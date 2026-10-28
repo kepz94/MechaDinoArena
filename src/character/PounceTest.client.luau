@@ -1,4 +1,4 @@
--- PounceTest v1.3 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
+-- PounceTest v1.4 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
 -- or the on-screen Pounce button (touch). Bound only while the character attribute PounceEnabled is true (the T-Rex
 -- has no pounce and gets no button).
 -- Flow:
@@ -42,10 +42,18 @@
 -- v1.3: shake-off (ShakeOffServer 1.0 / PounceServer 1.2). A server release with reason "water" leaps off like the jump
 --   key (PounceLeapOffSpeed / PounceLeapOffUp); "rammed" drops off and StunClient 1.0 lays the body down for the stun.
 --   A press while StunnedUntil (server time) is in the future does nothing (PounceInputResult "stunned").
+-- v1.4: air pounce (user: "allow pounce from mid air ... flying directly above a dino to pounce then when i press it it does
+--   nothing"; picks: same flat lunge, once per jump). With PounceAirEnabled (default true) a press while not grounded
+--   is allowed once per time in the air: the same flat lunge (PounceUpSpeed up + the horizontal lunge speed along the
+--   body's forward, set on the root at launch) starts from where the raptor is, and gravity brings it down onto what is
+--   ahead / below (front sweep + pin column as before). Any launch (ground or air) uses up the air pounce; it comes back
+--   once the raptor is grounded and "ready" again. A second air press: PounceInputResult "airUsed". PounceAirEnabled
+--   false = the 1.3 rule (PounceInputResult "air"). Cooldown and stamina are unchanged. Diagnostic: PounceLaunchFrom
+--   ("ground" / "air").
 -- Binding: a dino without PounceEnabled unbinds the action at start, so a binding left by a previous character
 --   (the old character's scripts are destroyed with it before their cleanup runs) never shows a Pounce button.
--- Allowed only when: alive, on the ground, not latched, not Exhausted, stamina >= PounceStaminaCost (StaminaEnabled
---   ~= false), PounceCooldown since the last local pounce.
+-- Allowed only when: alive, on the ground (v1.4: or in the air once per jump, PounceAirEnabled), not latched, not
+--   Exhausted, stamina >= PounceStaminaCost (StaminaEnabled ~= false), PounceCooldown since the last local pounce.
 -- Settings (character attributes): PounceEnabled, PounceWindup, PounceDistance, PounceUpSpeed, PounceReach,
 --   PounceLatchStandoff, PounceLeapOffSpeed, PounceLeapOffUp, PounceCooldown, PounceStaminaCost, PounceSizeRatio.
 -- Diagnostics (character attributes, this client): PounceTestState ("off" / "ready" / "windup" / "lunge" / "latched"
@@ -70,7 +78,8 @@ local ACTION = "DinoPounce"
 local BIND = "DinoPounceLatch"
 local DEFAULTS = {PounceEnabled = false, PounceWindup = 0.1, PounceDistance = 20, PounceUpSpeed = 28,
 	PounceReach = 1.6, PounceLatchStandoff = 2.4, PounceLeapOffSpeed = 30, PounceLeapOffUp = 35,
-	PounceCooldown = 3, PounceStaminaCost = 15, PounceSizeRatio = 1.5, StaminaEnabled = true, StaminaMax = 100}
+	PounceCooldown = 3, PounceStaminaCost = 15, PounceSizeRatio = 1.5, StaminaEnabled = true, StaminaMax = 100,
+	PounceAirEnabled = true} -- v1.4
 local FLIGHT_MAX = 1.0     -- seconds of lunge without contact before it ends
 local CONFIRM_WAIT = 0.6   -- seconds a predicted latch waits for the server
 local FRONT = 0.45         -- share of the body's length ahead of the centre where the sweep starts (~snout tip)
@@ -140,6 +149,7 @@ local holdLV
 local savedJumpPower -- Humanoid.JumpPower to put back after the launch (nil = nothing to restore)
 local kinds = {}           -- v1.1: [target model] = "latch" / "pin" (found at launch)
 local pinMode, pinRot, pinGroundY, pinHeight = false, CFrame.identity, 0, 0 -- v1.1
+local airUsed = false -- v1.4: a pounce was launched since the raptor was last grounded and ready
 
 local function hold(target)
 	if target then
@@ -208,8 +218,12 @@ local function tryPress()
 		result = "latched"
 	elseif (char:GetAttribute("StunnedUntil") or 0) > workspace:GetServerTimeNow() then -- v1.3
 		result = "stunned"
-	elseif state ~= "ready" or not grounded() then
+	elseif state ~= "ready" then
 		result = "air"
+	elseif not grounded() and get("PounceAirEnabled") ~= true then -- v1.4: 1.3 rule when air pounce is off
+		result = "air"
+	elseif not grounded() and airUsed then -- v1.4: once per time in the air
+		result = "airUsed"
 	elseif char:GetAttribute("Exhausted") == true then
 		result = "exhausted"
 	elseif get("StaminaEnabled") ~= false and staminaNow() < get("PounceStaminaCost") then
@@ -237,6 +251,8 @@ local function launch()
 	local flight = 2 * vy / math.max(1, workspace.Gravity)
 	lungeSpeed = get("PounceDistance") / flight
 	targets = findTargets()
+	show("PounceLaunchFrom", grounded() and "ground" or "air") -- v1.4
+	airUsed = true -- v1.4
 	savedJumpPower = hum.JumpPower
 	hum.UseJumpPower = true
 	hum.JumpPower = vy -- the Jumping state lifts with JumpPower
@@ -410,6 +426,7 @@ local stepConn = RunService.PreSimulation:Connect(function(dt)
 		show("PounceTestState", "off")
 		return
 	end
+	if state == "ready" and airUsed and grounded() then airUsed = false end -- v1.4: landed: air pounce back
 	if hum.Health <= 0 then
 		if state == "latched" then letGo("dead", false) end
 		hold(nil)

@@ -1,4 +1,4 @@
--- MechaButtons v1.2 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.3 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -46,12 +46,16 @@
 --   * speed lines: ScreenGui "MechaSpeedLines" (DisplayOrder 4) with 40 white streaks (100-220 x 4 px) flying outward
 --     from around the middle of the screen toward the edges, transparency 1 - 0.65 x k (hidden at k 0).
 --   Script attribute MechaBoostFxEnabled (default true; false = no punch and no lines). Diagnostic MechaBoostFx (k, 0.1).
+-- v1.3 (air pounce, PounceTest 1.4): a boost also ends when this character starts a pounce (PounceLocalState "windup" or
+--   "lunge"), so the boost's LinearVelocity (MaxForce infinite) does not hold the lunge back; the boost's end sets the
+--   horizontal speed to 0 during the 0.1 s wind-up, then the lunge sets its own speed. Script attribute
+--   MechaBoostPounceEnds (default true; false = 1.2 behaviour). Diagnostic (character): MechaBoostEnd ("pounce").
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -88,6 +92,11 @@ local lastDash = char:GetAttribute("DashStartedAt")
 local FX_BIND = "MechaBoostCam"
 local fxBoosting, fxK, fxBaseFov, fxGui, fxLines, fxT = false, 0, nil, nil, nil, 0
 local function fxOn() return script:GetAttribute("MechaBoostFxEnabled") ~= false end
+local function pounceStarted() -- v1.3
+	if script:GetAttribute("MechaBoostPounceEnds") == false then return false end
+	local s = char:GetAttribute("PounceLocalState")
+	return s == "windup" or s == "lunge"
+end
 local function fxBuild()
 	local pg = player:FindFirstChild("PlayerGui")
 	if not pg then return end
@@ -212,6 +221,11 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 	end
 	conn = RunService.Heartbeat:Connect(function()
 		local now = workspace:GetServerTimeNow()
+		if pounceStarted() then -- v1.3
+			char:SetAttribute("MechaBoostEnd", "pounce")
+			stop()
+			return
+		end
 		if os.clock() - t0 >= t or not char.Parent or hum.Health <= 0 or char:GetAttribute("PounceLatched") == true
 			or (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
 			stop()

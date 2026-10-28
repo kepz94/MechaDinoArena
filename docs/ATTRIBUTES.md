@@ -1212,6 +1212,20 @@ stamina (Kepu). The Thrusters part is on the dino only while it is in a slot (Ke
 
 T-Rex run 60 -> 39; maxed Sprint Legs (x2.6) 101; maxed + Thrusters boost (x1.75) 177 studs/s.
 
+## Air pounce (PounceTest 1.4 / MechaButtons 1.3)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| PounceAirEnabled | character | true | F / X / touch Pounce also works in the air, once per time in the air (any launch uses it; back after landing) |
+| PounceLaunchFrom | character (owner client) | — | diagnostic: "ground" / "air" for the last launch |
+| PounceInputResult "airUsed" | character (owner client) | — | diagnostic: a second press in the same air time |
+| MechaBoostPounceEnds | script MechaButtons | true | a Thrusters boost ends when a pounce starts (wind-up / lunge); false = 1.2 behaviour |
+| MechaBoostEnd | character (owner client) | — | diagnostic: "pounce" when a pounce ended the boost |
+
+The lunge is the ground one (PounceUpSpeed up + PounceDistance / flight time forward, 140 studs/s at RaptorScale 2) from
+wherever the raptor is; gravity brings it down. Launched far above a target, it carries you past it (Play: from 66 studs
+up and 23 studs behind, landed 105 studs beyond).
+
 ## Pounce claim scale (PounceServer 1.4)
 
 | Attribute | On | Default | Meaning |
