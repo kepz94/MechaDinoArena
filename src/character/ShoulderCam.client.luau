@@ -1,4 +1,4 @@
--- ShoulderCam v1.3 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
+-- ShoulderCam v1.4 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
 -- The camera is Scriptable and placed every frame (RenderStep, Camera priority, after TurnLimit / PounceTest):
 --   focus  = HumanoidRootPart position + ShoulderCamFocusHeight up (only the HRP position is used, so the view stays
 --            steady while the body tilts, e.g. latched on a pounce target)
@@ -44,6 +44,8 @@
 --   Diagnostic ShoulderCamPitchLock: "locked" (touch device, pitch fixed), "free" (mouse device), "off" (lock off).
 --   Test hook: ShoulderCamTouchPitchLockTest = true treats this device as touch-only (the Studio phone emulator keeps
 --   MouseEnabled = true, so it would otherwise always be "free").
+-- v1.4 (MDA-10, Kepu 2026-10-28 picked screenshot C): ShoulderCamTouchPitch default -20 -> -30 (camera higher, more
+--   ground in view).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -61,7 +63,7 @@ local DEFAULTS = {ShoulderCamEnabled = true, ShoulderCamSensitivity = 0.25, Shou
 	ShoulderCamTouchSensitivity = 0.35, ShoulderCamPitchMin = -55, ShoulderCamPitchMax = 65, ShoulderCamPitchStart = -12,
 	ShoulderCamZoomMin = 0.6, ShoulderCamZoomMax = 1.5, ShoulderCamSwapTime = 0.2,
 	ShoulderCamMouseTouchGuard = true, -- v1.2
-	ShoulderCamTouchPitchLock = true, ShoulderCamTouchPitch = -20} -- v1.3
+	ShoulderCamTouchPitchLock = true, ShoulderCamTouchPitch = -30} -- v1.3, v1.4: -30
 local PAD_DEADZONE = 0.15
 local WALL_PAD = 0.6      -- studs the camera stays in front of geometry it is pulled in by
 local ZOOM_STEP = 0.1     -- zoom change per wheel notch
@@ -88,7 +90,7 @@ local boxCf, boxSize = char:GetBoundingBox()
 local top = math.max(1, boxCf.Position.Y + boxSize.Y / 2 - hrp.Position.Y)
 local width = char:GetExtentsSize().X
 local spawnScale, spawnTop, spawnWidth, framedScale = char:GetScale(), top, width, char:GetScale() -- v1.1
-char:SetAttribute("ShoulderCamVersion", "1.3")
+char:SetAttribute("ShoulderCamVersion", "1.4")
 local function framing()
 	local sc = char:GetScale() -- v1.1: growth re-fit
 	if math.abs(sc - framedScale) > 1e-4 then
