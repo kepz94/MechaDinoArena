@@ -1,3 +1,9 @@
+# Mecha Dino Arena
+
+Squad arena branched from Dino Arcade at 3427ce8 — see docs/MECHA_ORIGIN.md. The Dino Arcade README follows unchanged.
+
+---
+
 # DinoBlox
 
 Dino Arcade — a fast, arcade-style open-world dinosaur survival / PvP game for Roblox. Blocky studded dinos,
