@@ -983,6 +983,14 @@ While GrowthState is "ready" (growth on), nothing is written. A `StatDamageTaken
   multiplied, after the growth cap, by the player character's `StatDamageTakenMul` (StatServer 1.0). Missing / invalid → 1.
 - Bot diagnostic: `BotLastHitDefenseMul` (the multiplier used on the last hit).
 
+## Class card (ClassCard 1.0, MDA-4, Mecha Dino Arena)
+Character attributes (this client):
+- `ClassCardEnabled` (default true): false hides the card.
+- `ClassCardFullTime` (default 8 s): how long the full card stays open after it first appears.
+- Diagnostics: `ClassCardVersion`, `ClassCardState` ("waiting" / "noSheet" / "hidden" / "full" / "collapsed").
+Reads (from StatServer 1.0): `Species`, `StatState`, `StatClass`, `StatAbilities`, `StatPoints_*`, `StatAdded_*`,
+`StatDamageTakenMul`, `BiteDamage`, `MoveWalkSpeed`, `MoveRunSpeed`, and Humanoid.MaxHealth.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):

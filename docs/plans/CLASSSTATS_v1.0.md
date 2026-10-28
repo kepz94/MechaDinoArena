@@ -165,8 +165,9 @@
 **Behaviour:**
 - Reads the character attributes from Task 2 and refreshes on any change to them.
 - Collapse (red-team #5):
-  - Full card for `ClassCardFullTime` (8 s) after spawn, then collapsed to the header line only: name, badge, "▸".
-  - Clicking or tapping the header toggles full ↔ collapsed ("▾" when full). A toggle cancels the 8 s timer.
+  - Full card for `ClassCardFullTime` (8 s) after spawn, then collapsed to the header line only: name, badge, "+".
+  - Clicking or tapping the header toggles full ("-") ↔ collapsed ("+"). A toggle cancels the 8 s timer. (Built: FredokaOne draws ▸ / ▾ blank, so the indicator is "+" / "-".)
+  - Viewport narrower than 900 px (the GoalTracker breakpoint): the card starts collapsed, so it never covers the goal tracker unless opened. Mecha chips are outline-only (Roblox strokes cannot be dashed).
 - Character attribute `ClassCardEnabled` (default true) hides the card when false.
 - Diagnostic `ClassCardState` ("waiting" until `StatState` is set / "full" / "collapsed" / "hidden" / "noSheet").
 
