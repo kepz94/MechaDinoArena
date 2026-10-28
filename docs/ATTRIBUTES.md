@@ -962,6 +962,22 @@ Pure module with no attributes of its own. StatServer 1.0 (MDA-2) writes the cha
   - Support: none.
 - Cap: +10 added per stat.
 
+## Class stats on player dinos (StatServer 1.0, MDA-2, Mecha Dino Arena)
+Script `StatServer`:
+- `StatEnabled` (default true): false writes the base values back.
+- `ArenaAdultSpawns` (default true): sets GrowthServer `GrowthEnabled = false` at start.
+- Diagnostics: `ArenaAdultSpawnsApplied` (true / false / "noGrowthServer"), `StatServerVersion`, `StatApplies` (count).
+Player input (written by the stat trees in part 3): `StatAdded_Health`, `StatAdded_Attack`, `StatAdded_Defense`,
+`StatAdded_Speed`, `StatAdded_Support` (ints; clamped by StatSheet 1.0; a change re-applies live).
+Character:
+- `StatState` ("waiting" / "noSheet" / "noHealth" / "growthOn" / "disabled" / "ready").
+- `StatClass` ("Bulky" / "Roamer"), `StatAbilities` (comma list, e.g. "Roar,Ram").
+- `StatPoints_<Stat>` (start + added), `StatAdded_<Stat>` (after clamping), `StatAddedClamped`.
+- `StatBase_<key>` / `StatBase_MaxHealth` (adult base), `StatDamageTakenMul` (Defense), `StatAppliedAt`, `StatServerVersion`.
+- Written stats: Humanoid.MaxHealth (health fraction kept after spawn), `BiteDamage`, `PounceLandDamage`,
+  `PounceTickDamage`, `MoveWalkSpeed`, `MoveRunSpeed`, `MoveCreepSpeed` (only those the character has).
+While GrowthState is "ready" (growth on), nothing is written. A `StatDamageTakenMul` already written stays as it was.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):

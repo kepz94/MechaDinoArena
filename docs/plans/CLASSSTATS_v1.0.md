@@ -43,7 +43,7 @@
 | Health | Humanoid.MaxHealth set by DinoHealthServer 1.0 (MAX_BY_SPECIES TRex 200, Raptor 60); `DinoMaxHealthSet` marks done | HealthBar, KillRegenServer, BotServer cap |
 | Attack | `BiteDamage` (T-Rex 25, Raptor 8), `PounceLandDamage` 8, `PounceTickDamage` 4 (raptor model data) | BiteServer `get(char,"BiteDamage")`, PounceServer `get(char,"PounceLandDamage"/"PounceTickDamage")` |
 | Defense | none today | bot hits on players: BotServer `hitDamage(b, char, hum, dmg)` (bite, latch land, latch tick) |
-| Speed | `MoveWalkSpeed` / `MoveRunSpeed` / `MoveCreepSpeed` (T-Rex 20 / 44 / 10, Raptor 30 / 52 / 10) | SprintTest client, IdleAnimation gait |
+| Speed | `MoveWalkSpeed` / `MoveRunSpeed` / `MoveCreepSpeed` (T-Rex 32 / 60 / 10 on the place's StarterCharacter — TRexModelData in the repo says 20 / 44, measured in Play 2026-10-28; Raptor 30 / 52 / 10) | SprintTest client, IdleAnimation gait |
 | Support | none | nothing until squads |
 
 - **Growth.** GrowthServer 1.2 is on by default: a new player spawns at level 1, scaled 0.4. With `GrowthEnabled = false`, a character keeps its adult values (GrowthState "disabled"; the script never writes at spawn while off).
