@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Class Stats Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:rgba(20,20,26,.86); --stroke:rgba(255,255,255,.5); --muted:#9fb0a6; --gold:#ffe27a; --on:#ffc832; --onText:#1e1a0a;
+  --xp:#c48cff; --health:#5fd16a; --sky1:#4f9be8; --sky2:#a9d4ff; --ground:#5fbf4f;
+  --assault:#eb553c; --vanguard:#ffb042; --bulky:#5cbeff; --healer:#7ce0c3; --roamer:#9be35a;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Fredoka,system-ui,sans-serif;color:#fff;background:#14141a;min-height:100vh}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;background:#0e0e13;border-bottom:1px solid #2a2a33;position:sticky;top:0;z-index:5}
+.top h1{font-size:16px;margin:0 12px 0 0;font-weight:700;letter-spacing:.3px}
+.vbtn{font:600 14px Fredoka,sans-serif;border:1px solid #3a3a46;background:#202029;color:#fff;border-radius:999px;padding:7px 14px;cursor:pointer}
+.vbtn.on{background:var(--on);color:var(--onText);border-color:var(--on)}
+.vbtn .rec{font-size:11px;opacity:.8;margin-left:6px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;padding:16px;max-width:1280px;margin:0 auto}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+/* game viewport */
+.game{position:relative;border-radius:14px;overflow:hidden;min-height:620px;
+  background:linear-gradient(var(--sky1),var(--sky2) 48%,#7fcf6a 48.2%,var(--ground) 100%)}
+.game:before{content:"";position:absolute;inset:48% 0 0 0;background:repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 26px,transparent 26px 52px),repeating-linear-gradient(0deg,rgba(0,0,0,.05) 0 26px,transparent 26px 52px)}
+.tree{position:absolute;bottom:52%;width:70px;height:90px}
+.tree i{position:absolute;left:28px;bottom:0;width:14px;height:44px;background:#5a3b2a}
+.tree b{position:absolute;left:0;bottom:36px;width:70px;height:54px;background:#2f8a3e;border-radius:6px;box-shadow:12px -10px 0 #3aa34b}
+.picker{position:absolute;left:16px;top:16px;display:flex;gap:8px}
+.pbtn{font:700 19px Fredoka,sans-serif;padding:10px 18px;border-radius:10px;border:1.5px solid var(--stroke);background:#202028;color:#fff;cursor:pointer;opacity:.95}
+.pbtn.on{background:var(--on);color:var(--onText)}
+.card{position:absolute;left:16px;top:72px;width:min(330px,calc(100% - 32px));background:var(--panel);border:1.5px solid var(--stroke);border-radius:12px;padding:12px 14px}
+.chead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.chead .name{font-size:20px;font-weight:700}
+.badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;color:#111;letter-spacing:.4px}
+.sub{font-size:12px;color:var(--muted);margin-bottom:8px}
+.row{display:grid;grid-template-columns:78px 1fr 96px;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.row .lab{font-weight:600}
+.row .val{text-align:right;font-variant-numeric:tabular-nums;font-size:13px}
+.row.dim{opacity:.45}
+.bar{height:10px;background:#14141a;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.12)}
+.bar>span{display:block;height:100%;border-radius:6px}
+.pips{display:flex;gap:3px}
+.pips i{width:11px;height:11px;border-radius:3px;background:#2b2b35;border:1px solid rgba(255,255,255,.12)}
+.pips i.f{background:var(--c)}
+.pips i.add{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+.plus{font:700 13px Fredoka,sans-serif;width:22px;height:22px;border-radius:6px;border:1px solid var(--stroke);background:#2b2b35;color:#fff;cursor:pointer;margin-left:4px}
+.plus:disabled{opacity:.3;cursor:default}
+.delta{color:var(--gold);font-size:12px}
+.neg{color:#ff8a7a}
+.abil{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.abil span{font-size:12px;padding:4px 8px;border-radius:8px;background:#2b2b35;border:1px solid rgba(255,255,255,.15)}
+.abil span.mecha{border-style:dashed;color:var(--muted)}
+.chip{display:inline-block;font-size:12px;padding:3px 8px;border-radius:999px;background:#2b2b35;border:1px solid rgba(255,255,255,.2);margin-left:auto}
+.foot{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12px;color:var(--muted)}
+.foot button{font:600 12px Fredoka,sans-serif;border-radius:8px;border:1px solid var(--stroke);background:#2b2b35;color:#fff;padding:4px 10px;cursor:pointer}
+.hud{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;width:min(420px,90%);}
+.hud .lbl{display:flex;justify-content:space-between;font-size:13px;font-weight:700;text-shadow:0 1px 2px #000}
+.hud .hb{height:16px;background:#14141a;border-radius:8px;border:1.5px solid rgba(255,255,255,.4);overflow:hidden}
+.hud .hb span{display:block;height:100%;background:linear-gradient(var(--health),#3fae4b)}
+.legend{position:absolute;right:16px;top:16px;background:var(--panel);border:1.5px solid var(--stroke);border-radius:12px;padding:10px 12px;font-size:12px;width:190px}
+.legend div{display:flex;align-items:center;gap:6px;margin:4px 0}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend .t{font-weight:700;font-size:13px;margin-bottom:4px}
+@media (max-width:640px){.legend{display:none}.game{min-height:560px}}
+/* side notes */
+.side{background:#1b1b22;border:1px solid #2a2a33;border-radius:14px;padding:14px 16px;font-size:14px;line-height:1.45}
+.side h2{font-size:17px;margin:0 0 6px}
+.side h3{font-size:13px;margin:12px 0 4px;color:var(--gold);text-transform:uppercase;letter-spacing:.5px}
+.side ul{margin:4px 0;padding-left:18px}
+.side li{margin:3px 0}
+.side .rec{display:inline-block;background:var(--on);color:var(--onText);font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Mecha Dino Arena · Class stats</h1>
+  <button class="vbtn" data-v="A">A · Class label + ratings</button>
+  <button class="vbtn" data-v="B">B · Class modifiers</button>
+  <button class="vbtn on" data-v="C">C · Stat points<span class="rec">recommended</span></button>
+</div>
+<div class="wrap">
+  <div class="game" id="game">
+    <div class="tree" style="left:46%"><i></i><b></b></div>
+    <div class="tree" style="left:68%;transform:scale(.8)"><i></i><b></b></div>
+    <div class="tree" style="left:84%;transform:scale(1.1)"><i></i><b></b></div>
+    <div class="picker">
+      <button class="pbtn on" data-s="TRex">T-REX</button>
+      <button class="pbtn" data-s="Raptor">RAPTOR</button>
+    </div>
+    <div class="card" id="card"></div>
+    <div class="legend">
+      <div class="t">Build types</div>
+      <div><i style="background:var(--assault)"></i>Assault · damage</div>
+      <div><i style="background:var(--vanguard)"></i>Vanguard · front line</div>
+      <div><i style="background:var(--bulky)"></i>Bulky · health + defense</div>
+      <div><i style="background:var(--healer)"></i>Healer · support</div>
+      <div><i style="background:var(--roamer)"></i>Roamer · speed + stamina</div>
+    </div>
+    <div class="hud">
+      <div class="lbl"><span>HEALTH</span><span id="hp">200 / 200</span></div>
+      <div class="hb"><span style="width:100%"></span></div>
+    </div>
+  </div>
+  <div class="side" id="side"></div>
+</div>
+<script>
+// Values from the repo (TRexModelData / RaptorModelData, DinoHealthServer 1.0, StaminaServer 1.4). Defense is new
+// (damage taken multiplier, 1.00 today for both). Support has no effect until squads.
+const SPECIES = {
+  TRex:  {name:"T-REX",  cls:"Bulky",  color:"var(--bulky)",  health:200, bite:25, cd:0.8, pounce:null, walk:20, run:44, stamTime:15, dmgTaken:1.00,
+          abil:["Roar (cone 90°, 30 studs, foes take ×1.25 dmg)","Ram"], pts:{Health:9,Attack:7,Defense:7,Speed:4,Stamina:4,Support:1}},
+  Raptor:{name:"RAPTOR", cls:"Roamer", color:"var(--roamer)", health:60,  bite:8,  cd:1.0, pounce:"8 + 4 / 0.5 s", walk:30, run:52, stamTime:15, dmgTaken:1.00,
+          abil:["Pounce + latch","Jump"], pts:{Health:3,Attack:4,Defense:3,Speed:9,Stamina:8,Support:1}}
+};
+const MODS = { // option B proposal (tune later)
+  Bulky: {Health:+0.25, Defense:-0.15, Speed:-0.10},
+  Roamer:{Speed:+0.10, Stamina:+0.30, Health:-0.10}
+};
+const STAT_COLOR = {Health:"var(--health)",Attack:"var(--assault)",Defense:"var(--bulky)",Speed:"var(--roamer)",Stamina:"#ffb042",Support:"var(--healer)"};
+let V = "C", S = "TRex", added = {};
+const fmt = n => (Math.round(n*10)/10).toString();
+function values(sp, extra){ // option C: each added point = +10% of the species' value (defense: -5% damage taken)
+  const a = k => extra[k]||0;
+  return {
+    Health: sp.health*(1+.1*a("Health")),
+    Attack: sp.bite*(1+.1*a("Attack")),
+    Defense: sp.dmgTaken*(1-.05*a("Defense")),
+    Speed: [sp.walk*(1+.1*a("Speed")), sp.run*(1+.1*a("Speed"))],
+    Stamina: sp.stamTime*(1+.1*a("Stamina")),
+    Support: null
+  };
+}
+function valText(k, v){
+  if(k==="Health") return fmt(v)+" HP";
+  if(k==="Attack") return "bite "+fmt(v);
+  if(k==="Defense") return "takes ×"+v.toFixed(2);
+  if(k==="Speed") return fmt(v[0])+" / "+fmt(v[1]);
+  if(k==="Stamina") return "run "+fmt(v)+" s";
+  return "—";
+}
+function render(){
+  const sp = SPECIES[S], card = document.getElementById("card");
+  document.querySelectorAll(".pbtn").forEach(b=>b.classList.toggle("on",b.dataset.s===S));
+  document.querySelectorAll(".vbtn").forEach(b=>b.classList.toggle("on",b.dataset.v===V));
+  let h = `<div class="chead"><span class="name">${sp.name}</span><span class="badge" style="background:${sp.color}">${sp.cls.toUpperCase()}</span>`;
+  if(V==="C"){ const used = Object.values(added).reduce((a,b)=>a+b,0); h += `<span class="chip">${3-used} skill pt${3-used===1?"":"s"}</span>`; }
+  h += `</div>`;
+  if(V==="A"){
+    h += `<div class="sub">Natural build type. Numbers are today's values, unchanged.</div>`;
+    const r = {Health:sp.health/25, Attack:(sp.bite/sp.cd + (sp.pounce?8:0))/4, Defense:5, Speed:sp.run/6, Stamina:sp.stamTime/2.5, Support:0};
+    const base = values(sp,{});
+    for(const k of ["Health","Attack","Defense","Speed","Stamina","Support"]){
+      const pct = Math.min(100, r[k]*10);
+      h += `<div class="row ${k==="Support"?"dim":""}"><span class="lab">${k}</span><div class="bar"><span style="width:${pct}%;background:${STAT_COLOR[k]}"></span></div><span class="val">${valText(k,base[k])}</span></div>`;
+    }
+  } else if(V==="B"){
+    const m = MODS[sp.cls];
+    h += `<div class="sub">${sp.cls} modifiers on top of the species' values (proposal numbers).</div>`;
+    const base = values(sp,{});
+    const mod = {Health:base.Health*(1+(m.Health||0)), Attack:base.Attack*(1+(m.Attack||0)), Defense:base.Defense*(1+(m.Defense||0)),
+                 Speed:[base.Speed[0]*(1+(m.Speed||0)), base.Speed[1]*(1+(m.Speed||0))], Stamina:base.Stamina*(1+(m.Stamina||0)), Support:null};
+    for(const k of ["Health","Attack","Defense","Speed","Stamina","Support"]){
+      const p = m[k]; const tag = p? `<span class="${(k==="Defense"? p>0 : p<0)?"neg":"delta"}">${p>0?"+":""}${Math.round(p*100)}%</span>`:"";
+      h += `<div class="row ${k==="Support"?"dim":""}"><span class="lab">${k}</span><span class="val" style="text-align:left">${k==="Support"?"":valText(k,base[k])+" →"}</span><span class="val">${k==="Support"?"squads first":valText(k,mod[k])+" "+tag}</span></div>`;
+    }
+    document.getElementById("hp").textContent = `${fmt(mod.Health)} / ${fmt(mod.Health)}`;
+  } else {
+    h += `<div class="sub">Starting points = the species' lean (today's numbers). Tree points add on top. Try the + buttons (3 demo points).</div>`;
+    const used = Object.values(added).reduce((a,b)=>a+b,0);
+    const val = values(sp, added);
+    for(const k of ["Health","Attack","Defense","Speed","Stamina","Support"]){
+      const start = sp.pts[k], add = added[k]||0;
+      let pips = ""; for(let i=0;i<10;i++){ pips += `<i class="${i<start?"f":(i<start+add?"add":"")}"></i>`; }
+      const canAdd = k!=="Support" && used<3 && start+add<10;
+      h += `<div class="row ${k==="Support"?"dim":""}" style="grid-template-columns:62px 1fr 110px"><span class="lab">${k}</span><div class="pips" style="--c:${STAT_COLOR[k]}">${pips}</div><span class="val">${valText(k,val[k])}${k!=="Support"?`<button class="plus" data-k="${k}" ${canAdd?"":"disabled"}>+</button>`:""}</span></div>`;
+    }
+    h += `<div class="foot"><button id="reset">Reset demo</button><span>Each point: +10% of that stat (defense: −5% damage taken)</span></div>`;
+    document.getElementById("hp").textContent = `${fmt(val.Health)} / ${fmt(val.Health)}`;
+  }
+  if(V==="A") document.getElementById("hp").textContent = `${sp.health} / ${sp.health}`;
+  h += `<div class="abil">${sp.abil.map(a=>`<span>${a}</span>`).join("")}<span class="mecha">Mecha skill · from trees</span><span class="mecha">Mecha skill · from trees</span></div>`;
+  card.innerHTML = h;
+  card.querySelectorAll(".plus").forEach(b=>b.onclick=()=>{added[b.dataset.k]=(added[b.dataset.k]||0)+1;render();});
+  const r = card.querySelector("#reset"); if(r) r.onclick=()=>{added={};render();};
+  renderSide();
+}
+const SIDE = {
+  A:`<h2>A · Class label + ratings</h2>
+    <p>The class is a label for what the species already does. The card shows today's numbers as rating bars.</p>
+    <h3>Optimises for</h3><ul><li>Smallest change: no balance numbers move.</li><li>Ships fastest (a data table + the card).</li></ul>
+    <h3>Trades off</h3><ul><li>The class has no mechanical meaning of its own; a third species "Bulky" would just be whatever its numbers are.</li><li>The stat trees later need their own stat model anyway (work moved, not saved).</li></ul>`,
+  B:`<h2>B · Class modifiers</h2>
+    <p>Each build type is a set of % modifiers (e.g. Bulky +25% health, −15% damage taken, −10% speed) applied on top of the species' values.</p>
+    <h3>Optimises for</h3><ul><li>Classes are reusable: a new species just picks one.</li><li>The class is felt in play right away.</li></ul>
+    <h3>Trades off</h3><ul><li>Changes today's balance (T-Rex 200 → 250 HP, raptor walk 30 → 33).</li><li>Two layers (class % + later tree points) to reason about and tune.</li></ul>`,
+  C:`<h2>C · Stat points <span class="rec">recommended</span></h2>
+    <p>Every dino has the same 6 stats on a 10-point sheet. The species' starting points are its natural lean (T-Rex heavy on Health / Defense = Bulky; Raptor heavy on Speed / Stamina = Roamer) and reproduce today's numbers exactly. Skill points from the tree add points to the same sheet.</p>
+    <h3>Optimises for</h3><ul><li>One model for classes <em>and</em> the stat trees: your "bulky raptor" is just Defense points on a Roamer sheet.</li><li>No balance change at the start.</li><li>The build type can be shown live from where the points sit.</li></ul>
+    <h3>Trades off</h3><ul><li>More upfront: a pure stat module + spec, and every stat-reading script reads the computed values.</li><li>Defense (damage taken) only matters once PvP exists; Support waits for squads.</li></ul>`
+};
+function renderSide(){
+  document.getElementById("side").innerHTML = SIDE[V] +
+   `<p class="note">Values from the repo: T-Rex 200 HP, bite 25 / 0.8 s, walk 20 / run 44; Raptor 60 HP, bite 8 / 1.0 s, pounce 8 + 4 per 0.5 s, walk 30 / run 52; both stamina 15 s run / 5 s refill. Defense is new (damage taken ×1.00 today). The "+10% per point" rate is a placeholder for the tree plan.</p>
+    <p class="note">Layout: card under the existing T-REX / RAPTOR picker (top-left), same dark panel, white 50% stroke, Fredoka, yellow selection. Legend top-right is mockup-only.</p>`;
+}
+document.querySelectorAll(".vbtn").forEach(b=>b.onclick=()=>{V=b.dataset.v;added={};render();});
+document.querySelectorAll(".pbtn").forEach(b=>b.onclick=()=>{S=b.dataset.s;added={};render();});
+render();
+</script>
+</body>
+</html>
