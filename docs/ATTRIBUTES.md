@@ -978,6 +978,11 @@ Character:
   `PounceTickDamage`, `MoveWalkSpeed`, `MoveRunSpeed`, `MoveCreepSpeed` (only those the character has).
 While GrowthState is "ready" (growth on), nothing is written. A `StatDamageTakenMul` already written stays as it was.
 
+## Defense on bot hits (BotServer 1.10, MDA-3, Mecha Dino Arena)
+- Script `BotServer` `BotDefenseEnabled` (default true): bot damage to a player (bite, latch land, latch tick) is
+  multiplied, after the growth cap, by the player character's `StatDamageTakenMul` (StatServer 1.0). Missing / invalid → 1.
+- Bot diagnostic: `BotLastHitDefenseMul` (the multiplier used on the last hit).
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):

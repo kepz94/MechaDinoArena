@@ -1,4 +1,4 @@
--- BotServer v1.9 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.10 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -238,12 +238,16 @@
 --   Script attributes: BotHuntEnabled (prey, default true), BotFightEnabled (bots, default true), BotRegenEnabled (true).
 --   Diagnostics: bot BotAnimalTarget, BotAnimalBites, BotAnimalKills, BotAnimalGiveUps, BotFleeing, BotEatState; script
 --   BotHuntKills, BotFightKills, BotFightBites, BotFlees, BotEats, BotHuntGiveUps.
+-- v1.10 (Mecha Dino Arena class stats, MDA-3, plan docs/plans/CLASSSTATS_v1.0.md Task 3, ADR-001): Defense on bot hits.
+--   hitDamage (every bot hit on a player: bite, latch land, latch tick) multiplies the damage, after the growth cap, by the
+--   player character's StatDamageTakenMul (StatServer 1.0; missing -> 1) while script attribute BotDefenseEnabled (default
+--   true) is not false. Diagnostic: bot BotLastHitDefenseMul.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -292,6 +296,7 @@ local BotRoam = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("B
 DEFAULTS.BotHuntEnabled = true -- v1.9
 DEFAULTS.BotFightEnabled = true -- v1.9
 DEFAULTS.BotRegenEnabled = true -- v1.9
+DEFAULTS.BotDefenseEnabled = true -- v1.10
 local BotHunt = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("BotHunt")) -- v1.9
 local BOT_AVOID_MIN_STAGE = 2
 local BOT_PLAYER_HIT_CAP = 0.4
@@ -722,7 +727,13 @@ local function hitDamage(b, char, hum, dmg)
 		if dmg > cap then dmg, capped = cap, true end
 	end
 	show(b, "BotLastHitCapped", capped)
-	return dmg
+	local mul = 1 -- v1.10: Defense (StatServer's StatDamageTakenMul)
+	if get("BotDefenseEnabled") ~= false then
+		local m = char:GetAttribute("StatDamageTakenMul")
+		if type(m) == "number" and m == m and m >= 0 then mul = m end
+	end
+	show(b, "BotLastHitDefenseMul", mul)
+	return dmg * mul
 end
 
 local function randomGoal(b)
