@@ -1059,6 +1059,15 @@ its bite is off.
 ArenaTouch 1.2 hides BITE while BiteEnabled is false and draws POUNCE big and yellow in BITE's place (PounceMain, dimmed
 while PounceTestState is not "ready").
 
+## Skill tree data (SkillTree 1.0)
+
+Pure module, no attributes. `ServerStorage.DinoArcade.SkillTree`; SkillServer 1.0 copies it to
+`ReplicatedStorage.SkillShared` for the client. Effects (`SkillTree.effects`) → what SkillEffects 1.0 writes:
+attackPts / defensePts / speedPts → player `StatAdded_Attack` / `_Defense` / `_Speed`; regenDelay / regenRate;
+killRegenAdd → `KillRegenFraction`; lifesteal; shieldMax / shieldTime → `SkillShield`; mainCdMul → `BiteCooldown` or
+`PounceCooldown`; moveCdMul → `PounceCooldown` / `RamCooldown` / `JumpCooldown`; bleedDps / bleedTime; crushStun /
+crushCooldown → bot `StunnedUntil`; tossMul → `StunTossDistance`; stunMul / stunImmuneAbove → `StunnedUntil`.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
