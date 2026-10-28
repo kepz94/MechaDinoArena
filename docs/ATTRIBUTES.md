@@ -1107,6 +1107,20 @@ and on server close.
 
 A bleed kill stamps the bot like BiteServer: `KilledBy`, `KilledByUserId`, `KilledWith` = "bleed", then `KilledAt`.
 
+## Skill tree screen (SkillScreen 1.0)
+
+Client only. Reads the player's Skill* attributes (SkillServer 1.0) and `ReplicatedStorage.SkillShared.SkillTree`; sends
+`ReplicatedStorage.SkillRequest` ("buy", pathId) / ("respec"). ScreenGuis: `SkillButton` (DisplayOrder 6),
+`SkillScreenDim` (20), `SkillScreen` (21). Named parts: `SkillButton.Skills`, `SkillScreen.Root.Top.Close / Respec`,
+`Root.Body.Rail.Area_<id>`, `Root.Body.Cols.Col_<pathId>.Stack.Node_<n>`, `Root.Body.Detail.Buy`, `Root.Confirm.Yes / No`.
+
+| Attribute (character, this client) | Meaning |
+|---|---|
+| SkillScreenVersion | "1.0" |
+| SkillScreenOpen | true / false ("noServer" when SkillServer's remote never appeared) |
+| SkillScreenArea | the open area id |
+| SkillScreenLastPress | "open" / "close" / "area:&lt;id&gt;" / "node:&lt;pathId&gt;:&lt;n&gt;" / "buy:&lt;pathId&gt;" / "respec" / "respecYes" / "respecNo" |
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
