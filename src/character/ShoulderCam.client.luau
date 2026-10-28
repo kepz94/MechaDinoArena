@@ -1,4 +1,4 @@
--- ShoulderCam v1.1 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
+-- ShoulderCam v1.2 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
 -- The camera is Scriptable and placed every frame (RenderStep, Camera priority, after TurnLimit / PounceTest):
 --   focus  = HumanoidRootPart position + ShoulderCamFocusHeight up (only the HRP position is used, so the view stays
 --            steady while the body tilts, e.g. latched on a pounce target)
@@ -28,6 +28,14 @@
 --   Model:GetScale() changes (GrowthServer 1.0 stage-up) both are multiplied by new / spawn scale. The distance already
 --   follows CameraStartZoom / ShoulderCamDistance, which GrowthServer scales. Diagnostics ShoulderCamScale (0.01
 --   steps), ShoulderCamVersion.
+-- v1.2 (MDA, mobile thumbstick turned the camera; Kepu 2026-10-28): on touch devices UserInputService:GetMouseDelta()
+--   also returns the drag of a touch while MouseBehavior is LockCenter, so the movement thumbstick (and every other
+--   touch) turned the camera through the mouse-aim path. The mouse delta is now applied only when
+--   ShoulderCamMouseGate = "applied": no touch is down AND a MouseMovement InputChanged arrived since the last frame.
+--   Touch look (right 60% drag, touch path above) is unchanged. Character attribute ShoulderCamMouseTouchGuard
+--   (default true): false = v1.1 (mouse delta always applied). Diagnostic ShoulderCamMouseGate: "applied" (mouse delta
+--   used), "touch" (a touch is down, delta ignored), "idle" (no mouse movement this frame, delta ignored), "off"
+--   (guard off, v1.1), "free" (Left Alt / menu, no aiming).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -43,7 +51,8 @@ local BIND = "DinoShoulderCam"
 local ACTION = "DinoShoulderSwap"
 local DEFAULTS = {ShoulderCamEnabled = true, ShoulderCamSensitivity = 0.25, ShoulderCamPadSpeed = 240,
 	ShoulderCamTouchSensitivity = 0.35, ShoulderCamPitchMin = -55, ShoulderCamPitchMax = 65, ShoulderCamPitchStart = -12,
-	ShoulderCamZoomMin = 0.6, ShoulderCamZoomMax = 1.5, ShoulderCamSwapTime = 0.2}
+	ShoulderCamZoomMin = 0.6, ShoulderCamZoomMax = 1.5, ShoulderCamSwapTime = 0.2,
+	ShoulderCamMouseTouchGuard = true} -- v1.2
 local PAD_DEADZONE = 0.15
 local WALL_PAD = 0.6      -- studs the camera stays in front of geometry it is pulled in by
 local ZOOM_STEP = 0.1     -- zoom change per wheel notch
@@ -70,7 +79,7 @@ local boxCf, boxSize = char:GetBoundingBox()
 local top = math.max(1, boxCf.Position.Y + boxSize.Y / 2 - hrp.Position.Y)
 local width = char:GetExtentsSize().X
 local spawnScale, spawnTop, spawnWidth, framedScale = char:GetScale(), top, width, char:GetScale() -- v1.1
-char:SetAttribute("ShoulderCamVersion", "1.1")
+char:SetAttribute("ShoulderCamVersion", "1.2")
 local function framing()
 	local sc = char:GetScale() -- v1.1: growth re-fit
 	if math.abs(sc - framedScale) > 1e-4 then
@@ -98,6 +107,8 @@ local touchLook, touchDelta = nil, Vector2.zero
 local wheelSteps = 0
 local pinchStartZoom
 local active = false
+local touchesDown = {}     -- v1.2: [InputObject] = true for every touch currently down
+local mouseMoved = false   -- v1.2: a MouseMovement InputChanged arrived since the last frame
 
 -- crosshair dot
 local gui = Instance.new("ScreenGui")
@@ -130,6 +141,8 @@ UserInputService.InputChanged:Connect(function(input, processed)
 		padLook = p.Magnitude > PAD_DEADZONE and p or Vector2.zero
 	elseif input.UserInputType == Enum.UserInputType.MouseWheel and not processed then
 		wheelSteps += input.Position.Z
+	elseif input.UserInputType == Enum.UserInputType.MouseMovement then -- v1.2
+		mouseMoved = true
 	elseif input == touchLook then
 		touchDelta += Vector2.new(input.Delta.X, input.Delta.Y)
 	end
@@ -143,6 +156,27 @@ end)
 UserInputService.InputEnded:Connect(function(input)
 	if input == touchLook then touchLook = nil end
 end)
+-- v1.2: touches down (any touch, processed or not), for the mouse-delta guard
+UserInputService.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch then touchesDown[input] = true end
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch then touchesDown[input] = nil end
+end)
+-- v1.2: "applied" / "touch" / "idle" / "off" (see header); clears the per-frame mouse flag
+local function mouseGate()
+	local moved = mouseMoved
+	mouseMoved = false
+	if get("ShoulderCamMouseTouchGuard") == false then return "off" end
+	for t in pairs(touchesDown) do -- drop touches whose InputEnded was missed
+		if t.UserInputState == Enum.UserInputState.End or t.UserInputState == Enum.UserInputState.Cancel then
+			touchesDown[t] = nil
+		end
+	end
+	if next(touchesDown) ~= nil then return "touch" end
+	if not moved then return "idle" end
+	return "applied"
+end
 UserInputService.TouchPinch:Connect(function(_, scale, _, state, processed)
 	if processed then return end
 	if state == Enum.UserInputState.Begin then pinchStartZoom = zoom end
@@ -238,7 +272,9 @@ local function step(dt)
 	gui.Enabled = not free
 	local gameSens = 1
 	pcall(function() gameSens = UserSettings():GetService("UserGameSettings").MouseSensitivity end)
-	if not free then
+	local gate = mouseGate() -- v1.2
+	show("ShoulderCamMouseGate", free and "free" or gate)
+	if not free and (gate == "applied" or gate == "off") then
 		local md = UserInputService:GetMouseDelta()
 		local k = math.rad(get("ShoulderCamSensitivity")) * gameSens
 		yaw -= md.X * k

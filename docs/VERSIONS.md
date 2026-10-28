@@ -103,6 +103,7 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | SprintTest | 1.5 | Auto-run (Mecha; Kepu 2026-10-28: "Let's make it auto run. Forget walking"): character attribute AutoRun true → runs as if the run key is held (Sprinting, source "run", DinoRunRequest true); roar / exhausted still take priority. AutoRun false / absent = v1.4. Verified in Play: T-Rex WalkSpeed 60, ran at 60 studs/s with GaitBlend 1.0 (full run gait). Install hash 5811 / 1067882844 |
 | ArenaRules | 1.1 | ArenaAutoRun (default true) sets AutoRun on every player character; toggle updates live. Verified: AutoRun true at spawn. Install hash 3057 / 1934386308 |
 | ArenaTouch | 1.1 | RUN hidden while AutoRun is true. Verified in the phone emulator: buttons Bite only (+ ability buttons as before). Install hash 10648 / 1468769058 |
+| ShoulderCam | 1.2 | Mobile fix: thumbstick no longer turns the camera. GetMouseDelta returns touch drags under LockCenter, so the mouse delta is applied only when no touch is down and a MouseMovement event arrived (ShoulderCamMouseGate "applied"). Toggle ShoulderCamMouseTouchGuard (false = 1.1). Verified in the phone emulator: thumbstick drag up 80 px moved the dino 109 studs, pitch stayed −12 (1.1: −12 → 9); right-side look drag 40 px yaw −14 (1.1: −38, was double-counted); guard off reproduces 1.1. Install hash 15372 / 1616582578 |
 
 ## Open decisions
 - Skill points per level-up.

@@ -1016,6 +1016,20 @@ Switched off in Mecha (Arena scope 1.1): HealthBar, SpeciesPicker, StaminaBar.
   without the key; `Sprinting` true, `MoveSpeedSource` "run". Roar / exhausted still take priority.
 - ArenaTouch hides the RUN button while `AutoRun` is true.
 
+## Mobile mouse-delta guard (ShoulderCam 1.2)
+
+On touch devices `UserInputService:GetMouseDelta()` also reports touch drags while MouseBehavior is LockCenter, so in 1.1
+the movement thumbstick (and any touch) turned the camera through the mouse-aim path. 1.2 applies the mouse delta only
+when no touch is down and a MouseMovement InputChanged arrived since the last frame. Touch look (right 60% drag,
+`ShoulderCamTouchSensitivity`) is unchanged; it is now the only path that turns the camera from a touch.
+
+| Attribute (character) | Default | Effect |
+|---|---|---|
+| ShoulderCamMouseTouchGuard | true | false = 1.1 behaviour (mouse delta always applied) |
+
+Diagnostic, owner client: `ShoulderCamMouseGate` — "applied" (mouse delta used), "touch" (a touch is down, delta
+ignored), "idle" (no mouse movement this frame), "off" (guard off), "free" (Left Alt / menu). `ShoulderCamVersion` "1.2".
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
