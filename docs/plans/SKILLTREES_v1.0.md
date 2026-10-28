@@ -48,7 +48,7 @@ GrowthServer stays off (adult spawns), so it is not used for XP. This settles AD
 
 ## Do-not-touch
 - **Code read, not changed:** GrowthServer, GrowthBar, LevelUpFX, StatServer, StatSheet, KillRegenServer, BiteServer, PounceServer, ShakeOffServer, BotServer, all move scripts.
-- **ArenaStatus and ArenaTouch are unchanged.** The SKILLS button is its own small ScreenGui.
+- **ArenaTouch is unchanged.** The SKILLS button is its own small ScreenGui. ArenaStatus changes only for the shield (Task 6, Kepu: "inside the health bar").
 - **Mecha parts, ability buttons, loadout slots, Engineering, PvP and squads are later pieces.** The screen shows those paths as "soon".
 
 ## File structure
@@ -75,9 +75,10 @@ GrowthServer stays off (adult spawns), so it is not used for XP. This settles AD
 | Lifesteal | heal 5% of damage you deal | 10% | 15% | **overheal shield:** healing past full becomes a shield (max 20% of max HP, lasts 6 s) that is lost before health; shown as a thin blue bar |
 | Jaws (main attack) | +1 Attack point | main attack cooldown ×0.9 (`BiteCooldown` or `PounceCooldown`) | **bleed:** hits make the target lose 3 HP/s for 4 s (a new hit restarts it) | **crushing hit:** a hit stuns the target 0.75 s (`StunnedUntil`), at most once per 4 s per target |
 | Thick Hide | +1 Defense point (−5%) | **less knockback:** thrown 50% less far when a T-Rex rams you off (`StunTossDistance` ×0.5) | stuns 25% shorter (`StunnedUntil` trimmed) | no stun while above 50% health |
-| Sprint Legs | +1 Speed point (+10%) | *acceleration: see red-team #1* | ×0.85 on `PounceCooldown` / `RamCooldown` / `JumpCooldown` | +1 Speed point |
+| Sprint Legs | +1 Speed point (+10%) | **run speed ×1.5**, always on (Kepu); written as +5 Speed points, so it goes through StatServer like the others | ×0.85 on `PounceCooldown` / `RamCooldown` / `JumpCooldown` | +1 Speed point |
 
 Bleed and the crushing hit work on bots now. Players get them once PvP damage exists.
+A full Sprint Legs path is +7 Speed points = run speed ×1.7 (T-Rex 60 → 102, raptor 52 → 88). That's within StatSheet's +10 cap.
 The other 10 paths are on the screen, locked, marked "soon".
 
 ### Task 1 — SkillTree 1.0 · Mode: Logic
@@ -208,6 +209,19 @@ The other 10 paths are on the screen, locked, marked "soon".
   - points and the XP bar match the player attributes.
 - Kepu checks it on his phone.
 
+### Task 6 — ArenaStatus 1.1: shield in the health bar · Mode: Wired
+**Files:** Modify `src/character/ArenaStatus.client.luau` (additive).
+
+- While the character's `SkillShield` > 0, a blue (90, 160, 255) section is drawn on the health bar.
+  - It starts where the green fill ends and is `SkillShield / MaxHealth` of the bar wide.
+  - It is clipped at the bar's end.
+- The label shows "h / max +s".
+- At 0 it hides.
+- Toggle: character `ArenaStatusShieldEnabled` (default true).
+- Diagnostic: `ArenaStatusShield` ("shown" / "hidden").
+
+**Acceptance:** with a shield, the blue section and the "+s" label appear; they go when it's used up or expires; nothing changes without a shield.
+
 ### Task 5 — ArenaScope 1.2 · Mode: Wired
 Expects SkillServer, SkillEffects and SkillScreen to be on, and ClassCard still off.
 
@@ -232,5 +246,13 @@ Expects SkillServer, SkillEffects and SkillScreen to be on, and ClassCard still 
   - area selected;
   - node selected (default: the first not-yet-bought step of the first path).
 
-## Red-team (to answer before filing)
-See the chat reply. The surviving points get folded in here.
+## Red-team (Kepu's answers 2026-10-28)
+1. **Five steps needed moves that don't exist.** Kepu: build the real ones.
+   - bleed and crushing hit: on bots now, players with PvP;
+   - knockback: the ram toss distance;
+   - overheal shield: shown in the health bar.
+   - Acceleration doesn't exist (dinos reach full speed instantly), so Sprint Legs II became run speed ×1.5 (Kepu).
+2. **XP from bot kills only, for now.** Kepu: pace as planned (about 650 raptor-bot kills to max). Tunable through SkillKillXpFraction and the curve.
+3. **Saving can't be tested in Studio without API access.** Kepu will switch on "Enable Studio Access to API Services". Until then `SkillSaveState` "noApi".
+4. **Bleed kills must still count.** Bleed stamps the kill exactly like BiteServer, and is tested: one XP gain, no double stamp.
+5. **Stun rules only touch raptors today.** Only ShakeOffServer stuns players, and only latched raptors. Accepted.
