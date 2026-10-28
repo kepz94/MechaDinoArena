@@ -9,6 +9,14 @@
 - Class stats come before PvP.
 - Growth XP will become skill points in part 3, with no size change.
 
+**Red-team answers:**
+- #1: cap the ADDED points (up to +10 per stat on top of the start).
+- #2: Health and Attack points are flat (the same gain on every dino); Defense and Speed are percentages.
+- #4: keep Task 3 (Defense on bot hits now).
+- #5: the card is full for 8 s after spawn, then collapses to a one-line header; tap the header to toggle.
+
+**Accepted risk (#3, ADR-001):** StatServer goes idle while growth is on. Part 3 (growth XP → skill points) must split GrowthServer into XP-only (no size or stat writes), or this plan's stats stop applying.
+
 **Architecture:**
 - **StatSheet 1.0** (pure module, `src/shared`): the species sheets and the stat → attribute formula.
 - **StatServer 1.0:** captures each player character's own base values at spawn and writes the computed attributes. It also turns on adult spawns, through GrowthServer's existing `GrowthEnabled` switch.
@@ -54,19 +62,22 @@
 
 **Interfaces (produces):**
 - `StatSheet.Version = "1.0"`, `StatSheet.STATS = {"Health","Attack","Defense","Speed","Support"}`
-- `StatSheet.MAX_POINTS = 10`, `StatSheet.RATE = 0.10` (per added point), `StatSheet.DEFENSE_RATE = 0.05`
+- `StatSheet.MAX_ADDED = 10` (cap per stat on ADDED points; starting points are not part of it)
+- `StatSheet.HEALTH_PER_POINT = 15` (flat MaxHealth), `StatSheet.ATTACK_PER_POINT = {BiteDamage = 2, PounceLandDamage = 2, PounceTickDamage = 1}` (flat)
+- `StatSheet.SPEED_RATE = 0.10` (per point, % of the species' own value), `StatSheet.DEFENSE_RATE = 0.05` (per point, off damage taken)
+- These per-point values are placeholders. Part 3 tunes them with the tree.
 - `StatSheet.SPECIES = { TRex = {class = "Bulky", start = {Health=9, Attack=7, Defense=7, Speed=4, Support=1}, abilities = {"Roar", "Ram"}}, Raptor = {class = "Roamer", start = {Health=3, Attack=4, Defense=3, Speed=9, Support=1}, abilities = {"Pounce + latch", "Jump"}} }`
 - `StatSheet.ATTACK_KEYS = {"BiteDamage","PounceLandDamage","PounceTickDamage"}`, `StatSheet.SPEED_KEYS = {"MoveWalkSpeed","MoveRunSpeed","MoveCreepSpeed"}`
-- `StatSheet.added(species, raw) -> {[stat] = int}, clampedAny`: each `raw[stat]` is converted with `math.floor`. A non-number or negative value becomes 0. Each value is capped at `MAX_POINTS - start[stat]`. Support is always 0 (no effect yet).
+- `StatSheet.added(species, raw) -> {[stat] = int}, clampedAny`: each `raw[stat]` is converted with `math.floor`. A non-number or negative value becomes 0. Each value is capped at `MAX_ADDED`. Support is always 0 (no effect yet).
 - `StatSheet.points(species, added) -> {[stat] = start + added}`
 - `StatSheet.values(base, added) -> {[attr] = value}`, where `base` = `{MaxHealth = n, BiteDamage = n, ...}` (only the keys present):
-  - `MaxHealth = round(base.MaxHealth × (1 + RATE × added.Health))`, to an integer
-  - each attack key: `round1(base[k] × (1 + RATE × added.Attack))`, to 0.1
-  - each speed key: `round1(base[k] × (1 + RATE × added.Speed))`
+  - `MaxHealth = base.MaxHealth + HEALTH_PER_POINT × added.Health` (flat)
+  - each attack key present in base: `base[k] + ATTACK_PER_POINT[k] × added.Attack` (flat)
+  - each speed key: `round1(base[k] × (1 + SPEED_RATE × added.Speed))`, to 0.1
   - `StatDamageTakenMul = round2(1 - DEFENSE_RATE × added.Defense)`
 - An unknown species (`SPECIES[species] == nil`) → `added` returns `nil, false`, and the caller stops.
 
-- [ ] Step 1: write the spec. Assert that both sheets sum to their table, that 0 added gives exactly the base (T-Rex 200 / 25 / 20 / 44 / 10, Raptor 60 / 8 / 8 / 4 / 30 / 52 / 10, mul 1), each formula row, the clamps (Health on T-Rex capped at 1, Defense on Raptor capped at 7, negative → 0, "x" → 0, 2.7 → 2, Support → 0), and that an unknown species gives nil.
+- [ ] Step 1: write the spec. Assert that both sheets sum to their table, that 0 added gives exactly the base (T-Rex 200 / 25 / 20 / 44 / 10, Raptor 60 / 8 / 8 / 4 / 30 / 52 / 10, mul 1), each formula row, the clamps (12 → 10 on any stat, negative → 0, "x" → 0, 2.7 → 2, Support → 0); flat Health / Attack give the same gain on both species, and that an unknown species gives nil.
 - [ ] Step 2: run in Studio Edit and watch it fail (module missing).
 - [ ] Step 3: write the module.
 - [ ] Step 4: run, PASS n.
@@ -115,9 +126,9 @@
 **Acceptance:**
 - 0 added on both species: every attribute and MaxHealth equals today's values.
 - `ArenaAdultSpawns` gives scale 1 and level-free spawns (GrowthState "disabled").
-- Player `StatAdded_Health = 1` on a T-Rex → MaxHealth 220, health fraction kept. `StatAdded_Health = 5` → clamped to 1, `StatAddedClamped` true.
+- Player `StatAdded_Health = 2` → T-Rex MaxHealth 230, Raptor 90, health fraction kept. `StatAdded_Health = 12` → clamped to 10, `StatAddedClamped` true.
 - Raptor `StatAdded_Speed = 1` → walk 33 / run 57.2 / creep 11, and SprintTest uses them.
-- Raptor `StatAdded_Attack = 2` → bite 9.6, pounce 9.6 / 4.8, and BiteServer's `BiteHitBaseDamage` matches.
+- Raptor `StatAdded_Attack = 2` → bite 12, pounce 12 / 6. T-Rex `StatAdded_Attack = 2` → bite 29. BiteServer's `BiteHitBaseDamage` matches.
 - `StatEnabled = false` restores the base values.
 - No warnings; hash matches; docs updated.
 
@@ -129,7 +140,7 @@
 - Bot diagnostic `BotLastHitDefenseMul`.
 
 **Acceptance:**
-- A player with `StatDamageTakenMul` 0.85 takes 0.85 × a T-Rex bot bite (25 → 21.25).
+- A player with `StatDamageTakenMul` 0.85 (3 Defense points) takes 0.85 × a T-Rex bot bite (25 → 21.25).
 - Missing attribute → ×1.
 - Toggle off → ×1.
 - The growth cap order is unchanged.
@@ -144,7 +155,8 @@
 - Header: species name (20 px) and the class badge (pill; Bulky (92, 190, 255), Roamer (155, 227, 90), Assault (235, 85, 60), Vanguard (255, 176, 66), Healer (124, 224, 195); dark text).
 - 5 rows in the order Health, Attack, Defense, Speed, Support. Each row has:
   - the label;
-  - 10 pips: starting points in the stat colour (Health (95, 209, 106), Attack (235, 85, 60), Defense (92, 190, 255), Speed (155, 227, 90), Support (124, 224, 195)) and added points in gold (255, 226, 122);
+  - 10 pips for the starting points, in the stat colour (Health (95, 209, 106), Attack (235, 85, 60), Defense (92, 190, 255), Speed (155, 227, 90), Support (124, 224, 195));
+  - right after the pips, gold (255, 226, 122) text "+N" for added points, only when N > 0;
   - the value, right-aligned: "200 HP", "bite 25", "takes ×1.00", "20 / 44", "—".
 - The Support row is at 0.45 transparency.
 - Ability chips: the species abilities, plus 2 dashed chips "Mecha skill · from trees" at 0.5 text transparency.
@@ -152,12 +164,16 @@
 
 **Behaviour:**
 - Reads the character attributes from Task 2 and refreshes on any change to them.
+- Collapse (red-team #5):
+  - Full card for `ClassCardFullTime` (8 s) after spawn, then collapsed to the header line only: name, badge, "▸".
+  - Clicking or tapping the header toggles full ↔ collapsed ("▾" when full). A toggle cancels the 8 s timer.
 - Character attribute `ClassCardEnabled` (default true) hides the card when false.
-- Diagnostic `ClassCardState` ("waiting" until `StatState` is set / "shown" / "hidden" / "noSheet").
+- Diagnostic `ClassCardState` ("waiting" until `StatState` is set / "full" / "collapsed" / "hidden" / "noSheet").
 
 **Acceptance:**
 - Card visible under the picker on spawn for both species, values matching the attributes.
-- Gold pips appear live when `StatAdded_*` changes.
+- Gold "+N" appears live when `StatAdded_*` changes.
+- Collapses at 8 s; the header tap toggles it.
 - Hidden with `ClassCardEnabled` false.
 - No overlap with the picker, health HUD or goal tracker at 1280 × 720 and 390 px phone width (screenshots).
 - No warnings; docs updated.
