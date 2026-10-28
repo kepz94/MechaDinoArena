@@ -1150,6 +1150,18 @@ the wrong half. BotRoam 1.1 takes `opts.inside` so roaming spots and paths stay 
 `ROAM_BORDER_MARGIN` (15, code constant): roam spots and paths stay at least 15 studs inside the zone edge.
 `BotFightEnabled` is false in Mecha (place attribute + BotServer.meta.json).
 
+## Raptor pack section (Territory 1.1 / BotServer 1.13)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| BotPackSectionEnabled | script BotServer | true | false = v1.12 (one raptor zone for packs and lone raptors) |
+| BotSoloExtra | script BotServer | 5 | extra lone roam raptors (groups Solo1..SoloN), read at server start |
+| BotPackSectionState | script BotServer | — | diagnostic: "on" / "off" |
+| BotTerritory | bot | — | now "RaptorPack" (pack of more than 1) / "RaptorSolo" (lone) / "TRex" |
+
+Bands (Territory 1.1, split `PACK_SPLIT_Z` -190): RaptorSolo z > -190 (nearer the spawn), RaptorPack z <= -190 (far half).
+A chase stops at the band line exactly like at the territory border (BotBorderDrops, BotState "border").
+
 ## Bigger raptors (RaptorScale 1.0)
 
 | Attribute | On | Default | Meaning |

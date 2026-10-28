@@ -1,4 +1,4 @@
--- Territory.spec v1.0 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.Territory (MDA-17, plan
+-- Territory.spec v1.1 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.Territory (MDA-17, plan
 -- docs/plans/TERRITORIES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 local ok, T = pcall(function() return require(game.ServerStorage.DinoArcade.Territory) end)
 if not ok then return "FAIL require: " .. tostring(T) end
@@ -7,7 +7,7 @@ local function eq(name, got, want)
 	if got == want then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", T.Version, "1.0")
+eq("Version", T.Version, "1.1")
 eq("SPAWN", T.SPAWN, Vector3.new(88, 0, 904))
 eq("SPAWN_SAFE", T.SPAWN_SAFE, 300)
 -- T-Rex: the left half (x <= -40)
@@ -42,6 +42,31 @@ eq("path inside", T.pathInside("Raptor", v(100, 0), v(800, -500)), true)
 eq("path crosses gap", T.pathInside("Raptor", v(100, 0), v(-100, 0)), false)
 eq("path through spawn circle", T.pathInside("TRex", v(-400, 900), v(-40, 650)), false)
 eq("path unknown", T.pathInside("Chicken", v(-900, 0), v(900, 0)), true)
+-- v1.1: raptor bands (split at z -190)
+eq("PACK_SPLIT_Z", T.PACK_SPLIT_Z, -190)
+eq("solo near", T.inside("RaptorSolo", 400, 300), true)
+eq("solo split edge", T.inside("RaptorSolo", 400, -189), true)
+eq("solo at split", T.inside("RaptorSolo", 400, -190), false)
+eq("pack at split", T.inside("RaptorPack", 400, -190), true)
+eq("pack far", T.inside("RaptorPack", 600, -800), true)
+eq("pack near", T.inside("RaptorPack", 600, 300), false)
+eq("solo gap", T.inside("RaptorSolo", 39, 0), false)
+eq("solo trex side", T.inside("RaptorSolo", -300, 0), false)
+eq("solo south cut", T.inside("RaptorSolo", 400, 561), false)
+eq("pack trex side", T.inside("RaptorPack", -300, -500), false)
+eq("raptor still both", T.inside("Raptor", 400, -800) and T.inside("Raptor", 400, 300), true)
+-- home for the bands: pos, x mirror, z mirror, both mirrors
+eq("home pack z mirror", T.home("RaptorPack", v(238.6, 446.4)), v(238.6, -446.4))
+eq("home pack xz mirror", T.home("RaptorPack", v(-152.7, 476.9)), v(152.7, -476.9))
+eq("home pack x mirror", T.home("RaptorPack", v(-89.6, -461.6)), v(89.6, -461.6))
+eq("home solo inside", T.home("RaptorSolo", v(238.6, 446.4)), v(238.6, 446.4))
+eq("home solo z mirror", T.home("RaptorSolo", v(300, -400)), v(300, 400))
+eq("home solo none", T.home("RaptorSolo", v(10, -100)), nil) -- every mirror is in the gap
+-- v1.0 home unchanged for TRex / Raptor (no z mirror)
+eq("home raptor still none", T.home("Raptor", v(-20, 700)), nil)
+eq("home trex no z mirror", T.home("TRex", v(20, 700)), nil)
+eq("path band crosses split", T.pathInside("RaptorPack", v(400, -300), v(400, 0)), false)
+eq("path band inside", T.pathInside("RaptorSolo", v(100, 0), v(800, 400)), true)
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

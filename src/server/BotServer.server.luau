@@ -1,4 +1,4 @@
--- BotServer v1.12 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.13 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -261,12 +261,24 @@
 --               (none inside -> the home).
 --   Bot fights: BotFightEnabled is false in Mecha (place attribute + BotServer.meta.json); the code is unchanged.
 --   Diagnostics: bot BotTerritory (zone name, "none" while off); script BotTerritoryState ("on" / "off").
+-- v1.13 (raptor pack section, MDA-23, plan docs/plans/PACKSECTION_v1.0.md Task 2, map docs/mockups/pack_section_options.png
+--   option A; Kepu 2026-10-28: "how am i supposed to kill a pack of raptors. maybe just have there be individual ones in
+--   the beginning" / "packs are in their own later section of the raptor half"; about 7 lone raptors; keep 4 packs of 3):
+--   script attribute BotPackSectionEnabled (default true; false = v1.12, one raptor zone). While it and
+--   BotTerritoryEnabled are on, a raptor's zone is a band of the raptor zone (Territory 1.1):
+--     RaptorPack - bots of a pack of more than 1 (Pack1 / Pack2 at the markers, Roam1 / Roam2): z <= -190, the far half;
+--     RaptorSolo - lone raptors (Roam3 / Roam4 and the extra Solo<n> groups): z > -190, the half nearer the spawn.
+--   Every v1.12 territory rule (home, wander, roam spots / paths with the 15-stud margin, chase pick / border drop, pack
+--   grudge, avoid runs) uses the bot's band instead of "Raptor"; a chase stops at the band line like at the border.
+--   Extra lone raptors: BotSoloExtra (default 5) more roam groups Solo1..SoloN of 1 raptor, made at start while
+--   BotPackSectionEnabled is on (2 + 5 = 7 lone raptors). Pack tables carry size (marker packs PACK_SIZE, roam groups
+--   their size). Diagnostics: bot BotTerritory ("RaptorPack" / "RaptorSolo"); script BotPackSectionState ("on" / "off").
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.12"
+local VERSION = "1.13"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -320,6 +332,8 @@ DEFAULTS.BotHidingEnabled = true -- v1.11
 local BotHunt = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("BotHunt")) -- v1.9
 DEFAULTS.BotTerritoryEnabled = true -- v1.12
 local Territory = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("Territory")) -- v1.12
+DEFAULTS.BotPackSectionEnabled = true -- v1.13
+DEFAULTS.BotSoloExtra = 5 -- v1.13
 local BOT_AVOID_MIN_STAGE = 2
 local BOT_PLAYER_HIT_CAP = 0.4
 local SPECIES = {
@@ -663,6 +677,17 @@ end
 -- v1.12: territories -------------------------------------------------------------------------------------------------
 local function territoryOn() return get("BotTerritoryEnabled") ~= false end
 local function inZone(species, p) return not territoryOn() or Territory.inside(species, p.X, p.Z) end
+-- v1.13: a raptor's band (packs far, lone raptors near); other species: their v1.12 zone
+local function packSectionOn() return get("BotPackSectionEnabled") ~= false end
+local function zoneFor(species, multi)
+	if species == "Raptor" and packSectionOn() then return multi and "RaptorPack" or "RaptorSolo" end
+	return species
+end
+local function botZone(b) return zoneFor(b.species, b.pack ~= nil and (b.pack.size or 1) > 1) end
+script:SetAttribute("BotPackSectionState", packSectionOn() and "on" or "off")
+script:GetAttributeChangedSignal("BotPackSectionEnabled"):Connect(function()
+	script:SetAttribute("BotPackSectionState", packSectionOn() and "on" or "off")
+end)
 -- where a marker bot stands: its marker inside its zone, else the mirror, else the nearest dry ground inside
 local function territoryBase(species, base)
 	local h = Territory.home(species, base)
@@ -729,8 +754,9 @@ function spawnBot(marker, pack, slot) -- v1.4: + pack, slot (nil: v1.3)
 	-- stand at the marker, random facing
 	local yaw = math.rad(math.random(0, 359))
 	local base = marker.Position - Vector3.new(0, marker.Size.Y / 2, 0)
-	if territoryOn() and marker:GetAttribute("BotRoam") ~= true then base = territoryBase(species, base) end -- v1.12
-	model:SetAttribute("BotTerritory", territoryOn() and Territory.ZONES[species] and species or "none") -- v1.12
+	local zone = zoneFor(species, pack ~= nil and (pack.size or 1) > 1) -- v1.13: the raptor band
+	if territoryOn() and marker:GetAttribute("BotRoam") ~= true then base = territoryBase(zone, base) end -- v1.12; v1.13: zone
+	model:SetAttribute("BotTerritory", territoryOn() and Territory.ZONES[zone] and zone or "none") -- v1.12; v1.13: zone
 	local home = flat(base) -- v1.4: a pack's home is its marker
 	if pack and slot then -- v1.4: members stand on a ring around the marker
 		local a = (slot - 1) * 2 * math.pi / PACK_SIZE
@@ -801,7 +827,7 @@ local function randomGoal(b)
 		local a = math.random() * 2 * math.pi
 		local d = math.sqrt(math.random()) * r
 		local p = b.home + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)
-		if math.abs(p.X) <= wanderLimit and math.abs(p.Z) <= wanderLimit and inZone(b.species, p) then return p end -- v1.12: + zone
+		if math.abs(p.X) <= wanderLimit and math.abs(p.Z) <= wanderLimit and inZone(botZone(b), p) then return p end -- v1.12: + zone; v1.13: band
 	end
 	return b.home
 end
@@ -1257,7 +1283,7 @@ local function packStep(b, now)
 	local pk = b.pack
 	if pk.grudge then
 		local gChar, _, gHrp = aliveChar(pk.grudge)
-		if gChar and not inZone(b.species, gHrp.Position) then gChar = nil end -- v1.12: not over the border
+		if gChar and not inZone(botZone(b), gHrp.Position) then gChar = nil end -- v1.12: not over the border; v1.13: band
 		if gChar then
 			show(b, "BotAvoiding", "")
 			return flankStep(b, pk.grudge, gChar, gHrp, now)
@@ -1278,7 +1304,7 @@ local function packStep(b, now)
 		local goal = clampLimit(flat(hrp.Position) + dir * AVOID_FLEE)
 		if avoidsWater(b) then goal = dryLine(hrp.Position, goal) end
 		local score = flat(goal - rexPos).Magnitude
-		if score > bestScore + 0.5 and inZone(b.species, goal) then best, bestScore = goal, score end -- v1.12: + zone
+		if score > bestScore + 0.5 and inZone(botZone(b), goal) then best, bestScore = goal, score end -- v1.12: + zone; v1.13: band
 	end
 	best = best or b.home -- v1.12
 	b.goal, b.waitUntil, b.target = nil, nil, nil
@@ -1738,7 +1764,7 @@ local function step(b)
 		local char, _, thrp = aliveChar(target)
 		if not char or flat(thrp.Position - hrp.Position).Magnitude > get("BotLoseRange") then
 			target = nil
-		elseif not inZone(b.species, thrp.Position) then -- v1.12: stop at the border
+		elseif not inZone(botZone(b), thrp.Position) then -- v1.12: stop at the border; v1.13: band
 			target = nil
 			borderDrop(b)
 		elseif b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char) then -- v1.4: packs leave a T-Rex alone; v1.6: not a Hatchling one
@@ -1760,7 +1786,7 @@ local function step(b)
 			if char and char:GetAttribute("Hidden") ~= true
 				and not (b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char)) then -- v1.4; v1.6: a Hatchling T-Rex may be hunted
 				local d = flat(thrp.Position - hrp.Position).Magnitude
-				if d <= bestD and inZone(b.species, thrp.Position) then best, bestD = player, d end -- v1.12: + zone
+				if d <= bestD and inZone(botZone(b), thrp.Position) then best, bestD = player, d end -- v1.12: + zone; v1.13: band
 			end
 		end
 		target = best
@@ -2082,7 +2108,7 @@ if spawnFolder then
 	table.sort(raptorMarkers, function(x, y) return x.Name < y.Name end)
 	for k, marker in ipairs(raptorMarkers) do
 		if k <= PACK_COUNT then
-			local pack = {name = "Pack" .. k, members = {}, grudge = nil, grudgeUntil = 0, grudgeUntilServer = 0}
+			local pack = {name = "Pack" .. k, members = {}, grudge = nil, grudgeUntil = 0, grudgeUntilServer = 0, size = PACK_SIZE} -- v1.13: + size
 			table.insert(packs, pack)
 			marker:SetAttribute("BotPackUnused", false)
 			for slot = 1, PACK_SIZE do spawnBot(marker, pack, slot) end
@@ -2101,6 +2127,11 @@ local ROAM_GROUPS = {
 	{name = "Roam4", species = "Raptor", size = 1},
 	{name = "Roam5", species = "TRex", size = 0},
 }
+if packSectionOn() then -- v1.13: more lone raptors for the solo band
+	for i = 1, math.max(0, math.floor(tonumber(get("BotSoloExtra")) or 0)) do
+		table.insert(ROAM_GROUPS, {name = "Solo" .. i, species = "Raptor", size = 1})
+	end
+end
 local ROAM_STAY, ROAM_ARRIVE, ROAM_STUCK_TIME, ROAM_STUCK_DIST, ROAM_SPAWN_AVOID = {20, 40}, 40, 25, 20, 250
 local roamRng = Random.new()
 local roamFolder = island:FindFirstChild("RoamMarkers")
@@ -2130,8 +2161,9 @@ end
 local ROAM_BORDER_MARGIN = 15 -- v1.12
 local function roamOpts(g) -- v1.12: + g (the group's species zone)
 	local o = {avoid = roamAvoid, limit = wanderLimit}
-	if g and territoryOn() and Territory.ZONES[g.species] then
-		local sp, m = g.species, ROAM_BORDER_MARGIN -- spots stay ROAM_BORDER_MARGIN inside (a pack spawns on a ring)
+	local gz = g and zoneFor(g.species, (g.size or 0) > 1) -- v1.13: the raptor band
+	if g and territoryOn() and Territory.ZONES[gz] then
+		local sp, m = gz, ROAM_BORDER_MARGIN -- spots stay ROAM_BORDER_MARGIN inside (a pack spawns on a ring)
 		o.inside = function(x, z)
 			return Territory.inside(sp, x, z) and Territory.inside(sp, x + m, z) and Territory.inside(sp, x - m, z)
 				and Territory.inside(sp, x, z + m) and Territory.inside(sp, x, z - m)
@@ -2361,7 +2393,7 @@ for _, def in ipairs(ROAM_GROUPS) do
 	marker.Parent = roamFolder
 	local g = {name = def.name, species = def.species, size = def.size, marker = marker, active = false, state = "off", trips = 0}
 	if def.size > 0 then
-		g.pack = {name = def.name, members = {}, grudge = nil, grudgeUntil = 0, grudgeUntilServer = 0, roam = true}
+		g.pack = {name = def.name, members = {}, grudge = nil, grudgeUntil = 0, grudgeUntilServer = 0, roam = true, size = def.size} -- v1.13: + size
 		table.insert(packs, g.pack)
 	end
 	table.insert(roamGroups, g)
