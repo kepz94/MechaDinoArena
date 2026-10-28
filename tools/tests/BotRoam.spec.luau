@@ -31,7 +31,7 @@ local function islet(x, z)
 	return nil
 end
 
-eq("Version", BR.Version, "1.0")
+eq("Version", BR.Version, "1.1")
 eq("STEP", BR.STEP, 4)
 eq("MAX_RISE", BR.MAX_RISE, 3)
 -- pathOk
@@ -86,6 +86,26 @@ eq("groundOk nil", BR.groundOk(nil), false)
 eq("groundOk 20", BR.groundOk(20), true)
 eq("groundOk 21", BR.groundOk(21), false)
 eq("groundOk -1", BR.groundOk(-1), false)
+
+-- v1.1: opts.inside (territories, MDA-18): a zone east of x = 300 (beyond the lake at 100..200)
+local function east(x, z) return x >= 300 end
+local okIn, whyIn = BR.pathOk(Vector3.new(400, 0, 0), Vector3.new(250, 0, 0), sample, {inside = east})
+eq("path leaving zone", okIn, false)
+eq("path leaving zone reason", whyIn, "outside")
+eq("path inside zone", (BR.pathOk(Vector3.new(400, 0, 0), Vector3.new(800, 0, 0), sample, {inside = east})), true)
+local found = 0
+for seed = 1, 20 do
+	local q = BR.pickSpot(Random.new(seed), Vector3.new(500, 0, 0), sample, {inside = east})
+	if q then
+		found += 1
+		truthy("pickSpot inside seed " .. seed, q.X >= 300)
+	end
+end
+truthy("pickSpot inside found some", found > 0)
+for seed = 1, 10 do
+	local r = BR.respawnSpot(Random.new(seed), sample, {}, {inside = east})
+	truthy("respawnSpot inside seed " .. seed, r and r.X >= 300)
+end
 
 if #fails > 0 then return "FAIL " .. #fails .. " (pass " .. passes .. ")\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

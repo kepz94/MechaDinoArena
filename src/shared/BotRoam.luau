@@ -1,4 +1,4 @@
--- BotRoam v1.0 (Dino Arcade) — where a roaming bot group goes next: path check, next spot, respawn spot.
+-- BotRoam v1.1 (Dino Arcade) — where a roaming bot group goes next: path check, next spot, respawn spot.
 -- DINO-28, plan docs/plans/ROAMING_v1.0.md, ADR-005. Pure: the island is read through a `sample(x, z)` function the caller
 --   passes in (BotServer 1.8: the ground top under (x, z), nil for water), and randomness through a Random object.
 -- User: "lets just forget the scale with your growth thingy and just have roaming bots on the map"; option B of
@@ -12,8 +12,11 @@
 --   dist from every opts.avoid {pos, dist} and passing pathOk.
 -- respawnSpot(rng, sample, players, opts) -> spot or nil: up to RESPAWN_TRIES (200) random points inside +/-limit with
 --   groundOk, at least PLAYER_DIST (150) from every player position and dist from every opts.avoid.
+-- v1.1 (Mecha Dino Arena territories, MDA-18, plan docs/plans/TERRITORIES_v1.0.md Task 2): optional opts.inside(x, z) ->
+--   boolean. When given, pickSpot / respawnSpot only return points inside, and pathOk fails with "outside" at the first
+--   sample outside. Without it everything is as in 1.0.
 local BotRoam = {}
-BotRoam.Version = "1.0"
+BotRoam.Version = "1.1"
 BotRoam.STEP = 4
 BotRoam.MAX_RISE = 3
 BotRoam.MIN_TOP = -0.8
@@ -44,6 +47,7 @@ function BotRoam.pathOk(from, to, sample, opts)
 		s = math.min(len, s + BotRoam.STEP)
 		local q = a + dir * s
 		if math.abs(q.X) > limit or math.abs(q.Z) > limit then return false, "limit" end
+		if opts and opts.inside and not opts.inside(q.X, q.Z) then return false, "outside" end -- v1.1
 		local top = sample(q.X, q.Z)
 		if top == nil or top < BotRoam.MIN_TOP then return false, "water" end
 		if top > BotRoam.MAX_TOP then return false, "high" end
@@ -71,6 +75,7 @@ function BotRoam.pickSpot(rng, from, sample, opts)
 		local dist = rng:NextNumber(minD, maxD)
 		local p = base + Vector3.new(math.cos(ang) * dist, 0, math.sin(ang) * dist)
 		if math.abs(p.X) <= limit and math.abs(p.Z) <= limit and farFromAll(p, opts and opts.avoid)
+			and (not (opts and opts.inside) or opts.inside(p.X, p.Z)) -- v1.1
 			and BotRoam.pathOk(base, p, sample, opts) then
 			return Vector3.new(p.X, sample(p.X, p.Z), p.Z), i
 		end
@@ -85,7 +90,7 @@ function BotRoam.respawnSpot(rng, sample, players, opts)
 	for _ = 1, tries do
 		local x, z = rng:NextNumber(-limit, limit), rng:NextNumber(-limit, limit)
 		local top = sample(x, z)
-		if BotRoam.groundOk(top) then
+		if BotRoam.groundOk(top) and (not (opts and opts.inside) or opts.inside(x, z)) then -- v1.1
 			local p = Vector3.new(x, top, z)
 			local ok = farFromAll(p, opts and opts.avoid)
 			if ok then

@@ -1131,6 +1131,12 @@ Client only. Reads the player's Skill* attributes (SkillServer 1.0) and `Replica
 Reads `SkillShield` (SkillEffects 1.0). The blue section is `SkillShield / MaxHealth` of the bar wide, drawn after the green
 fill and moved left just enough to stay inside the bar.
 
+## Territories (Territory 1.0 / BotRoam 1.1)
+
+Pure modules, no attributes. `Territory.inside(species, x, z)`: TRex x <= -40; Raptor x >= 40 and z <= 560; both at least
+300 studs from the spawn (88, 904); other species anywhere. `Territory.home` mirrors a marker across x = 0 when it is in
+the wrong half. BotRoam 1.1 takes `opts.inside` so roaming spots and paths stay in the zone.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
