@@ -1045,6 +1045,20 @@ tilt it up or down there. Left / right turning (yaw) is unchanged. PC and touch 
 Diagnostic, owner client: `ShoulderCamPitchLock` — "locked" (touch device, pitch fixed), "free" (mouse device), "off"
 (lock off). `ShoulderCamVersion` "1.3".
 
+## One attack button per dino (ArenaRules 1.2 / ArenaTouch 1.2)
+
+Kepu 2026-10-28: "each dino will have one attack button, the rest will be mecha add ons". The raptor's attack is POUNCE;
+its bite is off.
+
+| Attribute | Where | Default | Effect |
+|---|---|---|---|
+| ArenaRaptorNoBite | ArenaRules (script) | true | Sets BiteEnabled = false on player characters with Species "Raptor"; false gives the bite back |
+| ArenaBiteRule | character (diagnostic) | — | "raptorNoBite" / "raptorBite" (rule off) / "notRaptor" |
+| ArenaTouchMainButton | character (diagnostic, client) | — | "Bite" / "Pounce" / "none": which move is the big yellow button |
+
+ArenaTouch 1.2 hides BITE while BiteEnabled is false and draws POUNCE big and yellow in BITE's place (PounceMain, dimmed
+while PounceTestState is not "ready").
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
