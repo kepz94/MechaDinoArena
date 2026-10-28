@@ -1,4 +1,4 @@
--- ArenaScope v1.1 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.2 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -7,10 +7,12 @@
 --   ArenaScope_BotHiding ("off" when the attribute is false, else "mismatch").
 -- v1.1 (Arena HUD, MDA-9, plan docs/plans/ARENAHUD_v1.0.md Task 4): HealthBar, SpeciesPicker and StaminaBar expected off
 --   (replaced by ArenaStatus 1.0); ArenaStatus, ArenaTouch and ArenaRules expected on.
+-- v1.2 (skill trees, MDA-15, plan docs/plans/SKILLTREES_v1.0.md Task 5): SkillServer, SkillEffects and SkillScreen
+--   expected on (ClassCard stays off).
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 -- {container, name, expected Enabled}
 local SCOPE = {
@@ -31,6 +33,8 @@ local SCOPE = {
 	-- v1.1: the Arena HUD replaces the bottom-centre HUD and the top-left picker
 	{SCS, "HealthBar", false}, {SCS, "SpeciesPicker", false}, {SCS, "StaminaBar", false},
 	{SCS, "ArenaStatus", true}, {SCS, "ArenaTouch", true}, {SSS, "ArenaRules", true},
+	-- v1.2: skill trees
+	{SSS, "SkillServer", true}, {SSS, "SkillEffects", true}, {SCS, "SkillScreen", true},
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)

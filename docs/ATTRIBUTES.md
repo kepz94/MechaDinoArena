@@ -1121,6 +1121,16 @@ Client only. Reads the player's Skill* attributes (SkillServer 1.0) and `Replica
 | SkillScreenArea | the open area id |
 | SkillScreenLastPress | "open" / "close" / "area:&lt;id&gt;" / "node:&lt;pathId&gt;:&lt;n&gt;" / "buy:&lt;pathId&gt;" / "respec" / "respecYes" / "respecNo" |
 
+## Shield in the health bar (ArenaStatus 1.1)
+
+| Attribute (character) | Default | Meaning |
+|---|---|---|
+| ArenaStatusShieldEnabled | true | false = no shield section (1.0 look) |
+| ArenaStatusShield | — | diagnostic, this client: "shown" / "hidden" |
+
+Reads `SkillShield` (SkillEffects 1.0). The blue section is `SkillShield / MaxHealth` of the bar wide, drawn after the green
+fill and moved left just enough to stay inside the bar.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):

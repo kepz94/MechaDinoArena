@@ -213,8 +213,8 @@ The other 10 paths are on the screen, locked, marked "soon".
 **Files:** Modify `src/character/ArenaStatus.client.luau` (additive).
 
 - While the character's `SkillShield` > 0, a blue (90, 160, 255) section is drawn on the health bar.
-  - It starts where the green fill ends and is `SkillShield / MaxHealth` of the bar wide.
-  - It is clipped at the bar's end.
+  - It is `SkillShield / MaxHealth` of the bar wide and starts where the green fill ends.
+  - It is moved left just enough to stay inside the bar. (Changed in the build: the shield fills while health is full, so a section clipped at the bar's end would never show.)
 - The label shows "h / max +s".
 - At 0 it hides.
 - Toggle: character `ArenaStatusShieldEnabled` (default true).

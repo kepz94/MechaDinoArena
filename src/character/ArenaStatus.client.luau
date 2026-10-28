@@ -1,4 +1,4 @@
--- ArenaStatus v1.0 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
+-- ArenaStatus v1.1 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
 -- MDA-6, plan docs/plans/ARENAHUD_v1.0.md Task 1, mockup docs/mockups/mobile_hud_options.html option A (Kepu 2026-10-28:
 --   "health should be at the top right of the screen along with the T-Rex drop down list"; stamina bar only while latched).
 -- Replaces HealthBar 1.1 / SpeciesPicker 1.0 / StaminaBar 1.1 in Mecha (those are switched off by Arena scope 1.1).
@@ -13,11 +13,18 @@
 --   formula StaminaBar 1.1 draws).
 -- Diagnostics (character attributes, this client): ArenaStatusVersion, ArenaStatusMenu ("closed" / "open"),
 --   ArenaStatusLastPick (species sent), ArenaStatusStamina ("shown" / "hidden").
+-- v1.1 (skill trees, MDA-16, Kepu: the overheal shield shows "inside the health bar"): while the character's SkillShield
+--   (SkillEffects 1.0, Lifesteal star) is above 0, a blue (90, 160, 255) section SkillShield / MaxHealth of the bar wide
+--   is drawn in the health bar: right after the green fill, moved left just enough to stay inside the bar (the shield
+--   fills while health is full, so it then sits over the right end of the green); the label reads "h / max +s". At 0
+--   it hides. Character attribute ArenaStatusShieldEnabled (default true; false = 1.0). Diagnostic ArenaStatusShield
+--   ("shown" / "hidden").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
+local SHIELD = Color3.fromRGB(90, 160, 255) -- v1.1
 local LOW_FRACTION = 0.3
 local SPECIES = {{id = "TRex", label = "T-REX"}, {id = "Raptor", label = "RAPTOR"}}
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -187,6 +194,15 @@ local function barBlock(name, y, labelL, height)
 end
 local healthF, healthR, healthFill, healthGrad = barBlock("Health", 58, "HEALTH", 16)
 local stamF, stamR, stamFill, stamGrad = barBlock("Stamina", 96, "STAMINA", 12)
+-- v1.1: shield section inside the health bar
+local shieldFill = Instance.new("Frame")
+shieldFill.Name = "Shield"
+shieldFill.BackgroundColor3 = SHIELD
+shieldFill.BorderSizePixel = 0
+shieldFill.Visible = false
+shieldFill.ZIndex = 2
+shieldFill.Parent = healthFill.Parent
+corner(shieldFill, 16)
 stamR.Text = "LATCHED"
 stamGrad.Rotation = 0
 stamGrad.Color = ColorSequence.new(STAM_A, STAM_B)
@@ -199,6 +215,19 @@ local function refreshHealth()
 	healthFill.Size = UDim2.fromScale(h / max, 1)
 	local low = h / max < LOW_FRACTION
 	healthGrad.Color = low and ColorSequence.new(RED_A, RED_B) or ColorSequence.new(GREEN_A, GREEN_B)
+	-- v1.1: overheal shield
+	local shield = char:GetAttribute("SkillShield")
+	local on = char:GetAttribute("ArenaStatusShieldEnabled") ~= false and type(shield) == "number" and shield > 0
+	if on then
+		local w = math.min(shield / max, 1)
+		shieldFill.Position = UDim2.fromScale(math.min(h / max, 1 - w), 0)
+		shieldFill.Size = UDim2.fromScale(w, 1)
+		healthR.Text ..= (" +%d"):format(math.floor(shield + 0.5))
+	end
+	shieldFill.Visible = on
+	if char:GetAttribute("ArenaStatusShield") ~= (on and "shown" or "hidden") then
+		char:SetAttribute("ArenaStatusShield", on and "shown" or "hidden")
+	end
 end
 local function refreshSpecies()
 	current = char:GetAttribute("Species") or current
@@ -232,6 +261,8 @@ if hum then
 	hum:GetPropertyChangedSignal("MaxHealth"):Connect(refreshHealth)
 end
 char:GetAttributeChangedSignal("Species"):Connect(refreshSpecies)
+char:GetAttributeChangedSignal("SkillShield"):Connect(refreshHealth) -- v1.1
+char:GetAttributeChangedSignal("ArenaStatusShieldEnabled"):Connect(refreshHealth) -- v1.1
 refreshSpecies()
 refreshHealth()
 gui.Parent = player.PlayerGui
