@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mecha Thrusters Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:rgb(20,20,26); --panel2:rgb(32,32,40); --line:rgba(255,255,255,.18);
+  --yellow:rgb(255,200,50); --ytext:rgb(30,26,10);
+  --health:rgb(95,209,106); --attack:rgb(240,90,79); --defense:rgb(90,160,255);
+  --speed:rgb(255,211,77); --eng:rgb(255,155,46);
+  --page:#0d0e12; --text:#eef0f4; --muted:#9aa0ad;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:Inter,system-ui,sans-serif;padding:16px}
+h1{font-family:"Fredoka One",sans-serif;font-weight:400;margin:0 0 4px;font-size:22px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:12px;max-width:900px;line-height:1.45}
+.switch{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+.switch .lab{font-family:"Fredoka One";font-size:13px;color:var(--muted);width:70px}
+.switch button{font-family:"Fredoka One";font-size:14px;border:2px solid var(--line);background:var(--panel2);color:var(--text);padding:6px 12px;border-radius:999px;cursor:pointer}
+.switch button.on{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;margin-top:10px}
+@media (max-width:1100px){.wrap{grid-template-columns:1fr}}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.45;margin-bottom:10px}
+.note b{color:var(--yellow)} .note h3{font-family:"Fredoka One";font-weight:400;margin:0 0 6px;font-size:15px}
+.note table{border-collapse:collapse;width:100%;font-size:12px} .note td{border-top:1px solid var(--line);padding:3px 4px;vertical-align:top}
+/* phone */
+.phone{width:100%;aspect-ratio:844/390;background:#000;border-radius:38px;padding:12px;box-shadow:0 0 0 2px #333}
+.screen{position:relative;width:100%;height:100%;border-radius:28px;overflow:hidden;font-family:"Fredoka One",sans-serif;
+  background:linear-gradient(180deg,#6fb3ff 0%,#a8d4ff 45%,#5aa651 46%,#3f8a3b 100%);container-type:inline-size}
+.tree{position:absolute;bottom:54%;width:7%;height:22%}
+.tree i{position:absolute;left:42%;bottom:0;width:16%;height:50%;background:#5a3b2a}
+.tree b{position:absolute;left:0;bottom:40%;width:100%;height:60%;background:#2f8a3e;border-radius:6px}
+/* dino seen from behind (shoulder cam) */
+.dino{position:absolute;left:43%;bottom:16%;width:14%;height:36%;transition:left .35s ease-out,bottom .35s ease-out}
+.dino .body{position:absolute;inset:20% 10% 0 10%;background:#4f6b45;border-radius:16% 16% 8% 8%;box-shadow:inset -10px -10px 0 rgba(0,0,0,.15)}
+.dino .head{position:absolute;left:30%;top:0;width:40%;height:28%;background:#5c7a50;border-radius:20%}
+.dino.raptor{width:10%;height:30%}
+.dino.raptor .body{background:#6f8f3e}.dino.raptor .head{background:#7ea048}
+.thr{position:absolute;top:30%;width:22%;height:34%;background:#7b8590;border:2px solid #2b2f35;border-radius:3px;display:none}
+.thr:after{content:"";position:absolute;left:15%;right:15%;bottom:-18%;height:20%;background:#2b2f35;border-radius:2px}
+.thr.l{left:4%}.thr.r{right:4%}
+.dino.mech .thr{display:block}
+.flame{position:absolute;left:10%;right:10%;top:100%;height:0;background:linear-gradient(#ffe27a,#ff7a1a,transparent);border-radius:0 0 50% 50%;transition:height .1s}
+.dino.dash .flame{height:90%}
+.thr.big{height:40%;background:#8f99a3}
+.thr .fin{display:none;position:absolute;top:-22%;left:30%;width:40%;height:22%;background:#ff9b2e}
+.thr.star .fin{display:block}
+/* hud */
+.rbx{position:absolute;left:14px;top:10px;display:flex;gap:6px}.rbx span{width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.45)}
+.pill{position:absolute;top:5%;font-size:2cqw;background:rgba(20,20,26,.82);border:2px solid rgba(255,255,255,.5);border-radius:10px;padding:.2em .7em;color:#fff;cursor:pointer}
+.pill .sp{background:var(--yellow);color:var(--ytext);border-radius:6px;padding:0 .4em}
+.hp{position:absolute;right:3%;top:15%;width:24%;font-size:1.5cqw;color:#fff}
+.hp .bar{height:1.2cqw;border-radius:6px;background:#000;border:1px solid rgba(255,255,255,.4);overflow:hidden}.hp .bar i{display:block;height:100%;width:100%;background:var(--health)}
+.stick{position:absolute;left:6%;bottom:10%;width:14%;aspect-ratio:1;border-radius:50%;background:rgba(0,0,0,.25);border:2px solid rgba(255,255,255,.35)}
+.stick:after{content:"";position:absolute;left:32%;top:32%;width:36%;height:36%;border-radius:50%;background:rgba(255,255,255,.55)}
+.b{position:absolute;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:1.6cqw;background:rgba(20,20,26,.6);border:2px solid rgba(255,255,255,.6);user-select:none}
+.b.big{background:var(--yellow);color:var(--ytext);font-size:2.2cqw;border-color:#fff}
+/* mecha buttons: rounded squares in the Engineer orange */
+.m{position:absolute;aspect-ratio:1;border-radius:22%;display:grid;place-items:center;color:#fff;font-size:1.5cqw;background:rgba(20,20,26,.7);
+  border:2.5px solid var(--eng);cursor:pointer;user-select:none;overflow:hidden}
+.m .ic{font-size:2.3cqw;line-height:1;color:var(--eng)}
+.m .lb{font-size:1.2cqw;margin-top:-.4em}
+.m .pips{position:absolute;top:6%;right:8%;display:flex;gap:2px}.m .pips i{width:.7cqw;height:.7cqw;border-radius:50%;background:var(--eng)}.m .pips i.used{background:#555}
+.m .cd{position:absolute;inset:0;background:rgba(0,0,0,.55);transform-origin:bottom;transform:scaleY(0)}
+.m.empty{border-style:dashed;border-color:rgba(255,255,255,.4);cursor:default}.m.empty .ic{color:rgba(255,255,255,.4)}
+.m:active{transform:scale(.92)}
+.key{position:absolute;left:4%;top:4%;font-size:1cqw;color:var(--muted)}
+.tag{position:absolute;font-size:1.2cqw;color:#fff;background:rgba(255,155,46,.9);border-radius:6px;padding:0 .4em;transform:translate(50%,-50%);white-space:nowrap;pointer-events:none}
+/* skill screen overlay */
+.dim{position:absolute;inset:0;background:rgba(5,6,10,.6);display:none}
+.ss{position:absolute;inset:0;padding:2% 2% 2% 6%;display:none;flex-direction:column;gap:1.5%;color:#fff;font-size:1.6cqw}
+.ss.show,.dim.show{display:flex}
+.ss .top{display:flex;align-items:center;gap:1.2cqw}.ss .title{font-size:2.3cqw}
+.ss .pts{background:var(--yellow);color:var(--ytext);border-radius:10px;padding:.1em .7em}
+.ss .x{margin-left:auto;border:2px solid rgba(255,255,255,.5);border-radius:10px;padding:.1em .6em;cursor:pointer}
+.ss .body{flex:1;min-height:0;display:flex;gap:1cqw}
+.pane{background:rgba(20,20,26,.88);border:2px solid var(--line);border-radius:14px}
+.rail{width:8cqw;padding:.6cqw;display:flex;flex-direction:column;gap:.5cqw}
+.rail div{font-size:1.1cqw;text-align:center;padding:.4cqw 0;border-radius:8px;color:#cfd3dc}
+.rail div i{display:block;width:1.6cqw;height:1.6cqw;border-radius:50%;margin:0 auto .2cqw;background:var(--c)}
+.rail div.on{outline:2px solid var(--c);color:#fff}
+.cols{flex:1;display:flex;gap:.8cqw;padding:.8cqw}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;gap:.5cqw;background:rgba(255,255,255,.03);border-radius:10px;padding:.5cqw}
+.col .nm{font-size:1.4cqw;text-align:center}.col .nm .g{color:var(--eng)}
+.stack{flex:1;display:flex;flex-direction:column-reverse;justify-content:space-between;align-items:center}
+.node{width:4cqw;height:4cqw;border-radius:50%;display:grid;place-items:center;font-size:1.3cqw;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.06);color:#cfd3dc;cursor:pointer;position:relative}
+.node.own{background:var(--speed);border-color:var(--speed);color:#111}.node.next{border-color:var(--speed);color:#fff}.node.lock{opacity:.4}.node.final{border-radius:10px}
+.node.sel{outline:3px solid #fff;outline-offset:2px}
+.node .eq{position:absolute;top:-.6cqw;left:-.6cqw;background:var(--eng);color:#111;border-radius:5px;font-size:.9cqw;padding:0 .3em;display:none}
+.soonc{opacity:.4}.soonc .node{cursor:default}
+.detail{width:24cqw;padding:1cqw;display:flex;flex-direction:column;gap:.6cqw}
+.detail .dp{font-family:Inter;font-size:1.1cqw;color:var(--muted)}
+.detail .de{font-family:Inter;font-size:1.3cqw;line-height:1.35;flex:1}
+.buy{font-family:"Fredoka One";font-size:1.6cqw;border:none;border-radius:10px;padding:.6cqw;background:var(--yellow);color:var(--ytext);cursor:pointer}
+.buy[disabled]{background:#444;color:#999;cursor:default}
+.slots{display:none;gap:.6cqw}.slots button{flex:1;font-family:"Fredoka One";font-size:1.3cqw;border:2px solid var(--eng);background:transparent;color:#fff;border-radius:10px;padding:.4cqw;cursor:pointer}
+.slots button.on{background:var(--eng);color:#111}
+.lbar{display:none;align-items:center;gap:1cqw;padding:.6cqw 1cqw}
+.lbar .t{font-size:1.4cqw;color:var(--eng)}
+.lbar .sl{width:9cqw;height:4.2cqw;border:2px dashed rgba(255,255,255,.4);border-radius:10px;display:grid;place-items:center;font-size:1.2cqw;cursor:pointer;color:var(--muted)}
+.lbar .sl.full{border:2px solid var(--eng);color:#fff;background:rgba(255,155,46,.15)}
+.lbar .hint{font-family:Inter;font-size:1.1cqw;color:var(--muted)}
+.log{font-family:Inter;font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
+</style>
+</head>
+<body>
+<h1>Mecha parts · first piece: framework + Thrusters</h1>
+<div class="sub">Kepu 2026-10-28: "Mecha parts", framework + 1 part, Thrusters first, bots only. From the skill tree brainstorm: 2 mecha buttons on screen, filled from loadout slots you swap in a menu; parts are blocky and mounted on the dino; the look changes per upgrade.
+Click <b>OPEN SKILLS</b> (or the SKILLS pill), buy Thrusters, put it in a slot, close, then tap <b>DASH</b>. Pick one <b>Buttons</b> option and one <b>Loadout</b> option.</div>
+<div class="switch"><span class="lab">Buttons</span>
+ <button data-v="A" class="on">A · Thumb arc</button><button data-v="B">B · Column over LEAP</button><button data-v="C">C · Top of the thumb area</button></div>
+<div class="switch"><span class="lab">Loadout</span>
+ <button data-l="1" class="on">L1 · Slot toggles in the detail panel</button><button data-l="2">L2 · Loadout bar under the tree</button></div>
+<div class="switch"><span class="lab">Dino</span>
+ <button data-d="trex" class="on">T-Rex</button><button data-d="raptor">Raptor</button>
+ <span class="lab" style="width:auto;margin-left:12px"></span><button id="openBtn">OPEN SKILLS</button><button id="resetBtn">Reset</button></div>
+
+<div class="wrap">
+<div>
+<div class="phone"><div class="screen" id="scr">
+  <div class="tree" style="left:12%"><i></i><b></b></div><div class="tree" style="left:70%"><i></i><b></b></div><div class="tree" style="left:84%;bottom:58%"><i></i><b></b></div>
+  <div class="dino" id="dino"><div class="body"></div><div class="head"></div>
+    <div class="thr l"><div class="fin"></div><div class="flame"></div></div><div class="thr r"><div class="fin"></div><div class="flame"></div></div></div>
+  <div class="rbx"><span></span><span></span></div>
+  <div class="pill" style="right:20%" id="skillsPill">SKILLS <span class="sp" id="ptsPill">6</span></div>
+  <div class="pill" style="right:3%"><span class="sp" id="spPill">T-REX</span> ▾</div>
+  <div class="hp"><div style="display:flex;justify-content:space-between"><span>HEALTH</span><span>200 / 200</span></div><div class="bar"><i></i></div></div>
+  <div class="stick"></div>
+  <div id="hud"></div>
+  <div class="dim" id="dim"></div>
+  <div class="ss" id="ss">
+    <div class="top"><span class="title">SKILLS</span><span>Lv 7</span><span class="pts" id="ptsSS">6 PTS</span><span class="x" id="closeSS">✕</span></div>
+    <div class="body">
+      <div class="pane rail"><div style="--c:var(--health)"><i></i>Health</div><div style="--c:var(--attack)"><i></i>Attack</div><div style="--c:var(--defense)"><i></i>Defense</div><div class="on" style="--c:var(--speed)"><i></i>Speed</div><div style="--c:var(--eng)"><i></i>Engineer</div></div>
+      <div class="pane" style="flex:1;display:flex;flex-direction:column">
+        <div class="cols">
+          <div class="col"><div class="nm">Sprint Legs</div><div class="stack" id="colLegs"></div></div>
+          <div class="col"><div class="nm"><span class="g">⚙</span> Thrusters</div><div class="stack" id="colThr"></div></div>
+          <div class="col soonc"><div class="nm"><span class="g">⚙</span> Grapple Hook<br><span style="font-family:Inter;font-size:1cqw">soon</span></div><div class="stack" id="colGr"></div></div>
+        </div>
+        <div class="lbar" id="lbar"><span class="t">LOADOUT</span><div class="sl" data-s="1">Slot 1 · empty</div><div class="sl" data-s="2">Slot 2 · empty</div><span class="hint">Tap a slot to cycle your bought mecha buttons</span></div>
+      </div>
+      <div class="pane detail">
+        <div id="dn" style="font-size:1.8cqw">Thrusters</div>
+        <div class="dp" id="dp">Speed · step 1 of 4 · ⚙ mecha button</div>
+        <div class="de" id="de"></div>
+        <div class="slots" id="slots"><button data-s="1">SLOT 1</button><button data-s="2">SLOT 2</button></div>
+        <button class="buy" id="buy">BUY · 1 PT</button>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="log" id="log">Ready.</div>
+</div>
+
+<div>
+<div class="note" id="vnote"></div>
+<div class="note" id="lnote"></div>
+<div class="note"><h3>Thrusters numbers (proposed, all tunable)</h3>
+<table>
+<tr><td>I</td><td>Button: dash 35 studs forward in 0.35 s. Recharge 8 s. Costs 15 stamina (like LEAP).</td></tr>
+<tr><td>II</td><td>2 charges (each recharges in 8 s).</td></tr>
+<tr><td>III</td><td>Longer dash: 50 studs.</td></tr>
+<tr><td>★</td><td>Rocket hop: the dash also lifts you about 25 studs (T-Rex can get up high).</td></tr>
+</table>
+<div style="margin-top:6px">Look per upgrade: I two small boosters on the back · III bigger boosters · ★ orange fins. Flames while dashing.<br>
+PC keys: <b>1</b> = slot 1, <b>2</b> = slot 2 (both free today; Q is shoulder swap, E ram, F pounce, R roar).<br>
+Bots only: nothing in this piece damages players.</div></div>
+</div>
+</div>
+
+<script>
+const state={v:"A",l:"1",dino:"trex",pts:6,thr:0,legs:2,sel:1,slots:[null,null],charges:0,cd:false};
+const COST=[1,2,3,4];
+const THR=["Button: dash 35 studs forward (recharge 8 s, 15 stamina)","2 charges","Longer dash: 50 studs","Rocket hop: the dash also lifts you ~25 studs"];
+const LEGS=["Run 10% faster","Run speed x1.5","Pounce, ram and leap recharge 15% faster","Run 10% faster again"];
+const POS={ // right%, bottom% of the button's bottom-right corner (ArenaTouch AnchorPoint (1, 1)), size% of width
+ A:{m1:[21,8,9.5],m2:[32.5,18,9.5],note:"<h3>A · Thumb arc</h3>Slot 1 takes RUN's spot (RUN is hidden: auto-run). Slot 2 continues the arc to the left.<br><b>For:</b> closest to the thumb, nothing moves. <b>Against:</b> slot 2 sits furthest in, near the middle of the screen."},
+ B:{m1:[7.5,64,7.5],m2:[18.5,57,7.5],note:"<h3>B · Column over LEAP</h3>Both slots stacked above LEAP / RAM-POUNCE.<br><b>For:</b> clear of the main button, easy to spot. <b>Against:</b> a longer thumb stretch up; close to the health bar on short phones."},
+ C:{m1:[32,8,8.5],m2:[32,28,8.5],note:"<h3>C · Inner column</h3>A small column on the inner edge of the thumb area, left of RUN's spot.<br><b>For:</b> keeps the arc for dino moves and the column for mecha. <b>Against:</b> smaller buttons; the inner edge is a reach for small hands."}
+};
+const LNOTE={"1":"<h3>L1 · Slot toggles in the detail panel</h3>Select a bought mecha part, tap SLOT 1 or SLOT 2. A part goes in slot 1 by itself when you first buy it if a slot is free.<br><b>For:</b> no new screen piece. <b>Against:</b> you only see the loadout one part at a time.",
+ "2":"<h3>L2 · Loadout bar</h3>A bar under the tree shows both slots. Tap a slot to cycle through your bought mecha parts (and empty). Auto-fill on first buy as in L1.<br><b>For:</b> both slots always visible. <b>Against:</b> takes height from the tree."};
+const $=s=>document.querySelector(s), log=t=>$("#log").textContent=t;
+function bTpl(cls,txt,r,b,s){return `<div class="b ${cls}" style="right:${r}%;bottom:${b}%;width:${s}%">${txt}</div>`}
+function mBtn(n){const p=POS[state.v]["m"+n];const part=state.slots[n-1];
+ const style=`right:${p[0]}%;bottom:${p[1]}%;width:${p[2]}%`;
+ if(!part)return `<div class="m empty" style="${style}"><span class="ic">+</span><span class="lb">slot ${n}</span><span class="key">${n}</span></div>`;
+ const max=state.thr>=2?2:1;let pips="";for(let i=0;i<max;i++)pips+=`<i class="${i>=state.charges?"used":""}"></i>`;
+ return `<div class="m" data-m="${n}" style="${style}"><div class="cd" id="cd${n}"></div><span class="pips">${pips}</span><span class="ic">🚀</span><span class="lb">DASH</span><span class="key">${n}</span></div>`}
+function hud(){const r=state.dino==="raptor";let h="";
+ if(r){h+=bTpl("big","POUNCE",5,10,13.5)+bTpl("","LEAP",7,43,9.5)}else{h+=bTpl("big","BITE",5,10,13.5)}
+ h+=mBtn(1)+mBtn(2);$("#hud").innerHTML=h;
+ document.querySelectorAll(".m[data-m]").forEach(e=>e.onclick=()=>dash(+e.dataset.m));
+ $("#spPill").textContent=r?"RAPTOR":"T-REX";$("#dino").className="dino"+(r?" raptor":"")+(state.thr>0?" mech":"");
+ document.querySelectorAll(".thr").forEach(t=>{t.classList.toggle("big",state.thr>=3);t.classList.toggle("star",state.thr>=4)});
+ $("#ptsPill").textContent=state.pts;$("#ptsSS").textContent=state.pts+" PTS";
+ $("#vnote").innerHTML=POS[state.v].note;$("#lnote").innerHTML=LNOTE[state.l];}
+function nodes(id,n,owned,steps,soon,isThr){const el=$(id);el.innerHTML="";
+ for(let i=0;i<4;i++){const d=document.createElement("div");d.className="node"+(i===3?" final":"");
+  if(!soon){if(i<owned)d.classList.add("own");else if(i===owned)d.classList.add("next");else d.classList.add("lock")}else d.classList.add("lock");
+  if(isThr&&state.sel===i+1)d.classList.add("sel");
+  d.innerHTML=(i===3?"★":["I","II","III"][i])+`<span class="cost" style="position:absolute;bottom:-.7cqw;right:-.7cqw;background:#14141a;border:1px solid var(--line);border-radius:5px;font-size:.9cqw;padding:0 .3em">${COST[i]}</span>`;
+  if(isThr&&i===0){const eq=document.createElement("span");eq.className="eq";const s=state.slots.indexOf("thr");if(s>=0){eq.style.display="block";eq.textContent="S"+(s+1)}d.appendChild(eq)}
+  if(isThr)d.onclick=()=>{state.sel=i+1;render()};
+  el.appendChild(d);
+  if(i<3){const l=document.createElement("div");l.style.cssText="width:3px;flex:1;min-height:4px;background:"+(i<owned-1?"var(--speed)":"rgba(255,255,255,.15)");el.appendChild(l)}}}
+function detail(){const i=state.sel-1;$("#dp").textContent=`Speed · step ${state.sel} of 4 · ⚙ mecha button`;$("#de").textContent=THR[i];
+ const b=$("#buy");if(state.thr>=state.sel){b.disabled=true;b.textContent="BOUGHT"}else if(state.thr<i){b.disabled=true;b.textContent="BUY THE ONE BEFORE"}
+ else if(state.pts<COST[i]){b.disabled=true;b.textContent=`NEED ${COST[i]} PTS`}else{b.disabled=false;b.textContent=`BUY · ${COST[i]} PT${COST[i]>1?"S":""}`}
+ const s=$("#slots");s.style.display=(state.l==="1"&&state.thr>0)?"flex":"none";
+ s.querySelectorAll("button").forEach(x=>x.classList.toggle("on",state.slots[+x.dataset.s-1]==="thr"));
+ $("#lbar").style.display=state.l==="2"?"flex":"none";
+ $("#lbar").querySelectorAll(".sl").forEach(x=>{const n=+x.dataset.s;const f=state.slots[n-1]==="thr";x.classList.toggle("full",f);x.textContent=`Slot ${n} · `+(f?"⚙ Thrusters":"empty")})}
+function render(){hud();nodes("#colLegs",state.legs,state.legs,LEGS,false,false);nodes("#colThr",state.thr,state.thr,THR,false,true);nodes("#colGr",0,0,[],true,false);detail()}
+$("#buy").onclick=()=>{const i=state.sel-1;if(state.thr!==i||state.pts<COST[i])return;state.pts-=COST[i];state.thr++;
+ if(state.thr===1){const f=state.slots.indexOf(null);if(f>=0)state.slots[f]="thr";log("Bought Thrusters I · auto-equipped in slot "+(f+1))}else log("Bought Thrusters "+["","I","II","III","★"][state.thr]);
+ state.charges=state.thr>=2?2:1;if(state.sel<4)state.sel++;render()};
+$("#slots").onclick=e=>{const n=+e.target.dataset.s;if(!n)return;const cur=state.slots.indexOf("thr");state.slots=[null,null];if(cur!==n-1)state.slots[n-1]="thr";log(state.slots[n-1]?"Thrusters → slot "+n:"Thrusters unequipped");render()};
+$("#lbar").onclick=e=>{const n=+e.target.dataset?.s;if(!n||state.thr<1)return;const has=state.slots[n-1]==="thr";state.slots[0]=null;state.slots[1]=null;if(!has)state.slots[n-1]="thr";log(has?"Slot "+n+" emptied":"Thrusters → slot "+n);render()};
+function open(o){$("#ss").classList.toggle("show",o);$("#dim").classList.toggle("show",o)}
+$("#openBtn").onclick=()=>open(true);$("#skillsPill").onclick=()=>open(true);$("#closeSS").onclick=()=>open(false);
+function dash(n){if(state.charges<=0){log("DASH: recharging");return}state.charges--;
+ const d=$("#dino");const hop=state.thr>=4;const dist=state.thr>=3?14:9;
+ d.style.bottom=(16+(hop?14:3))+"%";d.style.left=(43-dist*0)+"%";d.classList.add("dash");
+ d.style.transform="scale(.85)";setTimeout(()=>{d.classList.remove("dash");d.style.bottom="16%";d.style.transform=""},380);
+ log(`DASH (slot ${n}): ${state.thr>=3?50:35} studs${hop?" + rocket hop ~25 studs up":""} · charges left ${state.charges}`);
+ const cd=$("#cd"+n);hud();const c2=$("#cd"+n);
+ if(!state.cd){state.cd=true;const t0=performance.now();const max=state.thr>=2?2:1;
+  (function tick(){const p=(performance.now()-t0)/4000;document.querySelectorAll(".m .cd").forEach(c=>c.style.transform=`scaleY(${state.charges<max?1-p:0})`);
+   if(p>=1){state.charges=Math.min(max,state.charges+1);state.cd=false;hud();if(state.charges<max)dash0();return}requestAnimationFrame(tick)})()}}
+function dash0(){state.cd=true;const t0=performance.now();const max=state.thr>=2?2:1;(function tick(){const p=(performance.now()-t0)/4000;document.querySelectorAll(".m .cd").forEach(c=>c.style.transform=`scaleY(${1-p})`);if(p>=1){state.charges=Math.min(max,state.charges+1);state.cd=false;hud();if(state.charges<max)dash0();return}requestAnimationFrame(tick)})()}
+document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-v]").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.v=b.dataset.v;render()});
+document.querySelectorAll("[data-l]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-l]").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.l=b.dataset.l;render()});
+document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-d]").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.dino=b.dataset.d;render()});
+$("#resetBtn").onclick=()=>{Object.assign(state,{pts:6,thr:0,sel:1,slots:[null,null],charges:0});log("Reset.");render()};
+render();
+</script>
+</body>
+</html>
