@@ -1,4 +1,4 @@
--- SkillScreen v1.0 (Mecha Dino Arena) — the SKILLS button and the skill tree screen (LocalScript, all devices). MDA-14,
+-- SkillScreen v1.1 (Mecha Dino Arena) — the SKILLS button and the skill tree screen (LocalScript, all devices). MDA-14,
 -- plan docs/plans/SKILLTREES_v1.0.md Task 4, mockup docs/mockups/skill_tree_options.html option A (Kepu's pick).
 -- Data: ReplicatedStorage.SkillShared.SkillTree (copied there by SkillServer 1.0) for names, steps and costs; the
 --   player's attributes (SkillServer 1.0) for everything that changes: SkillLevel, SkillXPInto, SkillXPNext, SkillLeft,
@@ -28,12 +28,22 @@
 -- Diagnostics (character attributes, this client): SkillScreenVersion, SkillScreenOpen, SkillScreenArea,
 --   SkillScreenLastPress ("open" / "close" / "area:<id>" / "node:<pathId>:<n>" / "buy:<pathId>" / "respec" /
 --   "respecYes" / "respecNo").
+-- v1.1 (mecha loadout, MDA-29, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 7, mockup docs/mockups/mecha_thrusters_options.html
+--   option L2 "Loadout bar"; Kepu 2026-10-28): Root.Body.Loadout, a bar under the tree (x 72, height 44, bottom of the body,
+--   as wide as Cols; Cols height = body - 52): an orange "LOADOUT" label, Slot_1 / Slot_2 tiles (120 x 36; "Slot n ·
+--   ⚙ <name>" with an orange stroke when full, "Slot n · empty" with a faint stroke when empty) and a hint. A tap on a
+--   slot fires ("slot", n, id) with the next of the player's bought loadout parts (SkillTree.BUTTONS, steps >= 1, in tree
+--   order) after the one in the slot, then empty ("") after the last; with none bought it does nothing. The slots come
+--   from the player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1). Thrusters is buyable (SkillTree 1.1 soon =
+--   false). The detail sub-line says "mecha button" for loadout parts (else "mecha part" / "passive").
+--   Script attribute SkillScreenLoadoutEnabled (default true; false = no bar, Cols full height as 1.0).
+--   Diagnostics: SkillScreenLastPress "slot:<n>:<id or empty or none>".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local BIND = "SkillScreenMouse"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -271,6 +281,37 @@ buyBtn.Size = UDim2.new(1, 0, 0, 40)
 buyBtn.Parent = detail
 corner(buyBtn)
 
+-- v1.1: loadout bar
+local ORANGE = Color3.fromRGB(255, 155, 46)
+local function loadoutOn() return script:GetAttribute("SkillScreenLoadoutEnabled") ~= false and ST.BUTTONS ~= nil end
+local loadout = pane(body)
+loadout.Name = "Loadout"
+loadout.AnchorPoint = Vector2.new(0, 1)
+local loTitle = label(loadout, "LOADOUT", 14, ORANGE)
+loTitle.Position = UDim2.fromOffset(12, 0)
+loTitle.Size = UDim2.new(0, 70, 1, 0)
+local slotBtns = {}
+for n = 1, 2 do
+	local b = button(loadout, "", 13)
+	b.Name = "Slot_" .. n
+	b.AnchorPoint = Vector2.new(0, 0.5)
+	b.Position = UDim2.new(0, 86 + (n - 1) * 128, 0.5, 0)
+	b.Size = UDim2.fromOffset(120, 36)
+	b.TextScaled = true
+	local tc = Instance.new("UITextSizeConstraint")
+	tc.MaxTextSize = 13
+	tc.Parent = b
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 6), UDim.new(0, 6)
+	pad.Parent = b
+	slotBtns[n] = {b = b, stroke = b:FindFirstChildOfClass("UIStroke")}
+end
+local loHint = label(loadout, "Tap a slot to change it", 11, GREY)
+loHint.Font = Enum.Font.Gotham
+loHint.Position = UDim2.fromOffset(86 + 2 * 128 + 4, 0)
+loHint.Size = UDim2.new(1, -(86 + 2 * 128 + 12), 1, 0)
+loHint.TextTruncate = Enum.TextTruncate.AtEnd
+
 local railButtons = {}
 local function layout()
 	local w = sgui.AbsoluteSize.X
@@ -278,6 +319,13 @@ local function layout()
 	detail.Size = UDim2.new(0, dw, 1, 0)
 	cols.Position = UDim2.fromOffset(72, 0)
 	cols.Size = UDim2.new(1, -(72 + dw + 8), 1, 0)
+	-- v1.1: the loadout bar takes the bottom 44 px of the tree's column (+ 8 px gap)
+	loadout.Visible = loadoutOn()
+	if loadout.Visible then
+		cols.Size = UDim2.new(1, -(72 + dw + 8), 1, -52)
+		loadout.Position = UDim2.new(0, 72, 1, 0)
+		loadout.Size = UDim2.new(1, -(72 + dw + 8), 0, 44)
+	end
 	-- area buttons share the rail's height (46 px each at most; 30 at least)
 	local rh = rail.AbsoluteSize.Y
 	local bh = rh > 0 and math.clamp(math.floor((rh - 6 - 4 * 4) / 5), 30, 46) or 46
@@ -490,7 +538,8 @@ local function drawDetail()
 	local i = sel.i
 	dName.Text = p.name .. " " .. ROMAN[i]
 	dName.TextColor3 = color
-	dSub.Text = ("%s · step %d of 4 · %s"):format(a.name, i, p.mech and "mecha part" or "passive")
+	local kind = p.mech and ((ST.BUTTONS and ST.BUTTONS[p.id]) and "mecha button" or "mecha part") or "passive" -- v1.1
+	dSub.Text = ("%s · step %d of 4 · %s"):format(a.name, i, kind)
 	dText.Text = p.steps[i]
 	local st = nodeState(p, i)
 	local cost = ST.COST[i]
@@ -517,9 +566,49 @@ local function drawTop()
 	badge.Visible = left() > 0
 end
 
+-- v1.1: loadout bar
+local function slotOf(n)
+	local v = player:GetAttribute("SkillSlot" .. n)
+	return (type(v) == "string" and v ~= "") and v or nil
+end
+local function ownedButtons()
+	local list = {}
+	for _, id in ipairs(ST.PATH_ORDER) do
+		if ST.BUTTONS and ST.BUTTONS[id] and not ST.PATHS[id].soon and stepsOf(id) >= 1 then table.insert(list, id) end
+	end
+	return list
+end
+local function drawLoadout()
+	if not loadoutOn() then return end
+	for n, s in ipairs(slotBtns) do
+		local id = slotOf(n)
+		local p = id and ST.PATHS[id]
+		s.b.Text = p and ("Slot %d · ⚙ %s"):format(n, p.name) or ("Slot %d · empty"):format(n)
+		s.stroke.Color = p and ORANGE or WHITE
+		s.stroke.Transparency = p and 0 or 0.6
+		s.b.TextColor3 = p and WHITE or GREY
+	end
+end
+for n, s in ipairs(slotBtns) do
+	s.b.MouseButton1Click:Connect(function()
+		local list = ownedButtons()
+		if #list == 0 then
+			press(("slot:%d:none"):format(n))
+			return
+		end
+		local cur, nextId = slotOf(n), list[1]
+		for k, id in ipairs(list) do
+			if id == cur then nextId = list[k + 1] or "" end
+		end
+		press(("slot:%d:%s"):format(n, nextId ~= "" and nextId or "empty"))
+		remote:FireServer("slot", n, nextId)
+	end)
+end
+
 function redraw()
 	drawTop()
 	if not sgui.Enabled then return end
+	drawLoadout() -- v1.1
 	for id, r in pairs(railButtons) do
 		local on = id == area
 		r.stroke.Transparency = on and 0 or 1

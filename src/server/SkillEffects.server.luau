@@ -1,4 +1,4 @@
--- SkillEffects v1.0 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.1 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -31,10 +31,15 @@
 -- Diagnostics: script SkillEffectsVersion; character SkillEffectsState ("ready" / "off"), SkillRegenActive,
 --   SkillLastHeal ("regen +3" / "lifesteal +2"), SkillShield, SkillShieldUntil, SkillStunTrimmed ("immune" / "trimmed" /
 --   "tossTrimmed"), SkillBase_<name>; bot SkillBleedUntil, SkillBleedBy, SkillCrushedAt.
+-- v1.1 (mecha Thrusters, MDA-26, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 3; Kepu: dash free, part only while
+--   slotted): character DashEnabled = effects on AND dashCharges > 0 AND "thrusters" in SkillSlot1 / SkillSlot2
+--   (SkillServer 1.1); DashCharges (0 while off), DashDistance (dashDist), DashHop (0 while off), DashTime and
+--   DashRecharge (script attributes SkillDashTime 0.35 / SkillDashRecharge 8). Re-applied when a SkillPath_ or a
+--   SkillSlot attribute changes. MechaServer 1.0 / MechaButtons 1.0 read them.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
@@ -44,6 +49,9 @@ local ST = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillT
 script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsEnabled") == nil then script:SetAttribute("SkillEffectsEnabled", true) end
 local function on() return script:GetAttribute("SkillEffectsEnabled") ~= false end
+for k, v in pairs({SkillDashTime = 0.35, SkillDashRecharge = 8}) do -- v1.1
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 
 local function now() return workspace:GetServerTimeNow() end
 local function round(x, step) return math.floor(x / step + 0.5) * step end
@@ -89,6 +97,18 @@ local function applyChar(char, st)
 		char:SetAttribute("SkillShieldUntil", nil)
 	end
 	char:SetAttribute("SkillEffectsState", live and "ready" or "off")
+	-- v1.1: Thrusters dash (only while slotted)
+	local slotted = false
+	for n = 1, ST.SLOTS or 2 do
+		if st.player:GetAttribute("SkillSlot" .. n) == "thrusters" then slotted = true end
+	end
+	local dashOn = live and (e.dashCharges or 0) > 0 and slotted
+	char:SetAttribute("DashEnabled", dashOn)
+	char:SetAttribute("DashCharges", dashOn and e.dashCharges or 0)
+	char:SetAttribute("DashDistance", e.dashDist or 0)
+	char:SetAttribute("DashHop", dashOn and e.dashHop or 0)
+	char:SetAttribute("DashTime", script:GetAttribute("SkillDashTime"))
+	char:SetAttribute("DashRecharge", script:GetAttribute("SkillDashRecharge"))
 end
 
 -- healing (regen / lifesteal), overflow into the shield
@@ -267,7 +287,7 @@ end
 local function onPlayer(player)
 	applyStats(player, effectsOf(player))
 	player.AttributeChanged:Connect(function(name)
-		if name:sub(1, 10) == "SkillPath_" then refresh(player) end
+		if name:sub(1, 10) == "SkillPath_" or name:sub(1, 9) == "SkillSlot" then refresh(player) end -- v1.1: + SkillSlot
 	end)
 	player.CharacterAdded:Connect(function(char) onCharacter(player, char) end)
 	if player.Character then task.spawn(onCharacter, player, player.Character) end

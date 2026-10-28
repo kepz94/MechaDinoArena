@@ -1,4 +1,4 @@
--- SkillServer v1.0 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
+-- SkillServer v1.1 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 2, ADR "Skill trees own XP and replace class stat points".
 -- Kepu: kills give XP, each level gives 1 skill point (cap 60), free respec any time, keep everything on death, builds
 --   saved. GrowthServer stays off (adult spawns); this script owns skill XP. Maths: ServerStorage.DinoArcade.SkillTree.
@@ -22,17 +22,25 @@
 --   SkillSaveState, SkillLevelUpAt (server time, on a level-up from XP).
 -- Script attributes: SkillServerVersion, SkillEnabled (default true; false = no XP and requests -> "disabled"),
 --   SkillKillXpFraction (0.5), SkillSaveEnabled (true), SkillKillsCounted (total credited kills).
+-- v1.1 (mecha loadout, MDA-25, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 2): 2 loadout slots (SkillTree 1.1).
+--   Save value {v = 1, xp, steps, loadout = {[1] = id or false, [2] = id or false}}; loaded through
+--   SkillTree.sanitizeLoadout (a save without loadout -> both empty). Buying a step of a BUTTONS path runs
+--   SkillTree.autoSlot (the first step fills the first empty slot). Request ("slot", n, pathId or "") -> SkillTree.setSlot
+--   ("" = clear); result "ok" / "badSlot" / "notButton" / "notOwned" in SkillLastResult (bad argument types -> "badArg").
+--   Respec empties both slots. Player attributes SkillSlot1 / SkillSlot2 (path id or ""). Script attribute
+--   SkillLoadoutEnabled (default true; false -> slot requests "disabled", buys don't auto-slot, the loadout stays as is).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_GAP = 10
 local RETRY_GAP = 30
 local REQUEST_GAP = 0.2
 local DEFAULTS = {SkillEnabled = true, SkillKillXpFraction = 0.5, SkillSaveEnabled = true}
+DEFAULTS.SkillLoadoutEnabled = true -- v1.1
 
 local treeModule = ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillTree")
 local ST = require(treeModule)
@@ -86,6 +94,8 @@ local function publish(player, d, levelUp)
 	for _, id in ipairs(ST.PATH_ORDER) do
 		player:SetAttribute("SkillPath_" .. id, d.steps[id] or 0)
 	end
+	d.loadout = ST.sanitizeLoadout(d.loadout, d.steps) -- v1.1
+	for n = 1, ST.SLOTS do player:SetAttribute("SkillSlot" .. n, d.loadout[n] or "") end
 end
 
 local function save(player, d)
@@ -93,7 +103,7 @@ local function save(player, d)
 	local st = player:GetAttribute("SkillSaveState")
 	if st == "noApi" or st == "loading" then return end
 	d.lastSave = os.clock()
-	local value = {v = 1, xp = d.xp, steps = d.steps}
+	local value = {v = 1, xp = d.xp, steps = d.steps, loadout = d.loadout} -- v1.1: + loadout
 	local ok, err = pcall(function() store:SetAsync("u" .. player.UserId, value) end)
 	if ok then
 		d.dirty = false
@@ -106,7 +116,8 @@ local function save(player, d)
 end
 
 local function load(player)
-	local d = {xp = 0, steps = ST.sanitize({}), loaded = false, dirty = false, lastSave = os.clock(), lastRequest = 0}
+	local d = {xp = 0, steps = ST.sanitize({}), loaded = false, dirty = false, lastSave = os.clock(), lastRequest = 0,
+		loadout = {false, false}} -- v1.1: + loadout
 	data[player] = d
 	if script:GetAttribute("SkillSaveEnabled") == false or not store then
 		player:SetAttribute("SkillSaveState", "off")
@@ -121,6 +132,7 @@ local function load(player)
 			d.steps = ST.sanitize(value.steps)
 			-- a saved build that no longer fits the points (curve change) is refunded
 			if ST.spent(d.steps) > ST.pointsOf((ST.levelOf(d.xp))) then d.steps = ST.sanitize({}) end
+			d.loadout = ST.sanitizeLoadout(value.loadout, d.steps) -- v1.1
 			player:SetAttribute("SkillSaveState", "loaded")
 		else
 			player:SetAttribute("SkillSaveState", "new")
@@ -157,7 +169,7 @@ task.spawn(function()
 end)
 
 -- requests
-remote.OnServerEvent:Connect(function(player, action, pathId)
+remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1: + slotPath ("slot": pathId = slot n)
 	local d = data[player]
 	if script:GetAttribute("SkillEnabled") == false then
 		player:SetAttribute("SkillLastResult", "disabled")
@@ -173,12 +185,28 @@ remote.OnServerEvent:Connect(function(player, action, pathId)
 		local new, why = ST.buy(d.steps, pathId, earned)
 		if new then
 			d.steps = new
+			if script:GetAttribute("SkillLoadoutEnabled") ~= false then d.loadout = ST.autoSlot(d.loadout, d.steps, pathId) end -- v1.1
 			d.dirty = true
 			publish(player, d, false)
 		end
 		player:SetAttribute("SkillLastResult", why)
+	elseif action == "slot" then -- v1.1
+		if script:GetAttribute("SkillLoadoutEnabled") == false then
+			player:SetAttribute("SkillLastResult", "disabled")
+		elseif type(pathId) ~= "number" or (type(slotPath) ~= "string" and slotPath ~= nil) then
+			player:SetAttribute("SkillLastResult", "badArg")
+		else
+			local new, why = ST.setSlot(d.loadout, d.steps, pathId, slotPath or "")
+			if new then
+				d.loadout = new
+				d.dirty = true
+				publish(player, d, false)
+			end
+			player:SetAttribute("SkillLastResult", why)
+		end
 	elseif action == "respec" then
 		d.steps = ST.sanitize({})
+		d.loadout = {false, false} -- v1.1
 		d.dirty = true
 		publish(player, d, false)
 		player:SetAttribute("SkillLastResult", "ok")

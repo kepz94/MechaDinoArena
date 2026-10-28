@@ -1,4 +1,4 @@
--- SkillTree.spec v1.0 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.1 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 local ok, ST = pcall(function() return require(game.ServerStorage.DinoArcade.SkillTree) end)
 if not ok then return "FAIL require: " .. tostring(ST) end
@@ -9,7 +9,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.0")
+eq("Version", ST.Version, "1.1")
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 60)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 61)
@@ -30,7 +30,7 @@ eq("path ids", table.concat(ids, ","),
 	"regen,medstation,lifesteal,jaws,turret,rocket,hide,armor,shield,legs,thrusters,grapple,sentry,traps,barricade")
 local buyable = {}
 for _, id in ipairs(ids) do if not ST.PATHS[id].soon then table.insert(buyable, id) end end
-eq("buyable", table.concat(buyable, ","), "regen,lifesteal,jaws,hide,legs")
+eq("buyable", table.concat(buyable, ","), "regen,lifesteal,jaws,hide,legs,thrusters") -- v1.1: + thrusters
 
 -- level curve: xpToNext(L) = 30 + 10 (L - 1); points = level - 1, cap 60 at level 61
 eq("xpToNext 1", ST.xpToNext(1), 30)
@@ -120,6 +120,52 @@ eq("soon ignored", e({turret = 4}).attackPts, 0)
 local all = e({regen = 4, lifesteal = 4, jaws = 4, hide = 4, legs = 4})
 eq("all attack", all.attackPts, 1); eq("all defense", all.defensePts, 1); eq("all speed", all.speedPts, 7)
 eq("all spent", ST.spent({regen = 4, lifesteal = 4, jaws = 4, hide = 4, legs = 4}), 50)
+
+-- v1.1: mecha framework + Thrusters
+eq("LIVE thrusters", ST.LIVE_MECH.thrusters, true)
+eq("BUTTONS thrusters", ST.BUTTONS.thrusters, true)
+eq("SLOTS", ST.SLOTS, 2)
+eq("thrusters not soon", ST.PATHS.thrusters.soon, false)
+eq("grapple still soon", ST.PATHS.grapple.soon, true)
+eq("canBuy thrusters I", cb({}, "thrusters", 1), "true:ok")
+eq("canBuy thrusters II needs 3", cb({thrusters = 1}, "thrusters", 2), "false:noPoints")
+eq("canBuy thrusters II", cb({thrusters = 1}, "thrusters", 3), "true:ok")
+eq("sanitize keeps thrusters", ST.sanitize({thrusters = 2}).thrusters, 2)
+eq("spent thrusters full", ST.spent({thrusters = 4}), 10)
+eq("dash 0 charges", e({}).dashCharges, 0); eq("dash 0 dist", e({}).dashDist, 0); eq("dash 0 hop", e({}).dashHop, 0)
+eq("dash I charges", e({thrusters = 1}).dashCharges, 1); eq("dash I dist", e({thrusters = 1}).dashDist, 35)
+eq("dash II charges", e({thrusters = 2}).dashCharges, 2); eq("dash II dist", e({thrusters = 2}).dashDist, 35)
+eq("dash III dist", e({thrusters = 3}).dashDist, 50); eq("dash III hop", e({thrusters = 3}).dashHop, 0)
+eq("dash star hop", e({thrusters = 4}).dashHop, 25); eq("dash star charges", e({thrusters = 4}).dashCharges, 2)
+eq("dash leaves passives", e({thrusters = 4}).speedPts, 0)
+local function lo(t) return tostring(t[1]) .. "," .. tostring(t[2]) end
+local own = {thrusters = 1}
+eq("sanitizeLoadout nil", lo(ST.sanitizeLoadout(nil, own)), "false,false")
+eq("sanitizeLoadout ok", lo(ST.sanitizeLoadout({"thrusters", false}, own)), "thrusters,false")
+eq("sanitizeLoadout dup", lo(ST.sanitizeLoadout({"thrusters", "thrusters"}, own)), "thrusters,false")
+eq("sanitizeLoadout slot2", lo(ST.sanitizeLoadout({false, "thrusters"}, own)), "false,thrusters")
+eq("sanitizeLoadout unowned", lo(ST.sanitizeLoadout({"thrusters", false}, {})), "false,false")
+eq("sanitizeLoadout passive", lo(ST.sanitizeLoadout({"regen", "jaws"}, {regen = 2, jaws = 1})), "false,false")
+eq("sanitizeLoadout soon", lo(ST.sanitizeLoadout({"grapple", "turret"}, {grapple = 1})), "false,false")
+eq("sanitizeLoadout junk", lo(ST.sanitizeLoadout({5, {}}, own)), "false,false")
+eq("autoSlot first", lo(ST.autoSlot({false, false}, own, "thrusters")), "thrusters,false")
+eq("autoSlot already", lo(ST.autoSlot({false, "thrusters"}, own, "thrusters")), "false,thrusters")
+eq("autoSlot passive", lo(ST.autoSlot({false, false}, {regen = 1}, "regen")), "false,false")
+eq("autoSlot unowned", lo(ST.autoSlot({false, false}, {}, "thrusters")), "false,false")
+local inLo = {false, false}
+ST.autoSlot(inLo, own, "thrusters")
+eq("autoSlot no input change", lo(inLo), "false,false")
+local function ss(l, st, n, id) local r, why = ST.setSlot(l, st, n, id) return (r and lo(r) or "nil") .. ":" .. tostring(why) end
+eq("setSlot 2", ss({"thrusters", false}, own, 2, "thrusters"), "false,thrusters:ok")
+eq("setSlot 1", ss({false, false}, own, 1, "thrusters"), "thrusters,false:ok")
+eq("setSlot clear", ss({"thrusters", false}, own, 1, ""), "false,false:ok")
+eq("setSlot clear false", ss({false, "thrusters"}, own, 2, false), "false,false:ok")
+eq("setSlot badSlot 0", ss({false, false}, own, 0, "thrusters"), "nil:badSlot")
+eq("setSlot badSlot 3", ss({false, false}, own, 3, "thrusters"), "nil:badSlot")
+eq("setSlot badSlot str", ss({false, false}, own, "1", "thrusters"), "nil:badSlot")
+eq("setSlot notButton", ss({false, false}, {regen = 1}, 1, "regen"), "nil:notButton")
+eq("setSlot notButton junk", ss({false, false}, own, 1, "nope"), "nil:notButton")
+eq("setSlot notOwned", ss({false, false}, {}, 1, "thrusters"), "nil:notOwned")
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

@@ -235,6 +235,15 @@ Expects MechaServer and MechaButtons on. Acceptance: ArenaScopeMismatches 0.
 - **Charges:** full → used → recharging → full. A step change (I → II) adds the new charge as full.
 - **Look:** none / I / III / star from the steps, shown only while DashEnabled is true.
 
+## Build notes (measured in Play, 2026-10-28)
+- **Sizing:** Torso_body alone is not the body's length (the T-Rex torso runs over several parts in the Torso segment), and
+  the raptor's torso is slim (boosters sized from it were 0.5 stud wide). MechaServer measures the whole Torso segment for
+  placement and sizes the boosters from the dino's height (0.09 / 0.13 / max(torso length x 0.35, height x 0.22)), welded
+  to Torso.Root.
+- **Slide:** without stopping the dash speed the dino slid ~60 studs after a 50-stud dash; MechaButtons zeroes the
+  horizontal speed at the end (dash then measured 48.9 / 50.0 studs, slide 0).
+- **Test hook:** MechaButtonsForceTouch (Studio has no phone emulator access from scripts here).
+
 ## Red-team (Kepu's answers 2026-10-28)
 1. **Dash vs pounce stamina.** The raptor's pounce needs 15 stamina, and the dash costs 15. A dash right before a pounce can block the pounce ("stamina"), and in Mecha the stamina bar is hidden until a latch.
    - **Answer: free (0 stamina).** Charges and the 8 s recharge are the only limit. Task 4 is cut; MechaServer has no stamina checks.

@@ -1162,6 +1162,30 @@ the wrong half. BotRoam 1.1 takes `opts.inside` so roaming spots and paths stay 
 Bands (Territory 1.1, split `PACK_SPLIT_Z` -190): RaptorSolo z > -190 (nearer the spawn), RaptorPack z <= -190 (far half).
 A chase stops at the band line exactly like at the territory border (BotBorderDrops, BotState "border").
 
+## Mecha parts: loadout + Thrusters (SkillTree 1.1 / SkillServer 1.1 / SkillEffects 1.1 / MechaServer 1.0 / MechaButtons 1.0 / SkillScreen 1.1)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| SkillSlot1 / SkillSlot2 | player | "" | loadout slot: path id ("thrusters") or "" (SkillServer 1.1, saved) |
+| SkillLoadoutEnabled | script SkillServer | true | false = slot requests "disabled", buys don't auto-slot |
+| DashEnabled | character | false | Thrusters bought AND in a slot AND SkillEffects on |
+| DashCharges | character | 0 | 1 at I, 2 from II (0 while off) |
+| DashDistance | character | 0 | 35 studs, 50 from III |
+| DashHop | character | 0 | 25 studs at star (0 while off) |
+| DashTime / DashRecharge | character | 0.35 / 8 | from script SkillEffects SkillDashTime / SkillDashRecharge |
+| DashChargesLeft / DashNextChargeAt | character | 0 / 0 | MechaServer: charges left; server time the next one comes back (0 = full) |
+| DashStartedAt / DashCount | character | — | MechaServer: accepted dash (server time, clamped stamp) / count |
+| DashServerResult / DashDenyReason / DashDeniedAt / DashDenyCount | character | — | "ok" / "badArg" / "dead" / "disabled" / "stunned" / "latched" / "charges" |
+| MechaThrustersLook | character | "none" | "none" / "I" / "III" / "star" / "noTorso" |
+| MechaEnabled | script MechaServer | true | false = every dash "disabled", parts removed |
+| MechaServerVersion / MechaDashes | script MechaServer | — | diagnostics |
+| MechaButtonsVersion / MechaButtonsState / MechaButtonsLastPress / MechaDashLocal / MechaDashLocalCount | character (client) | — | "on" touch / "keys" PC; "slot1:thrusters"; "idle" / "dashing" |
+| MechaButtonsForceTouch | script MechaButtons | nil | test hook: true draws the touch buttons on PC |
+| SkillScreenLoadoutEnabled | script SkillScreen | true | false = no loadout bar |
+
+Remote `ReplicatedStorage.DinoDashRequest:FireServer(serverTime)`; SkillRequest ("slot", n, id or ""). The dash costs no
+stamina (Kepu). The Thrusters part is on the dino only while it is in a slot (Kepu).
+
 ## Bigger raptors (RaptorScale 1.0)
 
 | Attribute | On | Default | Meaning |

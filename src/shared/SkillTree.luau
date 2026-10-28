@@ -1,4 +1,4 @@
--- SkillTree v1.0 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.1 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -22,8 +22,20 @@
 --   mainCdMul (main attack cooldown), moveCdMul (pounce / ram / jump cooldowns)
 --   bleedDps / bleedTime; crushStun (s) / crushCooldown (s per target)
 --   tossMul (ram toss distance), stunMul (stun length), stunImmuneAbove (health fraction; 0 = off)
+-- v1.1 (mecha parts framework + Thrusters, MDA-24, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 1, mockup
+--   docs/mockups/mecha_thrusters_options.html; Kepu 2026-10-28: framework + 1 part, Thrusters first, numbers as proposed):
+--   LIVE_MECH = {thrusters = true}: these mecha paths get soon = false at load (buyable); the other 9 stay "soon".
+--   BUTTONS = {thrusters = true}: mecha parts that take a loadout slot. SLOTS = 2.
+--   effects(steps) adds dashCharges (0; 1 at I; 2 from II), dashDist (35; 50 from III), dashHop (0; 25 at star).
+--   Loadout = {[1] = pathId or false, [2] = pathId or false}:
+--   sanitizeLoadout(raw, steps) -> a clean loadout: each slot a BUTTONS id bought (steps >= 1) and not soon, no id twice
+--     (the lower slot wins), anything else false.
+--   autoSlot(loadout, steps, pathId) -> a new loadout: a bought, unslotted BUTTONS id goes in the first empty slot;
+--     otherwise the clean loadout unchanged.
+--   setSlot(loadout, steps, n, pathId or false) -> a new loadout, "ok" | nil, reason ("badSlot" / "notButton" /
+--     "notOwned"); the id leaves its other slot. None of these change their inputs.
 local SkillTree = {}
-SkillTree.Version = "1.0"
+SkillTree.Version = "1.1"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -98,6 +110,14 @@ for _, a in ipairs(SkillTree.AREAS) do
 		SkillTree.PATHS[p.id] = p
 		table.insert(SkillTree.PATH_ORDER, p.id)
 	end
+end
+
+-- v1.1: mecha parts that are built (buyable) and the ones that take a loadout slot
+SkillTree.LIVE_MECH = {thrusters = true}
+SkillTree.BUTTONS = {thrusters = true}
+SkillTree.SLOTS = 2
+for id in pairs(SkillTree.LIVE_MECH) do
+	if SkillTree.PATHS[id] then SkillTree.PATHS[id].soon = false end
 end
 
 -- level curve
@@ -198,7 +218,67 @@ function SkillTree.effects(steps)
 	if g >= 2 then e.speedPts += 5 end -- run speed x1.5 (StatServer: +10% per point)
 	if g >= 3 then e.moveCdMul = 0.85 end
 	if g >= 4 then e.speedPts += 1 end
+	-- v1.1: Thrusters
+	e.dashCharges, e.dashDist, e.dashHop = 0, 0, 0
+	local t = s.thrusters or 0
+	if t >= 1 then e.dashCharges, e.dashDist = 1, 35 end
+	if t >= 2 then e.dashCharges = 2 end
+	if t >= 3 then e.dashDist = 50 end
+	if t >= 4 then e.dashHop = 25 end
 	return e
+end
+
+-- v1.1: loadout
+local function slottable(clean, id)
+	local p = type(id) == "string" and SkillTree.PATHS[id]
+	return p and SkillTree.BUTTONS[id] == true and not p.soon and (clean[id] or 0) >= 1 or false
+end
+
+function SkillTree.sanitizeLoadout(raw, steps)
+	local clean = SkillTree.sanitize(steps)
+	local out, seen = {}, {}
+	for n = 1, SkillTree.SLOTS do
+		local id = type(raw) == "table" and raw[n] or nil
+		if slottable(clean, id) and not seen[id] then
+			out[n], seen[id] = id, true
+		else
+			out[n] = false
+		end
+	end
+	return out
+end
+
+function SkillTree.autoSlot(loadout, steps, pathId)
+	local out = SkillTree.sanitizeLoadout(loadout, steps)
+	if not slottable(SkillTree.sanitize(steps), pathId) then return out end
+	for n = 1, SkillTree.SLOTS do
+		if out[n] == pathId then return out end
+	end
+	for n = 1, SkillTree.SLOTS do
+		if out[n] == false then
+			out[n] = pathId
+			return out
+		end
+	end
+	return out
+end
+
+function SkillTree.setSlot(loadout, steps, n, pathId)
+	if type(n) ~= "number" or n ~= math.floor(n) or n < 1 or n > SkillTree.SLOTS then return nil, "badSlot" end
+	local out = SkillTree.sanitizeLoadout(loadout, steps)
+	if pathId == false or pathId == nil or pathId == "" then
+		out[n] = false
+		return out, "ok"
+	end
+	if type(pathId) ~= "string" or not SkillTree.PATHS[pathId] or SkillTree.BUTTONS[pathId] ~= true then
+		return nil, "notButton"
+	end
+	if not slottable(SkillTree.sanitize(steps), pathId) then return nil, "notOwned" end
+	for m = 1, SkillTree.SLOTS do
+		if out[m] == pathId then out[m] = false end
+	end
+	out[n] = pathId
+	return out, "ok"
 end
 
 return SkillTree
