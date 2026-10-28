@@ -41,6 +41,8 @@ Kepu: "We need to do the leveling up system thingy. Each area should get differe
 - Free respec any time.
 - On death the player keeps everything (points, spent upgrades, XP).
 - Builds are saved (DataStore).
+- Upgrade cost rises along a path: 1, 2, 3, 4 (10 points finish a path; 60 points ≈ 6 full paths).
+- Level pace: fast start, slower later.
 
 **First piece to build (Kepu):** points + the tree screen (kills → skill points, saved builds, the screen to spend them), starting with the passive paths.
 
