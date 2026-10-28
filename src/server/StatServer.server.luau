@@ -1,4 +1,4 @@
--- StatServer v1.0 (Mecha Dino Arena) — applies the 5-stat point sheet (StatSheet 1.0) to every player dino, and turns on
+-- StatServer v1.1 (Mecha Dino Arena) — applies the 5-stat point sheet (StatSheet 1.0) to every player dino, and turns on
 -- adult spawns. MDA-2, plan docs/plans/CLASSSTATS_v1.0.md (Task 2 + deterministic map), ADR-001.
 -- User: everyone spawns as an adult dino; build types via one stat sheet (option C); points added later by the stat
 --   trees (part 3) arrive as player attributes StatAdded_<Stat> (Health / Attack / Defense / Speed / Support).
@@ -22,11 +22,16 @@
 -- Re-apply: a player StatAdded_* attribute changes; script StatEnabled changes; the character's GrowthState changes.
 -- Diagnostics: script StatServerVersion, StatApplies (count); character StatState ("waiting" / "noSheet" / "noHealth" /
 --   "growthOn" / "disabled" / "ready"), StatServerVersion.
+-- v1.1 (game speed, MDA-37; Kepu: "turn the whole speed of the game down a little bit" -> x0.65 everyone): every
+--   MoveWalkSpeed / MoveRunSpeed / MoveCreepSpeed this script writes (ready and disabled) is multiplied by
+--   ServerScriptService.ArenaRules' ArenaSpeedScale (ArenaRules 1.3, default 0.65; missing / not a positive number -> 1),
+--   rounded to 0.1. The Speed points (StatSheet) still multiply the base first, so the skill steps keep their ratios.
+--   A change of ArenaSpeedScale re-applies every character. Diagnostic: character StatSpeedScale.
 local Players = game:GetService("Players")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local BASE_WAIT = 5
 local DEFAULTS = {StatEnabled = true, ArenaAdultSpawns = true}
 
@@ -60,6 +65,20 @@ end
 
 local chars = {} -- [char] = {player, species, hum, base, baseMax, spawned}
 
+-- v1.1: game speed scale (ArenaRules 1.3)
+local SPEED_KEY = {}
+for _, k in ipairs(SS.SPEED_KEYS) do SPEED_KEY[k] = true end
+local function speedScale()
+	local ar = ServerScriptService:FindFirstChild("ArenaRules")
+	local v = ar and tonumber(ar:GetAttribute("ArenaSpeedScale"))
+	if not v or v ~= v or v <= 0 then return 1 end
+	return v
+end
+local function scaled(k, v)
+	if not SPEED_KEY[k] or type(v) ~= "number" then return v end
+	return math.floor(v * speedScale() * 10 + 0.5) / 10
+end
+
 local function set(inst, k, v)
 	if inst:GetAttribute(k) ~= v then inst:SetAttribute(k, v) end
 end
@@ -85,7 +104,8 @@ local function apply(char, st, atSpawn)
 		return
 	end
 	if get("StatEnabled") == false then
-		for k, v in pairs(st.base) do set(char, k, v) end
+		for k, v in pairs(st.base) do set(char, k, scaled(k, v)) end -- v1.1: + speed scale
+		set(char, "StatSpeedScale", speedScale()) -- v1.1
 		writeHealth(st, st.baseMax, atSpawn)
 		set(char, "StatDamageTakenMul", 1)
 		set(char, "StatState", "disabled")
@@ -96,8 +116,9 @@ local function apply(char, st, atSpawn)
 	base.MaxHealth = st.baseMax
 	local vals = SS.values(base, added)
 	for k, v in pairs(vals) do
-		if k == "MaxHealth" then writeHealth(st, v, atSpawn) else set(char, k, v) end
+		if k == "MaxHealth" then writeHealth(st, v, atSpawn) else set(char, k, scaled(k, v)) end -- v1.1: + speed scale
 	end
+	set(char, "StatSpeedScale", speedScale()) -- v1.1
 	local sheet = SS.SPECIES[st.species]
 	local points = SS.points(st.species, added)
 	set(char, "StatClass", sheet.class)
@@ -180,3 +201,13 @@ end)
 script:GetAttributeChangedSignal("StatEnabled"):Connect(function()
 	for char, st in pairs(chars) do apply(char, st, false) end
 end)
+
+-- v1.1: re-apply when the game speed changes
+do
+	local ar = ServerScriptService:FindFirstChild("ArenaRules")
+	if ar then
+		ar:GetAttributeChangedSignal("ArenaSpeedScale"):Connect(function()
+			for char, st in pairs(chars) do apply(char, st, false) end
+		end)
+	end
+end

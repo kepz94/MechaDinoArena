@@ -1,4 +1,4 @@
--- BotServer v1.13 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.14 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -273,12 +273,18 @@
 --   Extra lone raptors: BotSoloExtra (default 5) more roam groups Solo1..SoloN of 1 raptor, made at start while
 --   BotPackSectionEnabled is on (2 + 5 = 7 lone raptors). Pack tables carry size (marker packs PACK_SIZE, roam groups
 --   their size). Diagnostics: bot BotTerritory ("RaptorPack" / "RaptorSolo"); script BotPackSectionState ("on" / "off").
+-- v1.14 (game speed, MDA-37; Kepu: "turn the whole speed of the game down a little bit" -> "x0.65 everyone", players and
+--   bots): at spawn each bot's MoveWalkSpeed / MoveRunSpeed / MoveCreepSpeed (its template's value, else 16 / 28 / 10) is
+--   kept as BotSpeedBase_<key> and written as base x ServerScriptService.ArenaRules' ArenaSpeedScale (ArenaRules 1.3,
+--   default 0.65; missing -> 1), rounded to 0.1; every speed rule below reads those attributes, so walks, chases
+--   (x BotChaseSpeedMul), runs and the fling guard all slow down together. A change of ArenaSpeedScale rescales the bots
+--   in the game. Diagnostic: bot BotSpeedScale.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.13"
+local VERSION = "1.14"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -720,6 +726,38 @@ local function borderDrop(b)
 	if b.shown then b.shown.BotState = "border" end
 end
 
+-- v1.14: game speed (ArenaRules 1.3 ArenaSpeedScale)
+local BOT_SPEED_DEFAULTS = {MoveWalkSpeed = 16, MoveRunSpeed = 28, MoveCreepSpeed = 10}
+local function arenaSpeedScale()
+	local ar = game:GetService("ServerScriptService"):FindFirstChild("ArenaRules")
+	local v = ar and tonumber(ar:GetAttribute("ArenaSpeedScale"))
+	if not v or v ~= v or v <= 0 then return 1 end
+	return v
+end
+local function botSpeedScale(model)
+	local sc = arenaSpeedScale()
+	for k, d in pairs(BOT_SPEED_DEFAULTS) do
+		local base = model:GetAttribute("BotSpeedBase_" .. k)
+		if type(base) ~= "number" then
+			base = model:GetAttribute(k)
+			if type(base) ~= "number" then base = d end
+			model:SetAttribute("BotSpeedBase_" .. k, base)
+		end
+		model:SetAttribute(k, math.floor(base * sc * 10 + 0.5) / 10)
+	end
+	model:SetAttribute("BotSpeedScale", sc)
+end
+do
+	local ar = game:GetService("ServerScriptService"):FindFirstChild("ArenaRules")
+	if ar then
+		ar:GetAttributeChangedSignal("ArenaSpeedScale"):Connect(function()
+			for _, b in ipairs(bots) do
+				if b.model and b.model.Parent then botSpeedScale(b.model) end
+			end
+		end)
+	end
+end
+
 function spawnBot(marker, pack, slot) -- v1.4: + pack, slot (nil: v1.3)
 	local species = marker:GetAttribute("Species")
 	local template = templates[species]
@@ -750,6 +788,7 @@ function spawnBot(marker, pack, slot) -- v1.4: + pack, slot (nil: v1.3)
 	hum.UseJumpPower = true
 	hum.JumpPower = 0
 	hum.AutoRotate = true
+	botSpeedScale(model) -- v1.14
 	hum.WalkSpeed = model:GetAttribute("MoveWalkSpeed") or 16
 	-- stand at the marker, random facing
 	local yaw = math.rad(math.random(0, 359))

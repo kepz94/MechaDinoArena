@@ -140,6 +140,9 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | MechaButtons | 1.2 | Camera punch (FOV +15, small shake, ramps 0.15 s in / 0.3 s out) + 40 speed lines during the boost; MechaBoostFxEnabled toggle (MDA-35). Verified in Play (PC): FOV 70 -> 85 -> 70, speed lines on screen, boost 342 studs/s (3 x 114 with Legs II) for 1.5 s (512 studs). Live check of the 35% rule: bite 25 -> 35, run 60 -> 114 (Legs II), damage taken 0.70, bite cooldown 0.8 -> 0.59. Install hash 22754 / 1070118675 |
 | SkillTree | 1.4 | Thrusters boost 1 s (I / II), 1.35 s from III (35% rule) (MDA-36; Kepu: "a little too fast. maybe just make it 1.75 my run speed and 1 second long"); texts updated. Spec PASS 235. Install hash 15662 / 718806897 |
 | SkillEffects | 1.4 | SkillDashSpeedMul default 1.75 (MDA-36). Verified in Play: T-Rex run 60 -> boost 105 studs/s for 1.01 s, 104 studs. Install hash 15552 / 1291551386 |
+| ArenaRules | 1.3 | ArenaSpeedScale (default 0.65) — one number for the whole game's movement speed (MDA-37; Kepu: "turn the whole speed of the game down a little bit so that when everything is maxed out it doesnt feel too broken" -> "x0.65 everyone", players and bots). Install hash 5007 / 849675724 |
+| StatServer | 1.1 | Player MoveWalkSpeed / MoveRunSpeed / MoveCreepSpeed x ArenaSpeedScale after the Speed points (skill steps keep their ratios); re-applies on change; StatSpeedScale (MDA-37). Verified in Play: T-Rex run 60 -> 39, walk 20.8; Legs star run 101.4; boost 177 studs/s. Install hash 9527 / 3539944 |
+| BotServer | 1.14 | Bot walk / run / creep x ArenaSpeedScale at spawn (BotSpeedBase_<key> kept), live rescale on change, BotSpeedScale (MDA-37). Verified: T-Rex bot run 60 -> 39, raptor bot run 52 -> 33.8, walk 30 -> 19.5. Install hash 118735 / 1311784124 |
 
 ## Open decisions
 - Skill points per level-up.

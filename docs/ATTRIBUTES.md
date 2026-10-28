@@ -1201,6 +1201,17 @@ PC keys are R (slot 1) and C (slot 2); a "⚙ NEW: <PART>" popup shows how to us
 Remote `ReplicatedStorage.DinoDashRequest:FireServer(serverTime)`; SkillRequest ("slot", n, id or ""). The dash costs no
 stamina (Kepu). The Thrusters part is on the dino only while it is in a slot (Kepu).
 
+## Game speed (ArenaRules 1.3 / StatServer 1.1 / BotServer 1.14)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| ArenaSpeedScale | script ArenaRules | 0.65 | every dino's walk / run / creep speed x this (players and bots; 1 = as before; live) |
+| StatSpeedScale | player character | — | diagnostic: the scale StatServer used |
+| BotSpeedBase_MoveWalkSpeed / _MoveRunSpeed / _MoveCreepSpeed | bot | — | the bot's unscaled speeds |
+| BotSpeedScale | bot | — | diagnostic: the scale applied |
+
+T-Rex run 60 -> 39; maxed Sprint Legs (x2.6) 101; maxed + Thrusters boost (x1.75) 177 studs/s.
+
 ## Bigger raptors (RaptorScale 1.0)
 
 | Attribute | On | Default | Meaning |

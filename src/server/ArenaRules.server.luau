@@ -1,4 +1,4 @@
--- ArenaRules v1.2 (Mecha Dino Arena) — Mecha gameplay rules that belong to no single move script.
+-- ArenaRules v1.3 (Mecha Dino Arena) — Mecha gameplay rules that belong to no single move script.
 -- MDA-8, plan docs/plans/ARENAHUD_v1.0.md Task 3 (Kepu 2026-10-28: "No T-Rex jump").
 -- No default jump: every player character without JumpEnabled == true (the T-Rex; the raptor's leap is JumpTest 1.0 with
 --   JumpEnabled = true) gets Humanoid.UseJumpPower = true and JumpPower = 0 at spawn, so it cannot jump and Roblox hides
@@ -15,10 +15,16 @@
 --   and BiteServer already refuse bites while BiteEnabled is false; ArenaTouch 1.2 then shows POUNCE as the main
 --   button). false gives the raptor its bite back (BiteEnabled = true). Other species are not touched. Character
 --   attribute ArenaBiteRule: "raptorNoBite" (bite removed), "raptorBite" (rule off), "notRaptor".
+-- v1.3 (game speed, MDA-37; Kepu 2026-10-28: "lets just turn the whole speed of the game down a little bit so that when
+--   everything is maxed out it doesnt feel too broken" -> "x0.65 everyone", players and bots): script attribute
+--   ArenaSpeedScale (default 0.65; 1 = speeds as before). This script only holds the number: StatServer 1.1 multiplies
+--   every player dino's MoveWalkSpeed / MoveRunSpeed / MoveCreepSpeed by it, BotServer 1.14 every bot's. A change
+--   applies live. Everything built on run speed follows (auto-run, the Thrusters boost x1.75, bot chases).
 local Players = game:GetService("Players")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local DEFAULTS = {ArenaNoDefaultJump = true, ArenaAutoRun = true, ArenaRaptorNoBite = true}
+DEFAULTS.ArenaSpeedScale = 0.65 -- v1.3
 script:SetAttribute("ArenaRulesVersion", VERSION)
 for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
