@@ -67,16 +67,17 @@ GrowthServer stays off (adult spawns), so it is not used for XP. This settles AD
 - Kill XP = bot `DummyMaxHealth` × 0.5: raptor bot 30 XP, T-Rex bot 100 XP.
 - That's about 1 raptor-bot kill for the first level, about 21 for level 10, about 650 for level 61. Or one fifth as many T-Rex bots.
 
-**Path steps.** Only the 5 passive paths are buyable in this piece:
+**Path steps.** Only the 5 passive paths are buyable in this piece. Kepu: "build the real ones" (no stand-ins).
 
 | Path | I (1 pt) | II (2) | III (3) | ★ (4) |
 |---|---|---|---|---|
 | Regeneration | heal 2% max HP/s after 6 s without damage | after 5 s, 3%/s | after 4 s, 4%/s | kill heal `KillRegenFraction` +0.25 (0.25 → 0.5) |
-| Lifesteal | heal 5% of damage you deal | 10% | 15% | heal 20% of damage dealt *(stand-in for "overheal shield", see red-team #1)* |
-| Jaws (main attack) | +1 Attack point | main attack cooldown ×0.9 (`BiteCooldown` or `PounceCooldown`) | +1 Attack point *(stand-in for "bleed")* | main attack cooldown ×0.8 *(stand-in for "crushing stun")* |
-| Thick Hide | +1 Defense point (−5%) | +1 Defense point *(stand-in for "less knockback")* | stuns 25% shorter (`StunnedUntil` trimmed) | no stun while above 50% health |
-| Sprint Legs | +1 Speed point (+10%) | +1 Speed point *(stand-in for "acceleration")* | ×0.85 on `PounceCooldown` / `RamCooldown` / `JumpCooldown` | +1 Speed point |
+| Lifesteal | heal 5% of damage you deal | 10% | 15% | **overheal shield:** healing past full becomes a shield (max 20% of max HP, lasts 6 s) that is lost before health; shown as a thin blue bar |
+| Jaws (main attack) | +1 Attack point | main attack cooldown ×0.9 (`BiteCooldown` or `PounceCooldown`) | **bleed:** hits make the target lose 3 HP/s for 4 s (a new hit restarts it) | **crushing hit:** a hit stuns the target 0.75 s (`StunnedUntil`), at most once per 4 s per target |
+| Thick Hide | +1 Defense point (−5%) | **less knockback:** thrown 50% less far when a T-Rex rams you off (`StunTossDistance` ×0.5) | stuns 25% shorter (`StunnedUntil` trimmed) | no stun while above 50% health |
+| Sprint Legs | +1 Speed point (+10%) | *acceleration: see red-team #1* | ×0.85 on `PounceCooldown` / `RamCooldown` / `JumpCooldown` | +1 Speed point |
 
+Bleed and the crushing hit work on bots now. Players get them once PvP damage exists.
 The other 10 paths are on the screen, locked, marked "soon".
 
 ### Task 1 — SkillTree 1.0 · Mode: Logic
@@ -166,8 +167,15 @@ The other 10 paths are on the screen, locked, marked "soon".
   - Otherwise shorten what's left by `stunMul`.
 - **Diagnostics.** Character `SkillEffectsState` ("ready" / "off"), `SkillRegenActive`, `SkillLastHeal` ("regen +3" / "lifesteal +2"), `SkillStunTrimmed`.
 
+**On-hit effects (bleed, crushing hit):**
+- The target is the bot named by the attacker's hit attributes (`BiteHitTarget` / `PounceLatchTarget`; resolved by the build session from the attribute's real type).
+- **Bleed:** subtracts from the bot's `DummyHealth` every 0.5 s. If bleed takes `DummyHealth` from above 0 to 0, it stamps `KilledBy`, `KilledByUserId`, `KilledWith` = "bleed" and then `KilledAt`, exactly like BiteServer, so XP and the kill heal still count. Never stamps twice.
+- **Crushing hit:** sets the bot's `StunnedUntil` = now + 0.75 s; BotServer already makes a bot with a future `StunnedUntil` lie down and do nothing.
+- **Shield:** character `SkillShield` (HP) and `SkillShieldUntil`. A health drop while the shield is above 0 is given back from the shield.
+
 **Acceptance (Play, real place):**
 - Each path's 4 steps change the attribute in its row of the numbers table.
+- Bleed drains a bot and a bleed kill gives XP once; the crushing hit makes a bot lie down for 0.75 s; the shield absorbs a bot hit.
 - Regeneration heals after the delay and stops while you take damage.
 - Lifesteal heals on a bite hit (T-Rex) and on a pounce hit (raptor).
 - Switching it off brings back every base value.
