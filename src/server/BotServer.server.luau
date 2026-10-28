@@ -1,4 +1,4 @@
--- BotServer v1.10 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.11 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -242,12 +242,15 @@
 --   hitDamage (every bot hit on a player: bite, latch land, latch tick) multiplies the damage, after the growth cap, by the
 --   player character's StatDamageTakenMul (StatServer 1.0; missing -> 1) while script attribute BotDefenseEnabled (default
 --   true) is not false. Diagnostic: bot BotLastHitDefenseMul.
+-- v1.11 (Mecha Dino Arena scope, plan docs/plans/ARENASCOPE_v1.0.md; Kepu: ambush grass + creep off, "its not a survival
+--   game anymore"): script attribute BotHidingEnabled (default true = v1.10). false -> every player gets Hidden = false,
+--   HiddenReason "off", CoverHint false; neither the v1.7 grass rule nor the legacy bush rule runs.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -297,6 +300,7 @@ DEFAULTS.BotHuntEnabled = true -- v1.9
 DEFAULTS.BotFightEnabled = true -- v1.9
 DEFAULTS.BotRegenEnabled = true -- v1.9
 DEFAULTS.BotDefenseEnabled = true -- v1.10
+DEFAULTS.BotHidingEnabled = true -- v1.11
 local BotHunt = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("BotHunt")) -- v1.9
 local BOT_AVOID_MIN_STAGE = 2
 local BOT_PLAYER_HIT_CAP = 0.4
@@ -2307,7 +2311,11 @@ while true do
 		local char, _, thrp = aliveChar(player)
 		if char then
 			local hidden
-			if get("AmbushRulesEnabled") ~= false then -- v1.7
+			if get("BotHidingEnabled") == false then -- v1.11: nobody hides
+				hidden = false
+				if char:GetAttribute("HiddenReason") ~= "off" then char:SetAttribute("HiddenReason", "off") end
+				if char:GetAttribute("CoverHint") ~= false then char:SetAttribute("CoverHint", false) end
+			elseif get("AmbushRulesEnabled") ~= false then -- v1.7
 				local reason, height, hint
 				local creeping = char:GetAttribute("Creeping") == true
 				local scale = char:GetScale()

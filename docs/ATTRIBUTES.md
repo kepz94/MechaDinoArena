@@ -991,6 +991,15 @@ Character attributes (this client):
 Reads (from StatServer 1.0): `Species`, `StatState`, `StatClass`, `StatAbilities`, `StatPoints_*`, `StatAdded_*`,
 `StatDamageTakenMul`, `BiteDamage`, `MoveWalkSpeed`, `MoveRunSpeed`, and Humanoid.MaxHealth.
 
+## Arena scope (ArenaScope 1.0, BotServer 1.11, Mecha Dino Arena)
+- Script `ArenaScope` (check only): `ArenaScopeVersion`, `ArenaScopeMismatches`; `ArenaScope_<ScriptName>` = "on" /
+  "off" / "mismatch" / "missing"; `ArenaScope_BotHiding` = "off" / "mismatch".
+- Switched off in Mecha (script `Enabled = false`; repo `.meta.json`): SurvivalServer, SurvivalBars, PreyServer,
+  CarcassFlies, GoalServer, GoalTracker, CreepServer, CreepTest, CoverHint, BushView, RoarServer, RoarTest, RoarFX,
+  BiteDummy, ClassCard. Their attributes are no longer written in Mecha.
+- Script `BotServer` `BotHidingEnabled` (default true; Mecha false): false → every player `Hidden = false`,
+  `HiddenReason = "off"`, `CoverHint = false`.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
