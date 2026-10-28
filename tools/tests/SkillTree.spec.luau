@@ -1,4 +1,4 @@
--- SkillTree.spec v1.2 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.3 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 local ok, ST = pcall(function() return require(game.ServerStorage.DinoArcade.SkillTree) end)
 if not ok then return "FAIL require: " .. tostring(ST) end
@@ -9,7 +9,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.2")
+eq("Version", ST.Version, "1.3")
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 60)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 61)
@@ -81,6 +81,7 @@ local none, why2 = ST.buy({}, "regen", 0)
 eq("buy refused", none, nil)
 eq("buy refused reason", why2, "noPoints")
 
+ST.STRONG = false -- v1.3: the 1.0 - 1.2 cases below check the old numbers
 -- effects: neutral for an empty build
 local e0 = ST.effects({})
 eq("e0 attack", e0.attackPts, 0); eq("e0 defense", e0.defensePts, 0); eq("e0 speed", e0.speedPts, 0)
@@ -172,9 +173,46 @@ eq("boost I", e({thrusters = 1}).dashTime, 1.5)
 eq("boost II", e({thrusters = 2}).dashTime, 1.5)
 eq("boost III", e({thrusters = 3}).dashTime, 2.0)
 eq("boost star", e({thrusters = 4}).dashTime, 2.0)
-eq("thrusters text I", ST.PATHS.thrusters.steps[1], "Button: rocket boost for 1.5 s at 2x run speed (steer while boosting)")
+eq("thrusters text I", ST.PATHS.thrusters.steps[1], "Button: rocket boost for 1.5 s at 3x run speed (steer while boosting)") -- v1.3 text
 eq("thrusters steps", #ST.PATHS.thrusters.steps, 4)
 eq("grapple text kept", ST.PATHS.grapple.steps[1], "Button: pull yourself to a tree")
+-- v1.3: the 35% rule (STRONG): every step >= 1.35x the step before (times / cooldowns / damage taken: <= 1 / 1.35)
+ST.STRONG = true
+local function ok35(name, before, after, lower) -- lower = smaller is better
+	local ratio = lower and before / after or after / before
+	eq(name .. " >= 1.35x", ratio >= 1.35 - 1e-9, true)
+end
+local function E(k, n) local st = {} st[k] = n return ST.effects(st) end
+eq("regen I rate", E("regen", 1).regenRate, 0.02); eq("regen I delay", E("regen", 1).regenDelay, 6)
+eq("regen II rate", E("regen", 2).regenRate, 0.03); eq("regen II delay", E("regen", 2).regenDelay, 4.4)
+eq("regen III rate", E("regen", 3).regenRate, 0.045); eq("regen III delay", E("regen", 3).regenDelay, 3.2)
+ok35("regen rate I->II", 0.02, E("regen", 2).regenRate); ok35("regen rate II->III", 0.03, E("regen", 3).regenRate)
+ok35("regen delay I->II", 6, E("regen", 2).regenDelay, true); ok35("regen delay II->III", 4.4, E("regen", 3).regenDelay, true)
+ok35("kill heal star", 0.25, 0.25 + E("regen", 4).killRegenAdd)
+ok35("lifesteal I->II", E("lifesteal", 1).lifesteal, E("lifesteal", 2).lifesteal)
+ok35("lifesteal II->III", E("lifesteal", 2).lifesteal, E("lifesteal", 3).lifesteal)
+eq("jaws I attack", E("jaws", 1).attackPts, 5)
+ok35("jaws I bite", 25, 25 + 2 * E("jaws", 1).attackPts)
+ok35("jaws I pounce land", 8, 8 + 2 * E("jaws", 1).attackPts); ok35("jaws I pounce tick", 4, 4 + E("jaws", 1).attackPts)
+eq("jaws II cd", E("jaws", 2).mainCdMul, 0.74); ok35("jaws II cd", 1, E("jaws", 2).mainCdMul, true)
+eq("jaws star keeps attack", E("jaws", 4).attackPts, 5)
+eq("hide I defense", E("hide", 1).defensePts, 6); ok35("hide I damage taken", 1, 1 - 0.05 * E("hide", 1).defensePts, true)
+ok35("hide II toss", 1, E("hide", 2).tossMul, true)
+eq("hide III stun", E("hide", 3).stunMul, 0.70); ok35("hide III stun", 1, E("hide", 3).stunMul, true)
+local function run(n) return 1 + 0.1 * E("legs", n).speedPts end
+eq("legs I pts", E("legs", 1).speedPts, 4); eq("legs II pts", E("legs", 2).speedPts, 9)
+eq("legs III pts", E("legs", 3).speedPts, 9); eq("legs star pts", E("legs", 4).speedPts, 16)
+ok35("legs I run", 1, run(1)); ok35("legs II run", run(1), run(2)); ok35("legs star run", run(3), run(4))
+eq("legs III cd", E("legs", 3).moveCdMul, 0.74); ok35("legs III cd", 1, E("legs", 3).moveCdMul, true)
+ok35("thrusters II charges", E("thrusters", 1).dashCharges, E("thrusters", 2).dashCharges)
+eq("thrusters III time", E("thrusters", 3).dashTime, 2.1); ok35("thrusters III time", 1.5, E("thrusters", 3).dashTime)
+eq("text legs star", ST.PATHS.legs.steps[4], "Run speed x2.6")
+eq("text jaws II", ST.PATHS.jaws.steps[2], "Main attack recharges 35% faster")
+local all3 = ST.effects({regen = 4, lifesteal = 4, jaws = 4, hide = 4, legs = 4, thrusters = 4})
+eq("all3 attack", all3.attackPts, 5); eq("all3 defense", all3.defensePts, 6); eq("all3 speed", all3.speedPts, 16)
+ST.STRONG = false
+eq("off legs star", ST.effects({legs = 4}).speedPts, 7); eq("off jaws cd", ST.effects({jaws = 2}).mainCdMul, 0.9)
+ST.STRONG = true
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

@@ -1188,6 +1188,12 @@ A chase stops at the band line exactly like at the territory border (BotBorderDr
 | MechaBoostDir | character (client) | — | MechaButtons 1.1: "move" (steering with movement) / "keep" (last direction) |
 | MechaNewsShown | character (client) | — | MechaButtons 1.1: path id of the last "NEW" popup |
 
+| MechaBoostSoundId | script MechaServer | rbxassetid://9114554567 | v1.2: boost roar sound (placeholder) |
+| MechaBoostFxEnabled | script MechaButtons | true | v1.2: false = no camera punch / speed lines |
+| MechaBoostFx | character (client) | 0 | v1.2: boost effect strength k (0.1 steps) |
+| STRONG | SkillTree constant | true | v1.3: the 35% rule numbers (false = 1.2 numbers) |
+| MAX_ADDED_BY | StatSheet constant | {Speed = 16} | v1.1: per-stat added-point cap (others 10) |
+
 v1.1 changes (Kepu after trying it on PC): Thrusters is a steerable boost (DashTime 1.5 s, 2 s from III, at 2x run speed);
 PC keys are R (slot 1) and C (slot 2); a "⚙ NEW: <PART>" popup shows how to use a newly bought part; the fire is visible
 (fire particles, neon jets, glow) for the whole boost. DashDistance is no longer used by the boost.

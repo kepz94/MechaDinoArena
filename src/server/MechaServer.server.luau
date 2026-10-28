@@ -1,4 +1,4 @@
--- MechaServer v1.1 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
+-- MechaServer v1.2 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
 -- Thrusters part on the dino. MDA-27, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 5, mockup
 -- docs/mockups/mecha_thrusters_options.html (Kepu 2026-10-28: framework + Thrusters first; numbers as proposed; the dash is
 -- free; the part is on the dino only while it is in a loadout slot; bots only).
@@ -35,11 +35,16 @@
 --   while boosting, 1 otherwise; massless, no collide / query / touch); and a PointLight "Glow" (orange, range 4 x booster
 --   width, brightness 3). A later boost restarts the timer (an earlier boost's end no longer switches off a newer one).
 --   Diagnostic: character MechaFlame (true while the flame is on).
+-- v1.2 (MDA-35; Kepu: "its an arcade game. i want these boosts to feel significant" -> "Bigger fire", "Speed lines +
+--   sound"): flame particles twice the size (booster width x 2.4 -> 0.4) and living 0.4-0.7 s; the neon jets twice as
+--   long (booster length x 1.2); a Sound "Roar" on Nozzle_R (script attribute MechaBoostSoundId, default
+--   rbxassetid://9114554567 "Gas Fire Explosion 3 (SFX)", Pro Sound Effects, a Creator Store placeholder like
+--   BiteSoundId; volume 0.8) played at each boost start and stopped at its end (heard by everyone).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local MAX_LAG = 0.3
 local DEFAULT_RECHARGE, DEFAULT_TIME = 8, 0.35
 local METAL, DARK, ORANGE = Color3.fromRGB(123, 133, 144), Color3.fromRGB(43, 47, 53), Color3.fromRGB(255, 155, 46)
@@ -47,6 +52,7 @@ local METAL, DARK, ORANGE = Color3.fromRGB(123, 133, 144), Color3.fromRGB(43, 47
 script:SetAttribute("MechaServerVersion", VERSION)
 if script:GetAttribute("MechaEnabled") == nil then script:SetAttribute("MechaEnabled", true) end
 script:SetAttribute("MechaDashes", 0)
+if script:GetAttribute("MechaBoostSoundId") == nil then script:SetAttribute("MechaBoostSoundId", "rbxassetid://9114554567") end -- v1.2
 local function on() return script:GetAttribute("MechaEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
 
@@ -162,8 +168,8 @@ local function build(char, look)
 		f.EmissionDirection = Enum.NormalId.Back
 		f.Color = ColorSequence.new(Color3.fromRGB(255, 226, 122), Color3.fromRGB(255, 122, 26))
 		f.Texture = "rbxasset://textures/particles/fire_main.dds" -- v1.1
-		f.Size = NumberSequence.new(bs.X * 1.2, 0.2) -- v1.1: was ns.X x 0.6 -> 0
-		f.Lifetime = NumberRange.new(0.25, 0.45) -- v1.1: was 0.15-0.25
+		f.Size = NumberSequence.new(bs.X * 2.4, 0.4) -- v1.2: x2 (v1.1: bs.X x 1.2 -> 0.2; 1.0: ns.X x 0.6 -> 0)
+		f.Lifetime = NumberRange.new(0.4, 0.7) -- v1.2 (v1.1: 0.25-0.45; 1.0: 0.15-0.25)
 		f.Rate = 150 -- v1.1: was 120
 		f.Speed = NumberRange.new(12, 20) -- v1.1: was 20-30
 		f.SpreadAngle = Vector2.new(8, 8) -- v1.1
@@ -177,10 +183,18 @@ local function build(char, look)
 		glow.Brightness = 3
 		glow.Enabled = false
 		glow.Parent = at
-		local jet = part("Jet_" .. side[1], Vector3.new(ns.X * 0.8, ns.Y * 0.8, bs.Z * 0.6), -- v1.1: neon jet behind the nozzle
-			rot * CFrame.new(0, 0, (bs.Z + ns.Z) / 2 + ns.Z / 2 + bs.Z * 0.3), Color3.fromRGB(255, 190, 60), model, torso)
+		local jet = part("Jet_" .. side[1], Vector3.new(ns.X * 0.8, ns.Y * 0.8, bs.Z * 1.2), -- v1.1: neon jet behind the nozzle; v1.2: x2 long
+			rot * CFrame.new(0, 0, (bs.Z + ns.Z) / 2 + ns.Z / 2 + bs.Z * 0.6), Color3.fromRGB(255, 190, 60), model, torso)
 		jet.Material = Enum.Material.Neon
 		jet.Transparency = 1
+		if side[1] == "R" then -- v1.2: the boost roar
+			local snd = Instance.new("Sound")
+			snd.Name = "Roar"
+			snd.SoundId = script:GetAttribute("MechaBoostSoundId") or "rbxassetid://9114554567"
+			snd.Volume = 0.8
+			snd.RollOffMaxDistance = 300
+			snd.Parent = nozzle
+		end
 		if look == "star" then
 			part("Fin_" .. side[1], Vector3.new(bs.X * 0.15, bs.Y * 0.5, bs.Z * 0.6),
 				rot * CFrame.new(0, (bs.Y + bs.Y * 0.5) / 2, bs.Z * 0.1), ORANGE, model, torso)
@@ -212,9 +226,12 @@ local function flame(char)
 	flameToken[char] = token
 	setFlame(m, true)
 	char:SetAttribute("MechaFlame", true)
+	local roar = m:FindFirstChild("Roar", true) -- v1.2
+	if roar then roar.TimePosition = 0 roar:Play() end
 	task.delay(t, function()
 		if flameToken[char] ~= token then return end -- a newer boost owns the flame
 		if m.Parent then setFlame(m, false) end
+		if roar then roar:Stop() end -- v1.2
 		char:SetAttribute("MechaFlame", false)
 	end)
 end

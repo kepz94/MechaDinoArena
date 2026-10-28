@@ -1,4 +1,4 @@
--- MechaButtons v1.1 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.2 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -37,12 +37,21 @@
 --     LOADOUT slot (SKILLS)" when it is not in a slot. Shown when a loadout part's SkillPath_<id> goes from 0 to 1 or more
 --     while this character exists (SkillTree.BUTTONS from ReplicatedStorage.SkillShared; not on join / respawn).
 --     Diagnostics MechaNewsShown (path id), MechaBoostDir ("move" / "keep").
+-- v1.2 (MDA-35; Kepu: "its an arcade game. i want these boosts to feel significant" -> camera punch, speed lines):
+--   during a boost (this client) an envelope k goes 0 -> 1 in 0.15 s, stays 1 while boosting and goes back to 0 in 0.3 s
+--   after it ends:
+--   * camera punch: RenderStep "MechaBoostCam" at Camera priority + 2 (after ShoulderCam 1.5 and SkillScreen's mouse
+--     bind): Camera.FieldOfView = the FOV at boost start + 15 x k, and a small shake (pitch / yaw up to 0.6 degrees x k,
+--     from math.noise); the start FOV is put back and the bind removed when k is 0 again;
+--   * speed lines: ScreenGui "MechaSpeedLines" (DisplayOrder 4) with 40 white streaks (100-220 x 4 px) flying outward
+--     from around the middle of the screen toward the edges, transparency 1 - 0.65 x k (hidden at k 0).
+--   Script attribute MechaBoostFxEnabled (default true; false = no punch and no lines). Diagnostic MechaBoostFx (k, 0.1).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -74,6 +83,83 @@ end
 
 -- dash physics --------------------------------------------------------------------------------------------------------
 local lastDash = char:GetAttribute("DashStartedAt")
+
+-- v1.2: boost feel (camera punch + speed lines) --------------------------------------------------------------------
+local FX_BIND = "MechaBoostCam"
+local fxBoosting, fxK, fxBaseFov, fxGui, fxLines, fxT = false, 0, nil, nil, nil, 0
+local function fxOn() return script:GetAttribute("MechaBoostFxEnabled") ~= false end
+local function fxBuild()
+	local pg = player:FindFirstChild("PlayerGui")
+	if not pg then return end
+	local old = pg:FindFirstChild("MechaSpeedLines")
+	if old then old:Destroy() end
+	fxGui = Instance.new("ScreenGui")
+	fxGui.Name = "MechaSpeedLines"
+	fxGui.ResetOnSpawn = true
+	fxGui.DisplayOrder = 4
+	fxGui.IgnoreGuiInset = true
+	fxLines = {}
+	for i = 1, 40 do -- 40 streaks (24 looked sparse in Play)
+		local f = Instance.new("Frame")
+		f.Name = "Line_" .. i
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.BackgroundColor3 = Color3.new(1, 1, 1)
+		f.BorderSizePixel = 0
+		f.Parent = fxGui
+		fxLines[i] = {f = f, a = math.random() * math.pi * 2, r = 0.45 + math.random() * 0.55, len = 100 + math.random() * 120}
+	end
+	fxGui.Parent = pg
+end
+local function fxStep(dt)
+	fxT += dt
+	if fxBoosting then fxK = math.min(1, fxK + dt / 0.15) else fxK = math.max(0, fxK - dt / 0.3) end
+	local cam = workspace.CurrentCamera
+	if cam and fxBaseFov then
+		cam.FieldOfView = fxBaseFov + 15 * fxK
+		local amp = math.rad(0.6) * fxK
+		cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(fxT * 18, 1.3) * amp, math.noise(fxT * 18, 7.1) * amp, 0)
+	end
+	if fxGui and fxLines then
+		local size = fxGui.AbsoluteSize
+		local half = math.sqrt(size.X * size.X + size.Y * size.Y) / 2
+		for _, l in ipairs(fxLines) do
+			l.r += dt * 2.2
+			if l.r > 1.05 then l.a, l.r, l.len = math.random() * math.pi * 2, 0.45 + math.random() * 0.2, 100 + math.random() * 120 end
+			local x, y = size.X / 2 + math.cos(l.a) * l.r * half, size.Y / 2 + math.sin(l.a) * l.r * half
+			l.f.Position = UDim2.fromOffset(x, y)
+			l.f.Size = UDim2.fromOffset(l.len, 4)
+			l.f.Rotation = math.deg(l.a)
+			l.f.BackgroundTransparency = 1 - 0.65 * fxK
+		end
+		fxGui.Enabled = fxK > 0
+	end
+	local shown = math.floor(fxK * 10 + 0.5) / 10
+	if char:GetAttribute("MechaBoostFx") ~= shown then char:SetAttribute("MechaBoostFx", shown) end
+	if fxK <= 0 and not fxBoosting then
+		if cam and fxBaseFov then cam.FieldOfView = fxBaseFov end
+		fxBaseFov = nil
+		pcall(function() RunService:UnbindFromRenderStep(FX_BIND) end)
+	end
+end
+local function fxStart()
+	if not fxOn() then return end
+	fxBoosting = true
+	if not fxBaseFov then
+		fxBaseFov = workspace.CurrentCamera and workspace.CurrentCamera.FieldOfView or 70
+		if not (fxGui and fxGui.Parent) then fxBuild() end
+		pcall(function() RunService:UnbindFromRenderStep(FX_BIND) end)
+		RunService:BindToRenderStep(FX_BIND, Enum.RenderPriority.Camera.Value + 2, fxStep)
+	end
+end
+local function fxStop() fxBoosting = false end
+char.AncestryChanged:Connect(function(_, parent)
+	if parent then return end
+	pcall(function() RunService:UnbindFromRenderStep(FX_BIND) end)
+	local cam = workspace.CurrentCamera
+	if cam and fxBaseFov then cam.FieldOfView = fxBaseFov end
+	if fxGui then fxGui:Destroy() end
+end)
+
 local boostConn -- v1.1
 local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x run speed
 	if not (hrp and hum and hum.Health > 0) then return end
@@ -109,9 +195,11 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 	end
 	char:SetAttribute("MechaDashLocal", "dashing")
 	char:SetAttribute("MechaDashLocalCount", (char:GetAttribute("MechaDashLocalCount") or 0) + 1)
+	fxStart() -- v1.2
 	local t0 = os.clock()
 	local conn
 	local function stop()
+		fxStop() -- v1.2
 		if conn then conn:Disconnect() end
 		if boostConn == conn then boostConn = nil end
 		lv:Destroy()

@@ -1,4 +1,4 @@
--- StatSheet v1.0 (Mecha Dino Arena) — the 5-stat point sheet: species starting points (natural build type) and the
+-- StatSheet v1.1 (Mecha Dino Arena) — the 5-stat point sheet: species starting points (natural build type) and the
 -- stat -> attribute formula. MDA-1, plan docs/plans/CLASSSTATS_v1.0.md, ADR-001. Pure: no Instance access.
 -- User: option C "Stat points"; "stamina isnt a tree because stamina is unlimited" (no Stamina stat); Speed alone for
 --   Roamer. Red-team answers: the cap is on ADDED points (+10 per stat); Health and Attack points are flat (same gain on
@@ -12,10 +12,13 @@
 --   MaxHealth = base + HEALTH_PER_POINT x Health; attack keys = base + ATTACK_PER_POINT[key] x Attack;
 --   speed keys = round to 0.1 of base x (1 + SPEED_RATE x Speed); StatDamageTakenMul = round to 0.01 of
 --   1 - DEFENSE_RATE x Defense. With 0 added every value equals base exactly.
+-- v1.1 (MDA-34; Kepu 2026-10-28: every skill step at least 35% over the one before; Sprint Legs star "Raise the cap: x2.6
+--   run"): MAX_ADDED_BY = {Speed = 16}: the added cap per stat (others keep MAX_ADDED 10). Speed 16 = run x2.6.
 local StatSheet = {}
-StatSheet.Version = "1.0"
+StatSheet.Version = "1.1"
 StatSheet.STATS = {"Health", "Attack", "Defense", "Speed", "Support"}
 StatSheet.MAX_ADDED = 10
+StatSheet.MAX_ADDED_BY = {Speed = 16} -- v1.1
 StatSheet.HEALTH_PER_POINT = 15
 StatSheet.ATTACK_PER_POINT = {BiteDamage = 2, PounceLandDamage = 2, PounceTickDamage = 1}
 StatSheet.SPEED_RATE = 0.10
@@ -45,7 +48,8 @@ function StatSheet.added(species, raw)
 			n, clamped = 0, true
 		else
 			n = math.floor(v)
-			if n > StatSheet.MAX_ADDED then n, clamped = StatSheet.MAX_ADDED, true end
+			local cap = StatSheet.MAX_ADDED_BY[s] or StatSheet.MAX_ADDED -- v1.1: per-stat cap
+			if n > cap then n, clamped = cap, true end
 		end
 		if s == "Support" and n ~= 0 then n, clamped = 0, true end
 		out[s] = n

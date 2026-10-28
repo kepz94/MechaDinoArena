@@ -1,4 +1,4 @@
--- StatSheet.spec v1.0 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.StatSheet (MDA-1, plan docs/plans/CLASSSTATS_v1.0.md).
+-- StatSheet.spec v1.1 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.StatSheet (MDA-1, plan docs/plans/CLASSSTATS_v1.0.md).
 -- Run in Studio Edit through execute_luau (copy in ServerStorage.DinoArcadeTools.StatSheet_spec); returns "PASS n" or "FAIL ...".
 local ok, SS = pcall(function() return require(game.ServerStorage.DinoArcade.StatSheet) end)
 if not ok then return "FAIL require: " .. tostring(SS) end
@@ -14,7 +14,7 @@ local TREX = {MaxHealth = 200, BiteDamage = 25, MoveWalkSpeed = 20, MoveRunSpeed
 local RAPTOR = {MaxHealth = 60, BiteDamage = 8, PounceLandDamage = 8, PounceTickDamage = 4, MoveWalkSpeed = 30, MoveRunSpeed = 52,
 	MoveCreepSpeed = 10}
 
-eq("Version", SS.Version, "1.0")
+eq("Version", SS.Version, "1.1")
 eq("STATS", table.concat(SS.STATS, ","), "Health,Attack,Defense,Speed,Support")
 eq("MAX_ADDED", SS.MAX_ADDED, 10)
 eq("HEALTH_PER_POINT", SS.HEALTH_PER_POINT, 15)
@@ -95,6 +95,15 @@ eq("points Speed 9", p.Speed, 9)
 a, c = SS.added("Stego", {Health = 1})
 eq("unknown species nil", a, nil) eq("unknown flag", c, false)
 eq("unknown points nil", SS.points("Stego", {}), nil)
+-- v1.1: Speed cap 16, others 10
+eq("MAX_ADDED_BY Speed", SS.MAX_ADDED_BY.Speed, 16)
+a, c = SS.added("Raptor", {Speed = 16})
+eq("Speed 16 stays", a.Speed, 16) eq("Speed 16 no flag", c, false)
+a, c = SS.added("Raptor", {Speed = 20})
+eq("Speed 20 -> 16", a.Speed, 16) eq("Speed 20 flag", c, true)
+a, c = SS.added("TRex", {Attack = 12})
+eq("Attack still 10", a.Attack, 10)
+eq("Speed 16 run x2.6", SS.values({MoveRunSpeed = 44}, {Speed = 16}).MoveRunSpeed, 114.4, 1e-6)
 
 if #fails > 0 then return "FAIL " .. #fails .. " (pass " .. passes .. ")\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

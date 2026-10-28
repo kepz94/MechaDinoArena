@@ -1,4 +1,4 @@
--- SkillTree v1.2 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.3 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -37,8 +37,16 @@
 -- v1.2 (Thrusters boost, MDA-31, plan docs/plans/MECHA_THRUSTERS_v1.0.md "v1.1 changes"; Kepu 2026-10-28 after trying it:
 --   "make the thrusters actually last longer" -> "1.5 s boost, steerable"): effects adds dashTime (0; 1.5 s from I; 2 s
 --   from III). The Thrusters step texts describe the boost. dashDist stays as in 1.1 (no longer used by the boost).
+-- v1.3 (35% rule, MDA-34; Kepu 2026-10-28: "its an arcade game. i want these boosts to feel significant" / "every single
+--   boost you made needs to be at least 35% of an improvement from before" -> each step's number at least 1.35x the
+--   step before (for times, cooldowns and damage taken: at most 1 / 1.35 of it), whole tree): STRONG (default true;
+--   false = the 1.2 numbers). While on, effects() uses: Regeneration II delay 4.4 s, III 3.2 s and 4.5%/s; Jaws I +5
+--   Attack (T-Rex bite 25 -> 35), II main attack cooldown x0.74; Thick Hide I +6 Defense (damage taken x0.70), III stuns
+--   x0.70; Sprint Legs I +4 Speed (run x1.4), II 9 (x1.9), III move cooldowns x0.74, star 16 (x2.6; StatSheet 1.1 cap 16);
+--   Thrusters III boost 2.1 s. The step texts of those paths say the new numbers (Thrusters I: 3x run speed, SkillEffects
+--   1.3).
 local SkillTree = {}
-SkillTree.Version = "1.2"
+SkillTree.Version = "1.3"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -128,6 +136,24 @@ SkillTree.PATHS.thrusters.steps = {
 	"2 charges",
 	"Longer boost: 2 s",
 	"Rocket hop: the boost starts with a 25-stud hop"}
+
+-- v1.3: the 35% rule
+SkillTree.STRONG = true
+if SkillTree.STRONG then
+	local P = SkillTree.PATHS
+	P.regen.steps[2] = "Starts after 4.4 s, 3% per second"
+	P.regen.steps[3] = "Starts after 3.2 s, 4.5% per second"
+	P.jaws.steps[1] = "Main attack hits harder (+5 Attack points: T-Rex bite 25 -> 35)"
+	P.jaws.steps[2] = "Main attack recharges 35% faster"
+	P.hide.steps[1] = "Take 30% less damage (+6 Defense points)"
+	P.hide.steps[3] = "Stuns are 30% shorter"
+	P.legs.steps[1] = "Run 40% faster (+4 Speed points)"
+	P.legs.steps[2] = "Run speed x1.9"
+	P.legs.steps[3] = "Pounce, ram and leap recharge 35% faster"
+	P.legs.steps[4] = "Run speed x2.6"
+	P.thrusters.steps[1] = "Button: rocket boost for 1.5 s at 3x run speed (steer while boosting)"
+	P.thrusters.steps[3] = "Longer boost: 2.1 s"
+end
 
 -- level curve
 function SkillTree.xpToNext(level)
@@ -238,6 +264,18 @@ function SkillTree.effects(steps)
 	e.dashTime = 0
 	if t >= 1 then e.dashTime = 1.5 end
 	if t >= 3 then e.dashTime = 2.0 end
+	-- v1.3: the 35% rule (each step >= 1.35x the step before)
+	if SkillTree.STRONG then
+		if r >= 2 then e.regenDelay = 4.4 end
+		if r >= 3 then e.regenDelay, e.regenRate = 3.2, 0.045 end
+		e.attackPts = j >= 1 and 5 or 0
+		if j >= 2 then e.mainCdMul = 0.74 end
+		e.defensePts = h >= 1 and 6 or 0
+		if h >= 3 then e.stunMul = 0.70 end
+		e.speedPts = g >= 4 and 16 or g >= 2 and 9 or g >= 1 and 4 or 0
+		if g >= 3 then e.moveCdMul = 0.74 end
+		if t >= 3 then e.dashTime = 2.1 end
+	end
 	return e
 end
 
