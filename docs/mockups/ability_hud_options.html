@@ -1,0 +1,261 @@
+<title>Ability HUD Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: control strip on top, a 16:9 PC game screen with the HUD option drawn on it, notes beside (stacked when narrow).
+   Single dark look on purpose: it mirrors the game's HUD panels (rgb 20,20,26 + Engineer orange). */
+:root{
+  color-scheme: dark;
+  --page:#0e0f14; --panel:rgb(20,20,26); --panel2:rgb(32,32,41); --line:rgba(255,255,255,.18);
+  --text:#eef0f4; --muted:#9ba1ae; --yellow:rgb(255,200,50); --ytext:rgb(30,26,10);
+  --eng:rgb(255,155,46); --health:rgb(95,209,106); --attack:rgb(240,90,79); --cool:rgba(0,0,0,.62);
+  --display:"Fredoka One","Arial Rounded MT Bold",system-ui,sans-serif; --body:Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--body);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:400;margin:0 0 4px;font-size:22px;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:70ch;line-height:1.5}
+.controls{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row .lab{font-family:var(--display);font-size:13px;color:var(--muted);width:76px}
+.row button{font-family:var(--display);font-size:14px;border:2px solid var(--line);background:var(--panel2);color:var(--text);
+  padding:6px 12px;border-radius:999px;cursor:pointer}
+.row button.on{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.row button:focus-visible,.slot:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+@media (max-width:1000px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;min-width:0}
+.note h3{font-family:var(--display);font-weight:400;margin:0 0 6px;font-size:16px}
+.note b{color:var(--yellow)}
+.note ul{margin:6px 0 0;padding-left:18px}
+.hint{color:var(--muted);font-size:12px;margin-top:8px}
+
+/* the PC screen */
+.monitor{width:100%;max-width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;padding:8px;box-shadow:0 0 0 2px #2a2b33}
+.screen{position:relative;width:100%;height:100%;border-radius:6px;overflow:hidden;container-type:inline-size;font-family:var(--display);
+  background:linear-gradient(180deg,#6fb3ff 0%,#a8d4ff 44%,#5aa651 45%,#3f8a3b 100%)}
+.tree{position:absolute;bottom:55%;width:5%;height:20%}
+.tree i{position:absolute;left:42%;bottom:0;width:16%;height:50%;background:#5a3b2a}
+.tree b{position:absolute;left:0;bottom:40%;width:100%;height:60%;background:#2f8a3e;border-radius:6px}
+.dino{position:absolute;left:44%;bottom:20%;width:12%;height:34%}
+.dino .body{position:absolute;inset:20% 10% 0 10%;background:#6f8f3e;border-radius:16% 16% 8% 8%;box-shadow:inset -10px -10px 0 rgba(0,0,0,.15)}
+.dino .head{position:absolute;left:30%;top:0;width:40%;height:28%;background:#7ea048;border-radius:20%}
+.dino.trex{width:16%;height:42%;left:42%}.dino.trex .body{background:#4f6b45}.dino.trex .head{background:#5c7a50}
+.thr{position:absolute;top:30%;width:20%;height:32%;background:#7b8590;border:2px solid #2b2f35;border-radius:3px}
+.thr.l{left:2%}.thr.r{right:2%}
+.dino.noparts .thr{display:none}
+.flame{position:absolute;left:10%;right:10%;top:100%;height:0;background:linear-gradient(#ffe27a,#ff7a1a,transparent);border-radius:0 0 50% 50%;transition:height .1s}
+.boosting .flame{height:110%}
+
+/* fixed HUD that exists today (approximate) */
+.pill{position:absolute;right:1.4%;top:2%;font-size:1.3cqw;background:rgba(20,20,26,.82);border:2px solid rgba(255,255,255,.5);border-radius:10px;padding:.25em .7em;color:#fff}
+.pill .sp{background:var(--yellow);color:var(--ytext);border-radius:6px;padding:0 .4em}
+.skills{position:absolute;right:13%;top:2%;font-size:1.3cqw;background:var(--yellow);color:var(--ytext);border-radius:10px;padding:.25em .7em}
+.hp{position:absolute;right:1.4%;top:8.5%;width:22%;font-size:1cqw;color:#fff}
+.hp .t{display:flex;justify-content:space-between}
+.hp .bar{height:1cqw;border-radius:6px;background:#000;border:1px solid rgba(255,255,255,.4);overflow:hidden;margin-top:.3cqw}
+.hp .bar i{display:block;height:100%;width:82%;background:var(--health)}
+.growth{position:absolute;left:29%;width:42%;bottom:3%;background:rgba(20,20,26,.8);border:2px solid rgba(255,255,255,.45);border-radius:11px;padding:.5cqw .8cqw;font-size:1cqw;color:#fff}
+.growth .bar{height:.9cqw;border-radius:5px;background:#000;margin-top:.3cqw;overflow:hidden}.growth .bar i{display:block;height:100%;width:46%;background:var(--yellow)}
+
+/* shared slot tile */
+.slot{position:absolute;aspect-ratio:1;border-radius:22%;background:rgba(20,20,26,.7);border:.22cqw solid var(--eng);color:#fff;
+  display:grid;place-items:center;overflow:hidden;cursor:pointer;padding:0;font-family:var(--display)}
+.slot .name{font-size:1.15cqw;position:relative;z-index:2}
+.slot .key{position:absolute;left:7%;top:5%;font-size:.95cqw;color:rgba(255,255,255,.8);z-index:2}
+.slot .pips{position:absolute;right:8%;top:9%;display:flex;gap:.3cqw;z-index:2}
+.slot .pips i{width:.6cqw;height:.6cqw;border-radius:50%;background:var(--eng)}
+.slot .pips i.off{background:rgba(255,255,255,.25)}
+.slot .fill{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--cool);z-index:1}
+.slot .secs{position:absolute;bottom:6%;left:0;right:0;text-align:center;font-size:.9cqw;z-index:2;color:#ffd9a8}
+.slot.empty{border-color:rgba(255,255,255,.5);color:rgba(255,255,255,.75)}
+.slot.ability{border-color:rgba(255,255,255,.75)}
+.slot.ability.attack{border-color:var(--attack)}
+.slot.flash{box-shadow:0 0 0 .3cqw #fff}
+
+/* option C card */
+.card{position:absolute;right:1.4%;top:15%;width:22%;background:rgba(20,20,26,.82);border:2px solid rgba(255,255,255,.45);border-radius:11px;padding:.7cqw .9cqw;color:#fff;font-size:1cqw;display:flex;flex-direction:column;gap:.55cqw}
+.card .hd{font-size:.9cqw;letter-spacing:.08em;color:var(--muted)}
+.card .r{display:grid;grid-template-columns:2.2cqw minmax(0,1fr) auto;align-items:center;gap:.6cqw}
+.card .k{background:#fff;color:var(--ytext);border-radius:.4cqw;text-align:center;font-size:.9cqw;padding:.1cqw 0}
+.card .k.eng{background:var(--eng)}
+.card .mini{grid-column:2 / 4;height:.5cqw;border-radius:3px;background:#000;overflow:hidden}
+.card .mini i{display:block;height:100%;background:var(--eng);width:100%}
+.card .st{font-size:.9cqw;color:var(--health);font-variant-numeric:tabular-nums}
+.card .st.wait{color:#ffd9a8}
+.card .dim{color:rgba(255,255,255,.5)}
+
+.bardiv{position:absolute;width:.15cqw;background:rgba(255,255,255,.35);border-radius:2px}
+@media (prefers-reduced-motion:reduce){.flame{transition:none}}
+</style>
+
+<h1>Ability HUD — pick a direction</h1>
+<p class="sub">Your report: on PC there is no on-screen sign of which mecha parts are equipped or of any cooldown. Today the two slot buttons are drawn only on touch screens. The screen below is a PC game view; the existing HUD (species pill, SKILLS, health, growth bar) is drawn approximately. Press <b>R</b>, <b>C</b>, <b>F</b> or click/tap the tiles to see the timers (Thrusters: 2 charges, 8 s recharge; Pounce 3 s; Bite 1 s).</p>
+
+<div class="controls">
+  <div class="row" role="group" aria-label="Option">
+    <span class="lab">Option</span>
+    <button id="optA" class="on" data-opt="A">A · Slots on PC</button>
+    <button id="optB" data-opt="B">B · Ability bar</button>
+    <button id="optC" data-opt="C">C · Loadout card</button>
+  </div>
+  <div class="row" role="group" aria-label="Dino">
+    <span class="lab">Dino</span>
+    <button id="spR" class="on" data-sp="raptor">Raptor</button>
+    <button id="spT" data-sp="trex">T-Rex</button>
+  </div>
+  <div class="row" role="group" aria-label="Slot 1">
+    <span class="lab">Slot 1</span>
+    <button id="ldT" class="on" data-ld="thrusters">Thrusters</button>
+    <button id="ldE" data-ld="empty">Empty</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="monitor"><div class="screen" id="screen">
+    <div class="tree" style="left:12%"><i></i><b></b></div>
+    <div class="tree" style="left:72%"><i></i><b></b></div>
+    <div class="tree" style="left:86%;bottom:57%"><i></i><b></b></div>
+    <div class="dino" id="dino"><div class="body"></div><div class="head"></div>
+      <div class="thr l"><div class="flame"></div></div><div class="thr r"><div class="flame"></div></div></div>
+    <div class="skills">SKILLS</div>
+    <div class="pill"><span class="sp" id="spName">RAPTOR</span> ▾</div>
+    <div class="hp"><div class="t"><span>HEALTH</span><span>49 / 60</span></div><div class="bar"><i></i></div></div>
+    <div class="growth"><div>JUVENILE · LV 4</div><div class="bar"><i></i></div></div>
+    <div id="hud"></div>
+  </div></div>
+  <div class="note" id="note"></div>
+</div>
+
+<script>
+const S = {opt:"A", sp:"raptor", ld:"thrusters", charges:2, nextCharge:0, pounceAt:0, biteAt:0, boostUntil:0};
+const RECHARGE = 8, POUNCE = 3, BITE = 1, BOOST = 1.35;
+const now = () => performance.now()/1000;
+
+const NOTES = {
+ A: `<h3>A · Slots on PC</h3>
+  The two touch slot buttons, shown on PC too, at the same bottom-right spot (AutoRun on: right 21% / bottom 8% and right 32.5% / bottom 18%), with key hints <b>R</b> / <b>C</b>, charge pips and the dark recharge fill.
+  <ul><li>Smallest build: MechaButtons already draws these (its touch test hook shows them on PC).</li>
+  <li>Same look on phone and PC.</li>
+  <li>Mecha parts only: Pounce and Bite timers stay invisible.</li>
+  <li>Bottom-right is where the mouse hand rests; tiles are clickable too.</li></ul>`,
+ B: `<h3>B · Ability bar</h3>
+  One row bottom-centre above the growth bar: the two mecha slots, a divider, then the dino's own moves (Raptor: <b>F</b> Pounce, <b>LMB</b> Bite; T-Rex: <b>LMB</b> Bite). Each tile darkens and counts down while cooling.
+  <ul><li>Shows every cooldown you asked about, not only mecha.</li>
+  <li>New script; the touch buttons stay as they are on phones.</li>
+  <li>Sits in the centre of view; adds height to the bottom stack (growth bar).</li></ul>`,
+ C: `<h3>C · Loadout card</h3>
+  A text card under the health bar, top-right: one line per slot and per move, key chip, name, charges and a thin recharge bar; "READY" or seconds left.
+  <ul><li>Reads clearly, names each part in words.</li>
+  <li>Grouped with the other status (health) out of the action area.</li>
+  <li>Far from where you look while fighting; a glance up-right to check a timer.</li></ul>`
+};
+
+function tile(o){
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "slot " + (o.cls||"");
+  b.style.cssText = o.style;
+  b.innerHTML = `<span class="key">${o.key||""}</span><span class="name">${o.name}</span>` +
+    (o.pips!=null ? `<span class="pips">${[0,1].map(i=>`<i class="${i<o.pips?"":"off"}"></i>`).join("")}</span>` : "") +
+    `<span class="fill"></span><span class="secs"></span>`;
+  b.dataset.act = o.act||"";
+  b.addEventListener("click", ()=>act(o.act));
+  return b;
+}
+
+function render(){
+  const hud = document.getElementById("hud"); hud.innerHTML = "";
+  const thr = S.ld === "thrusters";
+  const raptor = S.sp === "raptor";
+  document.getElementById("spName").textContent = raptor ? "RAPTOR" : "T-REX";
+  const dino = document.getElementById("dino");
+  dino.className = "dino" + (raptor ? "" : " trex") + (thr ? "" : " noparts");
+  document.getElementById("note").innerHTML = NOTES[S.opt] + `<div class="hint">Styling uses the game's panel colour and Engineer orange from MechaButtons 1.2; sizes are fractions of the screen like the real HUD.</div>`;
+  const s1 = thr ? {name:"DASH", key:"R", pips:S.charges, act:"r"} : {name:"+", key:"R", cls:"empty", act:""};
+  const s2 = {name:"+", key:"C", cls:"empty", act:""};
+  if (S.opt === "A"){
+    hud.append(tile({...s1, style:"right:21%;bottom:8%;width:9.5%;transform:translate(0,0)"}));
+    hud.append(tile({...s2, style:"right:32.5%;bottom:18%;width:9.5%"}));
+  } else if (S.opt === "B"){
+    const w = 5.2, gap = .8;
+    const items = [{...s1}, {...s2}];
+    const own = raptor ? [{name:"POUNCE", key:"F", cls:"ability", act:"f"}, {name:"BITE", key:"LMB", cls:"ability attack", act:"b"}]
+                       : [{name:"BITE", key:"LMB", cls:"ability attack", act:"b"}];
+    const total = (items.length + own.length) * w + (items.length + own.length - 1) * gap + 2;
+    let x = 50 - total/2;
+    items.forEach(it=>{ hud.append(tile({...it, style:`left:${x}%;bottom:15%;width:${w}%`})); x += w + gap; });
+    const d = document.createElement("div"); d.className = "bardiv"; d.style.cssText = `left:${x+.2}%;bottom:16%;height:${w*1.2}%`; hud.append(d);
+    x += 2;
+    own.forEach(it=>{ hud.append(tile({...it, style:`left:${x}%;bottom:15%;width:${w}%`})); x += w + gap; });
+  } else {
+    const c = document.createElement("div"); c.className = "card";
+    const rows = [];
+    rows.push(`<div class="hd">LOADOUT</div>`);
+    rows.push(thr ? `<div class="r" data-row="r"><span class="k eng">R</span><span>THRUSTERS</span><span class="st" data-st="r"></span><span class="mini"><i data-mini="r"></i></span></div>`
+                  : `<div class="r"><span class="k eng">R</span><span class="dim">empty slot</span><span></span></div>`);
+    rows.push(`<div class="r"><span class="k eng">C</span><span class="dim">empty slot</span><span></span></div>`);
+    rows.push(`<div class="hd">MOVES</div>`);
+    if (raptor) rows.push(`<div class="r" data-row="f"><span class="k">F</span><span>POUNCE</span><span class="st" data-st="f"></span><span class="mini"><i data-mini="f"></i></span></div>`);
+    rows.push(`<div class="r" data-row="b"><span class="k">LMB</span><span>BITE</span><span class="st" data-st="b"></span><span class="mini"><i data-mini="b"></i></span></div>`);
+    c.innerHTML = rows.join(""); hud.append(c);
+    c.querySelectorAll("[data-row]").forEach(r=>r.addEventListener("click",()=>act(r.dataset.row)));
+  }
+}
+
+function act(a){
+  const t = now();
+  if (a === "r" && S.ld === "thrusters" && S.charges > 0){
+    if (S.charges === 2) S.nextCharge = t + RECHARGE;
+    S.charges -= 1; S.boostUntil = t + BOOST;
+  } else if (a === "f" && S.sp === "raptor" && t >= S.pounceAt){ S.pounceAt = t + POUNCE; }
+  else if (a === "b" && t >= S.biteAt){ S.biteAt = t + BITE; }
+  else return;
+  document.querySelectorAll(`.slot[data-act="${a}"]`).forEach(el=>{ el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"),150); });
+  render();
+}
+
+function tick(){
+  const t = now();
+  if (S.charges < 2 && t >= S.nextCharge){ S.charges += 1; if (S.charges < 2) S.nextCharge = t + RECHARGE; render(); }
+  document.getElementById("dino").classList.toggle("boosting", t < S.boostUntil);
+  const left = {
+    r: S.charges < 2 ? Math.max(0, S.nextCharge - t) : 0, rTotal: RECHARGE,
+    f: Math.max(0, S.pounceAt - t), fTotal: POUNCE,
+    b: Math.max(0, S.biteAt - t), bTotal: BITE
+  };
+  document.querySelectorAll(".slot").forEach(el=>{
+    const a = el.dataset.act; if (!a) return;
+    const l = left[a], tot = left[a+"Total"];
+    const fill = el.querySelector(".fill"), secs = el.querySelector(".secs");
+    const blocked = a === "r" ? S.charges === 0 : l > 0;
+    fill.style.height = (a === "r" ? (S.charges < 2 ? l/tot : 0) : l/tot) * 100 + "%";
+    secs.textContent = l > 0 ? l.toFixed(1) + "s" : "";
+    el.style.opacity = blocked ? .75 : 1;
+  });
+  document.querySelectorAll("[data-st]").forEach(el=>{
+    const a = el.dataset.st, l = left[a], tot = left[a+"Total"];
+    const ready = a === "r" ? S.charges > 0 : l <= 0;
+    el.textContent = a === "r" ? (S.charges + "/2" + (l > 0 ? " · " + l.toFixed(1) + "s" : "")) : (ready ? "READY" : l.toFixed(1) + "s");
+    el.classList.toggle("wait", !ready);
+    const mini = document.querySelector(`[data-mini="${a}"]`);
+    if (mini) mini.style.width = (l > 0 ? (1 - l/tot) : 1) * 100 + "%";
+  });
+  requestAnimationFrame(tick);
+}
+
+function pick(attr, val, groupSel){
+  S[attr] = val;
+  document.querySelectorAll(groupSel).forEach(b=>b.classList.toggle("on", b.dataset[attr] === val));
+  render();
+}
+document.querySelectorAll("[data-opt]").forEach(b=>b.addEventListener("click",()=>pick("opt", b.dataset.opt, "[data-opt]")));
+document.querySelectorAll("[data-sp]").forEach(b=>b.addEventListener("click",()=>pick("sp", b.dataset.sp, "[data-sp]")));
+document.querySelectorAll("[data-ld]").forEach(b=>b.addEventListener("click",()=>pick("ld", b.dataset.ld, "[data-ld]")));
+document.addEventListener("keydown", e=>{
+  const k = e.key.toLowerCase();
+  if (k === "r" || k === "f") act(k);
+});
+document.getElementById("screen").addEventListener("mousedown", e=>{ if (!e.target.closest(".slot,.card")) act("b"); });
+render(); tick();
+</script>
