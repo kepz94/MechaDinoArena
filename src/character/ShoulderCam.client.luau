@@ -1,4 +1,4 @@
--- ShoulderCam v1.2 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
+-- ShoulderCam v1.3 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
 -- The camera is Scriptable and placed every frame (RenderStep, Camera priority, after TurnLimit / PounceTest):
 --   focus  = HumanoidRootPart position + ShoulderCamFocusHeight up (only the HRP position is used, so the view stays
 --            steady while the body tilts, e.g. latched on a pounce target)
@@ -36,6 +36,14 @@
 --   (default true): false = v1.1 (mouse delta always applied). Diagnostic ShoulderCamMouseGate: "applied" (mouse delta
 --   used), "touch" (a touch is down, delta ignored), "idle" (no mouse movement this frame, delta ignored), "off"
 --   (guard off, v1.1), "free" (Left Alt / menu, no aiming).
+-- v1.3 (MDA-10, Kepu 2026-10-28: "how about we just apply a vertical camera lock", phones / tablets only): on a touch
+--   device without a mouse (UserInputService.TouchEnabled and not MouseEnabled) the pitch is set every frame to
+--   ShoulderCamTouchPitch (degrees, default -20), after all look input, so no touch, drag or look-at hook tilts the
+--   camera up or down there. Yaw (left / right turning) is unchanged. PC / touch laptops keep free pitch.
+--   Character attributes ShoulderCamTouchPitchLock (default true; false = 1.2) and ShoulderCamTouchPitch.
+--   Diagnostic ShoulderCamPitchLock: "locked" (touch device, pitch fixed), "free" (mouse device), "off" (lock off).
+--   Test hook: ShoulderCamTouchPitchLockTest = true treats this device as touch-only (the Studio phone emulator keeps
+--   MouseEnabled = true, so it would otherwise always be "free").
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -52,7 +60,8 @@ local ACTION = "DinoShoulderSwap"
 local DEFAULTS = {ShoulderCamEnabled = true, ShoulderCamSensitivity = 0.25, ShoulderCamPadSpeed = 240,
 	ShoulderCamTouchSensitivity = 0.35, ShoulderCamPitchMin = -55, ShoulderCamPitchMax = 65, ShoulderCamPitchStart = -12,
 	ShoulderCamZoomMin = 0.6, ShoulderCamZoomMax = 1.5, ShoulderCamSwapTime = 0.2,
-	ShoulderCamMouseTouchGuard = true} -- v1.2
+	ShoulderCamMouseTouchGuard = true, -- v1.2
+	ShoulderCamTouchPitchLock = true, ShoulderCamTouchPitch = -20} -- v1.3
 local PAD_DEADZONE = 0.15
 local WALL_PAD = 0.6      -- studs the camera stays in front of geometry it is pulled in by
 local ZOOM_STEP = 0.1     -- zoom change per wheel notch
@@ -79,7 +88,7 @@ local boxCf, boxSize = char:GetBoundingBox()
 local top = math.max(1, boxCf.Position.Y + boxSize.Y / 2 - hrp.Position.Y)
 local width = char:GetExtentsSize().X
 local spawnScale, spawnTop, spawnWidth, framedScale = char:GetScale(), top, width, char:GetScale() -- v1.1
-char:SetAttribute("ShoulderCamVersion", "1.2")
+char:SetAttribute("ShoulderCamVersion", "1.3")
 local function framing()
 	local sc = char:GetScale() -- v1.1: growth re-fit
 	if math.abs(sc - framedScale) > 1e-4 then
@@ -287,6 +296,18 @@ local function step(dt)
 	yaw -= touchDelta.X * tk
 	pitch -= touchDelta.Y * tk
 	touchDelta = Vector2.zero
+	-- v1.3: vertical lock on phones / tablets
+	local pitchLock = "off"
+	if get("ShoulderCamTouchPitchLock") then
+		if (UserInputService.TouchEnabled and not UserInputService.MouseEnabled)
+			or char:GetAttribute("ShoulderCamTouchPitchLockTest") == true then
+			pitch = math.rad(get("ShoulderCamTouchPitch"))
+			pitchLock = "locked"
+		else
+			pitchLock = "free"
+		end
+	end
+	show("ShoulderCamPitchLock", pitchLock)
 	pitch = math.clamp(pitch, math.rad(get("ShoulderCamPitchMin")), math.rad(get("ShoulderCamPitchMax")))
 	yaw = (yaw + math.pi) % (2 * math.pi) - math.pi
 	if wheelSteps ~= 0 then

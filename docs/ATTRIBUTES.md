@@ -1030,6 +1030,21 @@ when no touch is down and a MouseMovement InputChanged arrived since the last fr
 Diagnostic, owner client: `ShoulderCamMouseGate` — "applied" (mouse delta used), "touch" (a touch is down, delta
 ignored), "idle" (no mouse movement this frame), "off" (guard off), "free" (Left Alt / menu). `ShoulderCamVersion` "1.2".
 
+## Vertical camera lock on phones / tablets (ShoulderCam 1.3)
+
+On a touch device without a mouse (`UserInputService.TouchEnabled and not MouseEnabled`) the camera pitch is set every
+frame to `ShoulderCamTouchPitch`, after all look input. Touch drags, the thumbstick and the ShoulderCamLookAt hook cannot
+tilt it up or down there. Left / right turning (yaw) is unchanged. PC and touch laptops keep free pitch.
+
+| Attribute (character) | Default | Effect |
+|---|---|---|
+| ShoulderCamTouchPitchLock | true | false = 1.2 (free pitch on touch devices) |
+| ShoulderCamTouchPitch | -20 | Locked pitch (degrees; more negative = camera higher, looking down more) |
+| ShoulderCamTouchPitchLockTest | nil | Test hook: true treats this device as touch-only (Studio's emulator keeps MouseEnabled true) |
+
+Diagnostic, owner client: `ShoulderCamPitchLock` — "locked" (touch device, pitch fixed), "free" (mouse device), "off"
+(lock off). `ShoulderCamVersion` "1.3".
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
