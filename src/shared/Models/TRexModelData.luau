@@ -1,4 +1,4 @@
--- TRexModelData v1.22 (Dino Arcade) — snapshot of StarterPlayer.StarterCharacter (TRex v1.1 StripeEye, rig v1.3).
+-- TRexModelData v1.23 (Dino Arcade) — snapshot of StarterPlayer.StarterCharacter (TRex v1.1 StripeEye, rig v1.3).
 -- v1.2: rig 1.3 — thigh + shin 30% longer (tools/leg_stretch.py), feet unchanged; HipHeight 2.93 -> 4.956507,
 --       RigHipHeight 7.65 -> 9.676507; CameraStartZoom 35 + CameraZoom 1.0; StarterCharacter 1.2.
 -- v1.3: bite attributes (Bite*) + IdleAnimation 1.11, BitePose/BiteTest/BiteFX/BiteServer/BiteDummy 1.0.
@@ -33,6 +33,10 @@
 --        latched / pinned). Kill regen (user: "add health regen after a kill"): KillRegenEnabled true,
 --        KillRegenFraction 0.25, KillRegenTime 5. Versions StaminaBar 1.1, StaminaServer 1.4, BiteServer 1.6,
 --        PounceServer 1.3, KillRegenServer 1.0.
+-- v1.23: slower T-Rex step rate (user: "the t-rex walk animation is too fast"; picks: stride stretch, 50% slower):
+--        WalkStrideStretch 2, RunStrideStretch 2 (WalkPose 3.3 stride stretch; were default 1). Same foot path, half the
+--        steps per stud; planted feet glide by 1 - 1/2 = 50% of ground speed. Measured before (walk 19.7 studs/s):
+--        14.0 studs per cycle, 1.40 cycles/s. CreepStrideStretch unchanged (default 1).
 -- v1.18: versions only: BushView 1.1 (tall-grass patches), HealthBar 1.1 (death text).
 -- v1.17: versions only: HealthBar 1.0, BushView 1.0 (island: player health bar, see-through bush when hiding).
 -- v1.16: versions only: IdleAnimation 1.17, WalkPose 3.4 (move-direction stepping: strafe side-steps, backing up
@@ -283,6 +287,7 @@ return {
 		RunBounce = 0.3,
 		RunDuty = 0.48,
 		RunLean = 11,
+		RunStrideStretch = 2,
 		Species = "TRex",
 		SprintTestVersion = "1.4",
 		StaminaEnabled = true,
@@ -333,6 +338,7 @@ return {
 		WalkPoseVersion = "3.4",
 		WalkTailRate = 0.5,
 		WalkStepLength = 6,
+		WalkStrideStretch = 2,
 		WalkSway = 1,
 		WalkTailWhip = 1,
 		WalkToeDrop = 25,

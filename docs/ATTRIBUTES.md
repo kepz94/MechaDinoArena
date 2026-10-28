@@ -1212,6 +1212,17 @@ stamina (Kepu). The Thrusters part is on the dino only while it is in a slot (Ke
 
 T-Rex run 60 -> 39; maxed Sprint Legs (x2.6) 101; maxed + Thrusters boost (x1.75) 177 studs/s.
 
+## T-Rex step rate (TRexModelData 1.23)
+
+| Attribute (StarterCharacter, T-Rex) | Value | Meaning |
+|---|---|---|
+| WalkStrideStretch | 2 (was default 1) | walk: ground covered per gait cycle x2 = half the steps; planted feet glide 50% of the speed |
+| RunStrideStretch | 2 (was default 1) | run: same |
+| CreepStrideStretch | default 1 | unchanged |
+
+Step rate = ground speed / stride (distance-driven, WalkPose 3.3). Play-measured at run 39 studs/s: stretch 1 = 17.7 studs per
+cycle, 2.17 cycles/s; stretch 2 = 33.5 studs per cycle, 1.17 cycles/s. The T-Rex bot clones StarterCharacter, so it matches.
+
 ## Bigger raptors (RaptorScale 1.0)
 
 | Attribute | On | Default | Meaning |
