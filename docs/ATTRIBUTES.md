@@ -1011,6 +1011,11 @@ Server:
 - Character `ArenaJumpRule`: "blocked" (JumpPower 0), "leap" (JumpEnabled), "off".
 Switched off in Mecha (Arena scope 1.1): HealthBar, SpeciesPicker, StaminaBar.
 
+## Auto-run (SprintTest 1.5, ArenaRules 1.1, ArenaTouch 1.1; Mecha Dino Arena)
+- Character `AutoRun` (set by ArenaRules from its script attribute `ArenaAutoRun`, default true): SprintTest runs
+  without the key; `Sprinting` true, `MoveSpeedSource` "run". Roar / exhausted still take priority.
+- ArenaTouch hides the RUN button while `AutoRun` is true.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):

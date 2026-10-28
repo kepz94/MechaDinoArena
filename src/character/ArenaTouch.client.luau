@@ -1,4 +1,4 @@
--- ArenaTouch v1.0 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.1 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -22,6 +22,7 @@
 --   A styled button whose CAS button does not exist (action not bound) is hidden. Press feedback (scale 0.92) and
 --   ArenaTouchLastPress come from the CAS button's InputBegan / InputEnded.
 --   RAM / POUNCE / LEAP are dimmed (0.5) while RamTestState / PounceTestState / JumpTestState is not "ready".
+-- v1.1 (auto-run): RUN is hidden while the character attribute AutoRun is true (ArenaRules 1.1; the dino always runs).
 -- Diagnostics (character attributes, this client): ArenaTouchVersion, ArenaTouchState ("off" / "on"),
 --   ArenaTouchLastPress (button name), ArenaTouchCASMode, ArenaTouchJumpHidden.
 local Players = game:GetService("Players")
@@ -29,7 +30,7 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -199,12 +200,13 @@ local function refresh()
 	wanted.Ram = char:GetAttribute("RamEnabled") == true and char:GetAttribute("RamLatchGate") ~= nil
 		and char:GetAttribute("RamLatchGate") ~= "closed"
 	wanted.Pounce = char:GetAttribute("PounceEnabled") == true
+	wanted.Run = char:GetAttribute("AutoRun") ~= true -- v1.1
 	leap.Visible = char:GetAttribute("JumpEnabled") == true
 	dim(ram, ramLabel, "RamTestState")
 	dim(pounce, pounceLabel, "PounceTestState")
 	dim(leap, leapLabel, "JumpTestState")
 end
-local WATCH = {RamEnabled = true, RamLatchGate = true, PounceEnabled = true, JumpEnabled = true, RamTestState = true,
+local WATCH = {AutoRun = true, RamEnabled = true, RamLatchGate = true, PounceEnabled = true, JumpEnabled = true, RamTestState = true,
 	PounceTestState = true, JumpTestState = true}
 char.AttributeChanged:Connect(function(name)
 	if WATCH[name] then refresh() end

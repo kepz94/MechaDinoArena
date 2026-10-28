@@ -1,4 +1,4 @@
--- SprintTest v1.4 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.5 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -13,6 +13,9 @@
 --       (the server drains stamina only while the dino really runs). While Exhausted (replicated, set by
 --       StaminaServer) running is blocked: speed is MoveCreepSpeed, source "exhausted", Sprinting = false (so
 --       CreepTest does not treat the held key as running). Priority: roar > exhausted > run > creep > walk.
+-- v1.5 (Mecha Dino Arena auto-run; Kepu 2026-10-28: "Let's make it auto run. Forget walking"): while the character
+--       attribute AutoRun is true (set by ArenaRules 1.1), the dino runs as if the run key were held (Sprinting true,
+--       source "run", DinoRunRequest true); roar and exhausted still take priority. AutoRun false / absent = v1.4.
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -42,16 +45,18 @@ local sprinting = false
 local runRemote = ReplicatedStorage:WaitForChild("DinoRunRequest", 10) -- v1.4
 local runSent -- v1.4: last run key state sent to the server
 local scheduledUntil -- v1.3: debuff end time an expiry re-apply is already scheduled for
+local function running() return sprinting or char:GetAttribute("AutoRun") == true end -- v1.5
 local apply
 function apply()
 	local source
+	local run = running() -- v1.5
 	if char:GetAttribute("Roaring") then
 		source = "roar"
 		hum.WalkSpeed = get("MoveRoarSpeed")
 	elseif char:GetAttribute("Exhausted") == true then -- v1.4: out of stamina: crouch-walk, no running
 		source = "exhausted"
 		hum.WalkSpeed = get("MoveCreepSpeed")
-	elseif sprinting then
+	elseif run then -- v1.5: held or AutoRun
 		source = "run"
 		hum.WalkSpeed = get("MoveRunSpeed")
 	elseif char:GetAttribute("CreepInput") then
@@ -71,10 +76,10 @@ function apply()
 			if char.Parent then apply() end
 		end)
 	end
-	char:SetAttribute("Sprinting", sprinting and char:GetAttribute("Exhausted") ~= true) -- v1.4: not while exhausted
-	if runRemote and runSent ~= sprinting then -- v1.4
-		runSent = sprinting
-		runRemote:FireServer(sprinting)
+	char:SetAttribute("Sprinting", run and char:GetAttribute("Exhausted") ~= true) -- v1.4: not while exhausted; v1.5: run
+	if runRemote and runSent ~= run then -- v1.4; v1.5: run
+		runSent = run
+		runRemote:FireServer(run)
 	end
 	char:SetAttribute("MoveSpeedSource", source)
 end
@@ -101,6 +106,7 @@ char:GetAttributeChangedSignal("CreepInput"):Connect(apply)
 char:GetAttributeChangedSignal("DebuffUntil"):Connect(apply)    -- v1.3
 char:GetAttributeChangedSignal("DebuffSpeedMul"):Connect(apply) -- v1.3
 char:GetAttributeChangedSignal("Exhausted"):Connect(apply)      -- v1.4
+char:GetAttributeChangedSignal("AutoRun"):Connect(apply)        -- v1.5
 apply()
 
 local function cleanup()

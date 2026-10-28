@@ -1,4 +1,4 @@
--- ArenaRules v1.0 (Mecha Dino Arena) — Mecha gameplay rules that belong to no single move script.
+-- ArenaRules v1.1 (Mecha Dino Arena) — Mecha gameplay rules that belong to no single move script.
 -- MDA-8, plan docs/plans/ARENAHUD_v1.0.md Task 3 (Kepu 2026-10-28: "No T-Rex jump").
 -- No default jump: every player character without JumpEnabled == true (the T-Rex; the raptor's leap is JumpTest 1.0 with
 --   JumpEnabled = true) gets Humanoid.UseJumpPower = true and JumpPower = 0 at spawn, so it cannot jump and Roblox hides
@@ -6,10 +6,13 @@
 --   (characters already in the game get their spawn values back when it is switched off).
 -- Character attribute ArenaJumpRule: "blocked" (JumpPower 0), "leap" (JumpEnabled, left to JumpTest), "off" (rule off).
 -- Script attributes: ArenaRulesVersion, ArenaNoDefaultJump.
+-- v1.1 (auto-run; Kepu 2026-10-28: "Let's make it auto run. Forget walking there's no point in creep and walk speed"):
+--   script attribute ArenaAutoRun (default true) sets the character attribute AutoRun = true on every player character
+--   (SprintTest 1.5 then always runs; ArenaTouch 1.1 hides RUN); false sets AutoRun = false (hold-to-run as before).
 local Players = game:GetService("Players")
 
-local VERSION = "1.0"
-local DEFAULTS = {ArenaNoDefaultJump = true}
+local VERSION = "1.1"
+local DEFAULTS = {ArenaNoDefaultJump = true, ArenaAutoRun = true}
 script:SetAttribute("ArenaRulesVersion", VERSION)
 for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -38,6 +41,7 @@ local function onCharacter(char)
 	if not hum or not char.Parent then return end
 	local st = {hum = hum, useJumpPower = hum.UseJumpPower, jumpPower = hum.JumpPower}
 	chars[char] = st
+	char:SetAttribute("AutoRun", script:GetAttribute("ArenaAutoRun") ~= false) -- v1.1
 	apply(char, st)
 	char:GetAttributeChangedSignal("JumpEnabled"):Connect(function() apply(char, st) end)
 	char.AncestryChanged:Connect(function(_, parent)
@@ -52,6 +56,9 @@ end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
 
+script:GetAttributeChangedSignal("ArenaAutoRun"):Connect(function() -- v1.1
+	for char in pairs(chars) do char:SetAttribute("AutoRun", script:GetAttribute("ArenaAutoRun") ~= false) end
+end)
 script:GetAttributeChangedSignal("ArenaNoDefaultJump"):Connect(function()
 	for char, st in pairs(chars) do apply(char, st) end
 end)

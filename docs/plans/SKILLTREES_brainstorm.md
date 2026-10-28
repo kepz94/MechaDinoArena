@@ -26,7 +26,7 @@ Kepu: "We need to do the leveling up system thingy. Each area should get differe
 | Attack | ⚙ Back Turret | A light turret on the back auto-fires at the nearest enemy; fire rate, range; final: twin barrels |
 | Attack | ⚙ Shoulder Rocket | Button: aimed rocket with splash damage; reload, blast size; final: a 3-rocket burst |
 | Defense | Thick Hide | Flat damage reduction, less knockback, shorter stuns; final: no stuns above 50% health |
-| Defense | ⚙ Armor Plating (Kepu: "like black panthers") | Plates store part of the damage taken as charge, then release it as a blast around you; release rule: open question |
+| Defense | ⚙ Armor Plating (Kepu: "like black panthers") | Button: press to start absorbing incoming damage as charge; press again to release it as a blast around you (a bigger charge makes a bigger blast); at max charge it releases by itself |
 | Defense | ⚙ Energy Shield | Button: a bubble that blocks damage for a few seconds; stronger, shorter cooldown; final: it bursts and knocks enemies back |
 | Speed | Sprint Legs | Faster run and acceleration; final: shorter pounce / ram / leap cooldowns |
 | Speed | ⚙ Thrusters | Button: dash forward; 2 charges; final: rocket hop (lets the T-Rex get up high) |
@@ -34,5 +34,7 @@ Kepu: "We need to do the leveling up system thingy. Each area should get differe
 | Engineering | ⚙ Sentry | Button: drop an auto-turret; more health and damage; final: two sentries |
 | Engineering | ⚙ Traps | Button: drop mines; a slowing net trap; final: an EMP mine that shuts off enemy mech skills |
 | Engineering | ⚙ Barricade | Button: drop a wall; bigger, tougher; final: a dome the squad can stand inside |
+
+**First piece to build (Kepu):** points + the tree screen (kills → skill points, saved builds, the screen to spend them), starting with the passive paths.
 
 Numbers (damage, cooldowns, points per upgrade) are not set yet. They come in the build plan.
