@@ -1,14 +1,16 @@
--- ArenaScope v1.0 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.1 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
 --   state, "mismatch" when it does not, "missing" when the script is not there. Script attributes ArenaScopeVersion,
 --   ArenaScopeMismatches (mismatch + missing count). Bot hiding (BotServer 1.11 BotHidingEnabled) is reported as
 --   ArenaScope_BotHiding ("off" when the attribute is false, else "mismatch").
+-- v1.1 (Arena HUD, MDA-9, plan docs/plans/ARENAHUD_v1.0.md Task 4): HealthBar, SpeciesPicker and StaminaBar expected off
+--   (replaced by ArenaStatus 1.0); ArenaStatus, ArenaTouch and ArenaRules expected on.
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 -- {container, name, expected Enabled}
 local SCOPE = {
@@ -26,6 +28,9 @@ local SCOPE = {
 	{SSS, "RamServer", true}, {SCS, "RamTest", true}, {SSS, "ShakeOffServer", true},
 	{SSS, "PounceServer", true}, {SCS, "PounceTest", true}, {SSS, "JumpServer", true}, {SCS, "JumpTest", true},
 	{SSS, "StatServer", true}, {SSS, "GrowthServer", true}, {SCS, "HitboxView", true},
+	-- v1.1: the Arena HUD replaces the bottom-centre HUD and the top-left picker
+	{SCS, "HealthBar", false}, {SCS, "SpeciesPicker", false}, {SCS, "StaminaBar", false},
+	{SCS, "ArenaStatus", true}, {SCS, "ArenaTouch", true}, {SSS, "ArenaRules", true},
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)

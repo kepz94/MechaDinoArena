@@ -47,22 +47,18 @@ Top-right status, all devices. ScreenGui "ArenaStatus", DisplayOrder 6, IgnoreGu
 
 ### Task 2 — ArenaTouch 1.0 · Wired (`src/character/ArenaTouch.client.luau`)
 Only when `UserInputService.TouchEnabled`. ScreenGui "ArenaTouch", DisplayOrder 5.
-- **Hides Roblox's own buttons:**
-  - `PlayerGui.ContextActionGui.Enabled = false`, kept false; if it is created later, it is disabled when it appears.
-  - TouchGui JumpButton `Visible = false`, kept false through its Visible-changed signal.
-  - Diagnostics `ArenaTouchCASHidden`, `ArenaTouchJumpHidden` (true / "notFound").
-- **Buttons** (circles; the panel colour at 0.4 transparency; white stroke 0.4; FredokaOne; percent of the screen like the mockup):
+- **Built approach (changed in the Play test):** `ContextActionService:CallFunction` is not allowed for game scripts ("lacking capability RobloxScript"). So the moves keep their own Roblox touch buttons in ContextActionGui:
+  - every frame, ArenaTouch lays each bound action's button (`CAS:GetButton`, only after `GetBoundActionInfo` shows the action is bound) invisibly over its styled button;
+  - the touch reaches the real button, so the move script gets a true press and release;
+  - the styled buttons are Frames below them (ScreenGui DisplayOrder −1);
+  - the shoulder button is kept `Visible = false`, and the TouchGui JumpButton is kept hidden;
+  - LEAP is ArenaTouch's own button: `Humanoid.Jump = true` for 0.15 s, which JumpTest reads.
+- **Buttons** (circles, the panel colour at 0.4, white stroke 0.4, FredokaOne, percent of the screen like the mockup):
   - BITE: big yellow; right 5%, bottom 10%, 13.5% of the width.
   - RUN: hold; right 21%, bottom 8%.
-  - Ability: right 19.5%, bottom 33%.
-  - LEAP: raptor only; right 7%, bottom 43%.
+  - Ability: right 19.5%, bottom 33%. RAM is shown only while `RamEnabled` and `RamLatchGate ~= "closed"`; POUNCE while `PounceEnabled`.
+  - LEAP: raptor only; right 7%, bottom 43%; shown while `JumpEnabled`.
   - The small buttons are 9.5% of the width.
-- **Actions:**
-  - BITE: `CallFunction("DinoBiteTest", Begin)` on press.
-  - RUN: Begin on press, End on release or cancel.
-  - Ability: T-Rex RAM (`"DinoRam"`, visible only while `RamEnabled` and `RamLatchGate ~= "closed"`); raptor POUNCE (`"DinoPounce"`, visible while `PounceEnabled`).
-  - LEAP: the JumpAction when present (InputAction `Fire(true)` then `Fire(false)`), else `Humanoid.Jump = true`; visible while `JumpEnabled`.
-  - Each call is wrapped in pcall. A failure sets `ArenaTouchLastError` and the button stays.
 - **Dimmed** (0.5) while that move's state attribute is not ready: RamTestState / PounceTestState / JumpTestState ≠ "ready". BITE and RUN are never dimmed.
 - **No shoulder button** (DinoShoulderSwap stays on the keyboard).
 

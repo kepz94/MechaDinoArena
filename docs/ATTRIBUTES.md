@@ -1000,6 +1000,17 @@ Reads (from StatServer 1.0): `Species`, `StatState`, `StatClass`, `StatAbilities
 - Script `BotServer` `BotHidingEnabled` (default true; Mecha false): false → every player `Hidden = false`,
   `HiddenReason = "off"`, `CoverHint = false`.
 
+## Arena HUD (ArenaStatus 1.0, ArenaTouch 1.0, ArenaRules 1.0, ArenaScope 1.1; MDA-6..9, Mecha Dino Arena)
+Character attributes (this client):
+- ArenaStatus: `ArenaStatusVersion`, `ArenaStatusMenu` ("closed" / "open"), `ArenaStatusLastPick` (species sent),
+  `ArenaStatusStamina` ("shown" while PounceLatched / "hidden").
+- ArenaTouch: `ArenaTouchVersion`, `ArenaTouchState` ("off" without touch / "on"), `ArenaTouchLastPress` (Bite / Run /
+  Ram / Pounce / Leap), `ArenaTouchCASMode` ("overlay" / "noGui"), `ArenaTouchJumpHidden` (true / "notFound").
+Server:
+- Script `ArenaRules`: `ArenaRulesVersion`, `ArenaNoDefaultJump` (default true).
+- Character `ArenaJumpRule`: "blocked" (JumpPower 0), "leap" (JumpEnabled), "off".
+Switched off in Mecha (Arena scope 1.1): HealthBar, SpeciesPicker, StaminaBar.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
