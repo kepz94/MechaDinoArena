@@ -1068,6 +1068,27 @@ killRegenAdd → `KillRegenFraction`; lifesteal; shieldMax / shieldTime → `Ski
 `PounceCooldown`; moveCdMul → `PounceCooldown` / `RamCooldown` / `JumpCooldown`; bleedDps / bleedTime; crushStun /
 crushCooldown → bot `StunnedUntil`; tossMul → `StunTossDistance`; stunMul / stunImmuneAbove → `StunnedUntil`.
 
+## Skill points and saving (SkillServer 1.0)
+
+| Attribute | Where | Meaning |
+|---|---|---|
+| SkillEnabled | script | true; false = no XP, requests answered "disabled" |
+| SkillKillXpFraction | script | 0.5: kill XP = bot DummyMaxHealth × this (raptor bot 30, T-Rex bot 100) |
+| SkillSaveEnabled | script | true; false = session only (SkillSaveState "off") |
+| SkillServerVersion, SkillKillsCounted | script | diagnostics |
+| SkillLevel, SkillXP, SkillXPInto, SkillXPNext | player | level and XP (SkillXPNext 0 at level 61) |
+| SkillPoints, SkillSpent, SkillLeft | player | points earned (level − 1, cap 60), spent, left |
+| SkillPath_&lt;pathId&gt; | player | steps bought on that path, 0–4 (all 15 paths) |
+| SkillLastResult | player | "ok" / "noPoints" / "soon" / "maxed" / "unknownPath" / "badArg" / "busy" / "disabled" |
+| SkillLastXp | player | "kill +30" |
+| SkillSaveState | player | "loading" / "loaded" / "new" / "saved" / "failed" / "noApi" / "off" |
+| SkillLevelUpAt | player | server time of the last level-up from XP |
+| SkillXpCredited | bot | the credited player's name, or "noPlayer" |
+
+Remote: `ReplicatedStorage.SkillRequest` (RemoteEvent) — `("buy", pathId)` or `("respec")`. DataStore `MDA_Skills_v1`,
+key `"u" .. UserId`, value `{v = 1, xp, steps}`; saved on change (≤ every 10 s, failed retried every 30 s), on leave
+and on server close.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
