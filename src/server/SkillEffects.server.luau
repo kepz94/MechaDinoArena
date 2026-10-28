@@ -1,4 +1,4 @@
--- SkillEffects v1.1 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.2 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -36,10 +36,13 @@
 --   (SkillServer 1.1); DashCharges (0 while off), DashDistance (dashDist), DashHop (0 while off), DashTime and
 --   DashRecharge (script attributes SkillDashTime 0.35 / SkillDashRecharge 8). Re-applied when a SkillPath_ or a
 --   SkillSlot attribute changes. MechaServer 1.0 / MechaButtons 1.0 read them.
+-- v1.2 (Thrusters boost, MDA-31; Kepu: "1.5 s boost, steerable"): DashTime = SkillTree 1.2 dashTime (1.5 s; 2 s from III)
+--   while the dash is on (SkillDashTime is the fallback while off); new DashSpeedMul = script attribute SkillDashSpeedMul
+--   (default 2: the boost runs at 2x the dino's run speed, MechaButtons 1.1).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
@@ -49,7 +52,7 @@ local ST = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillT
 script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsEnabled") == nil then script:SetAttribute("SkillEffectsEnabled", true) end
 local function on() return script:GetAttribute("SkillEffectsEnabled") ~= false end
-for k, v in pairs({SkillDashTime = 0.35, SkillDashRecharge = 8}) do -- v1.1
+for k, v in pairs({SkillDashTime = 0.35, SkillDashRecharge = 8, SkillDashSpeedMul = 2}) do -- v1.1; v1.2: + SkillDashSpeedMul
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 
@@ -107,7 +110,8 @@ local function applyChar(char, st)
 	char:SetAttribute("DashCharges", dashOn and e.dashCharges or 0)
 	char:SetAttribute("DashDistance", e.dashDist or 0)
 	char:SetAttribute("DashHop", dashOn and e.dashHop or 0)
-	char:SetAttribute("DashTime", script:GetAttribute("SkillDashTime"))
+	char:SetAttribute("DashTime", (dashOn and (e.dashTime or 0) > 0) and e.dashTime or script:GetAttribute("SkillDashTime")) -- v1.2
+	char:SetAttribute("DashSpeedMul", script:GetAttribute("SkillDashSpeedMul")) -- v1.2
 	char:SetAttribute("DashRecharge", script:GetAttribute("SkillDashRecharge"))
 end
 

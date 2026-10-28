@@ -1,4 +1,4 @@
--- MechaServer v1.0 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
+-- MechaServer v1.1 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
 -- Thrusters part on the dino. MDA-27, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 5, mockup
 -- docs/mockups/mecha_thrusters_options.html (Kepu 2026-10-28: framework + Thrusters first; numbers as proposed; the dash is
 -- free; the part is on the dino only while it is in a loadout slot; bots only).
@@ -28,11 +28,18 @@
 -- Settings (script attributes): MechaEnabled (default true; false -> every request "disabled" and parts removed).
 -- Diagnostics: script MechaServerVersion, MechaDashes (accepted dashes); character MechaThrustersLook ("none" / "I" /
 --   "III" / "star"), DashServerResult, DashCount, DashDenyCount.
+-- v1.1 (Thrusters boost, MDA-32; Kepu 2026-10-28 after trying it on PC: "make the fire that shoots out visible"): the flame
+--   was too small and too short (0.35 s). Now each nozzle has, during the whole boost (DashTime: 1.5 s / 2 s, SkillEffects
+--   1.2): the Flame ParticleEmitter with Roblox's fire texture, bigger (booster width x 1.2 -> 0.2) and longer-lived
+--   (0.25-0.45 s, rate 150, spread 8); a neon Jet_L / Jet_R part behind the nozzle (yellow-orange, Transparency 0.15
+--   while boosting, 1 otherwise; massless, no collide / query / touch); and a PointLight "Glow" (orange, range 4 x booster
+--   width, brightness 3). A later boost restarts the timer (an earlier boost's end no longer switches off a newer one).
+--   Diagnostic: character MechaFlame (true while the flame is on).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local MAX_LAG = 0.3
 local DEFAULT_RECHARGE, DEFAULT_TIME = 8, 0.35
 local METAL, DARK, ORANGE = Color3.fromRGB(123, 133, 144), Color3.fromRGB(43, 47, 53), Color3.fromRGB(255, 155, 46)
@@ -154,12 +161,26 @@ local function build(char, look)
 		f.Enabled = false
 		f.EmissionDirection = Enum.NormalId.Back
 		f.Color = ColorSequence.new(Color3.fromRGB(255, 226, 122), Color3.fromRGB(255, 122, 26))
-		f.Size = NumberSequence.new(ns.X * 0.6, 0)
-		f.Lifetime = NumberRange.new(0.15, 0.25)
-		f.Rate = 120
-		f.Speed = NumberRange.new(20, 30)
+		f.Texture = "rbxasset://textures/particles/fire_main.dds" -- v1.1
+		f.Size = NumberSequence.new(bs.X * 1.2, 0.2) -- v1.1: was ns.X x 0.6 -> 0
+		f.Lifetime = NumberRange.new(0.25, 0.45) -- v1.1: was 0.15-0.25
+		f.Rate = 150 -- v1.1: was 120
+		f.Speed = NumberRange.new(12, 20) -- v1.1: was 20-30
+		f.SpreadAngle = Vector2.new(8, 8) -- v1.1
 		f.LightEmission = 1
+		f.LightInfluence = 0 -- v1.1
 		f.Parent = at
+		local glow = Instance.new("PointLight") -- v1.1
+		glow.Name = "Glow"
+		glow.Color = Color3.fromRGB(255, 150, 50)
+		glow.Range = bs.X * 4
+		glow.Brightness = 3
+		glow.Enabled = false
+		glow.Parent = at
+		local jet = part("Jet_" .. side[1], Vector3.new(ns.X * 0.8, ns.Y * 0.8, bs.Z * 0.6), -- v1.1: neon jet behind the nozzle
+			rot * CFrame.new(0, 0, (bs.Z + ns.Z) / 2 + ns.Z / 2 + bs.Z * 0.3), Color3.fromRGB(255, 190, 60), model, torso)
+		jet.Material = Enum.Material.Neon
+		jet.Transparency = 1
 		if look == "star" then
 			part("Fin_" .. side[1], Vector3.new(bs.X * 0.15, bs.Y * 0.5, bs.Z * 0.6),
 				rot * CFrame.new(0, (bs.Y + bs.Y * 0.5) / 2, bs.Z * 0.1), ORANGE, model, torso)
@@ -176,17 +197,25 @@ local function refreshLook(char, st)
 	end
 end
 
+local flameToken = setmetatable({}, {__mode = "k"}) -- v1.1: [char] = the newest boost
+local function setFlame(m, on) -- v1.1: emitters, jets and lights together
+	for _, d in ipairs(m:GetDescendants()) do
+		if d:IsA("ParticleEmitter") or d:IsA("PointLight") then d.Enabled = on
+		elseif d:IsA("BasePart") and d.Name:sub(1, 4) == "Jet_" then d.Transparency = on and 0.15 or 1 end
+	end
+end
 local function flame(char)
 	local m = char:FindFirstChild("Mecha_Thrusters")
 	if not m then return end
 	local t = tonumber(char:GetAttribute("DashTime")) or DEFAULT_TIME
-	for _, d in ipairs(m:GetDescendants()) do
-		if d:IsA("ParticleEmitter") then d.Enabled = true end
-	end
+	local token = {}
+	flameToken[char] = token
+	setFlame(m, true)
+	char:SetAttribute("MechaFlame", true)
 	task.delay(t, function()
-		for _, d in ipairs(m:GetDescendants()) do
-			if d:IsA("ParticleEmitter") then d.Enabled = false end
-		end
+		if flameToken[char] ~= token then return end -- a newer boost owns the flame
+		if m.Parent then setFlame(m, false) end
+		char:SetAttribute("MechaFlame", false)
 	end)
 end
 

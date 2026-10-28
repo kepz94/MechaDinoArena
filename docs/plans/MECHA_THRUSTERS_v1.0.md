@@ -244,6 +244,14 @@ Expects MechaServer and MechaButtons on. Acceptance: ArenaScopeMismatches 0.
   horizontal speed at the end (dash then measured 48.9 / 50.0 studs, slide 0).
 - **Test hook:** MechaButtonsForceTouch (Studio has no phone emulator access from scripts here).
 
+## v1.1 changes (Kepu tried it on PC, 2026-10-28)
+"what the hell was that. can you make it visible on pc what ability you have gained and make the thrusters actually last
+longer. also make the fire that shoots out visible" -> answers: "1.5 s boost, steerable"; PC: "New ability" popup; keys
+"shouldnt be the number 1 button ... Q or e or something" -> R / C.
+- SkillTree 1.2 / SkillEffects 1.2 (MDA-31): dashTime 1.5 s (2 s from III), DashSpeedMul 2.
+- MechaServer 1.1 (MDA-32): visible fire for the whole boost (fire particles, neon jets, glow).
+- MechaButtons 1.1 (MDA-33): keys R / C, steerable boost, "NEW" popup.
+
 ## Red-team (Kepu's answers 2026-10-28)
 1. **Dash vs pounce stamina.** The raptor's pounce needs 15 stamina, and the dash costs 15. A dash right before a pounce can block the pounce ("stamina"), and in Mecha the stamina bar is hidden until a latch.
    - **Answer: free (0 stamina).** Charges and the 8 s recharge are the only limit. Task 4 is cut; MechaServer has no stamina checks.

@@ -1183,6 +1183,15 @@ A chase stops at the band line exactly like at the territory border (BotBorderDr
 | MechaButtonsForceTouch | script MechaButtons | nil | test hook: true draws the touch buttons on PC |
 | SkillScreenLoadoutEnabled | script SkillScreen | true | false = no loadout bar |
 
+| DashSpeedMul | character | 2 | v1.2: boost speed = this x run speed (script SkillEffects SkillDashSpeedMul) |
+| MechaFlame | character | false | MechaServer 1.1: true while the thruster fire is on |
+| MechaBoostDir | character (client) | — | MechaButtons 1.1: "move" (steering with movement) / "keep" (last direction) |
+| MechaNewsShown | character (client) | — | MechaButtons 1.1: path id of the last "NEW" popup |
+
+v1.1 changes (Kepu after trying it on PC): Thrusters is a steerable boost (DashTime 1.5 s, 2 s from III, at 2x run speed);
+PC keys are R (slot 1) and C (slot 2); a "⚙ NEW: <PART>" popup shows how to use a newly bought part; the fire is visible
+(fire particles, neon jets, glow) for the whole boost. DashDistance is no longer used by the boost.
+
 Remote `ReplicatedStorage.DinoDashRequest:FireServer(serverTime)`; SkillRequest ("slot", n, id or ""). The dash costs no
 stamina (Kepu). The Thrusters part is on the dino only while it is in a slot (Kepu).
 

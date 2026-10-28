@@ -1,4 +1,4 @@
--- SkillTree.spec v1.1 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.2 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 local ok, ST = pcall(function() return require(game.ServerStorage.DinoArcade.SkillTree) end)
 if not ok then return "FAIL require: " .. tostring(ST) end
@@ -9,7 +9,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.1")
+eq("Version", ST.Version, "1.2")
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 60)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 61)
@@ -166,6 +166,15 @@ eq("setSlot badSlot str", ss({false, false}, own, "1", "thrusters"), "nil:badSlo
 eq("setSlot notButton", ss({false, false}, {regen = 1}, 1, "regen"), "nil:notButton")
 eq("setSlot notButton junk", ss({false, false}, own, 1, "nope"), "nil:notButton")
 eq("setSlot notOwned", ss({false, false}, {}, 1, "thrusters"), "nil:notOwned")
+-- v1.2: boost length and step texts
+eq("boost 0", e({}).dashTime, 0)
+eq("boost I", e({thrusters = 1}).dashTime, 1.5)
+eq("boost II", e({thrusters = 2}).dashTime, 1.5)
+eq("boost III", e({thrusters = 3}).dashTime, 2.0)
+eq("boost star", e({thrusters = 4}).dashTime, 2.0)
+eq("thrusters text I", ST.PATHS.thrusters.steps[1], "Button: rocket boost for 1.5 s at 2x run speed (steer while boosting)")
+eq("thrusters steps", #ST.PATHS.thrusters.steps, 4)
+eq("grapple text kept", ST.PATHS.grapple.steps[1], "Button: pull yourself to a tree")
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

@@ -1,4 +1,4 @@
--- SkillTree v1.1 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.2 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -34,8 +34,11 @@
 --     otherwise the clean loadout unchanged.
 --   setSlot(loadout, steps, n, pathId or false) -> a new loadout, "ok" | nil, reason ("badSlot" / "notButton" /
 --     "notOwned"); the id leaves its other slot. None of these change their inputs.
+-- v1.2 (Thrusters boost, MDA-31, plan docs/plans/MECHA_THRUSTERS_v1.0.md "v1.1 changes"; Kepu 2026-10-28 after trying it:
+--   "make the thrusters actually last longer" -> "1.5 s boost, steerable"): effects adds dashTime (0; 1.5 s from I; 2 s
+--   from III). The Thrusters step texts describe the boost. dashDist stays as in 1.1 (no longer used by the boost).
 local SkillTree = {}
-SkillTree.Version = "1.1"
+SkillTree.Version = "1.2"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -119,6 +122,12 @@ SkillTree.SLOTS = 2
 for id in pairs(SkillTree.LIVE_MECH) do
 	if SkillTree.PATHS[id] then SkillTree.PATHS[id].soon = false end
 end
+-- v1.2: Thrusters is a steerable rocket boost
+SkillTree.PATHS.thrusters.steps = {
+	"Button: rocket boost for 1.5 s at 2x run speed (steer while boosting)",
+	"2 charges",
+	"Longer boost: 2 s",
+	"Rocket hop: the boost starts with a 25-stud hop"}
 
 -- level curve
 function SkillTree.xpToNext(level)
@@ -225,6 +234,10 @@ function SkillTree.effects(steps)
 	if t >= 2 then e.dashCharges = 2 end
 	if t >= 3 then e.dashDist = 50 end
 	if t >= 4 then e.dashHop = 25 end
+	-- v1.2: boost length
+	e.dashTime = 0
+	if t >= 1 then e.dashTime = 1.5 end
+	if t >= 3 then e.dashTime = 2.0 end
 	return e
 end
 

@@ -1,4 +1,4 @@
--- MechaButtons v1.0 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.1 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -9,9 +9,10 @@
 --     AutoRun false (RUN shown):   Slot_1 right 33%, bottom 8%;   Slot_2 right 33%, bottom 28%;   9.5% of the width
 --   Look: rounded square (corner 22%), panel (20, 20, 26) at 0.3, 2.5 px Engineer-orange (255, 155, 46) stroke.
 --   Full slot: "DASH", charge pips top right (DashChargesLeft of DashCharges), a dark fill from the bottom showing the time
---   to the next charge (DashNextChargeAt, DashRecharge), key hint "1" / "2"; dimmed (0.5) while DashEnabled is not true.
+--   to the next charge (DashNextChargeAt, DashRecharge), key hint "1" / "2" (v1.1: "R" / "C", empty on touch); dimmed
+--   (0.5) while DashEnabled is not true.
 --   Empty slot: white stroke at 0.5, "+" and "slot n".
--- PC / no touch: no buttons; keys 1 and 2 press slot 1 and 2 (when the key is not used by a text box). Test hook: script
+-- PC / no touch: no buttons; keys 1 and 2 (v1.1: R and C) press slot 1 and 2 (when the key is not used by a text box). Test hook: script
 --   attribute MechaButtonsForceTouch (default nil / false) = true draws the touch buttons without touch (layout checks).
 -- Dash physics (this client owns the character): on a new DashStartedAt, a LinearVelocity on the HumanoidRootPart
 --   (VelocityConstraintMode Plane, world X / Z) at DashDistance / DashTime studs/s along the flat look direction, for
@@ -20,12 +21,28 @@
 --   dash ends instead of sliding on.
 -- Diagnostics (character attributes, this client): MechaButtonsVersion, MechaButtonsState ("on" touch / "keys"),
 --   MechaButtonsLastPress ("slot1:thrusters" / "slot2:empty" ...), MechaDashLocal ("idle" / "dashing"), MechaDashLocalCount.
+-- v1.1 (MDA-33; Kepu 2026-10-28 after trying it on PC: "what the hell was that ... make the thrusters actually last longer",
+--   "1.5 s boost, steerable"; keys "shouldnt be the number 1 button ... assign it to Q or e or something" -> "R / C";
+--   "make it visible on pc what ability you have gained" -> "New ability" popup):
+--   * Keys: R = slot 1, C = slot 2 (RoarTest R / CreepTest C are off in Mecha, ArenaScope 1.2+); 1 / 2 no longer do
+--     anything. Key hints on the buttons show R / C (empty on real touch devices).
+--   * Boost: when the character has DashSpeedMul (SkillEffects 1.2), a new DashStartedAt starts a boost for DashTime s
+--     (1.5 s; 2 s from III) at DashSpeedMul (2) x the run speed (max of MoveRunSpeed and Humanoid.WalkSpeed). Steerable:
+--     every frame the direction is the Humanoid's MoveDirection (flat) while you move, else the last direction (first:
+--     where the dino faces). The star hop works as in 1.0 (at the start). It ends early on death, a stun (StunnedUntil in
+--     the future) or a pounce latch (PounceLatched). At the end the horizontal speed is set to 0 as in 1.0. Without
+--     DashSpeedMul the 1.0 dash (DashDistance / DashTime straight ahead) is used.
+--   * Popup (PC and touch): ScreenGui "MechaNews" (DisplayOrder 25, above the skill screen), top centre, 4 s: "⚙ NEW:
+--     <PART NAME>" and "Press R to use it" / "Press C to use it" (PC) / "Tap its button to use it" (touch) / "Put it in a
+--     LOADOUT slot (SKILLS)" when it is not in a slot. Shown when a loadout part's SkillPath_<id> goes from 0 to 1 or more
+--     while this character exists (SkillTree.BUTTONS from ReplicatedStorage.SkillShared; not on join / respawn).
+--     Diagnostics MechaNewsShown (path id), MechaBoostDir ("move" / "keep").
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -33,6 +50,8 @@ local SPOTS = {
 	[false] = {{0.33, 0.08}, {0.33, 0.28}},  -- RUN shown: inner column
 }
 local SIZE = 0.095
+local KEYS = {Enum.KeyCode.R, Enum.KeyCode.C} -- v1.1: slot 1 / slot 2 (was 1 / 2)
+local KEY_NAMES = {"R", "C"}
 
 local char = script.Parent
 local player = Players.LocalPlayer
@@ -55,6 +74,72 @@ end
 
 -- dash physics --------------------------------------------------------------------------------------------------------
 local lastDash = char:GetAttribute("DashStartedAt")
+local boostConn -- v1.1
+local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x run speed
+	if not (hrp and hum and hum.Health > 0) then return end
+	local t = tonumber(char:GetAttribute("DashTime")) or 1.5
+	local mul = tonumber(char:GetAttribute("DashSpeedMul")) or 2
+	local hop = tonumber(char:GetAttribute("DashHop")) or 0
+	local speed = math.max(tonumber(char:GetAttribute("MoveRunSpeed")) or 0, hum.WalkSpeed) * mul
+	local dir = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+	if t <= 0 or speed <= 0 or dir.Magnitude < 1e-3 then return end
+	dir = dir.Unit
+	if boostConn then boostConn:Disconnect() end
+	local old = hrp:FindFirstChild("MechaDash")
+	if old then old:Destroy() end
+	local oldAt = hrp:FindFirstChild("MechaDashAt")
+	if oldAt then oldAt:Destroy() end
+	local at = Instance.new("Attachment")
+	at.Name = "MechaDashAt"
+	at.Parent = hrp
+	local lv = Instance.new("LinearVelocity")
+	lv.Name = "MechaDash"
+	lv.Attachment0 = at
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+	lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	lv.PrimaryTangentAxis = Vector3.xAxis
+	lv.SecondaryTangentAxis = Vector3.zAxis
+	lv.PlaneVelocity = Vector2.new(dir.X * speed, dir.Z * speed)
+	lv.MaxForce = math.huge
+	lv.Parent = hrp
+	if hop > 0 then
+		hum:ChangeState(Enum.HumanoidStateType.Freefall)
+		local cur = hrp.AssemblyLinearVelocity
+		hrp.AssemblyLinearVelocity = Vector3.new(cur.X, math.sqrt(2 * workspace.Gravity * hop), cur.Z)
+	end
+	char:SetAttribute("MechaDashLocal", "dashing")
+	char:SetAttribute("MechaDashLocalCount", (char:GetAttribute("MechaDashLocalCount") or 0) + 1)
+	local t0 = os.clock()
+	local conn
+	local function stop()
+		if conn then conn:Disconnect() end
+		if boostConn == conn then boostConn = nil end
+		lv:Destroy()
+		at:Destroy()
+		if hrp.Parent then
+			local cur = hrp.AssemblyLinearVelocity
+			hrp.AssemblyLinearVelocity = Vector3.new(0, cur.Y, 0)
+		end
+		if char.Parent then char:SetAttribute("MechaDashLocal", "idle") end
+	end
+	conn = RunService.Heartbeat:Connect(function()
+		local now = workspace:GetServerTimeNow()
+		if os.clock() - t0 >= t or not char.Parent or hum.Health <= 0 or char:GetAttribute("PounceLatched") == true
+			or (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+			stop()
+			return
+		end
+		local md = Vector3.new(hum.MoveDirection.X, 0, hum.MoveDirection.Z)
+		if md.Magnitude > 0.1 then
+			dir = md.Unit
+			if char:GetAttribute("MechaBoostDir") ~= "move" then char:SetAttribute("MechaBoostDir", "move") end
+		elseif char:GetAttribute("MechaBoostDir") ~= "keep" then
+			char:SetAttribute("MechaBoostDir", "keep")
+		end
+		lv.PlaneVelocity = Vector2.new(dir.X * speed, dir.Z * speed)
+	end)
+	boostConn = conn
+end
 local function dash()
 	if not (hrp and hum and hum.Health > 0) then return end
 	local dist = tonumber(char:GetAttribute("DashDistance")) or 0
@@ -98,15 +183,81 @@ char:GetAttributeChangedSignal("DashStartedAt"):Connect(function()
 	local s = char:GetAttribute("DashStartedAt")
 	if s == lastDash then return end
 	lastDash = s
-	dash()
+	if char:GetAttribute("DashSpeedMul") ~= nil then boost() else dash() end -- v1.1
 end)
 
 -- PC keys ------------------------------------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or UserInputService:GetFocusedTextBox() then return end
-	if input.KeyCode == Enum.KeyCode.One then press(1)
-	elseif input.KeyCode == Enum.KeyCode.Two then press(2) end
+	if input.KeyCode == KEYS[1] then press(1) -- v1.1: R (was 1)
+	elseif input.KeyCode == KEYS[2] then press(2) end -- v1.1: C (was 2)
 end)
+
+-- v1.1: "new ability" popup ----------------------------------------------------------------------------------------
+local pgNews = player:WaitForChild("PlayerGui")
+local shared = ReplicatedStorage:FindFirstChild("SkillShared")
+local okST, ST = pcall(function() return require(shared:WaitForChild("SkillTree", 10)) end)
+local isTouch = UserInputService.TouchEnabled
+local function showNews(id)
+	local p = okST and ST.PATHS[id]
+	if not p then return end
+	local slot
+	for n = 1, 2 do if slotPart(n) == id then slot = n end end
+	local how = not slot and "Put it in a LOADOUT slot (SKILLS)"
+		or isTouch and "Tap its button to use it"
+		or ("Press %s to use it"):format(KEY_NAMES[slot])
+	local old = pgNews:FindFirstChild("MechaNews")
+	if old then old:Destroy() end
+	local g = Instance.new("ScreenGui")
+	g.Name = "MechaNews"
+	g.ResetOnSpawn = true
+	g.DisplayOrder = 25
+	local f = Instance.new("Frame")
+	f.Name = "Box"
+	f.AnchorPoint = Vector2.new(0.5, 0)
+	f.Position = UDim2.new(0.5, 0, 0, 60)
+	f.Size = UDim2.fromOffset(320, 70)
+	f.BackgroundColor3 = PANEL
+	f.BackgroundTransparency = 0.1
+	f.Parent = g
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 12)
+	c.Parent = f
+	local st = Instance.new("UIStroke")
+	st.Color, st.Thickness = ORANGE, 2.5
+	st.Parent = f
+	local function line(text, y, h, size, color)
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.Position = UDim2.fromOffset(12, y)
+		l.Size = UDim2.new(1, -24, 0, h)
+		l.Font = Enum.Font.FredokaOne
+		l.Text = text
+		l.TextSize = size
+		l.TextColor3 = color
+		l.Parent = f
+		return l
+	end
+	line("⚙ NEW: " .. string.upper(p.name), 8, 28, 22, ORANGE).Name = "Title"
+	line(how, 38, 22, 16, Color3.new(1, 1, 1)).Name = "How"
+	g.Parent = pgNews
+	char:SetAttribute("MechaNewsShown", id)
+	task.delay(4, function() if g.Parent then g:Destroy() end end)
+end
+local known = {}
+if okST then
+	for id in pairs(ST.BUTTONS or {}) do known[id] = player:GetAttribute("SkillPath_" .. id) or 0 end
+	player.AttributeChanged:Connect(function(name)
+		local id = name:sub(1, 10) == "SkillPath_" and name:sub(11) or nil
+		if not id or known[id] == nil then return end
+		local n = player:GetAttribute(name) or 0
+		local was = known[id]
+		known[id] = n
+		if was == 0 and n >= 1 then
+			task.delay(0.3, function() showNews(id) end) -- the slot (SkillSlot1 / 2) arrives with the same buy
+		end
+	end)
+end
 
 -- test hook: script attribute MechaButtonsForceTouch = true draws the touch buttons on PC too (Studio layout checks)
 if not UserInputService.TouchEnabled and script:GetAttribute("MechaButtonsForceTouch") ~= true then
@@ -176,7 +327,7 @@ for n = 1, 2 do
 	local sub = label(b, "", UDim2.fromScale(0.1, 0.68), UDim2.fromScale(0.8, 0.22), 11)
 	sub.Name = "Sub"
 	sub.TextTransparency = 0.25
-	local key = label(b, tostring(n), UDim2.fromScale(0.08, 0.04), UDim2.fromScale(0.22, 0.22), 10,
+	local key = label(b, UserInputService.TouchEnabled and "" or KEY_NAMES[n], UDim2.fromScale(0.08, 0.04), UDim2.fromScale(0.22, 0.22), 10, -- v1.1: R / C
 		Color3.fromRGB(154, 160, 173))
 	key.Name = "Key"
 	local pips = Instance.new("Frame")
