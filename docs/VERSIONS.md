@@ -138,6 +138,8 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | SkillEffects | 1.3 | SkillDashSpeedMul default 3 (MDA-35, Kepu: "Faster: 3x run speed"). Install hash 15364 / 147546778 |
 | MechaServer | 1.2 | Bigger fire (particles x2, longer life, jets x2 long) + boost roar Sound (MechaBoostSoundId, default rbxassetid://9114554567 Pro Sound Effects placeholder) (MDA-35). Verified: roar playing during the boost. Install hash 16267 / 188961155 |
 | MechaButtons | 1.2 | Camera punch (FOV +15, small shake, ramps 0.15 s in / 0.3 s out) + 40 speed lines during the boost; MechaBoostFxEnabled toggle (MDA-35). Verified in Play (PC): FOV 70 -> 85 -> 70, speed lines on screen, boost 342 studs/s (3 x 114 with Legs II) for 1.5 s (512 studs). Live check of the 35% rule: bite 25 -> 35, run 60 -> 114 (Legs II), damage taken 0.70, bite cooldown 0.8 -> 0.59. Install hash 22754 / 1070118675 |
+| SkillTree | 1.4 | Thrusters boost 1 s (I / II), 1.35 s from III (35% rule) (MDA-36; Kepu: "a little too fast. maybe just make it 1.75 my run speed and 1 second long"); texts updated. Spec PASS 235. Install hash 15662 / 718806897 |
+| SkillEffects | 1.4 | SkillDashSpeedMul default 1.75 (MDA-36). Verified in Play: T-Rex run 60 -> boost 105 studs/s for 1.01 s, 104 studs. Install hash 15552 / 1291551386 |
 
 ## Open decisions
 - Skill points per level-up.

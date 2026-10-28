@@ -1,4 +1,4 @@
--- SkillTree v1.3 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.4 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -45,8 +45,11 @@
 --   x0.70; Sprint Legs I +4 Speed (run x1.4), II 9 (x1.9), III move cooldowns x0.74, star 16 (x2.6; StatSheet 1.1 cap 16);
 --   Thrusters III boost 2.1 s. The step texts of those paths say the new numbers (Thrusters I: 3x run speed, SkillEffects
 --   1.3).
+-- v1.4 (MDA-36; Kepu 2026-10-28 after playing it: "the thrusters might be a little too fast. maybe just make it 1.75 my
+--   run speed and 1 second long"): while STRONG, the Thrusters boost is 1 s (I / II) and 1.35 s from III (the 35% rule:
+--   1.35 x 1 s); texts say 1 s at 1.75x run speed (SkillEffects 1.4) and 1.35 s.
 local SkillTree = {}
-SkillTree.Version = "1.3"
+SkillTree.Version = "1.4"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -151,8 +154,8 @@ if SkillTree.STRONG then
 	P.legs.steps[2] = "Run speed x1.9"
 	P.legs.steps[3] = "Pounce, ram and leap recharge 35% faster"
 	P.legs.steps[4] = "Run speed x2.6"
-	P.thrusters.steps[1] = "Button: rocket boost for 1.5 s at 3x run speed (steer while boosting)"
-	P.thrusters.steps[3] = "Longer boost: 2.1 s"
+	P.thrusters.steps[1] = "Button: rocket boost for 1 s at 1.75x run speed (steer while boosting)" -- v1.4 (1.3: 1.5 s at 3x)
+	P.thrusters.steps[3] = "Longer boost: 1.35 s" -- v1.4 (1.3: 2.1 s)
 end
 
 -- level curve
@@ -274,7 +277,8 @@ function SkillTree.effects(steps)
 		if h >= 3 then e.stunMul = 0.70 end
 		e.speedPts = g >= 4 and 16 or g >= 2 and 9 or g >= 1 and 4 or 0
 		if g >= 3 then e.moveCdMul = 0.74 end
-		if t >= 3 then e.dashTime = 2.1 end
+		if t >= 1 then e.dashTime = 1.0 end -- v1.4 (1.3: 1.5)
+		if t >= 3 then e.dashTime = 1.35 end -- v1.4 (1.3: 2.1)
 	end
 	return e
 end

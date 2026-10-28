@@ -1,4 +1,4 @@
--- SkillEffects v1.3 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.4 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -41,10 +41,12 @@
 --   (default 2: the boost runs at 2x the dino's run speed, MechaButtons 1.1).
 -- v1.3 (MDA-35; Kepu: "its an arcade game. i want these boosts to feel significant" -> "Faster: 3x run speed"):
 --   SkillDashSpeedMul default 3 (was 2).
+-- v1.4 (MDA-36; Kepu: "a little too fast. maybe just make it 1.75 my run speed and 1 second long"): SkillDashSpeedMul
+--   default 1.75 (boost length: SkillTree 1.4).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
@@ -54,7 +56,7 @@ local ST = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillT
 script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsEnabled") == nil then script:SetAttribute("SkillEffectsEnabled", true) end
 local function on() return script:GetAttribute("SkillEffectsEnabled") ~= false end
-for k, v in pairs({SkillDashTime = 0.35, SkillDashRecharge = 8, SkillDashSpeedMul = 3}) do -- v1.1; v1.2: + SkillDashSpeedMul; v1.3: 2 -> 3
+for k, v in pairs({SkillDashTime = 0.35, SkillDashRecharge = 8, SkillDashSpeedMul = 1.75}) do -- v1.1; v1.2: + SkillDashSpeedMul; v1.3: 2 -> 3; v1.4: 3 -> 1.75
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 

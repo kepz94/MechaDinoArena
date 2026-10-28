@@ -1172,7 +1172,7 @@ A chase stops at the band line exactly like at the territory border (BotBorderDr
 | DashCharges | character | 0 | 1 at I, 2 from II (0 while off) |
 | DashDistance | character | 0 | 35 studs, 50 from III |
 | DashHop | character | 0 | 25 studs at star (0 while off) |
-| DashTime / DashRecharge | character | 0.35 / 8 | from script SkillEffects SkillDashTime / SkillDashRecharge |
+| DashTime / DashRecharge | character | 1 (1.35 from III) / 8 | from script SkillEffects SkillDashTime / SkillDashRecharge |
 | DashChargesLeft / DashNextChargeAt | character | 0 / 0 | MechaServer: charges left; server time the next one comes back (0 = full) |
 | DashStartedAt / DashCount | character | — | MechaServer: accepted dash (server time, clamped stamp) / count |
 | DashServerResult / DashDenyReason / DashDeniedAt / DashDenyCount | character | — | "ok" / "badArg" / "dead" / "disabled" / "stunned" / "latched" / "charges" |
@@ -1183,7 +1183,7 @@ A chase stops at the band line exactly like at the territory border (BotBorderDr
 | MechaButtonsForceTouch | script MechaButtons | nil | test hook: true draws the touch buttons on PC |
 | SkillScreenLoadoutEnabled | script SkillScreen | true | false = no loadout bar |
 
-| DashSpeedMul | character | 2 | v1.2: boost speed = this x run speed (script SkillEffects SkillDashSpeedMul) |
+| DashSpeedMul | character | 1.75 | v1.2: boost speed = this x run speed (script SkillEffects SkillDashSpeedMul; 2 in 1.2, 3 in 1.3, 1.75 from 1.4) |
 | MechaFlame | character | false | MechaServer 1.1: true while the thruster fire is on |
 | MechaBoostDir | character (client) | — | MechaButtons 1.1: "move" (steering with movement) / "keep" (last direction) |
 | MechaNewsShown | character (client) | — | MechaButtons 1.1: path id of the last "NEW" popup |
