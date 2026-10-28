@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skill Tree Screen Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:rgb(20,20,26); --panel2:rgb(32,32,40); --line:rgba(255,255,255,.18);
+  --yellow:rgb(255,200,50); --ytext:rgb(30,26,10);
+  --health:rgb(95,209,106); --attack:rgb(240,90,79); --defense:rgb(90,160,255);
+  --speed:rgb(255,211,77); --eng:rgb(255,155,46);
+  --page:#0d0e12; --text:#eef0f4; --muted:#9aa0ad;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:Inter,system-ui,sans-serif;padding:16px}
+h1{font-family:"Fredoka One",sans-serif;font-weight:400;margin:0 0 4px;font-size:22px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:12px}
+.switch{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.switch button{font-family:"Fredoka One";font-size:15px;border:2px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px;border-radius:999px;cursor:pointer}
+.switch button.on{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.note{max-width:860px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.45;margin-bottom:12px}
+.note b{color:var(--yellow)}
+/* phone frame, landscape */
+.phone{width:min(860px,100%);aspect-ratio:844/390;background:#000;border-radius:38px;padding:12px;box-shadow:0 0 0 2px #333}
+.screen{position:relative;width:100%;height:100%;border-radius:28px;overflow:hidden;
+  background:linear-gradient(180deg,#6fb3ff 0%,#a8d4ff 45%,#5aa651 46%,#3f8a3b 100%)}
+.dim{position:absolute;inset:0;background:rgba(5,6,10,.55)}
+.ui{position:absolute;inset:0;padding:10px 14px 10px 54px;display:flex;flex-direction:column;gap:8px;font-family:"Fredoka One",sans-serif}
+.top{display:flex;align-items:center;gap:10px}
+.title{font-size:20px}
+.lv{background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:3px 10px;font-size:14px;display:flex;align-items:center;gap:8px}
+.xp{width:120px;height:8px;background:#000;border-radius:5px;overflow:hidden}
+.xp i{display:block;height:100%;width:62%;background:linear-gradient(90deg,var(--yellow),rgb(255,155,46))}
+.pts{background:var(--yellow);color:var(--ytext);border-radius:10px;padding:3px 12px;font-size:16px}
+.spacer{flex:1}
+.btn{font-family:"Fredoka One";border:2px solid rgba(255,255,255,.5);background:rgba(20,20,26,.82);color:#fff;border-radius:10px;padding:4px 12px;font-size:14px;cursor:pointer}
+.btn.close{width:34px;padding:4px 0}
+.body{flex:1;min-height:0;display:flex;gap:10px}
+.pane{background:rgba(20,20,26,.86);border:2px solid var(--line);border-radius:14px}
+/* nodes */
+.node{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:13px;cursor:pointer;
+  border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.06);color:#cfd3dc;position:relative;flex:none}
+.node.own{background:var(--c);border-color:var(--c);color:#111}
+.node.next{border-color:var(--c);color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+.node.lock{opacity:.4}
+.node.final{border-radius:10px}
+.node.sel{outline:3px solid #fff;outline-offset:2px}
+.cost{position:absolute;bottom:-7px;right:-7px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-size:10px;padding:0 4px;color:#fff}
+.soon{font-size:10px;color:var(--muted);font-family:Inter}
+.gear{color:var(--eng)}
+/* A */
+.rail{width:64px;padding:6px;display:flex;flex-direction:column;gap:6px}
+.rail button{font-family:"Fredoka One";font-size:11px;border:2px solid transparent;border-radius:10px;background:transparent;color:#cfd3dc;padding:5px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.rail button .dot{width:16px;height:16px;border-radius:50%;background:var(--c)}
+.rail button.on{border-color:var(--c);background:rgba(255,255,255,.06);color:#fff}
+.cols{flex:1;display:flex;gap:8px;padding:8px}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;border-radius:10px;background:rgba(255,255,255,.03);padding:6px 4px}
+.col .name{font-size:13px;text-align:center}
+.col .stack{flex:1;display:flex;flex-direction:column-reverse;justify-content:space-between;align-items:center;padding:4px 0}
+.link{width:3px;flex:1;background:rgba(255,255,255,.15);min-height:6px}
+.link.own{background:var(--c)}
+.detail{width:220px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.detail .dn{font-size:16px}
+.detail .dp{font-size:11px;color:var(--muted);font-family:Inter}
+.detail .de{font-family:Inter;font-size:12.5px;line-height:1.35;flex:1}
+.buy{font-family:"Fredoka One";font-size:16px;border:none;border-radius:10px;padding:8px;background:var(--yellow);color:var(--ytext);cursor:pointer}
+.buy[disabled]{background:#444;color:#999;cursor:default}
+/* B */
+.list{flex:1;overflow:auto;padding:6px 10px;display:flex;flex-direction:column;gap:4px}
+.ahead{font-size:13px;color:var(--c);margin-top:4px}
+.row{display:flex;align-items:center;gap:10px;padding:3px 6px;border-radius:8px}
+.row .rn{width:130px;font-size:13px}
+.row .nodes{display:flex;gap:14px}
+.row .node{width:28px;height:28px;font-size:11px}
+.sheet{position:absolute;left:54px;right:14px;bottom:10px;background:rgba(20,20,26,.97);border:2px solid var(--line);border-radius:14px;padding:10px;display:none;gap:10px;align-items:center}
+.sheet.show{display:flex}
+.sheet .de{flex:1;font-family:Inter;font-size:12.5px}
+/* C */
+.tabs{display:flex;gap:6px}
+.tabs button{font-family:"Fredoka One";font-size:13px;border:2px solid var(--line);border-radius:999px;background:rgba(20,20,26,.86);color:#cfd3dc;padding:3px 12px;cursor:pointer}
+.tabs button.on{background:var(--c);border-color:var(--c);color:#111}
+.cards{flex:1;display:flex;gap:10px;overflow-x:auto;padding-bottom:2px}
+.card{flex:0 0 calc((100% - 20px)/3);padding:10px;display:flex;flex-direction:column;gap:6px}
+.card .cn{font-size:15px;color:var(--c)}
+.step{display:flex;align-items:center;gap:8px;font-family:Inter;font-size:11.5px;padding:4px;border-radius:8px}
+.step .node{width:26px;height:26px;font-size:11px}
+.step.cur{background:rgba(255,255,255,.07)}
+.card .buy{font-size:14px;padding:6px;margin-top:auto}
+.panelwrap{display:none}
+.panelwrap.show{display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px;max-width:860px}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.lg{width:14px;height:14px;border-radius:50%;display:inline-block;border:2px solid rgba(255,255,255,.4)}
+</style>
+</head>
+<body>
+<h1>Skill tree screen: 3 layouts</h1>
+<div class="sub">Mecha Dino Arena · first piece "Points + tree screen" · phone, landscape · tap nodes, buy, respec</div>
+<div class="switch" id="sw">
+  <button data-v="A" class="on">A · Area rail + 3 path columns</button>
+  <button data-v="B">B · Everything in one list</button>
+  <button data-v="C">C · Area tabs + path cards</button>
+</div>
+<div class="note" id="note"></div>
+
+<div class="phone"><div class="screen"><div class="dim"></div><div class="ui" id="ui"></div></div></div>
+
+<div class="legend">
+  <span><i class="lg" style="background:var(--health);border-color:var(--health)"></i>bought</span>
+  <span><i class="lg" style="border-color:#fff"></i>next (can buy)</span>
+  <span><i class="lg" style="opacity:.4"></i>locked (buy the one before first)</span>
+  <span>⚙ mecha part / button · "soon" = shown but not in this first piece</span>
+  <span>Numbers are examples only; the real numbers come in the build plan.</span>
+</div>
+
+<script>
+const AREAS=[
+ {id:"health",name:"Health",c:"var(--health)",paths:[
+  {n:"Regeneration",mech:false,soon:false,steps:["Heal 2 HP/s after 6 s without damage","Starts after 5 s, 3 HP/s","Starts after 4 s, 4 HP/s","★ Each kill heals 25% at once"]},
+  {n:"Med-Station",mech:true,soon:true,steps:["Button: drop a healing machine","Bigger heal area","Lasts longer","★ Two stations"]},
+  {n:"Lifesteal",mech:false,soon:false,steps:["5% of your attack damage heals you","10%","15%","★ Overheal becomes a short shield"]}]},
+ {id:"attack",name:"Attack",c:"var(--attack)",paths:[
+  {n:"Jaws",mech:false,soon:false,steps:["+2 attack damage","Faster attack (−10% cooldown)","Hits make the target bleed","★ Crushing hit: short stun"]},
+  {n:"Back Turret",mech:true,soon:true,steps:["Turret on your back auto-fires","Faster fire","Longer range","★ Twin barrels"]},
+  {n:"Shoulder Rocket",mech:true,soon:true,steps:["Button: aimed rocket, splash","Faster reload","Bigger blast","★ 3-rocket burst"]}]},
+ {id:"defense",name:"Defense",c:"var(--defense)",paths:[
+  {n:"Thick Hide",mech:false,soon:false,steps:["−5% damage taken","Less knockback","Shorter stuns","★ No stuns above 50% health"]},
+  {n:"Armor Plating",mech:true,soon:true,steps:["Button: absorb hits, release a blast","Bigger charge","Faster recharge","★ Auto-release at max is bigger"]},
+  {n:"Energy Shield",mech:true,soon:true,steps:["Button: bubble blocks damage","Stronger","Shorter cooldown","★ Bursts and knocks enemies back"]}]},
+ {id:"speed",name:"Speed",c:"var(--speed)",paths:[
+  {n:"Sprint Legs",mech:false,soon:false,steps:["+5% run speed","Faster acceleration","+10% run speed","★ Shorter pounce / ram / leap cooldowns"]},
+  {n:"Thrusters",mech:true,soon:true,steps:["Button: dash forward","2 charges","Longer dash","★ Rocket hop"]},
+  {n:"Grapple Hook",mech:true,soon:true,steps:["Button: pull yourself to a tree","Longer range","Faster pull","★ Hook an enemy, pull them in"]}]},
+ {id:"eng",name:"Engineer",c:"var(--eng)",paths:[
+  {n:"Sentry",mech:true,soon:true,steps:["Button: drop an auto-turret","More health","More damage","★ Two sentries"]},
+  {n:"Traps",mech:true,soon:true,steps:["Button: drop mines","Slowing net trap","More mines","★ EMP mine: shuts off mech skills"]},
+  {n:"Barricade",mech:true,soon:true,steps:["Button: drop a wall","Bigger","Tougher","★ Squad dome"]}]}
+];
+const COST=[1,2,3,4];
+const EARNED=12; // level 9 -> 12 points in this example
+let owned={}; // "area/path" -> steps bought (0..4)
+function reset(){owned={"health/Regeneration":2,"attack/Jaws":1}} // 3 + 1 = 4 spent? (1+2)+(1)=4
+reset();
+function spent(){let s=0;for(const k in owned){for(let i=0;i<owned[k];i++)s+=COST[i]}return s}
+function left(){return EARNED-spent()}
+let area="health", sel={a:"health",p:"Regeneration",i:2}, view="A";
+
+const NOTES={
+ A:"<b>A · Area rail + 3 path columns.</b> Pick an area on the left; its 3 paths stand side by side, bought steps fill from the bottom up; the right panel explains the tapped step and buys it. <b>Optimizes:</b> big tap targets, one area at a time, room for the explanation. <b>Trades off:</b> you only see one area at once.",
+ B:"<b>B · Everything in one list.</b> All 15 paths on one scrolling screen, grouped by area; tap a step and a bar at the bottom explains and buys it. <b>Optimizes:</b> the whole build at a glance. <b>Trades off:</b> small dots on a phone, lots of scrolling, the explanation covers part of the list.",
+ C:"<b>C · Area tabs + path cards.</b> Tabs across the top; each path is a card listing its 4 steps in words with one BUY button for the next step. <b>Optimizes:</b> reading what each step does without tapping. <b>Trades off:</b> text-heavy, smaller numbers per card, less like a \"tree\"."
+};
+
+function key(a,p){return a+"/"+p}
+function state(a,p,i,path){const o=owned[key(a,p)]||0;if(i<o)return"own";if(path.soon)return"lock";if(i===o)return"next";return"lock"}
+function canBuy(a,p,i,path){return !path.soon && (owned[key(a,p)]||0)===i && left()>=COST[i]}
+function buy(a,p){const path=findPath(a,p),o=owned[key(a,p)]||0;if(o<4&&canBuy(a,p,o,path)){owned[key(a,p)]=o+1;sel={a,p,i:Math.min(o+1,3)};render()}}
+function findArea(a){return AREAS.find(x=>x.id===a)}
+function findPath(a,p){return findArea(a).paths.find(x=>x.n===p)}
+function nodeHTML(a,path,i,small){
+  const st=state(a,path.n,i,path), isSel=sel.a===a&&sel.p===path.n&&sel.i===i;
+  return `<div class="node ${st} ${i===3?'final':''} ${isSel?'sel':''}" data-a="${a}" data-p="${path.n}" data-i="${i}">${i===3?'★':['I','II','III'][i]}${small?'':`<span class="cost">${COST[i]}</span>`}</div>`;
+}
+function topHTML(){return `<div class="top"><span class="title">SKILLS</span>
+ <span class="lv">LV 9 <span class="xp"><i></i></span> 620 / 1000 XP</span>
+ <span class="spacer"></span><span class="pts">${left()} PTS</span>
+ <button class="btn" id="respec">RESPEC</button><button class="btn close">X</button></div>`}
+function detailText(){
+  const ar=findArea(sel.a), path=findPath(sel.a,sel.p), i=sel.i, st=state(sel.a,sel.p,i,path);
+  let label= path.soon?"COMING SOON": st==="own"?"BOUGHT": st==="next"?(left()>=COST[i]?`BUY · ${COST[i]} PTS`:`NEED ${COST[i]} PTS`):"BUY THE ONE BEFORE";
+  return {ar,path,i,st,label,ok:st==="next"&&canBuy(sel.a,sel.p,i,path)};
+}
+function render(){
+  document.getElementById("note").innerHTML=NOTES[view];
+  const ui=document.getElementById("ui"), ar=findArea(area);
+  if(view==="A"){
+    const d=detailText();
+    ui.innerHTML=topHTML()+`<div class="body">
+     <div class="pane rail">${AREAS.map(x=>`<button class="${x.id===area?'on':''}" data-area="${x.id}" style="--c:${x.c}"><span class="dot"></span>${x.name}</button>`).join("")}</div>
+     <div class="pane cols" style="--c:${ar.c}">${ar.paths.map(p=>{
+        const o=owned[key(ar.id,p.n)]||0; let s="";
+        for(let i=0;i<4;i++){ if(i>0)s+=`<div class="link ${i<=o-1?'own':''}"></div>`; s+=nodeHTML(ar.id,p,i); }
+        return `<div class="col"><div class="name">${p.mech?'<span class="gear">⚙</span> ':''}${p.n}</div>${p.soon?'<div class="soon">soon</div>':''}<div class="stack">${s}</div></div>`}).join("")}</div>
+     <div class="pane detail" style="--c:${d.ar.c}"><div class="dn" style="color:${d.ar.c}">${d.path.n} ${d.i===3?'★':['I','II','III'][d.i]}</div>
+       <div class="dp">${d.ar.name} · step ${d.i+1} of 4 · ${d.path.mech?'mecha part':'passive'}</div>
+       <div class="de">${d.path.steps[d.i]}</div>
+       <button class="buy" id="buyBtn" ${d.ok?'':'disabled'}>${d.label}</button></div></div>`;
+  } else if(view==="B"){
+    const d=detailText();
+    ui.innerHTML=topHTML()+`<div class="body"><div class="pane list">${AREAS.map(x=>`<div class="ahead" style="--c:${x.c}">${x.name.toUpperCase()}</div>`+x.paths.map(p=>`<div class="row" style="--c:${x.c}"><span class="rn">${p.mech?'<span class="gear">⚙</span> ':''}${p.n}${p.soon?' <span class="soon">soon</span>':''}</span><span class="nodes">${[0,1,2,3].map(i=>nodeHTML(x.id,p,i,true)).join("")}</span></div>`).join("")).join("")}</div></div>
+     <div class="sheet show" style="--c:${d.ar.c}"><div><div style="color:${d.ar.c}">${d.path.n} ${d.i===3?'★':['I','II','III'][d.i]}</div><div class="soon">${d.ar.name} · cost ${COST[d.i]}</div></div><div class="de">${d.path.steps[d.i]}</div><button class="buy" id="buyBtn" ${d.ok?'':'disabled'}>${d.label}</button></div>`;
+  } else {
+    ui.innerHTML=topHTML()+`<div class="tabs">${AREAS.map(x=>`<button class="${x.id===area?'on':''}" data-area="${x.id}" style="--c:${x.c}">${x.name}</button>`).join("")}</div>
+     <div class="cards" style="--c:${ar.c}">${ar.paths.map(p=>{
+       const o=owned[key(ar.id,p.n)]||0, nextOk=o<4&&canBuy(ar.id,p.n,o,p);
+       const lbl=p.soon?"COMING SOON":o>=4?"MAXED":nextOk?`BUY NEXT · ${COST[o]} PTS`:`NEED ${COST[o]} PTS`;
+       return `<div class="pane card"><div class="cn">${p.mech?'<span class="gear">⚙</span> ':''}${p.n}</div>
+       ${p.steps.map((t,i)=>`<div class="step ${i===o&&!p.soon?'cur':''}">${nodeHTML(ar.id,p,i,true)}<span>${t}</span></div>`).join("")}
+       <button class="buy" data-buy="${p.n}" ${nextOk?'':'disabled'}>${lbl}</button></div>`}).join("")}</div>`;
+  }
+  wire();
+}
+function wire(){
+  document.querySelectorAll("[data-area]").forEach(b=>b.onclick=()=>{area=b.dataset.area;const p=findArea(area).paths[0];sel={a:area,p:p.n,i:Math.min(owned[key(area,p.n)]||0,3)};render()});
+  document.querySelectorAll(".node").forEach(n=>n.onclick=()=>{sel={a:n.dataset.a,p:n.dataset.p,i:+n.dataset.i};render()});
+  const bb=document.getElementById("buyBtn"); if(bb) bb.onclick=()=>buy(sel.a,sel.p);
+  document.querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buy(area,b.dataset.buy));
+  document.getElementById("respec").onclick=()=>{owned={};render()};
+}
+document.querySelectorAll("#sw button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#sw button").forEach(x=>x.classList.remove("on"));b.classList.add("on");view=b.dataset.v;render()});
+render();
+</script>
+</body>
+</html>
