@@ -1038,7 +1038,7 @@ tilt it up or down there. Left / right turning (yaw) is unchanged. PC and touch 
 
 | Attribute (character) | Default | Effect |
 |---|---|---|
-| ShoulderCamTouchPitchLock | true | false = 1.2 (free pitch on touch devices) |
+| ShoulderCamTouchPitchLock | false (1.5; 1.3–1.4: true) | true = lock the pitch on touch devices at ShoulderCamTouchPitch |
 | ShoulderCamTouchPitch | -30 (1.4; 1.3: -20) | Locked pitch (degrees; more negative = camera higher, looking down more) |
 | ShoulderCamTouchPitchLockTest | nil | Test hook: true treats this device as touch-only (Studio's emulator keeps MouseEnabled true) |
 
