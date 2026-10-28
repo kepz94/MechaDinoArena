@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile HUD Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:rgba(20,20,26,.82); --stroke:rgba(255,255,255,.5); --muted:#9fb0a6; --gold:#ffe27a; --on:#ffc832; --onText:#1e1a0a;
+  --health:#5fd16a; --health2:#3fae4b; --low:#eb372d; --stam1:#ffd34d; --stam2:#ff9b2e;
+  --page:#14141a; --chrome:#0e0e13; --line:#2a2a33;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Fredoka,system-ui,sans-serif;color:#fff;background:var(--page);min-height:100vh}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;background:var(--chrome);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.top h1{font-size:16px;margin:0 12px 0 0;font-weight:700}
+.btn{font:600 14px Fredoka,sans-serif;border:1px solid #3a3a46;background:#202029;color:#fff;border-radius:999px;padding:7px 14px;cursor:pointer}
+.btn.on{background:var(--on);color:var(--onText);border-color:var(--on)}
+.btn small{font-size:11px;opacity:.8;margin-left:6px}
+.sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;padding:16px;max-width:1280px;margin:0 auto;align-items:start}
+@media (max-width:1000px){.wrap{grid-template-columns:1fr}}
+/* phone frame: 844 x 390 landscape, scaled to fit */
+.phoneBox{width:100%;aspect-ratio:844/390;position:relative}
+.phone{position:absolute;inset:0;border-radius:28px;border:10px solid #050507;overflow:hidden;
+  background:linear-gradient(#5aa4ee,#b2d9ff 46%,#83d06d 46.2%,#5fbf4f 100%)}
+.phone:before{content:"";position:absolute;inset:46% 0 0 0;background:repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 22px,transparent 22px 44px),repeating-linear-gradient(0deg,rgba(0,0,0,.05) 0 22px,transparent 22px 44px)}
+.tree{position:absolute;bottom:54%;width:8%;height:24%}
+.tree i{position:absolute;left:42%;bottom:0;width:16%;height:50%;background:#5a3b2a}
+.tree b{position:absolute;left:0;bottom:40%;width:100%;height:60%;background:#2f8a3e;border-radius:6px;box-shadow:10px -8px 0 #3aa34b}
+.dino{position:absolute;left:44%;bottom:12%;width:12%;height:34%;background:#4f6b45;border-radius:18% 30% 10% 10%;box-shadow:inset -10px -10px 0 rgba(0,0,0,.15)}
+.dino.raptor{width:9%;height:22%;background:#6f8f3e;border-radius:30% 40% 10% 10%}
+/* roblox chrome */
+.rbx{position:absolute;left:14px;top:10px;display:flex;gap:6px}
+.rbx span{width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.45)}
+.stick{position:absolute;left:5%;bottom:10%;width:15%;aspect-ratio:1;border-radius:50%;background:rgba(0,0,0,.25);border:2px solid rgba(255,255,255,.35)}
+.stick:after{content:"";position:absolute;left:32%;top:32%;width:36%;height:36%;border-radius:50%;background:rgba(255,255,255,.55)}
+/* hud pieces (percent of the 844x390 frame) */
+.hud{position:absolute;inset:0;font-size:clamp(9px,1.5vw,14px)}
+.dd{position:absolute;font-weight:700;background:var(--panel);border:1.5px solid var(--stroke);border-radius:10px;padding:.35em .8em;display:flex;gap:.5em;align-items:center;cursor:pointer;user-select:none}
+.dd .sp{background:var(--on);color:var(--onText);border-radius:7px;padding:.05em .55em}
+.menu{position:absolute;background:var(--panel);border:1.5px solid var(--stroke);border-radius:10px;padding:.3em;display:none;flex-direction:column;gap:.25em;z-index:5;min-width:9em}
+.menu.open{display:flex}
+.menu div{padding:.35em .7em;border-radius:7px;cursor:pointer;font-weight:600}
+.menu div.cur{background:var(--on);color:var(--onText)}
+.menu div:hover:not(.cur){background:rgba(255,255,255,.1)}
+.menu .extra{font-size:.85em;color:var(--muted);border-top:1px solid rgba(255,255,255,.15);border-radius:0;margin-top:.2em}
+.hp{position:absolute}
+.hp .lbl{display:flex;justify-content:space-between;font-weight:700;font-size:.9em;text-shadow:0 1px 2px #000;margin-bottom:.15em}
+.hp .bar{height:1.05em;background:#14141a;border:1.5px solid rgba(255,255,255,.45);border-radius:999px;overflow:hidden}
+.hp .bar span{display:block;height:100%;background:linear-gradient(var(--health),var(--health2));transition:width .3s}
+.st{position:absolute;display:none}
+.st.show{display:block}
+.st .lbl{font-weight:700;font-size:.8em;text-shadow:0 1px 2px #000;margin-bottom:.1em;display:flex;justify-content:space-between}
+.st .bar{height:.75em;background:#14141a;border:1.5px solid rgba(255,255,255,.45);border-radius:999px;overflow:hidden}
+.st .bar span{display:block;height:100%;width:62%;background:linear-gradient(90deg,var(--stam1),var(--stam2))}
+.ab{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-weight:700;
+  background:rgba(20,20,26,.6);border:2px solid rgba(255,255,255,.6);color:#fff;cursor:pointer;user-select:none;line-height:1}
+.ab small{font-size:.65em;font-weight:600;opacity:.8;margin-top:.2em}
+.ab.big{background:rgba(255,200,50,.92);color:var(--onText);border-color:#fff}
+.ab:active,.ab.press{transform:scale(.92)}
+.ab.cool{opacity:.45}
+.ab.sq{border-radius:14px}
+.toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);background:var(--panel);border:1.5px solid var(--stroke);border-radius:10px;padding:.3em .9em;font-weight:700;opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+/* side */
+.side{background:#1b1b22;border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:14px;line-height:1.45}
+.side h2{font-size:17px;margin:0 0 6px}
+.side h3{font-size:12px;margin:12px 0 4px;color:var(--gold);text-transform:uppercase;letter-spacing:.5px}
+.side ul{margin:4px 0;padding-left:18px}.side li{margin:3px 0}
+.side .rec{display:inline-block;background:var(--on);color:var(--onText);font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+.legend{font-size:12px;color:var(--muted);margin:10px 0 0}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Mecha Dino Arena · Mobile HUD</h1>
+  <button class="btn on" data-v="A">A · Stack + thumb arc<small>recommended</small></button>
+  <button class="btn" data-v="B">B · Row + button bar</button>
+  <button class="btn" data-v="C">C · Chip + two buttons</button>
+  <span class="sep"></span>
+  <button class="btn" id="latch">Show latch (stamina)</button>
+  <button class="btn" id="hit">Take a hit</button>
+</div>
+<div class="wrap">
+  <div>
+    <div class="phoneBox"><div class="phone" id="phone">
+      <div class="tree" style="left:18%"><i></i><b></b></div>
+      <div class="tree" style="left:64%;transform:scale(.8)"><i></i><b></b></div>
+      <div class="tree" style="left:80%;transform:scale(1.15)"><i></i><b></b></div>
+      <div class="dino" id="dino"></div>
+      <div class="rbx"><span></span><span></span></div>
+      <div class="stick"></div>
+      <div class="hud" id="hud"></div>
+    </div></div>
+    <p class="legend">Phone landscape 844 × 390 (iPhone 14). Tap the species pill to open the dropdown; tap the buttons. The thumbstick and the Roblox menu (top-left) are Roblox's own.</p>
+  </div>
+  <div class="side" id="side"></div>
+</div>
+<script>
+let V="A", S="TRex", latched=false, hp=200;
+const MAX={TRex:200,Raptor:60};
+const NAME={TRex:"T-REX",Raptor:"RAPTOR"};
+// per species: the touch actions that exist in the game today (BiteTest, SprintTest "Run", RamTest, PounceTest, JumpTest leap, ShoulderCam)
+const ACT={TRex:[{k:"bite",t:"BITE"},{k:"run",t:"RUN",s:"hold"},{k:"ram",t:"RAM",s:"6 s"},{k:"jump",t:"JUMP"}],
+           Raptor:[{k:"bite",t:"BITE"},{k:"run",t:"RUN",s:"hold"},{k:"pounce",t:"POUNCE",s:"3 s"},{k:"leap",t:"LEAP"}]};
+const pct=(x)=>x+"%";
+function el(tag,cls,html,style){const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;if(style)Object.assign(e.style,style);return e;}
+function toast(t){const x=document.querySelector(".toast");x.textContent=t;x.classList.add("show");clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove("show"),900);}
+function dropdown(hud,pos,menuPos,extraShoulder){
+  const dd=el("div","dd",`<span class="sp">${NAME[S]}</span><span>▾</span>`,pos);
+  const m=el("div","menu","",menuPos);
+  for(const s of ["TRex","Raptor"]){const it=el("div",s===S?"cur":"",NAME[s]);it.onclick=(e)=>{e.stopPropagation();if(s!==S){S=s;hp=MAX[S];latched=false;toast("Respawning as "+NAME[s]);}render();};m.appendChild(it);}
+  if(extraShoulder){const it=el("div","extra","Swap shoulder");it.onclick=(e)=>{e.stopPropagation();m.classList.remove("open");toast("Camera: other shoulder");};m.appendChild(it);}
+  dd.onclick=(e)=>{e.stopPropagation();m.classList.toggle("open");};
+  hud.appendChild(dd);hud.appendChild(m);
+}
+function health(hud,pos){
+  const h=el("div","hp",`<div class="lbl"><span>HEALTH</span><span>${Math.round(hp)} / ${MAX[S]}</span></div><div class="bar"><span style="width:${hp/MAX[S]*100}%;${hp/MAX[S]<.3?"background:linear-gradient(#f05a4f,#c92f26)":""}"></span></div>`,pos);
+  hud.appendChild(h);
+}
+function stamina(hud,pos){
+  const s=el("div","st"+(latched?" show":""),`<div class="lbl"><span>STAMINA</span><span>LATCHED</span></div><div class="bar"><span></span></div>`,pos);
+  hud.appendChild(s);
+}
+function abtn(hud,a,pos,big,sq){
+  const b=el("div","ab"+(big?" big":"")+(sq?" sq":""),`${a.t}${a.s?`<small>${a.s}</small>`:""}`,pos);
+  b.onclick=()=>{b.classList.add("press");setTimeout(()=>b.classList.remove("press"),120);
+    if(a.k==="pounce"){latched=true;render();toast("Latched!");return;}
+    if(a.k==="ram"){toast(latched?"Rammed the tree":"Charging the nearest tree");return;}
+    toast(a.t.charAt(0)+a.t.slice(1).toLowerCase());};
+  hud.appendChild(b);
+}
+function render(){
+  document.querySelectorAll(".btn[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===V));
+  document.getElementById("latch").classList.toggle("on",latched);
+  document.getElementById("dino").className="dino"+(S==="Raptor"?" raptor":"");
+  const hud=document.getElementById("hud"); hud.innerHTML=""; hud.appendChild(el("div","toast",""));
+  const acts=ACT[S];
+  if(V==="A"){
+    // top-right stack: dropdown, then health under it (right-aligned, 27% wide)
+    dropdown(hud,{right:"2%",top:"4%"},{right:"2%",top:"15%"},true);
+    health(hud,{right:"2%",top:"15.5%",width:"27%"});
+    stamina(hud,{right:"2%",top:"27%",width:"27%"});
+    // thumb arc around a big BITE (bottom-right)
+    abtn(hud,acts[0],{right:"5%",bottom:"10%",width:"13.5%",aspectRatio:"1"},true);
+    const arc=[{right:"21%",bottom:"8%"},{right:"19.5%",bottom:"33%"},{right:"7%",bottom:"43%"}];
+    acts.slice(1).forEach((a,i)=>abtn(hud,a,{...arc[i],width:"9.5%",aspectRatio:"1"}));
+  } else if(V==="B"){
+    // top-right row: health bar then the dropdown to its right
+    dropdown(hud,{right:"2%",top:"4%"},{right:"2%",top:"15%"},true);
+    health(hud,{right:"17%",top:"4.2%",width:"26%"});
+    stamina(hud,{right:"17%",top:"15%",width:"26%"});
+    // bottom-right button bar, BITE last (nearest the thumb)
+    const n=acts.length; const w=10.5, gap=1.6;
+    const order=[...acts.slice(1),acts[0]];
+    order.forEach((a,i)=>abtn(hud,a,{right:pct(3+(n-1-i)*(w+gap)),bottom:"7%",width:pct(w),aspectRatio:"1"},a.k==="bite",true));
+  } else {
+    // compact chip: species + health inside one pill; dropdown from the chip
+    const chip=el("div","dd","",{right:"2%",top:"4%",minWidth:"28%",flexDirection:"column",alignItems:"stretch",gap:".25em"});
+    chip.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><span class="sp">${NAME[S]}</span><span style="font-size:.85em">${Math.round(hp)} / ${MAX[S]} ▾</span></div><div class="hp" style="position:static"><div class="bar"><span style="width:${hp/MAX[S]*100}%"></span></div></div>`;
+    const m=el("div","menu","",{right:"2%",top:"22%"});
+    for(const s of ["TRex","Raptor"]){const it=el("div",s===S?"cur":"",NAME[s]);it.onclick=(e)=>{e.stopPropagation();if(s!==S){S=s;hp=MAX[S];latched=false;toast("Respawning as "+NAME[s]);}render();};m.appendChild(it);}
+    const sh=el("div","extra","Swap shoulder");sh.onclick=(e)=>{e.stopPropagation();m.classList.remove("open");toast("Camera: other shoulder");};m.appendChild(sh);
+    chip.onclick=(e)=>{e.stopPropagation();m.classList.toggle("open");};
+    hud.appendChild(chip);hud.appendChild(m);
+    stamina(hud,{right:"2%",top:"22%",width:"28%"});
+    abtn(hud,acts[0],{right:"5%",bottom:"10%",width:"14%",aspectRatio:"1"},true);
+    const ab=acts.find(a=>a.k==="ram"||a.k==="pounce");
+    abtn(hud,ab,{right:"21%",bottom:"12%",width:"10%",aspectRatio:"1"});
+    abtn(hud,acts[3],{right:"8%",bottom:"42%",width:"9%",aspectRatio:"1"});
+    hud.appendChild(el("div","",`<div style="position:absolute;left:5%;bottom:48%;font-size:.75em;color:#fff;text-shadow:0 1px 2px #000">push stick to the edge = RUN</div>`));
+  }
+  document.querySelectorAll(".menu").forEach(m=>m.onclick=e=>e.stopPropagation());
+  renderSide();
+}
+document.addEventListener("click",()=>document.querySelectorAll(".menu.open").forEach(m=>m.classList.remove("open")));
+const SIDE={
+A:`<h2>A · Stack + thumb arc <span class="rec">recommended</span></h2>
+<p><b>Top-right:</b> species dropdown pill, health bar right under it (27% of the width). While latched, the stamina bar appears under health.</p>
+<p><b>Buttons:</b> a big BITE under the right thumb with RUN, RAM / POUNCE and JUMP / LEAP in an arc around it. That's how most mobile action games lay out their buttons.</p>
+<h3>Optimises for</h3><ul><li>Bite is always under the thumb; abilities are one short reach away.</li><li>All status (who you are, health, stamina) sits in one corner.</li></ul>
+<h3>Trades off</h3><ul><li>The arc covers more of the bottom-right view.</li><li>The camera-shoulder swap moves into the dropdown (it no longer has its own button).</li></ul>`,
+B:`<h2>B · Row + button bar</h2>
+<p><b>Top-right:</b> health bar and dropdown side by side in one row, stamina under health while latched.</p>
+<p><b>Buttons:</b> one straight row of rounded squares along the bottom-right, BITE last (nearest the thumb).</p>
+<h3>Optimises for</h3><ul><li>Lowest screen cover (one strip at the bottom, one at the top).</li><li>Easy to add buttons later (mecha skills) by extending the row.</li></ul>
+<h3>Trades off</h3><ul><li>Buttons far from the thumb (the left end) are a stretch on phones.</li></ul>`,
+C:`<h2>C · Chip + two buttons</h2>
+<p><b>Top-right:</b> one compact chip with species, health number and health bar; tapping it opens the species list and the shoulder swap.</p>
+<p><b>Buttons:</b> only BITE, the species ability (RAM / POUNCE) and JUMP / LEAP. RUN becomes automatic when the stick is pushed to the edge.</p>
+<h3>Optimises for</h3><ul><li>The cleanest screen.</li></ul>
+<h3>Trades off</h3><ul><li><b>Changes how sprint works</b> (no RUN button; new stick rule), a gameplay change, not just layout.</li><li>Little room for the mecha skills that come later.</li></ul>`
+};
+function renderSide(){document.getElementById("side").innerHTML=SIDE[V]+
+`<p class="note">Same in all three:</p><ul class="note">
+<li>The hunger / thirst bars are gone (switched off in Arena scope 1.0).</li>
+<li>The class card stays hidden.</li>
+<li>The buttons are this game's own, replacing Roblox's default ContextAction buttons (Bite, Run, Ram, Pounce, Shoulder).</li>
+<li>Roblox's own jump button is hidden. LEAP replaces it for the raptor, and JUMP for the T-Rex (today the T-Rex has Roblox's default jump).</li>
+<li>On PC the keys stay as they are (click, Shift, E, F, Space), and the same top-right status is used.</li></ul>
+<p class="note">Health colours, the stamina bar, FredokaOne and the yellow selection come from the current HUD. The numbers are the live values (T-Rex 200, Raptor 60).</p>`;}
+document.querySelectorAll(".btn[data-v]").forEach(b=>b.onclick=()=>{V=b.dataset.v;render();});
+document.getElementById("latch").onclick=()=>{latched=!latched;render();};
+document.getElementById("hit").onclick=()=>{hp=Math.max(0,hp-MAX[S]*0.18);if(hp===0)hp=MAX[S];render();};
+render();
+</script>
+</body>
+</html>
