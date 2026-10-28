@@ -1,4 +1,4 @@
--- PounceServer v1.3 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.4 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -40,6 +40,13 @@
 -- v1.3: killing blow (for KillRegenServer 1.0). When a landing or tick hit takes a target's DummyHealth from above 0
 --   to 0, the target gets KilledBy (raptor character name = player name), KilledByUserId, KilledWith = "pounce" and,
 --   last, KilledAt (server time). Damage is unchanged.
+-- v1.4: claim distances scale with the raptor (user: "its not pouncing consistently ... other wise it dismounts me").
+--   RaptorScale 1.0 (2x raptors) doubled the body and the lunge (PounceDistance 40 -> 140 studs/s) but CLAIM_TOLERANCE
+--   / OFFSET_MAX stayed at scale-1 values: a tail contact on a still target measured 17.8 studs, a target running
+--   at 33.8 studs/s gave 24.1 (behind) / 26.8 (head-on) -> "far" -> PounceTest let go ("rejected") 0.6 s later.
+--   Now "far" uses CLAIM_TOLERANCE x the raptor's Model:GetScale() and "badOffset" uses OFFSET_MAX x the same factor
+--   (factor never below 1). Script attribute PounceScaleClaimEnabled (default true; false = the 1.3 constants).
+--   Diagnostics: script PounceServerVersion; raptor PounceClaimTolerance (studs used for the last claim).
 -- Settings (raptor attributes): PounceEnabled (default false), PounceStaminaCost 15, PounceCooldown 3,
 --   PounceClaimWindow 0.9, PounceSizeRatio 1.5, PounceLandDamage 8, PounceTickDamage 4, PounceTickInterval 0.5.
 -- Diagnostics (raptor attributes): PounceServerResult, PounceClaimResult, PounceCount, PounceLatchCount,
@@ -56,6 +63,15 @@ local CLAIM_TOLERANCE = 24  -- studs between the claimed part and the raptor bod
                             -- late and targets in rest pose; 14 rejected a latch on a walking T-Rex at 15.1)
 local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's centre beyond its half size
 local MAX_LATCH = 30        -- safety: seconds a latch may last
+
+script:SetAttribute("PounceServerVersion", "1.4")
+if script:GetAttribute("PounceScaleClaimEnabled") == nil then script:SetAttribute("PounceScaleClaimEnabled", true) end -- v1.4
+
+-- v1.4: claim distances grow with the raptor's model scale (RaptorScale / growth); 1 when off or smaller
+local function claimScale(char)
+	if script:GetAttribute("PounceScaleClaimEnabled") ~= true then return 1 end
+	return math.max(1, char:GetScale())
+end
 
 local function remote(name)
 	local r = ReplicatedStorage:FindFirstChild(name)
@@ -216,10 +232,12 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 		else
 			local hrp = char:FindFirstChild("HumanoidRootPart")
 			local dist = hrp and (closestPoint(part, hrp.Position) - hrp.Position).Magnitude or math.huge
+			local k = claimScale(char) -- v1.4
 			char:SetAttribute("PounceClaimDist", math.floor(dist * 10 + 0.5) / 10)
-			if dist > CLAIM_TOLERANCE then
+			char:SetAttribute("PounceClaimTolerance", math.floor(CLAIM_TOLERANCE * k * 10 + 0.5) / 10)
+			if dist > CLAIM_TOLERANCE * k then
 				result = "far"
-			elseif offset.Position.Magnitude > part.Size.Magnitude / 2 + OFFSET_MAX then
+			elseif offset.Position.Magnitude > part.Size.Magnitude / 2 + OFFSET_MAX * k then
 				result = "badOffset"
 			elseif not alive(char) then
 				result = "dead"

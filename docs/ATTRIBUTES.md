@@ -1212,6 +1212,18 @@ stamina (Kepu). The Thrusters part is on the dino only while it is in a slot (Ke
 
 T-Rex run 60 -> 39; maxed Sprint Legs (x2.6) 101; maxed + Thrusters boost (x1.75) 177 studs/s.
 
+## Pounce claim scale (PounceServer 1.4)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| PounceScaleClaimEnabled | script PounceServer | true | "far" limit = 24 × the raptor's Model:GetScale() and offset margin = 8 × the same (never below × 1); false = 24 / 8 as in 1.3 |
+| PounceServerVersion | script PounceServer | — | "1.4" |
+| PounceClaimTolerance | raptor | — | diagnostic: studs the last claim was checked against (48 at RaptorScale 2) |
+
+Cause: RaptorScale 1.0 doubled the raptor and its lunge (140 studs/s) but not the claim limit. Play-measured with a target
+running 33.8 studs/s: 1.3 rejected "far" at 24.1 (from behind, Tail5) and 26.8 (head-on, Head) → PounceTest let go
+("rejected"); 1.4 accepted 22.7 and 26.6 and held the pin.
+
 ## T-Rex step rate (TRexModelData 1.23)
 
 | Attribute (StarterCharacter, T-Rex) | Value | Meaning |
