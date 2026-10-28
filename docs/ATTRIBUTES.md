@@ -1137,6 +1137,38 @@ Pure modules, no attributes. `Territory.inside(species, x, z)`: TRex x <= -40; R
 300 studs from the spawn (88, 904); other species anywhere. `Territory.home` mirrors a marker across x = 0 when it is in
 the wrong half. BotRoam 1.1 takes `opts.inside` so roaming spots and paths stay in the zone.
 
+## Bot territories (BotServer 1.12)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| BotTerritoryEnabled | script BotServer | true | false = v1.11 (bots go anywhere) |
+| BotTerritoryState | script BotServer | — | diagnostic: "on" / "off" |
+| BotBorderDrops | script BotServer and bot | 0 | chases dropped because the player left the bot's zone |
+| BotTerritory | bot | — | diagnostic: "TRex" / "Raptor" (zone used), "none" while off |
+| BotState "border" | bot | — | the bot just dropped a chase at its border |
+
+`ROAM_BORDER_MARGIN` (15, code constant): roam spots and paths stay at least 15 studs inside the zone edge.
+`BotFightEnabled` is false in Mecha (place attribute + BotServer.meta.json).
+
+## Bigger raptors (RaptorScale 1.0)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| RaptorScaleEnabled | script RaptorScale | true | false = new raptors keep scale 1 (already scaled ones stay) |
+| RaptorScale | script RaptorScale | 2 | size factor for every raptor (player and bot) |
+| RaptorScaleVersion | script RaptorScale | "1.0" | diagnostic |
+| RaptorScaleCount | script RaptorScale | 0 | diagnostic: models scaled since start |
+| RaptorScaleApplied | raptor model | — | diagnostic: factor applied (set once; blocks a second scale) |
+| RaptorScaleLift | raptor model | — | diagnostic: studs lifted to stand on the ground (0.1 steps) |
+
+Multiplied by the factor: the GrowthCurve distance keys the raptor has (BiteReachBack, BiteLungeDist, PounceDistance,
+PounceReach, PounceLatchStandoff, EatRange, EatHeight, CameraStartZoom, ShoulderCamDistance; missing keys use GrowthServer's
+FALLBACK, keys with neither are left alone). Health, speeds and damage are unchanged.
+
+## Arena scope (ArenaScope 1.3)
+- Expects `RaptorScale` on. Script `ArenaScope` `ArenaScope_BotFight` = "off" (BotServer `BotFightEnabled` false) /
+  "mismatch" (counted in `ArenaScopeMismatches`).
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):

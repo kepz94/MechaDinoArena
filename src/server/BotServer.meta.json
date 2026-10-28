@@ -1,5 +1,6 @@
 {
 	"attributes": {
-		"BotHidingEnabled": false
+		"BotHidingEnabled": false,
+		"BotFightEnabled": false
 	}
 }

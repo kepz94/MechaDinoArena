@@ -1,4 +1,4 @@
--- BotServer v1.11 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.12 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -245,12 +245,28 @@
 -- v1.11 (Mecha Dino Arena scope, plan docs/plans/ARENASCOPE_v1.0.md; Kepu: ambush grass + creep off, "its not a survival
 --   game anymore"): script attribute BotHidingEnabled (default true = v1.10). false -> every player gets Hidden = false,
 --   HiddenReason "off", CoverHint false; neither the v1.7 grass rule nor the legacy bush rule runs.
+-- v1.12 (Mecha Dino Arena territories, MDA-19, plan docs/plans/TERRITORIES_v1.0.md Task 3; Kepu: "turn off bots fighting
+--   against each other and being in the same areas lets do territories basically so youre only running into t-rexes in
+--   one area and only running into raptors in another"; layout A, a chasing bot stops at the border): script attribute
+--   BotTerritoryEnabled (default true; false = v1.11). Zones: ServerStorage.DinoArcade.Territory 1.0 (T-Rex: the left
+--   half; raptors: the right half; nobody within 300 studs of the spawn). While on:
+--     home    - a marker bot whose marker is outside its species' zone stands at Territory.home (the marker mirrored
+--               across x = 0) on dry ground, else on the nearest dry ground inside (rings of 20 studs, up to 400);
+--     wander  - wander points outside the zone are not used (the home is the fallback);
+--     roam    - roamOpts(g).inside keeps every roam group's spots and paths inside its species' zone, at least
+--               ROAM_BORDER_MARGIN (15) studs from its edge (a pack spawns on a 6-stud ring) (BotRoam 1.1);
+--     chase   - a player is only picked while inside the bot's zone; a chased player who leaves it is dropped
+--               (BotState "border", bot BotBorderDrops, script BotBorderDrops) and the bot goes back to wandering;
+--     packs   - a pack's grudge on a player outside the zone is dropped; an avoid run never picks a point outside
+--               (none inside -> the home).
+--   Bot fights: BotFightEnabled is false in Mecha (place attribute + BotServer.meta.json); the code is unchanged.
+--   Diagnostics: bot BotTerritory (zone name, "none" while off); script BotTerritoryState ("on" / "off").
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.11"
+local VERSION = "1.12"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -302,6 +318,8 @@ DEFAULTS.BotRegenEnabled = true -- v1.9
 DEFAULTS.BotDefenseEnabled = true -- v1.10
 DEFAULTS.BotHidingEnabled = true -- v1.11
 local BotHunt = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("BotHunt")) -- v1.9
+DEFAULTS.BotTerritoryEnabled = true -- v1.12
+local Territory = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("Territory")) -- v1.12
 local BOT_AVOID_MIN_STAGE = 2
 local BOT_PLAYER_HIT_CAP = 0.4
 local SPECIES = {
@@ -642,6 +660,41 @@ local function despawn(b)
 	end)
 end
 
+-- v1.12: territories -------------------------------------------------------------------------------------------------
+local function territoryOn() return get("BotTerritoryEnabled") ~= false end
+local function inZone(species, p) return not territoryOn() or Territory.inside(species, p.X, p.Z) end
+-- where a marker bot stands: its marker inside its zone, else the mirror, else the nearest dry ground inside
+local function territoryBase(species, base)
+	local h = Territory.home(species, base)
+	if h == base then return base end
+	if h then
+		local hit = groundHit(h.X, h.Z)
+		if hit and not isWater(hit.Position) then return hit.Position end
+	end
+	local c = h or base
+	for r = 20, 400, 20 do
+		for k = 0, 11 do
+			local a = k * math.pi / 6
+			local x, z = c.X + math.cos(a) * r, c.Z + math.sin(a) * r
+			if Territory.inside(species, x, z) and math.abs(x) <= wanderLimit and math.abs(z) <= wanderLimit then
+				local hit = groundHit(x, z)
+				if hit and not isWater(hit.Position) then return hit.Position end
+			end
+		end
+	end
+	return base
+end
+script:SetAttribute("BotTerritoryState", territoryOn() and "on" or "off")
+script:GetAttributeChangedSignal("BotTerritoryEnabled"):Connect(function()
+	script:SetAttribute("BotTerritoryState", territoryOn() and "on" or "off")
+end)
+local function borderDrop(b)
+	b.model:SetAttribute("BotBorderDrops", (b.model:GetAttribute("BotBorderDrops") or 0) + 1)
+	script:SetAttribute("BotBorderDrops", (script:GetAttribute("BotBorderDrops") or 0) + 1)
+	b.model:SetAttribute("BotState", "border")
+	if b.shown then b.shown.BotState = "border" end
+end
+
 function spawnBot(marker, pack, slot) -- v1.4: + pack, slot (nil: v1.3)
 	local species = marker:GetAttribute("Species")
 	local template = templates[species]
@@ -676,6 +729,8 @@ function spawnBot(marker, pack, slot) -- v1.4: + pack, slot (nil: v1.3)
 	-- stand at the marker, random facing
 	local yaw = math.rad(math.random(0, 359))
 	local base = marker.Position - Vector3.new(0, marker.Size.Y / 2, 0)
+	if territoryOn() and marker:GetAttribute("BotRoam") ~= true then base = territoryBase(species, base) end -- v1.12
+	model:SetAttribute("BotTerritory", territoryOn() and Territory.ZONES[species] and species or "none") -- v1.12
 	local home = flat(base) -- v1.4: a pack's home is its marker
 	if pack and slot then -- v1.4: members stand on a ring around the marker
 		local a = (slot - 1) * 2 * math.pi / PACK_SIZE
@@ -746,7 +801,7 @@ local function randomGoal(b)
 		local a = math.random() * 2 * math.pi
 		local d = math.sqrt(math.random()) * r
 		local p = b.home + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)
-		if math.abs(p.X) <= wanderLimit and math.abs(p.Z) <= wanderLimit then return p end
+		if math.abs(p.X) <= wanderLimit and math.abs(p.Z) <= wanderLimit and inZone(b.species, p) then return p end -- v1.12: + zone
 	end
 	return b.home
 end
@@ -1202,6 +1257,7 @@ local function packStep(b, now)
 	local pk = b.pack
 	if pk.grudge then
 		local gChar, _, gHrp = aliveChar(pk.grudge)
+		if gChar and not inZone(b.species, gHrp.Position) then gChar = nil end -- v1.12: not over the border
 		if gChar then
 			show(b, "BotAvoiding", "")
 			return flankStep(b, pk.grudge, gChar, gHrp, now)
@@ -1222,8 +1278,9 @@ local function packStep(b, now)
 		local goal = clampLimit(flat(hrp.Position) + dir * AVOID_FLEE)
 		if avoidsWater(b) then goal = dryLine(hrp.Position, goal) end
 		local score = flat(goal - rexPos).Magnitude
-		if score > bestScore + 0.5 then best, bestScore = goal, score end
+		if score > bestScore + 0.5 and inZone(b.species, goal) then best, bestScore = goal, score end -- v1.12: + zone
 	end
+	best = best or b.home -- v1.12
 	b.goal, b.waitUntil, b.target = nil, nil, nil
 	show(b, "BotTarget", "")
 	hum.WalkSpeed = model:GetAttribute("MoveRunSpeed") or 28
@@ -1681,6 +1738,9 @@ local function step(b)
 		local char, _, thrp = aliveChar(target)
 		if not char or flat(thrp.Position - hrp.Position).Magnitude > get("BotLoseRange") then
 			target = nil
+		elseif not inZone(b.species, thrp.Position) then -- v1.12: stop at the border
+			target = nil
+			borderDrop(b)
 		elseif b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char) then -- v1.4: packs leave a T-Rex alone; v1.6: not a Hatchling one
 			target = nil
 		elseif char:GetAttribute("Hidden") == true then
@@ -1700,7 +1760,7 @@ local function step(b)
 			if char and char:GetAttribute("Hidden") ~= true
 				and not (b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char)) then -- v1.4; v1.6: a Hatchling T-Rex may be hunted
 				local d = flat(thrp.Position - hrp.Position).Magnitude
-				if d <= bestD then best, bestD = player, d end
+				if d <= bestD and inZone(b.species, thrp.Position) then best, bestD = player, d end -- v1.12: + zone
 			end
 		end
 		target = best
@@ -2067,7 +2127,18 @@ local function playerPositions()
 	end
 	return t
 end
-local function roamOpts() return {avoid = roamAvoid, limit = wanderLimit} end
+local ROAM_BORDER_MARGIN = 15 -- v1.12
+local function roamOpts(g) -- v1.12: + g (the group's species zone)
+	local o = {avoid = roamAvoid, limit = wanderLimit}
+	if g and territoryOn() and Territory.ZONES[g.species] then
+		local sp, m = g.species, ROAM_BORDER_MARGIN -- spots stay ROAM_BORDER_MARGIN inside (a pack spawns on a ring)
+		o.inside = function(x, z)
+			return Territory.inside(sp, x, z) and Territory.inside(sp, x + m, z) and Territory.inside(sp, x - m, z)
+				and Territory.inside(sp, x, z + m) and Territory.inside(sp, x, z - m)
+		end
+	end
+	return o
+end
 local function roamSpotText(p) return ("%d, %d"):format(math.floor(p.X + 0.5), math.floor(p.Z + 0.5)) end
 local function placeMarker(g, p) g.marker.Position = p + Vector3.new(0, g.marker.Size.Y / 2, 0) end
 local function setRoamSpot(g, p)
@@ -2097,7 +2168,7 @@ local function startStay(g, now)
 	g.stayUntil = now + roamRng:NextNumber(ROAM_STAY[1], ROAM_STAY[2])
 end
 local function spawnGroup(g)
-	local spot = BotRoam.respawnSpot(roamRng, roamSample, playerPositions(), roamOpts())
+	local spot = BotRoam.respawnSpot(roamRng, roamSample, playerPositions(), roamOpts(g))
 	if not spot then g.state = "noSpot" return end
 	setRoamSpot(g, spot)
 	if g.size > 0 then
@@ -2128,7 +2199,7 @@ roamRespawn = function(b)
 			end
 			if not near then at = g.spot end
 		end
-		if not at then at = BotRoam.respawnSpot(roamRng, roamSample, players, roamOpts()) end
+		if not at then at = BotRoam.respawnSpot(roamRng, roamSample, players, roamOpts(g)) end
 		if not at then return end
 		if g.size <= 1 then
 			setRoamSpot(g, at)
@@ -2238,7 +2309,7 @@ local function roamTick()
 			elseif g.state == "stay" then
 				if now >= g.stayUntil then
 					bump("BotRoamPicks")
-					local spot = BotRoam.pickSpot(roamRng, lead.hrp.Position, roamSample, roamOpts())
+					local spot = BotRoam.pickSpot(roamRng, lead.hrp.Position, roamSample, roamOpts(g))
 					if spot then
 						setRoamSpot(g, spot)
 						g.state = "travel"
@@ -2257,7 +2328,7 @@ local function roamTick()
 					g.lastPos, g.lastMoveAt = lead.hrp.Position, now
 				elseif now - g.lastMoveAt >= ROAM_STUCK_TIME then
 					bump("BotRoamStuck")
-					local spot = BotRoam.pickSpot(roamRng, lead.hrp.Position, roamSample, roamOpts())
+					local spot = BotRoam.pickSpot(roamRng, lead.hrp.Position, roamSample, roamOpts(g))
 					g.lastPos, g.lastMoveAt = lead.hrp.Position, now
 					if spot then setRoamSpot(g, spot) else startStay(g, now) end
 				end

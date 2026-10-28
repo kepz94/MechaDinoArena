@@ -1,4 +1,4 @@
--- ArenaScope v1.2 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.3 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -9,10 +9,13 @@
 --   (replaced by ArenaStatus 1.0); ArenaStatus, ArenaTouch and ArenaRules expected on.
 -- v1.2 (skill trees, MDA-15, plan docs/plans/SKILLTREES_v1.0.md Task 5): SkillServer, SkillEffects and SkillScreen
 --   expected on (ClassCard stays off).
+-- v1.3 (territories + bigger raptors, MDA-21, plan docs/plans/TERRITORIES_v1.0.md Task 5): RaptorScale expected on; bot
+--   fights (BotServer 1.9 BotFightEnabled) reported as ArenaScope_BotFight ("off" when the attribute is false, else
+--   "mismatch").
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 -- {container, name, expected Enabled}
 local SCOPE = {
@@ -35,6 +38,8 @@ local SCOPE = {
 	{SCS, "ArenaStatus", true}, {SCS, "ArenaTouch", true}, {SSS, "ArenaRules", true},
 	-- v1.2: skill trees
 	{SSS, "SkillServer", true}, {SSS, "SkillEffects", true}, {SCS, "SkillScreen", true},
+	-- v1.3: bigger raptors
+	{SSS, "RaptorScale", true},
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)
@@ -56,6 +61,12 @@ if bot and bot:GetAttribute("BotHidingEnabled") == false then
 	script:SetAttribute("ArenaScope_BotHiding", "off")
 else
 	script:SetAttribute("ArenaScope_BotHiding", "mismatch")
+	bad += 1
+end
+if bot and bot:GetAttribute("BotFightEnabled") == false then -- v1.3
+	script:SetAttribute("ArenaScope_BotFight", "off")
+else
+	script:SetAttribute("ArenaScope_BotFight", "mismatch")
 	bad += 1
 end
 script:SetAttribute("ArenaScopeMismatches", bad)
