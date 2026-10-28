@@ -35,6 +35,13 @@ Kepu: "We need to do the leveling up system thingy. Each area should get differe
 | Engineering | ⚙ Traps | Button: drop mines; a slowing net trap; final: an EMP mine that shuts off enemy mech skills |
 | Engineering | ⚙ Barricade | Button: drop a wall; bigger, tougher; final: a dome the squad can stand inside |
 
+**Points (Kepu, 2026-10-28):**
+- Kills give XP; each level-up gives 1 skill point (no body growth).
+- Cap around 60 skill points.
+- Free respec any time.
+- On death the player keeps everything (points, spent upgrades, XP).
+- Builds are saved (DataStore).
+
 **First piece to build (Kepu):** points + the tree screen (kills → skill points, saved builds, the screen to spend them), starting with the passive paths.
 
 Numbers (damage, cooldowns, points per upgrade) are not set yet. They come in the build plan.
