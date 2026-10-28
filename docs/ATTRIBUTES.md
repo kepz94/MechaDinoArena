@@ -950,6 +950,18 @@ Conditions: flee = DummyHealth / DummyMaxHealth < 0.3 and a bot that may attack 
 3 s with no bite started, or 20 s chasing with no bite landing (skip that animal 15 s). A bitten pack member's pack gets a
 grudge on the biter for 20 s (fights it; nearestRex does not flee from it).
 
+## Stat sheet (StatSheet 1.0, MDA-1, Mecha Dino Arena)
+Pure module with no attributes of its own. StatServer 1.0 (MDA-2) writes the character attributes it computes.
+- Stats: Health, Attack, Defense, Speed, Support. Stamina is not a stat (StaminaPounceOnly: running never drains).
+- Natural build types: T-Rex = Bulky (start 9/7/7/4/1), Raptor = Roamer (start 3/4/3/9/1).
+- Per added point (placeholders until the stat trees):
+  - Health: +15 MaxHealth.
+  - Attack: BiteDamage +2, PounceLandDamage +2, PounceTickDamage +1.
+  - Speed: MoveWalkSpeed / MoveRunSpeed / MoveCreepSpeed +10% of the species' own value.
+  - Defense: StatDamageTakenMul −0.05.
+  - Support: none.
+- Cap: +10 added per stat.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
