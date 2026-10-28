@@ -1089,6 +1089,24 @@ Remote: `ReplicatedStorage.SkillRequest` (RemoteEvent) — `("buy", pathId)` or 
 key `"u" .. UserId`, value `{v = 1, xp, steps}`; saved on change (≤ every 10 s, failed retried every 30 s), on leave
 and on server close.
 
+## Skill effects (SkillEffects 1.0)
+
+| Attribute | Where | Meaning |
+|---|---|---|
+| SkillEffectsEnabled | script | true; false = every effect off, bases written back |
+| SkillEffectsVersion | script | diagnostic |
+| StatAdded_Attack / _Defense / _Speed | player (written) | stat points from the paths; StatServer applies them |
+| SkillBase_BiteCooldown / _PounceCooldown / _RamCooldown / _JumpCooldown / _KillRegenFraction | character | values captured at spawn |
+| BiteCooldown, PounceCooldown, RamCooldown, JumpCooldown, KillRegenFraction | character (written) | base × skill multiplier |
+| SkillEffectsState | character | "ready" / "off" |
+| SkillRegenActive | character | true while regenerating |
+| SkillLastHeal | character | "regen +2" / "lifesteal +4" |
+| SkillShield, SkillShieldUntil | character | overheal shield HP and its end time (server time) |
+| SkillStunTrimmed | character | "immune" / "trimmed" / "tossTrimmed" |
+| SkillBleedUntil, SkillBleedBy, SkillCrushedAt | bot | bleed end time, who made it bleed, last crushing hit |
+
+A bleed kill stamps the bot like BiteServer: `KilledBy`, `KilledByUserId`, `KilledWith` = "bleed", then `KilledAt`.
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):
