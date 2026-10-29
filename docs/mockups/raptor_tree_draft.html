@@ -1,0 +1,81 @@
+<title>Raptor Skill Tree</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one column per area (wraps on phones), each path a card with its 4 steps, tags for shared / raptor-only,
+   live / new, button / passive. Single dark look matching the in-game SKILLS screen. */
+:root{
+  color-scheme: dark;
+  --page:#0e0f14; --panel:rgb(20,20,26); --panel2:rgb(32,32,41); --line:rgba(255,255,255,.16);
+  --text:#eef0f4; --muted:#9ba1ae; --yellow:rgb(255,200,50); --ytext:rgb(30,26,10);
+  --health:rgb(95,209,106); --attack:rgb(240,90,79); --defense:rgb(90,160,255); --speed:rgb(255,211,77); --eng:rgb(255,155,46);
+  --display:"Fredoka One","Arial Rounded MT Bold",system-ui,sans-serif; --body:Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--body);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:400;margin:0 0 4px;font-size:24px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 14px;max-width:75ch;line-height:1.5}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:start}
+@media (max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.grid{grid-template-columns:minmax(0,1fr)}}
+.area{display:flex;flex-direction:column;gap:10px;min-width:0}
+.area h2{font-family:var(--display);font-weight:400;font-size:17px;margin:0;display:flex;align-items:center;gap:8px}
+.dot{width:12px;height:12px;border-radius:50%}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.card.shared{opacity:.72}
+.card h3{font-family:var(--display);font-weight:400;font-size:15px;margin:0 0 6px}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.tag{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;border-radius:5px;padding:1px 6px;border:1px solid var(--line);color:var(--muted)}
+.tag.new{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.tag.live{border-color:var(--health);color:var(--health)}
+.tag.btn{border-color:var(--eng);color:var(--eng)}
+ol{margin:0;padding-left:22px;font-size:12.5px;line-height:1.45}
+ol li::marker{font-family:var(--display);color:var(--muted)}
+ol li:last-child::marker{content:"★  "}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:16px;max-width:900px}
+.note h3{font-family:var(--display);font-weight:400;margin:0 0 6px;font-size:16px}
+.note b{color:var(--yellow)}
+</style>
+
+<h1>Raptor skill tree (draft)</h1>
+<p class="sub">This is your raptor mecha pick. The greyed cards are the shared stat paths that every dino has. The bright cards belong to the raptor only. Step texts on the <b>new</b> parts are first drafts for you to edit; numbers follow the 35% rule and get tuned when each part is built. Thrusters is live; Energy Shield and Grapple Hook keep their existing step texts.</p>
+<div class="legend"><span class="tag new">new</span><span class="tag live">live</span><span class="tag btn">button (loadout slot)</span><span class="tag">passive</span><span class="tag">shared stat</span></div>
+
+<div class="grid">
+  <section class="area"><h2><span class="dot" style="background:var(--health)"></span>Health</h2>
+    <div class="card shared"><h3>Regeneration</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>Heal over time after 6 s without damage</li><li>Starts sooner, heals more</li><li>Starts sooner again, heals more</li><li>Kill heal doubled</li></ol></div>
+    <div class="card"><h3>Adrenaline Injector</h3><div class="tags"><span class="tag new">new</span><span class="tag btn">button</span></div><ol><li>Heal 20% of max health over 3 s and run 1.3× faster while it lasts</li><li>Heal 27%</li><li>Recharges 26% faster</li><li>Also ends a stun at once</li></ol></div>
+    <div class="card shared"><h3>Lifesteal</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>5% of damage dealt heals you</li><li>10%</li><li>15%</li><li>Overheal becomes a shield</li></ol></div>
+  </section>
+
+  <section class="area"><h2><span class="dot" style="background:var(--attack)"></span>Attack</h2>
+    <div class="card shared"><h3>Jaws</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>Main attack hits harder</li><li>Main attack recharges faster</li><li>Hits make the target bleed</li><li>Crushing hit stuns</li></ol></div>
+    <div class="card"><h3>Blade Claws</h3><div class="tags"><span class="tag new">new</span><span class="tag">passive</span></div><ol><li>Mech sickle claws: pounce landing hits 35% harder</li><li>Latch / pin bites tick 35% faster</li><li>Pounce hits make the target bleed</li><li>A pin kill gives back half your pounce stamina</li></ol></div>
+    <div class="card"><h3>Dart Launcher</h3><div class="tags"><span class="tag new">new</span><span class="tag btn">button</span></div><ol><li>Fire a dart straight ahead: the hit dino is slowed 30% for 3 s</li><li>Marked: the hit dino shows through tall grass for 6 s</li><li>Two darts per charge</li><li>Tranquilizer: slow 60%</li></ol></div>
+  </section>
+
+  <section class="area"><h2><span class="dot" style="background:var(--defense)"></span>Defense</h2>
+    <div class="card shared"><h3>Thick Hide</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>Take less damage</li><li>Less knockback</li><li>Shorter stuns</li><li>No stuns above 50% health</li></ol></div>
+    <div class="card"><h3>Cloak Field</h3><div class="tags"><span class="tag new">new</span><span class="tag btn">button</span></div><ol><li>Turn nearly invisible for 3 s (ends when you pounce)</li><li>Lasts 4 s</li><li>A pounce out of the cloak hits 35% harder</li><li>Standing still keeps you cloaked</li></ol></div>
+    <div class="card"><h3>Energy Shield</h3><div class="tags"><span class="tag btn">button</span><span class="tag">existing, not built</span></div><ol><li>A bubble that blocks damage for a few seconds</li><li>Stronger</li><li>Shorter cooldown</li><li>Bursts and knocks enemies back</li></ol></div>
+  </section>
+
+  <section class="area"><h2><span class="dot" style="background:var(--speed)"></span>Speed</h2>
+    <div class="card shared"><h3>Sprint Legs</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>Run faster</li><li>Run speed ×1.9</li><li>Pounce / leap recharge faster</li><li>Run speed ×2.6</li></ol></div>
+    <div class="card"><h3>Thrusters</h3><div class="tags"><span class="tag live">live</span><span class="tag btn">button</span></div><ol><li>Boost 1.75× run speed for 1 s</li><li>2 charges</li><li>Boost lasts 1.35 s</li><li>Rocket hop</li></ol></div>
+    <div class="card"><h3>Grapple Hook</h3><div class="tags"><span class="tag btn">button</span><span class="tag">existing, not built</span></div><ol><li>Pull yourself to a tree</li><li>Longer range</li><li>Faster pull</li><li>Hook an enemy and pull them in</li></ol></div>
+  </section>
+
+  <section class="area"><h2><span class="dot" style="background:var(--eng)"></span>Engineer</h2>
+    <div class="card"><h3>Pack Beacon</h3><div class="tags"><span class="tag new">new</span><span class="tag btn">button</span></div><ol><li>Mark every enemy within 60 studs for your squad for 5 s</li><li>81-stud radius</li><li>Marked enemies take 35% more damage from you</li><li>Marks last until they leave the radius</li></ol></div>
+    <div class="card"><h3>Decoy Hologram</h3><div class="tags"><span class="tag new">new</span><span class="tag btn">button</span></div><ol><li>A fake raptor runs ahead for 5 s; bots chase it</li><li>Lasts 6.75 s</li><li>Two decoys</li><li>The decoy bursts and stuns whoever is near it</li></ol></div>
+  </section>
+</div>
+
+<div class="note">
+  <h3>What this means for the T-Rex</h3>
+  The tank parts you set aside (<b>Med-Station, Back Turret, Shoulder Rocket, Armor Plating, Sentry, Traps, Barricade</b>) are the T-Rex's candidates, plus a T-Rex speed part to replace Thrusters. We plan those next.
+  <br><br>Today's loadout has 2 slots, and the raptor would have 8 button parts: Adrenaline, Dart, Cloak, Shield, Thrusters, Grapple, Beacon and Decoy. Choosing which 2 to bring is the build choice. Blade Claws is passive and needs no slot.
+</div>
