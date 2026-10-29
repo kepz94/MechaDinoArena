@@ -1,4 +1,4 @@
--- SkillTree v1.7 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.8 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -88,7 +88,7 @@
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.7"
+SkillTree.Version = "1.8"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -164,6 +164,9 @@ SkillTree.AREAS = {
 
 -- v1.7 (Kepu 2026-10-29: "adrenaline should be faster or a bigger health charge" -> "Both"): adrenHeal 0.25 at I,
 --   0.34 from II (was 0.20 / 0.27); adrenSpeedMul 1.4 (was 1.3). Cooldown and time unchanged. Step texts updated.
+-- v1.8 (Kepu 2026-10-29: thrusters "half a second longer" at max -> "star 1.85 s, lower steps 1.37 s"; "2x run
+--   speed"): while STRONG, dashTime 1.37 s (I / II; was 1.0) and 1.85 s from III (was 1.35; 1.85 / 1.37 = 1.35, the
+--   35% rule). Speed is SkillEffects 1.7 SkillDashSpeedMul 2. Step texts I / III.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -286,6 +289,8 @@ if SkillTree.STRONG then
 	P.legs.steps[4] = "Run speed x2.6"
 	P.thrusters.steps[1] = "Button: rocket boost for 1 s at 1.75x run speed (steer while boosting)" -- v1.4 (1.3: 1.5 s at 3x)
 	P.thrusters.steps[3] = "Longer boost: 1.35 s" -- v1.4 (1.3: 2.1 s)
+	P.thrusters.steps[1] = "Button: rocket boost for 1.37 s at 2x run speed (steer while boosting; in the air with no stick: straight up)" -- v1.8
+	P.thrusters.steps[3] = "Longer boost: 1.85 s" -- v1.8
 end
 
 -- level curve
@@ -448,8 +453,8 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 		if h >= 3 then e.stunMul = 0.70 end
 		e.speedPts = g >= 4 and 16 or g >= 2 and 9 or g >= 1 and 4 or 0
 		if g >= 3 then e.moveCdMul = 0.74 end
-		if t >= 1 then e.dashTime = 1.0 end -- v1.4 (1.3: 1.5)
-		if t >= 3 then e.dashTime = 1.35 end -- v1.4 (1.3: 2.1)
+		if t >= 1 then e.dashTime = 1.37 end -- v1.8: 1.37 (v1.4: 1.0; 1.3: 1.5)
+		if t >= 3 then e.dashTime = 1.85 end -- v1.8: 1.85 (v1.4: 1.35; 1.3: 2.1)
 	end
 	-- v1.5: Cloak Field
 	local c = s.cloak or 0

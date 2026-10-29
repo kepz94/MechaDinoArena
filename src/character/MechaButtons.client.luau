@@ -1,4 +1,4 @@
--- MechaButtons v1.5 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.6 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -75,12 +75,20 @@
 --   (EnergyShieldServer 1.0). A press fires the remote with the server time. Ready while <Prefix>Enabled is true,
 --   <Prefix>Until <= now and now >= <Prefix>ReadyAt (else 0.5); the dark fill is the cooldown left / <Prefix>Cooldown.
 --   Button names "ADRENALINE" / "SHIELD". Thrusters / Cloak unchanged.
+-- v1.6 (Kepu 2026-10-29: "if you jump and press the thruster it should boost you straight up unless you move the analog
+--   forward. It would allow for more creative gameplay to get out of sticky situations" -> "About 30 studs", "Any
+--   direction"): a Thrusters boost that starts in the air (Humanoid.FloorMaterial == Air) with no move input
+--   (MoveDirection flat length < 0.1) goes straight up instead: a LinearVelocity (Vector mode, world) of
+--   (0, MechaAirUpHeight / MechaAirUpTime, 0) for MechaAirUpTime s (script attributes, defaults 30 studs / 0.6 s), no
+--   steering, no star hop; at the end the vertical speed is set to 0 so the rise peaks there and gravity takes over. Any
+--   stick / key direction in the air gives the normal boost that way. Script attribute MechaAirUpEnabled (default
+--   true). Diagnostics: character MechaBoostMode ("ground" / "air" / "up"), MechaAirUpCount.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -92,6 +100,9 @@ local KEYS = {Enum.KeyCode.R, Enum.KeyCode.C, Enum.KeyCode.T, Enum.KeyCode.V} --
 local KEY_NAMES = {"R", "C", "T", "V"}
 local PULL_COLOR = Color3.fromRGB(255, 217, 168) -- v1.4
 if script:GetAttribute("MechaButtonsPullEnabled") == nil then script:SetAttribute("MechaButtonsPullEnabled", true) end -- v1.4
+for k, v in pairs({MechaAirUpEnabled = true, MechaAirUpHeight = 30, MechaAirUpTime = 0.6}) do -- v1.6
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 
 local char = script.Parent
 local player = Players.LocalPlayer
@@ -252,6 +263,22 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 	local dir = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
 	if t <= 0 or speed <= 0 or dir.Magnitude < 1e-3 then return end
 	dir = dir.Unit
+	-- v1.6: in the air with no move input -> straight up
+	local inAir = hum.FloorMaterial == Enum.Material.Air
+	local still = Vector3.new(hum.MoveDirection.X, 0, hum.MoveDirection.Z).Magnitude < 0.1
+	local up = false
+	if script:GetAttribute("MechaAirUpEnabled") ~= false and inAir and still then up = true end
+	local upH = math.max(0, tonumber(script:GetAttribute("MechaAirUpHeight")) or 30)
+	local upT = math.max(0.05, tonumber(script:GetAttribute("MechaAirUpTime")) or 0.6)
+	if up then
+		t = upT
+		char:SetAttribute("MechaBoostMode", "up")
+		char:SetAttribute("MechaAirUpCount", (char:GetAttribute("MechaAirUpCount") or 0) + 1)
+	elseif inAir then
+		char:SetAttribute("MechaBoostMode", "air")
+	else
+		char:SetAttribute("MechaBoostMode", "ground")
+	end
 	if boostConn then boostConn:Disconnect() end
 	local old = hrp:FindFirstChild("MechaDash")
 	if old then old:Destroy() end
@@ -268,9 +295,14 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 	lv.PrimaryTangentAxis = Vector3.xAxis
 	lv.SecondaryTangentAxis = Vector3.zAxis
 	lv.PlaneVelocity = Vector2.new(dir.X * speed, dir.Z * speed)
+	if up then -- v1.6: straight up, no sideways speed
+		lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
+		lv.VectorVelocity = Vector3.new(0, upH / upT, 0)
+		hum:ChangeState(Enum.HumanoidStateType.Freefall)
+	end
 	lv.MaxForce = math.huge
 	lv.Parent = hrp
-	if hop > 0 then
+	if hop > 0 and not up then -- v1.6: no star hop on the straight-up boost
 		hum:ChangeState(Enum.HumanoidStateType.Freefall)
 		local cur = hrp.AssemblyLinearVelocity
 		hrp.AssemblyLinearVelocity = Vector3.new(cur.X, math.sqrt(2 * workspace.Gravity * hop), cur.Z)
@@ -288,7 +320,7 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 		at:Destroy()
 		if hrp.Parent then
 			local cur = hrp.AssemblyLinearVelocity
-			hrp.AssemblyLinearVelocity = Vector3.new(0, cur.Y, 0)
+			hrp.AssemblyLinearVelocity = Vector3.new(0, up and math.min(cur.Y, 0) or cur.Y, 0) -- v1.6: the rise peaks here
 		end
 		if char.Parent then char:SetAttribute("MechaDashLocal", "idle") end
 	end
@@ -304,6 +336,7 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 			stop()
 			return
 		end
+		if up then return end -- v1.6: no steering on the straight-up boost
 		local md = Vector3.new(hum.MoveDirection.X, 0, hum.MoveDirection.Z)
 		if md.Magnitude > 0.1 then
 			dir = md.Unit

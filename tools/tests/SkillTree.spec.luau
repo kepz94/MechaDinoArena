@@ -1,4 +1,4 @@
--- SkillTree.spec v1.7 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.8 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 local ok, ST = pcall(function() return require(game.ServerStorage.DinoArcade.SkillTree) end)
 if not ok then return "FAIL require: " .. tostring(ST) end
@@ -9,7 +9,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.7") -- v1.7 (was 1.6)
+eq("Version", ST.Version, "1.8") -- v1.8 (was 1.7)
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 40) -- v1.5 (ADR-004)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 41)
@@ -176,7 +176,7 @@ eq("boost I", e({thrusters = 1}).dashTime, 1.5)
 eq("boost II", e({thrusters = 2}).dashTime, 1.5)
 eq("boost III", e({thrusters = 3}).dashTime, 2.0)
 eq("boost star", e({thrusters = 4}).dashTime, 2.0)
-eq("thrusters text I", ST.PATHS.thrusters.steps[1], "Button: rocket boost for 1 s at 1.75x run speed (steer while boosting)") -- v1.4 text
+eq("thrusters text I", ST.PATHS.thrusters.steps[1], "Button: rocket boost for 1.37 s at 2x run speed (steer while boosting; in the air with no stick: straight up)") -- v1.8 text
 eq("thrusters steps", #ST.PATHS.thrusters.steps, 4)
 eq("grapple text kept", ST.PATHS.grapple.steps[1], "Button: pull yourself to a tree")
 -- v1.3: the 35% rule (STRONG): every step >= 1.35x the step before (times / cooldowns / damage taken: <= 1 / 1.35)
@@ -208,9 +208,10 @@ eq("legs III pts", E("legs", 3).speedPts, 9); eq("legs star pts", E("legs", 4).s
 ok35("legs I run", 1, run(1)); ok35("legs II run", run(1), run(2)); ok35("legs star run", run(3), run(4))
 eq("legs III cd", E("legs", 3).moveCdMul, 0.74); ok35("legs III cd", 1, E("legs", 3).moveCdMul, true)
 ok35("thrusters II charges", E("thrusters", 1).dashCharges, E("thrusters", 2).dashCharges)
-eq("thrusters I time", E("thrusters", 1).dashTime, 1.0); eq("thrusters II time", E("thrusters", 2).dashTime, 1.0) -- v1.4
-eq("thrusters III time", E("thrusters", 3).dashTime, 1.35); ok35("thrusters III time", E("thrusters", 2).dashTime, E("thrusters", 3).dashTime)
-eq("thrusters star time", E("thrusters", 4).dashTime, 1.35)
+eq("thrusters I time", E("thrusters", 1).dashTime, 1.37); eq("thrusters II time", E("thrusters", 2).dashTime, 1.37) -- v1.8
+eq("thrusters III time", E("thrusters", 3).dashTime, 1.85); ok35("thrusters III time", E("thrusters", 2).dashTime, E("thrusters", 3).dashTime)
+eq("thrusters star time", E("thrusters", 4).dashTime, 1.85) -- v1.8
+eq("thrusters text III", ST.PATHS.thrusters.steps[3], "Longer boost: 1.85 s")
 eq("text legs star", ST.PATHS.legs.steps[4], "Run speed x2.6")
 eq("text jaws II", ST.PATHS.jaws.steps[2], "Main attack recharges 35% faster")
 local all3 = ST.effects({regen = 4, lifesteal = 4, jaws = 4, hide = 4, legs = 4, thrusters = 4})
@@ -282,7 +283,7 @@ eq("autoSlot cloak", lo4(ST.autoSlot({"thrusters", false, false, false}, both, "
 eq("TRex loadout drops raptor parts", lo4(ST.sanitizeLoadout({"thrusters", "cloak", false, false}, both, "TRex")), "false,false,false,false")
 
 -- v1.6: raptor batch 1 (Blade Claws, Adrenaline Injector, Energy Shield; plan docs/plans/RAPTOR_PARTS_B1_v1.0.md)
-eq("Version 1.6+", ST.Version, "1.7") -- v1.7
+eq("Version 1.6+", ST.Version, "1.8") -- v1.8
 for _, id in ipairs({"blade", "adrenaline", "shield"}) do eq(id .. " live", ST.PATHS[id].soon, false) end
 eq("blade passive", ST.BUTTONS.blade == true, false)
 local function R(id, n) return ST.effects({[id] = n}, "Raptor") end
