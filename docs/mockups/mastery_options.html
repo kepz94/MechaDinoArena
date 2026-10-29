@@ -1,0 +1,104 @@
+<title>Mastery Display</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: option strip; a SKILLS screen excerpt (top bar, 3 path columns, detail panel); notes. Single dark look that
+   matches the in-game skill screen. */
+:root{
+  color-scheme: dark;
+  --page:#0e0f14; --panel:rgb(20,20,26); --panel2:rgb(32,32,41); --line:rgba(255,255,255,.18);
+  --text:#eef0f4; --muted:#9ba1ae; --yellow:rgb(255,200,50); --ytext:rgb(30,26,10); --eng:rgb(255,155,46);
+  --defense:rgb(90,160,255); --gold:rgb(255,214,102);
+  --display:"Fredoka One","Arial Rounded MT Bold",system-ui,sans-serif; --body:Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--body);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:400;margin:0 0 4px;font-size:22px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:72ch;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.row .lab{font-family:var(--display);font-size:13px;color:var(--muted);width:90px}
+.row button{font-family:var(--display);font-size:14px;border:2px solid var(--line);background:var(--panel2);color:var(--text);padding:6px 12px;border-radius:999px;cursor:pointer}
+.row button.on{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.row button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.scroll{overflow-x:auto;max-width:100%}
+.screen{width:860px;background:linear-gradient(180deg,#2c3f5c,#1f2d42);border-radius:12px;padding:12px;font-family:var(--display)}
+.top{display:flex;align-items:center;gap:8px;height:34px}
+.title{font-size:22px}
+.lv{display:flex;align-items:center;gap:8px;height:30px;background:rgba(20,20,26,.9);border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:0 10px;font-size:15px}
+.lv .bar{width:90px;height:8px;border-radius:4px;background:#000}.lv .bar i{display:block;height:100%;width:60%;border-radius:4px;background:linear-gradient(90deg,var(--yellow),var(--eng))}
+.mchip{background:rgba(20,20,26,.9);border:2px solid var(--gold);color:var(--gold);border-radius:8px;padding:3px 9px;font-size:14px;white-space:nowrap}
+.pips{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--gold)}
+.pips i{width:12px;height:12px;transform:rotate(45deg);border:2px solid var(--gold);display:inline-block}
+.pips i.f{background:var(--gold)}
+.sp{flex:1}.pts{background:var(--yellow);color:var(--ytext);border-radius:8px;padding:4px 9px;font-size:14px}
+.btn{background:rgba(20,20,26,.9);border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 10px;font-size:14px}
+.body{display:grid;grid-template-columns:60px 1fr 220px;gap:8px;margin-top:8px}
+.rail{background:rgba(20,20,26,.9);border-radius:10px;display:flex;flex-direction:column;gap:6px;padding:6px;align-items:center;font-size:10px}
+.rail .a{width:46px;padding:6px 0;border-radius:8px;text-align:center}.rail .a.on{outline:2px solid var(--defense)}
+.cols{background:rgba(20,20,26,.9);border-radius:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px}
+.col{background:rgba(255,255,255,.03);border-radius:10px;display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:12px;position:relative}
+.col h4{margin:0;font-weight:400;font-size:13px;display:flex;align-items:center;gap:5px;height:18px}
+.crown{color:var(--gold);font-size:13px}
+.col.m{box-shadow:inset 0 0 0 2px rgba(255,214,102,.55)}
+.node{width:38px;height:38px;border-radius:50%;border:2px solid rgba(255,255,255,.35);display:grid;place-items:center;font-size:12px;color:#ccd}
+.node.star{border-radius:10px}
+.node.b{background:var(--defense);border-color:var(--defense);color:#fff}
+.node.next{border-color:#fff;color:#fff}
+.node.lock{opacity:.35;position:relative}
+.node.lock:after{content:"🔒";position:absolute;right:-12px;top:-6px;font-size:12px;opacity:1}
+.node.sel{box-shadow:0 0 0 3px var(--yellow)}
+.detail{background:rgba(20,20,26,.9);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;font-family:var(--body);font-size:12px}
+.detail h5{margin:0;font-family:var(--display);font-weight:400;font-size:16px;color:var(--defense)}
+.detail .why{color:var(--gold);font-size:12px;line-height:1.4}
+.detail .buy{margin-top:auto;border-radius:9px;padding:9px;text-align:center;font-family:var(--display);font-size:14px;background:#444;color:#999}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:14px;max-width:860px}
+.note h3{font-family:var(--display);font-weight:400;margin:0 0 6px;font-size:16px}
+.note b{color:var(--yellow)}
+</style>
+
+<h1>Mastery 3: how the SKILLS screen shows it</h1>
+<p class="sub">Example: a raptor who has already mastered Sprint Legs, Jaws and Thrusters (taken past step II) opens Defense and selects Cloak Field III. Cloak is a 4th line, so step III is locked. Switch options to compare.</p>
+<div class="row" role="group" aria-label="Option"><span class="lab">Option</span>
+  <button class="on" data-o="A">A · Mastery chip</button>
+  <button data-o="B">B · Mastery pips</button>
+  <button data-o="C">C · Buy button only</button>
+</div>
+<div class="scroll"><div class="screen" id="scr"></div></div>
+<div class="note" id="note"></div>
+<script>
+let o = "A";
+const NOTES = {
+ A:`<h3>A · Mastery chip</h3>
+  <ul>
+   <li>A gold <b>MASTERY 3/3</b> chip sits in the top bar next to the level.</li>
+   <li>Mastered lines get a gold crown and a gold outline in every area.</li>
+   <li>Steps III and ★ of any other line show a lock.</li>
+   <li>The buy button says why: "MASTERY FULL · RESPEC TO CHANGE".</li>
+  </ul>`,
+ B:`<h3>B · Mastery pips</h3>Three gold diamonds by the level (◆◆◆) instead of the chip. It's smaller and saves room on phones, but the word "mastery" only shows in the detail panel. Crowns and locks are the same as A.`,
+ C:`<h3>C · Buy button only</h3>Nothing new in the top bar, and no crowns. The lock and the explanation only appear when you select a locked step III or ★. This adds the least to the screen, but the limit is a surprise the first time you hit it.`
+};
+function node(label, cls){ return `<div class="node ${cls}">${label}</div>`; }
+function render(){
+  const chip = o==="A" ? `<span class="mchip">MASTERY 3/3</span>` : o==="B" ? `<span class="pips"><i class="f"></i><i class="f"></i><i class="f"></i></span>` : "";
+  const crown = o!=="C";
+  const lock = o!=="C" ? "lock" : "";
+  const col = (name, m, nodes)=>`<div class="col ${m&&crown?"m":""}"><h4>${m&&crown?'<span class="crown">♛</span>':""}${name}</h4>${nodes}</div>`;
+  const cloakNodes = node("★","star "+lock) + node("III",(o==="C"?"":lock)+" sel") + node("II","b") + node("I","b");
+  const hideNodes = node("★","star "+lock) + node("III",lock) + node("II","next") + node("I","b");
+  const shieldNodes = node("★","star "+lock) + node("III",lock) + node("II","") + node("I","next");
+  document.getElementById("scr").innerHTML = `
+   <div class="top"><span class="title">RAPTOR</span><span class="lv">LV 41<span class="bar"><i></i></span>220 / 430 XP</span>${chip}<span class="sp"></span><span class="pts">4 PTS</span><span class="btn">RESPEC</span><span class="btn">X</span></div>
+   <div class="body">
+    <div class="rail"><div class="a">Health</div><div class="a">Attack</div><div class="a on">Defense</div><div class="a">Speed</div><div class="a">Engineer</div></div>
+    <div class="cols">${col("Thick Hide",false,hideNodes)}${col("⚙ Cloak Field",false,cloakNodes)}${col("⚙ Energy Shield",false,shieldNodes)}</div>
+    <div class="detail"><h5>Cloak Field III</h5><div>Defense · step 3 of 4 · mecha button</div><div>A pounce out of the cloak hits 35% harder</div>
+     <div class="why">You have mastered 3 lines (Sprint Legs, Jaws, Thrusters). Only 3 lines can go past step II.</div>
+     <div class="buy">MASTERY FULL · RESPEC TO CHANGE</div></div>
+   </div>`;
+  document.getElementById("note").innerHTML = NOTES[o] + `<p style="margin:8px 0 0">All options: a line counts as mastered at step III. Respec is free and clears all masteries. Steps I and II stay open on every line.</p>`;
+}
+document.querySelectorAll("[data-o]").forEach(b=>b.addEventListener("click",()=>{o=b.dataset.o;document.querySelectorAll("[data-o]").forEach(x=>x.classList.toggle("on",x===b));render();}));
+render();
+</script>

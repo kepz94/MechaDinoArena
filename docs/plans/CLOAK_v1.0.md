@@ -59,6 +59,36 @@ MechaServer (Thrusters), PounceTest, JumpTest, BiteTest / BiteServer, RamTest / 
 - `canBuy(..., dino)` → "otherDino" for a path the dino doesn't own.
 - The T-Rex loses Thrusters, which is now raptor-only. Kepu: "for the t-rex he won't get something like the thrusters". A T-Rex record that holds Thrusters is refunded when it loads (sanitize).
 
+## Mastery 3 + additive bonuses (Kepu 2026-10-29 03:20–03:25)
+Kepu: "limiting the player to only be able to fully fill some lines", then "what do you think is the best middle ground". He took the recommended Mastery 3 and "Yes, add them". Mockup docs/mockups/mastery_options.html, option A "Mastery chip".
+
+**The rule (SkillTree 1.5):**
+- A line (any path, stat or mecha) is **mastered** when its step is ≥ 3. MASTERY_MAX = 3.
+- `canBuy(steps, id, points, dino)`: buying step 3 of a line that is not yet mastered while 3 lines are already mastered → "masteryFull". This is checked after "otherDino" / "soon" / "maxed" and before "noPoints".
+- `mastered(steps)` returns the list of mastered ids in PATH_ORDER. `masteryOk(steps)` is true when the count ≤ MASTERY_MAX.
+- Points stay at 60. Respec (free) clears all masteries.
+- Spec cases:
+  - The 4th line's step III → masteryFull.
+  - A 3rd line's step III → ok.
+  - The ★ of a mastered line → ok.
+  - Steps I / II of any line → unaffected.
+
+**Old saves (SkillServer 1.3 cleanRecord):** a record with more than 3 mastered lines has every line cut back to step II. The refunded points come back; the player picks again.
+
+**Same-hit bonuses add, not multiply:**
+- Bonus damage on one hit is 1 + the sum of its bonus fractions.
+- PounceServer 1.5 landing: 1 + (cloak 0.35 if CloakPounceArmed) + (blade bonus when Blade Claws ships) + (roar debuff − 1 when the target is debuffed).
+- Today's roar debuff is the only multiplier, so for it alone nothing changes.
+- Later parts on the same hit (Reactive Armor bite, Roar Amplifier) follow the same rule when they ship.
+- Cooldown multipliers (mainCdMul × moveCdMul) are not damage and are unchanged.
+
+**SKILLS screen (SkillScreen 1.3, option A):**
+- A gold chip "MASTERY n/3" in the top bar, after the level box: rgb(255, 214, 102) stroke and text, panel background.
+- Mastered lines get a gold ♛ before the column name and a gold 2 px inner outline at 0.45 transparency.
+- When 3 lines are mastered, steps III and ★ of the other lines show at 0.35 with a 🔒.
+- The detail panel shows the reason in gold: "You have mastered 3 lines (A, B, C). Only 3 lines can go past step II."
+- Buy button: "MASTERY FULL · RESPEC TO CHANGE" (not pressable).
+
 ## Cloak Field steps (35% rule)
 
 | Step | Text | Effect keys |
