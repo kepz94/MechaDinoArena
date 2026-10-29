@@ -1388,6 +1388,10 @@ FALLBACK, keys with neither are left alone). Health, speeds and damage are uncha
 - Expects `RaptorScale` on. Script `ArenaScope` `ArenaScope_BotFight` = "off" (BotServer `BotFightEnabled` false) /
   "mismatch" (counted in `ArenaScopeMismatches`).
 
+## Arena scope (ArenaScope 1.6)
+- Also expects `CloakServer` (ServerScriptService) and `CloakFX` (StarterPlayer.StarterPlayerScripts) on:
+  `ArenaScope_CloakServer`, `ArenaScope_CloakFX` = "on" / "mismatch" / "missing".
+
 ## Growth (GrowthCurve 1.0 — maths only; GrowthServer applies it)
 Plan: docs/plans/GROWTH_v1.0.md (ADR-001). GrowthCurve has no attributes of its own; these are the character attributes it
 scales from the adult values (GrowthServer stores the adult value as `GrowthBase_<name>` and writes the scaled one):

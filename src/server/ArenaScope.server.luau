@@ -1,4 +1,4 @@
--- ArenaScope v1.5 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.6 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -15,11 +15,14 @@
 -- v1.4 (mecha parts framework + Thrusters, MDA-30, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 8): MechaServer and
 --   MechaButtons expected on.
 -- v1.5 (ability bar, MDA-43, plan docs/plans/ABILITY_BAR_v1.0.md Task 2): AbilityBar expected on.
+-- v1.6 (Cloak release, MDA-54, plan docs/plans/CLOAK_v1.0.md Task 6): CloakServer (ServerScriptService) and CloakFX
+--   (StarterPlayer.StarterPlayerScripts, SPS) expected on.
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
+local SPS = StarterPlayer:WaitForChild("StarterPlayerScripts") -- v1.6
 -- {container, name, expected Enabled}
 local SCOPE = {
 	-- off: survival layer, ambush / creep, roar, dummy, class card (until the skill tree screen)
@@ -47,6 +50,8 @@ local SCOPE = {
 	{SSS, "MechaServer", true}, {SCS, "MechaButtons", true},
 	-- v1.5: ability bar (PC)
 	{SCS, "AbilityBar", true},
+	-- v1.6: Cloak Field
+	{SSS, "CloakServer", true}, {SPS, "CloakFX", true},
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)
