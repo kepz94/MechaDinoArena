@@ -1320,6 +1320,20 @@ Turn SkillTestCloakEnabled off on ServerScriptService.SkillServer before a publi
 | GaitAlwaysRun | dino model (Raptor data, T-Rex StarterCharacter) | true | IdleAnimation shows the run gait at every moving speed (no walk animation); false / missing = 1.25 walk-to-run blend |
 | MoveWalkSpeed / MoveRunSpeed | raptor (data) | 41.6 / 78 | 1.3 x the T-Rex's 32 / 60; in play x ArenaSpeedScale 0.65 = 27 / 50.7 (T-Rex 20.8 / 39). Raptor bots use the same values |
 
+## Cloak look: camo plates + turn-on animation (CloakServer 1.1 / CloakFX 1.1)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| CloakLookStyle | script CloakServer | "plates" | "plates" = 4 black hex plates with cyan rims on the spine; "fins" = the 1.0 grey fins |
+| CloakLook | character | — | now also "plates" ("on" = fins) |
+| BaseC0 | Weld PlateHinge (Plate_n_Body_0) | — | the plate's resting C0; CloakFX turns the plate from it |
+| CloakFXAnimEnabled | script CloakFX | true | false = the 1.0 instant cloak look (no flip, no dissolve) |
+| CloakFXPhase | each dino (this client) | — | "turningOn" (0.56 s) / "on" / "turningOff" (0.35 s) / "off" |
+
+Turn-on: plates flip front to back (0.06 s apart, 0.12 s each) and show teal rgb(18, 58, 68); body blocks flash neon cyan
+for 0.08 s and fade in order of distance from the plates (0.12 - 0.56 s). Turn-off reverses it. Hitboxes and invisible
+parts never flash.
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |
