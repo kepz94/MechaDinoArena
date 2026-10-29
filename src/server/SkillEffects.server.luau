@@ -1,4 +1,4 @@
--- SkillEffects v1.8 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.9 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -53,6 +53,9 @@
 --     (ScentServer 1.0 / ScentFX 1.0 read them).
 --   * Raptor Screech: ScreechEnabled, ScreechRange, ScreechFlinch, ScreechCooldown, ScreechJam (ScreechServer 1.0 /
 --     MechaButtons 1.8 read them).
+-- v1.9 (raptor traps, MDA-80, plan docs/plans/RAPTOR_TRAPS_v1.0.md Task 2; SkillTree 1.12): Shock Mine (path "traps"),
+--   only while bought AND slotted: MineEnabled, MineDamage, MineSlow (speed multiplier, 1 when off), MineSlowTime,
+--   MineCooldown, MineMax, MineJam (MineServer 1.0 / MechaButtons 1.11 / AbilityBar 1.5 read them).
 -- v1.7 (Kepu 2026-10-29: thrusters "a little more of a speed boost" -> "2x run speed"): SkillDashSpeedMul default 2
 --   (was 1.75).
 -- v1.6 (raptor parts batch 1, MDA-59, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 2; SkillTree 1.6). Written with the
@@ -68,7 +71,7 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
 local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
@@ -198,6 +201,18 @@ local function applyChar(char, st)
 	local jam = false
 	if srOn and e.screechJam == true then jam = true end
 	char:SetAttribute("ScreechJam", jam)
+	-- v1.9: Shock Mine (path "traps")
+	local mnOn = false
+	if live and (e.mineMax or 0) > 0 and inSlot("traps") then mnOn = true end
+	char:SetAttribute("MineEnabled", mnOn)
+	char:SetAttribute("MineDamage", mnOn and e.mineDamage or 0)
+	char:SetAttribute("MineSlow", mnOn and (e.mineSlow or 1) or 1)
+	char:SetAttribute("MineSlowTime", mnOn and e.mineSlowTime or 0)
+	char:SetAttribute("MineCooldown", mnOn and e.mineCooldown or 0)
+	char:SetAttribute("MineMax", mnOn and e.mineMax or 0)
+	local mjam = false
+	if mnOn and e.mineJam == true then mjam = true end
+	char:SetAttribute("MineJam", mjam)
 end
 
 -- healing (regen / lifesteal), overflow into the shield

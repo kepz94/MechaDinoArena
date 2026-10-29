@@ -1659,3 +1659,19 @@ Instances: character Mecha_ShockCannon (Pod with Attachment ShockMuzzle, Barrel,
 workspace ShockBall (+ ShockBallShell, Arc_1-5 Beams), ShockMuzzleFlash, ScreechBurst (cyan); target root ShockStunSparks,
 ShockStunLight while stunned.
 
+## Shock Mine (SkillTree 1.12 / SkillEffects 1.9 / MineServer 1.0 / SprintTest 1.8 / CloakServer 1.5)
+
+Grapple Hook is scrapped (shown to nobody). The "traps" path is the raptor's Shock Mine.
+
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| MineEnabled / Damage / Slow / SlowTime / Cooldown / Max / Jam | character | false; 15; 0.5; 2; 12 / 8.8; 1 / 2; star | Shock Mine settings (only while slotted) |
+| MineReadyAt / StartedAt / ServerResult / Count / Out / LastEnd / LastHit / Hits | character (owner) | — | MineServer state and diagnostics; LastEnd "hit" / "expired" / "replaced" / "removed" |
+| MineSlowUntil / MineSlowMul | target character or bot | server time; 0.5 | speed multiplier until then (SprintTest for players, MineServer for bots) |
+| MineHitBy / MineHitCount | target | — | a mine hit |
+| MineSlowed | bot | true / false | MineServer is scaling the bot's WalkSpeed |
+| MineServerEnabled / MineRequests / MineThrown / MineHits | script MineServer | true; counts | off switch and counters |
+| MineOwner / MineState | ShockMine model | owner name; "flying" / "arming" / "armed" | each mine |
+
+Instances: workspace ShockMine (Base, Ring, Mast, Light, TriggerRing), MineBurst.
+

@@ -1,4 +1,4 @@
--- AbilityBar v1.4 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.5 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -43,6 +43,7 @@
 --   ("R:DASH,T:CLOAK FIELD,C:+,V:+,F:POUNCE,Space:LEAP").
 -- v1.4 (raptor parts batch 2, MDA-75): TIMED_PARTS += scent ("Scent") and screech ("Screech"; no Until, so it is only
 --   ready / cooling). Tile names from the slot part as before.
+-- v1.5 (raptor traps, MDA-80): TIMED_PARTS += traps ("Mine"; no Until: ready / cooling).
 -- v1.3 (raptor parts batch 1, MDA-65, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 8): Adrenaline Injector and Energy
 --   Shield slots (AdrenalineServer 1.0 / EnergyShieldServer 1.0) use the Cloak tile's states with their own attributes
 --   (TIMED_PARTS: <Prefix>Enabled, <Prefix>Until, <Prefix>ReadyAt, <Prefix>Cooldown; prefixes "Adrenaline" /
@@ -53,10 +54,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local char = script.Parent
 local TIMED_PARTS = {adrenaline = "Adrenaline", shield = "EnergyShield"} -- v1.3: part id -> attribute prefix
 TIMED_PARTS.scent, TIMED_PARTS.screech = "Scent", "Screech" -- v1.4: raptor parts batch 2
+TIMED_PARTS.traps = "Mine" -- v1.5: Shock Mine
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
 local PANEL = Color3.fromRGB(20, 20, 26)

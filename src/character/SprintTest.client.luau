@@ -1,4 +1,4 @@
--- SprintTest v1.7 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.8 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -23,6 +23,9 @@
 --   new diagnostic MoveSpeedParts ("none" / "adrenaline" / "shield" / "adrenaline+shield").
 -- v1.7 (raptor parts batch 2, MDA-73): a Raptor Screech hit on a T-Rex (ScreechSlowUntil, ScreechServer 1.0) multiplies
 --   the speed by SCREECH_SLOW (0.5) until then, with the other part multipliers; MoveSpeedParts can include "screech".
+-- v1.8 (raptor traps, MDA-80, plan docs/plans/RAPTOR_TRAPS_v1.0.md Task 4): a Shock Mine hit (MineSlowUntil /
+--   MineSlowMul, MineServer 1.0) multiplies the speed by MineSlowMul until then, with the other part multipliers;
+--   MoveSpeedParts can include "mine".
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -66,6 +69,12 @@ local function partSpeed()
 		mul *= SCREECH_SLOW
 		table.insert(names, "screech")
 		table.insert(ends, slowUntil)
+	end
+	local mineUntil, mineMul = char:GetAttribute("MineSlowUntil"), char:GetAttribute("MineSlowMul") -- v1.8
+	if typeof(mineUntil) == "number" and typeof(mineMul) == "number" and t < mineUntil then
+		mul *= math.clamp(mineMul, 0.05, 1)
+		table.insert(names, "mine")
+		table.insert(ends, mineUntil)
 	end
 	return mul, (#names > 0 and table.concat(names, "+") or "none"), ends
 end
@@ -148,7 +157,8 @@ char:GetAttributeChangedSignal("DebuffUntil"):Connect(apply)    -- v1.3
 char:GetAttributeChangedSignal("DebuffSpeedMul"):Connect(apply) -- v1.3
 char:GetAttributeChangedSignal("Exhausted"):Connect(apply)      -- v1.4
 char:GetAttributeChangedSignal("AutoRun"):Connect(apply)        -- v1.5
-for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil", "EnergyShieldSpeedMul", "ScreechSlowUntil"}) do -- v1.6; v1.7: + ScreechSlowUntil
+for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil", "EnergyShieldSpeedMul", "ScreechSlowUntil",
+	"MineSlowUntil", "MineSlowMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 apply()

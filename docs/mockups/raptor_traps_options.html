@@ -1,0 +1,261 @@
+<title>Raptor Traps Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: game-camera viewport on top, option + step controls under it, three option cards, a step table. Single dark look (in-game HUD). */
+:root {
+  --bg: #0e1116;
+  --panel: #171c24;
+  --line: #2a3240;
+  --fg: #e8edf4;
+  --muted: #8d98a8;
+  --hud: #ff9b2e;
+  --snare: #ffb347;
+  --mine: #7fe9ff;
+  --wire: #ff5a4f;
+  --good: #6fdc8c;
+  --display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { font: 700 clamp(26px, 4vw, 38px)/1.1 var(--display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h1 span { color: var(--snare); }
+.lede { color: var(--muted); max-width: 72ch; margin: 0; }
+.viewport { position: relative; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: #000; }
+canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 8; max-width: 100%; }
+.hudtag { position: absolute; left: 12px; top: 10px; font: 500 12px var(--mono); color: var(--muted); background: rgb(14 17 22 / .7); padding: 3px 8px; border-radius: 6px; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+button { font: 600 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+button[aria-pressed="true"] { border-color: var(--hud); color: var(--hud); }
+button:focus-visible { outline: 2px solid var(--mine); outline-offset: 2px; }
+#replay { background: var(--hud); color: #1b1206; border-color: var(--hud); font-family: var(--display); letter-spacing: .06em; padding: 8px 22px; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.opt { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.opt.on { border-color: var(--hud); }
+.opt h3 { margin: 0; font: 700 17px var(--display); }
+.opt .rec { font: 600 11px var(--mono); color: var(--good); letter-spacing: .1em; text-transform: uppercase; }
+.opt p { margin: 0; color: var(--muted); font-size: 14px; }
+.opt dl { margin: 4px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; }
+.opt dt { color: var(--muted); font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding-top: 2px; }
+.opt dd { margin: 0; }
+.spec { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.spec h2 { margin: 0 0 8px; font: 700 18px var(--display); }
+.spec table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.spec td, .spec th { text-align: left; padding: 6px 12px 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.spec th { color: var(--muted); font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; border-top: 0; }
+.tbl { overflow-x: auto; }
+.note { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+</style>
+
+<div class="wrap">
+  <h1>Raptor <span>Traps</span></h1>
+  <p class="lede">An ambush part for the roamer. Set a trap where a dino will walk, get a ping when it springs, then come in with Pounce, Blade Claws or the Shock Cannon. Every option below alerts you when it springs and doesn't copy the cannon's stun. View: the default game camera. A T-Rex walks across and steps on the trap.</p>
+
+  <div class="viewport">
+    <canvas id="cv" width="1280" height="640" aria-label="Game camera view of a raptor trap catching a T-Rex"></canvas>
+    <div class="hudtag" id="tag">GAME CAMERA</div>
+  </div>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Trap type"><b>Trap</b>
+      <button id="t-a" data-t="a">A · Snare</button>
+      <button id="t-b" data-t="b">B · Shock mine</button>
+      <button id="t-c" data-t="c">C · Tripwire net</button>
+    </div>
+    <button id="replay">REPLAY</button>
+  </div>
+
+  <div class="opts">
+    <div class="opt" id="o-a"><span class="rec">Recommended</span><h3>A · Snare</h3>
+      <p>Dropped at your feet and hard to see (faint outline). Steel jaws snap shut and chain the dino to the spot: it can't walk away but can still turn, bite and use parts. This holds a target in place, which the cannon's stun doesn't. Good for covering an escape or baiting a chase.</p>
+      <dl><dt>Place</dt><dd>At your feet</dd><dt>Effect</dt><dd>Rooted 1.5 s (2 s at ★)</dd><dt>Seen by enemy</dt><dd>Faint outline from close up</dd></dl>
+    </div>
+    <div class="opt" id="o-b"><h3>B · Shock mine</h3>
+      <p>Lobbed up to 30 studs ahead with a blinking light. Bursts with a jolt: some damage and a slow. Good for zone control in a fight, but it's closest to what the cannon already does (electric hit).</p>
+      <dl><dt>Place</dt><dd>Thrown 30 studs</dd><dt>Effect</dt><dd>15 damage + 50% slow 2 s</dd><dt>Seen by enemy</dt><dd>Blinking light, easy to spot</dd></dl>
+    </div>
+    <div class="opt" id="o-c"><h3>C · Tripwire net</h3>
+      <p>Two posts with a red laser between them, set across a path. Crossing it drops a net: a big slow, and it shows the dino through walls to you for a while. Best for watching routes, and great with Scent, but it takes two taps to set.</p>
+      <dl><dt>Place</dt><dd>Post here, then post there</dd><dt>Effect</dt><dd>60% slow 3 s + revealed 5 s</dd><dt>Seen by enemy</dt><dd>Visible laser</dd></dl>
+    </div>
+  </div>
+
+  <div class="spec">
+    <h2>Proposed steps (35% rule)</h2>
+    <div class="tbl"><table>
+      <tr><th>Step</th><th>A · Snare</th><th>B · Shock mine</th><th>C · Tripwire net</th></tr>
+      <tr><td>I</td><td>Drop a snare (1 out at a time, lasts 45 s); rooted 1.5 s; you get a ping; recharge 12 s</td><td>Throw a mine; 15 dmg + 50% slow 2 s; recharge 12 s</td><td>Set a tripwire; 60% slow 3 s + revealed 5 s; recharge 14 s</td></tr>
+      <tr><td>II</td><td>2 snares out at once</td><td>2 mines out</td><td>Wire 35% longer</td></tr>
+      <tr><td>III</td><td>Recharge 8.8 s</td><td>Recharge 8.8 s</td><td>Recharge 10.3 s</td></tr>
+      <tr><td>★</td><td>Root 2 s and the snare breaks the dino's cloak and shield</td><td>Mine also jams parts</td><td>Net also roots 1 s</td></tr>
+    </table></div>
+    <p class="note">Shared rules for every option: you can't trigger your own trap. Bots trigger traps too. A trap disappears when it fires, when it times out, or when you die.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv'), g = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const st = { t: 'a' };
+  let t0 = performance.now();
+  const TRAP = [6, 0, 46];            // trap spot (studs)
+  const C = { x: 4.5, y: 10.5, z: -17, f: 820, hy: H * 0.43 };
+
+  function proj(p) {
+    const dx = p[0] - C.x, dy = p[1] - C.y, dz = p[2] - C.z;
+    if (dz < 0.3) return null;
+    return [W / 2 + C.f * dx / dz, C.hy - C.f * dy / dz, dz];
+  }
+  function shade(hex, k) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${Math.min(255, (n >> 16) * k) | 0},${Math.min(255, (n >> 8 & 255) * k) | 0},${Math.min(255, (n & 255) * k) | 0})`;
+  }
+  function boxFaces(b, out) {
+    const [x0, x1, y0, y1, z0, z1, col, glow] = b;
+    const V = (x, y, z) => [x, y, z];
+    const faces = [
+      [[V(x0,y0,z0),V(x1,y0,z0),V(x1,y1,z0),V(x0,y1,z0)], [0,0,-1], .78],
+      [[V(x0,y0,z1),V(x0,y1,z1),V(x1,y1,z1),V(x1,y0,z1)], [0,0,1], .7],
+      [[V(x0,y1,z0),V(x1,y1,z0),V(x1,y1,z1),V(x0,y1,z1)], [0,1,0], 1.08],
+      [[V(x1,y0,z0),V(x1,y0,z1),V(x1,y1,z1),V(x1,y1,z0)], [1,0,0], .9],
+      [[V(x0,y0,z0),V(x0,y1,z0),V(x0,y1,z1),V(x0,y0,z1)], [-1,0,0], .62],
+    ];
+    for (const [pts, n, k] of faces) {
+      const cx = pts.reduce((a, p) => a + p[0], 0) / 4, cy = pts.reduce((a, p) => a + p[1], 0) / 4, cz = pts.reduce((a, p) => a + p[2], 0) / 4;
+      if ((C.x - cx) * n[0] + (C.y - cy) * n[1] + (C.z - cz) * n[2] <= 0) continue;
+      const pp = pts.map(proj); if (pp.some(q => !q)) continue;
+      out.push({ pp, d: Math.hypot(C.x - cx, C.y - cy, C.z - cz), fill: glow ? col : shade(col, k) });
+    }
+  }
+  const GREEN = '#4f8f3a', DARK = '#2f5a24', TANK = '#5dff8a', GUN = '#3a4350', STEEL = '#8e9aa8';
+  const raptor = [
+    [-1.0, -0.3, 0, 3.6, -0.4, 0.6, DARK], [0.3, 1.0, 0, 3.6, -0.4, 0.6, DARK],
+    [-1.3, 1.3, 3.4, 6.2, -1.6, 2.6, GREEN], [-0.5, 0.5, 4.4, 5.4, -7.5, -1.6, GREEN],
+    [-0.6, 0.6, 5.4, 7.6, 2.3, 3.4, GREEN], [-0.8, 0.8, 7.0, 8.5, 2.8, 5.6, GREEN],
+    [-1.0, -0.2, 6.2, 7.2, -0.6, 0.4, TANK, true], [0.2, 1.0, 6.2, 7.2, -0.6, 0.4, TANK, true],
+    [1.3, 2.2, 5.0, 6.1, 0.4, 2.0, GUN], [1.5, 2.0, 5.3, 5.8, 2.0, 4.8, STEEL],
+  ];
+  function trex(x, z, k) {
+    const R = '#7a6a3a', RD = '#5a4d2a', leg = Math.sin(k * 8) * 0.6;
+    return [
+      [x - 1.6, x - 0.4, 0, 5, z - 0.6 + leg, z + 0.6 + leg, RD], [x + 0.4, x + 1.6, 0, 5, z - 0.6 - leg, z + 0.6 - leg, RD],
+      [x - 2.2, x + 2.2, 5, 10, z - 3, z + 3, R],
+      [x - 1.4, x + 1.4, 9, 12.5, z - 1.5, z + 1.5, R],      // head (moving left, so head toward -x)
+      [x - 9.5, x - 2.2, 9, 11, z - 1, z + 1, R],              // jaw/head forward
+      [x + 2.2, x + 9.5, 7, 8.5, z - 0.8, z + 0.8, R],         // tail
+    ];
+  }
+  function ground() {
+    const sky = g.createLinearGradient(0, 0, 0, C.hy);
+    sky.addColorStop(0, '#1f6fd0'); sky.addColorStop(1, '#a9d4ef');
+    g.fillStyle = sky; g.fillRect(0, 0, W, C.hy + 2);
+    const gr = g.createLinearGradient(0, C.hy, 0, H);
+    gr.addColorStop(0, '#6aa84f'); gr.addColorStop(1, '#7cc05c');
+    g.fillStyle = gr; g.fillRect(0, C.hy, W, H - C.hy);
+    g.strokeStyle = 'rgba(40,80,30,.18)'; g.lineWidth = 1;
+    for (let z = 0; z <= 160; z += 10) { const a = proj([-60, 0, z]), b = proj([60, 0, z]); if (a && b) { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); } }
+  }
+  function ring(p, r, col, w, a = 1) {
+    const q = proj(p); if (!q) return;
+    const rx = C.f * r / q[2], ry = rx * 0.32;
+    g.save(); g.globalAlpha = a; g.strokeStyle = col; g.lineWidth = w;
+    g.beginPath(); g.ellipse(q[0], q[1], rx, ry, 0, 0, 7); g.stroke(); g.restore();
+  }
+  function label(p, text, col, sub) {
+    const q = proj(p); if (!q) return;
+    g.font = '700 22px "Chakra Petch", sans-serif'; g.textAlign = 'center';
+    g.lineWidth = 5; g.strokeStyle = 'rgba(0,0,0,.6)'; g.strokeText(text, q[0], q[1]);
+    g.fillStyle = col; g.fillText(text, q[0], q[1]);
+    if (sub) { g.font = '500 14px "IBM Plex Mono", monospace'; g.strokeText(sub, q[0], q[1] + 20); g.fillStyle = '#fff'; g.fillText(sub, q[0], q[1] + 20); }
+  }
+  function jag(x, y, ang, len) {
+    g.beginPath(); g.moveTo(x, y);
+    for (let i = 1; i <= 5; i++) { const t = i / 5, a = ang + (Math.random() - .5) * 1.2; g.lineTo(x + Math.cos(a) * len * t, y + Math.sin(a) * len * t); }
+    g.stroke();
+  }
+  function ping(now, sprungAt) {
+    const k = (now - sprungAt) / 1000;
+    if (k < 0 || k > 2.2) return;
+    g.save(); g.globalAlpha = Math.min(1, 2.2 - k);
+    g.fillStyle = 'rgba(14,17,22,.85)'; g.strokeStyle = '#ff9b2e'; g.lineWidth = 2;
+    const w = 300, x = W / 2 - w / 2, y = 22;
+    g.beginPath(); g.roundRect(x, y, w, 40, 10); g.fill(); g.stroke();
+    g.fillStyle = '#ff9b2e'; g.font = '700 18px "Chakra Petch", sans-serif'; g.textAlign = 'center';
+    g.fillText('TRAP SPRUNG · 46 studs', W / 2, y + 27); g.restore();
+  }
+
+  function frame(now) {
+    const k = ((now - t0) / 1000) % 7.5;   // loop
+    ground();
+    // T-Rex walks from right to left along z = 46
+    const startX = 38, speed = 9, stopX = TRAP[0] + 1.2;
+    const sprungAtK = (startX - stopX) / speed;              // time it reaches the trap
+    const sprung = k >= sprungAtK;
+    let x = sprung ? stopX : startX - k * speed;
+    // option-specific post-trigger movement
+    if (st.t === 'b' && sprung) x = stopX - (k - sprungAtK) * speed * 0.5;     // slowed, keeps walking
+    if (st.t === 'c' && sprung) x = stopX - (k - sprungAtK) * speed * 0.4;
+    if (st.t === 'a' && sprung && k - sprungAtK > 1.5) x = stopX - (k - sprungAtK - 1.5) * speed;   // root ends
+    const faces = [];
+    for (const b of [...trex(x, TRAP[2], sprung && st.t === 'a' && k - sprungAtK < 1.5 ? 0 : k), ...raptor]) boxFaces(b, faces);
+    // trap pieces before the trigger
+    if (!sprung) {
+      if (st.t === 'a') { ring(TRAP, 1.6, 'rgba(255,179,71,.35)', 2); ring(TRAP, 1.0, 'rgba(255,179,71,.25)', 1.5); }
+      if (st.t === 'b') { const bl = Math.sin(now / 120) > 0; ring(TRAP, 1.0, '#7fe9ff', 3); if (bl) ring(TRAP, 0.35, '#ffffff', 6); }
+      if (st.t === 'c') {
+        const pa = [TRAP[0] - 1, 0, TRAP[2] - 7], pb = [TRAP[0] - 1, 0, TRAP[2] + 7];
+        boxFaces([pa[0] - .3, pa[0] + .3, 0, 2.6, pa[2] - .3, pa[2] + .3, GUN], faces);
+        boxFaces([pb[0] - .3, pb[0] + .3, 0, 2.6, pb[2] - .3, pb[2] + .3, GUN], faces);
+      }
+    }
+    faces.sort((a, b) => b.d - a.d);
+    for (const f of faces) { g.fillStyle = f.fill; g.strokeStyle = 'rgba(0,0,0,.25)'; g.beginPath(); f.pp.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.fill(); g.stroke(); }
+    if (!sprung && st.t === 'c') {
+      const a = proj([TRAP[0] - 1, 1.4, TRAP[2] - 7]), b = proj([TRAP[0] - 1, 1.4, TRAP[2] + 7]);
+      if (a && b) { g.save(); g.strokeStyle = '#ff5a4f'; g.lineWidth = 3; g.shadowColor = '#ff5a4f'; g.shadowBlur = 12; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); g.restore(); }
+    }
+    // after the trigger
+    const dt = k - sprungAtK;
+    if (sprung) {
+      const body = [x, 7, TRAP[2]];
+      if (st.t === 'a' && dt < 1.5) {
+        ring([TRAP[0], 0, TRAP[2]], 1.4, '#ffb347', 5);
+        const s = proj([TRAP[0] + 1.2, 0.2, TRAP[2]]), l = proj([x + 0.9, 2, TRAP[2]]);
+        if (s && l) { g.strokeStyle = '#c9ced6'; g.lineWidth = 3; g.setLineDash([6, 4]); g.beginPath(); g.moveTo(s[0], s[1]); g.lineTo(l[0], l[1]); g.stroke(); g.setLineDash([]); }
+        label([x, 15, TRAP[2]], 'ROOTED', '#ffb347', `${(1.5 - dt).toFixed(1)} s · can still bite`);
+      }
+      if (st.t === 'b' && dt < 2) {
+        if (dt < 0.35) { const q = proj([TRAP[0], 1, TRAP[2]]); if (q) { g.save(); g.globalCompositeOperation = 'lighter'; const r = C.f * (3 + dt * 14) / q[2]; const gr = g.createRadialGradient(q[0], q[1], 0, q[0], q[1], r); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(127,233,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(q[0], q[1], r, 0, 7); g.fill(); g.restore(); } }
+        const q = proj(body); if (q) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(190,240,255,.9)'; g.lineWidth = 2; for (let i = 0; i < 4; i++) jag(q[0] + (Math.random() - .5) * 60, q[1] + (Math.random() - .5) * 60, Math.random() * 6.28, 30); g.restore(); }
+        label([x, 15, TRAP[2]], '−15 · SLOWED 50%', '#7fe9ff', `${(2 - dt).toFixed(1)} s`);
+      }
+      if (st.t === 'c' && dt < 3) {
+        const q = proj([x, 6, TRAP[2]]);
+        if (q) { const r = C.f * 6 / q[2]; g.strokeStyle = 'rgba(230,230,230,.85)'; g.lineWidth = 1.5;
+          for (let i = -4; i <= 4; i++) { g.beginPath(); g.moveTo(q[0] - r + i * r / 4, q[1] - r * .9); g.lineTo(q[0] + i * r / 4, q[1] + r * .9); g.stroke(); g.beginPath(); g.moveTo(q[0] + r + i * r / 4, q[1] - r * .9); g.lineTo(q[0] + i * r / 4, q[1] + r * .9); g.stroke(); } }
+        label([x, 15, TRAP[2]], 'NETTED · SLOWED 60%', '#ff5a4f', `${(3 - dt).toFixed(1)} s · revealed to you 5 s`);
+      }
+      ping(now, t0 + (Math.floor((now - t0) / 7500) * 7500) + sprungAtK * 1000);
+    }
+    if (!reduce) requestAnimationFrame(frame);
+  }
+  function sync() {
+    document.querySelectorAll('[data-t]').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === st.t));
+    ['a', 'b', 'c'].forEach(k => document.getElementById('o-' + k).classList.toggle('on', k === st.t));
+    t0 = performance.now() - 2600;   // start just before the trigger so the first frame shows the catch soon
+    if (reduce) requestAnimationFrame(frame);
+  }
+  document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { st.t = b.dataset.t; sync(); });
+  document.getElementById('replay').onclick = sync;
+  sync();
+  requestAnimationFrame(frame);
+})();
+</script>

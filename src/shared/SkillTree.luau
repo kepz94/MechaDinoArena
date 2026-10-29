@@ -1,4 +1,4 @@
--- SkillTree v1.11 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.12 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -88,7 +88,7 @@
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.11"
+SkillTree.Version = "1.12"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -185,6 +185,11 @@ SkillTree.AREAS = {
 --   that disables a target for 1.5 seconds max" -> mockup docs/mockups/shock_cannon_options.html B, "1.1 s -> 1.5 s at
 --   star"): the "screech" path is shown as "Shock Cannon"; screechFlinch (now a full stun on any dino, ScreechServer 1.2)
 --   1.1 s from I, 1.5 s at star (1.5 / 1.1 = 1.36); step texts I / star.
+-- v1.12 (Kepu 2026-10-29: "scrap it [Grapple] and introduce traps" -> mockup docs/mockups/raptor_traps_options.html
+--   B "Shock mine", Engineer; plan docs/plans/RAPTOR_TRAPS_v1.0.md): Grapple Hook shown to nobody (OWNER "none");
+--   "traps" becomes the raptor's live button part "Shock Mine" (OWNER Raptor, LIVE_MECH, BUTTONS) with step texts.
+--   Effects: mineDamage (0; 15), mineSlow (1; 0.5 speed multiplier), mineSlowTime (0; 2 s), mineCooldown (0; 12,
+--   8.8 from III), mineMax (0; 1, 2 from II), mineJam (false; true at star).
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -309,6 +314,16 @@ SkillTree.PATHS.screech.steps[2] = "Reaches 135 studs"
 SkillTree.PATHS.screech.name = "Shock Cannon"
 SkillTree.PATHS.screech.steps[1] = "Button: a shoulder cannon fires an electric ball (100 studs). The first dino hit is stunned for 1.1 s and loses its cloak"
 SkillTree.PATHS.screech.steps[4] = "Stun lasts 1.5 s and jams parts: the hit dino's boost, Shield and Adrenaline end at once"
+-- v1.12: Grapple scrapped (hidden); Traps -> the raptor's Shock Mine
+SkillTree.OWNER.grapple, SkillTree.OWNER.traps = "none", "Raptor"
+SkillTree.PATHS.grapple.dino, SkillTree.PATHS.traps.dino = "none", "Raptor"
+SkillTree.LIVE_MECH.traps = true
+SkillTree.BUTTONS.traps = true
+SkillTree.PATHS.traps.name = "Shock Mine"
+SkillTree.PATHS.traps.steps[1] = "Button: throw a mine 30 studs ahead. A dino that comes within 6 studs takes 15 damage and is slowed 50% for 2 s"
+SkillTree.PATHS.traps.steps[2] = "2 mines out at once"
+SkillTree.PATHS.traps.steps[3] = "Recharges 36% faster (8.8 s)"
+SkillTree.PATHS.traps.steps[4] = "Mines also jam parts: the dino's boost, Shield and Adrenaline end at once"
 for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
 	"armor", "ramjet", "shieldproj", "roaramp"}) do
 	SkillTree.BUTTONS[id] = true
@@ -549,6 +564,13 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if sr >= 2 then e.screechRange = 135 end -- v1.10: 135 (was 67.5)
 	if sr >= 3 then e.screechCooldown = 10.3 end -- 14 / 10.3 = 1.36 (10.4 failed the 35% rule)
 	if sr >= 4 then e.screechJam, e.screechFlinch = true, 1.5 end -- v1.11: + stun 1.5 s
+	-- v1.12: Shock Mine (path "traps")
+	local tr = s.traps or 0
+	e.mineDamage, e.mineSlow, e.mineSlowTime, e.mineCooldown, e.mineMax, e.mineJam = 0, 1, 0, 0, 0, false
+	if tr >= 1 then e.mineDamage, e.mineSlow, e.mineSlowTime, e.mineCooldown, e.mineMax = 15, 0.5, 2, 12, 1 end
+	if tr >= 2 then e.mineMax = 2 end
+	if tr >= 3 then e.mineCooldown = 8.8 end -- 12 / 8.8 = 1.36
+	if tr >= 4 then e.mineJam = true end
 	return e
 end
 

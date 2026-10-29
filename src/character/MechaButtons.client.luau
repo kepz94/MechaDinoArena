@@ -1,4 +1,4 @@
--- MechaButtons v1.10 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.11 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -108,12 +108,13 @@
 -- v1.10 (Kepu after v80: Shock Cannon, "Always full range"): its button reads "SHOCK CANNON"; while the character
 --   attribute ScreechFullRange is true (ScreechServer 1.2 Shock Cannon mode) the aim line is full ScreechRange at once and
 --   the release sends the full range (a quick press used to fire ~8 studs because the line grew over 1 s).
+-- v1.11 (raptor traps, MDA-80): TIMED_PARTS += traps ("Mine", DinoMineRequest, "SHOCK MINE"; MineServer 1.0), a normal press.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -143,6 +144,7 @@ local TIMED_PARTS = { -- v1.5: part id -> {attribute prefix, remote name, button
 }
 TIMED_PARTS.scent = {"Scent", "DinoScentRequest", "SCENT"} -- v1.8
 TIMED_PARTS.screech = {"Screech", "DinoScreechRequest", "SHOCK CANNON"} -- v1.8 (hold-to-aim, see aimStart); v1.9: Shock Dart; v1.10: Shock Cannon
+TIMED_PARTS.traps = {"Mine", "DinoMineRequest", "SHOCK MINE"} -- v1.11
 local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
 local aim -- v1.8: {slot, t0, input, gesture, part}
 
