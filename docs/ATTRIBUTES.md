@@ -1252,6 +1252,20 @@ Star (CloakStill): while flat speed < 1 stud/s, CloakedUntil keeps moving to now
 `Mecha_Cloak` (Fin_L / Fin_R grey metal, Strip_L / Strip_R neon cyan, Transparency 0.7, 0.2 while cloaked) welded to
 the Torso segment's Root while CloakEnabled is true.
 
+## Cloak look (CloakFX 1.0, every client)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| CloakFXEnabled | script CloakFX (PlayerScripts) | true | false = no cloak look, everything restored |
+| CloakFXVersion | character (owner client) | — | "1.0" |
+| CloakFXSeen | character (owner client) | — | cloaks this client has seen start (any dino) |
+| CloakFXShown | character (owner client) | — | dinos drawn cloaked right now |
+| CloakFXSelf | character (owner client) | — | true while your own dino is drawn cloaked |
+
+Look: LocalTransparencyModifier on every BasePart but HumanoidRootPart; own 0.6; others 0.91 +- 0.03 on a 0.6 s sine,
+their BillboardGuis off and Humanoid DisplayDistanceType None. Restored to 0 / each gui's own Enabled / the Humanoid's
+own DisplayDistanceType when the cloak ends or the dino dies.
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |
