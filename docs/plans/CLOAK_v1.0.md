@@ -167,6 +167,19 @@ On any end: CloakedUntil = now, CloakState "off", CloakEndReason = reason, Cloak
 - Own body ghosted at 0.6; another cloaked dino at about 0.9; restored afterwards.
 - No leftover transparency after a death mid-cloak.
 
+## Task 4b — Cloak hardware (visible part) · Mode: Wired
+Added 2026-10-29 03:10 after Kepu's rule for every mecha part: "It needs an actual physically visible mecha part". Thrusters already follows it (MechaServer boosters).
+
+**Files:** Modify `src/server/CloakServer.server.luau` (same release).
+
+**Look:**
+- While CloakEnabled is true, the raptor wears a "Mecha_Cloak" emitter pack: two thin fins on the Torso segment, welded like Mecha_Thrusters and sized from the dino's height. Grey metal with neon strips.
+- The strips glow cyan (Neon, 0.2 transparency) while cloaked, and dim (0.7) otherwise.
+- The pack is cloaked along with the body.
+- Removed when CloakEnabled goes false.
+
+**Acceptance:** fins visible on a raptor with Cloak slotted; they glow while cloaked; gone when unslotted.
+
 ## Task 5 — 4 slots + Cloak on the controls · Mode: Wired
 This is LOADOUT4 Tasks 2 and 3 (MDA-47 / MDA-48), plus:
 - **MechaButtons 1.4:** a press on a slot holding "cloak" fires DinoCloakRequest(server now). The button shows "CLOAK", dimmed while cooling, with the cooldown fill from CloakReadyAt. The sub-label shows "▼ CLOAK" when it is the pull part.

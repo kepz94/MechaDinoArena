@@ -1,0 +1,76 @@
+<title>T-Rex Skill Tree</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one column per area (wraps on phones), each path a card with its 4 steps, tags for shared / raptor-only,
+   live / new, button / passive. Single dark look matching the in-game SKILLS screen. */
+:root{
+  color-scheme: dark;
+  --page:#0e0f14; --panel:rgb(20,20,26); --panel2:rgb(32,32,41); --line:rgba(255,255,255,.16);
+  --text:#eef0f4; --muted:#9ba1ae; --yellow:rgb(255,200,50); --ytext:rgb(30,26,10);
+  --health:rgb(95,209,106); --attack:rgb(240,90,79); --defense:rgb(90,160,255); --speed:rgb(255,211,77); --eng:rgb(255,155,46);
+  --display:"Fredoka One","Arial Rounded MT Bold",system-ui,sans-serif; --body:Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--body);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:400;margin:0 0 4px;font-size:24px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 14px;max-width:75ch;line-height:1.5}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:start}
+@media (max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.grid{grid-template-columns:minmax(0,1fr)}}
+.area{display:flex;flex-direction:column;gap:10px;min-width:0}
+.area h2{font-family:var(--display);font-weight:400;font-size:17px;margin:0;display:flex;align-items:center;gap:8px}
+.dot{width:12px;height:12px;border-radius:50%}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.card.shared{opacity:.72}
+.card h3{font-family:var(--display);font-weight:400;font-size:15px;margin:0 0 6px}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.tag{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;border-radius:5px;padding:1px 6px;border:1px solid var(--line);color:var(--muted)}
+.tag.new{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.tag.live{border-color:var(--health);color:var(--health)}
+.tag.btn{border-color:var(--eng);color:var(--eng)}
+ol{margin:0;padding-left:22px;font-size:12.5px;line-height:1.45}
+ol li::marker{font-family:var(--display);color:var(--muted)}
+ol li:last-child::marker{content:"★  "}
+.hw{font-size:12px;color:#ffd9a8;margin:0 0 6px;line-height:1.4}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:16px;max-width:900px}
+.note h3{font-family:var(--display);font-weight:400;margin:0 0 6px;font-size:16px}
+.note b{color:var(--yellow)}
+</style>
+
+<h1>T-Rex skill tree (draft)</h1>
+<p class="sub">This is your T-Rex mecha pick. The greyed cards are the shared stat paths that every dino has. The bright cards belong to the T-Rex only. Every mecha part is visible hardware on the dino; the orange line under each name says what you see. Step texts are first drafts for you to edit; numbers follow the 35% rule and get tuned when each part is built.</p>
+<div class="legend"><span class="tag new">new</span><span class="tag live">live</span><span class="tag btn">button (loadout slot)</span><span class="tag">passive</span><span class="tag">shared stat</span></div>
+<div class="grid">
+  <section class="area"><h2><span class="dot" style="background:var(--health)"></span>Health</h2>
+    <div class="card shared"><h3>Regeneration</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>Heal over time after 6 s without damage</li><li>Starts sooner, heals more</li><li>Starts sooner again, heals more</li><li>Kill heal doubled</li></ol></div>
+    <div class="card shared"><h3>Lifesteal</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>5% of damage dealt heals you</li><li>10%</li><li>15%</li><li>Overheal becomes a shield</li></ol></div>
+    <div class="card"><h3>Repair Drone</h3><div class="tags"><span class="tag new">new</span><span class="tag btn">button</span></div><p class="hw">Small drone docked on the back; lifts off and hovers over you, welding sparks.</p><ol><li>Heals 20% of max health over 5 s</li><li>Heals 27%</li><li>Recharges 26% faster</li><li>The drone also heals an ally next to you</li></ol></div>
+    <div class="card"><h3>Bio-Battery Spine</h3><div class="tags"><span class="tag new">new</span><span class="tag">passive</span></div><p class="hw">Glowing cells along the spine that fill up one by one.</p><ol><li>Every hit you land fills a cell (5 cells); full = heal 15% of max health</li><li>Heal 20%</li><li>4 cells to fill</li><li>A full battery also gives 3 s of 35% faster bite recharge</li></ol></div>
+  </section>
+  <section class="area"><h2><span class="dot" style="background:var(--attack)"></span>Attack</h2>
+    <div class="card shared"><h3>Jaws</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>Main attack hits harder</li><li>Main attack recharges faster</li><li>Hits make the target bleed</li><li>Crushing hit stuns</li></ol></div>
+    <div class="card"><h3>Shoulder Rocket</h3><div class="tags"><span class="tag btn">button</span><span class="tag">existing, not built</span></div><p class="hw">Rocket pod on the shoulder; turns toward where you aim.</p><ol><li>Aimed rocket with splash damage</li><li>Faster reload</li><li>Bigger blast</li><li>3-rocket burst</li></ol></div>
+  </section>
+  <section class="area"><h2><span class="dot" style="background:var(--defense)"></span>Defense</h2>
+    <div class="card shared"><h3>Thick Hide</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>Take less damage</li><li>Less knockback</li><li>Shorter stuns</li><li>No stuns above 50% health</li></ol></div>
+    <div class="card"><h3>Armor Plating</h3><div class="tags"><span class="tag btn">button</span><span class="tag">existing, not built</span></div><p class="hw">Steel plates over the back and flanks; they glow as they soak up damage.</p><ol><li>Absorb damage, press again to release it as a blast</li><li>Bigger charge</li><li>Faster recharge</li><li>Bigger blast at max charge</li></ol></div>
+    <div class="card"><h3>Reactive Armor</h3><div class="tags"><span class="tag new">new</span><span class="tag">passive</span></div><p class="hw">Panels on the chest that light up as the meter charges.</p><ol><li>Each hit you take charges the panels (6 hits); full = your next bite deals +35% damage</li><li>4 hits to charge</li><li>The charged bite also knocks the target back</li><li>The charged bite also stuns for 0.75 s</li></ol></div>
+  </section>
+  <section class="area"><h2><span class="dot" style="background:var(--speed)"></span>Speed</h2>
+    <div class="card shared"><h3>Sprint Legs</h3><div class="tags"><span class="tag">shared stat</span><span class="tag live">live</span></div><ol><li>Run faster</li><li>Run speed ×1.9</li><li>Pounce / leap / ram recharge faster</li><li>Run speed ×2.6</li></ol></div>
+    <div class="card"><h3>Ramjet Charge</h3><div class="tags"><span class="tag new">new</span><span class="tag btn">button</span></div><p class="hw">A big jet engine strapped to the back; flames roar during the charge.</p><ol><li>Charge straight ahead at 1.75× run speed for 1 s; dinos in the way are knocked aside</li><li>2 charges</li><li>Lasts 1.35 s</li><li>Hitting a dino stuns it for 0.75 s</li></ol></div>
+  </section>
+  <section class="area"><h2><span class="dot" style="background:var(--eng)"></span>Engineer</h2>
+    <div class="card"><h3>Shield Projector</h3><div class="tags"><span class="tag new">new</span><span class="tag btn">button</span><span class="tag">bulky</span></div><p class="hw">Emitters on both shoulders; they project a glowing hard-light wall.</p><ol><li>A wall in front of you for 3 s that blocks hits and rockets</li><li>Lasts 4.1 s</li><li>Wider wall</li><li>The wall moves with you</li></ol></div>
+    <div class="card"><h3>Roar Amplifier</h3><div class="tags"><span class="tag new">new</span><span class="tag btn">button</span><span class="tag">support</span></div><p class="hw">Speaker horns bolted to the neck; they flare and shake when you roar.</p><ol><li>Gives you the roar: enemies in the cone take 25% more damage for 5 s</li><li>Lasts 6.75 s</li><li>Enemies take 35% more damage</li><li>The roar also shields allies near you (they take 25% less damage for 5 s)</li></ol></div>
+  </section>
+</div>
+<div class="note">
+  <h3>Notes</h3>
+  The Health area has <b>4 columns</b> (2 shared + 2 T-Rex); today's SKILLS screen fits 3. It needs a narrower column layout or a scroll for that one area.
+  <br><br>Button parts: Repair Drone, Shoulder Rocket, Armor Plating, Ramjet Charge, Shield Projector, Roar Amplifier (6) — picking 4 for the 4 slots is the build choice. Passive parts: Bio-Battery Spine, Reactive Armor.
+  <br><br>The roar is switched off in the arena today. Roar Amplifier gives the T-Rex its roar back as a mecha button while the part is equipped.
+</div>
