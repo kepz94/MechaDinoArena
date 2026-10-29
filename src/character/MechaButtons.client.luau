@@ -83,6 +83,9 @@
 --   steering, no star hop; at the end the vertical speed is set to 0 so the rise peaks there and gravity takes over. Any
 --   stick / key direction in the air gives the normal boost that way. Script attribute MechaAirUpEnabled (default
 --   true). Diagnostics: character MechaBoostMode ("ground" / "air" / "up"), MechaAirUpCount.
+--   v1.6 hover (Kepu: "just hit it and stay until the boost ends then drop"): after the MechaAirUpTime rise the
+--   LinearVelocity holds (0, 0, 0) until DashTime ends (the whole boost), then it is removed and gravity takes over.
+--   Diagnostic: MechaAirUpPhase ("rise" / "hover" / "done").
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -271,7 +274,8 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 	local upH = math.max(0, tonumber(script:GetAttribute("MechaAirUpHeight")) or 30)
 	local upT = math.max(0.05, tonumber(script:GetAttribute("MechaAirUpTime")) or 0.6)
 	if up then
-		t = upT
+		t = math.max(t, upT) -- v1.6 hover: the rise, then hold the height until the boost ends
+		char:SetAttribute("MechaAirUpPhase", "rise")
 		char:SetAttribute("MechaBoostMode", "up")
 		char:SetAttribute("MechaAirUpCount", (char:GetAttribute("MechaAirUpCount") or 0) + 1)
 	elseif inAir then
@@ -322,6 +326,7 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 			local cur = hrp.AssemblyLinearVelocity
 			hrp.AssemblyLinearVelocity = Vector3.new(0, up and math.min(cur.Y, 0) or cur.Y, 0) -- v1.6: the rise peaks here
 		end
+		if up and char.Parent then char:SetAttribute("MechaAirUpPhase", "done") end -- v1.6 hover
 		if char.Parent then char:SetAttribute("MechaDashLocal", "idle") end
 	end
 	conn = RunService.Heartbeat:Connect(function()
@@ -336,7 +341,13 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 			stop()
 			return
 		end
-		if up then return end -- v1.6: no steering on the straight-up boost
+		if up then -- v1.6: no steering on the straight-up boost; after the rise, hold the height
+			if os.clock() - t0 >= upT and char:GetAttribute("MechaAirUpPhase") == "rise" then
+				lv.VectorVelocity = Vector3.zero
+				char:SetAttribute("MechaAirUpPhase", "hover")
+			end
+			return
+		end
 		local md = Vector3.new(hum.MoveDirection.X, 0, hum.MoveDirection.Z)
 		if md.Magnitude > 0.1 then
 			dir = md.Unit

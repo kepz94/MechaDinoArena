@@ -1409,6 +1409,7 @@ SkillServer 1.6: SkillTestCloakEnabled now gives every live mecha part of the ac
 | DashTime / DashSpeedMul (thrusters) | character | 1.37 / 1.85 s from III; 2 | SkillTree 1.8 / SkillEffects 1.7 (were 1.0 / 1.35; 1.75) |
 | MechaAirUpEnabled / MechaAirUpHeight / MechaAirUpTime | script MechaButtons | true; 30; 0.6 | straight-up boost in the air with no move input (1.6) |
 | MechaBoostMode / MechaAirUpCount | character (client) | "ground" / "air" / "up"; count | which boost the last press gave |
+| MechaAirUpPhase | character (client) | "rise" / "hover" / "done" | straight-up boost: rising, holding the height until DashTime ends, ended |
 | BladeLookStep / BladeArmBlades / BladeTrails | character | 0-4; 0 / 2; "off" / "on" | diagnostics (trails only at star) |
 
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
