@@ -1,0 +1,88 @@
+<title>Skills Dino Label</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: control strip, then the SKILLS screen top bar drawn at PC width and at a small-phone width, notes below.
+   Single dark look on purpose: it mirrors the game's skill screen (panel rgb 20,20,26, yellow rgb 255,200,50). */
+:root{
+  color-scheme: dark;
+  --page:#0e0f14; --panel:rgb(20,20,26); --panel2:rgb(32,32,41); --line:rgba(255,255,255,.18);
+  --text:#eef0f4; --muted:#9ba1ae; --yellow:rgb(255,200,50); --ytext:rgb(30,26,10); --eng:rgb(255,155,46);
+  --display:"Fredoka One","Arial Rounded MT Bold",system-ui,sans-serif; --body:Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--body);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:400;margin:0 0 4px;font-size:22px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:70ch;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.row .lab{font-family:var(--display);font-size:13px;color:var(--muted);width:76px}
+.row button{font-family:var(--display);font-size:14px;border:2px solid var(--line);background:var(--panel2);color:var(--text);padding:6px 12px;border-radius:999px;cursor:pointer}
+.row button.on{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.row button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.frames{display:flex;flex-direction:column;gap:14px;margin-top:10px}
+.cap{font-size:12px;color:var(--muted);margin-bottom:4px}
+.scroll{overflow-x:auto;max-width:100%}
+.screen{position:relative;background:linear-gradient(180deg,#3b5e8c,#2b4466);border-radius:10px;padding:12px;font-family:var(--display);color:#fff}
+.screen.pc{width:900px}.screen.phone{width:600px}
+.top{display:flex;align-items:center;gap:6px;height:34px}
+.title{font-size:22px;white-space:nowrap}
+.chip{background:var(--yellow);color:var(--ytext);border-radius:7px;padding:2px 8px;font-size:14px;white-space:nowrap}
+.lv{display:flex;align-items:center;gap:8px;height:30px;background:rgba(20,20,26,.9);border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:0 10px;font-size:15px;white-space:nowrap}
+.lv .bar{width:90px;height:8px;border-radius:4px;background:#000;overflow:hidden}.lv .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--yellow),var(--eng))}
+.lv .xp{font-size:13px;color:#9aa0ad}
+.pts{background:var(--yellow);color:var(--ytext);border-radius:8px;padding:4px 9px;font-size:14px}
+.sp{flex:1}
+.btn{background:rgba(20,20,26,.9);border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 10px;font-size:14px}
+.x{width:34px;height:34px;display:grid;place-items:center}
+.body{margin-top:8px;height:90px;border-radius:8px;background:rgba(0,0,0,.18);display:grid;place-items:center;color:rgba(255,255,255,.45);font-size:13px}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:14px;max-width:900px}
+.note h3{font-family:var(--display);font-weight:400;margin:0 0 6px;font-size:16px}
+.note b{color:var(--yellow)}
+.toast{position:absolute;left:50%;top:52px;transform:translateX(-50%);background:rgba(20,20,26,.92);border:2px solid var(--yellow);border-radius:10px;padding:6px 12px;font-size:13px;white-space:nowrap}
+</style>
+
+<h1>Which dino's skills? Pick a label</h1>
+<p class="sub">Each dino now has its own level, points and build. The SKILLS screen shows the dino you are playing, and this label says which one it is. Switch the dino and the option to compare. The top bar is drawn at PC width and at a small phone's width (the screen's 12 px margins included).</p>
+
+<div class="row" role="group" aria-label="Option"><span class="lab">Option</span>
+  <button id="oA" class="on" data-o="A">A · Title</button>
+  <button id="oB" data-o="B">B · Chip in LV</button>
+  <button id="oC" data-o="C">C · Chip + switch note</button>
+</div>
+<div class="row" role="group" aria-label="Dino"><span class="lab">Dino</span>
+  <button id="dT" class="on" data-d="T">T-Rex · LV 7</button>
+  <button id="dR" data-d="R">Raptor · LV 2</button>
+</div>
+
+<div class="frames">
+  <div><div class="cap">PC (900 px wide)</div><div class="scroll"><div class="screen pc" id="pc"></div></div></div>
+  <div><div class="cap">Small phone (600 px wide)</div><div class="scroll"><div class="screen phone" id="ph"></div></div></div>
+</div>
+<div class="note" id="note"></div>
+
+<script>
+const S = {o:"A", d:"T"};
+const D = {T:{name:"T-REX", lv:7, into:40, next:90, pts:2}, R:{name:"RAPTOR", lv:2, into:12, next:40, pts:1}};
+const NOTES = {
+ A:`<h3>A · Title</h3>The title reads <b>T-REX SKILLS</b> instead of SKILLS; the LV box moves right to make room. Plain words, no new shape. On small phones the title takes about 60 px more, so the XP text gets tighter.`,
+ B:`<h3>B · Chip in LV</h3>A yellow species chip, the same style as the species pill top-right, sits inside the LV box: <b>[T-REX] LV 7</b>. It ties the level to the dino. The title stays SKILLS, so the bar keeps today's width plus the chip.`,
+ C:`<h3>C · Chip + switch note</h3>Same chip as B. The first time you open SKILLS after switching dino, a short note shows for 3 s: <b>"Raptor has its own level and points"</b>. It teaches the rule once, then stays out of the way.`
+};
+function bar(){
+  const d = D[S.d];
+  const chip = `<span class="chip">${d.name}</span>`;
+  const title = S.o==="A" ? `<span class="title">${d.name} SKILLS</span>` : `<span class="title">SKILLS</span>`;
+  const lvInner = (S.o!=="A" ? chip : "") + `<span>LV ${d.lv}</span><span class="bar"><i style="width:${Math.round(d.into/d.next*100)}%"></i></span><span class="xp">${d.into} / ${d.next} XP</span>`;
+  const toast = S.o==="C" && S.d==="R" ? `<div class="toast">Raptor has its own level and points</div>` : "";
+  return `<div class="top">${title}<span class="lv">${lvInner}</span><span class="pts">${d.pts} PTS</span><span class="sp"></span><span class="btn">RESPEC</span><span class="btn x">X</span></div><div class="body">tree</div>${toast}`;
+}
+function render(){
+  document.getElementById("pc").innerHTML = bar();
+  document.getElementById("ph").innerHTML = bar();
+  document.getElementById("note").innerHTML = NOTES[S.o];
+}
+document.querySelectorAll("[data-o]").forEach(b=>b.addEventListener("click",()=>{S.o=b.dataset.o;document.querySelectorAll("[data-o]").forEach(x=>x.classList.toggle("on",x===b));render();}));
+document.querySelectorAll("[data-d]").forEach(b=>b.addEventListener("click",()=>{S.d=b.dataset.d;document.querySelectorAll("[data-d]").forEach(x=>x.classList.toggle("on",x===b));render();}));
+render();
+</script>
