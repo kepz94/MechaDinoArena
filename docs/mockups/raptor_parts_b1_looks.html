@@ -1,0 +1,293 @@
+<title>Raptor Parts Looks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: part picker -> look options -> side-view stage + ability bar -> notes. Single dark look on purpose (the game's HUD panels), same as the earlier mecha mockups. */
+:root {
+  --ink: #0f1319;        /* page ground, HUD-panel dark */
+  --panel: #171d26;      /* raised panels */
+  --line: #2a3340;       /* hairlines */
+  --text: #e8edf4;       /* main text */
+  --muted: #9aa6b6;      /* secondary text */
+  --blade: #f05a4f;      /* Attack area red (Blade Claws) */
+  --adren: #5fd16a;      /* Health area green (Adrenaline) */
+  --shield: #5aa0ff;     /* Defense area blue (Energy Shield) */
+  --cyan: #5ff3ff;       /* Cloak (for reference) */
+  --orange: #ff9b2e;     /* Thrusters */
+  --accent: var(--blade);
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--ink); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.lede { margin: 4px 0 0; color: var(--muted); max-width: 72ch; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab {
+  font-family: var(--display); font-weight: 600; font-size: 15px; color: var(--text); background: var(--panel);
+  border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left;
+}
+.tab small { display: block; font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.parts .tab { font-size: 17px; }
+.tab:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 2px 0 -4px; }
+.stage { position: relative; border-radius: 16px; overflow: hidden; border: 2px solid var(--line); background: var(--panel); }
+canvas { display: block; width: 100%; aspect-ratio: 16 / 9; max-width: 100%; }
+.hud { position: absolute; left: 12px; top: 10px; font-family: var(--display); font-weight: 600; font-size: 14px;
+  background: rgba(15,19,25,.75); border-radius: 10px; padding: 4px 10px; display: grid; gap: 2px; }
+.hud b { color: var(--accent); font-weight: 600; }
+.hp { width: 180px; height: 10px; border-radius: 5px; background: #2a3340; overflow: hidden; position: relative; }
+.hp i { position: absolute; inset: 0 auto 0 0; background: var(--adren); }
+.hp em { position: absolute; inset: 0 auto 0 0; background: rgba(255,255,255,.75); }
+.bar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 6px; }
+.tile { width: 70px; height: 54px; border-radius: 10px; background: rgba(23,29,38,.92); border: 2px solid #3a4556; position: relative;
+  font-family: var(--display); font-weight: 700; font-size: 10px; display: grid; place-items: center; text-align: center; padding: 14px 3px 2px; overflow: hidden; }
+.tile .k { position: absolute; left: 5px; top: 2px; font-size: 11px; color: var(--muted); }
+.tile .cd { position: absolute; inset: auto 0 0 0; background: rgba(0,0,0,.55); height: 0; }
+.tile .t { position: absolute; right: 5px; bottom: 2px; font-size: 10px; color: var(--orange); }
+.tile.on { border-color: var(--accent); }
+.tile.new::after { content: "NEW"; position: absolute; right: 4px; top: 3px; font-size: 8px; color: var(--accent); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font-family: var(--display); font-weight: 700; font-size: 16px; border: 0; border-radius: 12px; padding: 10px 18px;
+  background: var(--accent); color: #10161d; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--text); border: 2px solid var(--line); }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; }
+.note h2 { font-family: var(--display); font-weight: 700; font-size: 20px; margin: 0; }
+.note dl { margin: 0; display: grid; grid-template-columns: 120px 1fr; gap: 6px 14px; }
+.note dt { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+.note dd { margin: 0; min-width: 0; }
+.steps { margin: 0; padding-left: 20px; }
+.steps li::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pick { color: var(--accent); font-family: var(--display); font-weight: 600; }
+.shared { color: var(--muted); font-size: 14px; max-width: 78ch; margin: 0; }
+.shared b { color: var(--text); }
+@media (max-width: 560px) { .note dl { grid-template-columns: 1fr; } h1 { font-size: 23px; } .tile { width: 58px; height: 48px; } .hp { width: 120px; } }
+[hidden] { display: none !important; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Raptor parts · <span id="title">Adrenaline Injector</span> looks</h1>
+    <p class="lede">Bigger, clearer looks for the three batch 1 parts, and each one grows with its step like Thrusters does. Use <b>Game camera</b> to see how it reads from the normal distance. Press the button to see the effect. Pick one look per part (and the Adrenaline numbers).</p>
+  </header>
+
+  <div class="lbl">Part</div>
+  <div class="row parts" role="group" aria-label="Part">
+    <button class="tab" data-p="adren" aria-pressed="true">Adrenaline Injector<small>Health · button</small></button>
+    <button class="tab" data-p="shield" aria-pressed="false">Energy Shield<small>Defense · button</small></button>
+    <button class="tab" data-p="blade" aria-pressed="false">Blade Claws<small>Attack · passive</small></button>
+  </div>
+
+  <div class="lbl">Look</div>
+  <div class="row" id="opts" role="group" aria-label="Look"></div>
+
+  <div class="lbl">Step and view</div>
+  <div class="row">
+    <div class="row" id="steps" role="group" aria-label="Step"></div>
+    <div class="row" id="views" role="group" aria-label="View"></div>
+  </div>
+
+  <div class="stage">
+    <canvas id="cv" width="1280" height="720" aria-label="The raptor with the selected part"></canvas>
+    <div class="hud"><span id="hudName">Adrenaline Injector</span><span><b id="hudState">ready</b></span></div>
+  </div>
+
+  <div class="controls" id="controls"></div>
+
+  <section class="note" id="adrenNums" aria-live="polite"></section>
+  <section class="note" id="note" aria-live="polite"></section>
+
+  <p class="shared"><b>Same for every look:</b> all of it is built on the server, so everyone sees the same thing. Numbers stay as they are except Adrenaline's (pick above). Each step's look is clearly bigger than the one before, like Thrusters' I → III → ★.</p>
+</div>
+
+<script>
+(() => {
+  const STEPS = ["I", "II", "III", "★"];
+  const ADREN_NUMS = {
+    fast: { tab: "Faster", sub: "run ×1.5", rows: ["Run ×1.5 for 3 s (was ×1.3)", "Heal 20% → 27% (same)", "Cooldown 20 → 14.8 s (same)"], note: "The escape tool: you get away fast, the heal stays small." },
+    heal: { tab: "Bigger heal", sub: "30% → 40.5%", rows: ["Heal 30% at I, 40.5% from II (was 20 / 27%)", "Run ×1.3 (same)", "Cooldown 20 → 14.8 s (same)"], note: "The comeback tool: a real chunk of health back in a fight." },
+    both: { tab: "Both", sub: "×1.4 and 25% → 34%", rows: ["Run ×1.4 for 3 s", "Heal 25% at I, 34% from II", "Cooldown 20 → 14.8 s (same)"], note: "My pick: stronger on both sides without one of them taking over. On a 60 HP raptor: 15 HP at I, 20 HP from II." },
+  };
+  const PARTS = {
+    adren: { name: "Adrenaline Injector", color: "#5fd16a", act: "Inject", dur: 3, opts: {
+      A: { tab: "Back tanks", sub: "aura", where: "Glass tanks of glowing green fluid on the shoulders, with a tube to the neck. I: 1 tank · II: 1 bigger · III: 2 tanks · ★: 3 tanks and a spinning ring.", fx: "For the whole boost: the body glows green (pulsing), green speed streaks trail behind, + numbers rise as it heals. The tanks drain and refill over the cooldown.", trade: "The biggest, most readable look; sits on the shoulders, in front of the Thrusters.", pick: "My pick: the glow lasts as long as the boost, so you and everyone else can see when it's on." },
+      B: { tab: "Neck injector XL", sub: "outline", where: "The current neck canister, 3× bigger, with glowing bands. I: 1 band · III: 2 canisters · ★: a crown of 3 vials.", fx: "A thick pulsing green outline around the raptor for the whole boost, + numbers.", trade: "Closest to what's in now. Still smaller from the camera behind.", pick: "" },
+      C: { tab: "Heart reactor", sub: "pulse rings", where: "A glowing green core on the chest. I: small core · III: bigger with a ring · ★: 3 rings.", fx: "The core flares and green rings pulse out of the chest every 0.4 s (heartbeat) for the whole boost, and the body glows.", trade: "Very clear from the front and sides; from straight behind the chest is hidden, so the rings carry it.", pick: "" },
+    } },
+    shield: { name: "Energy Shield", color: "#5aa0ff", act: "Raise shield", dur: 2.77, opts: {
+      A: { tab: "Hex dome", sub: "bubble", where: "Shoulder emitters that grow per step. While up: a big blue hex bubble over the whole raptor. III: brighter · ★: double layer.", fx: "A blocked hit makes the hit spot flash white and ripple. The bubble fades in the last 0.4 s so you know it's ending.", trade: "Impossible to miss; hides a bit of the raptor while up.", pick: "My pick: it reads as \"untouchable\" at a glance, which is what a full block is." },
+      B: { tab: "Thick shell", sub: "body glow", where: "The current hard-light shell, but a thick bright outline and a strong blue fill. Back pylons grow per step.", fx: "The whole body turns glowing blue; each block flashes white.", trade: "Keeps the raptor's shape visible; less dramatic than the dome.", pick: "" },
+      C: { tab: "Shield wings", sub: "panels", where: "Folded panels on the back. While up they swing out and wrap around the raptor. I: 2 panels · III: 4 · ★: 4 glowing.", fx: "Panels close around the body; hits spark on them.", trade: "The most mecha look; the most moving parts to build.", pick: "" },
+    } },
+    blade: { name: "Blade Claws", color: "#f05a4f", act: "Pounce a bot", dur: 1.6, opts: {
+      A: { tab: "Foot sickles+", sub: "+ arm blades", where: "The new big glowing foot sickles (in now). III adds forearm blades · ★ makes every blade glow brighter and leave red trails while pouncing.", fx: "Blades flick up on the pounce, red slash on the landing, red trails at ★.", trade: "Builds on what's in; the arm blades make it read from the side too.", pick: "My pick: the foot sickles you can already see, plus more steel as you upgrade." },
+      B: { tab: "Arm scythes", sub: "big forearms", where: "Large scythe blades on the forearms, always out. ★ adds the foot sickles.", fx: "Scythes swing forward on the pounce.", trade: "Very visible from the front; changes the raptor's silhouette most.", pick: "" },
+      C: { tab: "Blade tail", sub: "tail tip", where: "A big blade on the tail tip (always visible from the camera behind) plus the foot sickles. ★: the tail blade glows.", fx: "The tail blade whips on the landing.", trade: "Best from the game camera (the tail faces it). Doesn't sound like \"claws\".", pick: "" },
+    } },
+  };
+  const C = { green: "#5E943E", dark: "#283A1E", belly: "#C9C98F", eye: "#ffb020", metal: "#7b8590", nozzle: "#2b2f35", orange: "#ff9b2e",
+    stealth: "#1d2533", cyan: "#5ff3ff", sky1: "#9fd8ff", sky2: "#d9f1ff", grass: "#5fae4a", grass2: "#4d9a3b", steel: "#c9d2dc", red: "#f05a4f", gfluid: "#5fd16a", blue: "#5aa0ff" };
+  const cv = document.getElementById("cv"), g = cv.getContext("2d");
+  const W = 800, H = 450;
+  const S = { p: "adren", o: { adren: "A", shield: "A", blade: "A" }, step: 3, view: "close", nums: "both", t0: -99 };
+  function resize() { const r = cv.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2); const w = Math.max(320, Math.round(r.width * dpr)); if (cv.width !== w) { cv.width = w; cv.height = Math.round(w * 9 / 16); } }
+  function poly(pts, fill, stroke, lw) { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 2; g.stroke(); } }
+  function rr(x, y, w, h, r, fill) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); g.fillStyle = fill; g.fill(); }
+  function hexPath(cx, cy, r) { g.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30); const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a); k ? g.lineTo(x, y) : g.moveTo(x, y); } g.closePath(); }
+  const ease = p => p < 0 ? 0 : p > 1 ? 1 : 1 - Math.pow(1 - p, 3);
+
+  function background() {
+    const sky = g.createLinearGradient(0, 0, 0, 330); sky.addColorStop(0, C.sky1); sky.addColorStop(1, C.sky2);
+    g.fillStyle = sky; g.fillRect(0, 0, W, 330);
+    for (const [x, w, h] of [[40,120,70],[150,90,46],[600,150,80],[720,90,52]]) rr(x, 330 - h, w, h, 6, "#b9c6d6");
+    g.fillStyle = C.grass; g.fillRect(0, 330, W, 120);
+    g.fillStyle = C.grass2; for (let x = 8; x < W; x += 26) g.fillRect(x, 334 + (x % 3) * 9, 14, 6);
+  }
+  // the raptor body (side view, facing right) drawn into the current transform
+  function body(fill) {
+    const gr = fill || C.green;
+    poly([[345,258],[388,258],[400,312],[364,318]], fill || "#4a7a31"); poly([[368,314],[398,310],[384,362],[370,362]], fill || "#4a7a31"); poly([[362,360],[412,360],[418,375],[356,375]], fill || "#3c6428");
+    poly([[300,232],[300,272],[205,262],[110,238],[112,228],[205,240]], gr);
+    rr(290, 224, 182, 66, 18, gr); rr(330, 278, 132, 13, 6, fill || C.belly);
+    if (!fill) for (const x of [318, 348, 378, 408, 438]) rr(x, 227, 9, 34, 3, C.dark);
+    poly([[452,236],[486,284],[544,190],[512,168]], gr);
+    poly([[505,148],[600,148],[627,163],[627,184],[520,190]], gr);
+    if (!fill) { poly([[530,190],[617,190],[606,201],[536,201]], C.belly); g.beginPath(); g.arc(586, 161, 5, 0, Math.PI * 2); g.fillStyle = C.eye; g.fill(); }
+    poly([[465,276],[478,272],[496,306],[486,309]], gr);
+    poly([[328,255],[380,255],[396,316],[356,322]], gr); poly([[358,316],[392,312],[376,366],[360,366]], gr); poly([[348,362],[404,362],[410,379],[342,379]], fill || "#4f8436");
+  }
+  function glowBody(color, alpha, grow) { g.save(); g.globalAlpha = alpha; g.translate(370, 270); g.scale(grow, grow); g.translate(-370, -270); body(color); g.restore(); }
+  function thrusters() { rr(332, 203, 92, 24, 11, C.metal); rr(316, 206, 20, 18, 5, C.nozzle); rr(310, 209, 8, 12, 3, C.orange); }
+
+  function partAdren(o, st, t, act) {
+    if (o === "A") {
+      const n = st >= 3 ? 3 : st >= 2 ? 2 : 1, big = st >= 1 ? 1.25 : 1;
+      for (let i = 0; i < n; i++) {
+        const x = 440 + i * 22 - (n - 1) * 11, y = 196 - (st >= 1 ? 6 : 0), w = 18 * big, h = 34 * big;
+        rr(x - w / 2, y - h, w, h, 6, "#2c3440");
+        const level = act ? Math.max(0.15, 1 - t / 3) : 1;
+        rr(x - w / 2 + 3, y - h + 3 + (h - 6) * (1 - level), w - 6, (h - 6) * level, 4, C.gfluid);
+      }
+      g.strokeStyle = "#2c3440"; g.lineWidth = 4; g.beginPath(); g.moveTo(452, 196); g.quadraticCurveTo(480, 200, 500, 214); g.stroke();
+      if (st >= 3) { g.strokeStyle = C.gfluid; g.lineWidth = 3; g.beginPath(); g.ellipse(440, 160, 30, 8, 0, 0, Math.PI * 2 * ((t * 1.5) % 1 + (act ? 0 : 1))); g.stroke(); }
+    } else if (o === "B") {
+      const s = 1 + st * 0.2, n = st >= 3 ? 3 : st >= 2 ? 2 : 1;
+      for (let i = 0; i < n; i++) { g.save(); g.translate(500 + i * 10, 214 - i * 16); g.rotate(-0.95); rr(-26 * s, -12 * s, 52 * s, 24 * s, 8, "#2c3440"); rr(-20 * s, -7 * s, 40 * s, 14 * s, 5, C.gfluid); for (let b = 0; b <= st; b++) rr(-18 * s + b * 12 * s, -12 * s, 3, 24 * s, 1, "#c8ffd0"); g.restore(); }
+    } else {
+      const r = 10 + st * 4;
+      g.beginPath(); g.arc(468, 262, r + 4, 0, Math.PI * 2); g.fillStyle = "#2c3440"; g.fill();
+      g.beginPath(); g.arc(468, 262, r * (act ? 1 + 0.25 * Math.abs(Math.sin(t * 8)) : 1), 0, Math.PI * 2); g.fillStyle = C.gfluid; g.fill();
+      for (let k = 0; k < (st >= 3 ? 3 : st >= 2 ? 1 : 0); k++) { g.strokeStyle = C.gfluid; g.lineWidth = 2; g.beginPath(); g.arc(468, 262, r + 9 + k * 6, 0, Math.PI * 2); g.stroke(); }
+    }
+  }
+  function fxAdren(o, t) {
+    const pulse = 0.5 + 0.5 * Math.sin(t * 10);
+    if (o === "B") { g.save(); g.strokeStyle = C.gfluid; g.globalAlpha = 0.6 + 0.4 * pulse; g.lineWidth = 9; g.beginPath(); g.ellipse(370, 262, 245, 112, 0, 0, Math.PI * 2); g.stroke(); g.restore(); }
+    if (o === "A") for (let i = 0; i < 7; i++) { g.fillStyle = `rgba(95,209,106,${0.6 - i * 0.07})`; g.fillRect(130 - i * 18, 220 + i * 18 + Math.sin(t * 20 + i) * 3, 140, 5); }
+    if (o === "C") for (let k = 0; k < 3; k++) { const u = ((t / 0.4) + k / 3) % 1; g.strokeStyle = `rgba(95,209,106,${1 - u})`; g.lineWidth = 6; g.beginPath(); g.arc(468, 262, 20 + u * 160, 0, Math.PI * 2); g.stroke(); }
+    const k = (t % 0.6) / 0.6; g.font = "700 26px Fredoka, sans-serif"; g.fillStyle = `rgba(95,209,106,${1 - k})`; g.fillText("+" + (S.nums === "heal" ? 4 : S.nums === "both" ? 3 : 2), 520, 150 - k * 50);
+  }
+  function partShield(o, st) {
+    const s = 1 + st * 0.25;
+    if (o === "A") for (const x of [430, 470]) { rr(x - 6 * s, 210 - 18 * s, 12 * s, 18 * s, 4, "#2c3440"); g.beginPath(); g.arc(x, 210 - 18 * s, 5 * s, 0, Math.PI * 2); g.fillStyle = C.blue; g.fill(); }
+    if (o === "B") for (const x of [330, 380, 430].slice(0, st >= 2 ? 3 : 2)) { rr(x - 5 * s, 222 - 26 * s, 10 * s, 26 * s, 3, "#2c3440"); rr(x - 3 * s, 222 - 26 * s, 6 * s, 8 * s, 2, C.blue); }
+    if (o === "C") { const n = st >= 2 ? 4 : 2; for (let i = 0; i < n; i++) { g.save(); g.translate(360 + i * 22, 222); g.rotate(-0.3); rr(-8, -40 * s, 16, 40 * s, 4, st >= 3 ? "#3a6fc0" : "#2c3440"); g.restore(); } }
+  }
+  function fxShield(o, st, t, dur, hit) {
+    const fade = t > dur - 0.4 ? (dur - t) / 0.4 : 1;
+    if (o === "A") {
+      const layers = st >= 3 ? 2 : 1;
+      for (let L = 0; L < layers; L++) {
+        const rx = 230 + L * 18, ry = 135 + L * 12;
+        g.save(); g.globalAlpha = fade;
+        g.fillStyle = `rgba(90,160,255,${(st >= 2 ? 0.22 : 0.15)})`; g.beginPath(); g.ellipse(370, 262, rx, ry, 0, 0, Math.PI * 2); g.fill();
+        g.save(); g.beginPath(); g.ellipse(370, 262, rx, ry, 0, 0, Math.PI * 2); g.clip();
+        for (let y = 120; y < 410; y += 26) for (let x = 130; x < 620; x += 30) { hexPath(x + ((y / 26) % 2) * 15, y, 14); g.strokeStyle = `rgba(90,160,255,${st >= 2 ? 0.55 : 0.38})`; g.lineWidth = 1.5; g.stroke(); }
+        g.restore();
+        g.strokeStyle = hit ? "#ffffff" : C.blue; g.lineWidth = hit ? 8 : 5; g.beginPath(); g.ellipse(370, 262, rx, ry, 0, 0, Math.PI * 2); g.stroke();
+        g.restore();
+      }
+    } else if (o === "B") {
+      g.save(); g.globalAlpha = fade; glowBody(hit ? "#ffffff" : C.blue, 0.5, 1.0); g.strokeStyle = hit ? "#fff" : C.blue; g.lineWidth = 10; g.globalAlpha = 0.5 * fade; g.beginPath(); g.ellipse(370, 262, 235, 108, 0, 0, Math.PI * 2); g.stroke(); g.restore();
+    } else {
+      g.save(); g.globalAlpha = fade; const n = st >= 2 ? 4 : 2;
+      for (let i = 0; i < n; i++) { const a = -0.9 + i * (1.8 / (n - 1)); g.save(); g.translate(370 + Math.cos(a) * 200, 262 + Math.sin(a) * 100); g.rotate(a + Math.PI / 2); rr(-14, -55, 28, 110, 8, hit ? "#ffffff" : (st >= 3 ? "rgba(120,180,255,.95)" : "rgba(90,160,255,.85)")); g.restore(); }
+      g.restore();
+    }
+  }
+  function partBlade(o, st, t, act) {
+    const s = 1.3, up = act ? 1 : 0;
+    const sickle = (x, y, k) => { g.save(); g.translate(x, y); g.rotate(-0.6 * up); g.scale(k, k); poly([[0,0],[22,-6],[34,-26],[30,-44],[24,-30],[12,-14]], C.steel, "#8994a0", 1.5); poly([[30,-44],[34,-26],[28,-30]], C.red); poly([[0,-2],[22,-8],[22,-11],[0,-5]], C.red); g.restore(); };
+    if (o === "A" || st >= 3 || o === "C") { sickle(392, 368, s); sickle(345, 370, s * 0.9); }
+    if ((o === "A" && st >= 2) || o === "B") { g.save(); g.translate(484, 300); g.rotate(-0.3 - 1.4 * up); const k = o === "B" ? 1.6 : 1.1; poly([[0,-4],[60 * k,-10],[70 * k,0],[60 * k,6],[0,4]], C.steel, "#8994a0", 1.5); poly([[60 * k,-10],[70 * k,0],[60 * k,-2]], C.red); g.restore(); }
+    if (o === "C") { g.save(); g.translate(110, 232); g.rotate(-0.4); poly([[0,0],[-50,-24],[-62,-4],[-40,10]], st >= 3 ? "#ff8a80" : C.steel, "#8994a0", 2); poly([[-50,-24],[-62,-4],[-56,-14]], C.red); g.restore(); }
+    if (st >= 3 && act) { g.strokeStyle = "rgba(240,90,79,.7)"; g.lineWidth = 6; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(300 - i * 40, 380 - i * 4); g.lineTo(390 - i * 40, 368); g.stroke(); } }
+  }
+
+  function frame(nowMs) {
+    resize();
+    const now = nowMs / 1000, t = now - S.t0, P = PARTS[S.p], o = S.o[S.p], st = S.step;
+    const dur = S.p === "shield" ? [1.5, 2.05, 2.05, 2.77][st] : P.dur;
+    const act = t >= 0 && t < dur;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+    g.setTransform(cv.width / W, 0, 0, cv.width / W, 0, 0);
+    background();
+    const far = S.view === "far";
+    g.save();
+    if (far) { g.translate(400, 300); g.scale(0.42, 0.42); g.translate(-400, -270); }
+    let hit = false;
+    if (S.p === "shield" && act) hit = [0.5, 1.3, 2.1].some(b => t - b >= 0 && t - b < 0.12);
+    let lunge = 0, ty = 0;
+    if (S.p === "blade" && act) { lunge = Math.sin(Math.min(1, t / 0.6) * Math.PI) * 60; ty = -Math.sin(Math.min(1, t / 0.6) * Math.PI) * 40; }
+    g.translate(lunge, ty);
+    if (S.p === "adren" && act) fxAdren(o, t);
+    body(); thrusters();
+    if (S.p === "adren") partAdren(o, st, t, act);
+    if (S.p === "shield") partShield(o, st);
+    if (S.p === "blade") partBlade(o, st, t, act);
+    if (S.p === "adren" && act && (o === "A" || o === "C")) { const pl = 0.5 + 0.5 * Math.sin(t * 10); glowBody("#7dff8a", 0.3 + 0.25 * pl, 1.0); g.save(); g.strokeStyle = C.gfluid; g.globalAlpha = 0.5 + 0.3 * pl; g.lineWidth = 6; g.beginPath(); g.ellipse(370, 262, 240, 110, 0, 0, Math.PI * 2); g.stroke(); g.restore(); }
+    if (S.p === "shield" && act) fxShield(o, st, t, dur, hit);
+    g.restore();
+    if (far) { g.font = "600 13px Atkinson Hyperlegible, sans-serif"; g.fillStyle = "rgba(15,19,25,.75)"; g.fillRect(560, 20, 226, 24); g.fillStyle = "#e8edf4"; g.fillText("Game camera distance (about 40 studs)", 568, 37); }
+    document.getElementById("hudState").textContent = act ? (S.p === "blade" ? "pouncing" : `${S.p === "shield" ? "blocking" : "boosting"} · ${(dur - t).toFixed(1)} s`) : "ready";
+    requestAnimationFrame(frame);
+  }
+
+  function render() {
+    const P = PARTS[S.p], O = P.opts[S.o[S.p]];
+    document.documentElement.style.setProperty("--accent", P.color);
+    document.getElementById("title").textContent = P.name;
+    document.getElementById("hudName").textContent = P.name;
+    for (const b of document.querySelectorAll(".parts .tab")) b.setAttribute("aria-pressed", String(b.dataset.p === S.p));
+    const opts = document.getElementById("opts"); opts.innerHTML = "";
+    for (const k of ["A", "B", "C"]) { const o = P.opts[k], b = document.createElement("button"); b.className = "tab"; b.setAttribute("aria-pressed", String(S.o[S.p] === k)); b.innerHTML = `${k} · ${o.tab}<small>${o.sub}</small>`; b.onclick = () => { S.o[S.p] = k; render(); }; opts.appendChild(b); }
+    const steps = document.getElementById("steps"); steps.innerHTML = "";
+    STEPS.forEach((s, i) => { const b = document.createElement("button"); b.className = "tab"; b.setAttribute("aria-pressed", String(S.step === i)); b.textContent = "Step " + s; b.onclick = () => { S.step = i; render(); }; steps.appendChild(b); });
+    const views = document.getElementById("views"); views.innerHTML = "";
+    for (const [k, lbl] of [["close", "Close-up"], ["far", "Game camera"]]) { const b = document.createElement("button"); b.className = "tab"; b.setAttribute("aria-pressed", String(S.view === k)); b.textContent = lbl; b.onclick = () => { S.view = k; render(); }; views.appendChild(b); }
+    const ctl = document.getElementById("controls");
+    ctl.innerHTML = `<button class="btn" id="go">${P.act}</button>`;
+    document.getElementById("go").onclick = () => { S.t0 = performance.now() / 1000; };
+    const an = document.getElementById("adrenNums");
+    if (S.p === "adren") {
+      an.hidden = false;
+      an.innerHTML = `<h2>Adrenaline numbers</h2><div class="row" id="numRow"></div><ul class="steps">${ADREN_NUMS[S.nums].rows.map(r => `<li>${r}</li>`).join("")}</ul><p class="${S.nums === "both" ? "pick" : ""}" style="margin:0">${ADREN_NUMS[S.nums].note}</p>`;
+      const row = document.getElementById("numRow");
+      for (const k of ["both", "fast", "heal"]) { const b = document.createElement("button"); b.className = "tab"; b.setAttribute("aria-pressed", String(S.nums === k)); b.innerHTML = `${ADREN_NUMS[k].tab}<small>${ADREN_NUMS[k].sub}</small>`; b.onclick = () => { S.nums = k; render(); }; row.appendChild(b); }
+    } else an.hidden = true;
+    document.getElementById("note").innerHTML = `<h2>${S.o[S.p]} · ${O.tab}</h2><dl><dt>Where / steps</dt><dd>${O.where}</dd><dt>In action</dt><dd>${O.fx}</dd><dt>Trade-off</dt><dd>${O.trade}</dd>${O.pick ? `<dt>Pick</dt><dd class="pick">${O.pick}</dd>` : ""}</dl>`;
+  }
+  for (const b of document.querySelectorAll(".parts .tab")) b.onclick = () => { S.p = b.dataset.p; S.t0 = -99; render(); };
+  render();
+  requestAnimationFrame(frame);
+})();
+</script>
