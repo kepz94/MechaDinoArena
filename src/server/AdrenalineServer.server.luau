@@ -1,4 +1,4 @@
--- AdrenalineServer v1.2 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
+-- AdrenalineServer v1.3 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
 -- a few seconds and run faster while it lasts. MDA-62, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Neck injector" (Kepu 2026-10-29).
 -- Settings come from the character (SkillEffects 1.6): AdrenalineEnabled (bought AND slotted), AdrenalineHeal (share of
@@ -43,6 +43,9 @@
 --   The 1.1 glass transparency fade is replaced by this. A rebuild (step change, style flip) starts the fluid at the
 --   level the timers give. Diagnostics: character AdrenalineTankState ("full" / "draining" / "refilling"),
 --   AdrenalineTankFullAt (server time it will be full again).
+-- v1.3 (raptor parts batch 2, MDA-74, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 6): a new PartsJammedAt on the
+--   character (a star Raptor Screech hit, ScreechServer 1.0) ends a running boost at once with AdrenalineEndReason "jammed" (the
+--   cooldown then counts from now, like any early end).
 -- Settings: script attribute AdrenalineServerEnabled (default true).
 -- Diagnostics: script AdrenalineServerVersion, AdrenalineRequests; character AdrenalineServerResult, AdrenalineCount,
 --   AdrenalineHealed, AdrenalineEndReason, AdrenalineStunCleared, AdrenalineLook ("none" / "on" / "noNeck").
@@ -51,7 +54,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local GREEN, DARK, GREY = Color3.fromRGB(95, 209, 106), Color3.fromRGB(44, 52, 64), Color3.fromRGB(154, 166, 182)
 
 script:SetAttribute("AdrenalineServerVersion", VERSION)
@@ -459,6 +462,7 @@ local function onCharacter(char)
 		if char:GetAttribute("AdrenalineEnabled") ~= true then finish(char, "disabled") end
 		build(char)
 	end)
+	char:GetAttributeChangedSignal("PartsJammedAt"):Connect(function() finish(char, "jammed") end) -- v1.3
 	local pl = Players:GetPlayerFromCharacter(char) -- v1.1: the look follows the step
 	if pl then
 		local conn = pl:GetAttributeChangedSignal("SkillPath_adrenaline"):Connect(function()

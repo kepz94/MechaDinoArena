@@ -25,9 +25,9 @@ Cloak (CloakServer / CloakFX logic except reading a new end stamp), PounceServer
 | Part | I | II | III | ★ |
 |---|---|---|---|---|
 | Scent Sense | Pulse: trails of every other dino that passed within 60 studs in the last 8 s glow for you for 6 s; recharge 16 s | 81 studs | memory 10.8 s; the freshest end pulses | bleeding dinos leave a blood trail you see all the time |
-| Raptor Screech | Hold to aim (aim line grows to 50 studs over 1 s), release fires a sonic bolt (70 studs/s) at the first dino in its path: a raptor flinches 0.5 s and loses Cloak; a T-Rex is slowed for 0.5 s; recharge 14 s | max range x1.35 (67.5) | recharge 10.4 s (x0.74) | jams parts: the target's running boost, Shield and Adrenaline end at once |
+| Raptor Screech | Hold to aim (aim line grows to 50 studs over 1 s), release fires a sonic bolt (70 studs/s) at the first dino in its path: a raptor flinches 0.5 s and loses Cloak; a T-Rex is slowed for 0.5 s; recharge 14 s | max range x1.35 (67.5) | recharge 10.3 s (14 / 10.3 = 1.36; 10.4 failed the 35% rule) | jams parts: the target's running boost, Shield and Adrenaline end at once |
 
-Effects fields: `scentRadius` (60 / 81), `scentMemory` (8 / 10.8), `scentTime` 6, `scentCooldown` 16, `scentFresh` (III), `scentBlood` (★); `screechRange` (50 / 67.5), `screechFlinch` 0.5, `screechCooldown` (14 / 10.4), `screechJam` (★).
+Effects fields: `scentRadius` (60 / 81), `scentMemory` (8 / 10.8), `scentTime` 6, `scentCooldown` 16, `scentFresh` (III), `scentBlood` (★); `screechRange` (50 / 67.5), `screechFlinch` 0.5, `screechCooldown` (14 / 10.3), `screechJam` (★).
 
 ## Tasks (build order)
 1. **SkillTree 1.9** (Logic) — paths, texts, effects, dart / beacon to "none", spec cases incl. 35% rule.

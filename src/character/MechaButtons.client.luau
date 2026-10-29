@@ -1,4 +1,4 @@
--- MechaButtons v1.7 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.8 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -91,12 +91,24 @@
 --   boost the stick / keys now steer it like the normal boost: with move input the sideways speed is the boost speed
 --   (DashSpeedMul x run speed) in the move direction, without it 0; the up speed keeps the rise / hover profile, so the
 --   height is held while flying until the boost ends, then the drop. MechaBoostDir "move" / "keep" as on the ground.
+-- v1.8 (raptor parts batch 2, MDA-74 / MDA-75, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Tasks 6-7):
+--   * TIMED_PARTS += scent ("Scent", DinoScentRequest, "SCENT"; ScentServer 1.0) and screech ("Screech",
+--     DinoScreechRequest, "SCREECH"; ScreechServer 1.0). Scent is a normal press.
+--   * Raptor Screech is hold-to-aim (Kepu: "it needs to be aimed" -> C "Hold to aim"): pressing its slot starts the aim;
+--     an aim line "ScreechAim" (client-only red neon strip on the ground in front of the raptor, along its facing)
+--     grows from 0 to ScreechRange over AIM_TIME (1) s and stays at the max while held; letting go fires
+--     DinoScreechRequest(server time, held range). PC: key down / key up (R / C / T / V). Touch: the slot's button
+--     down / up; with a pull part on the same button, the aim follows the gesture: it aims the tap slot until the
+--     touch counts as a pull, then the pull slot (if that is Screech), and the release fires the one aimed. Dying,
+--     the character leaving or Screech leaving the slot cancels the aim.
+--     Diagnostics: MechaScreechAim ("idle" / "aiming"), MechaScreechHeld (last held range, studs), MechaScreechFired.
+--   * Jam (MDA-74): a new PartsJammedAt during a boost ends it (MechaBoostEnd "jammed").
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -124,15 +136,75 @@ local TIMED_PARTS = { -- v1.5: part id -> {attribute prefix, remote name, button
 	adrenaline = {"Adrenaline", "DinoAdrenalineRequest", "ADRENALINE"},
 	shield = {"EnergyShield", "DinoEnergyShieldRequest", "SHIELD"},
 }
+TIMED_PARTS.scent = {"Scent", "DinoScentRequest", "SCENT"} -- v1.8
+TIMED_PARTS.screech = {"Screech", "DinoScreechRequest", "SCREECH"} -- v1.8 (hold-to-aim, see aimStart)
+local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
+local aim -- v1.8: {slot, t0, input, gesture, part}
 
 local function slotPart(n)
 	local v = player:GetAttribute("SkillSlot" .. n)
 	return (type(v) == "string" and v ~= "") and v or nil
 end
 
-local function press(n)
+-- v1.8: Raptor Screech hold-to-aim
+local function aimRange()
+	if not aim then return 0 end
+	local maxR = tonumber(char:GetAttribute("ScreechRange")) or 0
+	return maxR * math.clamp((os.clock() - aim.t0) / AIM_TIME, 0, 1)
+end
+local function aimCancel()
+	if aim and aim.part then aim.part:Destroy() end
+	aim = nil
+	char:SetAttribute("MechaScreechAim", "idle")
+end
+local function aimStart(n, input, isGesture)
+	aimCancel()
+	if not hrp then return end
+	local line = Instance.new("Part")
+	line.Name = "ScreechAim"
+	line.Color = Color3.fromRGB(240, 90, 79)
+	line.Material = Enum.Material.Neon
+	line.Transparency = 0.25
+	line.Anchored, line.CanCollide, line.CanQuery, line.CanTouch, line.CastShadow = true, false, false, false, false
+	line.Size = Vector3.new(0.6, 0.1, 0.1)
+	line.Parent = workspace
+	aim = {slot = n, t0 = os.clock(), input = input, gesture = isGesture == true, part = line}
+	char:SetAttribute("MechaScreechAim", "aiming")
+end
+local function aimRelease()
+	if not aim then return end
+	local range = aimRange()
+	aimCancel()
+	char:SetAttribute("MechaScreechHeld", math.floor(range * 10 + 0.5) / 10)
+	local r = ReplicatedStorage:FindFirstChild("DinoScreechRequest")
+	if r then
+		r:FireServer(workspace:GetServerTimeNow(), range)
+		char:SetAttribute("MechaScreechFired", (char:GetAttribute("MechaScreechFired") or 0) + 1)
+	end
+end
+RunService.RenderStepped:Connect(function()
+	if not aim then return end
+	if not char.Parent or not hum or hum.Health <= 0 or slotPart(aim.slot) ~= "screech" then aimCancel() return end
+	local len = math.max(0.1, aimRange())
+	local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+	if look.Magnitude < 1e-3 then return end
+	look = look.Unit
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Exclude
+	rp.FilterDescendantsInstances = {char, aim.part}
+	local g = workspace:Raycast(hrp.Position, Vector3.new(0, -60, 0), rp)
+	local base = (g and g.Position or hrp.Position) + Vector3.new(0, 0.15, 0) -- on the ground under the raptor
+	aim.part.Size = Vector3.new(0.6, 0.1, len)
+	aim.part.CFrame = CFrame.lookAt(base + look * (4 + len / 2), base + look * (5 + len / 2))
+end)
+
+local function press(n, input)
 	local id = slotPart(n)
 	char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(n, id or "empty"))
+	if id == "screech" then -- v1.8: start the aim; the release fires
+		aimStart(n, input, false)
+		return
+	end
 	if id == "thrusters" and remote then remote:FireServer(workspace:GetServerTimeNow()) end
 	if id == "cloak" then -- v1.4
 		cloakRemote = cloakRemote or ReplicatedStorage:FindFirstChild("DinoCloakRequest")
@@ -320,6 +392,7 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 	char:SetAttribute("MechaDashLocalCount", (char:GetAttribute("MechaDashLocalCount") or 0) + 1)
 	fxStart() -- v1.2
 	local t0 = os.clock()
+	local jam0 = char:GetAttribute("PartsJammedAt") -- v1.8
 	local conn
 	local function stop()
 		fxStop() -- v1.2
@@ -338,6 +411,11 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 		local now = workspace:GetServerTimeNow()
 		if pounceStarted() then -- v1.3
 			char:SetAttribute("MechaBoostEnd", "pounce")
+			stop()
+			return
+		end
+		if char:GetAttribute("PartsJammedAt") ~= jam0 then -- v1.8: star Raptor Screech hit
+			char:SetAttribute("MechaBoostEnd", "jammed")
 			stop()
 			return
 		end
@@ -423,7 +501,14 @@ end)
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or UserInputService:GetFocusedTextBox() then return end
 	for n, k in ipairs(KEYS) do -- v1.1: R / C (was 1 / 2); v1.4: + T / V (slots 3 / 4)
-		if input.KeyCode == k then press(n) break end
+		if input.KeyCode == k then press(n, input) break end
+	end
+end)
+UserInputService.InputEnded:Connect(function(input) -- v1.8: let go of the key / touch that started a Screech aim
+	if aim and not aim.gesture then
+		if (aim.input and input == aim.input) or (input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode == KEYS[aim.slot]) then
+			aimRelease()
+		end
 	end
 end)
 
@@ -548,6 +633,7 @@ local function beginGesture(n, input)
 	local px = math.clamp(0.22 * h, 14, 24)
 	gesture = {n = n, input = input, y0 = input.Position.Y, pulling = false, px = px}
 	char:SetAttribute("MechaButtonsPullPx", math.floor(px * 10 + 0.5) / 10)
+	if slotPart(n) == "screech" then aimStart(n, input, true) end -- v1.8: aim the tap slot until it becomes a pull
 end
 local function endGesture()
 	local g = gesture
@@ -558,13 +644,26 @@ local function endGesture()
 	local s = slots[g.n]
 	if s then s.scale.Scale = 1 end
 	char:SetAttribute("MechaButtonsLastGesture", pulled and "pull" or "tap")
-	press(pulled and g.n + 2 or g.n)
+	local chosen = pulled and g.n + 2 or g.n
+	if slotPart(chosen) == "screech" then -- v1.8: the release fires the aimed Screech
+		char:SetAttribute("MechaButtonsLastPress", ("slot%d:screech"):format(chosen))
+		if aim and aim.slot == chosen then aimRelease() else aimCancel() end
+		return
+	end
+	aimCancel()
+	press(chosen)
 end
 UserInputService.InputChanged:Connect(function(input)
 	if not gesture then return end
 	if input == gesture.input or (gesture.input.UserInputType == Enum.UserInputType.MouseButton1
 		and input.UserInputType == Enum.UserInputType.MouseMovement) then
 		setPulling(input.Position.Y - gesture.y0 >= gesture.px)
+		local want = gesture.pulling and gesture.n + 2 or gesture.n -- v1.8: aim the slot the gesture would fire
+		if slotPart(want) == "screech" then
+			if not (aim and aim.slot == want) then aimStart(want, gesture.input, true) end
+		elseif aim and aim.gesture then
+			aimCancel()
+		end
 	end
 end)
 UserInputService.InputEnded:Connect(function(input)
@@ -646,7 +745,7 @@ for n = 1, 2 do
 			beginGesture(n, input)
 		else
 			char:SetAttribute("MechaButtonsLastGesture", "press")
-			press(n)
+			press(n, input)
 		end
 	end)
 	b.InputEnded:Connect(function() scale.Scale = 1 end)

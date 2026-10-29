@@ -1,6 +1,14 @@
--- SkillTree.spec v1.8 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.9 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
-local ok, ST = pcall(function() return require(game.ServerStorage.DinoArcade.SkillTree) end)
+-- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
+local ok, ST = pcall(function()
+	local src = game.ServerStorage.DinoArcade.SkillTree
+	local c = src:Clone()
+	c.Parent = src.Parent
+	local m = require(c)
+	c:Destroy()
+	return m
+end)
 if not ok then return "FAIL require: " .. tostring(ST) end
 local fails, passes = {}, 0
 local function eq(name, got, want, tol)
@@ -9,7 +17,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.8") -- v1.8 (was 1.7)
+eq("Version", ST.Version, "1.9") -- v1.9 (was 1.8)
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 40) -- v1.5 (ADR-004)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 41)
@@ -26,11 +34,11 @@ for _, a in ipairs(ST.AREAS) do
 end
 eq("areas", table.concat(areas, ","), "health,attack,defense,speed,eng")
 eq("path ids", table.concat(ids, ","),
-	"regen,medstation,lifesteal,adrenaline,repairdrone,biobattery,jaws,turret,rocket,blade,dart,hide,armor,shield,cloak,"
-	.. "reactive,legs,thrusters,grapple,ramjet,sentry,traps,barricade,beacon,decoy,shieldproj,roaramp")
+	"regen,medstation,lifesteal,adrenaline,repairdrone,biobattery,jaws,turret,rocket,blade,dart,screech,hide,armor,shield,cloak,"
+	.. "reactive,legs,thrusters,grapple,ramjet,sentry,traps,barricade,beacon,decoy,shieldproj,roaramp,scent") -- v1.9: + screech, scent
 local buyable = {}
 for _, id in ipairs(ids) do if not ST.PATHS[id].soon then table.insert(buyable, id) end end
-eq("buyable", table.concat(buyable, ","), "regen,lifesteal,jaws,hide,cloak,legs,thrusters") -- v1.1: + thrusters; v1.5: + cloak (AREAS order)
+eq("buyable", table.concat(buyable, ","), "regen,lifesteal,adrenaline,jaws,blade,screech,hide,shield,cloak,legs,thrusters,scent") -- v1.1: + thrusters; v1.5: + cloak (AREAS order); v1.9: + batch 1 (was stale since 1.6) + screech, scent
 
 -- level curve: xpToNext(L) = 30 + 10 (L - 1); points = level - 1, v1.5: cap 40 at level 41
 eq("xpToNext 1", ST.xpToNext(1), 30)
@@ -224,17 +232,17 @@ ST.STRONG = true
 local function names(list) local o = {} for _, p in ipairs(list) do table.insert(o, p.id) end return table.concat(o, ",") end
 eq("pathsFor health Raptor", names(ST.pathsFor("health", "Raptor")), "regen,lifesteal,adrenaline")
 eq("pathsFor health TRex", names(ST.pathsFor("health", "TRex")), "lifesteal,repairdrone,biobattery")
-eq("pathsFor attack Raptor", names(ST.pathsFor("attack", "Raptor")), "jaws,blade,dart")
+eq("pathsFor attack Raptor", names(ST.pathsFor("attack", "Raptor")), "blade,screech") -- v1.9 (1.6: no jaws; dart hidden)
 eq("pathsFor attack TRex", names(ST.pathsFor("attack", "TRex")), "jaws,rocket")
 eq("pathsFor defense Raptor", names(ST.pathsFor("defense", "Raptor")), "hide,shield,cloak")
 eq("pathsFor defense TRex", names(ST.pathsFor("defense", "TRex")), "hide,armor,reactive")
 eq("pathsFor speed Raptor", names(ST.pathsFor("speed", "Raptor")), "legs,thrusters,grapple")
 eq("pathsFor speed TRex", names(ST.pathsFor("speed", "TRex")), "legs,ramjet")
-eq("pathsFor eng Raptor", names(ST.pathsFor("eng", "Raptor")), "beacon,decoy")
+eq("pathsFor eng Raptor", names(ST.pathsFor("eng", "Raptor")), "decoy,scent") -- v1.9 (beacon hidden)
 eq("pathsFor eng TRex", names(ST.pathsFor("eng", "TRex")), "shieldproj,roaramp")
 eq("pathsFor eng new dino", names(ST.pathsFor("eng", "Stego")), "")
 eq("pathsFor health new dino", names(ST.pathsFor("health", "Stego")), "regen,lifesteal")
-eq("pathsFor nil = all", #ST.pathsFor("eng", nil), 7)
+eq("pathsFor nil = all", #ST.pathsFor("eng", nil), 8) -- v1.9: + scent
 eq("none hidden from All", ST.seesPath("turret", "All"), false)
 eq("canBuy cloak no dino", cb({}, "cloak", 5), "true:ok") -- dino nil = 1.4 behaviour (every path)
 local function cbd(steps, id, earned, dino) local okb, why = ST.canBuy(steps, id, earned, dino) return tostring(okb) .. ":" .. why end
@@ -250,18 +258,18 @@ eq("spent TRex refunds", ST.spent({thrusters = 2, regen = 2, jaws = 1}, "TRex"),
 eq("sanitize nil keeps", ST.sanitize({thrusters = 2}).thrusters, 2)
 
 -- v1.5: Mastery 3 (ADR-003)
-local m3 = {legs = 3, jaws = 3, cloak = 3, hide = 2}
-eq("mastered list", table.concat(ST.mastered(m3, "Raptor"), ","), "jaws,cloak,legs") -- PATH_ORDER; hide at II is not mastered
+local m3 = {legs = 3, blade = 3, cloak = 3, hide = 2} -- v1.9: blade (jaws is not a raptor path since 1.6; these 4 cases were stale)
+eq("mastered list", table.concat(ST.mastered(m3, "Raptor"), ","), "blade,cloak,legs") -- PATH_ORDER; hide at II is not mastered
 eq("mastered count", #ST.mastered(m3, "Raptor"), 3)
 eq("4th line III", cbd(m3, "hide", 40, "Raptor"), "false:masteryFull")
 eq("4th line II ok", cbd(m3, "thrusters", 40, "Raptor"), "true:ok")
 eq("star of mastered", cbd(m3, "legs", 40, "Raptor"), "true:ok")
-eq("3rd line III ok", cbd({legs = 3, jaws = 3, hide = 2}, "hide", 40, "Raptor"), "true:ok")
+eq("3rd line III ok", cbd({legs = 3, blade = 3, hide = 2}, "hide", 40, "Raptor"), "true:ok")
 eq("masteryOk 3", ST.masteryOk(m3, "Raptor"), true)
-eq("masteryOk 4", ST.masteryOk({legs = 3, jaws = 3, cloak = 3, hide = 3}, "Raptor"), false)
+eq("masteryOk 4", ST.masteryOk({legs = 3, blade = 3, cloak = 3, hide = 3}, "Raptor"), false)
 ST.BUILD_LIMITS = false
 eq("limits off: 4th III", cbd(m3, "hide", 60, "Raptor"), "true:ok")
-eq("limits off: masteryOk", ST.masteryOk({legs = 3, jaws = 3, cloak = 3, hide = 3}, "Raptor"), true)
+eq("limits off: masteryOk", ST.masteryOk({legs = 3, blade = 3, cloak = 3, hide = 3}, "Raptor"), true)
 ST.BUILD_LIMITS = true
 
 -- v1.5: Cloak effects (35% rule on time)
@@ -283,7 +291,7 @@ eq("autoSlot cloak", lo4(ST.autoSlot({"thrusters", false, false, false}, both, "
 eq("TRex loadout drops raptor parts", lo4(ST.sanitizeLoadout({"thrusters", "cloak", false, false}, both, "TRex")), "false,false,false,false")
 
 -- v1.6: raptor batch 1 (Blade Claws, Adrenaline Injector, Energy Shield; plan docs/plans/RAPTOR_PARTS_B1_v1.0.md)
-eq("Version 1.6+", ST.Version, "1.8") -- v1.8
+eq("Version 1.6+", ST.Version, "1.9") -- v1.9
 for _, id in ipairs({"blade", "adrenaline", "shield"}) do eq(id .. " live", ST.PATHS[id].soon, false) end
 eq("blade passive", ST.BUTTONS.blade == true, false)
 local function R(id, n) return ST.effects({[id] = n}, "Raptor") end
@@ -328,7 +336,27 @@ eq("raptor jaws buy", select(2, ST.canBuy({}, "jaws", 5, "Raptor")), "otherDino"
 eq("raptor jaws effects", ST.effects({jaws = 4}, "Raptor").bleedDps, 0)
 eq("raptor jaws refunded", ST.sanitize({jaws = 2}, "Raptor").jaws, 0)
 local att = {} for _, p in ipairs(ST.pathsFor("attack", "Raptor")) do table.insert(att, p.id) end
-eq("raptor attack area", table.concat(att, ","), "blade,dart")
+eq("raptor attack area", table.concat(att, ","), "blade,screech") -- v1.9
+
+-- v1.9: raptor batch 2 (Scent Sense, Raptor Screech; plan docs/plans/RAPTOR_PARTS_B2_v1.0.md)
+for _, id in ipairs({"scent", "screech"}) do eq(id .. " live", ST.PATHS[id].soon, false); eq(id .. " button", ST.BUTTONS[id], true) end
+eq("dart hidden", ST.seesPath("dart", "Raptor"), false); eq("beacon hidden", ST.seesPath("beacon", "Raptor"), false)
+eq("scent trex", ST.seesPath("scent", "TRex"), false); eq("screech trex", ST.seesPath("screech", "TRex"), false)
+eq("scent 0", R("scent", 0).scentRadius, 0); eq("scent 0 cd", R("scent", 0).scentCooldown, 0)
+eq("scent I", R("scent", 1).scentRadius, 60); eq("scent I mem", R("scent", 1).scentMemory, 8)
+eq("scent I time", R("scent", 1).scentTime, 6); eq("scent I cd", R("scent", 1).scentCooldown, 16)
+eq("scent II", R("scent", 2).scentRadius, 81); eq("scent II fresh", R("scent", 2).scentFresh, false)
+eq("scent III mem", R("scent", 3).scentMemory, 10.8); eq("scent III fresh", R("scent", 3).scentFresh, true)
+eq("scent III blood", R("scent", 3).scentBlood, false); eq("scent star blood", R("scent", 4).scentBlood, true)
+eq("screech 0", R("screech", 0).screechRange, 0)
+eq("screech I", R("screech", 1).screechRange, 50); eq("screech I flinch", R("screech", 1).screechFlinch, 0.5)
+eq("screech I cd", R("screech", 1).screechCooldown, 14); eq("screech II", R("screech", 2).screechRange, 67.5)
+eq("screech III cd", R("screech", 3).screechCooldown, 10.3); eq("screech III jam", R("screech", 3).screechJam, false)
+eq("screech star jam", R("screech", 4).screechJam, true)
+eq("35 scent radius", 81 / 60 >= 1.35 - 1e-9, true); eq("35 scent mem", 10.8 / 8 >= 1.35 - 1e-9, true)
+eq("35 screech range", 67.5 / 50 >= 1.35 - 1e-9, true); eq("35 screech cd", R("screech", 1).screechCooldown / R("screech", 3).screechCooldown >= 1.35 - 1e-9, true)
+local tx2 = ST.effects({scent = 4, screech = 4}, "TRex")
+eq("TRex scent", tx2.scentRadius, 0); eq("TRex screech", tx2.screechRange, 0)
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

@@ -1,4 +1,4 @@
--- ArenaScope v1.7 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.8 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -19,10 +19,12 @@
 --   (StarterPlayer.StarterPlayerScripts, SPS) expected on.
 -- v1.7 (raptor parts batch 1, MDA-65, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 8): BladeServer, AdrenalineServer and
 --   EnergyShieldServer (ServerScriptService) expected on.
+-- v1.8 (raptor parts batch 2, MDA-76, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 9): ScentServer, ScreechServer
+--   (ServerScriptService) and ScentFX (StarterPlayerScripts) expected on.
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 local SPS = StarterPlayer:WaitForChild("StarterPlayerScripts") -- v1.6
 -- {container, name, expected Enabled}
@@ -56,6 +58,7 @@ local SCOPE = {
 	{SSS, "CloakServer", true}, {SPS, "CloakFX", true},
 	-- v1.7: raptor parts batch 1
 	{SSS, "BladeServer", true}, {SSS, "AdrenalineServer", true}, {SSS, "EnergyShieldServer", true},
+	{SSS, "ScentServer", true}, {SSS, "ScreechServer", true}, {SPS, "ScentFX", true}, -- v1.8
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)

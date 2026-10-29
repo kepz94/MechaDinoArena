@@ -1,4 +1,4 @@
--- CloakServer v1.3 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
+-- CloakServer v1.4 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
 -- visible emitter pack. MDA-51, plan docs/plans/CLOAK_v1.0.md Tasks 3 + 4b (Kepu 2026-10-29: faint shimmer, bots lose
 -- you at once, breaks on pounce / damage / another part, 12 s cooldown, star capped at 2x; every mecha part is visible
 -- hardware).
@@ -43,13 +43,18 @@
 -- v1.3 (raptor parts batch 1, MDA-64, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 7): PART_STAMPS also lists
 --   AdrenalineStartedAt (AdrenalineServer 1.0) and EnergyShieldStartedAt (EnergyShieldServer 1.0): using either part ends
 --   the cloak with "part", like Thrusters. Nothing else changed.
+-- v1.4 (raptor parts batch 2, MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5): PART_STAMPS also lists
+--   ScentStartedAt (ScentServer 1.0) and ScreechStartedAt (ScreechServer 1.0): using either ends your cloak with "part".
+--   A Raptor Screech hit (ScreechHitAt, ScreechServer 1.0) ends the hit dino's cloak with the new reason "screech".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local STILL_SPEED = 1
 local PART_STAMPS = {"DashStartedAt", "AdrenalineStartedAt", "EnergyShieldStartedAt"} -- other mecha parts' start stamps break the cloak; v1.3: + Adrenaline / Energy Shield
+table.insert(PART_STAMPS, "ScentStartedAt") -- v1.4
+table.insert(PART_STAMPS, "ScreechStartedAt") -- v1.4
 local METAL, CYAN = Color3.fromRGB(110, 122, 134), Color3.fromRGB(95, 243, 255)
 
 script:SetAttribute("CloakServerVersion", VERSION)
@@ -302,6 +307,9 @@ local function onCharacter(char)
 			if char:GetAttribute("CloakState") == "on" then endCloak(char, "part") end
 		end)
 	end
+	char:GetAttributeChangedSignal("ScreechHitAt"):Connect(function() -- v1.4: a screech hit knocks you out of the cloak
+		if char:GetAttribute("CloakState") == "on" then endCloak(char, "screech") end
+	end)
 	char:GetAttributeChangedSignal("CloakEnabled"):Connect(function()
 		if char:GetAttribute("CloakEnabled") ~= true then endCloak(char, "part") end
 		buildPack(char)

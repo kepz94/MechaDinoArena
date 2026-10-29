@@ -1,4 +1,4 @@
--- EnergyShieldServer v1.2 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
+-- EnergyShieldServer v1.3 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
 -- damage for a short time, but move slower while it's up. MDA-63, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 6, mockup
 -- docs/mockups/raptor_parts_b1_options.html option B "Hard-light shell" (Kepu 2026-10-29: full block; "If we're allowing
 -- it to block all attacks then the push back shouldn't exist"; "You block all damage but you're slower during the
@@ -47,6 +47,9 @@
 --     hid the shell while both were up). While the shield is up in shell style, any other Highlight added to the
 --     character makes the shell be rebuilt (deferred) so it is the newest and stays visible for the whole shield.
 --     The other Highlight shows again once the shell is gone. Diagnostic: character EnergyShieldShellRefreshes.
+-- v1.3 (raptor parts batch 2, MDA-74, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 6): a new PartsJammedAt on the
+--   character (a star Raptor Screech hit, ScreechServer 1.0) ends a running shield at once with EnergyShieldEndReason "jammed" (the
+--   cooldown then counts from now, like any early end).
 -- Settings: script attribute EnergyShieldServerEnabled (default true).
 -- Diagnostics: script EnergyShieldServerVersion, EnergyShieldRequests; character EnergyShieldServerResult,
 --   EnergyShieldCount, EnergyShieldBlocks, EnergyShieldBlockAt, EnergyShieldEndReason, EnergyShieldState ("off" / "on"),
@@ -56,7 +59,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService") -- v1.1
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local BLUE, DARK, WHITE = Color3.fromRGB(90, 160, 255), Color3.fromRGB(44, 52, 64), Color3.new(1, 1, 1)
 
 script:SetAttribute("EnergyShieldServerVersion", VERSION)
@@ -428,6 +431,7 @@ local function onCharacter(char)
 		if char:GetAttribute("EnergyShieldEnabled") ~= true then finish(char, "disabled") end
 		build(char)
 	end)
+	char:GetAttributeChangedSignal("PartsJammedAt"):Connect(function() finish(char, "jammed") end) -- v1.3
 	char.ChildAdded:Connect(function(ch) -- v1.2: keep the shell the newest Highlight while the shield is up
 		if not ch:IsA("Highlight") or ch.Name == "EnergyShieldShell" then return end
 		if not st.active or domeStyle() then return end

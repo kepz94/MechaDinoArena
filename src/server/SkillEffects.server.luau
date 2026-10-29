@@ -1,4 +1,4 @@
--- SkillEffects v1.7 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.8 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -47,6 +47,12 @@
 --   CloakEnabled = effects on AND cloakTime > 0 AND "cloak" in any SkillSlot1..SLOTS (4); CloakTime, CloakCooldown,
 --   CloakPounceMul (1 while off), CloakStill (false while off). Written with the dash attributes (same re-apply
 --   triggers). CloakServer 1.0 / MechaButtons 1.4 / AbilityBar 1.2 read them.
+-- v1.8 (raptor parts batch 2, MDA-71, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 2; SkillTree 1.9), written with the
+--   other part attributes, only while the part is bought AND in a slot (0 / false otherwise):
+--   * Scent Sense: ScentEnabled, ScentRadius, ScentMemory, ScentTime, ScentCooldown, ScentFresh, ScentBlood
+--     (ScentServer 1.0 / ScentFX 1.0 read them).
+--   * Raptor Screech: ScreechEnabled, ScreechRange, ScreechFlinch, ScreechCooldown, ScreechJam (ScreechServer 1.0 /
+--     MechaButtons 1.8 read them).
 -- v1.7 (Kepu 2026-10-29: thrusters "a little more of a speed boost" -> "2x run speed"): SkillDashSpeedMul default 2
 --   (was 1.75).
 -- v1.6 (raptor parts batch 1, MDA-59, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 2; SkillTree 1.6). Written with the
@@ -62,7 +68,7 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
@@ -170,6 +176,28 @@ local function applyChar(char, st)
 	char:SetAttribute("EnergyShieldTime", shOn and e.eshieldTime or 0)
 	char:SetAttribute("EnergyShieldCooldown", shOn and e.eshieldCooldown or 0)
 	char:SetAttribute("EnergyShieldSpeedMul", shOn and (e.eshieldSpeedMul or 1) or 1)
+	-- v1.8: Scent Sense / Raptor Screech (booleans with explicit if/else)
+	local scOn = false
+	if live and (e.scentTime or 0) > 0 and inSlot("scent") then scOn = true end
+	char:SetAttribute("ScentEnabled", scOn)
+	char:SetAttribute("ScentRadius", scOn and e.scentRadius or 0)
+	char:SetAttribute("ScentMemory", scOn and e.scentMemory or 0)
+	char:SetAttribute("ScentTime", scOn and e.scentTime or 0)
+	char:SetAttribute("ScentCooldown", scOn and e.scentCooldown or 0)
+	local fresh, blood = false, false
+	if scOn and e.scentFresh == true then fresh = true end
+	if scOn and e.scentBlood == true then blood = true end
+	char:SetAttribute("ScentFresh", fresh)
+	char:SetAttribute("ScentBlood", blood)
+	local srOn = false
+	if live and (e.screechRange or 0) > 0 and inSlot("screech") then srOn = true end
+	char:SetAttribute("ScreechEnabled", srOn)
+	char:SetAttribute("ScreechRange", srOn and e.screechRange or 0)
+	char:SetAttribute("ScreechFlinch", srOn and e.screechFlinch or 0)
+	char:SetAttribute("ScreechCooldown", srOn and e.screechCooldown or 0)
+	local jam = false
+	if srOn and e.screechJam == true then jam = true end
+	char:SetAttribute("ScreechJam", jam)
 end
 
 -- healing (regen / lifesteal), overflow into the shield

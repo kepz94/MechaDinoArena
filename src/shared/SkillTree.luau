@@ -1,4 +1,4 @@
--- SkillTree v1.8 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.9 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -88,7 +88,7 @@
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.8"
+SkillTree.Version = "1.9"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -167,6 +167,16 @@ SkillTree.AREAS = {
 -- v1.8 (Kepu 2026-10-29: thrusters "half a second longer" at max -> "star 1.85 s, lower steps 1.37 s"; "2x run
 --   speed"): while STRONG, dashTime 1.37 s (I / II; was 1.0) and 1.85 s from III (was 1.35; 1.85 / 1.37 = 1.35, the
 --   35% rule). Speed is SkillEffects 1.7 SkillDashSpeedMul 2. Step texts I / III.
+-- v1.9 (raptor parts batch 2, MDA-70, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md; Kepu 2026-10-29: "these need to be Raptor
+--   specific ... the Raptor is a natural roamer"; mockup docs/mockups/raptor_parts_b2_scent_screech.html): two new raptor
+--   button parts, live: "screech" Raptor Screech (attack, appended after dart) and "scent" Scent Sense (eng, appended
+--   after roaramp). Dart Launcher and Pack Beacon are kept but shown to nobody (OWNER "none"). New effects fields (0 / 1
+--   / false when not owned):
+--     Scent Sense: scentRadius (0; 60, 81 from II), scentMemory (0; 8, 10.8 from III), scentTime (0; 6), scentCooldown
+--       (0; 16), scentFresh (false; true from III: the freshest end of each trail pulses), scentBlood (false; true at
+--       star: bleeding dinos leave a blood trail you see all the time).
+--     Raptor Screech: screechRange (0; 50, 67.5 from II: max held range), screechFlinch (0; 0.5 s), screechCooldown
+--       (0; 14, 10.3 from III), screechJam (false; true at star: the hit dino's boost, Shield and Adrenaline end).
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -222,6 +232,25 @@ do
 		for _, p in ipairs(add[a.id] or {}) do table.insert(a.paths, p) end
 	end
 end
+-- v1.9: raptor parts batch 2, appended to their areas
+do
+	local add = {
+		attack = {
+			path("screech", "Raptor Screech", true, true, {
+				"Button: hold to aim, release to screech. The first dino hit flinches for 0.5 s and loses its cloak (a T-Rex is slowed)",
+				"Reaches 35% farther", "Recharges 26% faster", "Jams parts: the hit dino's boost, Shield and Adrenaline end at once"}),
+		},
+		eng = {
+			path("scent", "Scent Sense", true, true, {
+				"Button: sniff. Trails of every dino that passed within 60 studs in the last 8 s glow for you for 6 s",
+				"Wider: 81 studs", "Longer memory (10.8 s); the freshest end of each trail pulses",
+				"Blood scent: bleeding dinos leave a blood trail you see all the time"}),
+		},
+	}
+	for _, a in ipairs(SkillTree.AREAS) do
+		for _, p in ipairs(add[a.id] or {}) do table.insert(a.paths, p) end
+	end
+end
 
 SkillTree.PATHS = {}
 SkillTree.PATH_ORDER = {}
@@ -258,6 +287,12 @@ SkillTree.PATHS.shield.steps[1] = "Button: block all damage for 1.5 s, but move 
 SkillTree.PATHS.shield.steps[4] = "Blocks even longer (2.77 s) and the slow is lighter" -- v1.6 (Kepu: no push-back)
 SkillTree.PATHS.adrenaline.steps[1] = "Button: heal 25% of max health over 3 s and run 1.4x faster while it lasts" -- v1.7
 SkillTree.PATHS.adrenaline.steps[2] = "Heal 34%" -- v1.7
+-- v1.9: batch 2 owners, live, buttons; Dart Launcher / Pack Beacon shown to nobody
+SkillTree.OWNER.screech, SkillTree.OWNER.scent = "Raptor", "Raptor"
+SkillTree.OWNER.dart, SkillTree.OWNER.beacon = "none", "none"
+for _, id in ipairs({"screech", "scent", "dart", "beacon"}) do SkillTree.PATHS[id].dino = SkillTree.OWNER[id] end
+SkillTree.LIVE_MECH.screech, SkillTree.LIVE_MECH.scent = true, true
+SkillTree.BUTTONS.screech, SkillTree.BUTTONS.scent = true, true
 for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
 	"armor", "ramjet", "shieldproj", "roaramp"}) do
 	SkillTree.BUTTONS[id] = true
@@ -484,6 +519,20 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if sh >= 2 then e.eshieldTime = 2.05 end
 	if sh >= 3 then e.eshieldCooldown = 11.8 end
 	if sh >= 4 then e.eshieldTime, e.eshieldSpeedMul = 2.77, 0.68 end
+	-- v1.9: Scent Sense
+	local sc = s.scent or 0
+	e.scentRadius, e.scentMemory, e.scentTime, e.scentCooldown, e.scentFresh, e.scentBlood = 0, 0, 0, 0, false, false
+	if sc >= 1 then e.scentRadius, e.scentMemory, e.scentTime, e.scentCooldown = 60, 8, 6, 16 end
+	if sc >= 2 then e.scentRadius = 81 end
+	if sc >= 3 then e.scentMemory, e.scentFresh = 10.8, true end
+	if sc >= 4 then e.scentBlood = true end
+	-- v1.9: Raptor Screech
+	local sr = s.screech or 0
+	e.screechRange, e.screechFlinch, e.screechCooldown, e.screechJam = 0, 0, 0, false
+	if sr >= 1 then e.screechRange, e.screechFlinch, e.screechCooldown = 50, 0.5, 14 end
+	if sr >= 2 then e.screechRange = 67.5 end
+	if sr >= 3 then e.screechCooldown = 10.3 end -- 14 / 10.3 = 1.36 (10.4 failed the 35% rule)
+	if sr >= 4 then e.screechJam = true end
 	return e
 end
 
