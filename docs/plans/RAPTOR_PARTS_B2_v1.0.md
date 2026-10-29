@@ -46,3 +46,14 @@ Effects fields: `scentRadius` (60 / 81), `scentMemory` (8 / 10.8), `scentTime` 6
 3. **Flinch uses the existing stun, so Thick Hide applies.** Kepu: "Hide counts". Accepted: Hide III shortens it, Hide ★ blocks it above 50% health. Acceptance: a Hide ★ target above half health does not flinch.
 4. **★ jam touches 4 scripts.** Kepu: "All three". One attribute (PartsJammedAt) read by AdrenalineServer, EnergyShieldServer and MechaButtons; acceptance per script.
 5. **Scent trail performance.** Accepted: client-only pooled prints, cap 300, history 4 Hz.
+
+## Follow-up after v76 (Kepu 2026-10-29)
+Kepu: "the screech shouldn't be called that because it's not even a screech also the dart doesn't even shoot far at all. I like the way the scent works tho. Also the equip skills menu is stupid. I should be able to tap a slot then tap the skill to fill that slot not tap through to cycle through skills for each slot." Picks: **Shock Dart**, **100 / 135 studs**, **Glowing dart** look, loadout **A · Picker row** (mockup `docs/mockups/loadout_picker_options.html`).
+
+| Task | Mode | Change |
+|---|---|---|
+| 10 — SkillTree 1.10 + spec | Logic | `screech` shown as "Shock Dart" (id kept: saves and attributes unchanged); screechRange 100 / 135; texts I / II |
+| 11 — ScreechServer 1.1 + MechaButtons 1.9 | Wired | bolt 110 studs/s; dart look (steel body, red neon tip, red-white streak); button "SHOCK DART" |
+| 12 — SkillScreen 1.4 | Wired | tap a slot to select it, a picker row of owned button parts (+ Empty) appears above the strip, the tree dims; tap a part to fill; SkillScreenSlotPickerEnabled (false = 1.3 cycle) |
+
+Red-team (one paragraph): the id stays "screech" so nothing saved breaks, at the cost of an internal name that no longer matches (accepted, documented). A longer dart at 110 studs/s is harder to dodge at range; the hold-to-aim and the 14 s recharge stay the counterweights (accepted; Kepu tunes after playing). The picker row overlaps the bottom 44 px of the tree while open; the dimmer makes that clear and a tap on it cancels, so no accidental buys.

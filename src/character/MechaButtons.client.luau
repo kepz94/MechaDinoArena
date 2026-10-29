@@ -1,4 +1,4 @@
--- MechaButtons v1.8 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.9 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -104,12 +104,13 @@
 --     the character leaving or Screech leaving the slot cancels the aim.
 --     Diagnostics: MechaScreechAim ("idle" / "aiming"), MechaScreechHeld (last held range, studs), MechaScreechFired.
 --   * Jam (MDA-74): a new PartsJammedAt during a boost ends it (MechaBoostEnd "jammed").
+-- v1.9 (Kepu: Raptor Screech renamed "Shock Dart"): its button reads "SHOCK DART". Nothing else changed.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -138,7 +139,7 @@ local TIMED_PARTS = { -- v1.5: part id -> {attribute prefix, remote name, button
 	shield = {"EnergyShield", "DinoEnergyShieldRequest", "SHIELD"},
 }
 TIMED_PARTS.scent = {"Scent", "DinoScentRequest", "SCENT"} -- v1.8
-TIMED_PARTS.screech = {"Screech", "DinoScreechRequest", "SCREECH"} -- v1.8 (hold-to-aim, see aimStart)
+TIMED_PARTS.screech = {"Screech", "DinoScreechRequest", "SHOCK DART"} -- v1.8 (hold-to-aim, see aimStart); v1.9: named Shock Dart
 local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
 local aim -- v1.8: {slot, t0, input, gesture, part}
 

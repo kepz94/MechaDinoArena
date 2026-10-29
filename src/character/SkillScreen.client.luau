@@ -1,4 +1,4 @@
--- SkillScreen v1.3 (Mecha Dino Arena) — the SKILLS button and the skill tree screen (LocalScript, all devices). MDA-14,
+-- SkillScreen v1.4 (Mecha Dino Arena) — the SKILLS button and the skill tree screen (LocalScript, all devices). MDA-14,
 -- plan docs/plans/SKILLTREES_v1.0.md Task 4, mockup docs/mockups/skill_tree_options.html option A (Kepu's pick).
 -- Data: ReplicatedStorage.SkillShared.SkillTree (copied there by SkillServer 1.0) for names, steps and costs; the
 --   player's attributes (SkillServer 1.0) for everything that changes: SkillLevel, SkillXPInto, SkillXPNext, SkillLeft,
@@ -79,12 +79,22 @@
 --     cycles that slot's part as 1.1 (only parts this dino owns).
 --   Diagnostics (character, this client): SkillScreenLayout ("tiers" / "rail"), SkillScreenTreeLines (path ids in tree
 --   order), SkillScreenTreeScale (0.01), SkillScreenTreeScroll ("none" / "x" / "y" / "xy"), SkillScreenMastery ("n/3").
+-- v1.4 (Kepu 2026-10-29: "the equip skills menu is stupid. I should be able to tap a slot then tap the skill to fill
+--   that slot not tap through to cycle through skills for each slot" -> mockup docs/mockups/loadout_picker_options.html
+--   A "Picker row"): tapping a loadout tile selects that slot (white stroke 3, LoadoutHint "Tap a part above"); a row
+--   "LoadoutPicker" (pane, 44 px, right above the strip, same width) shows one chip per button part this dino owns
+--   (ownedButtons, tree order; "· in R tap" / "· in C pull" when it sits in another slot) plus "Empty"; the tree column
+--   is dimmed by "LoadoutDim" (tap it to cancel). Tapping a chip fires ("slot", n, id) (SkillTree.setSlot moves a part
+--   out of its old slot) or ("slot", n, "") for Empty, and closes the picker. Tapping the selected tile again, closing
+--   the screen or switching dino cancels. Script attribute SkillScreenSlotPickerEnabled (default true; false = the 1.3
+--   tap-to-cycle). Diagnostic: character SkillScreenPickSlot (0 = none, else the slot number). Layers: LoadoutDim 11
+--   (above every tree layer), LoadoutPicker / Chips 12, chips 13; RESPEC closes the picker first (Confirm is 10-11).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local BIND = "SkillScreenMouse"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -413,6 +423,43 @@ for k, n in ipairs(SLOT_ORDER) do -- v1.3: 4 slots (was 1, 2)
 	pad.Parent = b
 	slotBtns[n] = {b = b, stroke = b:FindFirstChildOfClass("UIStroke")}
 end
+-- v1.4: slot picker (row above the strip + a dimmer over the tree column)
+local pickSlot -- selected slot number while picking
+if script:GetAttribute("SkillScreenSlotPickerEnabled") == nil then script:SetAttribute("SkillScreenSlotPickerEnabled", true) end
+local function pickerOn() return script:GetAttribute("SkillScreenSlotPickerEnabled") ~= false end
+local loDim = Instance.new("TextButton")
+loDim.Name = "LoadoutDim"
+loDim.AutoButtonColor = false
+loDim.Text = ""
+loDim.BackgroundColor3 = Color3.new(0, 0, 0)
+loDim.BackgroundTransparency = 0.45
+loDim.Visible = false
+loDim.ZIndex = 11 -- above every tree layer (nodes go up to 10; ZIndexBehavior Global)
+loDim.Parent = body
+corner(loDim, UDim.new(0, 14))
+local loPicker = pane(body)
+loPicker.Name = "LoadoutPicker"
+loPicker.AnchorPoint = Vector2.new(0, 1)
+loPicker.Visible = false
+loPicker.ZIndex = 12
+local loPickList = Instance.new("ScrollingFrame")
+loPickList.Name = "Chips"
+loPickList.BackgroundTransparency = 1
+loPickList.BorderSizePixel = 0
+loPickList.Position = UDim2.fromOffset(8, 0)
+loPickList.Size = UDim2.new(1, -16, 1, 0)
+loPickList.ScrollingDirection = Enum.ScrollingDirection.X
+loPickList.ScrollBarThickness = 4
+loPickList.AutomaticCanvasSize = Enum.AutomaticSize.X
+loPickList.CanvasSize = UDim2.new()
+loPickList.ZIndex = 12
+loPickList.Parent = loPicker
+local loPickLayout = Instance.new("UIListLayout")
+loPickLayout.FillDirection = Enum.FillDirection.Horizontal
+loPickLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+loPickLayout.Padding = UDim.new(0, 6)
+loPickLayout.SortOrder = Enum.SortOrder.LayoutOrder
+loPickLayout.Parent = loPickList
 local loHint = label(loadout, "Tap a slot to change it", 11, GREY)
 loHint.Font = Enum.Font.Gotham
 loHint.Position = UDim2.fromOffset(86 + 2 * 128 + 4, 0)
@@ -449,6 +496,11 @@ local function layout()
 		loHint.Visible = tw >= 120
 		loHint.Position = UDim2.fromOffset(86 + 4 * (tw + 6) + 4, 0)
 		loHint.Size = UDim2.new(1, -(86 + 4 * (tw + 6) + 12), 1, 0)
+		-- v1.4: the picker row sits right above the strip; the dimmer covers the tree column
+		loPicker.Position = UDim2.new(0, x0, 1, -52)
+		loPicker.Size = UDim2.new(1, -(x0 + dw + 8), 0, 44)
+		loDim.Position = UDim2.fromOffset(x0, 0)
+		loDim.Size = UDim2.new(1, -(x0 + dw + 8), 1, -52)
 	end
 	-- v1.3: Mastery chip room (before the points pill, whose left edge is 214 px from the right)
 	local avail = (w > 0 and w - 24 or 800) - 214 - 8 - 354
@@ -1024,6 +1076,7 @@ local function ownedButtons()
 	end
 	return list
 end
+local drawPicker -- v1.4
 local function drawLoadout()
 	if not loadoutOn() then return end
 	for n, s in ipairs(slotBtns) do
@@ -1032,11 +1085,78 @@ local function drawLoadout()
 		s.b.Text = p and ("%s · ⚙ %s"):format(SLOT_LABELS[n], p.name) or ("%s · empty"):format(SLOT_LABELS[n]) -- v1.3 (was "Slot n")
 		s.stroke.Color = p and ORANGE or WHITE
 		s.stroke.Transparency = p and 0 or 0.6
+		s.stroke.Thickness = 1.5
 		s.b.TextColor3 = p and WHITE or GREY
+		if pickSlot == n then -- v1.4: the slot being filled
+			s.stroke.Color, s.stroke.Transparency, s.stroke.Thickness = WHITE, 0, 3
+		end
+	end
+	drawPicker()
+end
+-- v1.4: picker row
+local function closePicker()
+	pickSlot = nil
+	char:SetAttribute("SkillScreenPickSlot", 0)
+	loPicker.Visible = false -- hidden here too: redraw skips the loadout while the screen is closed
+	loDim.Visible = false
+end
+function drawPicker()
+	local on = pickSlot ~= nil and pickerOn() and loadoutOn() and sgui.Enabled
+	loPicker.Visible = on
+	loDim.Visible = on
+	loHint.Text = on and "Tap a part above" or "Tap a slot to change it"
+	for _, ch in ipairs(loPickList:GetChildren()) do
+		if ch:IsA("GuiButton") then ch:Destroy() end
+	end
+	if not on then return end
+	local list = ownedButtons()
+	table.insert(list, "")
+	for k, id in ipairs(list) do
+		local p = id ~= "" and ST.PATHS[id]
+		local where
+		for m = 1, 4 do
+			if id ~= "" and m ~= pickSlot and slotOf(m) == id then where = SLOT_LABELS[m] end
+		end
+		local text = p and p.name or "Empty"
+		if where then text = text .. " · in " .. where end
+		local chip = button(loPickList, text, 13)
+		chip.Name = "Chip_" .. (id ~= "" and id or "empty")
+		chip.LayoutOrder = k
+		chip.AutomaticSize = Enum.AutomaticSize.X
+		chip.Size = UDim2.fromOffset(0, 32)
+		chip.ZIndex = 13
+		local cs = chip:FindFirstChildOfClass("UIStroke")
+		if cs then cs.Color, cs.Transparency = p and ORANGE or WHITE, p and 0 or 0.6 end
+		local cc = chip:FindFirstChildOfClass("UICorner")
+		if cc then cc.CornerRadius = UDim.new(0.5, 0) end
+		local pad = Instance.new("UIPadding")
+		pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 12), UDim.new(0, 12)
+		pad.Parent = chip
+		chip.MouseButton1Click:Connect(function()
+			local n = pickSlot
+			if not n then return end
+			press(("slot:%d:%s"):format(n, id ~= "" and id or "empty"))
+			remote:FireServer("slot", n, id)
+			closePicker()
+			drawLoadout()
+		end)
 	end
 end
+loDim.MouseButton1Click:Connect(function()
+	closePicker()
+	drawLoadout()
+end)
 for n, s in ipairs(slotBtns) do
 	s.b.MouseButton1Click:Connect(function()
+		if pickerOn() then -- v1.4: select the slot, the picker row does the rest
+			if pickSlot == n then closePicker() else
+				pickSlot = n
+				char:SetAttribute("SkillScreenPickSlot", n)
+				press(("pick:%d"):format(n))
+			end
+			drawLoadout()
+			return
+		end
 		local list = ownedButtons()
 		if #list == 0 then
 			press(("slot:%d:none"):format(n))
@@ -1081,10 +1201,11 @@ script:GetAttributeChangedSignal("SkillScreenTierRowsEnabled"):Connect(function(
 	sel = nil
 	redraw()
 end)
-char:GetAttributeChangedSignal("Species"):Connect(function() sel = nil redraw() end)
+char:GetAttributeChangedSignal("Species"):Connect(function() sel = nil closePicker() redraw() end) -- v1.4: + closePicker
 
 -- open / close
 local function setOpen(open)
+	if not open then closePicker() end -- v1.4
 	sgui.Enabled = open
 	dgui.Enabled = open
 	bgui.Enabled = not open -- the SKILLS button hides while the screen is open
@@ -1114,6 +1235,7 @@ buyBtn.MouseButton1Click:Connect(function()
 	remote:FireServer("buy", sel.path)
 end)
 respecBtn.MouseButton1Click:Connect(function()
+	if pickSlot then closePicker() drawLoadout() end -- v1.4: the confirm must not sit under the dimmer
 	press("respec")
 	confirm.Visible = true
 end)

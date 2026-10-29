@@ -1,4 +1,4 @@
--- SkillTree v1.9 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.10 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -88,7 +88,7 @@
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.9"
+SkillTree.Version = "1.10"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -177,6 +177,10 @@ SkillTree.AREAS = {
 --       star: bleeding dinos leave a blood trail you see all the time).
 --     Raptor Screech: screechRange (0; 50, 67.5 from II: max held range), screechFlinch (0; 0.5 s), screechCooldown
 --       (0; 14, 10.3 from III), screechJam (false; true at star: the hit dino's boost, Shield and Adrenaline end).
+-- v1.10 (Kepu 2026-10-29 after v76: "the screech shouldn't be called that because it's not even a screech also the dart
+--   doesn't even shoot far at all" -> "Shock Dart", "100 / 135 studs"): the "screech" path is shown as "Shock Dart"
+--   (path id kept, so saves and attributes stay); screechRange 100 at I, 135 from II (was 50 / 67.5; 1.35x kept);
+--   step texts I / II.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -293,6 +297,10 @@ SkillTree.OWNER.dart, SkillTree.OWNER.beacon = "none", "none"
 for _, id in ipairs({"screech", "scent", "dart", "beacon"}) do SkillTree.PATHS[id].dino = SkillTree.OWNER[id] end
 SkillTree.LIVE_MECH.screech, SkillTree.LIVE_MECH.scent = true, true
 SkillTree.BUTTONS.screech, SkillTree.BUTTONS.scent = true, true
+-- v1.10: Raptor Screech is shown as Shock Dart (id "screech" kept)
+SkillTree.PATHS.screech.name = "Shock Dart"
+SkillTree.PATHS.screech.steps[1] = "Button: hold to aim (up to 100 studs), release to fire. The first dino hit flinches for 0.5 s and loses its cloak (a T-Rex is slowed)"
+SkillTree.PATHS.screech.steps[2] = "Reaches 135 studs"
 for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
 	"armor", "ramjet", "shieldproj", "roaramp"}) do
 	SkillTree.BUTTONS[id] = true
@@ -529,8 +537,8 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	-- v1.9: Raptor Screech
 	local sr = s.screech or 0
 	e.screechRange, e.screechFlinch, e.screechCooldown, e.screechJam = 0, 0, 0, false
-	if sr >= 1 then e.screechRange, e.screechFlinch, e.screechCooldown = 50, 0.5, 14 end
-	if sr >= 2 then e.screechRange = 67.5 end
+	if sr >= 1 then e.screechRange, e.screechFlinch, e.screechCooldown = 100, 0.5, 14 end -- v1.10: 100 (was 50)
+	if sr >= 2 then e.screechRange = 135 end -- v1.10: 135 (was 67.5)
 	if sr >= 3 then e.screechCooldown = 10.3 end -- 14 / 10.3 = 1.36 (10.4 failed the 35% rule)
 	if sr >= 4 then e.screechJam = true end
 	return e

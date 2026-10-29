@@ -1,6 +1,7 @@
--- SkillTree.spec v1.9 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.10 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 -- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
+-- v1.10: Shock Dart (screech shown as "Shock Dart", range 100 / 135; the 35% range check reads the data)
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -17,7 +18,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.9") -- v1.9 (was 1.8)
+eq("Version", ST.Version, "1.10") -- v1.10 (was 1.9)
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 40) -- v1.5 (ADR-004)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 41)
@@ -291,7 +292,7 @@ eq("autoSlot cloak", lo4(ST.autoSlot({"thrusters", false, false, false}, both, "
 eq("TRex loadout drops raptor parts", lo4(ST.sanitizeLoadout({"thrusters", "cloak", false, false}, both, "TRex")), "false,false,false,false")
 
 -- v1.6: raptor batch 1 (Blade Claws, Adrenaline Injector, Energy Shield; plan docs/plans/RAPTOR_PARTS_B1_v1.0.md)
-eq("Version 1.6+", ST.Version, "1.9") -- v1.9
+eq("Version 1.6+", ST.Version, "1.10") -- v1.10
 for _, id in ipairs({"blade", "adrenaline", "shield"}) do eq(id .. " live", ST.PATHS[id].soon, false) end
 eq("blade passive", ST.BUTTONS.blade == true, false)
 local function R(id, n) return ST.effects({[id] = n}, "Raptor") end
@@ -349,12 +350,14 @@ eq("scent II", R("scent", 2).scentRadius, 81); eq("scent II fresh", R("scent", 2
 eq("scent III mem", R("scent", 3).scentMemory, 10.8); eq("scent III fresh", R("scent", 3).scentFresh, true)
 eq("scent III blood", R("scent", 3).scentBlood, false); eq("scent star blood", R("scent", 4).scentBlood, true)
 eq("screech 0", R("screech", 0).screechRange, 0)
-eq("screech I", R("screech", 1).screechRange, 50); eq("screech I flinch", R("screech", 1).screechFlinch, 0.5)
-eq("screech I cd", R("screech", 1).screechCooldown, 14); eq("screech II", R("screech", 2).screechRange, 67.5)
+eq("screech I", R("screech", 1).screechRange, 100); eq("screech I flinch", R("screech", 1).screechFlinch, 0.5)
+eq("screech I cd", R("screech", 1).screechCooldown, 14); eq("screech II", R("screech", 2).screechRange, 135)
 eq("screech III cd", R("screech", 3).screechCooldown, 10.3); eq("screech III jam", R("screech", 3).screechJam, false)
 eq("screech star jam", R("screech", 4).screechJam, true)
 eq("35 scent radius", 81 / 60 >= 1.35 - 1e-9, true); eq("35 scent mem", 10.8 / 8 >= 1.35 - 1e-9, true)
-eq("35 screech range", 67.5 / 50 >= 1.35 - 1e-9, true); eq("35 screech cd", R("screech", 1).screechCooldown / R("screech", 3).screechCooldown >= 1.35 - 1e-9, true)
+eq("35 screech range", R("screech", 2).screechRange / R("screech", 1).screechRange >= 1.35 - 1e-9, true)
+eq("35 screech cd", R("screech", 1).screechCooldown / R("screech", 3).screechCooldown >= 1.35 - 1e-9, true)
+eq("shock dart name", ST.PATHS.screech.name, "Shock Dart") -- v1.10
 local tx2 = ST.effects({scent = 4, screech = 4}, "TRex")
 eq("TRex scent", tx2.scentRadius, 0); eq("TRex screech", tx2.screechRange, 0)
 

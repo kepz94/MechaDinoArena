@@ -1,4 +1,4 @@
--- ScreechServer v1.0 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.1 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -26,6 +26,13 @@
 --   * star (shooter's ScreechJam): PartsJammedAt = now on the target (AdrenalineServer 1.3, EnergyShieldServer 1.3 and
 --     MechaButtons 1.8 end the target's Adrenaline, Shield and boost).
 --   Target diagnostics: ScreechHitBy (shooter name), ScreechHitCount.
+-- v1.1 (Kepu 2026-10-29 after v76: renamed "Shock Dart"; "the dart doesn't even shoot far at all" -> 100 / 135 studs
+--   (SkillTree 1.10), "Glowing dart"): BOLT_SPEED 110 (was 70) so the longer shot still lands in about 1 s; the bolt
+--   looks like a dart: "ScreechBolt" is a steel body (0.45 x 0.45 x 3.2, pointing the way it flies) with a red neon tip
+--   "ScreechDartTip" (0.5 x 0.5 x 1) and a red-to-white Trail streak (1.4 tall); both anchored, no collide / query / touch.
+--   From the default camera the dart flies end-on and was 2-3 px wide at 45 studs, so the tip carries a red neon glow
+--   ball "ScreechDartGlow" (GLOW_SIZE 2.2, transparency 0.55, welded to the tip, no collide / query / touch).
+--   Everything else as 1.0.
 -- Settings: script attribute ScreechServerEnabled (default true).
 -- Diagnostics: script ScreechServerVersion, ScreechRequests, ScreechHits, ScreechMisses; shooter character
 --   ScreechServerResult, ScreechCount, ScreechLastRange, ScreechLastHit (target name or "" for a miss), ScreechLastEnd
@@ -36,8 +43,9 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.0"
-local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 70, 4, 4
+local VERSION = "1.1"
+local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
+local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
 local RED = Color3.fromRGB(240, 90, 79)
 
 script:SetAttribute("ScreechServerVersion", VERSION)
@@ -128,6 +136,13 @@ local function endBolt(b, reason)
 	end
 	burst(b.pos, reason == "hit" and 10 or 6)
 	b.part:Destroy()
+	if b.tip then b.tip:Destroy() end -- v1.1
+end
+-- v1.1: put the dart (body + tip) at pos, pointing along its flight
+local function place(b, pos)
+	local cf = CFrame.lookAt(pos, pos + b.dir)
+	b.part.CFrame = cf
+	if b.tip then b.tip.CFrame = cf * CFrame.new(0, 0, -2.0) end
 end
 
 local rayParams = RaycastParams.new()
@@ -160,55 +175,77 @@ RunService.Heartbeat:Connect(function(dt)
 				end
 			end
 			-- anything solid first?
-			local ex = {b.shooter, b.part}
+			local ex = {b.shooter, b.part, b.tip} -- v1.1: tip too
 			for _, m in ipairs(targets(b.shooter)) do table.insert(ex, m) end
 			rayParams.FilterDescendantsInstances = ex
 			local wall = step > 0 and workspace:Raycast(a, z - a, rayParams)
 			local wallT = wall and (wall.Position - a).Magnitude / step or nil
 			if best and (not wallT or bestT <= wallT) then
 				b.pos = a + (z - a) * bestT
-				b.part.Position = b.pos
+				place(b, b.pos)
 				hit(b, best)
 				endBolt(b, "hit")
 			elseif wall then
 				b.pos = wall.Position
-				b.part.Position = b.pos
+				place(b, b.pos)
 				endBolt(b, "wall")
 			else
 				b.pos = z
 				b.left -= step
-				b.part.Position = z
+				place(b, z)
 				if b.left <= 1e-3 then endBolt(b, "range") end
 			end
 		end
 	end
 end)
 
-local function makeBolt(pos)
+local function makeBolt(pos, dir) -- v1.1: a glowing dart (was a red ball)
+	local cf = CFrame.lookAt(pos, pos + dir)
 	local p = Instance.new("Part")
 	p.Name = "ScreechBolt"
-	p.Shape = Enum.PartType.Ball
-	p.Size = Vector3.one * 2.4
-	p.Position = pos
-	p.Color = RED
-	p.Material = Enum.Material.Neon
-	p.Transparency = 0.15
+	p.Size = Vector3.new(0.45, 0.45, 3.2)
+	p.CFrame = cf
+	p.Color = Color3.fromRGB(201, 210, 220)
+	p.Material = Enum.Material.Metal
 	p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
 	local a0 = Instance.new("Attachment")
-	a0.Position = Vector3.new(0, 1, 0)
+	a0.Position = Vector3.new(0, 0.7, 1.2)
 	a0.Parent = p
 	local a1 = Instance.new("Attachment")
-	a1.Position = Vector3.new(0, -1, 0)
+	a1.Position = Vector3.new(0, -0.7, 1.2)
 	a1.Parent = p
 	local tr = Instance.new("Trail")
 	tr.Attachment0, tr.Attachment1 = a0, a1
-	tr.Color = ColorSequence.new(RED)
+	tr.Color = ColorSequence.new(RED, Color3.new(1, 1, 1))
 	tr.LightEmission = 1
-	tr.Lifetime = 0.25
-	tr.Transparency = NumberSequence.new(0.2, 1)
+	tr.Lifetime = 0.3
+	tr.Transparency = NumberSequence.new(0.1, 1)
 	tr.Parent = p
+	local tip = Instance.new("Part")
+	tip.Name = "ScreechDartTip"
+	tip.Size = Vector3.new(0.5, 0.5, 1)
+	tip.CFrame = cf * CFrame.new(0, 0, -2.0)
+	tip.Color = RED
+	tip.Material = Enum.Material.Neon
+	tip.Anchored, tip.CanCollide, tip.CanQuery, tip.CanTouch, tip.CastShadow = true, false, false, false, false
+	-- glow round the tip so the dart reads from the default camera (end-on it is only a few pixels)
+	local glow = Instance.new("Part")
+	glow.Name = "ScreechDartGlow"
+	glow.Shape = Enum.PartType.Ball
+	glow.Size = Vector3.one * GLOW_SIZE
+	glow.CFrame = tip.CFrame
+	glow.Color = RED
+	glow.Material = Enum.Material.Neon
+	glow.Transparency = 0.55
+	glow.Anchored, glow.CanCollide, glow.CanQuery, glow.CanTouch, glow.CastShadow = false, false, false, false, false
+	glow.Massless = true
+	local w = Instance.new("WeldConstraint")
+	w.Part0, w.Part1 = tip, glow
+	w.Parent = glow
+	glow.Parent = tip -- moves with the tip; destroyed with it
 	p.Parent = workspace
-	return p
+	tip.Parent = workspace
+	return p, tip
 end
 
 remote.OnServerEvent:Connect(function(player, stamp, held)
@@ -245,7 +282,8 @@ remote.OnServerEvent:Connect(function(player, stamp, held)
 	local pos = root.Position + dir * BOLT_AHEAD
 	local jam = false
 	if char:GetAttribute("ScreechJam") == true then jam = true end
-	table.insert(bolts, {shooter = char, part = makeBolt(pos), pos = pos, dir = dir, left = range,
+	local body, tip = makeBolt(pos, dir) -- v1.1: dart
+	table.insert(bolts, {shooter = char, part = body, tip = tip, pos = pos, dir = dir, left = range,
 		flinch = math.max(0.05, tonumber(char:GetAttribute("ScreechFlinch")) or 0.5), jam = jam})
 	char:SetAttribute("ScreechReadyAt", t + (tonumber(char:GetAttribute("ScreechCooldown")) or 0))
 	char:SetAttribute("ScreechCount", (char:GetAttribute("ScreechCount") or 0) + 1)

@@ -1630,3 +1630,17 @@ Press **H** in Play to show/hide them (HumanoidRootPart shown in yellow).
 
 Dart Launcher and Pack Beacon stay in the tree data with OWNER "none" (shown to nobody).
 
+## Shock Dart + loadout picker (SkillTree 1.10 / ScreechServer 1.1 / MechaButtons 1.9 / SkillScreen 1.4)
+
+Raptor Screech is shown as **Shock Dart**; its path id and every Screech* attribute keep the old name.
+
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| ScreechRange | character | 100 (I) / 135 (II+) | was 50 / 67.5 |
+| SkillScreenSlotPickerEnabled | script SkillScreen | true | tap a slot then a part (picker row); false = the 1.3 tap-to-cycle |
+| SkillScreenPickSlot | character (owner client) | 0 / 1-4 | diagnostic: the slot being filled (0 = none) |
+| SkillScreenLastPress | character (owner client) | "pick:n", "slot:n:<id>" / "slot:n:empty" | 1.4 adds the picker presses |
+
+Instances: SkillScreen.Root.Body.LoadoutPicker.Chips.Chip_<id> / Chip_empty; Root.Body.LoadoutDim. Dart parts in workspace:
+ScreechBolt (body), ScreechDartTip, ScreechDartTip.ScreechDartGlow.
+

@@ -1,0 +1,193 @@
+<title>Loadout Slot Picker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: option tabs -> a phone-shaped SKILLS screen (tree area + loadout strip) -> notes. Single dark look on purpose
+   (the game's SKILLS screen), like the earlier Mecha Dino Arena mockups. Styling approximates SkillScreen 1.3. */
+:root {
+  --ink: #0f1319;
+  --panel: #171d26;
+  --panel2: #1f2733;
+  --line: #2a3340;
+  --text: #e8edf4;
+  --muted: #9aa6b6;
+  --orange: #ff9b2e;
+  --red: #f05a4f;
+  --blue: #5aa0ff;
+  --green: #5fd16a;
+  --yellow: #ffd34d;
+  --violet: #c9a2ff;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--ink); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-size: 28px; margin: 0; text-wrap: balance; }
+h1 span { color: var(--orange); }
+.lede { margin: 4px 0 0; color: var(--muted); max-width: 72ch; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font-family: var(--display); font-weight: 600; font-size: 16px; color: var(--text); background: var(--panel);
+  border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left; }
+.tab small { display: block; font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,155,46,.22); }
+button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.screen { border: 2px solid var(--line); border-radius: 18px; background: #12161d; padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.top { display: flex; justify-content: space-between; align-items: center; font-family: var(--display); }
+.top b { font-size: 20px; }
+.pts { color: var(--yellow); font-size: 14px; }
+.tree { position: relative; background: var(--panel); border-radius: 12px; padding: 12px; display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; min-height: 230px; }
+.area { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.area h4 { margin: 0; font-family: var(--display); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; text-align: center; }
+.node { font-family: var(--display); font-size: 11px; line-height: 1.2; color: var(--text); background: var(--panel2);
+  border: 2px solid var(--line); border-radius: 10px; padding: 8px 4px; text-align: center; min-height: 52px; display: grid; place-items: center; }
+.node.hex { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); border-radius: 0; padding: 10px 12px; }
+.node.passive { opacity: .55; }
+.node.pickable { cursor: pointer; background: #2b2216; box-shadow: inset 0 0 0 2px var(--orange); animation: glow 1s ease-in-out infinite alternate; }
+.node.inSlot::after { content: attr(data-in); display: block; font-size: 10px; color: var(--orange); }
+@keyframes glow { from { filter: brightness(1); } to { filter: brightness(1.35); } }
+@media (prefers-reduced-motion: reduce) { .node.pickable { animation: none; } }
+.dim { position: absolute; inset: 0; background: rgba(15,19,25,.55); border-radius: 12px; pointer-events: none; }
+.loadout { background: var(--panel); border-radius: 12px; padding: 8px 10px; display: grid; gap: 8px; }
+.lohead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.lohead b { color: var(--orange); font-family: var(--display); }
+.lohead span { color: var(--muted); font-size: 12px; }
+.slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.slot { font-family: var(--display); font-size: 12px; color: var(--text); background: var(--panel2); border: 2px solid var(--line);
+  border-radius: 10px; padding: 6px 4px; cursor: pointer; text-align: center; min-height: 48px; }
+.slot small { display: block; color: var(--muted); font-size: 10px; }
+.slot.filled { border-color: var(--orange); }
+.slot.sel { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.25); background: #2b2216; }
+.picker { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.chip { flex: 0 0 auto; font-family: var(--display); font-size: 12px; color: var(--text); background: var(--panel2); border: 2px solid var(--orange);
+  border-radius: 999px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.chip small { color: var(--muted); font-size: 10px; margin-left: 4px; }
+.chip.clear { border-color: var(--line); color: var(--muted); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
+.card h3 { margin: 0; font-family: var(--display); color: var(--orange); font-size: 17px; }
+.card p { margin: 0; }
+.muted { color: var(--muted); }
+.pick { color: var(--orange); font-weight: 700; }
+.log { font-size: 13px; color: var(--muted); min-height: 1.5em; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Loadout: <span>tap a slot, then tap a part</span></h1>
+    <p class="lede">The SKILLS screen as a raptor with every part unlocked. Now a slot tap cycles through parts one by one. Both options below let you pick the slot first and then the part you want. Try it: tap a slot, then a part.</p>
+  </header>
+
+  <div class="row" id="opts">
+    <button class="tab" aria-pressed="true" data-opt="A">A · Picker row<small>your parts pop up above the slots</small></button>
+    <button class="tab" aria-pressed="false" data-opt="B">B · Pick in the tree<small>your parts glow in the tree</small></button>
+  </div>
+
+  <div class="screen">
+    <div class="top"><b>RAPTOR</b><span class="pts">12 PTS</span></div>
+    <div class="tree" id="tree"></div>
+    <div class="loadout">
+      <div class="lohead"><b>LOADOUT</b><span id="hint">Tap a slot to choose its part</span></div>
+      <div class="picker" id="picker" hidden></div>
+      <div class="slots" id="slots"></div>
+    </div>
+  </div>
+  <p class="log" id="log" aria-live="polite"></p>
+
+  <div class="cols">
+    <div class="card"><h3 id="oName"></h3><p id="oHow"></p><p class="muted" id="oTrade"></p><p class="pick" id="oPick"></p></div>
+    <div class="card"><h3>Same in both</h3>
+      <p>A part already in another slot moves to the slot you picked (the old slot empties), so a part is never in two slots.</p>
+      <p>"Empty" clears the slot. Tapping the selected slot again, or anywhere outside, cancels.</p>
+      <p>Only parts this dino owns can be picked. Passive parts (Blade Claws, stats) never show.</p></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const AREAS = [
+    {name: 'Health', color: 'var(--green)', paths: [['Regeneration', 0], ['Lifesteal', 0], ['Adrenaline', 1]]},
+    {name: 'Attack', color: 'var(--red)', paths: [['Blade Claws', 0], ['Raptor Screech', 1]]},
+    {name: 'Defense', color: 'var(--blue)', paths: [['Thick Hide', 0], ['Energy Shield', 1], ['Cloak Field', 1]]},
+    {name: 'Speed', color: 'var(--yellow)', paths: [['Sprint Legs', 0], ['Thrusters', 1]]},
+    {name: 'Engineer', color: 'var(--violet)', paths: [['Scent Sense', 1]]},
+  ];
+  const BUTTONS = AREAS.flatMap(a => a.paths.filter(p => p[1]).map(p => p[0]));
+  const LABELS = ['R · tap', 'R · pull ▼', 'C · tap', 'C · pull ▼']; // touch order on the strip: slot 1, 3, 2, 4
+  const ORDER = [1, 3, 2, 4];
+  const slots = {1: 'Scent Sense', 2: 'Raptor Screech', 3: 'Energy Shield', 4: 'Cloak Field'};
+  let opt = 'A', sel = null;
+
+  const $ = id => document.getElementById(id);
+  const say = t => { $('log').textContent = t; };
+  const slotOf = name => Object.keys(slots).find(k => slots[k] === name);
+
+  function fill(n, part) {
+    const was = slotOf(part);
+    if (part && was && +was !== n) slots[was] = null;
+    slots[n] = part;
+    say(part ? `Slot ${LABELS[ORDER.indexOf(n)]} = ${part}${was && +was !== n ? ` (moved from ${LABELS[ORDER.indexOf(+was)]})` : ''}` : `Slot ${LABELS[ORDER.indexOf(n)]} emptied`);
+    sel = null; render();
+  }
+
+  function render() {
+    const tree = $('tree'); tree.innerHTML = '';
+    for (const a of AREAS) {
+      const col = document.createElement('div'); col.className = 'area';
+      col.innerHTML = `<h4 style="color:${a.color}">${a.name}</h4>`;
+      for (const [name, btn] of a.paths) {
+        const n = document.createElement(btn && opt === 'B' && sel ? 'button' : 'div');
+        n.className = 'node' + (btn ? ' hex' : ' passive') + (btn && opt === 'B' && sel ? ' pickable' : '');
+        n.textContent = name;
+        const s = slotOf(name);
+        if (btn && s) { n.classList.add('inSlot'); n.dataset.in = 'in ' + LABELS[ORDER.indexOf(+s)].split(' ')[0] + (s > 2 ? ' pull' : ''); }
+        if (btn && opt === 'B' && sel) n.onclick = () => fill(sel, name);
+        col.appendChild(n);
+      }
+      tree.appendChild(col);
+    }
+    const sl = $('slots'); sl.innerHTML = '';
+    ORDER.forEach((n, i) => {
+      const b = document.createElement('button');
+      b.className = 'slot' + (slots[n] ? ' filled' : '') + (sel === n ? ' sel' : '');
+      b.innerHTML = `${slots[n] || 'empty'}<small>${LABELS[i]}</small>`;
+      b.onclick = () => { sel = sel === n ? null : n; say(sel ? `Choosing a part for ${LABELS[i]}` : ''); render(); };
+      sl.appendChild(b);
+    });
+    const pk = $('picker');
+    pk.hidden = !(opt === 'A' && sel);
+    pk.innerHTML = '';
+    if (opt === 'A' && sel) {
+      for (const name of BUTTONS) {
+        const c = document.createElement('button'); c.className = 'chip';
+        const s = slotOf(name);
+        c.innerHTML = name + (s ? `<small>in ${LABELS[ORDER.indexOf(+s)].split(' ·')[0]}${s > 2 ? ' pull' : ''}</small>` : '');
+        c.onclick = () => fill(sel, name); pk.appendChild(c);
+      }
+      const e = document.createElement('button'); e.className = 'chip clear'; e.textContent = 'Empty';
+      e.onclick = () => fill(sel, null); pk.appendChild(e);
+    }
+    $('hint').textContent = sel ? (opt === 'A' ? 'Tap a part above' : 'Tap a glowing part in the tree') : 'Tap a slot to choose its part';
+    const old = tree.querySelector('.dim'); if (old) old.remove();
+    if (opt === 'A' && sel) { const d = document.createElement('div'); d.className = 'dim'; tree.appendChild(d); }
+    if (opt === 'B' && sel) {
+      const e = document.createElement('div'); e.className = 'area';
+      e.innerHTML = '<h4 class="muted">&nbsp;</h4>';
+      const btn = document.createElement('button'); btn.className = 'node'; btn.textContent = 'Empty slot';
+      btn.onclick = () => fill(sel, null); e.appendChild(btn); tree.lastChild.appendChild(btn);
+    }
+    const O = {
+      A: ['A · Picker row', 'Tap a slot: it lights up and a row of your button parts appears right above the slots (the tree dims). Tap a part to put it in, or "Empty". Parts already slotted show where they are.', 'Fast and thumb-friendly: the slot and the choices sit together at the bottom. The tree stays as it is.', 'My pick: one tap to choose the slot, one tap to fill it, and your thumb barely moves.'],
+      B: ['B · Pick in the tree', 'Tap a slot: it lights up and your button parts glow in the tree. Tap one of the glowing hexagons to put it in.', 'Uses the tree you already know, but the parts are spread out across it, so your thumb travels more and it is easy to tap a node by mistake when you meant to buy.', ''],
+    }[opt];
+    $('oName').textContent = O[0]; $('oHow').textContent = O[1]; $('oTrade').textContent = O[2]; $('oPick').textContent = O[3];
+    document.querySelectorAll('#opts .tab').forEach(t => t.setAttribute('aria-pressed', String(t.dataset.opt === opt)));
+  }
+  $('opts').addEventListener('click', e => { const t = e.target.closest('[data-opt]'); if (!t) return; opt = t.dataset.opt; sel = null; say(''); render(); });
+  render();
+})();
+</script>
