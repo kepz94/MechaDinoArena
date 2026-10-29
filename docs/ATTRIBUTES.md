@@ -1230,7 +1230,8 @@ Save: DataStore "MDA_Skills_v2", key "u" .. UserId, value {v = 2, dinos = {[dino
 |---|---|---|---|
 | AbilityBarEnabled | script AbilityBar | true | false = no bar (AbilityBarState "off") |
 | AbilityBarVersion | character (owner client) | — | "1.0" |
-| AbilityBarState | character (owner client) | — | "on" / "touch" (touch device, no bar) / "off" |
+| AbilityBarState | character (owner client) | — | "on" / "touch" (touch device, no bar) / "off" / "skills" (1.1: hidden while the SKILLS screen is open) |
+| AbilityBarHideOnSkills | script AbilityBar | true | 1.1: hide the bar while SkillScreenOpen is true |
 | AbilityBarTiles | character (owner client) | — | key:name list, e.g. "R:DASH,C:+,F:POUNCE,Space:LEAP" |
 | AbilityBar_<Tile> | character (owner client) | — | Slot_1 / Slot_2 / Pounce / Leap / Bite / Ram: "empty" / "off" / "active" / "cooling" / "ready" / "stunned"; Ram without a tile "hidden" |
 

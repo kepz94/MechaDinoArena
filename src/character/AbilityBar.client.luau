@@ -1,4 +1,4 @@
--- AbilityBar v1.0 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.1 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -29,12 +29,15 @@
 -- Diagnostics (character attributes, this client, set on change): AbilityBarVersion, AbilityBarState, AbilityBarTiles
 --   ("R:DASH,C:+,F:POUNCE,Space:LEAP"), AbilityBar_<Tile> (state above; Tile = Slot_1 / Slot_2 / Pounce / Leap / Bite /
 --   Ram; a Ram without a tile = "hidden").
+-- v1.1 (Kepu 2026-10-29: the bar showed faintly through the SKILLS screen's see-through loadout strip -> "yes hide"):
+--   the bar is hidden while the character attribute SkillScreenOpen (SkillScreen 1.0+) is true; AbilityBarState
+--   "skills" then. Script attribute AbilityBarHideOnSkills (default true; false = 1.0 behaviour).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local char = script.Parent
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
@@ -64,6 +67,7 @@ local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 local SLOT_KEYS = {"R", "C"}
 
 if script:GetAttribute("AbilityBarEnabled") == nil then script:SetAttribute("AbilityBarEnabled", true) end
+if script:GetAttribute("AbilityBarHideOnSkills") == nil then script:SetAttribute("AbilityBarHideOnSkills", true) end -- v1.1
 
 local shown = {}
 local function show(attr, value)
@@ -293,9 +297,10 @@ end
 
 local function update()
 	local on = script:GetAttribute("AbilityBarEnabled") ~= false
-	gui.Enabled = on
-	show("AbilityBarState", on and "on" or "off")
-	if not on then return end
+	local skills = on and script:GetAttribute("AbilityBarHideOnSkills") ~= false and char:GetAttribute("SkillScreenOpen") == true -- v1.1
+	gui.Enabled = on and not skills
+	show("AbilityBarState", not on and "off" or skills and "skills" or "on")
+	if not on or skills then return end
 	rebuild()
 	local now = workspace:GetServerTimeNow()
 	for _, e in ipairs(tiles) do
