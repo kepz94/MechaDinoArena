@@ -43,15 +43,17 @@ MechaServer (Thrusters), PounceTest, JumpTest, BiteTest / BiteServer, RamTest / 
 
 | Area | Shared stat | Raptor | T-Rex (Kepu 2026-10-29 03:10, docs/mockups/trex_tree_draft.html) |
 |---|---|---|---|
-| Health | Regeneration, Lifesteal | Adrenaline Injector (soon) | Repair Drone (soon), Bio-Battery Spine (soon, passive) |
+| Health | Regeneration (not T-Rex), Lifesteal | Adrenaline Injector (soon) | Repair Drone (soon), Bio-Battery Spine (soon, passive) |
 | Attack | Jaws | Blade Claws (soon, passive), Dart Launcher (soon) | Shoulder Rocket (soon) |
 | Defense | Thick Hide | **Cloak Field (live)**, Energy Shield (soon) | Armor Plating (soon), Reactive Armor (soon, passive) |
 | Speed | Sprint Legs | Thrusters (live), Grapple Hook (soon) | Ramjet Charge (soon) |
 | Engineer | — | Pack Beacon (soon), Decoy Hologram (soon) | Shield Projector (soon), Roar Amplifier (soon) |
 
 - Med-Station, Back Turret, Sentry, Traps and Barricade belong to no dino yet: `path.dino = "none"`. They stay in the data for future dinos but are shown to nobody. Nothing is removed.
-- The T-Rex Health area has 4 columns: see decision "SkillScreen layout for 4-column areas" (SkillScreen 1.3 must handle it).
-- `path.dino` = nil (shared) / "Raptor" / "TRex".
+- Regeneration is a shared stat path, but the T-Rex doesn't get it. Kepu, 2026-10-29 03:13: "Remove regeneration from health", then "T-Rex only". This keeps the T-Rex Health area at 3 columns: Lifesteal, Repair Drone, Bio-Battery Spine.
+  - Data: `path.notFor = {TRex = true}`. Shared paths without notFor stay for every dino, including future ones.
+  - A T-Rex record holding Regeneration steps is refunded on load (sanitize). This is the same rule as Thrusters.
+- `path.dino` = nil (shared) / "Raptor" / "TRex" / "none" (shown to nobody); `path.notFor` = dinos a shared path skips (regen: TRex).
 - `SkillTree.pathsFor(areaId, dino)` = the area's paths a dino sees, in order: shared first.
 - `sanitize(raw, dino)` also zeroes paths the dino doesn't own. The dino nil or "All" means no filter (1.4 behaviour).
 - `canBuy(..., dino)` → "otherDino" for a path the dino doesn't own.
@@ -112,7 +114,9 @@ On any end: CloakedUntil = now, CloakState "off", CloakEndReason = reason, Cloak
 - pathsFor("defense", "Raptor") = {hide, cloak, shield}.
 - pathsFor("defense", "TRex") = {hide, armor}.
 - canBuy cloak as TRex → "otherDino"; as Raptor at 1 point → ok.
-- sanitize({thrusters = 2}, "TRex") → thrusters 0.
+- sanitize({thrusters = 2, regen = 2}, "TRex") → thrusters 0, regen 0.
+- pathsFor("health", "TRex") = {lifesteal, repairdrone, biobattery}.
+- pathsFor("health", "Raptor") = {regen, adrenaline, lifesteal}.
 - Cloak effects per step as in the table.
 - 4-slot loadout cases from LOADOUT4 Task 1.
 - Every existing spec case still passes.
