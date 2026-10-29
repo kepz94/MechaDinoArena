@@ -1287,6 +1287,23 @@ own DisplayDistanceType when the cloak ends or the dino dies.
 Button look: the tap part big; the pull part "▼ NAME" along the bottom (rgb(255, 217, 168), 0.5 while not ready); white
 4 px stroke while pulling. The Cloak button reads "CLOAK" with the cooldown fill from CloakReadyAt / CloakCooldown.
 
+## Skill tree screen: tier rows + Mastery (SkillScreen 1.3)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| SkillScreenTierRowsEnabled | script SkillScreen | true | classic tier-row tree; false = the 1.2 area rail + columns (both per dino via pathsFor) |
+| SkillScreenLayout | character (owner client) | — | "tiers" / "rail" |
+| SkillScreenTreeLines | character (owner client) | — | path ids in tree order (Raptor: regen ... decoy, 14; T-Rex: lifesteal ... roaramp, 12) |
+| SkillScreenTreeScale | character (owner client) | — | tree scale s (0.01; at least 0.75 = node radius 9) |
+| SkillScreenTreeScroll | character (owner client) | — | "none" / "x" / "y" / "xy" (the tree pane scrolls when the canvas is bigger) |
+| SkillScreenMastery | character (owner client) | — | "n/3": mastered lines (step >= 3) of this dino |
+
+Node states: own (filled, area colour) / next (white outline) / lock (dark) / soon (dashed, 0.6) / mlock (step III or
+star of an unmastered line while 3 lines are mastered: 0.4 with a lock; BUY "MASTERY FULL · RESPEC TO CHANGE" and the
+gold reason in the detail panel). Mastered lines: gold rings + gold halo under the lit links. Instances:
+SkillScreen.Root.Body.Cols.Tree.Canvas.Col_<pathId>.Node_<1-4>; Root.Top.Mastery; Root.Body.Detail.Why;
+Root.Body.Loadout.Slot_1..4.
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |
