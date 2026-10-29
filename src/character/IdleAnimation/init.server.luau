@@ -1,4 +1,4 @@
--- IdleAnimation v1.25 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.26 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -126,6 +126,12 @@
 --       StarterCharacterScripts; v1.24's refitScale called GetScale on it and errored every frame ("GetScale is not a
 --       valid member of StarterCharacterScripts", seen flooding the output in Play). refitScale now returns unless
 --       the model is a Model. Behaviour in a dino unchanged.
+-- v1.26: always-run look (Kepu 2026-10-29: "theres no run button in this game its set to auto run" ... "make sure they use
+--       running instead of walking animations" ... "the t-rex running animation too"): model attribute GaitAlwaysRun
+--       (default false = v1.25). While true, the gait target is 1 (run) at every moving speed instead of where the
+--       smoothed speed sits between MoveWalkSpeed and MoveRunSpeed; the leg phase still follows the distance travelled
+--       (run stride), so slower moves take slower run steps. Set by RaptorModelData 1.13 and on the T-Rex
+--       (StarterCharacter / TRexModelData 1.24). MoveState reads "running" once GaitBlend passes 0.5 while moving.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -437,7 +443,7 @@ end)
 
 -- v1.24: re-fit joint rest frames and leg geometry when the model's scale changes (see the header)
 local refitCount = 0
-model:SetAttribute("IdleAnimationVersion", "1.25")
+model:SetAttribute("IdleAnimationVersion", "1.26")
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -550,6 +556,7 @@ RunService.PreSimulation:Connect(function(dt)
 	local walkSpd = model:GetAttribute("MoveWalkSpeed") or DEFAULT_WALK_SPEED
 	local runSpd = model:GetAttribute("MoveRunSpeed") or DEFAULT_RUN_SPEED
 	local gaitTarget = runSpd > walkSpd and math.clamp((smoothSpeed - walkSpd) / (runSpd - walkSpd), 0, 1) or 0
+	if model:GetAttribute("GaitAlwaysRun") == true then gaitTarget = 1 end -- v1.26: run gait at every moving speed
 	gaitBlend += (gaitTarget - gaitBlend) * math.min(1, dt * GAIT_RATE)
 	-- upright <-> creep from the replicated Creeping attribute
 	local creepTarget = (model:GetAttribute("Creeping") == true and geo) and 1 or 0

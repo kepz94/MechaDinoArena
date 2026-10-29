@@ -1313,6 +1313,13 @@ Root.Body.Loadout.Slot_1..4.
 
 Turn SkillTestCloakEnabled off on ServerScriptService.SkillServer before a public publish.
 
+## Always-run gait + raptor speed (IdleAnimation 1.26 / RaptorModelData 1.13)
+
+| Attribute | On | Value | Meaning |
+|---|---|---|---|
+| GaitAlwaysRun | dino model (Raptor data, T-Rex StarterCharacter) | true | IdleAnimation shows the run gait at every moving speed (no walk animation); false / missing = 1.25 walk-to-run blend |
+| MoveWalkSpeed / MoveRunSpeed | raptor (data) | 41.6 / 78 | 1.3 x the T-Rex's 32 / 60; in play x ArenaSpeedScale 0.65 = 27 / 50.7 (T-Rex 20.8 / 39). Raptor bots use the same values |
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |

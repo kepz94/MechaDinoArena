@@ -1,4 +1,4 @@
--- TRexModelData v1.23 (Dino Arcade) — snapshot of StarterPlayer.StarterCharacter (TRex v1.1 StripeEye, rig v1.3).
+-- TRexModelData v1.24 (Dino Arcade) — snapshot of StarterPlayer.StarterCharacter (TRex v1.1 StripeEye, rig v1.3).
 -- v1.2: rig 1.3 — thigh + shin 30% longer (tools/leg_stretch.py), feet unchanged; HipHeight 2.93 -> 4.956507,
 --       RigHipHeight 7.65 -> 9.676507; CameraStartZoom 35 + CameraZoom 1.0; StarterCharacter 1.2.
 -- v1.3: bite attributes (Bite*) + IdleAnimation 1.11, BitePose/BiteTest/BiteFX/BiteServer/BiteDummy 1.0.
@@ -37,6 +37,10 @@
 --        WalkStrideStretch 2, RunStrideStretch 2 (WalkPose 3.3 stride stretch; were default 1). Same foot path, half the
 --        steps per stud; planted feet glide by 1 - 1/2 = 50% of ground speed. Measured before (walk 19.7 studs/s):
 --        14.0 studs per cycle, 1.40 cycles/s. CreepStrideStretch unchanged (default 1).
+-- v1.24: GaitAlwaysRun true (IdleAnimation 1.26; Kepu 2026-10-29: auto run game -> "the t-rex running animation too"):
+--        the run gait at every moving speed. Set on the place's StarterPlayer.StarterCharacter too (the T-Rex players
+--        and T-Rex bots are built from it). Note: the place's StarterCharacter speeds are 32 / 60, not this file's 20 / 44
+--        (known since docs/plans/CLASSSTATS_v1.0.md); not changed here.
 -- v1.18: versions only: BushView 1.1 (tall-grass patches), HealthBar 1.1 (death text).
 -- v1.17: versions only: HealthBar 1.0, BushView 1.0 (island: player health bar, see-through bush when hiding).
 -- v1.16: versions only: IdleAnimation 1.17, WalkPose 3.4 (move-direction stepping: strafe side-steps, backing up
@@ -327,6 +331,7 @@ return {
 		TurnLimitVersion = "1.1",
 		TurnServerVersion = "1.0",
 		HeadLeadEnabled = true,
+		GaitAlwaysRun = true, -- v1.24
 		HeadLeadMax = 45,
 		HeadLeadNeckShare = 0.45,
 		HeadLeadSmooth = 10,

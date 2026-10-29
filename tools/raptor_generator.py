@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Raptor generator v1.12 (Dino Arcade) -> src/shared/Models/RaptorModelData.luau
+"""Raptor generator v1.13 (Dino Arcade) -> src/shared/Models/RaptorModelData.luau
 
 Movie-style raptor (Deinonychus size) in the T-Rex block style (docs/STYLE_TRex.md), scaled to the
 T-Rex: T-Rex 40.1 studs long ~ 12.3 m (3.26 studs/m); raptor ~3.9 m -> 12.85 studs long, hip 3.3.
@@ -50,6 +50,11 @@ v1.12: pounce-only stamina + kill regen (inherited from TRexModelData 1.22: Stam
       RamStaminaCost 0, KillRegen*, versions StaminaBar 1.1 / StaminaServer 1.4 / BiteServer 1.6 / PounceServer 1.3 /
       KillRegenServer 1.0). Raptor override JumpStaminaCost 15 -> 0 (user: "the only time stamina is applied is on the
       pounce"); PounceStaminaCost 15 and PounceLatchDrain 15 kept (user: keep the pounce cost).
+v1.13: raptor speed + always-run look (Kepu 2026-10-29: "theres no run button in this game its set to auto run. make
+      the raptors 30% more faster than the t-rex by default", players and bots; "make sure they use running instead of
+      walking animations"). MoveWalkSpeed 30 -> 41.6 and MoveRunSpeed 52 -> 78 = 1.3 x the place's T-Rex
+      (StarterCharacter 32 / 60; in play x ArenaSpeedScale 0.65: raptor 27.0 / 50.7, T-Rex 20.8 / 39). GaitAlwaysRun true
+      (IdleAnimation 1.26: run gait at every moving speed). Stride / gait tuning attributes unchanged.
 """
 import math, re, os
 
@@ -57,7 +62,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "RaptorModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 
-VERSION = "1.12"
+VERSION = "1.13"
 HIP = 3.3            # hip (HRP centre) height above the ground
 HRP_SIZE_D = (3.6, 2.4, 1.4)   # D x (length), y, z (width)
 
@@ -252,7 +257,8 @@ for m in re.finditer(r'^\t\t(\w+) = (.+?),$', block, re.M):
 OVERRIDES = {
     "Species": '"Raptor"', "StyleVersion": '"1.0"', "RaptorModelVersion": f'"{VERSION}"',
     "DisplayName": '"Raptor"',
-    "MoveWalkSpeed": "30", "MoveRunSpeed": "52", "TurnLimitRate": "540",
+    "MoveWalkSpeed": "41.6", "MoveRunSpeed": "78", "TurnLimitRate": "540", # v1.13: was 30 / 52
+    "GaitAlwaysRun": "true", # v1.13: IdleAnimation 1.26 shows the run gait at every moving speed
     "RoarEnabled": "false", "BiteEnabled": "false",
     "CameraStartZoom": "16", "RigHipHeight": f"{HIP}", "IdleBob": "0.1",
     # gait: short legs at walk 30 / run 52 -> longest clean stride + arcade stride stretch (WalkPose 3.3).
