@@ -1,4 +1,4 @@
--- SkillScreen v1.1 (Mecha Dino Arena) — the SKILLS button and the skill tree screen (LocalScript, all devices). MDA-14,
+-- SkillScreen v1.2 (Mecha Dino Arena) — the SKILLS button and the skill tree screen (LocalScript, all devices). MDA-14,
 -- plan docs/plans/SKILLTREES_v1.0.md Task 4, mockup docs/mockups/skill_tree_options.html option A (Kepu's pick).
 -- Data: ReplicatedStorage.SkillShared.SkillTree (copied there by SkillServer 1.0) for names, steps and costs; the
 --   player's attributes (SkillServer 1.0) for everything that changes: SkillLevel, SkillXPInto, SkillXPNext, SkillLeft,
@@ -38,12 +38,18 @@
 --   false). The detail sub-line says "mecha button" for loadout parts (else "mecha part" / "passive").
 --   Script attribute SkillScreenLoadoutEnabled (default true; false = no bar, Cols full height as 1.0).
 --   Diagnostics: SkillScreenLastPress "slot:<n>:<id or empty or none>".
+-- v1.2 (skills per dino, MDA-45, plan docs/plans/SKILLS_PER_DINO_v1.0.md Task 2; Kepu 2026-10-29: "i dont think you need
+--   the "skills" label to be there. just dino name and level and xp progress"): the top bar title shows the dino whose
+--   level and points these are (SkillServer 1.2 keeps one record per dino): DINO_TITLES[Species] ("T-REX" / "RAPTOR"),
+--   else the Species in capitals, else "SKILLS" when the character has no Species. Same label, place and size (90 x 34,
+--   22). Updates when Species changes. Script attribute SkillScreenDinoTitleEnabled (default true; false = "SKILLS" as
+--   1.1). Diagnostic (character): SkillScreenTitle (the text shown). The SKILLS button on the HUD is unchanged.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local BIND = "SkillScreenMouse"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -176,6 +182,20 @@ top.Size = UDim2.new(1, 0, 0, 34)
 top.Parent = root
 local title = label(top, "SKILLS", 22)
 title.Size = UDim2.fromOffset(90, 34)
+-- v1.2: the dino's name instead of "SKILLS"
+local DINO_TITLES = {TRex = "T-REX", Raptor = "RAPTOR"}
+local function drawTitle()
+	local sp = char:GetAttribute("Species")
+	local text = "SKILLS"
+	if script:GetAttribute("SkillScreenDinoTitleEnabled") ~= false and type(sp) == "string" and sp ~= "" then
+		text = DINO_TITLES[sp] or string.upper(sp)
+	end
+	title.Text = text
+	char:SetAttribute("SkillScreenTitle", text)
+end
+drawTitle()
+char:GetAttributeChangedSignal("Species"):Connect(drawTitle)
+script:GetAttributeChangedSignal("SkillScreenDinoTitleEnabled"):Connect(drawTitle)
 local lv = Instance.new("Frame")
 lv.BackgroundColor3 = PANEL
 lv.BackgroundTransparency = 0.1

@@ -1212,6 +1212,18 @@ stamina (Kepu). The Thrusters part is on the dino only while it is in a slot (Ke
 
 T-Rex run 60 -> 39; maxed Sprint Legs (x2.6) 101; maxed + Thrusters boost (x1.75) 177 studs/s.
 
+## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| SkillPerDinoEnabled | script SkillServer | true | each dino (character Species) has its own XP, level, steps and loadout; false = one shared record "All" |
+| SkillDino | player | — | diagnostic: the dino whose record the Skill* player attributes show now |
+| SkillScreenDinoTitleEnabled | script SkillScreen | true | the SKILLS screen title shows the dino name (T-REX / RAPTOR); false = "SKILLS" |
+| SkillScreenTitle | character (owner client) | — | diagnostic: the title text shown |
+
+Save: DataStore "MDA_Skills_v2", key "u" .. UserId, value {v = 2, dinos = {[dino] = {xp, steps, loadout}}}. The 1.1 store
+"MDA_Skills_v1" (one shared build) is no longer used and is kept as it was (Kepu: reset all).
+
 ## Ability bar (AbilityBar 1.0, PC)
 
 | Attribute | On | Default | Meaning |

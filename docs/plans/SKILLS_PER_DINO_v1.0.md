@@ -12,10 +12,11 @@
 ## Global Constraints
 - Cloud place 84022023159448 only. Check `game.PlaceId` before every install; verify by hash + loadstring compile.
 - Version: SkillServer 1.2. Header and changelog, the SkillServerVersion attribute, a docs/VERSIONS.md row and a docs/ATTRIBUTES.md section.
-- No UI change in this part. The SKILLS screen already shows whatever the attributes hold. The species pill (ArenaStatus) already says which dino you are.
+- Version: SkillScreen 1.2 (Task 2).
+- One UI change (Kepu 2026-10-29 02:35, after the dino label mockup docs/mockups/skills_dino_label_options.html): "i dont think you need the "skills" label to be there. just dino name and level and xp progress".
 
 ## Do-not-touch
-SkillTree (maths and data), SkillEffects, StatServer, SkillScreen, MechaButtons, MechaServer, AbilityBar, SpeciesServer.
+SkillTree (maths and data), SkillEffects, StatServer, SkillScreen apart from its title, MechaButtons, MechaServer, AbilityBar, SpeciesServer.
 
 ## Grounded facts (repo f764cd1)
 - SkillServer 1.1 keeps `data[player] = {xp, steps, loadout, ...}` and saves `{v = 1, xp, steps, loadout}` in DataStore "MDA_Skills_v1", key "u" .. UserId.
@@ -71,12 +72,34 @@ SkillTree (maths and data), SkillEffects, StatServer, SkillScreen, MechaButtons,
 - SkillPerDinoEnabled false: one shared record "All".
 - Hash matches; docs.
 
-**Out of scope:** per-dino tree content (part 2); any SKILLS screen change.
+**Out of scope:** per-dino tree content (part 2); the SKILLS screen (Task 2).
+
+## Task 2 — SkillScreen 1.2 · Mode: Wired
+**Files:** Modify `src/character/SkillScreen.client.luau`.
+
+**Layout:** the top bar title label keeps its place and size (90 × 34, FredokaOne 22). Its text becomes the dino name:
+- DINO_TITLES[Species]: TRex → "T-REX", Raptor → "RAPTOR".
+- Any other Species → that Species in capitals.
+- No Species → "SKILLS".
+
+Level box, XP bar, PTS, RESPEC and X are unchanged. The HUD's SKILLS button is unchanged.
+
+**Interfaces:**
+- Consumes: the character attribute Species.
+- Produces: script attribute SkillScreenDinoTitleEnabled (default true; false = "SKILLS"); character diagnostic SkillScreenTitle.
+
+**Acceptance:**
+- T-Rex: the title reads "T-REX". Raptor: "RAPTOR". Each shows that dino's LV and XP.
+- The title updates on a species switch.
+- The toggle false shows "SKILLS".
+- Hash matches; docs.
+- Kepu checks it on phone and PC.
 
 ## Red-team (pre-filing)
 1. **Switch timing.** The new character spawns, then SkillServer swaps the attributes. For a tick, SkillEffects may apply the previous dino's build to the new body: wrong speed points, or DashEnabled from the old loadout.
-   - Mitigation: also swap when the player attribute DinoSpecies changes. SpeciesServer sets it before it builds the new body.
+   - Mitigation: both scripts handle the same CharacterAdded, and SkillEffects re-applies on every SkillPath_ / SkillSlot change in that same dispatch. So the end state is right within the frame.
+   - Swapping on DinoSpecies was dropped: it is set before the new body exists, so it would swap the old body's build early.
    - Acceptance item: after a switch, StatAdded_* / DashEnabled match the new dino.
 2. **The reset is irreversible for players if it is done by wiping.** Mitigation: use a new store name instead of deleting. Undo = point back to v1 (one constant).
 3. **Kill credit after a switch.** A bleed tick that kills a bot after the player switched dinos credits the new dino. Accepted as a rare edge: the credit rule is "the dino you are playing when the kill lands".
-4. **No visible cue on the SKILLS screen** that progress is per dino; only the pill shows the species. Accepted for part 1. A header label ("T-REX · LV 5") can be added later as its own small UI change, with a mockup.
+4. **No visible cue on the SKILLS screen** that progress is per dino. Resolved: Kepu asked for a dino label, the mockup was made, and he chose "just dino name and level and xp progress" (Task 2).

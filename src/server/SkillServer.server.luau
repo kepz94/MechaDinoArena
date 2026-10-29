@@ -1,4 +1,4 @@
--- SkillServer v1.1 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
+-- SkillServer v1.2 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 2, ADR "Skill trees own XP and replace class stat points".
 -- Kepu: kills give XP, each level gives 1 skill point (cap 60), free respec any time, keep everything on death, builds
 --   saved. GrowthServer stays off (adult spawns); this script owns skill XP. Maths: ServerStorage.DinoArcade.SkillTree.
@@ -29,18 +29,32 @@
 --   ("" = clear); result "ok" / "badSlot" / "notButton" / "notOwned" in SkillLastResult (bad argument types -> "badArg").
 --   Respec empties both slots. Player attributes SkillSlot1 / SkillSlot2 (path id or ""). Script attribute
 --   SkillLoadoutEnabled (default true; false -> slot requests "disabled", buys don't auto-slot, the loadout stays as is).
+-- v1.2 (skills per dino, MDA-44, plan docs/plans/SKILLS_PER_DINO_v1.0.md Task 1; Kepu 2026-10-29: "the skill points
+--   should be separate for each dino" -> everything per dino, reset all):
+--   * Each dino has its own record {xp, steps, loadout}. The dino key = the character's Species attribute, else the
+--     player's DinoSpecies, else "TRex"; script attribute SkillPerDinoEnabled (default true) = false -> one record "All".
+--   * The active record lives in the same d.xp / d.steps / d.loadout fields as before, so buy / respec / slot and the kill
+--     XP act on the dino being played (a kill credits the dino played when its KilledAt is counted). On CharacterAdded and
+--     when the character's Species changes, a different key stores the active fields in d.dinos[old key], loads the new
+--     key's record (fresh {0 XP, no steps, empty loadout} if none) and publishes it with no level-up stamp. Player
+--     attribute SkillDino = the active key.
+--   * Saving: new DataStore SAVE_STORE_V2 "MDA_Skills_v2" (Kepu: reset all; "MDA_Skills_v1" is no longer read or written
+--     and stays as it is), value {v = 2, dinos = {[key] = {xp, steps, loadout}}}. Each loaded record is sanitized like
+--     1.1 (a build over its points is refunded, the loadout sanitized); a value without v = 2 counts as "new".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local SAVE_STORE = "MDA_Skills_v1"
+local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
 local RETRY_GAP = 30
 local REQUEST_GAP = 0.2
 local DEFAULTS = {SkillEnabled = true, SkillKillXpFraction = 0.5, SkillSaveEnabled = true}
 DEFAULTS.SkillLoadoutEnabled = true -- v1.1
+DEFAULTS.SkillPerDinoEnabled = true -- v1.2
 
 local treeModule = ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillTree")
 local ST = require(treeModule)
@@ -71,11 +85,11 @@ end
 
 local store
 do
-	local ok, s = pcall(function() return DataStoreService:GetDataStore(SAVE_STORE) end)
+	local ok, s = pcall(function() return DataStoreService:GetDataStore(SAVE_STORE_V2) end) -- v1.2 (was SAVE_STORE)
 	store = ok and s or nil
 end
 
-local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest}
+local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest; v1.2: dinos, active}
 
 local function publish(player, d, levelUp)
 	local level, into, nxt = ST.levelOf(d.xp)
@@ -98,12 +112,42 @@ local function publish(player, d, levelUp)
 	for n = 1, ST.SLOTS do player:SetAttribute("SkillSlot" .. n, d.loadout[n] or "") end
 end
 
+-- v1.2: per-dino records -------------------------------------------------------------------------------------------
+local function dinoKey(player)
+	if script:GetAttribute("SkillPerDinoEnabled") == false then return "All" end
+	local c = player.Character
+	local s = c and c:GetAttribute("Species")
+	if type(s) == "string" and s ~= "" then return s end
+	s = player:GetAttribute("DinoSpecies")
+	if type(s) == "string" and s ~= "" then return s end
+	return "TRex"
+end
+local function stash(d) -- the active fields back into their record
+	if d.active then d.dinos[d.active] = {xp = d.xp, steps = d.steps, loadout = d.loadout} end
+end
+local function switchTo(player, d, key)
+	if d.active == key then return end
+	stash(d)
+	local r = d.dinos[key] or {xp = 0, steps = ST.sanitize({}), loadout = {false, false}}
+	d.xp, d.steps, d.loadout = r.xp, r.steps, r.loadout
+	d.active = key
+	player:SetAttribute("SkillDino", key)
+	if d.loaded then publish(player, d, false) end
+end
+local function cleanRecord(raw) -- a saved record -> {xp, steps, loadout}, sanitized like 1.1
+	local xp = math.max(0, math.floor(tonumber(type(raw) == "table" and raw.xp) or 0))
+	local steps = ST.sanitize(type(raw) == "table" and raw.steps or {})
+	if ST.spent(steps) > ST.pointsOf((ST.levelOf(xp))) then steps = ST.sanitize({}) end
+	return {xp = xp, steps = steps, loadout = ST.sanitizeLoadout(type(raw) == "table" and raw.loadout or nil, steps)}
+end
+
 local function save(player, d)
 	if script:GetAttribute("SkillSaveEnabled") == false or not store then return end
 	local st = player:GetAttribute("SkillSaveState")
 	if st == "noApi" or st == "loading" then return end
 	d.lastSave = os.clock()
-	local value = {v = 1, xp = d.xp, steps = d.steps, loadout = d.loadout} -- v1.1: + loadout
+	stash(d) -- v1.2
+	local value = {v = 2, dinos = d.dinos} -- v1.2 (1.1: {v = 1, xp, steps, loadout})
 	local ok, err = pcall(function() store:SetAsync("u" .. player.UserId, value) end)
 	if ok then
 		d.dirty = false
@@ -118,6 +162,7 @@ end
 local function load(player)
 	local d = {xp = 0, steps = ST.sanitize({}), loaded = false, dirty = false, lastSave = os.clock(), lastRequest = 0,
 		loadout = {false, false}} -- v1.1: + loadout
+	d.dinos, d.active = {}, nil -- v1.2
 	data[player] = d
 	if script:GetAttribute("SkillSaveEnabled") == false or not store then
 		player:SetAttribute("SkillSaveState", "off")
@@ -127,20 +172,40 @@ local function load(player)
 		if not player.Parent then return end
 		if not ok then
 			player:SetAttribute("SkillSaveState", tostring(value):find("not allowed") and "noApi" or "failed")
-		elseif type(value) == "table" then
-			d.xp = math.max(0, math.floor(tonumber(value.xp) or 0))
-			d.steps = ST.sanitize(value.steps)
-			-- a saved build that no longer fits the points (curve change) is refunded
-			if ST.spent(d.steps) > ST.pointsOf((ST.levelOf(d.xp))) then d.steps = ST.sanitize({}) end
-			d.loadout = ST.sanitizeLoadout(value.loadout, d.steps) -- v1.1
+		elseif type(value) == "table" and value.v == 2 and type(value.dinos) == "table" then -- v1.2: per-dino records
+			for key, raw in pairs(value.dinos) do
+				if type(key) == "string" then d.dinos[key] = cleanRecord(raw) end
+			end
 			player:SetAttribute("SkillSaveState", "loaded")
 		else
 			player:SetAttribute("SkillSaveState", "new")
 		end
 	end
+	switchTo(player, d, dinoKey(player)) -- v1.2: the dino being played (d.loaded is still false: no publish yet)
 	d.loaded = true
 	publish(player, d, false)
 end
+
+-- v1.2: follow the dino being played
+local function hookCharacter(player, char)
+	local function check()
+		local d = data[player]
+		if d and d.active then switchTo(player, d, dinoKey(player)) end
+	end
+	check()
+	char:GetAttributeChangedSignal("Species"):Connect(check)
+end
+local function hookPlayer(player)
+	player.CharacterAdded:Connect(function(char) hookCharacter(player, char) end)
+	if player.Character then hookCharacter(player, player.Character) end
+end
+Players.PlayerAdded:Connect(hookPlayer)
+for _, p in ipairs(Players:GetPlayers()) do hookPlayer(p) end
+script:GetAttributeChangedSignal("SkillPerDinoEnabled"):Connect(function()
+	for player, d in pairs(data) do
+		if d.active then switchTo(player, d, dinoKey(player)) end
+	end
+end)
 
 Players.PlayerAdded:Connect(load)
 for _, p in ipairs(Players:GetPlayers()) do task.spawn(load, p) end
