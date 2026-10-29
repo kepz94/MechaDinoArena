@@ -21,13 +21,13 @@ MechaServer / Thrusters, CloakFX, IdleAnimation and its pose modules, BotServer,
 |---|---|---|---|---|
 | Blade Claws (passive) | pounce landing hit +0.35 (added to the other landing bonuses) | latch / pin bite interval × 0.74 | pounce hits bleed 3 / s for 4 s | a pin kill gives back 50% of PounceStaminaCost |
 | Adrenaline Injector (button) | heal 20% of max health over 3 s, run × 1.3 for 3 s, cooldown 20 s | heal 27% | cooldown 14.8 s | usable while stunned and ends the stun |
-| Energy Shield (button) | block all damage for 1.5 s, cooldown 16 s | 2.05 s | cooldown 11.9 s | burst at the end: bots within 12 studs × the raptor's scale are pushed away |
+| Energy Shield (button) | block all damage for 1.5 s, cooldown 16 s; you move at 0.5× speed while blocking | 2.05 s | cooldown 11.9 s | 2.77 s and the slow eases to 0.68× (Kepu 2026-10-29: "If we're allowing it to block all attacks then the push back shouldn't exist" -> "Longer block"; "it's going to be a drawback ... you're slower during the blocking period" -> half speed, lighter at ★) |
 
 ## Attribute contract (written by SkillEffects 1.6 on the character; 0 / false while off or not owned / not slotted)
 - Blade (bought, passive; no slot): `BladeLandBonus` (0 / 0.35), `BladeTickMul` (1 / 0.74), `BladeBleedDps` (0 / 3), `BladeBleedTime` (0 / 4), `BladePinRefund` (0 / 0.5), `BladeLook` (true when steps ≥ 1).
 - Adrenaline (bought and in any slot): `AdrenalineEnabled`, `AdrenalineHeal` (0.20 / 0.27), `AdrenalineTime` (3), `AdrenalineSpeedMul` (1.3), `AdrenalineCooldown` (20 / 14.8), `AdrenalineStunClear` (false / true).
-- Energy Shield (bought and in any slot): `EnergyShieldEnabled`, `EnergyShieldTime` (1.5 / 2.05), `EnergyShieldCooldown` (16 / 11.9), `EnergyShieldBurst` (false / true).
-- Server state (each part's own script): `AdrenalineStartedAt`, `AdrenalineUntil`, `AdrenalineReadyAt`, `AdrenalineServerResult`; `EnergyShieldStartedAt`, `EnergyShieldUntil`, `EnergyShieldReadyAt`, `EnergyShieldServerResult`, `EnergyShieldBlocks`, `EnergyShieldBlockAt`, `EnergyShieldBurstAt`, `EnergyShieldBurstCount`.
+- Energy Shield (bought and in any slot): `EnergyShieldEnabled`, `EnergyShieldTime` (1.5 / 2.05 / ★ 2.77), `EnergyShieldCooldown` (16 / 11.9), `EnergyShieldSpeedMul` (0.5 / ★ 0.68).
+- Server state (each part's own script): `AdrenalineStartedAt`, `AdrenalineUntil`, `AdrenalineReadyAt`, `AdrenalineServerResult`; `EnergyShieldStartedAt`, `EnergyShieldUntil`, `EnergyShieldReadyAt`, `EnergyShieldServerResult`, `EnergyShieldBlocks`, `EnergyShieldBlockAt`.
 
 ## Deterministic map
 | State | Condition | Result |
@@ -43,8 +43,9 @@ MechaServer / Thrusters, CloakFX, IdleAnimation and its pose modules, BotServer,
 | Adrenaline heal | each 0.1 s while Until > now and health > 0 | health += heal × MaxHealth × dt / time, capped at MaxHealth |
 | Adrenaline ★ | ok while StunnedUntil > now | StunnedUntil = now |
 | Adrenaline speed | AdrenalineUntil > now (SprintTest 1.6) | the chosen speed × AdrenalineSpeedMul (× the roar debuff as before) |
+| Shield slow | EnergyShieldUntil > now (SprintTest 1.6) | the chosen speed × EnergyShieldSpeedMul; with Adrenaline too: both multiply (1.3 × 0.5 = 0.65) |
 | Shield block | Until > now | a ForceField (Visible false) on the character: every Humanoid:TakeDamage does nothing; a new LastHitAt counts a block |
-| Shield end | Until reached, death, or `EnergyShieldEnabled` false | ForceField and the shell removed; burst only on the timed end with ★ |
+| Shield end | Until reached, death, or `EnergyShieldEnabled` false | ForceField and the shell destroyed (not disabled) |
 | Death mid-part | health ≤ 0 | Until = now, effects removed; the cooldown still applies |
 | Cloak on | AdrenalineStartedAt / EnergyShieldStartedAt changes | cloak ends "part" (CloakServer 1.3) |
 | Blade pin kill | a PounceServer pin hit takes the target's DummyHealth to 0 and BladePinRefund > 0 | StaminaRefundAmount = refund × PounceStaminaCost, then StaminaRefundAt = now (StaminaServer adds it, clamped to max) |
@@ -53,9 +54,9 @@ MechaServer / Thrusters, CloakFX, IdleAnimation and its pose modules, BotServer,
 
 ### Task 1 — SkillTree 1.6 · Mode: Logic
 **Files:** Modify `src/shared/SkillTree.luau`; Test `tools/tests/SkillTree.spec.luau`.
-**Produces:** `effects(...)` fields `bladeLandBonus, bladeTickMul, bladeBleedDps, bladeBleedTime, bladePinRefund, adrenHeal, adrenTime, adrenSpeedMul, adrenCooldown, adrenStunClear, eshieldTime, eshieldCooldown, eshieldBurst`; `LIVE_MECH.blade / .adrenaline / .shield = true` (blade stays out of BUTTONS: passive).
-- [ ] Spec first: the step table above for each part, 35%-rule checks (I→II heal 0.27/0.20 = 1.35; shield 2.05/1.5 ≥ 1.35; cooldowns 20/14.8 and 16/11.9 ≥ 1.35), T-Rex gets all zeros, blade not slottable, adrenaline / shield slottable. Run in Studio Edit → FAIL.
-- [ ] Code, run → PASS. Version header + changelog.
+**Produces:** `effects(...)` fields `bladeLandBonus, bladeTickMul, bladeBleedDps, bladeBleedTime, bladePinRefund, adrenHeal, adrenTime, adrenSpeedMul, adrenCooldown, adrenStunClear, eshieldTime, eshieldCooldown, eshieldSpeedMul`; `LIVE_MECH.blade / .adrenaline / .shield = true` (blade stays out of BUTTONS: passive).
+- [ ] Spec first: the step table above for each part, 35%-rule checks (I→II heal 0.27/0.20 = 1.35; shield 2.05/1.5 and 2.77/2.05 ≥ 1.35; cooldowns 20/14.8 and 16/11.9 ≥ 1.35), T-Rex gets all zeros, blade not slottable, adrenaline / shield slottable. Run in Studio Edit → FAIL.
+- [ ] Code, run → PASS. Version header + changelog. Energy Shield's step texts become: I "Button: block all damage for 1.5 s, but move at half speed while it's up", ★ "Blocks even longer (2.77 s) and the slow is lighter" (Kepu's call; the 1.0 text "Bursts and knocks enemies back" is replaced, steps I–III unchanged).
 **Acceptance:** spec PASS; raptor tree shows the three lines as buyable (no "soon").
 
 ### Task 2 — SkillEffects 1.6 · Mode: Wired
@@ -88,11 +89,10 @@ MechaServer / Thrusters, CloakFX, IdleAnimation and its pose modules, BotServer,
 **Files:** Create `src/server/EnergyShieldServer.server.luau`; RemoteEvent `DinoEnergyShieldRequest`.
 - Request checks per the map; ForceField "EnergyShieldField" (Visible false); Highlight "EnergyShieldShell" (OutlineColor 90,160,255, FillTransparency 0.85, OutlineTransparency 0) while on; a block (new LastHitAt) → `EnergyShieldBlocks` + 1, `EnergyShieldBlockAt`, outline white for 0.12 s.
 - Small chest emitter disc (Torso Root, front) while `EnergyShieldEnabled`.
-- ★ burst on the timed end: each bot HumanoidRootPart within 12 × raptor scale gets AssemblyLinearVelocity = away × 60 + up × 25 (`EnergyShieldBurstPush` 60); a blue ring Highlight flash.
 - Switch `EnergyShieldServerEnabled`.
 
 ### Task 7 — SprintTest 1.6 + CloakServer 1.3 · Mode: Wired
-- SprintTest: speed × AdrenalineSpeedMul while AdrenalineUntil > now; re-applied at start and at the end (scheduled like the debuff). Diagnostic `MoveSpeedMul` includes it.
+- SprintTest: speed × AdrenalineSpeedMul while AdrenalineUntil > now, × EnergyShieldSpeedMul while EnergyShieldUntil > now; re-applied at each start and end (scheduled like the debuff). Diagnostic `MoveSpeedMul` includes both.
 - CloakServer: PART_STAMPS += "AdrenalineStartedAt", "EnergyShieldStartedAt".
 
 ### Task 8 — MechaButtons 1.5 + AbilityBar 1.3 + ArenaScope 1.7 · Mode: Wired
@@ -107,5 +107,6 @@ Each task's acceptance plus: buy all three (Mastery allows), slot Adrenaline in 
 1. **ForceField blocks more than bot bites.** Any `TakeDamage` source (future PvP, survival damage uses Health directly so it is not blocked) is blocked too. Accepted: "blocks damage" is the step text; noted for PvP.
 2. **ForceField shows a sparkle by default.** Mitigated: `Visible = false`; the shell is the Highlight.
 3. ~~Highlight limit (31 per client).~~ Withdrawn (Kepu 2026-10-29: "I play a lot of games where there's so many lines drawn"): Roblox raised the limit to 255 Highlights on screen (create.roblox.com/docs/effects/highlighting; DevForum "Lights, camera, more highlights", Nov 2025). Not a risk at this game's player count. Rule kept: Highlights are destroyed when the effect ends, never left disabled (disabled ones still count toward the 255).
-4. **Bot push fights BotServer's movement.** BotServer may move the bot right after; the push may look short. Mitigated by a strong, short impulse; tune `EnergyShieldBurstPush`. If it doesn't read, follow-up: use BotServer's toss path (out of scope here, BotServer is do-not-touch).
-5. **Mastery 3 caps builds.** Players can't max all parts; that is intended (ADR-003).
+4. ~~Bot push fights BotServer's movement.~~ Withdrawn: the ★ push is cut (Kepu: a full block plus a push is too much); ★ = longer block.
+5. **Thrusters during the shield.** The dash speed comes from MoveRunSpeed, not the slowed WalkSpeed, so a dash while shielded is full speed. Accepted for now (it costs a charge); flag to Kepu in the ticket.
+6. **Mastery 3 caps builds.** Players can't max all parts; that is intended (ADR-003).
