@@ -1,0 +1,225 @@
+<title>Classic Skill Tree</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: option switcher; a SKILLS screen (top bar, the tree, one upgrade panel); notes. Single dark look (game menu). */
+:root{
+  color-scheme: dark;
+  --page:#0d0e13; --panel:rgb(20,20,26); --panel2:rgb(32,32,41); --line:rgba(255,255,255,.14);
+  --text:#eef0f4; --muted:#9ba1ae; --yellow:rgb(255,200,50); --ytext:rgb(30,26,10); --gold:rgb(255,214,102);
+  --health:rgb(95,209,106); --attack:rgb(240,90,79); --defense:rgb(90,160,255); --speed:rgb(255,211,77); --eng:rgb(255,155,46);
+  --display:"Fredoka One","Arial Rounded MT Bold",system-ui,sans-serif; --body:Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--body);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:400;margin:0 0 4px;font-size:22px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:74ch;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.row button{font-family:var(--display);font-size:14px;border:2px solid var(--line);background:var(--panel2);color:var(--text);padding:6px 12px;border-radius:999px;cursor:pointer}
+.row button.on{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.row button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.scroll{overflow-x:auto;max-width:100%}
+.screen{width:1000px;border-radius:16px;overflow:hidden;font-family:var(--display);padding:14px;
+  background:radial-gradient(ellipse 70% 70% at 45% 70%,#1d2638 0%,#121722 70%)}
+.top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.title{font-size:24px}
+.lv{display:flex;align-items:center;gap:8px;height:30px;background:rgba(20,20,26,.85);border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:0 10px;font-size:15px}
+.lv .bar{width:90px;height:8px;border-radius:4px;background:#000;overflow:hidden}.lv .bar i{display:block;height:100%;width:45%;background:linear-gradient(90deg,var(--yellow),var(--eng))}
+.mchip{background:rgba(20,20,26,.85);border:2px solid var(--gold);color:var(--gold);border-radius:8px;padding:3px 9px;font-size:14px}
+.sp{flex:1}.pts{background:var(--yellow);color:var(--ytext);border-radius:8px;padding:4px 10px;font-size:15px}
+.x{background:rgba(20,20,26,.85);border:1px solid rgba(255,255,255,.4);border-radius:8px;width:34px;height:34px;display:grid;place-items:center}
+.main{display:grid;grid-template-columns:1fr 240px;gap:10px;height:480px}
+.tree{position:relative}
+.tree svg{width:100%;height:100%;display:block}
+.node{cursor:pointer}
+.panel{background:rgba(20,20,26,.92);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;font-family:var(--body);font-size:12.5px;min-width:0}
+.panel h5{margin:0;font-family:var(--display);font-weight:400;font-size:19px}
+.panel .meta{color:var(--muted);font-size:12px}
+.panel ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.panel li{display:grid;grid-template-columns:24px 1fr;gap:7px;line-height:1.35}
+.panel li .s{font-family:var(--display);font-size:11px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:2px solid rgba(255,255,255,.3)}
+.panel li.own .s{background:var(--c);border-color:var(--c);color:#111}
+.panel li.next .s{border-color:#fff}
+.panel li.cur{background:rgba(255,255,255,.05);border-radius:6px}
+.panel li.lock{opacity:.4}
+.panel .why{color:var(--gold);font-size:12px;line-height:1.4}
+.panel .buy{margin-top:auto;border:0;border-radius:10px;padding:11px;font-family:var(--display);font-size:15px;cursor:pointer}
+.panel .buy.ok{background:var(--yellow);color:var(--ytext)}.panel .buy.no{background:#444;color:#999;cursor:default}
+.legend{display:flex;gap:14px;font-family:var(--body);font-size:11.5px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:14px;max-width:1000px}
+.note h3{font-family:var(--display);font-weight:400;margin:0 0 6px;font-size:16px}
+</style>
+
+<h1>Classic skill tree: three layouts</h1>
+<p class="sub">These are connected nodes, like a classic RPG talent tree. Every path starts from your dino, splits into its 5 areas, then into lines. Each line has 4 steps: I, II, III and ★. Round nodes are dino stats; hexagons are mecha parts. A gold ring and glow marks your mastered lines. Only area names are written on the tree; click a node to see its name and steps on the right, then press UPGRADE.</p>
+<div class="row" role="group" aria-label="Layout">
+  <button class="on" data-o="A">A · Grows upward</button>
+  <button data-o="B">B · Left to right</button>
+  <button data-o="C">C · Tier rows</button>
+</div>
+<div class="scroll"><div class="screen">
+  <div class="top"><span class="title">RAPTOR</span><span class="lv">LV 26<span class="bar"><i></i></span>95 / 240 XP</span><span class="mchip" id="mchip"></span><span class="sp"></span><span class="pts" id="pts"></span><span class="x">X</span></div>
+  <div class="main"><div class="tree" id="tree"></div><div class="panel" id="panel"></div></div>
+  <div class="legend"><span>● dino stat</span><span>⬢ mecha part</span><span style="color:var(--gold)">gold ring = mastered</span><span>dashed = coming soon</span><span>🔒 = mastery full</span></div>
+</div></div>
+<div class="note" id="note"></div>
+
+<script>
+const AREA = {health:"rgb(95,209,106)", attack:"rgb(240,90,79)", defense:"rgb(90,160,255)", speed:"rgb(255,211,77)", eng:"rgb(255,155,46)"};
+const AREA_NAME = {health:"HEALTH", attack:"ATTACK", defense:"DEFENSE", speed:"SPEED", eng:"ENGINEER"};
+const AREAS = ["health","attack","defense","speed","eng"];
+const L = [
+ {id:"regen", name:"Regeneration", area:"health", steps:["Heal over time after 6 s without damage","Starts sooner, heals more","Starts sooner again","Kill heal doubled"]},
+ {id:"lifesteal", name:"Lifesteal", area:"health", steps:["5% of damage dealt heals you","10%","15%","Overheal becomes a shield"]},
+ {id:"adrenaline", name:"Adrenaline Injector", area:"health", mech:true, soon:true, steps:["Heal 20% over 3 s + run 1.3x","Heal 27%","Recharges 26% faster","Also ends a stun"]},
+ {id:"jaws", name:"Jaws", area:"attack", steps:["Main attack hits harder","Recharges faster","Hits bleed","Crushing hit stuns"]},
+ {id:"blade", name:"Blade Claws", area:"attack", mech:true, soon:true, steps:["Pounce landing +35%","Latch bites 35% faster","Pounce hits bleed","Pin kill refunds stamina"]},
+ {id:"dart", name:"Dart Launcher", area:"attack", mech:true, soon:true, steps:["Dart slows 30% for 3 s","Marked through grass","Two darts","Slow 60%"]},
+ {id:"hide", name:"Thick Hide", area:"defense", steps:["Take less damage","Less knockback","Shorter stuns","No stuns above 50%"]},
+ {id:"cloak", name:"Cloak Field", area:"defense", mech:true, steps:["Invisible 3 s; bots lose you","Lasts 4.1 s","Pounce from cloak +35%","Still = stay cloaked (2x)"]},
+ {id:"shield", name:"Energy Shield", area:"defense", mech:true, soon:true, steps:["Bubble blocks damage","Stronger","Shorter cooldown","Bursts, knocks back"]},
+ {id:"legs", name:"Sprint Legs", area:"speed", steps:["Run faster","Run x1.9","Pounce / leap recharge faster","Run x2.6"]},
+ {id:"thrusters", name:"Thrusters", area:"speed", mech:true, steps:["Boost 1.75x run for 1 s","2 charges","Lasts 1.35 s","Rocket hop"]},
+ {id:"grapple", name:"Grapple Hook", area:"speed", mech:true, soon:true, steps:["Pull to a tree","Longer range","Faster pull","Hook an enemy"]},
+ {id:"beacon", name:"Pack Beacon", area:"eng", mech:true, soon:true, steps:["Mark enemies 60 studs","81-stud radius","Marked take +35%","Marks hold in range"]},
+ {id:"decoy", name:"Decoy Hologram", area:"eng", mech:true, soon:true, steps:["Fake raptor runs 5 s","Lasts 6.75 s","Two decoys","Decoy bursts and stuns"]},
+];
+const byId = Object.fromEntries(L.map(l=>[l.id,l]));
+const COST = [1,2,3,4], EARNED = 25;
+const S = {o:"A", sel:"cloak", st:{legs:4, cloak:3, thrusters:2, jaws:1, lifesteal:1}};
+const spent = ()=>Object.entries(S.st).reduce((a,[id,n])=>a+COST.slice(0,n).reduce((x,y)=>x+y,0),0);
+const left = ()=>EARNED-spent();
+const mastered = ()=>L.filter(l=>(S.st[l.id]||0)>=3).map(l=>l.id);
+const locked = (l,i)=> i>=2 && !mastered().includes(l.id) && mastered().length>=3;
+function canBuy(l){ const n=S.st[l.id]||0;
+  if (l.soon) return [false,"COMING SOON"]; if (n>=4) return [false,"MAXED"];
+  if (locked(l,n)) return [false,"MASTERY FULL"]; if (left()<COST[n]) return [false,`NEED ${COST[n]} PTS`];
+  return [true,`UPGRADE · ${COST[n]} PTS`]; }
+
+function hex(x,y,r){ return [...Array(6)].map((_,k)=>{const a=Math.PI/180*(60*k-30);return `${x+r*Math.cos(a)},${y+r*Math.sin(a)}`;}).join(" "); }
+function nodeSvg(l,i,x,y){
+  const n = S.st[l.id]||0, own = i<n, next = i===n && !l.soon, lk = locked(l,i), m = mastered().includes(l.id);
+  const col = AREA[l.area], r = i===3 ? 15 : 12;
+  const fill = own ? col : "#151b27";
+  const stroke = l.soon ? "rgba(255,255,255,.25)" : own ? col : next ? "#fff" : "rgba(255,255,255,.3)";
+  const ring = m ? (l.mech ? `<polygon points="${hex(x,y,r+6)}" fill="none" stroke="rgb(255,214,102)" stroke-width="2"/>` : `<circle cx="${x}" cy="${y}" r="${r+5}" fill="none" stroke="rgb(255,214,102)" stroke-width="2"/>`) : "";
+  const dash = l.soon ? 'stroke-dasharray="3 3"' : "";
+  const sel = S.sel===l.id ? `<circle cx="${x}" cy="${y}" r="${r+7}" fill="none" stroke="rgb(255,200,50)" stroke-width="2" opacity=".85"/>` : "";
+  const shape = l.mech ? `<polygon points="${hex(x,y,r+1)}" fill="${fill}" stroke="${stroke}" stroke-width="2.2" ${dash}/>` : `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2.2" ${dash}/>`;
+  const glyph = i===3 ? "★" : ["I","II","III"][i];
+  return `<g class="node" data-id="${l.id}" opacity="${lk?0.4:l.soon?0.6:1}">${sel}${ring}${shape}<text x="${x}" y="${y+4}" text-anchor="middle" font-family="Fredoka One" font-size="${i===3?12:10}" fill="${own?"#111":"#cfd6e4"}">${glyph}</text>${lk?`<text x="${x+13}" y="${y-10}" font-size="10">🔒</text>`:""}</g>`;
+}
+function link(l, i, x1,y1,x2,y2){
+  const n = S.st[l.id]||0, lit = i < n, m = mastered().includes(l.id);
+  const col = lit ? AREA[l.area] : "rgba(255,255,255,.12)";
+  const halo = lit && m ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgb(255,214,102)" stroke-width="9" stroke-linecap="round" opacity=".55"/>` : "";
+  return `${halo}<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${lit?4:3}" stroke-linecap="round" ${l.soon?'stroke-dasharray="4 5"':""}/>`;
+}
+function root(x,y){
+  return `<g><circle cx="${x}" cy="${y}" r="26" fill="#1b2433" stroke="rgba(255,255,255,.5)" stroke-width="2"/><text x="${x}" y="${y+5}" text-anchor="middle" font-family="Fredoka One" font-size="13" fill="#fff">RAPTOR</text></g>`;
+}
+function areaHub(a,x,y,lx,ly){
+  return `<circle cx="${x}" cy="${y}" r="9" fill="${AREA[a]}"/><text x="${lx}" y="${ly}" text-anchor="middle" font-family="Fredoka One" font-size="12.5" fill="${AREA[a]}">${AREA_NAME[a]}</text>`;
+}
+function selLabel(l,x,y,anchor){ return S.sel===l.id ? `<text x="${x}" y="${y}" text-anchor="${anchor||"middle"}" font-family="Fredoka One" font-size="12" fill="rgb(255,200,50)">${l.name}</text>` : ""; }
+
+/* A: grows upward from the dino */
+function treeA(){
+  const W=740, H=480, rx=W/2, ry=450; let back="", front="";
+  const hubX = [80,225,370,515,660], hubY = 385, stepY=[315,245,175,100];
+  AREAS.forEach((a,ai)=>{
+    const lines = L.filter(l=>l.area===a), hx = hubX[ai];
+    back += `<line x1="${rx}" y1="${ry}" x2="${hx}" y2="${hubY}" stroke="${lines.some(l=>(S.st[l.id]||0)>0)?AREA[a]:"rgba(255,255,255,.12)"}" stroke-width="4" stroke-linecap="round"/>`;
+    lines.forEach((l,k)=>{
+      const x = hx + (k-(lines.length-1)/2)*44;
+      back += link(l,0,hx,hubY,x,stepY[0]);
+      for (let i=1;i<4;i++) back += link(l,i,x,stepY[i-1],x,stepY[i]);
+      for (let i=0;i<4;i++) front += nodeSvg(l,i,x,stepY[i]);
+      front += selLabel(l,x,stepY[3]-26);
+    });
+    front += areaHub(a,hx,hubY,hx,hubY+24);
+  });
+  return `<svg viewBox="0 0 ${W} ${H}">${back}${front}${root(rx,ry)}</svg>`;
+}
+/* B: left to right */
+function treeB(){
+  const W=740, H=480, rx=40, ry=240; let back="", front="";
+  const hubY=[50,145,240,335,430], hubX=150, stepX=[300,410,520,640];
+  AREAS.forEach((a,ai)=>{
+    const lines = L.filter(l=>l.area===a), hy = hubY[ai];
+    back += `<path d="M ${rx} ${ry} C ${rx+60} ${ry}, ${hubX-60} ${hy}, ${hubX} ${hy}" fill="none" stroke="${lines.some(l=>(S.st[l.id]||0)>0)?AREA[a]:"rgba(255,255,255,.12)"}" stroke-width="4"/>`;
+    lines.forEach((l,k)=>{
+      const y = hy + (k-(lines.length-1)/2)*28;
+      back += link(l,0,hubX,hy,stepX[0],y);
+      for (let i=1;i<4;i++) back += link(l,i,stepX[i-1],y,stepX[i],y);
+      for (let i=0;i<4;i++) front += nodeSvg(l,i,stepX[i],y);
+      front += selLabel(l,stepX[3]+26,y+4,"start");
+    });
+    front += areaHub(a,hubX,hy,hubX,hy-16);
+  });
+  return `<svg viewBox="0 0 ${W} ${H}">${back}${front}<g transform="translate(0,0)">${root(rx,ry)}</g></svg>`;
+}
+/* C: tier rows (columns per line, rows per step) */
+function treeC(){
+  const W=740, H=480; let back="", front="";
+  const rowY = {0:360, 1:280, 2:200, 3:120}; let x = 40; const cols=[];
+  AREAS.forEach((a,ai)=>{ const lines=L.filter(l=>l.area===a); const start=x;
+    lines.forEach(l=>{ cols.push([l,x]); x+=40; });
+    const mid=(start+x-40)/2;
+    front += `<text x="${mid}" y="${425}" text-anchor="middle" font-family="Fredoka One" font-size="12.5" fill="${AREA[a]}">${AREA_NAME[a]}</text>`;
+    back += `<line x1="${start-14}" y1="405" x2="${x-26}" y2="405" stroke="${AREA[a]}" stroke-width="3" opacity=".7"/>`;
+    x += 18; });
+  back += `<rect x="20" y="440" width="${x-40}" height="26" rx="13" fill="#1b2433" stroke="rgba(255,255,255,.35)"/><text x="${x/2}" y="458" text-anchor="middle" font-family="Fredoka One" font-size="13" fill="#fff">RAPTOR</text>`;
+  [["I",360],["II",280],["III",200],["★",120]].forEach(([t,y])=>{ back += `<text x="10" y="${y+4}" font-family="Fredoka One" font-size="11" fill="rgba(255,255,255,.35)">${t}</text><line x1="26" y1="${y}" x2="${x-20}" y2="${y}" stroke="rgba(255,255,255,.04)" stroke-width="30"/>`; });
+  back += `<line x1="26" y1="240" x2="${x-20}" y2="240" stroke="rgba(255,214,102,.35)" stroke-width="1.5" stroke-dasharray="6 5"/><text x="${x-20}" y="234" text-anchor="end" font-family="Inter" font-size="10" fill="rgba(255,214,102,.8)">mastery line: 3 lines can go above</text>`;
+  cols.forEach(([l,cx])=>{
+    back += link(l,0,cx,405,cx,rowY[0]);
+    for (let i=1;i<4;i++) back += link(l,i,cx,rowY[i-1],cx,rowY[i]);
+    for (let i=0;i<4;i++) front += nodeSvg(l,i,cx,rowY[i]);
+    front += selLabel(l,cx,rowY[3]-28);
+  });
+  return `<svg viewBox="0 0 ${W} ${H}">${back}${front}</svg>`;
+}
+function panel(){
+  const l = byId[S.sel]; const n = S.st[l.id]||0; const [ok,label] = canBuy(l);
+  const why = locked(l,n) ? `<div class="why">3 lines are already mastered (${mastered().map(i=>byId[i].name).join(", ")}). Only 3 lines can go past step II.</div>` : "";
+  return `<h5 style="color:${AREA[l.area]}">${mastered().includes(l.id)?"♛ ":""}${l.mech?"⬢ ":""}${l.name}</h5>
+   <div class="meta">${AREA_NAME[l.area].toLowerCase()} · ${l.mech?"mecha part":"dino stat"}${l.soon?" · coming soon":""}</div>
+   <ul style="--c:${AREA[l.area]}">${l.steps.map((t,i)=>`<li class="${i<n?"own":i===n?(locked(l,i)?"lock":"next cur"):(locked(l,i)?"lock":"")}"><span class="s">${i===3?"★":["I","II","III"][i]}</span><span>${t}</span></li>`).join("")}</ul>
+   ${why}<button class="buy ${ok?"ok":"no"}" id="buy">${label}</button>`;
+}
+const NOTES = {
+ A:`<h3>A · Grows upward</h3>
+  <ul>
+   <li>Your dino is the root at the bottom, and the five areas branch out above it.</li>
+   <li>Each line climbs I → II → III → ★.</li>
+   <li>The most classic "tree" shape; the strongest steps sit highest.</li>
+   <li>On phones, the five areas side by side get narrow (about 44 px per line).</li>
+  </ul>`,
+ B:`<h3>B · Left to right</h3>
+  <ul>
+   <li>Your dino is on the left; areas fan out, and lines run right through their steps.</li>
+   <li>It reads like a progress path, and the name of the line you pick sits at the end of its row.</li>
+   <li>It fits wide phone screens best, because each area gets its own row.</li>
+  </ul>`,
+ C:`<h3>C · Tier rows</h3>
+  <ul>
+   <li>Columns are lines, grouped by area; rows are the tiers I, II, III, ★.</li>
+   <li>A gold dashed "mastery line" between II and III shows the Mastery 3 rule right on the tree.</li>
+   <li>The most structured of the three, closest to Borderlands-style trees.</li>
+  </ul>`
+};
+function render(){
+  document.getElementById("mchip").textContent = `MASTERY ${mastered().length}/3`;
+  document.getElementById("pts").textContent = `${left()} PTS`;
+  const tree = document.getElementById("tree");
+  tree.innerHTML = S.o==="A"?treeA():S.o==="B"?treeB():treeC();
+  tree.querySelectorAll("[data-id]").forEach(el=>el.addEventListener("click",()=>{S.sel=el.dataset.id; render();}));
+  const p = document.getElementById("panel"); p.innerHTML = panel();
+  document.getElementById("buy").addEventListener("click",()=>{const l=byId[S.sel]; if(canBuy(l)[0]){S.st[l.id]=(S.st[l.id]||0)+1; render();}});
+  document.getElementById("note").innerHTML = NOTES[S.o];
+}
+document.querySelectorAll("[data-o]").forEach(b=>b.addEventListener("click",()=>{S.o=b.dataset.o;document.querySelectorAll("[data-o]").forEach(x=>x.classList.toggle("on",x===b));render();}));
+render();
+</script>
