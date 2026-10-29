@@ -1,4 +1,4 @@
--- SkillServer v1.2 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
+-- SkillServer v1.3 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 2, ADR "Skill trees own XP and replace class stat points".
 -- Kepu: kills give XP, each level gives 1 skill point (cap 60), free respec any time, keep everything on death, builds
 --   saved. GrowthServer stays off (adult spawns); this script owns skill XP. Maths: ServerStorage.DinoArcade.SkillTree.
@@ -41,12 +41,20 @@
 --   * Saving: new DataStore SAVE_STORE_V2 "MDA_Skills_v2" (Kepu: reset all; "MDA_Skills_v1" is no longer read or written
 --     and stays as it is), value {v = 2, dinos = {[key] = {xp, steps, loadout}}}. Each loaded record is sanitized like
 --     1.1 (a build over its points is refunded, the loadout sanitized); a value without v = 2 counts as "new".
+-- v1.3 (Cloak release, MDA-50, plan docs/plans/CLOAK_v1.0.md Task 2; SkillTree 1.5, ADR-003 / ADR-004):
+--   * The active dino key goes into every SkillTree call (sanitize / spent / buy / autoSlot / setSlot / sanitizeLoadout):
+--     a dino only buys, slots and keeps its own paths plus the shared ones it isn't skipped from. A buy of another
+--     dino's path -> SkillLastResult "otherDino"; a 4th mastered line -> "masteryFull" (SkillTree 1.5).
+--   * Loaded records (cleanRecord(raw, key)) are sanitized for their dino (e.g. a T-Rex record's Thrusters / Regeneration
+--     steps are dropped and their points come back); a record over Mastery 3 has every line cut back to step II; then,
+--     as before, a build over its points (now 40 at level 41) is refunded.
+--   * Empty loadouts are built from SkillTree.SLOTS (4): fresh records, the load default and respec.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -94,7 +102,7 @@ local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest; 
 local function publish(player, d, levelUp)
 	local level, into, nxt = ST.levelOf(d.xp)
 	local earned = ST.pointsOf(level)
-	local spent = ST.spent(d.steps)
+	local spent = ST.spent(d.steps, d.active) -- v1.3: + dino
 	if levelUp and (player:GetAttribute("SkillLevel") or level) < level then
 		player:SetAttribute("SkillLevelUpAt", workspace:GetServerTimeNow())
 	end
@@ -108,7 +116,7 @@ local function publish(player, d, levelUp)
 	for _, id in ipairs(ST.PATH_ORDER) do
 		player:SetAttribute("SkillPath_" .. id, d.steps[id] or 0)
 	end
-	d.loadout = ST.sanitizeLoadout(d.loadout, d.steps) -- v1.1
+	d.loadout = ST.sanitizeLoadout(d.loadout, d.steps, d.active) -- v1.1; v1.3: + dino
 	for n = 1, ST.SLOTS do player:SetAttribute("SkillSlot" .. n, d.loadout[n] or "") end
 end
 
@@ -122,23 +130,31 @@ local function dinoKey(player)
 	if type(s) == "string" and s ~= "" then return s end
 	return "TRex"
 end
+local function emptyLoadout() -- v1.3: SLOTS empties (4)
+	local l = {}
+	for n = 1, ST.SLOTS do l[n] = false end
+	return l
+end
 local function stash(d) -- the active fields back into their record
 	if d.active then d.dinos[d.active] = {xp = d.xp, steps = d.steps, loadout = d.loadout} end
 end
 local function switchTo(player, d, key)
 	if d.active == key then return end
 	stash(d)
-	local r = d.dinos[key] or {xp = 0, steps = ST.sanitize({}), loadout = {false, false}}
+	local r = d.dinos[key] or {xp = 0, steps = ST.sanitize({}, key), loadout = emptyLoadout()} -- v1.3
 	d.xp, d.steps, d.loadout = r.xp, r.steps, r.loadout
 	d.active = key
 	player:SetAttribute("SkillDino", key)
 	if d.loaded then publish(player, d, false) end
 end
-local function cleanRecord(raw) -- a saved record -> {xp, steps, loadout}, sanitized like 1.1
+local function cleanRecord(raw, key) -- a saved record -> {xp, steps, loadout}, sanitized like 1.1; v1.3: for its dino
 	local xp = math.max(0, math.floor(tonumber(type(raw) == "table" and raw.xp) or 0))
-	local steps = ST.sanitize(type(raw) == "table" and raw.steps or {})
-	if ST.spent(steps) > ST.pointsOf((ST.levelOf(xp))) then steps = ST.sanitize({}) end
-	return {xp = xp, steps = steps, loadout = ST.sanitizeLoadout(type(raw) == "table" and raw.loadout or nil, steps)}
+	local steps = ST.sanitize(type(raw) == "table" and raw.steps or {}, key)
+	if not ST.masteryOk(steps, key) then -- v1.3: over Mastery 3 -> every line back to step II
+		for id, n in pairs(steps) do if n > 2 then steps[id] = 2 end end
+	end
+	if ST.spent(steps, key) > ST.pointsOf((ST.levelOf(xp))) then steps = ST.sanitize({}, key) end
+	return {xp = xp, steps = steps, loadout = ST.sanitizeLoadout(type(raw) == "table" and raw.loadout or nil, steps, key)}
 end
 
 local function save(player, d)
@@ -161,7 +177,7 @@ end
 
 local function load(player)
 	local d = {xp = 0, steps = ST.sanitize({}), loaded = false, dirty = false, lastSave = os.clock(), lastRequest = 0,
-		loadout = {false, false}} -- v1.1: + loadout
+		loadout = emptyLoadout()} -- v1.1: + loadout; v1.3: SLOTS empties
 	d.dinos, d.active = {}, nil -- v1.2
 	data[player] = d
 	if script:GetAttribute("SkillSaveEnabled") == false or not store then
@@ -174,7 +190,7 @@ local function load(player)
 			player:SetAttribute("SkillSaveState", tostring(value):find("not allowed") and "noApi" or "failed")
 		elseif type(value) == "table" and value.v == 2 and type(value.dinos) == "table" then -- v1.2: per-dino records
 			for key, raw in pairs(value.dinos) do
-				if type(key) == "string" then d.dinos[key] = cleanRecord(raw) end
+				if type(key) == "string" then d.dinos[key] = cleanRecord(raw, key) end -- v1.3: + key
 			end
 			player:SetAttribute("SkillSaveState", "loaded")
 		else
@@ -247,10 +263,10 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 	d.lastRequest = os.clock()
 	if action == "buy" and type(pathId) == "string" then
 		local earned = ST.pointsOf((ST.levelOf(d.xp)))
-		local new, why = ST.buy(d.steps, pathId, earned)
+		local new, why = ST.buy(d.steps, pathId, earned, d.active) -- v1.3: + dino
 		if new then
 			d.steps = new
-			if script:GetAttribute("SkillLoadoutEnabled") ~= false then d.loadout = ST.autoSlot(d.loadout, d.steps, pathId) end -- v1.1
+			if script:GetAttribute("SkillLoadoutEnabled") ~= false then d.loadout = ST.autoSlot(d.loadout, d.steps, pathId, d.active) end -- v1.1; v1.3: + dino
 			d.dirty = true
 			publish(player, d, false)
 		end
@@ -261,7 +277,7 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 		elseif type(pathId) ~= "number" or (type(slotPath) ~= "string" and slotPath ~= nil) then
 			player:SetAttribute("SkillLastResult", "badArg")
 		else
-			local new, why = ST.setSlot(d.loadout, d.steps, pathId, slotPath or "")
+			local new, why = ST.setSlot(d.loadout, d.steps, pathId, slotPath or "", d.active) -- v1.3: + dino
 			if new then
 				d.loadout = new
 				d.dirty = true
@@ -270,8 +286,8 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 			player:SetAttribute("SkillLastResult", why)
 		end
 	elseif action == "respec" then
-		d.steps = ST.sanitize({})
-		d.loadout = {false, false} -- v1.1
+		d.steps = ST.sanitize({}, d.active)
+		d.loadout = emptyLoadout() -- v1.1; v1.3: SLOTS empties
 		d.dirty = true
 		publish(player, d, false)
 		player:SetAttribute("SkillLastResult", "ok")

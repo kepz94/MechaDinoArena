@@ -1,4 +1,4 @@
--- SkillEffects v1.4 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.5 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -43,10 +43,14 @@
 --   SkillDashSpeedMul default 3 (was 2).
 -- v1.4 (MDA-36; Kepu: "a little too fast. maybe just make it 1.75 my run speed and 1 second long"): SkillDashSpeedMul
 --   default 1.75 (boost length: SkillTree 1.4).
+-- v1.5 (Cloak release, MDA-50, plan docs/plans/CLOAK_v1.0.md Task 2; SkillTree 1.5): Cloak Field. Character
+--   CloakEnabled = effects on AND cloakTime > 0 AND "cloak" in any SkillSlot1..SLOTS (4); CloakTime, CloakCooldown,
+--   CloakPounceMul (1 while off), CloakStill (false while off). Written with the dash attributes (same re-apply
+--   triggers). CloakServer 1.0 / MechaButtons 1.4 / AbilityBar 1.2 read them.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
@@ -117,6 +121,17 @@ local function applyChar(char, st)
 	char:SetAttribute("DashTime", (dashOn and (e.dashTime or 0) > 0) and e.dashTime or script:GetAttribute("SkillDashTime")) -- v1.2
 	char:SetAttribute("DashSpeedMul", script:GetAttribute("SkillDashSpeedMul")) -- v1.2
 	char:SetAttribute("DashRecharge", script:GetAttribute("SkillDashRecharge"))
+	-- v1.5: Cloak Field (only while slotted)
+	local cloakSlotted = false
+	for n = 1, ST.SLOTS or 2 do
+		if st.player:GetAttribute("SkillSlot" .. n) == "cloak" then cloakSlotted = true end
+	end
+	local cloakOn = live and (e.cloakTime or 0) > 0 and cloakSlotted
+	char:SetAttribute("CloakEnabled", cloakOn)
+	char:SetAttribute("CloakTime", cloakOn and e.cloakTime or 0)
+	char:SetAttribute("CloakCooldown", cloakOn and e.cloakCooldown or 0)
+	char:SetAttribute("CloakPounceMul", cloakOn and (e.cloakPounceMul or 1) or 1)
+	char:SetAttribute("CloakStill", cloakOn and e.cloakStill == true or false)
 end
 
 -- healing (regen / lifesteal), overflow into the shield

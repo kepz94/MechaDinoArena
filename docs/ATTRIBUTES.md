@@ -1212,6 +1212,21 @@ stamina (Kepu). The Thrusters part is on the dino only while it is in a slot (Ke
 
 T-Rex run 60 -> 39; maxed Sprint Legs (x2.6) 101; maxed + Thrusters boost (x1.75) 177 studs/s.
 
+## Per-dino trees, Mastery and Cloak data (SkillTree 1.5 / SkillServer 1.3 / SkillEffects 1.5)
+
+| Attribute | On | Meaning |
+|---|---|---|
+| SkillLastResult "otherDino" | player | a buy / slot of a path the current dino doesn't have |
+| SkillLastResult "masteryFull" | player | step III of a 4th line while 3 lines are mastered (step III or higher) |
+| SkillSlot3 / SkillSlot4 | player | loadout slots 3 (button 1 pull / T) and 4 (button 2 pull / V); path id or "" |
+| CloakEnabled | character | Cloak Field bought and in any of the 4 slots |
+| CloakTime / CloakCooldown | character | cloak length (3 s; 4.1 s from II) / cooldown (12 s, counted from the cloak's end) |
+| CloakPounceMul | character | 1.35 from step III (added with other same-hit bonuses), else 1 |
+| CloakStill | character | star: standing still keeps the cloak (up to 2 x CloakTime) |
+
+SkillTree module flags: BUILD_LIMITS (true: 40 points, level cap 41, MASTERY_MAX 3), SLOTS 4. Path ownership and the
+per-dino lists: docs/plans/CLOAK_v1.0.md.
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |
