@@ -73,6 +73,14 @@ Kepu: "limiting the player to only be able to fully fill some lines", then "what
   - The ★ of a mastered line → ok.
   - Steps I / II of any line → unaffected.
 
+**Point budget (Kepu 2026-10-29 03:24):** "Doesn't step 2 of every skill still seem over powered. The point is you have to lean into a build not have every ability".
+- At 60 points, Mastery 3 still left about 10 lines at step II.
+- Picks: **40 points** and **level cap 41**.
+- SkillTree 1.5: MAX_POINTS = 40, MAX_LEVEL = 41. pointsOf(level) = min(level − 1, 40). levelOf caps at 41, where xpNext = 0 and the bar shows "MAX".
+- A maxed dino has 3 mastered lines (30 points) plus 10 points, e.g. 3 lines at step II and 1 at step I.
+- Records over 40 spent points are refunded on load: SkillServer's existing "spent > points" rule, using the new cap.
+- Spec: update the level-curve cases (cap 41) and add pointsOf(41) = 40, pointsOf(61) = 40.
+
 **Old saves (SkillServer 1.3 cleanRecord):** a record with more than 3 mastered lines has every line cut back to step II. The refunded points come back; the player picks again.
 
 **Same-hit bonuses add, not multiply:**
