@@ -1,4 +1,4 @@
--- MechaButtons v1.6 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.7 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -86,12 +86,17 @@
 --   v1.6 hover (Kepu: "just hit it and stay until the boost ends then drop"): after the MechaAirUpTime rise the
 --   LinearVelocity holds (0, 0, 0) until DashTime ends (the whole boost), then it is removed and gravity takes over.
 --   Diagnostic: MechaAirUpPhase ("rise" / "hover" / "done").
+-- v1.7 (Kepu 2026-10-29, after v70: "I just jumped and pressed dash then tried to move forward but it didn't really push
+--   forward once it hit the height ceiling"; 1.6 had no steering on the straight-up boost): during the straight-up
+--   boost the stick / keys now steer it like the normal boost: with move input the sideways speed is the boost speed
+--   (DashSpeedMul x run speed) in the move direction, without it 0; the up speed keeps the rise / hover profile, so the
+--   height is held while flying until the boost ends, then the drop. MechaBoostDir "move" / "keep" as on the ground.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -341,11 +346,20 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 			stop()
 			return
 		end
-		if up then -- v1.6: no steering on the straight-up boost; after the rise, hold the height
+		if up then -- v1.6: after the rise, hold the height; v1.7: steerable at boost speed while rising / hovering
 			if os.clock() - t0 >= upT and char:GetAttribute("MechaAirUpPhase") == "rise" then
-				lv.VectorVelocity = Vector3.zero
 				char:SetAttribute("MechaAirUpPhase", "hover")
 			end
+			local vy = char:GetAttribute("MechaAirUpPhase") == "rise" and upH / upT or 0
+			local umd = Vector3.new(hum.MoveDirection.X, 0, hum.MoveDirection.Z)
+			local side = Vector3.zero
+			if umd.Magnitude > 0.1 then
+				side = umd.Unit * speed
+				if char:GetAttribute("MechaBoostDir") ~= "move" then char:SetAttribute("MechaBoostDir", "move") end
+			elseif char:GetAttribute("MechaBoostDir") ~= "keep" then
+				char:SetAttribute("MechaBoostDir", "keep")
+			end
+			lv.VectorVelocity = Vector3.new(side.X, vy, side.Z)
 			return
 		end
 		local md = Vector3.new(hum.MoveDirection.X, 0, hum.MoveDirection.Z)
