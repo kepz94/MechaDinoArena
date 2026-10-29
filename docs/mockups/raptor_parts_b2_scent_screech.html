@@ -1,0 +1,429 @@
+<title>Scent Sense and Screech</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: part picker -> look / aim options -> top-down arena stage + step strip -> numbers + open questions.
+   Single dark look on purpose (the game's HUD panels), same as the earlier Mecha Dino Arena mockups. */
+:root {
+  --ink: #0f1319;        /* page ground, HUD-panel dark */
+  --panel: #171d26;      /* raised panels */
+  --line: #2a3340;       /* hairlines */
+  --text: #e8edf4;       /* main text */
+  --muted: #9aa6b6;      /* secondary text */
+  --scent: #c9a2ff;      /* Engineer-area scent violet (Scent Sense) */
+  --screech: #f05a4f;    /* Attack-area red (Raptor Screech) */
+  --cyan: #5ff3ff;       /* Cloak */
+  --blood: #ff3b3b;      /* bleed */
+  --grass: #2f6b3a;      /* tall grass */
+  --sand: #2a2f24;       /* ground */
+  --accent: var(--scent);
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--ink); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.lede { margin: 4px 0 0; color: var(--muted); max-width: 72ch; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab {
+  font-family: var(--display); font-weight: 600; font-size: 15px; color: var(--text); background: var(--panel);
+  border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left;
+}
+.tab small { display: block; font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.parts .tab { font-size: 17px; }
+.tab:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 2px 0 -4px; }
+.stage { position: relative; border-radius: 16px; overflow: hidden; border: 2px solid var(--line); background: var(--panel); }
+canvas { display: block; width: 100%; aspect-ratio: 16 / 9; max-width: 100%; touch-action: none; }
+.hud { position: absolute; left: 12px; top: 10px; font-family: var(--display); font-weight: 600; font-size: 13px;
+  background: rgba(15,19,25,.78); border-radius: 10px; padding: 4px 10px; display: grid; gap: 1px; }
+.hud b { color: var(--accent); font-weight: 600; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font-family: var(--display); font-weight: 700; font-size: 16px; border: 0; border-radius: 12px; padding: 10px 18px;
+  background: var(--accent); color: #14101c; cursor: pointer; }
+.btn.ghost { background: var(--panel); color: var(--text); border: 2px solid var(--line); }
+.steps { display: flex; gap: 6px; }
+.steps .tab { padding: 6px 12px; font-size: 15px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
+.card h3 { font-family: var(--display); font-size: 17px; margin: 0; color: var(--accent); }
+.card p { margin: 0; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+td, th { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 400; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+td:first-child { font-family: var(--display); font-weight: 600; color: var(--accent); white-space: nowrap; }
+.tbl { overflow-x: auto; }
+.pick { color: var(--accent); font-weight: 700; }
+.muted { color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Raptor batch 2: <span id="title">Scent Sense</span></h1>
+    <p class="lede">Top-down view of a patch of the island. You are the orange raptor in the middle. Pick a part, a look or aim style, and a step, then press the button. Everything shown is visible to you only.</p>
+  </header>
+
+  <div class="lbl">Part</div>
+  <div class="row parts" id="parts">
+    <button class="tab" aria-pressed="true" data-part="scent">Scent Sense<small>Engineer · replaces Pack Beacon</small></button>
+    <button class="tab" aria-pressed="false" data-part="screech">Raptor Screech<small>Attack · replaces Dart Launcher · aimed</small></button>
+  </div>
+
+  <div class="lbl" id="optLbl">Trail look</div>
+  <div class="row" id="opts"></div>
+
+  <div class="lbl" id="extraLbl">Cloaked raptors</div>
+  <div class="row" id="extra"></div>
+
+  <div class="stage">
+    <canvas id="cv" width="1280" height="720" aria-label="Top-down arena preview"></canvas>
+    <div class="hud" id="hud"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="fire">SNIFF</button>
+    <button class="btn ghost" id="reset">Reset</button>
+    <div class="steps" id="steps">
+      <button class="tab" data-step="1" aria-pressed="false">I</button>
+      <button class="tab" data-step="2" aria-pressed="false">II</button>
+      <button class="tab" data-step="3" aria-pressed="false">III</button>
+      <button class="tab" data-step="4" aria-pressed="true">★</button>
+    </div>
+    <span class="muted" id="hint">Tip: drag on the arena to turn (Screech aims where you face).</span>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="cols">
+    <div class="card"><h3 id="optName"></h3><p id="optWhere"></p><p class="muted" id="optTrade"></p><p class="pick" id="optPick"></p></div>
+    <div class="card"><h3>Steps (35% rule)</h3><div class="tbl"><table id="stepTbl"></table></div></div>
+  </div>
+
+  <div class="card">
+    <h3>Still open after this</h3>
+    <p>Pack Call (wild raptors join you) and the reworked Grapple Hook are not decided yet. They are not in this mockup.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const g = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const S = 4.2; // pixels per stud
+  const C = getComputedStyle(document.documentElement);
+  const col = n => C.getPropertyValue(n).trim();
+
+  const PARTS = {
+    scent: {
+      title: 'Scent Sense', accent: '--scent', btn: 'SNIFF', optLbl: 'Trail look', extraLbl: 'Cloaked raptors',
+      opts: {
+        A: { tab: 'Glowing paw prints', sub: 'footprints', where: 'Each dino that passed leaves glowing paw prints in its colour (raptor orange, T-Rex red). The oldest prints fade first, so the bright end is where they went.', trade: 'Reads instantly as "tracks". Dense when many dinos crossed the same spot.', pick: 'My pick: footprints are the most raptor thing, and the fade shows direction without arrows.' },
+        B: { tab: 'Scent ribbon', sub: 'mist line', where: 'A soft violet ribbon floats at knee height along each path, thicker where it is fresh.', trade: 'Easy to follow through grass. Says "smell", not "dino type".', pick: '' },
+        C: { tab: 'Trail + chevrons', sub: 'arrows', where: 'A thin line on the ground with chevrons pointing the way each dino went.', trade: 'Clearest direction. Most "UI", least natural.', pick: '' },
+      },
+      extra: {
+        faint: { tab: 'Faint prints (Recommended)', sub: 'cloak still helps', desc: 'faint' },
+        none: { tab: 'No prints', sub: 'cloak beats it', desc: 'none' },
+        full: { tab: 'Full prints', sub: 'scent beats cloak', desc: 'full' },
+      },
+      steps: [
+        ['I', 'Button: pulse. Trails of every enemy dino that passed within 60 studs in the last 8 s glow for you for 6 s. Recharge 16 s.'],
+        ['II', 'Wider: 81 studs.'],
+        ['III', 'Longer memory: trails from the last 10.8 s, and the freshest end pulses so you see which way they went.'],
+        ['★', 'Blood scent: a bleeding dino (Blade Claws III, Lifesteal hits) leaves a blood trail you see all the time, no pulse needed.'],
+      ],
+    },
+    screech: {
+      title: 'Raptor Screech', accent: '--screech', btn: 'SCREECH', optLbl: 'How it aims', extraLbl: 'Hit effect',
+      opts: {
+        A: { tab: 'Sonic bolt', sub: 'travels, dodgeable', where: 'A ring of sound flies where you face (40 studs) and hits the first dino in its path.', trade: 'Fair: the target can see it coming and sidestep. Needs you to face them.', pick: 'My pick: aimed, readable and dodgeable, so it is strong without feeling cheap.' },
+        B: { tab: 'Narrow beam', sub: 'instant', where: 'An instant narrow cone (12°, 30 studs) straight ahead of you.', trade: 'No travel time, so hard to dodge. Strongest of the three.', pick: '' },
+        C: { tab: 'Hold to aim', sub: 'charge + release', where: 'Hold the button: an aim line grows on the ground (up to 50 studs). Release to fire the bolt.', trade: 'Most control, slowest to use, telegraphs the shot to the target.', pick: '' },
+      },
+      extra: {
+        flinch: { tab: 'Flinch + break cloak', sub: 'proposed', desc: 'flinch' },
+      },
+      steps: [
+        ['I', 'Button: aimed screech. A hit raptor flinches for 0.5 s and is knocked out of Cloak; a T-Rex is staggered (slowed for 0.5 s). Recharge 14 s.'],
+        ['II', 'Range x1.35.'],
+        ['III', 'Recharges 26% faster.'],
+        ['★', 'Jams parts: the hit dino\'s running boost, Shield or Adrenaline ends at once.'],
+      ],
+    },
+  };
+
+  const state = { part: 'scent', opt: 'A', extra: 'faint', step: 4, face: -Math.PI / 2, t0: performance.now(), fx: [], pulseAt: -99, hold: null };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // the arena: you in the middle, grass patches, three enemies with recent paths
+  const ME = { x: 0, y: 0 };
+  const GRASS = [{ x: -60, y: -20, r: 26 }, { x: 45, y: 30, r: 22 }, { x: 10, y: -55, r: 18 }];
+  function pathOf(points, kind) { return { points, kind }; }
+  const ENEMIES = [
+    { name: 'Raptor', color: '#ff9b2e', kind: 'raptor', cloak: false, bleed: false, path: [[-95, 55], [-70, 40], [-50, 20], [-62, -5], [-58, -25]] },
+    { name: 'Cloaked raptor', color: '#ff9b2e', kind: 'raptor', cloak: true, bleed: false, path: [[70, -70], [55, -45], [40, -20], [48, 10], [44, 28]] },
+    { name: 'Bleeding T-Rex', color: '#f05a4f', kind: 'trex', cloak: false, bleed: true, path: [[95, 70], [70, 62], [35, 70], [5, 72], [-25, 80]] },
+  ];
+  ENEMIES.forEach(e => { e.len = e.path.length; });
+
+  function radius() { return state.step >= 2 ? 81 : 60; }
+  function memory() { return state.step >= 3 ? 10.8 : 8; }
+  function W2S(x, y) { return [W / 2 + x * S, H / 2 + y * S]; }
+
+  function drawGround() {
+    g.fillStyle = col('--sand'); g.fillRect(0, 0, W, H);
+    g.globalAlpha = .9;
+    for (const p of GRASS) {
+      const [x, y] = W2S(p.x, p.y);
+      g.fillStyle = col('--grass'); g.beginPath(); g.arc(x, y, p.r * S, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(120,190,110,.35)'; g.lineWidth = 2;
+      for (let i = 0; i < 24; i++) { const a = i * 2.39, rr = (i % 6) / 6 * p.r * S; g.beginPath(); g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr - 10); g.stroke(); }
+    }
+    g.globalAlpha = 1;
+    // stud grid
+    g.strokeStyle = 'rgba(255,255,255,.04)'; g.lineWidth = 1;
+    for (let s = -150; s <= 150; s += 20) { let [a] = W2S(s, 0); g.beginPath(); g.moveTo(a, 0); g.lineTo(a, H); g.stroke(); let [, b] = W2S(0, s); g.beginPath(); g.moveTo(0, b); g.lineTo(W, b); g.stroke(); }
+  }
+
+  function dino(x, y, ang, color, kind, alpha) {
+    const [sx, sy] = W2S(x, y);
+    g.save(); g.translate(sx, sy); g.rotate(ang); g.globalAlpha = alpha;
+    const L = kind === 'trex' ? 9 : 5.5;
+    g.fillStyle = color;
+    g.beginPath(); g.ellipse(0, 0, L * S * .55, L * S * .22, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(L * S * .55, 0, L * S * .2, L * S * .14, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.moveTo(-L * S * .5, -L * S * .08); g.lineTo(-L * S * 1.15, 0); g.lineTo(-L * S * .5, L * S * .08); g.fill();
+    g.restore(); g.globalAlpha = 1;
+  }
+
+  // a path point by fraction (0 old .. 1 newest)
+  function at(e, f) {
+    const n = e.path.length - 1, i = Math.min(n - 1, Math.floor(f * n)), k = f * n - i;
+    const a = e.path[i], b = e.path[i + 1];
+    return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, Math.atan2(b[1] - a[1], b[0] - a[0])];
+  }
+
+  function drawScent(now) {
+    const since = (now - state.pulseAt) / 1000;
+    const pulseOn = since >= 0 && since < 6;
+    // pulse ring
+    if (since >= 0 && since < 1.2) {
+      const [x, y] = W2S(0, 0); const r = radius() * S * Math.min(1, since / .6);
+      g.strokeStyle = col('--scent'); g.globalAlpha = 1 - since / 1.2; g.lineWidth = 4;
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
+    }
+    // radius guide
+    { const [x, y] = W2S(0, 0); g.setLineDash([8, 10]); g.strokeStyle = 'rgba(201,162,255,.25)'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, radius() * S, 0, Math.PI * 2); g.stroke(); g.setLineDash([]); }
+    const fade = pulseOn ? Math.min(1, (6 - since) / 1) : 0;
+    for (const e of ENEMIES) {
+      const bloodAlways = state.step >= 4 && e.bleed;
+      let a = bloodAlways ? 1 : fade;
+      if (a <= 0) continue;
+      if (e.cloak && !bloodAlways) { if (state.extra === 'none') continue; if (state.extra === 'faint') a *= .3; }
+      // which part of the path is "remembered": with more memory, more of the path shows
+      const startF = state.step >= 3 ? 0 : .25;
+      const color = (bloodAlways && !pulseOn) ? col('--blood') : e.color;
+      if (state.opt === 'A') {
+        let side = 1;
+        for (let f = startF; f <= 1.0001; f += .045) {
+          const [x, y, ang] = at(e, Math.min(f, .999)); const age = (f - startF) / (1 - startF);
+          const [sx, sy] = W2S(x + Math.cos(ang + Math.PI / 2) * 1.2 * side, y + Math.sin(ang + Math.PI / 2) * 1.2 * side); side = -side;
+          g.save(); g.translate(sx, sy); g.rotate(ang); g.globalAlpha = a * (.2 + .8 * age);
+          g.fillStyle = color; g.shadowColor = color; g.shadowBlur = 12;
+          const s = e.kind === 'trex' ? 1.5 : 1;
+          g.beginPath(); g.ellipse(0, 0, 5 * s, 3.4 * s, 0, 0, Math.PI * 2); g.fill();
+          for (let k = -1; k <= 1; k++) { g.beginPath(); g.ellipse(6 * s, k * 3.2 * s, 2.6 * s, 1.3 * s, k * .5, 0, Math.PI * 2); g.fill(); }
+          g.restore();
+        }
+      } else if (state.opt === 'B') {
+        for (let f = startF; f < .999; f += .01) {
+          const [x, y] = at(e, f), [x2, y2] = at(e, Math.min(.999, f + .01)); const age = (f - startF) / (1 - startF);
+          const [a1, b1] = W2S(x, y), [a2, b2] = W2S(x2, y2);
+          g.strokeStyle = bloodAlways && !pulseOn ? col('--blood') : col('--scent'); g.globalAlpha = a * (.15 + .7 * age);
+          g.lineWidth = 4 + 14 * age + Math.sin(now / 300 + f * 20) * 2; g.lineCap = 'round';
+          g.beginPath(); g.moveTo(a1, b1); g.lineTo(a2, b2); g.stroke();
+        }
+      } else {
+        g.globalAlpha = a; g.strokeStyle = color; g.lineWidth = 3;
+        g.beginPath(); for (let f = startF; f < .999; f += .01) { const [x, y] = at(e, f); const [sx, sy] = W2S(x, y); f === startF ? g.moveTo(sx, sy) : g.lineTo(sx, sy); } g.stroke();
+        for (let f = startF + .08; f < .999; f += .12) {
+          const [x, y, ang] = at(e, f); const [sx, sy] = W2S(x, y);
+          g.save(); g.translate(sx, sy); g.rotate(ang); g.fillStyle = color;
+          g.beginPath(); g.moveTo(9, 0); g.lineTo(-5, -7); g.lineTo(-1, 0); g.lineTo(-5, 7); g.fill(); g.restore();
+        }
+      }
+      // step III: the freshest end pulses
+      if (state.step >= 3 && pulseOn) {
+        const [x, y] = at(e, .985); const [sx, sy] = W2S(x, y);
+        g.globalAlpha = a * (.5 + .5 * Math.sin(now / 160)); g.strokeStyle = color; g.lineWidth = 3;
+        g.beginPath(); g.arc(sx, sy, 16, 0, Math.PI * 2); g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+    // enemies are mostly hidden in grass / cloak: show them faded
+    for (const e of ENEMIES) { const [x, y, ang] = at(e, .999); dino(x, y, ang, e.cloak ? col('--cyan') : e.color, e.kind, e.cloak ? .12 : .35); }
+  }
+
+  // ---- Screech ----
+  const TARGET = { x: 0, y: -48, vx: 9, kind: 'raptor', flinch: 0, cloak: true };
+  function screechRange() { return (state.opt === 'B' ? 30 : 40) * (state.step >= 2 ? 1.35 : 1); }
+  function fire(now) {
+    if (state.part === 'scent') { state.pulseAt = now; return; }
+    if (state.opt === 'C') return; // handled by hold
+    launch(now, screechRange());
+  }
+  function launch(now, range) {
+    if (state.opt === 'B') { state.fx.push({ type: 'beam', t: now, range }); hitCheck(now, range, true); }
+    else state.fx.push({ type: 'bolt', t: now, range, ang: state.face, done: false });
+  }
+  function hitCheck(now, range, cone) {
+    const dx = TARGET.x - ME.x, dy = TARGET.y - ME.y, d = Math.hypot(dx, dy);
+    let da = Math.atan2(dy, dx) - state.face; da = Math.atan2(Math.sin(da), Math.cos(da));
+    const halfW = cone ? 6 * Math.PI / 180 : Math.atan2(4, Math.max(d, 1));
+    if (d <= range && Math.abs(da) <= halfW + .02) { TARGET.flinch = now; TARGET.cloak = false; return true; }
+    return false;
+  }
+
+  function drawScreech(now) {
+    // target raptor strafing left-right
+    const t = (now - state.t0) / 1000;
+    TARGET.x = Math.sin(t * .6) * 30;
+    const flinching = now - TARGET.flinch < 500;
+    if (!flinching && now - TARGET.flinch > 4000) TARGET.cloak = true;
+    // aim guide
+    const [mx, my] = W2S(0, 0);
+    g.strokeStyle = 'rgba(240,90,79,.3)'; g.setLineDash([6, 8]); g.lineWidth = 2;
+    const R = screechRange() * S;
+    g.beginPath(); g.moveTo(mx, my); g.lineTo(mx + Math.cos(state.face) * R, my + Math.sin(state.face) * R); g.stroke(); g.setLineDash([]);
+    if (state.opt === 'B') {
+      g.fillStyle = 'rgba(240,90,79,.08)'; g.beginPath(); g.moveTo(mx, my);
+      g.arc(mx, my, R, state.face - 6 * Math.PI / 180, state.face + 6 * Math.PI / 180); g.closePath(); g.fill();
+    }
+    if (state.opt === 'C' && state.hold) {
+      const held = Math.min(1, (now - state.hold) / 1000); const r = 50 * held * (state.step >= 2 ? 1.35 : 1) * S;
+      g.strokeStyle = col('--screech'); g.lineWidth = 6; g.globalAlpha = .8;
+      g.beginPath(); g.moveTo(mx, my); g.lineTo(mx + Math.cos(state.face) * r, my + Math.sin(state.face) * r); g.stroke(); g.globalAlpha = 1;
+    }
+    // effects
+    for (const f of state.fx) {
+      const age = (now - f.t) / 1000;
+      if (f.type === 'beam') {
+        if (age > .35) { f.dead = true; continue; }
+        g.fillStyle = `rgba(240,90,79,${.5 * (1 - age / .35)})`; g.beginPath(); g.moveTo(mx, my);
+        g.arc(mx, my, f.range * S, state.face - 6 * Math.PI / 180, state.face + 6 * Math.PI / 180); g.closePath(); g.fill();
+      } else {
+        const d = Math.min(f.range, age * 70);
+        const x = Math.cos(f.ang) * d, y = Math.sin(f.ang) * d;
+        if (!f.done && Math.hypot(TARGET.x - x, TARGET.y - y) < 5) { f.done = true; TARGET.flinch = now; TARGET.cloak = false; f.hitAt = now; }
+        if (d >= f.range || f.done) { if (!f.endAt) f.endAt = now; if (now - f.endAt > 300) { f.dead = true; continue; } }
+        const [sx, sy] = W2S(x, y); const k = f.endAt ? 1 - (now - f.endAt) / 300 : 1;
+        g.strokeStyle = col('--screech'); g.lineWidth = 4; g.globalAlpha = k;
+        for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(sx, sy, 8 + i * 7 + (f.endAt ? (now - f.endAt) / 10 : 0), f.ang - .9, f.ang + .9); g.stroke(); }
+        g.globalAlpha = 1;
+      }
+    }
+    state.fx = state.fx.filter(f => !f.dead);
+    // target
+    const jitter = flinching ? Math.sin(now / 25) * 1.5 : 0;
+    dino(TARGET.x + jitter, TARGET.y, Math.PI / 2, TARGET.cloak ? col('--cyan') : '#ff9b2e', 'raptor', TARGET.cloak ? .25 : 1);
+    if (flinching) { const [sx, sy] = W2S(TARGET.x, TARGET.y); g.fillStyle = '#fff'; g.font = '700 22px Fredoka, sans-serif'; g.textAlign = 'center'; g.fillText('FLINCH', sx, sy - 34); }
+  }
+
+  function frame(now) {
+    drawGround();
+    if (state.part === 'scent') drawScent(now); else drawScreech(now);
+    dino(0, 0, state.face, '#ff9b2e', 'raptor', 1);
+    // facing tick
+    const [mx, my] = W2S(0, 0); g.fillStyle = '#fff'; g.beginPath(); g.arc(mx + Math.cos(state.face) * 34, my + Math.sin(state.face) * 34, 3, 0, Math.PI * 2); g.fill();
+    hud(now);
+    if (!reduce || state.part === 'screech' || now - state.pulseAt < 7000) requestAnimationFrame(frame); else setTimeout(() => requestAnimationFrame(frame), 250);
+  }
+
+  function hud(now) {
+    const h = document.getElementById('hud');
+    if (state.part === 'scent') {
+      const since = (now - state.pulseAt) / 1000;
+      const st = since >= 0 && since < 6 ? `trails on · ${(6 - since).toFixed(1)} s` : since >= 6 && since < 16 ? `recharging · ${(16 - since).toFixed(1)} s` : 'ready';
+      h.innerHTML = `<span><b>SCENT SENSE</b> · step ${state.step === 4 ? '★' : ['I', 'II', 'III'][state.step - 1]}</span><span>radius ${radius()} studs · memory ${memory()} s</span><span>${st}</span>`;
+    } else {
+      h.innerHTML = `<span><b>RAPTOR SCREECH</b> · step ${state.step === 4 ? '★' : ['I', 'II', 'III'][state.step - 1]}</span><span>range ${screechRange().toFixed(0)} studs · ${PARTS.screech.opts[state.opt].tab}</span><span>target ${TARGET.cloak ? 'cloaked' : 'revealed'}</span>`;
+    }
+  }
+
+  // ---- UI ----
+  function render() {
+    const P = PARTS[state.part];
+    document.documentElement.style.setProperty('--accent', `var(${P.accent})`);
+    document.getElementById('title').textContent = P.title;
+    document.getElementById('optLbl').textContent = P.optLbl;
+    document.getElementById('extraLbl').textContent = P.extraLbl;
+    document.getElementById('fire').textContent = P.btn;
+    document.getElementById('hint').textContent = state.part === 'scent' ? 'Press SNIFF, then switch steps to compare.' : (state.opt === 'C' ? 'Drag on the arena to turn. Hold SCREECH to aim, release to fire.' : 'Drag on the arena to turn, then SCREECH. The target strafes.');
+    const opts = document.getElementById('opts'); opts.innerHTML = '';
+    for (const [k, o] of Object.entries(P.opts)) {
+      const b = document.createElement('button'); b.className = 'tab'; b.setAttribute('aria-pressed', String(k === state.opt));
+      b.innerHTML = `${k} · ${o.tab}<small>${o.sub}</small>`; b.onclick = () => { state.opt = k; render(); }; opts.appendChild(b);
+    }
+    const ex = document.getElementById('extra'); ex.innerHTML = '';
+    const keys = Object.keys(P.extra); if (!keys.includes(state.extra)) state.extra = keys[0];
+    for (const [k, o] of Object.entries(P.extra)) {
+      const b = document.createElement('button'); b.className = 'tab'; b.setAttribute('aria-pressed', String(k === state.extra));
+      b.innerHTML = `${o.tab}<small>${o.sub}</small>`; b.onclick = () => { state.extra = k; render(); }; ex.appendChild(b);
+    }
+    const o = P.opts[state.opt];
+    document.getElementById('optName').textContent = `${state.opt} · ${o.tab}`;
+    document.getElementById('optWhere').textContent = o.where;
+    document.getElementById('optTrade').textContent = o.trade;
+    document.getElementById('optPick').textContent = o.pick;
+    document.getElementById('stepTbl').innerHTML = '<tr><th>Step</th><th>What it does</th></tr>' + P.steps.map(s => `<tr><td>${s[0]}</td><td>${s[1]}</td></tr>`).join('');
+    document.querySelectorAll('#steps .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.step === state.step)));
+    document.querySelectorAll('#parts .tab').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.part === state.part)));
+    document.getElementById('legend').innerHTML = state.part === 'scent'
+      ? `<span><i style="background:#ff9b2e"></i>raptor trail</span><span><i style="background:#f05a4f"></i>T-Rex trail</span><span><i style="background:${col('--blood')}"></i>blood trail (★)</span><span><i style="background:${col('--cyan')}"></i>cloaked raptor</span><span><i style="background:${col('--grass')}"></i>tall grass</span>`
+      : `<span><i style="background:${col('--cyan')}"></i>cloaked target</span><span><i style="background:#ff9b2e"></i>revealed target</span><span><i style="background:${col('--screech')}"></i>screech</span>`;
+    const fireBtn = document.getElementById('fire');
+    fireBtn.setAttribute('aria-label', P.btn);
+  }
+
+  document.getElementById('parts').addEventListener('click', e => {
+    const b = e.target.closest('[data-part]'); if (!b) return;
+    state.part = b.dataset.part; state.opt = 'A'; state.fx = []; state.face = -Math.PI / 2; render();
+  });
+  document.getElementById('steps').addEventListener('click', e => { const b = e.target.closest('[data-step]'); if (!b) return; state.step = +b.dataset.step; render(); });
+  const fireBtn = document.getElementById('fire');
+  fireBtn.addEventListener('click', () => fire(performance.now()));
+  fireBtn.addEventListener('pointerdown', () => { if (state.part === 'screech' && state.opt === 'C') state.hold = performance.now(); });
+  const release = () => {
+    if (state.hold) { const held = Math.min(1, (performance.now() - state.hold) / 1000); const r = 50 * held * (state.step >= 2 ? 1.35 : 1); state.hold = null; if (r > 3) launch(performance.now(), r); }
+  };
+  fireBtn.addEventListener('pointerup', release); fireBtn.addEventListener('pointerleave', release);
+  document.getElementById('reset').addEventListener('click', () => { state.pulseAt = -99999; state.fx = []; TARGET.cloak = true; TARGET.flinch = -9999; });
+  // drag on the arena to turn
+  let dragging = false;
+  function aim(ev) {
+    const r = cv.getBoundingClientRect();
+    const x = (ev.clientX - r.left) / r.width * W - W / 2, y = (ev.clientY - r.top) / r.height * H - H / 2;
+    state.face = Math.atan2(y, x);
+  }
+  cv.addEventListener('pointerdown', ev => { dragging = true; aim(ev); });
+  cv.addEventListener('pointermove', ev => { if (dragging) aim(ev); });
+  addEventListener('pointerup', () => { dragging = false; });
+
+  render();
+  state.pulseAt = performance.now() + 400; // open with a pulse so the first frame shows trails
+  requestAnimationFrame(frame);
+})();
+</script>
