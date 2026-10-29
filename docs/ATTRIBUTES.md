@@ -1644,3 +1644,18 @@ Raptor Screech is shown as **Shock Dart**; its path id and every Screech* attrib
 Instances: SkillScreen.Root.Body.LoadoutPicker.Chips.Chip_<id> / Chip_empty; Root.Body.LoadoutDim. Dart parts in workspace:
 ScreechBolt (body), ScreechDartTip, ScreechDartTip.ScreechDartGlow.
 
+## Shock Cannon (SkillTree 1.11 / ScreechServer 1.2 / MechaButtons 1.10)
+
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| ScreechShockCannonEnabled | script ScreechServer | true | Shock Cannon mode; false = the 1.1 Shock Dart (held range, dart, T-Rex slow) |
+| ScreechFlinch | character | 1.1 (I) / 1.5 (star) | stun length on a hit (any dino) |
+| ScreechFullRange | character | true while Shock Cannon mode is on | MechaButtons draws the full aim line and fires the full range |
+| ScreechCannon | character | "on" / "none" / "noTorso" | the shoulder cannon model state |
+| ScreechCannonReady | character | true / false | MuzzleGlow bright (ready) / dim (recharging) |
+| ScreechStunTime | target character or bot | seconds | stun actually applied (after Thick Hide) |
+
+Instances: character Mecha_ShockCannon (Pod with Attachment ShockMuzzle, Barrel, Coil_1, Coil_2, MuzzleRing, MuzzleGlow);
+workspace ShockBall (+ ShockBallShell, Arc_1-5 Beams), ShockMuzzleFlash, ScreechBurst (cyan); target root ShockStunSparks,
+ShockStunLight while stunned.
+

@@ -1,4 +1,4 @@
--- MechaButtons v1.9 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.10 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -105,12 +105,15 @@
 --     Diagnostics: MechaScreechAim ("idle" / "aiming"), MechaScreechHeld (last held range, studs), MechaScreechFired.
 --   * Jam (MDA-74): a new PartsJammedAt during a boost ends it (MechaBoostEnd "jammed").
 -- v1.9 (Kepu: Raptor Screech renamed "Shock Dart"): its button reads "SHOCK DART". Nothing else changed.
+-- v1.10 (Kepu after v80: Shock Cannon, "Always full range"): its button reads "SHOCK CANNON"; while the character
+--   attribute ScreechFullRange is true (ScreechServer 1.2 Shock Cannon mode) the aim line is full ScreechRange at once and
+--   the release sends the full range (a quick press used to fire ~8 studs because the line grew over 1 s).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -139,7 +142,7 @@ local TIMED_PARTS = { -- v1.5: part id -> {attribute prefix, remote name, button
 	shield = {"EnergyShield", "DinoEnergyShieldRequest", "SHIELD"},
 }
 TIMED_PARTS.scent = {"Scent", "DinoScentRequest", "SCENT"} -- v1.8
-TIMED_PARTS.screech = {"Screech", "DinoScreechRequest", "SHOCK DART"} -- v1.8 (hold-to-aim, see aimStart); v1.9: named Shock Dart
+TIMED_PARTS.screech = {"Screech", "DinoScreechRequest", "SHOCK CANNON"} -- v1.8 (hold-to-aim, see aimStart); v1.9: Shock Dart; v1.10: Shock Cannon
 local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
 local aim -- v1.8: {slot, t0, input, gesture, part}
 
@@ -152,7 +155,11 @@ end
 local function aimRange()
 	if not aim then return 0 end
 	local maxR = tonumber(char:GetAttribute("ScreechRange")) or 0
-	return maxR * math.clamp((os.clock() - aim.t0) / AIM_TIME, 0, 1)
+	if char:GetAttribute("ScreechFullRange") == true then -- v1.10: Shock Cannon, full range at once
+		return maxR
+	else
+		return maxR * math.clamp((os.clock() - aim.t0) / AIM_TIME, 0, 1)
+	end
 end
 local function aimCancel()
 	if aim and aim.part then aim.part:Destroy() end

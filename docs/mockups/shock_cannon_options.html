@@ -1,0 +1,311 @@
+<title>Shock Cannon Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one game viewport on top, option chips + readout under it, three option notes in a row. Single dark look (matches the in-game HUD). */
+:root {
+  --bg: #0e1116;
+  --panel: #171c24;
+  --line: #2a3240;
+  --fg: #e8edf4;
+  --muted: #8d98a8;
+  --hud: #ff9b2e;      /* game HUD orange */
+  --volt: #7fe9ff;     /* the electric ball */
+  --good: #6fdc8c;
+  --display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { font: 700 clamp(26px, 4vw, 38px)/1.1 var(--display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h1 span { color: var(--volt); }
+.lede { color: var(--muted); max-width: 70ch; margin: 0; }
+.viewport { position: relative; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: #000; }
+canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 8; max-width: 100%; }
+.hudtag { position: absolute; left: 12px; top: 10px; font: 500 12px var(--mono); color: var(--muted); background: rgb(14 17 22 / .7); padding: 3px 8px; border-radius: 6px; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+button { font: 600 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+button[aria-pressed="true"] { border-color: var(--hud); color: var(--hud); }
+button:focus-visible { outline: 2px solid var(--volt); outline-offset: 2px; }
+#fire { background: var(--hud); color: #1b1206; border-color: var(--hud); font-family: var(--display); letter-spacing: .06em; padding: 8px 22px; }
+.readout { font: 500 13px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.readout em { color: var(--volt); font-style: normal; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.opt { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.opt.on { border-color: var(--hud); }
+.opt h3 { margin: 0; font: 700 17px var(--display); }
+.opt .rec { font: 600 11px var(--mono); color: var(--good); letter-spacing: .1em; text-transform: uppercase; }
+.opt p { margin: 0; color: var(--muted); font-size: 14px; }
+.spec { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.spec h2 { margin: 0 0 8px; font: 700 18px var(--display); }
+.spec table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.spec td, .spec th { text-align: left; padding: 6px 10px 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.spec th { color: var(--muted); font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; border-top: 0; }
+.tbl { overflow-x: auto; }
+@media (prefers-reduced-motion: reduce) { #fire { transition: none; } }
+</style>
+
+<div class="wrap">
+  <h1>Shock Dart → <span>Shock Cannon</span></h1>
+  <p class="lede">A cannon mounted on the raptor fires a crackling electric ball you can follow all the way to the target. A hit stuns the target. This view is the default game camera (behind the raptor, offset to the right). Press Fire, switch the mount, or look from the side.</p>
+
+  <div class="viewport">
+    <canvas id="cv" width="1280" height="640" aria-label="Game camera view of a raptor firing an electric ball at a T-Rex"></canvas>
+    <div class="hudtag" id="tag">GAME CAMERA</div>
+  </div>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Cannon mount"><b>Mount</b>
+      <button id="m-a" data-m="a">A · Back turret</button>
+      <button id="m-b" data-m="b">B · Shoulder cannon</button>
+      <button id="m-c" data-m="c">C · Chest cannon</button>
+    </div>
+    <div class="group" role="group" aria-label="View"><b>View</b>
+      <button id="v-game" data-v="game">Game camera</button>
+      <button id="v-side" data-v="side">Side close-up</button>
+    </div>
+    <div class="group" role="group" aria-label="Ball speed"><b>Ball speed</b>
+      <button id="s-60" data-s="60">60</button>
+      <button id="s-75" data-s="75">75</button>
+      <button id="s-110" data-s="110">110 (now)</button>
+    </div>
+    <button id="fire">FIRE</button>
+    <div class="readout" id="read"></div>
+  </div>
+
+  <div class="opts">
+    <div class="opt" id="o-a"><h3>A · Back turret</h3><p>A turret on a short post above the shoulders, barrel over the head. Easy to see from behind and the ball starts high. It sits on top of the Adrenaline tanks, so the back gets crowded.</p></div>
+    <div class="opt" id="o-b"><span class="rec">Recommended</span><h3>B · Shoulder cannon</h3><p>A barrel pod on the right shoulder, on the camera's side. You see the barrel and the muzzle flash every shot, and the ball flies at body height straight to the target. It doesn't collide with the tanks.</p></div>
+    <div class="opt" id="o-c"><h3>C · Chest cannon</h3><p>A short barrel under the chin. Neat on the model, but the body hides it from the game camera. You only see the ball once it is a few studs out.</p></div>
+  </div>
+
+  <div class="spec">
+    <h2>Proposed steps (35% rule kept)</h2>
+    <div class="tbl"><table>
+      <tr><th>Step</th><th>Now (Shock Dart)</th><th>Proposed (Shock Cannon)</th></tr>
+      <tr><td>I</td><td>Hold to aim (range grows over 1 s), flinch 0.5 s, recharge 14 s</td><td>Fires at full range on any press (the aim line still shows while held); <b>stun 1.1 s</b> (raptor and T-Rex), range 100, recharge 14 s</td></tr>
+      <tr><td>II</td><td>Range 135</td><td>Range 135</td></tr>
+      <tr><td>III</td><td>Recharge 10.3 s</td><td>Recharge 10.3 s</td></tr>
+      <tr><td>★</td><td>Jams parts</td><td><b>Stun 1.5 s</b> (1.5 / 1.1 = 1.36) + jams parts</td></tr>
+    </table></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv'), g = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const st = { m: 'b', v: 'game', s: 75 };
+  const DIST = 120;               // studs to the target (inside the 135 range)
+  const BALL = 3;                 // ball core size, studs
+  let shot = null, stunUntil = 0, flashUntil = 0, autoAt = performance.now() + 900;
+
+  // ---- tiny 3D: boxes, camera with yaw, painter's sort ----
+  function cam() {
+    return st.v === 'game'
+      ? { x: 4.5, y: 10.5, z: -17, yaw: 0, f: 820, hy: H * 0.43 }
+      : { x: 26, y: 6.5, z: 1, yaw: -Math.PI / 2, f: 900, hy: H * 0.55 };
+  }
+  function proj(c, p) {
+    const dx = p[0] - c.x, dy = p[1] - c.y, dz = p[2] - c.z;
+    const cs = Math.cos(c.yaw), sn = Math.sin(c.yaw);
+    const x = dx * cs - dz * sn, z = dx * sn + dz * cs;
+    if (z < 0.3) return null;
+    return [W / 2 + c.f * x / z, c.hy - c.f * dy / z, z];
+  }
+  function shade(hex, k) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, (n >> 16) * k), gg = Math.min(255, (n >> 8 & 255) * k), b = Math.min(255, (n & 255) * k);
+    return `rgb(${r | 0},${gg | 0},${b | 0})`;
+  }
+  function boxFaces(b, c, out) {
+    const [x0, x1, y0, y1, z0, z1, col, glow] = b;
+    const V = (x, y, z) => [x, y, z];
+    const faces = [
+      [[V(x0,y0,z0),V(x1,y0,z0),V(x1,y1,z0),V(x0,y1,z0)], [0,0,-1], .78],
+      [[V(x0,y0,z1),V(x0,y1,z1),V(x1,y1,z1),V(x1,y0,z1)], [0,0,1], .7],
+      [[V(x0,y1,z0),V(x1,y1,z0),V(x1,y1,z1),V(x0,y1,z1)], [0,1,0], 1.08],
+      [[V(x0,y0,z0),V(x0,y0,z1),V(x1,y0,z1),V(x1,y0,z0)], [0,-1,0], .45],
+      [[V(x1,y0,z0),V(x1,y0,z1),V(x1,y1,z1),V(x1,y1,z0)], [1,0,0], .9],
+      [[V(x0,y0,z0),V(x0,y1,z0),V(x0,y1,z1),V(x0,y0,z1)], [-1,0,0], .62],
+    ];
+    for (const [pts, n, k] of faces) {
+      const cx = pts.reduce((a, p) => a + p[0], 0) / 4, cy = pts.reduce((a, p) => a + p[1], 0) / 4, cz = pts.reduce((a, p) => a + p[2], 0) / 4;
+      if ((c.x - cx) * n[0] + (c.y - cy) * n[1] + (c.z - cz) * n[2] <= 0) continue;
+      const pp = pts.map(p => proj(c, p));
+      if (pp.some(q => !q)) continue;
+      const d = Math.hypot(c.x - cx, c.y - cy, c.z - cz);
+      out.push({ pp, d, fill: glow ? col : shade(col, k) });
+    }
+  }
+
+  const GREEN = '#4f8f3a', DARK = '#2f5a24', STEEL = '#8e9aa8', GUN = '#3a4350', TANK = '#5dff8a';
+  function raptor() {
+    return [
+      [-1.0, -0.3, 0, 3.6, -0.4, 0.6, DARK], [0.3, 1.0, 0, 3.6, -0.4, 0.6, DARK],          // legs
+      [-1.3, 1.3, 3.4, 6.2, -1.6, 2.6, GREEN],                                              // body
+      [-0.5, 0.5, 4.4, 5.4, -7.5, -1.6, GREEN],                                             // tail
+      [-0.6, 0.6, 5.4, 7.6, 2.3, 3.4, GREEN],                                               // neck
+      [-0.8, 0.8, 7.0, 8.5, 2.8, 5.6, GREEN],                                               // head
+      [-1.0, -0.2, 6.2, 7.2, -0.6, 0.4, TANK, true], [0.2, 1.0, 6.2, 7.2, -0.6, 0.4, TANK, true], // adrenaline tanks
+    ];
+  }
+  function cannon(m) {
+    if (m === 'a') return { parts: [
+      [-0.25, 0.25, 6.2, 8.8, 0.6, 1.1, STEEL],             // post
+      [-0.9, 0.9, 8.8, 9.6, 0.2, 1.8, GUN],                 // turret
+      [-0.35, 0.35, 9.0, 9.5, 1.8, 5.6, STEEL],             // barrel
+      [-0.5, 0.5, 8.9, 9.6, 5.6, 6.1, GUN],                 // muzzle ring
+    ], muzzle: [0, 9.25, 6.3] };
+    if (m === 'b') return { parts: [
+      [1.3, 2.2, 5.0, 6.1, 0.4, 2.0, GUN],                  // pod
+      [1.5, 2.0, 5.3, 5.8, 2.0, 4.8, STEEL],                // barrel
+      [1.4, 2.1, 5.2, 5.9, 4.8, 5.3, GUN],                  // muzzle ring
+    ], muzzle: [1.75, 5.55, 5.5] };
+    return { parts: [
+      [-0.6, 0.6, 3.8, 4.8, 1.8, 3.0, GUN],
+      [-0.3, 0.3, 4.0, 4.6, 3.0, 5.2, STEEL],
+    ], muzzle: [0, 4.3, 5.4] };
+  }
+  function trex() {
+    const z = DIST, R = '#7a6a3a', RD = '#5a4d2a';
+    return [
+      [-1.6, -0.4, 0, 5, z - 0.6, z + 0.6, RD], [0.4, 1.6, 0, 5, z - 0.6, z + 0.6, RD],
+      [-2.2, 2.2, 5, 10, z - 2.5, z + 3.5, R],
+      [-1.4, 1.4, 9, 12.5, z - 4.5, z - 1.5, R],
+      [-0.8, 0.8, 7, 8.5, z + 3.5, z + 10, R],
+    ];
+  }
+
+  // ---- drawing helpers ----
+  function ground(c) {
+    const sky = g.createLinearGradient(0, 0, 0, c.hy);
+    sky.addColorStop(0, '#1f6fd0'); sky.addColorStop(1, '#a9d4ef');
+    g.fillStyle = sky; g.fillRect(0, 0, W, c.hy + 2);
+    const gr = g.createLinearGradient(0, c.hy, 0, H);
+    gr.addColorStop(0, '#d9cfae'); gr.addColorStop(1, '#efe6c8');
+    g.fillStyle = gr; g.fillRect(0, c.hy, W, H - c.hy);
+    // stud grid lines every 10 studs for depth
+    g.strokeStyle = 'rgba(120,100,60,.18)'; g.lineWidth = 1;
+    for (let z = 0; z <= 160; z += 10) {
+      const a = proj(c, [-40, 0, z]), b = proj(c, [40, 0, z]);
+      if (a && b) { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); }
+    }
+  }
+  function jag(x, y, ang, len, seg) {
+    g.beginPath(); g.moveTo(x, y);
+    let px = x, py = y;
+    for (let i = 1; i <= seg; i++) {
+      const t = i / seg, a = ang + (Math.random() - .5) * 1.1;
+      px = x + Math.cos(a) * len * t + (Math.random() - .5) * len * .18;
+      py = y + Math.sin(a) * len * t + (Math.random() - .5) * len * .18;
+      g.lineTo(px, py);
+    }
+    g.stroke();
+  }
+  function ballAt(c, p, now) {
+    const q = proj(c, p); if (!q) return;
+    const r = Math.max(4, c.f * (BALL / 2) / q[2]);
+    g.save(); g.globalCompositeOperation = 'lighter';
+    const halo = g.createRadialGradient(q[0], q[1], 0, q[0], q[1], r * 4.5);
+    halo.addColorStop(0, 'rgba(127,233,255,.55)'); halo.addColorStop(.4, 'rgba(60,150,255,.22)'); halo.addColorStop(1, 'rgba(60,150,255,0)');
+    g.fillStyle = halo; g.beginPath(); g.arc(q[0], q[1], r * 4.5, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(200,245,255,.95)'; g.lineWidth = Math.max(1.2, r * .14);
+    for (let i = 0; i < 6; i++) jag(q[0], q[1], Math.random() * 6.28, r * (1.8 + Math.random() * 1.4), 4);
+    const core = g.createRadialGradient(q[0], q[1], 0, q[0], q[1], r);
+    core.addColorStop(0, '#ffffff'); core.addColorStop(.55, '#bff4ff'); core.addColorStop(1, 'rgba(127,233,255,.2)');
+    g.fillStyle = core; g.beginPath(); g.arc(q[0], q[1], r, 0, 7); g.fill();
+    g.restore();
+  }
+  function trail(c, a, b) {
+    const n = 14;
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      const t = i / n, p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+      const q = proj(c, p); if (!q) continue;
+      const r = Math.max(1.5, c.f * 0.6 * t / q[2]);
+      g.fillStyle = `rgba(127,233,255,${0.05 + 0.25 * t})`;
+      g.beginPath(); g.arc(q[0] + (Math.random() - .5) * 3, q[1] + (Math.random() - .5) * 3, r, 0, 7); g.fill();
+    }
+    g.restore();
+  }
+
+  function frame(now) {
+    const c = cam();
+    ground(c);
+    const can = cannon(st.m);
+    const faces = [];
+    for (const b of [...trex(), ...raptor(), ...can.parts]) boxFaces(b, c, faces);
+    faces.sort((a, b) => b.d - a.d);
+    for (const f of faces) {
+      g.fillStyle = f.fill; g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 1;
+      g.beginPath(); f.pp.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.fill(); g.stroke();
+    }
+
+    // auto fire on a loop so the still page shows a shot in flight
+    if (!shot && now > autoAt && !reduce) fire(now);
+
+    const tgt = [0, 7.5, DIST - 2.4];
+    if (shot) {
+      const t = (now - shot.t0) / 1000, travelled = t * st.s, total = Math.hypot(tgt[0] - shot.from[0], tgt[1] - shot.from[1], tgt[2] - shot.from[2]);
+      const k = Math.min(1, travelled / total);
+      const p = shot.from.map((v, i) => v + (tgt[i] - v) * k);
+      const tail = shot.from.map((v, i) => v + (tgt[i] - v) * Math.max(0, k - 12 / total));
+      trail(c, tail, p);
+      ballAt(c, p, now);
+      if (k >= 1) { shot = null; stunUntil = now + 1500; autoAt = now + 2600; }
+    }
+    // muzzle flash + charge glow
+    if (now < flashUntil) {
+      const q = proj(c, can.muzzle);
+      if (q) { g.save(); g.globalCompositeOperation = 'lighter'; const r = c.f * 2.2 / q[2];
+        const fl = g.createRadialGradient(q[0], q[1], 0, q[0], q[1], r); fl.addColorStop(0, 'rgba(255,255,255,.95)'); fl.addColorStop(1, 'rgba(127,233,255,0)');
+        g.fillStyle = fl; g.beginPath(); g.arc(q[0], q[1], r, 0, 7); g.fill(); g.restore(); }
+    }
+    // stun on the target
+    if (now < stunUntil) {
+      const q = proj(c, [0, 8, DIST]);
+      if (q) {
+        const r = c.f * 6 / q[2];
+        g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(190,240,255,.95)'; g.lineWidth = 2;
+        for (let i = 0; i < 7; i++) jag(q[0] + (Math.random() - .5) * r, q[1] + (Math.random() - .5) * r, Math.random() * 6.28, r * .8, 5);
+        g.restore();
+        const left = (stunUntil - now) / 1500;
+        g.strokeStyle = '#7fe9ff'; g.lineWidth = 4;
+        g.beginPath(); g.arc(q[0], q[1] - r * 1.6, 16, -Math.PI / 2, -Math.PI / 2 + 6.283 * left); g.stroke();
+        g.fillStyle = '#ffffff'; g.font = '700 18px "Chakra Petch", sans-serif'; g.textAlign = 'center';
+        g.fillText('STUNNED', q[0], q[1] - r * 1.6 - 26);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  function fire(now) {
+    if (shot) return;
+    shot = { t0: now, from: cannon(st.m).muzzle };
+    flashUntil = now + 140;
+  }
+
+  function sync() {
+    document.querySelectorAll('[data-m]').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === st.m));
+    document.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === st.v));
+    document.querySelectorAll('[data-s]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.s === st.s));
+    ['a', 'b', 'c'].forEach(k => document.getElementById('o-' + k).classList.toggle('on', k === st.m));
+    document.getElementById('tag').textContent = st.v === 'game' ? 'GAME CAMERA' : 'SIDE CLOSE-UP';
+    document.getElementById('read').innerHTML = `target ${DIST} studs · flight <em>${(DIST / st.s).toFixed(1)} s</em> at ${st.s} studs/s · ball ${BALL} studs · stun <em>1.5 s</em> (★)`;
+  }
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { st.m = b.dataset.m; sync(); });
+  document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { st.v = b.dataset.v; sync(); });
+  document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { st.s = +b.dataset.s; sync(); });
+  document.getElementById('fire').onclick = () => { shot = null; fire(performance.now()); };
+  sync();
+  // start with a ball already in flight so the first frame shows one
+  shot = { t0: performance.now() - 600, from: cannon(st.m).muzzle };
+  requestAnimationFrame(frame);
+})();
+</script>

@@ -1,4 +1,4 @@
--- SkillTree v1.10 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.11 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -88,7 +88,7 @@
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.10"
+SkillTree.Version = "1.11"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -181,6 +181,10 @@ SkillTree.AREAS = {
 --   doesn't even shoot far at all" -> "Shock Dart", "100 / 135 studs"): the "screech" path is shown as "Shock Dart"
 --   (path id kept, so saves and attributes stay); screechRange 100 at I, 135 from II (was 50 / 67.5; 1.35x kept);
 --   step texts I / II.
+-- v1.11 (Kepu 2026-10-29 after v80: "make it a cannon that sits somewhere on the raptor and shoots an electricity ball
+--   that disables a target for 1.5 seconds max" -> mockup docs/mockups/shock_cannon_options.html B, "1.1 s -> 1.5 s at
+--   star"): the "screech" path is shown as "Shock Cannon"; screechFlinch (now a full stun on any dino, ScreechServer 1.2)
+--   1.1 s from I, 1.5 s at star (1.5 / 1.1 = 1.36); step texts I / star.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -301,6 +305,10 @@ SkillTree.BUTTONS.screech, SkillTree.BUTTONS.scent = true, true
 SkillTree.PATHS.screech.name = "Shock Dart"
 SkillTree.PATHS.screech.steps[1] = "Button: hold to aim (up to 100 studs), release to fire. The first dino hit flinches for 0.5 s and loses its cloak (a T-Rex is slowed)"
 SkillTree.PATHS.screech.steps[2] = "Reaches 135 studs"
+-- v1.11: Shock Cannon (id "screech" kept)
+SkillTree.PATHS.screech.name = "Shock Cannon"
+SkillTree.PATHS.screech.steps[1] = "Button: a shoulder cannon fires an electric ball (100 studs). The first dino hit is stunned for 1.1 s and loses its cloak"
+SkillTree.PATHS.screech.steps[4] = "Stun lasts 1.5 s and jams parts: the hit dino's boost, Shield and Adrenaline end at once"
 for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
 	"armor", "ramjet", "shieldproj", "roaramp"}) do
 	SkillTree.BUTTONS[id] = true
@@ -537,10 +545,10 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	-- v1.9: Raptor Screech
 	local sr = s.screech or 0
 	e.screechRange, e.screechFlinch, e.screechCooldown, e.screechJam = 0, 0, 0, false
-	if sr >= 1 then e.screechRange, e.screechFlinch, e.screechCooldown = 100, 0.5, 14 end -- v1.10: 100 (was 50)
+	if sr >= 1 then e.screechRange, e.screechFlinch, e.screechCooldown = 100, 1.1, 14 end -- v1.10: 100 (was 50); v1.11: stun 1.1 (was 0.5)
 	if sr >= 2 then e.screechRange = 135 end -- v1.10: 135 (was 67.5)
 	if sr >= 3 then e.screechCooldown = 10.3 end -- 14 / 10.3 = 1.36 (10.4 failed the 35% rule)
-	if sr >= 4 then e.screechJam = true end
+	if sr >= 4 then e.screechJam, e.screechFlinch = true, 1.5 end -- v1.11: + stun 1.5 s
 	return e
 end
 

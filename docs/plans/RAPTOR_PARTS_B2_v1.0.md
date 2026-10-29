@@ -57,3 +57,14 @@ Kepu: "the screech shouldn't be called that because it's not even a screech also
 | 12 — SkillScreen 1.4 | Wired | tap a slot to select it, a picker row of owned button parts (+ Empty) appears above the strip, the tree dims; tap a part to fill; SkillScreenSlotPickerEnabled (false = 1.3 cycle) |
 
 Red-team (one paragraph): the id stays "screech" so nothing saved breaks, at the cost of an internal name that no longer matches (accepted, documented). A longer dart at 110 studs/s is harder to dodge at range; the hold-to-aim and the 14 s recharge stay the counterweights (accepted; Kepu tunes after playing). The picker row overlaps the bottom 44 px of the tree while open; the dimmer makes that clear and a tap on it cancels, so no accidental buys.
+
+## Follow-up 2 after v80 — Shock Cannon (Kepu 2026-10-29)
+Kepu: "That shock dart animation sucks ... its distance is short as hell only works immediately in front of another dino. cant even see the damn thing travel and its just a glowing ball shooting ... lets make it a cannon that sits somewhere on the raptor and shoots an electricity ball that disables a target for 1.5 seconds max" / "not real but obvious". Cause of "short": the range grew with hold time (MechaButtons 1.8 AIM_TIME 1 s from 0), so a quick press fired ~8 studs (MIN_RANGE). Mockup `docs/mockups/shock_cannon_options.html`; picks: **B · Shoulder cannon**, **always full range**, **stun 1.1 s → 1.5 s at ★ on raptor and T-Rex**, **75 studs/s**.
+
+| Task | Mode | Change |
+|---|---|---|
+| 13 — SkillTree 1.11 + spec | Logic | name "Shock Cannon"; screechFlinch 1.1 at I, 1.5 at ★ (1.36x); step texts I / ★ |
+| 14 — ScreechServer 1.2 | Wired | "ShockCannon" model on the right shoulder (Torso.Root weld, sized by dino height) while ScreechEnabled; ball from its muzzle at full ScreechRange, 75 studs/s: white-cyan neon core + translucent shell + crackling Beams + sparks + light + trail; muzzle flash; any hit = StunnedUntil (both species) with sparks on the target while stunned. Toggle ScreechShockCannonEnabled (false = 1.1 dart). |
+| 15 — MechaButtons 1.10 | Wired | label "SHOCK CANNON"; with ScreechFullRange the aim line is full length at once and the release sends the full range |
+
+Red-team (one paragraph): a full stun on a T-Rex for 1.5 s is stronger than the old slow; the 14 / 10.3 s recharge, the visible 75 studs/s ball (dodgeable at range) and Thick Hide (stun rules apply) are the counterweights — accepted, Kepu tunes after playing. The cannon is a character descendant, so CloakFX fades it with the body. Server-side arcs replicate a few attachment moves per ball per frame; only one ball per raptor per 10 s, accepted.
