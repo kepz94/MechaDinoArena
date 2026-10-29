@@ -1,4 +1,4 @@
--- SkillTree v1.6 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.7 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -88,7 +88,7 @@
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.6"
+SkillTree.Version = "1.7"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -162,6 +162,8 @@ SkillTree.AREAS = {
 	}},
 }
 
+-- v1.7 (Kepu 2026-10-29: "adrenaline should be faster or a bigger health charge" -> "Both"): adrenHeal 0.25 at I,
+--   0.34 from II (was 0.20 / 0.27); adrenSpeedMul 1.4 (was 1.3). Cooldown and time unchanged. Step texts updated.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -251,6 +253,8 @@ SkillTree.LIVE_MECH.adrenaline = true -- v1.6
 SkillTree.LIVE_MECH.shield = true -- v1.6
 SkillTree.PATHS.shield.steps[1] = "Button: block all damage for 1.5 s, but move at half speed while it's up" -- v1.6 (Kepu)
 SkillTree.PATHS.shield.steps[4] = "Blocks even longer (2.77 s) and the slow is lighter" -- v1.6 (Kepu: no push-back)
+SkillTree.PATHS.adrenaline.steps[1] = "Button: heal 25% of max health over 3 s and run 1.4x faster while it lasts" -- v1.7
+SkillTree.PATHS.adrenaline.steps[2] = "Heal 34%" -- v1.7
 for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
 	"armor", "ramjet", "shieldproj", "roaramp"}) do
 	SkillTree.BUTTONS[id] = true
@@ -464,8 +468,8 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	-- v1.6: Adrenaline Injector
 	local ad = s.adrenaline or 0
 	e.adrenHeal, e.adrenTime, e.adrenSpeedMul, e.adrenCooldown, e.adrenStunClear = 0, 0, 1, 0, false
-	if ad >= 1 then e.adrenHeal, e.adrenTime, e.adrenSpeedMul, e.adrenCooldown = 0.20, 3, 1.3, 20 end
-	if ad >= 2 then e.adrenHeal = 0.27 end
+	if ad >= 1 then e.adrenHeal, e.adrenTime, e.adrenSpeedMul, e.adrenCooldown = 0.25, 3, 1.4, 20 end -- v1.7: 0.25 / 1.4 (was 0.20 / 1.3)
+	if ad >= 2 then e.adrenHeal = 0.34 end -- v1.7 (was 0.27)
 	if ad >= 3 then e.adrenCooldown = 14.8 end
 	if ad >= 4 then e.adrenStunClear = true end
 	-- v1.6: Energy Shield

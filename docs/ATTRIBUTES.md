@@ -1385,6 +1385,24 @@ Jaws is not for raptors (SkillTree 1.6 notFor Raptor; refunded on load).
 BladeServer 1.1: script BladeSizeMul (3; hook size multiplier), BladeOuterSide (true; false = the inner side as 1.0).
 SkillServer 1.6: SkillTestCloakEnabled now gives every live mecha part of the active dino at star; player SkillTestParts lists them.
 
+### Looks upgrade (SkillTree 1.7 / AdrenalineServer 1.1 / EnergyShieldServer 1.1 / BladeServer 1.2)
+
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| AdrenalineHeal / AdrenalineSpeedMul | character | 0.25 / 0.34 from II; 1.4 | SkillTree 1.7 numbers (were 0.20 / 0.27; 1.3) |
+| AdrenalineLookStyle | script AdrenalineServer | "tanks" / "neck" | look style; "neck" = the 1.0 canister |
+| AdrenalineLook | character | "none" / "tanks" / "on" (neck) / "noTorso" / "noNeck" | diagnostics |
+| AdrenalineLookStep / AdrenalineTanks | character | 0-4; 1 / 1 / 2 / 3 | step the tanks were built from; tank count |
+| AdrenalineGlow | Highlight under the character | — | whole boost, destroyed at the end |
+| AdrenalineHealPop | BillboardGui under the HumanoidRootPart | "+N" | every 0.5 s while healing, gone after 0.85 s |
+| EnergyShieldLookStyle | script EnergyShieldServer | "dome" / "shell" | look style; "shell" = the 1.0 Highlight + chest emitter |
+| EnergyShieldLook | character | "none" / "dome" / "on" (shell) / "noTorso" | diagnostics |
+| EnergyShieldLookStep | character | 1-4 | step the shoulder emitters were built from |
+| EnergyShieldRipples | character | count | blocks that drew a ripple on the dome |
+| EnergyShieldDome / EnergyShieldDome2 / EnergyShieldDomeTint / EnergyShieldRipple | workspace parts | — | the dome while up (outside the character: its size stays the same) |
+| BladeArmBladesEnabled | script BladeServer | true | false: no forearm blades |
+| BladeLookStep / BladeArmBlades / BladeTrails | character | 0-4; 0 / 2; "off" / "on" | diagnostics (trails only at star) |
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |

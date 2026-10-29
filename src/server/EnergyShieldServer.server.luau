@@ -1,4 +1,4 @@
--- EnergyShieldServer v1.0 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
+-- EnergyShieldServer v1.1 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
 -- damage for a short time, but move slower while it's up. MDA-63, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 6, mockup
 -- docs/mockups/raptor_parts_b1_options.html option B "Hard-light shell" (Kepu 2026-10-29: full block; "If we're allowing
 -- it to block all attacks then the push back shouldn't exist"; "You block all damage but you're slower during the
@@ -21,6 +21,23 @@
 -- End: at EnergyShieldUntil ("time"), death ("dead") or EnergyShieldEnabled turning false ("disabled"): the ForceField
 --   and the Highlight are destroyed (not disabled: disabled Highlights still count toward the per-client limit); early
 --   ends set EnergyShieldUntil = now and EnergyShieldReadyAt = now + cooldown. EnergyShieldEndReason.
+-- v1.1 (Kepu 2026-10-29: "the ability themselves don't seem obvious enough" -> mockup
+--   docs/mockups/raptor_parts_b1_looks.html, picked A "Hex dome"): script attribute EnergyShieldLookStyle (default
+--   "dome"; "shell" = the 1.0 Highlight shell + chest emitter). Dome look:
+--   * Shoulder emitters: one disc each side of the torso, front top ("EmitterL" / "EmitterR" dark ring + "EmitterCoreL"
+--     / "EmitterCoreR" blue neon), size by the player's SkillPath_shield: I 0.06, II 0.08, III 0.1, star 0.12 x dino
+--     height; from III a second neon ring "EmitterHaloL" / "EmitterHaloR". Rebuilt when that step changes.
+--   * While up: "EnergyShieldDome", an ellipsoid Part (SpecialMesh Sphere) of Material ForceField, blue, around the
+--     whole character (its box in the HumanoidRootPart's frame x DOME_PAD), welded to the HumanoidRootPart, massless, no collide / query.
+--     Parented to workspace, not the character, so the character's size (pounce latch / pin check, stun, growth)
+--     doesn't change while it's up.
+--     Width at least its height (a round bubble from the camera behind). Transparency 0.25 (III and star: 0 =
+--     brighter); star adds "EnergyShieldDome2" at x1.08; inside, "EnergyShieldDomeTint" (same ellipsoid x0.98,
+--     SmoothPlastic blue, Transparency DOME_TINT 0.8) so the bubble reads as solid. No Highlight in this style.
+--     A block flashes the dome white for 0.12 s and puts a white neon ripple ball "EnergyShieldRipple" on the dome
+--     surface toward the attacker (LastHitBy model; front if not found) that grows and fades in 0.3 s. The dome fades
+--     out (Transparency -> 1) over the last DOME_FADE (0.4) s.
+--   Diagnostics: EnergyShieldLook "dome" / "on" (shell) / "none" / "noTorso"; EnergyShieldLookStep; EnergyShieldRipples.
 -- Settings: script attribute EnergyShieldServerEnabled (default true).
 -- Diagnostics: script EnergyShieldServerVersion, EnergyShieldRequests; character EnergyShieldServerResult,
 --   EnergyShieldCount, EnergyShieldBlocks, EnergyShieldBlockAt, EnergyShieldEndReason, EnergyShieldState ("off" / "on"),
@@ -28,13 +45,23 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService") -- v1.1
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local BLUE, DARK, WHITE = Color3.fromRGB(90, 160, 255), Color3.fromRGB(44, 52, 64), Color3.new(1, 1, 1)
 
 script:SetAttribute("EnergyShieldServerVersion", VERSION)
 if script:GetAttribute("EnergyShieldServerEnabled") == nil then script:SetAttribute("EnergyShieldServerEnabled", true) end
 script:SetAttribute("EnergyShieldRequests", 0)
+if script:GetAttribute("EnergyShieldLookStyle") == nil then script:SetAttribute("EnergyShieldLookStyle", "dome") end -- v1.1
+local DOME_PAD, DOME_FADE = 1.15, 0.4 -- v1.1
+local DOME_TINT = 0.8 -- v1.1: tint layer transparency
+local EMIT_SIZE = {0.06, 0.08, 0.1, 0.12} -- v1.1: x dino height, by step I..star
+local function domeStyle() return script:GetAttribute("EnergyShieldLookStyle") ~= "shell" end
+local function stepOf(char)
+	local pl = Players:GetPlayerFromCharacter(char)
+	return pl and tonumber(pl:GetAttribute("SkillPath_shield")) or 0
+end
 local function on() return script:GetAttribute("EnergyShieldServerEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
 
@@ -114,6 +141,35 @@ local function build(char)
 	local lo, hi = rootBox(seg, root)
 	if not lo then char:SetAttribute("EnergyShieldLook", "noTorso") return end
 	local Hd = char:GetExtentsSize().Y
+	if domeStyle() then -- v1.1: shoulder emitters, size by step
+		local step = math.clamp(stepOf(char), 1, 4)
+		char:SetAttribute("EnergyShieldLookStep", step)
+		local d = Hd * EMIT_SIZE[step]
+		local model = Instance.new("Model")
+		model.Name = "Mecha_EnergyShield"
+		local x, y, z = bodyAxes(root, hrp)
+		for _, side in ipairs({{"L", -1}, {"R", 1}}) do
+			-- side face of the torso box, front top; the cylinder's axis (its X) points out sideways
+			local pLocal = (lo + hi) / 2 + x * side[2] * (extent(lo, hi, x) + d * 0.1) + y * (extent(lo, hi, y) * 0.45)
+				- z * (extent(lo, hi, z) * 0.45)
+			local out = x * side[2]
+			local cf = root.CFrame * CFrame.fromMatrix(pLocal, out, y)
+			local ring = part("Emitter" .. side[1], Vector3.new(d * 0.3, d, d), cf, DARK, model, root)
+			ring.Shape = Enum.PartType.Cylinder
+			local core = part("EmitterCore" .. side[1], Vector3.new(d * 0.36, d * 0.55, d * 0.55), cf, BLUE, model, root)
+			core.Shape = Enum.PartType.Cylinder
+			core.Material = Enum.Material.Neon
+			if step >= 3 then
+				local halo = part("EmitterHalo" .. side[1], Vector3.new(d * 0.12, d * 1.35, d * 1.35), cf * CFrame.new(-d * 0.05, 0, 0), BLUE, model, root)
+				halo.Shape = Enum.PartType.Cylinder
+				halo.Material = Enum.Material.Neon
+				halo.Transparency = 0.35
+			end
+		end
+		model.Parent = char
+		char:SetAttribute("EnergyShieldLook", "dome")
+		return
+	end
 	local d = Hd * 0.06
 	local model = Instance.new("Model")
 	model.Name = "Mecha_EnergyShield"
@@ -131,7 +187,12 @@ local function build(char)
 end
 
 local function clearFx(char)
-	for _, n in ipairs({"EnergyShieldField", "EnergyShieldShell"}) do
+	local st = chars[char] -- v1.1: the domes live in workspace
+	if st and st.domes then
+		for _, dm in ipairs(st.domes) do dm:Destroy() end
+		st.domes = nil
+	end
+	for _, n in ipairs({"EnergyShieldField", "EnergyShieldShell", "EnergyShieldDome", "EnergyShieldDome2"}) do -- v1.1: + domes
 		local x = char:FindFirstChild(n)
 		while x do
 			x:Destroy()
@@ -187,12 +248,79 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	ff.Name = "EnergyShieldField"
 	ff.Visible = false
 	ff.Parent = char
+	if domeStyle() then -- v1.1: hex dome
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			-- the character's box in the HumanoidRootPart's own frame (GetBoundingBox follows the PrimaryPart, which can
+			-- be a tilted segment: Play showed a thin slab)
+			local blo, bhi = Vector3.new(math.huge, math.huge, math.huge), Vector3.new(-math.huge, -math.huge, -math.huge)
+			for _, bp in ipairs(char:GetDescendants()) do
+				if bp:IsA("BasePart") and bp ~= hrp and bp.Transparency < 1 then
+					for _, sx in ipairs({-0.5, 0.5}) do for _, sy in ipairs({-0.5, 0.5}) do for _, sz in ipairs({-0.5, 0.5}) do
+						local q = hrp.CFrame:PointToObjectSpace(bp.CFrame * Vector3.new(bp.Size.X * sx, bp.Size.Y * sy, bp.Size.Z * sz))
+						blo, bhi = blo:Min(q), bhi:Max(q)
+					end end end
+				end
+			end
+			if blo.X == math.huge then blo, bhi = -hrp.Size / 2, hrp.Size / 2 end
+			local bcf, bsize = hrp.CFrame * CFrame.new((blo + bhi) / 2), bhi - blo
+			bsize = Vector3.new(math.max(bsize.X, bsize.Y), bsize.Y, bsize.Z) -- a round bubble from the camera behind, not a thin oval
+			local step = stepOf(char)
+			st.domes = {}
+			for i = 1, (step >= 4 and 2 or 1) do
+				local dome = Instance.new("Part")
+				dome.Name = i == 1 and "EnergyShieldDome" or "EnergyShieldDome2"
+				dome.Size = bsize * DOME_PAD * (i == 1 and 1 or 1.08)
+				dome.CFrame = bcf
+				dome.Color = BLUE
+				dome.Material = Enum.Material.ForceField
+				dome.Transparency = step >= 3 and 0 or 0.25
+				dome.Anchored, dome.Massless = false, true
+				dome.CanCollide, dome.CanQuery, dome.CanTouch = false, false, false
+				dome.CastShadow = false
+				local mesh = Instance.new("SpecialMesh")
+				mesh.MeshType = Enum.MeshType.Sphere
+				mesh.Parent = dome
+				local w = Instance.new("WeldConstraint")
+				w.Part0, w.Part1 = hrp, dome
+				w.Parent = dome
+				dome:SetAttribute("BaseTransparency", dome.Transparency)
+				dome.Parent = workspace
+				table.insert(st.domes, dome)
+				local fadeIn = math.max(0, dur - DOME_FADE)
+				task.delay(fadeIn, function()
+					if dome.Parent then TweenService:Create(dome, TweenInfo.new(math.min(DOME_FADE, dur)), {Transparency = 1}):Play() end
+				end)
+			end
+			-- a light blue tint inside the hex layer, so the bubble reads as solid from the game camera
+			local first = st.domes[1]
+			local tint = first:Clone()
+			tint:ClearAllChildren()
+			tint.Name = "EnergyShieldDomeTint"
+			tint.Material = Enum.Material.SmoothPlastic
+			tint.Size = first.Size * 0.98
+			tint.CFrame = first.CFrame
+			tint.Transparency = DOME_TINT
+			local tm = Instance.new("SpecialMesh")
+			tm.MeshType = Enum.MeshType.Sphere
+			tm.Parent = tint
+			local tw = Instance.new("WeldConstraint")
+			tw.Part0, tw.Part1 = hrp, tint
+			tw.Parent = tint
+			tint.Parent = workspace
+			table.insert(st.domes, tint)
+			task.delay(math.max(0, dur - DOME_FADE), function()
+				if tint.Parent then TweenService:Create(tint, TweenInfo.new(math.min(DOME_FADE, dur)), {Transparency = 1}):Play() end
+			end)
+		end
+	else
 	local hl = Instance.new("Highlight")
 	hl.Name = "EnergyShieldShell"
 	hl.FillColor, hl.OutlineColor = BLUE, BLUE
 	hl.FillTransparency, hl.OutlineTransparency = 0.85, 0
 	hl.DepthMode = Enum.HighlightDepthMode.Occluded
 	hl.Parent = char
+	end -- v1.1: end of the 1.0 shell
 	st.active = true
 	st.lastHit = char:GetAttribute("LastHitAt")
 	char:SetAttribute("EnergyShieldBlocks", 0)
@@ -233,6 +361,37 @@ local function onCharacter(char)
 		st.lastHit = at
 		char:SetAttribute("EnergyShieldBlocks", (char:GetAttribute("EnergyShieldBlocks") or 0) + 1)
 		char:SetAttribute("EnergyShieldBlockAt", now())
+		local dome = st.domes and st.domes[1] -- v1.1: dome flash + ripple
+		if dome and dome.Parent then
+			local token = {}
+			st.flashToken = token
+			dome.Color = WHITE
+			task.delay(0.12, function()
+				if st.flashToken == token and dome.Parent then dome.Color = BLUE end
+			end)
+			local c = dome.Position
+			local dir = dome.CFrame.LookVector
+			local by = char:GetAttribute("LastHitBy")
+			local att = typeof(by) == "string" and workspace:FindFirstChild(by, true)
+			local ap = att and att:IsA("Model") and att:GetPivot().Position
+			if ap and (ap - c).Magnitude > 0.1 then dir = (ap - c).Unit end
+			local l = dome.CFrame:VectorToObjectSpace(dir) -- the ellipsoid's surface point along dir
+			local hs = dome.Size / 2
+			local k = 1 / math.sqrt((l.X / hs.X) ^ 2 + (l.Y / hs.Y) ^ 2 + (l.Z / hs.Z) ^ 2)
+			local rp = Instance.new("Part")
+			rp.Name = "EnergyShieldRipple"
+			rp.Shape = Enum.PartType.Ball
+			rp.Size = Vector3.one * 0.3
+			rp.Position = c + dir * k
+			rp.Color = WHITE
+			rp.Material = Enum.Material.Neon
+			rp.Anchored, rp.CanCollide, rp.CanQuery, rp.CanTouch, rp.CastShadow = true, false, false, false, false
+			rp.Parent = workspace
+			local big = math.max(1, dome.Size.Y * 0.35)
+			TweenService:Create(rp, TweenInfo.new(0.3), {Size = Vector3.one * big, Transparency = 1}):Play()
+			task.delay(0.35, function() rp:Destroy() end)
+			char:SetAttribute("EnergyShieldRipples", (char:GetAttribute("EnergyShieldRipples") or 0) + 1)
+		end
 		local hl = char:FindFirstChild("EnergyShieldShell")
 		if hl then
 			local token = {}
@@ -247,12 +406,22 @@ local function onCharacter(char)
 		if char:GetAttribute("EnergyShieldEnabled") ~= true then finish(char, "disabled") end
 		build(char)
 	end)
+	local pl = Players:GetPlayerFromCharacter(char) -- v1.1: the emitters follow the step
+	if pl then
+		local conn = pl:GetAttributeChangedSignal("SkillPath_shield"):Connect(function()
+			if char.Parent then build(char) end
+		end)
+		char.AncestryChanged:Connect(function(_, parent) if not parent then conn:Disconnect() end end)
+	end
 	char.AncestryChanged:Connect(function(_, parent)
-		if not parent then chars[char] = nil end
+		if not parent then clearFx(char) chars[char] = nil end -- v1.1: + clearFx (domes are outside the character)
 	end)
 	build(char)
 end
 
+script:GetAttributeChangedSignal("EnergyShieldLookStyle"):Connect(function() -- v1.1
+	for char in pairs(chars) do build(char) end
+end)
 script:GetAttributeChangedSignal("EnergyShieldServerEnabled"):Connect(function()
 	for char in pairs(chars) do
 		if not on() then finish(char, "disabled") end

@@ -113,3 +113,22 @@ Each task's acceptance plus: buy all three (Mastery allows), slot Adrenaline in 
 4. ~~Bot push fights BotServer's movement.~~ Withdrawn: the ★ push is cut (Kepu: a full block plus a push is too much); ★ = longer block.
 5. **Thrusters during the shield.** The dash speed comes from MoveRunSpeed, not the slowed WalkSpeed, so a dash while shielded is full speed. Accepted for now (it costs a charge); flag to Kepu in the ticket.
 6. **Mastery 3 caps builds.** Players can't max all parts; that is intended (ADR-003).
+
+## Looks upgrade (v1.1 pass, Kepu 2026-10-29)
+
+Kepu: "I don't see what's clearly been added to the Dino body as well the ability themselves don't seem obvious enough" and "adrenaline should be faster or a bigger health charge". Mockup docs/mockups/raptor_parts_b1_looks.html; picks: Adrenaline **A · Back tanks**, numbers **Both**, Energy Shield **A · Hex dome**, Blade Claws **A · Foot sickles+**.
+
+| Task | Mode | Change |
+|---|---|---|
+| 9 — SkillTree 1.7 | Logic | adrenHeal 0.25 at I, 0.34 from II (0.34 / 0.25 = 1.36, passes the 35% rule); adrenSpeedMul 1.4; step texts I / II. Spec 1.7. |
+| 10 — AdrenalineServer 1.1 | Wired | AdrenalineLookStyle "tanks" (default) / "neck" (1.0). Shoulder tanks by SkillPath_adrenaline: I 1, II 1 x1.25, III 2, star 3 + caps + spinning neon ring; tube to the neck. Whole-boost green Highlight "AdrenalineGlow" (pulsing, destroyed at the end); glass drains over the boost, refills over the cooldown; wider / longer foot trails; "+N" heal pops every 0.5 s. |
+| 11 — EnergyShieldServer 1.1 | Wired | EnergyShieldLookStyle "dome" (default) / "shell" (1.0). Shoulder emitters on the torso sides by SkillPath_shield (0.06 / 0.08 / 0.1 / 0.12 x height; halo from III). While up: ForceField-material ellipsoid dome around the bounding box x1.15, welded to the HRP, parented to workspace (character size unchanged); brighter from III, second layer at star; a block flashes it white + a ripple toward the attacker; fades over the last 0.4 s. No Highlight in dome style. |
+| 12 — BladeServer 1.2 | Wired | Forearm blades on ArmL / ArmR from III (BladeArmBladesEnabled); star: all neon HOT + red trails on sickle tips and arm blades while the hooks are up. |
+
+Deterministic map additions: look step 0 (test layer off, part bought but SkillPath 0 is impossible: Enabled needs a step) -> step clamped to 1 for the emitters; step change during an Adrenaline boost -> rebuild skipped until the next change (glass state kept); style attribute flip -> every character rebuilt; character removed while the dome is up -> clearFx on AncestryChanged destroys the workspace domes.
+
+Red-team (single-ticket-scale pass, one paragraph per risk):
+- **Character size drift.** A dome inside the character would grow GetExtentsSize, which BotServer (latch vs pin) and PounceServer read. Mitigation: dome parented to workspace, welded to the HRP. Accepted.
+- **Highlight budget.** The dome style uses no Highlight; Adrenaline adds one per boosting player for 3 s (destroyed, not disabled). Well under 255. Accepted.
+- **Shoulder clutter.** Tanks sit on the torso top centre, shield emitters on the torso sides, thrusters behind: checked from the default game camera in Play before shipping.
+- **Server-driven spin.** The star ring's Weld C0 is set every Heartbeat on the server (one weld per star Adrenaline raptor). Small replication cost; accepted for now.

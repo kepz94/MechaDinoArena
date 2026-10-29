@@ -1,4 +1,4 @@
--- BladeServer v1.1 (Mecha Dino Arena) — Blade Claws look: a mecha sickle claw on each foot of a raptor that owns the
+-- BladeServer v1.2 (Mecha Dino Arena) — Blade Claws look: a mecha sickle claw on each foot of a raptor that owns the
 -- Blade Claws path (passive part, raptor parts batch 1). MDA-61, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 4, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Sickle claws" (Kepu 2026-10-29). The numbers (landing bonus,
 -- faster latch bites, bleed, pin-kill refund) live in PounceServer 1.6 / SkillEffects 1.6; this script is the look only.
@@ -20,6 +20,14 @@
 --   (the natural sickle's spot mirrored across the foot's middle, so the leg doesn't hide it from the camera behind),
 --   and each steel piece gets a red neon edge strip along its top ("SickleEdge*"), so the claw reads as a glowing mecha
 --   blade. Everything else as 1.0. BladeSizeMul 1 + the 1.0 side = set BladeOuterSide false.
+-- v1.2 (Kepu 2026-10-29: "the ability themselves don't seem obvious enough" -> mockup
+--   docs/mockups/raptor_parts_b1_looks.html, picked A "Foot sickles+"): by the player's SkillPath_blade (rebuilt when it
+--   changes): from III a forearm blade on each arm segment ("ArmL" / "ArmR" Root): "ArmBlade_L" (steel, dino height x
+--   ARM_BLADE_LEN long, pointing forward and a little down from the front of the arm's middle (forearm), outer side) with a red
+--   neon edge "ArmBladeEdge_L", WeldConstraint to the arm's Root. Star: every red neon piece turns HOT (brighter red)
+--   and each sickle tip and arm blade carries a red Trail "BladeTrail" (attachments "BladeTrailA" / "BladeTrailB"), on
+--   from PounceStartedAt until the hooks go back down. Script attribute BladeArmBladesEnabled (default true).
+--   Diagnostics: character BladeLookStep, BladeArmBlades (0 / 2), BladeTrails ("off" / "on").
 -- Settings: script attribute BladeServerEnabled (default true; false = parts removed, no flick / slash).
 -- Diagnostics: script BladeServerVersion, BladeSlashes; character BladeLookState ("none" / "on" / "noFeet"),
 --   BladeFlick ("down" / "up").
@@ -27,15 +35,42 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local FLICK_DEG = 40
 local STEEL, RED = Color3.fromRGB(201, 210, 220), Color3.fromRGB(240, 70, 60)
+local HOT = Color3.fromRGB(255, 120, 95) -- v1.2: star
+local ARM_BLADE_LEN = 0.25 -- v1.2: x dino height
 
 script:SetAttribute("BladeServerVersion", VERSION)
 if script:GetAttribute("BladeServerEnabled") == nil then script:SetAttribute("BladeServerEnabled", true) end
 script:SetAttribute("BladeSlashes", 0)
 if script:GetAttribute("BladeSizeMul") == nil then script:SetAttribute("BladeSizeMul", 3) end -- v1.1
 if script:GetAttribute("BladeOuterSide") == nil then script:SetAttribute("BladeOuterSide", true) end -- v1.1
+if script:GetAttribute("BladeArmBladesEnabled") == nil then script:SetAttribute("BladeArmBladesEnabled", true) end -- v1.2
+local function stepOf(char) -- v1.2
+	local pl = Players:GetPlayerFromCharacter(char)
+	return pl and tonumber(pl:GetAttribute("SkillPath_blade")) or 0
+end
+-- v1.2: a red trail between two attachments on a part (off until a pounce)
+local function addTrail(p, half)
+	local a0 = Instance.new("Attachment")
+	a0.Name = "BladeTrailA"
+	a0.Position = Vector3.new(0, half, 0)
+	a0.Parent = p
+	local a1 = Instance.new("Attachment")
+	a1.Name = "BladeTrailB"
+	a1.Position = Vector3.new(0, -half, 0)
+	a1.Parent = p
+	local t = Instance.new("Trail")
+	t.Name = "BladeTrail"
+	t.Attachment0, t.Attachment1 = a0, a1
+	t.Color = ColorSequence.new(HOT)
+	t.LightEmission = 1
+	t.Lifetime = 0.3
+	t.Transparency = NumberSequence.new(0.1, 1)
+	t.Enabled = false
+	t.Parent = p
+end
 local function on() return script:GetAttribute("BladeServerEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
 
@@ -171,6 +206,44 @@ local function build(char)
 		char:SetAttribute("BladeLookState", "noFeet")
 		return
 	end
+	-- v1.2: arm blades from III, hot + trails at star
+	local step = stepOf(char)
+	char:SetAttribute("BladeLookStep", step)
+	local arms = 0
+	if step >= 3 and script:GetAttribute("BladeArmBladesEnabled") ~= false then
+		local Hd = char:GetExtentsSize().Y
+		for _, side in ipairs({{"L", "ArmL", -1}, {"R", "ArmR", 1}}) do -- outer side: -right for the left arm
+			local seg = char:FindFirstChild(side[2])
+			local root = seg and seg:FindFirstChild("Root")
+			local lo, hi
+			if root then lo, hi = rootBox(seg, root) end
+			if root and lo then
+				local x, y, z = bodyAxes(root, hrp)
+				local L = Hd * ARM_BLADE_LEN
+				local th = L * 0.1
+				-- middle of the arm (the forearm: raptor arms hang down, so the lower end is at the hand), front, outer
+				-- side; the blade points forward, tilted 20 degrees down
+				local pLocal = (lo + hi) / 2 - z * extent(lo, hi, z)
+					+ x * side[3] * (extent(lo, hi, x) + th * 0.5)
+				local F = root.CFrame * CFrame.fromMatrix(pLocal, x, y, z) * CFrame.Angles(math.rad(-20), 0, 0)
+				local cf = F * CFrame.new(0, 0, -L * 0.35) -- most of the blade in front of the arm
+				local b = part("ArmBlade_" .. side[1], Vector3.new(th, L * 0.22, L), cf, STEEL, model, root)
+				local e = part("ArmBladeEdge_" .. side[1], Vector3.new(th * 1.1, L * 0.05, L * 0.98),
+					cf * CFrame.new(0, -L * 0.1, 0), RED, model, root)
+				e.Material = Enum.Material.Neon
+				if step >= 4 then addTrail(b, L * 0.1) end
+				arms += 1
+			end
+		end
+	end
+	char:SetAttribute("BladeArmBlades", arms)
+	if step >= 4 then
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") and d.Material == Enum.Material.Neon then d.Color = HOT end
+			if d:IsA("BasePart") and d.Name:sub(1, 10) == "SickleTip_" then addTrail(d, d.Size.Y * 0.5) end
+		end
+	end
+	char:SetAttribute("BladeTrails", "off")
 	model.Parent = char
 	char:SetAttribute("BladeLookState", "on")
 	char:SetAttribute("BladeFlick", "down")
@@ -189,6 +262,11 @@ local function setFlick(char, up)
 		end
 	end
 	char:SetAttribute("BladeFlick", up and "up" or "down")
+	local any = false -- v1.2: star trails follow the flick
+	for _, d in ipairs(m:GetDescendants()) do
+		if d:IsA("Trail") and d.Name == "BladeTrail" then d.Enabled = up any = true end
+	end
+	if any then char:SetAttribute("BladeTrails", up and "on" or "off") end
 end
 
 local function slash(char)
@@ -242,13 +320,20 @@ local function onCharacter(char)
 		end)
 	end)
 	char:GetAttributeChangedSignal("PounceLatchedAt"):Connect(function() slash(char) end)
+	local pl = Players:GetPlayerFromCharacter(char) -- v1.2: the look follows the step
+	if pl then
+		local conn = pl:GetAttributeChangedSignal("SkillPath_blade"):Connect(function()
+			if char.Parent then build(char) end
+		end)
+		char.AncestryChanged:Connect(function(_, parent) if not parent then conn:Disconnect() end end)
+	end
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then chars[char] = nil end
 	end)
 	build(char)
 end
 
-for _, a in ipairs({"BladeServerEnabled", "BladeSizeMul", "BladeOuterSide"}) do -- v1.1: + size / side
+for _, a in ipairs({"BladeServerEnabled", "BladeSizeMul", "BladeOuterSide", "BladeArmBladesEnabled"}) do -- v1.1: + size / side; v1.2: + arms
 	script:GetAttributeChangedSignal(a):Connect(function()
 		for char in pairs(chars) do build(char) end
 	end)

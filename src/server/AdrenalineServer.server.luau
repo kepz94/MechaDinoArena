@@ -1,4 +1,4 @@
--- AdrenalineServer v1.0 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
+-- AdrenalineServer v1.1 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
 -- a few seconds and run faster while it lasts. MDA-62, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Neck injector" (Kepu 2026-10-29).
 -- Settings come from the character (SkillEffects 1.6): AdrenalineEnabled (bought AND slotted), AdrenalineHeal (share of
@@ -23,6 +23,18 @@
 --   no collide / query / touch, no shadow. On each use: the plunger slides down into the canister (0.25 s) and back up
 --   at the end; a green Highlight "AdrenalinePulse" fades from FillTransparency 0.35 to 1 over 0.6 s and is destroyed;
 --   green Trails "AdrenalineTrail" on both feet are on until AdrenalineUntil.
+-- v1.1 (Kepu 2026-10-29: "the ability themselves don't seem obvious enough" -> mockup
+--   docs/mockups/raptor_parts_b1_looks.html, picked A "Back tanks"): script attribute AdrenalineLookStyle (default
+--   "tanks"; "neck" = the 1.0 neck canister). Tanks: Model "Mecha_Adrenaline" on top of the front of the Torso segment
+--   (the shoulders), welded to Torso.Root: "Tank_k" (dark frame) with "Glass_k" (green neon) inside; how many / how big
+--   by the player's SkillPath_adrenaline: I 1, II 1 bigger (x1.25), III 2, star 3 with neon caps "TankCap_k". A dark
+--   "Tube" runs from the tanks to the front top of the torso (the neck). Star: a "TankRing" of 6 neon blocks on a hub
+--   "TankRingHub" (Weld "TankRingHinge") around the tanks' base, spinning (TANK_RING_SPEED deg/s). Rebuilt
+--   when that step changes. While healing, a "+N" BillboardGui "AdrenalineHealPop" rises over the head every 0.5 s
+--   (the HP healed since the last one; fades out in 0.8 s). Diagnostics: AdrenalineLookStep, AdrenalineTanks.
+--   While the boost runs: a Highlight "AdrenalineGlow" (green fill pulsing 0.35 <-> 0.7, outline on) for the whole boost, destroyed at the end; the glass drains (Transparency 0 -> 0.75 over the boost) and refills
+--   over the cooldown; foot trails wider (dino height x 0.05 each side) and longer (0.5 s). The 0.6 s start flash
+--   (AdrenalinePulse) stays. AdrenalineLook "tanks" / "on" (neck) / "none" / "noTorso" / "noNeck".
 -- Settings: script attribute AdrenalineServerEnabled (default true).
 -- Diagnostics: script AdrenalineServerVersion, AdrenalineRequests; character AdrenalineServerResult, AdrenalineCount,
 --   AdrenalineHealed, AdrenalineEndReason, AdrenalineStunCleared, AdrenalineLook ("none" / "on" / "noNeck").
@@ -31,12 +43,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local GREEN, DARK, GREY = Color3.fromRGB(95, 209, 106), Color3.fromRGB(44, 52, 64), Color3.fromRGB(154, 166, 182)
 
 script:SetAttribute("AdrenalineServerVersion", VERSION)
 if script:GetAttribute("AdrenalineServerEnabled") == nil then script:SetAttribute("AdrenalineServerEnabled", true) end
 script:SetAttribute("AdrenalineRequests", 0)
+if script:GetAttribute("AdrenalineLookStyle") == nil then script:SetAttribute("AdrenalineLookStyle", "tanks") end -- v1.1
 local function on() return script:GetAttribute("AdrenalineServerEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
 
@@ -48,6 +61,8 @@ if not remote then
 end
 
 local chars = {} -- [char] = {hum, active, healed, target}
+local TANK_RING_SPEED = 180 -- v1.1: star ring, degrees per second
+local POP_EVERY = 0.5 -- v1.1: heal pop interval (s)
 
 local function part(name, size, cf, color, parent, mount)
 	local p = Instance.new("Part")
@@ -104,6 +119,61 @@ local function bodyAxes(root, hrp)
 	return x, y, x:Cross(y)
 end
 
+-- v1.1: the player's Adrenaline step (0..4; the test layer's star counts)
+local function stepOf(char)
+	local pl = Players:GetPlayerFromCharacter(char)
+	return pl and tonumber(pl:GetAttribute("SkillPath_adrenaline")) or 0
+end
+
+-- v1.1: tank glass drain / refill and the full-boost glow
+local function glass(char, transparency, time)
+	local m = char:FindFirstChild("Mecha_Adrenaline")
+	if not m then return end
+	for _, d in ipairs(m:GetChildren()) do
+		if d:IsA("BasePart") and d.Name:sub(1, 6) == "Glass_" then
+			TweenService:Create(d, TweenInfo.new(math.max(0.05, time)), {Transparency = transparency}):Play()
+		end
+	end
+end
+local function glow(char, on_)
+	local old = char:FindFirstChild("AdrenalineGlow")
+	if old then old:Destroy() end -- destroyed, not disabled
+	if not on_ then return end
+	local hl = Instance.new("Highlight")
+	hl.Name = "AdrenalineGlow"
+	hl.FillColor, hl.OutlineColor = GREEN, GREEN
+	hl.FillTransparency, hl.OutlineTransparency = 0.7, 0.1
+	hl.DepthMode = Enum.HighlightDepthMode.Occluded
+	hl.Parent = char
+	TweenService:Create(hl, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {FillTransparency = 0.35}):Play()
+end
+
+-- v1.1: "+N" rising over the head
+local function pop(char, amount)
+	local head = char:FindFirstChild("HumanoidRootPart")
+	if not head or amount < 0.5 then return end
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "AdrenalineHealPop"
+	bb.Size = UDim2.fromOffset(90, 36)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, char:GetExtentsSize().Y * 0.6, 0)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	local tl = Instance.new("TextLabel")
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.BackgroundTransparency = 1
+	tl.Text = "+" .. math.floor(amount + 0.5)
+	tl.TextColor3 = GREEN
+	tl.TextStrokeTransparency = 0.2
+	tl.Font = Enum.Font.GothamBlack
+	tl.TextScaled = true
+	tl.Parent = bb
+	bb.Adornee = head
+	bb.Parent = head
+	TweenService:Create(bb, TweenInfo.new(0.8), {StudsOffsetWorldSpace = bb.StudsOffsetWorldSpace + Vector3.new(0, 3, 0)}):Play()
+	TweenService:Create(tl, TweenInfo.new(0.8), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+	task.delay(0.85, function() bb:Destroy() end)
+end
+
 local function trails(char, enabled)
 	for _, d in ipairs(char:GetDescendants()) do
 		if d:IsA("Trail") and d.Name == "AdrenalineTrail" then d.Enabled = enabled end
@@ -121,12 +191,64 @@ local function build(char)
 		return
 	end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
-	local seg = char:FindFirstChild("Neck")
+	local Hd = char:GetExtentsSize().Y
+	local tanks = script:GetAttribute("AdrenalineLookStyle") ~= "neck" -- v1.1
+	local seg = char:FindFirstChild(tanks and "Torso" or "Neck")
 	local root = seg and seg:FindFirstChild("Root")
 	local lo, hi
 	if hrp and root then lo, hi = rootBox(seg, root) end
-	if not lo then char:SetAttribute("AdrenalineLook", "noNeck") return end
-	local Hd = char:GetExtentsSize().Y
+	if not lo then char:SetAttribute("AdrenalineLook", tanks and "noTorso" or "noNeck") return end
+	if tanks then -- v1.1: shoulder tanks, count / size by step
+		local model = Instance.new("Model")
+		model.Name = "Mecha_Adrenaline"
+		local step = stepOf(char)
+		local n = step >= 4 and 3 or step >= 3 and 2 or 1
+		local k = step >= 2 and 1.25 or 1
+		char:SetAttribute("AdrenalineLookStep", step) -- v1.1 diag
+		char:SetAttribute("AdrenalineTanks", n)
+		local ts = Vector3.new(Hd * 0.07, Hd * 0.14, Hd * 0.07) * k -- tank: right, up, back
+		local x, y, z = bodyAxes(root, hrp)
+		local top = (lo + hi) / 2 + y * extent(lo, hi, y) - z * (extent(lo, hi, z) * 0.55) -- top of the torso, near the front
+		for i = 1, n do
+			local off = (i - (n + 1) / 2) * ts.X * 1.25
+			local pLocal = top + x * off + y * (ts.Y * 0.4)
+			local cf = root.CFrame * CFrame.fromMatrix(pLocal, x, y, z)
+			local tank = part("Tank_" .. i, ts, cf, DARK, model, root)
+			local glass = part("Glass_" .. i, Vector3.new(ts.X * 1.04, ts.Y * 0.8, ts.Z * 1.04), cf, GREEN, model, tank)
+			glass.Material = Enum.Material.Neon
+			if step >= 4 then
+				local cap = part("TankCap_" .. i, Vector3.new(ts.X * 0.7, ts.Y * 0.12, ts.Z * 0.7), cf * CFrame.new(0, ts.Y * 0.56, 0), GREEN, model, tank)
+				cap.Material = Enum.Material.Neon
+			end
+		end
+		-- tube from the tank row to the front top of the torso (where the neck joins)
+		local a = top - z * (ts.Z * 0.5) + y * (ts.Y * 0.1)
+		local b = (lo + hi) / 2 + y * (extent(lo, hi, y) * 0.7) - z * extent(lo, hi, z)
+		local len = (b - a).Magnitude
+		if len > 0.05 then
+			local tcf = root.CFrame * CFrame.lookAt((a + b) / 2, b) -- Root space, looking from a to b
+			part("Tube", Vector3.new(Hd * 0.018, Hd * 0.018, len), tcf, DARK, model, root)
+		end
+		if step >= 4 then -- star: spinning ring of 6 neon blocks around the tanks' base
+			local hubCf = root.CFrame * CFrame.fromMatrix(top + y * (ts.Y * 0.05), x, y, z)
+			local hub = part("TankRingHub", Vector3.new(0.05, 0.05, 0.05), hubCf, GREEN, model, nil)
+			hub.Transparency = 1
+			local w = Instance.new("Weld")
+			w.Name = "TankRingHinge"
+			w.Part0, w.Part1 = root, hub
+			w.C0 = root.CFrame:ToObjectSpace(hubCf)
+			w:SetAttribute("BaseC0", w.C0)
+			w.Parent = hub
+			local r = math.max(ts.X * n * 0.75, ts.X * 1.1)
+			for i = 1, 6 do
+				local ang = math.rad(i * 60)
+				local scf = hubCf * CFrame.Angles(0, ang, 0) * CFrame.new(0, 0, -r)
+				part("TankRing_" .. i, Vector3.new(r * 0.7, Hd * 0.015, Hd * 0.03), scf, GREEN, model, hub).Material = Enum.Material.Neon
+			end
+		end
+		model.Parent = char
+	end
+	if not tanks then
 	local model = Instance.new("Model")
 	model.Name = "Mecha_Adrenaline"
 	local cs = Vector3.new(Hd * 0.035, Hd * 0.05, Hd * 0.1)
@@ -146,6 +268,7 @@ local function build(char)
 	hinge:SetAttribute("PushZ", ps.Z * 0.85)
 	hinge.Parent = plunger
 	model.Parent = char
+	end -- v1.1: end of the 1.0 neck look
 	-- trails on both feet (2 attachments each, off until used)
 	for _, f in ipairs({"FootL", "FootR"}) do
 		local fseg = char:FindFirstChild(f)
@@ -153,11 +276,11 @@ local function build(char)
 		if froot then
 			local a0 = Instance.new("Attachment")
 			a0.Name = "AdrenalineTrailA"
-			a0.Position = Vector3.new(0, Hd * 0.03, 0)
+			a0.Position = Vector3.new(0, Hd * 0.05, 0) -- v1.1: wider (was 0.03)
 			a0.Parent = froot
 			local a1 = Instance.new("Attachment")
 			a1.Name = "AdrenalineTrailB"
-			a1.Position = Vector3.new(0, -Hd * 0.03, 0)
+			a1.Position = Vector3.new(0, -Hd * 0.05, 0) -- v1.1
 			a1.Parent = froot
 			local t = Instance.new("Trail")
 			t.Name = "AdrenalineTrail"
@@ -165,12 +288,12 @@ local function build(char)
 			t.Color = ColorSequence.new(GREEN)
 			t.LightEmission = 0.8
 			t.Transparency = NumberSequence.new(0.2, 1)
-			t.Lifetime = 0.35
+			t.Lifetime = 0.5 -- v1.1 (was 0.35)
 			t.Enabled = false
 			t.Parent = froot
 		end
 	end
-	char:SetAttribute("AdrenalineLook", "on")
+	char:SetAttribute("AdrenalineLook", tanks and "tanks" or "on")
 end
 
 local function plunge(char, down)
@@ -199,6 +322,8 @@ local function finish(char, reason)
 	if not st or not st.active then return end
 	st.active = false
 	local t = now()
+	if st.popFrom and st.healed - st.popFrom >= 0.5 then pop(char, st.healed - st.popFrom) end -- v1.1: the rest
+	st.popAt = nil
 	if reason ~= "time" then
 		char:SetAttribute("AdrenalineUntil", t)
 		char:SetAttribute("AdrenalineReadyAt", t + (tonumber(char:GetAttribute("AdrenalineCooldown")) or 0))
@@ -206,6 +331,8 @@ local function finish(char, reason)
 	char:SetAttribute("AdrenalineEndReason", reason)
 	trails(char, false)
 	plunge(char, false)
+	glow(char, false) -- v1.1
+	glass(char, 0, math.max(0.1, (tonumber(char:GetAttribute("AdrenalineReadyAt")) or t) - t)) -- v1.1: refill over the cooldown
 end
 
 remote.OnServerEvent:Connect(function(player, stamp)
@@ -245,6 +372,7 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	st.healed = 0
 	st.target = (tonumber(char:GetAttribute("AdrenalineHeal")) or 0) * hum.MaxHealth
 	st.rate = st.target / dur
+	st.popAt, st.popFrom = t + POP_EVERY, 0 -- v1.1
 	char:SetAttribute("AdrenalineHealed", 0)
 	char:SetAttribute("AdrenalineEndReason", "")
 	char:SetAttribute("AdrenalineUntil", t + dur)
@@ -253,12 +381,18 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	char:SetAttribute("AdrenalineStartedAt", t) -- last: readers react to this one
 	trails(char, true)
 	plunge(char, true)
+	glow(char, true) -- v1.1: the whole boost
+	glass(char, 0.75, dur) -- v1.1: drain
 	pulse(char)
 end)
 
 RunService.Heartbeat:Connect(function(dt)
 	local t = now()
 	for char, st in pairs(chars) do
+		local m = char:FindFirstChild("Mecha_Adrenaline") -- v1.1: star ring spin
+		local hub = m and m:FindFirstChild("TankRingHub")
+		local w = hub and hub:FindFirstChild("TankRingHinge")
+		if w then w.C0 = w:GetAttribute("BaseC0") * CFrame.Angles(0, math.rad((t * TANK_RING_SPEED) % 360), 0) end
 		if st.active then
 			if not char.Parent or st.hum.Health <= 0 then
 				finish(char, "dead")
@@ -272,6 +406,10 @@ RunService.Heartbeat:Connect(function(dt)
 				end
 				st.healed += math.max(0, give)
 				char:SetAttribute("AdrenalineHealed", math.floor(st.healed * 10 + 0.5) / 10)
+				if t >= (st.popAt or math.huge) then -- v1.1: heal pop
+					pop(char, st.healed - st.popFrom)
+					st.popAt, st.popFrom = t + POP_EVERY, st.healed
+				end
 			end
 		end
 	end
@@ -289,12 +427,22 @@ local function onCharacter(char)
 		if char:GetAttribute("AdrenalineEnabled") ~= true then finish(char, "disabled") end
 		build(char)
 	end)
+	local pl = Players:GetPlayerFromCharacter(char) -- v1.1: the look follows the step
+	if pl then
+		local conn = pl:GetAttributeChangedSignal("SkillPath_adrenaline"):Connect(function()
+			if char.Parent and not (chars[char] and chars[char].active) then build(char) end
+		end)
+		char.AncestryChanged:Connect(function(_, parent) if not parent then conn:Disconnect() end end)
+	end
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then chars[char] = nil end
 	end)
 	build(char)
 end
 
+script:GetAttributeChangedSignal("AdrenalineLookStyle"):Connect(function() -- v1.1
+	for char in pairs(chars) do build(char) end
+end)
 script:GetAttributeChangedSignal("AdrenalineServerEnabled"):Connect(function()
 	for char in pairs(chars) do
 		if not on() then finish(char, "disabled") end
