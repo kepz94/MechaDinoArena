@@ -1,0 +1,285 @@
+<title>Skill Tree Styles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: option switcher; a SKILLS screen frame (top bar + the option's tree view + shared detail panel); notes.
+   Single dark look on purpose (the in-game screen is dark): panel rgb 20,20,26, yellow rgb 255,200,50, area colours. */
+:root{
+  color-scheme: dark;
+  --page:#0d0e13; --panel:rgb(20,20,26); --panel2:rgb(32,32,41); --line:rgba(255,255,255,.16);
+  --text:#eef0f4; --muted:#9ba1ae; --yellow:rgb(255,200,50); --ytext:rgb(30,26,10); --gold:rgb(255,214,102);
+  --health:rgb(95,209,106); --attack:rgb(240,90,79); --defense:rgb(90,160,255); --speed:rgb(255,211,77); --eng:rgb(255,155,46);
+  --bp:#0c2440; --bpline:rgba(140,200,255,.85); --bpgrid:rgba(140,200,255,.08);
+  --pcb:#0f2a1c; --trace:#2f6b47; --pad:#c9a64a;
+  --bone:#e8dcc0; --steel:#8d99a6;
+  --display:"Fredoka One","Arial Rounded MT Bold",system-ui,sans-serif; --body:Inter,system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--body);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:400;margin:0 0 4px;font-size:22px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:74ch;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.row button{font-family:var(--display);font-size:14px;border:2px solid var(--line);background:var(--panel2);color:var(--text);padding:6px 12px;border-radius:999px;cursor:pointer}
+.row button.on{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.row button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.scroll{overflow-x:auto;max-width:100%}
+.frame{width:980px;background:#151a24;border-radius:14px;padding:12px;font-family:var(--display)}
+.top{display:flex;align-items:center;gap:8px;height:34px;margin-bottom:8px}
+.title{font-size:22px}
+.lv{display:flex;align-items:center;gap:8px;height:30px;background:rgba(20,20,26,.9);border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:0 10px;font-size:15px}
+.lv .bar{width:90px;height:8px;border-radius:4px;background:#000;overflow:hidden}.lv .bar i{display:block;height:100%;width:45%;background:linear-gradient(90deg,var(--yellow),var(--eng))}
+.mchip{background:rgba(20,20,26,.9);border:2px solid var(--gold);color:var(--gold);border-radius:8px;padding:3px 9px;font-size:14px}
+.sp{flex:1}.pts{background:var(--yellow);color:var(--ytext);border-radius:8px;padding:4px 9px;font-size:14px}
+.btn{background:rgba(20,20,26,.9);border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 10px;font-size:14px}
+.main{display:grid;grid-template-columns:1fr 230px;gap:10px;height:440px}
+.view{border-radius:12px;overflow:hidden;position:relative}
+.detail{background:rgba(20,20,26,.95);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;font-family:var(--body);font-size:12.5px;min-width:0}
+.detail h5{margin:0;font-family:var(--display);font-weight:400;font-size:18px}
+.detail .meta{color:var(--muted);font-size:12px}
+.steps{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none}
+.steps li{display:grid;grid-template-columns:24px 1fr;gap:6px;align-items:start;line-height:1.35}
+.steps .n{font-family:var(--display);font-size:12px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:2px solid rgba(255,255,255,.3)}
+.steps li.own .n{background:var(--c);border-color:var(--c);color:#111}
+.steps li.next .n{border-color:#fff}
+.steps li.lock{opacity:.4}
+.why{color:var(--gold);font-size:12px;line-height:1.4}
+.buy{margin-top:auto;border:0;border-radius:9px;padding:10px;font-family:var(--display);font-size:14px;cursor:pointer}
+.buy.ok{background:var(--yellow);color:var(--ytext)}
+.buy.no{background:#444;color:#999;cursor:default}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:14px;max-width:980px}
+.note h3{font-family:var(--display);font-weight:400;margin:0 0 6px;font-size:16px}
+.note b{color:var(--yellow)}
+
+/* A: hangar blueprint */
+.bp{background-color:var(--bp);background-image:linear-gradient(var(--bpgrid) 1px,transparent 1px),linear-gradient(90deg,var(--bpgrid) 1px,transparent 1px);background-size:20px 20px}
+.bp svg{display:block;width:100%;height:100%}
+.bp .stamp{position:absolute;right:12px;bottom:10px;font-family:var(--mono);font-size:11px;color:var(--bpline);opacity:.7;text-align:right;line-height:1.4}
+.bio{position:absolute;left:10px;top:10px;bottom:10px;width:150px;display:flex;flex-direction:column;gap:6px}
+.bio .h{font-family:var(--mono);font-size:11px;color:var(--bpline);letter-spacing:.08em}
+.gauge{background:rgba(5,15,30,.7);border:1px solid rgba(140,200,255,.35);border-radius:8px;padding:5px 7px;cursor:pointer}
+.gauge.sel{outline:2px solid var(--yellow)}
+.gauge .t{font-size:12px;display:flex;justify-content:space-between;align-items:center}
+.gauge .segs{display:flex;gap:3px;margin-top:4px}
+.gauge .segs i{flex:1;height:7px;border-radius:2px;background:rgba(255,255,255,.12)}
+.gauge .segs i.f{background:var(--c)}
+.gauge.lockrow{opacity:.55}
+
+/* B: circuit board */
+.pcb{background:radial-gradient(circle at 50% 50%,#173d29,var(--pcb) 70%)}
+.pcb svg{display:block;width:100%;height:100%}
+
+/* C: bone & bolt */
+.spine{background:linear-gradient(180deg,#2a2218,#17130d)}
+.spine svg{display:block;width:100%;height:100%}
+</style>
+
+<h1>Skill tree: three game-specific styles</h1>
+<p class="sub">This is the same raptor build (LV 22, 2 lines mastered) in three looks. Click any part or line to see its steps in the panel, then press BUY to try it; the points, Mastery 3 and "soon" rules all work. Shapes and art are drawn by hand for the mockup.</p>
+<div class="row" role="group" aria-label="Style">
+  <button class="on" data-o="A">A · Hangar blueprint</button>
+  <button data-o="B">B · Circuit board</button>
+  <button data-o="C">C · Bone &amp; bolt</button>
+</div>
+<div class="scroll"><div class="frame">
+  <div class="top"><span class="title">RAPTOR</span><span class="lv">LV 22<span class="bar"><i></i></span>95 / 240 XP</span><span class="mchip" id="mchip"></span><span class="sp"></span><span class="pts" id="pts"></span><span class="btn">RESPEC</span><span class="btn">X</span></div>
+  <div class="main"><div class="view" id="view"></div><div class="detail" id="detail"></div></div>
+</div></div>
+<div class="note" id="note"></div>
+
+<script>
+const AREA = {health:"var(--health)", attack:"var(--attack)", defense:"var(--defense)", speed:"var(--speed)", eng:"var(--eng)"};
+const AREA_NAME = {health:"Health", attack:"Attack", defense:"Defense", speed:"Speed", eng:"Engineer"};
+const L = [
+ {id:"regen", name:"Regeneration", area:"health", mech:false, steps:["Heal over time after 6 s without damage","Starts sooner, heals more","Starts sooner again, heals more","Kill heal doubled"]},
+ {id:"lifesteal", name:"Lifesteal", area:"health", mech:false, steps:["5% of damage dealt heals you","10%","15%","Overheal becomes a shield"]},
+ {id:"adrenaline", name:"Adrenaline Injector", area:"health", mech:true, soon:true, mount:"neck injector", steps:["Heal 20% over 3 s + run 1.3x","Heal 27%","Recharges 26% faster","Also ends a stun"]},
+ {id:"jaws", name:"Jaws", area:"attack", mech:false, steps:["Main attack hits harder","Recharges faster","Hits make the target bleed","Crushing hit stuns"]},
+ {id:"blade", name:"Blade Claws", area:"attack", mech:true, soon:true, mount:"sickle claws", steps:["Pounce landing +35%","Latch bites tick 35% faster","Pounce hits bleed","Pin kill refunds stamina"]},
+ {id:"dart", name:"Dart Launcher", area:"attack", mech:true, soon:true, mount:"shoulder launcher", steps:["Dart slows 30% for 3 s","Marked through grass","Two darts","Tranquilizer: slow 60%"]},
+ {id:"hide", name:"Thick Hide", area:"defense", mech:false, steps:["Take less damage","Less knockback","Shorter stuns","No stuns above 50% health"]},
+ {id:"cloak", name:"Cloak Field", area:"defense", mech:true, mount:"emitter fins", steps:["Invisible 3 s; bots lose you","Lasts 4.1 s","Pounce from cloak +35%","Standing still keeps it (up to 2x)"]},
+ {id:"shield", name:"Energy Shield", area:"defense", mech:true, soon:true, mount:"chest emitter", steps:["Bubble blocks damage","Stronger","Shorter cooldown","Bursts, knocks back"]},
+ {id:"legs", name:"Sprint Legs", area:"speed", mech:false, steps:["Run faster","Run x1.9","Pounce / leap recharge faster","Run x2.6"]},
+ {id:"thrusters", name:"Thrusters", area:"speed", mech:true, mount:"hip boosters", steps:["Boost 1.75x run for 1 s","2 charges","Lasts 1.35 s","Rocket hop"]},
+ {id:"grapple", name:"Grapple Hook", area:"speed", mech:true, soon:true, mount:"wrist hook", steps:["Pull to a tree","Longer range","Faster pull","Hook an enemy"]},
+ {id:"beacon", name:"Pack Beacon", area:"eng", mech:true, soon:true, mount:"head antenna", steps:["Mark enemies 60 studs, 5 s","81-stud radius","Marked take +35% from you","Marks hold while in range"]},
+ {id:"decoy", name:"Decoy Hologram", area:"eng", mech:true, soon:true, mount:"tail projector", steps:["Fake raptor runs 5 s","Lasts 6.75 s","Two decoys","Decoy bursts and stuns"]},
+];
+const COST = [1,2,3,4];
+const S = {o:"A", sel:"cloak", st:{legs:4, cloak:3, thrusters:2, jaws:1, lifesteal:1}};
+const EARNED = 21;
+const byId = Object.fromEntries(L.map(l=>[l.id,l]));
+const spent = ()=>Object.entries(S.st).reduce((a,[id,n])=>a+COST.slice(0,n).reduce((x,y)=>x+y,0),0);
+const left = ()=>EARNED - spent();
+const mastered = ()=>L.filter(l=>(S.st[l.id]||0)>=3).map(l=>l.id);
+function canBuy(l){
+  const n = S.st[l.id]||0;
+  if (l.soon) return [false,"COMING SOON"];
+  if (n>=4) return [false,"MAXED"];
+  if (n===2 && !mastered().includes(l.id) && mastered().length>=3) return [false,"MASTERY FULL · RESPEC TO CHANGE"];
+  if (left() < COST[n]) return [false,`NEED ${COST[n]} PTS`];
+  return [true,`BUY · ${COST[n]} PTS`];
+}
+function stepState(l,i){
+  const n = S.st[l.id]||0;
+  if (i < n) return "own";
+  if (i === n) return (i>=2 && !mastered().includes(l.id) && mastered().length>=3) ? "lock" : "next";
+  return (i>=2 && !mastered().includes(l.id) && mastered().length>=3) ? "lock" : "";
+}
+function pick(id){ S.sel = id; render(); }
+function buy(){
+  const l = byId[S.sel]; if (!canBuy(l)[0]) return;
+  S.st[l.id] = (S.st[l.id]||0)+1; render();
+}
+
+/* ---------- A: hangar blueprint ---------- */
+const MOUNTS = { // [x,y] on the raptor (viewBox 0 0 760 440), label side
+  decoy:[150,215,"left"], thrusters:[300,175,"up"], cloak:[365,152,"up"], dart:[455,170,"up"],
+  adrenaline:[505,140,"up"], beacon:[575,92,"right"], shield:[470,235,"right"], grapple:[520,262,"right"], blade:[352,372,"down"]
+};
+function viewA(){
+  const bioIds = ["legs","jaws","hide","lifesteal","regen"];
+  const gauges = bioIds.map(id=>{ const l=byId[id], n=S.st[id]||0;
+    return `<div class="gauge ${S.sel===id?"sel":""}" style="--c:${AREA[l.area]}" data-id="${id}"><div class="t"><span>${mastered().includes(id)?"♛ ":""}${l.name}</span><span style="color:${AREA[l.area]}">●</span></div><div class="segs">${[0,1,2,3].map(i=>`<i class="${i<n?"f":""}"></i>`).join("")}</div></div>`;}).join("");
+  const raptor = `
+   <g fill="rgba(140,200,255,.05)" stroke="var(--bpline)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 70 215 C 170 196, 250 186, 312 190 C 350 160, 420 152, 470 162 C 500 146, 520 120, 540 104 C 562 88, 615 86, 645 100 L 652 112 C 625 118, 596 121, 574 124 C 556 136, 540 160, 524 186 C 506 216, 478 236, 448 242 C 410 248, 380 246, 356 242 C 300 236, 200 228, 70 215 Z"/>
+    <path d="M 350 238 L 338 290 L 365 330 L 352 372 L 392 374" fill="none"/>
+    <path d="M 392 240 L 384 288 L 410 326 L 400 362 L 438 364" fill="none" opacity=".6"/>
+    <path d="M 506 196 L 524 222 L 546 218" fill="none"/>
+    <circle cx="610" cy="102" r="3" fill="var(--bpline)"/>
+   </g>
+   <g font-family="JetBrains Mono, monospace" font-size="10" fill="var(--bpline)" opacity=".6">
+    <text x="70" y="250">TAIL</text><text x="300" y="268">HIP</text><text x="520" y="80">HEAD</text>
+   </g>`;
+  const mounts = Object.entries(MOUNTS).map(([id,[x,y,side]])=>{
+    const l = byId[id], n = S.st[id]||0, m = mastered().includes(id), col = l.soon ? "rgba(200,210,220,.55)" : AREA[l.area];
+    const off = {left:[-120,0],right:[110,0],up:[0,-58],down:[0,46]}[side];
+    const lx = x+off[0], ly = y+off[1];
+    const pips = [0,1,2,3].map(i=>`<rect x="${lx-26+i*14}" y="${ly+8}" width="10" height="5" rx="2" fill="${i<n?col:"rgba(255,255,255,.15)"}"/>`).join("");
+    return `<g class="mount" data-id="${id}" style="cursor:pointer">
+      <line x1="${x}" y1="${y}" x2="${lx}" y2="${ly}" stroke="${col}" stroke-width="1.4" stroke-dasharray="${l.soon?"4 4":"0"}"/>
+      <circle cx="${x}" cy="${y}" r="${S.sel===id?11:8}" fill="${l.soon?"#0c2440":col}" stroke="${m?"var(--gold)":col}" stroke-width="${m?4:2}" ${l.soon?'stroke-dasharray="3 3"':""}/>
+      <rect x="${lx-66}" y="${ly-22}" width="132" height="38" rx="8" fill="rgba(5,15,30,.88)" stroke="${S.sel===id?"var(--yellow)":col}" stroke-width="${S.sel===id?2:1}"/>
+      <text x="${lx}" y="${ly-6}" text-anchor="middle" font-family="Fredoka One" font-size="13" fill="#fff">${m?"♛ ":""}${l.name}</text>
+      ${l.soon?`<text x="${lx}" y="${ly+12}" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(200,210,220,.8)">SOON · ${l.mount}</text>`:pips}
+    </g>`;}).join("");
+  return `<div class="view bp" style="height:100%"><div class="bio"><div class="h">BIO · SHARED</div>${gauges}</div>
+    <svg viewBox="0 0 760 440" style="position:absolute;left:150px;top:0;width:calc(100% - 150px);height:100%">${raptor}${mounts}</svg>
+    <div class="stamp">MDA-HANGAR · RAPTOR MK.I<br>MECHA MOUNTS 9 · LIVE 2</div></div>`;
+}
+
+/* ---------- B: circuit board ---------- */
+function viewB(){
+  const areas = ["health","attack","defense","speed","eng"];
+  const cx = 380, cy = 220;
+  let s = `<rect x="${cx-58}" y="${cy-40}" width="116" height="80" rx="8" fill="#111" stroke="#666" stroke-width="2"/>
+    ${[...Array(8)].map((_,i)=>`<rect x="${cx-50+i*13}" y="${cy-48}" width="6" height="8" fill="#aaa"/><rect x="${cx-50+i*13}" y="${cy+40}" width="6" height="8" fill="#aaa"/>`).join("")}
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#ddd">RAPTOR CORE</text>
+    <text x="${cx}" y="${cy+14}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--gold)">MASTERY ${mastered().length}/3</text>`;
+  const angles = {health:-150, attack:-90, defense:-30, speed:30, eng:150};
+  areas.forEach(a=>{
+    const lines = L.filter(l=>l.area===a);
+    const base = angles[a]*Math.PI/180;
+    lines.forEach((l,k)=>{
+      const spread = (k-(lines.length-1)/2)*0.32;
+      const ang = base + spread;
+      const n = S.st[l.id]||0, m = mastered().includes(l.id);
+      const col = m ? "var(--gold)" : l.soon ? "#355c45" : n>0 ? AREA[l.area] : "var(--trace)";
+      const r0 = 70, rs = [110,150,190,230];
+      const pt = r=>[cx+Math.cos(ang)*r*1.45, cy+Math.sin(ang)*r];
+      const [x0,y0] = pt(r0), [x4,y4] = pt(rs[3]);
+      s += `<g data-id="${l.id}" style="cursor:pointer"><polyline points="${x0},${y0} ${pt(rs[0]).join(",")} ${x4},${y4}" fill="none" stroke="${col}" stroke-width="${m?5:3}" stroke-linecap="round" ${l.soon?'stroke-dasharray="5 5"':""}/>
+        ${rs.map((r,i)=>{ const [x,y]=pt(r); const own=i<n; return `<rect x="${x-7}" y="${y-7}" width="14" height="14" rx="${i===3?2:7}" fill="${own?(m?"var(--gold)":AREA[l.area]):"#1a3a28"}" stroke="${l.soon?"#3f6b52":"var(--pad)"}" stroke-width="1.5"/>`; }).join("")}
+        <text x="${x4+Math.cos(ang)*22}" y="${y4+Math.sin(ang)*16+4}" text-anchor="${Math.cos(ang)>0.2?"start":Math.cos(ang)<-0.2?"end":"middle"}" font-family="Fredoka One" font-size="12.5" fill="${S.sel===l.id?"var(--yellow)":l.soon?"#7fa38d":"#e8f2ea"}">${m?"♛ ":""}${l.mech?"⚙ ":""}${l.name}</text></g>`;
+    });
+    const [lx,ly] = [cx+Math.cos(base)*320*1.0, cy+Math.sin(base)*170];
+  });
+  return `<div class="view pcb" style="height:100%"><svg viewBox="0 0 760 440">${s}
+    <text x="12" y="428" font-family="JetBrains Mono" font-size="10" fill="#6fa086">PCB REV 1.5 · PADS = STEPS · GOLD TRACE = MASTERED · ⚙ = MECHA PART</text></svg></div>`;
+}
+
+/* ---------- C: bone & bolt ---------- */
+function viewC(){
+  const areas = ["health","attack","defense","speed","eng"];
+  let s = "";
+  const x0 = 380;
+  areas.forEach((a,i)=>{
+    const y = 50 + i*80;
+    s += `<rect x="${x0-34}" y="${y-22}" width="68" height="44" rx="16" fill="var(--bone)" stroke="#b9a983" stroke-width="2"/>
+      <text x="${x0}" y="${y+5}" text-anchor="middle" font-family="Fredoka One" font-size="13" fill="#4a3b22">${AREA_NAME[a]}</text>
+      <circle cx="${x0}" cy="${y}" r="5" fill="${AREA[a]}" transform="translate(0,-14)"/>`;
+    if (i<4) s += `<rect x="${x0-10}" y="${y+22}" width="20" height="14" fill="#cdbf9f"/>`;
+    const lines = L.filter(l=>l.area===a);
+    const bio = lines.filter(l=>!l.mech), mech = lines.filter(l=>l.mech);
+    const draw = (l,side,k,count)=>{
+      const n = S.st[l.id]||0, m = mastered().includes(l.id);
+      const dir = side==="L"?-1:1, yy = y + (k-(count-1)/2)*30;
+      const xs = x0 + dir*50, xe = x0 + dir*290;
+      const isB = !l.mech;
+      const col = isB ? "var(--bone)" : (l.soon ? "#4b545e" : "var(--steel)");
+      const stroke = m ? "var(--gold)" : (S.sel===l.id ? "var(--yellow)" : (isB?"#b9a983":"#59636e"));
+      const rivets = [0,1,2,3].map(j=>{ const rx = xs + dir*(60+j*48); const own=j<n;
+        return isB ? `<circle cx="${rx}" cy="${yy}" r="7" fill="${own?AREA[l.area]:"#cbbd9b"}" stroke="#8c7d5b"/>`
+                   : `<circle cx="${rx}" cy="${yy}" r="7" fill="${own?AREA[l.area]:"#39414a"}" stroke="#c7d0d9" stroke-width="1.5"/><line x1="${rx-3}" y1="${yy}" x2="${rx+3}" y2="${yy}" stroke="${own?"#111":"#aab"}" stroke-width="1.5"/>`; }).join("");
+      const shape = isB
+        ? `<path d="M ${xs} ${yy-8} L ${xe} ${yy-8} Q ${xe+dir*12} ${yy} ${xe} ${yy+8} L ${xs} ${yy+8} Z" fill="${col}" stroke="${stroke}" stroke-width="${m?3:1.5}"/>`
+        : `<rect x="${Math.min(xs,xe)}" y="${yy-11}" width="${Math.abs(xe-xs)}" height="22" rx="4" fill="${col}" stroke="${stroke}" stroke-width="${m?3:1.5}" ${l.soon?'stroke-dasharray="5 4"':""}/>`;
+      const tx = xs + dir*16;
+      return `<g data-id="${l.id}" style="cursor:pointer">${shape}${rivets}<text x="${tx}" y="${yy-14}" text-anchor="${dir<0?"end":"start"}" font-family="Fredoka One" font-size="12" fill="${l.soon?"#8a939c":"#f3ead6"}">${m?"♛ ":""}${l.name}${l.soon?" · soon":""}</text></g>`;
+    };
+    bio.forEach((l,k)=>s+=draw(l,"L",k,bio.length));
+    mech.forEach((l,k)=>s+=draw(l,"R",k,mech.length));
+  });
+  return `<div class="view spine" style="height:100%"><svg viewBox="0 0 760 440">
+    <text x="90" y="20" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#cdbf9f">BONE · SHARED</text>
+    <text x="670" y="20" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#c7d0d9">BOLTED-ON MECHA</text>${s}</svg></div>`;
+}
+
+const NOTES = {
+ A:`<h3>A · Hangar blueprint</h3>
+  <ul>
+   <li>The tree is the dino. Its mecha parts sit on a blueprint at the spot where the hardware mounts: boosters on the hips, cloak fins on the back, the launcher on the shoulder, claws on the foot.</li>
+   <li>The shared stat paths are "BIO" gauges down the left.</li>
+   <li>It fits your rule that every part is visible hardware, and each dino gets its own blueprint. The T-Rex shows the drone on its back, the rocket pod, and so on.</li>
+   <li>Cost: each dino needs a drawn silhouette and mount positions.</li>
+   <li>On phones the callout labels need care; they can shrink to just the mount dots.</li>
+  </ul>`,
+ B:`<h3>B · Circuit board</h3>
+  <ul>
+   <li>The dino is a "core" chip, and every line is a copper trace running out to its area, with steps as solder pads.</li>
+   <li>Mastered traces turn gold.</li>
+   <li>It reads as tech and engineering rather than dino.</li>
+   <li>It's easy to make for any number of dinos and lines: no art needed, the same layout for all.</li>
+   <li>It's the most abstract of the three, and gets busy with 14 lines.</li>
+  </ul>`,
+ C:`<h3>C · Bone &amp; bolt</h3>
+  <ul>
+   <li>A spine runs down the middle with one vertebra per area.</li>
+   <li>Shared stat paths are bones branching left; mecha parts are steel plates bolted on the right, with rivets as steps.</li>
+   <li>It says "dino + machine" in one picture, and bio vs mecha reads at a glance.</li>
+   <li>The tree keeps its rows, so it's the closest to today's screen and the easiest on phones.</li>
+   <li>It's the same shape for every dino, so it's less unique per species than A.</li>
+  </ul>`
+};
+
+function render(){
+  document.getElementById("mchip").textContent = `MASTERY ${mastered().length}/3`;
+  document.getElementById("pts").textContent = `${left()} PTS`;
+  const view = document.getElementById("view");
+  view.className = "view";
+  view.innerHTML = S.o==="A" ? viewA() : S.o==="B" ? viewB() : viewC();
+  view.querySelectorAll("[data-id]").forEach(el=>el.addEventListener("click",()=>pick(el.dataset.id)));
+  const l = byId[S.sel], [ok,label] = canBuy(l), n = S.st[l.id]||0;
+  const why = (n===2 && !mastered().includes(l.id) && mastered().length>=3) ? `<div class="why">You have mastered 3 lines (${mastered().map(i=>byId[i].name).join(", ")}). Only 3 lines can go past step II.</div>` : "";
+  document.getElementById("detail").innerHTML = `<h5 style="color:${AREA[l.area]}">${mastered().includes(l.id)?"♛ ":""}${l.name}</h5>
+    <div class="meta">${AREA_NAME[l.area]} · ${l.mech?(l.mount?"mecha part · "+l.mount:"mecha part"):"shared stat"}${l.soon?" · coming soon":""}</div>
+    <ul class="steps" style="--c:${AREA[l.area]}">${l.steps.map((t,i)=>`<li class="${stepState(l,i)}"><span class="n">${i===3?"★":["I","II","III"][i]}</span><span>${t}</span></li>`).join("")}</ul>
+    ${why}<button class="buy ${ok?"ok":"no"}" id="buyBtn">${label}</button>`;
+  document.getElementById("buyBtn").addEventListener("click",buy);
+  document.getElementById("note").innerHTML = NOTES[S.o];
+}
+document.querySelectorAll("[data-o]").forEach(b=>b.addEventListener("click",()=>{S.o=b.dataset.o;document.querySelectorAll("[data-o]").forEach(x=>x.classList.toggle("on",x===b));render();}));
+render();
+</script>
