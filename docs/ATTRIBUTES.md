@@ -1312,6 +1312,7 @@ Root.Body.Loadout.Slot_1..4.
 | SkillTestCloak | player | — | "on" while the layer is shown (Raptor + switch on), else "off" |
 
 Turn SkillTestCloakEnabled off on ServerScriptService.SkillServer before a public publish.
+SkillServer 1.5: the layer counts the Cloak as owned for the loadout and places it once in the first empty slot; nothing is hidden, so bought parts and the SKILLS tiles work as normal.
 
 ## Always-run gait + raptor speed (IdleAnimation 1.26 / RaptorModelData 1.13)
 
@@ -1325,6 +1326,8 @@ Turn SkillTestCloakEnabled off on ServerScriptService.SkillServer before a publi
 | Attribute | On | Default | Meaning |
 |---|---|---|---|
 | CloakLookStyle | script CloakServer | "plates" | "plates" = 4 black hex plates with cyan rims on the spine; "fins" = the 1.0 grey fins |
+| CloakLookStyle (1.2) | script CloakServer | "flanks" | 1.2 default: 4 plates flat on each flank (upper half), Plate_1..4 right / 5..8 left; CloakLook "flanks" |
+| PlateOrder | Weld PlateHinge | 1..4 | 1.2: the plate's row front to back; CloakFX 1.3 flip timing |
 | CloakLook | character | — | now also "plates" ("on" = fins) |
 | BaseC0 | Weld PlateHinge (Plate_n_Body_0) | — | the plate's resting C0; CloakFX turns the plate from it |
 | CloakFXAnimEnabled | script CloakFX | true | false = the 1.0 instant cloak look (no flip, no dissolve) |
