@@ -1,0 +1,145 @@
+<title>Flick Mecha Buttons</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: control strip; a phone game screen with the two mecha buttons you can really tap or pull down; the 4-slot
+   SKILLS loadout strip; notes. Single dark look matching the game HUD (panel rgb 20,20,26, Engineer orange). */
+:root{
+  color-scheme: dark;
+  --page:#0e0f14; --panel:rgb(20,20,26); --panel2:rgb(32,32,41); --line:rgba(255,255,255,.18);
+  --text:#eef0f4; --muted:#9ba1ae; --yellow:rgb(255,200,50); --ytext:rgb(30,26,10); --eng:rgb(255,155,46);
+  --display:"Fredoka One","Arial Rounded MT Bold",system-ui,sans-serif; --body:Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--body);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:400;margin:0 0 4px;font-size:22px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:72ch;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.row .lab{font-family:var(--display);font-size:13px;color:var(--muted);width:90px}
+.row button{font-family:var(--display);font-size:14px;border:2px solid var(--line);background:var(--panel2);color:var(--text);padding:6px 12px;border-radius:999px;cursor:pointer}
+.row button.on{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.row button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;margin-top:8px}
+@media (max-width:1000px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.phone{width:100%;max-width:100%;aspect-ratio:844/390;background:#000;border-radius:34px;padding:10px;box-shadow:0 0 0 2px #2a2b33}
+.screen{position:relative;width:100%;height:100%;border-radius:24px;overflow:hidden;container-type:inline-size;font-family:var(--display);
+  background:linear-gradient(180deg,#6fb3ff 0%,#a8d4ff 44%,#5aa651 45%,#3f8a3b 100%);touch-action:none;user-select:none}
+.stick{position:absolute;left:6%;bottom:10%;width:14%;aspect-ratio:1;border-radius:50%;background:rgba(0,0,0,.25);border:2px solid rgba(255,255,255,.35)}
+.circ{position:absolute;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:1.5cqw;background:rgba(20,20,26,.6);border:2px solid rgba(255,255,255,.6)}
+.circ.big{background:var(--yellow);color:var(--ytext);font-size:2cqw;border-color:#fff}
+.pill{position:absolute;right:2%;top:4%;font-size:1.6cqw;background:rgba(20,20,26,.82);border:2px solid rgba(255,255,255,.5);border-radius:10px;padding:.2em .7em;color:#fff}
+.pill b{background:var(--yellow);color:var(--ytext);border-radius:6px;padding:0 .4em;font-weight:400}
+.toast{position:absolute;left:50%;top:14%;transform:translateX(-50%);background:rgba(20,20,26,.9);border:2px solid var(--eng);border-radius:10px;padding:.3em .8em;font-size:1.7cqw;color:#fff;white-space:nowrap}
+/* mecha buttons */
+.mb{position:absolute;width:9.5%;aspect-ratio:1;border-radius:22%;background:rgba(20,20,26,.7);border:.25cqw solid var(--eng);color:#fff;
+  overflow:visible;cursor:pointer;touch-action:none}
+.mb .tapname{position:absolute;left:0;right:0;top:30%;text-align:center;font-size:1.25cqw}
+.mb .pullname{position:absolute;left:0;right:0;bottom:6%;text-align:center;font-size:.95cqw;color:#ffd9a8}
+.mb .band{position:absolute;left:0;right:0;bottom:0;height:40%;background:rgba(0,0,0,.45);border-radius:0 0 22% 22%;display:none}
+.mb.split .band{display:block}.mb.split .tapname{top:18%}
+.mb .ghost{position:absolute;left:50%;top:108%;transform:translateX(-50%);background:rgba(20,20,26,.92);border:2px solid var(--eng);border-radius:8px;padding:.2em .5em;font-size:1cqw;white-space:nowrap;display:none}
+.mb.reveal .pullname{display:none}
+.mb.reveal.held .ghost{display:block}
+.mb.pulling{border-color:#fff;box-shadow:0 0 0 .3cqw rgba(255,255,255,.35)}
+.mb.pulling .ghost{background:var(--eng);color:var(--ytext)}
+.mb.pulling .pullname{color:#fff}
+.mb .chev{position:absolute;left:50%;bottom:-2.2cqw;transform:translateX(-50%);font-size:1.2cqw;color:rgba(255,255,255,.7);display:none}
+.mb.held .chev{display:block}
+/* loadout */
+.lo{margin-top:12px;background:rgba(20,20,26,.9);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-family:var(--display)}
+.lo .t{color:var(--eng);font-size:14px;margin-right:6px}
+.lo .s{border:2px solid var(--eng);border-radius:8px;padding:5px 10px;font-size:13px;white-space:nowrap}
+.lo .s small{color:var(--muted);font-size:11px;margin-right:6px}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;min-width:0}
+.note h3{font-family:var(--display);font-weight:400;margin:0 0 6px;font-size:16px}
+.note b{color:var(--yellow)}
+.note ul{margin:6px 0 0;padding-left:18px}
+.log{margin-top:8px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+</style>
+
+<h1>Tap-and-pull mecha buttons</h1>
+<p class="sub">Each of the 2 mecha buttons holds 2 parts: <b>tap</b> = its top part, <b>tap and pull down</b> = its second part. That makes 4 loadout slots. Try it: press a button, drag down past the line and let go for the second part; let go without pulling for the first. The example loadout is the raptor's.</p>
+
+<div class="row" role="group" aria-label="Button look"><span class="lab">Button look</span>
+  <button id="lA" class="on" data-l="A">A · Sub-label</button>
+  <button id="lB" data-l="B">B · Split</button>
+  <button id="lC" data-l="C">C · Show on hold</button>
+</div>
+
+<div class="wrap">
+  <div>
+    <div class="phone"><div class="screen" id="screen">
+      <div class="pill"><b>RAPTOR</b> ▾</div>
+      <div class="stick"></div>
+      <div class="circ big" style="right:5%;bottom:10%;width:13.5%">POUNCE</div>
+      <div class="circ" style="right:7%;bottom:43%;width:9.5%">LEAP</div>
+      <div class="mb" id="b1" style="right:21%;bottom:8%" data-n="1"></div>
+      <div class="mb" id="b2" style="right:32.5%;bottom:18%" data-n="2"></div>
+      <div class="toast" id="toast" hidden></div>
+    </div></div>
+    <div class="lo" aria-label="SKILLS screen loadout strip">
+      <span class="t">LOADOUT</span>
+      <span class="s"><small>R · tap</small>⚙ Thrusters</span>
+      <span class="s"><small>R · pull ▼</small>⚙ Cloak Field</span>
+      <span class="s"><small>C · tap</small>⚙ Dart Launcher</span>
+      <span class="s"><small>C · pull ▼</small>⚙ Decoy Hologram</span>
+    </div>
+    <div class="log" id="log">Press a button.</div>
+  </div>
+  <div class="note" id="note"></div>
+</div>
+
+<script>
+const PARTS = {1:{tap:"DASH", pull:"CLOAK"}, 2:{tap:"DART", pull:"DECOY"}};
+const PULL_PX = 18; // drag distance (screen px at this size) that switches to the pull part
+let look = "A";
+const NOTES = {
+ A:`<h3>A · Sub-label</h3>Each button shows its tap part big and its pull part small at the bottom (<b>▼ CLOAK</b>). Both parts are visible all the time, but the second label is small on a phone.`,
+ B:`<h3>B · Split</h3>The bottom 40% of the button is a dark band with the pull part. It reads as two halves, and the band suggests pulling down. The tap name moves up a little.`,
+ C:`<h3>C · Show on hold</h3>The button shows only its tap part. While you hold it, a label pops up under your thumb with the pull part, and turns orange once you've pulled far enough. The button stays clean, but you can't see the second part until you press.`
+};
+const common = `<ul>
+  <li>Pull threshold: about ${PULL_PX} px down. Slot 1 sits low (8% from the bottom), so there is about 30 px of screen below it on a small phone. The threshold has to fit inside that.</li>
+  <li>A pull that starts on the button never moves the camera.</li>
+  <li>PC: each part gets its own key. R / C stay for the tap parts; two more keys for the pull parts (your pick).</li>
+  <li>The SKILLS loadout strip grows to 4 slots: R tap, R pull, C tap, C pull.</li>
+</ul>`;
+function draw(){
+  for (const n of [1,2]){
+    const b = document.getElementById("b"+n);
+    b.className = "mb" + (look==="B"?" split":"") + (look==="C"?" reveal":"");
+    b.innerHTML = `<div class="band"></div><div class="tapname">${PARTS[n].tap}</div><div class="pullname">▼ ${PARTS[n].pull}</div><div class="ghost">▼ ${PARTS[n].pull}</div><div class="chev">▼</div>`;
+  }
+  document.getElementById("note").innerHTML = NOTES[look] + common;
+}
+function fire(n, kind){
+  const name = PARTS[n][kind];
+  const t = document.getElementById("toast");
+  t.textContent = (kind==="tap" ? "Tap → " : "Pull ▼ → ") + name;
+  t.hidden = false;
+  clearTimeout(fire._t); fire._t = setTimeout(()=>{ t.hidden = true; }, 900);
+  document.getElementById("log").textContent = `Last: button ${n} ${kind === "tap" ? "tap" : "pull down"} → ${name}`;
+}
+for (const n of [1,2]){
+  const b = document.getElementById("b"+n);
+  let y0 = null, pulling = false;
+  b.addEventListener("pointerdown", e=>{ y0 = e.clientY; pulling = false; b.setPointerCapture(e.pointerId); b.classList.add("held"); });
+  b.addEventListener("pointermove", e=>{
+    if (y0 === null) return;
+    pulling = e.clientY - y0 >= PULL_PX;
+    b.classList.toggle("pulling", pulling);
+  });
+  const end = e=>{
+    if (y0 === null) return;
+    fire(n, pulling ? "pull" : "tap");
+    y0 = null; pulling = false; b.classList.remove("held","pulling");
+  };
+  b.addEventListener("pointerup", end);
+  b.addEventListener("pointercancel", ()=>{ y0 = null; b.classList.remove("held","pulling"); });
+}
+document.querySelectorAll("[data-l]").forEach(x=>x.addEventListener("click",()=>{
+  look = x.dataset.l; document.querySelectorAll("[data-l]").forEach(y=>y.classList.toggle("on", y===x)); draw();
+}));
+draw();
+</script>
