@@ -1,4 +1,4 @@
--- MineServer v1.1 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.2 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -49,13 +49,17 @@
 --     drop, e.g. Energy Shield) that rises and fades in 0.9 s.
 --   * Sound: script attribute MineSoundId (default rbxassetid://138132512434499 "sfx impactlightning", Creator Store,
 --     free; "" = silent) plays from "MineZapSound" at the blast.
+-- v1.2 (MDA-82; Kepu 2026-10-29: "Yes energy shield blocks it"): a player whose Energy Shield is up (EnergyShieldUntil >
+--   now) is not thrown or dazed by a mine (the shield already blocked the damage); the pop reads "BLOCKED", the zap
+--   flickers 0.3 s, target diagnostic MineBlockedAt. The star jam still lands (it ends the shield, as the Shock Cannon's
+--   does).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local THROW_DIST, ARC_TIME, ARC_HEIGHT, ARM_TIME = 30, 0.6, 8, 0.5
 local TRIGGER, LIFETIME, BLINK = 6, 60, 0.25
 local VOLT, VOLT_CORE = Color3.fromRGB(127, 233, 255), Color3.fromRGB(225, 250, 255)
@@ -388,7 +392,12 @@ local function hit(m, target)
 		if not launch and hum and not botSlow[target] then botSlow[target] = {hum = hum} end
 	end
 	local fxTime
-	if launch then -- v1.1: thrown and dazed
+	local shielded = pl ~= nil and (tonumber(target:GetAttribute("EnergyShieldUntil")) or 0) > t -- v1.2
+	if launch and shielded then -- v1.2: Energy Shield blocks the throw too
+		popText = "BLOCKED"
+		target:SetAttribute("MineBlockedAt", t)
+		fxTime = 0.3
+	elseif launch then -- v1.1: thrown and dazed
 		if pl then
 			target:SetAttribute("StunTossFrom", m.to)
 			target:SetAttribute("StunTossDistance", m.launch)
