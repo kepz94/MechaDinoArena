@@ -1329,6 +1329,7 @@ Turn SkillTestCloakEnabled off on ServerScriptService.SkillServer before a publi
 | BaseC0 | Weld PlateHinge (Plate_n_Body_0) | — | the plate's resting C0; CloakFX turns the plate from it |
 | CloakFXAnimEnabled | script CloakFX | true | false = the 1.0 instant cloak look (no flip, no dissolve) |
 | CloakFXPhase | each dino (this client) | — | "turningOn" (0.56 s) / "on" / "turningOff" (0.35 s) / "off" |
+| CloakFXShadowOff | script CloakFX | true | 1.2: cloaked parts cast no shadow on this client; false = shadows as 1.1 |
 
 Turn-on: plates flip front to back (0.06 s apart, 0.12 s each) and show teal rgb(18, 58, 68); body blocks flash neon cyan
 for 0.08 s and fade in order of distance from the plates (0.12 - 0.56 s). Turn-off reverses it. Hitboxes and invisible

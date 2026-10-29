@@ -1,4 +1,4 @@
--- CloakFX v1.1 (Mecha Dino Arena) — draws the Cloak Field on this client (LocalScript, StarterPlayerScripts).
+-- CloakFX v1.2 (Mecha Dino Arena) — draws the Cloak Field on this client (LocalScript, StarterPlayerScripts).
 -- MDA-52, plan docs/plans/CLOAK_v1.0.md Task 4 (Kepu 2026-10-29: a faint shimmer others can just make out).
 -- A character is cloaked while its CloakedUntil (server time, CloakServer 1.0) is in the future and its Humanoid is
 -- alive. Every render frame (bound after the camera, so the camera's own fade never overrides it):
@@ -31,10 +31,14 @@
 --   Restore also puts back every flashed part's Color / Material and each plate's C0 and colour (the closed colour is
 --   the one first seen for that part, kept across re-collects: a re-collect mid-animation read the open teal before).
 --   Diagnostic: CloakFXPhase on each drawn dino (this client; "off" after the restore).
+-- v1.2 (Kepu 2026-10-29: "turn the shadow off when cloaked"): while a part is drawn cloaked (its LTM at or above
+--   SHADOW_OFF_LTM 0.3: the whole "on" phase, and part by part during turning on / off) its CastShadow is false on this
+--   client; it goes back to the part's own value when the part is drawn visible again (flash included) and in the
+--   restore. Script attribute CloakFXShadowOff (default true; false = shadows as 1.1).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local SELF_LTM = 0.6
 local OTHER_MID, OTHER_AMP = 0.91, 0.03
 local SHIMMER_PERIOD = 0.6
@@ -45,6 +49,8 @@ local PLATE_OPEN = Color3.fromRGB(18, 58, 68) -- v1.1
 
 if script:GetAttribute("CloakFXEnabled") == nil then script:SetAttribute("CloakFXEnabled", true) end
 if script:GetAttribute("CloakFXAnimEnabled") == nil then script:SetAttribute("CloakFXAnimEnabled", true) end -- v1.1
+if script:GetAttribute("CloakFXShadowOff") == nil then script:SetAttribute("CloakFXShadowOff", true) end -- v1.2
+local SHADOW_OFF_LTM = 0.3 -- v1.2
 local me = Players.LocalPlayer
 
 local states = {} -- [char] = {parts = {BasePart}, dirty = bool, guis = {[gui] = wasEnabled}, hum, display, conns}
@@ -154,6 +160,17 @@ local function setFlash(p, inf, on)
 		if p.Parent then p.Color, p.Material = inf.color, inf.material end
 	end
 end
+-- v1.2: shadow off / back for one part (its own CastShadow kept)
+local function setShadow(p, inf, off)
+	if off and inf.shadow == nil then
+		inf.shadow = p.CastShadow
+		p.CastShadow = false
+	elseif not off and inf.shadow ~= nil then
+		if p.Parent then p.CastShadow = inf.shadow end
+		inf.shadow = nil
+	end
+end
+local function shadowOffOn() return script:GetAttribute("CloakFXShadowOff") ~= false end
 -- v1.1: plate n at flip f (0 closed .. 1 open)
 local function setPlate(pl, f)
 	if not pl.hinge.Parent then return end
@@ -175,7 +192,7 @@ local function finish(char, st)
 		if gui.Parent then gui.Enabled = was end
 	end
 	if st.hum and st.hum.Parent and st.display then st.hum.DisplayDistanceType = st.display end
-	for p, inf in pairs(st.info or {}) do setFlash(p, inf, false) end -- v1.1
+	for p, inf in pairs(st.info or {}) do setFlash(p, inf, false) setShadow(p, inf, false) end -- v1.1; v1.2: + shadow
 	for _, pl in pairs(st.plates or {}) do setPlate(pl, 0) end -- v1.1
 	char:SetAttribute("CloakFXPhase", "off") -- v1.1
 end
@@ -197,8 +214,13 @@ local function draw(char, st, t, phase, e)
 		char:SetAttribute("CloakFXPhase", phase)
 	end
 	if phase == "on" or phase == nil then
+		local off = shadowOffOn() and ltm >= SHADOW_OFF_LTM -- v1.2
 		for _, p in ipairs(st.parts) do
-			if p.Parent then p.LocalTransparencyModifier = ltm end
+			if p.Parent then
+				p.LocalTransparencyModifier = ltm
+				local inf = st.info[p]
+				if inf then setShadow(p, inf, off) end
+			end
 		end
 		if phase == "on" and animOn() then -- v1.1: steady state after the turn-on
 			for p, inf in pairs(st.info) do if inf.flashing then setFlash(p, inf, false) end end
@@ -230,6 +252,7 @@ local function draw(char, st, t, phase, e)
 			end
 			p.LocalTransparencyModifier = v
 			setFlash(p, inf, flash)
+			setShadow(p, inf, shadowOffOn() and v >= SHADOW_OFF_LTM) -- v1.2
 		end
 	end
 end
