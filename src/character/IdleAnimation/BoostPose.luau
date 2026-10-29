@@ -1,4 +1,4 @@
--- BoostPose v1.0 (Mecha Dino Arena) — Thrusters boost lean + booster swivel, option B of
+-- BoostPose v1.1 (Mecha Dino Arena) — Thrusters boost lean + booster swivel, option B of
 -- docs/mockups/boost_lean_options.html (Kepu 2026-10-29: "When I go backwards in the thrusters tho I think the raptors
 -- animation should reflect that ... leaning its body back so the thrusters are firing in the right direction same with
 -- left and right" -> "I love B"). Plan docs/plans/BOOST_LEAN_v1.0.md. Pure math; IdleAnimation 1.27 applies it.
@@ -13,6 +13,10 @@
 -- Stagger: two parallel boosters 2 * half apart (booster width bx) would overlap when turned across the back, so they
 --   slide apart along Z (the right one by +dz / 2, the left one by -dz / 2) until the gap between their axes is at least
 --   BoostSwivelGap * bx.
+-- v1.1 (bug, found in the 2-player close-out test 2026-10-29): settings() used `(typeof(a) == typeof(v)) and a or v`,
+--   which returns the default when the attribute is false, so BoostLeanEnabled / BoostSwivelEnabled = false did nothing
+--   (lean 14.9 and swivel 160 with both set false). Now an attribute of the same type is always used, false included.
+--   Nothing else changed.
 local BoostPose = {}
 
 BoostPose.Defaults = {
@@ -33,7 +37,7 @@ function BoostPose.settings(model)
 	local s = {}
 	for k, v in pairs(BoostPose.Defaults) do
 		local a = model:GetAttribute(k)
-		s[k] = (typeof(a) == typeof(v)) and a or v
+		if typeof(a) == typeof(v) then s[k] = a else s[k] = v end -- v1.1: false was dropped by `and a or v`
 	end
 	return s
 end
