@@ -1338,6 +1338,25 @@ Turn-on: plates flip front to back (0.06 s apart, 0.12 s each) and show teal rgb
 for 0.08 s and fade in order of distance from the plates (0.12 - 0.56 s). Turn-off reverses it. Hitboxes and invisible
 parts never flash.
 
+## Thrusters boost lean + booster swivel (MechaServer 1.3 / IdleAnimation 1.27 / BoostPose 1.0)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| MechaSwivelHinge | script MechaServer | true | true: each booster hangs on a Weld "BoosterHinge" (the group turns with it); false: the 1.2 fixed build |
+| MechaHinge | character | — | "hinge" / "fixed": how the current Mecha_Thrusters was built |
+| BaseC0 | Weld BoosterHinge | — | the hinge's rest C0 (booster frame in Torso.Root's frame); clients return to it after a boost |
+| BoostLeanEnabled / BoostSwivelEnabled | dino model | true / true | false: no body lean / boosters stay fixed |
+| BoostLeanForward / BoostLeanBack / BoostLeanSide | dino model | 10 / 15 / 12 | degrees: chest down (forward boost) / chest up (backward) / bank (sideways; right travel = left side down) |
+| BoostSwivelOver | dino model | 160 | degrees the boosters swing up and over for a straight-back boost (100..179) |
+| BoostEaseIn / BoostEaseOut | dino model | 0.15 / 0.25 | s: blend in from DashStartedAt, out after DashStartedAt + DashTime |
+| BoostDirRate / BoostDirMinSpeed | dino model | 12 / 2 | how fast the travel direction follows the movement (per s); studs/s below which it is held |
+| BoostSwivelGap | dino model | 1.15 | x booster width: minimum gap between the two booster axes (they slide apart along the back) |
+| BoostLeanBlend | dino model (client) | — | boost weight 0..1 (0.1 steps) |
+| BoostDir | dino model (client) | — | travel direction in degrees, atan2(right, forward): 0 forward, 90 right, ±180 back |
+| BoostLeanPitch / BoostLeanRoll | dino model (client) | — | applied lean in degrees (+ pitch = chest up, + roll = right side down) |
+| BoostSwivel | dino model (client) | — | "none" / "on" / "noHinge" (Mecha_Thrusters without hinges) / "off" (BoostSwivelEnabled false) |
+| BoostSwivelAngle / BoostStagger | dino model (client) | — | booster turn in degrees; studs the two boosters are slid apart |
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |

@@ -1,4 +1,4 @@
--- MechaServer v1.2 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
+-- MechaServer v1.3 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
 -- Thrusters part on the dino. MDA-27, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 5, mockup
 -- docs/mockups/mecha_thrusters_options.html (Kepu 2026-10-28: framework + Thrusters first; numbers as proposed; the dash is
 -- free; the part is on the dino only while it is in a loadout slot; bots only).
@@ -40,11 +40,19 @@
 --   long (booster length x 1.2); a Sound "Roar" on Nozzle_R (script attribute MechaBoostSoundId, default
 --   rbxassetid://9114554567 "Gas Fire Explosion 3 (SFX)", Pro Sound Effects, a Creator Store placeholder like
 --   BiteSoundId; volume 0.8) played at each boost start and stopped at its end (heard by everyone).
+-- v1.3 (boost lean option B, Kepu 2026-10-29 "I love B"; plan docs/plans/BOOST_LEAN_v1.0.md): booster hinge. While the
+--   script attribute MechaSwivelHinge is true (default), each Booster_L / _R is joined to Torso.Root by a Weld
+--   "BoosterHinge" (Part0 Torso.Root, Part1 the booster, C0 = the booster's rest frame in Torso.Root's frame, C1 identity,
+--   attribute BaseC0 = that C0) instead of a WeldConstraint, and that side's Nozzle_, Jet_ and Fin_ are welded
+--   (WeldConstraint) to the booster instead of Torso.Root, so the whole booster group turns when a client changes the
+--   hinge's C0 (IdleAnimation 1.27 / BoostPose 1.0 swivel the boosters during a boost on every client; the server never
+--   changes C0). Sizes, places, flame, jet, glow and roar unchanged. MechaSwivelHinge false = the 1.2 build.
+--   Diagnostic: character MechaHinge ("hinge" / "fixed"; set on each build with a look other than "none").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local MAX_LAG = 0.3
 local DEFAULT_RECHARGE, DEFAULT_TIME = 8, 0.35
 local METAL, DARK, ORANGE = Color3.fromRGB(123, 133, 144), Color3.fromRGB(43, 47, 53), Color3.fromRGB(255, 155, 46)
@@ -52,6 +60,7 @@ local METAL, DARK, ORANGE = Color3.fromRGB(123, 133, 144), Color3.fromRGB(43, 47
 script:SetAttribute("MechaServerVersion", VERSION)
 if script:GetAttribute("MechaEnabled") == nil then script:SetAttribute("MechaEnabled", true) end
 script:SetAttribute("MechaDashes", 0)
+if script:GetAttribute("MechaSwivelHinge") == nil then script:SetAttribute("MechaSwivelHinge", true) end -- v1.3
 if script:GetAttribute("MechaBoostSoundId") == nil then script:SetAttribute("MechaBoostSoundId", "rbxassetid://9114554567") end -- v1.2
 local function on() return script:GetAttribute("MechaEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
@@ -152,12 +161,27 @@ local function build(char, look)
 	-- on top of the back: 60% of the way from the front (-Z) to the back (+Z), sunk 35% into the top
 	local baseLocal = Vector3.new((lo.X + hi.X) / 2, hi.Y + bs.Y * 0.15, lo.Z + Ln * 0.6)
 	local base = hrp.CFrame:PointToWorldSpace(baseLocal)
+	local hingeOn = script:GetAttribute("MechaSwivelHinge") ~= false -- v1.3
+	char:SetAttribute("MechaHinge", hingeOn and "hinge" or "fixed")
 	for _, side in ipairs({{"L", -1}, {"R", 1}}) do
 		local c = base + R * side[2] * half
 		local rot = CFrame.fromMatrix(c, R, U, -L) -- part LookVector = the dino's look
-		part("Booster_" .. side[1], bs, rot, METAL, model, torso)
+		local booster = part("Booster_" .. side[1], bs, rot, METAL, model, torso)
+		local mount = torso -- v1.3: what the rest of this side is welded to
+		if hingeOn then
+			local wc = booster:FindFirstChildOfClass("WeldConstraint")
+			if wc then wc:Destroy() end
+			local hinge = Instance.new("Weld")
+			hinge.Name = "BoosterHinge"
+			hinge.Part0, hinge.Part1 = torso, booster
+			hinge.C0 = torso.CFrame:ToObjectSpace(rot)
+			hinge.C1 = CFrame.new()
+			hinge:SetAttribute("BaseC0", hinge.C0)
+			hinge.Parent = booster
+			mount = booster
+		end
 		local ns = Vector3.new(bs.X * 0.7, bs.Y * 0.7, bs.Z * 0.18)
-		local nozzle = part("Nozzle_" .. side[1], ns, rot * CFrame.new(0, 0, (bs.Z + ns.Z) / 2), DARK, model, torso)
+		local nozzle = part("Nozzle_" .. side[1], ns, rot * CFrame.new(0, 0, (bs.Z + ns.Z) / 2), DARK, model, mount)
 		local at = Instance.new("Attachment")
 		at.Name = "FlameAt"
 		at.Position = Vector3.new(0, 0, ns.Z / 2)
@@ -184,7 +208,7 @@ local function build(char, look)
 		glow.Enabled = false
 		glow.Parent = at
 		local jet = part("Jet_" .. side[1], Vector3.new(ns.X * 0.8, ns.Y * 0.8, bs.Z * 1.2), -- v1.1: neon jet behind the nozzle; v1.2: x2 long
-			rot * CFrame.new(0, 0, (bs.Z + ns.Z) / 2 + ns.Z / 2 + bs.Z * 0.6), Color3.fromRGB(255, 190, 60), model, torso)
+			rot * CFrame.new(0, 0, (bs.Z + ns.Z) / 2 + ns.Z / 2 + bs.Z * 0.6), Color3.fromRGB(255, 190, 60), model, mount)
 		jet.Material = Enum.Material.Neon
 		jet.Transparency = 1
 		if side[1] == "R" then -- v1.2: the boost roar
@@ -197,7 +221,7 @@ local function build(char, look)
 		end
 		if look == "star" then
 			part("Fin_" .. side[1], Vector3.new(bs.X * 0.15, bs.Y * 0.5, bs.Z * 0.6),
-				rot * CFrame.new(0, (bs.Y + bs.Y * 0.5) / 2, bs.Z * 0.1), ORANGE, model, torso)
+				rot * CFrame.new(0, (bs.Y + bs.Y * 0.5) / 2, bs.Z * 0.1), ORANGE, model, mount)
 		end
 	end
 	model.Parent = char

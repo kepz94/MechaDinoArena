@@ -1,4 +1,4 @@
--- IdleAnimation v1.26 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.27 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -132,6 +132,17 @@
 --       smoothed speed sits between MoveWalkSpeed and MoveRunSpeed; the leg phase still follows the distance travelled
 --       (run stride), so slower moves take slower run steps. Set by RaptorModelData 1.13 and on the T-Rex
 --       (StarterCharacter / TRexModelData 1.24). MoveState reads "running" once GaitBlend passes 0.5 while moving.
+-- v1.27: Thrusters boost lean + booster swivel (BoostPose 1.0; option B of docs/mockups/boost_lean_options.html, Kepu
+--       2026-10-29 "I love B"; plan docs/plans/BOOST_LEAN_v1.0.md). Boost window = model attribute DashStartedAt (server
+--       time, MechaServer) .. + DashTime, eased in BoostEaseIn / out BoostEaseOut (BoostPose.weight). Travel direction =
+--       this frame's flat movement in the body frame, smoothed (BoostDirRate; held below BoostDirMinSpeed; starts
+--       forward). Lean: BoostPose.lean on top of the RootJoint pose (BoostLeanEnabled). Swivel: each Weld "BoosterHinge"
+--       in Mecha_Thrusters (MechaServer 1.3) gets C0 = BaseC0 * (0, 0, +-dz / 2) * BoostPose.swivel rotation on this
+--       client (BoostSwivelEnabled); C0 goes back to BaseC0 when the weight is 0. Applied after stun, before the dead
+--       pose (dead still wins). All other layers unchanged.
+--       Diagnostics: BoostLeanBlend (0.1 steps), BoostDir (degrees, atan2(right, forward), 0 = forward, 180 = back),
+--       BoostLeanPitch / BoostLeanRoll (degrees, 1 decimal), BoostSwivel ("none" / "on" / "noHinge" / "off"),
+--       BoostSwivelAngle (degrees), BoostStagger (studs, 0.01 steps).
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -157,6 +168,7 @@ local PouncePose = require(script.PouncePose) -- v1.16 (defaults are read by Pou
 local RamPose = require(script.RamPose) -- v1.19 (defaults are read by RamPose.settings)
 local EatPose = require(script.EatPose) -- v1.20 (defaults are read by EatPose.settings)
 local DeadPose = require(script.DeadPose) -- v1.21 (defaults are read by DeadPose.settings)
+local BoostPose = require(script.BoostPose) -- v1.27 (defaults are read by BoostPose.settings)
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -200,6 +212,8 @@ local pounceLatchClock, pounceLetGoAt, pounceLast -- v1.16: local latch start, l
 local RAM_FADE = 0.25        -- v1.19: s the ram pose eases out after a charge that missed
 local STUN_BLEND_RATE = 8    -- v1.19: how fast the stun flailing blends in / out (per second)
 local stunBlend = 0          -- v1.19
+local boostF, boostR = 1, 0  -- v1.27: smoothed travel direction (body frame: forward, right)
+local boostDirty = false     -- v1.27: a BoosterHinge C0 is off its BaseC0
 local eatW, eatKind, eatClock = 0, nil, 0 -- v1.20: eat / drink weight, last kind ("eat" / "drink"), loop start
 local eatReach = 0 -- v1.20: extra neck dip (degrees) that brings the mouth to the target
 local REACH_GAIN = 6 -- v1.20: degrees of neck dip per stud the mouth is off the target
@@ -443,7 +457,7 @@ end)
 
 -- v1.24: re-fit joint rest frames and leg geometry when the model's scale changes (see the header)
 local refitCount = 0
-model:SetAttribute("IdleAnimationVersion", "1.26")
+model:SetAttribute("IdleAnimationVersion", "1.27")
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -520,6 +534,7 @@ RunService.PreSimulation:Connect(function(dt)
 	local effDist = 0
 	local turnRate = 0
 	local dirTarget = 0 -- v1.17
+	local boostMv -- v1.27: this frame's flat movement (nil = none / teleport)
 	if hrp then
 		local pos, yaw = hrp.Position, yawOf(hrp.CFrame)
 		if lastPos then
@@ -532,6 +547,7 @@ RunService.PreSimulation:Connect(function(dt)
 				local moveSpeed = dt > 0 and d / dt or 0
 				local turnWeight = math.clamp(1 - moveSpeed / TURN_STEP_FADE, 0, 1)
 				effDist = d + math.abs(dYaw) * legLen * 0.5 * turnWeight
+				boostMv = Vector3.new(pos.X - lastPos.X, 0, pos.Z - lastPos.Z) -- v1.27
 				-- v1.17: move direction in the body frame (RootJoint rest frame: +X forward, +Z right)
 				local rj = motors.RootJoint
 				if rj and moveSpeed > MOVE_DIR_MIN_SPEED and model:GetAttribute("WalkDirectional") ~= false then
@@ -986,6 +1002,66 @@ RunService.PreSimulation:Connect(function(dt)
 	end
 	show("StunPose", stunBlend > 0 and "kicking" or "none")
 	show("StunBlend", math.floor(stunBlend * 10 + 0.5) / 10)
+	-- v1.27: Thrusters boost lean + booster swivel (BoostPose 1.0)
+	local bps = BoostPose.settings(model)
+	if boostMv and dt > 0 and boostMv.Magnitude / dt > bps.BoostDirMinSpeed and hrp and motors.RootJoint then
+		local bodyCF = hrp.CFrame * motors.RootJoint.restC0
+		local f, r = boostMv:Dot(bodyCF.XVector), boostMv:Dot(bodyCF.ZVector)
+		local m = math.sqrt(f * f + r * r)
+		if m > 1e-6 then
+			local a = math.min(1, dt * bps.BoostDirRate)
+			boostF += (f / m - boostF) * a
+			boostR += (r / m - boostR) * a
+		end
+	end
+	local bm = math.sqrt(boostF * boostF + boostR * boostR)
+	local bf, br = 1, 0
+	if bm > 1e-3 then bf, br = boostF / bm, boostR / bm end
+	local dashAt, dashTime = model:GetAttribute("DashStartedAt"), model:GetAttribute("DashTime")
+	local bw = 0
+	if typeof(dashAt) == "number" then
+		bw = BoostPose.weight(workspace:GetServerTimeNow() - dashAt, typeof(dashTime) == "number" and dashTime or 0.35, bps)
+	end
+	local leanPitch, leanRoll = 0, 0
+	if bw > 0 and bps.BoostLeanEnabled and motors.RootJoint then
+		local lean
+		lean, leanPitch, leanRoll = BoostPose.lean(bf, br, bw, bps)
+		pose.RootJoint = lean * (pose.RootJoint or CFrame.identity)
+	end
+	local swState, swAngle, swStagger = "none", 0, 0
+	local thr = model:FindFirstChild("Mecha_Thrusters")
+	local bL = thr and thr:FindFirstChild("Booster_L")
+	local bR = thr and thr:FindFirstChild("Booster_R")
+	local hL = bL and bL:FindFirstChild("BoosterHinge")
+	local hR = bR and bR:FindFirstChild("BoosterHinge")
+	local baseL = hL and hL:GetAttribute("BaseC0")
+	local baseR = hR and hR:GetAttribute("BaseC0")
+	local hingesOk = typeof(baseL) == "CFrame" and typeof(baseR) == "CFrame"
+	if not bps.BoostSwivelEnabled then
+		swState = "off"
+	elseif thr and not hingesOk then
+		swState = "noHinge"
+	end
+	if bw > 0 and bps.BoostSwivelEnabled and hingesOk then
+		local half = (baseR.Position - baseL.Position).Magnitude / 2
+		local rot, dz, ang = BoostPose.swivel(bf, br, bw, bps, half, bR.Size.X)
+		hL.C0 = baseL * CFrame.new(0, 0, -dz / 2) * rot
+		hR.C0 = baseR * CFrame.new(0, 0, dz / 2) * rot
+		boostDirty = true
+		swState, swAngle, swStagger = "on", ang, math.abs(dz)
+	elseif boostDirty then
+		if hingesOk then
+			hL.C0, hR.C0 = baseL, baseR
+		end
+		boostDirty = false
+	end
+	show("BoostLeanBlend", math.floor(bw * 10 + 0.5) / 10)
+	show("BoostDir", math.floor(math.deg(math.atan2(br, bf)) + 0.5))
+	show("BoostLeanPitch", math.floor(leanPitch * 10 + 0.5) / 10)
+	show("BoostLeanRoll", math.floor(leanRoll * 10 + 0.5) / 10)
+	show("BoostSwivel", swState)
+	show("BoostSwivelAngle", math.floor(swAngle + 0.5))
+	show("BoostStagger", math.floor(swStagger * 100 + 0.5) / 100)
 	-- v1.21: dead pose, last
 	local ds = DeadPose.settings(model)
 	local deadHum = model:FindFirstChildOfClass("Humanoid")
