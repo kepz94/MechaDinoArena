@@ -279,12 +279,18 @@
 --   default 0.65; missing -> 1), rounded to 0.1; every speed rule below reads those attributes, so walks, chases
 --   (x BotChaseSpeedMul), runs and the fling guard all slow down together. A change of ArenaSpeedScale rescales the bots
 --   in the game. Diagnostic: bot BotSpeedScale.
+-- v1.15 (Cloak Field, MDA-51, plan docs/plans/CLOAK_v1.0.md Task 3; Kepu: bots lose you at once): a player whose
+--   character CloakedUntil (server time, CloakServer 1.0) is in the future is cloaked. Script attribute BotCloakEnabled
+--   (default true; false = v1.14). While on: a cloaked player is never picked as a target (target search and
+--   playerAllowed, as Hidden), and a chased target that becomes cloaked is dropped on the next tick (no BotHiddenLoseTime
+--   grace; BotState goes back to wandering). The T-Rex avoid checks (rexNear, nearestRex) are unchanged: only raptors
+--   cloak. Diagnostics: bot BotCloakDrops; script BotCloakDrops.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.14"
+local VERSION = "1.15"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -348,6 +354,7 @@ local SPECIES = {
 }
 
 script:SetAttribute("BotServerVersion", VERSION)
+if script:GetAttribute("BotCloakEnabled") == nil then script:SetAttribute("BotCloakEnabled", true) end -- v1.15
 
 local function get(k)
 	local v = script:GetAttribute(k)
@@ -1471,8 +1478,14 @@ local function animalDesc(model)
 	local o = recOf(model)
 	return o and botDesc(o) or nil
 end
+-- v1.15: Cloak Field active on this character
+local function cloaked(char)
+	if script:GetAttribute("BotCloakEnabled") == false then return false end
+	local u = char:GetAttribute("CloakedUntil")
+	return typeof(u) == "number" and u > workspace:GetServerTimeNow()
+end
 local function playerAllowed(b, char)
-	return char:GetAttribute("Hidden") ~= true
+	return char:GetAttribute("Hidden") ~= true and not cloaked(char) -- v1.15
 		and not (b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char))
 end
 local function nearestPlayerDist(b)
@@ -1808,6 +1821,10 @@ local function step(b)
 			borderDrop(b)
 		elseif b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char) then -- v1.4: packs leave a T-Rex alone; v1.6: not a Hatchling one
 			target = nil
+		elseif cloaked(char) then -- v1.15: lost at once
+			target = nil
+			show(b, "BotCloakDrops", (b.shown.BotCloakDrops or 0) + 1)
+			script:SetAttribute("BotCloakDrops", (script:GetAttribute("BotCloakDrops") or 0) + 1)
 		elseif char:GetAttribute("Hidden") == true then
 			b.hiddenSince = b.hiddenSince or now
 			if now - b.hiddenSince > get("BotHiddenLoseTime") then target = nil end
@@ -1822,7 +1839,7 @@ local function step(b)
 		local best, bestD = nil, get("BotSightRange")
 		for _, player in ipairs(Players:GetPlayers()) do
 			local char, _, thrp = aliveChar(player)
-			if char and char:GetAttribute("Hidden") ~= true
+			if char and char:GetAttribute("Hidden") ~= true and not cloaked(char) -- v1.15
 				and not (b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char)) then -- v1.4; v1.6: a Hatchling T-Rex may be hunted
 				local d = flat(thrp.Position - hrp.Position).Magnitude
 				if d <= bestD and inZone(botZone(b), thrp.Position) then best, bestD = player, d end -- v1.12: + zone; v1.13: band

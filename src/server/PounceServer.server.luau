@@ -1,4 +1,4 @@
--- PounceServer v1.4 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.5 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -47,6 +47,11 @@
 --   Now "far" uses CLAIM_TOLERANCE x the raptor's Model:GetScale() and "badOffset" uses OFFSET_MAX x the same factor
 --   (factor never below 1). Script attribute PounceScaleClaimEnabled (default true; false = the 1.3 constants).
 --   Diagnostics: script PounceServerVersion; raptor PounceClaimTolerance (studs used for the last claim).
+-- v1.5: Cloak Field ambush bonus (MDA-51, plan CLOAK_v1.0 Task 3). CloakServer 1.0 sets the raptor's CloakPounceArmed
+--   to the PounceStartedAt of a pounce started while cloaked. When the claim of that same pounce succeeds, the landing
+--   hit's multiplier is 1 + (CloakPounceMul - 1) + (DebuffDamageTakenMul - 1 while the roar debuff is on), additive;
+--   CloakPounceArmed is then cleared. Ticks are unchanged. Script attribute PounceCloakBonusEnabled (default true;
+--   false = no bonus). Diagnostics: raptor PounceCloakBonus (the added part used for the last landing, 0 = none).
 -- Settings (raptor attributes): PounceEnabled (default false), PounceStaminaCost 15, PounceCooldown 3,
 --   PounceClaimWindow 0.9, PounceSizeRatio 1.5, PounceLandDamage 8, PounceTickDamage 4, PounceTickInterval 0.5.
 -- Diagnostics (raptor attributes): PounceServerResult, PounceClaimResult, PounceCount, PounceLatchCount,
@@ -64,7 +69,8 @@ local CLAIM_TOLERANCE = 24  -- studs between the claimed part and the raptor bod
 local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's centre beyond its half size
 local MAX_LATCH = 30        -- safety: seconds a latch may last
 
-script:SetAttribute("PounceServerVersion", "1.4")
+script:SetAttribute("PounceServerVersion", "1.5")
+if script:GetAttribute("PounceCloakBonusEnabled") == nil then script:SetAttribute("PounceCloakBonusEnabled", true) end -- v1.5
 if script:GetAttribute("PounceScaleClaimEnabled") == nil then script:SetAttribute("PounceScaleClaimEnabled", true) end -- v1.4
 
 -- v1.4: claim distances grow with the raptor's model scale (RaptorScale / growth); 1 when off or smaller
@@ -139,10 +145,11 @@ local function latchValue(char)
 	return v
 end
 
-local function hit(char, model, dmg, now)
+local function hit(char, model, dmg, now, extra)
 	local mul = 1
 	local untilT, dmul = model:GetAttribute("DebuffUntil"), model:GetAttribute("DebuffDamageTakenMul")
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and now < untilT then mul = dmul end
+	mul += extra or 0 -- v1.5: cloak ambush bonus, added to the debuff (not multiplied)
 	local d = math.floor(dmg * mul + 0.5)
 	local hp = model:GetAttribute("DummyHealth")
 	if typeof(hp) == "number" then model:SetAttribute("DummyHealth", math.max(0, hp - d)) end
@@ -266,7 +273,17 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 	char:SetAttribute("PounceLatchedAt", now)
 	char:SetAttribute("PounceLatchCount", (char:GetAttribute("PounceLatchCount") or 0) + 1)
 	char:SetAttribute("PounceLatched", true) -- last: clients read the rest from here
-	hit(char, model, get(char, "PounceLandDamage"), now)
+	-- v1.5: this pounce began under the cloak -> landing bonus once
+	local extra = 0
+	local armed = char:GetAttribute("CloakPounceArmed")
+	if typeof(armed) == "number" and math.abs(armed - p.start) < 1e-4 then
+		if script:GetAttribute("PounceCloakBonusEnabled") ~= false then
+			extra = math.max(0, (tonumber(char:GetAttribute("CloakPounceMul")) or 1) - 1)
+		end
+		char:SetAttribute("CloakPounceArmed", nil)
+	end
+	char:SetAttribute("PounceCloakBonus", extra)
+	hit(char, model, get(char, "PounceLandDamage"), now, extra)
 end)
 
 releaseRemote.OnServerEvent:Connect(function(player)

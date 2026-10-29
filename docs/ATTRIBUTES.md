@@ -1227,6 +1227,31 @@ T-Rex run 60 -> 39; maxed Sprint Legs (x2.6) 101; maxed + Thrusters boost (x1.75
 SkillTree module flags: BUILD_LIMITS (true: 40 points, level cap 41, MASTERY_MAX 3), SLOTS 4. Path ownership and the
 per-dino lists: docs/plans/CLOAK_v1.0.md.
 
+## Cloak Field (CloakServer 1.0 / PounceServer 1.5 / BotServer 1.15)
+Request: `ReplicatedStorage.DinoCloakRequest:FireServer(serverTime)`.
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| CloakServerEnabled | script CloakServer | true | false = every request "disabled" |
+| CloakServerVersion / CloakRequests | script CloakServer | — | "1.0" / requests received |
+| CloakResult | character | — | badArg / dead / disabled / stunned / latched / active / cooldown / ok (checked in that order) |
+| CloakState | character | "off" | "on" while cloaked |
+| CloakStartedAt / CloakedUntil | character | — / 0 | server time the cloak began / ends (CloakedUntil = end time once off) |
+| CloakReadyAt | character | 0 | server time the next cloak is allowed (end + CloakCooldown) |
+| CloakEndReason | character | — | dead / pounce / damage (health drop) / part (DashStartedAt changed, or CloakEnabled went false) / time |
+| CloakCount | character | — | accepted cloaks this life |
+| CloakPounceArmed | character | — | PounceStartedAt of the pounce that broke the cloak; cleared when that pounce lands |
+| CloakLook | character | "none" | "on" (Mecha_Cloak fins built) / "none" / "noTorso" |
+| PounceCloakBonusEnabled | script PounceServer | true | false = no cloak landing bonus |
+| PounceCloakBonus | character | — | part added to the landing multiplier (CloakPounceMul - 1, e.g. 0.35), 0 = none |
+| BotCloakEnabled | script BotServer | true | false = bots ignore the cloak (v1.14) |
+| BotCloakDrops | bot / script BotServer | — | chases dropped because the target cloaked |
+
+Star (CloakStill): while flat speed < 1 stud/s, CloakedUntil keeps moving to now + 0.25, capped at CloakStartedAt +
+2 x CloakTime. Landing multiplier: 1 + (CloakPounceMul - 1) + (DebuffDamageTakenMul - 1), additive. Hardware: Model
+`Mecha_Cloak` (Fin_L / Fin_R grey metal, Strip_L / Strip_R neon cyan, Transparency 0.7, 0.2 while cloaked) welded to
+the Torso segment's Root while CloakEnabled is true.
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |
