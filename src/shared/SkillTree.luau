@@ -1,4 +1,4 @@
--- SkillTree v1.5 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.6 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -67,8 +67,28 @@
 --     cloakPounceMul (1; 1.35 from III, added with other same-hit bonuses by PounceServer), cloakStill (false; true at
 --     star: standing still keeps the cloak, up to 2 x cloakTime). BUTTONS also lists every button part (not live ones
 --     stay "soon", so they can't be slotted).
+-- v1.6 (raptor parts batch 1, MDA-58, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md; Kepu picked mockup
+--   docs/mockups/raptor_parts_b1_options.html Blade A / Adrenaline A / Shield B): Blade Claws, Adrenaline Injector and
+--   Energy Shield are live (LIVE_MECH). Blade Claws is passive (not in BUTTONS). New effects fields (0 / 1 / false when
+--   not owned, and always for a dino that doesn't own the path):
+--     Blade Claws: bladeLandBonus (0.35 from I, added to the other landing bonuses), bladeTickMul (1; 0.74 from II: the
+--       latch / pin bite interval), bladeBleedDps / bladeBleedTime (0; 3 / 4 from III: pounce hits bleed),
+--       bladePinRefund (0; 0.5 at star: share of PounceStaminaCost given back on a pin kill).
+--     Adrenaline Injector: adrenHeal (0; 0.20 at I, 0.27 from II: share of max health healed over adrenTime),
+--       adrenTime (0; 3), adrenSpeedMul (1; 1.3), adrenCooldown (0; 20, 14.8 from III), adrenStunClear (false; true at
+--       star: usable while stunned and ends the stun).
+--     Energy Shield (Kepu 2026-10-29: no push-back - "If we're allowing it to block all attacks then the push back
+--       shouldn't exist" -> star "Longer block"; "You block all damage but you're slower during the blocking period" ->
+--       half speed, lighter at star): eshieldTime (0; 1.5, 2.05 from II, 2.77 at star), eshieldCooldown (0; 16, 11.8
+--       from III), eshieldSpeedMul (1; 0.5 while blocking, 0.68 at star). Step texts I and star replaced to say so
+--       (the 1.0 texts "a bubble that blocks damage for a few seconds" / "Bursts and knocks enemies back" are gone;
+--       II / III unchanged).
+--   Jaws is not for raptors (Kepu 2026-10-29: "jaws 1 shouldn't be an ability for raptors because that's what the claws
+--     are doing" -> "Remove Jaws for raptors"): PATHS.jaws.notFor = {Raptor = true}, the same rule as Regeneration for
+--     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
+--     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.5"
+SkillTree.Version = "1.6"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -224,7 +244,13 @@ for id, dino in pairs(SkillTree.OWNER) do
 	if SkillTree.PATHS[id] then SkillTree.PATHS[id].dino = dino end
 end
 SkillTree.PATHS.regen.notFor = {TRex = true}
+SkillTree.PATHS.jaws.notFor = {Raptor = true} -- v1.6 (Kepu: Blade Claws does the raptor's pounce upgrades)
 SkillTree.LIVE_MECH.cloak = true
+SkillTree.LIVE_MECH.blade = true -- v1.6: raptor batch 1
+SkillTree.LIVE_MECH.adrenaline = true -- v1.6
+SkillTree.LIVE_MECH.shield = true -- v1.6
+SkillTree.PATHS.shield.steps[1] = "Button: block all damage for 1.5 s, but move at half speed while it's up" -- v1.6 (Kepu)
+SkillTree.PATHS.shield.steps[4] = "Blocks even longer (2.77 s) and the slow is lighter" -- v1.6 (Kepu: no push-back)
 for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
 	"armor", "ramjet", "shieldproj", "roaramp"}) do
 	SkillTree.BUTTONS[id] = true
@@ -428,6 +454,27 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if c >= 2 then e.cloakTime = 4.1 end
 	if c >= 3 then e.cloakPounceMul = 1.35 end
 	if c >= 4 then e.cloakStill = true end
+	-- v1.6: Blade Claws (passive)
+	local bl = s.blade or 0
+	e.bladeLandBonus, e.bladeTickMul, e.bladeBleedDps, e.bladeBleedTime, e.bladePinRefund = 0, 1, 0, 0, 0
+	if bl >= 1 then e.bladeLandBonus = 0.35 end
+	if bl >= 2 then e.bladeTickMul = 0.74 end
+	if bl >= 3 then e.bladeBleedDps, e.bladeBleedTime = 3, 4 end
+	if bl >= 4 then e.bladePinRefund = 0.5 end
+	-- v1.6: Adrenaline Injector
+	local ad = s.adrenaline or 0
+	e.adrenHeal, e.adrenTime, e.adrenSpeedMul, e.adrenCooldown, e.adrenStunClear = 0, 0, 1, 0, false
+	if ad >= 1 then e.adrenHeal, e.adrenTime, e.adrenSpeedMul, e.adrenCooldown = 0.20, 3, 1.3, 20 end
+	if ad >= 2 then e.adrenHeal = 0.27 end
+	if ad >= 3 then e.adrenCooldown = 14.8 end
+	if ad >= 4 then e.adrenStunClear = true end
+	-- v1.6: Energy Shield
+	local sh = s.shield or 0
+	e.eshieldTime, e.eshieldCooldown, e.eshieldSpeedMul = 0, 0, 1
+	if sh >= 1 then e.eshieldTime, e.eshieldCooldown, e.eshieldSpeedMul = 1.5, 16, 0.5 end
+	if sh >= 2 then e.eshieldTime = 2.05 end
+	if sh >= 3 then e.eshieldCooldown = 11.8 end
+	if sh >= 4 then e.eshieldTime, e.eshieldSpeedMul = 2.77, 0.68 end
 	return e
 end
 

@@ -1,4 +1,4 @@
--- AbilityBar v1.2 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.3 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -41,13 +41,19 @@
 --     "ready"   otherwise
 --   Other tile rules as 1.1. Diagnostics AbilityBar_Slot_3 / _Slot_4; AbilityBarTiles lists all 4 slots
 --   ("R:DASH,T:CLOAK FIELD,C:+,V:+,F:POUNCE,Space:LEAP").
+-- v1.3 (raptor parts batch 1, MDA-65, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 8): Adrenaline Injector and Energy
+--   Shield slots (AdrenalineServer 1.0 / EnergyShieldServer 1.0) use the Cloak tile's states with their own attributes
+--   (TIMED_PARTS: <Prefix>Enabled, <Prefix>Until, <Prefix>ReadyAt, <Prefix>Cooldown; prefixes "Adrenaline" /
+--   "EnergyShield"): off (dimmed 0.5) / active (seconds left) / cooling (fill + seconds, dim 0.25) / ready. Titles come
+--   from the path names as before ("ADRENALINE INJECTOR", "ENERGY SHIELD").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local char = script.Parent
+local TIMED_PARTS = {adrenaline = "Adrenaline", shield = "EnergyShield"} -- v1.3: part id -> attribute prefix
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -342,6 +348,20 @@ local function update()
 				local untilT = tonumber(char:GetAttribute("CloakedUntil")) or 0
 				local cd = math.max(0.01, tonumber(char:GetAttribute("CloakCooldown")) or 12)
 				if char:GetAttribute("CloakEnabled") ~= true then
+					paint(e, "off", 0.5, 0, nil)
+				elseif untilT > now then
+					paint(e, "active", 0, 0, untilT - now)
+				elseif now < readyAt then
+					paint(e, "cooling", 0.25, (readyAt - now) / cd, readyAt - now)
+				else
+					paint(e, "ready", 0, 0, nil)
+				end
+			elseif TIMED_PARTS[e.part] then -- v1.3: Adrenaline / Energy Shield
+				local px = TIMED_PARTS[e.part]
+				local readyAt = tonumber(char:GetAttribute(px .. "ReadyAt")) or 0
+				local untilT = tonumber(char:GetAttribute(px .. "Until")) or 0
+				local cd = math.max(0.01, tonumber(char:GetAttribute(px .. "Cooldown")) or 1)
+				if char:GetAttribute(px .. "Enabled") ~= true then
 					paint(e, "off", 0.5, 0, nil)
 				elseif untilT > now then
 					paint(e, "active", 0, 0, untilT - now)

@@ -1,4 +1,4 @@
--- CloakServer v1.2 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
+-- CloakServer v1.3 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
 -- visible emitter pack. MDA-51, plan docs/plans/CLOAK_v1.0.md Tasks 3 + 4b (Kepu 2026-10-29: faint shimmer, bots lose
 -- you at once, breaks on pounce / damage / another part, 12 s cooldown, star capped at 2x; every mecha part is visible
 -- hardware).
@@ -40,13 +40,16 @@
 --   68 % of its height (upper flank), just outside its side (x = edge +- (thickness / 2 + 0.02)). Plate_1..4 = right side,
 --   Plate_5..8 = left side, front to back; each PlateHinge has attribute PlateOrder 1..4 (front to back) for CloakFX's
 --   flip timing. CloakLook "flanks".
+-- v1.3 (raptor parts batch 1, MDA-64, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 7): PART_STAMPS also lists
+--   AdrenalineStartedAt (AdrenalineServer 1.0) and EnergyShieldStartedAt (EnergyShieldServer 1.0): using either part ends
+--   the cloak with "part", like Thrusters. Nothing else changed.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local STILL_SPEED = 1
-local PART_STAMPS = {"DashStartedAt"} -- other mecha parts' start stamps break the cloak
+local PART_STAMPS = {"DashStartedAt", "AdrenalineStartedAt", "EnergyShieldStartedAt"} -- other mecha parts' start stamps break the cloak; v1.3: + Adrenaline / Energy Shield
 local METAL, CYAN = Color3.fromRGB(110, 122, 134), Color3.fromRGB(95, 243, 255)
 
 script:SetAttribute("CloakServerVersion", VERSION)

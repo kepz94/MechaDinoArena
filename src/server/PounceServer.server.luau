@@ -1,4 +1,4 @@
--- PounceServer v1.5 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.6 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -52,6 +52,14 @@
 --   hit's multiplier is 1 + (CloakPounceMul - 1) + (DebuffDamageTakenMul - 1 while the roar debuff is on), additive;
 --   CloakPounceArmed is then cleared. Ticks are unchanged. Script attribute PounceCloakBonusEnabled (default true;
 --   false = no bonus). Diagnostics: raptor PounceCloakBonus (the added part used for the last landing, 0 = none).
+-- v1.6: Blade Claws (raptor parts batch 1, MDA-60, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 3; SkillEffects 1.6
+--   writes the raptor's Blade* attributes). While script attribute PounceBladeEnabled ~= false:
+--   * landing hit: + BladeLandBonus (0 / 0.35), added like the cloak bonus (1 + cloak + blade + debuff - 1, additive);
+--     diagnostic PounceBladeBonus (the part used for the last landing).
+--   * latch / pin bite interval = PounceTickInterval x BladeTickMul (1 / 0.74; clamped 0.2 .. 1), first tick included.
+--   * pin kill: when a landing or tick hit of a "pin" takes the target's DummyHealth from above 0 to 0 and
+--     BladePinRefund > 0, the raptor gets StaminaRefundAmount = BladePinRefund x PounceStaminaCost, then
+--     StaminaRefundAt = now (StaminaServer 1.5 adds it); diagnostic PounceBladeRefunds (count).
 -- Settings (raptor attributes): PounceEnabled (default false), PounceStaminaCost 15, PounceCooldown 3,
 --   PounceClaimWindow 0.9, PounceSizeRatio 1.5, PounceLandDamage 8, PounceTickDamage 4, PounceTickInterval 0.5.
 -- Diagnostics (raptor attributes): PounceServerResult, PounceClaimResult, PounceCount, PounceLatchCount,
@@ -69,8 +77,9 @@ local CLAIM_TOLERANCE = 24  -- studs between the claimed part and the raptor bod
 local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's centre beyond its half size
 local MAX_LATCH = 30        -- safety: seconds a latch may last
 
-script:SetAttribute("PounceServerVersion", "1.5")
+script:SetAttribute("PounceServerVersion", "1.6")
 if script:GetAttribute("PounceCloakBonusEnabled") == nil then script:SetAttribute("PounceCloakBonusEnabled", true) end -- v1.5
+if script:GetAttribute("PounceBladeEnabled") == nil then script:SetAttribute("PounceBladeEnabled", true) end -- v1.6
 if script:GetAttribute("PounceScaleClaimEnabled") == nil then script:SetAttribute("PounceScaleClaimEnabled", true) end -- v1.4
 
 -- v1.4: claim distances grow with the raptor's model scale (RaptorScale / growth); 1 when off or smaller
@@ -145,6 +154,14 @@ local function latchValue(char)
 	return v
 end
 
+-- v1.6: Blade Claws numbers (neutral when the switch is off)
+local function bladeOn() return script:GetAttribute("PounceBladeEnabled") ~= false end
+local function tickInterval(char)
+	local mul = 1
+	if bladeOn() then mul = math.clamp(tonumber(char:GetAttribute("BladeTickMul")) or 1, 0.2, 1) end
+	return get(char, "PounceTickInterval") * mul
+end
+
 local function hit(char, model, dmg, now, extra)
 	local mul = 1
 	local untilT, dmul = model:GetAttribute("DebuffUntil"), model:GetAttribute("DebuffDamageTakenMul")
@@ -159,6 +176,13 @@ local function hit(char, model, dmg, now, extra)
 		model:SetAttribute("KilledByUserId", killer and killer.UserId or 0)
 		model:SetAttribute("KilledWith", "pounce")
 		model:SetAttribute("KilledAt", now) -- last: KillRegenServer reacts to this one
+		local l = latches[char] -- v1.6: Blade Claws star, pin kill refund
+		local refund = bladeOn() and (tonumber(char:GetAttribute("BladePinRefund")) or 0) or 0
+		if l and l.mode == "pin" and l.model == model and refund > 0 then
+			char:SetAttribute("StaminaRefundAmount", refund * get(char, "PounceStaminaCost"))
+			char:SetAttribute("StaminaRefundAt", now) -- last: StaminaServer reacts to this one
+			char:SetAttribute("PounceBladeRefunds", (char:GetAttribute("PounceBladeRefunds") or 0) + 1)
+		end
 	end
 	char:SetAttribute("PounceHitDamage", d)
 	char:SetAttribute("PounceDamageTotal", (char:GetAttribute("PounceDamageTotal") or 0) + d)
@@ -264,7 +288,7 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 		model:SetAttribute("PinnedAt", now)
 	end
 	char:SetAttribute("PounceMode", mode)
-	latches[char] = {model = model, part = part, at = now, nextTick = now + get(char, "PounceTickInterval"), mode = mode}
+	latches[char] = {model = model, part = part, at = now, nextTick = now + tickInterval(char), mode = mode} -- v1.6: tickInterval
 	latchValue(char).Value = part
 	char:SetAttribute("PounceLatchOffset", offset)
 	char:SetAttribute("PounceLatchTarget", model.Name)
@@ -283,7 +307,9 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 		char:SetAttribute("CloakPounceArmed", nil)
 	end
 	char:SetAttribute("PounceCloakBonus", extra)
-	hit(char, model, get(char, "PounceLandDamage"), now, extra)
+	local blade = bladeOn() and math.max(0, tonumber(char:GetAttribute("BladeLandBonus")) or 0) or 0 -- v1.6
+	char:SetAttribute("PounceBladeBonus", blade)
+	hit(char, model, get(char, "PounceLandDamage"), now, extra + blade)
 end)
 
 releaseRemote.OnServerEvent:Connect(function(player)
@@ -309,7 +335,7 @@ RunService.Heartbeat:Connect(function()
 		elseif now - l.at > MAX_LATCH then
 			release(char, "timeout")
 		elseif now >= l.nextTick then
-			l.nextTick += get(char, "PounceTickInterval")
+			l.nextTick += tickInterval(char) -- v1.6 (was PounceTickInterval)
 			hit(char, l.model, get(char, "PounceTickDamage"), now)
 		end
 	end

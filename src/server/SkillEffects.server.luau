@@ -1,4 +1,4 @@
--- SkillEffects v1.5 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.6 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -47,10 +47,20 @@
 --   CloakEnabled = effects on AND cloakTime > 0 AND "cloak" in any SkillSlot1..SLOTS (4); CloakTime, CloakCooldown,
 --   CloakPounceMul (1 while off), CloakStill (false while off). Written with the dash attributes (same re-apply
 --   triggers). CloakServer 1.0 / MechaButtons 1.4 / AbilityBar 1.2 read them.
+-- v1.6 (raptor parts batch 1, MDA-59, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 2; SkillTree 1.6). Written with the
+--   dash / cloak attributes (same re-apply triggers); everything is 0 / 1 / false while effects are off:
+--   * Blade Claws (passive, bought is enough): BladeLook (steps >= 1), BladeLandBonus (0 / 0.35), BladeTickMul
+--     (1 / 0.74), BladeBleedDps / BladeBleedTime (0 / 3 / 4), BladePinRefund (0 / 0.5). PounceServer 1.6 / BladeServer 1.0
+--     read them. Pounce hits (PounceBiteAt) bleed with the stronger of Jaws' bleed and BladeBleedDps (time from the
+--     same source); bites keep Jaws' bleed only.
+--   * Adrenaline Injector (bought AND in any slot): AdrenalineEnabled, AdrenalineHeal, AdrenalineTime,
+--     AdrenalineSpeedMul (1 while off), AdrenalineCooldown, AdrenalineStunClear. AdrenalineServer 1.0 reads them.
+--   * Energy Shield (bought AND in any slot): EnergyShieldEnabled, EnergyShieldTime, EnergyShieldCooldown,
+--     EnergyShieldSpeedMul (1 while off). EnergyShieldServer 1.0 / SprintTest 1.6 read them.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
@@ -132,6 +142,32 @@ local function applyChar(char, st)
 	char:SetAttribute("CloakCooldown", cloakOn and e.cloakCooldown or 0)
 	char:SetAttribute("CloakPounceMul", cloakOn and (e.cloakPounceMul or 1) or 1)
 	char:SetAttribute("CloakStill", cloakOn and e.cloakStill == true or false)
+	-- v1.6: raptor batch 1
+	local function inSlot(id)
+		for n = 1, ST.SLOTS or 2 do
+			if st.player:GetAttribute("SkillSlot" .. n) == id then return true end
+		end
+		return false
+	end
+	local bladeOn = live and (e.bladeLandBonus or 0) > 0
+	char:SetAttribute("BladeLook", bladeOn)
+	char:SetAttribute("BladeLandBonus", bladeOn and e.bladeLandBonus or 0)
+	char:SetAttribute("BladeTickMul", bladeOn and (e.bladeTickMul or 1) or 1)
+	char:SetAttribute("BladeBleedDps", bladeOn and (e.bladeBleedDps or 0) or 0)
+	char:SetAttribute("BladeBleedTime", bladeOn and (e.bladeBleedTime or 0) or 0)
+	char:SetAttribute("BladePinRefund", bladeOn and (e.bladePinRefund or 0) or 0)
+	local adOn = live and (e.adrenTime or 0) > 0 and inSlot("adrenaline")
+	char:SetAttribute("AdrenalineEnabled", adOn)
+	char:SetAttribute("AdrenalineHeal", adOn and e.adrenHeal or 0)
+	char:SetAttribute("AdrenalineTime", adOn and e.adrenTime or 0)
+	char:SetAttribute("AdrenalineSpeedMul", adOn and (e.adrenSpeedMul or 1) or 1)
+	char:SetAttribute("AdrenalineCooldown", adOn and e.adrenCooldown or 0)
+	char:SetAttribute("AdrenalineStunClear", adOn and e.adrenStunClear == true or false)
+	local shOn = live and (e.eshieldTime or 0) > 0 and inSlot("shield")
+	char:SetAttribute("EnergyShieldEnabled", shOn)
+	char:SetAttribute("EnergyShieldTime", shOn and e.eshieldTime or 0)
+	char:SetAttribute("EnergyShieldCooldown", shOn and e.eshieldCooldown or 0)
+	char:SetAttribute("EnergyShieldSpeedMul", shOn and (e.eshieldSpeedMul or 1) or 1)
 end
 
 -- healing (regen / lifesteal), overflow into the shield
@@ -170,17 +206,19 @@ end
 local bleeds = {} -- [bot] = {char, player, dps, untilT}
 local crushed = setmetatable({}, {__mode = "k"}) -- [bot] = last crush time
 
-local function onHit(char, st, damage, targetName)
+local function onHit(char, st, damage, targetName, isPounce) -- v1.6: + isPounce
 	if not on() then return end
 	local e = st.e
 	if e.lifesteal > 0 and type(damage) == "number" and damage > 0 then heal(char, st, e.lifesteal * damage, "lifesteal") end
-	if e.bleedDps <= 0 and e.crushStun <= 0 then return end
+	local bleedDps, bleedTime = e.bleedDps, e.bleedTime
+	if isPounce and (e.bladeBleedDps or 0) > bleedDps then bleedDps, bleedTime = e.bladeBleedDps, e.bladeBleedTime end -- v1.6
+	if bleedDps <= 0 and e.crushStun <= 0 then return end
 	local bot = findBot(targetName)
 	if not bot or (tonumber(bot:GetAttribute("DummyHealth")) or 0) <= 0 then return end
 	local t = now()
-	if e.bleedDps > 0 then
-		bleeds[bot] = {char = char, player = st.player, dps = e.bleedDps, untilT = t + e.bleedTime}
-		bot:SetAttribute("SkillBleedUntil", t + e.bleedTime)
+	if bleedDps > 0 then
+		bleeds[bot] = {char = char, player = st.player, dps = bleedDps, untilT = t + bleedTime}
+		bot:SetAttribute("SkillBleedUntil", t + bleedTime)
 		bot:SetAttribute("SkillBleedBy", char.Name)
 	end
 	if e.crushStun > 0 and t - (crushed[bot] or -math.huge) >= e.crushCooldown then
@@ -268,7 +306,7 @@ local function onCharacter(player, char)
 		onHit(char, st, char:GetAttribute("BiteHitDamage"), char:GetAttribute("BiteHitTarget"))
 	end)
 	char:GetAttributeChangedSignal("PounceBiteAt"):Connect(function()
-		onHit(char, st, char:GetAttribute("PounceHitDamage"), char:GetAttribute("PounceLatchTarget"))
+		onHit(char, st, char:GetAttribute("PounceHitDamage"), char:GetAttribute("PounceLatchTarget"), true) -- v1.6: pounce
 	end)
 	char:GetAttributeChangedSignal("BiteEnabled"):Connect(function() applyChar(char, st) end)
 	char:GetAttributeChangedSignal("StunnedUntil"):Connect(function()

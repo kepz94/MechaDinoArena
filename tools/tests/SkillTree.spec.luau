@@ -1,4 +1,4 @@
--- SkillTree.spec v1.5 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.6 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 local ok, ST = pcall(function() return require(game.ServerStorage.DinoArcade.SkillTree) end)
 if not ok then return "FAIL require: " .. tostring(ST) end
@@ -9,7 +9,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.5")
+eq("Version", ST.Version, "1.6") -- v1.6 (was 1.5)
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 40) -- v1.5 (ADR-004)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 41)
@@ -280,6 +280,50 @@ eq("setSlot 3", (function() local r = ST.setSlot({"thrusters", false, false, fal
 eq("setSlot 4 cloak", (function() local r = ST.setSlot({"thrusters", false, false, false}, both, 4, "cloak", "Raptor") return lo4(r) end)(), "thrusters,false,false,cloak")
 eq("autoSlot cloak", lo4(ST.autoSlot({"thrusters", false, false, false}, both, "cloak", "Raptor")), "thrusters,cloak,false,false")
 eq("TRex loadout drops raptor parts", lo4(ST.sanitizeLoadout({"thrusters", "cloak", false, false}, both, "TRex")), "false,false,false,false")
+
+-- v1.6: raptor batch 1 (Blade Claws, Adrenaline Injector, Energy Shield; plan docs/plans/RAPTOR_PARTS_B1_v1.0.md)
+eq("Version 1.6", ST.Version, "1.6")
+for _, id in ipairs({"blade", "adrenaline", "shield"}) do eq(id .. " live", ST.PATHS[id].soon, false) end
+eq("blade passive", ST.BUTTONS.blade == true, false)
+local function R(id, n) return ST.effects({[id] = n}, "Raptor") end
+eq("blade 0", R("blade", 0).bladeLandBonus, 0); eq("blade 0 tick", R("blade", 0).bladeTickMul, 1)
+eq("blade I", R("blade", 1).bladeLandBonus, 0.35); eq("blade I tick", R("blade", 1).bladeTickMul, 1)
+eq("blade II tick", R("blade", 2).bladeTickMul, 0.74); eq("blade II bleed", R("blade", 2).bladeBleedDps, 0)
+eq("blade III bleed", R("blade", 3).bladeBleedDps, 3); eq("blade III time", R("blade", 3).bladeBleedTime, 4)
+eq("blade III refund", R("blade", 3).bladePinRefund, 0); eq("blade star refund", R("blade", 4).bladePinRefund, 0.5)
+eq("adren 0", R("adrenaline", 0).adrenHeal, 0); eq("adren 0 cd", R("adrenaline", 0).adrenCooldown, 0)
+eq("adren I heal", R("adrenaline", 1).adrenHeal, 0.20); eq("adren I time", R("adrenaline", 1).adrenTime, 3)
+eq("adren I speed", R("adrenaline", 1).adrenSpeedMul, 1.3); eq("adren I cd", R("adrenaline", 1).adrenCooldown, 20)
+eq("adren II heal", R("adrenaline", 2).adrenHeal, 0.27); eq("adren III cd", R("adrenaline", 3).adrenCooldown, 14.8)
+eq("adren III clear", R("adrenaline", 3).adrenStunClear, false); eq("adren star clear", R("adrenaline", 4).adrenStunClear, true)
+eq("adren 0 speed", R("adrenaline", 0).adrenSpeedMul, 1)
+eq("shield 0", R("shield", 0).eshieldTime, 0); eq("shield 0 slow", R("shield", 0).eshieldSpeedMul, 1)
+eq("shield I", R("shield", 1).eshieldTime, 1.5); eq("shield I cd", R("shield", 1).eshieldCooldown, 16)
+eq("shield I slow", R("shield", 1).eshieldSpeedMul, 0.5)
+eq("shield II", R("shield", 2).eshieldTime, 2.05); eq("shield III cd", R("shield", 3).eshieldCooldown, 11.8)
+eq("shield star", R("shield", 4).eshieldTime, 2.77); eq("shield star slow", R("shield", 4).eshieldSpeedMul, 0.68)
+eq("shield III slow", R("shield", 3).eshieldSpeedMul, 0.5)
+-- 35% rule
+eq("35 adren heal", 0.27 / 0.20 >= 1.35 - 1e-9, true); eq("35 adren cd", 20 / 14.8 >= 1.35, true)
+eq("35 shield II", 2.05 / 1.5 >= 1.35, true); eq("35 shield star", 2.77 / 2.05 >= 1.35, true)
+eq("35 shield cd", 16 / 11.8 >= 1.35, true); eq("35 shield slow", 0.68 / 0.5 >= 1.35, true)
+-- T-Rex gets none of it
+local tx = ST.effects({blade = 4, adrenaline = 4, shield = 4}, "TRex")
+eq("TRex blade", tx.bladeLandBonus, 0); eq("TRex adren", tx.adrenHeal, 0); eq("TRex shield", tx.eshieldTime, 0)
+-- slots: adrenaline / shield slottable, blade not
+local b1 = {adrenaline = 1, shield = 1, blade = 1}
+eq("autoSlot adrenaline", lo4(ST.autoSlot({false, false, false, false}, b1, "adrenaline", "Raptor")), "adrenaline,false,false,false")
+eq("autoSlot blade", lo4(ST.autoSlot({false, false, false, false}, b1, "blade", "Raptor")), "false,false,false,false")
+eq("setSlot shield 4", (function() local r = ST.setSlot({false, false, false, false}, b1, 4, "shield", "Raptor") return lo4(r) end)(), "false,false,false,shield")
+eq("shield step I text", ST.PATHS.shield.steps[1], "Button: block all damage for 1.5 s, but move at half speed while it's up")
+eq("shield star text", ST.PATHS.shield.steps[4], "Blocks even longer (2.77 s) and the slow is lighter")
+-- v1.6: no Jaws for raptors
+eq("raptor jaws hidden", ST.seesPath("jaws", "Raptor"), false); eq("trex jaws", ST.seesPath("jaws", "TRex"), true)
+eq("raptor jaws buy", select(2, ST.canBuy({}, "jaws", 5, "Raptor")), "otherDino")
+eq("raptor jaws effects", ST.effects({jaws = 4}, "Raptor").bleedDps, 0)
+eq("raptor jaws refunded", ST.sanitize({jaws = 2}, "Raptor").jaws, 0)
+local att = {} for _, p in ipairs(ST.pathsFor("attack", "Raptor")) do table.insert(att, p.id) end
+eq("raptor attack area", table.concat(att, ","), "blade,dart")
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

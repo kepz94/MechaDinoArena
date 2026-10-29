@@ -15,18 +15,21 @@
 ## Do-not-touch
 MechaServer / Thrusters, CloakFX, IdleAnimation and its pose modules, BotServer, BiteServer, RamServer, ShakeOffServer, StatServer, SkillServer, SkillScreen (already draws any live path), the T-Rex parts, the batch 2 / 3 parts (stay "soon").
 
+## Jaws is not for raptors
+Kepu 2026-10-29: "jaws 1 shouldn't be an ability for raptors because that's what the claws are doing" -> "Remove Jaws for raptors". SkillTree 1.6: `PATHS.jaws.notFor = {Raptor = true}` (the Regeneration / T-Rex rule). Raptor Attack area = Blade Claws + Dart Launcher; raptor Jaws steps are refunded on load; the T-Rex keeps Jaws.
+
 ## Steps and numbers
 
 | Part | I | II | III | ★ |
 |---|---|---|---|---|
 | Blade Claws (passive) | pounce landing hit +0.35 (added to the other landing bonuses) | latch / pin bite interval × 0.74 | pounce hits bleed 3 / s for 4 s | a pin kill gives back 50% of PounceStaminaCost |
 | Adrenaline Injector (button) | heal 20% of max health over 3 s, run × 1.3 for 3 s, cooldown 20 s | heal 27% | cooldown 14.8 s | usable while stunned and ends the stun |
-| Energy Shield (button) | block all damage for 1.5 s, cooldown 16 s; you move at 0.5× speed while blocking | 2.05 s | cooldown 11.9 s | 2.77 s and the slow eases to 0.68× (Kepu 2026-10-29: "If we're allowing it to block all attacks then the push back shouldn't exist" -> "Longer block"; "it's going to be a drawback ... you're slower during the blocking period" -> half speed, lighter at ★) |
+| Energy Shield (button) | block all damage for 1.5 s, cooldown 16 s; you move at 0.5× speed while blocking | 2.05 s | cooldown 11.8 s | 2.77 s and the slow eases to 0.68× (Kepu 2026-10-29: "If we're allowing it to block all attacks then the push back shouldn't exist" -> "Longer block"; "it's going to be a drawback ... you're slower during the blocking period" -> half speed, lighter at ★) |
 
 ## Attribute contract (written by SkillEffects 1.6 on the character; 0 / false while off or not owned / not slotted)
 - Blade (bought, passive; no slot): `BladeLandBonus` (0 / 0.35), `BladeTickMul` (1 / 0.74), `BladeBleedDps` (0 / 3), `BladeBleedTime` (0 / 4), `BladePinRefund` (0 / 0.5), `BladeLook` (true when steps ≥ 1).
 - Adrenaline (bought and in any slot): `AdrenalineEnabled`, `AdrenalineHeal` (0.20 / 0.27), `AdrenalineTime` (3), `AdrenalineSpeedMul` (1.3), `AdrenalineCooldown` (20 / 14.8), `AdrenalineStunClear` (false / true).
-- Energy Shield (bought and in any slot): `EnergyShieldEnabled`, `EnergyShieldTime` (1.5 / 2.05 / ★ 2.77), `EnergyShieldCooldown` (16 / 11.9), `EnergyShieldSpeedMul` (0.5 / ★ 0.68).
+- Energy Shield (bought and in any slot): `EnergyShieldEnabled`, `EnergyShieldTime` (1.5 / 2.05 / ★ 2.77), `EnergyShieldCooldown` (16 / 11.8), `EnergyShieldSpeedMul` (0.5 / ★ 0.68).
 - Server state (each part's own script): `AdrenalineStartedAt`, `AdrenalineUntil`, `AdrenalineReadyAt`, `AdrenalineServerResult`; `EnergyShieldStartedAt`, `EnergyShieldUntil`, `EnergyShieldReadyAt`, `EnergyShieldServerResult`, `EnergyShieldBlocks`, `EnergyShieldBlockAt`.
 
 ## Deterministic map
@@ -55,7 +58,7 @@ MechaServer / Thrusters, CloakFX, IdleAnimation and its pose modules, BotServer,
 ### Task 1 — SkillTree 1.6 · Mode: Logic
 **Files:** Modify `src/shared/SkillTree.luau`; Test `tools/tests/SkillTree.spec.luau`.
 **Produces:** `effects(...)` fields `bladeLandBonus, bladeTickMul, bladeBleedDps, bladeBleedTime, bladePinRefund, adrenHeal, adrenTime, adrenSpeedMul, adrenCooldown, adrenStunClear, eshieldTime, eshieldCooldown, eshieldSpeedMul`; `LIVE_MECH.blade / .adrenaline / .shield = true` (blade stays out of BUTTONS: passive).
-- [ ] Spec first: the step table above for each part, 35%-rule checks (I→II heal 0.27/0.20 = 1.35; shield 2.05/1.5 and 2.77/2.05 ≥ 1.35; cooldowns 20/14.8 and 16/11.9 ≥ 1.35), T-Rex gets all zeros, blade not slottable, adrenaline / shield slottable. Run in Studio Edit → FAIL.
+- [ ] Spec first: the step table above for each part, 35%-rule checks (I→II heal 0.27/0.20 = 1.35; shield 2.05/1.5 and 2.77/2.05 ≥ 1.35; cooldowns 20/14.8 and 16/11.8 ≥ 1.35), T-Rex gets all zeros, blade not slottable, adrenaline / shield slottable. Run in Studio Edit → FAIL.
 - [ ] Code, run → PASS. Version header + changelog. Energy Shield's step texts become: I "Button: block all damage for 1.5 s, but move at half speed while it's up", ★ "Blocks even longer (2.77 s) and the slow is lighter" (Kepu's call; the 1.0 text "Bursts and knocks enemies back" is replaced, steps I–III unchanged).
 **Acceptance:** spec PASS; raptor tree shows the three lines as buyable (no "soon").
 

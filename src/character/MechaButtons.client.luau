@@ -1,4 +1,4 @@
--- MechaButtons v1.4 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.5 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -69,12 +69,18 @@
 --   * Toggle: script attribute MechaButtonsPullEnabled (default true; false = 1.3 touch behaviour, slots 3 / 4 by T / V
 --     only). Diagnostics: MechaButtonsLastPress "slot3:..." / "slot4:...", MechaButtonsLastGesture ("tap" / "pull" /
 --     "press" = fired on InputBegan), MechaButtonsPullPx.
+-- v1.5 (raptor parts batch 1, MDA-65, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 8): two more button parts, handled
+--   like Cloak through TIMED_PARTS (part id -> attribute prefix, remote): "adrenaline" -> "Adrenaline",
+--   DinoAdrenalineRequest (AdrenalineServer 1.0); "shield" -> "EnergyShield", DinoEnergyShieldRequest
+--   (EnergyShieldServer 1.0). A press fires the remote with the server time. Ready while <Prefix>Enabled is true,
+--   <Prefix>Until <= now and now >= <Prefix>ReadyAt (else 0.5); the dark fill is the cooldown left / <Prefix>Cooldown.
+--   Button names "ADRENALINE" / "SHIELD". Thrusters / Cloak unchanged.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -95,6 +101,10 @@ char:SetAttribute("MechaButtonsVersion", VERSION)
 char:SetAttribute("MechaDashLocal", "idle")
 local remote = ReplicatedStorage:WaitForChild("DinoDashRequest", 20)
 local cloakRemote -- v1.4: DinoCloakRequest (CloakServer 1.0), looked up on first use
+local TIMED_PARTS = { -- v1.5: part id -> {attribute prefix, remote name, button name}
+	adrenaline = {"Adrenaline", "DinoAdrenalineRequest", "ADRENALINE"},
+	shield = {"EnergyShield", "DinoEnergyShieldRequest", "SHIELD"},
+}
 
 local function slotPart(n)
 	local v = player:GetAttribute("SkillSlot" .. n)
@@ -109,6 +119,11 @@ local function press(n)
 		cloakRemote = cloakRemote or ReplicatedStorage:FindFirstChild("DinoCloakRequest")
 		if cloakRemote then cloakRemote:FireServer(workspace:GetServerTimeNow()) end
 	end
+	local tp = id and TIMED_PARTS[id] -- v1.5
+	if tp then
+		local r = ReplicatedStorage:FindFirstChild(tp[2])
+		if r then r:FireServer(workspace:GetServerTimeNow()) end
+	end
 end
 
 -- v1.4: is a part ready to use, and how much of its cooldown is left (0..1)
@@ -121,6 +136,16 @@ local function partState(id)
 		local left = (tonumber(char:GetAttribute("CloakReadyAt")) or 0) - now
 		return ready, (cd > 0 and left > 0) and math.clamp(left / cd, 0, 1) or 0
 	end
+	local tp = TIMED_PARTS[id] -- v1.5
+	if tp then
+		local px = tp[1]
+		local readyAt = tonumber(char:GetAttribute(px .. "ReadyAt")) or 0
+		local ready = char:GetAttribute(px .. "Enabled") == true and (tonumber(char:GetAttribute(px .. "Until")) or 0) <= now
+			and now >= readyAt
+		local cd = tonumber(char:GetAttribute(px .. "Cooldown")) or 0
+		local left = readyAt - now
+		return ready, (cd > 0 and left > 0) and math.clamp(left / cd, 0, 1) or 0
+	end
 	local nextAt = tonumber(char:GetAttribute("DashNextChargeAt")) or 0
 	local rc = tonumber(char:GetAttribute("DashRecharge")) or 8
 	local frac = 0
@@ -129,6 +154,7 @@ local function partState(id)
 end
 local function partName(id)
 	if id == "thrusters" then return "DASH" end
+	if TIMED_PARTS[id] then return TIMED_PARTS[id][3] end -- v1.5
 	return string.upper(id)
 end
 
@@ -583,7 +609,7 @@ draw = function()
 	for n, s in ipairs(slots) do
 		if gesture and gesture.n == n and gesture.pulling then continue end -- v1.4: keep the pulling look
 		local id = slotPart(n)
-		if id == "cloak" then ready = (partState("cloak")) else ready = char:GetAttribute("DashEnabled") == true end -- v1.4
+		if id == "cloak" or TIMED_PARTS[id] then ready = (partState(id)) else ready = char:GetAttribute("DashEnabled") == true end -- v1.4; v1.5: + timed parts
 		if id then
 			s.stroke.Color, s.stroke.Transparency = ORANGE, ready and 0 or 0.5
 			s.main.Text = partName(id) -- v1.4 (was: thrusters -> DASH, else the id)
@@ -614,21 +640,33 @@ draw = function()
 end
 
 local lastCloakReady -- v1.4: redraw when the cloak's readiness flips (cooldown runs out)
+local lastTimedReady = {} -- v1.5: the same for the timed parts
 RunService.RenderStepped:Connect(function()
 	local nextAt = tonumber(char:GetAttribute("DashNextChargeAt")) or 0
 	local rc = tonumber(char:GetAttribute("DashRecharge")) or 8
 	local frac = 0
 	if nextAt > 0 and rc > 0 then frac = math.clamp((nextAt - workspace:GetServerTimeNow()) / rc, 0, 1) end
 	local cReady, cFrac = partState("cloak") -- v1.4
+	local redraw = false
 	for n, s in ipairs(slots) do
 		local id = slotPart(n)
-		s.cd.Size = UDim2.fromScale(1, id == "thrusters" and frac or id == "cloak" and cFrac or 0)
+		local tFrac = 0
+		if id and TIMED_PARTS[id] then -- v1.5
+			local r, f = partState(id)
+			tFrac = f
+			if r ~= lastTimedReady[id] then lastTimedReady[id] = r; redraw = true end
+		end
+		s.cd.Size = UDim2.fromScale(1, id == "thrusters" and frac or id == "cloak" and cFrac or tFrac)
 	end
-	if cReady ~= lastCloakReady then lastCloakReady = cReady; draw() end
+	if cReady ~= lastCloakReady then lastCloakReady = cReady; redraw = true end
+	if redraw then draw() end
 end)
 
 local WATCH = {DashEnabled = true, DashCharges = true, DashChargesLeft = true, AutoRun = true,
 	CloakEnabled = true, CloakState = true, CloakReadyAt = true} -- v1.4: + cloak
+for _, tp in pairs(TIMED_PARTS) do -- v1.5
+	for _, k in ipairs({"Enabled", "Until", "ReadyAt"}) do WATCH[tp[1] .. k] = true end
+end
 char.AttributeChanged:Connect(function(name)
 	if name == "AutoRun" then layout() end
 	if WATCH[name] then draw() end

@@ -1,4 +1,4 @@
--- StaminaServer v1.4 (Dino Arcade) — TEST. Server-owned stamina for every player dino.
+-- StaminaServer v1.5 (Dino Arcade) — TEST. Server-owned stamina for every player dino.
 -- Stamina is stored as a straight-line curve so every client can draw it smoothly without updates:
 --   stamina(now) = clamp(StaminaValue + StaminaRate * (now - StaminaAt), 0, StaminaMax)
 --   (replicated character attributes; StaminaAt is server time, written last on every change).
@@ -26,6 +26,9 @@
 --   stays false, so SprintTest / CreepServer / JumpServer / RamServer / PounceServer never see it); the pounce cost and
 --   the latch / pin drain work as v1.2 (PounceServer still releases at 0), and stamina refills at the normal rate
 --   after StaminaRegenDelay. Bite / jump / ram costs come from their own cost attributes (0 in TRexModelData 1.22).
+-- v1.5: stamina refund (Blade Claws star, PounceServer 1.6; MDA-60, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 3): a new
+--   StaminaRefundAt adds StaminaRefundAmount (clamped to StaminaMax; the current rate is kept). Ignored while
+--   StaminaEnabled is false. Diagnostics: StaminaRefundCount, StaminaLastEvent "refund"; script StaminaServerVersion.
 -- Exhaustion: when stamina reaches 0 (running or biting), Exhausted = true (replicated): SprintTest 1.4 blocks
 --   running and uses MoveCreepSpeed, CreepServer 1.1 holds Creeping = true (crouch walk). Refill works as
 --   normal; at StaminaRecoverFraction x StaminaMax (default 25%) Exhausted = false.
@@ -47,6 +50,7 @@ local DEFAULTS = {StaminaEnabled = true, StaminaMax = 100, StaminaRunTime = 15, 
 	PounceStaminaCost = 15, PounceLatchDrain = 15} -- v1.2
 DEFAULTS.RamStaminaCost = 20 -- v1.3
 DEFAULTS.StaminaPounceOnly = false -- v1.4
+script:SetAttribute("StaminaServerVersion", "1.5") -- v1.5
 
 local remote = ReplicatedStorage:FindFirstChild("DinoRunRequest")
 if not remote then
@@ -210,6 +214,19 @@ local function onCharacter(char)
 		char:SetAttribute("StaminaRamCount", (char:GetAttribute("StaminaRamCount") or 0) + 1)
 		char:SetAttribute("StaminaLastEvent", "ram")
 		step(char, st, t) -- exhaustion check right away
+	end)
+	char:GetAttributeChangedSignal("StaminaRefundAt"):Connect(function() -- v1.5
+		local at = char:GetAttribute("StaminaRefundAt")
+		if at == nil or at == st.lastRefund then return end
+		st.lastRefund = at
+		if get(char, "StaminaEnabled") == false then return end
+		local amount = tonumber(char:GetAttribute("StaminaRefundAmount")) or 0
+		if amount <= 0 then return end
+		local t = workspace:GetServerTimeNow()
+		local s = math.min(get(char, "StaminaMax"), current(char, t) + amount)
+		anchor(char, s, char:GetAttribute("StaminaRate") or 0, t)
+		char:SetAttribute("StaminaRefundCount", (char:GetAttribute("StaminaRefundCount") or 0) + 1)
+		char:SetAttribute("StaminaLastEvent", "refund")
 	end)
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then states[char] = nil end
