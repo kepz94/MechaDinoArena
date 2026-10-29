@@ -1,4 +1,4 @@
--- SkillServer v1.5 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
+-- SkillServer v1.6 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 2, ADR "Skill trees own XP and replace class stat points".
 -- Kepu: kills give XP, each level gives 1 skill point (cap 60), free respec any time, keep everything on death, builds
 --   saved. GrowthServer stays off (adult spawns); this script owns skill XP. Maths: ServerStorage.DinoArcade.SkillTree.
@@ -66,12 +66,20 @@
 --   loadout) when the layer turns on for that dino (d.testPlaced[key]; cleared when the layer is off for it and on
 --   respec). Nothing is hidden: SkillSlot1..4 are the loadout itself. Points, steps and buys stay real; a "cloak" left
 --   in a saved loadout is dropped on load (not owned) and when the layer is off.
+-- v1.6 (Kepu 2026-10-29, after raptor parts batch 1 shipped and Blade Claws had to be bought: "all things that are added
+--   need to be maxed unlocked for testing"): the same switch (SkillTestCloakEnabled) now gives EVERY live mecha part of
+--   the active dino at star (SkillTree.LIVE_MECH paths the dino owns: today the raptor's Cloak Field, Thrusters, Blade
+--   Claws, Adrenaline Injector, Energy Shield; later batches join automatically), not only the Cloak, and for any dino
+--   (1.5: raptor only). stepsFor = real steps with each of those set to 4. Each button part among them is placed once
+--   into the first empty slot (d.testPlaced[key] is now a set of part ids; an old boolean counts as {cloak}); passive
+--   parts (Blade Claws) need no slot. Points, steps, buys and the save stay real, as before. New diagnostic: player
+--   attribute SkillTestParts (the given ids, comma-separated; "" when off).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -117,19 +125,32 @@ end
 
 local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest; v1.2: dinos, active}
 
-local function testCloak(d) -- v1.4
-	return script:GetAttribute("SkillTestCloakEnabled") == true and d.active == "Raptor" and ST.PATHS.cloak ~= nil
+-- v1.6: the live mecha parts the active dino owns (PATH_ORDER order)
+local function testParts(d)
+	local out = {}
+	if script:GetAttribute("SkillTestCloakEnabled") ~= true or not d.active then return out end
+	for _, id in ipairs(ST.PATH_ORDER) do
+		local p = ST.PATHS[id]
+		if ST.LIVE_MECH[id] and p and not p.soon and ST.seesPath(p, d.active) then table.insert(out, id) end
+	end
+	return out
 end
-local function stepsFor(d) -- v1.5: real steps, plus the test Cloak at star while the layer is on
-	if not testCloak(d) then return d.steps end
+local function testCloak(d) -- v1.4; v1.6: true when the layer gives any part to this dino
+	return #testParts(d) > 0
+end
+local function stepsFor(d) -- v1.5: real steps, plus the test parts at star while the layer is on (v1.6: all live parts)
+	local parts = testParts(d)
+	if #parts == 0 then return d.steps end
 	local s = table.clone(d.steps)
-	s.cloak = 4
+	for _, id in ipairs(parts) do s[id] = 4 end
 	return s
 end
 
 local function publish(player, d, levelUp)
 	local test = testCloak(d) -- v1.4
 	player:SetAttribute("SkillTestCloak", test and "on" or "off")
+	local given = testParts(d) -- v1.6
+	player:SetAttribute("SkillTestParts", table.concat(given, ","))
 	local level, into, nxt = ST.levelOf(d.xp)
 	local earned = ST.pointsOf(level)
 	local spent = ST.spent(d.steps, d.active) -- v1.3: + dino
@@ -150,9 +171,16 @@ local function publish(player, d, levelUp)
 	d.loadout = ST.sanitizeLoadout(d.loadout, eff, d.active) -- v1.1; v1.3: + dino; v1.5: effective steps
 	d.testPlaced = d.testPlaced or {}
 	if test then -- v1.5: the given Cloak takes the first empty slot once (1.4 forced slot 1 and hid the real part)
-		if d.active and not d.testPlaced[d.active] then
-			d.testPlaced[d.active] = true
-			d.loadout = ST.autoSlot(d.loadout, eff, "cloak", d.active)
+		if d.active then -- v1.6: every given button part, each once
+			local placed = d.testPlaced[d.active]
+			if type(placed) ~= "table" then placed = placed and {cloak = true} or {} end
+			for _, id in ipairs(given) do
+				if not placed[id] then
+					placed[id] = true
+					d.loadout = ST.autoSlot(d.loadout, eff, id, d.active) -- passive parts are left out by autoSlot
+				end
+			end
+			d.testPlaced[d.active] = placed
 		end
 	elseif d.active then
 		d.testPlaced[d.active] = nil

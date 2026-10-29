@@ -1382,6 +1382,8 @@ parts never flash.
 | MoveSpeedParts | character (client) | "none" / "adrenaline" / "shield" / "adrenaline+shield" | SprintTest 1.6: which part multipliers apply |
 
 Jaws is not for raptors (SkillTree 1.6 notFor Raptor; refunded on load).
+BladeServer 1.1: script BladeSizeMul (3; hook size multiplier), BladeOuterSide (true; false = the inner side as 1.0).
+SkillServer 1.6: SkillTestCloakEnabled now gives every live mecha part of the active dino at star; player SkillTestParts lists them.
 
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 

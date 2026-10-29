@@ -1,4 +1,4 @@
--- BladeServer v1.0 (Mecha Dino Arena) — Blade Claws look: a mecha sickle claw on each foot of a raptor that owns the
+-- BladeServer v1.1 (Mecha Dino Arena) — Blade Claws look: a mecha sickle claw on each foot of a raptor that owns the
 -- Blade Claws path (passive part, raptor parts batch 1). MDA-61, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 4, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Sickle claws" (Kepu 2026-10-29). The numbers (landing bonus,
 -- faster latch bites, bleed, pin-kill refund) live in PounceServer 1.6 / SkillEffects 1.6; this script is the look only.
@@ -15,6 +15,11 @@
 --   after PounceLatched turns false, or 1.2 s after the pounce start when no latch came (the newest pounce wins).
 -- Slash: a new PounceLatchedAt (a landing) puts 3 red neon strips across the latch part (PounceLatchPart value) for
 --   0.3 s, fading out. Every client sees the parts (server-built).
+-- v1.1 (Kepu 2026-10-29: "Did you even make blade claws a visible upgrade?" - from the game camera the 1.0 hooks were a
+--   red dot): the hook is BladeSizeMul (script attribute, default 3) times bigger, sits on the OUTER side of each foot
+--   (the natural sickle's spot mirrored across the foot's middle, so the leg doesn't hide it from the camera behind),
+--   and each steel piece gets a red neon edge strip along its top ("SickleEdge*"), so the claw reads as a glowing mecha
+--   blade. Everything else as 1.0. BladeSizeMul 1 + the 1.0 side = set BladeOuterSide false.
 -- Settings: script attribute BladeServerEnabled (default true; false = parts removed, no flick / slash).
 -- Diagnostics: script BladeServerVersion, BladeSlashes; character BladeLookState ("none" / "on" / "noFeet"),
 --   BladeFlick ("down" / "up").
@@ -22,13 +27,15 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local FLICK_DEG = 40
 local STEEL, RED = Color3.fromRGB(201, 210, 220), Color3.fromRGB(240, 70, 60)
 
 script:SetAttribute("BladeServerVersion", VERSION)
 if script:GetAttribute("BladeServerEnabled") == nil then script:SetAttribute("BladeServerEnabled", true) end
 script:SetAttribute("BladeSlashes", 0)
+if script:GetAttribute("BladeSizeMul") == nil then script:SetAttribute("BladeSizeMul", 3) end -- v1.1
+if script:GetAttribute("BladeOuterSide") == nil then script:SetAttribute("BladeOuterSide", true) end -- v1.1
 local function on() return script:GetAttribute("BladeServerEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
 
@@ -120,6 +127,12 @@ local function build(char)
 				S = math.max(2 * extent(lo, hi, z), 0.2) * 0.3
 				pLocal = c + y * extent(lo, hi, y) - z * (extent(lo, hi, z) * 0.5) + x * side[3] * math.max(0, extent(lo, hi, x) - S * 0.15)
 			end
+			local mul = tonumber(script:GetAttribute("BladeSizeMul")) or 3 -- v1.1
+			S *= math.clamp(mul, 0.5, 6)
+			if script:GetAttribute("BladeOuterSide") ~= false then -- v1.1: mirror to the foot's outer side
+				local dx = (pLocal - c):Dot(x)
+				pLocal -= x * (2 * dx)
+			end
 			local t = S * 0.3
 			local F = root.CFrame * CFrame.fromMatrix(pLocal, x, y, z)
 			-- the hook: 3 pieces rising forward and curling back (angles from forward, upward positive)
@@ -137,6 +150,11 @@ local function build(char)
 					Vector3.new(t, pc[3], pc[1]), cf, isTip and RED or STEEL, model, first)
 				if isTip then pp.Material = Enum.Material.Neon end
 				if k == 1 then first, firstLen = pp, pc[1] end
+				if not isTip then -- v1.1: red neon edge along the piece's top
+					local e = part("SickleEdge" .. k .. "_" .. side[1], Vector3.new(t * 1.08, pc[3] * 0.22, pc[1] * 0.98),
+						cf * CFrame.new(0, pc[3] * 0.42, 0), RED, model, first)
+					e.Material = Enum.Material.Neon
+				end
 			end
 			local hinge = Instance.new("Weld")
 			hinge.Name = "SickleHinge"
@@ -230,9 +248,11 @@ local function onCharacter(char)
 	build(char)
 end
 
-script:GetAttributeChangedSignal("BladeServerEnabled"):Connect(function()
-	for char in pairs(chars) do build(char) end
-end)
+for _, a in ipairs({"BladeServerEnabled", "BladeSizeMul", "BladeOuterSide"}) do -- v1.1: + size / side
+	script:GetAttributeChangedSignal(a):Connect(function()
+		for char in pairs(chars) do build(char) end
+	end)
+end
 
 local function onPlayer(player)
 	player.CharacterAdded:Connect(onCharacter)

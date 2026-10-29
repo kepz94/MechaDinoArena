@@ -189,6 +189,8 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | MechaButtons | 1.5 | Adrenaline / Shield button parts via TIMED_PARTS (MDA-65). Verified: C fires adrenaline, T fires shield. Install hash 32068 / 344587815 |
 | AbilityBar | 1.3 | Adrenaline / Energy Shield tiles (off / active / cooling / ready) (MDA-65). Verified: ENERGY SHIELD tile counted 2.0 s while active. Install hash 18355 / 993934529 |
 | ArenaScope | 1.7 | Expects BladeServer, AdrenalineServer, EnergyShieldServer (MDA-65). Verified: ArenaScopeMismatches 0. Install hash 4942 / 323485767 |
+| SkillServer | 1.6 | Test switch (SkillTestCloakEnabled) gives every live mecha part of the active dino at star, not only the Cloak (Kepu: "all things that are added need to be maxed unlocked for testing"); each button part placed once into a free slot; SkillTestParts diagnostic. Verified in Play: raptor given adrenaline, blade, shield, cloak, thrusters at 4, slots adrenaline / shield / cloak / thrusters, 0 points used. Install hash 21836 / 534608038 |
+| BladeServer | 1.1 | Visible from the game camera (Kepu: "Did you even make blade claws a visible upgrade?"): hook x3 (BladeSizeMul), outer side of the foot (BladeOuterSide), red neon edge strips. Verified: glowing red hooks visible from the default camera. Install hash 12565 / 1063067432 |
 
 ## Open decisions
 - Skill points per level-up.
