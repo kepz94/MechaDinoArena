@@ -1304,6 +1304,15 @@ gold reason in the detail panel). Mastered lines: gold rings + gold halo under t
 SkillScreen.Root.Body.Cols.Tree.Canvas.Col_<pathId>.Node_<1-4>; Root.Top.Mastery; Root.Body.Detail.Why;
 Root.Body.Loadout.Slot_1..4.
 
+## Test unlock (SkillServer 1.4)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| SkillTestCloakEnabled | script SkillServer | false (code) / **true in the place** (testing, 2026-10-29) | raptor shows Cloak Field at star in slot 1 (R); display layer only, never saved; points not charged |
+| SkillTestCloak | player | — | "on" while the layer is shown (Raptor + switch on), else "off" |
+
+Turn SkillTestCloakEnabled off on ServerScriptService.SkillServer before a public publish.
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |

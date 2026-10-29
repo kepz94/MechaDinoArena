@@ -1,4 +1,4 @@
--- SkillServer v1.3 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
+-- SkillServer v1.4 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 2, ADR "Skill trees own XP and replace class stat points".
 -- Kepu: kills give XP, each level gives 1 skill point (cap 60), free respec any time, keep everything on death, builds
 --   saved. GrowthServer stays off (adult spawns); this script owns skill XP. Maths: ServerStorage.DinoArcade.SkillTree.
@@ -49,12 +49,20 @@
 --     steps are dropped and their points come back); a record over Mastery 3 has every line cut back to step II; then,
 --     as before, a build over its points (now 40 at level 41) is refunded.
 --   * Empty loadouts are built from SkillTree.SLOTS (4): fresh records, the load default and respec.
+-- v1.4 (test unlock; Kepu 2026-10-29: "for testing sake we'll have whatever we just implemented unlocked", private
+--   publish; picked "Cloak given" + "Test switch only"): script attribute SkillTestCloakEnabled (default false; set true
+--   on the place's SkillServer for testing). While it is true and the active dino is "Raptor", publish shows a test layer
+--   over the real record: SkillPath_cloak = 4 (star) and SkillSlot1 = "cloak" (Cloak removed from any other slot; the
+--   real slot-1 part is hidden while the layer is on). SkillEffects / CloakServer / the screens read those attributes, so
+--   the Cloak works at star in R. The layer is never stored: d.steps / d.loadout, points, buys, slots and the save stay
+--   the real record, so switching the attribute off (or playing the T-Rex) shows the real build again at once.
+--   Points are not charged for the given Cloak. Diagnostic: player attribute SkillTestCloak ("on" / "off").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -63,6 +71,7 @@ local REQUEST_GAP = 0.2
 local DEFAULTS = {SkillEnabled = true, SkillKillXpFraction = 0.5, SkillSaveEnabled = true}
 DEFAULTS.SkillLoadoutEnabled = true -- v1.1
 DEFAULTS.SkillPerDinoEnabled = true -- v1.2
+DEFAULTS.SkillTestCloakEnabled = false -- v1.4: test layer (raptor Cloak at star in slot 1, not saved)
 
 local treeModule = ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillTree")
 local ST = require(treeModule)
@@ -99,7 +108,13 @@ end
 
 local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest; v1.2: dinos, active}
 
+local function testCloak(d) -- v1.4
+	return script:GetAttribute("SkillTestCloakEnabled") == true and d.active == "Raptor" and ST.PATHS.cloak ~= nil
+end
+
 local function publish(player, d, levelUp)
+	local test = testCloak(d) -- v1.4
+	player:SetAttribute("SkillTestCloak", test and "on" or "off")
 	local level, into, nxt = ST.levelOf(d.xp)
 	local earned = ST.pointsOf(level)
 	local spent = ST.spent(d.steps, d.active) -- v1.3: + dino
@@ -114,10 +129,18 @@ local function publish(player, d, levelUp)
 	player:SetAttribute("SkillSpent", spent)
 	player:SetAttribute("SkillLeft", earned - spent)
 	for _, id in ipairs(ST.PATH_ORDER) do
-		player:SetAttribute("SkillPath_" .. id, d.steps[id] or 0)
+		local n = d.steps[id] or 0
+		if test and id == "cloak" then n = 4 end -- v1.4: test layer
+		player:SetAttribute("SkillPath_" .. id, n)
 	end
 	d.loadout = ST.sanitizeLoadout(d.loadout, d.steps, d.active) -- v1.1; v1.3: + dino
-	for n = 1, ST.SLOTS do player:SetAttribute("SkillSlot" .. n, d.loadout[n] or "") end
+	local shown = d.loadout
+	if test then -- v1.4: Cloak in slot 1 (R), out of the others; the real loadout is untouched
+		shown = table.clone(d.loadout)
+		for n = 1, ST.SLOTS do if shown[n] == "cloak" then shown[n] = false end end
+		shown[1] = "cloak"
+	end
+	for n = 1, ST.SLOTS do player:SetAttribute("SkillSlot" .. n, shown[n] or "") end
 end
 
 -- v1.2: per-dino records -------------------------------------------------------------------------------------------
@@ -217,6 +240,11 @@ local function hookPlayer(player)
 end
 Players.PlayerAdded:Connect(hookPlayer)
 for _, p in ipairs(Players:GetPlayers()) do hookPlayer(p) end
+script:GetAttributeChangedSignal("SkillTestCloakEnabled"):Connect(function() -- v1.4
+	for player, d in pairs(data) do
+		if d.loaded then publish(player, d, false) end
+	end
+end)
 script:GetAttributeChangedSignal("SkillPerDinoEnabled"):Connect(function()
 	for player, d in pairs(data) do
 		if d.active then switchTo(player, d, dinoKey(player)) end
