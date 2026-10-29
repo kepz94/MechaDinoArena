@@ -1,4 +1,4 @@
--- SkillServer v1.4 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
+-- SkillServer v1.5 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 2, ADR "Skill trees own XP and replace class stat points".
 -- Kepu: kills give XP, each level gives 1 skill point (cap 60), free respec any time, keep everything on death, builds
 --   saved. GrowthServer stays off (adult spawns); this script owns skill XP. Maths: ServerStorage.DinoArcade.SkillTree.
@@ -57,12 +57,21 @@
 --   the Cloak works at star in R. The layer is never stored: d.steps / d.loadout, points, buys, slots and the save stay
 --   the real record, so switching the attribute off (or playing the T-Rex) shows the real build again at once.
 --   Points are not charged for the given Cloak. Diagnostic: player attribute SkillTestCloak ("on" / "off").
+-- v1.5 (bug, Kepu 2026-10-29: "i unlocked thrusters and its not assigning to the button"): 1.4 forced SkillSlot1 =
+--   "cloak" over the real loadout, so (a) a bought part auto-slotted into the real slot 1 was hidden under the Cloak, and
+--   (b) the SKILLS loadout tiles cycled to the given Cloak first and the server refused it ("notOwned": the real record
+--   has no Cloak), so a tile never reached Thrusters. Now, while the layer is on, the dino's loadout works with the
+--   effective steps (real steps + cloak 4, stepsFor): sanitizeLoadout in publish, autoSlot on a buy and setSlot on a
+--   slot request treat the Cloak as owned, and the Cloak is placed once (autoSlot: the first empty slot, R on an empty
+--   loadout) when the layer turns on for that dino (d.testPlaced[key]; cleared when the layer is off for it and on
+--   respec). Nothing is hidden: SkillSlot1..4 are the loadout itself. Points, steps and buys stay real; a "cloak" left
+--   in a saved loadout is dropped on load (not owned) and when the layer is off.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -111,6 +120,12 @@ local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest; 
 local function testCloak(d) -- v1.4
 	return script:GetAttribute("SkillTestCloakEnabled") == true and d.active == "Raptor" and ST.PATHS.cloak ~= nil
 end
+local function stepsFor(d) -- v1.5: real steps, plus the test Cloak at star while the layer is on
+	if not testCloak(d) then return d.steps end
+	local s = table.clone(d.steps)
+	s.cloak = 4
+	return s
+end
 
 local function publish(player, d, levelUp)
 	local test = testCloak(d) -- v1.4
@@ -128,19 +143,21 @@ local function publish(player, d, levelUp)
 	player:SetAttribute("SkillPoints", earned)
 	player:SetAttribute("SkillSpent", spent)
 	player:SetAttribute("SkillLeft", earned - spent)
+	local eff = stepsFor(d) -- v1.5 (1.4: cloak 4 here only)
 	for _, id in ipairs(ST.PATH_ORDER) do
-		local n = d.steps[id] or 0
-		if test and id == "cloak" then n = 4 end -- v1.4: test layer
-		player:SetAttribute("SkillPath_" .. id, n)
+		player:SetAttribute("SkillPath_" .. id, eff[id] or 0)
 	end
-	d.loadout = ST.sanitizeLoadout(d.loadout, d.steps, d.active) -- v1.1; v1.3: + dino
-	local shown = d.loadout
-	if test then -- v1.4: Cloak in slot 1 (R), out of the others; the real loadout is untouched
-		shown = table.clone(d.loadout)
-		for n = 1, ST.SLOTS do if shown[n] == "cloak" then shown[n] = false end end
-		shown[1] = "cloak"
+	d.loadout = ST.sanitizeLoadout(d.loadout, eff, d.active) -- v1.1; v1.3: + dino; v1.5: effective steps
+	d.testPlaced = d.testPlaced or {}
+	if test then -- v1.5: the given Cloak takes the first empty slot once (1.4 forced slot 1 and hid the real part)
+		if d.active and not d.testPlaced[d.active] then
+			d.testPlaced[d.active] = true
+			d.loadout = ST.autoSlot(d.loadout, eff, "cloak", d.active)
+		end
+	elseif d.active then
+		d.testPlaced[d.active] = nil
 	end
-	for n = 1, ST.SLOTS do player:SetAttribute("SkillSlot" .. n, shown[n] or "") end
+	for n = 1, ST.SLOTS do player:SetAttribute("SkillSlot" .. n, d.loadout[n] or "") end
 end
 
 -- v1.2: per-dino records -------------------------------------------------------------------------------------------
@@ -294,7 +311,7 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 		local new, why = ST.buy(d.steps, pathId, earned, d.active) -- v1.3: + dino
 		if new then
 			d.steps = new
-			if script:GetAttribute("SkillLoadoutEnabled") ~= false then d.loadout = ST.autoSlot(d.loadout, d.steps, pathId, d.active) end -- v1.1; v1.3: + dino
+			if script:GetAttribute("SkillLoadoutEnabled") ~= false then d.loadout = ST.autoSlot(d.loadout, stepsFor(d), pathId, d.active) end -- v1.1; v1.3: + dino; v1.5: effective steps
 			d.dirty = true
 			publish(player, d, false)
 		end
@@ -305,7 +322,7 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 		elseif type(pathId) ~= "number" or (type(slotPath) ~= "string" and slotPath ~= nil) then
 			player:SetAttribute("SkillLastResult", "badArg")
 		else
-			local new, why = ST.setSlot(d.loadout, d.steps, pathId, slotPath or "", d.active) -- v1.3: + dino
+			local new, why = ST.setSlot(d.loadout, stepsFor(d), pathId, slotPath or "", d.active) -- v1.3: + dino; v1.5: effective steps
 			if new then
 				d.loadout = new
 				d.dirty = true
@@ -316,6 +333,7 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 	elseif action == "respec" then
 		d.steps = ST.sanitize({}, d.active)
 		d.loadout = emptyLoadout() -- v1.1; v1.3: SLOTS empties
+		if d.testPlaced and d.active then d.testPlaced[d.active] = nil end -- v1.5: the test Cloak is placed again
 		d.dirty = true
 		publish(player, d, false)
 		player:SetAttribute("SkillLastResult", "ok")

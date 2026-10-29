@@ -1,4 +1,4 @@
--- CloakFX v1.2 (Mecha Dino Arena) — draws the Cloak Field on this client (LocalScript, StarterPlayerScripts).
+-- CloakFX v1.3 (Mecha Dino Arena) — draws the Cloak Field on this client (LocalScript, StarterPlayerScripts).
 -- MDA-52, plan docs/plans/CLOAK_v1.0.md Task 4 (Kepu 2026-10-29: a faint shimmer others can just make out).
 -- A character is cloaked while its CloakedUntil (server time, CloakServer 1.0) is in the future and its Humanoid is
 -- alive. Every render frame (bound after the camera, so the camera's own fade never overrides it):
@@ -35,10 +35,13 @@
 --   SHADOW_OFF_LTM 0.3: the whole "on" phase, and part by part during turning on / off) its CastShadow is false on this
 --   client; it goes back to the part's own value when the part is drawn visible again (flash included) and in the
 --   restore. Script attribute CloakFXShadowOff (default true; false = shadows as 1.1).
+-- v1.3 (CloakServer 1.2 flank plates): plates are read as Plate_1..8 (was 1..4); a plate's flip timing uses its
+--   PlateHinge attribute PlateOrder (1..4 front to back; missing = its number), so the left and right plates of the
+--   same row flip together. Everything else as 1.2.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local SELF_LTM = 0.6
 local OTHER_MID, OTHER_AMP = 0.91, 0.03
 local SHIMMER_PERIOD = 0.6
@@ -99,7 +102,7 @@ local function collect(st, char)
 	st.plates = {}
 	st.closed = st.closed or {} -- [plate body part] = its colour when first seen (closed), kept across re-collects
 	local m = char:FindFirstChild("Mecha_Cloak")
-	for n = 1, 4 do
+	for n = 1, 8 do -- v1.3: up to 8 plates (was 4)
 		local root = m and m:FindFirstChild(("Plate_%d_Body_0"):format(n))
 		local hinge = root and root:FindFirstChild("PlateHinge")
 		if hinge and typeof(hinge:GetAttribute("BaseC0")) == "CFrame" then
@@ -111,7 +114,9 @@ local function collect(st, char)
 					if st.closed[b] == nil then st.closed[b] = b.Color end
 				end
 			end
-			st.plates[n] = {hinge = hinge, base = hinge:GetAttribute("BaseC0"), bodies = bodies, pos = root.Position, closed = st.closed}
+			local order = tonumber(hinge:GetAttribute("PlateOrder")) or n -- v1.3
+			st.plates[n] = {hinge = hinge, base = hinge:GetAttribute("BaseC0"), bodies = bodies, pos = root.Position, closed = st.closed,
+				order = order}
 		end
 	end
 	local centres = {}
@@ -229,7 +234,8 @@ local function draw(char, st, t, phase, e)
 		return
 	end
 	-- v1.1: turning on / off
-	for n, pl in pairs(st.plates) do
+	for _, pl in pairs(st.plates) do
+		local n = pl.order -- v1.3: row 1..4 front to back (was the plate number)
 		local f
 		if phase == "turningOn" then f = math.clamp((e - (n - 1) * 0.06) / 0.12, 0, 1)
 		else f = 1 - math.clamp((e - (4 - n) * 0.05) / 0.12, 0, 1) end

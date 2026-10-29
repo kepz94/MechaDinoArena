@@ -1,4 +1,4 @@
--- CloakServer v1.1 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
+-- CloakServer v1.2 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
 -- visible emitter pack. MDA-51, plan docs/plans/CLOAK_v1.0.md Tasks 3 + 4b (Kepu 2026-10-29: faint shimmer, bots lose
 -- you at once, breaks on pounce / damage / another part, 12 s cooldown, star capped at 2x; every mecha part is visible
 -- hardware).
@@ -33,11 +33,18 @@
 --   + Plate_n_Rim_0..2 (neon cyan, radius 1.12 R, 0.8 x the thickness). Plate_n_Body_0 is held to Torso.Root by a Weld
 --   "PlateHinge" (attribute BaseC0 = its C0) so CloakFX 1.1 can turn the plate about the spine; the other 5 parts are
 --   WeldConstraints to it. Massless, no collide / query / touch, no shadow. CloakLook "plates" ("on" = 1.0 fins).
+-- v1.2 (Kepu 2026-10-29: "the camo plates i thought would run along the side of the raptor like the picture not down
+--   the middle on its spine"; picked "Both sides, upper flank"): CloakLookStyle default "flanks" ("plates" = the 1.1
+--   spine row, "fins" = 1.0). Flanks: the same plate build (Body / Rim hexes, PlateHinge + BaseC0) lying flat on each
+--   side of the Torso segment, face outward: 4 per side at 14 / 33 / 52 / 70 % of its length from the front, centre at
+--   68 % of its height (upper flank), just outside its side (x = edge +- (thickness / 2 + 0.02)). Plate_1..4 = right side,
+--   Plate_5..8 = left side, front to back; each PlateHinge has attribute PlateOrder 1..4 (front to back) for CloakFX's
+--   flip timing. CloakLook "flanks".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local STILL_SPEED = 1
 local PART_STAMPS = {"DashStartedAt"} -- other mecha parts' start stamps break the cloak
 local METAL, CYAN = Color3.fromRGB(110, 122, 134), Color3.fromRGB(95, 243, 255)
@@ -45,7 +52,7 @@ local METAL, CYAN = Color3.fromRGB(110, 122, 134), Color3.fromRGB(95, 243, 255)
 script:SetAttribute("CloakServerVersion", VERSION)
 if script:GetAttribute("CloakServerEnabled") == nil then script:SetAttribute("CloakServerEnabled", true) end
 script:SetAttribute("CloakRequests", 0)
-if script:GetAttribute("CloakLookStyle") == nil then script:SetAttribute("CloakLookStyle", "plates") end -- v1.1
+if script:GetAttribute("CloakLookStyle") == nil then script:SetAttribute("CloakLookStyle", "flanks") end -- v1.1; v1.2: default "flanks"
 local function now() return workspace:GetServerTimeNow() end
 
 local remote = ReplicatedStorage:FindFirstChild("DinoCloakRequest")
@@ -121,6 +128,47 @@ local function buildPlates(char, hrp, torso, lo, hi, Hd)
 	char:SetAttribute("CloakLook", "plates")
 end
 
+-- v1.2: plates flat on both flanks (upper half), 4 per side
+local function buildFlankPlates(char, hrp, torso, lo, hi, Hd)
+	local model = Instance.new("Model")
+	model.Name = "Mecha_Cloak"
+	local R, U, L = hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector
+	local r = Hd * 0.052
+	local th = math.max(0.05, Hd * 0.012)
+	local y = lo.Y + (hi.Y - lo.Y) * 0.68
+	local n = 0
+	for _, side in ipairs({{hi.X, 1}, {lo.X, -1}}) do -- right, then left
+		for order, f in ipairs(PLATE_AT) do
+			n += 1
+			local local_ = Vector3.new(side[1] + side[2] * (th / 2 + 0.02), y, lo.Z + (hi.Z - lo.Z) * f)
+			local plateCF = CFrame.fromMatrix(hrp.CFrame:PointToWorldSpace(local_), R, U, -L) -- X right, Y up, Z back
+			local root = weldPart(("Plate_%d_Body_0"):format(n), Vector3.new(th, r, r * math.sqrt(3)), plateCF, PLATE_BLACK, model, torso)
+			root.Material = Enum.Material.SmoothPlastic
+			local wc = root:FindFirstChildOfClass("WeldConstraint")
+			if wc then wc:Destroy() end
+			local hinge = Instance.new("Weld")
+			hinge.Name = "PlateHinge"
+			hinge.Part0, hinge.Part1 = torso, root
+			hinge.C0 = torso.CFrame:ToObjectSpace(plateCF)
+			hinge.C1 = CFrame.new()
+			hinge:SetAttribute("BaseC0", hinge.C0)
+			hinge:SetAttribute("PlateOrder", order)
+			hinge.Parent = root
+			for k = 0, 2 do
+				local cf = plateCF * CFrame.Angles(math.rad(60 * k), 0, 0)
+				if k > 0 then
+					local b = weldPart(("Plate_%d_Body_%d"):format(n, k), Vector3.new(th, r, r * math.sqrt(3)), cf, PLATE_BLACK, model, root)
+					b.Material = Enum.Material.SmoothPlastic
+				end
+				local rim = weldPart(("Plate_%d_Rim_%d"):format(n, k), Vector3.new(th * 0.8, r * 1.12, r * 1.12 * math.sqrt(3)), cf, CYAN, model, root)
+				rim.Material = Enum.Material.Neon
+			end
+		end
+	end
+	model.Parent = char
+	char:SetAttribute("CloakLook", "flanks")
+end
+
 local function buildPack(char)
 	local old = char:FindFirstChild("Mecha_Cloak")
 	if old then old:Destroy() end
@@ -152,8 +200,12 @@ local function buildPack(char)
 	local R, U, L = hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector
 	local W, Ln = hi.X - lo.X, hi.Z - lo.Z
 	local Hd = char:GetExtentsSize().Y
-	if script:GetAttribute("CloakLookStyle") ~= "fins" then -- v1.1: camo plates (option C)
+	local style = script:GetAttribute("CloakLookStyle")
+	if style == "plates" then -- v1.1: camo plates on the spine (option C)
 		buildPlates(char, hrp, torso, lo, hi, Hd)
+		return
+	elseif style ~= "fins" then -- v1.2: camo plates on both flanks (default)
+		buildFlankPlates(char, hrp, torso, lo, hi, Hd)
 		return
 	end
 	local fs = Vector3.new(Hd * 0.035, Hd * 0.16, Hd * 0.18) -- fin: right, up, look
