@@ -1,9 +1,10 @@
--- SkillTree.spec v1.12 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.13 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 -- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
 -- v1.10: Shock Dart (screech shown as "Shock Dart", range 100 / 135; the 35% range check reads the data)
 -- v1.11: Shock Cannon (name; stun 1.1 s, 1.5 s at star, 35% check)
 -- v1.12: Shock Mine (traps live for Raptor, Grapple hidden; effects, 35% checks)
+-- v1.13: Shock Mine blast + launch (damage 25, launch 25, daze 1)
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -20,7 +21,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.12") -- v1.12 (was 1.11)
+eq("Version", ST.Version, "1.13") -- v1.13 (was 1.12)
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 40) -- v1.5 (ADR-004)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 41)
@@ -294,7 +295,7 @@ eq("autoSlot cloak", lo4(ST.autoSlot({"thrusters", false, false, false}, both, "
 eq("TRex loadout drops raptor parts", lo4(ST.sanitizeLoadout({"thrusters", "cloak", false, false}, both, "TRex")), "false,false,false,false")
 
 -- v1.6: raptor batch 1 (Blade Claws, Adrenaline Injector, Energy Shield; plan docs/plans/RAPTOR_PARTS_B1_v1.0.md)
-eq("Version 1.6+", ST.Version, "1.12") -- v1.12
+eq("Version 1.6+", ST.Version, "1.13") -- v1.13
 for _, id in ipairs({"blade", "adrenaline", "shield"}) do eq(id .. " live", ST.PATHS[id].soon, false) end
 eq("blade passive", ST.BUTTONS.blade == true, false)
 local function R(id, n) return ST.effects({[id] = n}, "Raptor") end
@@ -367,7 +368,7 @@ eq("mine name", ST.PATHS.traps.name, "Shock Mine"); eq("mine button", ST.BUTTONS
 eq("mine raptor", ST.seesPath("traps", "Raptor"), true); eq("mine trex", ST.seesPath("traps", "TRex"), false)
 eq("grapple hidden raptor", ST.seesPath("grapple", "Raptor"), false)
 eq("mine 0", R("traps", 0).mineDamage, 0); eq("mine 0 slow", R("traps", 0).mineSlow, 1)
-eq("mine I dmg", R("traps", 1).mineDamage, 15); eq("mine I slow", R("traps", 1).mineSlow, 0.5)
+eq("mine I dmg", R("traps", 1).mineDamage, 25); eq("mine I slow", R("traps", 1).mineSlow, 0.5)
 eq("mine I slow time", R("traps", 1).mineSlowTime, 2); eq("mine I cd", R("traps", 1).mineCooldown, 12)
 eq("mine I max", R("traps", 1).mineMax, 1); eq("mine II max", R("traps", 2).mineMax, 2)
 eq("mine III cd", R("traps", 3).mineCooldown, 8.8); eq("mine III jam", R("traps", 3).mineJam, false)
@@ -375,6 +376,8 @@ eq("mine star jam", R("traps", 4).mineJam, true)
 eq("35 mine max", R("traps", 2).mineMax / R("traps", 1).mineMax >= 1.35 - 1e-9, true)
 eq("35 mine cd", R("traps", 1).mineCooldown / R("traps", 3).mineCooldown >= 1.35 - 1e-9, true)
 eq("TRex mine", ST.effects({traps = 4}, "TRex").mineDamage, 0)
+eq("mine 0 launch", R("traps", 0).mineLaunch, 0); eq("mine I launch", R("traps", 1).mineLaunch, 25)
+eq("mine I daze", R("traps", 1).mineDaze, 1); eq("mine star launch", R("traps", 4).mineLaunch, 25)
 local tx2 = ST.effects({scent = 4, screech = 4}, "TRex")
 eq("TRex scent", tx2.scentRadius, 0); eq("TRex screech", tx2.screechRange, 0)
 

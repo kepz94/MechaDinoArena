@@ -1675,3 +1675,15 @@ Grapple Hook is scrapped (shown to nobody). The "traps" path is the raptor's Sho
 
 Instances: workspace ShockMine (Base, Ring, Mast, Light, TriggerRing), MineBurst.
 
+### Blast + launch (SkillTree 1.13 / SkillEffects 1.10 / MineServer 1.1)
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| MineLaunch / MineDaze | character | 25 studs; 1 s (0 when off) | how far a hit dino is thrown and how long it lies dazed |
+| MineLaunchEnabled | script MineServer | true | false = the 1.0 slow instead of the throw |
+| MineSoundId | script MineServer | rbxassetid://138132512434499 | blast sound ("" = silent) |
+| MineLaunchResult | bot | "tossed" / "stunOnly" | thrown, or only dazed (already anchored or busy) |
+| StunTossFrom / StunTossDistance / StunTossAt | target player | mine position; 25; server time | the existing StunClient toss, set by MineServer |
+
+Instances on the hit dino's root while thrown + dazed: MineZapSparks, MineZapLight, MineZapArc_1-4 (+ attachments),
+MineDamagePop (BillboardGui, 1 s); workspace MineZapSound (4 s).
+

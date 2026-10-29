@@ -1,4 +1,4 @@
--- SkillTree v1.12 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.13 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -88,7 +88,7 @@
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.12"
+SkillTree.Version = "1.13"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -190,6 +190,9 @@ SkillTree.AREAS = {
 --   "traps" becomes the raptor's live button part "Shock Mine" (OWNER Raptor, LIVE_MECH, BUTTONS) with step texts.
 --   Effects: mineDamage (0; 15), mineSlow (1; 0.5 speed multiplier), mineSlowTime (0; 2 s), mineCooldown (0; 12,
 --   8.8 from III), mineMax (0; 1, 2 from II), mineJam (false; true at star).
+-- v1.13 (Kepu 2026-10-29 after v84: "a bot walked on it but it didn't do anything to the bot noticeably ... make this an
+--   actual useful gadget" -> "Blast + launch", "25"): mineDamage 25 (was 15); new mineLaunch (0; 25 studs thrown back)
+--   and mineDaze (0; 1 s dazed after landing); step I text. mineSlow / mineSlowTime stay for MineServer's old mode.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -324,6 +327,7 @@ SkillTree.PATHS.traps.steps[1] = "Button: throw a mine 30 studs ahead. A dino th
 SkillTree.PATHS.traps.steps[2] = "2 mines out at once"
 SkillTree.PATHS.traps.steps[3] = "Recharges 36% faster (8.8 s)"
 SkillTree.PATHS.traps.steps[4] = "Mines also jam parts: the dino's boost, Shield and Adrenaline end at once"
+SkillTree.PATHS.traps.steps[1] = "Button: throw a mine 30 studs ahead. A dino that comes within 6 studs takes 25 damage, is blasted 25 studs back and dazed for 1 s" -- v1.13
 for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
 	"armor", "ramjet", "shieldproj", "roaramp"}) do
 	SkillTree.BUTTONS[id] = true
@@ -568,6 +572,8 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	local tr = s.traps or 0
 	e.mineDamage, e.mineSlow, e.mineSlowTime, e.mineCooldown, e.mineMax, e.mineJam = 0, 1, 0, 0, 0, false
 	if tr >= 1 then e.mineDamage, e.mineSlow, e.mineSlowTime, e.mineCooldown, e.mineMax = 15, 0.5, 2, 12, 1 end
+	e.mineLaunch, e.mineDaze = 0, 0 -- v1.13
+	if tr >= 1 then e.mineDamage, e.mineLaunch, e.mineDaze = 25, 25, 1 end -- v1.13: blast + launch (damage was 15)
 	if tr >= 2 then e.mineMax = 2 end
 	if tr >= 3 then e.mineCooldown = 8.8 end -- 12 / 8.8 = 1.36
 	if tr >= 4 then e.mineJam = true end

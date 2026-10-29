@@ -1,4 +1,4 @@
--- MineServer v1.0 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.1 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -32,17 +32,37 @@
 -- Settings: script attribute MineServerEnabled (default true; false removes every mine and refuses throws).
 -- Diagnostics: script MineServerVersion, MineRequests, MineThrown, MineHits; owner character MineServerResult,
 --   MineCount, MineOut (mines on the ground), MineLastEnd ("hit" / "expired" / "replaced" / "removed"), MineLastHit.
+-- v1.1 (MDA-81; Kepu 2026-10-29 after v84: "a bot walked on it but it didn't do anything to the bot noticeably ... I need
+--   to see some effects on the player and make this an actual useful gadget" -> "Blast + launch", damage "25", feedback
+--   "Zap on the dino", "Damage number", "Zap sound"). Launch mode (script attribute MineLaunchEnabled, default true;
+--   false = the 1.0 slow), with the owner's MineLaunch (25 studs) and MineDaze (1 s) (SkillEffects 1.10):
+--   * the hit dino takes MineDamage (SkillTree 1.13: 25) as in 1.0, then is thrown MineLaunch studs away from the mine:
+--     a player through the game's stun toss (StunTossFrom = the mine, StunTossDistance, StunTossAt = now, then
+--     StunnedUntil = now + TOSS_TIME 0.6 + MineDaze; StunClient flings, flips and lays it down, StunFX shows the stars,
+--     Thick Hide's stun rules apply); a bot by this script (anchored arc TOSS_TIME s, TOSS_HEIGHT 8, one backward flip,
+--     kept inside the island's IslandWanderLimit), then StunnedUntil = landing + MineDaze so BotServer lays it down; a
+--     bot that is already anchored or busy (BotState pounce / latch / ram / pinned / ko / tossed / stunned / getup /
+--     shake) is only dazed (MineDaze). No slow in launch mode. Bot diagnostic MineLaunchResult ("tossed" / "stunOnly").
+--   * Zap: while thrown + dazed the target's root carries sparks "MineZapSparks", a light "MineZapLight" and 4
+--     crackling Beams "MineZapArc_1..4" re-drawn every 0.06 s across its body.
+--   * Damage number: a BillboardGui "MineDamagePop" over the target ("-25", or "BLOCKED" when a player's health did not
+--     drop, e.g. Energy Shield) that rises and fades in 0.9 s.
+--   * Sound: script attribute MineSoundId (default rbxassetid://138132512434499 "sfx impactlightning", Creator Store,
+--     free; "" = silent) plays from "MineZapSound" at the blast.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local THROW_DIST, ARC_TIME, ARC_HEIGHT, ARM_TIME = 30, 0.6, 8, 0.5
 local TRIGGER, LIFETIME, BLINK = 6, 60, 0.25
 local VOLT, VOLT_CORE = Color3.fromRGB(127, 233, 255), Color3.fromRGB(225, 250, 255)
 local DARK = Color3.fromRGB(46, 52, 62)
+local TOSS_TIME, TOSS_HEIGHT = 0.6, 8 -- v1.1: TOSS_TIME matches StunClient's toss
+local BUSY = {pounce = true, latch = true, latched = true, ram = true, pinned = true, ko = true, tossed = true,
+	stunned = true, getup = true, shake = true} -- v1.1: bot states that are not thrown
 
 script:SetAttribute("MineServerVersion", VERSION)
 if script:GetAttribute("MineServerEnabled") == nil then script:SetAttribute("MineServerEnabled", true) end
@@ -50,6 +70,9 @@ script:SetAttribute("MineRequests", 0)
 script:SetAttribute("MineThrown", 0)
 script:SetAttribute("MineHits", 0)
 local function on() return script:GetAttribute("MineServerEnabled") ~= false end
+if script:GetAttribute("MineLaunchEnabled") == nil then script:SetAttribute("MineLaunchEnabled", true) end -- v1.1
+if script:GetAttribute("MineSoundId") == nil then script:SetAttribute("MineSoundId", "rbxassetid://138132512434499") end -- v1.1
+local function launchOn() return script:GetAttribute("MineLaunchEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
 
 local remote = ReplicatedStorage:FindFirstChild("DinoMineRequest")
@@ -179,15 +202,176 @@ local function removeAll(owner, reason)
 	for i = #st.mines, 1, -1 do removeMine(st.mines[i], reason) end
 end
 
+-- v1.1: a bot thrown away from the mine (players use StunClient's toss)
+local function launchBot(model, from, dist, daze)
+	local hrp = model:FindFirstChild("HumanoidRootPart")
+	local t = now()
+	if not hrp or hrp.Anchored or BUSY[tostring(model:GetAttribute("BotState"))] then
+		model:SetAttribute("StunnedUntil", math.max(tonumber(model:GetAttribute("StunnedUntil")) or 0, t + daze))
+		model:SetAttribute("MineLaunchResult", "stunOnly")
+		return
+	end
+	local start = hrp.Position
+	local away = Vector3.new(start.X - from.X, 0, start.Z - from.Z)
+	if away.Magnitude < 0.5 then away = -Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z) end
+	if away.Magnitude > 1e-3 then away = away.Unit else away = Vector3.zAxis end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local limit = (isl and isl:GetAttribute("IslandWanderLimit")) or 230
+	local land = Vector3.new(start.X, 0, start.Z) + away * dist
+	land = Vector3.new(math.clamp(land.X, -limit, limit), 0, math.clamp(land.Z, -limit, limit))
+	local ex = {}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+	local bots = isl and isl:FindFirstChild("Bots")
+	if bots then table.insert(ex, bots) end
+	local tg = isl and isl:FindFirstChild("TallGrass")
+	if tg then table.insert(ex, tg) end
+	rayParams.FilterDescendantsInstances = ex
+	local g0 = workspace:Raycast(start + Vector3.new(0, 2, 0), Vector3.new(0, -60, 0), rayParams)
+	local lift = g0 and (start.Y - g0.Position.Y) or 3
+	local g1 = workspace:Raycast(Vector3.new(land.X, start.Y + 40, land.Z), Vector3.new(0, -140, 0), rayParams)
+	local landY = (g1 and g1.Position.Y or (start.Y - lift)) + lift
+	local landPos = Vector3.new(land.X, landY, land.Z)
+	local rot = CFrame.lookAt(Vector3.zero, -away) -- faces the mine, flies backward
+	hrp.Anchored = true
+	model:SetAttribute("MineLaunchResult", "tossed")
+	task.spawn(function()
+		local t0 = os.clock()
+		while model.Parent do
+			local u = math.min(1, (os.clock() - t0) / TOSS_TIME)
+			local e = u * u * (3 - 2 * u)
+			local pos = start:Lerp(landPos, u) + Vector3.new(0, 4 * TOSS_HEIGHT * u * (1 - u), 0)
+			hrp.CFrame = CFrame.new(pos) * rot * CFrame.Angles(2 * math.pi * e, 0, 0) -- one backward flip
+			if u >= 1 then break end
+			RunService.Heartbeat:Wait()
+		end
+		if model.Parent then
+			hrp.CFrame = CFrame.new(landPos) * rot
+			hrp.Anchored = false
+			model:SetAttribute("StunnedUntil", math.max(tonumber(model:GetAttribute("StunnedUntil")) or 0, now() + daze))
+		end
+	end)
+end
+
+-- v1.1: crackling arcs, sparks and a light on the hit dino for dur seconds
+local function zap(target, dur)
+	local root = target:FindFirstChild("HumanoidRootPart")
+	if not root or dur <= 0 then return end
+	local half = target:GetExtentsSize() / 2
+	local made = {}
+	local pe = Instance.new("ParticleEmitter")
+	pe.Name = "MineZapSparks"
+	pe.Color = ColorSequence.new(VOLT_CORE, VOLT)
+	pe.LightEmission = 1
+	pe.Rate = 90
+	pe.Lifetime = NumberRange.new(0.15, 0.35)
+	pe.Speed = NumberRange.new(10, 18)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Size = NumberSequence.new(0.8, 0)
+	pe.Parent = root
+	table.insert(made, pe)
+	local li = Instance.new("PointLight")
+	li.Name = "MineZapLight"
+	li.Color, li.Range, li.Brightness = VOLT, 16, 4
+	li.Parent = root
+	table.insert(made, li)
+	local arcs = {}
+	for i = 1, 4 do
+		local a0 = Instance.new("Attachment")
+		a0.Name = "MineZapA_" .. i
+		a0.Parent = root
+		local a1 = Instance.new("Attachment")
+		a1.Name = "MineZapB_" .. i
+		a1.Parent = root
+		local bm = Instance.new("Beam")
+		bm.Name = "MineZapArc_" .. i
+		bm.Attachment0, bm.Attachment1 = a0, a1
+		bm.Color = ColorSequence.new(Color3.new(1, 1, 1), VOLT)
+		bm.LightEmission = 1
+		bm.FaceCamera = true
+		bm.Segments = 10
+		bm.Width0, bm.Width1 = 0.45, 0.12
+		bm.Transparency = NumberSequence.new(0)
+		bm.Parent = root
+		table.insert(arcs, {a0 = a0, a1 = a1, bm = bm})
+		table.insert(made, a0)
+		table.insert(made, a1)
+		table.insert(made, bm)
+	end
+	local function rnd() return Vector3.new((math.random() * 2 - 1) * half.X, (math.random() * 2 - 1) * half.Y, (math.random() * 2 - 1) * half.Z) end
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < dur and root.Parent do
+			for _, a in ipairs(arcs) do
+				a.a0.Position, a.a1.Position = rnd(), rnd()
+				a.bm.CurveSize0, a.bm.CurveSize1 = (math.random() - 0.5) * 6, (math.random() - 0.5) * 6
+			end
+			task.wait(0.06)
+		end
+		for _, x in ipairs(made) do x:Destroy() end
+	end)
+end
+
+-- v1.1: a rising damage number over the hit dino
+local function pop(target, text)
+	local root = target:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local h = target:GetExtentsSize().Y
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "MineDamagePop"
+	bb.Size = UDim2.fromOffset(140, 56)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.MaxDistance = 300
+	bb.StudsOffset = Vector3.new(0, h * 0.5 + 1.5, 0)
+	local tl = Instance.new("TextLabel")
+	tl.BackgroundTransparency = 1
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.Font = Enum.Font.GothamBlack
+	tl.TextScaled = true
+	tl.Text = text
+	tl.TextColor3 = VOLT_CORE
+	tl.TextStrokeColor3 = Color3.fromRGB(10, 40, 70)
+	tl.TextStrokeTransparency = 0
+	tl.Parent = bb
+	bb.Adornee = root
+	bb.Parent = root
+	TweenService:Create(bb, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{StudsOffset = bb.StudsOffset + Vector3.new(0, 4, 0)}):Play()
+	TweenService:Create(tl, TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.In, 0, false, 0.4),
+		{TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+	Debris:AddItem(bb, 1)
+end
+
+-- v1.1: the blast sound
+local function zapSound(pos)
+	local id = script:GetAttribute("MineSoundId")
+	if typeof(id) ~= "string" or id == "" then return end
+	local p = part("MineZapSound", Vector3.one * 0.2, CFrame.new(pos), VOLT, workspace)
+	p.Transparency = 1
+	local snd = Instance.new("Sound")
+	snd.SoundId = id
+	snd.Volume = 1
+	snd.RollOffMaxDistance = 220
+	snd.Parent = p
+	snd:Play()
+	Debris:AddItem(p, 4)
+end
+
 local function hit(m, target)
 	local t = now()
 	local owner = m.owner
 	local pl = Players:GetPlayerFromCharacter(target)
+	local launch = launchOn() and (m.launch or 0) > 0 -- v1.1
+	local popText = "-" .. math.floor(m.dmg + 0.5) -- v1.1
 	if pl then
 		local hum = target:FindFirstChildOfClass("Humanoid")
 		target:SetAttribute("LastHitBy", owner.Name)
 		target:SetAttribute("LastHitAt", t)
-		if hum then hum:TakeDamage(m.dmg) end
+		if hum then
+			local before = hum.Health
+			hum:TakeDamage(m.dmg)
+			if hum.Health >= before then popText = "BLOCKED" end
+		end
 	else
 		local hp = target:GetAttribute("DummyHealth")
 		if typeof(hp) == "number" then
@@ -201,10 +385,26 @@ local function hit(m, target)
 			end
 		end
 		local hum = target:FindFirstChildOfClass("Humanoid")
-		if hum and not botSlow[target] then botSlow[target] = {hum = hum} end
+		if not launch and hum and not botSlow[target] then botSlow[target] = {hum = hum} end
 	end
-	target:SetAttribute("MineSlowMul", m.slow)
-	target:SetAttribute("MineSlowUntil", t + m.slowTime)
+	local fxTime
+	if launch then -- v1.1: thrown and dazed
+		if pl then
+			target:SetAttribute("StunTossFrom", m.to)
+			target:SetAttribute("StunTossDistance", m.launch)
+			target:SetAttribute("StunTossAt", t)
+			target:SetAttribute("StunnedUntil", math.max(tonumber(target:GetAttribute("StunnedUntil")) or 0, t + TOSS_TIME + m.daze))
+		else
+			launchBot(target, m.to, m.launch, m.daze)
+		end
+		fxTime = TOSS_TIME + m.daze
+	else
+		target:SetAttribute("MineSlowMul", m.slow)
+		target:SetAttribute("MineSlowUntil", t + m.slowTime)
+		fxTime = m.slowTime
+	end
+	zap(target, fxTime) -- v1.1
+	pop(target, popText) -- v1.1
 	if m.jam then target:SetAttribute("PartsJammedAt", t) end
 	target:SetAttribute("MineHitBy", owner.Name)
 	target:SetAttribute("MineHitCount", (target:GetAttribute("MineHitCount") or 0) + 1)
@@ -248,6 +448,7 @@ RunService.Heartbeat:Connect(function()
 								local dy = root.Position.Y - m.to.Y
 								if flat <= TRIGGER + math.min(size.X, size.Z) / 2 and dy >= -2 and dy <= size.Y + 4 then
 									burst(m.to + Vector3.new(0, 1, 0))
+									zapSound(m.to + Vector3.new(0, 1, 0)) -- v1.1
 									hit(m, d)
 									removeMine(m, "hit")
 									break
@@ -335,6 +536,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	m.dmg = math.max(0, tonumber(char:GetAttribute("MineDamage")) or 15)
 	m.slow = math.clamp(tonumber(char:GetAttribute("MineSlow")) or 0.5, 0.05, 1)
 	m.slowTime = math.max(0, tonumber(char:GetAttribute("MineSlowTime")) or 2)
+	m.launch = math.max(0, tonumber(char:GetAttribute("MineLaunch")) or 0) -- v1.1
+	m.daze = math.max(0, tonumber(char:GetAttribute("MineDaze")) or 0) -- v1.1
 	local jam = false
 	if char:GetAttribute("MineJam") == true then jam = true end
 	m.jam = jam

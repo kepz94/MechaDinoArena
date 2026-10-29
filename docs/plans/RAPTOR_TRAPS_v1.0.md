@@ -29,3 +29,14 @@ BotServer AI (bot slow is done from MineServer), PounceServer, Shock Cannon, Thr
 
 ## Red-team (one paragraph)
 Player damage is new to the game: it makes the mine the only part that can kill a player, so 15 (25% of a raptor's 60, 7.5% of a T-Rex's 200) is the line to watch — accepted, Kepu tunes after playing; Energy Shield blocks it through the existing TakeDamage block. Bot slow without touching BotServer: MineServer rescales WalkSpeed every Stepped and remembers the AI's last value, so the AI's own speed changes still land; risk of a 1-frame full-speed step, accepted. Mines are server parts visible to everyone (blinking), so they are an area-denial tool, not a hidden one — that's the B pick. A raptor at II can hold 2 mines for 60 s; the cap and expiry keep the arena from filling up.
+
+## Follow-up after v84 — blast + launch (Kepu 2026-10-29)
+Kepu: "a bot walked on it but it didn't do anything to the bot noticeably. Remember this needs to feel like a game. I need to see some effects on the player and make this an actual useful gadget." Picks: **Blast + launch**, damage **25**, feedback **Zap on the dino**, **Damage number**, **Zap sound** (not "Bigger blast": the 1.0 burst stays).
+
+| Task | Mode | Change |
+|---|---|---|
+| 8 — SkillTree 1.13 + spec | Logic | mineDamage 25; mineLaunch 25; mineDaze 1; step I text |
+| 9 — SkillEffects 1.10 | Wired | MineLaunch, MineDaze |
+| 10 — MineServer 1.1 | Wired | launch mode (MineLaunchEnabled): players thrown by the existing stun toss (StunTossFrom / Distance / At + StunnedUntil = 0.6 + daze; StunClient unchanged); bots thrown by MineServer (anchored arc + flip) then StunnedUntil = landing + daze (BotServer lays them down, StunFX stars); zap arcs + sparks + light on the target; rising "-25" / "BLOCKED"; zap sound (MineSoundId) |
+
+Red-team (one paragraph): thrown dinos land 25 studs away from the mine, so a raptor that wants to follow up has to chase, which Pounce covers; the toss uses the same island-limit clamp as the ram toss. A bot already busy (latched, pinned, ramming) is only dazed so MineServer never fights BotServer for the root. Shield: damage shows "BLOCKED" but the throw still happens (the shield blocks damage, not shoves) — flagged to Kepu. The sound is a public Creator Store asset; if it fails to load the blast is silent (MineSoundId swaps it).

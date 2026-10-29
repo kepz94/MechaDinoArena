@@ -228,6 +228,9 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | MechaButtons | 1.11 | TIMED_PARTS.traps ("Mine", DinoMineRequest, "SHOCK MINE") (MDA-80). Install hash 42145 / 2129656435 |
 | AbilityBar | 1.5 | TIMED_PARTS.traps = "Mine" (MDA-80). Verified: bar tile SHOCK MINE with recharge seconds. Install hash 18765 / 361487179 |
 | ArenaScope | 1.9 | Expects MineServer (MDA-80). ArenaScopeMismatches 0. Install hash 5382 / 729290492 |
+| SkillTree | 1.13 | Shock Mine: mineDamage 25 (was 15), new mineLaunch 25 / mineDaze 1, step I text (MDA-81, Kepu: "Blast + launch"). Spec 1.13 PASS 437. Install hash 35683 / 1732854419; spec 28577 / 1470756297 |
+| SkillEffects | 1.10 | + MineLaunch, MineDaze while slotted (MDA-81). Install hash 22316 / 1217286048 |
+| MineServer | 1.1 | Launch mode (MineLaunchEnabled, default true; false = 1.0 slow): hit dino takes 25, is thrown 25 studs away from the mine and dazed 1 s (players: the existing StunClient toss via StunTossFrom / Distance / At + StunnedUntil; bots: anchored arc + flip here, then StunnedUntil so BotServer lays them down; busy / anchored bots only dazed); zap arcs + sparks + light on the target for the throw + daze; rising "-25" / "BLOCKED" BillboardGui; zap sound MineSoundId (default 138132512434499 "sfx impactlightning", free) (MDA-81). Verified in Play at star on a T-Rex bot: 200 -> 175, thrown 3 -> 28 studs from the mine in 0.6 s, stunned ~1 s (stars), then up and wandering; arcs and the pop present; the sound asset loads (3.2 s; not yet loaded 0.3 s after the first blast). Player-target toss not tested (needs a second player). Install hash 26183 / 1536465595 |
 
 ## Open decisions
 - Skill points per level-up.
