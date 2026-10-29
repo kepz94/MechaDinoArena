@@ -1,0 +1,213 @@
+<title>Dino Garage</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: option switcher; a garage screen (dino on a turntable in the middle, few controls around it, one upgrade
+   panel); notes. Single dark look (it's a game menu). */
+:root{
+  color-scheme: dark;
+  --page:#0d0e13; --panel:rgb(20,20,26); --panel2:rgb(32,32,41); --line:rgba(255,255,255,.14);
+  --text:#eef0f4; --muted:#9ba1ae; --yellow:rgb(255,200,50); --ytext:rgb(30,26,10); --gold:rgb(255,214,102);
+  --health:rgb(95,209,106); --attack:rgb(240,90,79); --defense:rgb(90,160,255); --speed:rgb(255,211,77); --eng:rgb(255,155,46);
+  --display:"Fredoka One","Arial Rounded MT Bold",system-ui,sans-serif; --body:Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--body);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:400;margin:0 0 4px;font-size:22px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:74ch;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.row button{font-family:var(--display);font-size:14px;border:2px solid var(--line);background:var(--panel2);color:var(--text);padding:6px 12px;border-radius:999px;cursor:pointer}
+.row button.on{background:var(--yellow);color:var(--ytext);border-color:var(--yellow)}
+.row button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.scroll{overflow-x:auto;max-width:100%}
+.screen{position:relative;width:960px;height:540px;border-radius:16px;overflow:hidden;font-family:var(--display);
+  background:radial-gradient(ellipse 60% 55% at 50% 58%,#2b3a52 0%,#161d2b 60%,#0d1119 100%)}
+.top{position:absolute;left:16px;right:16px;top:14px;display:flex;align-items:center;gap:8px;z-index:3}
+.title{font-size:24px}
+.lv{display:flex;align-items:center;gap:8px;height:30px;background:rgba(20,20,26,.85);border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:0 10px;font-size:15px}
+.lv .bar{width:90px;height:8px;border-radius:4px;background:#000;overflow:hidden}.lv .bar i{display:block;height:100%;width:45%;background:linear-gradient(90deg,var(--yellow),var(--eng))}
+.mchip{background:rgba(20,20,26,.85);border:2px solid var(--gold);color:var(--gold);border-radius:8px;padding:3px 9px;font-size:14px}
+.sp{flex:1}.pts{background:var(--yellow);color:var(--ytext);border-radius:8px;padding:4px 10px;font-size:15px}
+.x{background:rgba(20,20,26,.85);border:1px solid rgba(255,255,255,.4);border-radius:8px;width:34px;height:34px;display:grid;place-items:center}
+.stage{position:absolute;inset:0}
+.stage svg{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:620px;height:400px}
+.rotate{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);font-family:var(--body);font-size:11px;color:rgba(255,255,255,.45)}
+/* tabs (option A) */
+.tabs{position:absolute;left:16px;top:70px;display:flex;flex-direction:column;gap:8px;z-index:3}
+.tab{width:62px;height:62px;border-radius:14px;background:rgba(20,20,26,.8);border:2px solid rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;cursor:pointer}
+.tab i{width:16px;height:16px;border-radius:50%}
+.tab.on{border-color:var(--c);box-shadow:0 0 0 3px rgba(255,255,255,.06),0 0 18px -4px var(--c)}
+/* bottom cards */
+.cards{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:10px;z-index:3}
+.card{width:170px;background:rgba(20,20,26,.88);border:2px solid rgba(255,255,255,.16);border-radius:14px;padding:9px 11px;cursor:pointer}
+.card.sel{border-color:var(--yellow)}
+.card .n{font-size:14px;display:flex;align-items:center;gap:6px}
+.card .k{font-family:var(--body);font-size:11px;color:var(--muted);margin-top:2px}
+.card .lvl{display:flex;gap:4px;margin-top:7px}
+.card .lvl b{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.14)}
+.card .lvl b.f{background:var(--c)}
+.card.m{box-shadow:inset 0 0 0 2px rgba(255,214,102,.55)}
+.card.soon{opacity:.55}
+/* upgrade panel */
+.panel{position:absolute;right:16px;top:70px;width:250px;background:rgba(20,20,26,.92);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;z-index:3;display:flex;flex-direction:column;gap:8px;font-family:var(--body);font-size:12.5px}
+.panel h5{margin:0;font-family:var(--display);font-weight:400;font-size:19px}
+.panel .meta{color:var(--muted);font-size:12px}
+.panel ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.panel li{display:grid;grid-template-columns:24px 1fr;gap:7px;line-height:1.35}
+.panel li .s{font-family:var(--display);font-size:11px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:2px solid rgba(255,255,255,.3)}
+.panel li.own .s{background:var(--c);border-color:var(--c);color:#111}
+.panel li.next .s{border-color:#fff}
+.panel li.lock{opacity:.4}
+.panel .why{color:var(--gold);font-size:12px;line-height:1.4}
+.panel .buy{border:0;border-radius:10px;padding:11px;font-family:var(--display);font-size:15px;cursor:pointer}
+.panel .buy.ok{background:var(--yellow);color:var(--ytext)}.panel .buy.no{background:#444;color:#999;cursor:default}
+/* hotspots (option B) */
+.hot{cursor:pointer}
+/* slots (option C) */
+.slots{position:absolute;z-index:3}
+.slot{position:absolute;width:118px;background:rgba(20,20,26,.88);border:2px solid var(--eng);border-radius:14px;padding:8px 10px;cursor:pointer}
+.slot.sel{border-color:var(--yellow)}
+.slot .key{font-size:11px;color:var(--muted)}
+.slot .nm{font-size:14px;margin-top:2px}
+.slot.empty{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.6)}
+.statsbtn{position:absolute;left:16px;bottom:16px;z-index:3;background:rgba(20,20,26,.88);border:2px solid var(--health);border-radius:14px;padding:10px 14px;cursor:pointer;font-size:14px}
+.statsbtn.sel{border-color:var(--yellow)}
+.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:14px;max-width:960px}
+.note h3{font-family:var(--display);font-weight:400;margin:0 0 6px;font-size:16px}
+.note b{color:var(--yellow)}
+</style>
+
+<h1>Dino garage: three layouts</h1>
+<p class="sub">Your dino stands in the middle of the screen. In the game it's your real 3D model, and you drag to turn it. When you upgrade a part, its hardware shows up on the model. Here the dino is a flat drawing standing in for that. Each layout shows only a few things at once. Click around, and BUY works.</p>
+<div class="row" role="group" aria-label="Layout">
+  <button class="on" data-o="A">A · Tabs + cards</button>
+  <button data-o="B">B · Tap the dino</button>
+  <button data-o="C">C · Loadout locker</button>
+</div>
+<div class="scroll"><div class="screen" id="screen"></div></div>
+<div class="note" id="note"></div>
+
+<script>
+const AREA = {health:"var(--health)", attack:"var(--attack)", defense:"var(--defense)", speed:"var(--speed)", eng:"var(--eng)"};
+const AREA_NAME = {health:"Health", attack:"Attack", defense:"Defense", speed:"Speed", eng:"Engineer"};
+const L = [
+ {id:"regen", name:"Regeneration", area:"health", steps:["Heal over time after 6 s without damage","Starts sooner, heals more","Starts sooner again","Kill heal doubled"]},
+ {id:"lifesteal", name:"Lifesteal", area:"health", steps:["5% of damage dealt heals you","10%","15%","Overheal becomes a shield"]},
+ {id:"adrenaline", name:"Adrenaline Injector", area:"health", mech:"neck", soon:true, steps:["Heal 20% over 3 s + run 1.3x","Heal 27%","Recharges 26% faster","Also ends a stun"]},
+ {id:"jaws", name:"Jaws", area:"attack", steps:["Main attack hits harder","Recharges faster","Hits bleed","Crushing hit stuns"]},
+ {id:"blade", name:"Blade Claws", area:"attack", mech:"foot", soon:true, steps:["Pounce landing +35%","Latch bites 35% faster","Pounce hits bleed","Pin kill refunds stamina"]},
+ {id:"dart", name:"Dart Launcher", area:"attack", mech:"shoulder", soon:true, steps:["Dart slows 30% for 3 s","Marked through grass","Two darts","Slow 60%"]},
+ {id:"hide", name:"Thick Hide", area:"defense", steps:["Take less damage","Less knockback","Shorter stuns","No stuns above 50%"]},
+ {id:"cloak", name:"Cloak Field", area:"defense", mech:"back", steps:["Invisible 3 s; bots lose you","Lasts 4.1 s","Pounce from cloak +35%","Still = stay cloaked (2x)"]},
+ {id:"shield", name:"Energy Shield", area:"defense", mech:"chest", soon:true, steps:["Bubble blocks damage","Stronger","Shorter cooldown","Bursts, knocks back"]},
+ {id:"legs", name:"Sprint Legs", area:"speed", steps:["Run faster","Run x1.9","Pounce / leap recharge faster","Run x2.6"]},
+ {id:"thrusters", name:"Thrusters", area:"speed", mech:"hips", steps:["Boost 1.75x run for 1 s","2 charges","Lasts 1.35 s","Rocket hop"]},
+ {id:"grapple", name:"Grapple Hook", area:"speed", mech:"wrist", soon:true, steps:["Pull to a tree","Longer range","Faster pull","Hook an enemy"]},
+ {id:"beacon", name:"Pack Beacon", area:"eng", mech:"head", soon:true, steps:["Mark enemies 60 studs","81-stud radius","Marked take +35%","Marks hold in range"]},
+ {id:"decoy", name:"Decoy Hologram", area:"eng", mech:"tail", soon:true, steps:["Fake raptor runs 5 s","Lasts 6.75 s","Two decoys","Decoy bursts and stuns"]},
+];
+const byId = Object.fromEntries(L.map(l=>[l.id,l]));
+const COST = [1,2,3,4], EARNED = 21;
+const S = {o:"A", area:"defense", sel:"cloak", st:{legs:4, cloak:3, thrusters:2, jaws:1, lifesteal:1}, slots:["thrusters","","cloak",""]};
+const spent = ()=>Object.entries(S.st).reduce((a,[id,n])=>a+COST.slice(0,n).reduce((x,y)=>x+y,0),0);
+const left = ()=>EARNED-spent();
+const mastered = ()=>L.filter(l=>(S.st[l.id]||0)>=3).map(l=>l.id);
+const locked = (l,i)=> i>=2 && !mastered().includes(l.id) && mastered().length>=3;
+function canBuy(l){ const n=S.st[l.id]||0;
+  if (l.soon) return [false,"COMING SOON"]; if (n>=4) return [false,"MAXED"];
+  if (locked(l,n)) return [false,"MASTERY FULL"]; if (left()<COST[n]) return [false,`NEED ${COST[n]} PTS`];
+  return [true,`UPGRADE · ${COST[n]} PTS`]; }
+
+/* the dino on its turntable; hardware drawn only for parts you own (steps >= 1) */
+const MOUNT = {hips:[255,168], back:[318,140], shoulder:[392,160], neck:[432,128], head:[488,86], chest:[402,214], wrist:[452,232], foot:[322,330], tail:[130,190]};
+function dino(hot){
+  const own = id => (S.st[id]||0) >= 1;
+  const hw = [];
+  if (own("thrusters")) hw.push(`<g><rect x="232" y="146" width="34" height="22" rx="6" fill="#7b8590" stroke="#2b2f35" stroke-width="2"/><path d="M 232 152 L 212 148 L 212 164 L 232 160 Z" fill="#59636e"/><path d="M 212 150 L 188 156 L 212 162 Z" fill="#ffb54a" opacity=".85"/></g>`);
+  if (own("cloak")) hw.push(`<g><path d="M 300 132 L 310 104 L 320 132 Z" fill="#6e7a86" stroke="#2b2f35" stroke-width="1.5"/><path d="M 324 130 L 334 100 L 344 130 Z" fill="#6e7a86" stroke="#2b2f35" stroke-width="1.5"/><path d="M 306 128 L 310 112 M 330 126 L 334 108" stroke="#5ff3ff" stroke-width="2.5"/></g>`);
+  const hotspots = hot ? Object.entries({health:"neck", attack:"shoulder", defense:"back", speed:"hips", eng:"head"}).map(([a,m])=>{
+    const [x,y]=MOUNT[m]; const on = S.area===a;
+    return `<g class="hot" data-area="${a}"><circle cx="${x}" cy="${y}" r="${on?15:12}" fill="rgba(0,0,0,.35)" stroke="${AREA[a]}" stroke-width="3"/><circle cx="${x}" cy="${y}" r="5" fill="${AREA[a]}"/>${on?`<circle cx="${x}" cy="${y}" r="22" fill="none" stroke="${AREA[a]}" stroke-width="1.5" opacity=".5"/>`:""}</g>`; }).join("") : "";
+  const sel = byId[S.sel]; const glow = sel && sel.mech && !hot ? (()=>{const [x,y]=MOUNT[sel.mech];return `<circle cx="${x}" cy="${y}" r="18" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-dasharray="4 3"/>`;})() : "";
+  return `<svg viewBox="0 0 620 400" aria-label="raptor on a turntable">
+    <defs><radialGradient id="g1" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#8db15a"/><stop offset="1" stop-color="#4f6e2f"/></radialGradient></defs>
+    <ellipse cx="320" cy="352" rx="230" ry="34" fill="#0b0f16" stroke="rgba(255,255,255,.08)" stroke-width="2"/>
+    <ellipse cx="320" cy="346" rx="200" ry="24" fill="none" stroke="rgba(120,180,255,.25)" stroke-width="2"/>
+    <path d="M 60 196 C 150 178, 220 166, 262 168 C 300 140, 370 132, 420 142 C 448 126, 468 100, 488 84 C 510 68, 560 66, 590 80 L 596 92 C 570 98, 542 101, 520 104 C 502 118, 488 142, 472 166 C 452 196, 424 214, 394 220 C 360 226, 330 224, 306 220 C 250 214, 160 206, 60 196 Z" fill="url(#g1)" stroke="#2e431b" stroke-width="2"/>
+    <path d="M 300 216 L 290 268 L 316 306 L 304 344 L 344 346" fill="none" stroke="#4f6e2f" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 342 218 L 334 264 L 360 300 L 350 338 L 386 340" fill="none" stroke="#3f5a25" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 452 176 L 468 200 L 488 196" fill="none" stroke="#4f6e2f" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="556" cy="84" r="4" fill="#111"/>
+    ${hw.join("")}${glow}${hotspots}
+  </svg>`;
+}
+function panel(){
+  const l = byId[S.sel]; const n = S.st[l.id]||0; const [ok,label] = canBuy(l);
+  const why = locked(l,n) ? `<div class="why">3 lines are already mastered (${mastered().map(i=>byId[i].name).join(", ")}). Only 3 lines can go past step II.</div>` : "";
+  return `<div class="panel" style="--c:${AREA[l.area]}"><h5 style="color:${AREA[l.area]}">${mastered().includes(l.id)?"♛ ":""}${l.name}</h5>
+   <div class="meta">${AREA_NAME[l.area]} · ${l.mech?"mecha part · mounts on the "+l.mech:"dino stat"}${l.soon?" · coming soon":""}</div>
+   <ul>${l.steps.map((t,i)=>`<li class="${i<n?"own":i===n?(locked(l,i)?"lock":"next"):(locked(l,i)?"lock":"")}"><span class="s">${i===3?"★":["I","II","III"][i]}</span><span>${t}</span></li>`).join("")}</ul>
+   ${why}<button class="buy ${ok?"ok":"no"}" id="buy">${label}</button></div>`;
+}
+function cardsFor(ids){
+  return `<div class="cards">${ids.map(id=>{const l=byId[id],n=S.st[id]||0,m=mastered().includes(id);
+    return `<div class="card ${S.sel===id?"sel":""} ${m?"m":""} ${l.soon?"soon":""}" data-id="${id}" style="--c:${AREA[l.area]}"><div class="n">${m?"♛ ":""}${l.mech?"⚙ ":""}${l.name}</div><div class="k">${l.soon?"coming soon":l.mech?"mecha part":"dino stat"}</div><div class="lvl">${[0,1,2,3].map(i=>`<b class="${i<n?"f":""}"></b>`).join("")}</div></div>`;}).join("")}</div>`;
+}
+function top(){
+  return `<div class="top"><span class="title">RAPTOR</span><span class="lv">LV 22<span class="bar"><i></i></span>95 / 240 XP</span><span class="mchip">MASTERY ${mastered().length}/3</span><span class="sp"></span><span class="pts">${left()} PTS</span><span class="x">X</span></div>`;
+}
+function layoutA(){
+  const tabs = Object.keys(AREA).map(a=>`<div class="tab ${S.area===a?"on":""}" data-area="${a}" style="--c:${AREA[a]}"><i style="background:${AREA[a]}"></i>${AREA_NAME[a]}</div>`).join("");
+  return `${top()}<div class="tabs">${tabs}</div><div class="stage">${dino(false)}</div><div class="rotate">drag to turn</div>${cardsFor(L.filter(l=>l.area===S.area).map(l=>l.id))}${panel()}`;
+}
+function layoutB(){
+  return `${top()}<div class="stage">${dino(true)}</div><div class="rotate">tap a glowing spot</div>${cardsFor(L.filter(l=>l.area===S.area).map(l=>l.id))}${panel()}`;
+}
+function layoutC(){
+  const order = [0,2,1,3];
+  const keys = ["R · tap","C · tap","R · pull ▼","C · pull ▼"];
+  const sl = order.map((i,k)=>{const id=S.slots[i]; return `<div class="slot ${id?"":"empty"} ${S.sel===id&&id?"sel":""}" data-slot="${i}" style="left:16px;top:${70+k*66}px"><div class="key">${keys[i]}</div><div class="nm">${id?"⚙ "+byId[id].name:"+ empty"}</div></div>`;}).join("");
+  const statsOpen = !byId[S.sel].mech;
+  return `${top()}<div class="stage">${dino(false)}</div><div class="rotate">drag to turn</div><div class="slots" style="inset:0">${sl}</div>
+    <div class="statsbtn ${statsOpen?"sel":""}" data-stats="1">DINO STATS ▸</div>
+    ${statsOpen ? cardsFor(["legs","jaws","hide","lifesteal","regen"]) : cardsFor(L.filter(l=>l.mech).map(l=>l.id).slice(0,5))}${panel()}`;
+}
+const NOTES = {
+ A:`<h3>A · Tabs + cards</h3>
+  <ul>
+   <li>The dino in the middle. Five area tabs down the left.</li>
+   <li>The chosen area's 2–3 lines show as cards along the bottom.</li>
+   <li>The upgrade panel sits on the right.</li>
+   <li>Picking a mecha card highlights where it mounts on the dino.</li>
+  </ul>
+  It's the closest to today, just calmer and centred on the dino.`,
+ B:`<h3>B · Tap the dino</h3>
+  <ul>
+   <li>No list: the dino has 5 glowing spots, one per area (head, neck, back, shoulder, hips).</li>
+   <li>Tap one to see that area's lines as cards.</li>
+   <li>It feels the most like customizing your dino, and has the fewest things on screen.</li>
+  </ul>
+  Finding things takes one extra tap the first time.`,
+ C:`<h3>C · Loadout locker</h3>
+  <ul>
+   <li>Like a Fortnite locker: your 4 mecha slots sit around the dino (R / C, tap and pull).</li>
+   <li>The bottom cards are the mecha parts; "DINO STATS" switches them to the stat lines.</li>
+   <li>It puts the loadout first, which is what you see in a match.</li>
+  </ul>
+  The tree becomes "parts you own" rather than a tree.`
+};
+function render(){
+  const scr = document.getElementById("screen");
+  scr.innerHTML = S.o==="A"?layoutA():S.o==="B"?layoutB():layoutC();
+  scr.querySelectorAll("[data-area]").forEach(el=>el.addEventListener("click",()=>{S.area=el.dataset.area; S.sel=L.find(l=>l.area===S.area).id; render();}));
+  scr.querySelectorAll("[data-id]").forEach(el=>el.addEventListener("click",()=>{S.sel=el.dataset.id; render();}));
+  scr.querySelectorAll("[data-slot]").forEach(el=>el.addEventListener("click",()=>{const id=S.slots[+el.dataset.slot]; if(id){S.sel=id; render();}}));
+  scr.querySelectorAll("[data-stats]").forEach(el=>el.addEventListener("click",()=>{S.sel = byId[S.sel].mech ? "legs" : "thrusters"; render();}));
+  const b = document.getElementById("buy");
+  if (b) b.addEventListener("click",()=>{const l=byId[S.sel]; if(canBuy(l)[0]){S.st[l.id]=(S.st[l.id]||0)+1; render();}});
+  document.getElementById("note").innerHTML = NOTES[S.o];
+}
+document.querySelectorAll("[data-o]").forEach(b=>b.addEventListener("click",()=>{S.o=b.dataset.o;document.querySelectorAll("[data-o]").forEach(x=>x.classList.toggle("on",x===b));render();}));
+render();
+</script>
