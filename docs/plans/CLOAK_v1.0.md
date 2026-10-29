@@ -41,14 +41,16 @@ MechaServer (Thrusters), PounceTest, JumpTest, BiteTest / BiteServer, RamTest / 
 
 ## Path ownership (SkillTree 1.5)
 
-| Area | Shared stat | Raptor | T-Rex (interim, until the T-Rex plan) |
+| Area | Shared stat | Raptor | T-Rex (Kepu 2026-10-29 03:10, docs/mockups/trex_tree_draft.html) |
 |---|---|---|---|
-| Health | Regeneration, Lifesteal | Adrenaline Injector (soon) | Med-Station (soon) |
-| Attack | Jaws | Blade Claws (soon, passive), Dart Launcher (soon) | Back Turret (soon), Shoulder Rocket (soon) |
-| Defense | Thick Hide | **Cloak Field (live)**, Energy Shield (soon) | Armor Plating (soon) |
-| Speed | Sprint Legs | Thrusters (live), Grapple Hook (soon) | — (T-Rex speed part comes later) |
-| Engineer | — | Pack Beacon (soon), Decoy Hologram (soon) | Sentry, Traps, Barricade (soon) |
+| Health | Regeneration, Lifesteal | Adrenaline Injector (soon) | Repair Drone (soon), Bio-Battery Spine (soon, passive) |
+| Attack | Jaws | Blade Claws (soon, passive), Dart Launcher (soon) | Shoulder Rocket (soon) |
+| Defense | Thick Hide | **Cloak Field (live)**, Energy Shield (soon) | Armor Plating (soon), Reactive Armor (soon, passive) |
+| Speed | Sprint Legs | Thrusters (live), Grapple Hook (soon) | Ramjet Charge (soon) |
+| Engineer | — | Pack Beacon (soon), Decoy Hologram (soon) | Shield Projector (soon), Roar Amplifier (soon) |
 
+- Med-Station, Back Turret, Sentry, Traps and Barricade belong to no dino yet: `path.dino = "none"`. They stay in the data for future dinos but are shown to nobody. Nothing is removed.
+- The T-Rex Health area has 4 columns: see decision "SkillScreen layout for 4-column areas" (SkillScreen 1.3 must handle it).
 - `path.dino` = nil (shared) / "Raptor" / "TRex".
 - `SkillTree.pathsFor(areaId, dino)` = the area's paths a dino sees, in order: shared first.
 - `sanitize(raw, dino)` also zeroes paths the dino doesn't own. The dino nil or "All" means no filter (1.4 behaviour).
