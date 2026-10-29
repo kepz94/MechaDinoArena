@@ -1,0 +1,232 @@
+<title>Thruster Boost Lean</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: two game views (side + from behind) driven by one set of controls; the options are variants, notes below. Single dark look (the game's HUD panels). */
+:root {
+  --ink: #0f1319; --panel: #171d26; --line: #2a3340; --text: #e8edf4; --muted: #9aa6b6;
+  --orange: #ff9b2e; --cyan: #5ff3ff;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--ink); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 16px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; text-wrap: balance; }
+h1 span { color: var(--orange); }
+.lede { margin: 4px 0 0; color: var(--muted); max-width: 72ch; }
+.tabs, .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tab { font-family: var(--display); font-weight: 600; font-size: 15px; color: var(--text); background: var(--panel);
+  border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; }
+.tab small { display: block; font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,155,46,.15); }
+.tab.now[aria-pressed="true"] { border-color: var(--muted); box-shadow: none; }
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.view { position: relative; border: 2px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--panel); min-width: 0; }
+.view canvas { display: block; width: 100%; aspect-ratio: 4 / 3; max-width: 100%; }
+.view .cap { position: absolute; left: 10px; top: 8px; font-family: var(--display); font-weight: 600; font-size: 13px;
+  background: rgba(15,19,25,.72); border-radius: 8px; padding: 2px 8px; }
+.keys { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(2, 52px); gap: 6px; }
+.key { font-family: var(--display); font-weight: 700; font-size: 16px; border-radius: 10px; border: 2px solid var(--line);
+  background: var(--panel); color: var(--text); cursor: pointer; }
+.key small { display: block; font-size: 10px; color: var(--muted); font-family: var(--body); font-weight: 400; }
+.key[aria-pressed="true"] { border-color: var(--orange); background: #2a2116; }
+.key.w { grid-column: 2; grid-row: 1; } .key.a { grid-column: 1; grid-row: 2; } .key.s { grid-column: 2; grid-row: 2; } .key.d { grid-column: 3; grid-row: 2; }
+.btn { font-family: var(--display); font-weight: 700; font-size: 16px; border: 0; border-radius: 12px; padding: 12px 20px; background: var(--orange); color: #2a1604; cursor: pointer; }
+.tab:focus-visible, .key:focus-visible, .btn:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; }
+.note h2 { font-family: var(--display); font-weight: 700; font-size: 20px; margin: 0; }
+.note dl { margin: 0; display: grid; grid-template-columns: 120px 1fr; gap: 6px 14px; }
+.note dt { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+.note dd { margin: 0; min-width: 0; }
+.pick { color: var(--orange); font-family: var(--display); font-weight: 600; margin: 0; }
+.shared { color: var(--muted); font-size: 14px; max-width: 78ch; margin: 0; }
+.shared b { color: var(--text); }
+@media (max-width: 640px) { .views { grid-template-columns: 1fr; } .note dl { grid-template-columns: 1fr; } h1 { font-size: 23px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Thruster boost <span>lean</span></h1>
+    <p class="lede">The raptor's pose reacts to which way you boost, so the flames point away from where you're going. Pick a direction (W / A / S / D on PC, the stick on a phone), press <b>Boost</b>, and compare the options in both views.</p>
+  </header>
+
+  <div class="tabs" role="group" aria-label="Option">
+    <button class="tab now" id="tab-now" data-o="now" aria-pressed="false">Now<small>for comparison</small></button>
+    <button class="tab" id="tab-a" data-o="A" aria-pressed="true">A · Lean the body<small>tilt against the push</small></button>
+    <button class="tab" id="tab-b" data-o="B" aria-pressed="false">B · Lean + swivel boosters<small>flames aim exactly</small></button>
+    <button class="tab" id="tab-c" data-o="C" aria-pressed="false">C · Swivel boosters only<small>body stays still</small></button>
+  </div>
+
+  <div class="views">
+    <div class="view"><canvas id="side" width="800" height="600" aria-label="Side view of the raptor boosting"></canvas><div class="cap">Side view (W / S)</div></div>
+    <div class="view"><canvas id="rear" width="800" height="600" aria-label="View from behind the raptor boosting"></canvas><div class="cap">From behind (A / D)</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="keys" role="group" aria-label="Boost direction">
+      <button class="key w" id="k-w" data-d="fwd" aria-pressed="false">W<small>forward</small></button>
+      <button class="key a" id="k-a" data-d="left" aria-pressed="false">A<small>left</small></button>
+      <button class="key s" id="k-s" data-d="back" aria-pressed="true">S<small>back</small></button>
+      <button class="key d" id="k-d" data-d="right" aria-pressed="false">D<small>right</small></button>
+    </div>
+    <button class="btn" id="go">Boost</button>
+  </div>
+
+  <section class="note" id="note" aria-live="polite"></section>
+  <p class="shared"><b>Same in both options:</b> the lean eases in over 0.15 s and back out over 0.25 s, follows the steering during the boost, and plays on every player's screen (worked out from the boost start and the dino's movement). The camera, controls, speed and duration of the boost don't change.</p>
+</div>
+
+<script>
+(() => {
+  const NOTES = {
+    now: { t: "Now", what: "The body stays as it is and the flames always shoot out of the back.", fwd: "Looks right.", back: "Flames shoot backwards while you fly backwards, so it looks like the thrusters are pulling you.", side: "Flames shoot backwards while you slide sideways.", trade: "", pick: "" },
+    A: { t: "A · Lean the body", what: "The whole body tilts against the push; the boosters stay fixed on the back.", fwd: "Leans 10° forward into the boost.", back: "Leans back 30° (chest up, tail down), so the flames angle down and forward under the body.", side: "Banks 22° away from the travel direction (like being shoved sideways) and twists the back 25° so the boosters angle away from where you're going.", trade: "One pose layer on the body, simple and readable. The flames still mostly shoot backwards, so for a backward boost they only point down-forward, not straight ahead.", pick: "" },
+    C: { t: "C · Swivel boosters only", what: "The body stays as it is; only the boosters turn on their mounts so the flames point opposite your travel direction.", fwd: "Boosters straight back (as now).", back: "The boosters swing up and over to fire forward past the shoulders.", side: "The boosters turn to fire out the opposite side.", trade: "Flames always point the right way and the dino's pose (and aim) is untouched. Less body movement, so the boost feels less physical than A or B.", pick: "" },
+    B: { t: "B · Lean + swivel boosters", what: "A smaller body lean, plus the boosters turn on their mounts so the flames point exactly opposite your travel direction.", fwd: "Leans 10° forward; boosters straight back.", back: "Leans back 15°; the boosters swing up and over to fire forward past the shoulders.", side: "Banks 12°; the boosters turn to fire out the opposite side.", trade: "Most authentic: the flames always point the right way. It's two things to build (body lean + booster swivel), and the boosters visibly move.", pick: "My pick: you asked for the thrusters to fire in the right direction, and only swiveling the boosters gets that for backward boosts without flipping the dino around." },
+  };
+  const S = { o: "A", dir: "back", boostT: -10 };
+  const C = { green: "#5E943E", dark: "#283A1E", belly: "#C9C98F", eye: "#ffb020", metal: "#7b8590", nozzle: "#2b2f35", orange: "#ff9b2e",
+    sky1: "#9fd8ff", sky2: "#d9f1ff", grass: "#5fae4a", grass2: "#4d9a3b" };
+  const side = document.getElementById("side"), rear = document.getElementById("rear");
+  const sg = side.getContext("2d"), rg = rear.getContext("2d");
+  const W = 800, H = 600;
+
+  function poly(g, pts, fill) { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); g.fillStyle = fill; g.fill(); }
+  function rr(g, x, y, w, h, r, fill) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); g.fillStyle = fill; g.fill(); }
+  function flame(g, len, wid, t) { // a flame along +x from the origin
+    const flick = 1 + 0.12 * Math.sin(t * 60) + 0.08 * Math.sin(t * 37);
+    const L = len * flick;
+    const gr = g.createLinearGradient(0, 0, L, 0); gr.addColorStop(0, "#fff3c4"); gr.addColorStop(0.35, "#ffb23e"); gr.addColorStop(1, "rgba(255,90,20,0)");
+    g.beginPath(); g.moveTo(0, -wid / 2); g.quadraticCurveTo(L * 0.5, -wid * 0.7, L, 0); g.quadraticCurveTo(L * 0.5, wid * 0.7, 0, wid / 2); g.closePath(); g.fillStyle = gr; g.fill();
+  }
+  function scene(g) {
+    const sky = g.createLinearGradient(0, 0, 0, 470); sky.addColorStop(0, C.sky1); sky.addColorStop(1, C.sky2);
+    g.fillStyle = sky; g.fillRect(0, 0, W, 470); g.fillStyle = C.grass; g.fillRect(0, 470, W, 130);
+    g.fillStyle = C.grass2; for (let x = 6; x < W; x += 30) g.fillRect(x, 478 + (x % 3) * 10, 16, 6);
+  }
+  function streaks(g, dx, dy, t) { // motion lines opposite the travel direction
+    if (!dx && !dy) return;
+    g.save(); g.strokeStyle = "rgba(255,255,255,.75)"; g.lineWidth = 3; g.lineCap = "round";
+    for (let i = 0; i < 9; i++) {
+      const ph = ((t * 2.2 + i / 9) % 1);
+      const x = 400 - dx * (120 + ph * 300) + (dy ? (i - 4) * 70 : 0), y = 300 - dy * (60 + ph * 160) + (dx ? (i - 4) * 38 : 0);
+      g.globalAlpha = 1 - ph; g.beginPath(); g.moveTo(x, y); g.lineTo(x - dx * 60, y - dy * 30); g.stroke();
+    }
+    g.restore();
+  }
+
+  // eased weight of the boost pose (0..1): 0.15 s in, 1.5 s hold, 0.25 s out
+  function weight(t) { if (t < 0) return 0; if (t < 0.15) return t / 0.15; if (t < 1.5) return 1; if (t < 1.75) return 1 - (t - 1.5) / 0.25; return 0; }
+  const ease = k => k * k * (3 - 2 * k);
+
+  function poseFor(o, dir) { // {pitch (deg, + = chest up), roll (deg, + = right side down), twist (deg), swivelSide (deg in side view, 0 = flame back), swivelRear ('none'|'left'|'right')}
+    if (o === "now") return { pitch: 0, roll: 0, twist: 0, swS: 0, swR: 0 };
+    if (o === "C") { if (dir === "back") return { pitch: 0, roll: 0, twist: 0, swS: 160, swR: 0 }; if (dir === "fwd") return { pitch: 0, roll: 0, twist: 0, swS: 0, swR: 0 }; return { pitch: 0, roll: 0, twist: 0, swS: 0, swR: dir === "left" ? 1 : -1 }; }
+    const A = o === "A";
+    if (dir === "fwd") return { pitch: -10, roll: 0, twist: 0, swS: 0, swR: 0 };
+    if (dir === "back") return A ? { pitch: 30, roll: 0, twist: 0, swS: 0, swR: 0 } : { pitch: 15, roll: 0, twist: 0, swS: 160, swR: 0 };
+    const s = dir === "left" ? -1 : 1; // left travel: bank away (right side down = +roll)
+    return A ? { pitch: 0, roll: -22 * s, twist: 25 * s, swS: 0, swR: 0 } : { pitch: 0, roll: -12 * s, twist: 0, swS: 0, swR: -s };
+  }
+
+  function drawSide(t) {
+    const g = sg, bt = t - S.boostT, w = ease(weight(bt));
+    g.setTransform(side.width / W, 0, 0, side.height / H, 0, 0); g.clearRect(0, 0, W, H); scene(g);
+    const dirX = S.dir === "fwd" ? 1 : S.dir === "back" ? -1 : 0;
+    if (w > 0) streaks(g, dirX, 0, t);
+    const P = poseFor(S.o, S.dir);
+    const shiftX = w > 0 ? dirX * 20 * w : 0;
+    g.save(); g.translate(shiftX, 0);
+    // pivot at the hips; pitch: chest up = rotate counter-clockwise (raptor faces right)
+    g.translate(370, 400); g.rotate(-P.pitch * w * Math.PI / 180); g.translate(-370, -400);
+    // tail, body, neck, head (side view, facing right)
+    poly(g, [[300,330],[300,372],[200,366],[90,350],[92,338],[200,342]], C.green);
+    rr(g, 290, 322, 182, 66, 18, C.green); rr(g, 330, 376, 132, 13, 6, C.belly);
+    for (const x of [318,348,378,408,438]) rr(g, x, 325, 9, 34, 3, C.dark);
+    poly(g, [[452,334],[486,382],[544,288],[512,266]], C.green);
+    poly(g, [[505,246],[600,246],[627,261],[627,282],[520,288]], C.green);
+    poly(g, [[530,288],[617,288],[606,299],[536,299]], C.belly);
+    g.beginPath(); g.arc(586, 259, 5, 0, 7); g.fillStyle = C.eye; g.fill();
+    poly(g, [[465,374],[478,370],[496,404],[486,407]], C.green);
+    // booster on the back: pivot at its middle, swivel in B
+    g.save(); g.translate(378, 312); g.rotate(-P.swS * w * Math.PI / 180);
+    if (w > 0) { g.save(); g.translate(-62, 0); g.rotate(Math.PI); flame(g, 120 * w, 22, t); g.restore(); }
+    rr(g, -46, -12, 92, 24, 11, C.metal); rr(g, -62, -9, 20, 18, 5, C.nozzle);
+    g.restore();
+    g.restore();
+    // legs stay planted (drawn after so they read as the ground contact)
+    g.save(); g.translate(shiftX, 0);
+    poly(g, [[328,355],[380,355],[396,416],[356,422]], C.green); poly(g, [[358,416],[392,412],[376,466],[360,466]], C.green); poly(g, [[348,462],[404,462],[410,479],[342,479]], "#4f8436");
+    g.restore();
+  }
+
+  function drawRear(t) {
+    const g = rg, bt = t - S.boostT, w = ease(weight(bt));
+    g.setTransform(rear.width / W, 0, 0, rear.height / H, 0, 0); g.clearRect(0, 0, W, H); scene(g);
+    const dirX = S.dir === "left" ? -1 : S.dir === "right" ? 1 : 0;
+    if (w > 0) streaks(g, dirX, 0, t);
+    const P = poseFor(S.o, S.dir);
+    const shiftX = w > 0 ? dirX * 20 * w : 0;
+    g.save(); g.translate(400 + shiftX, 478);
+    // legs planted
+    rr(g, -58, -112, 30, 112, 8, C.green); rr(g, 28, -112, 30, 112, 8, C.green);
+    rr(g, -66, -12, 46, 14, 5, "#4f8436"); rr(g, 20, -12, 46, 14, 5, "#4f8436");
+    // body: roll about the hips (+roll = right side down = clockwise on screen)
+    g.translate(0, -120); g.rotate(P.roll * w * Math.PI / 180);
+    const tw = 1 - Math.abs(P.twist * w) / 120; // twist reads as a narrower back
+    g.save(); g.scale(tw, 1);
+    rr(g, -82, -98, 164, 104, 34, C.green); // body seen from behind
+    for (const x of [-60, -24, 12, 48]) rr(g, x, -96, 12, 30, 4, C.dark);
+    rr(g, -40, -150, 80, 60, 14, C.green); // neck / head above
+    g.restore();
+    // tail coming at the viewer
+    g.beginPath(); g.ellipse(0, -10, 26, 22, 0, 0, 7); g.fillStyle = "#57893a"; g.fill();
+    // boosters seen from behind (two nozzles on top of the back)
+    for (const bx of [-38, 38]) {
+      g.save(); g.translate(bx * tw, -104);
+      if (P.swR) { // B: turned to fire out the side
+        g.rotate(P.swR > 0 ? 0 : Math.PI); // flame out the side opposite the travel
+      }
+      if (w > 0) {
+        if (P.swR && w > 0.3) { g.save(); g.translate(24, 0); flame(g, 110 * w, 20, t); g.restore(); }
+        else { // firing at the viewer: a glowing disc
+          const r = (16 + 6 * Math.sin(t * 50)) * w + 8;
+          const gr = g.createRadialGradient(0, 0, 2, 0, 0, r * 1.8); gr.addColorStop(0, "#fff3c4"); gr.addColorStop(0.4, "rgba(255,170,60,.9)"); gr.addColorStop(1, "rgba(255,90,20,0)");
+          g.beginPath(); g.arc(0, 0, r * 1.8, 0, 7); g.fillStyle = gr; g.fill();
+        }
+      }
+      if (P.swR && w > 0.3) { rr(g, -22, -12, 44, 24, 11, C.metal); rr(g, 18, -10, 10, 20, 4, C.nozzle); }
+      else { g.beginPath(); g.arc(0, 0, 16, 0, 7); g.fillStyle = C.metal; g.fill(); g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fillStyle = C.nozzle; g.fill(); }
+      g.restore();
+    }
+    g.restore();
+  }
+
+  function frame(now) {
+    const t = now / 1000;
+    if (t - S.boostT > 2.6 && S.loop) S.boostT = t + 0.3;
+    drawSide(t); drawRear(t);
+    requestAnimationFrame(frame);
+  }
+  function note() {
+    const n = NOTES[S.o];
+    document.getElementById("note").innerHTML = `<h2>${n.t}</h2><dl><dt>What moves</dt><dd>${n.what}</dd><dt>Forward (W)</dt><dd>${n.fwd}</dd><dt>Back (S)</dt><dd>${n.back}</dd><dt>Left / right</dt><dd>${n.side}</dd>${n.trade ? `<dt>Trade-off</dt><dd>${n.trade}</dd>` : ""}</dl>` + (n.pick ? `<p class="pick">${n.pick}</p>` : "");
+  }
+  document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
+    S.o = b.dataset.o; document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-pressed", String(x === b))); note();
+  }));
+  document.querySelectorAll(".key").forEach(b => b.addEventListener("click", () => {
+    S.dir = b.dataset.d; document.querySelectorAll(".key").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    S.boostT = performance.now() / 1000;
+  }));
+  document.getElementById("go").addEventListener("click", () => { S.boostT = performance.now() / 1000; });
+  S.loop = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  S.boostT = performance.now() / 1000 + 0.4;
+  note();
+  requestAnimationFrame(frame);
+})();
+</script>
