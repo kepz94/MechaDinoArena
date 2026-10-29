@@ -1212,6 +1212,21 @@ stamina (Kepu). The Thrusters part is on the dino only while it is in a slot (Ke
 
 T-Rex run 60 -> 39; maxed Sprint Legs (x2.6) 101; maxed + Thrusters boost (x1.75) 177 studs/s.
 
+## Ability bar (AbilityBar 1.0, PC)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| AbilityBarEnabled | script AbilityBar | true | false = no bar (AbilityBarState "off") |
+| AbilityBarVersion | character (owner client) | — | "1.0" |
+| AbilityBarState | character (owner client) | — | "on" / "touch" (touch device, no bar) / "off" |
+| AbilityBarTiles | character (owner client) | — | key:name list, e.g. "R:DASH,C:+,F:POUNCE,Space:LEAP" |
+| AbilityBar_<Tile> | character (owner client) | — | Slot_1 / Slot_2 / Pounce / Leap / Bite / Ram: "empty" / "off" / "active" / "cooling" / "ready" / "stunned"; Ram without a tile "hidden" |
+
+Reads only: SkillSlot1 / SkillSlot2 (player), DashEnabled, DashCharges, DashChargesLeft, DashNextChargeAt, DashRecharge,
+MechaDashLocal, BitePredictedAt / PouncePredictedAt / JumpPredictedAt / RamPredictedAt + BiteCooldown / PounceCooldown /
+JumpCooldown / RamCooldown, PounceTestState / JumpTestState / RamTestState, StunnedUntil, RamLatchGate, Species, the
+moves' Enabled attributes. Layout and the state map: docs/plans/ABILITY_BAR_v1.0.md.
+
 ## Air pounce (PounceTest 1.4 / MechaButtons 1.3)
 
 | Attribute | On | Default | Meaning |

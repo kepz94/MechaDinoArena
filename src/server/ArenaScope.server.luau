@@ -1,4 +1,4 @@
--- ArenaScope v1.4 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.5 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -14,10 +14,11 @@
 --   "mismatch").
 -- v1.4 (mecha parts framework + Thrusters, MDA-30, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 8): MechaServer and
 --   MechaButtons expected on.
+-- v1.5 (ability bar, MDA-43, plan docs/plans/ABILITY_BAR_v1.0.md Task 2): AbilityBar expected on.
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 -- {container, name, expected Enabled}
 local SCOPE = {
@@ -44,6 +45,8 @@ local SCOPE = {
 	{SSS, "RaptorScale", true},
 	-- v1.4: mecha parts
 	{SSS, "MechaServer", true}, {SCS, "MechaButtons", true},
+	-- v1.5: ability bar (PC)
+	{SCS, "AbilityBar", true},
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)
