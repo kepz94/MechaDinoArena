@@ -1,4 +1,4 @@
--- AbilityBar v1.1 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.2 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -32,12 +32,21 @@
 -- v1.1 (Kepu 2026-10-29: the bar showed faintly through the SKILLS screen's see-through loadout strip -> "yes hide"):
 --   the bar is hidden while the character attribute SkillScreenOpen (SkillScreen 1.0+) is true; AbilityBarState
 --   "skills" then. Script attribute AbilityBarHideOnSkills (default true; false = 1.0 behaviour).
+-- v1.2 (4 slots + Cloak, MDA-53, plans docs/plans/LOADOUT4_v1.0.md Task 3 + docs/plans/CLOAK_v1.0.md Task 5): 4 slot tiles
+--   in the order Slot_1 (R), Slot_3 (T), Slot_2 (C), Slot_4 (V) (SLOT_ORDER; keys = MechaButtons 1.4), then the divider
+--   and the moves as 1.1. A Cloak Field slot (CloakServer 1.0) has its own states, first match wins:
+--     "off"     CloakEnabled ~= true                         dimmed 0.5
+--     "active"  CloakedUntil > now                           stroke 4 px white, seconds left of the cloak
+--     "cooling" now < CloakReadyAt                           fill (CloakReadyAt - now) / CloakCooldown, seconds, dim 0.25
+--     "ready"   otherwise
+--   Other tile rules as 1.1. Diagnostics AbilityBar_Slot_3 / _Slot_4; AbilityBarTiles lists all 4 slots
+--   ("R:DASH,T:CLOAK FIELD,C:+,V:+,F:POUNCE,Space:LEAP").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local char = script.Parent
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
@@ -64,7 +73,8 @@ local MOVES = {
 }
 local SPECIES_MOVES = {Raptor = {"Pounce", "Leap"}, TRex = {"Bite", "Ram"}}
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
-local SLOT_KEYS = {"R", "C"}
+local SLOT_KEYS = {"R", "C", "T", "V"} -- v1.2: + T / V (slots 3 / 4)
+local SLOT_ORDER = {1, 3, 2, 4} -- v1.2: tile order R, T, C, V
 
 if script:GetAttribute("AbilityBarEnabled") == nil then script:SetAttribute("AbilityBarEnabled", true) end
 if script:GetAttribute("AbilityBarHideOnSkills") == nil then script:SetAttribute("AbilityBarHideOnSkills", true) end -- v1.1
@@ -225,7 +235,7 @@ local function layout()
 	local T = tileSize()
 	local x = 0
 	for i, e in ipairs(tiles) do
-		if i == 3 and divider then
+		if i == #SLOT_ORDER + 1 and divider then -- v1.2: after the 4 slot tiles (was 3)
 			x += DIV_SPACE - GAP
 			divider.Size = UDim2.fromOffset(2, math.floor(T * 0.8))
 			divider.Position = UDim2.fromOffset(x, math.floor(T * 0.1))
@@ -241,7 +251,7 @@ end
 local function rebuild()
 	local moves = moveList()
 	local parts = {}
-	for n = 1, 2 do table.insert(parts, tostring(slotId(n) or "")) end
+	for _, n in ipairs(SLOT_ORDER) do table.insert(parts, tostring(slotId(n) or "")) end -- v1.2: 4 slots
 	local sig = table.concat(parts, ",") .. "|" .. table.concat(moves, ",")
 	if sig == signature and #tiles > 0 then return end
 	signature = sig
@@ -249,7 +259,7 @@ local function rebuild()
 	if divider then divider:Destroy() end
 	tiles = {}
 	local names = {}
-	for n = 1, 2 do
+	for _, n in ipairs(SLOT_ORDER) do -- v1.2: R, T, C, V (was 1, 2)
 		local id = slotId(n)
 		local title = not id and "+" or id == "thrusters" and "DASH"
 			or string.upper(okST and ST.PATHS[id] and ST.PATHS[id].name or id)
@@ -326,6 +336,19 @@ local function update()
 					paint(e, "cooling", 0.25, wait / rec, wait)
 				else
 					paint(e, "ready", 0, wait / rec, wait)
+				end
+			elseif e.part == "cloak" then -- v1.2: Cloak Field
+				local readyAt = tonumber(char:GetAttribute("CloakReadyAt")) or 0
+				local untilT = tonumber(char:GetAttribute("CloakedUntil")) or 0
+				local cd = math.max(0.01, tonumber(char:GetAttribute("CloakCooldown")) or 12)
+				if char:GetAttribute("CloakEnabled") ~= true then
+					paint(e, "off", 0.5, 0, nil)
+				elseif untilT > now then
+					paint(e, "active", 0, 0, untilT - now)
+				elseif now < readyAt then
+					paint(e, "cooling", 0.25, (readyAt - now) / cd, readyAt - now)
+				else
+					paint(e, "ready", 0, 0, nil)
 				end
 			else
 				paint(e, "ready", 0, 0, nil)

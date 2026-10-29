@@ -1,4 +1,4 @@
--- MechaButtons v1.3 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.4 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -50,12 +50,31 @@
 --   "lunge"), so the boost's LinearVelocity (MaxForce infinite) does not hold the lunge back; the boost's end sets the
 --   horizontal speed to 0 during the 0.1 s wind-up, then the lunge sets its own speed. Script attribute
 --   MechaBoostPounceEnds (default true; false = 1.2 behaviour). Diagnostic (character): MechaBoostEnd ("pounce").
+-- v1.4 (4 slots + Cloak, MDA-53, plans docs/plans/LOADOUT4_v1.0.md Task 2 + docs/plans/CLOAK_v1.0.md Task 5; Kepu
+--   2026-10-29: eFootball-style tap-and-pull, look A "Sub-label", fire on release, PC T / V):
+--   * Slots 1-4 (SkillSlot1..4, SkillTree 1.5 SLOTS 4): PC keys R / C / T / V press slots 1 / 2 / 3 / 4.
+--   * Touch: button n (1, 2) holds a tap part (slot n) and a pull part (slot n + 2).
+--       pull slot empty (or MechaButtonsPullEnabled false): presses slot n on InputBegan, as 1.3;
+--       pull slot set: InputBegan keeps the start Y; the touch is "pulling" once it is >= PULL_PX below the start
+--         (PULL_PX = clamp(0.22 x button height, 14, 24) px; tracked through UserInputService so it keeps working below the
+--         button); while pulling the stroke is white 4 px and the pull label white; InputEnded presses slot n + 2 when
+--         pulling, else slot n (fire on release).
+--   * Pull label ("Pull"): "▼ NAME" along the bottom (y 0.78, 0.16 of the button), rgb(255, 217, 168), 0.5 while that
+--     part is not ready; hidden when the pull slot is empty (the empty button's "slot n" text is then hidden too).
+--   * Cloak (CloakServer 1.0): a press on a slot holding "cloak" fires ReplicatedStorage.DinoCloakRequest:FireServer(server
+--     time). The button shows "CLOAK", ready while CloakEnabled is true, CloakedUntil <= now and now >= CloakReadyAt
+--     (else 0.5); the dark fill is the cooldown left (CloakReadyAt - now) / CloakCooldown. No pips.
+--   * NEW popup: looks up slots 1-4: "Press R / C / T / V to use it" (PC), "Tap its button" (slot 1 / 2) or "Tap and pull
+--     down its button" (slot 3 / 4) (touch).
+--   * Toggle: script attribute MechaButtonsPullEnabled (default true; false = 1.3 touch behaviour, slots 3 / 4 by T / V
+--     only). Diagnostics: MechaButtonsLastPress "slot3:..." / "slot4:...", MechaButtonsLastGesture ("tap" / "pull" /
+--     "press" = fired on InputBegan), MechaButtonsPullPx.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -63,8 +82,10 @@ local SPOTS = {
 	[false] = {{0.33, 0.08}, {0.33, 0.28}},  -- RUN shown: inner column
 }
 local SIZE = 0.095
-local KEYS = {Enum.KeyCode.R, Enum.KeyCode.C} -- v1.1: slot 1 / slot 2 (was 1 / 2)
-local KEY_NAMES = {"R", "C"}
+local KEYS = {Enum.KeyCode.R, Enum.KeyCode.C, Enum.KeyCode.T, Enum.KeyCode.V} -- v1.1: slot 1 / slot 2 (was 1 / 2); v1.4: + T / V
+local KEY_NAMES = {"R", "C", "T", "V"}
+local PULL_COLOR = Color3.fromRGB(255, 217, 168) -- v1.4
+if script:GetAttribute("MechaButtonsPullEnabled") == nil then script:SetAttribute("MechaButtonsPullEnabled", true) end -- v1.4
 
 local char = script.Parent
 local player = Players.LocalPlayer
@@ -73,6 +94,7 @@ local hrp = char:WaitForChild("HumanoidRootPart", 10)
 char:SetAttribute("MechaButtonsVersion", VERSION)
 char:SetAttribute("MechaDashLocal", "idle")
 local remote = ReplicatedStorage:WaitForChild("DinoDashRequest", 20)
+local cloakRemote -- v1.4: DinoCloakRequest (CloakServer 1.0), looked up on first use
 
 local function slotPart(n)
 	local v = player:GetAttribute("SkillSlot" .. n)
@@ -83,6 +105,31 @@ local function press(n)
 	local id = slotPart(n)
 	char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(n, id or "empty"))
 	if id == "thrusters" and remote then remote:FireServer(workspace:GetServerTimeNow()) end
+	if id == "cloak" then -- v1.4
+		cloakRemote = cloakRemote or ReplicatedStorage:FindFirstChild("DinoCloakRequest")
+		if cloakRemote then cloakRemote:FireServer(workspace:GetServerTimeNow()) end
+	end
+end
+
+-- v1.4: is a part ready to use, and how much of its cooldown is left (0..1)
+local function partState(id)
+	local now = workspace:GetServerTimeNow()
+	if id == "cloak" then
+		local ready = char:GetAttribute("CloakEnabled") == true and (tonumber(char:GetAttribute("CloakedUntil")) or 0) <= now
+			and now >= (tonumber(char:GetAttribute("CloakReadyAt")) or 0)
+		local cd = tonumber(char:GetAttribute("CloakCooldown")) or 0
+		local left = (tonumber(char:GetAttribute("CloakReadyAt")) or 0) - now
+		return ready, (cd > 0 and left > 0) and math.clamp(left / cd, 0, 1) or 0
+	end
+	local nextAt = tonumber(char:GetAttribute("DashNextChargeAt")) or 0
+	local rc = tonumber(char:GetAttribute("DashRecharge")) or 8
+	local frac = 0
+	if id == "thrusters" and nextAt > 0 and rc > 0 then frac = math.clamp((nextAt - now) / rc, 0, 1) end
+	return char:GetAttribute("DashEnabled") == true, frac
+end
+local function partName(id)
+	if id == "thrusters" then return "DASH" end
+	return string.upper(id)
 end
 
 -- dash physics --------------------------------------------------------------------------------------------------------
@@ -291,8 +338,9 @@ end)
 -- PC keys ------------------------------------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or UserInputService:GetFocusedTextBox() then return end
-	if input.KeyCode == KEYS[1] then press(1) -- v1.1: R (was 1)
-	elseif input.KeyCode == KEYS[2] then press(2) end -- v1.1: C (was 2)
+	for n, k in ipairs(KEYS) do -- v1.1: R / C (was 1 / 2); v1.4: + T / V (slots 3 / 4)
+		if input.KeyCode == k then press(n) break end
+	end
 end)
 
 -- v1.1: "new ability" popup ----------------------------------------------------------------------------------------
@@ -304,9 +352,9 @@ local function showNews(id)
 	local p = okST and ST.PATHS[id]
 	if not p then return end
 	local slot
-	for n = 1, 2 do if slotPart(n) == id then slot = n end end
+	for n = 1, 4 do if slotPart(n) == id then slot = n break end end -- v1.4: 4 slots
 	local how = not slot and "Put it in a LOADOUT slot (SKILLS)"
-		or isTouch and "Tap its button to use it"
+		or isTouch and (slot <= 2 and "Tap its button to use it" or "Tap and pull down its button to use it")
 		or ("Press %s to use it"):format(KEY_NAMES[slot])
 	local old = pgNews:FindFirstChild("MechaNews")
 	if old then old:Destroy() end
@@ -356,7 +404,7 @@ if okST then
 		local was = known[id]
 		known[id] = n
 		if was == 0 and n >= 1 then
-			task.delay(0.3, function() showNews(id) end) -- the slot (SkillSlot1 / 2) arrives with the same buy
+			task.delay(0.3, function() showNews(id) end) -- the slot (SkillSlot1..4) arrives with the same buy
 		end
 	end)
 end
@@ -393,6 +441,52 @@ local function label(parent, text, pos, size, maxSize, color)
 end
 
 local slots = {}
+local draw -- v1.4: forward
+-- v1.4: tap-and-pull gesture ------------------------------------------------------------------------------------------
+local function pullOn() return script:GetAttribute("MechaButtonsPullEnabled") ~= false end
+local gesture -- {n, input, y0, pulling, px}
+local function setPulling(on)
+	local s = gesture and slots[gesture.n]
+	if not s or gesture.pulling == on then return end
+	gesture.pulling = on
+	if on then
+		s.stroke.Color, s.stroke.Transparency, s.stroke.Thickness = Color3.new(1, 1, 1), 0, 4
+		s.pull.TextColor3, s.pull.TextTransparency = Color3.new(1, 1, 1), 0
+	else
+		s.stroke.Thickness = 2.5
+		s.pull.TextColor3 = PULL_COLOR
+		draw()
+	end
+end
+local function beginGesture(n, input)
+	local s = slots[n]
+	local h = s and s.b.AbsoluteSize.Y or 60
+	local px = math.clamp(0.22 * h, 14, 24)
+	gesture = {n = n, input = input, y0 = input.Position.Y, pulling = false, px = px}
+	char:SetAttribute("MechaButtonsPullPx", math.floor(px * 10 + 0.5) / 10)
+end
+local function endGesture()
+	local g = gesture
+	if not g then return end
+	local pulled = g.pulling
+	setPulling(false)
+	gesture = nil
+	local s = slots[g.n]
+	if s then s.scale.Scale = 1 end
+	char:SetAttribute("MechaButtonsLastGesture", pulled and "pull" or "tap")
+	press(pulled and g.n + 2 or g.n)
+end
+UserInputService.InputChanged:Connect(function(input)
+	if not gesture then return end
+	if input == gesture.input or (gesture.input.UserInputType == Enum.UserInputType.MouseButton1
+		and input.UserInputType == Enum.UserInputType.MouseMovement) then
+		setPulling(input.Position.Y - gesture.y0 >= gesture.px)
+	end
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if gesture and input == gesture.input then endGesture() end
+end)
+
 for n = 1, 2 do
 	local b = Instance.new("TextButton")
 	b.Name = "Slot_" .. n
@@ -429,6 +523,8 @@ for n = 1, 2 do
 	local sub = label(b, "", UDim2.fromScale(0.1, 0.68), UDim2.fromScale(0.8, 0.22), 11)
 	sub.Name = "Sub"
 	sub.TextTransparency = 0.25
+	local pull = label(b, "", UDim2.fromScale(0.04, 0.78), UDim2.fromScale(0.92, 0.16), 12, PULL_COLOR) -- v1.4
+	pull.Name = "Pull"
 	local key = label(b, UserInputService.TouchEnabled and "" or KEY_NAMES[n], UDim2.fromScale(0.08, 0.04), UDim2.fromScale(0.22, 0.22), 10, -- v1.1: R / C
 		Color3.fromRGB(154, 160, 173))
 	key.Name = "Key"
@@ -462,10 +558,15 @@ for n = 1, 2 do
 	b.InputBegan:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 		scale.Scale = 0.92
-		press(n)
+		if pullOn() and slotPart(n + 2) then -- v1.4: decide on release
+			beginGesture(n, input)
+		else
+			char:SetAttribute("MechaButtonsLastGesture", "press")
+			press(n)
+		end
 	end)
 	b.InputEnded:Connect(function() scale.Scale = 1 end)
-	slots[n] = {b = b, stroke = stroke, cd = cd, main = main, sub = sub, pips = pipFrames}
+	slots[n] = {b = b, stroke = stroke, cd = cd, main = main, sub = sub, pull = pull, pips = pipFrames, scale = scale}
 end
 
 local function layout()
@@ -475,19 +576,21 @@ local function layout()
 	end
 end
 
-local function draw()
+draw = function()
 	local ready = char:GetAttribute("DashEnabled") == true
 	local max = math.clamp(tonumber(char:GetAttribute("DashCharges")) or 0, 0, 2)
 	local left = tonumber(char:GetAttribute("DashChargesLeft")) or 0
 	for n, s in ipairs(slots) do
+		if gesture and gesture.n == n and gesture.pulling then continue end -- v1.4: keep the pulling look
 		local id = slotPart(n)
+		if id == "cloak" then ready = (partState("cloak")) else ready = char:GetAttribute("DashEnabled") == true end -- v1.4
 		if id then
 			s.stroke.Color, s.stroke.Transparency = ORANGE, ready and 0 or 0.5
-			s.main.Text = id == "thrusters" and "DASH" or string.upper(id)
+			s.main.Text = partName(id) -- v1.4 (was: thrusters -> DASH, else the id)
 			s.main.TextTransparency = ready and 0 or 0.5
 			s.sub.Text = ""
 			for i, p in ipairs(s.pips) do
-				p.Visible = i <= max
+				p.Visible = id == "thrusters" and i <= max -- v1.4: pips are the dash charges only
 				p.BackgroundColor3 = i <= left and ORANGE or Color3.fromRGB(85, 85, 85)
 			end
 		else
@@ -497,26 +600,41 @@ local function draw()
 			for _, p in ipairs(s.pips) do p.Visible = false end
 			s.cd.Size = UDim2.fromScale(1, 0)
 		end
+		-- v1.4: pull part sub-label
+		local pid = pullOn() and slotPart(n + 2) or nil
+		if pid then
+			local pready = partState(pid)
+			s.pull.Text = "▼ " .. partName(pid)
+			s.pull.TextTransparency = pready and 0 or 0.5
+			if not id then s.sub.Text = "" end
+		else
+			s.pull.Text = ""
+		end
 	end
 end
 
+local lastCloakReady -- v1.4: redraw when the cloak's readiness flips (cooldown runs out)
 RunService.RenderStepped:Connect(function()
 	local nextAt = tonumber(char:GetAttribute("DashNextChargeAt")) or 0
 	local rc = tonumber(char:GetAttribute("DashRecharge")) or 8
 	local frac = 0
 	if nextAt > 0 and rc > 0 then frac = math.clamp((nextAt - workspace:GetServerTimeNow()) / rc, 0, 1) end
+	local cReady, cFrac = partState("cloak") -- v1.4
 	for n, s in ipairs(slots) do
-		s.cd.Size = UDim2.fromScale(1, slotPart(n) == "thrusters" and frac or 0)
+		local id = slotPart(n)
+		s.cd.Size = UDim2.fromScale(1, id == "thrusters" and frac or id == "cloak" and cFrac or 0)
 	end
+	if cReady ~= lastCloakReady then lastCloakReady = cReady; draw() end
 end)
 
-local WATCH = {DashEnabled = true, DashCharges = true, DashChargesLeft = true, AutoRun = true}
+local WATCH = {DashEnabled = true, DashCharges = true, DashChargesLeft = true, AutoRun = true,
+	CloakEnabled = true, CloakState = true, CloakReadyAt = true} -- v1.4: + cloak
 char.AttributeChanged:Connect(function(name)
 	if name == "AutoRun" then layout() end
 	if WATCH[name] then draw() end
 end)
 player.AttributeChanged:Connect(function(name)
-	if name == "SkillSlot1" or name == "SkillSlot2" then draw() end
+	if name:sub(1, 9) == "SkillSlot" then draw() end -- v1.4: slots 1-4 (was 1 / 2)
 end)
 layout()
 draw()

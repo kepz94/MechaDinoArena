@@ -1266,6 +1266,27 @@ Look: LocalTransparencyModifier on every BasePart but HumanoidRootPart; own 0.6;
 their BillboardGuis off and Humanoid DisplayDistanceType None. Restored to 0 / each gui's own Enabled / the Humanoid's
 own DisplayDistanceType when the cloak ends or the dino dies.
 
+## 4 slots and tap-and-pull (MechaButtons 1.4 / AbilityBar 1.2)
+
+| Slot | Phone | PC |
+|---|---|---|
+| 1 | button 1 tap | R |
+| 2 | button 2 tap | C |
+| 3 | button 1 pull down | T |
+| 4 | button 2 pull down | V |
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| MechaButtonsPullEnabled | script MechaButtons | true | false = touch buttons fire slot 1 / 2 on press as 1.3; slots 3 / 4 by T / V only |
+| MechaButtonsLastGesture | character (owner client) | — | "tap" / "pull" (fired on release) / "press" (fired on InputBegan, no pull part) |
+| MechaButtonsPullPx | character (owner client) | — | pull distance used: clamp(0.22 x button height, 14, 24) px |
+| MechaButtonsLastPress | character (owner client) | — | now also "slot3:<id>" / "slot4:<id>" |
+| AbilityBar_Slot_3 / AbilityBar_Slot_4 | character (owner client) | — | tile states; cloak tiles: off / active / cooling / ready |
+| AbilityBarTiles | character (owner client) | — | R, T, C, V slot tiles first, e.g. "R:DASH,T:CLOAK FIELD,C:+,V:+,F:POUNCE,Space:LEAP" |
+
+Button look: the tap part big; the pull part "▼ NAME" along the bottom (rgb(255, 217, 168), 0.5 while not ready); white
+4 px stroke while pulling. The Cloak button reads "CLOAK" with the cooldown fill from CloakReadyAt / CloakCooldown.
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |
