@@ -1,4 +1,4 @@
--- AdrenalineServer v1.1 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
+-- AdrenalineServer v1.2 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
 -- a few seconds and run faster while it lasts. MDA-62, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Neck injector" (Kepu 2026-10-29).
 -- Settings come from the character (SkillEffects 1.6): AdrenalineEnabled (bought AND slotted), AdrenalineHeal (share of
@@ -35,6 +35,14 @@
 --   While the boost runs: a Highlight "AdrenalineGlow" (green fill pulsing 0.35 <-> 0.7, outline on) for the whole boost, destroyed at the end; the glass drains (Transparency 0 -> 0.75 over the boost) and refills
 --   over the cooldown; foot trails wider (dino height x 0.05 each side) and longer (0.5 s). The 0.6 s start flash
 --   (AdrenalinePulse) stays. AdrenalineLook "tanks" / "on" (neck) / "none" / "noTorso" / "noNeck".
+-- v1.2 (Kepu 2026-10-29): the star ring is removed ("Remove it"; TankRing / TankRingHub / spin gone). The tanks now
+--   show their charge as a fluid level ("when adrenaline is used I want the canisters to visibly empty out and when
+--   it's refilling to visibly refill so a player can look at that as a cue"): each "Glass_k" (green neon fluid) is
+--   joined to its tank by a Weld "FluidHinge" and its height goes from full (tank height x 0.8) down to FLUID_MIN
+--   (bottom of the tank) over the boost, then back up over the cooldown (linear; the bottom stays put, the top moves).
+--   The 1.1 glass transparency fade is replaced by this. A rebuild (step change, style flip) starts the fluid at the
+--   level the timers give. Diagnostics: character AdrenalineTankState ("full" / "draining" / "refilling"),
+--   AdrenalineTankFullAt (server time it will be full again).
 -- Settings: script attribute AdrenalineServerEnabled (default true).
 -- Diagnostics: script AdrenalineServerVersion, AdrenalineRequests; character AdrenalineServerResult, AdrenalineCount,
 --   AdrenalineHealed, AdrenalineEndReason, AdrenalineStunCleared, AdrenalineLook ("none" / "on" / "noNeck").
@@ -43,7 +51,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local GREEN, DARK, GREY = Color3.fromRGB(95, 209, 106), Color3.fromRGB(44, 52, 64), Color3.fromRGB(154, 166, 182)
 
 script:SetAttribute("AdrenalineServerVersion", VERSION)
@@ -61,7 +69,8 @@ if not remote then
 end
 
 local chars = {} -- [char] = {hum, active, healed, target}
-local TANK_RING_SPEED = 180 -- v1.1: star ring, degrees per second
+local FLUID_MIN = 0.04 -- v1.2: fluid height share when empty (a thin line at the bottom)
+local fluidToken = setmetatable({}, {__mode = "k"}) -- v1.2: newest fluid change per character
 local POP_EVERY = 0.5 -- v1.1: heal pop interval (s)
 
 local function part(name, size, cf, color, parent, mount)
@@ -125,14 +134,38 @@ local function stepOf(char)
 	return pl and tonumber(pl:GetAttribute("SkillPath_adrenaline")) or 0
 end
 
--- v1.1: tank glass drain / refill and the full-boost glow
-local function glass(char, transparency, time)
+-- v1.2: tank fluid level (0 empty .. 1 full); from = start level (nil = where it is), to = end level over time s
+local function fluid(char, from, to, time)
 	local m = char:FindFirstChild("Mecha_Adrenaline")
 	if not m then return end
-	for _, d in ipairs(m:GetChildren()) do
-		if d:IsA("BasePart") and d.Name:sub(1, 6) == "Glass_" then
-			TweenService:Create(d, TweenInfo.new(math.max(0.05, time)), {Transparency = transparency}):Play()
+	local function shape(H, L)
+		L = math.clamp(L, FLUID_MIN, 1)
+		return H * L, CFrame.new(0, -H / 2 + H * L / 2, 0)
+	end
+	for _, g in ipairs(m:GetChildren()) do
+		local w = g:IsA("BasePart") and g.Name:sub(1, 6) == "Glass_" and g:FindFirstChild("FluidHinge")
+		local H = w and tonumber(g:GetAttribute("FullHeight"))
+		if H then
+			if from then
+				local h, c0 = shape(H, from)
+				g.Size = Vector3.new(g.Size.X, h, g.Size.Z)
+				w.C0 = c0
+			end
+			local h, c0 = shape(H, to)
+			local info = TweenInfo.new(math.max(0.05, time), Enum.EasingStyle.Linear)
+			TweenService:Create(g, info, {Size = Vector3.new(g.Size.X, h, g.Size.Z)}):Play()
+			TweenService:Create(w, info, {C0 = c0}):Play()
 		end
+	end
+	local state = to >= 1 and (from == 1 and "full" or "refilling") or "draining"
+	char:SetAttribute("AdrenalineTankState", state)
+	char:SetAttribute("AdrenalineTankFullAt", to >= 1 and now() + time or 0)
+	local token = {}
+	fluidToken[char] = token
+	if state == "refilling" then
+		task.delay(time, function()
+			if fluidToken[char] == token and char.Parent then char:SetAttribute("AdrenalineTankState", "full") end
+		end)
 	end
 end
 local function glow(char, on_)
@@ -214,8 +247,14 @@ local function build(char)
 			local pLocal = top + x * off + y * (ts.Y * 0.4)
 			local cf = root.CFrame * CFrame.fromMatrix(pLocal, x, y, z)
 			local tank = part("Tank_" .. i, ts, cf, DARK, model, root)
-			local glass = part("Glass_" .. i, Vector3.new(ts.X * 1.04, ts.Y * 0.8, ts.Z * 1.04), cf, GREEN, model, tank)
+			local glass = part("Glass_" .. i, Vector3.new(ts.X * 1.04, ts.Y * 0.8, ts.Z * 1.04), cf, GREEN, model, nil)
 			glass.Material = Enum.Material.Neon
+			glass:SetAttribute("FullHeight", ts.Y * 0.8) -- v1.2: fluid level, joined by a Weld so it can drain downward
+			local fw = Instance.new("Weld")
+			fw.Name = "FluidHinge"
+			fw.Part0, fw.Part1 = tank, glass
+			fw.C0 = CFrame.new()
+			fw.Parent = glass
 			if step >= 4 then
 				local cap = part("TankCap_" .. i, Vector3.new(ts.X * 0.7, ts.Y * 0.12, ts.Z * 0.7), cf * CFrame.new(0, ts.Y * 0.56, 0), GREEN, model, tank)
 				cap.Material = Enum.Material.Neon
@@ -229,24 +268,21 @@ local function build(char)
 			local tcf = root.CFrame * CFrame.lookAt((a + b) / 2, b) -- Root space, looking from a to b
 			part("Tube", Vector3.new(Hd * 0.018, Hd * 0.018, len), tcf, DARK, model, root)
 		end
-		if step >= 4 then -- star: spinning ring of 6 neon blocks around the tanks' base
-			local hubCf = root.CFrame * CFrame.fromMatrix(top + y * (ts.Y * 0.05), x, y, z)
-			local hub = part("TankRingHub", Vector3.new(0.05, 0.05, 0.05), hubCf, GREEN, model, nil)
-			hub.Transparency = 1
-			local w = Instance.new("Weld")
-			w.Name = "TankRingHinge"
-			w.Part0, w.Part1 = root, hub
-			w.C0 = root.CFrame:ToObjectSpace(hubCf)
-			w:SetAttribute("BaseC0", w.C0)
-			w.Parent = hub
-			local r = math.max(ts.X * n * 0.75, ts.X * 1.1)
-			for i = 1, 6 do
-				local ang = math.rad(i * 60)
-				local scf = hubCf * CFrame.Angles(0, ang, 0) * CFrame.new(0, 0, -r)
-				part("TankRing_" .. i, Vector3.new(r * 0.7, Hd * 0.015, Hd * 0.03), scf, GREEN, model, hub).Material = Enum.Material.Neon
-			end
-		end
 		model.Parent = char
+		-- v1.2: start the fluid where the timers say
+		local t = now()
+		local st = chars[char]
+		local untilT = tonumber(char:GetAttribute("AdrenalineUntil")) or 0
+		local readyT = tonumber(char:GetAttribute("AdrenalineReadyAt")) or 0
+		local dur = math.max(0.1, tonumber(char:GetAttribute("AdrenalineTime")) or 3)
+		local cd = math.max(0.1, tonumber(char:GetAttribute("AdrenalineCooldown")) or 1)
+		if st and st.active and untilT > t then
+			fluid(char, (untilT - t) / dur, 0, untilT - t)
+		elseif readyT > t then
+			fluid(char, 1 - (readyT - t) / cd, 1, readyT - t)
+		else
+			fluid(char, 1, 1, 0.05)
+		end
 	end
 	if not tanks then
 	local model = Instance.new("Model")
@@ -332,7 +368,7 @@ local function finish(char, reason)
 	trails(char, false)
 	plunge(char, false)
 	glow(char, false) -- v1.1
-	glass(char, 0, math.max(0.1, (tonumber(char:GetAttribute("AdrenalineReadyAt")) or t) - t)) -- v1.1: refill over the cooldown
+	fluid(char, 0, 1, math.max(0.1, (tonumber(char:GetAttribute("AdrenalineReadyAt")) or t) - t)) -- v1.2: refill over the cooldown (1.1: glass fade)
 end
 
 remote.OnServerEvent:Connect(function(player, stamp)
@@ -382,17 +418,13 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	trails(char, true)
 	plunge(char, true)
 	glow(char, true) -- v1.1: the whole boost
-	glass(char, 0.75, dur) -- v1.1: drain
+	fluid(char, 1, 0, dur) -- v1.2: empties over the boost (1.1: glass fade)
 	pulse(char)
 end)
 
 RunService.Heartbeat:Connect(function(dt)
 	local t = now()
 	for char, st in pairs(chars) do
-		local m = char:FindFirstChild("Mecha_Adrenaline") -- v1.1: star ring spin
-		local hub = m and m:FindFirstChild("TankRingHub")
-		local w = hub and hub:FindFirstChild("TankRingHinge")
-		if w then w.C0 = w:GetAttribute("BaseC0") * CFrame.Angles(0, math.rad((t * TANK_RING_SPEED) % 360), 0) end
 		if st.active then
 			if not char.Parent or st.hum.Health <= 0 then
 				finish(char, "dead")
