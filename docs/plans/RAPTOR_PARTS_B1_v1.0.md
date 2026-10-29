@@ -106,6 +106,6 @@ Each task's acceptance plus: buy all three (Mastery allows), slot Adrenaline in 
 ## Red-team
 1. **ForceField blocks more than bot bites.** Any `TakeDamage` source (future PvP, survival damage uses Health directly so it is not blocked) is blocked too. Accepted: "blocks damage" is the step text; noted for PvP.
 2. **ForceField shows a sparkle by default.** Mitigated: `Visible = false`; the shell is the Highlight.
-3. **Highlight limit (31 per client).** Many raptors shielding at once could hit it. Accepted for now (solo / small servers); the shell would just not draw past the limit, the block still works.
+3. ~~Highlight limit (31 per client).~~ Withdrawn (Kepu 2026-10-29: "I play a lot of games where there's so many lines drawn"): Roblox raised the limit to 255 Highlights on screen (create.roblox.com/docs/effects/highlighting; DevForum "Lights, camera, more highlights", Nov 2025). Not a risk at this game's player count. Rule kept: Highlights are destroyed when the effect ends, never left disabled (disabled ones still count toward the 255).
 4. **Bot push fights BotServer's movement.** BotServer may move the bot right after; the push may look short. Mitigated by a strong, short impulse; tune `EnergyShieldBurstPush`. If it doesn't read, follow-up: use BotServer's toss path (out of scope here, BotServer is do-not-touch).
 5. **Mastery 3 caps builds.** Players can't max all parts; that is intended (ADR-003).
