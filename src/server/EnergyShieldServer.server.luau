@@ -1,4 +1,4 @@
--- EnergyShieldServer v1.1 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
+-- EnergyShieldServer v1.2 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
 -- damage for a short time, but move slower while it's up. MDA-63, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 6, mockup
 -- docs/mockups/raptor_parts_b1_options.html option B "Hard-light shell" (Kepu 2026-10-29: full block; "If we're allowing
 -- it to block all attacks then the push back shouldn't exist"; "You block all damage but you're slower during the
@@ -38,6 +38,15 @@
 --     surface toward the attacker (LastHitBy model; front if not found) that grows and fades in 0.3 s. The dome fades
 --     out (Transparency -> 1) over the last DOME_FADE (0.4) s.
 --   Diagnostics: EnergyShieldLook "dome" / "on" (shell) / "none" / "noTorso"; EnergyShieldLookStep; EnergyShieldRipples.
+-- v1.2 (Kepu 2026-10-29: "the shield is so ugly. Just go back to the first version of the shield where the blue is
+--   wrapped around the body of the raptor just make it persist for the whole duration of the shield"):
+--   * EnergyShieldLookStyle default is "shell" again (the 1.0 Highlight "EnergyShieldShell"); "dome" keeps the 1.1 dome.
+--   * The shoulder emitters stay (1.1); new script attribute EnergyShieldEmitterStyle ("shoulders" default; "chest" =
+--     the 1.0 chest disc). EnergyShieldLook "shoulders" / "on" (chest) / "none" / "noTorso".
+--   * Persist: only one Highlight shows on a character at a time and the newest one wins (Play: the Adrenaline glow
+--     hid the shell while both were up). While the shield is up in shell style, any other Highlight added to the
+--     character makes the shell be rebuilt (deferred) so it is the newest and stays visible for the whole shield.
+--     The other Highlight shows again once the shell is gone. Diagnostic: character EnergyShieldShellRefreshes.
 -- Settings: script attribute EnergyShieldServerEnabled (default true).
 -- Diagnostics: script EnergyShieldServerVersion, EnergyShieldRequests; character EnergyShieldServerResult,
 --   EnergyShieldCount, EnergyShieldBlocks, EnergyShieldBlockAt, EnergyShieldEndReason, EnergyShieldState ("off" / "on"),
@@ -47,17 +56,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService") -- v1.1
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local BLUE, DARK, WHITE = Color3.fromRGB(90, 160, 255), Color3.fromRGB(44, 52, 64), Color3.new(1, 1, 1)
 
 script:SetAttribute("EnergyShieldServerVersion", VERSION)
 if script:GetAttribute("EnergyShieldServerEnabled") == nil then script:SetAttribute("EnergyShieldServerEnabled", true) end
 script:SetAttribute("EnergyShieldRequests", 0)
-if script:GetAttribute("EnergyShieldLookStyle") == nil then script:SetAttribute("EnergyShieldLookStyle", "dome") end -- v1.1
+if script:GetAttribute("EnergyShieldLookStyle") == nil then script:SetAttribute("EnergyShieldLookStyle", "shell") end -- v1.2: shell (1.1: dome)
+if script:GetAttribute("EnergyShieldEmitterStyle") == nil then script:SetAttribute("EnergyShieldEmitterStyle", "shoulders") end -- v1.2
 local DOME_PAD, DOME_FADE = 1.15, 0.4 -- v1.1
 local DOME_TINT = 0.8 -- v1.1: tint layer transparency
 local EMIT_SIZE = {0.06, 0.08, 0.1, 0.12} -- v1.1: x dino height, by step I..star
-local function domeStyle() return script:GetAttribute("EnergyShieldLookStyle") ~= "shell" end
+local function domeStyle() return script:GetAttribute("EnergyShieldLookStyle") == "dome" end -- v1.2: dome only when asked
+local function shoulderEmitters() return script:GetAttribute("EnergyShieldEmitterStyle") ~= "chest" end -- v1.2
 local function stepOf(char)
 	local pl = Players:GetPlayerFromCharacter(char)
 	return pl and tonumber(pl:GetAttribute("SkillPath_shield")) or 0
@@ -141,7 +152,7 @@ local function build(char)
 	local lo, hi = rootBox(seg, root)
 	if not lo then char:SetAttribute("EnergyShieldLook", "noTorso") return end
 	local Hd = char:GetExtentsSize().Y
-	if domeStyle() then -- v1.1: shoulder emitters, size by step
+	if shoulderEmitters() then -- v1.1: shoulder emitters, size by step (v1.2: own switch)
 		local step = math.clamp(stepOf(char), 1, 4)
 		char:SetAttribute("EnergyShieldLookStep", step)
 		local d = Hd * EMIT_SIZE[step]
@@ -167,7 +178,7 @@ local function build(char)
 			end
 		end
 		model.Parent = char
-		char:SetAttribute("EnergyShieldLook", "dome")
+		char:SetAttribute("EnergyShieldLook", "shoulders") -- v1.2 (1.1: "dome")
 		return
 	end
 	local d = Hd * 0.06
@@ -184,6 +195,22 @@ local function build(char)
 	core.Material = Enum.Material.Neon
 	model.Parent = char
 	char:SetAttribute("EnergyShieldLook", "on")
+end
+
+-- v1.2: the 1.0 shell as a function, so it can be rebuilt to stay the newest Highlight
+local function shell(char)
+	local old = char:FindFirstChild("EnergyShieldShell")
+	while old do
+		old:Destroy()
+		old = char:FindFirstChild("EnergyShieldShell")
+	end
+	local hl = Instance.new("Highlight")
+	hl.Name = "EnergyShieldShell"
+	hl.FillColor, hl.OutlineColor = BLUE, BLUE
+	hl.FillTransparency, hl.OutlineTransparency = 0.85, 0
+	hl.DepthMode = Enum.HighlightDepthMode.Occluded
+	hl.Parent = char
+	return hl
 end
 
 local function clearFx(char)
@@ -314,12 +341,7 @@ remote.OnServerEvent:Connect(function(player, stamp)
 			end)
 		end
 	else
-	local hl = Instance.new("Highlight")
-	hl.Name = "EnergyShieldShell"
-	hl.FillColor, hl.OutlineColor = BLUE, BLUE
-	hl.FillTransparency, hl.OutlineTransparency = 0.85, 0
-	hl.DepthMode = Enum.HighlightDepthMode.Occluded
-	hl.Parent = char
+	shell(char) -- v1.2: same Highlight as 1.0, built by shell()
 	end -- v1.1: end of the 1.0 shell
 	st.active = true
 	st.lastHit = char:GetAttribute("LastHitAt")
@@ -406,6 +428,16 @@ local function onCharacter(char)
 		if char:GetAttribute("EnergyShieldEnabled") ~= true then finish(char, "disabled") end
 		build(char)
 	end)
+	char.ChildAdded:Connect(function(ch) -- v1.2: keep the shell the newest Highlight while the shield is up
+		if not ch:IsA("Highlight") or ch.Name == "EnergyShieldShell" then return end
+		if not st.active or domeStyle() then return end
+		task.defer(function()
+			if st.active and not domeStyle() then
+				shell(char)
+				char:SetAttribute("EnergyShieldShellRefreshes", (char:GetAttribute("EnergyShieldShellRefreshes") or 0) + 1)
+			end
+		end)
+	end)
 	local pl = Players:GetPlayerFromCharacter(char) -- v1.1: the emitters follow the step
 	if pl then
 		local conn = pl:GetAttributeChangedSignal("SkillPath_shield"):Connect(function()
@@ -419,6 +451,9 @@ local function onCharacter(char)
 	build(char)
 end
 
+script:GetAttributeChangedSignal("EnergyShieldEmitterStyle"):Connect(function() -- v1.2
+	for char in pairs(chars) do build(char) end
+end)
 script:GetAttributeChangedSignal("EnergyShieldLookStyle"):Connect(function() -- v1.1
 	for char in pairs(chars) do build(char) end
 end)

@@ -1401,6 +1401,9 @@ SkillServer 1.6: SkillTestCloakEnabled now gives every live mecha part of the ac
 | EnergyShieldRipples | character | count | blocks that drew a ripple on the dome |
 | EnergyShieldDome / EnergyShieldDome2 / EnergyShieldDomeTint / EnergyShieldRipple | workspace parts | — | the dome while up (outside the character: its size stays the same) |
 | BladeArmBladesEnabled | script BladeServer | true | false: no forearm blades |
+| EnergyShieldLookStyle (1.2) | script EnergyShieldServer | "shell" / "dome" | 1.2 default back to the 1.0 shell |
+| EnergyShieldEmitterStyle | script EnergyShieldServer | "shoulders" / "chest" | emitter look (1.2) |
+| EnergyShieldShellRefreshes | character | count | shell rebuilt to stay the newest Highlight while up (1.2) |
 | BladeLookStep / BladeArmBlades / BladeTrails | character | 0-4; 0 / 2; "off" / "on" | diagnostics (trails only at star) |
 
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
