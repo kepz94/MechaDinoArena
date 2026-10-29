@@ -8,7 +8,8 @@
 -- Pulse: when your own ScentStartedAt changes (ScentServer 1.0 accepted a sniff), every kept point not older than your
 --   ScentMemory and within ScentRadius of you becomes a paw print for ScentTime s (then all are removed):
 --   * print = a flat pad + 3 toes pointing the way the dino went, Neon, no collide / query / touch, anchored, in a
---     client-only Model "ScentTrails" under workspace; sized by species (T-Rex x1.6).
+--     client-only Model "ScentTrails" under workspace; sized from the dino's height (PRINT_SCALE x height; a raptor's
+--     print is about 2.3 studs long, a T-Rex's bigger) so they read from the game camera.
 --   * colour by species: raptor orange (255, 155, 46), T-Rex red (240, 90, 79), any other dino violet.
 --   * each print sits in a band Model with its own Highlight (DepthMode AlwaysOnTop, so prints show through tall grass):
 --     the newest half of a trail "fresh" (FillTransparency 0.15), the older half "old" (0.6), cloaked points "faint"
@@ -30,6 +31,7 @@ local SAMPLE_EVERY, PRINT_SPACING, KEEP, MAX_PRINTS, BLOOD_EVERY = 0.25, 6, 10.8
 local RAPTOR, TREX, OTHER, BLOOD = Color3.fromRGB(255, 155, 46), Color3.fromRGB(240, 90, 79), Color3.fromRGB(201, 162, 255),
 	Color3.fromRGB(255, 40, 40)
 local BAND_FILL = {fresh = 0.15, old = 0.6, faint = 0.85}
+local PRINT_SCALE = 0.2 -- print size multiplier per stud of dino height (Play: 1-stud prints were specks at 40+ studs)
 
 if script:GetAttribute("ScentFXEnabled") == nil then script:SetAttribute("ScentFXEnabled", true) end
 local function on() return script:GetAttribute("ScentFXEnabled") ~= false end
@@ -95,7 +97,7 @@ local function sample()
 			seen[m] = true
 			local h = hist[m]
 			if not h then
-				h = {points = {}, kind = kindOf(m)}
+				h = {points = {}, kind = kindOf(m), size = math.max(1, m:GetExtentsSize().Y * PRINT_SCALE)}
 				hist[m] = h
 			end
 			local pts = h.points
@@ -147,8 +149,7 @@ local function piece(parent, size, cf, color)
 end
 
 -- one paw print: pad + 3 toes pointing along dir
-local function print1(parent, pt, kind, color)
-	local s = kind == "trex" and 1.6 or 1
+local function print1(parent, pt, s, color)
 	local look = Vector3.new(pt.dir.X, 0, pt.dir.Z)
 	local cf = CFrame.lookAt(pt.p + Vector3.new(0, 0.12, 0), pt.p + Vector3.new(0, 0.12, 0) + look)
 	piece(parent, Vector3.new(1.3 * s, 0.12, 1.1 * s), cf, color)
@@ -188,7 +189,7 @@ local function pulse()
 			if t - pt.t <= memory and (pt.p - root.Position).Magnitude <= radius then table.insert(kept, pt) end
 		end
 		for i, pt in ipairs(kept) do
-			table.insert(list, {pt = pt, kind = h.kind, rank = i, count = #kept, m = m})
+			table.insert(list, {pt = pt, kind = h.kind, size = h.size, rank = i, count = #kept, m = m})
 		end
 	end
 	table.sort(list, function(a, b) return a.pt.t > b.pt.t end)
@@ -199,19 +200,20 @@ local function pulse()
 		local color = colorOf(e.kind)
 		local bandName = e.pt.cloak and "faint" or (e.rank <= math.ceil(e.count / 2) and "fresh" or "old")
 		local b = band(trails, e.kind .. "_" .. bandName, color, BAND_FILL[bandName])
-		print1(b, e.pt, e.kind, color)
+		print1(b, e.pt, e.size, color)
 		drawn += 1
 		if e.rank == 1 then newest[e.m] = e end
 	end
-	if fresh then -- III: a pulsing ring at each trail's newest point
+	if fresh and next(newest) then -- III: a pulsing ring at each trail's newest point (none when no prints)
 		local rb = band(trails, "ring", Color3.new(1, 1, 1), 0.3)
 		for _, e in pairs(newest) do
-			local ring = piece(rb, Vector3.new(0.15, 4, 4), CFrame.new(e.pt.p + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			local r0 = 4 * e.size
+			local ring = piece(rb, Vector3.new(0.15, r0, r0), CFrame.new(e.pt.p + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.rad(90)),
 				colorOf(e.kind))
 			ring.Shape = Enum.PartType.Cylinder
 			ring.Transparency = 0.4
 			TweenService:Create(ring, TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-				{Size = Vector3.new(0.15, 7, 7)}):Play()
+				{Size = Vector3.new(0.15, r0 * 1.75, r0 * 1.75)}):Play()
 		end
 	end
 	trails.Parent = workspace
@@ -259,7 +261,7 @@ local function blood()
 						bloodModel = Instance.new("Model")
 						bloodModel.Name = "ScentBlood"
 					end
-					print1(band(bloodModel, "blood", BLOOD, 0.1), pt, h.kind, BLOOD)
+					print1(band(bloodModel, "blood", BLOOD, 0.1), pt, h.size, BLOOD)
 					n += 1
 				end
 			end

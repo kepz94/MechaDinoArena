@@ -1610,3 +1610,23 @@ Press **H** in Play to show/hide them (HumanoidRootPart shown in yellow).
 `Roaring`, `Sprinting`, `MoveSpeedSource` (roar/run/creep/walk), `CreepBlend`, `CreepInput`, `CreepRequested`,
 `RoarFXCount`, `RoarRingsShot`, `RoarSoundLoaded`, `CameraZoomState` (zooming/set/timeout). Server: `RoarStartedAt`, `RoarCount`,
 `RoarLastResult`, `Creeping`, `CreepLastResult` (on/off/disabled/dead/badArg).
+
+## Raptor parts batch 2 (SkillTree 1.9 / SkillEffects 1.8 / ScentServer 1.0 / ScentFX 1.0 / ScreechServer 1.0)
+
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| ScentEnabled / Radius / Memory / Time / Cooldown / Fresh / Blood | character | false; 60 / 81; 8 / 10.8; 6; 16; III; star | Scent Sense settings (only while slotted) |
+| ScentStartedAt / Until / ReadyAt / State / EndReason / ServerResult / Count | character | — | ScentServer state and diagnostics |
+| ScentServerEnabled | script ScentServer | true | off switch |
+| ScentFXEnabled | script ScentFX (client) | true | off switch for the drawing |
+| ScentFXVersion / State / Prints / Tracked / BloodPrints / Pulses | character (client) | — | ScentFX diagnostics |
+| ScreechEnabled / Range / Flinch / Cooldown / Jam | character | false; 50 / 67.5; 0.5; 14 / 10.3; star | Raptor Screech settings (only while slotted) |
+| ScreechStartedAt / ReadyAt / ServerResult / Count / LastRange / LastHit / LastEnd | character (shooter) | — | ScreechServer state and diagnostics |
+| ScreechHitAt / HitBy / HitCount | character or bot (target) | — | a screech hit (CloakServer 1.4 ends the cloak) |
+| ScreechSlowUntil | character (T-Rex target) | server time | SprintTest 1.7 halves speed until then |
+| PartsJammedAt | character (target, star) | server time | ends Adrenaline, Shield and a boost ("jammed") |
+| ScreechServerEnabled / ScreechRequests / Hits / Misses | script ScreechServer | true; counts | off switch and counters |
+| MechaScreechAim / MechaScreechHeld / MechaScreechFired | character (client) | "idle" / "aiming"; studs; count | hold-to-aim diagnostics |
+
+Dart Launcher and Pack Beacon stay in the tree data with OWNER "none" (shown to nobody).
+

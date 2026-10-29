@@ -95,7 +95,8 @@
 --   * TIMED_PARTS += scent ("Scent", DinoScentRequest, "SCENT"; ScentServer 1.0) and screech ("Screech",
 --     DinoScreechRequest, "SCREECH"; ScreechServer 1.0). Scent is a normal press.
 --   * Raptor Screech is hold-to-aim (Kepu: "it needs to be aimed" -> C "Hold to aim"): pressing its slot starts the aim;
---     an aim line "ScreechAim" (client-only red neon strip on the ground in front of the raptor, along its facing)
+--     an aim line "ScreechAim" (client-only red neon beam at the raptor's root height, where the bolt flies, along its
+--     facing, with a Highlight that shows through grass and rocks)
 --     grows from 0 to ScreechRange over AIM_TIME (1) s and stays at the max while held; letting go fires
 --     DinoScreechRequest(server time, held range). PC: key down / key up (R / C / T / V). Touch: the slot's button
 --     down / up; with a pull part on the same button, the aim follows the gesture: it aims the tap slot until the
@@ -166,7 +167,12 @@ local function aimStart(n, input, isGesture)
 	line.Material = Enum.Material.Neon
 	line.Transparency = 0.25
 	line.Anchored, line.CanCollide, line.CanQuery, line.CanTouch, line.CastShadow = true, false, false, false, false
-	line.Size = Vector3.new(0.6, 0.1, 0.1)
+	line.Size = Vector3.new(0.5, 0.5, 0.1)
+	local hl = Instance.new("Highlight") -- Play: a ground strip was hidden by the rock steps; the beam shows through
+	hl.FillColor, hl.OutlineColor = line.Color, Color3.new(1, 1, 1)
+	hl.FillTransparency, hl.OutlineTransparency = 0.2, 0.6
+	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	hl.Parent = line
 	line.Parent = workspace
 	aim = {slot = n, t0 = os.clock(), input = input, gesture = isGesture == true, part = line}
 	char:SetAttribute("MechaScreechAim", "aiming")
@@ -189,12 +195,8 @@ RunService.RenderStepped:Connect(function()
 	local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
 	if look.Magnitude < 1e-3 then return end
 	look = look.Unit
-	local rp = RaycastParams.new()
-	rp.FilterType = Enum.RaycastFilterType.Exclude
-	rp.FilterDescendantsInstances = {char, aim.part}
-	local g = workspace:Raycast(hrp.Position, Vector3.new(0, -60, 0), rp)
-	local base = (g and g.Position or hrp.Position) + Vector3.new(0, 0.15, 0) -- on the ground under the raptor
-	aim.part.Size = Vector3.new(0.6, 0.1, len)
+	local base = hrp.Position -- the bolt's height (ScreechServer starts it 4 studs ahead of the root)
+	aim.part.Size = Vector3.new(0.5, 0.5, len)
 	aim.part.CFrame = CFrame.lookAt(base + look * (4 + len / 2), base + look * (5 + len / 2))
 end)
 
