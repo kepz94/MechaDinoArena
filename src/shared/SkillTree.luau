@@ -1,4 +1,4 @@
--- SkillTree v1.4 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.5 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -48,11 +48,37 @@
 -- v1.4 (MDA-36; Kepu 2026-10-28 after playing it: "the thrusters might be a little too fast. maybe just make it 1.75 my
 --   run speed and 1 second long"): while STRONG, the Thrusters boost is 1 s (I / II) and 1.35 s from III (the 35% rule:
 --   1.35 x 1 s); texts say 1 s at 1.75x run speed (SkillEffects 1.4) and 1.35 s.
+-- v1.5 (Cloak release, MDA-49, plan docs/plans/CLOAK_v1.0.md; ADR-003 / ADR-004; Kepu 2026-10-29):
+--   * Per-dino trees: path.dino = nil (shared stat path) / "Raptor" / "TRex" / "none" (kept, shown to nobody);
+--     path.notFor = {[dino] = true} for a shared path a dino skips (regen: TRex). New paths are added to AREAS after the
+--     1.4 ones (raptor: adrenaline, blade, dart, cloak, beacon, decoy; T-Rex: repairdrone, biobattery, reactive, ramjet,
+--     shieldproj, roaramp); shield / grapple / thrusters become Raptor, rocket / armor TRex, medstation / turret / sentry
+--     / traps / barricade "none". seesPath(p, dino): dino nil = every path (1.4 behaviour), "All" = every path but
+--     "none", any other key = shared paths it isn't skipped from + its own. pathsFor(areaId, dino) -> the area's paths
+--     the dino sees, shared first, then its own, each in AREAS order.
+--   * Every build function takes an optional last argument dino: sanitize(raw, dino) zeroes paths the dino doesn't see;
+--     spent / canBuy / buy / effects / sanitizeLoadout / autoSlot / setSlot pass it on. canBuy reasons in order:
+--     unknownPath, otherDino, soon, maxed, masteryFull, noPoints, ok.
+--   * Build limits (BUILD_LIMITS, default true; false = 1.4): MAX_POINTS 40, MAX_LEVEL 41 (one point per level), and
+--     Mastery 3: a line is mastered at step >= 3; buying step III of a line while MASTERY_MAX (3) other lines are
+--     mastered -> "masteryFull". mastered(steps, dino) -> ids in PATH_ORDER; masteryOk(steps, dino) -> count <= max.
+--   * SLOTS = 4 (slot 1 = button 1 tap / R, 2 = button 2 tap / C, 3 = button 1 pull / T, 4 = button 2 pull / V).
+--   * Cloak Field live (LIVE_MECH, BUTTONS): effects cloakTime (0; 3 s at I; 4.1 s from II), cloakCooldown (0; 12 s),
+--     cloakPounceMul (1; 1.35 from III, added with other same-hit bonuses by PounceServer), cloakStill (false; true at
+--     star: standing still keeps the cloak, up to 2 x cloakTime). BUTTONS also lists every button part (not live ones
+--     stay "soon", so they can't be slotted).
 local SkillTree = {}
-SkillTree.Version = "1.4"
+SkillTree.Version = "1.5"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
+-- v1.5: build limits (ADR-003 Mastery 3, ADR-004 40 points / level cap 41)
+SkillTree.BUILD_LIMITS = true
+SkillTree.MASTERY_MAX = 3
+if SkillTree.BUILD_LIMITS then
+	SkillTree.MAX_POINTS = 40
+	SkillTree.MAX_LEVEL = 41
+end
 
 local function path(id, name, mech, soon, steps)
 	return {id = id, name = name, mech = mech, soon = soon, steps = steps}
@@ -116,6 +142,62 @@ SkillTree.AREAS = {
 	}},
 }
 
+-- v1.5: per-dino paths, appended to their areas (1.4 order kept)
+do
+	local add = {
+		health = {
+			path("adrenaline", "Adrenaline Injector", true, true, {
+				"Button: heal 20% of max health over 3 s and run 1.3x faster while it lasts", "Heal 27%",
+				"Recharges 26% faster", "Also ends a stun at once"}),
+			path("repairdrone", "Repair Drone", true, true, {
+				"Button: a drone lifts off your back and heals 20% of max health over 5 s", "Heals 27%",
+				"Recharges 26% faster", "The drone also heals an ally next to you"}),
+			path("biobattery", "Bio-Battery Spine", true, true, {
+				"Every hit you land fills a cell (5 cells); full = heal 15% of max health", "Heal 20%",
+				"4 cells to fill", "A full battery also gives 3 s of 35% faster bite recharge"}),
+		},
+		attack = {
+			path("blade", "Blade Claws", true, true, {
+				"Mech sickle claws: pounce landing hits 35% harder", "Latch / pin bites tick 35% faster",
+				"Pounce hits make the target bleed", "A pin kill gives back half your pounce stamina"}),
+			path("dart", "Dart Launcher", true, true, {
+				"Button: fire a dart; the hit dino is slowed 30% for 3 s",
+				"Marked: the hit dino shows through tall grass for 6 s", "Two darts per charge", "Tranquilizer: slow 60%"}),
+		},
+		defense = {
+			path("cloak", "Cloak Field", true, true, {
+				"Button: nearly invisible for 3 s; bots lose you. Ends when you pounce, get hit or use another part",
+				"Lasts 4.1 s", "A pounce out of the cloak hits 35% harder",
+				"Standing still keeps you cloaked, up to twice as long"}),
+			path("reactive", "Reactive Armor", true, true, {
+				"Each hit you take charges the panels (6 hits); full = your next bite deals +35% damage", "4 hits to charge",
+				"The charged bite also knocks the target back", "The charged bite also stuns for 0.75 s"}),
+		},
+		speed = {
+			path("ramjet", "Ramjet Charge", true, true, {
+				"Button: charge straight ahead at 1.75x run speed for 1 s; dinos in the way are knocked aside",
+				"2 charges", "Lasts 1.35 s", "Hitting a dino stuns it for 0.75 s"}),
+		},
+		eng = {
+			path("beacon", "Pack Beacon", true, true, {
+				"Button: mark every enemy within 60 studs for your squad for 5 s", "81-stud radius",
+				"Marked enemies take 35% more damage from you", "Marks last until they leave the radius"}),
+			path("decoy", "Decoy Hologram", true, true, {
+				"Button: a fake raptor runs ahead for 5 s; bots chase it", "Lasts 6.75 s", "Two decoys",
+				"The decoy bursts and stuns whoever is near it"}),
+			path("shieldproj", "Shield Projector", true, true, {
+				"Button: a hard-light wall in front of you for 3 s that blocks hits and rockets", "Lasts 4.1 s",
+				"Wider wall", "The wall moves with you"}),
+			path("roaramp", "Roar Amplifier", true, true, {
+				"Button: roar; enemies in the cone take 25% more damage for 5 s", "Lasts 6.75 s",
+				"Enemies take 35% more damage", "The roar also shields allies near you (25% less damage for 5 s)"}),
+		},
+	}
+	for _, a in ipairs(SkillTree.AREAS) do
+		for _, p in ipairs(add[a.id] or {}) do table.insert(a.paths, p) end
+	end
+end
+
 SkillTree.PATHS = {}
 SkillTree.PATH_ORDER = {}
 for _, a in ipairs(SkillTree.AREAS) do
@@ -130,6 +212,24 @@ end
 SkillTree.LIVE_MECH = {thrusters = true}
 SkillTree.BUTTONS = {thrusters = true}
 SkillTree.SLOTS = 2
+-- v1.5: ownership, Cloak live, every button part listed, 4 slots
+SkillTree.OWNER = {
+	adrenaline = "Raptor", blade = "Raptor", dart = "Raptor", cloak = "Raptor", shield = "Raptor", thrusters = "Raptor",
+	grapple = "Raptor", beacon = "Raptor", decoy = "Raptor",
+	repairdrone = "TRex", biobattery = "TRex", rocket = "TRex", armor = "TRex", reactive = "TRex", ramjet = "TRex",
+	shieldproj = "TRex", roaramp = "TRex",
+	medstation = "none", turret = "none", sentry = "none", traps = "none", barricade = "none",
+}
+for id, dino in pairs(SkillTree.OWNER) do
+	if SkillTree.PATHS[id] then SkillTree.PATHS[id].dino = dino end
+end
+SkillTree.PATHS.regen.notFor = {TRex = true}
+SkillTree.LIVE_MECH.cloak = true
+for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
+	"armor", "ramjet", "shieldproj", "roaramp"}) do
+	SkillTree.BUTTONS[id] = true
+end
+SkillTree.SLOTS = 4
 for id in pairs(SkillTree.LIVE_MECH) do
 	if SkillTree.PATHS[id] then SkillTree.PATHS[id].soon = false end
 end
@@ -181,48 +281,89 @@ function SkillTree.pointsOf(level)
 	return math.clamp(math.floor(tonumber(level) or 1) - 1, 0, SkillTree.MAX_POINTS)
 end
 
+-- v1.5: which paths a dino sees
+function SkillTree.seesPath(p, dino)
+	if type(p) == "string" then p = SkillTree.PATHS[p] end
+	if not p then return false end
+	if dino == nil then return true end
+	if p.dino == "none" then return false end
+	if dino == "All" then return true end
+	if p.dino == nil then return not (p.notFor and p.notFor[dino]) end
+	return p.dino == dino
+end
+
+function SkillTree.pathsFor(areaId, dino)
+	local shared, own = {}, {}
+	for _, a in ipairs(SkillTree.AREAS) do
+		if a.id == areaId then
+			for _, p in ipairs(a.paths) do
+				if SkillTree.seesPath(p, dino) then table.insert(p.dino == nil and shared or own, p) end
+			end
+		end
+	end
+	for _, p in ipairs(own) do table.insert(shared, p) end
+	return shared
+end
+
 -- builds
-function SkillTree.sanitize(raw)
+function SkillTree.sanitize(raw, dino) -- v1.5: + dino
 	local clean = {}
 	for id, p in pairs(SkillTree.PATHS) do
 		local n = type(raw) == "table" and raw[id] or nil
-		if type(n) ~= "number" or n ~= n or p.soon then n = 0 end
+		if type(n) ~= "number" or n ~= n or p.soon or not SkillTree.seesPath(p, dino) then n = 0 end
 		clean[id] = math.clamp(math.floor(n), 0, 4)
 	end
 	return clean
 end
 
-function SkillTree.spent(steps)
+function SkillTree.spent(steps, dino) -- v1.5: + dino
 	local s = 0
-	for _, n in pairs(SkillTree.sanitize(steps)) do
+	for _, n in pairs(SkillTree.sanitize(steps, dino)) do
 		for i = 1, n do s += SkillTree.COST[i] end
 	end
 	return s
 end
 
-function SkillTree.canBuy(steps, pathId, pointsEarned)
+-- v1.5: Mastery 3
+function SkillTree.mastered(steps, dino)
+	local clean, out = SkillTree.sanitize(steps, dino), {}
+	for _, id in ipairs(SkillTree.PATH_ORDER) do
+		if (clean[id] or 0) >= 3 then table.insert(out, id) end
+	end
+	return out
+end
+
+function SkillTree.masteryOk(steps, dino)
+	return not SkillTree.BUILD_LIMITS or #SkillTree.mastered(steps, dino) <= SkillTree.MASTERY_MAX
+end
+
+function SkillTree.canBuy(steps, pathId, pointsEarned, dino) -- v1.5: + dino, otherDino, masteryFull
 	local p = SkillTree.PATHS[pathId]
 	if not p then return false, "unknownPath" end
+	if not SkillTree.seesPath(p, dino) then return false, "otherDino" end
 	if p.soon then return false, "soon" end
-	local clean = SkillTree.sanitize(steps)
+	local clean = SkillTree.sanitize(steps, dino)
 	local n = clean[pathId]
 	if n >= 4 then return false, "maxed" end
-	local left = (tonumber(pointsEarned) or 0) - SkillTree.spent(clean)
+	if SkillTree.BUILD_LIMITS and n == 2 and #SkillTree.mastered(clean, dino) >= SkillTree.MASTERY_MAX then
+		return false, "masteryFull"
+	end
+	local left = (tonumber(pointsEarned) or 0) - SkillTree.spent(clean, dino)
 	if left < SkillTree.COST[n + 1] then return false, "noPoints" end
 	return true, "ok"
 end
 
-function SkillTree.buy(steps, pathId, pointsEarned)
-	local ok, why = SkillTree.canBuy(steps, pathId, pointsEarned)
+function SkillTree.buy(steps, pathId, pointsEarned, dino) -- v1.5: + dino
+	local ok, why = SkillTree.canBuy(steps, pathId, pointsEarned, dino)
 	if not ok then return nil, why end
-	local new = SkillTree.sanitize(steps)
+	local new = SkillTree.sanitize(steps, dino)
 	new[pathId] += 1
 	return new, "ok"
 end
 
 -- effects
-function SkillTree.effects(steps)
-	local s = SkillTree.sanitize(steps)
+function SkillTree.effects(steps, dino) -- v1.5: + dino
+	local s = SkillTree.sanitize(steps, dino)
 	local e = {attackPts = 0, defensePts = 0, speedPts = 0, regenDelay = 0, regenRate = 0, killRegenAdd = 0,
 		lifesteal = 0, shieldMax = 0, shieldTime = 0, mainCdMul = 1, moveCdMul = 1, bleedDps = 0, bleedTime = 0,
 		crushStun = 0, crushCooldown = 0, tossMul = 1, stunMul = 1, stunImmuneAbove = 0}
@@ -280,17 +421,24 @@ function SkillTree.effects(steps)
 		if t >= 1 then e.dashTime = 1.0 end -- v1.4 (1.3: 1.5)
 		if t >= 3 then e.dashTime = 1.35 end -- v1.4 (1.3: 2.1)
 	end
+	-- v1.5: Cloak Field
+	local c = s.cloak or 0
+	e.cloakTime, e.cloakCooldown, e.cloakPounceMul, e.cloakStill = 0, 0, 1, false
+	if c >= 1 then e.cloakTime, e.cloakCooldown = 3, 12 end
+	if c >= 2 then e.cloakTime = 4.1 end
+	if c >= 3 then e.cloakPounceMul = 1.35 end
+	if c >= 4 then e.cloakStill = true end
 	return e
 end
 
 -- v1.1: loadout
-local function slottable(clean, id)
+local function slottable(clean, id) -- clean = sanitized with the dino (v1.5)
 	local p = type(id) == "string" and SkillTree.PATHS[id]
 	return p and SkillTree.BUTTONS[id] == true and not p.soon and (clean[id] or 0) >= 1 or false
 end
 
-function SkillTree.sanitizeLoadout(raw, steps)
-	local clean = SkillTree.sanitize(steps)
+function SkillTree.sanitizeLoadout(raw, steps, dino) -- v1.5: + dino
+	local clean = SkillTree.sanitize(steps, dino)
 	local out, seen = {}, {}
 	for n = 1, SkillTree.SLOTS do
 		local id = type(raw) == "table" and raw[n] or nil
@@ -303,9 +451,9 @@ function SkillTree.sanitizeLoadout(raw, steps)
 	return out
 end
 
-function SkillTree.autoSlot(loadout, steps, pathId)
-	local out = SkillTree.sanitizeLoadout(loadout, steps)
-	if not slottable(SkillTree.sanitize(steps), pathId) then return out end
+function SkillTree.autoSlot(loadout, steps, pathId, dino) -- v1.5: + dino
+	local out = SkillTree.sanitizeLoadout(loadout, steps, dino)
+	if not slottable(SkillTree.sanitize(steps, dino), pathId) then return out end
 	for n = 1, SkillTree.SLOTS do
 		if out[n] == pathId then return out end
 	end
@@ -318,9 +466,9 @@ function SkillTree.autoSlot(loadout, steps, pathId)
 	return out
 end
 
-function SkillTree.setSlot(loadout, steps, n, pathId)
+function SkillTree.setSlot(loadout, steps, n, pathId, dino) -- v1.5: + dino
 	if type(n) ~= "number" or n ~= math.floor(n) or n < 1 or n > SkillTree.SLOTS then return nil, "badSlot" end
-	local out = SkillTree.sanitizeLoadout(loadout, steps)
+	local out = SkillTree.sanitizeLoadout(loadout, steps, dino)
 	if pathId == false or pathId == nil or pathId == "" then
 		out[n] = false
 		return out, "ok"
@@ -328,7 +476,7 @@ function SkillTree.setSlot(loadout, steps, n, pathId)
 	if type(pathId) ~= "string" or not SkillTree.PATHS[pathId] or SkillTree.BUTTONS[pathId] ~= true then
 		return nil, "notButton"
 	end
-	if not slottable(SkillTree.sanitize(steps), pathId) then return nil, "notOwned" end
+	if not slottable(SkillTree.sanitize(steps, dino), pathId) then return nil, "notOwned" end
 	for m = 1, SkillTree.SLOTS do
 		if out[m] == pathId then out[m] = false end
 	end
