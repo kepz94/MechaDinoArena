@@ -1357,6 +1357,32 @@ parts never flash.
 | BoostSwivel | dino model (client) | — | "none" / "on" / "noHinge" (Mecha_Thrusters without hinges) / "off" (BoostSwivelEnabled false) |
 | BoostSwivelAngle / BoostStagger | dino model (client) | — | booster turn in degrees; studs the two boosters are slid apart |
 
+## Raptor parts batch 1 (SkillTree 1.6 / SkillEffects 1.6 / PounceServer 1.6 / BladeServer, AdrenalineServer, EnergyShieldServer 1.0)
+
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| BladeLook | character | false / true | Blade Claws bought (SkillEffects); BladeServer shows the sickles |
+| BladeLandBonus / BladeTickMul | character | 0 / 0.35; 1 / 0.74 | pounce landing bonus (additive); latch / pin bite interval multiplier |
+| BladeBleedDps / BladeBleedTime | character | 0 / 3; 0 / 4 | bleed on pounce hits (stronger of Jaws / Blade) |
+| BladePinRefund | character | 0 / 0.5 | share of PounceStaminaCost given back on a pin kill |
+| PounceBladeEnabled | script PounceServer | true | false: no Blade numbers in pounces |
+| PounceBladeBonus / PounceBladeRefunds | character | — | Blade part of the last landing; pin-kill refunds count |
+| StaminaRefundAmount / StaminaRefundAt | character | — | refund stamp read by StaminaServer 1.5 (StaminaRefundCount, StaminaLastEvent "refund") |
+| BladeServerEnabled | script BladeServer | true | false: no sickles / flick / slash |
+| BladeLookState / BladeFlick | character | "none" / "on" / "noFeet"; "down" / "up" | diagnostics |
+| AdrenalineEnabled / Heal / Time / SpeedMul / Cooldown / StunClear | character | false; 0.20 / 0.27; 3; 1.3; 20 / 14.8; star true | Adrenaline settings (only while slotted) |
+| AdrenalineStartedAt / Until / ReadyAt | character | — | server state (cooldown from the end) |
+| AdrenalineServerResult | character | badArg / dead / disabled / stunned / latched / active / cooldown / ok | last request |
+| AdrenalineHealed / AdrenalineEndReason / AdrenalineStunCleared / AdrenalineLook | character | — | diagnostics |
+| AdrenalineServerEnabled | script AdrenalineServer | true | off switch |
+| EnergyShieldEnabled / Time / Cooldown / SpeedMul | character | false; 1.5 / 2.05 / star 2.77; 16 / 11.8; 0.5 / star 0.68 | Energy Shield settings (only while slotted) |
+| EnergyShieldStartedAt / Until / ReadyAt / State | character | — | server state; "on" while blocking |
+| EnergyShieldServerResult / Blocks / BlockAt / EndReason / Look | character | — | diagnostics (blocks = LastHitAt stamps while up) |
+| EnergyShieldServerEnabled | script EnergyShieldServer | true | off switch |
+| MoveSpeedParts | character (client) | "none" / "adrenaline" / "shield" / "adrenaline+shield" | SprintTest 1.6: which part multipliers apply |
+
+Jaws is not for raptors (SkillTree 1.6 notFor Raptor; refunded on load).
+
 ## Skills per dino (SkillServer 1.2 / SkillScreen 1.2)
 
 | Attribute | On | Default | Meaning |

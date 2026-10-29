@@ -17,8 +17,8 @@
 --   (the last step is trimmed so the total is exactly heal x MaxHealth). AdrenalineHealed = the total so far (0.1 steps).
 -- Ends early on death or AdrenalineEnabled turning false: AdrenalineUntil = now, AdrenalineReadyAt = now + cooldown.
 --   AdrenalineEndReason "time" / "dead" / "disabled".
--- Look: Model "Mecha_Adrenaline" under the character while AdrenalineEnabled is true: on the side of the neck (the Neck
---   segment's box in the HumanoidRootPart's frame, right side) a dark canister "Canister" with green glass "Glass" and a
+-- Look: Model "Mecha_Adrenaline" under the character while AdrenalineEnabled is true: on the right side of the neck (the
+--   Neck segment's box in its Root's own frame, so the pose at build time doesn't matter) a dark canister "Canister" with green glass "Glass" and a
 --   grey plunger "Plunger" on top (Weld "PlungerHinge", attribute BaseC0). Welded to the Neck segment's Root. Massless,
 --   no collide / query / touch, no shadow. On each use: the plunger slides down into the canister (0.25 s) and back up
 --   at the end; a green Highlight "AdrenalinePulse" fades from FillTransparency 0.35 to 1 over 0.6 s and is destroyed;
@@ -69,18 +69,39 @@ local function part(name, size, cf, color, parent, mount)
 	return p
 end
 
-local function boxOf(seg, hrp, root)
+-- the segment's box in its Root's own frame (so the pose at build time doesn't matter)
+local function rootBox(seg, root)
 	local lo, hi = Vector3.new(math.huge, math.huge, math.huge), Vector3.new(-math.huge, -math.huge, -math.huge)
 	for _, p in ipairs(seg:GetDescendants()) do
 		if p:IsA("BasePart") and p ~= root then
 			for _, sx in ipairs({-0.5, 0.5}) do for _, sy in ipairs({-0.5, 0.5}) do for _, sz in ipairs({-0.5, 0.5}) do
-				local q = hrp.CFrame:PointToObjectSpace(p.CFrame * Vector3.new(p.Size.X * sx, p.Size.Y * sy, p.Size.Z * sz))
+				local q = root.CFrame:PointToObjectSpace(p.CFrame * Vector3.new(p.Size.X * sx, p.Size.Y * sy, p.Size.Z * sz))
 				lo, hi = lo:Min(q), hi:Max(q)
 			end end end
 		end
 	end
 	if lo.X == math.huge then return nil end
 	return lo, hi
+end
+-- the Root-space axis (unit +-X / Y / Z) nearest to a world direction
+local function axisOf(root, dir)
+	local v = root.CFrame:VectorToObjectSpace(dir)
+	local a = Vector3.new(math.abs(v.X), math.abs(v.Y), math.abs(v.Z))
+	if a.X >= a.Y and a.X >= a.Z then return Vector3.new(v.X >= 0 and 1 or -1, 0, 0) end
+	if a.Y >= a.Z then return Vector3.new(0, v.Y >= 0 and 1 or -1, 0) end
+	return Vector3.new(0, 0, v.Z >= 0 and 1 or -1)
+end
+-- distance from the box centre to its face along a unit axis
+local function extent(lo, hi, axis)
+	local h = (hi - lo) / 2
+	return math.abs(axis.X) * h.X + math.abs(axis.Y) * h.Y + math.abs(axis.Z) * h.Z
+end
+-- Root-space right / up / back axes that follow the body's right / up (z = x cross y = back)
+local function bodyAxes(root, hrp)
+	local x = axisOf(root, hrp.CFrame.RightVector)
+	local y = axisOf(root, hrp.CFrame.UpVector)
+	if math.abs(x:Dot(y)) > 0.5 then y = axisOf(root, hrp.CFrame.LookVector):Cross(x) end
+	return x, y, x:Cross(y)
 end
 
 local function trails(char, enabled)
@@ -103,15 +124,15 @@ local function build(char)
 	local seg = char:FindFirstChild("Neck")
 	local root = seg and seg:FindFirstChild("Root")
 	local lo, hi
-	if hrp and root then lo, hi = boxOf(seg, hrp, root) end
+	if hrp and root then lo, hi = rootBox(seg, root) end
 	if not lo then char:SetAttribute("AdrenalineLook", "noNeck") return end
 	local Hd = char:GetExtentsSize().Y
-	local R, U, L = hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector
 	local model = Instance.new("Model")
 	model.Name = "Mecha_Adrenaline"
-	local c = Vector3.new(hi.X + Hd * 0.012, (lo.Y + hi.Y) / 2, (lo.Z + hi.Z) / 2) -- right side of the neck
 	local cs = Vector3.new(Hd * 0.035, Hd * 0.05, Hd * 0.1)
-	local cf = CFrame.fromMatrix(hrp.CFrame:PointToWorldSpace(c), R, U, -L) * CFrame.Angles(math.rad(-30), 0, 0) -- along the neck
+	local x, y, z = bodyAxes(root, hrp)
+	local pLocal = (lo + hi) / 2 + x * (extent(lo, hi, x) + cs.X * 0.5) -- on the right side of the neck, in Root's frame
+	local cf = root.CFrame * CFrame.fromMatrix(pLocal, x, y, z) * CFrame.Angles(math.rad(-30), 0, 0) -- along the neck
 	local can = part("Canister", cs, cf, DARK, model, root)
 	part("Glass", Vector3.new(cs.X * 1.05, cs.Y * 0.6, cs.Z * 0.7), cf * CFrame.new(0, 0, cs.Z * 0.05), GREEN, model, can).Material = Enum.Material.Neon
 	local ps = Vector3.new(cs.X * 0.5, cs.Y * 0.5, cs.Z * 0.35)

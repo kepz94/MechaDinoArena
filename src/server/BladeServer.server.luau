@@ -3,12 +3,15 @@
 -- docs/mockups/raptor_parts_b1_options.html option A "Sickle claws" (Kepu 2026-10-29). The numbers (landing bonus,
 -- faster latch bites, bleed, pin-kill refund) live in PounceServer 1.6 / SkillEffects 1.6; this script is the look only.
 -- Part: Model "Mecha_Blade" under the character while its BladeLook (SkillEffects 1.6) is true. For each foot segment
---   (Model "FootL" / "FootR" with a part "Root"): a steel blade "Sickle_L" / "Sickle_R" (foot length x 0.5 long, x 0.32
---   tall, x 0.07 thick) standing on the inner front of the foot, tipped 35 degrees forward, joined to the foot's Root by
---   a Weld "SickleHinge" (C0 = the blade's rest frame in Root's frame, attribute BaseC0), plus a red neon edge strip
---   "SickleEdge_L" / "_R" welded (WeldConstraint) to the blade. Massless, CanCollide / CanQuery / CanTouch false, no
---   shadow. Removed when BladeLook turns false or the switch is off.
--- Flick: a new PounceStartedAt turns both hinges up FLICK_DEG (50) over 0.12 s (TweenService); they go back down 0.6 s
+--   (Model "FootL" / "FootR" with a part "Root"): a hooked mecha sickle of 3 pieces growing from the lower end of the
+--   dino's own sickle claw (part "<Foot>_sickle", size S = its longest side): "Sickle_L" (steel, S x 0.85 long, rising
+--   25 degrees), "SickleMid_L" (steel, S x 0.7, 60 degrees) and "SickleTip_L" (red neon, S x 0.5, 105 degrees: curls
+--   back), S x 0.3 thick ("_R" on the right foot). Without a "<Foot>_sickle": on top of the foot box, inner edge, a
+--   quarter back from the toes, S = foot length x 0.3. Placed in the foot Root's own frame (axes nearest the body's
+--   right / up), so the walk pose at build time doesn't matter. The first piece is joined to the foot's Root by a Weld
+--   "SickleHinge" (pivot at the hook's base; attribute BaseC0); the other pieces are welded (WeldConstraint) to it.
+--   Massless, CanCollide / CanQuery / CanTouch false, no shadow. Removed when BladeLook turns false or the switch is off.
+-- Flick: a new PounceStartedAt raises both hooks FLICK_DEG (40) over 0.12 s (TweenService); they go back down 0.6 s
 --   after PounceLatched turns false, or 1.2 s after the pounce start when no latch came (the newest pounce wins).
 -- Slash: a new PounceLatchedAt (a landing) puts 3 red neon strips across the latch part (PounceLatchPart value) for
 --   0.3 s, fading out. Every client sees the parts (server-built).
@@ -20,7 +23,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local VERSION = "1.0"
-local FLICK_DEG = 50
+local FLICK_DEG = 40
 local STEEL, RED = Color3.fromRGB(201, 210, 220), Color3.fromRGB(240, 70, 60)
 
 script:SetAttribute("BladeServerVersion", VERSION)
@@ -51,19 +54,39 @@ local function part(name, size, cf, color, parent, mount)
 	return p
 end
 
--- box of a segment's parts (Root excluded) in the HumanoidRootPart's frame
-local function boxOf(seg, hrp, root)
+-- the segment's box in its Root's own frame (so the pose at build time doesn't matter)
+local function rootBox(seg, root)
 	local lo, hi = Vector3.new(math.huge, math.huge, math.huge), Vector3.new(-math.huge, -math.huge, -math.huge)
 	for _, p in ipairs(seg:GetDescendants()) do
 		if p:IsA("BasePart") and p ~= root then
 			for _, sx in ipairs({-0.5, 0.5}) do for _, sy in ipairs({-0.5, 0.5}) do for _, sz in ipairs({-0.5, 0.5}) do
-				local q = hrp.CFrame:PointToObjectSpace(p.CFrame * Vector3.new(p.Size.X * sx, p.Size.Y * sy, p.Size.Z * sz))
+				local q = root.CFrame:PointToObjectSpace(p.CFrame * Vector3.new(p.Size.X * sx, p.Size.Y * sy, p.Size.Z * sz))
 				lo, hi = lo:Min(q), hi:Max(q)
 			end end end
 		end
 	end
 	if lo.X == math.huge then return nil end
 	return lo, hi
+end
+-- the Root-space axis (unit +-X / Y / Z) nearest to a world direction
+local function axisOf(root, dir)
+	local v = root.CFrame:VectorToObjectSpace(dir)
+	local a = Vector3.new(math.abs(v.X), math.abs(v.Y), math.abs(v.Z))
+	if a.X >= a.Y and a.X >= a.Z then return Vector3.new(v.X >= 0 and 1 or -1, 0, 0) end
+	if a.Y >= a.Z then return Vector3.new(0, v.Y >= 0 and 1 or -1, 0) end
+	return Vector3.new(0, 0, v.Z >= 0 and 1 or -1)
+end
+-- distance from the box centre to its face along a unit axis
+local function extent(lo, hi, axis)
+	local h = (hi - lo) / 2
+	return math.abs(axis.X) * h.X + math.abs(axis.Y) * h.Y + math.abs(axis.Z) * h.Z
+end
+-- Root-space right / up / back axes that follow the body's right / up (z = x cross y = back)
+local function bodyAxes(root, hrp)
+	local x = axisOf(root, hrp.CFrame.RightVector)
+	local y = axisOf(root, hrp.CFrame.UpVector)
+	if math.abs(x:Dot(y)) > 0.5 then y = axisOf(root, hrp.CFrame.LookVector):Cross(x) end
+	return x, y, x:Cross(y)
 end
 
 local function build(char)
@@ -77,33 +100,51 @@ local function build(char)
 	if not hrp then char:SetAttribute("BladeLookState", "noFeet") return end
 	local model = Instance.new("Model")
 	model.Name = "Mecha_Blade"
-	local R, U, L = hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector
 	local made = 0
-	for _, side in ipairs({{"L", "FootL"}, {"R", "FootR"}}) do
+	for _, side in ipairs({{"L", "FootL", 1}, {"R", "FootR", -1}}) do -- inner side: +right for the left foot
 		local seg = char:FindFirstChild(side[2])
 		local root = seg and seg:FindFirstChild("Root")
 		local lo, hi
-		if root then lo, hi = boxOf(seg, hrp, root) end
+		if root then lo, hi = rootBox(seg, root) end
 		if root and lo then
-			local Lf = math.max(hi.Z - lo.Z, 0.2) -- foot length (HRP frame: -Z forward)
-			local size = Vector3.new(Lf * 0.07, Lf * 0.32, Lf * 0.5)
-			-- inner side: the side nearer the body's centre line (x = 0)
-			local innerX = (math.abs(lo.X) < math.abs(hi.X)) and lo.X or hi.X
-			local x = innerX + (innerX < 0 and 1 or -1) * size.X * 0.5 -- just inside the foot's inner edge
-			local base = Vector3.new(x, hi.Y + size.Y * 0.35, lo.Z + Lf * 0.3)
-			local cf = CFrame.fromMatrix(hrp.CFrame:PointToWorldSpace(base), R, U, -L) * CFrame.Angles(math.rad(35), 0, 0)
-			local blade = part("Sickle_" .. side[1], size, cf, STEEL, model, nil)
-			local edge = part("SickleEdge_" .. side[1], Vector3.new(size.X * 1.1, size.Y * 0.18, size.Z * 0.95),
-				cf * CFrame.new(0, size.Y * 0.45, 0), RED, model, blade)
-			edge.Material = Enum.Material.Neon
+			local x, y, z = bodyAxes(root, hrp)
+			local c = (lo + hi) / 2
+			-- the dino's own sickle claw ("<Foot>_sickle"): the mecha hook grows from its lower end and is sized from it;
+			-- without one: the top of the foot box, inner edge, a quarter back from the toes, sized from the foot length
+			local nat = seg:FindFirstChild(side[2] .. "_sickle", true)
+			local S, pLocal
+			if nat and nat:IsA("BasePart") then
+				S = math.max(nat.Size.X, nat.Size.Y, nat.Size.Z)
+				pLocal = root.CFrame:PointToObjectSpace(nat.CFrame:PointToWorldSpace(Vector3.new(0, -nat.Size.Y / 2, 0)))
+			else
+				S = math.max(2 * extent(lo, hi, z), 0.2) * 0.3
+				pLocal = c + y * extent(lo, hi, y) - z * (extent(lo, hi, z) * 0.5) + x * side[3] * math.max(0, extent(lo, hi, x) - S * 0.15)
+			end
+			local t = S * 0.3
+			local F = root.CFrame * CFrame.fromMatrix(pLocal, x, y, z)
+			-- the hook: 3 pieces rising forward and curling back (angles from forward, upward positive)
+			local pieces = {{S * 0.85, 25, S * 0.45}, {S * 0.7, 60, S * 0.35}, {S * 0.5, 105, S * 0.25}}
+			local cur = F.Position
+			local first, firstLen
+			for k, pc in ipairs(pieces) do
+				local th = math.rad(pc[2])
+				local rot = F.Rotation * CFrame.Angles(th, 0, 0)
+				local dir = rot:VectorToWorldSpace(Vector3.new(0, 0, -1))
+				local cf = rot + cur + dir * (pc[1] / 2)
+				cur += dir * pc[1]
+				local isTip = k == #pieces
+				local pp = part(isTip and ("SickleTip_" .. side[1]) or (k == 1 and ("Sickle_" .. side[1]) or ("SickleMid_" .. side[1])),
+					Vector3.new(t, pc[3], pc[1]), cf, isTip and RED or STEEL, model, first)
+				if isTip then pp.Material = Enum.Material.Neon end
+				if k == 1 then first, firstLen = pp, pc[1] end
+			end
 			local hinge = Instance.new("Weld")
 			hinge.Name = "SickleHinge"
-			hinge.Part0, hinge.Part1 = root, blade
-			hinge.C0 = root.CFrame:ToObjectSpace(cf)
-			hinge.C1 = CFrame.new(0, -size.Y * 0.5, size.Z * 0.5) -- pivot: the blade's lower back corner
-			hinge.C0 = hinge.C0 * hinge.C1 -- keep the blade where it was built
+			hinge.Part0, hinge.Part1 = root, first
+			hinge.C1 = CFrame.new(0, 0, firstLen / 2) -- pivot: the hook's base (the piece's back end)
+			hinge.C0 = root.CFrame:ToObjectSpace(first.CFrame) * hinge.C1
 			hinge:SetAttribute("BaseC0", hinge.C0)
-			hinge.Parent = blade
+			hinge.Parent = first
 			made += 1
 		end
 	end
@@ -124,7 +165,7 @@ local function setFlick(char, up)
 		if h:IsA("Weld") and h.Name == "SickleHinge" then
 			local base = h:GetAttribute("BaseC0")
 			if typeof(base) == "CFrame" then
-				local goal = up and base * CFrame.Angles(math.rad(-FLICK_DEG), 0, 0) or base
+				local goal = up and base * CFrame.Angles(math.rad(FLICK_DEG), 0, 0) or base
 				TweenService:Create(h, TweenInfo.new(up and 0.12 or 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {C0 = goal}):Play()
 			end
 		end

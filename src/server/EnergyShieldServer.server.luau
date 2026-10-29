@@ -17,7 +17,7 @@
 -- Look: a Highlight "EnergyShieldShell" on the character while up (fill and outline blue 90,160,255, FillTransparency
 --   0.85, OutlineTransparency 0; everyone sees it); on a block the outline turns white for 0.12 s. While
 --   EnergyShieldEnabled: a small emitter disc "Emitter" (dark ring + blue neon core) on the chest (front of the Torso
---   segment, lower half), welded to Torso.Root; Model "Mecha_EnergyShield".
+--   segment's box in its Root's own frame, lower part), welded to Torso.Root; Model "Mecha_EnergyShield".
 -- End: at EnergyShieldUntil ("time"), death ("dead") or EnergyShieldEnabled turning false ("disabled"): the ForceField
 --   and the Highlight are destroyed (not disabled: disabled Highlights still count toward the per-client limit); early
 --   ends set EnergyShieldUntil = now and EnergyShieldReadyAt = now + cooldown. EnergyShieldEndReason.
@@ -65,6 +65,41 @@ local function part(name, size, cf, color, parent, mount)
 	return p
 end
 
+-- the segment's box in its Root's own frame (so the pose at build time doesn't matter)
+local function rootBox(seg, root)
+	local lo, hi = Vector3.new(math.huge, math.huge, math.huge), Vector3.new(-math.huge, -math.huge, -math.huge)
+	for _, p in ipairs(seg:GetDescendants()) do
+		if p:IsA("BasePart") and p ~= root then
+			for _, sx in ipairs({-0.5, 0.5}) do for _, sy in ipairs({-0.5, 0.5}) do for _, sz in ipairs({-0.5, 0.5}) do
+				local q = root.CFrame:PointToObjectSpace(p.CFrame * Vector3.new(p.Size.X * sx, p.Size.Y * sy, p.Size.Z * sz))
+				lo, hi = lo:Min(q), hi:Max(q)
+			end end end
+		end
+	end
+	if lo.X == math.huge then return nil end
+	return lo, hi
+end
+-- the Root-space axis (unit +-X / Y / Z) nearest to a world direction
+local function axisOf(root, dir)
+	local v = root.CFrame:VectorToObjectSpace(dir)
+	local a = Vector3.new(math.abs(v.X), math.abs(v.Y), math.abs(v.Z))
+	if a.X >= a.Y and a.X >= a.Z then return Vector3.new(v.X >= 0 and 1 or -1, 0, 0) end
+	if a.Y >= a.Z then return Vector3.new(0, v.Y >= 0 and 1 or -1, 0) end
+	return Vector3.new(0, 0, v.Z >= 0 and 1 or -1)
+end
+-- distance from the box centre to its face along a unit axis
+local function extent(lo, hi, axis)
+	local h = (hi - lo) / 2
+	return math.abs(axis.X) * h.X + math.abs(axis.Y) * h.Y + math.abs(axis.Z) * h.Z
+end
+-- Root-space right / up / back axes that follow the body's right / up (z = x cross y = back)
+local function bodyAxes(root, hrp)
+	local x = axisOf(root, hrp.CFrame.RightVector)
+	local y = axisOf(root, hrp.CFrame.UpVector)
+	if math.abs(x:Dot(y)) > 0.5 then y = axisOf(root, hrp.CFrame.LookVector):Cross(x) end
+	return x, y, x:Cross(y)
+end
+
 local function build(char)
 	local old = char:FindFirstChild("Mecha_EnergyShield")
 	if old then old:Destroy() end
@@ -76,23 +111,16 @@ local function build(char)
 	local seg = char:FindFirstChild("Torso")
 	local root = seg and seg:FindFirstChild("Root")
 	if not (hrp and root) then char:SetAttribute("EnergyShieldLook", "noTorso") return end
-	local lo, hi = Vector3.new(math.huge, math.huge, math.huge), Vector3.new(-math.huge, -math.huge, -math.huge)
-	for _, p in ipairs(seg:GetDescendants()) do
-		if p:IsA("BasePart") and p ~= root then
-			for _, sx in ipairs({-0.5, 0.5}) do for _, sy in ipairs({-0.5, 0.5}) do for _, sz in ipairs({-0.5, 0.5}) do
-				local q = hrp.CFrame:PointToObjectSpace(p.CFrame * Vector3.new(p.Size.X * sx, p.Size.Y * sy, p.Size.Z * sz))
-				lo, hi = lo:Min(q), hi:Max(q)
-			end end end
-		end
-	end
-	if lo.X == math.huge then char:SetAttribute("EnergyShieldLook", "noTorso") return end
+	local lo, hi = rootBox(seg, root)
+	if not lo then char:SetAttribute("EnergyShieldLook", "noTorso") return end
 	local Hd = char:GetExtentsSize().Y
 	local d = Hd * 0.06
 	local model = Instance.new("Model")
 	model.Name = "Mecha_EnergyShield"
-	-- chest: front face of the torso (-Z), lower half, facing forward (cylinder axis = X, so turn it to point along Z)
-	local c = hrp.CFrame:PointToWorldSpace(Vector3.new((lo.X + hi.X) / 2, lo.Y + (hi.Y - lo.Y) * 0.35, lo.Z - d * 0.1))
-	local cf = CFrame.lookAt(c, c + hrp.CFrame.LookVector) * CFrame.Angles(0, math.rad(90), 0)
+	-- chest: front face of the torso box (forward = -z), lower part; the cylinder's axis (its X) points forward
+	local x, y, z = bodyAxes(root, hrp)
+	local pLocal = (lo + hi) / 2 - z * (extent(lo, hi, z) + d * 0.05) - y * (extent(lo, hi, y) * 0.3)
+	local cf = root.CFrame * CFrame.fromMatrix(pLocal, -z, y)
 	local ring = part("Emitter", Vector3.new(d * 0.25, d, d), cf, DARK, model, root)
 	ring.Shape = Enum.PartType.Cylinder
 	local core = part("EmitterCore", Vector3.new(d * 0.3, d * 0.5, d * 0.5), cf, BLUE, model, root)
