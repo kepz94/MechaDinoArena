@@ -239,6 +239,41 @@ This is LOADOUT4 Tasks 2 and 3 (MDA-47 / MDA-48), plus:
 - The raptor tree shows only raptor + shared paths; the T-Rex tree shows no Thrusters / Cloak.
 - Kepu's phone and PC check.
 
+## Task 5b — SkillScreen 1.3 layout: classic tier rows
+Kepu 2026-10-29 04:01: "I love C's". Mockup: docs/mockups/skilltree_classic_options.html, option C "Tier rows". Rejected along the way: the blueprint, circuit board, bone & bolt and garage mockups.
+
+This replaces the 1.2 area rail + 3-column view. The top bar, the detail panel (right) and the loadout strip stay.
+
+**Tree area:**
+- One column per line the dino sees (`pathsFor(area, Species)` for each area in AREAS order), grouped by area.
+  - Columns are 40 px apart, with an 18 px gap between areas.
+  - Under each group: an area-coloured 3 px bar and the area name, FredokaOne 12.5.
+- Rows bottom → top are I, II, III, ★, with faint row bands and a row label at the left.
+- Under everything, a rounded bar with the dino name (T-REX / RAPTOR) acts as the root. Each column's line rises from its area bar to step I.
+- **Nodes:**
+  - Shape: dino stats are circles (r 12; ★ r 15), mecha parts are hexagons.
+  - Bought: filled in the area colour.
+  - Next buyable: white outline.
+  - Not yet: dark with a faint outline.
+  - Coming soon: dashed outline, 0.6 opacity.
+  - Locked by mastery: 0.4 opacity with a 🔒.
+  - Selected: yellow ring.
+- **Links:** lit in the area colour up to the bought step; faint above it; dashed for soon lines.
+- **Mastered line:** a gold ring around each node plus a gold glow under its links. This replaces the ♛ / outline of the mastery mockup A. The top-bar chip "MASTERY n/3" stays.
+- **Mastery line:** a gold dashed rule between rows II and III, labelled "mastery line: 3 lines can go above".
+- Only area names are written on the tree. The selected line's name shows above its ★ in yellow; the full name and steps are in the detail panel.
+- **Fit:** the tree scales to its width, with the node radius at least 9.
+  - Below that, the tree scrolls sideways inside its pane and the selected column is scrolled into view.
+  - Acceptance: a small phone (568 px tall view) and PC.
+
+**Acceptance:**
+- Raptor and T-Rex trees match their part lists.
+- Bought, next, soon, locked, mastered and selected states all show as above.
+- The mastery rule appears between II and III.
+- Tapping a node selects it; BUY works.
+- It fits or scrolls on a small phone.
+- Kepu checks it.
+
 ## Task 6 — ArenaScope 1.6 · Mode: Wired
 Expects CloakServer and CloakFX on.
 
