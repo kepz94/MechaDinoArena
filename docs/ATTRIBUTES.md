@@ -1895,3 +1895,6 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | PounceSlashStrikes / PounceSlashHits | raptor (local) | 0.. | strikes shown / hit count seen this latch |
 | PounceFXSlashes | raptor (local) | 0.. | slash effects shown |
 | PounceSlashSoundLoaded | raptor (local) | true / false | swish loaded |
+| TargetHUDTopBarEnabled | TargetHUD script | false | TargetHUD 1.1: true = the 1.0 top-centre bar |
+| TargetHUDFloatEnabled | TargetHUD script | true | TargetHUD 1.1: false = the target's floating bar stays over its head (may leave the screen) |
+| TargetHUDFloat | character (local) | "head" / "visible" / "edge" / "off" / "noBar" | TargetHUD 1.1: where the target's floating bar is drawn |

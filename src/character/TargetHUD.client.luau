@@ -1,4 +1,4 @@
--- TargetHUD v1.0 (Mecha Dino Arena) — the health of the dino you are hitting, on your own screen (LocalScript in the
+-- TargetHUD v1.1 (Mecha Dino Arena) — the health of the dino you are hitting, on your own screen (LocalScript in the
 -- character, this client only). Kepu 2026-10-29: "The health bar for any enemy im attacking needs to be visible for my
 -- screen"; mockup docs/mockups/hud_target_slash_options.html, picks "1 · Top centre" and "Any hit you land".
 -- Layout: ScreenGui "TargetHUD" (DisplayOrder 6, ResetOnSpawn) -> frame "Target" at the top centre: AnchorPoint (0.5, 0)
@@ -24,11 +24,32 @@
 -- Diagnostics (character attributes, this client): TargetHUDVersion, TargetHUDTarget (model name, "" = none),
 --   TargetHUDSource ("bite" / "pounce" / "lastHit" / "bleed" / ""), TargetHUDShown ("shown" / "hidden"),
 --   TargetHUDHits (hits counted), TargetHUDHealth ("hp/max").
+-- v1.1 (Kepu 2026-10-29: "I was just talking about the Raptor bots floating health bar just being in front of me at all
+--   times cause when I down them sometimes the floating health bar goes off screen. I don't want this big health bar
+--   taking up my screen" ... "Just reposition it to wherever it can be seen on my screen. For example if all I see are the
+--   pinned raptors legs put it over the legs"; mockup docs/mockups/target_bar_onscreen_options.html):
+--   * the top-centre bar is off: script attribute TargetHUDTopBarEnabled (default false; true = the 1.0 bar).
+--   * the target's own floating bar (BiteTargetHealth's BillboardGui "TargetBar" on Head.Root) is kept on screen while
+--     the target is shown by the rules above (hit within HOLD s, or latched on it): that billboard is hidden on this
+--     client (Enabled = false, restored when the target ends or changes) and a copy is drawn in ScreenGui "TargetFloat"
+--     (DisplayOrder 6, IgnoreGuiInset, ScreenInsets None; same 170 x 40 px look: the billboard's title text and colour,
+--     its bar back, fill size and fill colour copied every frame). Its centre is, in order:
+--       1. "head": where the billboard would be (adornee + StudsOffsetWorldSpace) when that spot is in front of the camera
+--          and the whole bar fits on screen (FLOAT_MARGIN 8 px from every edge);
+--       2. "visible": else FLOAT_ABOVE (30) px above the highest on-screen centre of the target's parts (its "Hitboxes"
+--          folder parts, else its visible BaseParts; e.g. only the pinned raptor's legs on screen -> over the legs),
+--          clamped so the whole bar fits;
+--       3. "edge": no part on screen -> toward the target's pivot (mirrored when it is behind the camera), clamped to the
+--          screen edge.
+--     The copy eases toward that point (FLOAT_RATE 14 per second; snaps when it first shows). Other dinos' bars are
+--     unchanged. Script attribute TargetHUDFloatEnabled (default true; false = the billboard stays where it is).
+--     Diagnostics: TargetHUDFloat ("head" / "visible" / "edge" / "off" / "noBar"). The hidden billboard is also restored
+--     when this character leaves the Workspace or this script is destroyed.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local HOLD = 4
 local SCAN = 0.15
 local FADE = 0.25
@@ -238,6 +259,151 @@ task.spawn(function()
 	end
 end)
 
+-- v1.1: the target's floating bar, kept on screen
+if script:GetAttribute("TargetHUDTopBarEnabled") == nil then script:SetAttribute("TargetHUDTopBarEnabled", false) end
+if script:GetAttribute("TargetHUDFloatEnabled") == nil then script:SetAttribute("TargetHUDFloatEnabled", true) end
+local FLOAT_MARGIN, FLOAT_ABOVE, FLOAT_RATE = 8, 30, 14
+local FLOAT_W, FLOAT_H = 170, 40
+local floatGui = Instance.new("ScreenGui")
+floatGui.Name = "TargetFloat"
+floatGui.ResetOnSpawn = true
+floatGui.DisplayOrder = 6
+floatGui.IgnoreGuiInset = true
+pcall(function() floatGui.ScreenInsets = Enum.ScreenInsets.None end)
+local float = Instance.new("Frame")
+float.Name = "Float"
+float.AnchorPoint = Vector2.new(0.5, 0.5)
+float.Size = UDim2.fromOffset(FLOAT_W, FLOAT_H)
+float.BackgroundTransparency = 1
+float.Visible = false
+float.Parent = floatGui
+local fTitle = Instance.new("TextLabel")
+fTitle.Name = "Title"
+fTitle.BackgroundTransparency = 1
+fTitle.Size = UDim2.new(1, 0, 0, 18)
+fTitle.Font = Enum.Font.FredokaOne
+fTitle.TextScaled = true
+fTitle.TextColor3 = Color3.new(1, 1, 1)
+fTitle.TextStrokeTransparency = 0
+fTitle.Parent = float
+local fBack = Instance.new("Frame")
+fBack.Name = "Back"
+fBack.BorderSizePixel = 0
+fBack.Position = UDim2.new(0, 10, 0, 22)
+fBack.Size = UDim2.new(1, -20, 0, 12)
+fBack.Parent = float
+local fFill = Instance.new("Frame")
+fFill.Name = "Fill"
+fFill.BorderSizePixel = 0
+fFill.Size = UDim2.fromScale(1, 1)
+fFill.Parent = fBack
+floatGui.Parent = pg
+
+local floatPos -- current centre (Vector2), nil = not shown
+local hiddenBar -- the billboard hidden on this client
+local partsCache = setmetatable({}, {__mode = "k"})
+local function partsOf(m)
+	local list = partsCache[m]
+	if list and os.clock() - list.at < 2 then return list end
+	list = {at = os.clock()}
+	local hb = m:FindFirstChild("Hitboxes")
+	if hb then
+		for _, p in ipairs(hb:GetChildren()) do
+			if p:IsA("BasePart") then list[#list + 1] = p end
+		end
+	end
+	if #list == 0 then
+		for _, p in ipairs(m:GetDescendants()) do
+			if p:IsA("BasePart") and p.Transparency < 1 then list[#list + 1] = p end
+			if #list >= 60 then break end
+		end
+	end
+	partsCache[m] = list
+	return list
+end
+local function restoreBar()
+	if hiddenBar then
+		hiddenBar.Enabled = true
+		hiddenBar = nil
+	end
+end
+-- the hidden billboard comes back when this character goes (death / respawn / leaving)
+char.AncestryChanged:Connect(function(_, parent) if parent == nil then restoreBar() end end)
+script.Destroying:Connect(restoreBar)
+local function showFloat(state)
+	if char:GetAttribute("TargetHUDFloat") ~= state then char:SetAttribute("TargetHUDFloat", state) end
+end
+local function updateFloat(m, dt)
+	local bb
+	if m and script:GetAttribute("TargetHUDFloatEnabled") ~= false then
+		local head = m:FindFirstChild("Head")
+		local root = head and head:FindFirstChild("Root")
+		bb = root and root:FindFirstChild("TargetBar")
+		if not (bb and bb:IsA("BillboardGui")) then
+			bb = nil
+			showFloat("noBar")
+		end
+	else
+		showFloat("off")
+	end
+	if not bb then
+		restoreBar()
+		float.Visible = false
+		floatPos = nil
+		return
+	end
+	if hiddenBar ~= bb then
+		restoreBar()
+		hiddenBar = bb
+	end
+	bb.Enabled = false
+	-- copy the look
+	local title, back0 = bb:FindFirstChild("Title"), bb:FindFirstChild("Back")
+	local fill0 = back0 and back0:FindFirstChild("Fill")
+	if title then fTitle.Text, fTitle.TextColor3 = title.Text, title.TextColor3 end
+	if back0 then fBack.BackgroundColor3 = back0.BackgroundColor3 end
+	if fill0 then fFill.Size, fFill.BackgroundColor3 = fill0.Size, fill0.BackgroundColor3 end
+	-- where
+	local cam = workspace.CurrentCamera
+	local vp = cam.ViewportSize
+	local minX, maxX = FLOAT_W / 2 + FLOAT_MARGIN, vp.X - FLOAT_W / 2 - FLOAT_MARGIN
+	local minY, maxY = FLOAT_H / 2 + FLOAT_MARGIN, vp.Y - FLOAT_H / 2 - FLOAT_MARGIN
+	local function clampV(v) return Vector2.new(math.clamp(v.X, minX, maxX), math.clamp(v.Y, minY, maxY)) end
+	local adornee = bb.Adornee
+	local spot = (adornee and adornee:IsA("BasePart") and adornee.Position or m:GetPivot().Position) + bb.StudsOffsetWorldSpace
+	local sp = cam:WorldToViewportPoint(spot)
+	local goal, state
+	if sp.Z > 0 and sp.X >= minX and sp.X <= maxX and sp.Y >= minY and sp.Y <= maxY then
+		goal, state = Vector2.new(sp.X, sp.Y), "head"
+	else
+		local best
+		for _, p in ipairs(partsOf(m)) do
+			if p.Parent then
+				local q = cam:WorldToViewportPoint(p.Position)
+				if q.Z > 0 and q.X >= 0 and q.X <= vp.X and q.Y >= 0 and q.Y <= vp.Y and (not best or q.Y < best.Y) then
+					best = q
+				end
+			end
+		end
+		if best then
+			goal, state = clampV(Vector2.new(best.X, best.Y - FLOAT_ABOVE)), "visible"
+		else
+			local q = cam:WorldToViewportPoint(m:GetPivot().Position)
+			local v = Vector2.new(q.X, q.Y)
+			if q.Z < 0 then v = Vector2.new(vp.X - q.X, vp.Y - q.Y) end
+			goal, state = clampV(v), "edge"
+		end
+	end
+	if not floatPos then
+		floatPos = goal
+	else
+		floatPos = floatPos:Lerp(goal, 1 - math.exp(-FLOAT_RATE * dt))
+	end
+	float.Position = UDim2.fromOffset(floatPos.X, floatPos.Y)
+	float.Visible = true
+	showFloat(state)
+end
+
 -- draw
 local shown = false
 local fadeT = 0
@@ -278,7 +444,7 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 	-- show / fade
-	if want then
+	if want and script:GetAttribute("TargetHUDTopBarEnabled") == true then -- v1.1: top bar off by default
 		fadeT = 0
 		if not shown then
 			shown = true
@@ -301,6 +467,7 @@ RunService.RenderStepped:Connect(function(dt)
 	nameL.TextStrokeTransparency, hpL.TextStrokeTransparency = 0.6 + 0.4 * a, 0.6 + 0.4 * a
 	back.BackgroundTransparency = a
 	fill.BackgroundTransparency = a
+	updateFloat(want and m or nil, dt) -- v1.1
 end)
 char:SetAttribute("TargetHUDShown", "hidden")
 char:SetAttribute("TargetHUDTarget", "")
