@@ -1,4 +1,4 @@
--- ModeServer v1.1 (Mecha Dino Arena) — main menu state, the lobby pad and the hop between the Sandbox and Arena places.
+-- ModeServer v1.2 (Mecha Dino Arena) — main menu state, the lobby pad and the hop between the Sandbox and Arena places.
 -- MDA-87, plan docs/plans/MAIN_MENU_v1.0.md Task 3, ADR-005, mockup docs/mockups/main_menu_options.html (layout A).
 -- Kepu 2026-10-29: menu on join in both places; ◀ ▶ respawn behind the menu; Arena = a second place (75433819286625).
 -- Mode of this server: ServerStorage.DinoArcade.ModeRules 1.0 currentMode() -> player attribute DinoMode.
@@ -31,13 +31,22 @@
 --   egg up until the dino stands on the island. Teleport data only skips the menu (nothing else reads it). Switch:
 --   script attribute ModeTripPlayEnabled (default true, read at start; false = 1.0: menu on every join, no teleport
 --   data). Diagnostic: player attribute ModeArrivedPlay (true when the menu was skipped for a trip).
+-- v1.2 (Kepu 2026-10-29: "when I load onto the island I should be facing the island"): in the menu the dino is parked
+--   facing +Z, and ShoulderCam 1.x keeps that camera direction, so after "play" the body (which turns toward the camera)
+--   looked out to sea from the SpawnLocation (88, 0, 904). Leaving the menu now stands the dino on the SpawnLocation
+--   facing the island: the flat direction from the spawn to the centre of Workspace.DinoIsland's bounding box (no
+--   DinoIsland, or the spawn at its centre -> the SpawnLocation's own facing), and turns the camera the same way through
+--   ShoulderCam's hook: character attribute ShoulderCamLookAt = a point 500 studs along that direction at the dino's
+--   height (cleared again on the server 1 s later, so the next "play" sets it anew). Script attribute
+--   ModeFaceIslandEnabled (default true; false = 1.1: CFrame.new(pos), no camera turn). Diagnostic: player attribute
+--   ModeFaceDir (the direction used, Vector3).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 local TeleportService = game:GetService("TeleportService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local PAD_HEIGHT = 600
 local PAD_SIZE = Vector3.new(400, 2, 400)
 local SLOT_GAP = 40
@@ -47,6 +56,7 @@ script:SetAttribute("ModeServerVersion", VERSION)
 if script:GetAttribute("ModeTripPlayEnabled") == nil then script:SetAttribute("ModeTripPlayEnabled", true) end -- v1.1
 local tripPlay = script:GetAttribute("ModeTripPlayEnabled") ~= false -- v1.1
 if script:GetAttribute("ModeServerEnabled") == nil then script:SetAttribute("ModeServerEnabled", true) end
+if script:GetAttribute("ModeFaceIslandEnabled") == nil then script:SetAttribute("ModeFaceIslandEnabled", true) end -- v1.2
 
 local ModeRules = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
 local MODE = ModeRules.currentMode()
@@ -144,7 +154,28 @@ local function unpark(player)
 	local sp = spawnPart()
 	local base = sp and (sp.Position + Vector3.new(0, sp.Size.Y / 2, 0)) or Vector3.zero
 	local pos = base + Vector3.new(0, standOffset(char), 0)
-	char:PivotTo(CFrame.new(pos))
+	if script:GetAttribute("ModeFaceIslandEnabled") ~= false then -- v1.2: face the island, camera too
+		local dir
+		local island = workspace:FindFirstChild("DinoIsland")
+		if island and island:IsA("Model") then
+			local cf = island:GetBoundingBox()
+			local d = Vector3.new(cf.Position.X - pos.X, 0, cf.Position.Z - pos.Z)
+			if d.Magnitude > 1 then dir = d.Unit end
+		end
+		if not dir and sp then
+			local d = Vector3.new(sp.CFrame.LookVector.X, 0, sp.CFrame.LookVector.Z)
+			if d.Magnitude > 0.01 then dir = d.Unit end
+		end
+		dir = dir or Vector3.new(0, 0, -1)
+		char:PivotTo(CFrame.lookAt(pos, pos + dir))
+		player:SetAttribute("ModeFaceDir", dir)
+		char:SetAttribute("ShoulderCamLookAt", pos + dir * 500)
+		task.delay(1, function()
+			if char.Parent then char:SetAttribute("ShoulderCamLookAt", nil) end
+		end)
+	else
+		char:PivotTo(CFrame.new(pos))
+	end
 	hrp.Anchored = false
 end
 

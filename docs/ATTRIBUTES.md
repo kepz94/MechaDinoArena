@@ -1898,3 +1898,14 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | TargetHUDTopBarEnabled | TargetHUD script | false | TargetHUD 1.1: true = the 1.0 top-centre bar |
 | TargetHUDFloatEnabled | TargetHUD script | true | TargetHUD 1.1: false = the target's floating bar stays over its head (may leave the screen) |
 | TargetHUDFloat | character (local) | "head" / "visible" / "edge" / "off" / "noBar" | TargetHUD 1.1: where the target's floating bar is drawn |
+
+### Default raptor, facing the island, no switch flash (SpeciesServer 1.1, ModeServer 1.2, HurtFlashGuard 1.0)
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| SpeciesDefault | SpeciesServer script | "Raptor" | dino for a player without DinoSpecies ("TRex" = 1.0) |
+| SpeciesServerVersion | SpeciesServer script | "1.1" | |
+| SpeciesDefaulted | player | true | the default was applied on join |
+| ModeFaceIslandEnabled | ModeServer script | true | false = 1.1 (no facing, no camera turn) |
+| ModeFaceDir | player | Vector3 | direction the dino faced when leaving the menu |
+| HurtFlashGuardEnabled | HurtFlashGuard script | true | false = Roblox's red flash on every dino switch; read at start |
+| HurtFlashGuardVersion / State / Count | player (local) | "1.0" / "guarding" / "idle" / "off", 0.. | diagnostics |

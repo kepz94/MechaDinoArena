@@ -1,4 +1,4 @@
--- SpeciesServer v1.0 (Dino Arcade) — TEST species switch: respawns a player as the dino they pick.
+-- SpeciesServer v1.1 (Dino Arcade) — TEST species switch: respawns a player as the dino they pick.
 -- Client -> server: ReplicatedStorage.DinoSpeciesRequest:FireServer(species) (sent by SpeciesPicker 1.0),
 --   species = "TRex" or "Raptor".
 -- TRex   -> player:LoadCharacter() (StarterPlayer.StarterCharacter, the T-Rex).
@@ -12,6 +12,12 @@
 -- Checks: species is a known name; at most one switch per SWITCH_COOLDOWN seconds; template built.
 -- Diagnostics: player attributes DinoSpecies, SpeciesLastResult ("ok" / "same" / "badArg" / "cooldown" /
 --   "noTemplate"); SpeciesTemplate (server attribute on this script: "ready" / "missing <reason>").
+-- v1.1 (Kepu 2026-10-29: "When I load into the game the raptor should be the default choice"): on join, a player
+--   without DinoSpecies gets DinoSpecies = script attribute SpeciesDefault (default "Raptor"; "TRex" = 1.0), so the first
+--   spawn is swapped to a raptor by the hook below (the menu opens on it); a body that spawned before the default was set
+--   is swapped too. An unknown value is ignored (1.0: T-Rex). The red flash on a dino switch is handled on the client by
+--   HurtFlashGuard 1.0. Diagnostics: script attribute SpeciesServerVersion; player attribute SpeciesDefaulted (true when
+--   the default was applied).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -19,6 +25,8 @@ local StarterPlayer = game:GetService("StarterPlayer")
 
 local SWITCH_COOLDOWN = 2
 local SPECIES = {TRex = true, Raptor = true}
+script:SetAttribute("SpeciesServerVersion", "1.1")
+if script:GetAttribute("SpeciesDefault") == nil then script:SetAttribute("SpeciesDefault", "Raptor") end -- v1.1
 
 local remote = ReplicatedStorage:FindFirstChild("DinoSpeciesRequest")
 if not remote then
@@ -114,6 +122,12 @@ end)
 
 -- keep the chosen species after a death (Roblox respawns as the StarterCharacter T-Rex)
 local function onPlayer(player)
+	-- v1.1: default dino for a player who has not picked one
+	local default = script:GetAttribute("SpeciesDefault")
+	if player:GetAttribute("DinoSpecies") == nil and type(default) == "string" and SPECIES[default] then
+		player:SetAttribute("DinoSpecies", default)
+		player:SetAttribute("SpeciesDefaulted", true)
+	end
 	player.CharacterAdded:Connect(function(char)
 		local want = player:GetAttribute("DinoSpecies")
 		if want == "Raptor" and raptorTemplate and speciesOf(char) ~= "Raptor" then
@@ -122,6 +136,14 @@ local function onPlayer(player)
 			end)
 		end
 	end)
+	-- v1.1: a body that spawned before the default was set
+	local char = player.Character
+	if player:GetAttribute("SpeciesDefaulted") == true and player:GetAttribute("DinoSpecies") == "Raptor" and raptorTemplate
+		and char and speciesOf(char) ~= "Raptor" then
+		task.defer(function()
+			if player.Character == char then spawnRaptor(player) end
+		end)
+	end
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
