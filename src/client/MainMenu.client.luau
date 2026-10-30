@@ -1,4 +1,4 @@
--- MainMenu v1.6 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.7 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -91,13 +91,16 @@
 --   No. 2" (Erik Satie) by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 ·
 --   "Little Toys" and "Crazy Daisy" courtesy of APM Music". Switch: script attribute MainMenuCreditEnabled (default true,
 --   read at start).
+-- v1.7 (MDA-108, plan docs/plans/SKINS_v1.0.md Task 4): the hangar preview is re-copied when the character's SkinApplied
+--   (SkinServer 1.0) changes, so a skin equipped in the Lab shows on the menu dino at once (the skin id is part of the
+--   preview key). Switch: script attribute MainMenuSkinRecopyEnabled (default true; false = 1.6).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -429,6 +432,7 @@ local musicPad = Instance.new("UIPadding")
 musicPad.Parent = musicB
 -- v1.6: music credit
 if script:GetAttribute("MainMenuCreditEnabled") == nil then script:SetAttribute("MainMenuCreditEnabled", true) end
+if script:GetAttribute("MainMenuSkinRecopyEnabled") == nil then script:SetAttribute("MainMenuSkinRecopyEnabled", true) end -- v1.7
 local credit = label(root, "Credit", Enum.Font.GothamBold, MUTED)
 credit.Text = 'Music: "Gymnopedie No. 2" (Erik Satie) by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 · "Little Toys" and "Crazy Daisy" courtesy of APM Music'
 credit.TextWrapped = true
@@ -722,7 +726,8 @@ local function previewKey()
 		if ch.Name:sub(1, 6) == "Mecha_" then table.insert(names, ch.Name) end
 	end
 	table.sort(names)
-	return ("%s|%s|%s|%s"):format(tostring(c), species(), mech and "mech" or "plain", table.concat(names, ","))
+	local skinKey = script:GetAttribute("MainMenuSkinRecopyEnabled") ~= false and tostring(c:GetAttribute("SkinApplied")) or "" -- v1.7
+	return ("%s|%s|%s|%s|%s"):format(tostring(c), species(), mech and "mech" or "plain", table.concat(names, ","), skinKey)
 end
 local function rebuildPreview()
 	local key = previewKey()
@@ -1124,6 +1129,7 @@ local function onChar(c)
 	table.insert(charConns, c.ChildAdded:Connect(function(ch) if ch.Name:sub(1, 6) == "Mecha_" then queueRefresh() end end))
 	table.insert(charConns, c.ChildRemoved:Connect(function(ch) if ch.Name:sub(1, 6) == "Mecha_" then queueRefresh() end end))
 	table.insert(charConns, c:GetAttributeChangedSignal("Species"):Connect(function() if open then redraw() queueRefresh() end end))
+	table.insert(charConns, c:GetAttributeChangedSignal("SkinApplied"):Connect(function() if open then queueRefresh() end end)) -- v1.7
 	if open then
 		task.delay(0.5, function()
 			if player.Character == c then

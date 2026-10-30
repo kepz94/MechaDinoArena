@@ -1945,6 +1945,16 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | ShoulderCamTurnEnabled / ShoulderCamTurn / ShoulderCamTurnCount | ShoulderCam script / character (local) | true / "turning"-"idle" / 0.. | ShoulderCam 1.6 eased turn switch + diagnostics |
 | RamBackUpEnabled / RamRunUp / RamRunUpFromFront / RamCamTurnEnabled | character | true / 30 / true / true | RamTest 1.2: back up to a uniform run-up (from the body's front) / turn the camera to an off-screen tree |
 | RamBackUp / RamBackUpDist / RamRunUpNeed / RamChargeDist / RamCamTurned | character (local) | "none"-"done"-"blocked"-"timeout"-"cancelled" / studs / studs / studs / true-false | RamTest 1.2 diagnostics |
+| SkinServerEnabled / SkinTestForceLoadFail | SkinServer script | true / false | SkinServer 1.0 switch / test: every skin load fails (no-write rule check) |
+| SkinServerVersion / SkinRequests | SkinServer script | "1.0" / 0.. | diagnostics |
+| SkinRole / SkinBaseMaterial | dino body parts | role name / Material name | set once per body by SkinServer (colour role, original material) |
+| SkinParts / SkinApplied | character | count / skin id | parts tagged / skin painted (set last; clients react to it) |
+| SkinEquipped_<Species> | player | skin id | equipped skin per dino (saved in MDA_Skins_v1) |
+| SkinSaveState / SkinWrites | player | "loading" / "loaded" / "new" / "loadFailed" / "noApi" / "saved" / "saveFailed" / 0.. | skin save diagnostics |
+| SkinServerResult / SkinServerResultAt | player | "ok" / "same" / "locked" / "unknown" / "notInMenu" / "noBody" / "badArg" / server time | last equip request |
+| LabSkinsEnabled | Lab script | true | Lab 1.6: SKINS tab in the full Lab; false = 1.5 |
+| LabSkinSelected / LabSkinCards | player (local) | skin id / count | Lab 1.6 diagnostics; LabTab gains "skins" |
+| MainMenuSkinRecopyEnabled | MainMenu script | true | MainMenu 1.7: hangar re-copies on SkinApplied |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |

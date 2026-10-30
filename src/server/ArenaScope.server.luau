@@ -1,4 +1,4 @@
--- ArenaScope v1.16 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.17 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -35,10 +35,11 @@
 -- v1.14 (enemy health bar, Kepu 2026-10-29): TargetHUD (StarterCharacterScripts) expected on.
 -- v1.15 (no red flash on a dino switch, Kepu 2026-10-29): HurtFlashGuard (StarterPlayerScripts) expected on.
 -- v1.16 (mine colours, Kepu 2026-10-30): MineColors (StarterPlayerScripts) expected on.
+-- v1.17 (skins, MDA-109, plan docs/plans/SKINS_v1.0.md Task 5): SkinServer (ServerScriptService) expected on.
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.16"
+local VERSION = "1.17"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 local SPS = StarterPlayer:WaitForChild("StarterPlayerScripts") -- v1.6
 local RF = game:GetService("ReplicatedFirst") -- v1.11
@@ -92,6 +93,7 @@ local SCOPE = {
 	{SCS, "TargetHUD", true}, -- v1.14
 	{SPS, "HurtFlashGuard", true}, -- v1.15
 	{SPS, "MineColors", true}, -- v1.16
+	{SSS, "SkinServer", true}, -- v1.17
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)

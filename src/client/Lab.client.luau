@@ -1,4 +1,4 @@
--- Lab v1.5 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.6 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -75,13 +75,33 @@
 --   and the button's y is CORNER_Y (8), level with ArenaStatus 1.4's MENU pill in the top-right corner (x unchanged: 8 px
 --   left of the pill). Script attribute LabCornerEnabled (default true, read at start; false = 1.4, y 12 under Roblox's
 --   top bar).
+-- v1.6 (MDA-107, plan docs/plans/SKINS_v1.0.md Task 3, mockup docs/mockups/skins_lab_tab.html; Kepu 2026-10-30: "the skins
+--   locker belongs in the lab with the other tab", "menu only"): a third tab SKINS (stroke SKIN rgb(201, 162, 255) when
+--   on) in the FULL Lab only (opened from the main menu; the compact Lab on the island keeps two tabs). With three tabs
+--   the tabs share the row equally and their labels shrink to fit (TextScaled, max S.tabText).
+--   * cards (the same grid cell as MECHA ABILITIES): a 4:3 ViewportFrame with a plain copy of your character (no
+--     Mecha_*, no hitboxes) painted in that skin (parts tagged SkinRole by SkinServer 1.0; colours / materials from
+--     ReplicatedStorage.SkinShared.SkinCatalog), turning; name (FredokaOne); rarity (RobotoMono, rarity colour: STARTER /
+--     COMMON grey, RARE volt, EPIC SKIN, LEGENDARY yellow); badge "ON" (SKIN, equipped) or "R$<price>" (ROBUX rgb(0,
+--     176, 111), locked). Stroke: selected white, equipped SKIN.
+--   * stage: tag "PREVIEW", the stage copy painted in the selected skin while the tab is open (in the equipped skin on
+--     the other tabs); hint "Tap a skin to preview it on your dino".
+--   * detail: "<DINO> SKIN · <RARITY>" (rarity colour), name, a row of the skin's colours, a line ("Owned. Equip it and you
+--     spawn in it every time." / "Locked."), then EQUIP (SKIN, dark text) -> ReplicatedStorage.DinoSkinRequest:
+--     FireServer("equip", id) / EQUIPPED (greyed) / "GET · R$<price>" (ROBUX, greyed) + "Buying comes in the next step.".
+--     Toast "<NAME> EQUIPPED" when SkinServerResult turns "ok".
+--   Selection starts on the equipped skin (player attribute SkinEquipped_<Dino>). Switch: script attribute
+--   LabSkinsEnabled (default true, read at start; false = no SKINS tab). LabTab gains "skins". Diagnostics:
+--   LabSkinSelected, LabSkinCards.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
+local SKIN = Color3.fromRGB(201, 162, 255) -- v1.6
+local ROBUX = Color3.fromRGB(0, 176, 111) -- v1.6
 if script:GetAttribute("LabTestFreeGivenEnabled") == nil then script:SetAttribute("LabTestFreeGivenEnabled", true) end -- v1.4
 local BIND = "LabMouse"
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -107,6 +127,8 @@ if script:GetAttribute("LabSplitTabsEnabled") == nil then script:SetAttribute("L
 local splitTabs = script:GetAttribute("LabSplitTabsEnabled") ~= false -- v1.2
 if script:GetAttribute("LabSlotShowsPartEnabled") == nil then script:SetAttribute("LabSlotShowsPartEnabled", true) end -- v1.3
 local slotShowsPart = script:GetAttribute("LabSlotShowsPartEnabled") ~= false -- v1.3
+if script:GetAttribute("LabSkinsEnabled") == nil then script:SetAttribute("LabSkinsEnabled", true) end -- v1.6
+local skinsOn = script:GetAttribute("LabSkinsEnabled") ~= false -- v1.6
 if script:GetAttribute("LabEnabled") == false then return end
 
 local shared = ReplicatedStorage:WaitForChild("SkillShared", 30)
@@ -324,6 +346,13 @@ for i, t in ipairs({tabParts, tabStats}) do
 	tabLabels[i] = label(t, "T", Enum.Font.GothamBlack, 11, MUTED, i == 1 and (splitTabs and "MECHA ABILITIES" or "MECH PARTS") or "STATS")
 	tabLabels[i].Size = UDim2.fromScale(1, 1)
 end
+-- v1.6: SKINS tab (full Lab only)
+local tabSkins = button(tabs, "Skins", WHITE, 0.94)
+tabSkins.Visible = false
+local tabSkinsCorner = corner(tabSkins)
+local tabSkinsStroke = stroke(tabSkins, SKIN, 1, 2)
+local tabSkinsLabel = label(tabSkins, "T", Enum.Font.GothamBlack, 11, MUTED, "SKINS")
+tabSkinsLabel.Size = UDim2.fromScale(1, 1)
 local grid = Instance.new("ScrollingFrame")
 grid.Name = "Grid"
 grid.BackgroundTransparency = 1
@@ -433,6 +462,7 @@ local toastPad = pad(toast, 16)
 -- ---------- state ----------
 local mode = nil -- nil / "full" / "compact"
 local tab = "parts"
+local skinSel = nil -- v1.6: selected skin id on the SKINS tab
 local selected = nil
 local slotSel = nil
 local cards = {} -- {id, b, view, cam, model, angle}
@@ -541,12 +571,170 @@ local function equip(id, n)
 	showToast(("%s → %s"):format(ST.PATHS[id].name, SLOT_KEYS[n] or tostring(n)))
 end
 
+-- v1.6: skins
+local SC -- SkinCatalog (client copy), loaded on first use
+local function skinCatalog()
+	if SC then return SC end
+	local f = ReplicatedStorage:FindFirstChild("SkinShared")
+	local m = f and f:FindFirstChild("SkinCatalog")
+	if m then
+		local ok, r = pcall(require, m)
+		if ok then SC = r end
+	end
+	return SC
+end
+local RARITY_COLOR = {STARTER = GREY, COMMON = GREY, RARE = VOLT, EPIC = SKIN, LEGENDARY = YELLOW}
+local function equippedSkin()
+	local cat = skinCatalog()
+	local id = player:GetAttribute("SkinEquipped_" .. species())
+	if cat then return cat.sanitize(species(), id) end
+	return type(id) == "string" and id or "classic"
+end
+local function paintModel(model, id)
+	local cat = skinCatalog()
+	local sk = cat and cat.get(species(), id)
+	if not sk then return end
+	for _, d in ipairs(model:GetDescendants()) do
+		local role = d:IsA("BasePart") and d:GetAttribute("SkinRole")
+		if role then
+			local hex = sk.colors[role]
+			if hex then d.Color = Color3.fromHex(hex) end
+			local mat = sk.materials and sk.materials[role] or d:GetAttribute("SkinBaseMaterial")
+			if type(mat) == "string" then
+				local ok, m = pcall(function() return Enum.Material[mat] end)
+				if ok and m then d.Material = m end
+			end
+		end
+	end
+end
+local function plainCopy() -- the live character without scripts, effects, hitboxes or mech parts, anchored, facing -Z
+	local c = player.Character
+	if not c then return nil end
+	local was = c.Archivable
+	c.Archivable = true
+	local ok, copy = pcall(function() return c:Clone() end)
+	c.Archivable = was
+	if not ok or not copy then return nil end
+	for _, d in ipairs(copy:GetDescendants()) do
+		if d:IsA("BaseScript") or d:IsA("Sound") or d:IsA("BillboardGui") or d:IsA("ParticleEmitter") or d:IsA("Beam")
+			or d:IsA("Trail") or d:IsA("ForceField") or d:IsA("Highlight") then
+			d:Destroy()
+		end
+	end
+	for _, ch in ipairs(copy:GetChildren()) do
+		if ch.Name == "Hitboxes" or ch.Name:sub(1, 6) == "Mecha_" then ch:Destroy() end
+	end
+	for _, d in ipairs(copy:GetDescendants()) do
+		if d:IsA("BasePart") then d.Anchored = true end
+	end
+	local hrp = copy:FindFirstChild("HumanoidRootPart")
+	local base = hrp and hrp.CFrame or copy:GetPivot()
+	local flat = Vector3.new(base.LookVector.X, 0, base.LookVector.Z)
+	if flat.Magnitude < 1e-3 then flat = Vector3.new(0, 0, -1) end
+	copy:PivotTo(CFrame.lookAt(base.Position, base.Position + flat.Unit):Inverse() * copy:GetPivot())
+	return copy
+end
+local function drawSkinCards()
+	gridList.Parent = nil
+	gridLayout.Parent = grid
+	local cat = skinCatalog()
+	local list = cat and cat.SKINS[species()] or {}
+	local eqId = equippedSkin()
+	if not skinSel or not (cat and cat.get(species(), skinSel)) then skinSel = eqId end
+	local base = plainCopy()
+	local models = 0
+	for i, sk in ipairs(list) do
+		local b = button(grid, "Skin_" .. sk.id, PANEL2, 0)
+		b.LayoutOrder = i
+		corner(b, UDim.new(0, 1.4 * S.ch))
+		if skinSel == sk.id then
+			stroke(b, WHITE, 0, 2.5)
+		elseif eqId == sk.id then
+			stroke(b, SKIN, 0.1, 2)
+		else
+			stroke(b, WHITE, 0.9, 2)
+		end
+		local entry = {id = sk.id, b = b}
+		local p1 = S.ch
+		local artW = S.cellW - 2 * p1
+		local artH = artW * 0.75
+		local art = frame(b, "Art", Color3.fromRGB(10, 14, 22), 0.2)
+		art.Position, art.Size = UDim2.fromOffset(p1, p1), UDim2.fromOffset(artW, artH)
+		corner(art, UDim.new(0, S.ch))
+		local glow = Instance.new("UIGradient")
+		glow.Rotation = 90
+		glow.Color = ColorSequence.new(Color3.fromRGB(14, 20, 30), Color3.fromRGB(44, 34, 66))
+		glow.Parent = art
+		if base then
+			local m = base:Clone()
+			paintModel(m, sk.id)
+			local vf = Instance.new("ViewportFrame")
+			vf.Name = "Model"
+			vf.BackgroundTransparency = 1
+			vf.Size = UDim2.fromScale(1, 1)
+			vf.Ambient = Color3.fromRGB(160, 160, 170)
+			vf.LightDirection = Vector3.new(-0.4, -1, -0.6)
+			vf.Parent = art
+			local c = Instance.new("Camera")
+			c.FieldOfView = 30
+			c.Parent = vf
+			vf.CurrentCamera = c
+			m.Parent = vf
+			local ctr, size = framing(m)
+			entry.cam, entry.center = c, ctr
+			entry.radius = (size * 0.5) / math.tan(math.rad(15)) * 1.05
+			entry.angle = i * 0.9
+			models += 1
+		end
+		local nm = label(b, "Name", Enum.Font.FredokaOne, S.cardName, WHITE, sk.name)
+		nm.TextXAlignment = Enum.TextXAlignment.Left
+		nm.TextTruncate = Enum.TextTruncate.AtEnd
+		nm.Position = UDim2.fromOffset(p1, p1 + artH + 0.6 * S.ch)
+		nm.Size = UDim2.fromOffset(artW, S.cardName * 1.15)
+		local metaY = p1 + artH + 0.6 * S.ch + S.cardName * 1.15 + 0.6 * S.ch
+		local rar = label(b, "Rarity", Enum.Font.RobotoMono, S.tagS, RARITY_COLOR[sk.rarity] or GREY, sk.rarity)
+		rar.TextXAlignment = Enum.TextXAlignment.Left
+		rar.Position = UDim2.fromOffset(p1, metaY)
+		rar.Size = UDim2.fromOffset(artW, S.metaH)
+		local owned = cat.owns(species(), sk.id, nil)
+		local badgeText, badgeCol, badgeTxt
+		if eqId == sk.id then
+			badgeText, badgeCol, badgeTxt = "ON", SKIN, Color3.fromRGB(26, 16, 48)
+		elseif not owned and sk.price then
+			badgeText, badgeCol, badgeTxt = "R$" .. tostring(sk.price), ROBUX, WHITE
+		end
+		if badgeText then
+			local bd = label(b, "Badge", Enum.Font.GothamBlack, S.tagS, badgeTxt, badgeText)
+			bd.BackgroundTransparency = 0
+			bd.BackgroundColor3 = badgeCol
+			bd.AutomaticSize = Enum.AutomaticSize.X
+			bd.AnchorPoint = Vector2.new(1, 0)
+			bd.Position = UDim2.fromOffset(p1 + artW - 0.6 * S.ch, p1 + 0.6 * S.ch)
+			bd.Size = UDim2.fromOffset(0, S.tagS + 0.8 * S.ch)
+			corner(bd, UDim.new(0, 0.7 * S.ch))
+			pad(bd, 0.6 * S.ch)
+		end
+		b.Activated:Connect(function()
+			press("skin:" .. sk.id)
+			skinSel = sk.id
+			redraw()
+		end)
+		table.insert(cards, entry)
+	end
+	if base then base:Destroy() end
+	player:SetAttribute("LabSkinCards", #list)
+	player:SetAttribute("LabSkinSelected", skinSel or "")
+	player:SetAttribute("LabCards", #list)
+	player:SetAttribute("LabModels", models)
+end
+
 local function drawCards()
 	for _, c in ipairs(cards) do c.b:Destroy() end
 	table.clear(cards)
 	for _, ch in ipairs(grid:GetChildren()) do
 		if ch:IsA("GuiObject") then ch:Destroy() end
 	end
+	if tab == "skins" then drawSkinCards() return end -- v1.6
 	local dino = species()
 	local ids = pathsFor(dino, tab == "parts")
 	local cardOf = {} -- v1.2: id -> true when drawn as a 3D card
@@ -777,6 +965,72 @@ local function drawDetail()
 	detailPad.PaddingLeft, detailPad.PaddingRight = UDim.new(0, 1.6 * S.ch), UDim.new(0, 1.6 * S.ch)
 	detailPad.PaddingTop, detailPad.PaddingBottom = UDim.new(0, 1.6 * S.ch), UDim.new(0, 1.6 * S.ch)
 	detailList.Padding = UDim.new(0, S.ch)
+	if tab == "skins" then -- v1.6: the selected skin
+		local cat = skinCatalog()
+		local sk = cat and skinSel and cat.get(species(), skinSel)
+		if not sk then
+			local h = label(detail, "Empty", Enum.Font.GothamBlack, S.stepS, MUTED, "Pick a skin.")
+			h.Size = UDim2.new(1, 0, 0, S.stepS * 2)
+			return
+		end
+		local rc = RARITY_COLOR[sk.rarity] or GREY
+		local sub = label(detail, "Sub", Enum.Font.GothamBlack, S.stepS, rc, ("%s SKIN · %s"):format(DINO_NAMES[species()] or string.upper(species()), sk.rarity))
+		sub.TextXAlignment = Enum.TextXAlignment.Left
+		sub.Size = UDim2.new(1, 0, 0, S.stepS * 1.2)
+		sub.LayoutOrder = 1
+		local ttl = label(detail, "Title", Enum.Font.FredokaOne, math.max(3 * S.ch, 15), WHITE, sk.name)
+		ttl.TextXAlignment = Enum.TextXAlignment.Left
+		ttl.TextWrapped = true
+		ttl.AutomaticSize = Enum.AutomaticSize.Y
+		ttl.Size = UDim2.new(1, 0, 0, 0)
+		ttl.LayoutOrder = 2
+		local chips = frame(detail, "Colors")
+		chips.LayoutOrder = 3
+		chips.Size = UDim2.new(1, 0, 0, 3.6 * S.ch)
+		local cl = list(chips, Enum.FillDirection.Horizontal, 0.6 * S.ch)
+		cl.Wraps = true
+		local roles = {}
+		for role in pairs(sk.colors) do table.insert(roles, role) end
+		table.sort(roles)
+		for _, role in ipairs(roles) do
+			local sw = frame(chips, "C_" .. role, Color3.fromHex(sk.colors[role]), 0)
+			sw.Size = UDim2.fromOffset(3.6 * S.ch, 3.6 * S.ch)
+			corner(sw, UDim.new(0, 0.8 * S.ch))
+			stroke(sw, WHITE, 0.8, 1.5)
+		end
+		local owned = cat.owns(species(), sk.id, nil)
+		local eq = equippedSkin() == sk.id
+		local line = label(detail, "Line", Enum.Font.GothamBlack, S.stepS, GREY, owned and "Owned. Equip it and you spawn in it every time." or "Locked.")
+		line.TextXAlignment = Enum.TextXAlignment.Left
+		line.TextWrapped = true
+		line.AutomaticSize = Enum.AutomaticSize.Y
+		line.Size = UDim2.new(1, 0, 0, 0)
+		line.LayoutOrder = 4
+		local btnH = math.max(5.6 * S.ch, 34)
+		local b
+		if not owned then
+			b = detailButton(detail, ("GET · R$%s"):format(tostring(sk.price or "?")), ROBUX, WHITE, false, 5)
+		elseif eq then
+			b = detailButton(detail, "EQUIPPED", PANEL2, MUTED, false, 5)
+		else
+			b = detailButton(detail, "EQUIP", SKIN, Color3.fromRGB(26, 16, 48), true, 5)
+			b.Activated:Connect(function()
+				press("skinEquip:" .. sk.id)
+				local r = ReplicatedStorage:FindFirstChild("DinoSkinRequest")
+				if r then r:FireServer("equip", sk.id) end
+			end)
+		end
+		b.Size = UDim2.new(1, 0, 0, btnH)
+		if not owned then
+			local h = label(detail, "Hint", Enum.Font.GothamBlack, S.hintS, MUTED, "Buying comes in the next step.")
+			h.TextXAlignment = Enum.TextXAlignment.Left
+			h.TextWrapped = true
+			h.AutomaticSize = Enum.AutomaticSize.Y
+			h.Size = UDim2.new(1, 0, 0, 0)
+			h.LayoutOrder = 6
+		end
+		return
+	end
 	local id = selected
 	local p = id and ST.PATHS[id]
 	if not p then
@@ -988,6 +1242,32 @@ local function layout()
 		tabBtns[i].BackgroundTransparency = on and 0.86 or 0.94
 		tabBtns[i].BackgroundColor3 = on and VOLT or WHITE
 	end
+	-- v1.6: three equal tabs when SKINS shows (full Lab only)
+	local showSkins = skinsOn and mode == "full"
+	tabSkins.Visible = showSkins
+	for i = 1, 2 do
+		local fit = tabLabels[i]:FindFirstChild("Fit")
+		if showSkins and not fit then
+			fit = Instance.new("UITextSizeConstraint")
+			fit.Name = "Fit"
+			fit.Parent = tabLabels[i]
+		end
+		if fit then fit.MinTextSize, fit.MaxTextSize = 7, S.tabText end
+		tabLabels[i].TextScaled = showSkins
+	end
+	if showSkins then
+		local w3 = (lw - 2 * tg) / 3
+		tabParts.Position, tabParts.Size = UDim2.fromOffset(0, 0), UDim2.fromOffset(w3, tabH)
+		tabStats.Position, tabStats.Size = UDim2.fromOffset(w3 + tg, 0), UDim2.fromOffset(w3, tabH)
+		tabSkins.Position, tabSkins.Size = UDim2.fromOffset(2 * (w3 + tg), 0), UDim2.fromOffset(w3, tabH)
+		tabSkinsCorner.CornerRadius = UDim.new(0, ch)
+		tabSkinsLabel.TextSize = S.tabText
+		local on = tab == "skins"
+		tabSkinsStroke.Transparency = on and 0 or 1
+		tabSkinsLabel.TextColor3 = on and WHITE or MUTED
+		tabSkins.BackgroundTransparency = on and 0.86 or 0.94
+		tabSkins.BackgroundColor3 = on and SKIN or WHITE
+	end
 	grid.Position, grid.Size = UDim2.fromOffset(0, tabH + 1.2 * ch), UDim2.fromOffset(lw, bh - tabH - 1.2 * ch)
 	S.cellW = (lw - ch - 12) / 2 -- 3 px stroke room left, 9 px for the scroll bar
 	S.metaH = math.max(S.tagS + 1 * ch, S.pip + 2)
@@ -995,7 +1275,7 @@ local function layout()
 	S.cardCell = UDim2.fromOffset(S.cellW, ch + artH + 0.6 * ch + S.cardName * 1.15 + 0.6 * ch + S.metaH + ch) -- v1.2
 	S.rowW, S.rowH = lw - 12, 1.2 * ch + S.cardName * 1.15 + 0.6 * ch + S.metaH + 1.2 * ch -- v1.2
 	gridList.Padding = UDim.new(0, ch)
-	if tab == "parts" then
+	if tab == "parts" or tab == "skins" then -- v1.6: skin cards use the part card cell
 		gridLayout.CellSize = UDim2.fromOffset(S.cellW, ch + artH + 0.6 * ch + S.cardName * 1.15 + 0.6 * ch + S.metaH + ch)
 		gridLayout.CellPadding = UDim2.fromOffset(ch, ch)
 	else
@@ -1112,12 +1392,26 @@ function redraw()
 	drawSlots()
 	drawDetail()
 	rebuildStage()
+	-- v1.6: stage colours (selected skin on the SKINS tab, the equipped one elsewhere), tag and hint
+	if skinsOn then
+		if stagePreview then paintModel(stagePreview, tab == "skins" and skinSel or equippedSkin()) end
+		stageTag.Text = tab == "skins" and "PREVIEW" or "ALL UPGRADES"
+		hint.Text = tab == "skins" and "Tap a skin to preview it on your dino" or "Tap a card, then EQUIP · tap a slot to choose where it goes"
+	end
 	player:SetAttribute("LabTab", tab)
 end
 
 -- ---------- input ----------
 tabParts.Activated:Connect(function() press("tab:parts") tab = "parts" selected = nil redraw() end)
 tabStats.Activated:Connect(function() press("tab:stats") tab = "stats" selected = nil slotSel = nil redraw() end)
+tabSkins.Activated:Connect(function() -- v1.6
+	if not (skinsOn and mode == "full") then return end
+	press("tab:skins")
+	tab = "skins"
+	slotSel = nil
+	skinSel = equippedSkin()
+	redraw()
+end)
 for n, s in ipairs(slotBtns) do
 	s.b.Activated:Connect(function()
 		press("slot:" .. n)
@@ -1159,6 +1453,7 @@ local function setOpen(kind)
 		end
 	end
 	if kind then
+		if kind ~= "full" and tab == "skins" then tab = "parts" end -- v1.6: SKINS only in the full Lab
 		slotSel = nil
 		stageKey = nil
 		redraw()
@@ -1212,6 +1507,12 @@ local function queue()
 end
 player.AttributeChanged:Connect(function(name)
 	if name:sub(1, 5) == "Skill" then queue() end
+	if name:sub(1, 12) == "SkinEquipped" then queue() end -- v1.6
+	if name == "SkinServerResultAt" and mode and player:GetAttribute("SkinServerResult") == "ok" then -- v1.6
+		local cat = skinCatalog()
+		local sk = cat and cat.get(species(), equippedSkin())
+		if sk then showToast(string.upper(sk.name) .. " EQUIPPED") end
+	end
 	if name == "InMenu" then
 		if player:GetAttribute("InMenu") == true and mode == "compact" then setOpen(nil) end
 		if player:GetAttribute("InMenu") ~= true and mode == "full" then setOpen(nil) end
@@ -1225,6 +1526,7 @@ local function onChar(c)
 	table.insert(charConns, c.ChildAdded:Connect(function(ch) if ch.Name:sub(1, 6) == "Mecha_" then task.delay(0.25, queue) end end))
 	table.insert(charConns, c.ChildRemoved:Connect(function(ch) if ch.Name:sub(1, 6) == "Mecha_" then task.delay(0.25, queue) end end))
 	table.insert(charConns, c:GetAttributeChangedSignal("Species"):Connect(queue))
+	table.insert(charConns, c:GetAttributeChangedSignal("SkinApplied"):Connect(function() stageKey = nil queue() end)) -- v1.6
 	c:SetAttribute("SkillScreenOpen", mode == "compact")
 	task.delay(0.5, queue)
 end

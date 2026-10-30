@@ -1,0 +1,88 @@
+-- SkinCatalog v1.0 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
+-- docs/plans/SKINS_v1.0.md Task 1, mockup docs/mockups/skins_lab_tab.html (Kepu 2026-10-30: skins picked in the Lab's
+-- SKINS tab from the main menu; "whatever is chosen in the menu is what youre spawning with every time unless you choose
+-- a different skin"; buying with Robux is the next plan). Pure: no Instance access. Used by SkinServer 1.0 (server) and,
+-- through the copy SkinServer puts in ReplicatedStorage.SkinShared, by Lab 1.6 (client).
+-- A skin is a palette swap: every visible block of a dino uses one of a few authored colours (RaptorModelData /
+--   TRexModelData). ROLES[species][hex] names the role of each authored colour; a skin gives a colour (and optionally a
+--   Material) per role. Colours listed in NEVER_PAINT (teeth, pupils / T-Rex eyes, mouths, the T-Rex eye shine, the
+--   HumanoidRootPart) have no role and are never repainted. Hex values: 6 upper-case hex digits, no "#".
+-- API:
+--   roleOf(species, color3) -> role or nil (exact authored colour; unknown species / colour -> nil)
+--   get(species, id) -> skin or nil; default(species) -> id of the first skin ("classic")
+--   owns(species, id, ownedSet) -> true for a known skin that is free or has ownedSet[id] == true
+--   sanitize(species, id) -> id when it is a known skin of that species, else the default
+-- Skin: {id, name, rarity ("STARTER" / "COMMON" / "RARE" / "EPIC" / "LEGENDARY"), price (Robux shown on locked cards,
+--   nil for free), free (owned by everyone), colors = {[role] = hex}, materials = {[role] = Enum.Material name} or nil}.
+--   Classic = the authored colours (the default look; picking it is "no skin").
+local SkinCatalog = {}
+SkinCatalog.Version = "1.0"
+
+SkinCatalog.ROLES = {
+	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
+		["2E8C82"] = "stripe", ["F0C81E"] = "eyes"},
+	TRex = {["666A4A"] = "main", ["50523A"] = "dark", ["B2A278"] = "belly"},
+}
+
+SkinCatalog.NEVER_PAINT = {["E8E2D2"] = true, ["111111"] = true, ["963C3C"] = true, ["6E342E"] = true, ["F5F5F0"] = true,
+	["A3A2A5"] = true}
+
+SkinCatalog.RARITY_ORDER = {"STARTER", "COMMON", "RARE", "EPIC", "LEGENDARY"}
+
+SkinCatalog.SKINS = {
+	Raptor = {
+		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
+			colors = {main = "5E943E", bands = "283A1E", limbs = "8FA046", belly = "C9C98F", claws = "302824", stripe = "2E8C82", eyes = "F0C81E"}},
+		{id = "desert", name = "Desert Runner", rarity = "COMMON", free = true,
+			colors = {main = "C9A46A", bands = "7A5530", limbs = "B08A55", belly = "EBDDB8", claws = "3B2A1C", stripe = "C2552E", eyes = "F0C81E"}},
+		{id = "arctic", name = "Arctic", rarity = "RARE", price = 149, free = false,
+			colors = {main = "E6EEF3", bands = "7FA6C2", limbs = "C7D8E3", belly = "FFFFFF", claws = "3A4A57", stripe = "3FB4E6", eyes = "7FE9FF"}},
+		{id = "night", name = "Night Stalker", rarity = "RARE", price = 149, free = false,
+			colors = {main = "22262B", bands = "0E1012", limbs = "33393F", belly = "4A5058", claws = "0B0C0D", stripe = "5FD16A", eyes = "5FD16A"},
+			materials = {stripe = "Neon", eyes = "Neon"}},
+		{id = "lava", name = "Lava", rarity = "EPIC", price = 299, free = false,
+			colors = {main = "2E2524", bands = "FF6A1A", limbs = "3D302E", belly = "5A3A30", claws = "120D0C", stripe = "FFC832", eyes = "FF6A1A"},
+			materials = {bands = "Neon", stripe = "Neon", eyes = "Neon"}},
+		{id = "gold", name = "Gold Hunter", rarity = "LEGENDARY", price = 499, free = false,
+			colors = {main = "D4A72C", bands = "7A5A10", limbs = "E6C25A", belly = "F5E4A8", claws = "3A2A08", stripe = "FFF2B0", eyes = "FFFFFF"},
+			materials = {stripe = "Neon", eyes = "Neon"}},
+	},
+	TRex = {
+		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
+			colors = {main = "666A4A", dark = "50523A", belly = "B2A278"}},
+	},
+}
+
+function SkinCatalog.roleOf(species, color3)
+	local roles = SkinCatalog.ROLES[species]
+	if not roles or typeof(color3) ~= "Color3" then return nil end
+	return roles[color3:ToHex():upper()]
+end
+
+function SkinCatalog.get(species, id)
+	local list = SkinCatalog.SKINS[species]
+	if not list or type(id) ~= "string" then return nil end
+	for _, s in ipairs(list) do
+		if s.id == id then return s end
+	end
+	return nil
+end
+
+function SkinCatalog.default(species)
+	local list = SkinCatalog.SKINS[species]
+	return list and list[1] and list[1].id or "classic"
+end
+
+function SkinCatalog.owns(species, id, ownedSet)
+	local s = SkinCatalog.get(species, id)
+	if not s then return false end
+	if s.free == true then return true end
+	return type(ownedSet) == "table" and ownedSet[id] == true
+end
+
+function SkinCatalog.sanitize(species, id)
+	if SkinCatalog.get(species, id) then return id end
+	return SkinCatalog.default(species)
+end
+
+return SkinCatalog
