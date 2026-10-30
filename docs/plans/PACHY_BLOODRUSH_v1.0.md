@@ -2,7 +2,7 @@
 
 **Goal:** when the pachy's headbutt charges are empty, it can pay health for more headbutts, so a player who runs dry can keep fighting at a cost.
 **Chosen direction:** HUD look "C · Both" (hearts + striped health chunk), name "Blood Rush". Mockup: docs/mockups/pachy_sacrifice_options.html.
-**Architecture:** a new pachy part line `bloodrush` in the Attack area, in a slot like Mecha Legs (it fires through ATTACK, not its slot key). HeadbuttServer accepts a press at 0 charges as a "sacrifice" when Blood Rush is on and health is above half, takes the health, and runs a normal charge flagged as a sacrifice. A new BloodRushServer applies the ★ bleed. The HUD and the FX read the attributes.
+**Architecture:** a new pachy part line `bloodrush` in the Attack area, in a slot like Mecha Legs (it fires through ATTACK, not its slot key). HeadbuttServer accepts a press at 0 charges as a "sacrifice" when Blood Rush is on, health is above half and fewer than 2 sacrifices were made since the charges ran out; it takes the health and runs a normal charge flagged as a sacrifice. The ★ slow uses the headbutt's existing slow (players and bots alike). The HUD and the FX read the attributes.
 
 ## Kepu's answers (2026-10-30)
 - "For attack you can sacrifice 25% of your life for another headbutt. This caps out at 50% so you could get two extra head butts after emptying your charges"
@@ -18,7 +18,7 @@
 | I | bloodRush true, bloodCost 0.25 | At 0 charges, ATTACK pays 25% of max health for one more headbutt; only above 50% health; never the last point |
 | II | bloodDamageMul 1.25 | Sacrifice headbutts hit 25% harder (on top of the run-up rule and the Dome) |
 | III | bloodNoSelfSlow true | No self-slow after a sacrifice headbutt |
-| ★ | bloodBleedDps 3, bloodBleedTime 4 | A sacrifice headbutt that lands makes the target bleed 3 a second for 4 s |
+| ★ | bloodSlowMul 0.45, bloodSlowTime 4 | A sacrifice headbutt that lands slows the target harder: speed x0.45 for 4 s (a normal headbutt: x0.65 for 3 s) |
 
 ## Global constraints
 - Additive only, each change behind a switch, version header + docs/VERSIONS.md + docs/ATTRIBUTES.md rows.
@@ -56,3 +56,9 @@
 2. A sacrifice that misses still costs the health, like a spent charge. Option: keep, or refund the health on a miss.
 3. "Whatever works against bots works against players": today the raptor's Jaws III and Blade Claws III bleed only hits bots (SkillEffects 1.x, bots only). Blood Rush bleed will hit players in the Arena. Option: a follow-up ticket to make those two bleeds hit players too, with the same bleed script.
 4. Accepted: a sacrifice from 60% may drop the pachy to 35% (Kepu's pick); the hearts show how many are left from the current health.
+
+## Kepu's red-team answers (2026-10-30)
+1. Regen loop -> "Max 2 per empty spell": at most 2 sacrifices after the charges run out; the count resets when a charge refills.
+2. Miss -> "Yes, still spent".
+3. -> "Ohh I didn't know they didn't work on players too. Okay we'll take out the bleed and instead make the opposing player take an even bigger speed debuff": ★ is a harder slow (x0.45 for 4 s, tunable), through the headbutt's existing slow, so it works on players and bots the same. No new bleed. Open item: the raptor's Jaws III / Blade Claws III bleed still hits bots only (not asked to change).
+Tasks change: Task 5 (BloodRushServer) is dropped; HeadbuttServer 1.5 applies the ★ slow; SkillEffects writes BloodRushSlowMul / BloodRushSlowTime instead of bleed fields; HeadbuttFX has no bleed drip.
