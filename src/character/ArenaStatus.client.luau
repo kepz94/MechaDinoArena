@@ -1,4 +1,4 @@
--- ArenaStatus v1.4 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
+-- ArenaStatus v1.5 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
 -- MDA-6, plan docs/plans/ARENAHUD_v1.0.md Task 1, mockup docs/mockups/mobile_hud_options.html option A (Kepu 2026-10-28:
 --   "health should be at the top right of the screen along with the T-Rex drop down list"; stamina bar only while latched).
 -- Replaces HealthBar 1.1 / SpeciesPicker 1.0 / StaminaBar 1.1 in Mecha (those are switched off by Arena scope 1.1).
@@ -48,15 +48,18 @@
 --     mouse is free (RenderStep "LeaveConfirmMouse", Camera + 1). It closes with the character (ResetOnSpawn). The game
 --     keeps running behind it. Script attribute ArenaLeaveConfirmEnabled (default true; false = 1.2, MENU leaves at once).
 --     Diagnostics: character ArenaLeaveConfirm ("open" / "stay" / "leave"), ArenaLeaveAsks (count).
+-- v1.5 (MDA-118, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 9): SPECIES gains {id = "Pachy", label = "PACHY"} (used by
+--   the 1.0 species menu and the status tag when the MENU pill is off).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local CORNER_Y = 8 -- v1.4
 local SHIELD = Color3.fromRGB(90, 160, 255) -- v1.1
 local LOW_FRACTION = 0.3
 local SPECIES = {{id = "TRex", label = "T-REX"}, {id = "Raptor", label = "RAPTOR"}}
+table.insert(SPECIES, {id = "Pachy", label = "PACHY"}) -- v1.5
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
 local GREEN_A, GREEN_B = Color3.fromRGB(95, 209, 106), Color3.fromRGB(63, 174, 75)

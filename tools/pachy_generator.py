@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pachy generator v1.0 (Mecha Dino Arena) -> src/shared/Models/PachyModelData.luau
+"""Pachy generator v1.1 (Mecha Dino Arena) -> src/shared/Models/PachyModelData.luau
 
 Pachycephalosaurus in the T-Rex / raptor block style. Plan docs/plans/PACHY_MODEL_v1.0.md, mockup
 docs/mockups/pachy_model_options.html, inspo docs/reference/pachy/ (Kepu 2026-10-30: knob ring head by default, "the
@@ -21,6 +21,14 @@ Coordinates: "dino space" D = (x forward, y up, z side; z > 0 is the L side), or
 Gameplay attributes: the T-Rex's (as the raptor inherits them) with every move switched off; abilities, speeds and gait
 come with the abilities plan.
 Run: python3 tools/pachy_generator.py   (writes the data file; prints the bounds and the colour check)
+v1.1 (plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 1, MDA-117; Kepu 2026-10-30: "a bit slower than the raptor but faster
+      than the t-rex" -> run 45 in the arena, health 90, "it should be able to leap", headbutt charge numbers from the
+      mockup docs/mockups/pachy_charge_options.html + "at least 20" damage + "shoved maybe 40 studs"): playable
+      attributes. Geometry unchanged.
+      DinoMaxHealth 90; MoveWalkSpeed 36.9 / MoveRunSpeed 69.2 (x ArenaSpeedScale 0.65 = 24 / 45; raptor 27 / 50.7,
+      T-Rex 20.8 / 39); GaitAlwaysRun true; TurnLimitRate 360 (raptor 540, T-Rex 180); CameraStartZoom 18 (x2 in game);
+      the raptor's leap (JumpEnabled ... JumpCooldown 0.5, JumpStaminaCost 0); Headbutt* settings (HeadbuttServer /
+      HeadbuttTest 1.0); gait = the raptor's scaled by the hip (4.0 / 3.3 = 1.21) for lengths.
 """
 import math, re, os
 
@@ -28,7 +36,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "PachyModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 
-VERSION = "1.0"
+VERSION = "1.1"
 HIP = 4.0            # hip (HRP centre) height above the ground
 HRP_SIZE_D = (4.0, 3.0, 1.8)   # D x (length), y, z (width)
 
@@ -231,6 +239,20 @@ OVERRIDES = {
     "RigHipHeight": f"{HIP}", "PachySpikes": "false",
     "BiteEnabled": "false", "PounceEnabled": "false", "RamEnabled": "false", "RoarEnabled": "false",
     "JumpEnabled": "false", "CreepEnabled": "false",
+    # v1.1 playable (plan PACHY_PLAYABLE_v1.0 Task 1)
+    "DinoMaxHealth": "90",
+    "MoveWalkSpeed": "36.9", "MoveRunSpeed": "69.2", "GaitAlwaysRun": "true", "TurnLimitRate": "360",
+    "CameraStartZoom": "18", "IdleBob": "0.12",
+    "JumpEnabled": "true", "JumpWindup": "0.12", "JumpLaunchPower": "59", "JumpBoost": "10",
+    "JumpBoostMinSpeed": "2", "JumpAirHold": "true", "JumpStaminaCost": "0", "JumpCooldown": "0.5",
+    "WalkStepLength": "10.3", "WalkDuty": "0.38", "WalkCrouch": "1", "WalkLift": "2.7", "WalkStrideStretch": "1.4",
+    "RunStepLength": "12.6", "RunDuty": "0.3", "RunCrouch": "1.9", "RunLift": "3.6", "RunFootForward": "1.9",
+    "RunStrideStretch": "1.22", "WalkSideStepReach": "1.2",
+    "RunNeckDrop": "12", "WalkTailWhip": "0.3", "RunTailWhip": "0.2", "IdleTailSway": "0.4",
+    "HeadbuttEnabled": "true", "HeadbuttCharges": "2", "HeadbuttWindup": "0.15", "HeadbuttSpeedMul": "1.4",
+    "HeadbuttMaxTime": "1.8", "HeadbuttTurnMul": "2", "HeadbuttDamage": "20", "HeadbuttShove": "40",
+    "HeadbuttShoveTime": "0.35", "HeadbuttSlowMul": "0.65", "HeadbuttSlowTime": "3", "HeadbuttRefill": "5",
+    "HeadbuttSelfSlowMul": "0.65", "HeadbuttSelfSlowTime": "2.5", "HeadbuttReach": "2",
 }
 attrs.update(OVERRIDES)
 for k in ("StarterCharacterVersion",):

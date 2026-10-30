@@ -1,4 +1,4 @@
--- SpeciesServer v1.1 (Dino Arcade) — TEST species switch: respawns a player as the dino they pick.
+-- SpeciesServer v1.2 (Dino Arcade) — TEST species switch: respawns a player as the dino they pick.
 -- Client -> server: ReplicatedStorage.DinoSpeciesRequest:FireServer(species) (sent by SpeciesPicker 1.0),
 --   species = "TRex" or "Raptor".
 -- TRex   -> player:LoadCharacter() (StarterPlayer.StarterCharacter, the T-Rex).
@@ -18,6 +18,12 @@
 --   is swapped too. An unknown value is ignored (1.0: T-Rex). The red flash on a dino switch is handled on the client by
 --   HurtFlashGuard 1.0. Diagnostics: script attribute SpeciesServerVersion; player attribute SpeciesDefaulted (true when
 --   the default was applied).
+-- v1.2 (MDA-118, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 3): third species "Pachy". A pachy template is built once
+--   from ServerStorage.DinoArcade.Models.PachyModelData (like the raptor's) while the script attribute
+--   SpeciesPachyEnabled (default true, read at start) is on; "Pachy" is then a known species: a request swaps in a copy
+--   of the template exactly as for the raptor (StarterCharacterScripts copies, old spot, player.Character), and after a
+--   death a player whose DinoSpecies is "Pachy" is switched back to a pachy. No template -> "noTemplate". Script
+--   attribute SpeciesPachyTemplate ("ready" / "missing <reason>" / "off").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -25,7 +31,7 @@ local StarterPlayer = game:GetService("StarterPlayer")
 
 local SWITCH_COOLDOWN = 2
 local SPECIES = {TRex = true, Raptor = true}
-script:SetAttribute("SpeciesServerVersion", "1.1")
+script:SetAttribute("SpeciesServerVersion", "1.2")
 if script:GetAttribute("SpeciesDefault") == nil then script:SetAttribute("SpeciesDefault", "Raptor") end -- v1.1
 
 local remote = ReplicatedStorage:FindFirstChild("DinoSpeciesRequest")
@@ -45,6 +51,22 @@ do
 		raptorTemplate = Builder.build(data, {name = "Raptor"})
 	end)
 	script:SetAttribute("SpeciesTemplate", ok and raptorTemplate and "ready" or ("missing " .. tostring(err)))
+end
+
+-- v1.2: pachy template
+if script:GetAttribute("SpeciesPachyEnabled") == nil then script:SetAttribute("SpeciesPachyEnabled", true) end
+local pachyTemplate
+if script:GetAttribute("SpeciesPachyEnabled") ~= false then
+	local ok, err = pcall(function()
+		local folder = ServerStorage:WaitForChild("DinoArcade", 10)
+		local Builder = require(folder:WaitForChild("DinoModelBuilder"))
+		local data = require(folder:WaitForChild("Models"):WaitForChild("PachyModelData"))
+		pachyTemplate = Builder.build(data, {name = "Pachy"})
+	end)
+	script:SetAttribute("SpeciesPachyTemplate", ok and pachyTemplate and "ready" or ("missing " .. tostring(err)))
+	if pachyTemplate then SPECIES.Pachy = true end
+else
+	script:SetAttribute("SpeciesPachyTemplate", "off")
 end
 
 local lastSwitch = {}
@@ -87,10 +109,28 @@ local function spawnRaptor(player)
 	if old and old ~= char then old:Destroy() end
 end
 
+-- v1.2: same as spawnRaptor, from the pachy template
+local function spawnPachy(player)
+	local char = pachyTemplate:Clone()
+	char.Name = player.Name
+	for _, s in ipairs(StarterPlayer.StarterCharacterScripts:GetChildren()) do
+		s:Clone().Parent = char
+	end
+	local hrp = char.HumanoidRootPart
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	char:PivotTo(spawnCFrame(player, hrp.Size.Y / 2 + hum.HipHeight))
+	local old = player.Character
+	char.Parent = workspace
+	player.Character = char
+	if old and old ~= char then old:Destroy() end
+end
+
 local function switch(player, species)
 	player:SetAttribute("DinoSpecies", species)
 	if species == "Raptor" then
 		spawnRaptor(player)
+	elseif species == "Pachy" and pachyTemplate then -- v1.2
+		spawnPachy(player)
 	else
 		player:LoadCharacter()
 	end
@@ -102,6 +142,10 @@ remote.OnServerEvent:Connect(function(player, species)
 		return
 	end
 	if species == "Raptor" and not raptorTemplate then
+		player:SetAttribute("SpeciesLastResult", "noTemplate")
+		return
+	end
+	if species == "Pachy" and not pachyTemplate then -- v1.2
 		player:SetAttribute("SpeciesLastResult", "noTemplate")
 		return
 	end
@@ -133,6 +177,11 @@ local function onPlayer(player)
 		if want == "Raptor" and raptorTemplate and speciesOf(char) ~= "Raptor" then
 			task.defer(function()
 				if player.Character == char then spawnRaptor(player) end
+			end)
+		end
+		if want == "Pachy" and pachyTemplate and speciesOf(char) ~= "Pachy" then -- v1.2
+			task.defer(function()
+				if player.Character == char then spawnPachy(player) end
 			end)
 		end
 	end)

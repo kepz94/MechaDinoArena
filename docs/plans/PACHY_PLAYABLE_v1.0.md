@@ -12,7 +12,7 @@
 | Health | 90 |
 | Charges | 2; 3 at the Battering Dome star |
 | Charge | speed x1.4 of run, up to 1.8 s, ends early on a hit; turning about 2x the normal turn rate |
-| Hit | 20 damage, knockback 30 studs, target speed -35% for 3 s |
+| Hit | 20 damage, shove 40 studs (see Knockback), target speed -35% for 3 s |
 | Refill | 5 s per charge, one at a time |
 | Last charge used | self speed -35% for 2.5 s after that charge ends |
 | Leap | the raptor's leap values; usable during a charge, keeps charge speed in the air |

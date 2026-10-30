@@ -1,4 +1,4 @@
--- StatSheet v1.1 (Mecha Dino Arena) — the 5-stat point sheet: species starting points (natural build type) and the
+-- StatSheet v1.2 (Mecha Dino Arena) — the 5-stat point sheet: species starting points (natural build type) and the
 -- stat -> attribute formula. MDA-1, plan docs/plans/CLASSSTATS_v1.0.md, ADR-001. Pure: no Instance access.
 -- User: option C "Stat points"; "stamina isnt a tree because stamina is unlimited" (no Stamina stat); Speed alone for
 --   Roamer. Red-team answers: the cap is on ADDED points (+10 per stat); Health and Attack points are flat (same gain on
@@ -14,22 +14,30 @@
 --   1 - DEFENSE_RATE x Defense. With 0 added every value equals base exactly.
 -- v1.1 (MDA-34; Kepu 2026-10-28: every skill step at least 35% over the one before; Sprint Legs star "Raise the cap: x2.6
 --   run"): MAX_ADDED_BY = {Speed = 16}: the added cap per stat (others keep MAX_ADDED 10). Speed 16 = run x2.6.
+-- v1.2 (MDA-117, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 2): SPECIES.Pachy (class "Bruiser", start Health 5 /
+--   Attack 6 / Defense 5 / Speed 7 / Support 1, abilities "Headbutt charge", "Leap"), so StatServer applies the arena
+--   speed scale and stat points to the pachy (unknown species -> "noSheet"). ATTACK_PER_POINT.HeadbuttDamage 2 and
+--   ATTACK_KEYS + "HeadbuttDamage" (only characters that have the attribute are affected: the T-Rex and raptor don't).
 local StatSheet = {}
-StatSheet.Version = "1.1"
+StatSheet.Version = "1.2"
 StatSheet.STATS = {"Health", "Attack", "Defense", "Speed", "Support"}
 StatSheet.MAX_ADDED = 10
 StatSheet.MAX_ADDED_BY = {Speed = 16} -- v1.1
 StatSheet.HEALTH_PER_POINT = 15
 StatSheet.ATTACK_PER_POINT = {BiteDamage = 2, PounceLandDamage = 2, PounceTickDamage = 1}
+StatSheet.ATTACK_PER_POINT.HeadbuttDamage = 2 -- v1.2
 StatSheet.SPEED_RATE = 0.10
 StatSheet.DEFENSE_RATE = 0.05
 StatSheet.ATTACK_KEYS = {"BiteDamage", "PounceLandDamage", "PounceTickDamage"}
+table.insert(StatSheet.ATTACK_KEYS, "HeadbuttDamage") -- v1.2
 StatSheet.SPEED_KEYS = {"MoveWalkSpeed", "MoveRunSpeed", "MoveCreepSpeed"}
 StatSheet.SPECIES = {
 	TRex = {class = "Bulky", start = {Health = 9, Attack = 7, Defense = 7, Speed = 4, Support = 1}, abilities = {"Roar", "Ram"}},
 	Raptor = {class = "Roamer", start = {Health = 3, Attack = 4, Defense = 3, Speed = 9, Support = 1},
 		abilities = {"Pounce + latch", "Jump"}},
 }
+StatSheet.SPECIES.Pachy = {class = "Bruiser", start = {Health = 5, Attack = 6, Defense = 5, Speed = 7, Support = 1},
+	abilities = {"Headbutt charge", "Leap"}} -- v1.2
 
 local function roundTo(x, step)
 	return math.floor(x / step + 0.5) * step

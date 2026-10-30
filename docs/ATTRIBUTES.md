@@ -1971,6 +1971,10 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | MountainStepsVersion / MountainStepsClimb / MountainStepsMaxFix / MountainStepsFaces / MountainStepsParts / MountainStepsUnreachBefore / MountainStepsUnreachAfter / MountainStepsUnreachTopAfter | Workspace.DinoIsland.MountainSteps folder | "1.0" / 10 / 30 / 920 / 959 / 786 / 0 / 0 | Island 3.3 mountain shelves (tools/mountain_steps_v1.luau); StepFace on each shelf = "low cell > high cell D<studs>" |
 | PachySpikes / PachyModelVersion | pachy model | false / "1.0" | PachyModelData 1.0: spikes shown (the fully upgraded attack look; wired by the abilities plan) |
 | DisplayPachyVersion | Workspace.DinoArcade_Pachy + its models | "1.0" | Studio-only pachy display models |
+| SpeciesPachyEnabled / SpeciesPachyTemplate | SpeciesServer script | true / "ready" | SpeciesServer 1.2 pachy species |
+| RaptorScalePachyEnabled / PachyScale | RaptorScale script | true / 2 | RaptorScale 1.1 pachy scaling |
+| MainMenuPachyEnabled | MainMenu script | true | MainMenu 1.8 PACHY card |
+| Headbutt* (Enabled, Charges, Windup, SpeedMul, MaxTime, TurnMul, Damage, Shove, ShoveTime, SlowMul, SlowTime, Refill, SelfSlowMul, SelfSlowTime, Reach) | pachy character | true, 2, 0.15, 1.4, 1.8, 2, 20, 40, 0.35, 0.65, 3, 5, 0.65, 2.5, 2 | PachyModelData 1.1 headbutt settings (HeadbuttServer / HeadbuttTest) |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |

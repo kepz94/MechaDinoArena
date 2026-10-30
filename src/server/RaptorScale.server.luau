@@ -1,4 +1,4 @@
--- RaptorScale v1.0 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
+-- RaptorScale v1.1 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
 -- docs/plans/TERRITORIES_v1.0.md Task 4 (Kepu 2026-10-28: "the raptor bots might be a little too small ... esp with the
 -- camera angle"; answers: 2x, bots and players).
 -- Who: every player character whose Species is "Raptor" (CharacterAdded, also SpeciesServer's raptor body) and every
@@ -12,10 +12,14 @@
 -- Settings (script attributes): RaptorScaleEnabled (default true; false = new raptors keep scale 1), RaptorScale (2).
 -- Diagnostics: script RaptorScaleVersion, RaptorScaleCount (models scaled); model RaptorScaleApplied (the factor used),
 --   RaptorScaleLift (studs lifted, 0.1 steps).
+-- v1.1 (MDA-118, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 4; Kepu 2026-10-30: pachy "a bit bigger than raptor" =
+--   built at 15 studs and doubled like the raptor): player characters whose Species is "Pachy" are scaled the same way
+--   (same distance keys and ground lift) by the script attribute PachyScale (default 2) while RaptorScalePachyEnabled
+--   (default true) is on. Diagnostic: the model's RaptorScaleApplied holds the factor used.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local DEFAULTS = {RaptorScaleEnabled = true, RaptorScale = 2}
 local FALLBACK = {BiteReachBack = 8, BiteLungeDist = 3, EatRange = 8, EatHeight = 20, CameraStartZoom = 35} -- = GrowthServer 1.2
 local GC = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("GrowthCurve"))
@@ -42,9 +46,12 @@ local function groundUnder(model, pos)
 	return r and r.Position.Y or nil
 end
 
-local function apply(model)
+if script:GetAttribute("RaptorScalePachyEnabled") == nil then script:SetAttribute("RaptorScalePachyEnabled", true) end -- v1.1
+if script:GetAttribute("PachyScale") == nil then script:SetAttribute("PachyScale", 2) end -- v1.1
+
+local function apply(model, factor) -- v1.1: factor = the pachy's scale (nil = RaptorScale)
 	if model:GetAttribute("RaptorScaleApplied") ~= nil or script:GetAttribute("RaptorScaleEnabled") == false then return end
-	local f = tonumber(script:GetAttribute("RaptorScale")) or DEFAULTS.RaptorScale
+	local f = factor or tonumber(script:GetAttribute("RaptorScale")) or DEFAULTS.RaptorScale
 	if f <= 0 or math.abs(f - 1) < 1e-3 then return end
 	model:SetAttribute("RaptorScaleApplied", f)
 	model:ScaleTo(model:GetScale() * f)
@@ -70,6 +77,9 @@ end
 local function onCharacter(char)
 	if not char:FindFirstChildOfClass("Humanoid") then char:WaitForChild("Humanoid", 10) end
 	if char.Parent and char:GetAttribute("Species") == "Raptor" then apply(char) end
+	if char.Parent and char:GetAttribute("Species") == "Pachy" and script:GetAttribute("RaptorScalePachyEnabled") ~= false then -- v1.1
+		apply(char, tonumber(script:GetAttribute("PachyScale")) or 2)
+	end
 end
 local function onPlayer(player)
 	player.CharacterAdded:Connect(onCharacter)
