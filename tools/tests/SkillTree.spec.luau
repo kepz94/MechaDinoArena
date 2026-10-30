@@ -1,4 +1,4 @@
--- SkillTree.spec v1.17 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.18 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 -- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
 -- v1.10: Shock Dart (screech shown as "Shock Dart", range 100 / 135; the 35% range check reads the data)
@@ -7,6 +7,7 @@
 -- v1.13: Shock Mine blast + launch (damage 25, launch 25, daze 1)
 -- v1.14: Shock Cannon star = heavy shot (30 damage, stun 1.1, no jam); Decoy hidden
 -- v1.15: Grapple, Dart Launcher, Pack Beacon, Decoy Hologram deleted from the tree
+-- v1.18: SkillTree 1.21 — Grappling Hook (pachy button part hookarm); grapple stays unknown
 -- v1.17: SkillTree 1.20 — Battering Dome (pachy-only line, effects per step)
 -- v1.16: SkillTree 1.19 — no Jaws for the pachy (notFor Pachy), raptor rule kept, T-Rex still sees Jaws
 local ok, ST = pcall(function()
@@ -405,6 +406,16 @@ eq("dome II shove", ST.effects({dome = 2}, "Pachy").hbShoveMul, 1.3)
 eq("dome III refill", ST.effects({dome = 3}, "Pachy").hbRefillMul, 0.7)
 eq("dome star charge", ST.effects({dome = 4}, "Pachy").hbExtraCharges, 1)
 eq("dome star spikes", ST.effects({dome = 4}, "Pachy").pachySpikes, true)
+
+-- v1.18: Grappling Hook (SkillTree 1.21)
+eq("hook exists", ST.PATHS.hookarm ~= nil, true)
+eq("hook button", ST.BUTTONS.hookarm, true)
+eq("hook live", ST.PATHS.hookarm.soon, false)
+eq("hook pachy only", ST.seesPath(ST.PATHS.hookarm, "Pachy") and not ST.seesPath(ST.PATHS.hookarm, "Raptor") and not ST.seesPath(ST.PATHS.hookarm, "TRex"), true)
+eq("grapple unknown", ST.PATHS.grapple == nil, true)
+eq("hook I", ST.effects({hookarm = 1}, "Pachy").hookRange, 60); eq("hook I cd", ST.effects({hookarm = 1}, "Pachy").hookCooldown, 8)
+eq("hook I dmg", ST.effects({hookarm = 1}, "Pachy").hookDamage, 10); eq("hook II range", ST.effects({hookarm = 2}, "Pachy").hookRange, 80)
+eq("hook III cd", ST.effects({hookarm = 3}, "Pachy").hookCooldown, 6); eq("hook star dmg", ST.effects({hookarm = 4}, "Pachy").hookDamage, 15)
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

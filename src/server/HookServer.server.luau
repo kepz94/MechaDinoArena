@@ -185,27 +185,31 @@ local function setLook(char)
 	char:SetAttribute("HookLookBuilt", true)
 end
 
--- bot slides (anchored, followed live)
+-- bot slides (anchored, followed live); a newer slide on the same bot takes over (the smash shove right after the pull)
+local slides = setmetatable({}, {__mode = "k"}) -- [model] = token of the running slide
 local function slide(model, goalFn, time, done)
 	local hrp = model:FindFirstChild("HumanoidRootPart")
-	if not hrp or hrp.Anchored then return false end
+	if not hrp or (hrp.Anchored and not slides[model]) then return false end
+	local my = {}
+	slides[model] = my
 	local start = hrp.Position
 	local rot = hrp.CFrame - hrp.Position
 	hrp.Anchored = true
 	task.spawn(function()
 		local t0 = os.clock()
 		while os.clock() - t0 < time do
-			if not hrp.Parent then return end
+			if not hrp.Parent or slides[model] ~= my then return end
 			local u = math.clamp((os.clock() - t0) / time, 0, 1)
 			local e = 1 - (1 - u) * (1 - u)
 			local g = goalFn()
 			hrp.CFrame = CFrame.new(start:Lerp(Vector3.new(g.X, start.Y, g.Z), e)) * rot
 			RunService.Heartbeat:Wait()
 		end
-		if hrp.Parent then
+		if hrp.Parent and slides[model] == my then
 			local g = goalFn()
 			hrp.CFrame = CFrame.new(Vector3.new(g.X, start.Y, g.Z)) * rot
 			hrp.Anchored = false
+			slides[model] = nil
 		end
 		if done then done() end
 	end)

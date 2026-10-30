@@ -2015,6 +2015,16 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | PachySpikes / PachySpikesShown | pachy character (server) | false / true; 0 / 10 | Battering Dome star; PachyLook 1.0 shows the spikes |
 | SkillEffectsDomeEnabled / HeadbuttDomeEnabled / PachyLookEnabled | SkillEffects / HeadbuttServer / PachyLook scripts | true | Drop 2 switches |
 | SkillTree.BATTERING_DOME | SkillTree module constant | true | SkillTree 1.20 Battering Dome line (false = 1.19) |
+| HookEnabled / HookRange / HookCooldown / HookDamage / HookLook | pachy character (server) | bool / 60-80 / 8-6 / 10-15 / bool | SkillEffects 1.14 -> HookServer 1.0 |
+| HookServerResult / HookResult / HookTargetName / HookSmashResult | pachy character (server) | ok / badArg / dead / disabled / menu / stunned / pinned / busy / cooldown; hit / miss / blocked / shielded; name; smash / escaped / gone | hook diagnostics |
+| HookStartedAt / HookLaunchAt / HookContactAt / HookSmashAt / HookBusyUntil / HookReadyAt / HookAimDir / HookAimEnd / HookCount | pachy character (server) | server times / Vector3 / count | hook timeline (StartedAt set last) |
+| HookHitDamage / HookHitTarget / HookHitCount / HookHitAt | pachy character (server) | 10-15 / name / count / time | smash (HitAt last) |
+| HookPullBy / HookPullGap / HookPullTime / HookPullAt / HookHeldUntil / HookSmashedBy | grabbed dino (server) | name / studs / 0.5 / time | pull stamps (HookPull 1.0) |
+| HookPullState / HookPullMoved / HookFXState / HookPoseState | characters (client) | idle / pulled; studs; none / out / reel / back; none / raise / hold / smash / lower | client diagnostics |
+| HookServerEnabled / HookPullEnabled / HookFXEnabled / HookPoseEnabled / SkillEffectsHookEnabled | scripts / characters | true | hook switches |
+| SkillTree.HOOK_ARM | SkillTree module constant | true | SkillTree 1.21 hook line (false = 1.20) |
+| HeadbuttRefillTier2 / HeadbuttRefillTier3 / HeadbuttRefillTierUsed | pachy character | 1.3 / 1.6 / 2-3 | HeadbuttServer 1.2 tiered refill |
+| HeadbuttRefillTiersEnabled / HeadbuttHookBusyEnabled | HeadbuttServer script | true | HeadbuttServer 1.2 switches |
 | StatusBadgesSlowLeft / StatusBadgesState | dino (client) | seconds (0.1 steps); + "slow" | StatusBadges 1.2 diagnostics |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
