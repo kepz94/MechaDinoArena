@@ -2028,6 +2028,13 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | HookArmOrigT | ArmR_fore / ArmR_hand / ArmR_claw1-3 (server) | number | HookServer 1.3: the part's Transparency before it was hidden (restored and cleared when the look goes) |
 | HookArmLevel | pachy character | degrees (default 56) | HookPose 1.1: arm lift that brings the forearm level |
 | HookFXShapeEnabled | character (client) | true | HookFX 1.2: hook-shaped claw + arm hook hidden in flight (false = 1.1 block claw) |
+| SkillBase_JumpBoost / SkillBase_JumpLaunchPower | pachy character (server) | 10 / 59 | SkillEffects 1.15: leap values before Mecha Legs |
+| JumpDoubleEnabled / JumpDoubleMul / MechaLegsLook | pachy character (server) | bool / 0.894 / bool | SkillEffects 1.15 (star) |
+| JumpDoubleAt / JumpDoubleCount / JumpDoubleResult | character (server) | time / count / ok, badArg, dead, disabled, pinned, noLeap, used | JumpServer 1.2 |
+| JumpDoublePredictedAt / JumpDoubleLocal / JumpDoubleLocalCount | own character (client) | time / ready, used / count | JumpTest 1.1 |
+| MechaLegsBuilt / MechaLegsFXCount / MechaLegsFXVersion | character | 0 / 6; count; 1.0 | MechaLegsServer 1.0 / MechaLegsFX 1.0 diagnostics |
+| SkillEffectsLegsEnabled / JumpDoubleServerEnabled / MechaLegsServerEnabled / MechaLegsFXEnabled | scripts / character | true | Mecha Legs switches |
+| SkillTree.MECHA_LEGS | SkillTree module constant | true | SkillTree 1.22 line (false = 1.21) |
 | HeadbuttRefillTier2 / HeadbuttRefillTier3 / HeadbuttRefillTierUsed | pachy character | 1.3 / 1.6 / 2-3 | HeadbuttServer 1.2 tiered refill |
 | HeadbuttRefillTiersEnabled / HeadbuttHookBusyEnabled | HeadbuttServer script | true | HeadbuttServer 1.2 switches |
 | StatusBadgesSlowLeft / StatusBadgesState | dino (client) | seconds (0.1 steps); + "slow" | StatusBadges 1.2 diagnostics |
