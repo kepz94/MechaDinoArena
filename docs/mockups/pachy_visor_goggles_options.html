@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dome Visor Goggles</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Dome Visor redo (Kepu 2026-10-30: "Just give it goggles that create a force field"): goggles always worn, three shapes
+   for the force field they make while the visor is up. Same blocky pachy as the earlier pachy mockups. */
+:root { color-scheme: dark; --page: #0d0f14; --panel: #14141a; --line: #2b3242; --muted: #8f99aa; --grey: #cfd3dc;
+  --yellow: #ffc832; --orange: #ff9a2e; --cyan: #5fe3ff; --ink: #0b0b12; --steel: #9aa6b8; --dark: #3a404c;
+  --display: "Fredoka", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: #fff; font: 15px/1.5 var(--body); }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 56px; display: grid; gap: 22px; }
+h1 { margin: 0; font: 700 32px var(--display); } h1 span { color: var(--yellow); }
+h2 { margin: 0; font: 700 22px var(--display); }
+.lede { margin: 0; color: var(--muted); }
+section { display: grid; gap: 12px; }
+.tag { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; position: relative; }
+.card.rec { border-color: var(--yellow); }
+.rec-b { position: absolute; top: -11px; right: 12px; background: var(--yellow); color: #201800; font: 800 11px var(--body); padding: 2px 8px; border-radius: 99px; }
+.card h3 { margin: 0; font: 700 17px var(--display); }
+.card p { margin: 0; color: var(--grey); font-size: 14px; }
+.scene { background: linear-gradient(180deg, #7fbdea, #b6def2 60%, #6cc25a 60%, #57a948); border-radius: 10px; aspect-ratio: 16 / 10; position: relative; overflow: hidden; }
+.scene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--panel); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font: 700 15px var(--display); color: var(--yellow); white-space: nowrap; }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+.chip { font: 800 14px var(--body); color: #fff; background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.game { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 5; max-height: 260px; background: linear-gradient(180deg, #7fbdea, #b6def2 55%, #6cc25a 55%, #57a948); }
+.game .black { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .08s; }
+.game .black.on { opacity: 1; }
+.game .hud { position: absolute; left: 12px; bottom: 10px; font: 800 13px var(--body); text-shadow: 0 1px 0 #000; z-index: 2; }
+.game .hud .bar { width: 160px; height: 10px; border: 2px solid #fffc; border-radius: 99px; background: #0008; }
+.game .hud .bar i { display: block; height: 100%; width: 70%; background: #5fd16a; border-radius: 99px; }
+.game .msg { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); font: 700 22px var(--display); color: #fff; opacity: 0; z-index: 2; }
+.game .msg.on { opacity: .85; }
+.game svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ff { transition: opacity .15s; }
+.off .ff { opacity: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dome Visor <span>goggles</span></h1>
+  <p class="lede">The plate on the head is gone. The pachy wears steel goggles with cyan lenses all the time; pressing the button makes them project a force field that blocks front hits (bite, pounce, headbutt, hook smash, Shock Cannon, ink) for 1.5 s / 2 s. A blocked hit still shows BLOCK. Pick the force field shape.</p>
+  <div><button class="chip" id="tog">Force field: ON (tap to turn off)</button></div>
+  <section>
+    <div class="cards" id="cards">
+      <div class="card rec"><span class="rec-b">RECOMMENDED</span>
+        <div class="scene"><svg viewBox="0 0 220 125"><g transform="translate(5,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="126" y="44" width="38" height="4" fill="#3a404c"/><circle cx="155" cy="46" r="6.5" fill="#3a404c"/><circle cx="155" cy="46" r="4.5" fill="#5fe3ff"/>
+            <path class="ff" d="M176 8 Q194 46 176 92" fill="#5fe3ff33" stroke="#5fe3ff" stroke-width="3"/><path class="ff" d="M180 20 L188 34 M184 50 L190 60 M182 72 L188 80" stroke="#bff4ff" stroke-width="1.5"/><path class="ff" d="M160 46 L176 46" stroke="#5fe3ff88" stroke-width="2" stroke-dasharray="3 3"/>
+          </g></svg></div>
+        <h3>A · Curved shield wall</h3>
+        <p>The goggles glow and a curved see-through cyan wall appears just in front of the face. It covers exactly what the visor blocks (the front), so players can read it at a glance.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 220 125"><g transform="translate(5,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="126" y="44" width="38" height="4" fill="#3a404c"/><circle cx="155" cy="46" r="6.5" fill="#3a404c"/><circle cx="155" cy="46" r="4.5" fill="#5fe3ff"/>
+            <path class="ff" d="M96 112 A90 90 0 0 1 186 22 L186 112 Z" fill="#5fe3ff22" stroke="#5fe3ff" stroke-width="2.5"/>
+          </g></svg></div>
+        <h3>B · Front half-bubble</h3>
+        <p>A big quarter-dome bubble covers the front half of the pachy, head to front feet. Bigger and flashier; reads as "shielded" from far away.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 220 125"><g transform="translate(5,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="126" y="44" width="38" height="4" fill="#3a404c"/><circle cx="155" cy="46" r="6.5" fill="#3a404c"/><circle cx="155" cy="46" r="4.5" fill="#5fe3ff"/>
+            <path class="ff" d="M160 46 L196 18 L196 74 Z" fill="#5fe3ff22"/><ellipse class="ff" cx="196" cy="46" rx="5" ry="28" fill="#5fe3ff44" stroke="#5fe3ff" stroke-width="2.5"/>
+          </g></svg></div>
+        <h3>C · Goggle beam + disc</h3>
+        <p>Two beams shoot out of the lenses and open a round energy disc in front of the snout. Most "projected by the goggles", smallest shape.</p>
+      </div>
+    </div>
+  </section>
+  <p class="note">Everything else stays: steps (1.5 s · 2 s · 10 s recharge · ★ knockback), front = 60° each side, BLOCK pop, Lab card shows the goggles with the field on.</p>
+</div>
+<script>
+const c = document.getElementById("cards"), b = document.getElementById("tog");
+b.onclick = () => { const off = c.classList.toggle("off"); b.textContent = off ? "Force field: OFF (tap to turn on)" : "Force field: ON (tap to turn off)"; };
+</script>
+</body>
+</html>

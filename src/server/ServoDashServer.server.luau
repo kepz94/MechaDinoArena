@@ -1,4 +1,4 @@
--- ServoDashServer v1.0 (Mecha Dino Arena) — the pachy's Overclocked Servo Dash, a Speed slot part (path "servodash").
+-- ServoDashServer v1.1 (Mecha Dino Arena) — the pachy's Overclocked Servo Dash, a Speed slot part (path "servodash").
 -- MDA-126, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Hip thrusters".
 -- Kepu 2026-10-30: "An active thruster burn that gives an instantaneous burst of top-speed forward velocity. It instantly
 --   overrides the headbutt empty-charge speed debuff for 1.5 seconds, letting you quickly escape after missing a charge."
@@ -25,16 +25,30 @@
 -- Switch: script attribute ServoDashServerEnabled (default true).
 -- Diagnostics: script ServoDashServerVersion, ServoDashRequests; character ServoDashServerResult, ServoDashCount,
 --   ServoDashEndReason, ServoDashLookBuilt.
+-- v1.1 (Kepu 2026-10-30: "make the animation better for the burst"; SkillTree 1.33: 2x run speed for 1 s / 1.5 s): at each
+--   ok press everyone sees a launch blast (script attribute ServoDashBurstEnabled, default true, read each press; false =
+--   1.0 look):
+--   * each bell's Exhaust gets a ParticleEmitter "Blast" (made on first use; white-hot to orange fire, 3x the flame size,
+--     thrown 2x as fast) that Emits BLAST_COUNT (45) at the press, and a PointLight "Glow" (orange, range Hd x 0.8) that
+--     is on while the dash runs;
+--   * a ground shockwave at the pachy's feet: Workspace.DinoFX.ServoDashFX "ServoDashRing" (flat white-orange neon
+--     cylinder, anchored, no collide / query / touch) grows from 2 to RING_SIZE (Hd x 2.2) studs across while fading out
+--     in RING_TIME (0.35) s, plus "ServoDashDust" (grey puffs, Emit 24) at the same spot; both removed after 1 s.
+--   Character diagnostic ServoDashBursts (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local STEEL, DARK = Color3.fromRGB(154, 166, 184), Color3.fromRGB(58, 64, 76)
 script:SetAttribute("ServoDashServerVersion", VERSION)
 script:SetAttribute("ServoDashRequests", 0)
 if script:GetAttribute("ServoDashServerEnabled") == nil then script:SetAttribute("ServoDashServerEnabled", true) end
 local function enabled() return script:GetAttribute("ServoDashServerEnabled") ~= false end
+if script:GetAttribute("ServoDashBurstEnabled") == nil then script:SetAttribute("ServoDashBurstEnabled", true) end -- v1.1
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local BLAST_COUNT, RING_TIME = 45, 0.35
 
 local remote = ReplicatedStorage:FindFirstChild("DinoServoDashRequest")
 if not remote then
@@ -162,6 +176,105 @@ local function setFire(char, on)
 	end
 end
 
+-- v1.1: the launch blast (see the header)
+local function fxFolder()
+	local fx = workspace:FindFirstChild("DinoFX")
+	if not fx then
+		fx = Instance.new("Folder")
+		fx.Name = "DinoFX"
+		fx.Parent = workspace
+	end
+	local f = fx:FindFirstChild("ServoDashFX")
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "ServoDashFX"
+		f.Parent = fx
+	end
+	return f
+end
+local function setGlow(char, on)
+	local m = char:FindFirstChild("Mecha_ServoDash")
+	if not m then return end
+	for _, d in ipairs(m:GetDescendants()) do
+		if d.Name == "Glow" and d:IsA("PointLight") then d.Enabled = on end
+	end
+end
+local function burst(char)
+	local m = char:FindFirstChild("Mecha_ServoDash")
+	local Hd = char:GetExtentsSize().Y
+	if m then
+		for _, ex in ipairs(m:GetDescendants()) do
+			if ex.Name == "Exhaust" and ex:IsA("Attachment") then
+				local b = ex:FindFirstChild("Blast")
+				if not b then
+					b = Instance.new("ParticleEmitter")
+					b.Name = "Blast"
+					b.Enabled = false
+					b.EmissionDirection = Enum.NormalId.Front
+					b.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 252, 230)),
+						ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 196, 70)), ColorSequenceKeypoint.new(1, Color3.fromRGB(210, 70, 20))})
+					b.LightEmission = 1
+					b.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, Hd * 0.2), NumberSequenceKeypoint.new(1, Hd * 0.05)})
+					b.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)})
+					b.Speed = NumberRange.new(Hd * 2.4, Hd * 3.6)
+					b.SpreadAngle = Vector2.new(22, 22)
+					b.Lifetime = NumberRange.new(0.15, 0.3)
+					b.Drag = 3
+					b.Parent = ex
+				end
+				b:Emit(BLAST_COUNT)
+				if not ex.Parent:FindFirstChild("Glow") then
+					local l = Instance.new("PointLight")
+					l.Name = "Glow"
+					l.Color = Color3.fromRGB(255, 150, 50)
+					l.Range = Hd * 0.8
+					l.Brightness = 3
+					l.Enabled = false
+					l.Parent = ex.Parent
+				end
+			end
+		end
+	end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = {char, fxFolder()}
+		local hit = workspace:Raycast(hrp.Position, Vector3.new(0, -Hd * 2, 0), params)
+		local pos = hit and hit.Position or (hrp.Position - Vector3.new(0, Hd * 0.5, 0))
+		local ring = Instance.new("Part")
+		ring.Name = "ServoDashRing"
+		ring.Shape = Enum.PartType.Cylinder
+		ring.Size = Vector3.new(0.2, 2, 2)
+		ring.CFrame = CFrame.new(pos + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		ring.Color = Color3.fromRGB(255, 214, 150)
+		ring.Material = Enum.Material.Neon
+		ring.Transparency = 0.2
+		ring.Anchored, ring.CanCollide, ring.CanQuery, ring.CanTouch, ring.CastShadow = true, false, false, false, false
+		ring.Parent = fxFolder()
+		local big = Hd * 2.2
+		TweenService:Create(ring, TweenInfo.new(RING_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{Size = Vector3.new(0.2, big, big), Transparency = 1}):Play()
+		local a = Instance.new("Attachment")
+		a.Parent = ring
+		local dust = Instance.new("ParticleEmitter")
+		dust.Name = "ServoDashDust"
+		dust.Enabled = false
+		dust.Color = ColorSequence.new(Color3.fromRGB(190, 182, 168))
+		dust.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, Hd * 0.12), NumberSequenceKeypoint.new(1, Hd * 0.3)})
+		dust.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1)})
+		dust.Speed = NumberRange.new(Hd * 0.8, Hd * 1.4)
+		dust.SpreadAngle = Vector2.new(180, 10)
+		dust.EmissionDirection = Enum.NormalId.Right -- the ring's local X = world up
+		dust.Lifetime = NumberRange.new(0.4, 0.8)
+		dust.Drag = 4
+		dust.Parent = a
+		dust:Emit(24)
+		Debris:AddItem(ring, 1)
+	end
+	char:SetAttribute("ServoDashBursts", (char:GetAttribute("ServoDashBursts") or 0) + 1)
+end
+
 local function setLook(char)
 	local want = enabled() and char:GetAttribute("Species") == "Pachy" and char:GetAttribute("ServoDashLook") == true
 	local old = char:FindFirstChild("Mecha_ServoDash")
@@ -180,6 +293,7 @@ local function finish(char, reason)
 	if not running[char] then return end
 	running[char] = nil
 	setFire(char, false)
+	setGlow(char, false) -- v1.1
 	if char.Parent then
 		if reason ~= "time" then char:SetAttribute("ServoDashUntil", now()) end
 		char:SetAttribute("ServoDashEndReason", reason)
@@ -227,6 +341,10 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	char:SetAttribute("ServoDashCount", (char:GetAttribute("ServoDashCount") or 0) + 1)
 	setLook(char)
 	setFire(char, true)
+	if script:GetAttribute("ServoDashBurstEnabled") ~= false then -- v1.1
+		pcall(burst, char)
+		setGlow(char, true)
+	end
 	setResult(char, "ok")
 	char:SetAttribute("ServoDashStartedAt", t) -- last
 end)

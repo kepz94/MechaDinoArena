@@ -1,4 +1,4 @@
--- InkServer v1.1 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
+-- InkServer v1.2 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
 -- MDA-128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Neck ink tank +
 --   barrel". Kepu 2026-10-30: "How about an ink shooter that blinds your enemy for 2 seconds. Turns their screen black";
 --   answers: fully black (HUD stays), an aimed shot like the Grappling Hook (first dino hit), bots lose you, steps II 80
@@ -38,12 +38,17 @@
 --   shooter's InkResult to "visor" (and is not counted in InkHits); blocked splash dinos are left out of InkSplashCount.
 --   Shooter diagnostic InkVisorBlocks (count). Switch: script attribute InkVisorEnabled (default true, read at each
 --   arrival; false = 1.0).
+-- v1.2 (Kepu 2026-10-30: "For the ink shooter just mount it on its stomach"): with script attribute InkBellyMount (default
+--   true, read at each build; false = 1.1 neck mount) "Mecha_InkTank" is welded to the Torso segment's Root instead, under
+--   the front of the belly: "Tank" lying lengthwise (Hd x 0.10 wide, 0.08 tall, 0.16 long) just below the belly, "Window"
+--   (ink behind glass) along its sides, "Cap" (steel) on its back end and "Barrel" (steel, Hd x 0.14) pointing forward
+--   from its front end, with the Attachment "Muzzle" at the tip (the shot starts there). Same part names as 1.1.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25)
 local AIM_HELP = 4
 local INK_SPEED = 160
@@ -56,6 +61,7 @@ script:SetAttribute("InkHits", 0)
 if script:GetAttribute("InkServerEnabled") == nil then script:SetAttribute("InkServerEnabled", true) end
 if script:GetAttribute("InkModeRulesEnabled") == nil then script:SetAttribute("InkModeRulesEnabled", true) end
 if script:GetAttribute("InkVisorEnabled") == nil then script:SetAttribute("InkVisorEnabled", true) end -- v1.1
+if script:GetAttribute("InkBellyMount") == nil then script:SetAttribute("InkBellyMount", true) end -- v1.2
 local visorModCache -- v1.1: Dome Visor (ServerStorage.DinoArcade.BoneCrest 1.2), loaded on first use
 local function visorMod()
 	if visorModCache == nil then
@@ -156,7 +162,41 @@ local function axisOf(root, dir)
 	return Vector3.new(0, 0, v.Z >= 0 and 1 or -1)
 end
 
+-- v1.2: the tank under the belly, the barrel pointing forward
+local function buildBelly(char)
+	local seg = char:FindFirstChild("Torso")
+	local root = seg and seg:FindFirstChild("Root")
+	if not (root and root:IsA("BasePart")) then return nil end
+	local lo, hi = rootBox(seg, root)
+	if not lo then return nil end
+	local ref = char:FindFirstChild("HumanoidRootPart") or root
+	local x = axisOf(root, ref.CFrame.RightVector)
+	local y = axisOf(root, ref.CFrame.UpVector)
+	if math.abs(x:Dot(y)) > 0.5 then y = axisOf(root, ref.CFrame.LookVector):Cross(x) end
+	local back = x:Cross(y)
+	local Hd = char:GetExtentsSize().Y
+	local w, h, d = Hd * 0.10, Hd * 0.08, Hd * 0.16
+	local c = (lo + hi) / 2 - y * (extent(lo, hi, y) + h * 0.45) - back * (extent(lo, hi, back) * 0.3)
+	local cf = root.CFrame * CFrame.fromMatrix(c, x, y, back) -- local -Z = forward
+	local m = Instance.new("Model")
+	m.Name = "Mecha_InkTank"
+	local tank = part("Tank", Vector3.new(w, h, d), cf, DARK, m, root)
+	part("Window", Vector3.new(w * 1.04, h * 0.5, d * 0.6), cf * CFrame.new(0, -h * 0.05, 0), INK, m, tank, Enum.Material.Glass)
+	part("Cap", Vector3.new(w * 0.7, h * 0.7, d * 0.08), cf * CFrame.new(0, 0, d * 0.54), STEEL, m, tank)
+	local len = Hd * 0.14
+	local bcf = cf * CFrame.new(0, 0, -(d * 0.5 + len * 0.5))
+	local barrel = part("Barrel", Vector3.new(w * 0.3, w * 0.3, len), bcf, STEEL, m, tank)
+	local mz = Instance.new("Attachment")
+	mz.Name = "Muzzle"
+	mz.Position = Vector3.new(0, 0, -len * 0.5)
+	mz.Parent = barrel
+	m.Parent = char
+	char:SetAttribute("InkLookBuilt", true)
+	return m
+end
+
 local function build(char)
+	if script:GetAttribute("InkBellyMount") ~= false then return buildBelly(char) end -- v1.2
 	local seg = char:FindFirstChild("Neck")
 	local root = seg and seg:FindFirstChild("Root")
 	if not (root and root:IsA("BasePart")) then return nil end

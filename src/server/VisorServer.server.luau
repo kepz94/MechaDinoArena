@@ -1,4 +1,4 @@
--- VisorServer v1.0 (Mecha Dino Arena) — the pachy's Dome Visor, a Defense slot part (path "visor").
+-- VisorServer v1.1 (Mecha Dino Arena) — the pachy's Dome Visor, a Defense slot part (path "visor").
 -- MDA-127, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Armored
 --   faceplate". Kepu 2026-10-30: "Okay let's do the dome visor for sure"; "All the recommended ones"; it blocks
 --   "Melee + Shock Cannon" from the front.
@@ -26,18 +26,32 @@
 -- Switch: script attribute VisorServerEnabled (default true).
 -- Diagnostics: script VisorServerVersion, VisorRequests; character VisorServerResult, VisorCount, VisorEndReason,
 --   VisorLookBuilt, VisorDown (plate in front of the face).
+-- v1.1 (Kepu 2026-10-30: "Wtf is that damn thingy on its head. Just give it goggles that create a force field" ->
+--   mockup docs/mockups/pachy_visor_goggles_options.html A "Curved shield wall"): with script attribute VisorGogglesLook
+--   (default true, read at each build; false = the 1.0 faceplate) "Mecha_DomeVisor" (model attribute Goggles = true) is:
+--   * goggles, always worn while VisorLook is true, on the Head segment's Root (its box in Root's own frame): per side
+--     ("L" / "R") a steel ring "Rim_<s>" and a neon cyan lens "Lens_<s>" (flat discs facing sideways, eye height, front
+--     third of the head; no strap, nothing on top of the head); PointLight "LensGlow" in each lens, on only while the
+--     visor is up;
+--   * while VisorUntil is in the future: Model "ForceField" in it, FIELD_PANELS (9) cyan ForceField-material panels on an
+--     arc in front of the face (radius = the head's front + Hd x 0.12, from -60 to +60 degrees: the same front cone the
+--     block uses, Hd x 0.3 tall), welded to Head.Root; they fade in over 0.1 s at the press and fade out over 0.2 s at
+--     the end, then are removed. VisorDown = the field is showing.
+--   Lab card (BuildPreview_visor): the goggles with the field on.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local DROP_TIME, RAISE_TIME = 0.1, 0.2
 local STEEL, DARK, CYAN = Color3.fromRGB(154, 166, 184), Color3.fromRGB(58, 64, 76), Color3.fromRGB(95, 227, 255)
 script:SetAttribute("VisorServerVersion", VERSION)
 script:SetAttribute("VisorRequests", 0)
 if script:GetAttribute("VisorServerEnabled") == nil then script:SetAttribute("VisorServerEnabled", true) end
 local function enabled() return script:GetAttribute("VisorServerEnabled") ~= false end
+if script:GetAttribute("VisorGogglesLook") == nil then script:SetAttribute("VisorGogglesLook", true) end -- v1.1
+local FIELD_PANELS, FIELD_CONE = 9, 60
 
 local remote = ReplicatedStorage:FindFirstChild("DinoVisorRequest")
 if not remote then
@@ -131,8 +145,99 @@ local function build(char, down)
 	return m
 end
 
+-- v1.1: the head's frame (Root, lo / hi, x = right, y = up, back) for the goggles and the field
+local function headFrame(char)
+	local seg = char:FindFirstChild("Head")
+	local root = seg and seg:FindFirstChild("Root")
+	if not (root and root:IsA("BasePart")) then return nil end
+	local lo, hi = rootBox(seg, root)
+	if not lo then return nil end
+	local ref = char:FindFirstChild("HumanoidRootPart") or root
+	local x = axisOf(root, ref.CFrame.RightVector)
+	local y = axisOf(root, ref.CFrame.UpVector)
+	if math.abs(x:Dot(y)) > 0.5 then y = axisOf(root, ref.CFrame.LookVector):Cross(x) end
+	return root, lo, hi, x, y, x:Cross(y)
+end
+
+local function setField(char, on, instant) -- instant: no fade-in (the Lab card is copied at once)
+	local m = char:FindFirstChild("Mecha_DomeVisor")
+	if not m then return end
+	local old = m:FindFirstChild("ForceField")
+	if not on then
+		if old then
+			for _, p in ipairs(old:GetChildren()) do
+				if p:IsA("BasePart") then TweenService:Create(p, TweenInfo.new(0.2), {Transparency = 1}):Play() end
+			end
+			task.delay(0.22, function() if old.Parent then old:Destroy() end end)
+		end
+	elseif not old then
+		local root, lo, hi, x, y, back = headFrame(char)
+		if root then
+			local Hd = char:GetExtentsSize().Y
+			local c = (lo + hi) / 2
+			local R = extent(lo, hi, back) + Hd * 0.12
+			local step = math.rad(2 * FIELD_CONE / FIELD_PANELS)
+			local w = 2 * R * math.tan(step / 2) * 1.04
+			local f = Instance.new("Model")
+			f.Name = "ForceField"
+			local base = CFrame.fromMatrix(c, x, y, back)
+			for i = 1, FIELD_PANELS do
+				local a = math.rad(-FIELD_CONE) + step * (i - 0.5)
+				local c0 = base * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -R)
+				local p = part("Panel_" .. i, Vector3.new(w, Hd * 0.3, 0.15), root.CFrame * c0, CYAN, f, Enum.Material.ForceField)
+				p.Transparency = instant and 0 or 1
+				weld("PanelWeld", root, p, c0)
+				if not instant then TweenService:Create(p, TweenInfo.new(0.1), {Transparency = 0}):Play() end
+			end
+			f.Parent = m
+		end
+	end
+	for _, d in ipairs(m:GetDescendants()) do
+		if d.Name == "LensGlow" and d:IsA("PointLight") then d.Enabled = on end
+	end
+	char:SetAttribute("VisorDown", on)
+end
+
+-- v1.1: the goggles (returns the model, or nil); fieldOn = start with the force field showing
+local function buildGoggles(char, fieldOn)
+	local root, lo, hi, x, y, back = headFrame(char)
+	if not root then return nil end
+	local Hd = char:GetExtentsSize().Y
+	local c = (lo + hi) / 2
+	local d = extent(lo, hi, y) * 0.6
+	local th = math.max(0.1, Hd * 0.02)
+	local eye = c + y * (extent(lo, hi, y) * 0.15) - back * (extent(lo, hi, back) * 0.3)
+	local m = Instance.new("Model")
+	m.Name = "Mecha_DomeVisor"
+	m:SetAttribute("Goggles", true)
+	for _, side in ipairs({-1, 1}) do
+		local s = side < 0 and "L" or "R"
+		local pos = eye + x * side * (extent(lo, hi, x) + th * 0.5)
+		local c0 = CFrame.fromMatrix(pos, x, y, back) -- a Cylinder's axis is its local X: the disc faces sideways
+		local rim = part("Rim_" .. s, Vector3.new(th * 0.8, d * 1.3, d * 1.3), root.CFrame * c0 * CFrame.new(-side * th * 0.3, 0, 0), STEEL, m)
+		rim.Shape = Enum.PartType.Cylinder
+		weld("RimWeld", root, rim, c0 * CFrame.new(-side * th * 0.3, 0, 0))
+		local lens = part("Lens_" .. s, Vector3.new(th, d, d), root.CFrame * c0 * CFrame.new(side * th * 0.2, 0, 0), CYAN, m, Enum.Material.Neon)
+		lens.Shape = Enum.PartType.Cylinder
+		weld("LensWeld", root, lens, c0 * CFrame.new(side * th * 0.2, 0, 0))
+		local glow = Instance.new("PointLight")
+		glow.Name = "LensGlow"
+		glow.Color = CYAN
+		glow.Range = Hd * 0.4
+		glow.Brightness = 2
+		glow.Enabled = false
+		glow.Parent = lens
+	end
+	m.Parent = char
+	char:SetAttribute("VisorLookBuilt", true)
+	char:SetAttribute("VisorDown", false)
+	if fieldOn then setField(char, true, true) end
+	return m
+end
+
 local function setDown(char, down)
 	local m = char:FindFirstChild("Mecha_DomeVisor")
+	if m and m:GetAttribute("Goggles") == true then setField(char, down) return end -- v1.1
 	local plate = m and m:FindFirstChild("Plate")
 	local w = plate and plate:FindFirstChild("VisorHinge")
 	local goal = w and w:GetAttribute(down and "DownC0" or "UpC0")
@@ -152,6 +257,10 @@ local function setLook(char)
 		return
 	end
 	if old then return end
+	if script:GetAttribute("VisorGogglesLook") ~= false then -- v1.1
+		buildGoggles(char, (tonumber(char:GetAttribute("VisorUntil")) or 0) > now())
+		return
+	end
 	build(char, (tonumber(char:GetAttribute("VisorUntil")) or 0) > now())
 end
 
@@ -242,6 +351,7 @@ do
 	fn.Name = "BuildPreview_visor"
 	fn.OnInvoke = function(model)
 		if not enabled() or typeof(model) ~= "Instance" then return nil end
+		if script:GetAttribute("VisorGogglesLook") ~= false then return buildGoggles(model, true) end -- v1.1
 		return build(model, true)
 	end
 	fn.Parent = script

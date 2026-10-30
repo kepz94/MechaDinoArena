@@ -1,4 +1,4 @@
--- SkillTree v1.32 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.33 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -288,6 +288,12 @@ SkillTree.AREAS = {
 --     true).
 --   * "ink" Ink Shooter (Engineering; SkillTree.PACHY_INK_SHOOTER): inkRange 60 (II 80), inkCd 15 (III 11), inkBlind 2,
 --     inkSplash 6 at star (0 below). All fields 0 / false below step I. false = 1.31 for that part.
+-- v1.33 (Kepu 2026-10-30: "the speed boost was not significant at all. At least 2x speed" -> "1 s / 1.5 s"; "Just give it
+--   goggles that create a force field" -> mockup docs/mockups/pachy_visor_goggles_options.html A "Curved shield wall"):
+--   * SkillTree.SERVO_DASH_2X (default true): servoMul 2 (was 1.6), servoTime 1 s at I, 1.5 s from II (was 1.5 / 2);
+--     step texts I and II say so. servoCd / servoRefill unchanged. false = 1.32 numbers.
+--   * SkillTree.VISOR_GOGGLES (default true): Dome Visor step I text describes the goggles' force field and adds ink
+--     (InkServer 1.1). Numbers unchanged.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -599,6 +605,16 @@ do
 		"Reaches 80 studs",
 		"Recharges in 11 s (was 15 s)",
 		"The ink splashes: everyone within 6 studs of the hit is blinded too"})
+	SkillTree.SERVO_DASH_2X = true -- v1.33
+	if SkillTree.PACHY_SERVO_DASH and SkillTree.SERVO_DASH_2X and SkillTree.PATHS.servodash then
+		local st = SkillTree.PATHS.servodash.steps
+		st[1] = "Button: hip thrusters blast you forward, then you run 2x top speed for 1 s and ignore the headbutt slow"
+		st[2] = "Lasts 1.5 s"
+	end
+	SkillTree.VISOR_GOGGLES = true -- v1.33
+	if SkillTree.PACHY_DOME_VISOR and SkillTree.VISOR_GOGGLES and SkillTree.PATHS.visor then
+		SkillTree.PATHS.visor.steps[1] = "Button: your goggles project a force field in front of you for 1.5 s that blocks every bite, pounce, headbutt, hook smash, Shock Cannon shot and ink glob from the front. You can still headbutt"
+	end
 end
 -- v1.30: the pachy's Bone Crest replaces Thick Hide (Defense)
 SkillTree.PACHY_BONE_CREST = true
@@ -793,6 +809,10 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 		if sd >= 2 then e.servoTime = 2 end
 		if sd >= 3 then e.servoCd = 8 end
 		if sd >= 4 then e.servoRefill = true end
+		if SkillTree.SERVO_DASH_2X then -- v1.33
+			if sd >= 1 then e.servoTime, e.servoMul = 1, 2 end
+			if sd >= 2 then e.servoTime = 1.5 end
+		end
 	end
 	e.visorTime, e.visorCd, e.visorKnock = 0, 0, false
 	if SkillTree.PACHY_DOME_VISOR then

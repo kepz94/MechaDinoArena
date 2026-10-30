@@ -2183,3 +2183,15 @@ Look: Mecha_DomeVisor (Plate, Slit, Rim) on Head.Root; VisorBlockSpark + VisorBl
 | BotInkEnabled / BotInkDrops | BotServer script / bot + script | default true; targets dropped because inked |
 | InkVisorEnabled / InkVisorBlocks | InkServer script / shooter | 1.1: default true (false = the visor doesn't stop ink); ink globs stopped by a Dome Visor (InkResult "visor", VisorLastKind "ink") |
 Look: Mecha_InkTank (Tank, Window, Cap, Barrel.Muzzle) on Neck.Root; Workspace.DinoFX.InkFX InkGlob / InkSplat; ScreenGui InkBlind (Black, Msg "INKED").
+
+## Pachy batch 3 redo (SkillTree 1.33 / ServoDashServer 1.1 / ServoDashLaunch 1.1 / VisorServer 1.1 / InkServer 1.2)
+| Attribute | Where | Meaning |
+|---|---|---|
+| SkillTree.SERVO_DASH_2X / SkillTree.VISOR_GOGGLES | SkillTree constants | true: dash x2 for 1 / 1.5 s; goggles step text (false = 1.32) |
+| ServoDashBurstEnabled | ServoDashServer script | default true; launch blast, glow, ground ring + dust |
+| ServoDashBursts | character | bursts shown |
+| ServoDashFxEnabled / ServoDashFx | character (owner client) | default true; camera punch + speed lines envelope k (0.1 steps) |
+| VisorGogglesLook | VisorServer script | default true: goggles + force field (false = the 1.0 faceplate) |
+| Goggles | Mecha_DomeVisor model | true when built as goggles |
+| InkBellyMount | InkServer script | default true: tank under the belly (false = the 1.1 neck mount) |
+Look: Mecha_DomeVisor (Rim_L/R, Lens_L/R with LensGlow, ForceField.Panel_1..9 while up); Mecha_ServoDash Exhaust.Blast + bell Glow; Workspace.DinoFX.ServoDashFX ServoDashRing / ServoDashDust; ScreenGui ServoDashSpeedLines; Mecha_InkTank on Torso.Root.
