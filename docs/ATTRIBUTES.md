@@ -1697,3 +1697,10 @@ MineServer 1.3 test hook: ServerScriptService.MineServer.MineTestDrop (BindableF
 Instance: ScreechDamagePop (BillboardGui on the hit dino's root, 1 s). Decoy Hologram is hidden from every dino (OWNER "none").
 SkillTree 1.15: Grapple Hook, Dart Launcher, Pack Beacon and Decoy Hologram no longer exist (no SkillPath_grapple / _dart / _beacon / _decoy attributes).
 
+## Modes (ModeRules 1.0, Main Menu v1.0)
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| ModeTestArena | Workspace | nil (off) | Studio only: true makes ModeRules.currentMode() return "arena" (teleports and the Arena place id do not exist in a Studio test); ignored in live servers |
+
+ModeRules: "arena" when the server's PlaceId is 75433819286625 (or the Studio test switch), else "sandbox". canAffect: non-player targets always; players in the menu never; bots / test hooks on players always; player on player only in "arena".
+
