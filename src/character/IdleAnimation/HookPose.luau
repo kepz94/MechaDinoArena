@@ -11,7 +11,7 @@
 -- phase(model, serverNow) -> phase or nil, u (0..1). get(phase, u, k, model) -> offsets.
 -- v1.1 (Kepu 2026-10-30: "it shoots at the ground because the dino arm doesnt lift straight"): the arm lift is ARM_LEVEL
 --   degrees (Studio measure: the pachy forearm rests ~58 deg below level; +75 left it ~20 deg above) plus the shot's pitch
---   (HookAimDir, HookServer 1.1 keeps it within -8 .. +25 deg), so the raised forearm points straight along the shot.
+--   (HookAimDir, HookServer 1.2 keeps it within -2 .. +25 deg), so the raised forearm points straight along the shot.
 --   Model attribute HookArmLevel overrides ARM_LEVEL (tuning).
 
 local HookPose = {}

@@ -1,4 +1,4 @@
--- HookServer v1.1 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.3 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -34,14 +34,28 @@
 --   which sent shots into the ground). The look is a slim launcher worn along the right forearm: a steel sleeve over
 --   ArmR_fore (along the forearm toward the hand), a dark barrel running past the hand, two claw prongs at its tip (HookFX
 --   fires from the barrel tip; HookPose 1.1 lifts the arm level along the shot).
+-- v1.2: PITCH_MIN -8 -> -2 deg (Studio test: a -8 deg shot from shoulder height met flat ground ~33-50 studs out, inside
+--   the 60 / 80 range, so level shots at a dino ahead still ended in the ground).
+-- v1.3 (Kepu 2026-10-30: "what it should do is replace the right arm with this grappling hook arm when it is attached",
+--   with a prosthesis reference picture): with HookLook the pachy's right forearm, hand and claws are hidden (Transparency
+--   1; each part keeps its old value in HookArmOrigT and gets it back when the look goes) and a hook-arm prosthesis takes
+--   their place, welded to ArmR_fore and running from the elbow along the forearm (L = 1.8 x the forearm length): a leather
+--   strap with a steel buckle at the elbow, a dark steel socket collar, a brass housing, an open frame of four thin brass
+--   rails ending in a brass front yoke (top + bottom), a rope spool inside (steel nut behind it, red ring in front), a short
+--   steel rod,
+--   and at the front the steel hook (model "Hook": Shank, Bend, Barb, Point; HookFX 1.2 hides it while it flies). An
+--   invisible "Barrel" runs from the elbow to the yoke (0.95 L) so the claw still leaves from its tip. Our own blocky
+--   design in the game's style (brass / rope / hook idea from the reference, not a copy of that art). Switch: script
+--   attribute HookArmReplaceEnabled (default true, read at start; false = the v1.1 forearm launcher). Diagnostics
+--   (character): HookArmHidden (parts hidden), HookLookBuilt.
 -- Switch: script attribute HookServerEnabled (default true, read at start). Diagnostics: script HookServerVersion,
 --   HookShots, HookHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
-local PITCH_MIN, PITCH_MAX = math.rad(-8), math.rad(25) -- v1.1
+local VERSION = "1.3"
+local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25) -- v1.1 clamp; v1.2 min -8 -> -2
 local WINDUP = 0.15        -- s arm raise before the claw flies
 local CLAW_SPEED = 220     -- studs/s (world)
 local PULL_TIME = 0.5      -- s
@@ -50,12 +64,17 @@ local AIM_HELP = 4         -- studs x scale around the aim line
 local SMASH_TOL = 18       -- studs x scale head-to-hitbox for the smash
 local SHOVE, SHOVE_TIME = 30, 0.35
 local STEEL, STEEL_DARK = Color3.fromRGB(154, 166, 184), Color3.fromRGB(93, 104, 120)
+local BRASS, LEATHER = Color3.fromRGB(201, 163, 74), Color3.fromRGB(110, 72, 40)        -- v1.3 prosthesis
+local ROPE, RING_RED = Color3.fromRGB(196, 160, 110), Color3.fromRGB(180, 40, 40)
+local ARM_HIDE = {"ArmR_fore", "ArmR_hand", "ArmR_claw1", "ArmR_claw2", "ArmR_claw3"}
 
 script:SetAttribute("HookServerVersion", VERSION)
 script:SetAttribute("HookShots", 0)
 script:SetAttribute("HookHits", 0)
 if script:GetAttribute("HookServerEnabled") == nil then script:SetAttribute("HookServerEnabled", true) end
 local enabled = script:GetAttribute("HookServerEnabled") ~= false
+if script:GetAttribute("HookArmReplaceEnabled") == nil then script:SetAttribute("HookArmReplaceEnabled", true) end
+local armReplace = script:GetAttribute("HookArmReplaceEnabled") ~= false -- v1.3
 
 local remote = ReplicatedStorage:FindFirstChild("DinoHookRequest")
 if not remote then
@@ -146,12 +165,98 @@ local function worldExclude()
 	return worldParams
 end
 
+-- v1.3: hide / restore the real right forearm, hand and claws
+local function hideArm(char, hide)
+	local seg = char:FindFirstChild("ArmR")
+	local n = 0
+	if seg then
+		for _, name in ipairs(ARM_HIDE) do
+			local p = seg:FindFirstChild(name, true)
+			if p and p:IsA("BasePart") then
+				if hide then
+					if p:GetAttribute("HookArmOrigT") == nil then p:SetAttribute("HookArmOrigT", p.Transparency) end
+					p.Transparency = 1
+					n += 1
+				elseif p:GetAttribute("HookArmOrigT") ~= nil then
+					p.Transparency = p:GetAttribute("HookArmOrigT")
+					p:SetAttribute("HookArmOrigT", nil)
+				end
+			end
+		end
+	end
+	char:SetAttribute("HookArmHidden", n)
+end
+
+-- v1.3: the hook-arm prosthesis in place of the forearm (see header)
+local function buildProsthesis(char, seg, fore, hand)
+	local upper = seg:FindFirstChild("ArmR_upper")
+	local up = fore.CFrame.UpVector * fore.Size.Y / 2
+	local e1, e2 = fore.Position + up, fore.Position - up
+	local elbow, far = e1, e2
+	if upper and upper:IsA("BasePart") and (e2 - upper.Position).Magnitude < (e1 - upper.Position).Magnitude then elbow, far = e2, e1 end
+	if (hand.Position - far).Magnitude > (hand.Position - elbow).Magnitude then elbow, far = far, elbow end
+	local axis = (far - elbow).Unit
+	local w = math.min(fore.Size.X, fore.Size.Z)
+	local L = fore.Size.Y * 1.8
+	local m = Instance.new("Model")
+	m.Name = "Mecha_HookArm"
+	local hookM = Instance.new("Model")
+	hookM.Name = "Hook"
+	hookM.Parent = m
+	local base = CFrame.lookAt(elbow, elbow + axis) -- Look = along the arm, Up = world-up side, Right = side
+	local function part(name, size, color, at, opts, parent)
+		-- at = Vector3(right, up, along) in w / w / L units from the elbow
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Color = color
+		p.Material = (opts and opts.mat) or Enum.Material.Metal
+		p.CanCollide, p.CanQuery, p.CanTouch, p.Massless = false, false, false, true
+		local cf = base * CFrame.new(at.X * w, at.Y * w, -at.Z * L)
+		if opts and opts.cyl then
+			p.Shape = Enum.PartType.Cylinder
+			cf = cf * CFrame.Angles(0, math.pi / 2, 0) -- cylinder axis (X) along the arm
+		end
+		p.CFrame = cf
+		if opts and opts.invisible then p.Transparency = 1 end
+		p.Parent = parent or m
+		local wc = Instance.new("WeldConstraint")
+		wc.Part0, wc.Part1 = fore, p
+		wc.Parent = p
+		return p
+	end
+	local cyl = {cyl = true}
+	part("Strap", Vector3.new(1.75 * w, 1.75 * w, 0.16 * L), LEATHER, Vector3.new(0, 0, 0.06), {mat = Enum.Material.Leather})
+	part("Buckle", Vector3.new(0.5 * w, 0.22 * w, 0.1 * L), STEEL, Vector3.new(0, 0.95, 0.06))
+	part("Socket", Vector3.new(1.5 * w, 1.5 * w, 0.1 * L), STEEL_DARK, Vector3.new(0, 0, 0.17))
+	part("Housing", Vector3.new(1.45 * w, 1.45 * w, 0.12 * L), BRASS, Vector3.new(0, 0, 0.27))
+	for _, c in ipairs({{"TL", -1, 1}, {"TR", 1, 1}, {"BL", -1, -1}, {"BR", 1, -1}}) do -- open frame: the spool shows from every side
+		part("Rail" .. c[1], Vector3.new(0.2 * w, 0.2 * w, 0.66 * L), BRASS, Vector3.new(c[2] * 0.62, c[3] * 0.62, 0.6))
+	end
+	part("Nut", Vector3.new(0.07 * L, 1.0 * w, 1.0 * w), STEEL_DARK, Vector3.new(0, 0, 0.36), cyl)
+	part("Spool", Vector3.new(0.34 * L, 0.88 * w, 0.88 * w), ROPE, Vector3.new(0, 0, 0.56), {cyl = true, mat = Enum.Material.Fabric})
+	part("RedRing", Vector3.new(0.06 * L, 0.96 * w, 0.96 * w), RING_RED, Vector3.new(0, 0, 0.73), {cyl = true, mat = Enum.Material.SmoothPlastic})
+	part("Rod", Vector3.new(0.2 * w, 0.2 * w, 0.18 * L), STEEL, Vector3.new(0, 0, 0.84))
+	part("YokeTop", Vector3.new(1.6 * w, 0.26 * w, 0.1 * L), BRASS, Vector3.new(0, 0.62, 0.93))
+	part("YokeBottom", Vector3.new(1.6 * w, 0.26 * w, 0.1 * L), BRASS, Vector3.new(0, -0.62, 0.93))
+	part("Barrel", Vector3.new(0.3 * w, 0.3 * w, 0.95 * L), STEEL_DARK, Vector3.new(0, 0, 0.475), {invisible = true})
+	-- the hook: shank forward out of the yoke, bends down, barb back, point up
+	part("Shank", Vector3.new(0.3 * w, 0.3 * w, 0.2 * L), STEEL, Vector3.new(0, 0, 1.03), nil, hookM)
+	part("Bend", Vector3.new(0.3 * w, 1.3 * w, 0.3 * w), STEEL, Vector3.new(0, -0.5, 1.12), nil, hookM)
+	part("Barb", Vector3.new(0.3 * w, 0.3 * w, 0.2 * L), STEEL, Vector3.new(0, -1.05, 1.03), nil, hookM)
+	part("Point", Vector3.new(0.26 * w, 0.6 * w, 0.26 * w), STEEL, Vector3.new(0, -0.85, 0.94), nil, hookM)
+	m.Parent = char
+	hideArm(char, true)
+	char:SetAttribute("HookLookBuilt", true)
+end
+
 -- the look: slim cuff + claw on the right wrist
 local function setLook(char)
 	local want = char:GetAttribute("HookLook") == true and char:GetAttribute("Species") == "Pachy"
 	local old = char:FindFirstChild("Mecha_HookArm")
 	if not want then
 		if old then old:Destroy() end
+		hideArm(char, false) -- v1.3
 		return
 	end
 	if old then return end
@@ -162,6 +267,7 @@ local function setLook(char)
 	local fore = seg:FindFirstChild("ArmR_fore")
 	local hand = seg:FindFirstChild("ArmR_hand")
 	if not (fore and fore:IsA("BasePart") and hand and hand:IsA("BasePart")) then return end
+	if armReplace then return buildProsthesis(char, seg, fore, hand) end -- v1.3
 	local toHand = hand.Position - fore.Position
 	if toHand.Magnitude < 1e-3 then return end
 	local axis = toHand.Unit

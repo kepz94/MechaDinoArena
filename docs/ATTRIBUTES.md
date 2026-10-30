@@ -2023,6 +2023,11 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | HookPullState / HookPullMoved / HookFXState / HookPoseState | characters (client) | idle / pulled; studs; none / out / reel / back; none / raise / hold / smash / lower | client diagnostics |
 | HookServerEnabled / HookPullEnabled / HookFXEnabled / HookPoseEnabled / SkillEffectsHookEnabled | scripts / characters | true | hook switches |
 | SkillTree.HOOK_ARM | SkillTree module constant | true | SkillTree 1.21 hook line (false = 1.20) |
+| HookArmReplaceEnabled | HookServer script | true | HookServer 1.3: prosthesis replaces the right forearm (false = 1.1 launcher) |
+| HookArmHidden / HookLookBuilt | pachy character (server) | 0 / 5; bool | HookServer 1.3: real arm parts hidden; look built |
+| HookArmOrigT | ArmR_fore / ArmR_hand / ArmR_claw1-3 (server) | number | HookServer 1.3: the part's Transparency before it was hidden (restored and cleared when the look goes) |
+| HookArmLevel | pachy character | degrees (default 56) | HookPose 1.1: arm lift that brings the forearm level |
+| HookFXShapeEnabled | character (client) | true | HookFX 1.2: hook-shaped claw + arm hook hidden in flight (false = 1.1 block claw) |
 | HeadbuttRefillTier2 / HeadbuttRefillTier3 / HeadbuttRefillTierUsed | pachy character | 1.3 / 1.6 / 2-3 | HeadbuttServer 1.2 tiered refill |
 | HeadbuttRefillTiersEnabled / HeadbuttHookBusyEnabled | HeadbuttServer script | true | HeadbuttServer 1.2 switches |
 | StatusBadgesSlowLeft / StatusBadgesState | dino (client) | seconds (0.1 steps); + "slow" | StatusBadges 1.2 diagnostics |

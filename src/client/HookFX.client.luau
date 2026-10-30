@@ -1,4 +1,4 @@
--- HookFX v1.1 (Mecha Dino Arena) — the pachy Grappling Hook effects on this client (LocalScript, StarterPlayerScripts).
+-- HookFX v1.2 (Mecha Dino Arena) — the pachy Grappling Hook effects on this client (LocalScript, StarterPlayerScripts).
 -- MDA-122, plan docs/plans/PACHY_PARTS_v1.0.md Drop A Task 6, mockup docs/mockups/pachy_parts_options.html "A · Wrist claw".
 -- For every player character with HookStartedAt (HookServer 1.0), from its server stamps:
 --   launch .. contact: a small steel claw flies from the wrist (Mecha_HookArm Barrel, else the ArmR segment) to
@@ -7,12 +7,16 @@
 --   HookHitAt (fresh): white flash at the smash point, low thud (built-in collide.wav, pitched down) and the damage number
 --     (HookHitDamage, yellow) popping up.
 -- v1.1 (forearm launcher, HookServer 1.1): the claw leaves from the barrel's tip (Barrel + its look x half its length).
+-- v1.2 (hook-arm prosthesis, HookServer 1.3): the flying claw is a steel hook (a thin shank + bend + barb + point built
+--   around the claw part) and the hook on the arm (Mecha_HookArm.Hook) is hidden on this client (LocalTransparencyModifier
+--   1) while the claw is out / reeling / coming back, shown again when it is home. Switch: character attribute
+--   HookFXShapeEnabled (default true; false = the v1.1 block claw, arm hook always shown).
 -- Created locally in Workspace.DinoFX_Local. Switch: character attribute HookFXEnabled (default true).
 -- Diagnostics (character, this client): HookFXVersion, HookFXState ("none" / "out" / "reel" / "back").
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local STALE = 1
 local STEEL, CHAIN = Color3.fromRGB(154, 166, 184), Color3.fromRGB(60, 66, 78)
 local NUMBER_COLOR = Color3.fromRGB(255, 214, 64)
@@ -130,6 +134,7 @@ local function watch(char)
 			if st then
 				if st.claw then st.claw:Destroy() end
 				if st.chain then st.chain:Destroy() end
+				if st.pieces then for _, pc in ipairs(st.pieces) do pc:Destroy() end end -- v1.2
 			end
 			tracked[char] = nil
 		end
@@ -148,6 +153,22 @@ Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
 
 local function show(char, k, v) if char:GetAttribute(k) ~= v then char:SetAttribute(k, v) end end
+
+-- v1.2: hook shape pieces around the claw (claw-local offsets x scale; the claw looks along the flight, forward = -Z)
+local HOOK_SHANK = Vector3.new(0.18, 0.18, 0.6)
+local HOOK_PIECES = {
+	{name = "HookBend", size = Vector3.new(0.18, 0.55, 0.18), at = Vector3.new(0, -0.22, -0.3)},
+	{name = "HookBarb", size = Vector3.new(0.18, 0.18, 0.34), at = Vector3.new(0, -0.45, -0.17)},
+	{name = "HookPoint", size = Vector3.new(0.15, 0.3, 0.15), at = Vector3.new(0, -0.32, -0.02)},
+}
+local function setArmHook(char, visible)
+	local m = char:FindFirstChild("Mecha_HookArm")
+	local h = m and m:FindFirstChild("Hook")
+	if not h then return end
+	for _, p in ipairs(h:GetChildren()) do
+		if p:IsA("BasePart") then p.LocalTransparencyModifier = visible and 0 or 1 end
+	end
+end
 
 RunService.RenderStepped:Connect(function()
 	local t = workspace:GetServerTimeNow()
@@ -188,10 +209,22 @@ RunService.RenderStepped:Connect(function()
 			st.chain.Size = Vector3.new(0.12 * s, 0.12 * s, len)
 			st.chain.CFrame = CFrame.lookAt(from + dir / 2, clawPos)
 			st.claw.Transparency, st.chain.Transparency = 0, 0
+			if char:GetAttribute("HookFXShapeEnabled") ~= false then -- v1.2
+				st.claw.Size = HOOK_SHANK * s
+				st.pieces = st.pieces or {}
+				for i, d in ipairs(HOOK_PIECES) do
+					local pc = st.pieces[i] or fxPart(d.name, d.size * s, STEEL, nil)
+					st.pieces[i] = pc
+					pc.CFrame = st.claw.CFrame * CFrame.new(d.at * s)
+					pc.Transparency = 0
+				end
+			end
 		else
 			if st.claw then st.claw.Transparency = 1 end
 			if st.chain then st.chain.Transparency = 1 end
+			if st.pieces then for _, pc in ipairs(st.pieces) do pc.Transparency = 1 end end -- v1.2
 		end
+		setArmHook(char, clawPos == nil or char:GetAttribute("HookFXShapeEnabled") == false) -- v1.2
 		show(char, "HookFXState", state)
 	end
 end)
