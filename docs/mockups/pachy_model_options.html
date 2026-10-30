@@ -1,0 +1,137 @@
+<title>Pachy Model Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro, chips (head / size / skin), one stage with the side view of the block pachy, a size strip against the raptor and T-Rex, the colour-group legend, notes. Single dark game look by choice (matches the Lab mockups). */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --volt: #7fe9ff; --skin: #c9a2ff;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--yellow); }
+.lede { margin: 0; color: var(--muted); max-width: 80ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+button:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.stage { background: linear-gradient(180deg, #16202e 0%, #1b2636 62%, #2a3a24 62%, #23321e 100%); border: 2px solid var(--line); border-radius: 18px; padding: 12px; }
+.stage svg { width: 100%; height: auto; display: block; }
+.sizes { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 8px; }
+.sizes h3, .legend h3 { margin: 0; font: 700 17px var(--display); }
+.row { display: grid; grid-template-columns: 110px 1fr 80px; gap: 10px; align-items: center; font: 800 13px var(--body); }
+.row .bar { height: 14px; border-radius: 99px; background: #2a3142; overflow: hidden; }
+.row .bar i { display: block; height: 100%; border-radius: 99px; }
+.row .num { font: 600 12px var(--mono); color: var(--grey); text-align: right; font-variant-numeric: tabular-nums; }
+.legend { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.role { display: flex; gap: 8px; align-items: center; font: 800 13px var(--body); min-width: 0; }
+.role i { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #ffffff33; flex: none; }
+.role small { display: block; font: 600 11px var(--mono); color: var(--muted); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note li { color: var(--grey); font-size: 14px; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+</style>
+
+<div class="wrap">
+  <h1>Pachycephalosaurus <span>model options</span></h1>
+  <p class="lede">Side view of the pachy in the same block style as the raptor and T-Rex. Every block belongs to one colour group, so a skin repaints groups (the second inspo photo is a skin here, not a different model). Pick a head style and a size; flip the skins to see the groups work.</p>
+  <div class="controls">
+    <div class="group" role="group" aria-label="Head"><b>Head</b>
+      <button class="chip" data-k="head" data-v="bumps" aria-pressed="true">Knob ring (photo 1)</button>
+      <button class="chip" data-k="head" data-v="spikes" aria-pressed="false">Spikes (photo 2)</button>
+    </div>
+    <div class="group" role="group" aria-label="Size"><b>Size</b>
+      <button class="chip" data-k="size" data-v="real" aria-pressed="true">Real (~15 studs)</button>
+      <button class="chip" data-k="size" data-v="bulk" aria-pressed="false">Bulked (~20 studs)</button>
+    </div>
+    <div class="group" role="group" aria-label="Skin preview"><b>Skin preview</b>
+      <button class="chip" data-k="skin" data-v="classic" aria-pressed="true">Classic</button>
+      <button class="chip" data-k="skin" data-v="ember" aria-pressed="false">Ember</button>
+      <button class="chip" data-k="skin" data-v="slate" aria-pressed="false">Slate</button>
+    </div>
+  </div>
+  <div class="stage"><svg id="dino" viewBox="0 0 320 200" role="img" aria-label="Side view of the block pachycephalosaurus"></svg></div>
+  <div class="sizes"><h3>Size next to the other dinos</h3><div id="sizes"></div></div>
+  <div class="legend"><h3>Colour groups (what a skin repaints)</h3><div class="roles" id="roles"></div></div>
+  <div class="notes">
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>Knob ring + Real size</h3><ul><li>Matches the photo 1 look: bone dome with a ring of knobs, short snout knobs.</li><li>Real size is a bit bigger than the raptor (15 vs 12.9 studs), so it reads as a mid-weight between raptor and T-Rex.</li><li>Photo 2's orange and maroon becomes a skin (Ember).</li></ul></div>
+    <div class="note"><h3>Spikes</h3><ul><li>Taller spikes behind the dome and on the snout, like photo 2.</li><li>Reads tougher; the spikes are their own colour group, so skins can make them glow.</li></ul></div>
+    <div class="note"><h3>Bulked size</h3><ul><li>About 20 studs long: halfway between raptor and T-Rex, easier to hit and to see.</li><li>Bigger than the real animal; better if it's meant to tank hits.</li></ul></div>
+    <div class="note"><h3>Same either way</h3><ul><li>Same 17-joint rig as the raptor and T-Rex, so walking, turning, hit boxes and mecha parts work the same way.</li><li>Every colour group has its own colour on the classic look, so skins never mix groups. Pupils and mouth are never repainted.</li><li>Abilities (head-butt charge etc.) come after the model.</li></ul></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const SKINS = {
+    classic: { main: '#7A6A4E', stripes: '#3E5A55', belly: '#C8B898', dome: '#E6DCC4', knobs: '#8C7A5A', mask: '#3F6F7A', limbs: '#5E5240', claws: '#2E2620', eyes: '#8A2A1E' },
+    ember:   { main: '#D9902E', stripes: '#7A2A3A', belly: '#F0D8A0', dome: '#F2E6D6', knobs: '#C9A27A', mask: '#C07A50', limbs: '#B0702A', claws: '#3A2418', eyes: '#E8C040' },
+    slate:   { main: '#5B6770', stripes: '#2C343A', belly: '#B8C0C4', dome: '#DDE3E6', knobs: '#7D8A92', mask: '#8FB0C8', limbs: '#4A545C', claws: '#22282C', eyes: '#7FE9FF' },
+  };
+  const ROLE_NAMES = { main: 'Body', stripes: 'Stripes', belly: 'Belly / throat', dome: 'Dome', knobs: 'Knobs / spikes', mask: 'Eye patch', limbs: 'Lower legs / hands', claws: 'Claws', eyes: 'Eyes' };
+  const st = { head: 'bumps', size: 'real', skin: 'classic' };
+  function r(x, y, w, h, c) { return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`; }
+  function draw() {
+    const c = SKINS[st.skin];
+    const PUPIL = '#111111', MOUTH = '#6E342E';
+    let s = '';
+    // far leg (shaded)
+    s += `<g opacity="0.55">${r(118, 112, 24, 34, c.main)}${r(127, 144, 11, 30, c.limbs)}${r(123, 172, 26, 8, c.limbs)}${r(147, 174, 5, 6, c.claws)}</g>`;
+    // tail
+    s += r(14, 94, 30, 8, c.main) + r(40, 90, 36, 12, c.main) + r(72, 86, 40, 18, c.main);
+    [22, 36, 52, 66, 84, 100].forEach((x, i) => { s += r(x, i < 2 ? 94 : (i < 4 ? 90 : 86), 5, i < 2 ? 5 : 7, c.stripes); });
+    // body
+    s += r(104, 78, 88, 48, c.main) + r(114, 118, 74, 10, c.belly);
+    [116, 132, 148, 164, 178].forEach(x => { s += r(x, 78, 6, 20, c.stripes); });
+    // neck + throat
+    s += r(184, 56, 28, 46, c.main) + r(200, 74, 14, 30, c.belly);
+    s += r(190, 56, 5, 14, c.stripes);
+    // head
+    s += r(198, 30, 50, 34, c.main);
+    s += r(202, 16, 44, 16, c.dome) + r(208, 8, 32, 9, c.dome) + r(216, 4, 16, 5, c.dome);
+    s += r(244, 40, 22, 20, c.main) + r(262, 44, 8, 13, c.main);
+    s += r(244, 56, 26, 3, MOUTH);
+    s += r(220, 33, 22, 15, c.mask) + r(227, 37, 7, 6, c.eyes) + r(230, 37, 2, 6, PUPIL);
+    if (st.head === 'bumps') {
+      [[198, 28], [203, 23], [242, 24], [247, 30], [250, 36], [262, 38], [266, 44], [198, 36]].forEach(([x, y]) => { s += r(x, y, 6, 6, c.knobs); });
+    } else {
+      const tri = (pts) => `<polygon points="${pts}" fill="${c.knobs}"/>`;
+      s += tri('198,30 184,18 202,24') + tri('200,38 184,32 202,32') + tri('204,22 196,8 210,18');
+      s += tri('246,24 254,12 250,28') + tri('262,40 274,30 266,44') + tri('266,48 280,46 268,52') + tri('252,36 262,24 256,40');
+    }
+    // arm
+    s += r(204, 92, 8, 16, c.main) + r(207, 106, 9, 6, c.limbs) + r(214, 108, 3, 5, c.claws);
+    // near leg
+    s += r(132, 110, 26, 36, c.main) + r(142, 144, 12, 30, c.limbs) + r(138, 172, 28, 8, c.limbs) + r(164, 174, 5, 6, c.claws);
+    const k = st.size === 'bulk' ? 1.0 : 0.78;
+    const svg = document.getElementById('dino');
+    svg.innerHTML = `<g transform="translate(${160 - 160 * k} ${190 - 190 * k}) scale(${k})">${s}</g>`;
+    // sizes
+    const list = [['Raptor', 12.85, '#5E943E'], ['Pachy', st.size === 'bulk' ? 20 : 15, c.main], ['T-Rex', 40.1, '#666A4A']];
+    document.getElementById('sizes').innerHTML = list.map(([n, v, col]) => `<div class="row"><span>${n}</span><span class="bar"><i style="width:${(v / 40.1 * 100).toFixed(1)}%;background:${col}"></i></span><span class="num">${v} studs</span></div>`).join('');
+    document.getElementById('roles').innerHTML = Object.keys(ROLE_NAMES).map(role => `<div class="role"><i style="background:${c[role]}"></i><span>${ROLE_NAMES[role]}<small>${c[role]}</small></span></div>`).join('')
+      + `<div class="role"><i style="background:${PUPIL}"></i><span>Pupils<small>never repainted</small></span></div><div class="role"><i style="background:${MOUTH}"></i><span>Mouth<small>never repainted</small></span></div>`;
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    st[b.dataset.k] = b.dataset.v;
+    document.querySelectorAll(`.chip[data-k="${b.dataset.k}"]`).forEach(x => x.setAttribute('aria-pressed', x === b));
+    draw();
+  });
+  draw();
+})();
+</script>
