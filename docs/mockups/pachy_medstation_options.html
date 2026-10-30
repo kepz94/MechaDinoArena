@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pachy Med-Station</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Mockup for the pachy's Med-Station (Health area, slot part): drop a machine, stand in its circle, heal 50% of max
+   health over 5 s. Three machine looks to pick from, one clickable HUD scene, and the proposed steps. Same dark game look
+   as the earlier pachy mockups (pachy_sacrifice_options.html). */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9a2e; --red: #f05a4f; --green: #5fd16a; --med: #46e08a; --med-soft: #46e08a33;
+  --sky1: #7fbdea; --sky2: #b6def2; --grass: #6cc25a; --grass2: #57a948;
+  --display: "Fredoka", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); margin: 0; }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); }
+h1 span { color: var(--med); }
+h2 { margin: 0; font: 700 18px var(--display); }
+.lede { margin: 0; color: var(--muted); max-width: 75ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+button:focus-visible { outline: 3px solid var(--med); outline-offset: 2px; }
+
+.scene { position: relative; width: 100%; aspect-ratio: 16 / 8; border-radius: 16px; overflow: hidden; border: 2px solid var(--line);
+  background: linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 50%, var(--grass) 50%, var(--grass2) 100%); }
+.pachy { position: absolute; left: 50%; top: 52%; width: 17%; transform: translate(-50%, -50%); transition: left .7s ease-in-out; z-index: 3; }
+.pachy.out { left: 86%; }
+.pachy.stun { filter: saturate(.4) brightness(.8); }
+.stars { position: absolute; top: -18%; left: 30%; font: 700 20px var(--display); color: var(--yellow); display: none; }
+.pachy.stun + .stars { display: block; }
+
+/* the heal area (ground ellipse, centred where it was dropped) */
+.station { position: absolute; left: 50%; top: 66%; transform: translate(-50%, -50%); width: 46%; aspect-ratio: 3.2 / 1; display: none; z-index: 2; }
+.station.on { display: block; }
+.station.big { width: 64%; }
+.area { position: absolute; inset: 0; border-radius: 50%; }
+.machine { position: absolute; left: 50%; bottom: 46%; transform: translateX(-50%); }
+
+/* A · Med pylon: ground ring + a mast with a green cross and a beam to the pachy */
+.lookA .area { border: 4px solid var(--med); background: radial-gradient(ellipse, var(--med-soft), transparent 70%); }
+.lookA .machine { width: 4%; height: 105%; background: #2e3440; border-radius: 4px; }
+.lookA .machine::after { content: "+"; position: absolute; left: 50%; top: -38%; transform: translateX(-50%); width: 260%; aspect-ratio: 1; border-radius: 50%;
+  background: var(--med); color: #0b2a17; font: 700 clamp(14px, 2vw, 22px)/1 var(--display); display: grid; place-items: center; box-shadow: 0 0 18px var(--med); }
+.beam { position: absolute; height: 4px; background: linear-gradient(90deg, var(--med), #b7ffd4); box-shadow: 0 0 10px var(--med); transform-origin: 0 50%; display: none; z-index: 2; }
+
+/* B · Heal dome: a low machine under a see-through green bubble the size of the area */
+.lookB .area { border: 3px solid #7cf0ad; background: radial-gradient(ellipse, #46e08a22, transparent 75%); }
+.lookB .dome { position: absolute; left: 0; right: 0; bottom: 50%; height: 330%; border-radius: 50% 50% 0 0 / 100% 100% 0 0; border: 3px solid #7cf0adaa; border-bottom: 0;
+  background: linear-gradient(180deg, #46e08a30, #46e08a14); }
+.lookB .machine { width: 12%; height: 42%; background: #2e3440; border-radius: 8px 8px 3px 3px; border: 3px solid var(--med); }
+.lookB .machine::after { content: "+"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--med); font: 700 clamp(12px, 1.8vw, 20px)/1 var(--display); }
+
+/* C · Pulse pad: a flat pad that sends a green wave out to the edge every second */
+.lookC .area { border: 3px dashed #7cf0adcc; }
+.lookC .machine { width: 18%; height: 24%; bottom: 38%; background: #2e3440; border-radius: 50%; border: 4px solid var(--med); box-shadow: 0 0 14px var(--med); }
+.wave { position: absolute; left: 50%; top: 50%; width: 10%; aspect-ratio: 3.2 / 1; border: 3px solid var(--med); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0; }
+.lookC.on .wave { animation: wave 1s linear infinite; }
+@keyframes wave { from { width: 10%; opacity: .9; } to { width: 100%; opacity: 0; } }
+
+.timer { position: absolute; left: 50%; top: 4%; transform: translateX(-50%); font: 700 clamp(14px, 2vw, 20px) var(--display); color: #fff; text-shadow: 0 2px 0 #0008; background: #0b2a17cc; border: 2px solid var(--med); border-radius: 99px; padding: 2px 14px; display: none; z-index: 4; }
+.timer.on { display: block; }
+.pop { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); font: 700 22px var(--display); color: var(--med); text-shadow: 0 2px 0 #0a2a14; opacity: 0; pointer-events: none; z-index: 4; }
+.pop.go { animation: rise .8s ease-out forwards; }
+@keyframes rise { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -40px); } }
+.toast { position: absolute; left: 50%; top: 80%; transform: translateX(-50%); background: #000000b0; border: 2px solid var(--red); border-radius: 10px; padding: 6px 12px; font: 800 14px var(--body); white-space: nowrap; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 5; }
+.toast.on { opacity: 1; }
+
+.hp { position: absolute; left: 1.2%; bottom: 3%; width: 21%; font: 800 clamp(9px, 1.3vw, 13px) var(--body); z-index: 4; }
+.hp .row { display: flex; justify-content: space-between; text-shadow: 0 1px 0 #000; }
+.hp .bar { position: relative; height: clamp(8px, 1.3vw, 13px); background: #00000088; border: 2px solid #ffffffcc; border-radius: 99px; overflow: hidden; }
+.hp .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--green); transition: width .25s; }
+.hp .fill.healing { background: repeating-linear-gradient(90deg, var(--green) 0 8px, #9bf0b4 8px 12px); }
+.bar-row { position: absolute; left: 50%; bottom: 3%; transform: translateX(-50%); display: flex; gap: .6%; width: 46%; z-index: 4; }
+.tile { position: relative; flex: 1; aspect-ratio: 1 / 1; border-radius: 12px; border: 3px solid #ffffffcc; background: #0a1a0fcc; display: grid; place-items: center; font: 700 clamp(8px, 1.15vw, 13px) var(--display); text-align: center; line-height: 1.05; overflow: hidden; }
+.tile .key { position: absolute; left: 7%; top: 3%; font: 800 clamp(7px, .95vw, 10px) var(--body); color: #ffffffcc; }
+.tile.med { border-color: var(--med); cursor: pointer; }
+.tile.med .cd { position: absolute; left: 0; right: 0; bottom: 0; background: #000000aa; height: 0%; }
+.tile.med .num { position: absolute; inset: 0; display: grid; place-items: center; font: 700 clamp(12px, 1.8vw, 20px) var(--display); color: #ffd9a8; text-shadow: 0 2px 0 #000; }
+.tile.med .pips { position: absolute; bottom: 6%; left: 0; right: 0; display: flex; justify-content: center; gap: 8%; }
+.tile.med .pips i { width: 14%; aspect-ratio: 1; border-radius: 50%; background: var(--med); }
+.tile.med .pips i.off { background: #ffffff33; }
+
+.state { margin: 0; font: 600 13px var(--mono); color: var(--grey); min-height: 1.5em; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; position: relative; }
+.note h3 { margin: 0 0 6px; font: 700 16px var(--display); }
+.note ul { margin: 0; padding-left: 18px; color: var(--grey); }
+.note.pick { border-color: var(--med); }
+.rec { position: absolute; top: -11px; right: 12px; background: var(--med); color: #0b2a17; font: 800 11px var(--body); padding: 2px 8px; border-radius: 99px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font: 700 15px var(--display); color: var(--med); white-space: nowrap; }
+tr.cur td { background: #46e08a14; }
+@media (max-width: 640px) { .bar-row { width: 70%; } .hp { width: 26%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pachy <span>Med-Station</span></h1>
+  <p class="lede">Health line for the pachy, in a slot. Drop a machine at your feet; while you stand in its circle you heal 50% of max health over 5 s (pachy: +45). Step out and the heal pauses; the machine still ends at 5 s. Can't drop while pinned or stunned. 30 s cooldown from the drop. Pick a machine look; press the tile to try it.</p>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Machine look"><b>Look</b>
+      <button class="chip" data-look="A" aria-pressed="false">A · Med pylon</button>
+      <button class="chip" data-look="B" aria-pressed="true">B · Heal dome</button>
+      <button class="chip" data-look="C" aria-pressed="false">C · Pulse pad</button>
+    </div>
+    <div class="group" role="group" aria-label="Step"><b>Step</b>
+      <button class="chip" data-step="1" aria-pressed="true">I</button>
+      <button class="chip" data-step="2" aria-pressed="false">II</button>
+      <button class="chip" data-step="3" aria-pressed="false">III</button>
+      <button class="chip" data-step="4" aria-pressed="false">★</button>
+    </div>
+    <div class="group"><b>Test</b>
+      <button class="chip" id="drop">Drop (V)</button>
+      <button class="chip" id="walk" aria-pressed="false">Step out</button>
+      <button class="chip" id="pin" aria-pressed="false">Pinned</button>
+      <button class="chip" id="stun" aria-pressed="false">Stunned</button>
+      <button class="chip" id="skip">Skip cooldown</button>
+      <button class="chip" id="reset">Reset</button>
+    </div>
+  </div>
+
+  <div class="scene" id="scene">
+    <div class="station lookB" id="station">
+      <div class="area"></div><div class="dome"></div><div class="wave"></div><div class="machine"></div>
+    </div>
+    <div class="beam" id="beam"></div>
+    <svg class="pachy" id="pachy" viewBox="0 0 200 140" aria-label="Pachy">
+      <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/>
+      <rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+      <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/>
+      <rect x="150" y="44" width="6" height="6" fill="#2b5a7a"/>
+      <rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+      <rect x="60" y="94" width="14" height="34" fill="#6d5e44"/><rect x="104" y="94" width="14" height="34" fill="#6d5e44"/>
+    </svg>
+    <div class="stars">✦ ✦ ✦</div>
+    <div class="timer" id="timer">MED 5.0</div>
+    <div class="pop" id="pop">+9</div>
+    <div class="toast" id="toast">Can't drop while pinned</div>
+    <div class="hp"><div class="row"><span>HEALTH</span><span id="hpText">30 / 90</span></div>
+      <div class="bar"><div class="fill" id="hpFill"></div></div></div>
+    <div class="bar-row">
+      <div class="tile"><span class="key">R</span>HOOK</div>
+      <div class="tile"><span class="key">LMB</span>BLOOD<br>RUSH</div>
+      <div class="tile"><span class="key">Space</span>LEGS</div>
+      <div class="tile med" id="medTile"><span class="key">V</span>MED<div class="cd" id="cd"></div><div class="num" id="cdNum"></div><div class="pips" id="pips"></div></div>
+      <div class="tile"><span class="key">LMB</span>ATTACK</div>
+    </div>
+  </div>
+  <p class="state" id="state" aria-live="polite"></p>
+
+  <div class="cols">
+    <div class="note" data-o="A"><h3>A · Med pylon</h3><ul>
+      <li>A post with a glowing green cross, a green ring on the ground, a beam to you while you heal.</li>
+      <li>Tall, easy to spot from far; the ring is the only edge you see.</li></ul></div>
+    <div class="note pick" data-o="B"><span class="rec">RECOMMENDED</span><h3>B · Heal dome</h3><ul>
+      <li>A low machine under a see-through green bubble exactly the size of the heal area.</li>
+      <li>The edge is obvious from every camera angle, so "stay inside" reads at a glance; enemies see where you are camping.</li></ul></div>
+    <div class="note" data-o="C"><h3>C · Pulse pad</h3><ul>
+      <li>A flat pad that sends a green wave out to the edge once a second (one heal tick per wave).</li>
+      <li>Lowest clutter, feels like a heartbeat; the edge is only a dashed line.</li></ul></div>
+  </div>
+
+  <div class="note">
+    <h2>Proposed steps (Health area, slot part)</h2>
+    <table>
+      <thead><tr><th>Step</th><th>What it does</th><th>Numbers</th></tr></thead>
+      <tbody>
+        <tr data-row="1"><td>I</td><td>Button: drop a Med-Station at your feet. Standing in its circle heals you 50% of max health over 5 s. Not while pinned or stunned.</td><td>radius 12 studs · 5 s · 10%/s · cooldown 30 s</td></tr>
+        <tr data-row="2"><td>II</td><td>Bigger heal area</td><td>radius 18 studs</td></tr>
+        <tr data-row="3"><td>III</td><td>Lasts longer</td><td>7 s at the same 10%/s (up to 70%)</td></tr>
+        <tr data-row="4"><td>★</td><td>Two stations: two drops before the cooldown; standing in both still heals once</td><td>2 charges, each back 30 s after use</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const MAX = 90;
+  let hp = 30, step = 1, look = "B", out = false, pinned = false, stunned = false;
+  let running = null, charges = [0], toastT = null;
+  const radiusBig = () => step >= 2, dur = () => (step >= 3 ? 7 : 5), maxCharges = () => (step >= 4 ? 2 : 1);
+
+  function say(t) { $("state").textContent = t; }
+  function toast(t) { $("toast").textContent = t; $("toast").classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => $("toast").classList.remove("on"), 1300); }
+  function drawHp(healing) {
+    $("hpFill").style.width = (hp / MAX * 100) + "%";
+    $("hpFill").classList.toggle("healing", !!healing);
+    $("hpText").textContent = Math.round(hp) + " / " + MAX;
+  }
+  function readyCount(now) { return charges.filter(t => t <= now).length; }
+  function drawTile() {
+    const now = performance.now();
+    const n = readyCount(now);
+    const next = Math.min(...charges);
+    const pips = $("pips"); pips.innerHTML = "";
+    if (maxCharges() > 1) for (let i = 0; i < maxCharges(); i++) { const e = document.createElement("i"); if (i >= n) e.className = "off"; pips.appendChild(e); }
+    if (n === 0) {
+      const left = Math.max(0, (next - now) / 1000);
+      $("cd").style.height = (left / 30 * 100) + "%";
+      $("cdNum").textContent = Math.ceil(left);
+    } else { $("cd").style.height = "0%"; $("cdNum").textContent = ""; }
+  }
+  function setLook(v) {
+    look = v;
+    $("station").className = "station look" + v + (running ? " on" : "") + (radiusBig() ? " big" : "");
+    document.querySelectorAll("[data-look]").forEach(b => b.setAttribute("aria-pressed", b.dataset.look === v));
+    document.querySelectorAll(".note[data-o]").forEach(n => n.style.opacity = n.dataset.o === v ? 1 : .55);
+  }
+  function setStep(v) {
+    step = v;
+    while (charges.length < maxCharges()) charges.push(0);
+    charges.length = maxCharges();
+    document.querySelectorAll("[data-step]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.step === v));
+    document.querySelectorAll("tr[data-row]").forEach(r => r.classList.toggle("cur", +r.dataset.row <= v));
+    setLook(look); drawTile();
+  }
+  function beam() {
+    const b = $("beam");
+    if (!running || out || look !== "A") { b.style.display = "none"; return; }
+    const s = $("scene").getBoundingClientRect(), m = $("station").querySelector(".machine").getBoundingClientRect(), p = $("pachy").getBoundingClientRect();
+    const x1 = m.left + m.width / 2 - s.left, y1 = m.top - s.top - m.height * .3, x2 = p.left + p.width * .55 - s.left, y2 = p.top + p.height * .45 - s.top;
+    b.style.display = "block"; b.style.left = x1 + "px"; b.style.top = y1 + "px";
+    b.style.width = Math.hypot(x2 - x1, y2 - y1) + "px"; b.style.transform = `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)`;
+  }
+  function drop() {
+    const now = performance.now();
+    if (pinned) { toast("Can't drop while pinned"); say("MedStationResult = \"pinned\""); return; }
+    if (stunned) { toast("Can't drop while stunned"); say("MedStationResult = \"stunned\""); return; }
+    if (readyCount(now) === 0) { toast("Recharging"); say("MedStationResult = \"cooldown\""); return; }
+    const i = charges.findIndex(t => t <= now); charges[i] = now + 30000;
+    if (running) clearInterval(running.iv);
+    out = false; $("pachy").classList.remove("out"); $("walk").setAttribute("aria-pressed", "false");
+    running = { end: now + dur() * 1000, healed: 0, acc: 0 };
+    setLook(look); $("timer").classList.add("on");
+    say("MedStationResult = \"ok\" · heals 9 HP/s while inside, " + dur() + " s");
+    let last = now;
+    running.iv = setInterval(() => {
+      const t = performance.now(), dt = (t - last) / 1000; last = t;
+      const left = Math.max(0, (running.end - t) / 1000);
+      $("timer").textContent = "MED " + left.toFixed(1);
+      if (!out && hp < MAX) {
+        const add = Math.min(MAX - hp, MAX * 0.10 * dt);
+        hp += add; running.healed += add; running.acc += add;
+        if (running.acc >= 4.5) { $("pop").textContent = "+" + Math.round(running.acc); const p = $("pop"); p.classList.remove("go"); void p.offsetWidth; p.classList.add("go"); running.acc = 0; }
+      }
+      drawHp(!out && hp < MAX); beam(); drawTile();
+      if (left <= 0) {
+        clearInterval(running.iv);
+        say("station gone · healed " + Math.round(running.healed) + " HP" + (running.healed < 44 && step < 3 ? " (part of it spent outside the circle)" : ""));
+        running = null; $("timer").classList.remove("on"); setLook(look); drawHp(false); beam();
+      }
+    }, 100);
+  }
+
+  document.querySelectorAll("[data-look]").forEach(b => b.onclick = () => setLook(b.dataset.look));
+  document.querySelectorAll("[data-step]").forEach(b => b.onclick = () => setStep(+b.dataset.step));
+  $("drop").onclick = drop; $("medTile").onclick = drop;
+  $("walk").onclick = () => {
+    out = !out; $("pachy").classList.toggle("out", out); $("walk").setAttribute("aria-pressed", out);
+    if (running) say(out ? "outside the circle: heal paused (MedStationInside = false)" : "back inside: healing");
+    setTimeout(beam, 720);
+  };
+  $("pin").onclick = () => { pinned = !pinned; $("pin").setAttribute("aria-pressed", pinned); };
+  $("stun").onclick = () => { stunned = !stunned; $("stun").setAttribute("aria-pressed", stunned); $("pachy").classList.toggle("stun", stunned); };
+  $("skip").onclick = () => { charges = charges.map(() => 0); drawTile(); };
+  $("reset").onclick = () => { if (running) clearInterval(running.iv); running = null; hp = 30; charges = charges.map(() => 0); $("timer").classList.remove("on"); setLook(look); drawHp(false); drawTile(); beam(); say(""); };
+  document.addEventListener("keydown", e => { if (e.key === "v" || e.key === "V") drop(); });
+  setInterval(drawTile, 250);
+  setStep(1); drawHp(false);
+})();
+</script>
+</body>
+</html>
