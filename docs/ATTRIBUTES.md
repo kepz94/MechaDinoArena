@@ -1689,3 +1689,10 @@ MineDamagePop (BillboardGui, 1 s); workspace MineZapSound (4 s).
 MineServer 1.2: a player whose Energy Shield is up is not thrown, dazed or jammed (pop "BLOCKED"); target diagnostic MineBlockedAt (server time).
 MineServer 1.3 test hook: ServerScriptService.MineServer.MineTestDrop (BindableFunction, server only) :Invoke(ownerModel, groundPos, {dmg, launch, daze, jam}); script diagnostic MineTestDrops.
 
+## Shock Cannon heavy shot (SkillTree 1.14 / SkillEffects 1.11 / ScreechServer 1.3)
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| ScreechDamage | character | 0; 30 at star | damage the cannon's hit deals (stun stays ScreechFlinch 1.1; ScreechJam is false at every step) |
+
+Instance: ScreechDamagePop (BillboardGui on the hit dino's root, 1 s). Decoy Hologram is hidden from every dino (OWNER "none").
+

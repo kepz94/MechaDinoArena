@@ -1,4 +1,4 @@
--- SkillEffects v1.10 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.11 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -57,6 +57,7 @@
 --   only while bought AND slotted: MineEnabled, MineDamage, MineSlow (speed multiplier, 1 when off), MineSlowTime,
 --   MineCooldown, MineMax, MineJam (MineServer 1.0 / MechaButtons 1.11 / AbilityBar 1.5 read them).
 -- v1.10 (MDA-81; SkillTree 1.13): + MineLaunch (studs) and MineDaze (s), 0 when off (MineServer 1.1).
+-- v1.11 (MDA-83; SkillTree 1.14): + ScreechDamage (Shock Cannon star heavy shot, 30; 0 otherwise or when off).
 -- v1.7 (Kepu 2026-10-29: thrusters "a little more of a speed boost" -> "2x run speed"): SkillDashSpeedMul default 2
 --   (was 1.75).
 -- v1.6 (raptor parts batch 1, MDA-59, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 2; SkillTree 1.6). Written with the
@@ -72,7 +73,7 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
@@ -202,6 +203,7 @@ local function applyChar(char, st)
 	local jam = false
 	if srOn and e.screechJam == true then jam = true end
 	char:SetAttribute("ScreechJam", jam)
+	char:SetAttribute("ScreechDamage", srOn and (e.screechDamage or 0) or 0) -- v1.11
 	-- v1.9: Shock Mine (path "traps")
 	local mnOn = false
 	if live and (e.mineMax or 0) > 0 and inSlot("traps") then mnOn = true end

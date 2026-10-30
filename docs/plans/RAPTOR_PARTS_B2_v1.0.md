@@ -68,3 +68,8 @@ Kepu: "That shock dart animation sucks ... its distance is short as hell only wo
 | 15 — MechaButtons 1.10 | Wired | label "SHOCK CANNON"; with ScreechFullRange the aim line is full length at once and the release sends the full range |
 
 Red-team (one paragraph): a full stun on a T-Rex for 1.5 s is stronger than the old slow; the 14 / 10.3 s recharge, the visible 75 studs/s ball (dodgeable at range) and Thick Hide (stun rules apply) are the counterweights — accepted, Kepu tunes after playing. The cannon is a character descendant, so CloakFX fades it with the body. Server-side arcs replicate a few attachment moves per ball per frame; only one ball per raptor per 10 s, accepted.
+
+## Follow-up 3 — different stars, no hologram (Kepu 2026-10-29)
+Kepu: "let's give them different star attributes then for the canon maybe make it deal more damage and remove the stun or possibly just slow the target down instead. Let's also forget about the hologram." Pick: **Heavy shot** — Shock Cannon I–III unchanged; ★ keeps the 1.1 s stun and adds 30 damage (no longer 1.5 s, no parts jam). The Shock Mine keeps the parts jam as its ★. Decoy Hologram hidden (OWNER "none").
+Tasks: SkillTree 1.14 + spec 1.14 (Logic), SkillEffects 1.11 ScreechDamage (Wired), ScreechServer 1.3 damage on hit + "-30" pop (Wired).
+Red-team (one paragraph): 30 damage is half a raptor's health on top of a stun, so the cannon at ★ becomes a strong opener; the 10.3 s recharge and the visible 75 studs/s ball are the counterweights (accepted, tune after play). Energy Shield blocks the damage through TakeDamage; the stun still lands as before.

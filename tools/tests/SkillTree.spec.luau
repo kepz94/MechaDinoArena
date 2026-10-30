@@ -1,10 +1,11 @@
--- SkillTree.spec v1.13 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.14 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 -- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
 -- v1.10: Shock Dart (screech shown as "Shock Dart", range 100 / 135; the 35% range check reads the data)
 -- v1.11: Shock Cannon (name; stun 1.1 s, 1.5 s at star, 35% check)
 -- v1.12: Shock Mine (traps live for Raptor, Grapple hidden; effects, 35% checks)
 -- v1.13: Shock Mine blast + launch (damage 25, launch 25, daze 1)
+-- v1.14: Shock Cannon star = heavy shot (30 damage, stun 1.1, no jam); Decoy hidden
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -21,7 +22,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.13") -- v1.13 (was 1.12)
+eq("Version", ST.Version, "1.14") -- v1.14 (was 1.13)
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 40) -- v1.5 (ADR-004)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 41)
@@ -242,7 +243,7 @@ eq("pathsFor defense Raptor", names(ST.pathsFor("defense", "Raptor")), "hide,shi
 eq("pathsFor defense TRex", names(ST.pathsFor("defense", "TRex")), "hide,armor,reactive")
 eq("pathsFor speed Raptor", names(ST.pathsFor("speed", "Raptor")), "legs,thrusters") -- v1.12: grapple scrapped;
 eq("pathsFor speed TRex", names(ST.pathsFor("speed", "TRex")), "legs,ramjet")
-eq("pathsFor eng Raptor", names(ST.pathsFor("eng", "Raptor")), "traps,decoy,scent") -- v1.9 (beacon hidden); v1.12: + traps
+eq("pathsFor eng Raptor", names(ST.pathsFor("eng", "Raptor")), "traps,scent") -- v1.9 (beacon hidden); v1.12: + traps; v1.14: decoy hidden
 eq("pathsFor eng TRex", names(ST.pathsFor("eng", "TRex")), "shieldproj,roaramp")
 eq("pathsFor eng new dino", names(ST.pathsFor("eng", "Stego")), "")
 eq("pathsFor health new dino", names(ST.pathsFor("health", "Stego")), "regen,lifesteal")
@@ -295,7 +296,7 @@ eq("autoSlot cloak", lo4(ST.autoSlot({"thrusters", false, false, false}, both, "
 eq("TRex loadout drops raptor parts", lo4(ST.sanitizeLoadout({"thrusters", "cloak", false, false}, both, "TRex")), "false,false,false,false")
 
 -- v1.6: raptor batch 1 (Blade Claws, Adrenaline Injector, Energy Shield; plan docs/plans/RAPTOR_PARTS_B1_v1.0.md)
-eq("Version 1.6+", ST.Version, "1.13") -- v1.13
+eq("Version 1.6+", ST.Version, "1.14") -- v1.14
 for _, id in ipairs({"blade", "adrenaline", "shield"}) do eq(id .. " live", ST.PATHS[id].soon, false) end
 eq("blade passive", ST.BUTTONS.blade == true, false)
 local function R(id, n) return ST.effects({[id] = n}, "Raptor") end
@@ -356,13 +357,14 @@ eq("screech 0", R("screech", 0).screechRange, 0)
 eq("screech I", R("screech", 1).screechRange, 100); eq("screech I flinch", R("screech", 1).screechFlinch, 1.1)
 eq("screech I cd", R("screech", 1).screechCooldown, 14); eq("screech II", R("screech", 2).screechRange, 135)
 eq("screech III cd", R("screech", 3).screechCooldown, 10.3); eq("screech III jam", R("screech", 3).screechJam, false)
-eq("screech star jam", R("screech", 4).screechJam, true)
+eq("screech star jam", R("screech", 4).screechJam, false) -- v1.14 (was true)
 eq("35 scent radius", 81 / 60 >= 1.35 - 1e-9, true); eq("35 scent mem", 10.8 / 8 >= 1.35 - 1e-9, true)
 eq("35 screech range", R("screech", 2).screechRange / R("screech", 1).screechRange >= 1.35 - 1e-9, true)
 eq("35 screech cd", R("screech", 1).screechCooldown / R("screech", 3).screechCooldown >= 1.35 - 1e-9, true)
 eq("shock cannon name", ST.PATHS.screech.name, "Shock Cannon") -- v1.11 (1.10: Shock Dart)
-eq("screech III flinch", R("screech", 3).screechFlinch, 1.1); eq("screech star flinch", R("screech", 4).screechFlinch, 1.5)
-eq("35 screech stun", R("screech", 4).screechFlinch / R("screech", 1).screechFlinch >= 1.35 - 1e-9, true)
+eq("screech III flinch", R("screech", 3).screechFlinch, 1.1); eq("screech star flinch", R("screech", 4).screechFlinch, 1.1) -- v1.14 (was 1.5)
+eq("screech star dmg", R("screech", 4).screechDamage, 30); eq("screech III dmg", R("screech", 3).screechDamage, 0) -- v1.14 (was the 35% stun check)
+eq("decoy hidden", ST.seesPath("decoy", "Raptor"), false) -- v1.14
 -- v1.12: Shock Mine
 eq("mine name", ST.PATHS.traps.name, "Shock Mine"); eq("mine button", ST.BUTTONS.traps, true); eq("mine live", ST.PATHS.traps.soon, false)
 eq("mine raptor", ST.seesPath("traps", "Raptor"), true); eq("mine trex", ST.seesPath("traps", "TRex"), false)

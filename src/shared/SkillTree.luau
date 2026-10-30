@@ -1,4 +1,4 @@
--- SkillTree v1.13 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.14 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -88,7 +88,7 @@
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.13"
+SkillTree.Version = "1.14"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -193,6 +193,10 @@ SkillTree.AREAS = {
 -- v1.13 (Kepu 2026-10-29 after v84: "a bot walked on it but it didn't do anything to the bot noticeably ... make this an
 --   actual useful gadget" -> "Blast + launch", "25"): mineDamage 25 (was 15); new mineLaunch (0; 25 studs thrown back)
 --   and mineDaze (0; 1 s dazed after landing); step I text. mineSlow / mineSlowTime stay for MineServer's old mode.
+-- v1.14 (Kepu 2026-10-29: "let's give them different star attributes ... for the canon maybe make it deal more damage
+--   and remove the stun" -> "Heavy shot"; "Let's also forget about the hologram"): Shock Cannon star no longer stuns
+--   longer or jams parts (screechFlinch stays 1.1, screechJam false); new screechDamage (0; 30 at star); star text.
+--   Decoy Hologram shown to nobody (OWNER "none"). The Shock Mine keeps the parts jam as its star.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -328,6 +332,10 @@ SkillTree.PATHS.traps.steps[2] = "2 mines out at once"
 SkillTree.PATHS.traps.steps[3] = "Recharges 36% faster (8.8 s)"
 SkillTree.PATHS.traps.steps[4] = "Mines also jam parts: the dino's boost, Shield and Adrenaline end at once"
 SkillTree.PATHS.traps.steps[1] = "Button: throw a mine 30 studs ahead. A dino that comes within 6 studs takes 25 damage, is blasted 25 studs back and dazed for 1 s" -- v1.13
+-- v1.14: Shock Cannon star = heavy shot; Decoy Hologram dropped
+SkillTree.PATHS.screech.steps[4] = "Heavy shot: the hit also deals 30 damage"
+SkillTree.OWNER.decoy = "none"
+SkillTree.PATHS.decoy.dino = "none"
 for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
 	"armor", "ramjet", "shieldproj", "roaramp"}) do
 	SkillTree.BUTTONS[id] = true
@@ -568,6 +576,8 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if sr >= 2 then e.screechRange = 135 end -- v1.10: 135 (was 67.5)
 	if sr >= 3 then e.screechCooldown = 10.3 end -- 14 / 10.3 = 1.36 (10.4 failed the 35% rule)
 	if sr >= 4 then e.screechJam, e.screechFlinch = true, 1.5 end -- v1.11: + stun 1.5 s
+	e.screechDamage = 0 -- v1.14
+	if sr >= 4 then e.screechJam, e.screechFlinch, e.screechDamage = false, 1.1, 30 end -- v1.14: star = heavy shot (no jam, no longer stun)
 	-- v1.12: Shock Mine (path "traps")
 	local tr = s.traps or 0
 	e.mineDamage, e.mineSlow, e.mineSlowTime, e.mineCooldown, e.mineMax, e.mineJam = 0, 1, 0, 0, 0, false

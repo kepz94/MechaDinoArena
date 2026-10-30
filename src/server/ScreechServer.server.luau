@@ -1,4 +1,4 @@
--- ScreechServer v1.2 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.3 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -55,6 +55,11 @@
 --     1.1 s, 1.5 s at star; Thick Hide rules apply as before); while the stun lasts the target's root carries sparks
 --     "ShockStunSparks" and a light "ShockStunLight". Target diagnostic ScreechStunTime (s, after Thick Hide).
 --     ScreechHitAt / jam / counters as 1.0.
+-- v1.3 (MDA-83; Kepu 2026-10-29: different star for the cannon -> "Heavy shot"; SkillTree 1.14): the shooter's
+--   ScreechDamage (30 at star, else 0) is dealt on a hit: a player through Humanoid:TakeDamage (LastHitBy / LastHitAt
+--   stamped; Energy Shield blocks it), a bot through DummyHealth (a killing blow stamps KilledBy / KilledByUserId /
+--   KilledWith "cannon" / KilledAt last). A damaging hit shows a rising "-30" (or "BLOCKED") BillboardGui
+--   "ScreechDamagePop" over the target. The star jam is gone from the tree (ScreechJam false), so jam code stays idle.
 -- Settings: script attribute ScreechServerEnabled (default true).
 -- Diagnostics: script ScreechServerVersion, ScreechRequests, ScreechHits, ScreechMisses; shooter character
 --   ScreechServerResult, ScreechCount, ScreechLastRange, ScreechLastHit (target name or "" for a miss), ScreechLastEnd
@@ -65,7 +70,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
 local SHOCK_SPEED, BALL_SIZE, SHELL_SIZE = 75, 3, 5 -- v1.2: Shock Cannon ball
@@ -138,6 +143,65 @@ local function burst(pos, size, color)
 	Debris:AddItem(p, 0.35)
 end
 
+-- v1.3: heavy shot damage + a rising number
+local function damagePop(target, text)
+	local root = target:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local h = target:GetExtentsSize().Y
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "ScreechDamagePop"
+	bb.Size = UDim2.fromOffset(140, 56)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.MaxDistance = 300
+	bb.StudsOffset = Vector3.new(0, h * 0.5 + 1.5, 0)
+	local tl = Instance.new("TextLabel")
+	tl.BackgroundTransparency = 1
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.Font = Enum.Font.GothamBlack
+	tl.TextScaled = true
+	tl.Text = text
+	tl.TextColor3 = VOLT_CORE
+	tl.TextStrokeColor3 = Color3.fromRGB(10, 40, 70)
+	tl.TextStrokeTransparency = 0
+	tl.Parent = bb
+	bb.Adornee = root
+	bb.Parent = root
+	TweenService:Create(bb, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{StudsOffset = bb.StudsOffset + Vector3.new(0, 4, 0)}):Play()
+	TweenService:Create(tl, TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.In, 0, false, 0.4),
+		{TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+	Debris:AddItem(bb, 1)
+end
+local function heavyDamage(b, target, t)
+	local dmg = b.dmg or 0
+	if dmg <= 0 then return end
+	local text = "-" .. math.floor(dmg + 0.5)
+	if Players:GetPlayerFromCharacter(target) then
+		local hum = target:FindFirstChildOfClass("Humanoid")
+		target:SetAttribute("LastHitBy", b.shooter.Name)
+		target:SetAttribute("LastHitAt", t)
+		if hum then
+			local before = hum.Health
+			hum:TakeDamage(dmg)
+			if hum.Health >= before then text = "BLOCKED" end
+		end
+	else
+		local hp = target:GetAttribute("DummyHealth")
+		if typeof(hp) == "number" then
+			target:SetAttribute("DummyHealth", math.max(0, hp - dmg))
+			if hp > 0 and hp - dmg <= 0 then
+				local killer = Players:GetPlayerFromCharacter(b.shooter)
+				target:SetAttribute("KilledBy", b.shooter.Name)
+				target:SetAttribute("KilledByUserId", killer and killer.UserId or 0)
+				target:SetAttribute("KilledWith", "cannon")
+				target:SetAttribute("KilledAt", t) -- last: KillRegenServer reacts to this one
+			end
+		end
+	end
+	damagePop(target, text)
+end
+
 local function hit(b, target)
 	local t = now()
 	local flinch = b.flinch
@@ -171,6 +235,7 @@ local function hit(b, target)
 		target:SetAttribute("StunnedUntil", math.max(tonumber(target:GetAttribute("StunnedUntil")) or 0, t + flinch))
 	end
 	if b.jam then target:SetAttribute("PartsJammedAt", t) end
+	if b.shock then heavyDamage(b, target, t) end -- v1.3
 	target:SetAttribute("ScreechHitBy", b.shooter.Name)
 	target:SetAttribute("ScreechHitCount", (target:GetAttribute("ScreechHitCount") or 0) + 1)
 	target:SetAttribute("ScreechHitAt", t) -- last: CloakServer reacts to it
@@ -534,7 +599,7 @@ remote.OnServerEvent:Connect(function(player, stamp, held)
 		muzzleFlash(pos)
 		local core, arcs = makeBall(pos, dir)
 		table.insert(bolts, {shooter = char, part = core, arcs = arcs, pos = pos, dir = dir, left = range, flinch = flinch,
-			jam = jam, shock = true, speed = SHOCK_SPEED})
+			jam = jam, shock = true, speed = SHOCK_SPEED, dmg = math.max(0, tonumber(char:GetAttribute("ScreechDamage")) or 0)}) -- v1.3: + dmg
 	else
 		local body, tip = makeBolt(pos, dir) -- v1.1: dart
 		table.insert(bolts, {shooter = char, part = body, tip = tip, pos = pos, dir = dir, left = range,
