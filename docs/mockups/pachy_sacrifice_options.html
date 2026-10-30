@@ -1,0 +1,216 @@
+<title>Pachy Sacrifice Headbutt</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Mockup for a new pachy Attack line: when the headbutt charges are empty, ATTACK pays 25% of max health for one more
+   headbutt, only while health is above 50%. One HUD scene (health bar + ability bar) with a clickable ATTACK, three HUD
+   looks to pick from, names, and the proposed step table. Same dark game look as the earlier pachy mockups. */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9a2e; --red: #f05a4f; --blood: #e0284a; --blood-soft: #e0284a44; --green: #5fd16a;
+  --sky1: #7fbdea; --sky2: #b6def2; --grass: #6cc25a; --grass2: #57a948;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); margin: 0; }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1000px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--blood); }
+h2 { margin: 0; font: 700 18px var(--display); }
+.lede { margin: 0; color: var(--muted); max-width: 75ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+button:focus-visible { outline: 3px solid var(--blood); outline-offset: 2px; }
+
+/* the game scene */
+.scene { position: relative; width: 100%; aspect-ratio: 16 / 8; border-radius: 16px; overflow: hidden; border: 2px solid var(--line);
+  background: linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 58%, var(--grass) 58%, var(--grass2) 100%); }
+.pachy { position: absolute; left: 50%; top: 40%; width: 19%; transform: translate(-50%, -50%); transition: transform .12s; }
+.pachy.hit { transform: translate(-50%, -50%) scale(1.06); }
+.flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, #e0284a88, transparent 55%); opacity: 0; pointer-events: none; transition: opacity .35s; }
+.flash.on { opacity: 1; transition: none; }
+.float { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font: 700 26px var(--display); color: var(--blood); text-shadow: 0 2px 0 #2a0610; opacity: 0; pointer-events: none; }
+.float.go { animation: rise .9s ease-out forwards; }
+@keyframes rise { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -46px); } }
+.toast { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); background: #000000b0; border: 2px solid var(--blood); border-radius: 10px; padding: 6px 12px; font: 800 14px var(--body); white-space: nowrap; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.on { opacity: 1; }
+
+/* HUD: health bottom-left, ability bar bottom-centre (matches AbilityBar 1.7+ and the HEALTH bar) */
+.hp { position: absolute; left: 1.2%; bottom: 3%; width: 21%; font: 800 clamp(9px, 1.3vw, 13px) var(--body); }
+.hp .row { display: flex; justify-content: space-between; text-shadow: 0 1px 0 #000; }
+.hp .bar { position: relative; height: clamp(8px, 1.3vw, 13px); background: #00000088; border: 2px solid #ffffffcc; border-radius: 99px; overflow: hidden; }
+.hp .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--green); transition: width .25s; }
+.hp .cost { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--blood) 0 5px, #ff7b93 5px 9px); opacity: 0; transition: opacity .2s, left .25s, width .25s; }
+.hp .half { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; background: #fff; opacity: 0; }
+.bar-row { position: absolute; left: 50%; bottom: 3%; transform: translateX(-50%); display: flex; gap: .6%; width: 46%; }
+.tile { position: relative; flex: 1; aspect-ratio: 1 / 1; border-radius: 12px; border: 3px solid #ffffffcc; background: #0a1a0fcc; display: grid; place-items: center; font: 700 clamp(9px, 1.25vw, 14px) var(--display); }
+.tile .key { position: absolute; left: 7%; top: 3%; font: 800 clamp(7px, .95vw, 10px) var(--body); color: #ffffffcc; }
+.tile.attack { border-color: var(--yellow); cursor: pointer; }
+.tile.attack.empty { opacity: .55; }
+.tile.attack.blood { border-color: var(--blood); box-shadow: 0 0 0 3px var(--blood-soft); opacity: 1; }
+.tile .pips { position: absolute; bottom: 8%; left: 0; right: 0; display: flex; justify-content: center; gap: 6%; }
+.pip { width: 18%; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--yellow); background: var(--yellow); }
+.pip.off { background: transparent; }
+.pip.heart { border: none; background: none; width: 20%; color: var(--blood); font-size: clamp(8px, 1.1vw, 13px); line-height: 1; display: grid; place-items: center; }
+.pip.heart.off { color: #ffffff55; }
+.tile .tag { position: absolute; top: -26%; left: 50%; transform: translateX(-50%); background: var(--blood); color: #fff; font: 800 clamp(7px, .9vw, 10px) var(--body); padding: 1px 6px; border-radius: 99px; white-space: nowrap; opacity: 0; }
+.tile .tag.on { opacity: 1; }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0 0 6px; font: 700 17px var(--display); }
+.note ul { margin: 0; padding-left: 18px; color: var(--grey); }
+.rec { display: inline-block; font: 600 10px var(--mono); letter-spacing: .12em; color: #1b1406; background: var(--yellow); border-radius: 4px; padding: 1px 6px; margin-bottom: 6px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font: 700 15px var(--display); color: var(--yellow); white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+.state { font: 600 12px var(--mono); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .float.go { animation: none; opacity: 0; } .pachy { transition: none; } }
+</style>
+
+<div class="wrap">
+  <h1>Pachy Attack line: <span>sacrifice headbutt</span></h1>
+  <p class="lede">Your answers: its own Attack line; the same ATTACK button; at 0 charges a press pays 25% of max health (22.5 of 90) for one more headbutt, only while health is above 50%; it never takes the last point of health. From full health that is two extra headbutts. Click ATTACK in the scene to spend the charges, then sacrifice. Pick a HUD look and a name.</p>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="HUD look"><b>HUD look</b>
+      <button class="chip" data-k="opt" data-v="A" aria-pressed="false">A · Blood pips</button>
+      <button class="chip" data-k="opt" data-v="B" aria-pressed="false">B · Health preview</button>
+      <button class="chip" data-k="opt" data-v="C" aria-pressed="true">C · Both</button>
+    </div>
+    <div class="group"><b>Test</b>
+      <button class="chip" id="press" aria-pressed="false">Press ATTACK</button>
+      <button class="chip" id="reset" aria-pressed="false">Reset</button>
+    </div>
+  </div>
+
+  <div class="scene" id="scene">
+    <svg class="pachy" id="pachy" viewBox="0 0 200 140" aria-label="Pachy">
+      <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/>
+      <rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+      <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/>
+      <rect x="150" y="44" width="6" height="6" fill="#2b5a7a"/>
+      <rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+      <rect x="60" y="94" width="14" height="34" fill="#6d5e44"/><rect x="104" y="94" width="14" height="34" fill="#6d5e44"/>
+      <rect x="132" y="70" width="8" height="18" fill="#c9a34a"/>
+    </svg>
+    <div class="flash" id="flash"></div>
+    <div class="float" id="float">-22.5</div>
+    <div class="toast" id="toast">Needs more than half health</div>
+    <div class="hp"><div class="row"><span>HEALTH</span><span id="hpText">90 / 90</span></div>
+      <div class="bar"><div class="fill" id="hpFill"></div><div class="cost" id="hpCost"></div><div class="half" id="hpHalf"></div></div></div>
+    <div class="bar-row">
+      <div class="tile"><span class="key">R</span>HOOK</div>
+      <div class="tile"><span class="key">T</span>+</div>
+      <div class="tile"><span class="key">C</span>LEGS</div>
+      <div class="tile"><span class="key">V</span>+</div>
+      <div class="tile attack" id="atk"><span class="key">LMB</span>ATTACK<span class="tag" id="tag">-25% HP</span><div class="pips" id="pips"></div></div>
+      <div class="tile"><span class="key">Space</span>LEAP</div>
+    </div>
+  </div>
+  <p class="state" id="state" aria-live="polite"></p>
+
+  <div class="cols">
+    <div class="note" data-o="A"><h3>A · Blood pips</h3><ul>
+      <li>When the yellow pips are gone, two red hearts take their place: one per sacrifice still allowed.</li>
+      <li>The tile border turns red. A heart greys out when health is at half or lower.</li>
+      <li>Clear count, but no hint of what it costs.</li></ul></div>
+    <div class="note" data-o="B"><h3>B · Health preview</h3><ul>
+      <li>At 0 charges the tile shows a red "-25% HP" tag and the health bar shows the 25% it will take, striped red, plus a half-way mark.</li>
+      <li>Shows the cost right where you look at your health; no count.</li></ul></div>
+    <div class="note pick" data-o="C"><span class="rec">RECOMMENDED</span><h3>C · Both</h3><ul>
+      <li>Hearts on the tile for how many are left, the striped chunk on the health bar for the cost.</li>
+      <li>Works on phone too: the same hearts go under the big ATTACK button.</li></ul></div>
+  </div>
+
+  <div class="note">
+    <h2>In the world (every player sees it)</h2>
+    <ul>
+      <li>A red flash and a red "-22.5" over the pachy when it pays, and the charge leaves a short red streak instead of the usual dust.</li>
+      <li>Same headbutt as a normal one (damage, run-up rule, knockback, slow). The usual self-slow after the last charge still applies.</li>
+    </ul>
+  </div>
+
+  <div class="note">
+    <h2>Name</h2>
+    <div class="group" role="group" aria-label="Name" style="margin-top:6px">
+      <button class="chip" data-k="name" data-v="Blood Rush" aria-pressed="true">Blood Rush</button>
+      <button class="chip" data-k="name" data-v="Last Stand" aria-pressed="false">Last Stand</button>
+      <button class="chip" data-k="name" data-v="Reckless Ram" aria-pressed="false">Reckless Ram</button>
+    </div>
+  </div>
+
+  <div class="note">
+    <h2>Proposed steps (<span id="nm">Blood Rush</span>, pachy Attack, not a slot)</h2>
+    <p class="lede" style="margin:4px 0 8px">Only step I is from you; II to ★ are my suggestion, so change any of them.</p>
+    <div class="tablewrap"><table>
+      <tr><th>Step</th><th>What it does</th></tr>
+      <tr><td>I</td><td>At 0 charges, ATTACK pays 25% of max health for one more headbutt. Only above 50% health; never takes the last point.</td></tr>
+      <tr><td>II</td><td>A sacrifice headbutt hits 25% harder.</td></tr>
+      <tr><td>III</td><td>No self-slow after a sacrifice headbutt.</td></tr>
+      <tr><td>★</td><td>A sacrifice headbutt that lands heals back half the health it cost (11 of 22.5).</td></tr>
+    </table></div>
+  </div>
+</div>
+
+<script>
+const MAX = 90, COST = 22.5, CHARGES = 3;
+const st = { opt: "C", hp: MAX, charges: CHARGES, name: "Blood Rush" };
+const $ = (id) => document.getElementById(id);
+function canSacrifice() { return st.hp > MAX / 2; }
+function sacrificesLeft() { let h = st.hp, n = 0; while (h > MAX / 2 && n < 9) { h = Math.max(1, h - COST); n++; } return n; }
+function draw() {
+  const showPips = st.opt === "A" || st.opt === "C", showPreview = st.opt === "B" || st.opt === "C";
+  const atk = $("atk"), pips = $("pips");
+  pips.innerHTML = "";
+  if (st.charges > 0) {
+    for (let i = 0; i < CHARGES; i++) { const p = document.createElement("span"); p.className = "pip" + (i < st.charges ? "" : " off"); pips.appendChild(p); }
+  } else if (showPips) {
+    const left = sacrificesLeft();
+    for (let i = 0; i < 2; i++) { const p = document.createElement("span"); p.className = "pip heart" + (i < left ? "" : " off"); p.textContent = "♥"; pips.appendChild(p); }
+  }
+  const empty = st.charges === 0, live = empty && canSacrifice();
+  atk.classList.toggle("empty", empty && !live);
+  atk.classList.toggle("blood", live);
+  $("tag").classList.toggle("on", live && showPreview);
+  $("hpFill").style.width = (st.hp / MAX * 100) + "%";
+  $("hpText").textContent = (Math.round(st.hp * 10) / 10) + " / " + MAX;
+  const cost = $("hpCost");
+  if (live && showPreview) {
+    const after = Math.max(1, st.hp - COST);
+    cost.style.left = (after / MAX * 100) + "%"; cost.style.width = ((st.hp - after) / MAX * 100) + "%"; cost.style.opacity = 1;
+  } else cost.style.opacity = 0;
+  $("hpHalf").style.opacity = empty && showPreview ? .9 : 0;
+  $("state").textContent = `charges ${st.charges}/${CHARGES} · health ${Math.round(st.hp * 10) / 10}/${MAX} · ` + (st.charges > 0 ? "normal headbutt" : live ? "next press = sacrifice" : "locked (half health or less)");
+  document.querySelectorAll(".note[data-o]").forEach(n => n.classList.toggle("pick", n.dataset.o === st.opt));
+}
+function bump() { const p = $("pachy"); p.classList.add("hit"); setTimeout(() => p.classList.remove("hit"), 140); }
+$("press").addEventListener("click", press);
+$("atk").addEventListener("click", press);
+function press() {
+  if (st.charges > 0) { st.charges--; bump(); draw(); return; }
+  if (!canSacrifice()) { const t = $("toast"); t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 1100); return; }
+  st.hp = Math.max(1, st.hp - COST); bump();
+  const f = $("flash"); f.classList.add("on"); requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove("on")));
+  const fl = $("float"); fl.classList.remove("go"); void fl.offsetWidth; fl.classList.add("go");
+  draw();
+}
+$("reset").addEventListener("click", () => { st.hp = MAX; st.charges = CHARGES; draw(); });
+document.querySelectorAll(".chip[data-k]").forEach(b => b.addEventListener("click", () => {
+  const k = b.dataset.k;
+  document.querySelectorAll(`.chip[data-k="${k}"]`).forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+  st[k] = b.dataset.v;
+  if (k === "name") $("nm").textContent = st.name;
+  draw();
+}));
+draw();
+</script>
