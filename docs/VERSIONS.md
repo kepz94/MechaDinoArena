@@ -285,6 +285,7 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | ArenaStatus | 1.3 | Health + stamina moved to the bottom-left edge, slim (option A): frame BarsBL at (0, 16, 1, −8), 36% wide (200..340 px), labels 12 px, bars 10 / 8 px, stamina under health only while latched; MENU stays top-right; switch ArenaStatusBottomLeftEnabled; diagnostic ArenaStatusLayout. Verified in Play: screenshots with and without stamina. Install hash 15263 / 103867793 |
 | TargetHUD | 1.0 | New LocalScript (StarterCharacterScripts): enemy health at the top centre (option 1) — name + "hp / max", red → orange bar, from your hit until 4 s after the last one (and while latched on it), fades 0.25 s; hits from bite (BiteHitTarget), pounce / pin (PounceLatchPart), Shock Cannon / Shock Mine / Arena (LastHitBy), bleed (SkillBleedBy); tree rams have no target; switch TargetHUDEnabled. Verified in Play: pin on a raptor bot → "RAPTOR BOT 33 / 60", hides 4 s after. Install hash 11820 / 599149502 |
 | ArenaScope | 1.14 | TargetHUD expected on. Install hash 7766 / 436628059 |
+| Publish | Sandbox v121 + Arena | TargetHUD 1.0, ArenaStatus 1.3, claw slashes (PounceServer 1.7, PouncePose 1.1, PounceSlash 1.0, IdleAnimation 1.28, PounceFX 1.1), ArenaScope 1.14 published to Sandbox (v121) and "Mecha Dino Arena - Arena" (Publish As, overwrite), Kepu 2026-10-29 "Publish" |
 | Publish | 2026-10-29 | Egg Loader release: Sandbox place published (v102); Arena place overwritten via Publish As. Live trip check pending (MDA-95). |
 
 ## Open decisions
