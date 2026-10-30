@@ -1,4 +1,4 @@
--- AbilityBar v1.7 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.8 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -63,16 +63,19 @@
 --   0.89 rising with the refill progress) / "ready". A red "SLOWED" pill sits above the tile while HeadbuttSelfSlowUntil
 --   or HeadbuttSlowUntil is in the future. false = 1.6 (the pachy gets the fallback order, no Headbutt tile).
 --   Diagnostics: AbilityBar_Headbutt (state), AbilityBarHeadbuttPips ("<ready>/<max>"), AbilityBarHeadbuttSlowed.
+-- v1.8 (pachy Grappling Hook, MDA-122): TIMED_PARTS.hookarm = "Hook" -> a Grappling Hook slot tile uses the timed-part
+--   states (off / cooling with HookReadyAt and HookCooldown / ready; no HookUntil, so never "active").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local char = script.Parent
 local TIMED_PARTS = {adrenaline = "Adrenaline", shield = "EnergyShield"} -- v1.3: part id -> attribute prefix
 TIMED_PARTS.scent, TIMED_PARTS.screech = "Scent", "Screech" -- v1.4: raptor parts batch 2
 TIMED_PARTS.traps = "Mine" -- v1.5: Shock Mine
+TIMED_PARTS.hookarm = "Hook" -- v1.8: pachy Grappling Hook (HookEnabled / HookReadyAt / HookCooldown; no HookUntil)
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
 local PANEL = Color3.fromRGB(20, 20, 26)

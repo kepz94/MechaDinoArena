@@ -1,4 +1,4 @@
--- IdleAnimation v1.29 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.30 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -157,6 +157,9 @@
 --       local state; other clients: HeadbuttStartedAt / HeadbuttHitAt / HeadbuttEndedAt), multiplied on after the ram
 --       layer; the head lead is suppressed while it runs. Switch: model attribute HeadbuttPoseEnabled (default true).
 --       Diagnostics: HeadbuttPoseState ("none" / "windup" / "charge" / "impact" / "fade"), HeadbuttPoseSource.
+-- v1.30: pachy Grappling Hook pose (HookPose 1.0; MDA-122): on models with HookStartedAt, HookPose.phase (server stamps,
+--       same on every client) -> arm raise / hold / smash dip / lower, multiplied on after the headbutt layer; head lead
+--       suppressed while it runs. Switch: model attribute HookPoseEnabled (default true). Diagnostic: HookPoseState.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -185,6 +188,7 @@ local EatPose = require(script.EatPose) -- v1.20 (defaults are read by EatPose.s
 local DeadPose = require(script.DeadPose) -- v1.21 (defaults are read by DeadPose.settings)
 local BoostPose = require(script.BoostPose) -- v1.27 (defaults are read by BoostPose.settings)
 local HeadbuttPose = require(script.HeadbuttPose) -- v1.29 (defaults are read by HeadbuttPose.settings)
+local HookPose = require(script.HookPose) -- v1.30
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -963,6 +967,12 @@ RunService.PreSimulation:Connect(function(dt)
 		hbPhase, hbU, hbSource = HeadbuttPose.phase(model, lpH ~= nil and lpH.Character == model, workspace:GetServerTimeNow())
 	end
 	local hbActive = hbPhase ~= nil
+	-- v1.30: grappling hook phase (pachy)
+	local hkPhase, hkU = nil, 0
+	if model:GetAttribute("HookStartedAt") ~= nil then
+		hkPhase, hkU = HookPose.phase(model, workspace:GetServerTimeNow())
+	end
+	hbActive = hbActive or hkPhase ~= nil -- v1.30: also suppresses the head lead
 	-- head leans into turns while moving
 	local turnHead = 0
 	if ts.TurnHeadEnabled and blend > 0.001 then
@@ -1017,6 +1027,13 @@ RunService.PreSimulation:Connect(function(dt)
 		show("HeadbuttPoseState", hbPhase or "none")
 		show("HeadbuttPoseSource", hbSource)
 	end
+	-- v1.30: grappling hook on top
+	if hkPhase then
+		for name, off in pairs(HookPose.get(hkPhase, hkU, 1)) do
+			if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+		end
+	end
+	if model:GetAttribute("HookStartedAt") ~= nil then show("HookPoseState", hkPhase or "none") end
 	-- roar on top of whatever the body is doing (upper body only)
 	local roarState = "none"
 	if roarF then

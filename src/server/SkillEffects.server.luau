@@ -1,4 +1,4 @@
--- SkillEffects v1.13 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.14 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -57,6 +57,10 @@
 --   only while bought AND slotted: MineEnabled, MineDamage, MineSlow (speed multiplier, 1 when off), MineSlowTime,
 --   MineCooldown, MineMax, MineJam (MineServer 1.0 / MechaButtons 1.11 / AbilityBar 1.5 read them).
 -- v1.10 (MDA-81; SkillTree 1.13): + MineLaunch (studs) and MineDaze (s), 0 when off (MineServer 1.1).
+-- v1.14 (pachy Grappling Hook, MDA-121; SkillTree 1.21): HookEnabled (bought, in a slot, Species "Pachy", effects on),
+--   HookRange, HookCooldown, HookDamage (0 when off) and HookLook (= HookEnabled; the wrist claw is shown). HookServer 1.0
+--   reads them. A new HookHitAt runs onHit like a bite (lifesteal). Switch: script attribute SkillEffectsHookEnabled
+--   (default true, read at start; false = 1.13).
 -- v1.13 (pachy Drop 2, Battering Dome; SkillTree 1.20): on a pachy character (Species "Pachy") the line is written as
 --   HeadbuttDamageMul (1 / 1.25), HeadbuttShoveMul (1 / 1.3), HeadbuttRefillMul (1 / 0.7), HeadbuttExtraCharges (0 / 1)
 --   and PachySpikes (false / true at the star); HeadbuttServer 1.1 / PachyLook 1.0 read them. Other species and effects
@@ -82,7 +86,9 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.13"
+local VERSION = "1.14"
+if script:GetAttribute("SkillEffectsHookEnabled") == nil then script:SetAttribute("SkillEffectsHookEnabled", true) end -- v1.14
+local HOOK_ON = script:GetAttribute("SkillEffectsHookEnabled") ~= false
 if script:GetAttribute("SkillEffectsDomeEnabled") == nil then script:SetAttribute("SkillEffectsDomeEnabled", true) end -- v1.13
 local DOME_ON = script:GetAttribute("SkillEffectsDomeEnabled") ~= false
 if script:GetAttribute("SkillEffectsHeadbuttEnabled") == nil then script:SetAttribute("SkillEffectsHeadbuttEnabled", true) end -- v1.12
@@ -239,6 +245,14 @@ local function applyChar(char, st)
 		char:SetAttribute("HeadbuttExtraCharges", bdOn and (e.hbExtraCharges or 0) or 0)
 		char:SetAttribute("PachySpikes", bdOn and e.pachySpikes == true)
 	end
+	if HOOK_ON then -- v1.14: Grappling Hook (pachy only, in a slot)
+		local hkOn = live and char:GetAttribute("Species") == "Pachy" and (e.hookRange or 0) > 0 and inSlot("hookarm")
+		char:SetAttribute("HookEnabled", hkOn)
+		char:SetAttribute("HookRange", hkOn and e.hookRange or 0)
+		char:SetAttribute("HookCooldown", hkOn and e.hookCooldown or 0)
+		char:SetAttribute("HookDamage", hkOn and e.hookDamage or 0)
+		char:SetAttribute("HookLook", hkOn)
+	end
 end
 
 -- healing (regen / lifesteal), overflow into the shield
@@ -382,6 +396,11 @@ local function onCharacter(player, char)
 	if HEADBUTT_HITS then -- v1.12: pachy headbutt
 		char:GetAttributeChangedSignal("HeadbuttHitAt"):Connect(function()
 			onHit(char, st, char:GetAttribute("HeadbuttHitDamage"), char:GetAttribute("HeadbuttHitTarget"))
+		end)
+	end
+	if HOOK_ON then -- v1.14: the hook smash counts as a hit (lifesteal)
+		char:GetAttributeChangedSignal("HookHitAt"):Connect(function()
+			onHit(char, st, char:GetAttribute("HookHitDamage"), char:GetAttribute("HookHitTarget"))
 		end)
 	end
 	char:GetAttributeChangedSignal("BiteEnabled"):Connect(function() applyChar(char, st) end)

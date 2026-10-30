@@ -1,4 +1,4 @@
--- MechaButtons v1.14 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.15 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -136,6 +136,9 @@
 --     to the flat part only (no tilt); the camera follows that flat direction.
 --   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
 --   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
+-- v1.15 (pachy Grappling Hook, MDA-122): TIMED_PARTS.hookarm = {"Hook", "DinoHookRequest", "GRAPPLING HOOK"}; pressing its
+--   slot fires DinoHookRequest(stamp, camera LookVector) (HookServer 1.0 aims along it) instead of the plain stamp.
+--   Ready / cooldown look from HookEnabled / HookReadyAt / HookCooldown like the other timed parts.
 -- v1.14 (Kepu 2026-10-30 after v128: "when I shoot the cannon don't adjust the camera angle"): with script attribute
 --   MechaAimKeepCamEnabled (default true) the release no longer sets ShoulderCamLookAt, so the camera stays where it was;
 --   the raptor still snaps to face the shot (then turns back toward the camera at its turn rate, TurnLimit "aim"). false =
@@ -145,7 +148,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.14"
+local VERSION = "1.15"
 local AIM_LOCK, AIM_DEAD = 0.25, 14 -- v1.12
 local AIM_FULL_PX, CONE_YAW, CONE_PITCH, AIM_SMOOTH, SEND_EPS = 110, math.rad(30), math.rad(15), 14, 0.01 -- v1.13
 if script:GetAttribute("MechaAimConeEnabled") == nil then script:SetAttribute("MechaAimConeEnabled", true) end -- v1.13
@@ -181,6 +184,7 @@ local TIMED_PARTS = { -- v1.5: part id -> {attribute prefix, remote name, button
 TIMED_PARTS.scent = {"Scent", "DinoScentRequest", "SCENT"} -- v1.8
 TIMED_PARTS.screech = {"Screech", "DinoScreechRequest", "SHOCK CANNON"} -- v1.8 (hold-to-aim, see aimStart); v1.9: Shock Dart; v1.10: Shock Cannon
 TIMED_PARTS.traps = {"Mine", "DinoMineRequest", "SHOCK MINE"} -- v1.11
+TIMED_PARTS.hookarm = {"Hook", "DinoHookRequest", "GRAPPLING HOOK"} -- v1.15: pachy Grappling Hook (fires with the aim)
 local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
 local aim -- v1.8: {slot, t0, input, gesture, part}
 
@@ -319,6 +323,12 @@ local function press(n, input)
 	char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(n, id or "empty"))
 	if id == "screech" then -- v1.8: start the aim; the release fires
 		aimStart(n, input, false)
+		return
+	end
+	if id == "hookarm" then -- v1.15: the hook fires along the camera look (HookServer 1.0)
+		local r = ReplicatedStorage:FindFirstChild("DinoHookRequest")
+		local cam = workspace.CurrentCamera
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
 		return
 	end
 	if id == "thrusters" and remote then remote:FireServer(workspace:GetServerTimeNow()) end

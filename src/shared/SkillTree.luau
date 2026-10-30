@@ -1,4 +1,4 @@
--- SkillTree v1.20 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.21 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -221,6 +221,11 @@ SkillTree.AREAS = {
 --   Dome", not a mecha part, OWNER Pachy) is appended to the attack area, PATHS and PATH_ORDER. Effects (0 / 1 when
 --   not bought): hbDamageMul (I: 1.25), hbShoveMul (II: 1.3), hbRefillMul (III: 0.7 = refill 30% faster),
 --   hbExtraCharges (star: 1 = a 3rd charge), pachySpikes (star: true). false = 1.19 (no line).
+-- v1.21 (pachy Grappling Hook, MDA-121, plan docs/plans/PACHY_PARTS_v1.0.md Drop A; mockup
+--   docs/mockups/pachy_parts_options.html "A · Wrist claw"): with SkillTree.HOOK_ARM (default true) the pachy's button
+--   part "hookarm" ("Grappling Hook", mecha, live, OWNER Pachy, BUTTONS) is appended to the attack area, PATHS and
+--   PATH_ORDER (new id; the deleted raptor "grapple" stays unknown). Effects (0 when not bought): hookRange (I 60, II 80),
+--   hookCooldown (I 8, III 6), hookDamage (I 10, star 15). false = 1.20 (no line).
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -422,6 +427,25 @@ if SkillTree.BATTERING_DOME and not SkillTree.PATHS.dome then
 	end
 	SkillTree.PATHS.dome = p
 	table.insert(SkillTree.PATH_ORDER, "dome")
+end
+-- v1.21: the pachy's Grappling Hook (button part)
+SkillTree.HOOK_ARM = true
+if SkillTree.HOOK_ARM and not SkillTree.PATHS.hookarm then
+	local p = path("hookarm", "Grappling Hook", true, false, {
+		"Button: lift your arm and fire a claw at a dino (60 studs); it is pulled in for a head smash: 10 damage and a knockback",
+		"Reaches 80 studs",
+		"Recharges faster (6 s)",
+		"The smash hits harder: 15 damage"})
+	p.area = "attack"
+	p.dino = "Pachy"
+	SkillTree.OWNER.hookarm = "Pachy"
+	SkillTree.LIVE_MECH.hookarm = true
+	SkillTree.BUTTONS.hookarm = true
+	for _, a in ipairs(SkillTree.AREAS) do
+		if a.id == "attack" then table.insert(a.paths, p) end
+	end
+	SkillTree.PATHS.hookarm = p
+	table.insert(SkillTree.PATH_ORDER, "hookarm")
 end
 -- v1.19: no Jaws for the pachy
 SkillTree.PACHY_NO_JAWS = true
@@ -657,6 +681,13 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if bd >= 2 then e.hbShoveMul = 1.3 end
 	if bd >= 3 then e.hbRefillMul = 0.7 end
 	if bd >= 4 then e.hbExtraCharges, e.pachySpikes = 1, true end
+	-- v1.21: Grappling Hook (pachy)
+	local hk = s.hookarm or 0
+	e.hookRange, e.hookCooldown, e.hookDamage = 0, 0, 0
+	if hk >= 1 then e.hookRange, e.hookCooldown, e.hookDamage = 60, 8, 10 end
+	if hk >= 2 then e.hookRange = 80 end
+	if hk >= 3 then e.hookCooldown = 6 end
+	if hk >= 4 then e.hookDamage = 15 end
 	return e
 end
 

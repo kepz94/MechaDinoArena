@@ -1,4 +1,4 @@
--- HeadbuttServer v1.1 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.2 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -37,13 +37,25 @@
 --   at start) the hit damage is HeadbuttDamage x HeadbuttDamageMul (default 1) x the roar debuff, and the shove distance
 --   HeadbuttShove x HeadbuttShoveMul (default 1). HeadbuttRefillMul / HeadbuttExtraCharges were already read (1.0).
 --   false = 1.0 numbers.
+-- v1.2 (Grappling Hook, MDA-122): a request while the pachy's hook shot runs (HookBusyUntil, HookServer 1.0, in the
+--   future) is "busy". Switch: script attribute HeadbuttHookBusyEnabled (default true, read at start).
+--   Tiered refill (Kepu 2026-10-30: "Base refill for the first ram used. Slightly longer once you use two and once you
+--   use 3 it's longer to refill. This way it punishes spammers"; picked 1x / 1.3x / 1.6x, self-slow kept): each refill's
+--   time = HeadbuttRefill x HeadbuttRefillMul x (1 while 1 charge is missing when that refill starts; character attribute
+--   HeadbuttRefillTier2 (default 1.3) while 2 are missing; HeadbuttRefillTier3 (default 1.6) while 3 are missing).
+--   Diagnostic HeadbuttRefillTierUsed (2 / 3, the last tier above 1). Switch: script attribute HeadbuttRefillTiersEnabled
+--   (default true, read at start; false = one refill time).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
+if script:GetAttribute("HeadbuttHookBusyEnabled") == nil then script:SetAttribute("HeadbuttHookBusyEnabled", true) end -- v1.2
+local HOOK_BUSY = script:GetAttribute("HeadbuttHookBusyEnabled") ~= false
+if script:GetAttribute("HeadbuttRefillTiersEnabled") == nil then script:SetAttribute("HeadbuttRefillTiersEnabled", true) end -- v1.2
+local TIERS_ON = script:GetAttribute("HeadbuttRefillTiersEnabled") ~= false
 local END_SLACK = 0.5     -- s after windup + max time the server waits for the client's end
 local HIT_TOLERANCE = 16  -- studs (x attacker scale) between the head and the target's hitbox for a claim
 local DEFAULTS = {HeadbuttEnabled = false, HeadbuttCharges = 2, HeadbuttExtraCharges = 0, HeadbuttWindup = 0.15,
@@ -88,8 +100,13 @@ local chars = {} -- [char] = {charges, active = {stamp, startAt, deadline, hit} 
 local function maxCharges(char)
 	return math.max(1, math.floor((tonumber(get(char, "HeadbuttCharges")) or 2) + (tonumber(get(char, "HeadbuttExtraCharges")) or 0)))
 end
-local function refillTime(char)
-	return math.max(0.5, (tonumber(get(char, "HeadbuttRefill")) or 5) * (tonumber(get(char, "HeadbuttRefillMul")) or 1))
+local function refillTime(char, missing) -- v1.2: + missing (tiered refill)
+	local base = math.max(0.5, (tonumber(get(char, "HeadbuttRefill")) or 5) * (tonumber(get(char, "HeadbuttRefillMul")) or 1))
+	if not TIERS_ON or not missing or missing < 2 then return base end
+	local k = missing >= 3 and (tonumber(char:GetAttribute("HeadbuttRefillTier3")) or 1.6)
+		or (tonumber(char:GetAttribute("HeadbuttRefillTier2")) or 1.3)
+	char:SetAttribute("HeadbuttRefillTierUsed", missing >= 3 and 3 or 2)
+	return base * k
 end
 
 local function publish(char, st)
@@ -112,7 +129,7 @@ local function track(char)
 			local m = maxCharges(char)
 			if st.charges > m then st.charges = m end
 			if st.charges < m and not st.refillAt then
-				st.refillStart, st.refillAt = now(), now() + refillTime(char)
+				st.refillStart, st.refillAt = now(), now() + refillTime(char, m - st.charges)
 			end
 			publish(char, st)
 		end)
@@ -158,7 +175,7 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		result = "stunned"
 	elseif char:GetAttribute("PinHeld") == true then
 		result = "pinned"
-	elseif st.active then
+	elseif st.active or (HOOK_BUSY and (tonumber(char:GetAttribute("HookBusyUntil")) or 0) > t) then -- v1.2: + hook
 		result = "busy"
 	elseif st.charges < 1 then
 		result = "empty"
@@ -168,7 +185,7 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		return
 	end
 	st.charges -= 1
-	if not st.refillAt then st.refillStart, st.refillAt = t, t + refillTime(char) end
+	if not st.refillAt then st.refillStart, st.refillAt = t, t + refillTime(char, maxCharges(char) - st.charges) end
 	st.active = {stamp = stamp, startAt = t, deadline = t + get(char, "HeadbuttWindup") + get(char, "HeadbuttMaxTime") + END_SLACK,
 		hit = false}
 	publish(char, st)
@@ -366,7 +383,7 @@ RunService.Heartbeat:Connect(function()
 		if st.refillAt and t >= st.refillAt then
 			st.charges = math.min(maxCharges(char), st.charges + 1)
 			if st.charges < maxCharges(char) then
-				st.refillStart, st.refillAt = t, t + refillTime(char)
+				st.refillStart, st.refillAt = t, t + refillTime(char, maxCharges(char) - st.charges)
 			else
 				st.refillStart, st.refillAt = nil, nil
 			end

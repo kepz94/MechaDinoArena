@@ -1,4 +1,4 @@
--- ArenaPvP v1.1 (Mecha Dino Arena) — in the Arena, bites, pounces and Blade Claws hurt other players. MDA-89, plan
+-- ArenaPvP v1.2 (Mecha Dino Arena) — in the Arena, bites, pounces and Blade Claws hurt other players. MDA-89, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 5, ADR-005 (Kepu 2026-10-29: "Add player damage in this plan"; Arena = the same island,
 -- no bots, PvP on; the Sandbox keeps no player damage).
 -- BiteServer / PounceServer are not changed: they damage a model's DummyHealth when the model has Bitable = true (and, for
@@ -28,6 +28,7 @@
 --   character HeadbuttHitAt changes (HeadbuttServer 1.0, set last) and its HeadbuttHitTarget is a bridged character's
 --   name -> LastHitBy / LastHitAt as for a bite. Switch: script attribute ArenaPvPHeadbuttEnabled (default true, read at
 --   start; false = 1.0, no headbutt credit). The headbutt damage itself already goes through DummyHealth (the bridge).
+-- v1.2 (Grappling Hook, MDA-122): the same credit on HookHitAt + HookHitTarget (HookServer 1.0), under the same switch.
 -- Switch: script attribute ArenaPvPEnabled (default true), read at start. false -> nothing is bridged (ArenaPvPState "off").
 -- Diagnostics: script ArenaPvPVersion, ArenaPvPState ("arena" / "sandbox" / "off"), ArenaPvPHits (damaging drops),
 --   ArenaPvPBlocked (drops the shield took); character ArenaPvPLastDelta, ArenaPvPBridged (true while bridged).
@@ -35,7 +36,7 @@ local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local TEST_DIST = 25
 
 script:SetAttribute("ArenaPvPVersion", VERSION)
@@ -128,6 +129,12 @@ local function watchAttacker(char)
 	if script:GetAttribute("ArenaPvPHeadbuttEnabled") ~= false then -- v1.1
 		char:GetAttributeChangedSignal("HeadbuttHitAt"):Connect(function()
 			local name = char:GetAttribute("HeadbuttHitTarget")
+			for model in pairs(bridged) do
+				if model ~= char and model.Name == name then credit(model, char) end
+			end
+		end)
+		char:GetAttributeChangedSignal("HookHitAt"):Connect(function() -- v1.2
+			local name = char:GetAttribute("HookHitTarget")
 			for model in pairs(bridged) do
 				if model ~= char and model.Name == name then credit(model, char) end
 			end
