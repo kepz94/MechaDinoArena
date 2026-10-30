@@ -1,9 +1,11 @@
--- SkinCatalog.spec v1.1 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
+-- SkinCatalog.spec v1.2 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...". Requires a
 -- fresh clone so a re-run in the same Studio session sees the installed source. Reads both model data modules to check
 -- that every authored colour is a skin role or on the never-paint list.
 -- v1.1 (MDA-110, plan docs/plans/SKINS_BUY_v1.0.md Task 1): prices 149 / 499 / 999, rarity products, productFor /
 --   rarityOfProduct / buyable.
+-- v1.2 (plan docs/plans/PACHY_MODEL_v1.0.md Task 2): Pachy colour groups — every PachyModelData colour (spikes too) is
+--   a Pachy role or never-paint, no hex shared between Pachy roles, none equal to a never-paint colour, Pachy classic.
 local da = game.ServerStorage:FindFirstChild("DinoArcade")
 local ok, SC = pcall(function()
 	local src = da.SkinCatalog
@@ -28,14 +30,27 @@ local function eq(name, got, want)
 end
 local function hex(c3) return c3:ToHex():upper() end
 
-eq("Version", SC.Version, "1.1")
+eq("Version", SC.Version, "1.2")
 
 -- roles of the authored colours
 local RAPTOR = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
 	["2E8C82"] = "stripe", ["F0C81E"] = "eyes"}
 local TREX = {["666A4A"] = "main", ["50523A"] = "dark", ["B2A278"] = "belly"}
+local PACHY = {["7A6A4E"] = "main", ["3E5A55"] = "stripes", ["C8B898"] = "belly", ["E6DCC4"] = "dome", ["8C7A5A"] = "knobs",
+	["3F6F7A"] = "mask", ["5E5240"] = "limbs", ["2E2620"] = "claws", ["8A2A1E"] = "eyes"} -- v1.2
 for h, role in pairs(RAPTOR) do eq("Raptor role " .. h, SC.roleOf("Raptor", Color3.fromHex(h)), role) end
 for h, role in pairs(TREX) do eq("TRex role " .. h, SC.roleOf("TRex", Color3.fromHex(h)), role) end
+for h, role in pairs(PACHY) do eq("Pachy role " .. h, SC.roleOf("Pachy", Color3.fromHex(h)), role) end -- v1.2
+do -- v1.2: skin rule for new dinos
+	local seen, roles = {}, 0
+	for h, role in pairs((SC.ROLES or {}).Pachy or {}) do
+		roles += 1
+		eq("Pachy hex " .. h .. " used once", seen[h], nil)
+		seen[h] = role
+		eq("Pachy hex " .. h .. " not never-paint", SC.NEVER_PAINT[h], nil)
+	end
+	eq("Pachy roles", roles, 9)
+end
 eq("unknown colour -> nil", SC.roleOf("Raptor", Color3.fromRGB(1, 2, 3)), nil)
 eq("teeth never painted", SC.roleOf("Raptor", Color3.fromHex("E8E2D2")), nil)
 eq("unknown species -> nil", SC.roleOf("Stego", Color3.fromHex("5E943E")), nil)
@@ -43,12 +58,16 @@ eq("raptor colour on a T-Rex -> nil", SC.roleOf("TRex", Color3.fromHex("5E943E")
 
 -- every authored colour is a role or never-paint: the raptor from RaptorModelData, the T-Rex from the StarterCharacter
 -- (TRexModelData is not installed in Studio; the StarterCharacter is the live T-Rex body)
-local authored = {Raptor = {}, TRex = {}}
+local authored = {Raptor = {}, TRex = {}, Pachy = {}} -- v1.2: Pachy from PachyModelData (spikes included)
 do
 	local d = data("RaptorModelData")
 	authored.Raptor[d.hrp.color:upper()] = true
 	for _, seg in ipairs(d.segments) do
 		for _, p in ipairs(seg.parts) do authored.Raptor[p.color:upper()] = true end
+	end
+	local pd = data("PachyModelData")
+	for _, seg in ipairs(pd.segments) do
+		for _, p in ipairs(seg.parts) do authored.Pachy[p.color:upper()] = true end
 	end
 	for _, p in ipairs(game.StarterPlayer.StarterCharacter:GetDescendants()) do
 		if p:IsA("BasePart") and p.Transparency < 1 and p.Name ~= "HumanoidRootPart" and not p:FindFirstAncestor("Hitboxes") then
@@ -60,14 +79,14 @@ for species, seen in pairs(authored) do
 	local n = 0
 	for h in pairs(seen) do
 		n += 1
-		local covered = SC.ROLES[species][h] ~= nil or SC.NEVER_PAINT[h] == true
+		local covered = (SC.ROLES[species] or {})[h] ~= nil or SC.NEVER_PAINT[h] == true
 		eq(species .. " colour " .. h .. " covered", covered, true)
 	end
 	eq(species .. " has colours", n > 0, true)
 end
 
 -- skins
-for species, roles in pairs({Raptor = RAPTOR, TRex = TREX}) do
+for species, roles in pairs({Raptor = RAPTOR, TRex = TREX, Pachy = PACHY}) do
 	local list = SC.SKINS[species]
 	eq(species .. " has skins", type(list) == "table" and #list > 0, true)
 	eq(species .. " default", SC.default(species), "classic")
