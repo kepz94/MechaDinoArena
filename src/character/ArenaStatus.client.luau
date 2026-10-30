@@ -1,4 +1,4 @@
--- ArenaStatus v1.6 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
+-- ArenaStatus v1.7 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
 -- MDA-6, plan docs/plans/ARENAHUD_v1.0.md Task 1, mockup docs/mockups/mobile_hud_options.html option A (Kepu 2026-10-28:
 --   "health should be at the top right of the screen along with the T-Rex drop down list"; stamina bar only while latched).
 -- Replaces HealthBar 1.1 / SpeciesPicker 1.0 / StaminaBar 1.1 in Mecha (those are switched off by Arena scope 1.1).
@@ -56,11 +56,17 @@
 --   transparency pulsing 0.05 .. 0.45 (0.8 s), and a thin white mark at half the bar. Hidden otherwise. Switch: script
 --   attribute ArenaStatusBloodEnabled (default true, read at start). Diagnostic: character ArenaStatusBlood
 --   ("shown" / "hidden").
+-- v1.7 (Kepu 2026-10-30: "I'm sacrificing health on my 3rd head rush. It shouldn't be sacrificed till I press the 4th";
+--   the server only takes health on the press at 0 charges, the solid red chunk over the green read as health already
+--   gone; answer "Outline only"): the BloodCost chunk has no fill (BackgroundTransparency 1) and a red (224, 40, 74)
+--   UIStroke "BloodCostOutline" (2 px) whose transparency pulses 0.05 .. 0.45 (0.8 s), so the green under it stays
+--   visible; the half mark is unchanged. Switch: script attribute ArenaStatusBloodOutline (default true, read at start;
+--   false = 1.6 solid chunk).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local CORNER_Y = 8 -- v1.4
 local SHIELD = Color3.fromRGB(90, 160, 255) -- v1.1
 local LOW_FRACTION = 0.3
@@ -465,6 +471,17 @@ if script:GetAttribute("ArenaStatusBloodEnabled") ~= false then
 	cost.Visible = false
 	cost.ZIndex = 3
 	cost.Parent = barBack
+	if script:GetAttribute("ArenaStatusBloodOutline") == nil then script:SetAttribute("ArenaStatusBloodOutline", true) end -- v1.7
+	local OUTLINE = script:GetAttribute("ArenaStatusBloodOutline") ~= false
+	local costStroke
+	if OUTLINE then
+		costStroke = Instance.new("UIStroke")
+		costStroke.Name = "BloodCostOutline"
+		costStroke.Color = Color3.fromRGB(224, 40, 74)
+		costStroke.Thickness = 2
+		costStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		costStroke.Parent = cost
+	end
 	local half = Instance.new("Frame")
 	half.Name = "HalfMark"
 	half.AnchorPoint = Vector2.new(0.5, 0)
@@ -488,7 +505,12 @@ if script:GetAttribute("ArenaStatusBloodEnabled") ~= false then
 			local after = math.max(1, h - (tonumber(char:GetAttribute("BloodRushCost")) or 0.25) * max)
 			cost.Position = UDim2.fromScale(after / max, 0)
 			cost.Size = UDim2.fromScale((h - after) / max, 1)
-			cost.BackgroundTransparency = 0.25 + 0.2 * math.sin(os.clock() * math.pi * 2 / 0.8)
+			if costStroke then -- v1.7: outline only, the green stays visible
+				cost.BackgroundTransparency = 1
+				costStroke.Transparency = 0.25 + 0.2 * math.sin(os.clock() * math.pi * 2 / 0.8)
+			else
+				cost.BackgroundTransparency = 0.25 + 0.2 * math.sin(os.clock() * math.pi * 2 / 0.8)
+			end
 		end
 		cost.Visible, half.Visible = ready, ready
 		local st = ready and "shown" or "hidden"

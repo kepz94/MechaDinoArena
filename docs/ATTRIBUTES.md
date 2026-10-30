@@ -1106,12 +1106,13 @@ and on server close.
 | SkillLastHeal | character | "regen +2" / "lifesteal +4" |
 | SkillEffectsIdleRegenEnabled | script (SkillEffects) | SkillEffects 1.19 switch, default true: every dino heals after SkillIdleRegenDelay s without a health drop (false = 1.18) |
 | SkillIdleRegenDelay | script (SkillEffects) | 8: seconds without any health drop (hit, bleed, Blood Rush payment) before the heal starts |
-| SkillIdleRegenRate | script (SkillEffects) | 0.20: share of MaxHealth healed per second, never past MaxHealth (no shield); the bigger of this and Regeneration wins |
+| SkillIdleRegenRate | script (SkillEffects) | 0.05 (SkillEffects 1.21; 1.19-1.20: 0.20): share of MaxHealth healed per second, never past MaxHealth (no shield); the bigger of this and Regeneration wins |
 | SkillIdleRegenActive | character | SkillEffects 1.19: true while healing this way; SkillLastHeal reads "idle +N" |
 | SkillEffectsRaptorLifestealEnabled | script (SkillEffects) | SkillEffects 1.20 switch, default true: a raptor heals 20 / 35 / 50% of damage at Lifesteal I-III (false = 1.19, 5 / 10 / 15%) |
 | SkillLifestealRate | character | SkillEffects 1.20: share of damage healed on the last hit |
 | SkillTree.RAPTOR_LIFESTEAL_STRONG | SkillTree module constant | true: SkillTree 1.28 e.lifestealRaptor + raptor step texts (false = 1.27) |
 | LabStepsForEnabled | script (Lab) | Lab 1.8 switch, default true (nil = on): per-dino step texts from path.stepsFor (false = 1.7) |
+| ArenaStatusBloodOutline | script (ArenaStatus) | ArenaStatus 1.7 switch, default true: Blood Rush cost preview is a red outline over the green (false = 1.6 solid chunk) |
 | SkillShield, SkillShieldUntil | character | overheal shield HP and its end time (server time) |
 | SkillStunTrimmed | character | "immune" / "trimmed" / "tossTrimmed" |
 | SkillBleedUntil, SkillBleedBy, SkillCrushedAt | bot | bleed end time, who made it bleed, last crushing hit |

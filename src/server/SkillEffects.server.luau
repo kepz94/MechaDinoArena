@@ -1,4 +1,4 @@
--- SkillEffects v1.20 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.21 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -121,10 +121,14 @@
 --   Species "Raptor") a hit heals e.lifestealRaptor (0.20 / 0.35 / 0.50) x damage instead of e.lifesteal; other dinos
 --   unchanged. Switch: script attribute SkillEffectsRaptorLifestealEnabled (default true, read each hit; false = 1.19).
 --   Diagnostic: character SkillLifestealRate (the share used on the last hit).
+-- v1.21 (Kepu 2026-10-30, pachy: "I kept seeing my health regen quickly even while blood rushing"; Studio repro: 8 s
+--   after the last Blood Rush payment the 1.19 heal (20%/s) filled 45 -> 90 in 2.5 s, which unlocked Blood Rush again,
+--   a 45 HP payment about every 11 s; answer "Slow the heal to 5%/s"): SkillIdleRegenRate default 0.20 -> 0.05 (every
+--   dino; the 8 s wait is unchanged). Pachy 45 -> 90 now takes 10 s after the wait. 0.20 = 1.20.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.20"
+local VERSION = "1.21"
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
 local BLEED_PLAYERS = script:GetAttribute("SkillBleedPlayersEnabled") ~= false
 if script:GetAttribute("SkillBleedPlayerTime") == nil then script:SetAttribute("SkillBleedPlayerTime", 2) end -- v1.18
@@ -145,7 +149,7 @@ local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
 local KILL_REGEN_DEFAULT = 0.25
 if script:GetAttribute("SkillEffectsRaptorLifestealEnabled") == nil then script:SetAttribute("SkillEffectsRaptorLifestealEnabled", true) end -- v1.20
-for k, v in pairs({SkillEffectsIdleRegenEnabled = true, SkillIdleRegenDelay = 8, SkillIdleRegenRate = 0.20}) do -- v1.19
+for k, v in pairs({SkillEffectsIdleRegenEnabled = true, SkillIdleRegenDelay = 8, SkillIdleRegenRate = 0.05}) do -- v1.19; v1.21: rate 0.20 -> 0.05
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local ST = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillTree"))
@@ -462,7 +466,7 @@ task.spawn(function()
 				and st.hum.Health < st.hum.MaxHealth
 				and t - st.lastDrop >= (script:GetAttribute("SkillIdleRegenDelay") or 8)
 			if char:GetAttribute("SkillIdleRegenActive") ~= idleOn then char:SetAttribute("SkillIdleRegenActive", idleOn) end
-			local idleAmt = idleOn and (script:GetAttribute("SkillIdleRegenRate") or 0.20) * st.hum.MaxHealth * TICK or 0
+			local idleAmt = idleOn and (script:GetAttribute("SkillIdleRegenRate") or 0.05) * st.hum.MaxHealth * TICK or 0
 			local skillAmt = regenOn and e.regenRate * st.hum.MaxHealth * TICK or 0
 			if idleOn and idleAmt >= skillAmt then
 				heal(char, st, math.min(idleAmt, st.hum.MaxHealth - st.hum.Health), "idle")
