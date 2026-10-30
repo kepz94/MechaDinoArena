@@ -1,4 +1,4 @@
--- Lab v1.6 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.7 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -93,13 +93,26 @@
 --   Selection starts on the equipped skin (player attribute SkinEquipped_<Dino>). Switch: script attribute
 --   LabSkinsEnabled (default true, read at start; false = no SKINS tab). LabTab gains "skins". Diagnostics:
 --   LabSkinSelected, LabSkinCards.
+-- v1.7 (MDA-112, plan docs/plans/SKINS_BUY_v1.0.md Task 3, mockup docs/mockups/skins_buy_options.html option A "Buy &
+--   wear"; Kepu 2026-10-30: prices "149 / 499 / 999"): buying skins on the SKINS tab (SkinServer 1.1).
+--   * owned = free or listed in player attribute SkinOwned_<Dino>; price = SkinPrice_<RARITY> (live), else the catalog
+--     price (card badge "R$<price>" and the button).
+--   * detail button for a locked skin: "UNLOCK · 1 CREDIT" (ROBUX) when SkinCredits_<RARITY> > 0; greyed "LOADING" while
+--     the skin save is not loaded (SkinSaveState nil / "loading" / "loadFailed" / "noApi"); greyed "SOON" when its rarity
+--     has no product; else "GET · R$<price>" (ROBUX). Pressing it -> DinoSkinRequest:FireServer("buy", id); the button is
+--     greyed "…" until the next SkinServerResult (at most BUY_WAIT s). Line: "Buy it once, keep it for good."
+--   * SkinServerResult "bought" / "boughtNotEquipped" -> toast "<NAME> UNLOCKED!" (SkinLastBought) and that card's stroke
+--     YELLOW for 1 s; "credit" -> toast "<RARITY> UNLOCK READY · PICK A SKIN"; "cancelled" -> nothing.
+--   * Redraws on SkinOwned_* / SkinCredits_* / SkinPrice_* / SkinSaveState. Switch: script attribute LabSkinBuyEnabled
+--     (default true, read at start; false = 1.6: greyed GET + "Buying comes in the next step."). Diagnostic: LabSkinBuy
+--     (last button state shown: "credit" / "loading" / "soon" / "get" / "wait").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local SKIN = Color3.fromRGB(201, 162, 255) -- v1.6
 local ROBUX = Color3.fromRGB(0, 176, 111) -- v1.6
 if script:GetAttribute("LabTestFreeGivenEnabled") == nil then script:SetAttribute("LabTestFreeGivenEnabled", true) end -- v1.4
@@ -129,6 +142,9 @@ if script:GetAttribute("LabSlotShowsPartEnabled") == nil then script:SetAttribut
 local slotShowsPart = script:GetAttribute("LabSlotShowsPartEnabled") ~= false -- v1.3
 if script:GetAttribute("LabSkinsEnabled") == nil then script:SetAttribute("LabSkinsEnabled", true) end -- v1.6
 local skinsOn = script:GetAttribute("LabSkinsEnabled") ~= false -- v1.6
+if script:GetAttribute("LabSkinBuyEnabled") == nil then script:SetAttribute("LabSkinBuyEnabled", true) end -- v1.7
+local skinBuyOn = script:GetAttribute("LabSkinBuyEnabled") ~= false -- v1.7
+local BUY_WAIT = 60 -- v1.7
 if script:GetAttribute("LabEnabled") == false then return end
 
 local shared = ReplicatedStorage:WaitForChild("SkillShared", 30)
@@ -584,6 +600,27 @@ local function skinCatalog()
 	return SC
 end
 local RARITY_COLOR = {STARTER = GREY, COMMON = GREY, RARE = VOLT, EPIC = SKIN, LEGENDARY = YELLOW}
+-- v1.7: buying
+local buyPendingAt = nil
+local flashId, flashUntil = nil, 0
+local function ownedSet()
+	if not skinBuyOn then return nil end
+	local set = {}
+	local v = player:GetAttribute("SkinOwned_" .. species())
+	if type(v) == "string" then
+		for id in v:gmatch("[^,]+") do set[id] = true end
+	end
+	return set
+end
+local function skinPrice(sk)
+	local live = skinBuyOn and player:GetAttribute("SkinPrice_" .. tostring(sk.rarity))
+	if type(live) == "number" then return live end
+	return sk.price
+end
+local function skinSaveReady()
+	local s = player:GetAttribute("SkinSaveState")
+	return s ~= nil and s ~= "loading" and s ~= "loadFailed" and s ~= "noApi"
+end
 local function equippedSkin()
 	local cat = skinCatalog()
 	local id = player:GetAttribute("SkinEquipped_" .. species())
@@ -647,7 +684,9 @@ local function drawSkinCards()
 		local b = button(grid, "Skin_" .. sk.id, PANEL2, 0)
 		b.LayoutOrder = i
 		corner(b, UDim.new(0, 1.4 * S.ch))
-		if skinSel == sk.id then
+		if flashId == sk.id and os.clock() < flashUntil then -- v1.7: just unlocked
+			stroke(b, YELLOW, 0, 3)
+		elseif skinSel == sk.id then
 			stroke(b, WHITE, 0, 2.5)
 		elseif eqId == sk.id then
 			stroke(b, SKIN, 0.1, 2)
@@ -696,12 +735,12 @@ local function drawSkinCards()
 		rar.TextXAlignment = Enum.TextXAlignment.Left
 		rar.Position = UDim2.fromOffset(p1, metaY)
 		rar.Size = UDim2.fromOffset(artW, S.metaH)
-		local owned = cat.owns(species(), sk.id, nil)
+		local owned = cat.owns(species(), sk.id, ownedSet()) -- v1.7: owned paid skins
 		local badgeText, badgeCol, badgeTxt
 		if eqId == sk.id then
 			badgeText, badgeCol, badgeTxt = "ON", SKIN, Color3.fromRGB(26, 16, 48)
 		elseif not owned and sk.price then
-			badgeText, badgeCol, badgeTxt = "R$" .. tostring(sk.price), ROBUX, WHITE
+			badgeText, badgeCol, badgeTxt = "R$" .. tostring(skinPrice(sk)), ROBUX, WHITE
 		end
 		if badgeText then
 			local bd = label(b, "Badge", Enum.Font.GothamBlack, S.tagS, badgeTxt, badgeText)
@@ -998,9 +1037,10 @@ local function drawDetail()
 			corner(sw, UDim.new(0, 0.8 * S.ch))
 			stroke(sw, WHITE, 0.8, 1.5)
 		end
-		local owned = cat.owns(species(), sk.id, nil)
+		local owned = cat.owns(species(), sk.id, ownedSet()) -- v1.7
 		local eq = equippedSkin() == sk.id
-		local line = label(detail, "Line", Enum.Font.GothamBlack, S.stepS, GREY, owned and "Owned. Equip it and you spawn in it every time." or "Locked.")
+		local lockedLine = skinBuyOn and "Buy it once, keep it for good." or "Locked." -- v1.7
+		local line = label(detail, "Line", Enum.Font.GothamBlack, S.stepS, GREY, owned and "Owned. Equip it and you spawn in it every time." or lockedLine)
 		line.TextXAlignment = Enum.TextXAlignment.Left
 		line.TextWrapped = true
 		line.AutomaticSize = Enum.AutomaticSize.Y
@@ -1008,7 +1048,39 @@ local function drawDetail()
 		line.LayoutOrder = 4
 		local btnH = math.max(5.6 * S.ch, 34)
 		local b
-		if not owned then
+		if not owned and skinBuyOn then -- v1.7
+			local credits = tonumber(player:GetAttribute("SkinCredits_" .. tostring(sk.rarity))) or 0
+			local hasProduct = cat.productFor and cat.productFor(species(), sk.id) ~= nil
+			local waiting = buyPendingAt ~= nil and os.clock() - buyPendingAt < BUY_WAIT
+			local state
+			if waiting then
+				state = "wait"
+				b = detailButton(detail, "…", ROBUX, WHITE, false, 5)
+			elseif not skinSaveReady() then
+				state = "loading"
+				b = detailButton(detail, "LOADING", ROBUX, WHITE, false, 5)
+			elseif credits > 0 then
+				state = "credit"
+				b = detailButton(detail, "UNLOCK · 1 CREDIT", ROBUX, WHITE, true, 5)
+			elseif not hasProduct then
+				state = "soon"
+				b = detailButton(detail, "SOON", ROBUX, WHITE, false, 5)
+			else
+				state = "get"
+				b = detailButton(detail, ("GET · R$%s"):format(tostring(skinPrice(sk) or "?")), ROBUX, WHITE, true, 5)
+			end
+			player:SetAttribute("LabSkinBuy", state)
+			if state == "credit" or state == "get" then
+				b.Activated:Connect(function()
+					press("skinBuy:" .. sk.id)
+					local r = ReplicatedStorage:FindFirstChild("DinoSkinRequest")
+					if not r then return end
+					buyPendingAt = os.clock()
+					r:FireServer("buy", sk.id)
+					redraw()
+				end)
+			end
+		elseif not owned then
 			b = detailButton(detail, ("GET · R$%s"):format(tostring(sk.price or "?")), ROBUX, WHITE, false, 5)
 		elseif eq then
 			b = detailButton(detail, "EQUIPPED", PANEL2, MUTED, false, 5)
@@ -1021,7 +1093,7 @@ local function drawDetail()
 			end)
 		end
 		b.Size = UDim2.new(1, 0, 0, btnH)
-		if not owned then
+		if not owned and not skinBuyOn then -- v1.7: 1.6 hint only with buying off
 			local h = label(detail, "Hint", Enum.Font.GothamBlack, S.hintS, MUTED, "Buying comes in the next step.")
 			h.TextXAlignment = Enum.TextXAlignment.Left
 			h.TextWrapped = true
@@ -1508,6 +1580,29 @@ end
 player.AttributeChanged:Connect(function(name)
 	if name:sub(1, 5) == "Skill" then queue() end
 	if name:sub(1, 12) == "SkinEquipped" then queue() end -- v1.6
+	if skinBuyOn and (name:sub(1, 9) == "SkinOwned" or name:sub(1, 11) == "SkinCredits" or name:sub(1, 9) == "SkinPrice"
+		or name == "SkinSaveState") then queue() end -- v1.7
+	if skinBuyOn and name == "SkinServerResultAt" then -- v1.7: buying results
+		local res = player:GetAttribute("SkinServerResult")
+		if res ~= "prompted" then buyPendingAt = nil end
+		if mode and (res == "bought" or res == "boughtNotEquipped") then
+			local cat = skinCatalog()
+			local id = player:GetAttribute("SkinLastBought")
+			local sk = cat and cat.get(species(), id)
+			if sk then
+				showToast(string.upper(sk.name) .. " UNLOCKED!")
+				flashId, flashUntil = sk.id, os.clock() + 1
+				task.delay(1.05, queue)
+			end
+		elseif mode and res == "credit" then
+			local r = "SKIN"
+			for _, rarity in ipairs({"RARE", "EPIC", "LEGENDARY"}) do
+				if (tonumber(player:GetAttribute("SkinCredits_" .. rarity)) or 0) > 0 then r = rarity break end
+			end
+			showToast(r .. " UNLOCK READY · PICK A SKIN")
+		end
+		queue()
+	end
 	if name == "SkinServerResultAt" and mode and player:GetAttribute("SkinServerResult") == "ok" then -- v1.6
 		local cat = skinCatalog()
 		local sk = cat and cat.get(species(), equippedSkin())
