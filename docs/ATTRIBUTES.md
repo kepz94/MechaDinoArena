@@ -2181,4 +2181,5 @@ Look: Mecha_DomeVisor (Plate, Slit, Rim) on Head.Root; VisorBlockSpark + VisorBl
 | InkServerEnabled / InkModeRulesEnabled / InkServerVersion / InkShots / InkHits / InkMode | InkServer script | switches (default true), version, counts, sandbox / arena |
 | InkBlindEnabled / InkBlindVersion / InkBlindShowing / InkBlindCount | character (client) | switch (default true), version, black screen showing, times shown |
 | BotInkEnabled / BotInkDrops | BotServer script / bot + script | default true; targets dropped because inked |
+| InkVisorEnabled / InkVisorBlocks | InkServer script / shooter | 1.1: default true (false = the visor doesn't stop ink); ink globs stopped by a Dome Visor (InkResult "visor", VisorLastKind "ink") |
 Look: Mecha_InkTank (Tank, Window, Cap, Barrel.Muzzle) on Neck.Root; Workspace.DinoFX.InkFX InkGlob / InkSplat; ScreenGui InkBlind (Black, Msg "INKED").

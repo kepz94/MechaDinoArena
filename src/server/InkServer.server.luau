@@ -1,4 +1,4 @@
--- InkServer v1.0 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
+-- InkServer v1.1 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
 -- MDA-128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Neck ink tank +
 --   barrel". Kepu 2026-10-30: "How about an ink shooter that blinds your enemy for 2 seconds. Turns their screen black";
 --   answers: fully black (HUD stays), an aimed shot like the Grappling Hook (first dino hit), bots lose you, steps II 80
@@ -32,12 +32,18 @@
 -- Switch: script attribute InkServerEnabled (default true). Mode rules: script attribute InkModeRulesEnabled (default
 --   true; false = players can always be inked).
 -- Diagnostics: script InkServerVersion, InkShots, InkHits, InkMode; character InkServerResult, InkLookBuilt.
+-- v1.1 (Kepu 2026-10-30: "The visor should block ink"): at arrival, a dino whose Dome Visor is up and faces the ink
+--   (BoneCrest 1.2 visorFront; main target: from the muzzle position at the shot; splash: from the hit point) is not
+--   inked: BoneCrest.visorBlock(dino, shooter, "ink") runs (BLOCK look; star knockback). A blocked main hit sets the
+--   shooter's InkResult to "visor" (and is not counted in InkHits); blocked splash dinos are left out of InkSplashCount.
+--   Shooter diagnostic InkVisorBlocks (count). Switch: script attribute InkVisorEnabled (default true, read at each
+--   arrival; false = 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25)
 local AIM_HELP = 4
 local INK_SPEED = 160
@@ -49,6 +55,24 @@ script:SetAttribute("InkShots", 0)
 script:SetAttribute("InkHits", 0)
 if script:GetAttribute("InkServerEnabled") == nil then script:SetAttribute("InkServerEnabled", true) end
 if script:GetAttribute("InkModeRulesEnabled") == nil then script:SetAttribute("InkModeRulesEnabled", true) end
+if script:GetAttribute("InkVisorEnabled") == nil then script:SetAttribute("InkVisorEnabled", true) end -- v1.1
+local visorModCache -- v1.1: Dome Visor (ServerStorage.DinoArcade.BoneCrest 1.2), loaded on first use
+local function visorMod()
+	if visorModCache == nil then
+		visorModCache = false
+		pcall(function() visorModCache = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+	end
+	return visorModCache or nil
+end
+-- v1.1: true (and the block handled) when the dino's visor faces fromPos
+local function visorBlocks(dino, shooter, fromPos)
+	if script:GetAttribute("InkVisorEnabled") == false then return false end
+	local VM = visorMod()
+	if not (VM and VM.visorFront(dino, fromPos)) then return false end
+	VM.visorBlock(dino, shooter, "ink")
+	if shooter.Parent then shooter:SetAttribute("InkVisorBlocks", (shooter:GetAttribute("InkVisorBlocks") or 0) + 1) end
+	return true
+end
 local function enabled() return script:GetAttribute("InkServerEnabled") ~= false end
 
 local ModeRules = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
@@ -383,8 +407,12 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		local blind = math.max(0.1, tonumber(char:GetAttribute("InkBlindTime")) or 2)
 		if target and target.Parent and (result == "hit" or result == "shielded") then
 			if result == "hit" and (tonumber(target:GetAttribute("EnergyShieldUntil")) or 0) <= ta then
-				ink(target, char, ta + blind, ta)
-				script:SetAttribute("InkHits", (script:GetAttribute("InkHits") or 0) + 1)
+				if visorBlocks(target, char, origin) then -- v1.1
+					if char.Parent then char:SetAttribute("InkResult", "visor") end
+				else
+					ink(target, char, ta + blind, ta)
+					script:SetAttribute("InkHits", (script:GetAttribute("InkHits") or 0) + 1)
+				end
 			end
 		end
 		local splash = tonumber(char:GetAttribute("InkSplash")) or 0
@@ -396,7 +424,7 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 					for _, p in ipairs(c.hb:GetChildren()) do
 						if p:IsA("BasePart") then near = math.min(near, (closestOnBox(p, aimEnd) - aimEnd).Magnitude) end
 					end
-					if near <= splash then
+					if near <= splash and not visorBlocks(c.m, char, aimEnd) then -- v1.1: + visor
 						ink(c.m, char, ta + blind, ta)
 						n += 1
 					end
