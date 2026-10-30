@@ -1,4 +1,4 @@
--- ArenaStatus v1.7 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
+-- ArenaStatus v1.8 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
 -- MDA-6, plan docs/plans/ARENAHUD_v1.0.md Task 1, mockup docs/mockups/mobile_hud_options.html option A (Kepu 2026-10-28:
 --   "health should be at the top right of the screen along with the T-Rex drop down list"; stamina bar only while latched).
 -- Replaces HealthBar 1.1 / SpeciesPicker 1.0 / StaminaBar 1.1 in Mecha (those are switched off by Arena scope 1.1).
@@ -62,11 +62,19 @@
 --   UIStroke "BloodCostOutline" (2 px) whose transparency pulses 0.05 .. 0.45 (0.8 s), so the green under it stays
 --   visible; the half mark is unchanged. Switch: script attribute ArenaStatusBloodOutline (default true, read at start;
 --   false = 1.6 solid chunk).
+-- v1.8 (Kepu 2026-10-30: "fix the preview to make it more obvious"; mockup docs/mockups/pachy_bloodrush_preview_options.html,
+--   picked "A · Hatched + tag"): with the 1.7 outline on, the outline is 3 px; a Frame "BloodCostStripes" (ClipsDescendants)
+--   fills the chunk with red (224, 40, 74) diagonal stripes drawn as steps of small squares (4 rows of a quarter of the bar
+--   height, 4 px wide, each row 4 px further left, a stripe every 9 px; Studio: rotated stripes are not clipped, steps
+--   are), so the green shows between them; a red tag "BloodCostTag" just right of the health bar reads "NEXT -<HP the
+--   press takes>" with a pointer to the bar (the bar sits at the screen's bottom edge, so under it is off screen).
+--   Stripes and outline pulse together (0.05 .. 0.45, 0.8 s); the tag stays solid and shows only with the preview.
+--   Switch: script attribute ArenaStatusBloodHatched (default true, read at start; false = 1.7 outline only).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local CORNER_Y = 8 -- v1.4
 local SHIELD = Color3.fromRGB(90, 160, 255) -- v1.1
 local LOW_FRACTION = 0.3
@@ -482,6 +490,58 @@ if script:GetAttribute("ArenaStatusBloodEnabled") ~= false then
 		costStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		costStroke.Parent = cost
 	end
+	if script:GetAttribute("ArenaStatusBloodHatched") == nil then script:SetAttribute("ArenaStatusBloodHatched", true) end -- v1.8
+	local stripes, costTag
+	if costStroke and script:GetAttribute("ArenaStatusBloodHatched") ~= false then
+		costStroke.Thickness = 3
+		stripes = Instance.new("Frame")
+		stripes.Name = "BloodCostStripes"
+		stripes.BackgroundTransparency = 1
+		stripes.BorderSizePixel = 0
+		stripes.ClipsDescendants = true
+		stripes.Size = UDim2.fromScale(1, 1)
+		stripes.ZIndex = 3
+		stripes.Parent = cost
+		for i = 0, 17 do
+			for row = 0, 3 do
+				local b = Instance.new("Frame")
+				b.Name = ("Stripe%d_%d"):format(i, row)
+				b.Position = UDim2.new(0, -12 + i * 9 + (3 - row) * 4, row * 0.25, 0)
+				b.Size = UDim2.new(0, 4, 0.25, 0)
+				b.BackgroundColor3 = Color3.fromRGB(224, 40, 74)
+				b.BorderSizePixel = 0
+				b.ZIndex = 3
+				b.Parent = stripes
+			end
+		end
+		costTag = Instance.new("TextLabel")
+		costTag.Name = "BloodCostTag"
+		costTag.AnchorPoint = Vector2.new(0, 0.5)
+		costTag.Position = UDim2.new(1, 12, 0.5, 0)
+		costTag.Size = UDim2.fromOffset(78, 20)
+		costTag.BackgroundColor3 = Color3.fromRGB(224, 40, 74)
+		costTag.BorderSizePixel = 0
+		costTag.Font = Enum.Font.FredokaOne
+		costTag.TextSize = 14
+		costTag.TextColor3 = Color3.new(1, 1, 1)
+		costTag.Text = "NEXT -22"
+		costTag.Visible = false
+		costTag.ZIndex = 5
+		costTag.Parent = barBack
+		local tc = Instance.new("UICorner")
+		tc.CornerRadius = UDim.new(1, 0)
+		tc.Parent = costTag
+		local tip = Instance.new("Frame")
+		tip.Name = "Pointer"
+		tip.AnchorPoint = Vector2.new(0.5, 0.5)
+		tip.Position = UDim2.fromScale(0, 0.5)
+		tip.Size = UDim2.fromOffset(8, 8)
+		tip.Rotation = 45
+		tip.BackgroundColor3 = Color3.fromRGB(224, 40, 74)
+		tip.BorderSizePixel = 0
+		tip.ZIndex = 4
+		tip.Parent = costTag
+	end
 	local half = Instance.new("Frame")
 	half.Name = "HalfMark"
 	half.AnchorPoint = Vector2.new(0.5, 0)
@@ -508,11 +568,17 @@ if script:GetAttribute("ArenaStatusBloodEnabled") ~= false then
 			if costStroke then -- v1.7: outline only, the green stays visible
 				cost.BackgroundTransparency = 1
 				costStroke.Transparency = 0.25 + 0.2 * math.sin(os.clock() * math.pi * 2 / 0.8)
+				if stripes then -- v1.8: stripes pulse with the outline, the tag names the cost
+					local tr = costStroke.Transparency
+					for _, b in ipairs(stripes:GetChildren()) do b.BackgroundTransparency = tr end
+					costTag.Text = ("NEXT -%d"):format(math.floor(h - after + 0.5))
+				end
 			else
 				cost.BackgroundTransparency = 0.25 + 0.2 * math.sin(os.clock() * math.pi * 2 / 0.8)
 			end
 		end
 		cost.Visible, half.Visible = ready, ready
+		if costTag then costTag.Visible = ready end -- v1.8
 		local st = ready and "shown" or "hidden"
 		if st ~= shownState then shownState = st; char:SetAttribute("ArenaStatusBlood", st) end
 	end)

@@ -1,4 +1,4 @@
--- HeadbuttServer v1.6 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.7 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -82,15 +82,24 @@
 --   longer resets when a charge refills; it resets to 0 only once Humanoid.Health is back at MaxHealth (checked every
 --   frame). So 2 sacrifices, then none until the pachy is at full health again. Switch: script attribute
 --   HeadbuttSacrificeFullResetEnabled (default true, read at start; false = 1.5, reset on a refill).
+-- v1.7 (Kepu 2026-10-30: "when i click on the 4th and 5th headrush ... my base headrushes were filling in the background
+--   so it allows for a 6th and maybe even 7th headrush ... refill should be only on the current empty slot"; answer "A
+--   Blood Rush restarts the refill"): a sacrifice press restarts the running refill: refillStart = now, refillAt = now +
+--   the refill time for the charges missing now (tiers as before). So the next normal charge comes a full refill after
+--   the last Blood Rush press. Normal presses are unchanged. Switch: script attribute HeadbuttSacrificeRestartsRefill
+--   (default true, read at start; false = 1.6, the refill keeps running). Diagnostic: character
+--   HeadbuttRefillRestarts (count).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
 local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
+if script:GetAttribute("HeadbuttSacrificeRestartsRefill") == nil then script:SetAttribute("HeadbuttSacrificeRestartsRefill", true) end -- v1.7
+local SAC_RESTARTS_REFILL = script:GetAttribute("HeadbuttSacrificeRestartsRefill") ~= false
 if script:GetAttribute("HeadbuttSacrificeEnabled") == nil then script:SetAttribute("HeadbuttSacrificeEnabled", true) end -- v1.5
 local SAC_ON = script:GetAttribute("HeadbuttSacrificeEnabled") ~= false
 if script:GetAttribute("HeadbuttRunTimeEnabled") == nil then script:SetAttribute("HeadbuttRunTimeEnabled", true) end -- v1.4
@@ -250,6 +259,10 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		char:SetAttribute("HeadbuttSacrifices", st.sacrifices)
 		char:SetAttribute("HeadbuttSacrificeCount", (char:GetAttribute("HeadbuttSacrificeCount") or 0) + 1)
 		char:SetAttribute("HeadbuttSacrificeAt", t)
+		if SAC_RESTARTS_REFILL and st.refillAt then -- v1.7: a Blood Rush press puts the refilling charge back to 0 s
+			st.refillStart, st.refillAt = t, t + refillTime(char, maxCharges(char) - st.charges)
+			char:SetAttribute("HeadbuttRefillRestarts", (char:GetAttribute("HeadbuttRefillRestarts") or 0) + 1)
+		end
 	else
 	st.charges -= 1
 	if not st.refillAt then

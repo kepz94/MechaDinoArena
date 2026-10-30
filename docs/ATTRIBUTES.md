@@ -1113,6 +1113,9 @@ and on server close.
 | SkillTree.RAPTOR_LIFESTEAL_STRONG | SkillTree module constant | true: SkillTree 1.28 e.lifestealRaptor + raptor step texts (false = 1.27) |
 | LabStepsForEnabled | script (Lab) | Lab 1.8 switch, default true (nil = on): per-dino step texts from path.stepsFor (false = 1.7) |
 | ArenaStatusBloodOutline | script (ArenaStatus) | ArenaStatus 1.7 switch, default true: Blood Rush cost preview is a red outline over the green (false = 1.6 solid chunk) |
+| ArenaStatusBloodHatched | script (ArenaStatus) | ArenaStatus 1.8 switch, default true: hatched stripes + "NEXT -N" tag on the Blood Rush preview (false = 1.7 outline only) |
+| HeadbuttSacrificeRestartsRefill | script (HeadbuttServer) | HeadbuttServer 1.7 switch, default true: a Blood Rush press restarts the running charge refill (false = 1.6) |
+| HeadbuttRefillRestarts | character | HeadbuttServer 1.7: refills restarted by Blood Rush presses (count) |
 | SkillShield, SkillShieldUntil | character | overheal shield HP and its end time (server time) |
 | SkillStunTrimmed | character | "immune" / "trimmed" / "tossTrimmed" |
 | SkillBleedUntil, SkillBleedBy, SkillCrushedAt | bot | bleed end time, who made it bleed, last crushing hit |
