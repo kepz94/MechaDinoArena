@@ -1826,6 +1826,7 @@ ArenaScope 1.12: ArenaScope_Lab, ArenaScope_LabPreviewServer (ArenaScope_SkillSc
 | LabBarH | player (local) | px | full Lab top bar height |
 | LabSplitTabsEnabled | Lab script | true | false = 1.1 tabs (every mech part on MECH PARTS); read at start |
 | LabPassiveCards | player (local) | 0.. | always-on part cards on the STATS tab |
+| LabSlotShowsPartEnabled | Lab script | true | Lab 1.3: a slot tap also shows that slot's part on the right; false = 1.2; read at start |
 | MainMenuHangarEnabled | MainMenu script | true | false = 1.2 see-through menu; read at start |
 | MainMenuHangarParts | player (local) | number | parts in the hangar room |
 | MainMenuPlayLoaderEnabled | MainMenu script | true | false = no egg after SANDBOX / ARENA |

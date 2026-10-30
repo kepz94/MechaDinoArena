@@ -1,4 +1,4 @@
--- Lab v1.2 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.3 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -59,13 +59,19 @@
 --   stay "parts" / "stats". Switch: script attribute LabSplitTabsEnabled (default true, read at start; false = the 1.1
 --   tabs: every mech part on MECH PARTS). The detail line of a button part reads "MECHA ABILITY · BUTTON". Diagnostic:
 --   LabPassiveCards (always-on part cards on the STATS tab).
+-- v1.3 (Kepu 2026-10-29: "when I select a weapon in the slots it doesn't tell me to the right what the weapon is"):
+--   tapping a slot that holds a part (when the tap selects that slot) also selects that part: the detail panel on the
+--   right shows it, its card gets the white stroke, and the MECHA ABILITIES tab opens if STATS was showing. The rest of
+--   the slot tap is as before (equip a selected unslotted part there / select / deselect the slot; then a card tap
+--   equips into the selected slot). Switch: script attribute LabSlotShowsPartEnabled (default true, read at start;
+--   false = 1.2). Diagnostic: LabSelected follows.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local BIND = "LabMouse"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local PANEL2 = Color3.fromRGB(28, 34, 48)
@@ -88,6 +94,8 @@ if script:GetAttribute("LabEnabled") == nil then script:SetAttribute("LabEnabled
 if script:GetAttribute("LabBarClearEnabled") == nil then script:SetAttribute("LabBarClearEnabled", true) end -- v1.1
 if script:GetAttribute("LabSplitTabsEnabled") == nil then script:SetAttribute("LabSplitTabsEnabled", true) end -- v1.2
 local splitTabs = script:GetAttribute("LabSplitTabsEnabled") ~= false -- v1.2
+if script:GetAttribute("LabSlotShowsPartEnabled") == nil then script:SetAttribute("LabSlotShowsPartEnabled", true) end -- v1.3
+local slotShowsPart = script:GetAttribute("LabSlotShowsPartEnabled") ~= false -- v1.3
 if script:GetAttribute("LabEnabled") == false then return end
 
 local shared = ReplicatedStorage:WaitForChild("SkillShared", 30)
@@ -1097,9 +1105,18 @@ for n, s in ipairs(slotBtns) do
 			slotSel = nil
 		else
 			slotSel = n
+			local inSlot = slotOf(n) -- v1.3: show the part in this slot on the right
+			if slotShowsPart and inSlot then
+				selected = inSlot
+				if tab ~= "parts" then tab = "parts" end
+			end
 		end
-		drawSlots()
-		drawCards()
+		if slotShowsPart then
+			redraw()
+		else
+			drawSlots()
+			drawCards()
+		end
 	end)
 end
 
