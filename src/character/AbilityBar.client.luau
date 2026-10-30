@@ -1,4 +1,4 @@
--- AbilityBar v1.9 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.10 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -70,12 +70,35 @@
 --   and the leap's states: "off" (MechaLegsEnabled not true) / "active" (JumpTestState crouch / air) / "cooling"
 --   (JumpPredictedAt + JumpCooldown, with the sweep and seconds) / "ready". Switch: script attribute
 --   AbilityBarLegsEnabled (default true, read at start; false = the plain slot tile).
+-- v1.10 (pachy Blood Rush, MDA-124, mockup docs/mockups/pachy_sacrifice_options.html "C · Both"): Blood Rush state =
+--   BloodRushEnabled, HeadbuttChargesNow 0, and "left" = how many more sacrifices can be made now: min(BloodRushMax -
+--   HeadbuttSacrifices, the presses health allows while it stays above half of MaxHealth, each taking BloodRushCost x
+--   max, never below 1). On the Headbutt tile at 0 charges with Blood Rush on: the charge pips hide and BloodRushMax red
+--   hearts (♥, rgb(224, 40, 74); grey 0.6 when used up) take their place; with left > 0 the tile is painted "sacrifice"
+--   (full colour, red 3 px stroke) and a red "-25% HP" tag (the cost in %) sits above the SLOWED pill. A slotted
+--   "bloodrush" tile shows key "LMB" (it fires through ATTACK) and "ready" (left > 0) / "spent" (dim 0.25: Blood Rush on,
+--   none left) / "waiting" (charges left: ready once they run out) / "off". Switch: script attribute AbilityBarBloodEnabled
+--   (default true, read at start; false = 1.9). Diagnostics: AbilityBarBloodLeft.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
+if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
+local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
+local BLOOD = Color3.fromRGB(224, 40, 74)
+local function bloodLeft(char) -- v1.10: sacrifices possible right now (nil when Blood Rush is off)
+	if char:GetAttribute("BloodRushEnabled") ~= true then return nil end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return 0 end
+	local max = math.max(1, hum.MaxHealth)
+	local cap = (tonumber(char:GetAttribute("BloodRushMax")) or 2) - (tonumber(char:GetAttribute("HeadbuttSacrifices")) or 0)
+	local cost = (tonumber(char:GetAttribute("BloodRushCost")) or 0.25) * max
+	local h, n = hum.Health, 0
+	while n < cap and h > max * 0.5 do h = math.max(1, h - cost); n += 1 end
+	return n
+end
 if script:GetAttribute("AbilityBarLegsEnabled") == nil then script:SetAttribute("AbilityBarLegsEnabled", true) end -- v1.9
 local LEGS_TILE = script:GetAttribute("AbilityBarLegsEnabled") ~= false
 local char = script.Parent
@@ -311,6 +334,7 @@ local function rebuild()
 		local title = not id and "+" or id == "thrusters" and "DASH"
 			or string.upper(okST and ST.PATHS[id] and ST.PATHS[id].name or id)
 		local key = (LEGS_TILE and id == "mechalegs") and "Space" or SLOT_KEYS[n] -- v1.9: Mecha Legs fires through the jump
+		if BLOOD_TILE and id == "bloodrush" then key = "LMB" end -- v1.10: Blood Rush fires through ATTACK
 		local t = makeTile("Slot_" .. n, key, title, id and ORANGE or WHITE, id == "thrusters")
 		if not id then t.stroke.Transparency = 0.5 end
 		table.insert(tiles, {id = "Slot_" .. n, kind = "slot", n = n, part = id, t = t})
@@ -397,6 +421,61 @@ local function rebuild()
 			sp.PaddingTop, sp.PaddingBottom = UDim.new(0.14, 0), UDim.new(0.14, 0)
 			sp.Parent = slow
 			t.slowed = slow
+			if BLOOD_TILE then -- v1.10: Blood Rush hearts + cost tag
+				local hearts = Instance.new("Frame")
+				hearts.Name = "BloodHearts"
+				hearts.BackgroundTransparency = 1
+				hearts.AnchorPoint = Vector2.new(0.5, 1)
+				hearts.Position = UDim2.fromScale(0.5, 0.96)
+				hearts.Size = UDim2.fromScale(0.9, 0.2)
+				hearts.ZIndex = 4
+				hearts.Visible = false
+				hearts.Parent = t.f
+				local hl = Instance.new("UIListLayout")
+				hl.FillDirection = Enum.FillDirection.Horizontal
+				hl.HorizontalAlignment = Enum.HorizontalAlignment.Center
+				hl.VerticalAlignment = Enum.VerticalAlignment.Center
+				hl.Padding = UDim.new(0.06, 0)
+				hl.Parent = hearts
+				t.bloodHearts = {}
+				for i = 1, 3 do
+					local h = Instance.new("TextLabel")
+					h.Name = "Heart_" .. i
+					h.BackgroundTransparency = 1
+					h.Size = UDim2.fromScale(1, 1)
+					h.SizeConstraint = Enum.SizeConstraint.RelativeYY
+					h.Font = Enum.Font.GothamBlack
+					h.Text = "♥"
+					h.TextScaled = true
+					h.TextColor3 = BLOOD
+					h.ZIndex = 4
+					h.LayoutOrder = i
+					h.Parent = hearts
+					t.bloodHearts[i] = h
+				end
+				t.bloodRow = hearts
+				local tagL = Instance.new("TextLabel")
+				tagL.Name = "BloodTag"
+				tagL.AnchorPoint = Vector2.new(0.5, 1)
+				tagL.Position = UDim2.new(0.5, 0, -0.3, -8)
+				tagL.Size = UDim2.fromScale(1.05, 0.24)
+				tagL.BackgroundColor3 = BLOOD
+				tagL.BorderSizePixel = 0
+				tagL.Font = Enum.Font.FredokaOne
+				tagL.Text = "-25% HP"
+				tagL.TextScaled = true
+				tagL.TextColor3 = WHITE
+				tagL.Visible = false
+				tagL.ZIndex = 5
+				tagL.Parent = t.f
+				local tc = Instance.new("UICorner")
+				tc.CornerRadius = UDim.new(0.5, 0)
+				tc.Parent = tagL
+				local tp = Instance.new("UIPadding")
+				tp.PaddingTop, tp.PaddingBottom = UDim.new(0.14, 0), UDim.new(0.14, 0)
+				tp.Parent = tagL
+				t.bloodTag = tagL
+			end
 		end
 		table.insert(tiles, {id = id, kind = "move", move = m, t = t})
 		table.insert(names, m.key .. ":" .. m.name)
@@ -468,6 +547,18 @@ local function update()
 				else
 					paint(e, "ready", 0, 0, nil)
 				end
+			elseif BLOOD_TILE and e.part == "bloodrush" then -- v1.10: Blood Rush
+				local left = bloodLeft(char)
+				if left == nil then
+					paint(e, "off", 0.5, 0, nil)
+				elseif (tonumber(char:GetAttribute("HeadbuttChargesNow")) or 1) >= 1 then
+					paint(e, "waiting", 0, 0, nil)
+				elseif left > 0 then
+					paint(e, "ready", 0, 0, nil)
+					e.t.stroke.Color = BLOOD
+				else
+					paint(e, "spent", 0.25, 0, nil)
+				end
 			elseif LEGS_TILE and e.part == "mechalegs" then -- v1.9: Mecha Legs = the leap's cooldown
 				local cd = math.max(0.01, tonumber(char:GetAttribute("JumpCooldown")) or 6)
 				local stamp = char:GetAttribute("JumpPredictedAt")
@@ -508,6 +599,20 @@ local function update()
 				pip.f.Visible = i <= maxC
 				pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0))
 			end
+			local bLeft = BLOOD_TILE and nowC <= 0 and bloodLeft(char) or nil -- v1.10
+			if e.t.bloodRow then
+				local bMax = math.clamp(math.floor(tonumber(char:GetAttribute("BloodRushMax")) or 2), 1, 3)
+				e.t.bloodRow.Visible = bLeft ~= nil
+				e.t.chargePips[1].f.Parent.Visible = bLeft == nil
+				for i, h in ipairs(e.t.bloodHearts) do
+					h.Visible = i <= bMax
+					h.TextColor3 = (bLeft and i <= bLeft) and BLOOD or WHITE
+					h.TextTransparency = (bLeft and i <= bLeft) and 0 or 0.6
+				end
+				e.t.bloodTag.Visible = bLeft ~= nil and bLeft > 0
+				e.t.bloodTag.Text = ("-%d%% HP"):format(math.floor((tonumber(char:GetAttribute("BloodRushCost")) or 0.25) * 100 + 0.5))
+				show("AbilityBarBloodLeft", bLeft or -1)
+			end
 			local slowedUntil = math.max(tonumber(char:GetAttribute("HeadbuttSelfSlowUntil")) or 0,
 				tonumber(char:GetAttribute("HeadbuttSlowUntil")) or 0)
 			e.t.slowed.Visible = slowedUntil > now
@@ -518,6 +623,11 @@ local function update()
 			elseif hs == "windup" or hs == "charge" then
 				paint(e, "active", 0, 0, nil)
 				e.t.stroke.Color = YELLOW
+			elseif nowC <= 0 and bLeft and bLeft > 0 then -- v1.10: a Blood Rush sacrifice is ready
+				paint(e, "sacrifice", 0, 0, nil)
+				e.t.stroke.Thickness, e.t.stroke.Color = 3, BLOOD
+				e.t.fill.Size = UDim2.fromScale(1, part)
+				e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = WHITE, 0.89
 			elseif nowC <= 0 then
 				paint(e, "empty", 0.45, 0, nil)
 				e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = WHITE, 0.89

@@ -1,4 +1,4 @@
--- SkillTree v1.23 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.24 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -242,6 +242,12 @@ SkillTree.AREAS = {
 --   second should be really strong too"), with SkillTree.MECHA_LEGS_STRONG (default true; false = the 1.22 numbers):
 --   I legsBoostMul 1.5 + legsPowerMul 1.2, II legsPowerMul 1.45 (about 2.1 x the base leap height), star doubleJump with
 --   legsDoubleMul 1 (a full leap from mid-air) and legsDoubleForward 15 studs/s. Step texts follow the numbers.
+-- v1.24 (pachy Blood Rush, MDA-124, plan docs/plans/PACHY_BLOODRUSH_v1.0.md, mockup "C · Both"; Kepu 2026-10-30): with
+--   SkillTree.BLOOD_RUSH (default true) the pachy's part "bloodrush" ("Blood Rush", mecha, live, OWNER Pachy, BUTTONS:
+--   takes a slot like Mecha Legs and fires through ATTACK) is appended to the attack area, PATHS and PATH_ORDER. Effects
+--   (off values when not bought): bloodRush (I: true), bloodCost (I: 0.25 of max health), bloodMax (I: 2 per empty
+--   spell), bloodDamageMul (II: 1.25), bloodNoSelfSlow (III: true), bloodSlowMul / bloodSlowTime (star: 0.45 / 4 s).
+--   false = 1.23 (no line).
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -492,6 +498,25 @@ if SkillTree.MECHA_LEGS_STRONG and SkillTree.PATHS.mechalegs then
 		"Mecha legs: jump again in mid-air at full leap power with a forward burst (double jump), part of the same leap"}
 end
 if SkillTree.MECHA_LEGS_SLOT and SkillTree.PATHS.mechalegs then SkillTree.BUTTONS.mechalegs = true end
+-- v1.24: the pachy's Blood Rush (slot part, fires through ATTACK)
+SkillTree.BLOOD_RUSH = true
+if SkillTree.BLOOD_RUSH and not SkillTree.PATHS.bloodrush then
+	local p = path("bloodrush", "Blood Rush", true, false, {
+		"Out of headbutt charges? ATTACK pays 25% of your max health for one more headbutt (above half health, 2 per empty spell)",
+		"Sacrifice headbutts hit 25% harder",
+		"No self-slow after a sacrifice headbutt",
+		"A sacrifice headbutt that lands slows the target hard: speed x0.45 for 4 s"})
+	p.area = "attack"
+	p.dino = "Pachy"
+	SkillTree.OWNER.bloodrush = "Pachy"
+	SkillTree.LIVE_MECH.bloodrush = true
+	SkillTree.BUTTONS.bloodrush = true
+	for _, a in ipairs(SkillTree.AREAS) do
+		if a.id == "attack" then table.insert(a.paths, p) end
+	end
+	SkillTree.PATHS.bloodrush = p
+	table.insert(SkillTree.PATH_ORDER, "bloodrush")
+end
 -- v1.19: no Jaws for the pachy
 SkillTree.PACHY_NO_JAWS = true
 if SkillTree.PACHY_NO_JAWS then
@@ -741,6 +766,14 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if ml >= 3 then e.legsCdMul = 0.65 end
 	if ml >= 4 then e.doubleJump, e.legsLook = true, true end
 	e.legsDoubleMul, e.legsDoubleForward = 0.894, 0 -- v1.23
+	-- v1.24: Blood Rush (pachy)
+	local br = s.bloodrush or 0
+	e.bloodRush, e.bloodCost, e.bloodMax, e.bloodDamageMul, e.bloodNoSelfSlow, e.bloodSlowMul, e.bloodSlowTime =
+		false, 0, 0, 1, false, 1, 0
+	if br >= 1 then e.bloodRush, e.bloodCost, e.bloodMax = true, 0.25, 2 end
+	if br >= 2 then e.bloodDamageMul = 1.25 end
+	if br >= 3 then e.bloodNoSelfSlow = true end
+	if br >= 4 then e.bloodSlowMul, e.bloodSlowTime = 0.45, 4 end
 	if SkillTree.MECHA_LEGS_STRONG then -- v1.23: stronger leap and double jump
 		if ml >= 1 then e.legsBoostMul, e.legsPowerMul = 1.5, 1.2 end
 		if ml >= 2 then e.legsPowerMul = 1.45 end

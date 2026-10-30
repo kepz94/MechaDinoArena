@@ -1,4 +1,4 @@
--- MechaButtons v1.16 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.17 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -136,6 +136,9 @@
 --     to the flat part only (no tilt); the camera follows that flat direction.
 --   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
 --   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
+-- v1.17 (pachy Blood Rush, MDA-124): a slotted "bloodrush" button reads "BLOOD RUSH" and is lit while a sacrifice can
+--   be made now (BloodRushEnabled, HeadbuttChargesNow 0, health above half, HeadbuttSacrifices < BloodRushMax); pressing
+--   it does nothing (ATTACK fires it). Switch: script attribute MechaButtonsBloodEnabled (default true).
 -- v1.16 (Kepu 2026-10-30: "mecha legs should take up an ability slot ... it's through the jump button"; SkillTree 1.23):
 --   a slotted "mechalegs" button reads "MECHA LEGS" and shows the leap's readiness (MechaLegsEnabled and the leap off
 --   cooldown: JumpPredictedAt + JumpCooldown) with the cooldown sweep. Pressing it does nothing (the jump fires it);
@@ -152,7 +155,9 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.16"
+local VERSION = "1.17"
+if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
+local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
 local LEGS_BTN = script:GetAttribute("MechaButtonsLegsEnabled") ~= false
 local AIM_LOCK, AIM_DEAD = 0.25, 14 -- v1.12
@@ -352,6 +357,14 @@ end
 -- v1.4: is a part ready to use, and how much of its cooldown is left (0..1)
 local function partState(id)
 	local now = workspace:GetServerTimeNow()
+	if BLOOD_BTN and id == "bloodrush" then -- v1.17: a sacrifice can be made now
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		local ok = char:GetAttribute("BloodRushEnabled") == true and hum ~= nil
+			and (tonumber(char:GetAttribute("HeadbuttChargesNow")) or 1) < 1
+			and hum.Health > hum.MaxHealth * 0.5
+			and (tonumber(char:GetAttribute("HeadbuttSacrifices")) or 0) < (tonumber(char:GetAttribute("BloodRushMax")) or 2)
+		return ok, 0
+	end
 	if LEGS_BTN and id == "mechalegs" then -- v1.16: the leap's cooldown
 		local cd = tonumber(char:GetAttribute("JumpCooldown")) or 6
 		local stamp = char:GetAttribute("JumpPredictedAt")
@@ -384,6 +397,7 @@ end
 local function partName(id)
 	if id == "thrusters" then return "DASH" end
 	if LEGS_BTN and id == "mechalegs" then return "MECHA LEGS" end -- v1.16
+	if BLOOD_BTN and id == "bloodrush" then return "BLOOD RUSH" end -- v1.17
 	if TIMED_PARTS[id] then return TIMED_PARTS[id][3] end -- v1.5
 	return string.upper(id)
 end
@@ -915,7 +929,7 @@ draw = function()
 	for n, s in ipairs(slots) do
 		if gesture and gesture.n == n and gesture.pulling then continue end -- v1.4: keep the pulling look
 		local id = slotPart(n)
-		if id == "cloak" or TIMED_PARTS[id] or (LEGS_BTN and id == "mechalegs") then ready = (partState(id)) else ready = char:GetAttribute("DashEnabled") == true end -- v1.4; v1.5: + timed parts; v1.16: + legs
+		if id == "cloak" or TIMED_PARTS[id] or (LEGS_BTN and id == "mechalegs") or (BLOOD_BTN and id == "bloodrush") then ready = (partState(id)) else ready = char:GetAttribute("DashEnabled") == true end -- v1.4; v1.5: + timed parts; v1.16: + legs
 		if id then
 			s.stroke.Color, s.stroke.Transparency = ORANGE, ready and 0 or 0.5
 			s.main.Text = partName(id) -- v1.4 (was: thrusters -> DASH, else the id)
@@ -957,7 +971,7 @@ RunService.RenderStepped:Connect(function()
 	for n, s in ipairs(slots) do
 		local id = slotPart(n)
 		local tFrac = 0
-		if id and (TIMED_PARTS[id] or (LEGS_BTN and id == "mechalegs")) then -- v1.5; v1.16: + legs
+		if id and (TIMED_PARTS[id] or (LEGS_BTN and id == "mechalegs") or (BLOOD_BTN and id == "bloodrush")) then -- v1.5; v1.16: + legs; v1.17: + blood
 			local r, f = partState(id)
 			tFrac = f
 			if r ~= lastTimedReady[id] then lastTimedReady[id] = r; redraw = true end
@@ -971,6 +985,7 @@ end)
 local WATCH = {DashEnabled = true, DashCharges = true, DashChargesLeft = true, AutoRun = true,
 	CloakEnabled = true, CloakState = true, CloakReadyAt = true} -- v1.4: + cloak
 WATCH.MechaLegsEnabled, WATCH.JumpPredictedAt = true, true -- v1.16
+WATCH.BloodRushEnabled, WATCH.HeadbuttChargesNow, WATCH.HeadbuttSacrifices = true, true, true -- v1.17
 for _, tp in pairs(TIMED_PARTS) do -- v1.5
 	for _, k in ipairs({"Enabled", "Until", "ReadyAt"}) do WATCH[tp[1] .. k] = true end
 end

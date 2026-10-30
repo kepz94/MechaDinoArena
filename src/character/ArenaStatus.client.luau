@@ -1,4 +1,4 @@
--- ArenaStatus v1.5 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
+-- ArenaStatus v1.6 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
 -- MDA-6, plan docs/plans/ARENAHUD_v1.0.md Task 1, mockup docs/mockups/mobile_hud_options.html option A (Kepu 2026-10-28:
 --   "health should be at the top right of the screen along with the T-Rex drop down list"; stamina bar only while latched).
 -- Replaces HealthBar 1.1 / SpeciesPicker 1.0 / StaminaBar 1.1 in Mecha (those are switched off by Arena scope 1.1).
@@ -50,11 +50,17 @@
 --     Diagnostics: character ArenaLeaveConfirm ("open" / "stay" / "leave"), ArenaLeaveAsks (count).
 -- v1.5 (MDA-118, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 9): SPECIES gains {id = "Pachy", label = "PACHY"} (used by
 --   the 1.0 species menu and the status tag when the MENU pill is off).
+-- v1.6 (pachy Blood Rush, MDA-124, mockup docs/mockups/pachy_sacrifice_options.html "C · Both"): while a sacrifice is
+--   ready (BloodRushEnabled, HeadbuttChargesNow 0, health above half, HeadbuttSacrifices < BloodRushMax) the health bar
+--   shows the health the next press takes: a red (224, 40, 74) chunk from max(1, h - BloodRushCost x max) to h, its
+--   transparency pulsing 0.05 .. 0.45 (0.8 s), and a thin white mark at half the bar. Hidden otherwise. Switch: script
+--   attribute ArenaStatusBloodEnabled (default true, read at start). Diagnostic: character ArenaStatusBlood
+--   ("shown" / "hidden").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local CORNER_Y = 8 -- v1.4
 local SHIELD = Color3.fromRGB(90, 160, 255) -- v1.1
 local LOW_FRACTION = 0.3
@@ -446,6 +452,48 @@ local function refreshSpecies()
 		if s.id == current then tag.Text = s.label end
 	end
 	if menuButton then tag.Text = "MENU" end -- v1.2
+end
+
+-- v1.6: Blood Rush cost preview in the health bar
+if script:GetAttribute("ArenaStatusBloodEnabled") == nil then script:SetAttribute("ArenaStatusBloodEnabled", true) end
+if script:GetAttribute("ArenaStatusBloodEnabled") ~= false then
+	local barBack = healthFill.Parent
+	local cost = Instance.new("Frame")
+	cost.Name = "BloodCost"
+	cost.BackgroundColor3 = Color3.fromRGB(224, 40, 74)
+	cost.BorderSizePixel = 0
+	cost.Visible = false
+	cost.ZIndex = 3
+	cost.Parent = barBack
+	local half = Instance.new("Frame")
+	half.Name = "HalfMark"
+	half.AnchorPoint = Vector2.new(0.5, 0)
+	half.Position = UDim2.fromScale(0.5, 0)
+	half.Size = UDim2.new(0, 2, 1, 0)
+	half.BackgroundColor3 = Color3.new(1, 1, 1)
+	half.BorderSizePixel = 0
+	half.Visible = false
+	half.ZIndex = 4
+	half.Parent = barBack
+	local shownState = nil
+	RunService.RenderStepped:Connect(function()
+		if not hum then return end
+		local max = math.max(hum.MaxHealth, 1)
+		local h = math.clamp(hum.Health, 0, max)
+		local ready = char:GetAttribute("BloodRushEnabled") == true
+			and (tonumber(char:GetAttribute("HeadbuttChargesNow")) or 1) < 1
+			and h > max * 0.5
+			and (tonumber(char:GetAttribute("HeadbuttSacrifices")) or 0) < (tonumber(char:GetAttribute("BloodRushMax")) or 2)
+		if ready then
+			local after = math.max(1, h - (tonumber(char:GetAttribute("BloodRushCost")) or 0.25) * max)
+			cost.Position = UDim2.fromScale(after / max, 0)
+			cost.Size = UDim2.fromScale((h - after) / max, 1)
+			cost.BackgroundTransparency = 0.25 + 0.2 * math.sin(os.clock() * math.pi * 2 / 0.8)
+		end
+		cost.Visible, half.Visible = ready, ready
+		local st = ready and "shown" or "hidden"
+		if st ~= shownState then shownState = st; char:SetAttribute("ArenaStatusBlood", st) end
+	end)
 end
 
 local stamShown = nil

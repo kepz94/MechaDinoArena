@@ -1,4 +1,4 @@
--- HeadbuttServer v1.4 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.5 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -62,13 +62,30 @@
 --   the 63 studs/s charge) = full, straight line between. The damage uses the larger of the distance and time values, so
 --   lag never lowers it. Diagnostics: HeadbuttHitChargeTime (s, 0.01), HeadbuttHitRunMul (the one used). Switch: script
 --   attribute HeadbuttRunTimeEnabled (default true, read at start; false = distance only, = 1.3).
+-- v1.5 (pachy Blood Rush, MDA-124, plan docs/plans/PACHY_BLOODRUSH_v1.0.md; Kepu 2026-10-30: "you can sacrifice 25% of
+--   your life for another headbutt. This caps out at 50% so you could get two extra head butts after emptying your
+--   charges"): with 0 charges, a request is a sacrifice instead of "empty" when the character attribute BloodRushEnabled
+--   is true (SkillEffects 1.17: Blood Rush bought and slotted). Checks, after the 1.4 ones: "empty" (Blood Rush off),
+--   "spent" (BloodRushMax, default 2, sacrifices since the charges ran out), "lowHealth" (Humanoid.Health at or below
+--   half of MaxHealth). Accepted: Humanoid.Health is set to Health - BloodRushCost (default 0.25) x MaxHealth, at least 1
+--   (set directly: TakeDamage would be blocked by an Energy Shield ForceField); no charge is spent; the charge runs
+--   like any other with st.active.sacrifice = true. Stamps: HeadbuttSacrificeCost (health taken, 0.1), HeadbuttSacrifices
+--   (used since the charges ran out), HeadbuttSacrificeCount (total), HeadbuttSacrificeAt (before HeadbuttStartedAt).
+--   The count resets to 0 when a charge refills. A sacrifice that misses still cost the health.
+--   On a sacrifice hit: damage x BloodRushDamageMul (default 1; II 1.25), HeadbuttHitSacrifice = true (false on a normal
+--   hit); when BloodRushSlowMul (★ 0.45) is below the normal slow, the target's slow is BloodRushSlowMul for
+--   BloodRushSlowTime (★ 4) s instead (players and bots, the same headbutt slow). At the end of a sacrifice charge the
+--   self-slow is skipped while BloodRushNoSelfSlow is true (III). Switch: script attribute HeadbuttSacrificeEnabled
+--   (default true, read at start; false = 1.4, "empty" at 0 charges).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
+if script:GetAttribute("HeadbuttSacrificeEnabled") == nil then script:SetAttribute("HeadbuttSacrificeEnabled", true) end -- v1.5
+local SAC_ON = script:GetAttribute("HeadbuttSacrificeEnabled") ~= false
 if script:GetAttribute("HeadbuttRunTimeEnabled") == nil then script:SetAttribute("HeadbuttRunTimeEnabled", true) end -- v1.4
 local RUNTIME_ON = script:GetAttribute("HeadbuttRunTimeEnabled") ~= false
 if script:GetAttribute("HeadbuttRunUpEnabled") == nil then script:SetAttribute("HeadbuttRunUpEnabled", true) end -- v1.3
@@ -160,11 +177,12 @@ end
 
 local function finish(char, st, result)
 	if not st.active then return end
+	local wasSacrifice = st.active.sacrifice == true -- v1.5
 	st.active = nil
 	local t = now()
 	char:SetAttribute("HeadbuttResult", result)
 	char:SetAttribute("HeadbuttEndedAt", t)
-	if st.charges <= 0 then -- the downside: every charge used
+	if st.charges <= 0 and not (wasSacrifice and char:GetAttribute("BloodRushNoSelfSlow") == true) then -- the downside: every charge used (v1.5: not after a sacrifice with Blood Rush III)
 		char:SetAttribute("HeadbuttSelfSlowMul", get(char, "HeadbuttSelfSlowMul"))
 		char:SetAttribute("HeadbuttSelfSlowUntil", t + get(char, "HeadbuttSelfSlowTime"))
 		char:SetAttribute("HeadbuttSelfSlowCount", (char:GetAttribute("HeadbuttSelfSlowCount") or 0) + 1)
@@ -185,6 +203,7 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	local t = now()
 	local result
+	local sacrifice = false -- v1.5
 	if typeof(stamp) ~= "number" or stamp ~= stamp then
 		result = "badArg"
 	elseif not hum or hum.Health <= 0 then
@@ -201,21 +220,42 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		result = "busy"
 	elseif st.charges < 1 then
 		result = "empty"
+		if SAC_ON and char:GetAttribute("BloodRushEnabled") == true then -- v1.5: Blood Rush sacrifice
+			if (st.sacrifices or 0) >= (tonumber(char:GetAttribute("BloodRushMax")) or 2) then
+				result = "spent"
+			elseif hum.Health <= hum.MaxHealth * 0.5 then
+				result = "lowHealth"
+			else
+				result = nil
+				sacrifice = true
+			end
+		end
 	end
 	if result then
 		setResult(char, result)
 		return
 	end
+	if sacrifice then -- v1.5: pay health, no charge
+		local before = hum.Health
+		hum.Health = math.max(1, before - (tonumber(char:GetAttribute("BloodRushCost")) or 0.25) * hum.MaxHealth)
+		st.sacrifices = (st.sacrifices or 0) + 1
+		char:SetAttribute("HeadbuttSacrificeCost", math.floor((before - hum.Health) * 10 + 0.5) / 10)
+		char:SetAttribute("HeadbuttSacrifices", st.sacrifices)
+		char:SetAttribute("HeadbuttSacrificeCount", (char:GetAttribute("HeadbuttSacrificeCount") or 0) + 1)
+		char:SetAttribute("HeadbuttSacrificeAt", t)
+	else
 	st.charges -= 1
 	if not st.refillAt then
 		st.refillStart, st.refillAt = t, t + refillTime(char, maxCharges(char) - st.charges)
 	elseif TIERS_ON then -- v1.2 fix: the running refill stretches to the tier of the charges missing now
 		st.refillAt = st.refillStart + refillTime(char, maxCharges(char) - st.charges)
 	end
+	end
 	st.active = {stamp = stamp, startAt = t, deadline = t + get(char, "HeadbuttWindup") + get(char, "HeadbuttMaxTime") + END_SLACK,
 		hit = false}
 	local hrp0 = char:FindFirstChild("HumanoidRootPart") -- v1.3: where the run-up starts
 	st.active.startPos = hrp0 and hrp0.Position or nil
+	st.active.sacrifice = sacrifice -- v1.5
 	publish(char, st)
 	char:SetAttribute("HeadbuttCount", (char:GetAttribute("HeadbuttCount") or 0) + 1)
 	setResult(char, "ok")
@@ -386,7 +426,10 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		char:SetAttribute("HeadbuttHitRun", math.floor(run * 10 + 0.5) / 10)
 		char:SetAttribute("HeadbuttHitRunMul", math.floor(runMul * 100 + 0.5) / 100)
 	end
-	local d = math.floor(get(char, "HeadbuttDamage") * runMul * domeMul(char, "HeadbuttDamageMul") * mul + 0.5) -- v1.1: x dome; v1.3: x run-up
+	local sacMul = 1 -- v1.5: Blood Rush II
+	if st.active.sacrifice then sacMul = math.max(0, tonumber(char:GetAttribute("BloodRushDamageMul")) or 1) end
+	char:SetAttribute("HeadbuttHitSacrifice", st.active.sacrifice == true)
+	local d = math.floor(get(char, "HeadbuttDamage") * runMul * sacMul * domeMul(char, "HeadbuttDamageMul") * mul + 0.5) -- v1.1: x dome; v1.3: x run-up; v1.5: x Blood Rush
 	local hp = model:GetAttribute("DummyHealth")
 	if typeof(hp) == "number" then model:SetAttribute("DummyHealth", math.max(0, hp - d)) end
 	if typeof(hp) == "number" and hp > 0 and hp - d <= 0 then
@@ -400,6 +443,10 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	local from = root and root.Position or model:GetPivot().Position
 	local shielded = (tonumber(model:GetAttribute("EnergyShieldUntil")) or 0) > t
 	local slowMul, slowUntil = get(char, "HeadbuttSlowMul"), t + get(char, "HeadbuttSlowTime")
+	local bSlow = tonumber(char:GetAttribute("BloodRushSlowMul")) -- v1.5: Blood Rush star, a harder slow
+	if st.active.sacrifice and bSlow and bSlow < slowMul then
+		slowMul, slowUntil = bSlow, t + (tonumber(char:GetAttribute("BloodRushSlowTime")) or get(char, "HeadbuttSlowTime"))
+	end
 	local shoveResult
 	if shielded then
 		shoveResult = "shielded"
@@ -431,6 +478,7 @@ RunService.Heartbeat:Connect(function()
 	for char, st in pairs(chars) do
 		if st.refillAt and t >= st.refillAt then
 			st.charges = math.min(maxCharges(char), st.charges + 1)
+			if (st.sacrifices or 0) > 0 then st.sacrifices = 0; char:SetAttribute("HeadbuttSacrifices", 0) end -- v1.5: a refill resets Blood Rush
 			if st.charges < maxCharges(char) then
 				st.refillStart, st.refillAt = t, t + refillTime(char, maxCharges(char) - st.charges)
 			else

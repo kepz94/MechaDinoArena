@@ -1,4 +1,4 @@
--- ArenaTouch v1.5 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.6 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -39,6 +39,11 @@
 --   HeadbuttSlowUntil is in the future. Look: dimmed (0.5) at 0 charges; a yellow glow ring (UIStroke 5 px) while
 --   HeadbuttLocalState is windup / charge. ArenaTouchMainButton adds "Headbutt"; diagnostic ArenaTouchHeadbuttPips
 --   ("<ready>/<max>"). false = 1.4 (no headbutt button).
+-- v1.6 (pachy Blood Rush, MDA-124, mockup "C · Both"): at 0 charges with BloodRushEnabled the charge pips under the big
+--   ATTACK button are replaced by BloodRushMax red hearts (rgb(224, 40, 74); grey 0.6 when used up; how many are left
+--   = the same rule as AbilityBar 1.10), the ATTACK button stays full colour with a red glow ring (stroke 5 px, 0.2)
+--   while one is left, and a red "-25% HP" pill sits above the SLOWED pill. Switch: script attribute
+--   ArenaTouchBloodEnabled (default true, read at start; false = 1.5). Diagnostic: ArenaTouchBloodLeft.
 -- Diagnostics (character attributes, this client): ArenaTouchVersion, ArenaTouchState ("off" / "on"),
 --   ArenaTouchLastPress (button name), ArenaTouchCASMode, ArenaTouchJumpHidden.
 local Players = game:GetService("Players")
@@ -46,7 +51,7 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -235,6 +240,69 @@ hbSlowCorner.Parent = hbSlow
 local hbSlowPad = Instance.new("UIPadding")
 hbSlowPad.PaddingTop, hbSlowPad.PaddingBottom = UDim.new(0.12, 0), UDim.new(0.12, 0)
 hbSlowPad.Parent = hbSlow
+-- v1.6: Blood Rush hearts + cost pill
+if script:GetAttribute("ArenaTouchBloodEnabled") == nil then script:SetAttribute("ArenaTouchBloodEnabled", true) end
+local BLOOD_ON = script:GetAttribute("ArenaTouchBloodEnabled") ~= false
+local BLOOD = Color3.fromRGB(224, 40, 74)
+local hbHeartRow = Instance.new("Frame")
+hbHeartRow.Name = "BloodHearts"
+hbHeartRow.BackgroundTransparency = 1
+hbHeartRow.AnchorPoint = Vector2.new(0.5, 0)
+hbHeartRow.Position = UDim2.new(0.5, 0, 1, 2)
+hbHeartRow.Size = UDim2.fromScale(1, 0.24)
+hbHeartRow.Visible = false
+hbHeartRow.Parent = headbuttMain
+local hbHeartList = Instance.new("UIListLayout")
+hbHeartList.FillDirection = Enum.FillDirection.Horizontal
+hbHeartList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+hbHeartList.Padding = UDim.new(0.04, 0)
+hbHeartList.Parent = hbHeartRow
+local hbHearts = {}
+for i = 1, 3 do
+	local h = Instance.new("TextLabel")
+	h.Name = "Heart_" .. i
+	h.BackgroundTransparency = 1
+	h.Size = UDim2.fromScale(1, 1)
+	h.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	h.Font = Enum.Font.GothamBlack
+	h.Text = "♥"
+	h.TextScaled = true
+	h.TextColor3 = BLOOD
+	h.TextStrokeTransparency = 0.5
+	h.LayoutOrder = i
+	h.Parent = hbHeartRow
+	hbHearts[i] = h
+end
+local hbBloodTag = Instance.new("TextLabel")
+hbBloodTag.Name = "BloodTag"
+hbBloodTag.AnchorPoint = Vector2.new(0.5, 1)
+hbBloodTag.Position = UDim2.new(0.5, 0, -0.24, -10)
+hbBloodTag.Size = UDim2.fromScale(0.9, 0.22)
+hbBloodTag.BackgroundColor3 = BLOOD
+hbBloodTag.BorderSizePixel = 0
+hbBloodTag.Font = Enum.Font.FredokaOne
+hbBloodTag.Text = "-25% HP"
+hbBloodTag.TextScaled = true
+hbBloodTag.TextColor3 = Color3.new(1, 1, 1)
+hbBloodTag.Visible = false
+hbBloodTag.Parent = headbuttMain
+local hbBloodTagCorner = Instance.new("UICorner")
+hbBloodTagCorner.CornerRadius = UDim.new(0.5, 0)
+hbBloodTagCorner.Parent = hbBloodTag
+local hbBloodTagPad = Instance.new("UIPadding")
+hbBloodTagPad.PaddingTop, hbBloodTagPad.PaddingBottom = UDim.new(0.12, 0), UDim.new(0.12, 0)
+hbBloodTagPad.Parent = hbBloodTag
+local function bloodLeft() -- v1.6: sacrifices possible right now (nil when Blood Rush is off)
+	if char:GetAttribute("BloodRushEnabled") ~= true then return nil end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return 0 end
+	local max = math.max(1, hum.MaxHealth)
+	local cap = (tonumber(char:GetAttribute("BloodRushMax")) or 2) - (tonumber(char:GetAttribute("HeadbuttSacrifices")) or 0)
+	local cost = (tonumber(char:GetAttribute("BloodRushCost")) or 0.25) * max
+	local h, n = hum.Health, 0
+	while n < cap and h > max * 0.5 do h = math.max(1, h - cost); n += 1 end
+	return n
+end
 leap.InputBegan:Connect(function(input)
 	if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 	leapScale.Scale = 0.92
@@ -347,6 +415,27 @@ RunService.RenderStepped:Connect(function()
 	headbuttMainLabel.TextTransparency = nowC > 0 and 0 or 0.5
 	local pips = nowC .. "/" .. maxC
 	if char:GetAttribute("ArenaTouchHeadbuttPips") ~= pips then char:SetAttribute("ArenaTouchHeadbuttPips", pips) end
+	-- v1.6: Blood Rush
+	local bLeft = BLOOD_ON and nowC <= 0 and bloodLeft() or nil
+	hbPipRow.Visible = bLeft == nil
+	hbHeartRow.Visible = bLeft ~= nil
+	if bLeft then
+		local bMax = math.clamp(math.floor(tonumber(char:GetAttribute("BloodRushMax")) or 2), 1, 3)
+		for i, h in ipairs(hbHearts) do
+			h.Visible = i <= bMax
+			h.TextColor3 = i <= bLeft and BLOOD or Color3.new(1, 1, 1)
+			h.TextTransparency = i <= bLeft and 0 or 0.6
+		end
+		if bLeft > 0 then
+			headbuttMain.BackgroundTransparency, headbuttMainLabel.TextTransparency = 0.08, 0
+			if not (hs == "windup" or hs == "charge") then headbuttGlow.Color, headbuttGlow.Transparency = BLOOD, 0.2 end
+		end
+		hbBloodTag.Text = ("-%d%% HP"):format(math.floor((tonumber(char:GetAttribute("BloodRushCost")) or 0.25) * 100 + 0.5))
+	end
+	if not (bLeft and bLeft > 0 and not (hs == "windup" or hs == "charge")) then headbuttGlow.Color = YELLOW end
+	hbBloodTag.Visible = bLeft ~= nil and bLeft > 0
+	local bl = bLeft or -1
+	if char:GetAttribute("ArenaTouchBloodLeft") ~= bl then char:SetAttribute("ArenaTouchBloodLeft", bl) end
 end)
 local WATCH = {BiteEnabled = true, HeadbuttEnabled = true, AutoRun = true, RamEnabled = true, RamLatchGate = true, PounceEnabled = true, JumpEnabled = true, RamTestState = true,
 	PounceTestState = true, JumpTestState = true}

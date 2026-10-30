@@ -1,4 +1,4 @@
--- HeadbuttTest v1.0 (Mecha Dino Arena) — the pachy's headbutt charge on the owner's client. MDA-119, plan
+-- HeadbuttTest v1.1 (Mecha Dino Arena) — the pachy's headbutt charge on the owner's client. MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 6 (server: HeadbuttServer 1.0).
 -- Active while the character has HeadbuttEnabled = true (PachyModelData 1.1). Kepu 2026-10-30: the headbutt is the
 --   pachy's ATTACK ("Headbutt = ATTACK"), "when its in charge mode it should be pretty manueverable", "it should be able to
@@ -23,13 +23,17 @@
 --   "charge" / "recover"), HeadbuttInputResult, HeadbuttLastInput ("click" / "key" / "touch"), HeadbuttLocalEndAt,
 --   HeadbuttContact (target name), HeadbuttClickBound, HeadbuttSteer ("input" / "straight").
 -- Switch: character attribute HeadbuttLeftClickEnabled (default true; false = F / X / touch only).
+-- v1.1 (pachy Blood Rush, MDA-124): at 0 charges the press still goes to the server (a sacrifice, HeadbuttServer 1.5)
+--   when BloodRushEnabled is true, health is above half of MaxHealth and HeadbuttSacrifices < BloodRushMax; the press
+--   result is then "sacrifice" until the server answers. Otherwise "empty" as before. Switch: character attribute
+--   HeadbuttSacrificeInputEnabled (default true; false = 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local ACTION = "DinoHeadbutt"
 local ACTION_CLICK = "DinoHeadbuttClick"
 local BIND = "DinoHeadbuttDrive"
@@ -157,6 +161,12 @@ local function tryPress(source)
 		result = "busy"
 	elseif (tonumber(char:GetAttribute("HeadbuttChargesNow")) or 0) < 1 then
 		result = "empty"
+		if char:GetAttribute("HeadbuttSacrificeInputEnabled") ~= false and char:GetAttribute("BloodRushEnabled") == true
+			and hum.Health > hum.MaxHealth * 0.5
+			and (tonumber(char:GetAttribute("HeadbuttSacrifices")) or 0) < (tonumber(char:GetAttribute("BloodRushMax")) or 2) then
+			result = nil -- v1.1: Blood Rush sacrifice (the server checks again and takes the health)
+			show("HeadbuttSacrificeInput", (char:GetAttribute("HeadbuttSacrificeInput") or 0) + 1)
+		end
 	end
 	show("HeadbuttLastInput", source)
 	if result then

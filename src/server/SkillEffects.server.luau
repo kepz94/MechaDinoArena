@@ -1,4 +1,4 @@
--- SkillEffects v1.16 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.17 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -68,6 +68,10 @@
 --   tiles read it). Switch: script attribute SkillEffectsLegsSlotEnabled (default true, read at start; false = 1.15).
 --   Also: JumpDoubleMul = e.legsDoubleMul (SkillTree 1.23: 1 = a full leap; 0.894 before) and JumpDoubleForward =
 --   e.legsDoubleForward (studs/s, JumpTest 1.2; 0 when off).
+-- v1.17 (pachy Blood Rush, MDA-124; SkillTree 1.24): on a pachy with "bloodrush" bought AND slotted: BloodRushEnabled
+--   true, BloodRushCost (0.25), BloodRushMax (2), BloodRushDamageMul (II 1.25), BloodRushNoSelfSlow (III), BloodRushSlowMul /
+--   BloodRushSlowTime (star 0.45 / 4); otherwise false / 0 / 0 / 1 / false / 1 / 0. HeadbuttServer 1.5, HeadbuttTest 1.1
+--   and the HUD read them. Switch: script attribute SkillEffectsBloodEnabled (default true, read at start; false = 1.16).
 -- v1.14 (pachy Grappling Hook, MDA-121; SkillTree 1.21): HookEnabled (bought, in a slot, Species "Pachy", effects on),
 --   HookRange, HookCooldown, HookDamage (0 when off) and HookLook (= HookEnabled; the wrist claw is shown). HookServer 1.0
 --   reads them. A new HookHitAt runs onHit like a bite (lifesteal). Switch: script attribute SkillEffectsHookEnabled
@@ -97,7 +101,9 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.16"
+local VERSION = "1.17"
+if script:GetAttribute("SkillEffectsBloodEnabled") == nil then script:SetAttribute("SkillEffectsBloodEnabled", true) end -- v1.17
+local BLOOD_ON = script:GetAttribute("SkillEffectsBloodEnabled") ~= false
 if script:GetAttribute("SkillEffectsLegsEnabled") == nil then script:SetAttribute("SkillEffectsLegsEnabled", true) end -- v1.15
 local LEGS_ON = script:GetAttribute("SkillEffectsLegsEnabled") ~= false
 if script:GetAttribute("SkillEffectsLegsSlotEnabled") == nil then script:SetAttribute("SkillEffectsLegsSlotEnabled", true) end -- v1.16
@@ -287,6 +293,16 @@ local function applyChar(char, st)
 		char:SetAttribute("JumpDoubleMul", e.legsDoubleMul or 0.894) -- v1.16 (was 0.894)
 		char:SetAttribute("JumpDoubleForward", mlOn and e.legsDoubleForward or 0) -- v1.16
 		char:SetAttribute("MechaLegsLook", mlOn and e.legsLook == true)
+	end
+	if BLOOD_ON then -- v1.17: Blood Rush (pachy only, slotted)
+		local brOn = live and char:GetAttribute("Species") == "Pachy" and e.bloodRush == true and inSlot("bloodrush")
+		char:SetAttribute("BloodRushEnabled", brOn == true)
+		char:SetAttribute("BloodRushCost", brOn and e.bloodCost or 0)
+		char:SetAttribute("BloodRushMax", brOn and e.bloodMax or 0)
+		char:SetAttribute("BloodRushDamageMul", brOn and e.bloodDamageMul or 1)
+		char:SetAttribute("BloodRushNoSelfSlow", brOn and e.bloodNoSelfSlow == true or false)
+		char:SetAttribute("BloodRushSlowMul", brOn and e.bloodSlowMul or 1)
+		char:SetAttribute("BloodRushSlowTime", brOn and e.bloodSlowTime or 0)
 	end
 end
 
