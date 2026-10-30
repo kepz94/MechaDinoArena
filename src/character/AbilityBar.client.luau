@@ -1,4 +1,4 @@
--- AbilityBar v1.6 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.7 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -52,12 +52,23 @@
 -- v1.6 (Kepu 2026-10-30: "can you rename the pounce button to attack and always assign it to left click on pc. it will be called attack for all dinos because my testers were confused what pounce meant last night"): with script attribute AbilityBarAttackEnabled (default true, read at start)
 --   the BITE and POUNCE tiles both read "ATTACK" and the Pounce tile's key hint is "LMB" (PounceTest 1.5 binds the left
 --   mouse button). false = 1.5 names and keys.
+-- v1.7 (pachy headbutt, MDA-120, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 9, mockup docs/mockups/pachy_charge_options.html
+--   option A "Pips", Kepu 2026-10-30 "1.A"): with script attribute AbilityBarHeadbuttEnabled (default true, read at
+--   start) the pachy's row is Headbutt (key "LMB", name "ATTACK", yellow stroke rgb(255, 200, 50)) then Leap
+--   (SPECIES_MOVES.Pachy). The Headbutt tile has one pip per charge, centred at the bottom (12 px circles at T = 92,
+--   scaled with the tile; yellow 2 px ring; filled = ready; the charge refilling next fills from the bottom with its
+--   refill progress). Charges come from the server: HeadbuttChargesNow / HeadbuttChargesMax / HeadbuttRefillStart /
+--   HeadbuttRefillAt (HeadbuttServer 1.0). Headbutt tile states (first match wins): "stunned" (STUN, dim 0.25) /
+--   "active" (HeadbuttLocalState windup / charge: stroke 4 px yellow) / "empty" (0 charges: dim 0.45, white fill at
+--   0.89 rising with the refill progress) / "ready". A red "SLOWED" pill sits above the tile while HeadbuttSelfSlowUntil
+--   or HeadbuttSlowUntil is in the future. false = 1.6 (the pachy gets the fallback order, no Headbutt tile).
+--   Diagnostics: AbilityBar_Headbutt (state), AbilityBarHeadbuttPips ("<ready>/<max>"), AbilityBarHeadbuttSlowed.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local char = script.Parent
 local TIMED_PARTS = {adrenaline = "Adrenaline", shield = "EnergyShield"} -- v1.3: part id -> attribute prefix
 TIMED_PARTS.scent, TIMED_PARTS.screech = "Scent", "Screech" -- v1.4: raptor parts batch 2
@@ -90,6 +101,14 @@ if script:GetAttribute("AbilityBarAttackEnabled") ~= false then -- v1.6: one nam
 	MOVES.Bite.name, MOVES.Pounce.name, MOVES.Pounce.key = "ATTACK", "ATTACK", "LMB"
 end
 local SPECIES_MOVES = {Raptor = {"Pounce", "Leap"}, TRex = {"Bite", "Ram"}}
+local YELLOW = Color3.fromRGB(255, 200, 50) -- v1.7
+if script:GetAttribute("AbilityBarHeadbuttEnabled") == nil then script:SetAttribute("AbilityBarHeadbuttEnabled", true) end -- v1.7
+local HEADBUTT_ON = script:GetAttribute("AbilityBarHeadbuttEnabled") ~= false
+if HEADBUTT_ON then -- v1.7: pachy headbutt tile (not in FALLBACK_ORDER, so other dinos never get it)
+	MOVES.Headbutt = {enabled = "HeadbuttEnabled", enabledDefault = false, key = "LMB", name = "ATTACK", color = YELLOW,
+		charges = true}
+	SPECIES_MOVES.Pachy = {"Headbutt", "Leap"}
+end
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 local SLOT_KEYS = {"R", "C", "T", "V"} -- v1.2: + T / V (slots 3 / 4)
 local SLOT_ORDER = {1, 3, 2, 4} -- v1.2: tile order R, T, C, V
@@ -298,6 +317,76 @@ local function rebuild()
 	for _, id in ipairs(moves) do
 		local m = MOVES[id]
 		local t = makeTile(id, m.key, m.name, m.color or WHITE, false)
+		if m.charges then -- v1.7: charge pips (bottom centre) + SLOWED pill
+			local row = Instance.new("Frame")
+			row.Name = "ChargePips"
+			row.BackgroundTransparency = 1
+			row.AnchorPoint = Vector2.new(0.5, 1)
+			row.Position = UDim2.fromScale(0.5, 0.935)
+			row.Size = UDim2.fromScale(0.9, 0.13)
+			row.ZIndex = 4
+			row.Parent = t.f
+			local list = Instance.new("UIListLayout")
+			list.FillDirection = Enum.FillDirection.Horizontal
+			list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+			list.VerticalAlignment = Enum.VerticalAlignment.Center
+			list.Padding = UDim.new(0.1, 0)
+			list.Parent = row
+			t.chargePips = {}
+			for i = 1, 3 do
+				local pip = Instance.new("Frame")
+				pip.Name = "Charge_" .. i
+				pip.Size = UDim2.fromScale(1, 1)
+				pip.SizeConstraint = Enum.SizeConstraint.RelativeYY
+				pip.BackgroundTransparency = 1
+				pip.ClipsDescendants = true
+				pip.ZIndex = 4
+				pip.LayoutOrder = i
+				pip.Parent = row
+				local pc = Instance.new("UICorner")
+				pc.CornerRadius = UDim.new(0.5, 0)
+				pc.Parent = pip
+				local ring = Instance.new("UIStroke")
+				ring.Color = YELLOW
+				ring.Thickness = 2
+				ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				ring.Parent = pip
+				local fillP = Instance.new("Frame")
+				fillP.Name = "Fill"
+				fillP.AnchorPoint = Vector2.new(0, 1)
+				fillP.Position = UDim2.fromScale(0, 1)
+				fillP.Size = UDim2.fromScale(1, 0)
+				fillP.BackgroundColor3 = YELLOW
+				fillP.BorderSizePixel = 0
+				fillP.ZIndex = 4
+				fillP.Parent = pip
+				local fc2 = Instance.new("UICorner")
+				fc2.CornerRadius = UDim.new(0.5, 0)
+				fc2.Parent = fillP
+				t.chargePips[i] = {f = pip, fill = fillP, ring = ring}
+			end
+			local slow = Instance.new("TextLabel")
+			slow.Name = "Slowed"
+			slow.AnchorPoint = Vector2.new(0.5, 1)
+			slow.Position = UDim2.new(0.5, 0, 0, -6)
+			slow.Size = UDim2.fromScale(1.05, 0.26)
+			slow.BackgroundColor3 = RED
+			slow.BorderSizePixel = 0
+			slow.Font = Enum.Font.FredokaOne
+			slow.Text = "SLOWED"
+			slow.TextScaled = true
+			slow.TextColor3 = WHITE
+			slow.Visible = false
+			slow.ZIndex = 5
+			slow.Parent = t.f
+			local sc = Instance.new("UICorner")
+			sc.CornerRadius = UDim.new(0.5, 0)
+			sc.Parent = slow
+			local sp = Instance.new("UIPadding")
+			sp.PaddingTop, sp.PaddingBottom = UDim.new(0.14, 0), UDim.new(0.14, 0)
+			sp.Parent = slow
+			t.slowed = slow
+		end
 		table.insert(tiles, {id = id, kind = "move", move = m, t = t})
 		table.insert(names, m.key .. ":" .. m.name)
 	end
@@ -385,6 +474,34 @@ local function update()
 			else
 				paint(e, "ready", 0, 0, nil)
 			end
+		elseif e.move.charges then -- v1.7: pachy headbutt (charges, no cooldown)
+			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("HeadbuttChargesMax")) or 2), 1, 3)
+			local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("HeadbuttChargesNow")) or maxC), 0, maxC)
+			local rs, ra = tonumber(char:GetAttribute("HeadbuttRefillStart")) or 0, tonumber(char:GetAttribute("HeadbuttRefillAt")) or 0
+			local part = (ra > rs and nowC < maxC) and math.clamp((now - rs) / (ra - rs), 0, 1) or 0
+			for i, pip in ipairs(e.t.chargePips) do
+				pip.f.Visible = i <= maxC
+				pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0))
+			end
+			local slowedUntil = math.max(tonumber(char:GetAttribute("HeadbuttSelfSlowUntil")) or 0,
+				tonumber(char:GetAttribute("HeadbuttSlowUntil")) or 0)
+			e.t.slowed.Visible = slowedUntil > now
+			local hs = char:GetAttribute("HeadbuttLocalState")
+			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = Color3.new(0, 0, 0), 0.38
+			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif hs == "windup" or hs == "charge" then
+				paint(e, "active", 0, 0, nil)
+				e.t.stroke.Color = YELLOW
+			elseif nowC <= 0 then
+				paint(e, "empty", 0.45, 0, nil)
+				e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = WHITE, 0.89
+				e.t.fill.Size = UDim2.fromScale(1, part)
+			else
+				paint(e, "ready", 0, 0, nil)
+			end
+			show("AbilityBarHeadbuttPips", nowC .. "/" .. maxC)
+			show("AbilityBarHeadbuttSlowed", slowedUntil > now)
 		else
 			local m = e.move
 			local cd = math.max(0.01, char:GetAttribute(m.cd) or m.cdDefault)

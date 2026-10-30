@@ -2001,6 +2001,10 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | HeadbuttPoseState / HeadbuttPoseSource | pachy character (client) | none / windup / charge / impact / fade; local / server | IdleAnimation 1.29 diagnostics |
 | HeadbuttFXEnabled | pachy character | true | HeadbuttFX 1.0 switch |
 | HeadbuttFXVersion / HeadbuttFXCharging / HeadbuttFXHits | pachy character (client) | "1.0" / bool / 0.. | HeadbuttFX diagnostics |
+| AbilityBarHeadbuttEnabled | AbilityBar script | true | AbilityBar 1.7 pachy ATTACK tile (false = 1.6) |
+| AbilityBar_Headbutt / AbilityBarHeadbuttPips / AbilityBarHeadbuttSlowed | pachy character (client) | stunned / active / empty / ready; "n/max"; bool | AbilityBar 1.7 diagnostics |
+| ArenaTouchHeadbuttEnabled | ArenaTouch script | true | ArenaTouch 1.5 headbutt button (false = 1.4) |
+| ArenaTouchHeadbuttPips / ArenaTouchMainButton | pachy character (client) | "n/max"; + "Headbutt" | ArenaTouch 1.5 diagnostics |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |
