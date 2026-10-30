@@ -1968,6 +1968,7 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | SkinServerResult (1.1 values) | player | "prompted" / "bought" / "boughtNotEquipped" / "credit" / "cancelled" / "free" / "notLoaded" / "owned" / "noProduct" / "noCredit" / "saveFailed" / "promptFailed" | buy results (added to 1.0's) |
 | LabSkinBuyEnabled | Lab script | true | Lab 1.7: GET / UNLOCK buttons live; false = 1.6 greyed GET |
 | LabSkinBuy | player (local) | "get" / "credit" / "loading" / "soon" / "wait" | Lab 1.7 diagnostic: button state shown |
+| MountainStepsVersion / MountainStepsClimb / MountainStepsMaxFix / MountainStepsFaces / MountainStepsParts / MountainStepsUnreachBefore / MountainStepsUnreachAfter / MountainStepsUnreachTopAfter | Workspace.DinoIsland.MountainSteps folder | "1.0" / 10 / 30 / 920 / 959 / 786 / 0 / 0 | Island 3.3 mountain shelves (tools/mountain_steps_v1.luau); StepFace on each shelf = "low cell > high cell D<studs>" |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |
