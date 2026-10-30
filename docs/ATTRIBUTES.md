@@ -2085,3 +2085,22 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | ShakeOffLastShielded | ramming dino (server) | 0.. | raptors whose shield blocked its last ram |
 | ShakeOffReason | raptor (server) | + "shielded" (1.2) | dismounted by a ram while shielded |
 | SkillTree.LEGS_GENTLE | SkillTree module constant | true | SkillTree 1.16: Sprint Legs +10% / +20% / +40% (speedPts 1 / 2 / 4); false = 1.15 (+40% / +90% / +160%) |
+
+## Med-Station (SkillTree 1.29 / SkillEffects 1.22 / MedStationServer 1.0 / MechaButtons 1.18 / AbilityBar 1.11, MDA-125)
+| Attribute | Where | Meaning |
+|---|---|---|
+| SkillTree.PACHY_MEDSTATION | SkillTree module constant | true: "medstation" is the pachy's live slot part (false = 1.28, shown to nobody) |
+| MedEnabled | character | SkillEffects 1.22: bought AND slotted on a pachy |
+| MedRadius / MedTime / MedRate / MedCooldown | character | 12 (18 from II) studs / 5 (7 from III, 10 at star) s / 0.10 of MaxHealth per s / 30 s |
+| MedReadyAt | character | MedStationServer: server time the next drop is allowed (drop + MedCooldown) |
+| MedActiveUntil | character | server time the running pad ends (set to now on an early end) |
+| MedDroppedAt | character | server time of the last drop (set last) |
+| MedInside | character | true / false while a pad runs (owner root within MedRadius, flat); nil after |
+| MedHealed / MedHealedTotal | character | HP added by the current pad / all pads (0.1 steps) |
+| MedServerResult (+ MedServerResultAt) | character | ok / badArg / dead / disabled / menu / stunned / pinned / cooldown |
+| MedCount, MedEndReason | character | drops made; time / dead / removed / disabled / replaced |
+| MedStationServerEnabled | script (MedStationServer) | default true; false refuses drops and removes running pads |
+| MedStationServerVersion, MedRequests, MedDrops | script (MedStationServer) | diagnostics |
+| SkillEffectsMedEnabled | script (SkillEffects) | default true; false = 1.21 (Med* not written, 8 s heal not skipped) |
+| MechaButtonsMedEnabled / AbilityBarMedEnabled | script | default true; false = no Med-Station entry on the buttons / bar |
+Pad: Workspace.MedStations.MedPad (MedOwner, MedState) with Base, Rim, Core (+ PointLight Glow), Edge_1..24, MedWave; owner gets MedHealPop "+N".

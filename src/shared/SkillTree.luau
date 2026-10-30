@@ -1,4 +1,4 @@
--- SkillTree v1.28 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.29 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -263,6 +263,12 @@ SkillTree.AREAS = {
 --   Lifesteal I / II / III (0 below I); SkillEffects 1.20 uses it on a raptor instead of e.lifesteal. The T-Rex keeps
 --   e.lifesteal 0.05 / 0.10 / 0.15; the star (overheal shield) is the same for both. PATHS.lifesteal.stepsFor.Raptor holds
 --   the raptor's step texts (Lab 1.8 shows them on a raptor). false = 1.27.
+-- v1.29 (pachy Med-Station, MDA-125, plan docs/plans/PACHY_MEDSTATION_v1.0.md, mockup
+--   docs/mockups/pachy_medstation_options.html look "C · Pulse pad"): with SkillTree.PACHY_MEDSTATION (default true) the
+--   shared path "medstation" (Health area, shown to nobody until now) becomes the pachy's live slot part: dino "Pachy",
+--   soon false, LIVE_MECH, BUTTONS, step texts I-star below. effects() gives medRadius / medTime / medRate / medCooldown:
+--   I 12 studs / 5 s / 0.10 per s / 30 s; II radius 18; III 7 s; star 10 s (Kepu: "Just extend the duration to be able to
+--   full heal in 10 seconds"); 0 below I. MedStationServer 1.0 runs it. Raptor / T-Rex still never see it. false = 1.28.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -525,6 +531,21 @@ if SkillTree.PACHY_NO_LIFESTEAL and SkillTree.PATHS.lifesteal then
 	SkillTree.PATHS.lifesteal.notFor = SkillTree.PATHS.lifesteal.notFor or {}
 	SkillTree.PATHS.lifesteal.notFor.Pachy = true
 end
+-- v1.29: the pachy's Med-Station (button part)
+SkillTree.PACHY_MEDSTATION = true
+if SkillTree.PACHY_MEDSTATION and SkillTree.PATHS.medstation then
+	local p = SkillTree.PATHS.medstation
+	p.dino = "Pachy"
+	p.soon = false
+	p.steps = {
+		"Button: drop a Med-Station pad at your feet. Standing in its circle heals 10% of max health per second for 5 s (50%). Not while pinned or stunned",
+		"Bigger heal area (12 -> 18 studs)",
+		"Lasts longer: 7 s (up to 70%)",
+		"Lasts 10 s: a full heal"}
+	SkillTree.OWNER.medstation = "Pachy"
+	SkillTree.LIVE_MECH.medstation = true
+	SkillTree.BUTTONS.medstation = true
+end
 -- v1.28: stronger Lifesteal for the raptor (texts; the numbers are in effects)
 SkillTree.RAPTOR_LIFESTEAL_STRONG = true
 if SkillTree.RAPTOR_LIFESTEAL_STRONG and SkillTree.PATHS.lifesteal then
@@ -683,6 +704,14 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if l >= 2 then e.lifesteal = 0.10 end
 	if l >= 3 then e.lifesteal = 0.15 end
 	if l >= 4 then e.shieldMax, e.shieldTime = 0.20, 6 end
+	local md = s.medstation or 0 -- v1.29: Med-Station (pachy)
+	e.medRadius, e.medTime, e.medRate, e.medCooldown = 0, 0, 0, 0
+	if SkillTree.PACHY_MEDSTATION then
+		if md >= 1 then e.medRadius, e.medTime, e.medRate, e.medCooldown = 12, 5, 0.10, 30 end
+		if md >= 2 then e.medRadius = 18 end
+		if md >= 3 then e.medTime = 7 end
+		if md >= 4 then e.medTime = 10 end
+	end
 	e.lifestealRaptor = 0 -- v1.28
 	if SkillTree.RAPTOR_LIFESTEAL_STRONG then
 		if l >= 1 then e.lifestealRaptor = 0.20 end

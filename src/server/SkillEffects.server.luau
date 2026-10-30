@@ -1,4 +1,4 @@
--- SkillEffects v1.21 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.22 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -125,10 +125,15 @@
 --   after the last Blood Rush payment the 1.19 heal (20%/s) filled 45 -> 90 in 2.5 s, which unlocked Blood Rush again,
 --   a 45 HP payment about every 11 s; answer "Slow the heal to 5%/s"): SkillIdleRegenRate default 0.20 -> 0.05 (every
 --   dino; the 8 s wait is unchanged). Pachy 45 -> 90 now takes 10 s after the wait. 0.20 = 1.20.
+-- v1.22 (pachy Med-Station, MDA-125, plan docs/plans/PACHY_MEDSTATION_v1.0.md; SkillTree 1.29): on a pachy (Species
+--   "Pachy") with "medstation" bought AND slotted: MedEnabled true, MedRadius / MedTime / MedRate / MedCooldown from the
+--   steps (off: false / 0 / 0 / 0 / 0). MedStationServer 1.0 reads them. Red-team answer "Bigger one only": the 8 s heal
+--   is skipped while the owner is healing on a running pad (character MedInside == true and MedActiveUntil > now).
+--   Switch: script attribute SkillEffectsMedEnabled (default true, read at start; false = 1.21, Med* never written).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.21"
+local VERSION = "1.22"
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
 local BLEED_PLAYERS = script:GetAttribute("SkillBleedPlayersEnabled") ~= false
 if script:GetAttribute("SkillBleedPlayerTime") == nil then script:SetAttribute("SkillBleedPlayerTime", 2) end -- v1.18
@@ -148,6 +153,8 @@ local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
 local KILL_REGEN_DEFAULT = 0.25
+if script:GetAttribute("SkillEffectsMedEnabled") == nil then script:SetAttribute("SkillEffectsMedEnabled", true) end -- v1.22
+local MED_ON = script:GetAttribute("SkillEffectsMedEnabled") ~= false
 if script:GetAttribute("SkillEffectsRaptorLifestealEnabled") == nil then script:SetAttribute("SkillEffectsRaptorLifestealEnabled", true) end -- v1.20
 for k, v in pairs({SkillEffectsIdleRegenEnabled = true, SkillIdleRegenDelay = 8, SkillIdleRegenRate = 0.05}) do -- v1.19; v1.21: rate 0.20 -> 0.05
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -308,6 +315,14 @@ local function applyChar(char, st)
 		char:SetAttribute("HookDamage", hkOn and e.hookDamage or 0)
 		char:SetAttribute("HookLook", hkOn)
 	end
+	if MED_ON then -- v1.22: Med-Station (pachy only, in a slot)
+		local mdOn = live and char:GetAttribute("Species") == "Pachy" and (e.medTime or 0) > 0 and inSlot("medstation")
+		char:SetAttribute("MedEnabled", mdOn)
+		char:SetAttribute("MedRadius", mdOn and e.medRadius or 0)
+		char:SetAttribute("MedTime", mdOn and e.medTime or 0)
+		char:SetAttribute("MedRate", mdOn and e.medRate or 0)
+		char:SetAttribute("MedCooldown", mdOn and e.medCooldown or 0)
+	end
 	if LEGS_ON then -- v1.15: Mecha Legs (pachy only, passive)
 		local mlOn = live and char:GetAttribute("Species") == "Pachy" and (e.legsCooldown or 0) > 0
 			and (not LEGS_SLOT or inSlot("mechalegs")) -- v1.16: only while slotted
@@ -465,6 +480,7 @@ task.spawn(function()
 			local idleOn = script:GetAttribute("SkillEffectsIdleRegenEnabled") ~= false
 				and st.hum.Health < st.hum.MaxHealth
 				and t - st.lastDrop >= (script:GetAttribute("SkillIdleRegenDelay") or 8)
+				and not (MED_ON and char:GetAttribute("MedInside") == true and (tonumber(char:GetAttribute("MedActiveUntil")) or 0) > t) -- v1.22
 			if char:GetAttribute("SkillIdleRegenActive") ~= idleOn then char:SetAttribute("SkillIdleRegenActive", idleOn) end
 			local idleAmt = idleOn and (script:GetAttribute("SkillIdleRegenRate") or 0.05) * st.hum.MaxHealth * TICK or 0
 			local skillAmt = regenOn and e.regenRate * st.hum.MaxHealth * TICK or 0

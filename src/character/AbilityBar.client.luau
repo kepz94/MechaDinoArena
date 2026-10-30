@@ -1,4 +1,4 @@
--- AbilityBar v1.10 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.11 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -70,6 +70,9 @@
 --   and the leap's states: "off" (MechaLegsEnabled not true) / "active" (JumpTestState crouch / air) / "cooling"
 --   (JumpPredictedAt + JumpCooldown, with the sweep and seconds) / "ready". Switch: script attribute
 --   AbilityBarLegsEnabled (default true, read at start; false = the plain slot tile).
+-- v1.11 (pachy Med-Station, MDA-125): TIMED_PARTS.medstation = "Med" -> a Med-Station slot tile shows "off" (MedEnabled not
+--   true) / "cooling" (sweep + seconds to MedReadyAt, from MedCooldown) / "ready"; the pad's run time is not shown on the
+--   tile (no MedUntil). Switch: script attribute AbilityBarMedEnabled (default true, read at start; false = 1.10).
 -- v1.10 (pachy Blood Rush, MDA-124, mockup docs/mockups/pachy_sacrifice_options.html "C · Both"): Blood Rush state =
 --   BloodRushEnabled, HeadbuttChargesNow 0, and "left" = how many more sacrifices can be made now: min(BloodRushMax -
 --   HeadbuttSacrifices, the presses health allows while it stays above half of MaxHealth, each taking BloodRushCost x
@@ -84,7 +87,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -106,6 +109,8 @@ local TIMED_PARTS = {adrenaline = "Adrenaline", shield = "EnergyShield"} -- v1.3
 TIMED_PARTS.scent, TIMED_PARTS.screech = "Scent", "Screech" -- v1.4: raptor parts batch 2
 TIMED_PARTS.traps = "Mine" -- v1.5: Shock Mine
 TIMED_PARTS.hookarm = "Hook" -- v1.8: pachy Grappling Hook (HookEnabled / HookReadyAt / HookCooldown; no HookUntil)
+if script:GetAttribute("AbilityBarMedEnabled") == nil then script:SetAttribute("AbilityBarMedEnabled", true) end -- v1.11
+if script:GetAttribute("AbilityBarMedEnabled") ~= false then TIMED_PARTS.medstation = "Med" end -- v1.11: pachy Med-Station (no MedUntil: ready / cooling)
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
 local PANEL = Color3.fromRGB(20, 20, 26)
