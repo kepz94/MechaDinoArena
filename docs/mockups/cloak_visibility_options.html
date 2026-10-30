@@ -1,0 +1,209 @@
+<title>Cloak Visibility Check</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro, chip groups (cloak, place, enemy bar, helper), one or two phone frames from the opponent's camera, notes. Same dark game look as the other HUD mockups (single dark theme by choice). */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9b2e; --green: #5fd16a; --red: #f05a4f; --volt: #7fe9ff;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--volt); }
+.lede { margin: 0; color: var(--muted); max-width: 80ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.chip:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.frames { display: grid; gap: 14px; }
+.frames.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.fr { display: grid; gap: 6px; min-width: 0; }
+.fr h2 { margin: 0; font: 700 18px var(--display); }
+.fr h2 small { font: 600 12px var(--mono); color: var(--muted); margin-left: 6px; }
+.device { position: relative; width: 100%; max-width: 900px; margin: 0 auto; aspect-ratio: 19.5 / 9; border: 8px solid #2a2f3a; border-radius: 30px; overflow: hidden; }
+.device canvas { display: block; width: 100%; height: 100%; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note li { color: var(--grey); font-size: 14px; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+.fine { margin: 0; color: var(--muted); font-size: 13px; }
+</style>
+
+<div class="wrap">
+  <h1>Cloak from the <span>opponent's camera</span></h1>
+  <p class="lede">You're the other player. A cloaked raptor walks across in front of you. Compare how easy it is to spot now (about 10%) against the new 1%, on different ground, with and without the enemy health bar that currently keeps marking it.</p>
+  <div class="controls">
+    <div class="group" role="group" aria-label="Cloak"><b>Cloak</b>
+      <button class="chip" data-k="vis" data-v="now" aria-pressed="false">Now · ~10%</button>
+      <button class="chip" data-k="vis" data-v="new" aria-pressed="false">New · 1%</button>
+      <button class="chip" data-k="vis" data-v="both" aria-pressed="true">Side by side</button>
+    </div>
+    <div class="group" role="group" aria-label="Ground"><b>Ground</b>
+      <button class="chip" data-k="bg" data-v="grass" aria-pressed="true">Grass</button>
+      <button class="chip" data-k="bg" data-v="sand" aria-pressed="false">Sand</button>
+      <button class="chip" data-k="bg" data-v="trees" aria-pressed="false">By the trees</button>
+    </div>
+    <div class="group" role="group" aria-label="Enemy bar"><b>Enemy bar</b>
+      <button class="chip" data-k="bar" data-v="on" aria-pressed="false">Now: tracks it</button>
+      <button class="chip" data-k="bar" data-v="off" aria-pressed="true">New: hidden</button>
+    </div>
+    <div class="group" role="group" aria-label="Helper"><b>Helper</b>
+      <button class="chip" data-k="help" data-v="off" aria-pressed="true">Off</button>
+      <button class="chip" data-k="help" data-v="on" aria-pressed="false">Show where it is</button>
+    </div>
+  </div>
+  <div class="frames" id="frames"></div>
+  <p class="fine">Drawn approximation of the Roblox look (body opacity with the same shimmer timing as the game). The real look gets checked in Studio from the default camera before it ships.</p>
+  <div class="notes">
+    <div class="note"><h3>Now · ~10%</h3><ul><li>Body shimmers between 6% and 12% visible every 0.6 s.</li><li>The flicker is what gives it away: movement catches the eye even on busy ground.</li><li>If you hit it in the last 4 s, its health bar keeps following it on your screen.</li></ul></div>
+    <div class="note pick"><span class="rec">RECOMMENDED (your ask)</span><h3>New · 1%</h3><ul><li>Body between 0.5% and 1.5% visible: practically gone at fighting distance.</li><li>The enemy bar is hidden while it's cloaked and comes back when the cloak ends.</li><li>Counters stay: Scent Sense still shows its trail, a Shock Cannon hit still breaks the cloak, and the cloak still ends when it pounces or gets hit.</li></ul></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const st = { vis: 'both', bg: 'grass', bar: 'off', help: 'off' };
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SHIM = 0.6;
+  const LEVEL = { now: { mid: 0.91, amp: 0.03, label: 'Now', small: '6–12% visible' }, new: { mid: 0.99, amp: 0.005, label: 'New', small: '0.5–1.5% visible' } };
+  let canvases = [];
+
+  function build() {
+    const f = document.getElementById('frames');
+    const list = st.vis === 'both' ? ['now', 'new'] : [st.vis];
+    f.className = 'frames' + (list.length > 1 ? ' two' : '');
+    f.innerHTML = list.map(k => `<div class="fr"><h2>${LEVEL[k].label}<small>${LEVEL[k].small}</small></h2><div class="device"><canvas data-k="${k}" aria-label="${LEVEL[k].label} cloak, opponent view"></canvas></div></div>`).join('');
+    canvases = [...f.querySelectorAll('canvas')];
+  }
+
+  function fit(c) {
+    const r = c.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    return [w, h];
+  }
+
+  // seeded noise for ground texture
+  function rnd(i) { const x = Math.sin(i * 127.1) * 43758.5453; return x - Math.floor(x); }
+
+  function scene(g, w, h) {
+    const hor = h * 0.42;
+    const sky = g.createLinearGradient(0, 0, 0, hor);
+    sky.addColorStop(0, '#79b8e8'); sky.addColorStop(1, '#b8dff3');
+    g.fillStyle = sky; g.fillRect(0, 0, w, hor);
+    // far mountain
+    g.fillStyle = '#7d9bb0';
+    g.beginPath(); g.moveTo(w * 0.05, hor); g.lineTo(w * 0.28, hor - h * 0.16); g.lineTo(w * 0.5, hor); g.fill();
+    g.fillStyle = '#8aa7ba';
+    g.beginPath(); g.moveTo(w * 0.4, hor); g.lineTo(w * 0.7, hor - h * 0.22); g.lineTo(w * 0.98, hor); g.fill();
+    const ground = st.bg === 'sand' ? ['#e4d29a', '#d4bf80', '#c9b170'] : ['#6cc25a', '#58ae47', '#4a9a3b'];
+    const gg = g.createLinearGradient(0, hor, 0, h);
+    gg.addColorStop(0, ground[0]); gg.addColorStop(1, ground[2]);
+    g.fillStyle = gg; g.fillRect(0, hor, w, h - hor);
+    // blocky terrain tiles
+    for (let i = 0; i < 160; i++) {
+      const x = rnd(i) * w, y = hor + rnd(i + 999) * (h - hor);
+      const s = (0.012 + rnd(i + 55) * 0.03) * w * ((y - hor) / (h - hor) + 0.3);
+      g.fillStyle = rnd(i + 7) > 0.5 ? ground[1] : ground[2];
+      g.globalAlpha = 0.55; g.fillRect(x, y, s, s * 0.45); g.globalAlpha = 1;
+    }
+    // grey rock steps
+    g.fillStyle = '#9aa3ad'; g.fillRect(w * 0.06, hor + h * 0.06, w * 0.16, h * 0.07);
+    g.fillStyle = '#b5bcc4'; g.fillRect(w * 0.08, hor + h * 0.03, w * 0.11, h * 0.04);
+    if (st.bg === 'trees') {
+      for (const [tx, sc] of [[0.18, 1], [0.62, 1.25], [0.83, 0.9], [0.44, 0.75]]) palm(g, w * tx, hor + h * 0.36 * sc, h * 0.5 * sc);
+    } else {
+      palm(g, w * 0.9, hor + h * 0.14, h * 0.32);
+    }
+  }
+  function palm(g, x, base, ht) {
+    g.fillStyle = '#7a5a38';
+    for (let i = 0; i < 6; i++) g.fillRect(x - ht * 0.03 + i * ht * 0.012, base - (i + 1) * ht * 0.13, ht * 0.06, ht * 0.14);
+    g.fillStyle = '#2f8a3a';
+    const tx = x + ht * 0.07, ty = base - ht * 0.82;
+    for (const a of [-2.6, -1.9, -1.2, -0.5, 0.2]) {
+      g.save(); g.translate(tx, ty); g.rotate(a); g.fillRect(0, -ht * 0.025, ht * 0.32, ht * 0.05); g.restore();
+    }
+  }
+
+  // blocky raptor (body, neck, head, tail, legs, cloak fins) facing right, origin at feet centre
+  function raptor(g, x, y, s, step) {
+    const body = '#4f8f3a', dark = '#3a6e2b', fin = '#2f6f80';
+    const R = (dx, dy, ww, hh, c) => { g.fillStyle = c; g.fillRect(x + dx * s, y + dy * s, ww * s, hh * s); };
+    const leg = Math.sin(step) * 0.08;
+    R(-0.42, -0.62, 0.62, 0.26, body);           // body
+    R(-0.92, -0.58, 0.52, 0.12, dark);           // tail
+    R(0.14, -0.86, 0.14, 0.3, body);             // neck
+    R(0.16, -0.96, 0.36, 0.16, body);            // head
+    R(0.44, -0.9, 0.12, 0.06, '#e8e0c8');        // teeth band
+    R(-0.18 + leg, -0.36, 0.1, 0.36, dark);      // leg L
+    R(0.0 - leg, -0.36, 0.1, 0.36, dark);        // leg R
+    R(-0.34, -0.72, 0.1, 0.1, fin); R(-0.18, -0.74, 0.1, 0.12, fin); R(-0.02, -0.72, 0.1, 0.1, fin); // cloak fins
+    R(0.22, -0.98, 0.05, 0.05, '#7fe9ff');       // eye glint
+  }
+
+  function bar(g, x, y, w) {
+    const bw = w * 0.13, bh = w * 0.03;
+    g.font = `700 ${Math.round(bh * 0.75)}px Fredoka, system-ui, sans-serif`;
+    g.textAlign = 'center'; g.lineWidth = Math.max(2, bh * 0.12); g.strokeStyle = '#000'; g.fillStyle = '#fff';
+    g.strokeText('Kepu_Raptor', x, y - bh * 0.35); g.fillText('Kepu_Raptor', x, y - bh * 0.35);
+    g.fillStyle = '#281e14'; g.fillRect(x - bw / 2, y, bw, bh * 0.45);
+    g.fillStyle = '#78c850'; g.fillRect(x - bw / 2, y, bw * 0.55, bh * 0.45);
+  }
+
+  let t0 = performance.now();
+  function frame(now) {
+    const t = (now - t0) / 1000;
+    for (const c of canvases) {
+      const [w, h] = fit(c);
+      const g = c.getContext('2d');
+      scene(g, w, h);
+      const lv = LEVEL[c.dataset.k];
+      const ltm = lv.mid + lv.amp * Math.sin(t * 2 * Math.PI / SHIM);
+      const p = reduce ? 0.45 : (Math.sin(t * 0.35) + 1) / 2;            // walks left and right
+      const x = w * (0.22 + 0.5 * p), y = h * 0.74, s = h * 0.34;
+      const dir = reduce ? 1 : (Math.cos(t * 0.35) >= 0 ? 1 : -1);
+      g.save();
+      g.globalAlpha = Math.max(0, 1 - ltm);
+      g.translate(x, 0); g.scale(dir, 1); raptor(g, 0, y, s, t * 7); g.restore();
+      g.globalAlpha = 1;
+      if (st.bar === 'on') bar(g, x, y - s * 1.12, w);
+      if (st.help === 'on') {
+        g.strokeStyle = '#ffc832'; g.lineWidth = Math.max(2, w * 0.003); g.setLineDash([w * 0.01, w * 0.008]);
+        g.strokeRect(x - s * 1.0, y - s * 1.05, s * 2.0, s * 1.1); g.setLineDash([]);
+      }
+      // HUD hints
+      g.fillStyle = '#f0f0f4e6';
+      g.beginPath(); g.arc(w * 0.04, h * 0.08, h * 0.045, 0, 7); g.fill();
+      g.fillStyle = '#ffc832'; g.fillRect(w * 0.88, h * 0.04, w * 0.09, h * 0.08);
+      g.fillStyle = '#1b1406'; g.font = `700 ${Math.round(h * 0.045)}px Fredoka, system-ui, sans-serif`; g.textAlign = 'center';
+      g.fillText('MENU', w * 0.925, h * 0.098);
+    }
+    if (!reduce) requestAnimationFrame(frame);
+  }
+
+  document.addEventListener('click', e => {
+    const c = e.target.closest('.chip');
+    if (!c) return;
+    st[c.dataset.k] = c.dataset.v;
+    document.querySelectorAll(`.chip[data-k="${c.dataset.k}"]`).forEach(x => x.setAttribute('aria-pressed', x === c));
+    if (c.dataset.k === 'vis') build();
+    if (reduce) requestAnimationFrame(frame);
+  });
+  window.addEventListener('resize', () => { if (reduce) requestAnimationFrame(frame); });
+  build();
+  requestAnimationFrame(frame);
+})();
+</script>
