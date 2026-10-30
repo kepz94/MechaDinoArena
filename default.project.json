@@ -6,6 +6,10 @@
 			"$className": "ServerScriptService",
 			"$path": "src/server"
 		},
+		"ReplicatedFirst": {
+			"$className": "ReplicatedFirst",
+			"$path": "src/first"
+		},
 		"ServerStorage": {
 			"$className": "ServerStorage",
 			"DinoArcade": {

@@ -1,4 +1,4 @@
--- MainMenu v1.0 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.1 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -43,13 +43,20 @@
 -- Diagnostics (LocalPlayer attributes, this client): MainMenuVersion, MainMenuOpen, MainMenuView ("plain" / "mech"),
 --   MainMenuPickSlot (0 = none), MainMenuLastPress ("flip" / "prev" / "next" / "slot:n" / "part:n:<id or empty>" /
 --   "sandbox" / "arena"), MainMenuToast (text shown, "" = none), MainMenuPreviewParts (parts in the preview copy).
+-- v1.1 (Egg Loader, MDA-94, plan docs/plans/EGG_LOADER_v1.0.md Task 2): the egg-hatch loading screen covers trips. When
+--   ModeLastResult turns "saving" or "teleporting" (a SANDBOX / ARENA press for the other place), once per trip:
+--   ReplicatedFirst.EggLoader.Show:Invoke("Sandbox" / "Arena") puts up the incubator ("TRAVELING TO ..."), and the gui it
+--   returns goes to TeleportService:SetTeleportGui so it stays up during the teleport (EggLoader 1.0 picks it up on
+--   arrival). "teleportFailed" -> EggLoader.Hide:Invoke() and the toast as before. "studio" never shows it. Script
+--   attribute MainMenuTravelLoaderEnabled (default true; false = 1.0). Diagnostic: MainMenuTravelLoader ("shown" /
+--   "hidden" / "none").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -693,8 +700,33 @@ local function showToast(text, stay)
 	end
 end
 local lastPressedMode = "arena"
+-- v1.1: the egg loader covers trips
+if script:GetAttribute("MainMenuTravelLoaderEnabled") == nil then script:SetAttribute("MainMenuTravelLoaderEnabled", true) end
+local travelShown = false
+local function travelLoader(r)
+	if script:GetAttribute("MainMenuTravelLoaderEnabled") == false then return end
+	local loader = game:GetService("ReplicatedFirst"):FindFirstChild("EggLoader")
+	local showFn = loader and loader:FindFirstChild("Show")
+	local hideFn = loader and loader:FindFirstChild("Hide")
+	if (r == "saving" or r == "teleporting") and not travelShown then
+		if showFn then
+			travelShown = true
+			local target = lastPressedMode == "sandbox" and "Sandbox" or "Arena"
+			local ok, g = pcall(function() return showFn:Invoke(target) end)
+			if ok and g then pcall(function() game:GetService("TeleportService"):SetTeleportGui(g) end) end
+			player:SetAttribute("MainMenuTravelLoader", "shown")
+		else
+			player:SetAttribute("MainMenuTravelLoader", "none")
+		end
+	elseif r == "teleportFailed" and travelShown then
+		travelShown = false
+		if hideFn then pcall(function() hideFn:Invoke() end) end
+		player:SetAttribute("MainMenuTravelLoader", "hidden")
+	end
+end
 player:GetAttributeChangedSignal("ModeLastAt"):Connect(function()
 	local r = player:GetAttribute("ModeLastResult")
+	travelLoader(r) -- v1.1
 	if r == "studio" then
 		showToast((lastPressedMode == "sandbox" and "SANDBOX" or "ARENA") .. " OPENS IN THE LIVE GAME", false)
 	elseif r == "saving" or r == "teleporting" then

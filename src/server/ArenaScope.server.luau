@@ -1,4 +1,4 @@
--- ArenaScope v1.10 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.11 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -28,12 +28,14 @@
 --   is expected to match PlaceGate's decision: this script waits up to 10 s for PlaceGate's PlaceGateState and expects
 --   BotServer on for "sandboxBotsOn" / "off" (switch off = bots in both places), off for anything else ("arenaNoBots",
 --   "noBotServer", or no PlaceGate). Diagnostic: ArenaScopeGateState.
+-- v1.11 (Egg Loader, MDA-95, plan docs/plans/EGG_LOADER_v1.0.md Task 3): EggLoader (ReplicatedFirst) expected on.
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 local SPS = StarterPlayer:WaitForChild("StarterPlayerScripts") -- v1.6
+local RF = game:GetService("ReplicatedFirst") -- v1.11
 -- v1.10: what PlaceGate decided for BotServer
 local gate = SSS:FindFirstChild("PlaceGate")
 local gateState = gate and gate:GetAttribute("PlaceGateState")
@@ -78,6 +80,7 @@ local SCOPE = {
 	{SSS, "ScentServer", true}, {SSS, "ScreechServer", true}, {SPS, "ScentFX", true}, -- v1.8
 	{SSS, "MineServer", true}, -- v1.9
 	{SSS, "PlaceGate", true}, {SSS, "ModeServer", true}, {SSS, "ArenaPvP", true}, {SPS, "MainMenu", true}, -- v1.10
+	{RF, "EggLoader", true}, -- v1.11
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)

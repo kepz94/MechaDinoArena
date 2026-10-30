@@ -1767,3 +1767,20 @@ MainMenu 1.0 (StarterPlayerScripts.MainMenu, MDA-90; LocalPlayer attributes set 
 
 ArenaStatus 1.2: script attribute ArenaMenuButtonEnabled (default true; false = the 1.1 species pill); ArenaStatusLastPick "menu". PC key M opens the menu.
 ArenaScope 1.10: ArenaScope_PlaceGate / _ModeServer / _ArenaPvP / _MainMenu / _ModeRules, ArenaScopeGateState.
+
+EggLoader 1.0 (ReplicatedFirst.EggLoader, MDA-93; LocalPlayer attributes set by this client):
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| EggLoaderEnabled | script | true | false = Roblox's default loading screen (read at start) |
+| EggLoaderVersion | player (local) | "1.0" | |
+| EggLoaderState | player (local) | "loading" / "hatching" / "hatched" / "fading" / "done" / "travel" / "off" | |
+| EggLoaderProgress | player (local) | 0..1 | gauge value |
+| EggLoaderCracks | player (local) | 0..5 | cracks shown |
+| EggLoaderLoadReason | player (local) | "loaded" / "timeout" | why it hatched |
+| EggLoaderShownFor | player (local) | s | time on screen at the hatch |
+| EggLoaderTrip | player (local) | "" / "Arena" / "Sandbox" | trip caption in use |
+| EggLoaderTarget | EggLoader ScreenGui | "Arena" / "Sandbox" | read on arrival from GetArrivingTeleportGui |
+
+BindableFunctions under EggLoader: Show(target) -> ScreenGui, Hide(), Replay().
+MainMenu 1.1: script attribute MainMenuTravelLoaderEnabled (default true); player (local) MainMenuTravelLoader "shown" / "hidden" / "none".
+ArenaScope 1.11: ArenaScope_EggLoader.
