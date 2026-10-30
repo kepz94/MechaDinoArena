@@ -1,4 +1,4 @@
--- TargetHUD v1.1 (Mecha Dino Arena) — the health of the dino you are hitting, on your own screen (LocalScript in the
+-- TargetHUD v1.2 (Mecha Dino Arena) — the health of the dino you are hitting, on your own screen (LocalScript in the
 -- character, this client only). Kepu 2026-10-29: "The health bar for any enemy im attacking needs to be visible for my
 -- screen"; mockup docs/mockups/hud_target_slash_options.html, picks "1 · Top centre" and "Any hit you land".
 -- Layout: ScreenGui "TargetHUD" (DisplayOrder 6, ResetOnSpawn) -> frame "Target" at the top centre: AnchorPoint (0.5, 0)
@@ -45,11 +45,18 @@
 --     unchanged. Script attribute TargetHUDFloatEnabled (default true; false = the billboard stays where it is).
 --     Diagnostics: TargetHUDFloat ("head" / "visible" / "edge" / "off" / "noBar"). The hidden billboard is also restored
 --     when this character leaves the Workspace or this script is destroyed.
+-- v1.2 (MDA-104; Kepu 2026-10-30: "The cloak is currently useless in PvP, players can still clearly see its location"):
+--   with script attribute TargetHUDHideCloakedEnabled (default true) a target whose CloakedUntil (server time,
+--   CloakServer) is in the future and that is alive is not marked: the "TargetFloat" copy is hidden (TargetHUDFloat
+--   "cloaked"), its own billboard stays hidden (CloakFX keeps every bar of a cloaked dino off), and the top bar (when
+--   on) is not shown. Target, hit time and HOLD keep running, so the bar comes back if the cloak ends inside them.
+--   The billboard this script hides carries the attribute TargetHUDHidden = true until it is given back, so CloakFX 1.4
+--   restores it as enabled. false = 1.1. Diagnostic: character TargetHUDCloaked (true / false).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local HOLD = 4
 local SCAN = 0.15
 local FADE = 0.25
@@ -324,6 +331,7 @@ end
 local function restoreBar()
 	if hiddenBar then
 		hiddenBar.Enabled = true
+		hiddenBar:SetAttribute("TargetHUDHidden", nil) -- v1.2
 		hiddenBar = nil
 	end
 end
@@ -357,6 +365,7 @@ local function updateFloat(m, dt)
 		hiddenBar = bb
 	end
 	bb.Enabled = false
+	bb:SetAttribute("TargetHUDHidden", true) -- v1.2: CloakFX 1.4 gives it back as enabled
 	-- copy the look
 	local title, back0 = bb:FindFirstChild("Title"), bb:FindFirstChild("Back")
 	local fill0 = back0 and back0:FindFirstChild("Fill")
@@ -443,8 +452,15 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		end
 	end
+	-- v1.2: a cloaked target is not marked
+	local cloaked = false
+	if m and script:GetAttribute("TargetHUDHideCloakedEnabled") ~= false then
+		local cu = m:GetAttribute("CloakedUntil")
+		cloaked = type(cu) == "number" and cu > workspace:GetServerTimeNow() and (healthOf(m)) > 0
+	end
+	if char:GetAttribute("TargetHUDCloaked") ~= cloaked then char:SetAttribute("TargetHUDCloaked", cloaked) end
 	-- show / fade
-	if want and script:GetAttribute("TargetHUDTopBarEnabled") == true then -- v1.1: top bar off by default
+	if want and not cloaked and script:GetAttribute("TargetHUDTopBarEnabled") == true then -- v1.2: + not cloaked -- v1.1: top bar off by default
 		fadeT = 0
 		if not shown then
 			shown = true
@@ -467,7 +483,13 @@ RunService.RenderStepped:Connect(function(dt)
 	nameL.TextStrokeTransparency, hpL.TextStrokeTransparency = 0.6 + 0.4 * a, 0.6 + 0.4 * a
 	back.BackgroundTransparency = a
 	fill.BackgroundTransparency = a
-	updateFloat(want and m or nil, dt) -- v1.1
+	if cloaked then -- v1.2: hide the copy, keep the billboard hidden (no restore while the dino is cloaked)
+		float.Visible = false
+		floatPos = nil
+		showFloat("cloaked")
+	else
+		updateFloat(want and m or nil, dt) -- v1.1
+	end
 end)
 char:SetAttribute("TargetHUDShown", "hidden")
 char:SetAttribute("TargetHUDTarget", "")

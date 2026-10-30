@@ -1,4 +1,4 @@
--- CloakFX v1.3 (Mecha Dino Arena) — draws the Cloak Field on this client (LocalScript, StarterPlayerScripts).
+-- CloakFX v1.4 (Mecha Dino Arena) — draws the Cloak Field on this client (LocalScript, StarterPlayerScripts).
 -- MDA-52, plan docs/plans/CLOAK_v1.0.md Task 4 (Kepu 2026-10-29: a faint shimmer others can just make out).
 -- A character is cloaked while its CloakedUntil (server time, CloakServer 1.0) is in the future and its Humanoid is
 -- alive. Every render frame (bound after the camera, so the camera's own fade never overrides it):
@@ -38,10 +38,20 @@
 -- v1.3 (CloakServer 1.2 flank plates): plates are read as Plate_1..8 (was 1..4); a plate's flip timing uses its
 --   PlateHinge attribute PlateOrder (1..4 front to back; missing = its number), so the left and right plates of the
 --   same row flip together. Everything else as 1.2.
+-- v1.4 (Kepu 2026-10-30 after a PvP test: "The cloak is currently useless in PvP, players can still clearly see its
+--   location. Maybe we should make it even less visible from 10 percent to maybe 1 percent"; MDA-104):
+--   * faint: with script attribute CloakFXFaintEnabled (default true) another player's cloaked dino uses
+--     FAINT_MID 0.99 +- FAINT_AMP 0.005 (0.5-1.5% visible; 1.3: 0.91 +- 0.03 = 6-12%). Your own view (SELF_LTM 0.6) and
+--     the turn-on / turn-off animation are unchanged. false = 1.3 values.
+--   * bars stay hidden: every frame, every BillboardGui on another player's cloaked dino is set Enabled = false (1.3 did
+--     it once per gui, so a script that re-enabled one, e.g. TargetHUD giving back the bar it had hidden, showed it over
+--     the cloaked dino). The value restored afterwards is the gui's own: Enabled, or true when TargetHUD 1.2 had it
+--     hidden (gui attribute TargetHUDHidden). Script attribute CloakFXBarsHiddenEnabled (default true; false = 1.3).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
+local FAINT_MID, FAINT_AMP = 0.99, 0.005 -- v1.4
 local SELF_LTM = 0.6
 local OTHER_MID, OTHER_AMP = 0.91, 0.03
 local SHIMMER_PERIOD = 0.6
@@ -53,6 +63,8 @@ local PLATE_OPEN = Color3.fromRGB(18, 58, 68) -- v1.1
 if script:GetAttribute("CloakFXEnabled") == nil then script:SetAttribute("CloakFXEnabled", true) end
 if script:GetAttribute("CloakFXAnimEnabled") == nil then script:SetAttribute("CloakFXAnimEnabled", true) end -- v1.1
 if script:GetAttribute("CloakFXShadowOff") == nil then script:SetAttribute("CloakFXShadowOff", true) end -- v1.2
+if script:GetAttribute("CloakFXFaintEnabled") == nil then script:SetAttribute("CloakFXFaintEnabled", true) end -- v1.4
+if script:GetAttribute("CloakFXBarsHiddenEnabled") == nil then script:SetAttribute("CloakFXBarsHiddenEnabled", true) end -- v1.4
 local SHADOW_OFF_LTM = 0.3 -- v1.2
 local me = Players.LocalPlayer
 
@@ -207,9 +219,15 @@ local function draw(char, st, t, phase, e)
 	local ltm = SELF_LTM
 	if not st.isMe then
 		ltm = OTHER_MID + OTHER_AMP * math.sin(t * 2 * math.pi / SHIMMER_PERIOD)
+		if script:GetAttribute("CloakFXFaintEnabled") ~= false then -- v1.4: ~1% visible
+			ltm = FAINT_MID + FAINT_AMP * math.sin(t * 2 * math.pi / SHIMMER_PERIOD)
+		end
+		local barsHidden = script:GetAttribute("CloakFXBarsHiddenEnabled") ~= false -- v1.4
 		for _, d in ipairs(char:GetDescendants()) do
 			if d:IsA("BillboardGui") and st.guis[d] == nil then
-				st.guis[d] = d.Enabled
+				st.guis[d] = d.Enabled or (barsHidden and d:GetAttribute("TargetHUDHidden") == true) -- v1.4: + TargetHUD's own hide
+				d.Enabled = false
+			elseif barsHidden and d:IsA("BillboardGui") and d.Enabled then -- v1.4: keep it hidden every frame
 				d.Enabled = false
 			end
 		end
