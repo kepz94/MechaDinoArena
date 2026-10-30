@@ -1932,6 +1932,10 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | MechaAimConeEnabled | MechaButtons script | true | MechaButtons 1.13: thumb aim is a smooth cone (+/-30 sides, +/-15 up/down); false = 1.12 full-circle flat aim |
 | MechaScreechAimDeg / MechaScreechAimPitch | character (local) | signed degrees (+ = right) / degrees (+ = up) | 1.13 cone diagnostics (AimDeg is signed from 1.13) |
 | MechaAimKeepCamEnabled / MechaScreechCamMoved | MechaButtons script / character (local) | true / true-false | MechaButtons 1.14: the camera stays put when the cannon fires; false = 1.13 (camera turns to the shot) |
+| ArenaCornerEnabled / ArenaStatusCorner | ArenaStatus script / character (local) | true / true-false | ArenaStatus 1.4: MENU in the top-right corner (DeviceSafeInsets, y 8); false = 1.3 |
+| ArenaLeaveConfirmEnabled | ArenaStatus script | true | ArenaStatus 1.4: MENU / M asks "Leave the island?" first; false = leave at once (1.2) |
+| ArenaLeaveConfirm / ArenaLeaveAsks | character (local) | "open" / "stay" / "leave", 0.. | leave check diagnostics |
+| LabCornerEnabled | Lab script | true | Lab 1.5: SKILLS in the top-right corner row; false = 1.4 |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |

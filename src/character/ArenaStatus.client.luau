@@ -1,4 +1,4 @@
--- ArenaStatus v1.3 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
+-- ArenaStatus v1.4 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
 -- MDA-6, plan docs/plans/ARENAHUD_v1.0.md Task 1, mockup docs/mockups/mobile_hud_options.html option A (Kepu 2026-10-28:
 --   "health should be at the top right of the screen along with the T-Rex drop down list"; stamina bar only while latched).
 -- Replaces HealthBar 1.1 / SpeciesPicker 1.0 / StaminaBar 1.1 in Mecha (those are switched off by Arena scope 1.1).
@@ -34,11 +34,26 @@
 --   8 px (stamina), 3 px between label and bar, 4 px between the two blocks. Colours, texts, shield and values as 1.2. The
 --   MENU pill stays top right. Script attribute ArenaStatusBottomLeftEnabled (default true; false = the 1.2 top-right
 --   bars). Diagnostic: character ArenaStatusLayout ("bottomLeft" / "topRight").
+-- v1.4 (Kepu 2026-10-30: "move the menu and skills to the top right of the screen it's floating mid right. Also ask for a
+--   confirmation when clicking menu button because it will kick you out the lobby"; mockup
+--   docs/mockups/menu_corner_confirm_options.html, pick A "Centre card"):
+--   * corner: the ScreenGui uses ScreenInsets DeviceSafeInsets (the whole screen except the phone's notch / rounded
+--     corners; 1.3 used the default CoreUISafeInsets, which starts under Roblox's top bar) and the MENU pill sits at
+--     (1, -16, 0, CORNER_Y (8)). The bottom-left bars keep their place. Script attribute ArenaCornerEnabled (default true,
+--     read at start; false = 1.3 placement). Diagnostic: character ArenaStatusCorner (true / false).
+--   * leave check: a MENU tap (or the M key) opens ScreenGui "LeaveConfirm" (DisplayOrder 30, full screen) instead of
+--     leaving: a dark full-screen dim and a centre card (width 80% of the screen, at most 340 px): "Leave the island?",
+--     "You'll go back to the main menu.", buttons STAY (dark) and LEAVE (yellow). LEAVE = the 1.2 action
+--     (DinoModeRequest "menu", ArenaStatusLastPick "menu"); STAY or a tap on the dim closes it. While it is open the PC
+--     mouse is free (RenderStep "LeaveConfirmMouse", Camera + 1). It closes with the character (ResetOnSpawn). The game
+--     keeps running behind it. Script attribute ArenaLeaveConfirmEnabled (default true; false = 1.2, MENU leaves at once).
+--     Diagnostics: character ArenaLeaveConfirm ("open" / "stay" / "leave"), ArenaLeaveAsks (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
+local CORNER_Y = 8 -- v1.4
 local SHIELD = Color3.fromRGB(90, 160, 255) -- v1.1
 local LOW_FRACTION = 0.3
 local SPECIES = {{id = "TRex", label = "T-REX"}, {id = "Raptor", label = "RAPTOR"}}
@@ -174,10 +189,121 @@ if script:GetAttribute("ArenaMenuButtonEnabled") == nil then script:SetAttribute
 local modeRemote = ReplicatedStorage:FindFirstChild("DinoModeRequest")
 local menuButton = script:GetAttribute("ArenaMenuButtonEnabled") ~= false and modeRemote ~= nil
 if menuButton then caret.Visible = false end
+-- v1.4: top-right corner + leave check
+if script:GetAttribute("ArenaCornerEnabled") == nil then script:SetAttribute("ArenaCornerEnabled", true) end
+if script:GetAttribute("ArenaLeaveConfirmEnabled") == nil then script:SetAttribute("ArenaLeaveConfirmEnabled", true) end
+local cornerOn = script:GetAttribute("ArenaCornerEnabled") ~= false
+if cornerOn then
+	gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+	pill.Position = UDim2.new(1, -16, 0, CORNER_Y)
+end
+char:SetAttribute("ArenaStatusCorner", cornerOn)
+local confirmGui
+local CONFIRM_BIND = "LeaveConfirmMouse"
+local function closeConfirm(how)
+	if confirmGui then confirmGui:Destroy() confirmGui = nil end
+	pcall(function() RunService:UnbindFromRenderStep(CONFIRM_BIND) end)
+	if how then char:SetAttribute("ArenaLeaveConfirm", how) end
+end
+local function leaveNow()
+	char:SetAttribute("ArenaStatusLastPick", "menu")
+	modeRemote:FireServer("menu")
+end
+local function askLeave()
+	if script:GetAttribute("ArenaLeaveConfirmEnabled") == false then leaveNow() return end
+	if confirmGui then return end
+	local g = Instance.new("ScreenGui")
+	g.Name = "LeaveConfirm"
+	g.DisplayOrder = 30
+	g.IgnoreGuiInset = true
+	g.ResetOnSpawn = true
+	local dim = Instance.new("TextButton")
+	dim.Name = "Dim"
+	dim.Size = UDim2.fromScale(1, 1)
+	dim.BackgroundColor3 = Color3.new(0, 0, 0)
+	dim.BackgroundTransparency = 0.4
+	dim.Text = ""
+	dim.AutoButtonColor = false
+	dim.Parent = g
+	local card = Instance.new("Frame")
+	card.Name = "Card"
+	card.AnchorPoint = Vector2.new(0.5, 0.5)
+	card.Position = UDim2.fromScale(0.5, 0.5)
+	card.Size = UDim2.new(0.8, 0, 0, 0)
+	card.AutomaticSize = Enum.AutomaticSize.Y
+	card.BackgroundColor3 = PANEL
+	card.Parent = g
+	local lim = Instance.new("UISizeConstraint")
+	lim.MaxSize = Vector2.new(340, math.huge)
+	lim.Parent = card
+	corner(card, 16)
+	stroke(card, 0.7, 2)
+	local pad = Instance.new("UIPadding")
+	for _, k in ipairs({"PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight"}) do pad[k] = UDim.new(0, 18) end
+	pad.Parent = card
+	local lay = Instance.new("UIListLayout")
+	lay.Padding = UDim.new(0, 12)
+	lay.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	lay.SortOrder = Enum.SortOrder.LayoutOrder
+	lay.Parent = card
+	local function text(name, t, size, font, color, order)
+		local l = Instance.new("TextLabel")
+		l.Name = name
+		l.BackgroundTransparency = 1
+		l.Size = UDim2.new(1, 0, 0, size + 6)
+		l.Font = font
+		l.Text = t
+		l.TextSize = size
+		l.TextColor3 = color
+		l.TextWrapped = true
+		l.LayoutOrder = order
+		l.Parent = card
+	end
+	text("Title", "Leave the island?", 26, Enum.Font.FredokaOne, Color3.new(1, 1, 1), 1)
+	text("Body", "You'll go back to the main menu.", 16, Enum.Font.GothamBold, Color3.fromRGB(207, 211, 220), 2)
+	local row = Instance.new("Frame")
+	row.Name = "Buttons"
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, 0, 0, 48)
+	row.LayoutOrder = 3
+	row.Parent = card
+	local function btn(name, t, bg, fg, x)
+		local b = Instance.new("TextButton")
+		b.Name = name
+		b.Position = UDim2.new(x, x > 0 and 6 or 0, 0, 0)
+		b.Size = UDim2.new(0.5, -6, 1, 0)
+		b.BackgroundColor3 = bg
+		b.Font = Enum.Font.FredokaOne
+		b.Text = t
+		b.TextSize = 22
+		b.TextColor3 = fg
+		b.Parent = row
+		corner(b, 12)
+		stroke(b, 0.6, 2)
+		return b
+	end
+	local stay = btn("Stay", "STAY", Color3.fromRGB(34, 36, 46), Color3.new(1, 1, 1), 0)
+	local leave = btn("Leave", "LEAVE", YELLOW, YELLOW_TEXT, 0.5)
+	stay.Activated:Connect(function() closeConfirm("stay") end)
+	dim.Activated:Connect(function() closeConfirm("stay") end)
+	leave.Activated:Connect(function()
+		closeConfirm("leave")
+		leaveNow()
+	end)
+	g.Parent = player.PlayerGui
+	confirmGui = g
+	char:SetAttribute("ArenaLeaveConfirm", "open")
+	char:SetAttribute("ArenaLeaveAsks", (char:GetAttribute("ArenaLeaveAsks") or 0) + 1)
+	RunService:BindToRenderStep(CONFIRM_BIND, Enum.RenderPriority.Camera.Value + 1, function()
+		local UIS = game:GetService("UserInputService")
+		UIS.MouseBehavior = Enum.MouseBehavior.Default
+		UIS.MouseIconEnabled = true
+	end)
+end
+char.AncestryChanged:Connect(function() if not char.Parent then closeConfirm() end end)
 pill.Activated:Connect(function()
 	if menuButton then
-		char:SetAttribute("ArenaStatusLastPick", "menu")
-		modeRemote:FireServer("menu")
+		askLeave() -- v1.4 (1.2 left at once)
 	else
 		setMenu(not menu.Visible)
 	end
@@ -185,8 +311,7 @@ end)
 if menuButton then
 	game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
 		if processed or input.KeyCode ~= Enum.KeyCode.M then return end
-		char:SetAttribute("ArenaStatusLastPick", "menu")
-		modeRemote:FireServer("menu")
+		askLeave() -- v1.4 (1.2 left at once)
 	end)
 end
 setMenu(false)

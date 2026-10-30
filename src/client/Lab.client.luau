@@ -1,4 +1,4 @@
--- Lab v1.4 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.5 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -70,13 +70,18 @@
 --   they counted as spent points and mastered lines ("NEED .. PTS" / "MASTERY FULL" on every stat). The ids in the player
 --   attribute SkillTestParts are now set to 0 for that check (SkillServer 1.7 judges buys the same way), and a given part
 --   itself reads MAXED. Script attribute LabTestFreeGivenEnabled (default true; false = 1.3).
+-- v1.5 (Kepu 2026-10-30: "move the menu and skills to the top right of the screen it's floating mid right"; mockup
+--   docs/mockups/menu_corner_confirm_options.html): the SKILLS ScreenGui "LabButton" uses ScreenInsets DeviceSafeInsets
+--   and the button's y is CORNER_Y (8), level with ArenaStatus 1.4's MENU pill in the top-right corner (x unchanged: 8 px
+--   left of the pill). Script attribute LabCornerEnabled (default true, read at start; false = 1.4, y 12 under Roblox's
+--   top bar).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 if script:GetAttribute("LabTestFreeGivenEnabled") == nil then script:SetAttribute("LabTestFreeGivenEnabled", true) end -- v1.4
 local BIND = "LabMouse"
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -1232,12 +1237,18 @@ local bgui = Instance.new("ScreenGui")
 bgui.Name = "LabButton"
 bgui.DisplayOrder = 6
 bgui.ResetOnSpawn = false
+if script:GetAttribute("LabCornerEnabled") == nil then script:SetAttribute("LabCornerEnabled", true) end -- v1.5
+local labY = 12
+if script:GetAttribute("LabCornerEnabled") ~= false then -- v1.5: top-right corner
+	bgui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+	labY = 8
+end
 bgui.Parent = pg
 labButton = button(bgui, "Skills", PANEL, 0.18)
 labButton.AnchorPoint = Vector2.new(1, 0)
 labButton.AutomaticSize = Enum.AutomaticSize.X
 labButton.Size = UDim2.fromOffset(0, 36)
-labButton.Position = UDim2.new(1, -150, 0, 12)
+labButton.Position = UDim2.new(1, -150, 0, labY)
 corner(labButton, UDim.new(0, 10))
 stroke(labButton, WHITE, 0.5, 1.5)
 pad(labButton, 12)
@@ -1268,9 +1279,9 @@ task.spawn(function()
 		local ast = pg:FindFirstChild("ArenaStatus")
 		local pill = ast and ast:FindFirstChild("Pill")
 		if pill and pill.AbsoluteSize.X > 0 then
-			labButton.Position = UDim2.new(1, -16 - pill.AbsoluteSize.X - 8, 0, 12)
+			labButton.Position = UDim2.new(1, -16 - pill.AbsoluteSize.X - 8, 0, labY)
 		else
-			labButton.Position = UDim2.new(1, -150, 0, 12)
+			labButton.Position = UDim2.new(1, -150, 0, labY)
 		end
 		local left = tonumber(player:GetAttribute("SkillLeft")) or 0
 		lbBadge.Text = tostring(left)
