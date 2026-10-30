@@ -1,4 +1,4 @@
--- SkillEffects v1.17 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.18 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -72,6 +72,16 @@
 --   true, BloodRushCost (0.25), BloodRushMax (2), BloodRushDamageMul (II 1.25), BloodRushNoSelfSlow (III), BloodRushSlowMul /
 --   BloodRushSlowTime (star 0.45 / 4); otherwise false / 0 / 0 / 1 / false / 1 / 0. HeadbuttServer 1.5, HeadbuttTest 1.1
 --   and the HUD read them. Switch: script attribute SkillEffectsBloodEnabled (default true, read at start; false = 1.16).
+-- v1.18 (Kepu 2026-10-30: "yes lets apply the bleeding to other players then. but shorten the time for bleeding so not
+--   every pounce on another raptor is one shot"; earlier: "whatever works against bots works against players same
+--   mechanic"): the Jaws III / Blade Claws III bleed also hits a player's dino. When the hit's target name is not a bot,
+--   a Workspace player character with that name that ArenaPvP bridges (ArenaPvPBridged and Bitable true: the Arena only,
+--   never in the menu) bleeds the same dps off its DummyHealth (ArenaPvP turns each drop into damage; an Energy Shield
+--   blocks it there) for script attribute SkillBleedPlayerTime s (default 2; bots keep their 4 s), a new hit restarts
+--   it, a killing tick stamps KilledBy / KilledByUserId / KilledWith "bleed" / KilledAt (last) and, for ArenaPvP's
+--   credit, LastHitBy / LastHitAt. Target attributes SkillBleedUntil / SkillBleedBy as on bots. Switch: script
+--   attribute SkillBleedPlayersEnabled (default true, read at start; false = 1.17, bots only). ArenaPvP's test target
+--   (ArenaPvPTestTarget, bridged like a player) counts as a player's dino, for Studio checks.
 -- v1.14 (pachy Grappling Hook, MDA-121; SkillTree 1.21): HookEnabled (bought, in a slot, Species "Pachy", effects on),
 --   HookRange, HookCooldown, HookDamage (0 when off) and HookLook (= HookEnabled; the wrist claw is shown). HookServer 1.0
 --   reads them. A new HookHitAt runs onHit like a bite (lifesteal). Switch: script attribute SkillEffectsHookEnabled
@@ -101,7 +111,10 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.17"
+local VERSION = "1.18"
+if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
+local BLEED_PLAYERS = script:GetAttribute("SkillBleedPlayersEnabled") ~= false
+if script:GetAttribute("SkillBleedPlayerTime") == nil then script:SetAttribute("SkillBleedPlayerTime", 2) end -- v1.18
 if script:GetAttribute("SkillEffectsBloodEnabled") == nil then script:SetAttribute("SkillEffectsBloodEnabled", true) end -- v1.17
 local BLOOD_ON = script:GetAttribute("SkillEffectsBloodEnabled") ~= false
 if script:GetAttribute("SkillEffectsLegsEnabled") == nil then script:SetAttribute("SkillEffectsLegsEnabled", true) end -- v1.15
@@ -340,6 +353,16 @@ local function findBot(name)
 end
 
 local bleeds = {} -- [bot] = {char, player, dps, untilT}
+local function findBridgedPlayer(name, attacker) -- v1.18: a player's dino ArenaPvP bridges (Arena only)
+	if not BLEED_PLAYERS or type(name) ~= "string" then return nil end
+	local m = workspace:FindFirstChild(name)
+	if m and m ~= attacker and m:IsA("Model")
+		and (game:GetService("Players"):GetPlayerFromCharacter(m) or m:GetAttribute("ArenaPvPTestTarget") == true)
+		and m:GetAttribute("ArenaPvPBridged") == true and m:GetAttribute("Bitable") == true then
+		return m
+	end
+	return nil
+end
 local crushed = setmetatable({}, {__mode = "k"}) -- [bot] = last crush time
 
 local function onHit(char, st, damage, targetName, isPounce) -- v1.6: + isPounce
@@ -350,14 +373,21 @@ local function onHit(char, st, damage, targetName, isPounce) -- v1.6: + isPounce
 	if isPounce and (e.bladeBleedDps or 0) > bleedDps then bleedDps, bleedTime = e.bladeBleedDps, e.bladeBleedTime end -- v1.6
 	if bleedDps <= 0 and e.crushStun <= 0 then return end
 	local bot = findBot(targetName)
+	local isPlayer = false
+	if not bot then -- v1.18: a player's dino (bleed only; the crushing hit stays bots only)
+		bot = findBridgedPlayer(targetName, char)
+		isPlayer = bot ~= nil
+		if isPlayer then bleedTime = math.min(bleedTime, tonumber(script:GetAttribute("SkillBleedPlayerTime")) or 2) end
+	end
 	if not bot or (tonumber(bot:GetAttribute("DummyHealth")) or 0) <= 0 then return end
 	local t = now()
+	if isPlayer and bleedDps <= 0 then return end
 	if bleedDps > 0 then
-		bleeds[bot] = {char = char, player = st.player, dps = bleedDps, untilT = t + bleedTime}
+		bleeds[bot] = {char = char, player = st.player, dps = bleedDps, untilT = t + bleedTime, isPlayer = isPlayer}
 		bot:SetAttribute("SkillBleedUntil", t + bleedTime)
 		bot:SetAttribute("SkillBleedBy", char.Name)
 	end
-	if e.crushStun > 0 and t - (crushed[bot] or -math.huge) >= e.crushCooldown then
+	if not isPlayer and e.crushStun > 0 and t - (crushed[bot] or -math.huge) >= e.crushCooldown then
 		crushed[bot] = t
 		bot:SetAttribute("StunnedUntil", math.max(bot:GetAttribute("StunnedUntil") or 0, t + e.crushStun))
 		bot:SetAttribute("SkillCrushedAt", t)
@@ -378,6 +408,10 @@ task.spawn(function()
 			end
 			local d = b.dps * BLEED_TICK
 			bot:SetAttribute("DummyHealth", math.max(0, hp - d))
+			if b.isPlayer and hp - d <= 0 then -- v1.18: credit for ArenaPvP on a player's dino
+				bot:SetAttribute("LastHitBy", b.char.Name)
+				bot:SetAttribute("LastHitAt", t)
+			end
 			if hp - d <= 0 then -- killing blow, stamped like BiteServer 1.6
 				bot:SetAttribute("KilledBy", b.char.Name)
 				bot:SetAttribute("KilledByUserId", b.player and b.player.UserId or 0)
