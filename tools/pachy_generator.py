@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pachy generator v1.1 (Mecha Dino Arena) -> src/shared/Models/PachyModelData.luau
+"""Pachy generator v1.2 (Mecha Dino Arena) -> src/shared/Models/PachyModelData.luau
 
 Pachycephalosaurus in the T-Rex / raptor block style. Plan docs/plans/PACHY_MODEL_v1.0.md, mockup
 docs/mockups/pachy_model_options.html, inspo docs/reference/pachy/ (Kepu 2026-10-30: knob ring head by default, "the
@@ -29,6 +29,10 @@ v1.1 (plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 1, MDA-117; Kepu 2026-10-30: "
       T-Rex 20.8 / 39); GaitAlwaysRun true; TurnLimitRate 360 (raptor 540, T-Rex 180); CameraStartZoom 18 (x2 in game);
       the raptor's leap (JumpEnabled ... JumpCooldown 0.5, JumpStaminaCost 0); Headbutt* settings (HeadbuttServer /
       HeadbuttTest 1.0); gait = the raptor's scaled by the hip (4.0 / 3.3 = 1.21) for lengths.
+v1.2 (Kepu 2026-10-30: "i think the pachy charging speed is good but the base speed should be a little slower than the
+      t-rex. it feels a little overpowered right now" -> run "37" in the arena; measured in Play: T-Rex 39, pachy 45):
+      MoveRunSpeed 56.9 / MoveWalkSpeed 30.3 (x 0.65 = 37 / 19.7, the same walk / run ratio); HeadbuttSpeedMul 1.7 so the
+      charge stays at 63 (37 x 1.7 = 62.9; was 45 x 1.4). Everything else unchanged.
 """
 import math, re, os
 
@@ -36,7 +40,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "PachyModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 
-VERSION = "1.1"
+VERSION = "1.2"
 HIP = 4.0            # hip (HRP centre) height above the ground
 HRP_SIZE_D = (4.0, 3.0, 1.8)   # D x (length), y, z (width)
 
@@ -241,7 +245,7 @@ OVERRIDES = {
     "JumpEnabled": "false", "CreepEnabled": "false",
     # v1.1 playable (plan PACHY_PLAYABLE_v1.0 Task 1)
     "DinoMaxHealth": "90",
-    "MoveWalkSpeed": "36.9", "MoveRunSpeed": "69.2", "GaitAlwaysRun": "true", "TurnLimitRate": "360",
+    "MoveWalkSpeed": "30.3", "MoveRunSpeed": "56.9", "GaitAlwaysRun": "true", "TurnLimitRate": "360",
     "CameraStartZoom": "18", "IdleBob": "0.12",
     "JumpEnabled": "true", "JumpWindup": "0.12", "JumpLaunchPower": "59", "JumpBoost": "10",
     "JumpBoostMinSpeed": "2", "JumpAirHold": "true", "JumpStaminaCost": "0", "JumpCooldown": "0.5",
@@ -249,7 +253,7 @@ OVERRIDES = {
     "RunStepLength": "12.6", "RunDuty": "0.3", "RunCrouch": "1.9", "RunLift": "3.6", "RunFootForward": "1.9",
     "RunStrideStretch": "1.22", "WalkSideStepReach": "1.2",
     "RunNeckDrop": "12", "WalkTailWhip": "0.3", "RunTailWhip": "0.2", "IdleTailSway": "0.4",
-    "HeadbuttEnabled": "true", "HeadbuttCharges": "2", "HeadbuttWindup": "0.15", "HeadbuttSpeedMul": "1.4",
+    "HeadbuttEnabled": "true", "HeadbuttCharges": "2", "HeadbuttWindup": "0.15", "HeadbuttSpeedMul": "1.7",
     "HeadbuttMaxTime": "1.8", "HeadbuttTurnMul": "2", "HeadbuttDamage": "20", "HeadbuttShove": "40",
     "HeadbuttShoveTime": "0.35", "HeadbuttSlowMul": "0.65", "HeadbuttSlowTime": "3", "HeadbuttRefill": "5",
     "HeadbuttSelfSlowMul": "0.65", "HeadbuttSelfSlowTime": "2.5", "HeadbuttReach": "2",

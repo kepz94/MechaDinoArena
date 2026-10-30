@@ -25,7 +25,14 @@
 - Paths are pachy-only (OWNER Pachy) and their effects are written only while the character's Species is "Pachy".
 
 ## Drops
-- **Drop A — Grappling Hook** (PvP value first) · **Drop B — Mecha Legs** · order vs Battering Dome (Drop 2 of PACHY_PLAYABLE) = Kepu's call.
+- Order (Kepu 2026-10-30 "lets do battering dome first. then address these two"): Battering Dome (PACHY_PLAYABLE Drop 2) -> **Drop A — Grappling Hook** -> **Drop B — Mecha Legs**.
+
+## Red-team (2026-10-30) — Kepu's answers
+1. Pachy upgrades leaking to other dinos: "man all these skill trees and abilites should be dino specific" -> answer "Separate progress per dino" (own skill points, bought steps and loadout per dino). Becomes its own plan (SKILLS_PER_DINO); until then the Species == "Pachy" gate on writes stays as a guard.
+2. Fresh ids `hookarm` / `mechalegs`, `grapple` stays dead: "okay sounds good".
+3. Mecha parts in colours no skin paints: "okay".
+4. Server distance check before the smash on player targets (laggy / exploit escape = miss); walls block the hook: "okay".
+5. Split into two drops: "lets do battering dome first. then address these two".
 
 ## Global Constraints
 - Additive; every new behaviour behind a switch. Versions per file (header changelog, VERSIONS.md row, ATTRIBUTES.md rows). Studio-tool testing only (never a second player: player-side pull / shove tested by stamping the own pachy, as Drop 1); Kepu publishes.
