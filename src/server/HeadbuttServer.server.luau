@@ -1,4 +1,4 @@
--- HeadbuttServer v1.8 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.9 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -93,13 +93,18 @@
 --   charge back at once (capped at the max); when that fills the charges the running refill stops, otherwise the running
 --   refill keeps going. Diagnostic: character HeadbuttChargesGiven (count). Switch: script attribute
 --   HeadbuttGiveChargeEnabled (default true, read each time; false = 1.7, ignored).
+-- v1.9 (pachy Dome Visor, MDA-127; BoneCrest 1.2): a headbutt that would hit a pachy whose visor is up, from the front
+--   (BoneCrest.visorFront with the attacker's root position), does nothing: no damage, no shove, no slow; the charge
+--   ends with HeadbuttHitResult / HeadbuttResult "visor" (the charge is spent, so the self-slow rule applies as for a
+--   miss) and BoneCrest.visorBlock(target, attacker, "headbutt") runs (BLOCK look; star knockback). Switch: script
+--   attribute HeadbuttVisorEnabled (default true, read each hit; false = 1.8).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
 local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
 if script:GetAttribute("HeadbuttSacrificeRestartsRefill") == nil then script:SetAttribute("HeadbuttSacrificeRestartsRefill", true) end -- v1.7
@@ -126,6 +131,15 @@ script:SetAttribute("HeadbuttServerVersion", VERSION)
 script:SetAttribute("HeadbuttRequests", 0)
 script:SetAttribute("HeadbuttHits", 0)
 if script:GetAttribute("HeadbuttServerEnabled") == nil then script:SetAttribute("HeadbuttServerEnabled", true) end
+if script:GetAttribute("HeadbuttVisorEnabled") == nil then script:SetAttribute("HeadbuttVisorEnabled", true) end -- v1.9
+local visorModCache -- v1.9: Dome Visor (ServerStorage.DinoArcade.BoneCrest 1.2), loaded on first use
+local function visorMod()
+	if visorModCache == nil then
+		visorModCache = false
+		pcall(function() visorModCache = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+	end
+	return visorModCache or nil
+end
 if script:GetAttribute("HeadbuttDomeEnabled") == nil then script:SetAttribute("HeadbuttDomeEnabled", true) end -- v1.1
 local DOME_ON = script:GetAttribute("HeadbuttDomeEnabled") ~= false
 local function domeMul(char, k) -- v1.1
@@ -421,6 +435,17 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		local gap = hp and gapTo(hp, hb) or math.huge
 		char:SetAttribute("HeadbuttHitGap", math.floor(gap * 10 + 0.5) / 10)
 		if gap > (HIT_TOLERANCE + get(char, "HeadbuttReach")) * scale then result = "far" end
+	end
+	if not result and script:GetAttribute("HeadbuttVisorEnabled") ~= false then -- v1.9: Dome Visor
+		local VM = visorMod()
+		local aRoot = char:FindFirstChild("HumanoidRootPart")
+		if VM and aRoot and VM.visorFront(model, aRoot.Position) then
+			char:SetAttribute("HeadbuttHitResult", "visor")
+			st.active.hit = true
+			VM.visorBlock(model, char, "headbutt")
+			finish(char, st, "visor")
+			return
+		end
 	end
 	char:SetAttribute("HeadbuttHitResult", result or "hit")
 	if result then return end

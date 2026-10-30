@@ -1,0 +1,431 @@
+-- InkServer v1.0 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
+-- MDA-128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Neck ink tank +
+--   barrel". Kepu 2026-10-30: "How about an ink shooter that blinds your enemy for 2 seconds. Turns their screen black";
+--   answers: fully black (HUD stays), an aimed shot like the Grappling Hook (first dino hit), bots lose you, steps II 80
+--   studs / III 11 s / star splash 6 studs, "Same as Shock Cannon" for who can be inked (ModeRules).
+-- Settings come from the character (SkillEffects 1.24): InkEnabled (bought AND slotted on a pachy), InkRange (60; 80 from
+--   II), InkCooldown (15; 11 from III), InkBlindTime (2), InkSplash (6 at star, else 0), InkLook.
+-- Client -> server: ReplicatedStorage.DinoInkRequest:FireServer(clientServerTime, aimDir) (MechaButtons 1.19 sends the
+--   camera LookVector). Checks, first failing wins: "badArg" (stamp not a number, aimDir not a Vector3 of length 0.5-1.5),
+--   "dead", "disabled" (InkServerEnabled false or InkEnabled ~= true), "menu", "stunned" (StunnedUntil > now), "pinned"
+--   (PinHeld), "cooldown" (now < InkReadyAt), "ok". Every ok shot starts the cooldown: InkReadyAt = now + InkCooldown.
+-- The shot (the Grappling Hook's aim rules, HookServer 1.5): heading from the camera, pitch clamped to -2..25 degrees;
+--   origin = the barrel's muzzle (else the head hitbox, else the root). Along the aim, up to InkRange studs, the first dino
+--   (Workspace models with a Hitboxes folder, Bitable true, a Species or IsBot, not self, not KO, alive) whose hitbox comes
+--   within AIM_HELP (4) x scale studs of the line, and which ModeRules.canAffect allows (player target: not in the menu,
+--   and only in the Arena; bots always), is the target. The world (every character / bot / tall grass excluded) blocks:
+--   a world hit nearer, or a wall between the muzzle and the target = "blocked". A target with EnergyShieldUntil in the
+--   future = "shielded" (the glob splats on it, no blind). Nothing found = "miss".
+--   Owner stamps: InkAimDir, InkAimEnd, InkResult ("hit" / "miss" / "blocked" / "shielded"), InkHitTarget (or ""),
+--   InkArriveAt, InkCount, InkStartedAt (last).
+-- Flight: a black glob (Part "InkGlob", ball, anchored, Workspace.DinoFX "InkFX" folder) flies from the muzzle to the
+--   end at INK_SPEED (160) studs/s; at the end a black splat (flat cylinder, fades in 1.5 s) and a burst of black drops.
+-- Blind (at arrival): the target's InkedUntil = max(current, arrival + InkBlindTime), InkedBy (pachy name), InkedAt
+--   (server time, last). A player's own client (InkBlind 1.0) shows a fully black screen under the HUD while InkedUntil
+--   is in the future; a bot (BotServer 1.18) drops its player target and picks none while inked.
+-- Star (InkSplash > 0): every other allowed, unshielded dino (not the shooter) whose hitbox is within InkSplash studs of
+--   the hit point is inked the same way (also on a "shielded" main hit). Owner InkSplashCount (the last shot).
+-- Look: while InkLook is true the pachy carries "Mecha_InkTank" on the Neck segment's Root (its box in Root's own frame):
+--   "Tank" (dark, on top of the neck), "Window" (black ink behind glass on its side), "Cap" (steel) and "Barrel" (steel,
+--   forward along the neck toward the jaw) with an Attachment "Muzzle" at the tip. Massless, no collide / query / touch.
+-- Lab card (plug and play, LabPreviewServer 1.2): BindableFunction "BuildPreview_ink".
+-- Switch: script attribute InkServerEnabled (default true). Mode rules: script attribute InkModeRulesEnabled (default
+--   true; false = players can always be inked).
+-- Diagnostics: script InkServerVersion, InkShots, InkHits, InkMode; character InkServerResult, InkLookBuilt.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local VERSION = "1.0"
+local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25)
+local AIM_HELP = 4
+local INK_SPEED = 160
+local INK = Color3.fromRGB(11, 11, 18)
+local STEEL, DARK = Color3.fromRGB(154, 166, 184), Color3.fromRGB(42, 45, 56)
+
+script:SetAttribute("InkServerVersion", VERSION)
+script:SetAttribute("InkShots", 0)
+script:SetAttribute("InkHits", 0)
+if script:GetAttribute("InkServerEnabled") == nil then script:SetAttribute("InkServerEnabled", true) end
+if script:GetAttribute("InkModeRulesEnabled") == nil then script:SetAttribute("InkModeRulesEnabled", true) end
+local function enabled() return script:GetAttribute("InkServerEnabled") ~= false end
+
+local ModeRules = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
+local MODE = ModeRules.currentMode()
+script:SetAttribute("InkMode", MODE)
+local function mayAffect(source, target)
+	if script:GetAttribute("InkModeRulesEnabled") == false then return true end
+	local tpl = Players:GetPlayerFromCharacter(target)
+	local spl = Players:GetPlayerFromCharacter(source)
+	local inMenu = tpl ~= nil and tpl:GetAttribute("InMenu") == true
+	return ModeRules.canAffect(spl ~= nil, tpl ~= nil, inMenu, MODE)
+end
+
+local remote = ReplicatedStorage:FindFirstChild("DinoInkRequest")
+if not remote then
+	remote = Instance.new("RemoteEvent")
+	remote.Name = "DinoInkRequest"
+	remote.Parent = ReplicatedStorage
+end
+
+local function now() return workspace:GetServerTimeNow() end
+
+local function fxFolder()
+	local fx = workspace:FindFirstChild("DinoFX")
+	if not fx then
+		fx = Instance.new("Folder")
+		fx.Name = "DinoFX"
+		fx.Parent = workspace
+	end
+	local f = fx:FindFirstChild("InkFX")
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "InkFX"
+		f.Parent = fx
+	end
+	return f
+end
+
+-- look ---------------------------------------------------------------------------------------------------------------
+local function part(name, size, cf, color, parent, mount, mat)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = mat or Enum.Material.Metal
+	p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+	p.Anchored, p.Massless = false, true
+	p.CanCollide, p.CanQuery, p.CanTouch = false, false, false
+	p.CastShadow = false
+	p.Parent = parent
+	if mount then
+		local w = Instance.new("WeldConstraint")
+		w.Part0, w.Part1 = mount, p
+		w.Parent = p
+	end
+	return p
+end
+local function rootBox(seg, root)
+	local lo, hi = Vector3.new(math.huge, math.huge, math.huge), Vector3.new(-math.huge, -math.huge, -math.huge)
+	for _, p in ipairs(seg:GetDescendants()) do
+		if p:IsA("BasePart") and p ~= root then
+			for _, sx in ipairs({-0.5, 0.5}) do for _, sy in ipairs({-0.5, 0.5}) do for _, sz in ipairs({-0.5, 0.5}) do
+				local q = root.CFrame:PointToObjectSpace(p.CFrame * Vector3.new(p.Size.X * sx, p.Size.Y * sy, p.Size.Z * sz))
+				lo, hi = lo:Min(q), hi:Max(q)
+			end end end
+		end
+	end
+	if lo.X == math.huge then return nil end
+	return lo, hi
+end
+local function extent(lo, hi, axis)
+	local h = (hi - lo) / 2
+	return math.abs(axis.X) * h.X + math.abs(axis.Y) * h.Y + math.abs(axis.Z) * h.Z
+end
+local function axisOf(root, dir)
+	local v = root.CFrame:VectorToObjectSpace(dir)
+	local a = Vector3.new(math.abs(v.X), math.abs(v.Y), math.abs(v.Z))
+	if a.X >= a.Y and a.X >= a.Z then return Vector3.new(v.X >= 0 and 1 or -1, 0, 0) end
+	if a.Y >= a.Z then return Vector3.new(0, v.Y >= 0 and 1 or -1, 0) end
+	return Vector3.new(0, 0, v.Z >= 0 and 1 or -1)
+end
+
+local function build(char)
+	local seg = char:FindFirstChild("Neck")
+	local root = seg and seg:FindFirstChild("Root")
+	if not (root and root:IsA("BasePart")) then return nil end
+	local lo, hi = rootBox(seg, root)
+	if not lo then return nil end
+	local ref = char:FindFirstChild("HumanoidRootPart") or root
+	local x = axisOf(root, ref.CFrame.RightVector)
+	local y = axisOf(root, ref.CFrame.UpVector)
+	if math.abs(x:Dot(y)) > 0.5 then y = axisOf(root, ref.CFrame.LookVector):Cross(x) end
+	local back = x:Cross(y)
+	local Hd = char:GetExtentsSize().Y
+	local w, h, d = Hd * 0.08, Hd * 0.11, Hd * 0.08
+	local c = (lo + hi) / 2 + y * (extent(lo, hi, y) + h * 0.45)
+	local cf = root.CFrame * CFrame.fromMatrix(c, x, y, back)
+	local m = Instance.new("Model")
+	m.Name = "Mecha_InkTank"
+	local tank = part("Tank", Vector3.new(w, h, d), cf, DARK, m, root)
+	part("Window", Vector3.new(w * 1.04, h * 0.55, d * 0.5), cf * CFrame.new(0, -h * 0.05, 0), INK, m, tank, Enum.Material.Glass)
+	part("Cap", Vector3.new(w * 0.7, h * 0.1, d * 0.7), cf * CFrame.new(0, h * 0.55, 0), STEEL, m, tank)
+	local len = extent(lo, hi, back) * 1.2 + Hd * 0.08
+	local bcf = cf * CFrame.new(0, -h * 0.2, -(d * 0.5 + len * 0.5))
+	local barrel = part("Barrel", Vector3.new(w * 0.32, w * 0.32, len), bcf, STEEL, m, tank)
+	local mz = Instance.new("Attachment")
+	mz.Name = "Muzzle"
+	mz.Position = Vector3.new(0, 0, -len * 0.5)
+	mz.Parent = barrel
+	m.Parent = char
+	char:SetAttribute("InkLookBuilt", true)
+	return m
+end
+
+local function setLook(char)
+	local want = enabled() and char:GetAttribute("Species") == "Pachy" and char:GetAttribute("InkLook") == true
+	local old = char:FindFirstChild("Mecha_InkTank")
+	if not want then
+		if old then old:Destroy() end
+		char:SetAttribute("InkLookBuilt", false)
+		return
+	end
+	if old then return end
+	build(char)
+end
+
+-- targets -------------------------------------------------------------------------------------------------------------
+local function closestOnBox(p, pos)
+	local lp = p.CFrame:PointToObjectSpace(pos)
+	local hh = p.Size / 2
+	local c = Vector3.new(math.clamp(lp.X, -hh.X, hh.X), math.clamp(lp.Y, -hh.Y, hh.Y), math.clamp(lp.Z, -hh.Z, hh.Z))
+	return p.CFrame:PointToWorldSpace(c)
+end
+local function isTarget(m, self)
+	if not (m:IsA("Model") and m ~= self and m:IsDescendantOf(workspace)) then return nil end
+	local hb = m:FindFirstChild("Hitboxes")
+	if not hb or m:GetAttribute("Bitable") ~= true then return nil end
+	if m:GetAttribute("Species") == nil and m:GetAttribute("IsBot") ~= true then return nil end
+	if m:GetAttribute("DummyState") == "ko" then return nil end
+	local hum = m:FindFirstChildOfClass("Humanoid")
+	if hum and hum.Health <= 0 then return nil end
+	return hb
+end
+local function candidates(self)
+	local list = {}
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local c = pl.Character
+		if c then local hb = isTarget(c, self) if hb and mayAffect(self, c) then table.insert(list, {m = c, hb = hb}) end end
+	end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local bots = isl and isl:FindFirstChild("Bots")
+	if bots then
+		for _, b in ipairs(bots:GetChildren()) do
+			local hb = isTarget(b, self) if hb and mayAffect(self, b) then table.insert(list, {m = b, hb = hb}) end
+		end
+	end
+	return list
+end
+local worldParams = RaycastParams.new()
+worldParams.FilterType = Enum.RaycastFilterType.Exclude
+local function worldExclude()
+	local ex = {}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	for _, n in ipairs({"Bots", "TallGrass"}) do
+		local f = isl and isl:FindFirstChild(n)
+		if f then table.insert(ex, f) end
+	end
+	for _, n in ipairs({"DinoFX_Local", "DinoFX"}) do
+		local f = workspace:FindFirstChild(n)
+		if f then table.insert(ex, f) end
+	end
+	for _, d in ipairs(workspace:GetChildren()) do
+		if d:IsA("Model") and (d:FindFirstChild("Hitboxes") or d:FindFirstChildOfClass("Humanoid")) then table.insert(ex, d) end
+	end
+	worldParams.FilterDescendantsInstances = ex
+	return worldParams
+end
+
+local function muzzleOf(char)
+	local m = char:FindFirstChild("Mecha_InkTank")
+	local barrel = m and m:FindFirstChild("Barrel")
+	local mz = barrel and barrel:FindFirstChild("Muzzle")
+	if mz then return mz.WorldPosition end
+	local hb = char:FindFirstChild("Hitboxes")
+	if hb then
+		for _, p in ipairs(hb:GetChildren()) do
+			if p:IsA("BasePart") and p:GetAttribute("HitboxSegment") == "Head" then return p.Position end
+		end
+	end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	return hrp and hrp.Position
+end
+
+-- effects ------------------------------------------------------------------------------------------------------------
+local function splat(pos)
+	local s = Instance.new("Part")
+	s.Name = "InkSplat"
+	s.Shape = Enum.PartType.Cylinder
+	s.Size = Vector3.new(0.2, 7, 7)
+	s.CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90))
+	s.Color = INK
+	s.Material = Enum.Material.SmoothPlastic
+	s.Anchored, s.CanCollide, s.CanQuery, s.CanTouch, s.CastShadow = true, false, false, false, false
+	s.Parent = fxFolder()
+	local a = Instance.new("Attachment")
+	a.Parent = s
+	local pe = Instance.new("ParticleEmitter")
+	pe.Enabled = false
+	pe.Color = ColorSequence.new(INK)
+	pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 1.2), NumberSequenceKeypoint.new(1, 0.3)})
+	pe.Speed = NumberRange.new(10, 20)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Acceleration = Vector3.new(0, -50, 0)
+	pe.Lifetime = NumberRange.new(0.3, 0.6)
+	pe.Parent = a
+	pe:Emit(30)
+	TweenService:Create(s, TweenInfo.new(1.5, Enum.EasingStyle.Linear, Enum.EasingDirection.In, 0, false, 0.5), {Transparency = 1}):Play()
+	Debris:AddItem(s, 2.1)
+end
+
+local function glob(from, to, fly)
+	local g = Instance.new("Part")
+	g.Name = "InkGlob"
+	g.Shape = Enum.PartType.Ball
+	g.Size = Vector3.one * 1.6
+	g.Color = INK
+	g.Material = Enum.Material.SmoothPlastic
+	g.Anchored, g.CanCollide, g.CanQuery, g.CanTouch, g.CastShadow = true, false, false, false, false
+	g.CFrame = CFrame.new(from)
+	g.Parent = fxFolder()
+	TweenService:Create(g, TweenInfo.new(math.max(0.03, fly), Enum.EasingStyle.Linear), {CFrame = CFrame.new(to)}):Play()
+	Debris:AddItem(g, fly + 0.05)
+end
+
+local function ink(target, shooter, untilT, t)
+	target:SetAttribute("InkedUntil", math.max(tonumber(target:GetAttribute("InkedUntil")) or 0, untilT))
+	target:SetAttribute("InkedBy", shooter.Name)
+	target:SetAttribute("InkedAt", t) -- last
+end
+
+local function setResult(char, r)
+	char:SetAttribute("InkServerResult", r)
+	char:SetAttribute("InkServerResultAt", now())
+end
+
+remote.OnServerEvent:Connect(function(player, stamp, aimDir)
+	local char = player.Character
+	if not char then return end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local t = now()
+	local r
+	if typeof(stamp) ~= "number" or stamp ~= stamp or typeof(aimDir) ~= "Vector3" or aimDir.Magnitude < 0.5 or aimDir.Magnitude > 1.5 then
+		r = "badArg"
+	elseif not hum or hum.Health <= 0 then
+		r = "dead"
+	elseif not enabled() or char:GetAttribute("InkEnabled") ~= true then
+		r = "disabled"
+	elseif player:GetAttribute("InMenu") == true then
+		r = "menu"
+	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
+		r = "stunned"
+	elseif char:GetAttribute("PinHeld") == true then
+		r = "pinned"
+	elseif t < (tonumber(char:GetAttribute("InkReadyAt")) or 0) then
+		r = "cooldown"
+	end
+	if r then setResult(char, r) return end
+	setResult(char, "ok")
+	setLook(char)
+	local s = char:GetScale()
+	local dir = aimDir.Unit
+	do -- heading from the camera, pitch held near level (as the Grappling Hook)
+		local flat = Vector3.new(dir.X, 0, dir.Z)
+		if flat.Magnitude < 1e-3 then
+			local hrp0 = char:FindFirstChild("HumanoidRootPart")
+			flat = hrp0 and hrp0.CFrame.LookVector * Vector3.new(1, 0, 1) or Vector3.zAxis
+		end
+		local pitch = math.clamp(math.asin(math.clamp(dir.Y, -1, 1)), PITCH_MIN, PITCH_MAX)
+		dir = flat.Unit * math.cos(pitch) + Vector3.yAxis * math.sin(pitch)
+	end
+	local origin = muzzleOf(char) or char:GetPivot().Position
+	local range = tonumber(char:GetAttribute("InkRange")) or 60
+	local params = worldExclude()
+	local wall = workspace:Raycast(origin, dir * range, params)
+	local wallDist = wall and (wall.Position - origin).Magnitude or math.huge
+	local best, bestT, bestPoint
+	for _, c in ipairs(candidates(char)) do
+		for _, p in ipairs(c.hb:GetChildren()) do
+			if p:IsA("BasePart") then
+				local tt = math.clamp((p.Position - origin):Dot(dir), 0, range)
+				local onLine = origin + dir * tt
+				local cp = closestOnBox(p, onLine)
+				if (cp - onLine).Magnitude <= AIM_HELP * s and tt > 0 and (not bestT or tt < bestT) then
+					best, bestT, bestPoint = c.m, tt, cp
+				end
+			end
+		end
+	end
+	local result, aimEnd = "miss", origin + dir * math.min(range, wallDist)
+	if best then
+		if bestT > wallDist then
+			result = "blocked"
+		else
+			local los = workspace:Raycast(origin, bestPoint - origin, params)
+			if los then
+				result, aimEnd = "blocked", los.Position
+			elseif (tonumber(best:GetAttribute("EnergyShieldUntil")) or 0) > t then
+				result, aimEnd = "shielded", bestPoint
+			else
+				result, aimEnd = "hit", bestPoint
+			end
+		end
+	end
+	local fly = (aimEnd - origin).Magnitude / INK_SPEED
+	local arrive = t + fly
+	char:SetAttribute("InkReadyAt", t + math.max(0.5, tonumber(char:GetAttribute("InkCooldown")) or 15))
+	char:SetAttribute("InkAimDir", dir)
+	char:SetAttribute("InkAimEnd", aimEnd)
+	char:SetAttribute("InkResult", result)
+	char:SetAttribute("InkHitTarget", (result == "hit" or result == "shielded") and best.Name or "")
+	char:SetAttribute("InkArriveAt", arrive)
+	char:SetAttribute("InkCount", (char:GetAttribute("InkCount") or 0) + 1)
+	char:SetAttribute("InkStartedAt", t) -- last
+	script:SetAttribute("InkShots", (script:GetAttribute("InkShots") or 0) + 1)
+	glob(origin, aimEnd, fly)
+	local target = best
+	task.delay(fly, function()
+		local ta = now()
+		splat(aimEnd)
+		local blind = math.max(0.1, tonumber(char:GetAttribute("InkBlindTime")) or 2)
+		if target and target.Parent and (result == "hit" or result == "shielded") then
+			if result == "hit" and (tonumber(target:GetAttribute("EnergyShieldUntil")) or 0) <= ta then
+				ink(target, char, ta + blind, ta)
+				script:SetAttribute("InkHits", (script:GetAttribute("InkHits") or 0) + 1)
+			end
+		end
+		local splash = tonumber(char:GetAttribute("InkSplash")) or 0
+		local n = 0
+		if splash > 0 and (result == "hit" or result == "shielded") and char.Parent then
+			for _, c in ipairs(candidates(char)) do
+				if c.m ~= target and (tonumber(c.m:GetAttribute("EnergyShieldUntil")) or 0) <= ta then
+					local near = math.huge
+					for _, p in ipairs(c.hb:GetChildren()) do
+						if p:IsA("BasePart") then near = math.min(near, (closestOnBox(p, aimEnd) - aimEnd).Magnitude) end
+					end
+					if near <= splash then
+						ink(c.m, char, ta + blind, ta)
+						n += 1
+					end
+				end
+			end
+		end
+		if char.Parent then char:SetAttribute("InkSplashCount", n) end
+	end)
+end)
+
+local function onCharacter(char)
+	char:GetAttributeChangedSignal("InkLook"):Connect(function() setLook(char) end)
+	char:GetAttributeChangedSignal("Species"):Connect(function() setLook(char) end)
+	task.defer(setLook, char)
+end
+local function onPlayer(p)
+	p.CharacterAdded:Connect(onCharacter)
+	if p.Character then onCharacter(p.Character) end
+end
+Players.PlayerAdded:Connect(onPlayer)
+for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- the Lab card model (plug and play: LabPreviewServer 1.2 finds BuildPreview_<pathId>)
+do
+	local fn = Instance.new("BindableFunction")
+	fn.Name = "BuildPreview_ink"
+	fn.OnInvoke = function(model)
+		if not enabled() or typeof(model) ~= "Instance" then return nil end
+		return build(model)
+	end
+	fn.Parent = script
+end

@@ -1,4 +1,4 @@
--- BotServer v1.17 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.18 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -293,12 +293,17 @@
 -- v1.17 (Kepu 2026-10-30: "It only takes 5 damage back for biters. Not slashers."): hitDamage takes the hit kind: the
 --   bot bite passes "bite", the bot pounce latch and its ticks pass "pounce" (BoneCrest 1.1 only reflects bites). The
 --   damage maths is unchanged.
+-- v1.18 (pachy Ink Shooter, MDA-128; Kepu 2026-10-30: "bots lose you"): a bot whose own InkedUntil (server time,
+--   InkServer 1.0) is in the future is inked: it drops its player target on the next tick and picks no player (target
+--   search, playerAllowed and the hunt picks) until the ink wears off; it wanders / hunts animals as usual meanwhile.
+--   Diagnostics: bot BotInkDrops; script BotInkDrops. Switch: script attribute BotInkEnabled (default true, read each
+--   tick; false = 1.17).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.17"
+local VERSION = "1.18"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -363,6 +368,7 @@ local SPECIES = {
 
 script:SetAttribute("BotServerVersion", VERSION)
 if script:GetAttribute("BotCloakEnabled") == nil then script:SetAttribute("BotCloakEnabled", true) end -- v1.15
+if script:GetAttribute("BotInkEnabled") == nil then script:SetAttribute("BotInkEnabled", true) end -- v1.18
 
 local function get(k)
 	local v = script:GetAttribute(k)
@@ -1504,8 +1510,15 @@ local function cloaked(char)
 	local u = char:GetAttribute("CloakedUntil")
 	return typeof(u) == "number" and u > workspace:GetServerTimeNow()
 end
+-- v1.18: this bot is inked (Ink Shooter)
+local function inked(b)
+	if script:GetAttribute("BotInkEnabled") == false then return false end
+	local u = b.model and b.model:GetAttribute("InkedUntil")
+	return typeof(u) == "number" and u > workspace:GetServerTimeNow()
+end
 local function playerAllowed(b, char)
 	return char:GetAttribute("Hidden") ~= true and not cloaked(char) -- v1.15
+		and not inked(b) -- v1.18
 		and not (b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char))
 end
 local function nearestPlayerDist(b)
@@ -1841,6 +1854,10 @@ local function step(b)
 			borderDrop(b)
 		elseif b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char) then -- v1.4: packs leave a T-Rex alone; v1.6: not a Hatchling one
 			target = nil
+		elseif inked(b) then -- v1.18: inked, lost at once
+			target = nil
+			show(b, "BotInkDrops", (b.shown.BotInkDrops or 0) + 1)
+			script:SetAttribute("BotInkDrops", (script:GetAttribute("BotInkDrops") or 0) + 1)
 		elseif cloaked(char) then -- v1.15: lost at once
 			target = nil
 			show(b, "BotCloakDrops", (b.shown.BotCloakDrops or 0) + 1)
@@ -1854,7 +1871,7 @@ local function step(b)
 		end
 	end
 	-- look for one
-	if not target then
+	if not target and not inked(b) then -- v1.18: an inked bot picks no one
 		b.hiddenSince = nil
 		local best, bestD = nil, get("BotSightRange")
 		for _, player in ipairs(Players:GetPlayers()) do

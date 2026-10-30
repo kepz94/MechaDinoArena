@@ -2155,3 +2155,30 @@ Look: BoneCrestSpark (Attachment + sparks) and BoneCrestPop ("CLANK") on the vic
 | HeadbuttGiveChargeAt / HeadbuttChargesGiven | character | a new time adds one headbutt charge (capped) / count given |
 | HeadbuttGiveChargeEnabled | HeadbuttServer script | default true; false = HeadbuttGiveChargeAt ignored |
 Look: Mecha_ServoDash on Torso.Root, Housing_L/R + Bell_L/R, Exhaust.Flame and SpeedLine on only while dashing.
+
+## Dome Visor (SkillEffects 1.24 / VisorServer 1.0 / BoneCrest 1.2 / HeadbuttServer 1.9 / HookServer 1.6 / ScreechServer 1.9 / PounceServer 1.10, MDA-127)
+| Attribute | Where | Meaning |
+|---|---|---|
+| VisorEnabled / VisorTime / VisorCooldown / VisorKnock / VisorLook | character (pachy) | bought AND slotted; 1.5 / 2 s, 14 / 10 s, star, look on |
+| VisorUntil / VisorReadyAt / VisorStartedAt | character | visor up until, next press (from the press), press time (set last) |
+| VisorServerResult / VisorServerResultAt, VisorCount, VisorEndReason, VisorLookBuilt, VisorDown | character | badArg / dead / disabled / menu / stunned / pinned / active / cooldown / ok; presses; time / dead / disabled; faceplate built; plate in front of the face |
+| VisorBlocked, VisorLastKind, VisorBlockAt, VisorKnocks, VisorKnockSkipped | character (victim) | blocked hits, bite / pounce / headbutt / hook / cannon, server time; star knocks, shield / busy / gap / error |
+| VisorKnockedAt | attacker | server time of the last star knockback |
+| UpC0 / DownC0 | Mecha_DomeVisor.Plate.VisorHinge | the hinge's stowed / down C0 |
+| VisorServerEnabled / VisorServerVersion / VisorRequests | VisorServer script | switch (default true), version, request count |
+| BoneCrestVisorEnabled / BoneCrestVisorKnockEnabled / BoneCrestVisorKnockDist / BoneCrestVisorKnockTime | BoneCrest module | default true / true / 24 / 0.35 |
+| HeadbuttVisorEnabled / HookVisorEnabled / ScreechVisorEnabled / PounceVisorEnabled | script | default true; false = that path ignores the visor |
+Results: HeadbuttHitResult / HeadbuttResult "visor", HookSmashResult "visor", ScreechLastHit "visor:<name>", PounceClaimResult "visor".
+Look: Mecha_DomeVisor (Plate, Slit, Rim) on Head.Root; VisorBlockSpark + VisorBlockPop ("BLOCK") on a blocked hit.
+
+## Ink Shooter (SkillEffects 1.24 / InkServer 1.0 / InkBlind 1.0 / BotServer 1.18, MDA-128)
+| Attribute | Where | Meaning |
+|---|---|---|
+| InkEnabled / InkRange / InkCooldown / InkBlindTime / InkSplash / InkLook | character (pachy) | bought AND slotted; 60 / 80 studs, 15 / 11 s, 2 s, 6 at star (0 off), look on |
+| InkReadyAt, InkAimDir, InkAimEnd, InkResult, InkHitTarget, InkArriveAt, InkCount, InkStartedAt, InkSplashCount | character (shooter) | next shot; aim; hit / miss / blocked / shielded; target name; arrival; shots; press time (last); dinos splashed |
+| InkServerResult / InkServerResultAt, InkLookBuilt | character | badArg / dead / disabled / menu / stunned / pinned / cooldown / ok; tank built |
+| InkedUntil / InkedBy / InkedAt | target (player or bot) | blind until (server time), shooter name, time (last) |
+| InkServerEnabled / InkModeRulesEnabled / InkServerVersion / InkShots / InkHits / InkMode | InkServer script | switches (default true), version, counts, sandbox / arena |
+| InkBlindEnabled / InkBlindVersion / InkBlindShowing / InkBlindCount | character (client) | switch (default true), version, black screen showing, times shown |
+| BotInkEnabled / BotInkDrops | BotServer script / bot + script | default true; targets dropped because inked |
+Look: Mecha_InkTank (Tank, Window, Cap, Barrel.Muzzle) on Neck.Root; Workspace.DinoFX.InkFX InkGlob / InkSplat; ScreenGui InkBlind (Black, Msg "INKED").

@@ -1,4 +1,4 @@
--- PounceServer v1.9 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.10 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -88,6 +88,11 @@
 --   the front of a pachy with Bone Crest: 0.80 / 0.70 / 0.60); a reduced hit calls BoneCrest.after (CLANK, star reflect at
 --   most once per 0.4 s). Raptor diagnostics PounceHitCrestMul, PounceHitDefenseMul. Switch: script attribute
 --   PounceCrestEnabled (default true, read each hit; false = 1.8 damage).
+-- v1.10 (pachy Dome Visor, MDA-127; BoneCrest 1.2): a claim on a dino whose visor is up, with the raptor in front
+--   (BoneCrest.visorFront with the raptor's root position), is refused: PounceClaimResult "visor" (no latch, no pin, no
+--   damage) and BoneCrest.visorBlock(target, raptor, "pounce") runs (BLOCK look; star knockback). Latch ticks already
+--   do 0 through BoneCrest.factor while the visor faces the raptor. Switch: script attribute PounceVisorEnabled
+--   (default true, read each claim; false = 1.9).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -109,7 +114,8 @@ local CLAIM_TOLERANCE = 24  -- studs between the claimed part and the raptor bod
 local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's centre beyond its half size
 local MAX_LATCH = 30        -- safety: seconds a latch may last
 
-script:SetAttribute("PounceServerVersion", "1.9")
+script:SetAttribute("PounceServerVersion", "1.10")
+if script:GetAttribute("PounceVisorEnabled") == nil then script:SetAttribute("PounceVisorEnabled", true) end -- v1.10
 if script:GetAttribute("PouncePinHoldEnabled") == nil then script:SetAttribute("PouncePinHoldEnabled", true) end -- v1.8
 if script:GetAttribute("PounceSlashTimingEnabled") == nil then script:SetAttribute("PounceSlashTimingEnabled", true) end -- v1.7
 local function slashTiming() return script:GetAttribute("PounceSlashTimingEnabled") ~= false end
@@ -325,12 +331,15 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 				result = "badOffset"
 			elseif not alive(char) then
 				result = "dead"
+			elseif script:GetAttribute("PounceVisorEnabled") ~= false and crest() and hrp and crest().visorFront(model, hrp.Position) then
+				result = "visor" -- v1.10: Dome Visor
 			else
 				result = "ok"
 			end
 		end
 	end
 	char:SetAttribute("PounceClaimResult", result)
+	if result == "visor" then crest().visorBlock(model, char, "pounce") end -- v1.10
 	if result ~= "ok" then return end
 	pending[char] = nil
 	-- v1.1: latch onto larger dinos, pin same-size or smaller ones

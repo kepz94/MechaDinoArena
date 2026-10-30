@@ -1,4 +1,4 @@
--- ScreechServer v1.8 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.9 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -89,13 +89,18 @@
 --   shot keeps its pitch, clamped to +/-PITCH_MAX (20) degrees: dir = flat x cos(pitch) + up x sin(pitch). The bolt then
 --   flies along that 3D direction (start, hit check, wall ray and range unchanged). false = 1.7 (flat). Diagnostic:
 --   character ScreechAimPitch (degrees, + = up, the last shot; 0 when not aimed).
+-- v1.9 (pachy Dome Visor, MDA-127; BoneCrest 1.2): a Shock Cannon ball (b.shock) that reaches a pachy whose visor is up,
+--   coming from the front (BoneCrest.visorFront with the point 20 studs back along the ball's flight), does nothing: no
+--   stun, no damage, no jam, no hit stamps; the ball still ends ("hit" burst) and BoneCrest.visorBlock(target, shooter,
+--   "cannon") runs (BLOCK look; star knockback). Other screech bolts are unchanged. Shooter diagnostic ScreechLastHit
+--   = "visor:<target>". Switch: script attribute ScreechVisorEnabled (default true, read each hit; false = 1.8).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
 local PITCH_MAX = math.rad(20) -- v1.8
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
@@ -248,8 +253,25 @@ local function heavyDamage(b, target, t)
 	damagePop(target, text)
 end
 
+if script:GetAttribute("ScreechVisorEnabled") == nil then script:SetAttribute("ScreechVisorEnabled", true) end -- v1.9
+local visorModCache -- v1.9: Dome Visor (ServerStorage.DinoArcade.BoneCrest 1.2), loaded on first use
+local function visorMod()
+	if visorModCache == nil then
+		visorModCache = false
+		pcall(function() visorModCache = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+	end
+	return visorModCache or nil
+end
 local function hit(b, target)
 	local t = now()
+	if b.shock and script:GetAttribute("ScreechVisorEnabled") ~= false then -- v1.9: Dome Visor
+		local VM = visorMod()
+		if VM and VM.visorFront(target, b.pos - b.dir * 20) then
+			b.shooter:SetAttribute("ScreechLastHit", "visor:" .. target.Name)
+			VM.visorBlock(target, b.shooter, "cannon")
+			return
+		end
+	end
 	local flinch = b.flinch
 	if b.shock then -- v1.2: a full stun on any dino, sparks while it lasts
 		target:SetAttribute("StunnedUntil", math.max(tonumber(target:GetAttribute("StunnedUntil")) or 0, t + flinch))

@@ -1,4 +1,4 @@
--- HookServer v1.5 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.6 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -60,13 +60,17 @@
 --   it by name): Invoke(pachy mannequin) sets HookLook true on it, runs the same setLook as on a player and returns its
 --   "Mecha_HookArm" model (nil when nothing was built). The live hook is unchanged. Switch: script attribute
 --   HookServerPreviewEnabled (default true; false -> returns nil).
+-- v1.6 (pachy Dome Visor, MDA-127; BoneCrest 1.2): at the smash, a target whose visor is up with the pachy in front
+--   (BoneCrest.visorFront with the pachy's root position) takes nothing: no damage, no knockback; HookSmashResult
+--   "visor" and BoneCrest.visorBlock(target, pachy, "hook") (BLOCK look; star knockback). The pull itself is unchanged.
+--   Switch: script attribute HookVisorEnabled (default true, read each smash; false = 1.5).
 -- Switch: script attribute HookServerEnabled (default true, read at start). Diagnostics: script HookServerVersion,
 --   HookShots, HookHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25) -- v1.1 clamp; v1.2 min -8 -> -2
 local WINDUP = 0.15        -- s arm raise before the claw flies
 local CLAW_SPEED = 220     -- studs/s (world)
@@ -84,6 +88,15 @@ script:SetAttribute("HookServerVersion", VERSION)
 script:SetAttribute("HookShots", 0)
 script:SetAttribute("HookHits", 0)
 if script:GetAttribute("HookServerEnabled") == nil then script:SetAttribute("HookServerEnabled", true) end
+if script:GetAttribute("HookVisorEnabled") == nil then script:SetAttribute("HookVisorEnabled", true) end -- v1.6
+local visorModCache -- v1.6: Dome Visor (ServerStorage.DinoArcade.BoneCrest 1.2), loaded on first use
+local function visorMod()
+	if visorModCache == nil then
+		visorModCache = false
+		pcall(function() visorModCache = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+	end
+	return visorModCache or nil
+end
 local enabled = script:GetAttribute("HookServerEnabled") ~= false
 if script:GetAttribute("HookArmReplaceEnabled") == nil then script:SetAttribute("HookArmReplaceEnabled", true) end
 local armReplace = script:GetAttribute("HookArmReplaceEnabled") ~= false -- v1.3
@@ -360,6 +373,15 @@ local function smash(char, player, target, hb)
 		local hp = headPos(char)
 		local s = char:GetScale()
 		if not hp or gapTo(hp, hb) > SMASH_TOL * s then result = "escaped" end
+	end
+	if not result and script:GetAttribute("HookVisorEnabled") ~= false then -- v1.6: Dome Visor
+		local VM = visorMod()
+		local aRoot = char:FindFirstChild("HumanoidRootPart")
+		if VM and aRoot and VM.visorFront(target, aRoot.Position) then
+			char:SetAttribute("HookSmashResult", "visor")
+			VM.visorBlock(target, char, "hook")
+			return
+		end
 	end
 	char:SetAttribute("HookSmashResult", result or "smash")
 	if result then return end
