@@ -1,4 +1,4 @@
--- SpeciesServer v1.2 (Dino Arcade) — TEST species switch: respawns a player as the dino they pick.
+-- SpeciesServer v1.3 (Dino Arcade) — TEST species switch: respawns a player as the dino they pick.
 -- Client -> server: ReplicatedStorage.DinoSpeciesRequest:FireServer(species) (sent by SpeciesPicker 1.0),
 --   species = "TRex" or "Raptor".
 -- TRex   -> player:LoadCharacter() (StarterPlayer.StarterCharacter, the T-Rex).
@@ -24,6 +24,16 @@
 --   of the template exactly as for the raptor (StarterCharacterScripts copies, old spot, player.Character), and after a
 --   death a player whose DinoSpecies is "Pachy" is switched back to a pachy. No template -> "noTemplate". Script
 --   attribute SpeciesPachyTemplate ("ready" / "missing <reason>" / "off").
+-- v1.3 (Kepu 2026-10-30: "whatever was my last selected dino in the main menu should be the auto option when i reopen the
+--   game. it keeps resetting back to raptor when i keep testing the pachy"): the last species a player switched to is
+--   remembered. Saved in DataStore "MDA_Settings_v1" (MusicServer's store), key "u<UserId>", field lastSpecies (the
+--   table's other fields are kept; UpdateAsync), after every accepted switch (at most once per SAVE_GAP 4 s; the newest
+--   wins; the last one is saved on leave). On join it is read before the default: a known species becomes DinoSpecies
+--   (player attribute SpeciesFromSave = true, SpeciesDefaulted not set) and a body that already spawned as another
+--   species is swapped to it, so the menu opens on that dino and the Arena place (same store) starts as it too. Nothing
+--   saved / read failed (e.g. Studio without API access) -> the 1.1 default (Raptor). Diagnostics: script attribute
+--   SpeciesSaveState ("ok" / "readFailed" / "writeFailed" / "noStore"); player SpeciesSaved (last saved value). Switch:
+--   script attribute SpeciesRememberEnabled (default true, read at start; false = 1.2).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -31,7 +41,7 @@ local StarterPlayer = game:GetService("StarterPlayer")
 
 local SWITCH_COOLDOWN = 2
 local SPECIES = {TRex = true, Raptor = true}
-script:SetAttribute("SpeciesServerVersion", "1.2")
+script:SetAttribute("SpeciesServerVersion", "1.3")
 if script:GetAttribute("SpeciesDefault") == nil then script:SetAttribute("SpeciesDefault", "Raptor") end -- v1.1
 
 local remote = ReplicatedStorage:FindFirstChild("DinoSpeciesRequest")
@@ -70,6 +80,62 @@ else
 end
 
 local lastSwitch = {}
+
+-- v1.3: remember the last species (MusicServer's settings store)
+if script:GetAttribute("SpeciesRememberEnabled") == nil then script:SetAttribute("SpeciesRememberEnabled", true) end
+local REMEMBER = script:GetAttribute("SpeciesRememberEnabled") ~= false
+local SAVE_GAP = 4
+local settingsStore
+if REMEMBER then
+	local ok, st = pcall(function() return game:GetService("DataStoreService"):GetDataStore("MDA_Settings_v1") end)
+	settingsStore = ok and st or nil
+	if not settingsStore then script:SetAttribute("SpeciesSaveState", "noStore") end
+end
+local saveState = {} -- [player] = {want, saved, lastSave, queued}
+local function saveSpecies(player)
+	local st = saveState[player]
+	if not (st and settingsStore) or st.want == st.saved then return end
+	local value = st.want
+	st.lastSave = os.clock()
+	local ok = pcall(function()
+		settingsStore:UpdateAsync("u" .. player.UserId, function(old)
+			local t = type(old) == "table" and old or {}
+			t.lastSpecies = value
+			return t
+		end)
+	end)
+	if ok then
+		st.saved = value
+		player:SetAttribute("SpeciesSaved", value)
+		script:SetAttribute("SpeciesSaveState", "ok")
+	else
+		script:SetAttribute("SpeciesSaveState", "writeFailed")
+	end
+end
+local function rememberSpecies(player, species)
+	if not (REMEMBER and settingsStore) then return end
+	local st = saveState[player]
+	if not st then st = {lastSave = 0}; saveState[player] = st end
+	st.want = species
+	if st.queued then return end
+	local waitFor = math.max(0, SAVE_GAP - (os.clock() - st.lastSave))
+	st.queued = true
+	task.delay(waitFor, function()
+		st.queued = false
+		if player.Parent then saveSpecies(player) end
+	end)
+end
+local function loadSpecies(player)
+	if not (REMEMBER and settingsStore) then return nil end
+	local ok, data = pcall(function() return settingsStore:GetAsync("u" .. player.UserId) end)
+	if not ok then script:SetAttribute("SpeciesSaveState", "readFailed") return nil end
+	local sp = type(data) == "table" and data.lastSpecies or nil
+	if type(sp) == "string" then
+		saveState[player] = saveState[player] or {lastSave = 0}
+		saveState[player].saved, saveState[player].want = sp, sp
+	end
+	return sp
+end
 
 local function speciesOf(char)
 	return char and char:GetAttribute("Species") or nil
@@ -157,15 +223,23 @@ remote.OnServerEvent:Connect(function(player, species)
 	if speciesOf(player.Character) == species then
 		player:SetAttribute("DinoSpecies", species)
 		player:SetAttribute("SpeciesLastResult", "same")
+		rememberSpecies(player, species) -- v1.3
 		return
 	end
 	lastSwitch[player] = now
 	switch(player, species)
 	player:SetAttribute("SpeciesLastResult", "ok")
+	rememberSpecies(player, species) -- v1.3
 end)
 
 -- keep the chosen species after a death (Roblox respawns as the StarterCharacter T-Rex)
 local function onPlayer(player)
+	-- v1.3: the remembered dino first (read before the default; this thread may wait for the store)
+	local saved = loadSpecies(player)
+	if player.Parent and player:GetAttribute("DinoSpecies") == nil and type(saved) == "string" and SPECIES[saved] then
+		player:SetAttribute("DinoSpecies", saved)
+		player:SetAttribute("SpeciesFromSave", true)
+	end
 	-- v1.1: default dino for a player who has not picked one
 	local default = script:GetAttribute("SpeciesDefault")
 	if player:GetAttribute("DinoSpecies") == nil and type(default) == "string" and SPECIES[default] then
@@ -194,6 +268,22 @@ local function onPlayer(player)
 		end)
 	end
 end
-Players.PlayerAdded:Connect(onPlayer)
-for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
-Players.PlayerRemoving:Connect(function(player) lastSwitch[player] = nil end)
+local function onPlayerV13(player) -- v1.3: a body that spawned (as another dino) while the store was read
+	onPlayer(player)
+	local char = player.Character
+	local want = player:GetAttribute("DinoSpecies")
+	if player:GetAttribute("SpeciesFromSave") == true and char and speciesOf(char) ~= want then
+		task.defer(function()
+			if player.Character ~= char then return end
+			if want == "Raptor" and raptorTemplate then spawnRaptor(player)
+			elseif want == "Pachy" and pachyTemplate then spawnPachy(player)
+			elseif want == "TRex" and (speciesOf(char) == "Raptor" or speciesOf(char) == "Pachy") then player:LoadCharacter() end
+		end)
+	end
+end
+Players.PlayerAdded:Connect(onPlayerV13)
+for _, p in ipairs(Players:GetPlayers()) do task.spawn(onPlayerV13, p) end
+Players.PlayerRemoving:Connect(function(player)
+	lastSwitch[player] = nil
+	if saveState[player] then saveSpecies(player); saveState[player] = nil end -- v1.3: the last choice
+end)

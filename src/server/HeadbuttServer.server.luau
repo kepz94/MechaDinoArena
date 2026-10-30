@@ -1,4 +1,4 @@
--- HeadbuttServer v1.3 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.4 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -55,13 +55,22 @@
 --   scale = full damage, in between it climbs in a straight line. Applied before the dome and roar multipliers. The
 --   shove and slow are unchanged. Diagnostics (attacker): HeadbuttHitRun (studs, 0.1), HeadbuttHitRunMul (0.01). Switch:
 --   script attribute HeadbuttRunUpEnabled (default true, read at start; false = full damage at any distance, = 1.2).
+-- v1.4 (Studio check of 1.3): the server sees the pachy's body late (it is moved by its own client), so the measured
+--   run-up came out short: a hit after a real ~18-stud charge measured 0.4 studs (head 17.9 studs from the target on the
+--   server) and got half damage. Now the run-up also counts by charge time: charged = hit time - (start + HeadbuttWindup);
+--   up to HeadbuttCloseTime (default 0.15 s) = HeadbuttCloseMul, from HeadbuttFullTime (default 0.45 s, about 28 studs at
+--   the 63 studs/s charge) = full, straight line between. The damage uses the larger of the distance and time values, so
+--   lag never lowers it. Diagnostics: HeadbuttHitChargeTime (s, 0.01), HeadbuttHitRunMul (the one used). Switch: script
+--   attribute HeadbuttRunTimeEnabled (default true, read at start; false = distance only, = 1.3).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
+if script:GetAttribute("HeadbuttRunTimeEnabled") == nil then script:SetAttribute("HeadbuttRunTimeEnabled", true) end -- v1.4
+local RUNTIME_ON = script:GetAttribute("HeadbuttRunTimeEnabled") ~= false
 if script:GetAttribute("HeadbuttRunUpEnabled") == nil then script:SetAttribute("HeadbuttRunUpEnabled", true) end -- v1.3
 local RUNUP_ON = script:GetAttribute("HeadbuttRunUpEnabled") ~= false
 if script:GetAttribute("HeadbuttHookBusyEnabled") == nil then script:SetAttribute("HeadbuttHookBusyEnabled", true) end -- v1.2
@@ -73,7 +82,8 @@ local HIT_TOLERANCE = 16  -- studs (x attacker scale) between the head and the t
 local DEFAULTS = {HeadbuttEnabled = false, HeadbuttCharges = 2, HeadbuttExtraCharges = 0, HeadbuttWindup = 0.15,
 	HeadbuttMaxTime = 1.8, HeadbuttDamage = 20, HeadbuttShove = 40, HeadbuttShoveTime = 0.35, HeadbuttSlowMul = 0.65,
 	HeadbuttSlowTime = 3, HeadbuttRefill = 5, HeadbuttRefillMul = 1, HeadbuttSelfSlowMul = 0.65, HeadbuttSelfSlowTime = 2.5,
-	HeadbuttReach = 2, HeadbuttCloseRun = 6, HeadbuttFullRun = 15, HeadbuttCloseMul = 0.5} -- v1.3: + run-up
+	HeadbuttReach = 2, HeadbuttCloseRun = 6, HeadbuttFullRun = 15, HeadbuttCloseMul = 0.5, -- v1.3: + run-up
+	HeadbuttCloseTime = 0.15, HeadbuttFullTime = 0.45} -- v1.4: + run-up by charge time
 
 script:SetAttribute("HeadbuttServerVersion", VERSION)
 script:SetAttribute("HeadbuttRequests", 0)
@@ -367,6 +377,12 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		local close, full = get(char, "HeadbuttCloseRun") * sc, math.max(get(char, "HeadbuttFullRun") * sc, get(char, "HeadbuttCloseRun") * sc + 0.01)
 		local cm = math.clamp(get(char, "HeadbuttCloseMul"), 0, 1)
 		runMul = cm + (1 - cm) * math.clamp((run - close) / (full - close), 0, 1)
+		if RUNTIME_ON then -- v1.4: charge time too (the server sees the body late); the larger counts
+			local charged = math.max(0, t - st.active.startAt - get(char, "HeadbuttWindup"))
+			local ct, ft = get(char, "HeadbuttCloseTime"), math.max(get(char, "HeadbuttFullTime"), get(char, "HeadbuttCloseTime") + 0.01)
+			runMul = math.max(runMul, cm + (1 - cm) * math.clamp((charged - ct) / (ft - ct), 0, 1))
+			char:SetAttribute("HeadbuttHitChargeTime", math.floor(charged * 100 + 0.5) / 100)
+		end
 		char:SetAttribute("HeadbuttHitRun", math.floor(run * 10 + 0.5) / 10)
 		char:SetAttribute("HeadbuttHitRunMul", math.floor(runMul * 100 + 0.5) / 100)
 	end
