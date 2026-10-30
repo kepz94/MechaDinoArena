@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pachy Parts Batch 3</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Pachy parts batch 3: Dome Visor (Defense), Ink Shooter (Engineering), Overclocked Servo Dash (Speed). Three looks per part
+   drawn on the same blocky pachy as the earlier pachy mockups, a playable "inked" screen, and the proposed steps. */
+:root { color-scheme: dark; --page: #0d0f14; --panel: #14141a; --line: #2b3242; --muted: #8f99aa; --grey: #cfd3dc;
+  --yellow: #ffc832; --orange: #ff9a2e; --cyan: #5fe3ff; --ink: #0b0b12; --steel: #9aa6b8; --dark: #3a404c;
+  --display: "Fredoka", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: #fff; font: 15px/1.5 var(--body); }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 56px; display: grid; gap: 22px; }
+h1 { margin: 0; font: 700 32px var(--display); } h1 span { color: var(--yellow); }
+h2 { margin: 0; font: 700 22px var(--display); }
+.lede { margin: 0; color: var(--muted); }
+section { display: grid; gap: 12px; }
+.tag { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; position: relative; }
+.card.rec { border-color: var(--yellow); }
+.rec-b { position: absolute; top: -11px; right: 12px; background: var(--yellow); color: #201800; font: 800 11px var(--body); padding: 2px 8px; border-radius: 99px; }
+.card h3 { margin: 0; font: 700 17px var(--display); }
+.card p { margin: 0; color: var(--grey); font-size: 14px; }
+.scene { background: linear-gradient(180deg, #7fbdea, #b6def2 60%, #6cc25a 60%, #57a948); border-radius: 10px; aspect-ratio: 16 / 10; position: relative; overflow: hidden; }
+.scene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--panel); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font: 700 15px var(--display); color: var(--yellow); white-space: nowrap; }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+.chip { font: 800 14px var(--body); color: #fff; background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.game { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 5; max-height: 260px; background: linear-gradient(180deg, #7fbdea, #b6def2 55%, #6cc25a 55%, #57a948); }
+.game .black { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .08s; }
+.game .black.on { opacity: 1; }
+.game .hud { position: absolute; left: 12px; bottom: 10px; font: 800 13px var(--body); text-shadow: 0 1px 0 #000; z-index: 2; }
+.game .hud .bar { width: 160px; height: 10px; border: 2px solid #fffc; border-radius: 99px; background: #0008; }
+.game .hud .bar i { display: block; height: 100%; width: 70%; background: #5fd16a; border-radius: 99px; }
+.game .msg { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); font: 700 22px var(--display); color: #fff; opacity: 0; z-index: 2; }
+.game .msg.on { opacity: .85; }
+.game svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pachy parts <span>batch 3</span></h1>
+  <p class="lede">Three new button parts so the pachy has 7 buttons for its 4 slots, like the raptor. Pick one look per part and say OK (or change) the steps.</p>
+
+  <!-- DOME VISOR -->
+  <section>
+    <span class="tag">Defense · button</span>
+    <h2>Dome Visor</h2>
+    <p class="lede">A visor drops over the pachy's face: everything that hits you from the front is blocked while it's down. You can still headbutt through it.</p>
+    <div class="cards">
+      <div class="card rec"><span class="rec-b">RECOMMENDED</span>
+        <div class="scene"><svg viewBox="0 0 200 125">
+          <g transform="translate(25,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="150" y="22" width="20" height="44" rx="4" fill="#3a404c"/><rect x="153" y="38" width="15" height="5" fill="#5fe3ff"/>
+            <rect x="148" y="20" width="24" height="5" rx="2" fill="#9aa6b8"/>
+          </g></svg></div>
+        <h3>A · Armored faceplate</h3>
+        <p>A dark steel plate slams down in front of the face with a glowing cyan eye slit. Reads as a tank, very clear from the front.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 200 125">
+          <g transform="translate(25,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <path d="M150 18 Q178 40 150 70" fill="#9fe8ff55" stroke="#bdefff" stroke-width="2"/>
+            <rect x="146" y="16" width="10" height="5" rx="2" fill="#9aa6b8"/>
+          </g></svg></div>
+        <h3>B · Riot glass visor</h3>
+        <p>A curved clear glass shield on a steel hinge swings over the face; you still see the pachy's face behind it. Lighter feel.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 200 125">
+          <g transform="translate(25,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <ellipse cx="166" cy="44" rx="10" ry="30" fill="#5fe3ff44" stroke="#5fe3ff" stroke-width="2"/>
+            <circle cx="148" cy="20" r="4" fill="#5fe3ff"/>
+          </g></svg></div>
+        <h3>C · Energy shield</h3>
+        <p>A small emitter on the dome throws a glowing cyan oval shield in front of the head. Sci-fi, clearly "mech".</p>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Step</th><th>Proposed</th></tr></thead>
+      <tbody>
+        <tr><td>I</td><td>Button: the visor blocks all damage from the front (60° like Bone Crest) for 1.5 s. Recharge 14 s. Headbutting still works.</td></tr>
+        <tr><td>II</td><td>Lasts 2 s</td></tr>
+        <tr><td>III</td><td>Recharges in 10 s</td></tr>
+        <tr><td>★</td><td>A hit blocked by the visor knocks the attacker back</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- INK SHOOTER -->
+  <section>
+    <span class="tag">Engineering · button</span>
+    <h2>Ink Shooter</h2>
+    <p class="lede">Your answers: aimed shot like the Grappling Hook, first dino hit; a hit player's game view goes fully black for 2 s (HUD stays); a hit bot forgets you for 2 s. II 80 studs · III 11 s recharge · ★ splash blinds everyone within 6 studs.</p>
+    <div class="cards">
+      <div class="card rec"><span class="rec-b">RECOMMENDED</span>
+        <div class="scene"><svg viewBox="0 0 200 125">
+          <g transform="translate(15,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="122" y="44" width="16" height="22" rx="5" fill="#2a2d38"/><rect x="125" y="47" width="10" height="8" fill="#14141a"/>
+            <rect x="136" y="52" width="26" height="6" rx="2" fill="#3a404c"/>
+            <circle cx="176" cy="55" r="6" fill="#0b0b12"/><circle cx="186" cy="53" r="3.5" fill="#0b0b12"/>
+          </g></svg></div>
+        <h3>A · Neck ink tank + barrel</h3>
+        <p>A dark ink tank on the neck with a short barrel along the jaw; shoots a black glob that splats. Fits the "mech bolted on" look of the hook and vials.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 200 125">
+          <g transform="translate(15,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="138" y="8" width="20" height="10" rx="3" fill="#3a404c"/><rect x="156" y="10" width="20" height="5" fill="#2a2d38"/>
+            <circle cx="186" cy="12" r="5" fill="#0b0b12"/>
+          </g></svg></div>
+        <h3>B · Dome turret</h3>
+        <p>A small swivel turret on top of the dome fires the ink. Very readable from far away; sits high on the silhouette.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 200 125">
+          <g transform="translate(15,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="142" y="58" width="22" height="10" rx="4" fill="#2a2d38"/><path d="M164 63 L196 50 L196 76 Z" fill="#0b0b12aa"/>
+          </g></svg></div>
+        <h3>C · Jaw sprayer</h3>
+        <p>A nozzle under the jaw squirts a spray of ink (still one aimed shot). Looks like it spits ink, more creature-like.</p>
+      </div>
+    </div>
+    <div class="game" id="game">
+      <svg viewBox="0 0 400 175"><g transform="translate(170,40)"><rect x="0" y="40" width="70" height="30" rx="5" fill="#7c7466"/><rect x="60" y="20" width="26" height="26" rx="5" fill="#7c7466"/><rect x="10" y="68" width="10" height="20" fill="#5f5848"/><rect x="48" y="68" width="10" height="20" fill="#5f5848"/></g></svg>
+      <div class="black" id="black"></div>
+      <div class="msg" id="msg">INKED</div>
+      <div class="hud">HEALTH<div class="bar"><i></i></div></div>
+    </div>
+    <div><button class="chip" id="inkBtn">Get inked (your screen, 2 s)</button></div>
+    <table>
+      <thead><tr><th>Step</th><th>Your picks</th></tr></thead>
+      <tbody>
+        <tr><td>I</td><td>Button: aim and fire an ink glob (60 studs). The first dino hit is blinded for 2 s: a player's view goes fully black; a bot forgets you. Recharge 15 s.</td></tr>
+        <tr><td>II</td><td>Reaches 80 studs</td></tr>
+        <tr><td>III</td><td>Recharges in 11 s</td></tr>
+        <tr><td>★</td><td>The ink splashes: everyone within 6 studs of the hit is blinded too</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- SERVO DASH -->
+  <section>
+    <span class="tag">Speed · button</span>
+    <h2>Overclocked Servo Dash</h2>
+    <p class="lede">Your idea: an instant thruster burst of top speed forward that cancels the headbutt slow for 1.5 s, so you can get away after a missed charge.</p>
+    <div class="cards">
+      <div class="card rec"><span class="rec-b">RECOMMENDED</span>
+        <div class="scene"><svg viewBox="0 0 200 125">
+          <g transform="translate(25,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="36" y="74" width="16" height="12" rx="3" fill="#3a404c"/><path d="M36 76 L6 80 L36 84 Z" fill="#ff9a2e"/><path d="M36 78 L18 80 L36 82 Z" fill="#ffe08a"/>
+            <line x1="-10" y1="60" x2="20" y2="60" stroke="#fff" stroke-width="2" opacity=".8"/><line x1="-14" y1="96" x2="14" y2="96" stroke="#fff" stroke-width="2" opacity=".8"/>
+          </g></svg></div>
+        <h3>A · Hip thrusters</h3>
+        <p>Two short exhausts on the hips blast orange flame on use, with white speed lines. Matches the Mecha Legs fire bursts.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 200 125">
+          <g transform="translate(25,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="58" y="92" width="18" height="24" rx="3" fill="#5fe3ff55" stroke="#5fe3ff" stroke-width="2"/><rect x="102" y="92" width="18" height="24" rx="3" fill="#5fe3ff55" stroke="#5fe3ff" stroke-width="2"/>
+            <path d="M58 112 L40 116 L58 118 Z" fill="#5fe3ff"/><path d="M102 112 L84 116 L102 118 Z" fill="#5fe3ff"/>
+          </g></svg></div>
+        <h3>B · Glowing leg servos</h3>
+        <p>Servo coils on the legs glow cyan and leave short cyan streaks while dashing. Subtle, no new part on the body when idle.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 200 125">
+          <g transform="translate(25,10)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="66" y="40" width="40" height="18" rx="4" fill="#3a404c"/><rect x="58" y="44" width="10" height="10" fill="#2a2d38"/>
+            <path d="M58 46 L26 49 L58 52 Z" fill="#ff9a2e"/>
+          </g></svg></div>
+        <h3>C · Back booster</h3>
+        <p>One big booster pack on the back with a single long flame. Very visible, but crowds the back with the other parts.</p>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Step</th><th>Proposed</th></tr></thead>
+      <tbody>
+        <tr><td>I</td><td>Button: a burst forward at full run speed (x1.6) for 1.5 s; it cancels the headbutt self-slow while it lasts. Recharge 12 s.</td></tr>
+        <tr><td>II</td><td>Lasts 2 s</td></tr>
+        <tr><td>III</td><td>Recharges in 8 s</td></tr>
+        <tr><td>★</td><td>Ending the dash refills one headbutt charge</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Every look also gets its Lab card model (BuildPreview_&lt;id&gt;) in the same build.</p>
+  </section>
+</div>
+<script>
+const b = document.getElementById("black"), m = document.getElementById("msg");
+document.getElementById("inkBtn").onclick = () => {
+  b.classList.add("on"); m.classList.add("on");
+  setTimeout(() => { b.classList.remove("on"); m.classList.remove("on"); }, 2000);
+};
+</script>
+</body>
+</html>
