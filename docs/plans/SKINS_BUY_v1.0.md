@@ -1,71 +1,74 @@
-# Mecha Dino Arena v1.0 — Buying Skins (game passes)
+# Mecha Dino Arena v1.0 — Buying Skins (developer products by rarity)
 
 **Goal:** players buy the paid raptor skins with Robux from the Lab's SKINS tab, own them for good, and are wearing the skin the moment the purchase goes through.
-**Intent (Kepu 2026-10-30):** skins are a big part of monetizing; "it should just be able to pull from accounts using receipts that their accounts have to know which skins are always theirs" · RNG rolls considered, then dropped ("lets not do rng then and just price the nicer skins much more expensive") · prices "149 / 499 / 999" · after buying: "A · Buy & wear".
+**Intent (Kepu 2026-10-30):** skins are a big part of monetizing; "it should just be able to pull from accounts using receipts that their accounts have to know which skins are always theirs" · RNG rolls considered, then dropped ("lets not do rng then and just price the nicer skins much more expensive") · prices "149 / 499 / 999" · after buying: "A · Buy & wear" · game passes per skin questioned ("why do i need to create 4 game passes these are in game skins") -> one developer product per price tier ("okay how do i create these products then").
 **Chosen direction:** A · Buy & wear — prototype `docs/mockups/skins_buy_options.html` (published artifact "Skin Buying Options").
-**Architecture:** every paid skin is one Roblox game pass. Roblox is the record of ownership (`MarketplaceService:UserOwnsGamePassAsync` at join, `PromptGamePassPurchaseFinished` during the session), so a bought skin can never be lost by our DataStore. SkinServer 1.1 adds ownership, prices and a "buy" request; SkinCatalog 1.1 carries the pass id per skin; Lab 1.7 turns on the GET button and shows the unlock.
+**Products (created by Kepu 2026-10-30, checked in Studio with GetProductInfo):** Rare Skin 3724102107 (R$149), Epic Skin 3724102265 (R$499), Legendary Skin 3724102407 (R$999). Experience: gameId 10773455700, Arena placeId 84022023159448.
+**Architecture:** every paid skin's rarity maps to one developer product. Roblox does not record developer product ownership, so SkinServer records it in the existing save (`MDA_Skins_v1`, field `owned`, reserved in 1.0) through `MarketplaceService.ProcessReceipt`: each receipt's PurchaseId is stored with the grant in one UpdateAsync, and Roblox is told "granted" only after that write succeeds (Roblox retries the receipt otherwise). The skin a receipt pays for is the one the player tapped GET on (the "intent"); a receipt with no matching intent (e.g. a future Shop listing) becomes an unlock credit for that rarity, spent on the next skin of that rarity the player picks.
 
 ## Global Constraints
 - Additive only: SkinServer 1.0 equip / paint / save behaviour is unchanged; new behaviour behind switches (`SkinBuyEnabled` on SkinServer, `LabSkinBuyEnabled` on Lab).
 - Versions: SkinCatalog 1.1, SkinServer 1.1, Lab 1.7. Each with header changelog, VERSIONS.md row, ATTRIBUTES.md rows.
-- Prices (Kepu): RARE 149 (Arctic, Night Stalker), EPIC 499 (Lava), LEGENDARY 999 (Gold Hunter). Classic and Desert Runner stay free. The price a player pays is the pass's own price on Roblox; the Lab shows the live pass price (fallback: catalog price).
+- Prices (Kepu): RARE 149 (Arctic, Night Stalker), EPIC 499 (Lava), LEGENDARY 999 (Gold Hunter). Classic and Desert Runner stay free. The Lab shows the product's live price (GetProductInfo), catalog price as fallback.
 - Skins are picked in the menu Lab only (unchanged). No trading, no random rolls.
+- SkinServer is the only ProcessReceipt in the game (checked: none in repo or Studio). Any later product must be added to its dispatch.
+- Products stay unlisted in Monetization -> Shop until Kepu has checked a live purchase.
 - Install via Studio multi_edit; verify by hash + loadstring; test with the Studio tools only (no computer use). Kepu publishes.
 
 ## Do-not-touch
-- SkinServer 1.0 save format and no-write-after-failed-load rule (`MDA_Skins_v1`, `{v=1, equipped, owned}`); `owned` stays carried through untouched (ownership comes from Roblox, not the DataStore).
+- SkinServer 1.0 save rules: no writes before a successful load for the equip save; UpdateAsync merge; BindToClose. (The receipt write is its own UpdateAsync that reads the stored value, so it is safe even when the session load failed.)
 - Skin painting / tagging (tag, paint, dress), MainMenu 1.7 hangar recopy, SkinCatalog colours and roles.
 - Lab MECHA ABILITIES / STATS tabs, compact Lab (no SKINS tab).
 - Every gameplay script.
 
-## Kepu's manual step (blocks the live test, not the build)
-Create 4 game passes on the Creator Dashboard for the Mecha Dino Arena experience: "Arctic Skin" R$149, "Night Stalker Skin" R$149, "Lava Skin" R$499, "Gold Hunter Skin" R$999 (each needs an icon image and "On Sale"). Send the 4 pass ids. Until then the GET button reads "SOON" and Studio tests use the test hook.
+## Save value (MDA_Skins_v1, key u<UserId>)
+`{v = 1, equipped = {[species] = id}, owned = {[skinId] = true}, credits = {[RARITY] = n}, receipts = {[PurchaseId] = unixTime}}` — `owned` was reserved in 1.0; `credits` and `receipts` are new and ignored by 1.0. Receipts keep the newest RECEIPT_KEEP (200).
 
 ## Deterministic map
 | State | Condition | End state |
 |---|---|---|
 | Free skin | `free = true` | owned by everyone (unchanged) |
-| Paid skin, no pass id | `passId == nil` | locked; GET greyed "SOON"; buy -> "noPass" |
-| Ownership pending | join, check not finished | `SkinOwnState_<id>` "checking"; GET greyed "CHECKING"; a saved paid skin paints default until owned (save untouched) |
-| Owns pass | `UserOwnsGamePassAsync` true | owned; saved skin painted |
-| Check failed | 3 tries fail | "failed"; retried every 30 s; GET greyed "CHECKING" (no double prompt) |
-| Buy request ok | in menu, known, paid, has pass, not owned, not pending | server `PromptGamePassPurchase`; result "prompted" |
-| Purchase finished, bought | `wasPurchased` true for a pass we map | owned; if still in menu: equipped + painted + save queued, result "bought"; else result "boughtNotEquipped" |
-| Purchase finished, cancelled | `wasPurchased` false | result "cancelled"; nothing changes, no toast |
-| Pass revoked (refund) | next join check false | locked; paints default; save untouched |
-| T-Rex | only Classic | nothing to buy |
+| Paid skin, no product for its rarity | `productFor == nil` | GET greyed "SOON"; buy -> "noProduct" |
+| Save not loaded | SkinSaveState not loaded / new / saved | GET greyed "LOADING"; buy -> "notLoaded" |
+| Owned | `owned[id]` | EQUIP / EQUIPPED (1.0) |
+| Credit for the rarity | `credits[r] > 0` | button "UNLOCK · 1 CREDIT"; buy -> credit spent in one UpdateAsync -> "bought" (+ equip) |
+| Buy | in menu, loaded, known, paid, not owned, product exists, no credit | intent = {id, rarity}; PromptProductPurchase -> "prompted"; button disabled |
+| Prompt closed without buying | PromptProductPurchaseFinished isPurchased false | intent cleared, "cancelled", nothing else |
+| Receipt, player in game, intent matches rarity, skin not owned | ProcessReceipt | owned[id] = true + receipt stored (one UpdateAsync) -> PurchaseGranted; equip if InMenu -> "bought", else "boughtNotEquipped" |
+| Receipt, no matching intent (or intent skin already owned) | ProcessReceipt | credits[r] += 1 + receipt stored -> PurchaseGranted -> "credit" |
+| Receipt already stored | receipts[PurchaseId] exists | nothing added -> PurchaseGranted (no double grant) |
+| Receipt, player not in game / write failed / unknown product | ProcessReceipt | NotProcessedYet (Roblox retries; nothing written) |
 
 ## Task 1 — SkinCatalog 1.1 · Mode: Logic
 **Files:** Modify `src/shared/SkinCatalog.luau`; Test `tools/tests/SkinCatalog.spec.luau` (1.1).
-**Interfaces:** Produces `skin.passId` (number or nil), `SkinCatalog.byPass(passId) -> species, skin` or nil, `SkinCatalog.buyable(species, id) -> bool` (known, not free, passId number > 0). Prices: arctic 149, night 149, lava 499, gold 999.
-- [ ] Spec first: byPass on a known / unknown id, buyable for free / paid-no-pass / paid-with-pass (set a pass id on a copy), prices match the ladder, every paid skin has `passId` key (nil allowed). Run in Studio, see it fail.
-- [ ] Add `passId = nil` to the 4 paid skins (filled when Kepu sends ids), prices, byPass, buyable. Version 1.1.
-- [ ] Run -> PASS; commit.
-**Acceptance:** spec PASS; 1.0 API (roleOf / get / default / owns / sanitize) unchanged.
+**Interfaces:** Produces `SkinCatalog.PRODUCTS = {RARE = 3724102107, EPIC = 3724102265, LEGENDARY = 3724102407}`, `productFor(species, id) -> productId or nil` (paid skin of a rarity with a product), `rarityOfProduct(productId) -> rarity or nil`, `buyable(species, id) -> bool`. Prices: arctic 149, night 149, lava 499, gold 999.
+- [ ] Spec first (fails on 1.0): prices, productFor for free / rare / epic / legendary / unknown, rarityOfProduct for each id and an unknown one, buyable. Run in Studio, see it fail.
+- [ ] Module changes; version 1.1. Run -> PASS; commit.
+**Acceptance:** spec PASS; 1.0 API unchanged.
 
 ## Task 2 — SkinServer 1.1 · Mode: Wired
 **Files:** Modify `src/server/SkinServer.server.luau`.
-**Interfaces:** Consumes Task 1. Produces: `DinoSkinRequest:FireServer("buy", id)`; player attributes `SkinOwned_<Species>` (comma list of owned paid ids), `SkinOwnState` ("checking" / "done" / "failed"), `SkinPrice_<id>` (live Robux price or catalog price), `SkinForSale_<id>` (bool); results "prompted" / "bought" / "boughtNotEquipped" / "cancelled" / "noPass" / "owned" / "pending" plus the 1.0 ones; player `SkinLastBought` (id) + `SkinLastBoughtAt`.
-- [ ] Switch `SkinBuyEnabled` (default true; false = 1.0 behaviour, "buy" -> "badArg").
-- [ ] Join: for each buyable skin, `UserOwnsGamePassAsync` in pcall, 3 tries (2, 4 s); owned ids into a session set `st.passOwned` (never written to the DataStore); `owns` checks use `st.owned` ∪ `st.passOwned`; then publish + dress. Failed -> retry every 30 s.
-- [ ] Prices: `GetProductInfo(passId, Enum.InfoType.GamePass)` once per pass at start (pcall), `SkinPrice_<id>` / `SkinForSale_<id>` on each player (fallback catalog price, for sale true).
-- [ ] "buy": badArg / notInMenu / noBody / unknown / free (already owned) / noPass / pending (ownership not done) / owned / prompted -> `MarketplaceService:PromptGamePassPurchase(player, passId)`.
-- [ ] `PromptGamePassPurchaseFinished(player, passId, wasPurchased)`: map with byPass; bought -> passOwned, then equip if InMenu (same path as "equip" ok: equipped, changed, publish, dress, save queued); results as the map.
-- [ ] Test hook (Studio only, `RunService:IsStudio()`): script attribute `SkinTestGrant` = skin id -> runs the finished handler with wasPurchased true for the first player, then clears itself.
-**Acceptance:** Studio Play with the hook: lava "buy" -> "noPass" (no pass id); hook lava -> "bought", SkinEquipped_Raptor lava, body painted, SkinOwned_Raptor contains lava; respawn keeps lava; "equip" lava -> "same"; hook while on the island -> "boughtNotEquipped"; SkinBuyEnabled false -> "buy" "badArg". With real pass ids: Studio test purchase -> "bought" (no Robux charged in Studio).
+**Interfaces:** Consumes Task 1. Produces: `DinoSkinRequest:FireServer("buy", id)`; player attributes `SkinOwned_<Species>` (comma list of owned paid ids), `SkinCredits_<RARITY>` (n), `SkinPrice_<RARITY>` (live price or catalog), results "prompted" / "bought" / "boughtNotEquipped" / "credit" / "cancelled" / "noProduct" / "notLoaded" / "owned" / "free" plus 1.0's; `SkinLastBought` + `SkinLastBoughtAt`; script `SkinReceipts` (granted), `SkinReceiptsDeferred` (NotProcessedYet count).
+- [ ] Switch `SkinBuyEnabled` (default true, read at start; false = 1.0: "buy" -> "badArg", no ProcessReceipt set).
+- [ ] Load: credits read with owned (same GetAsync).
+- [ ] Prices: GetProductInfo(productId, Enum.InfoType.Product) per rarity at start (pcall), published to every player.
+- [ ] "buy" checks in the map's order; credit path; prompt path with intent.
+- [ ] ProcessReceipt + PromptProductPurchaseFinished as the map.
+- [ ] Studio test store: script attribute `SkinTestMemoryStore` (Studio only, read at start): an in-memory store with GetAsync / UpdateAsync replaces the DataStore so loads, saves and receipts run in Studio. Test hook `SkinTestReceipt` = "<rarity>" (Studio only): runs ProcessReceipt for the first player with a fresh PurchaseId; `SkinTestReceiptRepeat` = true re-sends the last receipt (double-grant check).
+**Acceptance (Studio Play, memory store):** tap-buy lava -> "prompted" (Roblox test prompt shown in Studio); hook EPIC with lava intent -> "bought", SkinEquipped_Raptor lava, body painted, SkinOwned_Raptor has lava, save has receipt; repeat receipt -> no second grant; hook RARE with no intent -> "credit", SkinCredits_RARE 1; buy arctic -> credit spent, "bought"; respawn keeps the skin; "buy" lava again -> "owned"; island receipt -> "boughtNotEquipped"; SkinBuyEnabled false -> "badArg".
 
 ## Task 3 — Lab 1.7 · Mode: Wired
 **Files:** Modify `src/client/Lab.client.luau`.
 **Interfaces:** Consumes Task 2 attributes.
-**Layout:** unchanged from 1.6 except: the badge and button read the live price `SkinPrice_<id>`; GET · R$n is enabled (ROBUX green, white text) when `SkinForSale_<id>` and a pass exists and SkinOwnState "done"; greyed "CHECKING" while ownership is checking / failed; greyed "SOON" with no pass; the "Buying comes in the next step." line is replaced by "Buy it once, keep it for good."; owned = free or in `SkinOwned_<Species>`. On "bought": gold toast "<NAME> UNLOCKED!" and the card stroke flashes YELLOW for 1 s; on "boughtNotEquipped": gold toast "<NAME> UNLOCKED!" only. "cancelled": nothing.
+**Layout:** as 1.6 except the button and line: owned -> EQUIP / EQUIPPED; credit -> "UNLOCK · 1 CREDIT" (ROBUX); buyable -> "GET · R$<price>" (ROBUX, enabled; price = SkinPrice_<RARITY>); not loaded -> greyed "LOADING"; no product -> greyed "SOON"; after a press greyed "…" until a result. Line: owned "Owned. Equip it and you spawn in it every time." / locked "Buy it once, keep it for good." Badge price from SkinPrice_<RARITY>. Owned set = free or SkinOwned_<Species>. "bought": gold toast "<NAME> UNLOCKED!" and the card stroke YELLOW for 1 s; "boughtNotEquipped": the same toast; "credit": toast "<RARITY> UNLOCK READY · PICK A SKIN"; "cancelled": nothing.
 - [ ] Switch `LabSkinBuyEnabled` (default true; false = 1.6 greyed button).
-- [ ] Owned set from `SkinOwned_<Species>`; redraw on its change and on `SkinPrice_*` / `SkinOwnState` changes.
-- [ ] GET -> `DinoSkinRequest:FireServer("buy", id)`; button disabled until a result arrives (no double prompt).
-**Acceptance:** Studio Play (menu Lab, SKINS tab): lava card badge R$499; GET greyed "SOON" without pass id; hook grant -> toast "LAVA UNLOCKED!", card ON, stage + live body lava; respawn keeps it; compact Lab unchanged.
+- [ ] Redraw on SkinOwned_* / SkinCredits_* / SkinPrice_* / SkinSaveState changes.
+**Acceptance:** Studio Play (menu Lab, SKINS tab): badges R$149 / R$499 / R$999; GET opens the Roblox test prompt; hook receipt -> toast, card ON, stage and live body painted; credit button shows and spends; compact Lab unchanged.
 
 ## Red-team (Phase 4.5)
-1. **Shown price ≠ charged price** (catalog says 499, pass set to 450). Mitigation: Lab shows the pass's live price from GetProductInfo; catalog price is only a fallback.
-2. **Ownership check fails at join** -> a paying player sees their skin locked and could get prompted again. Mitigation: "CHECKING" state blocks GET; retries every 30 s; a saved paid skin is never overwritten (1.0 rule: locked paints default, save untouched).
-3. **Fake purchase from a client** -> only the server's PromptGamePassPurchaseFinished grants; the client "buy" only opens Roblox's prompt. The test hook only runs in Studio.
-4. **Purchase finishes after the player left the menu** -> unlock without auto-equip (equip stays menu-only), toast only.
-5. **Passes belong to one experience.** They must be created on the experience the Arena place is published in (where Kepu publishes); a pass id from another experience never reports ownership. Check: Studio test purchase with the real ids (Task 2 acceptance).
+1. **Shown price ≠ charged price.** Mitigation: Lab shows the product's live price; catalog only as fallback.
+2. **A paid receipt is lost or granted twice.** Mitigation: grant and PurchaseId in one UpdateAsync; PurchaseGranted only after it succeeds; a stored PurchaseId is never granted again; NotProcessedYet when the player is gone or the write fails (Roblox retries).
+3. **Which skin did a tier product pay for?** Mitigation: the GET intent; no intent -> a credit for that rarity, never a guess.
+4. **Fake purchase from a client.** Only ProcessReceipt grants; the client "buy" only opens Roblox's prompt; test hooks run only in Studio.
+5. **Purchase finishes after the player left the menu.** Unlock without auto-equip (equip stays menu-only).
+6. **Accepted risk:** our save is the only record of who owns a paid skin (Kepu chose products over passes). Covered by 2.

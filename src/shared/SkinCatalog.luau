@@ -1,4 +1,4 @@
--- SkinCatalog v1.0 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
+-- SkinCatalog v1.1 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1, mockup docs/mockups/skins_lab_tab.html (Kepu 2026-10-30: skins picked in the Lab's
 -- SKINS tab from the main menu; "whatever is chosen in the menu is what youre spawning with every time unless you choose
 -- a different skin"; buying with Robux is the next plan). Pure: no Instance access. Used by SkinServer 1.0 (server) and,
@@ -15,8 +15,14 @@
 -- Skin: {id, name, rarity ("STARTER" / "COMMON" / "RARE" / "EPIC" / "LEGENDARY"), price (Robux shown on locked cards,
 --   nil for free), free (owned by everyone), colors = {[role] = hex}, materials = {[role] = Enum.Material name} or nil}.
 --   Classic = the authored colours (the default look; picking it is "no skin").
+-- v1.1 (MDA-110, plan docs/plans/SKINS_BUY_v1.0.md Task 1; Kepu 2026-10-30: prices "149 / 499 / 999", one developer
+--   product per price tier): prices RARE 149 (Arctic, Night Stalker), EPIC 499 (Lava, was 299), LEGENDARY 999 (Gold
+--   Hunter, was 499). PRODUCTS[rarity] = developer product id (Rare Skin / Epic Skin / Legendary Skin, created by Kepu,
+--   checked in Studio with GetProductInfo). productFor(species, id) -> the product of a paid skin's rarity or nil (free,
+--   unknown, or a rarity with no product); rarityOfProduct(productId) -> rarity or nil (numbers only);
+--   buyable(species, id) -> productFor(...) ~= nil.
 local SkinCatalog = {}
-SkinCatalog.Version = "1.0"
+SkinCatalog.Version = "1.1"
 
 SkinCatalog.ROLES = {
 	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -40,10 +46,10 @@ SkinCatalog.SKINS = {
 		{id = "night", name = "Night Stalker", rarity = "RARE", price = 149, free = false,
 			colors = {main = "22262B", bands = "0E1012", limbs = "33393F", belly = "4A5058", claws = "0B0C0D", stripe = "5FD16A", eyes = "5FD16A"},
 			materials = {stripe = "Neon", eyes = "Neon"}},
-		{id = "lava", name = "Lava", rarity = "EPIC", price = 299, free = false,
+		{id = "lava", name = "Lava", rarity = "EPIC", price = 499, free = false,
 			colors = {main = "2E2524", bands = "FF6A1A", limbs = "3D302E", belly = "5A3A30", claws = "120D0C", stripe = "FFC832", eyes = "FF6A1A"},
 			materials = {bands = "Neon", stripe = "Neon", eyes = "Neon"}},
-		{id = "gold", name = "Gold Hunter", rarity = "LEGENDARY", price = 499, free = false,
+		{id = "gold", name = "Gold Hunter", rarity = "LEGENDARY", price = 999, free = false,
 			colors = {main = "D4A72C", bands = "7A5A10", limbs = "E6C25A", belly = "F5E4A8", claws = "3A2A08", stripe = "FFF2B0", eyes = "FFFFFF"},
 			materials = {stripe = "Neon", eyes = "Neon"}},
 	},
@@ -83,6 +89,27 @@ end
 function SkinCatalog.sanitize(species, id)
 	if SkinCatalog.get(species, id) then return id end
 	return SkinCatalog.default(species)
+end
+
+-- v1.1: buying (one developer product per rarity)
+SkinCatalog.PRODUCTS = {RARE = 3724102107, EPIC = 3724102265, LEGENDARY = 3724102407}
+
+function SkinCatalog.productFor(species, id)
+	local s = SkinCatalog.get(species, id)
+	if not s or s.free == true then return nil end
+	return SkinCatalog.PRODUCTS[s.rarity]
+end
+
+function SkinCatalog.rarityOfProduct(productId)
+	if type(productId) ~= "number" then return nil end
+	for rarity, pid in pairs(SkinCatalog.PRODUCTS) do
+		if pid == productId then return rarity end
+	end
+	return nil
+end
+
+function SkinCatalog.buyable(species, id)
+	return SkinCatalog.productFor(species, id) ~= nil
 end
 
 return SkinCatalog

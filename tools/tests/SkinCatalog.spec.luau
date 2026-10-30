@@ -1,7 +1,9 @@
--- SkinCatalog.spec v1.0 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
+-- SkinCatalog.spec v1.1 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...". Requires a
 -- fresh clone so a re-run in the same Studio session sees the installed source. Reads both model data modules to check
 -- that every authored colour is a skin role or on the never-paint list.
+-- v1.1 (MDA-110, plan docs/plans/SKINS_BUY_v1.0.md Task 1): prices 149 / 499 / 999, rarity products, productFor /
+--   rarityOfProduct / buyable.
 local da = game.ServerStorage:FindFirstChild("DinoArcade")
 local ok, SC = pcall(function()
 	local src = da.SkinCatalog
@@ -26,7 +28,7 @@ local function eq(name, got, want)
 end
 local function hex(c3) return c3:ToHex():upper() end
 
-eq("Version", SC.Version, "1.0")
+eq("Version", SC.Version, "1.1")
 
 -- roles of the authored colours
 local RAPTOR = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -106,6 +108,44 @@ eq("owns locked", SC.owns("Raptor", "lava", {}), false)
 eq("owns locked, owned", SC.owns("Raptor", "lava", {lava = true}), true)
 eq("owns unknown", SC.owns("Raptor", "nope", {nope = true}), false)
 eq("owns nil set", SC.owns("Raptor", "classic", nil), true)
+
+-- v1.1: buying
+local RARE, EPIC, LEG = 3724102107, 3724102265, 3724102407
+eq("product RARE", SC.PRODUCTS and SC.PRODUCTS.RARE, RARE)
+eq("product EPIC", SC.PRODUCTS and SC.PRODUCTS.EPIC, EPIC)
+eq("product LEGENDARY", SC.PRODUCTS and SC.PRODUCTS.LEGENDARY, LEG)
+for id, price in pairs({arctic = 149, night = 149, lava = 499, gold = 999}) do
+	eq("price " .. id, SC.get("Raptor", id).price, price)
+end
+local okF = type(SC.productFor) == "function"
+eq("productFor exists", okF, true)
+if okF then
+	eq("productFor classic", SC.productFor("Raptor", "classic"), nil)
+	eq("productFor desert", SC.productFor("Raptor", "desert"), nil)
+	eq("productFor arctic", SC.productFor("Raptor", "arctic"), RARE)
+	eq("productFor night", SC.productFor("Raptor", "night"), RARE)
+	eq("productFor lava", SC.productFor("Raptor", "lava"), EPIC)
+	eq("productFor gold", SC.productFor("Raptor", "gold"), LEG)
+	eq("productFor unknown", SC.productFor("Raptor", "nope"), nil)
+	eq("productFor bad species", SC.productFor("Stego", "lava"), nil)
+	eq("productFor TRex classic", SC.productFor("TRex", "classic"), nil)
+end
+local okR = type(SC.rarityOfProduct) == "function"
+eq("rarityOfProduct exists", okR, true)
+if okR then
+	eq("rarityOfProduct RARE", SC.rarityOfProduct(RARE), "RARE")
+	eq("rarityOfProduct EPIC", SC.rarityOfProduct(EPIC), "EPIC")
+	eq("rarityOfProduct LEGENDARY", SC.rarityOfProduct(LEG), "LEGENDARY")
+	eq("rarityOfProduct unknown", SC.rarityOfProduct(123), nil)
+	eq("rarityOfProduct string", SC.rarityOfProduct(tostring(RARE)), nil)
+end
+local okB = type(SC.buyable) == "function"
+eq("buyable exists", okB, true)
+if okB then
+	eq("buyable classic", SC.buyable("Raptor", "classic"), false)
+	eq("buyable lava", SC.buyable("Raptor", "lava"), true)
+	eq("buyable unknown", SC.buyable("Raptor", "nope"), false)
+end
 
 if #fails > 0 then return "FAIL " .. #fails .. " / " .. (passes + #fails) .. ": " .. table.concat(fails, "; ") end
 return "PASS " .. passes
