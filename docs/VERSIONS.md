@@ -235,7 +235,7 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | MineServer | 1.3 | Test hook (server only): BindableFunction MineTestDrop:Invoke(owner, groundPos, opts) drops a mine owned by a bot (Kepu: "have a bot drop one in front of you then you test it with a shield"). Verified in Play with a bot-owned mine (jam on) on the raptor: shield up -> BLOCKED, health 60 -> 60, no stun, no jam, shield stays up; shield down -> 60 -> 35, tossed 25 studs (StunTossDist 25), stunned ~1 s, getup, jammed. Install hash 28658 / 1108176365 |
 | SkillTree | 1.14 | Shock Cannon star = heavy shot: screechDamage 30, stun stays 1.1 s, no parts jam (the Shock Mine keeps the jam as its star); Decoy Hologram hidden (OWNER "none") (MDA-83). Spec 1.14 PASS 439. Install hash 36515 / 1720566300; spec 28827 / 653577998 |
 | SkillEffects | 1.11 | + ScreechDamage while slotted (MDA-83). Install hash 22511 / 1374249911 |
-| ScreechServer | 1.3 | Heavy shot: ScreechDamage dealt on a hit (players TakeDamage + LastHitBy / LastHitAt, Energy Shield blocks it; bots DummyHealth + KilledWith "cannon"), rising "-30" / "BLOCKED" ScreechDamagePop (MDA-83). Installed and compiles; Play check interrupted (the computer link dropped) - pending. Install hash 30261 / 1914512830 |
+| ScreechServer | 1.3 | Heavy shot: ScreechDamage dealt on a hit (players TakeDamage + LastHitBy / LastHitAt, Energy Shield blocks it; bots DummyHealth + KilledWith "cannon"), rising "-30" / "BLOCKED" ScreechDamagePop (MDA-83). Verified in Play at star on a T-Rex bot 60 studs away: hit, DummyHealth 200 -> 170, stunned ~1.1 s (ScreechStunTime 1 read 0.1 s later), no parts jam, "-30" pop. Install hash 30261 / 1914512830 |
 
 ## Open decisions
 - Skill points per level-up.
