@@ -1,4 +1,4 @@
--- MechaButtons v1.13 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.14 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -136,15 +136,20 @@
 --     to the flat part only (no tilt); the camera follows that flat direction.
 --   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
 --   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
+-- v1.14 (Kepu 2026-10-30 after v128: "when I shoot the cannon don't adjust the camera angle"): with script attribute
+--   MechaAimKeepCamEnabled (default true) the release no longer sets ShoulderCamLookAt, so the camera stays where it was;
+--   the raptor still snaps to face the shot (then turns back toward the camera at its turn rate, TurnLimit "aim"). false =
+--   1.13 (the camera turns to the shot). Diagnostic: character MechaScreechCamMoved (true / false, the last shot).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.13"
+local VERSION = "1.14"
 local AIM_LOCK, AIM_DEAD = 0.25, 14 -- v1.12
 local AIM_FULL_PX, CONE_YAW, CONE_PITCH, AIM_SMOOTH, SEND_EPS = 110, math.rad(30), math.rad(15), 14, 0.01 -- v1.13
 if script:GetAttribute("MechaAimConeEnabled") == nil then script:SetAttribute("MechaAimConeEnabled", true) end -- v1.13
+if script:GetAttribute("MechaAimKeepCamEnabled") == nil then script:SetAttribute("MechaAimKeepCamEnabled", true) end -- v1.14
 if script:GetAttribute("MechaThumbAimEnabled") == nil then script:SetAttribute("MechaThumbAimEnabled", true) end
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
@@ -237,7 +242,9 @@ local function aimRelease()
 		end
 		if faceDir and hrp then -- v1.12: face the shot, camera too
 			hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + faceDir)
-			char:SetAttribute("ShoulderCamLookAt", hrp.Position + faceDir * 500)
+			local camMoved = script:GetAttribute("MechaAimKeepCamEnabled") == false -- v1.14: camera stays
+			if camMoved then char:SetAttribute("ShoulderCamLookAt", hrp.Position + faceDir * 500) end
+			char:SetAttribute("MechaScreechCamMoved", camMoved)
 		end
 		r:FireServer(workspace:GetServerTimeNow(), range, thumbDir)
 		char:SetAttribute("MechaScreechFired", (char:GetAttribute("MechaScreechFired") or 0) + 1)

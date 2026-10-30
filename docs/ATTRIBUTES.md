@@ -1931,6 +1931,7 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | ScreechAimUsed | character (server) | true / false | last shot used the aim direction |
 | MechaAimConeEnabled | MechaButtons script | true | MechaButtons 1.13: thumb aim is a smooth cone (+/-30 sides, +/-15 up/down); false = 1.12 full-circle flat aim |
 | MechaScreechAimDeg / MechaScreechAimPitch | character (local) | signed degrees (+ = right) / degrees (+ = up) | 1.13 cone diagnostics (AimDeg is signed from 1.13) |
+| MechaAimKeepCamEnabled / MechaScreechCamMoved | MechaButtons script / character (local) | true / true-false | MechaButtons 1.14: the camera stays put when the cannon fires; false = 1.13 (camera turns to the shot) |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |

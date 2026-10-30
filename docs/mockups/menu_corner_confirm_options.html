@@ -1,0 +1,144 @@
+<title>Menu Corner and Confirm</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro, two chip groups (placement, confirm style), one clickable phone frame, option notes. Same dark game look as the other HUD mockups (single dark theme by choice). */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9b2e; --green: #5fd16a; --red: #f05a4f; --volt: #7fe9ff;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--yellow); }
+.lede { margin: 0; color: var(--muted); max-width: 80ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.chip:focus-visible, .pill:focus-visible, .dbtn:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.hint { font: 600 12px var(--mono); color: var(--volt); margin: 0; }
+.frameWrap { overflow-x: auto; }
+.device { position: relative; margin: 0 auto; width: min(100%, 900px); aspect-ratio: 19.5 / 9; border: 8px solid #2a2f3a; border-radius: 34px; overflow: hidden; background: linear-gradient(180deg, #7fbdea 0%, #a8d6f0 30%, #6cc25a 31%, #4fa63e 100%); }
+.s { position: absolute; inset: 0; container-type: size; }
+.robloxBtns { position: absolute; left: 2cqw; top: 2.5cqh; display: flex; gap: 1cqh; }
+.robloxBtns i { display: block; height: 11cqh; border-radius: 99px; background: rgb(240 240 244 / .92); }
+.robloxBtns i:first-child { width: 11cqh; } .robloxBtns i:last-child { width: 30cqh; }
+.inset { position: absolute; left: 0; right: 0; top: 0; height: 16cqh; border-bottom: .3cqh dashed #ffffff55; }
+.inset em { position: absolute; right: 30cqw; bottom: .6cqh; font: 600 2.2cqh var(--mono); color: #ffffffbb; font-style: normal; }
+.pills { position: absolute; display: flex; gap: 1.6cqh; transition: top .35s, right .35s; }
+.pill { font: 700 4.4cqh var(--display); padding: 1cqh 2.4cqh; border-radius: 2cqh; background: #14141aee; border: .4cqh solid #ffffff44; color: #fff; display: flex; gap: 1cqh; align-items: center; cursor: pointer; }
+.pill.menu { background: var(--yellow); color: #1b1406; border-color: #fff8; }
+.pill.menu.armed { background: var(--red); color: #fff; }
+.pill b.badge { background: var(--yellow); color: #1b1406; border-radius: 99px; font-size: 3.2cqh; min-width: 4.6cqh; height: 4.6cqh; display: grid; place-items: center; }
+.raptor { position: absolute; left: 45%; top: 46%; width: 10cqw; height: 22cqh; }
+.raptor svg { width: 100%; height: 100%; }
+.btns { position: absolute; right: 3cqw; bottom: 5cqh; display: grid; grid-template-columns: repeat(3, 18cqh); gap: 1.4cqh; align-items: end; }
+.btn { height: 18cqh; border-radius: 3cqh; background: #14301aee; border: .5cqh solid var(--orange); display: grid; place-items: center; font: 700 3cqh var(--display); }
+.btn.round { border-radius: 50%; border-color: #fff8; background: var(--yellow); color: #3b2a06; height: 22cqh; width: 22cqh; }
+.bars { position: absolute; left: 2cqw; bottom: 3cqh; width: 34cqw; display: grid; gap: .6cqh; }
+.bars .lbl { display: flex; justify-content: space-between; font: 700 2.6cqh var(--display); }
+.bars .tr { height: 2.4cqh; border-radius: 99px; background: #14141add; overflow: hidden; }
+.bars .tr i { display: block; height: 100%; width: 70%; background: var(--green); }
+/* A: centre card */
+.dim { position: absolute; inset: 0; background: #000a; display: grid; place-items: center; }
+.card { width: 56cqh; max-width: 80cqw; background: var(--panel); border: .4cqh solid #ffffff33; border-radius: 3cqh; padding: 4cqh; display: grid; gap: 2.4cqh; text-align: center; }
+.card h3 { margin: 0; font: 700 5.6cqh var(--display); }
+.card p { margin: 0; font: 700 3.2cqh var(--body); color: var(--grey); }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 2cqh; }
+.dbtn { font: 700 3.8cqh var(--display); border-radius: 2cqh; padding: 1.6cqh; border: .4cqh solid #ffffff44; background: #22242e; color: #fff; cursor: pointer; }
+.dbtn.go { background: var(--yellow); color: #1b1406; border-color: #fff8; }
+/* C: drop-down under MENU */
+.drop { position: absolute; width: 46cqh; background: var(--panel); border: .4cqh solid #ffffff33; border-radius: 2.4cqh; padding: 2.4cqh; display: grid; gap: 1.6cqh; }
+.drop p { margin: 0; font: 700 3.2cqh var(--body); color: var(--grey); }
+.drop .dbtn { font-size: 3.4cqh; padding: 1.2cqh; }
+.toast { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); font: 700 4cqh var(--display); background: #14141aee; padding: 1.4cqh 3cqh; border-radius: 2cqh; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note li { color: var(--grey); font-size: 14px; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+@media (prefers-reduced-motion: reduce) { .pills { transition: none; } }
+</style>
+
+<div class="wrap">
+  <h1>MENU + SKILLS to the <span>top-right corner</span>, and a "leave?" check</h1>
+  <p class="lede">MENU and SKILLS go right up into the top-right corner of the screen instead of sitting under Roblox's top bar. Tapping MENU asks first, because it takes you off the island. Pick a confirm style below, then tap MENU inside the phone to try it.</p>
+  <div class="controls">
+    <div class="group" role="group" aria-label="Placement"><b>Placement</b>
+      <button class="chip" data-k="pos" data-v="now" aria-pressed="false">Now (under the top bar)</button>
+      <button class="chip" data-k="pos" data-v="new" aria-pressed="true">New (top-right corner)</button>
+    </div>
+    <div class="group" role="group" aria-label="Confirm style"><b>Confirm</b>
+      <button class="chip" data-k="cf" data-v="A" aria-pressed="true">A · Centre card</button>
+      <button class="chip" data-k="cf" data-v="B" aria-pressed="false">B · Tap twice</button>
+      <button class="chip" data-k="cf" data-v="C" aria-pressed="false">C · Drop-down</button>
+    </div>
+  </div>
+  <p class="hint">Tap MENU in the phone to try the confirm.</p>
+  <div class="frameWrap"><div class="device"><div class="s" id="s"></div></div></div>
+  <div class="notes">
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>A · Centre card</h3><ul><li>A card in the middle: "Leave the island?" with STAY and LEAVE.</li><li>Hard to hit LEAVE by accident: it sits away from where your thumb was.</li><li>The game keeps running behind it (your dino is not paused).</li></ul></div>
+    <div class="note"><h3>B · Tap twice</h3><ul><li>The first tap turns MENU red: "TAP AGAIN TO LEAVE".</li><li>A second tap within 3 s leaves; otherwise it goes back to MENU.</li><li>Fastest, but a nervous double-tap still leaves.</li></ul></div>
+    <div class="note"><h3>C · Drop-down</h3><ul><li>A small box opens right under MENU: "Leave the island?" LEAVE / STAY.</li><li>Stays in the corner, covers little of the fight.</li><li>LEAVE is close to where you just tapped.</li></ul></div>
+    <div class="note"><h3>Same for all</h3><ul><li>Order stays: SKILLS, then MENU on the far right.</li><li>Kept clear of the phone's notch and rounded corner.</li><li>PC: the M key asks the same way.</li></ul></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const st = { pos: 'new', cf: 'A', open: false, armed: false, left: false };
+  let armTimer = null;
+  const raptor = `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="10" y="40" width="60" height="26" fill="#4f8f3a"/><rect x="60" y="22" width="14" height="26" fill="#4f8f3a"/><rect x="66" y="16" width="30" height="14" fill="#4f8f3a"/><rect x="0" y="46" width="14" height="8" fill="#3a6e2b"/><rect x="24" y="64" width="9" height="30" fill="#2f5a24"/><rect x="46" y="64" width="9" height="30" fill="#2f5a24"/><rect x="62" y="10" width="10" height="10" fill="#7fe9ff"/></svg>`;
+  function render() {
+    const s = document.getElementById('s');
+    const top = st.pos === 'new' ? '2.5cqh' : '19cqh';
+    const right = st.pos === 'new' ? '2.5cqw' : '2cqw';
+    const menuLabel = st.armed ? 'TAP AGAIN TO LEAVE' : 'MENU';
+    let overlay = '';
+    if (st.left) {
+      overlay = `<div class="toast">Back to the main menu</div>`;
+    } else if (st.open && st.cf === 'A') {
+      overlay = `<div class="dim"><div class="card" role="dialog" aria-label="Leave the island?"><h3>Leave the island?</h3><p>You'll go back to the main menu.</p><div class="row"><button class="dbtn" data-act="stay">STAY</button><button class="dbtn go" data-act="leave">LEAVE</button></div></div></div>`;
+    } else if (st.open && st.cf === 'C') {
+      overlay = `<div class="drop" style="right:${right}; top:calc(${top} + 10cqh)"><p>Leave the island?</p><button class="dbtn go" data-act="leave">LEAVE</button><button class="dbtn" data-act="stay">STAY</button></div>`;
+    }
+    s.innerHTML = `<div class="robloxBtns"><i></i><i></i></div>
+      ${st.pos === 'now' ? `<div class="inset"><em>Roblox top bar space</em></div>` : ''}
+      <div class="raptor">${raptor}</div>
+      <div class="pills" style="top:${top}; right:${right}"><span class="pill">SKILLS <b class="badge">3</b></span><button class="pill menu${st.armed ? ' armed' : ''}" data-act="menu">${menuLabel}</button></div>
+      <div class="btns"><div class="btn">ADRENALINE</div><div class="btn">CANNON</div><div class="btn round">POUNCE</div></div>
+      <div class="bars"><div class="lbl"><span>HEALTH</span><span>42 / 60</span></div><div class="tr"><i></i></div></div>
+      ${overlay}`;
+  }
+  function reset() { st.open = false; st.armed = false; clearTimeout(armTimer); }
+  function leave() { reset(); st.left = true; render(); setTimeout(() => { st.left = false; render(); }, 1400); }
+  document.addEventListener('click', e => {
+    const c = e.target.closest('.chip');
+    if (c) {
+      st[c.dataset.k] = c.dataset.v;
+      document.querySelectorAll(`.chip[data-k="${c.dataset.k}"]`).forEach(x => x.setAttribute('aria-pressed', x === c));
+      reset(); render(); return;
+    }
+    const a = e.target.closest('[data-act]');
+    if (!a) return;
+    if (a.dataset.act === 'menu') {
+      if (st.cf === 'B') {
+        if (st.armed) { leave(); return; }
+        st.armed = true; render();
+        armTimer = setTimeout(() => { st.armed = false; render(); }, 3000);
+      } else { st.open = !st.open; render(); }
+    } else if (a.dataset.act === 'leave') { leave(); }
+    else if (a.dataset.act === 'stay') { reset(); render(); }
+  });
+  render();
+})();
+</script>
