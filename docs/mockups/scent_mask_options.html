@@ -1,0 +1,92 @@
+<title>Scent Sense Mask</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro, bite toggle, three mask cards (side view of the raptor head, closed / open jaw), build notes. Single dark game look. */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9b2e; --volt: #7fe9ff;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); }
+h1 span { color: var(--volt); }
+.lede { margin: 0; color: var(--muted); max-width: 78ch; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.chip:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; align-content: start; }
+.card.pick { border-color: var(--yellow); }
+.art { background: linear-gradient(180deg, #1b2333, #10141c); border-radius: 12px; aspect-ratio: 4 / 3; display: grid; place-items: center; }
+.art svg { width: 92%; height: 92%; }
+.card h3 { margin: 0; font: 700 20px var(--display); }
+.card p, .card li { margin: 0; color: var(--grey); font-size: 14px; }
+.card ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note li { color: var(--grey); font-size: 14px; }
+</style>
+
+<div class="wrap">
+  <h1>Scent Sense <span>mask</span></h1>
+  <p class="lede">Scent Sense gets a part you can see: a mask over the raptor's nose and mouth. It shows while Scent Sense is bought and in a slot, like the other parts, and it becomes the 3D model on its Lab card. The upper half sits on the snout and the lower half on the jaw, so the jaw still opens to bite. Tap "Bite" to check that.</p>
+  <div><button class="chip" id="bite" aria-pressed="false">Bite (open jaw)</button></div>
+  <div class="cards" id="cards"></div>
+  <div class="note"><h3>Same for every option</h3><ul>
+    <li>Built by ScentServer on the raptor's Head and Jaw. The Lab card uses the same build code, through a BuildPreview hook like the other parts.</li>
+    <li>The volt parts glow brighter while a sniff is running.</li>
+    <li>It ships maxed and unlocked through the test switch, like the other parts.</li>
+  </ul></div>
+</div>
+
+<script>
+(() => {
+  const r = (x, y, w, h, c, extra = '') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}" ${extra}/>`;
+  const G = '#4f8f3a', Dk = '#2f5a24', L = '#6fb04f', M = '#3a4350', M2 = '#58657a', V = '#7fe9ff', O = '#ff9b2e';
+  function head(open, mask) {
+    const jawRot = open ? 'rotate(16 70 108)' : '';
+    let s = `<svg viewBox="0 0 320 200" aria-hidden="true">`;
+    s += r(0, 70, 80, 60, G) + r(0, 76, 80, 8, L); // neck
+    s += r(60, 56, 120, 52, G) + r(70, 60, 100, 6, L); // skull
+    s += r(160, 70, 120, 36, G); // snout
+    s += r(130, 66, 18, 14, '#111') + r(136, 68, 6, 6, '#fff'); // eye
+    s += r(262, 74, 10, 6, '#1a1a1a'); // nostril
+    // upper teeth
+    for (let i = 0; i < 7; i++) s += r(170 + i * 15, 106, 7, 9, '#f2efe6');
+    s += `<g transform="${jawRot}">` + r(70, 108, 196, 26, Dk);
+    for (let i = 0; i < 6; i++) s += r(176 + i * 15, 100, 7, 9, '#f2efe6');
+    s += mask.lower || '';
+    s += '</g>';
+    s += mask.upper || '';
+    return s + '</svg>';
+  }
+  const OPTIONS = [
+    { id: 'A', name: 'Breather', rec: true,
+      text: 'A dark plate over the snout tip and nostrils, two round filter canisters on the cheeks with volt rings, and a chin guard on the jaw. Reads as a gas mask straight away.',
+      pros: ['Clearest "mask" look', 'Canisters show from the side and the front'],
+      upper: r(214, 64, 70, 46, M, 'rx="6"') + r(220, 70, 58, 8, M2) + r(266, 78, 14, 8, V) + `<circle cx="206" cy="96" r="16" fill="${M2}"/><circle cx="206" cy="96" r="10" fill="${M}"/><circle cx="206" cy="96" r="5" fill="${V}"/>` + r(228, 98, 50, 4, V),
+      lower: r(214, 112, 56, 20, M, 'rx="5"') + r(222, 118, 40, 4, M2) },
+    { id: 'B', name: 'Muzzle cage', text: 'Metal bars wrap the snout and jaw like a cage, with a volt sensor bulb at the nose tip. Lighter, so more of the head stays visible.',
+      pros: ['Tough, battle-ready look', 'Teeth stay visible through the bars'],
+      upper: [0, 1, 2, 3].map(i => r(198 + i * 22, 62, 6, 48, M2)).join('') + r(196, 62, 90, 6, M) + `<circle cx="290" cy="82" r="9" fill="${V}"/>`,
+      lower: [0, 1, 2].map(i => r(206 + i * 22, 110, 6, 26, M2)).join('') + r(204, 130, 70, 6, M) },
+    { id: 'C', name: 'Snout visor', text: 'An angled plate on top of the snout with three volt sensor fins and side vents, plus a small chin plate. Closest to the sensor clip on the Lab card today.',
+      pros: ['Smallest; leaves the face open', 'Fins read as "sensor"'],
+      upper: `<path d="M196 70 L286 66 L286 84 L196 84 Z" fill="${M}"/>` + r(212, 52, 6, 16, V) + r(232, 48, 6, 20, V) + r(252, 52, 6, 16, V) + r(200, 88, 40, 5, M2) + r(200, 96, 40, 5, M2) + r(278, 70, 10, 10, O),
+      lower: r(224, 116, 44, 14, M, 'rx="4"') },
+  ];
+  let open = false;
+  function render() {
+    document.getElementById('cards').innerHTML = OPTIONS.map(o => `<div class="card ${o.rec ? 'pick' : ''}">${o.rec ? '<span class="rec">RECOMMENDED</span>' : ''}<div class="art">${head(open, o)}</div><h3>${o.id} · ${o.name}</h3><p>${o.text}</p><ul>${o.pros.map(p => `<li>${p}</li>`).join('')}</ul></div>`).join('');
+  }
+  document.getElementById('bite').addEventListener('click', e => { open = !open; e.currentTarget.setAttribute('aria-pressed', open); render(); });
+  render();
+})();
+</script>

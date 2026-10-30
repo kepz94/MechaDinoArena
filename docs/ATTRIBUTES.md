@@ -1830,6 +1830,8 @@ ArenaScope 1.12: ArenaScope_Lab, ArenaScope_LabPreviewServer (ArenaScope_SkillSc
 | MainMenuHangarEnabled | MainMenu script | true | false = 1.2 see-through menu; read at start |
 | MainMenuHangarParts | player (local) | number | parts in the hangar room |
 | MainMenuPlayLoaderEnabled | MainMenu script | true | false = no egg after SANDBOX / ARENA |
+| MainMenuMechFirstEnabled | MainMenu script | true | MainMenu 1.4: open in the mech view; false = plain first; read at start |
+| MainMenuHintTopEnabled | MainMenu script | true | MainMenu 1.4: stage hint above the dino (hangar on); false = 1.3 bottom hint |
 | MainMenuPlayLoader | player (local) | "shown" / "hidden" / "none" | play egg state |
 | EggLoaderSplashEnabled | EggLoader script | true | false = the 1.0 egg on join; read at start |
 | EggLoaderMode | player (local) | "splash" / "join" / "play" / "arrive" / "travel" | current screen kind |

@@ -1,4 +1,4 @@
--- MainMenu v1.3 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.4 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -73,13 +73,20 @@
 --   / "Arena") (EggLoader 1.1: the egg until the dino stands on the island), then fires the request; "busy" / "badArg"
 --   takes the egg down (EggLoader.Hide). Switch: script attribute MainMenuPlayLoaderEnabled (default true; false = no
 --   egg). Diagnostic: MainMenuPlayLoader ("shown" / "hidden" / "none").
+-- v1.4 (Kepu 2026-10-29, phone screenshot: "the mecha Dino should be the default view. Tap to see plain Dino should exist
+--   above the Dino head because you can't even see it"): the menu opens in the mech view (the copy with its Mecha_*
+--   parts; the tap still flips to the plain dino). Hangar on: the stage hint sits in a top row of the stage area, centred,
+--   on the same line as the DINO / MECH VIEW tag (row = 2.4ch + tag height + 0.8ch), and the dino is fitted to the stage
+--   area below that row, so the hint is always above its head. Switches: script attributes MainMenuMechFirstEnabled
+--   (default true, read at start; false = plain view first) and MainMenuHintTopEnabled (default true; false = 1.3 hint
+--   at the bottom).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -392,7 +399,9 @@ local toastPad = Instance.new("UIPadding")
 toastPad.Parent = toast
 
 -- ---------- state ----------
-local mech = false
+if script:GetAttribute("MainMenuMechFirstEnabled") == nil then script:SetAttribute("MainMenuMechFirstEnabled", true) end -- v1.4
+if script:GetAttribute("MainMenuHintTopEnabled") == nil then script:SetAttribute("MainMenuHintTopEnabled", true) end -- v1.4
+local mech = script:GetAttribute("MainMenuMechFirstEnabled") ~= false -- v1.4: mech view first (1.3: false)
 local pickSlot = nil
 local switchUntil = 0
 local switchingTo = nil
@@ -795,6 +804,13 @@ local function layout()
 	stageHint.TextSize = hint
 	stageHint.Size = UDim2.new(1, 0, 0, hint + 4)
 	stageHint.Position = UDim2.new(0, 0, 1, -(3.2 * ch + hint))
+	if hangarOn and script:GetAttribute("MainMenuHintTopEnabled") ~= false then -- v1.4: hint above the dino's head
+		local tagH = tagSize + 1.6 * ch
+		stageHint.Position = UDim2.new(0, 0, 0, 2.4 * ch + (tagH - (hint + 4)) / 2)
+		local band = 2.4 * ch + tagH + 0.8 * ch
+		hStage.y, hStage.h = S.top + band, math.max(stageH - band, 40)
+		placeHangarCam()
+	end
 	-- right column, centred vertically
 	local tBig = 7.6 * ch
 	local tSmall = tBig * 0.42
