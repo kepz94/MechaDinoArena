@@ -23,11 +23,11 @@
   - Left: tabs MECH PARTS / STATS (equal width, gap 0.8ch, text max(1.7ch, 10 px)), 1.2ch gap, then a scrolling 2-column card grid (gap 1ch). Card: padding 1ch, corner 1.4ch; 4:3 ViewportFrame with the part model turning; name (FredokaOne max(1.9ch, 11 px)); pips (1.6ch squares, star round) + step tag (I / II / III / ★ / NEW); badge top-right: slot key (orange) / ALWAYS ON (volt) / SOON (grey). Equipped = orange stroke; selected = white stroke. Stats tab: one row per stat (name, pips, area, "Next: n pts" / "Maxed").
   - Middle: stage (fills; panel, "ALL UPGRADES" tag, ViewportFrame with a copy of your live character, turning), 1.2ch gap, slot row (4 equal columns, gap 0.8cw, height max(6ch, 34 px): key + part icon (mini viewport) + name), 1.2ch gap, hint (max(1.5ch, 10 px)).
   - Right: detail panel (padding 1.6ch): area · kind line (area colour), name (FredokaOne 3ch), steps list (I / II / III / ★: got = area colour, next = white outline, rest grey; text max(1.6ch, 10 px)), buttons row (height max(5.6ch, 34 px)): BUY / UPGRADE · n PTS (yellow) or NEED n PTS / MAXED / MASTERY FULL / COMING SOON (greyed); EQUIP (orange) / UNEQUIP <key> (dark) for owned button parts.
-**Compact Lab** (island): same pieces inside a panel inset 10ch top, 11cw sides, 6ch bottom (corner 2.4ch, volt stroke), columns 34% | rest | 30%; the game keeps running behind a 0.55 dim.
+**Compact Lab** (island): same pieces inside a panel inset max(10ch, Roblox top bar height + 1ch) top, 11cw sides, 6ch bottom (corner 2.4ch, volt stroke), columns 34% | rest | 30%; the game keeps running behind a 0.55 dim.
 
 ## Deterministic map
 - Open full: MainMenu GO TO THE LAB -> `Lab.Open:Invoke("full")`; close ✕ -> back to the menu.
-- Open compact: SKILLS button or K, only while InMenu ~= true; ✕ / K / SKILLS closes. Character attribute SkillScreenOpen = true while the compact Lab is open (AbilityBar hides its bar, as with SkillScreen).
+- Open compact: SKILLS button or K, only while InMenu ~= true; X / K closes (build: the SKILLS pill hides while the compact Lab is open — it sat under the panel and the dim). Character attribute SkillScreenOpen = true while the compact Lab is open (AbilityBar hides its bar, as with SkillScreen).
 - Select a card: detail shows it. Buy: SkillRequest("buy", id); the screen redraws from the attributes. A newly bought button part is auto-slotted by SkillServer as today.
 - Equip: with a slot selected -> SkillRequest("slot", n, id); else first empty slot; all full -> toast "Slots full · tap a slot to replace" and the slots pulse. Tap a slot then a card = equip there. Unequip -> ("slot", n, "").
 - Stage: re-copied when the character, Species or its Mecha_* children change (as MainMenu).

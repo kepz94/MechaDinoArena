@@ -1784,3 +1784,37 @@ EggLoader 1.0 (ReplicatedFirst.EggLoader, MDA-93; LocalPlayer attributes set by 
 BindableFunctions under EggLoader: Show(target) -> ScreenGui, Hide(), Replay().
 MainMenu 1.1: script attribute MainMenuTravelLoaderEnabled (default true); player (local) MainMenuTravelLoader "shown" / "hidden" / "none".
 ArenaScope 1.11: ArenaScope_EggLoader.
+
+## Lab (Lab 1.0 / LabPreviewServer 1.0 / MainMenu 1.2, MDA-96..99)
+Part preview hooks (script attributes, read on every Invoke; default true; false = BuildPreview returns nil and the card shows "?"):
+AdrenalineServerPreviewEnabled (AdrenalineServer 1.4), ScreechServerPreviewEnabled (ScreechServer 1.5), EnergyShieldServerPreviewEnabled (EnergyShieldServer 1.4), CloakServerPreviewEnabled (CloakServer 1.6), BladeServerPreviewEnabled (BladeServer 1.3), MechaServerPreviewEnabled (MechaServer 1.4), MineServerPreviewEnabled (MineServer 1.5). Each script has a child BindableFunction BuildPreview (server only): Invoke(dinoModel) -> the Mecha_* model built on it (MineServer: Invoke() -> a mine model).
+
+LabPreviewServer 1.0 (ServerScriptService.LabPreviewServer, script attributes):
+| Attribute | Default / values | Meaning |
+|---|---|---|
+| LabPreviewServerEnabled | true | false = no previews (read at start) |
+| LabPreviewServerVersion | "1.0" | |
+| LabPreviewState | "building" / "ready" / "off" / "noTemplate" | |
+| LabPreviewCount | 0..8 | models in ReplicatedStorage.LabPreviews |
+| LabPreviewMissing | comma list / "" | parts whose preview failed |
+
+Folder ReplicatedStorage.LabPreviews: one Model per path id (adrenaline, screech, shield, cloak, blade, thrusters, traps, scent) with attributes PathId (string) and LabPreviewSize (Vector3, bounding box).
+
+Lab 1.0 (StarterPlayerScripts.Lab; LocalPlayer attributes set by this client unless noted):
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| LabEnabled | script | true | false = no Lab and no SKILLS button (read at start) |
+| LabVersion | player (local) | "1.0" | |
+| LabOpen | player (local) | "closed" / "full" / "compact" | |
+| LabTab | player (local) | "parts" / "stats" | |
+| LabSelected | player (local) | path id / "" | card shown in the detail panel |
+| LabSlotSel | player (local) | 0 / 1..4 | selected slot (0 = none) |
+| LabLastPress | player (local) | "tab:parts" / "tab:stats" / "card:<id>" / "slot:n" / "buy:<id>" / "equip:<id>:<n>" / "full" (EQUIP with all slots full) / "unequip:<id>" / "close" / "skills" / "key:K" | last press |
+| LabToast | player (local) | text | last toast ("Slots full · tap a slot to replace", ...) |
+| LabCards | player (local) | number | cards drawn |
+| LabModels | player (local) | number | card models drawn at the last full card draw |
+| SkillScreenOpen | character | true while the compact Lab is open | read by AbilityBar 1.1 (hides its bar) |
+
+BindableFunctions under Lab: Open("full" / "compact"), Close(). ScreenGuis: "Lab" (DisplayOrder 45), "LabButton" (DisplayOrder 6, the SKILLS pill: hidden while InMenu and while the compact Lab is open). PC key K toggles the compact Lab while InMenu ~= true.
+MainMenu 1.2: script attribute MainMenuLabEnabled (default true; false = the 1.1 picker); MainMenuLastPress "lab".
+ArenaScope 1.12: ArenaScope_Lab, ArenaScope_LabPreviewServer (ArenaScope_SkillScreen no longer reported).

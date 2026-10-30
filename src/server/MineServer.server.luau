@@ -1,4 +1,4 @@
--- MineServer v1.4 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.5 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -66,13 +66,18 @@
 --   (MineTestDrop) still hits players, nobody's mine hits a player in the menu; in the Arena player mines hit players.
 --   Switch: script attribute MineModeRulesEnabled (default true; false = v1.3, read on every check). Diagnostic: script
 --   MineMode ("sandbox" / "arena").
+-- v1.5 (Lab, MDA-96, plan docs/plans/LAB_v1.0.md Task 1; Kepu 2026-10-29: "Add a preview builder"): BindableFunction
+--   "BuildPreview" under this script (server only). Invoke() builds one mine with the same makeMine code at the
+--   origin, takes it out of Workspace (it is never armed or tracked) and returns its Model "ShockMine" without the
+--   TriggerRing. LabPreviewServer 1.0 turns it into the Lab card model. Switch: script attribute MineServerPreviewEnabled
+--   (default true; false -> returns nil).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local THROW_DIST, ARC_TIME, ARC_HEIGHT, ARM_TIME = 30, 0.6, 8, 0.5
 local TRIGGER, LIFETIME, BLINK = 6, 60, 0.25
 local VOLT, VOLT_CORE = Color3.fromRGB(127, 233, 255), Color3.fromRGB(225, 250, 255)
@@ -658,3 +663,16 @@ local function onPlayer(player)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.5: Lab card preview (LabPreviewServer 1.0)
+if script:GetAttribute("MineServerPreviewEnabled") == nil then script:SetAttribute("MineServerPreviewEnabled", true) end
+local previewFn = script:FindFirstChild("BuildPreview") or Instance.new("BindableFunction")
+previewFn.Name = "BuildPreview"
+previewFn.Parent = script
+previewFn.OnInvoke = function()
+	if script:GetAttribute("MineServerPreviewEnabled") == false then return nil end
+	local m = makeMine({Name = "Lab"}, Vector3.zero)
+	m.model.Parent = nil
+	if m.zone then m.zone:Destroy() end
+	return m.model
+end

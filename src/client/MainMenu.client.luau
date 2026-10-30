@@ -1,4 +1,4 @@
--- MainMenu v1.1 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.2 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -50,13 +50,19 @@
 --   arrival). "teleportFailed" -> EggLoader.Hide:Invoke() and the toast as before. "studio" never shows it. Script
 --   attribute MainMenuTravelLoaderEnabled (default true; false = 1.0). Diagnostic: MainMenuTravelLoader ("shown" /
 --   "hidden" / "none").
+-- v1.2 (Lab, MDA-98, plan docs/plans/LAB_v1.0.md Task 3, mockup docs/mockups/lab_options.html "Main menu"; Kepu 2026-10-29:
+--   "keep the main menu Dino select the same with a quick reference on what Dino you have and the mecha upgrades but a go to
+--   the lab option"): the slot row is read-only (a tap does nothing, no picker row, no hint) and a volt block button
+--   "GO TO THE LAB" (height max(7ch, 40 px), FredokaOne max(2.8ch, 15 px), full left-column width) sits under it, in the
+--   hint / picker row's place. It calls LocalPlayer.PlayerScripts.Lab.Open:Invoke("full") (Lab 1.0). Script attribute
+--   MainMenuLabEnabled (default true; false = the 1.1 picker). Diagnostic: MainMenuLastPress "lab".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -267,6 +273,16 @@ local pickPad = Instance.new("UIPadding")
 pickPad.Parent = picker
 local slotHint = label(root, "SlotHint", Enum.Font.GothamBlack, MUTED)
 slotHint.Text = "Tap a slot to change its part"
+-- v1.2: GO TO THE LAB
+if script:GetAttribute("MainMenuLabEnabled") == nil then script:SetAttribute("MainMenuLabEnabled", true) end
+local labOn = script:GetAttribute("MainMenuLabEnabled") ~= false
+local labB = blockButton(root, "LabGo", VOLT)
+local labText = label(labB.b, "T", Enum.Font.FredokaOne, VOLT, "GO TO THE LAB")
+labText.TextColor3 = Color3.fromRGB(6, 36, 48)
+labText.Text = "GO TO THE LAB"
+labText.Size = UDim2.fromScale(1, 1)
+labB.b.Visible = labOn
+labB.shadow.Visible = labOn
 
 -- right column
 local titleSmall = label(root, "TitleSmall", Enum.Font.FredokaOne, YELLOW)
@@ -442,6 +458,7 @@ local function drawSlots()
 			end
 			b.Activated:Connect(function()
 				press("slot:" .. n)
+				if labOn then return end -- v1.2: read-only, the Lab edits the loadout
 				if pickSlot == n then pickSlot = nil else pickSlot = n end
 				player:SetAttribute("MainMenuPickSlot", pickSlot or 0)
 				drawSlots()
@@ -453,7 +470,7 @@ local function drawSlots()
 	player:SetAttribute("MainMenuPickSlot", pickSlot or 0)
 	-- picker chips
 	picker.Visible = pickSlot ~= nil
-	slotHint.Visible = pickSlot == nil and #owned > 0
+	slotHint.Visible = pickSlot == nil and #owned > 0 and not labOn -- v1.2
 	if pickSlot then
 		pickList.Padding = UDim.new(0, math.max(0.8 * S.cw, 6))
 		local function chip(order, text, id)
@@ -579,6 +596,12 @@ local function layout()
 	local hintH = math.max(S.hintText * 1.4, 16)
 	local pickH = S.chipH + 2 * ch
 	local lowH = pickSlot and pickH or hintH
+	if labOn then -- v1.2: GO TO THE LAB in the hint / picker row's place
+		local labH = math.max(7 * ch, 40)
+		lowH = labH
+		placeButton(labB, lx, bottomY - labH, lw, labH, 1.6 * ch, 0.9 * ch, 0.6 * ch)
+		labText.TextSize = math.max(2.8 * ch, 15)
+	end
 	slotHint.Position, slotHint.Size = UDim2.fromOffset(lx, bottomY - hintH), UDim2.fromOffset(lw, hintH)
 	slotHint.TextSize = S.hintText
 	picker.Position, picker.Size = UDim2.fromOffset(lx, bottomY - pickH), UDim2.fromOffset(lw, pickH)
@@ -764,6 +787,13 @@ local function switchDino(step)
 		end
 	end)
 end
+labB.b.Activated:Connect(function() -- v1.2
+	press("lab")
+	local ps = player:FindFirstChild("PlayerScripts")
+	local lab = ps and ps:FindFirstChild("Lab")
+	local open = lab and lab:FindFirstChild("Open")
+	if open then pcall(function() open:Invoke("full") end) end
+end)
 prevB.b.Activated:Connect(function() switchDino(-1) end)
 nextB.b.Activated:Connect(function() switchDino(1) end)
 sandboxB.bb.b.Activated:Connect(function()

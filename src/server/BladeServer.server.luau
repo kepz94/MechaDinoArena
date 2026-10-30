@@ -1,4 +1,4 @@
--- BladeServer v1.2 (Mecha Dino Arena) — Blade Claws look: a mecha sickle claw on each foot of a raptor that owns the
+-- BladeServer v1.3 (Mecha Dino Arena) — Blade Claws look: a mecha sickle claw on each foot of a raptor that owns the
 -- Blade Claws path (passive part, raptor parts batch 1). MDA-61, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 4, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Sickle claws" (Kepu 2026-10-29). The numbers (landing bonus,
 -- faster latch bites, bleed, pin-kill refund) live in PounceServer 1.6 / SkillEffects 1.6; this script is the look only.
@@ -31,11 +31,16 @@
 -- Settings: script attribute BladeServerEnabled (default true; false = parts removed, no flick / slash).
 -- Diagnostics: script BladeServerVersion, BladeSlashes; character BladeLookState ("none" / "on" / "noFeet"),
 --   BladeFlick ("down" / "up").
+-- v1.3 (Lab, MDA-96, plan docs/plans/LAB_v1.0.md Task 1; Kepu 2026-10-29: "Add a preview builder"): BindableFunction
+--   "BuildPreview" under this script (server only). Invoke(model) builds this part on the given dino model (a Lab
+--   mannequin, not a player) with the same build code (BladeLook = true, then build(model)) and returns its Model "Mecha_Blade" (nil when
+--   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
+--   attribute BladeServerPreviewEnabled (default true; false -> returns nil).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local FLICK_DEG = 40
 local STEEL, RED = Color3.fromRGB(201, 210, 220), Color3.fromRGB(240, 70, 60)
 local HOT = Color3.fromRGB(255, 120, 95) -- v1.2: star
@@ -345,3 +350,15 @@ local function onPlayer(player)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.3: Lab card preview (LabPreviewServer 1.0)
+if script:GetAttribute("BladeServerPreviewEnabled") == nil then script:SetAttribute("BladeServerPreviewEnabled", true) end
+local previewFn = script:FindFirstChild("BuildPreview") or Instance.new("BindableFunction")
+previewFn.Name = "BuildPreview"
+previewFn.Parent = script
+previewFn.OnInvoke = function(model)
+	if script:GetAttribute("BladeServerPreviewEnabled") == false or typeof(model) ~= "Instance" then return nil end
+	model:SetAttribute("BladeLook", true)
+	build(model)
+	return model:FindFirstChild("Mecha_Blade")
+end

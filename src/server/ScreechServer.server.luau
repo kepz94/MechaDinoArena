@@ -1,4 +1,4 @@
--- ScreechServer v1.4 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.5 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -70,13 +70,18 @@
 --   target ModeBlockedAt (server time), shooter ModeBlockedTarget (target name), script ScreechModeBlocks + 1. Sandbox:
 --   a player's cannon hits bots only; Arena: players too; nobody hits a player in the menu. Switch: script attribute
 --   ScreechModeRulesEnabled (default true; false = v1.3, read on every check). Diagnostic: script ScreechMode.
+-- v1.5 (Lab, MDA-96, plan docs/plans/LAB_v1.0.md Task 1; Kepu 2026-10-29: "Add a preview builder"): BindableFunction
+--   "BuildPreview" under this script (server only). Invoke(model) builds this part on the given dino model (a Lab
+--   mannequin, not a player) with the same build code (ScreechEnabled = true, then buildCannon(model)) and returns its Model "Mecha_ShockCannon" (nil when
+--   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
+--   attribute ScreechServerPreviewEnabled (default true; false -> returns nil).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
 local SHOCK_SPEED, BALL_SIZE, SHELL_SIZE = 75, 3, 5 -- v1.2: Shock Cannon ball
@@ -682,3 +687,15 @@ local function onPlayer(player)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.5: Lab card preview (LabPreviewServer 1.0)
+if script:GetAttribute("ScreechServerPreviewEnabled") == nil then script:SetAttribute("ScreechServerPreviewEnabled", true) end
+local previewFn = script:FindFirstChild("BuildPreview") or Instance.new("BindableFunction")
+previewFn.Name = "BuildPreview"
+previewFn.Parent = script
+previewFn.OnInvoke = function(model)
+	if script:GetAttribute("ScreechServerPreviewEnabled") == false or typeof(model) ~= "Instance" then return nil end
+	model:SetAttribute("ScreechEnabled", true)
+	buildCannon(model)
+	return model:FindFirstChild("Mecha_ShockCannon")
+end

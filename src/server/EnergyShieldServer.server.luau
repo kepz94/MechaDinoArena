@@ -1,4 +1,4 @@
--- EnergyShieldServer v1.3 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
+-- EnergyShieldServer v1.4 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
 -- damage for a short time, but move slower while it's up. MDA-63, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 6, mockup
 -- docs/mockups/raptor_parts_b1_options.html option B "Hard-light shell" (Kepu 2026-10-29: full block; "If we're allowing
 -- it to block all attacks then the push back shouldn't exist"; "You block all damage but you're slower during the
@@ -54,12 +54,17 @@
 -- Diagnostics: script EnergyShieldServerVersion, EnergyShieldRequests; character EnergyShieldServerResult,
 --   EnergyShieldCount, EnergyShieldBlocks, EnergyShieldBlockAt, EnergyShieldEndReason, EnergyShieldState ("off" / "on"),
 --   EnergyShieldLook ("none" / "on" / "noTorso").
+-- v1.4 (Lab, MDA-96, plan docs/plans/LAB_v1.0.md Task 1; Kepu 2026-10-29: "Add a preview builder"): BindableFunction
+--   "BuildPreview" under this script (server only). Invoke(model) builds this part on the given dino model (a Lab
+--   mannequin, not a player) with the same build code (EnergyShieldEnabled = true, then build(model)) and returns its Model "Mecha_EnergyShield" (nil when
+--   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
+--   attribute EnergyShieldServerPreviewEnabled (default true; false -> returns nil).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService") -- v1.1
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local BLUE, DARK, WHITE = Color3.fromRGB(90, 160, 255), Color3.fromRGB(44, 52, 64), Color3.new(1, 1, 1)
 
 script:SetAttribute("EnergyShieldServerVersion", VERSION)
@@ -474,3 +479,15 @@ local function onPlayer(player)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.4: Lab card preview (LabPreviewServer 1.0)
+if script:GetAttribute("EnergyShieldServerPreviewEnabled") == nil then script:SetAttribute("EnergyShieldServerPreviewEnabled", true) end
+local previewFn = script:FindFirstChild("BuildPreview") or Instance.new("BindableFunction")
+previewFn.Name = "BuildPreview"
+previewFn.Parent = script
+previewFn.OnInvoke = function(model)
+	if script:GetAttribute("EnergyShieldServerPreviewEnabled") == false or typeof(model) ~= "Instance" then return nil end
+	model:SetAttribute("EnergyShieldEnabled", true)
+	build(model)
+	return model:FindFirstChild("Mecha_EnergyShield")
+end

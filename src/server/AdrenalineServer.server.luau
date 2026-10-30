@@ -1,4 +1,4 @@
--- AdrenalineServer v1.3 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
+-- AdrenalineServer v1.4 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
 -- a few seconds and run faster while it lasts. MDA-62, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Neck injector" (Kepu 2026-10-29).
 -- Settings come from the character (SkillEffects 1.6): AdrenalineEnabled (bought AND slotted), AdrenalineHeal (share of
@@ -49,12 +49,17 @@
 -- Settings: script attribute AdrenalineServerEnabled (default true).
 -- Diagnostics: script AdrenalineServerVersion, AdrenalineRequests; character AdrenalineServerResult, AdrenalineCount,
 --   AdrenalineHealed, AdrenalineEndReason, AdrenalineStunCleared, AdrenalineLook ("none" / "on" / "noNeck").
+-- v1.4 (Lab, MDA-96, plan docs/plans/LAB_v1.0.md Task 1; Kepu 2026-10-29: "Add a preview builder"): BindableFunction
+--   "BuildPreview" under this script (server only). Invoke(model) builds this part on the given dino model (a Lab
+--   mannequin, not a player) with the same build code (AdrenalineEnabled = true, then build(model)) and returns its Model "Mecha_Adrenaline" (nil when
+--   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
+--   attribute AdrenalineServerPreviewEnabled (default true; false -> returns nil).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local GREEN, DARK, GREY = Color3.fromRGB(95, 209, 106), Color3.fromRGB(44, 52, 64), Color3.fromRGB(154, 166, 182)
 
 script:SetAttribute("AdrenalineServerVersion", VERSION)
@@ -492,3 +497,15 @@ local function onPlayer(player)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.4: Lab card preview (LabPreviewServer 1.0)
+if script:GetAttribute("AdrenalineServerPreviewEnabled") == nil then script:SetAttribute("AdrenalineServerPreviewEnabled", true) end
+local previewFn = script:FindFirstChild("BuildPreview") or Instance.new("BindableFunction")
+previewFn.Name = "BuildPreview"
+previewFn.Parent = script
+previewFn.OnInvoke = function(model)
+	if script:GetAttribute("AdrenalineServerPreviewEnabled") == false or typeof(model) ~= "Instance" then return nil end
+	model:SetAttribute("AdrenalineEnabled", true)
+	build(model)
+	return model:FindFirstChild("Mecha_Adrenaline")
+end

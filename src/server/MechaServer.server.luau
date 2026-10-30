@@ -1,4 +1,4 @@
--- MechaServer v1.3 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
+-- MechaServer v1.4 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
 -- Thrusters part on the dino. MDA-27, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 5, mockup
 -- docs/mockups/mecha_thrusters_options.html (Kepu 2026-10-28: framework + Thrusters first; numbers as proposed; the dash is
 -- free; the part is on the dino only while it is in a loadout slot; bots only).
@@ -48,11 +48,16 @@
 --   hinge's C0 (IdleAnimation 1.27 / BoostPose 1.0 swivel the boosters during a boost on every client; the server never
 --   changes C0). Sizes, places, flame, jet, glow and roar unchanged. MechaSwivelHinge false = the 1.2 build.
 --   Diagnostic: character MechaHinge ("hinge" / "fixed"; set on each build with a look other than "none").
+-- v1.4 (Lab, MDA-96, plan docs/plans/LAB_v1.0.md Task 1; Kepu 2026-10-29: "Add a preview builder"): BindableFunction
+--   "BuildPreview" under this script (server only). Invoke(model) builds this part on the given dino model (a Lab
+--   mannequin, not a player) with the same build code (build(model, "I")) and returns its Model "Mecha_Thrusters" (nil when
+--   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
+--   attribute MechaServerPreviewEnabled (default true; false -> returns nil).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local MAX_LAG = 0.3
 local DEFAULT_RECHARGE, DEFAULT_TIME = 8, 0.35
 local METAL, DARK, ORANGE = Color3.fromRGB(123, 133, 144), Color3.fromRGB(43, 47, 53), Color3.fromRGB(255, 155, 46)
@@ -347,3 +352,14 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		char:SetAttribute("DashDeniedAt", stamp)
 	end
 end)
+
+-- v1.4: Lab card preview (LabPreviewServer 1.0)
+if script:GetAttribute("MechaServerPreviewEnabled") == nil then script:SetAttribute("MechaServerPreviewEnabled", true) end
+local previewFn = script:FindFirstChild("BuildPreview") or Instance.new("BindableFunction")
+previewFn.Name = "BuildPreview"
+previewFn.Parent = script
+previewFn.OnInvoke = function(model)
+	if script:GetAttribute("MechaServerPreviewEnabled") == false or typeof(model) ~= "Instance" then return nil end
+	build(model, "I")
+	return model:FindFirstChild("Mecha_Thrusters")
+end
