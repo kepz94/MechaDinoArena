@@ -3,7 +3,7 @@
 **Goal:** a main menu shown on join (and from a MENU button) where the player picks SANDBOX or ARENA and, on the same screen, picks a dino, sees it (plain or with its mech parts) and edits its loadout. Arena = PvP on the same island with no bots.
 **Intent (Kepu 2026-10-29):** "a main menu that says sandbox and then arena which would include PvP. Also a Dino select screen. It would show the current selected Dino and if someone clicks on it it'll be the Dino with the attachments ... keep the same kinda block design and just real simple but also gamey and correctly spaced out layout that takes into account how it looks both on pc and phone" / "you can customize the Dino with the mecha parts or select other Dino's" / "The arena will be the same island with no bots".
 **Chosen direction:** mockup `docs/mockups/main_menu_options.html` — **A · One-screen lobby** (dino stage + name + ◀ ▶ + loadout slots on the left; title + SANDBOX / ARENA on the right; tap the dino = plain ↔ mech view). **MENU button replaces the "RAPTOR ▾" pill.**
-**Architecture:** two places in the same experience, one place file published to both. Sandbox place (84022023159448) = today's island with bots, no player-vs-player damage. Arena place (new) = the same file; a gate keeps BotServer off and a PvP bridge lets bite / pounce / blade hurt players. Both places open the same menu on join; the other mode's button teleports.
+**Architecture:** two places in the same experience, one place file published to both. Sandbox place (84022023159448) = today's island with bots, no player-vs-player damage. Arena place (75433819286625, "Mecha Dino Arena - Arena") = the same file; a gate keeps BotServer off and a PvP bridge lets bite / pounce / blade hurt players. Both places open the same menu on join; the other mode's button teleports.
 
 ## Red-team outcome (Kepu 2026-10-29)
 | Challenge | Kepu's answer | Result |
@@ -57,12 +57,12 @@ BotServer code (only its `Enabled` property changes, via BotServer.meta.json + t
 
 ## Tasks (build order)
 
-### Task 0 — Arena place (Kepu, manual)
-Create a second place in the Mecha Dino Arena experience (Creator Dashboard → experience → Places → Add place, or Studio Asset Manager → Places → Add New Place) and send the place id. Until then ARENA_PLACE_ID = 0 and the ARENA button shows "COMING SOON".
+### Task 0 — Arena place (done 2026-10-29)
+Created in Studio Asset Manager → Places In Experience → Add New Place, renamed "Mecha Dino Arena - Arena": **place id 75433819286625** (verified with AssetService:GetGamePlacesAsync). Still the empty default place until the first "Publish to Roblox As" (Task 9).
 
 ### Task 1 — ModeRules 1.0 + spec · Mode: Logic
 **Files:** Create `src/shared/ModeRules.luau` (ServerStorage.DinoArcade.ModeRules), `tools/tests/ModeRules.spec.luau`.
-**Produces:** `ModeRules.SANDBOX_PLACE_ID = 84022023159448`, `ModeRules.ARENA_PLACE_ID` (number, 0 until Task 0), `placeMode(placeId: number, isStudio: boolean, testArena: boolean?) -> "sandbox" | "arena"`, `canAffect(srcIsPlayer: boolean, tgtIsPlayer: boolean, tgtInMenu: boolean, mode: string) -> boolean`, `currentMode() -> string` (reads game.PlaceId, RunService:IsStudio(), workspace attribute ModeTestArena).
+**Produces:** `ModeRules.SANDBOX_PLACE_ID = 84022023159448`, `ModeRules.ARENA_PLACE_ID = 75433819286625`, `placeMode(placeId: number, isStudio: boolean, testArena: boolean?) -> "sandbox" | "arena"`, `canAffect(srcIsPlayer: boolean, tgtIsPlayer: boolean, tgtInMenu: boolean, mode: string) -> boolean`, `currentMode() -> string` (reads game.PlaceId, RunService:IsStudio(), workspace attribute ModeTestArena).
 - [ ] Spec covering every row of the two tables above (failing first), then the module, spec PASS, commit.
 **Acceptance:** all rows; unknown mode string → canAffect false for player→player.
 
