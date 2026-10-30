@@ -28,7 +28,7 @@
 - Order (Kepu 2026-10-30 "lets do battering dome first. then address these two"): Battering Dome (PACHY_PLAYABLE Drop 2) -> **Drop A — Grappling Hook** -> **Drop B — Mecha Legs**.
 
 ## Red-team (2026-10-30) — Kepu's answers
-1. Pachy upgrades leaking to other dinos: "man all these skill trees and abilites should be dino specific" -> answer "Separate progress per dino" (own skill points, bought steps and loadout per dino). Becomes its own plan (SKILLS_PER_DINO); until then the Species == "Pachy" gate on writes stays as a guard.
+1. Pachy upgrades leaking to other dinos: Kepu "man all these skill trees and abilites should be dino specific" / "I always thought it was Dino specific". **Correction (checked in code 2026-10-30): it already is.** SkillServer 1.2+ (MDA-44, docs/plans/SKILLS_PER_DINO_v1.0.md) keeps XP, level, points, bought steps and loadout per dino (DataStore MDA_Skills_v2, `dinos[species]`; SkillPerDinoEnabled default true) and publishes only the active dino's SkillPath_* / SkillSlot*, so a pachy line never reaches the raptor. The challenge was wrong; no new plan. The Species == "Pachy" gate on writes stays as a cheap guard only.
 2. Fresh ids `hookarm` / `mechalegs`, `grapple` stays dead: "okay sounds good".
 3. Mecha parts in colours no skin paints: "okay".
 4. Server distance check before the smash on player targets (laggy / exploit escape = miss); walls block the hook: "okay".
