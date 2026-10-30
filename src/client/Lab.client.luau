@@ -1,4 +1,4 @@
--- Lab v1.7 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.8 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -106,13 +106,16 @@
 --   * Redraws on SkinOwned_* / SkinCredits_* / SkinPrice_* / SkinSaveState. Switch: script attribute LabSkinBuyEnabled
 --     (default true, read at start; false = 1.6: greyed GET + "Buying comes in the next step."). Diagnostic: LabSkinBuy
 --     (last button state shown: "credit" / "loading" / "soon" / "get" / "wait").
+-- v1.8 (Kepu 2026-10-30: "Health steal for raptor should be stronger then"; SkillTree 1.28): a step's text comes from
+--   path.stepsFor[<your dino>][i] when that exists (raptor Lifesteal 20% / 35% / 50%), else path.steps[i] as before.
+--   Switch: script attribute LabStepsForEnabled (default true, read each draw; false = 1.7).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local SKIN = Color3.fromRGB(201, 162, 255) -- v1.6
 local ROBUX = Color3.fromRGB(0, 176, 111) -- v1.6
 if script:GetAttribute("LabTestFreeGivenEnabled") == nil then script:SetAttribute("LabTestFreeGivenEnabled", true) end -- v1.4
@@ -278,6 +281,10 @@ local function equippable(id)
 end
 local function stepText(p, i)
 	local s = p.steps[i]
+	if script:GetAttribute("LabStepsForEnabled") ~= false and type(p.stepsFor) == "table" then -- v1.8
+		local alt = p.stepsFor[species()]
+		if type(alt) == "table" and alt[i] ~= nil then s = alt[i] end
+	end
 	if type(s) == "table" then return s.text or s.desc or tostring(s[1] or "") end
 	return tostring(s or "")
 end

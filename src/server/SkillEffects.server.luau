@@ -1,4 +1,4 @@
--- SkillEffects v1.19 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.20 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -117,10 +117,14 @@
 --   Runs even when SkillEffectsEnabled is false. Switch: script attribute SkillEffectsIdleRegenEnabled (default true,
 --   read each tick; false = 1.18). Diagnostics: character SkillIdleRegenActive (true while healing this way),
 --   SkillLastHeal "idle +N". Kill heal is off in KillRegenServer 1.1.
+-- v1.20 (Kepu 2026-10-30: "Health steal for raptor should be stronger then"; SkillTree 1.28): on a raptor (character
+--   Species "Raptor") a hit heals e.lifestealRaptor (0.20 / 0.35 / 0.50) x damage instead of e.lifesteal; other dinos
+--   unchanged. Switch: script attribute SkillEffectsRaptorLifestealEnabled (default true, read each hit; false = 1.19).
+--   Diagnostic: character SkillLifestealRate (the share used on the last hit).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.19"
+local VERSION = "1.20"
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
 local BLEED_PLAYERS = script:GetAttribute("SkillBleedPlayersEnabled") ~= false
 if script:GetAttribute("SkillBleedPlayerTime") == nil then script:SetAttribute("SkillBleedPlayerTime", 2) end -- v1.18
@@ -140,6 +144,7 @@ local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
 local KILL_REGEN_DEFAULT = 0.25
+if script:GetAttribute("SkillEffectsRaptorLifestealEnabled") == nil then script:SetAttribute("SkillEffectsRaptorLifestealEnabled", true) end -- v1.20
 for k, v in pairs({SkillEffectsIdleRegenEnabled = true, SkillIdleRegenDelay = 8, SkillIdleRegenRate = 0.20}) do -- v1.19
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -380,7 +385,13 @@ local crushed = setmetatable({}, {__mode = "k"}) -- [bot] = last crush time
 local function onHit(char, st, damage, targetName, isPounce) -- v1.6: + isPounce
 	if not on() then return end
 	local e = st.e
-	if e.lifesteal > 0 and type(damage) == "number" and damage > 0 then heal(char, st, e.lifesteal * damage, "lifesteal") end
+	local stealRate = e.lifesteal
+	if script:GetAttribute("SkillEffectsRaptorLifestealEnabled") ~= false and char:GetAttribute("Species") == "Raptor"
+		and (e.lifestealRaptor or 0) > 0 then stealRate = e.lifestealRaptor end -- v1.20
+	if stealRate > 0 and type(damage) == "number" and damage > 0 then
+		char:SetAttribute("SkillLifestealRate", stealRate)
+		heal(char, st, stealRate * damage, "lifesteal")
+	end
 	local bleedDps, bleedTime = e.bleedDps, e.bleedTime
 	if isPounce and (e.bladeBleedDps or 0) > bleedDps then bleedDps, bleedTime = e.bladeBleedDps, e.bladeBleedTime end -- v1.6
 	if bleedDps <= 0 and e.crushStun <= 0 then return end

@@ -1,4 +1,4 @@
--- SkillTree v1.27 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.28 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -258,6 +258,11 @@ SkillTree.AREAS = {
 --   (default true) PATHS.lifesteal.notFor gains Pachy (same rule as v1.26): no Lifesteal line (and no Lifesteal star
 --   shield) on the pachy; saved Lifesteal steps on the pachy are dropped by sanitize (their points come back). The
 --   built-in kill regen (25% over 5 s) is not changed. Raptor / T-Rex keep Lifesteal. false = 1.26.
+-- v1.28 (Kepu 2026-10-30: "Health steal for raptor should be stronger then"; answers: 20% / 35% / 50%, raptor only): with
+--   SkillTree.RAPTOR_LIFESTEAL_STRONG (default true) effects() also gives e.lifestealRaptor = 0.20 / 0.35 / 0.50 at
+--   Lifesteal I / II / III (0 below I); SkillEffects 1.20 uses it on a raptor instead of e.lifesteal. The T-Rex keeps
+--   e.lifesteal 0.05 / 0.10 / 0.15; the star (overheal shield) is the same for both. PATHS.lifesteal.stepsFor.Raptor holds
+--   the raptor's step texts (Lab 1.8 shows them on a raptor). false = 1.27.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -520,6 +525,17 @@ if SkillTree.PACHY_NO_LIFESTEAL and SkillTree.PATHS.lifesteal then
 	SkillTree.PATHS.lifesteal.notFor = SkillTree.PATHS.lifesteal.notFor or {}
 	SkillTree.PATHS.lifesteal.notFor.Pachy = true
 end
+-- v1.28: stronger Lifesteal for the raptor (texts; the numbers are in effects)
+SkillTree.RAPTOR_LIFESTEAL_STRONG = true
+if SkillTree.RAPTOR_LIFESTEAL_STRONG and SkillTree.PATHS.lifesteal then
+	local st = SkillTree.PATHS.lifesteal.steps
+	SkillTree.PATHS.lifesteal.stepsFor = SkillTree.PATHS.lifesteal.stepsFor or {}
+	SkillTree.PATHS.lifesteal.stepsFor.Raptor = {
+		"20% of the damage you deal heals you",
+		"35% of the damage you deal heals you",
+		"50% of the damage you deal heals you",
+		st[4]}
+end
 -- v1.24: the pachy's Blood Rush (slot part, fires through ATTACK)
 SkillTree.BLOOD_RUSH = true
 if SkillTree.BLOOD_RUSH and not SkillTree.PATHS.bloodrush then
@@ -667,6 +683,12 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if l >= 2 then e.lifesteal = 0.10 end
 	if l >= 3 then e.lifesteal = 0.15 end
 	if l >= 4 then e.shieldMax, e.shieldTime = 0.20, 6 end
+	e.lifestealRaptor = 0 -- v1.28
+	if SkillTree.RAPTOR_LIFESTEAL_STRONG then
+		if l >= 1 then e.lifestealRaptor = 0.20 end
+		if l >= 2 then e.lifestealRaptor = 0.35 end
+		if l >= 3 then e.lifestealRaptor = 0.50 end
+	end
 	-- Jaws (main attack)
 	local j = s.jaws
 	if j >= 1 then e.attackPts += 1 end
