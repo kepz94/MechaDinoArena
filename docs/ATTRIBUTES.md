@@ -2126,3 +2126,15 @@ Every new mech part, for any dino, ships its Lab card model by adding under its 
 | BloodVialsFull | character | vials full now (vial i full while HeadbuttSacrifices < i) |
 | BloodVialSprays | character | sprays shown (one per Blood Rush press) |
 Model Mecha_BloodVials: Glass_L/R, Blood_L/R (FluidHinge, FullHeight), CapTop/CapBottom_L/R, Nozzle_L/R with ParticleEmitter Spray. Lab card: BuildPreview_bloodrush.
+
+## Bone Crest (SkillTree 1.30 / SkillEffects 1.23 / BoneCrest 1.0 / BiteServer 1.8 / PounceServer 1.9 / BotServer 1.16)
+| Attribute | Where | Meaning |
+|---|---|---|
+| SkillTree.PACHY_BONE_CREST | SkillTree constant | true: pachy Defense line "crest", Thick Hide hidden on the pachy (false = 1.29) |
+| BoneCrestMul / BoneCrestReflect | character (pachy) | 0.80 / 0.70 / 0.60 (1 off); 5 at star (0 off) |
+| BoneCrestBlocked, BoneCrestLastSaved, BoneCrestLastKind, BoneCrestBlockAt | character (victim) | reduced front bites: count, HP saved, "bite" / "pounce", server time |
+| BoneCrestReflectedAt | attacker | server time of the last star reflect |
+| BoneCrestEnabled / BoneCrestDefenseEnabled | BoneCrest module | default true; false = no dome cut / no Thick Hide vs players |
+| BiteCrestEnabled / PounceCrestEnabled / BotCrestEnabled | script | default true; false = that damage path skips Bone Crest (and, for bite / pounce, the Thick Hide fix) |
+| BiteHitCrestMul / BiteHitDefenseMul, PounceHitCrestMul / PounceHitDefenseMul, BotLastHitCrestMul | attacker / bot | multipliers used on the last hit |
+Look: BoneCrestSpark (Attachment + sparks) and BoneCrestPop ("CLANK") on the victim's head.

@@ -1,4 +1,4 @@
--- BotServer v1.14 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.16 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -285,12 +285,17 @@
 --   playerAllowed, as Hidden), and a chased target that becomes cloaked is dropped on the next tick (no BotHiddenLoseTime
 --   grace; BotState goes back to wandering). The T-Rex avoid checks (rexNear, nearestRex) are unchanged: only raptors
 --   cloak. Diagnostics: bot BotCloakDrops; script BotCloakDrops.
+-- v1.16 (pachy Bone Crest, SkillTree 1.30; Kepu 2026-10-30: "Whoever bites your dome does 40% less damage"): every bot
+--   bite / pounce hit on a player (hitDamage) also takes BoneCrest.factor(player character, bot root position): a bot in
+--   front of a pachy with Bone Crest does 0.80 / 0.70 / 0.60 of the damage (after the growth cap and Defense), and the
+--   hit calls BoneCrest.after (CLANK; star: the bot takes 5 back off DummyHealth, once per 0.4 s). Bot diagnostic
+--   BotLastHitCrestMul. Switch: script attribute BotCrestEnabled (default true, read each hit; false = 1.15).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.15"
+local VERSION = "1.16"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -864,7 +869,19 @@ local function hitDamage(b, char, hum, dmg)
 		if type(m) == "number" and m == m and m >= 0 then mul = m end
 	end
 	show(b, "BotLastHitDefenseMul", mul)
-	return dmg * mul
+	-- v1.16: Bone Crest (a bot biting a pachy's dome from the front)
+	local crestMul = 1
+	if get("BotCrestEnabled") ~= false then
+		local ok, BC = pcall(function() return require(ServerStorage:WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+		local bRoot = b.model and b.model:FindFirstChild("HumanoidRootPart")
+		if ok and BC and bRoot then
+			local front
+			crestMul, front = BC.factor(char, bRoot.Position)
+			if front and crestMul < 1 then BC.after(char, b.model, dmg * mul, dmg * mul * crestMul, "bite") end
+		end
+	end
+	show(b, "BotLastHitCrestMul", crestMul)
+	return dmg * mul * crestMul
 end
 
 local function randomGoal(b)

@@ -1,4 +1,4 @@
--- SkillEffects v1.22 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.23 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -130,10 +130,13 @@
 --   steps (off: false / 0 / 0 / 0 / 0). MedStationServer 1.0 reads them. Red-team answer "Bigger one only": the 8 s heal
 --   is skipped while the owner is healing on a running pad (character MedInside == true and MedActiveUntil > now).
 --   Switch: script attribute SkillEffectsMedEnabled (default true, read at start; false = 1.21, Med* never written).
+-- v1.23 (pachy Bone Crest; SkillTree 1.30): on a pachy (Species "Pachy") with "crest" bought (a passive line, no slot):
+--   BoneCrestMul = crestMul (0.80 / 0.70 / 0.60; 1 off) and BoneCrestReflect = crestReflect (5 at star; 0 off). BoneCrest
+--   1.0 (module) reads them. Switch: script attribute SkillEffectsCrestEnabled (default true, read at start; false = 1.22).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.22"
+local VERSION = "1.23"
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
 local BLEED_PLAYERS = script:GetAttribute("SkillBleedPlayersEnabled") ~= false
 if script:GetAttribute("SkillBleedPlayerTime") == nil then script:SetAttribute("SkillBleedPlayerTime", 2) end -- v1.18
@@ -155,6 +158,8 @@ local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, Jump
 local KILL_REGEN_DEFAULT = 0.25
 if script:GetAttribute("SkillEffectsMedEnabled") == nil then script:SetAttribute("SkillEffectsMedEnabled", true) end -- v1.22
 local MED_ON = script:GetAttribute("SkillEffectsMedEnabled") ~= false
+if script:GetAttribute("SkillEffectsCrestEnabled") == nil then script:SetAttribute("SkillEffectsCrestEnabled", true) end -- v1.23
+local CREST_ON = script:GetAttribute("SkillEffectsCrestEnabled") ~= false
 if script:GetAttribute("SkillEffectsRaptorLifestealEnabled") == nil then script:SetAttribute("SkillEffectsRaptorLifestealEnabled", true) end -- v1.20
 for k, v in pairs({SkillEffectsIdleRegenEnabled = true, SkillIdleRegenDelay = 8, SkillIdleRegenRate = 0.05}) do -- v1.19; v1.21: rate 0.20 -> 0.05
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -314,6 +319,11 @@ local function applyChar(char, st)
 		char:SetAttribute("HookCooldown", hkOn and e.hookCooldown or 0)
 		char:SetAttribute("HookDamage", hkOn and e.hookDamage or 0)
 		char:SetAttribute("HookLook", hkOn)
+	end
+	if CREST_ON then -- v1.23: Bone Crest (pachy only, passive)
+		local bcOn = live and char:GetAttribute("Species") == "Pachy" and (e.crestMul or 1) < 1
+		char:SetAttribute("BoneCrestMul", bcOn and e.crestMul or 1)
+		char:SetAttribute("BoneCrestReflect", bcOn and (e.crestReflect or 0) or 0)
 	end
 	if MED_ON then -- v1.22: Med-Station (pachy only, in a slot)
 		local mdOn = live and char:GetAttribute("Species") == "Pachy" and (e.medTime or 0) > 0 and inSlot("medstation")

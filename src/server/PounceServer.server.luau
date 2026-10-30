@@ -1,4 +1,4 @@
--- PounceServer v1.8 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.9 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -83,9 +83,22 @@
 --   PounceClaimWindow 0.9, PounceSizeRatio 1.5, PounceLandDamage 8, PounceTickDamage 4, PounceTickInterval 0.5.
 -- Diagnostics (raptor attributes): PounceServerResult, PounceClaimResult, PounceCount, PounceLatchCount,
 --   PounceDamageTotal (this latch), PounceClaimDist.
+-- v1.9 (pachy Bone Crest, SkillTree 1.30; Kepu 2026-10-30 + Thick Hide vs players): every landing / tick hit d =
+--   round(d x BoneCrest.defense(target) x mul), mul = BoneCrest.factor(target, raptor root position) (a raptor latched on
+--   the front of a pachy with Bone Crest: 0.80 / 0.70 / 0.60); a reduced hit calls BoneCrest.after (CLANK, star reflect at
+--   most once per 0.4 s). Raptor diagnostics PounceHitCrestMul, PounceHitDefenseMul. Switch: script attribute
+--   PounceCrestEnabled (default true, read each hit; false = 1.8 damage).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local crestMod -- v1.9: Bone Crest / Thick Hide vs players (ServerStorage.DinoArcade.BoneCrest), loaded on first hit
+local function crest()
+	if crestMod == nil then
+		crestMod = false
+		pcall(function() crestMod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+	end
+	return crestMod or nil
+end
 
 local DEFAULTS = {PounceEnabled = false, PounceStaminaCost = 15, PounceCooldown = 3, PounceClaimWindow = 0.9,
 	PounceSizeRatio = 1.5, PounceLandDamage = 8, PounceTickDamage = 4, PounceTickInterval = 0.5,
@@ -96,7 +109,7 @@ local CLAIM_TOLERANCE = 24  -- studs between the claimed part and the raptor bod
 local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's centre beyond its half size
 local MAX_LATCH = 30        -- safety: seconds a latch may last
 
-script:SetAttribute("PounceServerVersion", "1.8")
+script:SetAttribute("PounceServerVersion", "1.9")
 if script:GetAttribute("PouncePinHoldEnabled") == nil then script:SetAttribute("PouncePinHoldEnabled", true) end -- v1.8
 if script:GetAttribute("PounceSlashTimingEnabled") == nil then script:SetAttribute("PounceSlashTimingEnabled", true) end -- v1.7
 local function slashTiming() return script:GetAttribute("PounceSlashTimingEnabled") ~= false end
@@ -190,6 +203,16 @@ local function hit(char, model, dmg, now, extra)
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and now < untilT then mul = dmul end
 	mul += extra or 0 -- v1.5: cloak ambush bonus, added to the debuff (not multiplied)
 	local d = math.floor(dmg * mul + 0.5)
+	local rawD, crestMul, crestFront, defMul = d, 1, false, 1 -- v1.9
+	local BC = script:GetAttribute("PounceCrestEnabled") ~= false and crest()
+	if BC then
+		local aRoot = char:FindFirstChild("HumanoidRootPart")
+		defMul = BC.defense(model)
+		crestMul, crestFront = BC.factor(model, aRoot and aRoot.Position)
+		d = math.floor(d * defMul * crestMul + 0.5)
+	end
+	char:SetAttribute("PounceHitCrestMul", crestMul)
+	char:SetAttribute("PounceHitDefenseMul", defMul)
 	local hp = model:GetAttribute("DummyHealth")
 	if typeof(hp) == "number" then model:SetAttribute("DummyHealth", math.max(0, hp - d)) end
 	if typeof(hp) == "number" and hp > 0 and hp - d <= 0 then -- v1.3: killing blow
@@ -210,6 +233,7 @@ local function hit(char, model, dmg, now, extra)
 	char:SetAttribute("PounceDamageTotal", (char:GetAttribute("PounceDamageTotal") or 0) + d)
 	if slashTiming() then char:SetAttribute("PounceHitCount", (char:GetAttribute("PounceHitCount") or 0) + 1) end -- v1.7
 	char:SetAttribute("PounceBiteAt", now)
+	if BC and crestFront and crestMul < 1 then BC.after(model, char, math.floor(rawD * defMul + 0.5), d, "pounce") end -- v1.9
 end
 
 local function release(char, reason)

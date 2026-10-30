@@ -1,4 +1,4 @@
--- BiteServer v1.7 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
+-- BiteServer v1.8 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
 -- hit at the moment the jaws shut.
 -- Client -> server: ReplicatedStorage.DinoBiteRequest:FireServer(clientServerTime) (sent by BiteTest)
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now] (so every client's pose lines up with
@@ -67,6 +67,13 @@
 -- Diagnostics (character attributes): BiteHitSource ("client" / "server" / "aim"), BiteClaimDist (studs from the
 --   server capsule line to the claimed point), BiteCount (accepted), BiteLastResult ("ok" / "cooldown" /
 --   "roaring" / "disabled" / "dead" / "badArg"), BiteLastContact ("hit" / "miss"), BiteStartLag (s).
+-- v1.8 (pachy Bone Crest, SkillTree 1.30; Kepu 2026-10-30 "Whoever bites your dome does 40% less damage" + Thick Hide vs
+--   players): after the zone / debuff / tired maths, dmg = round(dmg x BoneCrest.defense(target) x mul), mul =
+--   BoneCrest.factor(target, attacker root position) (front bites on a pachy with Bone Crest: 0.80 / 0.70 / 0.60; 1
+--   otherwise); a reduced front bite calls BoneCrest.after (CLANK, star reflect). defense = the target's own
+--   StatDamageTakenMul when the target is a player's character (Thick Hide now works against player bites too).
+--   Attacker diagnostics BiteHitCrestMul, BiteHitDefenseMul. Switch: script attribute BiteCrestEnabled (default true,
+--   read each hit; false = 1.7 damage).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local remote = ReplicatedStorage:FindFirstChild("DinoBiteRequest")
@@ -87,7 +94,16 @@ local DEFAULTS = {BiteEnabled = true, BiteCooldown = 0.8, BiteWindup = 0.15, Bit
 	StaminaTiredBiteMul = 0.6, -- v1.4
 	BiteDipMax = 60, -- v1.5
 	BiteAimMax = 45, BiteAimSlack = 2} -- v1.7
-script:SetAttribute("BiteServerVersion", "1.7")
+script:SetAttribute("BiteServerVersion", "1.8")
+local crestMod -- v1.8: Bone Crest / Thick Hide vs players (ServerStorage.DinoArcade.BoneCrest), loaded on first hit
+local function crest()
+	if crestMod == nil then
+		crestMod = false
+		pcall(function() crestMod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+	end
+	return crestMod or nil
+end
+
 local MAX_LAG = 0.3 -- seconds a client stamp may lag behind the server clock
 local CLAIM_WAIT = 0.35     -- seconds after contact a claim is still taken
 local CLAIM_SLACK = 10      -- extra studs allowed between the server capsule line and a claimed point
@@ -214,6 +230,16 @@ local function applyHit(char, model, point, source, part)
 	local pb = pending[char] -- v1.4: was the attacker exhausted when this bite was accepted?
 	local tiredMul = (pb and pb.exhausted) and get(char, "StaminaTiredBiteMul") or 1
 	local dmg = math.floor(base * zoneMul * debuffMul * tiredMul + 0.5)
+	local rawDmg, crestMul, crestFront, defMul = dmg, 1, false, 1 -- v1.8
+	local BC = script:GetAttribute("BiteCrestEnabled") ~= false and crest()
+	if BC then
+		local aRoot = char:FindFirstChild("HumanoidRootPart")
+		defMul = BC.defense(model)
+		crestMul, crestFront = BC.factor(model, aRoot and aRoot.Position)
+		dmg = math.floor(dmg * defMul * crestMul + 0.5)
+	end
+	char:SetAttribute("BiteHitCrestMul", crestMul)
+	char:SetAttribute("BiteHitDefenseMul", defMul)
 	char:SetAttribute("BiteHitBaseDamage", base)
 	char:SetAttribute("BiteHitZone", zone)
 	char:SetAttribute("BiteHitSegment", seg)
@@ -236,6 +262,7 @@ local function applyHit(char, model, point, source, part)
 	char:SetAttribute("BiteHitCount", (char:GetAttribute("BiteHitCount") or 0) + 1)
 	char:SetAttribute("BiteLastContact", "hit")
 	char:SetAttribute("BiteHitAt", workspace:GetServerTimeNow()) -- last: clients react to this one
+	if BC and crestFront and crestMul < 1 then BC.after(model, char, math.floor(rawDmg * defMul + 0.5), dmg, "bite") end -- v1.8
 end
 
 local function checkHit(char, startedAt)

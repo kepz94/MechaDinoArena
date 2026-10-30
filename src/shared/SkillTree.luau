@@ -1,4 +1,4 @@
--- SkillTree v1.29 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.30 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -269,6 +269,13 @@ SkillTree.AREAS = {
 --   soon false, LIVE_MECH, BUTTONS, step texts I-star below. effects() gives medRadius / medTime / medRate / medCooldown:
 --   I 12 studs / 5 s / 0.10 per s / 30 s; II radius 18; III 7 s; star 10 s (Kepu: "Just extend the duration to be able to
 --   full heal in 10 seconds"); 0 below I. MedStationServer 1.0 runs it. Raptor / T-Rex still never see it. false = 1.28.
+-- v1.30 (Kepu 2026-10-30: "We'll do the bone crest to replace the thick hide. Whoever bites your dome does 40% less
+--   damage"; answers: builds up to 40%, front bites only, spark + CLANK, Thick Hide vs players fixed too): with
+--   SkillTree.PACHY_BONE_CREST (default true) a pachy-only Defense line "crest" "Bone Crest" (not a mech part, no slot) is
+--   added and PATHS.hide.notFor gains Pachy (saved Thick Hide steps on the pachy are dropped by sanitize, points come
+--   back). effects(): crestMul 0.80 / 0.70 / 0.60 at I / II / III (bites and pounces from in front of the pachy do that
+--   share of their damage), crestReflect 5 at star (the biter takes 5 back); 1 / 0 below I. BoneCrest 1.0 (module) does
+--   the maths for BiteServer / PounceServer / BotServer. false = 1.29.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -546,6 +553,25 @@ if SkillTree.PACHY_MEDSTATION and SkillTree.PATHS.medstation then
 	SkillTree.LIVE_MECH.medstation = true
 	SkillTree.BUTTONS.medstation = true
 end
+-- v1.30: the pachy's Bone Crest replaces Thick Hide (Defense)
+SkillTree.PACHY_BONE_CREST = true
+if SkillTree.PACHY_BONE_CREST and not SkillTree.PATHS.crest then
+	local p = path("crest", "Bone Crest", false, false, {
+		"Bites and pounces on your dome (from in front) do 20% less damage",
+		"Dome bites do 30% less",
+		"Dome bites do 40% less",
+		"Whoever bites your dome takes 5 damage back"})
+	p.area = "defense"
+	p.dino = "Pachy"
+	SkillTree.OWNER.crest = "Pachy"
+	for _, a in ipairs(SkillTree.AREAS) do
+		if a.id == "defense" then table.insert(a.paths, p) end
+	end
+	SkillTree.PATHS.crest = p
+	table.insert(SkillTree.PATH_ORDER, "crest")
+	SkillTree.PATHS.hide.notFor = SkillTree.PATHS.hide.notFor or {}
+	SkillTree.PATHS.hide.notFor.Pachy = true
+end
 -- v1.28: stronger Lifesteal for the raptor (texts; the numbers are in effects)
 SkillTree.RAPTOR_LIFESTEAL_STRONG = true
 if SkillTree.RAPTOR_LIFESTEAL_STRONG and SkillTree.PATHS.lifesteal then
@@ -730,6 +756,15 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if h >= 2 then e.tossMul = 0.5 end
 	if h >= 3 then e.stunMul = 0.75 end
 	if h >= 4 then e.stunImmuneAbove = 0.5 end
+	-- v1.30: Bone Crest (pachy)
+	local bc = s.crest or 0
+	e.crestMul, e.crestReflect = 1, 0
+	if SkillTree.PACHY_BONE_CREST then
+		if bc >= 1 then e.crestMul = 0.80 end
+		if bc >= 2 then e.crestMul = 0.70 end
+		if bc >= 3 then e.crestMul = 0.60 end
+		if bc >= 4 then e.crestReflect = 5 end
+	end
 	-- Sprint Legs
 	local g = s.legs
 	if g >= 1 then e.speedPts += 1 end
