@@ -1997,6 +1997,10 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | HeadbuttShoveVersion / HeadbuttShoveState / HeadbuttShoveMoved | hit player's dino (client) | "1.0" / idle / pushed / studs | push diagnostics |
 | SprintHeadbuttSlowEnabled | SprintTest script | true | SprintTest 1.9 headbutt slows; false = 1.8 |
 | MoveSpeedParts | character (client) | + "headbutt" / "headbuttSelf" (1.9) | active speed parts |
+| HeadbuttPoseEnabled | pachy character | true | HeadbuttPose 1.0 switch (false = IdleAnimation 1.28 look) |
+| HeadbuttPoseState / HeadbuttPoseSource | pachy character (client) | none / windup / charge / impact / fade; local / server | IdleAnimation 1.29 diagnostics |
+| HeadbuttFXEnabled | pachy character | true | HeadbuttFX 1.0 switch |
+| HeadbuttFXVersion / HeadbuttFXCharging / HeadbuttFXHits | pachy character (client) | "1.0" / bool / 0.. | HeadbuttFX diagnostics |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |

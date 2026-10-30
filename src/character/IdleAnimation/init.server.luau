@@ -1,4 +1,4 @@
--- IdleAnimation v1.28 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.29 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -152,6 +152,11 @@
 --       strike when the hit arrives) instead of PouncePose.latch (bite). Otherwise the v1.16 latch pose, unchanged.
 --       Diagnostics: PounceSlashState ("L:<phase> R:<phase>", "" when not slashing), PounceSlashStrikes (strikes shown
 --       this latch), PounceSlashHits (hit count seen this latch).
+-- v1.29: pachy headbutt charge pose (HeadbuttPose 1.0; MDA-119, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 8). Models
+--       with HeadbuttEnabled = true (PachyModelData 1.1): phase from HeadbuttPose.phase (owner client: HeadbuttTest 1.0
+--       local state; other clients: HeadbuttStartedAt / HeadbuttHitAt / HeadbuttEndedAt), multiplied on after the ram
+--       layer; the head lead is suppressed while it runs. Switch: model attribute HeadbuttPoseEnabled (default true).
+--       Diagnostics: HeadbuttPoseState ("none" / "windup" / "charge" / "impact" / "fade"), HeadbuttPoseSource.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -179,6 +184,7 @@ local RamPose = require(script.RamPose) -- v1.19 (defaults are read by RamPose.s
 local EatPose = require(script.EatPose) -- v1.20 (defaults are read by EatPose.settings)
 local DeadPose = require(script.DeadPose) -- v1.21 (defaults are read by DeadPose.settings)
 local BoostPose = require(script.BoostPose) -- v1.27 (defaults are read by BoostPose.settings)
+local HeadbuttPose = require(script.HeadbuttPose) -- v1.29 (defaults are read by HeadbuttPose.settings)
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -950,6 +956,13 @@ RunService.PreSimulation:Connect(function(dt)
 		end
 	end
 	local ramActive = ramPhase ~= nil
+	-- v1.29: headbutt charge phase (pachy)
+	local hbPhase, hbU, hbSource = nil, 0, "none"
+	if model:GetAttribute("HeadbuttEnabled") == true then
+		local lpH = Players.LocalPlayer
+		hbPhase, hbU, hbSource = HeadbuttPose.phase(model, lpH ~= nil and lpH.Character == model, workspace:GetServerTimeNow())
+	end
+	local hbActive = hbPhase ~= nil
 	-- head leans into turns while moving
 	local turnHead = 0
 	if ts.TurnHeadEnabled and blend > 0.001 then
@@ -973,7 +986,7 @@ RunService.PreSimulation:Connect(function(dt)
 	local leadTarget = 0
 	if not hl.HeadLeadEnabled then
 		leadState = "off"
-	elseif roarF or biteT or pounceActive or ramActive or eatActive then -- v1.16: pounce; v1.19: ram; v1.20: eat / drink
+	elseif roarF or biteT or pounceActive or ramActive or eatActive or hbActive then -- v1.16: pounce; v1.19: ram; v1.20: eat / drink; v1.29: headbutt
 		leadState = "suppressed"
 	else
 		leadTarget = HeadLeadPose.target(leadErr, hl)
@@ -994,6 +1007,16 @@ RunService.PreSimulation:Connect(function(dt)
 	end
 	show("RamState", ramPhase or "none")
 	show("RamSource", ramSource)
+	-- v1.29: headbutt charge on top of the body and head lead
+	if hbPhase then
+		for name, off in pairs(HeadbuttPose.get(hbPhase, hbU, 1, now)) do
+			if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+		end
+	end
+	if model:GetAttribute("HeadbuttEnabled") == true then
+		show("HeadbuttPoseState", hbPhase or "none")
+		show("HeadbuttPoseSource", hbSource)
+	end
 	-- roar on top of whatever the body is doing (upper body only)
 	local roarState = "none"
 	if roarF then
