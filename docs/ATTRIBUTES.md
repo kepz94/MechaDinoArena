@@ -1715,3 +1715,17 @@ PlaceGate 1.0 (ServerScriptService.PlaceGate, script attributes):
 
 BotServer.Enabled is now false in the place file and BotServer.meta.json; PlaceGate starts it.
 
+ModeServer 1.0 (ServerScriptService.ModeServer):
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| ModeServerEnabled | script | true | false = no menu state, no pad, today's spawn (read at start) |
+| ModeServerState | script | "on" / "off" | |
+| ModeServerMode | script | "sandbox" / "arena" | ModeRules.currentMode() at start |
+| ModeServerVersion | script | "1.0" | |
+| DinoMode | player | "sandbox" / "arena" | this server's mode |
+| InMenu | player | true on join | in the main menu: parked on MenuLobbyPad, nobody can affect them (ModeRules) |
+| ModeLastResult | player | "ok" / "badArg" / "busy" / "saving" / "teleporting" / "teleportFailed" / "studio" / "noArenaPlace" | last DinoModeRequest result |
+| ModeLastAt | player | server time | set last; clients react to it |
+| ModeParkSlot | player | 0 / 1.. | parking slot on the pad (0 = not parked) |
+
+RemoteEvent ReplicatedStorage.DinoModeRequest:FireServer("play" / "sandbox" / "arena" / "menu"). Part Workspace.MenuLobbyPad (invisible, anchored, 400 x 2 x 400, 600 studs above the SpawnLocation).
