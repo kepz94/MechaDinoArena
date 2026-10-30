@@ -40,9 +40,12 @@
 -- v1.2 (Grappling Hook, MDA-122): a request while the pachy's hook shot runs (HookBusyUntil, HookServer 1.0, in the
 --   future) is "busy". Switch: script attribute HeadbuttHookBusyEnabled (default true, read at start).
 --   Tiered refill (Kepu 2026-10-30: "Base refill for the first ram used. Slightly longer once you use two and once you
---   use 3 it's longer to refill. This way it punishes spammers"; picked 1x / 1.3x / 1.6x, self-slow kept): each refill's
---   time = HeadbuttRefill x HeadbuttRefillMul x (1 while 1 charge is missing when that refill starts; character attribute
---   HeadbuttRefillTier2 (default 1.3) while 2 are missing; HeadbuttRefillTier3 (default 1.6) while 3 are missing).
+--   use 3 it's longer to refill. This way it punishes spammers"; picked 1x / 1.3x / 1.6x, self-slow kept): a refill's
+--   length = HeadbuttRefill x HeadbuttRefillMul x (1 while 1 charge is missing; character attribute HeadbuttRefillTier2
+--   (default 1.3) while 2 are missing; HeadbuttRefillTier3 (default 1.6) while 3 are missing). Spending another charge
+--   while a refill runs stretches that refill to the new tier (its start stays, progress kept); the next refill after it
+--   is priced by the charges missing then. Studio check of the first version: a refill always started at "1 missing",
+--   so the tiers never applied; fixed before release.
 --   Diagnostic HeadbuttRefillTierUsed (2 / 3, the last tier above 1). Switch: script attribute HeadbuttRefillTiersEnabled
 --   (default true, read at start; false = one refill time).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
@@ -185,7 +188,11 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		return
 	end
 	st.charges -= 1
-	if not st.refillAt then st.refillStart, st.refillAt = t, t + refillTime(char, maxCharges(char) - st.charges) end
+	if not st.refillAt then
+		st.refillStart, st.refillAt = t, t + refillTime(char, maxCharges(char) - st.charges)
+	elseif TIERS_ON then -- v1.2 fix: the running refill stretches to the tier of the charges missing now
+		st.refillAt = st.refillStart + refillTime(char, maxCharges(char) - st.charges)
+	end
 	st.active = {stamp = stamp, startAt = t, deadline = t + get(char, "HeadbuttWindup") + get(char, "HeadbuttMaxTime") + END_SLACK,
 		hit = false}
 	publish(char, st)
