@@ -1686,5 +1686,5 @@ Instances: workspace ShockMine (Base, Ring, Mast, Light, TriggerRing), MineBurst
 
 Instances on the hit dino's root while thrown + dazed: MineZapSparks, MineZapLight, MineZapArc_1-4 (+ attachments),
 MineDamagePop (BillboardGui, 1 s); workspace MineZapSound (4 s).
-MineServer 1.2: a player whose Energy Shield is up is not thrown or dazed (pop "BLOCKED"); target diagnostic MineBlockedAt (server time).
+MineServer 1.2: a player whose Energy Shield is up is not thrown, dazed or jammed (pop "BLOCKED"); target diagnostic MineBlockedAt (server time).
 

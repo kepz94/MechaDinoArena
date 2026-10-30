@@ -51,8 +51,8 @@
 --     free; "" = silent) plays from "MineZapSound" at the blast.
 -- v1.2 (MDA-82; Kepu 2026-10-29: "Yes energy shield blocks it"): a player whose Energy Shield is up (EnergyShieldUntil >
 --   now) is not thrown or dazed by a mine (the shield already blocked the damage); the pop reads "BLOCKED", the zap
---   flickers 0.3 s, target diagnostic MineBlockedAt. The star jam still lands (it ends the shield, as the Shock Cannon's
---   does).
+--   flickers 0.3 s, target diagnostic MineBlockedAt. The star jam does not land either (Kepu: "It shouldn't break the
+--   shield if the shield was equipped before stepping on it").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -414,7 +414,7 @@ local function hit(m, target)
 	end
 	zap(target, fxTime) -- v1.1
 	pop(target, popText) -- v1.1
-	if m.jam then target:SetAttribute("PartsJammedAt", t) end
+	if m.jam and not shielded then target:SetAttribute("PartsJammedAt", t) end -- v1.2: a shield that was up blocks the jam too
 	target:SetAttribute("MineHitBy", owner.Name)
 	target:SetAttribute("MineHitCount", (target:GetAttribute("MineHitCount") or 0) + 1)
 	if owner.Parent then
