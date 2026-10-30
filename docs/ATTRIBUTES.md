@@ -1852,3 +1852,20 @@ BindableFunction ReplicatedFirst.EggLoader.Play(target "Sandbox" / "Arena"). Scr
 | BladeClaws | character | number | lengthened claws (raptor: 12) |
 
 BindableFunction ScentServer.BuildPreview (server only). Model Mecha_Scent: MaskPlate, MaskTop, MaskVent, MaskCanL/R, MaskCoreL/R, MaskChin, MaskChinVent. Mecha_Blade (long claws): Claw_<Seg>_<n>, ClawTip_<Seg>_<n>.
+
+### Music (Music 1.0, MusicServer 1.0, MainMenu 1.5)
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| MusicEnabled | Music script (ReplicatedFirst) | true | false = no music; read at start |
+| MusicVersion | player (local) | "1.0" | |
+| MusicState | player (local) | "menu" / "island" / "lab" / "off" | which song should play |
+| MusicTrack | player (local) | song name / "" | playing song |
+| MusicLoaded | player (local) | true / false | playing song's TimeLength > 0 |
+| MusicMuted | player | true / false | MUSIC OFF (set by MusicServer) |
+| MusicServerEnabled | MusicServer script | true | false = no remote, music always on; read at start |
+| MusicSaveState | MusicServer script | "ok" / "readFailed" / "writeFailed" / "noStore" | last DataStore result |
+| MusicSettingRequests | MusicServer script | 0.. | remote calls |
+| MainMenuMusicButtonEnabled | MainMenu script | true | false = no MUSIC button |
+
+RemoteEvent ReplicatedStorage.MusicSetting:FireServer(muted). Sounds: SoundService.MDA_Music (menu / island / lab), client-side.
+Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performed by Kevin MacLeod, CC BY), island rbxassetid://1835450413 (Little Toys, APM), lab rbxassetid://1845556724 (Crazy Daisy, APM "Afro 8 Bit").

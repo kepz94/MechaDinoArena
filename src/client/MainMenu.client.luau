@@ -1,4 +1,4 @@
--- MainMenu v1.4 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.5 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -80,13 +80,19 @@
 --   area below that row, so the hint is always above its head. Switches: script attributes MainMenuMechFirstEnabled
 --   (default true, read at start; false = plain view first) and MainMenuHintTopEnabled (default true; false = 1.3 hint
 --   at the bottom).
+-- v1.5 (Kepu 2026-10-29: a MUSIC on/off button in the main menu, remembered per player): a pill "MUSIC ON" (volt text) /
+--   "MUSIC OFF" (muted text) in the top-right corner of the menu (right edge = the right column's right edge, top =
+--   the menu's top padding; height max(4.6ch, 28), text GothamBlack max(1.8ch, 11), padding 1.6ch, dark panel, white
+--   stroke 0.8). It shows the player attribute MusicMuted (MusicServer 1.0) and a tap fires
+--   ReplicatedStorage.MusicSetting:FireServer(not muted); Music 1.0 plays or fades out. Switch: script attribute
+--   MainMenuMusicButtonEnabled (default true, read at start; false = no button). Diagnostic: MainMenuLastPress "music".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -397,6 +403,37 @@ local toastCorner = corner(toast)
 local toastStroke = stroke(toast, YELLOW, 0, 2)
 local toastPad = Instance.new("UIPadding")
 toastPad.Parent = toast
+
+-- v1.5: MUSIC on / off
+if script:GetAttribute("MainMenuMusicButtonEnabled") == nil then script:SetAttribute("MainMenuMusicButtonEnabled", true) end
+local musicOn = script:GetAttribute("MainMenuMusicButtonEnabled") ~= false
+local musicB = Instance.new("TextButton")
+musicB.Name = "Music"
+musicB.AutoButtonColor = false
+musicB.BackgroundColor3 = PANEL
+musicB.BackgroundTransparency = 0.1
+musicB.BorderSizePixel = 0
+musicB.Font = Enum.Font.GothamBlack
+musicB.AutomaticSize = Enum.AutomaticSize.X
+musicB.AnchorPoint = Vector2.new(1, 0)
+musicB.Visible = musicOn
+musicB.Parent = root
+local musicCorner = corner(musicB)
+stroke(musicB, WHITE, 0.8, 2)
+local musicPad = Instance.new("UIPadding")
+musicPad.Parent = musicB
+local function drawMusic()
+	local muted = player:GetAttribute("MusicMuted") == true
+	musicB.Text = muted and "MUSIC OFF" or "MUSIC ON"
+	musicB.TextColor3 = muted and MUTED or VOLT
+end
+drawMusic()
+player:GetAttributeChangedSignal("MusicMuted"):Connect(drawMusic)
+musicB.Activated:Connect(function()
+	player:SetAttribute("MainMenuLastPress", "music")
+	local remote = ReplicatedStorage:FindFirstChild("MusicSetting")
+	if remote then remote:FireServer(not (player:GetAttribute("MusicMuted") == true)) end
+end)
 
 -- ---------- state ----------
 if script:GetAttribute("MainMenuMechFirstEnabled") == nil then script:SetAttribute("MainMenuMechFirstEnabled", true) end -- v1.4
@@ -852,6 +889,13 @@ local function layout()
 	toast.Position = UDim2.new(0.5, 0, 0, 12 * ch)
 	toastCorner.CornerRadius = UDim.new(0, 1.6 * ch)
 	toastPad.PaddingLeft, toastPad.PaddingRight = UDim.new(0, 2.4 * ch), UDim.new(0, 2.4 * ch)
+	-- v1.5: MUSIC on / off, top-right
+	local mh = math.max(4.6 * ch, 28)
+	musicB.TextSize = math.max(1.8 * ch, 11)
+	musicB.Size = UDim2.fromOffset(0, mh)
+	musicB.Position = UDim2.fromOffset(S.rightX + S.rightW, S.top)
+	musicCorner.CornerRadius = UDim.new(0, 1.2 * ch)
+	musicPad.PaddingLeft, musicPad.PaddingRight = UDim.new(0, 1.6 * ch), UDim.new(0, 1.6 * ch)
 end
 
 function relayout()

@@ -1,4 +1,4 @@
--- ArenaScope v1.12 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.13 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -31,10 +31,11 @@
 -- v1.11 (Egg Loader, MDA-95, plan docs/plans/EGG_LOADER_v1.0.md Task 3): EggLoader (ReplicatedFirst) expected on.
 -- v1.12 (Lab, MDA-99, plan docs/plans/LAB_v1.0.md Task 4): Lab (StarterPlayerScripts) and LabPreviewServer
 --   (ServerScriptService) expected on; the SkillScreen entry is removed (SkillScreen deleted, Kepu 2026-10-29: "Delete it").
+-- v1.13 (music, Kepu 2026-10-29): Music (ReplicatedFirst) and MusicServer (ServerScriptService) expected on.
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.12"
+local VERSION = "1.13"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 local SPS = StarterPlayer:WaitForChild("StarterPlayerScripts") -- v1.6
 local RF = game:GetService("ReplicatedFirst") -- v1.11
@@ -84,6 +85,7 @@ local SCOPE = {
 	{SSS, "PlaceGate", true}, {SSS, "ModeServer", true}, {SSS, "ArenaPvP", true}, {SPS, "MainMenu", true}, -- v1.10
 	{RF, "EggLoader", true}, -- v1.11
 	{SPS, "Lab", true}, {SSS, "LabPreviewServer", true}, -- v1.12
+	{RF, "Music", true}, {SSS, "MusicServer", true}, -- v1.13
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)
