@@ -1975,6 +1975,28 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | RaptorScalePachyEnabled / PachyScale | RaptorScale script | true / 2 | RaptorScale 1.1 pachy scaling |
 | MainMenuPachyEnabled | MainMenu script | true | MainMenu 1.8 PACHY card |
 | Headbutt* (Enabled, Charges, Windup, SpeedMul, MaxTime, TurnMul, Damage, Shove, ShoveTime, SlowMul, SlowTime, Refill, SelfSlowMul, SelfSlowTime, Reach) | pachy character | true, 2, 0.15, 1.4, 1.8, 2, 20, 40, 0.35, 0.65, 3, 5, 0.65, 2.5, 2 | PachyModelData 1.1 headbutt settings (HeadbuttServer / HeadbuttTest) |
+| HeadbuttExtraCharges / HeadbuttRefillMul | pachy character | 0 / 1 | added charges and refill time multiplier (upgrades, Drop 2) |
+| HeadbuttServerEnabled | HeadbuttServer script | true | HeadbuttServer 1.0; false = every request "disabled" |
+| HeadbuttServerVersion / HeadbuttRequests / HeadbuttHits | HeadbuttServer script | "1.0" / 0.. / 0.. | server diagnostics |
+| HeadbuttChargesNow / HeadbuttChargesMax | pachy character (server) | 0..max / 2 (+extra) | charges ready / max |
+| HeadbuttRefillStart / HeadbuttRefillAt | pachy character (server) | server time / 0 | the charge refilling now (0 when full) |
+| HeadbuttServerResult / HeadbuttServerResultAt | pachy character (server) | ok / badArg / dead / disabled / menu / stunned / pinned / busy / empty | last request result |
+| HeadbuttStartedAt / HeadbuttCount | pachy character (server) | server time / 0.. | charge started (set last) / charges used |
+| HeadbuttResult / HeadbuttEndedAt | pachy character (server) | hit / ended / timeout / died | how the last charge ended |
+| HeadbuttSelfSlowMul / HeadbuttSelfSlowUntil / HeadbuttSelfSlowCount | pachy character (server) | 0.65 / server time / 0.. | slow after the last charge (SprintTest 1.9) |
+| HeadbuttHitResult / HeadbuttHitGap | pachy character (server) | hit / noCharge / used / badTarget / self / ko / far; studs | last hit claim |
+| HeadbuttHitDamage / HeadbuttHitTarget / HeadbuttHitCount / HeadbuttHitAt | pachy character (server) | 20 / model name / 0.. / server time | last hit (HitAt set last) |
+| HeadbuttSlowMul / HeadbuttSlowUntil | hit dino (server) | 0.65 / server time | hit slow (players: SprintTest 1.9; bots: HeadbuttServer) |
+| HeadbuttShoveFrom / HeadbuttShoveDist / HeadbuttShoveTime / HeadbuttShoveAt | hit player's dino (server) | Vector3 / 40 / 0.35 / server time | shove stamp (At set last) for HeadbuttShove |
+| HeadbuttShoveResult / HeadbuttHitBy | hit dino (server) | shoved / shielded / botBusy; name | shove outcome / attacker |
+| HeadbuttTestVersion / HeadbuttLocalState / HeadbuttTestState | pachy character (client) | "1.0" / ready / windup / charge / recover | client state |
+| HeadbuttLastInput / HeadbuttInputResult | pachy character (client) | click / key / touch; sent / disabled / dead / stunned / busy / empty / denied:<r> | last press |
+| HeadbuttPredictedAt / HeadbuttLocalEndAt / HeadbuttSteer / HeadbuttContact / HeadbuttClickBound | pachy character (client) | stamp / time / input / straight / model name / bool | client diagnostics |
+| HeadbuttLeftClickEnabled | pachy character | true | false = no left-click headbutt (F / touch stay) |
+| HeadbuttShoveEnabled / HeadbuttShoveAccel | hit player's dino | true / 20000 | HeadbuttShove 1.0 switch / push force limit per mass |
+| HeadbuttShoveVersion / HeadbuttShoveState / HeadbuttShoveMoved | hit player's dino (client) | "1.0" / idle / pushed / studs | push diagnostics |
+| SprintHeadbuttSlowEnabled | SprintTest script | true | SprintTest 1.9 headbutt slows; false = 1.8 |
+| MoveSpeedParts | character (client) | + "headbutt" / "headbuttSelf" (1.9) | active speed parts |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |

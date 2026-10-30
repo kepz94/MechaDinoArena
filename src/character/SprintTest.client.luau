@@ -1,4 +1,4 @@
--- SprintTest v1.8 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.9 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -26,6 +26,10 @@
 -- v1.8 (raptor traps, MDA-80, plan docs/plans/RAPTOR_TRAPS_v1.0.md Task 4): a Shock Mine hit (MineSlowUntil /
 --   MineSlowMul, MineServer 1.0) multiplies the speed by MineSlowMul until then, with the other part multipliers;
 --   MoveSpeedParts can include "mine".
+-- v1.9 (pachy headbutt, MDA-119, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 7; HeadbuttServer 1.0): a headbutt hit
+--   (HeadbuttSlowUntil / HeadbuttSlowMul on the hit dino) and the pachy's own slow after its last charge
+--   (HeadbuttSelfSlowUntil / HeadbuttSelfSlowMul) multiply the speed like the mine slow; MoveSpeedParts can include
+--   "headbutt" / "headbuttSelf". Switch: script attribute SprintHeadbuttSlowEnabled (default true).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -75,6 +79,16 @@ local function partSpeed()
 		mul *= math.clamp(mineMul, 0.05, 1)
 		table.insert(names, "mine")
 		table.insert(ends, mineUntil)
+	end
+	if script:GetAttribute("SprintHeadbuttSlowEnabled") ~= false then -- v1.9
+		for _, h in ipairs({{"headbutt", "HeadbuttSlowUntil", "HeadbuttSlowMul"}, {"headbuttSelf", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul"}}) do
+			local untilT, m = char:GetAttribute(h[2]), char:GetAttribute(h[3])
+			if typeof(untilT) == "number" and typeof(m) == "number" and t < untilT then
+				mul *= math.clamp(m, 0.05, 1)
+				table.insert(names, h[1])
+				table.insert(ends, untilT)
+			end
+		end
 	end
 	return mul, (#names > 0 and table.concat(names, "+") or "none"), ends
 end
@@ -158,7 +172,7 @@ char:GetAttributeChangedSignal("DebuffSpeedMul"):Connect(apply) -- v1.3
 char:GetAttributeChangedSignal("Exhausted"):Connect(apply)      -- v1.4
 char:GetAttributeChangedSignal("AutoRun"):Connect(apply)        -- v1.5
 for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil", "EnergyShieldSpeedMul", "ScreechSlowUntil",
-	"MineSlowUntil", "MineSlowMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul
+	"MineSlowUntil", "MineSlowMul", "HeadbuttSlowUntil", "HeadbuttSlowMul", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 apply()
