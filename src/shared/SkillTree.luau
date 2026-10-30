@@ -1,4 +1,4 @@
--- SkillTree v1.26 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.27 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -254,6 +254,10 @@ SkillTree.AREAS = {
 --   SkillTree.PACHY_NO_REGEN (default true) PATHS.regen.notFor gains Pachy (the same rule as Regeneration for the T-Rex):
 --   the pachy's tree has no Regeneration line and saved Regeneration steps on the pachy are dropped by sanitize (their
 --   points come back). Lifesteal and the built-in kill regen are not changed. false = 1.25.
+-- v1.27 (Kepu 2026-10-30: "I noticed health steal is still a thing for the patchy"): with SkillTree.PACHY_NO_LIFESTEAL
+--   (default true) PATHS.lifesteal.notFor gains Pachy (same rule as v1.26): no Lifesteal line (and no Lifesteal star
+--   shield) on the pachy; saved Lifesteal steps on the pachy are dropped by sanitize (their points come back). The
+--   built-in kill regen (25% over 5 s) is not changed. Raptor / T-Rex keep Lifesteal. false = 1.26.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -509,6 +513,12 @@ SkillTree.PACHY_NO_REGEN = true
 if SkillTree.PACHY_NO_REGEN and SkillTree.PATHS.regen then
 	SkillTree.PATHS.regen.notFor = SkillTree.PATHS.regen.notFor or {}
 	SkillTree.PATHS.regen.notFor.Pachy = true
+end
+-- v1.27: no Lifesteal for the pachy
+SkillTree.PACHY_NO_LIFESTEAL = true
+if SkillTree.PACHY_NO_LIFESTEAL and SkillTree.PATHS.lifesteal then
+	SkillTree.PATHS.lifesteal.notFor = SkillTree.PATHS.lifesteal.notFor or {}
+	SkillTree.PATHS.lifesteal.notFor.Pachy = true
 end
 -- v1.24: the pachy's Blood Rush (slot part, fires through ATTACK)
 SkillTree.BLOOD_RUSH = true
