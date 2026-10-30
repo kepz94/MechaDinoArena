@@ -1,4 +1,4 @@
--- SkillTree v1.17 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.18 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -208,6 +208,11 @@ SkillTree.AREAS = {
 --   charges, so rank II's "2 mines out at once" did nothing. With SkillTree.MINE_FOURTH (default true) rank II sets
 --   mineMax 4 (4 charges, 4 mines on the ground at once); rank I keeps mineMax 1 (= 3 charges). Step texts: I says
 --   "(3 charges)", II "4th charge: 4 mines". MINE_FOURTH = false restores 1.16 (mineMax 2 at II).
+-- v1.18 (Kepu 2026-10-30: the pounce button is now "ATTACK" for every dino because testers were confused what pounce
+--   meant; "number 1 is fine" = the skill texts follow): with SkillTree.ATTACK_WORDING (default true) the step texts say
+--   attack instead of pounce: Blade Claws I / III / star, Cloak Field I / III, Sprint Legs III. Sprint Legs III names
+--   "the raptor's attack" because moveCdMul does not touch the T-Rex bite (SkillEffects skips BiteCooldown). Texts only;
+--   no effect changes. ATTACK_WORDING = false restores 1.17 texts.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -381,6 +386,17 @@ if SkillTree.LEGS_GENTLE then
 	P.legs.steps[1] = "Run 10% faster (+1 Speed point)"
 	P.legs.steps[2] = "Run 20% faster"
 	P.legs.steps[4] = "Run 40% faster"
+end
+-- v1.18: "attack" instead of "pounce" in the step texts
+SkillTree.ATTACK_WORDING = true
+if SkillTree.ATTACK_WORDING then
+	local P = SkillTree.PATHS
+	P.blade.steps[1] = "Mech sickle claws: your attack lands 35% harder"
+	P.blade.steps[3] = "Attack hits make the target bleed"
+	P.blade.steps[4] = "A pin kill gives back half your attack stamina"
+	P.cloak.steps[1] = "Button: nearly invisible for 3 s; bots lose you. Ends when you attack, get hit or use another part"
+	P.cloak.steps[3] = "An attack out of the cloak hits 35% harder"
+	P.legs.steps[3] = "Ram, leap and the raptor's attack recharge 35% faster"
 end
 
 -- level curve
