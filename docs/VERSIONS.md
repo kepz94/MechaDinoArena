@@ -302,6 +302,7 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | SkillServer | 1.7 | Test-run stat buys (Kepu: "it isn't letting me upgrade the stat tree on the test raptor"): the given test parts no longer count as spent points or mastered lines (buyBase); SkillSpent / SkillLeft from buyBase; a given part reads "maxed"; switch SkillTestFreeGivenEnabled. Cause: the Lab judged buys with the given parts at star (8 parts → "NEED .. PTS" / "MASTERY FULL"). Verified: old judge noPoints, new ok; regen bought twice (ok, ok), thrusters "maxed". Install hash 23729 / 1151795954 |
 | Lab | 1.4 | BUY label judged with SkillTestParts set to 0 (as SkillServer 1.7); switch LabTestFreeGivenEnabled. Install hash 54461 / 1886559566 |
 | ArenaScope | 1.16 | MineColors expected on. Install hash 8043 / 1747183888 |
+| Publish | Sandbox v125 + Arena | PvP pin hold, mine charges + colours, test-run stat buys, ArenaScope 1.16 published to Sandbox (v125) and "Mecha Dino Arena - Arena" (Publish As, overwrite), Kepu 2026-10-30 "Publish" |
 | Publish | 2026-10-29 | Egg Loader release: Sandbox place published (v102); Arena place overwritten via Publish As. Live trip check pending (MDA-95). |
 
 ## Open decisions
