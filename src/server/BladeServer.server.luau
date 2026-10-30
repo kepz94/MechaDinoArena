@@ -1,4 +1,4 @@
--- BladeServer v1.3 (Mecha Dino Arena) — Blade Claws look: a mecha sickle claw on each foot of a raptor that owns the
+-- BladeServer v1.4 (Mecha Dino Arena) — Blade Claws look: a mecha sickle claw on each foot of a raptor that owns the
 -- Blade Claws path (passive part, raptor parts batch 1). MDA-61, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 4, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Sickle claws" (Kepu 2026-10-29). The numbers (landing bonus,
 -- faster latch bites, bleed, pin-kill refund) live in PounceServer 1.6 / SkillEffects 1.6; this script is the look only.
@@ -36,11 +36,24 @@
 --   mannequin, not a player) with the same build code (BladeLook = true, then build(model)) and returns its Model "Mecha_Blade" (nil when
 --   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
 --   attribute BladeServerPreviewEnabled (default true; false -> returns nil).
+-- v1.4 (Kepu 2026-10-29: "the claws look terrible. They're not supposed to hook up. Just make the claws they have rn
+--   longer and more visible" / "They should hook down tho not up"; answers: feet + hands, drop the hooks and the forearm
+--   blades, steel with red neon tips): Mecha_Blade is the dino's own claws made longer. For every claw part
+--   ("<Seg>_claw<n>" in FootL / FootR / ArmL / ArmR): its longest side lc points away from the segment's middle (tip
+--   direction d); from the claw's tip a steel piece "Claw_<Seg>_<n>" goes on along d (lc x mul x 0.65 long, the claw's
+--   cross-section x 1.25), then a red neon tip "ClawTip_<Seg>_<n>" (lc x mul x 0.35, cross-section x 0.95) bends 40
+--   degrees DOWN (toward the world's down, taken square to d; a claw that already points mostly down bends toward the
+--   body's back instead). mul = script attribute BladeFootClawMul (default 8) on the feet, BladeHandClawMul (default
+--   3.5) on the hands. Each piece is welded (WeldConstraint) to its claw part, so it moves with the foot / hand. The
+--   hooked foot sickles, the flick and the forearm blades are not built. Star: the neon tips turn HOT and the foot tips
+--   carry the red trail (on during a pounce, as before). BuildPreview also copies the claw parts themselves (steel) into
+--   the returned model, so the Lab card shows whole claws. Switch: script attribute BladeLongClawsEnabled (default true;
+--   false = the 1.3 hooks and forearm blades). Diagnostic: character BladeClaws (number of lengthened claws).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local FLICK_DEG = 40
 local STEEL, RED = Color3.fromRGB(201, 210, 220), Color3.fromRGB(240, 70, 60)
 local HOT = Color3.fromRGB(255, 120, 95) -- v1.2: star
@@ -52,6 +65,9 @@ script:SetAttribute("BladeSlashes", 0)
 if script:GetAttribute("BladeSizeMul") == nil then script:SetAttribute("BladeSizeMul", 3) end -- v1.1
 if script:GetAttribute("BladeOuterSide") == nil then script:SetAttribute("BladeOuterSide", true) end -- v1.1
 if script:GetAttribute("BladeArmBladesEnabled") == nil then script:SetAttribute("BladeArmBladesEnabled", true) end -- v1.2
+if script:GetAttribute("BladeLongClawsEnabled") == nil then script:SetAttribute("BladeLongClawsEnabled", true) end -- v1.4
+if script:GetAttribute("BladeFootClawMul") == nil then script:SetAttribute("BladeFootClawMul", 8) end -- v1.4
+if script:GetAttribute("BladeHandClawMul") == nil then script:SetAttribute("BladeHandClawMul", 3.5) end -- v1.4
 local function stepOf(char) -- v1.2
 	local pl = Players:GetPlayerFromCharacter(char)
 	return pl and tonumber(pl:GetAttribute("SkillPath_blade")) or 0
@@ -136,6 +152,57 @@ local function bodyAxes(root, hrp)
 	return x, y, x:Cross(y)
 end
 
+-- v1.4: the dino's own claws, longer, steel with a red tip hooking down
+local function buildClaws(char, hrp, model)
+	local n = 0
+	local down = -hrp.CFrame.UpVector
+	for _, segName in ipairs({"FootL", "FootR", "ArmL", "ArmR"}) do
+		local seg = char:FindFirstChild(segName)
+		if seg then
+			local mul = tonumber(script:GetAttribute(segName:sub(1, 4) == "Foot" and "BladeFootClawMul" or "BladeHandClawMul")) or 3
+			mul = math.clamp(mul, 0.5, 6)
+			local sum, cnt = Vector3.zero, 0
+			for _, d in ipairs(seg:GetDescendants()) do
+				if d:IsA("BasePart") then sum += d.Position cnt += 1 end
+			end
+			local mid = cnt > 0 and sum / cnt or seg:GetPivot().Position
+			for _, c in ipairs(seg:GetDescendants()) do
+				local k = c:IsA("BasePart") and string.match(c.Name, "^" .. segName .. "_claw(%d+)$")
+				if k then
+					local sz = c.Size
+					local ax, lc, w, h
+					if sz.X >= sz.Y and sz.X >= sz.Z then ax, lc, w, h = Vector3.xAxis, sz.X, sz.Y, sz.Z
+					elseif sz.Y >= sz.Z then ax, lc, w, h = Vector3.yAxis, sz.Y, sz.X, sz.Z
+					else ax, lc, w, h = Vector3.zAxis, sz.Z, sz.X, sz.Y end
+					local dir = c.CFrame:VectorToWorldSpace(ax)
+					if dir:Dot(c.Position - mid) < 0 then dir = -dir end
+					local bend = down - dir * down:Dot(dir)
+					if bend.Magnitude < 0.5 then -- already pointing mostly down: bend toward the body's back
+						local back = -hrp.CFrame.LookVector
+						bend = back - dir * back:Dot(dir)
+					end
+					bend = bend.Unit
+					local L = lc * mul
+					local L1, L2 = L * 0.65, L * 0.35
+					local p0 = c.Position + dir * (lc / 2)
+					local c1 = p0 + dir * (L1 / 2)
+					local piece = part("Claw_" .. segName .. "_" .. k, Vector3.new(w * 1.25, h * 1.25, L1),
+						CFrame.lookAt(c1, c1 + dir, -bend), STEEL, model, c)
+					local dir2 = (dir * math.cos(math.rad(40)) + bend * math.sin(math.rad(40))).Unit
+					local p1 = p0 + dir * L1
+					local c2 = p1 + dir2 * (L2 / 2)
+					local tip = part("ClawTip_" .. segName .. "_" .. k, Vector3.new(w * 0.95, h * 0.95, L2),
+						CFrame.lookAt(c2, c2 + dir2, -bend), RED, model, c)
+					tip.Material = Enum.Material.Neon
+					n += 1
+				end
+			end
+		end
+	end
+	char:SetAttribute("BladeClaws", n)
+	return n
+end
+
 local function build(char)
 	local old = char:FindFirstChild("Mecha_Blade")
 	if old then old:Destroy() end
@@ -148,7 +215,8 @@ local function build(char)
 	local model = Instance.new("Model")
 	model.Name = "Mecha_Blade"
 	local made = 0
-	for _, side in ipairs({{"L", "FootL", 1}, {"R", "FootR", -1}}) do -- inner side: +right for the left foot
+	local longClaws = script:GetAttribute("BladeLongClawsEnabled") ~= false -- v1.4
+	for _, side in ipairs(longClaws and {} or {{"L", "FootL", 1}, {"R", "FootR", -1}}) do -- inner side: +right for the left foot
 		local seg = char:FindFirstChild(side[2])
 		local root = seg and seg:FindFirstChild("Root")
 		local lo, hi
@@ -206,6 +274,7 @@ local function build(char)
 			made += 1
 		end
 	end
+	if longClaws then made = buildClaws(char, hrp, model) end -- v1.4
 	if made == 0 then
 		model:Destroy()
 		char:SetAttribute("BladeLookState", "noFeet")
@@ -215,7 +284,7 @@ local function build(char)
 	local step = stepOf(char)
 	char:SetAttribute("BladeLookStep", step)
 	local arms = 0
-	if step >= 3 and script:GetAttribute("BladeArmBladesEnabled") ~= false then
+	if step >= 3 and not longClaws and script:GetAttribute("BladeArmBladesEnabled") ~= false then -- v1.4: not with long claws
 		local Hd = char:GetExtentsSize().Y
 		for _, side in ipairs({{"L", "ArmL", -1}, {"R", "ArmR", 1}}) do -- outer side: -right for the left arm
 			local seg = char:FindFirstChild(side[2])
@@ -246,6 +315,7 @@ local function build(char)
 		for _, d in ipairs(model:GetDescendants()) do
 			if d:IsA("BasePart") and d.Material == Enum.Material.Neon then d.Color = HOT end
 			if d:IsA("BasePart") and d.Name:sub(1, 10) == "SickleTip_" then addTrail(d, d.Size.Y * 0.5) end
+			if d:IsA("BasePart") and d.Name:sub(1, 12) == "ClawTip_Foot" then addTrail(d, d.Size.Y * 0.5) end -- v1.4
 		end
 	end
 	char:SetAttribute("BladeTrails", "off")
@@ -360,5 +430,22 @@ previewFn.OnInvoke = function(model)
 	if script:GetAttribute("BladeServerPreviewEnabled") == false or typeof(model) ~= "Instance" then return nil end
 	model:SetAttribute("BladeLook", true)
 	build(model)
-	return model:FindFirstChild("Mecha_Blade")
+	local m = model:FindFirstChild("Mecha_Blade")
+	if m and script:GetAttribute("BladeLongClawsEnabled") ~= false then -- v1.4: the card shows the whole claws (own claw too)
+		for _, segName in ipairs({"FootL", "FootR", "ArmL", "ArmR"}) do
+			local seg = model:FindFirstChild(segName)
+			if seg then
+				for _, c in ipairs(seg:GetDescendants()) do
+					if c:IsA("BasePart") and string.match(c.Name, "^" .. segName .. "_claw%d+$") then
+						local cp = c:Clone()
+						cp:ClearAllChildren()
+						cp.Color = STEEL
+						cp.Material = Enum.Material.Metal
+						cp.Parent = m
+					end
+				end
+			end
+		end
+	end
+	return m
 end

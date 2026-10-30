@@ -1840,3 +1840,15 @@ ArenaScope 1.12: ArenaScope_Lab, ArenaScope_LabPreviewServer (ArenaScope_SkillSc
 | ModeArrivedPlay | player | true / false | the menu was skipped for a trip arrival |
 
 BindableFunction ReplicatedFirst.EggLoader.Play(target "Sandbox" / "Arena"). ScreenGui "MainMenuHangar" (DisplayOrder 39). Teleport data on hops: {mdaPlay = true, mdaFrom = "sandbox" / "arena"}.
+
+### Scent mask, long claws (ScentServer 1.1, BladeServer 1.4, LabPreviewServer 1.1)
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| ScentMaskEnabled | ScentServer script | true | false = no mask |
+| ScentServerPreviewEnabled | ScentServer script | true | false = BuildPreview returns nil (Lab card falls back to the 1.0 sensor) |
+| ScentMaskState | character | "none" / "on" / "noHead" | mask state |
+| BladeLongClawsEnabled | BladeServer script | true | false = 1.3 hooks + forearm blades |
+| BladeFootClawMul / BladeHandClawMul | BladeServer script | 8 / 3.5 | claw extension length x the claw's longest side |
+| BladeClaws | character | number | lengthened claws (raptor: 12) |
+
+BindableFunction ScentServer.BuildPreview (server only). Model Mecha_Scent: MaskPlate, MaskTop, MaskVent, MaskCanL/R, MaskCoreL/R, MaskChin, MaskChinVent. Mecha_Blade (long claws): Claw_<Seg>_<n>, ClawTip_<Seg>_<n>.

@@ -1,4 +1,4 @@
--- LabPreviewServer v1.0 (Mecha Dino Arena) — builds the 3D part models the Lab's part cards show. MDA-96, plan
+-- LabPreviewServer v1.1 (Mecha Dino Arena) — builds the 3D part models the Lab's part cards show. MDA-96, plan
 -- docs/plans/LAB_v1.0.md Task 1, mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "Card with the
 -- part's 3D model"; "Add a preview builder").
 -- For each part: a fresh raptor mannequin (ServerStorage.DinoArcade.Models.RaptorModelData built with DinoModelBuilder, as
@@ -15,11 +15,14 @@
 -- Switch: script attribute LabPreviewServerEnabled (default true), read at start; false -> no previews (the Lab shows "?").
 -- Diagnostics (script attributes): LabPreviewServerVersion, LabPreviewState ("building" / "ready" / "off" /
 --   "noTemplate"), LabPreviewCount, LabPreviewMissing (comma list, "" = none).
+-- v1.1 (Scent Sense mask, ScentServer 1.1): scent comes from ScentServer's BuildPreview (the Breather mask on a
+--   mannequin) like the other parts; when that fails, the 1.0 nose sensor built here is stored instead (scent is then not
+--   listed as missing).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local WAIT = 30
 local SOURCES = {
 	{id = "adrenaline", script = "AdrenalineServer", body = true},
@@ -29,6 +32,7 @@ local SOURCES = {
 	{id = "blade", script = "BladeServer", body = true},
 	{id = "thrusters", script = "MechaServer", body = true},
 	{id = "traps", script = "MineServer", body = false},
+	{id = "scent", script = "ScentServer", body = true}, -- v1.1
 }
 local DROP = {"BaseScript", "Sound", "ParticleEmitter", "Trail", "Beam", "Light", "Fire", "Smoke", "Sparkles"}
 
@@ -147,11 +151,12 @@ for _, src in ipairs(SOURCES) do
 	end
 	if built then
 		store(src.id, built)
+	elseif src.id == "scent" then -- v1.1: fall back to the 1.0 sensor
+		store("scent", scentSensor())
 	else
 		table.insert(missing, src.id)
 	end
 end
-store("scent", scentSensor())
 
 script:SetAttribute("LabPreviewMissing", table.concat(missing, ","))
 if not template then
