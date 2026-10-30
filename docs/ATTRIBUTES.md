@@ -1704,3 +1704,14 @@ SkillTree 1.15: Grapple Hook, Dart Launcher, Pack Beacon and Decoy Hologram no l
 
 ModeRules: "arena" when the server's PlaceId is 75433819286625 (or the Studio test switch), else "sandbox". canAffect: non-player targets always; players in the menu never; bots / test hooks on players always; player on player only in "arena".
 
+PlaceGate 1.0 (ServerScriptService.PlaceGate, script attributes):
+| Attribute | Default / values | Meaning |
+|---|---|---|
+| PlaceGateEnabled | true | false = BotServer turned on in both places (read at start) |
+| PlaceMode | "sandbox" / "arena" | ModeRules.currentMode() at start |
+| PlaceGateState | "sandboxBotsOn" / "arenaNoBots" / "noBotServer" / "off" | what the gate did |
+| PlaceGateRemoved | 0.. | arena: non-player bot / dummy / bitable models removed |
+| PlaceGateVersion | "1.0" | |
+
+BotServer.Enabled is now false in the place file and BotServer.meta.json; PlaceGate starts it.
+

@@ -1,4 +1,7 @@
 {
+	"properties": {
+		"Enabled": false
+	},
 	"attributes": {
 		"BotHidingEnabled": false,
 		"BotFightEnabled": false
