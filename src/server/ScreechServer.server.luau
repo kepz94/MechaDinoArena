@@ -1,4 +1,4 @@
--- ScreechServer v1.3 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.4 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -64,13 +64,19 @@
 -- Diagnostics: script ScreechServerVersion, ScreechRequests, ScreechHits, ScreechMisses; shooter character
 --   ScreechServerResult, ScreechCount, ScreechLastRange, ScreechLastHit (target name or "" for a miss), ScreechLastEnd
 --   ("hit" / "range" / "wall").
+-- v1.4 (Main Menu, MDA-88, plan docs/plans/MAIN_MENU_v1.0.md Task 4, ADR-005): a bolt / shock ball only stops on a target
+--   for which ModeRules 1.0 canAffect(shooter is a player, target is a player, target's player InMenu, ModeRules.currentMode()
+--   at start) is true; any other target is passed through (no stun, flinch, jam or damage), noted once per bolt per target:
+--   target ModeBlockedAt (server time), shooter ModeBlockedTarget (target name), script ScreechModeBlocks + 1. Sandbox:
+--   a player's cannon hits bots only; Arena: players too; nobody hits a player in the menu. Switch: script attribute
+--   ScreechModeRulesEnabled (default true; false = v1.3, read on every check). Diagnostic: script ScreechMode.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
 local SHOCK_SPEED, BALL_SIZE, SHELL_SIZE = 75, 3, 5 -- v1.2: Shock Cannon ball
@@ -87,6 +93,23 @@ if script:GetAttribute("ScreechShockCannonEnabled") == nil then script:SetAttrib
 local function shockOn() return script:GetAttribute("ScreechShockCannonEnabled") ~= false end -- v1.2
 local function on() return script:GetAttribute("ScreechServerEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
+
+-- v1.4: ModeRules
+local ModeRules = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
+local MODE = ModeRules.currentMode()
+script:SetAttribute("ScreechMode", MODE)
+script:SetAttribute("ScreechModeBlocks", 0)
+if script:GetAttribute("ScreechModeRulesEnabled") == nil then script:SetAttribute("ScreechModeRulesEnabled", true) end
+local function mayAffect(source, target)
+	if script:GetAttribute("ScreechModeRulesEnabled") == false then
+		return true
+	else
+		local tpl = Players:GetPlayerFromCharacter(target)
+		local spl = Players:GetPlayerFromCharacter(source)
+		local inMenu = tpl ~= nil and tpl:GetAttribute("InMenu") == true
+		return ModeRules.canAffect(spl ~= nil, tpl ~= nil, inMenu, MODE)
+	end
+end
 
 local remote = ReplicatedStorage:FindFirstChild("DinoScreechRequest")
 if not remote then
@@ -296,7 +319,15 @@ RunService.Heartbeat:Connect(function(dt)
 					local d = (rel - seg * k).Magnitude
 					local reach = HIT_RADIUS + math.min(size.X, size.Z) / 2
 					if d <= reach and math.abs(root.Position.Y - a.Y) <= size.Y / 2 + HIT_RADIUS and (not bestT or k < bestT) then
-						best, bestT = m, k
+						if mayAffect(b.shooter, m) then -- v1.4
+							best, bestT = m, k
+						elseif not (b.modeIgnored and b.modeIgnored[m]) then -- v1.4: passed through, noted once
+							b.modeIgnored = b.modeIgnored or {}
+							b.modeIgnored[m] = true
+							m:SetAttribute("ModeBlockedAt", now())
+							if b.shooter.Parent then b.shooter:SetAttribute("ModeBlockedTarget", m.Name) end
+							script:SetAttribute("ScreechModeBlocks", (script:GetAttribute("ScreechModeBlocks") or 0) + 1)
+						end
 					end
 				end
 			end

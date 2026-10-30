@@ -1729,3 +1729,12 @@ ModeServer 1.0 (ServerScriptService.ModeServer):
 | ModeParkSlot | player | 0 / 1.. | parking slot on the pad (0 = not parked) |
 
 RemoteEvent ReplicatedStorage.DinoModeRequest:FireServer("play" / "sandbox" / "arena" / "menu"). Part Workspace.MenuLobbyPad (invisible, anchored, 400 x 2 x 400, 600 studs above the SpawnLocation).
+
+MineServer 1.4 / ScreechServer 1.4 (ModeRules check, MDA-88):
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| MineModeRulesEnabled / ScreechModeRulesEnabled | script | true | false = v1.3 (no mode check), read on every check |
+| MineMode / ScreechMode | script | "sandbox" / "arena" | ModeRules.currentMode() at start |
+| MineModeBlocks / ScreechModeBlocks | script | 0.. | targets ignored by the mode check |
+| ModeBlockedAt | target character | server time | a mine / bolt ignored this target (once per mine / bolt) |
+| ModeBlockedTarget | owner / shooter character | name | the last target the mode check protected from you |

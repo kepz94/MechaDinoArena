@@ -1,4 +1,4 @@
--- MineServer v1.3 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.4 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -58,13 +58,21 @@
 --   places a mine owned by owner (a bot model or a character) at groundPos, arming ARM_TIME s later, with opts.dmg (25),
 --   opts.launch (25), opts.daze (1), opts.jam (false); everything else as a thrown mine (the owner is never hit; any
 --   player character and every other bot is a target). Returns "ok" / "badArg". Diagnostic: script MineTestDrops.
+-- v1.4 (Main Menu, MDA-88, plan docs/plans/MAIN_MENU_v1.0.md Task 4, ADR-005; Kepu: Sandbox = no player damage, Arena =
+--   PvP): before a mine goes off on a target, ModeRules 1.0 canAffect(owner is a player, target is a player, target's player
+--   InMenu, ModeRules.currentMode() at start) must be true. false -> the mine ignores that target (it stays armed, no damage
+--   / throw / daze / jam); once per mine per target: target ModeBlockedAt (server time), owner ModeBlockedTarget (target
+--   name), script MineModeBlocks + 1. So in the Sandbox a player's mine hits bots only, a bot-owned test mine
+--   (MineTestDrop) still hits players, nobody's mine hits a player in the menu; in the Arena player mines hit players.
+--   Switch: script attribute MineModeRulesEnabled (default true; false = v1.3, read on every check). Diagnostic: script
+--   MineMode ("sandbox" / "arena").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local THROW_DIST, ARC_TIME, ARC_HEIGHT, ARM_TIME = 30, 0.6, 8, 0.5
 local TRIGGER, LIFETIME, BLINK = 6, 60, 0.25
 local VOLT, VOLT_CORE = Color3.fromRGB(127, 233, 255), Color3.fromRGB(225, 250, 255)
@@ -83,6 +91,23 @@ if script:GetAttribute("MineLaunchEnabled") == nil then script:SetAttribute("Min
 if script:GetAttribute("MineSoundId") == nil then script:SetAttribute("MineSoundId", "rbxassetid://138132512434499") end -- v1.1
 local function launchOn() return script:GetAttribute("MineLaunchEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
+
+-- v1.4: ModeRules
+local ModeRules = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
+local MODE = ModeRules.currentMode()
+script:SetAttribute("MineMode", MODE)
+script:SetAttribute("MineModeBlocks", 0)
+if script:GetAttribute("MineModeRulesEnabled") == nil then script:SetAttribute("MineModeRulesEnabled", true) end
+local function mayAffect(source, target)
+	if script:GetAttribute("MineModeRulesEnabled") == false then
+		return true
+	else
+		local tpl = Players:GetPlayerFromCharacter(target)
+		local spl = Players:GetPlayerFromCharacter(source)
+		local inMenu = tpl ~= nil and tpl:GetAttribute("InMenu") == true
+		return ModeRules.canAffect(spl ~= nil, tpl ~= nil, inMenu, MODE)
+	end
+end
 
 local remote = ReplicatedStorage:FindFirstChild("DinoMineRequest")
 if not remote then
@@ -461,11 +486,19 @@ RunService.Heartbeat:Connect(function()
 								local flat = Vector3.new(root.Position.X - m.to.X, 0, root.Position.Z - m.to.Z).Magnitude
 								local dy = root.Position.Y - m.to.Y
 								if flat <= TRIGGER + math.min(size.X, size.Z) / 2 and dy >= -2 and dy <= size.Y + 4 then
-									burst(m.to + Vector3.new(0, 1, 0))
-									zapSound(m.to + Vector3.new(0, 1, 0)) -- v1.1
-									hit(m, d)
-									removeMine(m, "hit")
-									break
+									if mayAffect(owner, d) then -- v1.4
+										burst(m.to + Vector3.new(0, 1, 0))
+										zapSound(m.to + Vector3.new(0, 1, 0)) -- v1.1
+										hit(m, d)
+										removeMine(m, "hit")
+										break
+									elseif not (m.modeIgnored and m.modeIgnored[d]) then -- v1.4: ignored, noted once
+										m.modeIgnored = m.modeIgnored or {}
+										m.modeIgnored[d] = true
+										d:SetAttribute("ModeBlockedAt", t)
+										if owner.Parent then owner:SetAttribute("ModeBlockedTarget", d.Name) end
+										script:SetAttribute("MineModeBlocks", (script:GetAttribute("MineModeBlocks") or 0) + 1)
+									end
 								end
 							end
 						end
