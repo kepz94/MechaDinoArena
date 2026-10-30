@@ -1,4 +1,4 @@
--- BloodVialServer v1.0 (Mecha Dino Arena) — the pachy's Blood Rush look: two blood vials, one on each side of the neck.
+-- BloodVialServer v1.1 (Mecha Dino Arena) — the pachy's Blood Rush look: two blood vials, one on each side of the neck.
 -- MDA-124. Kepu 2026-10-30: "Let's have it be 2 blood vials that go on each side of the pachy's neck" -> "When he uses it
 --   blood Rushes out the side".
 -- Who: player characters with Species "Pachy" while the character attribute BloodRushEnabled (SkillEffects 1.17: Blood
@@ -18,9 +18,18 @@
 --   vials full, on a pachy mannequin and returns it.
 -- Switch: script attribute BloodVialServerEnabled (default true, read at start; false = no vials, no card model).
 -- Diagnostics (character): BloodVialsBuilt (parts made, 0 when off), BloodVialsFull (vials full now), BloodVialSprays.
+-- v1.1 (Kepu 2026-10-30: "I wanted them to stick out horizontally"): with script attribute BloodVialHorizontal (default
+--   true, read at start) each vial lies flat and sticks straight out sideways from its side of the neck: its long axis
+--   points away from the neck (level with the ground in the neck's frame), the inner cap ("CapBottom_<s>") against the
+--   neck, the outer cap ("CapTop_<s>") at the far end and the nozzle out past the outer cap, so the blood sprays straight
+--   out of the tip (Spray EmissionDirection Top = along the vial, away from the neck). The blood drains from the tip back
+--   toward the neck (same FluidHinge: it keeps its inner end). Size, colours, levels and timing as 1.0. false = 1.0
+--   (upright along the neck, nozzle on the outer side).
 local Players = game:GetService("Players")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
+if script:GetAttribute("BloodVialHorizontal") == nil then script:SetAttribute("BloodVialHorizontal", true) end -- v1.1
+local HORIZONTAL = script:GetAttribute("BloodVialHorizontal") ~= false
 local SPRAY_TIME = 0.45
 local GLASS = Color3.fromRGB(214, 226, 236)
 local BLOOD = Color3.fromRGB(150, 12, 30)
@@ -127,6 +136,11 @@ local function build(char)
 		local s = side < 0 and "L" or "R"
 		local pLocal = (lo + hi) / 2 + x * side * (extent(lo, hi, x) + w * 0.6)
 		local cf = root.CFrame * CFrame.fromMatrix(pLocal, x, y, z) * CFrame.Angles(math.rad(-30), 0, 0) -- along the neck
+		if HORIZONTAL then -- v1.1: lying flat, sticking straight out: local +Y = away from the neck
+			local out = x * side
+			pLocal = (lo + hi) / 2 + out * (extent(lo, hi, x) + h * 0.5 + h * 0.06)
+			cf = root.CFrame * CFrame.fromMatrix(pLocal, z * side, out)
+		end
 		local glass = part("Glass_" .. s, Vector3.new(w, h, w), cf, GLASS, model, root, Enum.Material.Glass)
 		glass.Transparency = 0.55
 		local full = h * 0.86
@@ -140,12 +154,18 @@ local function build(char)
 		part("CapTop_" .. s, Vector3.new(w * 1.2, h * 0.1, w * 1.2), cf * CFrame.new(0, h * 0.52, 0), STEEL, model, glass, Enum.Material.Metal)
 		part("CapBottom_" .. s, Vector3.new(w * 1.2, h * 0.1, w * 1.2), cf * CFrame.new(0, -h * 0.52, 0), STEEL, model, glass, Enum.Material.Metal)
 		-- the nozzle on the outer side; its +X faces away from the neck (x * side in Root space)
-		local nozzle = part("Nozzle_" .. s, Vector3.new(w * 0.6, w * 0.35, w * 0.35),
-			cf * CFrame.new(side * w * 0.75, 0, 0), DARK, model, glass, Enum.Material.Metal)
+		local nozzle
+		if HORIZONTAL then -- v1.1: out past the outer cap, spraying straight out
+			nozzle = part("Nozzle_" .. s, Vector3.new(w * 0.4, h * 0.12, w * 0.4), cf * CFrame.new(0, h * 0.62, 0), DARK, model, glass, Enum.Material.Metal)
+		else
+			nozzle = part("Nozzle_" .. s, Vector3.new(w * 0.6, w * 0.35, w * 0.35),
+				cf * CFrame.new(side * w * 0.75, 0, 0), DARK, model, glass, Enum.Material.Metal)
+		end
 		local spray = Instance.new("ParticleEmitter")
 		spray.Name = "Spray"
 		spray.Enabled = false
 		spray.EmissionDirection = side > 0 and Enum.NormalId.Right or Enum.NormalId.Left
+		if HORIZONTAL then spray.EmissionDirection = Enum.NormalId.Top end -- v1.1: along the vial, away from the neck
 		spray.Color = ColorSequence.new(Color3.fromRGB(170, 10, 30), Color3.fromRGB(110, 0, 18))
 		spray.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, w * 1.0), NumberSequenceKeypoint.new(1, w * 0.3)})
 		spray.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.8, 0.1), NumberSequenceKeypoint.new(1, 1)})

@@ -2116,3 +2116,13 @@ Every new mech part, for any dino, ships its Lab card model by adding under its 
 | LabPreviewBodies | script (LabPreviewServer) | mannequins built (one per dino, on first use) |
 | LabPreviewMissing | script (LabPreviewServer) | live parts (LIVE_MECH, not soon) still without a model — empty = every live card has one |
 | HookServerPreviewEnabled / MechaLegsServerPreviewEnabled / MedStationServerPreviewEnabled | script | default true; false = that card shows "?" |
+
+## Blood Rush vials (BloodVialServer 1.0 / 1.1)
+| Attribute | Where | Meaning |
+|---|---|---|
+| BloodVialServerEnabled | script | default true; false = no vials, no Lab card model |
+| BloodVialHorizontal | script | 1.1, default true: vials stick straight out sideways (false = 1.0 upright along the neck) |
+| BloodVialsBuilt | character | parts made (0 when off) |
+| BloodVialsFull | character | vials full now (vial i full while HeadbuttSacrifices < i) |
+| BloodVialSprays | character | sprays shown (one per Blood Rush press) |
+Model Mecha_BloodVials: Glass_L/R, Blood_L/R (FluidHinge, FullHeight), CapTop/CapBottom_L/R, Nozzle_L/R with ParticleEmitter Spray. Lab card: BuildPreview_bloodrush.
