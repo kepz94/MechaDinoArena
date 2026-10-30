@@ -1,0 +1,214 @@
+<title>Pachy Headbutt Charge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro, chips (charge display option + state), PC ability bar strip, phone button cluster, charge pose, numbers table, Lab line, notes. Single dark game look (matches the HUD mockups). */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9b2e; --volt: #7fe9ff; --red: #f05a4f; --green: #5fd16a;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--yellow); }
+h2 { margin: 0; font: 700 19px var(--display); }
+.lede { margin: 0; color: var(--muted); max-width: 80ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+button:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.panel { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+/* PC ability bar */
+.bar { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; background: linear-gradient(180deg, #31523a, #27432f); border-radius: 12px; padding: 14px; }
+.tile { width: 92px; height: 92px; border-radius: 12px; background: #14141add; border: 3px solid #ffffff44; position: relative; display: grid; place-items: center; text-align: center; }
+.tile .nm { font: 700 15px var(--display); line-height: 1.05; }
+.tile .key { position: absolute; left: 6px; top: 4px; font: 600 11px var(--mono); color: var(--grey); }
+.tile.main { border-color: var(--yellow); }
+.tile.active { box-shadow: 0 0 0 4px #ffc83255, 0 0 18px #ffc832aa; }
+.tile.dim { opacity: .55; }
+.tile .fill { position: absolute; left: 0; right: 0; bottom: 0; background: #ffffff1c; border-radius: 0 0 9px 9px; }
+.pips { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; gap: 5px; justify-content: center; }
+.pip { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--yellow); background: transparent; }
+.pip.on { background: var(--yellow); }
+.pip.part { background: conic-gradient(var(--yellow) var(--p), transparent 0); }
+.badge { position: absolute; right: -8px; top: -8px; min-width: 26px; height: 26px; border-radius: 13px; background: var(--yellow); color: #1b1406; font: 700 15px var(--display); display: grid; place-items: center; padding: 0 6px; }
+.slow { position: absolute; left: 50%; top: -30px; transform: translateX(-50%); white-space: nowrap; font: 800 12px var(--body); color: #fff; background: var(--red); border-radius: 99px; padding: 2px 10px; }
+.sep { width: 3px; height: 70px; background: #ffffff33; border-radius: 2px; margin: 0 4px; }
+/* phone */
+.phone { position: relative; width: 100%; max-width: 520px; aspect-ratio: 19.5 / 9; border: 6px solid #2a2f3a; border-radius: 26px; overflow: hidden; background: linear-gradient(180deg, #7fbdea 0%, #a8d6f0 40%, #6cc25a 41%, #4fa63e 100%); container-type: size; margin: 0 auto; }
+.tb { position: absolute; border-radius: 50%; display: grid; place-items: center; font: 700 3.6cqh var(--display); }
+.tb.big { right: 5cqw; bottom: 10cqh; width: 13.5cqw; aspect-ratio: 1; background: var(--yellow); color: #1e1a0a; border: .5cqh solid #fff; }
+.tb.leap { right: 7cqw; bottom: 43cqh; width: 9.5cqw; aspect-ratio: 1; background: #14141a99; color: #fff; border: .4cqh solid #ffffff66; font-size: 3cqh; }
+.tb .pips { bottom: -4.2cqh; gap: 1cqh; }
+.tb .pip { width: 2.6cqh; height: 2.6cqh; border-width: .45cqh; }
+.tb .badge { right: -1cqh; top: -1cqh; min-width: 6cqh; height: 6cqh; font-size: 3.6cqh; border-radius: 3cqh; }
+.tb.active { box-shadow: 0 0 0 1cqh #ffc83266, 0 0 4cqh #ffc832; }
+.tb.dim { opacity: .55; }
+.tb .slow { top: -6cqh; font-size: 2.6cqh; }
+.stick { position: absolute; left: 7cqw; bottom: 10cqh; width: 22cqh; aspect-ratio: 1; border-radius: 50%; background: #ffffff33; border: .4cqh solid #ffffff66; }
+/* pose */
+.pose svg { width: 100%; height: auto; background: linear-gradient(180deg, #16202e 0%, #1b2636 66%, #2a3a24 66%); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td.v { font: 600 13px var(--mono); color: var(--yellow); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; }
+.steps { display: grid; gap: 8px; }
+.step { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: start; }
+.step b { font: 700 15px var(--display); color: var(--orange); }
+.step.star b { color: var(--yellow); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note li { color: var(--grey); font-size: 14px; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+.muted { color: var(--muted); font-size: 13px; margin: 0; }
+</style>
+
+<div class="wrap">
+  <h1>Pachy <span>headbutt charge</span></h1>
+  <p class="lede">The headbutt charge is the pachy's ATTACK (left click on PC, big yellow button on phones). It comes with 2 charges, 3 when its attack line is maxed. Using the last charge slows you for a moment. Pick how the charges show; flip the states to see each one.</p>
+  <div class="controls">
+    <div class="group" role="group" aria-label="Charge display"><b>Charges shown as</b>
+      <button class="chip" data-k="opt" data-v="pips" aria-pressed="true">A · Pips</button>
+      <button class="chip" data-k="opt" data-v="badge" aria-pressed="false">B · Number badge</button>
+    </div>
+    <div class="group" role="group" aria-label="State"><b>State</b>
+      <button class="chip" data-k="state" data-v="ready" aria-pressed="true">Ready</button>
+      <button class="chip" data-k="state" data-v="charging" aria-pressed="false">Charging</button>
+      <button class="chip" data-k="state" data-v="refill" aria-pressed="false">Refilling</button>
+      <button class="chip" data-k="state" data-v="empty" aria-pressed="false">All used (slowed)</button>
+      <button class="chip" data-k="state" data-v="max" aria-pressed="false">Maxed (3)</button>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="panel"><h2>PC ability bar</h2><div class="bar" id="bar"></div><p class="muted">Mecha slots stay as they are; the ATTACK tile carries the charges.</p></div>
+    <div class="panel"><h2>Phone</h2><div class="phone" id="phone"></div><p class="muted">Big ATTACK button carries the charges; LEAP above it.</p></div>
+  </div>
+
+  <div class="panel pose"><h2>Charge pose</h2><svg id="pose" viewBox="0 0 320 170" role="img" aria-label="Pachy side view: normal stance and charging stance"></svg><p class="muted">Left: normal run. Right: charging, with the body low, the head dipped forward so the dome leads, the tail straight out, speed lines and a dust trail. Like your second inspo picture.</p></div>
+
+  <div class="cols">
+    <div class="panel"><h2>Proposed numbers</h2><div class="tablewrap"><table>
+      <thead><tr><th>What</th><th>Value</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Run speed</td><td class="v">45</td><td>Raptor 50.7, T-Rex 39 (your pick)</td></tr>
+        <tr><td>Health</td><td class="v">90</td><td>Raptor 60, T-Rex 200 (your pick)</td></tr>
+        <tr><td>Charges</td><td class="v">2 · 3 maxed</td><td>Your rule</td></tr>
+        <tr><td>Charge speed</td><td class="v">×1.4 (63)</td><td>"Speeds it up a bit"; faster than a raptor for the dash</td></tr>
+        <tr><td>Charge length</td><td class="v">up to 1.8 s</td><td>Ends early when it hits</td></tr>
+        <tr><td>Steering</td><td class="v">fast turning</td><td>"Pretty maneuverable"; about twice the normal turn rate</td></tr>
+        <tr><td>Hit damage</td><td class="v">14</td><td>A good chunk of a raptor (60), small on a T-Rex</td></tr>
+        <tr><td>Knockback</td><td class="v">30 studs</td><td>About one raptor length</td></tr>
+        <tr><td>Target slowed</td><td class="v">−35% for 3 s</td><td>Your debuff</td></tr>
+        <tr><td>Charge refill</td><td class="v">5 s each</td><td>One at a time</td></tr>
+        <tr><td>Last charge used</td><td class="v">you −35% for 2.5 s</td><td>"A couple of seconds"</td></tr>
+        <tr><td>Leap</td><td class="v">like the raptor's</td><td>Works during a charge, keeps the charge speed in the air</td></tr>
+      </tbody></table></div></div>
+    <div class="panel"><h2>Attack line: Battering Dome</h2><div class="steps">
+      <div class="step"><b>I</b><span>Headbutt hits 25% harder</span></div>
+      <div class="step"><b>II</b><span>Knockback 30% farther</span></div>
+      <div class="step"><b>III</b><span>Charges refill 30% faster</span></div>
+      <div class="step star"><b>★</b><span>3rd charge + spiked dome</span></div>
+    </div><p class="muted">Pachy-only line in the Attack area, like the raptor's Blade Claws. The pachy can also use the shared mecha parts; each dino's own parts stay with that dino.</p></div>
+  </div>
+
+  <div class="notes">
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>A · Pips</h3><ul><li>One dot per charge under the ATTACK tile / button: filled = ready, filling = refilling.</li><li>Easy to read at a glance mid-fight, and a 3rd dot appearing makes the upgrade feel big.</li></ul></div>
+    <div class="note"><h3>B · Number badge</h3><ul><li>A yellow number on the corner of the tile / button.</li><li>Smaller, but harder to see the refill.</li></ul></div>
+    <div class="note"><h3>Same either way</h3><ul><li>Charging: the tile / button glows.</li><li>All charges used: a red "SLOWED" tag for the 2.5 s self-slow.</li><li>Every number in the table is a setting I can tune after you try it.</li></ul></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const st = { opt: 'pips', state: 'ready' };
+  function chargeInfo() {
+    const max = st.state === 'max' ? 3 : 2;
+    let ready = max, part = 0;
+    if (st.state === 'charging') ready = max - 1;
+    if (st.state === 'refill') { ready = 0; part = 0.6; }
+    if (st.state === 'empty') { ready = 0; part = 0.15; }
+    return { max, ready, part };
+  }
+  function pipsHtml(c) {
+    let h = '<span class="pips">';
+    for (let i = 0; i < c.max; i++) {
+      if (i < c.ready) h += '<span class="pip on"></span>';
+      else if (i === c.ready && c.part > 0) h += `<span class="pip part" style="--p:${Math.round(c.part * 100)}%"></span>`;
+      else h += '<span class="pip"></span>';
+    }
+    return h + '</span>';
+  }
+  function marks(c) { return st.opt === 'pips' ? pipsHtml(c) : `<span class="badge">${c.ready}</span>`; }
+  function render() {
+    const c = chargeInfo();
+    const active = st.state === 'charging';
+    const dim = c.ready === 0;
+    const slow = st.state === 'empty' ? '<span class="slow">SLOWED</span>' : '';
+    document.getElementById('bar').innerHTML =
+      `<div class="tile"><span class="key">R</span><span class="nm">ENERGY<br>SHIELD</span></div>` +
+      `<div class="tile"><span class="key">T</span><span class="nm">THRUST</span></div>` +
+      `<div class="sep"></div>` +
+      `<div class="tile main ${active ? 'active' : ''} ${dim ? 'dim' : ''}"><span class="key">LMB</span>${dim ? `<span class="fill" style="height:${Math.round(c.part * 100)}%"></span>` : ''}<span class="nm">ATTACK</span>${marks(c)}${slow}</div>` +
+      `<div class="tile"><span class="key">SPACE</span><span class="nm">LEAP</span></div>`;
+    document.getElementById('phone').innerHTML =
+      `<div class="stick"></div><div class="tb leap">LEAP</div>` +
+      `<div class="tb big ${active ? 'active' : ''} ${dim ? 'dim' : ''}">ATTACK${marks(c)}${slow}</div>`;
+  }
+  function pose() {
+    const C = { main: '#7A6A4E', stripes: '#3E5A55', belly: '#C8B898', dome: '#E6DCC4', knobs: '#8C7A5A', mask: '#3F6F7A', limbs: '#5E5240', claws: '#2E2620', eyes: '#8A2A1E' };
+    const r = (x, y, w, h, c) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`;
+    function dino(ox, charging) {
+      let s = '';
+      const k = 0.5;
+      const g = (inner, t) => `<g transform="translate(${ox} 0) ${t || ''}">${inner}</g>`;
+      // body (charging: lower + tilted forward)
+      let b = '';
+      b += r(14, 94, 30, 8, C.main) + r(40, 90, 36, 12, C.main) + r(72, 86, 40, 18, C.main);
+      b += r(104, 78, 88, 48, C.main) + r(114, 118, 74, 10, C.belly);
+      [116, 132, 148, 164, 178].forEach(x => { b += r(x, 78, 6, 20, C.stripes); });
+      [22, 52, 84].forEach(x => { b += r(x, 88, 5, 10, C.stripes); });
+      if (!charging) {
+        b += r(184, 56, 28, 46, C.main) + r(200, 74, 14, 30, C.belly);
+        b += r(198, 30, 50, 34, C.main) + r(202, 16, 44, 16, C.dome) + r(208, 8, 32, 9, C.dome) + r(244, 40, 22, 20, C.main);
+        b += r(220, 33, 22, 15, C.mask) + r(227, 37, 7, 6, C.eyes);
+      } else {
+        // neck forward, head dipped: dome leads
+        b += r(186, 76, 40, 28, C.main) + r(196, 98, 28, 8, C.belly);
+        b += `<g transform="rotate(62 240 92)">` + r(214, 70, 50, 34, C.main) + r(218, 56, 44, 16, C.dome) + r(224, 48, 32, 9, C.dome) + r(260, 80, 22, 20, C.main) + r(236, 73, 22, 15, C.mask) + r(243, 77, 7, 6, C.eyes) + `</g>`;
+      }
+      b += r(204, 92, 8, 16, C.main) + r(207, 106, 9, 6, C.limbs);
+      b += r(132, 110, 26, 36, C.main) + r(142, 144, 12, 30, C.limbs) + r(138, 172, 28, 8, C.limbs);
+      const t = charging ? 'translate(10 14) rotate(-8 150 120)' : '';
+      s += `<g transform="translate(${ox} 0) scale(${k}) translate(0 -14)"><g transform="${t}">${b}</g></g>`;
+      if (charging) {
+        for (let i = 0; i < 4; i++) s += `<rect x="${ox - 8 - i * 6}" y="${58 + i * 12}" width="${18 - i * 2}" height="2" fill="#ffffff88"/>`;
+        s += `<ellipse cx="${ox + 18}" cy="96" rx="14" ry="4" fill="#c8b89855"/>`;
+      }
+      return s;
+    }
+    document.getElementById('pose').innerHTML = dino(14, false) + dino(176, true);
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    st[b.dataset.k] = b.dataset.v;
+    document.querySelectorAll(`.chip[data-k="${b.dataset.k}"]`).forEach(x => x.setAttribute('aria-pressed', x === b));
+    render();
+  });
+  render();
+  pose();
+})();
+</script>
