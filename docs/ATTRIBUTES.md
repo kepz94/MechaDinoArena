@@ -2135,6 +2135,7 @@ Model Mecha_BloodVials: Glass_L/R, Blood_L/R (FluidHinge, FullHeight), CapTop/Ca
 | BoneCrestBlocked, BoneCrestLastSaved, BoneCrestLastKind, BoneCrestBlockAt | character (victim) | reduced front bites: count, HP saved, "bite" / "pounce", server time |
 | BoneCrestReflectedAt | attacker | server time of the last star reflect |
 | BoneCrestEnabled / BoneCrestDefenseEnabled | BoneCrest module | default true; false = no dome cut / no Thick Hide vs players |
+| BoneCrestReflectBitesOnly / BoneCrestReflectSkipped | BoneCrest module / victim | 1.1: star reflect only for non-raptor bites (default true); last skip reason "slash" / "raptor" |
 | BiteCrestEnabled / PounceCrestEnabled / BotCrestEnabled | script | default true; false = that damage path skips Bone Crest (and, for bite / pounce, the Thick Hide fix) |
 | BiteHitCrestMul / BiteHitDefenseMul, PounceHitCrestMul / PounceHitDefenseMul, BotLastHitCrestMul | attacker / bot | multipliers used on the last hit |
 Look: BoneCrestSpark (Attachment + sparks) and BoneCrestPop ("CLANK") on the victim's head.

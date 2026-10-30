@@ -1,4 +1,4 @@
--- BotServer v1.16 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.17 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -290,12 +290,15 @@
 --   front of a pachy with Bone Crest does 0.80 / 0.70 / 0.60 of the damage (after the growth cap and Defense), and the
 --   hit calls BoneCrest.after (CLANK; star: the bot takes 5 back off DummyHealth, once per 0.4 s). Bot diagnostic
 --   BotLastHitCrestMul. Switch: script attribute BotCrestEnabled (default true, read each hit; false = 1.15).
+-- v1.17 (Kepu 2026-10-30: "It only takes 5 damage back for biters. Not slashers."): hitDamage takes the hit kind: the
+--   bot bite passes "bite", the bot pounce latch and its ticks pass "pounce" (BoneCrest 1.1 only reflects bites). The
+--   damage maths is unchanged.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.16"
+local VERSION = "1.17"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -856,7 +859,7 @@ local function smallRex(char)
 	return st ~= nil and st < BOT_AVOID_MIN_STAGE
 end
 -- v1.6: damage a bot deals to a player character, capped by its growth (see the header)
-local function hitDamage(b, char, hum, dmg)
+local function hitDamage(b, char, hum, dmg, kind) -- v1.17: + kind ("bite" default / "pounce")
 	local capped = false
 	if growthStage(char) ~= nil then
 		local cap = BOT_PLAYER_HIT_CAP * hum.MaxHealth
@@ -877,7 +880,7 @@ local function hitDamage(b, char, hum, dmg)
 		if ok and BC and bRoot then
 			local front
 			crestMul, front = BC.factor(char, bRoot.Position)
-			if front and crestMul < 1 then BC.after(char, b.model, dmg * mul, dmg * mul * crestMul, "bite") end
+			if front and crestMul < 1 then BC.after(char, b.model, dmg * mul, dmg * mul * crestMul, kind or "bite") end
 		end
 	end
 	show(b, "BotLastHitCrestMul", crestMul)
@@ -1990,7 +1993,7 @@ local function latchOn(b, part, front, dir)
 	end
 	show(b, "BotLatchNoCollide", #b.noCollide)
 	local hum = char:FindFirstChildOfClass("Humanoid")
-	local dmg = hum and hitDamage(b, char, hum, 8) or 8 -- v1.6: growth cap
+	local dmg = hum and hitDamage(b, char, hum, 8, "pounce") or 8 -- v1.6: growth cap; v1.17: kind
 	if hum then hum:TakeDamage(dmg) end
 	model:SetAttribute("PounceHitDamage", dmg)
 	model:SetAttribute("PounceBiteAt", now)
@@ -2154,7 +2157,7 @@ RunService.Heartbeat:Connect(function(dt)
 					hrp.CFrame = l.part.CFrame * l.offset
 					if now >= l.nextTick then
 						l.nextTick += 0.5
-						local dmg = hitDamage(b, char, thum, 4) -- v1.6: growth cap
+						local dmg = hitDamage(b, char, thum, 4, "pounce") -- v1.6: growth cap; v1.17: kind
 						thum:TakeDamage(dmg)
 						model:SetAttribute("PounceHitDamage", dmg)
 						model:SetAttribute("PounceBiteAt", now)

@@ -1,4 +1,4 @@
--- BoneCrest v1.0 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
+-- BoneCrest v1.1 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
 -- (ModuleScript, ServerStorage.DinoArcade.BoneCrest, server only). SkillTree 1.30 / SkillEffects 1.23.
 -- Kepu 2026-10-30: "We'll do the bone crest to replace the thick hide. Whoever bites your dome does 40% less damage";
 --   answers: builds up to 40% (I 20%, II 30%, III 40%, star: the biter takes 5 damage back), "Bites from the front",
@@ -22,16 +22,24 @@
 -- Switch: this module's attribute BoneCrestEnabled (default true): false -> factor returns 1 and after does nothing
 --   (defense still applies). Separate switch for the Thick Hide fix: BoneCrestDefenseEnabled (default true; false ->
 --   defense returns 1).
+-- v1.1 (Kepu 2026-10-30: "It only takes 5 damage back for biters. Not slashers." / "So for example a raptor wouldn't
+--   take 5 damage back"): the star reflect happens only for a bite (after() kind "bite") by an attacker that is not a
+--   raptor (attacker attribute Species ~= "Raptor"; a model without Species whose name contains "Raptor", e.g.
+--   Bot_Raptor_1, counts as a raptor). Raptors are slashers: their pounce latch / slash ticks (kind "pounce") and their
+--   bites are still cut by the crest and still CLANK, but nothing is sent back. Victim diagnostic BoneCrestReflectSkipped
+--   ("slash" / "raptor"). Switch: module attribute BoneCrestReflectBitesOnly (default true; false = 1.0, any reduced hit
+--   reflects).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local M = {}
-M.VERSION = "1.0"
+M.VERSION = "1.1"
 M.CONE = 60
 local REFLECT_GAP = 0.4
 
 if script:GetAttribute("BoneCrestEnabled") == nil then script:SetAttribute("BoneCrestEnabled", true) end
 if script:GetAttribute("BoneCrestDefenseEnabled") == nil then script:SetAttribute("BoneCrestDefenseEnabled", true) end
+if script:GetAttribute("BoneCrestReflectBitesOnly") == nil then script:SetAttribute("BoneCrestReflectBitesOnly", true) end -- v1.1
 script:SetAttribute("BoneCrestVersion", M.VERSION)
 
 local lastReflect = setmetatable({}, {__mode = "k"})
@@ -132,6 +140,14 @@ function M.after(victim, attacker, rawDamage, damage, kind)
 	victim:SetAttribute("BoneCrestBlockAt", workspace:GetServerTimeNow())
 	pcall(look, victim)
 	local amount = tonumber(victim:GetAttribute("BoneCrestReflect")) or 0
+	if amount > 0 and script:GetAttribute("BoneCrestReflectBitesOnly") ~= false then -- v1.1: biters only, raptors are slashers
+		local sp = typeof(attacker) == "Instance" and attacker:GetAttribute("Species") or nil
+		local raptor = sp == "Raptor" or (sp == nil and typeof(attacker) == "Instance" and attacker.Name:find("Raptor") ~= nil)
+		if kind ~= "bite" or raptor then
+			victim:SetAttribute("BoneCrestReflectSkipped", kind ~= "bite" and "slash" or "raptor")
+			amount = 0
+		end
+	end
 	if amount > 0 and typeof(attacker) == "Instance" and attacker.Parent then pcall(reflect, victim, attacker, amount) end
 end
 

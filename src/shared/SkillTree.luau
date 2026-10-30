@@ -1,4 +1,4 @@
--- SkillTree v1.30 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.31 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -276,6 +276,9 @@ SkillTree.AREAS = {
 --   back). effects(): crestMul 0.80 / 0.70 / 0.60 at I / II / III (bites and pounces from in front of the pachy do that
 --   share of their damage), crestReflect 5 at star (the biter takes 5 back); 1 / 0 below I. BoneCrest 1.0 (module) does
 --   the maths for BiteServer / PounceServer / BotServer. false = 1.29.
+-- v1.31 (Kepu 2026-10-30: "It only takes 5 damage back for biters. Not slashers."; BoneCrest 1.1): Bone Crest star text
+--   reads "Biters that bite your dome take 5 damage back (not raptor slashes)"; Kepu: "So for example a raptor wouldn't take
+--   5 damage back".
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -560,7 +563,7 @@ if SkillTree.PACHY_BONE_CREST and not SkillTree.PATHS.crest then
 		"Bites and pounces on your dome (from in front) do 20% less damage",
 		"Dome bites do 30% less",
 		"Dome bites do 40% less",
-		"Whoever bites your dome takes 5 damage back"})
+		"Biters that bite your dome take 5 damage back (not raptor slashes)"}) -- v1.31: biters only
 	p.area = "defense"
 	p.dino = "Pachy"
 	SkillTree.OWNER.crest = "Pachy"
