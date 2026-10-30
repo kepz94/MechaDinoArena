@@ -1,4 +1,4 @@
--- SkillEffects v1.18 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.19 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -108,10 +108,19 @@
 --     AdrenalineSpeedMul (1 while off), AdrenalineCooldown, AdrenalineStunClear. AdrenalineServer 1.0 reads them.
 --   * Energy Shield (bought AND in any slot): EnergyShieldEnabled, EnergyShieldTime, EnergyShieldCooldown,
 --     EnergyShieldSpeedMul (1 while off). EnergyShieldServer 1.0 / SprintTest 1.6 read them.
+-- v1.19 (Kepu 2026-10-30: "It should be if there's been zero damage for 8 seconds slowly heal back health"; answers:
+--   20% per second, every dino, a Blood Rush payment restarts the wait): every player dino whose health has not dropped
+--   for SkillIdleRegenDelay (8) s heals SkillIdleRegenRate (0.20) x MaxHealth per second, every TICK (0.25 s), never
+--   past MaxHealth (no shield from it). "Dropped" = the same health-drop clock the Regeneration skill uses (st.lastDrop:
+--   any Humanoid.Health decrease, so a hit, a bleed tick and the Blood Rush payment all restart it). Where the
+--   Regeneration skill is also ready (on and past its own delay) only the bigger of the two heals is given that tick.
+--   Runs even when SkillEffectsEnabled is false. Switch: script attribute SkillEffectsIdleRegenEnabled (default true,
+--   read each tick; false = 1.18). Diagnostics: character SkillIdleRegenActive (true while healing this way),
+--   SkillLastHeal "idle +N". Kill heal is off in KillRegenServer 1.1.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.18"
+local VERSION = "1.19"
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
 local BLEED_PLAYERS = script:GetAttribute("SkillBleedPlayersEnabled") ~= false
 if script:GetAttribute("SkillBleedPlayerTime") == nil then script:SetAttribute("SkillBleedPlayerTime", 2) end -- v1.18
@@ -131,6 +140,9 @@ local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
 local KILL_REGEN_DEFAULT = 0.25
+for k, v in pairs({SkillEffectsIdleRegenEnabled = true, SkillIdleRegenDelay = 8, SkillIdleRegenRate = 0.20}) do -- v1.19
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 local ST = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillTree"))
 
 script:SetAttribute("SkillEffectsVersion", VERSION)
@@ -434,7 +446,16 @@ task.spawn(function()
 			local e = st.e
 			local regenOn = on() and e.regenRate > 0 and st.hum.Health < st.hum.MaxHealth and t - st.lastDrop >= e.regenDelay
 			if char:GetAttribute("SkillRegenActive") ~= regenOn then char:SetAttribute("SkillRegenActive", regenOn) end
-			if regenOn then heal(char, st, e.regenRate * st.hum.MaxHealth * TICK, "regen") end
+			-- v1.19: heal after SkillIdleRegenDelay s without a health drop (every dino), the bigger heal wins
+			local idleOn = script:GetAttribute("SkillEffectsIdleRegenEnabled") ~= false
+				and st.hum.Health < st.hum.MaxHealth
+				and t - st.lastDrop >= (script:GetAttribute("SkillIdleRegenDelay") or 8)
+			if char:GetAttribute("SkillIdleRegenActive") ~= idleOn then char:SetAttribute("SkillIdleRegenActive", idleOn) end
+			local idleAmt = idleOn and (script:GetAttribute("SkillIdleRegenRate") or 0.20) * st.hum.MaxHealth * TICK or 0
+			local skillAmt = regenOn and e.regenRate * st.hum.MaxHealth * TICK or 0
+			if idleOn and idleAmt >= skillAmt then
+				heal(char, st, math.min(idleAmt, st.hum.MaxHealth - st.hum.Health), "idle")
+			elseif regenOn then heal(char, st, e.regenRate * st.hum.MaxHealth * TICK, "regen") end
 			local untilT = char:GetAttribute("SkillShieldUntil")
 			if typeof(untilT) == "number" and t >= untilT then
 				char:SetAttribute("SkillShield", 0)

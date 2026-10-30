@@ -56,6 +56,9 @@ Diagnostics: character `KillCount`, `LastKillTarget`, `LastKillWith`, `KillRegen
 `KillRegenLastAt`, `KillRegenHealed` (+ `KillRegenHealedExact`); player `DinoKills`; script `KillRegenServerVersion`, `KillRegenKills`.
 Verified in Play: T-Rex bite kill 100 → 150; raptor pin kill 30 → 45 in a straight line over 5.00 s.
 
+KillRegenServer 1.1 (Kepu 2026-10-30, every dino): script attribute `KillRegenHealEnabled` (default false) — false = no kill heal; kills still
+counted, the bot's `KillRegenCredited` reads "healOff". true = 1.0. The heal after 8 s without damage is SkillEffects 1.19 (below).
+
 ## Hunger and thirst (SurvivalServer 1.0 / SurvivalBars 1.0)
 Modelled on The Isle (Evrima): two meters that drain over time; an empty meter damages health until the dino eats /
 drinks or dies. No link to stamina; no passive regen (KillRegenServer 1.0 unchanged).
@@ -1101,6 +1104,10 @@ and on server close.
 | SkillEffectsState | character | "ready" / "off" |
 | SkillRegenActive | character | true while regenerating |
 | SkillLastHeal | character | "regen +2" / "lifesteal +4" |
+| SkillEffectsIdleRegenEnabled | script (SkillEffects) | SkillEffects 1.19 switch, default true: every dino heals after SkillIdleRegenDelay s without a health drop (false = 1.18) |
+| SkillIdleRegenDelay | script (SkillEffects) | 8: seconds without any health drop (hit, bleed, Blood Rush payment) before the heal starts |
+| SkillIdleRegenRate | script (SkillEffects) | 0.20: share of MaxHealth healed per second, never past MaxHealth (no shield); the bigger of this and Regeneration wins |
+| SkillIdleRegenActive | character | SkillEffects 1.19: true while healing this way; SkillLastHeal reads "idle +N" |
 | SkillShield, SkillShieldUntil | character | overheal shield HP and its end time (server time) |
 | SkillStunTrimmed | character | "immune" / "trimmed" / "tossTrimmed" |
 | SkillBleedUntil, SkillBleedBy, SkillCrushedAt | bot | bleed end time, who made it bleed, last crushing hit |

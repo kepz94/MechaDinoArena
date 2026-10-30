@@ -1,4 +1,4 @@
--- KillRegenServer v1.0 (Dino Arcade) — TEST. Health back after a kill.
+-- KillRegenServer v1.1 (Dino Arcade) — TEST. Health back after a kill.
 -- User: "add health regen after a kill". Answers: a kill = the killing blow on a bot (player-vs-player kills later, once
 --   PvP damage exists); the killer gets 25% of their max health back over 5 s.
 -- Kill: BiteServer 1.6 / PounceServer 1.3 stamp the killing blow on the bot: KilledBy (player name), KilledByUserId,
@@ -17,14 +17,20 @@
 --   KillRegenHealedExact = the same unrounded),
 --   KillCount, LastKillTarget, LastKillWith; player DinoKills; bot KillRegenCredited; script KillRegenServerVersion,
 --   KillRegenKills (total credited).
+-- v1.1 (Kepu 2026-10-30: "Yeah take that off that shouldn't be the case. It should be if there's been zero damage for 8
+--   seconds slowly heal back health"; answer: every dino): with script attribute KillRegenHealEnabled (default false,
+--   read at each kill) a kill gives no heal to any dino. Kills are still counted (DinoKills, KillCount, LastKillTarget,
+--   LastKillWith, KillRegenKills); the bot's KillRegenCredited reads "healOff". The heal after 8 s without damage is
+--   SkillEffects 1.19. true = 1.0 (kill heal back, per character KillRegenEnabled / Fraction / Time).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local DEFAULTS = {KillRegenEnabled = true, KillRegenFraction = 0.25, KillRegenTime = 5}
 
 script:SetAttribute("KillRegenServerVersion", VERSION)
 script:SetAttribute("KillRegenKills", 0)
+if script:GetAttribute("KillRegenHealEnabled") == nil then script:SetAttribute("KillRegenHealEnabled", false) end -- v1.1
 
 local function get(char, k)
 	local v = char:GetAttribute(k)
@@ -60,6 +66,10 @@ local function credit(bot)
 	char:SetAttribute("LastKillTarget", bot.Name)
 	char:SetAttribute("LastKillWith", tostring(bot:GetAttribute("KilledWith")))
 	script:SetAttribute("KillRegenKills", (script:GetAttribute("KillRegenKills") or 0) + 1)
+	if script:GetAttribute("KillRegenHealEnabled") ~= true then -- v1.1: no kill heal for any dino
+		bot:SetAttribute("KillRegenCredited", "healOff")
+		return
+	end
 	if get(char, "KillRegenEnabled") == false then
 		bot:SetAttribute("KillRegenCredited", "disabled")
 		return
