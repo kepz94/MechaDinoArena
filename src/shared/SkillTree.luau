@@ -1,4 +1,4 @@
--- SkillTree v1.14 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.15 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -88,7 +88,7 @@
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
 local SkillTree = {}
-SkillTree.Version = "1.14"
+SkillTree.Version = "1.15"
 SkillTree.COST = {1, 2, 3, 4}
 SkillTree.MAX_POINTS = 60
 SkillTree.MAX_LEVEL = 61
@@ -151,8 +151,6 @@ SkillTree.AREAS = {
 			"Run 10% faster again"}),
 		path("thrusters", "Thrusters", true, true, {
 			"Button: dash forward", "2 charges", "Longer dash", "Rocket hop"}),
-		path("grapple", "Grapple Hook", true, true, {
-			"Button: pull yourself to a tree", "Longer range", "Faster pull", "Hook an enemy and pull them in"}),
 	}},
 	{id = "eng", name = "Engineer", color = {255, 155, 46}, paths = {
 		path("sentry", "Sentry", true, true, {"Button: drop an auto-turret", "More health", "More damage", "Two sentries"}),
@@ -197,6 +195,10 @@ SkillTree.AREAS = {
 --   and remove the stun" -> "Heavy shot"; "Let's also forget about the hologram"): Shock Cannon star no longer stuns
 --   longer or jams parts (screechFlinch stays 1.1, screechJam false); new screechDamage (0; 30 at star); star text.
 --   Decoy Hologram shown to nobody (OWNER "none"). The Shock Mine keeps the parts jam as its star.
+-- v1.15 (MDA-84; Kepu 2026-10-29, raptor complete: "Just delete them"): the four hidden raptor paths are deleted from
+--   the tree: Grapple Hook (speed), Dart Launcher (attack), Pack Beacon and Decoy Hologram (eng); their OWNER entries,
+--   the dino / OWNER lines that hid them and their BUTTONS entries go with them. Saved steps for these ids are dropped
+--   by sanitize (it walks PATHS); a request naming one is refused ("unknownPath").
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -215,9 +217,6 @@ do
 			path("blade", "Blade Claws", true, true, {
 				"Mech sickle claws: pounce landing hits 35% harder", "Latch / pin bites tick 35% faster",
 				"Pounce hits make the target bleed", "A pin kill gives back half your pounce stamina"}),
-			path("dart", "Dart Launcher", true, true, {
-				"Button: fire a dart; the hit dino is slowed 30% for 3 s",
-				"Marked: the hit dino shows through tall grass for 6 s", "Two darts per charge", "Tranquilizer: slow 60%"}),
 		},
 		defense = {
 			path("cloak", "Cloak Field", true, true, {
@@ -234,12 +233,6 @@ do
 				"2 charges", "Lasts 1.35 s", "Hitting a dino stuns it for 0.75 s"}),
 		},
 		eng = {
-			path("beacon", "Pack Beacon", true, true, {
-				"Button: mark every enemy within 60 studs for your squad for 5 s", "81-stud radius",
-				"Marked enemies take 35% more damage from you", "Marks last until they leave the radius"}),
-			path("decoy", "Decoy Hologram", true, true, {
-				"Button: a fake raptor runs ahead for 5 s; bots chase it", "Lasts 6.75 s", "Two decoys",
-				"The decoy bursts and stuns whoever is near it"}),
 			path("shieldproj", "Shield Projector", true, true, {
 				"Button: a hard-light wall in front of you for 3 s that blocks hits and rockets", "Lasts 4.1 s",
 				"Wider wall", "The wall moves with you"}),
@@ -288,8 +281,7 @@ SkillTree.BUTTONS = {thrusters = true}
 SkillTree.SLOTS = 2
 -- v1.5: ownership, Cloak live, every button part listed, 4 slots
 SkillTree.OWNER = {
-	adrenaline = "Raptor", blade = "Raptor", dart = "Raptor", cloak = "Raptor", shield = "Raptor", thrusters = "Raptor",
-	grapple = "Raptor", beacon = "Raptor", decoy = "Raptor",
+	adrenaline = "Raptor", blade = "Raptor", cloak = "Raptor", shield = "Raptor", thrusters = "Raptor", -- v1.15: - dart, grapple, beacon, decoy
 	repairdrone = "TRex", biobattery = "TRex", rocket = "TRex", armor = "TRex", reactive = "TRex", ramjet = "TRex",
 	shieldproj = "TRex", roaramp = "TRex",
 	medstation = "none", turret = "none", sentry = "none", traps = "none", barricade = "none",
@@ -309,8 +301,7 @@ SkillTree.PATHS.adrenaline.steps[1] = "Button: heal 25% of max health over 3 s a
 SkillTree.PATHS.adrenaline.steps[2] = "Heal 34%" -- v1.7
 -- v1.9: batch 2 owners, live, buttons; Dart Launcher / Pack Beacon shown to nobody
 SkillTree.OWNER.screech, SkillTree.OWNER.scent = "Raptor", "Raptor"
-SkillTree.OWNER.dart, SkillTree.OWNER.beacon = "none", "none"
-for _, id in ipairs({"screech", "scent", "dart", "beacon"}) do SkillTree.PATHS[id].dino = SkillTree.OWNER[id] end
+for _, id in ipairs({"screech", "scent"}) do SkillTree.PATHS[id].dino = SkillTree.OWNER[id] end -- v1.15: dart / beacon deleted
 SkillTree.LIVE_MECH.screech, SkillTree.LIVE_MECH.scent = true, true
 SkillTree.BUTTONS.screech, SkillTree.BUTTONS.scent = true, true
 -- v1.10: Raptor Screech is shown as Shock Dart (id "screech" kept)
@@ -322,8 +313,8 @@ SkillTree.PATHS.screech.name = "Shock Cannon"
 SkillTree.PATHS.screech.steps[1] = "Button: a shoulder cannon fires an electric ball (100 studs). The first dino hit is stunned for 1.1 s and loses its cloak"
 SkillTree.PATHS.screech.steps[4] = "Stun lasts 1.5 s and jams parts: the hit dino's boost, Shield and Adrenaline end at once"
 -- v1.12: Grapple scrapped (hidden); Traps -> the raptor's Shock Mine
-SkillTree.OWNER.grapple, SkillTree.OWNER.traps = "none", "Raptor"
-SkillTree.PATHS.grapple.dino, SkillTree.PATHS.traps.dino = "none", "Raptor"
+SkillTree.OWNER.traps = "Raptor" -- v1.15: grapple deleted
+SkillTree.PATHS.traps.dino = "Raptor"
 SkillTree.LIVE_MECH.traps = true
 SkillTree.BUTTONS.traps = true
 SkillTree.PATHS.traps.name = "Shock Mine"
@@ -334,9 +325,7 @@ SkillTree.PATHS.traps.steps[4] = "Mines also jam parts: the dino's boost, Shield
 SkillTree.PATHS.traps.steps[1] = "Button: throw a mine 30 studs ahead. A dino that comes within 6 studs takes 25 damage, is blasted 25 studs back and dazed for 1 s" -- v1.13
 -- v1.14: Shock Cannon star = heavy shot; Decoy Hologram dropped
 SkillTree.PATHS.screech.steps[4] = "Heavy shot: the hit also deals 30 damage"
-SkillTree.OWNER.decoy = "none"
-SkillTree.PATHS.decoy.dino = "none"
-for _, id in ipairs({"adrenaline", "dart", "cloak", "shield", "grapple", "beacon", "decoy", "repairdrone", "rocket",
+for _, id in ipairs({"adrenaline", "cloak", "shield", "repairdrone", "rocket", -- v1.15: decoy, dart, grapple, beacon deleted
 	"armor", "ramjet", "shieldproj", "roaramp"}) do
 	SkillTree.BUTTONS[id] = true
 end

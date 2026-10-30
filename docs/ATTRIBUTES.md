@@ -1695,4 +1695,5 @@ MineServer 1.3 test hook: ServerScriptService.MineServer.MineTestDrop (BindableF
 | ScreechDamage | character | 0; 30 at star | damage the cannon's hit deals (stun stays ScreechFlinch 1.1; ScreechJam is false at every step) |
 
 Instance: ScreechDamagePop (BillboardGui on the hit dino's root, 1 s). Decoy Hologram is hidden from every dino (OWNER "none").
+SkillTree 1.15: Grapple Hook, Dart Launcher, Pack Beacon and Decoy Hologram no longer exist (no SkillPath_grapple / _dart / _beacon / _decoy attributes).
 

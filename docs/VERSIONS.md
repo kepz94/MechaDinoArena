@@ -236,6 +236,7 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | SkillTree | 1.14 | Shock Cannon star = heavy shot: screechDamage 30, stun stays 1.1 s, no parts jam (the Shock Mine keeps the jam as its star); Decoy Hologram hidden (OWNER "none") (MDA-83). Spec 1.14 PASS 439. Install hash 36515 / 1720566300; spec 28827 / 653577998 |
 | SkillEffects | 1.11 | + ScreechDamage while slotted (MDA-83). Install hash 22511 / 1374249911 |
 | ScreechServer | 1.3 | Heavy shot: ScreechDamage dealt on a hit (players TakeDamage + LastHitBy / LastHitAt, Energy Shield blocks it; bots DummyHealth + KilledWith "cannon"), rising "-30" / "BLOCKED" ScreechDamagePop (MDA-83). Verified in Play at star on a T-Rex bot 60 studs away: hit, DummyHealth 200 -> 170, stunned ~1.1 s (ScreechStunTime 1 read 0.1 s later), no parts jam, "-30" pop. Install hash 30261 / 1914512830 |
+| SkillTree | 1.15 | Grapple Hook, Dart Launcher, Pack Beacon and Decoy Hologram deleted from the tree (path definitions, OWNER entries, the lines that hid them, BUTTONS entries) (MDA-84, Kepu: "Just delete them"). Saves drop the ids through sanitize; a request naming one is refused "unknownPath". Spec 1.15 PASS 432. Verified in Play: SKILLS screen opens; T-Rex 12 lines unchanged; raptor 12 lines (regen ... traps, scent); no errors. Install hash 35968 / 755431217; spec 29206 / 1229656648 |
 
 ## Open decisions
 - Skill points per level-up.

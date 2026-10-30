@@ -1,4 +1,4 @@
--- SkillTree.spec v1.14 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.15 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 -- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
 -- v1.10: Shock Dart (screech shown as "Shock Dart", range 100 / 135; the 35% range check reads the data)
@@ -6,6 +6,7 @@
 -- v1.12: Shock Mine (traps live for Raptor, Grapple hidden; effects, 35% checks)
 -- v1.13: Shock Mine blast + launch (damage 25, launch 25, daze 1)
 -- v1.14: Shock Cannon star = heavy shot (30 damage, stun 1.1, no jam); Decoy hidden
+-- v1.15: Grapple, Dart Launcher, Pack Beacon, Decoy Hologram deleted from the tree
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -22,7 +23,7 @@ local function eq(name, got, want, tol)
 	if good then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
 end
 
-eq("Version", ST.Version, "1.14") -- v1.14 (was 1.13)
+eq("Version", ST.Version, "1.15") -- v1.15 (was 1.14)
 eq("COST", table.concat(ST.COST, ","), "1,2,3,4")
 eq("MAX_POINTS", ST.MAX_POINTS, 40) -- v1.5 (ADR-004)
 eq("MAX_LEVEL", ST.MAX_LEVEL, 41)
@@ -39,8 +40,8 @@ for _, a in ipairs(ST.AREAS) do
 end
 eq("areas", table.concat(areas, ","), "health,attack,defense,speed,eng")
 eq("path ids", table.concat(ids, ","),
-	"regen,medstation,lifesteal,adrenaline,repairdrone,biobattery,jaws,turret,rocket,blade,dart,screech,hide,armor,shield,cloak,"
-	.. "reactive,legs,thrusters,grapple,ramjet,sentry,traps,barricade,beacon,decoy,shieldproj,roaramp,scent") -- v1.9: + screech, scent
+	"regen,medstation,lifesteal,adrenaline,repairdrone,biobattery,jaws,turret,rocket,blade,screech,hide,armor,shield,cloak,"
+	.. "reactive,legs,thrusters,ramjet,sentry,traps,barricade,shieldproj,roaramp,scent") -- v1.15: - dart, grapple, beacon, decoy; -- v1.9: + screech, scent
 local buyable = {}
 for _, id in ipairs(ids) do if not ST.PATHS[id].soon then table.insert(buyable, id) end end
 eq("buyable", table.concat(buyable, ","), "regen,lifesteal,adrenaline,jaws,blade,screech,hide,shield,cloak,legs,thrusters,traps,scent") -- v1.12: + traps; -- v1.1: + thrusters; v1.5: + cloak (AREAS order); v1.9: + batch 1 (was stale since 1.6) + screech, scent
@@ -142,7 +143,7 @@ eq("LIVE thrusters", ST.LIVE_MECH.thrusters, true)
 eq("BUTTONS thrusters", ST.BUTTONS.thrusters, true)
 eq("SLOTS", ST.SLOTS, 4) -- v1.5 (1.1: 2)
 eq("thrusters not soon", ST.PATHS.thrusters.soon, false)
-eq("grapple still soon", ST.PATHS.grapple.soon, true)
+eq("grapple deleted", ST.PATHS.grapple, nil) -- v1.15 (was: still soon)
 eq("cloak live", ST.PATHS.cloak.soon, false) -- v1.5
 eq("canBuy thrusters I", cb({}, "thrusters", 1), "true:ok")
 eq("canBuy thrusters II needs 3", cb({thrusters = 1}, "thrusters", 2), "false:noPoints")
@@ -163,7 +164,8 @@ eq("sanitizeLoadout dup", lo(ST.sanitizeLoadout({"thrusters", "thrusters"}, own)
 eq("sanitizeLoadout slot2", lo(ST.sanitizeLoadout({false, "thrusters"}, own)), "false,thrusters")
 eq("sanitizeLoadout unowned", lo(ST.sanitizeLoadout({"thrusters", false}, {})), "false,false")
 eq("sanitizeLoadout passive", lo(ST.sanitizeLoadout({"regen", "jaws"}, {regen = 2, jaws = 1})), "false,false")
-eq("sanitizeLoadout soon", lo(ST.sanitizeLoadout({"grapple", "turret"}, {grapple = 1})), "false,false")
+eq("sanitizeLoadout soon", lo(ST.sanitizeLoadout({"sentry", "turret"}, {sentry = 1})), "false,false") -- v1.15: sentry (grapple deleted)
+eq("sanitizeLoadout deleted id", lo(ST.sanitizeLoadout({"grapple", "decoy"}, {grapple = 4, decoy = 4}, "Raptor")), "false,false") -- v1.15
 eq("sanitizeLoadout junk", lo(ST.sanitizeLoadout({5, {}}, own)), "false,false")
 eq("autoSlot first", lo(ST.autoSlot({false, false}, own, "thrusters")), "thrusters,false")
 eq("autoSlot already", lo(ST.autoSlot({false, "thrusters"}, own, "thrusters")), "false,thrusters")
@@ -191,7 +193,7 @@ eq("boost III", e({thrusters = 3}).dashTime, 2.0)
 eq("boost star", e({thrusters = 4}).dashTime, 2.0)
 eq("thrusters text I", ST.PATHS.thrusters.steps[1], "Button: rocket boost for 1.37 s at 2x run speed (steer while boosting; in the air with no stick: straight up)") -- v1.8 text
 eq("thrusters steps", #ST.PATHS.thrusters.steps, 4)
-eq("grapple text kept", ST.PATHS.grapple.steps[1], "Button: pull yourself to a tree")
+eq("deleted ids not buyable", select(2, ST.canBuy({}, "decoy", 40, "Raptor")), "unknownPath") -- v1.15 (was: grapple text kept)
 -- v1.3: the 35% rule (STRONG): every step >= 1.35x the step before (times / cooldowns / damage taken: <= 1 / 1.35)
 ST.STRONG = true
 local function ok35(name, before, after, lower) -- lower = smaller is better
@@ -247,7 +249,7 @@ eq("pathsFor eng Raptor", names(ST.pathsFor("eng", "Raptor")), "traps,scent") --
 eq("pathsFor eng TRex", names(ST.pathsFor("eng", "TRex")), "shieldproj,roaramp")
 eq("pathsFor eng new dino", names(ST.pathsFor("eng", "Stego")), "")
 eq("pathsFor health new dino", names(ST.pathsFor("health", "Stego")), "regen,lifesteal")
-eq("pathsFor nil = all", #ST.pathsFor("eng", nil), 8) -- v1.9: + scent
+eq("pathsFor nil = all", #ST.pathsFor("eng", nil), 6) -- v1.9: + scent; v1.15: - beacon, decoy
 eq("none hidden from All", ST.seesPath("turret", "All"), false)
 eq("canBuy cloak no dino", cb({}, "cloak", 5), "true:ok") -- dino nil = 1.4 behaviour (every path)
 local function cbd(steps, id, earned, dino) local okb, why = ST.canBuy(steps, id, earned, dino) return tostring(okb) .. ":" .. why end
@@ -296,7 +298,7 @@ eq("autoSlot cloak", lo4(ST.autoSlot({"thrusters", false, false, false}, both, "
 eq("TRex loadout drops raptor parts", lo4(ST.sanitizeLoadout({"thrusters", "cloak", false, false}, both, "TRex")), "false,false,false,false")
 
 -- v1.6: raptor batch 1 (Blade Claws, Adrenaline Injector, Energy Shield; plan docs/plans/RAPTOR_PARTS_B1_v1.0.md)
-eq("Version 1.6+", ST.Version, "1.14") -- v1.14
+eq("Version 1.6+", ST.Version, "1.15") -- v1.15
 for _, id in ipairs({"blade", "adrenaline", "shield"}) do eq(id .. " live", ST.PATHS[id].soon, false) end
 eq("blade passive", ST.BUTTONS.blade == true, false)
 local function R(id, n) return ST.effects({[id] = n}, "Raptor") end
@@ -345,7 +347,7 @@ eq("raptor attack area", table.concat(att, ","), "blade,screech") -- v1.9
 
 -- v1.9: raptor batch 2 (Scent Sense, Raptor Screech; plan docs/plans/RAPTOR_PARTS_B2_v1.0.md)
 for _, id in ipairs({"scent", "screech"}) do eq(id .. " live", ST.PATHS[id].soon, false); eq(id .. " button", ST.BUTTONS[id], true) end
-eq("dart hidden", ST.seesPath("dart", "Raptor"), false); eq("beacon hidden", ST.seesPath("beacon", "Raptor"), false)
+eq("dart deleted", ST.PATHS.dart, nil); eq("beacon deleted", ST.PATHS.beacon, nil) -- v1.15 (was: hidden)
 eq("scent trex", ST.seesPath("scent", "TRex"), false); eq("screech trex", ST.seesPath("screech", "TRex"), false)
 eq("scent 0", R("scent", 0).scentRadius, 0); eq("scent 0 cd", R("scent", 0).scentCooldown, 0)
 eq("scent I", R("scent", 1).scentRadius, 60); eq("scent I mem", R("scent", 1).scentMemory, 8)
@@ -364,11 +366,11 @@ eq("35 screech cd", R("screech", 1).screechCooldown / R("screech", 3).screechCoo
 eq("shock cannon name", ST.PATHS.screech.name, "Shock Cannon") -- v1.11 (1.10: Shock Dart)
 eq("screech III flinch", R("screech", 3).screechFlinch, 1.1); eq("screech star flinch", R("screech", 4).screechFlinch, 1.1) -- v1.14 (was 1.5)
 eq("screech star dmg", R("screech", 4).screechDamage, 30); eq("screech III dmg", R("screech", 3).screechDamage, 0) -- v1.14 (was the 35% stun check)
-eq("decoy hidden", ST.seesPath("decoy", "Raptor"), false) -- v1.14
+eq("decoy deleted", ST.PATHS.decoy, nil) -- v1.15 (1.14: hidden)
 -- v1.12: Shock Mine
 eq("mine name", ST.PATHS.traps.name, "Shock Mine"); eq("mine button", ST.BUTTONS.traps, true); eq("mine live", ST.PATHS.traps.soon, false)
 eq("mine raptor", ST.seesPath("traps", "Raptor"), true); eq("mine trex", ST.seesPath("traps", "TRex"), false)
-eq("grapple hidden raptor", ST.seesPath("grapple", "Raptor"), false)
+eq("grapple deleted (raptor)", ST.sanitize({grapple = 4}, "Raptor").grapple, nil) -- v1.15 (was: hidden)
 eq("mine 0", R("traps", 0).mineDamage, 0); eq("mine 0 slow", R("traps", 0).mineSlow, 1)
 eq("mine I dmg", R("traps", 1).mineDamage, 25); eq("mine I slow", R("traps", 1).mineSlow, 0.5)
 eq("mine I slow time", R("traps", 1).mineSlowTime, 2); eq("mine I cd", R("traps", 1).mineCooldown, 12)
