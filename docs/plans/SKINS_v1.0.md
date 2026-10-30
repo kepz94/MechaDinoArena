@@ -48,7 +48,11 @@ Prices are placeholders shown on locked cards; Kepu sets real prices in the buyi
 **Files:** Create `src/server/SkinServer.server.luau` (ServerScriptService).
 **Interfaces:** consumes SkinCatalog. Produces: RemoteEvent `ReplicatedStorage.DinoSkinRequest:FireServer("equip", skinId)`; a copy of SkinCatalog at `ReplicatedStorage.SkinShared` (as SkillServer does with SkillShared); player attributes `SkinEquipped_<Species>` (id), `SkinOwnedFree` (comma ids, v1), `SkinSaveState`; character attributes `SkinApplied` (id, set last), `SkinParts` (count painted); part attribute `SkinRole`.
 **Steps:**
-1. Load per player from DataStore `MDA_Skins_v1` key `u<UserId>` → `{equipped = {[species] = id}}` (pcall; Studio "noApi" → defaults; SAVE_GAP 6 s like MusicServer; save on change and on leave).
+1. Persistence (the assignment stays until the player picks another skin):
+   - DataStore `MDA_Skins_v1`, key `u<UserId>`, value `{v = 1, equipped = {[species] = id}, owned = {}}` (`owned` reserved for the buying plan; v1 never writes into it, it only carries it through).
+   - Load on join with `GetAsync`, up to LOAD_TRIES (3) attempts LOAD_GAP (2, then 4) s apart. Loaded / new -> `SkinSaveState` "loaded" / "new". All attempts failed -> "loadFailed": the player plays with the default, equips still work for this session, and **nothing is ever written for that player this session** (a failed load can never overwrite a stored skin or a future purchase); the load is retried every RETRY_GAP (30) s and a later success applies the stored skin. Studio without API access -> "noApi" (same no-write rule).
+   - Save with `UpdateAsync` (merge: only `equipped[species]` is replaced; `owned` and other species are kept from the stored value), SAVE_GAP (6) s after a change, on PlayerRemoving, and in `game:BindToClose` (server shutdown), each in pcall with one retry; `SkinSaveState` "saved" / "saveFailed" (retried next gap).
+   - Studio testing: with Kepu's Game Settings → Security → "Enable Studio Access to API Services" on, the save / load path is tested in Studio (rejoin keeps the skin); without it, Kepu checks it live after publishing.
 2. On every new character (CharacterAdded, also the raptor swap SpeciesServer does): wait for the body's parts, tag each BasePart that is not HumanoidRootPart, not in `Hitboxes`, not under a `Mecha_*` model, with `SkinRole = SkinCatalog.roleOf(species, part.Color)` (only when the role exists and the part has no SkinRole yet), then paint the equipped skin (`Color`, and `Material` when the skin gives one, else the part's own). Set `SkinApplied` last.
 3. `equip`: checks in order "badArg" (not a string), "notInMenu" (InMenu ~= true), "unknown" (not in this species' SKINS), "locked" (not owned), "same", "ok" → paint the live (parked) character, set `SkinEquipped_<Species>`, queue a save. Result in player attribute `SkinServerResult`.
 4. Switch `SkinServerEnabled` (default true; false = no tags, no paint, remote ignored).
@@ -79,8 +83,13 @@ Expect SkinServer on. **Acceptance:** `ArenaScope_SkinServer` "on", mismatches 0
 | equip, locked | "locked" |
 | equip, already equipped | "same" |
 | equip ok | live body painted, attribute set, save queued |
-| DataStore unavailable (Studio / outage) | SkinSaveState "noApi" / "loadFailed": play with the default, never overwrite the stored value with a default |
+| DataStore unavailable (Studio / outage) | SkinSaveState "noApi" / "loadFailed": play with the default, no writes this session until a retry loads the stored value |
+| Server shuts down | BindToClose saves every changed player (merge) |
+| Player picks Classic | Classic is stored like any skin (= "unassigned", the default look) |
 | Part colour has no role (teeth, pupils, mouth, a future part) | left as it is |
 
-## Red-team (to be answered by Kepu before filing)
-See the chat for the 3–5 strongest challenges.
+## Red-team (Kepu's answers 2026-10-30)
+1. Bright / Neon skins change how visible a dino is (Neon can glow through the 1% cloak; dark skins hide better): **accepted** — Kepu: "dont worry about being neon or whatnot this is an arcade game". Neon stays on Lava / Night Stalker / Gold Hunter.
+2. A failed load followed by a save could wipe stored skins (and later purchases): **mitigated** — no writes after a failed load, UpdateAsync merge, `owned` carried through, BindToClose (Task 2 step 1). Kepu: "is there no way to assign a skin to a dino and keep it that way until unassigned? ... i cant do that if youre not sure" -> the assignment is a saved per-species value, applied to every new body; Classic = unassigned.
+3. Studio blocks DataStores by default: **mitigated** — Kepu can turn on Studio API access so the save path is tested in Studio; otherwise a live rejoin check after publishing (acceptance).
+4. Colour-matched roles break if a model colour changes: **mitigated** — the SkinCatalog spec checks that every authored colour in both model data files has a role or is on the never-paint list (teeth E8E2D2, pupils / T-Rex eyes 111111, mouths 963C3C / 6E342E, T-Rex shine F5F5F0, HumanoidRootPart A3A2A5).
