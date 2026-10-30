@@ -1,0 +1,314 @@
+<title>Main Menu Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: controls bar, then a device frame (PC 16:9 or phone landscape 19.5:9) holding the in-game menu; notes below. Single dark look = the game's HUD. */
+:root {
+  --page: #0d0f14;
+  --panel: #14141a;       /* game PANEL (20,20,26) */
+  --panel2: #1c2230;
+  --line: #2b3242;
+  --fg: #ffffff;
+  --grey: #cfd3dc;        /* game GREY (207,211,220) */
+  --muted: #8f99aa;
+  --yellow: #ffc832;      /* game YELLOW (255,200,50) */
+  --orange: #ff9b2e;      /* game ORANGE */
+  --green: #5fd16a;       /* game GREEN_A */
+  --red: #f05a4f;         /* game RED_A */
+  --volt: #7fe9ff;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif;  /* in game: FredokaOne */
+  --body: "Nunito", "Gotham", system-ui, sans-serif;           /* in game: Gotham */
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+body { background: var(--page); color: var(--fg); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 22px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--yellow); }
+.lede { margin: 0; color: var(--muted); max-width: 74ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 700 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.chip:focus-visible, .gbtn:focus-visible, .stage:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+
+/* device frame */
+.frameWrap { overflow-x: auto; }
+.device { position: relative; margin: 0 auto; border-radius: 18px; border: 3px solid #2a2f3a; overflow: hidden; background: #000; box-shadow: 0 20px 60px rgb(0 0 0 / .45); }
+.device.pc { width: min(100%, 1120px); aspect-ratio: 16 / 9; }
+.device.phone { width: min(100%, 860px); aspect-ratio: 19.5 / 9; border-radius: 34px; border-width: 8px; }
+.screen { position: absolute; inset: 0; container-type: size; font-family: var(--body); }
+/* game world behind the menu (blurred island) */
+.world { position: absolute; inset: 0; background:
+  linear-gradient(180deg, #2f80d9 0%, #8cc3ec 46%, #cfe3c0 47%, #6cb24f 60%, #4f9a3a 100%); filter: saturate(.9); }
+.world::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(10 12 18 / .78) 0%, rgb(10 12 18 / .45) 55%, rgb(10 12 18 / .7) 100%); backdrop-filter: blur(2px); }
+.blocks { position: absolute; left: 0; right: 0; bottom: 34%; height: 18%; display: flex; align-items: flex-end; gap: 1.2cqw; padding: 0 4cqw; opacity: .55; }
+.blocks i { display: block; background: #6f7a8c; width: 6cqw; }
+/* Roblox top bar keep-out */
+.topbar { position: absolute; left: 0; right: 0; top: 0; height: 9cqh; pointer-events: none; }
+.topbar::before { content: ""; position: absolute; left: 1.6cqw; top: 1.6cqh; width: 4.4cqh; height: 4.4cqh; border-radius: 1.2cqh; background: rgb(0 0 0 / .55); }
+.layer { position: absolute; inset: 0; }
+
+/* shared game UI pieces (sizes in container units so PC and phone scale like the game's Scale UI) */
+.title { font-family: var(--display); font-weight: 700; line-height: .95; letter-spacing: .01em; text-shadow: 0 .5cqh 0 rgb(0 0 0 / .45); }
+.title small { display: block; font-size: .42em; color: var(--yellow); letter-spacing: .14em; margin-bottom: .6cqh; }
+.gbtn { font-family: var(--display); font-weight: 700; border: 0; border-radius: 1.6cqh; cursor: pointer; color: #1b1406; background: var(--yellow); box-shadow: inset 0 -0.9cqh 0 rgb(0 0 0 / .22), 0 .6cqh 0 rgb(0 0 0 / .35); display: flex; align-items: center; justify-content: center; gap: 1.4cqw; text-transform: uppercase; letter-spacing: .03em; transition: transform .08s; }
+.gbtn:active { transform: translateY(.4cqh); }
+.gbtn.dark { background: var(--panel); color: var(--fg); border: .35cqh solid rgb(255 255 255 / .16); box-shadow: inset 0 -0.9cqh 0 rgb(0 0 0 / .35), 0 .6cqh 0 rgb(0 0 0 / .35); }
+.gbtn.arena { background: var(--orange); }
+.tag { font: 800 max(1.9cqh, 10px)/1 var(--body); padding: .7cqh 1cqh; border-radius: .9cqh; background: rgb(0 0 0 / .28); color: inherit; letter-spacing: .08em; }
+.sub { display: block; font: 800 max(2.1cqh, 11px)/1.2 var(--body); text-transform: none; letter-spacing: 0; opacity: .78; margin-top: .4cqh; }
+.panel { background: rgb(20 20 26 / .86); border: .35cqh solid rgb(255 255 255 / .12); border-radius: 2.2cqh; }
+.stage { position: relative; cursor: pointer; display: grid; place-items: center; overflow: hidden; }
+.stage .floor { position: absolute; left: 12%; right: 12%; bottom: 13%; height: 7%; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 200 50 / .35), transparent); }
+.stage svg { width: 82%; height: auto; max-height: 72%; position: relative; animation: bob 2.6s ease-in-out infinite; }
+.stage .hint { position: absolute; bottom: 3.2cqh; left: 0; right: 0; text-align: center; font: 800 max(2.2cqh, 11px) var(--body); color: var(--grey); }
+.stage .mode { position: absolute; top: 2.4cqh; left: 2.4cqh; font: 800 1.9cqh var(--mono); letter-spacing: .1em; padding: .8cqh 1.2cqh; border-radius: 1cqh; background: rgb(0 0 0 / .4); color: var(--grey); }
+.stage .mode.mech { color: var(--volt); }
+@keyframes bob { 50% { transform: translateY(-1.4cqh); } }
+@media (prefers-reduced-motion: reduce) { .stage svg { animation: none; } }
+.species { display: flex; align-items: center; justify-content: center; gap: 1.6cqw; }
+.arrow { width: max(7.2cqh, 40px); height: max(7.2cqh, 40px); padding: 0; font-size: max(3.4cqh, 16px); }
+.dname { font: 700 4.6cqh/1 var(--display); min-width: 22cqw; text-align: center; }
+.dname small { display: block; font: 800 max(1.9cqh, 11px) var(--body); color: var(--muted); margin-top: .7cqh; letter-spacing: .06em; }
+.slots { display: flex; gap: .8cqw; justify-content: center; flex-wrap: wrap; }
+.slot { font: 800 max(1.8cqh, 12px) var(--body); padding: max(.8cqh, 7px) max(1.1cqh, 9px); min-height: max(4.6cqh, 32px); border-radius: 1cqh; background: rgb(255 255 255 / .07); border: .3cqh solid rgb(255 155 46 / .55); color: var(--grey); white-space: nowrap; }
+.slot b { color: var(--orange); margin-right: .5cqw; }
+.slot.none { border-color: rgb(255 255 255 / .14); color: var(--muted); }
+button.slot { cursor: pointer; font-family: var(--body); }
+button.slot.sel { border-color: #fff; border-width: .5cqh; color: #fff; }
+.pick { display: flex; gap: .8cqw; overflow-x: auto; padding: 1cqh; border-radius: 1.4cqh; background: rgb(0 0 0 / .45); border: .3cqh solid rgb(255 255 255 / .12); }
+.pick button { flex: none; font: 800 max(1.9cqh, 12px) var(--body); padding: max(1cqh, 8px) max(1.4cqh, 12px); min-height: max(5cqh, 36px); border-radius: 99px; background: var(--panel); color: #fff; border: .3cqh solid var(--orange); cursor: pointer; white-space: nowrap; }
+.pick button.empty { border-color: rgb(255 255 255 / .3); }
+.pick button span { color: var(--muted); }
+.toast { position: absolute; left: 50%; top: 12cqh; transform: translateX(-50%); font: 700 3cqh var(--display); background: rgb(20 20 26 / .92); border: .35cqh solid var(--yellow); color: var(--yellow); padding: 1.4cqh 2.4cqh; border-radius: 1.6cqh; white-space: nowrap; }
+
+/* ---- A: one-screen lobby ---- */
+.A { display: grid; grid-template-columns: 1.15fr 1fr; gap: 3cqw; padding: 10cqh 4cqw 6cqh; }
+.A .stage { border-radius: 2.6cqh; }
+.A .right { display: grid; align-content: center; gap: 3cqh; }
+.A .title { font-size: 7.6cqh; }
+.A .modes { display: grid; gap: 2.2cqh; }
+.A .modes .gbtn { height: 13cqh; font-size: 5cqh; justify-content: space-between; padding: 0 3cqh; text-align: left; }
+.A .left { display: grid; grid-template-rows: 1fr auto auto auto; gap: 1.6cqh; min-height: 0; }
+
+/* ---- B: two steps ---- */
+.B1 { display: grid; place-items: center; align-content: center; gap: 5cqh; padding: 10cqh 6cqw 6cqh; }
+.B1 .title { font-size: 10cqh; text-align: center; }
+.B1 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 3cqw; width: min(92%, 120cqh); }
+.B1 .modes .gbtn { height: 24cqh; flex-direction: column; font-size: 6cqh; }
+.B2 { display: grid; grid-template-rows: auto 1fr auto; gap: 2cqh; padding: 10cqh 4cqw 4cqh; }
+.B2 .top { display: flex; justify-content: space-between; align-items: center; }
+.B2 .top .gbtn { height: max(7.5cqh, 40px); font-size: max(3cqh, 14px); padding: 0 2.4cqh; }
+.B2 .stage { border-radius: 2.6cqh; }
+.B2 .bottom { display: grid; grid-template-columns: 1fr auto; gap: 3cqw; align-items: center; }
+.B2 .play { height: 11cqh; font-size: 4.8cqh; padding: 0 5cqh; }
+
+/* ---- C: mode cards + dino pill ---- */
+.C { display: grid; grid-template-rows: auto 1fr; gap: 3cqh; padding: 10cqh 4cqw 5cqh; }
+.C .head { display: flex; justify-content: space-between; align-items: center; gap: 2cqw; }
+.C .title { font-size: 7cqh; }
+.C .pill { height: max(8.5cqh, 40px); font-size: max(3.2cqh, 14px); padding: 0 2.4cqh; }
+.C .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 3cqw; min-height: 0; }
+.C .card { border-radius: 2.6cqh; display: grid; grid-template-rows: 1fr auto; overflow: hidden; cursor: pointer; border: .45cqh solid rgb(255 255 255 / .14); }
+.C .card .art { display: grid; place-items: center; font-size: 13cqh; }
+.C .card.s .art { background: linear-gradient(180deg, #5fa8e6, #6cb24f); }
+.C .card.a .art { background: linear-gradient(180deg, #3b2a3e, #8a3d2c); }
+.C .card .foot { background: var(--panel); padding: 2cqh 2.6cqh; display: flex; justify-content: space-between; align-items: center; }
+.C .card .foot .t { font: 700 5cqh/1 var(--display); }
+.C .card .foot .d { font: 800 2.1cqh var(--body); color: var(--muted); }
+.C .overlay { position: absolute; inset: 0; background: rgb(8 10 14 / .78); display: grid; place-items: center; }
+.C .sheet { width: min(86%, 150cqh); height: 82%; display: grid; grid-template-rows: auto 1fr auto auto auto; gap: 1.6cqh; padding: 2.4cqh; }
+
+/* notes */
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.opt { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.opt.on { border-color: var(--yellow); }
+.opt h3 { margin: 0; font: 700 18px var(--display); }
+.opt .rec { font: 600 11px var(--mono); color: var(--green); letter-spacing: .1em; text-transform: uppercase; }
+.opt p { margin: 0; color: var(--muted); font-size: 14px; }
+.spec { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.spec h2 { margin: 0 0 6px; font: 700 18px var(--display); }
+.spec ul { margin: 0; padding-left: 18px; color: var(--grey); display: grid; gap: 4px; }
+</style>
+
+<div class="wrap">
+  <h1>Main Menu &amp; <span>Dino Select</span></h1>
+  <p class="lede">Three layouts for the first screen a player sees. Every option has SANDBOX (today's island with bots, no player damage) and ARENA (same island, bots off, player damage on), plus the dino select: a 3D preview of the current dino. Switch dinos with the arrows, tap the dino to flip it to its mech view, and tap a loadout slot to put a different mech part on it. The mech view updates to show the parts you've equipped. Switch between PC and phone (landscape, how Roblox phones play) to check spacing.</p>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Layout"><b>Layout</b>
+      <button class="chip" data-o="A">A · One-screen lobby</button>
+      <button class="chip" data-o="B">B · Two steps</button>
+      <button class="chip" data-o="C">C · Mode cards</button>
+    </div>
+    <div class="group" role="group" aria-label="Device"><b>Device</b>
+      <button class="chip" data-d="pc">PC 16:9</button>
+      <button class="chip" data-d="phone">Phone</button>
+    </div>
+  </div>
+
+  <div class="frameWrap"><div class="device pc" id="device"><div class="screen" id="screen"></div></div></div>
+
+  <div class="opts">
+    <div class="opt" id="o-A"><span class="rec">Recommended</span><h3>A · One-screen lobby</h3><p>Dino stage on the left, title and the two mode buttons on the right. Everything in one view: pick a dino, tap a mode, you spawn. Fewest taps, and it fits a phone without scrolling.</p></div>
+    <div class="opt" id="o-B"><h3>B · Two steps</h3><p>Big SANDBOX / ARENA blocks first, then a full dino select screen with PLAY and BACK. Each screen does one job. One extra tap every time you play.</p></div>
+    <div class="opt" id="o-C"><h3>C · Mode cards</h3><p>Two big picture cards for the modes; your dino sits in a pill at the top that opens the dino select over the menu. The modes get the spotlight, and the dino is one tap away.</p></div>
+  </div>
+
+  <div class="spec">
+    <h2>Same in every option</h2>
+    <ul>
+      <li>Shown when you join, and from a MENU button in the game (it replaces the "RAPTOR ▾" pill switch).</li>
+      <li>The dino preview is your real dino model turning slowly; the mech view adds the parts in its 4 loadout slots. The T-Rex has no live parts yet, so its mech view says so.</li>
+      <li>Customize: tap a slot (R / C / T / V), then a part from the row (or Empty), the same tap-a-slot-then-a-part flow as the SKILLS screen; a part already in another slot moves over. The loadout saves exactly as it does today.</li>
+      <li>Select other dinos with the arrows (T-Rex, Raptor; new dinos appear here automatically).</li>
+      <li>Sizes scale with the screen (Roblox Scale UI) with phone minimums: text at least 11-12 px, tap targets at least 40 px; nothing under the Roblox top-left buttons.</li>
+      <li>Fredoka One titles, Gotham text, dark panels and the yellow / orange accents already used by the HUD and SKILLS screen.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(() => {
+  const st = { o: 'A', d: 'pc', dino: 0, mech: false, step: 1, sheet: false, toast: '', pickSlot: -1 };
+  const DINOS = [
+    { id: 'Raptor', name: 'RAPTOR', sub: '60 HP · fast hunter', keys: ['R', 'C', 'T', 'V'],
+      slots: ['Adrenaline', 'Shock Cannon', 'Energy Shield', 'Cloak Field'],
+      owned: ['Adrenaline', 'Shock Cannon', 'Energy Shield', 'Cloak Field', 'Thrusters', 'Shock Mine', 'Scent Sense'] },
+    { id: 'TRex', name: 'T-REX', sub: '200 HP · heavy hitter', keys: [], slots: [], owned: [] },
+  ];
+  const screen = document.getElementById('screen');
+  const device = document.getElementById('device');
+
+  // blocky side-view dinos (same voxel feel as the game); parts drawn only in mech view
+  function raptorSVG(mech) {
+    const has = (n) => DINOS[0].slots.includes(n);
+    const G = '#4f8f3a', D = '#2f5a24', L = '#6fb04f';
+    let s = `<svg viewBox="0 0 220 140" aria-hidden="true">
+      <rect x="20" y="62" width="60" height="12" fill="${G}"/><rect x="8" y="60" width="16" height="9" fill="${G}"/>
+      <rect x="70" y="52" width="70" height="34" fill="${G}"/><rect x="74" y="56" width="62" height="6" fill="${L}"/>
+      <rect x="132" y="34" width="16" height="30" fill="${G}"/>
+      <rect x="140" y="22" width="44" height="22" fill="${G}"/><rect x="176" y="34" width="14" height="10" fill="${D}"/>
+      <rect x="168" y="27" width="5" height="5" fill="#111"/>
+      <rect x="86" y="86" width="12" height="34" fill="${D}"/><rect x="112" y="86" width="12" height="34" fill="${D}"/>
+      <rect x="82" y="118" width="20" height="6" fill="${D}"/><rect x="108" y="118" width="20" height="6" fill="${D}"/>
+      <rect x="132" y="70" width="14" height="6" fill="${D}"/>`;
+    if (mech && has('Adrenaline')) s += `
+      <rect x="96" y="40" width="12" height="13" fill="#5dff8a"/><rect x="111" y="40" width="12" height="13" fill="#5dff8a"/>
+      <rect x="96" y="37" width="12" height="4" fill="#3a4350"/><rect x="111" y="37" width="12" height="4" fill="#3a4350"/>`;
+    if (mech && has('Shock Cannon')) s += `
+      <rect x="118" y="58" width="22" height="16" fill="#3a4350"/><rect x="140" y="62" width="40" height="8" fill="#8e9aa8"/>
+      <rect x="150" y="60" width="4" height="12" fill="#7fe9ff"/><rect x="162" y="60" width="4" height="12" fill="#7fe9ff"/>
+      <circle cx="183" cy="66" r="5" fill="#7fe9ff"/>`;
+    if (mech && has('Cloak Field')) s += `
+      <rect x="74" y="44" width="5" height="12" fill="#8e9aa8"/><rect x="80" y="42" width="5" height="14" fill="#8e9aa8"/><rect x="74" y="48" width="11" height="2" fill="#7fe9ff"/>`;
+    if (mech && has('Energy Shield')) s += `
+      <rect x="66" y="50" width="78" height="40" fill="none" stroke="#5aa0ff" stroke-opacity=".55" stroke-width="2" stroke-dasharray="5 4"/>`;
+    if (mech && has('Thrusters')) s += `
+      <rect x="62" y="74" width="10" height="10" fill="#3a4350"/><rect x="54" y="76" width="9" height="6" fill="#ff9b2e"/>`;
+    if (mech && has('Shock Mine')) s += `
+      <rect x="98" y="80" width="14" height="5" fill="#2e343e"/><rect x="103" y="76" width="4" height="4" fill="#e1faff"/>`;
+    if (mech && has('Scent Sense')) s += `
+      <rect x="180" y="24" width="10" height="4" fill="#ff9b2e"/>`;
+    return s + '</svg>';
+  }
+  function trexSVG() {
+    const G = '#7a6a3a', D = '#5a4d2a', L = '#8f7d47';
+    return `<svg viewBox="0 0 220 140" aria-hidden="true">
+      <rect x="6" y="58" width="58" height="14" fill="${G}"/>
+      <rect x="56" y="44" width="78" height="44" fill="${G}"/><rect x="60" y="48" width="70" height="6" fill="${L}"/>
+      <rect x="126" y="30" width="22" height="30" fill="${G}"/>
+      <rect x="136" y="14" width="66" height="30" fill="${G}"/><rect x="176" y="32" width="26" height="10" fill="${D}"/>
+      <rect x="160" y="20" width="6" height="6" fill="#111"/>
+      <rect x="128" y="60" width="16" height="5" fill="${D}"/>
+      <rect x="74" y="88" width="18" height="34" fill="${D}"/><rect x="102" y="88" width="18" height="34" fill="${D}"/>
+      <rect x="70" y="118" width="26" height="7" fill="${D}"/><rect x="98" y="118" width="26" height="7" fill="${D}"/></svg>`;
+  }
+  function stage() {
+    const d = DINOS[st.dino];
+    const art = d.id === 'Raptor' ? raptorSVG(st.mech) : trexSVG();
+    const tag = st.mech ? '<span class="mode mech">MECH VIEW</span>' : '<span class="mode">DINO</span>';
+    let hint = st.mech ? 'Tap to see the dino' : 'Tap to see its mech parts';
+    if (st.mech && d.owned.length === 0) hint = 'No mech parts for the T-Rex yet · tap to go back';
+    return `<div class="stage panel" tabindex="0" role="button" aria-label="Flip dino view" data-act="flip"><span class="floor"></span>${tag}${art}<span class="hint">${hint}</span></div>`;
+  }
+  function picker() {
+    const d = DINOS[st.dino];
+    return `<div class="species">
+      <button class="gbtn dark arrow" data-act="prev" aria-label="Previous dino">◀</button>
+      <div class="dname">${d.name}<small>${d.sub}</small></div>
+      <button class="gbtn dark arrow" data-act="next" aria-label="Next dino">▶</button></div>`;
+  }
+  function slots() {
+    const d = DINOS[st.dino];
+    if (!d.owned.length) return `<div class="slots"><span class="slot none">No mech parts yet</span></div>`;
+    let h = `<div class="slots">${d.keys.map((k, i) => `<button class="slot${st.pickSlot === i ? ' sel' : ''}${d.slots[i] ? '' : ' none'}" data-act="slot" data-i="${i}"><b>${k}</b>${d.slots[i] || 'empty'}</button>`).join('')}</div>`;
+    if (st.pickSlot >= 0) {
+      h += `<div class="pick">${d.owned.map(n => {
+        const at = d.slots.indexOf(n);
+        const where = at >= 0 && at !== st.pickSlot ? ` <span>· in ${d.keys[at]}</span>` : '';
+        return `<button data-act="part" data-n="${n}">${n}${where}</button>`;
+      }).join('')}<button class="empty" data-act="part" data-n="">Empty</button></div>`;
+    } else {
+      h += `<div style="text-align:center;font:800 max(1.9cqh, 11px) var(--body);color:var(--muted)">Tap a slot to change its part</div>`;
+    }
+    return h;
+  }
+  const modeBtns = (cls = '') => `
+    <button class="gbtn ${cls}" data-act="play" data-m="SANDBOX"><span>Sandbox<span class="sub">Island with bots · no player damage</span></span><span class="tag">BOTS</span></button>
+    <button class="gbtn arena ${cls}" data-act="play" data-m="ARENA"><span>Arena<span class="sub">Same island · bots off · player damage on</span></span><span class="tag">PVP</span></button>`;
+  const title = (t) => `<div class="title"><small>MECHA DINO</small>${t}</div>`;
+
+  function render() {
+    device.className = 'device ' + st.d;
+    let ui = '';
+    if (st.o === 'A') {
+      ui = `<div class="layer A"><div class="left">${stage()}${picker()}${slots()}</div>
+        <div class="right">${title('ARENA')}<div class="modes">${modeBtns()}</div></div></div>`;
+    } else if (st.o === 'B') {
+      ui = st.step === 1
+        ? `<div class="layer B1">${title('ARENA')}<div class="modes">
+            <button class="gbtn" data-act="step2" data-m="SANDBOX">Sandbox<span class="sub">Island with bots</span></button>
+            <button class="gbtn arena" data-act="step2" data-m="ARENA">Arena<span class="sub">PvP · bots off</span></button></div></div>`
+        : `<div class="layer B2"><div class="top"><button class="gbtn dark" data-act="back">◀ Back</button><span class="tag" style="font-size:2.4cqh;color:var(--yellow)">${st.chosen || 'SANDBOX'}</span></div>
+            ${stage()}<div class="bottom"><div>${picker()}<div style="height:1.4cqh"></div>${slots()}</div><button class="gbtn play" data-act="play" data-m="${st.chosen || 'SANDBOX'}">Play</button></div></div>`;
+    } else {
+      const d = DINOS[st.dino];
+      ui = `<div class="layer C"><div class="head">${title('ARENA')}<button class="gbtn dark pill" data-act="sheet">${d.name} ▾</button></div>
+        <div class="cards">
+          <div class="card s" data-act="play" data-m="SANDBOX" role="button" tabindex="0"><div class="art">🏝</div><div class="foot"><div><div class="t">SANDBOX</div><div class="d">Island with bots · no player damage</div></div><span class="tag">BOTS</span></div></div>
+          <div class="card a" data-act="play" data-m="ARENA" role="button" tabindex="0"><div class="art">⚔</div><div class="foot"><div><div class="t">ARENA</div><div class="d">Bots off · player damage on</div></div><span class="tag">PVP</span></div></div>
+        </div></div>
+        ${st.sheet ? `<div class="overlay"><div class="sheet panel">${picker()}${stage()}${slots()}<button class="gbtn" style="height:9cqh;font-size:3.6cqh" data-act="sheet">Done</button></div></div>` : ''}`;
+    }
+    screen.innerHTML = `<div class="world"><div class="blocks"><i style="height:40%"></i><i style="height:70%"></i><i style="height:55%"></i><i style="height:85%"></i><i style="height:45%"></i><i style="height:65%"></i></div></div><div class="topbar"></div>${ui}${st.toast ? `<div class="toast">${st.toast}</div>` : ''}`;
+    document.querySelectorAll('[data-o]').forEach(b => b.setAttribute('aria-pressed', b.dataset.o === st.o));
+    document.querySelectorAll('[data-d]').forEach(b => b.setAttribute('aria-pressed', b.dataset.d === st.d));
+    ['A', 'B', 'C'].forEach(k => document.getElementById('o-' + k).classList.toggle('on', k === st.o));
+  }
+  screen.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act]'); if (!t) return;
+    const a = t.dataset.act;
+    if (a === 'flip') st.mech = !st.mech;
+    if (a === 'prev' || a === 'next') { st.dino = (st.dino + 1) % DINOS.length; st.mech = false; st.pickSlot = -1; }
+    if (a === 'slot') { const i = +t.dataset.i; st.pickSlot = st.pickSlot === i ? -1 : i; st.mech = true; }
+    if (a === 'part') {
+      const d = DINOS[st.dino], n = t.dataset.n, old = d.slots.indexOf(n);
+      if (n && old >= 0) d.slots[old] = '';
+      d.slots[st.pickSlot] = n; st.pickSlot = -1; st.mech = true;
+    }
+    if (a === 'step2') { st.step = 2; st.chosen = t.dataset.m; }
+    if (a === 'back') st.step = 1;
+    if (a === 'sheet') st.sheet = !st.sheet;
+    if (a === 'play') { st.toast = `Spawning ${DINOS[st.dino].name} in ${t.dataset.m}…`; setTimeout(() => { st.toast = ''; render(); }, 1600); }
+    render();
+  });
+  screen.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role="button"]')) { e.preventDefault(); e.target.click(); } });
+  document.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { st.o = b.dataset.o; st.step = 1; st.sheet = false; render(); });
+  document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { st.d = b.dataset.d; render(); });
+  render();
+})();
+</script>
