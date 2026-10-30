@@ -276,6 +276,7 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | MusicServer | 1.0 | New Script: MUSIC on/off remembered per player (DataStore MDA_Settings_v1, key u<UserId>, {musicOff}); remote MusicSetting; player attribute MusicMuted. Verified in Play: toggle sets MusicMuted; save "writeFailed" in Studio (no API access) — live check. Install hash 4003 / 1753084953 |
 | MainMenu | 1.5 | MUSIC ON / MUSIC OFF pill top-right of the menu (switch MainMenuMusicButtonEnabled). Verified in Play: tap -> MUSIC OFF, music off; screenshot. Install hash 49803 / 130506836 |
 | ArenaScope | 1.13 | Music + MusicServer expected on. Verified: mismatches 0. Install hash 7635 / 2114668833 |
+| MainMenu | 1.6 | Music credit bottom-right (Kevin MacLeod CC BY 4.0 for Gymnopedie No. 2; APM for Little Toys / Crazy Daisy); switch MainMenuCreditEnabled. Verified in Play: visible, text fits; screenshot. Install hash 51109 / 299719044 |
 | Publish | 2026-10-29 | Egg Loader release: Sandbox place published (v102); Arena place overwritten via Publish As. Live trip check pending (MDA-95). |
 
 ## Open decisions
