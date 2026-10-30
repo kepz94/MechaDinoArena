@@ -1,4 +1,4 @@
--- ShoulderCam v1.5 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
+-- ShoulderCam v1.6 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
 -- The camera is Scriptable and placed every frame (RenderStep, Camera priority, after TurnLimit / PounceTest):
 --   focus  = HumanoidRootPart position + ShoulderCamFocusHeight up (only the HRP position is used, so the view stays
 --            steady while the body tilts, e.g. latched on a pounce target)
@@ -49,6 +49,14 @@
 -- v1.5 (MDA-10, Kepu 2026-10-28: the locked camera felt bad on the phone; picked "Shoulder cam, no lock"):
 --   ShoulderCamTouchPitchLock default true -> false. Phones look up / down again by dragging the right side; the 1.2
 --   mouse-delta guard keeps the movement thumbstick from turning the camera. Setting the attribute true restores 1.4.
+-- v1.6 (MDA-102; Kepu 2026-10-30: "if you ram in the direction of a tree off camera it should re angle the camera to the
+--   direction of the ram" -> "Smooth turn (~0.3 s)"): eased turn hook. Setting the character attribute ShoulderCamTurnTo
+--   (Vector3, a world point) turns the camera's yaw toward that point (flat direction from the HumanoidRootPart) over
+--   ShoulderCamTurnTime s (character attribute, default TURN_TIME 0.3) along a smoothstep, the shortest way round; the
+--   pitch is not changed. The turn is added on top of the frame's look input (mouse / pad / touch keep working during it).
+--   The attribute is cleared when read; a new one restarts the turn. ShoulderCamLookAt (instant snap) is unchanged.
+--   Script attribute ShoulderCamTurnEnabled (default true; false = the attribute is cleared and ignored). Diagnostics:
+--   character ShoulderCamTurn ("turning" / "idle"), ShoulderCamTurnCount.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -93,7 +101,7 @@ local boxCf, boxSize = char:GetBoundingBox()
 local top = math.max(1, boxCf.Position.Y + boxSize.Y / 2 - hrp.Position.Y)
 local width = char:GetExtentsSize().X
 local spawnScale, spawnTop, spawnWidth, framedScale = char:GetScale(), top, width, char:GetScale() -- v1.1
-char:SetAttribute("ShoulderCamVersion", "1.5")
+char:SetAttribute("ShoulderCamVersion", "1.6")
 local function framing()
 	local sc = char:GetScale() -- v1.1: growth re-fit
 	if math.abs(sc - framedScale) > 1e-4 then
@@ -113,6 +121,9 @@ end
 local cam = workspace.CurrentCamera
 local function lookYaw(v) return math.atan2(-v.X, -v.Z) end -- yaw of CFrame.Angles(0, yaw, 0) whose LookVector is v
 local yaw = lookYaw(hrp.CFrame.LookVector)
+local TURN_TIME = 0.3 -- v1.6
+local camTurn -- v1.6: {delta, applied, t, dur}
+if script:GetAttribute("ShoulderCamTurnEnabled") == nil then script:SetAttribute("ShoulderCamTurnEnabled", true) end -- v1.6
 local pitch = math.rad(get("ShoulderCamPitchStart"))
 local zoom = 1
 local sideTarget, sideNow = 1, 1 -- +1 = right shoulder
@@ -278,6 +289,27 @@ local function step(dt)
 		end
 		char:SetAttribute("ShoulderCamLookAt", nil)
 	end
+	-- v1.6: eased turn toward ShoulderCamTurnTo
+	local turnTo = char:GetAttribute("ShoulderCamTurnTo")
+	if typeof(turnTo) == "Vector3" then
+		char:SetAttribute("ShoulderCamTurnTo", nil)
+		local d = Vector3.new(turnTo.X - hrp.Position.X, 0, turnTo.Z - hrp.Position.Z)
+		if script:GetAttribute("ShoulderCamTurnEnabled") ~= false and d.Magnitude > 1e-3 then
+			local delta = (lookYaw(d.Unit) - yaw + math.pi) % (2 * math.pi) - math.pi
+			camTurn = {delta = delta, applied = 0, t = 0,
+				dur = math.max(0.05, tonumber(char:GetAttribute("ShoulderCamTurnTime")) or TURN_TIME)}
+			char:SetAttribute("ShoulderCamTurnCount", (char:GetAttribute("ShoulderCamTurnCount") or 0) + 1)
+		end
+	end
+	if camTurn then
+		camTurn.t += dt
+		local u = math.clamp(camTurn.t / camTurn.dur, 0, 1)
+		local want = camTurn.delta * (u * u * (3 - 2 * u))
+		yaw += want - camTurn.applied
+		camTurn.applied = want
+		if u >= 1 then camTurn = nil end
+	end
+	show("ShoulderCamTurn", camTurn and "turning" or "idle")
 
 	-- aim input
 	local free = UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) or GuiService.MenuIsOpen

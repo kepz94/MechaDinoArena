@@ -1936,6 +1936,15 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | ArenaLeaveConfirmEnabled | ArenaStatus script | true | ArenaStatus 1.4: MENU / M asks "Leave the island?" first; false = leave at once (1.2) |
 | ArenaLeaveConfirm / ArenaLeaveAsks | character (local) | "open" / "stay" / "leave", 0.. | leave check diagnostics |
 | LabCornerEnabled | Lab script | true | Lab 1.5: SKILLS in the top-right corner row; false = 1.4 |
+| EnergyShieldWhileLatchedEnabled / EnergyShieldRaisedLatched | EnergyShieldServer script / character (server) | true / true-false | EnergyShieldServer 1.5: shield can be raised while latched; false = 1.4 ("latched" refused) |
+| CloakFXFaintEnabled / CloakFXBarsHiddenEnabled | CloakFX script | true / true | CloakFX 1.4: others' cloaked dinos ~1% visible / their bars kept off every frame; false = 1.3 |
+| TargetHUDHidden | BillboardGui "TargetBar" (local) | true / nil | TargetHUD 1.2 hid this bar (CloakFX 1.4 restores it as enabled) |
+| TargetHUDHideCloakedEnabled / TargetHUDCloaked | TargetHUD script / character (local) | true / true-false | TargetHUD 1.2: no marker on a cloaked target |
+| SkillTree.MINE_FOURTH | SkillTree module constant | true | SkillTree 1.17: Shock Mine rank II = 4 charges / 4 mines; false = 1.16 |
+| ShoulderCamTurnTo / ShoulderCamTurnTime | character (local) | Vector3 / 0.3 | ShoulderCam 1.6: ease the camera yaw toward that point |
+| ShoulderCamTurnEnabled / ShoulderCamTurn / ShoulderCamTurnCount | ShoulderCam script / character (local) | true / "turning"-"idle" / 0.. | ShoulderCam 1.6 eased turn switch + diagnostics |
+| RamBackUpEnabled / RamRunUp / RamRunUpFromFront / RamCamTurnEnabled | character | true / 30 / true / true | RamTest 1.2: back up to a uniform run-up (from the body's front) / turn the camera to an off-screen tree |
+| RamBackUp / RamBackUpDist / RamRunUpNeed / RamChargeDist / RamCamTurned | character (local) | "none"-"done"-"blocked"-"timeout"-"cancelled" / studs / studs / studs / true-false | RamTest 1.2 diagnostics |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |

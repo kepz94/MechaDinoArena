@@ -1,4 +1,4 @@
--- RamTest v1.1 (Dino Arcade) — TEST input for the T-Rex tree charge (owner's client only). E (keyboard), DPadUp (gamepad)
+-- RamTest v1.2 (Dino Arcade) — TEST input for the T-Rex tree charge (owner's client only). E (keyboard), DPadUp (gamepad)
 -- or the on-screen Ram button (touch) (key list: RAM_KEYS below). Bound only while the character attribute RamEnabled
 -- is true (TRexModelData 1.20; the raptor has none and gets no button).
 -- User: "a dedicated button that makes a dino run into the nearest tree so that its clear when its happening for
@@ -40,6 +40,32 @@
 --   otherwise unbound (E is free). A press with LatchedOnCount 0 -> RamInputResult "notLatchedOn" (checked after
 --   "latched"); RamServer 1.1 checks the same. RamRequiresLatchOn = false = the v1.0 behaviour.
 --   Diagnostic RamLatchGate ("open" / "closed" / "off" = not required).
+-- v1.2 (MDA-101 / MDA-102; Kepu 2026-10-30: "the charge up to a ram should be uniform every time. If you tap ram too
+--   close to a tree the t-Rex should back up first and then begin the ram, if you ram in the direction of a tree off
+--   camera it should re angle the camera to the direction of the ram" -> run-up "30 studs", farther trees "Charge the
+--   whole way", camera "Smooth turn (~0.3 s)"):
+--   * run-up: with RamBackUpEnabled (character attribute, default true) a press whose target trunk is less than
+--     RamRunUp (30) - 0.5 studs away (flat, HumanoidRootPart to the lowest Trunk part) first enters state "backup": the
+--     body keeps turning to face the trunk (as in the wind-up) and walks straight away from it (Humanoid:Move away +
+--     WalkSpeed = BACKUP_SPEED_MUL (0.8) x MoveRunSpeed, "RamHold" at that velocity) until the flat distance is at
+--     least RamRunUp ("done"), it is stuck (slower than 0.3 x the back-up speed after 0.25 s: "blocked") or BACKUP_MAX
+--     (2.0) s pass ("timeout"); then the wind-up and charge run exactly as 1.1. Farther trunks skip the back-up
+--     ("none"). The request (DinoRamRequest, RamPredictedAt, the stamp) is sent when the wind-up starts, not at the
+--     press, so RamServer's windows and other players' wind-up pose are unchanged. Dying, a stun, a pounce latch or
+--     (with RamRequiresLatchOn) no raptor left on during the back-up cancels it ("cancelled", state ready).
+--     The local checks (stamina, cooldown, ...) still run at the press; the cooldown counts from the press.
+--   * camera: with RamCamTurnEnabled (character attribute, default true) a press whose trunk centre is off screen (not
+--     on screen, or behind the camera) sets ShoulderCamTurnTo = the trunk position (ShoulderCam 1.6 eases the camera's
+--     yaw there in 0.3 s).
+--   Diagnostics: RamBackUp ("none" / "done" / "blocked" / "timeout" / "cancelled"), RamBackUpDist (studs walked back,
+--   whole), RamChargeDist (studs from the trunk when the wind-up starts, whole), RamCamTurned (true / false);
+--   RamTestState / RamLocalState gain "backup".
+--   Run-up from the body's front (Play, Studio 2026-10-30: measured from the HumanoidRootPart, a 30-stud run-up gave only
+--   ~8 studs of running, 0.18 s, because the T-Rex's front is ~16 studs ahead of its root and a palm trunk is thick):
+--   with RamRunUpFromFront (character attribute, default true) the distance to reach is RamRunUp + the body's front reach
+--   toward the trunk at the press (the farthest box corner of the HumanoidRootPart and the HitboxBlocks hitboxes along
+--   that direction, + REACH), so the T-Rex really runs about RamRunUp studs. false = from the root (as first built).
+--   Diagnostic: RamRunUpNeed (studs from the root to reach, whole).
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -57,6 +83,9 @@ local RAM_KEYS = {Enum.KeyCode.E, Enum.KeyCode.DPadUp} -- gamepad Y stays Roar (
 local DEFAULTS = {RamEnabled = false, RamWindup = 0.4, RamRange = 60, RamStaminaCost = 20, RamCooldown = 6,
 	RamSpeedMul = 1.15, RamMaxCharge = 3.5, MoveRunSpeed = 44, StaminaEnabled = true, StaminaMax = 100}
 DEFAULTS.RamRequiresLatchOn = true -- v1.1
+DEFAULTS.RamBackUpEnabled, DEFAULTS.RamRunUp, DEFAULTS.RamCamTurnEnabled = true, 30, true -- v1.2
+DEFAULTS.RamRunUpFromFront = true -- v1.2
+local BACKUP_SPEED_MUL, BACKUP_MAX, BACKUP_BLOCK_AFTER, BACKUP_BLOCK_MUL = 0.8, 2.0, 0.25, 0.3 -- v1.2 (BACKUP_MAX 2.0: Play, a 30-stud back-up took 1.17 s)
 local REACH = 1.5
 local HOLD_ACCEL = 1000      -- studs/s^2 the hold may use (force limit = mass x this)
 local BLOCK_AFTER = 0.25
@@ -203,10 +232,42 @@ local function setState(s)
 	if rebind then rebind() end
 end
 
+local beginWindup -- v1.2: forward
+local runUpNeed -- v1.2: root-to-trunk distance the back-up reaches
+-- v1.2: how far the body's front sticks out ahead of the root along dir (HumanoidRootPart + blocking hitboxes)
+local function frontReach(dir)
+	local parts = {hrp}
+	local hb = char:FindFirstChild("Hitboxes")
+	if hb then
+		for _, p in ipairs(hb:GetChildren()) do
+			if p:IsA("BasePart") and p:GetAttribute("HitboxBlocks") == true then table.insert(parts, p) end
+		end
+	end
+	local best = 0
+	for _, p in ipairs(parts) do
+		local cf, h = p.CFrame, p.Size / 2
+		local ext = math.abs(cf.RightVector:Dot(dir)) * h.X + math.abs(cf.UpVector:Dot(dir)) * h.Y + math.abs(cf.LookVector:Dot(dir)) * h.Z
+		best = math.max(best, (p.Position - hrp.Position):Dot(dir) + ext)
+	end
+	return best + REACH
+end
 local function dirToTarget()
 	local d = target and target.trunk.Parent and flat(target.trunk.Position - hrp.Position) or Vector3.zero
 	if d.Magnitude < 1e-3 then return chargeDir or flat(hrp.CFrame.LookVector).Unit end
 	return d.Unit
+end
+
+-- v1.2: the 1.1 press -> wind-up start, now also run after the back-up
+local backStart, backSpeed
+beginWindup = function()
+	stamp = workspace:GetServerTimeNow()
+	t0 = os.clock()
+	show("RamChargeDist", target and target.trunk.Parent and math.floor(flat(target.trunk.Position - hrp.Position).Magnitude + 0.5) or 0)
+	char:SetAttribute("RamPredictedAt", stamp)
+	if requestRemote and target then requestRemote:FireServer(stamp, target.trunk) end
+	show("RamInputResult", "sent")
+	hold(Vector3.zero)
+	setState("windup")
 end
 
 local function tryPress()
@@ -244,16 +305,40 @@ local function tryPress()
 	target = t
 	show("RamTargetDist", math.floor(t.dist + 0.5))
 	overlap.FilterDescendantsInstances = t.parts
-	stamp = now
 	t0 = os.clock()
 	lastRam = t0
 	local look = flat(hrp.CFrame.LookVector)
 	face = look.Magnitude > 1e-3 and look.Unit or Vector3.new(0, 0, -1)
-	char:SetAttribute("RamPredictedAt", stamp)
-	if requestRemote then requestRemote:FireServer(stamp, t.trunk) end
-	show("RamInputResult", "sent")
-	hold(Vector3.zero)
-	setState("windup")
+	-- v1.2: camera turns to an off-screen trunk
+	local turned = false
+	if get("RamCamTurnEnabled") ~= false then
+		local cam = workspace.CurrentCamera
+		local sp, onScreen = cam:WorldToViewportPoint(t.trunk.Position)
+		if not onScreen or sp.Z <= 0 then
+			char:SetAttribute("ShoulderCamTurnTo", t.trunk.Position)
+			turned = true
+		end
+	end
+	show("RamCamTurned", turned)
+	-- v1.2: back up first when the trunk is closer than the run-up
+	local toTrunk = flat(t.trunk.Position - hrp.Position)
+	runUpNeed = get("RamRunUp")
+	if get("RamRunUpFromFront") ~= false and toTrunk.Magnitude > 1e-3 then
+		runUpNeed += frontReach(toTrunk.Unit)
+	end
+	show("RamRunUpNeed", math.floor(runUpNeed + 0.5))
+	if get("RamBackUpEnabled") ~= false and t.dist < runUpNeed - 0.5 then
+		backStart = hrp.Position
+		backSpeed = get("MoveRunSpeed") * BACKUP_SPEED_MUL
+		savedWalkSpeed = hum.WalkSpeed
+		hum.WalkSpeed = backSpeed
+		show("RamWalkSpeed", "backup")
+		show("RamInputResult", "backup")
+		setState("backup")
+		return
+	end
+	show("RamBackUp", "none")
+	beginWindup()
 end
 
 local function touching()
@@ -299,11 +384,14 @@ end
 
 -- keep the body facing the way the ram wants this frame (after TurnLimit at Input + 1)
 local function applyFacing()
-	if (state == "windup" or state == "charge" or state == "recoil") and face and hum.Health > 0 then
+	if (state == "windup" or state == "charge" or state == "recoil" or state == "backup") and face and hum.Health > 0 then -- v1.2: + backup
 		local pos = hrp.Position
 		hrp.CFrame = CFrame.lookAt(pos, pos + face)
 		-- the Humanoid's controller follows Move: stand still, or run at the trunk at the charge speed
-		if state == "charge" and chargeDir and chargeSpeed then
+		if state == "backup" and backSpeed then -- v1.2: walk straight back, still facing the trunk
+			if hum.WalkSpeed ~= backSpeed then hum.WalkSpeed = backSpeed end
+			hum:Move(-face, false)
+		elseif state == "charge" and chargeDir and chargeSpeed then
 			if hum.WalkSpeed ~= chargeSpeed then hum.WalkSpeed = chargeSpeed end
 			hum:Move(chargeDir, false)
 		else
@@ -323,7 +411,38 @@ local stepConn = RunService.PreSimulation:Connect(function(dt)
 		show("RamTestState", "dead")
 		return
 	end
-	if state == "windup" then
+	if state == "backup" then -- v1.2
+		local want = dirToTarget()
+		local f = face:Lerp(want, math.min(1, dt * 12))
+		face = f.Magnitude > 1e-3 and f.Unit or want
+		hold(-want * backSpeed)
+		local t = os.clock() - t0
+		local dist = target.trunk.Parent and flat(target.trunk.Position - hrp.Position).Magnitude or math.huge
+		local v = flat(hrp.AssemblyLinearVelocity).Magnitude
+		local result
+		if (char:GetAttribute("StunnedUntil") or 0) > workspace:GetServerTimeNow() or char:GetAttribute("PounceLatched") == true
+			or not target.trunk.Parent
+			or (get("RamRequiresLatchOn") ~= false and (char:GetAttribute("LatchedOnCount") or 0) <= 0) then
+			result = "cancelled"
+		elseif dist >= runUpNeed then
+			result = "done"
+		elseif t > BACKUP_BLOCK_AFTER and v < backSpeed * BACKUP_BLOCK_MUL then
+			result = "blocked"
+		elseif t > BACKUP_MAX then
+			result = "timeout"
+		end
+		if result then
+			restoreWalkSpeed()
+			show("RamBackUp", result)
+			show("RamBackUpDist", math.floor(flat(hrp.Position - backStart).Magnitude + 0.5))
+			if result == "cancelled" then
+				hold(nil)
+				setState("ready")
+			else
+				beginWindup()
+			end
+		end
+	elseif state == "windup" then
 		if char:GetAttribute("RamDeniedAt") == stamp then
 			show("RamInputResult", "denied")
 			hold(nil)
