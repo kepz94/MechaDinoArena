@@ -1,4 +1,4 @@
--- ArenaTouch v1.3 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.4 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -27,6 +27,9 @@
 --   on the raptor). While BITE is hidden and POUNCE is on, POUNCE is drawn as the main button: big yellow, in BITE's
 --   place (right 5%, bottom 10%, 13.5%; "PounceMain"), and the small POUNCE is hidden; dimmed (0.5) while
 --   PounceTestState is not "ready". Diagnostic ArenaTouchMainButton: "Bite" / "Pounce" / "none".
+-- v1.4 (Kepu 2026-10-30: "what the hell do you mean a bite and a pounce that doesnt make sense. delete that crap"): the
+--   small POUNCE button is deleted. Every dino has one attack button: BITE when BiteEnabled is not false, otherwise the
+--   pounce as the big ATTACK button (PounceMain) while PounceEnabled. A dino with a bite gets no pounce button.
 -- Diagnostics (character attributes, this client): ArenaTouchVersion, ArenaTouchState ("off" / "on"),
 --   ArenaTouchLastPress (button name), ArenaTouchCASMode, ArenaTouchJumpHidden.
 local Players = game:GetService("Players")
@@ -34,7 +37,7 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -127,7 +130,6 @@ end
 local bite, _, biteScale = button("Bite", "BITE", nil, 0.05, 0.10, 0.135, true)
 local run, _, runScale = button("Run", "RUN", "hold", 0.21, 0.08, 0.095)
 local ram, ramLabel, ramScale = button("Ram", "RAM", nil, 0.195, 0.33, 0.095)
-local pounce, pounceLabel, pounceScale = button("Pounce", "POUNCE", nil, 0.195, 0.33, 0.095)
 local leap, leapLabel, leapScale = button("Leap", "LEAP", nil, 0.07, 0.43, 0.095, false, true)
 local pounceMain, pounceMainLabel, pounceMainScale = button("PounceMain", "POUNCE", nil, 0.05, 0.10, 0.135, true) -- v1.2
 pounceMain.Visible = false
@@ -156,7 +158,7 @@ local OVERLAY = {
 	{action = "DinoBiteTest", vis = bite, scale = biteScale, name = "Bite"},
 	{action = "DinoRunTest", vis = run, scale = runScale, name = "Run"},
 	{action = "DinoRam", vis = ram, scale = ramScale, name = "Ram"},
-	{action = "DinoPounce", vis = pounce, scale = pounceScale, name = "Pounce"},
+	{action = "DinoPounce", vis = pounceMain, scale = pounceMainScale, name = "Pounce"}, -- v1.4: main button only
 }
 local wanted = {Bite = true, Run = true, Ram = false, Pounce = false} -- set by refresh()
 local hooked = setmetatable({}, {__mode = "k"})
@@ -215,17 +217,12 @@ end
 local function refresh()
 	wanted.Ram = char:GetAttribute("RamEnabled") == true and char:GetAttribute("RamLatchGate") ~= nil
 		and char:GetAttribute("RamLatchGate") ~= "closed"
-	wanted.Pounce = char:GetAttribute("PounceEnabled") == true
 	wanted.Run = char:GetAttribute("AutoRun") ~= true -- v1.1
 	-- v1.2: one attack button: no bite -> POUNCE is the main (big) button
 	wanted.Bite = char:GetAttribute("BiteEnabled") ~= false
-	local mainPounce = not wanted.Bite and wanted.Pounce
-	local po = OVERLAY[4]
-	local want = mainPounce and pounceMain or pounce
-	if po.vis ~= want then
-		po.vis.Visible = false
-		po.vis, po.scale = want, mainPounce and pounceMainScale or pounceScale
-	end
+	-- v1.4: the pounce only ever shows as the main ATTACK button (small POUNCE deleted)
+	wanted.Pounce = char:GetAttribute("PounceEnabled") == true and not wanted.Bite
+	local mainPounce = wanted.Pounce
 	local mainName = wanted.Bite and "Bite" or (mainPounce and "Pounce" or "none")
 	if char:GetAttribute("ArenaTouchMainButton") ~= mainName then char:SetAttribute("ArenaTouchMainButton", mainName) end
 	local mainReady = char:GetAttribute("PounceTestState") == "ready"
@@ -233,7 +230,6 @@ local function refresh()
 	pounceMainLabel.TextTransparency = mainReady and 0 or 0.5
 	leap.Visible = char:GetAttribute("JumpEnabled") == true
 	dim(ram, ramLabel, "RamTestState")
-	dim(pounce, pounceLabel, "PounceTestState")
 	dim(leap, leapLabel, "JumpTestState")
 end
 local WATCH = {BiteEnabled = true, AutoRun = true, RamEnabled = true, RamLatchGate = true, PounceEnabled = true, JumpEnabled = true, RamTestState = true,
