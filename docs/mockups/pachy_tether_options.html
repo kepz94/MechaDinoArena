@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pachy Tether Spike</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Pachy Tether Spike (Engineering button, Kepu 2026-10-30: "a tether spike where if it lands it latches the person to a
+   chain to the ground. Makes them not mobile past the chain for a couple seconds"). Three launcher spots + the effect. */
+:root { color-scheme: dark; --page: #0d0f14; --panel: #14141a; --line: #2b3242; --muted: #8f99aa; --grey: #cfd3dc;
+  --yellow: #ffc832; --orange: #ff9a2e; --cyan: #5fe3ff; --ink: #0b0b12; --steel: #9aa6b8; --dark: #3a404c;
+  --display: "Fredoka", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: #fff; font: 15px/1.5 var(--body); }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 56px; display: grid; gap: 22px; }
+h1 { margin: 0; font: 700 32px var(--display); } h1 span { color: var(--yellow); }
+h2 { margin: 0; font: 700 22px var(--display); }
+.lede { margin: 0; color: var(--muted); }
+section { display: grid; gap: 12px; }
+.tag { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; position: relative; }
+.card.rec { border-color: var(--yellow); }
+.rec-b { position: absolute; top: -11px; right: 12px; background: var(--yellow); color: #201800; font: 800 11px var(--body); padding: 2px 8px; border-radius: 99px; }
+.card h3 { margin: 0; font: 700 17px var(--display); }
+.card p { margin: 0; color: var(--grey); font-size: 14px; }
+.scene { background: linear-gradient(180deg, #7fbdea, #b6def2 60%, #6cc25a 60%, #57a948); border-radius: 10px; aspect-ratio: 16 / 10; position: relative; overflow: hidden; }
+.scene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--panel); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font: 700 15px var(--display); color: var(--yellow); white-space: nowrap; }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+.chip { font: 800 14px var(--body); color: #fff; background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.game { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 5; max-height: 260px; background: linear-gradient(180deg, #7fbdea, #b6def2 55%, #6cc25a 55%, #57a948); }
+.game .black { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .08s; }
+.game .black.on { opacity: 1; }
+.game .hud { position: absolute; left: 12px; bottom: 10px; font: 800 13px var(--body); text-shadow: 0 1px 0 #000; z-index: 2; }
+.game .hud .bar { width: 160px; height: 10px; border: 2px solid #fffc; border-radius: 99px; background: #0008; }
+.game .hud .bar i { display: block; height: 100%; width: 70%; background: #5fd16a; border-radius: 99px; }
+.game .msg { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); font: 700 22px var(--display); color: #fff; opacity: 0; z-index: 2; }
+.game .msg.on { opacity: .85; }
+.game svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ff { transition: opacity .15s; }
+.off .ff { opacity: 0; }
+.effect { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pachy <span>Tether Spike</span></h1>
+  <p class="lede">Engineering button. Aim and fire a spike (like the hook and ink). If it hits a dino, the spike slams into the ground under them and a chain links them to it: they can move only inside the chain's reach until it breaks. Pick where the launcher sits, then the numbers.</p>
+  <section>
+    <div class="cards">
+      <div class="card rec"><span class="rec-b">RECOMMENDED</span>
+        <div class="scene"><svg viewBox="0 0 200 125"><g transform="translate(10,8)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="78" y="44" width="36" height="14" rx="3" fill="#3a404c"/><rect x="112" y="47" width="22" height="7" fill="#9aa6b8"/><path d="M134 50 l10 0 l-4 -4 M144 50 l-4 4" stroke="#ffc832" stroke-width="2.5" fill="none"/><circle cx="84" cy="51" r="3" fill="#ffc832"/>
+          </g></svg></div>
+        <h3>A · Back harpoon</h3>
+        <p>A dark launcher on the back with a steel barrel pointing forward over the shoulders and a yellow chain drum. Clear from every angle, away from the head.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 200 125"><g transform="translate(10,8)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="22" y="52" width="26" height="12" rx="3" fill="#3a404c"/><rect x="46" y="54" width="18" height="7" fill="#9aa6b8"/><path d="M64 57 l9 0 l-4 -4 M73 57 l-4 4" stroke="#ffc832" stroke-width="2.5" fill="none"/>
+          </g></svg></div>
+        <h3>B · Tail-base launcher</h3>
+        <p>Sits on top of the tail base and fires forward over the back. Sleek, out of the way of the other parts.</p>
+      </div>
+      <div class="card">
+        <div class="scene"><svg viewBox="0 0 200 125"><g transform="translate(10,8)">
+            <rect x="40" y="58" width="96" height="40" rx="6" fill="#8a7a5c"/><rect x="128" y="34" width="34" height="34" rx="6" fill="#8a7a5c"/>
+            <ellipse cx="148" cy="30" rx="20" ry="13" fill="#e9e3d4"/><rect x="6" y="64" width="40" height="12" rx="4" fill="#7a6a4e"/>
+            <rect x="60" y="94" width="14" height="22" fill="#6d5e44"/><rect x="104" y="94" width="14" height="22" fill="#6d5e44"/>
+            <rect x="124" y="72" width="16" height="22" rx="3" fill="#3a404c"/><rect x="138" y="80" width="22" height="6" fill="#9aa6b8"/><path d="M160 83 l9 0 l-4 -4 M169 83 l-4 4" stroke="#ffc832" stroke-width="2.5" fill="none"/>
+          </g></svg></div>
+        <h3>C · Left-arm launcher</h3>
+        <p>On the left forearm, mirroring the Grappling Hook on the right arm. Reads as a matched pair of arm tools.</p>
+      </div>
+    </div>
+  </section>
+  <section class="effect">
+    <h2>What a hit looks like</h2>
+    <div class="scene" style="aspect-ratio: 16/6"><svg viewBox="0 0 320 120">
+      <circle cx="200" cy="96" r="44" fill="none" stroke="#ffc83288" stroke-width="2" stroke-dasharray="5 5"/>
+      <rect x="196" y="84" width="8" height="14" fill="#9aa6b8"/><path d="M196 84 l4 -8 l4 8 z" fill="#9aa6b8"/>
+      <path d="M200 86 Q 222 70 238 62" stroke="#ffc832" stroke-width="3" fill="none" stroke-dasharray="4 2"/>
+      <rect x="230" y="48" width="40" height="22" rx="4" fill="#5b8f4e"/><rect x="262" y="40" width="16" height="16" rx="3" fill="#5b8f4e"/>
+      <text x="12" y="16" fill="#1d2a3a" font-family="Nunito, sans-serif" font-weight="800" font-size="8">chain reach (dashed circle): they can't leave it</text>
+    </svg></div>
+  </section>
+  <table>
+    <thead><tr><th>Step</th><th>Proposed (change any)</th></tr></thead>
+    <tbody>
+      <tr><td>I</td><td>Aim and fire (60 studs, first dino hit). Chained for 2.5 s, chain reach 10 studs. Recharge 14 s</td></tr>
+      <tr><td>II</td><td>Chained for 3.5 s</td></tr>
+      <tr><td>III</td><td>Recharges in 10 s</td></tr>
+      <tr><td>★</td><td>The chain yanks them back to the spike when it lands (reach 5 studs)</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Same rules as the Ink Shooter: players only in the Arena (bots always), Energy Shield blocks it, the Dome Visor blocks it from the front. Chained dinos can still bite, attack and use parts; they just can't leave the circle. Lab card in the same build.</p>
+</div>
+</body>
+</html>
