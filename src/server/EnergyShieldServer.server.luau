@@ -1,4 +1,4 @@
--- EnergyShieldServer v1.4 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
+-- EnergyShieldServer v1.5 (Mecha Dino Arena) — Energy Shield, a raptor button part (raptor parts batch 1): block all
 -- damage for a short time, but move slower while it's up. MDA-63, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 6, mockup
 -- docs/mockups/raptor_parts_b1_options.html option B "Hard-light shell" (Kepu 2026-10-29: full block; "If we're allowing
 -- it to block all attacks then the push back shouldn't exist"; "You block all damage but you're slower during the
@@ -59,16 +59,21 @@
 --   mannequin, not a player) with the same build code (EnergyShieldEnabled = true, then build(model)) and returns its Model "Mecha_EnergyShield" (nil when
 --   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
 --   attribute EnergyShieldServerPreviewEnabled (default true; false -> returns nil).
+-- v1.5 (Kepu 2026-10-30: "it should allow it to turn on while latched"): the "latched" check (PounceLatched) is skipped
+--   while script attribute EnergyShieldWhileLatchedEnabled ~= false (default true), so a raptor riding a T-Rex can raise
+--   the shield mid-ride (e.g. to turn a ram into a plain dismount, ShakeOffServer 1.2). false = 1.4 ("latched" refused).
+--   Diagnostic: character EnergyShieldRaisedLatched (true / false, the last raise).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService") -- v1.1
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local BLUE, DARK, WHITE = Color3.fromRGB(90, 160, 255), Color3.fromRGB(44, 52, 64), Color3.new(1, 1, 1)
 
 script:SetAttribute("EnergyShieldServerVersion", VERSION)
 if script:GetAttribute("EnergyShieldServerEnabled") == nil then script:SetAttribute("EnergyShieldServerEnabled", true) end
+if script:GetAttribute("EnergyShieldWhileLatchedEnabled") == nil then script:SetAttribute("EnergyShieldWhileLatchedEnabled", true) end -- v1.5
 script:SetAttribute("EnergyShieldRequests", 0)
 if script:GetAttribute("EnergyShieldLookStyle") == nil then script:SetAttribute("EnergyShieldLookStyle", "shell") end -- v1.2: shell (1.1: dome)
 if script:GetAttribute("EnergyShieldEmitterStyle") == nil then script:SetAttribute("EnergyShieldEmitterStyle", "shoulders") end -- v1.2
@@ -266,7 +271,7 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "disabled"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
-	elseif char:GetAttribute("PounceLatched") == true then
+	elseif char:GetAttribute("PounceLatched") == true and script:GetAttribute("EnergyShieldWhileLatchedEnabled") == false then -- v1.5: allowed by default
 		result = "latched"
 	elseif (tonumber(char:GetAttribute("EnergyShieldUntil")) or 0) > t then
 		result = "active"
@@ -277,6 +282,7 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	end
 	char:SetAttribute("EnergyShieldServerResult", result)
 	if result ~= "ok" then return end
+	char:SetAttribute("EnergyShieldRaisedLatched", char:GetAttribute("PounceLatched") == true) -- v1.5
 	local dur = math.max(0.1, tonumber(char:GetAttribute("EnergyShieldTime")) or 1.5)
 	clearFx(char)
 	local ff = Instance.new("ForceField")
