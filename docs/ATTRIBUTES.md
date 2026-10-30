@@ -2009,6 +2009,8 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | SkillEffectsHeadbuttEnabled | SkillEffects script | true | SkillEffects 1.12 headbutt onHit (false = 1.11) |
 | SkillTree.PACHY_NO_JAWS | SkillTree module constant | true | SkillTree 1.19: no Jaws path for the pachy; false = 1.18 |
 | ArenaScope_HeadbuttServer / _HeadbuttTest / _HeadbuttShove / _HeadbuttFX | ArenaScope script | "on" | ArenaScope 1.18 checks |
+| StatusBadgesSlowEnabled | StatusBadges script | true | StatusBadges 1.2 SLOW badge (false = 1.1) |
+| StatusBadgesSlowLeft / StatusBadgesState | dino (client) | seconds (0.1 steps); + "slow" | StatusBadges 1.2 diagnostics |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |
