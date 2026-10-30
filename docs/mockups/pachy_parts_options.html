@@ -1,0 +1,283 @@
+<title>Pachy Mecha Parts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro; part 1 Mecha Legs (look chips + animated leap / double jump scene + step table); part 2 Grappling Hook (look chips + aim chips + animated pull / smash scene + step table); HUD strip; notes. Single dark game look (matches the earlier mockups). */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9b2e; --volt: #7fe9ff; --red: #f05a4f; --steel: #9aa6b8; --steel-dark: #5d6878;
+  --sky1: #7fbdea; --sky2: #b6def2; --grass: #6cc25a; --grass2: #57a948;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--yellow); }
+h2 { margin: 0; font: 700 22px var(--display); }
+h2 small { font: 600 12px var(--mono); color: var(--muted); letter-spacing: .1em; margin-left: 8px; }
+.lede { margin: 0; color: var(--muted); max-width: 78ch; }
+.panel { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: #0f1117; border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+button:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.scene { width: 100%; max-width: 100%; aspect-ratio: 16 / 7; border-radius: 14px; overflow: hidden; border: 2px solid var(--line);
+  background: linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 64%, var(--grass) 64%, var(--grass2) 100%); }
+.scene canvas { width: 100%; height: 100%; display: block; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { background: #0f1117; border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0 0 4px; font: 700 16px var(--display); }
+.note p { margin: 0; color: var(--grey); }
+.rec { display: inline-block; font: 600 10px var(--mono); letter-spacing: .12em; color: #1b1406; background: var(--yellow); border-radius: 4px; padding: 1px 6px; margin-bottom: 4px; }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; background: linear-gradient(180deg, #31523a, #27432f); border-radius: 12px; padding: 14px; }
+.tile { width: 84px; height: 84px; border-radius: 12px; background: #14141add; border: 3px solid #ffffff44; position: relative; display: grid; place-items: center; text-align: center; }
+.tile .nm { font: 700 13px var(--display); line-height: 1.05; }
+.tile .key { position: absolute; left: 6px; top: 3px; font: 600 11px var(--mono); color: var(--grey); }
+.tile.slot { border-color: var(--orange); }
+.tile.main { border-color: var(--yellow); }
+.tile .cd { position: absolute; left: 0; right: 0; bottom: 0; background: #000000aa; border-radius: 0 0 9px 9px; }
+.tile .secs { position: absolute; bottom: 5px; left: 0; right: 0; font: 700 12px var(--display); color: #ffd9a8; }
+.sep { width: 3px; height: 64px; background: #ffffff33; border-radius: 2px; margin: 0 4px; }
+@media (prefers-reduced-motion: reduce) { .scene canvas { animation: none; } }
+</style>
+
+<div class="wrap">
+  <h1>Pachy mecha parts: <span>Mecha Legs</span> &amp; <span>Grappling Hook</span></h1>
+  <p class="lede">Your picks so far: Mecha Legs is a new pachy-only Speed line (I-III better leap, star = double jump with the legs shown); the Grappling Hook is an Attack button part that grabs players and bots, on its own cooldown, pulls them in and smashes for 10 with a knockback and no slow. Pick a look for each and how the hook aims. The hook sits on the right arm, slim, and the pachy raises that arm to shoot (Kepu 2026-10-30).</p>
+
+  <section class="panel" aria-labelledby="legs-h">
+    <h2 id="legs-h">1 · Mecha Legs <small>SPEED · PACHY</small></h2>
+    <div class="controls">
+      <div class="group" role="group" aria-label="Legs look"><b>Look</b>
+        <button class="chip" data-k="legs" data-v="pistons" aria-pressed="true">A · Piston shins</button>
+        <button class="chip" data-k="legs" data-v="springs" aria-pressed="false">B · Spring stilts</button>
+        <button class="chip" data-k="legs" data-v="braces" aria-pressed="false">C · Knee braces</button>
+      </div>
+      <div class="group" role="group" aria-label="Legs rank"><b>Rank</b>
+        <button class="chip" data-k="rank" data-v="0" aria-pressed="false">None</button>
+        <button class="chip" data-k="rank" data-v="3" aria-pressed="false">III</button>
+        <button class="chip" data-k="rank" data-v="4" aria-pressed="true">★ Star</button>
+      </div>
+    </div>
+    <div class="scene"><canvas id="legsCv" width="1000" height="440" aria-label="Pachy leap and double jump"></canvas></div>
+    <div class="cols">
+      <div class="note pick"><span class="rec">RECOMMENDED</span><h3>A · Piston shins</h3><p>Steel shin covers with a piston behind each, a small vent at the heel that puffs on the double jump. Reads "mecha" from far away.</p></div>
+      <div class="note"><h3>B · Spring stilts</h3><p>Coil springs under the feet that squash on landing and stretch on the jump. Playful, says "jump" loudest, less armored.</p></div>
+      <div class="note"><h3>C · Knee braces</h3><p>Small metal braces on the knees only. Subtle; keeps the dino look, but the star is easy to miss.</p></div>
+    </div>
+    <div class="tablewrap"><table>
+      <tr><th>Step</th><th>What it does</th><th>Numbers (tunable)</th></tr>
+      <tr><td>I</td><td>Leap farther forward</td><td class="n">forward boost +25%</td></tr>
+      <tr><td>II</td><td>Leap higher</td><td class="n">launch power +20%</td></tr>
+      <tr><td>III</td><td>Leap recharges faster</td><td class="n">leap cooldown -35%</td></tr>
+      <tr><td>★</td><td>Mecha legs shown on the pachy + a double jump in the air (also out of a headbutt charge)</td><td class="n">1 extra jump, 80% of a leap's height</td></tr>
+    </table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="hook-h">
+    <h2 id="hook-h">2 · Grappling Hook <small>ATTACK · PACHY · BUTTON</small></h2>
+    <div class="controls">
+      <div class="group" role="group" aria-label="Hook look"><b>Look</b>
+        <button class="chip" data-k="hook" data-v="chain" aria-pressed="true">A · Wrist claw</button>
+        <button class="chip" data-k="hook" data-v="harpoon" aria-pressed="false">B · Forearm harpoon</button>
+        <button class="chip" data-k="hook" data-v="tether" aria-pressed="false">C · Wrist tether</button>
+      </div>
+      <div class="group" role="group" aria-label="Aim"><b>Aim</b>
+        <button class="chip" data-k="aim" data-v="assist" aria-pressed="true">Crosshair + aim help</button>
+        <button class="chip" data-k="aim" data-v="free" aria-pressed="false">Crosshair only</button>
+        <button class="chip" data-k="aim" data-v="lock" aria-pressed="false">Auto nearest</button>
+      </div>
+      <div class="group"><b>Play</b><button class="chip" id="hookReplay" aria-pressed="false">Replay</button></div>
+    </div>
+    <div class="scene"><canvas id="hookCv" width="1000" height="440" aria-label="Hook, pull and head smash"></canvas></div>
+    <div class="cols">
+      <div class="note pick"><span class="rec">RECOMMENDED</span><h3>A · Wrist claw</h3><p>A slim steel cuff on the right wrist; a small three-prong claw fires on a thin chain, clamps, reels in. Clear but light.</p></div>
+      <div class="note"><h3>B · Forearm harpoon</h3><p>A thin tube along the right forearm fires a barbed dart on a cable. The sleekest; reads as a weapon.</p></div>
+      <div class="note"><h3>C · Wrist tether</h3><p>A small emitter ring on the wrist shoots a glowing blue line that latches and pulls. Most sci-fi, matches the Shock Mine's volt look.</p></div>
+    </div>
+    <div class="cols">
+      <div class="note pick"><span class="rec">RECOMMENDED</span><h3>Crosshair + aim help</h3><p>Fires where you look; a dino within a few studs of the line gets grabbed anyway. Fair, works on phone.</p></div>
+      <div class="note"><h3>Crosshair only</h3><p>Must be on target. Highest skill, hard on phone.</p></div>
+      <div class="note"><h3>Auto nearest</h3><p>Grabs the nearest dino in front within range. Easiest, least skill.</p></div>
+    </div>
+    <div class="tablewrap"><table>
+      <tr><th>Step</th><th>What it does</th><th>Numbers (tunable)</th></tr>
+      <tr><td>I</td><td>Button: hook a dino, pull it in, head smash: 10 damage + knockback (no slow)</td><td class="n">range 60 · pull 0.5 s · cooldown 8 s · shove 30</td></tr>
+      <tr><td>II</td><td>Longer reach</td><td class="n">range 80</td></tr>
+      <tr><td>III</td><td>Recharges faster</td><td class="n">cooldown 6 s</td></tr>
+      <tr><td>★</td><td>Smash hits harder</td><td class="n">15 damage</td></tr>
+    </table></div>
+    <p class="lede">Shot: the pachy lifts its right arm toward the aim (0.15 s), fires, holds the arm up while reeling, then drops it and dips the head for the smash. A miss reels the hook back with nothing. Energy Shield blocks the grab (like the slow). A grabbed dino can't move during the 0.5 s pull, then the smash knocks it away on its feet.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="hud-h">
+    <h2 id="hud-h">PC bar with the hook in a slot</h2>
+    <div class="bar">
+      <div class="tile slot"><span class="key">R</span><span class="nm">GRAPPLING<br>HOOK</span><span class="cd" style="height:45%"></span><span class="secs">3.6s</span></div>
+      <div class="tile"><span class="key">T</span><span class="nm">+</span></div>
+      <div class="tile"><span class="key">C</span><span class="nm">+</span></div>
+      <div class="tile"><span class="key">V</span><span class="nm">+</span></div>
+      <div class="sep"></div>
+      <div class="tile main"><span class="key">LMB</span><span class="nm">ATTACK</span></div>
+      <div class="tile"><span class="key">Space</span><span class="nm">LEAP</span></div>
+    </div>
+    <p class="lede">Same tile as the other parts (orange, cooldown fill + seconds). On a phone it is a slot button like the Shock Mine. Mecha Legs is passive, so it adds no button.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const st = { legs: 'pistons', rank: '4', hook: 'chain', aim: 'assist', t0: performance.now(), h0: performance.now() };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const P = { main: '#7A6A4E', stripes: '#3E5A55', belly: '#C8B898', dome: '#E6DCC4', mask: '#3F6F7A', limbs: '#5E5240', eyes: '#8A2A1E' };
+  const RAP = { main: '#8a6a3a', stripes: '#4a3a24', belly: '#d8c49a', limbs: '#6a5230', eyes: '#2a1a10' };
+  document.querySelectorAll('.chip[data-k]').forEach(b => b.addEventListener('click', () => {
+    st[b.dataset.k] = b.dataset.v;
+    document.querySelectorAll(`.chip[data-k="${b.dataset.k}"]`).forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    st.t0 = st.h0 = performance.now();
+  }));
+  document.getElementById('hookReplay').addEventListener('click', () => { st.h0 = performance.now(); });
+
+  function pachy(ctx, x, y, o) {
+    o = o || {};
+    ctx.save(); ctx.translate(x, y); if (o.flip) ctx.scale(-1, 1);
+    const r = (a, b, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(a, b, w, h); };
+    const dip = o.dip || 0;
+    r(-130, -60, 36, 11, P.main); r(-96, -66, 36, 15, P.main); r(-62, -72, 36, 20, P.main);
+    r(-30, -88, 90, 52, P.main); r(-22, -44, 76, 9, P.belly);
+    for (let i = 0; i < 5; i++) r(-22 + i * 16, -88, 6, 20, P.stripes);
+    ctx.save(); ctx.translate(60, -80); ctx.rotate(dip);
+    r(-6, -24, 26, 46, P.main);
+    r(8, -56, 50, 36, P.main); r(12, -72, 44, 18, P.dome); r(18, -81, 32, 9, P.dome); r(30, -48, 22, 14, P.mask); r(38, -45, 7, 6, P.eyes); r(54, -36, 18, 16, P.main);
+    ctx.restore();
+    // right arm (pivot at the shoulder), raised by o.arm 0..1, with the slim launcher on the forearm
+    ctx.save(); ctx.translate(72, -56); ctx.rotate(-(o.arm || 0) * 1.35);
+    r(-3, 0, 8, 18, P.limbs);
+    if (o.mount === 'chain') { r(-5, 8, 12, 6, '#9aa6b8'); r(-1, 16, 4, 6, '#5d6878'); }
+    if (o.mount === 'harpoon') { r(4, -2, 4, 22, '#9aa6b8'); r(3, 20, 6, 4, '#5d6878'); }
+    if (o.mount === 'tether') { r(-5, 10, 12, 4, '#5d6878'); r(-3, 14, 8, 3, '#7fe9ff'); }
+    ctx.restore();
+    const s = o.leg || 0, legs = o.legs, rank = o.rank || 0, squash = o.squash || 0;
+    for (const dx of [-4, 20]) {
+      const k = dx < 0 ? s : -s;
+      r(dx + k, -38, 20, 36, P.main);
+      if (rank >= 4 && legs === 'pistons') { r(dx + k + 2, -4, 16, 26, '#9aa6b8'); r(dx + k - 4, -2, 5, 22, '#5d6878'); r(dx + k - 2, 24, 26, 8, '#5d6878'); }
+      else if (rank >= 4 && legs === 'springs') { r(dx + k + 4, -4, 12, 18, P.limbs);
+        ctx.strokeStyle = '#9aa6b8'; ctx.lineWidth = 3; ctx.beginPath(); const top = 14, h = 16 - squash * 8;
+        for (let i = 0; i <= 5; i++) { const yy = top + (h * i) / 5; ctx.lineTo(dx + k + (i % 2 ? 2 : 18), yy); } ctx.stroke(); r(dx + k - 2, top + h, 24, 6, '#5d6878'); }
+      else { r(dx + k + 2, -2, 13, 24, P.limbs); r(dx + k - 2, 22, 26, 8, P.limbs);
+        if (rank >= 4 && legs === 'braces') { r(dx + k - 1, -8, 22, 7, '#9aa6b8'); } }
+    }
+    ctx.restore();
+  }
+  function raptor(ctx, x, y, o) {
+    o = o || {};
+    ctx.save(); ctx.translate(x, y); ctx.scale(-1, 1); ctx.rotate(o.tilt || 0);
+    const r = (a, b, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(a, b, w, h); };
+    r(-130, -66, 70, 10, RAP.main); r(-60, -84, 90, 40, RAP.main); r(-52, -48, 70, 8, RAP.belly);
+    for (let i = 0; i < 4; i++) r(-50 + i * 18, -84, 6, 16, RAP.stripes);
+    r(26, -112, 22, 40, RAP.main); r(36, -128, 62, 24, RAP.main); r(76, -122, 7, 6, RAP.eyes);
+    const s = o.leg || 0;
+    r(-24 + s, -46, 16, 30, RAP.main); r(-22 + s, -16, 10, 22, RAP.limbs); r(-26 + s, 4, 24, 6, RAP.limbs);
+    r(0 - s, -46, 16, 30, RAP.main); r(2 - s, -16, 10, 22, RAP.limbs); r(-2 - s, 4, 24, 6, RAP.limbs);
+    ctx.restore();
+  }
+
+  const lc = document.getElementById('legsCv').getContext('2d');
+  function legsFrame(now) {
+    const W = 1000, H = 440, ground = H * 0.9;
+    lc.clearRect(0, 0, W, H);
+    const rank = +st.rank;
+    const cyc = 3.2, t = ((now - st.t0) / 1000) % cyc;
+    const fwd = rank >= 1 ? 1.25 : 1, up = rank >= 2 ? 1.2 : 1;
+    const x0 = 140, jumpT = 1.1;
+    let x = x0, y = ground, squash = 0, puff = null;
+    const t1 = Math.min(t, jumpT);
+    if (t < 0.15) squash = 1 - t / 0.15;
+    const u = t1 / jumpT;
+    x = x0 + u * 320 * fwd;
+    y = ground - Math.sin(Math.PI * u) * 150 * up;
+    if (rank >= 4 && t > jumpT * 0.55) {
+      const t2 = Math.min(t - jumpT * 0.55, 1.2), u2 = t2 / 1.2;
+      const xA = x0 + 0.55 * 320 * fwd, yA = ground - Math.sin(Math.PI * 0.55) * 150 * up;
+      x = xA + u2 * 330 * fwd;
+      y = yA - Math.sin(Math.PI * u2) * 120 * up + (ground - yA) * u2 * u2;
+      if (t2 < 0.35) puff = { x: xA, y: yA, k: t2 / 0.35 };
+    } else if (t > jumpT) { x = x0 + 320 * fwd; y = ground; }
+    lc.strokeStyle = '#ffffff55'; lc.setLineDash([6, 8]); lc.lineWidth = 2; lc.beginPath(); lc.moveTo(x0 + 320, ground + 14); lc.lineTo(x0 + 320, ground - 10); lc.stroke(); lc.setLineDash([]);
+    lc.fillStyle = '#0d0f14aa'; lc.font = '600 13px "IBM Plex Mono", monospace'; lc.fillText('normal leap lands here', x0 + 250, ground + 30);
+    if (puff) {
+      lc.strokeStyle = `rgba(255,255,255,${0.8 * (1 - puff.k)})`; lc.lineWidth = 4;
+      lc.beginPath(); lc.ellipse(puff.x + 10, puff.y + 34, 20 + puff.k * 50, 6 + puff.k * 12, 0, 0, Math.PI * 2); lc.stroke();
+      if (st.legs === 'pistons') { lc.fillStyle = `rgba(255,170,60,${0.9 * (1 - puff.k)})`; lc.fillRect(puff.x - 2, puff.y + 26, 10, 14 + puff.k * 20); lc.fillRect(puff.x + 22, puff.y + 26, 10, 14 + puff.k * 20); }
+    }
+    pachy(lc, x, y, { legs: st.legs, rank, squash, leg: Math.sin(now / 90) * (y < ground - 2 ? 2 : 8) });
+    lc.fillStyle = '#0d0f14cc'; lc.font = '600 14px "IBM Plex Mono", monospace';
+    lc.fillText(rank >= 4 ? 'leap -> double jump in the air' : rank >= 1 ? 'leap: farther + higher' : 'leap: normal', 18, 28);
+    if (!reduce) requestAnimationFrame(legsFrame);
+  }
+
+  const hc = document.getElementById('hookCv').getContext('2d');
+  function hookFrame(now) {
+    const W = 1000, H = 440, ground = H * 0.9;
+    hc.clearRect(0, 0, W, H);
+    const t = ((now - st.h0) / 1000) % 4.2;
+    const px = 230;
+    let rx = 760, ry = ground, tilt = 0, phase = 'aim';
+    let hookTip = null, dip = 0, arm = 0;
+    const fire = 0.6, fly = 0.35, pull = 0.5, smash = 0.25;
+    if (t > fire - 0.15 && t <= fire) arm = (t - (fire - 0.15)) / 0.15;
+    if (t > fire && t < fire + fly + pull) arm = 1;
+    if (t > fire && t < fire + fly) { phase = 'fire'; const u = (t - fire) / fly; hookTip = { x: px + 60 + u * (rx - 40 - px - 60), y: ground - 100 + u * 30 }; }
+    else if (t >= fire + fly && t < fire + fly + pull) { phase = 'pull'; const u = (t - fire - fly) / pull; rx = 760 - u * (760 - (px + 190)); hookTip = { x: rx - 40, y: ground - 70 }; tilt = -0.15; }
+    else if (t >= fire + fly + pull) {
+      const ts = t - fire - fly - pull;
+      rx = px + 190;
+      if (ts < smash) { phase = 'smash'; dip = 0.9 * Math.sin(Math.PI * ts / smash); }
+      else { phase = 'knock'; const u = Math.min(1, (ts - smash) / 0.4); rx = px + 190 + (1 - (1 - u) * (1 - u)) * 240; tilt = 0.25 * (1 - u); }
+    }
+    if (st.aim !== 'lock' && phase === 'aim') {
+      hc.strokeStyle = '#ffffffcc'; hc.lineWidth = 2; const cx = 760, cy = ground - 80;
+      hc.beginPath(); hc.arc(cx, cy, 10, 0, Math.PI * 2); hc.stroke();
+      if (st.aim === 'assist') { hc.strokeStyle = '#ffc83288'; hc.setLineDash([5, 6]); hc.beginPath(); hc.arc(cx, cy, 46, 0, Math.PI * 2); hc.stroke(); hc.setLineDash([]); }
+    }
+    if (st.aim === 'lock' && phase === 'aim') { hc.strokeStyle = '#ffc832'; hc.lineWidth = 3; hc.strokeRect(rx - 120, ground - 140, 140, 150); }
+    if (hookTip) {
+      const sx = px + 72 + Math.sin(1.35) * 22, sy = ground - 56 - Math.cos(1.35) * 4 - 6;
+      if (st.hook === 'tether') { hc.strokeStyle = '#7fe9ff'; hc.lineWidth = 5; hc.shadowColor = '#7fe9ff'; hc.shadowBlur = 14; }
+      else if (st.hook === 'harpoon') { hc.strokeStyle = '#2b3242'; hc.lineWidth = 2; }
+      else { hc.strokeStyle = '#5d6878'; hc.lineWidth = 5; hc.setLineDash([8, 4]); }
+      hc.beginPath(); hc.moveTo(sx, sy); hc.lineTo(hookTip.x, hookTip.y); hc.stroke(); hc.setLineDash([]); hc.shadowBlur = 0;
+      hc.fillStyle = st.hook === 'tether' ? '#7fe9ff' : '#9aa6b8';
+      if (st.hook === 'chain') { hc.fillRect(hookTip.x - 6, hookTip.y - 12, 14, 24); hc.fillRect(hookTip.x + 6, hookTip.y - 14, 8, 6); hc.fillRect(hookTip.x + 6, hookTip.y + 8, 8, 6); }
+      else if (st.hook === 'harpoon') { hc.beginPath(); hc.moveTo(hookTip.x + 16, hookTip.y); hc.lineTo(hookTip.x - 6, hookTip.y - 8); hc.lineTo(hookTip.x - 6, hookTip.y + 8); hc.fill(); }
+      else { hc.beginPath(); hc.arc(hookTip.x, hookTip.y, 9, 0, Math.PI * 2); hc.fill(); }
+    }
+    raptor(hc, rx, ry, { tilt, leg: phase === 'aim' ? Math.sin(now / 110) * 8 : 0 });
+    pachy(hc, px, ground, { mount: st.hook, dip, arm, leg: 0 });
+    if (phase === 'smash' || (phase === 'knock' && t - fire - fly - pull - smash < 0.25)) {
+      const k = phase === 'smash' ? (t - fire - fly - pull) / smash : 1;
+      hc.fillStyle = `rgba(255,255,255,${0.7 * k})`; hc.beginPath(); hc.arc(px + 150, ground - 70, 30 * k + 10, 0, Math.PI * 2); hc.fill();
+      hc.fillStyle = '#ffd640'; hc.font = '700 32px Fredoka, system-ui'; hc.fillText('-10', px + 170, ground - 140 - (phase === 'knock' ? 20 : 0));
+    }
+    hc.fillStyle = '#0d0f14cc'; hc.font = '600 14px "IBM Plex Mono", monospace';
+    const label = { aim: 'aim', fire: 'hook flies', pull: 'pulled in (can\'t move)', smash: 'head smash -10', knock: 'knocked back, no slow' }[phase];
+    hc.fillText(label, 18, 28);
+    if (!reduce) requestAnimationFrame(hookFrame);
+  }
+  if (reduce) { legsFrame(st.t0 + 900); hookFrame(st.h0 + 1300); document.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => { legsFrame(st.t0 + 900); hookFrame(st.h0 + 1300); })); }
+  else { requestAnimationFrame(legsFrame); requestAnimationFrame(hookFrame); }
+})();
+</script>
