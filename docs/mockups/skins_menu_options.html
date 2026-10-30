@@ -1,0 +1,223 @@
+<title>Dino Skins Menu</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro, option chips, one clickable phone frame of the main menu (hangar left, SANDBOX / ARENA right), option notes. Same dark game look as the other menu mockups (single dark theme by choice). */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9b2e; --green: #5fd16a; --red: #f05a4f; --volt: #7fe9ff; --robux: #00b06f;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--yellow); }
+.lede { margin: 0; color: var(--muted); max-width: 80ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+button:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.frameWrap { overflow-x: auto; }
+.device { position: relative; margin: 0 auto; width: min(100%, 940px); aspect-ratio: 19.5 / 9; border: 8px solid #2a2f3a; border-radius: 30px; overflow: hidden; background: #141b27; }
+.s { position: absolute; inset: 0; container-type: size; display: grid; grid-template-columns: 1.15fr 1fr; gap: 3cqw; padding: 9cqh 4cqw 5cqh; }
+/* hangar backdrop */
+.hangar { position: absolute; inset: 0; background:
+  linear-gradient(180deg, #1a2333 0 58%, #111722 58% 100%),
+  #141b27; }
+.hangar::before { content: ""; position: absolute; left: 0; right: 0; top: 52%; height: 3cqh; background: repeating-linear-gradient(135deg, #ffc832 0 2cqh, #1b1406 2cqh 4cqh); opacity: .85; }
+.hangar::after { content: ""; position: absolute; inset: 0 0 0 46%; background: linear-gradient(90deg, rgba(10,12,18,0) 0%, rgba(10,12,18,.7) 30%, rgba(10,12,18,.78) 100%); }
+.col { position: relative; display: grid; gap: 1.6cqh; align-content: start; min-width: 0; }
+.stage { position: relative; height: 47cqh; }
+.tag { position: absolute; left: 0; top: 0; font: 600 2cqh var(--mono); color: var(--volt); letter-spacing: .1em; }
+.pedestal { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 34cqw; height: 6cqh; border-radius: 50%; background: radial-gradient(closest-side, rgba(127,233,255,.35), rgba(127,233,255,0)); border: .4cqh solid var(--volt); }
+.dino { position: absolute; left: 50%; bottom: 3cqh; transform: translateX(-50%); width: 44cqw; height: 40cqh; }
+.dino svg { width: 100%; height: 100%; overflow: visible; }
+.row { display: flex; align-items: center; gap: 1.4cqh; }
+.arrow { width: 7cqh; height: 7cqh; border-radius: 1.4cqh; background: #22242e; border: .3cqh solid #ffffff22; color: #fff; font: 700 3.2cqh var(--display); display: grid; place-items: center; cursor: pointer; }
+.nm { flex: 1; text-align: center; min-width: 0; }
+.nm b { display: block; font: 700 4.4cqh/1 var(--display); }
+.nm small { font: 700 1.9cqh var(--body); color: var(--muted); }
+.slots { display: flex; gap: 1cqh; flex-wrap: wrap; }
+.slot { font: 800 1.7cqh var(--body); padding: .8cqh 1.4cqh; border-radius: 1.2cqh; border: .3cqh solid var(--orange); background: #14141add; }
+.lab { height: 6.4cqh; border-radius: 1.6cqh; background: var(--volt); color: #06222a; font: 700 2.6cqh var(--display); border: 0; cursor: pointer; }
+.btnrow { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4cqh; }
+.skinsBtn { height: 6.4cqh; border-radius: 1.6cqh; background: #2a1f3d; color: #fff; font: 700 2.6cqh var(--display); border: .35cqh solid #c9a2ff; cursor: pointer; }
+.title { text-align: center; }
+.title small { display: block; font: 700 2.6cqh var(--display); color: var(--yellow); letter-spacing: .2em; }
+.title b { font: 700 7cqh/1 var(--display); }
+.play { height: 13cqh; border-radius: 2.4cqh; display: grid; place-items: center; font: 700 4.8cqh var(--display); color: #1b1406; border: .4cqh solid #fff8; }
+.play.sb { background: var(--yellow); } .play.ar { background: var(--orange); }
+/* skins: strip (A) */
+.strip { display: flex; gap: 1cqh; overflow-x: auto; padding-bottom: .4cqh; }
+.sw { flex: 0 0 auto; width: 7.4cqh; height: 7.4cqh; border-radius: 1.6cqh; border: .35cqh solid #ffffff22; position: relative; cursor: pointer; padding: 0; }
+.sw[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 .4cqh var(--yellow); }
+.sw .lock { position: absolute; right: -.6cqh; bottom: -.6cqh; font: 800 1.5cqh var(--body); background: var(--robux); color: #fff; border-radius: 1cqh; padding: .1cqh .7cqh; }
+.stripName { font: 700 2cqh var(--display); color: var(--grey); }
+/* skins: locker panel (B) */
+.locker { position: relative; display: grid; gap: 1.4cqh; align-content: start; background: #14141aee; border: .35cqh solid #c9a2ff66; border-radius: 2.4cqh; padding: 2cqh; height: 100%; }
+.locker header { display: flex; justify-content: space-between; align-items: center; }
+.locker header b { font: 700 3.6cqh var(--display); }
+.tabs { display: flex; gap: .8cqh; }
+.tab { font: 800 1.7cqh var(--body); padding: .6cqh 1.4cqh; border-radius: 99px; border: .3cqh solid #ffffff33; background: transparent; color: var(--grey); }
+.tab.on { border-color: #c9a2ff; color: #fff; }
+.tab.off { opacity: .45; }
+.close { width: 5.4cqh; height: 5.4cqh; border-radius: 1.2cqh; background: #22242e; border: .3cqh solid #ffffff22; color: #fff; font: 700 2.6cqh var(--display); cursor: pointer; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2cqh; }
+.card { border-radius: 1.6cqh; background: #1d1f29; border: .35cqh solid #ffffff1a; padding: 1cqh; display: grid; gap: .6cqh; cursor: pointer; text-align: left; color: #fff; }
+.card[aria-pressed="true"] { border-color: var(--yellow); }
+.card .bar { height: 5cqh; border-radius: 1cqh; }
+.card b { font: 700 2cqh var(--display); }
+.card small { font: 800 1.6cqh var(--body); color: var(--muted); }
+.card small.own { color: var(--green); } .card small.price { color: var(--robux); }
+.rar { font: 600 1.3cqh var(--mono); letter-spacing: .08em; }
+.equip { height: 6cqh; border-radius: 1.6cqh; border: .35cqh solid #fff8; font: 700 2.6cqh var(--display); cursor: pointer; }
+.equip.go { background: var(--yellow); color: #1b1406; }
+.equip.buy { background: var(--robux); color: #fff; }
+.equip.done { background: #22242e; color: var(--muted); }
+/* skins: stage arrows (C) */
+.skinRow { display: flex; align-items: center; justify-content: center; gap: 1.4cqh; position: absolute; left: 0; right: 0; bottom: -1cqh; }
+.skinRow .pill { font: 700 2.2cqh var(--display); background: #14141add; border: .3cqh solid #c9a2ff88; padding: .6cqh 2cqh; border-radius: 99px; }
+.toast { position: absolute; left: 50%; top: 10cqh; transform: translateX(-50%); font: 700 2.6cqh var(--display); background: #14141aee; border: .3cqh solid var(--yellow); border-radius: 1.6cqh; padding: 1cqh 2.4cqh; white-space: nowrap; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note li { color: var(--grey); font-size: 14px; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+</style>
+
+<div class="wrap">
+  <h1>Pick a skin in the <span>main menu</span></h1>
+  <p class="lede">Your dino in the hangar recolours the moment you tap a skin, and that's the skin you spawn with every time until you pick another. Tap skins inside the phone to try each option. Locked skins show where a Robux price would go; buying isn't part of the first build unless you want it to be.</p>
+  <div class="controls">
+    <div class="group" role="group" aria-label="Option"><b>Option</b>
+      <button class="chip" data-k="opt" data-v="A" aria-pressed="false">A · Swatch strip</button>
+      <button class="chip" data-k="opt" data-v="B" aria-pressed="true">B · Skins locker</button>
+      <button class="chip" data-k="opt" data-v="C" aria-pressed="false">C · Arrows on the dino</button>
+    </div>
+  </div>
+  <div class="frameWrap"><div class="device"><div class="hangar"></div><div class="s" id="s"></div></div></div>
+  <div class="notes">
+    <div class="note"><h3>A · Swatch strip</h3><ul><li>A row of colour swatches under the dino's name; one tap = equipped.</li><li>Fastest to use, takes no extra screen.</li><li>Tight on a phone once there are more than ~8 skins; no room for names or rarity.</li></ul></div>
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>B · Skins locker</h3><ul><li>A SKINS button beside GO TO THE LAB opens a locker over the right side: cards with name, rarity and owned / price.</li><li>Tap a card to preview it on your dino; EQUIP keeps it (locked ones show the price instead).</li><li>Room to grow: an ACCESSORIES tab can be added later without moving anything.</li></ul></div>
+    <div class="note"><h3>C · Arrows on the dino</h3><ul><li>◀ skin name ▶ right under the dino, like the dino switcher.</li><li>Simplest build, nothing new on screen.</li><li>Players can't see all skins at once, so selling them is harder.</li></ul></div>
+    <div class="note"><h3>Same for all</h3><ul><li>The skin you equip is saved and goes on every new body: respawns and dino switches.</li><li>Each dino has its own skins (a raptor skin stays a raptor skin).</li><li>Skins only change colours, never hitboxes or stats.</li></ul></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // colour roles taken from RaptorModelData (main 5E943E, bands 283A1E, limbs 8FA046, belly C9C98F, claws 302824, stripe 2E8C82, eye F0C81E)
+  const SKINS = [
+    { id: 'classic', name: 'Classic', rar: 'STARTER', own: true,  c: { main: '#5E943E', bands: '#283A1E', limbs: '#8FA046', belly: '#C9C98F', claws: '#302824', stripe: '#2E8C82', eye: '#F0C81E' } },
+    { id: 'desert',  name: 'Desert Runner', rar: 'COMMON', own: true, c: { main: '#C9A46A', bands: '#7A5530', limbs: '#B08A55', belly: '#EBDDB8', claws: '#3B2A1C', stripe: '#C2552E', eye: '#F0C81E' } },
+    { id: 'arctic',  name: 'Arctic', rar: 'RARE', own: false, price: 149, c: { main: '#E6EEF3', bands: '#7FA6C2', limbs: '#C7D8E3', belly: '#FFFFFF', claws: '#3A4A57', stripe: '#3FB4E6', eye: '#7FE9FF' } },
+    { id: 'night',   name: 'Night Stalker', rar: 'RARE', own: false, price: 149, c: { main: '#22262B', bands: '#0E1012', limbs: '#33393F', belly: '#4A5058', claws: '#0B0C0D', stripe: '#5FD16A', eye: '#5FD16A' } },
+    { id: 'lava',    name: 'Lava', rar: 'EPIC', own: false, price: 299, c: { main: '#2E2524', bands: '#FF6A1A', limbs: '#3D302E', belly: '#5A3A30', claws: '#120D0C', stripe: '#FFC832', eye: '#FF6A1A' }, glow: true },
+    { id: 'gold',    name: 'Gold Hunter', rar: 'LEGENDARY', own: false, price: 499, c: { main: '#D4A72C', bands: '#7A5A10', limbs: '#E6C25A', belly: '#F5E4A8', claws: '#3A2A08', stripe: '#FFF2B0', eye: '#FFFFFF' }, glow: true },
+  ];
+  const RAR = { STARTER: '#cfd3dc', COMMON: '#cfd3dc', RARE: '#7fe9ff', EPIC: '#c9a2ff', LEGENDARY: '#ffc832' };
+  const st = { opt: 'B', equipped: 'classic', preview: 'classic', open: true, toast: '' };
+  let toastT = null;
+
+  function dino(c, glow) {
+    const g = glow ? `filter="url(#gl)"` : '';
+    // side view, blocks: tail, body, neck, head, jaw, legs, arms; bands over body / tail
+    return `<svg viewBox="0 0 220 120" aria-hidden="true">
+      <defs><filter id="gl" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <rect x="6" y="46" width="70" height="12" fill="${c.main}"/>
+      <rect x="0" y="48" width="14" height="8" fill="${c.main}"/>
+      ${[14, 30, 46, 62].map(x => `<rect x="${x}" y="46" width="5" height="12" fill="${c.bands}" ${g}/>`).join('')}
+      <rect x="70" y="38" width="64" height="28" fill="${c.main}"/>
+      <rect x="74" y="60" width="56" height="7" fill="${c.belly}"/>
+      ${[80, 94, 108, 122].map(x => `<rect x="${x}" y="38" width="6" height="18" fill="${c.bands}" ${g}/>`).join('')}
+      <rect x="128" y="22" width="16" height="30" fill="${c.main}"/>
+      <rect x="136" y="38" width="8" height="12" fill="${c.belly}"/>
+      <rect x="134" y="12" width="40" height="16" fill="${c.main}"/>
+      <rect x="150" y="14" width="12" height="3" fill="${c.stripe}" ${g}/>
+      <rect x="152" y="17" width="6" height="5" fill="${c.eye}" ${g}/><rect x="155" y="17" width="2" height="5" fill="#111"/>
+      <rect x="138" y="28" width="36" height="6" fill="${c.main}"/>
+      <rect x="138" y="26" width="36" height="2" fill="#963C3C"/>
+      <rect x="142" y="25" width="30" height="2" fill="#E8E2D2"/>
+      <rect x="132" y="50" width="6" height="12" fill="${c.limbs}"/><rect x="132" y="61" width="9" height="3" fill="${c.claws}"/>
+      <rect x="82" y="64" width="14" height="24" fill="${c.main}"/>
+      <rect x="86" y="86" width="9" height="22" fill="${c.limbs}"/>
+      <rect x="84" y="106" width="16" height="5" fill="${c.limbs}"/><rect x="98" y="104" width="5" height="7" fill="${c.claws}"/>
+      <rect x="108" y="64" width="14" height="24" fill="${c.main}"/>
+      <rect x="112" y="86" width="9" height="22" fill="${c.limbs}"/>
+      <rect x="110" y="106" width="16" height="5" fill="${c.limbs}"/><rect x="124" y="104" width="5" height="7" fill="${c.claws}"/>
+    </svg>`;
+  }
+  const skin = id => SKINS.find(s => s.id === id);
+  const sw = s => `linear-gradient(135deg, ${s.c.main} 0 45%, ${s.c.bands} 45% 60%, ${s.c.belly} 60% 75%, ${s.c.stripe} 75%)`;
+
+  function left() {
+    const p = skin(st.preview);
+    let extra = '';
+    if (st.opt === 'A') {
+      extra = `<div class="stripName">SKIN · ${p.name.toUpperCase()}${p.own ? '' : ' · LOCKED'}</div>
+        <div class="strip">${SKINS.map(s => `<button class="sw" data-skin="${s.id}" aria-pressed="${s.id === st.preview}" aria-label="${s.name}" style="background:${sw(s)}">${s.own ? '' : `<span class="lock">R$${s.price}</span>`}</button>`).join('')}</div>`;
+    }
+    return `<div class="col">
+      <div class="stage"><span class="tag">MECH VIEW</span><div class="pedestal"></div><div class="dino">${dino(p.c, p.glow)}</div>
+        ${st.opt === 'C' ? `<div class="skinRow"><button class="arrow" data-act="prevSkin" aria-label="Previous skin">◀</button><span class="pill">${p.name}${p.own ? '' : ` · R$${p.price}`}</span><button class="arrow" data-act="nextSkin" aria-label="Next skin">▶</button></div>` : ''}
+      </div>
+      <div class="row"><span class="arrow">◀</span><div class="nm"><b>RAPTOR</b><small>Roamer · fast pouncer</small></div><span class="arrow">▶</span></div>
+      <div class="slots"><span class="slot">R · Adrenaline</span><span class="slot">C · Shock Cannon</span><span class="slot">R▼ · Shield</span><span class="slot">C▼ · Cloak</span></div>
+      ${extra}
+      ${st.opt === 'B' ? `<div class="btnrow"><button class="lab">GO TO THE LAB</button><button class="skinsBtn" data-act="openLocker">SKINS</button></div>` : `<button class="lab">GO TO THE LAB</button>`}
+    </div>`;
+  }
+  function right() {
+    if (st.opt === 'B' && st.open) {
+      const p = skin(st.preview);
+      const eq = st.preview === st.equipped;
+      const btn = !p.own ? `<button class="equip buy" data-act="buy">GET · R$${p.price}</button>` : eq ? `<button class="equip done">EQUIPPED</button>` : `<button class="equip go" data-act="equip">EQUIP</button>`;
+      return `<div class="locker" role="dialog" aria-label="Skins">
+        <header><b>RAPTOR SKINS</b><div class="tabs"><span class="tab on">SKINS</span><span class="tab off">ACCESSORIES · SOON</span></div><button class="close" data-act="closeLocker" aria-label="Close">✕</button></header>
+        <div class="grid">${SKINS.map(s => `<button class="card" data-skin="${s.id}" aria-pressed="${s.id === st.preview}"><div class="bar" style="background:${sw(s)}"></div><b>${s.name}</b><span class="rar" style="color:${RAR[s.rar]}">${s.rar}</span>${s.id === st.equipped ? '<small class="own">EQUIPPED</small>' : s.own ? '<small class="own">OWNED</small>' : `<small class="price">R$${s.price}</small>`}</button>`).join('')}</div>
+        ${btn}
+      </div>`;
+    }
+    return `<div class="col" style="align-content:center"><div class="title"><small>MECHA DINO</small><b>ARENA</b></div><div class="play sb">SANDBOX</div><div class="play ar">ARENA</div></div>`;
+  }
+  function render() {
+    document.getElementById('s').innerHTML = left() + right() + (st.toast ? `<div class="toast">${st.toast}</div>` : '');
+  }
+  function toast(t) { st.toast = t; clearTimeout(toastT); toastT = setTimeout(() => { st.toast = ''; render(); }, 1600); }
+  function pick(id) {
+    const s = skin(id);
+    st.preview = id;
+    if (st.opt !== 'B' && s.own) { st.equipped = id; toast(`${s.name.toUpperCase()} EQUIPPED`); }
+    else if (st.opt !== 'B') toast(`LOCKED · R$${s.price}`);
+  }
+  document.addEventListener('click', e => {
+    const c = e.target.closest('.chip');
+    if (c) {
+      st[c.dataset.k] = c.dataset.v; st.open = true; st.preview = st.equipped;
+      document.querySelectorAll(`.chip[data-k="${c.dataset.k}"]`).forEach(x => x.setAttribute('aria-pressed', x === c));
+      render(); return;
+    }
+    const s = e.target.closest('[data-skin]');
+    if (s) { pick(s.dataset.skin); render(); return; }
+    const a = e.target.closest('[data-act]');
+    if (!a) return;
+    const i = SKINS.findIndex(x => x.id === st.preview);
+    if (a.dataset.act === 'prevSkin') pick(SKINS[(i + SKINS.length - 1) % SKINS.length].id);
+    if (a.dataset.act === 'nextSkin') pick(SKINS[(i + 1) % SKINS.length].id);
+    if (a.dataset.act === 'openLocker') st.open = true;
+    if (a.dataset.act === 'closeLocker') { st.open = false; st.preview = st.equipped; }
+    if (a.dataset.act === 'equip') { st.equipped = st.preview; toast(`${skin(st.preview).name.toUpperCase()} EQUIPPED`); }
+    if (a.dataset.act === 'buy') toast('PURCHASE COMES IN A LATER STEP');
+    render();
+  });
+  render();
+})();
+</script>
