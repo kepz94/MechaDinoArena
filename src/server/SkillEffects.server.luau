@@ -1,4 +1,4 @@
--- SkillEffects v1.23 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.24 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -133,10 +133,15 @@
 -- v1.23 (pachy Bone Crest; SkillTree 1.30): on a pachy (Species "Pachy") with "crest" bought (a passive line, no slot):
 --   BoneCrestMul = crestMul (0.80 / 0.70 / 0.60; 1 off) and BoneCrestReflect = crestReflect (5 at star; 0 off). BoneCrest
 --   1.0 (module) reads them. Switch: script attribute SkillEffectsCrestEnabled (default true, read at start; false = 1.22).
+-- v1.24 (pachy parts batch 3, MDA-126..128; SkillTree 1.32): on a pachy with the part bought AND slotted (off values
+--   otherwise): Servo Dash: ServoDashEnabled, ServoDashTime, ServoDashCooldown, ServoDashSpeedMul (1 off), ServoDashRefill,
+--   ServoDashLook; Dome Visor: VisorEnabled, VisorTime, VisorCooldown, VisorKnock, VisorLook; Ink Shooter: InkEnabled,
+--   InkRange, InkCooldown, InkBlindTime, InkSplash, InkLook. ServoDashServer / VisorServer / InkServer 1.0 read them.
+--   Switch: script attribute SkillEffectsBatch3Enabled (default true, read at start; false = 1.23, none written).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.23"
+local VERSION = "1.24"
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
 local BLEED_PLAYERS = script:GetAttribute("SkillBleedPlayersEnabled") ~= false
 if script:GetAttribute("SkillBleedPlayerTime") == nil then script:SetAttribute("SkillBleedPlayerTime", 2) end -- v1.18
@@ -160,6 +165,8 @@ if script:GetAttribute("SkillEffectsMedEnabled") == nil then script:SetAttribute
 local MED_ON = script:GetAttribute("SkillEffectsMedEnabled") ~= false
 if script:GetAttribute("SkillEffectsCrestEnabled") == nil then script:SetAttribute("SkillEffectsCrestEnabled", true) end -- v1.23
 local CREST_ON = script:GetAttribute("SkillEffectsCrestEnabled") ~= false
+if script:GetAttribute("SkillEffectsBatch3Enabled") == nil then script:SetAttribute("SkillEffectsBatch3Enabled", true) end -- v1.24
+local B3_ON = script:GetAttribute("SkillEffectsBatch3Enabled") ~= false
 if script:GetAttribute("SkillEffectsRaptorLifestealEnabled") == nil then script:SetAttribute("SkillEffectsRaptorLifestealEnabled", true) end -- v1.20
 for k, v in pairs({SkillEffectsIdleRegenEnabled = true, SkillIdleRegenDelay = 8, SkillIdleRegenRate = 0.05}) do -- v1.19; v1.21: rate 0.20 -> 0.05
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -319,6 +326,29 @@ local function applyChar(char, st)
 		char:SetAttribute("HookCooldown", hkOn and e.hookCooldown or 0)
 		char:SetAttribute("HookDamage", hkOn and e.hookDamage or 0)
 		char:SetAttribute("HookLook", hkOn)
+	end
+	if B3_ON then -- v1.24: pachy parts batch 3 (in a slot)
+		local isPachy = live and char:GetAttribute("Species") == "Pachy"
+		local sdOn = isPachy and (e.servoTime or 0) > 0 and inSlot("servodash")
+		char:SetAttribute("ServoDashEnabled", sdOn)
+		char:SetAttribute("ServoDashTime", sdOn and e.servoTime or 0)
+		char:SetAttribute("ServoDashCooldown", sdOn and e.servoCd or 0)
+		char:SetAttribute("ServoDashSpeedMul", sdOn and e.servoMul or 1)
+		char:SetAttribute("ServoDashRefill", sdOn and e.servoRefill == true)
+		char:SetAttribute("ServoDashLook", sdOn)
+		local vzOn = isPachy and (e.visorTime or 0) > 0 and inSlot("visor")
+		char:SetAttribute("VisorEnabled", vzOn)
+		char:SetAttribute("VisorTime", vzOn and e.visorTime or 0)
+		char:SetAttribute("VisorCooldown", vzOn and e.visorCd or 0)
+		char:SetAttribute("VisorKnock", vzOn and e.visorKnock == true)
+		char:SetAttribute("VisorLook", vzOn)
+		local ikOn = isPachy and (e.inkRange or 0) > 0 and inSlot("ink")
+		char:SetAttribute("InkEnabled", ikOn)
+		char:SetAttribute("InkRange", ikOn and e.inkRange or 0)
+		char:SetAttribute("InkCooldown", ikOn and e.inkCd or 0)
+		char:SetAttribute("InkBlindTime", ikOn and e.inkBlind or 0)
+		char:SetAttribute("InkSplash", ikOn and e.inkSplash or 0)
+		char:SetAttribute("InkLook", ikOn)
 	end
 	if CREST_ON then -- v1.23: Bone Crest (pachy only, passive)
 		local bcOn = live and char:GetAttribute("Species") == "Pachy" and (e.crestMul or 1) < 1

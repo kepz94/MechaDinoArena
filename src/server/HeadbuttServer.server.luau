@@ -1,4 +1,4 @@
--- HeadbuttServer v1.7 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.8 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -89,13 +89,17 @@
 --   the last Blood Rush press. Normal presses are unchanged. Switch: script attribute HeadbuttSacrificeRestartsRefill
 --   (default true, read at start; false = 1.6, the refill keeps running). Diagnostic: character
 --   HeadbuttRefillRestarts (count).
+-- v1.8 (pachy Servo Dash star, MDA-126; ServoDashServer 1.0): a new character attribute HeadbuttGiveChargeAt gives one
+--   charge back at once (capped at the max); when that fills the charges the running refill stops, otherwise the running
+--   refill keeps going. Diagnostic: character HeadbuttChargesGiven (count). Switch: script attribute
+--   HeadbuttGiveChargeEnabled (default true, read each time; false = 1.7, ignored).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
 local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
 if script:GetAttribute("HeadbuttSacrificeRestartsRefill") == nil then script:SetAttribute("HeadbuttSacrificeRestartsRefill", true) end -- v1.7
@@ -522,6 +526,17 @@ local function onCharacter(char)
 		if char.Parent then track(char) end
 	end)
 	char:GetAttributeChangedSignal("HeadbuttEnabled"):Connect(function() track(char) end)
+	char:GetAttributeChangedSignal("HeadbuttGiveChargeAt"):Connect(function() -- v1.8: Servo Dash star
+		if script:GetAttribute("HeadbuttGiveChargeEnabled") == false then return end
+		local st = chars[char]
+		if not st then return end
+		local m = maxCharges(char)
+		if st.charges >= m then return end
+		st.charges += 1
+		if st.charges >= m then st.refillStart, st.refillAt = nil, nil end
+		char:SetAttribute("HeadbuttChargesGiven", (char:GetAttribute("HeadbuttChargesGiven") or 0) + 1)
+		publish(char, st)
+	end)
 end
 local function onPlayer(player)
 	player.CharacterAdded:Connect(onCharacter)

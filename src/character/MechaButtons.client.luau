@@ -1,4 +1,4 @@
--- MechaButtons v1.18 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.19 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -136,6 +136,10 @@
 --     to the flat part only (no tilt); the camera follows that flat direction.
 --   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
 --   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
+-- v1.19 (pachy parts batch 3, MDA-126..128, plan docs/plans/PACHY_PARTS_B3_v1.0.md): TIMED_PARTS += servodash
+--   {"ServoDash", "DinoServoDashRequest", "SERVO DASH"}, visor {"Visor", "DinoVisorRequest", "DOME VISOR"} and ink {"Ink",
+--   "DinoInkRequest", "INK SHOOTER"}. Ink fires along the camera look like the Grappling Hook: DinoInkRequest(stamp,
+--   camera LookVector). Switch: script attribute MechaButtonsBatch3Enabled (default true, read at start; false = 1.18).
 -- v1.18 (pachy Med-Station, MDA-125, plan docs/plans/PACHY_MEDSTATION_v1.0.md): TIMED_PARTS.medstation = {"Med",
 --   "DinoMedRequest", "MED-STATION"}: a slotted Med-Station button reads "MED-STATION", is lit while MedEnabled and
 --   MedReadyAt has passed (cooldown sweep from MedCooldown) and a press fires DinoMedRequest(stamp) (MedStationServer 1.0).
@@ -159,7 +163,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.18"
+local VERSION = "1.19"
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -202,6 +206,13 @@ TIMED_PARTS.traps = {"Mine", "DinoMineRequest", "SHOCK MINE"} -- v1.11
 TIMED_PARTS.hookarm = {"Hook", "DinoHookRequest", "GRAPPLING HOOK"} -- v1.15: pachy Grappling Hook (fires with the aim)
 if script:GetAttribute("MechaButtonsMedEnabled") == nil then script:SetAttribute("MechaButtonsMedEnabled", true) end -- v1.18
 if script:GetAttribute("MechaButtonsMedEnabled") ~= false then TIMED_PARTS.medstation = {"Med", "DinoMedRequest", "MED-STATION"} end -- v1.18: pachy Med-Station
+if script:GetAttribute("MechaButtonsBatch3Enabled") == nil then script:SetAttribute("MechaButtonsBatch3Enabled", true) end -- v1.19
+local B3_BTN = script:GetAttribute("MechaButtonsBatch3Enabled") ~= false
+if B3_BTN then -- v1.19: pachy parts batch 3
+	TIMED_PARTS.servodash = {"ServoDash", "DinoServoDashRequest", "SERVO DASH"}
+	TIMED_PARTS.visor = {"Visor", "DinoVisorRequest", "DOME VISOR"}
+	TIMED_PARTS.ink = {"Ink", "DinoInkRequest", "INK SHOOTER"}
+end
 local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
 local aim -- v1.8: {slot, t0, input, gesture, part}
 
@@ -340,6 +351,12 @@ local function press(n, input)
 	char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(n, id or "empty"))
 	if id == "screech" then -- v1.8: start the aim; the release fires
 		aimStart(n, input, false)
+		return
+	end
+	if B3_BTN and id == "ink" then -- v1.19: the ink fires along the camera look (InkServer 1.0)
+		local r = ReplicatedStorage:FindFirstChild("DinoInkRequest")
+		local cam = workspace.CurrentCamera
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
 		return
 	end
 	if id == "hookarm" then -- v1.15: the hook fires along the camera look (HookServer 1.0)

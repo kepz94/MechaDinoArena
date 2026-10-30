@@ -1,4 +1,4 @@
--- SkillTree v1.31 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.32 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -279,6 +279,15 @@ SkillTree.AREAS = {
 -- v1.31 (Kepu 2026-10-30: "It only takes 5 damage back for biters. Not slashers."; BoneCrest 1.1): Bone Crest star text
 --   reads "Biters that bite your dome take 5 damage back (not raptor slashes)"; Kepu: "So for example a raptor wouldn't take
 --   5 damage back".
+-- v1.32 (pachy parts batch 3, MDA-126..128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup
+--   docs/mockups/pachy_parts_b3_options.html, Kepu: "All the recommended ones"): three pachy-only live slot parts
+--   (OWNER Pachy, LIVE_MECH, BUTTONS), each behind its own switch:
+--   * "servodash" Overclocked Servo Dash (Speed; SkillTree.PACHY_SERVO_DASH): effects servoTime 1.5 (II 2), servoCd 12
+--     (III 8), servoMul 1.6, servoRefill (star true).
+--   * "visor" Dome Visor (Defense; SkillTree.PACHY_DOME_VISOR): visorTime 1.5 (II 2), visorCd 14 (III 10), visorKnock (star
+--     true).
+--   * "ink" Ink Shooter (Engineering; SkillTree.PACHY_INK_SHOOTER): inkRange 60 (II 80), inkCd 15 (III 11), inkBlind 2,
+--     inkSplash 6 at star (0 below). All fields 0 / false below step I. false = 1.31 for that part.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -556,6 +565,41 @@ if SkillTree.PACHY_MEDSTATION and SkillTree.PATHS.medstation then
 	SkillTree.LIVE_MECH.medstation = true
 	SkillTree.BUTTONS.medstation = true
 end
+-- v1.32: pachy parts batch 3 (button parts)
+do
+	local function addPart(flag, id, name, area, steps)
+		if not flag or SkillTree.PATHS[id] then return end
+		local p = path(id, name, true, false, steps)
+		p.area = area
+		p.dino = "Pachy"
+		SkillTree.OWNER[id] = "Pachy"
+		SkillTree.LIVE_MECH[id] = true
+		SkillTree.BUTTONS[id] = true
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == area then table.insert(a.paths, p) end
+		end
+		SkillTree.PATHS[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	SkillTree.PACHY_SERVO_DASH = true
+	addPart(SkillTree.PACHY_SERVO_DASH, "servodash", "Overclocked Servo Dash", "speed", {
+		"Button: hip thrusters launch you forward, then you run 1.6x top speed for 1.5 s and ignore the headbutt slow",
+		"Lasts 2 s",
+		"Recharges in 8 s (was 12 s)",
+		"Ending the dash refills one headbutt charge"})
+	SkillTree.PACHY_DOME_VISOR = true
+	addPart(SkillTree.PACHY_DOME_VISOR, "visor", "Dome Visor", "defense", {
+		"Button: an armored faceplate drops for 1.5 s and blocks every bite, pounce, headbutt, hook smash and Shock Cannon shot from the front. You can still headbutt",
+		"Lasts 2 s",
+		"Recharges in 10 s (was 14 s)",
+		"A hit the visor blocks knocks the attacker back"})
+	SkillTree.PACHY_INK_SHOOTER = true
+	addPart(SkillTree.PACHY_INK_SHOOTER, "ink", "Ink Shooter", "eng", {
+		"Button: aim and fire an ink glob (60 studs). The first dino hit is blinded for 2 s: a player's screen goes black, a bot forgets you",
+		"Reaches 80 studs",
+		"Recharges in 11 s (was 15 s)",
+		"The ink splashes: everyone within 6 studs of the hit is blinded too"})
+end
 -- v1.30: the pachy's Bone Crest replaces Thick Hide (Defense)
 SkillTree.PACHY_BONE_CREST = true
 if SkillTree.PACHY_BONE_CREST and not SkillTree.PATHS.crest then
@@ -740,6 +784,29 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 		if md >= 2 then e.medRadius = 18 end
 		if md >= 3 then e.medTime = 7 end
 		if md >= 4 then e.medTime = 10 end
+	end
+	-- v1.32: pachy parts batch 3
+	local sd, vz, ik = s.servodash or 0, s.visor or 0, s.ink or 0
+	e.servoTime, e.servoCd, e.servoMul, e.servoRefill = 0, 0, 1, false
+	if SkillTree.PACHY_SERVO_DASH then
+		if sd >= 1 then e.servoTime, e.servoCd, e.servoMul = 1.5, 12, 1.6 end
+		if sd >= 2 then e.servoTime = 2 end
+		if sd >= 3 then e.servoCd = 8 end
+		if sd >= 4 then e.servoRefill = true end
+	end
+	e.visorTime, e.visorCd, e.visorKnock = 0, 0, false
+	if SkillTree.PACHY_DOME_VISOR then
+		if vz >= 1 then e.visorTime, e.visorCd = 1.5, 14 end
+		if vz >= 2 then e.visorTime = 2 end
+		if vz >= 3 then e.visorCd = 10 end
+		if vz >= 4 then e.visorKnock = true end
+	end
+	e.inkRange, e.inkCd, e.inkBlind, e.inkSplash = 0, 0, 0, 0
+	if SkillTree.PACHY_INK_SHOOTER then
+		if ik >= 1 then e.inkRange, e.inkCd, e.inkBlind = 60, 15, 2 end
+		if ik >= 2 then e.inkRange = 80 end
+		if ik >= 3 then e.inkCd = 11 end
+		if ik >= 4 then e.inkSplash = 6 end
 	end
 	e.lifestealRaptor = 0 -- v1.28
 	if SkillTree.RAPTOR_LIFESTEAL_STRONG then

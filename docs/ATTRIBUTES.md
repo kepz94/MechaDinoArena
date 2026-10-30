@@ -2139,3 +2139,19 @@ Model Mecha_BloodVials: Glass_L/R, Blood_L/R (FluidHinge, FullHeight), CapTop/Ca
 | BiteCrestEnabled / PounceCrestEnabled / BotCrestEnabled | script | default true; false = that damage path skips Bone Crest (and, for bite / pounce, the Thick Hide fix) |
 | BiteHitCrestMul / BiteHitDefenseMul, PounceHitCrestMul / PounceHitDefenseMul, BotLastHitCrestMul | attacker / bot | multipliers used on the last hit |
 Look: BoneCrestSpark (Attachment + sparks) and BoneCrestPop ("CLANK") on the victim's head.
+
+## Overclocked Servo Dash (SkillTree 1.32 / SkillEffects 1.24 / ServoDashServer 1.0 / ServoDashLaunch 1.0 / SprintTest 1.10 / HeadbuttServer 1.8, MDA-126)
+| Attribute | Where | Meaning |
+|---|---|---|
+| SkillTree.PACHY_SERVO_DASH / PACHY_DOME_VISOR / PACHY_INK_SHOOTER | SkillTree constants | true: the batch 3 pachy parts exist (false = 1.31) |
+| SkillEffectsBatch3Enabled | SkillEffects script | default true; false = no ServoDash* / Visor* / Ink* attributes |
+| ServoDashEnabled / ServoDashTime / ServoDashCooldown / ServoDashSpeedMul / ServoDashRefill / ServoDashLook | character (pachy) | bought AND slotted; 1.5 / 2 s, 12 / 8 s, 1.6, star, look on |
+| ServoDashUntil / ServoDashReadyAt / ServoDashStartedAt | character | dash end, next press (from the press), press time (set last) |
+| ServoDashServerResult / ServoDashServerResultAt, ServoDashCount, ServoDashEndReason, ServoDashRefills, ServoDashLookBuilt | character | badArg / dead / disabled / menu / stunned / pinned / active / cooldown / ok; dashes; time / dead / disabled; star refills; thrusters built |
+| ServoDashServerEnabled / ServoDashServerVersion / ServoDashRequests | ServoDashServer script | switch (default true), version, request count |
+| ServoDashLaunchEnabled / ServoDashLaunchDist / ServoDashLaunchTime / ServoDashLaunchAccel | character | shove switch (default true), 22 studs, 0.25 s, 20000 |
+| ServoDashLaunchVersion / ServoDashLaunchState / ServoDashLaunchMoved | character (client) | version, idle / launching, studs moved by the last shove |
+| SprintServoDashEnabled | SprintTest script | default true; false = no dash speed, the self-slow stays |
+| HeadbuttGiveChargeAt / HeadbuttChargesGiven | character | a new time adds one headbutt charge (capped) / count given |
+| HeadbuttGiveChargeEnabled | HeadbuttServer script | default true; false = HeadbuttGiveChargeAt ignored |
+Look: Mecha_ServoDash on Torso.Root, Housing_L/R + Bell_L/R, Exhaust.Flame and SpeedLine on only while dashing.

@@ -1,4 +1,4 @@
--- AbilityBar v1.11 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.12 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -70,6 +70,9 @@
 --   and the leap's states: "off" (MechaLegsEnabled not true) / "active" (JumpTestState crouch / air) / "cooling"
 --   (JumpPredictedAt + JumpCooldown, with the sweep and seconds) / "ready". Switch: script attribute
 --   AbilityBarLegsEnabled (default true, read at start; false = the plain slot tile).
+-- v1.12 (pachy parts batch 3, MDA-126..128): TIMED_PARTS += servodash "ServoDash" and visor "Visor" (both with Until:
+--   active / cooling / ready) and ink "Ink" (no Until: cooling / ready). Switch: script attribute AbilityBarBatch3Enabled
+--   (default true, read at start; false = 1.11).
 -- v1.11 (pachy Med-Station, MDA-125): TIMED_PARTS.medstation = "Med" -> a Med-Station slot tile shows "off" (MedEnabled not
 --   true) / "cooling" (sweep + seconds to MedReadyAt, from MedCooldown) / "ready"; the pad's run time is not shown on the
 --   tile (no MedUntil). Switch: script attribute AbilityBarMedEnabled (default true, read at start; false = 1.10).
@@ -87,7 +90,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.11"
+local VERSION = "1.12"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -111,6 +114,10 @@ TIMED_PARTS.traps = "Mine" -- v1.5: Shock Mine
 TIMED_PARTS.hookarm = "Hook" -- v1.8: pachy Grappling Hook (HookEnabled / HookReadyAt / HookCooldown; no HookUntil)
 if script:GetAttribute("AbilityBarMedEnabled") == nil then script:SetAttribute("AbilityBarMedEnabled", true) end -- v1.11
 if script:GetAttribute("AbilityBarMedEnabled") ~= false then TIMED_PARTS.medstation = "Med" end -- v1.11: pachy Med-Station (no MedUntil: ready / cooling)
+if script:GetAttribute("AbilityBarBatch3Enabled") == nil then script:SetAttribute("AbilityBarBatch3Enabled", true) end -- v1.12
+if script:GetAttribute("AbilityBarBatch3Enabled") ~= false then -- v1.12: pachy parts batch 3
+	TIMED_PARTS.servodash, TIMED_PARTS.visor, TIMED_PARTS.ink = "ServoDash", "Visor", "Ink"
+end
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
 local PANEL = Color3.fromRGB(20, 20, 26)
