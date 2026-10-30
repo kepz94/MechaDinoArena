@@ -8,8 +8,9 @@
 --   client's FX). Diagnostics: JumpDoubleLocal ("ready" / "used"), JumpDoubleLocalCount. Switch: JumpDoubleEnabled.
 -- v1.2 (Kepu 2026-10-30: "Leaping isn't powerful enough ... the second should be really strong too"): the double jump
 --   also adds JumpDoubleForward studs/s (character attribute, SkillEffects 1.16; 0 / missing = none) along the body's
---   facing to the horizontal speed. Fix: doubleUsed / wasHeld are declared before launch() (1.1 declared them after it,
---   so launch() reset a global and only the first leap of a life could double jump).
+--   facing to the horizontal speed, and the air hold (input held) steers at that faster speed. Fix: doubleUsed /
+--   wasHeld are declared before launch() (1.1 declared them after it, so launch() reset a global and only the first
+--   leap of a life could double jump).
 -- While enabled, the Humanoid's built-in Jumping state is turned off, so a press never jumps straight away. Instead:
 --   1. Press (when allowed): JumpPredictedAt = server time (this client only, so the crouch shows at once) and
 --      DinoJumpRequest:FireServer(that time) (JumpServer 1.0 validates and sets the replicated JumpStartedAt).
@@ -231,6 +232,7 @@ local function doubleJump()
 	local hv = Vector3.new(v.X, 0, v.Z)
 	local face = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
 	if fwdAdd > 0 and face.Magnitude > 1e-3 then hv += face.Unit * fwdAdd end
+	leapSpeed = math.max(leapSpeed, hv.Magnitude) -- v1.2: the air hold keeps the burst while steering
 	hrp.AssemblyLinearVelocity = Vector3.new(hv.X, power, hv.Z) -- in the air: the velocity alone (no Jumping state)
 	takeoffY = math.min(takeoffY, hrp.Position.Y)
 	local s = workspace:GetServerTimeNow()

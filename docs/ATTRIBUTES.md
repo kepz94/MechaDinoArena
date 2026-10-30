@@ -2035,6 +2035,13 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | MechaLegsBuilt / MechaLegsFXCount / MechaLegsFXVersion | character | 0 / 6; count; 1.0 | MechaLegsServer 1.0 / MechaLegsFX 1.0 diagnostics |
 | SkillEffectsLegsEnabled / JumpDoubleServerEnabled / MechaLegsServerEnabled / MechaLegsFXEnabled | scripts / character | true | Mecha Legs switches |
 | SkillTree.MECHA_LEGS | SkillTree module constant | true | SkillTree 1.22 line (false = 1.21) |
+| HookArmSide | HookServer script | "ArmL" | HookServer 1.4: the rig segment that gets the hook (ArmL = the dino's right arm; "ArmR" = 1.3) |
+| HookArmSeg | pachy character (server) | ArmL / ArmR | HookServer 1.4 -> HookPose 1.2: which arm joint lifts |
+| MechaLegsEnabled | pachy character (server) | bool | SkillEffects 1.16: Mecha Legs on (bought, slotted, pachy) |
+| JumpDoubleForward | pachy character (server) | 0 / 15 studs/s | SkillEffects 1.16 -> JumpTest 1.2 double-jump forward burst |
+| MechaLegsFXLeapEnabled / MechaLegsFXLeapCount | character (client) | true / count | MechaLegsFX 1.1 leap fire + speed lines |
+| SkillEffectsLegsSlotEnabled / AbilityBarLegsEnabled / MechaButtonsLegsEnabled | scripts | true | Mecha Legs slot switches |
+| SkillTree.MECHA_LEGS_SLOT / SkillTree.MECHA_LEGS_STRONG | SkillTree module constants | true | SkillTree 1.23 (slot; stronger numbers) |
 | HeadbuttRefillTier2 / HeadbuttRefillTier3 / HeadbuttRefillTierUsed | pachy character | 1.3 / 1.6 / 2-3 | HeadbuttServer 1.2 tiered refill |
 | HeadbuttRefillTiersEnabled / HeadbuttHookBusyEnabled | HeadbuttServer script | true | HeadbuttServer 1.2 switches |
 | StatusBadgesSlowLeft / StatusBadgesState | dino (client) | seconds (0.1 steps); + "slow" | StatusBadges 1.2 diagnostics |

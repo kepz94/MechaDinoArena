@@ -9,8 +9,9 @@
 -- v1.1 (Kepu 2026-10-30: "This should be also have visuals to indicate it's strong whether it's small fire bursts through
 --   the leg or speed animation lines when you jump"): both.
 --   Leap (character with MechaLegsEnabled, SkillEffects 1.16): at takeoff (JumpPredictedAt on the own character,
---   JumpStartedAt for the others, + JumpWindup 0.12 s) a fire burst from each heel vent (a yellow core and 3 orange /
---   red neon flames that stick to the heel for 0.12 s, then swell and fall away, 0.35 s) and 6 white speed lines around
+--   JumpStartedAt for the others, + JumpWindup 0.12 s) a fire burst from each heel vent (a yellow core 1.5 studs and 3
+--   orange / red neon flames 1.1 studs that stick to the heel for 0.12 s, then swell and fall away, 0.35 s) and 8 white
+--   speed lines around
 --   the body that stretch downward and fade (0.35 s), streaming down past the dino.
 --   Double jump: the same burst at 1.6 x size and 10 speed lines, on top of the 1.0 ring and puffs.
 --   Switch: character attribute MechaLegsFXLeapEnabled (default true; false = 1.0, double jump ring and puffs only).
@@ -98,14 +99,14 @@ local function fireBurst(char, side, big)
 	local at0 = heelPos()
 	if not at0 then return end
 	local pieces = {}
-	local core = fxPart("LegsFlameCore", Vector3.one * 0.7 * s, FLAME[1], CFrame.new(at0), Enum.PartType.Ball)
-	table.insert(pieces, {p = core, off = Vector3.zero, grow = 1.6, drop = 1.5})
+	local core = fxPart("LegsFlameCore", Vector3.one * 1.5 * s, FLAME[1], CFrame.new(at0), Enum.PartType.Ball)
+	table.insert(pieces, {p = core, off = Vector3.zero, base = 1.5, grow = 2.5, drop = 1.5})
 	for i = 1, 3 do
 		local a = (i / 3) * math.pi * 2 + math.random() * 0.6
-		local off = Vector3.new(math.cos(a) * 0.35, -0.2, math.sin(a) * 0.35) * s
-		local f = fxPart("LegsFlame", Vector3.one * 0.5 * s, FLAME[2], CFrame.new(at0 + off), Enum.PartType.Ball)
+		local off = Vector3.new(math.cos(a) * 0.7, -0.6, math.sin(a) * 0.7) * s
+		local f = fxPart("LegsFlame", Vector3.one * 1.1 * s, FLAME[2], CFrame.new(at0 + off), Enum.PartType.Ball)
 		f.Color = FLAME[i == 1 and 2 or 3]
-		table.insert(pieces, {p = f, off = off, grow = 2.2, drop = 3 + math.random()})
+		table.insert(pieces, {p = f, off = off, base = 1.1, grow = 3, drop = 3 + math.random()})
 	end
 	local stick = 0.12
 	local t0 = os.clock()
@@ -114,7 +115,7 @@ local function fireBurst(char, side, big)
 		local el = os.clock() - t0
 		if el < stick then last = heelPos() or last end
 		for _, pc in ipairs(pieces) do
-			local d = (0.5 + pc.grow * u) * s
+			local d = (pc.base + pc.grow * u) * s
 			pc.p.Size = Vector3.new(d, d * 1.3, d)
 			local fall = el < stick and 0 or (el - stick) * pc.drop * 10 * s * 0.25
 			pc.p.CFrame = CFrame.new(last + pc.off * (1 + u) - Vector3.new(0, fall, 0))
@@ -168,7 +169,7 @@ local function maybeLeap(char, at)
 	lastLeap[char] = at
 	local windup = tonumber(char:GetAttribute("JumpWindup")) or 0.12
 	task.delay(math.max(0, at + windup - workspace:GetServerTimeNow()), function()
-		if char.Parent then leapFX(char, 1, 6) end
+		if char.Parent then leapFX(char, 1, 8) end
 	end)
 end
 
