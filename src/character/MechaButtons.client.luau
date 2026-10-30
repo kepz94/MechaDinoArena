@@ -1,4 +1,4 @@
--- MechaButtons v1.11 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.12 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -109,12 +109,25 @@
 --   attribute ScreechFullRange is true (ScreechServer 1.2 Shock Cannon mode) the aim line is full ScreechRange at once and
 --   the release sends the full range (a quick press used to fire ~8 studs because the line grew over 1 s).
 -- v1.11 (raptor traps, MDA-80): TIMED_PARTS += traps ("Mine", DinoMineRequest, "SHOCK MINE"; MineServer 1.0), a normal press.
+-- v1.12 (Shock Cannon thumb aim, Kepu 2026-10-30: "for shock cannon when you hold it down and the laser shows you can manually aim the laser and when you release it shoots ... on mobile it's hard to move the camera with your thumb already down" -> "I want to hold, once laser shows up I can just keep dragging without lifting my finger to aim"; "Yes, snap to face it"):
+--   on touch, the finger that holds a Shock Cannon button also aims it. The aim locks AIM_LOCK (0.25) s after the aim
+--   starts (or at once when the finger moves sideways / up more than AIM_DEAD (14) px); before that a quick drag down is
+--   still the pull to slot 3 / 4 as before. Once locked, the pull-down is off for that touch and the finger's offset from
+--   where the aim started works like a small joystick: within AIM_DEAD px = straight ahead (the raptor's facing, as
+--   before); farther = the flat direction camera-right x dx + camera-forward x (-dy) (up = ahead of the camera, down =
+--   behind, all the way round). The red aim line follows that direction. Letting go fires there: DinoScreechRequest gets
+--   a 3rd argument, the aim direction (ScreechServer 1.7), and when the finger had aimed, the raptor snaps to face it
+--   (HumanoidRootPart turned on this client, the owner) and the camera turns the same way (ShoulderCamLookAt). PC keys
+--   are unchanged (aim with the camera; no direction sent). Script attribute MechaThumbAimEnabled (default true; false =
+--   1.11). Diagnostics: MechaScreechAimMode ("ahead" / "thumb"), MechaScreechAimDeg (degrees from the facing).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.11"
+local VERSION = "1.12"
+local AIM_LOCK, AIM_DEAD = 0.25, 14 -- v1.12
+if script:GetAttribute("MechaThumbAimEnabled") == nil then script:SetAttribute("MechaThumbAimEnabled", true) end
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local SPOTS = {
@@ -185,16 +198,25 @@ local function aimStart(n, input, isGesture)
 	hl.Parent = line
 	line.Parent = workspace
 	aim = {slot = n, t0 = os.clock(), input = input, gesture = isGesture == true, part = line}
+	if aim.gesture and input and script:GetAttribute("MechaThumbAimEnabled") ~= false then -- v1.12: thumb aim
+		aim.origin = Vector2.new(input.Position.X, input.Position.Y)
+		aim.lockAt = os.clock() + AIM_LOCK
+	end
 	char:SetAttribute("MechaScreechAim", "aiming")
 end
 local function aimRelease()
 	if not aim then return end
 	local range = aimRange()
+	local thumbDir = aim.thumbDir -- v1.12
 	aimCancel()
 	char:SetAttribute("MechaScreechHeld", math.floor(range * 10 + 0.5) / 10)
 	local r = ReplicatedStorage:FindFirstChild("DinoScreechRequest")
 	if r then
-		r:FireServer(workspace:GetServerTimeNow(), range)
+		if thumbDir and hrp then -- v1.12: face the shot, camera too
+			hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + thumbDir)
+			char:SetAttribute("ShoulderCamLookAt", hrp.Position + thumbDir * 500)
+		end
+		r:FireServer(workspace:GetServerTimeNow(), range, thumbDir)
 		char:SetAttribute("MechaScreechFired", (char:GetAttribute("MechaScreechFired") or 0) + 1)
 	end
 end
@@ -205,6 +227,22 @@ RunService.RenderStepped:Connect(function()
 	local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
 	if look.Magnitude < 1e-3 then return end
 	look = look.Unit
+	local facing = look
+	aim.thumbDir = nil -- v1.12: the thumb's joystick direction, once locked and out of the dead zone
+	if aim.locked and aim.stick and aim.stick.Magnitude > AIM_DEAD then
+		local cf = workspace.CurrentCamera.CFrame
+		local f = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+		local rt = Vector3.new(cf.RightVector.X, 0, cf.RightVector.Z)
+		if f.Magnitude > 1e-3 and rt.Magnitude > 1e-3 then
+			local d = rt.Unit * aim.stick.X + f.Unit * (-aim.stick.Y)
+			if d.Magnitude > 1e-3 then
+				look = d.Unit
+				aim.thumbDir = look
+			end
+		end
+	end
+	char:SetAttribute("MechaScreechAimMode", aim.thumbDir and "thumb" or "ahead")
+	char:SetAttribute("MechaScreechAimDeg", math.floor(math.deg(math.acos(math.clamp(facing:Dot(look), -1, 1))) + 0.5))
 	local base = hrp.Position -- the bolt's height (ScreechServer starts it 4 studs ahead of the root)
 	aim.part.Size = Vector3.new(0.5, 0.5, len)
 	aim.part.CFrame = CFrame.lookAt(base + look * (4 + len / 2), base + look * (5 + len / 2))
@@ -669,6 +707,16 @@ UserInputService.InputChanged:Connect(function(input)
 	if not gesture then return end
 	if input == gesture.input or (gesture.input.UserInputType == Enum.UserInputType.MouseButton1
 		and input.UserInputType == Enum.UserInputType.MouseMovement) then
+		if aim and aim.gesture and aim.origin then -- v1.12: thumb aim; once locked the drag aims, no pull
+			local d = Vector2.new(input.Position.X, input.Position.Y) - aim.origin
+			if not aim.locked and (os.clock() >= aim.lockAt or math.abs(d.X) > AIM_DEAD or d.Y < -AIM_DEAD) then
+				aim.locked = true
+			end
+			if aim.locked then
+				aim.stick = d
+				return
+			end
+		end
 		setPulling(input.Position.Y - gesture.y0 >= gesture.px)
 		local want = gesture.pulling and gesture.n + 2 or gesture.n -- v1.8: aim the slot the gesture would fire
 		if slotPart(want) == "screech" then

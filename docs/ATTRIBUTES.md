@@ -1925,3 +1925,7 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | MineColorsVersion / MineColorsPainted | player (local) | "1.0" / 0.. | diagnostics |
 | SkillTestFreeGivenEnabled | SkillServer script | true | false = given test parts count as spent / mastered (1.6) |
 | LabTestFreeGivenEnabled | Lab script | true | false = 1.3 BUY judge |
+| MechaThumbAimEnabled | MechaButtons script | true | MechaButtons 1.12: false = Shock Cannon aims with the facing only |
+| MechaScreechAimMode / MechaScreechAimDeg | character (local) | "ahead" / "thumb", degrees | thumb aim diagnostics |
+| ScreechAimDirEnabled | ScreechServer script | true | ScreechServer 1.7: false = ignore the aim direction |
+| ScreechAimUsed | character (server) | true / false | last shot used the aim direction |

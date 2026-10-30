@@ -303,6 +303,8 @@ The Workspace display dino (TRex_v1.1_StripeEye) is rig 1.3 too: legs copied fro
 | Lab | 1.4 | BUY label judged with SkillTestParts set to 0 (as SkillServer 1.7); switch LabTestFreeGivenEnabled. Install hash 54461 / 1886559566 |
 | ArenaScope | 1.16 | MineColors expected on. Install hash 8043 / 1747183888 |
 | Publish | Sandbox v125 + Arena | PvP pin hold, mine charges + colours, test-run stat buys, ArenaScope 1.16 published to Sandbox (v125) and "Mecha Dino Arena - Arena" (Publish As, overwrite), Kepu 2026-10-30 "Publish" |
+| MechaButtons | 1.12 | Shock Cannon thumb aim (Kepu: "hold, once laser shows up I can just keep dragging without lifting my finger to aim"; "snap to face it"): the finger holding the button aims like a mini joystick once the aim locks (0.25 s, or a sideways / up move > 14 px; a quick drag down is still the pull to slot 3 / 4); up = ahead of the camera, all the way round; release fires there, the raptor snaps to face it and the camera follows (ShoulderCamLookAt). PC keys unchanged. Switch MechaThumbAimEnabled; diagnostics MechaScreechAimMode / MechaScreechAimDeg. Not touch-tested in Studio (no touch device) — live check on the phone. Install hash 45474 / 1779427652 |
+| ScreechServer | 1.7 | Optional aim direction (3rd argument, flat, >= 0.5 long) sets the shot direction; else the facing as before; switch ScreechAimDirEnabled; diagnostic ScreechAimUsed. Verified in Play: aimed to the raptor's right -> "ok", ScreechAimUsed true, the ball flew to the right (screenshot). Install hash 35601 / 954431747 |
 | Publish | 2026-10-29 | Egg Loader release: Sandbox place published (v102); Arena place overwritten via Publish As. Live trip check pending (MDA-95). |
 
 ## Open decisions

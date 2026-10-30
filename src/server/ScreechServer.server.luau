@@ -1,4 +1,4 @@
--- ScreechServer v1.6 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.7 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -78,13 +78,19 @@
 -- v1.6 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"; "The counters for Pounce is to shield and use adrenaline mid pounce" -> only Shield + Adrenaline while pinned):
 --   the Shock Cannon is refused while you are pinned by another player ("pinned": character PinHeld == true, set by PounceServer
 --   1.8), checked right after "stunned". Script attribute ScreechPinnedBlockEnabled (default true; false = v1.5).
+-- v1.7 (Shock Cannon thumb aim, Kepu 2026-10-30: "for shock cannon when you hold it down and the laser shows you can manually aim the laser and when you release it shoots ... on mobile it's hard to move the camera with your thumb already down" -> "I want to hold, once laser shows up I can just keep dragging without lifting my finger to aim"; "Yes, snap to face it"): DinoScreechRequest:FireServer(stamp, held, aim) takes an optional 3rd
+--   argument, a Vector3 aim direction (MechaButtons 1.12 sends it when the finger aimed). When it is a Vector3 whose flat
+--   part (Y dropped) is at least 0.5 long and script attribute ScreechAimDirEnabled ~= false, the shot flies along that
+--   flat direction (unit) instead of the HumanoidRootPart's facing; anything else (nil, another type, too short) = the
+--   facing, as 1.6. The checks, range, cooldown and damage are unchanged. Diagnostic: character ScreechAimUsed
+--   (true / false, the last shot).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
 local SHOCK_SPEED, BALL_SIZE, SHELL_SIZE = 75, 3, 5 -- v1.2: Shock Cannon ball
@@ -93,6 +99,7 @@ local CANNON_DARK, CANNON_STEEL = Color3.fromRGB(58, 67, 80), Color3.fromRGB(142
 local RED = Color3.fromRGB(240, 90, 79)
 
 script:SetAttribute("ScreechServerVersion", VERSION)
+if script:GetAttribute("ScreechAimDirEnabled") == nil then script:SetAttribute("ScreechAimDirEnabled", true) end -- v1.7
 if script:GetAttribute("ScreechPinnedBlockEnabled") == nil then script:SetAttribute("ScreechPinnedBlockEnabled", true) end -- v1.6
 if script:GetAttribute("ScreechServerEnabled") == nil then script:SetAttribute("ScreechServerEnabled", true) end
 script:SetAttribute("ScreechRequests", 0)
@@ -594,7 +601,7 @@ local function muzzleFlash(pos)
 	Debris:AddItem(p, 0.2)
 end
 
-remote.OnServerEvent:Connect(function(player, stamp, held)
+remote.OnServerEvent:Connect(function(player, stamp, held, aimDir) -- v1.7: + aimDir
 	local char = player.Character
 	local st = char and chars[char]
 	if not st then return end
@@ -629,6 +636,15 @@ remote.OnServerEvent:Connect(function(player, stamp, held)
 	local look = root.CFrame.LookVector
 	local dir = Vector3.new(look.X, 0, look.Z)
 	dir = dir.Magnitude > 1e-3 and dir.Unit or Vector3.new(0, 0, -1)
+	local aimed = false -- v1.7: the thumb's aim direction
+	if typeof(aimDir) == "Vector3" and aimDir == aimDir and script:GetAttribute("ScreechAimDirEnabled") ~= false then
+		local flat = Vector3.new(aimDir.X, 0, aimDir.Z)
+		if flat.Magnitude >= 0.5 and flat.Magnitude < 1e6 then
+			dir = flat.Unit
+			aimed = true
+		end
+	end
+	char:SetAttribute("ScreechAimUsed", aimed)
 	local pos = root.Position + dir * BOLT_AHEAD
 	local jam = false
 	if char:GetAttribute("ScreechJam") == true then jam = true end
