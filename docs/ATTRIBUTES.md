@@ -1738,3 +1738,17 @@ MineServer 1.4 / ScreechServer 1.4 (ModeRules check, MDA-88):
 | MineModeBlocks / ScreechModeBlocks | script | 0.. | targets ignored by the mode check |
 | ModeBlockedAt | target character | server time | a mine / bolt ignored this target (once per mine / bolt) |
 | ModeBlockedTarget | owner / shooter character | name | the last target the mode check protected from you |
+
+ArenaPvP 1.0 (ServerScriptService.ArenaPvP, MDA-89):
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| ArenaPvPEnabled | script | true | false = no player is bridged (read at start) |
+| ArenaPvPState | script | "arena" / "sandbox" / "off" | |
+| ArenaPvPHits / ArenaPvPBlocked | script | 0.. | DummyHealth drops that hurt / that the shield blocked |
+| ArenaPvPVersion | script | "1.0" | |
+| ArenaPvPBridged | character | true | DummyHealth is bridged to the Humanoid |
+| ArenaPvPLastDelta | character | number | last damage passed to TakeDamage |
+| Bitable / DummyHealth / DummyMaxHealth | character (Arena) | | set by ArenaPvP: Bitable false while InMenu |
+| ArenaPvPTestTarget | test model | true | the ArenaPvPTest "target" T-Rex (PlaceGate keeps it) |
+
+BindableFunction ArenaPvP.ArenaPvPTest (server only): Invoke("hit", character, dmg) / Invoke("target", nearCharacter).
