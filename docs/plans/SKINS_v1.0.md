@@ -42,7 +42,7 @@ Prices are placeholders shown on locked cards; Kepu sets real prices in the buyi
 - `SkinCatalog.sanitize(species, id) -> id` (unknown / nil → default).
 - `SkinCatalog.paint(species, id, part, role)` is NOT here (pure module; painting lives in the scripts).
 **Steps:** write the spec first (roles of every authored raptor / T-Rex colour, unknown colour → nil, Classic colours == authored colours for every role, sanitize, owns with free / owned / locked, every skin has a colour for every role of its species); run it in Studio (execute_luau, fails); write the module; run → PASS; commit.
-**Acceptance:** spec PASS; Classic paints back exactly the authored colours (round trip); every SKINS colour is valid hex; no Instance access.
+**Acceptance:** spec PASS; Classic paints back exactly the authored colours (round trip); every SKINS colour is valid hex; every authored colour in RaptorModelData / TRexModelData is either a role or in `SkinCatalog.NEVER_PAINT` (spec reads both data modules); no Instance access in the module.
 
 ### Task 2 — SkinServer 1.0 · Mode: Wired
 **Files:** Create `src/server/SkinServer.server.luau` (ServerScriptService).
