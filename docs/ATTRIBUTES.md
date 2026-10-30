@@ -2044,6 +2044,9 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | SkillTree.MECHA_LEGS_SLOT / SkillTree.MECHA_LEGS_STRONG | SkillTree module constants | true | SkillTree 1.23 (slot; stronger numbers) |
 | HeadbuttRefillTier2 / HeadbuttRefillTier3 / HeadbuttRefillTierUsed | pachy character | 1.3 / 1.6 / 2-3 | HeadbuttServer 1.2 tiered refill |
 | HeadbuttRefillTiersEnabled / HeadbuttHookBusyEnabled | HeadbuttServer script | true | HeadbuttServer 1.2 switches |
+| HeadbuttCloseRun / HeadbuttFullRun / HeadbuttCloseMul | pachy character | 6 / 15 (studs x scale) / 0.5 | HeadbuttServer 1.3 run-up damage |
+| HeadbuttHitRun / HeadbuttHitRunMul | pachy character (server) | studs / 0.5-1 | HeadbuttServer 1.3 last hit's run-up |
+| HeadbuttRunUpEnabled | HeadbuttServer script | true | HeadbuttServer 1.3 switch (false = full damage at any distance) |
 | StatusBadgesSlowLeft / StatusBadgesState | dino (client) | seconds (0.1 steps); + "slow" | StatusBadges 1.2 diagnostics |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |

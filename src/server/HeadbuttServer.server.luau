@@ -1,4 +1,4 @@
--- HeadbuttServer v1.2 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.3 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -48,13 +48,22 @@
 --   so the tiers never applied; fixed before release.
 --   Diagnostic HeadbuttRefillTierUsed (2 / 3, the last tier above 1). Switch: script attribute HeadbuttRefillTiersEnabled
 --   (default true, read at start; false = one refill time).
+-- v1.3 (Kepu 2026-10-30: "if i headbutt right in front of someone it should be less damage cause theres no charge up so
+--   lets set a reasonable range and damage for that"): the hit damage scales with the run-up, the flat distance the
+--   pachy's HumanoidRootPart moved from the request to the hit (st.active.startPos): up to HeadbuttCloseRun (default 6)
+--   studs x scale = HeadbuttCloseMul (default 0.5) of the damage (20 -> 10), from HeadbuttFullRun (default 15) studs x
+--   scale = full damage, in between it climbs in a straight line. Applied before the dome and roar multipliers. The
+--   shove and slow are unchanged. Diagnostics (attacker): HeadbuttHitRun (studs, 0.1), HeadbuttHitRunMul (0.01). Switch:
+--   script attribute HeadbuttRunUpEnabled (default true, read at start; false = full damage at any distance, = 1.2).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
+if script:GetAttribute("HeadbuttRunUpEnabled") == nil then script:SetAttribute("HeadbuttRunUpEnabled", true) end -- v1.3
+local RUNUP_ON = script:GetAttribute("HeadbuttRunUpEnabled") ~= false
 if script:GetAttribute("HeadbuttHookBusyEnabled") == nil then script:SetAttribute("HeadbuttHookBusyEnabled", true) end -- v1.2
 local HOOK_BUSY = script:GetAttribute("HeadbuttHookBusyEnabled") ~= false
 if script:GetAttribute("HeadbuttRefillTiersEnabled") == nil then script:SetAttribute("HeadbuttRefillTiersEnabled", true) end -- v1.2
@@ -64,7 +73,7 @@ local HIT_TOLERANCE = 16  -- studs (x attacker scale) between the head and the t
 local DEFAULTS = {HeadbuttEnabled = false, HeadbuttCharges = 2, HeadbuttExtraCharges = 0, HeadbuttWindup = 0.15,
 	HeadbuttMaxTime = 1.8, HeadbuttDamage = 20, HeadbuttShove = 40, HeadbuttShoveTime = 0.35, HeadbuttSlowMul = 0.65,
 	HeadbuttSlowTime = 3, HeadbuttRefill = 5, HeadbuttRefillMul = 1, HeadbuttSelfSlowMul = 0.65, HeadbuttSelfSlowTime = 2.5,
-	HeadbuttReach = 2}
+	HeadbuttReach = 2, HeadbuttCloseRun = 6, HeadbuttFullRun = 15, HeadbuttCloseMul = 0.5} -- v1.3: + run-up
 
 script:SetAttribute("HeadbuttServerVersion", VERSION)
 script:SetAttribute("HeadbuttRequests", 0)
@@ -195,6 +204,8 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 	end
 	st.active = {stamp = stamp, startAt = t, deadline = t + get(char, "HeadbuttWindup") + get(char, "HeadbuttMaxTime") + END_SLACK,
 		hit = false}
+	local hrp0 = char:FindFirstChild("HumanoidRootPart") -- v1.3: where the run-up starts
+	st.active.startPos = hrp0 and hrp0.Position or nil
 	publish(char, st)
 	char:SetAttribute("HeadbuttCount", (char:GetAttribute("HeadbuttCount") or 0) + 1)
 	setResult(char, "ok")
@@ -344,7 +355,22 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	local mul = 1
 	local untilT, dmul = model:GetAttribute("DebuffUntil"), model:GetAttribute("DebuffDamageTakenMul")
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and t < untilT then mul = dmul end
-	local d = math.floor(get(char, "HeadbuttDamage") * domeMul(char, "HeadbuttDamageMul") * mul + 0.5) -- v1.1: x dome
+	local runMul = 1 -- v1.3: less damage without a run-up
+	if RUNUP_ON then
+		local hrpNow = char:FindFirstChild("HumanoidRootPart")
+		local run = 0
+		if st.active.startPos and hrpNow then
+			local dv = hrpNow.Position - st.active.startPos
+			run = Vector3.new(dv.X, 0, dv.Z).Magnitude
+		end
+		local sc = char:GetScale()
+		local close, full = get(char, "HeadbuttCloseRun") * sc, math.max(get(char, "HeadbuttFullRun") * sc, get(char, "HeadbuttCloseRun") * sc + 0.01)
+		local cm = math.clamp(get(char, "HeadbuttCloseMul"), 0, 1)
+		runMul = cm + (1 - cm) * math.clamp((run - close) / (full - close), 0, 1)
+		char:SetAttribute("HeadbuttHitRun", math.floor(run * 10 + 0.5) / 10)
+		char:SetAttribute("HeadbuttHitRunMul", math.floor(runMul * 100 + 0.5) / 100)
+	end
+	local d = math.floor(get(char, "HeadbuttDamage") * runMul * domeMul(char, "HeadbuttDamageMul") * mul + 0.5) -- v1.1: x dome; v1.3: x run-up
 	local hp = model:GetAttribute("DummyHealth")
 	if typeof(hp) == "number" then model:SetAttribute("DummyHealth", math.max(0, hp - d)) end
 	if typeof(hp) == "number" and hp > 0 and hp - d <= 0 then
