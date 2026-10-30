@@ -1,4 +1,4 @@
--- SkillTree v1.33 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.34 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -294,6 +294,13 @@ SkillTree.AREAS = {
 --     step texts I and II say so. servoCd / servoRefill unchanged. false = 1.32 numbers.
 --   * SkillTree.VISOR_GOGGLES (default true): Dome Visor step I text describes the goggles' force field and adds ink
 --     (InkServer 1.1). Numbers unchanged.
+-- v1.34 (pachy Tether Spike, Engineering, MDA-129; Kepu 2026-10-30: "a tether spike where if it lands it latches the person to
+--   a chain to the ground ... It will launch like a splash. So it will shoot vertical and do a splash area that you're
+--   aiming at"; mockup docs/mockups/pachy_tether_options.html B "Tail-base launcher"; answers: hold / circle / release,
+--   8-stud circle, 60 range, only the closest dino, 10 studs / 2.5 s, star yank, Energy Shield blocks it):
+--   SkillTree.PACHY_TETHER (default true) adds the pachy part "tether" ("Tether Spike", eng, OWNER Pachy, LIVE_MECH,
+--   BUTTONS). effects(): tetherRange 60, tetherSplash 8, tetherReach 10, tetherTime 2.5 (II 3.5), tetherCd 14 (III 10),
+--   tetherYank (star: true; the chain pulls them to tetherYankReach 5). All 0 / false below step I.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -615,6 +622,12 @@ do
 	if SkillTree.PACHY_DOME_VISOR and SkillTree.VISOR_GOGGLES and SkillTree.PATHS.visor then
 		SkillTree.PATHS.visor.steps[1] = "Button: your goggles project a force field in front of you for 1.5 s that blocks every bite, pounce, headbutt, hook smash, Shock Cannon shot and ink glob from the front. You can still headbutt"
 	end
+	SkillTree.PACHY_TETHER = true -- v1.34
+	addPart(SkillTree.PACHY_TETHER, "tether", "Tether Spike", "eng", {
+		"Button: hold to aim a landing circle, let go to lob a spike (60 studs). The closest dino caught in the 8-stud circle is chained to the ground: it can't go more than 10 studs from the spike for 2.5 s",
+		"Chained for 3.5 s",
+		"Recharges in 10 s (was 14 s)",
+		"The chain yanks them in close to the spike (5 studs)"})
 end
 -- v1.30: the pachy's Bone Crest replaces Thick Hide (Defense)
 SkillTree.PACHY_BONE_CREST = true
@@ -827,6 +840,15 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 		if ik >= 2 then e.inkRange = 80 end
 		if ik >= 3 then e.inkCd = 11 end
 		if ik >= 4 then e.inkSplash = 6 end
+	end
+	-- v1.34: Tether Spike
+	local tt = s.tether or 0
+	e.tetherRange, e.tetherSplash, e.tetherReach, e.tetherTime, e.tetherCd, e.tetherYank, e.tetherYankReach = 0, 0, 0, 0, 0, false, 0
+	if SkillTree.PACHY_TETHER then
+		if tt >= 1 then e.tetherRange, e.tetherSplash, e.tetherReach, e.tetherTime, e.tetherCd = 60, 8, 10, 2.5, 14 end
+		if tt >= 2 then e.tetherTime = 3.5 end
+		if tt >= 3 then e.tetherCd = 10 end
+		if tt >= 4 then e.tetherYank, e.tetherYankReach = true, 5 end
 	end
 	e.lifestealRaptor = 0 -- v1.28
 	if SkillTree.RAPTOR_LIFESTEAL_STRONG then

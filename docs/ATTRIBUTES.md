@@ -2195,3 +2195,15 @@ Look: Mecha_InkTank (Tank, Window, Cap, Barrel.Muzzle) on Neck.Root; Workspace.D
 | Goggles | Mecha_DomeVisor model | true when built as goggles |
 | InkBellyMount | InkServer script | default true: tank under the belly (false = the 1.1 neck mount) |
 Look: Mecha_DomeVisor (Rim_L/R, Lens_L/R with LensGlow, ForceField.Panel_1..9 while up); Mecha_ServoDash Exhaust.Blast + bell Glow; Workspace.DinoFX.ServoDashFX ServoDashRing / ServoDashDust; ScreenGui ServoDashSpeedLines; Mecha_InkTank on Torso.Root.
+
+## Tether Spike (SkillTree 1.34 / SkillEffects 1.25 / TetherServer 1.0 / MechaButtons 1.20 / AbilityBar 1.13, MDA-129)
+| Attribute | Where | Meaning |
+|---|---|---|
+| TetherEnabled / TetherRange / TetherSplash / TetherReach / TetherTime / TetherCooldown / TetherYank / TetherYankReach / TetherLook | character (pachy) | bought AND slotted; 60, 8, 10, 2.5 / 3.5 s, 14 / 10 s, star, 5, look on |
+| TetherReadyAt, TetherAimPos, TetherLandAt, TetherCount, TetherStartedAt | character (shooter) | next shot; landing point; landing time; shots; press time (last) |
+| TetherServerResult / TetherServerResultAt, TetherResult, TetherHitTarget, TetherHits, TetherLastShielded, TetherLookBuilt | character | badArg / dead / disabled / menu / stunned / pinned / cooldown / ok; hit / miss / shielded; chained name; hits; shielded name; launcher built |
+| TetheredUntil, TetheredBy, TetherAnchor, TetherReachNow, TetheredAt, TetherEndReason | target (player or bot) | chain end (server time), shooter, spike position, flat reach now, time (last); time / dead / gone / replaced |
+| TetherServerEnabled / TetherModeRulesEnabled / TetherServerVersion / TetherShots / TetherHits / TetherMode | TetherServer script | switches (default true), version, counts, sandbox / arena |
+| SkillEffectsTetherEnabled / MechaButtonsTetherEnabled / AbilityBarTetherEnabled | script | default true; false = that script ignores the tether |
+| MechaTetherAim / MechaTetherAimDist / MechaTetherFired | character (client) | idle / aiming; circle distance (flat); shots fired |
+Look: Mecha_TetherLauncher (Base, Barrel.Muzzle, Tip, Drum) on Tail1.Root; Workspace.DinoFX.TetherFX TetherSpike (ChainTrail, TetherChain rope) / TetherRing; client TetherAim disc.

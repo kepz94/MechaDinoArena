@@ -1,4 +1,4 @@
--- MechaButtons v1.19 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.20 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -136,6 +136,17 @@
 --     to the flat part only (no tilt); the camera follows that flat direction.
 --   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
 --   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
+-- v1.20 (pachy Tether Spike, MDA-129, TetherServer 1.0; Kepu 2026-10-30: "It will launch like a splash ... a splash area that
+--   you're aiming at" -> "Hold, circle, release"): TIMED_PARTS.tether = {"Tether", "DinoTetherRequest", "TETHER SPIKE"}
+--   and the tether uses the Shock Cannon's hold-to-aim plumbing (PC key down / up, touch press / drag / release, the
+--   pull gesture) with its own aim: a client-only landing circle "TetherAim" (flat neon yellow disc, TetherSplash x 2
+--   studs across, Highlight outline always on top) on the ground. Where it sits: the ground point under the screen's
+--   centre (camera ray), at most TetherRange studs (flat) from the pachy; on touch, once the aim locks (as 1.12), the
+--   finger's offset moves it: direction = camera-right x dx + camera-forward x (-dy), distance = TetherRange x
+--   clamp((|offset| - AIM_DEAD) / (AIM_FULL_PX x 1.6), 0, 1). It eases toward the target (AIM_SMOOTH). Letting go fires
+--   DinoTetherRequest(server time, circle centre). Diagnostics: MechaTetherAim ("idle" / "aiming"), MechaTetherAimDist
+--   (studs, flat), MechaTetherFired. Switch: script attribute MechaButtonsTetherEnabled (default true, read at start;
+--   false = 1.19, no tether entry).
 -- v1.19 (pachy parts batch 3, MDA-126..128, plan docs/plans/PACHY_PARTS_B3_v1.0.md): TIMED_PARTS += servodash
 --   {"ServoDash", "DinoServoDashRequest", "SERVO DASH"}, visor {"Visor", "DinoVisorRequest", "DOME VISOR"} and ink {"Ink",
 --   "DinoInkRequest", "INK SHOOTER"}. Ink fires along the camera look like the Grappling Hook: DinoInkRequest(stamp,
@@ -163,12 +174,14 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.19"
+local VERSION = "1.20"
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
 local LEGS_BTN = script:GetAttribute("MechaButtonsLegsEnabled") ~= false
 local AIM_LOCK, AIM_DEAD = 0.25, 14 -- v1.12
+if script:GetAttribute("MechaButtonsTetherEnabled") == nil then script:SetAttribute("MechaButtonsTetherEnabled", true) end -- v1.20
+local TETHER_BTN = script:GetAttribute("MechaButtonsTetherEnabled") ~= false
 local AIM_FULL_PX, CONE_YAW, CONE_PITCH, AIM_SMOOTH, SEND_EPS = 110, math.rad(30), math.rad(15), 14, 0.01 -- v1.13
 if script:GetAttribute("MechaAimConeEnabled") == nil then script:SetAttribute("MechaAimConeEnabled", true) end -- v1.13
 if script:GetAttribute("MechaAimKeepCamEnabled") == nil then script:SetAttribute("MechaAimKeepCamEnabled", true) end -- v1.14
@@ -213,6 +226,9 @@ if B3_BTN then -- v1.19: pachy parts batch 3
 	TIMED_PARTS.visor = {"Visor", "DinoVisorRequest", "DOME VISOR"}
 	TIMED_PARTS.ink = {"Ink", "DinoInkRequest", "INK SHOOTER"}
 end
+if TETHER_BTN then TIMED_PARTS.tether = {"Tether", "DinoTetherRequest", "TETHER SPIKE"} end -- v1.20
+-- v1.20: parts that use hold-to-aim
+local function aimedPart(id) return id == "screech" or (TETHER_BTN and id == "tether") end
 local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
 local aim -- v1.8: {slot, t0, input, gesture, part}
 
@@ -233,12 +249,37 @@ local function aimRange()
 end
 local function aimCancel()
 	if aim and aim.part then aim.part:Destroy() end
+	local wasTether = aim and aim.kind == "tether" -- v1.20
 	aim = nil
-	char:SetAttribute("MechaScreechAim", "idle")
+	char:SetAttribute(wasTether and "MechaTetherAim" or "MechaScreechAim", "idle")
 end
 local function aimStart(n, input, isGesture)
 	aimCancel()
 	if not hrp then return end
+	if TETHER_BTN and slotPart(n) == "tether" then -- v1.20: the landing circle
+		local splash = math.max(1, tonumber(char:GetAttribute("TetherSplash")) or 8)
+		local disc = Instance.new("Part")
+		disc.Name = "TetherAim"
+		disc.Shape = Enum.PartType.Cylinder
+		disc.Size = Vector3.new(0.2, splash * 2, splash * 2)
+		disc.Color = Color3.fromRGB(255, 200, 50)
+		disc.Material = Enum.Material.Neon
+		disc.Transparency = 0.55
+		disc.Anchored, disc.CanCollide, disc.CanQuery, disc.CanTouch, disc.CastShadow = true, false, false, false, false
+		local hl = Instance.new("Highlight")
+		hl.FillColor, hl.OutlineColor = disc.Color, Color3.new(1, 1, 1)
+		hl.FillTransparency, hl.OutlineTransparency = 0.6, 0.2
+		hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		hl.Parent = disc
+		disc.Parent = workspace
+		aim = {slot = n, t0 = os.clock(), input = input, gesture = isGesture == true, part = disc, kind = "tether"}
+		if aim.gesture and input and script:GetAttribute("MechaThumbAimEnabled") ~= false then
+			aim.origin = Vector2.new(input.Position.X, input.Position.Y)
+			aim.lockAt = os.clock() + AIM_LOCK
+		end
+		char:SetAttribute("MechaTetherAim", "aiming")
+		return
+	end
 	local line = Instance.new("Part")
 	line.Name = "ScreechAim"
 	line.Color = Color3.fromRGB(240, 90, 79)
@@ -252,7 +293,7 @@ local function aimStart(n, input, isGesture)
 	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 	hl.Parent = line
 	line.Parent = workspace
-	aim = {slot = n, t0 = os.clock(), input = input, gesture = isGesture == true, part = line}
+	aim = {slot = n, t0 = os.clock(), input = input, gesture = isGesture == true, part = line, kind = "screech"}
 	if aim.gesture and input and script:GetAttribute("MechaThumbAimEnabled") ~= false then -- v1.12: thumb aim
 		aim.origin = Vector2.new(input.Position.X, input.Position.Y)
 		aim.lockAt = os.clock() + AIM_LOCK
@@ -261,6 +302,16 @@ local function aimStart(n, input, isGesture)
 end
 local function aimRelease()
 	if not aim then return end
+	if aim.kind == "tether" then -- v1.20: fire at the circle
+		local pos = aim.landPos
+		aimCancel()
+		local r = ReplicatedStorage:FindFirstChild("DinoTetherRequest")
+		if r and typeof(pos) == "Vector3" then
+			r:FireServer(workspace:GetServerTimeNow(), pos)
+			char:SetAttribute("MechaTetherFired", (char:GetAttribute("MechaTetherFired") or 0) + 1)
+		end
+		return
+	end
 	local range = aimRange()
 	local thumbDir = aim.thumbDir -- v1.12
 	aimCancel()
@@ -317,9 +368,52 @@ local function coneStep(facing, len, dt)
 	aim.part.Size = Vector3.new(0.5, 0.5, L)
 	aim.part.CFrame = CFrame.lookAt(start + look * (L / 2), start + look * (L / 2 + 1))
 end
+-- v1.20: the tether landing circle
+local tetherRay = RaycastParams.new()
+tetherRay.FilterType = Enum.RaycastFilterType.Exclude
+local function tetherStep(dt)
+	local range = math.max(1, tonumber(char:GetAttribute("TetherRange")) or 60)
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+	local ex = {char, aim.part}
+	local fx = workspace:FindFirstChild("DinoFX")
+	if fx then table.insert(ex, fx) end
+	tetherRay.FilterDescendantsInstances = ex
+	local base = Vector3.new(hrp.Position.X, 0, hrp.Position.Z)
+	local goal
+	if aim.origin and aim.locked and aim.stick and aim.stick.Magnitude > AIM_DEAD then -- touch: the finger moves it
+		local f = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)
+		local rt = Vector3.new(cam.CFrame.RightVector.X, 0, cam.CFrame.RightVector.Z)
+		if f.Magnitude > 1e-3 and rt.Magnitude > 1e-3 then
+			local d = rt.Unit * aim.stick.X + f.Unit * (-aim.stick.Y)
+			if d.Magnitude > 1e-3 then
+				local k = math.clamp((aim.stick.Magnitude - AIM_DEAD) / (AIM_FULL_PX * 1.6), 0, 1)
+				goal = base + d.Unit * range * k
+			end
+		end
+	end
+	if not goal then -- the ground under the screen's centre
+		local vp = cam.ViewportSize
+		local ray = cam:ViewportPointToRay(vp.X / 2, vp.Y / 2)
+		local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, tetherRay)
+		local p = hit and hit.Position or (ray.Origin + ray.Direction * 600)
+		goal = Vector3.new(p.X, 0, p.Z)
+	end
+	local off = goal - base
+	if off.Magnitude > range then off = off.Unit * range end
+	goal = base + off
+	local k = 1 - math.exp(-AIM_SMOOTH * math.clamp(dt or 0, 0, 0.1))
+	aim.flat = aim.flat and aim.flat:Lerp(goal, k) or goal
+	local g = workspace:Raycast(Vector3.new(aim.flat.X, hrp.Position.Y + 60, aim.flat.Z), Vector3.new(0, -240, 0), tetherRay)
+	local gp = g and g.Position or Vector3.new(aim.flat.X, hrp.Position.Y - 3, aim.flat.Z)
+	aim.landPos = gp
+	aim.part.CFrame = CFrame.new(gp + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	char:SetAttribute("MechaTetherAimDist", math.floor((aim.flat - base).Magnitude * 10 + 0.5) / 10)
+end
 RunService.RenderStepped:Connect(function(dt)
 	if not aim then return end
-	if not char.Parent or not hum or hum.Health <= 0 or slotPart(aim.slot) ~= "screech" then aimCancel() return end
+	if not char.Parent or not hum or hum.Health <= 0 or slotPart(aim.slot) ~= aim.kind then aimCancel() return end -- v1.20: aim.kind
+	if aim.kind == "tether" then tetherStep(dt) return end -- v1.20
 	local len = math.max(0.1, aimRange())
 	local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
 	if look.Magnitude < 1e-3 then return end
@@ -349,7 +443,7 @@ end)
 local function press(n, input)
 	local id = slotPart(n)
 	char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(n, id or "empty"))
-	if id == "screech" then -- v1.8: start the aim; the release fires
+	if aimedPart(id) then -- v1.8: start the aim; the release fires (v1.20: + tether)
 		aimStart(n, input, false)
 		return
 	end
@@ -809,7 +903,7 @@ local function beginGesture(n, input)
 	local px = math.clamp(0.22 * h, 14, 24)
 	gesture = {n = n, input = input, y0 = input.Position.Y, pulling = false, px = px}
 	char:SetAttribute("MechaButtonsPullPx", math.floor(px * 10 + 0.5) / 10)
-	if slotPart(n) == "screech" then aimStart(n, input, true) end -- v1.8: aim the tap slot until it becomes a pull
+	if aimedPart(slotPart(n)) then aimStart(n, input, true) end -- v1.8: aim the tap slot until it becomes a pull (v1.20: + tether)
 end
 local function endGesture()
 	local g = gesture
@@ -821,8 +915,8 @@ local function endGesture()
 	if s then s.scale.Scale = 1 end
 	char:SetAttribute("MechaButtonsLastGesture", pulled and "pull" or "tap")
 	local chosen = pulled and g.n + 2 or g.n
-	if slotPart(chosen) == "screech" then -- v1.8: the release fires the aimed Screech
-		char:SetAttribute("MechaButtonsLastPress", ("slot%d:screech"):format(chosen))
+	if aimedPart(slotPart(chosen)) then -- v1.8: the release fires the aimed Screech (v1.20: + tether)
+		char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(chosen, slotPart(chosen)))
 		if aim and aim.slot == chosen then aimRelease() else aimCancel() end
 		return
 	end
@@ -845,7 +939,7 @@ UserInputService.InputChanged:Connect(function(input)
 		end
 		setPulling(input.Position.Y - gesture.y0 >= gesture.px)
 		local want = gesture.pulling and gesture.n + 2 or gesture.n -- v1.8: aim the slot the gesture would fire
-		if slotPart(want) == "screech" then
+		if aimedPart(slotPart(want)) then -- v1.20: + tether
 			if not (aim and aim.slot == want) then aimStart(want, gesture.input, true) end
 		elseif aim and aim.gesture then
 			aimCancel()

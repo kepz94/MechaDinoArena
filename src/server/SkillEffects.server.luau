@@ -1,4 +1,4 @@
--- SkillEffects v1.24 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.25 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -138,10 +138,14 @@
 --   ServoDashLook; Dome Visor: VisorEnabled, VisorTime, VisorCooldown, VisorKnock, VisorLook; Ink Shooter: InkEnabled,
 --   InkRange, InkCooldown, InkBlindTime, InkSplash, InkLook. ServoDashServer / VisorServer / InkServer 1.0 read them.
 --   Switch: script attribute SkillEffectsBatch3Enabled (default true, read at start; false = 1.23, none written).
+-- v1.25 (pachy Tether Spike, MDA-129; SkillTree 1.34): on a pachy with "tether" bought AND slotted (off values otherwise):
+--   TetherEnabled, TetherRange, TetherSplash, TetherReach, TetherTime, TetherCooldown, TetherYank, TetherYankReach,
+--   TetherLook. TetherServer 1.0 reads them. Switch: script attribute SkillEffectsTetherEnabled (default true, read at
+--   start; false = 1.24, none written).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.24"
+local VERSION = "1.25"
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
 local BLEED_PLAYERS = script:GetAttribute("SkillBleedPlayersEnabled") ~= false
 if script:GetAttribute("SkillBleedPlayerTime") == nil then script:SetAttribute("SkillBleedPlayerTime", 2) end -- v1.18
@@ -167,6 +171,8 @@ if script:GetAttribute("SkillEffectsCrestEnabled") == nil then script:SetAttribu
 local CREST_ON = script:GetAttribute("SkillEffectsCrestEnabled") ~= false
 if script:GetAttribute("SkillEffectsBatch3Enabled") == nil then script:SetAttribute("SkillEffectsBatch3Enabled", true) end -- v1.24
 local B3_ON = script:GetAttribute("SkillEffectsBatch3Enabled") ~= false
+if script:GetAttribute("SkillEffectsTetherEnabled") == nil then script:SetAttribute("SkillEffectsTetherEnabled", true) end -- v1.25
+local TETHER_ON = script:GetAttribute("SkillEffectsTetherEnabled") ~= false
 if script:GetAttribute("SkillEffectsRaptorLifestealEnabled") == nil then script:SetAttribute("SkillEffectsRaptorLifestealEnabled", true) end -- v1.20
 for k, v in pairs({SkillEffectsIdleRegenEnabled = true, SkillIdleRegenDelay = 8, SkillIdleRegenRate = 0.05}) do -- v1.19; v1.21: rate 0.20 -> 0.05
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -349,6 +355,18 @@ local function applyChar(char, st)
 		char:SetAttribute("InkBlindTime", ikOn and e.inkBlind or 0)
 		char:SetAttribute("InkSplash", ikOn and e.inkSplash or 0)
 		char:SetAttribute("InkLook", ikOn)
+	end
+	if TETHER_ON then -- v1.25: pachy Tether Spike (in a slot)
+		local ttOn = live and char:GetAttribute("Species") == "Pachy" and (e.tetherRange or 0) > 0 and inSlot("tether")
+		char:SetAttribute("TetherEnabled", ttOn)
+		char:SetAttribute("TetherRange", ttOn and e.tetherRange or 0)
+		char:SetAttribute("TetherSplash", ttOn and e.tetherSplash or 0)
+		char:SetAttribute("TetherReach", ttOn and e.tetherReach or 0)
+		char:SetAttribute("TetherTime", ttOn and e.tetherTime or 0)
+		char:SetAttribute("TetherCooldown", ttOn and e.tetherCd or 0)
+		char:SetAttribute("TetherYank", ttOn and e.tetherYank == true)
+		char:SetAttribute("TetherYankReach", ttOn and e.tetherYankReach or 0)
+		char:SetAttribute("TetherLook", ttOn)
 	end
 	if CREST_ON then -- v1.23: Bone Crest (pachy only, passive)
 		local bcOn = live and char:GetAttribute("Species") == "Pachy" and (e.crestMul or 1) < 1
