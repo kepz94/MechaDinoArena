@@ -16,7 +16,8 @@
 --   rgb(138, 125, 255)) while HeadbuttSlowUntil (headbutt hit, HeadbuttServer 1.0) or HeadbuttSelfSlowUntil (the pachy's
 --   last charge) is in the future, its own timer bar (full length measured from when this client saw the newer stamp)
 --   and a pop on each new stamp. Around it, SLOW_LINES thin blue rgb(120, 190, 255) lines keep dropping (top of the pill
---   to below the timer, SLOW_LINE_TIME s each, fading as they fall, staggered), so it reads as being dragged down. The
+--   to below the timer, SLOW_LINE_TIME s each, fading as they fall, staggered; 3 x 11 px, deep blue rgb(60, 140, 255)
+--   with a 1 px dark edge so they show against the sky), so it reads as being dragged down. The
 --   BillboardGui widens to 3 badges + room for the lines. Switch: script attribute StatusBadgesSlowEnabled (default true,
 --   read at start; false = 1.1). StatusBadgesState adds "slow"; StatusBadgesSlowLeft (s, 0.1 steps).
 -- Diagnostics (client-side model attributes): StatusBadgesState = "none" / "def" / "def,spd" / ...,
@@ -37,8 +38,8 @@ local POP_SCALE, POP_TIME = 1.4, 0.3
 if script:GetAttribute("StatusBadgesSlowEnabled") == nil then script:SetAttribute("StatusBadgesSlowEnabled", true) end -- v1.2
 local SLOW_ON = script:GetAttribute("StatusBadgesSlowEnabled") ~= false
 local SLOW_COLOR = Color3.fromRGB(138, 125, 255)  -- v1.2: badge
-local LINE_COLOR = Color3.fromRGB(120, 190, 255)  -- v1.2: dropping lines
-local SLOW_LINES, SLOW_LINE_TIME, LINE_MARGIN = 6, 0.55, 10 -- v1.2: lines, s per drop, px each side for them
+local LINE_COLOR = Color3.fromRGB(60, 140, 255)  -- v1.2: dropping lines (Studio capture: 120, 190, 255 at 2 x 7 px was lost against the sky)
+local SLOW_LINES, SLOW_LINE_TIME, LINE_MARGIN = 6, 0.55, 18 -- v1.2: lines, s per drop, px each side for them
 
 -- badge definitions, in display order
 local BADGES = {
@@ -145,12 +146,16 @@ local function build()
 				ln.Name = "SlowLine_" .. i
 				ln.BackgroundColor3 = LINE_COLOR
 				ln.BorderSizePixel = 0
-				ln.Size = UDim2.fromOffset(2, 7)
+				ln.Size = UDim2.fromOffset(3, 11)
 				ln.ZIndex = 2
 				ln.Parent = holder
+				local edge = Instance.new("UIStroke")
+				edge.Color = Color3.fromRGB(15, 25, 60)
+				edge.Thickness = 1
+				edge.Parent = ln
 				local side = (i % 2 == 1) and -1 or 1
 				local k = math.ceil(i / 2) -- 1..3 per side
-				local x = side < 0 and (-3 - (k - 1) * 4) or (BADGE_W + 1 + (k - 1) * 4)
+				local x = side < 0 and (-5 - (k - 1) * 6) or (BADGE_W + 2 + (k - 1) * 6)
 				table.insert(slowLines, {frame = ln, phase = (i - 1) / SLOW_LINES, x = x})
 			end
 		end
@@ -210,7 +215,9 @@ conn = RunService.RenderStepped:Connect(function()
 		for _, l in ipairs(slowLines) do
 			local u = ((tl / SLOW_LINE_TIME) + l.phase) % 1
 			l.frame.Position = UDim2.fromOffset(l.x, -4 + u * (BADGE_H + BAR_H + 10))
-			l.frame.BackgroundTransparency = 0.1 + 0.85 * u
+			l.frame.BackgroundTransparency = 0.9 * u * u
+			local edge = l.frame:FindFirstChildOfClass("UIStroke")
+			if edge then edge.Transparency = 0.3 + 0.7 * u end
 		end
 	end
 	for _, b in ipairs(BADGES) do
