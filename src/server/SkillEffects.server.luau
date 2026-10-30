@@ -1,4 +1,4 @@
--- SkillEffects v1.12 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.13 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -57,6 +57,11 @@
 --   only while bought AND slotted: MineEnabled, MineDamage, MineSlow (speed multiplier, 1 when off), MineSlowTime,
 --   MineCooldown, MineMax, MineJam (MineServer 1.0 / MechaButtons 1.11 / AbilityBar 1.5 read them).
 -- v1.10 (MDA-81; SkillTree 1.13): + MineLaunch (studs) and MineDaze (s), 0 when off (MineServer 1.1).
+-- v1.13 (pachy Drop 2, Battering Dome; SkillTree 1.20): on a pachy character (Species "Pachy") the line is written as
+--   HeadbuttDamageMul (1 / 1.25), HeadbuttShoveMul (1 / 1.3), HeadbuttRefillMul (1 / 0.7), HeadbuttExtraCharges (0 / 1)
+--   and PachySpikes (false / true at the star); HeadbuttServer 1.1 / PachyLook 1.0 read them. Other species and effects
+--   off -> 1 / 1 / 1 / 0 / false. Switch: script attribute SkillEffectsDomeEnabled (default true, read at start; false =
+--   1.12, nothing written).
 -- v1.12 (pachy headbutt, MDA-120, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 10): a new HeadbuttHitAt (HeadbuttServer
 --   1.0, set last) counts as a hit like a bite: onHit with HeadbuttHitDamage / HeadbuttHitTarget (lifesteal heals
 --   lifesteal x damage; Jaws' bleed / crush only if bought, and SkillTree 1.19 keeps Jaws off the pachy). Switch: script
@@ -77,7 +82,9 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.12"
+local VERSION = "1.13"
+if script:GetAttribute("SkillEffectsDomeEnabled") == nil then script:SetAttribute("SkillEffectsDomeEnabled", true) end -- v1.13
+local DOME_ON = script:GetAttribute("SkillEffectsDomeEnabled") ~= false
 if script:GetAttribute("SkillEffectsHeadbuttEnabled") == nil then script:SetAttribute("SkillEffectsHeadbuttEnabled", true) end -- v1.12
 local HEADBUTT_HITS = script:GetAttribute("SkillEffectsHeadbuttEnabled") ~= false
 local TICK = 0.25
@@ -224,6 +231,14 @@ local function applyChar(char, st)
 	char:SetAttribute("MineJam", mjam)
 	char:SetAttribute("MineLaunch", mnOn and (e.mineLaunch or 0) or 0) -- v1.10
 	char:SetAttribute("MineDaze", mnOn and (e.mineDaze or 0) or 0) -- v1.10
+	if DOME_ON then -- v1.13: Battering Dome (pachy only)
+		local bdOn = live and char:GetAttribute("Species") == "Pachy"
+		char:SetAttribute("HeadbuttDamageMul", bdOn and (e.hbDamageMul or 1) or 1)
+		char:SetAttribute("HeadbuttShoveMul", bdOn and (e.hbShoveMul or 1) or 1)
+		char:SetAttribute("HeadbuttRefillMul", bdOn and (e.hbRefillMul or 1) or 1)
+		char:SetAttribute("HeadbuttExtraCharges", bdOn and (e.hbExtraCharges or 0) or 0)
+		char:SetAttribute("PachySpikes", bdOn and e.pachySpikes == true)
+	end
 end
 
 -- healing (regen / lifesteal), overflow into the shield

@@ -1,4 +1,4 @@
--- HeadbuttServer v1.0 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.1 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -33,13 +33,17 @@
 --   DinoHeadbuttEnd(stamp, reason) -> the client ended the charge (time out / cancelled); the server also ends it at the
 --     deadline. End: HeadbuttEndedAt, HeadbuttResult ("hit" / "ended" / "timeout" / "died"). If no charge is left, the
 --     pachy is slowed: HeadbuttSelfSlowMul / HeadbuttSelfSlowUntil (SprintTest 1.9), HeadbuttSelfSlowCount.
+-- v1.1 (pachy Drop 2, Battering Dome; SkillEffects 1.13): with script attribute HeadbuttDomeEnabled (default true, read
+--   at start) the hit damage is HeadbuttDamage x HeadbuttDamageMul (default 1) x the roar debuff, and the shove distance
+--   HeadbuttShove x HeadbuttShoveMul (default 1). HeadbuttRefillMul / HeadbuttExtraCharges were already read (1.0).
+--   false = 1.0 numbers.
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local END_SLACK = 0.5     -- s after windup + max time the server waits for the client's end
 local HIT_TOLERANCE = 16  -- studs (x attacker scale) between the head and the target's hitbox for a claim
 local DEFAULTS = {HeadbuttEnabled = false, HeadbuttCharges = 2, HeadbuttExtraCharges = 0, HeadbuttWindup = 0.15,
@@ -51,6 +55,12 @@ script:SetAttribute("HeadbuttServerVersion", VERSION)
 script:SetAttribute("HeadbuttRequests", 0)
 script:SetAttribute("HeadbuttHits", 0)
 if script:GetAttribute("HeadbuttServerEnabled") == nil then script:SetAttribute("HeadbuttServerEnabled", true) end
+if script:GetAttribute("HeadbuttDomeEnabled") == nil then script:SetAttribute("HeadbuttDomeEnabled", true) end -- v1.1
+local DOME_ON = script:GetAttribute("HeadbuttDomeEnabled") ~= false
+local function domeMul(char, k) -- v1.1
+	if not DOME_ON then return 1 end
+	return math.max(0, tonumber(char:GetAttribute(k)) or 1)
+end
 local enabled = script:GetAttribute("HeadbuttServerEnabled") ~= false
 
 local function remoteOf(name)
@@ -310,7 +320,7 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	local mul = 1
 	local untilT, dmul = model:GetAttribute("DebuffUntil"), model:GetAttribute("DebuffDamageTakenMul")
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and t < untilT then mul = dmul end
-	local d = math.floor(get(char, "HeadbuttDamage") * mul + 0.5)
+	local d = math.floor(get(char, "HeadbuttDamage") * domeMul(char, "HeadbuttDamageMul") * mul + 0.5) -- v1.1: x dome
 	local hp = model:GetAttribute("DummyHealth")
 	if typeof(hp) == "number" then model:SetAttribute("DummyHealth", math.max(0, hp - d)) end
 	if typeof(hp) == "number" and hp > 0 and hp - d <= 0 then
@@ -331,13 +341,13 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		model:SetAttribute("HeadbuttSlowMul", slowMul)
 		model:SetAttribute("HeadbuttSlowUntil", slowUntil)
 		model:SetAttribute("HeadbuttShoveFrom", from)
-		model:SetAttribute("HeadbuttShoveDist", get(char, "HeadbuttShove"))
+		model:SetAttribute("HeadbuttShoveDist", get(char, "HeadbuttShove") * domeMul(char, "HeadbuttShoveMul")) -- v1.1
 		model:SetAttribute("HeadbuttShoveTime", get(char, "HeadbuttShoveTime"))
 		model:SetAttribute("HeadbuttShoveAt", t) -- last: HeadbuttShove client reacts to this one
 		shoveResult = "shoved"
 	else
 		slowBot(model, slowMul, slowUntil)
-		shoveResult = shoveBot(model, from, get(char, "HeadbuttShove"), get(char, "HeadbuttShoveTime"))
+		shoveResult = shoveBot(model, from, get(char, "HeadbuttShove") * domeMul(char, "HeadbuttShoveMul"), get(char, "HeadbuttShoveTime")) -- v1.1
 	end
 	model:SetAttribute("HeadbuttShoveResult", shoveResult)
 	model:SetAttribute("HeadbuttHitBy", char.Name)

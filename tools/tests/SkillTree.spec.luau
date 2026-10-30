@@ -1,4 +1,4 @@
--- SkillTree.spec v1.16 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.17 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 -- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
 -- v1.10: Shock Dart (screech shown as "Shock Dart", range 100 / 135; the 35% range check reads the data)
@@ -7,6 +7,7 @@
 -- v1.13: Shock Mine blast + launch (damage 25, launch 25, daze 1)
 -- v1.14: Shock Cannon star = heavy shot (30 damage, stun 1.1, no jam); Decoy hidden
 -- v1.15: Grapple, Dart Launcher, Pack Beacon, Decoy Hologram deleted from the tree
+-- v1.17: SkillTree 1.20 — Battering Dome (pachy-only line, effects per step)
 -- v1.16: SkillTree 1.19 — no Jaws for the pachy (notFor Pachy), raptor rule kept, T-Rex still sees Jaws
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
@@ -391,6 +392,19 @@ eq("jaws notFor Pachy", ST.PATHS.jaws.notFor.Pachy, true)
 eq("jaws notFor Raptor kept", ST.PATHS.jaws.notFor.Raptor, true)
 eq("jaws TRex shown", ST.PATHS.jaws.notFor.TRex == nil, true)
 eq("PACHY_NO_JAWS", ST.PACHY_NO_JAWS, true)
+
+-- v1.17: Battering Dome (SkillTree 1.20)
+eq("dome exists", ST.PATHS.dome ~= nil, true)
+eq("dome pachy", ST.seesPath(ST.PATHS.dome, "Pachy"), true)
+eq("dome not raptor", ST.seesPath(ST.PATHS.dome, "Raptor"), false)
+eq("dome not trex", ST.seesPath(ST.PATHS.dome, "TRex"), false)
+eq("dome raptor sanitized", ST.sanitize({dome = 4}, "Raptor").dome, 0)
+eq("dome 0 dmg", ST.effects({dome = 0}, "Pachy").hbDamageMul, 1)
+eq("dome I dmg", ST.effects({dome = 1}, "Pachy").hbDamageMul, 1.25)
+eq("dome II shove", ST.effects({dome = 2}, "Pachy").hbShoveMul, 1.3)
+eq("dome III refill", ST.effects({dome = 3}, "Pachy").hbRefillMul, 0.7)
+eq("dome star charge", ST.effects({dome = 4}, "Pachy").hbExtraCharges, 1)
+eq("dome star spikes", ST.effects({dome = 4}, "Pachy").pachySpikes, true)
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

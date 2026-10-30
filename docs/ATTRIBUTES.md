@@ -2010,6 +2010,11 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | SkillTree.PACHY_NO_JAWS | SkillTree module constant | true | SkillTree 1.19: no Jaws path for the pachy; false = 1.18 |
 | ArenaScope_HeadbuttServer / _HeadbuttTest / _HeadbuttShove / _HeadbuttFX | ArenaScope script | "on" | ArenaScope 1.18 checks |
 | StatusBadgesSlowEnabled | StatusBadges script | true | StatusBadges 1.2 SLOW badge (false = 1.1) |
+| HeadbuttDamageMul / HeadbuttShoveMul | pachy character (server) | 1 / 1.25; 1 / 1.3 | Battering Dome I / II (SkillEffects 1.13 -> HeadbuttServer 1.1) |
+| HeadbuttRefillMul / HeadbuttExtraCharges | pachy character (server) | 1 / 0.7; 0 / 1 | Battering Dome III / star |
+| PachySpikes / PachySpikesShown | pachy character (server) | false / true; 0 / 10 | Battering Dome star; PachyLook 1.0 shows the spikes |
+| SkillEffectsDomeEnabled / HeadbuttDomeEnabled / PachyLookEnabled | SkillEffects / HeadbuttServer / PachyLook scripts | true | Drop 2 switches |
+| SkillTree.BATTERING_DOME | SkillTree module constant | true | SkillTree 1.20 Battering Dome line (false = 1.19) |
 | StatusBadgesSlowLeft / StatusBadgesState | dino (client) | seconds (0.1 steps); + "slow" | StatusBadges 1.2 diagnostics |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |

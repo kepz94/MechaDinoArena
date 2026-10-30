@@ -1,4 +1,4 @@
--- SkillTree v1.19 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.20 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -216,6 +216,11 @@ SkillTree.AREAS = {
 -- v1.19 (pachy, MDA-120, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 10; Kepu 2026-10-30 "Own attack line"): with
 --   SkillTree.PACHY_NO_JAWS (default true) PATHS.jaws.notFor gains Pachy (its attack line is Battering Dome, Drop 2).
 --   The pachy sees the shared paths except Jaws, plus no dino-owned paths yet. false = 1.18.
+-- v1.20 (pachy Drop 2, plan docs/plans/PACHY_PLAYABLE_v1.0.md "Drop 2"; Kepu 2026-10-30 "Own attack line", "lets do
+--   battering dome first"): with SkillTree.BATTERING_DOME (default true) the pachy's own attack line "dome" ("Battering
+--   Dome", not a mecha part, OWNER Pachy) is appended to the attack area, PATHS and PATH_ORDER. Effects (0 / 1 when
+--   not bought): hbDamageMul (I: 1.25), hbShoveMul (II: 1.3), hbRefillMul (III: 0.7 = refill 30% faster),
+--   hbExtraCharges (star: 1 = a 3rd charge), pachySpikes (star: true). false = 1.19 (no line).
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -400,6 +405,23 @@ if SkillTree.ATTACK_WORDING then
 	P.cloak.steps[1] = "Button: nearly invisible for 3 s; bots lose you. Ends when you attack, get hit or use another part"
 	P.cloak.steps[3] = "An attack out of the cloak hits 35% harder"
 	P.legs.steps[3] = "Ram, leap and the raptor's attack recharge 35% faster"
+end
+-- v1.20: the pachy's own attack line, Battering Dome
+SkillTree.BATTERING_DOME = true
+if SkillTree.BATTERING_DOME and not SkillTree.PATHS.dome then
+	local p = path("dome", "Battering Dome", false, false, {
+		"Headbutt hits 25% harder",
+		"Headbutt shoves 30% farther",
+		"Headbutt charges refill 30% faster",
+		"A 3rd headbutt charge, and spikes on your dome"})
+	p.area = "attack"
+	p.dino = "Pachy"
+	SkillTree.OWNER.dome = "Pachy"
+	for _, a in ipairs(SkillTree.AREAS) do
+		if a.id == "attack" then table.insert(a.paths, p) end
+	end
+	SkillTree.PATHS.dome = p
+	table.insert(SkillTree.PATH_ORDER, "dome")
 end
 -- v1.19: no Jaws for the pachy
 SkillTree.PACHY_NO_JAWS = true
@@ -628,6 +650,13 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if SkillTree.LEGS_GENTLE then -- v1.16: +10% / +20% / +40%
 		e.speedPts = g >= 4 and 4 or g >= 2 and 2 or g >= 1 and 1 or 0
 	end
+	-- v1.20: Battering Dome (pachy)
+	local bd = s.dome or 0
+	e.hbDamageMul, e.hbShoveMul, e.hbRefillMul, e.hbExtraCharges, e.pachySpikes = 1, 1, 1, 0, false
+	if bd >= 1 then e.hbDamageMul = 1.25 end
+	if bd >= 2 then e.hbShoveMul = 1.3 end
+	if bd >= 3 then e.hbRefillMul = 0.7 end
+	if bd >= 4 then e.hbExtraCharges, e.pachySpikes = 1, true end
 	return e
 end
 
