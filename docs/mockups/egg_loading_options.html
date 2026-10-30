@@ -1,0 +1,372 @@
+<title>Egg Hatch Loading Screen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: control strip, one device frame (PC 16:9 / phone 19.5:9) holding the live loading screen, then the three options and the build notes. Single dark game look, colors set explicitly. */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14;
+  --panel: #14141a;        /* game PANEL (20,20,26) */
+  --line: #2b3242;
+  --fg: #ffffff;
+  --grey: #cfd3dc;         /* game GREY */
+  --muted: #8f99aa;
+  --yellow: #ffc832;       /* game YELLOW (255,200,50) */
+  --orange: #ff9b2e;       /* game ORANGE */
+  --green: #5fd16a;
+  --volt: #7fe9ff;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif;  /* in game: FredokaOne */
+  --body: "Nunito", "Gotham", system-ui, sans-serif;           /* in game: Gotham */
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1160px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--yellow); }
+.lede { margin: 0; color: var(--muted); max-width: 74ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.chip.go { background: var(--yellow); color: #1b1406; border-color: var(--yellow); }
+.chip:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+
+.frameWrap { overflow-x: auto; }
+.device { position: relative; margin: 0 auto; border-radius: 18px; border: 3px solid #2a2f3a; overflow: hidden; background: #000; box-shadow: 0 20px 60px rgb(0 0 0 / .45); }
+.device.pc { width: min(100%, 1120px); aspect-ratio: 16 / 9; }
+.device.phone { width: min(100%, 860px); aspect-ratio: 19.5 / 9; border-radius: 34px; border-width: 8px; }
+.screen { position: absolute; inset: 0; container-type: size; overflow: hidden; }
+.topbar { position: absolute; left: 1.6cqw; top: 1.6cqh; width: 4.4cqh; height: 4.4cqh; border-radius: 1.2cqh; background: rgb(0 0 0 / .55); z-index: 9; }
+
+/* ---------- shared game pieces ---------- */
+.title { font: 700 6cqh/1 var(--display); letter-spacing: .01em; text-shadow: 0 .5cqh 0 rgb(0 0 0 / .45); }
+.title small { display: block; font-size: .42em; color: var(--yellow); letter-spacing: .14em; margin-bottom: .5cqh; }
+.caption { font: 900 max(2.2cqh, 11px)/1.2 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--grey); }
+.tip { font: 800 max(2cqh, 11px)/1.3 var(--body); color: var(--muted); }
+.tip b { color: var(--yellow); }
+.bar { height: max(2.6cqh, 12px); border-radius: 99px; background: rgb(255 255 255 / .1); border: .35cqh solid rgb(255 255 255 / .16); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--orange), var(--yellow)); border-radius: 99px; transition: width .2s linear; }
+.egg { width: 100%; height: 100%; overflow: visible; }
+.eggBox { position: absolute; }
+
+/* wobble grows with the cracks */
+@keyframes wob1 { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-2deg); } 75% { transform: rotate(2deg); } }
+@keyframes wob2 { 0%,100% { transform: rotate(0) translateY(0); } 20% { transform: rotate(-5deg) translateY(-1%); } 40% { transform: rotate(4deg); } 60% { transform: rotate(-3deg) translateY(-1.5%); } 80% { transform: rotate(2deg); } }
+.eggWob { transform-origin: 50% 92%; transform-box: fill-box; }
+.lv1 .eggWob { animation: wob1 1.6s ease-in-out infinite; }
+.lv2 .eggWob { animation: wob1 .9s ease-in-out infinite; }
+.lv3 .eggWob { animation: wob2 .7s ease-in-out infinite; }
+.hatched .eggWob { animation: none; }
+@keyframes bob { 50% { transform: translateY(-2.5%); } }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+.eye { transform-box: fill-box; transform-origin: 50% 50%; animation: blink 3.2s infinite; }
+.babyBob { animation: bob 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .eggWob, .babyBob, .eye { animation: none !important; } }
+
+/* fade into the menu */
+.fade { position: absolute; inset: 0; background: #0a0c12; opacity: 0; pointer-events: none; transition: opacity .6s; z-index: 8; }
+.fade.on { opacity: 1; }
+.menuStub { position: absolute; inset: 0; display: grid; place-items: center; background: linear-gradient(90deg, rgb(10 12 18 / .94), rgb(10 12 18 / .82)), linear-gradient(180deg, #2f80d9, #8cc3ec 46%, #6cb24f 47%, #4f9a3a); z-index: 7; }
+.menuStub div { text-align: center; }
+.menuStub .t { font: 700 7cqh/1 var(--display); }
+.menuStub .t small { display: block; font-size: .42em; color: var(--yellow); letter-spacing: .14em; }
+.menuStub p { margin: 1.4cqh 0 0; font: 800 max(2cqh, 11px) var(--body); color: var(--muted); }
+
+/* ---------- A · Nest ---------- */
+.A { position: absolute; inset: 0; background:
+  radial-gradient(ellipse 60% 55% at 50% 52%, #24314a 0%, #141a28 60%, #0b0e15 100%); }
+.A .stars i { position: absolute; width: .7cqh; height: .7cqh; background: #fff; opacity: .5; }
+.A .head { position: absolute; top: 9cqh; left: 0; right: 0; text-align: center; }
+.A .eggBox { left: 50%; top: 19cqh; width: 38cqh; height: 48cqh; transform: translateX(-50%); }
+.A .foot { position: absolute; left: 50%; bottom: 5cqh; width: min(62cqh, 60cqw); transform: translateX(-50%); display: grid; gap: 1.4cqh; }
+.A .foot .row { display: flex; justify-content: space-between; align-items: baseline; }
+.A .foot .pct { font: 700 max(2.6cqh, 13px) var(--display); color: var(--yellow); font-variant-numeric: tabular-nums; }
+.A .foot .tip { text-align: center; }
+
+/* ---------- B · Beach sunrise ---------- */
+.B { position: absolute; inset: 0; background: linear-gradient(180deg, #ff9d5c 0%, #ffc27a 30%, #ffe0a3 46%, #7fc4e8 47%, #4aa3d6 60%, #e8d39a 61%, #d9bf7f 100%); }
+.B .sun { position: absolute; left: 62%; top: 30%; width: 16cqh; height: 16cqh; background: #fff3c4; box-shadow: 0 0 0 1.6cqh rgb(255 243 196 / .35); }
+.B .isle { position: absolute; bottom: 53%; display: flex; align-items: flex-end; gap: .6cqw; opacity: .55; }
+.B .isle i { display: block; width: 3.2cqw; background: #5d6b52; }
+.B .eggBox { left: 14%; bottom: 8cqh; width: 32cqh; height: 42cqh; }
+.B .shadow { position: absolute; left: calc(14% + 2cqh); bottom: 6.6cqh; width: 28cqh; height: 3cqh; border-radius: 50%; background: rgb(90 60 20 / .3); }
+.B .side { position: absolute; right: 5cqw; bottom: 8cqh; text-align: right; display: grid; gap: 1cqh; justify-items: end; }
+.B .side .title { color: #fff; }
+.B .side .caption { color: #3a2a12; }
+.B .side .tip { color: #5a4420; max-width: 46cqw; }
+.B .side .tip b { color: #b45a00; }
+.B .dots span { display: inline-block; width: 1.4cqh; height: 1.4cqh; margin-left: .8cqh; background: #3a2a12; opacity: .25; }
+.B .dots span.on { opacity: 1; }
+
+/* ---------- C · Mecha incubator ---------- */
+.C { position: absolute; inset: 0; background: linear-gradient(180deg, #10141d, #1a2130 60%, #0e1219); }
+.C .grid { position: absolute; inset: 0; background-image: linear-gradient(rgb(127 233 255 / .06) 2px, transparent 2px), linear-gradient(90deg, rgb(127 233 255 / .06) 2px, transparent 2px); background-size: 6cqh 6cqh; }
+.C .pod { position: absolute; left: 50%; top: 13cqh; width: 46cqh; height: 70cqh; transform: translateX(-50%); }
+.C .glass { position: absolute; left: 6cqh; right: 6cqh; top: 7cqh; bottom: 10cqh; border: .6cqh solid #3a4350; background: radial-gradient(ellipse at 50% 70%, rgb(127 233 255 / .28), rgb(127 233 255 / .04) 70%); }
+.C .cap { position: absolute; left: 2cqh; right: 2cqh; height: 7cqh; background: #3a4350; box-shadow: inset 0 -1cqh 0 rgb(0 0 0 / .3); transition: transform .9s cubic-bezier(.3,1.4,.5,1); }
+.C .cap.top { top: 0; }
+.C .cap.bot { bottom: 3cqh; height: 8cqh; }
+.C .cap.top.open { transform: translateY(-10cqh); }
+.C .light { position: absolute; top: 2.4cqh; width: 2cqh; height: 2cqh; background: #ff9b2e; }
+.C .eggBox { left: 50%; bottom: 11cqh; width: 26cqh; height: 34cqh; transform: translateX(-50%); }
+.C .gauge { position: absolute; right: 7cqw; top: 50%; transform: translateY(-50%); display: grid; gap: 1.2cqh; justify-items: center; }
+.C .gauge .tube { width: 4cqh; height: 44cqh; border: .5cqh solid #3a4350; background: rgb(0 0 0 / .35); display: flex; align-items: flex-end; }
+.C .gauge .tube i { display: block; width: 100%; height: 0; background: linear-gradient(0deg, #2bb5d8, var(--volt)); transition: height .2s linear; }
+.C .gauge .pct { font: 700 max(2.6cqh, 13px) var(--display); color: var(--volt); font-variant-numeric: tabular-nums; }
+.C .left { position: absolute; left: 6cqw; top: 50%; transform: translateY(-50%); display: grid; gap: 1.4cqh; max-width: 30cqw; }
+.C .left .caption { color: var(--volt); }
+
+/* ---------- notes ---------- */
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.opt { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.opt.on { border-color: var(--yellow); }
+.opt h3 { margin: 0; font: 700 18px var(--display); }
+.opt .rec { font: 600 11px var(--mono); color: var(--green); letter-spacing: .1em; text-transform: uppercase; }
+.opt p { margin: 0; color: var(--muted); font-size: 14px; }
+.spec { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.spec h2 { margin: 0 0 6px; font: 700 18px var(--display); }
+.spec ul { margin: 0; padding-left: 18px; color: var(--grey); display: grid; gap: 4px; }
+.state { font: 600 12px var(--mono); color: var(--muted); text-align: center; }
+</style>
+
+<div class="wrap">
+  <h1>Egg hatch <span>loading screen</span></h1>
+  <p class="lede">Three looks for the screen you see while the game loads, on join and on every Sandbox ↔ Arena trip. In all three the egg keeps cracking while the game loads. When it's ready, the shell pops and a baby T-Rex sits up inside. Two seconds later the screen fades into the menu. Use the controls to replay it, try a slow load, or switch to the Arena trip.</p>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Look"><b>Look</b>
+      <button class="chip" data-o="A">A · Nest</button>
+      <button class="chip" data-o="B">B · Beach sunrise</button>
+      <button class="chip" data-o="C">C · Mecha incubator</button>
+    </div>
+    <div class="group" role="group" aria-label="Device"><b>Device</b>
+      <button class="chip" data-d="pc">PC 16:9</button>
+      <button class="chip" data-d="phone">Phone</button>
+    </div>
+    <div class="group" role="group" aria-label="When"><b>When</b>
+      <button class="chip" data-w="join">Joining</button>
+      <button class="chip" data-w="hop">Trip to Arena</button>
+    </div>
+    <div class="group" role="group" aria-label="Load"><b>Load</b>
+      <button class="chip" data-l="4">Fast (4 s)</button>
+      <button class="chip" data-l="10">Slow (10 s)</button>
+    </div>
+    <button class="chip go" id="replay">↻ Replay</button>
+  </div>
+
+  <div class="frameWrap"><div class="device pc" id="device"><div class="screen" id="screen"></div></div></div>
+  <div class="state" id="state">loading…</div>
+
+  <div class="opts">
+    <div class="opt" id="o-A"><span class="rec">Recommended</span><h3>A · Nest</h3><p>The egg sits big in the middle of a straw nest under a night sky, with the game title above and a yellow progress bar under it. Easiest to read on a phone, and the bar tells you how long is left.</p></div>
+    <div class="opt" id="o-B"><h3>B · Beach sunrise</h3><p>The egg sits on the island's sand at sunrise, and the title sits bottom-right. No bar: the cracks and dots are the only progress. The prettiest scene, but you can't tell how long is left.</p></div>
+    <div class="opt" id="o-C"><h3>C · Mecha incubator</h3><p>The egg sits in a metal incubator pod with a glowing gauge. The lid lifts when it hatches. Ties into the mecha theme, but less "cute nest" than you described.</p></div>
+  </div>
+
+  <div class="spec">
+    <h2>How it would be built</h2>
+    <ul>
+      <li>Drawn from plain blocks (UI frames), not images, so it shows on the very first frame, before anything has downloaded. Same block style as the island.</li>
+      <li>Runs from ReplicatedFirst and replaces Roblox's default loading screen. Cracking keeps going until the game reports it has loaded and your dino is parked behind the menu.</li>
+      <li>For a Sandbox ↔ Arena trip, the same screen is shown while you travel and keeps cracking on the other side until that place has loaded. The caption reads "Traveling to Arena" / "Traveling to Sandbox".</li>
+      <li>Baby is always a T-Rex. After it pops out: 2 seconds, then a 0.6 s fade into the menu.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(() => {
+  const st = { o: 'A', d: 'pc', w: 'join', l: 4 };
+  const screen = document.getElementById('screen');
+  const device = document.getElementById('device');
+  const stateEl = document.getElementById('state');
+  const TIPS = [
+    'Tip: tap your dino in the menu to see its <b>mech parts</b>.',
+    'Tip: in the Arena there are <b>no bots</b>. Watch for other dinos.',
+    'Tip: <b>Energy Shield</b> blocks a Shock Mine if it was up first.',
+  ];
+
+  // ---------- the egg (pixel blocks) ----------
+  const C = 8, COLS = 18, ROWS = 24;              // cell size, grid
+  const W = COLS * C, H = ROWS * C;
+  function eggCells() {
+    const cells = [];
+    const cx = COLS / 2, cy = ROWS * 0.56, b = ROWS * 0.5;
+    for (let r = 0; r < ROWS; r++) {
+      const dy = (r + 0.5 - cy) / b;
+      if (Math.abs(dy) >= 1) continue;
+      let half = (COLS / 2) * Math.sqrt(1 - dy * dy);
+      if (r + 0.5 < cy) half *= 1 - 0.18 * ((cy - r - 0.5) / b); // narrower top
+      for (let c = 0; c < COLS; c++) {
+        const dx = c + 0.5 - cx;
+        if (Math.abs(dx) <= half) cells.push([c, r, dx / half, dy]);
+      }
+    }
+    return cells;
+  }
+  const CELLS = eggCells();
+  // the split line: a zigzag around row 10
+  const splitAt = (c) => 10 + ((c % 4) < 2 ? 0 : 1) + (c % 4 === 1 ? -1 : 0);
+  const SPOTS = new Set(['5,6', '6,6', '11,8', '12,8', '12,9', '4,14', '13,15', '14,15', '8,18', '9,18', '6,11', '10,4']);
+  function shade(c, r, nx, ny) {
+    if (SPOTS.has(c + ',' + r)) return '#d7b98a';
+    const light = -nx * 0.6 - ny * 0.4;
+    if (light > 0.45) return '#fffaf0';
+    if (light > 0.05) return '#f6ecd8';
+    if (light > -0.4) return '#eadcbf';
+    return '#d9c7a4';
+  }
+  function eggSVG() {
+    let top = '', bot = '';
+    for (const [c, r, nx, ny] of CELLS) {
+      const rect = `<rect x="${c * C}" y="${r * C}" width="${C + .4}" height="${C + .4}" fill="${shade(c, r, nx, ny)}"/>`;
+      if (r < splitAt(c)) top += rect; else bot += rect;
+    }
+    // inside of the shell (seen once the top is gone)
+    let inner = '';
+    for (const [c, r] of CELLS) if (r >= splitAt(c) && r < splitAt(c) + 3 && c > 1 && c < COLS - 2) inner += `<rect x="${c * C}" y="${r * C}" width="${C + .4}" height="${C + .4}" fill="#6b5a3e"/>`;
+    // cracks, revealed one by one (pathLength 1 so dashoffset 1 -> 0 draws them)
+    const cracks = [
+      'M 64 40 L 72 56 L 64 64 L 76 80',
+      'M 104 96 L 96 108 L 108 116 L 100 132',
+      'M 40 120 L 52 128 L 44 140',
+      'M 116 60 L 106 72 L 118 84',
+      // main crack along the split line (the one that opens)
+      'M 8 84 ' + Array.from({ length: COLS + 1 }, (_, c) => `L ${c * C} ${splitAt(Math.min(c, COLS - 1)) * C}`).join(' '),
+    ].map((d, i) => `<path class="crack" data-i="${i}" d="${d}" pathLength="1" fill="none" stroke="#3b2b1a" stroke-width="3.2" stroke-linecap="square" stroke-linejoin="miter" stroke-dasharray="1" stroke-dashoffset="1" style="transition: stroke-dashoffset .5s"/>`).join('');
+    return `<svg class="egg" viewBox="-40 -60 ${W + 80} ${H + 70}" aria-hidden="true">
+      <g class="eggWob">
+        <g class="inner" opacity="0">${inner}</g>
+        <g class="baby" style="transform: translateY(60px)">${babySVG()}</g>
+        <g class="bot">${bot}</g>
+        <g class="topL" style="transition: transform .9s cubic-bezier(.2,.8,.3,1), opacity .9s">${top.split('<rect').filter(Boolean).filter(s => +s.match(/x="(\d+)/)[1] < W / 2).map(s => '<rect' + s).join('')}</g>
+        <g class="topR" style="transition: transform .9s cubic-bezier(.2,.8,.3,1), opacity .9s">${top.split('<rect').filter(Boolean).filter(s => +s.match(/x="(\d+)/)[1] >= W / 2).map(s => '<rect' + s).join('')}</g>
+        <g class="cracks">${cracks}</g>
+      </g>
+      <g class="chips"></g>
+    </svg>`;
+  }
+  // cute baby T-Rex, blocky: big head, big eyes, tiny arms on the rim
+  function babySVG() {
+    const G = '#7cc04a', D = '#5b9a33', L = '#a8dd72', B = '#f4e3b0';
+    const r = (x, y, w, h, f) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+    return `<g class="babyBob">
+      ${r(40, 64, 64, 40, G)}${r(48, 72, 48, 24, B)}
+      ${r(28, 12, 88, 60, G)}${r(36, 4, 64, 12, G)}${r(36, 16, 72, 8, L)}
+      ${r(100, 40, 28, 28, G)}${r(104, 60, 24, 8, D)}
+      ${r(112, 64, 4, 4, '#fff')}${r(120, 64, 4, 4, '#fff')}
+      <g class="eye">${r(48, 28, 20, 24, '#1a1a1a')}${r(52, 30, 8, 8, '#fff')}</g>
+      <g class="eye">${r(84, 28, 20, 24, '#1a1a1a')}${r(88, 30, 8, 8, '#fff')}</g>
+      ${r(40, 54, 10, 6, '#ff9db0')}${r(98, 54, 10, 6, '#ff9db0')}
+      ${r(64, 58, 4, 4, '#1a1a1a')}${r(68, 62, 12, 4, '#1a1a1a')}${r(80, 58, 4, 4, '#1a1a1a')}
+      ${r(26, 70, 16, 8, G)}${r(102, 70, 16, 8, G)}${r(22, 74, 8, 6, D)}${r(114, 74, 8, 6, D)}
+    </g>`;
+  }
+
+  // ---------- the three looks ----------
+  function caption() { return st.w === 'hop' ? 'Traveling to Arena' : 'Loading the island'; }
+  function scene() {
+    const tip = TIPS[Math.floor(Math.random() * TIPS.length)];
+    if (st.o === 'A') {
+      const stars = Array.from({ length: 26 }, (_, i) => `<i style="left:${(i * 37) % 100}%;top:${(i * 53) % 46}%"></i>`).join('');
+      const nest = `<svg viewBox="0 0 320 60" style="position:absolute;left:50%;top:61cqh;width:52cqh;transform:translateX(-50%)" aria-hidden="true">
+        ${Array.from({ length: 16 }, (_, i) => `<rect x="${10 + i * 19}" y="${18 + (i % 3) * 6}" width="22" height="10" fill="${['#a8793f', '#8a5f2e', '#c49152'][i % 3]}" transform="rotate(${(i % 2 ? 1 : -1) * 12} ${21 + i * 19} 23)"/>`).join('')}
+        <rect x="20" y="30" width="280" height="22" fill="#6e4a22"/><rect x="40" y="48" width="240" height="10" fill="#5a3c1b"/></svg>`;
+      return `<div class="A"><div class="stars">${stars}</div>
+        <div class="head"><div class="title"><small>MECHA DINO</small>ARENA</div></div>
+        ${nest}<div class="eggBox">${eggSVG()}</div>
+        <div class="foot"><div class="row"><span class="caption" id="cap">${caption()}…</span><span class="pct" id="pct">0%</span></div>
+          <div class="bar"><i id="fill"></i></div><div class="tip">${tip}</div></div></div>`;
+    }
+    if (st.o === 'B') {
+      const isle = [40, 70, 55, 85, 45, 65, 50].map(h => `<i style="height:${h * .14}cqh"></i>`).join('');
+      return `<div class="B"><div class="sun"></div><div class="isle" style="left:44%">${isle}</div>
+        <div class="shadow"></div><div class="eggBox">${eggSVG()}</div>
+        <div class="side"><div class="title"><small style="color:#b45a00">MECHA DINO</small>ARENA</div>
+          <div class="caption" id="cap">${caption()}<span class="dots" id="dots"><span></span><span></span><span></span></span></div>
+          <div class="tip">${tip}</div></div></div>`;
+    }
+    return `<div class="C"><div class="grid"></div>
+      <div class="left"><div class="title"><small>MECHA DINO</small>ARENA</div><div class="caption" id="cap">${caption()}</div><div class="tip">${tip}</div></div>
+      <div class="pod"><div class="glass"></div><div class="cap top" id="lid"><span class="light" style="left:4cqh"></span><span class="light" style="right:4cqh"></span></div>
+        <div class="eggBox">${eggSVG()}</div><div class="cap bot"></div></div>
+      <div class="gauge"><div class="tube"><i id="fill"></i></div><div class="pct" id="pct">0%</div></div></div>`;
+  }
+
+  // ---------- the run ----------
+  let timers = [], raf = 0;
+  function clear() { timers.forEach(clearTimeout); timers = []; cancelAnimationFrame(raf); }
+  const later = (ms, f) => timers.push(setTimeout(f, ms));
+  function run() {
+    clear();
+    device.className = 'device ' + st.d;
+    screen.innerHTML = `<div class="topbar"></div>${scene()}<div class="fade" id="fade"></div>`;
+    const root = screen.querySelector('.A, .B, .C');
+    const cracks = [...screen.querySelectorAll('.crack')];
+    const fill = screen.querySelector('#fill'), pct = screen.querySelector('#pct'), dots = screen.querySelectorAll('#dots span');
+    const t0 = performance.now(), dur = st.l * 1000;
+    stateEl.textContent = 'loading… the egg cracks more as loading goes on';
+    function tick(now) {
+      // uneven progress, like real loading
+      const k = Math.min(1, (now - t0) / dur);
+      const p = Math.min(1, k + 0.06 * Math.sin(k * 9) * (1 - k));
+      if (fill) { if (st.o === 'C') fill.style.height = (p * 100) + '%'; else fill.style.width = (p * 100) + '%'; }
+      if (pct) pct.textContent = Math.floor(p * 100) + '%';
+      dots.forEach((d, i) => d.classList.toggle('on', Math.floor(now / 400) % 4 > i));
+      const shown = p >= .9 ? 5 : p >= .7 ? 4 : p >= .5 ? 3 : p >= .3 ? 2 : p >= .12 ? 1 : 0;
+      cracks.forEach((c, i) => { if (i < shown) c.setAttribute('stroke-dashoffset', '0'); });
+      root.classList.toggle('lv1', p > .1 && p <= .45);
+      root.classList.toggle('lv2', p > .45 && p <= .8);
+      root.classList.toggle('lv3', p > .8);
+      if (k < 1) raf = requestAnimationFrame(tick); else hatch(root);
+    }
+    raf = requestAnimationFrame(tick);
+  }
+  function hatch(root) {
+    stateEl.textContent = 'loaded → the shell pops and the baby sits up';
+    root.classList.remove('lv1', 'lv2', 'lv3');
+    root.classList.add('hatched');
+    const q = (s) => screen.querySelector(s);
+    const cap = q('#cap');
+    if (cap) cap.textContent = st.w === 'hop' ? 'Welcome to the Arena!' : 'Hatched!';
+    q('.cracks').style.opacity = 0;
+    q('.topL').style.transform = 'translate(-70px,-90px) rotate(-38deg)';
+    q('.topR').style.transform = 'translate(70px,-80px) rotate(34deg)';
+    q('.topL').style.opacity = 0; q('.topR').style.opacity = 0;
+    q('.inner').setAttribute('opacity', '1');
+    const lid = q('#lid'); if (lid) lid.classList.add('open');
+    const baby = q('.baby');
+    baby.style.transition = 'transform .7s cubic-bezier(.3,1.6,.5,1)';
+    later(250, () => { baby.style.transform = 'translateY(-4px)'; });
+    later(950, () => { stateEl.textContent = 'baby is out → 2 s, then fade into the menu'; });
+    later(2950, () => { q('#fade').classList.add('on'); });
+    later(3550, () => {
+      screen.insertAdjacentHTML('beforeend', `<div class="menuStub"><div><div class="t"><small>MECHA DINO</small>ARENA</div><p>(the main menu opens here)</p></div></div>`);
+      q('#fade').classList.remove('on');
+      stateEl.textContent = 'game loaded · menu shown';
+    });
+  }
+
+  // ---------- controls ----------
+  function sync() {
+    document.querySelectorAll('[data-o]').forEach(b => b.setAttribute('aria-pressed', b.dataset.o === st.o));
+    document.querySelectorAll('[data-d]').forEach(b => b.setAttribute('aria-pressed', b.dataset.d === st.d));
+    document.querySelectorAll('[data-w]').forEach(b => b.setAttribute('aria-pressed', b.dataset.w === st.w));
+    document.querySelectorAll('[data-l]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.l === st.l));
+    ['A', 'B', 'C'].forEach(o => document.getElementById('o-' + o).classList.toggle('on', o === st.o));
+  }
+  document.querySelector('.controls').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.o) st.o = b.dataset.o;
+    if (b.dataset.d) st.d = b.dataset.d;
+    if (b.dataset.w) st.w = b.dataset.w;
+    if (b.dataset.l) st.l = +b.dataset.l;
+    sync(); run();
+  });
+  sync(); run();
+})();
+</script>
