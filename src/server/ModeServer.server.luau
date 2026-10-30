@@ -1,4 +1,4 @@
--- ModeServer v1.0 (Mecha Dino Arena) — main menu state, the lobby pad and the hop between the Sandbox and Arena places.
+-- ModeServer v1.1 (Mecha Dino Arena) — main menu state, the lobby pad and the hop between the Sandbox and Arena places.
 -- MDA-87, plan docs/plans/MAIN_MENU_v1.0.md Task 3, ADR-005, mockup docs/mockups/main_menu_options.html (layout A).
 -- Kepu 2026-10-29: menu on join in both places; ◀ ▶ respawn behind the menu; Arena = a second place (75433819286625).
 -- Mode of this server: ServerStorage.DinoArcade.ModeRules 1.0 currentMode() -> player attribute DinoMode.
@@ -25,19 +25,27 @@
 --   answers nothing: today's spawn.
 -- Diagnostics: script attributes ModeServerVersion, ModeServerState ("on" / "off"), ModeServerMode; player attributes
 --   DinoMode, InMenu, ModeLastResult, ModeLastAt, ModeParkSlot (0 = not parked).
+-- v1.1 (Kepu 2026-10-29: pressing ARENA in the Sandbox goes "Straight into play"): a hop sends TeleportOptions with
+--   teleport data {mdaPlay = true, mdaFrom = this mode}. On join, when the player's GetJoinData().TeleportData is a table
+--   with mdaPlay == true, the menu is skipped: InMenu = false, nothing is parked (normal spawn); EggLoader 1.1 keeps the
+--   egg up until the dino stands on the island. Teleport data only skips the menu (nothing else reads it). Switch:
+--   script attribute ModeTripPlayEnabled (default true, read at start; false = 1.0: menu on every join, no teleport
+--   data). Diagnostic: player attribute ModeArrivedPlay (true when the menu was skipped for a trip).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 local TeleportService = game:GetService("TeleportService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local PAD_HEIGHT = 600
 local PAD_SIZE = Vector3.new(400, 2, 400)
 local SLOT_GAP = 40
 local SAVE_WAIT = 12
 
 script:SetAttribute("ModeServerVersion", VERSION)
+if script:GetAttribute("ModeTripPlayEnabled") == nil then script:SetAttribute("ModeTripPlayEnabled", true) end -- v1.1
+local tripPlay = script:GetAttribute("ModeTripPlayEnabled") ~= false -- v1.1
 if script:GetAttribute("ModeServerEnabled") == nil then script:SetAttribute("ModeServerEnabled", true) end
 
 local ModeRules = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
@@ -162,7 +170,13 @@ local function hop(player, target)
 	end
 	result(player, "teleporting")
 	local ok = pcall(function()
-		TeleportService:TeleportAsync(target, {player})
+		if tripPlay then -- v1.1: the arriving server skips the menu
+			local options = Instance.new("TeleportOptions")
+			options:SetTeleportData({mdaPlay = true, mdaFrom = MODE})
+			TeleportService:TeleportAsync(target, {player}, options)
+		else
+			TeleportService:TeleportAsync(target, {player})
+		end
 	end)
 	if not ok then
 		result(player, "teleportFailed")
@@ -214,7 +228,18 @@ end)
 local function onPlayer(player)
 	player:SetAttribute("DinoMode", MODE)
 	player:SetAttribute("ModeParkSlot", 0)
-	player:SetAttribute("InMenu", true)
+	local arrivedPlay = false -- v1.1
+	if tripPlay then
+		local okJd, jd = pcall(function() return player:GetJoinData() end)
+		local td = okJd and type(jd) == "table" and jd.TeleportData or nil
+		if type(td) == "table" and td.mdaPlay == true then arrivedPlay = true end
+	end
+	player:SetAttribute("ModeArrivedPlay", arrivedPlay)
+	if arrivedPlay then
+		player:SetAttribute("InMenu", false)
+	else
+		player:SetAttribute("InMenu", true)
+	end
 	player:GetAttributeChangedSignal("SkillLastXp"):Connect(function()
 		lastChange[player] = os.clock()
 	end)

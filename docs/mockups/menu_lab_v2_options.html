@@ -1,0 +1,388 @@
+<title>Dedicated Menu and Lab Tabs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: controls, one device frame (menu -> egg -> island flow, or the Lab), then the option notes. Single dark game look. */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14;
+  --panel: #14141a;
+  --panel2: #1c2230;
+  --line: #2b3242;
+  --fg: #ffffff;
+  --grey: #cfd3dc;
+  --muted: #8f99aa;
+  --yellow: #ffc832;
+  --orange: #ff9b2e;
+  --green: #5fd16a;
+  --red: #f05a4f;
+  --blue: #5aa0ff;
+  --volt: #7fe9ff;
+  --gold: #ffd666;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif;
+  --body: "Nunito", "Gotham", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--volt); }
+h2 { margin: 6px 0 0; font: 700 22px/1.2 var(--display); }
+.lede { margin: 0; color: var(--muted); max-width: 80ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.chip:focus-visible, .s button:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.frameWrap { overflow-x: auto; }
+.device { position: relative; margin: 0 auto; border-radius: 18px; border: 3px solid #2a2f3a; overflow: hidden; background: #000; box-shadow: 0 20px 60px rgb(0 0 0 / .45); }
+.device.pc { width: min(100%, 1140px); aspect-ratio: 16 / 9; }
+.device.phone { width: min(100%, 880px); aspect-ratio: 19.5 / 9; border-radius: 34px; border-width: 8px; }
+.s { position: absolute; inset: 0; container-type: size; font-family: var(--body); overflow: hidden; }
+.s button { font-family: inherit; cursor: pointer; }
+.robloxBtns { position: absolute; left: 1.6cqw; top: 2cqh; display: flex; gap: 1cqh; z-index: 30; pointer-events: none; }
+.robloxBtns i { display: block; height: 11cqh; border-radius: 99px; background: rgb(240 240 244 / .92); }
+.robloxBtns i:first-child { width: 11cqh; }
+.robloxBtns i:last-child { width: 30cqh; }
+.device.pc .robloxBtns i { height: 7cqh; }
+.device.pc .robloxBtns i:first-child { width: 7cqh; }
+.device.pc .robloxBtns i:last-child { width: 19cqh; }
+
+/* shared game pieces */
+.gbtn { font-family: var(--display) !important; font-weight: 700; border: 0; border-radius: 1.6cqh; color: #1b1406; background: var(--yellow); box-shadow: inset 0 -.9cqh 0 rgb(0 0 0 / .22), 0 .6cqh 0 rgb(0 0 0 / .35); text-transform: uppercase; letter-spacing: .03em; }
+.gbtn.dark { background: var(--panel); color: #fff; border: .35cqh solid rgb(255 255 255 / .16); }
+.gbtn.volt { background: var(--volt); color: #062430; }
+.gbtn.orange { background: var(--orange); }
+.mode { display: grid; grid-template-columns: 1fr auto; align-items: center; text-align: left; padding: 0 2.4cqh; }
+.mode .n { font-size: 5cqh; line-height: 1; }
+.mode .sub { font: 800 max(2cqh, 10px) var(--body); text-transform: none; letter-spacing: 0; opacity: .8; }
+.mode .tag { font: 900 max(1.8cqh, 9px) var(--body); background: rgb(0 0 0 / .2); border-radius: 1cqh; padding: .6cqh 1.2cqh; }
+.key { color: var(--orange); font: 900 max(1.9cqh, 10px) var(--body); }
+.slot { display: flex; align-items: center; gap: 1cqh; padding: 0 1.4cqh; height: max(5cqh, 26px); border: .35cqh solid var(--orange); border-radius: 1.2cqh; background: rgb(255 255 255 / .05); font: 800 max(1.8cqh, 10px) var(--body); color: var(--grey); white-space: nowrap; }
+.slots { display: flex; flex-wrap: wrap; gap: 1cqh; justify-content: center; }
+.arrow { width: max(7cqh, 36px); height: max(7cqh, 36px); font-size: 3cqh; }
+.dname { font: 700 4.6cqh/1 var(--display); }
+.dsub { font: 800 max(1.9cqh, 10px) var(--body); color: var(--muted); }
+svg.dino { width: 100%; height: 100%; }
+
+/* ---------- menu A: hangar bay ---------- */
+.hangar { position: absolute; inset: 0; background:
+  linear-gradient(180deg, #151b27 0%, #1b2333 58%, #10141c 58.2%, #0c0f15 100%); }
+.hangar::before { content: ""; position: absolute; inset: 0 0 42% 0; background:
+  repeating-linear-gradient(90deg, transparent 0 12cqw, rgb(255 255 255 / .05) 12cqw 12.3cqw),
+  repeating-linear-gradient(0deg, transparent 0 9cqh, rgb(255 255 255 / .035) 9cqh 9.3cqh); }
+.hangar::after { content: ""; position: absolute; inset: 58% 0 0 0; background:
+  repeating-linear-gradient(90deg, transparent 0 6cqw, rgb(127 233 255 / .07) 6cqw 6.2cqw); transform: perspective(40cqh) rotateX(50deg); transform-origin: top; }
+.stripe { position: absolute; left: 0; right: 0; top: 54%; height: 1.6cqh; background: repeating-linear-gradient(45deg, var(--yellow) 0 2cqh, #1b1406 2cqh 4cqh); opacity: .55; }
+.spot { position: absolute; left: 12%; width: 36%; top: 0; bottom: 18%; background: radial-gradient(60% 100% at 50% 0%, rgb(127 233 255 / .18), transparent 70%); clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); }
+.pedestal { position: absolute; left: 14%; width: 32%; bottom: 20%; height: 7cqh; border-radius: 50%; background: radial-gradient(closest-side, #39465c, #1c2230); box-shadow: 0 0 0 .5cqh rgb(127 233 255 / .35), 0 0 4cqh rgb(127 233 255 / .25); }
+.dinoA { position: absolute; left: 13%; width: 34%; bottom: 23%; height: 44cqh; }
+.underA { position: absolute; left: 4cqw; width: 50cqw; bottom: 4cqh; display: grid; gap: 1.4cqh; justify-items: center; }
+.rowA { display: flex; align-items: center; gap: 3cqw; }
+.rightA { position: absolute; right: 4cqw; width: 36cqw; top: 50%; transform: translateY(-50%); display: grid; gap: 2.2cqh; }
+.brand { font: 700 2.8cqh/1 var(--display); color: var(--yellow); }
+.bigT { font: 700 8cqh/.95 var(--display); text-shadow: 0 .6cqh 0 rgb(0 0 0 / .45); margin-bottom: 1.4cqh; }
+.rightA .mode { height: 13cqh; }
+.labBtn { height: max(6cqh, 32px); width: 100%; font-size: max(2.6cqh, 13px); }
+
+/* ---------- menu B: title screen ---------- */
+.titleBg { position: absolute; inset: 0; background: radial-gradient(70% 80% at 50% 45%, #22304a 0%, #121826 55%, #0a0d14 100%); }
+.titleBg::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgb(255 255 255 / .025) 0 .4cqh, transparent .4cqh 1.2cqh); }
+.tB { position: absolute; top: 6cqh; left: 0; right: 0; text-align: center; }
+.tB .brand { font-size: 3cqh; }
+.tB .bigT { font-size: 9cqh; margin: 0; }
+.dinoB { position: absolute; left: 32%; width: 36%; top: 22cqh; height: 40cqh; }
+.pedB { position: absolute; left: 34%; width: 32%; top: 58cqh; height: 6cqh; border-radius: 50%; background: radial-gradient(closest-side, #3a4a66, #1c2230); box-shadow: 0 0 3cqh rgb(255 200 50 / .25); }
+.arrB { position: absolute; top: 38cqh; }
+.arrB.l { left: 24%; } .arrB.r { right: 24%; }
+.nameB { position: absolute; top: 65cqh; left: 0; right: 0; display: grid; justify-items: center; gap: .8cqh; }
+.botB { position: absolute; left: 4cqw; right: 4cqw; bottom: 4cqh; display: grid; grid-template-columns: 1fr 1.4fr 1.4fr; gap: 2cqw; height: 12cqh; }
+.botB .labBtn { height: 100%; font-size: 3cqh; }
+
+/* ---------- menu C: today's layout, solid ---------- */
+.solidBg { position: absolute; inset: 0; background: linear-gradient(110deg, #10141d 0%, #182133 55%, #0e121a 100%); }
+.solidBg::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgb(255 255 255 / .03) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / .03) 1px, transparent 1px); background-size: 6cqh 6cqh; }
+.colsC { position: absolute; left: 4cqw; right: 4cqw; top: 12cqh; bottom: 6cqh; display: grid; grid-template-columns: 1.15fr 1fr; gap: 3cqw; }
+.leftC { display: grid; grid-template-rows: 1fr auto auto auto; gap: 1.6cqh; min-height: 0; }
+.stageC { position: relative; border-radius: 2.6cqh; background: rgb(20 20 26 / .86); border: .35cqh solid rgb(255 255 255 / .12); min-height: 0; }
+.stageC svg { position: absolute; inset: 8% 18%; width: 64%; height: 84%; }
+.rightC { display: grid; align-content: center; gap: 2.2cqh; }
+.rightC .mode { height: 13cqh; }
+
+/* ---------- egg ---------- */
+.egg { position: absolute; inset: 0; background: radial-gradient(60% 70% at 50% 45%, #1d2a3e, #0b0e14); display: grid; place-items: center; }
+.eggBox { display: grid; justify-items: center; gap: 2cqh; }
+.eggShell { width: 22cqh; height: 28cqh; border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%; background: linear-gradient(180deg, #f6efd9, #d9cfa8); box-shadow: 0 0 0 1cqh #2b3446, 0 0 0 1.6cqh var(--volt), 0 0 6cqh rgb(127 233 255 / .4); position: relative; animation: rock .9s ease-in-out infinite; }
+.eggShell::after { content: ""; position: absolute; left: 30%; top: 38%; width: 40%; height: 18%; border-top: .5cqh solid #7a6a3a; clip-path: polygon(0 0, 20% 100%, 40% 0, 60% 100%, 80% 0, 100% 100%, 100% 0); }
+@keyframes rock { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@media (prefers-reduced-motion: reduce) { .eggShell { animation: none; } }
+.gauge { width: 40cqw; height: 2cqh; border-radius: 99px; background: #222b3a; overflow: hidden; }
+.gauge i { display: block; height: 100%; width: 0; background: var(--volt); transition: width .25s; }
+.cap { font: 700 3cqh var(--display); letter-spacing: .04em; }
+.cap small { display: block; font: 800 max(1.8cqh, 10px) var(--body); color: var(--muted); text-align: center; letter-spacing: 0; }
+
+/* ---------- island (after) ---------- */
+.island { position: absolute; inset: 0; background: linear-gradient(180deg, #2f80d9 0%, #8cc3ec 46%, #cfe3c0 47%, #6cb24f 60%, #4f9a3a 100%); }
+.island .hud { position: absolute; right: 2cqw; top: 2.4cqh; display: flex; gap: 1cqw; }
+.pill { font: 700 max(2.6cqh, 12px) var(--display); padding: .8cqh 2cqh; border-radius: 1.4cqh; background: var(--panel); border: .3cqh solid rgb(255 255 255 / .3); }
+.pill.menu { background: var(--yellow); color: #1b1406; }
+.island .me { position: absolute; left: 38%; width: 24%; bottom: 14%; height: 30cqh; }
+.island .msg { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font: 700 4cqh var(--display); text-shadow: 0 .5cqh 0 rgb(0 0 0 / .45); }
+
+/* ---------- Lab ---------- */
+.labS { position: absolute; inset: 0; background: linear-gradient(180deg, #10141d, #1a2130 60%, #0e1219); }
+.labBar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 1.6cqh; border-bottom: .35cqh solid var(--volt); padding: 0 2cqw 0 calc(1.6cqw + 44cqh); }
+.device.pc .labBar { padding-left: calc(1.6cqw + 30cqh); }
+.labBar .nm { font: 700 3.4cqh var(--display); } .labBar .nm small { color: var(--volt); font-size: .55em; margin-right: .6em; }
+.labBar .lv { font: 900 max(1.8cqh, 10px) var(--body); color: var(--muted); }
+.xp { width: 12cqw; height: 1.4cqh; border-radius: 99px; background: #2b3242; overflow: hidden; } .xp i { display: block; width: 74%; height: 100%; background: var(--yellow); }
+.mas { font: 900 max(1.7cqh, 10px) var(--body); color: var(--gold); border: .3cqh solid var(--gold); border-radius: 1cqh; padding: .4cqh 1.2cqh; }
+.sp { flex: 1; }
+.pts { font: 700 2.4cqh var(--display); background: var(--yellow); color: #1b1406; border-radius: 1cqh; padding: .4cqh 1.4cqh; }
+.xB { width: max(5cqh, 26px); height: max(5cqh, 26px); border-radius: 1.6cqh; border: .3cqh solid rgb(255 255 255 / .2); display: grid; place-items: center; font: 700 2.4cqh var(--display); }
+.labBody { position: absolute; left: 2cqw; right: 2cqw; bottom: 2cqh; display: grid; grid-template-columns: 31% 1fr 27%; gap: 1.6cqw; }
+.colL { display: grid; grid-template-rows: auto 1fr; gap: 1.2cqh; min-height: 0; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: .8cqh; }
+.tab { font: 900 max(1.7cqh, 9px) var(--body); color: var(--muted); background: rgb(255 255 255 / .06); border: .3cqh solid transparent; border-radius: 1cqh; height: max(4.4cqh, 22px); }
+.tab[aria-pressed="true"] { color: #fff; background: rgb(127 233 255 / .14); border-color: var(--volt); }
+.grid { overflow: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 1cqh; align-content: start; padding: 3px; min-height: 0; }
+.card { background: var(--panel); border: .3cqh solid #2b3242; border-radius: 1.4cqh; padding: 1cqh; display: grid; gap: .6cqh; position: relative; text-align: left; color: #fff; }
+.card.eq { border-color: var(--orange); } .card.sel { border-color: #fff; }
+.art { aspect-ratio: 4 / 3; background: #0b0d12; border-radius: 1cqh; display: grid; place-items: center; }
+.art svg { width: 60%; height: 70%; }
+.cn { font: 700 max(1.9cqh, 10px) var(--display); }
+.badge { position: absolute; right: 1.6cqh; top: 1.6cqh; font: 900 max(1.5cqh, 8px) var(--body); padding: .2cqh .8cqh; border-radius: .6cqh; background: var(--orange); color: #1b1406; }
+.badge.on { background: var(--volt); color: #062430; }
+.pips { display: flex; gap: .5cqh; } .pips i { width: 1.6cqh; height: 1.6cqh; border-radius: .4cqh; background: #39404e; } .pips i.g { background: var(--c, var(--green)); } .pips i:last-child { border-radius: 50%; }
+.sec { grid-column: 1 / -1; font: 600 max(1.5cqh, 8px) var(--mono); letter-spacing: .12em; color: var(--volt); padding-top: .6cqh; }
+.statRow { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .4cqh 1.2cqh; background: var(--panel); border: .3cqh solid #2b3242; border-radius: 1.2cqh; padding: 1cqh 1.4cqh; text-align: left; color: #fff; }
+.statRow.sel { border-color: #fff; }
+.thumb { width: 6cqh; height: 6cqh; border-radius: .8cqh; background: #0b0d12; display: grid; place-items: center; grid-row: span 2; }
+.thumb svg { width: 80%; height: 80%; }
+.statRow .a { font: 900 max(1.5cqh, 8px) var(--body); }
+.statRow .nx { font: 900 max(1.5cqh, 8px) var(--body); color: var(--muted); justify-self: end; }
+.colM { display: grid; grid-template-rows: 1fr auto auto; gap: 1.2cqh; min-height: 0; }
+.stage { position: relative; background: var(--panel); border: .3cqh solid rgb(255 255 255 / .1); border-radius: 1.6cqh; min-height: 0; }
+.stage svg { position: absolute; inset: 10% 12%; width: 76%; height: 80%; }
+.stage .tg { position: absolute; left: 1.4cqh; top: 1.4cqh; font: 600 max(1.4cqh, 8px) var(--mono); color: var(--volt); background: rgb(0 0 0 / .4); padding: .2cqh .8cqh; border-radius: .6cqh; }
+.lslots { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8cqw; }
+.lslots .slot { justify-content: flex-start; overflow: hidden; }
+.hint { text-align: center; font: 800 max(1.5cqh, 8px) var(--body); color: var(--muted); }
+.colR { background: var(--panel); border: .3cqh solid rgb(255 255 255 / .1); border-radius: 1.6cqh; padding: 1.6cqh; display: grid; gap: 1cqh; align-content: start; min-height: 0; overflow: auto; }
+.colR .ar { font: 900 max(1.5cqh, 8px) var(--body); }
+.colR .t { font: 700 3cqh var(--display); }
+.stp { display: grid; grid-template-columns: 3.4cqh 1fr; gap: 1cqh; align-items: start; font: 800 max(1.6cqh, 9px) var(--body); color: var(--grey); }
+.stp b { height: 3cqh; border-radius: .7cqh; background: var(--c, var(--green)); color: #1b1406; display: grid; place-items: center; font-size: max(1.5cqh, 8px); }
+.acts { display: grid; grid-template-columns: 1fr 1fr; gap: 1cqh; }
+.acts button { height: max(5.6cqh, 28px); border-radius: 1.2cqh; background: transparent; color: var(--muted); border: .3cqh solid #2b3242; font: 900 max(1.8cqh, 9px) var(--body); }
+.acts button.w { color: #fff; }
+
+/* notes */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note p, .note li { margin: 0; color: var(--grey); font-size: 14px; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.note .rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+.flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font: 800 14px var(--body); }
+.flow span { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+.flow em { color: var(--muted); font-style: normal; }
+</style>
+
+<div class="wrap">
+  <h1>Dedicated menu <span>+</span> Lab tabs</h1>
+  <p class="lede">Your three changes: the Lab gets MECHA ABILITIES and STATS tabs, with every always-on part under STATS. The main menu becomes a solid screen of its own, so no island or HUD shows behind it. The egg loading screen plays after SANDBOX or ARENA, while the island loads. Tap SANDBOX or ARENA in the frame to play the flow. Pick one menu look and one STATS layout.</p>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Screen"><b>Screen</b>
+      <button class="chip" data-k="screen" data-v="menu" aria-pressed="true">Main menu</button>
+      <button class="chip" data-k="screen" data-v="lab" aria-pressed="false">Lab</button>
+    </div>
+    <div class="group" role="group" aria-label="Menu look"><b>Menu</b>
+      <button class="chip" data-k="menu" data-v="A" aria-pressed="true">A · Hangar bay</button>
+      <button class="chip" data-k="menu" data-v="B" aria-pressed="false">B · Title screen</button>
+      <button class="chip" data-k="menu" data-v="C" aria-pressed="false">C · Today's layout, solid</button>
+    </div>
+    <div class="group" role="group" aria-label="Stats layout"><b>Stats tab</b>
+      <button class="chip" data-k="stats" data-v="1" aria-pressed="true">1 · Stat rows + part cards</button>
+      <button class="chip" data-k="stats" data-v="2" aria-pressed="false">2 · One list</button>
+    </div>
+    <div class="group" role="group" aria-label="Device"><b>Device</b>
+      <button class="chip" data-k="dev" data-v="phone" aria-pressed="true">Phone</button>
+      <button class="chip" data-k="dev" data-v="pc" aria-pressed="false">PC</button>
+    </div>
+  </div>
+
+  <div class="frameWrap"><div id="device" class="device phone"><div class="s" id="screen"></div></div></div>
+
+  <div class="flow" aria-label="Flow"><span>Join</span><em>→</em><span>Main menu (solid, no HUD)</span><em>→</em><span>SANDBOX / ARENA</span><em>→</em><span>Egg loading screen until the island and your dino are in</span><em>→</em><span>Hatch → play</span><em>· MENU pill →</em><span>Main menu</span></div>
+
+  <h2>Main menu</h2>
+  <div class="notes">
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>A · Hangar bay</h3><p>A built hangar fills the whole screen behind the menu: a wall with panel lines, a hazard stripe, and a floor grid. Your dino stands on a lit pedestal on the left. The right column and the GO TO THE LAB button stay where they are today.</p><ul><li>Feels like a place, not a panel over the game.</li><li>Layout players already know.</li><li>The hangar is drawn in the 3D preview, so it costs nothing in the world.</li></ul></div>
+    <div class="note"><h3>B · Title screen</h3><p>A centred console-game layout: a big logo on top, your dino in the middle with ◀ ▶ beside it, and three buttons along the bottom: LAB, SANDBOX and ARENA.</p><ul><li>Strongest "game title" feel.</li><li>The slot row moves under the dino's name.</li><li>Moves every button, so it is the biggest change.</li></ul></div>
+    <div class="note"><h3>C · Today's layout, solid</h3><p>The same menu as today on an opaque dark background with a faint grid. The island and HUD no longer show through.</p><ul><li>Smallest change.</li><li>Reads like a settings page, less like a game.</li></ul></div>
+  </div>
+
+  <h2>Lab · STATS tab</h2>
+  <div class="notes">
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>1 · Stat rows + part cards</h3><p>The four stat rows come first. Under an ALWAYS ON PARTS label sit the always-on parts as the same 3D cards used on MECHA ABILITIES. For the raptor that is Blade Claws; for the T-Rex, Bio-Battery Spine and the other always-on parts.</p></div>
+    <div class="note"><h3>2 · One list</h3><p>Every entry is a row: the stats with a coloured area icon, and the always-on parts with a small turning model thumbnail. Compact, but the parts lose their big card.</p></div>
+    <div class="note"><h3>Both</h3><ul><li>MECHA ABILITIES lists only the parts you equip into a slot (R / C / T / V).</li><li>The bar now sits below the Roblox buttons on phones (already fixed in Studio).</li></ul></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const st = { screen: 'menu', menu: 'A', stats: '1', dev: 'phone', flow: 'menu', tab: 'abil', sel: 'adrenaline' };
+  const r = (x, y, w, h, c) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`;
+  function dinoSVG(mech) {
+    const G = '#4f8f3a', Dk = '#2f5a24', L = '#6fb04f';
+    let s = `<svg class="dino" viewBox="0 0 220 140" aria-hidden="true">${r(20, 62, 60, 12, G)}${r(8, 60, 16, 9, G)}${r(70, 52, 70, 34, G)}${r(74, 56, 62, 6, L)}${r(132, 34, 16, 30, G)}${r(140, 22, 44, 22, G)}${r(176, 34, 14, 10, Dk)}${r(168, 27, 5, 5, '#111')}${r(86, 86, 12, 34, Dk)}${r(112, 86, 12, 34, Dk)}${r(82, 118, 20, 6, Dk)}${r(108, 118, 20, 6, Dk)}${r(132, 70, 14, 6, Dk)}`;
+    if (mech) {
+      s += r(96, 40, 12, 13, '#5dff8a') + r(96, 37, 12, 4, '#3a4350');
+      s += r(118, 58, 22, 16, '#3a4350') + r(140, 62, 40, 8, '#8e9aa8') + r(150, 60, 4, 12, '#7fe9ff') + `<circle cx="183" cy="66" r="5" fill="#7fe9ff"/>`;
+      s += r(74, 44, 5, 12, '#8e9aa8') + r(80, 42, 5, 14, '#8e9aa8') + r(74, 48, 11, 2, '#7fe9ff');
+      s += r(96, 116, 8, 4, '#8e9aa8') + r(100, 110, 4, 6, '#f05a4f') + r(122, 116, 8, 4, '#8e9aa8') + r(126, 110, 4, 6, '#f05a4f');
+    }
+    return s + '</svg>';
+  }
+  const ICON = {
+    adrenaline: r(10, 4, 12, 16, '#5dff8a') + r(10, 2, 12, 4, '#3a4350') + r(15, 20, 2, 10, '#3a4350'),
+    screech: r(2, 12, 10, 8, '#3a4350') + r(12, 14, 16, 4, '#8e9aa8') + r(16, 12, 2, 8, '#7fe9ff') + r(22, 12, 2, 8, '#7fe9ff'),
+    shield: `<circle cx="9" cy="16" r="4" fill="#7fe9ff"/><circle cx="23" cy="16" r="4" fill="#7fe9ff"/>`,
+    cloak: r(4, 10, 5, 12, '#7fe9ff') + r(11, 8, 5, 14, '#7fe9ff') + r(18, 10, 5, 12, '#7fe9ff') + r(25, 12, 4, 10, '#7fe9ff'),
+    thrusters: r(8, 4, 16, 14, '#3a4350') + r(10, 18, 5, 4, '#8e9aa8') + r(17, 18, 5, 4, '#8e9aa8') + r(10, 22, 5, 7, '#ff9b2e') + r(17, 22, 5, 7, '#ff9b2e'),
+    traps: r(4, 20, 24, 6, '#2e343e') + r(8, 17, 16, 4, '#7fe9ff') + r(14, 8, 4, 10, '#8e9aa8'),
+    scent: r(6, 12, 20, 10, '#3a4350') + r(24, 14, 5, 6, '#ff9b2e') + r(9, 8, 3, 5, '#7fe9ff') + r(15, 6, 3, 7, '#7fe9ff'),
+    blade: r(6, 6, 6, 20, '#f05a4f') + r(6, 22, 6, 6, '#8e9aa8') + r(20, 6, 6, 20, '#f05a4f') + r(20, 22, 6, 6, '#8e9aa8'),
+    lifesteal: `<circle cx="16" cy="16" r="9" fill="#5fd16a"/>`, jaws: `<path d="M5 10 L27 10 L22 22 L10 22 Z" fill="#f05a4f"/>`,
+    hide: r(7, 7, 18, 18, '#5aa0ff'), legs: `<path d="M6 24 L16 6 L26 24 Z" fill="#ffc832"/>`,
+  };
+  const icon = id => `<svg viewBox="0 0 32 32" aria-hidden="true">${ICON[id] || ''}</svg>`;
+  const ABIL = [
+    { id: 'adrenaline', n: 'Adrenaline Injector', c: '#5fd16a', k: 'R' }, { id: 'screech', n: 'Shock Cannon', c: '#f05a4f', k: 'C' },
+    { id: 'shield', n: 'Energy Shield', c: '#5aa0ff', k: 'T' }, { id: 'cloak', n: 'Cloak Field', c: '#5aa0ff', k: 'V' },
+    { id: 'thrusters', n: 'Thrusters', c: '#ffc832' }, { id: 'traps', n: 'Shock Mine', c: '#f05a4f' }, { id: 'scent', n: 'Scent Sense', c: '#5fd16a' },
+  ];
+  const STATS = [
+    { id: 'lifesteal', n: 'Lifesteal', a: 'HEALTH', c: '#5fd16a' }, { id: 'jaws', n: 'Jaws', a: 'ATTACK', c: '#f05a4f' },
+    { id: 'hide', n: 'Thick Hide', a: 'DEFENSE', c: '#5aa0ff' }, { id: 'legs', n: 'Sprint Legs', a: 'SPEED', c: '#ffc832' },
+  ];
+  const PASSIVE = [{ id: 'blade', n: 'Blade Claws', c: '#f05a4f', a: 'ATTACK' }];
+  const pips = c => `<div class="pips" style="--c:${c}"><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i></div>`;
+  const $ = s => document.querySelector(s);
+
+  function slotsRow() {
+    return `<div class="slots">${ABIL.filter(p => p.k).map(p => `<span class="slot"><span class="key">${p.k}</span>${p.n}</span>`).join('')}</div>`;
+  }
+  function menuA() {
+    return `<div class="hangar"></div><div class="stripe"></div><div class="spot"></div><div class="pedestal"></div>
+      <div class="dinoA">${dinoSVG(true)}</div>
+      <div class="underA"><div class="rowA"><button class="gbtn dark arrow" aria-label="Previous dino">◀</button><div style="text-align:center"><div class="dname">RAPTOR</div><div class="dsub">60 HP · fast hunter</div></div><button class="gbtn dark arrow" aria-label="Next dino">▶</button></div>${slotsRow()}<button class="gbtn volt labBtn" data-go="lab">GO TO THE LAB</button></div>
+      <div class="rightA"><div><div class="brand">MECHA DINO</div><div class="bigT">ARENA</div></div>${modes()}</div>`;
+  }
+  function menuB() {
+    return `<div class="titleBg"></div><div class="tB"><div class="brand">MECHA DINO</div><div class="bigT">ARENA</div></div>
+      <div class="pedB"></div><div class="dinoB">${dinoSVG(true)}</div>
+      <button class="gbtn dark arrow arrB l" aria-label="Previous dino">◀</button><button class="gbtn dark arrow arrB r" aria-label="Next dino">▶</button>
+      <div class="nameB"><div class="dname">RAPTOR</div>${slotsRow()}</div>
+      <div class="botB"><button class="gbtn volt labBtn" data-go="lab">LAB</button>${modes()}</div>`;
+  }
+  function menuC() {
+    return `<div class="solidBg"></div><div class="colsC"><div class="leftC"><div class="stageC">${dinoSVG(true)}</div>
+      <div class="rowA" style="justify-content:center"><button class="gbtn dark arrow" aria-label="Previous dino">◀</button><div style="text-align:center"><div class="dname">RAPTOR</div><div class="dsub">60 HP · fast hunter</div></div><button class="gbtn dark arrow" aria-label="Next dino">▶</button></div>
+      ${slotsRow()}<button class="gbtn volt labBtn" data-go="lab">GO TO THE LAB</button></div>
+      <div class="rightC"><div><div class="brand">MECHA DINO</div><div class="bigT">ARENA</div></div>${modes()}</div></div>`;
+  }
+  function modes() {
+    return `<button class="gbtn mode" data-go="egg:SANDBOX"><span><span class="n">SANDBOX</span><br><span class="sub">Island with bots · no player damage</span></span><span class="tag">BOTS</span></button>
+      <button class="gbtn orange mode" data-go="egg:ARENA"><span><span class="n">ARENA</span><br><span class="sub">Same island · no bots · player damage on</span></span><span class="tag">PVP</span></button>`;
+  }
+  let eggTimer = null;
+  function egg(where) {
+    return `<div class="egg"><div class="eggBox"><div class="eggShell"></div><div class="gauge"><i id="g"></i></div><div class="cap">LOADING ${where}<small>${where === 'ARENA' ? 'Traveling to the Arena · the island loads behind the egg' : 'Dropping you on the island'}</small></div></div></div>`;
+  }
+  function island(where) {
+    return `<div class="island"><div class="hud"><span class="pill">SKILLS</span><span class="pill menu" data-go="menu" role="button" tabindex="0">MENU</span></div><div class="me">${dinoSVG(true)}</div><div class="msg">${where} · playing</div></div>`;
+  }
+  function lab() {
+    const abil = st.tab === 'abil';
+    let grid = '';
+    if (abil) {
+      grid = ABIL.map(p => `<button class="card ${p.k ? 'eq' : ''} ${st.sel === p.id ? 'sel' : ''}" data-sel="${p.id}">${p.k ? `<span class="badge">${p.k}</span>` : ''}<div class="art">${icon(p.id)}</div><div class="cn">${p.n}</div>${pips(p.c)}</button>`).join('');
+    } else if (st.stats === '1') {
+      grid = STATS.map(s => `<button class="statRow ${st.sel === s.id ? 'sel' : ''}" data-sel="${s.id}" style="grid-template-columns:1fr auto"><span class="cn">${s.n}</span>${pips(s.c)}<span class="a" style="color:${s.c}">${s.a}</span><span class="nx">Next: 1 pt</span></button>`).join('')
+        + `<div class="sec">ALWAYS ON PARTS</div>`
+        + PASSIVE.map(p => `<button class="card ${st.sel === p.id ? 'sel' : ''}" data-sel="${p.id}"><span class="badge on">ALWAYS ON</span><div class="art">${icon(p.id)}</div><div class="cn">${p.n}</div>${pips(p.c)}</button>`).join('');
+    } else {
+      grid = [...STATS.map(s => ({ ...s, stat: true })), ...PASSIVE].map(s => `<button class="statRow ${st.sel === s.id ? 'sel' : ''}" data-sel="${s.id}"><span class="thumb">${icon(s.id)}</span><span class="cn">${s.n}${s.stat ? '' : ' <span class="badge on" style="position:static">ALWAYS ON</span>'}</span>${pips(s.c)}<span class="a" style="color:${s.c}">${s.a}</span><span class="nx">${s.stat ? 'Next: 1 pt' : 'Maxed'}</span></button>`).join('');
+    }
+    const all = [...ABIL, ...STATS, ...PASSIVE].find(p => p.id === st.sel) || ABIL[0];
+    const kind = ABIL.includes(all) ? 'MECHA ABILITY · BUTTON' : PASSIVE.includes(all) ? 'MECH PART · ALWAYS ON' : 'STAT';
+    return `<div class="labS"></div>
+      <div class="labBar" id="labBar"><span class="nm"><small>LAB</small>RAPTOR</span><span class="lv">LV 19</span><span class="xp"><i></i></span><span class="mas">MASTERY 3/3</span><span class="sp"></span><span class="pts">11 PTS</span><span class="xB" data-go="menu" role="button" tabindex="0">X</span></div>
+      <div class="labBody" id="labBody">
+        <div class="colL"><div class="tabs"><button class="tab" data-tab="abil" aria-pressed="${abil}">MECHA ABILITIES</button><button class="tab" data-tab="stats" aria-pressed="${!abil}">STATS</button></div><div class="grid">${grid}</div></div>
+        <div class="colM"><div class="stage"><span class="tg">ALL UPGRADES</span>${dinoSVG(true)}</div><div class="lslots">${ABIL.filter(p => p.k).map(p => `<span class="slot"><span class="key">${p.k}</span>${icon(p.id).replace('<svg', '<svg width="22" height="22"')}</span>`).join('')}</div><div class="hint">Tap a card, then EQUIP · tap a slot to choose where it goes</div></div>
+        <div class="colR"><span class="ar" style="color:${all.c}">${all.a ? all.a + ' · ' : ''}${kind}</span><span class="t">${all.n}</span>
+          ${['I', 'II', 'III', '★'].map((x, i) => `<div class="stp" style="--c:${all.c}"><b>${x}</b><span>${['Unlocks the part', 'Stronger', 'Recharges faster', 'Star upgrade'][i]}</span></div>`).join('')}
+          <div class="acts"><button>MAXED</button>${ABIL.includes(all) && all.k ? `<button class="w">UNEQUIP ${all.k}</button>` : ''}</div></div>
+      </div>`;
+  }
+  function render() {
+    const dev = $('#device');
+    dev.className = 'device ' + st.dev;
+    let html = '';
+    if (st.screen === 'lab') html = lab();
+    else if (st.flow === 'menu') html = st.menu === 'A' ? menuA() : st.menu === 'B' ? menuB() : menuC();
+    else if (st.flow.startsWith('egg:')) html = egg(st.flow.slice(4));
+    else if (st.flow.startsWith('island:')) html = island(st.flow.slice(7));
+    $('#screen').innerHTML = html + '<div class="robloxBtns" aria-hidden="true"><i></i><i></i></div>';
+    if (st.screen === 'lab') {
+      const h = st.dev === 'phone' ? 15 : 11; // bar at least as tall as the Roblox buttons (TopbarInset + 0.6ch)
+      $('#labBar').style.height = h + 'cqh';
+      $('#labBody').style.top = (h + 1.6) + 'cqh';
+    }
+    if (st.flow.startsWith('egg:')) {
+      clearInterval(eggTimer);
+      let p = 0;
+      eggTimer = setInterval(() => {
+        p += 9;
+        const g = document.getElementById('g');
+        if (g) g.style.width = Math.min(p, 100) + '%';
+        if (p >= 110) { clearInterval(eggTimer); st.flow = 'island:' + st.flow.slice(4); render(); }
+      }, 160);
+    }
+  }
+  document.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (chip) {
+      st[chip.dataset.k] = chip.dataset.v;
+      document.querySelectorAll(`.chip[data-k="${chip.dataset.k}"]`).forEach(c => c.setAttribute('aria-pressed', c === chip));
+      if (chip.dataset.k === 'screen' || chip.dataset.k === 'menu') { st.flow = 'menu'; clearInterval(eggTimer); }
+      if (chip.dataset.k === 'stats') { st.screen = 'lab'; st.tab = 'stats'; st.sel = 'lifesteal'; document.querySelectorAll('.chip[data-k="screen"]').forEach(c => c.setAttribute('aria-pressed', c.dataset.v === 'lab')); }
+      render(); return;
+    }
+    const go = e.target.closest('[data-go]');
+    if (go) {
+      const v = go.dataset.go;
+      clearInterval(eggTimer);
+      if (v === 'lab') { st.screen = 'lab'; document.querySelectorAll('.chip[data-k="screen"]').forEach(c => c.setAttribute('aria-pressed', c.dataset.v === 'lab')); }
+      else if (v === 'menu') { st.screen = 'menu'; st.flow = 'menu'; document.querySelectorAll('.chip[data-k="screen"]').forEach(c => c.setAttribute('aria-pressed', c.dataset.v === 'menu')); }
+      else st.flow = v;
+      render(); return;
+    }
+    const tab = e.target.closest('[data-tab]');
+    if (tab) { st.tab = tab.dataset.tab; st.sel = st.tab === 'abil' ? 'adrenaline' : 'lifesteal'; render(); return; }
+    const sel = e.target.closest('[data-sel]');
+    if (sel) { st.sel = sel.dataset.sel; render(); }
+  });
+  render();
+})();
+</script>

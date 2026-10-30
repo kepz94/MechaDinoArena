@@ -1,4 +1,4 @@
--- Lab v1.0 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.2 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -47,13 +47,25 @@
 -- Diagnostics (LocalPlayer attributes, this client): LabVersion, LabOpen ("closed" / "full" / "compact"), LabTab
 --   ("parts" / "stats"), LabSelected (path id), LabSlotSel (0 / 1..4), LabLastPress, LabToast, LabCards, LabModels
 --   (cards with a 3D model).
+-- v1.1 (Kepu 2026-10-29, phone screenshot: "look part of the menu is blocked"): the full Lab's top bar is at least as tall
+--   as the Roblox top bar (GuiService.TopbarInset height + 0.6ch; the Roblox buttons on phones reach below the 1.0 bar and
+--   covered the MECH PARTS / STATS tabs); its items stay centred in it, so the body starts below the Roblox buttons.
+--   Switch: script attribute LabBarClearEnabled (default true; false = the 1.0 bar height). Diagnostic: LabBarH (px).
+-- v1.2 (Kepu 2026-10-29: "We need to have two sections. Stats. And mecha abilities. Anything passive goes to stats";
+--   mockup docs/mockups/menu_lab_v2_options.html, STATS option 1 "Stat rows + part cards"): the tabs read MECHA ABILITIES /
+--   STATS. MECHA ABILITIES = this dino's mech parts that are buttons (SkillTree.BUTTONS), as cards. STATS = the stat rows,
+--   then (when this dino has any) a label "ALWAYS ON PARTS" (volt, RobotoMono max(1.5ch, 8)) and the always-on mech parts
+--   (mech, not BUTTONS) as the same 3D cards in a 2-column grid. The STATS tab scrolls as one list (gap 1ch). LabTab values
+--   stay "parts" / "stats". Switch: script attribute LabSplitTabsEnabled (default true, read at start; false = the 1.1
+--   tabs: every mech part on MECH PARTS). The detail line of a button part reads "MECHA ABILITY · BUTTON". Diagnostic:
+--   LabPassiveCards (always-on part cards on the STATS tab).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.0"
+local VERSION = "1.2"
 local BIND = "LabMouse"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local PANEL2 = Color3.fromRGB(28, 34, 48)
@@ -73,6 +85,9 @@ local player = Players.LocalPlayer
 player:SetAttribute("LabVersion", VERSION)
 player:SetAttribute("LabOpen", "closed")
 if script:GetAttribute("LabEnabled") == nil then script:SetAttribute("LabEnabled", true) end
+if script:GetAttribute("LabBarClearEnabled") == nil then script:SetAttribute("LabBarClearEnabled", true) end -- v1.1
+if script:GetAttribute("LabSplitTabsEnabled") == nil then script:SetAttribute("LabSplitTabsEnabled", true) end -- v1.2
+local splitTabs = script:GetAttribute("LabSplitTabsEnabled") ~= false -- v1.2
 if script:GetAttribute("LabEnabled") == false then return end
 
 local shared = ReplicatedStorage:WaitForChild("SkillShared", 30)
@@ -287,7 +302,7 @@ local tabCorners, tabStrokes, tabLabels = {}, {}, {}
 for i, t in ipairs({tabParts, tabStats}) do
 	tabCorners[i] = corner(t)
 	tabStrokes[i] = stroke(t, VOLT, 1, 2)
-	tabLabels[i] = label(t, "T", Enum.Font.GothamBlack, 11, MUTED, i == 1 and "MECH PARTS" or "STATS")
+	tabLabels[i] = label(t, "T", Enum.Font.GothamBlack, 11, MUTED, i == 1 and (splitTabs and "MECHA ABILITIES" or "MECH PARTS") or "STATS")
 	tabLabels[i].Size = UDim2.fromScale(1, 1)
 end
 local grid = Instance.new("ScrollingFrame")
@@ -304,6 +319,8 @@ local gridLayout = Instance.new("UIGridLayout")
 gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 gridLayout.Parent = grid
 pad(grid, 3, 0, 3, 3) -- room for the 2 px selected / equipped stroke (the scrolling frame clips it otherwise)
+local gridList = Instance.new("UIListLayout") -- v1.2: the STATS tab (rows, label, always-on part cards) as one list
+gridList.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- middle: stage + slots + hint
 local stage = frame(mid, "Stage", PANEL, 0.1)
@@ -452,6 +469,10 @@ local function measure()
 	S.small = math.max(1.8 * ch, 10)
 	S.closeS = math.max(5 * ch, 30)
 	S.barH = 1.4 * ch + math.max(S.closeS, S.nameS * 1.1) + 1.2 * ch
+	if mode ~= "compact" and script:GetAttribute("LabBarClearEnabled") ~= false then -- v1.1: clear the Roblox top bar
+		S.barH = math.max(S.barH, topInset() + 0.6 * ch)
+	end
+	player:SetAttribute("LabBarH", math.floor(S.barH + 0.5))
 	S.tabText = math.max(1.7 * ch, 10)
 	S.cardName = math.max(1.9 * ch, 11)
 	S.pip = math.max(1.6 * ch, 7)
@@ -509,6 +530,51 @@ local function drawCards()
 	end
 	local dino = species()
 	local ids = pathsFor(dino, tab == "parts")
+	local cardOf = {} -- v1.2: id -> true when drawn as a 3D card
+	local passive = {}
+	if splitTabs then -- v1.2: MECHA ABILITIES = button parts; STATS = stats + always-on parts
+		local mech = pathsFor(dino, true)
+		if tab == "parts" then
+			ids = {}
+			for _, id in ipairs(mech) do
+				if ST.BUTTONS[id] == true then table.insert(ids, id) end
+			end
+		else
+			for _, id in ipairs(mech) do
+				if ST.BUTTONS[id] ~= true then table.insert(passive, id) end
+			end
+		end
+	end
+	if tab == "parts" then
+		for _, id in ipairs(ids) do cardOf[id] = true end
+		gridList.Parent = nil
+		gridLayout.Parent = grid
+	else
+		gridLayout.Parent = nil
+		gridList.Parent = grid
+	end
+	local passiveBox
+	if #passive > 0 then
+		local sec = label(grid, "PassiveLabel", Enum.Font.RobotoMono, math.max(1.5 * S.ch, 8), VOLT, "ALWAYS ON PARTS")
+		sec.TextXAlignment = Enum.TextXAlignment.Left
+		sec.TextYAlignment = Enum.TextYAlignment.Bottom
+		sec.LayoutOrder = #ids + 1
+		sec.Size = UDim2.fromOffset(S.rowW, math.max(1.5 * S.ch, 8) + 0.6 * S.ch)
+		passiveBox = frame(grid, "Passive")
+		passiveBox.LayoutOrder = #ids + 2
+		passiveBox.AutomaticSize = Enum.AutomaticSize.Y
+		passiveBox.Size = UDim2.fromOffset(S.rowW, 0)
+		local pg2 = Instance.new("UIGridLayout")
+		pg2.SortOrder = Enum.SortOrder.LayoutOrder
+		pg2.CellSize = S.cardCell
+		pg2.CellPadding = UDim2.fromOffset(S.ch, S.ch)
+		pg2.Parent = passiveBox
+		for _, id in ipairs(passive) do
+			table.insert(ids, id)
+			cardOf[id] = true
+		end
+	end
+	player:SetAttribute("LabPassiveCards", #passive)
 	local models = 0
 	if not selected or not table.find(ids, selected) then selected = ids[1] end
 	for i, id in ipairs(ids) do
@@ -517,8 +583,10 @@ local function drawCards()
 		local col = rgb(area.color)
 		local n = stepsOf(id)
 		local eq = slotIndex(id)
-		local b = button(grid, "Card_" .. id, PANEL2, 0)
+		local asCard = cardOf[id] == true
+		local b = button(asCard and tab ~= "parts" and passiveBox or grid, "Card_" .. id, PANEL2, 0)
 		b.LayoutOrder = i
+		if not asCard then b.Size = UDim2.fromOffset(S.rowW, S.rowH) end -- v1.2: rows sit in the STATS list
 		corner(b, UDim.new(0, 1.4 * S.ch))
 		local st
 		if selected == id then
@@ -529,7 +597,7 @@ local function drawCards()
 			st = stroke(b, WHITE, 0.9, 2)
 		end
 		local entry = {id = id, b = b}
-		if tab == "parts" then
+		if asCard then
 			local p1 = S.ch
 			local artW = S.cellW - 2 * p1
 			local artH = artW * 0.75
@@ -700,7 +768,7 @@ local function drawDetail()
 	local area = areaOf(id)
 	local col = rgb(area.color)
 	local n = stepsOf(id)
-	local kind = p.mech ~= true and "Stat" or (ST.BUTTONS[id] == true and "Mech part · button" or "Mech part · always on")
+	local kind = p.mech ~= true and "Stat" or (ST.BUTTONS[id] == true and (splitTabs and "Mecha ability · button" or "Mech part · button") or "Mech part · always on") -- v1.2 wording
 	local sub = label(detail, "Sub", Enum.Font.GothamBlack, S.stepS, col, string.upper(area.name .. " · " .. kind))
 	sub.TextXAlignment = Enum.TextXAlignment.Left
 	sub.Size = UDim2.new(1, 0, 0, S.stepS * 1.2)
@@ -894,6 +962,9 @@ local function layout()
 	S.cellW = (lw - ch - 12) / 2 -- 3 px stroke room left, 9 px for the scroll bar
 	S.metaH = math.max(S.tagS + 1 * ch, S.pip + 2)
 	local artH = (S.cellW - 2 * ch) * 0.75
+	S.cardCell = UDim2.fromOffset(S.cellW, ch + artH + 0.6 * ch + S.cardName * 1.15 + 0.6 * ch + S.metaH + ch) -- v1.2
+	S.rowW, S.rowH = lw - 12, 1.2 * ch + S.cardName * 1.15 + 0.6 * ch + S.metaH + 1.2 * ch -- v1.2
+	gridList.Padding = UDim.new(0, ch)
 	if tab == "parts" then
 		gridLayout.CellSize = UDim2.fromOffset(S.cellW, ch + artH + 0.6 * ch + S.cardName * 1.15 + 0.6 * ch + S.metaH + ch)
 		gridLayout.CellPadding = UDim2.fromOffset(ch, ch)

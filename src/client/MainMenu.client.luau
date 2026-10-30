@@ -1,4 +1,4 @@
--- MainMenu v1.2 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.3 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -56,13 +56,30 @@
 --   "GO TO THE LAB" (height max(7ch, 40 px), FredokaOne max(2.8ch, 15 px), full left-column width) sits under it, in the
 --   hint / picker row's place. It calls LocalPlayer.PlayerScripts.Lab.Open:Invoke("full") (Lab 1.0). Script attribute
 --   MainMenuLabEnabled (default true; false = the 1.1 picker). Diagnostic: MainMenuLastPress "lab".
+-- v1.3 (Kepu 2026-10-29: "the menu is its own dedicated menu"; mockup docs/mockups/menu_lab_v2_options.html option A
+--   "Hangar bay"): the menu is solid. A second ScreenGui "MainMenuHangar" (DisplayOrder 39, IgnoreGuiInset, shown with the
+--   menu) holds a full-screen ViewportFrame "Scene" (background rgb(20, 27, 39)) with a hangar built from parts around the
+--   dino copy, scaled by u = max(diagonal / 25, 0.6) (diagonal = the copy's X/Z bounding-box diagonal): floor (dark, volt
+--   grid lines every 10u), back wall (panel ribs every 14u, a rib 18u up, two volt light bars 22u up, a yellow / black
+--   hazard band 3u tall along its base) 0.5 x diagonal + 18u behind the dino, a pedestal (radius 0.42 x diagonal, a volt
+--   neon ring, a faint volt glow disc 1.7 x its size on the floor) under its feet. The copy goes in this scene (not in the
+--   Stage view) and turns on the pedestal (0.45 rad/s); the camera is fixed (looking down 0.12) and placed so the dino's
+--   centre sits at the stage area's centre x and 0.45 of its height, the X/Z diagonal fitting 0.92 of its width and height + 0.12 x
+--   diagonal 0.9 of its height. The Stage keeps its tap (flip), tag and hint but draws no panel, stroke or floor glow; the
+--   Root backdrop is fully transparent (the scene covers the island and the HUD). A dark scrim over the right 55% of the
+--   scene (transparency 1 -> 0.3 over its first 30%, 0.22 at the right edge) keeps the right column readable. Switch: script attribute
+--   MainMenuHangarEnabled (default true, read at start; false = 1.2). Diagnostic: MainMenuHangarParts (parts in the room).
+--   SANDBOX / ARENA for this server's mode (player attribute DinoMode) first calls ReplicatedFirst.EggLoader.Play("Sandbox"
+--   / "Arena") (EggLoader 1.1: the egg until the dino stands on the island), then fires the request; "busy" / "badArg"
+--   takes the egg down (EggLoader.Hide). Switch: script attribute MainMenuPlayLoaderEnabled (default true; false = no
+--   egg). Diagnostic: MainMenuPlayLoader ("shown" / "hidden" / "none").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -218,6 +235,51 @@ cam.FieldOfView = 40
 cam.Parent = view
 view.CurrentCamera = cam
 
+-- v1.3: the hangar scene behind the menu
+if script:GetAttribute("MainMenuHangarEnabled") == nil then script:SetAttribute("MainMenuHangarEnabled", true) end
+local hangarOn = script:GetAttribute("MainMenuHangarEnabled") ~= false
+local hgui, scene, hcam
+if hangarOn then
+	local oldH = pg:FindFirstChild("MainMenuHangar")
+	if oldH then oldH:Destroy() end
+	hgui = Instance.new("ScreenGui")
+	hgui.Name = "MainMenuHangar"
+	hgui.DisplayOrder = 39
+	hgui.IgnoreGuiInset = true
+	hgui.ResetOnSpawn = false
+	hgui.Enabled = false
+	hgui.Parent = pg
+	scene = Instance.new("ViewportFrame")
+	scene.Name = "Scene"
+	scene.Size = UDim2.fromScale(1, 1)
+	scene.BackgroundColor3 = Color3.fromRGB(20, 27, 39)
+	scene.BackgroundTransparency = 0
+	scene.BorderSizePixel = 0
+	scene.Ambient = Color3.fromRGB(120, 126, 140)
+	scene.LightColor = Color3.fromRGB(255, 250, 240)
+	scene.LightDirection = Vector3.new(-0.3, -1, -0.5)
+	scene.Parent = hgui
+	hcam = Instance.new("Camera")
+	hcam.FieldOfView = 40
+	hcam.Parent = scene
+	scene.CurrentCamera = hcam
+	local scrim = Instance.new("Frame") -- keeps the right column readable over the wall's hazard band
+	scrim.Name = "Scrim"
+	scrim.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
+	scrim.BorderSizePixel = 0
+	scrim.Position, scrim.Size = UDim2.fromScale(0.45, 0), UDim2.fromScale(0.55, 1)
+	scrim.Parent = hgui
+	local sg = Instance.new("UIGradient")
+	sg.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.3),
+		NumberSequenceKeypoint.new(1, 0.22)})
+	sg.Parent = scrim
+	root.BackgroundTransparency = 1
+	stage.BackgroundTransparency = 1
+	stageStroke.Transparency = 1
+	floor.Visible = false
+	view.Visible = false
+end
+
 local modeTag = label(stage, "ModeTag", Enum.Font.RobotoMono, GREY)
 modeTag.BackgroundTransparency = 0.6
 modeTag.BackgroundColor3 = Color3.new(0, 0, 0)
@@ -339,6 +401,8 @@ local lastPreviewKey = nil
 local preview = nil
 local orbit = 0
 local center, radius = Vector3.zero, 20
+local hSize, hBase, hDiag = Vector3.new(10, 10, 10), CFrame.new(), 10 -- v1.3: copy size, pivot, X/Z diagonal
+local hRoom = nil -- v1.3
 
 local function char() return player.Character end
 local function species()
@@ -513,6 +577,83 @@ local function drawSlots()
 	end
 end
 
+-- ---------- v1.3: hangar room ----------
+local function hPart(parent, name, size, cf, color, neon, transp)
+	local b = Instance.new("Part")
+	b.Name = name
+	b.Anchored = true
+	b.CanCollide, b.CanQuery, b.CanTouch = false, false, false
+	b.CastShadow = false
+	b.Size = size
+	b.CFrame = cf
+	b.Color = color
+	b.Material = neon and Enum.Material.Neon or Enum.Material.SmoothPlastic
+	b.TopSurface, b.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+	b.Transparency = transp or 0
+	b.Parent = parent
+	return b
+end
+local function buildRoom()
+	if hRoom then hRoom:Destroy() end
+	local room = Instance.new("Model")
+	room.Name = "Room"
+	local u = math.max(hDiag / 25, 0.6)
+	local feet = center.Y - hSize.Y / 2
+	local ph = math.max(hSize.Y * 0.08, 0.8 * u)
+	local floorY = feet - ph
+	local cx, cz = center.X, center.Z
+	local wallZ = cz - (hDiag * 0.5 + 18 * u)
+	local DARK = Color3.fromRGB(16, 20, 29)
+	local WALL = Color3.fromRGB(30, 37, 52)
+	local RIB = Color3.fromRGB(37, 45, 62)
+	local VOLTC = Color3.fromRGB(127, 233, 255)
+	hPart(room, "Floor", Vector3.new(2000, 1, 2000), CFrame.new(cx, floorY - 0.5, cz), DARK)
+	for i = -15, 15 do
+		hPart(room, "GridX", Vector3.new(0.25 * u, 0.05, 300 * u), CFrame.new(cx + i * 10 * u, floorY + 0.03, cz), VOLTC, false, 0.82)
+		hPart(room, "GridZ", Vector3.new(300 * u, 0.05, 0.25 * u), CFrame.new(cx, floorY + 0.03, cz + i * 10 * u), VOLTC, false, 0.82)
+	end
+	hPart(room, "Wall", Vector3.new(2000, 1000, 2), CFrame.new(cx, floorY + 500, wallZ - 1), WALL)
+	for i = -12, 12 do
+		hPart(room, "Rib", Vector3.new(0.8 * u, 1000, 0.6), CFrame.new(cx + i * 14 * u, floorY + 500, wallZ + 0.3), RIB)
+	end
+	hPart(room, "RibH", Vector3.new(2000, 0.8 * u, 0.6), CFrame.new(cx, floorY + 18 * u, wallZ + 0.4), RIB)
+	for _, x in ipairs({-30, 30}) do
+		hPart(room, "LightBar", Vector3.new(40 * u, 0.7 * u, 0.4), CFrame.new(cx + x * u, floorY + 22 * u, wallZ + 0.6), VOLTC, true)
+	end
+	for i = -60, 60 do
+		hPart(room, "Hazard", Vector3.new(3 * u, 3 * u, 0.5), CFrame.new(cx + i * 3 * u, floorY + 1.5 * u, wallZ + 0.7),
+			(i % 2 == 0) and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(27, 20, 6))
+	end
+	local rp = hDiag * 0.42
+	local vert = CFrame.Angles(0, 0, math.pi / 2) -- cylinders stand up
+	hPart(room, "Glow", Vector3.new(0.1, rp * 1.7, rp * 1.7), CFrame.new(cx, floorY + 0.06, cz) * vert, VOLTC, true, 0.9).Shape = Enum.PartType.Cylinder
+	hPart(room, "Pedestal", Vector3.new(ph, rp * 2, rp * 2), CFrame.new(cx, floorY + ph / 2, cz) * vert, Color3.fromRGB(44, 54, 72)).Shape = Enum.PartType.Cylinder
+	hPart(room, "Ring", Vector3.new(ph * 0.3, rp * 2 + 0.8 * u, rp * 2 + 0.8 * u), CFrame.new(cx, floorY + ph * 0.45, cz) * vert, VOLTC, true).Shape = Enum.PartType.Cylinder
+	hPart(room, "Top", Vector3.new(0.2, rp * 1.84, rp * 1.84), CFrame.new(cx, feet - 0.05, cz) * vert, Color3.fromRGB(57, 70, 92)).Shape = Enum.PartType.Cylinder
+	room.Parent = scene
+	hRoom = room
+	local n = 0
+	for _, d in ipairs(room:GetChildren()) do if d:IsA("BasePart") then n += 1 end end
+	player:SetAttribute("MainMenuHangarParts", n)
+end
+local hStage = {x = 0, y = 0, w = 100, h = 100} -- the stage area on screen (set by layout)
+local function placeHangarCam()
+	if not hangarOn then return end
+	local W, H = scene.AbsoluteSize.X, scene.AbsoluteSize.Y
+	if W <= 0 or H <= 0 then return end
+	local t = math.tan(math.rad(hcam.FieldOfView / 2))
+	local A = W / H
+	local hh = hSize.Y + 0.12 * hDiag -- the 0.12 camera tilt shows a little of the depth
+	local d = math.max(hDiag * W / (2 * t * A * hStage.w * 0.92), hh * H / (2 * t * hStage.h * 0.9))
+	local cx, cy = hStage.x + hStage.w / 2, hStage.y + hStage.h * 0.45 -- a little above the middle: room for the pedestal
+	local nx = (cx - W / 2) / (W / 2)
+	local ny = (H / 2 - cy) / (H / 2)
+	local dir = Vector3.new(0, -0.12, -1).Unit
+	local look = CFrame.lookAt(Vector3.zero, dir)
+	local pos = center - dir * d - look.RightVector * (nx * d * t * A) - look.UpVector * (ny * d * t)
+	hcam.CFrame = CFrame.lookAt(pos, pos + dir)
+end
+
 -- ---------- preview ----------
 local function previewKey()
 	local c = char()
@@ -560,7 +701,15 @@ local function rebuildPreview()
 	local cf, size = copy:GetBoundingBox()
 	center = cf.Position
 	radius = (math.max(size.X, size.Y, size.Z) * 0.5) / math.tan(math.rad(cam.FieldOfView / 2)) * 1.1
-	copy.Parent = view
+	if hangarOn then -- v1.3: into the hangar, on the pedestal
+		hSize, hBase = size, copy:GetPivot()
+		hDiag = math.sqrt(size.X ^ 2 + size.Z ^ 2)
+		copy.Parent = scene
+		buildRoom()
+		placeHangarCam()
+	else
+		copy.Parent = view
+	end
 	preview = copy
 	player:SetAttribute("MainMenuPreviewParts", parts)
 end
@@ -629,6 +778,8 @@ local function layout()
 	dsub.TextSize = subSize
 	local stageH = math.max(spY - S.gap - S.top, 60)
 	stage.Position, stage.Size = UDim2.fromOffset(lx, S.top), UDim2.fromOffset(lw, stageH)
+	hStage.x, hStage.y, hStage.w, hStage.h = lx, S.top, lw, stageH -- v1.3
+	placeHangarCam()
 	stageCorner.CornerRadius = UDim.new(0, 2.6 * ch)
 	stageStroke.Thickness = math.max(0.35 * ch, 1.5)
 	local tagSize = math.max(1.9 * ch, 11)
@@ -796,14 +947,44 @@ labB.b.Activated:Connect(function() -- v1.2
 end)
 prevB.b.Activated:Connect(function() switchDino(-1) end)
 nextB.b.Activated:Connect(function() switchDino(1) end)
+-- v1.3: the egg while the island loads (this server's mode only; a hop uses the travel loader)
+if script:GetAttribute("MainMenuPlayLoaderEnabled") == nil then script:SetAttribute("MainMenuPlayLoaderEnabled", true) end
+local playShown = false
+local function playLoader(modeName)
+	if script:GetAttribute("MainMenuPlayLoaderEnabled") == false then return end
+	if player:GetAttribute("DinoMode") ~= modeName then return end
+	local loader = game:GetService("ReplicatedFirst"):FindFirstChild("EggLoader")
+	local playFn = loader and loader:FindFirstChild("Play")
+	if playFn then
+		playShown = true
+		pcall(function() playFn:Invoke(modeName == "arena" and "Arena" or "Sandbox") end)
+		player:SetAttribute("MainMenuPlayLoader", "shown")
+	else
+		player:SetAttribute("MainMenuPlayLoader", "none")
+	end
+end
+player:GetAttributeChangedSignal("ModeLastAt"):Connect(function()
+	local r = player:GetAttribute("ModeLastResult")
+	if playShown and (r == "busy" or r == "badArg") then
+		playShown = false
+		local loader = game:GetService("ReplicatedFirst"):FindFirstChild("EggLoader")
+		local hideFn = loader and loader:FindFirstChild("Hide")
+		if hideFn then pcall(function() hideFn:Invoke() end) end
+		player:SetAttribute("MainMenuPlayLoader", "hidden")
+	elseif r == "ok" then
+		playShown = false
+	end
+end)
 sandboxB.bb.b.Activated:Connect(function()
 	press("sandbox")
 	lastPressedMode = "sandbox"
+	playLoader("sandbox") -- v1.3
 	if modeRemote then modeRemote:FireServer("sandbox") end
 end)
 arenaB.bb.b.Activated:Connect(function()
 	press("arena")
 	lastPressedMode = "arena"
+	playLoader("arena") -- v1.3
 	if modeRemote then modeRemote:FireServer("arena") end
 end)
 
@@ -813,6 +994,7 @@ local function setOpen(on)
 	if on == open then return end
 	open = on
 	gui.Enabled = on
+	if hgui then hgui.Enabled = on end -- v1.3
 	player:SetAttribute("MainMenuOpen", on)
 	blur.Parent = workspace.CurrentCamera
 	blur.Enabled = on
@@ -834,6 +1016,12 @@ end
 RunService.RenderStepped:Connect(function(dt)
 	if not open then return end
 	orbit += dt * 0.45
+	if hangarOn then -- v1.3: the dino turns on the pedestal, the camera stays
+		if preview and preview.Parent then
+			preview:PivotTo(CFrame.new(center) * CFrame.Angles(0, orbit, 0) * CFrame.new(-center) * hBase)
+		end
+		return
+	end
 	local off = Vector3.new(math.sin(orbit), 0.32, math.cos(orbit)).Unit * radius
 	cam.CFrame = CFrame.lookAt(center + off, center)
 end)

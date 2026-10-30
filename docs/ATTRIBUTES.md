@@ -1818,3 +1818,22 @@ Lab 1.0 (StarterPlayerScripts.Lab; LocalPlayer attributes set by this client unl
 BindableFunctions under Lab: Open("full" / "compact"), Close(). ScreenGuis: "Lab" (DisplayOrder 45), "LabButton" (DisplayOrder 6, the SKILLS pill: hidden while InMenu and while the compact Lab is open). PC key K toggles the compact Lab while InMenu ~= true.
 MainMenu 1.2: script attribute MainMenuLabEnabled (default true; false = the 1.1 picker); MainMenuLastPress "lab".
 ArenaScope 1.12: ArenaScope_Lab, ArenaScope_LabPreviewServer (ArenaScope_SkillScreen no longer reported).
+
+### Lab 1.1 / 1.2, MainMenu 1.3, EggLoader 1.1, ModeServer 1.1 (dedicated menu, Kepu 2026-10-29)
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| LabBarClearEnabled | Lab script | true | false = the 1.0 bar height (may sit under the Roblox buttons) |
+| LabBarH | player (local) | px | full Lab top bar height |
+| LabSplitTabsEnabled | Lab script | true | false = 1.1 tabs (every mech part on MECH PARTS); read at start |
+| LabPassiveCards | player (local) | 0.. | always-on part cards on the STATS tab |
+| MainMenuHangarEnabled | MainMenu script | true | false = 1.2 see-through menu; read at start |
+| MainMenuHangarParts | player (local) | number | parts in the hangar room |
+| MainMenuPlayLoaderEnabled | MainMenu script | true | false = no egg after SANDBOX / ARENA |
+| MainMenuPlayLoader | player (local) | "shown" / "hidden" / "none" | play egg state |
+| EggLoaderSplashEnabled | EggLoader script | true | false = the 1.0 egg on join; read at start |
+| EggLoaderMode | player (local) | "splash" / "join" / "play" / "arrive" / "travel" | current screen kind |
+| EggLoaderState | player (local) | adds "splash" | |
+| ModeTripPlayEnabled | ModeServer script | true | false = 1.0 (menu on every join, no teleport data); read at start |
+| ModeArrivedPlay | player | true / false | the menu was skipped for a trip arrival |
+
+BindableFunction ReplicatedFirst.EggLoader.Play(target "Sandbox" / "Arena"). ScreenGui "MainMenuHangar" (DisplayOrder 39). Teleport data on hops: {mdaPlay = true, mdaFrom = "sandbox" / "arena"}.

@@ -1,4 +1,4 @@
--- EggLoader v1.0 (Mecha Dino Arena) — the loading screen: a blocky egg in a mecha incubator that keeps cracking while
+-- EggLoader v1.1 (Mecha Dino Arena) — the loading screen: a blocky egg in a mecha incubator that keeps cracking while
 -- the game loads, then a baby T-Rex hatches and, 2 s later, the screen fades into the main menu (LocalScript in
 -- ReplicatedFirst, all devices). MDA-93, plan docs/plans/EGG_LOADER_v1.0.md Task 1, mockup docs/mockups/egg_loading_options.html
 -- option C "Mecha incubator" (Kepu 2026-10-29: "a load screen in between with a Dino egg hatching and a baby Dino sitting
@@ -42,6 +42,23 @@
 --   "hatched" / "fading" / "done" / "travel" / "off"), EggLoaderProgress (0.01), EggLoaderCracks (0..5),
 --   EggLoaderLoadReason ("loaded" / "timeout"), EggLoaderShownFor (s, at the hatch), EggLoaderTrip ("" / "Arena" /
 --   "Sandbox").
+-- v1.1 (Kepu 2026-10-29: "when I load up the game it should go to the main menu ... when I click on arena or bots it should
+--   show the loading screen to allow the island to load"; answers: join = a plain menu-coloured screen, the Arena trip
+--   goes straight into play). Four modes:
+--   * "splash" (join without a trip): the same backdrop and grid, "MECHA DINO" / "ARENA" centred (title 9ch), under it
+--     "LOADING" (volt, max(2.4ch, 12)) with 0..3 dots cycling every 0.4 s and a 24ch x 0.8ch track with a 6ch volt bar
+--     sweeping across it (1.2 s); no pod, gauge or tip. It ends with the fade (0.3 + 0.3 s) once the join rule holds
+--     (below) and at least SPLASH_MIN (0.6) s have passed, or at TIMEOUT. Switch: script attribute EggLoaderSplashEnabled
+--     (default true, read at start; false = the 1.0 egg on join).
+--   * "play" (BindableFunction Play(target), MainMenu 1.3 SANDBOX / ARENA for this server's mode): the egg, caption
+--     "LOADING SANDBOX" / "LOADING ARENA", hatches ("WELCOME TO THE ...!") once the island rule holds: InMenu == false,
+--     ModeParkSlot == 0, the character's HumanoidRootPart exists and a ray 80 studs down from it (character excluded)
+--     hits something; MIN_CRACK and TIMEOUT as before. Hide() also takes a "play" egg down.
+--   * "arrive" (join after a trip, from the arriving teleport gui): the egg, caption "TRAVELING TO ...", hatches when
+--     InMenu == false and the island rule holds (ModeServer 1.1 skips the menu for a trip), or, when InMenu == true,
+--     MainMenuOpen == true (as 1.0); InMenu not set -> MENU_WAIT as before.
+--   * "join" (splash switch off) and "travel": as 1.0.
+--   Diagnostics: EggLoaderState adds "splash"; EggLoaderMode ("splash" / "join" / "play" / "arrive" / "travel").
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local RunService = game:GetService("RunService")
@@ -50,11 +67,13 @@ local ContentProvider = game:GetService("ContentProvider")
 local TeleportService = game:GetService("TeleportService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local MIN_CRACK = 3
 local TIMEOUT = 45
 local HOLD = 2
 local MENU_WAIT = 10
+local SPLASH_MIN = 0.6 -- v1.1
+local GROUND_RAY = 80 -- v1.1
 local CRACK_AT = {0.12, 0.3, 0.5, 0.7, 0.9}
 local VOLT = Color3.fromRGB(127, 233, 255)
 local YELLOW = Color3.fromRGB(255, 200, 50)
@@ -68,6 +87,8 @@ local TIPS = {
 }
 
 if script:GetAttribute("EggLoaderEnabled") == nil then script:SetAttribute("EggLoaderEnabled", true) end
+if script:GetAttribute("EggLoaderSplashEnabled") == nil then script:SetAttribute("EggLoaderSplashEnabled", true) end -- v1.1
+local splashOn = script:GetAttribute("EggLoaderSplashEnabled") ~= false -- v1.1
 local player = Players.LocalPlayer
 player:SetAttribute("EggLoaderVersion", VERSION)
 if script:GetAttribute("EggLoaderEnabled") == false then
@@ -217,7 +238,11 @@ local function build(mode, target)
 	s.tip.TextXAlignment = Enum.TextXAlignment.Left
 	s.tip.TextYAlignment = Enum.TextYAlignment.Top
 	s.tip.Text = TIPS[math.random(1, #TIPS)]
-	if mode == "travel" or target then
+	if mode == "play" then -- v1.1
+		s.caption.Text = "LOADING " .. string.upper(target or "SANDBOX")
+	elseif mode == "splash" then -- v1.1
+		s.caption.Text = "LOADING"
+	elseif mode == "travel" or target then
 		s.caption.Text = "TRAVELING TO " .. string.upper(target or "ARENA")
 	else
 		s.caption.Text = "LOADING THE ISLAND"
@@ -333,6 +358,19 @@ local function build(mode, target)
 	s.pct = label(root, "Percent", Enum.Font.FredokaOne, VOLT)
 	s.pct.Text = "0%"
 
+	if mode == "splash" then -- v1.1: no pod, gauge or tip; a sweeping bar under the caption
+		s.pod.Visible, s.tube.Visible, s.pct.Visible, s.tip.Visible = false, false, false, false
+		s.track = frame(root, "Track", Color3.new(1, 1, 1), 3)
+		s.track.BackgroundTransparency = 0.88
+		s.track.ClipsDescendants = true
+		local tc = Instance.new("UICorner")
+		tc.CornerRadius = UDim.new(1, 0)
+		tc.Parent = s.track
+		s.sweep = frame(s.track, "Sweep", VOLT, 3)
+		local sc = Instance.new("UICorner")
+		sc.CornerRadius = UDim.new(1, 0)
+		sc.Parent = s.sweep
+	end
 	s.cover = frame(gui, "Cover", Color3.fromRGB(10, 12, 18), 20)
 	s.cover.Size = UDim2.fromScale(1, 1)
 	s.cover.BackgroundTransparency = 1
@@ -425,6 +463,31 @@ local function layout(s)
 	s.pct.Position, s.pct.Size = UDim2.fromOffset(gx - 4 * ch, gy + tubeH + 1.2 * ch), UDim2.fromOffset(tubeW + 8 * ch, pctS)
 	s.pct.TextSize = pctS
 	s.ch = ch
+	if s.mode == "splash" then -- v1.1: title + LOADING + sweep, centred
+		local big = 9 * ch
+		local small = big * 0.42
+		local cap = math.max(2.4 * ch, 12)
+		local trackW, trackH = 24 * ch, math.max(0.8 * ch, 4)
+		local total = small + 0.5 * ch + big + 3 * ch + cap + 2 * ch + trackH
+		local y = H / 2 - total / 2
+		for _, l in ipairs({s.titleSmall, s.title, s.titleShadow, s.caption}) do
+			l.TextXAlignment = Enum.TextXAlignment.Center
+		end
+		s.titleSmall.Position, s.titleSmall.Size = UDim2.fromOffset(0, y), UDim2.new(1, 0, 0, small)
+		s.titleSmall.TextSize = small
+		y += small + 0.5 * ch
+		s.title.Position, s.title.Size = UDim2.fromOffset(0, y), UDim2.new(1, 0, 0, big)
+		s.title.TextSize = big
+		s.titleShadow.Position, s.titleShadow.Size = UDim2.fromOffset(0, y + 0.6 * ch), UDim2.new(1, 0, 0, big)
+		s.titleShadow.TextSize = big
+		y += big + 3 * ch
+		s.caption.Position, s.caption.Size = UDim2.fromOffset(0, y), UDim2.new(1, 0, 0, cap)
+		s.caption.TextSize = cap
+		y += cap + 2 * ch
+		s.track.Position, s.track.Size = UDim2.fromOffset((W - trackW) / 2, y), UDim2.fromOffset(trackW, trackH)
+		s.sweep.Size = UDim2.fromOffset(6 * ch, trackH)
+		s.trackW = trackW
+	end
 end
 
 -- ---------- running ----------
@@ -444,9 +507,26 @@ local function rockLevel(p)
 	if p > 0.8 then return 3 elseif p > 0.45 then return 2 elseif p > 0.1 then return 1 else return 0 end
 end
 
+local function onIsland() -- v1.1: out of the menu, not parked, ground under the dino
+	local c = player.Character
+	local hrp = c and c:FindFirstChild("HumanoidRootPart")
+	if not hrp then return false end
+	if player:GetAttribute("InMenu") ~= false then return false end
+	if (tonumber(player:GetAttribute("ModeParkSlot")) or 0) ~= 0 then return false end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {c}
+	return workspace:Raycast(hrp.Position, Vector3.new(0, -GROUND_RAY, 0), params) ~= nil
+end
+
 local function isLoaded(s)
 	if not game:IsLoaded() or not player.Character then return false end
 	local inMenu = player:GetAttribute("InMenu")
+	if s.mode == "play" then -- v1.1
+		return onIsland()
+	elseif s.mode == "arrive" and inMenu == false then -- v1.1
+		return onIsland()
+	end
 	if inMenu == nil then
 		return os.clock() - s.t0 >= MENU_WAIT -- ModeServer off: nothing more to wait for
 	elseif inMenu == true then
@@ -504,7 +584,8 @@ end
 local function start(s)
 	layout(s)
 	s.root:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() layout(s) end)
-	setState(s.mode == "travel" and "travel" or "loading")
+	setState(s.mode == "travel" and "travel" or (s.mode == "splash" and "splash" or "loading"))
+	player:SetAttribute("EggLoaderMode", s.mode) -- v1.1
 	player:SetAttribute("EggLoaderTrip", s.target or "")
 	local conn
 	conn = RunService.RenderStepped:Connect(function()
@@ -517,6 +598,20 @@ local function start(s)
 			return
 		end
 		if s.hatching then return end
+		if s.mode == "splash" then -- v1.1: dots + sweep; fade out once the menu is up
+			s.caption.Text = "LOADING" .. string.rep(".", math.floor(t / 0.4) % 4)
+			if s.trackW then
+				local k = (t % 1.2) / 1.2
+				s.sweep.Position = UDim2.fromOffset(-6 * s.ch + k * (s.trackW + 6 * s.ch), 0)
+			end
+			if t >= SPLASH_MIN and (isLoaded(s) or t >= TIMEOUT) then
+				s.hatching = true
+				player:SetAttribute("EggLoaderLoadReason", t >= TIMEOUT and not isLoaded(s) and "timeout" or "loaded")
+				player:SetAttribute("EggLoaderShownFor", math.floor(t * 10 + 0.5) / 10)
+				task.spawn(finish, s)
+			end
+			return
+		end
 		-- progress
 		local q = ContentProvider.RequestQueueSize
 		if q > s.maxQueue then s.maxQueue = q end
@@ -585,11 +680,19 @@ local hideApi = script:FindFirstChild("Hide") or Instance.new("BindableFunction"
 hideApi.Name = "Hide"
 hideApi.Parent = script
 hideApi.OnInvoke = function()
-	if current and current.mode == "travel" and current.gui.Parent then
+	if current and (current.mode == "travel" or current.mode == "play") and current.gui.Parent then -- v1.1: + play
 		current.gui:Destroy()
 		current = nil
 		setState("done")
 	end
+	return true
+end
+local playApi = script:FindFirstChild("Play") or Instance.new("BindableFunction") -- v1.1
+playApi.Name = "Play"
+playApi.Parent = script
+playApi.OnInvoke = function(target)
+	local t = (target == "Arena") and "Arena" or "Sandbox"
+	show("play", t)
 	return true
 end
 local replayApi = script:FindFirstChild("Replay") or Instance.new("BindableFunction")
@@ -605,4 +708,10 @@ local arriving
 pcall(function() arriving = TeleportService:GetArrivingTeleportGui() end)
 local arrivedFrom = arriving and arriving:GetAttribute("EggLoaderTarget")
 if arriving then arriving:Destroy() end
-show("join", (arrivedFrom == "Arena" or arrivedFrom == "Sandbox") and arrivedFrom or nil)
+if arrivedFrom == "Arena" or arrivedFrom == "Sandbox" then -- v1.1: after a trip -> "arrive"; else the splash
+	show("arrive", arrivedFrom)
+elseif splashOn then
+	show("splash", nil)
+else
+	show("join", nil)
+end
