@@ -1,4 +1,4 @@
--- ArenaTouch v1.2 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.3 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -34,7 +34,7 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -131,6 +131,16 @@ local pounce, pounceLabel, pounceScale = button("Pounce", "POUNCE", nil, 0.195, 
 local leap, leapLabel, leapScale = button("Leap", "LEAP", nil, 0.07, 0.43, 0.095, false, true)
 local pounceMain, pounceMainLabel, pounceMainScale = button("PounceMain", "POUNCE", nil, 0.05, 0.10, 0.135, true) -- v1.2
 pounceMain.Visible = false
+-- v1.3 (Kepu 2026-10-30: "can you rename the pounce button to attack and always assign it to left click on pc. it will be called attack for all dinos because my testers were confused what pounce meant last night"): with script attribute ArenaTouchAttackLabelEnabled
+--   (default true, read at start) the big main attack button reads "ATTACK" for every dino (BITE on the T-Rex,
+--   PounceMain on the raptor). The small POUNCE button (only shown when a dino has both a bite and a pounce) keeps its
+--   name. false = 1.2 labels.
+if script:GetAttribute("ArenaTouchAttackLabelEnabled") == nil then script:SetAttribute("ArenaTouchAttackLabelEnabled", true) end
+if script:GetAttribute("ArenaTouchAttackLabelEnabled") ~= false then
+	pounceMainLabel.Text = "ATTACK"
+	local biteLabel = bite:FindFirstChildWhichIsA("TextLabel")
+	if biteLabel then biteLabel.Text = "ATTACK" end
+end
 leap.InputBegan:Connect(function(input)
 	if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 	leapScale.Scale = 0.92

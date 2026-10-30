@@ -1,4 +1,4 @@
--- AbilityBar v1.5 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.6 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -49,12 +49,15 @@
 --   (TIMED_PARTS: <Prefix>Enabled, <Prefix>Until, <Prefix>ReadyAt, <Prefix>Cooldown; prefixes "Adrenaline" /
 --   "EnergyShield"): off (dimmed 0.5) / active (seconds left) / cooling (fill + seconds, dim 0.25) / ready. Titles come
 --   from the path names as before ("ADRENALINE INJECTOR", "ENERGY SHIELD").
+-- v1.6 (Kepu 2026-10-30: "can you rename the pounce button to attack and always assign it to left click on pc. it will be called attack for all dinos because my testers were confused what pounce meant last night"): with script attribute AbilityBarAttackEnabled (default true, read at start)
+--   the BITE and POUNCE tiles both read "ATTACK" and the Pounce tile's key hint is "LMB" (PounceTest 1.5 binds the left
+--   mouse button). false = 1.5 names and keys.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local char = script.Parent
 local TIMED_PARTS = {adrenaline = "Adrenaline", shield = "EnergyShield"} -- v1.3: part id -> attribute prefix
 TIMED_PARTS.scent, TIMED_PARTS.screech = "Scent", "Screech" -- v1.4: raptor parts batch 2
@@ -82,6 +85,10 @@ local MOVES = {
 	Ram = {enabled = "RamEnabled", enabledDefault = false, key = "E", name = "RAM", cd = "RamCooldown", cdDefault = 6,
 		stamp = "RamPredictedAt", stateAttr = "RamTestState", active = {windup = true, charge = true, recoil = true}},
 }
+if script:GetAttribute("AbilityBarAttackEnabled") == nil then script:SetAttribute("AbilityBarAttackEnabled", true) end -- v1.6
+if script:GetAttribute("AbilityBarAttackEnabled") ~= false then -- v1.6: one name for every dino's main attack
+	MOVES.Bite.name, MOVES.Pounce.name, MOVES.Pounce.key = "ATTACK", "ATTACK", "LMB"
+end
 local SPECIES_MOVES = {Raptor = {"Pounce", "Leap"}, TRex = {"Bite", "Ram"}}
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 local SLOT_KEYS = {"R", "C", "T", "V"} -- v1.2: + T / V (slots 3 / 4)

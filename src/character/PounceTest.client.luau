@@ -1,4 +1,4 @@
--- PounceTest v1.4 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
+-- PounceTest v1.5 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
 -- or the on-screen Pounce button (touch). Bound only while the character attribute PounceEnabled is true (the T-Rex
 -- has no pounce and gets no button).
 -- Flow:
@@ -63,6 +63,13 @@
 --   PounceLetGo (last local release: "jump" / "rejected" / "server:<reason>" / "gone" / "dead" / "orphan" = a late
 --   server latch this client was no longer riding, released at once), PounceTargets
 --   (latchable / pinnable dinos found at launch), PounceKind (v1.1).
+-- v1.5 (Kepu 2026-10-30: "can you rename the pounce button to attack and always assign it to left click on pc. it will be called attack for all dinos because my testers were confused what pounce meant last night"):
+--   on a PC with a mouse (UserInputService.MouseEnabled) the left mouse button also pounces: a second action
+--   "DinoPounceClick" bound to MouseButton1 while PounceEnabled and PounceLeftClickEnabled (character attribute, default
+--   true). A click is ignored while the menu is up (player InMenu), the Lab is open (player LabOpen ~= "closed"), the
+--   skill screen flag is set (SkillScreenOpen) or a text box has focus; it returns Pass so the click still reaches the
+--   camera and the rest of the game. F / gamepad X stay as they are. Diagnostic: PounceClickBound (true / false),
+--   PounceLastInput ("click" once a click has pounced).
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -80,6 +87,7 @@ local DEFAULTS = {PounceEnabled = false, PounceWindup = 0.1, PounceDistance = 20
 	PounceReach = 1.6, PounceLatchStandoff = 2.4, PounceLeapOffSpeed = 30, PounceLeapOffUp = 35,
 	PounceCooldown = 3, PounceStaminaCost = 15, PounceSizeRatio = 1.5, StaminaEnabled = true, StaminaMax = 100,
 	PounceAirEnabled = true} -- v1.4
+DEFAULTS.PounceLeftClickEnabled = true -- v1.5
 local FLIGHT_MAX = 1.0     -- seconds of lunge without contact before it ends
 local CONFIRM_WAIT = 0.6   -- seconds a predicted latch waits for the server
 local FRONT = 0.45         -- share of the body's length ahead of the centre where the sweep starts (~snout tip)
@@ -525,10 +533,44 @@ end
 char:GetAttributeChangedSignal("PounceEnabled"):Connect(applyBinding)
 applyBinding()
 
+-- v1.5: left click = attack (pounce) on PC
+local ACTION_CLICK = "DinoPounceClick"
+local clickBound = false
+local localPlayer = game:GetService("Players").LocalPlayer
+local function onPounceClick(_, inputState, input)
+	if inputState ~= Enum.UserInputState.Begin or not input or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+		return Enum.ContextActionResult.Pass
+	end
+	local lab = localPlayer and localPlayer:GetAttribute("LabOpen")
+	if (localPlayer and localPlayer:GetAttribute("InMenu") == true) or (lab ~= nil and lab ~= "closed")
+		or char:GetAttribute("SkillScreenOpen") == true or UserInputService:GetFocusedTextBox() then
+		return Enum.ContextActionResult.Pass
+	end
+	show("PounceLastInput", "click")
+	tryPress()
+	return Enum.ContextActionResult.Pass
+end
+local function applyClickBinding()
+	local on = get("PounceEnabled") == true and get("PounceLeftClickEnabled") ~= false and UserInputService.MouseEnabled
+	if on and not clickBound then
+		ContextActionService:BindActionAtPriority(ACTION_CLICK, onPounceClick, false, Enum.ContextActionPriority.High.Value,
+			Enum.UserInputType.MouseButton1)
+		clickBound = true
+	elseif not on then
+		ContextActionService:UnbindAction(ACTION_CLICK) -- also clears a binding left by a previous character
+		clickBound = false
+	end
+	show("PounceClickBound", clickBound)
+end
+char:GetAttributeChangedSignal("PounceEnabled"):Connect(applyClickBinding)
+char:GetAttributeChangedSignal("PounceLeftClickEnabled"):Connect(applyClickBinding)
+applyClickBinding()
+
 local function cleanup()
 	stepConn:Disconnect()
 	RunService:UnbindFromRenderStep(BIND)
 	if bound then ContextActionService:UnbindAction(ACTION) end
+	if clickBound then ContextActionService:UnbindAction(ACTION_CLICK) end -- v1.5
 	if holdLV then holdLV.Enabled = false end
 end
 hum.Died:Connect(cleanup)

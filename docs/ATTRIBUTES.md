@@ -1955,6 +1955,10 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | LabSkinsEnabled | Lab script | true | Lab 1.6: SKINS tab in the full Lab; false = 1.5 |
 | LabSkinSelected / LabSkinCards | player (local) | skin id / count | Lab 1.6 diagnostics; LabTab gains "skins" |
 | MainMenuSkinRecopyEnabled | MainMenu script | true | MainMenu 1.7: hangar re-copies on SkinApplied |
+| PounceLeftClickEnabled | character | true | PounceTest 1.5: left mouse button = attack (pounce) on PC; false = F / X only |
+| PounceClickBound / PounceLastInput | character (local) | true-false / "click" | PounceTest 1.5 diagnostics (click binding active / last pounce came from a click) |
+| AbilityBarAttackEnabled | AbilityBar script | true | AbilityBar 1.6: Bite / Pounce tiles read ATTACK, Pounce key LMB; false = 1.5 names |
+| ArenaTouchAttackLabelEnabled | ArenaTouch script | true | ArenaTouch 1.3: big main attack button reads ATTACK; false = BITE / POUNCE |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |
