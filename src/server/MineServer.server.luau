@@ -1,4 +1,4 @@
--- MineServer v1.2 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.3 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -53,13 +53,18 @@
 --   now) is not thrown or dazed by a mine (the shield already blocked the damage); the pop reads "BLOCKED", the zap
 --   flickers 0.3 s, target diagnostic MineBlockedAt. The star jam does not land either (Kepu: "It shouldn't break the
 --   shield if the shield was equipped before stepping on it").
+-- v1.3 (test hook, Kepu: "have a bot drop one in front of you then you test it with a shield"): BindableFunction
+--   "MineTestDrop" under this script (server only; clients cannot reach it). MineTestDrop:Invoke(owner, groundPos, opts)
+--   places a mine owned by owner (a bot model or a character) at groundPos, arming ARM_TIME s later, with opts.dmg (25),
+--   opts.launch (25), opts.daze (1), opts.jam (false); everything else as a thrown mine (the owner is never hit; any
+--   player character and every other bot is a target). Returns "ok" / "badArg". Diagnostic: script MineTestDrops.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local THROW_DIST, ARC_TIME, ARC_HEIGHT, ARM_TIME = 30, 0.6, 8, 0.5
 local TRIGGER, LIFETIME, BLINK = 6, 60, 0.25
 local VOLT, VOLT_CORE = Color3.fromRGB(127, 233, 255), Color3.fromRGB(225, 250, 255)
@@ -560,6 +565,35 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	script:SetAttribute("MineThrown", (script:GetAttribute("MineThrown") or 0) + 1)
 	char:SetAttribute("MineStartedAt", t) -- last: readers react to this one
 end)
+
+-- v1.3: test hook (server only): a mine owned by a bot or a character, dropped at a ground point
+local testDrop = script:FindFirstChild("MineTestDrop")
+if not testDrop then
+	testDrop = Instance.new("BindableFunction")
+	testDrop.Name = "MineTestDrop"
+	testDrop.Parent = script
+end
+testDrop.OnInvoke = function(owner, pos, opts)
+	if typeof(owner) ~= "Instance" or not owner:IsA("Model") or typeof(pos) ~= "Vector3" then return "badArg" end
+	if typeof(opts) ~= "table" then opts = {} end
+	if not chars[owner] then chars[owner] = {hum = owner:FindFirstChildOfClass("Humanoid"), mines = {}} end
+	local t = now()
+	local m = makeMine(owner, pos)
+	m.owner, m.from, m.to, m.t0 = owner, pos, pos, t
+	m.landAt, m.armAt, m.dieAt = t, t + ARM_TIME, t + LIFETIME
+	m.dmg = tonumber(opts.dmg) or 25
+	m.slow, m.slowTime = 0.5, 2
+	m.launch = tonumber(opts.launch) or 25
+	m.daze = tonumber(opts.daze) or 1
+	local jam = false
+	if opts.jam == true then jam = true end
+	m.jam = jam
+	m.state = "flying"
+	table.insert(chars[owner].mines, m)
+	setOut(owner)
+	script:SetAttribute("MineTestDrops", (script:GetAttribute("MineTestDrops") or 0) + 1)
+	return "ok"
+end
 
 local function onCharacter(char)
 	if chars[char] then return end
