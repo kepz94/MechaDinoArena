@@ -1,4 +1,4 @@
--- LabPreviewServer v1.1 (Mecha Dino Arena) — builds the 3D part models the Lab's part cards show. MDA-96, plan
+-- LabPreviewServer v1.2 (Mecha Dino Arena) — builds the 3D part models the Lab's part cards show. MDA-96, plan
 -- docs/plans/LAB_v1.0.md Task 1, mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "Card with the
 -- part's 3D model"; "Add a preview builder").
 -- For each part: a fresh raptor mannequin (ServerStorage.DinoArcade.Models.RaptorModelData built with DinoModelBuilder, as
@@ -18,11 +18,23 @@
 -- v1.1 (Scent Sense mask, ScentServer 1.1): scent comes from ScentServer's BuildPreview (the Breather mask on a
 --   mannequin) like the other parts; when that fails, the 1.0 nose sensor built here is stored instead (scent is then not
 --   listed as missing).
+-- v1.2 (Kepu 2026-10-30: "You need to be able to do this crap for every Dino and its mech parts" ... "Plug and play"):
+--   any part script, for any dino, gets its Lab card model by adding a BindableFunction named "BuildPreview_<pathId>"
+--   under itself; nothing here has to change. Found by name anywhere under ServerScriptService (at start and when added
+--   later). Body (BindableFunction attribute PreviewBody): a dino name ("Raptor" / "TRex" / "Pachy" / any
+--   ServerStorage.DinoArcade.Models.<Dino>ModelData) = a fresh mannequin of that dino is passed in, like the 1.0 raptor;
+--   "none" = Invoke() with no body; not set = the path's owner dino (SkillTree PATHS[id].dino). Mannequins are built once
+--   per dino, on first use. The result goes through the same clean / store as 1.0 (LabPreviews.<pathId>). The 1.0 / 1.1
+--   SOURCES list still runs first and is unchanged; a BuildPreview_<id> for an id already stored is skipped.
+--   Coverage: every live part (SkillTree LIVE_MECH, not soon, owner not "none") without a stored model is listed in
+--   LabPreviewMissing, kept current as models arrive. Diagnostics: LabPreviewPlugged (ids built through 1.2),
+--   LabPreviewBodies (mannequins built). Switch: script attribute LabPreviewPlugEnabled (default true, read at start;
+--   false = 1.1).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local WAIT = 30
 local SOURCES = {
 	{id = "adrenaline", script = "AdrenalineServer", body = true},
@@ -159,6 +171,79 @@ for _, src in ipairs(SOURCES) do
 end
 
 script:SetAttribute("LabPreviewMissing", table.concat(missing, ","))
+
+-- v1.2: plug and play (see the header)
+if script:GetAttribute("LabPreviewPlugEnabled") == nil then script:SetAttribute("LabPreviewPlugEnabled", true) end
+if script:GetAttribute("LabPreviewPlugEnabled") ~= false then
+	local ST
+	pcall(function() ST = require(ServerStorage:WaitForChild("DinoArcade", 10):WaitForChild("SkillTree", 10)) end)
+	local bodies = {Raptor = template or nil} -- [dino] = mannequin, or false when it cannot be built
+	local function body(dino)
+		if bodies[dino] ~= nil then return bodies[dino] or nil end
+		local ok, res = pcall(function()
+			local da = ServerStorage:WaitForChild("DinoArcade", 10)
+			local mod = da:WaitForChild("Models"):FindFirstChild(dino .. "ModelData")
+			if not mod then return nil end
+			return require(da:WaitForChild("DinoModelBuilder")).build(require(mod), {name = "LabMannequin_" .. dino})
+		end)
+		bodies[dino] = (ok and res) or false
+		if not ok then warn("LabPreviewServer: " .. dino .. " mannequin: " .. tostring(res)) end
+		local names = {}
+		for k, v in pairs(bodies) do if v then table.insert(names, k) end end
+		table.sort(names)
+		script:SetAttribute("LabPreviewBodies", table.concat(names, ","))
+		return bodies[dino] or nil
+	end
+	local plugged = {}
+	local function coverage()
+		local out = {}
+		if ST and ST.LIVE_MECH then
+			for id in pairs(ST.LIVE_MECH) do
+				local p = ST.PATHS[id]
+				if p and not p.soon and p.dino ~= "none" and not folder:FindFirstChild(id) then table.insert(out, id) end
+			end
+		end
+		for _, id in ipairs(missing) do
+			if not folder:FindFirstChild(id) and not table.find(out, id) then table.insert(out, id) end
+		end
+		table.sort(out)
+		script:SetAttribute("LabPreviewMissing", table.concat(out, ","))
+	end
+	local function plug(fn)
+		if not fn:IsA("BindableFunction") then return end
+		local id = fn.Name:match("^BuildPreview_(.+)$")
+		if not id or folder:FindFirstChild(id) then return end
+		local want = fn:GetAttribute("PreviewBody")
+		if want == nil and ST and ST.PATHS[id] then want = ST.PATHS[id].dino end
+		local m
+		if type(want) == "string" and want ~= "none" and want ~= "All" then
+			m = body(want)
+			if not m then warn("LabPreviewServer: " .. id .. ": no " .. want .. " mannequin") coverage() return end
+		end
+		local ok, res = pcall(function()
+			if m then
+				local c = m:Clone()
+				c:PivotTo(CFrame.new())
+				local r = fn:Invoke(c)
+				if r then r.Parent = nil end
+				c:Destroy()
+				return r
+			end
+			return fn:Invoke()
+		end)
+		if ok and typeof(res) == "Instance" and res:IsA("Model") then
+			store(id, res)
+			table.insert(plugged, id)
+			script:SetAttribute("LabPreviewPlugged", table.concat(plugged, ","))
+		elseif not ok then
+			warn("LabPreviewServer: " .. id .. ": " .. tostring(res))
+		end
+		coverage()
+	end
+	for _, d in ipairs(ServerScriptService:GetDescendants()) do plug(d) end
+	ServerScriptService.DescendantAdded:Connect(function(d) task.defer(plug, d) end)
+	coverage()
+end
 if not template then
 	script:SetAttribute("LabPreviewState", "noTemplate")
 else

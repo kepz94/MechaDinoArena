@@ -1,4 +1,4 @@
--- HookServer v1.4 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.5 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -55,13 +55,18 @@
 --   arm; "ArmR" = 1.3). Every arm use follows it: the shot origin (Root), the hidden parts (<seg>_fore / _hand /
 --   _claw1-3), the prosthesis / launcher (<seg>_fore, _hand, _upper). Character attribute HookArmSeg (the segment, set
 --   when the character comes in) tells HookPose 1.2 which arm to lift.
+-- v1.5 (Kepu 2026-10-30: "You need to be able to do this crap for every Dino and its mech parts ... Plug and play"):
+--   BindableFunction "BuildPreview_hookarm" under this script (server only) for the Lab card (LabPreviewServer 1.2 finds
+--   it by name): Invoke(pachy mannequin) sets HookLook true on it, runs the same setLook as on a player and returns its
+--   "Mecha_HookArm" model (nil when nothing was built). The live hook is unchanged. Switch: script attribute
+--   HookServerPreviewEnabled (default true; false -> returns nil).
 -- Switch: script attribute HookServerEnabled (default true, read at start). Diagnostics: script HookServerVersion,
 --   HookShots, HookHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25) -- v1.1 clamp; v1.2 min -8 -> -2
 local WINDUP = 0.15        -- s arm raise before the claw flies
 local CLAW_SPEED = 220     -- studs/s (world)
@@ -536,3 +541,18 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.5: the Lab card model (plug and play: LabPreviewServer 1.2 finds BuildPreview_<pathId>)
+if script:GetAttribute("HookServerPreviewEnabled") == nil then script:SetAttribute("HookServerPreviewEnabled", true) end
+do
+	local fn = Instance.new("BindableFunction")
+	fn.Name = "BuildPreview_hookarm"
+	fn.OnInvoke = function(model)
+		if script:GetAttribute("HookServerPreviewEnabled") == false or typeof(model) ~= "Instance" then return nil end
+		model:SetAttribute("Species", "Pachy")
+		model:SetAttribute("HookLook", true)
+		setLook(model)
+		return model:FindFirstChild("Mecha_HookArm")
+	end
+	fn.Parent = script
+end

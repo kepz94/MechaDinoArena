@@ -1,4 +1,4 @@
--- MedStationServer v1.0 (Mecha Dino Arena) — the pachy's Med-Station, a Health slot part (path "medstation"). MDA-125,
+-- MedStationServer v1.1 (Mecha Dino Arena) — the pachy's Med-Station, a Health slot part (path "medstation"). MDA-125,
 -- plan docs/plans/PACHY_MEDSTATION_v1.0.md, mockup docs/mockups/pachy_medstation_options.html look "C · Pulse pad".
 -- Kepu 2026-10-30: "drop a Machine that provides heals in an area for 5 seconds and heals your health up to 50 percent in
 --   those 5 seconds. It can't be dropped while pinned down by another dinosaur or stunned. This gives the pachy heals but
@@ -31,12 +31,18 @@
 -- Settings: script attribute MedStationServerEnabled (default true; false refuses drops and removes running pads).
 -- Diagnostics: script MedStationServerVersion, MedRequests, MedDrops; character MedServerResult, MedCount, MedInside,
 --   MedHealed, MedHealedTotal, MedEndReason.
+-- v1.1 (Kepu 2026-10-30: "You need to be able to do this crap for every Dino and its mech parts ... Plug and play"):
+--   BindableFunction "BuildPreview_medstation" under this script (server only) for the Lab card (LabPreviewServer 1.2,
+--   PreviewBody "none": no dino needed): Invoke() builds the same pulse pad with the same build code (scale 1) and a
+--   PREVIEW_RADIUS (5) stud dashed ring so it fits a card, and returns it (not left in Workspace). Switch: script attribute
+--   MedStationServerPreviewEnabled (default true).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
+local PREVIEW_RADIUS = 5 -- v1.1
 local TICK = 0.25
 local PAD_SIZE = 3.5
 local EDGE_PIECES = 24
@@ -277,3 +283,21 @@ end)
 Players.PlayerRemoving:Connect(function(player)
 	if player.Character then stop(player.Character, "removed") end
 end)
+
+-- v1.1: the Lab card model (plug and play: LabPreviewServer 1.2 finds BuildPreview_<pathId>)
+if script:GetAttribute("MedStationServerPreviewEnabled") == nil then script:SetAttribute("MedStationServerPreviewEnabled", true) end
+do
+	local fn = Instance.new("BindableFunction")
+	fn.Name = "BuildPreview_medstation"
+	fn:SetAttribute("PreviewBody", "none")
+	fn.OnInvoke = function()
+		if script:GetAttribute("MedStationServerPreviewEnabled") == false then return nil end
+		local stand = Instance.new("Model") -- stands in for the owner (scale 1, a name)
+		stand.Name = "LabPreview"
+		local m = build(stand, Vector3.zero, PREVIEW_RADIUS)
+		m.Parent = nil
+		stand:Destroy()
+		return m
+	end
+	fn.Parent = script
+end

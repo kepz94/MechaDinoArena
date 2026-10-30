@@ -2104,3 +2104,15 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | SkillEffectsMedEnabled | script (SkillEffects) | default true; false = 1.21 (Med* not written, 8 s heal not skipped) |
 | MechaButtonsMedEnabled / AbilityBarMedEnabled | script | default true; false = no Med-Station entry on the buttons / bar |
 Pad: Workspace.MedStations.MedPad (MedOwner, MedState) with Base, Rim, Core (+ PointLight Glow), Edge_1..24, MedWave; owner gets MedHealPop "+N".
+
+## Lab card models, plug and play (LabPreviewServer 1.2)
+Every new mech part, for any dino, ships its Lab card model by adding under its own server script:
+`BindableFunction "BuildPreview_<pathId>"` — Invoke(mannequin) builds the part on the given body with the same code as the live part and returns its Model (or nil).
+| Attribute | Where | Meaning |
+|---|---|---|
+| PreviewBody | the BindableFunction | dino name ("Raptor" / "TRex" / "Pachy" / any Models.<Dino>ModelData) or "none" (Invoke() with no body); not set = the path's owner dino |
+| LabPreviewPlugEnabled | script (LabPreviewServer) | default true; false = 1.1 (SOURCES list only) |
+| LabPreviewPlugged | script (LabPreviewServer) | ids built through BuildPreview_<id> |
+| LabPreviewBodies | script (LabPreviewServer) | mannequins built (one per dino, on first use) |
+| LabPreviewMissing | script (LabPreviewServer) | live parts (LIVE_MECH, not soon) still without a model — empty = every live card has one |
+| HookServerPreviewEnabled / MechaLegsServerPreviewEnabled / MedStationServerPreviewEnabled | script | default true; false = that card shows "?" |

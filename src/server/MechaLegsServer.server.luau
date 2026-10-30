@@ -1,4 +1,4 @@
--- MechaLegsServer v1.0 (Mecha Dino Arena) — puts the pachy's Mecha Legs on (Mecha Legs star). MDA-123, plan
+-- MechaLegsServer v1.1 (Mecha Dino Arena) — puts the pachy's Mecha Legs on (Mecha Legs star). MDA-123, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop B Task 10, mockup docs/mockups/pachy_parts_options.html "A · Piston shins".
 -- Who: player characters with Species "Pachy". While the character attribute MechaLegsLook (SkillEffects 1.15) is true
 --   the model "Mecha_Legs" is built: on each shin (segment ShinL / ShinR, part "<seg>_shin") a steel cover wrapping it
@@ -6,9 +6,13 @@
 --   lower end). Welded, massless, no collision, colours no skin role uses (SkinServer never paints them). Removed when
 --   MechaLegsLook turns false. Built on the server, so every client sees it.
 -- Diagnostics (character): MechaLegsBuilt (parts made). Switch: script attribute MechaLegsServerEnabled (default true).
+-- v1.1 (Kepu 2026-10-30: "You need to be able to do this crap for every Dino and its mech parts ... Plug and play"):
+--   BindableFunction "BuildPreview_mechalegs" under this script (server only) for the Lab card (LabPreviewServer 1.2):
+--   Invoke(pachy mannequin) sets MechaLegsLook true on it, runs the same apply as on a player and returns its "Mecha_Legs"
+--   model. The live legs are unchanged. Switch: script attribute MechaLegsServerPreviewEnabled (default true).
 local Players = game:GetService("Players")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local STEEL, DARK = Color3.fromRGB(154, 166, 184), Color3.fromRGB(93, 104, 120)
 script:SetAttribute("MechaLegsServerVersion", VERSION)
 if script:GetAttribute("MechaLegsServerEnabled") == nil then script:SetAttribute("MechaLegsServerEnabled", true) end
@@ -77,3 +81,18 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.1: the Lab card model (plug and play: LabPreviewServer 1.2 finds BuildPreview_<pathId>)
+if script:GetAttribute("MechaLegsServerPreviewEnabled") == nil then script:SetAttribute("MechaLegsServerPreviewEnabled", true) end
+do
+	local fn = Instance.new("BindableFunction")
+	fn.Name = "BuildPreview_mechalegs"
+	fn.OnInvoke = function(model)
+		if script:GetAttribute("MechaLegsServerPreviewEnabled") == false or typeof(model) ~= "Instance" then return nil end
+		model:SetAttribute("Species", "Pachy")
+		model:SetAttribute("MechaLegsLook", true)
+		apply(model)
+		return model:FindFirstChild("Mecha_Legs")
+	end
+	fn.Parent = script
+end
