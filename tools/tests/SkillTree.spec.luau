@@ -1,4 +1,4 @@
--- SkillTree.spec v1.15 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.16 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 -- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
 -- v1.10: Shock Dart (screech shown as "Shock Dart", range 100 / 135; the 35% range check reads the data)
@@ -7,6 +7,7 @@
 -- v1.13: Shock Mine blast + launch (damage 25, launch 25, daze 1)
 -- v1.14: Shock Cannon star = heavy shot (30 damage, stun 1.1, no jam); Decoy hidden
 -- v1.15: Grapple, Dart Launcher, Pack Beacon, Decoy Hologram deleted from the tree
+-- v1.16: SkillTree 1.19 — no Jaws for the pachy (notFor Pachy), raptor rule kept, T-Rex still sees Jaws
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -384,6 +385,12 @@ eq("mine 0 launch", R("traps", 0).mineLaunch, 0); eq("mine I launch", R("traps",
 eq("mine I daze", R("traps", 1).mineDaze, 1); eq("mine star launch", R("traps", 4).mineLaunch, 25)
 local tx2 = ST.effects({scent = 4, screech = 4}, "TRex")
 eq("TRex scent", tx2.scentRadius, 0); eq("TRex screech", tx2.screechRange, 0)
+
+-- v1.16: pachy (SkillTree 1.19)
+eq("jaws notFor Pachy", ST.PATHS.jaws.notFor.Pachy, true)
+eq("jaws notFor Raptor kept", ST.PATHS.jaws.notFor.Raptor, true)
+eq("jaws TRex shown", ST.PATHS.jaws.notFor.TRex == nil, true)
+eq("PACHY_NO_JAWS", ST.PACHY_NO_JAWS, true)
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

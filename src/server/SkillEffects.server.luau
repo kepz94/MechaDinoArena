@@ -1,4 +1,4 @@
--- SkillEffects v1.11 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.12 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -57,6 +57,10 @@
 --   only while bought AND slotted: MineEnabled, MineDamage, MineSlow (speed multiplier, 1 when off), MineSlowTime,
 --   MineCooldown, MineMax, MineJam (MineServer 1.0 / MechaButtons 1.11 / AbilityBar 1.5 read them).
 -- v1.10 (MDA-81; SkillTree 1.13): + MineLaunch (studs) and MineDaze (s), 0 when off (MineServer 1.1).
+-- v1.12 (pachy headbutt, MDA-120, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 10): a new HeadbuttHitAt (HeadbuttServer
+--   1.0, set last) counts as a hit like a bite: onHit with HeadbuttHitDamage / HeadbuttHitTarget (lifesteal heals
+--   lifesteal x damage; Jaws' bleed / crush only if bought, and SkillTree 1.19 keeps Jaws off the pachy). Switch: script
+--   attribute SkillEffectsHeadbuttEnabled (default true, read at start; false = 1.11).
 -- v1.11 (MDA-83; SkillTree 1.14): + ScreechDamage (Shock Cannon star heavy shot, 30; 0 otherwise or when off).
 -- v1.7 (Kepu 2026-10-29: thrusters "a little more of a speed boost" -> "2x run speed"): SkillDashSpeedMul default 2
 --   (was 1.75).
@@ -73,7 +77,9 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.11"
+local VERSION = "1.12"
+if script:GetAttribute("SkillEffectsHeadbuttEnabled") == nil then script:SetAttribute("SkillEffectsHeadbuttEnabled", true) end -- v1.12
+local HEADBUTT_HITS = script:GetAttribute("SkillEffectsHeadbuttEnabled") ~= false
 local TICK = 0.25
 local BLEED_TICK = 0.5
 local COOLDOWNS = {BiteCooldown = 0.8, PounceCooldown = 3, RamCooldown = 6, JumpCooldown = 0.5}
@@ -358,6 +364,11 @@ local function onCharacter(player, char)
 	char:GetAttributeChangedSignal("PounceBiteAt"):Connect(function()
 		onHit(char, st, char:GetAttribute("PounceHitDamage"), char:GetAttribute("PounceLatchTarget"), true) -- v1.6: pounce
 	end)
+	if HEADBUTT_HITS then -- v1.12: pachy headbutt
+		char:GetAttributeChangedSignal("HeadbuttHitAt"):Connect(function()
+			onHit(char, st, char:GetAttribute("HeadbuttHitDamage"), char:GetAttribute("HeadbuttHitTarget"))
+		end)
+	end
 	char:GetAttributeChangedSignal("BiteEnabled"):Connect(function() applyChar(char, st) end)
 	char:GetAttributeChangedSignal("StunnedUntil"):Connect(function()
 		local untilT, t = char:GetAttribute("StunnedUntil"), now()

@@ -1,4 +1,4 @@
--- ArenaPvP v1.0 (Mecha Dino Arena) — in the Arena, bites, pounces and Blade Claws hurt other players. MDA-89, plan
+-- ArenaPvP v1.1 (Mecha Dino Arena) — in the Arena, bites, pounces and Blade Claws hurt other players. MDA-89, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 5, ADR-005 (Kepu 2026-10-29: "Add player damage in this plan"; Arena = the same island,
 -- no bots, PvP on; the Sandbox keeps no player damage).
 -- BiteServer / PounceServer are not changed: they damage a model's DummyHealth when the model has Bitable = true (and, for
@@ -24,6 +24,10 @@
 --     no scripts, Species "TRex", ArenaPvPTestTarget = true so PlaceGate keeps it, HumanoidRootPart anchored, 200 / 200)
 --     25 studs in front of nearCharacter, bridged like a player (Bitable set one frame after it is in Workspace); an older one is
 --     removed. Returns the model, or nil when the mode is "sandbox" or the switch is off.
+-- v1.1 (pachy headbutt, MDA-120, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 10): attacker credit also when a player's
+--   character HeadbuttHitAt changes (HeadbuttServer 1.0, set last) and its HeadbuttHitTarget is a bridged character's
+--   name -> LastHitBy / LastHitAt as for a bite. Switch: script attribute ArenaPvPHeadbuttEnabled (default true, read at
+--   start; false = 1.0, no headbutt credit). The headbutt damage itself already goes through DummyHealth (the bridge).
 -- Switch: script attribute ArenaPvPEnabled (default true), read at start. false -> nothing is bridged (ArenaPvPState "off").
 -- Diagnostics: script ArenaPvPVersion, ArenaPvPState ("arena" / "sandbox" / "off"), ArenaPvPHits (damaging drops),
 --   ArenaPvPBlocked (drops the shield took); character ArenaPvPLastDelta, ArenaPvPBridged (true while bridged).
@@ -31,11 +35,12 @@ local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local TEST_DIST = 25
 
 script:SetAttribute("ArenaPvPVersion", VERSION)
 if script:GetAttribute("ArenaPvPEnabled") == nil then script:SetAttribute("ArenaPvPEnabled", true) end
+if script:GetAttribute("ArenaPvPHeadbuttEnabled") == nil then script:SetAttribute("ArenaPvPHeadbuttEnabled", true) end -- v1.1
 script:SetAttribute("ArenaPvPHits", 0)
 script:SetAttribute("ArenaPvPBlocked", 0)
 
@@ -120,6 +125,14 @@ local function watchAttacker(char)
 			if model ~= char and part and part:IsDescendantOf(model) then credit(model, char) end
 		end
 	end)
+	if script:GetAttribute("ArenaPvPHeadbuttEnabled") ~= false then -- v1.1
+		char:GetAttributeChangedSignal("HeadbuttHitAt"):Connect(function()
+			local name = char:GetAttribute("HeadbuttHitTarget")
+			for model in pairs(bridged) do
+				if model ~= char and model.Name == name then credit(model, char) end
+			end
+		end)
+	end
 end
 
 local test = Instance.new("BindableFunction")

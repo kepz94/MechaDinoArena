@@ -2005,6 +2005,10 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | AbilityBar_Headbutt / AbilityBarHeadbuttPips / AbilityBarHeadbuttSlowed | pachy character (client) | stunned / active / empty / ready; "n/max"; bool | AbilityBar 1.7 diagnostics |
 | ArenaTouchHeadbuttEnabled | ArenaTouch script | true | ArenaTouch 1.5 headbutt button (false = 1.4) |
 | ArenaTouchHeadbuttPips / ArenaTouchMainButton | pachy character (client) | "n/max"; + "Headbutt" | ArenaTouch 1.5 diagnostics |
+| ArenaPvPHeadbuttEnabled | ArenaPvP script | true | ArenaPvP 1.1 headbutt credit (false = 1.0) |
+| SkillEffectsHeadbuttEnabled | SkillEffects script | true | SkillEffects 1.12 headbutt onHit (false = 1.11) |
+| SkillTree.PACHY_NO_JAWS | SkillTree module constant | true | SkillTree 1.19: no Jaws path for the pachy; false = 1.18 |
+| ArenaScope_HeadbuttServer / _HeadbuttTest / _HeadbuttShove / _HeadbuttFX | ArenaScope script | "on" | ArenaScope 1.18 checks |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
 | ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |

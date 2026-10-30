@@ -1,4 +1,4 @@
--- SkillTree v1.18 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.19 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -213,6 +213,9 @@ SkillTree.AREAS = {
 --   attack instead of pounce: Blade Claws I / III / star, Cloak Field I / III, Sprint Legs III. Sprint Legs III names
 --   "the raptor's attack" because moveCdMul does not touch the T-Rex bite (SkillEffects skips BiteCooldown). Texts only;
 --   no effect changes. ATTACK_WORDING = false restores 1.17 texts.
+-- v1.19 (pachy, MDA-120, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 10; Kepu 2026-10-30 "Own attack line"): with
+--   SkillTree.PACHY_NO_JAWS (default true) PATHS.jaws.notFor gains Pachy (its attack line is Battering Dome, Drop 2).
+--   The pachy sees the shared paths except Jaws, plus no dino-owned paths yet. false = 1.18.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -397,6 +400,12 @@ if SkillTree.ATTACK_WORDING then
 	P.cloak.steps[1] = "Button: nearly invisible for 3 s; bots lose you. Ends when you attack, get hit or use another part"
 	P.cloak.steps[3] = "An attack out of the cloak hits 35% harder"
 	P.legs.steps[3] = "Ram, leap and the raptor's attack recharge 35% faster"
+end
+-- v1.19: no Jaws for the pachy
+SkillTree.PACHY_NO_JAWS = true
+if SkillTree.PACHY_NO_JAWS then
+	SkillTree.PATHS.jaws.notFor = SkillTree.PATHS.jaws.notFor or {}
+	SkillTree.PATHS.jaws.notFor.Pachy = true
 end
 
 -- level curve
