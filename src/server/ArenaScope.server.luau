@@ -1,4 +1,4 @@
--- ArenaScope v1.19 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.20 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -40,10 +40,11 @@
 --   HeadbuttTest / HeadbuttShove (StarterCharacterScripts) and HeadbuttFX (StarterPlayerScripts) expected on.
 -- v1.19 (pachy Drop 2 + Grappling Hook): PachyLook, HookServer (ServerScriptService), HookPull (StarterCharacterScripts)
 --   and HookFX (StarterPlayerScripts) expected on.
+-- v1.20 (pachy Mecha Legs): MechaLegsServer (ServerScriptService) and MechaLegsFX (StarterPlayerScripts) expected on.
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.19"
+local VERSION = "1.20"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 local SPS = StarterPlayer:WaitForChild("StarterPlayerScripts") -- v1.6
 local RF = game:GetService("ReplicatedFirst") -- v1.11
@@ -100,6 +101,7 @@ local SCOPE = {
 	{SSS, "SkinServer", true}, -- v1.17
 	{SSS, "HeadbuttServer", true}, {SCS, "HeadbuttTest", true}, {SCS, "HeadbuttShove", true}, {SPS, "HeadbuttFX", true}, -- v1.18
 	{SSS, "PachyLook", true}, {SSS, "HookServer", true}, {SCS, "HookPull", true}, {SPS, "HookFX", true}, -- v1.19
+	{SSS, "MechaLegsServer", true}, {SPS, "MechaLegsFX", true}, -- v1.20
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)

@@ -1,6 +1,11 @@
--- JumpTest v1.0 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
+-- JumpTest v1.1 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
 -- button. Only active while the character attribute JumpEnabled is true (default false: the T-Rex keeps the
 -- default Roblox jump untouched).
+-- v1.1 (pachy Mecha Legs star, MDA-123): while JumpDoubleEnabled (SkillEffects 1.15) is true, a NEW jump press (the
+--   key / button released and pressed again) in mid-air during a leap gives one double jump per leap: vertical speed set
+--   to JumpLaunchPower x JumpDoubleMul (0.894 = 80% of a leap's height), horizontal speed kept, the air hold keeps going;
+--   DinoJumpDoubleRequest(stamp) tells JumpServer 1.2 (JumpDoubleAt for every client). Local JumpDoublePredictedAt (this
+--   client's FX). Diagnostics: JumpDoubleLocal ("ready" / "used"), JumpDoubleLocalCount. Switch: JumpDoubleEnabled.
 -- While enabled, the Humanoid's built-in Jumping state is turned off, so a press never jumps straight away. Instead:
 --   1. Press (when allowed): JumpPredictedAt = server time (this client only, so the crouch shows at once) and
 --      DinoJumpRequest:FireServer(that time) (JumpServer 1.0 validates and sets the replicated JumpStartedAt).
@@ -203,10 +208,29 @@ local function launch()
 	takeoffY, peakY = hrp.Position.Y, hrp.Position.Y
 	launchPos = hrp.Position
 	state = "air"
+	doubleUsed = false -- v1.1
+	show("JumpDoubleLocal", "ready")
 	show("JumpLaunchCount", (char:GetAttribute("JumpLaunchCount") or 0) + 1)
 	show("JumpTakeoffSpeed", math.floor(takeoff * 2 + 0.5) / 2)
 	show("JumpBoostApplied", boosted)
 	show("JumpLeapSpeed", math.floor(leapSpeed * 2 + 0.5) / 2)
+end
+
+-- v1.1: Mecha Legs double jump
+local doubleUsed, wasHeld = false, false
+local doubleRemote
+local function doubleJump()
+	doubleUsed = true
+	local v = hrp.AssemblyLinearVelocity
+	local power = get("JumpLaunchPower") * (tonumber(char:GetAttribute("JumpDoubleMul")) or 0.894)
+	hrp.AssemblyLinearVelocity = Vector3.new(v.X, power, v.Z) -- in the air: the velocity alone (no Jumping state)
+	takeoffY = math.min(takeoffY, hrp.Position.Y)
+	local s = workspace:GetServerTimeNow()
+	char:SetAttribute("JumpDoublePredictedAt", s)
+	doubleRemote = doubleRemote or ReplicatedStorage:FindFirstChild("DinoJumpDoubleRequest")
+	if doubleRemote then doubleRemote:FireServer(s) end
+	show("JumpDoubleLocal", "used")
+	show("JumpDoubleLocalCount", (char:GetAttribute("JumpDoubleLocalCount") or 0) + 1)
 end
 
 local function land(result)
@@ -228,6 +252,12 @@ local conn = RunService.PreSimulation:Connect(function()
 		return
 	end
 	local now = os.clock()
+	local held = jumpHeld() -- v1.1: press edge for the double jump
+	local pressed = held and not wasHeld
+	wasHeld = held
+	if state == "air" and leftGround and pressed and not doubleUsed and char:GetAttribute("JumpDoubleEnabled") == true then
+		doubleJump()
+	end
 	if state == "ready" then
 		if jumpHeld() then tryPress() end
 	elseif state == "crouch" then

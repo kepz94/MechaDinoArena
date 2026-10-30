@@ -1,4 +1,4 @@
--- SkillEffects v1.14 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.15 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -57,6 +57,12 @@
 --   only while bought AND slotted: MineEnabled, MineDamage, MineSlow (speed multiplier, 1 when off), MineSlowTime,
 --   MineCooldown, MineMax, MineJam (MineServer 1.0 / MechaButtons 1.11 / AbilityBar 1.5 read them).
 -- v1.10 (MDA-81; SkillTree 1.13): + MineLaunch (studs) and MineDaze (s), 0 when off (MineServer 1.1).
+-- v1.15 (pachy Mecha Legs, MDA-123; SkillTree 1.22): on a pachy with the line bought: JumpBoost = SkillBase_JumpBoost x
+--   legsBoostMul, JumpLaunchPower = SkillBase_JumpLaunchPower x legsPowerMul (bases kept at the first write), JumpCooldown =
+--   legsCooldown x legsCdMul x moveCdMul (one cooldown for the leap and its double jump), JumpDoubleEnabled (star),
+--   JumpDoubleMul 0.894 (80% of a leap's height), MechaLegsLook (star). Not bought / not a pachy / effects off -> the
+--   bases back, JumpDoubleEnabled / MechaLegsLook false (JumpCooldown stays the 1.14 value). Switch: script attribute
+--   SkillEffectsLegsEnabled (default true, read at start; false = 1.14).
 -- v1.14 (pachy Grappling Hook, MDA-121; SkillTree 1.21): HookEnabled (bought, in a slot, Species "Pachy", effects on),
 --   HookRange, HookCooldown, HookDamage (0 when off) and HookLook (= HookEnabled; the wrist claw is shown). HookServer 1.0
 --   reads them. A new HookHitAt runs onHit like a bite (lifesteal). Switch: script attribute SkillEffectsHookEnabled
@@ -86,7 +92,9 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.14"
+local VERSION = "1.15"
+if script:GetAttribute("SkillEffectsLegsEnabled") == nil then script:SetAttribute("SkillEffectsLegsEnabled", true) end -- v1.15
+local LEGS_ON = script:GetAttribute("SkillEffectsLegsEnabled") ~= false
 if script:GetAttribute("SkillEffectsHookEnabled") == nil then script:SetAttribute("SkillEffectsHookEnabled", true) end -- v1.14
 local HOOK_ON = script:GetAttribute("SkillEffectsHookEnabled") ~= false
 if script:GetAttribute("SkillEffectsDomeEnabled") == nil then script:SetAttribute("SkillEffectsDomeEnabled", true) end -- v1.13
@@ -252,6 +260,23 @@ local function applyChar(char, st)
 		char:SetAttribute("HookCooldown", hkOn and e.hookCooldown or 0)
 		char:SetAttribute("HookDamage", hkOn and e.hookDamage or 0)
 		char:SetAttribute("HookLook", hkOn)
+	end
+	if LEGS_ON then -- v1.15: Mecha Legs (pachy only, passive)
+		local mlOn = live and char:GetAttribute("Species") == "Pachy" and (e.legsCooldown or 0) > 0
+		for _, k in ipairs({"JumpBoost", "JumpLaunchPower"}) do
+			if char:GetAttribute("SkillBase_" .. k) == nil and char:GetAttribute(k) ~= nil then
+				char:SetAttribute("SkillBase_" .. k, char:GetAttribute(k))
+			end
+		end
+		local bBoost, bPower = char:GetAttribute("SkillBase_JumpBoost"), char:GetAttribute("SkillBase_JumpLaunchPower")
+		if bBoost then writeOwn(st, char, "JumpBoost", round(bBoost * (mlOn and e.legsBoostMul or 1), 0.01)) end
+		if bPower then writeOwn(st, char, "JumpLaunchPower", round(bPower * (mlOn and e.legsPowerMul or 1), 0.01)) end
+		if mlOn then
+			writeOwn(st, char, "JumpCooldown", round(e.legsCooldown * (e.legsCdMul or 1) * (e.moveCdMul or 1), 0.01))
+		end
+		char:SetAttribute("JumpDoubleEnabled", mlOn and e.doubleJump == true)
+		char:SetAttribute("JumpDoubleMul", 0.894)
+		char:SetAttribute("MechaLegsLook", mlOn and e.legsLook == true)
 	end
 end
 

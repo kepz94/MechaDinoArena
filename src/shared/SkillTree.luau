@@ -1,4 +1,4 @@
--- SkillTree v1.21 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.22 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -226,6 +226,13 @@ SkillTree.AREAS = {
 --   part "hookarm" ("Grappling Hook", mecha, live, OWNER Pachy, BUTTONS) is appended to the attack area, PATHS and
 --   PATH_ORDER (new id; the deleted raptor "grapple" stays unknown). Effects (0 when not bought): hookRange (I 60, II 80),
 --   hookCooldown (I 8, III 6), hookDamage (I 10, star 15). false = 1.20 (no line).
+-- v1.22 (pachy Mecha Legs, MDA-123, plan docs/plans/PACHY_PARTS_v1.0.md Drop B; mockup "A · Piston shins"; Kepu
+--   2026-10-30: "they should have a cool down since this is a boosted jump" -> "One shared cooldown", "6 s; III = 35%
+--   faster"): with SkillTree.MECHA_LEGS (default true) the pachy's passive mecha part "mechalegs" ("Mecha Legs", live,
+--   OWNER Pachy, not a button) is appended to the speed area, PATHS and PATH_ORDER. Effects (1 / 0 / false when not
+--   bought): legsBoostMul (I: 1.25, leap forward boost), legsPowerMul (II: 1.2, leap launch power), legsCooldown (from I:
+--   6 s, one cooldown for the whole leap incl. its double jump), legsCdMul (III: 0.65), doubleJump + legsLook (star).
+--   false = 1.21 (no line).
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -446,6 +453,24 @@ if SkillTree.HOOK_ARM and not SkillTree.PATHS.hookarm then
 	end
 	SkillTree.PATHS.hookarm = p
 	table.insert(SkillTree.PATH_ORDER, "hookarm")
+end
+-- v1.22: the pachy's Mecha Legs (passive part)
+SkillTree.MECHA_LEGS = true
+if SkillTree.MECHA_LEGS and not SkillTree.PATHS.mechalegs then
+	local p = path("mechalegs", "Mecha Legs", true, false, {
+		"Piston-boosted leap: 25% farther forward. The leap now has a 6 s cooldown",
+		"Leap 20% higher",
+		"The leap cooldown recharges 35% faster (3.9 s)",
+		"Mecha legs: jump again in mid-air (double jump), part of the same leap"})
+	p.area = "speed"
+	p.dino = "Pachy"
+	SkillTree.OWNER.mechalegs = "Pachy"
+	SkillTree.LIVE_MECH.mechalegs = true
+	for _, a in ipairs(SkillTree.AREAS) do
+		if a.id == "speed" then table.insert(a.paths, p) end
+	end
+	SkillTree.PATHS.mechalegs = p
+	table.insert(SkillTree.PATH_ORDER, "mechalegs")
 end
 -- v1.19: no Jaws for the pachy
 SkillTree.PACHY_NO_JAWS = true
@@ -688,6 +713,13 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if hk >= 2 then e.hookRange = 80 end
 	if hk >= 3 then e.hookCooldown = 6 end
 	if hk >= 4 then e.hookDamage = 15 end
+	-- v1.22: Mecha Legs (pachy)
+	local ml = s.mechalegs or 0
+	e.legsBoostMul, e.legsPowerMul, e.legsCooldown, e.legsCdMul, e.doubleJump, e.legsLook = 1, 1, 0, 1, false, false
+	if ml >= 1 then e.legsBoostMul, e.legsCooldown = 1.25, 6 end
+	if ml >= 2 then e.legsPowerMul = 1.2 end
+	if ml >= 3 then e.legsCdMul = 0.65 end
+	if ml >= 4 then e.doubleJump, e.legsLook = true, true end
 	return e
 end
 
