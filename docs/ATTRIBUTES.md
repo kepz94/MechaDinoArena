@@ -2051,6 +2051,12 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | HeadbuttRunTimeEnabled | HeadbuttServer script | true | HeadbuttServer 1.4 switch (false = distance only) |
 | SpeciesFromSave / SpeciesSaved | player (server) | bool / species | SpeciesServer 1.3 remembered dino |
 | SpeciesSaveState / SpeciesRememberEnabled | SpeciesServer script | ok, readFailed, writeFailed, noStore / true | SpeciesServer 1.3 |
+| BloodRushEnabled / BloodRushCost / BloodRushMax / BloodRushDamageMul / BloodRushNoSelfSlow / BloodRushSlowMul / BloodRushSlowTime | pachy character (server) | bool / 0.25 / 2 / 1.25 / bool / 0.45 / 4 | SkillEffects 1.17 Blood Rush |
+| HeadbuttSacrifices / HeadbuttSacrificeCost / HeadbuttSacrificeCount / HeadbuttSacrificeAt / HeadbuttHitSacrifice | pachy character (server) | 0-2 / health / count / time / bool | HeadbuttServer 1.5 |
+| HeadbuttSacrificeEnabled / SkillEffectsBloodEnabled / ArenaStatusBloodEnabled / AbilityBarBloodEnabled / ArenaTouchBloodEnabled / MechaButtonsBloodEnabled | scripts | true | Blood Rush switches |
+| HeadbuttSacrificeInputEnabled / HeadbuttFXBloodEnabled | character | true | HeadbuttTest 1.1 / HeadbuttFX 1.1 switches |
+| HeadbuttSacrificeInput / AbilityBarBloodLeft / ArenaTouchBloodLeft / ArenaStatusBlood / HeadbuttFXSacrifices | character (client) | count / -1..2 / shown, hidden / count | Blood Rush diagnostics |
+| SkillTree.BLOOD_RUSH | SkillTree module constant | true | SkillTree 1.24 line (false = 1.23) |
 | StatusBadgesSlowLeft / StatusBadgesState | dino (client) | seconds (0.1 steps); + "slow" | StatusBadges 1.2 diagnostics |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
