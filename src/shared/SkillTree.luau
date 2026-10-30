@@ -1,4 +1,4 @@
--- SkillTree v1.24 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.25 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -248,6 +248,8 @@ SkillTree.AREAS = {
 --   (off values when not bought): bloodRush (I: true), bloodCost (I: 0.25 of max health), bloodMax (I: 2 per empty
 --   spell), bloodDamageMul (II: 1.25), bloodNoSelfSlow (III: true), bloodSlowMul / bloodSlowTime (star: 0.45 / 4 s).
 --   false = 1.23 (no line).
+-- v1.25 (Kepu 2026-10-30: "don't allow for blood rush to be used again until full health is restored"; HeadbuttServer
+--   1.6): Blood Rush step I text reads "2, then not again until you are back at full health".
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -502,7 +504,7 @@ if SkillTree.MECHA_LEGS_SLOT and SkillTree.PATHS.mechalegs then SkillTree.BUTTON
 SkillTree.BLOOD_RUSH = true
 if SkillTree.BLOOD_RUSH and not SkillTree.PATHS.bloodrush then
 	local p = path("bloodrush", "Blood Rush", true, false, {
-		"Out of headbutt charges? ATTACK pays 25% of your max health for one more headbutt (above half health, 2 per empty spell)",
+		"Out of headbutt charges? ATTACK pays 25% of your max health for one more headbutt (above half health; 2, then not again until you are back at full health)",
 		"Sacrifice headbutts hit 25% harder",
 		"No self-slow after a sacrifice headbutt",
 		"A sacrifice headbutt that lands slows the target hard: speed x0.45 for 4 s"})

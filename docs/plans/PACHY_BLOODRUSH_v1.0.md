@@ -62,3 +62,6 @@
 2. Miss -> "Yes, still spent".
 3. -> "Ohh I didn't know they didn't work on players too. Okay we'll take out the bleed and instead make the opposing player take an even bigger speed debuff": ★ is a harder slow (x0.45 for 4 s, tunable), through the headbutt's existing slow, so it works on players and bots the same. No new bleed. Open item: the raptor's Jaws III / Blade Claws III bleed still hits bots only (not asked to change).
 Tasks change: Task 5 (BloodRushServer) is dropped; HeadbuttServer 1.5 applies the ★ slow; SkillEffects writes BloodRushSlowMul / BloodRushSlowTime instead of bleed fields; HeadbuttFX has no bleed drip.
+
+## Change after play (2026-10-30)
+- Kepu: "don't allow for blood rush to be used again until full health is restored" -> "2, then wait for full health": HeadbuttServer 1.6 resets the count at full health only; SkillTree 1.25 step text.

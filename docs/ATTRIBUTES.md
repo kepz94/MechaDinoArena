@@ -2058,6 +2058,7 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | HeadbuttSacrificeInput / AbilityBarBloodLeft / ArenaTouchBloodLeft / ArenaStatusBlood / HeadbuttFXSacrifices | character (client) | count / -1..2 / shown, hidden / count | Blood Rush diagnostics |
 | SkillTree.BLOOD_RUSH | SkillTree module constant | true | SkillTree 1.24 line (false = 1.23) |
 | SkillBleedPlayersEnabled / SkillBleedPlayerTime | SkillEffects script | true / 2 s | SkillEffects 1.18: bleed on players' dinos (Arena) and its length |
+| HeadbuttSacrificeFullResetEnabled | HeadbuttServer script | true | HeadbuttServer 1.6: Blood Rush count resets at full health only (false = on a refill) |
 | StatusBadgesSlowLeft / StatusBadgesState | dino (client) | seconds (0.1 steps); + "slow" | StatusBadges 1.2 diagnostics |
 | ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
 | ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |

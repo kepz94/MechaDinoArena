@@ -1,4 +1,4 @@
--- HeadbuttServer v1.5 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.6 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -77,13 +77,20 @@
 --   BloodRushSlowTime (★ 4) s instead (players and bots, the same headbutt slow). At the end of a sacrifice charge the
 --   self-slow is skipped while BloodRushNoSelfSlow is true (III). Switch: script attribute HeadbuttSacrificeEnabled
 --   (default true, read at start; false = 1.4, "empty" at 0 charges).
+-- v1.6 (Kepu 2026-10-30: "don't allow for blood rush to be used again until full health is restored. I was spamming it
+--   ... my health kept restoring quick" -> "2, then wait for full health"): the sacrifice count (HeadbuttSacrifices) no
+--   longer resets when a charge refills; it resets to 0 only once Humanoid.Health is back at MaxHealth (checked every
+--   frame). So 2 sacrifices, then none until the pachy is at full health again. Switch: script attribute
+--   HeadbuttSacrificeFullResetEnabled (default true, read at start; false = 1.5, reset on a refill).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
+if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
+local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
 if script:GetAttribute("HeadbuttSacrificeEnabled") == nil then script:SetAttribute("HeadbuttSacrificeEnabled", true) end -- v1.5
 local SAC_ON = script:GetAttribute("HeadbuttSacrificeEnabled") ~= false
 if script:GetAttribute("HeadbuttRunTimeEnabled") == nil then script:SetAttribute("HeadbuttRunTimeEnabled", true) end -- v1.4
@@ -478,7 +485,7 @@ RunService.Heartbeat:Connect(function()
 	for char, st in pairs(chars) do
 		if st.refillAt and t >= st.refillAt then
 			st.charges = math.min(maxCharges(char), st.charges + 1)
-			if (st.sacrifices or 0) > 0 then st.sacrifices = 0; char:SetAttribute("HeadbuttSacrifices", 0) end -- v1.5: a refill resets Blood Rush
+			if not SAC_FULL_RESET and (st.sacrifices or 0) > 0 then st.sacrifices = 0; char:SetAttribute("HeadbuttSacrifices", 0) end -- v1.5: a refill resets Blood Rush (v1.6: only with the switch off)
 			if st.charges < maxCharges(char) then
 				st.refillStart, st.refillAt = t, t + refillTime(char, maxCharges(char) - st.charges)
 			else
@@ -489,6 +496,10 @@ RunService.Heartbeat:Connect(function()
 		if st.active and t > st.active.deadline then finish(char, st, "timeout") end
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if st.active and hum and hum.Health <= 0 then finish(char, st, "died") end
+		if SAC_FULL_RESET and (st.sacrifices or 0) > 0 and hum and hum.Health > 0 and hum.Health >= hum.MaxHealth - 0.01 then -- v1.6
+			st.sacrifices = 0
+			char:SetAttribute("HeadbuttSacrifices", 0)
+		end
 	end
 end)
 
