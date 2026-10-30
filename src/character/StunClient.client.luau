@@ -1,4 +1,4 @@
--- StunClient v1.2 (Dino Arcade) — the player's own dino while stunned (LocalScript).
+-- StunClient v1.3 (Dino Arcade) — the player's own dino while stunned (LocalScript).
 -- Stunned = the character attribute StunnedUntil (server time, set by ShakeOffServer 1.0 when a T-Rex rams a tree with
 -- this raptor latched on) is in the future. While stunned: Humanoid.PlatformStand = true and the HumanoidRootPart is
 -- anchored lying on its side on the ground below (ground ray, dinos and grass ignored; rolled 90 degrees about its
@@ -20,6 +20,12 @@
 --   now uses Workspace.DinoIsland's IslandWanderLimit (ISLAND_LIMIT only when it is missing), so it lands
 --   StunTossDistance (15) studs from where it was, away from the tree. Diagnostics: StunClientVersion,
 --   StunTossLimit (the limit used).
+-- v1.3 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"):
+--   while the character attribute PinHeld == true (PounceServer 1.8: another player's raptor pins you) the dino is held
+--   exactly like a stun (PlatformStand, anchored, rolled onto its side where it is; no toss), and gets up the same way
+--   when PinHeld clears. Shield / Adrenaline buttons still work (their servers do not check it). Script attribute
+--   StunPinHoldEnabled (default true; false = 1.2: a pin does nothing here). StunState reads "pinned" while held;
+--   StunLeft is 0 then.
 -- Diagnostics (character attributes, this client): StunState ("none" / "stunned" / "getup"), StunLeft (seconds, 0.1
 -- steps).
 local Players = game:GetService("Players")
@@ -35,8 +41,9 @@ local TOSS_TIME = 0.6      -- v1.1
 local TOSS_HEIGHT = 6      -- v1.1: studs above the straight line at the middle of the flight
 local TOSS_FRESH = 1       -- v1.1: s between the stun start and StunTossAt for the stun to be a toss
 local ISLAND_LIMIT = 230   -- v1.1: |X| / |Z| the landing point is kept within (edge walls at 237)
-local VERSION = "1.2"      -- v1.2
+local VERSION = "1.3"      -- v1.3
 char:SetAttribute("StunClientVersion", VERSION)
+if script:GetAttribute("StunPinHoldEnabled") == nil then script:SetAttribute("StunPinHoldEnabled", true) end -- v1.3
 
 pcall(function() RunService:UnbindFromRenderStep(BIND) end) -- a binding left by a previous character
 
@@ -112,7 +119,22 @@ local function step()
 	local now = workspace:GetServerTimeNow()
 	local untilT = char:GetAttribute("StunnedUntil")
 	local stunned = typeof(untilT) == "number" and untilT > now
-	if stunned then
+	local pinned = not stunned and char:GetAttribute("PinHeld") == true and script:GetAttribute("StunPinHoldEnabled") ~= false -- v1.3
+	if pinned then
+		if state ~= "pinned" then
+			if state ~= "stunned" and state ~= "tossed" then
+				t0 = os.clock()
+				frames()
+			end
+			toss = nil
+			state = "pinned"
+		end
+		hum.PlatformStand = true
+		hrp.Anchored = true
+		local u = math.min(1, (os.clock() - t0) / ROLL_TIME)
+		hrp.CFrame = standCF:Lerp(lyingCF, u * u * (3 - 2 * u))
+		show("StunLeft", 0)
+	elseif stunned then
 		if state ~= "stunned" and state ~= "tossed" then
 			t0 = os.clock()
 			frames()
@@ -137,7 +159,7 @@ local function step()
 			hrp.CFrame = standCF:Lerp(lyingCF, u * u * (3 - 2 * u))
 		end
 		show("StunLeft", math.floor((untilT - now) * 10 + 0.5) / 10)
-	elseif state == "stunned" or state == "tossed" then -- v1.1: + tossed
+	elseif state == "stunned" or state == "tossed" or state == "pinned" then -- v1.1: + tossed; v1.3: + pinned
 		state = "getup"
 		t0 = os.clock()
 	elseif state == "getup" then

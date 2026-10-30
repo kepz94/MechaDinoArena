@@ -1,4 +1,4 @@
--- SkillServer v1.6 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
+-- SkillServer v1.7 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 2, ADR "Skill trees own XP and replace class stat points".
 -- Kepu: kills give XP, each level gives 1 skill point (cap 60), free respec any time, keep everything on death, builds
 --   saved. GrowthServer stays off (adult spawns); this script owns skill XP. Maths: ServerStorage.DinoArcade.SkillTree.
@@ -74,12 +74,22 @@
 --   into the first empty slot (d.testPlaced[key] is now a set of part ids; an old boolean counts as {cloak}); passive
 --   parts (Blade Claws) need no slot. Points, steps, buys and the save stay real, as before. New diagnostic: player
 --   attribute SkillTestParts (the given ids, comma-separated; "" when off).
+-- v1.7 (bug, Kepu 2026-10-30: "let me edit the stats on the test run because it isn't letting me upgrade the stat tree on
+--   the test raptor"): with the test layer on, the given parts sit at star in the published SkillPath_ values, and the
+--   Lab (SkillTree.canBuy over those values with the real SkillPoints) counted them as spent (5 parts x 10 points) and as
+--   mastered lines (5 >= MASTERY_MAX 3): every stat buy read "NEED .. PTS" / "MASTERY FULL", although the server's own
+--   check used the real steps. While the layer is on (and script attribute SkillTestFreeGivenEnabled ~= false), the
+--   given parts are now left out of every points and mastery count, on the server and in the Lab (Lab 1.4): buys are
+--   judged on buyBase = the real steps with each given part set to 0, SkillSpent / SkillLeft are published from
+--   buyBase, and a given part itself is refused as "maxed". The buy still lands in the real steps and is saved. Note: a
+--   given part that was also bought for real costs nothing while the layer is on; when the layer is switched off, a build
+--   that is then over its points is reset by the load check, as before.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -146,6 +156,17 @@ local function stepsFor(d) -- v1.5: real steps, plus the test parts at star whil
 	return s
 end
 
+-- v1.7: the steps buys and points are judged on (the given test parts left out)
+if script:GetAttribute("SkillTestFreeGivenEnabled") == nil then script:SetAttribute("SkillTestFreeGivenEnabled", true) end
+local function buyBase(d)
+	local parts = testParts(d)
+	if #parts == 0 or script:GetAttribute("SkillTestFreeGivenEnabled") == false then return d.steps, {} end
+	local s = table.clone(d.steps)
+	local given = {}
+	for _, id in ipairs(parts) do s[id] = 0; given[id] = true end
+	return s, given
+end
+
 local function publish(player, d, levelUp)
 	local test = testCloak(d) -- v1.4
 	player:SetAttribute("SkillTestCloak", test and "on" or "off")
@@ -153,7 +174,7 @@ local function publish(player, d, levelUp)
 	player:SetAttribute("SkillTestParts", table.concat(given, ","))
 	local level, into, nxt = ST.levelOf(d.xp)
 	local earned = ST.pointsOf(level)
-	local spent = ST.spent(d.steps, d.active) -- v1.3: + dino
+	local spent = ST.spent((buyBase(d)), d.active) -- v1.3: + dino; v1.7: given test parts left out
 	if levelUp and (player:GetAttribute("SkillLevel") or level) < level then
 		player:SetAttribute("SkillLevelUpAt", workspace:GetServerTimeNow())
 	end
@@ -336,7 +357,17 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 	d.lastRequest = os.clock()
 	if action == "buy" and type(pathId) == "string" then
 		local earned = ST.pointsOf((ST.levelOf(d.xp)))
-		local new, why = ST.buy(d.steps, pathId, earned, d.active) -- v1.3: + dino
+		local base, given = buyBase(d) -- v1.7
+		local new, why
+		if given[pathId] then
+			why = "maxed"
+		else
+			new, why = ST.buy(base, pathId, earned, d.active) -- v1.3: + dino; v1.7: on buyBase
+			if new then
+				new = ST.sanitize(d.steps, d.active)
+				new[pathId] += 1
+			end
+		end
 		if new then
 			d.steps = new
 			if script:GetAttribute("SkillLoadoutEnabled") ~= false then d.loadout = ST.autoSlot(d.loadout, stepsFor(d), pathId, d.active) end -- v1.1; v1.3: + dino; v1.5: effective steps

@@ -1,4 +1,4 @@
--- MechaServer v1.4 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
+-- MechaServer v1.5 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
 -- Thrusters part on the dino. MDA-27, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 5, mockup
 -- docs/mockups/mecha_thrusters_options.html (Kepu 2026-10-28: framework + Thrusters first; numbers as proposed; the dash is
 -- free; the part is on the dino only while it is in a loadout slot; bots only).
@@ -53,16 +53,20 @@
 --   mannequin, not a player) with the same build code (build(model, "I")) and returns its Model "Mecha_Thrusters" (nil when
 --   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
 --   attribute MechaServerPreviewEnabled (default true; false -> returns nil).
+-- v1.5 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"; "The counters for Pounce is to shield and use adrenaline mid pounce" -> only Shield + Adrenaline while pinned):
+--   the Thrusters dash is refused while you are pinned by another player ("pinned": character PinHeld == true, set by PounceServer
+--   1.8), checked right after "stunned". Script attribute MechaPinnedBlockEnabled (default true; false = v1.4).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local MAX_LAG = 0.3
 local DEFAULT_RECHARGE, DEFAULT_TIME = 8, 0.35
 local METAL, DARK, ORANGE = Color3.fromRGB(123, 133, 144), Color3.fromRGB(43, 47, 53), Color3.fromRGB(255, 155, 46)
 
 script:SetAttribute("MechaServerVersion", VERSION)
+if script:GetAttribute("MechaPinnedBlockEnabled") == nil then script:SetAttribute("MechaPinnedBlockEnabled", true) end -- v1.5
 if script:GetAttribute("MechaEnabled") == nil then script:SetAttribute("MechaEnabled", true) end
 script:SetAttribute("MechaDashes", 0)
 if script:GetAttribute("MechaSwivelHinge") == nil then script:SetAttribute("MechaSwivelHinge", true) end -- v1.3
@@ -331,6 +335,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "disabled"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
+	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("MechaPinnedBlockEnabled") ~= false then -- v1.5
+		result = "pinned"
 	elseif char:GetAttribute("PounceLatched") == true then
 		result = "latched"
 	elseif (char:GetAttribute("DashChargesLeft") or 0) < 1 then

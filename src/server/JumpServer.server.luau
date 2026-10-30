@@ -1,4 +1,4 @@
--- JumpServer v1.0 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
+-- JumpServer v1.1 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
 -- Client -> server: ReplicatedStorage.DinoJumpRequest:FireServer(clientServerTime) (sent by JumpTest 1.0 at the
 --   key press, i.e. the start of the crouch).
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now], written to the character attribute
@@ -19,10 +19,15 @@
 -- Settings (character attributes): JumpEnabled (default false), JumpStaminaCost (15), JumpCooldown (0.5).
 -- Diagnostics (character attributes): JumpServerResult (last result above), JumpCount (accepted leaps),
 --   JumpDenyCount, JumpDeniedAt, JumpDenyReason.
+-- v1.1 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"; "The counters for Pounce is to shield and use adrenaline mid pounce" -> only Shield + Adrenaline while pinned): "pinned"
+--   (character PinHeld == true, set by PounceServer 1.8 while another player pins you) is refused, checked after
+--   "disabled". Script attribute JumpPinnedBlockEnabled (default true; false = 1.0). Diagnostic: JumpServerVersion.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DEFAULTS = {JumpEnabled = false, JumpStaminaCost = 15, JumpCooldown = 0.5, StaminaEnabled = true,
 	StaminaMax = 100}
+script:SetAttribute("JumpServerVersion", "1.1") -- v1.1
+if script:GetAttribute("JumpPinnedBlockEnabled") == nil then script:SetAttribute("JumpPinnedBlockEnabled", true) end
 local MAX_LAG = 0.3 -- seconds a client stamp may lag behind the server clock (same as BiteServer)
 
 local remote = ReplicatedStorage:FindFirstChild("DinoJumpRequest")
@@ -62,6 +67,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "dead"
 	elseif get(char, "JumpEnabled") ~= true then
 		result = "disabled"
+	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("JumpPinnedBlockEnabled") ~= false then -- v1.1
+		result = "pinned"
 	elseif char:GetAttribute("Exhausted") == true then
 		result = "exhausted"
 	elseif get(char, "StaminaEnabled") ~= false and stamina(char, now) < get(char, "JumpStaminaCost") then

@@ -1,4 +1,4 @@
--- ScreechServer v1.5 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.6 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -75,13 +75,16 @@
 --   mannequin, not a player) with the same build code (ScreechEnabled = true, then buildCannon(model)) and returns its Model "Mecha_ShockCannon" (nil when
 --   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
 --   attribute ScreechServerPreviewEnabled (default true; false -> returns nil).
+-- v1.6 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"; "The counters for Pounce is to shield and use adrenaline mid pounce" -> only Shield + Adrenaline while pinned):
+--   the Shock Cannon is refused while you are pinned by another player ("pinned": character PinHeld == true, set by PounceServer
+--   1.8), checked right after "stunned". Script attribute ScreechPinnedBlockEnabled (default true; false = v1.5).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
 local SHOCK_SPEED, BALL_SIZE, SHELL_SIZE = 75, 3, 5 -- v1.2: Shock Cannon ball
@@ -90,6 +93,7 @@ local CANNON_DARK, CANNON_STEEL = Color3.fromRGB(58, 67, 80), Color3.fromRGB(142
 local RED = Color3.fromRGB(240, 90, 79)
 
 script:SetAttribute("ScreechServerVersion", VERSION)
+if script:GetAttribute("ScreechPinnedBlockEnabled") == nil then script:SetAttribute("ScreechPinnedBlockEnabled", true) end -- v1.6
 if script:GetAttribute("ScreechServerEnabled") == nil then script:SetAttribute("ScreechServerEnabled", true) end
 script:SetAttribute("ScreechRequests", 0)
 script:SetAttribute("ScreechHits", 0)
@@ -607,6 +611,8 @@ remote.OnServerEvent:Connect(function(player, stamp, held)
 		result = "disabled"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
+	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("ScreechPinnedBlockEnabled") ~= false then -- v1.6
+		result = "pinned"
 	elseif char:GetAttribute("PounceLatched") == true then
 		result = "latched"
 	elseif t < (tonumber(char:GetAttribute("ScreechReadyAt")) or 0) then

@@ -1,4 +1,4 @@
--- ScentServer v1.1 (Mecha Dino Arena) — Scent Sense, a raptor button part (raptor parts batch 2): the server gate and
+-- ScentServer v1.2 (Mecha Dino Arena) — Scent Sense, a raptor button part (raptor parts batch 2): the server gate and
 -- cooldown for the sniff; the trails themselves are drawn by the owner's client (ScentFX 1.0, visible to you only).
 -- MDA-72, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 3, mockup docs/mockups/raptor_parts_b2_scent_screech.html
 -- (Kepu 2026-10-29: "I like scent sense. Let's add that" -> A "Glowing paw prints", cloaked raptors leave faint prints).
@@ -30,13 +30,17 @@
 --   (default true; false = no mask). Diagnostic: character ScentMaskState ("none" / "on" / "noHead").
 --   BindableFunction "BuildPreview" (server only): Invoke(model) builds the mask on a Lab mannequin (ScentEnabled = true)
 --   and returns its Model (LabPreviewServer 1.1); switch ScentServerPreviewEnabled (default true).
+-- v1.2 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"; "The counters for Pounce is to shield and use adrenaline mid pounce" -> only Shield + Adrenaline while pinned):
+--   Scent Sense is refused while you are pinned by another player ("pinned": character PinHeld == true, set by PounceServer
+--   1.8), checked right after "stunned". Script attribute ScentPinnedBlockEnabled (default true; false = v1.1).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 
 script:SetAttribute("ScentServerVersion", VERSION)
+if script:GetAttribute("ScentPinnedBlockEnabled") == nil then script:SetAttribute("ScentPinnedBlockEnabled", true) end -- v1.2
 if script:GetAttribute("ScentServerEnabled") == nil then script:SetAttribute("ScentServerEnabled", true) end
 script:SetAttribute("ScentRequests", 0)
 local function on() return script:GetAttribute("ScentServerEnabled") ~= false end
@@ -208,6 +212,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "disabled"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
+	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("ScentPinnedBlockEnabled") ~= false then -- v1.2
+		result = "pinned"
 	elseif (tonumber(char:GetAttribute("ScentUntil")) or 0) > t then
 		result = "active"
 	elseif t < (tonumber(char:GetAttribute("ScentReadyAt")) or 0) then

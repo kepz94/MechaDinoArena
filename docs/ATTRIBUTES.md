@@ -1909,3 +1909,19 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | ModeFaceDir | player | Vector3 | direction the dino faced when leaving the menu |
 | HurtFlashGuardEnabled | HurtFlashGuard script | true | false = Roblox's red flash on every dino switch; read at start |
 | HurtFlashGuardVersion / State / Count | player (local) | "1.0" / "guarding" / "idle" / "off", 0.. | diagnostics |
+
+### PvP pin hold, mine charges + colours, test-run stats (PounceServer 1.8, StunClient 1.3, JumpServer 1.1, MechaServer 1.5, CloakServer 1.7, ScreechServer 1.6, ScentServer 1.2, MineServer 1.6, MineColors 1.0, SkillServer 1.7, Lab 1.4)
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| PinHeld | player character (server) | true / nil | pinned by another player's raptor (PounceServer 1.8) |
+| PouncePinHoldEnabled | PounceServer script | true | false = a player pin holds nothing (1.7) |
+| PouncePinPlayer | raptor (server) | true / false | pinning a player now |
+| StunPinHoldEnabled | StunClient script | true | false = PinHeld ignored on the client |
+| JumpPinnedBlockEnabled / MechaPinnedBlockEnabled / CloakPinnedBlockEnabled / ScreechPinnedBlockEnabled / ScentPinnedBlockEnabled / MinePinnedBlockEnabled | each server script | true | false = that move / part works while pinned |
+| MineChargesEnabled / MineCharges | MineServer script | true / 3 | throw charges on / how many |
+| MineChargesLeft / MineChargesMax / MineNextChargeAt | character (server) | 0..3 / 3 / server time (0 = full) | mine charges |
+| MineOwner | ShockMine model, MineBurst | owner name | for MineColors |
+| MineColorsEnabled | MineColors script | true | false = all mines cyan |
+| MineColorsVersion / MineColorsPainted | player (local) | "1.0" / 0.. | diagnostics |
+| SkillTestFreeGivenEnabled | SkillServer script | true | false = given test parts count as spent / mastered (1.6) |
+| LabTestFreeGivenEnabled | Lab script | true | false = 1.3 BUY judge |

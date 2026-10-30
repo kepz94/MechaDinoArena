@@ -1,4 +1,4 @@
--- CloakServer v1.6 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
+-- CloakServer v1.7 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
 -- visible emitter pack. MDA-51, plan docs/plans/CLOAK_v1.0.md Tasks 3 + 4b (Kepu 2026-10-29: faint shimmer, bots lose
 -- you at once, breaks on pounce / damage / another part, 12 s cooldown, star capped at 2x; every mecha part is visible
 -- hardware).
@@ -53,11 +53,14 @@
 --   mannequin, not a player) with the same build code (CloakEnabled = true, then buildPack(model)) and returns its Model "Mecha_Cloak" (nil when
 --   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
 --   attribute CloakServerPreviewEnabled (default true; false -> returns nil).
+-- v1.7 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"; "The counters for Pounce is to shield and use adrenaline mid pounce" -> only Shield + Adrenaline while pinned):
+--   Cloak Field is refused while you are pinned by another player ("pinned": character PinHeld == true, set by PounceServer
+--   1.8), checked right after "stunned". Script attribute CloakPinnedBlockEnabled (default true; false = v1.6).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local STILL_SPEED = 1
 local PART_STAMPS = {"DashStartedAt", "AdrenalineStartedAt", "EnergyShieldStartedAt"} -- other mecha parts' start stamps break the cloak; v1.3: + Adrenaline / Energy Shield
 table.insert(PART_STAMPS, "ScentStartedAt") -- v1.4
@@ -66,6 +69,7 @@ table.insert(PART_STAMPS, "MineStartedAt") -- v1.5
 local METAL, CYAN = Color3.fromRGB(110, 122, 134), Color3.fromRGB(95, 243, 255)
 
 script:SetAttribute("CloakServerVersion", VERSION)
+if script:GetAttribute("CloakPinnedBlockEnabled") == nil then script:SetAttribute("CloakPinnedBlockEnabled", true) end -- v1.7
 if script:GetAttribute("CloakServerEnabled") == nil then script:SetAttribute("CloakServerEnabled", true) end
 script:SetAttribute("CloakRequests", 0)
 if script:GetAttribute("CloakLookStyle") == nil then script:SetAttribute("CloakLookStyle", "flanks") end -- v1.1; v1.2: default "flanks"
@@ -269,6 +273,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "disabled"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
+	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("CloakPinnedBlockEnabled") ~= false then -- v1.7
+		result = "pinned"
 	elseif char:GetAttribute("PounceLatched") == true then
 		result = "latched"
 	elseif (char:GetAttribute("CloakedUntil") or 0) > t then

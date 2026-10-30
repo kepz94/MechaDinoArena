@@ -1,4 +1,4 @@
--- PounceServer v1.7 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.8 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -70,6 +70,15 @@
 --   * PounceNextHitAt (server time of the next tick hit): set at the latch start (= now + the tick interval) and after
 --     every tick; the next arm winds up so it is cocked by then and strikes when the hit arrives.
 --   Damage, timing and release rules are unchanged.
+-- v1.8 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"; "The counters for Pounce is to shield and use adrenaline mid pounce" -> only Shield + Adrenaline while pinned): a pin's
+--   target that is a player's character was held by nothing (bots stop and roll over by reading PinnedBy; a player kept
+--   full control), so the pouncer rode a running raptor. While script attribute PouncePinHoldEnabled ~= false, a pin on
+--   a player also sets the target's PinHeld = true (cleared with PinnedBy on release): StunClient 1.3 lays it on its
+--   side and holds it still (no move, turn or leap); this script refuses its pounce requests ("pinned", checked after
+--   "stunned"); JumpServer 1.1, MechaServer 1.5 (Thrusters), CloakServer 1.7, ScreechServer 1.6, MineServer 1.6 and
+--   ScentServer 1.2 refuse theirs ("pinned"). Energy Shield and Adrenaline still work (the counters); Adrenaline does
+--   not end the pin. No escape: the pin still ends only on the pouncer's leap ("jump"), stamina 0 or the safety
+--   reasons. Damage is unchanged. Diagnostics: raptor PouncePinPlayer (true while pinning a player).
 -- Settings (raptor attributes): PounceEnabled (default false), PounceStaminaCost 15, PounceCooldown 3,
 --   PounceClaimWindow 0.9, PounceSizeRatio 1.5, PounceLandDamage 8, PounceTickDamage 4, PounceTickInterval 0.5.
 -- Diagnostics (raptor attributes): PounceServerResult, PounceClaimResult, PounceCount, PounceLatchCount,
@@ -87,7 +96,8 @@ local CLAIM_TOLERANCE = 24  -- studs between the claimed part and the raptor bod
 local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's centre beyond its half size
 local MAX_LATCH = 30        -- safety: seconds a latch may last
 
-script:SetAttribute("PounceServerVersion", "1.7")
+script:SetAttribute("PounceServerVersion", "1.8")
+if script:GetAttribute("PouncePinHoldEnabled") == nil then script:SetAttribute("PouncePinHoldEnabled", true) end -- v1.8
 if script:GetAttribute("PounceSlashTimingEnabled") == nil then script:SetAttribute("PounceSlashTimingEnabled", true) end -- v1.7
 local function slashTiming() return script:GetAttribute("PounceSlashTimingEnabled") ~= false end
 if script:GetAttribute("PounceCloakBonusEnabled") == nil then script:SetAttribute("PounceCloakBonusEnabled", true) end -- v1.5
@@ -211,6 +221,10 @@ local function release(char, reason)
 		l.model:SetAttribute("PinnedBy", nil)
 		l.model:SetAttribute("PinReleasedAt", workspace:GetServerTimeNow())
 	end
+	if l.pinHold then -- v1.8: the pinned player can move again
+		if l.model then l.model:SetAttribute("PinHeld", nil) end
+		char:SetAttribute("PouncePinPlayer", false)
+	end
 	local v = char:FindFirstChild("PounceLatchPart")
 	if v then v.Value = nil end
 	char:SetAttribute("PounceLatched", false)
@@ -233,6 +247,8 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		result = "latched"
 	elseif (char:GetAttribute("StunnedUntil") or 0) > now then -- v1.2
 		result = "stunned"
+	elseif char:GetAttribute("PinHeld") == true then -- v1.8: pinned by another player
+		result = "pinned"
 	elseif char:GetAttribute("Exhausted") == true then
 		result = "exhausted"
 	elseif get(char, "StaminaEnabled") ~= false and stamina(char, now) < get(char, "PounceStaminaCost") then
@@ -302,6 +318,11 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 	end
 	char:SetAttribute("PounceMode", mode)
 	latches[char] = {model = model, part = part, at = now, nextTick = now + tickInterval(char), mode = mode} -- v1.6: tickInterval
+	if mode == "pin" and Players:GetPlayerFromCharacter(model) and script:GetAttribute("PouncePinHoldEnabled") ~= false then
+		latches[char].pinHold = true -- v1.8: hold a pinned player down
+		model:SetAttribute("PinHeld", true)
+		char:SetAttribute("PouncePinPlayer", true)
+	end
 	latchValue(char).Value = part
 	char:SetAttribute("PounceLatchOffset", offset)
 	char:SetAttribute("PounceLatchTarget", model.Name)

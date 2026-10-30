@@ -1,4 +1,4 @@
--- Lab v1.3 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.4 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -65,13 +65,19 @@
 --   the slot tap is as before (equip a selected unslotted part there / select / deselect the slot; then a card tap
 --   equips into the selected slot). Switch: script attribute LabSlotShowsPartEnabled (default true, read at start;
 --   false = 1.2). Diagnostic: LabSelected follows.
+-- v1.4 (bug, Kepu 2026-10-30: "it isn't letting me upgrade the stat tree on the test raptor"): the BUY / UPGRADE label
+--   came from SkillTree.canBuy over the published SkillPath_ values, where the test layer's given parts sit at star, so
+--   they counted as spent points and mastered lines ("NEED .. PTS" / "MASTERY FULL" on every stat). The ids in the player
+--   attribute SkillTestParts are now set to 0 for that check (SkillServer 1.7 judges buys the same way), and a given part
+--   itself reads MAXED. Script attribute LabTestFreeGivenEnabled (default true; false = 1.3).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
+if script:GetAttribute("LabTestFreeGivenEnabled") == nil then script:SetAttribute("LabTestFreeGivenEnabled", true) end -- v1.4
 local BIND = "LabMouse"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local PANEL2 = Color3.fromRGB(28, 34, 48)
@@ -825,7 +831,18 @@ local function drawDetail()
 	local acts = frame(detail, "Actions")
 	acts.Size = UDim2.new(1, 0, 0, S.btnH)
 	acts.LayoutOrder = 4
-	local ok, why = ST.canBuy(allSteps(), id, tonumber(player:GetAttribute("SkillPoints")) or 0, species())
+	-- v1.4: the given test parts (SkillTestParts) are left out of the points / mastery counts, as SkillServer 1.7 does
+	local judge = allSteps()
+	local givenIds = player:GetAttribute("SkillTestParts")
+	local isGiven = false
+	if type(givenIds) == "string" and givenIds ~= "" and script:GetAttribute("LabTestFreeGivenEnabled") ~= false then
+		for gid in string.gmatch(givenIds, "[^,]+") do
+			if gid == id then isGiven = true end
+			judge[gid] = 0
+		end
+	end
+	local ok, why = ST.canBuy(judge, id, tonumber(player:GetAttribute("SkillPoints")) or 0, species())
+	if isGiven then ok, why = false, "maxed" end
 	local buyText
 	if ok then
 		local cost = ST.COST[n + 1]

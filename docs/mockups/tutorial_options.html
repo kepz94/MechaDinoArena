@@ -1,0 +1,178 @@
+<title>Sandbox Tutorial</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro, chip rows (look, step), one phone frame (Kepu's phone HUD), notes. Dark game look of the earlier mockups. */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9b2e; --green: #5fd16a; --red: #f05a4f; --volt: #7fe9ff;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); }
+h1 span { color: var(--volt); }
+.lede { margin: 0; color: var(--muted); max-width: 82ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.chip:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.frameWrap { overflow-x: auto; }
+.device { position: relative; margin: 0 auto; width: min(100%, 940px); aspect-ratio: 19.5 / 9; border: 8px solid #2a2f3a; border-radius: 34px; overflow: hidden; background: linear-gradient(180deg, #8fc6ea 0%, #b5dcf0 22%, #6cc25a 23%, #4fa63e 100%); }
+.s { position: absolute; inset: 0; container-type: size; }
+.robloxBtns { position: absolute; left: 1.6cqw; top: 2.5cqh; display: flex; gap: 1cqh; z-index: 1; }
+.robloxBtns i { display: block; height: 11cqh; border-radius: 99px; background: rgb(240 240 244 / .92); }
+.robloxBtns i:first-child { width: 11cqh; } .robloxBtns i:last-child { width: 30cqh; }
+.pill { position: absolute; top: 3cqh; font: 700 4.5cqh var(--display); padding: 1cqh 2.4cqh; border-radius: 2cqh; background: #14141aee; border: .4cqh solid #ffffff33; z-index: 1; }
+.pill.menu { right: 2cqw; background: var(--yellow); color: #1b1406; }
+.pill.skills { right: calc(2cqw + 22cqh); }
+.pill b { color: var(--yellow); }
+.btn { position: absolute; display: grid; place-items: center; font: 700 3.4cqh var(--display); text-align: center; z-index: 1; }
+.btn.sq { width: 18cqh; height: 18cqh; border-radius: 3cqh; background: #14301aee; border: .5cqh solid var(--orange); }
+.btn.round { border-radius: 50%; }
+.b-adr { right: 31cqw; bottom: 14cqh; }
+.b-dash { right: 20cqw; bottom: 5cqh; }
+.b-pounce { right: 7cqw; bottom: 6cqh; width: 26cqh; height: 26cqh; background: #ffc832; color: #3b2a06; border: .6cqh solid #fff8; font-size: 4.6cqh; }
+.b-leap { right: 9.5cqw; bottom: 36cqh; width: 19cqh; height: 19cqh; background: #26402bee; border: .5cqh solid #fff8; }
+.mine { position: absolute; left: 2cqw; bottom: 2cqh; width: 36cqw; display: grid; gap: .4cqh; z-index: 1; }
+.mine .lbl { display: flex; justify-content: space-between; font: 700 2.6cqh var(--display); text-shadow: 0 .3cqh 0 #0008; }
+.mine .tr { height: 2.4cqh; border-radius: 99px; background: #14141add; overflow: hidden; }
+.mine .tr i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #5fd16a, #3fae4b); }
+.raptor { position: absolute; left: 44%; top: 42%; width: 10cqw; height: 18cqh; }
+.raptor svg, .bot svg { width: 100%; height: 100%; overflow: visible; }
+.bot { position: absolute; left: 60%; top: 40%; width: 9cqw; height: 12cqh; }
+.botbar { position: absolute; left: 64.5%; top: 34%; transform: translate(-50%, 0); width: 16cqh; text-align: center; font: 700 2.6cqh var(--display); }
+.botbar i { display: block; height: 1.8cqh; margin-top: .3cqh; background: linear-gradient(90deg, #78c850 70%, #281e14 70%); }
+/* A · coach card + pointer */
+.coach { position: absolute; left: 50%; top: 3cqh; transform: translateX(-50%); width: 44cqw; background: #14141aee; border: .4cqh solid var(--volt); border-radius: 2cqh; padding: 1.4cqh 2.2cqh; display: grid; gap: .6cqh; z-index: 3; }
+.coach .top { display: flex; justify-content: space-between; align-items: center; font: 600 2.3cqh var(--mono); color: var(--volt); letter-spacing: .08em; }
+.coach .top u { text-decoration: none; color: #ffffffaa; font-family: var(--display); font-weight: 700; letter-spacing: 0; border: .3cqh solid #ffffff44; border-radius: 1cqh; padding: 0 1.2cqh; }
+.coach h4 { margin: 0; font: 700 4.4cqh/1.1 var(--display); }
+.coach p { margin: 0; color: var(--grey); font-size: 2.8cqh; line-height: 1.25; }
+.dots { display: flex; gap: .8cqh; }
+.dots i { width: 1.6cqh; height: 1.6cqh; border-radius: 50%; background: #ffffff33; }
+.dots i.on { background: var(--volt); } .dots i.done { background: var(--green); }
+.arrow { position: absolute; width: 0; height: 0; border-left: 2.4cqh solid transparent; border-right: 2.4cqh solid transparent; border-top: 3.6cqh solid var(--volt); transform: translate(-50%, -100%); z-index: 4; animation: bob .8s ease-in-out infinite; filter: drop-shadow(0 .4cqh 0 #0008); }
+@keyframes bob { 50% { margin-top: -2cqh; } }
+.ring { position: absolute; border-radius: 50%; border: .7cqh solid var(--volt); transform: translate(-50%, -50%); z-index: 2; animation: ring 1.2s ease-out infinite; }
+@keyframes ring { from { opacity: 1; scale: .85; } to { opacity: 0; scale: 1.35; } }
+/* B · checklist */
+.list { position: absolute; left: 2cqw; top: 17cqh; width: 30cqw; background: #14141add; border: .35cqh solid #ffffff33; border-radius: 2cqh; padding: 1.2cqh 1.8cqh; display: grid; gap: .5cqh; z-index: 3; }
+.list b { font: 600 2.2cqh var(--mono); color: var(--volt); letter-spacing: .08em; }
+.list div { display: flex; gap: 1.2cqh; align-items: center; font: 700 2.9cqh var(--display); color: #ffffff77; }
+.list div.on { color: #fff; } .list div.done { color: var(--green); text-decoration: line-through; }
+.list div s { text-decoration: none; display: inline-grid; place-items: center; width: 3cqh; height: 3cqh; border-radius: 50%; border: .3cqh solid currentColor; font-size: 2cqh; flex: none; }
+.list small { color: var(--grey); font-size: 2.4cqh; line-height: 1.2; }
+/* C · spotlight */
+.dim { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.bubble { position: absolute; z-index: 4; width: 34cqw; background: #fff; color: #14141a; border-radius: 2.4cqh; padding: 1.6cqh 2.2cqh; font: 800 3cqh/1.25 var(--body); box-shadow: 0 .6cqh 0 #0006; }
+.bubble h4 { margin: 0 0 .4cqh; font: 700 4cqh var(--display); }
+.bubble .bot-ic { position: absolute; left: -7cqh; top: -1cqh; width: 8cqh; height: 8cqh; border-radius: 2cqh; background: var(--volt); display: grid; place-items: center; font: 700 4cqh var(--display); color: #14141a; }
+.bubble small { display: block; margin-top: .8cqh; color: #666; font: 700 2.2cqh var(--mono); }
+.tick { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); font: 700 9cqh var(--display); color: var(--green); text-shadow: 0 .6cqh 0 #0008; z-index: 5; opacity: 0; }
+.tick.show { animation: tick 1s ease-out; }
+@keyframes tick { 20% { opacity: 1; scale: 1.2; } 70% { opacity: 1; scale: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .arrow, .ring, .tick.show { animation: none; } }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note p, .note li { margin: 0; color: var(--grey); font-size: 14px; }
+.note ol, .note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+</style>
+
+<div class="wrap">
+  <h1>Sandbox tutorial: <span>pick a look</span></h1>
+  <p class="lede">The steps follow your picks: pounce, leap, a mecha part, then skills / Lab and the menu. It plays as the raptor on a player's first Sandbox visit, can be skipped, and comes back from a TUTORIAL button in the main menu. Switch the look, then click "Done (simulate)" to walk through the steps.</p>
+  <div class="controls">
+    <div class="group" role="group" aria-label="Look"><b>Look</b>
+      <button class="chip" data-k="look" data-v="A" aria-pressed="true">A · Coach card + pointer</button>
+      <button class="chip" data-k="look" data-v="B" aria-pressed="false">B · Checklist on the left</button>
+      <button class="chip" data-k="look" data-v="C" aria-pressed="false">C · Spotlight + robot coach</button>
+    </div>
+    <div class="group" role="group" aria-label="Step"><b>Step</b>
+      <button class="chip" id="prev" aria-pressed="false">◀ Back</button>
+      <button class="chip" id="next" aria-pressed="false">Done (simulate) ▶</button>
+    </div>
+  </div>
+  <div class="frameWrap"><div class="device"><div class="s" id="s"></div></div></div>
+  <div class="notes">
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>A · Coach card + pointer</h3><p>A card at the top centre (where the big enemy bar was) with the step, a one-line tip and SKIP. A bouncing arrow and a pulsing ring sit on the button or the bot to use. A green tick shows when you've done it, then the next step.</p></div>
+    <div class="note"><h3>B · Checklist on the left</h3><p>All five steps in a list on the left, current one bright, done ones ticked green. The button to use pulses. You see the whole tutorial at once, but it covers more of the island.</p></div>
+    <div class="note"><h3>C · Spotlight + robot coach</h3><p>The screen dims except the button to use, with a speech bubble from a small mecha coach. Hardest to miss; the island is dark while a step is up, so it feels less like playing.</p></div>
+    <div class="note"><h3>The steps (all looks)</h3><ol><li>POUNCE a Raptor Bot (done when you latch on).</li><li>LEAP (done when you jump).</li><li>Use a mecha part button, e.g. ADRENALINE.</li><li>Tap SKILLS: spend points in the Lab.</li><li>MENU: switch dinos or go to the Arena (done with "Got it").</li></ol></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STEPS = [
+    { t: 'Pounce on a bot', p: 'Get close to a Raptor Bot and tap POUNCE to jump on it and slash.', target: 'bot', key: 'POUNCE' },
+    { t: 'Leap', p: 'Tap LEAP to jump high — great for getting out of a fight.', target: 'leap', key: 'LEAP' },
+    { t: 'Use a mecha part', p: 'Your mecha parts are the orange buttons. Tap ADRENALINE.', target: 'adr', key: 'R' },
+    { t: 'Skills + Lab', p: 'Beating bots earns skill points. Tap SKILLS to spend them in the Lab.', target: 'skills', key: 'K' },
+    { t: 'The menu', p: 'Tap MENU any time to switch dinos or go to the Arena.', target: 'menu', key: 'M', gotIt: true },
+  ];
+  // target centres in % of the frame (x, y) and ring size in cqh
+  const POS = { bot: [64.5, 46, 16], leap: [86.2, 54, 24], adr: [64.5, 76, 24], skills: [79.3, 11, 22], menu: [93, 11, 18], pounce: [88.5, 79, 32] };
+  const st = { look: 'A', i: 0 };
+  const raptor = `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="10" y="40" width="60" height="26" fill="#4f8f3a"/><rect x="60" y="22" width="14" height="26" fill="#4f8f3a"/><rect x="66" y="16" width="30" height="14" fill="#4f8f3a"/><rect x="0" y="46" width="14" height="8" fill="#3a6e2b"/><rect x="24" y="64" width="9" height="30" fill="#2f5a24"/><rect x="46" y="64" width="9" height="30" fill="#2f5a24"/><rect x="62" y="10" width="10" height="10" fill="#7fe9ff"/></svg>`;
+  const botSvg = `<svg viewBox="0 0 100 60" aria-hidden="true"><rect x="5" y="22" width="80" height="22" rx="4" fill="#7a8f3a"/><rect x="78" y="10" width="20" height="16" fill="#7a8f3a"/><rect x="20" y="42" width="8" height="16" fill="#5d6e2b"/><rect x="50" y="42" width="8" height="16" fill="#5d6e2b"/></svg>`;
+  function hud() {
+    return `<div class="robloxBtns"><i></i><i></i></div>
+      <span class="pill skills">SKILLS <b>16</b></span><span class="pill menu">MENU</span>
+      <div class="raptor">${raptor}</div><div class="bot">${botSvg}</div>
+      <div class="botbar">Raptor Bot<i></i></div>
+      <div class="btn sq b-adr">ADRENALINE</div><div class="btn sq b-dash">DASH</div>
+      <div class="btn round b-leap">LEAP</div><div class="btn round b-pounce">POUNCE</div>
+      <div class="mine"><div class="lbl"><span>HEALTH</span><span>60 / 60</span></div><div class="tr"><i></i></div></div>`;
+  }
+  function pointer(target) {
+    const [x, y, r] = POS[target];
+    const extra = target === 'bot' ? (() => { const [px, py, pr] = POS.pounce; return `<div class="ring" style="left:${px}%; top:${py}%; width:${pr}cqh; height:${pr}cqh"></div>`; })() : '';
+    return `<div class="ring" style="left:${x}%; top:${y}%; width:${r}cqh; height:${r}cqh"></div>${extra}<div class="arrow" style="left:${x}%; top:calc(${y}% - ${r / 2 + 1}cqh)"></div>`;
+  }
+  function dots() { return `<div class="dots">${STEPS.map((_, k) => `<i class="${k < st.i ? 'done' : k === st.i ? 'on' : ''}"></i>`).join('')}</div>`; }
+  function render() {
+    const s = document.getElementById('s');
+    const done = st.i >= STEPS.length;
+    const step = STEPS[Math.min(st.i, STEPS.length - 1)];
+    let ui = '';
+    if (done) {
+      ui = `<div class="coach" style="border-color:var(--green)"><div class="top"><span style="color:var(--green)">TUTORIAL DONE</span></div><h4>You're ready!</h4><p>Replay it any time from TUTORIAL in the main menu.</p></div>`;
+    } else if (st.look === 'A') {
+      ui = `<div class="coach"><div class="top"><span>STEP ${st.i + 1} / ${STEPS.length}</span><u>SKIP</u></div><h4>${step.t}</h4><p>${step.p}${step.gotIt ? ' <u style="text-decoration:none;color:#1b1406;background:var(--volt);border-radius:1cqh;padding:0 1.2cqh;font-weight:800">GOT IT</u>' : ''}</p>${dots()}</div>` + pointer(step.target);
+    } else if (st.look === 'B') {
+      ui = `<div class="list"><b>TUTORIAL · SKIP</b>${STEPS.map((x, k) => `<div class="${k < st.i ? 'done' : k === st.i ? 'on' : ''}"><s>${k < st.i ? '✓' : k + 1}</s>${x.t}</div>${k === st.i ? `<small>${x.p}</small>` : ''}`).join('')}</div>` + pointer(step.target).replace(/<div class="arrow".*$/, '');
+    } else {
+      const [x, y, r] = POS[step.target];
+      const bx = Math.min(Math.max(x - 20, 6), 56), by = y > 50 ? y - 34 : y + 12;
+      ui = `<div class="dim" style="background:radial-gradient(circle at ${x}% ${y}%, transparent ${r * 0.9}cqh, #000b ${r * 0.9 + 1}cqh)"></div>
+        <div class="bubble" style="left:${bx}%; top:${by}%"><div class="bot-ic">◉</div><h4>${step.t}</h4>${step.p}<small>STEP ${st.i + 1}/${STEPS.length} · TAP SKIP TO END</small></div>` + pointer(step.target).replace(/<div class="arrow".*$/, '');
+    }
+    s.innerHTML = hud() + ui + `<div class="tick" id="tick">✓</div>`;
+  }
+  document.addEventListener('click', e => {
+    const c = e.target.closest('.chip[data-k]');
+    if (!c) return;
+    st[c.dataset.k] = c.dataset.v;
+    document.querySelectorAll(`.chip[data-k="${c.dataset.k}"]`).forEach(x => x.setAttribute('aria-pressed', x === c));
+    render();
+  });
+  document.getElementById('next').addEventListener('click', () => {
+    if (st.i >= STEPS.length) { st.i = 0; render(); return; }
+    const t = document.getElementById('tick');
+    t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+    setTimeout(() => { st.i += 1; render(); }, 650);
+  });
+  document.getElementById('prev').addEventListener('click', () => { st.i = Math.max(0, st.i - 1); render(); });
+  render();
+})();
+</script>

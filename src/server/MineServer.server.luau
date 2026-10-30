@@ -1,4 +1,4 @@
--- MineServer v1.5 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.6 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -71,13 +71,27 @@
 --   origin, takes it out of Workspace (it is never armed or tracked) and returns its Model "ShockMine" without the
 --   TriggerRing. LabPreviewServer 1.0 turns it into the Lab card model. Switch: script attribute MineServerPreviewEnabled
 --   (default true; false -> returns nil).
+-- v1.6 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"; "The counters for Pounce is to shield and use adrenaline mid pounce" -> only Shield + Adrenaline while pinned):
+--   Shock Mine throws is refused while you are pinned by another player ("pinned": character PinHeld == true, set by PounceServer
+--   1.8), checked right after "stunned". Script attribute MinePinnedBlockEnabled (default true; false = v1.5).
+--   Also in v1.6 (Kepu 2026-10-30: "for the mine I need at least 3 to be dropped down" -> "3 charges, drop
+--   back-to-back"; "Enemy mines will be red friendly mines blue" -> "Yours blue, enemies' red"):
+--   * charges: while script attribute MineChargesEnabled ~= false, a player holds max(MineCharges (script attribute,
+--     default 3), MineMax) charges (full at spawn). A throw needs 1 charge ("cooldown" at 0) and uses it; empty charges
+--     refill one at a time, MineCooldown s each (the first starts when a throw leaves the charges below full). Up to
+--     that many mines stay on the ground (oldest "replaced" past it). Published on the character (also every 0.2 s while
+--     refilling): MineChargesLeft, MineChargesMax, MineNextChargeAt (server time, 0 when full), and MineReadyAt = 0 while
+--     a charge is left, else MineNextChargeAt (so the buttons show ready / cooling as before). false = 1.5: one throw per
+--     MineCooldown, MineMax on the ground.
+--   * colours: every mine model and its "MineBurst" carry MineOwner (owner name); MineColors 1.0 (StarterPlayerScripts)
+--     paints them on each screen: your own blue, everyone else's red. The server still builds them cyan.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local THROW_DIST, ARC_TIME, ARC_HEIGHT, ARM_TIME = 30, 0.6, 8, 0.5
 local TRIGGER, LIFETIME, BLINK = 6, 60, 0.25
 local VOLT, VOLT_CORE = Color3.fromRGB(127, 233, 255), Color3.fromRGB(225, 250, 255)
@@ -87,6 +101,7 @@ local BUSY = {pounce = true, latch = true, latched = true, ram = true, pinned = 
 	stunned = true, getup = true, shake = true} -- v1.1: bot states that are not thrown
 
 script:SetAttribute("MineServerVersion", VERSION)
+if script:GetAttribute("MinePinnedBlockEnabled") == nil then script:SetAttribute("MinePinnedBlockEnabled", true) end -- v1.6
 if script:GetAttribute("MineServerEnabled") == nil then script:SetAttribute("MineServerEnabled", true) end
 script:SetAttribute("MineRequests", 0)
 script:SetAttribute("MineThrown", 0)
@@ -198,8 +213,9 @@ local function makeMine(owner, pos)
 	return m
 end
 
-local function burst(pos)
+local function burst(pos, ownerName)
 	local p = part("MineBurst", Vector3.one * 2, CFrame.new(pos), VOLT, workspace, Enum.PartType.Ball, true)
+	if ownerName then p:SetAttribute("MineOwner", ownerName) end -- v1.6: MineColors paints it
 	p.Transparency = 0.15
 	local pe = Instance.new("ParticleEmitter")
 	pe.Color = ColorSequence.new(VOLT_CORE, VOLT)
@@ -459,6 +475,50 @@ local function hit(m, target)
 	script:SetAttribute("MineHits", (script:GetAttribute("MineHits") or 0) + 1)
 end
 
+-- v1.6: throw charges
+if script:GetAttribute("MineChargesEnabled") == nil then script:SetAttribute("MineChargesEnabled", true) end
+if script:GetAttribute("MineCharges") == nil then script:SetAttribute("MineCharges", 3) end
+local function chargesOn() return script:GetAttribute("MineChargesEnabled") ~= false end
+local function chargesMax(char)
+	return math.max(1, math.floor(tonumber(script:GetAttribute("MineCharges")) or 3), math.floor(tonumber(char:GetAttribute("MineMax")) or 1))
+end
+local function publishCharges(char, st)
+	local full = st.charges >= chargesMax(char)
+	local nextAt = full and 0 or (st.nextChargeAt or 0)
+	if char:GetAttribute("MineChargesLeft") ~= st.charges then char:SetAttribute("MineChargesLeft", st.charges) end
+	if char:GetAttribute("MineChargesMax") ~= chargesMax(char) then char:SetAttribute("MineChargesMax", chargesMax(char)) end
+	if char:GetAttribute("MineNextChargeAt") ~= nextAt then char:SetAttribute("MineNextChargeAt", nextAt) end
+	local ready = st.charges > 0 and 0 or nextAt
+	if char:GetAttribute("MineReadyAt") ~= ready then char:SetAttribute("MineReadyAt", ready) end
+end
+-- brings st.charges up to date at time t; returns the charges left
+local function refill(char, st, t)
+	local cmax = chargesMax(char)
+	if st.charges == nil then st.charges = cmax end
+	local cd = math.max(0.1, tonumber(char:GetAttribute("MineCooldown")) or 12)
+	while st.charges < cmax and st.nextChargeAt and t >= st.nextChargeAt do
+		st.charges += 1
+		st.nextChargeAt = st.charges < cmax and st.nextChargeAt + cd or nil
+	end
+	if st.charges >= cmax then st.charges, st.nextChargeAt = cmax, nil end
+	if st.charges < cmax and not st.nextChargeAt then st.nextChargeAt = t + cd end
+	publishCharges(char, st)
+	return st.charges
+end
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		if chargesOn() then
+			local t = now()
+			for owner, st in pairs(chars) do
+				if owner:IsA("Model") and Players:GetPlayerFromCharacter(owner) and owner:GetAttribute("MineEnabled") == true then
+					refill(owner, st, t)
+				end
+			end
+		end
+	end
+end)
+
 RunService.Heartbeat:Connect(function()
 	local t = now()
 	for owner, st in pairs(chars) do
@@ -492,7 +552,7 @@ RunService.Heartbeat:Connect(function()
 								local dy = root.Position.Y - m.to.Y
 								if flat <= TRIGGER + math.min(size.X, size.Z) / 2 and dy >= -2 and dy <= size.Y + 4 then
 									if mayAffect(owner, d) then -- v1.4
-										burst(m.to + Vector3.new(0, 1, 0))
+										burst(m.to + Vector3.new(0, 1, 0), owner.Name) -- v1.6: + owner
 										zapSound(m.to + Vector3.new(0, 1, 0)) -- v1.1
 										hit(m, d)
 										removeMine(m, "hit")
@@ -555,9 +615,13 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "disabled"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
+	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("MinePinnedBlockEnabled") ~= false then -- v1.6
+		result = "pinned"
 	elseif char:GetAttribute("PounceLatched") == true then
 		result = "latched"
-	elseif t < (tonumber(char:GetAttribute("MineReadyAt")) or 0) then
+	elseif chargesOn() and refill(char, st, t) < 1 then -- v1.6: charges
+		result = "cooldown"
+	elseif not chargesOn() and t < (tonumber(char:GetAttribute("MineReadyAt")) or 0) then
 		result = "cooldown"
 	else
 		result = "ok"
@@ -596,9 +660,17 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	m.state = "flying"
 	table.insert(st.mines, m)
 	local max = math.max(1, tonumber(char:GetAttribute("MineMax")) or 1)
+	if chargesOn() then max = math.max(max, chargesMax(char)) end -- v1.6
 	while #st.mines > max do removeMine(st.mines[1], "replaced") end
 	setOut(char)
-	char:SetAttribute("MineReadyAt", t + (tonumber(char:GetAttribute("MineCooldown")) or 0))
+	if chargesOn() then -- v1.6: use a charge
+		local cmax = chargesMax(char)
+		if st.charges >= cmax then st.nextChargeAt = t + math.max(0, tonumber(char:GetAttribute("MineCooldown")) or 0) end
+		st.charges -= 1
+		publishCharges(char, st)
+	else
+		char:SetAttribute("MineReadyAt", t + (tonumber(char:GetAttribute("MineCooldown")) or 0))
+	end
 	char:SetAttribute("MineCount", (char:GetAttribute("MineCount") or 0) + 1)
 	script:SetAttribute("MineThrown", (script:GetAttribute("MineThrown") or 0) + 1)
 	char:SetAttribute("MineStartedAt", t) -- last: readers react to this one
