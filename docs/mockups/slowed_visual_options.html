@@ -1,0 +1,199 @@
+<title>Slowed Look Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro, chips (look + who is slowed + play), one big island scene with the dino, notes per option, what changes in game. Single dark game look (matches the earlier HUD / charge mockups). */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --slow: #8a7dff; --slow-soft: #8a7dff55; --red: #f05a4f; --def: #50a0ff;
+  --sky1: #7fbdea; --sky2: #b6def2; --grass: #6cc25a; --grass2: #57a948;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1000px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--slow); }
+h2 { margin: 0; font: 700 18px var(--display); }
+.lede { margin: 0; color: var(--muted); max-width: 75ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+button:focus-visible { outline: 3px solid var(--slow); outline-offset: 2px; }
+.scene { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 8; border-radius: 16px; overflow: hidden; border: 2px solid var(--line);
+  background: linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 62%, var(--grass) 62%, var(--grass2) 100%); }
+.scene canvas { width: 100%; height: 100%; display: block; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0 0 6px; font: 700 17px var(--display); }
+.note ul { margin: 0; padding-left: 18px; color: var(--grey); }
+.rec { display: inline-block; font: 600 10px var(--mono); letter-spacing: .12em; color: #1b1406; background: var(--yellow); border-radius: 4px; padding: 1px 6px; margin-bottom: 6px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.tablewrap { overflow-x: auto; }
+@media (prefers-reduced-motion: reduce) { .scene canvas { animation: none; } }
+</style>
+
+<div class="wrap">
+  <h1>Pachy headbutt: <span>slowed</span> look on the dino</h1>
+  <p class="lede">The same look shows on the dino that got headbutted (slowed 3 s) and on the pachy after it uses its last charge (slowed 2.5 s). Everyone near it sees it. Pick a look; the scene plays the slow from start to end.</p>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Look"><b>Look</b>
+      <button class="chip" data-k="opt" data-v="badge" aria-pressed="false">A · Badge</button>
+      <button class="chip" data-k="opt" data-v="body" aria-pressed="false">B · On the body</button>
+      <button class="chip" data-k="opt" data-v="both" aria-pressed="true">C · Both</button>
+    </div>
+    <div class="group" role="group" aria-label="Who"><b>Who</b>
+      <button class="chip" data-k="who" data-v="raptor" aria-pressed="true">Hit raptor (3 s)</button>
+      <button class="chip" data-k="who" data-v="pachy" aria-pressed="false">Pachy, last charge (2.5 s)</button>
+    </div>
+    <div class="group"><b>Play</b>
+      <button class="chip" id="replay" aria-pressed="false">Replay</button>
+    </div>
+  </div>
+
+  <div class="scene"><canvas id="cv" width="1000" height="500" aria-label="Island scene with a slowed dino"></canvas></div>
+
+  <div class="cols">
+    <div class="note"><h3>A · Badge</h3><ul>
+      <li>A purple "▼ SLOW" badge with a timer bar, in the same row as the roar's DEF / SPD badges above the name.</li>
+      <li>Matches what players already know; clean, but small from far away.</li></ul></div>
+    <div class="note"><h3>B · On the body</h3><ul>
+      <li>The dino glows a cold purple, drags heavy dust at its feet and leaves fading after-images, so it reads as sluggish from any distance.</li>
+      <li>Very visible; no text, so a new player may not know it means slowed.</li></ul></div>
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>C · Both</h3><ul>
+      <li>The body look for distance plus the badge with its timer for "how long".</li>
+      <li>Fades out together when the slow ends.</li></ul></div>
+  </div>
+
+  <div class="note">
+    <h2>What changes in game</h2>
+    <div class="tablewrap"><table>
+      <tr><th>Part</th><th>What</th></tr>
+      <tr><td>StatusBadges 1.2</td><td>New "▼ SLOW" badge (A, C) while HeadbuttSlowUntil or HeadbuttSelfSlowUntil is in the future; timer bar empties over the slow.</td></tr>
+      <tr><td>HeadbuttFX 1.1</td><td>Body look (B, C): purple glow, heavy foot dust, after-images every 0.15 s while moving; fades in 0.2 s, out 0.3 s.</td></tr>
+      <tr><td>Untouched</td><td>Speed numbers, the ability bar's SLOWED pill, the shock-mine slow.</td></tr>
+    </table></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const st = { opt: 'both', who: 'raptor', t0: performance.now() };
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const SLOW = css('--slow');
+  const PACHY = { main: '#7A6A4E', stripes: '#3E5A55', belly: '#C8B898', dome: '#E6DCC4', mask: '#3F6F7A', limbs: '#5E5240', eyes: '#8A2A1E' };
+  const RAPTOR = { main: '#8a6a3a', stripes: '#4a3a24', belly: '#d8c49a', dome: '#8a6a3a', mask: '#4a3a24', limbs: '#6a5230', eyes: '#2a1a10' };
+
+  document.querySelectorAll('.chip[data-k]').forEach(b => b.addEventListener('click', () => {
+    st[b.dataset.k] = b.dataset.v;
+    document.querySelectorAll(`.chip[data-k="${b.dataset.k}"]`).forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    st.t0 = performance.now();
+  }));
+  document.getElementById('replay').addEventListener('click', () => { st.t0 = performance.now(); });
+
+  function dino(x, y, C, isPachy, legPhase, alpha) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y);
+    const r = (a, b, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(a, b, w, h); };
+    // tail
+    r(-150, -64, 40, 12, C.main); r(-112, -70, 40, 16, C.main); r(-74, -76, 40, 22, C.main);
+    // body
+    r(-40, -92, 100, 56, C.main); r(-30, -44, 84, 10, C.belly);
+    for (let i = 0; i < 5; i++) r(-30 + i * 18, -92, 7, 22, C.stripes);
+    // neck + head
+    r(52, -112, 30, 50, C.main);
+    if (isPachy) { r(66, -146, 56, 40, C.main); r(70, -164, 50, 20, C.dome); r(76, -174, 38, 10, C.dome); r(90, -138, 24, 16, C.mask); r(98, -134, 8, 7, C.eyes); r(118, -124, 22, 18, C.main); }
+    else { r(66, -136, 72, 30, C.main); r(110, -128, 8, 7, C.eyes); r(66, -110, 66, 8, C.belly); }
+    r(76, -70, 8, 18, C.limbs);
+    // legs
+    const s = Math.sin(legPhase) * 10;
+    r(-6 + s, -40, 22, 40, C.main); r(-2 + s, 0, 14, 26, C.limbs); r(-6 + s, 24, 28, 8, C.limbs);
+    r(20 - s, -40, 22, 40, C.main); r(24 - s, 0, 14, 26, C.limbs); r(20 - s, 24, 28, 8, C.limbs);
+    ctx.restore();
+  }
+
+  function frame(now) {
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    const isPachy = st.who === 'pachy';
+    const dur = isPachy ? 2.5 : 3;
+    const cycle = dur + 1.5; // slow, then 1.5 s normal
+    const t = ((now - st.t0) / 1000) % cycle;
+    const slowed = t < dur;
+    const left = slowed ? 1 - t / dur : 0;
+    const fadeOut = slowed ? Math.min(1, (dur - t) / 0.3) : 0;
+    const k = slowed ? Math.min(1, t / 0.2) * fadeOut : 0; // body-look weight
+    const speed = slowed ? 0.65 : 1;
+    const body = st.opt !== 'badge', badge = st.opt !== 'body';
+    // ground stripes scrolling to show speed
+    const scroll = ((now / 1000) * 260 * speed) % 120;
+    ctx.fillStyle = '#ffffff22';
+    for (let x = -scroll; x < W; x += 120) ctx.fillRect(x, H * 0.8, 50, 6);
+    const C = isPachy ? PACHY : RAPTOR;
+    const x = W * 0.45, y = H * 0.84;
+    const legPhase = (now / 1000) * 14 * speed;
+    // after-images
+    if (body && k > 0.01 && !reduce) {
+      for (let i = 3; i >= 1; i--) {
+        ctx.save(); ctx.filter = 'grayscale(1)';
+        dino(x - i * 34, y, { main: SLOW, stripes: SLOW, belly: SLOW, dome: SLOW, mask: SLOW, limbs: SLOW, eyes: SLOW }, isPachy, legPhase - i * 0.6, 0.18 * k / i);
+        ctx.restore();
+      }
+    }
+    // glow
+    if (body && k > 0.01) {
+      const g = ctx.createRadialGradient(x, y - 70, 20, x, y - 70, 190);
+      g.addColorStop(0, `rgba(138,125,255,${0.45 * k})`); g.addColorStop(1, 'rgba(138,125,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - 220, y - 270, 440, 300);
+    }
+    dino(x, y, C, isPachy, legPhase, 1);
+    // tint over the body
+    if (body && k > 0.01) {
+      ctx.save(); ctx.globalCompositeOperation = 'source-atop'; ctx.restore();
+      ctx.save(); ctx.globalAlpha = 0.28 * k; ctx.globalCompositeOperation = 'color';
+      ctx.fillStyle = SLOW; ctx.fillRect(x - 160, y - 180, 310, 215); ctx.restore();
+      // heavy dust at the feet
+      for (let i = 0; i < 6; i++) {
+        const p = ((now / 1000) * 0.9 + i / 6) % 1;
+        ctx.fillStyle = `rgba(110,100,150,${0.45 * (1 - p) * k})`;
+        ctx.beginPath(); ctx.ellipse(x + 10 - p * 110, y + 30 - p * 8, 14 + p * 26, 7 + p * 9, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // name + health bar + badge
+    const nx = x + 20, ny = y - (isPachy ? 230 : 200);
+    ctx.font = '700 18px Fredoka, system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+    ctx.fillText(isPachy ? 'Pachy' : 'Raptor', nx, ny);
+    ctx.fillStyle = '#00000088'; ctx.fillRect(nx - 50, ny + 6, 100, 9);
+    ctx.fillStyle = '#5fd16a'; ctx.fillRect(nx - 50, ny + 6, isPachy ? 100 : 70, 9);
+    if (badge && slowed) {
+      const bw = 76, bh = 22, bx = nx - bw / 2, by = ny - 42;
+      const pop = t < 0.3 ? 1 + 0.4 * Math.sin(Math.PI * t / 0.3) : 1;
+      ctx.save(); ctx.translate(nx, by + bh / 2); ctx.scale(pop, pop); ctx.translate(-nx, -(by + bh / 2));
+      ctx.globalAlpha = fadeOut;
+      ctx.fillStyle = SLOW; roundRect(bx, by, bw, bh, 6); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '700 14px Fredoka, system-ui'; ctx.fillText('▼ SLOW', nx, by + 16);
+      ctx.fillStyle = '#00000066'; ctx.fillRect(bx, by + bh + 2, bw, 4);
+      ctx.fillStyle = '#fff'; ctx.fillRect(bx, by + bh + 2, bw * left, 4);
+      ctx.restore();
+    }
+    // state caption
+    ctx.textAlign = 'left'; ctx.font = '600 14px "IBM Plex Mono", monospace'; ctx.fillStyle = '#0d0f14cc';
+    ctx.fillText(slowed ? `SLOWED  ${(dur - t).toFixed(1)} s` : 'normal speed', 18, 30);
+    if (!reduce) requestAnimationFrame(frame);
+  }
+  function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  if (reduce) { st.t0 = performance.now() - 800; frame(performance.now()); document.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => frame(performance.now() + 800))); }
+  else requestAnimationFrame(frame);
+})();
+</script>
