@@ -1,0 +1,426 @@
+<title>Dino Lab Screens</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: controls, one device frame showing the chosen screen (menu / Lab / island SKILLS), then the three Lab layouts and build notes. Single dark game look. */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14;
+  --panel: #14141a;
+  --panel2: #1c2230;
+  --line: #2b3242;
+  --fg: #ffffff;
+  --grey: #cfd3dc;
+  --muted: #8f99aa;
+  --yellow: #ffc832;
+  --orange: #ff9b2e;
+  --green: #5fd16a;
+  --red: #f05a4f;
+  --blue: #5aa0ff;
+  --volt: #7fe9ff;
+  --gold: #ffd666;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif;
+  --body: "Nunito", "Gotham", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--volt); }
+.lede { margin: 0; color: var(--muted); max-width: 76ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.chip:focus-visible, .s button:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.frameWrap { overflow-x: auto; }
+.device { position: relative; margin: 0 auto; border-radius: 18px; border: 3px solid #2a2f3a; overflow: hidden; background: #000; box-shadow: 0 20px 60px rgb(0 0 0 / .45); }
+.device.pc { width: min(100%, 1140px); aspect-ratio: 16 / 9; }
+.device.phone { width: min(100%, 880px); aspect-ratio: 19.5 / 9; border-radius: 34px; border-width: 8px; }
+.s { position: absolute; inset: 0; container-type: size; font-family: var(--body); overflow: hidden; }
+.s button { font-family: inherit; cursor: pointer; }
+
+/* game world behind */
+.world { position: absolute; inset: 0; background: linear-gradient(180deg, #2f80d9 0%, #8cc3ec 46%, #cfe3c0 47%, #6cb24f 60%, #4f9a3a 100%); }
+.world .blk { position: absolute; bottom: 34%; width: 7cqw; background: #6f7a8c; }
+.dim { position: absolute; inset: 0; background: rgb(10 12 18 / .55); }
+.topbtn { position: absolute; left: 1.6cqw; top: 1.6cqh; width: 4.4cqh; height: 4.4cqh; border-radius: 1.2cqh; background: rgb(0 0 0 / .55); z-index: 20; }
+
+/* shared game pieces */
+.gbtn { font-family: var(--display) !important; font-weight: 700; border: 0; border-radius: 1.6cqh; color: #1b1406; background: var(--yellow); box-shadow: inset 0 -.9cqh 0 rgb(0 0 0 / .22), 0 .6cqh 0 rgb(0 0 0 / .35); text-transform: uppercase; letter-spacing: .03em; }
+.gbtn.dark { background: var(--panel); color: #fff; border: .35cqh solid rgb(255 255 255 / .16); }
+.gbtn.volt { background: var(--volt); color: #062430; }
+.gbtn.orange { background: var(--orange); }
+.gbtn[disabled] { opacity: .45; cursor: default; }
+.panel { background: rgb(20 20 26 / .9); border: .35cqh solid rgb(255 255 255 / .12); border-radius: 2cqh; }
+.title { font: 700 7cqh/.95 var(--display); text-shadow: 0 .5cqh 0 rgb(0 0 0 / .45); }
+.title small { display: block; font-size: .42em; color: var(--yellow); letter-spacing: .14em; margin-bottom: .6cqh; }
+.tag { font: 900 max(1.7cqh, 10px)/1 var(--body); letter-spacing: .08em; padding: .6cqh 1cqh; border-radius: .8cqh; background: rgb(0 0 0 / .35); text-transform: uppercase; }
+.pips { display: inline-flex; gap: .5cqh; }
+.pips i { width: 1.6cqh; height: 1.6cqh; border-radius: .4cqh; background: rgb(255 255 255 / .14); }
+.pips i.on { background: var(--c, var(--orange)); }
+.pips i.star { border-radius: 50%; }
+.stage { position: relative; display: grid; place-items: center; overflow: hidden; }
+.stage .floor { position: absolute; left: 14%; right: 14%; bottom: 10%; height: 7%; border-radius: 50%; background: radial-gradient(closest-side, rgb(127 233 255 / .35), transparent); }
+.stage svg.dino { width: 86%; max-height: 80%; position: relative; animation: bob 2.6s ease-in-out infinite; }
+.stage .lbl { position: absolute; top: 1.8cqh; left: 1.8cqh; font: 600 max(1.6cqh, 10px) var(--mono); letter-spacing: .1em; color: var(--volt); padding: .6cqh 1cqh; border-radius: .8cqh; background: rgb(0 0 0 / .4); }
+@keyframes bob { 50% { transform: translateY(-1.2cqh); } }
+@keyframes spin { 0% { transform: rotateY(0) } 100% { transform: rotateY(360deg) } }
+@media (prefers-reduced-motion: reduce) { .stage svg.dino, .card .art svg { animation: none !important; } }
+
+/* part cards */
+.card { position: relative; display: grid; grid-template-rows: auto auto auto; gap: .6cqh; padding: 1cqh; border-radius: 1.4cqh; background: var(--panel2); border: .3cqh solid rgb(255 255 255 / .1); text-align: left; color: #fff; min-width: 0; }
+.card.sel { border-color: #fff; box-shadow: 0 0 0 .3cqh rgb(255 255 255 / .25); }
+.card.eq { border-color: var(--orange); }
+.card.soon { opacity: .5; }
+.card .art { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: 1cqh; background: radial-gradient(ellipse at 50% 65%, rgb(127 233 255 / .2), rgb(0 0 0 / .25) 70%); perspective: 300px; }
+.card .art svg { width: 64%; height: auto; animation: spin 6s linear infinite; }
+.card .nm { font: 700 max(1.9cqh, 11px)/1.1 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .meta { display: flex; justify-content: space-between; align-items: center; gap: .6cqh; }
+.card .badge { position: absolute; top: .8cqh; right: .8cqh; font: 900 max(1.5cqh, 9px)/1 var(--body); padding: .5cqh .8cqh; border-radius: .7cqh; background: var(--orange); color: #1b1406; }
+.card .badge.pas { background: var(--volt); color: #062430; }
+.card .badge.lock { background: rgb(255 255 255 / .2); color: #fff; }
+
+/* slots */
+.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8cqw; }
+.slot { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .8cqh; padding: .6cqh 1cqh; min-height: max(6cqh, 34px); border-radius: 1.2cqh; background: rgb(255 255 255 / .06); border: .3cqh solid rgb(255 155 46 / .55); color: var(--grey); text-align: left; min-width: 0; }
+.slot .k { font: 900 max(1.9cqh, 11px)/1 var(--body); color: var(--orange); }
+.slot .v { display: flex; align-items: center; gap: .6cqh; font: 800 max(1.6cqh, 10px)/1.1 var(--body); min-width: 0; }
+.slot .v span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot .v svg { width: 3.4cqh; height: 3.4cqh; flex: none; }
+.slot.empty { border-color: rgb(255 255 255 / .14); color: var(--muted); }
+.slot.sel { border-color: #fff; border-width: .5cqh; color: #fff; }
+.slot.want { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { border-color: #fff; } }
+
+/* detail */
+.detail { display: grid; gap: 1cqh; align-content: start; padding: 1.6cqh; min-height: 0; overflow: auto; }
+.detail h3 { margin: 0; font: 700 3cqh/1.05 var(--display); }
+.detail .sub { font: 800 max(1.6cqh, 10px) var(--body); color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.steps { display: grid; gap: .7cqh; margin: 0; padding: 0; list-style: none; }
+.steps li { display: grid; grid-template-columns: 3.4cqh 1fr; gap: .8cqh; align-items: start; font: 700 max(1.6cqh, 10px)/1.3 var(--body); color: var(--muted); }
+.steps li b { display: grid; place-items: center; height: 3cqh; border-radius: .7cqh; font: 900 max(1.5cqh, 9px) var(--body); background: rgb(255 255 255 / .1); color: var(--muted); }
+.steps li.got { color: var(--grey); }
+.steps li.got b { background: var(--c, var(--orange)); color: #1b1406; }
+.steps li.next { color: #fff; }
+.steps li.next b { outline: .3cqh solid #fff; color: #fff; }
+.acts { display: flex; gap: 1cqh; flex-wrap: wrap; }
+.acts .gbtn { flex: 1 1 auto; height: max(5.6cqh, 34px); font-size: max(2.1cqh, 12px); padding: 0 1.6cqh; }
+.hint { font: 800 max(1.5cqh, 10px) var(--body); color: var(--muted); }
+
+/* top bar of the Lab */
+.lab { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: linear-gradient(180deg, #10141d, #1a2130 60%, #0e1219); }
+.bar { display: flex; align-items: center; gap: 1.6cqh; padding: 1.4cqh 2cqw 1.2cqh 10cqh; background: rgb(14 18 26 / .96); border-bottom: .35cqh solid rgb(127 233 255 / .25); }
+.bar .nm { font: 700 3.4cqh/1 var(--display); }
+.bar .nm small { color: var(--volt); font-size: .55em; letter-spacing: .14em; margin-right: 1cqh; }
+.bar .lv { font: 900 max(1.8cqh, 10px) var(--body); color: var(--grey); display: flex; align-items: center; gap: 1cqh; }
+.bar .xp { width: 12cqw; height: 1.4cqh; border-radius: 99px; background: rgb(255 255 255 / .12); overflow: hidden; }
+.bar .xp i { display: block; height: 100%; width: 62%; background: var(--yellow); }
+.bar .pts { margin-left: auto; font: 700 2.4cqh/1 var(--display); color: #1b1406; background: var(--yellow); padding: .8cqh 1.4cqh; border-radius: 1cqh; }
+.bar .mas { font: 900 max(1.7cqh, 10px) var(--body); color: var(--gold); border: .3cqh solid rgb(255 214 102 / .6); padding: .7cqh 1.2cqh; border-radius: 1cqh; }
+.bar .x { height: max(5cqh, 30px); width: max(5cqh, 30px); padding: 0; font-size: 2.4cqh; }
+.tabs { display: flex; gap: .8cqh; }
+.tabs button { flex: 1; font: 900 max(1.7cqh, 10px) var(--body); letter-spacing: .08em; padding: .9cqh; border-radius: 1cqh; background: rgb(255 255 255 / .06); color: var(--muted); border: .3cqh solid transparent; }
+.tabs button[aria-selected="true"] { color: #fff; border-color: var(--volt); background: rgb(127 233 255 / .12); }
+.grid { display: grid; gap: 1cqh; overflow: auto; align-content: start; min-height: 0; padding-right: .4cqh; }
+.statrow { display: grid; grid-template-columns: 1fr auto; gap: .6cqh 1cqh; align-items: center; padding: 1.2cqh 1.4cqh; border-radius: 1.2cqh; background: var(--panel2); border: .3cqh solid rgb(255 255 255 / .08); text-align: left; color: #fff; }
+.statrow.sel { border-color: #fff; }
+.statrow .nm { font: 700 max(2cqh, 11px)/1.1 var(--display); }
+.statrow .ar { font: 900 max(1.5cqh, 9px) var(--body); letter-spacing: .08em; text-transform: uppercase; }
+
+/* A · Workbench */
+.A .body { display: grid; grid-template-columns: 31% 1fr 27%; gap: 1.6cqw; padding: 1.6cqh 2cqw 2cqh; min-height: 0; }
+.A .col { display: grid; grid-template-rows: auto 1fr; gap: 1.2cqh; min-height: 0; }
+.A .grid { grid-template-columns: repeat(2, 1fr); }
+.A .mid { display: grid; grid-template-rows: 1fr auto auto; gap: 1.2cqh; min-height: 0; }
+.A .stage { border-radius: 2cqh; }
+/* B · Split */
+.B .body { display: grid; grid-template-columns: 44% 1fr; gap: 1.8cqw; padding: 1.6cqh 2cqw 2cqh; min-height: 0; }
+.B .left { display: grid; grid-template-rows: 1fr auto auto; gap: 1.2cqh; min-height: 0; }
+.B .right { display: grid; grid-template-rows: auto minmax(0, 1fr) minmax(0, 40cqh); gap: 1.2cqh; min-height: 0; }
+.B .grid { grid-template-columns: repeat(4, 1fr); }
+.B .sheet { min-height: 0; display: grid; }
+.B .sheet .detail { overflow: auto; }
+/* C · Hangar */
+.C .body { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) 27cqh; gap: 1cqh; padding: 1.2cqh 2cqw 1.6cqh; min-height: 0; }
+.C .bay { position: relative; display: grid; grid-template-columns: 22% 1fr 22%; gap: 1.6cqw; min-height: 0; }
+.C .sockets { display: grid; gap: 1.2cqh; align-content: center; }
+.C .sockets .slot { grid-template-columns: 1fr; text-align: center; justify-items: center; min-height: 11cqh; }
+.C .sockets .slot .v { flex-direction: column; }
+.C .sockets .slot .v svg { width: 5cqh; height: 5cqh; }
+.C .hand { display: grid; grid-template-columns: auto 1fr; gap: 1.2cqh; align-items: stretch; }
+.C .hand .tabs { flex-direction: column; }
+.C .hand { min-height: 0; }
+.C .hand .grid { grid-auto-flow: column; grid-auto-columns: 14cqw; overflow-x: auto; overflow-y: hidden; }
+.C .hand .card { grid-template-rows: 1fr auto auto; }
+.C .hand .card .art { aspect-ratio: auto; min-height: 0; }
+.C .hand .statrow { width: 22cqw; }
+.C .pop { position: absolute; left: 30%; right: 30%; bottom: calc(27cqh + 2.6cqh); max-height: 34cqh; display: grid; z-index: 4; }
+.C .pop .detail { overflow: auto; box-shadow: 0 1cqh 3cqh rgb(0 0 0 / .5); }
+
+/* compact island version */
+.compact .lab { inset: 10cqh 11cqw 6cqh 11cqw; border-radius: 2.4cqh; overflow: hidden; box-shadow: 0 2cqh 6cqh rgb(0 0 0 / .5); background: rgb(14 18 26 / .94); border: .35cqh solid rgb(127 233 255 / .3); }
+.compact .bar { padding-left: 2cqw; }
+.compact .A .body { grid-template-columns: 34% 1fr 30%; }
+.compact .B .grid { grid-template-columns: repeat(3, 1fr); }
+
+/* main menu */
+.menu { position: absolute; inset: 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 3cqw; padding: 10cqh 4cqw 5cqh; background: linear-gradient(90deg, rgb(10 12 18 / .94), rgb(10 12 18 / .82) 55%, rgb(10 12 18 / .9)); }
+.menu .left { display: grid; grid-template-rows: 1fr auto auto auto; gap: 1.4cqh; min-height: 0; }
+.menu .species { display: flex; align-items: center; justify-content: center; gap: 1.6cqw; }
+.menu .arrow { width: max(7cqh, 40px); height: max(7cqh, 40px); padding: 0; font: 900 3.6cqh var(--body) !important; }
+.menu .dname { font: 700 4.6cqh/1 var(--display); min-width: 22cqw; text-align: center; }
+.menu .dname small { display: block; font: 800 max(1.9cqh, 11px) var(--body); color: var(--muted); margin-top: .6cqh; }
+.menu .ref .slot { pointer-events: none; }
+.menu .lab-go { height: max(7cqh, 40px); font-size: max(2.8cqh, 15px); display: flex; align-items: center; justify-content: center; gap: 1.4cqh; }
+.menu .right { display: grid; align-content: center; gap: 3cqh; }
+.menu .modes { display: grid; gap: 2.2cqh; }
+.menu .modes .gbtn { height: 13cqh; font-size: 5cqh; display: flex; align-items: center; justify-content: space-between; padding: 0 3cqh; text-align: left; }
+.menu .modes .sub { display: block; font: 800 max(2.1cqh, 11px) var(--body); text-transform: none; letter-spacing: 0; opacity: .78; }
+/* HUD on the island */
+.hud { position: absolute; top: 1.6cqh; right: 1.6cqw; display: flex; gap: 1cqh; z-index: 2; }
+.hud button { height: max(6cqh, 32px); padding: 0 2cqh; font-size: max(2.2cqh, 12px); }
+.toast { position: absolute; left: 50%; bottom: 3cqh; transform: translateX(-50%); font: 700 max(2.4cqh, 12px) var(--display); background: rgb(20 20 26 / .95); border: .35cqh solid var(--yellow); color: var(--yellow); padding: 1.2cqh 2.4cqh; border-radius: 1.6cqh; white-space: nowrap; z-index: 30; pointer-events: none; }
+
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.opt { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.opt.on { border-color: var(--yellow); }
+.opt h3 { margin: 0; font: 700 18px var(--display); }
+.opt .rec { font: 600 11px var(--mono); color: var(--green); letter-spacing: .1em; text-transform: uppercase; }
+.opt p { margin: 0; color: var(--muted); font-size: 14px; }
+.spec { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.spec h2 { margin: 0 0 6px; font: 700 18px var(--display); }
+.spec ul { margin: 0; padding-left: 18px; color: var(--grey); display: grid; gap: 4px; }
+</style>
+
+<div class="wrap">
+  <h1>Dino <span>Lab</span></h1>
+  <p class="lede">The Lab replaces the skill tree and the menu's tap-to-pick loadout. Your dino stands in the middle with every upgrade it has, each mech part is a card with the part's own 3D model, and you buy steps, upgrade stats and fill the four button slots in one place. The main menu keeps the dino select with a read-only slot row and a GO TO THE LAB button; the SKILLS button on the island opens a compact version over the game. Everything is clickable: buy steps, equip parts, switch dinos.</p>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Layout"><b>Layout</b>
+      <button class="chip" data-o="A">A · Workbench</button>
+      <button class="chip" data-o="B">B · Split</button>
+      <button class="chip" data-o="C">C · Hangar</button>
+    </div>
+    <div class="group" role="group" aria-label="Screen"><b>Screen</b>
+      <button class="chip" data-v="menu">Main menu</button>
+      <button class="chip" data-v="lab">Lab</button>
+      <button class="chip" data-v="island">Island SKILLS</button>
+    </div>
+    <div class="group" role="group" aria-label="Device"><b>Device</b>
+      <button class="chip" data-d="pc">PC 16:9</button>
+      <button class="chip" data-d="phone">Phone</button>
+    </div>
+  </div>
+
+  <div class="frameWrap"><div class="device pc" id="device"><div class="s" id="screen"></div></div></div>
+
+  <div class="opts">
+    <div class="opt" id="o-A"><span class="rec">Recommended</span><h3>A · Workbench</h3><p>Three columns: part cards on the left (PARTS / STATS tabs), the dino big in the middle with the four slots under it, and the selected card's steps with BUY and EQUIP on the right. Everything visible at once; on a phone the cards and details get narrow.</p></div>
+    <div class="opt" id="o-B"><h3>B · Split</h3><p>Dino and slots on the left half, a 4-wide card grid on the right, and the selected card's details slide up under the grid. Bigger cards, so the part models read best; details only show once you pick a card.</p></div>
+    <div class="opt" id="o-C"><h3>C · Hangar</h3><p>The dino fills the middle with its four sockets beside it like a mech bay, and the cards run along the bottom as a scrolling hand. The most "game" feeling; fewer cards visible at once and details pop over the hand.</p></div>
+  </div>
+
+  <div class="spec">
+    <h2>What changes in the game</h2>
+    <ul>
+      <li>The skill tree screen goes away. The Lab buys steps (1-2-3-4 points, the same rules: 40 points, 3 masteries) and equips parts; the server checks every buy and slot as it does today.</li>
+      <li>Part cards show the real part: each mech part's model is built once for the card from the same code that builds it on your dino.</li>
+      <li>The big dino shows every upgrade applied: equipped button parts and bought always-on parts (Blade Claws). Equipping a card puts it on the dino at once.</li>
+      <li>Main menu: the loadout picker is replaced by a read-only slot row plus GO TO THE LAB. On the island, SKILLS (K on PC) opens the compact Lab over the game.</li>
+      <li>T-Rex parts that aren't built yet show as locked "COMING SOON" cards.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(() => {
+  const st = { o: 'A', v: 'lab', d: 'pc', dino: 'Raptor', tab: 'parts', sel: 'screech', slotSel: -1, toast: '' };
+  const KEYS = ['R', 'C', 'T', 'V'];
+  const COST = [1, 2, 3, 4];
+  const AREA = { health: ['Health', '#5fd16a'], attack: ['Attack', '#f05a4f'], defense: ['Defense', '#5aa0ff'], speed: ['Speed', '#ffd34d'], eng: ['Engineer', '#ff9b2e'] };
+  const P = {
+    adrenaline: { n: 'Adrenaline Injector', a: 'health', btn: 1, s: ['Button: heal 25% of max health over 3 s and run 1.4x faster', 'Heal 34%', 'Recharges 26% faster', 'Also ends a stun at once'] },
+    screech: { n: 'Shock Cannon', a: 'attack', btn: 1, s: ['Button: shoulder cannon, 100 studs; first dino hit is stunned 1.1 s', 'Reaches 135 studs', 'Recharges 26% faster', 'Heavy shot: the hit also deals 30 damage'] },
+    blade: { n: 'Blade Claws', a: 'attack', btn: 0, s: ['Mech sickle claws: pounce landing hits 35% harder', 'Latch / pin bites tick 35% faster', 'Pounce hits make the target bleed', 'A pin kill gives back half your pounce stamina'] },
+    shield: { n: 'Energy Shield', a: 'defense', btn: 1, s: ['Button: block all damage for 1.5 s at half speed', 'Stronger', 'Shorter cooldown', 'Blocks 2.77 s and the slow is lighter'] },
+    cloak: { n: 'Cloak Field', a: 'defense', btn: 1, s: ['Button: nearly invisible for 3 s; bots lose you', 'Lasts 4.1 s', 'A pounce out of the cloak hits 35% harder', 'Standing still keeps you cloaked, up to twice as long'] },
+    thrusters: { n: 'Thrusters', a: 'speed', btn: 1, s: ['Button: rocket boost 1.37 s at 2x run speed', '2 charges', 'Longer boost: 1.85 s', 'Rocket hop: starts with a 25-stud hop'] },
+    traps: { n: 'Shock Mine', a: 'eng', btn: 1, s: ['Button: throw a mine 30 studs; 25 damage, blasted back 25 studs, dazed 1 s', '2 mines out at once', 'Recharges 36% faster (8.8 s)', 'Mines also jam the dino\'s parts'] },
+    scent: { n: 'Scent Sense', a: 'eng', btn: 1, s: ['Button: sniff; trails of dinos within 60 studs glow for 6 s', 'Wider: 81 studs', 'Longer memory; fresh trail ends pulse', 'Blood scent: bleeding dinos leave a trail you always see'] },
+    repairdrone: { n: 'Repair Drone', a: 'health', btn: 1, soon: 1, s: ['Button: a drone heals 20% over 5 s', 'Heals 27%', 'Recharges 26% faster', 'Also heals an ally next to you'] },
+    rocket: { n: 'Shoulder Rocket', a: 'attack', btn: 1, soon: 1, s: ['Button: aimed rocket with splash damage', 'Faster reload', 'Bigger blast', '3-rocket burst'] },
+    armor: { n: 'Armor Plating', a: 'defense', btn: 1, soon: 1, s: ['Button: absorb damage, press again to blast it out', 'Bigger charge', 'Faster recharge', 'Bigger blast at max charge'] },
+    ramjet: { n: 'Ramjet Charge', a: 'speed', btn: 1, soon: 1, s: ['Button: charge ahead at 1.75x run speed', '2 charges', 'Lasts 1.35 s', 'Hitting a dino stuns it 0.75 s'] },
+    roaramp: { n: 'Roar Amplifier', a: 'eng', btn: 1, soon: 1, s: ['Button: roar; enemies in the cone take 25% more damage', 'Lasts 6.75 s', '35% more damage', 'Also shields allies near you'] },
+    regen: { n: 'Regeneration', a: 'health', stat: 1, s: ['Heal 2% per second after 6 s without damage', 'Starts after 4.4 s, 3% per second', 'Starts after 3.2 s, 4.5% per second', 'Kill heal doubled'] },
+    lifesteal: { n: 'Lifesteal', a: 'health', stat: 1, s: ['5% of the damage you deal heals you', '10%', '15%', 'Healing past full becomes a shield'] },
+    jaws: { n: 'Jaws', a: 'attack', stat: 1, s: ['Bite hits harder (25 → 35)', 'Bite recharges 35% faster', 'Bites make the target bleed', 'Crushing hit: stun 0.75 s'] },
+    hide: { n: 'Thick Hide', a: 'defense', stat: 1, s: ['Take 30% less damage', 'Thrown half as far by rams', 'Stuns are 30% shorter', 'No stuns above 50% health'] },
+    legs: { n: 'Sprint Legs', a: 'speed', stat: 1, s: ['Run 40% faster', 'Run speed x1.9', 'Pounce, ram and leap recharge 35% faster', 'Run speed x2.6'] },
+  };
+  const D = {
+    Raptor: { name: 'RAPTOR', sub: '60 HP · fast hunter', lv: 21, left: 6, parts: ['adrenaline', 'screech', 'blade', 'shield', 'cloak', 'thrusters', 'traps', 'scent'], stats: ['regen', 'lifesteal', 'hide', 'legs'],
+      steps: { adrenaline: 2, screech: 4, blade: 1, shield: 1, cloak: 3, thrusters: 0, traps: 2, scent: 0, regen: 1, lifesteal: 0, hide: 2, legs: 1 }, slots: ['adrenaline', 'screech', 'shield', 'cloak'] },
+    TRex: { name: 'T-REX', sub: '200 HP · heavy hitter', lv: 6, left: 3, parts: ['repairdrone', 'rocket', 'armor', 'ramjet', 'roaramp'], stats: ['lifesteal', 'jaws', 'hide', 'legs'],
+      steps: { jaws: 1, hide: 1, lifesteal: 0, legs: 0 }, slots: ['', '', '', ''] },
+  };
+  const dino = () => D[st.dino];
+  const steps = (id) => dino().steps[id] || 0;
+  const mastered = () => Object.entries(dino().steps).filter(([, n]) => n >= 3).length;
+
+  // ---------- part art (blocky icons, spun like the 3D card models) ----------
+  const r = (x, y, w, h, f) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+  const ICON = {
+    adrenaline: r(6, 6, 8, 20, '#5dff8a') + r(18, 6, 8, 20, '#5dff8a') + r(6, 3, 8, 4, '#3a4350') + r(18, 3, 8, 4, '#3a4350') + r(4, 24, 24, 5, '#3a4350') + r(8, 10, 3, 12, '#b9ffd0'),
+    screech: r(3, 12, 10, 10, '#3a4350') + r(12, 14, 16, 6, '#8e9aa8') + r(16, 12, 2, 10, '#7fe9ff') + r(22, 12, 2, 10, '#7fe9ff') + r(27, 13, 4, 8, '#7fe9ff'),
+    blade: r(10, 22, 12, 6, '#8e9aa8') + r(16, 14, 6, 9, '#8e9aa8') + r(19, 8, 5, 7, '#8e9aa8') + r(21, 4, 4, 5, '#f05a4f'),
+    shield: r(6, 20, 20, 8, '#3a4350') + `<path d="M4 20 Q16 2 28 20" fill="none" stroke="#5aa0ff" stroke-width="3"/>` + r(13, 16, 6, 5, '#7fe9ff'),
+    cloak: r(6, 8, 4, 18, '#8e9aa8') + r(13, 5, 4, 21, '#8e9aa8') + r(20, 8, 4, 18, '#8e9aa8') + r(4, 14, 22, 3, '#7fe9ff') + r(4, 24, 22, 4, '#3a4350'),
+    thrusters: r(8, 4, 16, 14, '#3a4350') + r(10, 18, 5, 4, '#8e9aa8') + r(17, 18, 5, 4, '#8e9aa8') + r(10, 22, 5, 7, '#ff9b2e') + r(17, 22, 5, 7, '#ff9b2e') + r(11, 26, 3, 4, '#ffd34d'),
+    traps: r(4, 20, 24, 6, '#2e343e') + r(8, 17, 16, 4, '#7fe9ff') + r(14, 8, 4, 10, '#8e9aa8') + r(13, 4, 6, 5, '#e1faff'),
+    scent: r(6, 12, 20, 10, '#3a4350') + r(24, 14, 5, 6, '#ff9b2e') + r(9, 8, 3, 5, '#7fe9ff') + r(15, 6, 3, 7, '#7fe9ff') + r(21, 8, 3, 5, '#7fe9ff'),
+    repairdrone: r(8, 10, 16, 10, '#8e9aa8') + r(2, 8, 10, 3, '#3a4350') + r(20, 8, 10, 3, '#3a4350') + r(13, 13, 6, 4, '#5fd16a'),
+    rocket: r(4, 12, 20, 8, '#8e9aa8') + r(24, 13, 5, 6, '#f05a4f') + r(2, 10, 4, 12, '#3a4350'),
+    armor: r(6, 6, 20, 20, '#5a6474') + r(8, 8, 16, 4, '#8e9aa8') + r(8, 14, 16, 4, '#8e9aa8') + r(8, 20, 16, 4, '#8e9aa8'),
+    ramjet: r(4, 10, 18, 12, '#3a4350') + r(22, 12, 6, 8, '#8e9aa8') + r(0, 13, 5, 6, '#ff9b2e'),
+    roaramp: r(6, 10, 10, 12, '#3a4350') + `<path d="M16 10 L28 4 L28 28 L16 22 Z" fill="#8e9aa8"/>` + r(9, 13, 4, 6, '#ffd34d'),
+  };
+  const icon = (id, cls = '') => `<svg class="${cls}" viewBox="0 0 32 32" aria-hidden="true">${ICON[id] || ''}</svg>`;
+
+  // ---------- the dino with everything applied ----------
+  function dinoSVG() {
+    const eq = new Set([...dino().slots.filter(Boolean), ...dino().parts.filter(id => !P[id].btn && steps(id) > 0)]);
+    if (st.dino === 'TRex') {
+      const G = '#7a6a3a', Dk = '#5a4d2a', L = '#8f7d47';
+      return `<svg class="dino" viewBox="0 0 220 140" aria-hidden="true">${r(6, 58, 58, 14, G)}${r(56, 44, 78, 44, G)}${r(60, 48, 70, 6, L)}${r(126, 30, 22, 30, G)}${r(136, 14, 66, 30, G)}${r(176, 32, 26, 10, Dk)}${r(160, 20, 6, 6, '#111')}${r(128, 60, 16, 5, Dk)}${r(74, 88, 18, 34, Dk)}${r(102, 88, 18, 34, Dk)}${r(70, 118, 26, 7, Dk)}${r(98, 118, 26, 7, Dk)}</svg>`;
+    }
+    const G = '#4f8f3a', Dk = '#2f5a24', L = '#6fb04f';
+    let s = `<svg class="dino" viewBox="0 0 220 140" aria-hidden="true">${r(20, 62, 60, 12, G)}${r(8, 60, 16, 9, G)}${r(70, 52, 70, 34, G)}${r(74, 56, 62, 6, L)}${r(132, 34, 16, 30, G)}${r(140, 22, 44, 22, G)}${r(176, 34, 14, 10, Dk)}${r(168, 27, 5, 5, '#111')}${r(86, 86, 12, 34, Dk)}${r(112, 86, 12, 34, Dk)}${r(82, 118, 20, 6, Dk)}${r(108, 118, 20, 6, Dk)}${r(132, 70, 14, 6, Dk)}`;
+    if (eq.has('adrenaline')) s += r(96, 40, 12, 13, '#5dff8a') + r(111, 40, 12, 13, '#5dff8a') + r(96, 37, 12, 4, '#3a4350') + r(111, 37, 12, 4, '#3a4350');
+    if (eq.has('screech')) s += r(118, 58, 22, 16, '#3a4350') + r(140, 62, 40, 8, '#8e9aa8') + r(150, 60, 4, 12, '#7fe9ff') + r(162, 60, 4, 12, '#7fe9ff') + `<circle cx="183" cy="66" r="5" fill="#7fe9ff"/>`;
+    if (eq.has('cloak')) s += r(74, 44, 5, 12, '#8e9aa8') + r(80, 42, 5, 14, '#8e9aa8') + r(74, 48, 11, 2, '#7fe9ff');
+    if (eq.has('shield')) s += `<rect x="64" y="48" width="82" height="44" fill="none" stroke="#5aa0ff" stroke-opacity=".6" stroke-width="2" stroke-dasharray="5 4"/>`;
+    if (eq.has('thrusters')) s += r(62, 74, 10, 10, '#3a4350') + r(54, 76, 9, 6, '#ff9b2e');
+    if (eq.has('traps')) s += r(98, 80, 14, 5, '#2e343e') + r(103, 76, 4, 4, '#e1faff');
+    if (eq.has('scent')) s += r(180, 24, 10, 4, '#ff9b2e');
+    if (eq.has('blade')) s += r(96, 116, 8, 4, '#8e9aa8') + r(100, 110, 4, 6, '#f05a4f') + r(122, 116, 8, 4, '#8e9aa8') + r(126, 110, 4, 6, '#f05a4f');
+    return s + '</svg>';
+  }
+
+  // ---------- pieces ----------
+  const pips = (id) => { const c = AREA[P[id].a][1]; return `<span class="pips" style="--c:${c}">${[0, 1, 2, 3].map(i => `<i class="${i < steps(id) ? 'on' : ''}${i === 3 ? ' star' : ''}"></i>`).join('')}</span>`; };
+  function card(id) {
+    const p = P[id], n = steps(id), eq = dino().slots.indexOf(id);
+    const badge = p.soon ? '<span class="badge lock">SOON</span>' : !p.btn ? '<span class="badge pas">ALWAYS ON</span>' : eq >= 0 ? `<span class="badge">${KEYS[eq]}</span>` : '';
+    return `<button class="card${st.sel === id ? ' sel' : ''}${eq >= 0 ? ' eq' : ''}${p.soon ? ' soon' : ''}" data-card="${id}">${badge}
+      <span class="art">${icon(id)}</span><span class="nm">${p.n}</span>
+      <span class="meta">${pips(id)}<span class="tag" style="color:${AREA[p.a][1]}">${n ? (n === 4 ? '★' : ['I', 'II', 'III'][n - 1]) : 'NEW'}</span></span></button>`;
+  }
+  function statRow(id) {
+    const p = P[id];
+    return `<button class="statrow${st.sel === id ? ' sel' : ''}" data-card="${id}"><span class="nm">${p.n}</span>${pips(id)}<span class="ar" style="color:${AREA[p.a][1]}">${AREA[p.a][0]}</span><span class="hint">${steps(id) < 4 ? 'Next: ' + COST[steps(id)] + ' pts' : 'Maxed'}</span></button>`;
+  }
+  function slots() {
+    return `<div class="slots">${KEYS.map((k, i) => { const id = dino().slots[i]; const want = st.sel && P[st.sel] && P[st.sel].btn && !P[st.sel].soon && steps(st.sel) > 0 && dino().slots.indexOf(st.sel) < 0;
+      return `<button class="slot${id ? '' : ' empty'}${st.slotSel === i ? ' sel' : ''}${want ? ' want' : ''}" data-slot="${i}"><span class="k">${k}</span><span class="v">${id ? icon(id) : ''}<span>${id ? P[id].n : 'empty'}</span></span></button>`; }).join('')}</div>`;
+  }
+  function detail() {
+    const id = st.sel, p = P[id];
+    if (!p) return `<div class="detail panel"><span class="hint">Pick a card to see its steps.</span></div>`;
+    const n = steps(id), eq = dino().slots.indexOf(id);
+    const cost = n < 4 ? COST[n] : 0;
+    const mLock = n === 2 && mastered() >= 3;
+    let buy;
+    if (p.soon) buy = `<button class="gbtn dark" disabled>COMING SOON</button>`;
+    else if (n >= 4) buy = `<button class="gbtn dark" disabled>MAXED</button>`;
+    else if (mLock) buy = `<button class="gbtn dark" disabled>MASTERY FULL</button>`;
+    else if (dino().left < cost) buy = `<button class="gbtn dark" disabled>NEED ${cost} PTS</button>`;
+    else buy = `<button class="gbtn" data-act="buy">${n ? 'UPGRADE' : 'BUY'} · ${cost} PT${cost > 1 ? 'S' : ''}</button>`;
+    let equip = '';
+    if (p.btn && !p.soon && n > 0) equip = eq >= 0 ? `<button class="gbtn dark" data-act="unequip">UNEQUIP ${KEYS[eq]}</button>` : `<button class="gbtn orange" data-act="equip">EQUIP</button>`;
+    const kind = p.stat ? 'Stat' : p.btn ? 'Mech part · button' : 'Mech part · always on';
+    return `<div class="detail panel" style="--c:${AREA[p.a][1]}"><span class="sub" style="color:${AREA[p.a][1]}">${AREA[p.a][0]} · ${kind}</span><h3>${p.n}</h3>
+      <ul class="steps">${p.s.map((t, i) => `<li class="${i < n ? 'got' : i === n ? 'next' : ''}"><b>${['I', 'II', 'III', '★'][i]}</b><span>${t}</span></li>`).join('')}</ul>
+      <div class="acts">${buy}${equip}</div>${p.btn && n > 0 && eq < 0 ? '<span class="hint">EQUIP fills the first empty slot, or tap a slot first to replace it.</span>' : ''}</div>`;
+  }
+  const tabs = () => `<div class="tabs" role="tablist"><button role="tab" aria-selected="${st.tab === 'parts'}" data-tab="parts">MECH PARTS</button><button role="tab" aria-selected="${st.tab === 'stats'}" data-tab="stats">STATS</button></div>`;
+  const list = () => st.tab === 'parts' ? dino().parts.map(card).join('') : dino().stats.map(statRow).join('');
+  const stage = () => `<div class="stage panel"><span class="floor"></span><span class="lbl">ALL UPGRADES</span>${dinoSVG()}</div>`;
+  const bar = (close) => `<div class="bar"><span class="nm"><small>LAB</small>${dino().name}</span><span class="lv">LV ${dino().lv}<span class="xp"><i></i></span></span><span class="mas">MASTERY ${mastered()}/3</span><span class="pts">${dino().left} PTS</span><button class="gbtn dark x" data-act="${close}" aria-label="Close">✕</button></div>`;
+
+  function labBody() {
+    if (st.o === 'A') return `<div class="body"><div class="col">${tabs()}<div class="grid">${list()}</div></div><div class="mid">${stage()}${slots()}<span class="hint" style="text-align:center">Tap a card, then EQUIP · tap a slot to choose where it goes</span></div>${detail()}</div>`;
+    if (st.o === 'B') return `<div class="body"><div class="left">${stage()}${slots()}<span class="hint" style="text-align:center">Tap a card, then EQUIP</span></div><div class="right">${tabs()}<div class="grid">${list()}</div><div class="sheet">${detail()}</div></div></div>`;
+    return `<div class="body"><div class="bay"><div class="sockets">${slotsCol(0, 2)}</div>${stage()}<div class="sockets">${slotsCol(2, 4)}</div></div><div class="hand">${tabs()}<div class="grid">${list()}</div></div>${st.sel ? `<div class="pop">${detail()}</div>` : ''}</div>`;
+  }
+  function slotsCol(a, b) {
+    let h = '';
+    for (let i = a; i < b; i++) { const id = dino().slots[i]; h += `<button class="slot${id ? '' : ' empty'}${st.slotSel === i ? ' sel' : ''}" data-slot="${i}"><span class="k">${KEYS[i]}</span><span class="v">${id ? icon(id) : ''}<span>${id ? P[id].n : 'empty'}</span></span></button>`; }
+    return h;
+  }
+  const world = () => `<div class="world">${[8, 20, 34, 60, 74, 88].map((x, i) => `<i class="blk" style="left:${x}%;height:${10 + (i % 3) * 6}%"></i>`).join('')}</div>`;
+
+  function render() {
+    document.getElementById('device').className = 'device ' + st.d;
+    const screen = document.getElementById('screen');
+    let h = world() + '<span class="topbtn"></span>';
+    if (st.v === 'menu') {
+      const ref = `<div class="ref">${slots()}</div>`;
+      h += `<div class="menu"><div class="left">${stage()}<div class="species"><button class="gbtn dark arrow" data-act="swap">◀</button><div class="dname">${dino().name}<small>${dino().sub}</small></div><button class="gbtn dark arrow" data-act="swap">▶</button></div>${ref}<button class="gbtn volt lab-go" data-act="lab">⚙ GO TO THE LAB</button></div>
+        <div class="right"><div class="title"><small>MECHA DINO</small>ARENA</div><div class="modes"><button class="gbtn" data-act="none"><span>Sandbox<span class="sub">Island with bots · no player damage</span></span><span class="tag">BOTS</span></button><button class="gbtn orange" data-act="none"><span>Arena<span class="sub">Same island · no bots · player damage on</span></span><span class="tag">PVP</span></button></div></div></div>`;
+    } else if (st.v === 'lab') {
+      h += `<div class="lab ${st.o}">${bar('menu')}${labBody()}</div>`;
+    } else {
+      h += `<div class="hud"><button class="gbtn dark" data-act="skills">SKILLS</button><button class="gbtn" data-act="menu">MENU</button></div><div class="dim"></div><div class="compact"><div class="lab ${st.o}">${bar('closeIsland')}${labBody()}</div></div>`;
+    }
+    if (st.toast) h += `<div class="toast">${st.toast}</div>`;
+    screen.innerHTML = h;
+    ['A', 'B', 'C'].forEach(o => document.getElementById('o-' + o).classList.toggle('on', o === st.o));
+    document.querySelectorAll('[data-o]').forEach(b => b.setAttribute('aria-pressed', b.dataset.o === st.o));
+    document.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === st.v));
+    document.querySelectorAll('[data-d]').forEach(b => b.setAttribute('aria-pressed', b.dataset.d === st.d));
+  }
+  let tt;
+  function toast(t) { st.toast = t; clearTimeout(tt); tt = setTimeout(() => { st.toast = ''; render(); }, 1600); }
+
+  document.querySelector('.controls').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.o) st.o = b.dataset.o;
+    if (b.dataset.v) st.v = b.dataset.v;
+    if (b.dataset.d) st.d = b.dataset.d;
+    render();
+  });
+  document.getElementById('screen').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    const d = dino();
+    if (b.dataset.tab) { st.tab = b.dataset.tab; st.sel = st.tab === 'parts' ? d.parts[0] : d.stats[0]; }
+    else if (b.dataset.card) {
+      const id = b.dataset.card; st.sel = id;
+      if (st.slotSel >= 0 && P[id].btn && !P[id].soon && steps(id) > 0) { equip(id, st.slotSel); st.slotSel = -1; }
+    } else if (b.dataset.slot) {
+      const i = +b.dataset.slot;
+      if (st.sel && P[st.sel].btn && !P[st.sel].soon && steps(st.sel) > 0 && d.slots.indexOf(st.sel) < 0) { equip(st.sel, i); st.slotSel = -1; }
+      else st.slotSel = st.slotSel === i ? -1 : i;
+    } else {
+      const a = b.dataset.act;
+      if (a === 'buy') { const n = steps(st.sel); d.left -= COST[n]; d.steps[st.sel] = n + 1; toast(`${P[st.sel].n} ${['I', 'II', 'III', '★'][n]} bought`); if (n === 0 && P[st.sel].btn) { const e2 = d.slots.indexOf(''); if (e2 >= 0) d.slots[e2] = st.sel; } }
+      if (a === 'equip') { const e2 = st.slotSel >= 0 ? st.slotSel : d.slots.indexOf(''); if (e2 >= 0) equip(st.sel, e2); else { toast('Slots full · tap a slot to replace'); } }
+      if (a === 'unequip') { const i = d.slots.indexOf(st.sel); d.slots[i] = ''; toast(`${P[st.sel].n} taken off`); }
+      if (a === 'lab') st.v = 'lab';
+      if (a === 'menu') st.v = 'menu';
+      if (a === 'closeIsland') st.toast = 'Closed · back to the island';
+      if (a === 'skills') st.v = 'island';
+      if (a === 'swap') { st.dino = st.dino === 'Raptor' ? 'TRex' : 'Raptor'; st.sel = dino().parts[0]; st.tab = 'parts'; }
+    }
+    render();
+  });
+  function equip(id, i) { const d = dino(); const old = d.slots.indexOf(id); if (old >= 0) d.slots[old] = ''; d.slots[i] = id; toast(`${P[id].n} → ${KEYS[i]}`); }
+  render();
+})();
+</script>
