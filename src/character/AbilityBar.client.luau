@@ -1,4 +1,4 @@
--- AbilityBar v1.8 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.9 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -65,12 +65,19 @@
 --   Diagnostics: AbilityBar_Headbutt (state), AbilityBarHeadbuttPips ("<ready>/<max>"), AbilityBarHeadbuttSlowed.
 -- v1.8 (pachy Grappling Hook, MDA-122): TIMED_PARTS.hookarm = "Hook" -> a Grappling Hook slot tile uses the timed-part
 --   states (off / cooling with HookReadyAt and HookCooldown / ready; no HookUntil, so never "active").
+-- v1.9 (Kepu 2026-10-30: "mecha legs should take up an ability slot ... it's through the jump button"; SkillTree 1.23):
+--   a slotted "mechalegs" tile ("MECHA LEGS") shows "Space" as its key (it fires through the jump, not the slot key)
+--   and the leap's states: "off" (MechaLegsEnabled not true) / "active" (JumpTestState crouch / air) / "cooling"
+--   (JumpPredictedAt + JumpCooldown, with the sweep and seconds) / "ready". Switch: script attribute
+--   AbilityBarLegsEnabled (default true, read at start; false = the plain slot tile).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
+if script:GetAttribute("AbilityBarLegsEnabled") == nil then script:SetAttribute("AbilityBarLegsEnabled", true) end -- v1.9
+local LEGS_TILE = script:GetAttribute("AbilityBarLegsEnabled") ~= false
 local char = script.Parent
 local TIMED_PARTS = {adrenaline = "Adrenaline", shield = "EnergyShield"} -- v1.3: part id -> attribute prefix
 TIMED_PARTS.scent, TIMED_PARTS.screech = "Scent", "Screech" -- v1.4: raptor parts batch 2
@@ -303,7 +310,8 @@ local function rebuild()
 		local id = slotId(n)
 		local title = not id and "+" or id == "thrusters" and "DASH"
 			or string.upper(okST and ST.PATHS[id] and ST.PATHS[id].name or id)
-		local t = makeTile("Slot_" .. n, SLOT_KEYS[n], title, id and ORANGE or WHITE, id == "thrusters")
+		local key = (LEGS_TILE and id == "mechalegs") and "Space" or SLOT_KEYS[n] -- v1.9: Mecha Legs fires through the jump
+		local t = makeTile("Slot_" .. n, key, title, id and ORANGE or WHITE, id == "thrusters")
 		if not id then t.stroke.Transparency = 0.5 end
 		table.insert(tiles, {id = "Slot_" .. n, kind = "slot", n = n, part = id, t = t})
 		table.insert(names, SLOT_KEYS[n] .. ":" .. title)
@@ -457,6 +465,20 @@ local function update()
 					paint(e, "active", 0, 0, untilT - now)
 				elseif now < readyAt then
 					paint(e, "cooling", 0.25, (readyAt - now) / cd, readyAt - now)
+				else
+					paint(e, "ready", 0, 0, nil)
+				end
+			elseif LEGS_TILE and e.part == "mechalegs" then -- v1.9: Mecha Legs = the leap's cooldown
+				local cd = math.max(0.01, tonumber(char:GetAttribute("JumpCooldown")) or 6)
+				local stamp = char:GetAttribute("JumpPredictedAt")
+				local left = typeof(stamp) == "number" and math.max(0, stamp + cd - now) or 0
+				local js = char:GetAttribute("JumpTestState")
+				if char:GetAttribute("MechaLegsEnabled") ~= true then
+					paint(e, "off", 0.5, 0, nil)
+				elseif js == "crouch" or js == "air" then
+					paint(e, "active", 0, left / cd, left)
+				elseif left > 0 then
+					paint(e, "cooling", 0.25, left / cd, left)
 				else
 					paint(e, "ready", 0, 0, nil)
 				end

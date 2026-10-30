@@ -1,4 +1,4 @@
--- MechaButtons v1.15 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.16 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -136,6 +136,10 @@
 --     to the flat part only (no tilt); the camera follows that flat direction.
 --   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
 --   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
+-- v1.16 (Kepu 2026-10-30: "mecha legs should take up an ability slot ... it's through the jump button"; SkillTree 1.23):
+--   a slotted "mechalegs" button reads "MECHA LEGS" and shows the leap's readiness (MechaLegsEnabled and the leap off
+--   cooldown: JumpPredictedAt + JumpCooldown) with the cooldown sweep. Pressing it does nothing (the jump fires it);
+--   MechaButtonsLastPress still records the press. Switch: script attribute MechaButtonsLegsEnabled (default true).
 -- v1.15 (pachy Grappling Hook, MDA-122): TIMED_PARTS.hookarm = {"Hook", "DinoHookRequest", "GRAPPLING HOOK"}; pressing its
 --   slot fires DinoHookRequest(stamp, camera LookVector) (HookServer 1.0 aims along it) instead of the plain stamp.
 --   Ready / cooldown look from HookEnabled / HookReadyAt / HookCooldown like the other timed parts.
@@ -148,7 +152,9 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.15"
+local VERSION = "1.16"
+if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
+local LEGS_BTN = script:GetAttribute("MechaButtonsLegsEnabled") ~= false
 local AIM_LOCK, AIM_DEAD = 0.25, 14 -- v1.12
 local AIM_FULL_PX, CONE_YAW, CONE_PITCH, AIM_SMOOTH, SEND_EPS = 110, math.rad(30), math.rad(15), 14, 0.01 -- v1.13
 if script:GetAttribute("MechaAimConeEnabled") == nil then script:SetAttribute("MechaAimConeEnabled", true) end -- v1.13
@@ -346,6 +352,12 @@ end
 -- v1.4: is a part ready to use, and how much of its cooldown is left (0..1)
 local function partState(id)
 	local now = workspace:GetServerTimeNow()
+	if LEGS_BTN and id == "mechalegs" then -- v1.16: the leap's cooldown
+		local cd = tonumber(char:GetAttribute("JumpCooldown")) or 6
+		local stamp = char:GetAttribute("JumpPredictedAt")
+		local left = typeof(stamp) == "number" and (stamp + cd - now) or 0
+		return char:GetAttribute("MechaLegsEnabled") == true and left <= 0, (cd > 0 and left > 0) and math.clamp(left / cd, 0, 1) or 0
+	end
 	if id == "cloak" then
 		local ready = char:GetAttribute("CloakEnabled") == true and (tonumber(char:GetAttribute("CloakedUntil")) or 0) <= now
 			and now >= (tonumber(char:GetAttribute("CloakReadyAt")) or 0)
@@ -371,6 +383,7 @@ local function partState(id)
 end
 local function partName(id)
 	if id == "thrusters" then return "DASH" end
+	if LEGS_BTN and id == "mechalegs" then return "MECHA LEGS" end -- v1.16
 	if TIMED_PARTS[id] then return TIMED_PARTS[id][3] end -- v1.5
 	return string.upper(id)
 end
@@ -902,7 +915,7 @@ draw = function()
 	for n, s in ipairs(slots) do
 		if gesture and gesture.n == n and gesture.pulling then continue end -- v1.4: keep the pulling look
 		local id = slotPart(n)
-		if id == "cloak" or TIMED_PARTS[id] then ready = (partState(id)) else ready = char:GetAttribute("DashEnabled") == true end -- v1.4; v1.5: + timed parts
+		if id == "cloak" or TIMED_PARTS[id] or (LEGS_BTN and id == "mechalegs") then ready = (partState(id)) else ready = char:GetAttribute("DashEnabled") == true end -- v1.4; v1.5: + timed parts; v1.16: + legs
 		if id then
 			s.stroke.Color, s.stroke.Transparency = ORANGE, ready and 0 or 0.5
 			s.main.Text = partName(id) -- v1.4 (was: thrusters -> DASH, else the id)
@@ -944,7 +957,7 @@ RunService.RenderStepped:Connect(function()
 	for n, s in ipairs(slots) do
 		local id = slotPart(n)
 		local tFrac = 0
-		if id and TIMED_PARTS[id] then -- v1.5
+		if id and (TIMED_PARTS[id] or (LEGS_BTN and id == "mechalegs")) then -- v1.5; v1.16: + legs
 			local r, f = partState(id)
 			tFrac = f
 			if r ~= lastTimedReady[id] then lastTimedReady[id] = r; redraw = true end
@@ -957,6 +970,7 @@ end)
 
 local WATCH = {DashEnabled = true, DashCharges = true, DashChargesLeft = true, AutoRun = true,
 	CloakEnabled = true, CloakState = true, CloakReadyAt = true} -- v1.4: + cloak
+WATCH.MechaLegsEnabled, WATCH.JumpPredictedAt = true, true -- v1.16
 for _, tp in pairs(TIMED_PARTS) do -- v1.5
 	for _, k in ipairs({"Enabled", "Until", "ReadyAt"}) do WATCH[tp[1] .. k] = true end
 end

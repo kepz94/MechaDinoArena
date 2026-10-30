@@ -1,4 +1,4 @@
--- HookPose v1.1 (Mecha Dino Arena) — the pachy's Grappling Hook pose (HookServer 1.0), per-joint offsets multiplied onto
+-- HookPose v1.2 (Mecha Dino Arena) — the pachy's Grappling Hook pose (HookServer 1.0), per-joint offsets multiplied onto
 -- the current pose (IdleAnimation 1.30). MDA-122, plan docs/plans/PACHY_PARTS_v1.0.md Drop A Task 6 (Kepu 2026-10-30:
 -- "something he lifts his arm to shoot" · "pull them in then the pachy would dip its head for a smash").
 -- Joint frames are world-aligned at build time: rotation about Z = pitch (positive lifts the front).
@@ -13,9 +13,12 @@
 --   degrees (Studio measure: the pachy forearm rests ~58 deg below level; +75 left it ~20 deg above) plus the shot's pitch
 --   (HookAimDir, HookServer 1.2 keeps it within -2 .. +25 deg), so the raised forearm points straight along the shot.
 --   Model attribute HookArmLevel overrides ARM_LEVEL (tuning).
+-- v1.2 (Kepu: the hook goes on the dino's right arm; HookServer 1.4): the lifted joint is the model attribute HookArmSeg
+--   ("ArmL" = the pachy's real right arm; HookServer stamps it), "ArmR" when the attribute is missing (= 1.1). Both arm
+--   joints have the same frame (rotation about Z lifts the front), so the lift is the same.
 
 local HookPose = {}
-HookPose.Version = "1.1"
+HookPose.Version = "1.2"
 HookPose.ARM_UP = 75 -- 1.0 (kept for reference)
 HookPose.ARM_LEVEL = 56 -- v1.1
 HookPose.SMASH = 0.3
@@ -58,7 +61,9 @@ function HookPose.get(phase, u, k, model)
 		local d = model:GetAttribute("HookAimDir")
 		if typeof(d) == "Vector3" and d.Magnitude > 1e-3 then lift += math.deg(math.asin(math.clamp(d.Unit.Y, -1, 1))) end
 	end
-	out.ArmR = CFrame.Angles(0, 0, rad(lift * arm * k))
+	local seg = model and model:GetAttribute("HookArmSeg") -- v1.2
+	seg = (seg == "ArmL" or seg == "ArmR") and seg or "ArmR"
+	out[seg] = CFrame.Angles(0, 0, rad(lift * arm * k))
 	out.RootJoint = CFrame.Angles(0, 0, rad((3 * back - 6 * dip) * k))
 	out.Neck = CFrame.Angles(0, 0, rad((4 * back - 30 * dip) * k))
 	out.Head = CFrame.Angles(0, 0, rad(-40 * dip * k))

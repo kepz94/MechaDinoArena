@@ -1,4 +1,4 @@
--- HookServer v1.3 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.4 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -48,13 +48,20 @@
 --   design in the game's style (brass / rope / hook idea from the reference, not a copy of that art). Switch: script
 --   attribute HookArmReplaceEnabled (default true, read at start; false = the v1.1 forearm launcher). Diagnostics
 --   (character): HookArmHidden (parts hidden), HookLookBuilt.
+-- v1.4 (Kepu 2026-10-30: "You have the hook on the wrong side of the Dino. I need it on the right side of the Dino. The
+--   right arm because that's the default shoulder view on mobile so I can see it"): the pachy rig's "ArmR" segment sits on
+--   the dino's LEFT (torso space: the head is +X, the arm joints at Z -0.7 (ArmR) / +0.7 (ArmL); right = forward x up =
+--   +Z), so the hook now goes on the segment named by script attribute HookArmSide (default "ArmL" = the dino's real right
+--   arm; "ArmR" = 1.3). Every arm use follows it: the shot origin (Root), the hidden parts (<seg>_fore / _hand /
+--   _claw1-3), the prosthesis / launcher (<seg>_fore, _hand, _upper). Character attribute HookArmSeg (the segment, set
+--   when the character comes in) tells HookPose 1.2 which arm to lift.
 -- Switch: script attribute HookServerEnabled (default true, read at start). Diagnostics: script HookServerVersion,
 --   HookShots, HookHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25) -- v1.1 clamp; v1.2 min -8 -> -2
 local WINDUP = 0.15        -- s arm raise before the claw flies
 local CLAW_SPEED = 220     -- studs/s (world)
@@ -75,6 +82,9 @@ if script:GetAttribute("HookServerEnabled") == nil then script:SetAttribute("Hoo
 local enabled = script:GetAttribute("HookServerEnabled") ~= false
 if script:GetAttribute("HookArmReplaceEnabled") == nil then script:SetAttribute("HookArmReplaceEnabled", true) end
 local armReplace = script:GetAttribute("HookArmReplaceEnabled") ~= false -- v1.3
+if script:GetAttribute("HookArmSide") == nil then script:SetAttribute("HookArmSide", "ArmL") end -- v1.4
+local HOOK_SEG = script:GetAttribute("HookArmSide") == "ArmR" and "ArmR" or "ArmL" -- v1.4: ArmL = the dino's right arm
+for i, name in ipairs(ARM_HIDE) do ARM_HIDE[i] = (name:gsub("^ArmR", HOOK_SEG)) end -- v1.4
 
 local remote = ReplicatedStorage:FindFirstChild("DinoHookRequest")
 if not remote then
@@ -86,7 +96,7 @@ end
 local function now() return workspace:GetServerTimeNow() end
 
 local function armOrigin(char)
-	local seg = char:FindFirstChild("ArmR")
+	local seg = char:FindFirstChild(HOOK_SEG) -- v1.4
 	local root = seg and (seg:IsA("BasePart") and seg or seg:FindFirstChild("Root"))
 	if root and root:IsA("BasePart") then return root.Position end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -167,7 +177,7 @@ end
 
 -- v1.3: hide / restore the real right forearm, hand and claws
 local function hideArm(char, hide)
-	local seg = char:FindFirstChild("ArmR")
+	local seg = char:FindFirstChild(HOOK_SEG) -- v1.4
 	local n = 0
 	if seg then
 		for _, name in ipairs(ARM_HIDE) do
@@ -189,7 +199,7 @@ end
 
 -- v1.3: the hook-arm prosthesis in place of the forearm (see header)
 local function buildProsthesis(char, seg, fore, hand)
-	local upper = seg:FindFirstChild("ArmR_upper")
+	local upper = seg:FindFirstChild(HOOK_SEG .. "_upper")
 	local up = fore.CFrame.UpVector * fore.Size.Y / 2
 	local e1, e2 = fore.Position + up, fore.Position - up
 	local elbow, far = e1, e2
@@ -252,6 +262,7 @@ end
 
 -- the look: slim cuff + claw on the right wrist
 local function setLook(char)
+	if char:GetAttribute("HookArmSeg") ~= HOOK_SEG then char:SetAttribute("HookArmSeg", HOOK_SEG) end -- v1.4
 	local want = char:GetAttribute("HookLook") == true and char:GetAttribute("Species") == "Pachy"
 	local old = char:FindFirstChild("Mecha_HookArm")
 	if not want then
@@ -260,12 +271,12 @@ local function setLook(char)
 		return
 	end
 	if old then return end
-	local seg = char:FindFirstChild("ArmR")
+	local seg = char:FindFirstChild(HOOK_SEG) -- v1.4
 	local root = seg and (seg:IsA("BasePart") and seg or seg:FindFirstChild("Root"))
 	if not (root and root:IsA("BasePart")) then return end
 	-- v1.1: a forearm launcher: sleeve over ArmR_fore pointing toward the hand, barrel past the hand, claw prongs at the tip
-	local fore = seg:FindFirstChild("ArmR_fore")
-	local hand = seg:FindFirstChild("ArmR_hand")
+	local fore = seg:FindFirstChild(HOOK_SEG .. "_fore")
+	local hand = seg:FindFirstChild(HOOK_SEG .. "_hand")
 	if not (fore and fore:IsA("BasePart") and hand and hand:IsA("BasePart")) then return end
 	if armReplace then return buildProsthesis(char, seg, fore, hand) end -- v1.3
 	local toHand = hand.Position - fore.Position

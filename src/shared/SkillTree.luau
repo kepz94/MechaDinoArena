@@ -1,4 +1,4 @@
--- SkillTree v1.22 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.23 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -233,6 +233,15 @@ SkillTree.AREAS = {
 --   bought): legsBoostMul (I: 1.25, leap forward boost), legsPowerMul (II: 1.2, leap launch power), legsCooldown (from I:
 --   6 s, one cooldown for the whole leap incl. its double jump), legsCdMul (III: 0.65), doubleJump + legsLook (star).
 --   false = 1.21 (no line).
+-- v1.23 (Kepu 2026-10-30: "mecha legs should take up an ability slot. It's not a passive one, it just doesn't
+--   traditionally trigger through the ability buttons like others it's through the jump button"): with
+--   SkillTree.MECHA_LEGS_SLOT (default true) "mechalegs" is also in BUTTONS, so it takes a loadout slot like the other
+--   parts (sanitizeLoadout / autoSlot) and SkillEffects 1.16 only turns it on while slotted. It still fires through the
+--   jump (JumpTest), not its slot key. false = 1.22 (passive, no slot).
+--   Stronger (Kepu 2026-10-30: "Leaping isn't powerful enough. This should have some typa strong jump feeling and the
+--   second should be really strong too"), with SkillTree.MECHA_LEGS_STRONG (default true; false = the 1.22 numbers):
+--   I legsBoostMul 1.5 + legsPowerMul 1.2, II legsPowerMul 1.45 (about 2.1 x the base leap height), star doubleJump with
+--   legsDoubleMul 1 (a full leap from mid-air) and legsDoubleForward 15 studs/s. Step texts follow the numbers.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -472,6 +481,17 @@ if SkillTree.MECHA_LEGS and not SkillTree.PATHS.mechalegs then
 	SkillTree.PATHS.mechalegs = p
 	table.insert(SkillTree.PATH_ORDER, "mechalegs")
 end
+-- v1.23: Mecha Legs takes a slot (fires through the jump)
+SkillTree.MECHA_LEGS_SLOT = true
+SkillTree.MECHA_LEGS_STRONG = true -- v1.23: stronger numbers (read by effects())
+if SkillTree.MECHA_LEGS_STRONG and SkillTree.PATHS.mechalegs then
+	SkillTree.PATHS.mechalegs.steps = {
+		"Piston-boosted leap: 50% farther forward and 20% more launch power. The leap now has a 6 s cooldown",
+		"Leap launch power +45% (about twice as high)",
+		"The leap cooldown recharges 35% faster (3.9 s)",
+		"Mecha legs: jump again in mid-air at full leap power with a forward burst (double jump), part of the same leap"}
+end
+if SkillTree.MECHA_LEGS_SLOT and SkillTree.PATHS.mechalegs then SkillTree.BUTTONS.mechalegs = true end
 -- v1.19: no Jaws for the pachy
 SkillTree.PACHY_NO_JAWS = true
 if SkillTree.PACHY_NO_JAWS then
@@ -720,6 +740,12 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if ml >= 2 then e.legsPowerMul = 1.2 end
 	if ml >= 3 then e.legsCdMul = 0.65 end
 	if ml >= 4 then e.doubleJump, e.legsLook = true, true end
+	e.legsDoubleMul, e.legsDoubleForward = 0.894, 0 -- v1.23
+	if SkillTree.MECHA_LEGS_STRONG then -- v1.23: stronger leap and double jump
+		if ml >= 1 then e.legsBoostMul, e.legsPowerMul = 1.5, 1.2 end
+		if ml >= 2 then e.legsPowerMul = 1.45 end
+		if ml >= 4 then e.legsDoubleMul, e.legsDoubleForward = 1, 15 end
+	end
 	return e
 end
 
