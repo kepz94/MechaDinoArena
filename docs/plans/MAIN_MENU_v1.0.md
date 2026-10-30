@@ -18,7 +18,7 @@
 
 **Accepted risks / notes**
 - Teleports do not run in Studio. Studio tests use the test switch `ModeTestArena`; the real hop is checked in the live game after publish.
-- Every release = install once, publish to Sandbox, then "Publish to Roblox As" the Arena place, then back to the Sandbox place (Studio re-binds the open file to the last place published to).
+- Every release = install once, File > Publish (Sandbox), then File > Publish As > Mecha Dino Arena > "Mecha Dino Arena - Arena" > Overwrite. Checked 2026-10-29: Studio stays bound to the Sandbox place after Publish As ("you are still editing Mecha Dino Arena"), so no publish back is needed.
 - GrowthServer XP / level is session-only (DINO-10 still open), so it resets on a place hop. Skill XP, steps and loadouts are in DataStore `MDA_Skills_v2` (experience-wide) and carry over.
 - Save race on hop: SkillServer saves changed data at most every 10 s and on leave. ModeServer waits for the save before teleporting (Task 3); SkillServer is not changed.
 
@@ -112,4 +112,4 @@ Created in Studio Asset Manager → Places In Experience → Add New Place, rena
 Expects ModeRules, PlaceGate, ModeServer, ArenaPvP, MainMenu.
 
 ### Task 9 — Publish both places (on Kepu's yes)
-Publish → Sandbox; Publish As → Arena place; Publish As → Sandbox place again. Live check: SANDBOX ↔ ARENA hop, loadout carries over, no bots in Arena.
+Publish → Sandbox; Publish As → Arena place (Studio stays on the Sandbox place). Live check: SANDBOX ↔ ARENA hop, loadout carries over, no bots in Arena.
