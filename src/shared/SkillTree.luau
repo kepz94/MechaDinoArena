@@ -1,4 +1,4 @@
--- SkillTree v1.25 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.26 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -250,6 +250,10 @@ SkillTree.AREAS = {
 --   false = 1.23 (no line).
 -- v1.25 (Kepu 2026-10-30: "don't allow for blood rush to be used again until full health is restored"; HeadbuttServer
 --   1.6): Blood Rush step I text reads "2, then not again until you are back at full health".
+-- v1.26 (Kepu 2026-10-30: "health regen should never be a skill for pachy. take that off."): with
+--   SkillTree.PACHY_NO_REGEN (default true) PATHS.regen.notFor gains Pachy (the same rule as Regeneration for the T-Rex):
+--   the pachy's tree has no Regeneration line and saved Regeneration steps on the pachy are dropped by sanitize (their
+--   points come back). Lifesteal and the built-in kill regen are not changed. false = 1.25.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -500,6 +504,12 @@ if SkillTree.MECHA_LEGS_STRONG and SkillTree.PATHS.mechalegs then
 		"Mecha legs: jump again in mid-air at full leap power with a forward burst (double jump), part of the same leap"}
 end
 if SkillTree.MECHA_LEGS_SLOT and SkillTree.PATHS.mechalegs then SkillTree.BUTTONS.mechalegs = true end
+-- v1.26: no Regeneration for the pachy
+SkillTree.PACHY_NO_REGEN = true
+if SkillTree.PACHY_NO_REGEN and SkillTree.PATHS.regen then
+	SkillTree.PATHS.regen.notFor = SkillTree.PATHS.regen.notFor or {}
+	SkillTree.PATHS.regen.notFor.Pachy = true
+end
 -- v1.24: the pachy's Blood Rush (slot part, fires through ATTACK)
 SkillTree.BLOOD_RUSH = true
 if SkillTree.BLOOD_RUSH and not SkillTree.PATHS.bloodrush then
