@@ -1,4 +1,4 @@
--- HookPose v1.0 (Mecha Dino Arena) — the pachy's Grappling Hook pose (HookServer 1.0), per-joint offsets multiplied onto
+-- HookPose v1.1 (Mecha Dino Arena) — the pachy's Grappling Hook pose (HookServer 1.0), per-joint offsets multiplied onto
 -- the current pose (IdleAnimation 1.30). MDA-122, plan docs/plans/PACHY_PARTS_v1.0.md Drop A Task 6 (Kepu 2026-10-30:
 -- "something he lifts his arm to shoot" · "pull them in then the pachy would dip its head for a smash").
 -- Joint frames are world-aligned at build time: rotation about Z = pitch (positive lifts the front).
@@ -8,11 +8,16 @@
 --   hold   launch .. smash (or end)   arm stays up while the claw flies and reels
 --   smash  smash .. +SMASH            arm drops, the head dips hard for the smash and snaps back (then done)
 --   lower  end .. +LOWER              after a miss: the arm eases down
--- phase(model, serverNow) -> phase or nil, u (0..1). get(phase, u, k) -> offsets.
+-- phase(model, serverNow) -> phase or nil, u (0..1). get(phase, u, k, model) -> offsets.
+-- v1.1 (Kepu 2026-10-30: "it shoots at the ground because the dino arm doesnt lift straight"): the arm lift is ARM_LEVEL
+--   degrees (Studio measure: the pachy forearm rests ~58 deg below level; +75 left it ~20 deg above) plus the shot's pitch
+--   (HookAimDir, HookServer 1.1 keeps it within -8 .. +25 deg), so the raised forearm points straight along the shot.
+--   Model attribute HookArmLevel overrides ARM_LEVEL (tuning).
 
 local HookPose = {}
-HookPose.Version = "1.0"
-HookPose.ARM_UP = 75
+HookPose.Version = "1.1"
+HookPose.ARM_UP = 75 -- 1.0 (kept for reference)
+HookPose.ARM_LEVEL = 56 -- v1.1
 HookPose.SMASH = 0.3
 HookPose.LOWER = 0.25
 
@@ -37,7 +42,7 @@ function HookPose.phase(model, t)
 	return nil, 0
 end
 
-function HookPose.get(phase, u, k)
+function HookPose.get(phase, u, k, model)
 	local out = {}
 	local arm, dip, back = 0, 0, 0
 	if phase == "raise" then arm, back = smoothstep(u), smoothstep(u)
@@ -47,7 +52,13 @@ function HookPose.get(phase, u, k)
 		dip = sin(pi * math.clamp(u, 0, 1))
 	elseif phase == "lower" then arm, back = 1 - smoothstep(u), 1 - smoothstep(u)
 	end
-	out.ArmR = CFrame.Angles(0, 0, rad(HookPose.ARM_UP * arm * k))
+	local lift = HookPose.ARM_LEVEL -- v1.1: level + the shot's pitch
+	if model then
+		lift = tonumber(model:GetAttribute("HookArmLevel")) or lift
+		local d = model:GetAttribute("HookAimDir")
+		if typeof(d) == "Vector3" and d.Magnitude > 1e-3 then lift += math.deg(math.asin(math.clamp(d.Unit.Y, -1, 1))) end
+	end
+	out.ArmR = CFrame.Angles(0, 0, rad(lift * arm * k))
 	out.RootJoint = CFrame.Angles(0, 0, rad((3 * back - 6 * dip) * k))
 	out.Neck = CFrame.Angles(0, 0, rad((4 * back - 30 * dip) * k))
 	out.Head = CFrame.Angles(0, 0, rad(-40 * dip * k))

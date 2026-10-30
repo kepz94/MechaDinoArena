@@ -1029,7 +1029,7 @@ RunService.PreSimulation:Connect(function(dt)
 	end
 	-- v1.30: grappling hook on top
 	if hkPhase then
-		for name, off in pairs(HookPose.get(hkPhase, hkU, 1)) do
+		for name, off in pairs(HookPose.get(hkPhase, hkU, 1, model)) do -- HookPose 1.1: + model (aim pitch)
 			if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
 		end
 	end

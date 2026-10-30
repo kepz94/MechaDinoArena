@@ -1,4 +1,4 @@
--- HookFX v1.0 (Mecha Dino Arena) — the pachy Grappling Hook effects on this client (LocalScript, StarterPlayerScripts).
+-- HookFX v1.1 (Mecha Dino Arena) — the pachy Grappling Hook effects on this client (LocalScript, StarterPlayerScripts).
 -- MDA-122, plan docs/plans/PACHY_PARTS_v1.0.md Drop A Task 6, mockup docs/mockups/pachy_parts_options.html "A · Wrist claw".
 -- For every player character with HookStartedAt (HookServer 1.0), from its server stamps:
 --   launch .. contact: a small steel claw flies from the wrist (Mecha_HookArm Barrel, else the ArmR segment) to
@@ -6,12 +6,13 @@
 --     in until HookSmashAt; a clamp flash at contact. On a miss / block / shield it flies out and back the same time.
 --   HookHitAt (fresh): white flash at the smash point, low thud (built-in collide.wav, pitched down) and the damage number
 --     (HookHitDamage, yellow) popping up.
+-- v1.1 (forearm launcher, HookServer 1.1): the claw leaves from the barrel's tip (Barrel + its look x half its length).
 -- Created locally in Workspace.DinoFX_Local. Switch: character attribute HookFXEnabled (default true).
 -- Diagnostics (character, this client): HookFXVersion, HookFXState ("none" / "out" / "reel" / "back").
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local STALE = 1
 local STEEL, CHAIN = Color3.fromRGB(154, 166, 184), Color3.fromRGB(60, 66, 78)
 local NUMBER_COLOR = Color3.fromRGB(255, 214, 64)
@@ -48,7 +49,7 @@ end
 local function wrist(char)
 	local m = char:FindFirstChild("Mecha_HookArm")
 	local b = m and m:FindFirstChild("Barrel")
-	if b then return b.Position end
+	if b then return b.Position + b.CFrame.LookVector * b.Size.Z / 2 end -- v1.1: barrel tip
 	local seg = char:FindFirstChild("ArmR")
 	local r = seg and (seg:IsA("BasePart") and seg or seg:FindFirstChild("Root"))
 	if r and r:IsA("BasePart") then return r.Position end

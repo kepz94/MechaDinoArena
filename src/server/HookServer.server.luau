@@ -1,4 +1,4 @@
--- HookServer v1.0 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.1 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -28,13 +28,20 @@
 --   HookSmashResult ("smash" / "escaped" / "gone").
 -- Look: while HookLook is true the pachy carries "Mecha_HookArm" (a slim steel wrist cuff + claw on ArmR, colours no skin
 --   role uses); removed when false. HookBusyUntil (server time) while a shot runs (HeadbuttServer 1.2 refuses then).
+-- v1.1 (Kepu 2026-10-30: "the grappling hook should be on the right arm of the dino. it should wear like a forearm attachment
+--   that the dino lifts to shoot. rn it shoots at the ground because the dino arm doesnt lift straight"): the aim keeps the
+--   camera's heading but its pitch is held within PITCH_MIN .. PITCH_MAX (-8 .. +25 deg; the camera looks down at the dino,
+--   which sent shots into the ground). The look is a slim launcher worn along the right forearm: a steel sleeve over
+--   ArmR_fore (along the forearm toward the hand), a dark barrel running past the hand, two claw prongs at its tip (HookFX
+--   fires from the barrel tip; HookPose 1.1 lifts the arm level along the shot).
 -- Switch: script attribute HookServerEnabled (default true, read at start). Diagnostics: script HookServerVersion,
 --   HookShots, HookHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
+local PITCH_MIN, PITCH_MAX = math.rad(-8), math.rad(25) -- v1.1
 local WINDUP = 0.15        -- s arm raise before the claw flies
 local CLAW_SPEED = 220     -- studs/s (world)
 local PULL_TIME = 0.5      -- s
@@ -151,36 +158,40 @@ local function setLook(char)
 	local seg = char:FindFirstChild("ArmR")
 	local root = seg and (seg:IsA("BasePart") and seg or seg:FindFirstChild("Root"))
 	if not (root and root:IsA("BasePart")) then return end
-	-- the arm's lowest visible part = the forearm / hand
-	local hand, low = nil, math.huge
-	for _, p in ipairs(seg:GetDescendants()) do
-		if p:IsA("BasePart") and p.Transparency < 1 and p ~= root then
-			local y = root.CFrame:PointToObjectSpace(p.Position).Y
-			if y < low then hand, low = p, y end
-		end
-	end
-	hand = hand or root
-	local s = char:GetScale()
+	-- v1.1: a forearm launcher: sleeve over ArmR_fore pointing toward the hand, barrel past the hand, claw prongs at the tip
+	local fore = seg:FindFirstChild("ArmR_fore")
+	local hand = seg:FindFirstChild("ArmR_hand")
+	if not (fore and fore:IsA("BasePart") and hand and hand:IsA("BasePart")) then return end
+	local toHand = hand.Position - fore.Position
+	if toHand.Magnitude < 1e-3 then return end
+	local axis = toHand.Unit
+	local width = math.min(fore.Size.X, fore.Size.Z)
+	local foreLen = math.max(fore.Size.X, fore.Size.Y, fore.Size.Z)
 	local m = Instance.new("Model")
 	m.Name = "Mecha_HookArm"
-	local function part(name, size, color, cf)
+	local function part(name, size, color, center)
 		local p = Instance.new("Part")
 		p.Name = name
-		p.Size = size * s
+		p.Size = size
 		p.Color = color
 		p.Material = Enum.Material.Metal
 		p.CanCollide, p.CanQuery, p.CanTouch, p.Massless = false, false, false, true
-		p.CFrame = hand.CFrame * CFrame.new(cf.Position * s) * cf.Rotation
+		p.CFrame = CFrame.lookAt(center, center + axis)
 		p.Parent = m
 		local w = Instance.new("WeldConstraint")
-		w.Part0, w.Part1 = hand, p
+		w.Part0, w.Part1 = fore, p
 		w.Parent = p
 		return p
 	end
-	part("Cuff", Vector3.new(0.5, 0.35, 0.5), STEEL, CFrame.new(0, 0, 0))
-	part("Barrel", Vector3.new(0.18, 0.18, 0.45), STEEL_DARK, CFrame.new(0, 0.05, -0.3))
-	part("ClawL", Vector3.new(0.08, 0.08, 0.22), STEEL, CFrame.new(-0.1, 0.05, -0.55))
-	part("ClawR", Vector3.new(0.08, 0.08, 0.22), STEEL, CFrame.new(0.1, 0.05, -0.55))
+	local sleeveLen = foreLen * 0.8
+	part("Sleeve", Vector3.new(width * 1.3, width * 1.3, sleeveLen), STEEL, fore.Position)
+	local barrelLen = toHand.Magnitude + width * 1.2
+	local barrelCenter = fore.Position + axis * (barrelLen / 2)
+	local barrel = part("Barrel", Vector3.new(width * 0.45, width * 0.45, barrelLen), STEEL_DARK, barrelCenter)
+	local tip = fore.Position + axis * barrelLen
+	local sideV = barrel.CFrame.RightVector * width * 0.28
+	part("ClawL", Vector3.new(width * 0.16, width * 0.16, width * 0.5), STEEL, tip - sideV)
+	part("ClawR", Vector3.new(width * 0.16, width * 0.16, width * 0.5), STEEL, tip + sideV)
 	m.Parent = char
 	char:SetAttribute("HookLookBuilt", true)
 end
@@ -303,6 +314,15 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	busy[char] = true
 	local s = char:GetScale()
 	local dir = aimDir.Unit
+	do -- v1.1: heading from the camera, pitch held near level
+		local flat = Vector3.new(dir.X, 0, dir.Z)
+		if flat.Magnitude < 1e-3 then
+			local hrp0 = char:FindFirstChild("HumanoidRootPart")
+			flat = hrp0 and hrp0.CFrame.LookVector * Vector3.new(1, 0, 1) or Vector3.zAxis
+		end
+		local pitch = math.clamp(math.asin(math.clamp(dir.Y, -1, 1)), PITCH_MIN, PITCH_MAX)
+		dir = flat.Unit * math.cos(pitch) + Vector3.yAxis * math.sin(pitch)
+	end
 	local origin = armOrigin(char) or char:GetPivot().Position
 	local range = tonumber(char:GetAttribute("HookRange")) or 60
 	local params = worldExclude()
