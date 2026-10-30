@@ -1,4 +1,4 @@
--- ArenaStatus v1.2 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
+-- ArenaStatus v1.3 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
 -- MDA-6, plan docs/plans/ARENAHUD_v1.0.md Task 1, mockup docs/mockups/mobile_hud_options.html option A (Kepu 2026-10-28:
 --   "health should be at the top right of the screen along with the T-Rex drop down list"; stamina bar only while latched).
 -- Replaces HealthBar 1.1 / SpeciesPicker 1.0 / StaminaBar 1.1 in Mecha (those are switched off by Arena scope 1.1).
@@ -26,11 +26,19 @@
 --   false, or no DinoModeRequest, = the 1.1 species pill). Diagnostic: ArenaStatusLastPick "menu". PC: the M key does the
 --   same (ShoulderCam keeps the mouse locked to the centre, so the pill is only clickable while Left Alt is held), like K
 --   for SKILLS; typing in chat does not trigger it.
+-- v1.3 (Kepu 2026-10-29: "my healthy and stamina can go bottom left of the screen"; mockup
+--   docs/mockups/hud_target_slash_options.html option A "Bottom-left edge, slim"): the health and stamina bars move into a
+--   frame "BarsBL" at the bottom-left edge, under the phone thumb area: AnchorPoint (0, 1) at (0, 16, 1, -8), width 36% of
+--   the screen clamped to 200..340 px, a vertical list from the bottom: HEALTH then STAMINA under it (stamina still only
+--   while latched; with it hidden, health sits on the bottom edge). Slim: labels 12 px (row 14 px), bars 10 px (health) /
+--   8 px (stamina), 3 px between label and bar, 4 px between the two blocks. Colours, texts, shield and values as 1.2. The
+--   MENU pill stays top right. Script attribute ArenaStatusBottomLeftEnabled (default true; false = the 1.2 top-right
+--   bars). Diagnostic: character ArenaStatusLayout ("bottomLeft" / "topRight").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local SHIELD = Color3.fromRGB(90, 160, 255) -- v1.1
 local LOW_FRACTION = 0.3
 local SPECIES = {{id = "TRex", label = "T-REX"}, {id = "Raptor", label = "RAPTOR"}}
@@ -229,6 +237,55 @@ shieldFill.Visible = false
 shieldFill.ZIndex = 2
 shieldFill.Parent = healthFill.Parent
 corner(shieldFill, 16)
+-- v1.3: bottom-left edge, slim
+if script:GetAttribute("ArenaStatusBottomLeftEnabled") == nil then script:SetAttribute("ArenaStatusBottomLeftEnabled", true) end
+if script:GetAttribute("ArenaStatusBottomLeftEnabled") ~= false then
+	local holder = Instance.new("Frame")
+	holder.Name = "BarsBL"
+	holder.AnchorPoint = Vector2.new(0, 1)
+	holder.Position = UDim2.new(0, 16, 1, -8)
+	holder.Size = UDim2.new(0.36, 0, 0, 0)
+	holder.AutomaticSize = Enum.AutomaticSize.Y
+	holder.BackgroundTransparency = 1
+	holder.Parent = gui
+	local hc = Instance.new("UISizeConstraint")
+	hc.MinSize, hc.MaxSize = Vector2.new(200, 0), Vector2.new(340, math.huge)
+	hc.Parent = holder
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Vertical
+	list.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Padding = UDim.new(0, 4)
+	list.Parent = holder
+	local function slim(f, order, height)
+		local c = f:FindFirstChildOfClass("UISizeConstraint")
+		if c then c:Destroy() end
+		f.LayoutOrder = order
+		f.AnchorPoint = Vector2.new(0, 0)
+		f.Position = UDim2.new()
+		f.Size = UDim2.new(1, 0, 0, 14 + 3 + height)
+		for _, ch in ipairs(f:GetChildren()) do
+			if ch:IsA("TextLabel") then
+				ch.TextSize = 12
+				ch.Size = UDim2.new(0.5, 0, 0, 14)
+			elseif ch:IsA("Frame") then -- the bar back
+				ch.Position = UDim2.fromOffset(0, 17)
+				ch.Size = UDim2.new(1, 0, 0, height)
+				for _, k in ipairs(ch:GetDescendants()) do
+					if k:IsA("UICorner") then k.CornerRadius = UDim.new(0, height) end
+				end
+				local c2 = ch:FindFirstChildOfClass("UICorner")
+				if c2 then c2.CornerRadius = UDim.new(0, height) end
+			end
+		end
+		f.Parent = holder
+	end
+	slim(healthF, 1, 10)
+	slim(stamF, 2, 8)
+	char:SetAttribute("ArenaStatusLayout", "bottomLeft")
+else
+	char:SetAttribute("ArenaStatusLayout", "topRight")
+end
 stamR.Text = "LATCHED"
 stamGrad.Rotation = 0
 stamGrad.Color = ColorSequence.new(STAM_A, STAM_B)

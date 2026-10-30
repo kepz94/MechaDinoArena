@@ -1870,3 +1870,28 @@ BindableFunction ScentServer.BuildPreview (server only). Model Mecha_Scent: Mask
 
 RemoteEvent ReplicatedStorage.MusicSetting:FireServer(muted). Sounds: SoundService.MDA_Music (menu / island / lab), client-side.
 Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performed by Kevin MacLeod, CC BY), island rbxassetid://1835450413 (Little Toys, APM), lab rbxassetid://1845556724 (Crazy Daisy, APM "Afro 8 Bit").
+
+### Enemy bar, bottom-left bars, claw slashes (TargetHUD 1.0, ArenaStatus 1.3, PounceServer 1.7, PouncePose 1.1, PounceSlash 1.0, IdleAnimation 1.28, PounceFX 1.1)
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| TargetHUDEnabled | TargetHUD script | true | false = no enemy bar; read at start |
+| TargetHUDVersion | character (local) | "1.0" | |
+| TargetHUDTarget | character (local) | model name / "" | model of your newest hit |
+| TargetHUDSource | character (local) | "bite" / "pounce" / "lastHit" / "bleed" | where that hit came from |
+| TargetHUDShown | character (local) | "shown" / "hidden" | bar on screen |
+| TargetHUDHits | character (local) | 0.. | hits counted |
+| TargetHUDHealth | character (local) | "hp/max" | shown health |
+| ArenaStatusBottomLeftEnabled | ArenaStatus script | true | false = the 1.2 top-right bars |
+| ArenaStatusLayout | character (local) | "bottomLeft" / "topRight" | |
+| PounceSlashTimingEnabled | PounceServer script | true | false = no PounceHitCount / PounceNextHitAt (clients fall back to the bite latch) |
+| PounceHitCount | raptor (server) | 0.. | hits this latch (landing = 1); odd = left arm, even = right |
+| PounceNextHitAt | raptor (server) | server time | when the next tick hit lands |
+| PounceSlashEnabled | raptor (model) | true | false = PouncePose.latch bite + 1.0 jaw effects |
+| PounceSlashWindup / Strike / RakeTime / Recover | raptor (model) | 0.22 / 0.07 / 0.07 / 0.16 s | slash timing (wind-up capped at 70% of the hit interval) |
+| PounceSlashCocked / Splay / RakeEnd / Cross | raptor (model) | 160 / 50 / −15 / 10 ° | arm angles: raised, out to the side, end of the rake, across |
+| PounceSlashDrag / Tremble / Dip / Lean / HeadTurn / PounceSnarl | raptor (model) | 6° / 3° / 0.8 (× scale) / 6° / 8° / 3° | rake drag, cocked tremble, body dip + lean per strike, head turn, jaw flutter |
+| PounceSlashSoundPitch / Volume | raptor (model) | 1.15 / 0.6 | slash swish (rbxasset://sounds/swordslash.wav) |
+| PounceSlashState | raptor (local) | "L:<phase> R:<phase>" / "" | diagnostic: arm phases |
+| PounceSlashStrikes / PounceSlashHits | raptor (local) | 0.. | strikes shown / hit count seen this latch |
+| PounceFXSlashes | raptor (local) | 0.. | slash effects shown |
+| PounceSlashSoundLoaded | raptor (local) | true / false | swish loaded |

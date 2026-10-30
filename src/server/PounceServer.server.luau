@@ -1,4 +1,4 @@
--- PounceServer v1.6 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.7 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -60,6 +60,16 @@
 --   * pin kill: when a landing or tick hit of a "pin" takes the target's DummyHealth from above 0 to 0 and
 --     BladePinRefund > 0, the raptor gets StaminaRefundAmount = BladePinRefund x PounceStaminaCost, then
 --     StaminaRefundAt = now (StaminaServer 1.5 adds it); diagnostic PounceBladeRefunds (count).
+-- v1.7: slash timing (Kepu 2026-10-29: "we need to see visible slashing with the arm claws" ... "the slashes need to be
+--   animated and show some wind up ... and be accurate to the damage taken. I can't have 2 slashes only but then -4 health
+--   appears in between all those slashes"; mockup docs/mockups/hud_target_slash_options.html "Claw slashes only"). While
+--   script attribute PounceSlashTimingEnabled ~= false the raptor also gets:
+--   * PounceHitCount: 0 at each latch / pin start, + 1 on every hit (landing = 1), set before PounceBiteAt, so a client
+--     reading PounceBiteAt sees the matching count. Clients (IdleAnimation 1.28 / PounceSlash 1.0, PounceFX 1.1) slash
+--     with the left arm on odd counts and the right arm on even counts: one slash per hit, never more or fewer.
+--   * PounceNextHitAt (server time of the next tick hit): set at the latch start (= now + the tick interval) and after
+--     every tick; the next arm winds up so it is cocked by then and strikes when the hit arrives.
+--   Damage, timing and release rules are unchanged.
 -- Settings (raptor attributes): PounceEnabled (default false), PounceStaminaCost 15, PounceCooldown 3,
 --   PounceClaimWindow 0.9, PounceSizeRatio 1.5, PounceLandDamage 8, PounceTickDamage 4, PounceTickInterval 0.5.
 -- Diagnostics (raptor attributes): PounceServerResult, PounceClaimResult, PounceCount, PounceLatchCount,
@@ -77,7 +87,9 @@ local CLAIM_TOLERANCE = 24  -- studs between the claimed part and the raptor bod
 local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's centre beyond its half size
 local MAX_LATCH = 30        -- safety: seconds a latch may last
 
-script:SetAttribute("PounceServerVersion", "1.6")
+script:SetAttribute("PounceServerVersion", "1.7")
+if script:GetAttribute("PounceSlashTimingEnabled") == nil then script:SetAttribute("PounceSlashTimingEnabled", true) end -- v1.7
+local function slashTiming() return script:GetAttribute("PounceSlashTimingEnabled") ~= false end
 if script:GetAttribute("PounceCloakBonusEnabled") == nil then script:SetAttribute("PounceCloakBonusEnabled", true) end -- v1.5
 if script:GetAttribute("PounceBladeEnabled") == nil then script:SetAttribute("PounceBladeEnabled", true) end -- v1.6
 if script:GetAttribute("PounceScaleClaimEnabled") == nil then script:SetAttribute("PounceScaleClaimEnabled", true) end -- v1.4
@@ -186,6 +198,7 @@ local function hit(char, model, dmg, now, extra)
 	end
 	char:SetAttribute("PounceHitDamage", d)
 	char:SetAttribute("PounceDamageTotal", (char:GetAttribute("PounceDamageTotal") or 0) + d)
+	if slashTiming() then char:SetAttribute("PounceHitCount", (char:GetAttribute("PounceHitCount") or 0) + 1) end -- v1.7
 	char:SetAttribute("PounceBiteAt", now)
 end
 
@@ -294,6 +307,10 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 	char:SetAttribute("PounceLatchTarget", model.Name)
 	char:SetAttribute("PounceLatchSegment", part:GetAttribute("HitboxSegment"))
 	char:SetAttribute("PounceDamageTotal", 0)
+	if slashTiming() then -- v1.7
+		char:SetAttribute("PounceHitCount", 0)
+		char:SetAttribute("PounceNextHitAt", latches[char].nextTick)
+	end
 	char:SetAttribute("PounceLatchedAt", now)
 	char:SetAttribute("PounceLatchCount", (char:GetAttribute("PounceLatchCount") or 0) + 1)
 	char:SetAttribute("PounceLatched", true) -- last: clients read the rest from here
@@ -336,6 +353,7 @@ RunService.Heartbeat:Connect(function()
 			release(char, "timeout")
 		elseif now >= l.nextTick then
 			l.nextTick += tickInterval(char) -- v1.6 (was PounceTickInterval)
+			if slashTiming() then char:SetAttribute("PounceNextHitAt", l.nextTick) end -- v1.7: before the hit
 			hit(char, l.model, get(char, "PounceTickDamage"), now)
 		end
 	end

@@ -1,4 +1,4 @@
--- IdleAnimation v1.27 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.28 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -143,6 +143,15 @@
 --       Diagnostics: BoostLeanBlend (0.1 steps), BoostDir (degrees, atan2(right, forward), 0 = forward, 180 = back),
 --       BoostLeanPitch / BoostLeanRoll (degrees, 1 decimal), BoostSwivel ("none" / "on" / "noHinge" / "off"),
 --       BoostSwivelAngle (degrees), BoostStagger (studs, 0.01 steps).
+-- v1.28: claw slashes while latched (Kepu 2026-10-29: "we need to see visible slashing with the arm claws. I need to see
+--       the raptor animate his swings on the downed victim" + "the slashes need to be animated and show some wind up ...
+--       and be accurate to the damage taken"; mockup docs/mockups/hud_target_slash_options.html "Claw slashes only").
+--       While latched, when the model attribute PounceSlashEnabled ~= false (PouncePose 1.1 default true) and the server
+--       sends PounceHitCount (PounceServer 1.7), the latched pose is PouncePose.slash with the arms from PounceSlash 1.0
+--       (one tracker per latch on this client: left arm on odd hits, right on even, a wind-up before each hit and the
+--       strike when the hit arrives) instead of PouncePose.latch (bite). Otherwise the v1.16 latch pose, unchanged.
+--       Diagnostics: PounceSlashState ("L:<phase> R:<phase>", "" when not slashing), PounceSlashStrikes (strikes shown
+--       this latch), PounceSlashHits (hit count seen this latch).
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -165,6 +174,7 @@ local TurnPose = require(script.TurnPose)
 local HeadLeadPose = require(script.HeadLeadPose)
 local JumpPose = require(script.JumpPose) -- v1.15 (defaults are read by JumpPose.settings, not written to the model)
 local PouncePose = require(script.PouncePose) -- v1.16 (defaults are read by PouncePose.settings)
+local PounceSlash = require(script.PounceSlash) -- v1.28
 local RamPose = require(script.RamPose) -- v1.19 (defaults are read by RamPose.settings)
 local EatPose = require(script.EatPose) -- v1.20 (defaults are read by EatPose.settings)
 local DeadPose = require(script.DeadPose) -- v1.21 (defaults are read by DeadPose.settings)
@@ -209,6 +219,7 @@ local jumpParams = RaycastParams.new() -- v1.15: ground probe (ignores this mode
 jumpParams.FilterType = Enum.RaycastFilterType.Exclude
 jumpParams.FilterDescendantsInstances = {model}
 local pounceLatchClock, pounceLetGoAt, pounceLast -- v1.16: local latch start, let-go time, last latched pose
+local pounceSlash -- v1.28: PounceSlash tracker of the current latch (nil when not latched)
 local RAM_FADE = 0.25        -- v1.19: s the ram pose eases out after a charge that missed
 local STUN_BLEND_RATE = 8    -- v1.19: how fast the stun flailing blends in / out (per second)
 local stunBlend = 0          -- v1.19
@@ -457,7 +468,7 @@ end)
 
 -- v1.24: re-fit joint rest frames and leg geometry when the model's scale changes (see the header)
 local refitCount = 0
-model:SetAttribute("IdleAnimationVersion", "1.27")
+model:SetAttribute("IdleAnimationVersion", "1.28")
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -777,11 +788,24 @@ RunService.PreSimulation:Connect(function(dt)
 			local biteAt = model:GetAttribute("PounceBiteAt")
 			local latchedAt = model:GetAttribute("PounceLatchedAt")
 			local chomp = (biteAt and latchedAt and biteAt >= latchedAt - 0.01) and (serverNow - biteAt) or nil
-			pp = PouncePose.latch(now - pounceLatchClock, chomp, ps, geo)
+			if ps.PounceSlashEnabled ~= false and type(model:GetAttribute("PounceHitCount")) == "number" then -- v1.28
+				pounceSlash = pounceSlash or PounceSlash.new(model, serverNow)
+				local arms, sState, strikes, hits = pounceSlash:update(model, serverNow, now, ps)
+				pp = PouncePose.slash(now - pounceLatchClock, arms, ps, geo)
+				show("PounceSlashState", sState)
+				show("PounceSlashStrikes", strikes)
+				show("PounceSlashHits", hits)
+			else
+				pp = PouncePose.latch(now - pounceLatchClock, chomp, ps, geo)
+			end
 			pw, pState = 1, "latched"
 			pounceLast, pounceLetGoAt = pp, nil
 		else
 			if pounceLatchClock then pounceLetGoAt, pounceLatchClock = now, nil end
+			if pounceSlash then -- v1.28
+				pounceSlash = nil
+				show("PounceSlashState", "")
+			end
 			local windup, lunge = false, false
 			if localState then
 				windup, lunge = localState == "windup", localState == "lunge"

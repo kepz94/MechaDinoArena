@@ -1,4 +1,4 @@
--- PounceFX v1.0 (Dino Arcade) — pounce bite effects on every player's client (RunContext = Client).
+-- PounceFX v1.1 (Dino Arcade) — pounce bite effects on every player's client (RunContext = Client).
 -- Triggered by this character's server attribute PounceBiteAt (set by PounceServer 1.0 on every latch hit):
 --   * chomp sound on the head: BiteSoundId (the bite chomp; empty = silent) at PounceSoundPitch (default 1.35, a
 --     smaller, higher chomp) and PounceSoundVolume (default 0.7), replayed from the start on every hit;
@@ -6,6 +6,18 @@
 --   * a popping damage number (PounceHitDamage) at the jaws: the landing hit (PounceBiteAt == PounceLatchedAt) is a
 --     big yellow number like a bite's, each later bite while latched a smaller, quicker orange one.
 -- No chunks, wobble or camera punch (two hits a second would be too busy).
+-- v1.1: claw slash effects (Kepu 2026-10-29: "visible slashing with the arm claws" ... "be accurate to the damage
+--   taken"; mockup docs/mockups/hud_target_slash_options.html "Claw slashes only"). While the character attribute
+--   PounceSlashEnabled ~= false and the server sends PounceHitCount (PounceServer 1.7), each hit instead gives, for the
+--   arm of that hit (count odd -> ArmL, even -> ArmR; the same rule as PounceSlash 1.0 in IdleAnimation 1.28):
+--   * at once: a slash swish on the hand (SLASH_SOUND, the built-in sword slash, PounceSlashSoundPitch 1.15 /
+--     PounceSlashSoundVolume 0.6; no chomp);
+--   * PounceSlashStrike (0.07 s, the strike time of PouncePose 1.1) later, when the claws reach the end of the rake as
+--     this client animates them: a small flash at the claws, three red neon streaks (the claw marks) along the path the
+--     claws travelled during the strike, drawn out over 0.06 s and fading over 0.35 s, and the damage number
+--     (PounceHitDamage of this hit, landing = big yellow, later hits = orange, as 1.0) at the claws.
+--   One hit = one swish, one set of streaks and one number. When off: the 1.0 jaw effects.
+--   Diagnostics: PounceFXLast adds "slashL" / "slashR"; PounceFXSlashes (slash effects shown).
 -- Diagnostics (client-side character attributes): PounceFXHits (hit effects shown), PounceFXLast ("land" /
 --   "bite"), PounceSoundLoaded.
 local RunService = game:GetService("RunService")
@@ -16,6 +28,11 @@ local FLASH_TIME = 0.1
 local LAND = {time = 0.8, scale = 1, rise = 4, color = Color3.fromRGB(255, 214, 64)}   -- same look as a bite number
 local TICK = {time = 0.55, scale = 0.65, rise = 2.5, color = Color3.fromRGB(255, 160, 60)}
 local STALE = 1 -- seconds after which a hit stamp is too old to show (e.g. joined late)
+-- v1.1: claw slashes
+local SLASH_SOUND = "rbxasset://sounds/swordslash.wav"
+local SLASH_DEFAULTS = {PounceSlashStrike = 0.07, PounceSlashSoundPitch = 1.15, PounceSlashSoundVolume = 0.6}
+local STREAK_COLOR = Color3.fromRGB(255, 70, 55)
+local STREAK_GROW, STREAK_FADE = 0.06, 0.35
 
 local function get(k)
 	local v = char:GetAttribute(k)
@@ -130,10 +147,102 @@ local function ensureSound()
 	return sound
 end
 
+-- v1.1: claw slash effects
+local function sget(k)
+	local v = char:GetAttribute(k)
+	if v == nil then v = SLASH_DEFAULTS[k] end
+	return v
+end
+-- the claws of one arm as this client animates them (long Blade Claw first, then the dino's own claw, then the hand)
+local function clawPoint(side)
+	local seg = char:FindFirstChild("Arm" .. side)
+	if not seg then return nil end
+	local p = seg:FindFirstChild("Claw_Arm" .. side .. "_2", true) or char:FindFirstChild("Claw_Arm" .. side .. "_2", true)
+		or seg:FindFirstChild("Arm" .. side .. "_claw2") or seg:FindFirstChild("Arm" .. side .. "_hand")
+	return p and p:IsA("BasePart") and p.Position or nil
+end
+local slashSounds = {}
+local function slashSound(side)
+	local seg = char:FindFirstChild("Arm" .. side)
+	local hand = seg and (seg:FindFirstChild("Arm" .. side .. "_hand") or seg:FindFirstChild("Root"))
+	if not hand then return end
+	local snd = slashSounds[side]
+	if not snd or snd.Parent ~= hand then
+		snd = Instance.new("Sound")
+		snd.Name = "PounceSlashSound"
+		snd.SoundId = SLASH_SOUND
+		snd.RollOffMaxDistance = 200
+		snd.Parent = hand
+		slashSounds[side] = snd
+	end
+	snd.PlaybackSpeed = sget("PounceSlashSoundPitch")
+	snd.Volume = sget("PounceSlashSoundVolume")
+	snd.TimePosition = 0
+	snd:Play()
+	char:SetAttribute("PounceSlashSoundLoaded", snd.IsLoaded)
+end
+local function streaks(from, to)
+	local dir = to - from
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if dir.Magnitude < 0.3 then dir = root and -root.CFrame.UpVector or Vector3.new(0, -1, 0) end
+	local scale = math.max(0.5, char:GetScale())
+	local len = math.clamp(dir.Magnitude * 1.2, 1.5 * scale, 2.6 * scale)
+	local unit = dir.Unit
+	local side = root and root.CFrame.RightVector or Vector3.new(1, 0, 0)
+	side = (side - unit * side:Dot(unit))
+	side = side.Magnitude > 0.01 and side.Unit or Vector3.new(1, 0, 0)
+	local w = 0.09 * scale
+	local parts = {}
+	for i = -1, 1 do
+		local p = fxPart("PounceSlashStreak", Vector3.new(w, w, 0.05), STREAK_COLOR, CFrame.new(to))
+		p.Material = Enum.Material.Neon
+		parts[#parts + 1] = {p = p, off = side * (i * 0.32 * scale) - unit * (math.abs(i) * 0.15 * scale)}
+	end
+	animate(STREAK_GROW + STREAK_FADE, function(u)
+		local t = u * (STREAK_GROW + STREAK_FADE)
+		local g = math.min(1, t / STREAK_GROW)
+		local l = math.max(0.05, len * g)
+		local fade = t > STREAK_GROW and (t - STREAK_GROW) / STREAK_FADE or 0
+		for _, e in ipairs(parts) do
+			local tip = to + e.off
+			local c = tip - unit * (l / 2)
+			e.p.Size = Vector3.new(w * (1 - 0.6 * fade), w * (1 - 0.6 * fade), l)
+			e.p.CFrame = CFrame.lookAt(c, c + unit)
+			e.p.Transparency = 0.05 + 0.95 * fade
+		end
+	end, function()
+		for _, e in ipairs(parts) do e.p:Destroy() end
+	end)
+end
+local slashes = 0
+local function slashHit(count, landing)
+	local side = (count % 2 == 1) and "L" or "R"
+	local dmg = char:GetAttribute("PounceHitDamage") or 0
+	slashSound(side)
+	local from = clawPoint(side)
+	task.delay(sget("PounceSlashStrike"), function()
+		local pos = clawPoint(side)
+		if not pos then return end
+		flash(pos)
+		streaks(from or pos, pos)
+		damageNumber(pos + Vector3.new(0, 1, 0), dmg, landing and LAND or TICK)
+	end)
+	slashes += 1
+	char:SetAttribute("PounceFXSlashes", slashes)
+	char:SetAttribute("PounceFXLast", "slash" .. side)
+end
+
 local hits = 0
 char:GetAttributeChangedSignal("PounceBiteAt"):Connect(function()
 	local at = char:GetAttribute("PounceBiteAt")
 	if not at or workspace:GetServerTimeNow() - at > STALE then return end
+	local count = char:GetAttribute("PounceHitCount") -- v1.1
+	if char:GetAttribute("PounceSlashEnabled") ~= false and type(count) == "number" and count > 0 then
+		slashHit(count, math.abs(at - (char:GetAttribute("PounceLatchedAt") or -1)) < 0.01)
+		hits += 1
+		char:SetAttribute("PounceFXHits", hits)
+		return
+	end
 	local landing = math.abs(at - (char:GetAttribute("PounceLatchedAt") or -1)) < 0.01
 	local s = ensureSound()
 	if s then
