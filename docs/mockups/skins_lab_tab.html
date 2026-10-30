@@ -1,0 +1,174 @@
+<title>Lab Skins Tab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: intro, chips (where the Lab is opened), one clickable phone frame of the Lab (top bar; left tabs + card grid; middle stage + slots; right detail), notes. Same dark game look as the Lab mockups (single dark theme by choice). */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9b2e; --green: #5fd16a; --red: #f05a4f; --volt: #7fe9ff; --robux: #00b06f; --skin: #c9a2ff;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--skin); }
+.lede { margin: 0; color: var(--muted); max-width: 80ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+button:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.frameWrap { overflow-x: auto; }
+.device { position: relative; margin: 0 auto; width: min(100%, 940px); aspect-ratio: 19.5 / 9; border: 8px solid #2a2f3a; border-radius: 30px; overflow: hidden; background: linear-gradient(135deg, #10141d, #1a2130 50%, #0e1219); }
+.device.compact { background: linear-gradient(180deg, #7fbdea 0%, #a8d6f0 30%, #6cc25a 31%, #4fa63e 100%); }
+.s { position: absolute; inset: 0; container-type: size; }
+.dim { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+.lab { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr; }
+.compact .lab { inset: 10cqh 11cqw 6cqh; background: #141924f2; border: .35cqh solid var(--volt); border-radius: 2.4cqh; overflow: hidden; }
+.bar { display: flex; align-items: center; gap: 1.6cqh; padding: 1.6cqh 2cqw 1.2cqh 12cqh; border-bottom: .35cqh solid var(--volt); }
+.compact .bar { padding-left: 2cqw; }
+.bar .ttl { font: 700 3.2cqh var(--display); }
+.bar .ttl small { color: var(--volt); font-size: .55em; margin-right: .6cqh; }
+.bar .lv { font: 800 1.8cqh var(--body); color: var(--grey); }
+.bar .xp { width: 12cqw; height: 1.4cqh; border-radius: 99px; background: #0008; overflow: hidden; } .bar .xp i { display: block; width: 62%; height: 100%; background: var(--volt); }
+.bar .sp { flex: 1; }
+.bar .pts { font: 700 2.2cqh var(--display); color: #1b1406; background: var(--yellow); border-radius: 99px; padding: .3cqh 1.4cqh; }
+.bar .x { width: 5cqh; height: 5cqh; border-radius: 1cqh; background: #22242e; display: grid; place-items: center; font: 700 2.4cqh var(--display); }
+.rb { position: absolute; left: 2cqw; top: 2cqh; display: flex; gap: 1cqh; } .rb i { display: block; height: 7cqh; border-radius: 99px; background: rgb(240 240 244 / .9); } .rb i:first-child { width: 7cqh; } .rb i:last-child { width: 18cqh; }
+.compact .rb { display: none; }
+.body { display: grid; grid-template-columns: 31% 1fr 27%; gap: 1.6cqw; padding: 1.6cqh 2cqw 2cqh; min-height: 0; }
+.compact .body { grid-template-columns: 34% 1fr 30%; }
+.left { display: grid; grid-template-rows: auto 1fr; gap: 1.2cqh; min-height: 0; }
+.tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .8cqh; }
+.tab { font: 800 1.6cqh var(--body); padding: .9cqh .4cqh; border-radius: 1.2cqh; border: .3cqh solid #ffffff22; background: #1d2230; color: var(--grey); cursor: pointer; }
+.tab.on { border-color: var(--volt); color: #fff; }
+.tab.skins.on { border-color: var(--skin); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1cqh; overflow: auto; align-content: start; padding: 3px; }
+.card { border-radius: 1.4cqh; background: #1d2230; border: .3cqh solid #ffffff18; padding: 1cqh; display: grid; gap: .5cqh; cursor: pointer; color: #fff; text-align: left; position: relative; }
+.card[aria-pressed="true"] { border-color: #fff; }
+.card.eq { border-color: var(--skin); }
+.card .pv { aspect-ratio: 4 / 3; border-radius: 1cqh; background: #0f131c; display: grid; place-items: center; overflow: hidden; }
+.card .pv svg { width: 92%; height: auto; }
+.card b { font: 700 1.9cqh var(--display); }
+.card .rar { font: 600 1.3cqh var(--mono); letter-spacing: .08em; }
+.card .badge { position: absolute; right: .8cqh; top: .8cqh; font: 800 1.3cqh var(--body); border-radius: .8cqh; padding: .1cqh .7cqh; }
+.badge.eq { background: var(--skin); color: #1a1030; } .badge.lock { background: var(--robux); color: #fff; }
+.mid { display: grid; grid-template-rows: auto 1fr auto auto; gap: 1.2cqh; min-height: 0; }
+.mid .tag { font: 600 1.8cqh var(--mono); color: var(--volt); letter-spacing: .1em; }
+.stage { position: relative; display: grid; place-items: center; min-height: 0; }
+.stage .glow { position: absolute; bottom: 4%; width: 70%; height: 12%; border-radius: 50%; background: radial-gradient(closest-side, rgba(127,233,255,.35), rgba(127,233,255,0)); }
+.stage svg { width: 92%; max-height: 100%; position: relative; }
+.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8cqw; }
+.slot { font: 800 1.5cqh var(--body); padding: .9cqh .6cqh; border-radius: 1.2cqh; border: .3cqh solid var(--orange); background: #14141add; text-align: center; }
+.hint { font: 700 1.6cqh var(--body); color: var(--muted); text-align: center; }
+.right { background: #1a1f2b; border-radius: 1.6cqh; padding: 1.6cqh; display: grid; gap: 1.2cqh; align-content: start; }
+.right .kind { font: 600 1.5cqh var(--mono); letter-spacing: .1em; }
+.right h3 { margin: 0; font: 700 3cqh/1.1 var(--display); }
+.right p { margin: 0; font: 700 1.6cqh var(--body); color: var(--grey); }
+.pal { display: flex; gap: .6cqh; flex-wrap: wrap; }
+.pal i { width: 3.6cqh; height: 3.6cqh; border-radius: .8cqh; border: .25cqh solid #ffffff33; }
+.btn { height: 5.6cqh; border-radius: 1.4cqh; border: .3cqh solid #fff8; font: 700 2.4cqh var(--display); cursor: pointer; }
+.btn.go { background: var(--skin); color: #1a1030; } .btn.buy { background: var(--robux); color: #fff; opacity: .55; cursor: default; } .btn.done { background: #22242e; color: var(--muted); cursor: default; }
+.toast { position: absolute; left: 50%; top: 14cqh; transform: translateX(-50%); font: 700 2.4cqh var(--display); background: #14141aee; border: .3cqh solid var(--skin); border-radius: 1.6cqh; padding: 1cqh 2.4cqh; white-space: nowrap; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note li { color: var(--grey); font-size: 14px; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+</style>
+
+<div class="wrap">
+  <h1>Skins as a third <span>Lab tab</span></h1>
+  <p class="lede">The Lab gets MECHA ABILITIES · STATS · SKINS. Tap a skin card and the dino on the Lab stage previews it; EQUIP puts it on your real dino and saves it, so you spawn in it every time until you pick another. Locked skins show their Robux price; buying comes in the next step. Use the chips to see the Lab from the menu and on the island.</p>
+  <div class="controls">
+    <div class="group" role="group" aria-label="Opened from"><b>Lab opened from</b>
+      <button class="chip" data-k="where" data-v="full" aria-pressed="true">Main menu (full)</button>
+      <button class="chip" data-k="where" data-v="compact" aria-pressed="false">Island (compact)</button>
+    </div>
+    <div class="group" role="group" aria-label="Island skins"><b>Skins on the island</b>
+      <button class="chip" data-k="island" data-v="hidden" aria-pressed="true">Tab only in the menu Lab</button>
+      <button class="chip" data-k="island" data-v="shown" aria-pressed="false">Tab on the island too</button>
+    </div>
+  </div>
+  <div class="frameWrap"><div class="device" id="dev"><div class="s" id="s"></div></div></div>
+  <div class="notes">
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>Skins only in the menu Lab</h3><ul><li>Matches "pick it in the menu": the SKINS tab shows in the full Lab (main menu → GO TO THE LAB).</li><li>On the island the compact Lab keeps its two tabs, so nobody changes colour mid-fight.</li></ul></div>
+    <div class="note"><h3>Skins on the island too</h3><ul><li>The compact Lab on the island also gets the SKINS tab, and EQUIP recolours your dino right there.</li><li>Handy, but a dino could change colour in the middle of a fight.</li></ul></div>
+    <div class="note"><h3>Same either way</h3><ul><li>Cards: a small model in that skin, name, rarity; EQUIPPED / price badge.</li><li>Right panel: the skin's colours, then EQUIP / EQUIPPED / GET · R$ (greyed until buying is built).</li><li>Each dino has its own skins; colours only, never hitboxes or stats.</li></ul></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const SKINS = [
+    { id: 'classic', name: 'Classic', rar: 'STARTER', own: true,  c: { main: '#5E943E', bands: '#283A1E', limbs: '#8FA046', belly: '#C9C98F', claws: '#302824', stripe: '#2E8C82', eye: '#F0C81E' } },
+    { id: 'desert',  name: 'Desert Runner', rar: 'COMMON', own: true, c: { main: '#C9A46A', bands: '#7A5530', limbs: '#B08A55', belly: '#EBDDB8', claws: '#3B2A1C', stripe: '#C2552E', eye: '#F0C81E' } },
+    { id: 'arctic',  name: 'Arctic', rar: 'RARE', own: false, price: 149, c: { main: '#E6EEF3', bands: '#7FA6C2', limbs: '#C7D8E3', belly: '#FFFFFF', claws: '#3A4A57', stripe: '#3FB4E6', eye: '#7FE9FF' } },
+    { id: 'night',   name: 'Night Stalker', rar: 'RARE', own: false, price: 149, c: { main: '#22262B', bands: '#0E1012', limbs: '#33393F', belly: '#4A5058', claws: '#0B0C0D', stripe: '#5FD16A', eye: '#5FD16A' } },
+    { id: 'lava',    name: 'Lava', rar: 'EPIC', own: false, price: 299, c: { main: '#2E2524', bands: '#FF6A1A', limbs: '#3D302E', belly: '#5A3A30', claws: '#120D0C', stripe: '#FFC832', eye: '#FF6A1A' } },
+    { id: 'gold',    name: 'Gold Hunter', rar: 'LEGENDARY', own: false, price: 499, c: { main: '#D4A72C', bands: '#7A5A10', limbs: '#E6C25A', belly: '#F5E4A8', claws: '#3A2A08', stripe: '#FFF2B0', eye: '#FFFFFF' } },
+  ];
+  const RAR = { STARTER: '#cfd3dc', COMMON: '#cfd3dc', RARE: '#7fe9ff', EPIC: '#c9a2ff', LEGENDARY: '#ffc832' };
+  const st = { where: 'full', island: 'hidden', tab: 'skins', sel: 'classic', equipped: 'classic', toast: '' };
+  let tT = null;
+  const skin = id => SKINS.find(s => s.id === id);
+  function dino(c, mech) {
+    return `<svg viewBox="0 0 220 120" aria-hidden="true">
+      <rect x="6" y="46" width="70" height="12" fill="${c.main}"/><rect x="0" y="48" width="14" height="8" fill="${c.main}"/>
+      ${[14, 30, 46, 62].map(x => `<rect x="${x}" y="46" width="5" height="12" fill="${c.bands}"/>`).join('')}
+      <rect x="70" y="38" width="64" height="28" fill="${c.main}"/><rect x="74" y="60" width="56" height="7" fill="${c.belly}"/>
+      ${[80, 94, 108, 122].map(x => `<rect x="${x}" y="38" width="6" height="18" fill="${c.bands}"/>`).join('')}
+      <rect x="128" y="22" width="16" height="30" fill="${c.main}"/><rect x="136" y="38" width="8" height="12" fill="${c.belly}"/>
+      <rect x="134" y="12" width="40" height="16" fill="${c.main}"/><rect x="150" y="14" width="12" height="3" fill="${c.stripe}"/>
+      <rect x="152" y="17" width="6" height="5" fill="${c.eye}"/><rect x="155" y="17" width="2" height="5" fill="#111"/>
+      <rect x="138" y="28" width="36" height="6" fill="${c.main}"/><rect x="138" y="26" width="36" height="2" fill="#963C3C"/><rect x="142" y="25" width="30" height="2" fill="#E8E2D2"/>
+      <rect x="132" y="50" width="6" height="12" fill="${c.limbs}"/><rect x="132" y="61" width="9" height="3" fill="${c.claws}"/>
+      <rect x="82" y="64" width="14" height="24" fill="${c.main}"/><rect x="86" y="86" width="9" height="22" fill="${c.limbs}"/><rect x="84" y="106" width="16" height="5" fill="${c.limbs}"/><rect x="98" y="104" width="5" height="7" fill="${c.claws}"/>
+      <rect x="108" y="64" width="14" height="24" fill="${c.main}"/><rect x="112" y="86" width="9" height="22" fill="${c.limbs}"/><rect x="110" y="106" width="16" height="5" fill="${c.limbs}"/><rect x="124" y="104" width="5" height="7" fill="${c.claws}"/>
+      ${mech ? `<rect x="96" y="26" width="22" height="10" fill="#3a3f4b"/><rect x="114" y="28" width="12" height="5" fill="#ff9b2e"/><rect x="84" y="30" width="8" height="8" fill="#5aa0ff"/>` : ''}
+    </svg>`;
+  }
+  function render() {
+    const compact = st.where === 'compact';
+    document.getElementById('dev').className = 'device' + (compact ? ' compact' : '');
+    const skinsTab = !compact || st.island === 'shown';
+    if (!skinsTab && st.tab === 'skins') st.tab = 'parts';
+    const sel = skin(st.sel);
+    const showC = st.tab === 'skins' ? sel.c : skin(st.equipped).c;
+    const tabs = `<div class="tabs"><button class="tab ${st.tab === 'parts' ? 'on' : ''}" data-tab="parts">MECHA ABILITIES</button><button class="tab ${st.tab === 'stats' ? 'on' : ''}" data-tab="stats">STATS</button>${skinsTab ? `<button class="tab skins ${st.tab === 'skins' ? 'on' : ''}" data-tab="skins">SKINS</button>` : ''}</div>`;
+    let grid, detail;
+    if (st.tab === 'skins') {
+      grid = SKINS.map(s => `<button class="card ${s.id === st.equipped ? 'eq' : ''}" data-skin="${s.id}" aria-pressed="${s.id === st.sel}"><div class="pv">${dino(s.c)}</div><b>${s.name}</b><span class="rar" style="color:${RAR[s.rar]}">${s.rar}</span>${s.id === st.equipped ? '<span class="badge eq">ON</span>' : s.own ? '' : `<span class="badge lock">R$${s.price}</span>`}</button>`).join('');
+      const btn = !sel.own ? `<button class="btn buy" disabled>GET · R$${sel.price}</button><p>Buying comes in the next step.</p>` : sel.id === st.equipped ? `<button class="btn done" disabled>EQUIPPED</button>` : `<button class="btn go" data-act="equip">EQUIP</button>`;
+      detail = `<span class="kind" style="color:${RAR[sel.rar]}">RAPTOR SKIN · ${sel.rar}</span><h3>${sel.name}</h3><div class="pal">${Object.values(sel.c).map(v => `<i style="background:${v}"></i>`).join('')}</div><p>${sel.own ? 'Owned. Equip it and you spawn in it every time.' : 'Locked.'}</p>${btn}`;
+    } else {
+      const parts = st.tab === 'parts' ? ['Adrenaline', 'Shock Cannon', 'Energy Shield', 'Cloak Field', 'Shock Mine', 'Scent Sense'] : ['Health', 'Attack', 'Speed', 'Defense'];
+      grid = parts.map(n => `<div class="card"><div class="pv" style="color:#7fe9ff;font:700 2cqh var(--display)">${st.tab === 'parts' ? '⚙' : '▲'}</div><b>${n}</b></div>`).join('');
+      detail = `<span class="kind" style="color:var(--volt)">${st.tab === 'parts' ? 'MECHA ABILITY · BUTTON' : 'STAT'}</span><h3>${st.tab === 'parts' ? 'Shock Cannon' : 'Speed'}</h3><p>(unchanged)</p>`;
+    }
+    document.getElementById('s').innerHTML = `${compact ? '<div class="dim"></div>' : '<div class="rb"><i></i><i></i></div>'}
+      <div class="lab"><div class="bar"><span class="ttl"><small>LAB</small>RAPTOR</span><span class="lv">LV 12</span><span class="xp"><i></i></span><span class="sp"></span><span class="pts">3 PTS</span><span class="x">✕</span></div>
+      <div class="body"><div class="left">${tabs}<div class="grid">${grid}</div></div>
+      <div class="mid"><span class="tag">${st.tab === 'skins' ? 'PREVIEW' : 'ALL UPGRADES'}</span><div class="stage"><div class="glow"></div>${dino(showC, true)}</div>
+      <div class="slots"><span class="slot">R · Adrenaline</span><span class="slot">C · Cannon</span><span class="slot">R▼ · Shield</span><span class="slot">C▼ · Cloak</span></div><span class="hint">${st.tab === 'skins' ? 'Tap a skin to preview it on your dino' : 'Tap a part for details'}</span></div>
+      <div class="right">${detail}</div></div></div>
+      ${st.toast ? `<div class="toast">${st.toast}</div>` : ''}`;
+  }
+  document.addEventListener('click', e => {
+    const c = e.target.closest('.chip');
+    if (c) { st[c.dataset.k] = c.dataset.v; document.querySelectorAll(`.chip[data-k="${c.dataset.k}"]`).forEach(x => x.setAttribute('aria-pressed', x === c)); render(); return; }
+    const t = e.target.closest('[data-tab]'); if (t) { st.tab = t.dataset.tab; render(); return; }
+    const s = e.target.closest('[data-skin]'); if (s) { st.sel = s.dataset.skin; render(); return; }
+    const a = e.target.closest('[data-act="equip"]');
+    if (a) { st.equipped = st.sel; st.toast = `${skin(st.sel).name.toUpperCase()} EQUIPPED`; clearTimeout(tT); tT = setTimeout(() => { st.toast = ''; render(); }, 1500); render(); }
+  });
+  render();
+})();
+</script>
