@@ -1,4 +1,4 @@
--- ScreechServer v1.7 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.8 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -84,13 +84,19 @@
 --   flat direction (unit) instead of the HumanoidRootPart's facing; anything else (nil, another type, too short) = the
 --   facing, as 1.6. The checks, range, cooldown and damage are unchanged. Diagnostic: character ScreechAimUsed
 --   (true / false, the last shot).
+-- v1.8 (Kepu 2026-10-30: "it should be able to aim up and down too not just side to side"; MechaButtons 1.13 sends a 3D
+--   aim direction): when the aim direction is used (as 1.7) and script attribute ScreechAimPitchEnabled ~= false, the
+--   shot keeps its pitch, clamped to +/-PITCH_MAX (20) degrees: dir = flat x cos(pitch) + up x sin(pitch). The bolt then
+--   flies along that 3D direction (start, hit check, wall ray and range unchanged). false = 1.7 (flat). Diagnostic:
+--   character ScreechAimPitch (degrees, + = up, the last shot; 0 when not aimed).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
+local PITCH_MAX = math.rad(20) -- v1.8
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
 local SHOCK_SPEED, BALL_SIZE, SHELL_SIZE = 75, 3, 5 -- v1.2: Shock Cannon ball
@@ -100,6 +106,7 @@ local RED = Color3.fromRGB(240, 90, 79)
 
 script:SetAttribute("ScreechServerVersion", VERSION)
 if script:GetAttribute("ScreechAimDirEnabled") == nil then script:SetAttribute("ScreechAimDirEnabled", true) end -- v1.7
+if script:GetAttribute("ScreechAimPitchEnabled") == nil then script:SetAttribute("ScreechAimPitchEnabled", true) end -- v1.8
 if script:GetAttribute("ScreechPinnedBlockEnabled") == nil then script:SetAttribute("ScreechPinnedBlockEnabled", true) end -- v1.6
 if script:GetAttribute("ScreechServerEnabled") == nil then script:SetAttribute("ScreechServerEnabled", true) end
 script:SetAttribute("ScreechRequests", 0)
@@ -644,6 +651,13 @@ remote.OnServerEvent:Connect(function(player, stamp, held, aimDir) -- v1.7: + ai
 			aimed = true
 		end
 	end
+	local pitch = 0 -- v1.8: keep the aim's pitch
+	if aimed and script:GetAttribute("ScreechAimPitchEnabled") ~= false and aimDir.Magnitude > 1e-3 then
+		local u = aimDir.Unit
+		pitch = math.clamp(math.asin(math.clamp(u.Y, -1, 1)), -PITCH_MAX, PITCH_MAX)
+		dir = (dir * math.cos(pitch) + Vector3.yAxis * math.sin(pitch)).Unit
+	end
+	char:SetAttribute("ScreechAimPitch", math.floor(math.deg(pitch) + 0.5))
 	char:SetAttribute("ScreechAimUsed", aimed)
 	local pos = root.Position + dir * BOLT_AHEAD
 	local jam = false

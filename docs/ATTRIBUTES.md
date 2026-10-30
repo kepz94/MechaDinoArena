@@ -1929,3 +1929,12 @@ Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performe
 | MechaScreechAimMode / MechaScreechAimDeg | character (local) | "ahead" / "thumb", degrees | thumb aim diagnostics |
 | ScreechAimDirEnabled | ScreechServer script | true | ScreechServer 1.7: false = ignore the aim direction |
 | ScreechAimUsed | character (server) | true / false | last shot used the aim direction |
+| MechaAimConeEnabled | MechaButtons script | true | MechaButtons 1.13: thumb aim is a smooth cone (+/-30 sides, +/-15 up/down); false = 1.12 full-circle flat aim |
+| MechaScreechAimDeg / MechaScreechAimPitch | character (local) | signed degrees (+ = right) / degrees (+ = up) | 1.13 cone diagnostics (AimDeg is signed from 1.13) |
+| ScreechAimPitchEnabled | ScreechServer script | true | ScreechServer 1.8: the shot keeps the aim's pitch (clamped +/-20); false = flat (1.7) |
+| ScreechAimPitch | character (server) | degrees, + = up | last shot's pitch (0 when not aimed) |
+| ShakeOffShieldBlockEnabled | ShakeOffServer script | true | ShakeOffServer 1.2: a latched raptor with Energy Shield up is just dismounted by a ram ("shielded", no stun, no toss); false = 1.1 |
+| ShakeOffShieldBlocks | raptor (server) | 0.. | rams its shield blocked |
+| ShakeOffLastShielded | ramming dino (server) | 0.. | raptors whose shield blocked its last ram |
+| ShakeOffReason | raptor (server) | + "shielded" (1.2) | dismounted by a ram while shielded |
+| SkillTree.LEGS_GENTLE | SkillTree module constant | true | SkillTree 1.16: Sprint Legs +10% / +20% / +40% (speedPts 1 / 2 / 4); false = 1.15 (+40% / +90% / +160%) |

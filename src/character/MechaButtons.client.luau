@@ -1,4 +1,4 @@
--- MechaButtons v1.12 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.13 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -120,13 +120,31 @@
 --   (HumanoidRootPart turned on this client, the owner) and the camera turns the same way (ShoulderCamLookAt). PC keys
 --   are unchanged (aim with the camera; no direction sent). Script attribute MechaThumbAimEnabled (default true; false =
 --   1.11). Diagnostics: MechaScreechAimMode ("ahead" / "thumb"), MechaScreechAimDeg (degrees from the facing).
+-- v1.13 (Kepu 2026-10-30 after the v126 test: "The laser on the cannon with the touch thing is way too sensitive ... it
+--   should be able to aim up and down too not just side to side. It should feel smooth nothing jerky you don't need to be
+--   able to aim 90 degrees from you just what's in front of you"; cone size: no preference -> +/-30 sides, +/-15 up/down):
+--   with script attribute MechaAimConeEnabled (default true; false = 1.12) the thumb aim is a cone in front of the raptor:
+--   * stick -> target angles, per axis: offset beyond AIM_DEAD (14) px, divided by AIM_FULL_PX (110) px, clamped to 1:
+--     sideways = yaw up to CONE_YAW (30) degrees left / right of the raptor's facing; finger up = aim up, finger down =
+--     aim down, up to CONE_PITCH (15) degrees. Before the aim locks (and inside the dead zone) the target is straight ahead.
+--   * smooth: the shown yaw / pitch ease toward the target (1 - e^(-AIM_SMOOTH (14) x dt) per frame), no jumps.
+--   * the red line starts where the shot leaves (the cannon's ShockMuzzle when the cannon model has one, else 4 studs
+--     ahead of the root, as ScreechServer) and runs along the aimed direction, cut short where it meets something solid
+--     (ray, CanCollide parts, own character excluded).
+--   * the direction sent on release is the shown one (3D, with the pitch; ScreechServer 1.8 uses the pitch) when it is
+--     more than SEND_EPS (0.01 rad) off the facing, else none (= the facing, as before). The snap-to-face turns the raptor
+--     to the flat part only (no tilt); the camera follows that flat direction.
+--   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
+--   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.12"
+local VERSION = "1.13"
 local AIM_LOCK, AIM_DEAD = 0.25, 14 -- v1.12
+local AIM_FULL_PX, CONE_YAW, CONE_PITCH, AIM_SMOOTH, SEND_EPS = 110, math.rad(30), math.rad(15), 14, 0.01 -- v1.13
+if script:GetAttribute("MechaAimConeEnabled") == nil then script:SetAttribute("MechaAimConeEnabled", true) end -- v1.13
 if script:GetAttribute("MechaThumbAimEnabled") == nil then script:SetAttribute("MechaThumbAimEnabled", true) end
 local PANEL = Color3.fromRGB(20, 20, 26)
 local ORANGE = Color3.fromRGB(255, 155, 46)
@@ -212,15 +230,55 @@ local function aimRelease()
 	char:SetAttribute("MechaScreechHeld", math.floor(range * 10 + 0.5) / 10)
 	local r = ReplicatedStorage:FindFirstChild("DinoScreechRequest")
 	if r then
-		if thumbDir and hrp then -- v1.12: face the shot, camera too
-			hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + thumbDir)
-			char:SetAttribute("ShoulderCamLookAt", hrp.Position + thumbDir * 500)
+		local faceDir = thumbDir -- v1.13: the cone's direction has a pitch; turn to its flat part only
+		if thumbDir and script:GetAttribute("MechaAimConeEnabled") ~= false then
+			local fl = Vector3.new(thumbDir.X, 0, thumbDir.Z)
+			faceDir = fl.Magnitude > 1e-3 and fl.Unit or nil
+		end
+		if faceDir and hrp then -- v1.12: face the shot, camera too
+			hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + faceDir)
+			char:SetAttribute("ShoulderCamLookAt", hrp.Position + faceDir * 500)
 		end
 		r:FireServer(workspace:GetServerTimeNow(), range, thumbDir)
 		char:SetAttribute("MechaScreechFired", (char:GetAttribute("MechaScreechFired") or 0) + 1)
 	end
 end
-RunService.RenderStepped:Connect(function()
+-- v1.13: the thumb aim cone (smooth yaw + pitch in front of the raptor)
+local coneRay = RaycastParams.new()
+coneRay.FilterType = Enum.RaycastFilterType.Exclude
+coneRay.RespectCanCollide = true
+local function coneAxis(v) -- px offset -> -1..1 past the dead zone
+	local m = math.abs(v) - AIM_DEAD
+	if m <= 0 then return 0 end
+	return math.sign(v) * math.clamp(m / AIM_FULL_PX, 0, 1)
+end
+local function coneStep(facing, len, dt)
+	local tyaw, tpitch = 0, 0
+	if aim.locked and aim.stick then
+		tyaw = coneAxis(aim.stick.X) * CONE_YAW
+		tpitch = coneAxis(-aim.stick.Y) * CONE_PITCH
+	end
+	local k = 1 - math.exp(-AIM_SMOOTH * math.clamp(dt or 0, 0, 0.1))
+	aim.yaw = (aim.yaw or 0) + (tyaw - (aim.yaw or 0)) * k
+	aim.pitch = (aim.pitch or 0) + (tpitch - (aim.pitch or 0)) * k
+	local right = facing:Cross(Vector3.yAxis)
+	local h = facing * math.cos(aim.yaw) + right * math.sin(aim.yaw)
+	local look = (h * math.cos(aim.pitch) + Vector3.yAxis * math.sin(aim.pitch)).Unit
+	aim.thumbDir = (math.abs(aim.yaw) > SEND_EPS or math.abs(aim.pitch) > SEND_EPS) and look or nil
+	char:SetAttribute("MechaScreechAimMode", aim.thumbDir and "thumb" or "ahead")
+	char:SetAttribute("MechaScreechAimDeg", math.floor(math.deg(aim.yaw) + 0.5))
+	char:SetAttribute("MechaScreechAimPitch", math.floor(math.deg(aim.pitch) + 0.5))
+	local cm = char:FindFirstChild("Mecha_ShockCannon")
+	local pod = cm and cm:FindFirstChild("Pod")
+	local mz = pod and pod:FindFirstChild("ShockMuzzle")
+	local start = (mz and mz:IsA("Attachment")) and mz.WorldPosition or hrp.Position + h * 4
+	coneRay.FilterDescendantsInstances = {char, aim.part}
+	local hit = workspace:Raycast(start, look * len, coneRay)
+	local L = hit and math.max(0.1, (hit.Position - start).Magnitude) or len
+	aim.part.Size = Vector3.new(0.5, 0.5, L)
+	aim.part.CFrame = CFrame.lookAt(start + look * (L / 2), start + look * (L / 2 + 1))
+end
+RunService.RenderStepped:Connect(function(dt)
 	if not aim then return end
 	if not char.Parent or not hum or hum.Health <= 0 or slotPart(aim.slot) ~= "screech" then aimCancel() return end
 	local len = math.max(0.1, aimRange())
@@ -228,6 +286,7 @@ RunService.RenderStepped:Connect(function()
 	if look.Magnitude < 1e-3 then return end
 	look = look.Unit
 	local facing = look
+	if aim.origin and script:GetAttribute("MechaAimConeEnabled") ~= false then coneStep(facing, len, dt) return end -- v1.13
 	aim.thumbDir = nil -- v1.12: the thumb's joystick direction, once locked and out of the dead zone
 	if aim.locked and aim.stick and aim.stick.Magnitude > AIM_DEAD then
 		local cf = workspace.CurrentCamera.CFrame

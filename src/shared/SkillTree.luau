@@ -1,4 +1,4 @@
--- SkillTree v1.15 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.16 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -199,6 +199,11 @@ SkillTree.AREAS = {
 --   the tree: Grapple Hook (speed), Dart Launcher (attack), Pack Beacon and Decoy Hologram (eng); their OWNER entries,
 --   the dino / OWNER lines that hid them and their BUTTONS entries go with them. Saved steps for these ids are dropped
 --   by sanitize (it walks PATHS); a request naming one is refused ("unknownPath").
+-- v1.16 (Kepu 2026-10-30 after the v126 test: "I maxed out the Raptor speed and it was way too fast. The testers said the
+--   base speed is fast enough. Maybe just a little faster than that is perfect" -> "Maybe Max speed +40 percent"): with
+--   SkillTree.LEGS_GENTLE (default true) Sprint Legs gives speedPts I 1 / II 2 / star 4 (StatServer +10% per point:
+--   +10% / +20% / +40%; was 4 / 9 / 16 = +40% / +90% / +160%) and the step texts say so. III (moves recharge 35%
+--   faster) is unchanged. LEGS_GENTLE = false restores 1.15.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -358,6 +363,14 @@ if SkillTree.STRONG then
 	P.thrusters.steps[3] = "Longer boost: 1.35 s" -- v1.4 (1.3: 2.1 s)
 	P.thrusters.steps[1] = "Button: rocket boost for 1.37 s at 2x run speed (steer while boosting; in the air with no stick: straight up)" -- v1.8
 	P.thrusters.steps[3] = "Longer boost: 1.85 s" -- v1.8
+end
+-- v1.16: gentle Sprint Legs (max +40%)
+SkillTree.LEGS_GENTLE = true
+if SkillTree.LEGS_GENTLE then
+	local P = SkillTree.PATHS
+	P.legs.steps[1] = "Run 10% faster (+1 Speed point)"
+	P.legs.steps[2] = "Run 20% faster"
+	P.legs.steps[4] = "Run 40% faster"
 end
 
 -- level curve
@@ -576,6 +589,9 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 	if tr >= 2 then e.mineMax = 2 end
 	if tr >= 3 then e.mineCooldown = 8.8 end -- 12 / 8.8 = 1.36
 	if tr >= 4 then e.mineJam = true end
+	if SkillTree.LEGS_GENTLE then -- v1.16: +10% / +20% / +40%
+		e.speedPts = g >= 4 and 4 or g >= 2 and 2 or g >= 1 and 1 or 0
+	end
 	return e
 end
 

@@ -1,4 +1,4 @@
--- ShakeOffServer v1.1 (Dino Arcade) — TEST. Two ways for a big dino (T-Rex) to get rid of raptors latched onto it
+-- ShakeOffServer v1.2 (Dino Arcade) — TEST. Two ways for a big dino (T-Rex) to get rid of raptors latched onto it
 -- (user: "ram into a tree which stuns the animal that was latched long enough for the t-rex to bite ... the other way
 -- to rid a raptor is to step in water, it automatically makes a raptor jump off").
 -- Latched raptors: player characters and bots with PounceLatched = true whose ObjectValue PounceLatchPart points into
@@ -26,11 +26,19 @@
 --   * Water is unchanged.
 --   Diagnostics: on the shaking dino ShakeOffRamImpacts (button-ram impacts handled), ShakeOffLastTossed (raptors
 --   tossed by the last one); script attribute ShakeOffPassiveRamOn.
+-- v1.2 (Kepu 2026-10-30: "if I'm latched on a trex and it rams, if I have my shield up it should block the ram and just
+--   dismount me instead"): a raptor shaken off with "rammed" (button or passive ram) whose Energy Shield is up
+--   (EnergyShieldUntil > now, EnergyShieldServer) gets ShakeOffReason "shielded" instead: no StunTossFrom /
+--   StunTossDistance / StunTossAt, no StunnedUntil; ShakeOffAt as before, so PounceServer releases the latch with
+--   "shielded" and PounceTest drops off (not a water leap). Water shake-offs are unchanged.
+--   Switch: script attribute ShakeOffShieldBlockEnabled (default true; false = 1.1, a shield does not stop the stun).
+--   Diagnostics: on the raptor ShakeOffShieldBlocks (count); on the dino ShakeOffLastShielded (raptors whose shield
+--   blocked its last ram).
 -- Diagnostics: on the shaking dino ShakeOffCount, ShakeOffLast ("water" / "rammed"), ShakeOffLastAt, RamSpeed (studs/s,
 --   whole, the windowed max while raptors are on it), InWater; script attribute ShakeOffServerVersion.
 local Players = game:GetService("Players")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local TICK = 0.05
 local RAM_WINDOW = 0.5
 local RAM_SPEED_MUL = 0.75
@@ -42,6 +50,7 @@ local TOSS_DISTANCE = 15   -- v1.1
 
 script:SetAttribute("ShakeOffServerVersion", VERSION)
 if script:GetAttribute("ShakeOffPassiveRam") == nil then script:SetAttribute("ShakeOffPassiveRam", false) end -- v1.1
+if script:GetAttribute("ShakeOffShieldBlockEnabled") == nil then script:SetAttribute("ShakeOffShieldBlockEnabled", true) end -- v1.2
 
 local island = workspace:WaitForChild("DinoIsland", 10)
 local waterTop = -0.8
@@ -105,6 +114,12 @@ local function touchesTrunk(model, hrp)
 end
 
 local function shake(latcher, target, reason, now, tossFrom, tossAt)
+	if reason == "rammed" and script:GetAttribute("ShakeOffShieldBlockEnabled") ~= false
+		and (tonumber(latcher:GetAttribute("EnergyShieldUntil")) or 0) > now then -- v1.2: shield blocks the ram
+		reason, tossFrom = "shielded", nil
+		latcher:SetAttribute("ShakeOffShieldBlocks", (latcher:GetAttribute("ShakeOffShieldBlocks") or 0) + 1)
+		target:SetAttribute("ShakeOffLastShielded", (target:GetAttribute("ShakeOffLastShielded") or 0) + 1)
+	end
 	latcher:SetAttribute("ShakeOffReason", reason)
 	if tossFrom then -- v1.1: before StunnedUntil, so the stun is seen as a toss
 		latcher:SetAttribute("StunTossFrom", tossFrom)
@@ -174,6 +189,7 @@ while true do
 					local from = target:GetAttribute("RamImpactPoint")
 					if typeof(from) ~= "Vector3" then from = hrp.Position end
 					local tossed = 0
+					target:SetAttribute("ShakeOffLastShielded", 0) -- v1.2
 					for _, l in ipairs(latchers) do
 						local la = l:GetAttribute("PounceLatchedAt")
 						if typeof(la) ~= "number" or la <= at + RAM_FRESH then
@@ -187,6 +203,7 @@ while true do
 					and maxSpeed >= (target:GetAttribute("MoveRunSpeed") or 28) * RAM_SPEED_MUL
 					and clock - (lastRam[target] or -math.huge) >= RAM_COOLDOWN and touchesTrunk(target, hrp) then
 					lastRam[target] = clock
+					target:SetAttribute("ShakeOffLastShielded", 0) -- v1.2
 					for _, l in ipairs(latchers) do shake(l, target, "rammed", now) end
 				end
 			end
