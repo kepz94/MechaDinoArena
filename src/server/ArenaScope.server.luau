@@ -1,4 +1,4 @@
--- ArenaScope v1.9 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
+-- ArenaScope v1.10 (Mecha Dino Arena) — check-only report of which systems are switched on / off in Mecha Dino Arena.
 -- Plan docs/plans/ARENASCOPE_v1.0.md (Kepu 2026-10-28: "its not a survival game anymore"). Changes nothing: the scope is
 --   set by each script's Enabled property (Studio place) and its .meta.json "Enabled" (repo / Rojo).
 -- At start, for every script in SCOPE: script attribute ArenaScope_<Name> = "off" / "on" when it matches the expected
@@ -22,12 +22,28 @@
 -- v1.8 (raptor parts batch 2, MDA-76, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 9): ScentServer, ScreechServer
 --   (ServerScriptService) and ScentFX (StarterPlayerScripts) expected on.
 -- v1.9 (raptor traps, MDA-80, plan docs/plans/RAPTOR_TRAPS_v1.0.md Task 7): MineServer (ServerScriptService) expected on.
+-- v1.10 (Main Menu, MDA-91, plan docs/plans/MAIN_MENU_v1.0.md Task 8, ADR-005): PlaceGate, ModeServer, ArenaPvP
+--   (ServerScriptService) and MainMenu (StarterPlayerScripts) expected on; module ServerStorage.DinoArcade.ModeRules
+--   expected present (ArenaScope_ModeRules "on" / "missing"). BotServer's Enabled is set by PlaceGate 1.0 at start, so it
+--   is expected to match PlaceGate's decision: this script waits up to 10 s for PlaceGate's PlaceGateState and expects
+--   BotServer on for "sandboxBotsOn" / "off" (switch off = bots in both places), off for anything else ("arenaNoBots",
+--   "noBotServer", or no PlaceGate). Diagnostic: ArenaScopeGateState.
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
 local SSS, SCS = ServerScriptService, StarterPlayer:WaitForChild("StarterCharacterScripts")
 local SPS = StarterPlayer:WaitForChild("StarterPlayerScripts") -- v1.6
+-- v1.10: what PlaceGate decided for BotServer
+local gate = SSS:FindFirstChild("PlaceGate")
+local gateState = gate and gate:GetAttribute("PlaceGateState")
+local waitStart = os.clock()
+while gate and gateState == nil and os.clock() - waitStart < 10 do
+	task.wait(0.1)
+	gateState = gate:GetAttribute("PlaceGateState")
+end
+local botsExpected = gateState == "sandboxBotsOn" or gateState == "off"
+script:SetAttribute("ArenaScopeGateState", tostring(gateState))
 -- {container, name, expected Enabled}
 local SCOPE = {
 	-- off: survival layer, ambush / creep, roar, dummy, class card (until the skill tree screen)
@@ -40,7 +56,7 @@ local SCOPE = {
 	{SSS, "BiteDummy", false},
 	{SCS, "ClassCard", false},
 	-- on: combat, bots, stats, growth (kept for part 3), debug
-	{SSS, "BotServer", true}, {SSS, "BiteServer", true}, {SCS, "BiteTest", true}, {SCS, "SprintTest", true},
+	{SSS, "BotServer", botsExpected}, {SSS, "BiteServer", true}, {SCS, "BiteTest", true}, {SCS, "SprintTest", true}, -- v1.10: BotServer was true
 	{SSS, "RamServer", true}, {SCS, "RamTest", true}, {SSS, "ShakeOffServer", true},
 	{SSS, "PounceServer", true}, {SCS, "PounceTest", true}, {SSS, "JumpServer", true}, {SCS, "JumpTest", true},
 	{SSS, "StatServer", true}, {SSS, "GrowthServer", true}, {SCS, "HitboxView", true},
@@ -61,6 +77,7 @@ local SCOPE = {
 	{SSS, "BladeServer", true}, {SSS, "AdrenalineServer", true}, {SSS, "EnergyShieldServer", true},
 	{SSS, "ScentServer", true}, {SSS, "ScreechServer", true}, {SPS, "ScentFX", true}, -- v1.8
 	{SSS, "MineServer", true}, -- v1.9
+	{SSS, "PlaceGate", true}, {SSS, "ModeServer", true}, {SSS, "ArenaPvP", true}, {SPS, "MainMenu", true}, -- v1.10
 }
 
 script:SetAttribute("ArenaScopeVersion", VERSION)
@@ -88,6 +105,13 @@ if bot and bot:GetAttribute("BotFightEnabled") == false then -- v1.3
 	script:SetAttribute("ArenaScope_BotFight", "off")
 else
 	script:SetAttribute("ArenaScope_BotFight", "mismatch")
+	bad += 1
+end
+local da = game:GetService("ServerStorage"):FindFirstChild("DinoArcade") -- v1.10
+if da and da:FindFirstChild("ModeRules") and da.ModeRules:IsA("ModuleScript") then
+	script:SetAttribute("ArenaScope_ModeRules", "on")
+else
+	script:SetAttribute("ArenaScope_ModeRules", "missing")
 	bad += 1
 end
 script:SetAttribute("ArenaScopeMismatches", bad)

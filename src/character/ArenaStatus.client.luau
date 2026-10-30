@@ -1,4 +1,4 @@
--- ArenaStatus v1.1 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
+-- ArenaStatus v1.2 (Mecha Dino Arena) — top-right status for the player's own dino (LocalScript, all devices).
 -- MDA-6, plan docs/plans/ARENAHUD_v1.0.md Task 1, mockup docs/mockups/mobile_hud_options.html option A (Kepu 2026-10-28:
 --   "health should be at the top right of the screen along with the T-Rex drop down list"; stamina bar only while latched).
 -- Replaces HealthBar 1.1 / SpeciesPicker 1.0 / StaminaBar 1.1 in Mecha (those are switched off by Arena scope 1.1).
@@ -19,11 +19,18 @@
 --   fills while health is full, so it then sits over the right end of the green); the label reads "h / max +s". At 0
 --   it hides. Character attribute ArenaStatusShieldEnabled (default true; false = 1.0). Diagnostic ArenaStatusShield
 --   ("shown" / "hidden").
+-- v1.2 (Main Menu, MDA-91, plan docs/plans/MAIN_MENU_v1.0.md Task 7, mockup docs/mockups/main_menu_options.html; Kepu
+--   2026-10-29: "MENU button replaces the dino pill"): the pill keeps its place and look but reads "MENU" (no "v") and a tap
+--   fires ReplicatedStorage.DinoModeRequest:FireServer("menu") (ModeServer 1.0 parks the dino and MainMenu 1.0 opens;
+--   dinos are switched there). The species drop-down is not opened. Script attribute ArenaMenuButtonEnabled (default true;
+--   false, or no DinoModeRequest, = the 1.1 species pill). Diagnostic: ArenaStatusLastPick "menu". PC: the M key does the
+--   same (ShoulderCam keeps the mouse locked to the centre, so the pill is only clickable while Left Alt is held), like K
+--   for SKILLS; typing in chat does not trigger it.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local SHIELD = Color3.fromRGB(90, 160, 255) -- v1.1
 local LOW_FRACTION = 0.3
 local SPECIES = {{id = "TRex", label = "T-REX"}, {id = "Raptor", label = "RAPTOR"}}
@@ -154,7 +161,26 @@ for i, s in ipairs(SPECIES) do
 		char:SetAttribute("ArenaStatusLastPick", s.id)
 	end)
 end
-pill.Activated:Connect(function() setMenu(not menu.Visible) end)
+-- v1.2: MENU button
+if script:GetAttribute("ArenaMenuButtonEnabled") == nil then script:SetAttribute("ArenaMenuButtonEnabled", true) end
+local modeRemote = ReplicatedStorage:FindFirstChild("DinoModeRequest")
+local menuButton = script:GetAttribute("ArenaMenuButtonEnabled") ~= false and modeRemote ~= nil
+if menuButton then caret.Visible = false end
+pill.Activated:Connect(function()
+	if menuButton then
+		char:SetAttribute("ArenaStatusLastPick", "menu")
+		modeRemote:FireServer("menu")
+	else
+		setMenu(not menu.Visible)
+	end
+end)
+if menuButton then
+	game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+		if processed or input.KeyCode ~= Enum.KeyCode.M then return end
+		char:SetAttribute("ArenaStatusLastPick", "menu")
+		modeRemote:FireServer("menu")
+	end)
+end
 setMenu(false)
 
 -- bars
@@ -234,6 +260,7 @@ local function refreshSpecies()
 	for _, s in ipairs(SPECIES) do
 		if s.id == current then tag.Text = s.label end
 	end
+	if menuButton then tag.Text = "MENU" end -- v1.2
 end
 
 local stamShown = nil

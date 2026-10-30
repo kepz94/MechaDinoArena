@@ -1752,3 +1752,18 @@ ArenaPvP 1.0 (ServerScriptService.ArenaPvP, MDA-89):
 | ArenaPvPTestTarget | test model | true | the ArenaPvPTest "target" T-Rex (PlaceGate keeps it) |
 
 BindableFunction ArenaPvP.ArenaPvPTest (server only): Invoke("hit", character, dmg) / Invoke("target", nearCharacter).
+
+MainMenu 1.0 (StarterPlayerScripts.MainMenu, MDA-90; LocalPlayer attributes set by this client):
+| Attribute | On | Default / values | Meaning |
+|---|---|---|---|
+| MainMenuEnabled | script | true | false = no menu (read at start) |
+| MainMenuVersion | player (local) | "1.0" | |
+| MainMenuOpen | player (local) | true / false | the menu is showing (follows InMenu) |
+| MainMenuView | player (local) | "plain" / "mech" | preview view |
+| MainMenuPickSlot | player (local) | 0 / 1..4 | slot whose picker row is open |
+| MainMenuLastPress | player (local) | "flip" / "prev" / "next" / "slot:n" / "part:n:id" / "sandbox" / "arena" | last press |
+| MainMenuToast | player (local) | text / "" | toast shown |
+| MainMenuPreviewParts | player (local) | number | visible parts in the preview copy |
+
+ArenaStatus 1.2: script attribute ArenaMenuButtonEnabled (default true; false = the 1.1 species pill); ArenaStatusLastPick "menu". PC key M opens the menu.
+ArenaScope 1.10: ArenaScope_PlaceGate / _ModeServer / _ArenaPvP / _MainMenu / _ModeRules, ArenaScopeGateState.
