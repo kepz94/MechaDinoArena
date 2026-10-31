@@ -1,4 +1,4 @@
--- ClimbTest v1.7 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.8 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -49,12 +49,16 @@
 --   held for ClimbHopTime (0.35 s) by a second LinearVelocity "ClimbHopVelocity" in Plane mode (world X / Z only, so
 --   gravity and the hop's upward speed are untouched); the Humanoid is put in Freefall at the hop. A grab during the
 --   push ends it. Setting (character attribute): ClimbHopTime.
+-- v1.8 (Studio check of 1.7: the push worked, 9.3 studs back, but from near the pad centre it still landed on the pad):
+--   off a tree top ("hopOffTop") the push lasts until the HRP is half its length + 1 stud past the proxy's edge along
+--   the hop direction (at least ClimbHopTime, at most HOP_TOP_MAX_TIME 1 s), so the hop clears the pad from anywhere on it
+--   (CoconutPalm_219's pad is 8.85 studs in radius).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -233,6 +237,7 @@ hopLv.MaxForce = math.huge
 hopLv.Enabled = false
 hopLv.Parent = hrp
 local hopUntil = 0
+local HOP_TOP_MAX_TIME = 1 -- v1.8
 
 local state = "ground"
 local holding = false
@@ -386,7 +391,18 @@ RunService.Heartbeat:Connect(function()
 			hum:ChangeState(Enum.HumanoidStateType.Freefall)
 			hopLv.PlaneVelocity = Vector2.new(-fwd.X * v, -fwd.Z * v)
 			hopLv.Enabled = true
-			hopUntil = os.clock() + setting("ClimbHopTime")
+			local pushTime = setting("ClimbHopTime")
+			if out.reason == "hopOffTop" and onTop and v > 0 then
+				-- distance along -fwd from the HRP to the proxy's edge, + half the HRP length + 1
+				local c = Vector3.new(onTop.Position.X, 0, onTop.Position.Z)
+				local rel = Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - c
+				local d = -fwd
+				local b = rel:Dot(d)
+				local disc = b * b - (rel:Dot(rel) - reachOf(onTop) ^ 2)
+				local toEdge = disc > 0 and (-b + math.sqrt(disc)) or 0
+				pushTime = math.max(pushTime, math.min((toEdge + half + 1) / v, HOP_TOP_MAX_TIME))
+			end
+			hopUntil = os.clock() + pushTime
 		end
 		if hopLv.Enabled and os.clock() >= hopUntil then hopLv.Enabled = false end
 	end
