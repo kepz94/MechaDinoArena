@@ -1,4 +1,4 @@
--- SlashTest v1.2 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
+-- SlashTest v1.3 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 9 (server: SlashServer 1.1), mockup docs/mockups/herrera_kit_options.html.
 -- Kepu 2026-10-30: "Dash-through slash"; the drop attack "should be able to happen if I press the dash aimed at a nearby
 --   target but not be its own dedicated button".
@@ -38,13 +38,17 @@
 --   with every CanCollide part of each target dino that is not in "DinoHitbox", for the targets whose root is within
 --   SlashDist x scale + NOCOLLIDE_MARGIN x scale; removed with the groups at the dash end. Diagnostic: SlashNoCollide
 --   (constraints made).
+-- v1.3 (MDA-146, Kepu 2026-10-31 phone screenshots: the grey "Slash" touch button stayed on the pachy after switching
+--   from the Herrera): a character's scripts are destroyed before their own cleanup runs, so the CAS actions stayed bound.
+--   At start, on every character of this player (any dino), the actions "DinoSlash" / "DinoSlashClick" are unbound before
+--   anything else (then bound again below when this dino has SlashEnabled). ArenaTouch 1.7 also hides a leftover.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local ACTION = "DinoSlash"
 local ACTION_CLICK = "DinoSlashClick"
 local BIND = "DinoSlashDrive"
@@ -58,6 +62,8 @@ local hum = char:WaitForChild("Humanoid", 10)
 local hrp = char:WaitForChild("HumanoidRootPart", 10)
 local player = Players.LocalPlayer
 if not (hum and hrp) or Players:GetPlayerFromCharacter(char) ~= player then return end
+pcall(function() ContextActionService:UnbindAction(ACTION) end) -- v1.3: a leftover from the previous character
+pcall(function() ContextActionService:UnbindAction(ACTION_CLICK) end)
 if char:GetAttribute("SlashEnabled") ~= true then return end
 char:SetAttribute("SlashTestVersion", VERSION)
 

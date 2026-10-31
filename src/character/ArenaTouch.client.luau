@@ -1,4 +1,4 @@
--- ArenaTouch v1.6 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.7 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -44,6 +44,22 @@
 --   = the same rule as AbilityBar 1.10), the ATTACK button stays full colour with a red glow ring (stroke 5 px, 0.2)
 --   while one is left, and a red "-25% HP" pill sits above the SLOWED pill. Switch: script attribute
 --   ArenaTouchBloodEnabled (default true, read at start; false = 1.5). Diagnostic: ArenaTouchBloodLeft.
+-- v1.7 (MDA-146, plan docs/plans/PHONE_LAYOUT_v1.0.md, mockup docs/mockups/phone_layout_unified_options.html option A;
+--   Kepu 2026-10-31: "same base layout for every Dino with only the variation in the actual move animation and the
+--   abilities themselves", "call it all jump"; the Herrera showed Roblox's raw grey "Slash" circle and no ATTACK, and the
+--   circle stayed on the next dino):
+--   * Herrera slash as the big yellow ATTACK ("SlashMain", BITE's place) over CAS "DinoSlash" (SlashTest) for a dino with
+--     SlashEnabled (and no bite / pounce / headbutt); under it one pip per charge (SlashChargesMax, 2) filled from
+--     SlashChargesNow, the refilling one from the bottom (SlashRefillStart / At); dimmed (0.5) at 0 charges; yellow glow
+--     ring while SlashLocalState is "dash". Being in the overlay table also hides a leftover DinoSlash button on any other
+--     dino. Switch: script attribute ArenaTouchSlashEnabled (default true, read at start). Diagnostic
+--     ArenaTouchSlashPips; ArenaTouchMainButton adds "Slash".
+--   * LEAP is called JUMP and is shown on every dino that can jump (JumpEnabled) or climb (ClimbEnabled). A press works as
+--     before (Humanoid.Jump for LEAP_HOLD s): JumpTest leaps, ClimbTest 1.11 hops off a tree. Lit while JumpTestState is
+--     "ready" or, on a climber, while ClimbLocalState is climbing / clinging / top; dimmed (0.5) otherwise. Switch: script
+--     attribute ArenaTouchJumpForAllEnabled (default true, read at start; false = 1.6: LEAP, JumpEnabled only).
+--   * Test hook: script attribute ArenaTouchForceTouch = true draws the layout without a touch screen (Studio layout
+--     checks; buttons show even where Roblox made no CAS touch button).
 -- Diagnostics (character attributes, this client): ArenaTouchVersion, ArenaTouchState ("off" / "on"),
 --   ArenaTouchLastPress (button name), ArenaTouchCASMode, ArenaTouchJumpHidden.
 local Players = game:GetService("Players")
@@ -51,7 +67,7 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -60,7 +76,8 @@ local char = script.Parent
 local player = Players.LocalPlayer
 local hum = char:WaitForChild("Humanoid", 10)
 char:SetAttribute("ArenaTouchVersion", VERSION)
-if not UserInputService.TouchEnabled then
+local FORCE = script:GetAttribute("ArenaTouchForceTouch") == true -- v1.7: test hook
+if not UserInputService.TouchEnabled and not FORCE then
 	char:SetAttribute("ArenaTouchState", "off")
 	return
 end
@@ -292,6 +309,73 @@ hbBloodTagCorner.Parent = hbBloodTag
 local hbBloodTagPad = Instance.new("UIPadding")
 hbBloodTagPad.PaddingTop, hbBloodTagPad.PaddingBottom = UDim.new(0.12, 0), UDim.new(0.12, 0)
 hbBloodTagPad.Parent = hbBloodTag
+-- v1.7: Herrera slash main button + charge pips + glow; LEAP -> JUMP
+if script:GetAttribute("ArenaTouchSlashEnabled") == nil then script:SetAttribute("ArenaTouchSlashEnabled", true) end
+local SLASH_ON = script:GetAttribute("ArenaTouchSlashEnabled") ~= false
+if script:GetAttribute("ArenaTouchJumpForAllEnabled") == nil then script:SetAttribute("ArenaTouchJumpForAllEnabled", true) end
+local JUMP_ALL = script:GetAttribute("ArenaTouchJumpForAllEnabled") ~= false
+if JUMP_ALL then leapLabel.Text = "JUMP" end
+local slashMain, slashMainLabel, slashMainScale = button("SlashMain", "ATTACK", nil, 0.05, 0.10, 0.135, true)
+slashMain.Visible = false
+local slGlowRing = Instance.new("Frame")
+slGlowRing.Name = "GlowRing"
+slGlowRing.BackgroundTransparency = 1
+slGlowRing.Size = UDim2.fromScale(1, 1)
+slGlowRing.Parent = slashMain
+local slRingCorner = Instance.new("UICorner")
+slRingCorner.CornerRadius = UDim.new(0.5, 0)
+slRingCorner.Parent = slGlowRing
+local slGlow = Instance.new("UIStroke")
+slGlow.Name = "Glow"
+slGlow.Color = YELLOW
+slGlow.Thickness = 5
+slGlow.Transparency = 1
+slGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+slGlow.Parent = slGlowRing
+local slPipRow = Instance.new("Frame")
+slPipRow.Name = "ChargePips"
+slPipRow.BackgroundTransparency = 1
+slPipRow.AnchorPoint = Vector2.new(0.5, 0)
+slPipRow.Position = UDim2.new(0.5, 0, 1, 4)
+slPipRow.Size = UDim2.fromScale(1, 0.19)
+slPipRow.Parent = slashMain
+local slList = Instance.new("UIListLayout")
+slList.FillDirection = Enum.FillDirection.Horizontal
+slList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+slList.Padding = UDim.new(0.06, 0)
+slList.Parent = slPipRow
+local slPips = {}
+for i = 1, 3 do
+	local pip = Instance.new("Frame")
+	pip.Name = "Charge_" .. i
+	pip.Size = UDim2.fromScale(1, 1)
+	pip.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	pip.BackgroundColor3 = PANEL
+	pip.BackgroundTransparency = 0.4
+	pip.ClipsDescendants = true
+	pip.LayoutOrder = i
+	pip.Parent = slPipRow
+	local pc = Instance.new("UICorner")
+	pc.CornerRadius = UDim.new(0.5, 0)
+	pc.Parent = pip
+	local ring = Instance.new("UIStroke")
+	ring.Color = YELLOW
+	ring.Thickness = 2
+	ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	ring.Parent = pip
+	local f = Instance.new("Frame")
+	f.Name = "Fill"
+	f.AnchorPoint = Vector2.new(0, 1)
+	f.Position = UDim2.fromScale(0, 1)
+	f.Size = UDim2.fromScale(1, 0)
+	f.BackgroundColor3 = YELLOW
+	f.BorderSizePixel = 0
+	f.Parent = pip
+	local fc = Instance.new("UICorner")
+	fc.CornerRadius = UDim.new(0.5, 0)
+	fc.Parent = f
+	slPips[i] = {f = pip, fill = f}
+end
 local function bloodLeft() -- v1.6: sacrifices possible right now (nil when Blood Rush is off)
 	if char:GetAttribute("BloodRushEnabled") ~= true then return nil end
 	local hum = char:FindFirstChildOfClass("Humanoid")
@@ -321,7 +405,8 @@ local OVERLAY = {
 	{action = "DinoPounce", vis = pounceMain, scale = pounceMainScale, name = "Pounce"}, -- v1.4: main button only
 	{action = "DinoHeadbutt", vis = headbuttMain, scale = headbuttMainScale, name = "Headbutt"}, -- v1.5
 }
-local wanted = {Bite = true, Run = true, Ram = false, Pounce = false, Headbutt = false} -- set by refresh(); v1.5: + Headbutt
+if SLASH_ON then table.insert(OVERLAY, {action = "DinoSlash", vis = slashMain, scale = slashMainScale, name = "Slash"}) end -- v1.7
+local wanted = {Bite = true, Run = true, Ram = false, Pounce = false, Headbutt = false, Slash = false} -- set by refresh(); v1.5: + Headbutt; v1.7: + Slash
 local hooked = setmetatable({}, {__mode = "k"})
 local function hook(btn, o)
 	if hooked[btn] then return end
@@ -355,7 +440,7 @@ RunService.RenderStepped:Connect(function()
 	end
 	for _, o in ipairs(OVERLAY) do
 		local btn = getButton(o.action)
-		o.vis.Visible = wanted[o.name] and btn ~= nil
+		o.vis.Visible = wanted[o.name] and (btn ~= nil or FORCE) -- v1.7: FORCE = layout test without CAS touch buttons
 		if btn and btn.Parent then
 			hideCas(btn)
 			hook(btn, o)
@@ -386,7 +471,11 @@ local function refresh()
 	local mainPounce = wanted.Pounce
 	-- v1.5: pachy headbutt as the main ATTACK button
 	wanted.Headbutt = HEADBUTT_ON and char:GetAttribute("HeadbuttEnabled") == true and not wanted.Bite and not wanted.Pounce
-	local mainName = wanted.Bite and "Bite" or (mainPounce and "Pounce" or (wanted.Headbutt and "Headbutt" or "none"))
+	-- v1.7: Herrera slash as the main ATTACK button
+	wanted.Slash = SLASH_ON and char:GetAttribute("SlashEnabled") == true and not wanted.Bite and not wanted.Pounce
+		and not wanted.Headbutt
+	local mainName = wanted.Bite and "Bite" or (mainPounce and "Pounce" or (wanted.Headbutt and "Headbutt"
+		or (wanted.Slash and "Slash" or "none")))
 	if char:GetAttribute("ArenaTouchMainButton") ~= mainName then char:SetAttribute("ArenaTouchMainButton", mainName) end
 	local mainReady = char:GetAttribute("PounceTestState") == "ready"
 	pounceMain.BackgroundTransparency = mainReady and 0.08 or 0.5
@@ -394,6 +483,16 @@ local function refresh()
 	leap.Visible = char:GetAttribute("JumpEnabled") == true
 	dim(ram, ramLabel, "RamTestState")
 	dim(leap, leapLabel, "JumpTestState")
+	if JUMP_ALL then -- v1.7: JUMP on every dino that jumps or climbs; lit when a press does something
+		local climber = char:GetAttribute("ClimbEnabled") == true
+		leap.Visible = char:GetAttribute("JumpEnabled") == true or climber
+		local cs = char:GetAttribute("ClimbLocalState")
+		local onTree = climber and (cs == "climbing" or cs == "clinging" or cs == "top")
+		local ready = onTree or (char:GetAttribute("JumpEnabled") == true and char:GetAttribute("JumpTestState") == "ready")
+		leap.BackgroundTransparency = ready and 0.4 or 0.7
+		leapLabel.TextTransparency = ready and 0 or 0.5
+		if char:GetAttribute("ArenaTouchJumpLit") ~= ready then char:SetAttribute("ArenaTouchJumpLit", ready) end
+	end
 end
 -- v1.5: headbutt pips / SLOWED / dim / glow every frame
 RunService.RenderStepped:Connect(function()
@@ -438,7 +537,25 @@ RunService.RenderStepped:Connect(function()
 	if char:GetAttribute("ArenaTouchBloodLeft") ~= bl then char:SetAttribute("ArenaTouchBloodLeft", bl) end
 end)
 local WATCH = {BiteEnabled = true, HeadbuttEnabled = true, AutoRun = true, RamEnabled = true, RamLatchGate = true, PounceEnabled = true, JumpEnabled = true, RamTestState = true,
-	PounceTestState = true, JumpTestState = true}
+	PounceTestState = true, JumpTestState = true, SlashEnabled = true, ClimbEnabled = true, ClimbLocalState = true} -- v1.7: + Slash / Climb
+-- v1.7: slash pips / dim / glow every frame
+RunService.RenderStepped:Connect(function()
+	if not wanted.Slash then return end
+	local now = workspace:GetServerTimeNow()
+	local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("SlashChargesMax")) or 2), 1, 3)
+	local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("SlashChargesNow")) or maxC), 0, maxC)
+	local rs, ra = tonumber(char:GetAttribute("SlashRefillStart")) or 0, tonumber(char:GetAttribute("SlashRefillAt")) or 0
+	local part = (ra > rs and nowC < maxC) and math.clamp((now - rs) / (ra - rs), 0, 1) or 0
+	for i, pip in ipairs(slPips) do
+		pip.f.Visible = i <= maxC
+		pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0))
+	end
+	slGlow.Transparency = char:GetAttribute("SlashLocalState") == "dash" and 0.2 or 1
+	slashMain.BackgroundTransparency = nowC > 0 and 0.08 or 0.5
+	slashMainLabel.TextTransparency = nowC > 0 and 0 or 0.5
+	local pips = nowC .. "/" .. maxC
+	if char:GetAttribute("ArenaTouchSlashPips") ~= pips then char:SetAttribute("ArenaTouchSlashPips", pips) end
+end)
 char.AttributeChanged:Connect(function(name)
 	if WATCH[name] then refresh() end
 end)

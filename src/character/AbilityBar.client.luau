@@ -1,4 +1,4 @@
--- AbilityBar v1.14 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.15 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -98,12 +98,15 @@
 --   at 0.89 rising with the refill) / "ready". Hop states: "ready" while ClimbLocalState is climbing / clinging / top
 --   (ClimbTest), else "ground" (dim 0.5). false = 1.13 (the Herrera gets the fallback order). Diagnostics:
 --   AbilityBar_Slash / AbilityBar_Hop (state), AbilityBarSlashPips ("<ready>/<max>").
+-- v1.15 (MDA-146, plan docs/plans/PHONE_LAYOUT_v1.0.md; Kepu 2026-10-31 "call it all jump"): the Leap tile and the
+--   Herrera's Hop tile are named "JUMP" (key Space unchanged; tile ids / states unchanged). Switch: script attribute
+--   AbilityBarJumpNameEnabled (default true, read at start; false = 1.14 names LEAP / HOP).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.14"
+local VERSION = "1.15"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -174,6 +177,11 @@ if script:GetAttribute("AbilityBarHerreraEnabled") ~= false then -- v1.14: Herre
 	MOVES.Slash = {enabled = "SlashEnabled", enabledDefault = false, key = "LMB", name = "SLASH", color = YELLOW, slashPips = true}
 	MOVES.Hop = {enabled = "ClimbEnabled", enabledDefault = false, key = "Space", name = "HOP", hop = true}
 	SPECIES_MOVES.Herrera = {"Slash", "Hop"}
+end
+if script:GetAttribute("AbilityBarJumpNameEnabled") == nil then script:SetAttribute("AbilityBarJumpNameEnabled", true) end -- v1.15
+if script:GetAttribute("AbilityBarJumpNameEnabled") ~= false then -- v1.15: one name for every dino's jump
+	MOVES.Leap.name = "JUMP"
+	if MOVES.Hop then MOVES.Hop.name = "JUMP" end
 end
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 local SLOT_KEYS = {"R", "C", "T", "V"} -- v1.2: + T / V (slots 3 / 4)

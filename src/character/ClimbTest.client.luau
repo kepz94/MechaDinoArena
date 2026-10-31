@@ -1,4 +1,4 @@
--- ClimbTest v1.10 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.11 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -63,12 +63,16 @@
 --   trunk) as before, else ClimbLogic.treeTopTarget over the climbed tree's own proxies (TreeTopOf = ClimbTreeLocal; a
 --   leaning palm's crown is off the trunk line). With no target at all a trunk-end mantle keeps clinging (held, vy 0)
 --   instead of letting go (1.9 dropped to "ground"). Diagnostic: ClimbMantleTarget ("trunk" / "tree" / "none").
+-- v1.11 (MDA-146 / MDA-145: a phone had no way off a tree — no Space, and the hop only read the JumpAction): a hop is
+--   also a rising edge of Humanoid.Jump, which ArenaTouch 1.7's JUMP button sets on phones (this game has no PlayerModule
+--   control scripts, so nothing else sets it). PC Space (JumpAction) unchanged. Diagnostic: ClimbHopSource ("action" /
+--   "humanoid").
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -207,13 +211,19 @@ task.spawn(function()
 	if ok and a and a:IsA("InputAction") then jumpAction = a end
 end)
 local jumpWasDown = false
+local humJumpWas = false -- v1.11
 local function jumpPressed()
-	if not jumpAction then return false end
+	local hj = hum.Jump == true -- v1.11: the phone JUMP button (ArenaTouch 1.7)
+	local hjPressed = hj and not humJumpWas
+	humJumpWas = hj
+	if hjPressed then char:SetAttribute("ClimbHopSource", "humanoid") end
+	if not jumpAction then return hjPressed end
 	local ok, v = pcall(function() return jumpAction:GetState() end)
 	local down = ok and v == true
 	local pressed = down and not jumpWasDown
 	jumpWasDown = down
-	return pressed
+	if pressed then char:SetAttribute("ClimbHopSource", "action") end
+	return pressed or hjPressed
 end
 
 -- forces
