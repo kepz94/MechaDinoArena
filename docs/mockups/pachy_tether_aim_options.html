@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tether Aim Mode</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Tether Spike dedicated aim mode (Kepu 2026-10-30: "when I click tether spike it changes the camera angle where I only aim
+   as I'm strafe walking. It shows like a launcher pov where I can properly aim"). Three camera views, same HUD. */
+:root { color-scheme: dark; --page: #0d0f14; --panel: #14141a; --line: #2b3242; --muted: #8f99aa; --grey: #cfd3dc;
+  --yellow: #ffc832; --orange: #ff9a2e; --cyan: #5fe3ff; --ink: #0b0b12; --steel: #9aa6b8; --dark: #3a404c;
+  --display: "Fredoka", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: #fff; font: 15px/1.5 var(--body); }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 56px; display: grid; gap: 22px; }
+h1 { margin: 0; font: 700 32px var(--display); } h1 span { color: var(--yellow); }
+h2 { margin: 0; font: 700 22px var(--display); }
+.lede { margin: 0; color: var(--muted); }
+section { display: grid; gap: 12px; }
+.tag { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; position: relative; }
+.card.rec { border-color: var(--yellow); }
+.rec-b { position: absolute; top: -11px; right: 12px; background: var(--yellow); color: #201800; font: 800 11px var(--body); padding: 2px 8px; border-radius: 99px; }
+.card h3 { margin: 0; font: 700 17px var(--display); }
+.card p { margin: 0; color: var(--grey); font-size: 14px; }
+.scene { background: linear-gradient(180deg, #7fbdea, #b6def2 60%, #6cc25a 60%, #57a948); border-radius: 10px; aspect-ratio: 16 / 10; position: relative; overflow: hidden; }
+.scene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--panel); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font: 700 15px var(--display); color: var(--yellow); white-space: nowrap; }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+.chip { font: 800 14px var(--body); color: #fff; background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.game { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 5; max-height: 260px; background: linear-gradient(180deg, #7fbdea, #b6def2 55%, #6cc25a 55%, #57a948); }
+.game .black { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .08s; }
+.game .black.on { opacity: 1; }
+.game .hud { position: absolute; left: 12px; bottom: 10px; font: 800 13px var(--body); text-shadow: 0 1px 0 #000; z-index: 2; }
+.game .hud .bar { width: 160px; height: 10px; border: 2px solid #fffc; border-radius: 99px; background: #0008; }
+.game .hud .bar i { display: block; height: 100%; width: 70%; background: #5fd16a; border-radius: 99px; }
+.game .msg { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); font: 700 22px var(--display); color: #fff; opacity: 0; z-index: 2; }
+.game .msg.on { opacity: .85; }
+.game svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ff { transition: opacity .15s; }
+.off .ff { opacity: 0; }
+.effect { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+.shot { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16/9; background: linear-gradient(180deg,#7fbdea,#b6def2 45%,#6cc25a 45%,#4f9a40); }
+.shot svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hudtag { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); font: 800 12px var(--body); background: #000a; padding: 3px 10px; border-radius: 99px; color: #ffc832; }
+.btns { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
+.btns span { font: 800 11px var(--body); background: #14141acc; border: 2px solid #ff9a2e; border-radius: 10px; padding: 6px 8px; }
+.btns span.fire { border-color: #ffc832; background: #ffc832; color: #201800; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tether <span>aim mode</span></h1>
+  <p class="lede">Tap Tether Spike: the camera switches to a launcher view, the pachy faces where you aim and walks / strafes without turning, and the landing circle + arc follow your aim (camera look = direction, tilt = distance, up to 90 studs). Pick the view.</p>
+  <div class="cards">
+    <div class="card rec"><span class="rec-b">RECOMMENDED</span>
+      <div class="shot"><svg viewBox="0 0 320 180">
+  <path d="M175 100 Q 205 20 245 78" stroke="#ffc832" stroke-width="2.5" fill="none" stroke-dasharray="5 4"/>
+  <ellipse cx="245" cy="84" rx="26" ry="8" fill="#ffc83266" stroke="#fff" stroke-width="1.5"/>
+  <rect x="236" y="62" width="22" height="12" rx="3" fill="#5b8f4e"/>
+  <g transform="translate(170,120)"><rect x="-26" y="-14" width="52" height="30" rx="5" fill="#8a7a5c"/><rect x="-8" y="-32" width="16" height="20" rx="4" fill="#8a7a5c"/><ellipse cx="0" cy="-34" rx="11" ry="7" fill="#e9e3d4"/><rect x="-5" y="14" width="10" height="26" fill="#7a6a4e"/><rect x="-4" y="0" width="8" height="10" fill="#3a404c"/><rect x="-2" y="-8" width="4" height="10" fill="#9aa6b8"/></g>
+</svg><div class="hudtag">TETHER AIM</div><div class="btns"><span>CANCEL</span><span class="fire">FIRE</span></div></div>
+      <h3>A · Over-the-shoulder artillery</h3>
+      <p>Camera jumps up and behind the launcher, tilted toward the landing zone. A dashed arc shows the lob and the circle shows where it lands. You walk and strafe; the camera turns with your aim.</p>
+    </div>
+    <div class="card">
+      <div class="shot"><svg viewBox="0 0 320 180">
+  <rect width="320" height="180" fill="#5fae4f"/>
+  <circle cx="60" cy="40" r="14" fill="#2f7a35"/><circle cx="270" cy="140" r="16" fill="#2f7a35"/><circle cx="250" cy="30" r="12" fill="#2f7a35"/>
+  <g transform="translate(160,140)"><rect x="-10" y="-18" width="20" height="36" rx="5" fill="#8a7a5c"/><ellipse cx="0" cy="-20" rx="9" ry="7" fill="#e9e3d4"/></g>
+  <path d="M160 122 L 205 62" stroke="#ffc832" stroke-width="2.5" stroke-dasharray="5 4"/>
+  <circle cx="210" cy="56" r="22" fill="#ffc83266" stroke="#fff" stroke-width="1.5"/>
+  <rect x="202" y="48" width="14" height="18" rx="3" fill="#3f6f37"/>
+</svg><div class="hudtag">TETHER AIM</div><div class="btns"><span>CANCEL</span><span class="fire">FIRE</span></div></div>
+      <h3>B · Top-down tactical</h3>
+      <p>Camera rises high above the pachy and looks almost straight down, like a map. Easiest to judge distance and see who is in the circle; you see less of what is around you.</p>
+    </div>
+    <div class="card">
+      <div class="shot"><svg viewBox="0 0 320 180">
+  <path d="M160 180 Q 160 60 190 84" stroke="#ffc832" stroke-width="3" fill="none" stroke-dasharray="6 4"/>
+  <ellipse cx="192" cy="90" rx="34" ry="10" fill="#ffc83266" stroke="#fff" stroke-width="1.5"/>
+  <rect x="180" y="66" width="26" height="14" rx="3" fill="#5b8f4e"/>
+  <rect x="120" y="150" width="80" height="30" rx="6" fill="#3a404c"/><rect x="152" y="132" width="16" height="30" fill="#9aa6b8"/>
+  <circle cx="160" cy="90" r="40" fill="none" stroke="#ffffff55" stroke-width="1.5"/><path d="M160 46 v12 M160 122 v12 M116 90 h12 M192 90 h12" stroke="#fff8" stroke-width="1.5"/>
+</svg><div class="hudtag">TETHER AIM</div><div class="btns"><span>CANCEL</span><span class="fire">FIRE</span></div></div>
+      <h3>C · Launcher scope</h3>
+      <p>Camera sits on the tail launcher looking down its barrel with a scope ring. Most "I am the launcher"; hardest to see your own pachy while strafing.</p>
+    </div>
+  </div>
+  <p class="note">The HUD buttons (FIRE / CANCEL) are placeholders; how you fire and cancel is the next question.</p>
+</div>
+</body>
+</html>
