@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Herrerasaurus generator v0.3 (Mecha Dino Arena) — MOCKUP prototype (not installed in the game yet).
+"""Herrerasaurus generator v0.4 (Mecha Dino Arena) — MOCKUP prototype (not installed in the game yet).
 
 Kepu 2026-10-30: "the next Dino I want to work on it's the Herrerasaurus. This will be a utility Dino someone that's a
 Pain in the ass to deal with but easy to kill" · "It's going to have the most mecha utility and the fastest in the game" ·
@@ -21,7 +21,7 @@ import math, os, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "HerreraModelData.luau")
 
-VERSION = "0.3"
+VERSION = "0.4"
 TARGET_LEN = 11.2    # studs at scale 1 (raptor 12.85; doubled in game: ~22.4 vs the raptor's 25.4)
 HIP0 = 3.3           # authored hip height before the length scale
 HRP_SIZE_D0 = (3.2, 2.1, 1.2)
@@ -29,11 +29,11 @@ HRP_SIZE_D0 = (3.2, 2.1, 1.2)
 # v0.2: three palette candidates for the mockup (all keep the skin rule); PALETTE picks the Classic one
 PALETTES = {
     "rust":     {"main": "B5652E", "stripes": "2A1E18", "belly": "E6D2A8", "markings": "8E2A22", "limbs": "8A4A24",
-                 "claws": "241C18", "eyes": "F2D54A", "tailbands": "D9A66A", "mask": "3A2420"},
+                 "claws": "241C18", "eyes": "F2D54A", "tailbands": "D9A66A", "mask": "3A2420", "frill": "E2A93A"},
     "charcoal": {"main": "4A4F55", "stripes": "25282C", "belly": "B9B3A4", "markings": "C8323C", "limbs": "3A3E43",
-                 "claws": "1A1A1C", "eyes": "F07A2A", "tailbands": "8C9096", "mask": "16181B"},
+                 "claws": "1A1A1C", "eyes": "F07A2A", "tailbands": "8C9096", "mask": "16181B", "frill": "E04A2C"},
     "olive":    {"main": "6E6A3A", "stripes": "2F3320", "belly": "D3C89A", "markings": "B8414A", "limbs": "5A5530",
-                 "claws": "2C2620", "eyes": "E8C547", "tailbands": "B9B26A", "mask": "262A1A"},
+                 "claws": "2C2620", "eyes": "E8C547", "tailbands": "B9B26A", "mask": "262A1A", "frill": "C9572E"},
 }
 PALETTE = sys.argv[sys.argv.index("--palette") + 1] if "--palette" in sys.argv else "rust"
 C = {
@@ -85,132 +85,143 @@ def tilt_down(dx, dy):
     return math.degrees(math.atan2(dx, -dy))
 
 
-# ---------------------------------------------------------------- v0.3 (Kepu 2026-10-30: "it looks exactly like a raptor. It
-# needs to look different" / "The facial structure and the whole body needs to be it's own"): its own body plan:
-#   head  - a WEDGE: tall boxy rear skull tapering to a long snout, a dark open window on the side of the snout (the
-#           fenestra), a hooked-down snout tip with a notch and a big fang behind it, horn ridges over the eyes, a deep
-#           kinked lower jaw, a red throat pouch;
-#   body  - deep chest with a shoulder hump, narrow hips, a row of dark back scutes and slanted flank stripes, held
-#           level; long neck carried forward; big three-claw hands; long legs; a long straight tail.
+# ---------------------------------------------------------------- v0.4 (Kepu 2026-10-30: "the body is basically the same thing
+# as the raptor. You didn't add any creative character to it" / "It should look really different not even closely the
+# same" -> "Hunched goblin" + "Frill-necked trickster"): its own body plan, nothing shared with the raptor's shapes:
+#   goblin  - barrel chest and a high bony shoulder hump, pinched waist, scrawny hips; the spine rises from the hips to the
+#             shoulders and the neck drops DOWN to an oversized head that hangs below the shoulder line; long dangling
+#             arms almost to the ground with big hooked claws; skinny stilt legs with knobbly knees and big splayed feet;
+#             a thin whip tail that curls up at the end;
+#   face    - big round cranium with bulging eyes on top, little back-swept horns, a short wide snout, a jutting
+#             underbite jaw with snaggle teeth poking up outside the lip;
+#   trickster - a big flared fan frill around the back of the head (plates with dark spokes and a bright rim), a bright
+#             throat sac, quills down the back getting longest at the shoulders, a quill tuft on the tail tip.
 seg("Torso", (0.0, 0.0, 0.0))
-part("Torso", "main", (2.7, 1.1, 0.92), (0.45, 0.15, 0.0))
-part("Torso", "main", (1.15, 1.3, 0.94), (1.8, 0.05, 0.0), pitch=-10, name="Torso_chest")
-part("Torso", "main", (1.0, 0.4, 0.82), (1.45, 0.78, 0.0), pitch=-6, name="Torso_hump")
-part("Torso", "main", (1.0, 0.95, 0.84), (-0.65, 0.25, 0.0), pitch=4, name="Torso_hips")
-part("Torso", "belly", (2.6, 0.24, 0.76), (0.55, -0.42, 0.0))
-part("Torso", "belly", (0.6, 0.9, 0.8), (2.25, -0.05, 0.0), pitch=-10, name="Torso_breast")
-for i, (x, y) in enumerate([(-1.0, 0.8), (-0.55, 0.8), (-0.1, 0.8), (0.35, 0.8), (0.8, 0.84), (1.25, 1.06), (1.7, 1.02)]):
-    part("Torso", "stripes", (0.3, 0.26, 0.3), (x, y, 0.0), name=f"Torso_scute{i + 1}")
-for i, x in enumerate([-0.85, -0.35, 0.15, 0.65, 1.15, 1.65]):
+part("Torso", "main", (0.85, 0.72, 0.68), (-0.5, 0.18, 0.0), pitch=10, name="Torso_hips")
+part("Torso", "main", (0.85, 0.74, 0.66), (0.25, 0.32, 0.0), pitch=18, name="Torso_waist")
+part("Torso", "main", (1.35, 1.45, 1.15), (1.15, 0.62, 0.0), pitch=25, name="Torso_chest")
+part("Torso", "main", (1.05, 0.55, 1.05), (1.2, 1.38, 0.0), pitch=18, name="Torso_hump")
+part("Torso", "belly", (1.5, 0.22, 0.56), (0.55, -0.08, 0.0), pitch=18, name="Torso_belly")
+part("Torso", "belly", (0.45, 1.15, 0.95), (1.8, 0.4, 0.0), pitch=25, name="Torso_breast")
+for i, (x, y, h) in enumerate([(-0.75, 0.55, 0.35), (-0.35, 0.68, 0.42), (0.05, 0.82, 0.5), (0.45, 1.05, 0.62),
+                                (0.85, 1.42, 0.85), (1.25, 1.62, 1.0), (1.6, 1.58, 0.85)]):
+    a = math.radians(55)
+    part("Torso", "stripes", (0.13, h, 0.13), (x - math.sin(a) * h / 2 * 0.5, y + math.cos(a) * h / 2, 0.0), pitch=35, name=f"Torso_quill{i + 1}")
+for i, x in enumerate([-0.55, 0.0, 0.55, 1.05]):
     for side in (1, -1):
-        part("Torso", "stripes", (0.15, 0.8, 0.04), (x, 0.28, side * 0.47), pitch=18, name=f"Torso_stripe{i + 1}{'L' if side > 0 else 'R'}")
-for i, (x, y) in enumerate([(-0.6, -0.15), (0.4, -0.12), (1.4, -0.15)]):
+        part("Torso", "stripes", (0.14, 0.62, 0.04), (x, 0.42 + x * 0.25, side * (0.37 + max(0, x) * 0.17)), pitch=-12,
+             name=f"Torso_stripe{i + 1}{'L' if side > 0 else 'R'}")
+for i, (x, y) in enumerate([(-0.2, 0.05), (0.7, 0.35)]):
     for side in (1, -1):
-        part("Torso", "markings", (0.28, 0.22, 0.04), (x, y, side * 0.475), name=f"Torso_spot{i + 1}{'L' if side > 0 else 'R'}")
+        part("Torso", "markings", (0.24, 0.2, 0.04), (x, y, side * (0.36 + max(0, x) * 0.25)), name=f"Torso_spot{i + 1}{'L' if side > 0 else 'R'}")
 
-# ---------------------------------------------------------------- neck (long, carried forward)
-seg("Neck", (2.25, 0.5, 0.0))
-part("Neck", "main", (1.0, 0.68, 0.64), (2.7, 0.78, 0.0), pitch=28)
-part("Neck", "main", (0.95, 0.6, 0.56), (3.38, 1.12, 0.0), pitch=15, name="Neck_upper")
-part("Neck", "belly", (1.5, 0.2, 0.48), (3.0, 0.62, 0.0), pitch=22, name="Neck_throat")
-part("Neck", "stripes", (0.26, 0.22, 0.26), (2.65, 1.2, 0.0), pitch=28, name="Neck_scute1")
-part("Neck", "stripes", (0.24, 0.2, 0.24), (3.25, 1.47, 0.0), pitch=15, name="Neck_scute2")
-part("Neck", "markings", (0.85, 0.46, 0.4), (3.55, 0.72, 0.0), pitch=12, name="Neck_dewlap1")
-part("Neck", "markings", (0.45, 0.3, 0.32), (3.95, 0.66, 0.0), pitch=0, name="Neck_dewlap2")
+# ---------------------------------------------------------------- neck (drops down and forward from the hump)
+seg("Neck", (1.75, 1.15, 0.0))
+part("Neck", "main", (0.9, 0.64, 0.62), (2.15, 0.92, 0.0), pitch=-35)
+part("Neck", "main", (0.8, 0.6, 0.58), (2.65, 0.6, 0.0), pitch=-22, name="Neck_lower")
+part("Neck", "markings", (0.95, 0.62, 0.7), (2.75, 0.18, 0.0), pitch=-10, name="Neck_sac")
+part("Neck", "markings", (0.55, 0.42, 0.56), (2.3, 0.45, 0.0), pitch=-25, name="Neck_sac2")
+for i, (x, y) in enumerate([(2.05, 1.3), (2.5, 0.98)]):
+    part("Neck", "stripes", (0.12, 0.55 - i * 0.12, 0.12), (x, y, 0.0), pitch=40, name=f"Neck_quill{i + 1}")
 
-# ---------------------------------------------------------------- head (wedge skull)
-seg("Head", (3.75, 1.2, 0.0))
-part("Head", "main", (0.85, 0.98, 0.88), (4.12, 1.32, 0.0), name="Head_skull")
-part("Head", "main", (1.1, 0.74, 0.74), (4.98, 1.24, 0.0), pitch=-6, name="Head_snout")
-part("Head", "main", (0.85, 0.56, 0.62), (5.88, 1.11, 0.0), pitch=-6, name="Head_muzzle")
-part("Head", "main", (0.36, 0.52, 0.58), (6.42, 0.98, 0.0), pitch=22, name="Head_tip")
-part("Head", "mouth", (2.4, 0.1, 0.62), (5.15, 0.86, 0.0), name="Head_mouth")
-for i, x in enumerate([4.55, 4.8, 5.05, 5.3, 5.55, 5.8]):
-    part("Head", "tooth", (0.1, 0.15, 0.66), (x, 0.9, 0.0), name=f"Head_tooth{i + 1}")
-part("Head", "tooth", (0.13, 0.32, 0.68), (6.12, 0.82, 0.0), pitch=8, name="Head_fang")
-part("Head", "stripes", (1.75, 0.06, 0.32), (5.3, 1.6, 0.0), pitch=-6, name="Head_snoutline")
-part("Head", "stripes", (0.6, 0.1, 0.9), (4.2, 1.82, 0.0), name="Head_brow")
+# ---------------------------------------------------------------- head (oversized, hanging low)
+seg("Head", (3.0, 0.45, 0.0))
+part("Head", "main", (1.15, 0.98, 1.05), (3.45, 0.6, 0.0), name="Head_cranium")
+part("Head", "main", (1.15, 0.66, 0.86), (4.48, 0.46, 0.0), pitch=-4, name="Head_snout")
+part("Head", "main", (0.38, 0.58, 0.8), (5.18, 0.4, 0.0), name="Head_tip")
+part("Head", "mouth", (2.1, 0.08, 0.84), (4.3, 0.12, 0.0), name="Head_mouth")
+for i, x in enumerate([3.75, 4.05, 4.35, 4.65, 4.95]):
+    part("Head", "tooth", (0.1, 0.12, 0.86), (x, 0.15, 0.0), name=f"Head_tooth{i + 1}")
+part("Head", "stripes", (1.2, 0.07, 0.4), (4.5, 0.8, 0.0), pitch=-4, name="Head_snoutline")
 for side in (1, -1):
     s = "L" if side > 0 else "R"
-    part("Head", "mask", (0.62, 0.36, 0.03), (4.98, 1.24, side * 0.37), pitch=-6, name=f"Head_window{s}")
-    part("Head", "mask", (0.08, 0.08, 0.04), (6.42, 1.12, side * 0.28), name=f"Head_nostril{s}")
-    part("Head", "eyes", (0.26, 0.24, 0.05), (4.3, 1.52, side * 0.445), name=f"Head_eye{s}")
-    part("Head", "pupil", (0.07, 0.2, 0.03), (4.32, 1.52, side * 0.47), name=f"Head_pupil{s}")
-    part("Head", "markings", (0.6, 0.18, 0.14), (4.3, 1.84, side * 0.38), pitch=-15, name=f"Head_browridge{s}")
-    part("Head", "markings", (0.22, 0.3, 0.14), (4.02, 1.98, side * 0.38), pitch=-30, name=f"Head_browridgeTip{s}")
-    part("Head", "stripes", (0.14, 0.5, 0.03), (3.82, 1.25, side * 0.445), pitch=12, name=f"Head_cheekstripe{s}")
+    part("Head", "main", (0.46, 0.4, 0.4), (3.62, 1.12, side * 0.32), name=f"Head_eyebump{s}")
+    part("Head", "eyes", (0.34, 0.3, 0.06), (3.66, 1.14, side * 0.53), name=f"Head_eye{s}")
+    part("Head", "pupil", (0.1, 0.24, 0.03), (3.7, 1.14, side * 0.565), name=f"Head_pupil{s}")
+    part("Head", "markings", (0.16, 0.5, 0.13), (3.28, 1.4, side * 0.32), pitch=45, name=f"Head_horn{s}")
+    part("Head", "mask", (0.5, 0.3, 0.03), (4.45, 0.5, side * 0.44), pitch=-4, name=f"Head_cheek{s}")
+    part("Head", "mask", (0.09, 0.09, 0.04), (5.3, 0.55, side * 0.33), name=f"Head_nostril{s}")
+# the frill: a fan of plates around the back of the head, dark spokes between them, bright rim
+FRILL_C = (2.92, 0.55)
+for i, a in enumerate(range(-105, 106, 21)):
+    r = 0.95
+    ar = math.radians(a)
+    part("Head", "frill", (0.1, 0.95, 0.5), (FRILL_C[0], FRILL_C[1] + r * math.cos(ar), r * math.sin(ar)), roll=a, name=f"Head_frill{i + 1}")
+    part("Head", "markings", (0.11, 0.2, 0.52), (FRILL_C[0] - 0.01, FRILL_C[1] + 1.48 * math.cos(ar), 1.48 * math.sin(ar)), roll=a, name=f"Head_frillrim{i + 1}")
+for i, a in enumerate(range(-94, 95, 21)):
+    ar = math.radians(a)
+    part("Head", "mask", (0.12, 1.0, 0.07), (FRILL_C[0] + 0.01, FRILL_C[1] + 0.98 * math.cos(ar), 0.98 * math.sin(ar)), roll=a, name=f"Head_frillspoke{i + 1}")
 
-# ---------------------------------------------------------------- jaw (deep at the back, kinked underside, rest open 8 deg)
-JAW_ROOT = (3.9, 0.9, 0.0)
-JAW_OPEN = -8
+# ---------------------------------------------------------------- jaw (jutting underbite, snaggle teeth; rest open 4 deg)
+JAW_ROOT = (3.2, 0.1, 0.0)
+JAW_OPEN = -4
 seg("Jaw", JAW_ROOT)
 for key, size, c, nm, pch in [
-    ("main", (1.0, 0.5, 0.66), (4.45, 0.62, 0.0), "Jaw_rear", 0),
-    ("main", (1.25, 0.36, 0.6), (5.48, 0.68, 0.0), "Jaw_lower", 0),
-    ("main", (0.75, 0.26, 0.52), (6.25, 0.74, 0.0), "Jaw_chin", -5),
-    ("belly", (2.3, 0.08, 0.5), (5.25, 0.42, 0.0), "Jaw_under", 3),
-] + [("tooth", (0.1, 0.12, 0.56), (x, 0.88, 0.0), f"Jaw_tooth{i + 1}", 0) for i, x in enumerate([4.75, 5.0, 5.25, 5.5, 5.75, 6.0, 6.25])]:
+    ("main", (2.2, 0.42, 0.95), (4.35, -0.12, 0.0), "Jaw_lower", 0),
+    ("main", (0.42, 0.42, 0.88), (5.5, -0.06, 0.0), "Jaw_chin", 0),
+    ("belly", (1.9, 0.08, 0.7), (4.3, -0.34, 0.0), "Jaw_under", 0),
+] + [("tooth", (0.11, h, 0.1), (x, 0.1 + h / 2 - 0.05, side * zz), f"Jaw_snaggle{i + 1}{'L' if side > 0 else 'R'}", 0)
+     for i, (x, h, zz) in enumerate([(5.45, 0.42, 0.34), (4.75, 0.32, 0.43), (4.1, 0.28, 0.45)]) for side in (1, -1)]:
     part("Jaw", key, size, about(JAW_ROOT, c, JAW_OPEN), pitch=JAW_OPEN + pch, name=nm)
 
-# ---------------------------------------------------------------- arms (big hands, long three-claw fingers)
+# ---------------------------------------------------------------- arms (long, dangling, big hooked claws)
 for side in (1, -1):
     s = "L" if side > 0 else "R"
-    z = side * 0.6
-    sh, el, ha = (2.0, -0.1), (2.35, -0.75), (2.85, -1.05)
-    seg(f"Arm{s}", (sh[0], sh[1], side * 0.5))
-    part(f"Arm{s}", "main", (0.28, 0.76, 0.26), ((sh[0] + el[0]) / 2, (sh[1] + el[1]) / 2, z),
+    z = side * 0.66
+    sh, el, wr = (1.6, 0.65), (1.95, -0.4), (2.2, -1.75)
+    seg(f"Arm{s}", (sh[0], sh[1], side * 0.56))
+    part(f"Arm{s}", "main", (0.38, 1.15, 0.34), ((sh[0] + el[0]) / 2, (sh[1] + el[1]) / 2, z),
          pitch=tilt_down(el[0] - sh[0], el[1] - sh[1]), name=f"Arm{s}_upper")
-    part(f"Arm{s}", "limbs", (0.25, 0.62, 0.23), ((el[0] + ha[0]) / 2, (el[1] + ha[1]) / 2, z),
-         pitch=tilt_down(ha[0] - el[0], ha[1] - el[1]), name=f"Arm{s}_fore")
-    part(f"Arm{s}", "limbs", (0.42, 0.3, 0.32), (2.92, -1.1, z), name=f"Arm{s}_hand")
-    for i, dz in enumerate((-0.1, 0.0, 0.1)):
-        part(f"Arm{s}", "claws", (0.09, 0.6, 0.08), (3.22, -1.32, z + dz), pitch=45, name=f"Arm{s}_claw{i + 1}")
+    part(f"Arm{s}", "main", (0.4, 0.34, 0.4), (el[0], el[1], z), name=f"Arm{s}_elbow")
+    part(f"Arm{s}", "limbs", (0.3, 1.38, 0.28), ((el[0] + wr[0]) / 2, (el[1] + wr[1]) / 2, z),
+         pitch=tilt_down(wr[0] - el[0], wr[1] - el[1]), name=f"Arm{s}_fore")
+    part(f"Arm{s}", "limbs", (0.55, 0.36, 0.44), (2.32, -1.95, z), name=f"Arm{s}_hand")
+    for i, dz in enumerate((-0.14, 0.0, 0.14)):
+        part(f"Arm{s}", "claws", (0.12, 0.42, 0.1), (2.62, -2.12, z + dz), pitch=35, name=f"Arm{s}_claw{i + 1}")
+        part(f"Arm{s}", "claws", (0.1, 0.3, 0.09), (2.84, -2.38, z + dz), pitch=75, name=f"Arm{s}_hook{i + 1}")
 
-# ---------------------------------------------------------------- tail (long, straight, scutes on the first three)
-TAIL_RISE = 4.0
-tail = [
-    (1.4, (1.5, 0.78, 0.72), [(0.95, "stripes")], 2),
-    (1.35, (1.42, 0.62, 0.56), [(0.45, "stripes"), (0.95, "tailbands")], 2),
-    (1.3, (1.36, 0.48, 0.44), [(0.35, "stripes"), (0.8, "tailbands")], 1),
-    (1.25, (1.3, 0.35, 0.32), [(0.3, "stripes"), (0.75, "tailbands")], 0),
-    (1.25, (1.3, 0.23, 0.21), [(0.25, "tailbands"), (0.6, "stripes"), (0.95, "tailbands")], 0),
-]
-_a = math.radians(TAIL_RISE)
-_dir = (-math.cos(_a), math.sin(_a))
-_root = (-1.1, 0.35)
-for i, (seglen, size, bands, scutes) in enumerate(tail):
+# ---------------------------------------------------------------- tail (thin whip, curls up at the end, quill tuft)
+tail = [(1.4, (1.42, 0.5, 0.46), 8), (1.35, (1.36, 0.38, 0.34), 10), (1.25, (1.28, 0.28, 0.25), 16),
+        (1.1, (1.14, 0.2, 0.18), 28), (0.95, (1.0, 0.14, 0.13), 45)]
+_root = (-0.9, 0.38)
+for i, (seglen, size, rise) in enumerate(tail):
     name = f"Tail{i + 1}"
+    a = math.radians(rise)
+    d = (-math.cos(a), math.sin(a))
     seg(name, (_root[0], _root[1], 0.0))
-    centre = (_root[0] + _dir[0] * (size[0] / 2 - 0.05), _root[1] + _dir[1] * (size[0] / 2 - 0.05), 0.0)
-    part(name, "main", size, centre, pitch=-TAIL_RISE)
-    for j in range(scutes):
-        d = 0.35 + j * 0.6
-        part(name, "stripes", (0.26 - i * 0.04, 0.2 - i * 0.03, 0.26 - i * 0.04),
-             (_root[0] + _dir[0] * d, _root[1] + _dir[1] * d + size[1] / 2 + 0.06, 0.0), pitch=-TAIL_RISE, name=f"{name}_scute{j + 1}")
-    for j, (d, key) in enumerate(bands):
-        part(name, key, (0.16, size[1] + 0.04, size[2] + 0.04), (_root[0] + _dir[0] * d, _root[1] + _dir[1] * d, 0.0),
-             pitch=-TAIL_RISE, name=f"{name}_band{j + 1}")
-    _root = (_root[0] + _dir[0] * seglen, _root[1] + _dir[1] * seglen)
+    centre = (_root[0] + d[0] * (size[0] / 2 - 0.05), _root[1] + d[1] * (size[0] / 2 - 0.05), 0.0)
+    part(name, "main", size, centre, pitch=-rise)
+    for j, dd in enumerate((0.35, 0.85)):
+        key = "stripes" if j == 0 else "tailbands"
+        part(name, key, (0.14, size[1] + 0.04, size[2] + 0.04), (_root[0] + d[0] * dd, _root[1] + d[1] * dd, 0.0), pitch=-rise, name=f"{name}_band{j + 1}")
+    if i == 4:
+        tip = (_root[0] + d[0] * seglen, _root[1] + d[1] * seglen)
+        for k, (yaw_, pt) in enumerate([(0, 20), (25, 35), (-25, 35)]):
+            part(name, "stripes", (0.09, 0.6, 0.09), (tip[0] - 0.05, tip[1] + 0.25, math.sin(math.radians(yaw_)) * 0.18),
+                 pitch=pt, roll=yaw_, name=f"{name}_quill{k + 1}")
+    _root = (_root[0] + d[0] * seglen, _root[1] + d[1] * seglen)
 
-# ---------------------------------------------------------------- legs (long, for speed)
+# ---------------------------------------------------------------- legs (skinny stilts, knobbly knees, big splayed feet)
 for side in (1, -1):
     s = "L" if side > 0 else "R"
-    z = side * 0.52
-    hip, knee, ankle, ball = (-0.2, 0.0), (0.35, -1.25), (-0.5, -2.35), (-0.1, -3.1)
+    z = side * 0.42
+    hip, knee, ankle, ball = (-0.45, 0.05), (0.15, -1.3), (-0.55, -2.55), (-0.25, -3.18)
     seg(f"Leg{s}", (hip[0], hip[1], z))
-    part(f"Leg{s}", "main", (0.64, 1.5, 0.54), ((hip[0] + knee[0]) / 2, (hip[1] + knee[1]) / 2, z),
+    part(f"Leg{s}", "main", (0.62, 0.7, 0.5), (-0.4, -0.15, z), pitch=10, name=f"Leg{s}_haunch")
+    part(f"Leg{s}", "main", (0.36, 1.45, 0.34), ((hip[0] + knee[0]) / 2, (hip[1] + knee[1]) / 2, z),
          pitch=tilt_down(knee[0] - hip[0], knee[1] - hip[1]), name=f"Leg{s}_thigh")
-    part(f"Leg{s}", "main", (1.2, 0.9, 0.58), (-0.15, -0.25, z), pitch=10, name=f"Leg{s}_muscle")
-    part(f"Leg{s}", "stripes", (0.15, 0.75, 0.04), (-0.2, -0.3, z + side * 0.3), pitch=18, name=f"Leg{s}_stripe")
     seg(f"Shin{s}", (knee[0], knee[1], z))
-    part(f"Shin{s}", "limbs", (0.36, 1.45, 0.38), ((knee[0] + ankle[0]) / 2, (knee[1] + ankle[1]) / 2, z),
+    part(f"Shin{s}", "limbs", (0.46, 0.42, 0.44), (knee[0] + 0.05, knee[1], z), name=f"Shin{s}_knee")
+    part(f"Shin{s}", "limbs", (0.22, 1.42, 0.24), ((knee[0] + ankle[0]) / 2, (knee[1] + ankle[1]) / 2, z),
          pitch=tilt_down(ankle[0] - knee[0], ankle[1] - knee[1]), name=f"Shin{s}_shin")
     seg(f"Foot{s}", (ankle[0], ankle[1], z))
-    part(f"Foot{s}", "limbs", (0.3, 0.9, 0.32), ((ankle[0] + ball[0]) / 2, (ankle[1] + ball[1]) / 2, z),
+    part(f"Foot{s}", "limbs", (0.22, 0.75, 0.24), ((ankle[0] + ball[0]) / 2, (ankle[1] + ball[1]) / 2, z),
          pitch=tilt_down(ball[0] - ankle[0], ball[1] - ankle[1]), name=f"Foot{s}_meta")
-    part(f"Foot{s}", "limbs", (0.9, 0.22, 0.42), (0.22, -3.19, z), name=f"Foot{s}_toes")
-    for i, dz in enumerate((-0.14, 0.0, 0.14)):
-        part(f"Foot{s}", "claws", (0.18, 0.13, 0.08), (0.72, -3.22, z + dz), name=f"Foot{s}_claw{i + 1}")
+    for i, yw in enumerate((-28, 0, 28)):
+        L = 1.0 if yw == 0 else 0.8
+        dx, dz = math.cos(math.radians(yw)) * L / 2, -math.sin(math.radians(yw)) * L / 2
+        part(f"Foot{s}", "limbs", (L, 0.16, 0.2), (-0.2 + dx, -3.22, z + dz), yaw=yw, name=f"Foot{s}_toe{i + 1}")
+        part(f"Foot{s}", "claws", (0.2, 0.13, 0.1), (-0.2 + dx * 2 + 0.06, -3.24, z + dz * 2), yaw=yw, name=f"Foot{s}_claw{i + 1}")
 
 JOINTS = [("RootJoint", "HRP", "Torso"), ("Neck", "Torso", "Neck"), ("Head", "Neck", "Head"), ("Jaw", "Head", "Jaw"),
           ("ArmL", "Torso", "ArmL"), ("ArmR", "Torso", "ArmR"), ("Tail1", "Torso", "Tail1"), ("Tail2", "Tail1", "Tail2"),
