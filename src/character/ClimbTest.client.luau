@@ -1,4 +1,4 @@
--- ClimbTest v1.5 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.6 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -40,12 +40,16 @@
 -- v1.5 (Studio check of 1.4: Space on a tree top did nothing — JumpRequest does not fire in this game's input setup):
 --   hop = a press of StarterPlayer.PlayerModule.InputContexts.CharacterContext.JumpAction (Input Action System, read
 --   like JumpTest 1.x; edge: down now, up last frame), plus JumpRequest when that action is missing.
+-- v1.6 (Studio check of 1.5: running into CoconutPalm_219 slid around it, ClimbReason "ground" with the trunk 0.1 stud
+--   ahead — Workspace.StreamingEnabled is true, the trunk list was collected once at spawn, so trees streamed in later
+--   were not in the ray filter): the trunk list follows Trees.DescendantAdded / DescendantRemoving; the ray filter is
+--   rebuilt on the next frame after a change. Diagnostic: ClimbTrunkCount.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -71,23 +75,48 @@ end
 -- trunk parts of the island (collected once)
 local trunkParts = {}
 local trunkTree = {} -- [part] = tree model
+local trunkParams = RaycastParams.new()
+trunkParams.FilterType = Enum.RaycastFilterType.Include
+trunkParams.FilterDescendantsInstances = trunkParts
+-- v1.6: the list follows streaming (trees arrive / leave after spawn)
+local trunkDirty = false
 do
 	local island = workspace:WaitForChild("DinoIsland", 30)
 	local trees = island and island:WaitForChild("Trees", 30)
 	if trees then
-		for _, tree in ipairs(trees:GetChildren()) do
-			for _, p in ipairs(tree:GetDescendants()) do
-				if p:IsA("BasePart") and p.Name:match("^Trunk") then
-					table.insert(trunkParts, p)
+		local function treeOf(p)
+			local t = p
+			while t and t.Parent ~= trees do t = t.Parent end
+			return t
+		end
+		local function add(p)
+			if p:IsA("BasePart") and p.Name:match("^Trunk") and not trunkTree[p] then
+				local tree = treeOf(p)
+				if tree then
 					trunkTree[p] = tree
+					trunkDirty = true
 				end
 			end
 		end
+		for _, p in ipairs(trees:GetDescendants()) do add(p) end
+		trees.DescendantAdded:Connect(add)
+		trees.DescendantRemoving:Connect(function(p)
+			if trunkTree[p] then
+				trunkTree[p] = nil
+				trunkDirty = true
+			end
+		end)
 	end
 end
-local trunkParams = RaycastParams.new()
-trunkParams.FilterType = Enum.RaycastFilterType.Include
-trunkParams.FilterDescendantsInstances = trunkParts
+local function refreshTrunks()
+	if not trunkDirty then return end
+	trunkDirty = false
+	table.clear(trunkParts)
+	for p in pairs(trunkTree) do table.insert(trunkParts, p) end
+	trunkParams.FilterDescendantsInstances = trunkParts
+	char:SetAttribute("ClimbTrunkCount", #trunkParts)
+end
+refreshTrunks()
 local groundParams = RaycastParams.new()
 groundParams.FilterType = Enum.RaycastFilterType.Exclude
 groundParams.FilterDescendantsInstances = {char}
@@ -256,6 +285,7 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 	-- probes
+	refreshTrunks() -- v1.6
 	local look = hrp.CFrame.LookVector
 	local fwd = Vector3.new(look.X, 0, look.Z)
 	fwd = fwd.Magnitude > 1e-3 and fwd.Unit or Vector3.new(0, 0, -1)
