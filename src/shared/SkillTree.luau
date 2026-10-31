@@ -1,4 +1,4 @@
--- SkillTree v1.42 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.43 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,22 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.43 (Kepu 2026-10-31 16:26: "the herrerra changes we made need to be their own stat lines, the claws the blood sucker.
+--   Remove the speed debuff from the claws but make the damage 25% more max"; picked "Move to STATS rows, keep looks",
+--   "+5 / +10 / +15 / +25%", plating too):
+--   * SkillTree.HERRERA_PASSIVE_STATS (default true): "ironclaw", "siphon" and "plating" get mech = false (Herrera stat rows
+--     in their areas Attack / Health / Defense, bought like Tree Stalker / Blood Frenzy; the Lab lists them under STATS) and
+--     leave BUTTONS. They stay in LIVE_MECH (the test layer still gives them at star) and keep their path ids, so bought
+--     steps carry over; HerreraPartsServer still shows their looks.
+--   * SkillTree.HERRERA_IRONCLAW_TUNE (default true): Iron Claw = slash damage x HERRERA_IRONCLAW_MULS (1.05 / 1.10 / 1.15 /
+--     1.25), no run-speed change (ironClawSpeedMul 1); step texts "+5%" / "+10%" / "+15%" / "+25%".
+--   * SkillTree.HERRERA_PASS3 (default true; plan docs/plans/HERRERA_PARTS_v1.0.md Pass 3, MDA-164): Herrera button parts
+--     "caltrops" Razor Caltrops (eng), "goo" Goo Blob Shooter (eng), "hadren" Adrenaline Injector (health). Effects (off
+--     values when not bought): caltropCount 6 / 10 (II), caltropRadius 5 / 7 (II; half the patch width), caltropTime 8 / 14
+--     (III), caltropHidden (star), caltropBleedDps 3, caltropBleedTime 3, caltropSlowMul 0.7, caltropSlowTime 1,
+--     caltropCooldown 16; gooToss 30, gooRadius 8 / 11 (II), gooTime 5 / 8 (star), gooCount 1 / 2 (III), gooSlowMul 0.6,
+--     gooCooldown 14, gooAssistAngle 30, gooAssistMin 15, gooAssistMax 45; hadren on a Herrera: adrenHeal 0.25 / 0.34 (II),
+--     adrenTime 3, adrenSpeedMul 1.4, adrenCooldown 20 / 14.8 (III), adrenStunClear false, adrenSlashRefill (star).
 -- v1.42 (Kepu 2026-10-31: "Blood siphon should be passive actually"): with SkillTree.HERRERA_SIPHON_PASSIVE (default
 --   true) "siphon" leaves BUTTONS: it takes no loadout slot and works whenever it is bought (SkillEffects 1.28), like the
 --   raptor's Blade Claws. The Lab lists it with the always-on parts on the STATS tab ("Mech part · always on"); a saved
@@ -885,6 +901,49 @@ if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_PASS2_SOON then
 	end
 end
 
+-- v1.43: claws / siphon / plating are Herrera stat rows; Iron Claw retuned; pass 3 parts
+SkillTree.HERRERA_PASSIVE_STATS = true
+if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_PASSIVE_STATS then
+	for _, id in ipairs({"ironclaw", "siphon", "plating"}) do
+		local p = SkillTree.PATHS[id]
+		if p then
+			p.mech = false
+			SkillTree.BUTTONS[id] = nil
+		end
+	end
+end
+SkillTree.HERRERA_IRONCLAW_TUNE = true
+SkillTree.HERRERA_IRONCLAW_MULS = {1.05, 1.10, 1.15, 1.25}
+if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_IRONCLAW_TUNE and SkillTree.PATHS.ironclaw then
+	SkillTree.PATHS.ironclaw.steps = {"Iron hook blades: slash damage +5%", "Slash damage +10%", "Slash damage +15%",
+		"Slash damage +25%"}
+end
+SkillTree.HERRERA_PASS3 = true
+if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_PASS3 and not SkillTree.PATHS.caltrops then
+	local function part(id, name, areaId, steps)
+		local p = path(id, name, true, false, steps)
+		p.area = areaId
+		p.dino = "Herrera"
+		SkillTree.OWNER[id] = "Herrera"
+		SkillTree.LIVE_MECH[id] = true
+		SkillTree.BUTTONS[id] = true
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		SkillTree.PATHS[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	part("caltrops", "Razor Caltrops", "eng", {
+		"Button: drop 6 razor spikes in a 10-stud patch behind you for 8 s. An enemy that steps on one bleeds 3/s for 3 s and is slowed 30% for 1 s. Recharges in 16 s",
+		"10 spikes, 14-stud patch", "Spikes last 14 s", "Enemies can't see the spikes (only you and your squad do)"})
+	part("goo", "Goo Blob Shooter", "eng", {
+		"Button: toss a goo blob 30 studs ahead (straight down while gliding). It splats into a 16-stud puddle for 5 s; enemies in it are slowed 40%. Recharges in 14 s",
+		"Puddle 22 studs wide", "Fires 2 blobs side by side", "Puddles last 8 s"})
+	part("hadren", "Adrenaline Injector", "health", {
+		"Button: heal 25% of max health over 3 s and run 1.4x faster while it lasts. Recharges in 20 s",
+		"Heal 34%", "Recharges 26% faster", "Also refills every slash charge at once"})
+end
+
 -- level curve
 function SkillTree.xpToNext(level)
 	return 30 + 10 * (level - 1)
@@ -1323,6 +1382,47 @@ do
 			local qu, sm = s.quills or 0, s.smoke or 0
 			if qu >= 1 and (e.quillCount or 0) > 0 then e.quillCount = SkillTree.HERRERA_QUILL_COUNTS[math.min(4, qu)] end
 			if sm >= 1 and (e.smokeRadius or 0) > 0 then e.smokeRadius = SkillTree.HERRERA_SMOKE_RADIUS end
+		end
+		return e
+	end
+end
+
+-- v1.43: Iron Claw retune + the pass 3 parts around the 1.42 effects
+do
+	local effectsV142 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsV142(steps, dino)
+		if type(e) ~= "table" or not SkillTree.HERRERA_PARTS then return e end
+		local s = type(steps) == "table" and steps or {}
+		if SkillTree.HERRERA_IRONCLAW_TUNE then
+			local ic = s.ironclaw or 0
+			if ic >= 1 then
+				e.ironClawDamageMul = SkillTree.HERRERA_IRONCLAW_MULS[math.min(4, ic)]
+				e.ironClawSpeedMul = 1
+			end
+		end
+		if SkillTree.HERRERA_PASS3 then
+			local ca, go, ha = s.caltrops or 0, s.goo or 0, s.hadren or 0
+			e.caltropCount = ca >= 2 and 10 or (ca >= 1 and 6 or 0)
+			e.caltropRadius = ca >= 2 and 7 or (ca >= 1 and 5 or 0)
+			e.caltropTime = ca >= 3 and 14 or (ca >= 1 and 8 or 0)
+			e.caltropHidden = ca >= 4
+			e.caltropBleedDps, e.caltropBleedTime = ca >= 1 and 3 or 0, ca >= 1 and 3 or 0
+			e.caltropSlowMul, e.caltropSlowTime = ca >= 1 and 0.7 or 1, ca >= 1 and 1 or 0
+			e.caltropCooldown = 16
+			e.gooToss = go >= 1 and 30 or 0
+			e.gooRadius = go >= 2 and 11 or (go >= 1 and 8 or 0)
+			e.gooTime = go >= 4 and 8 or (go >= 1 and 5 or 0)
+			e.gooCount = go >= 3 and 2 or (go >= 1 and 1 or 0)
+			e.gooSlowMul = go >= 1 and 0.6 or 1
+			e.gooCooldown = 14
+			e.gooAssistAngle, e.gooAssistMin, e.gooAssistMax = 30, 15, 45
+			if dino == "Herrera" and ha >= 1 then
+				e.adrenHeal = ha >= 2 and 0.34 or 0.25
+				e.adrenTime, e.adrenSpeedMul, e.adrenStunClear = 3, 1.4, false
+				e.adrenCooldown = ha >= 3 and 14.8 or 20
+			end
+			e.adrenSlashRefill = dino == "Herrera" and ha >= 4
 		end
 		return e
 	end

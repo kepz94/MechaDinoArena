@@ -1,4 +1,4 @@
--- MechaButtons v1.24 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.25 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -219,7 +219,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.24"
+local VERSION = "1.25"
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -279,6 +279,16 @@ if HM_BTN then -- v1.24: Herrera parts pass 2
 	TIMED_PARTS.smoke = {"Smoke", "DinoSmokeRequest", "SMOKE PODS"}
 	TIMED_PARTS.strobe = {"Strobe", "DinoStrobeRequest", "STROBE FRILL"}
 	TIMED_PARTS.breaker = {"Breaker", "DinoBreakerRequest", "STUN BREAKER"}
+end
+-- v1.25 (Herrera parts pass 3, MDA-165 / 166 / 167; HerreraMovesServer 1.2, AdrenalineServer 1.5): normal presses for Razor
+--   Caltrops ("Caltrop", DinoCaltropRequest), Goo Blob Shooter ("Goo", DinoGooRequest: no aim mode, Kepu 15:49) and the
+--   Herrera's Adrenaline Injector ("hadren" -> "Adrenaline", DinoAdrenalineRequest). Switch: script attribute
+--   MechaButtonsHerreraPass3Enabled (default true, read at start; false = 1.24).
+if script:GetAttribute("MechaButtonsHerreraPass3Enabled") == nil then script:SetAttribute("MechaButtonsHerreraPass3Enabled", true) end
+if script:GetAttribute("MechaButtonsHerreraPass3Enabled") ~= false then
+	TIMED_PARTS.caltrops = {"Caltrop", "DinoCaltropRequest", "CALTROPS"}
+	TIMED_PARTS.goo = {"Goo", "DinoGooRequest", "GOO BLOB"}
+	TIMED_PARTS.hadren = {"Adrenaline", "DinoAdrenalineRequest", "ADRENALINE"}
 end
 -- v1.20: parts that use hold-to-aim
 local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off

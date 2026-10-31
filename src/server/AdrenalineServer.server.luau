@@ -1,4 +1,4 @@
--- AdrenalineServer v1.4 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
+-- AdrenalineServer v1.5 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
 -- a few seconds and run faster while it lasts. MDA-62, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Neck injector" (Kepu 2026-10-29).
 -- Settings come from the character (SkillEffects 1.6): AdrenalineEnabled (bought AND slotted), AdrenalineHeal (share of
@@ -54,12 +54,20 @@
 --   mannequin, not a player) with the same build code (AdrenalineEnabled = true, then build(model)) and returns its Model "Mecha_Adrenaline" (nil when
 --   nothing was built). LabPreviewServer 1.0 turns it into the Lab card model. The live part is unchanged. Switch: script
 --   attribute AdrenalineServerPreviewEnabled (default true; false -> returns nil).
+-- v1.5 (Herrera parts pass 3, MDA-167, plan docs/plans/HERRERA_PARTS_v1.0.md Part 11; Kepu 2026-10-31 "an adrenaline that
+--   works like raptors", star "refills slash charges", look A "Back Tanks"): the same request / heal / run / cooldown rules
+--   serve the Herrera's "hadren" (SkillEffects 1.30 writes the Adrenaline* attributes for it). On a character with Species
+--   "Herrera" no Mecha_Adrenaline model is built (HerreraPartsServer 1.3 builds the Herrera's Back Tanks; AdrenalineLook
+--   "herrera"); the green glow, the start pulse and the "+N" pops are unchanged. Switch: script attribute
+--   AdrenalineHerreraLookOff (default true, read at each build; false = the raptor look on a Herrera too). Star: on an "ok"
+--   request with the character's AdrenalineSlashRefill = true, the character gets SlashRefillAllAt = now (SlashServer 1.7
+--   refills every slash charge). Switch: AdrenalineSlashRefillEnabled (default true, read at each request).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local GREEN, DARK, GREY = Color3.fromRGB(95, 209, 106), Color3.fromRGB(44, 52, 64), Color3.fromRGB(154, 166, 182)
 
 script:SetAttribute("AdrenalineServerVersion", VERSION)
@@ -229,6 +237,10 @@ local function build(char)
 	end
 	if not on() or char:GetAttribute("AdrenalineEnabled") ~= true then
 		char:SetAttribute("AdrenalineLook", "none")
+		return
+	end
+	if char:GetAttribute("Species") == "Herrera" and script:GetAttribute("AdrenalineHerreraLookOff") ~= false then -- v1.5
+		char:SetAttribute("AdrenalineLook", "herrera")
 		return
 	end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -422,6 +434,9 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	char:SetAttribute("AdrenalineUntil", t + dur)
 	char:SetAttribute("AdrenalineReadyAt", t + dur + (tonumber(char:GetAttribute("AdrenalineCooldown")) or 0))
 	char:SetAttribute("AdrenalineCount", (char:GetAttribute("AdrenalineCount") or 0) + 1)
+	if char:GetAttribute("AdrenalineSlashRefill") == true and script:GetAttribute("AdrenalineSlashRefillEnabled") ~= false then -- v1.5
+		char:SetAttribute("SlashRefillAllAt", t)
+	end
 	char:SetAttribute("AdrenalineStartedAt", t) -- last: readers react to this one
 	trails(char, true)
 	plunge(char, true)

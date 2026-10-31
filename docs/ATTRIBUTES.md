@@ -2460,3 +2460,19 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ArenaSpawnKind "squad" | player | | ArenaSpawnServer 1.2 |
 | SquadHUDEnabled | SquadHUD script | true | SquadHUD 1.0 |
 | SquadHUDVersion / SquadHUDPanel / SquadHUDRows / SquadHUDInvite / SquadHUDLastPress | player (client) | "1.0" / "open"/"closed" / count / "shown"/"hidden" / last press | SquadHUD 1.0 |
+| CaltropEnabled / CaltropCount / CaltropRadius / CaltropTime / CaltropHidden / CaltropBleedDps / CaltropBleedTime / CaltropSlowMul / CaltropSlowTime / CaltropCooldown | character | bool / 6,10 / 5,7 / 8,14 s / star bool / 3 / 3 s / 0.7 / 1 s / 16 s | SkillTree 1.43 -> SkillEffects 1.30 |
+| GooEnabled / GooToss / GooRadius / GooTime / GooCount / GooSlowMul / GooCooldown / GooAssistAngle / GooAssistMin / GooAssistMax | character | bool / 30 / 8,11 / 5,8 s / 1,2 / 0.6 / 14 s / 30 deg / 15 / 45 studs | SkillTree 1.43 -> SkillEffects 1.30 |
+| HerreraAdrenEnabled / AdrenalineSlashRefill | character | bool / star bool | SkillEffects 1.30 |
+| SkillEffectsHerreraPass3Enabled | SkillEffects script | true | SkillEffects 1.30 |
+| CaltropDroppedAt / CaltropHits | character (owner) | server time / count | HerreraMovesServer 1.2 |
+| CaltropBleedUntil / CaltropBleedBy / CaltropHitAt / CaltropBleedTickAt / CaltropSlowMul / CaltropSlowUntil | character or bot (target) | server time / name / server time / server time / mul / server time | HerreraMovesServer 1.2 |
+| GooLand / GooAssistTarget / GooFiredAt | character (owner) | Vector3 / name or "" / server time | HerreraMovesServer 1.2 |
+| GooSlowMul / GooSlowUntil | character (target) | mul / server time | HerreraMovesServer 1.2 |
+| Patch_<UserId>: Owner / OwnerUserId / Until / Hidden / Scale / Spikes / DroppedAt | ReplicatedStorage.CaltropPatches Configuration | name / id / time / bool / scale / JSON [[x,y,z,used]] / time | HerreraMovesServer 1.2 |
+| HerreraMoves_caltropsEnabled / HerreraMoves_gooEnabled / HerreraMoves_gooAssistEnabled / CaltropDrops / CaltropTriggers / GooShots | HerreraMovesServer script | true / count | HerreraMovesServer 1.2 |
+| AdrenalineHerreraLookOff / SlashRefillAllAt | AdrenalineServer script / character | bool / server time | AdrenalineServer 1.5 |
+| SlashSkillLast "adrenRefill" | character | | SlashServer 1.7 |
+| SprintPass3SlowEnabled / MoveSpeedParts "caltrop" / "goo" | SprintTest script / character | true / names | SprintTest 1.16 |
+| AbilityBarHerreraPass3Enabled / MechaButtonsHerreraPass3Enabled | each script | true | AbilityBar 1.19 / MechaButtons 1.25 |
+| HerreraPartsFluidEnabled / HPartRole "fluid" | HerreraPartsServer script / part | true / role | HerreraPartsServer 1.3 |
+| HerreraMovesFXCaltropsEnabled | HerreraMovesFX script | true | HerreraMovesFX 1.3 |

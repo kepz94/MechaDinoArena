@@ -1,4 +1,4 @@
--- HerreraPartsServer v1.2 (Mecha Dino Arena) — puts the Herrera's mecha parts on (server-built, every client sees them)
+-- HerreraPartsServer v1.3 (Mecha Dino Arena) — puts the Herrera's mecha parts on (server-built, every client sees them)
 -- and builds their Lab card models. Plan docs/plans/HERRERA_PARTS_v1.0.md (MDA-149..156), Kepu 2026-10-31 "Build"; the
 -- looks are the picked mockups, same numbers: Iron Claw B "Hook Blades" (docs/mockups/herrera_ironclaw_options.html),
 -- Glider Wings A "Bat Membranes", Quill Launcher B "Spine Quills", Smoke Pods B "Tail Vents", Back Plating A "Spine
@@ -36,9 +36,19 @@
 --   rebuilt open (the Lab card look: full membranes, spar, finger rods); when it turns false it is rebuilt folded.
 --   HPart_glider attribute HPartOpen (true / false). Switch: script attribute HerreraPartsGlideOpenEnabled (default true,
 --   read on each change; false = 1.1, always folded on players).
+-- v1.3 (Herrera parts pass 3, MDA-165 / 166 / 167; mockup docs/mockups/herrera_parts_b3_options.html, Kepu picked A / A / A):
+--   caltrops CaltropEnabled -> "Tail Spreader" (hopper, 2 bands, 5 spike tips, rear chute on Tail1_main); goo GooEnabled ->
+--   "Hump Mortar" (base plate, tube tilted forward, lime muzzle ring, glass tank with a lime core on Torso_hump); hadren
+--   HerreraAdrenEnabled (SkillEffects 1.30) -> "Back Tanks" (2 glass tanks with green cores, steel caps, green feed tube on
+--   Torso_hump). Colours: lime Neon rgb(166, 226, 46), lime glass rgb(224, 255, 208), adrenaline Neon rgb(70, 224, 138),
+--   green glass rgb(216, 255, 240). The tank cores ("fluid" pieces) empty and refill: on AdrenalineStartedAt (Back Tanks)
+--   / GooFiredAt (mortar tank) their Transparency tweens to 0.8 over the boost (AdrenalineTime) / 0.3 s, then back to 0
+--   over the cooldown (AdrenalineCooldown / GooCooldown). Lab cards BuildPreview_caltrops / _goo / _hadren come from the
+--   same PARTS loop. Switch: HerreraParts_<id>Enabled for each (default true); HerreraPartsFluidEnabled (default true).
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local C = {
 	steel = {Color3.fromRGB(154, 166, 184), Enum.Material.Metal}, dark = {Color3.fromRGB(93, 104, 120), Enum.Material.Metal},
 	bright = {Color3.fromRGB(211, 219, 230), Enum.Material.Metal}, hot = {Color3.fromRGB(255, 98, 18), Enum.Material.Neon}, -- v1.1 (was 255, 138, 42: rendered yellow)
@@ -46,17 +56,21 @@ local C = {
 	blood = {Color3.fromRGB(208, 32, 42), Enum.Material.Neon}, led = {Color3.fromRGB(255, 231, 176), Enum.Material.Neon},
 	volt = {Color3.fromRGB(127, 233, 255), Enum.Material.Neon}, glass = {Color3.fromRGB(207, 232, 255), Enum.Material.Glass, 0.65},
 	canvas = {Color3.fromRGB(224, 116, 42), Enum.Material.SmoothPlastic, 0.1},
+	lime = {Color3.fromRGB(166, 226, 46), Enum.Material.Neon}, limeGlass = {Color3.fromRGB(224, 255, 208), Enum.Material.Glass, 0.65}, -- v1.3
+	adr = {Color3.fromRGB(70, 224, 138), Enum.Material.Neon}, adrGlass = {Color3.fromRGB(216, 255, 240), Enum.Material.Glass, 0.65}, -- v1.3
 }
 local PARTS = {
 	{id = "ironclaw", flag = "IronClawEnabled"}, {id = "glider", flag = "GliderEnabled"}, {id = "quills", flag = "QuillEnabled"},
 	{id = "smoke", flag = "SmokeEnabled"}, {id = "plating", flag = "PlatingEnabled"}, {id = "siphon", flag = "SiphonEnabled"},
 	{id = "strobe", flag = "StrobeEnabled"}, {id = "breaker", flag = "BreakerEnabled"},
+	{id = "caltrops", flag = "CaltropEnabled"}, {id = "goo", flag = "GooEnabled"}, {id = "hadren", flag = "HerreraAdrenEnabled"}, -- v1.3
 }
 local HIDES = {quills = true, plating = true} -- hide the 7 back quills
 
 script:SetAttribute("HerreraPartsServerVersion", VERSION)
 if script:GetAttribute("HerreraPartsServerEnabled") == nil then script:SetAttribute("HerreraPartsServerEnabled", true) end
 local enabled = script:GetAttribute("HerreraPartsServerEnabled") ~= false
+if script:GetAttribute("HerreraPartsFluidEnabled") == nil then script:SetAttribute("HerreraPartsFluidEnabled", true) end -- v1.3
 for _, p in ipairs(PARTS) do
 	if script:GetAttribute("HerreraParts_" .. p.id .. "Enabled") == nil then script:SetAttribute("HerreraParts_" .. p.id .. "Enabled", true) end
 end
@@ -172,8 +186,42 @@ local function breaker()
 	end
 	return out
 end
+-- v1.3: pass 3 looks (look A each)
+local function caltrops()
+	local out = {
+		{"Tail1_main", {0.85, 0.5, 0.6}, {0, 0.42, 0}, {0, 0, 0}, "dark", "hopper"},
+		{"Tail1_main", {0.3, 0.26, 0.5}, {0.52, 0.32, 0}, {0, 0, -20}, "steel", "chute"},
+	}
+	for _, x in ipairs({-0.3, 0.3}) do table.insert(out, {"Tail1_main", {0.08, 0.54, 0.64}, {x, 0.42, 0}, {0, 0, 0}, "steel"}) end
+	for i = 0, 4 do
+		local x, z, r = -0.3 + i * 0.15, (i % 2 == 1) and 0.12 or -0.12, (i - 2) * 12
+		table.insert(out, {"Tail1_main", {0.09, 0.26, 0.09}, {x, 0.78, z}, {0, 0, r}, "steel", "spike"})
+		table.insert(out, {"Tail1_main", {0.07, 0.1, 0.07}, {x, 0.93, z}, {0, 0, r}, "blood", "spikeTip"})
+	end
+	return out
+end
+local function goo()
+	local out = {
+		{"Torso_hump", {0.9, 0.12, 0.8}, {0, 0.32, 0}, {0, 0, 0}, "dark", "base"},
+		{"Torso_hump", {0.5, 1.0, 0.5}, {0.22, 0.85, 0}, {0, 0, -32}, "steel", "tube"},
+		{"Torso_hump", {0.58, 0.14, 0.58}, {0.48, 1.27, 0}, {0, 0, -32}, "lime", "muzzle"},
+		{"Torso_hump", {0.6, 0.55, 0.6}, {-0.42, 0.62, 0}, {0, 0, 0}, "limeGlass", "tank"},
+		{"Torso_hump", {0.42, 0.4, 0.42}, {-0.42, 0.6, 0}, {0, 0, 0}, "lime", "fluid"},
+	}
+	for _, y in ipairs({0.36, 0.88}) do table.insert(out, {"Torso_hump", {0.64, 0.06, 0.64}, {-0.42, y, 0}, {0, 0, 0}, "steel"}) end
+	return out
+end
+local function hadren()
+	local out = {{"Torso_hump", {0.9, 0.1, 0.1}, {0.45, 1.0, 0}, {0, 0, -25}, "adr", "tube"}}
+	for _, z in ipairs({0.27, -0.27}) do
+		table.insert(out, {"Torso_hump", {0.34, 0.85, 0.34}, {-0.1, 0.72, z}, {0, 0, 0}, "adrGlass", "tank"})
+		table.insert(out, {"Torso_hump", {0.24, 0.7, 0.24}, {-0.1, 0.66, z}, {0, 0, 0}, "adr", "fluid"})
+		for _, y in ipairs({1.17, 0.28}) do table.insert(out, {"Torso_hump", {0.38, 0.1, 0.38}, {-0.1, y, z}, {0, 0, 0}, "steel"}) end
+	end
+	return out
+end
 local BUILD = {ironclaw = ironclaw, glider = glider, quills = quills, smoke = smoke, plating = plating, siphon = siphon,
-	strobe = strobe, breaker = breaker}
+	strobe = strobe, breaker = breaker, caltrops = caltrops, goo = goo, hadren = hadren} -- v1.3: + pass 3
 
 -- ---------- build / remove ----------
 local function find(char, name)
@@ -289,6 +337,27 @@ local function onCharacter(char)
 			g:Destroy()
 			apply(char)
 		end
+	end)
+	-- v1.3: tank cores empty on use and refill over the cooldown
+	local function drain(id, emptyTime, refillTime)
+		if script:GetAttribute("HerreraPartsFluidEnabled") == false then return end
+		local m = char:FindFirstChild("HPart_" .. id)
+		if not m then return end
+		for _, d in ipairs(m:GetChildren()) do
+			if d:IsA("BasePart") and d:GetAttribute("HPartRole") == "fluid" then
+				local down = TweenService:Create(d, TweenInfo.new(math.max(0.05, emptyTime), Enum.EasingStyle.Linear), {Transparency = 0.8})
+				down.Completed:Connect(function()
+					if d.Parent then TweenService:Create(d, TweenInfo.new(math.max(0.1, refillTime), Enum.EasingStyle.Linear), {Transparency = 0}):Play() end
+				end)
+				down:Play()
+			end
+		end
+	end
+	char:GetAttributeChangedSignal("AdrenalineStartedAt"):Connect(function()
+		drain("hadren", tonumber(char:GetAttribute("AdrenalineTime")) or 3, tonumber(char:GetAttribute("AdrenalineCooldown")) or 20)
+	end)
+	char:GetAttributeChangedSignal("GooFiredAt"):Connect(function()
+		drain("goo", 0.3, (tonumber(char:GetAttribute("GooCooldown")) or 14) - 0.3)
 	end)
 	task.defer(apply, char)
 end

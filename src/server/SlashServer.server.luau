@@ -1,4 +1,4 @@
--- SlashServer v1.6 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.7 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -101,7 +101,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local TIME_SLACK = 0.6      -- s after the dash time a claim is still accepted (client -> server lag)
 local PATH_TOLERANCE = 6    -- studs (x scale) between the target's hitboxes and the dash path, on top of SlashReach
 local DIVE_SLACK = 3        -- studs (x scale) added to SlashDiveRange for the request check (the target moves)
@@ -201,11 +201,24 @@ local function publish(char, st)
 	char:SetAttribute("SlashRefillAt", st.refillAt or 0)
 end
 
+-- v1.7 (Herrera Adrenaline Injector star, MDA-167; AdrenalineServer 1.5): SlashRefillAllAt on the character (a new server
+--   time) refills every slash charge, the Blood Frenzy star's refill path (addCharges to max, SlashSkillLast
+--   "adrenRefill"). Switch: script attribute SlashAdrenRefillEnabled (default true, read at each change).
+local adrenRefillFn -- set below, once addCharges / skillEvent exist
+local function watchAdrenRefill(char)
+	char:GetAttributeChangedSignal("SlashRefillAllAt"):Connect(function()
+		if script:GetAttribute("SlashAdrenRefillEnabled") == false then return end
+		local st = chars[char]
+		if st and adrenRefillFn then adrenRefillFn(char, st) end
+	end)
+end
+
 local function track(char)
 	if chars[char] or char:GetAttribute("SlashEnabled") ~= true then return end
 	local st = {charges = maxCharges(char), active = nil}
 	chars[char] = st
 	publish(char, st)
+	watchAdrenRefill(char) -- v1.7
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then chars[char] = nil end
 	end)
@@ -408,6 +421,10 @@ local function addCharges(char, st, n)
 	st.charges = math.min(m, st.charges + n)
 	if st.charges >= m then st.refillStart, st.refillAt = nil, nil end
 	publish(char, st)
+end
+adrenRefillFn = function(char, st) -- v1.7
+	addCharges(char, st, maxCharges(char))
+	skillEvent(char, "adrenRefill")
 end
 
 local bleeds = {} -- [model] = {untilT, nextTick, by, byId, dps, tick}

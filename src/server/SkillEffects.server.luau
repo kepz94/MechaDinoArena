@@ -1,4 +1,4 @@
--- SkillEffects v1.29 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.30 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -185,10 +185,22 @@
 --   follow-ups never land on one (backstop; the hit servers already refuse squadmates). Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
 --   SquadTestId counts). Switch: script attribute SkillEffectsSquadEnabled (default true, read at each check; false = 1.28).
 --   Diagnostic: script SkillEffectsSquadSkips (count of squadmate skips / refusals).
+-- v1.30 (Herrera parts pass 3, MDA-164, SkillTree 1.43; switch script attribute SkillEffectsHerreraPass3Enabled, default
+--   true, read at start; false = 1.29): on a Herrera with the part bought AND slotted (off values otherwise) -
+--     Razor Caltrops: CaltropEnabled, CaltropCount, CaltropRadius, CaltropTime, CaltropHidden, CaltropBleedDps,
+--       CaltropBleedTime, CaltropSlowMul, CaltropSlowTime, CaltropCooldown (HerreraMovesServer 1.2);
+--     Goo Blob Shooter: GooEnabled, GooToss, GooRadius, GooTime, GooCount, GooSlowMul, GooCooldown, GooAssistAngle,
+--       GooAssistMin, GooAssistMax (HerreraMovesServer 1.2);
+--     Adrenaline Injector ("hadren"): HerreraAdrenEnabled + HerreraAdrenSlashRefill (HerreraPartsServer 1.3's Back Tanks),
+--       and the raptor's Adrenaline* attributes (AdrenalineServer, unchanged maths) are written when "hadren" is in a slot on
+--       a Herrera, plus AdrenalineSlashRefill (star; AdrenalineServer 1.5 refills the slash charges).
+--   Blood Siphon also counts a dino whose CaltropBleedUntil is in the future as bleeding.
+--   Iron Claw / Blood Siphon / Back Plating are stat rows from SkillTree 1.43 (mech = false); they were already "on when
+--   bought" (not in BUTTONS), so their writes are unchanged.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.29" -- v1.28 (1.27 left this at "1.26"); v1.29 squads
+local VERSION = "1.30" -- v1.28 (1.27 left this at "1.26"); v1.29 squads; v1.30 Herrera pass 3
 if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
 local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false
 if script:GetAttribute("SkillEffectsHerreraPartsEnabled") == nil then script:SetAttribute("SkillEffectsHerreraPartsEnabled", true) end -- v1.27
@@ -205,6 +217,17 @@ local HPARTS = { -- v1.27: {path id, prefix, {attribute, effect field, off value
 		{"Cooldown", "strobeCooldown", 0}}},
 	{"breaker", "Breaker", {{"Push", "breakerPush", 0}, {"Cooldown", "breakerCooldown", 0}, {"Immune", "breakerImmune", 0}}},
 }
+if script:GetAttribute("SkillEffectsHerreraPass3Enabled") == nil then script:SetAttribute("SkillEffectsHerreraPass3Enabled", true) end -- v1.30
+local HPASS3_ON = script:GetAttribute("SkillEffectsHerreraPass3Enabled") ~= false
+if HPASS3_ON then -- v1.30
+	table.insert(HPARTS, {"caltrops", "Caltrop", {{"Count", "caltropCount", 0}, {"Radius", "caltropRadius", 0}, {"Time", "caltropTime", 0},
+		{"Hidden", "caltropHidden", false}, {"BleedDps", "caltropBleedDps", 0}, {"BleedTime", "caltropBleedTime", 0},
+		{"SlowMul", "caltropSlowMul", 1}, {"SlowTime", "caltropSlowTime", 0}, {"Cooldown", "caltropCooldown", 0}}})
+	table.insert(HPARTS, {"goo", "Goo", {{"Toss", "gooToss", 0}, {"Radius", "gooRadius", 0}, {"Time", "gooTime", 0},
+		{"Count", "gooCount", 0}, {"SlowMul", "gooSlowMul", 1}, {"Cooldown", "gooCooldown", 0}, {"AssistAngle", "gooAssistAngle", 0},
+		{"AssistMin", "gooAssistMin", 0}, {"AssistMax", "gooAssistMax", 0}}})
+	table.insert(HPARTS, {"hadren", "HerreraAdren", {{"SlashRefill", "adrenSlashRefill", false}}})
+end
 local HERRERA_BASES = {SlashRefill = 4, SlashCharges = 2, SlashBleedDps = 3, SlashBleedTime = 4, SlashDiveRange = 20,
 	ClimbSpeed = 10} -- v1.26
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
@@ -337,7 +360,9 @@ local function applyChar(char, st)
 	char:SetAttribute("BladeBleedDps", bladeOn and (e.bladeBleedDps or 0) or 0)
 	char:SetAttribute("BladeBleedTime", bladeOn and (e.bladeBleedTime or 0) or 0)
 	char:SetAttribute("BladePinRefund", bladeOn and (e.bladePinRefund or 0) or 0)
-	local adOn = live and (e.adrenTime or 0) > 0 and inSlot("adrenaline")
+	local adOn = live and (e.adrenTime or 0) > 0 and (inSlot("adrenaline")
+		or (HPASS3_ON and char:GetAttribute("Species") == "Herrera" and inSlot("hadren"))) -- v1.30: the Herrera's injector
+	char:SetAttribute("AdrenalineSlashRefill", adOn and e.adrenSlashRefill == true or false) -- v1.30
 	char:SetAttribute("AdrenalineEnabled", adOn)
 	char:SetAttribute("AdrenalineHeal", adOn and e.adrenHeal or 0)
 	char:SetAttribute("AdrenalineTime", adOn and e.adrenTime or 0)
@@ -683,6 +708,7 @@ if HPARTS_ON then
 						local pos = r and r.Position or m:GetPivot().Position
 						if (pos - hrp.Position).Magnitude <= range then
 							local bleeding = (tonumber(m:GetAttribute("SlashBleedUntil")) or 0) > t or (tonumber(m:GetAttribute("SkillBleedUntil")) or 0) > t
+								or (HPASS3_ON and (tonumber(m:GetAttribute("CaltropBleedUntil")) or 0) > t) -- v1.30
 							if bleeding and m:GetAttribute("DummyState") ~= "ko" then n += 1 end
 							local kh = tonumber(char:GetAttribute("SiphonKillHeal")) or 0
 							local kAt = tonumber(m:GetAttribute("KilledAt"))

@@ -1,4 +1,4 @@
--- AbilityBar v1.18 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.19 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -117,7 +117,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.18"
+local VERSION = "1.19"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -151,6 +151,13 @@ if script:GetAttribute("AbilityBarHerreraPartsEnabled") == nil then script:SetAt
 local HPARTS_TILE = script:GetAttribute("AbilityBarHerreraPartsEnabled") ~= false
 if HPARTS_TILE then -- v1.18: Herrera parts pass 2
 	TIMED_PARTS.quills, TIMED_PARTS.smoke, TIMED_PARTS.strobe = "Quill", "Smoke", "Strobe"
+end
+-- v1.19 (Herrera parts pass 3, MDA-165 / 166 / 167): tiles for Razor Caltrops ("Caltrop"), Goo Blob Shooter ("Goo") and the
+--   Herrera's Adrenaline Injector ("hadren" -> the shared "Adrenaline" attributes). Switch: script attribute
+--   AbilityBarHerreraPass3Enabled (default true, read at start; false = 1.18).
+if script:GetAttribute("AbilityBarHerreraPass3Enabled") == nil then script:SetAttribute("AbilityBarHerreraPass3Enabled", true) end
+if script:GetAttribute("AbilityBarHerreraPass3Enabled") ~= false then
+	TIMED_PARTS.caltrops, TIMED_PARTS.goo, TIMED_PARTS.hadren = "Caltrop", "Goo", "Adrenaline"
 end
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 

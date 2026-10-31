@@ -1,4 +1,4 @@
--- HerreraMovesFX v1.2 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
+-- HerreraMovesFX v1.3 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/HERRERA_PARTS_v1.0.md Parts 3, 4, 7, 8 and "Pass 2 — build map"; the moves are
 -- HerreraMovesServer 1.0, the looks HerreraPartsServer 1.2. Runs for every player character (yours and others') and for
 -- Workspace.DinoIsland.Bots. Everything is local (Workspace "HerreraMovesFX"), nothing is replicated.
@@ -32,10 +32,18 @@
 --   HerreraMovesFX_SmokeOutlineTransparency default 0.15), so you see through it and only its outline shows. Other
 --   players' clouds are unchanged (solid). Switch: script attribute HerreraMovesFXSmokeOutlineEnabled (default true, read
 --   at each cloud; false = 1.1, own cloud at SmokeOwnTransparency).
+-- v1.3 (Herrera parts pass 3, MDA-165, HerreraMovesServer 1.2): Razor Caltrops spikes are drawn here from
+--   ReplicatedStorage.CaltropPatches (one Configuration per patch, attribute Spikes = JSON [[x, y, z, used], ...]): each
+--   unused spike = 3 crossed steel bars (0.2 x 1.1 x 0.2 x the patch Scale) with blood-red Neon tips, anchored, no
+--   collide / query / touch, in Workspace.HerreraMovesFX.Caltrops; used spikes vanish (a small red spark burst). Who sees
+--   a patch: everyone while Hidden is false; while Hidden is true (star) only its owner (drawn at 0.5 transparency) and
+--   the owner's squadmates (ReplicatedStorage.SquadShared.SquadRules.same). A new patch appears at once (no drop animation).
+--   Switch: script attribute HerreraMovesFXCaltropsEnabled (default true, read at each update; false = no spikes drawn).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local QUILL_GAP, QUILL_SPEED = 0.045, 90
 local SMOKE_PUFFS = 70
 local HOT = Color3.fromRGB(255, 98, 18)
@@ -471,3 +479,118 @@ RunService.Heartbeat:Connect(function()
 	end
 	for m in pairs(stars) do if not live[m] then clearStars(m) end end
 end)
+
+-- v1.3: Razor Caltrops spikes ------------------------------------------------------------------------------------------
+do
+	local RS = game:GetService("ReplicatedStorage")
+	local folder = RS:WaitForChild("CaltropPatches", 30)
+	local calF = Instance.new("Folder")
+	calF.Name = "Caltrops"
+	calF.Parent = fxFolder
+	local BLOOD = Color3.fromRGB(208, 32, 42)
+	local drawn = {} -- [cfg] = {model, spikes = {[i] = Model}}
+	local squadMod
+	local function squadmate(userId)
+		local sh = RS:FindFirstChild("SquadShared")
+		local m = sh and sh:FindFirstChild("SquadRules")
+		if not squadMod and m then
+			local ok, mod = pcall(require, m)
+			if ok then squadMod = mod end
+		end
+		local owner = Players:GetPlayerByUserId(userId)
+		return squadMod ~= nil and owner ~= nil and squadMod.same(me, owner)
+	end
+	local function piece(parent, size, cf, color, mat, transp)
+		local p = Instance.new("Part")
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = mat
+		p.Transparency = transp
+		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+		p.Parent = parent
+		return p
+	end
+	local function spike(parent, pos, sc, transp, i)
+		local m = Instance.new("Model")
+		m.Name = "Spike_" .. i
+		local base = CFrame.new(pos + Vector3.new(0, 0.35 * sc, 0)) * CFrame.Angles(0, i * 1.7, 0)
+		for k, r in ipairs({Vector3.new(0, 0, 0.6), Vector3.new(math.pi / 2, 0, 0.6), Vector3.new(0, math.pi / 2, math.pi / 2 + 0.6)}) do
+			local cf = base * CFrame.Angles(r.X, r.Y, r.Z)
+			piece(m, Vector3.new(0.2, 1.1, 0.2) * sc, cf, STEEL, Enum.Material.Metal, transp)
+			if k == 1 then
+				piece(m, Vector3.new(0.26, 0.26, 0.26) * sc, cf * CFrame.new(0, 0.58 * sc, 0), BLOOD, Enum.Material.Neon, transp)
+				piece(m, Vector3.new(0.26, 0.26, 0.26) * sc, cf * CFrame.new(0, -0.58 * sc, 0), BLOOD, Enum.Material.Neon, transp)
+			end
+		end
+		m.Parent = parent
+		return m
+	end
+	local function burst(pos)
+		for _ = 1, 6 do
+			local p = piece(calF, Vector3.new(0.25, 0.25, 0.25), CFrame.new(pos + Vector3.new(0, 0.5, 0)), BLOOD, Enum.Material.Neon, 0)
+			local v = Vector3.new(math.random() - 0.5, 1, math.random() - 0.5) * 6
+			local t0 = os.clock()
+			local conn
+			conn = RunService.RenderStepped:Connect(function()
+				local u = (os.clock() - t0) / 0.4
+				if u >= 1 or not p.Parent then conn:Disconnect() p:Destroy() return end
+				p.CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0) + v * u * 0.4 + Vector3.new(0, -4 * u * u, 0))
+				p.Transparency = u
+			end)
+		end
+	end
+	local function update(cfg)
+		local d = drawn[cfg]
+		local visible = on() and script:GetAttribute("HerreraMovesFXCaltropsEnabled") ~= false and cfg.Parent ~= nil
+		local own = cfg:GetAttribute("OwnerUserId") == me.UserId
+		if visible and cfg:GetAttribute("Hidden") == true and not own and not squadmate(cfg:GetAttribute("OwnerUserId")) then visible = false end
+		if not visible then
+			if d then d.model:Destroy() drawn[cfg] = nil end
+			return
+		end
+		local ok, list = pcall(function() return HttpService:JSONDecode(cfg:GetAttribute("Spikes") or "[]") end)
+		if not ok or type(list) ~= "table" then return end
+		local sc = tonumber(cfg:GetAttribute("Scale")) or 1
+		local transp = (cfg:GetAttribute("Hidden") == true) and 0.5 or 0
+		if not d then
+			d = {model = Instance.new("Model"), spikes = {}}
+			d.model.Name = cfg.Name
+			d.model.Parent = calF
+			drawn[cfg] = d
+		end
+		for i, e in ipairs(list) do
+			local pos = Vector3.new(e[1], e[2], e[3])
+			local used = e[4] == 1
+			local m = d.spikes[i]
+			if used and m then
+				burst(pos)
+				m:Destroy()
+				d.spikes[i] = false
+			elseif not used and m == nil then
+				d.spikes[i] = spike(d.model, pos, sc, transp, i)
+			end
+		end
+		count()
+	end
+	local function track(cfg)
+		if not cfg:IsA("Configuration") then return end
+		update(cfg)
+		cfg:GetAttributeChangedSignal("Spikes"):Connect(function() update(cfg) end)
+		cfg:GetAttributeChangedSignal("Hidden"):Connect(function()
+			local d = drawn[cfg]
+			if d then d.model:Destroy() drawn[cfg] = nil end
+			update(cfg)
+		end)
+		cfg.AncestryChanged:Connect(function(_, parent)
+			if not parent then
+				local d = drawn[cfg]
+				if d then d.model:Destroy() drawn[cfg] = nil end
+			end
+		end)
+	end
+	if folder then
+		folder.ChildAdded:Connect(track)
+		for _, c in ipairs(folder:GetChildren()) do task.spawn(track, c) end
+	end
+end
