@@ -2442,3 +2442,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ArenaSpawnKind / ArenaSpawnNearTo | player | "near"/"ring" / name | ArenaSpawnServer 1.1 |
 | HERRERA_SIPHON_PASSIVE / HERRERA_IRONCLAW_PASSIVE (module flags) | SkillTree | true / true | SkillTree 1.42 |
 | SkillEffectsHerreraPassiveEnabled | SkillEffects script | true | SkillEffects 1.28 |
+| HERRERA_PLATING_PASSIVE (module flag) | SkillTree | true | SkillTree 1.42 |

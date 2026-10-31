@@ -178,7 +178,7 @@
 --   SiphonKillHeal x MaxHealth once per kill. Diagnostics: character SiphonBleeding (count in range), SiphonHealAt (last).
 -- v1.28 (Kepu 2026-10-31: "Blood siphon should be passive actually"; SkillTree 1.42 takes "siphon" out of BUTTONS): a
 --   Herrera part that is not a button part (ST.BUTTONS[id] ~= true) is on whenever it is bought, slotted or not; button
---   parts still need a slot. Today: Blood Siphon and Iron Claw. Switch: script attribute SkillEffectsHerreraPassiveEnabled
+--   parts still need a slot. Today: Blood Siphon, Iron Claw and Back Plating. Switch: script attribute SkillEffectsHerreraPassiveEnabled
 --   (default true, read at each apply; false = 1.27, every Herrera part needs a slot).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")

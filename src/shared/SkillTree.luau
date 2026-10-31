@@ -107,7 +107,8 @@
 --   raptor's Blade Claws. The Lab lists it with the always-on parts on the STATS tab ("Mech part · always on"); a saved
 --   loadout slot holding it is dropped by sanitizeLoadout (not slottable). Step texts and effects unchanged.
 --   Kepu, right after: "And claws" -> SkillTree.HERRERA_IRONCLAW_PASSIVE (default true): "ironclaw" (Iron Claw) leaves
---   BUTTONS the same way.
+--   BUTTONS the same way. Then "Yes make it passive too" -> SkillTree.HERRERA_PLATING_PASSIVE (default true): "plating"
+--   (Back Plating) too.
 -- v1.41 (Kepu 2026-10-31 after playing pass 2: "We need the smoke cloud to be way bigger and thicker. Also lower the
 --   quill count to 6 quills"; picked smoke "B · 28 studs, 260 puffs" and quills "3 / 4 / 5 / 6"): switch
 --   SkillTree.HERRERA_TUNE_1 (default true). effects() is wrapped (the 1.38 maths unchanged inside): on a Herrera with the
@@ -861,6 +862,8 @@ SkillTree.HERRERA_SIPHON_PASSIVE = true
 if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_SIPHON_PASSIVE then SkillTree.BUTTONS.siphon = nil end
 SkillTree.HERRERA_IRONCLAW_PASSIVE = true -- v1.42: "And claws"
 if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_IRONCLAW_PASSIVE then SkillTree.BUTTONS.ironclaw = nil end
+SkillTree.HERRERA_PLATING_PASSIVE = true -- v1.42: "Yes make it passive too"
+if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_PLATING_PASSIVE then SkillTree.BUTTONS.plating = nil end
 if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_TUNE_1 then
 	if SkillTree.PATHS.quills then
 		SkillTree.PATHS.quills.steps = {"Button: fire 3 quills at your target, 4 damage each (40 studs). Recharges in 20 s",
