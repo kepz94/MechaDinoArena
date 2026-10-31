@@ -20,6 +20,17 @@
 | # | Part | Spec | Mockup | Built |
 |---|---|---|---|---|
 | 1 | Iron Claw (Hook Blades) MDA-149 | done (below) | docs/mockups/herrera_ironclaw_options.html, look B; video docs/reference/herrera/mockup_ironclaw_B.mp4 | no |
+| 2 | Glider Wings (Bat Membranes) | done (below) | docs/mockups/herrera_parts_b1_options.html, look A; video docs/reference/herrera/mockup_parts_b1_glider.mp4 | no |
+| 3 | Quill Launcher (Spine Quills) | done (below) | same page, look B; video mockup_parts_b1_quills.mp4 | no |
+| 4 | Smoke Pods (Tail Vents) | done (below) | same page, look B; video mockup_parts_b1_smoke.mp4 | no |
+| 5 | Back Plating (Spine Scutes) | done (below) | same page, look A; video mockup_parts_b1_plating.mp4 | no |
+
+The Herrera ends with 5 parts (Kepu picked these 4 from 16 ideas on 2026-10-31). More can be added later the same way.
+
+**Shared for parts 2–5:**
+- Steel / dark steel / hot-orange accent, the same colours as Iron Claw (STEEL rgb(154, 166, 184), DARK rgb(93, 104, 120), HOT rgb(255, 138, 42)). The membrane canvas is rgb(224, 116, 42).
+- Sizes are at model scale 1 (×2 in game).
+- Mockup sources live in tools/mockup/ (parts_b1_app.js and parts_b1_head.html, built by build2.py).
 
 ---
 
@@ -141,3 +152,202 @@ Numbers on the Herrera (server rounding `floor(x + 0.5)`):
 - No camera shake.
 - The T-Rex, Raptor and Pachy are unchanged.
 - Tested on PC, gamepad and the phone layout before publish.
+
+---
+
+## Part 2 — Glider Wings (`glider`) · SPEED · Herrera only
+
+### Decisions (Kepu 2026-10-31)
+- Chosen from the mobility ideas.
+- Steps: "Glide strike".
+- Look: A · Bat Membranes.
+
+### Steps
+| Step | Effect |
+|---|---|
+| I | Glide: hold JUMP in the air, fall at 8 studs/s, keep your run speed forward. |
+| II | SLASH while gliding = drop attack on anything below (55 studs). |
+| III | Drop attack from a glide +30% damage. |
+| ★ | The glide drop lands with a bleed burst: every dino within 10 studs bleeds. This uses the Herrera's normal slash bleed (3/s, or 5/s with Razor Claws III). |
+
+### How it works
+- Takes a slot. There's no key of its own: it acts through JUMP, like Mecha Legs.
+- No cooldown.
+- Gliding:
+  - Starts when JUMP is held while airborne and falling: after any leap, a tree hop, or stepping off a ledge.
+  - Ends on landing, on a grab onto a trunk (ClimbTest), or when JUMP is released.
+  - While gliding, the vertical speed is clamped to −8 studs/s, and the horizontal speed is held at the run speed (after Iron Claw / Frenzy multipliers) in the facing direction, steerable by the stick.
+- II:
+  - SlashServer accepts kind "dive" while the character attribute `Gliding` is true, the same as on a tree.
+  - The target rules are unchanged: below you, within SlashDiveRange (Tree Stalker raises it).
+  - Only drop attacks get the glide bonus; the ground slash doesn't.
+- III: the dive hit × 1.3 when it started from a glide.
+- ★: on a glide-dive hit, apply the slash bleed to every Bitable model within 10 studs (× scale) of the landing point, the hit target included.
+
+### Look (A · Bat Membranes)
+- Welded to `Torso_chest`, both sides (chest local Z = side), massless, no collision:
+  - three membrane panels (chord 1.9 / 1.6 / 1.15, span 1.3 / 2.4 / 3.6 from 0.62 out), canvas colour, transparency 0.1;
+  - a steel leading-edge spar (3.8 long);
+  - three dark finger rods fanned at −25° / −50° / −75° (3.4 / 2.6 / 1.7 long);
+  - a hot-orange Neon shoulder hub;
+  - a steel rod along each forearm.
+- **Folded:** span scaled to 5% from the body edge (a thin strip at the chest sides).
+- **Opening:** opens in 0.2 s when the glide starts and folds in 0.25 s on landing.
+- **Glide pose:** arms out (roll −55 on the left / +55 on the right, pitch +20), legs trailing (pitch −45), tail straightened (×0.2 of the scurry tail), body pitch +14.
+
+### Acceptance
+- Hold JUMP after a leap or tree hop → the wings open and you glide at a fall of 8 studs/s.
+- Release JUMP or land → the wings fold.
+- II: SLASH while gliding does a drop attack on a target below within range.
+- III: that drop attack does +30%.
+- ★: it also makes every dino within 10 studs bleed.
+- No effect when not slotted.
+
+---
+
+## Part 3 — Quill Launcher (`quills`) · ATTACK · Herrera only
+
+### Decisions (Kepu 2026-10-31)
+- Volley.
+- "No bleed we'll just increase the quill count. Have it have a long cooldown."
+- Look: B · Spine Quills.
+
+### Steps
+| Step | Effect |
+|---|---|
+| I | Fire 5 quills at your target, 4 damage each (40 studs). |
+| II | 8 quills. |
+| III | 12 quills. |
+| ★ | 17 quills. |
+
+### How it works
+- Takes a slot and fires on its slot key.
+- Cooldown 20 s.
+- Target:
+  - the Bitable model closest to your aim within a 40-stud × scale cone of 35° in front of you (the same target pick as the slash dive);
+  - without a target, the quills fly straight ahead 40 studs.
+- Firing:
+  - quills leave the 7 spine tubes in turn, one every 0.045 s;
+  - each flies on a slight arc at 45 studs/s (model ×2 → 90 studs/s in game);
+  - each hit does 4 damage (DummyHealth).
+- Hits are server-checked: the server fixes the target and the count at the request, and applies the damage at the computed flight time.
+- No bleed, no slow.
+
+### Look (B · Spine Quills)
+- The 7 `Torso_quill1..7` parts are hidden and replaced, each welded to its quill:
+  - a steel tube (width ×1.9, length ×1.15);
+  - a hot-orange Neon tip;
+  - a dark collar.
+- Fired quills are steel shafts (1.3 long) with a hot-orange tip and dark fletching.
+
+### Feel (arcade)
+- A small recoil nod per quill.
+- A white number "4" per hit.
+- A big yellow total with "N QUILLS × 4" once all have landed.
+- The slot tile shows the 20 s cooldown sweep.
+
+### Acceptance
+- Pressing the slot key fires 5 / 8 / 12 / 17 quills for I–★, at 4 damage each, up to 40 studs.
+- Then a 20 s cooldown.
+- No bleed.
+- The spine quills are steel with glowing tips only while slotted.
+
+---
+
+## Part 4 — Smoke Pods (`smoke`) · TRICKSTER · Herrera only
+
+### Decisions (Kepu 2026-10-31)
+- Vanish cloud.
+- Look: B · Tail Vents.
+
+### Steps
+| Step | Effect |
+|---|---|
+| I | Smoke cloud (12 studs) for 4 s: inside it your name and health bar are hidden, and bots lose you. |
+| II | The cloud lasts 6 s. |
+| III | Run 25% faster inside the smoke. |
+| ★ | Enemies inside the smoke are slowed 25%. |
+
+### How it works
+- Takes a slot and fires on its slot key.
+- Cooldown 18 s.
+- The cloud stays where it was dropped, as a 12-stud × scale radius sphere around the drop point.
+- **While you're inside:**
+  - your BillboardGuis are hidden for other players (the TreeTopHide pattern);
+  - bots targeting you drop their target (BotHunt's target is cleared, with a "?" pop) and go back to wandering;
+  - they can't pick you as a target until you leave the cloud.
+- **III:** run speed × 1.25 while you're inside (SprintTest, MoveSpeedParts "smoke").
+- **★:** any other character or bot inside gets a 25% slow while inside (the SprintTest pattern for players, the bot's walk speed for bots).
+- **Visual:** about 70 round cartoon puffs (white / light grey Ball parts, 0.8–2.1 radius × scale) that pop out from the vents in 0.35 s, wobble gently, and fade over 0.6 s at the end. A "POOF!" pop.
+
+### Look (B · Tail Vents)
+- Welded to `Tail1_main`:
+  - a dark vent block (0.70 × 0.62 × 0.62);
+  - a hot-orange Neon intake ring;
+  - 3 steel nozzles angled back 25°.
+- The smoke bursts out of the nozzles.
+
+### Acceptance
+- The slot key drops a 12-stud cloud for 4 s (6 s from II).
+- Inside it: your name and bar are hidden and bots lose you.
+- III: +25% run inside.
+- ★: enemies inside are slowed 25%.
+- 18 s cooldown.
+- The tail vents show only while slotted.
+
+---
+
+## Part 5 — Back Plating (`plating`) · DEFENSE · Herrera only
+
+### Decisions (Kepu 2026-10-31)
+- Rear guard with "Max -30% damage".
+- Look: A · Spine Scutes.
+- The step numbers and "from behind only, front unchanged" were stated in the pick question.
+
+### Steps
+| Step | Damage from behind |
+|---|---|
+| I | −10% |
+| II | −15% |
+| III | −22% |
+| ★ | −30% |
+
+The front is always unchanged.
+
+### How it works
+- Takes a slot. Always on while slotted, no key.
+- **"From behind":** the attacker's root is in the back half-space of the Herrera, i.e. the dot product of the Herrera's look vector with (attacker − Herrera) is < 0.
+- **Applied:** in the Herrera's incoming-damage path, alongside Thick Hide / Wiry Frame. Re-ground which scripts apply bite / slash / headbutt damage to a player dino (ArenaPvP / DummyHealth bridge) before choosing the hook.
+- **Feel:**
+  - a plated hit makes orange-white sparks off the plates;
+  - the plates flash white for 0.25 s;
+  - the number shows the struck-through original and the reduced value, with "−N% PLATED".
+
+### Look (A · Spine Scutes)
+- The back quills `Torso_quill1..7` are hidden.
+- 6 overlapping steel plates (tilted −6°) on `Torso_hips`, `Torso_waist`, `Torso_chest`, `Torso_hump`, `Tail1_main` and `Tail2_main`, each with:
+  - a dark rim;
+  - 2 bright rivets.
+
+### Acceptance
+- Hits from behind are −10 / −15 / −22 / −30% for I–★; hits from the front are unchanged.
+- Sparks and the plated number on reduced hits.
+- The plates show only while slotted.
+
+---
+
+## Build order (one or two passes)
+**Pass 1 (shared plumbing + the simpler parts):**
+1. SkillTree paths `ironclaw`, `glider`, `quills`, `smoke`, `plating` (Herrera, mech, LIVE_MECH, BUTTONS), their step texts and effects.
+2. SkillEffects writes for the five parts.
+3. The visuals: a server script per part, or one `HerreraPartsServer` with a part table (preferred: one script, one switch per part), building each look plus `BuildPreview_<id>` for the Lab card.
+4. Iron Claw (SlashServer multiplier, SprintTest, FX).
+5. Back Plating (damage hook).
+
+**Pass 2 (new behaviour):**
+1. Glider (JumpTest / ClimbTest glide state, SlashServer dive while gliding, bleed burst).
+2. Quill Launcher (remote + server flight / damage + client FX).
+3. Smoke Pods (cloud server object, hide, BotHunt target drop, slows).
+
+**AbilityBar / ArenaTouch:** slot tiles for the keyed parts (quills, smoke). Check the phone layout through ArenaTouch's styled table (the 2026-10-31 lesson).
+
