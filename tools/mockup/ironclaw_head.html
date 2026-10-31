@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iron Claw Looks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Same dark HUD-panel look as the earlier mecha mockups (raptor_parts_b1_looks.html). */
+:root {
+  --ink: #0f1319; --panel: #171d26; --line: #2a3340; --text: #e8edf4; --muted: #9aa6b6;
+  --attack: #f05a4f; --steel: #9aa6b8; --hot: #ff8a2a; --yellow: #ffc832; --green: #5fd16a;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding: 20px max(16px, env(safe-area-inset-right)) 40px max(16px, env(safe-area-inset-left)); }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; }
+h1 span { color: var(--attack); }
+.lede { margin: 2px 0 0; color: var(--muted); max-width: 75ch; }
+.lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 4px 0 -6px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font-family: var(--display); font-weight: 600; font-size: 16px; color: var(--text); background: var(--panel);
+  border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left; }
+.tab small { display: block; font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { border-color: var(--attack); box-shadow: 0 0 0 3px rgba(240,90,79,.22); }
+.tab.step { min-width: 64px; text-align: center; }
+.tab:focus-visible { outline: 3px solid var(--attack); outline-offset: 2px; }
+.stage { position: relative; border-radius: 16px; overflow: hidden; border: 2px solid var(--line); background: #8fc6e8; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; }
+.hud { position: absolute; left: 10px; top: 10px; font-family: var(--display); font-weight: 600; font-size: 14px;
+  background: rgba(15,19,25,.78); border-radius: 10px; padding: 6px 10px; display: grid; gap: 1px; pointer-events: none; }
+.hud b { color: var(--yellow); }
+.hud .dn { color: #ff9a8f; }
+.bar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
+.tile { width: 76px; height: 56px; border-radius: 10px; background: rgba(23,29,38,.92); border: 2px solid #3a4556; position: relative;
+  font-family: var(--display); font-weight: 700; font-size: 11px; display: grid; place-items: center; text-align: center; padding: 14px 3px 2px; }
+.tile .k { position: absolute; left: 6px; top: 2px; font-size: 11px; color: var(--muted); }
+.tile .pips { position: absolute; right: 6px; top: 5px; display: flex; gap: 2px; }
+.tile .pips i { width: 6px; height: 6px; border-radius: 3px; background: var(--yellow); }
+.tile .pips i.off { background: #3a4556; }
+.tile.iron { border-color: var(--steel); background: linear-gradient(180deg, rgba(60,70,86,.95), rgba(23,29,38,.95)); }
+.tile.iron.flash { border-color: #fff; box-shadow: 0 0 14px #fff; }
+.tile.iron .k { color: var(--steel); }
+.tile.empty { opacity: .45; }
+.tile.active { border-color: #fff; }
+.pop { position: absolute; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 700; pointer-events: none;
+  text-shadow: 0 3px 0 #2a1200, 0 0 10px rgba(0,0,0,.5); white-space: nowrap; }
+.pop small { display: block; text-align: center; font-size: 13px; color: #fff; letter-spacing: .1em; }
+.hp { position: absolute; transform: translate(-50%, -100%); width: 110px; pointer-events: none; text-align: center;
+  font-family: var(--display); font-size: 12px; color: #fff; text-shadow: 0 1px 2px #000; }
+.hp div { height: 9px; border-radius: 5px; background: #2a1a14; overflow: hidden; border: 1px solid #000; }
+.hp div i { display: block; height: 100%; background: #78c850; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { font-family: var(--display); font-weight: 700; font-size: 15px; border: 0; border-radius: 12px; padding: 9px 16px; cursor: pointer;
+  background: var(--yellow); color: #1b1406; }
+.btn.ghost { background: var(--panel); color: var(--text); border: 2px solid var(--line); }
+.btn[aria-pressed="true"] { outline: 2px solid var(--attack); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.card h2 { font-family: var(--display); font-size: 18px; margin: 0 0 6px; }
+.card p { margin: 6px 0; color: var(--muted); }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.steps li { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start; }
+.steps li b { display: grid; place-items: center; height: 24px; border-radius: 6px; background: #252e3b; font-family: var(--display); font-size: 13px; }
+.steps li.cur b { background: var(--yellow); color: #1b1406; }
+.steps li.cur span { color: var(--text); }
+.steps li span { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 400; font-size: 13px; }
+td.up { color: var(--yellow); } td.dn { color: #ff9a8f; }
+tr.cur td { background: rgba(255,200,50,.07); }
+.note { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1><span>Iron Claw</span> · Herrera mecha part</h1>
+    <p class="lede">Takes an ability slot like Mecha Legs and Blood Rush, and fires through your SLASH. While it's slotted, the claws wear the iron. Each step adds slash damage and slows the run. This is the real Herrera model (HerreraModelData 1.2) in its scurry, doing the dash-through slash.</p>
+  </div>
+  <p class="lbl">Look</p>
+  <div class="row" id="looks"></div>
+  <p class="lbl">Step</p>
+  <div class="row" id="steps"></div>
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="hud" id="hud"></div>
+    <div class="hp" id="hp"><span>Bot_TRex</span><div><i id="hpfill"></i></div></div>
+    <div class="bar" id="bar"></div>
+  </div>
+  <div class="controls">
+    <button class="btn" id="slashBtn">SLASH now</button>
+    <button class="btn ghost" id="slotBtn" aria-pressed="true">Slotted: ON</button>
+    <button class="btn ghost" id="viewBtn" aria-pressed="false">Lab card view</button>
+    <button class="btn ghost" id="slowBtn" aria-pressed="false">Slow-mo</button>
+    <span class="note">The slash plays by itself about every 3 s.</span>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2 id="lookName"></h2>
+      <p id="lookWhy"></p>
+      <p class="note" id="lookParts"></p>
+    </div>
+    <div class="card">
+      <h2>Iron Claw · ATTACK · mecha part</h2>
+      <ul class="steps" id="stepList"></ul>
+      <p class="note">Takes an ability slot and stays on while slotted, with no button and no cooldown. It only shows on the dino while it's slotted. Herrera only.</p>
+      <p class="note">What Iron Claw adds to today's slash: a wind-up flash on the iron, a bigger rake, a short orange streak behind each blade tip (a Roblox Trail on the blade), sparks, a short hit-stop, a bigger yellow number with "CLANG!", and heavier footstep dust from III. Press "Slotted: OFF" to compare with the slash as it is now.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Numbers (no other upgrades / with Razor Claws I)</h2>
+    <table><thead><tr><th>Step</th><th>Slash hit</th><th>With Razor Claws I</th><th>Run speed (Arena)</th></tr></thead><tbody id="numRows"></tbody></table>
+    <p class="note">Only the slash hit gets the bonus; the bleed stays the same. Only the run is slowed (the game has no separate walk). The server rounds the hit, as it does today.</p>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
