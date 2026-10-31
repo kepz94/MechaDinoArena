@@ -1,4 +1,4 @@
--- ClimbTest v1.0 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.1 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -21,12 +21,18 @@
 -- Settings (character attributes, scale 1): ClimbSpeed 10, ClimbGrabDist 1.5, ClimbTopGap 2, ClimbHopSpeed 12,
 --   ClimbHeadReach 4.5.
 -- Diagnostics (local): ClimbLocalState, ClimbReason, ClimbTreeLocal, ClimbTestVersion.
+-- v1.1 (Studio check of 1.0: the input never read "forward" — this game has no PlayerScripts.PlayerModule): the move
+--   input is read like TurnLimit 1.1: StarterPlayer.PlayerModule.InputContexts.CharacterContext.MoveAction (Vector2,
+--   y = forward), else the legacy PlayerModule controls. Off the trunk, "forward" = the camera-relative input points
+--   along the body's facing (dot > 0.3; "back" < -0.3); on the trunk, forward / back = the raw input's y (W / S), so
+--   the camera angle does not matter while climbing. Diagnostic ClimbInputSource ("inputAction" / "controlModule" /
+--   "none").
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -86,12 +92,48 @@ local function topOf(p)
 	return p:GetAttribute("TreeTopTopY") or (p.Position.Y + p.Size.Y / 2)
 end
 
--- controls
-local controls
+-- controls (v1.1: TurnLimit 1.1's reader) -> Vector2 (x = right, y = forward)
+local readMove = function() return Vector2.zero end
 task.spawn(function()
-	local ok, pm = pcall(function() return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")) end)
-	if ok and pm then controls = pm:GetControls() end
+	local moveAction
+	local pm = game:GetService("StarterPlayer"):WaitForChild("PlayerModule", 10)
+	if pm then
+		local ok, a = pcall(function()
+			return pm:WaitForChild("InputContexts", 10):WaitForChild("CharacterContext", 10):WaitForChild("MoveAction", 10)
+		end)
+		if ok and a and a:IsA("InputAction") then moveAction = a end
+	end
+	if moveAction then
+		readMove = function()
+			local v = moveAction:GetState()
+			return typeof(v) == "Vector2" and v or Vector2.zero
+		end
+		char:SetAttribute("ClimbInputSource", "inputAction")
+		return
+	end
+	local ps = player:FindFirstChild("PlayerScripts")
+	local legacy = ps and ps:FindFirstChild("PlayerModule")
+	local ok, cm = pcall(function() return require(legacy):GetControls() end)
+	if legacy and ok and cm then
+		readMove = function()
+			local v = cm:GetMoveVector()
+			return Vector2.new(v.X, -v.Z)
+		end
+		char:SetAttribute("ClimbInputSource", "controlModule")
+	else
+		char:SetAttribute("ClimbInputSource", "none")
+	end
 end)
+local function inputWorld(mv)
+	if mv.Magnitude < 1e-3 then return Vector3.zero end
+	local cam = workspace.CurrentCamera
+	local cf = cam and cam.CFrame or CFrame.identity
+	local look = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+	if look.Magnitude < 1e-3 then return Vector3.zero end
+	look = look.Unit
+	local right = Vector3.new(-look.Z, 0, look.X)
+	return right * mv.X + look * mv.Y
+end
 local hopQueued = false
 UserInputService.JumpRequest:Connect(function() hopQueued = true end)
 
@@ -166,14 +208,20 @@ RunService.Heartbeat:Connect(function()
 		hopQueued = false
 		return
 	end
-	-- input
-	local mv = controls and controls:GetMoveVector() or Vector3.zero
-	local input = {forward = mv.Z < -0.3, back = mv.Z > 0.3, hop = hopQueued}
-	hopQueued = false
 	-- probes
 	local look = hrp.CFrame.LookVector
 	local fwd = Vector3.new(look.X, 0, look.Z)
 	fwd = fwd.Magnitude > 1e-3 and fwd.Unit or Vector3.new(0, 0, -1)
+	-- input (v1.1)
+	local mv = readMove()
+	local input
+	if state == "climbing" or state == "clinging" then
+		input = {forward = mv.Y > 0.3, back = mv.Y < -0.3, hop = hopQueued}
+	else
+		local along = inputWorld(mv):Dot(fwd)
+		input = {forward = along > 0.3, back = along < -0.3, hop = hopQueued}
+	end
+	hopQueued = false
 	local half = hrp.Size.Z / 2
 	local probe = {}
 	local hit = workspace:Raycast(hrp.Position, fwd * (half + s.grab * 3), trunkParams)
