@@ -1,4 +1,4 @@
--- MainMenu v1.8 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.9 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -97,13 +97,17 @@
 -- v1.8 (MDA-118, plan docs/plans/PACHY_PLAYABLE_v1.0.md Task 9): the pachy in the dino select: DINOS gains
 --   {id = "Pachy", name = "PACHY", sub = "90 HP · headbutt charger"} after the T-Rex (the arrows cycle Raptor, T-Rex,
 --   Pachy). Switch: script attribute MainMenuPachyEnabled (default true, read at start; false = 1.7 list).
+-- v1.9 (MDA-143, plan docs/plans/HERRERA_KIT_v1.0.md Task 11): the Herrerasaurus in the dino select: DINOS gains
+--   {id = "Herrera", name = "HERRERA", sub = "40 HP · climber, dash slash"} after the pachy (the arrows cycle Raptor,
+--   T-Rex, Pachy, Herrera). Switch: script attribute MainMenuHerreraEnabled (default true, read at start; false = 1.8
+--   list).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -121,6 +125,10 @@ local DINOS = {
 if script:GetAttribute("MainMenuPachyEnabled") == nil then script:SetAttribute("MainMenuPachyEnabled", true) end -- v1.8
 if script:GetAttribute("MainMenuPachyEnabled") ~= false then
 	table.insert(DINOS, {id = "Pachy", name = "PACHY", sub = "90 HP · headbutt charger"})
+end
+if script:GetAttribute("MainMenuHerreraEnabled") == nil then script:SetAttribute("MainMenuHerreraEnabled", true) end -- v1.9
+if script:GetAttribute("MainMenuHerreraEnabled") ~= false then
+	table.insert(DINOS, {id = "Herrera", name = "HERRERA", sub = "40 HP · climber, dash slash"})
 end
 local SLOT_KEYS = UserInputService.TouchEnabled and {"R", "C", "R▼", "C▼"} or {"R", "C", "T", "V"}
 
