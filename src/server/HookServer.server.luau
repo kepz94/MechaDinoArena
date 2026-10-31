@@ -1,4 +1,4 @@
--- HookServer v1.6 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.7 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -66,11 +66,15 @@
 --   Switch: script attribute HookVisorEnabled (default true, read each smash; false = 1.5).
 -- Switch: script attribute HookServerEnabled (default true, read at start). Diagnostics: script HookServerVersion,
 --   HookShots, HookHits.
+-- v1.7 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
+--   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". A hit's damage is also x the target's DazedDamageMul while its DazedUntil is in the future (star 1.2) and x 0 while
+--   its StunBreakImmuneUntil is in the future (Stun Breaker star, MDA-156). Switch:
+--   script attribute HookDazeEnabled (default true, read at each request; false = 1.6).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25) -- v1.1 clamp; v1.2 min -8 -> -2
 local WINDUP = 0.15        -- s arm raise before the claw flies
 local CLAW_SPEED = 220     -- studs/s (world)
@@ -388,6 +392,10 @@ local function smash(char, player, target, hb)
 	local mul = 1
 	local untilT, dmul = target:GetAttribute("DebuffUntil"), target:GetAttribute("DebuffDamageTakenMul")
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and t < untilT then mul = dmul end
+	if script:GetAttribute("HookDazeEnabled") ~= false then -- v1.7: daze star / Stun Breaker star
+		if (tonumber(target:GetAttribute("DazedUntil")) or 0) > t then mul *= math.max(1, tonumber(target:GetAttribute("DazedDamageMul")) or 1) end
+		if (tonumber(target:GetAttribute("StunBreakImmuneUntil")) or 0) > t then mul = 0 end
+	end
 	local d = math.floor((tonumber(char:GetAttribute("HookDamage")) or 10) * mul + 0.5)
 	local hpv = target:GetAttribute("DummyHealth")
 	if typeof(hpv) == "number" then target:SetAttribute("DummyHealth", math.max(0, hpv - d)) end
@@ -446,6 +454,8 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		r = "menu"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		r = "stunned"
+	elseif script:GetAttribute("HookDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > t then -- v1.7: Strobe Frill daze
+		r = "dazed"
 	elseif char:GetAttribute("PinHeld") == true then
 		r = "pinned"
 	elseif busy[char] or (tonumber(char:GetAttribute("HeadbuttStartedAt")) or 0) > (tonumber(char:GetAttribute("HeadbuttEndedAt")) or 0) then

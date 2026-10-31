@@ -1,4 +1,4 @@
--- MineServer v1.6 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.7 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -85,13 +85,16 @@
 --     MineCooldown, MineMax on the ground.
 --   * colours: every mine model and its "MineBurst" carry MineOwner (owner name); MineColors 1.0 (StarterPlayerScripts)
 --     paints them on each screen: your own blue, everyone else's red. The server still builds them cyan.
+-- v1.7 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
+--   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
+--   script attribute MineDazeEnabled (default true, read at each request; false = 1.6).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local THROW_DIST, ARC_TIME, ARC_HEIGHT, ARM_TIME = 30, 0.6, 8, 0.5
 local TRIGGER, LIFETIME, BLINK = 6, 60, 0.25
 local VOLT, VOLT_CORE = Color3.fromRGB(127, 233, 255), Color3.fromRGB(225, 250, 255)
@@ -615,6 +618,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "disabled"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
+	elseif script:GetAttribute("MineDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > t then -- v1.7: Strobe Frill daze
+		result = "dazed"
 	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("MinePinnedBlockEnabled") ~= false then -- v1.6
 		result = "pinned"
 	elseif char:GetAttribute("PounceLatched") == true then

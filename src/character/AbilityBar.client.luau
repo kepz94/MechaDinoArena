@@ -1,4 +1,4 @@
--- AbilityBar v1.17 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.18 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -108,12 +108,16 @@
 --   tile is "ready" on a tree (as 1.14) or when JumpEnabled and JumpTestState is "ready", "active" (white ring) while
 --   JumpTestState is "crouch" / "air", else dim ("ground"). Switch: script attribute AbilityBarHerreraJumpEnabled (default
 --   true, read at start; false = 1.16: lit only on a tree).
+-- v1.18 (Herrera parts pass 2, MDA-151 / 152 / 155 / 156): TIMED_PARTS += quills "Quill", smoke "Smoke" (with SmokeUntil:
+--   "active" while the cloud lasts), strobe "Strobe", breaker "Breaker". The Stun Breaker tile: "off" while BreakerEnabled
+--   is not true, "cooling" during its cooldown, "ready" while stunned (StunnedUntil > now) or pinned (PinHeld), else
+--   "waiting" (dim). Switch: script attribute AbilityBarHerreraPartsEnabled (default true, read at start; false = 1.17).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.17"
+local VERSION = "1.18"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -143,6 +147,11 @@ if script:GetAttribute("AbilityBarBatch3Enabled") ~= false then -- v1.12: pachy 
 end
 if script:GetAttribute("AbilityBarTetherEnabled") == nil then script:SetAttribute("AbilityBarTetherEnabled", true) end -- v1.13
 if script:GetAttribute("AbilityBarTetherEnabled") ~= false then TIMED_PARTS.tether = "Tether" end -- v1.13
+if script:GetAttribute("AbilityBarHerreraPartsEnabled") == nil then script:SetAttribute("AbilityBarHerreraPartsEnabled", true) end -- v1.18
+local HPARTS_TILE = script:GetAttribute("AbilityBarHerreraPartsEnabled") ~= false
+if HPARTS_TILE then -- v1.18: Herrera parts pass 2
+	TIMED_PARTS.quills, TIMED_PARTS.smoke, TIMED_PARTS.strobe = "Quill", "Smoke", "Strobe"
+end
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -675,6 +684,19 @@ local function update()
 					paint(e, "cooling", 0.25, left / cd, left)
 				else
 					paint(e, "ready", 0, 0, nil)
+				end
+			elseif HPARTS_TILE and e.part == "breaker" then -- v1.18: Stun Breaker
+				local readyAt = tonumber(char:GetAttribute("BreakerReadyAt")) or 0
+				local cd = math.max(0.01, tonumber(char:GetAttribute("BreakerCooldown")) or 20)
+				local held = (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now or char:GetAttribute("PinHeld") == true
+				if char:GetAttribute("BreakerEnabled") ~= true then
+					paint(e, "off", 0.5, 0, nil)
+				elseif now < readyAt then
+					paint(e, "cooling", 0.25, (readyAt - now) / cd, readyAt - now)
+				elseif held then
+					paint(e, "ready", 0, 0, nil)
+				else
+					paint(e, "waiting", 0.25, 0, nil)
 				end
 			elseif TIMED_PARTS[e.part] then -- v1.3: Adrenaline / Energy Shield
 				local px = TIMED_PARTS[e.part]

@@ -1,4 +1,4 @@
--- TetherServer v1.1 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
+-- TetherServer v1.2 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
 -- MDA-129, mockup docs/mockups/pachy_tether_options.html B "Tail-base launcher". Kepu 2026-10-30: "a tether spike where if
 --   it lands it latches the person to a chain to the ground. Makes them not mobile past the chain for a couple seconds"
 --   -> "this will not shoot straight like a gun tho. It will launch like a splash. So it will shoot vertical and do a
@@ -44,13 +44,16 @@
 --   landing point's ground ray also skips DinoIsland.Trees, Rocks and EdgeWalls (it already skipped characters, Bots,
 --   TallGrass, Prey and the FX folders), so the spike lands on the ground / mountain steps under the circle, never on a
 --   treetop. Switch: script attribute TetherGroundOnly (default true, read each shot; false = 1.0).
+-- v1.2 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
+--   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
+--   script attribute TetherDazeEnabled (default true, read at each request; false = 1.1).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local FLIGHT, ARC_HEIGHT, RANGE_SLACK, YANK_SPEED = 0.8, 22, 4, 60
 local STEEL, DARK, YELLOW = Color3.fromRGB(154, 166, 184), Color3.fromRGB(58, 64, 76), Color3.fromRGB(255, 200, 50)
 
@@ -442,6 +445,8 @@ remote.OnServerEvent:Connect(function(player, stamp, landPos)
 		r = "menu"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		r = "stunned"
+	elseif script:GetAttribute("TetherDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > t then -- v1.2: Strobe Frill daze
+		r = "dazed"
 	elseif char:GetAttribute("PinHeld") == true then
 		r = "pinned"
 	elseif t < (tonumber(char:GetAttribute("TetherReadyAt")) or 0) then

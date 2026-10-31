@@ -1,4 +1,4 @@
--- IdleAnimation v1.33 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.36 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -195,6 +195,12 @@
 --       speed, so every jump, trunk hop and fall off a tree plays the same sequence. Only climbing / clinging end a jump
 --       (a leap from a tree top keeps its crouch), and the tree -> ground air start (from climbing / clinging / top) only
 --       happens when no jump is running. Switch: model attribute HerreraJumpClockEnabled (default true; false = 1.34).
+-- v1.36 (Herrera parts pass 2, MDA-150 / MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map";
+--       HerreraMovesPose 1.0): on scurry models, right after the leap layer, the pose is lerped toward the glide pose
+--       (arms out, legs trailing, tail straightened, nose up) by HerreraMovesPose.glideWeight (owner: GlideLocal; others:
+--       Gliding; in 0.2 s, out 0.25 s); and on top of the slash layer, the Strobe Frill rear-up offsets from
+--       StrobeStartedAt. Switches: model attributes GlidePoseEnabled / StrobePoseEnabled (default true). Diagnostics:
+--       GlidePoseBlend (0.1 steps), StrobePoseState ("none" / "rear"). Every other model unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -228,6 +234,7 @@ local ScurryPose = require(script.ScurryPose) -- v1.31
 local ClimbPose = require(script.ClimbPose) -- v1.32
 local SlashPose = require(script.SlashPose) -- v1.33
 local HerreraJumpPose = require(script.HerreraJumpPose) -- v1.34
+local HerreraMovesPose = require(script.HerreraMovesPose) -- v1.36
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -527,6 +534,7 @@ model:SetAttribute("IdleAnimationVersion", "1.32") -- v1.32
 model:SetAttribute("IdleAnimationVersion", "1.33") -- v1.33
 model:SetAttribute("IdleAnimationVersion", "1.34") -- v1.34
 model:SetAttribute("IdleAnimationVersion", "1.35") -- v1.35
+model:SetAttribute("IdleAnimationVersion", "1.36") -- v1.36
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -891,6 +899,18 @@ RunService.PreSimulation:Connect(function(dt)
 		show("JumpState", jumpState)
 		show("JumpBlend", math.floor(jumpW * 10 + 0.5) / 10)
 	end
+	-- v1.36: Herrera glide (Glider Wings) replaces the pose by the glide weight
+	if hrp and scurryOn and scurryGeo and (model:GetAttribute("GliderEnabled") == true or model:GetAttribute("GlideLocal") ~= nil) then
+		local lpG = Players.LocalPlayer
+		local gw = HerreraMovesPose.glideWeight(model, lpG ~= nil and lpG.Character == model, dt)
+		if gw > 0 then
+			local gp = HerreraMovesPose.getGlide(model, ss, scurryGeo, motors, scurryScale)
+			for name, off in pairs(gp) do
+				if motors[name] then pose[name] = (pose[name] or CFrame.identity):Lerp(off, gw) end
+			end
+		end
+		show("GlidePoseBlend", math.floor(gw * 10 + 0.5) / 10)
+	end
 	-- v1.16: pounce (wind-up / lunge / latched / let-go fade) replaces the pose by the pounce weight
 	local pounceActive = false
 	if hrp and geo and model:GetAttribute("PounceEnabled") == true then
@@ -1161,6 +1181,16 @@ RunService.PreSimulation:Connect(function(dt)
 		show("SlashPoseState", slPhase or "none")
 		show("SlashPoseKind", slKind)
 		show("SlashPoseSource", slSource)
+	end
+	-- v1.36: Strobe Frill rear-up on top
+	if model:GetAttribute("StrobeStartedAt") ~= nil then
+		local sp = HerreraMovesPose.strobe(model, workspace:GetServerTimeNow())
+		if sp then
+			for name, off in pairs(sp) do
+				if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+			end
+		end
+		show("StrobePoseState", sp and "rear" or "none")
 	end
 	-- roar on top of whatever the body is doing (upper body only)
 	local roarState = "none"

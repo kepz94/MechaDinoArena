@@ -1,4 +1,4 @@
--- BoneCrest v1.3 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
+-- BoneCrest v1.4 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
 -- (ModuleScript, ServerStorage.DinoArcade.BoneCrest, server only). SkillTree 1.30 / SkillEffects 1.23.
 -- Kepu 2026-10-30: "We'll do the bone crest to replace the thick hide. Whoever bites your dome does 40% less damage";
 --   answers: builds up to 40% (I 20%, II 30%, III 40%, star: the biter takes 5 damage back), "Bites from the front",
@@ -57,11 +57,17 @@
 --   visor / crest maths unchanged. Covers every hit that already goes through factor (BotServer bites / pounces,
 --   BiteServer, PounceServer), the same coverage as Bone Crest. Switch: module attribute BoneCrestPlatingEnabled (default
 --   true; false = 1.2).
+-- v1.4 (Herrera parts pass 2, MDA-155 / MDA-156, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): factor()
+--   is wrapped (the 1.3 maths unchanged inside): while the victim's StunBreakImmuneUntil (Stun Breaker star,
+--   HerreraMovesServer 1.0) is in the future it returns 0, false (no crest / plating stamps) and stamps the victim
+--   StunBreakBlocked (count); otherwise the 1.3 result's mul is x the victim's DazedDamageMul while its DazedUntil is in
+--   the future (Strobe Frill star 1.2). Covers every caller of factor (BotServer bites / pounces, BiteServer,
+--   PounceServer). Switch: module attribute BoneCrestHerreraMovesEnabled (default true, read at each call; false = 1.3).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local M = {}
-M.VERSION = "1.3"
+M.VERSION = "1.4"
 M.CONE = 60
 local REFLECT_GAP = 0.4
 
@@ -135,6 +141,23 @@ function M.factor(victim, attackerPos)
 	if look.Magnitude < 1e-3 then return 1, false end
 	local front = d.Magnitude < 1e-3 or look.Unit:Dot(d.Unit) >= math.cos(math.rad(M.CONE))
 	return front and math.max(0, mul) or 1, front
+end
+
+-- v1.4: Stun Breaker immunity and the Strobe Frill daze star around the 1.3 factor
+if script:GetAttribute("BoneCrestHerreraMovesEnabled") == nil then script:SetAttribute("BoneCrestHerreraMovesEnabled", true) end
+local factorV13 = M.factor
+function M.factor(victim, attackerPos)
+	if script:GetAttribute("BoneCrestHerreraMovesEnabled") == false or typeof(victim) ~= "Instance" then return factorV13(victim, attackerPos) end
+	local t = workspace:GetServerTimeNow()
+	if (tonumber(victim:GetAttribute("StunBreakImmuneUntil")) or 0) > t then
+		victim:SetAttribute("StunBreakBlocked", (victim:GetAttribute("StunBreakBlocked") or 0) + 1)
+		return 0, false
+	end
+	local mul, front = factorV13(victim, attackerPos)
+	if (tonumber(victim:GetAttribute("DazedUntil")) or 0) > t then
+		mul *= math.max(1, tonumber(victim:GetAttribute("DazedDamageMul")) or 1)
+	end
+	return mul, front
 end
 
 local function look(victim)

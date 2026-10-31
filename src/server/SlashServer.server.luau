@@ -1,4 +1,4 @@
--- SlashServer v1.4 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.5 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -78,13 +78,25 @@
 --   1.5): d = round((SlashDamage + bleed bonus) x debuff x IronClawDamageMul). Bleed ticks are unchanged. Attacker
 --   diagnostic SlashIronClawMul (the multiplier used on the last hit). Switch: script attribute SlashIronClawEnabled
 --   (default true, read at start; false = 1.3).
+-- v1.5 (Herrera parts pass 2, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"):
+--   * Strobe Frill daze (MDA-155): a request while the character's DazedUntil is in the future is refused ("dazed", right
+--     after "stunned"). A hit's damage is also x the target's DazedDamageMul while its DazedUntil is in the future (star
+--     1.2) and x 0 while its StunBreakImmuneUntil is in the future (Stun Breaker star, MDA-156). Switch: script attribute
+--     SlashDazeEnabled (default true, read at each request / hit; false = 1.4).
+--   * Glider Wings (MDA-150): a "dive" request off a tree is accepted while the character's Gliding is true (replicated,
+--     HerreraMovesServer 1.0) and GliderDrop is true (step II); the dash is marked as a glide dive (attacker SlashGlideDive
+--     true, false on other dashes). A glide-dive hit's damage is x GliderDropMul (III: 1.3). Star (GliderBurst > 0): that
+--     hit also starts the slash bleed (the attacker's SlashBleedDps / SlashBleedTime, same rules as a hit's bleed) on every
+--     other dino (player characters and Workspace.DinoIsland.Bots, Bitable, Hitboxes, not KO, no Energy Shield) whose root
+--     is within GliderBurst x scale of the landing point (the hit target's root); attacker SlashGlideBurstCount. Switch:
+--     script attribute SlashGlideEnabled (default true, read at each request / hit; false = 1.4).
 -- Switch: script attribute SlashServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script SlashServerVersion, SlashRequests, SlashHits, SlashBleedTicks.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local TIME_SLACK = 0.6      -- s after the dash time a claim is still accepted (client -> server lag)
 local PATH_TOLERANCE = 6    -- studs (x scale) between the target's hitboxes and the dash path, on top of SlashReach
 local DIVE_SLACK = 3        -- studs (x scale) added to SlashDiveRange for the request check (the target moves)
@@ -105,6 +117,20 @@ script:SetAttribute("SlashSkillEvents", 0)
 local FRENZY_STEP, FRENZY_HOLD, FRENZY_RANGE = 0.25, 0.5, 40
 if script:GetAttribute("SlashIronClawEnabled") == nil then script:SetAttribute("SlashIronClawEnabled", true) end -- v1.4
 local IRONCLAW = script:GetAttribute("SlashIronClawEnabled") ~= false
+for _, k in ipairs({"SlashDazeEnabled", "SlashGlideEnabled"}) do -- v1.5
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
+local function dazeOn() return script:GetAttribute("SlashDazeEnabled") ~= false end -- v1.5
+local function glideDive(char) -- v1.5: gliding with Glider Wings II
+	return script:GetAttribute("SlashGlideEnabled") ~= false and char:GetAttribute("Gliding") == true and char:GetAttribute("GliderDrop") == true
+end
+local function takenMul(model, t) -- v1.5: daze star x Stun Breaker star
+	if not dazeOn() then return 1 end
+	local m = 1
+	if (tonumber(model:GetAttribute("DazedUntil")) or 0) > t then m *= math.max(1, tonumber(model:GetAttribute("DazedDamageMul")) or 1) end
+	if (tonumber(model:GetAttribute("StunBreakImmuneUntil")) or 0) > t then m = 0 end
+	return m
+end
 
 -- v1.2: pass-through collision group for the dash
 do
@@ -235,12 +261,16 @@ requestRemote.OnServerEvent:Connect(function(player, stamp, kind, target)
 		result = "menu"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
+	elseif dazeOn() and (tonumber(char:GetAttribute("DazedUntil")) or 0) > t then -- v1.5: Strobe Frill daze
+		result = "dazed"
 	elseif char:GetAttribute("PinHeld") == true then
 		result = "pinned"
 	elseif st.active then
 		result = "busy"
 	elseif st.charges < 1 then
 		result = "empty"
+	elseif kind == "dive" and not climbing(char) and glideDive(char) then -- v1.5: a dive from a glide is accepted
+		char:SetAttribute("SlashGlideDive", true)
 	elseif kind == "dive" and not climbing(char) then
 		result = "noTree"
 	end
@@ -293,6 +323,8 @@ requestRemote.OnServerEvent:Connect(function(player, stamp, kind, target)
 	local pathLen = (to - from).Magnitude
 	local dashTime = get(char, "SlashTime") * math.max(1, pathLen / math.max(L, 1e-3))
 	st.active = {stamp = stamp, startAt = t, endAt = t + dashTime, from = from, to = to, hit = {}, kind = kind} -- v1.3: + kind
+	st.active.glide = kind == "dive" and not climbing(char) and glideDive(char) -- v1.5
+	char:SetAttribute("SlashGlideDive", st.active.glide)
 	publish(char, st)
 	char:SetAttribute("SlashKind", kind)
 	char:SetAttribute("SlashFrom", from)
@@ -389,6 +421,8 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	local icMul = 1 -- v1.4: Iron Claw
 	if IRONCLAW and char:GetAttribute("IronClawEnabled") == true then icMul = math.max(0, tonumber(char:GetAttribute("IronClawDamageMul")) or 1) end
 	char:SetAttribute("SlashIronClawMul", icMul)
+	mul *= takenMul(model, t) -- v1.5
+	if st.active.glide then icMul *= math.max(0, tonumber(char:GetAttribute("GliderDropMul")) or 1) end -- v1.5: glide dive
 	local d = math.floor((get(char, "SlashDamage") + bonus) * mul * icMul + 0.5)
 	local killed = takeHealth(model, d, char.Name, player.UserId, "slash", t)
 	if bonus > 0 then skillEvent(char, "bleedBonus") end
@@ -420,6 +454,32 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		model:SetAttribute("SlashBleedBy", char.Name)
 		model:SetAttribute("SlashBleedDps", bleeds[model].dps)
 		model:SetAttribute("SlashBleedResult", "bleeding")
+	end
+	if st.active.glide and script:GetAttribute("SlashGlideEnabled") ~= false then -- v1.5: Glider Wings star bleed burst
+		local burst = (tonumber(char:GetAttribute("GliderBurst")) or 0) * char:GetScale()
+		local n = 0
+		local land = rootOf(model)
+		if burst > 0 and land then
+			local list = {}
+			for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(list, pl.Character) end end
+			local isl = workspace:FindFirstChild("DinoIsland")
+			local bf = isl and isl:FindFirstChild("Bots")
+			if bf then for _, b in ipairs(bf:GetChildren()) do table.insert(list, b) end end
+			for _, m in ipairs(list) do
+				if m ~= char and m ~= model and targetOk(m) and m:GetAttribute("DummyState") ~= "ko"
+					and (tonumber(m:GetAttribute("EnergyShieldUntil")) or 0) <= t and (rootOf(m) - land).Magnitude <= burst then
+					local tick = math.max(0.1, get(char, "SlashBleedTick"))
+					bleeds[m] = {untilT = t + get(char, "SlashBleedTime"), nextTick = t + tick, by = char.Name, byId = player.UserId,
+						dps = get(char, "SlashBleedDps"), tick = tick, char = char}
+					m:SetAttribute("SlashBleedUntil", bleeds[m].untilT)
+					m:SetAttribute("SlashBleedBy", char.Name)
+					m:SetAttribute("SlashBleedDps", bleeds[m].dps)
+					m:SetAttribute("SlashBleedResult", "burst")
+					n += 1
+				end
+			end
+		end
+		char:SetAttribute("SlashGlideBurstCount", n)
 	end
 	model:SetAttribute("SlashHitBy", char.Name)
 	model:SetAttribute("SlashTakenDamage", d)

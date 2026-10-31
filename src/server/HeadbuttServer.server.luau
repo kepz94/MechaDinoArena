@@ -1,4 +1,4 @@
--- HeadbuttServer v1.9 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.11 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -105,11 +105,15 @@
 --   attribute HeadbuttTakenStampEnabled (default true, read each hit; false = 1.9).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
+-- v1.11 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
+--   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". A hit's damage is also x the target's DazedDamageMul while its DazedUntil is in the future (star 1.2) and x 0 while
+--   its StunBreakImmuneUntil is in the future (Stun Breaker star, MDA-156). Switch:
+--   script attribute HeadbuttDazeEnabled (default true, read at each request; false = 1.10).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
 local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
 if script:GetAttribute("HeadbuttSacrificeRestartsRefill") == nil then script:SetAttribute("HeadbuttSacrificeRestartsRefill", true) end -- v1.7
@@ -253,6 +257,8 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		result = "menu"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
+	elseif script:GetAttribute("HeadbuttDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > t then -- v1.11: Strobe Frill daze
+		result = "dazed"
 	elseif char:GetAttribute("PinHeld") == true then
 		result = "pinned"
 	elseif st.active or (HOOK_BUSY and (tonumber(char:GetAttribute("HookBusyUntil")) or 0) > t) then -- v1.2: + hook
@@ -459,6 +465,10 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	local mul = 1
 	local untilT, dmul = model:GetAttribute("DebuffUntil"), model:GetAttribute("DebuffDamageTakenMul")
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and t < untilT then mul = dmul end
+	if script:GetAttribute("HeadbuttDazeEnabled") ~= false then -- v1.11: daze star / Stun Breaker star
+		if (tonumber(model:GetAttribute("DazedUntil")) or 0) > t then mul *= math.max(1, tonumber(model:GetAttribute("DazedDamageMul")) or 1) end
+		if (tonumber(model:GetAttribute("StunBreakImmuneUntil")) or 0) > t then mul = 0 end
+	end
 	local runMul = 1 -- v1.3: less damage without a run-up
 	if RUNUP_ON then
 		local hrpNow = char:FindFirstChild("HumanoidRootPart")

@@ -1,4 +1,4 @@
--- ScreechServer v1.9 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.10 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -94,13 +94,16 @@
 --   stun, no damage, no jam, no hit stamps; the ball still ends ("hit" burst) and BoneCrest.visorBlock(target, shooter,
 --   "cannon") runs (BLOCK look; star knockback). Other screech bolts are unchanged. Shooter diagnostic ScreechLastHit
 --   = "visor:<target>". Switch: script attribute ScreechVisorEnabled (default true, read each hit; false = 1.8).
+-- v1.10 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
+--   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
+--   script attribute ScreechDazeEnabled (default true, read at each request; false = 1.9).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
 local PITCH_MAX = math.rad(20) -- v1.8
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
@@ -647,6 +650,8 @@ remote.OnServerEvent:Connect(function(player, stamp, held, aimDir) -- v1.7: + ai
 		result = "disabled"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		result = "stunned"
+	elseif script:GetAttribute("ScreechDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > t then -- v1.10: Strobe Frill daze
+		result = "dazed"
 	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("ScreechPinnedBlockEnabled") ~= false then -- v1.6
 		result = "pinned"
 	elseif char:GetAttribute("PounceLatched") == true then

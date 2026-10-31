@@ -1,4 +1,4 @@
--- InkServer v1.4 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
+-- InkServer v1.5 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
 -- MDA-128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Neck ink tank +
 --   barrel". Kepu 2026-10-30: "How about an ink shooter that blinds your enemy for 2 seconds. Turns their screen black";
 --   answers: fully black (HUD stays), an aimed shot like the Grappling Hook (first dino hit), bots lose you, steps II 80
@@ -68,12 +68,15 @@
 --   clamp on the snapped direction). No candidate within the angle = the aim as sent (1.3). The normal hit search then
 --   runs along the new direction. Diagnostics: character InkAssisted (true / false, the last shot), InkAssistDeg (angle
 --   snapped, whole degrees; 0 when not snapped).
+-- v1.5 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
+--   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
+--   script attribute InkDazeEnabled (default true, read at each request; false = 1.4).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25)
 local PITCH_MIN_SHOULDER = math.rad(-20) -- v1.3: the shoulder muzzle sits high, so the shot may aim down to the ground ahead
 local AIM_HELP = 4
@@ -537,6 +540,8 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		r = "menu"
 	elseif (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then
 		r = "stunned"
+	elseif script:GetAttribute("InkDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > t then -- v1.5: Strobe Frill daze
+		r = "dazed"
 	elseif char:GetAttribute("PinHeld") == true then
 		r = "pinned"
 	elseif t < (tonumber(char:GetAttribute("InkReadyAt")) or 0) then

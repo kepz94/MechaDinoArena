@@ -1,4 +1,4 @@
--- HerreraPartsServer v1.1 (Mecha Dino Arena) — puts the Herrera's mecha parts on (server-built, every client sees them)
+-- HerreraPartsServer v1.2 (Mecha Dino Arena) — puts the Herrera's mecha parts on (server-built, every client sees them)
 -- and builds their Lab card models. Plan docs/plans/HERRERA_PARTS_v1.0.md (MDA-149..156), Kepu 2026-10-31 "Build"; the
 -- looks are the picked mockups, same numbers: Iron Claw B "Hook Blades" (docs/mockups/herrera_ironclaw_options.html),
 -- Glider Wings A "Bat Membranes", Quill Launcher B "Spine Quills", Smoke Pods B "Tail Vents", Back Plating A "Spine
@@ -32,9 +32,13 @@
 -- v1.1 (Studio check of 1.0: the hot orange Neon rgb(255, 138, 42) renders yellow in Roblox, the mockups' edges are
 --   orange): Neon "hot" pieces (Iron Claw blade edges, glider hub, quill tips, tail-vent ring, strobe rim lamps) use
 --   rgb(255, 98, 18); the Iron Claw trail colour follows. Non-Neon orange (the coil rings) is unchanged.
+-- v1.2 (Glider Wings glide, MDA-150, pass 2): while the character's Gliding is true (HerreraMovesServer 1.0) the glider is
+--   rebuilt open (the Lab card look: full membranes, spar, finger rods); when it turns false it is rebuilt folded.
+--   HPart_glider attribute HPartOpen (true / false). Switch: script attribute HerreraPartsGlideOpenEnabled (default true,
+--   read on each change; false = 1.1, always folded on players).
 local Players = game:GetService("Players")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local C = {
 	steel = {Color3.fromRGB(154, 166, 184), Enum.Material.Metal}, dark = {Color3.fromRGB(93, 104, 120), Enum.Material.Metal},
 	bright = {Color3.fromRGB(211, 219, 230), Enum.Material.Metal}, hot = {Color3.fromRGB(255, 98, 18), Enum.Material.Neon}, -- v1.1 (was 255, 138, 42: rendered yellow)
@@ -198,7 +202,9 @@ local function addTrail(char, model, sd, sc)
 end
 local function buildPart(char, id, preview)
 	local sc = char:GetScale()
-	local list = id == "glider" and glider(preview) or (id == "quills" and quills(char) or BUILD[id]())
+	local open = preview -- v1.2: open while gliding
+	if id == "glider" and not preview and char:GetAttribute("Gliding") == true and script:GetAttribute("HerreraPartsGlideOpenEnabled") ~= false then open = true end
+	local list = id == "glider" and glider(open) or (id == "quills" and quills(char) or BUILD[id]())
 	local m = Instance.new("Model")
 	m.Name = "HPart_" .. id
 	local n = 0
@@ -229,6 +235,7 @@ local function buildPart(char, id, preview)
 		for _, sd in ipairs({"L", "R"}) do addTrail(char, m, sd, sc) end
 	end
 	m:SetAttribute("HPartId", id)
+	if id == "glider" then m:SetAttribute("HPartOpen", open) end -- v1.2
 	m.Parent = char
 	return m, n
 end
@@ -275,6 +282,14 @@ local function onCharacter(char)
 		char:GetAttributeChangedSignal(p.flag):Connect(function() apply(char) end)
 	end
 	char:GetAttributeChangedSignal("Species"):Connect(function() apply(char) end)
+	char:GetAttributeChangedSignal("Gliding"):Connect(function() -- v1.2: rebuild the glider open / folded
+		local g = char:FindFirstChild("HPart_glider")
+		local want = char:GetAttribute("Gliding") == true and script:GetAttribute("HerreraPartsGlideOpenEnabled") ~= false
+		if g and g:GetAttribute("HPartOpen") ~= want then
+			g:Destroy()
+			apply(char)
+		end
+	end)
 	task.defer(apply, char)
 end
 local function onPlayer(p)

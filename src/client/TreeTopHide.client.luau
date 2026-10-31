@@ -1,4 +1,4 @@
--- TreeTopHide v1.0 (Mecha Dino Arena) — Tree Stalker III: "On a tree top, enemies cannot see your name or health bar"
+-- TreeTopHide v1.1 (Mecha Dino Arena) — Tree Stalker III: "On a tree top, enemies cannot see your name or health bar"
 -- (LocalScript in StarterPlayerScripts, all devices). SkillTree 1.37 / SkillEffects 1.26, plan docs/plans/STAT_LINES_v1.0.md
 -- (Kepu 2026-10-31 picked the new row Tree Stalker).
 -- Every frame, for every OTHER player's character with the character attribute TreeTopHidden = true (SkillEffects 1.26)
@@ -9,10 +9,13 @@
 -- Your own dino is never hidden on your own screen.
 -- Switch: script attribute TreeTopHideEnabled (default true, read each frame; false = everything put back, nothing hidden).
 -- Diagnostics: script TreeTopHideVersion, TreeTopHidCount (characters hidden right now); player TreeTopHideVersion.
+-- v1.1 (Herrera Smoke Pods, MDA-152, HerreraMovesServer 1.0): a character with SmokeHidden = true (inside its own smoke
+--   cloud) is hidden the same way. Switch: script attribute TreeTopHideSmokeEnabled (default true, read each frame; false
+--   = 1.0).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local me = Players.LocalPlayer
 script:SetAttribute("TreeTopHideVersion", VERSION)
 me:SetAttribute("TreeTopHideVersion", VERSION)
@@ -31,6 +34,7 @@ local function restore(char)
 end
 
 local function wantsHide(char)
+	if script:GetAttribute("TreeTopHideSmokeEnabled") ~= false and char:GetAttribute("SmokeHidden") == true then return true end -- v1.1
 	return char:GetAttribute("TreeTopHidden") == true and char:GetAttribute("ClimbState") == "top"
 end
 

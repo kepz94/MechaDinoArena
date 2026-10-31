@@ -1,4 +1,4 @@
--- SkillTree v1.39 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.40 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,9 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.40 (Herrera parts pass 2 built: HerreraMovesServer 1.0, GliderTest 1.0, HerreraMovesFX 1.0): HERRERA_PASS2_SOON
+--   = false, so Glider Wings, Quill Launcher, Smoke Pods, Strobe Frill and Stun Breaker are live (buyable, slottable, in
+--   LIVE_MECH). Set it back to true to hide them as SOON again (1.39).
 -- v1.39 (Kepu 2026-10-31, publishing pass 1: the 5 parts whose moves come in pass 2 go out as "Mark them SOON"): with
 --   SkillTree.HERRERA_PASS2_SOON (default true) glider, quills, smoke, strobe and breaker get soon = true and leave
 --   LIVE_MECH: shown in the Lab as SOON, not buyable (canBuy "soon"), not given by SkillServer's Studio test layer.
@@ -836,6 +839,7 @@ if SkillTree.HERRERA_PARTS and not SkillTree.PATHS.ironclaw then
 end
 -- v1.39: the pass-2 parts are SOON until their moves are built
 SkillTree.HERRERA_PASS2_SOON = true
+SkillTree.HERRERA_PASS2_SOON = false -- v1.40: pass 2 built
 if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_PASS2_SOON then
 	for _, id in ipairs({"glider", "quills", "smoke", "strobe", "breaker"}) do
 		if SkillTree.PATHS[id] then

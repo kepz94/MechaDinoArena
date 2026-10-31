@@ -1,4 +1,4 @@
--- BiteServer v1.8 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
+-- BiteServer v1.9 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
 -- hit at the moment the jaws shut.
 -- Client -> server: ReplicatedStorage.DinoBiteRequest:FireServer(clientServerTime) (sent by BiteTest)
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now] (so every client's pose lines up with
@@ -74,6 +74,9 @@
 --   StatDamageTakenMul when the target is a player's character (Thick Hide now works against player bites too).
 --   Attacker diagnostics BiteHitCrestMul, BiteHitDefenseMul. Switch: script attribute BiteCrestEnabled (default true,
 --   read each hit; false = 1.7 damage).
+-- v1.9 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
+--   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed", right after "disabled").
+--   Switch: script attribute BiteDazeEnabled (default true, read at each request; false = 1.8).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local remote = ReplicatedStorage:FindFirstChild("DinoBiteRequest")
@@ -381,6 +384,8 @@ remote.OnServerEvent:Connect(function(player, stamp, dip, yaw, aimTarget) -- v1.
 		result = "dead"
 	elseif char:GetAttribute("BiteEnabled") == false then
 		result = "disabled"
+	elseif script:GetAttribute("BiteDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > now then -- v1.9: Strobe Frill daze
+		result = "dazed"
 	else
 		local roarAt = char:GetAttribute("RoarStartedAt")
 		local start = math.clamp(stamp, now - MAX_LAG, now)

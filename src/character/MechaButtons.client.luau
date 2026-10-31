@@ -1,4 +1,4 @@
--- MechaButtons v1.23 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.24 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -207,12 +207,19 @@
 --   MechaAimKeepCamEnabled (default true) the release no longer sets ShoulderCamLookAt, so the camera stays where it was;
 --   the raptor still snaps to face the shot (then turns back toward the camera at its turn rate, TurnLimit "aim"). false =
 --   1.13 (the camera turns to the shot). Diagnostic: character MechaScreechCamMoved (true / false, the last shot).
+-- v1.24 (Herrera parts pass 2, MDA-151 / 152 / 155 / 156, HerreraMovesServer 1.0): TIMED_PARTS += quills ("Quill",
+--   DinoQuillRequest, "QUILL LAUNCHER"; fires with the camera LookVector like the Ink Shooter), smoke ("Smoke",
+--   DinoSmokeRequest, "SMOKE PODS"), strobe ("Strobe", DinoStrobeRequest, "STROBE FRILL"), breaker ("Breaker",
+--   DinoBreakerRequest, "STUN BREAKER"). The breaker is ready only while BreakerEnabled, stunned (StunnedUntil > now) or
+--   pinned (PinHeld), and off cooldown (BreakerReadyAt / BreakerCooldown); otherwise the button is dimmed. Glider Wings
+--   has no key (it acts through JUMP). Switch: script attribute MechaButtonsHerreraEnabled (default true, read at start;
+--   false = 1.23).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.23"
+local VERSION = "1.24"
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -265,6 +272,14 @@ if B3_BTN then -- v1.19: pachy parts batch 3
 	TIMED_PARTS.ink = {"Ink", "DinoInkRequest", "INK SHOOTER"}
 end
 if TETHER_BTN then TIMED_PARTS.tether = {"Tether", "DinoTetherRequest", "TETHER SPIKE"} end -- v1.20
+if script:GetAttribute("MechaButtonsHerreraEnabled") == nil then script:SetAttribute("MechaButtonsHerreraEnabled", true) end -- v1.24
+local HM_BTN = script:GetAttribute("MechaButtonsHerreraEnabled") ~= false
+if HM_BTN then -- v1.24: Herrera parts pass 2
+	TIMED_PARTS.quills = {"Quill", "DinoQuillRequest", "QUILL LAUNCHER"}
+	TIMED_PARTS.smoke = {"Smoke", "DinoSmokeRequest", "SMOKE PODS"}
+	TIMED_PARTS.strobe = {"Strobe", "DinoStrobeRequest", "STROBE FRILL"}
+	TIMED_PARTS.breaker = {"Breaker", "DinoBreakerRequest", "STUN BREAKER"}
+end
 -- v1.20: parts that use hold-to-aim
 local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off
 	return id == "screech" or (TETHER_BTN and id == "tether" and script:GetAttribute("MechaTetherAimMode") == false)
@@ -757,6 +772,12 @@ local function press(n, input)
 		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
 		return
 	end
+	if HM_BTN and id == "quills" then -- v1.24: the quills fly along the camera look (HerreraMovesServer 1.0)
+		local r = ReplicatedStorage:FindFirstChild("DinoQuillRequest")
+		local cam = workspace.CurrentCamera
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
+		return
+	end
 	if id == "hookarm" then -- v1.15: the hook fires along the camera look (HookServer 1.0)
 		local r = ReplicatedStorage:FindFirstChild("DinoHookRequest")
 		local cam = workspace.CurrentCamera
@@ -798,6 +819,13 @@ local function partState(id)
 		local cd = tonumber(char:GetAttribute("CloakCooldown")) or 0
 		local left = (tonumber(char:GetAttribute("CloakReadyAt")) or 0) - now
 		return ready, (cd > 0 and left > 0) and math.clamp(left / cd, 0, 1) or 0
+	end
+	if HM_BTN and id == "breaker" then -- v1.24: only while stunned or pinned
+		local readyAt = tonumber(char:GetAttribute("BreakerReadyAt")) or 0
+		local held = (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now or char:GetAttribute("PinHeld") == true
+		local cd = tonumber(char:GetAttribute("BreakerCooldown")) or 0
+		local left = readyAt - now
+		return char:GetAttribute("BreakerEnabled") == true and held and now >= readyAt, (cd > 0 and left > 0) and math.clamp(left / cd, 0, 1) or 0
 	end
 	local tp = TIMED_PARTS[id] -- v1.5
 	if tp then

@@ -1,4 +1,4 @@
--- RamServer v1.1 (Dino Arcade) — TEST. Validates the T-Rex tree charge ("a dedicated button that makes a dino run into
+-- RamServer v1.2 (Dino Arcade) — TEST. Validates the T-Rex tree charge ("a dedicated button that makes a dino run into
 -- the nearest tree") and stamps it so every client shows it (IdleAnimation 1.19 / RamPose 1.0) and ShakeOffServer 1.1
 -- can knock latched raptors off on the impact.
 -- Client -> server (sent by RamTest 1.0):
@@ -33,11 +33,14 @@
 --   "notLatchedOn" when RamRequiresLatchOn (character attribute, default true) ~= false and the count, taken at the
 --   request, is 0. A ram already accepted is not stopped when the raptors let go. Bots (BotServer 1.3) are unchanged:
 --   they already ram only while a player raptor is latched on.
+-- v1.2 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
+--   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
+--   script attribute RamDazeEnabled (default true, read at each request; false = 1.1).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local DEFAULTS = {RamEnabled = false, RamWindup = 0.4, RamRange = 60, RamStaminaCost = 20, RamCooldown = 6,
 	RamMaxCharge = 3.5, StaminaEnabled = true, StaminaMax = 100}
 DEFAULTS.RamRequiresLatchOn = true -- v1.1
@@ -201,6 +204,8 @@ requestRemote.OnServerEvent:Connect(function(player, stamp, trunk)
 		result = "disabled"
 	elseif (char:GetAttribute("StunnedUntil") or 0) > now then
 		result = "stunned"
+	elseif script:GetAttribute("RamDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > now then -- v1.2: Strobe Frill daze
+		result = "dazed"
 	elseif char:GetAttribute("PounceLatched") == true then
 		result = "latched"
 	elseif get(char, "RamRequiresLatchOn") ~= false and latchedOnCount(char) == 0 then -- v1.1

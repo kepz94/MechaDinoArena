@@ -1,4 +1,4 @@
--- SlashTest v1.3 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
+-- SlashTest v1.4 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 9 (server: SlashServer 1.1), mockup docs/mockups/herrera_kit_options.html.
 -- Kepu 2026-10-30: "Dash-through slash"; the drop attack "should be able to happen if I press the dash aimed at a nearby
 --   target but not be its own dedicated button".
@@ -42,13 +42,17 @@
 --   from the Herrera): a character's scripts are destroyed before their own cleanup runs, so the CAS actions stayed bound.
 --   At start, on every character of this player (any dino), the actions "DinoSlash" / "DinoSlashClick" are unbound before
 --   anything else (then bound again below when this dino has SlashEnabled). ArenaTouch 1.7 also hides a leftover.
+-- v1.4 (Herrera Glider Wings II, MDA-150, plan docs/plans/HERRERA_PARTS_v1.0.md Part 2): while this client's GlideLocal
+--   (GliderTest 1.0) and the character's GliderDrop are true, a press off a tree is a "dive" (drop attack on the dino
+--   below, else the leap) as from a tree; SlashServer 1.5 accepts it while the replicated Gliding is true. Switch: script
+--   attribute SlashGlideDiveEnabled (default true, read at each press; false = 1.3).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local ACTION = "DinoSlash"
 local ACTION_CLICK = "DinoSlashClick"
 local BIND = "DinoSlashDrive"
@@ -252,6 +256,8 @@ local function tryPress(source)
 	local dir = Vector3.new(look.X, 0, look.Z)
 	dir = dir.Magnitude > 1e-3 and dir.Unit or Vector3.new(0, 0, -1)
 	local kind = onTree() and "dive" or "ground"
+	if kind == "ground" and script:GetAttribute("SlashGlideDiveEnabled") ~= false and char:GetAttribute("GlideLocal") == true
+		and char:GetAttribute("GliderDrop") == true then kind = "dive" end -- v1.4: drop attack from a glide
 	local target = kind == "dive" and diveTarget() or nil
 	local localKind = kind == "dive" and (target and "dive" or "leap") or "ground"
 	local time = T

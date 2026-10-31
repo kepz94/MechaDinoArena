@@ -1,4 +1,4 @@
--- PounceServer v1.11 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.12 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -104,6 +104,9 @@
 --     dropped. PounceTest 1.6 ends the leap on the client when the shove lands.
 --   Diagnostics: raptor PounceHeadbuttCancels; target PounceChargeBlocks. Switches (script, read each claim):
 --   PounceChargeBlockEnabled, PounceHeadbuttCancelEnabled (default true; false = 1.10).
+-- v1.12 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
+--   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
+--   script attribute PounceDazeEnabled (default true, read at each request; false = 1.11).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -310,6 +313,8 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		result = "latched"
 	elseif (char:GetAttribute("StunnedUntil") or 0) > now then -- v1.2
 		result = "stunned"
+	elseif script:GetAttribute("PounceDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > now then -- v1.12: Strobe Frill daze
+		result = "dazed"
 	elseif char:GetAttribute("PinHeld") == true then -- v1.8: pinned by another player
 		result = "pinned"
 	elseif char:GetAttribute("Exhausted") == true then

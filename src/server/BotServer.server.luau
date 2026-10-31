@@ -1,4 +1,4 @@
--- BotServer v1.18 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.22 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -347,12 +347,20 @@
 --   Either way the pounce cooldown starts. Diagnostics: bot BotPounceCancel ("charging" / "headbutted"); script
 --   BotPounceChargeBlocks, BotPounceHeadbuttCancels. Switches (script, read each check): BotPounceChargeBlockEnabled,
 --   BotPounceHeadbuttCancelEnabled (default true; false = 1.20).
+-- v1.22 (Herrera parts pass 2, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"):
+--   * Strobe Frill daze (MDA-155): a bot whose DazedUntil (HerreraMovesServer 1.0) is in the future starts no bite (chase
+--     and flank), no pounce (chase and flank) and no pachy charge; it keeps moving. A bite / pounce / charge already
+--     running finishes. Script attribute BotDazeEnabled (default true, read each step; false = 1.21). Diagnostic: bot
+--     BotDazedSkips; script BotDazedSkips.
+--   * Smoke Pods (MDA-152): a player character whose SmokeHidden is true (inside its own smoke cloud) is dropped at once
+--     (like a cloak) and is not picked as a target. Script attribute BotSmokeEnabled (default true, read each step; false
+--     = 1.21). Diagnostics: bot BotSmokeDrops; script BotSmokeDrops.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.21"
+local VERSION = "1.22"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -438,6 +446,24 @@ SPECIES.Pachy = {health = 90, biteDamage = 0, biteCooldown = 1.0, biteReach = 0,
 script:SetAttribute("BotServerVersion", VERSION)
 if script:GetAttribute("BotCloakEnabled") == nil then script:SetAttribute("BotCloakEnabled", true) end -- v1.15
 if script:GetAttribute("BotInkEnabled") == nil then script:SetAttribute("BotInkEnabled", true) end -- v1.18
+if script:GetAttribute("BotDazeEnabled") == nil then script:SetAttribute("BotDazeEnabled", true) end -- v1.22
+if script:GetAttribute("BotSmokeEnabled") == nil then script:SetAttribute("BotSmokeEnabled", true) end -- v1.22
+-- v1.22: Strobe Frill daze on this bot (no new attacks); counted when it holds one back
+local function dazed(b)
+	if script:GetAttribute("BotDazeEnabled") == false then return false end
+	local u = b.model and b.model:GetAttribute("DazedUntil")
+	return typeof(u) == "number" and u > workspace:GetServerTimeNow()
+end
+local function dazedSkip(b)
+	if not dazed(b) then return false end
+	b.model:SetAttribute("BotDazedSkips", (b.model:GetAttribute("BotDazedSkips") or 0) + 1)
+	script:SetAttribute("BotDazedSkips", (script:GetAttribute("BotDazedSkips") or 0) + 1)
+	return true
+end
+-- v1.22: inside its own Smoke Pods cloud
+local function smoked(char)
+	return script:GetAttribute("BotSmokeEnabled") ~= false and char:GetAttribute("SmokeHidden") == true
+end
 
 local function get(k)
 	local v = script:GetAttribute(k)
@@ -1404,7 +1430,7 @@ local function flankStep(b, player, char, thrp, now)
 		return true
 	end
 	-- a side bite whenever the snout is in reach of an allowed hitbox
-	if now >= b.nextBite then
+	if now >= b.nextBite and not dazedSkip(b) then -- v1.22: + daze
 		local dip = dipFor(b, char, NO_HEAD)
 		if dip then
 			bite(b, player, dip, NO_HEAD)
@@ -1429,7 +1455,7 @@ local function flankStep(b, player, char, thrp, now)
 	if avoidsWater(b) then goal, clear, detoured = dryGoal(hrp.Position, spot, b) end
 	hum:MoveTo(goal)
 	if flat(spot - hrp.Position).Magnitude <= FLANK_NEAR and not wet then
-		if canFlankPounce(b, char) then
+		if canFlankPounce(b, char) and not dazedSkip(b) then -- v1.22: + daze
 			startPounce(b, char, NO_HEAD)
 			return true
 		end
@@ -1608,6 +1634,7 @@ local function inked(b)
 end
 local function playerAllowed(b, char)
 	return char:GetAttribute("Hidden") ~= true and not cloaked(char) -- v1.15
+		and not smoked(char) -- v1.22
 		and not inked(b) -- v1.18
 		and not (b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char))
 end
@@ -2030,6 +2057,7 @@ local function pachyChase(b, player, thrp, clear, now)
 	local hrp, hum = b.hrp, b.hum
 	local d = flat(thrp.Position - hrp.Position).Magnitude
 	local ready = (b.hbCharges or 0) > 0 and now >= (b.nextHeadbutt or 0)
+	if ready and dazedSkip(b) then ready = false end -- v1.22: dazed, no charge
 	if ready and clear and d <= get("BotPachyChargeRange") then
 		startPachyCharge(b, player)
 		return true
@@ -2134,6 +2162,10 @@ local function step(b)
 			target = nil
 			show(b, "BotInkDrops", (b.shown.BotInkDrops or 0) + 1)
 			script:SetAttribute("BotInkDrops", (script:GetAttribute("BotInkDrops") or 0) + 1)
+		elseif smoked(char) then -- v1.22: in the smoke, lost at once
+			target = nil
+			show(b, "BotSmokeDrops", (b.shown.BotSmokeDrops or 0) + 1)
+			script:SetAttribute("BotSmokeDrops", (script:GetAttribute("BotSmokeDrops") or 0) + 1)
 		elseif cloaked(char) then -- v1.15: lost at once
 			target = nil
 			show(b, "BotCloakDrops", (b.shown.BotCloakDrops or 0) + 1)
@@ -2153,6 +2185,7 @@ local function step(b)
 		for _, player in ipairs(Players:GetPlayers()) do
 			local char, _, thrp = aliveChar(player)
 			if char and char:GetAttribute("Hidden") ~= true and not cloaked(char) -- v1.15
+				and not smoked(char) -- v1.22
 				and not (b.pack and get("BotPacksEnabled") and char:GetAttribute("Species") == "TRex" and not smallRex(char)) then -- v1.4; v1.6: a Hatchling T-Rex may be hunted
 				local d = flat(thrp.Position - hrp.Position).Magnitude
 				if d <= bestD and inZone(botZone(b), thrp.Position) then best, bestD = player, d end -- v1.12: + zone; v1.13: band
@@ -2186,9 +2219,10 @@ local function step(b)
 				return
 			end
 			local dip = (now >= b.nextBite and char) and dipFor(b, char) or nil -- v1.2: dipped bite
+			if dip and dazed(b) then dip = nil; dazedSkip(b) end -- v1.22: dazed, no bite
 			if dip then
 				bite(b, target, dip)
-			elseif char and canPounce(b, char) then -- v1.2
+			elseif char and not dazed(b) and canPounce(b, char) then -- v1.2; v1.22: + daze
 				startPounce(b, char)
 			elseif now >= b.nextBite - b.cfg.biteCooldown + 0.6 then
 				if clear then show(b, "BotState", "chase") else waterState(b, detoured and "detour" or "shore") end -- v1.4
