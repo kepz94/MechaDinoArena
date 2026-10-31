@@ -1,6 +1,16 @@
--- StatSheet.spec v1.1 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.StatSheet (MDA-1, plan docs/plans/CLASSSTATS_v1.0.md).
+-- StatSheet.spec v1.3 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.StatSheet (MDA-1, plan docs/plans/CLASSSTATS_v1.0.md).
 -- Run in Studio Edit through execute_luau (copy in ServerStorage.DinoArcadeTools.StatSheet_spec); returns "PASS n" or "FAIL ...".
-local ok, SS = pcall(function() return require(game.ServerStorage.DinoArcade.StatSheet) end)
+-- v1.3 (MDA-134, plan docs/plans/HERRERA_KIT_v1.0.md Task 2): requires a fresh clone (a re-run sees the installed source);
+--   Version "1.3" (the 1.1 spec was not bumped for StatSheet 1.2); pachy sheet + HeadbuttDamage; Herrera sheet (Utility,
+--   2/3/2/10/1, "Dash-through slash", "Auto-climb") and SlashDamage +1 per Attack point.
+local ok, SS = pcall(function()
+	local src = game.ServerStorage.DinoArcade.StatSheet
+	local c = src:Clone()
+	c.Parent = src.Parent
+	local m = require(c)
+	c:Destroy()
+	return m
+end)
 if not ok then return "FAIL require: " .. tostring(SS) end
 local fails, passes = {}, 0
 local function eq(name, got, want, tol)
@@ -14,7 +24,7 @@ local TREX = {MaxHealth = 200, BiteDamage = 25, MoveWalkSpeed = 20, MoveRunSpeed
 local RAPTOR = {MaxHealth = 60, BiteDamage = 8, PounceLandDamage = 8, PounceTickDamage = 4, MoveWalkSpeed = 30, MoveRunSpeed = 52,
 	MoveCreepSpeed = 10}
 
-eq("Version", SS.Version, "1.1")
+eq("Version", SS.Version, "1.3")
 eq("STATS", table.concat(SS.STATS, ","), "Health,Attack,Defense,Speed,Support")
 eq("MAX_ADDED", SS.MAX_ADDED, 10)
 eq("HEALTH_PER_POINT", SS.HEALTH_PER_POINT, 15)
@@ -104,6 +114,24 @@ eq("Speed 20 -> 16", a.Speed, 16) eq("Speed 20 flag", c, true)
 a, c = SS.added("TRex", {Attack = 12})
 eq("Attack still 10", a.Attack, 10)
 eq("Speed 16 run x2.6", SS.values({MoveRunSpeed = 44}, {Speed = 16}).MoveRunSpeed, 114.4, 1e-6)
+
+-- v1.3: pachy (1.2) and Herrera sheets
+eq("Pachy class", SS.SPECIES.Pachy and SS.SPECIES.Pachy.class, "Bruiser")
+eq("ATTACK headbutt", SS.ATTACK_PER_POINT.HeadbuttDamage, 2)
+eq("Herrera class", SS.SPECIES.Herrera and SS.SPECIES.Herrera.class, "Utility")
+if SS.SPECIES.Herrera then
+	eq("Herrera start", sheet("Herrera"), "2/3/2/10/1")
+	eq("Herrera abilities", table.concat(SS.SPECIES.Herrera.abilities, ","), "Dash-through slash,Auto-climb")
+end
+eq("ATTACK slash", SS.ATTACK_PER_POINT.SlashDamage, 1)
+eq("ATTACK_KEYS has SlashDamage", table.find(SS.ATTACK_KEYS, "SlashDamage") ~= nil, true)
+local HERRERA = {MaxHealth = 40, SlashDamage = 8, MoveWalkSpeed = 48, MoveRunSpeed = 90}
+v = SS.values(HERRERA, SS.added("Herrera", {Attack = 3}) or {})
+eq("Herrera Attack 3 slash", v.SlashDamage, 11)
+eq("Herrera Attack 3 no bite key", v.BiteDamage, nil)
+v = SS.values(HERRERA, SS.added("Herrera", {}) or {})
+eq("Herrera 0 health", v.MaxHealth, 40)
+eq("Raptor no slash key", SS.values(RAPTOR, SS.added("Raptor", {Attack = 2})).SlashDamage, nil)
 
 if #fails > 0 then return "FAIL " .. #fails .. " (pass " .. passes .. ")\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes
