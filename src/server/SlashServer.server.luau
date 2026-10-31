@@ -1,4 +1,4 @@
--- SlashServer v1.0 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.1 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -46,13 +46,16 @@
 --   SlashBleedTick defaults to 1.
 -- Speed burst: when a dash ends (start + dash time) the attacker gets SlashBurstMul and SlashBurstUntil = end +
 --   SlashBurstTime (SprintTest 1.11 multiplies the run speed while it lasts); SlashEndedAt (last).
+-- v1.1 (Studio check of 1.0: a bleed on Bot_TRex_1 took 3 ticks (9), not 4 — the last tick is due exactly at
+--   SlashBleedUntil and the expiry test ran first): a tick is taken when due and not later than SlashBleedUntil (+1 ms);
+--   the bleed is dropped after its last tick (next tick past SlashBleedUntil).
 -- Switch: script attribute SlashServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script SlashServerVersion, SlashRequests, SlashHits, SlashBleedTicks.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local TIME_SLACK = 0.6      -- s after the dash time a claim is still accepted (client -> server lag)
 local PATH_TOLERANCE = 6    -- studs (x scale) between the target's hitboxes and the dash path, on top of SlashReach
 local DIVE_SLACK = 3        -- studs (x scale) added to SlashDiveRange for the request check (the target moves)
@@ -353,17 +356,20 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 	for model, b in pairs(bleeds) do
-		if not model.Parent or model:GetAttribute("DummyState") == "ko" or t > b.untilT + 1e-3 then
+		if not model.Parent or model:GetAttribute("DummyState") == "ko" then
 			bleeds[model] = nil
-		elseif t >= b.nextTick then
-			b.nextTick += b.tick
-			if (tonumber(model:GetAttribute("EnergyShieldUntil")) or 0) <= t then
-				local d = math.floor(b.dps * b.tick * 10 + 0.5) / 10
-				takeHealth(model, d, b.by, b.byId, "bleed", t)
-				model:SetAttribute("SlashBleedTickDamage", d)
-				model:SetAttribute("SlashBleedTickAt", t) -- last: SlashFX reacts to this one
-				script:SetAttribute("SlashBleedTicks", (script:GetAttribute("SlashBleedTicks") or 0) + 1)
+		else
+			if t >= b.nextTick and b.nextTick <= b.untilT + 1e-3 then -- v1.1: the last tick (due at untilT) counts
+				b.nextTick += b.tick
+				if (tonumber(model:GetAttribute("EnergyShieldUntil")) or 0) <= t then
+					local d = math.floor(b.dps * b.tick * 10 + 0.5) / 10
+					takeHealth(model, d, b.by, b.byId, "bleed", t)
+					model:SetAttribute("SlashBleedTickDamage", d)
+					model:SetAttribute("SlashBleedTickAt", t) -- last: SlashFX reacts to this one
+					script:SetAttribute("SlashBleedTicks", (script:GetAttribute("SlashBleedTicks") or 0) + 1)
+				end
 			end
+			if b.nextTick > b.untilT + 1e-3 then bleeds[model] = nil end -- v1.1: after the last tick
 		end
 	end
 end)
