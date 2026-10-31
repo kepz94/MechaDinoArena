@@ -1,4 +1,4 @@
--- SkillTree v1.36 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.38 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -87,6 +87,21 @@
 --     are doing" -> "Remove Jaws for raptors"): PATHS.jaws.notFor = {Raptor = true}, the same rule as Regeneration for
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
+-- v1.38 (Kepu 2026-10-31 "Build"; plan docs/plans/HERRERA_PARTS_v1.0.md, MDA-149..156; mockups
+--   docs/mockups/herrera_ironclaw_options.html B, herrera_parts_b1_options.html, herrera_parts_b2_options.html). Switch
+--   SkillTree.HERRERA_PARTS (default true): the Herrera's 8 mecha parts, each mech, live (LIVE_MECH), a loadout slot
+--   (BUTTONS), dino / OWNER "Herrera": ironclaw "Iron Claw" (attack), quills "Quill Launcher" (attack), glider "Glider
+--   Wings" (speed), smoke "Smoke Pods" (eng), strobe "Strobe Frill" (eng), plating "Back Plating" (defense), breaker
+--   "Stun Breaker" (defense), siphon "Blood Siphon" (health). effects() fields (off values when not bought):
+--     ironClawDamageMul 1.1 / 1.2 / 1.3 / 1.5, ironClawSpeedMul 0.95 / 0.90 / 0.85 / 0.75, ironClawDust (III);
+--     gliderFall 8 (I), gliderDrop (II), gliderDropMul 1.3 (III), gliderBurst 10 studs (star);
+--     quillCount 5 / 8 / 12 / 17, quillDamage 4, quillRange 40, quillCooldown 20;
+--     smokeRadius 12, smokeTime 4 / 6 (II), smokeRunMul 1.25 (III), smokeSlowMul 0.75 (star), smokeCooldown 18;
+--     platingRearMul 0.90 / 0.85 / 0.78 / 0.70;
+--     siphonRate 1 / 1.5 (II), siphonRange 15 / 25 (III), siphonKillHeal 0.25 (star);
+--     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
+--       strobeCooldown 16;
+--     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
 -- v1.37 (Kepu 2026-10-31: "you keep applying these to any new Dino ... I need you to just have a generalized stat line that
 --   can be customized to the Dino"; mockup docs/mockups/stat_lines_per_dino_options.html option A "Same rows, own names",
 --   new rows Tree Stalker + Blood Frenzy; plan docs/plans/STAT_LINES_v1.0.md). Switch SkillTree.HERRERA_STATS (default true):
@@ -770,6 +785,51 @@ if SkillTree.HERRERA_STATS and not SkillTree.PATHS.stalker then
 		"Slash a bleeding dino: +3 damage",
 		"A kill while they bleed refills all slash charges"})
 end
+-- v1.38: the Herrera's mecha parts
+SkillTree.HERRERA_PARTS = true
+if SkillTree.HERRERA_PARTS and not SkillTree.PATHS.ironclaw then
+	local function part(id, name, areaId, steps)
+		local p = path(id, name, true, false, steps)
+		p.area = areaId
+		p.dino = "Herrera"
+		SkillTree.OWNER[id] = "Herrera"
+		SkillTree.LIVE_MECH[id] = true
+		SkillTree.BUTTONS[id] = true
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		SkillTree.PATHS[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	part("ironclaw", "Iron Claw", "attack", {
+		"Iron hook blades: slash damage +10%, run 5% slower",
+		"Slash damage +20%, run 10% slower",
+		"Slash damage +30%, run 15% slower",
+		"Slash damage +50%, run 25% slower"})
+	part("quills", "Quill Launcher", "attack", {
+		"Button: fire 5 quills at your target, 4 damage each (40 studs). Recharges in 20 s",
+		"8 quills", "12 quills", "17 quills"})
+	part("glider", "Glider Wings", "speed", {
+		"Hold JUMP in the air to glide: fall at 8 studs/s and keep your run speed",
+		"SLASH while gliding = drop attack on anything below (55 studs)",
+		"Drop attack from a glide +30% damage",
+		"The glide drop lands with a bleed burst (10 studs around)"})
+	part("smoke", "Smoke Pods", "eng", {
+		"Button: a smoke cloud (12 studs) for 4 s. Inside it your name and health bar are hidden and bots lose you. Recharges in 18 s",
+		"The cloud lasts 6 s", "Run 25% faster inside the smoke", "Enemies inside the smoke are slowed 25%"})
+	part("strobe", "Strobe Frill", "eng", {
+		"Button: your frill flashes in a 60° cone (20 studs). Enemies in it are dazed (can't attack) for 1 s. Recharges in 16 s",
+		"Daze lasts 1.5 s", "Cone 90°, 25 studs", "Dazed enemies take +20% damage"})
+	part("plating", "Back Plating", "defense", {
+		"Steel plates on your back: hits from behind -10% damage",
+		"Hits from behind -15%", "Hits from behind -22%", "Hits from behind -30%"})
+	part("breaker", "Stun Breaker", "defense", {
+		"Button (while stunned or pinned): break free. Recharges in 20 s",
+		"Breaking free pushes enemies near you back 10 studs", "Recharges in 14 s", "1 s of no damage after breaking free"})
+	part("siphon", "Blood Siphon", "health", {
+		"Heal 1 HP/s for each bleeding enemy within 15 studs",
+		"1.5 HP/s each", "Range 25 studs", "A bleed kill near you heals 25% of your max health"})
+end
 
 -- level curve
 function SkillTree.xpToNext(level)
@@ -1111,6 +1171,38 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 		if bf >= 3 then e.bleedBonus = 3 end
 		if bf >= 4 then e.killRefill = true end
 	end
+	-- v1.38: the Herrera's mecha parts (off values when not bought)
+	local function st(id) return s[id] or 0 end
+	local ic, gl, qu, sm, pl, si, sb, br = st("ironclaw"), st("glider"), st("quills"), st("smoke"), st("plating"),
+		st("siphon"), st("strobe"), st("breaker")
+	local on = SkillTree.HERRERA_PARTS
+	e.ironClawDamageMul = on and ({1.1, 1.2, 1.3, 1.5})[ic] or 1
+	e.ironClawSpeedMul = on and ({0.95, 0.90, 0.85, 0.75})[ic] or 1
+	e.ironClawDust = on and ic >= 3
+	e.gliderFall = on and gl >= 1 and 8 or 0
+	e.gliderDrop = on and gl >= 2
+	e.gliderDropMul = on and gl >= 3 and 1.3 or 1
+	e.gliderBurst = on and gl >= 4 and 10 or 0
+	e.quillCount = on and ({5, 8, 12, 17})[qu] or 0
+	e.quillDamage, e.quillRange, e.quillCooldown = (on and qu >= 1) and 4 or 0, (on and qu >= 1) and 40 or 0, 20
+	e.smokeRadius = on and sm >= 1 and 12 or 0
+	e.smokeTime = on and (sm >= 2 and 6 or (sm >= 1 and 4 or 0)) or 0
+	e.smokeRunMul = on and sm >= 3 and 1.25 or 1
+	e.smokeSlowMul = on and sm >= 4 and 0.75 or 1
+	e.smokeCooldown = 18
+	e.platingRearMul = on and ({0.90, 0.85, 0.78, 0.70})[pl] or 1
+	e.siphonRate = on and (si >= 2 and 1.5 or (si >= 1 and 1 or 0)) or 0
+	e.siphonRange = on and (si >= 3 and 25 or (si >= 1 and 15 or 0)) or 0
+	e.siphonKillHeal = on and si >= 4 and 0.25 or 0
+	e.strobeAngle = on and (sb >= 3 and 90 or (sb >= 1 and 60 or 0)) or 0
+	e.strobeRange = on and (sb >= 3 and 25 or (sb >= 1 and 20 or 0)) or 0
+	e.strobeDaze = on and (sb >= 2 and 1.5 or (sb >= 1 and 1 or 0)) or 0
+	e.strobeDazedMul = on and sb >= 4 and 1.2 or 1
+	e.strobeCooldown = 16
+	e.breaker = on and br >= 1
+	e.breakerPush = on and br >= 2 and 10 or 0
+	e.breakerCooldown = on and br >= 3 and 14 or 20
+	e.breakerImmune = on and br >= 4 and 1 or 0
 	return e
 end
 
