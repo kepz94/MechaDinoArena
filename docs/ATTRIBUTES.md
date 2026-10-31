@@ -2426,3 +2426,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | MechaButtonsHerreraEnabled | MechaButtons script | true | MechaButtons 1.24 |
 | AbilityBarHerreraPartsEnabled | AbilityBar script | true | AbilityBar 1.18 |
 | HerreraPartsGlideOpenEnabled / HPartOpen | HerreraPartsServer script / HPart_glider | true / bool | HerreraPartsServer 1.2 |
+| SkillLoadoutKeepTestEnabled | SkillServer script | true | SkillServer 1.8 |
+| SkillLoadoutRestored | player | "saved" / "" | SkillServer 1.8 |

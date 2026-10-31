@@ -1,4 +1,4 @@
--- SkillServer v1.7 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
+-- SkillServer v1.8 (Mecha Dino Arena) — skill tree XP, levels, points, buy / respec and saving. MDA-12, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 2, ADR "Skill trees own XP and replace class stat points".
 -- Kepu: kills give XP, each level gives 1 skill point (cap 60), free respec any time, keep everything on death, builds
 --   saved. GrowthServer stays off (adult spawns); this script owns skill XP. Maths: ServerStorage.DinoArcade.SkillTree.
@@ -84,12 +84,27 @@
 --   buyBase, and a given part itself is refused as "maxed". The buy still lands in the real steps and is saved. Note: a
 --   given part that was also bought for real costs nothing while the layer is on; when the layer is switched off, a build
 --   that is then over its points is reset by the load check, as before.
+-- v1.8 (bug MDA-157, Kepu 2026-10-31: "sometimes I set my load out in the menu then load in with something totally
+--   different"; "It should just auto save whatever is the last Dino and last loadout equipped in the main menu"): with the
+--   test layer on, the slots hold parts the layer gives (not bought), and the saved loadout was sanitized on load with the
+--   real steps (cleanRecord), so those slots came back empty and publish refilled them with the given parts in
+--   PATH_ORDER. Now cleanRecord also keeps the saved loadout as it was (record field rawLoadout, never saved); the first
+--   publish of that dino in the session, while the layer is on for it, sanitizes that saved loadout with the effective
+--   steps (real + given at star) instead, and counts every given part as already placed, so nothing is refilled: the
+--   slots come back exactly as last equipped, empty slots included. No saved record for the dino -> the 1.7 first
+--   placement. Layer off -> the 1.7 sanitize with the real steps (a part not bought is dropped). The loadout is already
+--   saved on every slot change (dirty -> at most SAVE_GAP s, and on leave / close); the last dino is saved by
+--   SpeciesServer 1.3 (lastSpecies). Switch: script attribute SkillLoadoutKeepTestEnabled (default true, read at each
+--   publish; false = 1.7). A save writes, for a dino not played yet this session, its saved loadout as it was (1.7 wrote
+--   the copy sanitized with the real steps, so it lost the given parts too); rawLoadout itself is never written.
+--   Diagnostic: player attribute SkillLoadoutRestored ("saved" when a saved loadout was put
+--   back this way, else "").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -189,8 +204,20 @@ local function publish(player, d, levelUp)
 	for _, id in ipairs(ST.PATH_ORDER) do
 		player:SetAttribute("SkillPath_" .. id, eff[id] or 0)
 	end
-	d.loadout = ST.sanitizeLoadout(d.loadout, eff, d.active) -- v1.1; v1.3: + dino; v1.5: effective steps
 	d.testPlaced = d.testPlaced or {}
+	local restored = false -- v1.8: put the saved loadout back with the effective steps (MDA-157)
+	if d.rawLoadout ~= nil then
+		if test and d.active and script:GetAttribute("SkillLoadoutKeepTestEnabled") ~= false then
+			d.loadout = d.rawLoadout
+			local placed = {}
+			for _, id in ipairs(given) do placed[id] = true end
+			d.testPlaced[d.active] = placed
+			restored = true
+		end
+		d.rawLoadout = nil
+	end
+	player:SetAttribute("SkillLoadoutRestored", restored and "saved" or "")
+	d.loadout = ST.sanitizeLoadout(d.loadout, eff, d.active) -- v1.1; v1.3: + dino; v1.5: effective steps
 	if test then -- v1.5: the given Cloak takes the first empty slot once (1.4 forced slot 1 and hid the real part)
 		if d.active then -- v1.6: every given button part, each once
 			local placed = d.testPlaced[d.active]
@@ -232,6 +259,7 @@ local function switchTo(player, d, key)
 	stash(d)
 	local r = d.dinos[key] or {xp = 0, steps = ST.sanitize({}, key), loadout = emptyLoadout()} -- v1.3
 	d.xp, d.steps, d.loadout = r.xp, r.steps, r.loadout
+	d.rawLoadout, r.rawLoadout = r.rawLoadout, nil -- v1.8: the saved loadout, used once by the next publish
 	d.active = key
 	player:SetAttribute("SkillDino", key)
 	if d.loaded then publish(player, d, false) end
@@ -243,7 +271,8 @@ local function cleanRecord(raw, key) -- a saved record -> {xp, steps, loadout}, 
 		for id, n in pairs(steps) do if n > 2 then steps[id] = 2 end end
 	end
 	if ST.spent(steps, key) > ST.pointsOf((ST.levelOf(xp))) then steps = ST.sanitize({}, key) end
-	return {xp = xp, steps = steps, loadout = ST.sanitizeLoadout(type(raw) == "table" and raw.loadout or nil, steps, key)}
+	return {xp = xp, steps = steps, loadout = ST.sanitizeLoadout(type(raw) == "table" and raw.loadout or nil, steps, key),
+		rawLoadout = type(raw) == "table" and type(raw.loadout) == "table" and table.clone(raw.loadout) or nil} -- v1.8
 end
 
 local function save(player, d)
@@ -253,6 +282,13 @@ local function save(player, d)
 	d.lastSave = os.clock()
 	stash(d) -- v1.2
 	local value = {v = 2, dinos = d.dinos} -- v1.2 (1.1: {v = 1, xp, steps, loadout})
+	if script:GetAttribute("SkillLoadoutKeepTestEnabled") ~= false then -- v1.8: a dino not played yet this session keeps
+		local dinos = {} -- its saved loadout as it was (not the copy sanitized with the real steps)
+		for key, r in pairs(d.dinos) do
+			dinos[key] = {xp = r.xp, steps = r.steps, loadout = r.rawLoadout or r.loadout}
+		end
+		value = {v = 2, dinos = dinos}
+	end
 	local ok, err = pcall(function() store:SetAsync("u" .. player.UserId, value) end)
 	if ok then
 		d.dirty = false
