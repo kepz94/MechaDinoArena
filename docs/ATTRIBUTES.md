@@ -2317,3 +2317,23 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TreeTopBody | herrera model | true: HRP in the HerreraBody collision group |
 | SpeciesHerreraEnabled / SpeciesHerreraTemplate | SpeciesServer script | default true / template state |
 | HerreraScale / RaptorScaleHerreraEnabled | RaptorScale script | 2 / default true |
+
+## Herrerasaurus kit — slash (SlashServer 1.2 / SlashTest 1.2 / SprintTest 1.12 / SlashPose 1.0 / IdleAnimation 1.33 / SlashFX 1.0 / AbilityBar 1.14 / MainMenu 1.9)
+| Attribute | On | Meaning |
+|---|---|---|
+| SlashChargesNow / SlashChargesMax / SlashRefillStart / SlashRefillAt | herrera (server) | charges; refill window (server times, 0 when full) |
+| SlashKind / SlashFrom / SlashDir / SlashTo / SlashDashTime / SlashDiveTarget / SlashDiveCheck / SlashCount / SlashStartedAt | herrera (server) | the accepted dash (path, time, dive target / check: ok / none / badTarget / self / ko / far / notBelow) |
+| SlashServerResult / SlashServerResultAt | herrera (server) | ok / badArg / dead / disabled / menu / stunned / pinned / busy / empty / noTree |
+| SlashHitResult / SlashHitGap / SlashHitDamage / SlashHitTarget / SlashHitCount / SlashHitAt | herrera (server) | hit / noDash / used / badTarget / self / ko / far; studs to the path; last hit |
+| SlashBurstMul / SlashBurstUntil / SlashEndedAt | herrera (server) | speed burst after the dash (SprintTest 1.12) |
+| SlashHitBy / SlashTakenDamage / SlashTakenAt / SlashBleedUntil / SlashBleedBy / SlashBleedDps / SlashBleedResult / SlashBleedTickDamage / SlashBleedTickAt | target (server) | hit + bleed (bleeding / shielded) |
+| SlashBleedTick | herrera (override) | bleed tick seconds (default 1) |
+| SlashServerEnabled / SlashPassThroughEnabled / SlashServerVersion / SlashDashGroup / SlashRequests / SlashHits / SlashBleedTicks | SlashServer script | switches; "1.2"; ready / off / failed; counters |
+| SlashTestVersion / SlashLocalState / SlashLocalKind / SlashLocalTarget / SlashInputResult / SlashLastInput / SlashContact / SlashContacts / SlashLocalEndAt / SlashClickBound / SlashPredictedAt / SlashPassThrough / SlashNoCollide | herrera (owner client) | "1.2"; ready / dash / recover; ground / dive / leap; press result; parts moved; no-collide constraints |
+| SlashLeftClickEnabled / SlashPassThroughEnabled | herrera | default true |
+| SlashPoseEnabled / SlashPoseState / SlashPoseKind / SlashPoseSource | herrera (client) | default on; none / dash / fade; ground / dive; local / server |
+| SlashFXEnabled / SlashFXVersion / SlashFXHits / SlashFXTicks | model (client) | default on; attacker "1.0"; target counters |
+| SprintSlashBurstEnabled | SprintTest script | default true |
+| AbilityBarHerreraEnabled / AbilityBar_Slash / AbilityBar_Hop / AbilityBarSlashPips | AbilityBar script / herrera | default true; stunned / active / empty / ready; ready / ground; "n/max" |
+| MainMenuHerreraEnabled | MainMenu script | default true |
+| ClimbHopTime | herrera (override) | ClimbTest hop push seconds (0.35) |
