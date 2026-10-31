@@ -594,7 +594,7 @@ The front is always unchanged.
 | III | Fires 2 blobs side by side. |
 | ★ | Puddles last 8 s. |
 ### How it works
-- Aim = the Tether Spike's current aim (MechaButtons 1.22 "Top-down tactical"): tap = aim mode with a landing circle (GooRadius × 2 across; III: two circles side by side), tap again / left click = fire, CANCEL / right click / Q / 6 s = no fire. Implemented by parameterising tacStart / tacStep / tacEnd with a part table {prefix, remote, range attr, circle size}; the tether row stays as it is.
+- Aim = the Tether Spike's current aim (MechaButtons 1.22 "Top-down tactical"): tap = aim mode with a landing circle (GooRadius × 2 across; III: two circles side by side), tap again / left click = fire, CANCEL / right click / Q / 6 s = no fire. Built as a separate copy (red-team, Kepu "Separate copy, tether untouched"): new gooTacStart / gooTacStep / gooTacEnd, RenderStep "GooTacCam", action "GooTacInput", circle "GooAim", HUD "GooAimHud", character GooAiming (SprintTest walk speed like TetherAiming). The tether code is not edited.
 - Request `DinoGooRequest(stamp, landPos)`; `check(..., "goo", "Goo", {})` (not refused by daze — area denial, like smoke). landPos clamped to GooRange (60) + 4 flat, dropped on the ground.
 - III: two landing points = landPos ± right(flat, perpendicular to root→landPos) × GooRadius × 0.85 × scale.
 - Flight 0.85 s (0.12 s stagger for the 2nd), apex 14 studs above the higher end, from the mortar muzzle; server part "GooBlob" (anchored, no collide / query / touch) in Workspace.DinoFX.GooFX.
@@ -641,7 +641,7 @@ The front is always unchanged.
 | AdrenalineServer | 1.5 | no raptor look on a Herrera; ★ SlashRefillAllAt | AdrenalineHerreraLookOff, AdrenalineSlashRefillEnabled |
 | SlashServer | 1.6 | SlashRefillAllAt → charges = max | SlashAdrenRefillEnabled |
 | SprintTest | 1.16 | × CaltropSlowMul / × GooSlowMul while their Until > now | SprintTestPass3SlowEnabled |
-| MechaButtons | 1.25 | TIMED_PARTS caltrops / goo / hadren; goo uses the tactical aim (parameterised) | MechaButtonsHerreraPass3Enabled |
+| MechaButtons | 1.25 | TIMED_PARTS caltrops / goo / hadren; goo gets its own copy of the tactical aim (tether code untouched) | MechaButtonsHerreraPass3Enabled |
 | AbilityBar | 1.19 | the same three tiles | AbilityBarHerreraPass3Enabled |
 
 ### Deterministic map
@@ -659,3 +659,10 @@ The front is always unchanged.
 | In goo | allowed enemy root within GooRadius × scale of a live puddle | player GooSlowUntil = now + 0.3, GooSlowMul 0.6; bot WalkSpeed × 0.6 |
 | Out of goo / puddle ends | | player slow lapses ≤ 0.3 s; bot WalkSpeed restored |
 | Adrenaline (Herrera) | AdrenalineServer rules as today | heal / run / cooldown; ★ SlashRefillAllAt → charges max |
+
+### Pass 3 red-team synthesis (Kepu 2026-10-31)
+- Build after Squads v1.0 ("Squads first").
+- Goo aim: a separate copy; the tether stays untouched.
+- Caltrops ★ "hidden": the spike data lives in ReplicatedStorage, so an exploiter could read it. Accepted risk (casual game; the same holds for any client-drawn FX).
+- Herrera Adrenaline re-uses AdrenalineServer: a raptor regression check is part of the acceptance.
+- New targets (caltrops, goo) go through `candidates` / `mayAffect`, so the squad check covers them.

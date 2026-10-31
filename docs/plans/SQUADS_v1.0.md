@@ -127,8 +127,10 @@ Squadmates are skipped by the client target finders, so no local latch, no stopp
 
 Each uses `ReplicatedStorage.SquadShared` and the switch `<Script>SquadEnabled`.
 
-Visibility:
-- TreeTopHide 1.2: never hides a squadmate's GUIs from you.
+Visibility (v1.0):
+- TreeTopHide 1.2: never hides a squadmate's GUIs from you (tree tops and smoke).
+
+Deferred to Squads v1.1 (red-team R4, Kepu "Defer to v1.1"):
 - CloakFX 1.5: a cloaked squadmate shows to you as your own cloak does.
 - ScentFX 1.1: no paw prints for squadmates.
 - MineColors 1.1: a squadmate's mines are BLUE, like your own.
@@ -138,7 +140,6 @@ Visibility:
   - pouncing it doesn't latch locally;
   - a headbutt passes through without stopping;
   - bite aim-assist ignores it.
-- Its mines show blue.
 - Its smoke and tree-top hiding don't hide its bars from you.
 
 ## Task S4 — Squad heals + squad spawn · Mode: Wired
@@ -217,3 +218,12 @@ Visibility:
 | Squadmate dead | Humanoid health 0 | row "DOWN · respawning", tag hidden; still in the squad |
 | Leave / menu / quit | | SquadId ""; a 1-member squad is dissolved |
 | Hidden caltrops (Herrera ★) | Hidden true | drawn for the owner + squadmates (SquadRules.same) |
+
+## Red-team synthesis (Kepu 2026-10-31)
+| # | Challenge | Outcome |
+|---|---|---|
+| R1 | 13 server + 4 client scripts each need the squad check; one missed path = friendly fire | Kept. Mitigation: S2 / S3 acceptance runs every move against the SquadTest squadmate before publish. Rule for every future part: pick targets through `candidates` / `mayAffect` with the squad check. |
+| R2 | The DummyHealth bridge can't tell who is attacking, so there's no single backstop | Accepted risk. The per-path checks are the only guard. ArenaPvP stays unchanged. |
+| R3 | No real second player in testing (Kepu's rule): the invite card on another client and their health on yours are only simulated | Kepu: "No, ship and see in the group test". Accepted risk; watch these in the group test. |
+| R4 | Scope | CloakFX / ScentFX / MineColors squad polish deferred to v1.1 (backlog ticket). |
+| R5 | Order vs Herrera pass 3 | Squads first. |
