@@ -181,6 +181,14 @@
 --       swipe at the end (dive / leap), fading out over SlashPose.FADE; multiplied on after the grappling hook layer,
 --       before the roar. Switch: model attribute SlashPoseEnabled (default true). Diagnostics: SlashPoseState ("none" /
 --       "dash" / "fade"), SlashPoseKind, SlashPoseSource. Every other model unchanged.
+-- v1.34: Herrerasaurus jump pose (HerreraJumpPose 1.0, option C "Branch reach"; MDA-147, plan
+--       docs/plans/HERRERA_JUMP_v1.0.md Task 5). On GaitScurry models (with the scurry geometry) and model attribute
+--       HerreraJumpPoseEnabled ~= false, the leap layer (same clock, phases and weights as v1.15) draws
+--       HerreraJumpPose.crouch / air / land instead of JumpPose (landing time HJumpLandTime). Also on those models: while
+--       ClimbState (owner: ClimbLocalState) is climbing / clinging / top the current jump ends (a mid-air trunk grab hands
+--       over to the climb pose), and a change from those states to ground while more than 1 stud above the ground (the
+--       tree hop / letting go) starts a jump at the air phase (no crouch), so the hop off a tree shows the air + landing.
+--       Diagnostics: JumpPoseKind ("herrera" / "biped"), JumpSource adds "tree". Every other model unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -213,6 +221,7 @@ local HookPose = require(script.HookPose) -- v1.30
 local ScurryPose = require(script.ScurryPose) -- v1.31
 local ClimbPose = require(script.ClimbPose) -- v1.32
 local SlashPose = require(script.SlashPose) -- v1.33
+local HerreraJumpPose = require(script.HerreraJumpPose) -- v1.34
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -241,6 +250,7 @@ local hrp, lastPos, lastYaw
 local walkPhase, blend, smoothSpeed, gaitBlend = 0, 0, 0, 0
 local scurryPhase, scurryGeo, scurryScale = 0, nil, nil -- v1.31
 local climbW, climbPhase, climbLastY = 0, 0, nil -- v1.32
+local jumpTreeWas = false -- v1.34: on a tree last frame (Herrera)
 local CLIMB_BLEND_RATE = 8 -- v1.32 (per second)
 local creepBlend = 0
 local smoothTurnRate = 0      -- degrees/s, positive = turning left
@@ -509,6 +519,7 @@ model:SetAttribute("IdleAnimationVersion", "1.28")
 model:SetAttribute("IdleAnimationVersion", "1.31") -- v1.31 (the 1.28 line above was never bumped for 1.29 / 1.30)
 model:SetAttribute("IdleAnimationVersion", "1.32") -- v1.32
 model:SetAttribute("IdleAnimationVersion", "1.33") -- v1.33
+model:SetAttribute("IdleAnimationVersion", "1.34") -- v1.34
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -793,6 +804,25 @@ RunService.PreSimulation:Connect(function(dt)
 			(jump.source == "predicted" and jSource == "server" and jStart - jump.start < 0.5))) then
 			jump = {start = jStart, source = jSource, air = false}
 		end
+		-- v1.34: Herrera: the climb owns the body on a tree; leaving a tree in the air shows the jump's air + landing
+		local herreraJump = scurryOn and scurryGeo ~= nil and model:GetAttribute("HerreraJumpPoseEnabled") ~= false
+		if herreraJump then
+			local cst = (lp and lp.Character == model and model:GetAttribute("ClimbLocalState")) or model:GetAttribute("ClimbState")
+			local onTree = cst == "climbing" or cst == "clinging" or cst == "top"
+			if onTree and jump then jump.done = true end
+			if jumpTreeWas and not onTree then
+				local hm = model:FindFirstChildOfClass("Humanoid")
+				local base = hrp.Size.Y / 2 + (hm and hm.HipHeight or 0)
+				local g = workspace:Raycast(hrp.Position, Vector3.new(0, -(base + 40), 0), jumpParams)
+				local gapNow = g and (hrp.Position.Y - g.Position.Y - base) or nil
+				if gapNow == nil or gapNow > 1 then
+					jump = {start = serverNow - (model:GetAttribute("JumpWindup") or 0.12), source = "tree", air = true}
+				end
+			end
+			jumpTreeWas = onTree
+		end
+		show("JumpPoseKind", herreraJump and "herrera" or "biped")
+		local hs = herreraJump and HerreraJumpPose.settings(model) or nil
 		-- vertical speed from the HRP height change (works for every client)
 		local y = hrp.Position.Y
 		if jumpLastY and dt > 0 and math.abs(y - jumpLastY) < TELEPORT_DIST then
@@ -816,22 +846,23 @@ RunService.PreSimulation:Connect(function(dt)
 			if t > JUMP_MAX_TIME or t < -0.05 then
 				jump.done = true
 			elseif jump.landAt then
-				local u = (now - jump.landAt) / math.max(0.01, js.JumpLandTime)
+				local u = (now - jump.landAt) / math.max(0.01, hs and hs.HJumpLandTime or js.JumpLandTime)
 				if u < 1 then
-					jp = JumpPose.land(u, js, geo)
+					jp = hs and HerreraJumpPose.get("land", u, nil, hs, ss, scurryGeo, motors, scurryScale) or JumpPose.land(u, js, geo)
 					jumpW, jumpState = 1 - u * u * (3 - 2 * u), "land"
 				else
 					jump.done = true
 				end
 			elseif jump.air then
 				local fall = math.clamp(-jumpVy / (power * 0.5), 0, 1)
-				jp = JumpPose.air(math.max(0, t - W), fall, jumpVy / power, js, geo)
+				jp = hs and HerreraJumpPose.get("air", math.max(0, t - W), math.clamp(jumpVy / power, -1, 1), hs, ss, scurryGeo, motors, scurryScale)
+					or JumpPose.air(math.max(0, t - W), fall, jumpVy / power, js, geo)
 				jumpW, jumpState = 1, (jumpVy >= 0 and "rise" or "fall")
 			elseif t < W then
-				jp = JumpPose.crouch(t / W, js, geo)
+				jp = hs and HerreraJumpPose.get("crouch", t / W, nil, hs, ss, scurryGeo, motors, scurryScale) or JumpPose.crouch(t / W, js, geo)
 				jumpW, jumpState = 1, "crouch"
 			elseif t < W + JUMP_LIFTOFF_WAIT then
-				jp = JumpPose.air(t - W, 0, 1, js, geo)
+				jp = hs and HerreraJumpPose.get("air", t - W, 1, hs, ss, scurryGeo, motors, scurryScale) or JumpPose.air(t - W, 0, 1, js, geo)
 				jumpW, jumpState = 1, "push"
 			else
 				jump.done = true

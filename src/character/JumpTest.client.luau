@@ -1,4 +1,4 @@
--- JumpTest v1.2 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
+-- JumpTest v1.3 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
 -- button. Only active while the character attribute JumpEnabled is true (default false: the T-Rex keeps the
 -- default Roblox jump untouched).
 -- v1.1 (pachy Mecha Legs star, MDA-123): while JumpDoubleEnabled (SkillEffects 1.15) is true, a NEW jump press (the
@@ -11,6 +11,11 @@
 --   facing to the horizontal speed, and the air hold (input held) steers at that faster speed. Fix: doubleUsed /
 --   wasHeld are declared before launch() (1.1 declared them after it, so launch() reset a global and only the first
 --   leap of a life could double jump).
+-- v1.3 (MDA-147, plan docs/plans/HERRERA_JUMP_v1.0.md Task 2: the Herrera's JUMP on a tree top fired both this leap and
+--   ClimbTest's hop): while the character attribute JumpSuppressed is true (ClimbTest 1.13 sets it while the Herrera is on
+--   a trunk / tree top), a press is refused (JumpInputResult "suppressed"), a crouch is cancelled, and a leap in the air
+--   ends at once (air hold off, Jumping state off) so the climb owns the body. Nothing sets it on other dinos. Switch:
+--   script attribute JumpSuppressEnabled (default true, read at start; false = 1.2).
 -- While enabled, the Humanoid's built-in Jumping state is turned off, so a press never jumps straight away. Instead:
 --   1. Press (when allowed): JumpPredictedAt = server time (this client only, so the crouch shows at once) and
 --      DinoJumpRequest:FireServer(that time) (JumpServer 1.0 validates and sets the replicated JumpStartedAt).
@@ -60,6 +65,10 @@ local LIFTOFF_WAIT = 0.3   -- seconds after launch to leave the ground before gi
 local REQUEST_FRESH = 0.1  -- seconds a JumpRequest event counts as "key pressed"
 local JUMP_HOLD_ACCEL = 1000 -- studs/s^2 the air-hold constraint may use (force limit = mass x this)
 local JUMPING = Enum.HumanoidStateType.Jumping
+if script:GetAttribute("JumpSuppressEnabled") == nil then script:SetAttribute("JumpSuppressEnabled", true) end -- v1.3
+local SUPPRESS_ON = script:GetAttribute("JumpSuppressEnabled") ~= false
+local function suppressed() return SUPPRESS_ON and char:GetAttribute("JumpSuppressed") == true end
+char:SetAttribute("JumpTestVersion", "1.3") -- v1.3 (the model data carries "1.0")
 
 local function get(k)
 	local v = char:GetAttribute(k)
@@ -170,6 +179,8 @@ local function tryPress()
 	local result
 	if hum.Health <= 0 then
 		result = "dead"
+	elseif suppressed() then -- v1.3
+		result = "suppressed"
 	elseif not grounded() then
 		result = "air"
 	elseif char:GetAttribute("Exhausted") == true then
@@ -268,7 +279,9 @@ local conn = RunService.PreSimulation:Connect(function()
 	if state == "air" and leftGround and pressed and not doubleUsed and char:GetAttribute("JumpDoubleEnabled") == true then
 		doubleJump()
 	end
-	if state == "ready" then
+	if state ~= "ready" and suppressed() then -- v1.3: on a tree: the climb owns the body
+		land("suppressed")
+	elseif state == "ready" then
 		if jumpHeld() then tryPress() end
 	elseif state == "crouch" then
 		if char:GetAttribute("JumpDeniedAt") == stamp then

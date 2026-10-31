@@ -1,4 +1,4 @@
--- ArenaTouch v1.7 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.8 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -60,6 +60,11 @@
 --     attribute ArenaTouchJumpForAllEnabled (default true, read at start; false = 1.6: LEAP, JumpEnabled only).
 --   * Test hook: script attribute ArenaTouchForceTouch = true draws the layout without a touch screen (Studio layout
 --     checks; buttons show even where Roblox made no CAS touch button).
+-- v1.8 (MDA-147, plan docs/plans/HERRERA_JUMP_v1.0.md Task 7; Kepu 2026-10-31 "you can just hold the button and it will
+--   spam it" for the phone button): while a finger stays on JUMP, Humanoid.Jump stays true (re-set every frame) until the
+--   finger lifts (a tap still lasts at least LEAP_HOLD s). JumpTest re-leaps on each landing while it is held (every
+--   dino, like holding Space on PC); ClimbTest 1.11 hops once per press (rising edge). Switch: script attribute
+--   ArenaTouchJumpHoldEnabled (default true, read at start; false = 1.7 taps). Diagnostic: ArenaTouchJumpHeld.
 -- Diagnostics (character attributes, this client): ArenaTouchVersion, ArenaTouchState ("off" / "on"),
 --   ArenaTouchLastPress (button name), ArenaTouchCASMode, ArenaTouchJumpHidden.
 local Players = game:GetService("Players")
@@ -67,7 +72,7 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -387,14 +392,37 @@ local function bloodLeft() -- v1.6: sacrifices possible right now (nil when Bloo
 	while n < cap and h > max * 0.5 do h = math.max(1, h - cost); n += 1 end
 	return n
 end
+if script:GetAttribute("ArenaTouchJumpHoldEnabled") == nil then script:SetAttribute("ArenaTouchJumpHoldEnabled", true) end -- v1.8
+local JUMP_HOLD_ON = script:GetAttribute("ArenaTouchJumpHoldEnabled") ~= false
+local jumpInput, jumpPressAt = nil, 0 -- v1.8: the finger on JUMP
 leap.InputBegan:Connect(function(input)
 	if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 	leapScale.Scale = 0.92
 	char:SetAttribute("ArenaTouchLastPress", "Leap")
 	if not hum then return end
 	hum.Jump = true
-	task.delay(LEAP_HOLD, function() if hum.Parent then hum.Jump = false end end)
+	if JUMP_HOLD_ON then jumpInput, jumpPressAt = input, os.clock() end -- v1.8
+	task.delay(LEAP_HOLD, function() if hum.Parent and not jumpInput then hum.Jump = false end end)
 end)
+if JUMP_HOLD_ON then -- v1.8: keep Humanoid.Jump while held
+	RunService.Heartbeat:Connect(function()
+		if not jumpInput then return end
+		local st = jumpInput.UserInputState
+		if st == Enum.UserInputState.End or st == Enum.UserInputState.Cancel then
+			jumpInput = nil
+			local left = LEAP_HOLD - (os.clock() - jumpPressAt)
+			if left <= 0 then
+				if hum.Parent then hum.Jump = false end
+			else
+				task.delay(left, function() if hum.Parent and not jumpInput then hum.Jump = false end end)
+			end
+		elseif not hum.Jump then
+			hum.Jump = true
+		end
+		local held = jumpInput ~= nil
+		if char:GetAttribute("ArenaTouchJumpHeld") ~= held then char:SetAttribute("ArenaTouchJumpHeld", held) end
+	end)
+end
 leap.InputEnded:Connect(function() leapScale.Scale = 1 end)
 
 -- overlay: Roblox's CAS button for each move, invisible, laid over its styled button every frame

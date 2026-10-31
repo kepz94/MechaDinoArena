@@ -1,4 +1,4 @@
--- ClimbTest v1.12 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.13 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -84,12 +84,17 @@
 --   speed, so the body follows a leaning trunk. No such part (or a non-Y-axis trunk) = the probes as before. Switch:
 --   script attribute ClimbTrunkFollowEnabled (default true, read at start; false = probes only). Diagnostic:
 --   ClimbFollow ("on" / "off").
+-- v1.13 (MDA-147, plan docs/plans/HERRERA_JUMP_v1.0.md Task 3: the Herrera now has the JumpTest leap too, and JUMP on a
+--   tree top fired both the leap and the hop): the character attribute JumpSuppressed is true while ClimbLocalState is
+--   climbing / clinging / top and false otherwise (JumpTest 1.3 then refuses / ends its leap, so JUMP on a tree is only the
+--   hop, and a leap that grabs a trunk mid-air hands the body to the climb). Switch: script attribute
+--   ClimbJumpSuppressEnabled (default true, read at start; false = 1.12, JumpSuppressed never written).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.12"
+local VERSION = "1.13"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -336,9 +341,15 @@ local savedTurnLimit
 local lastSentState, lastSentTree
 local currentTree = ""
 
+if script:GetAttribute("ClimbJumpSuppressEnabled") == nil then script:SetAttribute("ClimbJumpSuppressEnabled", true) end -- v1.13
+local JUMP_SUPPRESS_ON = script:GetAttribute("ClimbJumpSuppressEnabled") ~= false
+if JUMP_SUPPRESS_ON then char:SetAttribute("JumpSuppressed", false) end
 local function send(st, tree)
 	if st == lastSentState and tree == lastSentTree then return end
 	lastSentState, lastSentTree = st, tree
+	if JUMP_SUPPRESS_ON then -- v1.13
+		char:SetAttribute("JumpSuppressed", st == "climbing" or st == "clinging" or st == "top")
+	end
 	char:SetAttribute("ClimbLocalState", st)
 	char:SetAttribute("ClimbTreeLocal", tree)
 	if remote then remote:FireServer(st, tree) end

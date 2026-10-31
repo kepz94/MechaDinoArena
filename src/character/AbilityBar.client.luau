@@ -1,4 +1,4 @@
--- AbilityBar v1.16 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.17 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -104,12 +104,16 @@
 -- v1.16 (MDA-146, Kepu 2026-10-31 "Yes T. rex gets jump"): the T-Rex row is Bite, Leap (JUMP, Space), Ram, so the
 --   JUMP tile sits right after the attack as on the raptor / pachy / Herrera; the tile follows JumpEnabled (TRexJump 1.0).
 --   Switch: script attribute AbilityBarTRexJumpEnabled (default true, read at start; false = 1.15 row Bite, Ram).
+-- v1.17 (MDA-147, plan docs/plans/HERRERA_JUMP_v1.0.md Task 6: the Herrera jumps on the ground too): the Herrera's JUMP
+--   tile is "ready" on a tree (as 1.14) or when JumpEnabled and JumpTestState is "ready", "active" (white ring) while
+--   JumpTestState is "crouch" / "air", else dim ("ground"). Switch: script attribute AbilityBarHerreraJumpEnabled (default
+--   true, read at start; false = 1.16: lit only on a tree).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.16"
+local VERSION = "1.17"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -191,6 +195,8 @@ if script:GetAttribute("AbilityBarTRexJumpEnabled") ~= false then -- v1.16: T-Re
 	SPECIES_MOVES.TRex = {"Bite", "Leap", "Ram"}
 end
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
+if script:GetAttribute("AbilityBarHerreraJumpEnabled") == nil then script:SetAttribute("AbilityBarHerreraJumpEnabled", true) end -- v1.17
+local HERRERA_JUMP_TILE = script:GetAttribute("AbilityBarHerreraJumpEnabled") ~= false
 local SLOT_KEYS = {"R", "C", "T", "V"} -- v1.2: + T / V (slots 3 / 4)
 local SLOT_ORDER = {1, 3, 2, 4} -- v1.2: tile order R, T, C, V
 
@@ -712,7 +718,12 @@ local function update()
 			show("AbilityBarSlashPips", nowC .. "/" .. maxC)
 		elseif e.move.hop then -- v1.14: Herrera hop, lit only on a tree
 			local cs = char:GetAttribute("ClimbLocalState")
+			local js = HERRERA_JUMP_TILE and char:GetAttribute("JumpEnabled") == true and char:GetAttribute("JumpTestState") or nil -- v1.17
 			if cs == "climbing" or cs == "clinging" or cs == "top" then
+				paint(e, "ready", 0, 0, nil)
+			elseif js == "crouch" or js == "air" then -- v1.17
+				paint(e, "active", 0, 0, nil)
+			elseif js == "ready" then -- v1.17
 				paint(e, "ready", 0, 0, nil)
 			else
 				paint(e, "ground", 0.5, 0, nil)
