@@ -1,4 +1,4 @@
--- IdleAnimation v1.30 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.31 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -160,6 +160,14 @@
 -- v1.30: pachy Grappling Hook pose (HookPose 1.0; MDA-122): on models with HookStartedAt, HookPose.phase (server stamps,
 --       same on every client) -> arm raise / hold / smash dip / lower, multiplied on after the headbutt layer; head lead
 --       suppressed while it runs. Switch: model attribute HookPoseEnabled (default true). Diagnostic: HookPoseState.
+-- v1.31: Herrerasaurus scurry (ScurryPose 1.0; plan docs/plans/HERRERA_SCURRY_v1.0.md Task 2, mockup
+--       docs/mockups/herrera_scurry_options.html option A, Kepu 2026-10-30 "Wow I love A"). On models with GaitScurry =
+--       true (HerreraModelData 1.1) and ScurryPoseEnabled ~= false the moving pose is ScurryPose.get (four-legged
+--       iguana scurry with the ground fit) instead of WalkPose.get, lerped in by the same walk blend, so standing
+--       still keeps the two-legged idle pose. Scurry phase = distance travelled / (ScurryStride x scale), at most
+--       ScurryMaxHz steps per second; the hand / foot geometry is rebuilt when the model scale changes. Every other
+--       model takes the v1.30 WalkPose path unchanged. Diagnostics: ScurryState ("off" / "noGeo" / "idle" / "blend" /
+--       "scurry"), ScurryBlend (0.1 steps), ScurryHz (0.1 steps), ScurryDrop (studs, 0.01 steps).
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -189,6 +197,7 @@ local DeadPose = require(script.DeadPose) -- v1.21 (defaults are read by DeadPos
 local BoostPose = require(script.BoostPose) -- v1.27 (defaults are read by BoostPose.settings)
 local HeadbuttPose = require(script.HeadbuttPose) -- v1.29 (defaults are read by HeadbuttPose.settings)
 local HookPose = require(script.HookPose) -- v1.30
+local ScurryPose = require(script.ScurryPose) -- v1.31
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -215,6 +224,7 @@ local start = os.clock()
 local look = IdlePose.newLook(os.clock(), IdlePose.settings(model))
 local hrp, lastPos, lastYaw
 local walkPhase, blend, smoothSpeed, gaitBlend = 0, 0, 0, 0
+local scurryPhase, scurryGeo, scurryScale = 0, nil, nil -- v1.31
 local creepBlend = 0
 local smoothTurnRate = 0      -- degrees/s, positive = turning left
 local tailPhase = 0           -- tail swing phase while moving (radians)
@@ -479,6 +489,7 @@ end)
 -- v1.24: re-fit joint rest frames and leg geometry when the model's scale changes (see the header)
 local refitCount = 0
 model:SetAttribute("IdleAnimationVersion", "1.28")
+model:SetAttribute("IdleAnimationVersion", "1.31") -- v1.31 (the 1.28 line above was never bumped for 1.29 / 1.30)
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -604,6 +615,19 @@ RunService.PreSimulation:Connect(function(dt)
 		walkPhase = (walkPhase + dPhase) % (2 * math.pi)
 		tailPhase = (tailPhase + dPhase * ws.WalkTailRate) % (2 * math.pi)
 	end
+	-- v1.31: scurry models: own settings, hand / foot geometry (rebuilt on a scale change) and phase
+	local scurryOn = model:GetAttribute("GaitScurry") == true and model:GetAttribute("ScurryPoseEnabled") ~= false
+	local ss, scurryHz, scurryDrop
+	if scurryOn then
+		ss = ScurryPose.settings(model)
+		local sc = model:IsA("Model") and model:GetScale() or 1
+		if not scurryGeo or scurryScale ~= sc then
+			scurryGeo = ScurryPose.buildGeo(model, motors)
+			scurryScale = sc
+		end
+		scurryHz = dt > 0 and math.min(effDist / (ss.ScurryStride * sc) / dt, ss.ScurryMaxHz) or 0
+		scurryPhase = (scurryPhase + scurryHz * dt * 2 * math.pi) % (2 * math.pi)
+	end
 
 	-- roar progress (server-time stamp so every client is in sync)
 	local rs = RoarPose.settings(model)
@@ -698,7 +722,13 @@ RunService.PreSimulation:Connect(function(dt)
 			end
 		end
 	end
-	if blend > 0.001 and geo then
+	if blend > 0.001 and geo and scurryOn and scurryGeo then -- v1.31: four-legged scurry instead of the walk
+		local sp, drop = ScurryPose.get(scurryPhase, ss, scurryGeo, motors, scurryScale)
+		scurryDrop = drop
+		for name in pairs(motors) do
+			pose[name] = (pose[name] or CFrame.identity):Lerp(sp[name] or CFrame.identity, blend)
+		end
+	elseif blend > 0.001 and geo then
 		local walk = WalkPose.get(walkPhase, ws, geo, gaitBlend, creepBlend, tailPhase, moveDir) -- v1.17: + direction
 		for name in pairs(motors) do
 			pose[name] = (pose[name] or CFrame.identity):Lerp(walk[name] or CFrame.identity, blend)
@@ -1168,4 +1198,12 @@ RunService.PreSimulation:Connect(function(dt)
 	show("HeadLead", math.floor(headLead + 0.5))
 	show("HeadLeadSource", leadSource)
 	show("HeadLeadState", leadState)
+	if scurryOn then -- v1.31
+		show("ScurryState", not scurryGeo and "noGeo" or (blend < 0.05 and "idle" or (blend > 0.95 and "scurry" or "blend")))
+		show("ScurryBlend", math.floor(blend * 10 + 0.5) / 10)
+		show("ScurryHz", math.floor((scurryHz or 0) * 10 + 0.5) / 10)
+		if scurryDrop then show("ScurryDrop", math.floor(scurryDrop * 100 + 0.5) / 100) end
+	else
+		show("ScurryState", "off")
+	end
 end)
