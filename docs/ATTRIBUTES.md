@@ -2356,3 +2356,17 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ClimbThrough | herrera (owner client) | "off" / "moving" / "done" / "timeout" | ClimbTest 1.14 diagnostic |
 | HerreraJumpClockEnabled | herrera model | true | IdleAnimation 1.35: time-driven air pose |
 | HJumpHoldReach / HJumpHoldPitch | herrera model | 1 / 0.5 | HerreraJumpPose 1.1: hold the branch reach the whole jump (0 = 1.0 falling pose) |
+| HERRERA_STATS (module flag) | SkillTree | true | SkillTree 1.37: per-dino row names / steps + Tree Stalker / Blood Frenzy |
+| LabNameForEnabled / LabNameFor | Lab script / player | true / "<id>=<name>" | Lab 1.9 |
+| SkillEffectsHerreraEnabled | SkillEffects script | true | SkillEffects 1.26 |
+| SkillEffectsDino | character | "Herrera" / "" | SkillEffects 1.26 diagnostic |
+| SkillBase_SlashRefill / SlashCharges / SlashBleedDps / SlashBleedTime / SlashDiveRange / ClimbSpeed | herrera | 4 / 2 / 3 / 4 / 20 / 10 (model values) | SkillEffects 1.26 bases |
+| SlashDiveRefill / SlashDiveStun / SlashBleedBonus / SlashKillRefill / SlashFrenzyMul | herrera | false / 0 / 0 / false / 1 | SkillEffects 1.26 writes, SlashServer 1.3 reads |
+| TreeTopHidden | herrera | false | SkillEffects 1.26 writes, TreeTopHide 1.0 reads |
+| SlashSkillsEnabled / SlashSkillEvents | SlashServer script | true / count | SlashServer 1.3 |
+| SlashFrenzyRange | herrera (optional) | 40 | SlashServer 1.3 |
+| SlashFrenzyUntil / SlashFrenzyActive | herrera | server time / bool | SlashServer 1.3 (SprintTest 1.13 reads Until) |
+| SlashBleedDealt / SlashBleedDealtAt | herrera (attacker) | damage / server time | SlashServer 1.3 (SkillEffects 1.26 lifesteal) |
+| SlashSkillLast | herrera | "diveRefill" / "diveStun" / "bleedBonus" / "killRefill" | SlashServer 1.3 diagnostic |
+| SprintFrenzyEnabled | SprintTest script | true | SprintTest 1.13 |
+| TreeTopHideEnabled / TreeTopHideVersion / TreeTopHidCount | TreeTopHide script (+ player version) | true / "1.0" / count | TreeTopHide 1.0 |
