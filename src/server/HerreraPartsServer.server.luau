@@ -1,4 +1,4 @@
--- HerreraPartsServer v1.0 (Mecha Dino Arena) — puts the Herrera's mecha parts on (server-built, every client sees them)
+-- HerreraPartsServer v1.1 (Mecha Dino Arena) — puts the Herrera's mecha parts on (server-built, every client sees them)
 -- and builds their Lab card models. Plan docs/plans/HERRERA_PARTS_v1.0.md (MDA-149..156), Kepu 2026-10-31 "Build"; the
 -- looks are the picked mockups, same numbers: Iron Claw B "Hook Blades" (docs/mockups/herrera_ironclaw_options.html),
 -- Glider Wings A "Bat Membranes", Quill Launcher B "Spine Quills", Smoke Pods B "Tail Vents", Back Plating A "Spine
@@ -29,12 +29,15 @@
 -- Switches: script attribute HerreraPartsServerEnabled (default true, read at start; false = no looks); per part
 --   HerreraParts_<id>Enabled (default true, read on each apply). Diagnostics: script HerreraPartsServerVersion; character
 --   HerreraPartsBuilt ("<id>=<pieces>,..." of what is on).
+-- v1.1 (Studio check of 1.0: the hot orange Neon rgb(255, 138, 42) renders yellow in Roblox, the mockups' edges are
+--   orange): Neon "hot" pieces (Iron Claw blade edges, glider hub, quill tips, tail-vent ring, strobe rim lamps) use
+--   rgb(255, 98, 18); the Iron Claw trail colour follows. Non-Neon orange (the coil rings) is unchanged.
 local Players = game:GetService("Players")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local C = {
 	steel = {Color3.fromRGB(154, 166, 184), Enum.Material.Metal}, dark = {Color3.fromRGB(93, 104, 120), Enum.Material.Metal},
-	bright = {Color3.fromRGB(211, 219, 230), Enum.Material.Metal}, hot = {Color3.fromRGB(255, 138, 42), Enum.Material.Neon},
+	bright = {Color3.fromRGB(211, 219, 230), Enum.Material.Metal}, hot = {Color3.fromRGB(255, 98, 18), Enum.Material.Neon}, -- v1.1 (was 255, 138, 42: rendered yellow)
 	hotSolid = {Color3.fromRGB(255, 138, 42), Enum.Material.SmoothPlastic},
 	blood = {Color3.fromRGB(208, 32, 42), Enum.Material.Neon}, led = {Color3.fromRGB(255, 231, 176), Enum.Material.Neon},
 	volt = {Color3.fromRGB(127, 233, 255), Enum.Material.Neon}, glass = {Color3.fromRGB(207, 232, 255), Enum.Material.Glass, 0.65},
@@ -186,7 +189,7 @@ local function addTrail(char, model, sd, sc)
 	tr.Name = "IronClawTrail"
 	tr.Attachment0, tr.Attachment1 = a0, a1
 	tr.Lifetime, tr.MinLength = 0.11, 0.05
-	tr.Color = ColorSequence.new(Color3.fromRGB(255, 170, 80), Color3.fromRGB(255, 138, 42))
+	tr.Color = ColorSequence.new(Color3.fromRGB(255, 140, 50), Color3.fromRGB(255, 98, 18)) -- v1.1
 	tr.Transparency = NumberSequence.new(0.1, 1)
 	tr.LightEmission, tr.FaceCamera, tr.Enabled = 1, true, false
 	tr.Parent = model

@@ -2370,3 +2370,24 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | SlashSkillLast | herrera | "diveRefill" / "diveStun" / "bleedBonus" / "killRefill" | SlashServer 1.3 diagnostic |
 | SprintFrenzyEnabled | SprintTest script | true | SprintTest 1.13 |
 | TreeTopHideEnabled / TreeTopHideVersion / TreeTopHidCount | TreeTopHide script (+ player version) | true / "1.0" / count | TreeTopHide 1.0 |
+| HERRERA_PARTS (module flag) | SkillTree | true | SkillTree 1.38 |
+| SkillEffectsHerreraPartsEnabled | SkillEffects script | true | SkillEffects 1.27 |
+| IronClawEnabled / IronClawDamageMul / IronClawSpeedMul / IronClawDust | herrera | false / 1 / 1 / false | SkillEffects 1.27 (Iron Claw, slotted) |
+| PlatingEnabled / PlatingRearMul | herrera | false / 1 | SkillEffects 1.27 (Back Plating) |
+| SiphonEnabled / SiphonRate / SiphonRange / SiphonKillHeal | herrera | false / 0 / 0 / 0 | SkillEffects 1.27 (Blood Siphon) |
+| GliderEnabled / GliderFall / GliderDrop / GliderDropMul / GliderBurst | herrera | false / 0 / false / 1 / 0 | SkillEffects 1.27 (pass 2 reads them) |
+| QuillEnabled / QuillCount / QuillDamage / QuillRange / QuillCooldown | herrera | false / 0 / 0 / 0 / 0 | SkillEffects 1.27 (pass 2) |
+| SmokeEnabled / SmokeRadius / SmokeTime / SmokeRunMul / SmokeSlowMul / SmokeCooldown | herrera | false / 0 / 0 / 1 / 1 / 0 | SkillEffects 1.27 (pass 2) |
+| StrobeEnabled / StrobeAngle / StrobeRange / StrobeDaze / StrobeDazedMul / StrobeCooldown | herrera | false / 0 / 0 / 0 / 1 / 0 | SkillEffects 1.27 (pass 2) |
+| BreakerEnabled / BreakerPush / BreakerCooldown / BreakerImmune | herrera | false / 0 / 0 / 0 | SkillEffects 1.27 (pass 2) |
+| SiphonBleeding / SiphonHealAt / SiphonKillAt | herrera | count / server time | SkillEffects 1.27 diagnostics |
+| HerreraPartsServerEnabled / HerreraParts_<id>Enabled / HerreraPartsServerVersion | HerreraPartsServer script | true / true / "1.1" | HerreraPartsServer 1.1 |
+| HerreraPartsBuilt | herrera | "<id>=<pieces>,..." | HerreraPartsServer diagnostic |
+| HPartRole / HPartBaseColor | part look pieces | role / Color3 | HerreraPartsServer (read by HerreraPartsFX) |
+| HPartsOldTransparency | Torso_quill1..7 | number | HerreraPartsServer (quills hidden) |
+| HerreraPartsFXEnabled / HerreraPartsFXVersion / HerreraPartsFXEvents | HerreraPartsFX script | true / "1.0" / count | HerreraPartsFX 1.0 |
+| SlashIronClawEnabled / SlashIronClawMul | SlashServer script / herrera | true / number | SlashServer 1.4 |
+| SprintIronClawEnabled | SprintTest script | true | SprintTest 1.14 |
+| IronClawPoseMul / SlashPoseIronClawEnabled | herrera model | 1.35 / true | SlashPose 1.1 |
+| BoneCrestPlatingEnabled | BoneCrest module | true | BoneCrest 1.3 |
+| PlatingHits / PlatingLastMul / PlatingHitAt | herrera (victim) | count / mul / server time | BoneCrest 1.3 |
