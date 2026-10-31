@@ -1,4 +1,4 @@
--- HerreraMovesFX v1.0 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
+-- HerreraMovesFX v1.1 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/HERRERA_PARTS_v1.0.md Parts 3, 4, 7, 8 and "Pass 2 — build map"; the moves are
 -- HerreraMovesServer 1.0, the looks HerreraPartsServer 1.2. Runs for every player character (yours and others') and for
 -- Workspace.DinoIsland.Bots. Everything is local (Workspace "HerreraMovesFX"), nothing is replicated.
@@ -20,10 +20,16 @@
 -- Smoke lost (a bot's SmokeLostAt): a "?" pop over the bot.
 -- Switch: script attribute HerreraMovesFXEnabled (default true, read each event; false = no effects).
 -- Diagnostics: script HerreraMovesFXVersion, HerreraMovesFXEvents (count).
+-- v1.1 (Kepu 2026-10-31: "We need the smoke cloud to be way bigger and thicker"): the smoke look is tunable by script
+--   attributes, read at each cloud: HerreraMovesFX_SmokePuffs (count), HerreraMovesFX_SmokePuffScale (puff radius
+--   multiplier), HerreraMovesFX_SmokeOwnTransparency (your own cloud), HerreraMovesFX_SmokeOtherTransparency (others'
+--   clouds). Defaults = Kepu's pick from Studio captures (docs/reference/herrera/smoke_size_B.jpg, "B · 28 studs, 260
+--   puffs"; own view "Half see-through"): 260 puffs, x2.2 puffs, own 0.4, others 0 (solid). 1.0 was 70 / x1 / 0.6 / 0.1.
+--   The cloud radius itself is SkillTree 1.41 (28 studs).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local QUILL_GAP, QUILL_SPEED = 0.045, 90
 local SMOKE_PUFFS = 70
 local HOT = Color3.fromRGB(255, 98, 18)
@@ -207,20 +213,24 @@ local function smokeCloud(char)
 	local nozzles = pieces(char, "smoke", "nozzle")
 	local life = math.max(0.5, untilT - workspace:GetServerTimeNow())
 	pop("POOF!", WHITE, center + Vector3.new(0, 2 * s, 0), 7)
-	for i = 1, SMOKE_PUFFS do
+	local function tun(k, d) local v = script:GetAttribute("HerreraMovesFX_" .. k) return typeof(v) == "number" and v or d end -- v1.1
+	local puffs = math.clamp(math.floor(tun("SmokePuffs", 260)), 1, 400)
+	local puffScale = math.max(0.1, tun("SmokePuffScale", 2.2))
+	local ownT, otherT = math.clamp(tun("SmokeOwnTransparency", 0.4), 0, 1), math.clamp(tun("SmokeOtherTransparency", 0), 0, 1)
+	for i = 1, puffs do
 		local nz = #nozzles > 0 and nozzles[(i - 1) % #nozzles + 1]
 		local from = nz and nz.Parent and nz.Position or center
 		-- a random spot in the sphere, biased toward the ground half
 		local dir = Vector3.new(math.random() - 0.5, (math.random() - 0.35) * 0.8, math.random() - 0.5)
 		dir = dir.Magnitude > 1e-3 and dir.Unit or Vector3.yAxis
 		local spot = center + dir * radius * (0.25 + 0.75 * math.sqrt(math.random()))
-		local r = (0.8 + math.random() * 1.3) * s
+		local r = (0.8 + math.random() * 1.3) * s * puffScale -- v1.1: x puffScale
 		local grey = 0.86 + math.random() * 0.14
 		local puff = fxPart(Vector3.one * 0.2, Color3.new(grey, grey, grey), CFrame.new(from), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-		local baseT = mine and 0.6 or 0.1
+		local baseT = mine and ownT or otherT -- v1.1 (1.0: 0.6 / 0.1)
 		puff.Transparency = baseT
 		local wob = math.random() * math.pi * 2
-		local delayIn = (i / SMOKE_PUFFS) * 0.15
+		local delayIn = (i / puffs) * 0.15
 		task.delay(delayIn, function()
 			local total = math.max(0.4, life - delayIn)
 			animate(total, function(u)

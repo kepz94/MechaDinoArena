@@ -2428,3 +2428,7 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | HerreraPartsGlideOpenEnabled / HPartOpen | HerreraPartsServer script / HPart_glider | true / bool | HerreraPartsServer 1.2 |
 | SkillLoadoutKeepTestEnabled | SkillServer script | true | SkillServer 1.8 |
 | SkillLoadoutRestored | player | "saved" / "" | SkillServer 1.8 |
+| SkillSaveRaceFixEnabled | SkillServer script | true | SkillServer 1.8 |
+| HerreraMovesFX_SmokePuffs / _SmokePuffScale / _SmokeOwnTransparency / _SmokeOtherTransparency | HerreraMovesFX script | 260 / 2.2 / 0.4 / 0 | HerreraMovesFX 1.1 |
+| HERRERA_TUNE_1 / HERRERA_QUILL_COUNTS / HERRERA_SMOKE_RADIUS (module flags) | SkillTree | true / {3,4,5,6} / 28 | SkillTree 1.41 |
+| HeadbuttRefill | pachy model | 3 (was 5) | PachyModelData 1.3 |

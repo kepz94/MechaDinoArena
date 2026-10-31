@@ -33,6 +33,9 @@ v1.2 (Kepu 2026-10-30: "i think the pachy charging speed is good but the base sp
       t-rex. it feels a little overpowered right now" -> run "37" in the arena; measured in Play: T-Rex 39, pachy 45):
       MoveRunSpeed 56.9 / MoveWalkSpeed 30.3 (x 0.65 = 37 / 19.7, the same walk / run ratio); HeadbuttSpeedMul 1.7 so the
       charge stays at 63 (37 x 1.7 = 62.9; was 45 x 1.4). Everything else unchanged.
+v1.3 (Kepu 2026-10-31: "let's shorten the cool down for the pachy headbutts for each refill"; picked "3 s per charge"):
+      HeadbuttRefill 3 (was 5). HeadbuttServer's tiers (x1.3 with 2 missing, x1.6 with 3) and the Bone Dome skill
+      multiplier (x0.7) are unchanged: 3 / 3.9 / 4.8 s, 2.1 s with the skill. Everything else unchanged.
 """
 import math, re, os
 
@@ -40,7 +43,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "PachyModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 
-VERSION = "1.2"
+VERSION = "1.3"
 HIP = 4.0            # hip (HRP centre) height above the ground
 HRP_SIZE_D = (4.0, 3.0, 1.8)   # D x (length), y, z (width)
 
@@ -255,7 +258,7 @@ OVERRIDES = {
     "RunNeckDrop": "12", "WalkTailWhip": "0.3", "RunTailWhip": "0.2", "IdleTailSway": "0.4",
     "HeadbuttEnabled": "true", "HeadbuttCharges": "2", "HeadbuttWindup": "0.15", "HeadbuttSpeedMul": "1.7",
     "HeadbuttMaxTime": "1.8", "HeadbuttTurnMul": "2", "HeadbuttDamage": "20", "HeadbuttShove": "40",
-    "HeadbuttShoveTime": "0.35", "HeadbuttSlowMul": "0.65", "HeadbuttSlowTime": "3", "HeadbuttRefill": "5",
+    "HeadbuttShoveTime": "0.35", "HeadbuttSlowMul": "0.65", "HeadbuttSlowTime": "3", "HeadbuttRefill": "3",
     "HeadbuttSelfSlowMul": "0.65", "HeadbuttSelfSlowTime": "2.5", "HeadbuttReach": "2",
 }
 attrs.update(OVERRIDES)

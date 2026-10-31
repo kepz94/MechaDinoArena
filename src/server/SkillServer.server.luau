@@ -99,6 +99,12 @@
 --   the copy sanitized with the real steps, so it lost the given parts too); rawLoadout itself is never written.
 --   Diagnostic: player attribute SkillLoadoutRestored ("saved" when a saved loadout was put
 --   back this way, else "").
+--   Save race (found in the same Studio check): save() snapshots the data, waits on SetAsync, then cleared d.dirty; a
+--   change made while the write was in flight (e.g. slots 3 and 4 set right after slots 1 and 2) was marked dirty and
+--   then un-marked, so it was never written (Studio: live slots strobe / breaker / empty / smoke, store strobe / breaker
+--   / glider / smoke). Now d.dirty is cleared when the snapshot is taken and set again if the write fails, so a change
+--   made during the write is saved by the next periodic save (or on leave). Switch: script attribute
+--   SkillSaveRaceFixEnabled (default true, read at each save; false = 1.7).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -289,11 +295,14 @@ local function save(player, d)
 		end
 		value = {v = 2, dinos = dinos}
 	end
+	local raceFix = script:GetAttribute("SkillSaveRaceFixEnabled") ~= false -- v1.8
+	if raceFix then d.dirty = false end -- v1.8: cleared at the snapshot, so a change during the write stays dirty
 	local ok, err = pcall(function() store:SetAsync("u" .. player.UserId, value) end)
 	if ok then
-		d.dirty = false
+		if not raceFix then d.dirty = false end -- v1.8: 1.7 cleared it here
 		if player.Parent then player:SetAttribute("SkillSaveState", "saved") end
 	else
+		if raceFix then d.dirty = true end -- v1.8: the snapshot was not written
 		if player.Parent then
 			player:SetAttribute("SkillSaveState", tostring(err):find("not allowed") and "noApi" or "failed")
 		end

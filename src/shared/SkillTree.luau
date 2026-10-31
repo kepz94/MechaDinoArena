@@ -1,4 +1,4 @@
--- SkillTree v1.40 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.41 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,12 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.41 (Kepu 2026-10-31 after playing pass 2: "We need the smoke cloud to be way bigger and thicker. Also lower the
+--   quill count to 6 quills"; picked smoke "B · 28 studs, 260 puffs" and quills "3 / 4 / 5 / 6"): switch
+--   SkillTree.HERRERA_TUNE_1 (default true). effects() is wrapped (the 1.38 maths unchanged inside): on a Herrera with the
+--   parts on, quillCount = 3 / 4 / 5 / 6 for I-star (was 5 / 8 / 12 / 17; 4 damage each, 40 studs, 20 s unchanged) and
+--   smokeRadius = 28 (was 12; time 4 / 6 s, run and slow steps unchanged). The Lab step texts of Quill Launcher and Smoke
+--   Pods say the same. The thicker puffs are HerreraMovesFX 1.1.
 -- v1.40 (Herrera parts pass 2 built: HerreraMovesServer 1.0, GliderTest 1.0, HerreraMovesFX 1.0): HERRERA_PASS2_SOON
 --   = false, so Glider Wings, Quill Launcher, Smoke Pods, Strobe Frill and Stun Breaker are live (buyable, slottable, in
 --   LIVE_MECH). Set it back to true to hide them as SOON again (1.39).
@@ -840,6 +846,20 @@ end
 -- v1.39: the pass-2 parts are SOON until their moves are built
 SkillTree.HERRERA_PASS2_SOON = true
 SkillTree.HERRERA_PASS2_SOON = false -- v1.40: pass 2 built
+-- v1.41: Kepu's tuning after playing pass 2 (step texts here, numbers in the effects() wrapper at the end)
+SkillTree.HERRERA_TUNE_1 = true
+SkillTree.HERRERA_QUILL_COUNTS = {3, 4, 5, 6}
+SkillTree.HERRERA_SMOKE_RADIUS = 28
+if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_TUNE_1 then
+	if SkillTree.PATHS.quills then
+		SkillTree.PATHS.quills.steps = {"Button: fire 3 quills at your target, 4 damage each (40 studs). Recharges in 20 s",
+			"4 quills", "5 quills", "6 quills"}
+	end
+	if SkillTree.PATHS.smoke then
+		SkillTree.PATHS.smoke.steps = {"Button: a big smoke cloud (28 studs) for 4 s. Inside it your name and health bar are hidden and bots lose you. Recharges in 18 s",
+			"The cloud lasts 6 s", "Run 25% faster inside the smoke", "Enemies inside the smoke are slowed 25%"}
+	end
+end
 if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_PASS2_SOON then
 	for _, id in ipairs({"glider", "quills", "smoke", "strobe", "breaker"}) do
 		if SkillTree.PATHS[id] then
@@ -1275,6 +1295,21 @@ function SkillTree.setSlot(loadout, steps, n, pathId, dino) -- v1.5: + dino
 	end
 	out[n] = pathId
 	return out, "ok"
+end
+
+-- v1.41: Herrera tuning around the 1.38 effects (quill counts, smoke radius)
+do
+	local effectsV140 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsV140(steps, dino)
+		if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_TUNE_1 and type(e) == "table" then
+			local s = type(steps) == "table" and steps or {}
+			local qu, sm = s.quills or 0, s.smoke or 0
+			if qu >= 1 and (e.quillCount or 0) > 0 then e.quillCount = SkillTree.HERRERA_QUILL_COUNTS[math.min(4, qu)] end
+			if sm >= 1 and (e.smokeRadius or 0) > 0 then e.smokeRadius = SkillTree.HERRERA_SMOKE_RADIUS end
+		end
+		return e
+	end
 end
 
 return SkillTree
