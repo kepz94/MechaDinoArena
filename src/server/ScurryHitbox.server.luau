@@ -1,4 +1,4 @@
--- ScurryHitbox v1.0 (Mecha Dino Arena) — the Herrerasaurus' hitboxes follow its four-legged crouch (plan
+-- ScurryHitbox v1.1 (Mecha Dino Arena) — the Herrerasaurus' hitboxes follow its four-legged crouch (plan
 -- docs/plans/HERRERA_SCURRY_v1.0.md Task 4; Kepu 2026-10-30 "The hitbox should adjust to the crouch").
 -- Why: DinoHitboxes 1.1 welds each hitbox to its segment Root; the gait is animated on the clients only, so on the server
 --   (where bites, pounces, headbutts and bots test hits) the boxes stay in the rest pose. For the Herrera the rest pose
@@ -17,18 +17,38 @@
 -- Switch: script attribute ScurryHitboxEnabled (default true; false = models are left on the DinoHitboxes 1.1 welds).
 -- Diagnostics (model): ScurryHitboxState ("ready" / "noPose" / "noGeo"), ScurryHitboxCount, ScurryHitboxBlend (0.1
 --   steps), ScurryHitboxDrop (studs the Torso box centre sits lower at full crouch, 0.01 steps), ScurryHitboxVersion.
+-- v1.1 (MDA-139, plan docs/plans/HERRERA_KIT_v1.0.md Task 7): a third box target "climb" = each box carried by its Root
+--   in ClimbPose.meanPose (body straight up the trunk; ClimbPose 1.0 from the same IdleAnimation folder). While the
+--   character's ClimbState (ClimbServer 1.0) is "climbing" / "clinging" the climb weight eases to 1 (CLIMB_RATE per
+--   second), else to 0; Weld C0 = rest:Lerp(crouch, scurry weight):Lerp(climb, climb weight). Rescaled with the others.
+--   Without ClimbPose (or ClimbEnabled not true) the climb target is the rest box (1.0 behaviour). Diagnostic:
+--   ScurryHitboxClimb (0.1 steps).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local MOVE_SPEED = 2   -- studs/s of horizontal HRP speed that counts as scurrying
 local BLEND_RATE = 6   -- per second (IdleAnimation's BLEND_RATE)
 local STEP = 0.02      -- weld C0 is rewritten when the weight moved this much (or reached 0 / 1)
+local CLIMB_RATE = 8   -- v1.1: per second
 
 if script:GetAttribute("ScurryHitboxEnabled") == nil then script:SetAttribute("ScurryHitboxEnabled", true) end
 script:SetAttribute("ScurryHitboxVersion", VERSION)
 
 local tracked = {} -- [model] = {hrp, boxes = {{weld, rest, crouch}}, w, lastW, scale}
+
+local function climbPoseFor(model) -- v1.1
+	local ia = model:FindFirstChild("IdleAnimation")
+	local src = ia and ia:FindFirstChild("ClimbPose")
+	if not src then
+		local scs = game:GetService("StarterPlayer"):FindFirstChild("StarterCharacterScripts")
+		ia = scs and scs:FindFirstChild("IdleAnimation")
+		src = ia and ia:FindFirstChild("ClimbPose")
+	end
+	if not src then return nil end
+	local ok, m = pcall(require, src)
+	return ok and m or nil
+end
 
 local function scurryPoseFor(model)
 	local ia = model:FindFirstChild("IdleAnimation")
@@ -87,6 +107,8 @@ local function setup(model)
 	if not geo then model:SetAttribute("ScurryHitboxState", "noGeo") return end
 	local scale = model:GetScale()
 	local pose = SP.fitted(SP.meanAngles(SP.settings(model)), geo, motors, scale)
+	local CP = model:GetAttribute("ClimbEnabled") == true and climbPoseFor(model) or nil -- v1.1
+	local climbPose = CP and CP.meanPose(CP.settings(model), scale) or nil
 	local boxes, torsoDrop = {}, 0
 	for _, box in ipairs(folder:GetChildren()) do
 		local wc = box:IsA("BasePart") and box:FindFirstChildOfClass("WeldConstraint")
@@ -97,18 +119,23 @@ local function setup(model)
 			local rc = rootInHrp(root, hrp, motors, pose)
 			if rc then
 				local crouch = rc * root.CFrame:ToObjectSpace(box.CFrame)
+				local climb = rest -- v1.1
+				if climbPose then
+					local cc = rootInHrp(root, hrp, motors, climbPose)
+					if cc then climb = cc * root.CFrame:ToObjectSpace(box.CFrame) end
+				end
 				local weld = Instance.new("Weld")
 				weld.Name = "ScurryHitboxWeld"
 				weld.Part0, weld.Part1 = hrp, box
 				weld.C0, weld.C1 = rest, CFrame.identity
 				wc:Destroy()
 				weld.Parent = box
-				table.insert(boxes, {weld = weld, rest = rest, crouch = crouch})
+				table.insert(boxes, {weld = weld, rest = rest, crouch = crouch, climb = climb})
 				if box:GetAttribute("HitboxSegment") == "Torso" then torsoDrop = rest.Position.Y - crouch.Position.Y end
 			end
 		end
 	end
-	tracked[model] = {hrp = hrp, boxes = boxes, w = 0, lastW = 0, scale = scale}
+	tracked[model] = {hrp = hrp, boxes = boxes, w = 0, lastW = 0, scale = scale, wc = 0, lastWc = 0}
 	model:SetAttribute("ScurryHitboxState", "ready")
 	model:SetAttribute("ScurryHitboxCount", #boxes)
 	model:SetAttribute("ScurryHitboxDrop", math.floor(torsoDrop * 100 + 0.5) / 100)
@@ -152,6 +179,7 @@ RunService.Heartbeat:Connect(function(dt)
 			for _, b in ipairs(t.boxes) do
 				b.rest = CFrame.new(b.rest.Position * k) * b.rest.Rotation
 				b.crouch = CFrame.new(b.crouch.Position * k) * b.crouch.Rotation
+				b.climb = CFrame.new(b.climb.Position * k) * b.climb.Rotation -- v1.1
 			end
 			t.scale = sc
 			t.lastW = -1 -- rewrite the welds
@@ -160,12 +188,20 @@ RunService.Heartbeat:Connect(function(dt)
 		local target = Vector3.new(v.X, 0, v.Z).Magnitude > MOVE_SPEED * sc and 1 or 0
 		t.w += (target - t.w) * math.min(1, dt * BLEND_RATE)
 		if target == 0 and t.w < 0.01 then t.w = 0 elseif target == 1 and t.w > 0.99 then t.w = 1 end
-		if math.abs(t.w - t.lastW) >= STEP or ((t.w == 0 or t.w == 1) and t.w ~= t.lastW) then
+		-- v1.1: climb weight from the server-stamped climb state
+		local cs = model:GetAttribute("ClimbState")
+		local cTarget = (cs == "climbing" or cs == "clinging") and 1 or 0
+		t.wc += (cTarget - t.wc) * math.min(1, dt * CLIMB_RATE)
+		if cTarget == 0 and t.wc < 0.01 then t.wc = 0 elseif cTarget == 1 and t.wc > 0.99 then t.wc = 1 end
+		local moved = math.abs(t.w - t.lastW) >= STEP or ((t.w == 0 or t.w == 1) and t.w ~= t.lastW)
+		local movedC = math.abs(t.wc - t.lastWc) >= STEP or ((t.wc == 0 or t.wc == 1) and t.wc ~= t.lastWc)
+		if moved or movedC then
 			for _, b in ipairs(t.boxes) do
-				b.weld.C0 = b.rest:Lerp(b.crouch, t.w)
+				b.weld.C0 = b.rest:Lerp(b.crouch, t.w):Lerp(b.climb, t.wc)
 			end
-			t.lastW = t.w
+			t.lastW, t.lastWc = t.w, t.wc
 			model:SetAttribute("ScurryHitboxBlend", math.floor(t.w * 10 + 0.5) / 10)
+			model:SetAttribute("ScurryHitboxClimb", math.floor(t.wc * 10 + 0.5) / 10)
 		end
 	end
 end)

@@ -1,4 +1,4 @@
--- IdleAnimation v1.31 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.32 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -168,6 +168,13 @@
 --       ScurryMaxHz steps per second; the hand / foot geometry is rebuilt when the model scale changes. Every other
 --       model takes the v1.30 WalkPose path unchanged. Diagnostics: ScurryState ("off" / "noGeo" / "idle" / "blend" /
 --       "scurry"), ScurryBlend (0.1 steps), ScurryHz (0.1 steps), ScurryDrop (studs, 0.01 steps).
+-- v1.32: Herrerasaurus climb pose (ClimbPose 1.0; MDA-139, plan docs/plans/HERRERA_KIT_v1.0.md Task 7). On models with
+--       ClimbEnabled = true: while the climb state is "climbing" / "clinging" (this client's own ClimbLocalState from
+--       ClimbTest 1.0 on the owner's character, else the replicated ClimbState from ClimbServer 1.0) the pose blends
+--       (CLIMB_BLEND_RATE per second) to ClimbPose.get: body straight up the trunk, limbs gripping in diagonal pairs
+--       (phase = climbed height / (ClimbStride x scale); still while clinging), tail hanging. Layered right after the
+--       walk / scurry blend, before the leap and every action layer. Switch: model attribute ClimbPoseEnabled (default
+--       true). Diagnostic: ClimbPoseBlend (0.1 steps). Every other model unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -198,6 +205,7 @@ local BoostPose = require(script.BoostPose) -- v1.27 (defaults are read by Boost
 local HeadbuttPose = require(script.HeadbuttPose) -- v1.29 (defaults are read by HeadbuttPose.settings)
 local HookPose = require(script.HookPose) -- v1.30
 local ScurryPose = require(script.ScurryPose) -- v1.31
+local ClimbPose = require(script.ClimbPose) -- v1.32
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -225,6 +233,8 @@ local look = IdlePose.newLook(os.clock(), IdlePose.settings(model))
 local hrp, lastPos, lastYaw
 local walkPhase, blend, smoothSpeed, gaitBlend = 0, 0, 0, 0
 local scurryPhase, scurryGeo, scurryScale = 0, nil, nil -- v1.31
+local climbW, climbPhase, climbLastY = 0, 0, nil -- v1.32
+local CLIMB_BLEND_RATE = 8 -- v1.32 (per second)
 local creepBlend = 0
 local smoothTurnRate = 0      -- degrees/s, positive = turning left
 local tailPhase = 0           -- tail swing phase while moving (radians)
@@ -490,6 +500,7 @@ end)
 local refitCount = 0
 model:SetAttribute("IdleAnimationVersion", "1.28")
 model:SetAttribute("IdleAnimationVersion", "1.31") -- v1.31 (the 1.28 line above was never bumped for 1.29 / 1.30)
+model:SetAttribute("IdleAnimationVersion", "1.32") -- v1.32
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -733,6 +744,29 @@ RunService.PreSimulation:Connect(function(dt)
 		for name in pairs(motors) do
 			pose[name] = (pose[name] or CFrame.identity):Lerp(walk[name] or CFrame.identity, blend)
 		end
+	end
+	-- v1.32: Herrera climb pose while on a trunk
+	if model:IsA("Model") and model:GetAttribute("ClimbEnabled") == true then
+		local lp = Players.LocalPlayer
+		local cst = (lp and lp.Character == model and model:GetAttribute("ClimbLocalState")) or model:GetAttribute("ClimbState")
+		local cTarget = ((cst == "climbing" or cst == "clinging") and model:GetAttribute("ClimbPoseEnabled") ~= false) and 1 or 0
+		climbW += (cTarget - climbW) * math.min(1, dt * CLIMB_BLEND_RATE)
+		if cTarget == 0 and climbW < 0.01 then climbW = 0 end
+		local cs = ClimbPose.settings(model)
+		if hrp then
+			local y = hrp.Position.Y
+			if climbLastY and cst == "climbing" then
+				climbPhase = (climbPhase + math.abs(y - climbLastY) / (cs.ClimbStride * model:GetScale()) * 2 * math.pi) % (2 * math.pi)
+			end
+			climbLastY = y
+		end
+		if climbW > 0.001 then
+			local cp = ClimbPose.get(climbPhase, cs, model:GetScale())
+			for name in pairs(motors) do
+				pose[name] = (pose[name] or CFrame.identity):Lerp(cp[name] or CFrame.identity, climbW)
+			end
+		end
+		show("ClimbPoseBlend", math.floor(climbW * 10 + 0.5) / 10)
 	end
 	-- v1.15: leap (crouch / air / land) replaces the idle + walk pose by the jump weight
 	local jumpState, jumpW = "none", 0
