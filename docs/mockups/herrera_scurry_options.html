@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Herrera Scurry Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #e8743a; --volt: #7fe9ff;
+  --display: "Fredoka", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0d0f14; } }
+:root[data-theme="dark"] { --page: #0d0f14; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding: 24px 16px 64px; }
+main { max-width: 1100px; margin: 0 auto; display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); }
+h1 span { color: var(--accent); }
+h2 { margin: 0 0 6px; font: 700 20px/1.2 var(--display); }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 84ch; }
+.tag { font: 600 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.panel { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 12px; }
+.stage { position: relative; width: 100%; aspect-ratio: 16 / 8; border-radius: 12px; overflow: hidden; background: #a9c4d8; touch-action: none; cursor: grab; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+.hud { position: absolute; left: 12px; top: 10px; font: 600 12px var(--mono); color: #10161f; background: #ffffffc8; border-radius: 8px; padding: 3px 9px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; background: #0f131c; border-radius: 12px; padding: 3px; gap: 3px; }
+.seg button { font: 800 13px var(--body); color: var(--grey); background: transparent; border: 0; border-radius: 9px; padding: 7px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--fg); box-shadow: inset 0 0 0 2px var(--accent); }
+.bar label { font: 700 13px var(--body); color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.opt { text-align: left; color: var(--fg); background: var(--card); border: 3px solid #ffffff14; border-radius: 16px; padding: 14px; display: grid; gap: 6px; cursor: pointer; font: inherit; position: relative; align-content: start; }
+.opt[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px #e8743a33; }
+.opt[aria-pressed="true"]::after { content: "PICKED"; position: absolute; top: 12px; right: 12px; background: var(--accent); color: #1a0d05; font: 800 12px var(--body); padding: 2px 10px; border-radius: 8px; }
+.opt b { font: 700 19px/1.2 var(--display); }
+.opt p { margin: 0; color: var(--grey); font-size: 14px; }
+ul { margin: 0; padding-left: 18px; color: var(--grey); }
+li { margin: 2px 0; }
+button:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+@media (max-width: 820px) { .opts { grid-template-columns: 1fr; } .stage { aspect-ratio: 4 / 3; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="tag" style="color:var(--accent)">Mecha Dino Arena · plan · Herrerasaurus scurry gait (mockup)</div>
+  <h1>Herrerasaurus, <span>on two legs when idle, on all fours when it moves</span></h1>
+  <p class="lede">The real HerreraModelData 1.0 body (all 153 blocks, same joints as in game) animated in your browser. Pick how the run looks. Drag the view to turn it.</p>
+</header>
+<section class="panel">
+  <div class="stage" id="stage"><div class="hud" id="hud">idle</div></div>
+  <div class="bar">
+    <div class="seg" id="gaitSeg">
+      <button data-v="A" aria-pressed="true">A · Iguana scurry</button>
+      <button data-v="B" aria-pressed="false">B · Bounding gallop</button>
+    </div>
+    <div class="seg" id="modeSeg">
+      <button data-v="demo" aria-pressed="true">Stop and go</button>
+      <button data-v="run" aria-pressed="false">Moving</button>
+      <button data-v="idle" aria-pressed="false">Idle</button>
+    </div>
+    <div class="seg" id="viewSeg">
+      <button data-v="side" aria-pressed="false">Side</button>
+      <button data-v="34" aria-pressed="true">3/4</button>
+      <button data-v="top" aria-pressed="false">Top</button>
+      <button data-v="front" aria-pressed="false">Front</button>
+    </div>
+    <label>Speed <input id="speed" type="range" min="0.25" max="1" step="0.25" value="1"></label>
+  </div>
+</section>
+<section>
+  <h2>Pick the run</h2>
+  <div class="opts" id="opts">
+    <button class="opt" data-id="A" aria-pressed="true">
+      <b>A · Iguana scurry</b>
+      <p>Diagonal pairs (front-left with back-right), legs and arms splayed out to the sides, the whole body wiggles in an S from head to tail, and the tail whips side to side. Low and twitchy, very hard to read.</p>
+    </button>
+    <button class="opt" data-id="B" aria-pressed="false">
+      <b>B · Bounding gallop</b>
+      <p>Both arms reach together, then both legs push together; the back arches and flattens with each bound and the tail pumps up and down. Reads as raw speed, like a dog or a cheetah.</p>
+    </button>
+  </div>
+</section>
+<section class="panel">
+  <h2>How it works in game</h2>
+  <ul>
+    <li><b>Standing still:</b> the two-legged pose you picked (the model's rest pose), with the normal idle breathing and head turns.</li>
+    <li><b>Any movement:</b> it drops onto all fours and scurries. The drop and the stand-up blend in about a fifth of a second.</li>
+    <li><b>Arms:</b> the long dangling arms already reach the ground once the body tips forward; no model change needed.</li>
+    <li><b>Hitboxes and the camera</b> stay on the body; only the pose changes.</li>
+  </ul>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const DATA = {"hip":2.975478549816567,"segments":[{"name":"Torso","parent":"HRP","root":[0.0,0.0,0.0],"parts":[{"n":"Torso_hips","s":[0.7664,0.6492,0.6131],"c":[-0.4508,0.1623,0.0],"R":[0.98481,-0.17365,0.0,0.17365,0.98481,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Torso_waist","s":[0.7664,0.6672,0.5951],"c":[0.2254,0.2885,0.0],"R":[0.95106,-0.30902,0.0,0.30902,0.95106,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Torso_chest","s":[1.2172,1.3074,1.0369],"c":[1.0369,0.559,0.0],"R":[0.90631,-0.42262,0.0,0.42262,0.90631,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Torso_hump","s":[0.9467,0.4959,0.9467],"c":[1.082,1.2443,0.0],"R":[0.95106,-0.30902,0.0,0.30902,0.95106,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Torso_belly","s":[1.3525,0.1984,0.5049],"c":[0.4959,-0.0721,0.0],"R":[0.95106,-0.30902,0.0,0.30902,0.95106,0.0,0.0,0.0,1.0],"col":"D3C89A","k":"belly"},{"n":"Torso_breast","s":[0.4057,1.0369,0.8566],"c":[1.623,0.3607,0.0],"R":[0.90631,-0.42262,0.0,0.42262,0.90631,0.0,0.0,0.0,1.0],"col":"D3C89A","k":"belly"},{"n":"Torso_quill1","s":[0.1172,0.3156,0.1172],"c":[-0.7409,0.5864,0.0],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_quill2","s":[0.1172,0.3787,0.1172],"c":[-0.3931,0.7217,0.0],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_quill3","s":[0.1172,0.4508,0.1172],"c":[-0.0472,0.8687,0.0],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_quill4","s":[0.1172,0.559,0.1172],"c":[0.2913,1.1071,0.0],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_quill5","s":[0.1172,0.7664,0.1172],"c":[0.6095,1.5002,0.0],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_quill6","s":[0.1172,0.9017,0.1172],"c":[0.9424,1.7193,0.0],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_quill7","s":[0.1172,0.7664,0.1172],"c":[1.2857,1.6444,0.0],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_stripe1L","s":[0.1262,0.559,0.0361],"c":[-0.4959,0.2547,0.3336],"R":[0.97815,0.20791,0.0,-0.20791,0.97815,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_stripe1R","s":[0.1262,0.559,0.0361],"c":[-0.4959,0.2547,-0.3336],"R":[0.97815,0.20791,0.0,-0.20791,0.97815,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_stripe2L","s":[0.1262,0.559,0.0361],"c":[0.0,0.3787,0.3336],"R":[0.97815,0.20791,0.0,-0.20791,0.97815,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_stripe2R","s":[0.1262,0.559,0.0361],"c":[0.0,0.3787,-0.3336],"R":[0.97815,0.20791,0.0,-0.20791,0.97815,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_stripe3L","s":[0.1262,0.559,0.0361],"c":[0.4959,0.5027,0.4179],"R":[0.97815,0.20791,0.0,-0.20791,0.97815,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_stripe3R","s":[0.1262,0.559,0.0361],"c":[0.4959,0.5027,-0.4179],"R":[0.97815,0.20791,0.0,-0.20791,0.97815,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_stripe4L","s":[0.1262,0.559,0.0361],"c":[0.9467,0.6154,0.4946],"R":[0.97815,0.20791,0.0,-0.20791,0.97815,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_stripe4R","s":[0.1262,0.559,0.0361],"c":[0.9467,0.6154,-0.4946],"R":[0.97815,0.20791,0.0,-0.20791,0.97815,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Torso_spot1L","s":[0.2164,0.1803,0.0361],"c":[-0.1803,0.0451,0.3246],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"B8414A","k":"markings"},{"n":"Torso_spot1R","s":[0.2164,0.1803,0.0361],"c":[-0.1803,0.0451,-0.3246],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"B8414A","k":"markings"},{"n":"Torso_spot2L","s":[0.2164,0.1803,0.0361],"c":[0.6312,0.3156,0.4824],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"B8414A","k":"markings"},{"n":"Torso_spot2R","s":[0.2164,0.1803,0.0361],"c":[0.6312,0.3156,-0.4824],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"B8414A","k":"markings"}]},{"name":"Neck","parent":"Torso","root":[1.5779,1.0369,0.0],"parts":[{"n":"Neck_main","s":[0.8115,0.5771,0.559],"c":[0.3607,-0.2074,0.0],"R":[0.81915,0.57358,0.0,-0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Neck_lower","s":[0.7213,0.541,0.523],"c":[0.8115,-0.4959,0.0],"R":[0.92718,0.37461,0.0,-0.37461,0.92718,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Neck_sac","s":[0.8566,0.559,0.6312],"c":[0.9017,-0.8746,0.0],"R":[0.98481,0.17365,0.0,-0.17365,0.98481,0.0,0.0,0.0,1.0],"col":"B8414A","k":"markings"},{"n":"Neck_sac2","s":[0.4959,0.3787,0.5049],"c":[0.4959,-0.6312,0.0],"R":[0.90631,0.42262,0.0,-0.42262,0.90631,0.0,0.0,0.0,1.0],"col":"B8414A","k":"markings"},{"n":"Neck_quill1","s":[0.1082,0.4959,0.1082],"c":[0.2705,0.1352,0.0],"R":[0.76604,-0.64279,0.0,0.64279,0.76604,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Neck_quill2","s":[0.1082,0.3877,0.1082],"c":[0.6762,-0.1533,0.0],"R":[0.76604,-0.64279,0.0,0.64279,0.76604,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"}]},{"name":"Head","parent":"Neck","root":[2.705,0.4057,0.0],"parts":[{"n":"Head_cranium","s":[1.0369,0.8836,0.9467],"c":[0.4057,0.1352,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Head_snout","s":[1.0369,0.5951,0.7754],"c":[1.3345,0.009,0.0],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Head_tip","s":[0.3426,0.523,0.7213],"c":[1.9656,-0.0451,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Head_mouth","s":[1.8935,0.0721,0.7574],"c":[1.1722,-0.2975,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"6E342E","k":"mouth"},{"n":"Head_tooth1","s":[0.0902,0.1082,0.7754],"c":[0.6762,-0.2705,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Head_tooth2","s":[0.0902,0.1082,0.7754],"c":[0.9467,-0.2705,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Head_tooth3","s":[0.0902,0.1082,0.7754],"c":[1.2172,-0.2705,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Head_tooth4","s":[0.0902,0.1082,0.7754],"c":[1.4877,-0.2705,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Head_tooth5","s":[0.0902,0.1082,0.7754],"c":[1.7582,-0.2705,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Head_snoutline","s":[1.082,0.0631,0.3607],"c":[1.3525,0.3156,0.0],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Head_eyebumpL","s":[0.4148,0.3607,0.3607],"c":[0.559,0.6041,0.2885],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Head_eyeL","s":[0.3066,0.2705,0.0541],"c":[0.5951,0.6221,0.4779],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"E8C547","k":"eyes"},{"n":"Head_pupilL","s":[0.0902,0.2164,0.027],"c":[0.6312,0.6221,0.5094],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"111111","k":"pupil"},{"n":"Head_hornL","s":[0.1443,0.4508,0.1172],"c":[0.2525,0.8566,0.2885],"R":[0.70711,-0.70711,0.0,0.70711,0.70711,0.0,0.0,0.0,1.0],"col":"B8414A","k":"markings"},{"n":"Head_cheekL","s":[0.4508,0.2705,0.027],"c":[1.3074,0.0451,0.3967],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"262A1A","k":"mask"},{"n":"Head_nostrilL","s":[0.0811,0.0811,0.0361],"c":[2.0738,0.0902,0.2975],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"262A1A","k":"mask"},{"n":"Head_eyebumpR","s":[0.4148,0.3607,0.3607],"c":[0.559,0.6041,-0.2885],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Head_eyeR","s":[0.3066,0.2705,0.0541],"c":[0.5951,0.6221,-0.4779],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"E8C547","k":"eyes"},{"n":"Head_pupilR","s":[0.0902,0.2164,0.027],"c":[0.6312,0.6221,-0.5094],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"111111","k":"pupil"},{"n":"Head_hornR","s":[0.1443,0.4508,0.1172],"c":[0.2525,0.8566,-0.2885],"R":[0.70711,-0.70711,0.0,0.70711,0.70711,0.0,0.0,0.0,1.0],"col":"B8414A","k":"markings"},{"n":"Head_cheekR","s":[0.4508,0.2705,0.027],"c":[1.3074,0.0451,-0.3967],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"262A1A","k":"mask"},{"n":"Head_nostrilR","s":[0.0811,0.0811,0.0361],"c":[2.0738,0.0902,-0.2975],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"262A1A","k":"mask"},{"n":"Head_frill1","s":[0.0902,0.8566,0.4508],"c":[-0.0721,-0.1315,-0.8274],"R":[1.0,0.0,0.0,0.0,-0.25882,0.96593,0.0,-0.96593,-0.25882],"col":"C9572E","k":"frill"},{"n":"Head_frillrim1","s":[0.0992,0.1803,0.4689],"c":[-0.0811,-0.2552,-1.289],"R":[1.0,0.0,0.0,0.0,-0.25882,0.96593,0.0,-0.96593,-0.25882],"col":"B8414A","k":"markings"},{"n":"Head_frill2","s":[0.0902,0.8566,0.4508],"c":[-0.0721,0.1797,-0.8519],"R":[1.0,0.0,0.0,0.0,0.10453,0.99452,0.0,-0.99452,0.10453],"col":"C9572E","k":"frill"},{"n":"Head_frillrim2","s":[0.0992,0.1803,0.4689],"c":[-0.0811,0.2297,-1.3271],"R":[1.0,0.0,0.0,0.0,0.10453,0.99452,0.0,-0.99452,0.10453],"col":"B8414A","k":"markings"},{"n":"Head_frill3","s":[0.0902,0.8566,0.4508],"c":[-0.0721,0.479,-0.7632],"R":[1.0,0.0,0.0,0.0,0.45399,0.89101,0.0,-0.89101,0.45399],"col":"C9572E","k":"frill"},{"n":"Head_frillrim3","s":[0.0992,0.1803,0.4689],"c":[-0.0811,0.696,-1.189],"R":[1.0,0.0,0.0,0.0,0.45399,0.89101,0.0,-0.89101,0.45399],"col":"B8414A","k":"markings"},{"n":"Head_frill4","s":[0.0902,0.8566,0.4508],"c":[-0.0721,0.7267,-0.5732],"R":[1.0,0.0,0.0,0.0,0.74314,0.66913,0.0,-0.66913,0.74314],"col":"C9572E","k":"frill"},{"n":"Head_frillrim4","s":[0.0992,0.1803,0.4689],"c":[-0.0811,1.0819,-0.8929],"R":[1.0,0.0,0.0,0.0,0.74314,0.66913,0.0,-0.66913,0.74314],"col":"B8414A","k":"markings"},{"n":"Head_frill5","s":[0.0902,0.8566,0.4508],"c":[-0.0721,0.8898,-0.307],"R":[1.0,0.0,0.0,0.0,0.93358,0.35837,0.0,-0.35837,0.93358],"col":"C9572E","k":"frill"},{"n":"Head_frillrim5","s":[0.0992,0.1803,0.4689],"c":[-0.0811,1.336,-0.4782],"R":[1.0,0.0,0.0,0.0,0.93358,0.35837,0.0,-0.35837,0.93358],"col":"B8414A","k":"markings"},{"n":"Head_frill6","s":[0.0902,0.8566,0.4508],"c":[-0.0721,0.9467,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"C9572E","k":"frill"},{"n":"Head_frillrim6","s":[0.0992,0.1803,0.4689],"c":[-0.0811,1.4246,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"B8414A","k":"markings"},{"n":"Head_frill7","s":[0.0902,0.8566,0.4508],"c":[-0.0721,0.8898,0.307],"R":[1.0,0.0,0.0,0.0,0.93358,-0.35837,0.0,0.35837,0.93358],"col":"C9572E","k":"frill"},{"n":"Head_frillrim7","s":[0.0992,0.1803,0.4689],"c":[-0.0811,1.336,0.4782],"R":[1.0,0.0,0.0,0.0,0.93358,-0.35837,0.0,0.35837,0.93358],"col":"B8414A","k":"markings"},{"n":"Head_frill8","s":[0.0902,0.8566,0.4508],"c":[-0.0721,0.7267,0.5732],"R":[1.0,0.0,0.0,0.0,0.74314,-0.66913,0.0,0.66913,0.74314],"col":"C9572E","k":"frill"},{"n":"Head_frillrim8","s":[0.0992,0.1803,0.4689],"c":[-0.0811,1.0819,0.8929],"R":[1.0,0.0,0.0,0.0,0.74314,-0.66913,0.0,0.66913,0.74314],"col":"B8414A","k":"markings"},{"n":"Head_frill9","s":[0.0902,0.8566,0.4508],"c":[-0.0721,0.479,0.7632],"R":[1.0,0.0,0.0,0.0,0.45399,-0.89101,0.0,0.89101,0.45399],"col":"C9572E","k":"frill"},{"n":"Head_frillrim9","s":[0.0992,0.1803,0.4689],"c":[-0.0811,0.696,1.189],"R":[1.0,0.0,0.0,0.0,0.45399,-0.89101,0.0,0.89101,0.45399],"col":"B8414A","k":"markings"},{"n":"Head_frill10","s":[0.0902,0.8566,0.4508],"c":[-0.0721,0.1797,0.8519],"R":[1.0,0.0,0.0,0.0,0.10453,-0.99452,0.0,0.99452,0.10453],"col":"C9572E","k":"frill"},{"n":"Head_frillrim10","s":[0.0992,0.1803,0.4689],"c":[-0.0811,0.2297,1.3271],"R":[1.0,0.0,0.0,0.0,0.10453,-0.99452,0.0,0.99452,0.10453],"col":"B8414A","k":"markings"},{"n":"Head_frill11","s":[0.0902,0.8566,0.4508],"c":[-0.0721,-0.1315,0.8274],"R":[1.0,0.0,0.0,0.0,-0.25882,-0.96593,0.0,0.96593,-0.25882],"col":"C9572E","k":"frill"},{"n":"Head_frillrim11","s":[0.0992,0.1803,0.4689],"c":[-0.0811,-0.2552,1.289],"R":[1.0,0.0,0.0,0.0,-0.25882,-0.96593,0.0,0.96593,-0.25882],"col":"B8414A","k":"markings"},{"n":"Head_frillspoke1","s":[0.1082,0.9017,0.0631],"c":[-0.0631,0.0285,-0.8815],"R":[1.0,0.0,0.0,0.0,-0.06976,0.99756,0.0,-0.99756,-0.06976],"col":"262A1A","k":"mask"},{"n":"Head_frillspoke2","s":[0.1082,0.9017,0.0631],"c":[-0.0631,0.3485,-0.845],"R":[1.0,0.0,0.0,0.0,0.29237,0.9563,0.0,-0.9563,0.29237],"col":"262A1A","k":"mask"},{"n":"Head_frillspoke3","s":[0.1082,0.9017,0.0631],"c":[-0.0631,0.6342,-0.6963],"R":[1.0,0.0,0.0,0.0,0.61566,0.78801,0.0,-0.78801,0.61566],"col":"262A1A","k":"mask"},{"n":"Head_frillspoke4","s":[0.1082,0.9017,0.0631],"c":[-0.0631,0.8476,-0.4551],"R":[1.0,0.0,0.0,0.0,0.85717,0.51504,0.0,-0.51504,0.85717],"col":"262A1A","k":"mask"},{"n":"Head_frillspoke5","s":[0.1082,0.9017,0.0631],"c":[-0.0631,0.9604,-0.1534],"R":[1.0,0.0,0.0,0.0,0.98481,0.17365,0.0,-0.17365,0.98481],"col":"262A1A","k":"mask"},{"n":"Head_frillspoke6","s":[0.1082,0.9017,0.0631],"c":[-0.0631,0.9576,0.1686],"R":[1.0,0.0,0.0,0.0,0.98163,-0.19081,0.0,0.19081,0.98163],"col":"262A1A","k":"mask"},{"n":"Head_frillspoke7","s":[0.1082,0.9017,0.0631],"c":[-0.0631,0.8395,0.4683],"R":[1.0,0.0,0.0,0.0,0.84805,-0.52992,0.0,0.52992,0.84805],"col":"262A1A","k":"mask"},{"n":"Head_frillspoke8","s":[0.1082,0.9017,0.0631],"c":[-0.0631,0.6219,0.7057],"R":[1.0,0.0,0.0,0.0,0.60182,-0.79864,0.0,0.79864,0.60182],"col":"262A1A","k":"mask"},{"n":"Head_frillspoke9","s":[0.1082,0.9017,0.0631],"c":[-0.0631,0.3337,0.8494],"R":[1.0,0.0,0.0,0.0,0.27564,-0.96126,0.0,0.96126,0.27564],"col":"262A1A","k":"mask"}]},{"name":"Jaw","parent":"Head","root":[2.8853,0.0902,0.0],"parts":[{"n":"Jaw_lower","s":[1.9837,0.3787,0.8566],"c":[1.0205,-0.2702,0.0],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Jaw_chin","s":[0.3787,0.3787,0.7935],"c":[2.0587,-0.2886,0.0],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Jaw_under","s":[1.7132,0.0721,0.6312],"c":[0.9617,-0.465,0.0],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"D3C89A","k":"belly"},{"n":"Jaw_snaggle1L","s":[0.0992,0.3787,0.0902],"c":[2.0339,0.0024,0.3066],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Jaw_snaggle1R","s":[0.0992,0.3787,0.0902],"c":[2.0339,0.0024,-0.3066],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Jaw_snaggle2L","s":[0.0992,0.2885,0.0902],"c":[1.4011,0.0015,0.3877],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Jaw_snaggle2R","s":[0.0992,0.2885,0.0902],"c":[1.4011,0.0015,-0.3877],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Jaw_snaggle3L","s":[0.0992,0.2525,0.0902],"c":[0.8152,0.0243,0.4057],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"},{"n":"Jaw_snaggle3R","s":[0.0992,0.2525,0.0902],"c":[0.8152,0.0243,-0.4057],"R":[0.99756,0.06976,0.0,-0.06976,0.99756,0.0,0.0,0.0,1.0],"col":"E8E2D2","k":"tooth"}]},{"name":"ArmL","parent":"Torso","root":[1.4427,0.5861,0.5049],"parts":[{"n":"ArmL_upper","s":[0.3426,1.0369,0.3066],"c":[0.1578,-0.4734,0.0902],"R":[0.94868,-0.31623,0.0,0.31623,0.94868,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"ArmL_elbow","s":[0.3607,0.3066,0.3607],"c":[0.3156,-0.9467,0.0902],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"ArmL_fore","s":[0.2705,1.2443,0.2525],"c":[0.4283,-1.5554,0.0902],"R":[0.98328,-0.18209,0.0,0.18209,0.98328,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"ArmL_hand","s":[0.4959,0.3246,0.3967],"c":[0.6492,-2.3443,0.0902],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"ArmL_claw1","s":[0.1082,0.3787,0.0902],"c":[0.9197,-2.4976,-0.0361],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmL_hook1","s":[0.0902,0.2705,0.0811],"c":[1.1181,-2.732,-0.0361],"R":[0.25882,-0.96593,0.0,0.96593,0.25882,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmL_claw2","s":[0.1082,0.3787,0.0902],"c":[0.9197,-2.4976,0.0902],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmL_hook2","s":[0.0902,0.2705,0.0811],"c":[1.1181,-2.732,0.0902],"R":[0.25882,-0.96593,0.0,0.96593,0.25882,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmL_claw3","s":[0.1082,0.3787,0.0902],"c":[0.9197,-2.4976,0.2164],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmL_hook3","s":[0.0902,0.2705,0.0811],"c":[1.1181,-2.732,0.2164],"R":[0.25882,-0.96593,0.0,0.96593,0.25882,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"}]},{"name":"ArmR","parent":"Torso","root":[1.4427,0.5861,-0.5049],"parts":[{"n":"ArmR_upper","s":[0.3426,1.0369,0.3066],"c":[0.1578,-0.4734,-0.0902],"R":[0.94868,-0.31623,0.0,0.31623,0.94868,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"ArmR_elbow","s":[0.3607,0.3066,0.3607],"c":[0.3156,-0.9467,-0.0902],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"ArmR_fore","s":[0.2705,1.2443,0.2525],"c":[0.4283,-1.5554,-0.0902],"R":[0.98328,-0.18209,0.0,0.18209,0.98328,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"ArmR_hand","s":[0.4959,0.3246,0.3967],"c":[0.6492,-2.3443,-0.0902],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"ArmR_claw1","s":[0.1082,0.3787,0.0902],"c":[0.9197,-2.4976,-0.2164],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmR_hook1","s":[0.0902,0.2705,0.0811],"c":[1.1181,-2.732,-0.2164],"R":[0.25882,-0.96593,0.0,0.96593,0.25882,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmR_claw2","s":[0.1082,0.3787,0.0902],"c":[0.9197,-2.4976,-0.0902],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmR_hook2","s":[0.0902,0.2705,0.0811],"c":[1.1181,-2.732,-0.0902],"R":[0.25882,-0.96593,0.0,0.96593,0.25882,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmR_claw3","s":[0.1082,0.3787,0.0902],"c":[0.9197,-2.4976,0.0361],"R":[0.81915,-0.57358,0.0,0.57358,0.81915,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"ArmR_hook3","s":[0.0902,0.2705,0.0811],"c":[1.1181,-2.732,0.0361],"R":[0.25882,-0.96593,0.0,0.96593,0.25882,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"}]},{"name":"Tail1","parent":"Torso","root":[-0.8115,0.3426,0.0],"parts":[{"n":"Tail1_main","s":[1.2804,0.4508,0.4148],"c":[-0.5893,0.0828,0.0],"R":[0.99027,0.13917,0.0,-0.13917,0.99027,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Tail1_band1","s":[0.1262,0.4869,0.4508],"c":[-0.3125,0.0439,0.0],"R":[0.99027,0.13917,0.0,-0.13917,0.99027,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Tail1_band2","s":[0.1262,0.4869,0.4508],"c":[-0.759,0.1067,0.0],"R":[0.99027,0.13917,0.0,-0.13917,0.99027,0.0,0.0,0.0,1.0],"col":"B9B26A","k":"tailbands"}]},{"name":"Tail2","parent":"Tail1","root":[-2.0615,0.5183,0.0],"parts":[{"n":"Tail2_main","s":[1.2263,0.3426,0.3066],"c":[-0.5594,0.0986,0.0],"R":[0.98481,0.17365,0.0,-0.17365,0.98481,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Tail2_band1","s":[0.1262,0.3787,0.3426],"c":[-0.3108,0.0548,0.0],"R":[0.98481,0.17365,0.0,-0.17365,0.98481,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Tail2_band2","s":[0.1262,0.3787,0.3426],"c":[-0.7548,0.1331,0.0],"R":[0.98481,0.17365,0.0,-0.17365,0.98481,0.0,0.0,0.0,1.0],"col":"B9B26A","k":"tailbands"}]},{"name":"Tail3","parent":"Tail2","root":[-3.2603,0.7297,0.0],"parts":[{"n":"Tail3_main","s":[1.1541,0.2525,0.2254],"c":[-0.5114,0.1466,0.0],"R":[0.96126,0.27564,0.0,-0.27564,0.96126,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Tail3_band1","s":[0.1262,0.2885,0.2615],"c":[-0.3034,0.087,0.0],"R":[0.96126,0.27564,0.0,-0.27564,0.96126,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Tail3_band2","s":[0.1262,0.2885,0.2615],"c":[-0.7367,0.2113,0.0],"R":[0.96126,0.27564,0.0,-0.27564,0.96126,0.0,0.0,0.0,1.0],"col":"B9B26A","k":"tailbands"}]},{"name":"Tail4","parent":"Tail3","root":[-4.3437,1.0403,0.0],"parts":[{"n":"Tail4_main","s":[1.0279,0.1803,0.1623],"c":[-0.414,0.2201,0.0],"R":[0.88295,0.46947,0.0,-0.46947,0.88295,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Tail4_band1","s":[0.1262,0.2164,0.1984],"c":[-0.2786,0.1482,0.0],"R":[0.88295,0.46947,0.0,-0.46947,0.88295,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Tail4_band2","s":[0.1262,0.2164,0.1984],"c":[-0.6767,0.3598,0.0],"R":[0.88295,0.46947,0.0,-0.46947,0.88295,0.0,0.0,0.0,1.0],"col":"B9B26A","k":"tailbands"}]},{"name":"Tail5","parent":"Tail4","root":[-5.2194,1.506,0.0],"parts":[{"n":"Tail5_main","s":[0.9017,0.1262,0.1172],"c":[-0.2869,0.2869,0.0],"R":[0.70711,0.70711,0.0,-0.70711,0.70711,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"Tail5_band1","s":[0.1262,0.1623,0.1533],"c":[-0.2231,0.2231,0.0],"R":[0.70711,0.70711,0.0,-0.70711,0.70711,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Tail5_band2","s":[0.1262,0.1623,0.1533],"c":[-0.5419,0.5419,0.0],"R":[0.70711,0.70711,0.0,-0.70711,0.70711,0.0,0.0,0.0,1.0],"col":"B9B26A","k":"tailbands"},{"n":"Tail5_quill1","s":[0.0811,0.541,0.0811],"c":[-0.6508,0.8311,0.0],"R":[0.93969,-0.34202,0.0,0.34202,0.93969,0.0,0.0,0.0,1.0],"col":"2F3320","k":"stripes"},{"n":"Tail5_quill2","s":[0.0811,0.541,0.0811],"c":[-0.6508,0.8311,0.0686],"R":[0.81915,-0.51984,0.2424,0.57358,0.7424,-0.34619,0.0,0.42262,0.90631],"col":"2F3320","k":"stripes"},{"n":"Tail5_quill3","s":[0.0811,0.541,0.0811],"c":[-0.6508,0.8311,-0.0686],"R":[0.81915,-0.51984,-0.2424,0.57358,0.7424,0.34619,0.0,-0.42262,0.90631],"col":"2F3320","k":"stripes"}]},{"name":"LegL","parent":"Torso","root":[-0.4057,0.0451,0.3787],"parts":[{"n":"LegL_haunch","s":[0.559,0.6312,0.4508],"c":[0.0451,-0.1803,0.0],"R":[0.98481,-0.17365,0.0,0.17365,0.98481,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"LegL_thigh","s":[0.3246,1.3074,0.3066],"c":[0.2705,-0.6086,0.0],"R":[0.91381,-0.40614,0.0,0.40614,0.91381,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"}]},{"name":"ShinL","parent":"LegL","root":[0.1352,-1.1722,0.3787],"parts":[{"n":"ShinL_knee","s":[0.4148,0.3787,0.3967],"c":[0.0451,0.0,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"ShinL_shin","s":[0.1984,1.2804,0.2164],"c":[-0.3156,-0.5635,0.0],"R":[0.87251,0.4886,0.0,-0.4886,0.87251,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"}]},{"name":"FootL","parent":"ShinL","root":[-0.4959,-2.2992,0.3787],"parts":[{"n":"FootL_meta","s":[0.1984,0.6762,0.2164],"c":[0.1352,-0.284,0.0],"R":[0.90286,-0.42993,0.0,0.42993,0.90286,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"FootL_toe1","s":[0.7213,0.1443,0.1803],"c":[0.634,-0.6041,0.1693],"R":[0.88295,0.0,-0.46947,0.0,1.0,0.0,0.46947,0.0,0.88295],"col":"5A5530","k":"limbs"},{"n":"FootL_claw1","s":[0.1803,0.1172,0.0902],"c":[1.0066,-0.6221,0.3386],"R":[0.88295,0.0,-0.46947,0.0,1.0,0.0,0.46947,0.0,0.88295],"col":"2C2620","k":"claws"},{"n":"FootL_toe2","s":[0.9017,0.1443,0.1803],"c":[0.7664,-0.6041,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"FootL_claw2","s":[0.1803,0.1172,0.0902],"c":[1.2713,-0.6221,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"FootL_toe3","s":[0.7213,0.1443,0.1803],"c":[0.634,-0.6041,-0.1693],"R":[0.88295,0.0,0.46947,0.0,1.0,0.0,-0.46947,0.0,0.88295],"col":"5A5530","k":"limbs"},{"n":"FootL_claw3","s":[0.1803,0.1172,0.0902],"c":[1.0066,-0.6221,-0.3386],"R":[0.88295,0.0,0.46947,0.0,1.0,0.0,-0.46947,0.0,0.88295],"col":"2C2620","k":"claws"}]},{"name":"LegR","parent":"Torso","root":[-0.4057,0.0451,-0.3787],"parts":[{"n":"LegR_haunch","s":[0.559,0.6312,0.4508],"c":[0.0451,-0.1803,0.0],"R":[0.98481,-0.17365,0.0,0.17365,0.98481,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"},{"n":"LegR_thigh","s":[0.3246,1.3074,0.3066],"c":[0.2705,-0.6086,0.0],"R":[0.91381,-0.40614,0.0,0.40614,0.91381,0.0,0.0,0.0,1.0],"col":"6E6A3A","k":"main"}]},{"name":"ShinR","parent":"LegR","root":[0.1352,-1.1722,-0.3787],"parts":[{"n":"ShinR_knee","s":[0.4148,0.3787,0.3967],"c":[0.0451,0.0,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"ShinR_shin","s":[0.1984,1.2804,0.2164],"c":[-0.3156,-0.5635,0.0],"R":[0.87251,0.4886,0.0,-0.4886,0.87251,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"}]},{"name":"FootR","parent":"ShinR","root":[-0.4959,-2.2992,-0.3787],"parts":[{"n":"FootR_meta","s":[0.1984,0.6762,0.2164],"c":[0.1352,-0.284,0.0],"R":[0.90286,-0.42993,0.0,0.42993,0.90286,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"FootR_toe1","s":[0.7213,0.1443,0.1803],"c":[0.634,-0.6041,0.1693],"R":[0.88295,0.0,-0.46947,0.0,1.0,0.0,0.46947,0.0,0.88295],"col":"5A5530","k":"limbs"},{"n":"FootR_claw1","s":[0.1803,0.1172,0.0902],"c":[1.0066,-0.6221,0.3386],"R":[0.88295,0.0,-0.46947,0.0,1.0,0.0,0.46947,0.0,0.88295],"col":"2C2620","k":"claws"},{"n":"FootR_toe2","s":[0.9017,0.1443,0.1803],"c":[0.7664,-0.6041,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"5A5530","k":"limbs"},{"n":"FootR_claw2","s":[0.1803,0.1172,0.0902],"c":[1.2713,-0.6221,0.0],"R":[1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"col":"2C2620","k":"claws"},{"n":"FootR_toe3","s":[0.7213,0.1443,0.1803],"c":[0.634,-0.6041,-0.1693],"R":[0.88295,0.0,0.46947,0.0,1.0,0.0,-0.46947,0.0,0.88295],"col":"5A5530","k":"limbs"},{"n":"FootR_claw3","s":[0.1803,0.1172,0.0902],"c":[1.0066,-0.6221,-0.3386],"R":[0.88295,0.0,0.46947,0.0,1.0,0.0,-0.46947,0.0,0.88295],"col":"2C2620","k":"claws"}]}]};
+const D2R = Math.PI / 180;
+const stage = document.getElementById('stage');
+const hud = document.getElementById('hud');
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xa9c4d8);
+scene.fog = new THREE.Fog(0xa9c4d8, 40, 90);
+const camera = new THREE.PerspectiveCamera(35, 2, 0.1, 200);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x4a6a3a, 0.75));
+const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+sun.position.set(6, 14, 8); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, {left: -12, right: 12, top: 12, bottom: -12});
+scene.add(sun);
+
+// ground: green tiles that scroll under the dino while it moves
+const groundTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#5f9a45'; g.fillRect(0, 0, 64, 64);
+  g.fillStyle = '#578f3f'; g.fillRect(0, 0, 32, 32); g.fillRect(32, 32, 32, 32);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(30, 30);
+  return t;
+})();
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshLambertMaterial({map: groundTex}));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+// rig: one Group per segment at its joint, parts as boxes (dino space: x forward, y up, z side)
+const root = new THREE.Group(); scene.add(root);
+const groups = {}, rest = {};
+const mats = {};
+const mat = hex => mats[hex] || (mats[hex] = new THREE.MeshLambertMaterial({color: new THREE.Color('#' + hex)}));
+const limbMeshes = [];
+for (const s of DATA.segments) {
+  const g = new THREE.Group();
+  const pr = s.parent === 'HRP' ? [0, 0, 0] : DATA.segments.find(x => x.name === s.parent).root;
+  g.position.set(s.root[0] - pr[0], s.root[1] - pr[1], s.root[2] - pr[2]);
+  for (const p of s.parts) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(p.s[0], p.s[1], p.s[2]), mat(p.col));
+    m.position.set(p.c[0], p.c[1], p.c[2]);
+    const R = p.R, M4 = new THREE.Matrix4().set(R[0], R[1], R[2], 0, R[3], R[4], R[5], 0, R[6], R[7], R[8], 0, 0, 0, 0, 1);
+    m.quaternion.setFromRotationMatrix(M4);
+    m.castShadow = true;
+    g.add(m);
+    if (/^(Foot|Arm)/.test(s.name) && /(toe|claw|hook|hand)/.test(p.n)) limbMeshes.push(m);
+  }
+  groups[s.name] = g; rest[s.name] = g.position.clone();
+}
+for (const s of DATA.segments) (s.parent === 'HRP' ? root : groups[s.parent]).add(groups[s.name]);
+const HIP = DATA.hip;
+
+// poses: {segment: [pitch (about z, + = nose / limb forward-up), yaw (about y), roll (about x)]}, body: {y, pitch, yaw, roll}
+const SEGS = DATA.segments.map(s => s.name);
+function blank() { const o = {}; for (const n of SEGS) o[n] = [0, 0, 0]; o.body = [0, 0, 0, 0]; return o; }
+function add(o, n, p, y = 0, r = 0) { o[n][0] += p; o[n][1] += y; o[n][2] += r; }
+
+function idlePose(t) {
+  const o = blank(), b = Math.sin(t * 2 * Math.PI / 1.6);
+  add(o, 'Torso', 1.5 * b); add(o, 'Neck', -1.5 * b); add(o, 'Head', 2 * Math.sin(t * 0.9) * 0.5, 6 * Math.sin(t * 0.6));
+  add(o, 'Jaw', -2 - 2 * Math.max(0, b));
+  for (let i = 1; i <= 5; i++) add(o, 'Tail' + i, 0, 3 * Math.sin(t * 1.4 - i * 0.5));
+  add(o, 'ArmL', 3 * b); add(o, 'ArmR', 3 * b);
+  return o;
+}
+
+// on all fours: body tipped forward, neck and head lifted to keep looking ahead, limbs set under the body
+function quadBase(o) {
+  add(o, 'Torso', -24);
+  add(o, 'Neck', 6); add(o, 'Head', 16); add(o, 'Jaw', -3);
+  add(o, 'ArmL', 30); add(o, 'ArmR', 30);
+  add(o, 'LegL', 48); add(o, 'LegR', 48); add(o, 'ShinL', -48); add(o, 'ShinR', -48); add(o, 'FootL', 24); add(o, 'FootR', 24);
+  add(o, 'Tail1', 26); add(o, 'Tail2', 4); add(o, 'Tail3', 8); add(o, 'Tail4', 14); add(o, 'Tail5', 20);
+}
+
+function gaitA(ph) { // iguana: diagonal pairs, sprawl, S-wave, tail whip
+  const o = blank(); quadBase(o);
+  const pairs = {ArmL: ph, LegR: ph, ArmR: ph + Math.PI, LegL: ph + Math.PI};
+  for (const [n, p] of Object.entries(pairs)) {
+    const sw = Math.sin(p), lift = Math.max(0, Math.cos(p));
+    const side = n.endsWith('L') ? 1 : -1;
+    if (n.startsWith('Arm')) { add(o, n, 34 * sw, 0, -side * (18 + 10 * lift)); }
+    else {
+      add(o, n, 30 * sw, 0, -side * 16);
+      add(o, 'Shin' + n.slice(3), -34 * lift); add(o, 'Foot' + n.slice(3), 20 * lift);
+    }
+  }
+  const w = Math.sin(ph);
+  o.body[2] = 11 * w; o.body[3] = 4 * Math.sin(ph + Math.PI / 2);
+  add(o, 'Neck', 0, -9 * w); add(o, 'Head', 0, -6 * w);
+  for (let i = 1; i <= 5; i++) add(o, 'Tail' + i, 0, (8 + i * 4) * Math.sin(ph - i * 0.75));
+  o.body[0] = 0.12 * Math.abs(Math.cos(ph));
+  return o;
+}
+
+function gaitB(ph) { // gallop: arms together, legs together, back arches, tail pumps
+  const o = blank(); quadBase(o);
+  const pa = ph, pl = ph + Math.PI * 0.65;
+  for (const s of ['L', 'R']) {
+    const off = s === 'L' ? 0.25 : 0;
+    const swA = Math.sin(pa + off), liftA = Math.max(0, Math.cos(pa + off));
+    const swL = Math.sin(pl + off), liftL = Math.max(0, Math.cos(pl + off));
+    const side = s === 'L' ? 1 : -1;
+    add(o, 'Arm' + s, 42 * swA, 0, -side * 6);
+    add(o, 'Leg' + s, 38 * swL, 0, -side * 4);
+    add(o, 'Shin' + s, -40 * liftL); add(o, 'Foot' + s, 24 * liftL);
+  }
+  const arch = Math.sin(ph + Math.PI / 2);
+  o.body[1] = 7 * arch;
+  add(o, 'Neck', -6 * arch); add(o, 'Head', -3 * arch);
+  for (let i = 1; i <= 5; i++) add(o, 'Tail' + i, (5 + i * 2) * Math.sin(ph - i * 0.6));
+  o.body[0] = 0.35 * Math.max(0, Math.sin(ph + 0.4));
+  return o;
+}
+
+function mix(a, b, k) {
+  const o = blank();
+  for (const n of SEGS) for (let i = 0; i < 3; i++) o[n][i] = a[n][i] * (1 - k) + b[n][i] * k;
+  for (let i = 0; i < 4; i++) o.body[i] = a.body[i] * (1 - k) + b.body[i] * k;
+  return o;
+}
+const eul = (p, y, r) => new THREE.Euler(r * D2R, y * D2R, p * D2R, 'ZYX');
+const box = new THREE.Box3();
+function apply(o) {
+  for (const n of SEGS) {
+    const v = o[n];
+    groups[n].setRotationFromEuler(eul(v[0], v[1], v[2]));
+  }
+  root.setRotationFromEuler(eul(o.body[1], o.body[2], o.body[3]));
+  root.position.set(0, HIP, 0);
+  root.updateMatrixWorld(true);
+  // stand on the ground: lowest foot / hand block touches y = 0, plus the gait's bounce
+  let low = Infinity;
+  for (const m of limbMeshes) { box.setFromObject(m); low = Math.min(low, box.min.y); }
+  root.position.y = HIP - low + o.body[0];
+}
+
+// controls
+const state = {gait: 'A', mode: 'demo', view: '34', speed: 1, pick: 'A'};
+function seg(id, key, after) {
+  const el = document.getElementById(id);
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    state[key] = b.dataset.v;
+    el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    if (after) after();
+  }));
+}
+seg('gaitSeg', 'gait'); seg('modeSeg', 'mode'); seg('viewSeg', 'view', () => setView());
+document.getElementById('speed').addEventListener('input', e => state.speed = +e.target.value);
+document.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => {
+  state.pick = b.dataset.id;
+  document.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-pressed', x === b));
+  state.gait = b.dataset.id;
+  document.querySelectorAll('#gaitSeg button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === b.dataset.id));
+}));
+
+// camera: orbit by drag
+const VIEWS = {side: [0, 6], '34': [50, 16], top: [0, 80], front: [90, 10]};
+let az = 50, el = 16, dist = 21;
+function setView() { [az, el] = VIEWS[state.view]; }
+let drag = null;
+stage.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY, az, el]; stage.setPointerCapture(e.pointerId); });
+stage.addEventListener('pointermove', e => {
+  if (!drag) return;
+  az = drag[2] - (e.clientX - drag[0]) * 0.4;
+  el = Math.max(2, Math.min(85, drag[3] + (e.clientY - drag[1]) * 0.3));
+});
+stage.addEventListener('pointerup', () => drag = null);
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+
+let ph = 0, moveK = 0, last = performance.now(), clock = 0;
+const STEP_HZ = {A: 3.6, B: 2.6};
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000) * state.speed; last = now; clock += dt;
+  let moving;
+  if (state.mode === 'run') moving = true;
+  else if (state.mode === 'idle') moving = false;
+  else moving = (clock % 5) > 1.6; // stop and go: stand 1.6 s, scurry 3.4 s
+  moveK += ((moving ? 1 : 0) - moveK) * Math.min(1, dt / 0.2 * 3);
+  ph += dt * 2 * Math.PI * STEP_HZ[state.gait] * moveK;
+  const run = state.gait === 'A' ? gaitA(ph) : gaitB(ph);
+  apply(mix(idlePose(clock), run, moveK));
+  groundTex.offset.x -= dt * moveK * (state.gait === 'A' ? 0.9 : 1.1); // world scrolls under it
+  hud.textContent = moveK > 0.5 ? (state.gait === 'A' ? 'moving · iguana scurry' : 'moving · bounding gallop') : 'idle · on two legs';
+  const a = az * D2R, e = el * D2R;
+  camera.position.set(Math.cos(e) * Math.sin(a) * dist + 0.5, Math.sin(e) * dist + 2.4, Math.cos(e) * Math.cos(a) * dist);
+  camera.lookAt(0.5, 2.4, 0);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
