@@ -1,4 +1,4 @@
--- RaptorScale v1.1 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
+-- RaptorScale v1.3 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
 -- docs/plans/TERRITORIES_v1.0.md Task 4 (Kepu 2026-10-28: "the raptor bots might be a little too small ... esp with the
 -- camera angle"; answers: 2x, bots and players).
 -- Who: every player character whose Species is "Raptor" (CharacterAdded, also SpeciesServer's raptor body) and every
@@ -20,6 +20,9 @@
 --   BotSpecies "Pachy", BotServer 1.19) are scaled like the player pachy, by PachyScale (2), so they stand next to the
 --   2x raptor bots at the pachy's "a bit bigger than raptor" size. Switch: script attribute RaptorScalePachyBotsEnabled
 --   (default true, read per new bot; false = 1.1, pachy bots stay at scale 1).
+-- v1.3 (MDA-135, plan docs/plans/HERRERA_KIT_v1.0.md Task 3): player characters whose Species is "Herrera" are scaled
+--   like the pachy (same distance keys and ground lift) by the script attribute HerreraScale (default 2) while
+--   RaptorScaleHerreraEnabled (default true) is on. (The header line read v1.1 through 1.2.)
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -53,6 +56,8 @@ end
 if script:GetAttribute("RaptorScalePachyEnabled") == nil then script:SetAttribute("RaptorScalePachyEnabled", true) end -- v1.1
 if script:GetAttribute("PachyScale") == nil then script:SetAttribute("PachyScale", 2) end -- v1.1
 if script:GetAttribute("RaptorScalePachyBotsEnabled") == nil then script:SetAttribute("RaptorScalePachyBotsEnabled", true) end -- v1.2
+if script:GetAttribute("RaptorScaleHerreraEnabled") == nil then script:SetAttribute("RaptorScaleHerreraEnabled", true) end -- v1.3
+if script:GetAttribute("HerreraScale") == nil then script:SetAttribute("HerreraScale", 2) end -- v1.3
 
 local function apply(model, factor) -- v1.1: factor = the pachy's scale (nil = RaptorScale)
 	if model:GetAttribute("RaptorScaleApplied") ~= nil or script:GetAttribute("RaptorScaleEnabled") == false then return end
@@ -84,6 +89,9 @@ local function onCharacter(char)
 	if char.Parent and char:GetAttribute("Species") == "Raptor" then apply(char) end
 	if char.Parent and char:GetAttribute("Species") == "Pachy" and script:GetAttribute("RaptorScalePachyEnabled") ~= false then -- v1.1
 		apply(char, tonumber(script:GetAttribute("PachyScale")) or 2)
+	end
+	if char.Parent and char:GetAttribute("Species") == "Herrera" and script:GetAttribute("RaptorScaleHerreraEnabled") ~= false then -- v1.3
+		apply(char, tonumber(script:GetAttribute("HerreraScale")) or 2)
 	end
 end
 local function onPlayer(player)
