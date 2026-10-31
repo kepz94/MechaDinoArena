@@ -1,4 +1,4 @@
--- SlashTest v1.1 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
+-- SlashTest v1.2 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 9 (server: SlashServer 1.1), mockup docs/mockups/herrera_kit_options.html.
 -- Kepu 2026-10-30: "Dash-through slash"; the drop attack "should be able to happen if I press the dash aimed at a nearby
 --   target but not be its own dedicated button".
@@ -32,17 +32,24 @@
 --   body passes through other dinos and still stands on the ground / tree tops; the groups are put back at the dash end
 --   (and on death / removal). Only when the group is registered. Switch: character attribute SlashPassThroughEnabled
 --   (default true; false = 1.0). Diagnostic: SlashPassThrough (parts moved, 0 when off).
+-- v1.2 (Studio check of 1.1: still slid around the anchored T-Rex bot — its HumanoidRootPart (9.6 x 9.4 x 12, CanCollide)
+--   is in "Default", like the ground, so a group cannot skip it): with the groups, NoCollisionConstraints (made on this
+--   client only, parented to a folder "SlashNoCollide" under the HumanoidRootPart) pair every part moved to "SlashDash"
+--   with every CanCollide part of each target dino that is not in "DinoHitbox", for the targets whose root is within
+--   SlashDist x scale + NOCOLLIDE_MARGIN x scale; removed with the groups at the dash end. Diagnostic: SlashNoCollide
+--   (constraints made).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local ACTION = "DinoSlash"
 local ACTION_CLICK = "DinoSlashClick"
 local BIND = "DinoSlashDrive"
 local RECOVER = 0.15
+local NOCOLLIDE_MARGIN = 15 -- v1.2: studs (x scale) beyond the dash length for the no-collide targets
 local DEFAULTS = {SlashEnabled = false, SlashDist = 12.5, SlashTime = 0.3, SlashDiveRange = 20, SlashDiveCone = 35,
 	SlashReach = 2, SlashLeftClickEnabled = true}
 
@@ -159,9 +166,38 @@ local function passThrough(on)
 			end
 		end
 		show("SlashPassThrough", n)
+		-- v1.2: the targets' own colliding parts outside "DinoHitbox" (e.g. a bot's root box in "Default")
+		local folder = Instance.new("Folder")
+		folder.Name = "SlashNoCollide"
+		local reach = (get("SlashDist") + NOCOLLIDE_MARGIN) * char:GetScale()
+		local mine = {}
+		for p in pairs(savedGroups) do table.insert(mine, p) end
+		local made = 0
+		for _, m in pairs(targets) do
+			local r = m:FindFirstChild("HumanoidRootPart")
+			if r and m.Parent and (r.Position - hrp.Position).Magnitude <= reach + r.Size.Magnitude then
+				for _, q in ipairs(m:GetDescendants()) do
+					if q:IsA("BasePart") and q.CanCollide and q.CollisionGroup ~= "DinoHitbox" then
+						for _, p in ipairs(mine) do
+							local nc = Instance.new("NoCollisionConstraint")
+							nc.Part0, nc.Part1 = p, q
+							nc.Parent = folder
+							made += 1
+						end
+					end
+				end
+			end
+		end
+		folder.Parent = hrp
+		savedGroups[folder] = false -- removed below
+		show("SlashNoCollide", made)
 	elseif savedGroups then
 		for p, g in pairs(savedGroups) do
-			if p.Parent then p.CollisionGroup = g end
+			if g == false then
+				p:Destroy() -- v1.2: the no-collide folder
+			elseif p.Parent then
+				p.CollisionGroup = g
+			end
 		end
 		savedGroups = nil
 	end
