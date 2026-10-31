@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena Squads</title>
+<style>
+/* Same dark panel look as the other MDA mockups. In-game pieces use the Lab / ArenaStatus colours: PANEL (20,20,26) at 0.18,
+   white stroke, YELLOW (255,200,50), DARK_TEXT (27,20,6), health green (120,200,80). Fonts: system fallbacks (offline). */
+:root { --ink: #0f1319; --panel: #171d26; --line: #2a3340; --text: #e8edf4; --muted: #9aa6b6; --accent: #ff8a2a; --yellow: #ffc832;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5; padding: 20px 16px 40px; }
+.wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-size: 28px; margin: 0; } h1 span { color: var(--accent); }
+.lede { margin: 2px 0 0; color: var(--muted); max-width: 86ch; }
+.lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 4px 0 -6px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font-family: var(--display); font-weight: 600; font-size: 16px; color: var(--text); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left; }
+.tab small { display: block; font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,138,42,.22); }
+.btn { font-family: var(--display); font-weight: 700; font-size: 15px; border: 0; border-radius: 12px; padding: 9px 16px; cursor: pointer; background: var(--yellow); color: #1b1406; }
+.btn.ghost { background: var(--panel); color: var(--text); border: 2px solid var(--line); }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.card h2 { font-family: var(--display); font-size: 18px; margin: 0 0 6px; } .card p, .card li { color: var(--muted); margin: 4px 0; }
+.card b { color: var(--text); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+/* ---------- the game screen: image pixels x --k ---------- */
+.stage { position: relative; width: 100%; aspect-ratio: 1769 / 710; border-radius: 16px; overflow: hidden; border: 2px solid var(--line);
+  background: url(__BG__) center / cover; --k: 0.6; font-family: var(--display); user-select: none; }
+.px { position: absolute; }
+.cover { background: rgba(20,20,26,1); } /* hides nothing; reserved */
+.pill { position: absolute; height: calc(var(--k) * 46px); border-radius: calc(var(--k) * 12px); background: rgba(20,20,26,.82); border: calc(var(--k) * 2px) solid rgba(255,255,255,.5);
+  color: #fff; font-weight: 700; font-size: calc(var(--k) * 22px); display: flex; align-items: center; gap: calc(var(--k) * 8px); padding: 0 calc(var(--k) * 15px); cursor: pointer; white-space: nowrap; }
+.pill .badge { background: #ffc832; color: #1b1406; border-radius: 50%; width: calc(var(--k) * 26px); height: calc(var(--k) * 26px); display: grid; place-items: center; font-size: calc(var(--k) * 16px); }
+.pill.on { border-color: #ffc832; box-shadow: 0 0 calc(var(--k) * 10px) rgba(255,200,50,.6); }
+.pill .dots { display: flex; gap: calc(var(--k) * 4px); }
+.pill .dots i { width: calc(var(--k) * 10px); height: calc(var(--k) * 10px); border-radius: 50%; background: #3a4556; display: block; }
+.pill .dots i.on { background: #78c850; }
+.panel { position: absolute; background: rgba(20,20,26,.94); border: calc(var(--k) * 2px) solid rgba(255,255,255,.45); border-radius: calc(var(--k) * 14px);
+  padding: calc(var(--k) * 12px); color: #fff; font-size: calc(var(--k) * 19px); display: grid; gap: calc(var(--k) * 8px); }
+.panel h3 { margin: 0; font-size: calc(var(--k) * 22px); display: flex; justify-content: space-between; align-items: center; }
+.panel h3 small { color: #ffc832; font-size: calc(var(--k) * 18px); }
+.prow { display: grid; grid-template-columns: 1fr auto; gap: calc(var(--k) * 8px); align-items: center; background: rgba(255,255,255,.06); border-radius: calc(var(--k) * 10px); padding: calc(var(--k) * 7px) calc(var(--k) * 10px); }
+.prow .nm { display: flex; flex-direction: column; line-height: 1.1; } .prow .nm small { color: #9aa6b6; font-size: calc(var(--k) * 14px); font-family: var(--body); }
+.sbtn { font-family: var(--display); font-weight: 700; font-size: calc(var(--k) * 17px); border: 0; border-radius: calc(var(--k) * 9px); padding: calc(var(--k) * 6px) calc(var(--k) * 12px); cursor: pointer; background: #ffc832; color: #1b1406; min-width: calc(var(--k) * 110px); }
+.sbtn.dark { background: #2a3340; color: #fff; } .sbtn.off { background: #2a3340; color: #6f7a8a; cursor: default; } .sbtn.red { background: #e0284a; color: #fff; } .sbtn.green { background: #3d8a3a; color: #fff; cursor: default; }
+.sbtn.wide { width: 100%; }
+.sec { color: #9aa6b6; font-size: calc(var(--k) * 14px); letter-spacing: .08em; margin-top: calc(var(--k) * 2px); }
+.hb { position: absolute; color: #fff; font-size: calc(var(--k) * 13px); text-shadow: 0 1px 2px #000; }
+.hb .top { display: flex; justify-content: space-between; letter-spacing: .03em; }
+.hb .bar { height: calc(var(--k) * 10px); border-radius: calc(var(--k) * 5px); background: #2a1a14; border: 1px solid #000; overflow: hidden; position: relative; }
+.hb .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: #78c850; transition: width .4s; } .hb .bar i.low { background: #e0284a; }
+.hb.sq .top { color: #9cf08a; } .hb.sq .bar { height: calc(var(--k) * 8px); }
+.hb.dead .top { color: #9aa6b6; } .hb.dead .bar i { width: 0 !important; }
+.card2 { position: absolute; background: rgba(20,20,26,.82); border: calc(var(--k) * 2px) solid rgba(120,200,80,.7); border-radius: calc(var(--k) * 10px); padding: calc(var(--k) * 6px) calc(var(--k) * 10px); color: #fff; font-size: calc(var(--k) * 15px); width: calc(var(--k) * 236px); }
+.card2 .top { display: flex; justify-content: space-between; color: #9cf08a; } .card2 .bar { height: calc(var(--k) * 8px); border-radius: calc(var(--k) * 4px); background: #2a1a14; overflow: hidden; position: relative; margin-top: calc(var(--k) * 3px); }
+.card2 .bar i { position: absolute; inset: 0 auto 0 0; background: #78c850; transition: width .4s; }
+.over { position: absolute; transform: translate(-50%, -100%); text-align: center; color: #9cf08a; font-size: calc(var(--k) * 16px); text-shadow: 0 1px 2px #000, 0 0 4px #000; white-space: nowrap; pointer-events: none; }
+.over .bar { width: calc(var(--k) * 110px); height: calc(var(--k) * 9px); margin: calc(var(--k) * 2px) auto 0; border-radius: calc(var(--k) * 5px); background: #2a1a14; border: 1px solid #000; overflow: hidden; position: relative; }
+.over .bar i { position: absolute; inset: 0 auto 0 0; background: #78c850; transition: width .4s; }
+.over .dia { display: inline-block; width: calc(var(--k) * 10px); height: calc(var(--k) * 10px); background: #78c850; transform: rotate(45deg); margin-right: calc(var(--k) * 5px); border: 1px solid #000; }
+.dim { position: absolute; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; }
+.invite { width: min(80%, calc(var(--k) * 560px)); background: rgba(20,20,26,.96); border: calc(var(--k) * 2px) solid #ffc832; border-radius: calc(var(--k) * 16px); padding: calc(var(--k) * 18px); color: #fff; text-align: center; display: grid; gap: calc(var(--k) * 10px); font-size: calc(var(--k) * 20px); }
+.invite h4 { margin: 0; font-size: calc(var(--k) * 28px); color: #ffc832; } .invite p { margin: 0; color: #c9d2de; font-family: var(--body); }
+.invite .two { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--k) * 10px); }
+.invite .t { height: calc(var(--k) * 6px); background: #2a3340; border-radius: 3px; overflow: hidden; } .invite .t i { display: block; height: 100%; background: #ffc832; width: 60%; }
+.toast { position: absolute; left: 50%; top: calc(var(--k) * 70px); transform: translateX(-50%); background: rgba(20,20,26,.9); color: #fff; border-radius: calc(var(--k) * 10px); padding: calc(var(--k) * 6px) calc(var(--k) * 14px); font-size: calc(var(--k) * 18px); border: calc(var(--k) * 2px) solid #78c850; white-space: nowrap; transition: opacity .3s; }
+.popn { position: absolute; transform: translate(-50%, -50%); font-weight: 700; color: #fff; text-shadow: 0 3px 0 #2a1200, 0 0 8px #000; font-size: calc(var(--k) * 30px); pointer-events: none; white-space: nowrap; animation: rise 1.1s ease-out forwards; }
+.popn small { display: block; font-size: .5em; letter-spacing: .1em; text-align: center; }
+@keyframes rise { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: calc(var(--k) * -50px); } }
+.ring { position: absolute; transform: translate(-50%, -50%) scaleY(.32); border: calc(var(--k) * 5px) dashed #46e08a; border-radius: 50%; pointer-events: none; box-shadow: 0 0 20px #46e08a inset; }
+.notes ul { margin: 6px 0 0; padding-left: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1><span>Arena</span> squads</h1>
+    <p class="lede">A SQUAD button under SKILLS opens the squad list: invite players on the island, leave the squad, and see your squadmates' health. Up to 4 per squad. Squadmates can't hurt each other in any way, respawn near each other, and Med Stations heal them too. The screen behind is a real phone capture (Studio, Herrera); the squad pieces are the mockup. Click around: everything on the screen works.</p>
+  </div>
+  <p class="lbl">Where squadmates' health shows</p>
+  <div class="row" id="opts"></div>
+  <div class="stage" id="stage"></div>
+  <div class="row">
+    <button class="btn" id="bInvite">Someone invites you</button>
+    <button class="btn ghost" id="bBite">Bite a squadmate</button>
+    <button class="btn ghost" id="bMed">Drop a Med Station near them</button>
+    <button class="btn ghost" id="bHurt">Squadmate gets hit</button>
+    <button class="btn ghost" id="bDie">Squadmate dies / respawns</button>
+    <button class="btn ghost" id="bReset">Reset</button>
+  </div>
+  <div class="grid2">
+    <div class="card"><h2 id="oName"></h2><p id="oWhy"></p><p id="oTrade" style="font-size:13px"></p></div>
+    <div class="card notes"><h2>Rules (your picks)</h2><ul>
+      <li><b>Up to 4</b> per squad, Arena only. Invite anyone on the island who isn't in the menu or in a full squad.</li>
+      <li>The invite pops up on their screen for <b>15 s</b>: JOIN or NO. Joining someone already in a squad puts you in that squad.</li>
+      <li><b>Friendly fire off for everything harmful</b>: no damage, slows, stuns, daze, bleed, pins, latches, traps, mines, caltrops or goo between squadmates. Your smoke doesn't hide you from them.</li>
+      <li><b>Med Station</b> heals squadmates standing in the circle too (your pick: "heals work for both of us").</li>
+      <li><b>Respawn near a squadmate</b>: 30–60 studs from a live squadmate, any lobby size.</li>
+      <li>Leaving the island, going to the menu, or leaving the game takes you out of the squad. The squad lasts through deaths.</li>
+      <li>PC key for the button: <b>G</b> (like K for SKILLS).</li>
+    </ul></div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const OPTS = [
+  {name: "A · Under my health", sub: "stacked bars, bottom left", why: "Each squadmate gets a slim bar stacked right above your own HEALTH bar, with their name. A small green diamond and name float over their dino so you can tell friend from foe in a fight. The top right stays as it is, and the bars sit under the phone thumb area like your own.", trade: "Trade-off: it's in the corner, so in a big fight you glance down to check them; 3 squadmates add 3 short rows."},
+  {name: "B · Cards under SQUAD", sub: "health cards top right", why: "Squadmates show as small green-edged cards right under the SQUAD button, always visible. A green diamond and name float over their dino.", trade: "Trade-off: on phones a 4-player squad's cards reach down toward the JUMP button; the top right gets busier."},
+  {name: "C · Over their heads", sub: "a health bar over each squadmate", why: "No new HUD rows: each squadmate has a green name and health bar over their dino, visible through walls. You see their health right where they are.", trade: "Trade-off: when a squadmate is far away or behind you, you can't check their health without turning the camera."}];
+const ME = {name: "kepz94", hp: 40, max: 40};
+const PLAYERS = [
+  {id: 1, name: "HerreraHank", dino: "HERRERA", max: 40, hp: 33, x: 870, y: 352},
+  {id: 2, name: "RaptorQueen", dino: "RAPTOR", max: 60, hp: 51, x: 1140, y: 232},
+  {id: 3, name: "PachyPal", dino: "PACHY", max: 90, hp: 90, x: 1660, y: 262},
+  {id: 4, name: "BigRexBen", dino: "T-REX", max: 200, hp: 170, other: true, x: 0, y: 0}];
+let opt = 0, open = false, squad = [], invited = {}, inviteCard = null, toastT = null;
+const stage = $("stage");
+function fit() { stage.style.setProperty("--k", stage.clientWidth / 1769); }
+window.addEventListener("resize", fit);
+function P(x, y, w, h) { return `left:calc(var(--k)*${x}px);top:calc(var(--k)*${y}px);` + (w ? `width:calc(var(--k)*${w}px);` : "") + (h ? `height:calc(var(--k)*${h}px);` : ""); }
+function pct(p) { return Math.max(0, p.hp / p.max * 100); }
+function draw() {
+  $("opts").innerHTML = ""; OPTS.forEach((o, i) => { const b = document.createElement("button"); b.className = "tab"; b.setAttribute("aria-pressed", i === opt); b.innerHTML = o.name + "<small>" + o.sub + "</small>"; b.onclick = () => { opt = i; draw(); }; $("opts").appendChild(b); });
+  $("oName").textContent = OPTS[opt].name; $("oWhy").textContent = OPTS[opt].why; $("oTrade").textContent = OPTS[opt].trade;
+  let h = "";
+  // SQUAD pill under SKILLS (SKILLS sits at x 1512..1640, y 9..56 in this capture)
+  const n = squad.length + (squad.length ? 1 : 0);
+  h += `<div class="pill ${open ? "on" : ""}" id="sqPill" style="${P(1512, 64)}">SQUAD ${squad.length ? `<span class="dots">${[0, 1, 2, 3].map(i => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span>` : ""}</div>`;
+  // health
+  if (opt === 0) { let y = 668; squad.slice().reverse().forEach(p => { y -= 34; h += `<div class="hb sq ${p.hp <= 0 ? "dead" : ""}" style="${P(20, y, 300)}"><div class="top"><span>◆ ${p.name}</span><span>${p.hp <= 0 ? "DOWN · respawning" : Math.round(p.hp) + " / " + p.max}</span></div><div class="bar"><i class="${p.hp / p.max < .3 ? "low" : ""}" style="width:${pct(p)}%"></i></div></div>`; }); }
+  if (opt === 1) { let y = open ? 0 : 118; if (!open) squad.forEach((p, i) => { h += `<div class="card2" style="${P(1512, 118 + i * 52)}"><div class="top"><span>◆ ${p.name}</span><span>${p.hp <= 0 ? "DOWN" : Math.round(p.hp)}</span></div><div class="bar"><i style="width:${pct(p)}%"></i></div></div>`; }); }
+  squad.forEach(p => { if (p.hp <= 0 && opt !== 0) {} const showBar = opt === 2;
+    h += `<div class="over" style="${P(p.x, p.y)}"><span class="dia"></span>${p.name}${showBar ? `<div class="bar"><i style="width:${pct(p)}%"></i></div>` : ""}</div>`; });
+  // the panel
+  if (open) {
+    const full = squad.length >= 3;
+    h += `<div class="panel" style="${P(1214, 118, 534)}"><h3>SQUAD <small>${squad.length ? squad.length + 1 : 1} / 4</small></h3>`;
+    if (squad.length) { h += `<div class="sec">IN YOUR SQUAD</div>` + squad.map(p => `<div class="prow"><div class="nm">◆ ${p.name}<small>${p.dino} · ${p.hp <= 0 ? "down" : Math.round(p.hp) + " / " + p.max + " HP"}</small></div><button class="sbtn green">SQUADMATE</button></div>`).join("");
+      h += `<button class="sbtn red wide" data-a="leave">LEAVE SQUAD</button>`; }
+    const rest = PLAYERS.filter(p => !squad.includes(p));
+    h += `<div class="sec">ON THE ISLAND</div>` + rest.map(p => { let b;
+      if (p.other) b = `<button class="sbtn off">IN A SQUAD</button>`;
+      else if (full) b = `<button class="sbtn off">SQUAD FULL</button>`;
+      else if (invited[p.id]) b = `<button class="sbtn dark">INVITED…</button>`;
+      else b = `<button class="sbtn" data-a="inv" data-id="${p.id}">INVITE</button>`;
+      return `<div class="prow"><div class="nm">${p.name}<small>${p.dino}</small></div>${b}</div>`; }).join("");
+    if (!rest.length) h += `<div class="sec">nobody else on the island</div>`;
+    h += `</div>`;
+  }
+  if (inviteCard) h += `<div class="dim"><div class="invite"><h4>SQUAD INVITE</h4><p><b style="color:#fff">${inviteCard.name}</b> wants to squad up.<br>No friendly fire, respawn together.</p><div class="t"><i id="itime"></i></div><div class="two"><button class="sbtn dark" data-a="no">NO</button><button class="sbtn" data-a="join">JOIN</button></div></div></div>`;
+  const keep = [...stage.querySelectorAll(".popn,.ring,.toast")];
+  stage.innerHTML = h; keep.forEach(k => stage.appendChild(k));
+  $("sqPill").onclick = () => { open = !open; draw(); };
+  stage.querySelectorAll("[data-a]").forEach(b => b.onclick = e => { e.stopPropagation(); act(b.dataset.a, Number(b.dataset.id)); });
+}
+function toast(t) { stage.querySelectorAll(".toast").forEach(x => x.remove()); const d = document.createElement("div"); d.className = "toast"; d.textContent = t; stage.appendChild(d); clearTimeout(toastT); toastT = setTimeout(() => d.remove(), 2200); }
+function popAt(html, x, y, color) { const d = document.createElement("div"); d.className = "popn"; d.style.cssText = P(x, y) + `color:${color || "#fff"}`; d.innerHTML = html; stage.appendChild(d); setTimeout(() => d.remove(), 1150); }
+function act(a, id) {
+  if (a === "inv") { const p = PLAYERS.find(q => q.id === id); invited[id] = 1; draw(); toast("Invite sent to " + p.name);
+    setTimeout(() => { if (!invited[id]) return; delete invited[id]; if (squad.length < 3 && !squad.includes(p)) { squad.push(p); toast(p.name + " joined your squad"); } draw(); }, 1500); }
+  if (a === "leave") { squad = []; invited = {}; toast("You left the squad"); draw(); }
+  if (a === "join") { const p = PLAYERS.find(q => q.name === inviteCard.name); inviteCard = null; if (!squad.includes(p)) squad.push(p); toast("You joined " + p.name + "'s squad"); draw(); }
+  if (a === "no") { inviteCard = null; draw(); }
+}
+$("bInvite").onclick = () => { const p = PLAYERS.find(q => !q.other && !squad.includes(q)); if (!p) { toast("everyone's already in your squad"); return; }
+  inviteCard = {name: p.name}; draw(); let t = 15; const iv = setInterval(() => { t -= 0.1; const el = $("itime"); if (!inviteCard || !el) return clearInterval(iv); el.style.width = (t / 15 * 100) + "%"; if (t <= 0) { clearInterval(iv); inviteCard = null; draw(); } }, 100); };
+$("bBite").onclick = () => { const p = squad[0]; if (!p) { toast("invite someone first"); return; } popAt("0<small>SQUAD · NO DAMAGE</small>", p.x, p.y + 20, "#9cf08a"); };
+$("bMed").onclick = () => { const p = squad[0]; if (!p) { toast("invite someone first"); return; }
+  const r = document.createElement("div"); r.className = "ring"; r.style.cssText = P(820, 520, 520, 520); stage.appendChild(r);
+  let k = 0; const iv = setInterval(() => { k++; [ME].concat(squad.slice(0, 1)).forEach(q => { if (q === ME) return; q.hp = Math.min(q.max, q.hp + q.max * 0.05); });
+    popAt("+" + Math.round(p.max * 0.05), p.x + 30, p.y + 10, "#5fd16a"); popAt("+2", 800, 330, "#5fd16a"); draw(); if (k >= 5) { clearInterval(iv); r.remove(); } }, 600); };
+$("bHurt").onclick = () => { const p = squad[0]; if (!p) { toast("invite someone first"); return; } p.hp = Math.max(1, p.hp - p.max * 0.35); popAt("-" + Math.round(p.max * 0.35), p.x, p.y + 10, "#ff4a5a"); draw(); };
+$("bDie").onclick = () => { const p = squad[0]; if (!p) { toast("invite someone first"); return; } p.hp = 0; draw(); toast(p.name + " is down"); setTimeout(() => { p.hp = p.max; draw(); toast(p.name + " respawned near you"); }, 2200); };
+$("bReset").onclick = () => { squad = []; invited = {}; inviteCard = null; open = false; PLAYERS.forEach(p => p.hp = Math.round(p.max * 0.85)); draw(); };
+fit(); draw();
+</script>
+</body>
+</html>
