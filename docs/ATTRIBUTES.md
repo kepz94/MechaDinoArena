@@ -2298,3 +2298,22 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ScurryState / ScurryBlend / ScurryHz / ScurryDrop | dino model (client) | "off" / "noGeo" / "idle" / "blend" / "scurry"; blend 0..1; step rate; RootJoint ground-fit drop (studs) |
 | ScurryHitboxEnabled / ScurryHitboxVersion | ScurryHitbox script | default true / "1.0" |
 | ScurryHitboxState / ScurryHitboxCount / ScurryHitboxBlend / ScurryHitboxDrop | herrera model (server) | "ready" / "noPose" / "noGeo"; boxes moved; crouch weight 0..1; Torso box centre drop at full crouch (studs) |
+
+## Herrerasaurus kit — climbing (HerreraModelData 1.2 / TreeTopServer 1.0 / ClimbServer 1.0 / ClimbTest 1.8 / ClimbPose 1.0 / IdleAnimation 1.32 / ScurryHitbox 1.1)
+| Attribute | On | Meaning |
+|---|---|---|
+| DinoMaxHealth / MoveRunSpeed / MoveWalkSpeed / CameraStartZoom / TurnLimitRate | herrera model | 40 / 90 / 48 / 16 / 540 |
+| SlashEnabled / SlashCharges / SlashRefill / SlashDist / SlashTime / SlashDamage / SlashBleedDps / SlashBleedTime / SlashBurstMul / SlashBurstTime / SlashDiveRange / SlashDiveCone / SlashReach | herrera model | true / 2 / 4 s / 12.5 studs (scale 1) / 0.3 s / 8 / 3 per s / 4 s / x1.4 / 0.5 s / 20 studs / 35 deg / 2 studs (used from SlashServer 1.0) |
+| ClimbEnabled / ClimbSpeed / ClimbGrabDist / ClimbTopGap / ClimbHopSpeed | herrera model | true / 10 studs/s / 1.5 / 2 / 12 (scale 1) |
+| ClimbHeadReach / ClimbHopTime | herrera model (override) | ClimbTest defaults 4.5 studs (scale 1) / 0.35 s |
+| ClimbBodyPitch / ClimbRoll / ClimbBodyIn / ClimbStride | herrera model (override) | ClimbPose defaults 90 / 6 deg / 1.2 / 2.4 studs |
+| ClimbTestVersion / ClimbLocalState / ClimbReason / ClimbTreeLocal / ClimbInputSource / ClimbTrunkCount | herrera model (owner client) | "1.8"; ground / climbing / clinging / top; ClimbLogic reason; tree name; "inputAction" / "controlModule" / "none"; trunk parts in the ray filter |
+| ClimbState / ClimbTree / ClimbAt | herrera model (server) | stamped by ClimbServer from DinoClimbState |
+| ClimbServerEnabled / ClimbServerVersion / ClimbServerResult | ClimbServer script | default true / "1.0" / last check result (ok / badArg / disabled / dead / menu / noTree / far) |
+| ClimbPoseEnabled / ClimbPoseBlend | herrera model | default on / client blend 0..1 |
+| ScurryHitboxClimb | herrera model (server) | climb box weight 0..1 |
+| TreeTopEnabled / TreeTopVersion / TreeTopState / TreeTopTrees / TreeTopCountJungle / TreeTopCountPine / TreeTopCountPalm | TreeTopServer script | default true / "1.0" / state / trees / proxies per kind |
+| TreeTopOf / TreeTopKind / TreeTopTopY | tree-top proxy | tree name / jungle / pine / palm / top surface Y |
+| TreeTopBody | herrera model | true: HRP in the HerreraBody collision group |
+| SpeciesHerreraEnabled / SpeciesHerreraTemplate | SpeciesServer script | default true / template state |
+| HerreraScale / RaptorScaleHerreraEnabled | RaptorScale script | 2 / default true |
