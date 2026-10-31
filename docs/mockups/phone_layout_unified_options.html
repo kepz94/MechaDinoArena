@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone Button Layout</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1218;--panel:#1b2029;--ink:#e9edf3;--muted:#98a2b3;--yellow:#ffc832;--yink:#1e1a0a;--orange:#ff9b2e;--blood:#e0284a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+header,section{max-width:1100px;margin:0 auto;padding:16px}
+h1{font:700 24px Fredoka,system-ui;margin:4px 0 6px}
+p{margin:6px 0;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+button.pill{background:var(--panel);color:var(--ink);border:2px solid #ffffff22;border-radius:999px;padding:7px 14px;font:600 14px system-ui;cursor:pointer}
+button.pill[aria-pressed=true]{border-color:var(--yellow);color:var(--yellow)}
+.lab{font:700 12px system-ui;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:12px}
+/* phone screen: 2000 x 924 like Kepu's screenshots */
+.phone{position:relative;width:100%;aspect-ratio:2000/924;border-radius:22px;overflow:hidden;border:6px solid #000;
+  background:linear-gradient(#3a8fe0 0%,#8cc5f2 46%,#7fbf5a 46.2%,#58a63a 70%,#e9e2cf 70.2%,#e2dac4 100%);container-type:inline-size}
+.mountain{position:absolute;left:38%;top:24%;width:24%;height:22%;background:#9aa7c2;clip-path:polygon(50% 0,100% 100%,0 100%);opacity:.8}
+.dino{position:absolute;left:44%;top:46%;width:12%;height:24%;display:grid;place-items:center;font:700 2.2cqw Fredoka;color:#fff;
+  text-shadow:0 2px 0 #0008;background:#00000022;border-radius:12px}
+.hud{position:absolute;font-family:Fredoka,system-ui}
+.health{left:7.4%;bottom:3%;width:32%;color:#fff;font-size:1.4cqw}
+.health .bar{height:1.3cqw;border-radius:9px;background:#ffffff55;overflow:hidden;margin-top:.4cqw}
+.health .bar i{display:block;height:100%;background:#4cd263}
+.top{right:7.5%;top:2%;display:flex;gap:1cqw}
+.top div{background:#1b2230;border:2px solid #ffffff44;border-radius:1.4cqw;padding:.8cqw 1.6cqw;font-size:2cqw;color:#fff}
+.top div.m{color:#1b1607;background:var(--yellow)}
+/* controls: AnchorPoint (1,1), right / bottom in % of width / height, size in % of width (ArenaTouch / MechaButtons) */
+.ctl{position:absolute;transform:translate(0,0);display:grid;place-items:center;font-family:Fredoka,system-ui;cursor:pointer;user-select:none;transition:transform .08s}
+.ctl:active{transform:scale(.92)}
+.circle{border-radius:50%;border:.25cqw solid #ffffffaa;background:#141a22aa;color:#fff;font-size:2.1cqw}
+.big{background:var(--yellow);color:var(--yink);font-size:3.1cqw;border-color:#fff}
+.big.dim{opacity:.5}
+.big.glow{box-shadow:0 0 0 .5cqw var(--yellow)}
+.slot{border-radius:22%;border:.25cqw solid var(--orange);background:#14181fcc;color:#fff;font-size:1.25cqw;text-align:center;line-height:1.15}
+.slot.empty{border-color:#ffffff80;color:#ffffffcc}
+.slot small{display:block;color:#ffd9a8;font-size:1.1cqw;margin-top:.4cqw}
+.pips{position:absolute;display:flex;gap:.6cqw;justify-content:center}
+.pip{width:2.4cqw;height:2.4cqw;border-radius:50%;border:.2cqw solid var(--yellow);background:#14181faa;overflow:hidden;position:relative}
+.pip i{position:absolute;left:0;right:0;bottom:0;background:var(--yellow)}
+.tag{position:absolute;left:50%;transform:translateX(-50%);top:-2.4cqw;background:#2ecc71;color:#06210f;font:700 1.1cqw Fredoka;border-radius:99px;padding:.15cqw .8cqw;white-space:nowrap}
+.gone{position:absolute;border:.25cqw dashed #ffffff55;border-radius:50%;display:grid;place-items:center;color:#ffffff88;font:600 1.1cqw system-ui;text-align:center}
+.old{position:absolute;border-radius:50%;border:.2cqw solid #ffffff99;background:#00000055;color:#ffffffcc;display:grid;place-items:center;font:600 1.5cqw system-ui}
+.note{background:var(--panel);border-radius:12px;padding:12px 14px;margin-top:12px}
+.note b{color:var(--ink)}
+table{border-collapse:collapse;width:100%;margin-top:10px;font-size:14px}
+td,th{border-top:1px solid #ffffff18;padding:7px 6px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;width:150px}
+@media (max-width:600px){h1{font-size:20px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>One phone layout for every dino (MDA-146)</h1>
+  <p>Kepu's ruling: "same base layout for every Dino with only the variation in the actual move animation and the abilities themselves" and "call it all jump". Below is the live phone screen at the real button spots (ATTACK right 5% / bottom 10%; JUMP above it where LEAP is now; the two loadout slots where they are today). Tap ATTACK to spend a charge, tap JUMP to see it fire.</p>
+  <div class="lab">Option</div>
+  <div class="row" id="optSeg">
+    <button class="pill" data-v="A" aria-pressed="true">A · JUMP on every dino (T-Rex gets a jump)</button>
+    <button class="pill" data-v="B" aria-pressed="false">B · JUMP on every dino that can jump (T-Rex spot stays empty)</button>
+  </div>
+  <div class="lab">Dino</div>
+  <div class="row" id="dinoSeg">
+    <button class="pill" data-v="Raptor" aria-pressed="false">Raptor</button>
+    <button class="pill" data-v="TRex" aria-pressed="false">T-Rex</button>
+    <button class="pill" data-v="Pachy" aria-pressed="false">Pachy</button>
+    <button class="pill" data-v="Herrera" aria-pressed="true">Herrera</button>
+  </div>
+  <div class="row" id="treeRow">
+    <button class="pill" id="treeBtn" aria-pressed="false">Herrera on a tree</button>
+    <button class="pill" id="beforeBtn" aria-pressed="false">Show today's broken Herrera screen</button>
+  </div>
+</header>
+<section>
+  <div class="phone" id="phone">
+    <div class="mountain"></div>
+    <div class="dino" id="dinoName">HERRERA</div>
+    <div class="hud health"><span>HEALTH</span><span style="float:right" id="hp">40 / 40</span><div class="bar"><i style="width:100%"></i></div></div>
+    <div class="hud top"><div>SKILLS</div><div class="m">MENU</div></div>
+    <div id="controls"></div>
+  </div>
+  <div class="note" id="explain"></div>
+  <table>
+    <tr><th>Same for every dino</th><td>Big yellow <b>ATTACK</b> bottom right (the dino's own attack: T-Rex bite, raptor pounce, pachy headbutt, Herrera slash). Charge pips under it when that attack has charges (pachy 2-3, Herrera 2). <b>JUMP</b> above it (today's LEAP spot). Two loadout slots to the left, same spots and look as now.</td></tr>
+    <tr><th>Only the move changes</th><td>JUMP fires the dino's own jump: raptor / pachy leap, Herrera high spam-jump (no cooldown, hold to repeat, MDA-147). On a trunk or tree top the Herrera's same JUMP button jumps off the tree.</td></tr>
+    <tr><th>Renames</th><td>LEAP → JUMP on the phone button and on the PC ability bar tile (Space). Herrera's PC HOP tile → JUMP.</td></tr>
+    <tr><th>Bug fixes in the same build</th><td>No raw grey Roblox "Slash" circle; it never stays behind when you switch dinos. The Herrera gets a way off a tree on a phone (MDA-145).</td></tr>
+  </table>
+</section>
+<script>
+const DINOS = {
+  Raptor:  {name:'RAPTOR', hp:'60 / 60', pips:0, jump:true, slots:[['ADRENALINE','▼ SHIELD'],['SHOCK CANNON','▼ CLOAK']]},
+  TRex:    {name:'T-REX', hp:'200 / 200', pips:0, jump:false, slots:[null,null]},
+  Pachy:   {name:'PACHY', hp:'90 / 90', pips:3, jump:true, slots:[['MED-STATION','▼ MECHA LEGS'],['GRAPPLING HOOK','▼ SERVO DASH']]},
+  Herrera: {name:'HERRERA', hp:'40 / 40', pips:2, jump:true, slots:[null,null]},
+};
+let opt='A', dino='Herrera', onTree=false, before=false, charges={Pachy:3,Herrera:2}, jumpFlash=0;
+const $=s=>document.querySelector(s);
+function seg(id, set){document.querySelectorAll('#'+id+' button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#'+id+' button').forEach(x=>x.setAttribute('aria-pressed',x===b));set(b.dataset.v);draw();});}
+seg('optSeg',v=>opt=v); seg('dinoSeg',v=>{dino=v; if(v!=='Herrera'){onTree=false;before=false;$('#treeBtn').setAttribute('aria-pressed',false);$('#beforeBtn').setAttribute('aria-pressed',false);}});
+$('#treeBtn').onclick=()=>{onTree=!onTree;$('#treeBtn').setAttribute('aria-pressed',onTree);draw();};
+$('#beforeBtn').onclick=()=>{before=!before;$('#beforeBtn').setAttribute('aria-pressed',before);draw();};
+function place(el,right,bottom,size){el.style.right=right+'%';el.style.bottom=bottom+'%';el.style.width=size+'cqw';el.style.height=size+'cqw';}
+function draw(){
+  const d=DINOS[dino], c=$('#controls'); c.innerHTML='';
+  $('#dinoName').textContent=d.name+(dino==='Herrera'&&onTree?' (on a tree)':''); $('#hp').textContent=d.hp;
+  $('#treeRow').style.display=dino==='Herrera'?'flex':'none';
+  // slots (MechaButtons, AutoRun: Slot_1 right 21% bottom 8%; Slot_2 right 32.5% bottom 18%; 9.5% of width)
+  [[21,8],[32.5,18]].forEach((p,i)=>{const s=document.createElement('div');const v=d.slots[i];s.className='ctl slot'+(v?'':' empty');
+    s.innerHTML=v?(v[0]+'<small>'+v[1]+'</small>'):('+<br>slot '+(i+1));place(s,p[0],p[1],9.5);c.appendChild(s);});
+  if(before&&dino==='Herrera'){ // today's v243 phone screen: no ATTACK, no JUMP, grey raw "Slash" over slot 1
+    const o=document.createElement('div');o.className='old';o.textContent='Slash';place(o,22,24,5.5);c.appendChild(o);
+    $('#explain').innerHTML='<b>Today (v243):</b> no ATTACK button, no jump, and Roblox\'s plain grey "Slash" circle sitting on slot 1. It also stays on the next dino after you switch.';
+    return;
+  }
+  // ATTACK (right 5%, bottom 10%, 13.5% of width)
+  const a=document.createElement('div');a.className='ctl circle big';a.textContent='ATTACK';place(a,5,10,13.5);
+  const n=charges[dino]; if(d.pips&&n===0)a.classList.add('dim');
+  a.onclick=()=>{if(!d.pips)return;if(charges[dino]>0){charges[dino]--;a.classList.add('glow');setTimeout(draw,250);setTimeout(()=>{charges[dino]=Math.min(d.pips,charges[dino]+1);draw();},dino==='Herrera'?4000:5000);}};
+  c.appendChild(a);
+  if(d.pips){const p=document.createElement('div');p.className='pips';p.style.right='5%';p.style.width='13.5cqw';p.style.bottom='3.2%';
+    for(let i=0;i<d.pips;i++){const q=document.createElement('div');q.className='pip';q.innerHTML='<i style="height:'+(i<charges[dino]?100:0)+'%"></i>';p.appendChild(q);}c.appendChild(p);}
+  // JUMP (right 7%, bottom 43%, 9.5% of width) — LEAP renamed
+  if(d.jump||opt==='A'){
+    const j=document.createElement('div');j.className='ctl circle';j.textContent='JUMP';place(j,7,43,9.5);
+    if(dino==='Herrera'&&onTree){const t=document.createElement('div');t.className='tag';t.textContent='jumps off the tree';j.appendChild(t);}
+    j.onclick=()=>{jumpFlash++;const k=jumpFlash;j.style.background='#ffffff44';setTimeout(()=>{if(k===jumpFlash)j.style.background='';},180);};
+    c.appendChild(j);
+  } else {
+    const g=document.createElement('div');g.className='gone';g.textContent='no jump';place(g,7,43,9.5);c.appendChild(g);
+  }
+  const ex={
+    Raptor:'Raptor: ATTACK = pounce, JUMP = its leap (was LEAP). Slots unchanged.',
+    TRex: opt==='A'?'T-Rex: ATTACK = bite, and in A it gets a JUMP like everyone else (today the T-Rex has no jump: your 2026-10-28 call "no T-Rex jump"). Its jump would be low and heavy.':'T-Rex: ATTACK = bite, no jump (your 2026-10-28 call "no T-Rex jump" stays). The JUMP spot is just empty.',
+    Pachy:'Pachy: ATTACK = headbutt with its charge pips (tap to spend one), JUMP = its leap (was LEAP). Blood Rush hearts / SLOWED pill stay exactly as now.',
+    Herrera: onTree?'Herrera on a trunk or tree top: the same JUMP button jumps off the tree (today a phone has no way off). ATTACK = the dive at a dino below.':'Herrera: ATTACK = dash-through slash with 2 charge pips (tap to spend; one refills every 4 s), JUMP = its high, no-cooldown jump (hold to repeat). No grey Roblox button.'
+  };
+  $('#explain').innerHTML='<b>Option '+opt+' · '+d.name+'.</b> '+ex[dino];
+}
+draw();
+</script>
+</body>
+</html>
