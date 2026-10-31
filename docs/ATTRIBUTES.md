@@ -2282,3 +2282,9 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | BotPounceChargeBlockEnabled / BotPounceHeadbuttCancelEnabled | BotServer script | default true: raptor bot pounces refused head-on into a charge / cancelled by a headbutt |
 | BotPounceCancel | raptor bot | "charging" / "headbutted" (last cancelled pounce) |
 | BotPounceChargeBlocks / BotPounceHeadbuttCancels | BotServer script | counts |
+
+## Herrerasaurus model (HerreraModelData 1.0 / SkinCatalog 1.4)
+| Attribute | On | Meaning |
+|---|---|---|
+| Species / DisplayName / HerreraModelVersion | herrera model | "Herrera" / "Herrera" / "1.0": HerreraModelData 1.0 (moves off; T-Rex gameplay attributes inherited) |
+| DisplayHerreraVersion | Workspace.DinoArcade_Herrera + Herrera_Display | "1.0": Studio-only herrera display model |

@@ -1,4 +1,4 @@
--- SkinCatalog v1.2 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
+-- SkinCatalog v1.4 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1, mockup docs/mockups/skins_lab_tab.html (Kepu 2026-10-30: skins picked in the Lab's
 -- SKINS tab from the main menu; "whatever is chosen in the menu is what youre spawning with every time unless you choose
 -- a different skin"; buying with Robux is the next plan). Pure: no Instance access. Used by SkinServer 1.0 (server) and,
@@ -30,8 +30,12 @@
 --   Classic, Riverstone (COMMON, free), Fossil (RARE 149), Thunderhead (RARE 149), Ember (EPIC 499), Obsidian Crown
 --   (LEGENDARY 999). Ids carry the prefix "pachy_": the save's owned set is keyed by id only, so a raptor skin never
 --   unlocks a pachy one. Prices / products are the existing rarity tiers. Raptor / T-Rex lists, roles and API unchanged.
+-- v1.4 (plan docs/plans/HERRERA_MODEL_v1.0.md Task 2; mockup docs/mockups/herrera_model_options.html v0.4, Kepu
+--   2026-10-30 "let's choose C just to keep it somewhat realistic"): Herrera colour groups (HerreraModelData 1.0: main,
+--   stripes, belly, markings, limbs, claws, eyes, tailbands, mask, frill; teeth / pupils / mouth are never-paint) and its
+--   Classic skin (Swamp olive). Raptor / T-Rex / Pachy lists, roles and API unchanged.
 local SkinCatalog = {}
-SkinCatalog.Version = "1.3"
+SkinCatalog.Version = "1.4"
 
 SkinCatalog.ROLES = {
 	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -39,6 +43,9 @@ SkinCatalog.ROLES = {
 	TRex = {["666A4A"] = "main", ["50523A"] = "dark", ["B2A278"] = "belly"},
 	Pachy = {["7A6A4E"] = "main", ["3E5A55"] = "stripes", ["C8B898"] = "belly", ["E6DCC4"] = "dome", ["8C7A5A"] = "knobs",
 		["3F6F7A"] = "mask", ["5E5240"] = "limbs", ["2E2620"] = "claws", ["8A2A1E"] = "eyes"}, -- v1.2
+	Herrera = {["6E6A3A"] = "main", ["2F3320"] = "stripes", ["D3C89A"] = "belly", ["B8414A"] = "markings",
+		["5A5530"] = "limbs", ["2C2620"] = "claws", ["E8C547"] = "eyes", ["B9B26A"] = "tailbands", ["262A1A"] = "mask",
+		["C9572E"] = "frill"}, -- v1.4
 }
 
 SkinCatalog.NEVER_PAINT = {["E8E2D2"] = true, ["111111"] = true, ["963C3C"] = true, ["6E342E"] = true, ["F5F5F0"] = true,
@@ -92,6 +99,11 @@ SkinCatalog.SKINS = {
 			colors = {main = "151517", stripes = "D4A72C", belly = "2A2A2E", dome = "F2C14A", knobs = "FFE08A", mask = "D4A72C",
 				limbs = "1F1F22", claws = "D4A72C", eyes = "FFE08A"},
 			materials = {dome = "Foil", stripes = "Neon", knobs = "Neon", eyes = "Neon"}},
+	},
+	Herrera = { -- v1.4
+		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
+			colors = {main = "6E6A3A", stripes = "2F3320", belly = "D3C89A", markings = "B8414A", limbs = "5A5530",
+				claws = "2C2620", eyes = "E8C547", tailbands = "B9B26A", mask = "262A1A", frill = "C9572E"}},
 	},
 }
 

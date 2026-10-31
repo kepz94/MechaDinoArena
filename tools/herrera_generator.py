@@ -1,32 +1,37 @@
 #!/usr/bin/env python3
-"""Herrerasaurus generator v0.4 (Mecha Dino Arena) — MOCKUP prototype (not installed in the game yet).
+"""Herrerasaurus generator v1.0 (Mecha Dino Arena) — writes src/shared/Models/HerreraModelData.luau.
 
 Kepu 2026-10-30: "the next Dino I want to work on it's the Herrerasaurus. This will be a utility Dino someone that's a
 Pain in the ass to deal with but easy to kill" · "It's going to have the most mecha utility and the fastest in the game" ·
 answers: 40 HP, a bit smaller than the raptor; ATTACK = hit-and-run slash; hard to catch + climber; day 1.
-Reference look (Kepu's picture, used only as a colour / feature reference; the model is our own block design): olive
-green body, dark back stripe, red markings and a red throat, pale bands on the tail, long low skull, long clawed arms.
+Look: "Hunched goblin" + "Frill-necked trickster" (mockup docs/mockups/herrera_model_options.html, v0.4) · Classic colours
+"let's choose C just to keep it somewhat realistic" (Swamp olive).
+Gait note (Kepu): "This Dino will have a gallop run not a two legged walk. He stands on two legs when idle but does a
+scurry type of run like a regular iguana does" -> the long dangling arms reach the ground for the scurry (gait plan later).
 
 Same 17-segment rig and joint names as the T-Rex / raptor / pachy (rig 1.3). Dino space D = (x forward, y up, z left),
 origin at the hip centre (= HumanoidRootPart centre). The whole body is scaled so its length is TARGET_LEN studs.
 Skin rule: every visible block uses one authored colour per group, no hex shared between groups, none equal to a
 never-paint colour (teeth E8E2D2, pupils 111111, mouth 6E342E, HRP A3A2A5).
-Look options for the mockup (all parts are always built; the mockup hides one set by name):
-  Neck_dewlap*      red throat pouch            (option A "Red throat", C "Both")
-  Head_browridge*   red brow horns over the eyes (option B "Brow horns", C "Both")
-Run: python3 tools/herrera_generator.py [--mock OUT]   (--mock writes segments + joints only, for Studio renders)
+Gameplay attributes: the T-Rex's (as the raptor / pachy inherit them) with every move switched off; abilities, speeds and
+gait come with the playable plan.
+Run: python3 tools/herrera_generator.py [--palette rust|charcoal|olive] [--mock OUT]
+  (default palette olive = Classic; --mock writes segments + joints only, for Studio renders)
 """
-import math, os, sys
+import math, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "HerreraModelData.luau")
+TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
+ROLES = ["main", "stripes", "belly", "markings", "limbs", "claws", "eyes", "tailbands", "mask", "frill"]
 
-VERSION = "0.4"
+VERSION = "1.0"
 TARGET_LEN = 11.2    # studs at scale 1 (raptor 12.85; doubled in game: ~22.4 vs the raptor's 25.4)
 HIP0 = 3.3           # authored hip height before the length scale
 HRP_SIZE_D0 = (3.2, 2.1, 1.2)
 
 # v0.2: three palette candidates for the mockup (all keep the skin rule); PALETTE picks the Classic one
+# v1.0: Classic = olive (Kepu: "let's choose C")
 PALETTES = {
     "rust":     {"main": "B5652E", "stripes": "2A1E18", "belly": "E6D2A8", "markings": "8E2A22", "limbs": "8A4A24",
                  "claws": "241C18", "eyes": "F2D54A", "tailbands": "D9A66A", "mask": "3A2420", "frill": "E2A93A"},
@@ -35,7 +40,7 @@ PALETTES = {
     "olive":    {"main": "6E6A3A", "stripes": "2F3320", "belly": "D3C89A", "markings": "B8414A", "limbs": "5A5530",
                  "claws": "2C2620", "eyes": "E8C547", "tailbands": "B9B26A", "mask": "262A1A", "frill": "C9572E"},
 }
-PALETTE = sys.argv[sys.argv.index("--palette") + 1] if "--palette" in sys.argv else "rust"
+PALETTE = sys.argv[sys.argv.index("--palette") + 1] if "--palette" in sys.argv else "olive"
 C = {
     **PALETTES[PALETTE],
     "tooth":     "E8E2D2",  # never-paint
@@ -302,6 +307,36 @@ if "--mock" in sys.argv:
     lines = ["return {", f'\tversion = "{VERSION}", species = "Herrera", style = "1.0", rig = "1.3",'] + body_lines() + ["\tattributes = {Species = \"Herrera\"},", "}"]
     open(path, "w").write("\n".join(lines) + "\n")
     print("mock ->", path)
+else:
+    # ------------------------------------------------------------ full data file (v1.0)
+    hexes = [C[r] for r in ROLES]
+    assert len(set(hexes)) == len(hexes), "two colour groups share a hex"
+    assert not ({"E8E2D2", "111111", "6E342E", "A3A2A5"} & set(hexes)), "a group uses a never-paint colour"
+    used = {C[p["key"]] for n_ in order for p in segments[n_]["parts"]}
+    assert used <= set(hexes) | {"E8E2D2", "111111", "6E342E"}, "a block colour is not a role or never-paint"
+    trex = open(TREX).read()
+    block = trex[trex.index("attributes = {"):]
+    block = block[:block.index("\n\t},")]
+    attrs = {m.group(1): m.group(2) for m in re.finditer(r'^\t\t(\w+) = (.+?),$', block, re.M)}
+    attrs.update({
+        "Species": '"Herrera"', "StyleVersion": '"1.0"', "HerreraModelVersion": f'"{VERSION}"', "DisplayName": '"Herrera"',
+        "RigHipHeight": f"{HIP:.4g}",
+        "BiteEnabled": "false", "PounceEnabled": "false", "RamEnabled": "false", "RoarEnabled": "false",
+        "JumpEnabled": "false", "CreepEnabled": "false",
+    })
+    attrs.pop("StarterCharacterVersion", None)
+    lines = [
+        f"-- HerreraModelData v{VERSION} (Mecha Dino Arena) — block-style Herrerasaurus (hunched goblin + frill-necked trickster), rig 1.3 joint names, skin-ready colour groups.",
+        "-- Generated by tools/herrera_generator.py (do not edit by hand; change the generator and re-run).",
+        f"-- Scale: {TARGET_LEN} studs long, hip {HIP:.4g} studs (doubled in game like the raptor: ~22.4 vs the raptor's 25.4).",
+        "-- Colour groups (Classic = Swamp olive): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: teeth E8E2D2, pupil 111111, mouth 6E342E.",
+        "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB.",
+        "-- Rebuild with DinoModelBuilder.build(require(HerreraModelData)).",
+        "return {",
+        f'\tversion = "{VERSION}", species = "Herrera", style = "1.0", rig = "1.3",',
+    ] + body_lines() + ["\tattributes = {"] + [f"\t\t{k} = {attrs[k]}," for k in sorted(attrs)] + ["\t},", "}"]
+    open(OUT, "w").write("\n".join(lines) + "\n")
+    print("data ->", OUT, f"({len(attrs)} attributes)")
 n = sum(len(segments[s]["parts"]) for s in order)
 print(f"{n} parts, {len(order)} segments, scale {K:.3f}, HIP {HIP:.3f}")
 print("D bounds: length %.2f, height %.2f (ground %.2f, top %.2f), width %.2f" % (

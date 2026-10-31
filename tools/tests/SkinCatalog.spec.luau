@@ -1,4 +1,4 @@
--- SkinCatalog.spec v1.3 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
+-- SkinCatalog.spec v1.4 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...". Requires a
 -- fresh clone so a re-run in the same Studio session sees the installed source. Reads both model data modules to check
 -- that every authored colour is a skin role or on the never-paint list.
@@ -8,6 +8,8 @@
 --   a Pachy role or never-paint, no hex shared between Pachy roles, none equal to a never-paint colour, Pachy classic.
 -- v1.3 (plan docs/plans/PACHY_SKINS_v1.0.md Task 1): the pachy lineup — 6 skins in order, pachy_ ids (no id shared with
 --   another dino), prices / free, products by rarity, ownership separate from the raptor's.
+-- v1.4 (plan docs/plans/HERRERA_MODEL_v1.0.md Task 2): Herrera colour groups — every HerreraModelData colour is a
+--   Herrera role or never-paint, 10 roles, no hex shared, none never-paint, Herrera classic (Swamp olive) round trip.
 local da = game.ServerStorage:FindFirstChild("DinoArcade")
 local ok, SC = pcall(function()
 	local src = da.SkinCatalog
@@ -32,7 +34,7 @@ local function eq(name, got, want)
 end
 local function hex(c3) return c3:ToHex():upper() end
 
-eq("Version", SC.Version, "1.3")
+eq("Version", SC.Version, "1.4")
 
 -- roles of the authored colours
 local RAPTOR = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -40,18 +42,22 @@ local RAPTOR = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs",
 local TREX = {["666A4A"] = "main", ["50523A"] = "dark", ["B2A278"] = "belly"}
 local PACHY = {["7A6A4E"] = "main", ["3E5A55"] = "stripes", ["C8B898"] = "belly", ["E6DCC4"] = "dome", ["8C7A5A"] = "knobs",
 	["3F6F7A"] = "mask", ["5E5240"] = "limbs", ["2E2620"] = "claws", ["8A2A1E"] = "eyes"} -- v1.2
+local HERRERA = {["6E6A3A"] = "main", ["2F3320"] = "stripes", ["D3C89A"] = "belly", ["B8414A"] = "markings",
+	["5A5530"] = "limbs", ["2C2620"] = "claws", ["E8C547"] = "eyes", ["B9B26A"] = "tailbands", ["262A1A"] = "mask",
+	["C9572E"] = "frill"} -- v1.4
 for h, role in pairs(RAPTOR) do eq("Raptor role " .. h, SC.roleOf("Raptor", Color3.fromHex(h)), role) end
 for h, role in pairs(TREX) do eq("TRex role " .. h, SC.roleOf("TRex", Color3.fromHex(h)), role) end
 for h, role in pairs(PACHY) do eq("Pachy role " .. h, SC.roleOf("Pachy", Color3.fromHex(h)), role) end -- v1.2
-do -- v1.2: skin rule for new dinos
+for h, role in pairs(HERRERA) do eq("Herrera role " .. h, SC.roleOf("Herrera", Color3.fromHex(h)), role) end -- v1.4
+for species, count in pairs({Pachy = 9, Herrera = 10}) do -- v1.2: skin rule for new dinos (v1.4: + Herrera)
 	local seen, roles = {}, 0
-	for h, role in pairs((SC.ROLES or {}).Pachy or {}) do
+	for h, role in pairs((SC.ROLES or {})[species] or {}) do
 		roles += 1
-		eq("Pachy hex " .. h .. " used once", seen[h], nil)
+		eq(species .. " hex " .. h .. " used once", seen[h], nil)
 		seen[h] = role
-		eq("Pachy hex " .. h .. " not never-paint", SC.NEVER_PAINT[h], nil)
+		eq(species .. " hex " .. h .. " not never-paint", SC.NEVER_PAINT[h], nil)
 	end
-	eq("Pachy roles", roles, 9)
+	eq(species .. " roles", roles, count)
 end
 eq("unknown colour -> nil", SC.roleOf("Raptor", Color3.fromRGB(1, 2, 3)), nil)
 eq("teeth never painted", SC.roleOf("Raptor", Color3.fromHex("E8E2D2")), nil)
@@ -60,7 +66,7 @@ eq("raptor colour on a T-Rex -> nil", SC.roleOf("TRex", Color3.fromHex("5E943E")
 
 -- every authored colour is a role or never-paint: the raptor from RaptorModelData, the T-Rex from the StarterCharacter
 -- (TRexModelData is not installed in Studio; the StarterCharacter is the live T-Rex body)
-local authored = {Raptor = {}, TRex = {}, Pachy = {}} -- v1.2: Pachy from PachyModelData (spikes included)
+local authored = {Raptor = {}, TRex = {}, Pachy = {}, Herrera = {}} -- v1.2: Pachy from PachyModelData (spikes included); v1.4 Herrera
 do
 	local d = data("RaptorModelData")
 	authored.Raptor[d.hrp.color:upper()] = true
@@ -70,6 +76,10 @@ do
 	local pd = data("PachyModelData")
 	for _, seg in ipairs(pd.segments) do
 		for _, p in ipairs(seg.parts) do authored.Pachy[p.color:upper()] = true end
+	end
+	local hd = data("HerreraModelData") -- v1.4
+	for _, seg in ipairs(hd.segments) do
+		for _, p in ipairs(seg.parts) do authored.Herrera[p.color:upper()] = true end
 	end
 	for _, p in ipairs(game.StarterPlayer.StarterCharacter:GetDescendants()) do
 		if p:IsA("BasePart") and p.Transparency < 1 and p.Name ~= "HumanoidRootPart" and not p:FindFirstAncestor("Hitboxes") then
@@ -88,9 +98,10 @@ for species, seen in pairs(authored) do
 end
 
 -- skins
-for species, roles in pairs({Raptor = RAPTOR, TRex = TREX, Pachy = PACHY}) do
+for species, roles in pairs({Raptor = RAPTOR, TRex = TREX, Pachy = PACHY, Herrera = HERRERA}) do
 	local list = SC.SKINS[species]
 	eq(species .. " has skins", type(list) == "table" and #list > 0, true)
+	if type(list) ~= "table" or #list == 0 then continue end -- v1.4: a missing species list fails above, not by error
 	eq(species .. " default", SC.default(species), "classic")
 	eq(species .. " first = default", list[1].id, "classic")
 	local classic = SC.get(species, "classic")
