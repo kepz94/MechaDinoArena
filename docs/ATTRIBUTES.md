@@ -2238,3 +2238,18 @@ Look: ScreenGui TetherAimHud (Tag, Timer, Cancel); TetherAim disc + TetherAimLin
 | MechaTetherAimKeepCam | MechaButtons script | default true: the camera returns to its pre-aim look after the tether aim mode |
 | InkAimAssistEnabled / InkAimAssistDeg | InkServer script | default true / 12: snap the shot to the closest dino within that angle |
 | InkAssisted / InkAssistDeg | character (shooter) | the last shot snapped / the angle snapped (0 = not) |
+
+## Pachy bots (BotServer 1.19 / HeadbuttFX 1.2)
+| Attribute | On | Meaning |
+|---|---|---|
+| BotPachyEnabled | BotServer script | default true (read at start): Pachy Bot template + groups Pachy1..N; false = 1.18 |
+| BotPachyCount | BotServer script | default 3: pachy roam groups (taken off the Solo raptor groups) |
+| BotPachyNeutral | BotServer script | default true: other bots neither fight nor flee from pachy bots |
+| BotPachyCharges / BotPachyRefill / BotPachyCooldown | BotServer script | 2 / 5 s per charge / 1.5 s between charges |
+| BotPachyWindup / BotPachyChargeTime / BotPachyChargeRange / BotPachySpeedMul / BotPachyReach | BotServer script | 0.45 s / 1.0 s / 35 studs / 1.7 x run speed / 3 studs |
+| BotPachyDamage / BotPachyShove / BotPachyShoveTime / BotPachySlowMul / BotPachySlowTime | BotServer script | 12 / 40 studs / 0.35 s / 0.65 / 3 s |
+| BotPachyBackoff | BotServer script | 18: out of charges and closer than this -> back off; up to +12 -> hold |
+| BotPachyState / BotPachyGroups / BotHeadbutts / BotHeadbuttHits | BotServer script | "on" / "off"; groups made; charges started; hits |
+| BotHeadbuttCharges / BotHeadbutts / BotHeadbuttHits / BotHeadbuttResult | pachy bot | charges left; charges; hits; hit / shielded / visor / missed / water / lost / interrupted |
+| HeadbuttStartedAt / HeadbuttEndedAt / HeadbuttHitAt / HeadbuttHitDamage / HeadbuttHitTarget / HeadbuttWindup / HeadbuttMaxTime | pachy bot | the charge stamps (pose + FX on every client) |
+| HeadbuttFXBotsEnabled | HeadbuttFX script | default true: pachy bots get the headbutt effects |

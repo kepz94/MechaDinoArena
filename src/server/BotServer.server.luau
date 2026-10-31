@@ -298,12 +298,43 @@
 --   search, playerAllowed and the hunt picks) until the ink wears off; it wanders / hunts animals as usual meanwhile.
 --   Diagnostics: bot BotInkDrops; script BotInkDrops. Switch: script attribute BotInkEnabled (default true, read each
 --   tick; false = 1.17).
+-- v1.19 (pachy bots; Kepu 2026-10-30: "have some pachys in the beginning right section instead of solo raptors", "They
+--   will just have the basic head butt charge only 2 of them"; answers: 2 charges, 3 pachys + 4 lone raptors, a hit = 12
+--   damage + shove + slow, health 90): species "Pachy" = DinoModelBuilder build of Models.PachyModelData, SPECIES.Pachy
+--   (health 90, "Pachy Bot"). Roam groups Pachy1..Pachy<BotPachyCount> (size 1) take the place of the last
+--   BotPachyCount lone-raptor Solo groups (5 Solo - 3 = 2, + Roam3 / Roam4 = 4 lone raptors). Zone: RaptorSolo (the
+--   raptor zone when BotPackSectionEnabled is false). Water: kept dry like a raptor. No bite, no pounce, no pack /
+--   hunt logic (packStep / huntStep are skipped): it chases players by the usual target rules and headbutts:
+--   charges     BotPachyCharges (2); a spent charge refills after BotPachyRefill (5) s, one at a time. Next charge
+--               no sooner than BotPachyCooldown (1.5) s after the last ended.
+--   charge      target within BotPachyChargeRange (35) studs (flat), way dry, a charge ready -> windup BotPachyWindup
+--               (0.45) s standing and turning to the target ("windup"), then a straight run at MoveRunSpeed x
+--               BotPachySpeedMul (1.7) for up to BotPachyChargeTime (1.0) s ("charge"). Model stamps HeadbuttWindup /
+--               HeadbuttMaxTime (= those settings), HeadbuttStartedAt (start), HeadbuttEndedAt (miss) or HeadbuttHitAt
+--               (hit): IdleAnimation's HeadbuttPose and HeadbuttFX 1.2 show it on every client.
+--   hit         the bot's head (Head hitbox front, else HRP front) within BotPachyReach (3) studs of the target's
+--               nearest hitbox. Dome Visor up and the bot in front (BoneCrest.visorFront): BoneCrest.visorBlock(target,
+--               bot, "headbutt"), nothing else ("visor"). Else damage = hitDamage(BotPachyDamage 12, "headbutt") (growth
+--               cap, Defense, Bone Crest) by Humanoid:TakeDamage (an Energy Shield ForceField blocks it); unless
+--               EnergyShieldUntil is in the future the player is shoved and slowed like a pachy headbutt:
+--               HeadbuttSlowMul BotPachySlowMul (0.65) until + BotPachySlowTime (3) s, HeadbuttShoveFrom (bot root),
+--               HeadbuttShoveDist BotPachyShove (40), HeadbuttShoveTime BotPachyShoveTime (0.35), HeadbuttShoveAt (last).
+--   end         hit / visor / missed (time up) / water (dry ground ends ahead) / lost (target gone) / interrupted (KO,
+--               pinned, stunned, anchored by a shove or knock).
+--   no charge   target closer than BotPachyBackoff (18) studs -> walks away ("backoff"); up to 12 studs beyond it it
+--               holds ("hold"); farther it closes in ("chase").
+--   BotPachyNeutral (default true): other bots neither fight nor flee from pachy bots (huntStep candidates / threats).
+-- Diagnostics: bot BotHeadbuttCharges, BotHeadbutts, BotHeadbuttHits, BotHeadbuttResult, HeadbuttHitDamage,
+--   HeadbuttHitTarget; player HeadbuttHitBy, HeadbuttShoveResult ("shoved" / "shielded"), LastHitBy / LastHitDamage /
+--   LastHitAt; script BotHeadbutts, BotHeadbuttHits, BotPachyGroups, BotPachyState ("on" / "off").
+-- Switch: script attribute BotPachyEnabled (default true, read at start for the template and the groups; false = 1.18,
+--   7 lone raptors).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.18"
+local VERSION = "1.19"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -359,12 +390,31 @@ DEFAULTS.BotTerritoryEnabled = true -- v1.12
 local Territory = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("Territory")) -- v1.12
 DEFAULTS.BotPackSectionEnabled = true -- v1.13
 DEFAULTS.BotSoloExtra = 5 -- v1.13
+-- v1.19: pachy bots
+DEFAULTS.BotPachyEnabled = true
+DEFAULTS.BotPachyCount = 3
+DEFAULTS.BotPachyNeutral = true
+DEFAULTS.BotPachyCharges = 2
+DEFAULTS.BotPachyRefill = 5
+DEFAULTS.BotPachyCooldown = 1.5
+DEFAULTS.BotPachyWindup = 0.45
+DEFAULTS.BotPachyChargeTime = 1.0
+DEFAULTS.BotPachyChargeRange = 35
+DEFAULTS.BotPachySpeedMul = 1.7
+DEFAULTS.BotPachyReach = 3
+DEFAULTS.BotPachyDamage = 12
+DEFAULTS.BotPachyShove = 40
+DEFAULTS.BotPachyShoveTime = 0.35
+DEFAULTS.BotPachySlowMul = 0.65
+DEFAULTS.BotPachySlowTime = 3
+DEFAULTS.BotPachyBackoff = 18
 local BOT_AVOID_MIN_STAGE = 2
 local BOT_PLAYER_HIT_CAP = 0.4
 local SPECIES = {
 	Raptor = {health = 60, biteDamage = 8, biteCooldown = 1.0, biteReach = 3, halfWidth = 0.9, displayName = "Raptor Bot"},
 	TRex = {health = 200, biteDamage = 25, biteCooldown = 1.6, biteReach = 6, halfWidth = 4.5, displayName = "T-Rex Bot"},
 }
+SPECIES.Pachy = {health = 90, biteDamage = 0, biteCooldown = 1.0, biteReach = 0, halfWidth = 1.2, displayName = "Pachy Bot"} -- v1.19
 
 script:SetAttribute("BotServerVersion", VERSION)
 if script:GetAttribute("BotCloakEnabled") == nil then script:SetAttribute("BotCloakEnabled", true) end -- v1.15
@@ -375,6 +425,8 @@ local function get(k)
 	if v == nil then v = DEFAULTS[k] end
 	return v
 end
+local PACHY_ON = get("BotPachyEnabled") ~= false -- v1.19 (read at start)
+script:SetAttribute("BotPachyState", PACHY_ON and "on" or "off")
 
 local island = workspace:WaitForChild("DinoIsland", 10)
 if not island then
@@ -399,6 +451,15 @@ do
 		templates.Raptor = Builder.build(data, {name = "Raptor"})
 	end)
 	if not ok then warn("BotServer: raptor template: " .. tostring(err)) end
+	if PACHY_ON then -- v1.19
+		local okP, errP = pcall(function()
+			local folder = ServerStorage:WaitForChild("DinoArcade", 10)
+			local Builder = require(folder:WaitForChild("DinoModelBuilder"))
+			local data = require(folder:WaitForChild("Models"):WaitForChild("PachyModelData"))
+			templates.Pachy = Builder.build(data, {name = "Pachy"})
+		end)
+		if not okP then warn("BotServer: pachy template: " .. tostring(errP)) end
+	end
 	local sc = StarterPlayer:FindFirstChild("StarterCharacter")
 	if sc then
 		local was = sc.Archivable
@@ -545,7 +606,7 @@ local function nearestDry(p)
 	return nil
 end
 local function avoidsWater(b)
-	return b.species == "Raptor" and get("BotAvoidWater") ~= false
+	return (b.species == "Raptor" or b.species == "Pachy") and get("BotAvoidWater") ~= false -- v1.19: + pachy
 end
 local function trexWandersDry(b) -- v1.5
 	return b.species == "TRex" and get("BotTRexAvoidWater") ~= false
@@ -707,6 +768,7 @@ local function inZone(species, p) return not territoryOn() or Territory.inside(s
 -- v1.13: a raptor's band (packs far, lone raptors near); other species: their v1.12 zone
 local function packSectionOn() return get("BotPackSectionEnabled") ~= false end
 local function zoneFor(species, multi)
+	if species == "Pachy" then return packSectionOn() and "RaptorSolo" or "Raptor" end -- v1.19
 	if species == "Raptor" and packSectionOn() then return multi and "RaptorPack" or "RaptorSolo" end
 	return species
 end
@@ -800,6 +862,14 @@ function spawnBot(marker, pack, slot) -- v1.4: + pack, slot (nil: v1.3)
 	model:SetAttribute("BotBites", 0)
 	model:SetAttribute("BotState", "idle")
 	model:SetAttribute("BotTarget", "")
+	if species == "Pachy" then -- v1.19: headbutt only
+		model:SetAttribute("BiteEnabled", false)
+		model:SetAttribute("HeadbuttWindup", get("BotPachyWindup"))
+		model:SetAttribute("HeadbuttMaxTime", get("BotPachyChargeTime"))
+		model:SetAttribute("BotHeadbuttCharges", math.max(1, math.floor(tonumber(get("BotPachyCharges")) or 2)))
+		model:SetAttribute("BotHeadbutts", 0)
+		model:SetAttribute("BotHeadbuttHits", 0)
+	end
 	local hrp = model:FindFirstChild("HumanoidRootPart")
 	local hum = model:FindFirstChildOfClass("Humanoid")
 	if not (hrp and hum) then model:Destroy() return end
@@ -1630,6 +1700,7 @@ local function biteAnimal(b, target, dip, fight)
 		end
 	end)
 end
+local function pachyNeutral(o) return o.species == "Pachy" and get("BotPachyNeutral") ~= false end -- v1.19
 local function huntStep(b, now)
 	local hunt, fightOn = get("BotHuntEnabled") ~= false, get("BotFightEnabled") ~= false
 	if not hunt and not fightOn then
@@ -1643,7 +1714,7 @@ local function huntStep(b, now)
 	if fightOn and BotHunt.shouldFlee(me.hpFrac) then
 		local threat, td = nil, FLEE_RADIUS
 		for _, o in ipairs(bots) do
-			if o ~= b and not o.removed and o.model.Parent and not o.koAt then
+			if o ~= b and not o.removed and o.model.Parent and not o.koAt and not pachyNeutral(o) then -- v1.19: + neutral
 				local d = flat(o.hrp.Position - hrp.Position).Magnitude
 				if d <= td and BotHunt.hostile(botDesc(o), me) then threat, td = o, d end
 			end
@@ -1708,7 +1779,7 @@ local function huntStep(b, now)
 		if fightOn then
 			for _, o in ipairs(bots) do
 				if o ~= b and not o.removed and o.model.Parent and not o.koAt and animalUp(o.model)
-					and not skipped(b, o.model, now) then
+					and not skipped(b, o.model, now) and not pachyNeutral(o) then -- v1.19: + neutral
 					table.insert(cands, {desc = botDesc(o), dist = flat(o.hrp.Position - hrp.Position).Magnitude, model = o.model})
 				end
 			end
@@ -1782,12 +1853,179 @@ local function huntTick()
 	end
 end
 
+-- v1.19: pachy bot headbutt ------------------------------------------------------------------------------------------
+local function pachyMax() return math.max(1, math.floor(tonumber(get("BotPachyCharges")) or 2)) end
+local function pachyRefill(b, now)
+	local max = pachyMax()
+	if b.hbCharges == nil then b.hbCharges = max end
+	if b.hbCharges < max then
+		if not b.hbRefillAt then b.hbRefillAt = now + get("BotPachyRefill") end
+		if now >= b.hbRefillAt then
+			b.hbCharges += 1
+			b.hbRefillAt = b.hbCharges < max and now + get("BotPachyRefill") or nil
+		end
+	else
+		b.hbCharges, b.hbRefillAt = max, nil
+	end
+	show(b, "BotHeadbuttCharges", b.hbCharges)
+end
+local function botHeadPos(b)
+	local fwd = flat(b.hrp.CFrame.LookVector)
+	fwd = fwd.Magnitude > 1e-3 and fwd.Unit or Vector3.zAxis
+	local hb = b.model:FindFirstChild("Hitboxes")
+	if hb then
+		for _, p in ipairs(hb:GetChildren()) do
+			if p:IsA("BasePart") and p:GetAttribute("HitboxSegment") == "Head" then
+				return p.Position + fwd * (math.max(p.Size.X, p.Size.Y, p.Size.Z) / 2)
+			end
+		end
+	end
+	return b.hrp.Position + fwd * (b.hrp.Size.Z / 2)
+end
+local pachyCrest -- BoneCrest, loaded on first use
+local function crestMod()
+	if pachyCrest == nil then
+		pachyCrest = false
+		pcall(function() pachyCrest = require(ServerStorage:WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+	end
+	return pachyCrest or nil
+end
+local function pachyHit(b, char, hum)
+	local model, root = b.model, b.hrp
+	local t = workspace:GetServerTimeNow()
+	local BC = crestMod()
+	if BC and BC.visorFront(char, root.Position) then -- Dome Visor up, bot in front
+		BC.visorBlock(char, model, "headbutt")
+		return "visor"
+	end
+	local dmg = hitDamage(b, char, hum, get("BotPachyDamage"), "headbutt")
+	hum:TakeDamage(dmg)
+	local shielded = (tonumber(char:GetAttribute("EnergyShieldUntil")) or 0) > t
+	if not shielded then
+		char:SetAttribute("HeadbuttSlowMul", get("BotPachySlowMul"))
+		char:SetAttribute("HeadbuttSlowUntil", t + get("BotPachySlowTime"))
+		char:SetAttribute("HeadbuttShoveFrom", root.Position)
+		char:SetAttribute("HeadbuttShoveDist", get("BotPachyShove"))
+		char:SetAttribute("HeadbuttShoveTime", get("BotPachyShoveTime"))
+		char:SetAttribute("HeadbuttShoveAt", t) -- last: HeadbuttShove client pushes the body
+	end
+	char:SetAttribute("HeadbuttShoveResult", shielded and "shielded" or "shoved")
+	char:SetAttribute("HeadbuttHitBy", model.Name)
+	char:SetAttribute("LastHitBy", model.Name)
+	char:SetAttribute("LastHitDamage", dmg)
+	char:SetAttribute("LastHitAt", t)
+	model:SetAttribute("HeadbuttHitDamage", math.floor(dmg + 0.5))
+	model:SetAttribute("HeadbuttHitTarget", char.Name)
+	model:SetAttribute("BotHeadbuttHits", (model:GetAttribute("BotHeadbuttHits") or 0) + 1)
+	model:SetAttribute("HeadbuttHitAt", t) -- last: HeadbuttPose impact / HeadbuttFX 1.2 react to this one
+	script:SetAttribute("BotHeadbuttHits", (script:GetAttribute("BotHeadbuttHits") or 0) + 1)
+	return shielded and "shielded" or "hit"
+end
+local function endPachyCharge(b, c, result)
+	if b.charge ~= c then return end
+	b.charge = nil
+	b.nextHeadbutt = os.clock() + get("BotPachyCooldown")
+	if b.hum.Parent and b.hrp.Parent then
+		b.hum.WalkSpeed = b.model:GetAttribute("MoveRunSpeed") or 28
+		b.hum:MoveTo(b.hrp.Position)
+	end
+	show(b, "BotHeadbuttResult", result)
+	if result ~= "hit" and result ~= "shielded" and b.model.Parent then
+		b.model:SetAttribute("HeadbuttEndedAt", workspace:GetServerTimeNow())
+	end
+end
+local function startPachyCharge(b, player)
+	local model, hum, hrp = b.model, b.hum, b.hrp
+	local c = {}
+	b.charge = c
+	b.hbCharges = math.max(0, (b.hbCharges or pachyMax()) - 1)
+	if not b.hbRefillAt then b.hbRefillAt = os.clock() + get("BotPachyRefill") end
+	show(b, "BotHeadbuttCharges", b.hbCharges)
+	model:SetAttribute("BotHeadbutts", (model:GetAttribute("BotHeadbutts") or 0) + 1)
+	script:SetAttribute("BotHeadbutts", (script:GetAttribute("BotHeadbutts") or 0) + 1)
+	local windup, maxTime = math.max(0, get("BotPachyWindup")), math.max(0.1, get("BotPachyChargeTime"))
+	model:SetAttribute("HeadbuttWindup", windup)
+	model:SetAttribute("HeadbuttMaxTime", maxTime)
+	hum:MoveTo(hrp.Position)
+	show(b, "BotState", "windup")
+	model:SetAttribute("HeadbuttStartedAt", workspace:GetServerTimeNow()) -- last: clients start the pose
+	task.spawn(function()
+		local function up()
+			return b.charge == c and not b.removed and model.Parent ~= nil and not b.koAt and not b.down
+				and model:GetAttribute("DummyState") ~= "ko" and model:GetAttribute("PinnedAt") == nil
+				and (model:GetAttribute("StunnedUntil") or 0) <= workspace:GetServerTimeNow()
+		end
+		local dir
+		local t0 = os.clock()
+		while os.clock() - t0 < windup do
+			if not up() then endPachyCharge(b, c, "interrupted") return end
+			local tc, _, thrp = aliveChar(player)
+			if not tc then endPachyCharge(b, c, "lost") return end
+			local v = flat(thrp.Position - hrp.Position)
+			if v.Magnitude > 1e-3 and not hrp.Anchored then
+				dir = v.Unit
+				hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + dir)
+			end
+			RunService.Heartbeat:Wait()
+		end
+		if not dir then
+			local f = flat(hrp.CFrame.LookVector)
+			dir = f.Magnitude > 1e-3 and f.Unit or Vector3.zAxis
+		end
+		hum.WalkSpeed = (model:GetAttribute("MoveRunSpeed") or 28) * get("BotPachySpeedMul")
+		show(b, "BotState", "charge")
+		local t1 = os.clock()
+		while os.clock() - t1 < maxTime do
+			if not up() or hrp.Anchored then endPachyCharge(b, c, "interrupted") return end
+			local tc, th = aliveChar(player)
+			if not tc then endPachyCharge(b, c, "lost") return end
+			if avoidsWater(b) and isWater(hrp.Position + dir * 4) then endPachyCharge(b, c, "water") return end
+			if distanceTo(tc, botHeadPos(b)) <= get("BotPachyReach") then
+				endPachyCharge(b, c, pachyHit(b, tc, th))
+				return
+			end
+			hum:MoveTo(hrp.Position + dir * 50)
+			RunService.Heartbeat:Wait()
+		end
+		endPachyCharge(b, c, "missed")
+	end)
+end
+-- chase step for a pachy bot (target picked by step); true when it handled the move
+local function pachyChase(b, player, thrp, clear, now)
+	local hrp, hum = b.hrp, b.hum
+	local d = flat(thrp.Position - hrp.Position).Magnitude
+	local ready = (b.hbCharges or 0) > 0 and now >= (b.nextHeadbutt or 0)
+	if ready and clear and d <= get("BotPachyChargeRange") then
+		startPachyCharge(b, player)
+		return true
+	end
+	if ready then return false end
+	local back = get("BotPachyBackoff")
+	if d < back then
+		local away = flat(hrp.Position - thrp.Position)
+		if away.Magnitude < 1e-3 then away = -flat(hrp.CFrame.LookVector) end
+		away = away.Magnitude > 1e-3 and away.Unit or Vector3.zAxis
+		local goal = clampLimit(flat(hrp.Position) + away * back)
+		if avoidsWater(b) then goal = dryLine(hrp.Position, goal) end
+		if not inZone(botZone(b), goal) then goal = b.home end
+		hum:MoveTo(goal)
+		show(b, "BotState", "backoff")
+		return true
+	elseif d <= back + 12 then
+		hum:MoveTo(hrp.Position)
+		show(b, "BotState", "hold")
+		return true
+	end
+	return false
+end
+
 local function step(b)
 	local model, hum, hrp = b.model, b.hum, b.hrp
 	if b.removed then return end
 	if not model.Parent then b.removed = true return end
 	if b.pounce or b.latch then return end -- v1.2: the Heartbeat drives a pounce / latch
 	if b.ram then return end -- v1.3: the Heartbeat drives a ram
+	if b.charge then return end -- v1.19: the pachy charge loop drives it
 	if b.hopping then return end -- v1.5: climbing out of a lake
 	if model:GetAttribute("DummyState") == "ko" and not b.koAt then b.koAt = os.clock() end
 	local ko = b.koAt ~= nil -- once knocked out it stays down (BiteTargetHealth's reset is ignored) until removed
@@ -1807,6 +2045,8 @@ local function step(b)
 		return
 	end
 	local now = os.clock()
+	local isPachy = b.species == "Pachy" -- v1.19
+	if isPachy then pachyRefill(b, now) end
 	-- v1.2: T-Rex bot with a player raptor on it runs for a tree or the water
 	if b.species == "TRex" and latchedByPlayer(b) then
 		if startRam(b) then return end -- v1.3: dedicated ram when a tree is in range and it is ready
@@ -1838,11 +2078,11 @@ local function step(b)
 		return
 	end
 	b.stuckWindow = nil -- v1.5
-	if b.pack and get("BotPacksEnabled") then
+	if b.pack and get("BotPacksEnabled") and not isPachy then -- v1.19: not a pachy
 		show(b, "BotPackRole", packLeader(b.pack) == b and "leader" or "follower")
 		if packStep(b, now) then return end
 	end
-	if huntStep(b, now) then return end -- v1.9: flee / hunt prey / fight bots / eat
+	if not isPachy and huntStep(b, now) then return end -- v1.9: flee / hunt prey / fight bots / eat; v1.19: not a pachy
 	-- keep / lose the current target
 	local target = b.target
 	if target then
@@ -1903,6 +2143,12 @@ local function step(b)
 			local goal, clear, detoured = thrp.Position, true, false -- v1.4: not into water
 			if avoidsWater(b) then goal, clear, detoured = dryGoal(hrp.Position, thrp.Position, b) end
 			hum:MoveTo(goal)
+			if isPachy then -- v1.19: headbutt instead of bite / pounce
+				if not pachyChase(b, target, thrp, clear, now) then
+					if clear then show(b, "BotState", "chase") else waterState(b, detoured and "detour" or "shore") end
+				end
+				return
+			end
 			local dip = (now >= b.nextBite and char) and dipFor(b, char) or nil -- v1.2: dipped bite
 			if dip then
 				bite(b, target, dip)
@@ -2220,11 +2466,16 @@ local ROAM_GROUPS = {
 	{name = "Roam4", species = "Raptor", size = 1},
 	{name = "Roam5", species = "TRex", size = 0},
 }
+local PACHY_COUNT = (PACHY_ON and templates.Pachy) and math.max(0, math.floor(tonumber(get("BotPachyCount")) or 0)) or 0 -- v1.19
 if packSectionOn() then -- v1.13: more lone raptors for the solo band
-	for i = 1, math.max(0, math.floor(tonumber(get("BotSoloExtra")) or 0)) do
+	for i = 1, math.max(0, math.floor(tonumber(get("BotSoloExtra")) or 0) - PACHY_COUNT) do -- v1.19: - the pachys
 		table.insert(ROAM_GROUPS, {name = "Solo" .. i, species = "Raptor", size = 1})
 	end
 end
+for i = 1, PACHY_COUNT do -- v1.19: lone pachys in the solo band
+	table.insert(ROAM_GROUPS, {name = "Pachy" .. i, species = "Pachy", size = 1})
+end
+script:SetAttribute("BotPachyGroups", PACHY_COUNT)
 local ROAM_STAY, ROAM_ARRIVE, ROAM_STUCK_TIME, ROAM_STUCK_DIST, ROAM_SPAWN_AVOID = {20, 40}, 40, 25, 20, 250
 local roamRng = Random.new()
 local roamFolder = island:FindFirstChild("RoamMarkers")

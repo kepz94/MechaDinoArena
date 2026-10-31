@@ -16,10 +16,14 @@
 --   (HeadbuttSacrificeAt within 0.05 s of HeadbuttStartedAt) draws the dust and the streaks red instead of tan / white.
 --   Switch: character attribute HeadbuttFXBloodEnabled (default true; false = 1.0). Diagnostic: HeadbuttFXSacrifices.
 -- Diagnostics (client-side character attributes): HeadbuttFXVersion, HeadbuttFXCharging (bool), HeadbuttFXHits.
+-- v1.2 (pachy bots, BotServer 1.19): models in Workspace.DinoIsland.Bots with HeadbuttEnabled = true (Pachy Bot) get the
+--   same effects as another player's pachy (dust, streaks, impact flash / ring / thud / damage number from the bot's
+--   HeadbuttStartedAt / HeadbuttEndedAt / HeadbuttHitAt / HeadbuttHitDamage). Switch: this script's attribute
+--   HeadbuttFXBotsEnabled (default true, read at start; false = 1.1, players only).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local BLOOD_COLOR = Color3.fromRGB(224, 40, 74) -- v1.1
 local FOV_KICK = 8
 local FOV_RATE = 10        -- per second, kick easing
@@ -305,6 +309,19 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+if script:GetAttribute("HeadbuttFXBotsEnabled") ~= false then -- v1.2: pachy bots
+	task.spawn(function()
+		local isl = workspace:WaitForChild("DinoIsland", 30)
+		local bots = isl and isl:WaitForChild("Bots", 30)
+		if not bots then return end
+		for _, m in ipairs(bots:GetChildren()) do
+			if m:IsA("Model") then onCharacter(m) end
+		end
+		bots.ChildAdded:Connect(function(m)
+			if m:IsA("Model") then onCharacter(m) end
+		end)
+	end)
+end
 
 local fovApplied = 0
 RunService.RenderStepped:Connect(function(dt)
