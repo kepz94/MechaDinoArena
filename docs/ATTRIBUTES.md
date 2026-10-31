@@ -2221,3 +2221,12 @@ Look: <head>.InkHit (InkSplash, InkDrip); model.InkBlindedTag (Blot, Text "BLIND
 | SkillTree.TETHER_RANGE_90 | SkillTree constant | true: tetherRange 90 (false = 60) |
 | MechaTetherTiltAim | MechaButtons script | default true: camera tilt sets the circle distance, ground-only placement (false = 1.20 crosshair ray) |
 | TetherGroundOnly | TetherServer script | default true: the landing ray skips Trees / Rocks / EdgeWalls |
+
+## Tether aim mode (MechaButtons 1.22 / SprintTest 1.11)
+| Attribute | Where | Meaning |
+|---|---|---|
+| MechaTetherAimMode | MechaButtons script | default true: tap = top-down aim mode, tap again = fire (false = hold-to-aim) |
+| TetherAiming | character (client) | true while in aim mode (SprintTest walks only) |
+| MechaTetherAim / MechaTetherAimEnd | character (client) | tactical / idle; fired / cancel / timeout / gone / cooldown |
+| SprintTetherAimEnabled | SprintTest script | default true; false = running allowed while aiming |
+Look: ScreenGui TetherAimHud (Tag, Timer, Cancel); TetherAim disc + TetherAimLine (client only).

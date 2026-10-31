@@ -1,4 +1,4 @@
--- SprintTest v1.10 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.11 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -35,6 +35,10 @@
 --   (HeadbuttSelfSlowUntil) is skipped while the dash runs (Kepu: "instantly overrides the headbutt ... speed debuff");
 --   other slows and the roar debuff still apply. MoveSpeedParts can include "servodash". Switch: script attribute
 --   SprintServoDashEnabled (default true, read each apply; false = 1.9).
+-- v1.11 (Tether Spike aim mode, MechaButtons 1.22): while the character attribute TetherAiming is true the dino never runs
+--   (Shift / AutoRun ignored, Sprinting false, so no stamina drain) and moves at MoveWalkSpeed (or slower: roar, exhausted,
+--   creep and the slows still apply). Switch: script attribute SprintTetherAimEnabled (default true, read each apply;
+--   false = 1.10).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -112,7 +116,10 @@ local sprinting = false
 local runRemote = ReplicatedStorage:WaitForChild("DinoRunRequest", 10) -- v1.4
 local runSent -- v1.4: last run key state sent to the server
 local scheduledUntil -- v1.3: debuff end time an expiry re-apply is already scheduled for
-local function running() return sprinting or char:GetAttribute("AutoRun") == true end -- v1.5
+local function running() -- v1.5; v1.11: never while aiming the Tether Spike
+	if char:GetAttribute("TetherAiming") == true and script:GetAttribute("SprintTetherAimEnabled") ~= false then return false end
+	return sprinting or char:GetAttribute("AutoRun") == true
+end
 local apply
 function apply()
 	local source
@@ -190,6 +197,7 @@ char:GetAttributeChangedSignal("DebuffUntil"):Connect(apply)    -- v1.3
 char:GetAttributeChangedSignal("DebuffSpeedMul"):Connect(apply) -- v1.3
 char:GetAttributeChangedSignal("Exhausted"):Connect(apply)      -- v1.4
 char:GetAttributeChangedSignal("AutoRun"):Connect(apply)        -- v1.5
+char:GetAttributeChangedSignal("TetherAiming"):Connect(apply)   -- v1.11
 for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil", "EnergyShieldSpeedMul", "ScreechSlowUntil",
 	"MineSlowUntil", "MineSlowMul", "HeadbuttSlowUntil", "HeadbuttSlowMul", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul",
 	"ServoDashUntil", "ServoDashSpeedMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*

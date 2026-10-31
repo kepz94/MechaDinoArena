@@ -1,4 +1,4 @@
--- MechaButtons v1.21 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.22 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -136,6 +136,30 @@
 --     to the flat part only (no tilt); the camera follows that flat direction.
 --   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
 --   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
+-- v1.22 (Kepu 2026-10-30: "when I click tether spike it changes the camera angle where I only aim as I'm strafe walking. It
+--   shows like a launcher pov where I can properly aim. Just like dedicated aiming" -> mockup
+--   docs/mockups/pachy_tether_aim_options.html B "Top-down tactical"; fire: tap Tether again; cancel: CANCEL button +
+--   timeout; move: strafe at walk speed). With script attribute MechaTetherAimMode (default true, read at each press;
+--   false = 1.21 hold-to-aim) the Tether Spike no longer uses hold-to-aim:
+--   * press (key or button, tap) while the tether is ready (TetherEnabled, TetherReadyAt passed) = enter aim mode; press
+--     again (or PC left click) = fire DinoTetherRequest(stamp, circle centre) and leave; CANCEL button / right click / Q
+--     = leave without firing; TAC_TIMEOUT (6) s = leave without firing; death / respawn / the part leaving the slot =
+--     leave. A press while cooling does nothing (MechaTetherAimEnd "cooldown").
+--   * camera: RenderStep "TetherTacCam" (Camera + 10): Scriptable, high above (TAC_HEIGHT 85 studs) and TAC_BACK (28)
+--     behind a point TAC_AHEAD (35) studs ahead of the pachy, looking down at it; the yaw is fixed at the moment you
+--     enter (forward = up on screen) and it follows the pachy's position. ShoulderCamEnabled and TurnLimitEnabled are set
+--     false while aiming (put back as they were after), the mouse is free and shown.
+--   * circle: "TetherAim" (as 1.20) starting TAC_START (40) studs ahead; PC: under the mouse cursor (ray on the ground,
+--     trees / rocks / grass / dinos skipped); touch: a drag that starts on the right 60% of the screen (not on a button)
+--     moves it TAC_DRAG (0.18) studs per pixel. Kept 6 .. TetherRange studs from the pachy, snapped onto the ground
+--     (same skip list). A neon line "TetherAimLine" runs from the pachy to it.
+--   * the pachy turns to face the circle every frame (AutoRotate off) and moves with the normal controls relative to the
+--     fixed camera, so it strafes; SprintTest 1.11 keeps it at walk speed while the character attribute TetherAiming is
+--     true.
+--   * HUD: ScreenGui "TetherAimHud" (DisplayOrder 7): "TETHER AIM - tap TETHER to fire" (PC: "click or TETHER key to
+--     fire") tag at the top centre, the seconds left under it, and a CANCEL button under that.
+--   Diagnostics: MechaTetherAim ("tactical" / "idle"), MechaTetherAimEnd ("fired" / "cancel" / "timeout" / "gone" /
+--   "cooldown"), MechaTetherAimDist, MechaTetherFired. Character attribute TetherAiming (true while in aim mode).
 -- v1.21 (Kepu 2026-10-30 after playing v205: "that was so wonky trying to aim that ... It was locking onto the top of trees
 --   too and everything" -> "Camera tilt = distance"): with script attribute MechaTetherTiltAim (default true, read each
 --   frame; false = 1.20 crosshair ray) the landing circle no longer follows what the screen's centre ray hits. Instead:
@@ -182,7 +206,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.21"
+local VERSION = "1.22"
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -236,7 +260,9 @@ if B3_BTN then -- v1.19: pachy parts batch 3
 end
 if TETHER_BTN then TIMED_PARTS.tether = {"Tether", "DinoTetherRequest", "TETHER SPIKE"} end -- v1.20
 -- v1.20: parts that use hold-to-aim
-local function aimedPart(id) return id == "screech" or (TETHER_BTN and id == "tether") end
+local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off
+	return id == "screech" or (TETHER_BTN and id == "tether" and script:GetAttribute("MechaTetherAimMode") == false)
+end
 local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
 local aim -- v1.8: {slot, t0, input, gesture, part}
 
@@ -481,9 +507,237 @@ RunService.RenderStepped:Connect(function(dt)
 	aim.part.CFrame = CFrame.lookAt(base + look * (4 + len / 2), base + look * (5 + len / 2))
 end)
 
+-- v1.22: Tether Spike tactical aim mode (see the header)
+if script:GetAttribute("MechaTetherAimMode") == nil then script:SetAttribute("MechaTetherAimMode", true) end
+local ContextActionService = game:GetService("ContextActionService")
+local TAC_HEIGHT, TAC_BACK, TAC_AHEAD, TAC_TIMEOUT, TAC_DRAG, TAC_START = 85, 28, 35, 6, 0.18, 40
+local tac -- {slot, t0, disc, line, gui, fwd, flat, landPos, conns, prev*}
+local function tacOn() return TETHER_BTN and script:GetAttribute("MechaTetherAimMode") ~= false end
+local tacRay = RaycastParams.new()
+tacRay.FilterType = Enum.RaycastFilterType.Exclude
+local function tacExclude()
+	local ex = {}
+	if tac then
+		if tac.disc then table.insert(ex, tac.disc) end
+		if tac.line then table.insert(ex, tac.line) end
+	end
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	for _, n in ipairs({"Trees", "Rocks", "TallGrass", "Bots", "EdgeWalls", "Prey"}) do
+		local f = isl and isl:FindFirstChild(n)
+		if f then table.insert(ex, f) end
+	end
+	for _, n in ipairs({"DinoFX", "DinoFX_Local"}) do
+		local f = workspace:FindFirstChild(n)
+		if f then table.insert(ex, f) end
+	end
+	tacRay.FilterDescendantsInstances = ex
+	return tacRay
+end
+local function tacEnd(fire, why)
+	local s = tac
+	if not s then return end
+	tac = nil
+	pcall(function() RunService:UnbindFromRenderStep("TetherTacCam") end)
+	pcall(function() ContextActionService:UnbindAction("TetherTacInput") end)
+	for _, c in ipairs(s.conns) do c:Disconnect() end
+	for _, x in ipairs({s.disc, s.line, s.gui}) do if x then x:Destroy() end end
+	local cam = workspace.CurrentCamera
+	if cam and s.prevFov then cam.FieldOfView = s.prevFov end
+	char:SetAttribute("TetherAiming", false)
+	char:SetAttribute("TurnLimitEnabled", s.prevTurn)
+	char:SetAttribute("ShoulderCamEnabled", s.prevCam)
+	if hum and s.prevTurn == false then hum.AutoRotate = true end
+	char:SetAttribute("MechaTetherAimEnd", why)
+	char:SetAttribute("MechaTetherAim", "idle")
+	if fire and typeof(s.landPos) == "Vector3" then
+		local r = ReplicatedStorage:FindFirstChild("DinoTetherRequest")
+		if r then
+			r:FireServer(workspace:GetServerTimeNow(), s.landPos)
+			char:SetAttribute("MechaTetherFired", (char:GetAttribute("MechaTetherFired") or 0) + 1)
+		end
+	end
+end
+local function tacStep(dt)
+	local s = tac
+	if not s then return end
+	if not char.Parent or not hum or hum.Health <= 0 or slotPart(s.slot) ~= "tether" then tacEnd(false, "gone") return end
+	if os.clock() - s.t0 > TAC_TIMEOUT then tacEnd(false, "timeout") return end
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+	local range = math.max(1, tonumber(char:GetAttribute("TetherRange")) or 90)
+	local base = Vector3.new(hrp.Position.X, 0, hrp.Position.Z)
+	-- the camera: high above, looking down at the area ahead (yaw fixed at the start)
+	local center = hrp.Position + s.fwd * TAC_AHEAD
+	local eye = center + Vector3.new(0, TAC_HEIGHT, 0) - s.fwd * TAC_BACK
+	cam.CameraType = Enum.CameraType.Scriptable
+	cam.CFrame = CFrame.lookAt(eye, center)
+	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	UserInputService.MouseIconEnabled = true
+	-- where the circle goes: the mouse (PC) or the drag (touch)
+	if UserInputService.MouseEnabled and not s.touched then
+		local mp = UserInputService:GetMouseLocation()
+		local ray = cam:ViewportPointToRay(mp.X, mp.Y)
+		local hit = workspace:Raycast(ray.Origin, ray.Direction * 1000, tacExclude())
+		local p = hit and hit.Position or (ray.Origin + ray.Direction * ((ray.Origin.Y - hrp.Position.Y) / math.max(0.05, -ray.Direction.Y)))
+		s.flat = Vector3.new(p.X, 0, p.Z)
+	end
+	local off = s.flat - base
+	if off.Magnitude > range then off = off.Unit * range end
+	if off.Magnitude < 6 then off = (off.Magnitude > 1e-3 and off.Unit or s.fwd) * 6 end
+	s.flat = base + off
+	local g = workspace:Raycast(Vector3.new(s.flat.X, hrp.Position.Y + 80, s.flat.Z), Vector3.new(0, -260, 0), tacExclude())
+	local gp = g and g.Position or Vector3.new(s.flat.X, hrp.Position.Y - 3, s.flat.Z)
+	s.landPos = gp
+	s.disc.CFrame = CFrame.new(gp + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	local from = Vector3.new(hrp.Position.X, gp.Y + 0.35, hrp.Position.Z)
+	local to = gp + Vector3.new(0, 0.35, 0)
+	local L = math.max(0.1, (to - from).Magnitude)
+	s.line.Size = Vector3.new(0.35, 0.1, L)
+	s.line.CFrame = CFrame.lookAt(from:Lerp(to, 0.5), to)
+	-- the pachy faces the circle and walks / strafes without turning
+	hum.AutoRotate = false
+	local face = Vector3.new(gp.X, hrp.Position.Y, gp.Z)
+	if (face - hrp.Position).Magnitude > 0.5 then hrp.CFrame = CFrame.lookAt(hrp.Position, face) end
+	local left = math.max(0, TAC_TIMEOUT - (os.clock() - s.t0))
+	if s.timer then s.timer.Text = ("%.1fs"):format(left) end
+	char:SetAttribute("MechaTetherAimDist", math.floor(off.Magnitude * 10 + 0.5) / 10)
+end
+local function tacStart(n)
+	if tac or not hrp or not hum or hum.Health <= 0 then return end
+	if char:GetAttribute("TetherEnabled") ~= true then return end
+	if (tonumber(char:GetAttribute("TetherReadyAt")) or 0) > workspace:GetServerTimeNow() then
+		char:SetAttribute("MechaTetherAimEnd", "cooldown")
+		return
+	end
+	local cam = workspace.CurrentCamera
+	local f = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+	f = f.Magnitude > 1e-3 and f.Unit or Vector3.new(0, 0, -1)
+	local splash = math.max(1, tonumber(char:GetAttribute("TetherSplash")) or 8)
+	local disc = Instance.new("Part")
+	disc.Name = "TetherAim"
+	disc.Shape = Enum.PartType.Cylinder
+	disc.Size = Vector3.new(0.2, splash * 2, splash * 2)
+	disc.Color = Color3.fromRGB(255, 200, 50)
+	disc.Material = Enum.Material.Neon
+	disc.Transparency = 0.5
+	disc.Anchored, disc.CanCollide, disc.CanQuery, disc.CanTouch, disc.CastShadow = true, false, false, false, false
+	local hl = Instance.new("Highlight")
+	hl.FillColor, hl.OutlineColor = disc.Color, Color3.new(1, 1, 1)
+	hl.FillTransparency, hl.OutlineTransparency = 0.6, 0.1
+	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	hl.Parent = disc
+	disc.Parent = workspace
+	local line = Instance.new("Part")
+	line.Name = "TetherAimLine"
+	line.Color = Color3.fromRGB(255, 200, 50)
+	line.Material = Enum.Material.Neon
+	line.Transparency = 0.35
+	line.Anchored, line.CanCollide, line.CanQuery, line.CanTouch, line.CastShadow = true, false, false, false, false
+	line.Parent = workspace
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "TetherAimHud"
+	gui.ResetOnSpawn = true
+	gui.DisplayOrder = 7
+	gui.IgnoreGuiInset = true
+	local tag = Instance.new("TextLabel")
+	tag.Name = "Tag"
+	tag.AnchorPoint = Vector2.new(0.5, 0)
+	tag.Position = UDim2.new(0.5, 0, 0, 58)
+	tag.Size = UDim2.fromOffset(330, 34)
+	tag.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	tag.BackgroundTransparency = 0.35
+	tag.Font = Enum.Font.FredokaOne
+	tag.TextSize = 18
+	tag.TextColor3 = Color3.fromRGB(255, 200, 50)
+	tag.Text = UserInputService.TouchEnabled and not UserInputService.MouseEnabled and "TETHER AIM \u{00B7} tap TETHER to fire"
+		or "TETHER AIM \u{00B7} click or TETHER key to fire"
+	tag.Parent = gui
+	local tc = Instance.new("UICorner")
+	tc.CornerRadius = UDim.new(0.5, 0)
+	tc.Parent = tag
+	local timer = Instance.new("TextLabel")
+	timer.Name = "Timer"
+	timer.AnchorPoint = Vector2.new(0.5, 0)
+	timer.Position = UDim2.new(0.5, 0, 0, 96)
+	timer.Size = UDim2.fromOffset(80, 22)
+	timer.BackgroundTransparency = 1
+	timer.Font = Enum.Font.GothamBold
+	timer.TextSize = 14
+	timer.TextColor3 = Color3.new(1, 1, 1)
+	timer.TextStrokeTransparency = 0.4
+	timer.Parent = gui
+	local cancel = Instance.new("TextButton")
+	cancel.Name = "Cancel"
+	cancel.AnchorPoint = Vector2.new(0.5, 0)
+	cancel.Position = UDim2.new(0.5, 0, 0, 122)
+	cancel.Size = UDim2.fromOffset(120, 38)
+	cancel.BackgroundColor3 = PANEL
+	cancel.BackgroundTransparency = 0.15
+	cancel.AutoButtonColor = true
+	cancel.Font = Enum.Font.FredokaOne
+	cancel.TextSize = 18
+	cancel.TextColor3 = Color3.new(1, 1, 1)
+	cancel.Text = "CANCEL"
+	cancel.Parent = gui
+	local cc = Instance.new("UICorner")
+	cc.CornerRadius = UDim.new(0.3, 0)
+	cc.Parent = cancel
+	local cs = Instance.new("UIStroke")
+	cs.Color = ORANGE
+	cs.Thickness = 2
+	cs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	cs.Parent = cancel
+	gui.Parent = player:WaitForChild("PlayerGui")
+	tac = {slot = n, t0 = os.clock(), disc = disc, line = line, gui = gui, timer = timer, fwd = f,
+		flat = Vector3.new(hrp.Position.X, 0, hrp.Position.Z) + f * TAC_START, conns = {},
+		prevTurn = char:GetAttribute("TurnLimitEnabled"), prevCam = char:GetAttribute("ShoulderCamEnabled"),
+		prevFov = cam and cam.FieldOfView}
+	table.insert(tac.conns, cancel.Activated:Connect(function() tacEnd(false, "cancel") end))
+	-- touch: a drag that starts on the right side of the screen (not on a button) moves the circle
+	local drags = {}
+	table.insert(tac.conns, UserInputService.TouchStarted:Connect(function(input, processed)
+		if processed or not tac then return end
+		local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1000, 600)
+		if input.Position.X > vp.X * 0.4 then drags[input] = Vector2.new(input.Position.X, input.Position.Y) end
+	end))
+	table.insert(tac.conns, UserInputService.TouchMoved:Connect(function(input)
+		local last = drags[input]
+		if not (last and tac) then return end
+		local now = Vector2.new(input.Position.X, input.Position.Y)
+		local d = now - last
+		drags[input] = now
+		local rt = Vector3.new(-tac.fwd.Z, 0, tac.fwd.X) -- screen right = the camera's right (yaw fixed)
+		tac.touched = true
+		tac.flat += (rt * d.X + tac.fwd * (-d.Y)) * TAC_DRAG
+	end))
+	table.insert(tac.conns, UserInputService.TouchEnded:Connect(function(input) drags[input] = nil end))
+	ContextActionService:BindActionAtPriority("TetherTacInput", function(_, state, input)
+		if state ~= Enum.UserInputState.Begin then return Enum.ContextActionResult.Sink end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			tacEnd(true, "fired")
+		else
+			tacEnd(false, "cancel")
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.ContextActionPriority.High.Value + 50, Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2,
+		Enum.KeyCode.Q)
+	char:SetAttribute("ShoulderCamEnabled", false)
+	char:SetAttribute("TurnLimitEnabled", false)
+	char:SetAttribute("TetherAiming", true)
+	char:SetAttribute("MechaTetherAim", "tactical")
+	char:SetAttribute("MechaTetherAimEnd", nil)
+	RunService:BindToRenderStep("TetherTacCam", Enum.RenderPriority.Camera.Value + 10, tacStep)
+end
+char.AncestryChanged:Connect(function(_, parent) if not parent then tacEnd(false, "gone") end end)
+
 local function press(n, input)
 	local id = slotPart(n)
 	char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(n, id or "empty"))
+	if tacOn() and id == "tether" then -- v1.22: tap = aim mode, tap again = fire
+		if tac then tacEnd(true, "fired") else tacStart(n) end
+		return
+	end
 	if aimedPart(id) then -- v1.8: start the aim; the release fires (v1.20: + tether)
 		aimStart(n, input, false)
 		return
