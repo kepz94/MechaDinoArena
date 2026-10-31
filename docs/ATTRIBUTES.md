@@ -2443,3 +2443,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | HERRERA_SIPHON_PASSIVE / HERRERA_IRONCLAW_PASSIVE (module flags) | SkillTree | true / true | SkillTree 1.42 |
 | SkillEffectsHerreraPassiveEnabled | SkillEffects script | true | SkillEffects 1.28 |
 | HERRERA_PLATING_PASSIVE (module flag) | SkillTree | true | SkillTree 1.42 |
+| HerreraMovesFXSmokeOutlineEnabled / HerreraMovesFX_SmokeOwnOutlineTransparency / _SmokeOutlineTransparency | HerreraMovesFX script | true / 0.92 / 0.15 | HerreraMovesFX 1.2 |

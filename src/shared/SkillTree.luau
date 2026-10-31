@@ -108,7 +108,8 @@
 --   loadout slot holding it is dropped by sanitizeLoadout (not slottable). Step texts and effects unchanged.
 --   Kepu, right after: "And claws" -> SkillTree.HERRERA_IRONCLAW_PASSIVE (default true): "ironclaw" (Iron Claw) leaves
 --   BUTTONS the same way. Then "Yes make it passive too" -> SkillTree.HERRERA_PLATING_PASSIVE (default true): "plating"
---   (Back Plating) too.
+--   (Back Plating) too. Then Kepu "Boost the darts up 8" (picked "5 / 6 / 7 / 8"): HERRERA_QUILL_COUNTS = 5 / 6 / 7 / 8
+--   (1.41: 3 / 4 / 5 / 6) and the Quill Launcher step texts.
 -- v1.41 (Kepu 2026-10-31 after playing pass 2: "We need the smoke cloud to be way bigger and thicker. Also lower the
 --   quill count to 6 quills"; picked smoke "B · 28 studs, 260 puffs" and quills "3 / 4 / 5 / 6"): switch
 --   SkillTree.HERRERA_TUNE_1 (default true). effects() is wrapped (the 1.38 maths unchanged inside): on a Herrera with the
@@ -856,6 +857,7 @@ SkillTree.HERRERA_PASS2_SOON = false -- v1.40: pass 2 built
 -- v1.41: Kepu's tuning after playing pass 2 (step texts here, numbers in the effects() wrapper at the end)
 SkillTree.HERRERA_TUNE_1 = true
 SkillTree.HERRERA_QUILL_COUNTS = {3, 4, 5, 6}
+SkillTree.HERRERA_QUILL_COUNTS = {5, 6, 7, 8} -- v1.42: "Boost the darts up 8"
 SkillTree.HERRERA_SMOKE_RADIUS = 28
 -- v1.42: Blood Siphon is passive (no slot)
 SkillTree.HERRERA_SIPHON_PASSIVE = true
@@ -866,8 +868,8 @@ SkillTree.HERRERA_PLATING_PASSIVE = true -- v1.42: "Yes make it passive too"
 if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_PLATING_PASSIVE then SkillTree.BUTTONS.plating = nil end
 if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_TUNE_1 then
 	if SkillTree.PATHS.quills then
-		SkillTree.PATHS.quills.steps = {"Button: fire 3 quills at your target, 4 damage each (40 studs). Recharges in 20 s",
-			"4 quills", "5 quills", "6 quills"}
+		SkillTree.PATHS.quills.steps = {"Button: fire 5 quills at your target, 4 damage each (40 studs). Recharges in 20 s",
+			"6 quills", "7 quills", "8 quills"} -- v1.42 (1.41: 3 / 4 / 5 / 6)
 	end
 	if SkillTree.PATHS.smoke then
 		SkillTree.PATHS.smoke.steps = {"Button: a big smoke cloud (28 studs) for 4 s. Inside it your name and health bar are hidden and bots lose you. Recharges in 18 s",

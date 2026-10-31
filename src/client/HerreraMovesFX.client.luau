@@ -1,4 +1,4 @@
--- HerreraMovesFX v1.1 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
+-- HerreraMovesFX v1.2 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/HERRERA_PARTS_v1.0.md Parts 3, 4, 7, 8 and "Pass 2 — build map"; the moves are
 -- HerreraMovesServer 1.0, the looks HerreraPartsServer 1.2. Runs for every player character (yours and others') and for
 -- Workspace.DinoIsland.Bots. Everything is local (Workspace "HerreraMovesFX"), nothing is replicated.
@@ -26,10 +26,16 @@
 --   clouds). Defaults = Kepu's pick from Studio captures (docs/reference/herrera/smoke_size_B.jpg, "B · 28 studs, 260
 --   puffs"; own view "Half see-through"): 260 puffs, x2.2 puffs, own 0.4, others 0 (solid). 1.0 was 70 / x1 / 0.6 / 0.1.
 --   The cloud radius itself is SkillTree 1.41 (28 studs).
+-- v1.2 (Kepu 2026-10-31: "For the smoke allow me to see right through it just see the outline of the smoke"; picked
+--   "Clear inside, white outline"): your OWN cloud's puffs are drawn at HerreraMovesFX_SmokeOwnOutlineTransparency
+--   (default 0.92) inside a Model "OwnSmoke" with a Highlight (fill off, white outline, OutlineTransparency
+--   HerreraMovesFX_SmokeOutlineTransparency default 0.15), so you see through it and only its outline shows. Other
+--   players' clouds are unchanged (solid). Switch: script attribute HerreraMovesFXSmokeOutlineEnabled (default true, read
+--   at each cloud; false = 1.1, own cloud at SmokeOwnTransparency).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local QUILL_GAP, QUILL_SPEED = 0.045, 90
 local SMOKE_PUFFS = 70
 local HOT = Color3.fromRGB(255, 98, 18)
@@ -217,6 +223,21 @@ local function smokeCloud(char)
 	local puffs = math.clamp(math.floor(tun("SmokePuffs", 260)), 1, 400)
 	local puffScale = math.max(0.1, tun("SmokePuffScale", 2.2))
 	local ownT, otherT = math.clamp(tun("SmokeOwnTransparency", 0.4), 0, 1), math.clamp(tun("SmokeOtherTransparency", 0), 0, 1)
+	local holder -- v1.2: your own cloud, see-through with a white outline
+	if mine and script:GetAttribute("HerreraMovesFXSmokeOutlineEnabled") ~= false then
+		ownT = math.clamp(tun("SmokeOwnOutlineTransparency", 0.92), 0, 0.99)
+		holder = Instance.new("Model")
+		holder.Name = "OwnSmoke"
+		local hl = Instance.new("Highlight")
+		hl.FillTransparency = 1
+		hl.OutlineColor = WHITE
+		hl.OutlineTransparency = math.clamp(tun("SmokeOutlineTransparency", 0.15), 0, 1)
+		hl.DepthMode = Enum.HighlightDepthMode.Occluded
+		hl.Adornee = holder
+		hl.Parent = holder
+		holder.Parent = fxFolder
+		task.delay(life + 0.5, function() holder:Destroy() end)
+	end
 	for i = 1, puffs do
 		local nz = #nozzles > 0 and nozzles[(i - 1) % #nozzles + 1]
 		local from = nz and nz.Parent and nz.Position or center
@@ -227,6 +248,7 @@ local function smokeCloud(char)
 		local r = (0.8 + math.random() * 1.3) * s * puffScale -- v1.1: x puffScale
 		local grey = 0.86 + math.random() * 0.14
 		local puff = fxPart(Vector3.one * 0.2, Color3.new(grey, grey, grey), CFrame.new(from), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+		if holder then puff.Parent = holder end -- v1.2
 		local baseT = mine and ownT or otherT -- v1.1 (1.0: 0.6 / 0.1)
 		puff.Transparency = baseT
 		local wob = math.random() * math.pi * 2
