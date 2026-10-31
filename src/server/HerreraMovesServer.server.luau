@@ -1,4 +1,4 @@
--- HerreraMovesServer v1.2 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
+-- HerreraMovesServer v1.3 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
 -- (MDA-151), Smoke Pods (MDA-152), Strobe Frill (MDA-155), Stun Breaker (MDA-156), and the Glider Wings' glide state
 -- (MDA-150). Plan docs/plans/HERRERA_PARTS_v1.0.md (Parts 2, 3, 4, 7, 8 and "Pass 2 — build map"); Kepu 2026-10-31.
 -- Settings come from the character (SkillEffects 1.27, a Herrera with the part bought AND slotted):
@@ -79,12 +79,18 @@
 --   down) is slowed: player GooSlowMul / GooSlowUntil (now + 0.3), bot WalkSpeed x GooSlowMul. Owner stamps: GooLand,
 --   GooAssistTarget, GooFiredAt (last). Switches: HerreraMoves_caltropsEnabled, HerreraMoves_gooEnabled,
 --   HerreraMoves_gooAssistEnabled (default true each). Diagnostics: script CaltropDrops, CaltropTriggers, GooShots.
+-- v1.3 (Kepu 2026-10-31 "the spikes need a better animation as it falls out they just appear"; mockup
+--   docs/mockups/herrera_caltrops_drop_options.html, picked "A · Chute spray" + "When it lands"): each spike now arms only
+--   when its drop animation (HerreraMovesFX 1.4) lands: spike i (0-based) armAt = DroppedAt + i x CALTROP_ARM_GAP (0.035 s)
+--   + CALTROP_ARM_FLY (0.42 s); the trigger loop skips a spike while now < armAt. The patch publishes the two numbers as
+--   Configuration attributes ArmGap / ArmFly so the clients animate on the same clock. Switch: script attribute
+--   HerreraMoves_caltropArmOnLandEnabled (default true, read at each drop; false = 1.2, armed on press, ArmGap / ArmFly 0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local QUILL_GAP, QUILL_SPEED, QUILL_CONE = 0.045, 90, math.rad(35)
 local SMOKE_TICK = 0.1
 local STROBE_WINDUP = 0.15
@@ -93,7 +99,8 @@ local BREAK_PUSH_TIME = 0.3
 script:SetAttribute("HerreraMovesServerVersion", VERSION)
 for _, k in ipairs({"HerreraMovesServerEnabled", "HerreraMoves_quillsEnabled", "HerreraMoves_smokeEnabled",
 	"HerreraMoves_strobeEnabled", "HerreraMoves_breakerEnabled", "HerreraMoves_gliderEnabled", "HerreraMovesModeRulesEnabled",
-	"HerreraMoves_caltropsEnabled", "HerreraMoves_gooEnabled", "HerreraMoves_gooAssistEnabled"}) do -- v1.2: + pass 3
+	"HerreraMoves_caltropsEnabled", "HerreraMoves_gooEnabled", "HerreraMoves_gooAssistEnabled",
+	"HerreraMoves_caltropArmOnLandEnabled"}) do -- v1.2: + pass 3; v1.3: + arm on land
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function on(id)
@@ -601,9 +608,12 @@ caltropRemote.OnServerEvent:Connect(function(player, stamp)
 	local r = math.max(1, num(char, "CaltropRadius", 5)) * s
 	local center = root.Position - facing(root) * (r + 4 * s)
 	local spikes = {}
+	local armOn = script:GetAttribute("HerreraMoves_caltropArmOnLandEnabled") ~= false -- v1.3
+	local armGap, armFly = armOn and 0.035 or 0, armOn and 0.42 or 0
 	for i = 0, n - 1 do
 		local a, d = i * 2.39996, r * math.sqrt((i + 0.5) / n)
-		spikes[i + 1] = {pos = groundBelow(center + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)), used = false}
+		spikes[i + 1] = {pos = groundBelow(center + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)), used = false,
+			armAt = t + i * armGap + armFly} -- v1.3
 	end
 	local cfg = Instance.new("Configuration")
 	cfg.Name = "Patch_" .. player.UserId
@@ -615,6 +625,8 @@ caltropRemote.OnServerEvent:Connect(function(player, stamp)
 	cfg:SetAttribute("Scale", s)
 	cfg:SetAttribute("Spikes", spikesJson(pt))
 	cfg:SetAttribute("DroppedAt", t)
+	cfg:SetAttribute("ArmGap", armGap) -- v1.3
+	cfg:SetAttribute("ArmFly", armFly)
 	cfg.Parent = patchFolder
 	patches[char] = pt
 	char:SetAttribute("CaltropDroppedAt", t) -- last: HerreraMovesFX rattles the hopper
@@ -763,7 +775,7 @@ RunService.Heartbeat:Connect(function(dt)
 					if t - (pt.last[m] or -9) >= 0.35 and not shielded(m, t) then
 						local reach = 1.6 * pt.scale + 1.5 * scaleOf(m)
 						for _, sp in ipairs(pt.spikes) do
-							if not sp.used and flat(root.Position - sp.pos).Magnitude <= reach
+							if not sp.used and t >= (sp.armAt or 0) and flat(root.Position - sp.pos).Magnitude <= reach -- v1.3: armAt
 								and math.abs(root.Position.Y - sp.pos.Y) <= 12 * pt.scale then
 								sp.used, changed = true, true
 								pt.last[m] = t

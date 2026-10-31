@@ -1,4 +1,4 @@
--- HerreraMovesFX v1.3 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
+-- HerreraMovesFX v1.4 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/HERRERA_PARTS_v1.0.md Parts 3, 4, 7, 8 and "Pass 2 — build map"; the moves are
 -- HerreraMovesServer 1.0, the looks HerreraPartsServer 1.2. Runs for every player character (yours and others') and for
 -- Workspace.DinoIsland.Bots. Everything is local (Workspace "HerreraMovesFX"), nothing is replicated.
@@ -39,11 +39,24 @@
 --   a patch: everyone while Hidden is false; while Hidden is true (star) only its owner (drawn at 0.5 transparency) and
 --   the owner's squadmates (ReplicatedStorage.SquadShared.SquadRules.same). A new patch appears at once (no drop animation).
 --   Switch: script attribute HerreraMovesFXCaltropsEnabled (default true, read at each update; false = no spikes drawn).
+-- v1.4 (Kepu 2026-10-31, mockup docs/mockups/herrera_caltrops_drop_options.html, picked "A · Chute spray"): a new patch's
+--   spikes no longer appear at once. Spike i (1-based) leaves the owner's Tail Spreader chute (HPart_caltrops piece with
+--   HPartRole "chute"; else the owner's Tail1_main; else 6 x Scale studs above its spot) at DroppedAt + (i - 1) x ArmGap
+--   and flies ArmFly s (the patch's attributes from HerreraMovesServer 1.3, default 0.035 / 0.42) on an arc (peak + 4 x
+--   Scale studs) to its spot, tumbling; it is hidden (LocalTransparencyModifier 1) until it leaves. On landing: two small
+--   hops (0.8 x Scale studs over 0.12 s, then 0.28 x Scale over 0.08 s) and a tan dust puff (3 balls, 0.35 s). Clock:
+--   workspace:GetServerTimeNow(), so a client that sees the patch late joins the animation part-way; a spike that is
+--   already past its landing when drawn appears at once (as 1.3). The server arms each spike when it lands (1.3).
+--   Hopper kick: when an owner's CaltropDroppedAt changes, the HPart_caltrops pieces are hidden locally
+--   (LocalTransparencyModifier 1) and anchored copies follow them for 0.45 s with a decaying shake (back along the
+--   facing, 0.25 x scale studs, + small roll), then the copies are removed and the pieces shown again. Switches: script
+--   attributes HerreraMovesFXCaltropDropEnabled and HerreraMovesFXCaltropKickEnabled (default true, read at each patch /
+--   drop; false = 1.3). Diagnostics: script CaltropFlights (spikes animated), CaltropKicks.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local QUILL_GAP, QUILL_SPEED = 0.045, 90
 local SMOKE_PUFFS = 70
 local HOT = Color3.fromRGB(255, 98, 18)
@@ -540,6 +553,131 @@ do
 			end)
 		end
 	end
+	-- v1.4: chute spray -------------------------------------------------------------------------------------------------
+	for _, k in ipairs({"HerreraMovesFXCaltropDropEnabled", "HerreraMovesFXCaltropKickEnabled"}) do
+		if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+	end
+	local DUST = Color3.fromRGB(196, 176, 138)
+	local function bump(k) script:SetAttribute(k, (script:GetAttribute(k) or 0) + 1) end
+	local function ownerChar(cfg)
+		local pl = Players:GetPlayerByUserId(cfg:GetAttribute("OwnerUserId") or 0)
+		return pl and pl.Character or nil
+	end
+	local function chutePos(cfg)
+		local c = ownerChar(cfg)
+		if not c then return nil end
+		local ch = pieces(c, "caltrops", "chute")[1]
+		if ch then return ch.Position end
+		local tail = c:FindFirstChild("Tail1_main", true)
+		return tail and tail:IsA("BasePart") and tail.Position or nil
+	end
+	local function setHidden(m, on1)
+		for _, p in ipairs(m:GetDescendants()) do
+			if p:IsA("BasePart") then p.LocalTransparencyModifier = on1 and 1 or 0 end
+		end
+	end
+	local function dust(pos, sc, transp)
+		for k = 1, 3 do
+			local a = k * 2.1
+			local b = fxPart(Vector3.new(0.5, 0.5, 0.5) * sc, DUST, CFrame.new(pos), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+			b.Parent = calF
+			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+			animate(0.35, function(u)
+				b.Size = Vector3.new(1, 1, 1) * (0.5 + 1.1 * u) * sc
+				b.CFrame = CFrame.new(pos + dir * 0.9 * u * sc + Vector3.new(0, (0.2 + 0.5 * u) * sc, 0))
+				b.Transparency = math.max(transp, 0.35 + 0.65 * u)
+			end, function() b:Destroy() end)
+		end
+	end
+	local function hop(L, sc)
+		if L < 0.12 then return 0.8 * sc * math.sin(math.pi * L / 0.12) end
+		if L < 0.2 then return 0.28 * sc * math.sin(math.pi * (L - 0.12) / 0.08) end
+		return 0
+	end
+	local function flyIn(d, cfg, m, i, sc, transp)
+		if script:GetAttribute("HerreraMovesFXCaltropDropEnabled") == false then return end
+		local gap, fly = tonumber(cfg:GetAttribute("ArmGap")) or 0.035, tonumber(cfg:GetAttribute("ArmFly")) or 0.42
+		local dropped = tonumber(cfg:GetAttribute("DroppedAt"))
+		if not dropped or fly <= 0 then return end
+		local st = dropped + (i - 1) * gap
+		if workspace:GetServerTimeNow() >= st + fly then return end -- already landed: as 1.3
+		local final = m:GetPivot()
+		if d.from == nil then d.from = chutePos(cfg) or false end
+		local from = d.from or (final.Position + Vector3.new(0, 6 * sc, 0))
+		local rot = final - final.Position
+		local landed = false
+		bump("CaltropFlights")
+		setHidden(m, true)
+		local conn
+		conn = RunService.RenderStepped:Connect(function()
+			if not m.Parent then conn:Disconnect() return end
+			local u = (workspace:GetServerTimeNow() - st) / fly
+			if u < 0 then
+				m:PivotTo(CFrame.new(from) * rot)
+			elseif u < 1 then
+				setHidden(m, false)
+				local p = from:Lerp(final.Position, u) + Vector3.new(0, 4 * sc * 4 * u * (1 - u), 0)
+				m:PivotTo(CFrame.new(p) * CFrame.Angles(u * 9, u * 5, 0) * rot)
+			else
+				if not landed then
+					landed = true
+					setHidden(m, false)
+					dust(final.Position - Vector3.new(0, 0.3 * sc, 0), sc, transp)
+				end
+				local L = (u - 1) * fly
+				if L >= 0.2 then
+					m:PivotTo(final)
+					conn:Disconnect()
+				else
+					m:PivotTo(final + Vector3.new(0, hop(L, sc), 0))
+				end
+			end
+		end)
+	end
+	local function kick(char)
+		if script:GetAttribute("HerreraMovesFXCaltropKickEnabled") == false or not on() then return end
+		local src = pieces(char, "caltrops")
+		if #src == 0 then return end
+		bump("CaltropKicks")
+		local copies = {}
+		for _, p in ipairs(src) do
+			local c = p:Clone()
+			for _, x in ipairs(c:GetChildren()) do
+				if x:IsA("Constraint") or x:IsA("JointInstance") or x:IsA("WeldConstraint") then x:Destroy() end
+			end
+			c.Anchored, c.CanCollide, c.CanQuery, c.CanTouch = true, false, false, false
+			c.Parent = calF
+			p.LocalTransparencyModifier = 1
+			table.insert(copies, {p, c})
+		end
+		local s = char:GetScale()
+		animate(0.45, function(u)
+			local root = char:FindFirstChild("HumanoidRootPart")
+			local back = root and -root.CFrame.LookVector or Vector3.zero
+			local k = math.sin(u * math.pi * 6) * (1 - u)
+			for _, pc in ipairs(copies) do
+				if pc[1].Parent then pc[2].CFrame = (pc[1].CFrame + back * 0.25 * s * k) * CFrame.Angles(0, 0, 0.08 * k) end
+			end
+		end, function()
+			for _, pc in ipairs(copies) do
+				pc[2]:Destroy()
+				if pc[1].Parent then pc[1].LocalTransparencyModifier = 0 end
+			end
+		end)
+	end
+	local kicked = setmetatable({}, {__mode = "k"})
+	local function watchKick(char)
+		if kicked[char] then return end
+		kicked[char] = true
+		char:GetAttributeChangedSignal("CaltropDroppedAt"):Connect(function() kick(char) end)
+	end
+	local function onKickPlayer(p)
+		p.CharacterAdded:Connect(watchKick)
+		if p.Character then watchKick(p.Character) end
+	end
+	Players.PlayerAdded:Connect(onKickPlayer)
+	for _, p in ipairs(Players:GetPlayers()) do onKickPlayer(p) end
+
 	local function update(cfg)
 		local d = drawn[cfg]
 		local visible = on() and script:GetAttribute("HerreraMovesFXCaltropsEnabled") ~= false and cfg.Parent ~= nil
@@ -569,6 +707,7 @@ do
 				d.spikes[i] = false
 			elseif not used and m == nil then
 				d.spikes[i] = spike(d.model, pos, sc, transp, i)
+				flyIn(d, cfg, d.spikes[i], i, sc, transp) -- v1.4
 			end
 		end
 		count()
