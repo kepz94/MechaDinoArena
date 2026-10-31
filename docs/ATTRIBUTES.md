@@ -2444,3 +2444,10 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | SkillEffectsHerreraPassiveEnabled | SkillEffects script | true | SkillEffects 1.28 |
 | HERRERA_PLATING_PASSIVE (module flag) | SkillTree | true | SkillTree 1.42 |
 | HerreraMovesFXSmokeOutlineEnabled / HerreraMovesFX_SmokeOwnOutlineTransparency / _SmokeOutlineTransparency | HerreraMovesFX script | true / 0.92 / 0.15 | HerreraMovesFX 1.2 |
+| SquadId / SquadLeftReason | player | "" or "<userId>_<n>" / "leave"/"switch"/"menu"/"quit"/"dissolved" | SquadServer 1.0 |
+| SquadInviteFrom / SquadInviteFromName / SquadInviteUntil | player | UserId / name / server time | SquadServer 1.0 |
+| SquadInvitedAt_<userId> | player (sender) | server time | SquadServer 1.0 |
+| SquadResult / SquadResultAt | player | result / server time (last) | SquadServer 1.0 |
+| SquadTestId | model (ArenaPvP test target) | squad id | SquadServer 1.0 test hook |
+| SquadsLive | ReplicatedStorage | bool | SquadServer 1.0 |
+| SquadServerEnabled / SquadServerVersion / SquadServerMode / SquadRequests / SquadSquads | SquadServer script | true / "1.0" / mode / count / count | SquadServer 1.0 |
