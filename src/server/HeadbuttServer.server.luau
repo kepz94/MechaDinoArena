@@ -98,13 +98,18 @@
 --   ends with HeadbuttHitResult / HeadbuttResult "visor" (the charge is spent, so the self-slow rule applies as for a
 --   miss) and BoneCrest.visorBlock(target, attacker, "headbutt") runs (BLOCK look; star knockback). Switch: script
 --   attribute HeadbuttVisorEnabled (default true, read each hit; false = 1.8).
+-- v1.10 (Kepu 2026-10-30: the headbutt-beats-pounce rules "should apply to bots"; BotServer 1.21): every hit that is not
+--   blocked by the target's Energy Shield also stamps the target with HeadbuttTakenFrom (attacker root position),
+--   HeadbuttTakenDist (the shove distance) and HeadbuttTakenAt (server time, last), so BotServer can knock a raptor bot
+--   out of a pounce (its body is anchored mid-leap, which this script's ground glide skips: "botBusy"). Switch: script
+--   attribute HeadbuttTakenStampEnabled (default true, read each hit; false = 1.9).
 -- Switch: script attribute HeadbuttServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script HeadbuttServerVersion, HeadbuttRequests, HeadbuttHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
 local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
 if script:GetAttribute("HeadbuttSacrificeRestartsRefill") == nil then script:SetAttribute("HeadbuttSacrificeRestartsRefill", true) end -- v1.7
@@ -512,6 +517,11 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		shoveResult = shoveBot(model, from, get(char, "HeadbuttShove") * domeMul(char, "HeadbuttShoveMul"), get(char, "HeadbuttShoveTime")) -- v1.1
 	end
 	model:SetAttribute("HeadbuttShoveResult", shoveResult)
+	if shoveResult ~= "shielded" and script:GetAttribute("HeadbuttTakenStampEnabled") ~= false then -- v1.10
+		model:SetAttribute("HeadbuttTakenFrom", from)
+		model:SetAttribute("HeadbuttTakenDist", get(char, "HeadbuttShove") * domeMul(char, "HeadbuttShoveMul"))
+		model:SetAttribute("HeadbuttTakenAt", t)
+	end
 	model:SetAttribute("HeadbuttHitBy", char.Name)
 	char:SetAttribute("HeadbuttHitDamage", d)
 	char:SetAttribute("HeadbuttHitTarget", model.Name)

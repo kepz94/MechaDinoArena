@@ -336,12 +336,23 @@
 --   Diagnostic: bot BotHeadbuttGap (the gap at the hit / at the end of the charge, 0.1). Switch: script attribute
 --   BotPachyReachScaled (default true, read each check; false = 1.19 test). Studio at 2x with reach 3 (6): hits at gaps
 --   5.4 - 5.9, misses where the bodies stopped at 7.0 -> BotPachyReach default 4 (8 at 2x).
+-- v1.21 (Kepu 2026-10-30: the PounceServer 1.11 headbutt-beats-pounce rules "should apply to bots"): a raptor bot's pounce
+--   (its start = server time when the pounce began) ends at once, with no latch and no damage, when
+--   * charging: at lunge contact the target's headbutt charge is running (HeadbuttStartedAt .. HeadbuttWindup +
+--     HeadbuttMaxTime + 0.5 s, no HeadbuttEndedAt / HeadbuttHitAt since) and the bot is inside its 60-degree front cone
+--     (= BoneCrest.CONE): the bot drops out of the air (unanchored) in front of the pachy, whose headbutt hits it; or
+--   * headbutted: the bot's HeadbuttTakenAt (HeadbuttServer 1.10) is at or after the pounce start (wind-up or lunge): it
+--     is slid back along the ground HeadbuttTakenDist studs away from HeadbuttTakenFrom over HEADBUTT_KNOCK_TIME (0.35)
+--     s (anchored glide; the AI waits), then carries on.
+--   Either way the pounce cooldown starts. Diagnostics: bot BotPounceCancel ("charging" / "headbutted"); script
+--   BotPounceChargeBlocks, BotPounceHeadbuttCancels. Switches (script, read each check): BotPounceChargeBlockEnabled,
+--   BotPounceHeadbuttCancelEnabled (default true; false = 1.20).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.20"
+local VERSION = "1.21"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -1131,6 +1142,7 @@ local function startPounce(b, char, skip) -- v1.4: + skip (flank pounce: hitbox 
 	b.pounce = {phase = "windup", t0 = os.clock(), char = char, skip = skip}
 	b.hum:Move(Vector3.zero)
 	b.model:SetAttribute("PounceStartedAt", workspace:GetServerTimeNow())
+	b.pounce.startAt = workspace:GetServerTimeNow() -- v1.21
 	show(b, "BotState", "pounce")
 end
 
@@ -2050,6 +2062,7 @@ local function step(b)
 	if b.ram then return end -- v1.3: the Heartbeat drives a ram
 	if b.charge then return end -- v1.19: the pachy charge loop drives it
 	if b.hopping then return end -- v1.5: climbing out of a lake
+	if b.knock then return end -- v1.21: slid back by a headbutt
 	if model:GetAttribute("DummyState") == "ko" and not b.koAt then b.koAt = os.clock() end
 	local ko = b.koAt ~= nil -- once knocked out it stays down (BiteTargetHealth's reset is ignored) until removed
 	local pinned = model:GetAttribute("PinnedAt") ~= nil
@@ -2289,6 +2302,66 @@ local function latchOn(b, part, front, dir)
 	show(b, "BotState", "latched")
 end
 
+-- v1.21: headbutt beats a bot pounce ------------------------------------------------------------------------------------
+local HEADBUTT_KNOCK_TIME = 0.35
+local function chargingFront(model, pos)
+	local now = workspace:GetServerTimeNow()
+	local s = model:GetAttribute("HeadbuttStartedAt")
+	if typeof(s) ~= "number" or now < s - 0.05 then return false end
+	local windup = tonumber(model:GetAttribute("HeadbuttWindup")) or 0.15
+	local maxT = tonumber(model:GetAttribute("HeadbuttMaxTime")) or 1.8
+	if now > s + windup + maxT + 0.5 then return false end
+	local e, h = model:GetAttribute("HeadbuttEndedAt"), model:GetAttribute("HeadbuttHitAt")
+	if typeof(e) == "number" and e >= s - 0.001 then return false end
+	if typeof(h) == "number" and h >= s - 0.001 then return false end
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if not root then return false end
+	local d = flat(pos - root.Position)
+	local look = flat(root.CFrame.LookVector)
+	if look.Magnitude < 1e-3 then return false end
+	return d.Magnitude < 1e-3 or look.Unit:Dot(d.Unit) >= math.cos(math.rad(60))
+end
+local function cancelPounce(b, why)
+	b.pounce = nil
+	b.hrp.Anchored = false
+	pcall(function() b.hrp:SetNetworkOwner(nil) end)
+	b.nextPounce = os.clock() + get("BotPounceCooldown")
+	show(b, "BotPounceCancel", why)
+	local k = why == "charging" and "BotPounceChargeBlocks" or "BotPounceHeadbuttCancels"
+	script:SetAttribute(k, (script:GetAttribute(k) or 0) + 1)
+end
+-- slide a bot back along the ground (anchored glide, like HeadbuttServer's bot shove)
+local function knockBot(b, from, dist)
+	local hrp = b.hrp
+	local start = hrp.Position
+	local away = flat(start - (typeof(from) == "Vector3" and from or start))
+	if away.Magnitude < 0.5 then away = -flat(hrp.CFrame.LookVector) end
+	away = away.Magnitude > 1e-3 and away.Unit or Vector3.zAxis
+	local land = clampLimit(flat(start) + away * (tonumber(dist) or 40))
+	local g0 = groundHit(start.X, start.Z)
+	local g1 = groundHit(land.X, land.Z)
+	local lift = g0 and (start.Y - g0.Position.Y) or (hrp.Size.Y / 2 + b.hum.HipHeight)
+	local landPos = Vector3.new(land.X, (g1 and g1.Position.Y or (start.Y - lift)) + lift, land.Z)
+	local rot = hrp.CFrame - hrp.Position
+	b.knock = true
+	hrp.Anchored = true
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < HEADBUTT_KNOCK_TIME and hrp.Parent and not b.removed do
+			local u = math.clamp((os.clock() - t0) / HEADBUTT_KNOCK_TIME, 0, 1)
+			local e = 1 - (1 - u) * (1 - u)
+			hrp.CFrame = CFrame.new(start:Lerp(landPos, e)) * rot
+			RunService.Heartbeat:Wait()
+		end
+		if hrp.Parent then
+			hrp.CFrame = CFrame.new(landPos) * rot
+			if not b.down then hrp.Anchored = false end
+			pcall(function() hrp:SetNetworkOwner(nil) end)
+		end
+		b.knock = nil
+	end)
+end
+
 local flingClamps = 0
 RunService.Heartbeat:Connect(function(dt)
 	local now = workspace:GetServerTimeNow()
@@ -2375,6 +2448,12 @@ RunService.Heartbeat:Connect(function(dt)
 					b.nextPounce = os.clock() + get("BotPounceCooldown")
 					return
 				end
+				local ta = model:GetAttribute("HeadbuttTakenAt") -- v1.21: knocked out of the pounce
+				if get("BotPounceHeadbuttCancelEnabled") ~= false and typeof(ta) == "number" and ta >= (p.startAt or math.huge) - 0.001 then
+					cancelPounce(b, "headbutted")
+					knockBot(b, model:GetAttribute("HeadbuttTakenFrom"), model:GetAttribute("HeadbuttTakenDist"))
+					return
+				end
 				local t = os.clock() - p.t0
 				if p.phase == "windup" then
 					if t >= BOT_POUNCE_WINDUP then
@@ -2413,7 +2492,10 @@ RunService.Heartbeat:Connect(function(dt)
 					op.FilterDescendantsInstances = p.targets
 					local touching = workspace:GetPartBoundsInRadius(front, 2.2, op)
 					if #touching == 0 then touching = workspace:GetPartBoundsInRadius(pos, 2.6, op) end
-					if #touching > 0 then
+					if #touching > 0 and get("BotPounceChargeBlockEnabled") ~= false and chargingFront(char, pos) then
+						cancelPounce(b, "charging") -- v1.21: head-on into a headbutt charge
+						show(b, "BotState", "chase")
+					elseif #touching > 0 then
 						latchOn(b, touching[1], front, p.dir)
 					elseif u >= 1 then
 						b.pounce = nil

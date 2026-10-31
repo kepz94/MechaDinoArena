@@ -2273,3 +2273,12 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | PounceChargeBlocks | target dino | pounces refused by its charge |
 | PounceHeadbuttCancels | raptor | pounces cancelled by a headbutt |
 | PounceTestVersion | raptor (client) | "1.6" |
+
+## Headbutt beats pounce for bots (HeadbuttServer 1.10 / BotServer 1.21)
+| Attribute | On | Meaning |
+|---|---|---|
+| HeadbuttTakenStampEnabled | HeadbuttServer script | default true: stamp the hit target with HeadbuttTakenFrom / HeadbuttTakenDist / HeadbuttTakenAt |
+| HeadbuttTakenFrom / HeadbuttTakenDist / HeadbuttTakenAt | hit target (player or bot) | attacker position / shove studs / server time of an unshielded headbutt hit |
+| BotPounceChargeBlockEnabled / BotPounceHeadbuttCancelEnabled | BotServer script | default true: raptor bot pounces refused head-on into a charge / cancelled by a headbutt |
+| BotPounceCancel | raptor bot | "charging" / "headbutted" (last cancelled pounce) |
+| BotPounceChargeBlocks / BotPounceHeadbuttCancels | BotServer script | counts |
