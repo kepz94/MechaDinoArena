@@ -2207,3 +2207,10 @@ Look: Mecha_DomeVisor (Rim_L/R, Lens_L/R with LensGlow, ForceField.Panel_1..9 wh
 | SkillEffectsTetherEnabled / MechaButtonsTetherEnabled / AbilityBarTetherEnabled | script | default true; false = that script ignores the tether |
 | MechaTetherAim / MechaTetherAimDist / MechaTetherFired | character (client) | idle / aiming; circle distance (flat); shots fired |
 Look: Mecha_TetherLauncher (Base, Barrel.Muzzle, Tip, Drum) on Tail1.Root; Workspace.DinoFX.TetherFX TetherSpike (ChainTrail, TetherChain rope) / TetherRing; client TetherAim disc.
+
+## Ink Shooter 1.3 (shoulder mount + hit look)
+| Attribute | Where | Meaning |
+|---|---|---|
+| InkShoulderMount | InkServer script | default true: tank on the left shoulder, aim down to -20 degrees (false = InkBellyMount / neck) |
+| InkHitLookEnabled | InkServer script | default true: InkHit splash + drip on the inked dino's head and the "BLINDED" tag; the flat splat disc only on misses |
+Look: <head>.InkHit (InkSplash, InkDrip); model.InkBlindedTag (Blot, Text "BLINDED").

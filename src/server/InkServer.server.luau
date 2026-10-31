@@ -1,4 +1,4 @@
--- InkServer v1.2 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
+-- InkServer v1.3 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
 -- MDA-128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Neck ink tank +
 --   barrel". Kepu 2026-10-30: "How about an ink shooter that blinds your enemy for 2 seconds. Turns their screen black";
 --   answers: fully black (HUD stays), an aimed shot like the Grappling Hook (first dino hit), bots lose you, steps II 80
@@ -43,13 +43,31 @@
 --   the front of the belly: "Tank" lying lengthwise (Hd x 0.10 wide, 0.08 tall, 0.16 long) just below the belly, "Window"
 --   (ink behind glass) along its sides, "Cap" (steel) on its back end and "Barrel" (steel, Hd x 0.14) pointing forward
 --   from its front end, with the Attachment "Muzzle" at the tip (the shot starts there). Same part names as 1.1.
+-- v1.3 (Kepu 2026-10-30: "I wanted it on the shoulder also the ink animation itself doesn't tell me anything as a user. It
+--   should visibly splash the Dino and make them drip black on their face for a moment from my end. Or maybe just do a
+--   splash on them and say blinded so I can see that"):
+--   * Mount: with script attribute InkShoulderMount (default true, read at each build; false = 1.2 / 1.1 by InkBellyMount)
+--     "Mecha_InkTank" sits on the pachy's LEFT shoulder (the Grappling Hook is on the right arm): on top of the Torso
+--     segment's Root box, its front part, left side: "Tank" upright (Hd x 0.08 wide, 0.10 tall, 0.08 deep), "Window"
+--     (ink behind glass), "Cap" (steel, on top), "Barrel" (steel, Hd x 0.12) pointing forward from its front face with the
+--     Attachment "Muzzle" at the tip. Same part names as before. With the shoulder mount the aim may tilt down to
+--     PITCH_MIN_SHOULDER (-20 degrees; was -2, the hook's limit) so a shot from the high shoulder can reach a raptor.
+--   * Inked look (every dino that gets inked, seen by everyone; script attribute InkHitLookEnabled, default true, read at
+--     each ink): on its head (Head segment Root, else a Head hitbox, else the root) an Attachment "InkHit" with a
+--     ParticleEmitter "InkSplash" (black blobs thrown out all round, Emit 40) and "InkDrip" (black drops running down,
+--     falling, Rate 30) that drips for the whole blind time, plus a BillboardGui "InkBlindedTag" above the head reading
+--     "BLINDED" (white Fredoka, black outline, on a black ink-blot backing) that pops in, stays while InkedUntil is in the
+--     future and fades out. A new ink on a dino that is still inked restarts it. Removed 0.6 s after the ink wears off.
+--     On a "hit" / "shielded" shot the flat InkSplat disc is hidden (it hung in the air at the hit point); its drops
+--     still burst there. Misses / blocked shots keep the disc.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25)
+local PITCH_MIN_SHOULDER = math.rad(-20) -- v1.3: the shoulder muzzle sits high, so the shot may aim down to the ground ahead
 local AIM_HELP = 4
 local INK_SPEED = 160
 local INK = Color3.fromRGB(11, 11, 18)
@@ -62,6 +80,8 @@ if script:GetAttribute("InkServerEnabled") == nil then script:SetAttribute("InkS
 if script:GetAttribute("InkModeRulesEnabled") == nil then script:SetAttribute("InkModeRulesEnabled", true) end
 if script:GetAttribute("InkVisorEnabled") == nil then script:SetAttribute("InkVisorEnabled", true) end -- v1.1
 if script:GetAttribute("InkBellyMount") == nil then script:SetAttribute("InkBellyMount", true) end -- v1.2
+if script:GetAttribute("InkShoulderMount") == nil then script:SetAttribute("InkShoulderMount", true) end -- v1.3
+if script:GetAttribute("InkHitLookEnabled") == nil then script:SetAttribute("InkHitLookEnabled", true) end -- v1.3
 local visorModCache -- v1.1: Dome Visor (ServerStorage.DinoArcade.BoneCrest 1.2), loaded on first use
 local function visorMod()
 	if visorModCache == nil then
@@ -195,7 +215,42 @@ local function buildBelly(char)
 	return m
 end
 
+-- v1.3: the tank on the left shoulder, the barrel pointing forward
+local function buildShoulder(char)
+	local seg = char:FindFirstChild("Torso")
+	local root = seg and seg:FindFirstChild("Root")
+	if not (root and root:IsA("BasePart")) then return nil end
+	local lo, hi = rootBox(seg, root)
+	if not lo then return nil end
+	local ref = char:FindFirstChild("HumanoidRootPart") or root
+	local x = axisOf(root, ref.CFrame.RightVector)
+	local y = axisOf(root, ref.CFrame.UpVector)
+	if math.abs(x:Dot(y)) > 0.5 then y = axisOf(root, ref.CFrame.LookVector):Cross(x) end
+	local back = x:Cross(y)
+	local Hd = char:GetExtentsSize().Y
+	local w, h, d = Hd * 0.08, Hd * 0.10, Hd * 0.08
+	local c = (lo + hi) / 2 + y * (extent(lo, hi, y) + h * 0.45) - back * (extent(lo, hi, back) * 0.55)
+		- x * (extent(lo, hi, x) * 0.55) -- -x = the dino's left
+	local cf = root.CFrame * CFrame.fromMatrix(c, x, y, back) -- local -Z = forward
+	local m = Instance.new("Model")
+	m.Name = "Mecha_InkTank"
+	local tank = part("Tank", Vector3.new(w, h, d), cf, DARK, m, root)
+	part("Window", Vector3.new(w * 1.04, h * 0.55, d * 0.5), cf * CFrame.new(0, -h * 0.05, 0), INK, m, tank, Enum.Material.Glass)
+	part("Cap", Vector3.new(w * 0.7, h * 0.1, d * 0.7), cf * CFrame.new(0, h * 0.55, 0), STEEL, m, tank)
+	local len = Hd * 0.12
+	local bcf = cf * CFrame.new(0, h * 0.1, -(d * 0.5 + len * 0.5))
+	local barrel = part("Barrel", Vector3.new(w * 0.32, w * 0.32, len), bcf, STEEL, m, tank)
+	local mz = Instance.new("Attachment")
+	mz.Name = "Muzzle"
+	mz.Position = Vector3.new(0, 0, -len * 0.5)
+	mz.Parent = barrel
+	m.Parent = char
+	char:SetAttribute("InkLookBuilt", true)
+	return m
+end
+
 local function build(char)
+	if script:GetAttribute("InkShoulderMount") ~= false then return buildShoulder(char) end -- v1.3
 	if script:GetAttribute("InkBellyMount") ~= false then return buildBelly(char) end -- v1.2
 	local seg = char:FindFirstChild("Neck")
 	local root = seg and seg:FindFirstChild("Root")
@@ -309,7 +364,7 @@ local function muzzleOf(char)
 end
 
 -- effects ------------------------------------------------------------------------------------------------------------
-local function splat(pos)
+local function splat(pos, burstOnly) -- v1.3: burstOnly = the drops without the flat disc (a hit on a dino)
 	local s = Instance.new("Part")
 	s.Name = "InkSplat"
 	s.Shape = Enum.PartType.Cylinder
@@ -318,6 +373,7 @@ local function splat(pos)
 	s.Color = INK
 	s.Material = Enum.Material.SmoothPlastic
 	s.Anchored, s.CanCollide, s.CanQuery, s.CanTouch, s.CastShadow = true, false, false, false, false
+	if burstOnly then s.Transparency = 1 end
 	s.Parent = fxFolder()
 	local a = Instance.new("Attachment")
 	a.Parent = s
@@ -349,10 +405,105 @@ local function glob(from, to, fly)
 	Debris:AddItem(g, fly + 0.05)
 end
 
+-- v1.3: the inked look on the target's head (see the header)
+local function headAnchor(model)
+	local head = model:FindFirstChild("Head")
+	local a = head and (head:IsA("BasePart") and head or head:FindFirstChild("Root"))
+	if a and a:IsA("BasePart") then return a end
+	local hb = model:FindFirstChild("Hitboxes")
+	if hb then
+		for _, p in ipairs(hb:GetChildren()) do
+			if p:IsA("BasePart") and p:GetAttribute("HitboxSegment") == "Head" then return p end
+		end
+	end
+	return model:FindFirstChild("HumanoidRootPart")
+end
+local function inkedLook(target)
+	local anchor = headAnchor(target)
+	if not anchor then return end
+	local oldA = anchor:FindFirstChild("InkHit")
+	if oldA then oldA:Destroy() end
+	local oldT = target:FindFirstChild("InkBlindedTag")
+	if oldT then oldT:Destroy() end
+	local a = Instance.new("Attachment")
+	a.Name = "InkHit"
+	a.Parent = anchor
+	local splash = Instance.new("ParticleEmitter")
+	splash.Name = "InkSplash"
+	splash.Enabled = false
+	splash.Color = ColorSequence.new(INK)
+	splash.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 1.1), NumberSequenceKeypoint.new(1, 0.4)})
+	splash.Speed = NumberRange.new(12, 22)
+	splash.SpreadAngle = Vector2.new(180, 180)
+	splash.Acceleration = Vector3.new(0, -50, 0)
+	splash.Drag = 2
+	splash.Lifetime = NumberRange.new(0.35, 0.6)
+	splash.Parent = a
+	splash:Emit(40)
+	local drip = Instance.new("ParticleEmitter")
+	drip.Name = "InkDrip"
+	drip.Color = ColorSequence.new(INK)
+	drip.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 0.25)})
+	drip.Speed = NumberRange.new(0.5, 2)
+	drip.SpreadAngle = Vector2.new(60, 60)
+	drip.EmissionDirection = Enum.NormalId.Bottom
+	drip.Acceleration = Vector3.new(0, -40, 0)
+	drip.Lifetime = NumberRange.new(0.5, 0.9)
+	drip.Rate = 30
+	drip.Parent = a
+	local g = Instance.new("BillboardGui")
+	g.Name = "InkBlindedTag"
+	g.Size = UDim2.fromOffset(150, 44)
+	g.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
+	g.AlwaysOnTop = true
+	g.MaxDistance = 300
+	g.Adornee = anchor
+	local blot = Instance.new("Frame")
+	blot.Name = "Blot"
+	blot.AnchorPoint = Vector2.new(0.5, 0.5)
+	blot.Position = UDim2.fromScale(0.5, 0.5)
+	blot.Size = UDim2.fromScale(0.2, 0.2)
+	blot.BackgroundColor3 = INK
+	blot.BackgroundTransparency = 0.15
+	blot.Parent = g
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = blot
+	local l = Instance.new("TextLabel")
+	l.Name = "Text"
+	l.BackgroundTransparency = 1
+	l.Size = UDim2.fromScale(1, 1)
+	l.Font = Enum.Font.FredokaOne
+	l.TextSize = 26
+	l.TextColor3 = Color3.new(1, 1, 1)
+	l.TextStrokeColor3 = INK
+	l.TextStrokeTransparency = 0
+	l.Text = "BLINDED"
+	l.Parent = g
+	g.Parent = target
+	TweenService:Create(blot, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.fromScale(1, 1)}):Play()
+	task.spawn(function()
+		while a.Parent and g.Parent and target.Parent do
+			if (tonumber(target:GetAttribute("InkedUntil")) or 0) <= now() then break end
+			task.wait(0.1)
+		end
+		if not a.Parent then return end -- replaced by a newer ink
+		drip.Enabled = false
+		if g.Parent then
+			TweenService:Create(l, TweenInfo.new(0.3), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+			TweenService:Create(blot, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+		end
+		task.wait(0.6)
+		if a.Parent then a:Destroy() end
+		if g.Parent then g:Destroy() end
+	end)
+end
+
 local function ink(target, shooter, untilT, t)
 	target:SetAttribute("InkedUntil", math.max(tonumber(target:GetAttribute("InkedUntil")) or 0, untilT))
 	target:SetAttribute("InkedBy", shooter.Name)
 	target:SetAttribute("InkedAt", t) -- last
+	if script:GetAttribute("InkHitLookEnabled") ~= false then pcall(inkedLook, target) end -- v1.3 (after InkedUntil)
 end
 
 local function setResult(char, r)
@@ -392,7 +543,8 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 			local hrp0 = char:FindFirstChild("HumanoidRootPart")
 			flat = hrp0 and hrp0.CFrame.LookVector * Vector3.new(1, 0, 1) or Vector3.zAxis
 		end
-		local pitch = math.clamp(math.asin(math.clamp(dir.Y, -1, 1)), PITCH_MIN, PITCH_MAX)
+		local pmin = script:GetAttribute("InkShoulderMount") ~= false and PITCH_MIN_SHOULDER or PITCH_MIN -- v1.3
+		local pitch = math.clamp(math.asin(math.clamp(dir.Y, -1, 1)), pmin, PITCH_MAX)
 		dir = flat.Unit * math.cos(pitch) + Vector3.yAxis * math.sin(pitch)
 	end
 	local origin = muzzleOf(char) or char:GetPivot().Position
@@ -443,7 +595,7 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local target = best
 	task.delay(fly, function()
 		local ta = now()
-		splat(aimEnd)
+		splat(aimEnd, script:GetAttribute("InkHitLookEnabled") ~= false and (result == "hit" or result == "shielded")) -- v1.3
 		local blind = math.max(0.1, tonumber(char:GetAttribute("InkBlindTime")) or 2)
 		if target and target.Parent and (result == "hit" or result == "shielded") then
 			if result == "hit" and (tonumber(target:GetAttribute("EnergyShieldUntil")) or 0) <= ta then
