@@ -20,10 +20,10 @@
 | # | Part | Spec | Mockup | Built |
 |---|---|---|---|---|
 | 1 | Iron Claw (Hook Blades) MDA-149 | done (below) | docs/mockups/herrera_ironclaw_options.html, look B; video docs/reference/herrera/mockup_ironclaw_B.mp4 | no |
-| 2 | Glider Wings (Bat Membranes) | done (below) | docs/mockups/herrera_parts_b1_options.html, look A; video docs/reference/herrera/mockup_parts_b1_glider.mp4 | no |
-| 3 | Quill Launcher (Spine Quills) | done (below) | same page, look B; video mockup_parts_b1_quills.mp4 | no |
-| 4 | Smoke Pods (Tail Vents) | done (below) | same page, look B; video mockup_parts_b1_smoke.mp4 | no |
-| 5 | Back Plating (Spine Scutes) | done (below) | same page, look A; video mockup_parts_b1_plating.mp4 | no |
+| 2 | Glider Wings (Bat Membranes) MDA-150 | done (below) | docs/mockups/herrera_parts_b1_options.html, look A; video docs/reference/herrera/mockup_parts_b1_glider.mp4 | no |
+| 3 | Quill Launcher (Spine Quills) MDA-151 | done (below) | same page, look B; video mockup_parts_b1_quills.mp4 | no |
+| 4 | Smoke Pods (Tail Vents) MDA-152 | done (below) | same page, look B; video mockup_parts_b1_smoke.mp4 | no |
+| 5 | Back Plating (Spine Scutes) MDA-153 | done (below) | same page, look A; video mockup_parts_b1_plating.mp4 | no |
 
 The Herrera ends with 5 parts (Kepu picked these 4 from 16 ideas on 2026-10-31). More can be added later the same way.
 
