@@ -1,4 +1,4 @@
--- ClimbTest v1.11 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.12 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -67,12 +67,29 @@
 --   also a rising edge of Humanoid.Jump, which ArenaTouch 1.7's JUMP button sets on phones (this game has no PlayerModule
 --   control scripts, so nothing else sets it). PC Space (JumpAction) unchanged. Diagnostic: ClimbHopSource ("action" /
 --   "humanoid").
+-- v1.12 (Kepu 2026-10-31 "Fix the bug": walking into the base of a leaning palm threw the Herrera up to the crown;
+--   Studio CoconutPalm_7, lean +z, scale 2: from +x / -x the climb mantled after 0.27 / 0.15 s, y 13 -> 53; from +z at
+--   y 29.5 -> 53.5): the trunk-end probe is one sphere cast along the facing at head height, and a leaning trunk drifts
+--   off that line long before its top, so "trunk ends" fired low on the trunk and ClimbLogic 1.1 mantled to the crown.
+--   Now, while climbing / clinging, a missed head probe only counts as the trunk's end when the probe point is at or
+--   above the climbed tree's trunk top (highest point of its Trunk* parts, cached per tree); below it the probe miss is
+--   ignored and the climb goes on. Switch: script attribute ClimbTrunkTopEnabled (default true, read at start; false =
+--   1.11). Diagnostics: ClimbTrunkTopY (the climbed tree's trunk top), ClimbEndCheck ("probe" / "belowTop").
+--   Same cause at body height (Studio CoconutPalm_24, lean 15 studs +x, climbed from +z: with only the rule above the
+--   body lost the trunk at y 45.5 and fell): while climbing / clinging, the climbed tree's trunk centre at body height
+--   comes from its Trunk* parts' axes (the part whose long axis is Y and spans the body's height; centre = Position +
+--   UpVector * t, radius = half its thickness). trunkAhead = distance along the facing from the body's front to that
+--   trunk's surface (when the trunk is in front: along > 0, sideways offset <= radius + body width), and the hold pulls
+--   the body to (centre - facing * (radius + half length + grab)) plus the trunk's lean per stud climbed times the climb
+--   speed, so the body follows a leaning trunk. No such part (or a non-Y-axis trunk) = the probes as before. Switch:
+--   script attribute ClimbTrunkFollowEnabled (default true, read at start; false = probes only). Diagnostic:
+--   ClimbFollow ("on" / "off").
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.11"
+local VERSION = "1.12"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -103,6 +120,12 @@ trunkParams.FilterType = Enum.RaycastFilterType.Include
 trunkParams.FilterDescendantsInstances = trunkParts
 -- v1.6: the list follows streaming (trees arrive / leave after spawn)
 local trunkDirty = false
+local trunkTopCache = {} -- v1.12: [tree name] = trunk top Y
+if script:GetAttribute("ClimbTrunkTopEnabled") == nil then script:SetAttribute("ClimbTrunkTopEnabled", true) end
+local TRUNK_TOP_ON = script:GetAttribute("ClimbTrunkTopEnabled") ~= false
+local trunkSegCache = {} -- v1.12: [tree name] = {trunk parts}
+if script:GetAttribute("ClimbTrunkFollowEnabled") == nil then script:SetAttribute("ClimbTrunkFollowEnabled", true) end
+local TRUNK_FOLLOW_ON = script:GetAttribute("ClimbTrunkFollowEnabled") ~= false
 do
 	local island = workspace:WaitForChild("DinoIsland", 30)
 	local trees = island and island:WaitForChild("Trees", 30)
@@ -138,8 +161,56 @@ local function refreshTrunks()
 	for p in pairs(trunkTree) do table.insert(trunkParts, p) end
 	trunkParams.FilterDescendantsInstances = trunkParts
 	char:SetAttribute("ClimbTrunkCount", #trunkParts)
+	if trunkTopCache then table.clear(trunkTopCache) end -- v1.12
+	if trunkSegCache then table.clear(trunkSegCache) end -- v1.12
 end
 refreshTrunks()
+-- v1.12: highest point of a tree's Trunk* parts (world Y), nil when the tree has none in the list
+local function trunkTopOf(treeName)
+	if treeName == "" then return nil end
+	local cached = trunkTopCache[treeName]
+	if cached then return cached end
+	local top
+	for p, tree in pairs(trunkTree) do
+		if tree.Name == treeName then
+			local cf, sz = p.CFrame, p.Size
+			local ext = math.abs(cf.RightVector.Y) * sz.X / 2 + math.abs(cf.UpVector.Y) * sz.Y / 2 + math.abs(cf.LookVector.Y) * sz.Z / 2
+			local t = p.Position.Y + ext
+			if not top or t > top then top = t end
+		end
+	end
+	trunkTopCache[treeName] = top
+	return top
+end
+-- v1.12: the tree's trunk centre at height y: {c = Vector3, r = radius, up = axis (up.Y > 0)} or nil
+local function trunkCentreAt(treeName, y)
+	if treeName == "" then return nil end
+	local list = trunkSegCache[treeName]
+	if not list then
+		list = {}
+		for p, tree in pairs(trunkTree) do
+			if tree.Name == treeName then table.insert(list, p) end
+		end
+		trunkSegCache[treeName] = list
+	end
+	local best, bestOver
+	for _, p in ipairs(list) do
+		local sz = p.Size
+		if p.Parent and sz.Y >= sz.X and sz.Y >= sz.Z then
+			local up = p.CFrame.UpVector
+			if up.Y < 0 then up = -up end
+			if up.Y > 0.2 then
+				local t = (y - p.Position.Y) / up.Y
+				local over = math.abs(t) - sz.Y / 2
+				if not bestOver or over < bestOver then
+					best, bestOver = {c = p.Position + up * t, r = math.min(sz.X, sz.Z) / 2, up = up}, over
+				end
+			end
+		end
+	end
+	if best and bestOver <= 1 then return best end
+	return nil
+end
 local groundParams = RaycastParams.new()
 groundParams.FilterType = Enum.RaycastFilterType.Exclude
 groundParams.FilterDescendantsInstances = {char}
@@ -362,6 +433,34 @@ RunService.Heartbeat:Connect(function()
 		currentTree = trunkTree[hit.Instance] and trunkTree[hit.Instance].Name or currentTree
 	end
 	probe.trunkEnds = workspace:Spherecast(hrp.Position + Vector3.new(0, headReach, 0), radius, fwd * (half + s.grab * 3), trunkParams) == nil
+	if TRUNK_TOP_ON and probe.trunkEnds and (state == "climbing" or state == "clinging") then -- v1.12
+		local topY = trunkTopOf(currentTree)
+		char:SetAttribute("ClimbTrunkTopY", topY or -1)
+		if topY and hrp.Position.Y + headReach < topY then
+			probe.trunkEnds = false -- the trunk goes on above the head; it only leans off the probe line
+			char:SetAttribute("ClimbEndCheck", "belowTop")
+		else
+			char:SetAttribute("ClimbEndCheck", "probe")
+		end
+	end
+	local follow -- v1.12: the climbed trunk at body height
+	if TRUNK_FOLLOW_ON and (state == "climbing" or state == "clinging") then
+		follow = trunkCentreAt(currentTree, hrp.Position.Y)
+		if follow then
+			local rel = Vector3.new(follow.c.X - hrp.Position.X, 0, follow.c.Z - hrp.Position.Z)
+			local along = rel:Dot(fwd)
+			local lateral = (rel - fwd * along).Magnitude
+			if along > 0 and lateral <= follow.r + hrp.Size.X then
+				probe.trunkAhead = math.max(0, along - follow.r - front)
+			else
+				follow = nil
+			end
+		end
+	end
+	if TRUNK_FOLLOW_ON then
+		local f = follow and "on" or "off"
+		if char:GetAttribute("ClimbFollow") ~= f then char:SetAttribute("ClimbFollow", f) end
+	end
 	local feetY = hrp.Position.Y - (hrp.Size.Y / 2 + hum.HipHeight)
 	local headY = hrp.Position.Y + hrp.Size.Y / 2 + headReach
 	local plist = {}
@@ -421,7 +520,11 @@ RunService.Heartbeat:Connect(function()
 		hold(true)
 		-- hold point: grab distance off the trunk surface along the facing; pull there horizontally
 		local pull = Vector3.zero
-		if hit then
+		if follow then -- v1.12: stay at the leaning trunk
+			local want = follow.c - fwd * (follow.r + half + s.grab)
+			local d = want - hrp.Position
+			pull = Vector3.new(d.X, 0, d.Z) * 10 + Vector3.new(follow.up.X, 0, follow.up.Z) / follow.up.Y * out.vy
+		elseif hit then
 			local want = hit.Position - fwd * (half + s.grab)
 			local d = want - hrp.Position
 			pull = Vector3.new(d.X, 0, d.Z) * 10

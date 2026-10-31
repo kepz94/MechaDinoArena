@@ -2342,3 +2342,6 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ClimbHopSource | herrera (owner client) | "action" / "humanoid" | ClimbTest 1.11: which input made the last hop |
 | AbilityBarJumpNameEnabled | AbilityBar script | true | AbilityBar 1.15: Leap / Hop tiles read JUMP (false = LEAP / HOP) |
 | TRexJumpEnabled / TRexJumpVersion / TRexJumpApplied | TRexJump script; character | true / "1.0" / count | TRexJump 1.0: T-Rex jump settings (written only where unset: JumpEnabled true, JumpWindup 0.2, JumpLaunchPower 50, JumpBoost 6, JumpBoostMinSpeed 2, JumpAirHold true, JumpStaminaCost 0, JumpCooldown 1) |
+| AbilityBarTRexJumpEnabled | AbilityBar script | true | AbilityBar 1.16: T-Rex JUMP tile (false = row Bite, Ram) |
+| ClimbTrunkTopEnabled / ClimbTrunkFollowEnabled | ClimbTest script | true / true | ClimbTest 1.12 switches: trunk end only at the trunk top; follow the climbed trunk's axis |
+| ClimbTrunkTopY / ClimbEndCheck / ClimbFollow | herrera (owner client) | studs / "probe", "belowTop" / "on", "off" | ClimbTest 1.12 diagnostics |

@@ -1,4 +1,4 @@
--- AbilityBar v1.15 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.16 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -101,12 +101,15 @@
 -- v1.15 (MDA-146, plan docs/plans/PHONE_LAYOUT_v1.0.md; Kepu 2026-10-31 "call it all jump"): the Leap tile and the
 --   Herrera's Hop tile are named "JUMP" (key Space unchanged; tile ids / states unchanged). Switch: script attribute
 --   AbilityBarJumpNameEnabled (default true, read at start; false = 1.14 names LEAP / HOP).
+-- v1.16 (MDA-146, Kepu 2026-10-31 "Yes T. rex gets jump"): the T-Rex row is Bite, Leap (JUMP, Space), Ram, so the
+--   JUMP tile sits right after the attack as on the raptor / pachy / Herrera; the tile follows JumpEnabled (TRexJump 1.0).
+--   Switch: script attribute AbilityBarTRexJumpEnabled (default true, read at start; false = 1.15 row Bite, Ram).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.15"
+local VERSION = "1.16"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -182,6 +185,10 @@ if script:GetAttribute("AbilityBarJumpNameEnabled") == nil then script:SetAttrib
 if script:GetAttribute("AbilityBarJumpNameEnabled") ~= false then -- v1.15: one name for every dino's jump
 	MOVES.Leap.name = "JUMP"
 	if MOVES.Hop then MOVES.Hop.name = "JUMP" end
+end
+if script:GetAttribute("AbilityBarTRexJumpEnabled") == nil then script:SetAttribute("AbilityBarTRexJumpEnabled", true) end -- v1.16
+if script:GetAttribute("AbilityBarTRexJumpEnabled") ~= false then -- v1.16: T-Rex JUMP tile after the attack
+	SPECIES_MOVES.TRex = {"Bite", "Leap", "Ram"}
 end
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 local SLOT_KEYS = {"R", "C", "T", "V"} -- v1.2: + T / V (slots 3 / 4)
