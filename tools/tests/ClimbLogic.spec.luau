@@ -1,6 +1,7 @@
--- ClimbLogic.spec v1.0 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.ClimbLogic (MDA-137, plan
+-- ClimbLogic.spec v1.1 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.ClimbLogic (MDA-137, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 5). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 -- One case per row of the module's rules (the plan's deterministic map) plus mantleTarget.
+-- v1.1 (MDA-145): trunk end + forward -> mantle (the plan's row "the trunk ends -> onto the top"), treeTopTarget.
 local src = game.ServerStorage:FindFirstChild("DinoArcade") and game.ServerStorage.DinoArcade:FindFirstChild("ClimbLogic")
 if not src then return "FAIL ClimbLogic missing" end
 local CL = loadstring(src.Source)()
@@ -15,7 +16,7 @@ local function case(name, state, input, probe, wantState, check)
 	for k, v in pairs(check or {}) do eq(name .. " " .. k, out[k], v) end
 end
 
-eq("Version", CL.Version, "1.0")
+eq("Version", CL.Version, "1.1")
 -- ground / top
 case("grab", "ground", {forward = true}, {trunkAhead = 2}, "climbing", {hold = true, vy = 20, reason = "grab"})
 case("too far to grab", "ground", {forward = true}, {trunkAhead = 5}, "ground", {hold = false})
@@ -34,7 +35,8 @@ case("lost trunk", "climbing", {forward = true}, {trunkAhead = nil}, "ground", {
 case("trunk far", "clinging", {}, {trunkAhead = 7}, "ground", {reason = "lostTrunk"})
 case("mantle", "climbing", {forward = true}, {trunkAhead = 1, topAbove = 3}, "top", {mantle = true, hold = false})
 case("top not near yet", "climbing", {forward = true}, {trunkAhead = 1, topAbove = 9}, "climbing", {mantle = false, vy = 20})
-case("trunk end no proxy", "climbing", {forward = true}, {trunkAhead = 1, trunkEnds = true}, "clinging", {vy = 0, reason = "trunkEnd"})
+case("trunk end -> mantle", "climbing", {forward = true}, {trunkAhead = 1, trunkEnds = true}, "top", {mantle = true, hold = false, reason = "trunkEnd"})
+case("trunk end, no forward -> cling", "climbing", {}, {trunkAhead = 1, trunkEnds = true}, "clinging", {hold = true, vy = 0, reason = "cling"})
 case("slide down", "clinging", {back = true}, {trunkAhead = 1, groundBelow = 6}, "climbing", {vy = -20, reason = "down"})
 case("reach ground", "climbing", {back = true}, {trunkAhead = 1, groundBelow = 0.3}, "ground", {hold = false, reason = "slidDown"})
 case("back with no ground below", "climbing", {back = true}, {trunkAhead = 1}, "climbing", {vy = -20})
@@ -56,6 +58,14 @@ eq("mantle none in reach", t, nil)
 t = CL.mantleTarget({{x = 0, z = 0, top = 10, reach = 9}}, Vector3.new(0, 30, 0), 33)
 eq("mantle only below -> nil", t, nil)
 eq("mantle nil proxies", CL.mantleTarget(nil, Vector3.new(), 0), nil)
+-- v1.1: the climbed tree's own top (no footprint test: a leaning palm's crown is off the trunk line)
+local own = {{x = 11, z = 3, top = 52, reach = 8.85}, {x = 12, z = 2, top = 48, reach = 4}, {x = 11, z = 3, top = 20, reach = 8}}
+t = CL.treeTopTarget(own, 37)
+eq("tree top highest", t and t.Y, 52)
+eq("tree top x = proxy", t and t.X, 11)
+eq("tree top z = proxy", t and t.Z, 3)
+eq("tree top only below -> nil", CL.treeTopTarget({{x = 0, z = 0, top = 20, reach = 5}}, 37), nil)
+eq("tree top nil proxies", CL.treeTopTarget(nil, 0), nil)
 
 if #fails > 0 then return "FAIL " .. #fails .. " / " .. (passes + #fails) .. ": " .. table.concat(fails, "; ") end
 return "PASS " .. passes

@@ -1,4 +1,4 @@
--- ClimbTest v1.9 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.10 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -57,12 +57,18 @@
 --   SlashLocalState is "dash" (the slash / dive / leap runs) the trunk is let go (forces off, PlatformStand off,
 --   TurnLimitEnabled restored), a running hop push stops, the state is "ground" and nothing is probed, so the dash is not
 --   caught by the trunk again; after the dash the probes run as before. ClimbReason "slash".
+-- v1.10 (MDA-145, Kepu 2026-10-31 live on a phone: stuck clinging under a palm crown; Studio repro on CoconutPalm_7,
+--   which leans: the vertical climb lost the trunk at y 37, ~15 studs under the crown, and clung at "trunkEnd"):
+--   with ClimbLogic 1.1 forward at the trunk end mantles. The mantle target is ClimbLogic.mantleTarget (a proxy over the
+--   trunk) as before, else ClimbLogic.treeTopTarget over the climbed tree's own proxies (TreeTopOf = ClimbTreeLocal; a
+--   leaning palm's crown is off the trunk line). With no target at all a trunk-end mantle keeps clinging (held, vy 0)
+--   instead of letting go (1.9 dropped to "ground"). Diagnostic: ClimbMantleTarget ("trunk" / "tree" / "none").
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -354,7 +360,7 @@ RunService.Heartbeat:Connect(function()
 		local reach = reachOf(p)
 		local d = Vector3.new(p.Position.X - hrp.Position.X, 0, p.Position.Z - hrp.Position.Z).Magnitude
 		local top = topOf(p)
-		table.insert(plist, {x = p.Position.X, z = p.Position.Z, top = top, reach = reach})
+		table.insert(plist, {x = p.Position.X, z = p.Position.Z, top = top, reach = reach, tree = p:GetAttribute("TreeTopOf")}) -- v1.10: + tree
 		if d <= reach then
 			local bottom = top - 2 * (top - p.Position.Y)
 			if bottom >= hrp.Position.Y then
@@ -374,6 +380,22 @@ RunService.Heartbeat:Connect(function()
 	if out.mantle then
 		local trunkPos = hit and hit.Position or hrp.Position
 		local target = CL.mantleTarget(plist, trunkPos, hrp.Position.Y)
+		local how = target and "trunk" or "none" -- v1.10
+		if not target and CL.treeTopTarget and currentTree ~= "" then -- v1.10: the climbed tree's own top
+			local own = {}
+			for _, q in ipairs(plist) do
+				if q.tree == currentTree then table.insert(own, q) end
+			end
+			target = CL.treeTopTarget(own, hrp.Position.Y)
+			if target then how = "tree" end
+		end
+		char:SetAttribute("ClimbMantleTarget", how)
+		if not target and out.reason == "trunkEnd" then -- v1.10: nowhere to go: keep clinging, do not drop
+			hold(true)
+			lv.VectorVelocity = Vector3.zero
+			ao.CFrame = CFrame.lookAt(Vector3.zero, fwd)
+			nextState = "clinging"
+		else
 		hold(false)
 		if target then
 			local up = hrp.Size.Y / 2 + hum.HipHeight + 0.3
@@ -382,6 +404,7 @@ RunService.Heartbeat:Connect(function()
 		else
 			nextState = "ground"
 		end
+		end -- v1.10
 	elseif out.hold then
 		hopLv.Enabled = false -- v1.7
 		hopUntil = 0

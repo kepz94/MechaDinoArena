@@ -1,4 +1,4 @@
--- MainMenu v1.9 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.10 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -101,13 +101,19 @@
 --   {id = "Herrera", name = "HERRERA", sub = "40 HP · climber, dash slash"} after the pachy (the arrows cycle Raptor,
 --   T-Rex, Pachy, Herrera). Switch: script attribute MainMenuHerreraEnabled (default true, read at start; false = 1.8
 --   list).
+-- v1.10 (MDA-145, Kepu 2026-10-31: leaving to the menu while the Herrera was on a tree showed the menu Herrera lying in
+--   the climb pose): the preview is a copy of the live character, taken when the menu opens, so it froze the pose on
+--   the joints at that moment. The preview key now also carries "pose" while the character's ClimbPoseBlend
+--   (IdleAnimation 1.32) is above 0 or its SlashPoseState (IdleAnimation 1.33) is not "none", and the menu re-copies when
+--   either changes (ClimbTest lets go on menu entry, so the climb pose fades out within ~0.5 s and the copy is retaken
+--   standing). Switch: script attribute MainMenuPoseRecopyEnabled (default true; false = 1.9).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -742,7 +748,13 @@ local function previewKey()
 	end
 	table.sort(names)
 	local skinKey = script:GetAttribute("MainMenuSkinRecopyEnabled") ~= false and tostring(c:GetAttribute("SkinApplied")) or "" -- v1.7
-	return ("%s|%s|%s|%s|%s"):format(tostring(c), species(), mech and "mech" or "plain", table.concat(names, ","), skinKey)
+	local poseKey = "" -- v1.10: an action pose on the joints -> copy again once it has faded
+	if script:GetAttribute("MainMenuPoseRecopyEnabled") ~= false then
+		local cb = tonumber(c:GetAttribute("ClimbPoseBlend")) or 0
+		local sp = c:GetAttribute("SlashPoseState")
+		if cb > 0 or (sp ~= nil and sp ~= "none") then poseKey = "pose" end
+	end
+	return ("%s|%s|%s|%s|%s|%s"):format(tostring(c), species(), mech and "mech" or "plain", table.concat(names, ","), skinKey, poseKey)
 end
 local function rebuildPreview()
 	local key = previewKey()
@@ -1145,6 +1157,9 @@ local function onChar(c)
 	table.insert(charConns, c.ChildRemoved:Connect(function(ch) if ch.Name:sub(1, 6) == "Mecha_" then queueRefresh() end end))
 	table.insert(charConns, c:GetAttributeChangedSignal("Species"):Connect(function() if open then redraw() queueRefresh() end end))
 	table.insert(charConns, c:GetAttributeChangedSignal("SkinApplied"):Connect(function() if open then queueRefresh() end end)) -- v1.7
+	for _, a in ipairs({"ClimbPoseBlend", "SlashPoseState"}) do -- v1.10
+		table.insert(charConns, c:GetAttributeChangedSignal(a):Connect(function() if open then queueRefresh() end end))
+	end
 	if open then
 		task.delay(0.5, function()
 			if player.Character == c then
