@@ -1,4 +1,4 @@
--- BiteTest v1.6 (Dino Arcade) — TEST input for the quick bite. Left click (mouse), R2 (gamepad) or the
+-- BiteTest v1.7 (Dino Arcade) — TEST input for the quick bite. Left click (mouse), R2 (gamepad) or the
 -- on-screen Bite button (touch).
 -- On press (when allowed): stamps BitePredictedAt = server time (this client only, so the attacker sees the
 -- wind-up at once), sends DinoBiteRequest:FireServer(that time), and pushes the body forward
@@ -47,6 +47,10 @@
 --   the scoring and everything else in the aim are unchanged.
 -- Diagnostics (character attributes, this client): BiteClaim ("sent" / "none"), BiteInputResult ("sent" / "cooldown" / "roaring" /
 --   "disabled" / "dead"), BiteLungeMoved (studs actually moved by the last lunge, 0.01 steps).
+-- v1.7 (Arena squads, MDA-160, plan docs/plans/SQUADS_v1.0.md Task S3, ADR-006; Kepu 2026-10-31 "turning friendly fire off"): a squadmate's hitboxes are not a bite target (targetOf) and
+--   not an aim-assist candidate (aimCandidates), so the bite never steers onto or claims a squadmate.
+--   Squadmates = ReplicatedStorage.SquadShared.SquadRules (SquadServer 1.0's copy) sameChar. Switch: script attribute
+--   BiteTestSquadEnabled (default true, read at each check; false = 1.6).
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -62,7 +66,7 @@ local DEFAULTS = {BiteEnabled = true, BiteCooldown = 0.8, BiteWindup = 0.15, Bit
 	BiteAimAssist = true, BiteAimCone = 45, BiteAimMax = 45} -- v1.5
 local DIP_STEP = 5 -- v1.3: degrees between tried dips
 local AIM_SCAN, AIM_YAW_WEIGHT, AIM_DIST_WEIGHT = 45, 0.05, 0.02 -- v1.5
-char:SetAttribute("BiteTestVersion", "1.6")
+char:SetAttribute("BiteTestVersion", "1.7")
 
 local function get(k)
 	local v = char:GetAttribute(k)
@@ -118,13 +122,30 @@ end
 
 -- the bite target a part belongs to: a BiteDummy model (any of its parts) or a Bitable model (only the
 -- parts in its "Hitboxes" folder, built by DinoHitboxes); nil otherwise
+-- v1.7: squadmates are never targets (ReplicatedStorage.SquadShared.SquadRules, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("BiteTestSquadEnabled") == false then return false end
+	if not squadMod then
+		local sh = game:GetService("ReplicatedStorage"):FindFirstChild("SquadShared")
+		local m = sh and sh:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	return squadMod.sameChar(a, b)
+end
 local function targetOf(part)
 	local model = part:FindFirstAncestorWhichIsA("Model")
 	while model do
 		if model:GetAttribute("BiteDummy") == true then return model end
 		if model:GetAttribute("Bitable") == true then
 			local folder = part.Parent
-			if folder and folder.Name == "Hitboxes" and folder.Parent == model then return model end
+			if folder and folder.Name == "Hitboxes" and folder.Parent == model then
+				if squadmate(char, model) then return nil end -- v1.7
+				return model
+			end
 			return nil
 		end
 		model = model:FindFirstAncestorWhichIsA("Model")
@@ -191,6 +212,7 @@ local function aimCandidates()
 	local list = {}
 	local function consider(m)
 		if not m:IsA("Model") or m == char or m:GetAttribute("DummyState") == "ko" then return end
+		if squadmate(char, m) then return end -- v1.7
 		local h = m:FindFirstChildOfClass("Humanoid")
 		if h and h.Health <= 0 then return end
 		if m:GetAttribute("BiteDummy") == true then

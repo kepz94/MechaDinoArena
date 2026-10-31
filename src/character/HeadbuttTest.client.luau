@@ -1,4 +1,4 @@
--- HeadbuttTest v1.1 (Mecha Dino Arena) — the pachy's headbutt charge on the owner's client. MDA-119, plan
+-- HeadbuttTest v1.2 (Mecha Dino Arena) — the pachy's headbutt charge on the owner's client. MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 6 (server: HeadbuttServer 1.0).
 -- Active while the character has HeadbuttEnabled = true (PachyModelData 1.1). Kepu 2026-10-30: the headbutt is the
 --   pachy's ATTACK ("Headbutt = ATTACK"), "when its in charge mode it should be pretty manueverable", "it should be able to
@@ -27,13 +27,17 @@
 --   when BloodRushEnabled is true, health is above half of MaxHealth and HeadbuttSacrifices < BloodRushMax; the press
 --   result is then "sacrifice" until the server answers. Otherwise "empty" as before. Switch: character attribute
 --   HeadbuttSacrificeInputEnabled (default true; false = 1.0).
+-- v1.2 (Arena squads, MDA-160, plan docs/plans/SQUADS_v1.0.md Task S3, ADR-006; Kepu 2026-10-31 "turning friendly fire off"): a squadmate is not a headbutt target (findTargets), so the charge
+--   passes through a squadmate instead of ending on contact.
+--   Squadmates = ReplicatedStorage.SquadShared.SquadRules (SquadServer 1.0's copy) sameChar. Switch: script attribute
+--   HeadbuttTestSquadEnabled (default true, read at each check; false = 1.1).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local ACTION = "DinoHeadbutt"
 local ACTION_CLICK = "DinoHeadbuttClick"
 local BIND = "DinoHeadbuttDrive"
@@ -118,13 +122,28 @@ local function headBox()
 	return nil
 end
 
+-- v1.2: squadmates are never targets (ReplicatedStorage.SquadShared.SquadRules, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("HeadbuttTestSquadEnabled") == false then return false end
+	if not squadMod then
+		local sh = game:GetService("ReplicatedStorage"):FindFirstChild("SquadShared")
+		local m = sh and sh:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	return squadMod.sameChar(a, b)
+end
 local function findTargets()
 	local list, folders = {}, {}
 	for _, d in ipairs(workspace:GetDescendants()) do
 		if d:IsA("Folder") and d.Name == "Hitboxes" then
 			local m = d.Parent
 			if m and m:IsA("Model") and m ~= char and m:GetAttribute("Bitable") == true
-				and (m:GetAttribute("Species") ~= nil or m:GetAttribute("IsBot") == true) and m:GetAttribute("DummyState") ~= "ko" then
+				and (m:GetAttribute("Species") ~= nil or m:GetAttribute("IsBot") == true) and m:GetAttribute("DummyState") ~= "ko"
+				and not squadmate(char, m) then -- v1.2: squad
 				table.insert(folders, d)
 				list[d] = m
 			end

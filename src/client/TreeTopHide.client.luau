@@ -1,4 +1,4 @@
--- TreeTopHide v1.1 (Mecha Dino Arena) — Tree Stalker III: "On a tree top, enemies cannot see your name or health bar"
+-- TreeTopHide v1.2 (Mecha Dino Arena) — Tree Stalker III: "On a tree top, enemies cannot see your name or health bar"
 -- (LocalScript in StarterPlayerScripts, all devices). SkillTree 1.37 / SkillEffects 1.26, plan docs/plans/STAT_LINES_v1.0.md
 -- (Kepu 2026-10-31 picked the new row Tree Stalker).
 -- Every frame, for every OTHER player's character with the character attribute TreeTopHidden = true (SkillEffects 1.26)
@@ -12,10 +12,14 @@
 -- v1.1 (Herrera Smoke Pods, MDA-152, HerreraMovesServer 1.0): a character with SmokeHidden = true (inside its own smoke
 --   cloud) is hidden the same way. Switch: script attribute TreeTopHideSmokeEnabled (default true, read each frame; false
 --   = 1.0).
+-- v1.2 (Arena squads, MDA-160, plan docs/plans/SQUADS_v1.0.md Task S3, ADR-006; Kepu 2026-10-31 "turning friendly fire off"): a squadmate's name / health bar is never hidden from you (tree
+--   top or smoke): wantsHide is false for your squadmates.
+--   Squadmates = ReplicatedStorage.SquadShared.SquadRules (SquadServer 1.0's copy) sameChar. Switch: script attribute
+--   TreeTopHideSquadEnabled (default true, read at each check; false = 1.1).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local me = Players.LocalPlayer
 script:SetAttribute("TreeTopHideVersion", VERSION)
 me:SetAttribute("TreeTopHideVersion", VERSION)
@@ -33,7 +37,22 @@ local function restore(char)
 	hidden[char] = nil
 end
 
+-- v1.2: squadmates are never targets (ReplicatedStorage.SquadShared.SquadRules, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("TreeTopHideSquadEnabled") == false then return false end
+	if not squadMod then
+		local sh = game:GetService("ReplicatedStorage"):FindFirstChild("SquadShared")
+		local m = sh and sh:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	return squadMod.sameChar(a, b)
+end
 local function wantsHide(char)
+	if me.Character and squadmate(me.Character, char) then return false end -- v1.2
 	if script:GetAttribute("TreeTopHideSmokeEnabled") ~= false and char:GetAttribute("SmokeHidden") == true then return true end -- v1.1
 	return char:GetAttribute("TreeTopHidden") == true and char:GetAttribute("ClimbState") == "top"
 end

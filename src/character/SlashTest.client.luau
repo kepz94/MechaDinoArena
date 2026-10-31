@@ -1,4 +1,4 @@
--- SlashTest v1.4 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
+-- SlashTest v1.5 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 9 (server: SlashServer 1.1), mockup docs/mockups/herrera_kit_options.html.
 -- Kepu 2026-10-30: "Dash-through slash"; the drop attack "should be able to happen if I press the dash aimed at a nearby
 --   target but not be its own dedicated button".
@@ -46,13 +46,17 @@
 --   (GliderTest 1.0) and the character's GliderDrop are true, a press off a tree is a "dive" (drop attack on the dino
 --   below, else the leap) as from a tree; SlashServer 1.5 accepts it while the replicated Gliding is true. Switch: script
 --   attribute SlashGlideDiveEnabled (default true, read at each press; false = 1.3).
+-- v1.5 (Arena squads, MDA-160, plan docs/plans/SQUADS_v1.0.md Task S3, ADR-006; Kepu 2026-10-31 "turning friendly fire off"): a squadmate is not a slash target (isTarget feeds findTargets,
+--   the dive pick and the contact loop), so no claim or dive is ever sent for a squadmate.
+--   Squadmates = ReplicatedStorage.SquadShared.SquadRules (SquadServer 1.0's copy) sameChar. Switch: script attribute
+--   SlashTestSquadEnabled (default true, read at each check; false = 1.4).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local ACTION = "DinoSlash"
 local ACTION_CLICK = "DinoSlashClick"
 local BIND = "DinoSlashDrive"
@@ -112,9 +116,24 @@ local function setState(s)
 end
 setState("ready")
 
+-- v1.5: squadmates are never targets (ReplicatedStorage.SquadShared.SquadRules, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("SlashTestSquadEnabled") == false then return false end
+	if not squadMod then
+		local sh = game:GetService("ReplicatedStorage"):FindFirstChild("SquadShared")
+		local m = sh and sh:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	return squadMod.sameChar(a, b)
+end
 local function isTarget(m)
 	return m and m:IsA("Model") and m ~= char and m:GetAttribute("Bitable") == true
 		and (m:GetAttribute("Species") ~= nil or m:GetAttribute("IsBot") == true) and m:GetAttribute("DummyState") ~= "ko"
+		and not squadmate(char, m) -- v1.5
 end
 
 local function findTargets()
