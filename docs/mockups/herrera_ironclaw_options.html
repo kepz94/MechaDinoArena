@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iron Claw Looks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Same dark HUD-panel look as the earlier mecha mockups (raptor_parts_b1_looks.html). */
+:root {
+  --ink: #0f1319; --panel: #171d26; --line: #2a3340; --text: #e8edf4; --muted: #9aa6b6;
+  --attack: #f05a4f; --steel: #9aa6b8; --hot: #ff8a2a; --yellow: #ffc832; --green: #5fd16a;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding: 20px max(16px, env(safe-area-inset-right)) 40px max(16px, env(safe-area-inset-left)); }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; }
+h1 span { color: var(--attack); }
+.lede { margin: 2px 0 0; color: var(--muted); max-width: 75ch; }
+.lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 4px 0 -6px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font-family: var(--display); font-weight: 600; font-size: 16px; color: var(--text); background: var(--panel);
+  border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left; }
+.tab small { display: block; font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { border-color: var(--attack); box-shadow: 0 0 0 3px rgba(240,90,79,.22); }
+.tab.step { min-width: 64px; text-align: center; }
+.tab:focus-visible { outline: 3px solid var(--attack); outline-offset: 2px; }
+.stage { position: relative; border-radius: 16px; overflow: hidden; border: 2px solid var(--line); background: #8fc6e8; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; }
+.hud { position: absolute; left: 10px; top: 10px; font-family: var(--display); font-weight: 600; font-size: 14px;
+  background: rgba(15,19,25,.78); border-radius: 10px; padding: 6px 10px; display: grid; gap: 1px; pointer-events: none; }
+.hud b { color: var(--yellow); }
+.hud .dn { color: #ff9a8f; }
+.bar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
+.tile { width: 76px; height: 56px; border-radius: 10px; background: rgba(23,29,38,.92); border: 2px solid #3a4556; position: relative;
+  font-family: var(--display); font-weight: 700; font-size: 11px; display: grid; place-items: center; text-align: center; padding: 14px 3px 2px; }
+.tile .k { position: absolute; left: 6px; top: 2px; font-size: 11px; color: var(--muted); }
+.tile .pips { position: absolute; right: 6px; top: 5px; display: flex; gap: 2px; }
+.tile .pips i { width: 6px; height: 6px; border-radius: 3px; background: var(--yellow); }
+.tile .pips i.off { background: #3a4556; }
+.tile.iron { border-color: var(--steel); background: linear-gradient(180deg, rgba(60,70,86,.95), rgba(23,29,38,.95)); }
+.tile.iron.flash { border-color: #fff; box-shadow: 0 0 14px #fff; }
+.tile.iron .k { color: var(--steel); }
+.tile.empty { opacity: .45; }
+.tile.active { border-color: #fff; }
+.pop { position: absolute; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 700; pointer-events: none;
+  text-shadow: 0 3px 0 #2a1200, 0 0 10px rgba(0,0,0,.5); white-space: nowrap; }
+.pop small { display: block; text-align: center; font-size: 13px; color: #fff; letter-spacing: .1em; }
+.hp { position: absolute; transform: translate(-50%, -100%); width: 110px; pointer-events: none; text-align: center;
+  font-family: var(--display); font-size: 12px; color: #fff; text-shadow: 0 1px 2px #000; }
+.hp div { height: 9px; border-radius: 5px; background: #2a1a14; overflow: hidden; border: 1px solid #000; }
+.hp div i { display: block; height: 100%; background: #78c850; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { font-family: var(--display); font-weight: 700; font-size: 15px; border: 0; border-radius: 12px; padding: 9px 16px; cursor: pointer;
+  background: var(--yellow); color: #1b1406; }
+.btn.ghost { background: var(--panel); color: var(--text); border: 2px solid var(--line); }
+.btn[aria-pressed="true"] { outline: 2px solid var(--attack); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.card h2 { font-family: var(--display); font-size: 18px; margin: 0 0 6px; }
+.card p { margin: 6px 0; color: var(--muted); }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.steps li { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start; }
+.steps li b { display: grid; place-items: center; height: 24px; border-radius: 6px; background: #252e3b; font-family: var(--display); font-size: 13px; }
+.steps li.cur b { background: var(--yellow); color: #1b1406; }
+.steps li.cur span { color: var(--text); }
+.steps li span { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 400; font-size: 13px; }
+td.up { color: var(--yellow); } td.dn { color: #ff9a8f; }
+tr.cur td { background: rgba(255,200,50,.07); }
+.note { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1><span>Iron Claw</span> · Herrera mecha part</h1>
+    <p class="lede">Takes an ability slot like Mecha Legs and Blood Rush, and fires through your SLASH. While it's slotted, the claws wear the iron. Each step adds slash damage and slows the run. This is the real Herrera model (HerreraModelData 1.2) in its scurry, doing the dash-through slash.</p>
+  </div>
+  <p class="lbl">Look</p>
+  <div class="row" id="looks"></div>
+  <p class="lbl">Step</p>
+  <div class="row" id="steps"></div>
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="hud" id="hud"></div>
+    <div class="hp" id="hp"><span>Bot_TRex</span><div><i id="hpfill"></i></div></div>
+    <div class="bar" id="bar"></div>
+  </div>
+  <div class="controls">
+    <button class="btn" id="slashBtn">SLASH now</button>
+    <button class="btn ghost" id="slotBtn" aria-pressed="true">Slotted: ON</button>
+    <button class="btn ghost" id="viewBtn" aria-pressed="false">Lab card view</button>
+    <button class="btn ghost" id="slowBtn" aria-pressed="false">Slow-mo</button>
+    <span class="note">The slash plays by itself about every 3 s.</span>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2 id="lookName"></h2>
+      <p id="lookWhy"></p>
+      <p class="note" id="lookParts"></p>
+    </div>
+    <div class="card">
+      <h2>Iron Claw · ATTACK · mecha part</h2>
+      <ul class="steps" id="stepList"></ul>
+      <p class="note">Takes an ability slot and stays on while slotted, with no button and no cooldown. It only shows on the dino while it's slotted. Herrera only.</p>
+      <p class="note">What Iron Claw adds to today's slash: a wind-up flash on the iron, a bigger rake, a slash arc (orange-edged on B), sparks, a short hit-stop with a camera shake, a bigger yellow number with "CLANG!", and heavier footstep dust from III. Press "Slotted: OFF" to compare with the slash as it is now.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Numbers (no other upgrades / with Razor Claws I)</h2>
+    <table><thead><tr><th>Step</th><th>Slash hit</th><th>With Razor Claws I</th><th>Run speed (Arena)</th></tr></thead><tbody id="numRows"></tbody></table>
+    <p class="note">Only the slash hit gets the bonus; the bleed stays the same. Only the run is slowed (the game has no separate walk). The server rounds the hit, as it does today.</p>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ---------- data: HerreraModelData 1.2 (parts / segments / joints, exported as-is) ----------
+const D = {"segs":[{"n":"Torso","root":[0.0,0.0,0.0,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"Torso_hips","s":[0.7664,0.6492,0.6131],"cf":[0.0,0.1623,0.45083,0.0,0.0,1.0,0.17365,0.98481,0.0,-0.98481,0.17365,0.0],"c":"6E6A3A"},{"n":"Torso_waist","s":[0.7664,0.6672,0.5951],"cf":[0.0,0.28853,-0.22542,0.0,0.0,1.0,0.30902,0.95106,0.0,-0.95106,0.30902,0.0],"c":"6E6A3A"},{"n":"Torso_chest","s":[1.2172,1.3074,1.0369],"cf":[0.0,0.55903,-1.03691,0.0,0.0,1.0,0.42262,0.90631,0.0,-0.90631,0.42262,0.0],"c":"6E6A3A"},{"n":"Torso_hump","s":[0.9467,0.4959,0.9467],"cf":[0.0,1.24429,-1.08199,0.0,0.0,1.0,0.30902,0.95106,0.0,-0.95106,0.30902,0.0],"c":"6E6A3A"},{"n":"Torso_belly","s":[1.3525,0.1984,0.5049],"cf":[0.0,-0.07213,-0.49591,0.0,0.0,1.0,0.30902,0.95106,0.0,-0.95106,0.30902,0.0],"c":"D3C89A"},{"n":"Torso_breast","s":[0.4057,1.0369,0.8566],"cf":[0.0,0.36066,-1.62299,0.0,0.0,1.0,0.42262,0.90631,0.0,-0.90631,0.42262,0.0],"c":"D3C89A"},{"n":"Torso_quill1","s":[0.1172,0.3156,0.1172],"cf":[0.0,0.58642,0.74087,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2F3320"},{"n":"Torso_quill2","s":[0.1172,0.3787,0.1172],"cf":[0.0,0.72173,0.39313,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2F3320"},{"n":"Torso_quill3","s":[0.1172,0.4508,0.1172],"cf":[0.0,0.86865,0.04724,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2F3320"},{"n":"Torso_quill4","s":[0.1172,0.559,0.1172],"cf":[0.0,1.10707,-0.29126,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2F3320"},{"n":"Torso_quill5","s":[0.1172,0.7664,0.1172],"cf":[0.0,1.50016,-0.60946,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2F3320"},{"n":"Torso_quill6","s":[0.1172,0.9017,0.1172],"cf":[0.0,1.71927,-0.94243,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2F3320"},{"n":"Torso_quill7","s":[0.1172,0.7664,0.1172],"cf":[0.0,1.64442,-1.2857,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2F3320"},{"n":"Torso_stripe1L","s":[0.1262,0.559,0.0361],"cf":[0.33361,0.25472,0.49591,0.0,0.0,1.0,-0.20791,0.97815,0.0,-0.97815,-0.20791,0.0],"c":"2F3320"},{"n":"Torso_stripe1R","s":[0.1262,0.559,0.0361],"cf":[-0.33361,0.25472,0.49591,0.0,0.0,1.0,-0.20791,0.97815,0.0,-0.97815,-0.20791,0.0],"c":"2F3320"},{"n":"Torso_stripe2L","s":[0.1262,0.559,0.0361],"cf":[0.33361,0.3787,0.0,0.0,0.0,1.0,-0.20791,0.97815,0.0,-0.97815,-0.20791,0.0],"c":"2F3320"},{"n":"Torso_stripe2R","s":[0.1262,0.559,0.0361],"cf":[-0.33361,0.3787,0.0,0.0,0.0,1.0,-0.20791,0.97815,0.0,-0.97815,-0.20791,0.0],"c":"2F3320"},{"n":"Torso_stripe3L","s":[0.1262,0.559,0.0361],"cf":[0.41792,0.50268,-0.49591,0.0,0.0,1.0,-0.20791,0.97815,0.0,-0.97815,-0.20791,0.0],"c":"2F3320"},{"n":"Torso_stripe3R","s":[0.1262,0.559,0.0361],"cf":[-0.41792,0.50268,-0.49591,0.0,0.0,1.0,-0.20791,0.97815,0.0,-0.97815,-0.20791,0.0],"c":"2F3320"},{"n":"Torso_stripe4L","s":[0.1262,0.559,0.0361],"cf":[0.49456,0.61538,-0.94674,0.0,0.0,1.0,-0.20791,0.97815,0.0,-0.97815,-0.20791,0.0],"c":"2F3320"},{"n":"Torso_stripe4R","s":[0.1262,0.559,0.0361],"cf":[-0.49456,0.61538,-0.94674,0.0,0.0,1.0,-0.20791,0.97815,0.0,-0.97815,-0.20791,0.0],"c":"2F3320"},{"n":"Torso_spot1L","s":[0.2164,0.1803,0.0361],"cf":[0.3246,0.04508,0.18033,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Torso_spot1R","s":[0.2164,0.1803,0.0361],"cf":[-0.3246,0.04508,0.18033,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Torso_spot2L","s":[0.2164,0.1803,0.0361],"cf":[0.48239,0.31558,-0.63116,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Torso_spot2R","s":[0.2164,0.1803,0.0361],"cf":[-0.48239,0.31558,-0.63116,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"B8414A"}]},{"n":"Neck","root":[0.0,1.03691,-1.57791,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"Neck_main","s":[0.8115,0.5771,0.559],"cf":[0.0,0.82953,-1.93857,0.0,0.0,1.0,-0.57358,0.81915,0.0,-0.81915,-0.57358,0.0],"c":"6E6A3A"},{"n":"Neck_lower","s":[0.7213,0.541,0.523],"cf":[0.0,0.541,-2.3894,0.0,0.0,1.0,-0.37461,0.92718,0.0,-0.92718,-0.37461,0.0],"c":"6E6A3A"},{"n":"Neck_sac","s":[0.8566,0.559,0.6312],"cf":[0.0,0.1623,-2.47957,0.0,0.0,1.0,-0.17365,0.98481,0.0,-0.98481,-0.17365,0.0],"c":"B8414A"},{"n":"Neck_sac2","s":[0.4959,0.3787,0.5049],"cf":[0.0,0.40575,-2.07382,0.0,0.0,1.0,-0.42262,0.90631,0.0,-0.90631,-0.42262,0.0],"c":"B8414A"},{"n":"Neck_quill1","s":[0.1082,0.4959,0.1082],"cf":[0.0,1.17216,-1.8484,0.0,0.0,1.0,0.64279,0.76604,0.0,-0.76604,0.64279,0.0],"c":"2F3320"},{"n":"Neck_quill2","s":[0.1082,0.3877,0.1082],"cf":[0.0,0.88363,-2.25415,0.0,0.0,1.0,0.64279,0.76604,0.0,-0.76604,0.64279,0.0],"c":"2F3320"}]},{"n":"Head","root":[0.0,0.40575,-2.70498,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"Head_cranium","s":[1.0369,0.8836,0.9467],"cf":[0.0,0.541,-3.11073,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"6E6A3A"},{"n":"Head_snout","s":[1.0369,0.5951,0.7754],"cf":[0.0,0.41476,-4.03944,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"6E6A3A"},{"n":"Head_tip","s":[0.3426,0.523,0.7213],"cf":[0.0,0.36066,-4.6706,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"6E6A3A"},{"n":"Head_mouth","s":[1.8935,0.0721,0.7574],"cf":[0.0,0.1082,-3.87714,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"6E342E"},{"n":"Head_tooth1","s":[0.0902,0.1082,0.7754],"cf":[0.0,0.13525,-3.38123,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"E8E2D2"},{"n":"Head_tooth2","s":[0.0902,0.1082,0.7754],"cf":[0.0,0.13525,-3.65172,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"E8E2D2"},{"n":"Head_tooth3","s":[0.0902,0.1082,0.7754],"cf":[0.0,0.13525,-3.92222,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"E8E2D2"},{"n":"Head_tooth4","s":[0.0902,0.1082,0.7754],"cf":[0.0,0.13525,-4.19272,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"E8E2D2"},{"n":"Head_tooth5","s":[0.0902,0.1082,0.7754],"cf":[0.0,0.13525,-4.46322,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"E8E2D2"},{"n":"Head_snoutline","s":[1.082,0.0631,0.3607],"cf":[0.0,0.72133,-4.05747,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"2F3320"},{"n":"Head_eyebumpL","s":[0.4148,0.3607,0.3607],"cf":[0.28853,1.00986,-3.26401,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"6E6A3A"},{"n":"Head_eyeL","s":[0.3066,0.2705,0.0541],"cf":[0.47788,1.02789,-3.30008,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"E8C547"},{"n":"Head_pupilL","s":[0.0902,0.2164,0.027],"cf":[0.50944,1.02789,-3.33614,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"111111"},{"n":"Head_hornL","s":[0.1443,0.4508,0.1172],"cf":[0.28853,1.26232,-2.95745,0.0,0.0,1.0,0.70711,0.70711,0.0,-0.70711,0.70711,0.0],"c":"B8414A"},{"n":"Head_cheekL","s":[0.4508,0.2705,0.027],"cf":[0.39673,0.45083,-4.01239,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"262A1A"},{"n":"Head_nostrilL","s":[0.0811,0.0811,0.0361],"cf":[0.29755,0.49591,-4.7788,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_eyebumpR","s":[0.4148,0.3607,0.3607],"cf":[-0.28853,1.00986,-3.26401,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"6E6A3A"},{"n":"Head_eyeR","s":[0.3066,0.2705,0.0541],"cf":[-0.47788,1.02789,-3.30008,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"E8C547"},{"n":"Head_pupilR","s":[0.0902,0.2164,0.027],"cf":[-0.50944,1.02789,-3.33614,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"111111"},{"n":"Head_hornR","s":[0.1443,0.4508,0.1172],"cf":[-0.28853,1.26232,-2.95745,0.0,0.0,1.0,0.70711,0.70711,0.0,-0.70711,0.70711,0.0],"c":"B8414A"},{"n":"Head_cheekR","s":[0.4508,0.2705,0.027],"cf":[-0.39673,0.45083,-4.01239,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"262A1A"},{"n":"Head_nostrilR","s":[0.0811,0.0811,0.0361],"cf":[-0.29755,0.49591,-4.7788,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_frill1","s":[0.0902,0.8566,0.4508],"cf":[-0.82739,0.27421,-2.63285,0.0,-0.96593,-0.25882,0.0,-0.25882,0.96593,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim1","s":[0.0992,0.1803,0.4689],"cf":[-1.28899,0.15053,-2.62383,0.0,-0.96593,-0.25882,0.0,-0.25882,0.96593,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill2","s":[0.0902,0.8566,0.4508],"cf":[-0.85188,0.58545,-2.63285,0.0,-0.99452,0.10453,0.0,0.10453,0.99452,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim2","s":[0.0992,0.1803,0.4689],"cf":[-1.32715,0.6354,-2.62383,0.0,-0.99452,0.10453,0.0,0.10453,0.99452,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill3","s":[0.0902,0.8566,0.4508],"cf":[-0.76322,0.88479,-2.63285,0.0,-0.89101,0.45399,0.0,0.45399,0.89101,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim3","s":[0.0992,0.1803,0.4689],"cf":[-1.18901,1.10174,-2.62383,0.0,-0.89101,0.45399,0.0,0.45399,0.89101,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill4","s":[0.0902,0.8566,0.4508],"cf":[-0.57316,1.13247,-2.63285,0.0,-0.66913,0.74314,0.0,0.74314,0.66913,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim4","s":[0.0992,0.1803,0.4689],"cf":[-0.89293,1.48761,-2.62383,0.0,-0.66913,0.74314,0.0,0.74314,0.66913,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill5","s":[0.0902,0.8566,0.4508],"cf":[-0.30697,1.2956,-2.63285,0.0,-0.35837,0.93358,0.0,0.93358,0.35837,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim5","s":[0.0992,0.1803,0.4689],"cf":[-0.47823,1.74174,-2.62383,0.0,-0.35837,0.93358,0.0,0.93358,0.35837,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill6","s":[0.0902,0.8566,0.4508],"cf":[0.0,1.35249,-2.63285,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim6","s":[0.0992,0.1803,0.4689],"cf":[0.0,1.83037,-2.62383,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill7","s":[0.0902,0.8566,0.4508],"cf":[0.30697,1.2956,-2.63285,0.0,0.35837,0.93358,0.0,0.93358,-0.35837,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim7","s":[0.0992,0.1803,0.4689],"cf":[0.47823,1.74174,-2.62383,0.0,0.35837,0.93358,0.0,0.93358,-0.35837,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill8","s":[0.0902,0.8566,0.4508],"cf":[0.57316,1.13247,-2.63285,0.0,0.66913,0.74314,0.0,0.74314,-0.66913,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim8","s":[0.0992,0.1803,0.4689],"cf":[0.89293,1.48761,-2.62383,0.0,0.66913,0.74314,0.0,0.74314,-0.66913,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill9","s":[0.0902,0.8566,0.4508],"cf":[0.76322,0.88479,-2.63285,0.0,0.89101,0.45399,0.0,0.45399,-0.89101,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim9","s":[0.0992,0.1803,0.4689],"cf":[1.18901,1.10174,-2.62383,0.0,0.89101,0.45399,0.0,0.45399,-0.89101,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill10","s":[0.0902,0.8566,0.4508],"cf":[0.85188,0.58545,-2.63285,0.0,0.99452,0.10453,0.0,0.10453,-0.99452,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim10","s":[0.0992,0.1803,0.4689],"cf":[1.32715,0.6354,-2.62383,0.0,0.99452,0.10453,0.0,0.10453,-0.99452,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frill11","s":[0.0902,0.8566,0.4508],"cf":[0.82739,0.27421,-2.63285,0.0,0.96593,-0.25882,0.0,-0.25882,-0.96593,-1.0,0.0,0.0],"c":"C9572E"},{"n":"Head_frillrim11","s":[0.0992,0.1803,0.4689],"cf":[1.28899,0.15053,-2.62383,0.0,0.96593,-0.25882,0.0,-0.25882,-0.96593,-1.0,0.0,0.0],"c":"B8414A"},{"n":"Head_frillspoke1","s":[0.1082,0.9017,0.0631],"cf":[-0.88147,0.43427,-2.64186,0.0,-0.99756,-0.06976,0.0,-0.06976,0.99756,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_frillspoke2","s":[0.1082,0.9017,0.0631],"cf":[-0.84502,0.75426,-2.64186,0.0,-0.9563,0.29237,0.0,0.29237,0.9563,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_frillspoke3","s":[0.1082,0.9017,0.0631],"cf":[-0.69631,1.03993,-2.64186,0.0,-0.78801,0.61566,0.0,0.61566,0.78801,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_frillspoke4","s":[0.1082,0.9017,0.0631],"cf":[-0.4551,1.25333,-2.64186,0.0,-0.51504,0.85717,0.0,0.85717,0.51504,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_frillspoke5","s":[0.1082,0.9017,0.0631],"cf":[-0.15344,1.36612,-2.64186,0.0,-0.17365,0.98481,0.0,0.98481,0.17365,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_frillspoke6","s":[0.1082,0.9017,0.0631],"cf":[0.1686,1.36331,-2.64186,0.0,0.19081,0.98163,0.0,0.98163,-0.19081,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_frillspoke7","s":[0.1082,0.9017,0.0631],"cf":[0.46825,1.24527,-2.64186,0.0,0.52992,0.84805,0.0,0.84805,-0.52992,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_frillspoke8","s":[0.1082,0.9017,0.0631],"cf":[0.7057,1.02769,-2.64186,0.0,0.79864,0.60182,0.0,0.60182,-0.79864,-1.0,0.0,0.0],"c":"262A1A"},{"n":"Head_frillspoke9","s":[0.1082,0.9017,0.0631],"cf":[0.8494,0.73947,-2.64186,0.0,0.96126,0.27564,0.0,0.27564,-0.96126,-1.0,0.0,0.0],"c":"262A1A"}]},{"n":"Jaw","root":[0.0,0.09017,-2.88531,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"Jaw_lower","s":[1.9837,0.3787,0.8566],"cf":[0.0,-0.18005,-3.90586,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"6E6A3A"},{"n":"Jaw_chin","s":[0.3787,0.3787,0.7935],"cf":[0.0,-0.19841,-4.94402,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"6E6A3A"},{"n":"Jaw_under","s":[1.7132,0.0721,0.6312],"cf":[0.0,-0.37478,-3.84705,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"D3C89A"},{"n":"Jaw_snaggle1L","s":[0.0992,0.3787,0.0902],"cf":[0.30656,0.09256,-4.91917,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"E8E2D2"},{"n":"Jaw_snaggle1R","s":[0.0992,0.3787,0.0902],"cf":[-0.30656,0.09256,-4.91917,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"E8E2D2"},{"n":"Jaw_snaggle2L","s":[0.0992,0.2885,0.0902],"cf":[0.38771,0.09162,-4.2864,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"E8E2D2"},{"n":"Jaw_snaggle2R","s":[0.0992,0.2885,0.0902],"cf":[-0.38771,0.09162,-4.2864,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"E8E2D2"},{"n":"Jaw_snaggle3L","s":[0.0992,0.2525,0.0902],"cf":[0.40575,0.11451,-3.70049,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"E8E2D2"},{"n":"Jaw_snaggle3R","s":[0.0992,0.2525,0.0902],"cf":[-0.40575,0.11451,-3.70049,0.0,0.0,1.0,-0.06976,0.99756,0.0,-0.99756,-0.06976,0.0],"c":"E8E2D2"}]},{"n":"ArmL","root":[0.50493,0.58608,-1.44266,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"ArmL_upper","s":[0.3426,1.0369,0.3066],"cf":[0.5951,0.11271,-1.60045,0.0,0.0,1.0,0.31623,0.94868,0.0,-0.94868,0.31623,0.0],"c":"6E6A3A"},{"n":"ArmL_elbow","s":[0.3607,0.3066,0.3607],"cf":[0.5951,-0.36066,-1.75824,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"6E6A3A"},{"n":"ArmL_fore","s":[0.2705,1.2443,0.2525],"cf":[0.5951,-0.96928,-1.87094,0.0,0.0,1.0,0.18209,0.98328,0.0,-0.98328,0.18209,0.0],"c":"5A5530"},{"n":"ArmL_hand","s":[0.4959,0.3246,0.3967],"cf":[0.5951,-1.75824,-2.09185,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"5A5530"},{"n":"ArmL_claw1","s":[0.1082,0.3787,0.0902],"cf":[0.46886,-1.91152,-2.36235,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2C2620"},{"n":"ArmL_hook1","s":[0.0902,0.2705,0.0811],"cf":[0.46886,-2.14595,-2.56071,0.0,0.0,1.0,0.96593,0.25882,0.0,-0.25882,0.96593,0.0],"c":"2C2620"},{"n":"ArmL_claw2","s":[0.1082,0.3787,0.0902],"cf":[0.5951,-1.91152,-2.36235,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2C2620"},{"n":"ArmL_hook2","s":[0.0902,0.2705,0.0811],"cf":[0.5951,-2.14595,-2.56071,0.0,0.0,1.0,0.96593,0.25882,0.0,-0.25882,0.96593,0.0],"c":"2C2620"},{"n":"ArmL_claw3","s":[0.1082,0.3787,0.0902],"cf":[0.72133,-1.91152,-2.36235,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2C2620"},{"n":"ArmL_hook3","s":[0.0902,0.2705,0.0811],"cf":[0.72133,-2.14595,-2.56071,0.0,0.0,1.0,0.96593,0.25882,0.0,-0.25882,0.96593,0.0],"c":"2C2620"}]},{"n":"ArmR","root":[-0.50493,0.58608,-1.44266,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"ArmR_upper","s":[0.3426,1.0369,0.3066],"cf":[-0.5951,0.11271,-1.60045,0.0,0.0,1.0,0.31623,0.94868,0.0,-0.94868,0.31623,0.0],"c":"6E6A3A"},{"n":"ArmR_elbow","s":[0.3607,0.3066,0.3607],"cf":[-0.5951,-0.36066,-1.75824,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"6E6A3A"},{"n":"ArmR_fore","s":[0.2705,1.2443,0.2525],"cf":[-0.5951,-0.96928,-1.87094,0.0,0.0,1.0,0.18209,0.98328,0.0,-0.98328,0.18209,0.0],"c":"5A5530"},{"n":"ArmR_hand","s":[0.4959,0.3246,0.3967],"cf":[-0.5951,-1.75824,-2.09185,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"5A5530"},{"n":"ArmR_claw1","s":[0.1082,0.3787,0.0902],"cf":[-0.72133,-1.91152,-2.36235,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2C2620"},{"n":"ArmR_hook1","s":[0.0902,0.2705,0.0811],"cf":[-0.72133,-2.14595,-2.56071,0.0,0.0,1.0,0.96593,0.25882,0.0,-0.25882,0.96593,0.0],"c":"2C2620"},{"n":"ArmR_claw2","s":[0.1082,0.3787,0.0902],"cf":[-0.5951,-1.91152,-2.36235,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2C2620"},{"n":"ArmR_hook2","s":[0.0902,0.2705,0.0811],"cf":[-0.5951,-2.14595,-2.56071,0.0,0.0,1.0,0.96593,0.25882,0.0,-0.25882,0.96593,0.0],"c":"2C2620"},{"n":"ArmR_claw3","s":[0.1082,0.3787,0.0902],"cf":[-0.46886,-1.91152,-2.36235,0.0,0.0,1.0,0.57358,0.81915,0.0,-0.81915,0.57358,0.0],"c":"2C2620"},{"n":"ArmR_hook3","s":[0.0902,0.2705,0.0811],"cf":[-0.46886,-2.14595,-2.56071,0.0,0.0,1.0,0.96593,0.25882,0.0,-0.25882,0.96593,0.0],"c":"2C2620"}]},{"n":"Tail1","root":[0.0,0.34263,0.81149,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"Tail1_main","s":[1.2804,0.4508,0.4148],"cf":[0.0,0.42545,1.4008,0.0,0.0,1.0,-0.13917,0.99027,0.0,-0.99027,-0.13917,0.0],"c":"6E6A3A"},{"n":"Tail1_band1","s":[0.1262,0.4869,0.4508],"cf":[0.0,0.38655,1.124,0.0,0.0,1.0,-0.13917,0.99027,0.0,-0.99027,-0.13917,0.0],"c":"2F3320"},{"n":"Tail1_band2","s":[0.1262,0.4869,0.4508],"cf":[0.0,0.44929,1.57045,0.0,0.0,1.0,-0.13917,0.99027,0.0,-0.99027,-0.13917,0.0],"c":"B9B26A"}]},{"n":"Tail2","root":[0.0,0.51831,2.06153,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"Tail2_main","s":[1.2263,0.3426,0.3066],"cf":[0.0,0.61695,2.62095,0.0,0.0,1.0,-0.17365,0.98481,0.0,-0.98481,-0.17365,0.0],"c":"6E6A3A"},{"n":"Tail2_band1","s":[0.1262,0.3787,0.3426],"cf":[0.0,0.57311,2.37232,0.0,0.0,1.0,-0.17365,0.98481,0.0,-0.98481,-0.17365,0.0],"c":"2F3320"},{"n":"Tail2_band2","s":[0.1262,0.3787,0.3426],"cf":[0.0,0.6514,2.8163,0.0,0.0,1.0,-0.17365,0.98481,0.0,-0.98481,-0.17365,0.0],"c":"B9B26A"}]},{"n":"Tail3","root":[0.0,0.72968,3.26028,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"Tail3_main","s":[1.1541,0.2525,0.2254],"cf":[0.0,0.87632,3.77165,0.0,0.0,1.0,-0.27564,0.96126,0.0,-0.96126,-0.27564,0.0],"c":"6E6A3A"},{"n":"Tail3_band1","s":[0.1262,0.2885,0.2615],"cf":[0.0,0.81667,3.56364,0.0,0.0,1.0,-0.27564,0.96126,0.0,-0.96126,-0.27564,0.0],"c":"2F3320"},{"n":"Tail3_band2","s":[0.1262,0.2885,0.2615],"cf":[0.0,0.94094,3.997,0.0,0.0,1.0,-0.27564,0.96126,0.0,-0.96126,-0.27564,0.0],"c":"B9B26A"}]},{"n":"Tail4","root":[0.0,1.04035,4.3437,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"Tail4_main","s":[1.0279,0.1803,0.1623],"cf":[0.0,1.26047,4.75768,0.0,0.0,1.0,-0.46947,0.88295,0.0,-0.88295,-0.46947,0.0],"c":"6E6A3A"},{"n":"Tail4_band1","s":[0.1262,0.2164,0.1984],"cf":[0.0,1.1885,4.62234,0.0,0.0,1.0,-0.46947,0.88295,0.0,-0.88295,-0.46947,0.0],"c":"2F3320"},{"n":"Tail4_band2","s":[0.1262,0.2164,0.1984],"cf":[0.0,1.40016,5.0204,0.0,0.0,1.0,-0.46947,0.88295,0.0,-0.88295,-0.46947,0.0],"c":"B9B26A"}]},{"n":"Tail5","root":[0.0,1.50598,5.21943,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"Tail5_main","s":[0.9017,0.1262,0.1172],"cf":[0.0,1.79289,5.50633,0.0,0.0,1.0,-0.70711,0.70711,0.0,-0.70711,-0.70711,0.0],"c":"6E6A3A"},{"n":"Tail5_band1","s":[0.1262,0.1623,0.1533],"cf":[0.0,1.72913,5.44258,0.0,0.0,1.0,-0.70711,0.70711,0.0,-0.70711,-0.70711,0.0],"c":"2F3320"},{"n":"Tail5_band2","s":[0.1262,0.1623,0.1533],"cf":[0.0,2.04792,5.76136,0.0,0.0,1.0,-0.70711,0.70711,0.0,-0.70711,-0.70711,0.0],"c":"B9B26A"},{"n":"Tail5_quill1","s":[0.0811,0.541,0.0811],"cf":[0.0,2.33709,5.8702,0.0,0.0,1.0,0.34202,0.93969,0.0,-0.93969,0.34202,0.0],"c":"2F3320"},{"n":"Tail5_quill2","s":[0.0811,0.541,0.0811],"cf":[0.06859,2.33709,5.8702,0.0,0.42262,0.90631,0.57358,0.7424,-0.34619,-0.81915,0.51984,-0.2424],"c":"2F3320"},{"n":"Tail5_quill3","s":[0.0811,0.541,0.0811],"cf":[-0.06859,2.33709,5.8702,0.0,-0.42262,0.90631,0.57358,0.7424,0.34619,-0.81915,0.51984,0.2424],"c":"2F3320"}]},{"n":"LegL","root":[0.3787,0.04508,0.40575,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"LegL_haunch","s":[0.559,0.6312,0.4508],"cf":[0.3787,-0.13525,0.36066,0.0,0.0,1.0,0.17365,0.98481,0.0,-0.98481,0.17365,0.0],"c":"6E6A3A"},{"n":"LegL_thigh","s":[0.3246,1.3074,0.3066],"cf":[0.3787,-0.56354,0.13525,0.0,0.0,1.0,0.40614,0.91381,0.0,-0.91381,0.40614,0.0],"c":"6E6A3A"}]},{"n":"ShinL","root":[0.3787,-1.17216,-0.13525,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"ShinL_knee","s":[0.4148,0.3787,0.3967],"cf":[0.3787,-1.17216,-0.18033,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"5A5530"},{"n":"ShinL_shin","s":[0.1984,1.2804,0.2164],"cf":[0.3787,-1.7357,0.18033,0.0,0.0,1.0,-0.4886,0.87251,0.0,-0.87251,-0.4886,0.0],"c":"5A5530"}]},{"n":"FootL","root":[0.3787,-2.29923,0.49591,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"FootL_meta","s":[0.1984,0.6762,0.2164],"cf":[0.3787,-2.58326,0.36066,0.0,0.0,1.0,0.42993,0.90286,0.0,-0.90286,0.42993,0.0],"c":"5A5530"},{"n":"FootL_toe1","s":[0.7213,0.1443,0.1803],"cf":[0.54802,-2.90335,-0.13812,0.46947,0.0,0.88295,0.0,1.0,0.0,-0.88295,0.0,0.46947],"c":"5A5530"},{"n":"FootL_claw1","s":[0.1803,0.1172,0.0902],"cf":[0.71734,-2.92138,-0.51066,0.46947,0.0,0.88295,0.0,1.0,0.0,-0.88295,0.0,0.46947],"c":"2C2620"},{"n":"FootL_toe2","s":[0.9017,0.1443,0.1803],"cf":[0.3787,-2.90335,-0.2705,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"5A5530"},{"n":"FootL_claw2","s":[0.1803,0.1172,0.0902],"cf":[0.3787,-2.92138,-0.77543,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"2C2620"},{"n":"FootL_toe3","s":[0.7213,0.1443,0.1803],"cf":[0.20938,-2.90335,-0.13812,-0.46947,0.0,0.88295,0.0,1.0,0.0,-0.88295,0.0,-0.46947],"c":"5A5530"},{"n":"FootL_claw3","s":[0.1803,0.1172,0.0902],"cf":[0.04005,-2.92138,-0.51066,-0.46947,0.0,0.88295,0.0,1.0,0.0,-0.88295,0.0,-0.46947],"c":"2C2620"}]},{"n":"LegR","root":[-0.3787,0.04508,0.40575,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"LegR_haunch","s":[0.559,0.6312,0.4508],"cf":[-0.3787,-0.13525,0.36066,0.0,0.0,1.0,0.17365,0.98481,0.0,-0.98481,0.17365,0.0],"c":"6E6A3A"},{"n":"LegR_thigh","s":[0.3246,1.3074,0.3066],"cf":[-0.3787,-0.56354,0.13525,0.0,0.0,1.0,0.40614,0.91381,0.0,-0.91381,0.40614,0.0],"c":"6E6A3A"}]},{"n":"ShinR","root":[-0.3787,-1.17216,-0.13525,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"ShinR_knee","s":[0.4148,0.3787,0.3967],"cf":[-0.3787,-1.17216,-0.18033,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"5A5530"},{"n":"ShinR_shin","s":[0.1984,1.2804,0.2164],"cf":[-0.3787,-1.7357,0.18033,0.0,0.0,1.0,-0.4886,0.87251,0.0,-0.87251,-0.4886,0.0],"c":"5A5530"}]},{"n":"FootR","root":[-0.3787,-2.29923,0.49591,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"parts":[{"n":"FootR_meta","s":[0.1984,0.6762,0.2164],"cf":[-0.3787,-2.58326,0.36066,0.0,0.0,1.0,0.42993,0.90286,0.0,-0.90286,0.42993,0.0],"c":"5A5530"},{"n":"FootR_toe1","s":[0.7213,0.1443,0.1803],"cf":[-0.20938,-2.90335,-0.13812,0.46947,0.0,0.88295,0.0,1.0,0.0,-0.88295,0.0,0.46947],"c":"5A5530"},{"n":"FootR_claw1","s":[0.1803,0.1172,0.0902],"cf":[-0.04005,-2.92138,-0.51066,0.46947,0.0,0.88295,0.0,1.0,0.0,-0.88295,0.0,0.46947],"c":"2C2620"},{"n":"FootR_toe2","s":[0.9017,0.1443,0.1803],"cf":[-0.3787,-2.90335,-0.2705,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"5A5530"},{"n":"FootR_claw2","s":[0.1803,0.1172,0.0902],"cf":[-0.3787,-2.92138,-0.77543,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c":"2C2620"},{"n":"FootR_toe3","s":[0.7213,0.1443,0.1803],"cf":[-0.54802,-2.90335,-0.13812,-0.46947,0.0,0.88295,0.0,1.0,0.0,-0.88295,0.0,-0.46947],"c":"5A5530"},{"n":"FootR_claw3","s":[0.1803,0.1172,0.0902],"cf":[-0.71734,-2.92138,-0.51066,-0.46947,0.0,0.88295,0.0,1.0,0.0,-0.88295,0.0,-0.46947],"c":"2C2620"}]}],"joints":[{"n":"RootJoint","p0":"HRP","p1":"Torso","c0":[0.0,0.0,0.0,0.0,0.0,1.0,0.0,1.0,0.0,-1.0,0.0,0.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"Neck","p0":"Torso","p1":"Neck","c0":[1.57791,1.03691,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"Head","p0":"Neck","p1":"Head","c0":[1.12708,-0.63116,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"Jaw","p0":"Head","p1":"Jaw","c0":[0.18033,-0.31558,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"ArmL","p0":"Torso","p1":"ArmL","c0":[1.44266,0.58608,0.50493,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"ArmR","p0":"Torso","p1":"ArmR","c0":[1.44266,0.58608,-0.50493,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"Tail1","p0":"Torso","p1":"Tail1","c0":[-0.81149,0.34263,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"Tail2","p0":"Tail1","p1":"Tail2","c0":[-1.25004,0.17568,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"Tail3","p0":"Tail2","p1":"Tail3","c0":[-1.19875,0.21137,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"Tail4","p0":"Tail3","p1":"Tail4","c0":[-1.08341,0.31066,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"Tail5","p0":"Tail4","p1":"Tail5","c0":[-0.87573,0.46563,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"LegL","p0":"Torso","p1":"LegL","c0":[-0.40575,0.04508,0.3787,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"LegR","p0":"Torso","p1":"LegR","c0":[-0.40575,0.04508,-0.3787,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"KneeL","p0":"LegL","p1":"ShinL","c0":[0.541,-1.21724,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"KneeR","p0":"LegR","p1":"ShinR","c0":[0.541,-1.21724,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"AnkleL","p0":"ShinL","p1":"FootL","c0":[-0.63116,-1.12708,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]},{"n":"AnkleR","p0":"ShinR","p1":"FootR","c0":[-0.63116,-1.12708,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],"c1":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]}],"hrp":[1.082,1.893,2.885],"hip":2.029};
+const STEEL = 0x9aa6b8, DARK = 0x5d6878, BRIGHT = 0xd3dbe6, HOT = 0xff8a2a;
+const BASE_SLASH = 8, RAZOR_SLASH = 13, BASE_RUN = 58.5; // SlashDamage 8; Razor Claws I 13; MoveRunSpeed 90 x ArenaSpeedScale 0.65
+const STEPS = [
+  {k: "I", dmg: 0.10, spd: 0.05}, {k: "II", dmg: 0.20, spd: 0.10},
+  {k: "III", dmg: 0.30, spd: 0.15}, {k: "★", dmg: 0.50, spd: 0.25}];
+const LOOKS = [
+  {id: "A", name: "A · Iron Gauntlets", sub: "steel sleeves, armoured claws",
+    why: "The Herrera's own claws, sheathed in steel: longer bright tips, a steel sleeve and cuff on each forearm, a knuckle plate. It still reads as the Herrera's hands, so it's clearly a claw upgrade. The bright claws flash on every rake.",
+    parts: "Per arm: forearm sleeve, wrist cuff, elbow plate, knuckle plate, 3 claw sheaths and 3 hook sheaths. 10 parts per arm, steel and dark steel."},
+  {id: "B", name: "B · Hook Blades", sub: "one big iron sickle per hand",
+    why: "One huge curved iron hook under each hand with a hot-orange edge. It's the most recognizable shape from far away. The rake leaves an orange-edged arc, and the slowdown reads as the weight of the blades.",
+    parts: "Per arm: knuckle plate, wrist band, a 3-piece sickle blade with a glowing edge. 7 parts per arm."},
+  {id: "C", name: "C · Heavy Knuckles", sub: "iron fists + shoulder plates",
+    why: "Blocky iron fists with three forward spikes, a forearm brace and a shoulder plate. It looks the heaviest, so the run slowdown makes sense at a glance. The slash turns into a punchy rake.",
+    parts: "Per arm: iron fist block, 3 spikes, forearm brace, shoulder plate. The Herrera's own claws are hidden inside the fist. 6 parts per arm."}];
+let look = 0, step = 3, slotted = true, labView = false, slow = false;
+
+// ---------- three ----------
+const cv = document.getElementById("cv");
+const renderer = new THREE.WebGLRenderer({canvas: cv, antialias: true, preserveDrawingBuffer: true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+const scene = new THREE.Scene();
+const sky = new THREE.Color(0x8fc6e8), labBg = new THREE.Color(0x141a26);
+scene.background = sky;
+scene.fog = new THREE.Fog(0x8fc6e8, 30, 70);
+const cam = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 200);
+scene.add(new THREE.HemisphereLight(0xeaf6ff, 0x5a6a3a, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(-6, 14, 9); scene.add(sun);
+const rim = new THREE.DirectionalLight(0xffe2b8, 0.35); rim.position.set(8, 5, -10); scene.add(rim);
+
+const world = new THREE.Group(); scene.add(world);
+// ground: grass strip with sand stripes (Sandbox island colours)
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(160, 40), new THREE.MeshLambertMaterial({color: 0x6fae4a}));
+ground.rotation.x = -Math.PI / 2; world.add(ground);
+for (let i = -40; i < 40; i++) {
+  const t = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25 + (i * 7919 % 5) * 0.06, 0.5),
+    new THREE.MeshLambertMaterial({color: i % 3 ? 0x5c9a3c : 0x86c05a}));
+  t.position.set(i * 2.1 + ((i * 31) % 7) * 0.2, 0.12, -3 - ((i * 17) % 9) * 0.6); world.add(t);
+  if (i % 4 === 0) { const r = t.clone(); r.material = new THREE.MeshLambertMaterial({color: 0x9c9284}); r.scale.set(1.6, 1.8, 1.4); r.position.z = 4 + ((i * 13) % 5); world.add(r); }
+}
+const sand = new THREE.Mesh(new THREE.PlaneGeometry(160, 3), new THREE.MeshLambertMaterial({color: 0xc9b47a}));
+sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0.01, -7); world.add(sand);
+
+// ---------- rig ----------
+function cfm(a) { const m = new THREE.Matrix4(); m.set(a[3], a[4], a[5], a[0], a[6], a[7], a[8], a[1], a[9], a[10], a[11], a[2], 0, 0, 0, 1); return m; }
+const segs = {}, partInfo = {};
+const dino = new THREE.Group(); world.add(dino);
+const matCache = {};
+function mat(hex, glow) {
+  const key = hex + (glow ? "g" : "");
+  if (!matCache[key]) matCache[key] = glow ? new THREE.MeshBasicMaterial({color: hex})
+    : new THREE.MeshLambertMaterial({color: hex});
+  return matCache[key];
+}
+for (const s of D.segs) {
+  const rootInv = cfm(s.root).invert();
+  segs[s.n] = {world: new THREE.Matrix4(), parts: []};
+  for (const p of s.parts) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(p.s[0], p.s[1], p.s[2]), mat(parseInt(p.c, 16)));
+    m.matrixAutoUpdate = false;
+    const local = rootInv.clone().multiply(cfm(p.cf));
+    dino.add(m);
+    const info = {mesh: m, local, seg: s.n, size: p.s};
+    segs[s.n].parts.push(info); partInfo[p.n] = info;
+  }
+}
+const joints = D.joints.map(j => ({n: j.n, p0: j.p0, p1: j.p1, c0: cfm(j.c0), c1inv: cfm(j.c1).invert()}));
+const rad = THREE.MathUtils.degToRad;
+const tmpE = new THREE.Euler(), tmpM = new THREE.Matrix4();
+function rot(p, y, r) { tmpE.set(rad(r), rad(y), rad(p), "ZYX"); return new THREE.Matrix4().makeRotationFromEuler(tmpE); }
+
+// ScurryPose 1.0 defaults + angles(phase) (ported 1:1)
+const S = {BodyPitch: -24, Neck: 6, Head: 16, Jaw: -3, ArmTuck: 30, LegTuck: 48, Knee: -48, Foot: 24,
+  Tail: [26, 4, 8, 14, 20], ArmSwing: 34, ArmSprawl: 18, ArmLiftSprawl: 10, LegSwing: 30, LegSprawl: 16,
+  KneeLift: -34, FootLift: 20, BodyYaw: 11, BodyRoll: 4, NeckYaw: -9, HeadYaw: -6, TailWhip: 8, TailWhipGrow: 4,
+  TailLag: 0.75, Stride: 3.2, MaxHz: 5};
+const JN = ["RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5",
+  "LegL", "LegR", "KneeL", "KneeR", "AnkleL", "AnkleR"];
+function blank() { const o = {body: [0, 0, 0]}; JN.forEach(n => o[n] = [0, 0, 0]); return o; }
+function add(o, n, p, y, r) { o[n][0] += p; o[n][1] += (y || 0); o[n][2] += (r || 0); }
+function scurry(phase, amt) {
+  const o = blank();
+  add(o, "RootJoint", S.BodyPitch); add(o, "Neck", S.Neck); add(o, "Head", S.Head); add(o, "Jaw", S.Jaw);
+  add(o, "ArmL", S.ArmTuck); add(o, "ArmR", S.ArmTuck); add(o, "LegL", S.LegTuck); add(o, "LegR", S.LegTuck);
+  add(o, "KneeL", S.Knee); add(o, "KneeR", S.Knee); add(o, "AnkleL", S.Foot); add(o, "AnkleR", S.Foot);
+  for (let i = 1; i <= 5; i++) add(o, "Tail" + i, S.Tail[i - 1]);
+  const pa = {ArmL: phase, LegR: phase, ArmR: phase + Math.PI, LegL: phase + Math.PI};
+  for (const n in pa) {
+    const sw = Math.sin(pa[n]) * amt, lift = Math.max(0, Math.cos(pa[n])) * amt, side = n.endsWith("L") ? 1 : -1;
+    if (n.startsWith("Arm")) add(o, n, S.ArmSwing * sw, 0, -side * (S.ArmSprawl + S.ArmLiftSprawl * lift));
+    else { const sf = n.slice(-1); add(o, n, S.LegSwing * sw, 0, -side * S.LegSprawl); add(o, "Knee" + sf, S.KneeLift * lift); add(o, "Ankle" + sf, S.FootLift * lift); }
+  }
+  const w = Math.sin(phase) * amt;
+  o.body[1] = S.BodyYaw * w; o.body[2] = S.BodyRoll * Math.sin(phase + Math.PI / 2) * amt;
+  add(o, "Neck", 0, S.NeckYaw * w); add(o, "Head", 0, S.HeadYaw * w);
+  for (let i = 1; i <= 5; i++) add(o, "Tail" + i, 0, (S.TailWhip + i * S.TailWhipGrow) * Math.sin(phase - i * S.TailLag) * amt);
+  return o;
+}
+
+// ---------- the iron (built on the model's own parts, like MechaLegsServer: anchor.CFrame * offset) ----------
+const equip = [];
+function piece(anchor, size, pos, rotd, color, glow) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), glow ? mat(color, true)
+    : new THREE.MeshLambertMaterial({color, emissive: 0x000000}));
+  m.matrixAutoUpdate = false; dino.add(m);
+  const off = new THREE.Matrix4().compose(new THREE.Vector3(pos[0], pos[1], pos[2]),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(rad(rotd[0] || 0), rad(rotd[1] || 0), rad(rotd[2] || 0))), new THREE.Vector3(1, 1, 1));
+  equip.push({mesh: m, anchor, off, glow: !!glow, base: color});
+}
+const hidden = new Set();
+function buildLook() {
+  equip.forEach(e => { dino.remove(e.mesh); e.mesh.geometry.dispose(); });
+  equip.length = 0; hidden.clear();
+  if (!slotted) return;
+  for (const sd of ["L", "R"]) {
+    const A = "Arm" + sd, z = sd === "L" ? 1 : -1; // outward = local +Z on the left arm
+    if (look === 0) {
+      piece(A + "_fore", [0.58, 1.05, 0.54], [0, -0.08, 0], [0, 0, 0], STEEL);
+      piece(A + "_fore", [0.68, 0.24, 0.64], [0, -0.58, 0], [0, 0, 0], DARK);
+      piece(A + "_fore", [0.62, 0.16, 0.58], [0, 0.42, 0], [0, 0, 0], DARK);
+      for (const yy of [-0.25, 0.1]) piece(A + "_fore", [0.1, 0.1, 0.1], [0.3, yy, 0.27 * z], [0, 0, 0], BRIGHT);
+      piece(A + "_hand", [0.74, 0.22, 0.6], [0, 0.16, 0], [0, 0, 0], STEEL);
+      for (let i = 1; i <= 3; i++) {
+        piece(A + "_claw" + i, [0.2, 0.9, 0.17], [0, -0.2, 0], [0, 0, 0], BRIGHT);
+        piece(A + "_hook" + i, [0.17, 0.66, 0.15], [0, -0.22, 0], [0, 0, 0], BRIGHT);
+      }
+    } else if (look === 1) {
+      piece(A + "_hand", [0.72, 0.24, 0.6], [0, 0.15, 0], [0, 0, 0], DARK);
+      piece(A + "_fore", [0.5, 0.26, 0.48], [0, -0.52, 0], [0, 0, 0], STEEL);
+      // sickle: a chain of boxes along a curve that runs forward from the hand and hooks down (hand local +X = forward)
+      const pts = [[0.05, 0.0], [0.75, 0.12], [1.35, 0.0], [1.75, -0.35], [1.9, -0.8]], th = [0.3, 0.26, 0.2, 0.15];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], len = Math.hypot(x1 - x0, y1 - y0), a = Math.atan2(y1 - y0, x1 - x0);
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, nx = Math.sin(a), ny = -Math.cos(a); // the inner (lower) side
+        piece(A + "_hand", [len + 0.1, th[i], 0.13], [cx, cy, 0], [0, 0, a * 180 / Math.PI], STEEL);
+        piece(A + "_hand", [len + 0.08, 0.07, 0.15], [cx + nx * th[i] / 2, cy + ny * th[i] / 2, 0], [0, 0, a * 180 / Math.PI], HOT, true);
+      }
+    } else {
+      piece(A + "_hand", [1.05, 0.74, 0.9], [0.1, -0.06, 0], [0, 0, 0], DARK);
+      for (const sz of [-0.28, 0, 0.28]) piece(A + "_hand", [0.5, 0.2, 0.2], [0.82, -0.08, sz], [0, 0, 0], BRIGHT);
+      piece(A + "_fore", [0.56, 0.8, 0.52], [0, -0.12, 0], [0, 0, 0], STEEL);
+      piece(A + "_upper", [0.74, 0.62, 0.7], [0, 0.32, 0.08 * z], [0, 0, 0], STEEL);
+      piece(A + "_upper", [0.8, 0.14, 0.76], [0, 0.02, 0.08 * z], [0, 0, 0], DARK);
+      for (let i = 1; i <= 3; i++) { hidden.add(A + "_claw" + i); hidden.add(A + "_hook" + i); }
+    }
+  }
+  for (const n in partInfo) partInfo[n].mesh.visible = !hidden.has(n);
+}
+
+// ---------- the bot (stand-in target: a simple block T-Rex bot) ----------
+const bot = new THREE.Group(); world.add(bot);
+const botMat = new THREE.MeshLambertMaterial({color: 0x7f8c9e});
+function bb(s, p, c) { const m = new THREE.Mesh(new THREE.BoxGeometry(...s), c ? new THREE.MeshLambertMaterial({color: c}) : botMat); m.position.set(...p); bot.add(m); return m; }
+const botBody = new THREE.Group(); bot.add(botBody);
+[[[2.6, 1.8, 1.6], [0, 2.6, 0]], [[1.6, 1.3, 1.3], [1.7, 3.5, 0]], [[1.2, 0.5, 1.1], [2.2, 3.0, 0]], [[2.4, 0.6, 0.6], [-2.2, 2.6, 0]],
+ [[0.6, 2.0, 0.6], [0.2, 1.0, 0.45]], [[0.6, 2.0, 0.6], [0.2, 1.0, -0.45]]].forEach(([s, p]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(...s), botMat); m.position.set(...p); botBody.add(m); });
+const eye = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshBasicMaterial({color: 0xffd23a})); eye.position.set(2.2, 3.8, 0.66); botBody.add(eye);
+const BOT_X = 0; bot.position.set(BOT_X, 0, -0.6); bot.rotation.y = Math.PI; // faces the incoming dino
+let botHp = 200, botFlash = 0, botKnock = 0;
+
+// ---------- FX ----------
+const fx = [];
+function spark(pos, color, n, spd) {
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), new THREE.MeshBasicMaterial({color, transparent: true}));
+    m.position.copy(pos); world.add(m);
+    const a = Math.random() * Math.PI * 2, u = Math.random() * 0.8 + 0.2;
+    fx.push({m, v: new THREE.Vector3(Math.cos(a) * spd * u + 2, Math.random() * spd, Math.sin(a) * spd * u), life: 0.45, max: 0.45, g: -22});
+  }
+}
+function arc(pos, color, edge) {
+  const g = new THREE.RingGeometry(1.6, 2.3, 24, 1, -0.4, 2.6);
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({color, transparent: true, side: THREE.DoubleSide, depthWrite: false}));
+  m.position.copy(pos); m.rotation.y = 0; world.add(m);
+  fx.push({m, v: new THREE.Vector3(6, 0, 0), life: 0.22, max: 0.22, g: 0, grow: 1.8});
+  if (edge) { const e = new THREE.Mesh(new THREE.RingGeometry(2.25, 2.45, 24, 1, -0.4, 2.6), new THREE.MeshBasicMaterial({color: edge, transparent: true, side: THREE.DoubleSide, depthWrite: false}));
+    e.position.copy(pos); world.add(e); fx.push({m: e, v: new THREE.Vector3(6, 0, 0), life: 0.22, max: 0.22, g: 0, grow: 1.8}); }
+}
+function dust(pos, big) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({color: 0xd8cfb4, transparent: true}));
+  m.position.copy(pos); world.add(m);
+  fx.push({m, v: new THREE.Vector3(-2, 1.2, (Math.random() - .5) * 2), life: big ? 0.5 : 0.35, max: big ? 0.5 : 0.35, g: -2, grow: big ? 2.2 : 1.2});
+}
+const stage = document.getElementById("stage");
+const pops = [];
+function pop(text, sub, color, size, worldPos) {
+  const el = document.createElement("div"); el.className = "pop"; el.style.color = color; el.style.fontSize = size + "px";
+  el.innerHTML = text + (sub ? "<small>" + sub + "</small>" : ""); stage.appendChild(el);
+  pops.push({el, p: worldPos.clone(), t: 0, life: 0.9, size});
+}
+
+// ---------- UI ----------
+const $ = id => document.getElementById(id);
+function pctTxt(x) { return Math.round(x * 100) + "%"; }
+function dmgFor(base, si) { return Math.floor(base * (si < 0 ? 1 : 1 + STEPS[si].dmg) + 0.5); }
+function runFor(si) { return si < 0 ? BASE_RUN : BASE_RUN * (1 - STEPS[si].spd); }
+function curStep() { return slotted ? step : -1; }
+function drawUI() {
+  $("looks").innerHTML = ""; $("steps").innerHTML = "";
+  LOOKS.forEach((L, i) => { const b = document.createElement("button"); b.className = "tab"; b.setAttribute("aria-pressed", i === look);
+    b.innerHTML = L.name + "<small>" + L.sub + "</small>"; b.onclick = () => { look = i; buildLook(); drawUI(); }; $("looks").appendChild(b); });
+  STEPS.forEach((st, i) => { const b = document.createElement("button"); b.className = "tab step"; b.setAttribute("aria-pressed", i === step);
+    b.innerHTML = st.k + "<small>+" + pctTxt(st.dmg) + " / −" + pctTxt(st.spd) + "</small>"; b.onclick = () => { step = i; drawUI(); }; $("steps").appendChild(b); });
+  $("lookName").textContent = LOOKS[look].name; $("lookWhy").textContent = LOOKS[look].why; $("lookParts").textContent = LOOKS[look].parts;
+  $("stepList").innerHTML = STEPS.map((st, i) => `<li class="${i === step ? "cur" : ""}"><b>${st.k}</b><span>Slash damage +${pctTxt(st.dmg)}, run ${pctTxt(st.spd)} slower</span></li>`).join("");
+  $("numRows").innerHTML = `<tr class="${slotted ? "" : "cur"}"><td>not slotted</td><td>${BASE_SLASH}</td><td>${RAZOR_SLASH}</td><td>${BASE_RUN.toFixed(1)}</td></tr>` +
+    STEPS.map((st, i) => `<tr class="${slotted && i === step ? "cur" : ""}"><td>${st.k}</td><td class="up">${dmgFor(BASE_SLASH, i)}</td><td class="up">${dmgFor(RAZOR_SLASH, i)}</td><td class="dn">${runFor(i).toFixed(1)}</td></tr>`).join("");
+  const si = curStep();
+  $("hud").innerHTML = `<div>SLASH <b>${dmgFor(BASE_SLASH, si)}</b> ${si >= 0 ? `<span style="color:var(--yellow)">(+${pctTxt(STEPS[si].dmg)})</span>` : ""}</div>` +
+    `<div>RUN <b>${runFor(si).toFixed(1)}</b> ${si >= 0 ? `<span class="dn">(−${pctTxt(STEPS[si].spd)})</span>` : ""}</div>`;
+  $("bar").innerHTML = `<div class="tile" id="tSlash"><span class="k">ATK</span><span class="pips"><i></i><i></i></span>SLASH</div>` +
+    `<div class="tile"><span class="k">SPC</span>JUMP</div>` +
+    (slotted ? `<div class="tile iron" id="tIron"><span class="k">R</span>IRON<br>CLAW</div>` : `<div class="tile empty"><span class="k">R</span>—</div>`) +
+    `<div class="tile empty"><span class="k">C</span>—</div>`;
+  $("slotBtn").textContent = "Slotted: " + (slotted ? "ON" : "OFF"); $("slotBtn").setAttribute("aria-pressed", slotted);
+  $("viewBtn").setAttribute("aria-pressed", labView); $("slowBtn").setAttribute("aria-pressed", slow);
+}
+$("slotBtn").onclick = () => { slotted = !slotted; buildLook(); drawUI(); };
+$("viewBtn").onclick = () => { labView = !labView; resetRun(); drawUI(); };
+$("slowBtn").onclick = () => { slow = !slow; drawUI(); };
+$("slashBtn").onclick = () => { if (labView) { labView = false; drawUI(); } resetRun(BOT_X - 9); };
+
+// ---------- the run / slash loop ----------
+const FWD = new THREE.Vector3(1, 0, 0);
+let state, st;
+function resetRun(x) { state = "run"; st = {t: 0, x: x !== undefined ? x : BOT_X - 24, phase: 0, hit: false, slashT: 0, lastStepSide: 0, out: 0}; }
+resetRun();
+const WINDUP = 0.12, DASH = 0.30, DASH_LEN = 12.5, RECOVER = 0.2;
+let hitStop = 0, shake = 0, glint = 0, camX = BOT_X - 8;
+
+function poseNow(dt) {
+  const si = curStep();
+  const speed = runFor(si) / 2; // model units (the game model is x2)
+  let o, k = 0;
+  if (labView) { o = scurry(0, 0); add(o, "ArmL", 20); add(o, "ArmR", -10); return o; }
+  if (state === "run" || state === "out") {
+    st.phase += Math.min(S.MaxHz * 2 * Math.PI, speed / S.Stride * 2 * Math.PI) * dt;
+    o = scurry(st.phase, 1);
+  } else {
+    o = scurry(st.phase, 0.35);
+  }
+  if (state === "windup") { // cock both claws back, crouch (arcade anticipation)
+    const w = Math.min(1, st.slashT / WINDUP);
+    add(o, "RootJoint", -10 * w); add(o, "ArmL", -55 * w, 0, 10 * w); add(o, "ArmR", -35 * w, 0, -10 * w); add(o, "Neck", -8 * w); add(o, "Jaw", -10 * w);
+  }
+  if (state === "dash" || state === "recover") { // SlashPose 1.0 "ground" rake, pushed harder for the iron
+    const u = state === "dash" ? Math.min(1, st.slashT / DASH) : 1;
+    k = u > 0.2 && u < 0.8 ? Math.sin(Math.PI * (u - 0.2) / 0.6) : 0;
+    const f = state === "recover" ? Math.max(0, 1 - st.slashT / RECOVER) : 1;
+    const amp = slotted ? 1.35 : 1;
+    add(o, "ArmL", (60 * k * amp - 55 * (1 - u) * f), 0, -20 * k);
+    add(o, "ArmR", (-40 * k * amp - 35 * (1 - u) * f), 0, 20 * k);
+    add(o, "Jaw", -18 * k - 6); add(o, "RootJoint", -6 * f);
+    o.body[1] += 14 * Math.sin(Math.PI * u) * f; // body twist with the rake
+  }
+  return o;
+}
+
+const corner = new THREE.Vector3();
+function applyPose(o, rootPos, yaw) {
+  const hrp = new THREE.Matrix4().makeRotationY(yaw);
+  const W = {HRP: hrp};
+  for (const j of joints) {
+    const v = o[j.n] || [0, 0, 0];
+    let pose = rot(v[0], v[1], v[2]);
+    if (j.n === "RootJoint") pose = rot(o.body[0], o.body[1], o.body[2]).multiply(pose);
+    W[j.p1] = W[j.p0].clone().multiply(j.c0).multiply(pose).multiply(j.c1inv);
+  }
+  // ground fit: the lowest corner of any visible body part sits on the ground
+  let minY = Infinity;
+  for (const n in segs) {
+    for (const p of segs[n].parts) {
+      const m = W[n].clone().multiply(p.local);
+      p.mesh.matrix.copy(m);
+      if (!p.mesh.visible) continue;
+      const h = p.size;
+      for (let i = 0; i < 8; i++) {
+        corner.set((i & 1 ? .5 : -.5) * h[0], (i & 2 ? .5 : -.5) * h[1], (i & 4 ? .5 : -.5) * h[2]).applyMatrix4(m);
+        if (corner.y < minY) minY = corner.y;
+      }
+    }
+  }
+  const lift = new THREE.Matrix4().makeTranslation(rootPos.x, -minY + rootPos.y, rootPos.z);
+  for (const n in segs) for (const p of segs[n].parts) p.mesh.matrix.premultiply(lift);
+  for (const e of equip) {
+    const a = partInfo[e.anchor];
+    e.mesh.matrix.copy(a.mesh.matrix).multiply(e.off);
+  }
+  return W;
+}
+
+function handWorld(sd) { const m = partInfo["Arm" + sd + "_hand"].mesh.matrix; return new THREE.Vector3().setFromMatrixPosition(m); }
+
+let last = performance.now(), auto = 0;
+function frame(now) {
+  let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (slow) dt *= 0.3;
+  if (hitStop > 0) { hitStop -= dt; dt = 0; }
+  const si = curStep();
+  const speed = runFor(si) / 2;
+  st.t += dt;
+  if (!labView) {
+    if (state === "run") {
+      st.x += speed * dt;
+      if (st.x >= BOT_X - 8.5) { state = "windup"; st.slashT = 0; glint = 1; flashTile(); }
+    } else if (state === "windup") {
+      st.slashT += dt; st.x += speed * 0.25 * dt;
+      if (st.slashT >= WINDUP) { state = "dash"; st.slashT = 0; st.dashFrom = st.x; }
+    } else if (state === "dash") {
+      st.slashT += dt;
+      const u = Math.min(1, st.slashT / DASH);
+      st.x = st.dashFrom + DASH_LEN * (1 - Math.pow(1 - u, 2));
+      if (!st.hit && st.x >= BOT_X - 1.0) onHit();
+      if (u >= 1) { state = "recover"; st.slashT = 0; }
+    } else if (state === "recover") {
+      st.slashT += dt; st.x += speed * 0.5 * dt;
+      if (st.slashT >= RECOVER) { state = "out"; }
+    } else if (state === "out") {
+      st.x += speed * dt; st.out += dt;
+      if (st.out > 0.9) resetRun();
+    }
+  }
+  // footfall dust (heavier with the iron)
+  if ((state === "run" || state === "out") && !labView) {
+    const side = Math.sin(st.phase) > 0 ? 1 : -1;
+    if (side !== st.lastStepSide) { st.lastStepSide = side; dust(new THREE.Vector3(st.x - 0.5, 0.15, side * 0.4), slotted && step >= 2); }
+  }
+  const o = poseNow(dt);
+  applyPose(o, new THREE.Vector3(labView ? 0 : st.x, 0, labView ? 0 : 0), -Math.PI / 2 + (labView ? (now / 1000) * 0.6 : 0));
+  // dash streak + arc during the rake
+  if (state === "dash" && slotted && !st.arcDone && st.slashT / DASH > 0.35) {
+    st.arcDone = true;
+    const hp = handWorld("L"); hp.x += 0.8; hp.y += 0.6;
+    arc(hp, look === 1 ? 0xfff1e0 : 0xe8f0ff, look === 1 ? HOT : (look === 2 ? 0x9aa6b8 : null));
+  }
+  if (state === "run") st.arcDone = false;
+  // the iron glint (windup) and hit flash
+  glint = Math.max(0, glint - dt * 4);
+  for (const e of equip) if (!e.glow) e.mesh.material.emissive.setScalar(glint * 0.9);
+  // bot reaction
+  botFlash = Math.max(0, botFlash - dt * 5); botKnock = Math.max(0, botKnock - dt * 3);
+  botMat.emissive = botMat.emissive || new THREE.Color(); botMat.emissive.setRGB(botFlash, botFlash * 0.2, botFlash * 0.1);
+  botBody.rotation.z = -botKnock * 0.35; botBody.position.x = -botKnock * 0.6;
+  bot.visible = !labView; ground.visible = !labView; world.children.forEach(c => { if (c !== dino && c !== bot && c !== ground && !c.userData.fx) c.visible = !labView; });
+  dino.visible = true;
+  // fx
+  for (let i = fx.length - 1; i >= 0; i--) {
+    const f = fx[i]; f.life -= dt;
+    if (f.life <= 0) { world.remove(f.m); f.m.geometry.dispose(); fx.splice(i, 1); continue; }
+    f.v.y += f.g * dt; f.m.position.addScaledVector(f.v, dt);
+    const a = f.life / f.max; f.m.material.opacity = a;
+    if (f.grow) f.m.scale.setScalar(1 + (1 - a) * (f.grow - 1));
+  }
+  // camera
+  scene.background = labView ? labBg : sky; scene.fog.near = labView ? 1000 : 30; scene.fog.far = labView ? 2000 : 70;
+  if (labView) {
+    cam.position.set(4, 4.5, 15); cam.lookAt(0, 1.3, 0); cam.fov = 28;
+  } else {
+    camX += ((st.x + 2.5) - camX) * Math.min(1, dt * 5 + (dt === 0 ? 0 : 0));
+    const sx = (Math.random() - .5) * shake, sy = (Math.random() - .5) * shake;
+    shake = Math.max(0, shake - (dt || 0.016) * 3);
+    cam.position.set(camX + 6 + sx, 5 + sy, 16); cam.lookAt(camX, 1.3, 0); cam.fov = 38;
+  }
+  cam.updateProjectionMatrix();
+  renderer.render(scene, cam);
+  // pops + bot bar
+  const r = cv.getBoundingClientRect();
+  for (let i = pops.length - 1; i >= 0; i--) {
+    const p = pops[i]; p.t += (slow ? 0.3 : 1) * 0.016;
+    const v = p.p.clone(); v.y += p.t * 2.2; v.project(cam);
+    const sc = p.t < 0.08 ? 1.7 - p.t * 8 : 1;
+    p.el.style.left = ((v.x + 1) / 2 * r.width) + "px"; p.el.style.top = ((1 - v.y) / 2 * r.height) + "px";
+    p.el.style.transform = `translate(-50%,-50%) scale(${sc})`; p.el.style.opacity = Math.min(1, (p.life - p.t) * 3);
+    if (p.t > p.life) { p.el.remove(); pops.splice(i, 1); }
+  }
+  const hb = new THREE.Vector3(BOT_X, 5.0, -0.6).project(cam);
+  $("hp").style.display = labView ? "none" : "block";
+  $("hp").style.left = ((hb.x + 1) / 2 * r.width) + "px"; $("hp").style.top = ((1 - hb.y) / 2 * r.height) + "px";
+  $("hpfill").style.width = (botHp / 2) + "%";
+  requestAnimationFrame(frame);
+}
+function flashTile() { const t = $("tIron"); if (t) { t.classList.add("flash"); setTimeout(() => t.classList.remove("flash"), 220); } }
+function onHit() {
+  st.hit = true;
+  const si = curStep();
+  const d = dmgFor(BASE_SLASH, si);
+  botHp -= d; if (botHp < 40) botHp = 200;
+  botFlash = 1; botKnock = slotted ? 1 : 0.5;
+  hitStop = slotted ? 0.09 : 0.04; shake = slotted ? 0.5 : 0.15;
+  const at = new THREE.Vector3(BOT_X, 3.2, -0.6);
+  spark(at, slotted ? (look === 1 ? HOT : 0xffe08a) : 0xffffff, slotted ? 18 : 6, slotted ? 9 : 5);
+  if (slotted) spark(at, 0xffffff, 6, 12);
+  pop(String(d), slotted ? "CLANG!" : "", slotted ? "#ffc832" : "#ffffff", slotted ? 40 : 28, new THREE.Vector3(BOT_X, 4.6, -0.6));
+  const t0 = setTimeout(() => { pop("-3", "", "#ff5a4a", 18, new THREE.Vector3(BOT_X + 2.2, 3.6, -0.6)); botHp -= 3; }, 1000);
+}
+function resize() { const w = stage.clientWidth; renderer.setSize(w, w * 9 / 16, false); cam.aspect = 16 / 9; }
+window.addEventListener("resize", resize);
+buildLook(); drawUI(); resize(); requestAnimationFrame(frame);
+
+</script>
+</body>
+</html>
