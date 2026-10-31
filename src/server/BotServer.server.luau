@@ -329,12 +329,19 @@
 --   LastHitAt; script BotHeadbutts, BotHeadbuttHits, BotPachyGroups, BotPachyState ("on" / "off").
 -- Switch: script attribute BotPachyEnabled (default true, read at start for the template and the groups; false = 1.18,
 --   7 lone raptors).
+-- v1.20 (RaptorScale 1.2 doubles the pachy bots; Studio check: a 2x pachy bot ran head-on to 7.3 studs (root to root)
+--   from a 2x player pachy and still "missed" — its head went past / over the target's hitboxes without its front
+--   point coming within 3 studs): the hit test takes the nearer of the head front point and the Head hitbox centre, and
+--   the reach is BotPachyReach x the bot's model scale (3 -> 6 at 2x), like the player headbutt's tolerance x scale.
+--   Diagnostic: bot BotHeadbuttGap (the gap at the hit / at the end of the charge, 0.1). Switch: script attribute
+--   BotPachyReachScaled (default true, read each check; false = 1.19 test). Studio at 2x with reach 3 (6): hits at gaps
+--   5.4 - 5.9, misses where the bodies stopped at 7.0 -> BotPachyReach default 4 (8 at 2x).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.19"
+local VERSION = "1.20"
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -401,13 +408,14 @@ DEFAULTS.BotPachyWindup = 0.45
 DEFAULTS.BotPachyChargeTime = 1.0
 DEFAULTS.BotPachyChargeRange = 35
 DEFAULTS.BotPachySpeedMul = 1.7
-DEFAULTS.BotPachyReach = 3
+DEFAULTS.BotPachyReach = 4 -- v1.20: was 3
 DEFAULTS.BotPachyDamage = 12
 DEFAULTS.BotPachyShove = 40
 DEFAULTS.BotPachyShoveTime = 0.35
 DEFAULTS.BotPachySlowMul = 0.65
 DEFAULTS.BotPachySlowTime = 3
 DEFAULTS.BotPachyBackoff = 18
+DEFAULTS.BotPachyReachScaled = true -- v1.20
 local BOT_AVOID_MIN_STAGE = 2
 local BOT_PLAYER_HIT_CAP = 0.4
 local SPECIES = {
@@ -1974,19 +1982,34 @@ local function startPachyCharge(b, player)
 		end
 		hum.WalkSpeed = (model:GetAttribute("MoveRunSpeed") or 28) * get("BotPachySpeedMul")
 		show(b, "BotState", "charge")
+		b.hbGap = nil -- v1.20
 		local t1 = os.clock()
 		while os.clock() - t1 < maxTime do
 			if not up() or hrp.Anchored then endPachyCharge(b, c, "interrupted") return end
 			local tc, th = aliveChar(player)
 			if not tc then endPachyCharge(b, c, "lost") return end
 			if avoidsWater(b) and isWater(hrp.Position + dir * 4) then endPachyCharge(b, c, "water") return end
-			if distanceTo(tc, botHeadPos(b)) <= get("BotPachyReach") then
+			local reach, gap = get("BotPachyReach"), distanceTo(tc, botHeadPos(b))
+			if get("BotPachyReachScaled") ~= false then -- v1.20: head centre too, reach x scale
+				local hb = model:FindFirstChild("Hitboxes")
+				for _, p in ipairs(hb and hb:GetChildren() or {}) do
+					if p:IsA("BasePart") and p:GetAttribute("HitboxSegment") == "Head" then
+						gap = math.min(gap, distanceTo(tc, p.Position))
+						break
+					end
+				end
+				reach *= math.max(1, model:GetScale())
+			end
+			if gap < (b.hbGap or math.huge) then b.hbGap = gap end
+			if gap <= reach then
+				show(b, "BotHeadbuttGap", math.floor(gap * 10 + 0.5) / 10)
 				endPachyCharge(b, c, pachyHit(b, tc, th))
 				return
 			end
 			hum:MoveTo(hrp.Position + dir * 50)
 			RunService.Heartbeat:Wait()
 		end
+		if b.hbGap then show(b, "BotHeadbuttGap", math.floor(b.hbGap * 10 + 0.5) / 10) end -- v1.20
 		endPachyCharge(b, c, "missed")
 	end)
 end

@@ -2256,3 +2256,11 @@ Look: ScreenGui TetherAimHud (Tag, Timer, Cancel); TetherAim disc + TetherAimLin
 
 ## Pachy skins (SkinCatalog 1.3)
 No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pachy (pachy_riverstone / pachy_fossil / pachy_thunderhead / pachy_ember / pachy_obsidian / classic), SkinOwned_Pachy (comma list of owned pachy_* ids), SkinCredits_<RARITY>, SkinServerResult.
+
+## Pachy bots 2x (RaptorScale 1.2 / BotServer 1.20)
+| Attribute | On | Meaning |
+|---|---|---|
+| RaptorScalePachyBotsEnabled | RaptorScale script | default true: pachy bots are scaled by PachyScale (2) |
+| BotPachyReachScaled | BotServer script | default true: headbutt hit test uses the Head hitbox centre too and reach x model scale |
+| BotPachyReach | BotServer script | default 4 (was 3): studs at scale 1 |
+| BotHeadbuttGap | pachy bot | head-to-target gap at the hit / closest gap of a missed charge (0.1) |

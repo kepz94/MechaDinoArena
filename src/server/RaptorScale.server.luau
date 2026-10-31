@@ -16,10 +16,14 @@
 --   built at 15 studs and doubled like the raptor): player characters whose Species is "Pachy" are scaled the same way
 --   (same distance keys and ground lift) by the script attribute PachyScale (default 2) while RaptorScalePachyEnabled
 --   (default true) is on. Diagnostic: the model's RaptorScaleApplied holds the factor used.
+-- v1.2 (Kepu 2026-10-30: "You made the bot pachys so damn small wtf. Make them raptor sized"): pachy bots (models with
+--   BotSpecies "Pachy", BotServer 1.19) are scaled like the player pachy, by PachyScale (2), so they stand next to the
+--   2x raptor bots at the pachy's "a bit bigger than raptor" size. Switch: script attribute RaptorScalePachyBotsEnabled
+--   (default true, read per new bot; false = 1.1, pachy bots stay at scale 1).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local DEFAULTS = {RaptorScaleEnabled = true, RaptorScale = 2}
 local FALLBACK = {BiteReachBack = 8, BiteLungeDist = 3, EatRange = 8, EatHeight = 20, CameraStartZoom = 35} -- = GrowthServer 1.2
 local GC = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("GrowthCurve"))
@@ -48,6 +52,7 @@ end
 
 if script:GetAttribute("RaptorScalePachyEnabled") == nil then script:SetAttribute("RaptorScalePachyEnabled", true) end -- v1.1
 if script:GetAttribute("PachyScale") == nil then script:SetAttribute("PachyScale", 2) end -- v1.1
+if script:GetAttribute("RaptorScalePachyBotsEnabled") == nil then script:SetAttribute("RaptorScalePachyBotsEnabled", true) end -- v1.2
 
 local function apply(model, factor) -- v1.1: factor = the pachy's scale (nil = RaptorScale)
 	if model:GetAttribute("RaptorScaleApplied") ~= nil or script:GetAttribute("RaptorScaleEnabled") == false then return end
@@ -91,6 +96,9 @@ for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
 -- raptor bots
 local function onModel(m)
 	if m:IsA("Model") and m:GetAttribute("BotSpecies") == "Raptor" then task.defer(apply, m) end
+	if m:IsA("Model") and m:GetAttribute("BotSpecies") == "Pachy" and script:GetAttribute("RaptorScalePachyBotsEnabled") ~= false then -- v1.2
+		task.defer(apply, m, tonumber(script:GetAttribute("PachyScale")) or 2)
+	end
 end
 workspace.DescendantAdded:Connect(onModel)
 for _, d in ipairs(workspace:GetDescendants()) do onModel(d) end
