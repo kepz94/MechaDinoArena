@@ -195,7 +195,7 @@ local function candidates(self)
 	local bots = isl and isl:FindFirstChild("Bots")
 	if bots then
 		for _, b in ipairs(bots:GetChildren()) do
-			local hb = isTarget(b, self) if hb then table.insert(list, {m = b, hb = hb}) end
+			local hb = not squadmate(self, b) and isTarget(b, self) if hb then table.insert(list, {m = b, hb = hb}) end -- v1.8: squad (test targets)
 		end
 	end
 	return list

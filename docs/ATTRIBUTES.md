@@ -2451,3 +2451,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | SquadTestId | model (ArenaPvP test target) | squad id | SquadServer 1.0 test hook |
 | SquadsLive | ReplicatedStorage | bool | SquadServer 1.0 |
 | SquadServerEnabled / SquadServerVersion / SquadServerMode / SquadRequests / SquadSquads | SquadServer script | true / "1.0" / mode / count / count | SquadServer 1.0 |
+| <Script>SquadEnabled / <Script>SquadSkips (Bite/Pounce/Slash/Headbutt/Hook/Roar/Ink/Tether/Mine/Screech/HerreraMovesServer, SkillEffects) | each script | true / count | Squads S2 (MDA-159) |
+| BiteClaimResult / PounceClaimResult / SlashHitResult / HeadbuttHitResult "squad", SlashDiveCheck "squad" | character | result | Squads S2 |
