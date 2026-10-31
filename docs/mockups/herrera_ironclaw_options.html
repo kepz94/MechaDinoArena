@@ -112,7 +112,7 @@ tr.cur td { background: rgba(255,200,50,.07); }
       <h2>Iron Claw · ATTACK · mecha part</h2>
       <ul class="steps" id="stepList"></ul>
       <p class="note">Takes an ability slot and stays on while slotted, with no button and no cooldown. It only shows on the dino while it's slotted. Herrera only.</p>
-      <p class="note">What Iron Claw adds to today's slash: a wind-up flash on the iron, a bigger rake, a slash arc (orange-edged on B), sparks, a short hit-stop with a camera shake, a bigger yellow number with "CLANG!", and heavier footstep dust from III. Press "Slotted: OFF" to compare with the slash as it is now.</p>
+      <p class="note">What Iron Claw adds to today's slash: a wind-up flash on the iron, a bigger rake, a short orange streak behind each blade tip (a Roblox Trail on the blade), sparks, a short hit-stop, a bigger yellow number with "CLANG!", and heavier footstep dust from III. Press "Slotted: OFF" to compare with the slash as it is now.</p>
     </div>
   </div>
   <div class="card">
@@ -425,6 +425,44 @@ function applyPose(o, rootPos, yaw) {
   return W;
 }
 
+const TRAIL_LIFE = 0.11, trails = {};
+const TIP = {0: [[0, -0.55, 0], [0, -0.2, 0], "_claw2"], 1: [[1.9, -0.8, 0], [1.78, -0.42, 0], "_hand"], 2: [[0.95, -0.08, 0], [0.4, -0.08, 0], "_hand"]};
+for (const sd of ["L", "R"]) {
+  const max = 40, geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(max * 2 * 3), 3));
+  geo.setAttribute("tcol", new THREE.BufferAttribute(new Float32Array(max * 2 * 3), 3));
+  geo.setAttribute("talpha", new THREE.BufferAttribute(new Float32Array(max * 2), 1));
+  const idx = []; for (let i = 0; i < max - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  geo.setIndex(idx);
+  const mesh = new THREE.Mesh(geo, new THREE.ShaderMaterial({side: THREE.DoubleSide, transparent: true, depthWrite: false,
+    vertexShader: "attribute vec3 tcol; attribute float talpha; varying vec3 vc; varying float va; void main(){ vc = tcol; va = talpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: "varying vec3 vc; varying float va; void main(){ gl_FragColor = vec4(vc, va); }"}));
+  mesh.frustumCulled = false; scene.add(mesh);
+  trails[sd] = {mesh, hist: [], max};
+}
+function updateTrail(sd, on, dt) {
+  const T = trails[sd], cfg = TIP[look];
+  for (const h of T.hist) h.age += dt;
+  while (T.hist.length && T.hist[0].age > TRAIL_LIFE) T.hist.shift();
+  if (on && dt > 0) {
+    const m = partInfo["Arm" + sd + cfg[2]].mesh.matrix;
+    T.hist.push({a: new THREE.Vector3(...cfg[0]).applyMatrix4(m), b: new THREE.Vector3(...cfg[1]).applyMatrix4(m), age: 0});
+    if (T.hist.length > T.max) T.hist.shift();
+  }
+  const pos = T.mesh.geometry.attributes.position, col = T.mesh.geometry.attributes.tcol, al = T.mesh.geometry.attributes.talpha, n = T.hist.length;
+  const c0 = new THREE.Color(look === 1 ? HOT : 0xdfe8f5), c1 = new THREE.Color(0xffffff);
+  for (let i = 0; i < T.max; i++) {
+    const h = T.hist[Math.min(i, n - 1)];
+    if (!h) { pos.setXYZ(i * 2, 0, -50, 0); pos.setXYZ(i * 2 + 1, 0, -50, 0); al.setX(i * 2, 0); al.setX(i * 2 + 1, 0); continue; }
+    const f = Math.max(0, 1 - h.age / TRAIL_LIFE) * (i < n ? 1 : 0); // fades to nothing (additive black = invisible)
+    pos.setXYZ(i * 2, h.a.x, h.a.y, h.a.z); pos.setXYZ(i * 2 + 1, h.b.x, h.b.y, h.b.z);
+    const tip = c1.clone().lerp(c0, 0.95);
+    col.setXYZ(i * 2, tip.r, tip.g, tip.b); col.setXYZ(i * 2 + 1, c0.r, c0.g, c0.b);
+    al.setX(i * 2, 0.9 * f); al.setX(i * 2 + 1, 0.15 * f);
+  }
+  pos.needsUpdate = true; col.needsUpdate = true; al.needsUpdate = true;
+  T.mesh.visible = n > 1 && !labView;
+}
 function handWorld(sd) { const m = partInfo["Arm" + sd + "_hand"].mesh.matrix; return new THREE.Vector3().setFromMatrixPosition(m); }
 
 let last = performance.now(), auto = 0;
@@ -463,13 +501,9 @@ function frame(now) {
   }
   const o = poseNow(dt);
   applyPose(o, new THREE.Vector3(labView ? 0 : st.x, 0, labView ? 0 : 0), -Math.PI / 2 + (labView ? (now / 1000) * 0.6 : 0));
-  // dash streak + arc during the rake
-  if (state === "dash" && slotted && !st.arcDone && st.slashT / DASH > 0.35) {
-    st.arcDone = true;
-    const hp = handWorld("L"); hp.x += 0.8; hp.y += 0.6;
-    arc(hp, look === 1 ? 0xfff1e0 : 0xe8f0ff, look === 1 ? HOT : (look === 2 ? 0x9aa6b8 : null));
-  }
-  if (state === "run") st.arcDone = false;
+  // blade-tip trails (like a Roblox Trail between two attachments on each blade: mid-blade and tip)
+  const swinging = slotted && (state === "windup" || state === "dash" || state === "recover");
+  for (const sd of ["L", "R"]) updateTrail(sd, swinging, dt);
   // the iron glint (windup) and hit flash
   glint = Math.max(0, glint - dt * 4);
   for (const e of equip) if (!e.glow) e.mesh.material.emissive.setScalar(glint * 0.9);
@@ -522,7 +556,7 @@ function onHit() {
   const d = dmgFor(BASE_SLASH, si);
   botHp -= d; if (botHp < 40) botHp = 200;
   botFlash = 1; botKnock = slotted ? 1 : 0.5;
-  hitStop = slotted ? 0.09 : 0.04; shake = slotted ? 0.5 : 0.15;
+  hitStop = slotted ? 0.09 : 0.04; shake = 0; // no camera shake (Kepu 2026-10-31)
   const at = new THREE.Vector3(BOT_X, 3.2, -0.6);
   spark(at, slotted ? (look === 1 ? HOT : 0xffe08a) : 0xffffff, slotted ? 18 : 6, slotted ? 9 : 5);
   if (slotted) spark(at, 0xffffff, 6, 12);
