@@ -1,4 +1,4 @@
--- SkinCatalog.spec v1.4 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
+-- SkinCatalog.spec v1.5 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...". Requires a
 -- fresh clone so a re-run in the same Studio session sees the installed source. Reads both model data modules to check
 -- that every authored colour is a skin role or on the never-paint list.
@@ -10,6 +10,10 @@
 --   another dino), prices / free, products by rarity, ownership separate from the raptor's.
 -- v1.4 (plan docs/plans/HERRERA_MODEL_v1.0.md Task 2): Herrera colour groups — every HerreraModelData colour is a
 --   Herrera role or never-paint, 10 roles, no hex shared, none never-paint, Herrera classic (Swamp olive) round trip.
+-- v1.5 (plan docs/plans/HERRERA_SKINS_v1.0.md Task 1): the Herrera lineup — 6 skins in order, herrera_ ids (no id shared
+--   with another dino), prices / free, products by rarity, per skin all 10 roles / no hex twice / no never-paint / valid
+--   materials, ownership separate. SkinCatalog 1.5's ALL_UNLOCKED (group test) makes owns() true for every skin, so the
+--   spec checks the flag is a boolean and then forces it false on its own test copy: the owns checks test the locked rules.
 local da = game.ServerStorage:FindFirstChild("DinoArcade")
 local ok, SC = pcall(function()
 	local src = da.SkinCatalog
@@ -20,6 +24,8 @@ local ok, SC = pcall(function()
 	return m
 end)
 if not ok then return "FAIL require: " .. tostring(SC) end
+local UNLOCKED = SC.ALL_UNLOCKED -- v1.5: test copy only
+SC.ALL_UNLOCKED = false
 local function data(name)
 	local src = da.Models[name]
 	local c = src:Clone()
@@ -34,7 +40,8 @@ local function eq(name, got, want)
 end
 local function hex(c3) return c3:ToHex():upper() end
 
-eq("Version", SC.Version, "1.4")
+eq("Version", SC.Version, "1.6")
+eq("ALL_UNLOCKED is a boolean", type(UNLOCKED), "boolean") -- v1.5
 
 -- roles of the authored colours
 local RAPTOR = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -207,6 +214,51 @@ do
 	eq("pachy owns owned", SC.owns("Pachy", "pachy_fossil", {pachy_fossil = true}), true)
 	eq("pachy owns free", SC.owns("Pachy", "pachy_riverstone", {}), true)
 	eq("pachy sanitize raptor id", SC.sanitize("Pachy", "lava"), "classic")
+end
+
+-- v1.5: Herrera lineup
+do
+	local want = {
+		{"classic", "STARTER", nil}, {"herrera_canopy", "COMMON", nil}, {"herrera_bloodmoon", "RARE", 149},
+		{"herrera_ghostbark", "RARE", 149}, {"herrera_venom", "EPIC", 499}, {"herrera_obsidian", "LEGENDARY", 999},
+	}
+	local ROLES = {"main", "stripes", "belly", "markings", "limbs", "claws", "eyes", "tailbands", "mask", "frill"}
+	local list = SC.SKINS.Herrera or {}
+	eq("herrera skins", #list, 6)
+	for i, w in ipairs(want) do
+		local s = list[i] or {}
+		eq("herrera order " .. i, s.id, w[1])
+		eq("herrera rarity " .. w[1], s.rarity, w[2])
+		eq("herrera price " .. w[1], s.price, w[3])
+		eq("herrera free " .. w[1], s.free == true, w[3] == nil)
+		eq("herrera product " .. w[1], SC.productFor("Herrera", w[1]), w[3] and SC.PRODUCTS[w[2]] or nil)
+		local seen, ok10 = {}, 0
+		for _, r in ipairs(ROLES) do
+			local h = s.colors and s.colors[r]
+			if type(h) == "string" and h:match("^%x%x%x%x%x%x$") and h == h:upper() then ok10 += 1 end
+			if h then
+				eq("herrera " .. w[1] .. " " .. r .. " not never-paint", SC.NEVER_PAINT[h], nil)
+				eq("herrera " .. w[1] .. " " .. r .. " hex once", seen[h], nil)
+				seen[h] = r
+			end
+		end
+		eq("herrera " .. w[1] .. " 10 roles", ok10, 10)
+		for r, m in pairs(s.materials or {}) do
+			eq("herrera " .. w[1] .. " material " .. r, (pcall(function() return Enum.Material[m] end)), true)
+		end
+	end
+	local other = {}
+	for _, sp in ipairs({"Raptor", "TRex", "Pachy"}) do for _, s in ipairs(SC.SKINS[sp]) do other[s.id] = sp end end
+	for _, s in ipairs(list) do
+		if s.id ~= "classic" then
+			eq("herrera id prefix " .. s.id, s.id:sub(1, 8), "herrera_")
+			eq("herrera id not shared " .. s.id, other[s.id], nil)
+		end
+	end
+	eq("herrera owns separate", SC.owns("Herrera", "herrera_bloodmoon", {pachy_fossil = true, arctic = true}), false)
+	eq("herrera owns owned", SC.owns("Herrera", "herrera_bloodmoon", {herrera_bloodmoon = true}), true)
+	eq("herrera owns free", SC.owns("Herrera", "herrera_canopy", {}), true)
+	eq("herrera sanitize pachy id", SC.sanitize("Herrera", "pachy_ember"), "classic")
 end
 
 if #fails > 0 then return "FAIL " .. #fails .. " / " .. (passes + #fails) .. ": " .. table.concat(fails, "; ") end

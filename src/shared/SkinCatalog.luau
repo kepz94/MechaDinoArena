@@ -1,4 +1,4 @@
--- SkinCatalog v1.5 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
+-- SkinCatalog v1.6 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1, mockup docs/mockups/skins_lab_tab.html (Kepu 2026-10-30: skins picked in the Lab's
 -- SKINS tab from the main menu; "whatever is chosen in the menu is what youre spawning with every time unless you choose
 -- a different skin"; buying with Robux is the next plan). Pure: no Instance access. Used by SkinServer 1.0 (server) and,
@@ -40,9 +40,15 @@
 --   bought or written to owned / credits: a buy request for a paid skin answers "owned". Set false to go back to 1.4
 --   (paid skins locked until bought). This module is cloned to ReplicatedStorage.SkinShared at start, so the Lab and the
 --   server read the same flag.
+-- v1.6 (plan docs/plans/HERRERA_SKINS_v1.0.md Task 1, MDA-170, mockup docs/mockups/herrera_skins_options.html; Kepu
+--   2026-10-31: lineup "Same as pachy", "Herrera-own themes", body only; picks Common A, Rare 1 A, Rare 2 A, Epic A,
+--   Legendary B): the Herrera lineup Classic, Canopy (COMMON, free), Bloodmoon (RARE 149), Ghost Bark (RARE 149), Venom
+--   (EPIC 499), Obsidian Fang (LEGENDARY 999). Ids carry the prefix "herrera_" (the save's owned set is keyed by id only).
+--   Prices / products are the existing rarity tiers. Raptor / T-Rex / Pachy lists, Herrera roles / Classic, ALL_UNLOCKED
+--   and the API unchanged.
 local SkinCatalog = {}
 SkinCatalog.ALL_UNLOCKED = true -- v1.5: group test, every skin unlocked
-SkinCatalog.Version = "1.5"
+SkinCatalog.Version = "1.6"
 
 SkinCatalog.ROLES = {
 	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -111,6 +117,26 @@ SkinCatalog.SKINS = {
 		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
 			colors = {main = "6E6A3A", stripes = "2F3320", belly = "D3C89A", markings = "B8414A", limbs = "5A5530",
 				claws = "2C2620", eyes = "E8C547", tailbands = "B9B26A", mask = "262A1A", frill = "C9572E"}},
+		-- v1.6: the Herrera drop
+		{id = "herrera_canopy", name = "Canopy", rarity = "COMMON", free = true,
+			colors = {main = "4F7A3A", stripes = "24391C", belly = "C8D49A", markings = "D9A23A", limbs = "3F6530",
+				claws = "2A2A1E", eyes = "F0E04A", tailbands = "8DB85A", mask = "1D2A16", frill = "6FA83C"}},
+		{id = "herrera_bloodmoon", name = "Bloodmoon", rarity = "RARE", price = 149, free = false,
+			colors = {main = "3A3436", stripes = "1C191A", belly = "8A7E78", markings = "C8202E", limbs = "2E2A2B",
+				claws = "0E0C0C", eyes = "FF3B3B", tailbands = "9A1E28", mask = "151213", frill = "B0182A"},
+			materials = {eyes = "Neon"}},
+		{id = "herrera_ghostbark", name = "Ghost Bark", rarity = "RARE", price = 149, free = false,
+			colors = {main = "D8D2C2", stripes = "4A4640", belly = "EFE9DA", markings = "2A2724", limbs = "C4BDAB",
+				claws = "3A3530", eyes = "7FE9FF", tailbands = "9A9488", mask = "5A554C", frill = "B8AE9A"},
+			materials = {eyes = "Neon"}},
+		{id = "herrera_venom", name = "Venom", rarity = "EPIC", price = 499, free = false,
+			colors = {main = "1E2420", stripes = "A6E22E", belly = "3A4438", markings = "7CFF4A", limbs = "2A3229",
+				claws = "0D100D", eyes = "C6FF3A", tailbands = "5FBF2A", mask = "121612", frill = "8FE03A"},
+			materials = {stripes = "Neon", markings = "Neon", eyes = "Neon", frill = "Neon"}},
+		{id = "herrera_obsidian", name = "Obsidian Fang", rarity = "LEGENDARY", price = 999, free = false,
+			colors = {main = "141416", stripes = "2A2A2E", belly = "3A3A40", markings = "D0202A", limbs = "1E1E22",
+				claws = "D4A72C", eyes = "FFD24A", tailbands = "B81822", mask = "0A0A0C", frill = "9E1520"},
+			materials = {markings = "Neon", claws = "Foil", eyes = "Neon", frill = "Neon"}},
 	},
 }
 
