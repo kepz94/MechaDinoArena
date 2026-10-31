@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Herrerasaurus generator v1.0 (Mecha Dino Arena) — writes src/shared/Models/HerreraModelData.luau.
+"""Herrerasaurus generator v1.1 (Mecha Dino Arena) — writes src/shared/Models/HerreraModelData.luau.
 
 Kepu 2026-10-30: "the next Dino I want to work on it's the Herrerasaurus. This will be a utility Dino someone that's a
 Pain in the ass to deal with but easy to kill" · "It's going to have the most mecha utility and the fastest in the game" ·
@@ -15,6 +15,9 @@ Skin rule: every visible block uses one authored colour per group, no hex shared
 never-paint colour (teeth E8E2D2, pupils 111111, mouth 6E342E, HRP A3A2A5).
 Gameplay attributes: the T-Rex's (as the raptor / pachy inherit them) with every move switched off; abilities, speeds and
 gait come with the playable plan.
+v1.1 (plan docs/plans/HERRERA_SCURRY_v1.0.md Task 3, mockup docs/mockups/herrera_scurry_options.html option A, Kepu
+"Wow I love A"): attributes GaitScurry = true (IdleAnimation 1.31 uses ScurryPose instead of WalkPose), GaitAlwaysRun =
+true, ScurryPoseVersion "1.0". Geometry unchanged.
 Run: python3 tools/herrera_generator.py [--palette rust|charcoal|olive] [--mock OUT]
   (default palette olive = Classic; --mock writes segments + joints only, for Studio renders)
 """
@@ -25,7 +28,7 @@ OUT = os.path.join(ROOT, "src", "shared", "Models", "HerreraModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 ROLES = ["main", "stripes", "belly", "markings", "limbs", "claws", "eyes", "tailbands", "mask", "frill"]
 
-VERSION = "1.0"
+VERSION = "1.1"
 TARGET_LEN = 11.2    # studs at scale 1 (raptor 12.85; doubled in game: ~22.4 vs the raptor's 25.4)
 HIP0 = 3.3           # authored hip height before the length scale
 HRP_SIZE_D0 = (3.2, 2.1, 1.2)
@@ -323,6 +326,7 @@ else:
         "RigHipHeight": f"{HIP:.4g}",
         "BiteEnabled": "false", "PounceEnabled": "false", "RamEnabled": "false", "RoarEnabled": "false",
         "JumpEnabled": "false", "CreepEnabled": "false",
+        "GaitScurry": "true", "GaitAlwaysRun": "true", "ScurryPoseVersion": '"1.0"',  # v1.1
     })
     attrs.pop("StarterCharacterVersion", None)
     lines = [
