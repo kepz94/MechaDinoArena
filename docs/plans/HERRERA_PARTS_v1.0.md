@@ -543,3 +543,119 @@ The front is always unchanged.
 | Glide ends | land / grab a trunk / release JUMP / slash dash / part off | GlideLocal false, server Gliding false |
 | Slash "dive" request | not on a tree, Gliding and GliderDrop | accepted (was "noTree"); SlashGlideDive true |
 | Glide dive hit | | × GliderDropMul; ★ every Bitable model within GliderBurst × scale of the landing point bleeds (the slash bleed) |
+
+---
+
+## Pass 3 — parts 9–11 (Kepu 2026-10-31: "Let's plan 3 abilities right now")
+
+**Intent:** three more Herrera button parts: a bleed trap, "a blob shooter that slows a wide area of the field" and "an adrenaline that works like raptors".
+**Mockup:** docs/mockups/herrera_parts_b3_options.html (sources tools/mockup/p3_parts.js, p3_scen.js, build4.py); videos docs/reference/herrera/mockup_parts_b3_caltrops.mp4, _blob.mp4, _adrenaline.mp4.
+**Picks (Kepu 2026-10-31):** Caltrops ladder "Bleed trap", look A · Tail Spreader. Blob ladder "Two blobs", "Lobbed arc", cooldown 14 s, look A · Hump Mortar. Adrenaline "Same, but ★ refills slash charges", look A · Back Tanks.
+**After pass 3:** the Herrera has 11 parts (8 button parts; siphon / ironclaw / plating are passive).
+
+### Status
+| # | Part | Path id | Area | Ticket | Built |
+|---|---|---|---|---|---|
+| 9 | Razor Caltrops (Tail Spreader) | `caltrops` | eng (UTILITY) | MDA-157 | no |
+| 10 | Goo Blob Shooter (Hump Mortar) | `goo` | eng (UTILITY) | MDA-158 | no |
+| 11 | Adrenaline Injector (Back Tanks) | `hadren` | health | MDA-159 | no |
+
+## Part 9 — Razor Caltrops (`caltrops`)
+### Steps
+| Step | Effect |
+|---|---|
+| I | Button: drop 6 razor spikes in a 10-stud patch behind you, for 8 s. An enemy that steps on one bleeds 3/s for 3 s and is slowed 30% for 1 s. Recharges in 16 s. |
+| II | 10 spikes, 14-stud patch. |
+| III | Spikes last 14 s. |
+| ★ | Enemies can't see the spikes (only you and your squad). |
+### How it works
+- Request `DinoCaltropRequest(stamp)`; HerreraMovesServer `check(..., "caltrops", "Caltrop", {})` (refused: badArg / dead / disabled / menu / stunned / pinned / cooldown; not "dazed": a trap is not an attack — same row as Smoke Pods).
+- Patch centre = root − facing(flat) × (CaltropRadius + 4) × scale; spikes at sunflower spots (i × 137.5°, r × √((i+0.5)/n)) dropped onto the ground (ray down, the TetherServer 1.1 skip list). A new patch replaces the owner's old one.
+- Server data, client drawn: Folder `ReplicatedStorage.CaltropPatches`, one Configuration per patch (`Owner` name, `OwnerUserId`, `Until`, `Hidden` (★), `Scale`, `Spikes` = JSON array of {x,y,z,used}). HerreraMovesFX 1.3 draws each spike (3 crossed steel bars + red Neon tips, scale-1 size 0.2 × 1.1 × 0.2) — for every viewer when Hidden is false; when Hidden is true only for the owner (and squadmates once Squads ships: SquadRules.same).
+- Trigger: every 0.1 s, for every allowed enemy (`candidates(self)`) whose root is within 1.6 × scale studs (flat) of an unused spike: spike used (removed), target `CaltropBleedUntil = now + 3`, `CaltropBleedBy`, `CaltropSlowUntil = now + 1`, `CaltropSlowMul = 0.7`; one trigger per target per 0.35 s. Energy Shield (EnergyShieldUntil) = no trigger, spike kept.
+- Bleed ticks every 1 s while CaltropBleedUntil ≥ now: 3 off DummyHealth through `takeHealth` (× takenMul: daze ★, immunity), KilledWith "caltrops". A new spike restarts the 3 s.
+- Slow: players → SprintTest 1.16 × CaltropSlowMul while CaltropSlowUntil > now; bots → WalkSpeed × 0.7 while slowed (the Smoke ★ bot pattern).
+- Blood Siphon counts CaltropBleedUntil as "bleeding" (SkillEffects 1.29).
+### Look (A · Tail Spreader)
+- On `Tail1_main`: dark hopper 0.85 × 0.5 × 0.6 at (0, 0.42, 0); 2 steel bands 0.08 × 0.54 × 0.64 at x ±0.3; 5 spike tips (steel 0.09 × 0.26 × 0.09 + blood Neon 0.07 × 0.1 × 0.07 on top) along the top at z ±0.12, fanned ±24°; steel rear chute 0.3 × 0.26 × 0.5 at (0.52, 0.32, 0), tilted −20°.
+- On use: the hopper rattles 0.5 s (HerreraMovesFX), spikes arc out of the chute (0.4–0.56 s each, staggered 0.04 s).
+### Acceptance
+- Slot key drops 6 spikes in a 10-stud patch behind (10 / 14 from II), lasting 8 s (14 from III); 16 s cooldown.
+- An enemy stepping on one: −3 at once and every second for 3 s, 30% slower for 1 s; the spike is gone.
+- ★: other players never see the spikes; you do.
+- Bots step on them and slow; a shielded enemy doesn't trigger them.
+
+## Part 10 — Goo Blob Shooter (`goo`)
+### Steps
+| Step | Effect |
+|---|---|
+| I | Button: lob a goo blob up to 60 studs. It splats into a 16-stud goo puddle for 5 s; enemies in the goo are slowed 40%. Recharges in 14 s. |
+| II | Puddle 22 studs wide. |
+| III | Fires 2 blobs side by side. |
+| ★ | Puddles last 8 s. |
+### How it works
+- Aim = the Tether Spike's current aim (MechaButtons 1.22 "Top-down tactical"): tap = aim mode with a landing circle (GooRadius × 2 across; III: two circles side by side), tap again / left click = fire, CANCEL / right click / Q / 6 s = no fire. Implemented by parameterising tacStart / tacStep / tacEnd with a part table {prefix, remote, range attr, circle size}; the tether row stays as it is.
+- Request `DinoGooRequest(stamp, landPos)`; `check(..., "goo", "Goo", {})` (not refused by daze — area denial, like smoke). landPos clamped to GooRange (60) + 4 flat, dropped on the ground.
+- III: two landing points = landPos ± right(flat, perpendicular to root→landPos) × GooRadius × 0.85 × scale.
+- Flight 0.85 s (0.12 s stagger for the 2nd), apex 14 studs above the higher end, from the mortar muzzle; server part "GooBlob" (anchored, no collide / query / touch) in Workspace.DinoFX.GooFX.
+- Puddle: Part "GooPuddle" (Cylinder, lime Neon rgb(166, 226, 46) at 0.25 transparency, height 0.2, anchored, no collide / query / touch) + darker rim, for GooTime (5; 8 at ★).
+- Slow: every 0.2 s each allowed enemy whose root is within GooRadius × scale (flat) of a live puddle: player `GooSlowUntil = now + 0.3`, `GooSlowMul = 0.6` (SprintTest 1.16); bot WalkSpeed × 0.6 while inside, put back on leaving / puddle end. No damage.
+### Look (A · Hump Mortar)
+- On `Torso_hump`: dark base plate 0.9 × 0.12 × 0.8 at (0, 0.32, 0); steel tube 0.5 × 1.0 × 0.5 at (0.22, 0.85, 0) tilted −32° (forward); lime Neon muzzle ring 0.58 × 0.14 × 0.58 at (0.48, 1.27, 0) same tilt; glass tank 0.6 × 0.55 × 0.6 at (−0.42, 0.62, 0) with a lime Neon core 0.42 × 0.4 × 0.42 (level drains on fire, refills over the cooldown); 2 steel bands.
+- On fire: the tube kicks back 0.25 along its axis (0.35 s), body pitch −7° (HerreraMovesPose 1.1 `gooKick`), "THUMP!" pop.
+### Acceptance
+- Tap → aim circle; tap → blob arcs and splats a 16-stud puddle (22 from II) where the circle was; 14 s cooldown.
+- Enemies (bots and Arena players) inside run 40% slower; outside, normal.
+- III: two puddles side by side. ★: 8 s puddles.
+
+## Part 11 — Adrenaline Injector (`hadren`)
+### Steps
+| Step | Effect |
+|---|---|
+| I | Button: heal 25% of max health over 3 s and run 1.4x faster while it lasts. Recharges in 20 s. |
+| II | Heal 34%. |
+| III | Recharges 26% faster (14.8 s). |
+| ★ | Also refills every slash charge at once. |
+### How it works
+- Re-uses AdrenalineServer 1.4 unchanged in its maths: SkillTree 1.43 `effects()` sets the same keys (adrenHeal, adrenTime, adrenSpeedMul, adrenCooldown) from `s.hadren` on a Herrera, plus `adrenSlashRefill` at ★ (adrenStunClear stays false). SkillEffects 1.29 writes the Adrenaline* attributes when `hadren` is in a slot on a Herrera (the raptor `inSlot("adrenaline")` row is unchanged) plus `AdrenalineSlashRefill`.
+- ★: AdrenalineServer 1.5 on "ok" with AdrenalineSlashRefill → character `SlashRefillAllAt = now`; SlashServer 1.6 listens and sets charges to SlashChargesMax (the Blood Frenzy ★ refill code path), SlashSkillLast "adrenRefill".
+- Cooldown from the end of the boost (AdrenalineServer as is). MechaButtons / AbilityBar: TIMED_PARTS.hadren = {"Adrenaline", "DinoAdrenalineRequest", "ADRENALINE"}.
+- AdrenalineServer 1.5 builds no raptor look on a Species "Herrera" (switch AdrenalineHerreraLookOff, default true); HerreraPartsServer 1.3 builds the Back Tanks.
+### Look (A · Back Tanks)
+- On `Torso_hump`, two tanks at z ±0.27: glass 0.34 × 0.85 × 0.34 at (−0.1, 0.72, z); green Neon fluid rgb(70, 224, 138) 0.24 × 0.7 × 0.24 at (−0.1, 0.66, z) whose height follows AdrenalineServer's fluid rule (drains over the boost, refills over the cooldown; bottom fixed); steel caps 0.38 × 0.1 × 0.38 at y 1.17 and 0.28; a green Neon feed tube 0.9 × 0.1 × 0.1 at (0.45, 1.0, 0) tilted −25°.
+- During the boost: green Highlight pulse (AdrenalineServer's AdrenalineGlow), foot trails, "+N" pops — all existing.
+### Acceptance
+- Slot key: +25% of max health over 3 s (34% from II), 1.4x run while it lasts; cooldown 20 s (14.8 from III) counted from the end.
+- ★: both slash pips refill at once.
+- The raptor's Adrenaline Injector is unchanged (regression check on a raptor).
+
+## Pass 3 — build map
+| Script | Version | Change | Switch |
+|---|---|---|---|
+| SkillTree | 1.43 | `part("caltrops"…)`, `part("goo"…)`, `part("hadren"…)` (Herrera, LIVE_MECH, BUTTONS) + step texts above; effects wrapper: caltropCount 6/10, caltropRadius 5/7 (studs, half the patch), caltropTime 8/14, caltropHidden ★, caltropBleedDps 3, caltropBleedTime 3, caltropSlowMul 0.7, caltropSlowTime 1, caltropCooldown 16; gooRange 60, gooRadius 8/11, gooTime 5/8, gooCount 1/2 (III), gooSlowMul 0.6, gooCooldown 14; hadren → adren keys + adrenSlashRefill | SkillTree.HERRERA_PASS3 |
+| SkillEffects | 1.29 | Herrera rows Caltrop* / Goo* (prefix loop as 1.27); Adrenaline* from hadren; siphon counts CaltropBleedUntil | SkillEffectsHerreraPass3Enabled |
+| HerreraMovesServer | 1.1 | DinoCaltropRequest, DinoGooRequest; patches, triggers, bleed ticks, puddles, slows | HerreraMoves_caltropsEnabled, HerreraMoves_gooEnabled |
+| HerreraMovesFX | 1.3 | spike drawing (Hidden rule), hopper rattle, spike arcs, goo flight drips, splat, puddle bubbles, "SLOWED" pops | HerreraMovesFXPass3Enabled |
+| HerreraMovesPose | 1.1 | gooKick (body −7°, 0.35 s from GooFiredAt) | model GooPosePoseEnabled |
+| HerreraPartsServer | 1.3 | looks HPart_caltrops / HPart_goo / HPart_hadren + BuildPreview_caltrops / _goo / _hadren; tank fluid level | HerreraParts_<id>Enabled |
+| AdrenalineServer | 1.5 | no raptor look on a Herrera; ★ SlashRefillAllAt | AdrenalineHerreraLookOff, AdrenalineSlashRefillEnabled |
+| SlashServer | 1.6 | SlashRefillAllAt → charges = max | SlashAdrenRefillEnabled |
+| SprintTest | 1.16 | × CaltropSlowMul / × GooSlowMul while their Until > now | SprintTestPass3SlowEnabled |
+| MechaButtons | 1.25 | TIMED_PARTS caltrops / goo / hadren; goo uses the tactical aim (parameterised) | MechaButtonsHerreraPass3Enabled |
+| AbilityBar | 1.19 | the same three tiles | AbilityBarHerreraPass3Enabled |
+
+### Deterministic map
+| State | Condition | Result |
+|---|---|---|
+| Caltrop request | badArg / dead / disabled / menu / stunned / pinned / cooldown | refused (CaltropServerResult) |
+| Caltrop drop | ok | old patch removed; new patch CaltropCount spikes, Until = now + CaltropTime |
+| Spike stepped | allowed enemy root within 1.6 × scale, unused, no shield, ≥ 0.35 s since its last trigger | used; bleed 3 s, slow 1 s |
+| Spike, shielded enemy | EnergyShieldUntil > now | nothing, spike stays |
+| Patch over | now ≥ Until, owner dead / left / part off | patch removed (bleeds already running finish) |
+| Spike drawing | Hidden false | every client; Hidden true → owner (+ squad) only |
+| Goo aim | tap while ready | tactical aim; second tap fires; cancel / 6 s → none, no cooldown |
+| Goo request | badArg / dead / disabled / menu / stunned / pinned / cooldown | refused (GooServerResult) |
+| Goo fire | ok | GooCount blobs; puddle(s) at landing for GooTime |
+| In goo | allowed enemy root within GooRadius × scale of a live puddle | player GooSlowUntil = now + 0.3, GooSlowMul 0.6; bot WalkSpeed × 0.6 |
+| Out of goo / puddle ends | | player slow lapses ≤ 0.3 s; bot WalkSpeed restored |
+| Adrenaline (Herrera) | AdrenalineServer rules as today | heal / run / cooldown; ★ SlashRefillAllAt → charges max |
