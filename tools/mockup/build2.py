@@ -1,0 +1,5 @@
+h=open('/tmp/ic/parts_head.html').read()
+three=open('/tmp/ic/node_modules/three/build/three.min.js').read()
+h=h.replace('<script>/*THREE*/</script>','<script>/* three.js r128 (MIT), inlined so the page works offline / in previews */\n'+three+'\n</script>')
+s=open('/tmp/ic/parts.js').read().replace('__DATA__',open('/tmp/ic/herrera.json').read())
+open('/home/claude/mechadinoarena/docs/mockups/herrera_parts_b1_options.html','w').write(h+s+"\n</script>\n</body>\n</html>\n")
