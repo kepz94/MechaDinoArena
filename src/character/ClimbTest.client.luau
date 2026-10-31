@@ -1,4 +1,4 @@
--- ClimbTest v1.8 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.9 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -53,12 +53,16 @@
 --   off a tree top ("hopOffTop") the push lasts until the HRP is half its length + 1 stud past the proxy's edge along
 --   the hop direction (at least ClimbHopTime, at most HOP_TOP_MAX_TIME 1 s), so the hop clears the pad from anywhere on it
 --   (CoconutPalm_219's pad is 8.85 studs in radius).
+-- v1.9 (MDA-141, plan docs/plans/HERRERA_KIT_v1.0.md Task 9; SlashTest 1.0): while the character attribute
+--   SlashLocalState is "dash" (the slash / dive / leap runs) the trunk is let go (forces off, PlatformStand off,
+--   TurnLimitEnabled restored), a running hop push stops, the state is "ground" and nothing is probed, so the dash is not
+--   caught by the trunk again; after the dash the probes run as before. ClimbReason "slash".
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -305,6 +309,15 @@ RunService.Heartbeat:Connect(function()
 		state = "ground"
 		send("ground", "")
 		hopQueued = false
+		return
+	end
+	if char:GetAttribute("SlashLocalState") == "dash" then -- v1.9: the slash dash owns the body
+		if holding then hold(false) end
+		hopLv.Enabled = false
+		state = "ground"
+		send("ground", "")
+		hopQueued = false
+		char:SetAttribute("ClimbReason", "slash")
 		return
 	end
 	-- probes

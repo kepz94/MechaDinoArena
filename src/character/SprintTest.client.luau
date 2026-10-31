@@ -1,4 +1,4 @@
--- SprintTest v1.11 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.12 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -39,6 +39,10 @@
 --   (Shift / AutoRun ignored, Sprinting false, so no stamina drain) and moves at MoveWalkSpeed (or slower: roar, exhausted,
 --   creep and the slows still apply). Switch: script attribute SprintTetherAimEnabled (default true, read each apply;
 --   false = 1.10).
+-- v1.12 (Herrerasaurus slash, MDA-141, plan docs/plans/HERRERA_KIT_v1.0.md Task 9 — the plan named this 1.11, taken by the
+--   Tether Spike aim mode): the slash's speed burst (SlashBurstUntil / SlashBurstMul, SlashServer 1.1, stamped at the
+--   dash end) multiplies the speed while SlashBurstUntil > now, with the other part multipliers; MoveSpeedParts can
+--   include "slashBurst". Switch: script attribute SprintSlashBurstEnabled (default true, read each apply; false = 1.11).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -96,6 +100,13 @@ local function partSpeed()
 		mul *= m
 		table.insert(names, "servodash")
 		table.insert(ends, dashUntil)
+	end
+	local burstUntil, burstMul = char:GetAttribute("SlashBurstUntil"), char:GetAttribute("SlashBurstMul") -- v1.12
+	if script:GetAttribute("SprintSlashBurstEnabled") ~= false and typeof(burstUntil) == "number" and typeof(burstMul) == "number"
+		and t < burstUntil then
+		mul *= math.max(0, burstMul)
+		table.insert(names, "slashBurst")
+		table.insert(ends, burstUntil)
 	end
 	if script:GetAttribute("SprintHeadbuttSlowEnabled") ~= false then -- v1.9
 		for _, h in ipairs({{"headbutt", "HeadbuttSlowUntil", "HeadbuttSlowMul"}, {"headbuttSelf", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul"}}) do
@@ -200,7 +211,7 @@ char:GetAttributeChangedSignal("AutoRun"):Connect(apply)        -- v1.5
 char:GetAttributeChangedSignal("TetherAiming"):Connect(apply)   -- v1.11
 for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil", "EnergyShieldSpeedMul", "ScreechSlowUntil",
 	"MineSlowUntil", "MineSlowMul", "HeadbuttSlowUntil", "HeadbuttSlowMul", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul",
-	"ServoDashUntil", "ServoDashSpeedMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*
+	"ServoDashUntil", "ServoDashSpeedMul", "SlashBurstUntil", "SlashBurstMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 apply()
