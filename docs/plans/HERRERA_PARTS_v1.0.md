@@ -24,8 +24,19 @@
 | 3 | Quill Launcher (Spine Quills) MDA-151 | done (below) | same page, look B; video mockup_parts_b1_quills.mp4 | no |
 | 4 | Smoke Pods (Tail Vents) MDA-152 | done (below) | same page, look B; video mockup_parts_b1_smoke.mp4 | no |
 | 5 | Back Plating (Spine Scutes) MDA-153 | done (below) | same page, look A; video mockup_parts_b1_plating.mp4 | no |
+| 6 | Blood Siphon (Throat Pump) | done (below) | docs/mockups/herrera_parts_b2_options.html, look A; video docs/reference/herrera/mockup_parts_b2_siphon.mp4 | no |
+| 7 | Strobe Frill (LED Frill) | done (below) | same page, look A; video mockup_parts_b2_strobe.mp4 | no |
+| 8 | Stun Breaker (Back Capacitor) | done (below) | same page, look B; video mockup_parts_b2_breaker.mp4 | no |
 
-The Herrera ends with 5 parts (Kepu picked these 4 from 16 ideas on 2026-10-31). More can be added later the same way.
+The Herrera ends with 8 parts, like the Raptor and Pachy.
+
+- Batch 1 (parts 2–5): picked from 16 ideas.
+- Batch 2 (parts 6–8): picked to fill the gaps Kepu asked about ("where are we lacking rn?"):
+  - Health: no healing part yet.
+  - A second Utility part.
+  - A way out of a stun.
+- Areas: attack 2, speed 1, utility 2, defense 2, health 1.
+- Mockup sources for batch 2: tools/mockup/p2_*.js, built by build3.py.
 
 **Shared for parts 2–5:**
 - Steel / dark steel / hot-orange accent, the same colours as Iron Claw (STEEL rgb(154, 166, 184), DARK rgb(93, 104, 120), HOT rgb(255, 138, 42)). The membrane canvas is rgb(224, 116, 42).
@@ -336,18 +347,147 @@ The front is always unchanged.
 
 ---
 
+## Part 6 — Blood Siphon (`siphon`) · HEALTH · Herrera only
+
+### Decisions (Kepu 2026-10-31)
+- Health gap: Blood Siphon.
+- Look: A · Throat Pump.
+
+### Steps
+| Step | Effect |
+|---|---|
+| I | Heal 1 HP/s for each bleeding enemy within 15 studs. |
+| II | 1.5 HP/s each. |
+| III | Range 25 studs. |
+| ★ | A bleed kill near you (within the range) heals 25% of your max health. |
+
+### How it works
+- Takes a slot. Always on while slotted, no key.
+- **What counts as a bleeding enemy:**
+  - another character or bot with SlashBleedUntil > now, or SkillBleedUntil > now (any attacker's bleed);
+  - its root within the range × scale of yours.
+- **Ticks:** every 1 s, through SkillEffects' `heal(char, st, amount, "siphon")`. Overheal becomes the Blood Drinker ★ shield when that's bought.
+- **★:** on KilledWith "bleed" (any attacker) within range, heal 25% of max health once per kill.
+- **Visual:** while healing, red beads (Neon cubes, 0.3 × scale) fly on an arc from each bleeding enemy's chest to the tank, about 8 per second per enemy. The tank core pulses (scale +25%) on each tick.
+- **Feel:** a green "+1" / "+1.5" pop per tick per enemy, and a big "+N BLEED KILL · 25%" on ★.
+
+### Look (A · Throat Pump)
+- A glass tank under the neck, just behind the frill (`Neck_main`), visible from the side:
+  - a glass box 1.15 × 0.85 × 0.95 at −0.62 Y, Glass, transparency 0.65;
+  - a glowing red core 0.88 × 0.6 × 0.7, Neon rgb(208, 32, 42);
+  - 2 steel bands;
+  - 2 dark side clamps.
+- A steel band on the red throat sac (`Neck_sac`) and a red Neon pipe under `Neck_lower`.
+
+### Acceptance
+- Near bleeding enemies you heal 1 / 1.5 HP/s each, within 15 studs (25 from III).
+- ★: a bleed kill in range heals 25% of max health.
+- The beads and the tank pulse show; the tank shows only while slotted.
+
+---
+
+## Part 7 — Strobe Frill (`strobe`) · UTILITY · Herrera only
+
+### Decisions (Kepu 2026-10-31)
+- Utility gap: Strobe Frill.
+- Look: A · LED Frill.
+
+### Steps
+| Step | Effect |
+|---|---|
+| I | Frill flash in a 60° cone, 20 studs: enemies are dazed (can't attack) for 1 s. |
+| II | Daze 1.5 s. |
+| III | Cone 90°, 25 studs. |
+| ★ | Dazed enemies take +20% damage while dazed. |
+
+### How it works
+- Takes a slot and fires on its slot key.
+- Cooldown 16 s.
+- **Flash:** a 0.15 s rear-up (body +18°, neck +18°, jaw open), then the flash. Server-checked, from the server's root position and facing.
+- **Who is hit:** every enemy character or bot whose root is within range × scale and inside the half-angle (30°, or 45° from III) of the facing.
+- **Daze:** sets `DazedUntil = now + daze` on the target.
+  - The attack / ability servers refuse requests while DazedUntil > now (result "dazed"): BiteServer, PounceServer, SlashServer, HeadbuttServer, the mech parts. Re-ground each one.
+  - Bots skip attacks while dazed.
+- **★:** damage taken while DazedUntil > now is × 1.2 (the same multiplier spot as the roar debuff).
+- **Visual:**
+  - the frill strips strobe white about 5 times in 0.35 s;
+  - a white flare sphere at the head (0.3 s);
+  - 13 light rays across the cone (0.4 s);
+  - "FLASH!" pop.
+- **On the dazed:** 4 yellow stars spin over the head for the daze, with a "DAZED N s" pop.
+
+### Look (A · LED Frill)
+- On each of the 11 frill spines (`Head_frill1..11`): a light strip on both faces (0.05 × 0.62 × 0.16, Neon rgb(255, 231, 176)).
+- On each rim (`Head_frillrim1..11`): a hot-orange Neon lamp.
+- A steel collar on `Neck_main`.
+- The strips go white during the flash.
+
+### Acceptance
+- The slot key flashes a 60° / 20-stud cone (90° / 25 from III).
+- Enemies in it can't attack for 1 s (1.5 from II), with stars over their heads.
+- ★: +20% damage taken while dazed.
+- 16 s cooldown.
+- The LEDs show only while slotted.
+
+---
+
+## Part 8 — Stun Breaker (`breaker`) · DEFENSE · Herrera only
+
+### Decisions (Kepu 2026-10-31)
+- Escape gap: Stun Breaker.
+- Look: B · Back Capacitor.
+
+### Steps
+| Step | Effect |
+|---|---|
+| I | Break out of a stun / pin. |
+| II | Pushes nearby enemies back 10 studs. |
+| III | Cooldown 14 s. |
+| ★ | 1 s of no damage after breaking out. |
+
+### How it works
+- Takes a slot and fires on its slot key.
+- Cooldown 20 s (14 s from III).
+- **When it can be used:** only while StunnedUntil > now or PinHeld is true. Otherwise the request is refused ("notStunned") and the tile shows dimmed.
+- **I:** clears the stun / pin on the server (StunnedUntil = now; PinHeld released through the pin owner's script; re-ground the pounce / tether pin owners).
+- **II:** every enemy within 10 studs × scale is pushed 10 studs × scale away from you over about 0.3 s (the knockback pattern of HeadbuttServer / VisorServer).
+- **★:** `StunBreakImmuneUntil = now + 1`. Incoming damage is 0 until then (the same hook as Back Plating). Your dino blinks white.
+- **Visual:**
+  - "BREAK!" pop;
+  - 10 zig-zag electric bolts (cyan / white Neon segments, 0.2 s) arc out of the two coil tips;
+  - the capacitor band flashes;
+  - your stun stars vanish.
+
+### Look (B · Back Capacitor)
+- On `Torso_hump`:
+  - a dark capacitor box 0.95 × 0.6 × 0.85 with a cyan Neon band rgb(127, 233, 255);
+  - two steel coil prongs (1.1 tall, ±0.25 apart), each with 3 hot-orange coil rings and a cyan Neon tip.
+
+### Acceptance
+- While stunned or pinned, the slot key breaks you out (refused when you're not stunned).
+- II: pushes enemies within 10 studs back 10 studs.
+- III: cooldown 14 s.
+- ★: 1 s of no damage, with the white blink.
+- Bolts show from the coil prongs.
+- The capacitor shows only while slotted.
+
+---
+
 ## Build order (one or two passes)
 **Pass 1 (shared plumbing + the simpler parts):**
-1. SkillTree paths `ironclaw`, `glider`, `quills`, `smoke`, `plating` (Herrera, mech, LIVE_MECH, BUTTONS), their step texts and effects.
-2. SkillEffects writes for the five parts.
+1. SkillTree paths `ironclaw`, `glider`, `quills`, `smoke`, `plating`, `siphon`, `strobe`, `breaker` (Herrera, mech, LIVE_MECH, BUTTONS), their step texts and effects.
+2. SkillEffects writes for the eight parts. Blood Siphon goes in pass 1: a SkillEffects tick plus the beads FX.
 3. The visuals: a server script per part, or one `HerreraPartsServer` with a part table (preferred: one script, one switch per part), building each look plus `BuildPreview_<id>` for the Lab card.
 4. Iron Claw (SlashServer multiplier, SprintTest, FX).
-5. Back Plating (damage hook).
+5. Back Plating (damage hook, shared with Stun Breaker ★ immunity).
+6. Blood Siphon.
 
 **Pass 2 (new behaviour):**
 1. Glider (JumpTest / ClimbTest glide state, SlashServer dive while gliding, bleed burst).
 2. Quill Launcher (remote + server flight / damage + client FX).
 3. Smoke Pods (cloud server object, hide, BotHunt target drop, slows).
+4. Strobe Frill (DazedUntil + attack servers refuse while dazed; ★ damage multiplier).
+5. Stun Breaker (break the stun / pin, push, ★ immunity).
 
-**AbilityBar / ArenaTouch:** slot tiles for the keyed parts (quills, smoke). Check the phone layout through ArenaTouch's styled table (the 2026-10-31 lesson).
+**AbilityBar / ArenaTouch:** slot tiles for the keyed parts (quills, smoke, strobe, breaker; the breaker tile is dimmed unless you're stunned). Check the phone layout through ArenaTouch's styled table (the 2026-10-31 lesson).
 
