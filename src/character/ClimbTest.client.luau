@@ -1,4 +1,4 @@
--- ClimbTest v1.4 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.5 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -37,12 +37,15 @@
 -- v1.4 (Studio check of 1.3: climbing worked, palm mantle onto the top at y 45.9; the first 4 frames after a grab
 --   flickered grab / lostTrunk because on the trunk the distance was measured from the HRP's half length while the
 --   head box still stuck out): the front-most blocking point is used on the trunk too.
+-- v1.5 (Studio check of 1.4: Space on a tree top did nothing — JumpRequest does not fire in this game's input setup):
+--   hop = a press of StarterPlayer.PlayerModule.InputContexts.CharacterContext.JumpAction (Input Action System, read
+--   like JumpTest 1.x; edge: down now, up last frame), plus JumpRequest when that action is missing.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -146,6 +149,24 @@ local function inputWorld(mv)
 end
 local hopQueued = false
 UserInputService.JumpRequest:Connect(function() hopQueued = true end)
+-- v1.5: the Input Action System jump (JumpTest's reader)
+local jumpAction
+task.spawn(function()
+	local pm = game:GetService("StarterPlayer"):FindFirstChild("PlayerModule")
+	local ok, a = pcall(function()
+		return pm and pm:WaitForChild("InputContexts", 5):WaitForChild("CharacterContext", 5):WaitForChild("JumpAction", 5)
+	end)
+	if ok and a and a:IsA("InputAction") then jumpAction = a end
+end)
+local jumpWasDown = false
+local function jumpPressed()
+	if not jumpAction then return false end
+	local ok, v = pcall(function() return jumpAction:GetState() end)
+	local down = ok and v == true
+	local pressed = down and not jumpWasDown
+	jumpWasDown = down
+	return pressed
+end
 
 -- forces
 local att = Instance.new("Attachment")
@@ -239,6 +260,7 @@ RunService.Heartbeat:Connect(function()
 	local fwd = Vector3.new(look.X, 0, look.Z)
 	fwd = fwd.Magnitude > 1e-3 and fwd.Unit or Vector3.new(0, 0, -1)
 	-- input (v1.1)
+	if jumpPressed() then hopQueued = true end -- v1.5
 	local mv = readMove()
 	local input
 	if state == "climbing" or state == "clinging" then
