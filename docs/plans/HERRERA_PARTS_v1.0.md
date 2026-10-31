@@ -20,13 +20,13 @@
 | # | Part | Spec | Mockup | Built |
 |---|---|---|---|---|
 | 1 | Iron Claw (Hook Blades) MDA-149 | done (below) | docs/mockups/herrera_ironclaw_options.html, look B; video docs/reference/herrera/mockup_ironclaw_B.mp4 | pass 1 (Studio 2026-10-31) |
-| 2 | Glider Wings (Bat Membranes) MDA-150 | done (below) | docs/mockups/herrera_parts_b1_options.html, look A; video docs/reference/herrera/mockup_parts_b1_glider.mp4 | look + Lab card (pass 1); move in pass 2 |
-| 3 | Quill Launcher (Spine Quills) MDA-151 | done (below) | same page, look B; video mockup_parts_b1_quills.mp4 | look + Lab card (pass 1); move in pass 2 |
-| 4 | Smoke Pods (Tail Vents) MDA-152 | done (below) | same page, look B; video mockup_parts_b1_smoke.mp4 | look + Lab card (pass 1); move in pass 2 |
+| 2 | Glider Wings (Bat Membranes) MDA-150 | done (below) | docs/mockups/herrera_parts_b1_options.html, look A; video docs/reference/herrera/mockup_parts_b1_glider.mp4 | look + Lab card (pass 1); move pass 2 (Studio 2026-10-31) |
+| 3 | Quill Launcher (Spine Quills) MDA-151 | done (below) | same page, look B; video mockup_parts_b1_quills.mp4 | look + Lab card (pass 1); move pass 2 (Studio 2026-10-31) |
+| 4 | Smoke Pods (Tail Vents) MDA-152 | done (below) | same page, look B; video mockup_parts_b1_smoke.mp4 | look + Lab card (pass 1); move pass 2 (Studio 2026-10-31) |
 | 5 | Back Plating (Spine Scutes) MDA-153 | done (below) | same page, look A; video mockup_parts_b1_plating.mp4 | pass 1 (Studio 2026-10-31) |
 | 6 | Blood Siphon (Throat Pump) MDA-154 | done (below) | docs/mockups/herrera_parts_b2_options.html, look A; video docs/reference/herrera/mockup_parts_b2_siphon.mp4 | pass 1 (Studio 2026-10-31) |
-| 7 | Strobe Frill (LED Frill) MDA-155 | done (below) | same page, look A; video mockup_parts_b2_strobe.mp4 | look + Lab card (pass 1); move in pass 2 |
-| 8 | Stun Breaker (Back Capacitor) MDA-156 | done (below) | same page, look B; video mockup_parts_b2_breaker.mp4 | look + Lab card (pass 1); move in pass 2 |
+| 7 | Strobe Frill (LED Frill) MDA-155 | done (below) | same page, look A; video mockup_parts_b2_strobe.mp4 | look + Lab card (pass 1); move pass 2 (Studio 2026-10-31) |
+| 8 | Stun Breaker (Back Capacitor) MDA-156 | done (below) | same page, look B; video mockup_parts_b2_breaker.mp4 | look + Lab card (pass 1); move pass 2 (Studio 2026-10-31) |
 
 The Herrera ends with 8 parts, like the Raptor and Pachy.
 

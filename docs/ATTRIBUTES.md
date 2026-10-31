@@ -2392,3 +2392,37 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | BoneCrestPlatingEnabled | BoneCrest module | true | BoneCrest 1.3 |
 | PlatingHits / PlatingLastMul / PlatingHitAt | herrera (victim) | count / mul / server time | BoneCrest 1.3 |
 | HERRERA_PASS2_SOON (module flag) | SkillTree | true | SkillTree 1.39: pass-2 parts SOON |
+| HERRERA_PASS2_SOON = false (module flag) | SkillTree | false | SkillTree 1.40: pass-2 parts live |
+| HerreraMovesServerEnabled / HerreraMoves_quillsEnabled / _smokeEnabled / _strobeEnabled / _breakerEnabled / _gliderEnabled / HerreraMovesModeRulesEnabled | HerreraMovesServer script | true | HerreraMovesServer 1.0 |
+| QuillServerResult / SmokeServerResult / StrobeServerResult / BreakerServerResult (+ ...ResultAt) | herrera | "ok" / "badArg" / "dead" / "disabled" / "menu" / "stunned" / "pinned" / "dazed" / "notStunned" / "cooldown" | HerreraMovesServer 1.0 |
+| QuillReadyAt / SmokeReadyAt / StrobeReadyAt / BreakerReadyAt | herrera | server time | HerreraMovesServer 1.0 |
+| QuillResult / QuillTarget / QuillShot / QuillAimEnd / QuillFlightTime / QuillStartedAt / QuillLanded / QuillTotalDamage / QuillLandedAt | herrera | "hit"/"miss" / name / count / Vector3 / s / time / count / damage / time | HerreraMovesServer 1.0 |
+| QuillHitBy / QuillHitAt | target | name / time | HerreraMovesServer 1.0 |
+| SmokeCenter / SmokeRadiusNow / SmokeUntil / SmokeStartedAt | herrera | Vector3 / studs / time / time | HerreraMovesServer 1.0 |
+| SmokeHidden | herrera | true inside its own cloud | HerreraMovesServer 1.0 (read by BotServer 1.22, TreeTopHide 1.1) |
+| SmokeRunUntil | herrera | cloud end / 0 | HerreraMovesServer 1.0 (SprintTest 1.15) |
+| SmokeSlowUntil / SmokeSlowMul | enemy player | cloud end or 0 / 0.75 | HerreraMovesServer 1.0 (SprintTest 1.15) |
+| SmokeSlowed / SmokeLostAt | bot | bool / time | HerreraMovesServer 1.0 |
+| StrobeStartedAt / StrobeAt / StrobeHits | herrera | time / time / count | HerreraMovesServer 1.0 |
+| DazedUntil / DazedDamageMul / DazedBy / DazedAt | any dino | time / 1 or 1.2 / name / time | HerreraMovesServer 1.0 (refused "dazed" by the attack servers; mul read by BoneCrest 1.4, SlashServer 1.5, HeadbuttServer 1.11, HookServer 1.7, quills) |
+| BreakerAt / BreakerPushed | herrera | time / count | HerreraMovesServer 1.0 |
+| StunBreakImmuneUntil | herrera | time | HerreraMovesServer 1.0 (damage 0) |
+| StunBreakBlocked | herrera | count | BoneCrest 1.4 |
+| Gliding / GlideStartedAt / GlideEndedAt | herrera | bool / time / time | HerreraMovesServer 1.0 |
+| GliderTestEnabled | GliderTest script | true | GliderTest 1.0 |
+| GliderTestVersion / GlideLocal / GlideLocalReason / GlideCount / GlideFallSpeed | herrera (owner client) | | GliderTest 1.0 |
+| HerreraMovesFXEnabled / HerreraMovesFXVersion / HerreraMovesFXEvents | HerreraMovesFX script | true / "1.0" / count | HerreraMovesFX 1.0 |
+| GlidePoseEnabled / StrobePoseEnabled / GlideArmRoll / GlideArmPitch / GlideLegTrail / GlideTailKeep / GlidePitch | herrera model | true / true / 55 / 20 / 45 / 0.2 / 14 | HerreraMovesPose 1.0 |
+| GlidePoseBlend / StrobePoseState | herrera model (client) | 0-1 / "none"/"rear" | IdleAnimation 1.36 |
+| SlashDazeEnabled / SlashGlideEnabled | SlashServer script | true | SlashServer 1.5 |
+| SlashGlideDive / SlashGlideBurstCount | herrera | bool / count | SlashServer 1.5 |
+| SlashGlideDiveEnabled | SlashTest script | true | SlashTest 1.4 |
+| BiteDazeEnabled / PounceDazeEnabled / HeadbuttDazeEnabled / RamDazeEnabled / HookDazeEnabled / InkDazeEnabled / MineDazeEnabled / TetherDazeEnabled / ScreechDazeEnabled | each server script | true | BiteServer 1.9, PounceServer 1.12, HeadbuttServer 1.11, RamServer 1.2, HookServer 1.7, InkServer 1.5, MineServer 1.7, TetherServer 1.2, ScreechServer 1.10 |
+| BoneCrestHerreraMovesEnabled | BoneCrest module | true | BoneCrest 1.4 |
+| BotDazeEnabled / BotSmokeEnabled | BotServer script | true | BotServer 1.22 |
+| BotDazedSkips / BotSmokeDrops | bot + BotServer script | count | BotServer 1.22 |
+| SprintSmokeEnabled | SprintTest script | true | SprintTest 1.15 |
+| TreeTopHideSmokeEnabled | TreeTopHide script | true | TreeTopHide 1.1 |
+| MechaButtonsHerreraEnabled | MechaButtons script | true | MechaButtons 1.24 |
+| AbilityBarHerreraPartsEnabled | AbilityBar script | true | AbilityBar 1.18 |
+| HerreraPartsGlideOpenEnabled / HPartOpen | HerreraPartsServer script / HPart_glider | true / bool | HerreraPartsServer 1.2 |
