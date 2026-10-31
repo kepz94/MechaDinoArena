@@ -1,4 +1,4 @@
--- BoneCrest v1.1 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
+-- BoneCrest v1.3 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
 -- (ModuleScript, ServerStorage.DinoArcade.BoneCrest, server only). SkillTree 1.30 / SkillEffects 1.23.
 -- Kepu 2026-10-30: "We'll do the bone crest to replace the thick hide. Whoever bites your dome does 40% less damage";
 --   answers: builds up to 40% (I 20%, II 30%, III 40%, star: the biter takes 5 damage back), "Bites from the front",
@@ -48,11 +48,20 @@
 --   Switches (module attributes): BoneCrestVisorEnabled (default true; false = 1.1: the visor blocks nothing here),
 --   BoneCrestVisorKnockEnabled (default true; false = no knockback). Settings: BoneCrestVisorKnockDist (24),
 --   BoneCrestVisorKnockTime (0.35).
+-- v1.3 (Herrera Back Plating, MDA-153, plan docs/plans/HERRERA_PARTS_v1.0.md Part 5; Kepu 2026-10-31 "Max -30% damage",
+--   from behind only): factor(victim, attackerPos) first checks the victim's PlatingRearMul (SkillEffects 1.27 writes it
+--   on a Herrera with Back Plating bought AND slotted; 1 / missing = none): when it is < 1 and the attacker's flat
+--   direction from the victim's root is behind (LookVector . direction < 0), it returns PlatingRearMul, false (front =
+--   false, so the callers' crest after() is not run) and stamps the victim PlatingHits (count), PlatingLastMul,
+--   PlatingHitAt (server time, last; HerreraPartsFX shows sparks + "-N% PLATED"). Hits from the front fall through to the
+--   visor / crest maths unchanged. Covers every hit that already goes through factor (BotServer bites / pounces,
+--   BiteServer, PounceServer), the same coverage as Bone Crest. Switch: module attribute BoneCrestPlatingEnabled (default
+--   true; false = 1.2).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local M = {}
-M.VERSION = "1.2"
+M.VERSION = "1.3"
 M.CONE = 60
 local REFLECT_GAP = 0.4
 
@@ -63,6 +72,7 @@ for k, v in pairs({BoneCrestVisorEnabled = true, BoneCrestVisorKnockEnabled = tr
 	BoneCrestVisorKnockTime = 0.35}) do -- v1.2
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
+if script:GetAttribute("BoneCrestPlatingEnabled") == nil then script:SetAttribute("BoneCrestPlatingEnabled", true) end -- v1.3
 script:SetAttribute("BoneCrestVersion", M.VERSION)
 
 local lastReflect = setmetatable({}, {__mode = "k"})
@@ -90,7 +100,28 @@ function M.visorFront(victim, attackerPos)
 	return d.Magnitude < 1e-3 or look.Unit:Dot(d.Unit) >= math.cos(math.rad(M.CONE))
 end
 
+-- v1.3: Back Plating (a hit from behind on a plated Herrera)
+local function platingRear(victim, attackerPos)
+	if script:GetAttribute("BoneCrestPlatingEnabled") == false or typeof(victim) ~= "Instance" then return nil end
+	local mul = tonumber(victim:GetAttribute("PlatingRearMul"))
+	if not mul or mul >= 1 or typeof(attackerPos) ~= "Vector3" then return nil end
+	local root = victim:FindFirstChild("HumanoidRootPart")
+	if not root then return nil end
+	local d = attackerPos - root.Position
+	d = Vector3.new(d.X, 0, d.Z)
+	local look = root.CFrame.LookVector
+	look = Vector3.new(look.X, 0, look.Z)
+	if d.Magnitude < 1e-3 or look.Magnitude < 1e-3 or look.Unit:Dot(d.Unit) >= 0 then return nil end
+	mul = math.max(0, mul)
+	victim:SetAttribute("PlatingHits", (victim:GetAttribute("PlatingHits") or 0) + 1)
+	victim:SetAttribute("PlatingLastMul", mul)
+	victim:SetAttribute("PlatingHitAt", workspace:GetServerTimeNow()) -- last
+	return mul
+end
+
 function M.factor(victim, attackerPos)
+	local plated = platingRear(victim, attackerPos) -- v1.3
+	if plated then return plated, false end
 	if M.visorFront(victim, attackerPos) then return 0, true end -- v1.2: the visor blocks it
 	if script:GetAttribute("BoneCrestEnabled") == false or typeof(victim) ~= "Instance" then return 1, false end
 	local mul = tonumber(victim:GetAttribute("BoneCrestMul")) or 1

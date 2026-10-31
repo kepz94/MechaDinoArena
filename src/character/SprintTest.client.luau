@@ -1,4 +1,4 @@
--- SprintTest v1.13 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.14 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -47,6 +47,9 @@
 --   (SlashServer 1.3 keeps it 0.5 s ahead while a bleeding dino is near) the speed is multiplied by SlashFrenzyMul
 --   (SkillEffects 1.26: 1.1), with the other part multipliers; MoveSpeedParts can include "frenzy". Switch: script
 --   attribute SprintFrenzyEnabled (default true, read each apply; false = 1.12).
+-- v1.14 (Herrera Iron Claw, MDA-149): while IronClawEnabled (SkillEffects 1.27) the speed is multiplied by
+--   IronClawSpeedMul (0.95 / 0.90 / 0.85 / 0.75), with the other part multipliers; MoveSpeedParts can include "ironclaw".
+--   Switch: script attribute SprintIronClawEnabled (default true, read each apply; false = 1.13).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -118,6 +121,13 @@ local function partSpeed()
 		mul *= math.max(0, frMul)
 		table.insert(names, "frenzy")
 		table.insert(ends, frUntil)
+	end
+	if script:GetAttribute("SprintIronClawEnabled") ~= false and char:GetAttribute("IronClawEnabled") == true then -- v1.14
+		local m = tonumber(char:GetAttribute("IronClawSpeedMul")) or 1
+		if m ~= 1 then
+			mul *= math.clamp(m, 0.05, 1)
+			table.insert(names, "ironclaw")
+		end
 	end
 	if script:GetAttribute("SprintHeadbuttSlowEnabled") ~= false then -- v1.9
 		for _, h in ipairs({{"headbutt", "HeadbuttSlowUntil", "HeadbuttSlowMul"}, {"headbuttSelf", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul"}}) do
@@ -222,7 +232,7 @@ char:GetAttributeChangedSignal("AutoRun"):Connect(apply)        -- v1.5
 char:GetAttributeChangedSignal("TetherAiming"):Connect(apply)   -- v1.11
 for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil", "EnergyShieldSpeedMul", "ScreechSlowUntil",
 	"MineSlowUntil", "MineSlowMul", "HeadbuttSlowUntil", "HeadbuttSlowMul", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul",
-	"ServoDashUntil", "ServoDashSpeedMul", "SlashBurstUntil", "SlashBurstMul", "SlashFrenzyUntil", "SlashFrenzyMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*
+	"ServoDashUntil", "ServoDashSpeedMul", "SlashBurstUntil", "SlashBurstMul", "SlashFrenzyUntil", "SlashFrenzyMul", "IronClawEnabled", "IronClawSpeedMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 apply()

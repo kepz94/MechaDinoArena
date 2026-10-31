@@ -1,4 +1,4 @@
--- SkillEffects v1.26 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.27 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -158,12 +158,44 @@
 --   * Blood Drinker (Lifesteal on the Herrera): SlashHitAt heals lifesteal x SlashHitDamage (same heal / shield as a
 --     bite), SlashBleedDealtAt (SlashServer 1.3, the attacker's bleed ticks) heals lifesteal x SlashBleedDealt.
 --   Diagnostic: character SkillEffectsDino ("Herrera" / "").
+-- v1.27 (the Herrera's mecha parts, SkillTree 1.38, plan docs/plans/HERRERA_PARTS_v1.0.md, MDA-149..156). Switch: script
+--   attribute SkillEffectsHerreraPartsEnabled (default true, read at start; false = 1.26, none written). On a Herrera
+--   (character Species "Herrera") with a part bought AND in a loadout slot, its character attributes are written from the
+--   effects (off values otherwise: Enabled false, multipliers 1, numbers 0). <Prefix>Enabled also tells HerreraPartsServer
+--   to show the part's look.
+--     Iron Claw:      IronClawEnabled, IronClawDamageMul, IronClawSpeedMul, IronClawDust
+--     Back Plating:   PlatingEnabled, PlatingRearMul (BoneCrest 1.3 cuts hits from behind)
+--     Blood Siphon:   SiphonEnabled, SiphonRate, SiphonRange, SiphonKillHeal
+--     Glider Wings:   GliderEnabled, GliderFall, GliderDrop, GliderDropMul, GliderBurst
+--     Quill Launcher: QuillEnabled, QuillCount, QuillDamage, QuillRange, QuillCooldown
+--     Smoke Pods:     SmokeEnabled, SmokeRadius, SmokeTime, SmokeRunMul, SmokeSlowMul, SmokeCooldown
+--     Strobe Frill:   StrobeEnabled, StrobeAngle, StrobeRange, StrobeDaze, StrobeDazedMul, StrobeCooldown
+--     Stun Breaker:   BreakerEnabled, BreakerPush, BreakerCooldown, BreakerImmune
+--   Blood Siphon tick (every 0.5 s): every other character or bot (workspace.DinoIsland.Bots, player characters) that is
+--   bleeding (SlashBleedUntil or SkillBleedUntil in the future) with its root within SiphonRange x your scale heals you
+--   SiphonRate x 0.5 each, through the same heal() as Lifesteal (overheal -> the Blood Drinker shield when bought);
+--   star (SiphonKillHeal): a model in range whose KilledWith is "bleed" and KilledAt is in the last 1.5 s heals
+--   SiphonKillHeal x MaxHealth once per kill. Diagnostics: character SiphonBleeding (count in range), SiphonHealAt (last).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.26"
 if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
 local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false
+if script:GetAttribute("SkillEffectsHerreraPartsEnabled") == nil then script:SetAttribute("SkillEffectsHerreraPartsEnabled", true) end -- v1.27
+local HPARTS_ON = script:GetAttribute("SkillEffectsHerreraPartsEnabled") ~= false
+local HPARTS = { -- v1.27: {path id, prefix, {attribute, effect field, off value}...}
+	{"ironclaw", "IronClaw", {{"DamageMul", "ironClawDamageMul", 1}, {"SpeedMul", "ironClawSpeedMul", 1}, {"Dust", "ironClawDust", false}}},
+	{"plating", "Plating", {{"RearMul", "platingRearMul", 1}}},
+	{"siphon", "Siphon", {{"Rate", "siphonRate", 0}, {"Range", "siphonRange", 0}, {"KillHeal", "siphonKillHeal", 0}}},
+	{"glider", "Glider", {{"Fall", "gliderFall", 0}, {"Drop", "gliderDrop", false}, {"DropMul", "gliderDropMul", 1}, {"Burst", "gliderBurst", 0}}},
+	{"quills", "Quill", {{"Count", "quillCount", 0}, {"Damage", "quillDamage", 0}, {"Range", "quillRange", 0}, {"Cooldown", "quillCooldown", 0}}},
+	{"smoke", "Smoke", {{"Radius", "smokeRadius", 0}, {"Time", "smokeTime", 0}, {"RunMul", "smokeRunMul", 1}, {"SlowMul", "smokeSlowMul", 1},
+		{"Cooldown", "smokeCooldown", 0}}},
+	{"strobe", "Strobe", {{"Angle", "strobeAngle", 0}, {"Range", "strobeRange", 0}, {"Daze", "strobeDaze", 0}, {"DazedMul", "strobeDazedMul", 1},
+		{"Cooldown", "strobeCooldown", 0}}},
+	{"breaker", "Breaker", {{"Push", "breakerPush", 0}, {"Cooldown", "breakerCooldown", 0}, {"Immune", "breakerImmune", 0}}},
+}
 local HERRERA_BASES = {SlashRefill = 4, SlashCharges = 2, SlashBleedDps = 3, SlashBleedTime = 4, SlashDiveRange = 20,
 	ClimbSpeed = 10} -- v1.26
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
@@ -439,6 +471,19 @@ local function applyChar(char, st)
 		char:SetAttribute("BloodRushSlowMul", brOn and e.bloodSlowMul or 1)
 		char:SetAttribute("BloodRushSlowTime", brOn and e.bloodSlowTime or 0)
 	end
+	if HPARTS_ON then -- v1.27: the Herrera's mecha parts (bought AND slotted)
+		local isH = char:GetAttribute("Species") == "Herrera"
+		for _, def in ipairs(HPARTS) do
+			local id, prefix = def[1], def[2]
+			local on = live and isH and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and inSlot(id)
+			for _, f in ipairs(def[3]) do
+				local v = f[3]
+				if on and e[f[2]] ~= nil then v = e[f[2]] end
+				if char:GetAttribute(prefix .. f[1]) ~= v then char:SetAttribute(prefix .. f[1], v) end
+			end
+			if char:GetAttribute(prefix .. "Enabled") ~= (on == true) then char:SetAttribute(prefix .. "Enabled", on == true) end
+		end
+	end
 	if HERRERA_ON then -- v1.26: the Herrera's rows
 		local hOn = char:GetAttribute("Species") == "Herrera"
 		char:SetAttribute("SkillEffectsDino", hOn and "Herrera" or "")
@@ -577,6 +622,58 @@ task.spawn(function()
 		end
 	end
 end)
+
+-- v1.27: Blood Siphon
+if HPARTS_ON then
+	local SIPHON_TICK = 0.5
+	local function others()
+		local list = {}
+		local island = workspace:FindFirstChild("DinoIsland")
+		local bots = island and island:FindFirstChild("Bots")
+		if bots then for _, m in ipairs(bots:GetChildren()) do if m:IsA("Model") then table.insert(list, m) end end end
+		for _, p in ipairs(Players:GetPlayers()) do if p.Character then table.insert(list, p.Character) end end
+		return list
+	end
+	task.spawn(function()
+		while true do
+			task.wait(SIPHON_TICK)
+			if not on() then continue end
+			local t = now()
+			local pool
+			for char, st in pairs(chars) do
+				local rate = tonumber(char:GetAttribute("SiphonRate")) or 0
+				local hrp = char:FindFirstChild("HumanoidRootPart")
+				if char:GetAttribute("SiphonEnabled") ~= true or rate <= 0 or not hrp or st.hum.Health <= 0 then continue end
+				pool = pool or others()
+				local range = (tonumber(char:GetAttribute("SiphonRange")) or 0) * char:GetScale()
+				local n = 0
+				st.siphonKills = st.siphonKills or setmetatable({}, {__mode = "k"})
+				for _, m in ipairs(pool) do
+					if m ~= char and m.Parent then
+						local r = m:FindFirstChild("HumanoidRootPart")
+						local pos = r and r.Position or m:GetPivot().Position
+						if (pos - hrp.Position).Magnitude <= range then
+							local bleeding = (tonumber(m:GetAttribute("SlashBleedUntil")) or 0) > t or (tonumber(m:GetAttribute("SkillBleedUntil")) or 0) > t
+							if bleeding and m:GetAttribute("DummyState") ~= "ko" then n += 1 end
+							local kh = tonumber(char:GetAttribute("SiphonKillHeal")) or 0
+							local kAt = tonumber(m:GetAttribute("KilledAt"))
+							if kh > 0 and m:GetAttribute("KilledWith") == "bleed" and kAt and t - kAt <= 1.5 and st.siphonKills[m] ~= kAt then
+								st.siphonKills[m] = kAt
+								heal(char, st, kh * st.hum.MaxHealth, "siphonKill")
+								char:SetAttribute("SiphonKillAt", t)
+							end
+						end
+					end
+				end
+				if char:GetAttribute("SiphonBleeding") ~= n then char:SetAttribute("SiphonBleeding", n) end
+				if n > 0 and st.hum.Health < st.hum.MaxHealth + 1e6 then
+					heal(char, st, rate * n * SIPHON_TICK, "siphon")
+					char:SetAttribute("SiphonHealAt", t)
+				end
+			end
+		end
+	end)
+end
 
 -- regen + shield expiry
 task.spawn(function()

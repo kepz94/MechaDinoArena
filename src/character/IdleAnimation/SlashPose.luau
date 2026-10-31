@@ -1,4 +1,4 @@
--- SlashPose v1.0 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash pose (SlashTest 1.2 / SlashServer 1.2), as
+-- SlashPose v1.1 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash pose (SlashTest 1.2 / SlashServer 1.2), as
 -- per-joint offsets multiplied onto the current pose (IdleAnimation 1.33). MDA-142, plan docs/plans/HERRERA_KIT_v1.0.md
 -- Task 10, mockup docs/mockups/herrera_kit_options.html (Kepu 2026-10-30 dash look "A"); the numbers are the mockup's
 -- swipe() / dive() offsets.
@@ -16,8 +16,14 @@
 --     the server's SlashDashTime once SlashStartedAt for this dash has arrived, else SlashTime.
 --   other clients: SlashStartedAt / SlashDashTime / SlashKind (+ SlashDiveTarget: "dive" kind either way).
 -- Switch: model attribute SlashPoseEnabled (default true; false = no slash pose).
+-- v1.1 (Herrera Iron Claw, MDA-149, plan docs/plans/HERRERA_PARTS_v1.0.md Part 1 "bigger rake"): phase(model, ...) also
+--   notes the model's rake size: IronClawPoseMul (model attribute, default 1.35) while its IronClawEnabled is true, else 1;
+--   the next get() multiplies the swipe offsets (the arms' rake and the jaw) by it (the dive's arm / leg / body offsets are
+--   unchanged). IdleAnimation calls phase() then get() for one model at a time, so the value belongs to that model.
+--   Switch: model attribute SlashPoseIronClawEnabled (default true; false = 1.0).
 local SlashPose = {}
-SlashPose.Version = "1.0"
+SlashPose.Version = "1.1"
+local rakeMul = 1 -- v1.1: set by phase(), used by the next get()
 SlashPose.Defaults = {SlashEnabled = false, SlashTime = 0.3, SlashPoseEnabled = true}
 SlashPose.FADE = 0.2
 
@@ -36,6 +42,10 @@ function SlashPose.settings(model)
 end
 
 function SlashPose.phase(model, isOwner, serverNow)
+	rakeMul = 1 -- v1.1
+	if model:GetAttribute("IronClawEnabled") == true and model:GetAttribute("SlashPoseIronClawEnabled") ~= false then
+		rakeMul = tonumber(model:GetAttribute("IronClawPoseMul")) or 1.35
+	end
 	local s = SlashPose.settings(model)
 	if s.SlashEnabled ~= true or s.SlashPoseEnabled == false then return nil, "ground", 0, "none" end
 	local T = math.max(0.05, tonumber(s.SlashTime) or 0.3)
@@ -82,6 +92,7 @@ local function angles(kind, u)
 	else
 		k = (u > 0.2 and u < 0.8) and sin(pi * (u - 0.2) / 0.6) or 0
 	end
+	k *= rakeMul -- v1.1: Iron Claw's bigger rake
 	a.ArmL[1] += 60 * k
 	a.ArmL[3] -= 20 * k
 	a.ArmR[1] -= 40 * k

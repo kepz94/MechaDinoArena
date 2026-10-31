@@ -1,4 +1,4 @@
--- SlashServer v1.3 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.4 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -73,13 +73,18 @@
 --   Diagnostics: attacker SlashSkillLast ("diveRefill" / "diveStun" / "bleedBonus" / "killRefill"), SlashFrenzyActive (bool);
 --   script SlashSkillEvents (count). Switch: script attribute SlashSkillsEnabled (default true, read at start; false = 1.2:
 --   none of the above, no SlashBleedDealt stamps).
+-- v1.4 (Herrera Iron Claw, MDA-149, plan docs/plans/HERRERA_PARTS_v1.0.md Part 1): a slash hit's damage is also
+--   multiplied by the attacker's IronClawDamageMul while its IronClawEnabled is true (SkillEffects 1.27: 1.1 / 1.2 / 1.3 /
+--   1.5): d = round((SlashDamage + bleed bonus) x debuff x IronClawDamageMul). Bleed ticks are unchanged. Attacker
+--   diagnostic SlashIronClawMul (the multiplier used on the last hit). Switch: script attribute SlashIronClawEnabled
+--   (default true, read at start; false = 1.3).
 -- Switch: script attribute SlashServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script SlashServerVersion, SlashRequests, SlashHits, SlashBleedTicks.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local TIME_SLACK = 0.6      -- s after the dash time a claim is still accepted (client -> server lag)
 local PATH_TOLERANCE = 6    -- studs (x scale) between the target's hitboxes and the dash path, on top of SlashReach
 local DIVE_SLACK = 3        -- studs (x scale) added to SlashDiveRange for the request check (the target moves)
@@ -98,6 +103,8 @@ if script:GetAttribute("SlashSkillsEnabled") == nil then script:SetAttribute("Sl
 local SKILLS = script:GetAttribute("SlashSkillsEnabled") ~= false
 script:SetAttribute("SlashSkillEvents", 0)
 local FRENZY_STEP, FRENZY_HOLD, FRENZY_RANGE = 0.25, 0.5, 40
+if script:GetAttribute("SlashIronClawEnabled") == nil then script:SetAttribute("SlashIronClawEnabled", true) end -- v1.4
+local IRONCLAW = script:GetAttribute("SlashIronClawEnabled") ~= false
 
 -- v1.2: pass-through collision group for the dash
 do
@@ -379,7 +386,10 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and t < untilT then mul = dmul end
 	local wasBleeding = SKILLS and bleeds[model] ~= nil and t <= bleeds[model].untilT + 1e-3 -- v1.3
 	local bonus = wasBleeding and math.max(0, tonumber(char:GetAttribute("SlashBleedBonus")) or 0) or 0 -- v1.3
-	local d = math.floor((get(char, "SlashDamage") + bonus) * mul + 0.5)
+	local icMul = 1 -- v1.4: Iron Claw
+	if IRONCLAW and char:GetAttribute("IronClawEnabled") == true then icMul = math.max(0, tonumber(char:GetAttribute("IronClawDamageMul")) or 1) end
+	char:SetAttribute("SlashIronClawMul", icMul)
+	local d = math.floor((get(char, "SlashDamage") + bonus) * mul * icMul + 0.5)
 	local killed = takeHealth(model, d, char.Name, player.UserId, "slash", t)
 	if bonus > 0 then skillEvent(char, "bleedBonus") end
 	if SKILLS and st.active.kind == "dive" then -- v1.3: Tree Stalker
