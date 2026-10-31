@@ -219,6 +219,9 @@ Deferred to Squads v1.1 (red-team R4, Kepu "Defer to v1.1"):
 | Leave / menu / quit | | SquadId ""; a 1-member squad is dissolved |
 | Hidden caltrops (Herrera ★) | Hidden true | drawn for the owner + squadmates (SquadRules.same) |
 
+## Tickets
+S1 MDA-158, S2 MDA-159, S3 MDA-160, S4 MDA-161, S5 MDA-162, v1.1 polish MDA-163. ADR-006.
+
 ## Red-team synthesis (Kepu 2026-10-31)
 | # | Challenge | Outcome |
 |---|---|---|

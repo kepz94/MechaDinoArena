@@ -556,9 +556,9 @@ The front is always unchanged.
 ### Status
 | # | Part | Path id | Area | Ticket | Built |
 |---|---|---|---|---|---|
-| 9 | Razor Caltrops (Tail Spreader) | `caltrops` | eng (UTILITY) | MDA-157 | no |
-| 10 | Goo Blob Shooter (Hump Mortar) | `goo` | eng (UTILITY) | MDA-158 | no |
-| 11 | Adrenaline Injector (Back Tanks) | `hadren` | health | MDA-159 | no |
+| 9 | Razor Caltrops (Tail Spreader) | `caltrops` | eng (UTILITY) | MDA-165 | no |
+| 10 | Goo Blob Shooter (Hump Mortar) | `goo` | eng (UTILITY) | MDA-166 | no |
+| 11 | Adrenaline Injector (Back Tanks) | `hadren` | health | MDA-167 | no |
 
 ## Part 9 — Razor Caltrops (`caltrops`)
 ### Steps
@@ -661,6 +661,7 @@ The front is always unchanged.
 | Adrenaline (Herrera) | AdrenalineServer rules as today | heal / run / cooldown; ★ SlashRefillAllAt → charges max |
 
 ### Pass 3 red-team synthesis (Kepu 2026-10-31)
+- Tickets: H1 MDA-164 (SkillTree / SkillEffects), H2 MDA-165, H3 MDA-166, H4 MDA-167, H5 MDA-168 (Studio check).
 - Build after Squads v1.0 ("Squads first").
 - Goo aim: a separate copy; the tether stays untouched.
 - Caltrops ★ "hidden": the spike data lives in ReplicatedStorage, so an exploiter could read it. Accepted risk (casual game; the same holds for any client-drawn FX).
