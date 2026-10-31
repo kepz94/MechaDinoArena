@@ -1,4 +1,4 @@
--- ClimbTest v1.3 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.4 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -34,12 +34,15 @@
 --   (DinoHitboxes, CanCollide) sticks out ~6.7 studs ahead of the HRP at 2x and hits the bark first): trunkAhead is
 --   measured from the body's front-most blocking point: the largest reach along the facing of any corner of a
 --   "Hitboxes" part with HitboxBlocks = true (else the HRP's half length).
+-- v1.4 (Studio check of 1.3: climbing worked, palm mantle onto the top at y 45.9; the first 4 frames after a grab
+--   flickered grab / lostTrunk because on the trunk the distance was measured from the HRP's half length while the
+--   head box still stuck out): the front-most blocking point is used on the trunk too.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -248,7 +251,7 @@ RunService.Heartbeat:Connect(function()
 	local half = hrp.Size.Z / 2
 	local probe = {}
 	local radius = hrp.Size.X / 2 -- v1.2: as wide as the body
-	local front = (state == "climbing" or state == "clinging") and half or frontReach(fwd, half) -- v1.3
+	local front = frontReach(fwd, half) -- v1.3 (v1.4: on the trunk too)
 	local hit = workspace:Spherecast(hrp.Position, radius, fwd * (front + s.grab * 3), trunkParams)
 	if hit then
 		probe.trunkAhead = math.max(0, hit.Distance + radius - front)
