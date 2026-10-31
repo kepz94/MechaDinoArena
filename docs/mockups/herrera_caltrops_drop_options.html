@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caltrops Drop Animation</title>
+<style>
+/* Same dark HUD-panel look as herrera_parts_b3_options.html. Fonts: system fallbacks only (works offline). */
+:root {
+  --ink: #0f1319; --panel: #171d26; --line: #2a3340; --text: #e8edf4; --muted: #9aa6b6;
+  --accent: #ff8a2a; --steel: #9aa6b8; --yellow: #ffc832; --blood: #d0202a;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding: 20px 16px 40px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; }
+h1 span { color: var(--accent); }
+.lede { margin: 2px 0 0; color: var(--muted); max-width: 78ch; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font-family: var(--display); font-weight: 600; font-size: 17px; color: var(--text); background: var(--panel);
+  border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left; }
+.tab small { display: block; font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,138,42,.22); }
+.tab:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.stage { position: relative; border-radius: 16px; overflow: hidden; border: 2px solid var(--line); background: #8fc6e8; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; }
+.hud { position: absolute; left: 10px; top: 10px; font-family: var(--display); font-weight: 600; font-size: 14px;
+  background: rgba(15,19,25,.78); border-radius: 10px; padding: 6px 10px; pointer-events: none; }
+.hud b { color: var(--yellow); }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+.card h2 { font-family: var(--display); margin: 0 0 4px; font-size: 20px; }
+.card p { margin: 4px 0; }
+.card .tr { color: var(--muted); }
+.good { color: #7ee08a; } .bad { color: #ff9d7a; }
+@media (max-width: 600px) { h1 { font-size: 22px; } .tab { font-size: 15px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Razor Caltrops <span>drop animation</span></h1>
+  <p class="lede">Today (HerreraMovesFX 1.3) the spikes just appear on the ground. Three ways to show them leaving the Tail Spreader.
+    Side view, star patch (10 spikes). Client-only look in HerreraMovesFX; the server patch is unchanged.</p>
+
+  <div class="row" role="group" aria-label="Option">
+    <button class="tab" data-v="A" aria-pressed="true">A · Chute spray<small>arcs out of the chute, tumble, bounce</small></button>
+    <button class="tab" data-v="B" aria-pressed="false">B · Drop &amp; bounce<small>fall from tail height, spin, bounce</small></button>
+    <button class="tab" data-v="C" aria-pressed="false">C · Pour &amp; skitter<small>pour out, slide along the ground</small></button>
+    <button class="tab" data-v="0" aria-pressed="false">Now<small>appear at once (v1.3)</small></button>
+  </div>
+  <div class="row" role="group" aria-label="Playback">
+    <button class="tab" id="replay">Replay<small>drop again</small></button>
+    <button class="tab" id="slow" aria-pressed="false">Slow-mo ×0.25<small>see each frame</small></button>
+  </div>
+
+  <div class="stage">
+    <canvas id="c" width="1280" height="720" aria-label="Side view of a Herrera dropping caltrops behind it"></canvas>
+    <div class="hud" id="hud"></div>
+  </div>
+
+  <div class="card" id="info"></div>
+</div>
+<script>
+const INFO = {
+  A: { name: "A · Chute spray", time: "≈0.6 s (spikes leave 0.035 s apart)",
+    what: "Each spike shoots out of the rear chute on its own arc to its spot, tumbling end over end, lands with a small bounce and a dust puff. The hopper kicks back once as it fires (the unbuilt \"hopper rattle\").",
+    plus: "Reads clearly as \"the tail part threw these\"; matches the Tail Spreader look.",
+    minus: "Most work (per-spike arc + spin + bounce); 10 spikes in flight at once." },
+  B: { name: "B · Drop & bounce", time: "≈0.45 s",
+    what: "All spikes appear at tail height over their spots and fall straight down spinning, bounce twice and settle with a clink spark.",
+    plus: "Simplest; spikes never travel over other things.",
+    minus: "Doesn't show them coming out of the chute — they appear mid-air." },
+  C: { name: "C · Pour & skitter", time: "≈0.7 s",
+    what: "Spikes pour out of the chute onto the ground just behind the tail, then skitter outward along the ground to their spots, spinning flat and slowing down.",
+    plus: "Feels like scattering metal on the ground; low and readable.",
+    minus: "Longest; spikes slide through each other on bumpy ground (they follow the ground height)." },
+  "0": { name: "Now · appear at once", time: "0 s", what: "Current HerreraMovesFX 1.3.", plus: "", minus: "No sense of where they came from." }
+};
+const cv = document.getElementById("c"), g = cv.getContext("2d");
+const W = cv.width, H = cv.height, GROUND = 560;
+let V = "A", slow = false, t0 = performance.now(), lastLoop = 0;
+
+// dino (faces right), tail ends at TAILX; chute at the tail top
+const DX = 880, CHUTE = { x: 600, y: GROUND - 230 };
+// 10 spike spots: sunflower in a disc behind the dino (x = along facing, z = depth)
+const SP = [];
+for (let i = 0; i < 10; i++) {
+  const a = i * 2.39996, d = 150 * Math.sqrt((i + 0.5) / 10);
+  SP.push({ x: 330 + Math.cos(a) * d, z: Math.sin(a) * d });
+}
+const scr = (x, h, z) => [x, GROUND - h + z * 0.32];
+const ease = u => 1 - Math.pow(1 - u, 3);
+
+function sky() {
+  g.fillStyle = "#8fc6e8"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#6fb24a"; g.fillRect(0, GROUND - 60, W, H);
+  g.fillStyle = "#5c9a3d"; g.beginPath(); g.ellipse(330, GROUND, 190, 62, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = "rgba(0,0,0,.08)"; g.lineWidth = 2;
+  for (let x = 0; x < W; x += 64) { g.beginPath(); g.moveTo(x, GROUND - 60); g.lineTo(x - 120, H); g.stroke(); }
+}
+function dino(kick) {
+  g.save(); g.translate(0, 0);
+  const body = "#7a7a3c", dark = "#3d3f24";
+  // legs
+  g.fillStyle = dark; g.fillRect(DX - 30, GROUND - 150, 26, 150); g.fillRect(DX + 20, GROUND - 150, 26, 150);
+  // body
+  g.fillStyle = body; g.fillRect(DX - 90, GROUND - 260, 200, 110);
+  // neck + head
+  g.fillRect(DX + 90, GROUND - 360, 50, 120); g.fillRect(DX + 110, GROUND - 390, 110, 52);
+  g.fillStyle = "#c33"; g.beginPath(); g.ellipse(DX + 70, GROUND - 330, 60, 80, 0.3, 0, Math.PI * 2); g.fill(); // frill
+  g.fillStyle = body;
+  // tail (tapered)
+  g.beginPath(); g.moveTo(DX - 90, GROUND - 255); g.lineTo(CHUTE.x - 140, GROUND - 210); g.lineTo(CHUTE.x - 140, GROUND - 196); g.lineTo(DX - 90, GROUND - 160); g.fill();
+  // hopper (Tail Spreader)
+  const k = kick ? Math.sin(kick * 40) * 4 * (1 - kick) : 0;
+  g.translate(k, 0);
+  g.fillStyle = "#2b2f36"; g.fillRect(CHUTE.x + 10, GROUND - 270, 90, 50);
+  g.fillStyle = "#9aa6b8"; g.fillRect(CHUTE.x + 26, GROUND - 274, 6, 58); g.fillRect(CHUTE.x + 78, GROUND - 274, 6, 58);
+  for (let i = 0; i < 5; i++) { g.fillStyle = "#9aa6b8"; g.fillRect(CHUTE.x + 20 + i * 15, GROUND - 292, 5, 20); g.fillStyle = "#d0202a"; g.fillRect(CHUTE.x + 19 + i * 15, GROUND - 298, 7, 7); }
+  g.fillStyle = "#9aa6b8"; g.save(); g.translate(CHUTE.x + 14, GROUND - 236); g.rotate(-0.35); g.fillRect(-40, -12, 44, 24); g.restore();
+  g.restore();
+}
+function jack(x, y, rot, alpha, flat) {
+  g.save(); g.translate(x, y); g.rotate(rot); g.globalAlpha = alpha;
+  const L = 15, sq = flat ? 0.45 : 1;
+  g.strokeStyle = "#9aa6b8"; g.lineWidth = 5; g.lineCap = "round";
+  g.beginPath(); g.moveTo(-L, 0); g.lineTo(L, 0); g.moveTo(0, -L * sq); g.lineTo(0, L * sq);
+  g.moveTo(-L * .6, -L * .6 * sq); g.lineTo(L * .6, L * .6 * sq); g.stroke();
+  g.fillStyle = "#d0202a";
+  for (const [a, b] of [[-L, 0], [L, 0], [0, -L * sq], [0, L * sq]]) { g.beginPath(); g.arc(a, b, 4, 0, 7); g.fill(); }
+  g.restore();
+}
+function shadow(x, z, s) { const [sx, sy] = scr(x, 0, z); g.fillStyle = "rgba(0,0,0,.22)"; g.beginPath(); g.ellipse(sx, sy + 4, 14 * s, 5 * s, 0, 0, 7); g.fill(); }
+function dust(x, z, u) {
+  if (u <= 0 || u >= 1) return; const [sx, sy] = scr(x, 0, z);
+  g.fillStyle = `rgba(210,190,150,${.55 * (1 - u)})`;
+  for (let k = -1; k <= 1; k += 2) { g.beginPath(); g.arc(sx + k * 20 * u, sy - 4 - 8 * u, 6 + 8 * u, 0, 7); g.fill(); }
+}
+function spark(x, z, u) {
+  if (u <= 0 || u >= 1) return; const [sx, sy] = scr(x, 0, z);
+  g.strokeStyle = `rgba(255,230,140,${1 - u})`; g.lineWidth = 3;
+  for (let k = 0; k < 4; k++) { const a = -Math.PI / 2 + (k - 1.5) * .5, r = 6 + 18 * u; g.beginPath(); g.moveTo(sx + Math.cos(a) * r * .4, sy - 10 + Math.sin(a) * r * .4); g.lineTo(sx + Math.cos(a) * r, sy - 10 + Math.sin(a) * r); g.stroke(); }
+}
+// bounce height after landing: two small hops
+function hop(u, h1) { // u = time since landing (s)
+  if (u < 0.12) return h1 * Math.sin(Math.PI * u / 0.12);
+  if (u < 0.2) return h1 * 0.35 * Math.sin(Math.PI * (u - 0.12) / 0.08);
+  return 0;
+}
+
+function frame(now) {
+  const scale = slow ? 0.25 : 1;
+  let t = (now - t0) / 1000 * scale;
+  if (t > 2.6) { t0 = now; t = 0; }
+  sky();
+  let kick = 0;
+  if (V === "A" && t < 0.5) kick = t / 0.5;
+  if (V === "C" && t < 0.4) kick = t / 0.4;
+  // draw spikes behind/in front order by z
+  const order = SP.map((s, i) => [s, i]).sort((a, b) => a[0].z - b[0].z);
+  const front = [];
+  for (const [s, i] of order) {
+    let x = s.x, z = s.z, h = 0, rot = i, alpha = 1, flat = false, landedAt = null;
+    if (V === "0") {
+      // appear at once
+    } else if (V === "A") {
+      const st = i * 0.035, T = 0.42, u = (t - st) / T;
+      if (u < 0) continue;
+      if (u < 1) {
+        const cx = CHUTE.x - 30, ch = GROUND - CHUTE.y; // chute height
+        x = cx + (s.x - cx) * u; z = s.z * u;
+        h = ch * (1 - u) + 120 * 4 * u * (1 - u); // arc
+        rot = i + u * 9;
+        shadow(x, z, 0.6 + 0.4 * u);
+      } else { landedAt = t - st - T; h = hop(landedAt, 16); rot = i + 9; }
+    } else if (V === "B") {
+      const T = 0.3, st = i * 0.012, u = (t - st) / T;
+      if (u < 0) continue;
+      const top = GROUND - CHUTE.y;
+      if (u < 1) { h = top * (1 - u * u); rot = i + u * 6; alpha = Math.min(1, u * 4); shadow(x, z, 0.5 + 0.5 * u); }
+      else { landedAt = t - st - T; h = hop(landedAt, 22); rot = i + 6; }
+    } else if (V === "C") {
+      const st = i * 0.03, Tp = 0.22, Ts = 0.42, u = (t - st);
+      if (u < 0) continue;
+      const px = CHUTE.x - 60, pz = (i % 3 - 1) * 10;
+      if (u < Tp) { // pour: fall from chute to the ground behind the tail
+        const v = u / Tp; x = CHUTE.x - 30 - 30 * v; z = pz * v; h = (GROUND - CHUTE.y) * (1 - v * v); rot = i + v * 4; shadow(x, z, .6);
+      } else if (u < Tp + Ts) { // skitter outward
+        const v = ease((u - Tp) / Ts); x = px + (s.x - px) * v; z = pz + (s.z - pz) * v; h = Math.abs(Math.sin(v * Math.PI * 3)) * 6 * (1 - v);
+        rot = i + 4 + v * 10; flat = true;
+      } else { landedAt = u - Tp - Ts; rot = i + 14; flat = true; }
+    }
+    const [sx, sy] = scr(x, h, z);
+    if (landedAt !== null) { if (V === "A") dust(s.x, s.z, landedAt / 0.35); if (V === "B") spark(s.x, s.z, landedAt / 0.25); if (V === "C") spark(s.x, s.z, landedAt / 0.2); }
+    (z > 0 ? front : front).push([sx, sy - 6, rot, alpha, flat && V === "C" && landedAt === null]);
+  }
+  for (const f of front) jack(...f);
+  dino(kick);
+  const hud = document.getElementById("hud");
+  hud.innerHTML = `<b>${INFO[V].name}</b> · t = ${t.toFixed(2)} s${slow ? " (slow-mo)" : ""}`;
+  requestAnimationFrame(frame);
+}
+function setV(v) {
+  V = v; t0 = performance.now();
+  document.querySelectorAll("[data-v]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v));
+  const I = INFO[v];
+  document.getElementById("info").innerHTML = `<h2>${I.name}</h2><p>${I.what}</p><p class="tr">Length: ${I.time}</p>` +
+    (I.plus ? `<p><span class="good">+</span> ${I.plus}</p>` : "") + (I.minus ? `<p><span class="bad">−</span> ${I.minus}</p>` : "") +
+    (v !== "0" ? `<p class="tr">Gameplay note: the server arms the spikes the moment you press (HerreraMovesServer 1.2). During this animation an enemy can already step on a spot before its spike visibly lands.</p>` : "");
+}
+document.querySelectorAll("[data-v]").forEach(b => b.addEventListener("click", () => setV(b.dataset.v)));
+document.getElementById("replay").addEventListener("click", () => { t0 = performance.now(); });
+document.getElementById("slow").addEventListener("click", e => { slow = !slow; e.currentTarget.setAttribute("aria-pressed", slow); t0 = performance.now(); });
+setV("A");
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
