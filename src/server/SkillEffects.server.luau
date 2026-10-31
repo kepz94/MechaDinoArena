@@ -1,4 +1,4 @@
--- SkillEffects v1.25 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.26 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -142,10 +142,30 @@
 --   TetherEnabled, TetherRange, TetherSplash, TetherReach, TetherTime, TetherCooldown, TetherYank, TetherYankReach,
 --   TetherLook. TetherServer 1.0 reads them. Switch: script attribute SkillEffectsTetherEnabled (default true, read at
 --   start; false = 1.24, none written).
+-- v1.26 (Kepu 2026-10-31: "I need you to just have a generalized stat line that can be customized to the Dino";
+--   SkillTree 1.37 option A + Tree Stalker + Blood Frenzy, plan docs/plans/STAT_LINES_v1.0.md). Switch: script attribute
+--   SkillEffectsHerreraEnabled (default true, read at start; false = 1.25: no dino passed, nothing below written).
+--   * Effects for a Herrera (character Species, else player DinoSpecies, = "Herrera") are ST.effects(steps, "Herrera");
+--     every other dino keeps ST.effects(steps) as before. A Species change on the character refreshes.
+--   * On a Herrera, from bases kept as SkillBase_<name> at the first write (the character's own value, else SlashServer /
+--     ClimbTest defaults SlashRefill 4, SlashCharges 2, SlashBleedDps 3, SlashBleedTime 4, SlashDiveRange 20, ClimbSpeed 10):
+--       SlashRefill = base x slashRefillMul (Razor Claws II 0.65), SlashBleedDps = slashBleedDps when > 0 (III 5) else base,
+--       SlashCharges = base + slashExtraCharges (star +1), ClimbSpeed = base x climbSpeedMul (Scurry Legs III 1.35),
+--       SlashDiveRange = base x diveRangeMul (Tree Stalker I 55/40), SlashBleedTime = slashBleedTime when > 0 (Blood
+--       Frenzy II 6) else base; flags SlashDiveRefill (Tree Stalker II), TreeTopHidden (III), SlashDiveStun (star 0.5),
+--       SlashFrenzyMul (Blood Frenzy I 1.1), SlashBleedBonus (III 3), SlashKillRefill (star). SlashServer 1.3, SprintTest
+--       1.13 and TreeTopHide 1.0 read them. Off (SkillEffectsEnabled false): the bases written back, flags off.
+--   * Blood Drinker (Lifesteal on the Herrera): SlashHitAt heals lifesteal x SlashHitDamage (same heal / shield as a
+--     bite), SlashBleedDealtAt (SlashServer 1.3, the attacker's bleed ticks) heals lifesteal x SlashBleedDealt.
+--   Diagnostic: character SkillEffectsDino ("Herrera" / "").
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.25"
+local VERSION = "1.26"
+if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
+local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false
+local HERRERA_BASES = {SlashRefill = 4, SlashCharges = 2, SlashBleedDps = 3, SlashBleedTime = 4, SlashDiveRange = 20,
+	ClimbSpeed = 10} -- v1.26
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
 local BLEED_PLAYERS = script:GetAttribute("SkillBleedPlayersEnabled") ~= false
 if script:GetAttribute("SkillBleedPlayerTime") == nil then script:SetAttribute("SkillBleedPlayerTime", 2) end -- v1.18
@@ -189,9 +209,17 @@ end
 local function now() return workspace:GetServerTimeNow() end
 local function round(x, step) return math.floor(x / step + 0.5) * step end
 
+local function isHerrera(player) -- v1.26
+	if not HERRERA_ON then return false end
+	local c = player.Character
+	local sp = c and c:GetAttribute("Species")
+	if type(sp) ~= "string" or sp == "" then sp = player:GetAttribute("DinoSpecies") end
+	return sp == "Herrera"
+end
 local function effectsOf(player)
 	local steps = {}
 	for _, id in ipairs(ST.PATH_ORDER) do steps[id] = player:GetAttribute("SkillPath_" .. id) end
+	if isHerrera(player) then return ST.effects(steps, "Herrera") end -- v1.26
 	return ST.effects(steps)
 end
 
@@ -411,6 +439,32 @@ local function applyChar(char, st)
 		char:SetAttribute("BloodRushSlowMul", brOn and e.bloodSlowMul or 1)
 		char:SetAttribute("BloodRushSlowTime", brOn and e.bloodSlowTime or 0)
 	end
+	if HERRERA_ON then -- v1.26: the Herrera's rows
+		local hOn = char:GetAttribute("Species") == "Herrera"
+		char:SetAttribute("SkillEffectsDino", hOn and "Herrera" or "")
+		if hOn then
+			for k, d in pairs(HERRERA_BASES) do
+				if char:GetAttribute("SkillBase_" .. k) == nil then
+					local v = char:GetAttribute(k)
+					char:SetAttribute("SkillBase_" .. k, typeof(v) == "number" and v or d)
+				end
+			end
+			local function base(k) return char:GetAttribute("SkillBase_" .. k) end
+			local x = live and e or {}
+			writeOwn(st, char, "SlashRefill", round(base("SlashRefill") * (x.slashRefillMul or 1), 0.01))
+			writeOwn(st, char, "SlashBleedDps", (x.slashBleedDps or 0) > 0 and x.slashBleedDps or base("SlashBleedDps"))
+			writeOwn(st, char, "SlashCharges", base("SlashCharges") + (x.slashExtraCharges or 0))
+			writeOwn(st, char, "ClimbSpeed", round(base("ClimbSpeed") * (x.climbSpeedMul or 1), 0.01))
+			writeOwn(st, char, "SlashDiveRange", round(base("SlashDiveRange") * (x.diveRangeMul or 1), 0.01))
+			writeOwn(st, char, "SlashBleedTime", (x.slashBleedTime or 0) > 0 and x.slashBleedTime or base("SlashBleedTime"))
+			char:SetAttribute("SlashDiveRefill", x.diveRefill == true)
+			char:SetAttribute("TreeTopHidden", x.treeTopHidden == true)
+			char:SetAttribute("SlashDiveStun", x.diveStun or 0)
+			char:SetAttribute("SlashFrenzyMul", x.frenzySpeedMul or 1)
+			char:SetAttribute("SlashBleedBonus", x.bleedBonus or 0)
+			char:SetAttribute("SlashKillRefill", x.killRefill == true)
+		end
+	end
 end
 
 -- healing (regen / lifesteal), overflow into the shield
@@ -599,6 +653,25 @@ local function onCharacter(player, char)
 		end)
 	end
 	char:GetAttributeChangedSignal("BiteEnabled"):Connect(function() applyChar(char, st) end)
+	if HERRERA_ON then -- v1.26
+		char:GetAttributeChangedSignal("Species"):Connect(function()
+			st.e = effectsOf(player)
+			applyStats(player, st.e)
+			applyChar(char, st)
+		end)
+		char:GetAttributeChangedSignal("SlashHitAt"):Connect(function() -- Blood Drinker: the slash hit
+			if char:GetAttribute("Species") == "Herrera" then
+				onHit(char, st, char:GetAttribute("SlashHitDamage"), char:GetAttribute("SlashHitTarget"))
+			end
+		end)
+		char:GetAttributeChangedSignal("SlashBleedDealtAt"):Connect(function() -- Blood Drinker: the bleed ticks
+			local d = char:GetAttribute("SlashBleedDealt")
+			if on() and char:GetAttribute("Species") == "Herrera" and st.e.lifesteal > 0 and typeof(d) == "number" and d > 0 then
+				char:SetAttribute("SkillLifestealRate", st.e.lifesteal)
+				heal(char, st, st.e.lifesteal * d, "lifesteal")
+			end
+		end)
+	end
 	char:GetAttributeChangedSignal("StunnedUntil"):Connect(function()
 		local untilT, t = char:GetAttribute("StunnedUntil"), now()
 		if untilT == st.writing.StunnedUntil or not on() then return end

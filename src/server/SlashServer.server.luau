@@ -1,4 +1,4 @@
--- SlashServer v1.2 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.3 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -56,13 +56,30 @@
 --   own parts in it for the dash only. Copied at start and again after 4 s (TreeTopServer re-copies HerreraBody after 3 s).
 --   Switch: script attribute SlashPassThroughEnabled (default true, read at start; false = no group, 1.1). Diagnostic:
 --   script SlashDashGroup ("ready" / "off" / "failed").
+-- v1.3 (Herrera stat rows, SkillTree 1.37 / SkillEffects 1.26, plan docs/plans/STAT_LINES_v1.0.md; Kepu 2026-10-31 picked
+--   the new rows Tree Stalker and Blood Frenzy): reads these attacker character attributes (SkillEffects writes them;
+--   missing = off):
+--     SlashDiveRefill (bool): the first hit of a dive gives back one charge (capped at SlashChargesMax).
+--     SlashDiveStun (s): a dive hit sets the target's StunnedUntil = max(its value, now + SlashDiveStun).
+--     SlashBleedBonus (damage): a hit on a target already bleeding from a slash adds this to the hit (before the debuff
+--       multiplier); the new bleed then restarts as before.
+--     SlashKillRefill (bool): a kill by this attacker's slash on a bleeding target, or by this attacker's bleed tick, refills
+--       every charge.
+--     SlashFrenzyMul (number > 1): every 0.25 s, while a slash-bleeding dino other than this one has its root within
+--       SlashFrenzyRange (default 40) x scale of this one's root, SlashFrenzyUntil = now + 0.5 (SprintTest 1.13 multiplies
+--       the speed by SlashFrenzyMul until then).
+--   Bleed ticks are credited to the attacker: SlashBleedDealt (damage of the tick) then SlashBleedDealtAt (last; SkillEffects
+--   1.26 heals Blood Drinker from it). takeHealth now returns true on a killing blow (callers that ignore it are unchanged).
+--   Diagnostics: attacker SlashSkillLast ("diveRefill" / "diveStun" / "bleedBonus" / "killRefill"), SlashFrenzyActive (bool);
+--   script SlashSkillEvents (count). Switch: script attribute SlashSkillsEnabled (default true, read at start; false = 1.2:
+--   none of the above, no SlashBleedDealt stamps).
 -- Switch: script attribute SlashServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script SlashServerVersion, SlashRequests, SlashHits, SlashBleedTicks.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local TIME_SLACK = 0.6      -- s after the dash time a claim is still accepted (client -> server lag)
 local PATH_TOLERANCE = 6    -- studs (x scale) between the target's hitboxes and the dash path, on top of SlashReach
 local DIVE_SLACK = 3        -- studs (x scale) added to SlashDiveRange for the request check (the target moves)
@@ -77,6 +94,10 @@ script:SetAttribute("SlashHits", 0)
 script:SetAttribute("SlashBleedTicks", 0)
 if script:GetAttribute("SlashServerEnabled") == nil then script:SetAttribute("SlashServerEnabled", true) end
 local enabled = script:GetAttribute("SlashServerEnabled") ~= false
+if script:GetAttribute("SlashSkillsEnabled") == nil then script:SetAttribute("SlashSkillsEnabled", true) end -- v1.3
+local SKILLS = script:GetAttribute("SlashSkillsEnabled") ~= false
+script:SetAttribute("SlashSkillEvents", 0)
+local FRENZY_STEP, FRENZY_HOLD, FRENZY_RANGE = 0.25, 0.5, 40
 
 -- v1.2: pass-through collision group for the dash
 do
@@ -264,7 +285,7 @@ requestRemote.OnServerEvent:Connect(function(player, stamp, kind, target)
 	end
 	local pathLen = (to - from).Magnitude
 	local dashTime = get(char, "SlashTime") * math.max(1, pathLen / math.max(L, 1e-3))
-	st.active = {stamp = stamp, startAt = t, endAt = t + dashTime, from = from, to = to, hit = {}}
+	st.active = {stamp = stamp, startAt = t, endAt = t + dashTime, from = from, to = to, hit = {}, kind = kind} -- v1.3: + kind
 	publish(char, st)
 	char:SetAttribute("SlashKind", kind)
 	char:SetAttribute("SlashFrom", from)
@@ -308,7 +329,21 @@ local function takeHealth(model, d, killer, killerId, with, t)
 		model:SetAttribute("KilledByUserId", killerId)
 		model:SetAttribute("KilledWith", with)
 		model:SetAttribute("KilledAt", t) -- last: KillRegenServer reacts to this one
+		return true -- v1.3
 	end
+	return false
+end
+
+-- v1.3: skill rows
+local function skillEvent(char, what)
+	char:SetAttribute("SlashSkillLast", what)
+	script:SetAttribute("SlashSkillEvents", (script:GetAttribute("SlashSkillEvents") or 0) + 1)
+end
+local function addCharges(char, st, n)
+	local m = maxCharges(char)
+	st.charges = math.min(m, st.charges + n)
+	if st.charges >= m then st.refillStart, st.refillAt = nil, nil end
+	publish(char, st)
 end
 
 local bleeds = {} -- [model] = {untilT, nextTick, by, byId, dps, tick}
@@ -342,8 +377,27 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	local mul = 1
 	local untilT, dmul = model:GetAttribute("DebuffUntil"), model:GetAttribute("DebuffDamageTakenMul")
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and t < untilT then mul = dmul end
-	local d = math.floor(get(char, "SlashDamage") * mul + 0.5)
-	takeHealth(model, d, char.Name, player.UserId, "slash", t)
+	local wasBleeding = SKILLS and bleeds[model] ~= nil and t <= bleeds[model].untilT + 1e-3 -- v1.3
+	local bonus = wasBleeding and math.max(0, tonumber(char:GetAttribute("SlashBleedBonus")) or 0) or 0 -- v1.3
+	local d = math.floor((get(char, "SlashDamage") + bonus) * mul + 0.5)
+	local killed = takeHealth(model, d, char.Name, player.UserId, "slash", t)
+	if bonus > 0 then skillEvent(char, "bleedBonus") end
+	if SKILLS and st.active.kind == "dive" then -- v1.3: Tree Stalker
+		if char:GetAttribute("SlashDiveRefill") == true and not st.active.refilled then
+			st.active.refilled = true
+			addCharges(char, st, 1)
+			skillEvent(char, "diveRefill")
+		end
+		local stun = tonumber(char:GetAttribute("SlashDiveStun")) or 0
+		if stun > 0 and not killed then
+			model:SetAttribute("StunnedUntil", math.max(tonumber(model:GetAttribute("StunnedUntil")) or 0, t + stun))
+			skillEvent(char, "diveStun")
+		end
+	end
+	if killed and wasBleeding and char:GetAttribute("SlashKillRefill") == true then -- v1.3: Blood Frenzy star
+		addCharges(char, st, maxCharges(char))
+		skillEvent(char, "killRefill")
+	end
 	-- bleed (no stacking: one per target, restarted by a new hit)
 	local shielded = (tonumber(model:GetAttribute("EnergyShieldUntil")) or 0) > t
 	if shielded then
@@ -351,7 +405,7 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	else
 		local tick = math.max(0.1, get(char, "SlashBleedTick"))
 		bleeds[model] = {untilT = t + get(char, "SlashBleedTime"), nextTick = t + tick, by = char.Name, byId = player.UserId,
-			dps = get(char, "SlashBleedDps"), tick = tick}
+			dps = get(char, "SlashBleedDps"), tick = tick, char = char} -- v1.3: + char
 		model:SetAttribute("SlashBleedUntil", bleeds[model].untilT)
 		model:SetAttribute("SlashBleedBy", char.Name)
 		model:SetAttribute("SlashBleedDps", bleeds[model].dps)
@@ -400,7 +454,17 @@ RunService.Heartbeat:Connect(function()
 				b.nextTick += b.tick
 				if (tonumber(model:GetAttribute("EnergyShieldUntil")) or 0) <= t then
 					local d = math.floor(b.dps * b.tick * 10 + 0.5) / 10
-					takeHealth(model, d, b.by, b.byId, "bleed", t)
+					local killed = takeHealth(model, d, b.by, b.byId, "bleed", t)
+					local by = b.char
+					if SKILLS and by and by.Parent then -- v1.3: credit the attacker
+						by:SetAttribute("SlashBleedDealt", d)
+						by:SetAttribute("SlashBleedDealtAt", t) -- last: SkillEffects reacts to this one
+						local bst = chars[by]
+						if killed and bst and by:GetAttribute("SlashKillRefill") == true then
+							addCharges(by, bst, maxCharges(by))
+							skillEvent(by, "killRefill")
+						end
+					end
 					model:SetAttribute("SlashBleedTickDamage", d)
 					model:SetAttribute("SlashBleedTickAt", t) -- last: SlashFX reacts to this one
 					script:SetAttribute("SlashBleedTicks", (script:GetAttribute("SlashBleedTicks") or 0) + 1)
@@ -410,6 +474,32 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 end)
+
+-- v1.3: Blood Frenzy I (speed while a bleeding dino is near)
+if SKILLS then
+	task.spawn(function()
+		while true do
+			task.wait(FRENZY_STEP)
+			local t = now()
+			for char in pairs(chars) do
+				local m = tonumber(char:GetAttribute("SlashFrenzyMul")) or 1
+				local hrp = char:FindFirstChild("HumanoidRootPart")
+				local active = false
+				if m ~= 1 and hrp and char.Parent then
+					local range = (tonumber(char:GetAttribute("SlashFrenzyRange")) or FRENZY_RANGE) * char:GetScale()
+					for model, b in pairs(bleeds) do
+						if model ~= char and model.Parent and t <= b.untilT + 1e-3 and (rootOf(model) - hrp.Position).Magnitude <= range then
+							active = true
+							break
+						end
+					end
+				end
+				if active then char:SetAttribute("SlashFrenzyUntil", t + FRENZY_HOLD) end
+				if char:GetAttribute("SlashFrenzyActive") ~= active then char:SetAttribute("SlashFrenzyActive", active) end
+			end
+		end
+	end)
+end
 
 -- characters
 local function onCharacter(char)

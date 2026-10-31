@@ -106,6 +106,12 @@
 --   * Redraws on SkinOwned_* / SkinCredits_* / SkinPrice_* / SkinSaveState. Switch: script attribute LabSkinBuyEnabled
 --     (default true, read at start; false = 1.6: greyed GET + "Buying comes in the next step."). Diagnostic: LabSkinBuy
 --     (last button state shown: "credit" / "loading" / "soon" / "get" / "wait").
+-- v1.9 (Kepu 2026-10-31: "you wouldn't call it jaws here because the herera doesn't use jaws at all"; SkillTree 1.37,
+--   plan docs/plans/STAT_LINES_v1.0.md): a row's name comes from path.nameFor[<your dino>] when that exists (the Herrera:
+--   Blood Drinker / Razor Claws / Wiry Frame / Scurry Legs), else path.name as before: cards, the detail title, the
+--   slot names and the toasts. The new Herrera rows (Tree Stalker in the new Hunt area, Blood Frenzy) show through
+--   ST.pathsFor like any dino-only row. Switch: script attribute LabNameForEnabled (default true, read each draw;
+--   false = 1.8 names). Diagnostic: player attribute LabNameFor (the last renamed row "<id>=<name>", or "").
 -- v1.8 (Kepu 2026-10-30: "Health steal for raptor should be stronger then"; SkillTree 1.28): a step's text comes from
 --   path.stepsFor[<your dino>][i] when that exists (raptor Lifesteal 20% / 35% / 50%), else path.steps[i] as before.
 --   Switch: script attribute LabStepsForEnabled (default true, read each draw; false = 1.7).
@@ -115,7 +121,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
 local SKIN = Color3.fromRGB(201, 162, 255) -- v1.6
 local ROBUX = Color3.fromRGB(0, 176, 111) -- v1.6
 if script:GetAttribute("LabTestFreeGivenEnabled") == nil then script:SetAttribute("LabTestFreeGivenEnabled", true) end -- v1.4
@@ -136,6 +142,7 @@ local DINO_NAMES = {TRex = "T-REX", Raptor = "RAPTOR"}
 
 local player = Players.LocalPlayer
 player:SetAttribute("LabVersion", VERSION)
+player:SetAttribute("LabNameFor", "") -- v1.9
 player:SetAttribute("LabOpen", "closed")
 if script:GetAttribute("LabEnabled") == nil then script:SetAttribute("LabEnabled", true) end
 if script:GetAttribute("LabBarClearEnabled") == nil then script:SetAttribute("LabBarClearEnabled", true) end -- v1.1
@@ -287,6 +294,17 @@ local function stepText(p, i)
 	end
 	if type(s) == "table" then return s.text or s.desc or tostring(s[1] or "") end
 	return tostring(s or "")
+end
+local function pathName(p) -- v1.9
+	if not p then return "" end
+	if script:GetAttribute("LabNameForEnabled") ~= false and type(p.nameFor) == "table" then
+		local alt = p.nameFor[species()]
+		if type(alt) == "string" and alt ~= "" then
+			player:SetAttribute("LabNameFor", p.id .. "=" .. alt)
+			return alt
+		end
+	end
+	return p.name
 end
 
 -- ---------- screen ----------
@@ -591,7 +609,7 @@ local function equip(id, n)
 	press(("equip:%s:%d"):format(id, n))
 	remote:FireServer("slot", n, id)
 	slotSel = nil
-	showToast(("%s → %s"):format(ST.PATHS[id].name, SLOT_KEYS[n] or tostring(n)))
+	showToast(("%s → %s"):format(pathName(ST.PATHS[id]), SLOT_KEYS[n] or tostring(n)))
 end
 
 -- v1.6: skins
@@ -885,7 +903,7 @@ local function drawCards()
 				q.Size = UDim2.fromScale(1, 1)
 				q.TextTransparency = 0.3
 			end
-			local nm = label(b, "Name", Enum.Font.FredokaOne, S.cardName, WHITE, p.name)
+			local nm = label(b, "Name", Enum.Font.FredokaOne, S.cardName, WHITE, pathName(p))
 			nm.TextXAlignment = Enum.TextXAlignment.Left
 			nm.TextTruncate = Enum.TextTruncate.AtEnd
 			nm.Position = UDim2.fromOffset(p1, p1 + artH + 0.6 * S.ch)
@@ -926,7 +944,7 @@ local function drawCards()
 		else
 			-- stats row
 			local px = 1.4 * S.ch
-			local nm = label(b, "Name", Enum.Font.FredokaOne, S.cardName, WHITE, p.name)
+			local nm = label(b, "Name", Enum.Font.FredokaOne, S.cardName, WHITE, pathName(p))
 			nm.TextXAlignment = Enum.TextXAlignment.Left
 			nm.Position = UDim2.fromOffset(px, 1.2 * S.ch)
 			nm.Size = UDim2.new(1, -2 * px, 0, S.cardName * 1.15)
@@ -963,7 +981,7 @@ local function drawSlots()
 	for n, s in ipairs(slotBtns) do
 		local id = slotOf(n)
 		local p = id and ST.PATHS[id]
-		s.name.Text = p and p.name or "empty"
+		s.name.Text = p and pathName(p) or "empty"
 		s.name.TextColor3 = p and GREY or MUTED
 		if slotSel == n then
 			s.stroke.Color, s.stroke.Transparency, s.stroke.Thickness = WHITE, 0, 3
@@ -1125,7 +1143,7 @@ local function drawDetail()
 	sub.TextXAlignment = Enum.TextXAlignment.Left
 	sub.Size = UDim2.new(1, 0, 0, S.stepS * 1.2)
 	sub.LayoutOrder = 1
-	local ttl = label(detail, "Title", Enum.Font.FredokaOne, math.max(3 * S.ch, 15), WHITE, p.name)
+	local ttl = label(detail, "Title", Enum.Font.FredokaOne, math.max(3 * S.ch, 15), WHITE, pathName(p))
 	ttl.TextXAlignment = Enum.TextXAlignment.Left
 	ttl.TextWrapped = true
 	ttl.AutomaticSize = Enum.AutomaticSize.Y
@@ -1219,14 +1237,14 @@ local function drawDetail()
 		if not ok then return end
 		press("buy:" .. id)
 		remote:FireServer("buy", id)
-		showToast(("%s %s"):format(p.name, ROMAN[n + 1]))
+		showToast(("%s %s"):format(pathName(p), ROMAN[n + 1]))
 	end)
 	if eqBtn then
 		eqBtn.Activated:Connect(function()
 			if eqIdx then
 				press("unequip:" .. id)
 				remote:FireServer("slot", eqIdx, "")
-				showToast(p.name .. " taken off")
+				showToast(pathName(p) .. " taken off")
 			else
 				local target = slotSel
 				if not target then

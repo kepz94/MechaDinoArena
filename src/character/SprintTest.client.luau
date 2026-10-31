@@ -1,4 +1,4 @@
--- SprintTest v1.12 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.13 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -43,6 +43,10 @@
 --   Tether Spike aim mode): the slash's speed burst (SlashBurstUntil / SlashBurstMul, SlashServer 1.1, stamped at the
 --   dash end) multiplies the speed while SlashBurstUntil > now, with the other part multipliers; MoveSpeedParts can
 --   include "slashBurst". Switch: script attribute SprintSlashBurstEnabled (default true, read each apply; false = 1.11).
+-- v1.13 (Herrera Blood Frenzy I, SkillTree 1.37, plan docs/plans/STAT_LINES_v1.0.md): while SlashFrenzyUntil > now
+--   (SlashServer 1.3 keeps it 0.5 s ahead while a bleeding dino is near) the speed is multiplied by SlashFrenzyMul
+--   (SkillEffects 1.26: 1.1), with the other part multipliers; MoveSpeedParts can include "frenzy". Switch: script
+--   attribute SprintFrenzyEnabled (default true, read each apply; false = 1.12).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -107,6 +111,13 @@ local function partSpeed()
 		mul *= math.max(0, burstMul)
 		table.insert(names, "slashBurst")
 		table.insert(ends, burstUntil)
+	end
+	local frUntil, frMul = char:GetAttribute("SlashFrenzyUntil"), char:GetAttribute("SlashFrenzyMul") -- v1.13
+	if script:GetAttribute("SprintFrenzyEnabled") ~= false and typeof(frUntil) == "number" and typeof(frMul) == "number"
+		and t < frUntil and frMul ~= 1 then
+		mul *= math.max(0, frMul)
+		table.insert(names, "frenzy")
+		table.insert(ends, frUntil)
 	end
 	if script:GetAttribute("SprintHeadbuttSlowEnabled") ~= false then -- v1.9
 		for _, h in ipairs({{"headbutt", "HeadbuttSlowUntil", "HeadbuttSlowMul"}, {"headbuttSelf", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul"}}) do
@@ -211,7 +222,7 @@ char:GetAttributeChangedSignal("AutoRun"):Connect(apply)        -- v1.5
 char:GetAttributeChangedSignal("TetherAiming"):Connect(apply)   -- v1.11
 for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil", "EnergyShieldSpeedMul", "ScreechSlowUntil",
 	"MineSlowUntil", "MineSlowMul", "HeadbuttSlowUntil", "HeadbuttSlowMul", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul",
-	"ServoDashUntil", "ServoDashSpeedMul", "SlashBurstUntil", "SlashBurstMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*
+	"ServoDashUntil", "ServoDashSpeedMul", "SlashBurstUntil", "SlashBurstMul", "SlashFrenzyUntil", "SlashFrenzyMul"}) do -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 apply()
