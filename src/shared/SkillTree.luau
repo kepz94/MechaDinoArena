@@ -1,4 +1,4 @@
--- SkillTree v1.34 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.35 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -301,6 +301,8 @@ SkillTree.AREAS = {
 --   SkillTree.PACHY_TETHER (default true) adds the pachy part "tether" ("Tether Spike", eng, OWNER Pachy, LIVE_MECH,
 --   BUTTONS). effects(): tetherRange 60, tetherSplash 8, tetherReach 10, tetherTime 2.5 (II 3.5), tetherCd 14 (III 10),
 --   tetherYank (star: true; the chain pulls them to tetherYankReach 5). All 0 / false below step I.
+-- v1.35 (Kepu 2026-10-30 after playing v205: "the radius is so short" -> "Range: 60 to 90 studs"): SkillTree.TETHER_RANGE_90
+--   (default true) tetherRange 90 (was 60) and step I text "(90 studs)". false = 1.34.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -628,6 +630,10 @@ do
 		"Chained for 3.5 s",
 		"Recharges in 10 s (was 14 s)",
 		"The chain yanks them in close to the spike (5 studs)"})
+	SkillTree.TETHER_RANGE_90 = true -- v1.35
+	if SkillTree.PACHY_TETHER and SkillTree.TETHER_RANGE_90 and SkillTree.PATHS.tether then
+		SkillTree.PATHS.tether.steps[1] = "Button: hold to aim a landing circle (tilt the camera to move it nearer or farther), let go to lob a spike (90 studs). The closest dino caught in the 8-stud circle is chained to the ground: it can't go more than 10 studs from the spike for 2.5 s"
+	end
 end
 -- v1.30: the pachy's Bone Crest replaces Thick Hide (Defense)
 SkillTree.PACHY_BONE_CREST = true
@@ -849,6 +855,7 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 		if tt >= 2 then e.tetherTime = 3.5 end
 		if tt >= 3 then e.tetherCd = 10 end
 		if tt >= 4 then e.tetherYank, e.tetherYankReach = true, 5 end
+		if tt >= 1 and SkillTree.TETHER_RANGE_90 then e.tetherRange = 90 end -- v1.35
 	end
 	e.lifestealRaptor = 0 -- v1.28
 	if SkillTree.RAPTOR_LIFESTEAL_STRONG then

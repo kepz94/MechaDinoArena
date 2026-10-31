@@ -1,4 +1,4 @@
--- TetherServer v1.0 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
+-- TetherServer v1.1 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
 -- MDA-129, mockup docs/mockups/pachy_tether_options.html B "Tail-base launcher". Kepu 2026-10-30: "a tether spike where if
 --   it lands it latches the person to a chain to the ground. Makes them not mobile past the chain for a couple seconds"
 --   -> "this will not shoot straight like a gun tho. It will launch like a splash. So it will shoot vertical and do a
@@ -40,13 +40,17 @@
 --   true; false = players can always be chained).
 -- Diagnostics: script TetherServerVersion, TetherShots, TetherHits, TetherMode; character TetherServerResult,
 --   TetherLookBuilt.
+-- v1.1 (Kepu 2026-10-30: "It was locking onto the top of trees too and everything"; range 90 from SkillTree 1.35): the
+--   landing point's ground ray also skips DinoIsland.Trees, Rocks and EdgeWalls (it already skipped characters, Bots,
+--   TallGrass, Prey and the FX folders), so the spike lands on the ground / mountain steps under the circle, never on a
+--   treetop. Switch: script attribute TetherGroundOnly (default true, read each shot; false = 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local FLIGHT, ARC_HEIGHT, RANGE_SLACK, YANK_SPEED = 0.8, 22, 4, 60
 local STEEL, DARK, YELLOW = Color3.fromRGB(154, 166, 184), Color3.fromRGB(58, 64, 76), Color3.fromRGB(255, 200, 50)
 
@@ -55,6 +59,7 @@ script:SetAttribute("TetherShots", 0)
 script:SetAttribute("TetherHits", 0)
 if script:GetAttribute("TetherServerEnabled") == nil then script:SetAttribute("TetherServerEnabled", true) end
 if script:GetAttribute("TetherModeRulesEnabled") == nil then script:SetAttribute("TetherModeRulesEnabled", true) end
+if script:GetAttribute("TetherGroundOnly") == nil then script:SetAttribute("TetherGroundOnly", true) end -- v1.1
 local function enabled() return script:GetAttribute("TetherServerEnabled") ~= false end
 
 local ModeRules = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
@@ -225,6 +230,12 @@ local function ground(pos)
 	for _, n in ipairs({"Bots", "TallGrass", "Prey"}) do
 		local f = isl and isl:FindFirstChild(n)
 		if f then table.insert(ex, f) end
+	end
+	if script:GetAttribute("TetherGroundOnly") ~= false then -- v1.1: no treetops / rocks / edge walls
+		for _, n in ipairs({"Trees", "Rocks", "EdgeWalls"}) do
+			local f = isl and isl:FindFirstChild(n)
+			if f then table.insert(ex, f) end
+		end
 	end
 	for _, n in ipairs({"DinoFX_Local", "DinoFX"}) do
 		local f = workspace:FindFirstChild(n)

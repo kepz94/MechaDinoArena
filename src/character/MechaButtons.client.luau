@@ -1,4 +1,4 @@
--- MechaButtons v1.20 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.21 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -136,6 +136,14 @@
 --     to the flat part only (no tilt); the camera follows that flat direction.
 --   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
 --   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
+-- v1.21 (Kepu 2026-10-30 after playing v205: "that was so wonky trying to aim that ... It was locking onto the top of trees
+--   too and everything" -> "Camera tilt = distance"): with script attribute MechaTetherTiltAim (default true, read each
+--   frame; false = 1.20 crosshair ray) the landing circle no longer follows what the screen's centre ray hits. Instead:
+--   direction = the camera's flat facing; distance = TetherRange x clamp((pitch - TILT_NEAR) / (TILT_FAR - TILT_NEAR), 0,
+--   1), floored at TILT_MIN_DIST (6) studs, pitch = the camera's up/down angle (TILT_NEAR -45 degrees = closest, TILT_FAR
+--   -5 degrees or higher = full range). The ground under it is found with a ray from 80 studs up that skips
+--   DinoIsland.Trees / Rocks / TallGrass / Bots / EdgeWalls, every character and the FX folders, so the circle always sits
+--   on the ground or the mountain steps. The touch drag after the aim locks (1.20) is unchanged and still moves it.
 -- v1.20 (pachy Tether Spike, MDA-129, TetherServer 1.0; Kepu 2026-10-30: "It will launch like a splash ... a splash area that
 --   you're aiming at" -> "Hold, circle, release"): TIMED_PARTS.tether = {"Tether", "DinoTetherRequest", "TETHER SPIKE"}
 --   and the tether uses the Shock Cannon's hold-to-aim plumbing (PC key down / up, touch press / drag / release, the
@@ -174,7 +182,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.20"
+local VERSION = "1.21"
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -371,6 +379,25 @@ end
 -- v1.20: the tether landing circle
 local tetherRay = RaycastParams.new()
 tetherRay.FilterType = Enum.RaycastFilterType.Exclude
+local TILT_NEAR, TILT_FAR, TILT_MIN_DIST = math.rad(-45), math.rad(-5), 6 -- v1.21
+if script:GetAttribute("MechaTetherTiltAim") == nil then script:SetAttribute("MechaTetherTiltAim", true) end -- v1.21
+local groundRay = RaycastParams.new() -- v1.21: ground only (no trees / rocks / grass / dinos)
+groundRay.FilterType = Enum.RaycastFilterType.Exclude
+local function groundExclude()
+	local ex = {aim.part}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	for _, n in ipairs({"Trees", "Rocks", "TallGrass", "Bots", "EdgeWalls", "Prey"}) do
+		local f = isl and isl:FindFirstChild(n)
+		if f then table.insert(ex, f) end
+	end
+	for _, n in ipairs({"DinoFX", "DinoFX_Local"}) do
+		local f = workspace:FindFirstChild(n)
+		if f then table.insert(ex, f) end
+	end
+	groundRay.FilterDescendantsInstances = ex
+	return groundRay
+end
 local function tetherStep(dt)
 	local range = math.max(1, tonumber(char:GetAttribute("TetherRange")) or 60)
 	local cam = workspace.CurrentCamera
@@ -392,6 +419,15 @@ local function tetherStep(dt)
 			end
 		end
 	end
+	if not goal and script:GetAttribute("MechaTetherTiltAim") ~= false then -- v1.21: camera tilt = distance
+		local look = cam.CFrame.LookVector
+		local f = Vector3.new(look.X, 0, look.Z)
+		if f.Magnitude > 1e-3 then
+			local pitch = math.asin(math.clamp(look.Y, -1, 1))
+			local k = math.clamp((pitch - TILT_NEAR) / (TILT_FAR - TILT_NEAR), 0, 1)
+			goal = base + f.Unit * math.max(TILT_MIN_DIST, range * k)
+		end
+	end
 	if not goal then -- the ground under the screen's centre
 		local vp = cam.ViewportSize
 		local ray = cam:ViewportPointToRay(vp.X / 2, vp.Y / 2)
@@ -404,7 +440,12 @@ local function tetherStep(dt)
 	goal = base + off
 	local k = 1 - math.exp(-AIM_SMOOTH * math.clamp(dt or 0, 0, 0.1))
 	aim.flat = aim.flat and aim.flat:Lerp(goal, k) or goal
-	local g = workspace:Raycast(Vector3.new(aim.flat.X, hrp.Position.Y + 60, aim.flat.Z), Vector3.new(0, -240, 0), tetherRay)
+	local g
+	if script:GetAttribute("MechaTetherTiltAim") ~= false then -- v1.21: ground only
+		g = workspace:Raycast(Vector3.new(aim.flat.X, hrp.Position.Y + 80, aim.flat.Z), Vector3.new(0, -260, 0), groundExclude())
+	else
+		g = workspace:Raycast(Vector3.new(aim.flat.X, hrp.Position.Y + 60, aim.flat.Z), Vector3.new(0, -240, 0), tetherRay)
+	end
 	local gp = g and g.Position or Vector3.new(aim.flat.X, hrp.Position.Y - 3, aim.flat.Z)
 	aim.landPos = gp
 	aim.part.CFrame = CFrame.new(gp + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, 0, math.rad(90))

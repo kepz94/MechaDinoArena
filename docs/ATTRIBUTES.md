@@ -2214,3 +2214,10 @@ Look: Mecha_TetherLauncher (Base, Barrel.Muzzle, Tip, Drum) on Tail1.Root; Works
 | InkShoulderMount | InkServer script | default true: tank on the left shoulder, aim down to -20 degrees (false = InkBellyMount / neck) |
 | InkHitLookEnabled | InkServer script | default true: InkHit splash + drip on the inked dino's head and the "BLINDED" tag; the flat splat disc only on misses |
 Look: <head>.InkHit (InkSplash, InkDrip); model.InkBlindedTag (Blot, Text "BLINDED").
+
+## Tether aim 1.21 / TetherServer 1.1
+| Attribute | Where | Meaning |
+|---|---|---|
+| SkillTree.TETHER_RANGE_90 | SkillTree constant | true: tetherRange 90 (false = 60) |
+| MechaTetherTiltAim | MechaButtons script | default true: camera tilt sets the circle distance, ground-only placement (false = 1.20 crosshair ray) |
+| TetherGroundOnly | TetherServer script | default true: the landing ray skips Trees / Rocks / EdgeWalls |
