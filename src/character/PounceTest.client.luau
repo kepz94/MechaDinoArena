@@ -1,4 +1,4 @@
--- PounceTest v1.5 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
+-- PounceTest v1.6 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
 -- or the on-screen Pounce button (touch). Bound only while the character attribute PounceEnabled is true (the T-Rex
 -- has no pounce and gets no button).
 -- Flow:
@@ -70,6 +70,11 @@
 --   skill screen flag is set (SkillScreenOpen) or a text box has focus; it returns Pass so the click still reaches the
 --   camera and the rest of the game. F / gamepad X stay as they are. Diagnostic: PounceClickBound (true / false),
 --   PounceLastInput ("click" once a click has pounced).
+-- v1.6 (Kepu 2026-10-30: a pachy headbutt beats a head-on pounce; PounceServer 1.11): a fresh pachy headbutt shove on this
+--   raptor (HeadbuttShoveAt, server time, at most 1 s old) during the wind-up or the lunge ends the pounce here at once
+--   (the PounceHold push is released so HeadbuttShove 1.0 pushes the body back): PounceContact "headbutted" (wind-up:
+--   PounceInputResult "headbutted"). The server refuses this pounce's claim ("headbutted"). Switch: character attribute
+--   PounceHeadbuttCancelEnabled (default true; false = 1.5). Diagnostic: PounceTestVersion.
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -425,6 +430,20 @@ local function followLatch()
 		hrp.AssemblyAngularVelocity = Vector3.zero
 	end
 end
+
+-- v1.6: a pachy headbutt knocks the raptor out of its pounce
+char:SetAttribute("PounceTestVersion", "1.6")
+char:GetAttributeChangedSignal("HeadbuttShoveAt"):Connect(function()
+	if char:GetAttribute("PounceHeadbuttCancelEnabled") == false then return end
+	local at = char:GetAttribute("HeadbuttShoveAt")
+	if typeof(at) ~= "number" or math.abs(workspace:GetServerTimeNow() - at) > 1 then return end
+	if state == "windup" then
+		show("PounceInputResult", "headbutted")
+		setLocalState("ready")
+	elseif state == "lunge" then
+		endLunge("headbutted")
+	end
+end)
 
 local stepConn = RunService.PreSimulation:Connect(function(dt)
 	if get("PounceEnabled") ~= true then

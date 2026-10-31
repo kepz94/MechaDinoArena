@@ -2264,3 +2264,12 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | BotPachyReachScaled | BotServer script | default true: headbutt hit test uses the Head hitbox centre too and reach x model scale |
 | BotPachyReach | BotServer script | default 4 (was 3): studs at scale 1 |
 | BotHeadbuttGap | pachy bot | head-to-target gap at the hit / closest gap of a missed charge (0.1) |
+
+## Headbutt beats pounce head-on (PounceServer 1.11 / PounceTest 1.6)
+| Attribute | On | Meaning |
+|---|---|---|
+| PounceChargeBlockEnabled | PounceServer script | default true: a dino charging a headbutt can't be pounced from its front ("charging") |
+| PounceHeadbuttCancelEnabled | PounceServer script / character | default true: a headbutt shove after the pounce start cancels it ("headbutted"; client ends the leap) |
+| PounceChargeBlocks | target dino | pounces refused by its charge |
+| PounceHeadbuttCancels | raptor | pounces cancelled by a headbutt |
+| PounceTestVersion | raptor (client) | "1.6" |

@@ -1,4 +1,4 @@
--- PounceServer v1.10 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.11 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -93,6 +93,17 @@
 --   damage) and BoneCrest.visorBlock(target, raptor, "pounce") runs (BLOCK look; star knockback). Latch ticks already
 --   do 0 through BoneCrest.factor while the visor faces the raptor. Switch: script attribute PounceVisorEnabled
 --   (default true, read each claim; false = 1.9).
+-- v1.11 (Kepu 2026-10-30: "a pachy headbutt beats a raptor pounce if they're both going head on" -> "Both rules"):
+--   * charge blocks a front pounce: a claim on a dino whose headbutt charge is running (HeadbuttStartedAt, until
+--     HeadbuttWindup + HeadbuttMaxTime + 0.5 s, no HeadbuttEndedAt / HeadbuttHitAt since; player pachies (HeadbuttServer)
+--     and pachy bots (BotServer 1.19) both stamp these) with the raptor's root inside the target's front cone
+--     (BoneCrest.CONE, 60 degrees) is refused: PounceClaimResult "charging" (no latch, no pin, no damage; the pachy's own
+--     headbutt hits the raptor).
+--   * a headbutt cancels the pounce: a claim from a raptor whose HeadbuttShoveAt (set by a pachy headbutt hit that was
+--     not blocked by its Energy Shield) is at or after its pounce start is refused: "headbutted"; the pending pounce is
+--     dropped. PounceTest 1.6 ends the leap on the client when the shove lands.
+--   Diagnostics: raptor PounceHeadbuttCancels; target PounceChargeBlocks. Switches (script, read each claim):
+--   PounceChargeBlockEnabled, PounceHeadbuttCancelEnabled (default true; false = 1.10).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -114,7 +125,9 @@ local CLAIM_TOLERANCE = 24  -- studs between the claimed part and the raptor bod
 local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's centre beyond its half size
 local MAX_LATCH = 30        -- safety: seconds a latch may last
 
-script:SetAttribute("PounceServerVersion", "1.10")
+script:SetAttribute("PounceServerVersion", "1.11")
+if script:GetAttribute("PounceChargeBlockEnabled") == nil then script:SetAttribute("PounceChargeBlockEnabled", true) end -- v1.11
+if script:GetAttribute("PounceHeadbuttCancelEnabled") == nil then script:SetAttribute("PounceHeadbuttCancelEnabled", true) end -- v1.11
 if script:GetAttribute("PounceVisorEnabled") == nil then script:SetAttribute("PounceVisorEnabled", true) end -- v1.10
 if script:GetAttribute("PouncePinHoldEnabled") == nil then script:SetAttribute("PouncePinHoldEnabled", true) end -- v1.8
 if script:GetAttribute("PounceSlashTimingEnabled") == nil then script:SetAttribute("PounceSlashTimingEnabled", true) end -- v1.7
@@ -262,6 +275,26 @@ local function release(char, reason)
 	char:SetAttribute("PounceReleaseReason", reason)
 end
 
+-- v1.11: a headbutt charge running on model, with pos inside its front cone
+local function chargingFront(model, pos, now)
+	local s = model:GetAttribute("HeadbuttStartedAt")
+	if typeof(s) ~= "number" or now < s - 0.05 then return false end
+	local windup = tonumber(model:GetAttribute("HeadbuttWindup")) or 0.15
+	local maxT = tonumber(model:GetAttribute("HeadbuttMaxTime")) or 1.8
+	if now > s + windup + maxT + 0.5 then return false end
+	local e, h = model:GetAttribute("HeadbuttEndedAt"), model:GetAttribute("HeadbuttHitAt")
+	if typeof(e) == "number" and e >= s - 0.001 then return false end
+	if typeof(h) == "number" and h >= s - 0.001 then return false end
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if not root or typeof(pos) ~= "Vector3" then return false end
+	local d = pos - root.Position
+	d = Vector3.new(d.X, 0, d.Z)
+	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	if look.Magnitude < 1e-3 then return false end
+	local cone = (crest() and tonumber(crest().CONE)) or 60
+	return d.Magnitude < 1e-3 or look.Unit:Dot(d.Unit) >= math.cos(math.rad(cone))
+end
+
 requestRemote.OnServerEvent:Connect(function(player, stamp)
 	local char = player.Character
 	if not char then return end
@@ -313,6 +346,11 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 		result = "noPounce"
 	elseif now - p.start > get(char, "PounceClaimWindow") then
 		result = "late"
+	elseif script:GetAttribute("PounceHeadbuttCancelEnabled") ~= false and typeof(char:GetAttribute("HeadbuttShoveAt")) == "number"
+		and char:GetAttribute("HeadbuttShoveAt") >= p.start - 0.001 then
+		result = "headbutted" -- v1.11: knocked out of the pounce
+		pending[char] = nil
+		char:SetAttribute("PounceHeadbuttCancels", (char:GetAttribute("PounceHeadbuttCancels") or 0) + 1)
 	else
 		model = targetOf(part)
 		if not model or model == char or model:GetAttribute("DummyState") == "ko" then
@@ -333,6 +371,9 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 				result = "dead"
 			elseif script:GetAttribute("PounceVisorEnabled") ~= false and crest() and hrp and crest().visorFront(model, hrp.Position) then
 				result = "visor" -- v1.10: Dome Visor
+			elseif script:GetAttribute("PounceChargeBlockEnabled") ~= false and hrp and chargingFront(model, hrp.Position, now) then
+				result = "charging" -- v1.11: head-on into a headbutt charge
+				model:SetAttribute("PounceChargeBlocks", (model:GetAttribute("PounceChargeBlocks") or 0) + 1)
 			else
 				result = "ok"
 			end
