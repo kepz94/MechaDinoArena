@@ -1,4 +1,4 @@
--- ScreechServer v1.10 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.11 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -97,13 +97,17 @@
 -- v1.10 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
 --   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
 --   script attribute ScreechDazeEnabled (default true, read at each request; false = 1.9).
+-- v1.11 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): mayAffect(source, target) is also false for a squadmate (wraps the ModeRules check), so no squadmate is ever picked, hit or slowed. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute ScreechServerSquadEnabled (default true, read at each check; false = 1.10).
+--   Diagnostic: script ScreechServerSquadSkips (count of squadmate skips / refusals).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 local PITCH_MAX = math.rad(20) -- v1.8
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
@@ -139,6 +143,31 @@ local function mayAffect(source, target)
 		local spl = Players:GetPlayerFromCharacter(source)
 		local inMenu = tpl ~= nil and tpl:GetAttribute("InMenu") == true
 		return ModeRules.canAffect(spl ~= nil, tpl ~= nil, inMenu, MODE)
+	end
+end
+-- v1.11: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("ScreechServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("ScreechServerSquadSkips", (script:GetAttribute("ScreechServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
+do -- v1.11: wrap the mode check with the squad check
+	local modeOnly = mayAffect
+	mayAffect = function(source, target)
+		if squadmate(source, target) then return false end
+		return modeOnly(source, target)
 	end
 end
 

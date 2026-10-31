@@ -1,4 +1,4 @@
--- RoarServer v1.1 (Dino Arcade) — TEST. Validates roar requests from players and stamps the start time.
+-- RoarServer v1.2 (Dino Arcade) — TEST. Validates roar requests from players and stamps the start time.
 -- Client -> server: ReplicatedStorage.DinoRoarRequest:FireServer()
 -- Server -> everyone: character attribute RoarStartedAt = workspace:GetServerTimeNow() (replicates), which
 --   every client's IdleAnimation (pose) and RoarFX (sound + rings) read, so all players see the same roar.
@@ -22,6 +22,11 @@
 --   RoarDebuffDuration, RoarDebuffDamageTaken, RoarDebuffSpeed.
 --   Roarer diagnostics: RoarEffectState ("sweeping" / "done" / "disabled"), RoarHits (targets hit by the last
 --   roar), RoarHitNames (comma list).
+-- v1.2 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): the roar sweep skips a squadmate (no debuff). Nothing else in the sweep changes (its
+--   missing mode / menu gate stays as it is, plan do-not-touch). Diagnostic: script RoarServerVersion. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute RoarServerSquadEnabled (default true, read at each check; false = 1.1).
+--   Diagnostic: script RoarServerSquadSkips (count of squadmate skips / refusals).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
@@ -64,6 +69,25 @@ local function closestPoint(part, p)
 end
 
 -- the dino model (Species attribute) a part belongs to, or nil
+-- v1.2: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("RoarServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("RoarServerSquadSkips", (script:GetAttribute("RoarServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
+script:SetAttribute("RoarServerVersion", "1.2") -- v1.2
 local function dinoOf(part)
 	local model = part:FindFirstAncestorWhichIsA("Model")
 	while model do
@@ -132,7 +156,7 @@ local function sweep(char, started)
 			local seen = {}
 			for _, part in ipairs(workspace:GetPartBoundsInRadius(origin, range, params)) do
 				local model = dinoOf(part)
-				if model and model ~= char and not seen[model] and not hit[model] then
+				if model and model ~= char and not seen[model] and not hit[model] and not squadmate(char, model) then -- v1.2: squad
 					seen[model] = true
 					local d, pt = nearestPoint(model, origin)
 					if pt and d <= range then

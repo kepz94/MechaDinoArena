@@ -1,4 +1,4 @@
--- BiteServer v1.9 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
+-- BiteServer v1.10 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
 -- hit at the moment the jaws shut.
 -- Client -> server: ReplicatedStorage.DinoBiteRequest:FireServer(clientServerTime) (sent by BiteTest)
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now] (so every client's pose lines up with
@@ -77,6 +77,11 @@
 -- v1.9 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
 --   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed", right after "disabled").
 --   Switch: script attribute BiteDazeEnabled (default true, read at each request; false = 1.8).
+-- v1.10 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): a squadmate is skipped by the server sweep, dropped as the aimed target (request and fallback), refused as a
+--   client claim (BiteClaimResult "squad"), and applyHit does nothing to one (backstop). Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute BiteServerSquadEnabled (default true, read at each check; false = 1.9).
+--   Diagnostic: script BiteServerSquadSkips (count of squadmate skips / refusals).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local remote = ReplicatedStorage:FindFirstChild("DinoBiteRequest")
@@ -97,7 +102,7 @@ local DEFAULTS = {BiteEnabled = true, BiteCooldown = 0.8, BiteWindup = 0.15, Bit
 	StaminaTiredBiteMul = 0.6, -- v1.4
 	BiteDipMax = 60, -- v1.5
 	BiteAimMax = 45, BiteAimSlack = 2} -- v1.7
-script:SetAttribute("BiteServerVersion", "1.8")
+script:SetAttribute("BiteServerVersion", "1.10") -- v1.10 (1.9 left this at "1.8")
 local crestMod -- v1.8: Bone Crest / Thick Hide vs players (ServerStorage.DinoArcade.BoneCrest), loaded on first hit
 local function crest()
 	if crestMod == nil then
@@ -105,6 +110,24 @@ local function crest()
 		pcall(function() crestMod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
 	end
 	return crestMod or nil
+end
+-- v1.10: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("BiteServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("BiteServerSquadSkips", (script:GetAttribute("BiteServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
 end
 
 local MAX_LAG = 0.3 -- seconds a client stamp may lag behind the server clock
@@ -227,6 +250,7 @@ local function debuffOf(model)
 end
 
 local function applyHit(char, model, point, source, part)
+	if squadmate(char, model) then return end -- v1.10: backstop
 	local base = get(char, "BiteDamage")
 	local zone, seg, zoneMul = zoneOf(model, part)
 	local debuffMul = debuffOf(model)
@@ -282,7 +306,7 @@ local function checkHit(char, startedAt)
 	local inRange = {} -- v1.3: every target part inside the capsule, for the zone pick
 	for _, part in ipairs(workspace:GetPartBoundsInRadius((a + b) / 2, (b - a).Magnitude / 2 + range, params)) do
 		local model = targetOf(part)
-		if model then
+		if model and not squadmate(char, model) then -- v1.10
 			local d, cp = segmentHit(part, a, b)
 			if d <= range then table.insert(inRange, {model = model, part = part}) end
 			if d <= range and d < best then best, bestModel, bestPoint, bestPart = d, model, cp, part end
@@ -303,7 +327,7 @@ local function checkHit(char, startedAt)
 	end
 	-- v1.7: the aimed target, within BiteRange + BiteAimSlack of the aimed capsule line
 	local aim = p.aimTarget
-	if aim and aim.Parent and aim:IsDescendantOf(workspace) then
+	if aim and aim.Parent and aim:IsDescendantOf(workspace) and not squadmate(char, aim) then -- v1.10
 		local isDummy = aim:GetAttribute("BiteDummy") == true
 		local container = isDummy and aim or aim:FindFirstChild("Hitboxes")
 		if container then
@@ -352,6 +376,7 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, model, point)
 	if not (model:IsDescendantOf(workspace) and (isDummy or isDino)) or model == char then
 		return reject("badTarget")
 	end
+	if squadmate(char, model) then return reject("squad") end -- v1.10
 	local onTarget = math.huge
 	local nearestPart -- v1.3: the hitbox nearest the claimed point decides the zone
 	for _, part in ipairs((isDummy and model or model.Hitboxes):GetDescendants()) do
@@ -403,7 +428,7 @@ remote.OnServerEvent:Connect(function(player, stamp, dip, yaw, aimTarget) -- v1.
 			local aimMax = get(char, "BiteAimMax")
 			local y = (typeof(yaw) == "number" and yaw == yaw) and math.clamp(yaw, -aimMax, aimMax) or 0
 			local tgt = nil
-			if typeof(aimTarget) == "Instance" and aimTarget:IsA("Model") and aimTarget ~= char and aimTarget:IsDescendantOf(workspace)
+			if typeof(aimTarget) == "Instance" and aimTarget:IsA("Model") and aimTarget ~= char and aimTarget:IsDescendantOf(workspace) and not squadmate(char, aimTarget) -- v1.10
 				and (aimTarget:GetAttribute("BiteDummy") == true or (aimTarget:GetAttribute("Bitable") == true and aimTarget:FindFirstChild("Hitboxes"))) then
 				tgt = aimTarget
 			end

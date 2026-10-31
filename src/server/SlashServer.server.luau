@@ -1,4 +1,4 @@
--- SlashServer v1.5 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.6 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -92,11 +92,16 @@
 --     script attribute SlashGlideEnabled (default true, read at each request / hit; false = 1.4).
 -- Switch: script attribute SlashServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script SlashServerVersion, SlashRequests, SlashHits, SlashBleedTicks.
+-- v1.6 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): a hit claim on a squadmate is refused (SlashHitResult "squad"), a dive target that is a
+--   squadmate counts as no target (SlashDiveCheck "squad"), and the glide-dive bleed burst skips squadmates. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute SlashServerSquadEnabled (default true, read at each check; false = 1.5).
+--   Diagnostic: script SlashServerSquadSkips (count of squadmate skips / refusals).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local TIME_SLACK = 0.6      -- s after the dash time a claim is still accepted (client -> server lag)
 local PATH_TOLERANCE = 6    -- studs (x scale) between the target's hitboxes and the dash path, on top of SlashReach
 local DIVE_SLACK = 3        -- studs (x scale) added to SlashDiveRange for the request check (the target moves)
@@ -227,6 +232,24 @@ local function targetOk(model)
 	if model:GetAttribute("Species") == nil and model:GetAttribute("IsBot") ~= true then return false end
 	return true, hb
 end
+-- v1.6: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("SlashServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("SlashServerSquadSkips", (script:GetAttribute("SlashServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
 
 local function rootOf(model)
 	local r = model:FindFirstChild("HumanoidRootPart")
@@ -299,6 +322,8 @@ requestRemote.OnServerEvent:Connect(function(player, stamp, kind, target)
 			check = "badTarget"
 		elseif target == char then
 			check = "self"
+		elseif squadmate(char, target) then -- v1.6
+			check = "squad"
 		elseif target:GetAttribute("DummyState") == "ko" then
 			check = "ko"
 		else
@@ -399,6 +424,8 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		result = "badTarget"
 	elseif model == char then
 		result = "self"
+	elseif squadmate(char, model) then -- v1.6
+		result = "squad"
 	elseif st.active.hit[model] then
 		result = "used"
 	elseif model:GetAttribute("DummyState") == "ko" then
@@ -466,7 +493,7 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 			local bf = isl and isl:FindFirstChild("Bots")
 			if bf then for _, b in ipairs(bf:GetChildren()) do table.insert(list, b) end end
 			for _, m in ipairs(list) do
-				if m ~= char and m ~= model and targetOk(m) and m:GetAttribute("DummyState") ~= "ko"
+				if m ~= char and m ~= model and targetOk(m) and not squadmate(char, m) and m:GetAttribute("DummyState") ~= "ko" -- v1.6: squad
 					and (tonumber(m:GetAttribute("EnergyShieldUntil")) or 0) <= t and (rootOf(m) - land).Magnitude <= burst then
 					local tick = math.max(0.1, get(char, "SlashBleedTick"))
 					bleeds[m] = {untilT = t + get(char, "SlashBleedTime"), nextTick = t + tick, by = char.Name, byId = player.UserId,

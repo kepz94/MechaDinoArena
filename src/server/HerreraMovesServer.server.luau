@@ -1,4 +1,4 @@
--- HerreraMovesServer v1.0 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
+-- HerreraMovesServer v1.1 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
 -- (MDA-151), Smoke Pods (MDA-152), Strobe Frill (MDA-155), Stun Breaker (MDA-156), and the Glider Wings' glide state
 -- (MDA-150). Plan docs/plans/HERRERA_PARTS_v1.0.md (Parts 2, 3, 4, 7, 8 and "Pass 2 — build map"); Kepu 2026-10-31.
 -- Settings come from the character (SkillEffects 1.27, a Herrera with the part bought AND slotted):
@@ -50,12 +50,16 @@
 --   (default true each), HerreraMovesModeRulesEnabled (default true; false = players can always be hit).
 -- Diagnostics: script HerreraMovesServerVersion, HerreraMovesMode, QuillVolleys, QuillHits, SmokeClouds, StrobeFlashes,
 --   StrobeDazes, BreakerBreaks; character results above.
+-- v1.1 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): mayAffect(source, target) is also false for a squadmate (wraps the ModeRules check), so no squadmate is ever picked, hit or slowed. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute HerreraMovesServerSquadEnabled (default true, read at each check; false = 1.0).
+--   Diagnostic: script HerreraMovesServerSquadSkips (count of squadmate skips / refusals).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local QUILL_GAP, QUILL_SPEED, QUILL_CONE = 0.045, 90, math.rad(35)
 local SMOKE_TICK = 0.1
 local STROBE_WINDUP = 0.15
@@ -80,6 +84,31 @@ local function mayAffect(source, target)
 	local spl = Players:GetPlayerFromCharacter(source)
 	local inMenu = tpl ~= nil and tpl:GetAttribute("InMenu") == true
 	return ModeRules.canAffect(spl ~= nil, tpl ~= nil, inMenu, MODE)
+end
+-- v1.1: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("HerreraMovesServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("HerreraMovesServerSquadSkips", (script:GetAttribute("HerreraMovesServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
+do -- v1.1: wrap the mode check with the squad check
+	local modeOnly = mayAffect
+	mayAffect = function(source, target)
+		if squadmate(source, target) then return false end
+		return modeOnly(source, target)
+	end
 end
 
 local function remote(name)
@@ -243,7 +272,7 @@ quillRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		local launch = (i - 1) * QUILL_GAP
 		task.delay(launch + fly, function()
 			local ta = now()
-			if target.Parent and isTarget(target, char) and not shielded(target, ta) then
+			if target.Parent and isTarget(target, char) and mayAffect(char, target) and not shielded(target, ta) then -- v1.1: + mayAffect (squad / mode) on arrival
 				local d = math.floor(dmg * takenMul(target, ta) * 10 + 0.5) / 10
 				if d > 0 then
 					takeHealth(target, d, char, player, "quills", ta)

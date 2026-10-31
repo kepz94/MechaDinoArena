@@ -1,4 +1,4 @@
--- SkillEffects v1.28 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.29 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -180,10 +180,15 @@
 --   Herrera part that is not a button part (ST.BUTTONS[id] ~= true) is on whenever it is bought, slotted or not; button
 --   parts still need a slot. Today: Blood Siphon, Iron Claw and Back Plating. Switch: script attribute SkillEffectsHerreraPassiveEnabled
 --   (default true, read at each apply; false = 1.27, every Herrera part needs a slot).
+-- v1.29 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): findBridgedPlayer never returns the attacker's squadmate, so skill bleeds / lifesteal
+--   follow-ups never land on one (backstop; the hit servers already refuse squadmates). Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute SkillEffectsSquadEnabled (default true, read at each check; false = 1.28).
+--   Diagnostic: script SkillEffectsSquadSkips (count of squadmate skips / refusals).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.28" -- v1.28 (1.27 left this at "1.26")
+local VERSION = "1.29" -- v1.28 (1.27 left this at "1.26"); v1.29 squads
 if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
 local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false
 if script:GetAttribute("SkillEffectsHerreraPartsEnabled") == nil then script:SetAttribute("SkillEffectsHerreraPartsEnabled", true) end -- v1.27
@@ -551,12 +556,31 @@ local function findBot(name)
 end
 
 local bleeds = {} -- [bot] = {char, player, dps, untilT}
+-- v1.29: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("SkillEffectsSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("SkillEffectsSquadSkips", (script:GetAttribute("SkillEffectsSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
 local function findBridgedPlayer(name, attacker) -- v1.18: a player's dino ArenaPvP bridges (Arena only)
 	if not BLEED_PLAYERS or type(name) ~= "string" then return nil end
 	local m = workspace:FindFirstChild(name)
 	if m and m ~= attacker and m:IsA("Model")
 		and (game:GetService("Players"):GetPlayerFromCharacter(m) or m:GetAttribute("ArenaPvPTestTarget") == true)
-		and m:GetAttribute("ArenaPvPBridged") == true and m:GetAttribute("Bitable") == true then
+		and m:GetAttribute("ArenaPvPBridged") == true and m:GetAttribute("Bitable") == true
+		and not (attacker and squadmate(attacker, m)) then -- v1.29: squad
 		return m
 	end
 	return nil

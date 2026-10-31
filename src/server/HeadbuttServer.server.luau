@@ -1,4 +1,4 @@
--- HeadbuttServer v1.12 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.13 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -116,11 +116,16 @@
 --   attribute, default 1.5), with the other multipliers (Bone Dome, Blood Rush, debuff, daze) as before. Attacker
 --   diagnostics HeadbuttHitDashCharge (true / false), HeadbuttHitDashMul. Switch: script attribute
 --   HeadbuttDashChargeEnabled (default true, read at each request / hit; false = 1.11).
+-- v1.13 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): a hit claim on a squadmate is refused (HeadbuttHitResult "squad") before the Dome Visor
+--   check, so no damage, slow, shove or visor knockback between squadmates. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute HeadbuttServerSquadEnabled (default true, read at each check; false = 1.12).
+--   Diagnostic: script HeadbuttServerSquadSkips (count of squadmate skips / refusals).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.12"
+local VERSION = "1.13"
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
 local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
 if script:GetAttribute("HeadbuttSacrificeRestartsRefill") == nil then script:SetAttribute("HeadbuttSacrificeRestartsRefill", true) end -- v1.7
@@ -329,6 +334,24 @@ endRemote.OnServerEvent:Connect(function(player, stamp, reason)
 	finish(char, st, reason == "timeout" and "timeout" or "ended")
 end)
 
+-- v1.13: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("HeadbuttServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("HeadbuttServerSquadSkips", (script:GetAttribute("HeadbuttServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
 -- target checks
 local function targetOk(model)
 	if typeof(model) ~= "Instance" or not model:IsA("Model") or not model:IsDescendantOf(workspace) then return false end
@@ -449,6 +472,8 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		result = "badTarget"
 	elseif model == char then
 		result = "self"
+	elseif squadmate(char, model) then -- v1.13
+		result = "squad"
 	elseif model:GetAttribute("DummyState") == "ko" then
 		result = "ko"
 	else

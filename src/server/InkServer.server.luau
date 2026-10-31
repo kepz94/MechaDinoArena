@@ -1,4 +1,4 @@
--- InkServer v1.5 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
+-- InkServer v1.6 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
 -- MDA-128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Neck ink tank +
 --   barrel". Kepu 2026-10-30: "How about an ink shooter that blinds your enemy for 2 seconds. Turns their screen black";
 --   answers: fully black (HUD stays), an aimed shot like the Grappling Hook (first dino hit), bots lose you, steps II 80
@@ -71,12 +71,16 @@
 -- v1.5 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
 --   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
 --   script attribute InkDazeEnabled (default true, read at each request; false = 1.4).
+-- v1.6 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): mayAffect(source, target) is also false for a squadmate (wraps the ModeRules check), so no squadmate is ever picked, hit or slowed. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute InkServerSquadEnabled (default true, read at each check; false = 1.5).
+--   Diagnostic: script InkServerSquadSkips (count of squadmate skips / refusals).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25)
 local PITCH_MIN_SHOULDER = math.rad(-20) -- v1.3: the shoulder muzzle sits high, so the shot may aim down to the ground ahead
 local AIM_HELP = 4
@@ -123,6 +127,31 @@ local function mayAffect(source, target)
 	local spl = Players:GetPlayerFromCharacter(source)
 	local inMenu = tpl ~= nil and tpl:GetAttribute("InMenu") == true
 	return ModeRules.canAffect(spl ~= nil, tpl ~= nil, inMenu, MODE)
+end
+-- v1.6: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("InkServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("InkServerSquadSkips", (script:GetAttribute("InkServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
+do -- v1.6: wrap the mode check with the squad check
+	local modeOnly = mayAffect
+	mayAffect = function(source, target)
+		if squadmate(source, target) then return false end
+		return modeOnly(source, target)
+	end
 end
 
 local remote = ReplicatedStorage:FindFirstChild("DinoInkRequest")

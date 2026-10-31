@@ -1,4 +1,4 @@
--- TetherServer v1.2 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
+-- TetherServer v1.3 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
 -- MDA-129, mockup docs/mockups/pachy_tether_options.html B "Tail-base launcher". Kepu 2026-10-30: "a tether spike where if
 --   it lands it latches the person to a chain to the ground. Makes them not mobile past the chain for a couple seconds"
 --   -> "this will not shoot straight like a gun tho. It will launch like a splash. So it will shoot vertical and do a
@@ -47,13 +47,17 @@
 -- v1.2 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
 --   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
 --   script attribute TetherDazeEnabled (default true, read at each request; false = 1.1).
+-- v1.3 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): mayAffect(source, target) is also false for a squadmate (wraps the ModeRules check), so no squadmate is ever picked, hit or slowed. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute TetherServerSquadEnabled (default true, read at each check; false = 1.2).
+--   Diagnostic: script TetherServerSquadSkips (count of squadmate skips / refusals).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local FLIGHT, ARC_HEIGHT, RANGE_SLACK, YANK_SPEED = 0.8, 22, 4, 60
 local STEEL, DARK, YELLOW = Color3.fromRGB(154, 166, 184), Color3.fromRGB(58, 64, 76), Color3.fromRGB(255, 200, 50)
 
@@ -74,6 +78,31 @@ local function mayAffect(source, target)
 	local spl = Players:GetPlayerFromCharacter(source)
 	local inMenu = tpl ~= nil and tpl:GetAttribute("InMenu") == true
 	return ModeRules.canAffect(spl ~= nil, tpl ~= nil, inMenu, MODE)
+end
+-- v1.3: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("TetherServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("TetherServerSquadSkips", (script:GetAttribute("TetherServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
+do -- v1.3: wrap the mode check with the squad check
+	local modeOnly = mayAffect
+	mayAffect = function(source, target)
+		if squadmate(source, target) then return false end
+		return modeOnly(source, target)
+	end
 end
 
 local remote = ReplicatedStorage:FindFirstChild("DinoTetherRequest")

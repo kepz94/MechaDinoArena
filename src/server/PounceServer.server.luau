@@ -1,4 +1,4 @@
--- PounceServer v1.12 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.13 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -107,6 +107,11 @@
 -- v1.12 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
 --   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
 --   script attribute PounceDazeEnabled (default true, read at each request; false = 1.11).
+-- v1.13 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): a claim on a squadmate is refused (PounceClaimResult "squad") right after "busy", before the
+--   Dome Visor check, so nothing pins, latches, hurts or knocks back anyone. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute PounceServerSquadEnabled (default true, read at each check; false = 1.12).
+--   Diagnostic: script PounceServerSquadSkips (count of squadmate skips / refusals).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -118,6 +123,24 @@ local function crest()
 	end
 	return crestMod or nil
 end
+-- v1.13: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("PounceServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("PounceServerSquadSkips", (script:GetAttribute("PounceServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
 
 local DEFAULTS = {PounceEnabled = false, PounceStaminaCost = 15, PounceCooldown = 3, PounceClaimWindow = 0.9,
 	PounceSizeRatio = 1.5, PounceLandDamage = 8, PounceTickDamage = 4, PounceTickInterval = 0.5,
@@ -128,7 +151,7 @@ local CLAIM_TOLERANCE = 24  -- studs between the claimed part and the raptor bod
 local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's centre beyond its half size
 local MAX_LATCH = 30        -- safety: seconds a latch may last
 
-script:SetAttribute("PounceServerVersion", "1.11")
+script:SetAttribute("PounceServerVersion", "1.13") -- v1.13 (1.12 left this at "1.11")
 if script:GetAttribute("PounceChargeBlockEnabled") == nil then script:SetAttribute("PounceChargeBlockEnabled", true) end -- v1.11
 if script:GetAttribute("PounceHeadbuttCancelEnabled") == nil then script:SetAttribute("PounceHeadbuttCancelEnabled", true) end -- v1.11
 if script:GetAttribute("PounceVisorEnabled") == nil then script:SetAttribute("PounceVisorEnabled", true) end -- v1.10
@@ -362,6 +385,8 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 			result = "badTarget"
 		elseif model:GetAttribute("PinnedAt") ~= nil then -- v1.1: already pinned
 			result = "busy"
+		elseif squadmate(char, model) then -- v1.13
+			result = "squad"
 		else
 			local hrp = char:FindFirstChild("HumanoidRootPart")
 			local dist = hrp and (closestPoint(part, hrp.Position) - hrp.Position).Magnitude or math.huge

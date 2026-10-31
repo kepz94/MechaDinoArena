@@ -1,4 +1,4 @@
--- MineServer v1.7 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.8 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -88,13 +88,17 @@
 -- v1.7 (Herrera Strobe Frill daze, MDA-155, plan docs/plans/HERRERA_PARTS_v1.0.md "Pass 2 — build map"): a request while
 --   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". Switch:
 --   script attribute MineDazeEnabled (default true, read at each request; false = 1.6).
+-- v1.8 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): mayAffect(source, target) is also false for a squadmate (wraps the ModeRules check), so no squadmate is ever picked, hit or slowed. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute MineServerSquadEnabled (default true, read at each check; false = 1.7).
+--   Diagnostic: script MineServerSquadSkips (count of squadmate skips / refusals).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local THROW_DIST, ARC_TIME, ARC_HEIGHT, ARM_TIME = 30, 0.6, 8, 0.5
 local TRIGGER, LIFETIME, BLINK = 6, 60, 0.25
 local VOLT, VOLT_CORE = Color3.fromRGB(127, 233, 255), Color3.fromRGB(225, 250, 255)
@@ -129,6 +133,31 @@ local function mayAffect(source, target)
 		local spl = Players:GetPlayerFromCharacter(source)
 		local inMenu = tpl ~= nil and tpl:GetAttribute("InMenu") == true
 		return ModeRules.canAffect(spl ~= nil, tpl ~= nil, inMenu, MODE)
+	end
+end
+-- v1.8: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("MineServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("MineServerSquadSkips", (script:GetAttribute("MineServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
+do -- v1.8: wrap the mode check with the squad check
+	local modeOnly = mayAffect
+	mayAffect = function(source, target)
+		if squadmate(source, target) then return false end
+		return modeOnly(source, target)
 	end
 end
 

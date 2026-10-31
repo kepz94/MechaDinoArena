@@ -1,4 +1,4 @@
--- HookServer v1.7 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.8 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -70,11 +70,16 @@
 --   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". A hit's damage is also x the target's DazedDamageMul while its DazedUntil is in the future (star 1.2) and x 0 while
 --   its StunBreakImmuneUntil is in the future (Stun Breaker star, MDA-156). Switch:
 --   script attribute HookDazeEnabled (default true, read at each request; false = 1.6).
+-- v1.8 (Arena squads, MDA-159, plan docs/plans/SQUADS_v1.0.md Task S2, ADR-006; Kepu 2026-10-31 "turning friendly fire off",
+--   picked "Everything harmful"): candidates(self) leaves out squadmates (the hook flies past them to an enemy behind) and the
+--   smash re-check drops a squadmate ("gone"). Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
+--   SquadTestId counts). Switch: script attribute HookServerSquadEnabled (default true, read at each check; false = 1.7).
+--   Diagnostic: script HookServerSquadSkips (count of squadmate skips / refusals).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.7"
+local VERSION = "1.8"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25) -- v1.1 clamp; v1.2 min -8 -> -2
 local WINDUP = 0.15        -- s arm raise before the claw flies
 local CLAW_SPEED = 220     -- studs/s (world)
@@ -151,6 +156,24 @@ local function gapTo(pos, hb)
 	return best
 end
 
+-- v1.8: squadmates are never targets (SquadRules 1.0, loaded on first use)
+local squadMod
+local function squadmate(a, b)
+	if script:GetAttribute("HookServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local ok, mod = pcall(require, m)
+		if not ok then return false end
+		squadMod = mod
+	end
+	if squadMod.sameChar(a, b) then
+		script:SetAttribute("HookServerSquadSkips", (script:GetAttribute("HookServerSquadSkips") or 0) + 1)
+		return true
+	end
+	return false
+end
 local function isTarget(m, self)
 	if not (m:IsA("Model") and m ~= self and m:IsDescendantOf(workspace)) then return nil end
 	local hb = m:FindFirstChild("Hitboxes")
@@ -166,7 +189,7 @@ local function candidates(self)
 	local list = {}
 	for _, pl in ipairs(Players:GetPlayers()) do
 		local c = pl.Character
-		if c then local hb = isTarget(c, self) if hb then table.insert(list, {m = c, hb = hb}) end end
+		if c and not squadmate(self, c) then local hb = isTarget(c, self) if hb then table.insert(list, {m = c, hb = hb}) end end -- v1.8: squad
 	end
 	local isl = workspace:FindFirstChild("DinoIsland")
 	local bots = isl and isl:FindFirstChild("Bots")
@@ -371,7 +394,7 @@ local busy = {} -- [char] = true while a shot runs
 local function smash(char, player, target, hb)
 	local t = now()
 	local result
-	if not char.Parent or not target.Parent or not isTarget(target, char) then
+	if not char.Parent or not target.Parent or not isTarget(target, char) or squadmate(char, target) then -- v1.8: squad
 		result = "gone"
 	else
 		local hp = headPos(char)
