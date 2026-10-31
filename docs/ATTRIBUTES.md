@@ -2253,3 +2253,6 @@ Look: ScreenGui TetherAimHud (Tag, Timer, Cancel); TetherAim disc + TetherAimLin
 | BotHeadbuttCharges / BotHeadbutts / BotHeadbuttHits / BotHeadbuttResult | pachy bot | charges left; charges; hits; hit / shielded / visor / missed / water / lost / interrupted |
 | HeadbuttStartedAt / HeadbuttEndedAt / HeadbuttHitAt / HeadbuttHitDamage / HeadbuttHitTarget / HeadbuttWindup / HeadbuttMaxTime | pachy bot | the charge stamps (pose + FX on every client) |
 | HeadbuttFXBotsEnabled | HeadbuttFX script | default true: pachy bots get the headbutt effects |
+
+## Pachy skins (SkinCatalog 1.3)
+No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pachy (pachy_riverstone / pachy_fossil / pachy_thunderhead / pachy_ember / pachy_obsidian / classic), SkinOwned_Pachy (comma list of owned pachy_* ids), SkinCredits_<RARITY>, SkinServerResult.

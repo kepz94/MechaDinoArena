@@ -25,8 +25,13 @@
 --   have to be made with skins in mind"): Pachy colour groups (PachyModelData 1.0: main, stripes, belly, dome, knobs
 --   (knob ring and the hidden spikes), mask, limbs, claws, eyes; pupils / mouth are never-paint) and its Classic skin.
 --   Skin rule for every new dino: one hex per group, no hex shared, none equal to a never-paint colour.
+-- v1.3 (plan docs/plans/PACHY_SKINS_v1.0.md Task 1, mockup docs/mockups/pachy_skins_options.html; Kepu 2026-10-30:
+--   lineup "Same as raptor", "Pachy-own themes", ownership "Separate per dino", picks "All option A"): the pachy lineup
+--   Classic, Riverstone (COMMON, free), Fossil (RARE 149), Thunderhead (RARE 149), Ember (EPIC 499), Obsidian Crown
+--   (LEGENDARY 999). Ids carry the prefix "pachy_": the save's owned set is keyed by id only, so a raptor skin never
+--   unlocks a pachy one. Prices / products are the existing rarity tiers. Raptor / T-Rex lists, roles and API unchanged.
 local SkinCatalog = {}
-SkinCatalog.Version = "1.2"
+SkinCatalog.Version = "1.3"
 
 SkinCatalog.ROLES = {
 	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -67,6 +72,26 @@ SkinCatalog.SKINS = {
 		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
 			colors = {main = "7A6A4E", stripes = "3E5A55", belly = "C8B898", dome = "E6DCC4", knobs = "8C7A5A", mask = "3F6F7A",
 				limbs = "5E5240", claws = "2E2620", eyes = "8A2A1E"}},
+		-- v1.3: the pachy drop
+		{id = "pachy_riverstone", name = "Riverstone", rarity = "COMMON", free = true,
+			colors = {main = "6F7F6A", stripes = "3C4A3E", belly = "C9CDB8", dome = "D8D4C0", knobs = "8E9A84", mask = "4E6E78",
+				limbs = "5A6658", claws = "2A2E2A", eyes = "D9A23A"}},
+		{id = "pachy_fossil", name = "Fossil", rarity = "RARE", price = 149, free = false,
+			colors = {main = "C9BFA4", stripes = "5A5246", belly = "E3DAC4", dome = "F2EAD2", knobs = "B8AE96", mask = "4A443A",
+				limbs = "B5AA90", claws = "2B2722", eyes = "7A1E12"},
+			materials = {dome = "Marble", knobs = "Marble"}},
+		{id = "pachy_thunderhead", name = "Thunderhead", rarity = "RARE", price = 149, free = false,
+			colors = {main = "4A5566", stripes = "FFD23F", belly = "9AA6B5", dome = "C9D3DF", knobs = "FFD23F", mask = "2C3440",
+				limbs = "3A4452", claws = "1A1E24", eyes = "FFD23F"},
+			materials = {stripes = "Neon", eyes = "Neon"}},
+		{id = "pachy_ember", name = "Ember", rarity = "EPIC", price = 499, free = false,
+			colors = {main = "2B2422", stripes = "FF6A1A", belly = "4A3530", dome = "3A2E2A", knobs = "FFB02E", mask = "FF6A1A",
+				limbs = "352B28", claws = "0F0B0A", eyes = "FFB02E"},
+			materials = {stripes = "Neon", knobs = "Neon", eyes = "Neon"}},
+		{id = "pachy_obsidian", name = "Obsidian Crown", rarity = "LEGENDARY", price = 999, free = false,
+			colors = {main = "151517", stripes = "D4A72C", belly = "2A2A2E", dome = "F2C14A", knobs = "FFE08A", mask = "D4A72C",
+				limbs = "1F1F22", claws = "D4A72C", eyes = "FFE08A"},
+			materials = {dome = "Foil", stripes = "Neon", knobs = "Neon", eyes = "Neon"}},
 	},
 }
 
