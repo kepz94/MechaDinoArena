@@ -491,3 +491,55 @@ The front is always unchanged.
 
 **AbilityBar / ArenaTouch:** slot tiles for the keyed parts (quills, smoke, strobe, breaker; the breaker tile is dimmed unless you're stunned). Check the phone layout through ArenaTouch's styled table (the 2026-10-31 lesson).
 
+
+---
+
+## Pass 2 — build map (2026-10-31, after Kepu's "Okay next")
+
+### New scripts
+| Script | Place | Version | Switch | Job |
+|---|---|---|---|---|
+| HerreraMovesServer | ServerScriptService | 1.0 | HerreraMovesServerEnabled, HerreraMoves_<id>Enabled | remotes DinoQuillRequest, DinoSmokeRequest, DinoStrobeRequest, DinoBreakerRequest, DinoGlideRequest; checks, targets, damage, daze, clouds, push, immunity |
+| HerreraMovesFX | StarterPlayerScripts | 1.0 | HerreraMovesFXEnabled | every client: quill flights + numbers, smoke puffs, strobe flash / rays, daze stars, breaker bolts / blink, "?" pops |
+| GliderTest | StarterCharacterScripts | 1.0 | GliderTestEnabled | owner client: glide while JUMP is held in the air (fall clamp, forward hold), tells the server |
+| IdleAnimation/HerreraMovesPose | module | 1.0 | model GlidePoseEnabled / StrobePoseEnabled | glide pose (full pose) and the strobe rear-up (offsets) |
+
+### Extended scripts (each change behind its own switch)
+| Script | Version | Change |
+|---|---|---|
+| SlashServer | 1.5 | "dazed" refusal; damage × DazedDamageMul while dazed, 0 while StunBreakImmuneUntil; dive accepted while Gliding + GliderDrop; glide dive × GliderDropMul; ★ bleed burst within GliderBurst studs |
+| SlashTest | 1.4 | kind "dive" while GlideLocal + GliderDrop |
+| BiteServer 1.9, PounceServer 1.12, HeadbuttServer 1.11, RamServer 1.2, HookServer 1.7, InkServer 1.5, MineServer 1.7, TetherServer 1.2, ScreechServer 1.10 | | "dazed" refusal (DazedUntil > now); Headbutt / Hook also the damage-taken multiplier |
+| BoneCrest | 1.4 | factor(): 0 while StunBreakImmuneUntil; × DazedDamageMul while dazed (covers bites, pounces, bot hits) |
+| BotServer | 1.22 | a dazed bot starts no bite / pounce / headbutt; SmokeHidden players are dropped at once and not picked |
+| SprintTest | 1.15 | × SmokeRunMul while SmokeRunUntil; × SmokeSlowMul while SmokeSlowUntil |
+| TreeTopHide | 1.1 | also hides the BillboardGuis of a player with SmokeHidden |
+| MechaButtons | 1.24 | TIMED_PARTS quills / smoke / strobe / breaker; quills fire with the camera look; breaker ready only while stunned / pinned |
+| AbilityBar | 1.18 | same tiles; breaker "waiting" unless stunned / pinned |
+| IdleAnimation | 1.36 | glide pose (lerped in over 0.2 s, out over 0.25 s) after the leap layer; strobe rear-up on top |
+| HerreraPartsServer | 1.2 | glider wings open while Gliding |
+| SkillTree | 1.40 | HERRERA_PASS2_SOON = false (the five parts go live) |
+
+### Re-grounded scope of "can't attack" (daze)
+- Refused while dazed: bite, pounce, slash, headbutt, ram, Grappling Hook, Ink Shooter, Shock Mine, Tether Spike, Shock Cannon, Quill Launcher, Strobe Frill.
+- Not refused (not attacks): moving, leap, climb, Thrusters, Cloak, Energy Shield, Dome Visor, Adrenaline, Servo Dash, Med-Station, Scent, Smoke Pods, Stun Breaker, roar.
+
+### Deterministic map
+| State | Condition | Result |
+|---|---|---|
+| Quill request | badArg / dead / disabled / menu / stunned / pinned / dazed / cooldown | refused (QuillServerResult) |
+| Quill volley | ok, target in 35° flat cone within QuillRange × scale, line of sight | QuillCount quills at it; else straight ahead QuillRange × scale ("miss") |
+| Quill hit | arrives, target alive, no Energy Shield | QuillDamage × roar debuff × daze ★ × immunity off DummyHealth; kill → KilledWith "quills" |
+| Smoke request | badArg / dead / disabled / menu / stunned / pinned / cooldown | refused |
+| Smoke cloud | ok | centre = root, radius SmokeRadius × scale, until now + SmokeTime |
+| Owner inside | root within radius | SmokeHidden true; SmokeRunUntil = cloud end (III) |
+| Owner outside / cloud over | | SmokeHidden false, SmokeRunUntil 0 |
+| Enemy inside (★) | SmokeSlowMul < 1, player allowed by ModeRules or a bot | player SmokeSlowUntil / SmokeSlowMul; bot WalkSpeed × mul |
+| Strobe request | badArg / dead / disabled / menu / stunned / pinned / dazed / cooldown | refused |
+| Strobe flash | ok, 0.15 s later | every allowed enemy root within StrobeRange × scale and StrobeAngle / 2 of the facing (flat): DazedUntil = max(old, now + StrobeDaze), DazedDamageMul = StrobeDazedMul; Energy Shield = skipped |
+| Breaker request | badArg / dead / disabled / menu / notStunned (not stunned and not PinHeld) / cooldown | refused |
+| Breaker ok | | StunnedUntil = now; a pinner gets ShakeOffReason "breaker" + ShakeOffAt (PounceServer releases); II push enemies within BreakerPush × scale; ★ StunBreakImmuneUntil = now + BreakerImmune |
+| Glide (client) | GliderEnabled, JUMP held, airborne, falling, not on a tree, not slashing / stunned / pinned | GlideLocal true, vertical speed ≥ −GliderFall, forward held at the run speed when no stick input; server Gliding true |
+| Glide ends | land / grab a trunk / release JUMP / slash dash / part off | GlideLocal false, server Gliding false |
+| Slash "dive" request | not on a tree, Gliding and GliderDrop | accepted (was "noTree"); SlashGlideDive true |
+| Glide dive hit | | × GliderDropMul; ★ every Bitable model within GliderBurst × scale of the landing point bleeds (the slash bleed) |
