@@ -2337,3 +2337,8 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | AbilityBarHerreraEnabled / AbilityBar_Slash / AbilityBar_Hop / AbilityBarSlashPips | AbilityBar script / herrera | default true; stunned / active / empty / ready; ready / ground; "n/max" |
 | MainMenuHerreraEnabled | MainMenu script | default true |
 | ClimbHopTime | herrera (override) | ClimbTest hop push seconds (0.35) |
+| ArenaTouchSlashEnabled / ArenaTouchJumpForAllEnabled / ArenaTouchForceTouch | ArenaTouch script | true / true / unset | ArenaTouch 1.7 switches; ForceTouch = draw the phone layout without a touch screen (Studio test hook) |
+| ArenaTouchSlashPips / ArenaTouchJumpLit | character (client) | "n/max" / bool | ArenaTouch 1.7 diagnostics |
+| ClimbHopSource | herrera (owner client) | "action" / "humanoid" | ClimbTest 1.11: which input made the last hop |
+| AbilityBarJumpNameEnabled | AbilityBar script | true | AbilityBar 1.15: Leap / Hop tiles read JUMP (false = LEAP / HOP) |
+| TRexJumpEnabled / TRexJumpVersion / TRexJumpApplied | TRexJump script; character | true / "1.0" / count | TRexJump 1.0: T-Rex jump settings (written only where unset: JumpEnabled true, JumpWindup 0.2, JumpLaunchPower 50, JumpBoost 6, JumpBoostMinSpeed 2, JumpAirHold true, JumpStaminaCost 0, JumpCooldown 1) |
