@@ -87,6 +87,19 @@
 --     are doing" -> "Remove Jaws for raptors"): PATHS.jaws.notFor = {Raptor = true}, the same rule as Regeneration for
 --     the T-Rex. The raptor's Attack area is Blade Claws + Dart Launcher; a raptor record holding Jaws steps is refunded
 --     on load (sanitize). The T-Rex keeps Jaws.
+-- v1.37 (Kepu 2026-10-31: "you keep applying these to any new Dino ... I need you to just have a generalized stat line that
+--   can be customized to the Dino"; mockup docs/mockups/stat_lines_per_dino_options.html option A "Same rows, own names",
+--   new rows Tree Stalker + Blood Frenzy; plan docs/plans/STAT_LINES_v1.0.md). Switch SkillTree.HERRERA_STATS (default true):
+--   * path.nameFor[dino] (new, like stepsFor): the name that dino sees. The Herrera: Lifesteal -> "Blood Drinker",
+--     Jaws -> "Razor Claws", Thick Hide -> "Wiry Frame", Sprint Legs -> "Scurry Legs" (same path ids, so saved steps
+--     keep their pips), each with its own stepsFor.
+--   * Sprint Legs III text per dino (stepsFor TRex / Raptor / Pachy / Herrera) names only that dino's own moves.
+--   * New area "hunt" (Hunt, rgb(201, 162, 255)) and two Herrera-only paths: "stalker" Tree Stalker (hunt) and "frenzy"
+--     Blood Frenzy (attack).
+--   * effects(steps, "Herrera"): Jaws II-star off (mainCdMul 1, bleedDps / bleedTime / crush 0) and instead
+--     slashRefillMul 0.65 (II), slashBleedDps 5 (III), slashExtraCharges 1 (star); Sprint Legs III climbSpeedMul 1.35;
+--     Tree Stalker diveRangeMul 55/40, diveRefill, treeTopHidden, diveStun 0.5; Blood Frenzy frenzySpeedMul 1.1,
+--     slashBleedTime 6, bleedBonus 3, killRefill. These fields are 1 / 0 / false on every other dino.
 local SkillTree = {}
 SkillTree.Version = "1.15"
 SkillTree.COST = {1, 2, 3, 4}
@@ -698,6 +711,65 @@ if SkillTree.PACHY_NO_JAWS then
 	SkillTree.PATHS.jaws.notFor = SkillTree.PATHS.jaws.notFor or {}
 	SkillTree.PATHS.jaws.notFor.Pachy = true
 end
+-- v1.37: one stat-line shape, each dino its own rows (mockup docs/mockups/stat_lines_per_dino_options.html option A;
+--   Kepu 2026-10-31 "you wouldn't call it jaws here because the herera doesn't use jaws at all"; new rows Tree Stalker
+--   and Blood Frenzy)
+SkillTree.HERRERA_STATS = true
+if SkillTree.HERRERA_STATS and not SkillTree.PATHS.stalker then
+	local P = SkillTree.PATHS
+	local function nameFor(id, dino, name)
+		P[id].nameFor = P[id].nameFor or {}
+		P[id].nameFor[dino] = name
+	end
+	local function stepsFor(id, dino, steps)
+		P[id].stepsFor = P[id].stepsFor or {}
+		P[id].stepsFor[dino] = steps
+	end
+	nameFor("lifesteal", "Herrera", "Blood Drinker")
+	stepsFor("lifesteal", "Herrera", {
+		"5% of your slash and bleed damage heals you",
+		"10% of your slash and bleed damage heals you",
+		"15% of your slash and bleed damage heals you",
+		"Healing past full becomes a shield (up to 20% of max health, lasts 6 s)"})
+	nameFor("jaws", "Herrera", "Razor Claws")
+	stepsFor("jaws", "Herrera", {
+		"Slash hits harder (+5 Attack points: slash 8 -> 13)",
+		"Slash charges refill 35% faster (4 s -> 2.6 s)",
+		"Bleed burns hotter: 5 per second (was 3)",
+		"A 3rd slash charge"})
+	nameFor("hide", "Herrera", "Wiry Frame")
+	stepsFor("hide", "Herrera", {P.hide.steps[1], "Less knockback: thrown half as far by rams and shoves", P.hide.steps[3],
+		P.hide.steps[4]})
+	nameFor("legs", "Herrera", "Scurry Legs")
+	stepsFor("legs", "Herrera", {P.legs.steps[1], P.legs.steps[2], "Climb 35% faster", P.legs.steps[4]})
+	-- Sprint Legs III names only that dino's own moves
+	stepsFor("legs", "TRex", {P.legs.steps[1], P.legs.steps[2], "Ram and leap recharge 35% faster", P.legs.steps[4]})
+	stepsFor("legs", "Raptor", {P.legs.steps[1], P.legs.steps[2], "Pounce and leap recharge 35% faster", P.legs.steps[4]})
+	stepsFor("legs", "Pachy", {P.legs.steps[1], P.legs.steps[2], "Leap recharges 35% faster", P.legs.steps[4]})
+	-- the Herrera's own rows: Tree Stalker (new area Hunt) and Blood Frenzy (attack)
+	table.insert(SkillTree.AREAS, {id = "hunt", name = "Hunt", color = {201, 162, 255}, paths = {}})
+	local function add(id, name, areaId, steps)
+		local p = path(id, name, false, false, steps)
+		p.area = areaId
+		p.dino = "Herrera"
+		SkillTree.OWNER[id] = "Herrera"
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		P[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	add("stalker", "Tree Stalker", "hunt", {
+		"Drop attack reaches 55 studs (was 40)",
+		"Landing a drop attack refills a slash charge",
+		"On a tree top, enemies cannot see your name or health bar",
+		"A drop attack hit stuns for 0.5 s"})
+	add("frenzy", "Blood Frenzy", "attack", {
+		"Run 10% faster while an enemy near you bleeds",
+		"Bleed lasts 6 s (was 4)",
+		"Slash a bleeding dino: +3 damage",
+		"A kill while they bleed refills all slash charges"})
+end
 
 -- level curve
 function SkillTree.xpToNext(level)
@@ -1017,6 +1089,27 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 		if ml >= 1 then e.legsBoostMul, e.legsPowerMul = 1.5, 1.2 end
 		if ml >= 2 then e.legsPowerMul = 1.45 end
 		if ml >= 4 then e.legsDoubleMul, e.legsDoubleForward = 1, 15 end
+	end
+	-- v1.37: the Herrera's rows (Razor Claws / Scurry Legs III / Tree Stalker / Blood Frenzy; Blood Drinker = lifesteal,
+	--   Wiry Frame = hide, both as before)
+	e.slashRefillMul, e.slashBleedDps, e.slashExtraCharges, e.climbSpeedMul = 1, 0, 0, 1
+	e.diveRangeMul, e.diveRefill, e.treeTopHidden, e.diveStun = 1, false, false, 0
+	e.frenzySpeedMul, e.slashBleedTime, e.bleedBonus, e.killRefill = 1, 0, 0, false
+	if SkillTree.HERRERA_STATS and dino == "Herrera" then
+		local jw, lg, ts, bf = s.jaws or 0, s.legs or 0, s.stalker or 0, s.frenzy or 0
+		e.mainCdMul, e.bleedDps, e.bleedTime, e.crushStun, e.crushCooldown = 1, 0, 0, 0, 0 -- Razor Claws, not Jaws II-star
+		if jw >= 2 then e.slashRefillMul = 0.65 end
+		if jw >= 3 then e.slashBleedDps = 5 end
+		if jw >= 4 then e.slashExtraCharges = 1 end
+		if lg >= 3 then e.climbSpeedMul = 1.35 end
+		if ts >= 1 then e.diveRangeMul = 55 / 40 end
+		if ts >= 2 then e.diveRefill = true end
+		if ts >= 3 then e.treeTopHidden = true end
+		if ts >= 4 then e.diveStun = 0.5 end
+		if bf >= 1 then e.frenzySpeedMul = 1.1 end
+		if bf >= 2 then e.slashBleedTime = 6 end
+		if bf >= 3 then e.bleedBonus = 3 end
+		if bf >= 4 then e.killRefill = true end
 	end
 	return e
 end

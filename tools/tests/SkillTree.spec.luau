@@ -1,4 +1,4 @@
--- SkillTree.spec v1.19 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.20 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
 -- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
 -- v1.10: Shock Dart (screech shown as "Shock Dart", range 100 / 135; the 35% range check reads the data)
@@ -7,6 +7,7 @@
 -- v1.13: Shock Mine blast + launch (damage 25, launch 25, daze 1)
 -- v1.14: Shock Cannon star = heavy shot (30 damage, stun 1.1, no jam); Decoy hidden
 -- v1.15: Grapple, Dart Launcher, Pack Beacon, Decoy Hologram deleted from the tree
+-- v1.20: SkillTree 1.37 — per-dino stat rows (nameFor / stepsFor), area Hunt, Herrera Tree Stalker + Blood Frenzy
 -- v1.19: SkillTree 1.22 — Mecha Legs (pachy passive part mechalegs)
 -- v1.18: SkillTree 1.21 — Grappling Hook (pachy button part hookarm); grapple stays unknown
 -- v1.17: SkillTree 1.20 — Battering Dome (pachy-only line, effects per step)
@@ -42,7 +43,7 @@ for _, a in ipairs(ST.AREAS) do
 		eq("area of " .. p.id, ST.PATHS[p.id] and ST.PATHS[p.id].area, a.id)
 	end
 end
-eq("areas", table.concat(areas, ","), "health,attack,defense,speed,eng")
+eq("areas", table.concat(areas, ","), "health,attack,defense,speed,eng,hunt") -- v1.20: + hunt
 eq("path ids", table.concat(ids, ","),
 	"regen,medstation,lifesteal,adrenaline,repairdrone,biobattery,jaws,turret,rocket,blade,screech,hide,armor,shield,cloak,"
 	.. "reactive,legs,thrusters,ramjet,sentry,traps,barricade,shieldproj,roaramp,scent") -- v1.15: - dart, grapple, beacon, decoy; -- v1.9: + screech, scent
@@ -426,6 +427,39 @@ eq("legs 0 cd", ST.effects({mechalegs = 0}, "Pachy").legsCooldown, 0)
 eq("legs I boost", ST.effects({mechalegs = 1}, "Pachy").legsBoostMul, 1.25); eq("legs I cd", ST.effects({mechalegs = 1}, "Pachy").legsCooldown, 6)
 eq("legs II power", ST.effects({mechalegs = 2}, "Pachy").legsPowerMul, 1.2); eq("legs III cd mul", ST.effects({mechalegs = 3}, "Pachy").legsCdMul, 0.65)
 eq("legs star double", ST.effects({mechalegs = 4}, "Pachy").doubleJump, true); eq("legs III no double", ST.effects({mechalegs = 3}, "Pachy").doubleJump, false)
+
+-- v1.20: per-dino stat rows (SkillTree 1.37)
+local P = ST.PATHS
+eq("herrera jaws name", P.jaws.nameFor and P.jaws.nameFor.Herrera, "Razor Claws")
+eq("herrera lifesteal name", P.lifesteal.nameFor and P.lifesteal.nameFor.Herrera, "Blood Drinker")
+eq("herrera hide name", P.hide.nameFor and P.hide.nameFor.Herrera, "Wiry Frame")
+eq("herrera legs name", P.legs.nameFor and P.legs.nameFor.Herrera, "Scurry Legs")
+eq("trex jaws name unchanged", P.jaws.nameFor and P.jaws.nameFor.TRex, nil)
+eq("legs III trex", P.legs.stepsFor.TRex[3], "Ram and leap recharge 35% faster")
+eq("legs III raptor", P.legs.stepsFor.Raptor[3], "Pounce and leap recharge 35% faster")
+eq("legs III herrera", P.legs.stepsFor.Herrera[3], "Climb 35% faster")
+eq("raptor lifesteal steps kept", P.lifesteal.stepsFor.Raptor[1], "20% of the damage you deal heals you")
+eq("stalker herrera only", ST.seesPath(P.stalker, "Herrera") and not ST.seesPath(P.stalker, "TRex") and not ST.seesPath(P.stalker, "Raptor") and not ST.seesPath(P.stalker, "Pachy"), true)
+eq("frenzy herrera only", ST.seesPath(P.frenzy, "Herrera") and not ST.seesPath(P.frenzy, "Raptor"), true)
+eq("stalker area", P.stalker.area, "hunt"); eq("frenzy area", P.frenzy.area, "attack")
+eq("stalker not a part", P.stalker.mech, false)
+eq("stalker sanitized off herrera", ST.sanitize({stalker = 3}, "TRex").stalker, 0)
+local H = function(t) return ST.effects(t, "Herrera") end
+eq("razor I attack", H({jaws = 1}).attackPts, 5)
+eq("razor II refill", H({jaws = 2}).slashRefillMul, 0.65); eq("razor II no mainCd", H({jaws = 2}).mainCdMul, 1)
+eq("razor III bleed", H({jaws = 3}).slashBleedDps, 5); eq("razor III no jaws bleed", H({jaws = 3}).bleedDps, 0)
+eq("razor star charge", H({jaws = 4}).slashExtraCharges, 1); eq("razor star no crush", H({jaws = 4}).crushStun, 0)
+eq("trex jaws III bleed kept", ST.effects({jaws = 3}, "TRex").bleedDps, 3); eq("trex no slash fields", ST.effects({jaws = 4}, "TRex").slashExtraCharges, 0)
+eq("scurry III climb", H({legs = 3}).climbSpeedMul, 1.35); eq("scurry II climb", H({legs = 2}).climbSpeedMul, 1)
+eq("raptor legs III no climb", ST.effects({legs = 3}, "Raptor").climbSpeedMul, 1)
+eq("blood drinker I", H({lifesteal = 1}).lifesteal, 0.05); eq("blood drinker star shield", H({lifesteal = 4}).shieldMax, 0.20)
+eq("stalker 0", H({}).diveRangeMul, 1)
+eq("stalker I range", H({stalker = 1}).diveRangeMul, 55 / 40); eq("stalker II refill", H({stalker = 2}).diveRefill, true)
+eq("stalker III hidden", H({stalker = 3}).treeTopHidden, true); eq("stalker II not hidden", H({stalker = 2}).treeTopHidden, false)
+eq("stalker star stun", H({stalker = 4}).diveStun, 0.5)
+eq("frenzy I speed", H({frenzy = 1}).frenzySpeedMul, 1.1); eq("frenzy II time", H({frenzy = 2}).slashBleedTime, 6)
+eq("frenzy III bonus", H({frenzy = 3}).bleedBonus, 3); eq("frenzy star refill", H({frenzy = 4}).killRefill, true)
+eq("frenzy III no refill", H({frenzy = 3}).killRefill, false)
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes
