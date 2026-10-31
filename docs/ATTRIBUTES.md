@@ -2454,3 +2454,7 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | <Script>SquadEnabled / <Script>SquadSkips (Bite/Pounce/Slash/Headbutt/Hook/Roar/Ink/Tether/Mine/Screech/HerreraMovesServer, SkillEffects) | each script | true / count | Squads S2 (MDA-159) |
 | BiteClaimResult / PounceClaimResult / SlashHitResult / HeadbuttHitResult "squad", SlashDiveCheck "squad" | character | result | Squads S2 |
 | BiteTestSquadEnabled / PounceTestSquadEnabled / SlashTestSquadEnabled / HeadbuttTestSquadEnabled / TreeTopHideSquadEnabled | each script | true | Squads S3 (MDA-160) |
+| MedStationSquadHealEnabled | MedStationServer script | true | MedStationServer 1.2 |
+| MedSquadInside / MedSquadHealed | character (squadmate) | bool or nil / HP | MedStationServer 1.2 |
+| ArenaSpawnSquadEnabled | ArenaSpawnServer script | true | ArenaSpawnServer 1.2 |
+| ArenaSpawnKind "squad" | player | | ArenaSpawnServer 1.2 |

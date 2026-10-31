@@ -1,4 +1,4 @@
--- ArenaSpawnServer v1.1 (Mecha Dino Arena) — spread spawn points for the Arena place (Kepu 2026-10-31: "allow different
+-- ArenaSpawnServer v1.2 (Mecha Dino Arena) — spread spawn points for the Arena place (Kepu 2026-10-31: "allow different
 -- spawn points on the arena map because im going to have an actual group test"; picked "8 spots around the island",
 -- "Farthest from other players", "Arena: Play + respawn"). Map: docs/reference/arena/arena_spawns_map.jpg.
 -- Spawn points: the BaseParts in Workspace.ArenaSpawns (ArenaSpawn1..8, invisible, anchored, no collide / query / touch;
@@ -31,10 +31,18 @@
 --   live player, or more players than the limit -> the 1.0 ring rule. Diagnostics: player ArenaSpawnKind ("near" /
 --   "ring"), ArenaSpawnIndex 0 for a near spawn, ArenaSpawnNearTo (the other player's name). Switch: script attribute
 --   ArenaSpawnNearEnabled (default true, read at each placement; false = 1.0).
+-- v1.2 (Arena squads, MDA-161, plan docs/plans/SQUADS_v1.0.md Task S4; Kepu 2026-10-31 picked "respawn near a squadmate"):
+--   before the 1.1 rules, when the player has a live squadmate (SquadRules 1.0 same: alive, not in the menu, root known), up
+--   to NEAR_TRIES random spots SQUAD_MIN..SQUAD_MAX (30..60) studs from one of them (picked at random) are tried with the
+--   1.1 ground / clear checks (DinoIsland.Ground, dry, flat, no Trees / Rocks / MountainSteps / EdgeWalls within 18 studs);
+--   every live NON-squad player must be at least NEAR_MIN (60) studs away. Facing: toward that squadmate. Any lobby size.
+--   No spot / no live squadmate -> the 1.1 rules (near, then ring). Diagnostics: player ArenaSpawnKind "squad",
+--   ArenaSpawnNearTo (the squadmate's name), ArenaSpawnIndex 0. Switch: script attribute ArenaSpawnSquadEnabled (default
+--   true, read at each placement; false = 1.1).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local SETTLE, SETTLE_RESPAWN = 0.15, 0.3
 
 script:SetAttribute("ArenaSpawnServerVersion", VERSION)
@@ -139,13 +147,73 @@ local function nearSpot(player)
 	return nil
 end
 
+-- v1.2: a spot near a live squadmate (any lobby size); returns ground point, squadmate name, their position
+if script:GetAttribute("ArenaSpawnSquadEnabled") == nil then script:SetAttribute("ArenaSpawnSquadEnabled", true) end
+local SQUAD_MIN, SQUAD_MAX = 30, 60
+local squadMod
+local function squadSpot(player)
+	if script:GetAttribute("ArenaSpawnSquadEnabled") == false then return nil end
+	if not squadMod then
+		local arc = ServerStorage:FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return nil end
+		local ok, mod = pcall(require, m)
+		if not ok then return nil end
+		squadMod = mod
+	end
+	if not squadMod.live() then return nil end
+	local island = workspace:FindFirstChild("DinoIsland")
+	local groundF = island and island:FindFirstChild("Ground")
+	if not groundF then return nil end
+	local mates, others = {}, {}
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local c = pl ~= player and pl.Character
+		local r = c and c:FindFirstChild("HumanoidRootPart")
+		local hum = c and c:FindFirstChildOfClass("Humanoid")
+		if r and hum and hum.Health > 0 and pl:GetAttribute("InMenu") ~= true then
+			if squadMod.same(player, pl) then table.insert(mates, {pl = pl, pos = r.Position})
+			else table.insert(others, r.Position) end
+		end
+	end
+	if #mates == 0 then return nil end
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Include
+	rp.FilterDescendantsInstances = {groundF}
+	local op = OverlapParams.new()
+	op.FilterType = Enum.RaycastFilterType.Include
+	local block = {}
+	for _, n in ipairs({"Trees", "Rocks", "MountainSteps", "EdgeWalls"}) do
+		local f = island:FindFirstChild(n)
+		if f then table.insert(block, f) end
+	end
+	op.FilterDescendantsInstances = block
+	local anchor = mates[math.random(1, #mates)]
+	for _ = 1, NEAR_TRIES do
+		local a = math.random() * 2 * math.pi
+		local d = SQUAD_MIN + math.random() * (SQUAD_MAX - SQUAD_MIN)
+		local x, z = anchor.pos.X + math.cos(a) * d, anchor.pos.Z + math.sin(a) * d
+		local hit = workspace:Raycast(Vector3.new(x, anchor.pos.Y + 300, z), Vector3.new(0, -800, 0), rp)
+		if hit and hit.Position.Y >= 0 and hit.Normal.Y > 0.9
+			and #workspace:GetPartBoundsInBox(CFrame.new(hit.Position + Vector3.new(0, 12, 0)), Vector3.new(36, 22, 36), op) == 0 then
+			local clear = true
+			for _, o in ipairs(others) do
+				if Vector3.new(o.X - x, 0, o.Z - z).Magnitude < NEAR_MIN then clear = false break end
+			end
+			if clear then return hit.Position, anchor.pl.Name, anchor.pos end
+		end
+	end
+	return nil
+end
+
 local moves = 0
 local function place(player, char, reason)
 	if not on() or player.Character ~= char or not char.Parent then return end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 	local pos, i, dir, nearTo
-	local g, who, whoPos = nearSpot(player) -- v1.1
+	local kind -- v1.2
+	local g, who, whoPos = squadSpot(player) -- v1.2
+	if g then kind = "squad" else g, who, whoPos = nearSpot(player) end -- v1.1
 	if g then
 		pos, i, nearTo = g + Vector3.new(0, standOffset(char), 0), 0, who
 		local d = Vector3.new(whoPos.X - pos.X, 0, whoPos.Z - pos.Z)
@@ -171,7 +239,7 @@ local function place(player, char, reason)
 	moves += 1
 	script:SetAttribute("ArenaSpawnMoves", moves)
 	player:SetAttribute("ArenaSpawnIndex", i)
-	player:SetAttribute("ArenaSpawnKind", nearTo and "near" or "ring") -- v1.1
+	player:SetAttribute("ArenaSpawnKind", kind or (nearTo and "near" or "ring")) -- v1.1; v1.2 "squad"
 	player:SetAttribute("ArenaSpawnNearTo", nearTo or "")
 	player:SetAttribute("ArenaSpawnReason", reason)
 	player:SetAttribute("ArenaSpawnAt", workspace:GetServerTimeNow()) -- last

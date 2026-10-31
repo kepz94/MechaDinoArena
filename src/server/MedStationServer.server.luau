@@ -1,4 +1,4 @@
--- MedStationServer v1.1 (Mecha Dino Arena) — the pachy's Med-Station, a Health slot part (path "medstation"). MDA-125,
+-- MedStationServer v1.2 (Mecha Dino Arena) — the pachy's Med-Station, a Health slot part (path "medstation"). MDA-125,
 -- plan docs/plans/PACHY_MEDSTATION_v1.0.md, mockup docs/mockups/pachy_medstation_options.html look "C · Pulse pad".
 -- Kepu 2026-10-30: "drop a Machine that provides heals in an area for 5 seconds and heals your health up to 50 percent in
 --   those 5 seconds. It can't be dropped while pinned down by another dinosaur or stunned. This gives the pachy heals but
@@ -36,12 +36,20 @@
 --   PreviewBody "none": no dino needed): Invoke() builds the same pulse pad with the same build code (scale 1) and a
 --   PREVIEW_RADIUS (5) stud dashed ring so it fits a card, and returns it (not left in Workspace). Switch: script attribute
 --   MedStationServerPreviewEnabled (default true).
+-- v1.2 (Arena squads, MDA-161, plan docs/plans/SQUADS_v1.0.md Task S4; Kepu 2026-10-31: "Also allow heals to work for both
+--   of us like the patchy heal mine"): while a pad runs, every live squadmate of the owner (SquadRules 1.0 sameChar: an Arena
+--   player on the same squad, or a test model with the same SquadTestId) whose HumanoidRootPart is within the pad's radius
+--   (flat) heals like the owner: MedRate x its own MaxHealth per second (every TICK), capped at its MaxHealth, with the "+N"
+--   pop over it once a second. Squadmate attributes: MedSquadInside (true / false while a squadmate's pad runs, nil after),
+--   MedSquadHealed (HP added by squadmates' pads, total, 0.1 steps). The owner's rules are unchanged; only Med Stations
+--   heal squadmates (no other heal changes). Switch: script attribute MedStationSquadHealEnabled (default true, read every
+--   tick; false = 1.1, owner only).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local PREVIEW_RADIUS = 5 -- v1.1
 local TICK = 0.25
 local PAD_SIZE = 3.5
@@ -173,10 +181,64 @@ local function pop(char, amount)
 	task.delay(0.85, function() g:Destroy() end)
 end
 
+-- v1.2: squadmates inside the pad heal too
+if script:GetAttribute("MedStationSquadHealEnabled") == nil then script:SetAttribute("MedStationSquadHealEnabled", true) end
+local squadMod
+local function squadRules()
+	if not squadMod then
+		local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return nil end
+		local ok, mod = pcall(require, m)
+		if not ok then return nil end
+		squadMod = mod
+	end
+	return squadMod
+end
+local function squadHeal(char, st)
+	st.mates = st.mates or {}
+	if script:GetAttribute("MedStationSquadHealEnabled") == false then return end
+	local R = squadRules()
+	if not R or not R.live() then return end
+	local list = {}
+	for _, pl in ipairs(Players:GetPlayers()) do
+		if pl.Character and pl.Character ~= char then table.insert(list, pl.Character) end
+	end
+	for _, m in ipairs(workspace:GetChildren()) do
+		if m:IsA("Model") and m:GetAttribute("SquadTestId") ~= nil then table.insert(list, m) end
+	end
+	for _, m in ipairs(list) do
+		if R.sameChar(char, m) then
+			local hum = m:FindFirstChildOfClass("Humanoid")
+			local root = m:FindFirstChild("HumanoidRootPart")
+			if hum and root and hum.Health > 0 then
+				local flat = Vector3.new(root.Position.X - st.center.X, 0, root.Position.Z - st.center.Z).Magnitude
+				local inside = flat <= st.radius
+				local e = st.mates[m]
+				if not e then
+					e = {sec = 0}
+					st.mates[m] = e
+				end
+				if m:GetAttribute("MedSquadInside") ~= inside then m:SetAttribute("MedSquadInside", inside) end
+				if inside and hum.Health < hum.MaxHealth then
+					local before = hum.Health
+					hum.Health = math.min(hum.MaxHealth, before + st.rate * hum.MaxHealth * TICK)
+					local added = hum.Health - before
+					e.sec += added
+					m:SetAttribute("MedSquadHealed", math.floor(((m:GetAttribute("MedSquadHealed") or 0) + added) * 10 + 0.5) / 10)
+				end
+			end
+		end
+	end
+end
+
 local function stop(char, reason)
 	local st = pads[char]
 	if not st then return end
 	pads[char] = nil
+	for m in pairs(st.mates or {}) do -- v1.2
+		if m.Parent then m:SetAttribute("MedSquadInside", nil) end
+	end
 	if st.model then st.model:Destroy() end
 	if char.Parent then
 		if reason ~= "time" then char:SetAttribute("MedActiveUntil", now()) end
@@ -269,11 +331,16 @@ RunService.Heartbeat:Connect(function(dt)
 					char:SetAttribute("MedHealed", math.floor(((char:GetAttribute("MedHealed") or 0) + added) * 10 + 0.5) / 10)
 					char:SetAttribute("MedHealedTotal", math.floor(((char:GetAttribute("MedHealedTotal") or 0) + added) * 10 + 0.5) / 10)
 				end
+				squadHeal(char, st) -- v1.2
 				st.secAcc += TICK
 				if st.secAcc >= 1 - 1e-6 then
 					st.secAcc = 0
 					if st.secHealed >= 0.5 then pop(char, st.secHealed) end
 					st.secHealed = 0
+					for m, e in pairs(st.mates or {}) do -- v1.2: squadmates' pops
+						if e.sec >= 0.5 and m.Parent then pop(m, e.sec) end
+						e.sec = 0
+					end
 				end
 			end
 		end
