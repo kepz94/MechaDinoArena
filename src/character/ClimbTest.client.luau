@@ -1,4 +1,4 @@
--- ClimbTest v1.1 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.2 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -27,12 +27,15 @@
 --   along the body's facing (dot > 0.3; "back" < -0.3); on the trunk, forward / back = the raw input's y (W / S), so
 --   the camera angle does not matter while climbing. Diagnostic ClimbInputSource ("inputAction" / "controlModule" /
 --   "none").
+-- v1.2 (Studio check of 1.1: running into a palm 1.9 studs off its axis slid past it without a grab — the thin ray
+--   missed the 3-stud trunk the body hit): trunkAhead / trunkEnds use a sphere cast as wide as the HRP (radius =
+--   HRP width / 2); trunkAhead = the sphere's travel + radius - the HRP's half length.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -224,12 +227,13 @@ RunService.Heartbeat:Connect(function()
 	hopQueued = false
 	local half = hrp.Size.Z / 2
 	local probe = {}
-	local hit = workspace:Raycast(hrp.Position, fwd * (half + s.grab * 3), trunkParams)
+	local radius = hrp.Size.X / 2 -- v1.2: as wide as the body
+	local hit = workspace:Spherecast(hrp.Position, radius, fwd * (half + s.grab * 3), trunkParams)
 	if hit then
-		probe.trunkAhead = hit.Distance - half
+		probe.trunkAhead = math.max(0, hit.Distance + radius - half)
 		currentTree = trunkTree[hit.Instance] and trunkTree[hit.Instance].Name or currentTree
 	end
-	probe.trunkEnds = workspace:Raycast(hrp.Position + Vector3.new(0, headReach, 0), fwd * (half + s.grab * 3), trunkParams) == nil
+	probe.trunkEnds = workspace:Spherecast(hrp.Position + Vector3.new(0, headReach, 0), radius, fwd * (half + s.grab * 3), trunkParams) == nil
 	local feetY = hrp.Position.Y - (hrp.Size.Y / 2 + hum.HipHeight)
 	local headY = hrp.Position.Y + hrp.Size.Y / 2 + headReach
 	local plist = {}
