@@ -1,4 +1,4 @@
--- HerreraJumpPose v1.0 (Mecha Dino Arena) — the Herrerasaurus' jump, option C "Branch reach" (MDA-147, plan
+-- HerreraJumpPose v1.1 (Mecha Dino Arena) — the Herrerasaurus' jump, option C "Branch reach" (MDA-147, plan
 -- docs/plans/HERRERA_JUMP_v1.0.md Task 4; mockup docs/mockups/herrera_jump_options.html, Kepu 2026-10-31 "C · Branch
 -- reach"). Springs from the scurry head-first, arms stretched forward and up as if grabbing a branch, legs trailing, tail
 -- curled up; swings the legs under to land on all fours. Used by IdleAnimation 1.34 instead of JumpPose on GaitScurry
@@ -17,9 +17,15 @@
 -- API: Defaults; settings(model); crouch(c, s, ss); air(a, vyN, s, ss); land(u, s, ss) -> angles;
 --   get(kind, x, y, s, ss, geo, motors, scale) -> pose {[joint] = CFrame} (kind "crouch" (x = c) / "air" (x = a, y = vyN)
 --   / "land" (x = u)).
+-- v1.1 (Kepu 2026-10-31, live v255: "it doesn't show the same jump animation all the time, only when I leap towards a
+--   tree. I want it to be that animation every time"): a leap at a tree grabs on while still rising, so only the rising
+--   branch reach showed; a full jump turned into the falling pose (arms down, legs forward, nose down) after the apex.
+--   With HJumpHoldReach = 1 (default) the reach is held for the whole air time: arms up / forward, legs trailing, tail
+--   curled, body pitched HJumpPitch x HJumpHoldPitch nose-up (ramped in with the reach), no falling change; the landing
+--   squash is unchanged. HJumpHoldReach = 0 = 1.0 (rising / falling by vyN).
 local ScurryPose = require(script.Parent:WaitForChild("ScurryPose"))
 local HerreraJumpPose = {}
-HerreraJumpPose.Version = "1.0"
+HerreraJumpPose.Version = "1.1"
 HerreraJumpPose.Defaults = {
 	HJumpPoseScale = 1,    -- multiplier on every offset below (0 = the plain scurry crouch)
 	HJumpPitch = 28,       -- degrees of body pitch at full vertical speed (nose up rising, down falling)
@@ -29,6 +35,8 @@ HerreraJumpPose.Defaults = {
 	HJumpPushTime = 0.14,  -- s of the leg push at liftoff
 	HJumpReachTime = 0.2,  -- s to the full reach
 	HJumpLandTime = 0.18,  -- s of the landing squash
+	HJumpHoldReach = 1,    -- v1.1: 1 = hold the branch reach for the whole air time; 0 = 1.0 (falling pose after the apex)
+	HJumpHoldPitch = 0.5,  -- v1.1: share of HJumpPitch held nose-up while holding the reach
 }
 local TAIL_CURL = {14, 10, 14, 18, 22}
 local sin, min, max, pi = math.sin, math.min, math.max, math.pi
@@ -72,7 +80,8 @@ function HerreraJumpPose.air(a, vyN, s, ss)
 	local g = s.HJumpPoseScale
 	local push = 1 - smooth(a / max(0.01, s.HJumpPushTime))
 	local up = smooth(a / max(0.01, s.HJumpReachTime))
-	local reach = smooth(-vyN * 1.4)
+	local hold = s.HJumpHoldReach ~= 0 -- v1.1
+	local reach = hold and 0 or smooth(-vyN * 1.4)
 	both(o, "Arm", (s.HJumpArmReach * up - 35 * reach) * g, -12 * up * g)
 	add(o, "Jaw", -16 * up * g)
 	local trail = s.HJumpLegTrail * up * (1 - reach)
@@ -81,7 +90,11 @@ function HerreraJumpPose.air(a, vyN, s, ss)
 	both(o, "Ankle", -40 * up * (1 - reach) * g)
 	add(o, "Neck", 14 * up * g); add(o, "Head", -6 * up * g)
 	for i = 1, 5 do add(o, "Tail" .. i, -TAIL_CURL[i] * s.HJumpTailCurl * up * (1 - 0.6 * reach) * g) end
-	add(o, "RootJoint", s.HJumpPitch * max(-1, min(1, vyN)) * g)
+	if hold then -- v1.1: the same nose-up reach all the way
+		add(o, "RootJoint", s.HJumpPitch * s.HJumpHoldPitch * up * g)
+	else
+		add(o, "RootJoint", s.HJumpPitch * max(-1, min(1, vyN)) * g)
+	end
 	return o
 end
 

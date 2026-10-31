@@ -2355,3 +2355,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ClimbThroughEnabled / ClimbTopJumpEnabled | ClimbTest script | true / true | ClimbTest 1.14: climb through the leaves; JUMP on a tree top = the leap |
 | ClimbThrough | herrera (owner client) | "off" / "moving" / "done" / "timeout" | ClimbTest 1.14 diagnostic |
 | HerreraJumpClockEnabled | herrera model | true | IdleAnimation 1.35: time-driven air pose |
+| HJumpHoldReach / HJumpHoldPitch | herrera model | 1 / 0.5 | HerreraJumpPose 1.1: hold the branch reach the whole jump (0 = 1.0 falling pose) |
