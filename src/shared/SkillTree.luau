@@ -1,4 +1,4 @@
--- SkillTree v1.41 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.42 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,12 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.42 (Kepu 2026-10-31: "Blood siphon should be passive actually"): with SkillTree.HERRERA_SIPHON_PASSIVE (default
+--   true) "siphon" leaves BUTTONS: it takes no loadout slot and works whenever it is bought (SkillEffects 1.28), like the
+--   raptor's Blade Claws. The Lab lists it with the always-on parts on the STATS tab ("Mech part · always on"); a saved
+--   loadout slot holding it is dropped by sanitizeLoadout (not slottable). Step texts and effects unchanged.
+--   Kepu, right after: "And claws" -> SkillTree.HERRERA_IRONCLAW_PASSIVE (default true): "ironclaw" (Iron Claw) leaves
+--   BUTTONS the same way.
 -- v1.41 (Kepu 2026-10-31 after playing pass 2: "We need the smoke cloud to be way bigger and thicker. Also lower the
 --   quill count to 6 quills"; picked smoke "B · 28 studs, 260 puffs" and quills "3 / 4 / 5 / 6"): switch
 --   SkillTree.HERRERA_TUNE_1 (default true). effects() is wrapped (the 1.38 maths unchanged inside): on a Herrera with the
@@ -850,6 +856,11 @@ SkillTree.HERRERA_PASS2_SOON = false -- v1.40: pass 2 built
 SkillTree.HERRERA_TUNE_1 = true
 SkillTree.HERRERA_QUILL_COUNTS = {3, 4, 5, 6}
 SkillTree.HERRERA_SMOKE_RADIUS = 28
+-- v1.42: Blood Siphon is passive (no slot)
+SkillTree.HERRERA_SIPHON_PASSIVE = true
+if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_SIPHON_PASSIVE then SkillTree.BUTTONS.siphon = nil end
+SkillTree.HERRERA_IRONCLAW_PASSIVE = true -- v1.42: "And claws"
+if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_IRONCLAW_PASSIVE then SkillTree.BUTTONS.ironclaw = nil end
 if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_TUNE_1 then
 	if SkillTree.PATHS.quills then
 		SkillTree.PATHS.quills.steps = {"Button: fire 3 quills at your target, 4 damage each (40 studs). Recharges in 20 s",

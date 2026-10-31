@@ -1,4 +1,4 @@
--- SkillEffects v1.27 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.28 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -176,10 +176,14 @@
 --   SiphonRate x 0.5 each, through the same heal() as Lifesteal (overheal -> the Blood Drinker shield when bought);
 --   star (SiphonKillHeal): a model in range whose KilledWith is "bleed" and KilledAt is in the last 1.5 s heals
 --   SiphonKillHeal x MaxHealth once per kill. Diagnostics: character SiphonBleeding (count in range), SiphonHealAt (last).
+-- v1.28 (Kepu 2026-10-31: "Blood siphon should be passive actually"; SkillTree 1.42 takes "siphon" out of BUTTONS): a
+--   Herrera part that is not a button part (ST.BUTTONS[id] ~= true) is on whenever it is bought, slotted or not; button
+--   parts still need a slot. Today: Blood Siphon and Iron Claw. Switch: script attribute SkillEffectsHerreraPassiveEnabled
+--   (default true, read at each apply; false = 1.27, every Herrera part needs a slot).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.26"
+local VERSION = "1.28" -- v1.28 (1.27 left this at "1.26")
 if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
 local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false
 if script:GetAttribute("SkillEffectsHerreraPartsEnabled") == nil then script:SetAttribute("SkillEffectsHerreraPartsEnabled", true) end -- v1.27
@@ -475,7 +479,8 @@ local function applyChar(char, st)
 		local isH = char:GetAttribute("Species") == "Herrera"
 		for _, def in ipairs(HPARTS) do
 			local id, prefix = def[1], def[2]
-			local on = live and isH and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and inSlot(id)
+			local passive = script:GetAttribute("SkillEffectsHerreraPassiveEnabled") ~= false and ST.BUTTONS[id] ~= true -- v1.28
+			local on = live and isH and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and (inSlot(id) or passive)
 			for _, f in ipairs(def[3]) do
 				local v = f[3]
 				if on and e[f[2]] ~= nil then v = e[f[2]] end
