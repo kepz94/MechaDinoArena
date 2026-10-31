@@ -1,4 +1,4 @@
--- HeadbuttServer v1.11 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.12 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -109,17 +109,27 @@
 --   the character's DazedUntil (HerreraMovesServer 1.0) is in the future is refused ("dazed"), right after "stunned". A hit's damage is also x the target's DazedDamageMul while its DazedUntil is in the future (star 1.2) and x 0 while
 --   its StunBreakImmuneUntil is in the future (Stun Breaker star, MDA-156). Switch:
 --   script attribute HeadbuttDazeEnabled (default true, read at each request; false = 1.10).
+-- v1.12 (Kepu 2026-10-31: "when you do the dash ability on pachy and charge during the dash have it do max damage with a
+--   1.5x multiplier"): a headbutt charge that starts while the pachy's Servo Dash runs (ServoDashUntil > now at the
+--   request, ServoDashServer 1.0), or whose hit lands while it runs, is a dash charge: its hit uses the full run-up
+--   (runMul 1, as if charged the whole HeadbuttFullRun / HeadbuttFullTime) and is x HeadbuttDashChargeMul (script
+--   attribute, default 1.5), with the other multipliers (Bone Dome, Blood Rush, debuff, daze) as before. Attacker
+--   diagnostics HeadbuttHitDashCharge (true / false), HeadbuttHitDashMul. Switch: script attribute
+--   HeadbuttDashChargeEnabled (default true, read at each request / hit; false = 1.11).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.11"
+local VERSION = "1.12"
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
 local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
 if script:GetAttribute("HeadbuttSacrificeRestartsRefill") == nil then script:SetAttribute("HeadbuttSacrificeRestartsRefill", true) end -- v1.7
 local SAC_RESTARTS_REFILL = script:GetAttribute("HeadbuttSacrificeRestartsRefill") ~= false
 if script:GetAttribute("HeadbuttSacrificeEnabled") == nil then script:SetAttribute("HeadbuttSacrificeEnabled", true) end -- v1.5
 local SAC_ON = script:GetAttribute("HeadbuttSacrificeEnabled") ~= false
+for k, v in pairs({HeadbuttDashChargeEnabled = true, HeadbuttDashChargeMul = 1.5}) do -- v1.12
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 if script:GetAttribute("HeadbuttRunTimeEnabled") == nil then script:SetAttribute("HeadbuttRunTimeEnabled", true) end -- v1.4
 local RUNTIME_ON = script:GetAttribute("HeadbuttRunTimeEnabled") ~= false
 if script:GetAttribute("HeadbuttRunUpEnabled") == nil then script:SetAttribute("HeadbuttRunUpEnabled", true) end -- v1.3
@@ -305,6 +315,7 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 	local hrp0 = char:FindFirstChild("HumanoidRootPart") -- v1.3: where the run-up starts
 	st.active.startPos = hrp0 and hrp0.Position or nil
 	st.active.sacrifice = sacrifice -- v1.5
+	st.active.dashed = (tonumber(char:GetAttribute("ServoDashUntil")) or 0) > t -- v1.12: charge started during the Servo Dash
 	publish(char, st)
 	char:SetAttribute("HeadbuttCount", (char:GetAttribute("HeadbuttCount") or 0) + 1)
 	setResult(char, "ok")
@@ -490,10 +501,19 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		char:SetAttribute("HeadbuttHitRun", math.floor(run * 10 + 0.5) / 10)
 		char:SetAttribute("HeadbuttHitRunMul", math.floor(runMul * 100 + 0.5) / 100)
 	end
+	local dashMul = 1 -- v1.12: a charge during the Servo Dash = full run-up x HeadbuttDashChargeMul
+	local dashed = script:GetAttribute("HeadbuttDashChargeEnabled") ~= false
+		and (st.active.dashed == true or (tonumber(char:GetAttribute("ServoDashUntil")) or 0) > t)
+	if dashed then
+		runMul = 1
+		dashMul = math.max(0, tonumber(script:GetAttribute("HeadbuttDashChargeMul")) or 1.5)
+	end
+	char:SetAttribute("HeadbuttHitDashCharge", dashed)
+	char:SetAttribute("HeadbuttHitDashMul", dashMul)
 	local sacMul = 1 -- v1.5: Blood Rush II
 	if st.active.sacrifice then sacMul = math.max(0, tonumber(char:GetAttribute("BloodRushDamageMul")) or 1) end
 	char:SetAttribute("HeadbuttHitSacrifice", st.active.sacrifice == true)
-	local d = math.floor(get(char, "HeadbuttDamage") * runMul * sacMul * domeMul(char, "HeadbuttDamageMul") * mul + 0.5) -- v1.1: x dome; v1.3: x run-up; v1.5: x Blood Rush
+	local d = math.floor(get(char, "HeadbuttDamage") * runMul * sacMul * domeMul(char, "HeadbuttDamageMul") * mul * dashMul + 0.5) -- v1.1: x dome; v1.3: x run-up; v1.5: x Blood Rush; v1.12: x dash charge
 	local hp = model:GetAttribute("DummyHealth")
 	if typeof(hp) == "number" then model:SetAttribute("DummyHealth", math.max(0, hp - d)) end
 	if typeof(hp) == "number" and hp > 0 and hp - d <= 0 then

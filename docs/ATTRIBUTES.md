@@ -2432,3 +2432,9 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | HerreraMovesFX_SmokePuffs / _SmokePuffScale / _SmokeOwnTransparency / _SmokeOtherTransparency | HerreraMovesFX script | 260 / 2.2 / 0.4 / 0 | HerreraMovesFX 1.1 |
 | HERRERA_TUNE_1 / HERRERA_QUILL_COUNTS / HERRERA_SMOKE_RADIUS (module flags) | SkillTree | true / {3,4,5,6} / 28 | SkillTree 1.41 |
 | HeadbuttRefill | pachy model | 3 (was 5) | PachyModelData 1.3 |
+| HeadbuttDashChargeEnabled / HeadbuttDashChargeMul | HeadbuttServer script | true / 1.5 | HeadbuttServer 1.12 |
+| HeadbuttHitDashCharge / HeadbuttHitDashMul | pachy | bool / mul | HeadbuttServer 1.12 |
+| ALL_UNLOCKED (module flag) | SkinCatalog | true | SkinCatalog 1.5 |
+| ArenaSpawnsEnabled / ArenaSpawnServerVersion / ArenaSpawnMode / ArenaSpawnPoints / ArenaSpawnMoves | ArenaSpawnServer script | true / "1.0" / mode / count / count | ArenaSpawnServer 1.0 |
+| ArenaSpawnIndex / ArenaSpawnReason / ArenaSpawnAt | player | n / "play"/"respawn"/"join" / time | ArenaSpawnServer 1.0 |
+| ArenaSpawnIndex | Workspace.ArenaSpawns parts | 1-8 | tools/arena_spawns_install.luau |

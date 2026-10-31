@@ -1,4 +1,4 @@
--- SkinCatalog v1.4 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
+-- SkinCatalog v1.5 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1, mockup docs/mockups/skins_lab_tab.html (Kepu 2026-10-30: skins picked in the Lab's
 -- SKINS tab from the main menu; "whatever is chosen in the menu is what youre spawning with every time unless you choose
 -- a different skin"; buying with Robux is the next plan). Pure: no Instance access. Used by SkinServer 1.0 (server) and,
@@ -34,8 +34,15 @@
 --   2026-10-30 "let's choose C just to keep it somewhat realistic"): Herrera colour groups (HerreraModelData 1.0: main,
 --   stripes, belly, markings, limbs, claws, eyes, tailbands, mask, frill; teeth / pupils / mouth are never-paint) and its
 --   Classic skin (Swamp olive). Raptor / T-Rex / Pachy lists, roles and API unchanged.
+-- v1.5 (Kepu 2026-10-31: "im going to have an actual group test the game out. Have all the skins unlocked for now"):
+--   with SkinCatalog.ALL_UNLOCKED (default true) owns() is true for every known skin of the species, free or paid, so the
+--   Lab shows every skin as owned (EQUIP, no price) and SkinServer lets any of them be equipped and painted. Nothing is
+--   bought or written to owned / credits: a buy request for a paid skin answers "owned". Set false to go back to 1.4
+--   (paid skins locked until bought). This module is cloned to ReplicatedStorage.SkinShared at start, so the Lab and the
+--   server read the same flag.
 local SkinCatalog = {}
-SkinCatalog.Version = "1.4"
+SkinCatalog.ALL_UNLOCKED = true -- v1.5: group test, every skin unlocked
+SkinCatalog.Version = "1.5"
 
 SkinCatalog.ROLES = {
 	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -130,6 +137,7 @@ end
 function SkinCatalog.owns(species, id, ownedSet)
 	local s = SkinCatalog.get(species, id)
 	if not s then return false end
+	if SkinCatalog.ALL_UNLOCKED then return true end -- v1.5
 	if s.free == true then return true end
 	return type(ownedSet) == "table" and ownedSet[id] == true
 end
