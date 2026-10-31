@@ -2480,3 +2480,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | HerreraMoves_caltropArmOnLandEnabled | HerreraMovesServer script | true | HerreraMovesServer 1.3 |
 | HerreraMovesFXCaltropDropEnabled / HerreraMovesFXCaltropKickEnabled / CaltropFlights / CaltropKicks | HerreraMovesFX script | true / true / count / count | HerreraMovesFX 1.4 |
 | MainMenuHPartsEnabled | MainMenu script | true | MainMenu 1.11 |
+| SkillTree.RAPTOR_BLADE_STAT | SkillTree module | true | SkillTree 1.44 |

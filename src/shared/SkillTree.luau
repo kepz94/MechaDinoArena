@@ -1,4 +1,4 @@
--- SkillTree v1.43 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.44 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,12 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.44 (Kepu 2026-10-31: "Slotted parts and equipped stats show up. Anything not equipped is not shown"; Blade Claws
+--   picked "Make it a raptor stat line"): SkillTree.RAPTOR_BLADE_STAT (default true): "blade" Blade Claws gets mech = false
+--   (a raptor stat row in Attack, listed under STATS in the Lab, bought like the other rows) instead of an "always on" mecha
+--   card that could not be slotted. It stays in LIVE_MECH (the Studio test layer still gives it at star) and keeps its path
+--   id, steps and effects, so bought steps carry over; BladeLook (Mecha_Blade) still shows once owned, like the
+--   Herrera's stat rows. Set false = 1.43.
 -- v1.43 (Kepu 2026-10-31 16:26: "the herrerra changes we made need to be their own stat lines, the claws the blood sucker.
 --   Remove the speed debuff from the claws but make the damage 25% more max"; picked "Move to STATS rows, keep looks",
 --   "+5 / +10 / +15 / +25%", plating too):
@@ -942,6 +948,12 @@ if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_PASS3 and not SkillTree.PATHS.c
 	part("hadren", "Adrenaline Injector", "health", {
 		"Button: heal 25% of max health over 3 s and run 1.4x faster while it lasts. Recharges in 20 s",
 		"Heal 34%", "Recharges 26% faster", "Also refills every slash charge at once"})
+end
+-- v1.44: Blade Claws is a raptor stat row
+SkillTree.RAPTOR_BLADE_STAT = true
+if SkillTree.RAPTOR_BLADE_STAT and SkillTree.PATHS.blade then
+	SkillTree.PATHS.blade.mech = false
+	SkillTree.BUTTONS.blade = nil
 end
 
 -- level curve
