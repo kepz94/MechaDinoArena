@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Herrerasaurus generator v1.1 (Mecha Dino Arena) — writes src/shared/Models/HerreraModelData.luau.
+"""Herrerasaurus generator v1.2 (Mecha Dino Arena) — writes src/shared/Models/HerreraModelData.luau.
 
 Kepu 2026-10-30: "the next Dino I want to work on it's the Herrerasaurus. This will be a utility Dino someone that's a
 Pain in the ass to deal with but easy to kill" · "It's going to have the most mecha utility and the fastest in the game" ·
@@ -18,6 +18,9 @@ gait come with the playable plan.
 v1.1 (plan docs/plans/HERRERA_SCURRY_v1.0.md Task 3, mockup docs/mockups/herrera_scurry_options.html option A, Kepu
 "Wow I love A"): attributes GaitScurry = true (IdleAnimation 1.31 uses ScurryPose instead of WalkPose), GaitAlwaysRun =
 true, ScurryPoseVersion "1.0". Geometry unchanged.
+v1.2 (plan docs/plans/HERRERA_KIT_v1.0.md Task 1, MDA-133): kit attributes — DinoMaxHealth 40, MoveRunSpeed 90 /
+MoveWalkSpeed 48 (raptor 78 / 41.6, ~+15%), CameraStartZoom 16, TurnLimitRate 540 (raptor values), SlashEnabled + Slash*,
+ClimbEnabled + Climb* (distances at scale 1; the body is doubled in game). Geometry unchanged.
 Run: python3 tools/herrera_generator.py [--palette rust|charcoal|olive] [--mock OUT]
   (default palette olive = Classic; --mock writes segments + joints only, for Studio renders)
 """
@@ -28,7 +31,7 @@ OUT = os.path.join(ROOT, "src", "shared", "Models", "HerreraModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 ROLES = ["main", "stripes", "belly", "markings", "limbs", "claws", "eyes", "tailbands", "mask", "frill"]
 
-VERSION = "1.1"
+VERSION = "1.2"
 TARGET_LEN = 11.2    # studs at scale 1 (raptor 12.85; doubled in game: ~22.4 vs the raptor's 25.4)
 HIP0 = 3.3           # authored hip height before the length scale
 HRP_SIZE_D0 = (3.2, 2.1, 1.2)
@@ -327,6 +330,12 @@ else:
         "BiteEnabled": "false", "PounceEnabled": "false", "RamEnabled": "false", "RoarEnabled": "false",
         "JumpEnabled": "false", "CreepEnabled": "false",
         "GaitScurry": "true", "GaitAlwaysRun": "true", "ScurryPoseVersion": '"1.0"',  # v1.1
+        # v1.2: kit (plan HERRERA_KIT_v1.0 Task 1)
+        "DinoMaxHealth": "40", "MoveRunSpeed": "90", "MoveWalkSpeed": "48", "CameraStartZoom": "16", "TurnLimitRate": "540",
+        "SlashEnabled": "true", "SlashCharges": "2", "SlashRefill": "4", "SlashDist": "12.5", "SlashTime": "0.3",
+        "SlashDamage": "8", "SlashBleedDps": "3", "SlashBleedTime": "4", "SlashBurstMul": "1.4", "SlashBurstTime": "0.5",
+        "SlashDiveRange": "20", "SlashDiveCone": "35", "SlashReach": "2",
+        "ClimbEnabled": "true", "ClimbSpeed": "10", "ClimbGrabDist": "1.5", "ClimbTopGap": "2", "ClimbHopSpeed": "12",
     })
     attrs.pop("StarterCharacterVersion", None)
     lines = [
