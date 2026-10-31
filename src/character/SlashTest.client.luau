@@ -1,4 +1,4 @@
--- SlashTest v1.0 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
+-- SlashTest v1.1 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 9 (server: SlashServer 1.1), mockup docs/mockups/herrera_kit_options.html.
 -- Kepu 2026-10-30: "Dash-through slash"; the drop attack "should be able to happen if I press the dash aimed at a nearby
 --   target but not be its own dedicated button".
@@ -26,13 +26,19 @@
 --   ("ground" / "dive" / "leap"), SlashLocalTarget, SlashInputResult, SlashLastInput ("click" / "key" / "touch"),
 --   SlashContact, SlashContacts (count), SlashLocalEndAt, SlashClickBound.
 -- Switch: character attribute SlashLeftClickEnabled (default true; false = R2 / touch only).
+-- v1.1 (Studio check of 1.0: the dash into an anchored T-Rex bot hit it but slid around its blocking hitboxes): for the
+--   dash only, every BasePart of this character whose CollisionGroup is "HerreraBody" or "DinoHitbox" (the HRP and the own
+--   blocking hitboxes) is put in "SlashDash" (SlashServer 1.2: collides like HerreraBody, not with dino hitboxes), so the
+--   body passes through other dinos and still stands on the ground / tree tops; the groups are put back at the dash end
+--   (and on death / removal). Only when the group is registered. Switch: character attribute SlashPassThroughEnabled
+--   (default true; false = 1.0). Diagnostic: SlashPassThrough (parts moved, 0 when off).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local ACTION = "DinoSlash"
 local ACTION_CLICK = "DinoSlashClick"
 local BIND = "DinoSlashDrive"
@@ -135,9 +141,36 @@ local function diveTarget()
 	return best
 end
 
+-- v1.1: pass through other dinos during the dash
+local PhysicsService = game:GetService("PhysicsService")
+local savedGroups = nil -- {[part] = group}
+local function passThrough(on)
+	if on then
+		if savedGroups or char:GetAttribute("SlashPassThroughEnabled") == false then return end
+		local okReg, reg = pcall(function() return PhysicsService:IsCollisionGroupRegistered("SlashDash") end)
+		if not (okReg and reg) then show("SlashPassThrough", 0) return end
+		savedGroups = {}
+		local n = 0
+		for _, p in ipairs(char:GetDescendants()) do
+			if p:IsA("BasePart") and (p.CollisionGroup == "HerreraBody" or p.CollisionGroup == "DinoHitbox") then
+				savedGroups[p] = p.CollisionGroup
+				p.CollisionGroup = "SlashDash"
+				n += 1
+			end
+		end
+		show("SlashPassThrough", n)
+	elseif savedGroups then
+		for p, g in pairs(savedGroups) do
+			if p.Parent then p.CollisionGroup = g end
+		end
+		savedGroups = nil
+	end
+end
+
 local function stopDash()
 	lv.Enabled = false
 	dash = nil
+	passThrough(false) -- v1.1
 end
 
 local function finishLocal(nextState)
@@ -191,6 +224,7 @@ local function tryPress(source)
 	show("SlashLocalTarget", target and target.Name or "")
 	if requestRemote then requestRemote:FireServer(stamp, kind, target) end
 	show("SlashInputResult", "sent")
+	passThrough(true) -- v1.1
 	setState("dash")
 	phaseAt = os.clock()
 end

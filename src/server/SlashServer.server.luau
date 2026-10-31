@@ -1,4 +1,4 @@
--- SlashServer v1.1 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.2 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -49,13 +49,20 @@
 -- v1.1 (Studio check of 1.0: a bleed on Bot_TRex_1 took 3 ticks (9), not 4 — the last tick is due exactly at
 --   SlashBleedUntil and the expiry test ran first): a tick is taken when due and not later than SlashBleedUntil (+1 ms);
 --   the bleed is dropped after its last tick (next tick past SlashBleedUntil).
+-- v1.2 (Studio check of SlashTest 1.0: the ground dash into an anchored T-Rex bot hit it, but the body slid around the
+--   bot's blocking hitboxes instead of passing through; the plan's dash is "through"): registers the collision group
+--   "SlashDash" = the collisions of "HerreraBody" (TreeTopServer 1.0; "Default" when it is missing) with every registered
+--   group, except "DinoHitbox" (DinoHitboxes' boxes) and itself: not collidable. SlashTest 1.1 puts the dashing Herrera's
+--   own parts in it for the dash only. Copied at start and again after 4 s (TreeTopServer re-copies HerreraBody after 3 s).
+--   Switch: script attribute SlashPassThroughEnabled (default true, read at start; false = no group, 1.1). Diagnostic:
+--   script SlashDashGroup ("ready" / "off" / "failed").
 -- Switch: script attribute SlashServerEnabled (default true, read at start; false = every request "disabled").
 -- Diagnostics: script SlashServerVersion, SlashRequests, SlashHits, SlashBleedTicks.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local TIME_SLACK = 0.6      -- s after the dash time a claim is still accepted (client -> server lag)
 local PATH_TOLERANCE = 6    -- studs (x scale) between the target's hitboxes and the dash path, on top of SlashReach
 local DIVE_SLACK = 3        -- studs (x scale) added to SlashDiveRange for the request check (the target moves)
@@ -70,6 +77,36 @@ script:SetAttribute("SlashHits", 0)
 script:SetAttribute("SlashBleedTicks", 0)
 if script:GetAttribute("SlashServerEnabled") == nil then script:SetAttribute("SlashServerEnabled", true) end
 local enabled = script:GetAttribute("SlashServerEnabled") ~= false
+
+-- v1.2: pass-through collision group for the dash
+do
+	if script:GetAttribute("SlashPassThroughEnabled") == nil then script:SetAttribute("SlashPassThroughEnabled", true) end
+	if script:GetAttribute("SlashPassThroughEnabled") == false then
+		script:SetAttribute("SlashDashGroup", "off")
+	else
+		local PhysicsService = game:GetService("PhysicsService")
+		local GROUP, HITBOX = "SlashDash", "DinoHitbox"
+		local function copyGroups()
+			local ok = pcall(function()
+				if not PhysicsService:IsCollisionGroupRegistered(GROUP) then PhysicsService:RegisterCollisionGroup(GROUP) end
+				local src = PhysicsService:IsCollisionGroupRegistered("HerreraBody") and "HerreraBody" or "Default"
+				for _, g in ipairs(PhysicsService:GetRegisteredCollisionGroups()) do
+					local name = g.name
+					if name ~= GROUP then
+						PhysicsService:CollisionGroupSetCollidable(GROUP, name, PhysicsService:CollisionGroupsAreCollidable(src, name))
+					end
+				end
+				PhysicsService:CollisionGroupSetCollidable(GROUP, GROUP, false)
+				if PhysicsService:IsCollisionGroupRegistered(HITBOX) then
+					PhysicsService:CollisionGroupSetCollidable(GROUP, HITBOX, false)
+				end
+			end)
+			script:SetAttribute("SlashDashGroup", ok and "ready" or "failed")
+		end
+		copyGroups()
+		task.delay(4, copyGroups)
+	end
+end
 
 local function remoteOf(name)
 	local r = ReplicatedStorage:FindFirstChild(name)
