@@ -7,7 +7,8 @@
 
 ## Global Constraints
 - Additive. WalkPose, IdlePose and every other pose layer unchanged; raptor / T-Rex / pachy keep the WalkPose path (they have no GaitScurry).
-- Versions: ScurryPose 1.0, IdleAnimation 1.31, HerreraModelData 1.1 (generator 1.1), ScurryPose.spec 1.0, herrera Play harness 1.0.
+- Versions: ScurryPose 1.0, IdleAnimation 1.31, HerreraModelData 1.1 (generator 1.1), ScurryHitbox 1.0, ScurryPose.spec 1.0, herrera Play harness 1.0.
+- Kepu 2026-10-30 on the plan: "The hitbox should adjust to the crouch" -> Task 4 (ScurryHitbox).
 - Switches: model attribute `GaitScurry` (HerreraModelData true; absent elsewhere = off), `ScurryPoseEnabled` (default true; false = WalkPose path even on the Herrera).
 - Joint frames: every rig 1.3 joint pose is `restC0 * pose`, and the segment Roots are in dino space (x forward, y up, z left), so pitch = about Z, yaw = about Y, roll = about X: `CFrame.fromEulerAngles(roll, yaw, pitch, Enum.RotationOrder.ZYX)` = the mockup's `Euler(roll, yaw, pitch, 'ZYX')`.
 - Not in this plan: making the Herrera pickable (SpeciesServer / MainMenu), its kit (40 HP, top speed, slash, climbing), Lab card. Those come with the Herrera playable plan; this plan is tested through a Studio-only harness.
@@ -60,7 +61,15 @@ WalkPose, IdlePose, JumpPose / PouncePose / BitePose / RoarPose / HeadbuttPose /
 **Steps:** attributes GaitScurry = true, GaitAlwaysRun = true, ScurryPoseVersion "1.0"; geometry unchanged (diff = attributes + version lines only) -> install -> hash -> commit.
 **Acceptance:** generator asserts still pass; only the attribute block and version lines differ from 1.0.
 
-## Task 4 — Studio Play check · Mode: Wired
+## Task 4 — ScurryHitbox 1.0 · Mode: Wired
+**Why:** DinoHitboxes 1.1 welds each box to its segment Root; poses run on the clients only, so on the server (where bites / pounces / headbutts / bots test hits) the boxes stay in the two-legged rest pose.
+**Files:** Create `src/server/ScurryHitbox.server.luau` (ServerScriptService).
+**Interfaces (consumes):** ScurryPose.settings / meanAngles / buildGeo / fitted (Task 1), the "Hitboxes" folder and boxes of DinoHitboxes 1.1 (WeldConstraint Part0 = segment Root).
+**Steps:** on GaitScurry models with Hitboxes: each box's WeldConstraint -> Weld to the HumanoidRootPart; C0 = rest:Lerp(crouch, w), rest = the box now (server rest pose), crouch = the box carried by ScurryPose.meanAngles fitted to the ground; w -> 1 while the horizontal HRP speed > 2 studs/s x scale, eased at 6 / s (the client walk blend). Server-set welds replicate, so server and clients test the same boxes. Scale change -> offsets rescaled. Switch: script attribute ScurryHitboxEnabled (default true). Diagnostics: ScurryHitboxState / Count / Blend / Drop / Version.
+**Acceptance:** Play: standing, the Torso box is where DinoHitboxes put it; scurrying, ScurryHitboxBlend 1 and the Torso box centre is ScurryHitboxDrop lower (server); back to rest within 1 s of stopping; the blocking boxes (Torso, Neck, Head, Tail) stay above the ground at full crouch; raptor / pachy boxes untouched (no ScurryHitboxState).
+**Out of scope:** DinoHitboxes, the hit tests themselves.
+
+## Task 5 — Studio Play check · Mode: Wired
 **Files:** Create `tools/tests/herrera_play_harness.luau` (Studio-only test tool, server context in Play: builds a Herrera character from HerreraModelData, scaled 2x, with copies of StarterCharacterScripts, and sets it as the test player's character; nothing installed in the place).
 **Acceptance:**
 - Standing: ScurryState "idle", two-legged rest pose (side capture).
@@ -72,7 +81,7 @@ WalkPose, IdlePose, JumpPose / PouncePose / BitePose / RoarPose / HeadbuttPose /
 - Captures go to docs/reference/herrera/.
 
 ## Red-team (single feature, one paragraph per risk)
-1. **Hitboxes and camera.** The HumanoidRootPart stays at the bipedal hip height (physics unchanged); only the visual body drops by the ground fit. Hit tests that use the visual hitboxes follow the body down; anything using the HRP height stays at the standing height. Accepted for this plan; checked again in the playable plan when the slash and the hit zones are wired.
+1. **Hitboxes and camera.** The HumanoidRootPart stays at the bipedal hip height (physics unchanged); only the visual body drops by the ground fit. Kepu: "The hitbox should adjust to the crouch" -> Task 4 moves the hitboxes to the average crouch on the server (replicated). They follow the average crouch, not each limb swing (accepted). Anything that uses the HRP height (the camera) stays at the standing height.
 2. **Step rate at the fastest speed.** The Herrera will be the fastest dino; distance-driven phase would make the legs blur. ScurryMaxHz (5) caps the step rate; above it the body slides further per step (stride stretches), the same trade WalkPose makes.
 3. **Later layers on a quadruped.** Jump / stun / dead and the future slash were authored on upright bodies. They keep their order and are applied on top of the scurry pose; the kit plan reviews each one on the Herrera.
 4. **Harness drift.** The test harness builds the character by hand, not through SpeciesServer, so RaptorScale / StatServer may not see it. Only the gait is under test here; the playable plan re-tests through SpeciesServer.
