@@ -1,4 +1,4 @@
--- ClimbTest v1.6 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.7 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -44,12 +44,17 @@
 --   ahead — Workspace.StreamingEnabled is true, the trunk list was collected once at spawn, so trees streamed in later
 --   were not in the ray filter): the trunk list follows Trees.DescendantAdded / DescendantRemoving; the ray filter is
 --   rebuilt on the next frame after a change. Diagnostic: ClimbTrunkCount.
+-- v1.7 (Studio check of 1.6: Space on the palm top read "hopOffTop" and the body rose ~16 studs/s, but the Humanoid's
+--   own ground / air control cancelled the backward speed, so it landed back on the pad): the hop's backward part is
+--   held for ClimbHopTime (0.35 s) by a second LinearVelocity "ClimbHopVelocity" in Plane mode (world X / Z only, so
+--   gravity and the hop's upward speed are untouched); the Humanoid is put in Freefall at the hop. A grab during the
+--   push ends it. Setting (character attribute): ClimbHopTime.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -66,7 +71,7 @@ if not CL then
 	return
 end
 
-local DEFAULTS = {ClimbSpeed = 10, ClimbGrabDist = 1.5, ClimbTopGap = 2, ClimbHopSpeed = 12, ClimbHeadReach = 4.5}
+local DEFAULTS = {ClimbSpeed = 10, ClimbGrabDist = 1.5, ClimbTopGap = 2, ClimbHopSpeed = 12, ClimbHeadReach = 4.5, ClimbHopTime = 0.35}
 local function setting(k)
 	local v = char:GetAttribute(k)
 	return type(v) == "number" and v or DEFAULTS[k]
@@ -216,6 +221,18 @@ ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
 ao.RigidityEnabled = true
 ao.Enabled = false
 ao.Parent = hrp
+-- v1.7: the hop's horizontal push (Plane: world X / Z only)
+local hopLv = Instance.new("LinearVelocity")
+hopLv.Name = "ClimbHopVelocity"
+hopLv.Attachment0 = att
+hopLv.RelativeTo = Enum.ActuatorRelativeTo.World
+hopLv.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+hopLv.PrimaryTangentAxis = Vector3.xAxis
+hopLv.SecondaryTangentAxis = Vector3.zAxis
+hopLv.MaxForce = math.huge
+hopLv.Enabled = false
+hopLv.Parent = hrp
+local hopUntil = 0
 
 local state = "ground"
 local holding = false
@@ -279,6 +296,7 @@ RunService.Heartbeat:Connect(function()
 	local headReach = setting("ClimbHeadReach") * scale
 	if blocked() then
 		if holding then hold(false) end
+		hopLv.Enabled = false -- v1.7
 		state = "ground"
 		send("ground", "")
 		hopQueued = false
@@ -347,6 +365,8 @@ RunService.Heartbeat:Connect(function()
 			nextState = "ground"
 		end
 	elseif out.hold then
+		hopLv.Enabled = false -- v1.7
+		hopUntil = 0
 		hold(true)
 		-- hold point: grab distance off the trunk surface along the facing; pull there horizontally
 		local pull = Vector3.zero
@@ -362,7 +382,13 @@ RunService.Heartbeat:Connect(function()
 		if out.hop then
 			local v = setting("ClimbHopSpeed") * scale
 			hrp.AssemblyLinearVelocity = -fwd * v + Vector3.new(0, v * 0.8, 0)
+			-- v1.7: hold the backward part for ClimbHopTime
+			hum:ChangeState(Enum.HumanoidStateType.Freefall)
+			hopLv.PlaneVelocity = Vector2.new(-fwd.X * v, -fwd.Z * v)
+			hopLv.Enabled = true
+			hopUntil = os.clock() + setting("ClimbHopTime")
 		end
+		if hopLv.Enabled and os.clock() >= hopUntil then hopLv.Enabled = false end
 	end
 	state = nextState
 	local tree = ""
