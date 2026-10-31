@@ -24,9 +24,9 @@
 | 3 | Quill Launcher (Spine Quills) MDA-151 | done (below) | same page, look B; video mockup_parts_b1_quills.mp4 | no |
 | 4 | Smoke Pods (Tail Vents) MDA-152 | done (below) | same page, look B; video mockup_parts_b1_smoke.mp4 | no |
 | 5 | Back Plating (Spine Scutes) MDA-153 | done (below) | same page, look A; video mockup_parts_b1_plating.mp4 | no |
-| 6 | Blood Siphon (Throat Pump) | done (below) | docs/mockups/herrera_parts_b2_options.html, look A; video docs/reference/herrera/mockup_parts_b2_siphon.mp4 | no |
-| 7 | Strobe Frill (LED Frill) | done (below) | same page, look A; video mockup_parts_b2_strobe.mp4 | no |
-| 8 | Stun Breaker (Back Capacitor) | done (below) | same page, look B; video mockup_parts_b2_breaker.mp4 | no |
+| 6 | Blood Siphon (Throat Pump) MDA-154 | done (below) | docs/mockups/herrera_parts_b2_options.html, look A; video docs/reference/herrera/mockup_parts_b2_siphon.mp4 | no |
+| 7 | Strobe Frill (LED Frill) MDA-155 | done (below) | same page, look A; video mockup_parts_b2_strobe.mp4 | no |
+| 8 | Stun Breaker (Back Capacitor) MDA-156 | done (below) | same page, look B; video mockup_parts_b2_breaker.mp4 | no |
 
 The Herrera ends with 8 parts, like the Raptor and Pachy.
 
