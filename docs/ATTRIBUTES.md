@@ -2288,3 +2288,13 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 |---|---|---|
 | Species / DisplayName / HerreraModelVersion | herrera model | "Herrera" / "Herrera" / "1.0": HerreraModelData 1.0 (moves off; T-Rex gameplay attributes inherited) |
 | DisplayHerreraVersion | Workspace.DinoArcade_Herrera + Herrera_Display | "1.0": Studio-only herrera display model |
+
+## Herrerasaurus scurry (ScurryPose 1.0 / IdleAnimation 1.31 / ScurryHitbox 1.0 / HerreraModelData 1.1)
+| Attribute | On | Meaning |
+|---|---|---|
+| GaitScurry / ScurryPoseVersion | herrera model | true / "1.0": IdleAnimation uses ScurryPose instead of WalkPose (idle stays two-legged) |
+| ScurryPoseEnabled | dino model | default (nil) on; false = the WalkPose path even with GaitScurry |
+| Scurry* tuning (BodyPitch -24, Neck 6, Head 16, Jaw -3, ArmTuck 30, LegTuck 48, Knee -48, Foot 24, Tail1..5 26/4/8/14/20, ArmSwing 34, ArmSprawl 18, ArmLiftSprawl 10, LegSwing 30, LegSprawl 16, KneeLift -34, FootLift 20, BodyYaw 11, BodyRoll 4, NeckYaw -9, HeadYaw -6, TailWhip 8, TailWhipGrow 4, TailLag 0.75, Bounce 0.12, Stride 3.2, MaxHz 5) | dino model (override) | ScurryPose.Defaults: degrees, studs at scale 1, stride studs per cycle, max steps per second |
+| ScurryState / ScurryBlend / ScurryHz / ScurryDrop | dino model (client) | "off" / "noGeo" / "idle" / "blend" / "scurry"; blend 0..1; step rate; RootJoint ground-fit drop (studs) |
+| ScurryHitboxEnabled / ScurryHitboxVersion | ScurryHitbox script | default true / "1.0" |
+| ScurryHitboxState / ScurryHitboxCount / ScurryHitboxBlend / ScurryHitboxDrop | herrera model (server) | "ready" / "noPose" / "noGeo"; boxes moved; crouch weight 0..1; Torso box centre drop at full crouch (studs) |
