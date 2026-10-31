@@ -189,6 +189,12 @@
 --       over to the climb pose), and a change from those states to ground while more than 1 stud above the ground (the
 --       tree hop / letting go) starts a jump at the air phase (no crouch), so the hop off a tree shows the air + landing.
 --       Diagnostics: JumpPoseKind ("herrera" / "biped"), JumpSource adds "tree". Every other model unchanged.
+-- v1.35 (Kepu 2026-10-31 phone video: "The jump animation needs to be the same every time"; ClimbTest 1.14 makes JUMP on a
+--       tree top the normal leap): on HerreraJumpPose models the air pose is driven by the time since launch only (vyN =
+--       1 - (t - JumpWindup) x Gravity / JumpLaunchPower, the leap's own ballistic curve) instead of the measured vertical
+--       speed, so every jump, trunk hop and fall off a tree plays the same sequence. Only climbing / clinging end a jump
+--       (a leap from a tree top keeps its crouch), and the tree -> ground air start (from climbing / clinging / top) only
+--       happens when no jump is running. Switch: model attribute HerreraJumpClockEnabled (default true; false = 1.34).
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -520,6 +526,7 @@ model:SetAttribute("IdleAnimationVersion", "1.31") -- v1.31 (the 1.28 line above
 model:SetAttribute("IdleAnimationVersion", "1.32") -- v1.32
 model:SetAttribute("IdleAnimationVersion", "1.33") -- v1.33
 model:SetAttribute("IdleAnimationVersion", "1.34") -- v1.34
+model:SetAttribute("IdleAnimationVersion", "1.35") -- v1.35
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -809,8 +816,10 @@ RunService.PreSimulation:Connect(function(dt)
 		if herreraJump then
 			local cst = (lp and lp.Character == model and model:GetAttribute("ClimbLocalState")) or model:GetAttribute("ClimbState")
 			local onTree = cst == "climbing" or cst == "clinging" or cst == "top"
-			if onTree and jump then jump.done = true end
-			if jumpTreeWas and not onTree then
+			local clockOn = model:GetAttribute("HerreraJumpClockEnabled") ~= false -- v1.35
+			local onTrunk = cst == "climbing" or cst == "clinging"
+			if (clockOn and onTrunk or not clockOn and onTree) and jump then jump.done = true end
+			if jumpTreeWas and not onTree and (not clockOn or not jump or jump.done) then
 				local hm = model:FindFirstChildOfClass("Humanoid")
 				local base = hrp.Size.Y / 2 + (hm and hm.HipHeight or 0)
 				local g = workspace:Raycast(hrp.Position, Vector3.new(0, -(base + 40), 0), jumpParams)
@@ -855,7 +864,10 @@ RunService.PreSimulation:Connect(function(dt)
 				end
 			elseif jump.air then
 				local fall = math.clamp(-jumpVy / (power * 0.5), 0, 1)
-				jp = hs and HerreraJumpPose.get("air", math.max(0, t - W), math.clamp(jumpVy / power, -1, 1), hs, ss, scurryGeo, motors, scurryScale)
+				local hVy = model:GetAttribute("HerreraJumpClockEnabled") ~= false -- v1.35: the leap's own clock
+					and math.clamp(1 - math.max(0, t - W) * workspace.Gravity / math.max(1, power), -1, 1)
+					or math.clamp(jumpVy / power, -1, 1)
+				jp = hs and HerreraJumpPose.get("air", math.max(0, t - W), hVy, hs, ss, scurryGeo, motors, scurryScale)
 					or JumpPose.air(math.max(0, t - W), fall, jumpVy / power, js, geo)
 				jumpW, jumpState = 1, (jumpVy >= 0 and "rise" or "fall")
 			elseif t < W then

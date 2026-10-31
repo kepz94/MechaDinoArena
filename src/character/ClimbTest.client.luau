@@ -1,4 +1,4 @@
--- ClimbTest v1.13 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
+-- ClimbTest v1.14 (Mecha Dino Arena) — the Herrerasaurus' auto-climb on the owner's client. MDA-138, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 6 (Kepu 2026-10-30: "climbing should just happen. If I walk up to a tree as a herra
 -- it should automatically start climbing the tree vertically"; tree tops standable for the Herrera only).
 -- Runs on characters with ClimbEnabled = true (HerreraModelData 1.2); does nothing on other dinos.
@@ -89,12 +89,31 @@
 --   climbing / clinging / top and false otherwise (JumpTest 1.3 then refuses / ends its leap, so JUMP on a tree is only the
 --   hop, and a leap that grabs a trunk mid-air hands the body to the climb). Switch: script attribute
 --   ClimbJumpSuppressEnabled (default true, read at start; false = 1.12, JumpSuppressed never written).
+-- v1.14 (Kepu 2026-10-31 phone video, live v252: "when I climb and get to the near top of the tree it just cuts the camera
+--   and goes straight to the top it feels buggy. Just allow it to climb through the leaves. Also when I try to jump off the
+--   tree top it bounces me backwards like a glitch and then it's just hard to jump off for an attack"):
+--   * Climb through the leaves (switch ClimbThroughEnabled): a mantle with a target no longer teleports the body onto the
+--     tree top. The body keeps climbing (held, climb pose, state "climbing", reason "through") in a straight line at
+--     ClimbSpeed x 1.2 to the stand point above the target (feet 0.3 studs over it; pulled inside the pad it lands on to at
+--     most its reach - half the body length - 1 stud from the centre, so it does not stand on the edge), passing through the tree-top proxies
+--     (local NoCollisionConstraints between the HumanoidRootPart and every proxy of the climbed tree or within reach + 10
+--     studs of the target; and every colliding body part (HRP + DinoHitbox boxes) with the climbed tree's own Trunk* parts,
+--     which a leaning trunk puts in the straight path), then
+--     lets go onto the top ("top") once within 0.8 studs, or at or above the stand height within 2 studs sideways; the
+--     constraints are removed on arrival. Gives up (lets go,
+--     constraints removed) after THROUGH_MAX_TIME s or when blocked / the slash dash starts. Diagnostic: ClimbThrough
+--     ("off" / "moving" / "done" / "timeout"). On arrival the body is held still sideways (ClimbSettleVelocity, Plane 0)
+--     until the move stick is let go, at most SETTLE_MAX_TIME 1 s, so a stick still held from the climb does not run it off
+--     the pad.
+--   * JUMP on a tree top is the Herrera's normal jump (switch ClimbTopJumpEnabled): the hop input is dropped while the
+--     state is "top" (no more backward "hopOffTop" push) and JumpSuppressed is true only while climbing / clinging, so
+--     JumpTest leaps from the pad in the moved direction. JUMP on a trunk is still the hop off backward.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.13"
+local VERSION = "1.14"
 local char = script.Parent
 if not char:IsA("Model") then return end
 local hum = char:WaitForChild("Humanoid")
@@ -334,6 +353,32 @@ hopLv.Enabled = false
 hopLv.Parent = hrp
 local hopUntil = 0
 local HOP_TOP_MAX_TIME = 1 -- v1.8
+-- v1.14: climb through the leaves onto the top
+if script:GetAttribute("ClimbThroughEnabled") == nil then script:SetAttribute("ClimbThroughEnabled", true) end
+local THROUGH_ON = script:GetAttribute("ClimbThroughEnabled") ~= false
+if script:GetAttribute("ClimbTopJumpEnabled") == nil then script:SetAttribute("ClimbTopJumpEnabled", true) end
+local TOP_JUMP_ON = script:GetAttribute("ClimbTopJumpEnabled") ~= false
+local THROUGH_MAX_TIME = 4
+local through -- {stand = Vector3, tree = name, t0 = os.clock(), nc = {NoCollisionConstraint}}
+local SETTLE_MAX_TIME = 1 -- s the body is held still on the top after climbing through (until the stick is let go)
+local settleUntil = 0
+local settleLv = Instance.new("LinearVelocity")
+settleLv.Name = "ClimbSettleVelocity"
+settleLv.Attachment0 = att
+settleLv.RelativeTo = Enum.ActuatorRelativeTo.World
+settleLv.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+settleLv.PrimaryTangentAxis = Vector3.xAxis
+settleLv.SecondaryTangentAxis = Vector3.zAxis
+settleLv.PlaneVelocity = Vector2.zero
+settleLv.MaxForce = math.huge
+settleLv.Enabled = false
+settleLv.Parent = hrp
+local function endThrough(how)
+	if not through then return end
+	for _, c in ipairs(through.nc) do c:Destroy() end
+	through = nil
+	char:SetAttribute("ClimbThrough", how)
+end
 
 local state = "ground"
 local holding = false
@@ -348,7 +393,7 @@ local function send(st, tree)
 	if st == lastSentState and tree == lastSentTree then return end
 	lastSentState, lastSentTree = st, tree
 	if JUMP_SUPPRESS_ON then -- v1.13
-		char:SetAttribute("JumpSuppressed", st == "climbing" or st == "clinging" or st == "top")
+		char:SetAttribute("JumpSuppressed", st == "climbing" or st == "clinging" or (st == "top" and not TOP_JUMP_ON)) -- v1.14: top -> the leap
 	end
 	char:SetAttribute("ClimbLocalState", st)
 	char:SetAttribute("ClimbTreeLocal", tree)
@@ -402,6 +447,8 @@ RunService.Heartbeat:Connect(function()
 	local s = {grab = setting("ClimbGrabDist") * scale, topGap = setting("ClimbTopGap") * scale, speed = setting("ClimbSpeed") * scale}
 	local headReach = setting("ClimbHeadReach") * scale
 	if blocked() then
+		endThrough("off") -- v1.14
+		settleLv.Enabled = false
 		if holding then hold(false) end
 		hopLv.Enabled = false -- v1.7
 		state = "ground"
@@ -410,6 +457,7 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 	if char:GetAttribute("SlashLocalState") == "dash" then -- v1.9: the slash dash owns the body
+		endThrough("off") -- v1.14
 		if holding then hold(false) end
 		hopLv.Enabled = false
 		state = "ground"
@@ -417,6 +465,36 @@ RunService.Heartbeat:Connect(function()
 		hopQueued = false
 		char:SetAttribute("ClimbReason", "slash")
 		return
+	end
+	if through then -- v1.14: climbing through the leaves to the stand point
+		local d = through.stand - hrp.Position
+		local arrived = d.Magnitude < 0.8 or (d.Y <= 0.5 and Vector3.new(d.X, 0, d.Z).Magnitude < 2)
+		if arrived or os.clock() - through.t0 > THROUGH_MAX_TIME then
+			local timedOut = not arrived
+			local tree = through.tree
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hold(false)
+			endThrough(timedOut and "timeout" or "done")
+			state = timedOut and "ground" or "top"
+			char:SetAttribute("ClimbReason", timedOut and "throughTimeout" or "throughDone")
+			send(state, timedOut and "" or tree)
+			if not timedOut then settleUntil = os.clock() + SETTLE_MAX_TIME; settleLv.Enabled = true end
+		else
+			hold(true)
+			local v = s.speed * 1.2
+			lv.VectorVelocity = d.Unit * math.min(v, d.Magnitude * 8)
+			local flat = Vector3.new(d.X, 0, d.Z)
+			if flat.Magnitude > 0.5 then ao.CFrame = CFrame.lookAt(Vector3.zero, flat.Unit) end
+			char:SetAttribute("ClimbReason", "through")
+			send("climbing", currentTree)
+		end
+		hopQueued = false
+		jumpPressed()
+		return
+	end
+	if settleLv.Enabled and (os.clock() >= settleUntil or readMove().Magnitude < 0.1 or state ~= "top"
+		or (char:GetAttribute("JumpTestState") ~= nil and char:GetAttribute("JumpTestState") ~= "ready")) then -- a jump frees it too
+		settleLv.Enabled = false -- v1.14: the stick was let go (or time): free to walk / jump
 	end
 	-- probes
 	refreshTrunks() -- v1.6
@@ -434,6 +512,7 @@ RunService.Heartbeat:Connect(function()
 		input = {forward = along > 0.3, back = along < -0.3, hop = hopQueued}
 	end
 	hopQueued = false
+	if TOP_JUMP_ON and state == "top" then input.hop = false end -- v1.14: JUMP on a tree top = JumpTest's leap
 	local half = hrp.Size.Z / 2
 	local probe = {}
 	local radius = hrp.Size.X / 2 -- v1.2: as wide as the body
@@ -516,6 +595,57 @@ RunService.Heartbeat:Connect(function()
 			ao.CFrame = CFrame.lookAt(Vector3.zero, fwd)
 			nextState = "clinging"
 		else
+		if target and THROUGH_ON then -- v1.14: climb on through the leaves (no teleport)
+			local up = hrp.Size.Y / 2 + hum.HipHeight + 0.3
+			-- keep the stand point inside the pad it lands on (a leaning palm's trunk top is at the pad's edge)
+			for _, px in ipairs(proxies()) do
+				if px:IsA("BasePart") and math.abs(topOf(px) - target.Y) < 0.5 then
+					local c = Vector3.new(px.Position.X, target.Y, px.Position.Z)
+					local off = Vector3.new(target.X - c.X, 0, target.Z - c.Z)
+					local r = reachOf(px)
+					local inner = math.max(0, r - (half + 1))
+					if off.Magnitude <= r + 0.5 then
+						if off.Magnitude > inner then target = c + (off.Magnitude > 1e-3 and off.Unit or Vector3.zero) * inner end
+						break
+					end
+				end
+			end
+			through = {stand = target + Vector3.new(0, up, 0), tree = currentTree, t0 = os.clock(), nc = {}}
+			for _, px in ipairs(proxies()) do
+				if px:IsA("BasePart") then
+					local own = px:GetAttribute("TreeTopOf") == currentTree
+					local near = Vector3.new(px.Position.X - target.X, 0, px.Position.Z - target.Z).Magnitude <= reachOf(px) + 10
+					if own or near then
+						local nc = Instance.new("NoCollisionConstraint")
+						nc.Name = "ClimbThroughNoCollide"
+						nc.Part0, nc.Part1 = hrp, px
+						nc.Parent = hrp
+						table.insert(through.nc, nc)
+					end
+				end
+			end
+			local bodyParts = {} -- every colliding body part (the HumanoidRootPart and the DinoHitbox boxes)
+			for _, bp in ipairs(char:GetDescendants()) do
+				if bp:IsA("BasePart") and bp.CanCollide then table.insert(bodyParts, bp) end
+			end
+			for tp, tm in pairs(trunkTree) do -- the climbed tree's own trunk too (a leaning trunk is in the straight path)
+				if tm.Name == currentTree then
+					for _, bp in ipairs(bodyParts) do
+						local nc = Instance.new("NoCollisionConstraint")
+						nc.Name = "ClimbThroughNoCollide"
+						nc.Part0, nc.Part1 = bp, tp
+						nc.Parent = hrp
+						table.insert(through.nc, nc)
+					end
+				end
+			end
+			char:SetAttribute("ClimbThrough", "moving")
+			hold(true)
+			lv.VectorVelocity = Vector3.new(0, s.speed, 0)
+			nextState = "climbing"
+			out.reason = "through"
+			char:SetAttribute("ClimbReason", "through")
+		else
 		hold(false)
 		if target then
 			local up = hrp.Size.Y / 2 + hum.HipHeight + 0.3
@@ -524,6 +654,7 @@ RunService.Heartbeat:Connect(function()
 		else
 			nextState = "ground"
 		end
+		end -- v1.14 (teleport path)
 		end -- v1.10
 	elseif out.hold then
 		hopLv.Enabled = false -- v1.7

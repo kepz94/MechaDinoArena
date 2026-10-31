@@ -2352,3 +2352,6 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | JumpPoseKind | model (client) | "herrera" / "biped" | IdleAnimation 1.34 diagnostic |
 | AbilityBarHerreraJumpEnabled | AbilityBar script | true | AbilityBar 1.17 |
 | ArenaTouchJumpHoldEnabled / ArenaTouchJumpHeld | ArenaTouch script / character | true / bool | ArenaTouch 1.8 |
+| ClimbThroughEnabled / ClimbTopJumpEnabled | ClimbTest script | true / true | ClimbTest 1.14: climb through the leaves; JUMP on a tree top = the leap |
+| ClimbThrough | herrera (owner client) | "off" / "moving" / "done" / "timeout" | ClimbTest 1.14 diagnostic |
+| HerreraJumpClockEnabled | herrera model | true | IdleAnimation 1.35: time-driven air pose |
