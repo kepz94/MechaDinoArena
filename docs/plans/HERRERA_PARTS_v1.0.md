@@ -589,14 +589,14 @@ The front is always unchanged.
 ### Steps
 | Step | Effect |
 |---|---|
-| I | Button: lob a goo blob up to 60 studs. It splats into a 16-stud goo puddle for 5 s; enemies in the goo are slowed 40%. Recharges in 14 s. |
+| I | Button: toss a goo blob 30 studs ahead (straight down while gliding). It splats into a 16-stud goo puddle for 5 s; enemies in the goo are slowed 40%. Recharges in 14 s. |
 | II | Puddle 22 studs wide. |
 | III | Fires 2 blobs side by side. |
 | ★ | Puddles last 8 s. |
 ### How it works
-- Aim = the Tether Spike's current aim (MechaButtons 1.22 "Top-down tactical"): tap = aim mode with a landing circle (GooRadius × 2 across; III: two circles side by side), tap again / left click = fire, CANCEL / right click / Q / 6 s = no fire. Built as a separate copy (red-team, Kepu "Separate copy, tether untouched"): new gooTacStart / gooTacStep / gooTacEnd, RenderStep "GooTacCam", action "GooTacInput", circle "GooAim", HUD "GooAimHud", character GooAiming (SprintTest walk speed like TetherAiming). The tether code is not edited.
-- Request `DinoGooRequest(stamp, landPos)`; `check(..., "goo", "Goo", {})` (not refused by daze — area denial, like smoke). landPos clamped to GooRange (60) + 4 flat, dropped on the ground.
-- III: two landing points = landPos ± right(flat, perpendicular to root→landPos) × GooRadius × 0.85 × scale.
+- Aim (Kepu 2026-10-31 15:49, replaces the tether-style aim and its red-team copy: "Have the blobs just toss from a set distance and be dropped immediately under you when gliding as herrera"; picked 30 studs): no aim mode. A tap fires at once. The landing point is the root + facing (flat) × GooToss (30) × scale, dropped onto the ground. While Gliding is true, the landing point is the ground straight under the root (the blob falls straight down). MechaButtons sends `DinoGooRequest(stamp)`; the server works out the point itself.
+- Request `DinoGooRequest(stamp)`; `check(..., "goo", "Goo", {})` (not refused by daze — area denial, like smoke).
+- III: two landing points = the landing point ± right(flat, perpendicular to the facing) × GooRadius × 0.85 × scale.
 - Flight 0.85 s (0.12 s stagger for the 2nd), apex 14 studs above the higher end, from the mortar muzzle; server part "GooBlob" (anchored, no collide / query / touch) in Workspace.DinoFX.GooFX.
 - Puddle: Part "GooPuddle" (Cylinder, lime Neon rgb(166, 226, 46) at 0.25 transparency, height 0.2, anchored, no collide / query / touch) + darker rim, for GooTime (5; 8 at ★).
 - Slow: every 0.2 s each allowed enemy whose root is within GooRadius × scale (flat) of a live puddle: player `GooSlowUntil = now + 0.3`, `GooSlowMul = 0.6` (SprintTest 1.16); bot WalkSpeed × 0.6 while inside, put back on leaving / puddle end. No damage.
@@ -632,7 +632,7 @@ The front is always unchanged.
 ## Pass 3 — build map
 | Script | Version | Change | Switch |
 |---|---|---|---|
-| SkillTree | 1.43 | `part("caltrops"…)`, `part("goo"…)`, `part("hadren"…)` (Herrera, LIVE_MECH, BUTTONS) + step texts above; effects wrapper: caltropCount 6/10, caltropRadius 5/7 (studs, half the patch), caltropTime 8/14, caltropHidden ★, caltropBleedDps 3, caltropBleedTime 3, caltropSlowMul 0.7, caltropSlowTime 1, caltropCooldown 16; gooRange 60, gooRadius 8/11, gooTime 5/8, gooCount 1/2 (III), gooSlowMul 0.6, gooCooldown 14; hadren → adren keys + adrenSlashRefill | SkillTree.HERRERA_PASS3 |
+| SkillTree | 1.43 | `part("caltrops"…)`, `part("goo"…)`, `part("hadren"…)` (Herrera, LIVE_MECH, BUTTONS) + step texts above; effects wrapper: caltropCount 6/10, caltropRadius 5/7 (studs, half the patch), caltropTime 8/14, caltropHidden ★, caltropBleedDps 3, caltropBleedTime 3, caltropSlowMul 0.7, caltropSlowTime 1, caltropCooldown 16; gooToss 30, gooRadius 8/11, gooTime 5/8, gooCount 1/2 (III), gooSlowMul 0.6, gooCooldown 14; hadren → adren keys + adrenSlashRefill | SkillTree.HERRERA_PASS3 |
 | SkillEffects | 1.29 | Herrera rows Caltrop* / Goo* (prefix loop as 1.27); Adrenaline* from hadren; siphon counts CaltropBleedUntil | SkillEffectsHerreraPass3Enabled |
 | HerreraMovesServer | 1.1 | DinoCaltropRequest, DinoGooRequest; patches, triggers, bleed ticks, puddles, slows | HerreraMoves_caltropsEnabled, HerreraMoves_gooEnabled |
 | HerreraMovesFX | 1.3 | spike drawing (Hidden rule), hopper rattle, spike arcs, goo flight drips, splat, puddle bubbles, "SLOWED" pops | HerreraMovesFXPass3Enabled |
@@ -641,7 +641,7 @@ The front is always unchanged.
 | AdrenalineServer | 1.5 | no raptor look on a Herrera; ★ SlashRefillAllAt | AdrenalineHerreraLookOff, AdrenalineSlashRefillEnabled |
 | SlashServer | 1.6 | SlashRefillAllAt → charges = max | SlashAdrenRefillEnabled |
 | SprintTest | 1.16 | × CaltropSlowMul / × GooSlowMul while their Until > now | SprintTestPass3SlowEnabled |
-| MechaButtons | 1.25 | TIMED_PARTS caltrops / goo / hadren; goo gets its own copy of the tactical aim (tether code untouched) | MechaButtonsHerreraPass3Enabled |
+| MechaButtons | 1.25 | TIMED_PARTS caltrops / goo / hadren (normal presses; no goo aim) | MechaButtonsHerreraPass3Enabled |
 | AbilityBar | 1.19 | the same three tiles | AbilityBarHerreraPass3Enabled |
 
 ### Deterministic map
@@ -653,7 +653,8 @@ The front is always unchanged.
 | Spike, shielded enemy | EnergyShieldUntil > now | nothing, spike stays |
 | Patch over | now ≥ Until, owner dead / left / part off | patch removed (bleeds already running finish) |
 | Spike drawing | Hidden false | every client; Hidden true → owner (+ squad) only |
-| Goo aim | tap while ready | tactical aim; second tap fires; cancel / 6 s → none, no cooldown |
+| Goo toss | tap while ready, not gliding | lands GooToss (30) × scale ahead |
+| Goo drop | tap while Gliding | lands straight under you |
 | Goo request | badArg / dead / disabled / menu / stunned / pinned / cooldown | refused (GooServerResult) |
 | Goo fire | ok | GooCount blobs; puddle(s) at landing for GooTime |
 | In goo | allowed enemy root within GooRadius × scale of a live puddle | player GooSlowUntil = now + 0.3, GooSlowMul 0.6; bot WalkSpeed × 0.6 |
@@ -663,7 +664,7 @@ The front is always unchanged.
 ### Pass 3 red-team synthesis (Kepu 2026-10-31)
 - Tickets: H1 MDA-164 (SkillTree / SkillEffects), H2 MDA-165, H3 MDA-166, H4 MDA-167, H5 MDA-168 (Studio check).
 - Build after Squads v1.0 ("Squads first").
-- Goo aim: a separate copy; the tether stays untouched.
+- Goo aim: superseded by Kepu 15:49, fixed 30-stud toss / straight down while gliding. No aim code; the tether is untouched.
 - Caltrops ★ "hidden": the spike data lives in ReplicatedStorage, so an exploiter could read it. Accepted risk (casual game; the same holds for any client-drawn FX).
 - Herrera Adrenaline re-uses AdrenalineServer: a raptor regression check is part of the acceptance.
 - New targets (caltrops, goo) go through `candidates` / `mayAffect`, so the squad check covers them.
