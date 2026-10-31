@@ -2458,3 +2458,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | MedSquadInside / MedSquadHealed | character (squadmate) | bool or nil / HP | MedStationServer 1.2 |
 | ArenaSpawnSquadEnabled | ArenaSpawnServer script | true | ArenaSpawnServer 1.2 |
 | ArenaSpawnKind "squad" | player | | ArenaSpawnServer 1.2 |
+| SquadHUDEnabled | SquadHUD script | true | SquadHUD 1.0 |
+| SquadHUDVersion / SquadHUDPanel / SquadHUDRows / SquadHUDInvite / SquadHUDLastPress | player (client) | "1.0" / "open"/"closed" / count / "shown"/"hidden" / last press | SquadHUD 1.0 |
