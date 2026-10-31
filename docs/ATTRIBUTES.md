@@ -2479,3 +2479,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ArmGap / ArmFly | ReplicatedStorage.CaltropPatches Configuration | 0.035 / 0.42 s (0 / 0 with the switch off) | HerreraMovesServer 1.3 |
 | HerreraMoves_caltropArmOnLandEnabled | HerreraMovesServer script | true | HerreraMovesServer 1.3 |
 | HerreraMovesFXCaltropDropEnabled / HerreraMovesFXCaltropKickEnabled / CaltropFlights / CaltropKicks | HerreraMovesFX script | true / true / count / count | HerreraMovesFX 1.4 |
+| MainMenuHPartsEnabled | MainMenu script | true | MainMenu 1.11 |

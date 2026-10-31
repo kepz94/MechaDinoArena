@@ -1,4 +1,4 @@
--- MainMenu v1.10 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.11 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -107,13 +107,20 @@
 --   (IdleAnimation 1.32) is above 0 or its SlashPoseState (IdleAnimation 1.33) is not "none", and the menu re-copies when
 --   either changes (ClimbTest lets go on menu entry, so the climb pose fades out within ~0.5 s and the copy is retaken
 --   standing). Switch: script attribute MainMenuPoseRecopyEnabled (default true; false = 1.9).
+-- v1.11 (bug, Kepu 2026-10-31: "the stun breaker keeps showing up on the back of the herrera even when not equipped ...
+--   Only what is equipped should be visible"): the Herrera's mecha parts are Models "HPart_<id>" (HerreraPartsServer),
+--   not "Mecha_*", so the preview neither re-copied when one was added / removed (the copy kept whatever the Herrera wore
+--   when it was last taken: a part unequipped in the menu stayed on the menu Herrera) nor left them out of the plain
+--   view. Raptor / pachy parts are all "Mecha_*" and were not affected (Studio check). A mecha part child is now "Mecha_*"
+--   or "HPart_*": both count in the preview key, both re-copy on ChildAdded / ChildRemoved, both are left out of the
+--   plain view. Switch: script attribute MainMenuHPartsEnabled (default true, read at each check; false = 1.10).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -739,12 +746,17 @@ local function placeHangarCam()
 end
 
 -- ---------- preview ----------
+if script:GetAttribute("MainMenuHPartsEnabled") == nil then script:SetAttribute("MainMenuHPartsEnabled", true) end -- v1.11
+local function isMechaPart(name) -- v1.11: "Mecha_*" (raptor / pachy) or "HPart_*" (Herrera)
+	if name:sub(1, 6) == "Mecha_" then return true end
+	return script:GetAttribute("MainMenuHPartsEnabled") ~= false and name:sub(1, 6) == "HPart_"
+end
 local function previewKey()
 	local c = char()
 	if not c then return "none" end
 	local names = {}
 	for _, ch in ipairs(c:GetChildren()) do
-		if ch.Name:sub(1, 6) == "Mecha_" then table.insert(names, ch.Name) end
+		if isMechaPart(ch.Name) then table.insert(names, ch.Name) end -- v1.11: + HPart_*
 	end
 	table.sort(names)
 	local skinKey = script:GetAttribute("MainMenuSkinRecopyEnabled") ~= false and tostring(c:GetAttribute("SkinApplied")) or "" -- v1.7
@@ -776,7 +788,7 @@ local function rebuildPreview()
 		end
 	end
 	for _, ch in ipairs(copy:GetChildren()) do
-		if ch.Name == "Hitboxes" or (not mech and ch.Name:sub(1, 6) == "Mecha_") then ch:Destroy() end
+		if ch.Name == "Hitboxes" or (not mech and isMechaPart(ch.Name)) then ch:Destroy() end -- v1.11: + HPart_*
 	end
 	for _, d in ipairs(copy:GetDescendants()) do
 		if d:IsA("BasePart") then
@@ -1153,8 +1165,8 @@ local function onChar(c)
 	for _, cn in ipairs(charConns) do cn:Disconnect() end
 	table.clear(charConns)
 	if switchingTo ~= nil then switchingTo = nil end
-	table.insert(charConns, c.ChildAdded:Connect(function(ch) if ch.Name:sub(1, 6) == "Mecha_" then queueRefresh() end end))
-	table.insert(charConns, c.ChildRemoved:Connect(function(ch) if ch.Name:sub(1, 6) == "Mecha_" then queueRefresh() end end))
+	table.insert(charConns, c.ChildAdded:Connect(function(ch) if isMechaPart(ch.Name) then queueRefresh() end end)) -- v1.11: + HPart_*
+	table.insert(charConns, c.ChildRemoved:Connect(function(ch) if isMechaPart(ch.Name) then queueRefresh() end end))
 	table.insert(charConns, c:GetAttributeChangedSignal("Species"):Connect(function() if open then redraw() queueRefresh() end end))
 	table.insert(charConns, c:GetAttributeChangedSignal("SkinApplied"):Connect(function() if open then queueRefresh() end end)) -- v1.7
 	for _, a in ipairs({"ClimbPoseBlend", "SlashPoseState"}) do -- v1.10
