@@ -2438,3 +2438,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ArenaSpawnsEnabled / ArenaSpawnServerVersion / ArenaSpawnMode / ArenaSpawnPoints / ArenaSpawnMoves | ArenaSpawnServer script | true / "1.0" / mode / count / count | ArenaSpawnServer 1.0 |
 | ArenaSpawnIndex / ArenaSpawnReason / ArenaSpawnAt | player | n / "play"/"respawn"/"join" / time | ArenaSpawnServer 1.0 |
 | ArenaSpawnIndex | Workspace.ArenaSpawns parts | 1-8 | tools/arena_spawns_install.luau |
+| ArenaSpawnNearEnabled / ArenaSpawnNearMaxPlayers | ArenaSpawnServer script | true / 4 | ArenaSpawnServer 1.1 |
+| ArenaSpawnKind / ArenaSpawnNearTo | player | "near"/"ring" / name | ArenaSpawnServer 1.1 |

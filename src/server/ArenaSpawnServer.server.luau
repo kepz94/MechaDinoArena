@@ -1,4 +1,4 @@
--- ArenaSpawnServer v1.0 (Mecha Dino Arena) — spread spawn points for the Arena place (Kepu 2026-10-31: "allow different
+-- ArenaSpawnServer v1.1 (Mecha Dino Arena) — spread spawn points for the Arena place (Kepu 2026-10-31: "allow different
 -- spawn points on the arena map because im going to have an actual group test"; picked "8 spots around the island",
 -- "Farthest from other players", "Arena: Play + respawn"). Map: docs/reference/arena/arena_spawns_map.jpg.
 -- Spawn points: the BaseParts in Workspace.ArenaSpawns (ArenaSpawn1..8, invisible, anchored, no collide / query / touch;
@@ -21,14 +21,28 @@
 --   as before).
 -- Diagnostics: script ArenaSpawnServerVersion, ArenaSpawnMode, ArenaSpawnPoints (count), ArenaSpawnMoves; player
 --   ArenaSpawnIndex (the point used), ArenaSpawnReason ("play" / "respawn" / "join"), ArenaSpawnAt (server time).
+-- v1.1 (Kepu 2026-10-31 after the group test: "the spawns feel too far apart. When it's only a few people in the lobby keep
+--   the spawns near"; picked "Spawn near another player" up to "4 players"): while the server has at most
+--   ArenaSpawnNearMaxPlayers (script attribute, default 4) players and at least one other player is alive and out of the
+--   menu, the player lands NEAR_MIN..NEAR_MAX (60..120) studs from one of those players (picked at random): up to
+--   NEAR_TRIES (30) random spots around them are tried; a spot counts when the ground there is Workspace.DinoIsland.Ground,
+--   dry (height >= 0) and flat (normal Y > 0.9), no Trees / Rocks / MountainSteps / EdgeWalls part is within 18 studs,
+--   and every other live player is at least NEAR_MIN studs away. Facing: toward that player. No such spot, no other
+--   live player, or more players than the limit -> the 1.0 ring rule. Diagnostics: player ArenaSpawnKind ("near" /
+--   "ring"), ArenaSpawnIndex 0 for a near spawn, ArenaSpawnNearTo (the other player's name). Switch: script attribute
+--   ArenaSpawnNearEnabled (default true, read at each placement; false = 1.0).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local SETTLE, SETTLE_RESPAWN = 0.15, 0.3
 
 script:SetAttribute("ArenaSpawnServerVersion", VERSION)
 if script:GetAttribute("ArenaSpawnsEnabled") == nil then script:SetAttribute("ArenaSpawnsEnabled", true) end
+for k, v in pairs({ArenaSpawnNearEnabled = true, ArenaSpawnNearMaxPlayers = 4}) do -- v1.1
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local NEAR_MIN, NEAR_MAX, NEAR_TRIES = 60, 120, 30 -- v1.1
 local ModeRules = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
 local MODE = ModeRules.currentMode()
 script:SetAttribute("ArenaSpawnMode", MODE)
@@ -81,17 +95,68 @@ local function choose(player)
 	return best, bestI
 end
 
+-- v1.1: a spot near another player while the lobby is small; returns ground point, that player's name, their position
+local function nearSpot(player)
+	if script:GetAttribute("ArenaSpawnNearEnabled") == false then return nil end
+	if #Players:GetPlayers() > (tonumber(script:GetAttribute("ArenaSpawnNearMaxPlayers")) or 4) then return nil end
+	local island = workspace:FindFirstChild("DinoIsland")
+	local groundF = island and island:FindFirstChild("Ground")
+	if not groundF then return nil end
+	local live = {}
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local c = pl ~= player and pl.Character
+		local r = c and c:FindFirstChild("HumanoidRootPart")
+		local hum = c and c:FindFirstChildOfClass("Humanoid")
+		if r and hum and hum.Health > 0 and pl:GetAttribute("InMenu") ~= true then table.insert(live, {pl = pl, pos = r.Position}) end
+	end
+	if #live == 0 then return nil end
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Include
+	rp.FilterDescendantsInstances = {groundF}
+	local op = OverlapParams.new()
+	op.FilterType = Enum.RaycastFilterType.Include
+	local block = {}
+	for _, n in ipairs({"Trees", "Rocks", "MountainSteps", "EdgeWalls"}) do
+		local f = island:FindFirstChild(n)
+		if f then table.insert(block, f) end
+	end
+	op.FilterDescendantsInstances = block
+	local anchor = live[math.random(1, #live)]
+	for _ = 1, NEAR_TRIES do
+		local a = math.random() * 2 * math.pi
+		local d = NEAR_MIN + math.random() * (NEAR_MAX - NEAR_MIN)
+		local x, z = anchor.pos.X + math.cos(a) * d, anchor.pos.Z + math.sin(a) * d
+		local hit = workspace:Raycast(Vector3.new(x, anchor.pos.Y + 300, z), Vector3.new(0, -800, 0), rp)
+		if hit and hit.Position.Y >= 0 and hit.Normal.Y > 0.9
+			and #workspace:GetPartBoundsInBox(CFrame.new(hit.Position + Vector3.new(0, 12, 0)), Vector3.new(36, 22, 36), op) == 0 then
+			local clear = true
+			for _, o in ipairs(live) do
+				if Vector3.new(o.pos.X - x, 0, o.pos.Z - z).Magnitude < NEAR_MIN then clear = false break end
+			end
+			if clear then return hit.Position, anchor.pl.Name, anchor.pos end
+		end
+	end
+	return nil
+end
+
 local moves = 0
 local function place(player, char, reason)
 	if not on() or player.Character ~= char or not char.Parent then return end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
-	local p, i = choose(player)
-	if not p then return end
-	local pos = p.Position + Vector3.new(0, p.Size.Y / 2 + standOffset(char), 0)
-	local dir
+	local pos, i, dir, nearTo
+	local g, who, whoPos = nearSpot(player) -- v1.1
+	if g then
+		pos, i, nearTo = g + Vector3.new(0, standOffset(char), 0), 0, who
+		local d = Vector3.new(whoPos.X - pos.X, 0, whoPos.Z - pos.Z)
+		if d.Magnitude > 1 then dir = d.Unit end
+	else
+		local p, pi = choose(player)
+		if not p then return end
+		pos, i = p.Position + Vector3.new(0, p.Size.Y / 2 + standOffset(char), 0), pi
+	end
 	local island = workspace:FindFirstChild("DinoIsland")
-	if island and island:IsA("Model") then
+	if not dir and island and island:IsA("Model") then
 		local cf = island:GetBoundingBox()
 		local d = Vector3.new(cf.Position.X - pos.X, 0, cf.Position.Z - pos.Z)
 		if d.Magnitude > 1 then dir = d.Unit end
@@ -106,6 +171,8 @@ local function place(player, char, reason)
 	moves += 1
 	script:SetAttribute("ArenaSpawnMoves", moves)
 	player:SetAttribute("ArenaSpawnIndex", i)
+	player:SetAttribute("ArenaSpawnKind", nearTo and "near" or "ring") -- v1.1
+	player:SetAttribute("ArenaSpawnNearTo", nearTo or "")
 	player:SetAttribute("ArenaSpawnReason", reason)
 	player:SetAttribute("ArenaSpawnAt", workspace:GetServerTimeNow()) -- last
 end
