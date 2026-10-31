@@ -1,4 +1,4 @@
--- MechaButtons v1.22 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.23 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -136,6 +136,12 @@
 --     to the flat part only (no tilt); the camera follows that flat direction.
 --   PC keys are unchanged. Diagnostics: MechaScreechAimDeg (signed yaw, degrees, + = right), MechaScreechAimPitch
 --   (degrees, + = up), MechaScreechAimMode ("ahead" / "thumb").
+-- v1.23 (Kepu 2026-10-30: "It readjusts my camera after shooting. I don't want it to do that"): leaving the tether aim mode
+--   puts the over-the-shoulder camera back the way it looked when aim mode started (instead of re-centring behind the
+--   pachy, which faces where you aimed): the camera's look direction is saved at the start and, after ShoulderCamEnabled
+--   is put back, ShoulderCamLookAt (ShoulderCam's look-at hook) is set to a point 500 studs along it. The body then turns
+--   back with the camera at TurnLimit's normal rate. Script attribute MechaTetherAimKeepCam (default true, read when
+--   leaving; false = 1.22).
 -- v1.22 (Kepu 2026-10-30: "when I click tether spike it changes the camera angle where I only aim as I'm strafe walking. It
 --   shows like a launcher pov where I can properly aim. Just like dedicated aiming" -> mockup
 --   docs/mockups/pachy_tether_aim_options.html B "Top-down tactical"; fire: tap Tether again; cancel: CANCEL button +
@@ -206,7 +212,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.22"
+local VERSION = "1.23"
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -547,6 +553,9 @@ local function tacEnd(fire, why)
 	char:SetAttribute("TetherAiming", false)
 	char:SetAttribute("TurnLimitEnabled", s.prevTurn)
 	char:SetAttribute("ShoulderCamEnabled", s.prevCam)
+	if s.prevLook and hrp and script:GetAttribute("MechaTetherAimKeepCam") ~= false then -- v1.23: the camera as it was
+		char:SetAttribute("ShoulderCamLookAt", hrp.Position + s.prevLook * 500)
+	end
 	if hum and s.prevTurn == false then hum.AutoRotate = true end
 	char:SetAttribute("MechaTetherAimEnd", why)
 	char:SetAttribute("MechaTetherAim", "idle")
@@ -692,7 +701,7 @@ local function tacStart(n)
 	tac = {slot = n, t0 = os.clock(), disc = disc, line = line, gui = gui, timer = timer, fwd = f,
 		flat = Vector3.new(hrp.Position.X, 0, hrp.Position.Z) + f * TAC_START, conns = {},
 		prevTurn = char:GetAttribute("TurnLimitEnabled"), prevCam = char:GetAttribute("ShoulderCamEnabled"),
-		prevFov = cam and cam.FieldOfView}
+		prevFov = cam and cam.FieldOfView, prevLook = cam and cam.CFrame.LookVector} -- v1.23: prevLook
 	table.insert(tac.conns, cancel.Activated:Connect(function() tacEnd(false, "cancel") end))
 	-- touch: a drag that starts on the right side of the screen (not on a button) moves the circle
 	local drags = {}

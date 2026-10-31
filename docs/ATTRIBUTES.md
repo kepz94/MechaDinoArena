@@ -2230,3 +2230,11 @@ Look: <head>.InkHit (InkSplash, InkDrip); model.InkBlindedTag (Blot, Text "BLIND
 | MechaTetherAim / MechaTetherAimEnd | character (client) | tactical / idle; fired / cancel / timeout / gone / cooldown |
 | SprintTetherAimEnabled | SprintTest script | default true; false = running allowed while aiming |
 Look: ScreenGui TetherAimHud (Tag, Timer, Cancel); TetherAim disc + TetherAimLine (client only).
+
+## Tether 1.36 / aim 1.23 / Ink assist 1.4
+| Attribute | Where | Meaning |
+|---|---|---|
+| SkillTree.TETHER_BIGGER | SkillTree constant | true: 15-stud circle, chained 4 / 5 s (false = 8, 2.5 / 3.5) |
+| MechaTetherAimKeepCam | MechaButtons script | default true: the camera returns to its pre-aim look after the tether aim mode |
+| InkAimAssistEnabled / InkAimAssistDeg | InkServer script | default true / 12: snap the shot to the closest dino within that angle |
+| InkAssisted / InkAssistDeg | character (shooter) | the last shot snapped / the angle snapped (0 = not) |

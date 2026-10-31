@@ -1,4 +1,4 @@
--- SkillTree v1.35 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.36 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -303,6 +303,9 @@ SkillTree.AREAS = {
 --   tetherYank (star: true; the chain pulls them to tetherYankReach 5). All 0 / false below step I.
 -- v1.35 (Kepu 2026-10-30 after playing v205: "the radius is so short" -> "Range: 60 to 90 studs"): SkillTree.TETHER_RANGE_90
 --   (default true) tetherRange 90 (was 60) and step I text "(90 studs)". false = 1.34.
+-- v1.36 (Kepu 2026-10-30: "I need the splash radius to be larger and the time it's holding an enemy down to be longer" ->
+--   "15 studs", "4 s / 5 s"): SkillTree.TETHER_BIGGER (default true) tetherSplash 15 (was 8), tetherTime 4 s at I, 5 s from
+--   II (was 2.5 / 3.5); step texts I / II follow (tap to aim, as MechaButtons 1.22). false = 1.35.
 -- v1.5: per-dino paths, appended to their areas (1.4 order kept)
 do
 	local add = {
@@ -634,6 +637,11 @@ do
 	if SkillTree.PACHY_TETHER and SkillTree.TETHER_RANGE_90 and SkillTree.PATHS.tether then
 		SkillTree.PATHS.tether.steps[1] = "Button: hold to aim a landing circle (tilt the camera to move it nearer or farther), let go to lob a spike (90 studs). The closest dino caught in the 8-stud circle is chained to the ground: it can't go more than 10 studs from the spike for 2.5 s"
 	end
+	SkillTree.TETHER_BIGGER = true -- v1.36
+	if SkillTree.PACHY_TETHER and SkillTree.TETHER_BIGGER and SkillTree.PATHS.tether then
+		SkillTree.PATHS.tether.steps[1] = "Button: tap to aim from above (move the circle, keep walking), tap again to lob a spike (90 studs). The closest dino caught in the 15-stud circle is chained to the ground: it can't go more than 10 studs from the spike for 4 s"
+		SkillTree.PATHS.tether.steps[2] = "Chained for 5 s"
+	end
 end
 -- v1.30: the pachy's Bone Crest replaces Thick Hide (Defense)
 SkillTree.PACHY_BONE_CREST = true
@@ -856,6 +864,10 @@ function SkillTree.effects(steps, dino) -- v1.5: + dino
 		if tt >= 3 then e.tetherCd = 10 end
 		if tt >= 4 then e.tetherYank, e.tetherYankReach = true, 5 end
 		if tt >= 1 and SkillTree.TETHER_RANGE_90 then e.tetherRange = 90 end -- v1.35
+		if SkillTree.TETHER_BIGGER then -- v1.36
+			if tt >= 1 then e.tetherSplash, e.tetherTime = 15, 4 end
+			if tt >= 2 then e.tetherTime = 5 end
+		end
 	end
 	e.lifestealRaptor = 0 -- v1.28
 	if SkillTree.RAPTOR_LIFESTEAL_STRONG then

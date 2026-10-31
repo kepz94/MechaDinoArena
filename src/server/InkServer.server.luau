@@ -1,4 +1,4 @@
--- InkServer v1.3 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
+-- InkServer v1.4 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
 -- MDA-128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Neck ink tank +
 --   barrel". Kepu 2026-10-30: "How about an ink shooter that blinds your enemy for 2 seconds. Turns their screen black";
 --   answers: fully black (HUD stays), an aimed shot like the Grappling Hook (first dino hit), bots lose you, steps II 80
@@ -60,12 +60,20 @@
 --     future and fades out. A new ink on a dino that is still inked restarts it. Removed 0.6 s after the ink wears off.
 --     On a "hit" / "shielded" shot the flat InkSplat disc is hidden (it hung in the air at the hit point); its drops
 --     still burst there. Misses / blocked shots keep the disc.
+-- v1.4 (Kepu 2026-10-30: "the ink shooter needs some aim assistance" -> "Snap to nearby dino"): with script attribute
+--   InkAimAssistEnabled (default true, read each shot) the shot is turned toward the closest dino within InkAimAssistDeg
+--   (script attribute, default 12) degrees of the aim (after the pitch clamp): of the allowed targets (same as the hit
+--   search: ModeRules, not KO, alive), every hitbox part within InkRange of the muzzle with a clear line from the muzzle
+--   (world only) is scored by its angle from the aim; the smallest wins and the shot flies straight at that part (no pitch
+--   clamp on the snapped direction). No candidate within the angle = the aim as sent (1.3). The normal hit search then
+--   runs along the new direction. Diagnostics: character InkAssisted (true / false, the last shot), InkAssistDeg (angle
+--   snapped, whole degrees; 0 when not snapped).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25)
 local PITCH_MIN_SHOULDER = math.rad(-20) -- v1.3: the shoulder muzzle sits high, so the shot may aim down to the ground ahead
 local AIM_HELP = 4
@@ -82,6 +90,8 @@ if script:GetAttribute("InkVisorEnabled") == nil then script:SetAttribute("InkVi
 if script:GetAttribute("InkBellyMount") == nil then script:SetAttribute("InkBellyMount", true) end -- v1.2
 if script:GetAttribute("InkShoulderMount") == nil then script:SetAttribute("InkShoulderMount", true) end -- v1.3
 if script:GetAttribute("InkHitLookEnabled") == nil then script:SetAttribute("InkHitLookEnabled", true) end -- v1.3
+if script:GetAttribute("InkAimAssistEnabled") == nil then script:SetAttribute("InkAimAssistEnabled", true) end -- v1.4
+if script:GetAttribute("InkAimAssistDeg") == nil then script:SetAttribute("InkAimAssistDeg", 12) end -- v1.4
 local visorModCache -- v1.1: Dome Visor (ServerStorage.DinoArcade.BoneCrest 1.2), loaded on first use
 local function visorMod()
 	if visorModCache == nil then
@@ -550,6 +560,29 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local origin = muzzleOf(char) or char:GetPivot().Position
 	local range = tonumber(char:GetAttribute("InkRange")) or 60
 	local params = worldExclude()
+	do -- v1.4: aim assist, snap to the closest dino near the aim
+		local snapDir, snapAng
+		if script:GetAttribute("InkAimAssistEnabled") ~= false then
+			local maxAng = math.rad(math.clamp(tonumber(script:GetAttribute("InkAimAssistDeg")) or 12, 0, 45))
+			for _, c in ipairs(candidates(char)) do
+				for _, p in ipairs(c.hb:GetChildren()) do
+					if p:IsA("BasePart") then
+						local v = p.Position - origin
+						local d = v.Magnitude
+						if d > 0.5 and d <= range then
+							local ang = math.acos(math.clamp(dir:Dot(v / d), -1, 1))
+							if ang <= maxAng and (not snapAng or ang < snapAng) and not workspace:Raycast(origin, v, params) then
+								snapDir, snapAng = v / d, ang
+							end
+						end
+					end
+				end
+			end
+		end
+		if snapDir then dir = snapDir end
+		char:SetAttribute("InkAssisted", snapDir ~= nil)
+		char:SetAttribute("InkAssistDeg", snapAng and math.floor(math.deg(snapAng) + 0.5) or 0)
+	end
 	local wall = workspace:Raycast(origin, dir * range, params)
 	local wallDist = wall and (wall.Position - origin).Magnitude or math.huge
 	local best, bestT, bestPoint
