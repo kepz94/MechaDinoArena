@@ -1,4 +1,4 @@
--- AbilityBar v1.13 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.14 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -88,12 +88,22 @@
 --   "bloodrush" tile shows key "LMB" (it fires through ATTACK) and "ready" (left > 0) / "spent" (dim 0.25: Blood Rush on,
 --   none left) / "waiting" (charges left: ready once they run out) / "off". Switch: script attribute AbilityBarBloodEnabled
 --   (default true, read at start; false = 1.9). Diagnostics: AbilityBarBloodLeft.
+-- v1.14 (Herrerasaurus kit, MDA-143, plan docs/plans/HERRERA_KIT_v1.0.md Task 11 — the plan named it 1.8, the bar was
+--   already 1.13; mockup docs/mockups/herrera_kit_options.html bar "R, T, LMB SLASH (pips), Space HOP"): with script
+--   attribute AbilityBarHerreraEnabled (default true, read at start) the Herrera's row (SPECIES_MOVES.Herrera) is
+--   Slash (key "LMB", name "SLASH", yellow stroke) then Hop (key "Space", name "HOP"). The Slash tile has one pip per
+--   charge (the Headbutt tile's pips: bottom centre, yellow ring, fill rising with the refill), from SlashChargesNow /
+--   SlashChargesMax / SlashRefillStart / SlashRefillAt (SlashServer 1.2). Slash states (first match wins): "stunned"
+--   (STUN, dim 0.25) / "active" (SlashLocalState "dash": stroke 4 px yellow) / "empty" (0 charges: dim 0.45, white fill
+--   at 0.89 rising with the refill) / "ready". Hop states: "ready" while ClimbLocalState is climbing / clinging / top
+--   (ClimbTest), else "ground" (dim 0.5). false = 1.13 (the Herrera gets the fallback order). Diagnostics:
+--   AbilityBar_Slash / AbilityBar_Hop (state), AbilityBarSlashPips ("<ready>/<max>").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.13"
+local VERSION = "1.14"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -158,6 +168,12 @@ if HEADBUTT_ON then -- v1.7: pachy headbutt tile (not in FALLBACK_ORDER, so othe
 	MOVES.Headbutt = {enabled = "HeadbuttEnabled", enabledDefault = false, key = "LMB", name = "ATTACK", color = YELLOW,
 		charges = true}
 	SPECIES_MOVES.Pachy = {"Headbutt", "Leap"}
+end
+if script:GetAttribute("AbilityBarHerreraEnabled") == nil then script:SetAttribute("AbilityBarHerreraEnabled", true) end -- v1.14
+if script:GetAttribute("AbilityBarHerreraEnabled") ~= false then -- v1.14: Herrera slash + hop (not in FALLBACK_ORDER)
+	MOVES.Slash = {enabled = "SlashEnabled", enabledDefault = false, key = "LMB", name = "SLASH", color = YELLOW, slashPips = true}
+	MOVES.Hop = {enabled = "ClimbEnabled", enabledDefault = false, key = "Space", name = "HOP", hop = true}
+	SPECIES_MOVES.Herrera = {"Slash", "Hop"}
 end
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 local SLOT_KEYS = {"R", "C", "T", "V"} -- v1.2: + T / V (slots 3 / 4)
@@ -494,6 +510,55 @@ local function rebuild()
 				t.bloodTag = tagL
 			end
 		end
+		if m.slashPips then -- v1.14: Herrera slash charge pips (the Headbutt tile's pips, no SLOWED / Blood Rush)
+			local row = Instance.new("Frame")
+			row.Name = "ChargePips"
+			row.BackgroundTransparency = 1
+			row.AnchorPoint = Vector2.new(0.5, 1)
+			row.Position = UDim2.fromScale(0.5, 0.935)
+			row.Size = UDim2.fromScale(0.9, 0.13)
+			row.ZIndex = 4
+			row.Parent = t.f
+			local list = Instance.new("UIListLayout")
+			list.FillDirection = Enum.FillDirection.Horizontal
+			list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+			list.VerticalAlignment = Enum.VerticalAlignment.Center
+			list.Padding = UDim.new(0.1, 0)
+			list.Parent = row
+			t.chargePips = {}
+			for i = 1, 3 do
+				local pip = Instance.new("Frame")
+				pip.Name = "Charge_" .. i
+				pip.Size = UDim2.fromScale(1, 1)
+				pip.SizeConstraint = Enum.SizeConstraint.RelativeYY
+				pip.BackgroundTransparency = 1
+				pip.ClipsDescendants = true
+				pip.ZIndex = 4
+				pip.LayoutOrder = i
+				pip.Parent = row
+				local pc = Instance.new("UICorner")
+				pc.CornerRadius = UDim.new(0.5, 0)
+				pc.Parent = pip
+				local ring = Instance.new("UIStroke")
+				ring.Color = YELLOW
+				ring.Thickness = 2
+				ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				ring.Parent = pip
+				local fillP = Instance.new("Frame")
+				fillP.Name = "Fill"
+				fillP.AnchorPoint = Vector2.new(0, 1)
+				fillP.Position = UDim2.fromScale(0, 1)
+				fillP.Size = UDim2.fromScale(1, 0)
+				fillP.BackgroundColor3 = YELLOW
+				fillP.BorderSizePixel = 0
+				fillP.ZIndex = 4
+				fillP.Parent = pip
+				local fc2 = Instance.new("UICorner")
+				fc2.CornerRadius = UDim.new(0.5, 0)
+				fc2.Parent = fillP
+				t.chargePips[i] = {f = pip, fill = fillP, ring = ring}
+			end
+		end
 		table.insert(tiles, {id = id, kind = "move", move = m, t = t})
 		table.insert(names, m.key .. ":" .. m.name)
 	end
@@ -606,6 +671,36 @@ local function update()
 				end
 			else
 				paint(e, "ready", 0, 0, nil)
+			end
+		elseif e.move.slashPips then -- v1.14: Herrera slash (charges, no cooldown)
+			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("SlashChargesMax")) or 2), 1, 3)
+			local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("SlashChargesNow")) or maxC), 0, maxC)
+			local rs, ra = tonumber(char:GetAttribute("SlashRefillStart")) or 0, tonumber(char:GetAttribute("SlashRefillAt")) or 0
+			local part = (ra > rs and nowC < maxC) and math.clamp((now - rs) / (ra - rs), 0, 1) or 0
+			for i, pip in ipairs(e.t.chargePips) do
+				pip.f.Visible = i <= maxC
+				pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0))
+			end
+			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = Color3.new(0, 0, 0), 0.38
+			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif char:GetAttribute("SlashLocalState") == "dash" then
+				paint(e, "active", 0, 0, nil)
+				e.t.stroke.Color = YELLOW
+			elseif nowC <= 0 then
+				paint(e, "empty", 0.45, 0, nil)
+				e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = WHITE, 0.89
+				e.t.fill.Size = UDim2.fromScale(1, part)
+			else
+				paint(e, "ready", 0, 0, nil)
+			end
+			show("AbilityBarSlashPips", nowC .. "/" .. maxC)
+		elseif e.move.hop then -- v1.14: Herrera hop, lit only on a tree
+			local cs = char:GetAttribute("ClimbLocalState")
+			if cs == "climbing" or cs == "clinging" or cs == "top" then
+				paint(e, "ready", 0, 0, nil)
+			else
+				paint(e, "ground", 0.5, 0, nil)
 			end
 		elseif e.move.charges then -- v1.7: pachy headbutt (charges, no cooldown)
 			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("HeadbuttChargesMax")) or 2), 1, 3)
