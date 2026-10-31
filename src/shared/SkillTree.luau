@@ -1,4 +1,4 @@
--- SkillTree v1.38 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.39 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,10 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.39 (Kepu 2026-10-31, publishing pass 1: the 5 parts whose moves come in pass 2 go out as "Mark them SOON"): with
+--   SkillTree.HERRERA_PASS2_SOON (default true) glider, quills, smoke, strobe and breaker get soon = true and leave
+--   LIVE_MECH: shown in the Lab as SOON, not buyable (canBuy "soon"), not given by SkillServer's Studio test layer.
+--   Iron Claw, Back Plating and Blood Siphon stay live. Set false when pass 2 ships.
 -- v1.37 (Kepu 2026-10-31: "you keep applying these to any new Dino ... I need you to just have a generalized stat line that
 --   can be customized to the Dino"; mockup docs/mockups/stat_lines_per_dino_options.html option A "Same rows, own names",
 --   new rows Tree Stalker + Blood Frenzy; plan docs/plans/STAT_LINES_v1.0.md). Switch SkillTree.HERRERA_STATS (default true):
@@ -829,6 +833,16 @@ if SkillTree.HERRERA_PARTS and not SkillTree.PATHS.ironclaw then
 	part("siphon", "Blood Siphon", "health", {
 		"Heal 1 HP/s for each bleeding enemy within 15 studs",
 		"1.5 HP/s each", "Range 25 studs", "A bleed kill near you heals 25% of your max health"})
+end
+-- v1.39: the pass-2 parts are SOON until their moves are built
+SkillTree.HERRERA_PASS2_SOON = true
+if SkillTree.HERRERA_PARTS and SkillTree.HERRERA_PASS2_SOON then
+	for _, id in ipairs({"glider", "quills", "smoke", "strobe", "breaker"}) do
+		if SkillTree.PATHS[id] then
+			SkillTree.PATHS[id].soon = true
+			SkillTree.LIVE_MECH[id] = nil
+		end
+	end
 end
 
 -- level curve

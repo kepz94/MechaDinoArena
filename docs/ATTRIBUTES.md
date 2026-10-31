@@ -2391,3 +2391,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | IronClawPoseMul / SlashPoseIronClawEnabled | herrera model | 1.35 / true | SlashPose 1.1 |
 | BoneCrestPlatingEnabled | BoneCrest module | true | BoneCrest 1.3 |
 | PlatingHits / PlatingLastMul / PlatingHitAt | herrera (victim) | count / mul / server time | BoneCrest 1.3 |
+| HERRERA_PASS2_SOON (module flag) | SkillTree | true | SkillTree 1.39: pass-2 parts SOON |
