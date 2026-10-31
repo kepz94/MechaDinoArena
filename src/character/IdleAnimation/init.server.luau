@@ -1,4 +1,4 @@
--- IdleAnimation v1.32 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.33 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -175,6 +175,12 @@
 --       (phase = climbed height / (ClimbStride x scale); still while clinging), tail hanging. Layered right after the
 --       walk / scurry blend, before the leap and every action layer. Switch: model attribute ClimbPoseEnabled (default
 --       true). Diagnostic: ClimbPoseBlend (0.1 steps). Every other model unchanged.
+-- v1.33: Herrerasaurus dash-through slash pose (SlashPose 1.0; MDA-142, plan docs/plans/HERRERA_KIT_v1.0.md Task 10). On
+--       models with SlashEnabled = true: SlashPose.phase (owner: SlashTest's local state; others: SlashServer's
+--       SlashStartedAt / SlashDashTime / SlashKind) -> claw swipe mid-dash (ground) or arms-forward nose-down dive with a
+--       swipe at the end (dive / leap), fading out over SlashPose.FADE; multiplied on after the grappling hook layer,
+--       before the roar. Switch: model attribute SlashPoseEnabled (default true). Diagnostics: SlashPoseState ("none" /
+--       "dash" / "fade"), SlashPoseKind, SlashPoseSource. Every other model unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -206,6 +212,7 @@ local HeadbuttPose = require(script.HeadbuttPose) -- v1.29 (defaults are read by
 local HookPose = require(script.HookPose) -- v1.30
 local ScurryPose = require(script.ScurryPose) -- v1.31
 local ClimbPose = require(script.ClimbPose) -- v1.32
+local SlashPose = require(script.SlashPose) -- v1.33
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -501,6 +508,7 @@ local refitCount = 0
 model:SetAttribute("IdleAnimationVersion", "1.28")
 model:SetAttribute("IdleAnimationVersion", "1.31") -- v1.31 (the 1.28 line above was never bumped for 1.29 / 1.30)
 model:SetAttribute("IdleAnimationVersion", "1.32") -- v1.32
+model:SetAttribute("IdleAnimationVersion", "1.33") -- v1.33
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -1098,6 +1106,19 @@ RunService.PreSimulation:Connect(function(dt)
 		end
 	end
 	if model:GetAttribute("HookStartedAt") ~= nil then show("HookPoseState", hkPhase or "none") end
+	-- v1.33: Herrera dash-through slash on top
+	if model:GetAttribute("SlashEnabled") == true then
+		local lpS = Players.LocalPlayer
+		local slPhase, slKind, slU, slSource = SlashPose.phase(model, lpS ~= nil and lpS.Character == model, workspace:GetServerTimeNow())
+		if slPhase then
+			for name, off in pairs(SlashPose.get(slPhase, slKind, slU)) do
+				if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+			end
+		end
+		show("SlashPoseState", slPhase or "none")
+		show("SlashPoseKind", slKind)
+		show("SlashPoseSource", slSource)
+	end
 	-- roar on top of whatever the body is doing (upper body only)
 	local roarState = "none"
 	if roarF then
