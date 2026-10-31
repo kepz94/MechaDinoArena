@@ -595,6 +595,7 @@ The front is always unchanged.
 | ★ | Puddles last 8 s. |
 ### How it works
 - Aim (Kepu 2026-10-31 15:49, replaces the tether-style aim and its red-team copy: "Have the blobs just toss from a set distance and be dropped immediately under you when gliding as herrera"; picked 30 studs): no aim mode. A tap fires at once. The landing point is the root + facing (flat) × GooToss (30) × scale, dropped onto the ground. While Gliding is true, the landing point is the ground straight under the root (the blob falls straight down). MechaButtons sends `DinoGooRequest(stamp)`; the server works out the point itself.
+- Soft aim assist (Kepu 15:50: "Also soft aim to assist"). This applies to the toss only, not the glide drop. The server picks the closest allowed enemy (`candidates`, so squadmates are never picked) whose root is within GooAssistAngle (30°) of the facing (flat) and GooAssistMin..GooAssistMax (15..45) × scale studs away. If there is one, the landing point moves onto that enemy's root, dropped onto the ground. If there is none, the blob lands at the fixed 30 studs. Character GooAssistTarget is the picked name, or "". Tunables are character attributes GooAssistAngle / GooAssistMin / GooAssistMax, with the switch HerreraMoves_gooAssistEnabled.
 - Request `DinoGooRequest(stamp)`; `check(..., "goo", "Goo", {})` (not refused by daze — area denial, like smoke).
 - III: two landing points = the landing point ± right(flat, perpendicular to the facing) × GooRadius × 0.85 × scale.
 - Flight 0.85 s (0.12 s stagger for the 2nd), apex 14 studs above the higher end, from the mortar muzzle; server part "GooBlob" (anchored, no collide / query / touch) in Workspace.DinoFX.GooFX.
@@ -653,7 +654,8 @@ The front is always unchanged.
 | Spike, shielded enemy | EnergyShieldUntil > now | nothing, spike stays |
 | Patch over | now ≥ Until, owner dead / left / part off | patch removed (bleeds already running finish) |
 | Spike drawing | Hidden false | every client; Hidden true → owner (+ squad) only |
-| Goo toss | tap while ready, not gliding | lands GooToss (30) × scale ahead |
+| Goo toss | tap while ready, not gliding, no enemy in the assist cone | lands GooToss (30) × scale ahead |
+| Goo toss, assisted | an allowed enemy within 30° and 15–45 studs | lands on the closest such enemy |
 | Goo drop | tap while Gliding | lands straight under you |
 | Goo request | badArg / dead / disabled / menu / stunned / pinned / cooldown | refused (GooServerResult) |
 | Goo fire | ok | GooCount blobs; puddle(s) at landing for GooTime |
