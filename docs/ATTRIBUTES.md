@@ -2345,3 +2345,10 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | AbilityBarTRexJumpEnabled | AbilityBar script | true | AbilityBar 1.16: T-Rex JUMP tile (false = row Bite, Ram) |
 | ClimbTrunkTopEnabled / ClimbTrunkFollowEnabled | ClimbTest script | true / true | ClimbTest 1.12 switches: trunk end only at the trunk top; follow the climbed trunk's axis |
 | ClimbTrunkTopY / ClimbEndCheck / ClimbFollow | herrera (owner client) | studs / "probe", "belowTop" / "on", "off" | ClimbTest 1.12 diagnostics |
+| HerreraJumpEnabled / HerreraJump_<Jump setting> / HerreraJumpVersion / HerreraJumpApplied | HerreraJump script; character | true / numbers / "1.0" / count | HerreraJump 1.0 |
+| JumpSuppressed | character (owner client) | bool | ClimbTest 1.13 writes (on a tree); JumpTest 1.3 reads (refuse / end the leap) |
+| JumpSuppressEnabled / ClimbJumpSuppressEnabled | JumpTest / ClimbTest scripts | true / true | switches |
+| HerreraJumpPoseEnabled / HJumpPoseScale / HJumpPitch / HJumpArmReach / HJumpLegTrail / HJumpTailCurl / HJumpPushTime / HJumpReachTime / HJumpLandTime | herrera model | true / 1 / 28 / 100 / 70 / 1 / 0.14 / 0.2 / 0.18 | IdleAnimation 1.34 + HerreraJumpPose 1.0 |
+| JumpPoseKind | model (client) | "herrera" / "biped" | IdleAnimation 1.34 diagnostic |
+| AbilityBarHerreraJumpEnabled | AbilityBar script | true | AbilityBar 1.17 |
+| ArenaTouchJumpHoldEnabled / ArenaTouchJumpHeld | ArenaTouch script / character | true / bool | ArenaTouch 1.8 |

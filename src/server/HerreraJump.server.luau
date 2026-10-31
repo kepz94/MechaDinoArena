@@ -4,7 +4,7 @@
 -- button and it will spam it", "a strong jump and it will be high for it's size since it climbs trees").
 -- Who: every player character with the character attribute Species "Herrera". On spawn (and when Species becomes
 --   "Herrera") these are written (the model data has JumpEnabled false, so they are written even where set):
---     JumpEnabled true, JumpWindup 0.08, JumpLaunchPower 75 (tuned in Studio to an 18-stud peak), JumpBoost 10,
+--     JumpEnabled true, JumpWindup 0.08, JumpLaunchPower 76 (Studio: 75 -> peaks 17.2-17.5, 76 -> 17.9 studs), JumpBoost 10,
 --     JumpBoostMinSpeed 2, JumpAirHold true, JumpStaminaCost 0, JumpCooldown 0, SkillBase_JumpCooldown 0
 --   (SkillEffects writes JumpCooldown = SkillBase_JumpCooldown x the skill multiplier; base 0 keeps every write 0).
 --   Holding JUMP re-leaps on every landing (JumpTest), so no cooldown = a jump per landing.
@@ -15,7 +15,7 @@ local Players = game:GetService("Players")
 
 local VERSION = "1.0"
 local SETTINGS = {
-	{"JumpEnabled", true}, {"JumpWindup", 0.08}, {"JumpLaunchPower", 75}, {"JumpBoost", 10}, {"JumpBoostMinSpeed", 2},
+	{"JumpEnabled", true}, {"JumpWindup", 0.08}, {"JumpLaunchPower", 76}, {"JumpBoost", 10}, {"JumpBoostMinSpeed", 2},
 	{"JumpAirHold", true}, {"JumpStaminaCost", 0}, {"JumpCooldown", 0}, {"SkillBase_JumpCooldown", 0},
 }
 
