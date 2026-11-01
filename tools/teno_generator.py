@@ -21,7 +21,8 @@ Run: python3 tools/teno_generator.py --look A|B|C --json OUT   (mockup export, t
 """
 import json, math, sys
 
-VERSION = "0.2"
+VERSION = "0.3"
+BODY_K = 0.84  # v0.3: the v0.2 C scale
 TARGET_LEN = 20.0  # v0.2: the body keeps about its v0.1 size, the much longer tail adds length (~40 studs in game)
 ROLES = ["main", "dorsal", "belly", "bands", "limbs", "claws", "eyes", "beak", "scutes", "mask"]
 NEVER = {"E8E2D2", "111111", "963C3C", "6E342E", "F5F5F0", "A3A2A5"}
@@ -40,7 +41,7 @@ LOOKS = {  # v0.2 (Kepu: "The tail isn't long enough. I want this to be cartooni
               pal={"main": "6F7E56", "dorsal": "485436", "belly": "D2CC9E", "bands": "333C26", "limbs": "5A6646",
                    "claws": "22261C", "eyes": "F3C64A", "beak": "6A6E78", "scutes": "B8B48A", "mask": "9C4A36"}),
     "C": dict(name="Goofy Noodle", hip0=3.9, headPitch=-4, lid=0.0, bodyH=1.0, bodyW=0.95, neckLen=1.15, neckRise=34, headLen=0.95,
-              hs=1.5, brow=-0.5, eye=2.3, beakHook=0.1, smile=1, tailRise=[30, 22, 6, -18, -40], tailThick=0.95, scuteH=0.22,
+              hs=1.5, brow=-0.5, eye=2.3, beakHook=0.1, smile=1, tailRise=[26, 16, 2, -14, -30], tailThick=1.45, tailLen=1.22, scuteH=0.22,
               plates=False, legThick=1.0, armThick=1.0, dewlap=False, crest=True, rings=False,
               pal={"main": "D99A4A", "dorsal": "2E8C8A", "belly": "F6E6BE", "bands": "C83A3A", "limbs": "B87A36",
                    "claws": "3A2A1E", "eyes": "FFFFFF", "beak": "F2D04A", "scutes": "1E6462", "mask": "F2B8A0"}),
@@ -221,9 +222,11 @@ for side in (1, -1):
 
 # ---------------------------------------------------------------- tail (very long, stiff, tapering; held off the ground)
 tt = L["tailThick"]
+TL = L.get("tailLen", 1.0)  # v0.3 (Kepu on C: "I need the tail to be more longer and thicker")
 tail = [(3.3, (3.45, 1.85 * bh * tt, 1.5 * bw * tt)), (3.25, (3.4, 1.3 * tt, 1.08 * tt)), (3.2, (3.35, 0.9 * tt, 0.76 * tt)),
         (3.15, (3.3, 0.58 * tt, 0.5 * tt)), (3.1, (3.2, 0.34 * tt, 0.3 * tt))]  # v0.2: ~16 long (was 9.6), about 62% of the length
 _root = (-1.1, 0.3)
+tail = [(sl * TL, (sz[0] * TL, sz[1], sz[2])) for sl, sz in tail]
 for i, (seglen, size) in enumerate(tail):
     name = f"Tail{i + 1}"
     rise = L["tailRise"][i]
@@ -296,6 +299,8 @@ def bounds():
 
 lo, hi = bounds()
 K = TARGET_LEN / (hi[0] - lo[0])
+if "tailLen" in L:  # v0.3: keep the v0.2 body size; the longer tail only adds length
+    K = BODY_K
 for n in order:
     sg = segments[n]
     sg["root"] = tuple(v * K for v in sg["root"])

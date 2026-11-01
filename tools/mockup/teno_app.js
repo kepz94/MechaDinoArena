@@ -6,7 +6,7 @@ const rad = THREE.MathUtils.degToRad;
 const INFO = {
   A: {sub: "sleepy, kind, a bit slow", why: "A big old softie: huge sleepy half-lidded eyes, a chunky orange beak with a little smile, puffy cheeks and a throat dewlap, a round body with a hump over the hips. The giant tail drags low and level, then the tip curls up like a hook.", tail: "Very long and low, the tip curls up."},
   B: {sub: "cranky, armoured, stubborn", why: "A grumpy tank: half-closed eyes under an angry slanted brow, a frowning hooked grey beak, a wide body on pillar legs, bony plates down its sides, and a thick tail wrapped in dark armour rings.", tail: "Thick and stiff, straight back like a battering ram, armour rings."},
-  C: {sub: "goofy, curious, bouncy", why: "A happy noodle: enormous round googly eyes with raised brows, a big yellow beak with a grin, a little crest on the head, the neck held up, and a teal back with red stripes. The tail sweeps up in a huge S-curve and hooks down at the end.", tail: "Swept high in a big S-curve, tip hooked down."},
+  C: {sub: "goofy, curious, bouncy", why: "A happy noodle: enormous round googly eyes with raised brows, a big yellow beak with a grin, a little crest on the head, the neck held up, and a teal back with red stripes. The tail sweeps up in a huge S-curve and hooks down at the end. v0.3: the tail is 22% longer and 45% thicker (about two-thirds of its length).", tail: "v0.3: longer and thicker, swept high in a big S-curve, tip hooked down."},
 };
 
 // ---------- three ----------
@@ -129,7 +129,7 @@ function frame(now) {
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
-resize(); setLook("A"); setView("three");
+resize(); setLook("C"); setView("three");
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__swing = t => { swingT = t; };
