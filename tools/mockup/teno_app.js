@@ -4,9 +4,9 @@ const HERRERA = __HERRERA__;
 const $ = id => document.getElementById(id);
 const rad = THREE.MathUtils.degToRad;
 const INFO = {
-  A: {sub: "calm, old, stubborn", why: "The everyday Tenontosaurus: barrel body peaking over the hips, a long low head with heavy cheeks and a hooked beak, a soft throat dewlap, sleepy-looking eyes. The tail is held low and level behind it, like a long stiff rope, and just keeps going.", tail: "Level, then drooping toward the tip."},
-  B: {sub: "heavy, armoured, cranky", why: "A thick-necked bruiser: wider body, pillar front legs, a deep frowning brow, a hooked beak, and bony plates on the flanks and down the sides of the tail. The tail base is extra thick, so the swing reads as a heavy club-rod.", tail: "Thick and almost straight, carried low like a battering ram."},
-  C: {sub: "alert, tall, jumpy", why: "Leggier and slimmer, neck held high, big round eyes, a little crest of quills behind the head, and bright red display bands on a teal back. The tail is carried in a high S-curve, ready to snap like a whip.", tail: "Lifted high in an S-curve, tip hanging down."},
+  A: {sub: "sleepy, kind, a bit slow", why: "A big old softie: huge sleepy half-lidded eyes, a chunky orange beak with a little smile, puffy cheeks and a throat dewlap, a round body with a hump over the hips. The giant tail drags low and level, then the tip curls up like a hook.", tail: "Very long and low, the tip curls up."},
+  B: {sub: "cranky, armoured, stubborn", why: "A grumpy tank: half-closed eyes under an angry slanted brow, a frowning hooked grey beak, a wide body on pillar legs, bony plates down its sides, and a thick tail wrapped in dark armour rings.", tail: "Thick and stiff, straight back like a battering ram, armour rings."},
+  C: {sub: "goofy, curious, bouncy", why: "A happy noodle: enormous round googly eyes with raised brows, a big yellow beak with a grin, a little crest on the head, the neck held up, and a teal back with red stripes. The tail sweeps up in a huge S-curve and hooks down at the end.", tail: "Swept high in a big S-curve, tip hooked down."},
 };
 
 // ---------- three ----------

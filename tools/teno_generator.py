@@ -21,29 +21,29 @@ Run: python3 tools/teno_generator.py --look A|B|C --json OUT   (mockup export, t
 """
 import json, math, sys
 
-VERSION = "0.1"
-TARGET_LEN = 17.0
+VERSION = "0.2"
+TARGET_LEN = 20.0  # v0.2: the body keeps about its v0.1 size, the much longer tail adds length (~40 studs in game)
 ROLES = ["main", "dorsal", "belly", "bands", "limbs", "claws", "eyes", "beak", "scutes", "mask"]
 NEVER = {"E8E2D2", "111111", "963C3C", "6E342E", "F5F5F0", "A3A2A5"}
 M = ((0, 0, 1), (0, 1, 0), (-1, 0, 0))  # D -> HRP space
 
 # Look parameters: proportions stay Tenontosaurus; character comes from posture, head, tail carriage and details.
-LOOKS = {
-    "A": dict(name="Old Gardener", hip0=4.0, headPitch=-14, lid=1.0, bodyH=1.0, bodyW=1.0, neckLen=1.0, neckRise=14, headLen=1.0, brow=0.0,
-              eye=1.0, beakHook=0.15, tailRise=[6, 0, -4, -6, -6], tailThick=1.0, scuteH=0.28, plates=False,
-              legThick=1.0, armThick=1.0, dewlap=True, crest=False,
-              pal={"main": "8A7350", "dorsal": "5A4632", "belly": "D8C7A0", "bands": "4A3A2A", "limbs": "6E5A3E",
-                   "claws": "2E2620", "eyes": "D9A23A", "beak": "3A332C", "scutes": "6B5236", "mask": "B89A6A"}),
-    "B": dict(name="Grumpy Bruiser", hip0=3.7, headPitch=-10, lid=0.0, bodyH=1.18, bodyW=1.2, neckLen=0.82, neckRise=4, headLen=0.92, brow=1.0,
-              eye=0.8, beakHook=0.3, tailRise=[2, -2, -3, -3, -2], tailThick=1.3, scuteH=0.45, plates=True,
-              legThick=1.3, armThick=1.35, dewlap=False, crest=False,
-              pal={"main": "5F6A4A", "dorsal": "3A4230", "belly": "B9B48E", "bands": "2B3022", "limbs": "4C553A",
-                   "claws": "1E201A", "eyes": "E0742A", "beak": "2A2622", "scutes": "8C8A6A", "mask": "7A3A2E"}),
-    "C": dict(name="Skittish Strider", hip0=4.4, headPitch=-6, lid=0.0, bodyH=0.9, bodyW=0.86, neckLen=1.22, neckRise=30, headLen=0.95, brow=-0.5,
-              eye=1.35, beakHook=0.05, tailRise=[22, 14, 2, -14, -24], tailThick=0.85, scuteH=0.2, plates=False,
-              legThick=0.85, armThick=0.85, dewlap=False, crest=True,
-              pal={"main": "9A7A4A", "dorsal": "3E5A5A", "belly": "E6D8B0", "bands": "C24A2A", "limbs": "7A6038",
-                   "claws": "2A221C", "eyes": "7FD0E6", "beak": "4A3A2A", "scutes": "2E4444", "mask": "E0B04A"}),
+LOOKS = {  # v0.2 (Kepu: "The tail isn't long enough. I want this to be cartoonish with a lot of character super easily identifiable")
+    "A": dict(name="Grandpa Whip", hip0=3.5, headPitch=-12, lid=1.0, bodyH=1.12, bodyW=1.08, neckLen=0.85, neckRise=12, headLen=0.95,
+              hs=1.45, brow=0.0, eye=1.9, beakHook=0.25, smile=1, tailRise=[8, 0, -6, -4, 30], tailThick=1.1, scuteH=0.3,
+              plates=False, legThick=1.15, armThick=1.1, dewlap=True, crest=False, rings=False,
+              pal={"main": "A88A5A", "dorsal": "6E5434", "belly": "EADBB4", "bands": "5A4228", "limbs": "8A6E46",
+                   "claws": "3A2E22", "eyes": "F2E2A0", "beak": "E8A23A", "scutes": "7A5C38", "mask": "D2B484"}),
+    "B": dict(name="Grumpy Tank", hip0=3.3, headPitch=-6, lid=0.45, bodyH=1.25, bodyW=1.28, neckLen=0.72, neckRise=2, headLen=0.9,
+              hs=1.35, brow=1.0, eye=1.5, beakHook=0.45, smile=-1, tailRise=[3, -1, -2, -2, -1], tailThick=1.35, scuteH=0.48,
+              plates=True, legThick=1.35, armThick=1.35, dewlap=False, crest=False, rings=True,
+              pal={"main": "6F7E56", "dorsal": "485436", "belly": "D2CC9E", "bands": "333C26", "limbs": "5A6646",
+                   "claws": "22261C", "eyes": "F3C64A", "beak": "6A6E78", "scutes": "B8B48A", "mask": "9C4A36"}),
+    "C": dict(name="Goofy Noodle", hip0=3.9, headPitch=-4, lid=0.0, bodyH=1.0, bodyW=0.95, neckLen=1.15, neckRise=34, headLen=0.95,
+              hs=1.5, brow=-0.5, eye=2.3, beakHook=0.1, smile=1, tailRise=[30, 22, 6, -18, -40], tailThick=0.95, scuteH=0.22,
+              plates=False, legThick=1.0, armThick=1.0, dewlap=False, crest=True, rings=False,
+              pal={"main": "D99A4A", "dorsal": "2E8C8A", "belly": "F6E6BE", "bands": "C83A3A", "limbs": "B87A36",
+                   "claws": "3A2A1E", "eyes": "FFFFFF", "beak": "F2D04A", "scutes": "1E6462", "mask": "F2B8A0"}),
 }
 LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
 L = LOOKS[LOOK]
@@ -151,8 +151,8 @@ for i in range(3):
 if L["dewlap"]:
     part("Neck", "mask", (1.1, 0.42, 0.42), along_neck(1.85, -0.75), pitch=nr - 8, name="Neck_dewlap")
 
-# ---------------------------------------------------------------- head (long and low; keratin beak, big cheeks, an eye full of mood)
-hl = L["headLen"]
+# ---------------------------------------------------------------- head (cartoon: big, huge eyes, chunky coloured beak, puffy cheeks)
+hl, hs = L["headLen"], L["hs"]
 HX, HY = NECK_END[0] + 0.05, NECK_END[1]
 seg("Head", (HX, HY, 0.0))
 hp = L["headPitch"]
@@ -162,39 +162,46 @@ hn = (-math.sin(hr), math.cos(hr))
 
 
 def along_head(t, up=0.0, z=0.0):
-    return (HX + hd_[0] * t * hl + hn[0] * up, HY + hd_[1] * t * hl + hn[1] * up, z)
+    return (HX + hd_[0] * t * hl * hs + hn[0] * up * hs, HY + hd_[1] * t * hl * hs + hn[1] * up * hs, z * hs)
 
 
-part("Head", "main", (1.2, 1.2, 1.1), along_head(0.35, 0.12), pitch=hp, name="Head_cranium")
-part("Head", "main", (1.3 * hl, 0.9, 0.86), along_head(1.35, -0.02), pitch=hp, name="Head_snout")
-part("Head", "main", (0.55, 0.8, 0.74), along_head(2.15, -0.08), pitch=hp, name="Head_nose")
-part("Head", "beak", (0.5, 0.62, 0.62), along_head(2.6, -0.16 - L["beakHook"] * 0.15), pitch=hp - 8, name="Head_beak")
-part("Head", "beak", (0.26, 0.3 + L["beakHook"], 0.42), along_head(2.86, -0.38 - L["beakHook"] * 0.35), pitch=hp - 28, name="Head_beakHook")
-part("Head", "mouth", (2.0 * hl, 0.08, 0.8), along_head(1.4, -0.47), pitch=hp, name="Head_mouth")
-part("Head", "dorsal", (1.9 * hl, 0.14, 0.62), along_head(1.15, 0.47), pitch=hp, name="Head_top")
+def hpart(key, size, t, up, z=0.0, dp=0.0, name=None):
+    part("Head", key, tuple(v * hs for v in size), along_head(t, up, z), pitch=hp + dp, name=name)
+
+
+hpart("main", (1.25, 1.25, 1.15), 0.35, 0.18, name="Head_cranium")
+hpart("main", (1.3 * hl, 0.92, 0.9), 1.3, -0.02, name="Head_snout")
+hpart("main", (0.6, 0.85, 0.8), 2.05, -0.06, name="Head_nose")
+hpart("beak", (0.62, 0.7, 0.72), 2.55, -0.14 - L["beakHook"] * 0.12, dp=-8, name="Head_beak")
+hpart("beak", (0.32, 0.3 + L["beakHook"], 0.5), 2.86, -0.38 - L["beakHook"] * 0.3, dp=-30, name="Head_beakHook")
+hpart("mouth", (1.9 * hl, 0.08, 0.84), 1.3, -0.47, name="Head_mouth")
+hpart("mouth", (0.32, 0.08, 0.86), 0.42, -0.47 + 0.1 * L["smile"], dp=-30 * L["smile"], name="Head_mouthEnd")
+hpart("dorsal", (1.9 * hl, 0.14, 0.66), 1.15, 0.47, name="Head_top")
 e = L["eye"]
 for side in (1, -1):
-    part("Head", "main", (0.55, 0.45, 0.32), along_head(0.55, 0.42, side * 0.46), pitch=hp, name=side_name("Head_eyebump", side))
-    part("Head", "eyes", (0.32 * e, 0.28 * e, 0.06), along_head(0.6, 0.42, side * 0.63), pitch=hp, name=side_name("Head_eye", side))
-    part("Head", "pupil", (0.11 * e, 0.2 * e, 0.03), along_head(0.66, 0.42, side * 0.665), pitch=hp, name=side_name("Head_pupil", side))
-    part("Head", "shine", (0.06 * e, 0.06 * e, 0.02), along_head(0.62, 0.48 + 0.04 * e, side * 0.68), pitch=hp, name=side_name("Head_shine", side))
+    hpart("main", (0.36 * e, 0.34 * e, 0.3), 0.5, 0.44, side * 0.44, name=side_name("Head_eyebump", side))
+    hpart("eyes", (0.3 * e, 0.3 * e, 0.06), 0.52, 0.44, side * 0.6, name=side_name("Head_eye", side))
+    hpart("pupil", (0.13 * e, 0.17 * e, 0.03), 0.6, 0.42, side * 0.635, name=side_name("Head_pupil", side))
+    hpart("shine", (0.05 * e, 0.05 * e, 0.02), 0.56, 0.48 + 0.03 * e, side * 0.65, name=side_name("Head_shine", side))
     lid = L["lid"]
     if lid > 0:  # heavy sleepy lid over the top of the eye
-        part("Head", "dorsal", (0.42 * e, 0.16 * e * lid, 0.08), along_head(0.6, 0.42 + 0.14 * e - 0.04 * lid, side * 0.66), pitch=hp + 4, name=side_name("Head_lid", side))
-    if L["brow"] > 0:  # angry brow ridge
-        part("Head", "dorsal", (0.62, 0.22, 0.26), along_head(0.6, 0.66, side * 0.5), pitch=hp - 18 * L["brow"], name=side_name("Head_brow", side))
-    part("Head", "mask", (0.95 * hl, 0.5, 0.08), along_head(1.15, -0.12, side * 0.44), pitch=hp, name=side_name("Head_cheek", side))
-    part("Head", "mask", (0.14, 0.12, 0.05), along_head(2.32, 0.2, side * 0.37), pitch=hp, name=side_name("Head_nostril", side))
+        hpart("dorsal", (0.34 * e, 0.16 * e * lid, 0.1), 0.52, 0.44 + 0.15 * e - 0.08 * e * lid, side * 0.63, dp=6, name=side_name("Head_lid", side))
+    if L["brow"] > 0:  # angry slanted brow
+        hpart("dorsal", (0.44 * e, 0.12 * e, 0.22), 0.55, 0.47 + 0.17 * e, side * 0.56, dp=-22, name=side_name("Head_brow", side))
+    elif L["brow"] < 0:  # surprised raised brow
+        hpart("dorsal", (0.3 * e, 0.06 * e, 0.16), 0.52, 0.5 + 0.22 * e, side * 0.55, dp=14, name=side_name("Head_brow", side))
+    hpart("mask", (0.85 * hl, 0.62, 0.1), 1.05, -0.12, side * 0.47, name=side_name("Head_cheek", side))
+    hpart("mask", (0.14, 0.12, 0.05), 2.22, 0.24, side * 0.4, name=side_name("Head_nostril", side))
 if L["crest"]:
     for i in range(3):
-        part("Head", "bands", (0.16, 0.5 - i * 0.1, 0.14), along_head(0.02 - i * 0.26, 0.72 - i * 0.06), pitch=hp - 38, name=f"Head_crest{i + 1}")
+        hpart("bands", (0.16, 0.5 - i * 0.1, 0.14), 0.02 - i * 0.2, 0.74 - i * 0.05, dp=-38, name=f"Head_crest{i + 1}")
 
 # ---------------------------------------------------------------- jaw (lower beak; rest closed)
 JR = along_head(0.25, -0.45)
 seg("Jaw", (JR[0], JR[1], 0.0))
-part("Jaw", "main", (2.0 * hl, 0.38, 0.8), along_head(1.35, -0.7), pitch=hp, name="Jaw_lower")
-part("Jaw", "beak", (0.44, 0.34, 0.58), along_head(2.42, -0.76), pitch=hp, name="Jaw_beak")
-part("Jaw", "belly", (1.8 * hl, 0.1, 0.62), along_head(1.25, -0.9), pitch=hp, name="Jaw_under")
+for key, size, t, up, nm in [("main", (1.95 * hl, 0.4, 0.84), 1.3, -0.7, "Jaw_lower"), ("beak", (0.5, 0.36, 0.62), 2.38, -0.74, "Jaw_beak"),
+                             ("belly", (1.75 * hl, 0.1, 0.66), 1.2, -0.92, "Jaw_under")]:
+    part("Jaw", key, tuple(v * hs for v in size), along_head(t, up), pitch=hp, name=nm)
 
 # ---------------------------------------------------------------- front legs (Arm segments: shoulder -> ground, blunt hoof fingers)
 at = L["armThick"]
@@ -214,8 +221,8 @@ for side in (1, -1):
 
 # ---------------------------------------------------------------- tail (very long, stiff, tapering; held off the ground)
 tt = L["tailThick"]
-tail = [(2.05, (2.2, 1.85 * bh * tt, 1.5 * bw * tt)), (2.0, (2.15, 1.35 * tt, 1.12 * tt)), (1.95, (2.1, 0.98 * tt, 0.82 * tt)),
-        (1.85, (2.0, 0.66 * tt, 0.56 * tt)), (1.75, (1.9, 0.4 * tt, 0.34 * tt))]
+tail = [(3.3, (3.45, 1.85 * bh * tt, 1.5 * bw * tt)), (3.25, (3.4, 1.3 * tt, 1.08 * tt)), (3.2, (3.35, 0.9 * tt, 0.76 * tt)),
+        (3.15, (3.3, 0.58 * tt, 0.5 * tt)), (3.1, (3.2, 0.34 * tt, 0.3 * tt))]  # v0.2: ~16 long (was 9.6), about 62% of the length
 _root = (-1.1, 0.3)
 for i, (seglen, size) in enumerate(tail):
     name = f"Tail{i + 1}"
@@ -233,7 +240,8 @@ for i, (seglen, size) in enumerate(tail):
     part(name, "dorsal", (size[0], 0.16, size[2] * 0.84), at_(size[0] / 2 - 0.08, size[1] / 2), pitch=-rise, name=f"{name}_dorsal")
     part(name, "belly", (size[0] * 0.9, 0.12, size[2] * 0.7), at_(size[0] / 2 - 0.08, -size[1] / 2), pitch=-rise, name=f"{name}_under")
     if i >= 1:
-        part(name, "bands", (0.34, size[1] + 0.06, size[2] + 0.06), at_(seglen * 0.55), pitch=-rise, name=f"{name}_band")
+        for j, f in enumerate((0.35, 0.75) if L["rings"] else (0.55,)):
+            part(name, "bands", (0.34, size[1] + 0.08, size[2] + 0.08), at_(seglen * f), pitch=-rise, name=f"{name}_band{j + 1}")
     h = L["scuteH"] * (1.0 - i * 0.15)
     part(name, "scutes", (0.22, h, 0.22), at_(seglen * 0.3, size[1] / 2 + h / 2), pitch=-rise, name=f"{name}_scute1")
     if i < 3:
@@ -297,6 +305,7 @@ for n in order:
 HIP = H * K
 HRP_SIZE_D = tuple(v * K for v in (3.2, 2.1, 1.2))
 lo, hi = bounds()
+HIP = max(HIP, -lo[1])  # the lowest block (a hoof) sits on the ground
 
 
 def cf(pos_d, R_d=None):
