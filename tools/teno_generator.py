@@ -23,6 +23,7 @@ v0.2 (Kepu: "The tail isn't long enough. I want this to be cartoonish with a lot
   dino is ~24.9 studs at scale 1 (~50 in game). v1.0 (Kepu "Yes, build v0.3"): the data file for look C.
 v1.1 (plan docs/plans/TENO_KIT_v1.0.md Task 1, MDA-172): kit attributes (tank; tap = scratch, hold = rear tail slam with 3
   charges / 8 s each; J2 rearing leap). Geometry unchanged.
+v1.2 (Kepu 2026-10-31 after v302: "40 damage is way too strong. Lower it to 20"): TenoSlamDamage 40 -> 20. Nothing else.
 Run: python3 tools/teno_generator.py                         (writes src/shared/Models/TenoModelData.luau, look C)
      python3 tools/teno_generator.py --look A|B|C --json OUT  (mockup export, the three.js viewer's format)
 """
@@ -32,7 +33,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "TenoModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 
-VERSION = "1.1"
+VERSION = "1.2"
 BODY_K = 0.84  # v0.3: the v0.2 C scale
 TARGET_LEN = 20.0  # v0.2: the body keeps about its v0.1 size, the much longer tail adds length (~40 studs in game)
 ROLES = ["main", "dorsal", "belly", "bands", "limbs", "claws", "eyes", "beak", "scutes", "mask"]
@@ -383,7 +384,7 @@ if "--json" not in sys.argv:
         "DinoMaxHealth": "150", "MoveWalkSpeed": "30", "MoveRunSpeed": "52", "CameraStartZoom": "24", "TurnLimitRate": "240",
         "TenoAttackEnabled": "true", "TenoPoseEnabled": "true",
         "TenoScratchDamage": "8", "TenoScratchGap": "0.5", "TenoScratchReach": "5.5", "TenoScratchShove": "6",
-        "TenoSlamDamage": "40", "TenoSlamCharges": "3", "TenoSlamRefill": "8", "TenoSlamHoldMin": "0.22",
+        "TenoSlamDamage": "20", "TenoSlamCharges": "3", "TenoSlamRefill": "8", "TenoSlamHoldMin": "0.22",
         "TenoSlamRange": "15", "TenoSlamArc": "220", "TenoSlamToss": "35", "TenoSlamStun": "1", "TenoSlamDropTime": "0.13",
         "JumpEnabled": "true", "JumpWindup": "0.28", "JumpLaunchPower": "54", "JumpBoost": "14", "JumpBoostMinSpeed": "2",
         "JumpAirHold": "true", "JumpStaminaCost": "0", "JumpCooldown": "1",

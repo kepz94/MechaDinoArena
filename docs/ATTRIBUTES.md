@@ -2503,3 +2503,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoFXEnabled / TenoFXVersion / TenoFXEvents / TenoFXLast | TenoFX script | true / "1.0" / count / "scratch" / "slam" / "land" / "launch" | TenoFX 1.0 |
 | ArenaTouchTenoEnabled / ArenaTouchTenoPips; ArenaTouchMainButton adds "Teno" | ArenaTouch script / character | true / "n/max" | ArenaTouch 1.9 |
 | AbilityBarTenoEnabled / AbilityBar_TenoAttack / AbilityBarTenoPips | AbilityBar script / character | true / state / "n/max" | AbilityBar 1.20 |
+| TenoSlamDamage | teno model | 20 (was 40 in 1.1) | TenoModelData 1.2 |
+| TenoFXLeapEnabled | TenoFX script | false (true = 1.0 leap dust / landing ring / shake) | TenoFX 1.1 |

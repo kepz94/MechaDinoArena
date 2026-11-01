@@ -1,4 +1,4 @@
--- TenoFX v1.0 (Mecha Dino Arena) — the Tenontosaurus' scratch, tail-slam and leap effects on this client (LocalScript,
+-- TenoFX v1.1 (Mecha Dino Arena) — the Tenontosaurus' scratch, tail-slam and leap effects on this client (LocalScript,
 -- StarterPlayerScripts). MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 8, mockup docs/mockups/teno_attacks_options.html
 -- v0.2 (Kepu 2026-10-31: "way more animated with more effects to really sell the power of the slam"). Every size below is
 -- the mockup's (studs at scale 2) x (character scale / 2). Runs for every player character with TenoAttackEnabled (yours and
@@ -23,10 +23,13 @@
 --   up), "-N BUCKED OFF" over a bucked raptor; 1 s, rising.
 -- Switch: script attribute TenoFXEnabled (default true, read each event; false = no effects).
 -- Diagnostics: script TenoFXVersion, TenoFXEvents (count), TenoFXLast ("scratch" / "slam" / "land" / "launch").
+-- v1.1 (Kepu 2026-10-31 after v302: "take away all the extra dust and seismic effects when jumping keep that consistent
+--   with other models"): the leap's takeoff dust and landing ring / dust / rocks / camera shake are off, like every other
+--   dino's jump (no jump effects). Switch: script attribute TenoFXLeapEnabled (default false, read each jump; true = 1.0).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local SHAKE_RANGE = 90
 local DUST, ROCK, ROCK2, CRACK = Color3.fromHex("CBB487"), Color3.fromHex("7A6A50"), Color3.fromHex("5C4E3A"), Color3.fromHex("3A2E22")
 local WAVE, GLOW, STREAK = Color3.fromHex("FFF1C8"), Color3.fromHex("FFD24A"), Color3.fromHex("FFF0B0")
@@ -35,6 +38,7 @@ local RING_SEGS = 28
 script:SetAttribute("TenoFXVersion", VERSION)
 script:SetAttribute("TenoFXEvents", 0)
 if script:GetAttribute("TenoFXEnabled") == nil then script:SetAttribute("TenoFXEnabled", true) end
+if script:GetAttribute("TenoFXLeapEnabled") == nil then script:SetAttribute("TenoFXLeapEnabled", false) end -- v1.1
 local function on() return script:GetAttribute("TenoFXEnabled") ~= false end
 local function note(what)
 	script:SetAttribute("TenoFXEvents", (script:GetAttribute("TenoFXEvents") or 0) + 1)
@@ -469,6 +473,7 @@ local function watch(char, pl)
 	c(char:GetAttributeChangedSignal("JumpState"), function()
 		if not isTeno() then return end
 		local js = char:GetAttribute("JumpState")
+		if script:GetAttribute("TenoFXLeapEnabled") ~= true then lastJump = js return end -- v1.1: no jump effects
 		if (js == "push" or js == "rise") and lastJump == "crouch" then launchFX(char) end
 		if js == "land" and lastJump ~= "land" then landFX(char) end
 		lastJump = js
