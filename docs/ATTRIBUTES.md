@@ -2490,3 +2490,16 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | SpeciesTenoEnabled / SpeciesTenoTemplate | SpeciesServer script | default true / "ready" / "missing <reason>" / "off" | SpeciesServer 1.5 |
 | RaptorScaleTenoEnabled / TenoScale | RaptorScale script | true / 2 | RaptorScale 1.4 |
 | MainMenuTenoEnabled | MainMenu script | true (read at start) | MainMenu 1.12 |
+| TenoPoseEnabled / TenoLeapAirBlend / TenoLeapLandTime / TenoScratchUp / TenoScratchDown / TenoScratchRecover / TenoSlamRecover / TenoHoldRise | teno model (TenoPose defaults) | true / 0.34 / 0.4 / 0.12 / 0.10 / 0.25 / 0.7 / 0.55 | TenoPose 1.0 |
+| JumpPoseKind adds "teno"; TenoPoseState / TenoPoseSource | character (each client) | "none" / "hold" / "scratch" / "slam"; "local" / "server" / "off" | IdleAnimation 1.37 |
+| TenoAttackServerEnabled / TenoAttackModeRulesEnabled / TenoAttackSquadEnabled | TenoAttackServer script | true / true / true | TenoAttackServer 1.0 |
+| TenoAttackServerVersion / TenoAttackRequests / TenoAttackScratches / TenoAttackSlams / TenoAttackHits / TenoAttackBucked / TenoAttackSquadSkips / TenoAttackMode | TenoAttackServer script | diagnostics | TenoAttackServer 1.0 |
+| TenoSlamChargesMax / TenoSlamLeft / TenoSlamRefillStart / TenoSlamRefillAt | character (server) | 3 / 0..3 / server times (0 = full) | TenoAttackServer 1.0 |
+| TenoHoldSince / TenoScratchAt / TenoScratchHitAt / TenoScratchHits / TenoScratchTargets / TenoSlamAt / TenoSlamHold / TenoSlamImpactAt / TenoSlamPoint / TenoSlamHits / TenoSlamBucked / TenoSlamTargets / TenoSlamBuckedNames | character (server) | stamps / counts / "|"-joined names | TenoAttackServer 1.0 |
+| TenoAttackServerResult / TenoAttackServerResultAt / TenoScratchCount / TenoSlamCount / TenoAttackServerVersion | character (server) | "ok" / "emptyScratch" / refusal; time; counts | TenoAttackServer 1.0 |
+| TenoTossResult | tossed bot | "tossed" / "stunOnly" | TenoAttackServer 1.0 |
+| TenoLeftClickEnabled | character | true (false = R2 / touch only) | TenoAttackTest 1.0 |
+| TenoLocalState / TenoLocalAt / TenoLocalHold / TenoInputResult / TenoLastInput / TenoClickBound / TenoNoChargeAt / TenoAttackTestVersion | character (owner client) | "none" / "press" / "hold" / "scratch" / "slam"; time; seconds; result; source; bool; time | TenoAttackTest 1.0 |
+| TenoFXEnabled / TenoFXVersion / TenoFXEvents / TenoFXLast | TenoFX script | true / "1.0" / count / "scratch" / "slam" / "land" / "launch" | TenoFX 1.0 |
+| ArenaTouchTenoEnabled / ArenaTouchTenoPips; ArenaTouchMainButton adds "Teno" | ArenaTouch script / character | true / "n/max" | ArenaTouch 1.9 |
+| AbilityBarTenoEnabled / AbilityBar_TenoAttack / AbilityBarTenoPips | AbilityBar script / character | true / state / "n/max" | AbilityBar 1.20 |
