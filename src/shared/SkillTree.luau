@@ -1,4 +1,4 @@
--- SkillTree v1.45 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.46 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,8 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.46 (Kepu 2026-10-31: Herrera damage "a little too strong" -> "Both a little"; HerreraModelData 1.3 slash 8 -> 7, bleed
+--   3 -> 2 per second): Razor Claws step texts only - I "slash 7 -> 12", III "(was 2)". Effects unchanged.
 -- v1.45 (Tenontosaurus stat rows, plan docs/plans/TENO_STATS_v1.0.md, mockup docs/mockups/teno_stats_options.html; Kepu
 --   2026-10-31: "No life steal and no regeneration for this one", speed C, defense C, signature 2 "Buck Off", "No attack
 --   row", stun rule "Off only while stunned"). Switch SkillTree.TENO_STATS (default true; false = 1.44):
@@ -801,9 +803,9 @@ if SkillTree.HERRERA_STATS and not SkillTree.PATHS.stalker then
 		"Healing past full becomes a shield (up to 20% of max health, lasts 6 s)"})
 	nameFor("jaws", "Herrera", "Razor Claws")
 	stepsFor("jaws", "Herrera", {
-		"Slash hits harder (+5 Attack points: slash 8 -> 13)",
+		"Slash hits harder (+5 Attack points: slash 7 -> 12)",
 		"Slash charges refill 35% faster (4 s -> 2.6 s)",
-		"Bleed burns hotter: 5 per second (was 3)",
+		"Bleed burns hotter: 5 per second (was 2)",
 		"A 3rd slash charge"})
 	nameFor("hide", "Herrera", "Wiry Frame")
 	stepsFor("hide", "Herrera", {P.hide.steps[1], "Less knockback: thrown half as far by rams and shoves", P.hide.steps[3],

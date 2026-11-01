@@ -2518,3 +2518,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoAttackStatsEnabled / TenoSlamFree | TenoAttackServer script / character | true / bool | TenoAttackServer 1.1 |
 | TenoAttackTestBuckEnabled | TenoAttackTest script | true | TenoAttackTest 1.1 |
 | SprintTenoChargeEnabled; MoveSpeedParts adds "charge" | SprintTest script / character | true | SprintTest 1.17 |
+| SlashDamage / SlashBleedDps | herrera model | 7 / 2 (were 8 / 3) | HerreraModelData 1.3 |

@@ -21,6 +21,8 @@ true, ScurryPoseVersion "1.0". Geometry unchanged.
 v1.2 (plan docs/plans/HERRERA_KIT_v1.0.md Task 1, MDA-133): kit attributes — DinoMaxHealth 40, MoveRunSpeed 90 /
 MoveWalkSpeed 48 (raptor 78 / 41.6, ~+15%), CameraStartZoom 16, TurnLimitRate 540 (raptor values), SlashEnabled + Slash*,
 ClimbEnabled + Climb* (distances at scale 1; the body is doubled in game). Geometry unchanged.
+v1.3 (Kepu 2026-10-31: "Turn the damage down on the herrerra. It's a little too strong", picked "Both a little"):
+SlashDamage 8 -> 7, SlashBleedDps 3 -> 2 (bleed time 4 s unchanged: 15 per slash, was 20). Nothing else.
 Run: python3 tools/herrera_generator.py [--palette rust|charcoal|olive] [--mock OUT]
   (default palette olive = Classic; --mock writes segments + joints only, for Studio renders)
 """
@@ -31,7 +33,7 @@ OUT = os.path.join(ROOT, "src", "shared", "Models", "HerreraModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 ROLES = ["main", "stripes", "belly", "markings", "limbs", "claws", "eyes", "tailbands", "mask", "frill"]
 
-VERSION = "1.2"
+VERSION = "1.3"
 TARGET_LEN = 11.2    # studs at scale 1 (raptor 12.85; doubled in game: ~22.4 vs the raptor's 25.4)
 HIP0 = 3.3           # authored hip height before the length scale
 HRP_SIZE_D0 = (3.2, 2.1, 1.2)
@@ -333,7 +335,7 @@ else:
         # v1.2: kit (plan HERRERA_KIT_v1.0 Task 1)
         "DinoMaxHealth": "40", "MoveRunSpeed": "90", "MoveWalkSpeed": "48", "CameraStartZoom": "16", "TurnLimitRate": "540",
         "SlashEnabled": "true", "SlashCharges": "2", "SlashRefill": "4", "SlashDist": "12.5", "SlashTime": "0.3",
-        "SlashDamage": "8", "SlashBleedDps": "3", "SlashBleedTime": "4", "SlashBurstMul": "1.4", "SlashBurstTime": "0.5",
+        "SlashDamage": "7", "SlashBleedDps": "2", "SlashBleedTime": "4", "SlashBurstMul": "1.4", "SlashBurstTime": "0.5",
         "SlashDiveRange": "20", "SlashDiveCone": "35", "SlashReach": "2",
         "ClimbEnabled": "true", "ClimbSpeed": "10", "ClimbGrabDist": "1.5", "ClimbTopGap": "2", "ClimbHopSpeed": "12",
     })
