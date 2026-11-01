@@ -1,4 +1,4 @@
--- ArenaTouch v1.8 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.9 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -65,6 +65,14 @@
 --   finger lifts (a tap still lasts at least LEAP_HOLD s). JumpTest re-leaps on each landing while it is held (every
 --   dino, like holding Space on PC); ClimbTest 1.11 hops once per press (rising edge). Switch: script attribute
 --   ArenaTouchJumpHoldEnabled (default true, read at start; false = 1.7 taps). Diagnostic: ArenaTouchJumpHeld.
+-- v1.9 (Tenontosaurus kit, MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 6): the teno's ATTACK (tap = scratch, hold and
+--   release = tail slam) as the big yellow ATTACK ("TenoMain", BITE's place) over CAS "DinoTenoAttack" (TenoAttackTest 1.0;
+--   the touch lands on Roblox's button, so the press and the release both reach it) for a dino with TenoAttackEnabled (and no
+--   bite / pounce / headbutt / slash); under it one pip per slam charge (TenoSlamChargesMax, 3) filled from TenoSlamLeft,
+--   the refilling one from the bottom (TenoSlamRefillStart / At). The button stays lit at 0 charges (a tap still
+--   scratches); the pip rings flash red for 0.3 s after TenoNoChargeAt; yellow glow ring while TenoLocalState is "hold".
+--   Switch: script attribute ArenaTouchTenoEnabled (default true, read at start). Diagnostic ArenaTouchTenoPips;
+--   ArenaTouchMainButton adds "Teno".
 -- Diagnostics (character attributes, this client): ArenaTouchVersion, ArenaTouchState ("off" / "on"),
 --   ArenaTouchLastPress (button name), ArenaTouchCASMode, ArenaTouchJumpHidden.
 local Players = game:GetService("Players")
@@ -72,7 +80,7 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -425,6 +433,22 @@ if JUMP_HOLD_ON then -- v1.8: keep Humanoid.Jump while held
 end
 leap.InputEnded:Connect(function() leapScale.Scale = 1 end)
 
+-- v1.9: teno ATTACK main button + slam charge pips + hold glow (the slash button's look)
+if script:GetAttribute("ArenaTouchTenoEnabled") == nil then script:SetAttribute("ArenaTouchTenoEnabled", true) end
+local TENO_ON = script:GetAttribute("ArenaTouchTenoEnabled") ~= false
+local tenoMain, _, tenoMainScale = button("TenoMain", "ATTACK", nil, 0.05, 0.10, 0.135, true)
+tenoMain.Visible = false
+local tnGlowRing = slGlowRing:Clone()
+tnGlowRing.Parent = tenoMain
+local tnGlow = tnGlowRing:FindFirstChild("Glow")
+local tnPipRow = slPipRow:Clone()
+tnPipRow.Parent = tenoMain
+local tnPips = {}
+for i = 1, 3 do
+	local f = tnPipRow:FindFirstChild("Charge_" .. i)
+	tnPips[i] = {f = f, fill = f:FindFirstChild("Fill"), ring = f:FindFirstChildOfClass("UIStroke")}
+end
+
 -- overlay: Roblox's CAS button for each move, invisible, laid over its styled button every frame
 local OVERLAY = {
 	{action = "DinoBiteTest", vis = bite, scale = biteScale, name = "Bite"},
@@ -434,6 +458,7 @@ local OVERLAY = {
 	{action = "DinoHeadbutt", vis = headbuttMain, scale = headbuttMainScale, name = "Headbutt"}, -- v1.5
 }
 if SLASH_ON then table.insert(OVERLAY, {action = "DinoSlash", vis = slashMain, scale = slashMainScale, name = "Slash"}) end -- v1.7
+if TENO_ON then table.insert(OVERLAY, {action = "DinoTenoAttack", vis = tenoMain, scale = tenoMainScale, name = "Teno"}) end -- v1.9
 local wanted = {Bite = true, Run = true, Ram = false, Pounce = false, Headbutt = false, Slash = false} -- set by refresh(); v1.5: + Headbutt; v1.7: + Slash
 local hooked = setmetatable({}, {__mode = "k"})
 local function hook(btn, o)
@@ -504,6 +529,9 @@ local function refresh()
 		and not wanted.Headbutt
 	local mainName = wanted.Bite and "Bite" or (mainPounce and "Pounce" or (wanted.Headbutt and "Headbutt"
 		or (wanted.Slash and "Slash" or "none")))
+	-- v1.9: teno ATTACK as the main button
+	wanted.Teno = TENO_ON and char:GetAttribute("TenoAttackEnabled") == true and mainName == "none"
+	if wanted.Teno then mainName = "Teno" end
 	if char:GetAttribute("ArenaTouchMainButton") ~= mainName then char:SetAttribute("ArenaTouchMainButton", mainName) end
 	local mainReady = char:GetAttribute("PounceTestState") == "ready"
 	pounceMain.BackgroundTransparency = mainReady and 0.08 or 0.5
@@ -566,6 +594,26 @@ RunService.RenderStepped:Connect(function()
 end)
 local WATCH = {BiteEnabled = true, HeadbuttEnabled = true, AutoRun = true, RamEnabled = true, RamLatchGate = true, PounceEnabled = true, JumpEnabled = true, RamTestState = true,
 	PounceTestState = true, JumpTestState = true, SlashEnabled = true, ClimbEnabled = true, ClimbLocalState = true} -- v1.7: + Slash / Climb
+WATCH.TenoAttackEnabled = true -- v1.9
+-- v1.9: teno pips / glow every frame
+local RED_RING = Color3.fromRGB(240, 90, 79)
+RunService.RenderStepped:Connect(function()
+	if not wanted.Teno then return end
+	local now = workspace:GetServerTimeNow()
+	local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamChargesMax")) or 3), 1, 3)
+	local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamLeft")) or maxC), 0, maxC)
+	local rs, ra = tonumber(char:GetAttribute("TenoSlamRefillStart")) or 0, tonumber(char:GetAttribute("TenoSlamRefillAt")) or 0
+	local part = (ra > rs and nowC < maxC) and math.clamp((now - rs) / (ra - rs), 0, 1) or 0
+	local flashNo = now - (tonumber(char:GetAttribute("TenoNoChargeAt")) or -1) < 0.3
+	for i, pip in ipairs(tnPips) do
+		pip.f.Visible = i <= maxC
+		pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0))
+		if pip.ring then pip.ring.Color = flashNo and RED_RING or YELLOW end
+	end
+	if tnGlow then tnGlow.Transparency = char:GetAttribute("TenoLocalState") == "hold" and 0.2 or 1 end
+	local pips = nowC .. "/" .. maxC
+	if char:GetAttribute("ArenaTouchTenoPips") ~= pips then char:SetAttribute("ArenaTouchTenoPips", pips) end
+end)
 -- v1.7: slash pips / dim / glow every frame
 RunService.RenderStepped:Connect(function()
 	if not wanted.Slash then return end

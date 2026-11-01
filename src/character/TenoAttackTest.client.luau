@@ -1,0 +1,226 @@
+-- TenoAttackTest v1.0 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
+-- release = rear tail slam. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 6 (server: TenoAttackServer 1.0), mockup
+-- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: "Tap = scratch, hold = slam").
+-- Active while the character has TenoAttackEnabled = true (TenoModelData 1.1); does nothing on other dinos.
+-- Input: left mouse button (action "DinoTenoAttackClick", MouseButton1, returns Pass; a press is ignored while the menu is
+--   up (player InMenu), the Lab is open (LabOpen ~= "closed"), SkillScreenOpen or a text box has focus) and action
+--   "DinoTenoAttack" (gamepad ButtonR2 + a Roblox touch button titled "Attack"; ArenaTouch 1.9 lays it under the big
+--   yellow ATTACK). Both use Begin (press) and End (release).
+-- Press: local checks "dead", "stunned", "pinned", "menu" (TenoInputResult); else the press starts (TenoLocalState
+--   "press", TenoLocalAt = server time; no pose).
+-- Held >= TenoSlamHoldMin (0.22 s): with TenoSlamLeft >= 1 (published by the server) -> TenoLocalState "hold" (the
+--   wind-up pose, TenoLocalAt = the press time) and DinoTenoAttack:FireServer("hold", press time); with no charge ->
+--   TenoInputResult "noCharge" (no wind-up; the release scratches; ArenaTouch / AbilityBar flash the pips from
+--   TenoNoChargeAt).
+-- Release: after a "hold" -> TenoLocalState "slam", TenoLocalAt = now, TenoLocalHold = held seconds,
+--   FireServer("slam", now, held); else (a tap, or held with no charge) -> a scratch unless the last scratch was less than
+--   TenoScratchGap s ago (TenoInputResult "cooldown", no animation): TenoLocalState "scratch", TenoLocalAt = now,
+--   FireServer("scratch", now).
+-- While holding: death, a stun, a pin or the menu ends the hold: TenoLocalState "none", FireServer("cancel", now).
+-- Server refusal (TenoAttackServerResult other than "ok" / "emptyScratch", newer than the request): the local pose stops
+--   (TenoLocalState "none", TenoInputResult "denied:<reason>").
+-- Switch: character attribute TenoLeftClickEnabled (default true; false = R2 / touch only).
+-- Diagnostics (character, this client): TenoAttackTestVersion, TenoLocalState ("none" / "press" / "hold" / "scratch" /
+--   "slam"), TenoInputResult, TenoLastInput ("click" / "key" / "touch"), TenoClickBound, TenoNoChargeAt.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+
+local VERSION = "1.0"
+local ACTION = "DinoTenoAttack"
+local ACTION_CLICK = "DinoTenoAttackClick"
+local DEFAULTS = {TenoAttackEnabled = false, TenoSlamHoldMin = 0.22, TenoScratchGap = 0.5, TenoLeftClickEnabled = true}
+
+local char = script.Parent
+local hum = char:WaitForChild("Humanoid", 10)
+local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
+pcall(function() ContextActionService:UnbindAction(ACTION) end) -- a leftover from the previous character
+pcall(function() ContextActionService:UnbindAction(ACTION_CLICK) end)
+char:SetAttribute("TenoAttackTestVersion", VERSION)
+if not hum then return end
+
+local function get(k)
+	local v = char:GetAttribute(k)
+	if v == nil then v = DEFAULTS[k] end
+	return v
+end
+local function show(k, v)
+	if char:GetAttribute(k) ~= v then char:SetAttribute(k, v) end
+end
+local function now() return workspace:GetServerTimeNow() end
+local remote -- found on first use
+local function fire(...)
+	remote = remote or ReplicatedStorage:FindFirstChild("DinoTenoAttack")
+	if remote then remote:FireServer(...) end
+end
+
+local press = nil      -- {at, src, held, noCharge}
+local lastScratch = -math.huge
+local lastSent = 0
+
+local function blocked()
+	local t = now()
+	if hum.Health <= 0 then return "dead" end
+	if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t then return "stunned" end
+	if char:GetAttribute("PinHeld") == true then return "pinned" end
+	if player:GetAttribute("InMenu") == true then return "menu" end
+	return nil
+end
+
+local function setState(st, at)
+	char:SetAttribute("TenoLocalAt", at)
+	char:SetAttribute("TenoLocalState", st)
+end
+
+local function onPress(src)
+	if get("TenoAttackEnabled") ~= true or press then return end
+	local r = blocked()
+	show("TenoLastInput", src)
+	if r then
+		show("TenoInputResult", r)
+		return
+	end
+	local t = now()
+	press = {at = t, src = src, held = false, noCharge = false}
+	setState("press", t)
+	show("TenoInputResult", "press")
+end
+
+local function onRelease()
+	local p = press
+	if not p then return end
+	press = nil
+	local t = now()
+	if p.held then
+		local held = t - p.at
+		char:SetAttribute("TenoLocalHold", held)
+		setState("slam", t)
+		lastSent = t
+		fire("slam", t, held)
+		show("TenoInputResult", "slam")
+		return
+	end
+	if t - lastScratch < (tonumber(get("TenoScratchGap")) or 0.5) then
+		setState("none", t)
+		show("TenoInputResult", "cooldown")
+		return
+	end
+	lastScratch = t
+	setState("scratch", t)
+	lastSent = t
+	fire("scratch", t)
+	show("TenoInputResult", p.noCharge and "scratchNoCharge" or "scratch")
+end
+
+local function cancel(reason)
+	if not press then return end
+	local wasHeld = press.held
+	press = nil
+	local t = now()
+	setState("none", t)
+	show("TenoInputResult", "cancel:" .. reason)
+	if wasHeld then fire("cancel", t) end
+end
+
+RunService.Heartbeat:Connect(function()
+	if not press then return end
+	local r = blocked()
+	if r then
+		cancel(r)
+		return
+	end
+	if not press.held and not press.noCharge and now() - press.at >= (tonumber(get("TenoSlamHoldMin")) or 0.22) then
+		if (tonumber(char:GetAttribute("TenoSlamLeft")) or 0) >= 1 then
+			press.held = true
+			setState("hold", press.at)
+			fire("hold", press.at)
+			show("TenoInputResult", "hold")
+		else
+			press.noCharge = true
+			char:SetAttribute("TenoNoChargeAt", now())
+			show("TenoInputResult", "noCharge")
+		end
+	end
+end)
+
+-- server refusals stop the local pose
+char:GetAttributeChangedSignal("TenoAttackServerResultAt"):Connect(function()
+	local r = char:GetAttribute("TenoAttackServerResult")
+	local at = tonumber(char:GetAttribute("TenoAttackServerResultAt")) or 0
+	if r == "ok" or r == "emptyScratch" or at < lastSent - 0.05 then return end
+	local st = char:GetAttribute("TenoLocalState")
+	if st == "scratch" or st == "slam" or st == "hold" then
+		if press then press = nil end
+		setState("none", now())
+		show("TenoInputResult", "denied:" .. tostring(r))
+	end
+end)
+
+-- bindings
+local function onAction(_, inputState, input)
+	local src = (input and input.UserInputType == Enum.UserInputType.Touch) and "touch" or "key"
+	if inputState == Enum.UserInputState.Begin then
+		onPress(src)
+		return Enum.ContextActionResult.Sink
+	elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
+		onRelease()
+		return Enum.ContextActionResult.Sink
+	end
+	return Enum.ContextActionResult.Pass
+end
+local function onClick(_, inputState, input)
+	if not input or input.UserInputType ~= Enum.UserInputType.MouseButton1 then return Enum.ContextActionResult.Pass end
+	if inputState == Enum.UserInputState.Begin then
+		local lab = player:GetAttribute("LabOpen")
+		if player:GetAttribute("InMenu") == true or (lab ~= nil and lab ~= "closed") or char:GetAttribute("SkillScreenOpen") == true
+			or UserInputService:GetFocusedTextBox() then
+			return Enum.ContextActionResult.Pass
+		end
+		onPress("click")
+	elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
+		if press and press.src == "click" then onRelease() end
+	end
+	return Enum.ContextActionResult.Pass
+end
+local bound, clickBound = false, false
+local function applyBinding()
+	local on = get("TenoAttackEnabled") == true
+	if on and not bound then
+		ContextActionService:BindActionAtPriority(ACTION, onAction, true, Enum.ContextActionPriority.High.Value,
+			Enum.KeyCode.ButtonR2)
+		ContextActionService:SetTitle(ACTION, "Attack")
+		bound = true
+	elseif not on and bound then
+		ContextActionService:UnbindAction(ACTION)
+		bound = false
+	end
+	local clickOn = on and get("TenoLeftClickEnabled") ~= false and UserInputService.MouseEnabled
+	if clickOn and not clickBound then
+		ContextActionService:BindActionAtPriority(ACTION_CLICK, onClick, false, Enum.ContextActionPriority.High.Value,
+			Enum.UserInputType.MouseButton1)
+		clickBound = true
+	elseif not clickOn and clickBound then
+		ContextActionService:UnbindAction(ACTION_CLICK)
+		clickBound = false
+	end
+	show("TenoClickBound", clickBound)
+end
+char:GetAttributeChangedSignal("TenoAttackEnabled"):Connect(applyBinding)
+char:GetAttributeChangedSignal("TenoLeftClickEnabled"):Connect(applyBinding)
+setState("none", now())
+applyBinding()
+
+local function cleanup()
+	if bound then ContextActionService:UnbindAction(ACTION) end
+	if clickBound then ContextActionService:UnbindAction(ACTION_CLICK) end
+	bound, clickBound = false, false
+end
+hum.Died:Connect(function()
+	cancel("dead")
+	cleanup()
+end)
+char.AncestryChanged:Connect(function(_, parent)
+	if not parent then cleanup() end
+end)

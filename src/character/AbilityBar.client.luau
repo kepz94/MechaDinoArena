@@ -1,4 +1,4 @@
--- AbilityBar v1.19 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.20 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -112,12 +112,19 @@
 --   "active" while the cloud lasts), strobe "Strobe", breaker "Breaker". The Stun Breaker tile: "off" while BreakerEnabled
 --   is not true, "cooling" during its cooldown, "ready" while stunned (StunnedUntil > now) or pinned (PinHeld), else
 --   "waiting" (dim). Switch: script attribute AbilityBarHerreraPartsEnabled (default true, read at start; false = 1.17).
+-- v1.20 (Tenontosaurus kit, MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 6): SPECIES_MOVES.Teno = TenoAttack (key "LMB",
+--   name "ATTACK", yellow stroke; tap = scratch, hold = tail slam) then Leap (JUMP, Space). The ATTACK tile has one pip per
+--   slam charge (the Slash tile's pips) from TenoSlamLeft / TenoSlamChargesMax / TenoSlamRefillStart / TenoSlamRefillAt
+--   (TenoAttackServer 1.0). States (first match wins): "stunned" (STUN, dim 0.25) / "active" (TenoLocalState "hold" or
+--   "slam": stroke 4 px yellow) / "ready" (also at 0 charges: a tap still scratches; the refilling pip shows the time).
+--   Switch: script attribute AbilityBarTenoEnabled (default true, read at start; false = 1.19: no teno row, the fallback
+--   order). Diagnostics: AbilityBar_TenoAttack (state), AbilityBarTenoPips ("<ready>/<max>").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.19"
+local VERSION = "1.20"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -209,6 +216,12 @@ end
 if script:GetAttribute("AbilityBarTRexJumpEnabled") == nil then script:SetAttribute("AbilityBarTRexJumpEnabled", true) end -- v1.16
 if script:GetAttribute("AbilityBarTRexJumpEnabled") ~= false then -- v1.16: T-Rex JUMP tile after the attack
 	SPECIES_MOVES.TRex = {"Bite", "Leap", "Ram"}
+end
+if script:GetAttribute("AbilityBarTenoEnabled") == nil then script:SetAttribute("AbilityBarTenoEnabled", true) end -- v1.20
+if script:GetAttribute("AbilityBarTenoEnabled") ~= false then -- v1.20: teno ATTACK (not in FALLBACK_ORDER) + JUMP
+	MOVES.TenoAttack = {enabled = "TenoAttackEnabled", enabledDefault = false, key = "LMB", name = "ATTACK", color = YELLOW,
+		slashPips = true, tenoPips = true}
+	SPECIES_MOVES.Teno = {"TenoAttack", "Leap"}
 end
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 if script:GetAttribute("AbilityBarHerreraJumpEnabled") == nil then script:SetAttribute("AbilityBarHerreraJumpEnabled", true) end -- v1.17
@@ -722,6 +735,26 @@ local function update()
 			else
 				paint(e, "ready", 0, 0, nil)
 			end
+		elseif e.move.tenoPips then -- v1.20: teno ATTACK (slam charges; the scratch is always there)
+			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamChargesMax")) or 3), 1, 3)
+			local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamLeft")) or maxC), 0, maxC)
+			local rs, ra = tonumber(char:GetAttribute("TenoSlamRefillStart")) or 0, tonumber(char:GetAttribute("TenoSlamRefillAt")) or 0
+			local part = (ra > rs and nowC < maxC) and math.clamp((now - rs) / (ra - rs), 0, 1) or 0
+			for i, pip in ipairs(e.t.chargePips) do
+				pip.f.Visible = i <= maxC
+				pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0))
+			end
+			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = Color3.new(0, 0, 0), 0.38
+			local ls = char:GetAttribute("TenoLocalState")
+			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif ls == "hold" or ls == "slam" then
+				paint(e, "active", 0, 0, nil)
+				e.t.stroke.Color = YELLOW
+			else
+				paint(e, "ready", 0, 0, nil)
+			end
+			show("AbilityBarTenoPips", nowC .. "/" .. maxC)
 		elseif e.move.slashPips then -- v1.14: Herrera slash (charges, no cooldown)
 			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("SlashChargesMax")) or 2), 1, 3)
 			local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("SlashChargesNow")) or maxC), 0, maxC)

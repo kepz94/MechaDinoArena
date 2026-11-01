@@ -1,4 +1,4 @@
--- IdleAnimation v1.36 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.37 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -201,6 +201,14 @@
 --       Gliding; in 0.2 s, out 0.25 s); and on top of the slash layer, the Strobe Frill rear-up offsets from
 --       StrobeStartedAt. Switches: model attributes GlidePoseEnabled / StrobePoseEnabled (default true). Diagnostics:
 --       GlidePoseBlend (0.1 steps), StrobePoseState ("none" / "rear"). Every other model unchanged.
+-- v1.37 (Tenontosaurus kit, MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7; TenoPose 1.0, mockup
+--       docs/mockups/teno_attacks_options.html v0.2): on models with Species "Teno" and TenoPoseEnabled ~= false (not
+--       scurry models), the leap layer (same clock and phases as v1.15) draws TenoPose.leap("crouch" / "air" / "land")
+--       (J2 rearing leap; landing time TenoLeapLandTime, weight from TenoPose) instead of JumpPose; and on models with
+--       TenoAttackEnabled = true, after the Strobe layer, the scratch / slam wind-up / tail slam offsets from TenoPose.phase
+--       (owner: TenoLocalState / TenoLocalAt / TenoLocalHold; others: TenoHoldSince / TenoScratchAt / TenoSlamAt /
+--       TenoSlamHold) are multiplied on. Diagnostics: JumpPoseKind adds "teno"; TenoPoseState ("none" / "hold" /
+--       "scratch" / "slam"), TenoPoseSource. Every other model unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -235,6 +243,7 @@ local ClimbPose = require(script.ClimbPose) -- v1.32
 local SlashPose = require(script.SlashPose) -- v1.33
 local HerreraJumpPose = require(script.HerreraJumpPose) -- v1.34
 local HerreraMovesPose = require(script.HerreraMovesPose) -- v1.36
+local TenoPose = require(script.TenoPose) -- v1.37
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -535,6 +544,7 @@ model:SetAttribute("IdleAnimationVersion", "1.33") -- v1.33
 model:SetAttribute("IdleAnimationVersion", "1.34") -- v1.34
 model:SetAttribute("IdleAnimationVersion", "1.35") -- v1.35
 model:SetAttribute("IdleAnimationVersion", "1.36") -- v1.36
+model:SetAttribute("IdleAnimationVersion", "1.37") -- v1.37
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -838,7 +848,10 @@ RunService.PreSimulation:Connect(function(dt)
 			end
 			jumpTreeWas = onTree
 		end
-		show("JumpPoseKind", herreraJump and "herrera" or "biped")
+		-- v1.37: teno rearing leap
+		local tenoJump = not herreraJump and model:GetAttribute("Species") == "Teno" and model:GetAttribute("TenoPoseEnabled") ~= false
+		local tps = tenoJump and TenoPose.settings(model) or nil
+		show("JumpPoseKind", herreraJump and "herrera" or (tenoJump and "teno") or "biped")
 		local hs = herreraJump and HerreraJumpPose.settings(model) or nil
 		-- vertical speed from the HRP height change (works for every client)
 		local y = hrp.Position.Y
@@ -863,13 +876,19 @@ RunService.PreSimulation:Connect(function(dt)
 			if t > JUMP_MAX_TIME or t < -0.05 then
 				jump.done = true
 			elseif jump.landAt then
-				local u = (now - jump.landAt) / math.max(0.01, hs and hs.HJumpLandTime or js.JumpLandTime)
-				if u < 1 then
+				local u = (now - jump.landAt) / math.max(0.01, hs and hs.HJumpLandTime or tps and tps.TenoLeapLandTime or js.JumpLandTime)
+				if u < 1 and tps then -- v1.37
+					jp, jumpW = TenoPose.leap("land", u, tps)
+					jumpState = "land"
+				elseif u < 1 then
 					jp = hs and HerreraJumpPose.get("land", u, nil, hs, ss, scurryGeo, motors, scurryScale) or JumpPose.land(u, js, geo)
 					jumpW, jumpState = 1 - u * u * (3 - 2 * u), "land"
 				else
 					jump.done = true
 				end
+			elseif jump.air and tps then -- v1.37
+				jp = TenoPose.leap("air", math.max(0, t - W), tps)
+				jumpW, jumpState = 1, (jumpVy >= 0 and "rise" or "fall")
 			elseif jump.air then
 				local fall = math.clamp(-jumpVy / (power * 0.5), 0, 1)
 				local hVy = model:GetAttribute("HerreraJumpClockEnabled") ~= false -- v1.35: the leap's own clock
@@ -878,9 +897,15 @@ RunService.PreSimulation:Connect(function(dt)
 				jp = hs and HerreraJumpPose.get("air", math.max(0, t - W), hVy, hs, ss, scurryGeo, motors, scurryScale)
 					or JumpPose.air(math.max(0, t - W), fall, jumpVy / power, js, geo)
 				jumpW, jumpState = 1, (jumpVy >= 0 and "rise" or "fall")
+			elseif t < W and tps then -- v1.37
+				jp = TenoPose.leap("crouch", t / W, tps)
+				jumpW, jumpState = 1, "crouch"
 			elseif t < W then
 				jp = hs and HerreraJumpPose.get("crouch", t / W, nil, hs, ss, scurryGeo, motors, scurryScale) or JumpPose.crouch(t / W, js, geo)
 				jumpW, jumpState = 1, "crouch"
+			elseif t < W + JUMP_LIFTOFF_WAIT and tps then -- v1.37
+				jp = TenoPose.leap("air", t - W, tps)
+				jumpW, jumpState = 1, "push"
 			elseif t < W + JUMP_LIFTOFF_WAIT then
 				jp = hs and HerreraJumpPose.get("air", t - W, 1, hs, ss, scurryGeo, motors, scurryScale) or JumpPose.air(t - W, 0, 1, js, geo)
 				jumpW, jumpState = 1, "push"
@@ -1191,6 +1216,19 @@ RunService.PreSimulation:Connect(function(dt)
 			end
 		end
 		show("StrobePoseState", sp and "rear" or "none")
+	end
+	-- v1.37: teno scratch / tail-slam wind-up / tail slam on top
+	if model:GetAttribute("TenoAttackEnabled") == true then
+		local lpT = Players.LocalPlayer
+		local tsN = workspace:GetServerTimeNow()
+		local tPhase, tT, tHold, tSrc = TenoPose.phase(model, lpT ~= nil and lpT.Character == model, tsN)
+		if tPhase then
+			for name, off in pairs(TenoPose.attack(tPhase, tT, tHold, TenoPose.settings(model), tsN)) do
+				if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+			end
+		end
+		show("TenoPoseState", tPhase or "none")
+		show("TenoPoseSource", tSrc)
 	end
 	-- roar on top of whatever the body is doing (upper body only)
 	local roarState = "none"
