@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teno Stat Rows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #e8743a; --volt: #7fe9ff; --yellow: #ffc832; --gold: #ffd666; --orange: #ff9b2e;
+  --health: #5fd16a; --attack: #f05a4f; --defense: #5aa0ff; --speed: #ffd34d; --eng: #ff9b2e; --hunt: #c9a2ff;
+  --ok: #5fd16a; --bad: #ff6a5f; --new: #7fe9ff;
+  --display: "Fredoka", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0d0f14; } }
+:root[data-theme="dark"] { --page: #0d0f14; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding: 24px 16px 64px; }
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); }
+h1 span { color: var(--accent); }
+h2 { margin: 0 0 6px; font: 700 20px/1.2 var(--display); }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 88ch; }
+.tag { font: 600 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.ctrl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; background: #0f131c; border-radius: 12px; padding: 3px; gap: 3px; flex-wrap: wrap; }
+.seg button { font: 800 13px var(--body); color: var(--grey); background: transparent; border: 0; border-radius: 9px; padding: 7px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--fg); box-shadow: inset 0 0 0 2px var(--accent); }
+/* Lab look (Lab 1.8) */
+.lab { background: linear-gradient(180deg, #10141d, #1a2130 60%, #0e1219); border: 2px solid var(--volt); border-radius: 18px; overflow: hidden; }
+.labbar { display: flex; align-items: center; gap: 14px; padding: 12px 18px; background: #0e121a; border-bottom: 3px solid #7fe9ff55; flex-wrap: wrap; }
+.labbar .l { font: 800 11px var(--body); color: var(--volt); }
+.labbar .dn { font: 700 22px var(--display); text-transform: uppercase; }
+.labbar .lv { font: 800 12px var(--body); color: var(--grey); }
+.xp { width: 140px; height: 9px; background: #2a303c; border-radius: 9px; overflow: hidden; }
+.xp i { display: block; height: 100%; width: 72%; background: var(--yellow); }
+.chip { font: 800 11px var(--body); border: 2px solid var(--gold); color: var(--gold); border-radius: 8px; padding: 1px 8px; }
+.pts { margin-left: auto; background: var(--yellow); color: #1b1406; font: 700 14px var(--display); border-radius: 8px; padding: 2px 10px; }
+.labbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; padding: 16px 18px 18px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.tabs div { text-align: center; font: 900 11px var(--body); color: var(--muted); background: #1a1f2b; border-radius: 8px; padding: 5px; }
+.tabs div.on { color: #fff; box-shadow: inset 0 0 0 2px var(--volt); background: #123544; }
+.rows { display: grid; gap: 8px; }
+.row { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; background: #1b2130; border: 2px solid #ffffff14; border-radius: 12px; padding: 9px 12px; cursor: pointer; text-align: left; color: inherit; font: inherit; width: 100%; }
+.row[aria-pressed="true"] { border-color: #fff; }
+.row .nm { font: 800 15px var(--body); }
+.row .ar { font: 900 11px var(--body); letter-spacing: .04em; text-transform: uppercase; }
+.row .pips { display: flex; gap: 4px; justify-self: end; }
+.row .pips i { width: 12px; height: 12px; border-radius: 3px; background: #ffffff26; }
+.row .pips i.star { border-radius: 50%; }
+.row .nx { font: 800 11px var(--body); color: var(--grey); justify-self: end; }
+.flag { position: absolute; right: 10px; top: -9px; font: 900 10px var(--body); border-radius: 6px; padding: 0 6px; }
+.flag.bad { background: var(--bad); color: #2a0806; }
+.flag.new { background: var(--new); color: #06242e; }
+.flag.ren { background: var(--gold); color: #2a1e04; }
+.detail { background: #12161f; border: 2px solid #ffffff1a; border-radius: 14px; padding: 14px 16px; min-height: 280px; }
+.detail .k { font: 900 12px var(--body); text-transform: uppercase; letter-spacing: .04em; }
+.detail .t { font: 700 24px var(--display); margin: 2px 0 8px; }
+.step { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: start; margin: 7px 0; }
+.step .n { width: 26px; height: 22px; border-radius: 6px; background: #2a303c; display: grid; place-items: center; font: 900 11px var(--body); color: var(--grey); }
+.step .d { font: 700 13.5px var(--body); color: var(--grey); }
+.step .s { font: 900 10px var(--body); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+.s.ok { background: #1f4a25; color: var(--ok); }
+.s.bad { background: #4a1f1c; color: var(--bad); }
+.s.new { background: #123544; color: var(--new); }
+.why { margin-top: 10px; font: 700 13px var(--body); color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+.opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.opt { text-align: left; color: var(--fg); background: var(--card); border: 3px solid #ffffff14; border-radius: 16px; padding: 14px; display: grid; gap: 6px; cursor: pointer; font: inherit; align-content: start; }
+.opt[aria-pressed="true"] { border-color: var(--accent); }
+.opt b { font: 700 18px var(--display); }
+.opt p { margin: 0; color: var(--grey); }
+.opt .rec { font: 600 11px var(--mono); color: var(--accent); letter-spacing: .1em; text-transform: uppercase; }
+.opt .trade { color: var(--muted); font-size: 14px; }
+.panel { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-top: 1px solid var(--line); font-size: 14px; }
+th { color: var(--grey); font-weight: 900; }
+td { color: var(--grey); }
+td b { color: #fff; }
+.mini { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.mini > div { background: #161b26; border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+.mini h3 { margin: 0 0 6px; font: 700 15px var(--display); }
+.mini ul { margin: 0; padding-left: 16px; color: var(--grey); font-size: 13px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; font: 800 12px var(--body); color: var(--grey); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+@media (max-width: 860px) { .labbody { grid-template-columns: 1fr; } .opts { grid-template-columns: 1fr; } .mini { grid-template-columns: 1fr 1fr; } th { width: auto; } }
+.toggle-note { font: 700 13px var(--body); color: var(--muted); }
+.rule { background: #2a1f0a; border: 2px solid var(--gold); border-radius: 12px; padding: 8px 12px; font: 800 13px var(--body); color: var(--gold); margin-top: 10px; }
+.row.dim { opacity: .45; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="tag" style="color:var(--accent)">Mecha Dino Arena · plan · Tenontosaurus stat rows (mockup v0.1)</div>
+  <h1>Teno stats: <span>Charge Up · Brace · Buck Off</span></h1>
+  <p class="lede">The Lab's STATS tab as the Teno would see it. Your picks: speed C Charge Up, defense C Brace, signature 2 Buck Off. No Lifesteal and no Regeneration. Tap a row to see its steps. Two things are still open (the switches below): whether the Teno keeps an attack row, and exactly how the stun rule on Buck Off works.</p>
+</header>
+
+<section class="ctrl">
+  <span class="toggle-note">Attack row:</span>
+  <div class="seg" id="atkSeg">
+    <button data-v="club" aria-pressed="true">Club Tail</button>
+    <button data-v="none" aria-pressed="false">No attack row</button>
+  </div>
+  <span class="toggle-note">Buck Off when stunned:</span>
+  <div class="seg" id="stunSeg">
+    <button data-v="while" aria-pressed="true">Off only while stunned</button>
+    <button data-v="latch" aria-pressed="false">Off for the whole latch</button>
+  </div>
+</section>
+
+<section class="lab">
+  <div class="labbar">
+    <span class="l">LAB</span><span class="dn">Teno</span><span class="lv">LV 10</span><div class="xp"><i></i></div>
+    <span class="chip">MASTERY 1/3</span><span class="pts">3 PTS</span>
+  </div>
+  <div class="labbody">
+    <div>
+      <div class="tabs"><div>MECHA ABILITIES</div><div class="on">STATS</div></div>
+      <div class="rows" id="rows"></div>
+    </div>
+    <div class="detail" id="detail"></div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>What each switch means</h2>
+  <table>
+    <tr><th>Club Tail</th><td>The Teno's version of the shared attack row (Jaws on the T-Rex, Razor Claws on the Herrera). <b>No attack row</b> = the Teno has 3 rows like the pachy, and its damage only grows from Attack points.</td></tr>
+    <tr><th>Off only while stunned</th><td>Buck Off does nothing while you are stunned. Once the stun ends, a raptor still latched on gets the Buck Off effects again (latch damage ticks, free slam).</td></tr>
+    <tr><th>Off for the whole latch</th><td>If a raptor latched on while you were stunned, Buck Off stays off for that latch until it lets go or is thrown off, even after your stun ends.</td></tr>
+  </table>
+</section>
+</main>
+<script>
+const AREA = {attack: ['Attack', 'var(--attack)'], defense: ['Defense', 'var(--defense)'], speed: ['Speed', 'var(--speed)'], sig: ['Signature', 'var(--hunt)']};
+let atk = 'club', stun = 'while', sel = 'buck';
+function rows() {
+  const stunText = stun === 'while' ? 'Only while a raptor is latched on you. Does nothing while you are stunned.' : 'Only while a raptor is latched on you. A raptor that latched on while you were stunned gets none of it, for that whole latch.';
+  const list = [];
+  if (atk === 'club') list.push({id: 'club', name: 'Club Tail', area: 'attack', flag: 'ren', steps: [
+    'Slam and scratch hit harder (+5 Attack points: slam 20 -> 30, scratch 8 -> 13)',
+    'Slam charges refill 35% faster (8 s -> 5.2 s)',
+    'Slam stuns 1.5 s (was 1)',
+    'A 4th slam charge'], why: 'The shared attack row in Teno words, every step on the scratch / slam. Not picked yet: keep it or drop it.'});
+  list.push({id: 'charge', name: 'Charge Up', area: 'speed', flag: 'new', steps: [
+    'After 2 s of running: run 10% faster',
+    "After 3 s of running: run 20% faster, and you can't be shoved",
+    'Running into a dino at full speed bumps it 10 studs aside',
+    'Full-speed hits stun 0.5 s'], why: 'Speed C. Rewards long runs: get going, then barrel through.'});
+  list.push({id: 'brace', name: 'Brace', area: 'defense', flag: 'new', steps: [
+    'While holding a slam: take 20% less damage',
+    "While holding: can't be stunned or knocked back",
+    'While holding: every hit you take adds +3 damage to that slam',
+    'Releasing a slam heals 5% of max health per enemy hit'], why: 'Defense C. The wind-up becomes armour: hold, soak the hits, give them back.'});
+  list.push({id: 'buck', name: 'Buck Off', area: 'sig', flag: 'new', steps: [
+    'Latched raptors take +10 slam damage',
+    'A slam while something is latched on costs no charge',
+    'After a buck-off, nothing can latch on for 2 s',
+    'A raptor that latches on takes 3 damage per second until it lets go'], rule: stunText, why: 'Signature 2. The Teno\'s own row: punishes raptors that pounce on its back.'});
+  return list;
+}
+function render() {
+  const list = rows();
+  if (!list.find(r => r.id === sel)) sel = list[0].id;
+  document.getElementById('rows').innerHTML = list.map(r => {
+    const a = AREA[r.area];
+    const flag = r.flag === 'ren' ? '<span class="flag ren">NOT PICKED YET</span>' : '<span class="flag new">NEW</span>';
+    return `<button class="row" data-id="${r.id}" aria-pressed="${r.id === sel}">${flag}<span class="nm">${r.name}</span><span class="pips"><i></i><i></i><i></i><i class="star"></i></span><span class="ar" style="color:${a[1]}">${a[0]}</span><span class="nx">Next: 1 pt</span></button>`;
+  }).join('');
+  const r = list.find(x => x.id === sel), a = AREA[r.area];
+  const N = ['I', 'II', 'III', '★'];
+  document.getElementById('detail').innerHTML = `<div class="k" style="color:${a[1]}">${a[0]} · STAT</div><div class="t">${r.name}</div>` +
+    r.steps.map((s, i) => `<div class="step"><span class="n">${N[i]}</span><span class="d">${s}</span><span class="s new">NEW</span></div>`).join('') +
+    (r.rule ? `<div class="rule">${r.rule}</div>` : '') + `<div class="why">${r.why}</div>`;
+  document.querySelectorAll('#rows .row').forEach(b => b.addEventListener('click', () => { sel = b.dataset.id; render(); }));
+}
+function seg(id, cb) {
+  const el = document.getElementById(id);
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); cb(b.dataset.v); render();
+  }));
+}
+seg('atkSeg', v => atk = v);
+seg('stunSeg', v => stun = v);
+render();
+</script>
+</body>
+</html>
