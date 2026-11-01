@@ -56,17 +56,18 @@ ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
 <body>
 <main>
   <header>
-    <h1><span>Teno</span> attacks + jump</h1>
-    <p class="lede">The real Teno model (TenoModelData 1.0). One attack button: <b>tap</b> for a quick claw scratch, <b>hold</b> to wind up the heavy tail slam and <b>release</b> to unleash it (3 charges, 8 s each). Three ways the slam could look; every one gets the impact package: hit-stop, flash, double shockwave, ground cracks, flying rocks, dust, camera shake, and targets launched with stun wobble. Try the big button (or hold Space), and pick a slam and a jump.</p>
+    <h1><span>Teno</span> attacks + jump · v0.2</h1>
+    <p class="lede">The real Teno model (TenoModelData 1.0). One attack button: <b>tap</b> for a quick claw scratch, <b>hold</b> to wind up the heavy tail slam and <b>release</b> to unleash it (3 charges, 8 s each). <b>v0.2: D · Rear Tail Slam</b> is your pick (lift the tail and slam it down behind; a raptor dummy rides on its back to show the buck-off). A-C stay for comparison; every one gets the impact package: hit-stop, flash, double shockwave, ground cracks, flying rocks, dust, camera shake, and targets launched with stun wobble. Try the big button (or hold Space), and pick a slam and a jump.</p>
   </header>
   <div class="row" role="group" aria-label="Slam"><span class="lbl">Slam</span>
+    <button class="tab" data-opt="D">D · Rear Tail Slam<small>your pick: slam behind, buck off pouncers</small></button>
     <button class="tab" data-opt="A">A · Rear &amp; Crash<small>like the video, but bigger</small></button>
     <button class="tab" data-opt="B">B · Overhead Tail Hammer<small>the tail is the weapon</small></button>
     <button class="tab" data-opt="C">C · Spin Sweep Slam<small>hits all around</small></button>
   </div>
   <div class="row" role="group" aria-label="Jump"><span class="lbl">Jump</span>
     <button class="tab" data-jump="J1" aria-pressed="false">J1 · Heavy Hop<small>crouch, spring, thump down</small></button>
-    <button class="tab" data-jump="J2" aria-pressed="false">J2 · Rearing Leap<small>rear up, launch, ground-shake landing</small></button>
+    <button class="tab" data-jump="J2" aria-pressed="true">J2 · Rearing Leap<small>your pick: rear up, launch, ground-shake landing</small></button>
   </div>
   <div class="row"><span class="lbl">Try</span>
     <button class="btn" id="demoScratch">Play scratch</button>

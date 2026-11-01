@@ -4,6 +4,7 @@ const HERRERA = __HERRERA__;
 const $ = id => document.getElementById(id);
 const rad = THREE.MathUtils.degToRad;
 const OPT = {
+  D: {name: "Rear Tail Slam", sub: "Kepu's pick: slam behind, shake off pouncers", why: "Hold: front legs dig in, hips rise and the giant tail lifts high up behind it, quivering and glowing as it charges. Release: the tail cracks down onto the ground BEHIND the teno. Everything chasing it gets launched backwards, and any raptor pounced on its back is bucked off and flung. Run away, then slam whoever is following.", area: "Behind it: a 220° rear zone out to 30 studs (tail length), plus anything latched on its back"},
   A: {name: "Rear & Crash", sub: "like the video, but bigger", why: "Rears up onto its hind legs with the tail planted like a kickstand, front legs pawing the air while you hold. On release it crashes down chest-first: a shockwave ring, ground cracks, rocks and dust burst out in front, and everything in the cone is launched away.", area: "Cone in front (120°, 22 studs)"},
   B: {name: "Overhead Tail Hammer", sub: "the tail is the weapon", why: "Plants its front legs, hips up, and coils the giant tail up over its back like a scorpion while you hold (the tail glows brighter the longer you hold). On release the tail hammers down over its head into the ground in front: a crater, a tall shockwave, cracks and rocks right where the tip lands.", area: "Circle where the tail tip lands (14 studs), 18-28 studs ahead"},
   C: {name: "Spin Sweep Slam", sub: "hits all around", why: "Crouches and winds the tail around to one side while you hold. On release it spins a full circle with the tail sweeping low, then slams the tail down to finish: a ring shockwave all around it, dust trail along the sweep, everyone nearby launched outward.", area: "Ring all around (28 studs, tail length)"},
@@ -59,8 +60,8 @@ function partPos(d, name, local) { return new THREE.Vector3(...(local || [0, 0, 
 // ---------- actors ----------
 const teno = buildDino(TENO, 2);
 const targets = [
-  {x: 0, z: -34}, {x: -16, z: -26}, {x: 18, z: -12}, {x: -14, z: 22},
-].map((p, i) => { const d = buildDino(HERRERA, 2); d.home = p; d.yaw = Math.PI * (i === 3 ? 0.3 : 1) + (i - 1) * 0.3; return Object.assign(d, {x: p.x, z: p.z, vx: 0, vy: 0, vz: 0, spin: 0, stun: 0, hp: 40, hit: false}); });
+  {x: 0, z: -34, yaw: Math.PI}, {x: 18, z: -12, yaw: Math.PI * 0.6}, {x: 2, z: 44, yaw: 0}, {x: -18, z: 30, yaw: 0.4}, {x: 0, z: 2, yaw: 0, latched: true},
+].map((p, i) => { const d = buildDino(HERRERA, 2); d.home = p; d.yaw = p.yaw; return Object.assign(d, {x: p.x, z: p.z, vx: 0, vy: 0, vz: 0, spin: 0, stun: 0, hp: 40, hit: false, latched: !!p.latched}); });
 const HPOSE = {RootJoint: [-24, 0, 0], Neck: [6, 0, 0], Head: [16, 0, 0], Jaw: [-3, 0, 0], ArmL: [30, 0, -18], ArmR: [30, 0, 18],
   LegL: [48, 0, -16], LegR: [48, 0, 16], KneeL: [-48, 0, 0], KneeR: [-48, 0, 0], AnkleL: [24, 0, 0], AnkleR: [24, 0, 0],
   Tail1: [26, 0, 0], Tail2: [4, 0, 0], Tail3: [8, 0, 0], Tail4: [14, 0, 0], Tail5: [20, 0, 0]};
@@ -163,7 +164,7 @@ const J_CROUCH = {RootJoint: [-8, 0, 0], LegL: [30, 0, 0], LegR: [30, 0, 0], Kne
 const J_AIR = {RootJoint: [10, 0, 0], LegL: [-30, 0, 0], LegR: [-30, 0, 0], KneeL: [-20, 0, 0], KneeR: [-20, 0, 0], ArmL: [55, 0, 0], ArmR: [55, 0, 0], Neck: [12, 0, 0], Head: [-6, 0, 0], Jaw: [-18, 0, 0], Tail1: [-16, 0, 0], Tail2: [-10, 0, 0], Tail3: [-8, 0, 0], Tail4: [-6, 0, 0], Tail5: [-6, 0, 0]};
 const J_REAR = {RootJoint: [40, 0, 0], LegL: [-40, 0, 0], LegR: [-40, 0, 0], KneeL: [-30, 0, 0], KneeR: [-30, 0, 0], ArmL: [60, 0, 0], ArmR: [60, 0, 0], Neck: [12, 0, 0], Tail1: [-30, 0, 0], Tail2: [0, 0, 0], Tail5: [-12, 0, 0]};
 const J_LAND = {RootJoint: [-10, 0, 0], LegL: [24, 0, 0], LegR: [24, 0, 0], KneeL: [-30, 0, 0], KneeR: [-30, 0, 0], ArmL: [-20, 0, 0], ArmR: [-20, 0, 0], Neck: [-14, 0, 0], Head: [-8, 0, 0], Tail1: [10, 0, 0], Tail2: [8, 0, 0], Tail3: [6, 0, 0]};
-let jopt = "J1", jumpY = 0;
+let jopt = "J2", jumpY = 0;
 document.querySelectorAll("[data-jump]").forEach(b => b.onclick = () => { jopt = b.dataset.jump; document.querySelectorAll("[data-jump]").forEach(x => x.setAttribute("aria-pressed", x === b)); if (state === "idle") { state = "jump"; st = 0; impactDone = false; } });
 function jumpAngles(t, A) {
   const H = 9; // studs of hop at game size
@@ -181,8 +182,12 @@ function jumpAngles(t, A) {
   state = "idle"; jumpY = 0; return A;
 }
 
+// D: rear tail slam (Kepu): hips up, tail lifted high behind, slammed down behind
+const D_UP = {RootJoint: [-12, 0, 0], LegL: [12, 0, 0], LegR: [12, 0, 0], KneeL: [-10, 0, 0], KneeR: [-10, 0, 0], ArmL: [-14, 0, 0], ArmR: [-14, 0, 0], Neck: [-14, 0, 0], Head: [14, 0, 0], Jaw: [-16, 0, 0], Tail1: [-58, 0, 0], Tail2: [-24, 0, 0], Tail3: [-12, 0, 0], Tail4: [6, 0, 0], Tail5: [14, 0, 0]};
+const D_DOWN = {RootJoint: [6, 0, 0], LegL: [-6, 0, 0], LegR: [-6, 0, 0], ArmL: [-4, 0, 0], ArmR: [-4, 0, 0], Neck: [-4, 0, 0], Head: [-4, 0, 0], Tail1: [16, 0, 0], Tail2: [8, 0, 0], Tail3: [6, 0, 0], Tail4: [-2, 0, 0], Tail5: [-6, 0, 0]};
+
 // ---------- state ----------
-let opt = "A", state = "idle", st = 0, hold = 0, charges = 3, rechargeT = 0, tGlobal = 0, view = "behind", impactDone = false, spinYaw = 0;
+let opt = "D", state = "idle", st = 0, hold = 0, charges = 3, rechargeT = 0, tGlobal = 0, view = "behind", impactDone = false, spinYaw = 0;
 const RECHARGE = 8, HOLD_MIN = 0.22, MAX_HOLD = 1.0;
 const glowRing = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 48), new THREE.MeshBasicMaterial({color: GLOW, transparent: true, opacity: 0, side: THREE.DoubleSide}));
 glowRing.rotation.x = -Math.PI / 2; glowRing.position.y = 0.2; scene.add(glowRing);
@@ -210,6 +215,7 @@ function slamImpact(point, kind) {
   const f = forward();
   if (kind === "A") { cracks(point, 7, 14, [Math.atan2(f.x, f.z), 2.2]); hitTargets(point, 24, f, 130, 40, 34, true); }
   if (kind === "B") { cracks(point, 10, 12); hitTargets(point, 15, null, 0, 40, 38, true); }
+  if (kind === "D") { const b = forward().negate(); cracks(point, 9, 14, [Math.atan2(b.x, b.z), 3.4]); hitTargets(new THREE.Vector3(teno.x, 0, teno.z), 32, b, 220, 40, 36, true); for (const d of targets) if (d.latched) { d.latched = false; d.airborne = true; d.vx = (Math.random() - 0.5) * 20; d.vz = 26; d.vy = 40; d.spin = 12; d.stun = 1.4; popNum(new THREE.Vector3(d.x, 6, d.z), "-40 BUCKED OFF", true); } }
   if (kind === "C") { cracks(point, 12, 13); hitTargets(new THREE.Vector3(teno.x, 0, teno.z), 30, null, 0, 40, 30, true); }
   $("hud").classList.add("bang"); setTimeout(() => $("hud").classList.remove("bang"), 180);
 }
@@ -239,7 +245,7 @@ $("demoScratch").onclick = () => { if (state === "idle") { state = "scratch"; st
 $("demoSlam").onclick = () => { if (state === "idle" && charges > 0) { state = "hold"; st = 0; hold = 0; autoRelease = 0.9; } else flashNoCharge(); };
 let autoRelease = -1;
 $("slow").onclick = e => { slow = !slow; e.currentTarget.setAttribute("aria-pressed", slow); };
-$("reset").onclick = () => { charges = 3; rechargeT = 0; for (const d of targets) Object.assign(d, {x: d.home.x, z: d.home.z, y: 0, vx: 0, vy: 0, vz: 0, stun: 0, hp: 40, airborne: false}); };
+$("reset").onclick = () => { charges = 3; rechargeT = 0; for (const d of targets) Object.assign(d, {x: d.home.x, z: d.home.z, y: 0, vx: 0, vy: 0, vz: 0, stun: 0, hp: 40, airborne: false, roll: 0, latched: !!d.home.latched}); };
 document.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => { opt = b.dataset.opt; drawInfo(); });
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { view = b.dataset.view; document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
 function drawInfo() {
@@ -262,24 +268,25 @@ function tenoAngles(dt) {
     st += dt; hold = Math.min(MAX_HOLD, hold + dt);
     if (autoRelease > 0 && st >= autoRelease) { autoRelease = -1; if (useCharge()) { state = "slam"; st = 0; impactDone = false; spinYaw = 0; } else state = "idle"; }
     const u = ease(hold / 0.55), jitter = Math.sin(t * 40) * hold * 1.5;
-    const UP = opt === "A" ? A_UP : opt === "B" ? B_UP : C_UP;
+    const UP = opt === "D" ? D_UP : opt === "A" ? A_UP : opt === "B" ? B_UP : C_UP;
     A = mix(IDLE(t), UP, hold < HOLD_MIN ? 0 : u);
     if (hold >= HOLD_MIN) { A.ArmL = [A.ArmL[0] + (opt === "A" ? Math.sin(t * 14) * 18 : 0), A.ArmL[1], A.ArmL[2]]; A.ArmR = [A.ArmR[0] + (opt === "A" ? Math.sin(t * 14 + 2) * 18 : 0), A.ArmR[1], A.ArmR[2]]; A.Tail5 = [A.Tail5[0] + jitter, A.Tail5[1], 0]; }
   } else if (state === "slam") {
     st += dt;
-    const UP = opt === "A" ? A_UP : opt === "B" ? B_UP : C_UP, DOWN = opt === "A" ? A_DOWN : opt === "B" ? B_DOWN : C_SLAM;
+    const UP = opt === "D" ? D_UP : opt === "A" ? A_UP : opt === "B" ? B_UP : C_UP, DOWN = opt === "D" ? D_DOWN : opt === "A" ? A_DOWN : opt === "B" ? B_DOWN : C_SLAM;
     if (opt === "C") {
       const TS = 0.45, TD = 0.14;
       if (st < TS) { const u = st / TS; spinYaw = -u * Math.PI * 2; A = mix(UP, C_SWEEP, ease(u * 3)); if (Math.random() < 0.6) { const tip = partPos(teno, "Tail5_main"); dust(new THREE.Vector3(tip.x, 0, tip.z), 1, 3, 2, 1); } }
       else if (st < TS + TD) { spinYaw = -Math.PI * 2; A = mix(C_SWEEP, DOWN, easeIn((st - TS) / TD)); }
       else { if (!impactDone) { const tip = partPos(teno, "Tail4_main"); slamImpact(new THREE.Vector3(tip.x, 0, tip.z), "C"); } A = mix(DOWN, IDLE(t), ease((st - TS - TD) / 0.6)); if (st > TS + TD + 0.6) { state = "idle"; spinYaw = 0; } }
     } else {
-      const TD = opt === "B" ? 0.2 : 0.16;
+      const TD = opt === "B" ? 0.2 : opt === "D" ? 0.13 : 0.16;
       if (st < TD) A = mix(UP, DOWN, easeIn(st / TD));
       else {
         if (!impactDone) {
           let p;
-          if (opt === "A") { p = partPos(teno, "ArmL_hand").add(partPos(teno, "ArmR_hand")).multiplyScalar(0.5).add(forward().multiplyScalar(4)); }
+          if (opt === "D") { p = partPos(teno, "Tail3_main"); }
+          else if (opt === "A") { p = partPos(teno, "ArmL_hand").add(partPos(teno, "ArmR_hand")).multiplyScalar(0.5).add(forward().multiplyScalar(4)); }
           else { p = partPos(teno, "Tail5_main"); }
           slamImpact(new THREE.Vector3(p.x, 0, p.z), opt);
         }
@@ -309,6 +316,7 @@ function frame(now) {
   glowRing.material.opacity = g * 0.8; glowRing.scale.setScalar(6 + g * 6 + Math.sin(tGlobal * 10) * 0.6);
   // targets
   for (const d of targets) {
+    if (d.latched) { const back = partPos(teno, "Torso_dorsalBack"); d.x = back.x; d.z = back.z + 1; d.y = back.y - 6.5; d.roll = Math.sin(tGlobal * 6) * 0.15; const a = Object.assign({}, HPOSE, {Head: [-10 + Math.sin(tGlobal * 12) * 12, 0, 0], Jaw: [-30, 0, 0]}); pose(d, a, true); for (const p of d.parts) p.mesh.matrix.premultiply(new THREE.Matrix4().makeTranslation(0, d.y, 0)); continue; }
     if (d.airborne || d.vy !== 0 || Math.abs(d.vx) > 0.01) {
       d.vy -= 70 * dt; d.x += d.vx * dt; d.z += d.vz * dt; d.y = (d.y || 0) + d.vy * dt; d.roll += d.spin * dt;
       if (d.y <= 0) { d.y = 0; if (d.vy < -20) dust(new THREE.Vector3(d.x, 0, d.z), 4, 5, 3, 1); d.vy = 0; d.vx *= 0.5; d.vz *= 0.5; if (Math.abs(d.vx) < 0.5) { d.vx = d.vz = 0; d.airborne = false; } }
@@ -321,7 +329,7 @@ function frame(now) {
   }
   updateFx(dt);
   // camera
-  const tgt = new THREE.Vector3(0, 6, -6);
+  const tgt = new THREE.Vector3(0, 6, opt === "D" ? 8 : -6);
   let cp;
   if (view === "behind") cp = new THREE.Vector3(10, 26, 58);
   else if (view === "side") cp = new THREE.Vector3(68, 14, -4);
