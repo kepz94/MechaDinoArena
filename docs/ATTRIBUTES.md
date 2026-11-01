@@ -2505,3 +2505,16 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | AbilityBarTenoEnabled / AbilityBar_TenoAttack / AbilityBarTenoPips | AbilityBar script / character | true / state / "n/max" | AbilityBar 1.20 |
 | TenoSlamDamage | teno model | 20 (was 40 in 1.1) | TenoModelData 1.2 |
 | TenoFXLeapEnabled | TenoFX script | false (true = 1.0 leap dust / landing ring / shake) | TenoFX 1.1 |
+| SkillTree.TENO_STATS | SkillTree module | true | SkillTree 1.45 |
+| TenoChargeMul1 / TenoChargeMul2 / TenoChargeNoShove / TenoChargeBump / TenoChargeBumpStun | teno character (SkillEffects) | 1.1 / 1.2 / true / 10 / 0.5 when bought (off 1 / 1 / false / 0 / 0) | SkillEffects 1.31 |
+| TenoBraceMul / TenoBraceNoStun / TenoBraceStack / TenoBraceHeal | teno character (SkillEffects) | 0.8 / true / 3 / 0.05 when bought (off 1 / false / 0 / 0) | SkillEffects 1.31 |
+| TenoBuckBonus / TenoBuckFree / TenoBuckImmune / TenoBuckDps | teno character (SkillEffects) | 10 / true / 2 / 3 when bought (off 0 / false / 0 / 0) | SkillEffects 1.31 |
+| SkillEffectsTenoEnabled; SkillStunTrimmed adds "braced" | SkillEffects script / character | true | SkillEffects 1.31 |
+| TenoStatsServerEnabled / TenoStatsServerVersion / TenoStatsBumps / TenoStatsRepelled / TenoStatsTicks | TenoStatsServer script | true / "1.0" / counts | TenoStatsServer 1.0 |
+| TenoChargeLevel / TenoChargeMul / TenoBumpCount / TenoBumpLast | teno character (server) | 0-2 / 1-1.2 / count / name | TenoStatsServer 1.0 |
+| TenoBraceHits / TenoBraceBonus / TenoBraceRefunded / TenoBraceHealed | teno character (server) | count / damage / total / last heal | TenoStatsServer 1.0 |
+| TenoLatchedCount / TenoLatchImmuneUntil / TenoBuckTicks | teno character (server) | count / server time / count | TenoStatsServer 1.0 |
+| HeadbuttShoveEnabled (written false / nil) | teno character | false while charged (II) or holding with Brace II | TenoStatsServer 1.0 |
+| TenoAttackStatsEnabled / TenoSlamFree | TenoAttackServer script / character | true / bool | TenoAttackServer 1.1 |
+| TenoAttackTestBuckEnabled | TenoAttackTest script | true | TenoAttackTest 1.1 |
+| SprintTenoChargeEnabled; MoveSpeedParts adds "charge" | SprintTest script / character | true | SprintTest 1.17 |
