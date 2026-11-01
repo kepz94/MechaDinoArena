@@ -49,9 +49,11 @@
 -- v1.7 (plan docs/plans/TENO_MODEL_v1.0.md Task 2, MDA-171): Teno colour groups (TenoModelData 1.0: main, dorsal, belly,
 --   bands, limbs, claws (hooves), eyes, beak, scutes, mask; pupils / mouth / eye shine are never-paint) and its Classic skin
 --   (Goofy Noodle). Other species' lists, roles and the API unchanged.
+-- v1.8 (Kepu 2026-10-31: teno "a little too cartoonish" -> mockup v0.4 pick "E · S-curve tail"; TenoModelData 1.3): the
+--   Teno colour groups and its Classic skin take the Old Gardener colours (same 10 role names). Other species unchanged.
 local SkinCatalog = {}
 SkinCatalog.ALL_UNLOCKED = true -- v1.5: group test, every skin unlocked
-SkinCatalog.Version = "1.7"
+SkinCatalog.Version = "1.8"
 
 SkinCatalog.ROLES = {
 	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -62,8 +64,8 @@ SkinCatalog.ROLES = {
 	Herrera = {["6E6A3A"] = "main", ["2F3320"] = "stripes", ["D3C89A"] = "belly", ["B8414A"] = "markings",
 		["5A5530"] = "limbs", ["2C2620"] = "claws", ["E8C547"] = "eyes", ["B9B26A"] = "tailbands", ["262A1A"] = "mask",
 		["C9572E"] = "frill"}, -- v1.4
-	Teno = {["D99A4A"] = "main", ["2E8C8A"] = "dorsal", ["F6E6BE"] = "belly", ["C83A3A"] = "bands", ["B87A36"] = "limbs",
-		["3A2A1E"] = "claws", ["FFFFFF"] = "eyes", ["F2D04A"] = "beak", ["1E6462"] = "scutes", ["F2B8A0"] = "mask"}, -- v1.7
+	Teno = {["8A7350"] = "main", ["5A4632"] = "dorsal", ["D8C7A0"] = "belly", ["4A3A2A"] = "bands", ["6E5A3E"] = "limbs",
+		["2E2620"] = "claws", ["D9A23A"] = "eyes", ["3A332C"] = "beak", ["6B5236"] = "scutes", ["B89A6A"] = "mask"}, -- v1.8 (v1.7: Goofy Noodle hexes)
 }
 
 SkinCatalog.NEVER_PAINT = {["E8E2D2"] = true, ["111111"] = true, ["963C3C"] = true, ["6E342E"] = true, ["F5F5F0"] = true,
@@ -145,8 +147,8 @@ SkinCatalog.SKINS = {
 	},
 	Teno = { -- v1.7
 		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
-			colors = {main = "D99A4A", dorsal = "2E8C8A", belly = "F6E6BE", bands = "C83A3A", limbs = "B87A36", claws = "3A2A1E",
-				eyes = "FFFFFF", beak = "F2D04A", scutes = "1E6462", mask = "F2B8A0"}},
+			colors = {main = "8A7350", dorsal = "5A4632", belly = "D8C7A0", bands = "4A3A2A", limbs = "6E5A3E", claws = "2E2620",
+				eyes = "D9A23A", beak = "3A332C", scutes = "6B5236", mask = "B89A6A"}}, -- v1.8 Old Gardener (v1.7 Goofy Noodle)
 	},
 }
 

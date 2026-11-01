@@ -1,4 +1,4 @@
--- SkinCatalog.spec v1.6 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
+-- SkinCatalog.spec v1.7 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...". Requires a
 -- fresh clone so a re-run in the same Studio session sees the installed source. Reads both model data modules to check
 -- that every authored colour is a skin role or on the never-paint list.
@@ -16,6 +16,7 @@
 --   spec checks the flag is a boolean and then forces it false on its own test copy: the owns checks test the locked rules.
 -- v1.6 (plan docs/plans/TENO_MODEL_v1.0.md Task 2, MDA-171): Teno colour groups — every TenoModelData colour is a Teno role
 --   or never-paint, 10 roles, no hex shared, none never-paint, Teno classic (Goofy Noodle) round trip.
+-- v1.7 (SkinCatalog 1.8, TenoModelData 1.3): the Teno hexes are the Old Gardener colours.
 local da = game.ServerStorage:FindFirstChild("DinoArcade")
 local ok, SC = pcall(function()
 	local src = da.SkinCatalog
@@ -54,8 +55,8 @@ local PACHY = {["7A6A4E"] = "main", ["3E5A55"] = "stripes", ["C8B898"] = "belly"
 local HERRERA = {["6E6A3A"] = "main", ["2F3320"] = "stripes", ["D3C89A"] = "belly", ["B8414A"] = "markings",
 	["5A5530"] = "limbs", ["2C2620"] = "claws", ["E8C547"] = "eyes", ["B9B26A"] = "tailbands", ["262A1A"] = "mask",
 	["C9572E"] = "frill"} -- v1.4
-local TENO = {["D99A4A"] = "main", ["2E8C8A"] = "dorsal", ["F6E6BE"] = "belly", ["C83A3A"] = "bands", ["B87A36"] = "limbs",
-	["3A2A1E"] = "claws", ["FFFFFF"] = "eyes", ["F2D04A"] = "beak", ["1E6462"] = "scutes", ["F2B8A0"] = "mask"} -- v1.6
+local TENO = {["8A7350"] = "main", ["5A4632"] = "dorsal", ["D8C7A0"] = "belly", ["4A3A2A"] = "bands", ["6E5A3E"] = "limbs",
+	["2E2620"] = "claws", ["D9A23A"] = "eyes", ["3A332C"] = "beak", ["6B5236"] = "scutes", ["B89A6A"] = "mask"} -- v1.7 (v1.6: Goofy Noodle)
 for h, role in pairs(RAPTOR) do eq("Raptor role " .. h, SC.roleOf("Raptor", Color3.fromHex(h)), role) end
 for h, role in pairs(TREX) do eq("TRex role " .. h, SC.roleOf("TRex", Color3.fromHex(h)), role) end
 for h, role in pairs(PACHY) do eq("Pachy role " .. h, SC.roleOf("Pachy", Color3.fromHex(h)), role) end -- v1.2
