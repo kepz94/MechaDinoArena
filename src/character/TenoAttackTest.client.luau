@@ -1,4 +1,4 @@
--- TenoAttackTest v1.0 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
+-- TenoAttackTest v1.1 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
 -- release = rear tail slam. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 6 (server: TenoAttackServer 1.0), mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: "Tap = scratch, hold = slam").
 -- Active while the character has TenoAttackEnabled = true (TenoModelData 1.1); does nothing on other dinos.
@@ -22,13 +22,17 @@
 -- Switch: character attribute TenoLeftClickEnabled (default true; false = R2 / touch only).
 -- Diagnostics (character, this client): TenoAttackTestVersion, TenoLocalState ("none" / "press" / "hold" / "scratch" /
 --   "slam"), TenoInputResult, TenoLastInput ("click" / "key" / "touch"), TenoClickBound, TenoNoChargeAt.
+-- v1.1 (Buck Off II, plan docs/plans/TENO_STATS_v1.0.md): the wind-up also starts at 0 charges while TenoBuckFree is true
+--   and TenoLatchedCount > 0 (TenoStatsServer 1.0: raptors latched on you; never while stunned, the press is refused then);
+--   TenoAttackServer 1.1 makes that slam free. Switch: script attribute TenoAttackTestBuckEnabled (default true, read at
+--   each hold; false = 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local ACTION = "DinoTenoAttack"
 local ACTION_CLICK = "DinoTenoAttackClick"
 local DEFAULTS = {TenoAttackEnabled = false, TenoSlamHoldMin = 0.22, TenoScratchGap = 0.5, TenoLeftClickEnabled = true}
@@ -132,7 +136,9 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 	if not press.held and not press.noCharge and now() - press.at >= (tonumber(get("TenoSlamHoldMin")) or 0.22) then
-		if (tonumber(char:GetAttribute("TenoSlamLeft")) or 0) >= 1 then
+		local freeHold = script:GetAttribute("TenoAttackTestBuckEnabled") ~= false and char:GetAttribute("TenoBuckFree") == true
+			and (tonumber(char:GetAttribute("TenoLatchedCount")) or 0) > 0 -- v1.1: Buck Off II
+		if (tonumber(char:GetAttribute("TenoSlamLeft")) or 0) >= 1 or freeHold then
 			press.held = true
 			setState("hold", press.at)
 			fire("hold", press.at)

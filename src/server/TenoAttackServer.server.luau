@@ -1,4 +1,4 @@
--- TenoAttackServer v1.0 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.1 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -47,12 +47,19 @@
 --   TenoAttackBucked, TenoAttackSquadSkips, TenoAttackMode; character TenoScratchCount, TenoSlamCount, TenoScratchHits,
 --   TenoScratchTargets (names joined by "|"),
 --   TenoAttackServerVersion.
+-- v1.1 (Tenontosaurus stat rows, plan docs/plans/TENO_STATS_v1.0.md; SkillEffects 1.31 writes the attributes). Switch: script
+--   attribute TenoAttackStatsEnabled (default true, read at each use; false = 1.0):
+--   * Brace III: every slam target also takes the character's TenoBraceBonus (TenoStatsServer 1.0: +TenoBraceStack per hit
+--     taken while holding), read at the impact.
+--   * Buck Off I: a latched raptor also takes TenoBuckBonus, unless the teno is stunned at the impact.
+--   * Buck Off II (TenoBuckFree true, a raptor latched on the teno, the teno not stunned): "hold" is accepted at 0 charges
+--     and a "slam" at 0 charges stays a slam; no charge is used (character TenoSlamFree true; false otherwise).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local SCRATCH_HIT_AT = 0.17     -- s after the press: mockup T1 + T2 / 2
 local SCRATCH_CONE = math.rad(45)
 local SHOVE_TIME = 0.3
@@ -67,7 +74,7 @@ for _, k in ipairs({"TenoAttackRequests", "TenoAttackScratches", "TenoAttackSlam
 	"TenoAttackSquadSkips"}) do
 	script:SetAttribute(k, 0)
 end
-for _, k in ipairs({"TenoAttackServerEnabled", "TenoAttackModeRulesEnabled", "TenoAttackSquadEnabled"}) do
+for _, k in ipairs({"TenoAttackServerEnabled", "TenoAttackModeRulesEnabled", "TenoAttackSquadEnabled", "TenoAttackStatsEnabled"}) do -- v1.1: + Stats
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local enabled = script:GetAttribute("TenoAttackServerEnabled") ~= false
@@ -348,6 +355,25 @@ local function jointPos(char, name, fallback)
 	return fallback
 end
 
+-- v1.1: raptors latched on the teno (not pins) and Buck Off II
+local function statsOn() return script:GetAttribute("TenoAttackStatsEnabled") ~= false end
+local function latchersOn(char)
+	local list = {}
+	local all = {}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(all, pl.Character) end end
+	for _, b in ipairs(bots()) do table.insert(all, b) end
+	for _, m in ipairs(all) do
+		if m ~= char and m:GetAttribute("PounceLatched") == true and m:GetAttribute("PounceMode") ~= "pin" then
+			local v = m:FindFirstChild("PounceLatchPart")
+			if v and v:IsA("ObjectValue") and v.Value ~= nil and v.Value:IsDescendantOf(char) then table.insert(list, m) end
+		end
+	end
+	return list
+end
+local function freeSlam(char, t)
+	return statsOn() and char:GetAttribute("TenoBuckFree") == true and num(char, "StunnedUntil", 0) <= t and #latchersOn(char) > 0
+end
+
 local function doScratch(player, char, st, t, stamp)
 	st.lastScratch = t
 	char:SetAttribute("TenoScratchCount", (char:GetAttribute("TenoScratchCount") or 0) + 1)
@@ -384,8 +410,10 @@ local function doScratch(player, char, st, t, stamp)
 end
 
 local function doSlam(player, char, st, t, hold)
-	st.charges -= 1
-	if not st.refillAt then st.refillStart, st.refillAt = t, t + math.max(0.5, get(char, "TenoSlamRefill")) end
+	local free = freeSlam(char, t) -- v1.1: Buck Off II
+	char:SetAttribute("TenoSlamFree", free)
+	if not free then st.charges -= 1 end
+	if not free and not st.refillAt then st.refillStart, st.refillAt = t, t + math.max(0.5, get(char, "TenoSlamRefill")) end
 	publish(char, st)
 	local drop = math.max(0, get(char, "TenoSlamDropTime"))
 	st.slamUntil = t + drop
@@ -408,6 +436,8 @@ local function doSlam(player, char, st, t, hold)
 		local toss = math.max(0, get(char, "TenoSlamToss"))
 		local stun = math.max(0, get(char, "TenoSlamStun"))
 		local dmg = get(char, "TenoSlamDamage")
+		local braceBonus = statsOn() and math.max(0, num(char, "TenoBraceBonus", 0)) or 0 -- v1.1: Brace III
+		local buckBonus = (statsOn() and num(char, "StunnedUntil", 0) <= ti) and math.max(0, num(char, "TenoBuckBonus", 0)) or 0 -- v1.1: Buck Off I
 		local hit, bucked, names, buckedNames = {}, 0, {}, {}
 		local function latchedOnMe(m)
 			if m:GetAttribute("PounceLatched") ~= true or m:GetAttribute("PounceMode") == "pin" then return false end
@@ -417,7 +447,7 @@ local function doSlam(player, char, st, t, hold)
 		local function apply(m, latched)
 			if hit[m] then return end
 			hit[m] = true
-			damage(char, player, m, dmg, "tailslam", ti)
+			damage(char, player, m, dmg + braceBonus + (latched and buckBonus or 0), "tailslam", ti) -- v1.1: + bonuses
 			local isPlayer = Players:GetPlayerFromCharacter(m) ~= nil
 			if isPlayer then
 				m:SetAttribute("StunTossFrom", hips)
@@ -510,7 +540,7 @@ remote.OnServerEvent:Connect(function(player, kind, stamp, hold)
 		r = "busy"
 	end
 	if not r and kind == "hold" then
-		if st.charges < 1 then
+		if st.charges < 1 and not freeSlam(char, t) then -- v1.1: Buck Off II
 			r = "empty"
 		else
 			char:SetAttribute("TenoHoldSince", math.clamp(stamp, t - HOLD_BACK, t))
@@ -519,7 +549,7 @@ remote.OnServerEvent:Connect(function(player, kind, stamp, hold)
 		end
 	end
 	local result = "ok"
-	if not r and kind == "slam" and st.charges < 1 then
+	if not r and kind == "slam" and st.charges < 1 and not freeSlam(char, t) then -- v1.1: Buck Off II
 		kind, result = "scratch", "emptyScratch"
 	end
 	if not r and kind == "scratch" and t - st.lastScratch < math.max(0, get(char, "TenoScratchGap")) then

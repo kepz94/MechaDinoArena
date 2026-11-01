@@ -1,4 +1,4 @@
--- SkillTree v1.44 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.45 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,16 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.45 (Tenontosaurus stat rows, plan docs/plans/TENO_STATS_v1.0.md, mockup docs/mockups/teno_stats_options.html; Kepu
+--   2026-10-31: "No life steal and no regeneration for this one", speed C, defense C, signature 2 "Buck Off", "No attack
+--   row", stun rule "Off only while stunned"). Switch SkillTree.TENO_STATS (default true; false = 1.44):
+--   * PATHS regen / lifesteal / jaws / hide / legs get notFor.Teno (the teno sees none of the shared stat rows).
+--   * New area "sig" (Signature, rgb(201, 162, 255)) and three teno-only rows (dino / OWNER "Teno", mech false):
+--     "chargeup" Charge Up (speed), "brace" Brace (defense), "buckoff" Buck Off (sig).
+--   * effects(): chargeMul1 1.1 (I), chargeMul2 1.2 (II; = chargeMul1 below II), chargeNoShove (II), chargeBump 10 (III),
+--     chargeBumpStun 0.5 (star); braceMul 0.8 (I), braceNoStun (II), braceStack 3 (III), braceHeal 0.05 (star); buckBonus 10
+--     (I), buckFree (II), buckImmune 2 (III), buckDps 3 (star). Off values (1 / false / 0) on every other build.
+--     SkillEffects 1.31 writes them, TenoStatsServer 1.0 / TenoAttackServer 1.1 act on them.
 -- v1.44 (Kepu 2026-10-31: "Slotted parts and equipped stats show up. Anything not equipped is not shown"; Blade Claws
 --   picked "Make it a raptor stat line"): SkillTree.RAPTOR_BLADE_STAT (default true): "blade" Blade Claws gets mech = false
 --   (a raptor stat row in Attack, listed under STATS in the Lab, bought like the other rows) instead of an "always on" mecha
@@ -955,6 +965,44 @@ if SkillTree.RAPTOR_BLADE_STAT and SkillTree.PATHS.blade then
 	SkillTree.PATHS.blade.mech = false
 	SkillTree.BUTTONS.blade = nil
 end
+-- v1.45: the Tenontosaurus' stat rows
+SkillTree.TENO_STATS = true
+if SkillTree.TENO_STATS and not SkillTree.PATHS.chargeup then
+	local P = SkillTree.PATHS
+	for _, id in ipairs({"regen", "lifesteal", "jaws", "hide", "legs"}) do
+		if P[id] then
+			P[id].notFor = P[id].notFor or {}
+			P[id].notFor.Teno = true
+		end
+	end
+	table.insert(SkillTree.AREAS, {id = "sig", name = "Signature", color = {201, 162, 255}, paths = {}})
+	local function add(id, name, areaId, steps)
+		local p = path(id, name, false, false, steps)
+		p.area = areaId
+		p.dino = "Teno"
+		SkillTree.OWNER[id] = "Teno"
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		P[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	add("chargeup", "Charge Up", "speed", {
+		"After 2 s of running: run 10% faster",
+		"After 3 s of running: run 20% faster, and you can't be shoved",
+		"Running into a dino at full speed bumps it 10 studs aside",
+		"Full-speed hits stun 0.5 s"})
+	add("brace", "Brace", "defense", {
+		"While holding a slam: take 20% less damage",
+		"While holding: can't be stunned or knocked back",
+		"While holding: every hit you take adds +3 damage to that slam",
+		"Releasing a slam heals 5% of max health per enemy hit"})
+	add("buckoff", "Buck Off", "sig", {
+		"Latched raptors take +10 slam damage (Buck Off does nothing while you are stunned)",
+		"A slam while something is latched on costs no charge",
+		"After a buck-off, nothing can latch on for 2 s",
+		"A raptor that latches on takes 3 damage per second until it lets go"})
+end
 
 -- level curve
 function SkillTree.xpToNext(level)
@@ -1436,6 +1484,32 @@ do
 			end
 			e.adrenSlashRefill = dino == "Herrera" and ha >= 4
 		end
+		return e
+	end
+end
+
+-- v1.45: the Tenontosaurus' rows around the 1.44 effects (off values on every build without them)
+do
+	local effectsV144 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsV144(steps, dino)
+		if type(e) ~= "table" then return e end
+		local s = SkillTree.sanitize(steps, dino)
+		local on = SkillTree.TENO_STATS
+		local cu, bc, bo = on and s.chargeup or 0, on and s.brace or 0, on and s.buckoff or 0
+		e.chargeMul1 = cu >= 1 and 1.1 or 1
+		e.chargeMul2 = cu >= 2 and 1.2 or e.chargeMul1
+		e.chargeNoShove = cu >= 2
+		e.chargeBump = cu >= 3 and 10 or 0
+		e.chargeBumpStun = cu >= 4 and 0.5 or 0
+		e.braceMul = bc >= 1 and 0.8 or 1
+		e.braceNoStun = bc >= 2
+		e.braceStack = bc >= 3 and 3 or 0
+		e.braceHeal = bc >= 4 and 0.05 or 0
+		e.buckBonus = bo >= 1 and 10 or 0
+		e.buckFree = bo >= 2
+		e.buckImmune = bo >= 3 and 2 or 0
+		e.buckDps = bo >= 4 and 3 or 0
 		return e
 	end
 end

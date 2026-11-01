@@ -1,4 +1,4 @@
--- SkillEffects v1.30 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.31 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -197,10 +197,28 @@
 --   Blood Siphon also counts a dino whose CaltropBleedUntil is in the future as bleeding.
 --   Iron Claw / Blood Siphon / Back Plating are stat rows from SkillTree 1.43 (mech = false); they were already "on when
 --   bought" (not in BUTTONS), so their writes are unchanged.
+-- v1.31 (Tenontosaurus stat rows, SkillTree 1.45, plan docs/plans/TENO_STATS_v1.0.md; switch script attribute
+--   SkillEffectsTenoEnabled, default true, read at start; false = 1.30): on a character with Species "Teno" (and on any
+--   character that already has them, so a switch away writes the off values) the effects are written as TenoChargeMul1,
+--   TenoChargeMul2, TenoChargeNoShove, TenoChargeBump, TenoChargeBumpStun, TenoBraceMul, TenoBraceNoStun, TenoBraceStack,
+--   TenoBraceHeal, TenoBuckBonus, TenoBuckFree, TenoBuckImmune, TenoBuckDps (off values 1 / false / 0 when not bought, not a
+--   teno or SkillEffectsEnabled false). TenoStatsServer 1.0 and TenoAttackServer 1.1 read them. Brace II: when StunnedUntil
+--   is set into the future while TenoBraceNoStun is true and TenoHoldSince > 0 (holding a slam), StunnedUntil = now
+--   (SkillStunTrimmed "braced"), before the Thick Hide rules.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.30" -- v1.28 (1.27 left this at "1.26"); v1.29 squads; v1.30 Herrera pass 3
+VERSION = "1.31" -- v1.31 teno rows
+if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
+local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
+local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
+	{"TenoChargeMul1", "chargeMul1", 1}, {"TenoChargeMul2", "chargeMul2", 1}, {"TenoChargeNoShove", "chargeNoShove", false},
+	{"TenoChargeBump", "chargeBump", 0}, {"TenoChargeBumpStun", "chargeBumpStun", 0}, {"TenoBraceMul", "braceMul", 1},
+	{"TenoBraceNoStun", "braceNoStun", false}, {"TenoBraceStack", "braceStack", 0}, {"TenoBraceHeal", "braceHeal", 0},
+	{"TenoBuckBonus", "buckBonus", 0}, {"TenoBuckFree", "buckFree", false}, {"TenoBuckImmune", "buckImmune", 0},
+	{"TenoBuckDps", "buckDps", 0},
+}
 if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
 local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false
 if script:GetAttribute("SkillEffectsHerreraPartsEnabled") == nil then script:SetAttribute("SkillEffectsHerreraPartsEnabled", true) end -- v1.27
@@ -545,6 +563,17 @@ local function applyChar(char, st)
 			char:SetAttribute("SlashKillRefill", x.killRefill == true)
 		end
 	end
+	if TENO_ON then -- v1.31: the Tenontosaurus' rows
+		local tOn = char:GetAttribute("Species") == "Teno"
+		if tOn or char:GetAttribute("TenoBraceMul") ~= nil then
+			local x = (live and tOn) and e or {}
+			for _, f in ipairs(TENO_ATTRS) do
+				local v = x[f[2]]
+				if v == nil then v = f[3] end
+				if char:GetAttribute(f[1]) ~= v then char:SetAttribute(f[1], v) end
+			end
+		end
+	end
 end
 
 -- healing (regen / lifesteal), overflow into the shield
@@ -829,6 +858,11 @@ local function onCharacter(player, char)
 		if untilT == st.writing.StunnedUntil or not on() then return end
 		if typeof(untilT) ~= "number" or untilT <= t then return end
 		local e = st.e
+		if TENO_ON and char:GetAttribute("TenoBraceNoStun") == true and (tonumber(char:GetAttribute("TenoHoldSince")) or 0) > 0 then -- v1.31: Brace II
+			writeOwn(st, char, "StunnedUntil", t)
+			char:SetAttribute("SkillStunTrimmed", "braced")
+			return
+		end
 		if e.stunImmuneAbove > 0 and hum.Health > e.stunImmuneAbove * hum.MaxHealth then
 			writeOwn(st, char, "StunnedUntil", t)
 			char:SetAttribute("SkillStunTrimmed", "immune")

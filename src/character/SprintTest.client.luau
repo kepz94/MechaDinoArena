@@ -1,4 +1,4 @@
--- SprintTest v1.16 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.17 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -57,6 +57,10 @@
 -- v1.16 (Herrera parts pass 3, MDA-165 / MDA-166, HerreraMovesServer 1.2): while CaltropSlowUntil > now the speed is x
 --   CaltropSlowMul (a Razor Caltrops spike; MoveSpeedParts "caltrop"); while GooSlowUntil > now it is x GooSlowMul (inside a
 --   goo puddle; "goo"). Switch: script attribute SprintPass3SlowEnabled (default true, read each apply; false = 1.15).
+-- v1.17 (Tenontosaurus Charge Up, plan docs/plans/TENO_STATS_v1.0.md): the speed is multiplied by TenoChargeMul
+--   (TenoStatsServer 1.0: 1.1 after 2 s of running, 1.2 after 3 s; 1 otherwise) when it is not 1, with the other part
+--   multipliers; MoveSpeedParts can include "charge". Switch: script attribute SprintTenoChargeEnabled (default true, read
+--   each apply; false = 1.16).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -134,6 +138,13 @@ local function partSpeed()
 		if m ~= 1 then
 			mul *= math.clamp(m, 0.05, 1)
 			table.insert(names, "ironclaw")
+		end
+	end
+	if script:GetAttribute("SprintTenoChargeEnabled") ~= false then -- v1.17
+		local m = tonumber(char:GetAttribute("TenoChargeMul")) or 1
+		if m ~= 1 then
+			mul *= math.clamp(m, 0.05, 3)
+			table.insert(names, "charge")
 		end
 	end
 	if script:GetAttribute("SprintSmokeEnabled") ~= false then -- v1.15
@@ -261,7 +272,7 @@ for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil"
 	"MineSlowUntil", "MineSlowMul", "HeadbuttSlowUntil", "HeadbuttSlowMul", "HeadbuttSelfSlowUntil", "HeadbuttSelfSlowMul",
 	"ServoDashUntil", "ServoDashSpeedMul", "SlashBurstUntil", "SlashBurstMul", "SlashFrenzyUntil", "SlashFrenzyMul", "IronClawEnabled", "IronClawSpeedMul",
 	"SmokeRunUntil", "SmokeRunMul", "SmokeSlowUntil", "SmokeSlowMul",
-	"CaltropSlowUntil", "CaltropSlowMul", "GooSlowUntil", "GooSlowMul"}) do -- v1.16: + Caltrop* / Goo* -- v1.15: + Smoke* -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*
+	"CaltropSlowUntil", "CaltropSlowMul", "GooSlowUntil", "GooSlowMul", "TenoChargeMul"}) do -- v1.17: + TenoChargeMul -- v1.16: + Caltrop* / Goo* -- v1.15: + Smoke* -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 apply()
