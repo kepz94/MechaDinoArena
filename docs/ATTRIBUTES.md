@@ -2522,3 +2522,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoLeapSmoothEnabled / TenoLeapAirBlend2 / TenoLeapReachStart / TenoLeapReachTime / TenoLeapReach / TenoLeapLandIn / TenoLeapLandTime2 / TenoLeapFilterRate | teno model (TenoPose defaults) | true / 0.4 / 0.25 / 0.35 / 0.45 / 0.35 / 0.55 / 16 (smooth on: TenoLeapLandTime read as TenoLeapLandTime2) | TenoPose 1.1 |
 | IdleAnimationVersion | model | "1.38" | IdleAnimation 1.38 |
 | TenoModelVersion / RigHipHeight | teno model | "1.3" / 3.381 (were "1.2" / 3.298) | TenoModelData 1.3 |
+| LabHPartsEnabled | Lab script (StarterPlayerScripts) | true (false = Lab 1.9: only Mecha_* children refresh the stage) | Lab 1.10 |
+| LabVersion | player (this client) | "1.10" | Lab 1.10 |

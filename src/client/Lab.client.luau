@@ -1,4 +1,4 @@
--- Lab v1.8 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.10 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -115,13 +115,26 @@
 -- v1.8 (Kepu 2026-10-30: "Health steal for raptor should be stronger then"; SkillTree 1.28): a step's text comes from
 --   path.stepsFor[<your dino>][i] when that exists (raptor Lifesteal 20% / 35% / 50%), else path.steps[i] as before.
 --   Switch: script attribute LabStepsForEnabled (default true, read each draw; false = 1.7).
+-- v1.10 (bug, Kepu 2026-11-01, Lab screenshot: "It has the stun breaker appearing on my herrera even tho it's not
+--   equipped"): the same cause MainMenu 1.11 fixed in the menu, here in the Lab. The stage copy is re-taken only when its
+--   key changes, and the key and the ChildAdded / ChildRemoved watchers looked at "Mecha_*" children only; the Herrera's
+--   parts are Models "HPart_<id>" (HerreraPartsServer), so equipping / unequipping a Herrera part never re-copied (the
+--   stage kept the parts the Herrera wore when the copy was taken) and the SKINS plain view kept HPart_* pieces. A mecha
+--   part child is now "Mecha_*" or "HPart_*" for the stage key, the watchers and the plain view. Raptor / pachy parts
+--   ("Mecha_*") and the teno (no parts) unchanged. Switch: script attribute LabHPartsEnabled (default true, read at each
+--   check; false = 1.9).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
+if script:GetAttribute("LabHPartsEnabled") == nil then script:SetAttribute("LabHPartsEnabled", true) end -- v1.10
+local function isMechaPart(name) -- v1.10: "Mecha_*" (raptor / pachy) or "HPart_*" (Herrera)
+	if name:sub(1, 6) == "Mecha_" then return true end
+	return script:GetAttribute("LabHPartsEnabled") ~= false and name:sub(1, 6) == "HPart_"
+end
 local SKIN = Color3.fromRGB(201, 162, 255) -- v1.6
 local ROBUX = Color3.fromRGB(0, 176, 111) -- v1.6
 if script:GetAttribute("LabTestFreeGivenEnabled") == nil then script:SetAttribute("LabTestFreeGivenEnabled", true) end -- v1.4
@@ -684,7 +697,7 @@ local function plainCopy() -- the live character without scripts, effects, hitbo
 		end
 	end
 	for _, ch in ipairs(copy:GetChildren()) do
-		if ch.Name == "Hitboxes" or ch.Name:sub(1, 6) == "Mecha_" then ch:Destroy() end
+		if ch.Name == "Hitboxes" or isMechaPart(ch.Name) then ch:Destroy() end -- v1.10: + HPart_*
 	end
 	for _, d in ipairs(copy:GetDescendants()) do
 		if d:IsA("BasePart") then d.Anchored = true end
@@ -1442,7 +1455,7 @@ local function rebuildStage()
 	local names = {}
 	if c then
 		for _, ch in ipairs(c:GetChildren()) do
-			if ch.Name:sub(1, 6) == "Mecha_" then table.insert(names, ch.Name) end
+			if isMechaPart(ch.Name) then table.insert(names, ch.Name) end -- v1.10: + HPart_*
 		end
 	end
 	table.sort(names)
@@ -1643,8 +1656,8 @@ local charConns = {}
 local function onChar(c)
 	for _, cn in ipairs(charConns) do cn:Disconnect() end
 	table.clear(charConns)
-	table.insert(charConns, c.ChildAdded:Connect(function(ch) if ch.Name:sub(1, 6) == "Mecha_" then task.delay(0.25, queue) end end))
-	table.insert(charConns, c.ChildRemoved:Connect(function(ch) if ch.Name:sub(1, 6) == "Mecha_" then task.delay(0.25, queue) end end))
+	table.insert(charConns, c.ChildAdded:Connect(function(ch) if isMechaPart(ch.Name) then task.delay(0.25, queue) end end)) -- v1.10: + HPart_*
+	table.insert(charConns, c.ChildRemoved:Connect(function(ch) if isMechaPart(ch.Name) then task.delay(0.25, queue) end end))
 	table.insert(charConns, c:GetAttributeChangedSignal("Species"):Connect(queue))
 	table.insert(charConns, c:GetAttributeChangedSignal("SkinApplied"):Connect(function() stageKey = nil queue() end)) -- v1.6
 	c:SetAttribute("SkillScreenOpen", mode == "compact")
