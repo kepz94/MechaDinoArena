@@ -1,4 +1,4 @@
--- IdleAnimation v1.37 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.38 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -209,6 +209,9 @@
 --       (owner: TenoLocalState / TenoLocalAt / TenoLocalHold; others: TenoHoldSince / TenoScratchAt / TenoSlamAt /
 --       TenoSlamHold) are multiplied on. Diagnostics: JumpPoseKind adds "teno"; TenoPoseState ("none" / "hold" /
 --       "scratch" / "slam"), TenoPoseSource. Every other model unchanged.
+-- v1.38 (Kepu 2026-10-31: teno jump "looks so rough"; TenoPose 1.1): on teno leap frames the crouch / push / air weight is
+--       the one TenoPose.leap returns (TenoPose 1.1: the crouch eases in from the walk / idle pose; 1.0 returned 1, so a
+--       model with TenoLeapSmoothEnabled false is unchanged). Every other model unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -545,6 +548,7 @@ model:SetAttribute("IdleAnimationVersion", "1.34") -- v1.34
 model:SetAttribute("IdleAnimationVersion", "1.35") -- v1.35
 model:SetAttribute("IdleAnimationVersion", "1.36") -- v1.36
 model:SetAttribute("IdleAnimationVersion", "1.37") -- v1.37
+model:SetAttribute("IdleAnimationVersion", "1.38") -- v1.38
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -887,8 +891,8 @@ RunService.PreSimulation:Connect(function(dt)
 					jump.done = true
 				end
 			elseif jump.air and tps then -- v1.37
-				jp = TenoPose.leap("air", math.max(0, t - W), tps)
-				jumpW, jumpState = 1, (jumpVy >= 0 and "rise" or "fall")
+				jp, jumpW = TenoPose.leap("air", math.max(0, t - W), tps) -- v1.38: + weight
+				jumpState = jumpVy >= 0 and "rise" or "fall"
 			elseif jump.air then
 				local fall = math.clamp(-jumpVy / (power * 0.5), 0, 1)
 				local hVy = model:GetAttribute("HerreraJumpClockEnabled") ~= false -- v1.35: the leap's own clock
@@ -898,14 +902,14 @@ RunService.PreSimulation:Connect(function(dt)
 					or JumpPose.air(math.max(0, t - W), fall, jumpVy / power, js, geo)
 				jumpW, jumpState = 1, (jumpVy >= 0 and "rise" or "fall")
 			elseif t < W and tps then -- v1.37
-				jp = TenoPose.leap("crouch", t / W, tps)
-				jumpW, jumpState = 1, "crouch"
+				jp, jumpW = TenoPose.leap("crouch", t / W, tps) -- v1.38: + weight
+				jumpState = "crouch"
 			elseif t < W then
 				jp = hs and HerreraJumpPose.get("crouch", t / W, nil, hs, ss, scurryGeo, motors, scurryScale) or JumpPose.crouch(t / W, js, geo)
 				jumpW, jumpState = 1, "crouch"
 			elseif t < W + JUMP_LIFTOFF_WAIT and tps then -- v1.37
-				jp = TenoPose.leap("air", t - W, tps)
-				jumpW, jumpState = 1, "push"
+				jp, jumpW = TenoPose.leap("air", t - W, tps) -- v1.38: + weight
+				jumpState = "push"
 			elseif t < W + JUMP_LIFTOFF_WAIT then
 				jp = hs and HerreraJumpPose.get("air", t - W, 1, hs, ss, scurryGeo, motors, scurryScale) or JumpPose.air(t - W, 0, 1, js, geo)
 				jumpW, jumpState = 1, "push"

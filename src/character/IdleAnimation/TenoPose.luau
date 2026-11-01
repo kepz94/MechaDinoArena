@@ -1,4 +1,4 @@
--- TenoPose v1.0 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.1 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -22,8 +22,21 @@
 --             (ease); ends after.
 --   attack(phase, t, hold, s, now) -> {joint = CFrame}.
 -- Switch: model attribute TenoPoseEnabled (default true; false = no teno leap or attack poses, the biped jump pose plays).
+-- v1.1 (Kepu 2026-10-31: "make the teno's jump animation more smooth. It looks so rough rn"): smoother leap (the same J_REAR /
+--   J_AIR / J_LAND poses), while the model attribute TenoLeapSmoothEnabled is not false (default true; false = 1.0):
+--   * crouch: the full J_REAR pose with weight smoothstep(x), so the body eases out of the walk / idle pose into the rear-up
+--     (1.0 jumped to the rest pose at weight 1 on the first frame); IdleAnimation 1.38 uses this weight.
+--   * air: J_REAR -> J_AIR by smoothstep over TenoLeapAirBlend2 (0.4 s; 1.0: ease-out over 0.34 s, a hard first frame),
+--     then from TenoLeapReachStart (0.25 s) over TenoLeapReachTime (0.35 s) a TenoLeapReach (0.45) share of J_LAND (legs
+--     reach for the ground before the touchdown).
+--   * land: from the pose held at the touchdown to J_LAND by smoothstep over the first TenoLeapLandIn (0.35) of the landing,
+--     then the weight fades 1 -> 0 by smoothstep; the landing lasts TenoLeapLandTime2 (0.55 s; 1.0: 0.4 s, a linear 0.12 s snap
+--     into J_LAND and an ease-out fade).
+--   * every leap frame is low-pass filtered (angles follow the target at TenoLeapFilterRate 16 per second; reset when a new
+--     leap starts after 0.25 s without leap frames). The filter state lives in this module, which each character's
+--     IdleAnimation requires from its own copy, so it belongs to one model.
 local TenoPose = {}
-TenoPose.Version = "1.0"
+TenoPose.Version = "1.1"
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -31,6 +44,9 @@ TenoPose.Defaults = {
 	TenoScratchUp = 0.12, TenoScratchDown = 0.10, TenoScratchRecover = 0.25,
 	TenoSlamHoldMin = 0.22, TenoSlamDropTime = 0.13, TenoSlamRecover = 0.7,
 	TenoHoldRise = 0.55,       -- s from the press to the full wind-up (mockup hold / 0.55)
+	-- v1.1: smooth leap
+	TenoLeapSmoothEnabled = true, TenoLeapAirBlend2 = 0.4, TenoLeapReachStart = 0.25, TenoLeapReachTime = 0.35,
+	TenoLeapReach = 0.45, TenoLeapLandIn = 0.35, TenoLeapLandTime2 = 0.55, TenoLeapFilterRate = 16,
 }
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5",
@@ -97,6 +113,7 @@ function TenoPose.settings(model)
 		if typeof(a) ~= typeof(v) then a = v end
 		s[k] = a
 	end
+	if s.TenoLeapSmoothEnabled ~= false then s.TenoLeapLandTime = s.TenoLeapLandTime2 end -- v1.1: IdleAnimation reads this
 	return s
 end
 
@@ -113,7 +130,45 @@ function TenoPose.leapAngles(phase, x, s)
 	return mix(ZERO, ZERO, 0, JOINTS), 0
 end
 
+-- v1.1: the smooth leap (see the header)
+local function smooth(u) u = clamp01(u) return u * u * (3 - 2 * u) end
+local filt = {at = -math.huge, a = nil, landFrom = nil}
+function TenoPose.leapSmoothAngles(phase, x, s, clock)
+	local A, w
+	if phase == "crouch" then
+		A, w = mix(J_REAR, J_REAR, 0, JOINTS), smooth(x)
+	elseif phase == "air" then
+		A = mix(J_REAR, J_AIR, smooth(x / max(0.01, s.TenoLeapAirBlend2)), JOINTS)
+		A = mix(A, J_LAND, s.TenoLeapReach * smooth((x - s.TenoLeapReachStart) / max(0.01, s.TenoLeapReachTime)), JOINTS)
+		w = 1
+	elseif phase == "land" then
+		local from = filt.landFrom or filt.a or J_AIR
+		if not filt.landFrom then filt.landFrom = from end
+		local inF = math.clamp(s.TenoLeapLandIn, 0.05, 0.95)
+		if x < inF then
+			A, w = mix(from, J_LAND, smooth(x / inF), JOINTS), 1
+		else
+			A, w = mix(J_LAND, J_LAND, 0, JOINTS), 1 - smooth((x - inF) / (1 - inF))
+		end
+	else
+		return mix(ZERO, ZERO, 0, JOINTS), 0
+	end
+	if phase ~= "land" then filt.landFrom = nil end
+	local now = clock or os.clock()
+	if not filt.a or now - filt.at > 0.25 then
+		filt.a = A
+	else
+		filt.a = mix(filt.a, A, 1 - math.exp(-s.TenoLeapFilterRate * math.max(0, now - filt.at)), JOINTS)
+	end
+	filt.at = now
+	return filt.a, w
+end
+
 function TenoPose.leap(phase, x, s)
+	if s.TenoLeapSmoothEnabled ~= false then -- v1.1
+		local a, w = TenoPose.leapSmoothAngles(phase, x, s)
+		return toCF(a), w
+	end
 	local a, w = TenoPose.leapAngles(phase, x, s)
 	return toCF(a), w
 end
