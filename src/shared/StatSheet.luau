@@ -21,8 +21,11 @@
 -- v1.3 (MDA-134, plan docs/plans/HERRERA_KIT_v1.0.md Task 2): SPECIES.Herrera (class "Utility", start Health 2 / Attack 3 /
 --   Defense 2 / Speed 10 / Support 1, abilities "Dash-through slash", "Auto-climb"); ATTACK_PER_POINT.SlashDamage 1 and
 --   ATTACK_KEYS + "SlashDamage" (only the Herrera has the attribute).
+-- v1.4 (MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 2): SPECIES.Teno (class "Tank", start Health 9 / Attack 5 / Defense 8 /
+--   Speed 3 / Support 1, abilities "Scratch + tail slam", "Rearing leap"); ATTACK_KEYS + "TenoScratchDamage" (1 per point)
+--   and "TenoSlamDamage" (2 per point) (only the teno has them).
 local StatSheet = {}
-StatSheet.Version = "1.3"
+StatSheet.Version = "1.4"
 StatSheet.STATS = {"Health", "Attack", "Defense", "Speed", "Support"}
 StatSheet.MAX_ADDED = 10
 StatSheet.MAX_ADDED_BY = {Speed = 16} -- v1.1
@@ -45,6 +48,12 @@ StatSheet.SPECIES.Pachy = {class = "Bruiser", start = {Health = 5, Attack = 6, D
 	abilities = {"Headbutt charge", "Leap"}} -- v1.2
 StatSheet.SPECIES.Herrera = {class = "Utility", start = {Health = 2, Attack = 3, Defense = 2, Speed = 10, Support = 1},
 	abilities = {"Dash-through slash", "Auto-climb"}} -- v1.3
+StatSheet.SPECIES.Teno = {class = "Tank", start = {Health = 9, Attack = 5, Defense = 8, Speed = 3, Support = 1},
+	abilities = {"Scratch + tail slam", "Rearing leap"}} -- v1.4
+table.insert(StatSheet.ATTACK_KEYS, "TenoScratchDamage") -- v1.4
+table.insert(StatSheet.ATTACK_KEYS, "TenoSlamDamage")
+StatSheet.ATTACK_PER_POINT.TenoScratchDamage = 1
+StatSheet.ATTACK_PER_POINT.TenoSlamDamage = 2
 
 local function roundTo(x, step)
 	return math.floor(x / step + 0.5) * step

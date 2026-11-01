@@ -38,6 +38,10 @@
 --   template built once from ServerStorage.DinoArcade.Models.HerreraModelData while the script attribute
 --   SpeciesHerreraEnabled (default true, read at start) is on; "Herrera" is then a known species (switch, respawn after a
 --   death, remembered choice). Script attribute SpeciesHerreraTemplate ("ready" / "missing <reason>" / "off").
+-- v1.5 (MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 3): fifth species "Teno", exactly like the Herrera (1.4): a template
+--   built once from ServerStorage.DinoArcade.Models.TenoModelData while SpeciesTenoEnabled (default true, read at start)
+--   is on; "Teno" is then a known species (switch, respawn after a death, remembered choice). Script attribute
+--   SpeciesTenoTemplate ("ready" / "missing <reason>" / "off").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -47,6 +51,7 @@ local SWITCH_COOLDOWN = 2
 local SPECIES = {TRex = true, Raptor = true}
 script:SetAttribute("SpeciesServerVersion", "1.3")
 script:SetAttribute("SpeciesServerVersion", "1.4") -- v1.4
+script:SetAttribute("SpeciesServerVersion", "1.5") -- v1.5
 if script:GetAttribute("SpeciesDefault") == nil then script:SetAttribute("SpeciesDefault", "Raptor") end -- v1.1
 
 local remote = ReplicatedStorage:FindFirstChild("DinoSpeciesRequest")
@@ -98,6 +103,22 @@ if script:GetAttribute("SpeciesHerreraEnabled") ~= false then
 	if herreraTemplate then SPECIES.Herrera = true end
 else
 	script:SetAttribute("SpeciesHerreraTemplate", "off")
+end
+
+-- v1.5: teno template
+if script:GetAttribute("SpeciesTenoEnabled") == nil then script:SetAttribute("SpeciesTenoEnabled", true) end
+local tenoTemplate
+if script:GetAttribute("SpeciesTenoEnabled") ~= false then
+	local ok, err = pcall(function()
+		local folder = ServerStorage:WaitForChild("DinoArcade", 10)
+		local Builder = require(folder:WaitForChild("DinoModelBuilder"))
+		local data = require(folder:WaitForChild("Models"):WaitForChild("TenoModelData"))
+		tenoTemplate = Builder.build(data, {name = "Teno"})
+	end)
+	script:SetAttribute("SpeciesTenoTemplate", ok and tenoTemplate and "ready" or ("missing " .. tostring(err)))
+	if tenoTemplate then SPECIES.Teno = true end
+else
+	script:SetAttribute("SpeciesTenoTemplate", "off")
 end
 
 local lastSwitch = {}
@@ -228,6 +249,22 @@ local function spawnHerrera(player)
 	if old and old ~= char then old:Destroy() end
 end
 
+-- v1.5: same as spawnHerrera, from the teno template
+local function spawnTeno(player)
+	local char = tenoTemplate:Clone()
+	char.Name = player.Name
+	for _, s in ipairs(StarterPlayer.StarterCharacterScripts:GetChildren()) do
+		s:Clone().Parent = char
+	end
+	local hrp = char.HumanoidRootPart
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	char:PivotTo(spawnCFrame(player, hrp.Size.Y / 2 + hum.HipHeight))
+	local old = player.Character
+	char.Parent = workspace
+	player.Character = char
+	if old and old ~= char then old:Destroy() end
+end
+
 local function switch(player, species)
 	player:SetAttribute("DinoSpecies", species)
 	if species == "Raptor" then
@@ -236,6 +273,8 @@ local function switch(player, species)
 		spawnPachy(player)
 	elseif species == "Herrera" and herreraTemplate then -- v1.4
 		spawnHerrera(player)
+	elseif species == "Teno" and tenoTemplate then -- v1.5
+		spawnTeno(player)
 	else
 		player:LoadCharacter()
 	end
@@ -255,6 +294,10 @@ remote.OnServerEvent:Connect(function(player, species)
 		return
 	end
 	if species == "Herrera" and not herreraTemplate then -- v1.4
+		player:SetAttribute("SpeciesLastResult", "noTemplate")
+		return
+	end
+	if species == "Teno" and not tenoTemplate then -- v1.5
 		player:SetAttribute("SpeciesLastResult", "noTemplate")
 		return
 	end
@@ -306,6 +349,11 @@ local function onPlayer(player)
 				if player.Character == char then spawnHerrera(player) end
 			end)
 		end
+		if want == "Teno" and tenoTemplate and speciesOf(char) ~= "Teno" then -- v1.5
+			task.defer(function()
+				if player.Character == char then spawnTeno(player) end
+			end)
+		end
 	end)
 	-- v1.1: a body that spawned before the default was set
 	local char = player.Character
@@ -326,7 +374,9 @@ local function onPlayerV13(player) -- v1.3: a body that spawned (as another dino
 			if want == "Raptor" and raptorTemplate then spawnRaptor(player)
 			elseif want == "Pachy" and pachyTemplate then spawnPachy(player)
 			elseif want == "Herrera" and herreraTemplate then spawnHerrera(player) -- v1.4
+			elseif want == "Teno" and tenoTemplate then spawnTeno(player) -- v1.5
 			elseif want == "TRex" and speciesOf(char) == "Herrera" then player:LoadCharacter() -- v1.4
+			elseif want == "TRex" and speciesOf(char) == "Teno" then player:LoadCharacter() -- v1.5
 			elseif want == "TRex" and (speciesOf(char) == "Raptor" or speciesOf(char) == "Pachy") then player:LoadCharacter() end
 		end)
 	end

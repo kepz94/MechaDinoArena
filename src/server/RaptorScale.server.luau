@@ -23,6 +23,8 @@
 -- v1.3 (MDA-135, plan docs/plans/HERRERA_KIT_v1.0.md Task 3): player characters whose Species is "Herrera" are scaled
 --   like the pachy (same distance keys and ground lift) by the script attribute HerreraScale (default 2) while
 --   RaptorScaleHerreraEnabled (default true) is on. (The header line read v1.1 through 1.2.)
+-- v1.4 (MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 3): player characters whose Species is "Teno" are scaled the same way
+--   by the script attribute TenoScale (default 2) while RaptorScaleTenoEnabled (default true) is on.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -92,6 +94,9 @@ local function onCharacter(char)
 	end
 	if char.Parent and char:GetAttribute("Species") == "Herrera" and script:GetAttribute("RaptorScaleHerreraEnabled") ~= false then -- v1.3
 		apply(char, tonumber(script:GetAttribute("HerreraScale")) or 2)
+	end
+	if char.Parent and char:GetAttribute("Species") == "Teno" and script:GetAttribute("RaptorScaleTenoEnabled") ~= false then -- v1.4
+		apply(char, tonumber(script:GetAttribute("TenoScale")) or 2)
 	end
 end
 local function onPlayer(player)

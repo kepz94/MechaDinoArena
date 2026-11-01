@@ -2481,3 +2481,12 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | HerreraMovesFXCaltropDropEnabled / HerreraMovesFXCaltropKickEnabled / CaltropFlights / CaltropKicks | HerreraMovesFX script | true / true / count / count | HerreraMovesFX 1.4 |
 | MainMenuHPartsEnabled | MainMenu script | true | MainMenu 1.11 |
 | SkillTree.RAPTOR_BLADE_STAT | SkillTree module | true | SkillTree 1.44 |
+| DinoMaxHealth / MoveWalkSpeed / MoveRunSpeed / CameraStartZoom / TurnLimitRate | teno model | 150 / 30 / 52 / 24 / 240 | TenoModelData 1.1 |
+| TenoAttackEnabled / TenoPoseEnabled | teno model | true / true (read by TenoAttackServer / TenoPose, Tasks 5–7) | TenoModelData 1.1 |
+| TenoScratchDamage / TenoScratchGap / TenoScratchReach / TenoScratchShove | teno model | 8 / 0.5 s / 5.5 (x scale) / 6 | TenoModelData 1.1 |
+| TenoSlamDamage / TenoSlamCharges / TenoSlamRefill / TenoSlamHoldMin / TenoSlamRange / TenoSlamArc / TenoSlamToss / TenoSlamStun / TenoSlamDropTime | teno model | 40 / 3 / 8 s / 0.22 s / 15 (x scale) / 220° / 35 studs / 1 s / 0.13 s | TenoModelData 1.1 |
+| JumpEnabled / JumpWindup / JumpLaunchPower / JumpBoost / JumpBoostMinSpeed / JumpAirHold / JumpStaminaCost / JumpCooldown | teno model | true / 0.28 / 54 / 14 / 2 / true / 0 / 1 | TenoModelData 1.1 |
+| TenoScratchDamage / TenoSlamDamage in ATTACK_KEYS | StatSheet module | +1 / +2 per Attack point | StatSheet 1.4 |
+| SpeciesTenoEnabled / SpeciesTenoTemplate | SpeciesServer script | default true / "ready" / "missing <reason>" / "off" | SpeciesServer 1.5 |
+| RaptorScaleTenoEnabled / TenoScale | RaptorScale script | true / 2 | RaptorScale 1.4 |
+| MainMenuTenoEnabled | MainMenu script | true (read at start) | MainMenu 1.12 |
