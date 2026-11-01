@@ -1,4 +1,4 @@
--- SkillTree v1.46 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.47 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,14 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.47 (Kepu 2026-11-01: "the herrerra has too many stackable stat upgrades ... look over the redundant ones to make this
+--   a fair dino" -> picked "Trim overlap"). Switch SkillTree.HERRERA_TRIM (default true; false = 1.46):
+--   * Removed for the Herrera (saved steps dropped by sanitize, so spent points come back): Regeneration (notFor.Herrera),
+--     Blood Siphon and Iron Claw (dino / OWNER "none": shown to nobody, like Dart Launcher). Its heals: Blood Drinker
+--     (lifesteal) + Adrenaline Injector (button); its slash damage row: Razor Claws.
+--   * Razor Claws I: +3 Attack points (was +5; slash 7 -> 10), III: slash bleed 3 per second (was 5).
+--   * Blood Frenzy II: bleed lasts 5 s (was 6), III: +2 on a bleeding dino (was +3).
+--   Maxed Herrera: slash on a bleeding dino 12 (was 19 with Iron Claw), bleed per hit 15 (was 30). Other dinos unchanged.
 -- v1.46 (Kepu 2026-10-31: Herrera damage "a little too strong" -> "Both a little"; HerreraModelData 1.3 slash 8 -> 7, bleed
 --   3 -> 2 per second): Razor Claws step texts only - I "slash 7 -> 12", III "(was 2)". Effects unchanged.
 -- v1.45 (Tenontosaurus stat rows, plan docs/plans/TENO_STATS_v1.0.md, mockup docs/mockups/teno_stats_options.html; Kepu
@@ -1486,6 +1494,54 @@ do
 			end
 			e.adrenSlashRefill = dino == "Herrera" and ha >= 4
 		end
+		return e
+	end
+end
+
+-- v1.47: Herrera trim (header): rows hidden here, numbers in the effects wrapper below
+SkillTree.HERRERA_TRIM = true
+SkillTree.HERRERA_TRIM_ATTACK, SkillTree.HERRERA_TRIM_BLEED_DPS = 3, 3
+SkillTree.HERRERA_TRIM_BLEED_TIME, SkillTree.HERRERA_TRIM_BLEED_BONUS = 5, 2
+if SkillTree.HERRERA_TRIM then
+	local P = SkillTree.PATHS
+	if P.regen then
+		P.regen.notFor = P.regen.notFor or {}
+		P.regen.notFor.Herrera = true
+	end
+	for _, id in ipairs({"siphon", "ironclaw"}) do
+		if P[id] and P[id].dino == "Herrera" then
+			P[id].dino = "none"
+			SkillTree.OWNER[id] = "none"
+			SkillTree.BUTTONS[id] = nil
+		end
+	end
+	if P.jaws and P.jaws.stepsFor and P.jaws.stepsFor.Herrera then
+		P.jaws.stepsFor.Herrera = {
+			("Slash hits harder (+%d Attack points: slash 7 -> %d)"):format(SkillTree.HERRERA_TRIM_ATTACK, 7 + SkillTree.HERRERA_TRIM_ATTACK),
+			P.jaws.stepsFor.Herrera[2],
+			("Bleed burns hotter: %d per second (was 2)"):format(SkillTree.HERRERA_TRIM_BLEED_DPS),
+			P.jaws.stepsFor.Herrera[4]}
+	end
+	if P.frenzy then
+		P.frenzy.steps = {P.frenzy.steps[1], ("Bleed lasts %d s (was 4)"):format(SkillTree.HERRERA_TRIM_BLEED_TIME),
+			("Slash a bleeding dino: +%d damage"):format(SkillTree.HERRERA_TRIM_BLEED_BONUS), P.frenzy.steps[4]}
+	end
+end
+do
+	local effectsV146 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsV146(steps, dino)
+		if type(e) ~= "table" or not SkillTree.HERRERA_TRIM or dino ~= "Herrera" then return e end
+		local s = SkillTree.sanitize(steps, dino)
+		local jw, bf = s.jaws or 0, s.frenzy or 0
+		if jw >= 1 then e.attackPts = SkillTree.HERRERA_TRIM_ATTACK end
+		if jw >= 3 then e.slashBleedDps = SkillTree.HERRERA_TRIM_BLEED_DPS end
+		if bf >= 2 then e.slashBleedTime = SkillTree.HERRERA_TRIM_BLEED_TIME end
+		if bf >= 3 then e.bleedBonus = SkillTree.HERRERA_TRIM_BLEED_BONUS end
+		-- the removed rows give their off values even from unsanitized steps
+		e.regenDelay, e.regenRate, e.killRegenAdd = 0, 0, 0
+		e.siphonRate, e.siphonRange, e.siphonKillHeal = 0, 0, 0
+		e.ironClawDamageMul, e.ironClawSpeedMul, e.ironClawDust = 1, 1, false
 		return e
 	end
 end
