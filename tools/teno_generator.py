@@ -17,11 +17,20 @@ Dino space D = (x forward, y up, z left), origin at the hip centre (= HumanoidRo
 All joints world-aligned (identity C0 rotation); tilts are baked into the parts.
 Skin rule (SkinCatalog): every visible block uses one colour group, no hex shared between groups, none equal to a
 never-paint colour (pupils 111111, mouth 6E342E, HRP A3A2A5; also E8E2D2, 963C3C, F5F5F0).
-Run: python3 tools/teno_generator.py --look A|B|C --json OUT   (mockup export, the three.js viewer's format)
+v0.2 (Kepu: "The tail isn't long enough. I want this to be cartoonish with a lot of character super easily
+  identifiable"): cartoon looks (big heads, huge eyes, coloured beaks, tail ~62%). v0.3 (Kepu on C Goofy Noodle: "I need
+  the tail to be more longer and thicker"): C tail x1.22 longer, x1.45 thicker; body scale kept (BODY_K 0.84), so the
+  dino is ~24.9 studs at scale 1 (~50 in game). v1.0 (Kepu "Yes, build v0.3"): the data file for look C.
+Run: python3 tools/teno_generator.py                         (writes src/shared/Models/TenoModelData.luau, look C)
+     python3 tools/teno_generator.py --look A|B|C --json OUT  (mockup export, the three.js viewer's format)
 """
-import json, math, sys
+import json, math, os, re, sys
 
-VERSION = "0.3"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(ROOT, "src", "shared", "Models", "TenoModelData.luau")
+TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
+
+VERSION = "1.0"
 BODY_K = 0.84  # v0.3: the v0.2 C scale
 TARGET_LEN = 20.0  # v0.2: the body keeps about its v0.1 size, the much longer tail adds length (~40 studs in game)
 ROLES = ["main", "dorsal", "belly", "bands", "limbs", "claws", "eyes", "beak", "scutes", "mask"]
@@ -46,7 +55,7 @@ LOOKS = {  # v0.2 (Kepu: "The tail isn't long enough. I want this to be cartooni
               pal={"main": "D99A4A", "dorsal": "2E8C8A", "belly": "F6E6BE", "bands": "C83A3A", "limbs": "B87A36",
                    "claws": "3A2A1E", "eyes": "FFFFFF", "beak": "F2D04A", "scutes": "1E6462", "mask": "F2B8A0"}),
 }
-LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
+LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "C"  # v1.0: Kepu "Yes, build v0.3" = C Goofy Noodle
 L = LOOKS[LOOK]
 C = {**L["pal"], "pupil": "111111", "mouth": "6E342E", "shine": "F5F5F0"}
 SMOOTH = {"eyes", "pupil", "claws", "mouth", "beak", "shine"}
@@ -337,6 +346,46 @@ if "--json" in sys.argv:
             "hrp": [round(hz, 4), round(hy, 4), round(hx, 4)], "hip": round(HIP - hy / 2, 4)}
     json.dump(data, open(out, "w"))
     print("json ->", out)
+if "--json" not in sys.argv:
+    # ------------------------------------------------------------ full data file (v1.0), same layout as HerreraModelData
+    def fmt(v):
+        return "{" + ",".join(f"{x:g}" for x in v) + "}"
+    used = {C[p["key"]] for n_ in order for p in segments[n_]["parts"]}
+    assert used <= set(hexes) | {"111111", "6E342E", "F5F5F0"}, "a block colour is not a role or never-paint"
+    hx, hy, hz = HRP_SIZE_D
+    body = [f'\thrp = {{size = {{{hz:.4g},{hy:.4g},{hx:.4g}}}, color = "A3A2A5", surface = {{"Studs","Inlet","Smooth","Smooth","Smooth","Smooth"}}}},',
+            f'\thumanoid = {{RigType = "R15", HipHeight = {HIP - hy / 2:.4g}, DisplayDistanceType = "None"}},',
+            '\tmodelStreamingMode = "Atomic",', "\tsegments = {"]
+    for n_ in order:
+        sg = segments[n_]
+        body.append(f'\t\t{{name = "{n_}", root = {fmt(cf(sg["root"]))}, parts = {{')
+        for p in sg["parts"]:
+            surface = '"Smooth"' if p["key"] in SMOOTH else '"Studs"'
+            body.append(f'\t\t\t{{name = "{p["name"]}", size = {fmt([round(v, 4) for v in p["size"]])}, '
+                        f'cf = {fmt(cf(p["center"], p["R"]))}, color = "{C[p["key"]]}", surface = {surface}}},')
+        body.append("\t\t}},")
+    body.append("\t},")
+    body.append("\tjoints = {")
+    for jn, p0, p1 in JOINTS:
+        c0 = cf((0.0, 0.0, 0.0)) if p0 == "HRP" else [round(segments[p1]["root"][i] - segments[p0]["root"][i], 5) + 0.0 for i in range(3)] + [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        body.append(f'\t\t{{name = "{jn}", part0 = "{p0}", part1 = "{p1}", c0 = {fmt(c0)}, c1 = {{0,0,0,1,0,0,0,1,0,0,0,1}}}},')
+    body.append("\t},")
+    trex = open(TREX).read()
+    block = trex[trex.index("attributes = {"):]
+    block = block[:block.index("\n\t},")]
+    attrs = {m.group(1): m.group(2) for m in re.finditer(r'^\t\t(\w+) = (.+?),$', block, re.M)}
+    attrs.update({"Species": '"Teno"', "StyleVersion": '"1.0"', "TenoModelVersion": f'"{VERSION}"', "DisplayName": '"Tenontosaurus"',
+                  "RigHipHeight": f"{HIP:.4g}", "BiteEnabled": "false", "PounceEnabled": "false", "RamEnabled": "false",
+                  "RoarEnabled": "false", "JumpEnabled": "false", "CreepEnabled": "false"})
+    attrs.pop("StarterCharacterVersion", None)
+    lines = [f"-- TenoModelData v{VERSION} (Mecha Dino Arena) — block-style cartoon Tenontosaurus (C Goofy Noodle, long thick tail), rig 1.3 joint names, skin-ready colour groups.",
+             "-- Generated by tools/teno_generator.py (do not edit by hand; change the generator and re-run). Plan docs/plans/TENO_MODEL_v1.0.md.",
+             f"-- Scale: {hi[0] - lo[0]:.2f} studs long (tail {sum(t[0] for t in tail) * K:.2f}), hip {HIP:.4g} studs; doubled in game like the raptor / pachy / Herrera (~{2 * (hi[0] - lo[0]):.0f}).",
+             "-- Colour groups (Classic = Goofy Noodle): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: pupil 111111, mouth 6E342E, eye shine F5F5F0.",
+             "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB. Rebuild with DinoModelBuilder.build(require(TenoModelData)).",
+             "return {", f'\tversion = "{VERSION}", species = "Teno", style = "1.0", rig = "1.3",'] + body + ["\tattributes = {"] + [f"\t\t{k} = {attrs[k]}," for k in sorted(attrs)] + ["\t},", "}"]
+    open(OUT, "w").write("\n".join(lines) + "\n")
+    print("data ->", OUT, f"({len(attrs)} attributes)")
 n = sum(len(segments[s]["parts"]) for s in order)
 tail_len = sum(t[0] for t in tail) * K
 print(f"look {LOOK} ({L['name']}): {n} parts, {len(order)} segments, scale {K:.3f}, HIP {HIP:.3f}")

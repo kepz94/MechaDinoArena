@@ -1,4 +1,4 @@
--- SkinCatalog v1.6 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
+-- SkinCatalog v1.7 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1, mockup docs/mockups/skins_lab_tab.html (Kepu 2026-10-30: skins picked in the Lab's
 -- SKINS tab from the main menu; "whatever is chosen in the menu is what youre spawning with every time unless you choose
 -- a different skin"; buying with Robux is the next plan). Pure: no Instance access. Used by SkinServer 1.0 (server) and,
@@ -46,9 +46,12 @@
 --   (EPIC 499), Obsidian Fang (LEGENDARY 999). Ids carry the prefix "herrera_" (the save's owned set is keyed by id only).
 --   Prices / products are the existing rarity tiers. Raptor / T-Rex / Pachy lists, Herrera roles / Classic, ALL_UNLOCKED
 --   and the API unchanged.
+-- v1.7 (plan docs/plans/TENO_MODEL_v1.0.md Task 2, MDA-171): Teno colour groups (TenoModelData 1.0: main, dorsal, belly,
+--   bands, limbs, claws (hooves), eyes, beak, scutes, mask; pupils / mouth / eye shine are never-paint) and its Classic skin
+--   (Goofy Noodle). Other species' lists, roles and the API unchanged.
 local SkinCatalog = {}
 SkinCatalog.ALL_UNLOCKED = true -- v1.5: group test, every skin unlocked
-SkinCatalog.Version = "1.6"
+SkinCatalog.Version = "1.7"
 
 SkinCatalog.ROLES = {
 	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -59,6 +62,8 @@ SkinCatalog.ROLES = {
 	Herrera = {["6E6A3A"] = "main", ["2F3320"] = "stripes", ["D3C89A"] = "belly", ["B8414A"] = "markings",
 		["5A5530"] = "limbs", ["2C2620"] = "claws", ["E8C547"] = "eyes", ["B9B26A"] = "tailbands", ["262A1A"] = "mask",
 		["C9572E"] = "frill"}, -- v1.4
+	Teno = {["D99A4A"] = "main", ["2E8C8A"] = "dorsal", ["F6E6BE"] = "belly", ["C83A3A"] = "bands", ["B87A36"] = "limbs",
+		["3A2A1E"] = "claws", ["FFFFFF"] = "eyes", ["F2D04A"] = "beak", ["1E6462"] = "scutes", ["F2B8A0"] = "mask"}, -- v1.7
 }
 
 SkinCatalog.NEVER_PAINT = {["E8E2D2"] = true, ["111111"] = true, ["963C3C"] = true, ["6E342E"] = true, ["F5F5F0"] = true,
@@ -137,6 +142,11 @@ SkinCatalog.SKINS = {
 			colors = {main = "141416", stripes = "2A2A2E", belly = "3A3A40", markings = "D0202A", limbs = "1E1E22",
 				claws = "D4A72C", eyes = "FFD24A", tailbands = "B81822", mask = "0A0A0C", frill = "9E1520"},
 			materials = {markings = "Neon", claws = "Foil", eyes = "Neon", frill = "Neon"}},
+	},
+	Teno = { -- v1.7
+		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
+			colors = {main = "D99A4A", dorsal = "2E8C8A", belly = "F6E6BE", bands = "C83A3A", limbs = "B87A36", claws = "3A2A1E",
+				eyes = "FFFFFF", beak = "F2D04A", scutes = "1E6462", mask = "F2B8A0"}},
 	},
 }
 
