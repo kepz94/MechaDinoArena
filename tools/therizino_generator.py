@@ -1,47 +1,53 @@
 #!/usr/bin/env python3
-"""Therizino generator v0.1 (Mecha Dino Arena) — mockup stage: three looks for Kepu to pick from.
+"""Therizino generator v0.2 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
 
 Kepu 2026-11-02: "Therizino. Slasher build" -> "Make the model". Answers: size "Between raptor and T-Rex (~32)";
 style "True to the animal"; feathers "Fully feathered"; roster "Day 1".
-Our own design of the real animal (Therizinosaurus): a small head with a beak, a long upright neck, a deep pot-bellied
-body held at a slant, a short drooping tail, stocky four-toed legs, and huge arms with three giant sickle claws; a shaggy
-feather coat. Kepu's reference picture was film art (UCS LLC and Amblin); nothing here copies that creature.
+v0.2 (Kepu: "I need it to look more intimidating with its big claws for slashing" / "you're not even presenting different
+options you're just changing the posture and bringing different colors. I want 3 different styles to choose from"):
+three different body designs, each with its own claws, head, neck, coat and stance (v0.1's three looks were one body in
+three colours / poses; they are in git at commit e005463):
+  A Reaper - tall and gaunt: a ragged feather cloak, a long straight neck, a skull-like head with a hooked beak and
+             deep-set eyes, the longest thin scythe claws held out wide.
+  B Brute  - massive and hunched like a bear: a huge belly and a feather hump over the shoulders, a thick neck carrying a
+             heavy boxy head low in front, thick arms with broad meat-hook claws that curl right back.
+  C Mantis - crouched to strike: the neck coiled in an S, a wedge head pointed forward, raised display quills on the back
+             and head, the arms folded up in front like a praying mantis with flat blade claws cocked over them.
+Our own design of the real animal (Therizinosaurus). Kepu's reference picture was film art (UCS LLC and Amblin); nothing
+here copies that creature.
 
 Same 17-segment rig and joint names as the other dinos (rig 1.3). Dino space D = (x forward, y up, z left), origin at
 the hip centre (= HumanoidRootPart centre). The whole body is scaled so its length is TARGET_LEN studs (16 at scale 1,
 doubled in game like the raptor / Herrera / troodon: ~32; T-Rex ~40, raptor ~25.7).
 Skin rule: every visible block uses one authored colour per group (10 groups), no hex shared between groups, none equal
-to a never-paint colour (teeth E8E2D2, pupils 111111, mouth 6E342E, HRP A3A2A5).
-Looks (mockup docs/mockups/therizino_model_options.html):
-  A Bark Ranger - russet-brown coat, cream mane, claws held forward ready to slash, neck upright.
-  B Ghost Moss  - ash-grey shaggy coat (fullest), white mane, charcoal arms, ivory claws hanging low, neck leaning forward.
-  C Ember Back  - charcoal coat with an orange back and arm bars, a face mask, claws raised high, a sleeker coat, neck up.
+to a never-paint colour (teeth E8E2D2, pupils 111111, mouth 6E342E, HRP A3A2A5). Colours are a first pass per style and
+can move between styles.
 Run: python3 tools/therizino_generator.py --look A|B|C --json OUT   (the three.js viewer's format)
 The data file (TherizinoModelData.luau, attributes, Classic colours) comes after Kepu picks.
 """
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.1"
+VERSION = "0.2"
 TARGET_LEN = 16.0    # studs at scale 1 (~32 in game)
 HRP_SIZE_D0 = (3.0, 2.6, 1.6)
 ROLES = ["main", "back", "belly", "coat", "mane", "limbs", "claws", "eyes", "beak", "mask"]
 NEVER = {"E8E2D2", "111111", "6E342E", "A3A2A5"}
 
-LOOKS = {
-    "A": {"name": "Bark Ranger", "feather": 1.0, "neck": 0, "claws": "forward",
-          "pal": {"main": "7A5236", "back": "4E3424", "belly": "C9B48E", "coat": "6A4630", "mane": "E6D8B8",
-                  "limbs": "5A3E2C", "claws": "2C2622", "eyes": "D8A030", "beak": "3A3530", "mask": "40302A"}},
-    "B": {"name": "Ghost Moss", "feather": 1.3, "neck": -10, "claws": "hang",
-          "pal": {"main": "8A8C88", "back": "5C5E5A", "belly": "CFCBC0", "coat": "767874", "mane": "EDEBE4",
-                  "limbs": "3C3D3B", "claws": "D8D0BC", "eyes": "E0B848", "beak": "2E2F2E", "mask": "4A4C49"}},
-    "C": {"name": "Ember Back", "feather": 0.8, "neck": 6, "claws": "raised",
-          "pal": {"main": "3A3836", "back": "D2632A", "belly": "A69C8C", "coat": "2C2A28", "mane": "8E8A84",
-                  "limbs": "4A4644", "claws": "1E1C1B", "eyes": "F2C040", "beak": "5A4A3A", "mask": "C24A22"}},
+LOOKS = {  # v0.2: three styles (body designs)
+    "A": {"name": "Reaper", "style": "reaper", "feather": 1.1, "neck": 0,
+          "pal": {"main": "3E3B38", "back": "2A2826", "belly": "8C857A", "coat": "4A4642", "mane": "6E6A64",
+                  "limbs": "2F2D2B", "claws": "E2DCCB", "eyes": "F2C83A", "beak": "1E1C1B", "mask": "161514"}},
+    "B": {"name": "Brute", "style": "brute", "feather": 1.3, "neck": 0,
+          "pal": {"main": "7A5236", "back": "4E3424", "belly": "C9B48E", "coat": "6A4630", "mane": "3A2A20",
+                  "limbs": "5A3E2C", "claws": "2C2622", "eyes": "D8A030", "beak": "46403A", "mask": "40302A"}},
+    "C": {"name": "Mantis", "style": "mantis", "feather": 0.9, "neck": 0,
+          "pal": {"main": "5A6046", "back": "D0702E", "belly": "B9B48E", "coat": "474D38", "mane": "7A8060",
+                  "limbs": "3A3E2E", "claws": "24221E", "eyes": "F0D040", "beak": "2E2C26", "mask": "8E3A1E"}},
 }
 LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
 L = LOOKS[LOOK]
-F, NECK_RAISE, CLAWS = L["feather"], L["neck"], L["claws"]
+F, NECK_RAISE, STYLE = L["feather"], L["neck"], L["style"]
 C = {**L["pal"], "tooth": "E8E2D2", "pupil": "111111", "mouth": "6E342E"}
 M = ((0, 0, 1), (0, 1, 0), (-1, 0, 0))  # D -> HRP space
 
@@ -110,142 +116,232 @@ def nfe(n):
     return max(1, round(n * F))
 
 
-# ---------------------------------------------------------------- torso (deep pot belly, held at a slant, shaggy coat)
-seg("Torso", (0.0, 0.0, 0.0))
-part("Torso", "main", (1.6, 1.4, 1.3), (-0.3, 0.2, 0.0), pitch=15, name="Torso_hips")
-part("Torso", "main", (2.2, 1.9, 1.75), (0.85, 0.35, 0.0), pitch=25, name="Torso_belly")
-part("Torso", "main", (1.5, 1.55, 1.4), (1.95, 1.15, 0.0), pitch=42, name="Torso_chest")
-part("Torso", "belly", (1.9, 0.2, 1.15), (0.85, -0.62, 0.0), pitch=22, name="Torso_under")
-part("Torso", "belly", (0.3, 1.2, 1.0), (2.55, 1.0, 0.0), pitch=40, name="Torso_breast")
-part("Torso", "back", (2.6, 0.18, 0.8), (0.6, 1.2, 0.0), pitch=22, name="Torso_backstripe")
-part("Torso", "back", (1.1, 0.18, 0.7), (1.9, 1.95, 0.0), pitch=42, name="Torso_backstripe2")
-n = nfe(9)  # shaggy coat hanging off the flanks and belly
-for i in range(n):
-    t = i / max(1, n - 1)
-    x, y = -0.7 + 2.9 * t, -0.05 + 0.85 * t
-    for side in (1, -1):
-        blade("Torso", "coat", (x, y, side * 0.86), (-0.35, -0.94, side * 0.15), (0.75 + 0.2 * math.sin(t * 9)) * F, 0.34, 0.06,
-              name=f"Torso_shag{i + 1}{'L' if side > 0 else 'R'}")
-for i in range(nfe(5)):  # belly fringe
-    t = i / max(1, nfe(5) - 1)
-    blade("Torso", "coat", (0.1 + 1.6 * t, -0.62 + 0.4 * t, 0.0), (-0.25, -0.97, 0), 0.6 * F, 0.5, 0.08, name=f"Torso_fringe{i + 1}")
-for i in range(nfe(8)):  # back feathers
-    t = i / max(1, nfe(8) - 1)
-    blade("Torso", "back", (-0.9 + 3.0 * t, 0.86 + 1.25 * t * t, 0.0), (-0.97, 0.12, 0), 0.6 * F, 0.6, 0.1, ref=(0, 1, 0),
-          name=f"Torso_plume{i + 1}")
+# ---------------------------------------------------------------- shared builders (v0.2)
+def coat_shag(segname, pts, length, width, side_z, name, d=(-0.35, -0.94)):
+    for i, (x, y) in enumerate(pts):
+        for side in (1, -1):
+            blade(segname, "coat", (x, y, side * side_z), (d[0], d[1], side * 0.15), length * (0.85 + 0.3 * ((i * 7) % 3) / 2) * F,
+                  width, 0.06, name=f"{name}{i + 1}{'L' if side > 0 else 'R'}")
 
-# ---------------------------------------------------------------- neck (long, upright, mane down the back)
-NECK_ROOT = (2.45, 1.75)
-seg("Neck", (NECK_ROOT[0], NECK_ROOT[1], 0.0))
-part("Neck", "mane", (1.15, 0.78, 0.74), (2.75, 2.25, 0.0), pitch=68, name="Neck_base")
-part("Neck", "mane", (1.05, 0.62, 0.6), (2.98, 3.15, 0.0), pitch=80, name="Neck_mid")
-part("Neck", "mane", (0.95, 0.54, 0.52), (3.12, 4.0, 0.0), pitch=78, name="Neck_upper")
-for i in range(nfe(7)):
-    t = i / max(1, nfe(7) - 1)
-    blade("Neck", "mane", (2.45 + 0.6 * t, 2.3 + 2.0 * t, 0.0), (-0.85, -0.2, 0), 0.5 * F, 0.3, 0.07, name=f"Neck_mane{i + 1}")
-    for side in (1, -1):
-        blade("Neck", "mane", (2.65 + 0.45 * t, 2.0 + 2.0 * t, side * 0.3), (-0.5, -0.6, side * 0.62), 0.45 * F, 0.3, 0.05,
-              ref=(0, 1, 0), name=f"Neck_ruff{i + 1}{'L' if side > 0 else 'R'}")
 
-# ---------------------------------------------------------------- head (small, beaked)
-seg("Head", (3.2, 4.4, 0.0))
-part("Head", "main", (0.72, 0.62, 0.58), (3.45, 4.62, 0.0), name="Head_cranium")
-part("Head", "main", (0.66, 0.42, 0.44), (3.95, 4.5, 0.0), pitch=-10, name="Head_snout")
-part("Head", "beak", (0.32, 0.32, 0.38), (4.32, 4.4, 0.0), pitch=-18, name="Head_beak")
-part("Head", "mouth", (0.8, 0.05, 0.43), (3.95, 4.3, 0.0), pitch=-10, name="Head_mouth")
-for i in range(4):
-    part("Head", "tooth", (0.06, 0.08, 0.44), (3.62 + i * 0.13, 4.36 - i * 0.022, 0.0), name=f"Head_tooth{i + 1}")
-for side in (1, -1):
+def line(a, b, n):
+    return [(a[0] + (b[0] - a[0]) * i / max(1, n - 1), a[1] + (b[1] - a[1]) * i / max(1, n - 1)) for i in range(n)]
+
+
+def claws(segname, wr, z, side, dirs, lens, widths, thicks, spread, start=0.12):
+    """Three big curved claws from the wrist: each a chain of tapering blocks following `dirs` (a curve in the side plane)."""
+    for i, (dz, lm) in enumerate(((-spread, 0.88), (0.0, 1.0), (spread, 0.8))):
+        splay = (1 if dz > 0 else -1 if dz < 0 else 0) * 0.14
+        pt = (wr[0] + dirs[0][0] * start, wr[1] + dirs[0][1] * start, z + dz)
+        for j, (dd, ln, w, t) in enumerate(zip(dirs, lens, widths, thicks)):
+            pt = blade(segname, "claws", pt, (dd[0], dd[1], splay), ln * lm, w, t, name=f"{segname}_claw{i + 1}{'abcd'[j]}")
+
+
+def arm(side, sh, el, wr, z, upper_w, fore_w, hand, fringe_len):
     s = "L" if side > 0 else "R"
-    part("Head", "eyes", (0.2, 0.2, 0.05), (3.52, 4.72, side * 0.3), name=f"Head_eye{s}")
-    part("Head", "pupil", (0.08, 0.14, 0.03), (3.54, 4.72, side * 0.325), name=f"Head_pupil{s}")
-    part("Head", "mask", (0.62, 0.1, 0.04), (3.6, 4.85, side * 0.29), pitch=-6, name=f"Head_brow{s}")
-    part("Head", "mask", (0.5, 0.08, 0.03), (3.95, 4.58, side * 0.225), pitch=-10, name=f"Head_cheek{s}")
-for i in range(max(2, nfe(3))):
-    a = math.radians(25 + 18 * i)
-    blade("Head", "mane", (3.18, 4.82 - 0.08 * i, 0.0), (-math.cos(a), math.sin(a), 0), 0.38 * F, 0.12, 0.06, name=f"Head_crest{i + 1}")
+    nm = f"Arm{s}"
+    seg(nm, (sh[0], sh[1], side * abs(z) * 0.85))
+    part(nm, "coat", (upper_w * 1.5, upper_w * 1.3, upper_w * 1.1), (sh[0] - 0.05, sh[1] - 0.25, z), name=f"{nm}_shoulder")
+    bone(nm, "coat", (sh[0], sh[1], z), (el[0], el[1], z), upper_w, upper_w * 0.95, f"{nm}_upper")
+    part(nm, "limbs", (fore_w * 1.1,) * 3, (el[0], el[1], z), name=f"{nm}_elbow")
+    bone(nm, "limbs", (el[0], el[1], z), (wr[0], wr[1], z), fore_w, fore_w, f"{nm}_fore")
+    part(nm, "limbs", hand, (wr[0], wr[1], z), name=f"{nm}_hand")
+    n = nfe(5)
+    for i in range(n):  # feather fringe trailing off the forearm
+        t = i / max(1, n - 1)
+        st = (el[0] + (wr[0] - el[0]) * t, el[1] + (wr[1] - el[1]) * t, z + side * fore_w * 0.3)
+        dx, dy = wr[0] - el[0], wr[1] - el[1]
+        ln = math.hypot(dx, dy)
+        perp = (dy / ln, -dx / ln)  # the side of the forearm facing down
+        if perp[1] > 0:
+            perp = (-perp[0], -perp[1])
+        blade(nm, "coat", st, (perp[0] - 0.3, perp[1], 0), fringe_len * (0.8 + 0.4 * t) * F, 0.24, 0.05, name=f"{nm}_fringe{i + 1}")
+    return nm
 
-# ---------------------------------------------------------------- jaw (beaked; rest open 5 deg)
-JAW_ROOT = (3.4, 4.32, 0.0)
-JAW_OPEN = -5
-seg("Jaw", JAW_ROOT)
-for key, size, c, nm, pch in [("main", (0.92, 0.18, 0.4), (3.9, 4.24, 0.0), "Jaw_lower", -8),
-                              ("beak", (0.26, 0.2, 0.34), (4.3, 4.18, 0.0), "Jaw_beak", -14),
-                              ("belly", (0.7, 0.05, 0.3), (3.85, 4.14, 0.0), "Jaw_under", -8)]:
-    part("Jaw", key, size, about(JAW_ROOT, c, JAW_OPEN), pitch=JAW_OPEN + pch, name=nm)
 
-# ---------------------------------------------------------------- arms (long, feathered, three giant sickle claws)
-ARM_POSES = {  # shoulder, elbow, wrist, claw directions base -> mid -> tip (a curved sickle in three blocks)
-    "forward": ((2.15, 1.0), (2.45, -0.85), (3.4, -0.75), ((0.75, -0.66), (0.35, -0.94), (-0.1, -1.0))),
-    "hang":    ((2.15, 1.0), (2.2, -0.6), (2.6, -1.6), ((0.55, -0.83), (0.2, -0.98), (-0.3, -0.95))),
-    "raised":  ((2.15, 1.0), (2.8, 0.1), (3.7, 0.75), ((0.98, 0.1), (0.8, -0.6), (0.35, -0.94))),
-}
-sh, el, wr, CD = ARM_POSES[CLAWS]
-for side in (1, -1):
-    s = "L" if side > 0 else "R"
-    z = side * 0.95
-    seg(f"Arm{s}", (sh[0], sh[1], side * 0.8))
-    part(f"Arm{s}", "coat", (0.6, 0.5, 0.42), (sh[0] - 0.05, sh[1] - 0.32, z - side * 0.05), name=f"Arm{s}_shoulder")
-    bone(f"Arm{s}", "coat", (sh[0], sh[1], z), (el[0], el[1], z), 0.4, 0.38, f"Arm{s}_upper")
-    part(f"Arm{s}", "limbs", (0.32, 0.32, 0.32), (el[0], el[1], z), name=f"Arm{s}_elbow")
-    bone(f"Arm{s}", "limbs", (el[0], el[1], z), (wr[0], wr[1], z), 0.3, 0.3, f"Arm{s}_fore")
-    part(f"Arm{s}", "limbs", (0.42, 0.34, 0.4), (wr[0], wr[1], z), name=f"Arm{s}_hand")
-    for i in range(nfe(5)):  # feather fringe trailing off the forearm
-        t = i / max(1, nfe(5) - 1)
-        st = (el[0] + (wr[0] - el[0]) * t, el[1] + (wr[1] - el[1]) * t, z + side * 0.1)
-        blade(f"Arm{s}", "coat", st, (-0.55, -0.83, 0), (0.55 + 0.15 * t) * F, 0.24, 0.05, name=f"Arm{s}_fringe{i + 1}")
-    for i, (dz, lm) in enumerate(((-0.14, 0.88), (0.0, 1.0), (0.14, 0.8))):  # three giant sickle claws, tapering, curved
-        pt = (wr[0] + CD[0][0] * 0.12, wr[1] + CD[0][1] * 0.12, z + dz)
-        for j, (dd, ln, w, t) in enumerate(zip(CD, (0.8, 0.7, 0.55), (0.2, 0.15, 0.1), (0.12, 0.1, 0.07))):
-            pt = blade(f"Arm{s}", "claws", pt, (dd[0], dd[1], 0), ln * lm, w, t, name=f"Arm{s}_claw{i + 1}{'abc'[j]}")
-
-# ---------------------------------------------------------------- tail (short, drooping, feathered, tip tuft)
-tail = [(1.0, (1.05, 0.85, 0.8), -6), (0.95, (1.0, 0.66, 0.62), -9), (0.85, (0.9, 0.5, 0.48), -11),
-        (0.75, (0.8, 0.38, 0.36), -9), (0.65, (0.7, 0.28, 0.27), -6)]
-_root = (-1.0, 0.25)
-for i, (seglen, size, rise) in enumerate(tail):
-    name = f"Tail{i + 1}"
-    a = math.radians(rise)
-    d = (-math.cos(a), math.sin(a))
-    seg(name, (_root[0], _root[1], 0.0))
-    part(name, "main", size, (_root[0] + d[0] * (size[0] / 2 - 0.05), _root[1] + d[1] * (size[0] / 2 - 0.05), 0.0), pitch=-rise)
-    blade(name, "back", (_root[0] + d[0] * 0.45, _root[1] + d[1] * 0.45 + size[1] / 2 - 0.05, 0.0), (-0.97, 0.12, 0),
-          0.45 * F, size[2] * 0.85, 0.08, ref=(0, 1, 0), name=f"{name}_plume")
+def legs(knee, ankle, ball, zoff, thigh_w, shin_w, meta_w, toe_l):
     for side in (1, -1):
-        blade(name, "coat", (_root[0] + d[0] * 0.5, _root[1] + d[1] * 0.5, side * size[2] / 2), (-0.6, -0.55, side * 0.55),
-              0.45 * F, 0.3, 0.05, ref=(0, 1, 0), name=f"{name}_shag{'L' if side > 0 else 'R'}")
-    if i == 4:
-        tip = (_root[0] + d[0] * seglen, _root[1] + d[1] * seglen)
-        for k, ang in enumerate((-30, 0, 30)):
-            r_ = math.radians(ang)
-            blade(name, "coat", (tip[0] + 0.1, tip[1], 0.0), (-math.cos(r_), 0.05, math.sin(r_)), 0.7 * F, 0.26, 0.06,
-                  ref=(0, 1, 0), name=f"{name}_tuft{k + 1}")
-    _root = (_root[0] + d[0] * seglen, _root[1] + d[1] * seglen)
+        s = "L" if side > 0 else "R"
+        z = side * zoff
+        seg(f"Leg{s}", (0.0, 0.0, z))
+        part(f"Leg{s}", "main", (thigh_w * 1.45, thigh_w * 1.4, thigh_w * 1.05), (0.1, -0.35, z), pitch=10, name=f"Leg{s}_haunch")
+        bone(f"Leg{s}", "main", (0.0, 0.0, z), (knee[0], knee[1], z), thigh_w, thigh_w * 0.86, f"Leg{s}_thigh")
+        for i, (x, y) in enumerate(line((-0.35, -0.3), (0.15, -1.2), nfe(4))):
+            blade(f"Leg{s}", "coat", (x, y, z + side * thigh_w * 0.35), (-0.5, -0.86, 0), 0.6 * F, 0.3, 0.06, name=f"Leg{s}_pants{i + 1}")
+        seg(f"Shin{s}", (knee[0], knee[1], z))
+        part(f"Shin{s}", "limbs", (shin_w * 1.15,) * 3, (knee[0], knee[1], z), name=f"Shin{s}_knee")
+        bone(f"Shin{s}", "limbs", (knee[0], knee[1], z), (ankle[0], ankle[1], z), shin_w, shin_w * 0.95, f"Shin{s}_shin")
+        seg(f"Foot{s}", (ankle[0], ankle[1], z))
+        bone(f"Foot{s}", "limbs", (ankle[0], ankle[1], z), (ball[0], ball[1], z), meta_w, meta_w, f"Foot{s}_meta")
+        for i, yw in enumerate((18, 0, -18)):
+            L_ = toe_l if yw == 0 else toe_l * 0.83
+            dx, dz = math.cos(math.radians(yw)) * L_ / 2, -math.sin(math.radians(yw)) * L_ / 2
+            part(f"Foot{s}", "limbs", (L_, 0.18, 0.22), (ball[0] + dx, ball[1] - 0.04, z + side * dz), yaw=yw * side, name=f"Foot{s}_toe{i + 1}")
+            part(f"Foot{s}", "claws", (0.24, 0.16, 0.14), (ball[0] + dx * 2 + 0.07, ball[1] - 0.05, z + side * dz * 2), yaw=yw * side,
+                 name=f"Foot{s}_claw{i + 1}")
+        part(f"Foot{s}", "limbs", (0.32, 0.14, 0.15), (ball[0] - 0.25, ball[1] + 0.05, z + side * 0.2), yaw=-40 * side, name=f"Foot{s}_toe4")
 
-# ---------------------------------------------------------------- legs (stocky, feathered thighs, four toes)
-for side in (1, -1):
-    s = "L" if side > 0 else "R"
-    z = side * 0.62
-    hip, knee, ankle, ball = (0.0, 0.0), (0.55, -1.65), (-0.15, -3.05), (0.15, -3.55)
-    seg(f"Leg{s}", (hip[0], hip[1], z))
-    part(f"Leg{s}", "main", (1.0, 1.0, 0.7), (0.1, -0.35, z), pitch=10, name=f"Leg{s}_haunch")
-    bone(f"Leg{s}", "main", (hip[0], hip[1], z), (knee[0], knee[1], z), 0.72, 0.62, f"Leg{s}_thigh")
-    for i in range(nfe(4)):
-        t = i / max(1, nfe(4) - 1)
-        blade(f"Leg{s}", "coat", (-0.35 + 0.5 * t, -0.3 - 0.9 * t, z + side * 0.25), (-0.5, -0.86, 0), 0.6 * F, 0.3, 0.06,
-              name=f"Leg{s}_pants{i + 1}")
-    seg(f"Shin{s}", (knee[0], knee[1], z))
-    part(f"Shin{s}", "limbs", (0.48, 0.44, 0.48), (knee[0], knee[1], z), name=f"Shin{s}_knee")
-    bone(f"Shin{s}", "limbs", (knee[0], knee[1], z), (ankle[0], ankle[1], z), 0.42, 0.4, f"Shin{s}_shin")
-    seg(f"Foot{s}", (ankle[0], ankle[1], z))
-    bone(f"Foot{s}", "limbs", (ankle[0], ankle[1], z), (ball[0], ball[1], z), 0.38, 0.4, f"Foot{s}_meta")
-    for i, yw in enumerate((18, 0, -18)):
-        L_ = 0.75 if yw == 0 else 0.62
-        dx, dz = math.cos(math.radians(yw)) * L_ / 2, -math.sin(math.radians(yw)) * L_ / 2
-        part(f"Foot{s}", "limbs", (L_, 0.18, 0.2), (ball[0] + dx, ball[1] - 0.04, z + side * dz), yaw=yw * side, name=f"Foot{s}_toe{i + 1}")
-        part(f"Foot{s}", "claws", (0.2, 0.15, 0.13), (ball[0] + dx * 2 + 0.06, ball[1] - 0.05, z + side * dz * 2), yaw=yw * side,
-             name=f"Foot{s}_claw{i + 1}")
-    part(f"Foot{s}", "limbs", (0.32, 0.14, 0.15), (ball[0] - 0.25, ball[1] + 0.05, z + side * 0.2), yaw=-40 * side, name=f"Foot{s}_toe4")
+
+def tail(spec, root, plume_k="back", tip=True):
+    _root = root
+    for i, (seglen, size, rise) in enumerate(spec):
+        name = f"Tail{i + 1}"
+        a = math.radians(rise)
+        d = (-math.cos(a), math.sin(a))
+        seg(name, (_root[0], _root[1], 0.0))
+        part(name, "main", size, (_root[0] + d[0] * (size[0] / 2 - 0.05), _root[1] + d[1] * (size[0] / 2 - 0.05), 0.0), pitch=-rise)
+        blade(name, plume_k, (_root[0] + d[0] * 0.45, _root[1] + d[1] * 0.45 + size[1] / 2 - 0.05, 0.0), (d[0], d[1] + 0.12, 0),
+              0.45 * F, size[2] * 0.85, 0.08, ref=(0, 1, 0), name=f"{name}_plume")
+        for side in (1, -1):
+            blade(name, "coat", (_root[0] + d[0] * 0.5, _root[1] + d[1] * 0.5, side * size[2] / 2), (d[0] * 0.6, -0.55, side * 0.55),
+                  0.45 * F, 0.3, 0.05, ref=(0, 1, 0), name=f"{name}_shag{'L' if side > 0 else 'R'}")
+        if i == len(spec) - 1 and tip:
+            tp = (_root[0] + d[0] * seglen, _root[1] + d[1] * seglen)
+            for k, ang in enumerate((-30, 0, 30)):
+                r_ = math.radians(ang)
+                blade(name, "coat", (tp[0] + 0.1, tp[1], 0.0), (d[0] * math.cos(r_), d[1], math.sin(r_)), 0.75 * F, 0.26, 0.06,
+                      ref=(0, 1, 0), name=f"{name}_tuft{k + 1}")
+        _root = (_root[0] + d[0] * seglen, _root[1] + d[1] * seglen)
+
+
+def eyes_and_brow(cx, cy, zz, eye, brow_len, brow_pitch, socket=True):
+    for side in (1, -1):
+        s = "L" if side > 0 else "R"
+        if socket:
+            part("Head", "mask", (eye[0] * 1.7, eye[1] * 1.9, 0.04), (cx, cy, side * (zz - 0.005)), name=f"Head_socket{s}")
+        part("Head", "eyes", (eye[0], eye[1], 0.05), (cx + 0.02, cy, side * (zz + 0.01)), name=f"Head_eye{s}")
+        part("Head", "pupil", (eye[0] * 0.35, eye[1] * 0.8, 0.03), (cx + 0.04, cy, side * (zz + 0.03)), name=f"Head_pupil{s}")
+        part("Head", "mask", (brow_len, 0.14, 0.1), (cx + 0.05, cy + eye[1] * 0.85, side * (zz - 0.02)), pitch=brow_pitch, name=f"Head_brow{s}")
+
+
+NECK_ROOT = (0.0, 0.0)  # set per style; the look posture (NECK_RAISE) is 0 for every v0.2 style
+
+if STYLE == "reaper":
+    # ------------------------------------------------------------ A Reaper: tall and gaunt, a ragged feather cloak, the
+    # longest scythe claws held out wide, a skull-like head with a hooked beak and deep-set eyes
+    seg("Torso", (0.0, 0.0, 0.0))
+    part("Torso", "main", (1.4, 1.2, 1.1), (-0.3, 0.25, 0.0), pitch=20, name="Torso_hips")
+    part("Torso", "main", (1.8, 1.6, 1.3), (0.7, 0.55, 0.0), pitch=35, name="Torso_body")
+    part("Torso", "main", (1.3, 1.5, 1.2), (1.6, 1.35, 0.0), pitch=50, name="Torso_chest")
+    part("Torso", "belly", (1.6, 0.18, 0.8), (0.75, -0.3, 0.0), pitch=30, name="Torso_under")
+    part("Torso", "back", (2.4, 0.16, 0.7), (0.65, 1.3, 0.0), pitch=35, name="Torso_backstripe")
+    coat_shag("Torso", line((-0.7, 0.0), (1.8, 1.5), nfe(10)), 1.25, 0.3, 0.68, "Torso_cloak")
+    coat_shag("Torso", line((-0.4, 0.75), (1.6, 2.0), nfe(6)), 0.9, 0.3, 0.45, "Torso_cape", d=(-0.6, -0.8))
+    NECK_ROOT = (2.0, 2.0)
+    seg("Neck", (2.0, 2.0, 0.0))
+    for i, (sz, c, p) in enumerate([((1.0, 0.62, 0.58), (2.12, 2.6), 80), ((0.95, 0.52, 0.5), (2.22, 3.5), 86), ((0.9, 0.46, 0.44), (2.3, 4.35), 80)]):
+        part("Neck", "mane", sz, (c[0], c[1], 0.0), pitch=p, name=f"Neck_{i + 1}")
+    for i, (x, y) in enumerate(line((1.95, 2.4), (2.15, 4.5), nfe(7))):
+        blade("Neck", "mane", (x, y, 0.0), (-0.75, -0.65, 0), 0.7 * F, 0.32, 0.07, name=f"Neck_mane{i + 1}")
+    seg("Head", (2.35, 4.75, 0.0))
+    part("Head", "main", (0.66, 0.56, 0.5), (2.6, 4.9, 0.0), name="Head_skull")
+    part("Head", "main", (0.72, 0.32, 0.36), (3.1, 4.8, 0.0), pitch=-12, name="Head_snout")
+    part("Head", "beak", (0.36, 0.2, 0.3), (3.5, 4.7, 0.0), pitch=-25, name="Head_beak")
+    part("Head", "beak", (0.16, 0.36, 0.26), (3.66, 4.54, 0.0), pitch=-35, name="Head_hook")
+    part("Head", "mouth", (0.8, 0.05, 0.37), (3.1, 4.66, 0.0), pitch=-12, name="Head_mouth")
+    eyes_and_brow(2.66, 4.95, 0.25, (0.13, 0.1), 0.52, -20)
+    for i in range(max(2, nfe(3))):
+        a = math.radians(20 + 16 * i)
+        blade("Head", "mane", (2.3, 5.05 - 0.08 * i, 0.0), (-math.cos(a), -math.sin(a) * 0.4, 0), 0.5 * F, 0.12, 0.06, name=f"Head_crest{i + 1}")
+    seg("Jaw", (2.75, 4.62, 0.0))
+    for key, size, c, nm, pch in [("main", (0.72, 0.14, 0.3), (3.1, 4.6, 0.0), "Jaw_lower", -12), ("beak", (0.2, 0.14, 0.24), (3.48, 4.52, 0.0), "Jaw_beak", -20)]:
+        part("Jaw", key, size, about((2.75, 4.62, 0.0), c, -10), pitch=-10 + pch, name=nm)
+    for side in (1, -1):
+        nm = arm(side, (1.75, 1.3), (2.15, -0.05), (3.2, -0.45), side * 1.15, 0.36, 0.26, (0.44, 0.32, 0.42), 0.6)
+        claws(nm, (3.2, -0.45), side * 1.15, side, ((0.9, -0.44), (0.6, -0.8), (0.2, -0.98), (-0.25, -0.97)),
+              (1.1, 1.0, 0.9, 0.7), (0.2, 0.16, 0.11, 0.06), (0.11, 0.09, 0.07, 0.05), 0.2)
+    tail([(0.9, (0.95, 0.62, 0.58), -8), (0.85, (0.9, 0.48, 0.45), -10), (0.75, (0.8, 0.36, 0.34), -12),
+          (0.65, (0.7, 0.27, 0.26), -10), (0.55, (0.6, 0.2, 0.2), -8)], (-0.9, 0.3))
+    legs((0.55, -1.7), (-0.2, -3.1), (0.12, -3.6), 0.55, 0.6, 0.36, 0.32, 0.72)
+
+elif STYLE == "brute":
+    # ------------------------------------------------------------ B Brute: massive and hunched like a bear, a huge belly
+    # and feather hump over the shoulders, a thick neck carrying a heavy boxy head low in front, thick arms with broad
+    # meat-hook claws that curl right back
+    seg("Torso", (0.0, 0.0, 0.0))
+    part("Torso", "main", (1.6, 1.5, 1.5), (-0.3, 0.15, 0.0), pitch=8, name="Torso_hips")
+    part("Torso", "main", (2.4, 2.2, 2.1), (0.9, 0.05, 0.0), pitch=10, name="Torso_belly")
+    part("Torso", "main", (1.6, 2.0, 2.0), (2.1, 0.6, 0.0), pitch=20, name="Torso_shoulders")
+    part("Torso", "mane", (1.7, 0.9, 1.8), (1.75, 1.75, 0.0), pitch=12, name="Torso_hump")
+    part("Torso", "belly", (2.0, 0.2, 1.5), (0.95, -1.05, 0.0), pitch=10, name="Torso_under")
+    part("Torso", "back", (2.2, 0.18, 1.0), (0.4, 1.2, 0.0), pitch=6, name="Torso_backstripe")
+    for i, (x, y) in enumerate(line((0.9, 2.15), (2.6, 2.0), nfe(6))):
+        for side in (1, -1):
+            blade("Torso", "mane", (x, y - 0.1, side * 0.45), (-0.8, -0.35, side * 0.45), 0.7 * F, 0.34, 0.08, ref=(0, 1, 0),
+                  name=f"Torso_humpfur{i + 1}{'L' if side > 0 else 'R'}")
+        blade("Torso", "mane", (x, y, 0.0), (-0.9, 0.35, 0), 0.55 * F, 0.3, 0.1, name=f"Torso_humpridge{i + 1}")
+    coat_shag("Torso", line((-0.8, 0.0), (2.4, 0.4), nfe(10)), 0.95, 0.38, 1.0, "Torso_shag")
+    coat_shag("Torso", line((0.2, -0.95), (1.8, -0.8), nfe(4)), 0.6, 0.5, 0.45, "Torso_fringe", d=(-0.2, -0.98))
+    NECK_ROOT = (2.6, 1.4)
+    seg("Neck", (2.6, 1.4, 0.0))
+    part("Neck", "mane", (1.1, 1.05, 1.0), (3.0, 1.6, 0.0), pitch=20, name="Neck_base")
+    part("Neck", "mane", (0.95, 0.9, 0.85), (3.65, 1.45, 0.0), pitch=-15, name="Neck_upper")
+    for i, (x, y) in enumerate(line((2.8, 2.2), (3.8, 1.95), nfe(5))):
+        blade("Neck", "mane", (x, y, 0.0), (-0.85, 0.35, 0), 0.5 * F, 0.3, 0.1, name=f"Neck_mane{i + 1}")
+    seg("Head", (4.0, 1.3, 0.0))
+    part("Head", "main", (0.95, 0.85, 0.85), (4.32, 1.38, 0.0), name="Head_cranium")
+    part("Head", "main", (0.8, 0.6, 0.68), (4.95, 1.22, 0.0), pitch=-8, name="Head_snout")
+    part("Head", "beak", (0.38, 0.52, 0.58), (5.4, 1.06, 0.0), pitch=-20, name="Head_beak")
+    part("Head", "mask", (0.75, 0.2, 0.95), (4.48, 1.82, 0.0), pitch=-14, name="Head_browridge")
+    part("Head", "mouth", (0.95, 0.06, 0.66), (4.95, 0.93, 0.0), pitch=-8, name="Head_mouth")
+    for i in range(5):
+        part("Head", "tooth", (0.07, 0.1, 0.67), (4.6 + i * 0.15, 0.97 - i * 0.02, 0.0), name=f"Head_tooth{i + 1}")
+    eyes_and_brow(4.45, 1.55, 0.43, (0.16, 0.12), 0.55, -22)
+    seg("Jaw", (4.2, 0.95, 0.0))
+    for key, size, c, nm, pch in [("main", (1.15, 0.3, 0.62), (4.85, 0.85, 0.0), "Jaw_lower", -8), ("beak", (0.3, 0.3, 0.5), (5.38, 0.8, 0.0), "Jaw_beak", -18),
+                                  ("mane", (0.8, 0.3, 0.55), (4.6, 0.62, 0.0), "Jaw_beard", -5)]:
+        part("Jaw", key, size, about((4.2, 0.95, 0.0), c, -12), pitch=-12 + pch, name=nm)
+    for side in (1, -1):
+        nm = arm(side, (2.4, 0.9), (2.75, -0.6), (3.65, -0.85), side * 1.2, 0.65, 0.5, (0.62, 0.5, 0.62), 0.7)
+        claws(nm, (3.65, -0.85), side * 1.2, side, ((0.8, -0.6), (0.3, -0.95), (-0.3, -0.95), (-0.75, -0.66)),
+              (0.85, 0.75, 0.6, 0.42), (0.38, 0.3, 0.2, 0.1), (0.22, 0.18, 0.13, 0.07), 0.24, start=0.2)
+    tail([(0.9, (1.0, 1.0, 0.95), -5), (0.85, (0.95, 0.78, 0.72), -8), (0.75, (0.85, 0.58, 0.55), -10),
+          (0.65, (0.75, 0.42, 0.4), -8), (0.55, (0.65, 0.3, 0.3), -5)], (-1.0, 0.2))
+    legs((0.5, -1.4), (-0.15, -2.75), (0.15, -3.2), 0.75, 0.88, 0.56, 0.48, 0.8)
+
+else:
+    # ------------------------------------------------------------ C Mantis: crouched to strike, the neck coiled in an S
+    # with the wedge head pointed forward, a fan of display quills raised on the back and head, the arms folded up in
+    # front like a praying mantis with flat blade claws cocked over them, the tail held up
+    seg("Torso", (0.0, 0.0, 0.0))
+    part("Torso", "main", (1.3, 1.1, 1.1), (-0.3, 0.2, 0.0), pitch=15, name="Torso_hips")
+    part("Torso", "main", (1.9, 1.5, 1.4), (0.8, 0.4, 0.0), pitch=18, name="Torso_body")
+    part("Torso", "main", (1.2, 1.3, 1.2), (1.75, 0.95, 0.0), pitch=35, name="Torso_chest")
+    part("Torso", "belly", (1.7, 0.18, 0.9), (0.85, -0.3, 0.0), pitch=18, name="Torso_under")
+    for i, (x, y) in enumerate(line((-0.6, 0.95), (1.6, 1.75), nfe(8))):  # raised display quills
+        t = i / max(1, nfe(8) - 1)
+        a = math.radians(115 - 45 * t)
+        blade("Torso", "back", (x, y, 0.0), (math.cos(a), math.sin(a), 0), (0.8 + 0.6 * math.sin(t * math.pi)) * F, 0.16, 0.08, name=f"Torso_quill{i + 1}")
+        for side in (1, -1):
+            blade("Torso", "back", (x, y - 0.1, side * 0.3), (math.cos(a) * 0.8, math.sin(a) * 0.8, side * 0.6), (0.6 + 0.4 * math.sin(t * math.pi)) * F,
+                  0.14, 0.07, name=f"Torso_quill{i + 1}{'L' if side > 0 else 'R'}")
+    coat_shag("Torso", line((-0.6, 0.0), (1.9, 0.9), nfe(8)), 0.8, 0.3, 0.7, "Torso_shag")
+    NECK_ROOT = (2.1, 1.4)
+    seg("Neck", (2.1, 1.4, 0.0))
+    part("Neck", "mane", (0.8, 0.58, 0.52), (2.3, 1.95, 0.0), pitch=75, name="Neck_1")
+    part("Neck", "mane", (0.75, 0.52, 0.48), (2.38, 2.65, 0.0), pitch=98, name="Neck_2")
+    part("Neck", "mane", (0.75, 0.5, 0.46), (2.7, 3.25, 0.0), pitch=35, name="Neck_3")
+    for i, (x, y) in enumerate(line((2.0, 2.0), (2.25, 3.35), nfe(5))):
+        blade("Neck", "mane", (x, y, 0.0), (-0.9, 0.2, 0), 0.5 * F, 0.28, 0.06, name=f"Neck_mane{i + 1}")
+    seg("Head", (3.05, 3.42, 0.0))
+    part("Head", "main", (0.62, 0.5, 0.46), (3.3, 3.48, 0.0), name="Head_cranium")
+    part("Head", "main", (0.82, 0.3, 0.32), (3.86, 3.36, 0.0), pitch=-15, name="Head_snout")
+    part("Head", "beak", (0.24, 0.34, 0.26), (4.26, 3.17, 0.0), pitch=-38, name="Head_hook")
+    part("Head", "mouth", (0.85, 0.05, 0.33), (3.85, 3.22, 0.0), pitch=-15, name="Head_mouth")
+    eyes_and_brow(3.35, 3.55, 0.235, (0.18, 0.08), 0.45, -25, socket=False)
+    for i in range(nfe(4)):  # head crest quills standing up and back
+        a = math.radians(70 + 18 * i)
+        blade("Head", "back", (3.15 - 0.05 * i, 3.68, 0.0), (math.cos(a), math.sin(a), 0), (0.75 - 0.08 * i) * F, 0.12, 0.06, name=f"Head_crest{i + 1}")
+    seg("Jaw", (3.4, 3.28, 0.0))
+    for key, size, c, nm, pch in [("main", (0.8, 0.14, 0.28), (3.85, 3.2, 0.0), "Jaw_lower", -15), ("beak", (0.18, 0.14, 0.22), (4.22, 3.08, 0.0), "Jaw_beak", -25)]:
+        part("Jaw", key, size, about((3.4, 3.28, 0.0), c, -10), pitch=-10 + pch, name=nm)
+    for side in (1, -1):
+        nm = arm(side, (1.85, 0.9), (1.8, -0.45), (2.75, 0.55), side * 0.95, 0.38, 0.3, (0.42, 0.36, 0.4), 0.55)
+        claws(nm, (2.75, 0.55), side * 0.95, side, ((0.35, 0.94), (0.85, 0.53), (0.98, -0.2), (0.6, -0.8)),
+              (0.9, 0.85, 0.75, 0.5), (0.26, 0.22, 0.15, 0.07), (0.07, 0.06, 0.05, 0.04), 0.16)
+    tail([(0.9, (0.95, 0.66, 0.62), 12), (0.85, (0.9, 0.5, 0.47), 10), (0.8, (0.85, 0.38, 0.36), 8),
+          (0.7, (0.75, 0.28, 0.27), 6), (0.6, (0.65, 0.2, 0.2), 4)], (-0.85, 0.35))
+    legs((0.75, -1.35), (-0.25, -2.6), (0.15, -3.2), 0.55, 0.62, 0.38, 0.34, 0.75)
 
 JOINTS = [("RootJoint", "HRP", "Torso"), ("Neck", "Torso", "Neck"), ("Head", "Neck", "Head"), ("Jaw", "Head", "Jaw"),
           ("ArmL", "Torso", "ArmL"), ("ArmR", "Torso", "ArmR"), ("Tail1", "Torso", "Tail1"), ("Tail2", "Tail1", "Tail2"),

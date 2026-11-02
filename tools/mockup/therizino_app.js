@@ -1,13 +1,13 @@
-// Therizino model mockup app v0.1. LOOKS = generator exports (tools/therizino_generator.py --json); RAPTOR / TREX = model_json.py exports.
+// Therizino model mockup app v0.2 (three styles). LOOKS = generator exports (tools/therizino_generator.py --json); RAPTOR / TREX = model_json.py exports.
 const LOOKS = __LOOKS__;
 const RAPTOR = __RAPTOR__;
 const TREX = __TREX__;
 const $ = id => document.getElementById(id);
 const rad = THREE.MathUtils.degToRad;
 const INFO = {
-  A: {why: "A woodland bruiser: russet-brown shaggy coat, a dark back, a cream mane down the long neck, dark claws. Arms held out in front with the claws pointed forward, ready to slash.", pose: "Neck upright, claws forward."},
-  B: {why: "The fullest, shaggiest coat: ash grey with a white mane and charcoal arms, and pale ivory claws that hang low almost to the ground. The neck leans forward like it is stalking.", pose: "Neck leaning forward, claws hanging."},
-  C: {why: "Charcoal body with a bright orange back stripe and plumes, an orange face mask and dark claws; a sleeker coat. The arms are raised high with the claws cocked, a threat pose.", pose: "Neck up, claws raised."},
+  A: {why: "Tall and gaunt, like a reaper: a ragged feather cloak hanging off a narrow body, a long straight neck, and a skull-like head with a hooked beak and deep-set eyes under a heavy brow. The longest claws of the three: thin scythes that sweep down almost to the ground, held out wide from the body.", pose: "Upright and looming, arms spread, scythes out."},
+  B: {why: "Massive and hunched, like a bear: a huge belly, a thick feather hump over the shoulders, and a thick neck carrying a heavy boxy head low in front, with a heavy brow ridge, a big beak and a feather beard. Thick muscled arms end in broad meat-hook claws that curl right back.", pose: "Low and heavy, head forward, hooks ready."},
+  C: {why: "Crouched to strike, like a praying mantis: the neck coiled in an S with a wedge head and hooked beak pointed forward, a fan of orange display quills raised on the back and head, and the arms folded up in front with flat blade claws cocked over them. The tail is held up.", pose: "Coiled, blades cocked, quills raised."},
 };
 
 // ---------- three ----------
