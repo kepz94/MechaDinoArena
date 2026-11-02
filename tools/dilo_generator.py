@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Dilo generator v0.8 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+"""Dilo generator v1.0 (Mecha Dino Arena) — writes src/shared/Models/DiloModelData.luau.
+v1.0 (Kepu 2026-11-02: "I like the bruiser face."): Classic = E (D's thick Cobra Hood body, red / yellow split hood, Bruiser
+face; default look); without --json the generator writes the data file (geometry + the T-Rex's attributes with every
+move off, Species "Dilo"). The other looks stay reproducible with --look.
+v0.1-0.8 (mockup stage): styles for Kepu to pick from.
 v0.2 (Kepu 2026-11-02: "The frill splits in the middle"): every frill is two halves, left and right, with a gap down the
 middle (--whole = the v0.1 one-piece frill). Colours and patterns stay our own.
 v0.3: look D = A Cobra Hood with a red frill and yellow markings (Kepu: "the quill stalker frill colors on the cobra hood").
@@ -24,13 +28,18 @@ Same 17-segment rig and joint names as the other dinos (rig 1.3). Dino space D =
 the hip centre. Scaled so its length is TARGET_LEN (13 studs at scale 1, doubled in game: ~26 like the raptor).
 Skin rule: 10 colour groups, no shared hex, no never-paint colour (teeth E8E2D2, pupil 111111, mouth 6E342E, HRP A3A2A5).
 Colours are a first pass per style and can move between styles.
-Run: python3 tools/dilo_generator.py --look A|B|C|D|E|F|G --json OUT   (the three.js viewer's format)
+Run: python3 tools/dilo_generator.py                (writes the data file: E, Bruiser face)
+     python3 tools/dilo_generator.py --look A|B|C|D|E|F|G --json OUT   (the three.js viewer's format)
 The data file (DiloModelData.luau) comes after Kepu picks.
 """
 import json, math, os, sys
 
+import re
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.8"
+OUT = os.path.join(ROOT, "src", "shared", "Models", "DiloModelData.luau")
+TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
+SMOOTH = {"eyes", "pupil", "tooth", "claws", "mouth"}
+VERSION = "1.0"
 TARGET_LEN = 13.0    # studs at scale 1 (~26 in game, the raptor's size)
 HRP_SIZE_D0 = (3.0, 2.0, 1.1)
 ROLES = ["main", "stripes", "belly", "frill", "frillmark", "crest", "limbs", "claws", "eyes", "mask"]
@@ -65,7 +74,7 @@ LOOKS = {
           "pal": {"main": "6E7A3A", "stripes": "3A3F22", "belly": "D8D0A0", "frill": "C8362E", "frillmark": "E2C23A",
                   "crest": "C24A2A", "limbs": "5A6430", "claws": "2C2822", "eyes": "F0E04A", "mask": "1C1C1A"}},
 }
-LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
+LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "E"  # v1.0: Classic = E (Bruiser face)
 L = LOOKS[LOOK]
 FR, NECK_RAISE, STYLE = L["fr"], L["neck"], L["style"]
 F = 1.0
@@ -555,6 +564,46 @@ if "--json" in sys.argv:
             "stats": {"length": round(hi[0] - lo[0], 2), "height": round(hi[1] + HIP, 2), "width": round(hi[2] - lo[2], 2), "hip": round(HIP, 3)}}
     json.dump(data, open(out, "w"))
     print("json ->", out)
+if "--json" not in sys.argv:
+    # ------------------------------------------------------------ full data file (v1.0), same layout as HerreraModelData / TenoModelData
+    assert LOOK == "E" and SPLIT, "the data file is the picked look: E (D body + Bruiser face), split frill"
+    def fmt(v):
+        return "{" + ",".join(f"{x:g}" for x in v) + "}"
+    hx, hy, hz = HRP_SIZE_D
+    body = [f'\thrp = {{size = {{{hz:.4g},{hy:.4g},{hx:.4g}}}, color = "A3A2A5", surface = {{"Studs","Inlet","Smooth","Smooth","Smooth","Smooth"}}}},',
+            f'\thumanoid = {{RigType = "R15", HipHeight = {HIP - hy / 2:.4g}, DisplayDistanceType = "None"}},',
+            '\tmodelStreamingMode = "Atomic",', "\tsegments = {"]
+    for n_ in order:
+        sg = segments[n_]
+        body.append(f'\t\t{{name = "{n_}", root = {fmt(cf(sg["root"]))}, parts = {{')
+        for p in sg["parts"]:
+            surface = '"Smooth"' if p["key"] in SMOOTH else '"Studs"'
+            body.append(f'\t\t\t{{name = "{p["name"]}", size = {fmt([round(v, 4) for v in p["size"]])}, '
+                        f'cf = {fmt(cf(p["center"], p["R"]))}, color = "{C[p["key"]]}", surface = {surface}}},')
+        body.append("\t\t}},")
+    body.append("\t},")
+    body.append("\tjoints = {")
+    for jn, p0, p1 in JOINTS:
+        c0 = cf((0.0, 0.0, 0.0)) if p0 == "HRP" else [round(segments[p1]["root"][i] - segments[p0]["root"][i], 5) + 0.0 for i in range(3)] + [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        body.append(f'\t\t{{name = "{jn}", part0 = "{p0}", part1 = "{p1}", c0 = {fmt(c0)}, c1 = {{0,0,0,1,0,0,0,1,0,0,0,1}}}},')
+    body.append("\t},")
+    trex = open(TREX).read()
+    block = trex[trex.index("attributes = {"):]
+    block = block[:block.index("\n\t},")]
+    attrs = {m.group(1): m.group(2) for m in re.finditer(r'^\t\t(\w+) = (.+?),$', block, re.M)}
+    attrs.update({"Species": '"Dilo"', "StyleVersion": '"1.0"', "DiloModelVersion": f'"{VERSION}"', "DisplayName": '"Dilo"',
+                  "RigHipHeight": f"{HIP:.4g}", "BiteEnabled": "false", "PounceEnabled": "false", "RamEnabled": "false",
+                  "RoarEnabled": "false", "JumpEnabled": "false", "CreepEnabled": "false"})
+    attrs.pop("StarterCharacterVersion", None)
+    lines = [f"-- DiloModelData v{VERSION} (Mecha Dino Arena) — block-style Dilophosaurus ({LOOK} {L['name']}: thick Cobra Hood body, red / yellow split hood frill, Bruiser face), rig 1.3 joint names, skin-ready colour groups.",
+             "-- Generated by tools/dilo_generator.py (do not edit by hand; change the generator and re-run). Mockup docs/mockups/dilo_model_options.html (v0.8, Kepu picked E: D's body with the Bruiser face).",
+             f"-- Scale: {hi[0] - lo[0]:.2f} studs long, hip {HIP:.4g} studs; doubled in game (~26, the raptor's size). The frill is built twice: open (\"_frill\" parts) and folded (\"_fold\" parts); the kit plan decides which shows when.",
+             f"-- Colour groups (Classic = {L['name']}): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: teeth E8E2D2, pupil 111111, mouth 6E342E.",
+             "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB. Rebuild with DinoModelBuilder.build(require(DiloModelData)).",
+             "-- Not playable yet: no SpeciesServer entry, no kit (every move off). Those come with the Dilo kit plan.",
+             "return {", f'\tversion = "{VERSION}", species = "Dilo", style = "1.0", rig = "1.3",'] + body + ["\tattributes = {"] + [f"\t\t{k} = {attrs[k]}," for k in sorted(attrs)] + ["\t},", "}"]
+    open(OUT, "w").write("\n".join(lines) + "\n")
+    print("data ->", OUT, f"({len(attrs)} attributes)")
 n = sum(len(segments[s_]["parts"]) for s_ in order)
 print(f"look {LOOK} ({L['name']}): {n} parts, {len(order)} segments, scale {K:.3f}, HIP {HIP:.3f}")
 print("length %.2f, height %.2f, width %.2f" % (hi[0] - lo[0], hi[1] + HIP, hi[2] - lo[2]))
