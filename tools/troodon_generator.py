@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""Troodon generator v0.2 (Mecha Dino Arena) — mockup stage: three looks for Kepu to pick from.
+"""Troodon generator v1.0 (Mecha Dino Arena) — writes src/shared/Models/TroodonModelData.luau.
 v0.2: long drooping arms on every look (--arms folded = v0.1).
+v1.0 (Kepu 2026-11-01: "I like the night watcher. Let's save this model"): Classic = B Night Watcher (default look) with the
+v0.2 drooping arms; without --json the generator writes the data file (geometry + the T-Rex's attributes with every move
+off, Species "Troodon"). Looks A / C stay reproducible with --look for the mockup.
 
 Kepu 2026-11-01: "Let's start planning for the next Dino after the teno. Are you able to make models for a troodon"
 (reference picture: slim green troodon with brown stripes, big yellow eyes, a long narrow toothy snout, a feather crest
@@ -17,12 +20,17 @@ Looks (mockup docs/mockups/troodon_model_options.html):
   B Night Watcher  - dusk grey-brown, bigger eyes (troodon had very large eyes), a fuller feather coat, neck low.
   C Sand Runner    - sandy with dark stripes, a lighter feather coat, longer legs, neck held up.
 The data file (src/shared/Models/TroodonModelData.luau, attributes, Classic colours) comes after Kepu picks.
-Run: python3 tools/troodon_generator.py --look A|B|C [--arms droop|folded] --json OUT   (the three.js viewer's format)
+Run: python3 tools/troodon_generator.py                (writes the data file: look B, drooping arms)
+     python3 tools/troodon_generator.py --look A|B|C [--arms droop|folded] --json OUT   (the three.js viewer's format)
 """
 import json, math, os, sys
 
+import re
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.2"
+OUT = os.path.join(ROOT, "src", "shared", "Models", "TroodonModelData.luau")
+TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
+SMOOTH = {"eyes", "pupil", "tooth", "claws", "mouth"}
+VERSION = "1.0"
 TARGET_LEN = 12.0    # studs at scale 1: between the Herrera (11.2) and the raptor (12.85)
 HRP_SIZE_D0 = (3.0, 2.0, 1.1)
 ROLES = ["main", "stripes", "belly", "feathers", "crest", "limbs", "claws", "eyes", "mask", "tailfan"]
@@ -39,7 +47,7 @@ LOOKS = {
           "pal": {"main": "B08A5A", "stripes": "5E4028", "belly": "EADBB8", "feathers": "9A764A", "crest": "C9A06A",
                   "limbs": "8A6A44", "claws": "2E2620", "eyes": "E6C24A", "mask": "4A3624", "tailfan": "7A5636"}},
 }
-LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
+LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "B"  # v1.0: Classic = B Night Watcher
 L = LOOKS[LOOK]
 F, ES, NECK_RAISE, LEG = L["feather"], L["eye"], L["neck"], L["leg"]
 C = {**L["pal"], "tooth": "E8E2D2", "pupil": "111111", "mouth": "6E342E"}
@@ -370,6 +378,46 @@ if "--json" in sys.argv:
             "stats": {"length": round(hi[0] - lo[0], 2), "height": round(hi[1] + HIP, 2), "width": round(hi[2] - lo[2], 2), "hip": round(HIP, 3)}}
     json.dump(data, open(out, "w"))
     print("json ->", out)
+if "--json" not in sys.argv:
+    # ------------------------------------------------------------ full data file (v1.0), same layout as HerreraModelData / TenoModelData
+    assert LOOK == "B" and ARMS == "droop", "the data file is the picked look: B Night Watcher with drooping arms"
+    def fmt(v):
+        return "{" + ",".join(f"{x:g}" for x in v) + "}"
+    hx, hy, hz = HRP_SIZE_D
+    body = [f'\thrp = {{size = {{{hz:.4g},{hy:.4g},{hx:.4g}}}, color = "A3A2A5", surface = {{"Studs","Inlet","Smooth","Smooth","Smooth","Smooth"}}}},',
+            f'\thumanoid = {{RigType = "R15", HipHeight = {HIP - hy / 2:.4g}, DisplayDistanceType = "None"}},',
+            '\tmodelStreamingMode = "Atomic",', "\tsegments = {"]
+    for n_ in order:
+        sg = segments[n_]
+        body.append(f'\t\t{{name = "{n_}", root = {fmt(cf(sg["root"]))}, parts = {{')
+        for p in sg["parts"]:
+            surface = '"Smooth"' if p["key"] in SMOOTH else '"Studs"'
+            body.append(f'\t\t\t{{name = "{p["name"]}", size = {fmt([round(v, 4) for v in p["size"]])}, '
+                        f'cf = {fmt(cf(p["center"], p["R"]))}, color = "{C[p["key"]]}", surface = {surface}}},')
+        body.append("\t\t}},")
+    body.append("\t},")
+    body.append("\tjoints = {")
+    for jn, p0, p1 in JOINTS:
+        c0 = cf((0.0, 0.0, 0.0)) if p0 == "HRP" else [round(segments[p1]["root"][i] - segments[p0]["root"][i], 5) + 0.0 for i in range(3)] + [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        body.append(f'\t\t{{name = "{jn}", part0 = "{p0}", part1 = "{p1}", c0 = {fmt(c0)}, c1 = {{0,0,0,1,0,0,0,1,0,0,0,1}}}},')
+    body.append("\t},")
+    trex = open(TREX).read()
+    block = trex[trex.index("attributes = {"):]
+    block = block[:block.index("\n\t},")]
+    attrs = {m.group(1): m.group(2) for m in re.finditer(r'^\t\t(\w+) = (.+?),$', block, re.M)}
+    attrs.update({"Species": '"Troodon"', "StyleVersion": '"1.0"', "TroodonModelVersion": f'"{VERSION}"', "DisplayName": '"Troodon"',
+                  "RigHipHeight": f"{HIP:.4g}", "BiteEnabled": "false", "PounceEnabled": "false", "RamEnabled": "false",
+                  "RoarEnabled": "false", "JumpEnabled": "false", "CreepEnabled": "false"})
+    attrs.pop("StarterCharacterVersion", None)
+    lines = [f"-- TroodonModelData v{VERSION} (Mecha Dino Arena) — block-style feathered Troodon ({LOOK} {L['name']}, long drooping arms), rig 1.3 joint names, skin-ready colour groups.",
+             "-- Generated by tools/troodon_generator.py (do not edit by hand; change the generator and re-run). Mockup docs/mockups/troodon_model_options.html (v0.2, Kepu picked B).",
+             f"-- Scale: {hi[0] - lo[0]:.2f} studs long, hip {HIP:.4g} studs; doubled in game like the raptor / Herrera (~{2 * (hi[0] - lo[0]):.0f}; Herrera ~22.4, raptor ~25.7).",
+             f"-- Colour groups (Classic = {L['name']}): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: teeth E8E2D2, pupil 111111, mouth 6E342E.",
+             "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB. Rebuild with DinoModelBuilder.build(require(TroodonModelData)).",
+             "-- Not playable yet: no SpeciesServer entry, no kit (every move off). Those come with the troodon kit plan.",
+             "return {", f'\tversion = "{VERSION}", species = "Troodon", style = "1.0", rig = "1.3",'] + body + ["\tattributes = {"] + [f"\t\t{k} = {attrs[k]}," for k in sorted(attrs)] + ["\t},", "}"]
+    open(OUT, "w").write("\n".join(lines) + "\n")
+    print("data ->", OUT, f"({len(attrs)} attributes)")
 n = sum(len(segments[s_]["parts"]) for s_ in order)
 print(f"look {LOOK} ({L['name']}): {n} parts, {len(order)} segments, scale {K:.3f}, HIP {HIP:.3f}")
 print("length %.2f, height %.2f, width %.2f" % (hi[0] - lo[0], hi[1] + HIP, hi[2] - lo[2]))

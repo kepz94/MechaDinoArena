@@ -133,7 +133,7 @@ function frame(now) {
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
-resize(); setLook("A"); setView("three");
+resize(); setLook("B"); setView("three");
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__run = t => { swingT = t; };
