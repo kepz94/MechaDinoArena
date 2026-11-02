@@ -1,4 +1,4 @@
-# Dino roster v1.24
+# Dino roster v1.25
 
 The list of dinos that are in the game, and the ones planned for roll-out. Add new dinos at the bottom of "Planned" as
 Kepu sends them; each one goes model mockup → Kepu's pick → model data → kit plan → playable.
@@ -11,7 +11,7 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 |---|---|---|---|---|---|---|
 | 1 | T-Rex | TRexModelData | 200 | 44 | ~40 | The heavy (bite, roar). Redesign picked: X = Apex true to life at roster scale, 62 studs (mockup docs/mockups/trex_redesign_options.html v0.3; plan docs/plans/TREX_REDESIGN_v1.0.md, red-team pending) |
 | 2 | Raptor | RaptorModelData 1.13 | 60 | 78 | ~25.7 | Pounce / latch hunter |
-| 3 | Pachy | PachyModelData | 90 | 56.9 | — | Headbutt / ram. Head rework in mockup (docs/mockups/pachy_head_options.html v0.4): Kepu loves the refined Crowned Skull (v0.4) with the Battering Dome spikes as the default look, plus a bulkier mid section (E +25% / F +40%, pick pending) |
+| 3 | Pachy | PachyModelData 1.4 (repo, not installed; game runs 1.3) | 90 | 56.9 | — | Headbutt / ram. Redesign saved: refined Crowned Skull, horns always on, mid section +25%, cream dome; Battering Dome star = stat boosts only |
 | 4 | Herrera | HerreraModelData 1.3 | 40 | 90 | ~22.4 | "a Pain in the ass to deal with but easy to kill", most mecha utility, fastest |
 | 5 | Teno (Tenontosaurus) | TenoModelData 1.3 (1.4 written, not installed) | 150 | 52 | ~47 | Tank: scratch + rear tail slam |
 
@@ -51,3 +51,4 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 | 1.22 | T-Rex redesign mockup v0.1: three designs with real proportions, same colour roles and length (Kepu 2026-11-02: "the t-Rex needs a redesign. It looks way too cartoonish with its portions"). |
 | 1.23 | T-Rex mockup v0.2: A2 Apex true to life (real-size skull ~13%, head level with the back, tail ~half the length) and X = A2 at roster scale, 62 studs (Kepu 2026-11-02: "Okay do it"). |
 | 1.24 | T-Rex redesign: Kepu picked X, the true-to-life Apex at roster scale (62 studs) (2026-11-02: "Let's go with X that looks way cooler"); plan TREX_REDESIGN_v1.0 written. |
+| 1.25 | Pachy redesign saved: PachyModelData 1.4 (E +25%, cream, star = stat boosts only); T-Rex plan approved (Kepu 2026-11-02: "I'm good with this plan"). |

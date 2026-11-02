@@ -1592,4 +1592,14 @@ do
 	end
 end
 
+
+-- v1.51 (Pachy redesign, PachyModelData 1.4 / PachyLook 1.1; Kepu 2026-11-02: battering dome spikes as "the default look"
+-- -> "Nothing new just the stat boosts"): the dome spikes are always on, so the Battering Dome star text drops "and spikes on
+-- your dome"; its effects (hbExtraCharges, pachySpikes) are unchanged. Switch SkillTree.PACHY_SPIKES_ALWAYS (false = 1.20
+-- text). Numbered after the planned teno 1.49 / 1.50; renumber at build time if the order changes.
+SkillTree.PACHY_SPIKES_ALWAYS = true
+if SkillTree.PACHY_SPIKES_ALWAYS and SkillTree.PATHS.dome then
+	SkillTree.PATHS.dome.steps[4] = "A 3rd headbutt charge"
+end
+
 return SkillTree
