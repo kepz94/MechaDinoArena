@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Troodon generator v0.1 (Mecha Dino Arena) — mockup stage: three looks for Kepu to pick from.
+"""Troodon generator v0.2 (Mecha Dino Arena) — mockup stage: three looks for Kepu to pick from.
+v0.2: long drooping arms on every look (--arms folded = v0.1).
 
 Kepu 2026-11-01: "Let's start planning for the next Dino after the teno. Are you able to make models for a troodon"
 (reference picture: slim green troodon with brown stripes, big yellow eyes, a long narrow toothy snout, a feather crest
@@ -16,12 +17,12 @@ Looks (mockup docs/mockups/troodon_model_options.html):
   B Night Watcher  - dusk grey-brown, bigger eyes (troodon had very large eyes), a fuller feather coat, neck low.
   C Sand Runner    - sandy with dark stripes, a lighter feather coat, longer legs, neck held up.
 The data file (src/shared/Models/TroodonModelData.luau, attributes, Classic colours) comes after Kepu picks.
-Run: python3 tools/troodon_generator.py --look A|B|C --json OUT   (the three.js viewer's format)
+Run: python3 tools/troodon_generator.py --look A|B|C [--arms droop|folded] --json OUT   (the three.js viewer's format)
 """
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.1"
+VERSION = "0.2"
 TARGET_LEN = 12.0    # studs at scale 1: between the Herrera (11.2) and the raptor (12.85)
 HRP_SIZE_D0 = (3.0, 2.0, 1.1)
 ROLES = ["main", "stripes", "belly", "feathers", "crest", "limbs", "claws", "eyes", "mask", "tailfan"]
@@ -177,25 +178,55 @@ for key, size, c, nm in [("main", (1.65, 0.18, 0.3), (3.4, 1.49, 0.0), "Jaw_lowe
         [("tooth", (0.06, 0.09, 0.31), (2.9 + i * 0.15, 1.62, 0.0), f"Jaw_tooth{i + 1}") for i in range(8)]:
     part("Jaw", key, size, about(JAW_ROOT, c, JAW_OPEN), pitch=JAW_OPEN - 6 * (key == "main"), name=nm)
 
-# ---------------------------------------------------------------- arms (folded like wings, feather fans, 3 small claws)
-for side in (1, -1):
-    s = "L" if side > 0 else "R"
-    z = side * 0.42
-    sh, el, wr = (1.45, 0.08), (1.72, -0.48), (2.2, -0.34)
-    seg(f"Arm{s}", (sh[0], sh[1], side * 0.36))
-    part(f"Arm{s}", "feathers", (0.22, 0.66, 0.2), ((sh[0] + el[0]) / 2, (sh[1] + el[1]) / 2, z),
-         pitch=tilt_down(el[0] - sh[0], el[1] - sh[1]), name=f"Arm{s}_upper")
-    part(f"Arm{s}", "limbs", (0.16, 0.5, 0.16), ((el[0] + wr[0]) / 2, (el[1] + wr[1]) / 2, z),
-         pitch=tilt_down(wr[0] - el[0], wr[1] - el[1]), name=f"Arm{s}_fore")
-    part(f"Arm{s}", "limbs", (0.24, 0.14, 0.14), (2.32, -0.37, z), name=f"Arm{s}_hand")
-    for i, dz in enumerate((-0.05, 0.0, 0.05)):
-        blade(f"Arm{s}", "claws", (2.4, -0.38, z + dz), (0.5, -0.86, 0), 0.22, 0.05, 0.05, name=f"Arm{s}_claw{i + 1}")
-    n = nfe(5)
-    for i in range(n):
-        t = i / max(1, n - 1)
-        st = (el[0] + (wr[0] - el[0]) * t, el[1] + (wr[1] - el[1]) * t, side * 0.46)
-        blade(f"Arm{s}", "feathers", st, (-0.55, -0.84, 0), (0.42 + 0.22 * t) * (0.75 + 0.25 * F), 0.17, 0.04,
-              name=f"Arm{s}_fan{i + 1}")
+# ---------------------------------------------------------------- arms
+# v0.2 (Kepu 2026-11-01, reference picture: "Can you make the arms longer and hang more more droopier"): ARMS "droop" =
+# long arms hanging down from the shoulders, the hands drooping at about knee height with curled hooked fingers, the
+# feather fan trailing back off the forearm. --arms folded keeps the v0.1 folded wing arms.
+ARMS = sys.argv[sys.argv.index("--arms") + 1] if "--arms" in sys.argv else "droop"
+if ARMS == "folded":  # v0.1: folded like wings, feather fans, 3 small claws
+    for side in (1, -1):
+        s = "L" if side > 0 else "R"
+        z = side * 0.42
+        sh, el, wr = (1.45, 0.08), (1.72, -0.48), (2.2, -0.34)
+        seg(f"Arm{s}", (sh[0], sh[1], side * 0.36))
+        part(f"Arm{s}", "feathers", (0.22, 0.66, 0.2), ((sh[0] + el[0]) / 2, (sh[1] + el[1]) / 2, z),
+             pitch=tilt_down(el[0] - sh[0], el[1] - sh[1]), name=f"Arm{s}_upper")
+        part(f"Arm{s}", "limbs", (0.16, 0.5, 0.16), ((el[0] + wr[0]) / 2, (el[1] + wr[1]) / 2, z),
+             pitch=tilt_down(wr[0] - el[0], wr[1] - el[1]), name=f"Arm{s}_fore")
+        part(f"Arm{s}", "limbs", (0.24, 0.14, 0.14), (2.32, -0.37, z), name=f"Arm{s}_hand")
+        for i, dz in enumerate((-0.05, 0.0, 0.05)):
+            blade(f"Arm{s}", "claws", (2.4, -0.38, z + dz), (0.5, -0.86, 0), 0.22, 0.05, 0.05, name=f"Arm{s}_claw{i + 1}")
+        n = nfe(5)
+        for i in range(n):
+            t = i / max(1, n - 1)
+            st = (el[0] + (wr[0] - el[0]) * t, el[1] + (wr[1] - el[1]) * t, side * 0.46)
+            blade(f"Arm{s}", "feathers", st, (-0.55, -0.84, 0), (0.42 + 0.22 * t) * (0.75 + 0.25 * F), 0.17, 0.04,
+                  name=f"Arm{s}_fan{i + 1}")
+else:  # v0.2 droop
+    for side in (1, -1):
+        s = "L" if side > 0 else "R"
+        z = side * 0.42
+        sh, el, wr, kn = (1.45, 0.08), (1.36, -0.9), (1.92, -1.66), (2.04, -1.96)  # shoulder, elbow, wrist, knuckles
+        seg(f"Arm{s}", (sh[0], sh[1], side * 0.36))
+        part(f"Arm{s}", "main", (0.3, 0.36, 0.3), (sh[0] + 0.02, sh[1] - 0.08, z), name=f"Arm{s}_shoulder")
+        part(f"Arm{s}", "feathers", (0.22, math.dist(sh, el) + 0.08, 0.2), ((sh[0] + el[0]) / 2, (sh[1] + el[1]) / 2, z),
+             pitch=tilt_down(el[0] - sh[0], el[1] - sh[1]), name=f"Arm{s}_upper")
+        part(f"Arm{s}", "limbs", (0.2, 0.2, 0.2), (el[0], el[1], z), name=f"Arm{s}_elbow")
+        part(f"Arm{s}", "limbs", (0.15, math.dist(el, wr) + 0.06, 0.15), ((el[0] + wr[0]) / 2, (el[1] + wr[1]) / 2, z),
+             pitch=tilt_down(wr[0] - el[0], wr[1] - el[1]), name=f"Arm{s}_fore")
+        part(f"Arm{s}", "limbs", (0.16, math.dist(wr, kn) + 0.06, 0.2), ((wr[0] + kn[0]) / 2, (wr[1] + kn[1]) / 2, z),
+             pitch=tilt_down(kn[0] - wr[0], kn[1] - wr[1]), name=f"Arm{s}_hand")
+        for i, dz in enumerate((-0.07, 0.0, 0.07)):  # fingers hang down and hook back under
+            f0 = (kn[0], kn[1] + 0.04, z + dz)
+            blade(f"Arm{s}", "limbs", f0, (0.25, -0.97, 0), 0.22, 0.06, 0.06, name=f"Arm{s}_finger{i + 1}")
+            f1 = (f0[0] + 0.25 * 0.22, f0[1] - 0.97 * 0.22, z + dz)
+            blade(f"Arm{s}", "claws", f1, (-0.55, -0.83, 0), 0.2, 0.05, 0.05, name=f"Arm{s}_claw{i + 1}")
+        n = nfe(5)
+        for i in range(n):
+            t = i / max(1, n - 1)
+            st = (el[0] + (wr[0] - el[0]) * t, el[1] + (wr[1] - el[1]) * t, side * 0.47)
+            blade(f"Arm{s}", "feathers", st, (-0.62, -0.78, 0), (0.3 + 0.16 * t) * (0.75 + 0.25 * F), 0.2, 0.04,
+                  name=f"Arm{s}_fan{i + 1}")
 
 # ---------------------------------------------------------------- tail (long, slim, level, feather fan at the tip)
 tail = [(1.3, (1.34, 0.5, 0.46), 6), (1.25, (1.3, 0.4, 0.37), 4), (1.15, (1.2, 0.31, 0.29), 2),

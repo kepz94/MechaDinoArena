@@ -1,4 +1,4 @@
-// Troodon model mockup app v0.1. LOOKS = generator exports (tools/troodon_generator.py --json); HERRERA / RAPTOR = model_json.py exports.
+// Troodon model mockup app v0.2 (long drooping arms). LOOKS = generator exports (tools/troodon_generator.py --json); HERRERA / RAPTOR = model_json.py exports.
 const LOOKS = __LOOKS__;
 const HERRERA = __HERRERA__;
 const RAPTOR = __RAPTOR__;
@@ -75,7 +75,7 @@ function runPose(t) { // a preview stride: legs swing, knees fold, body bobs, ta
   o.LegL = [-s * 38, 0, 0]; o.LegR = [s * 38, 0, 0];
   o.KneeL = [Math.min(0, c) * 50 - 8, 0, 0]; o.KneeR = [Math.min(0, -c) * 50 - 8, 0, 0];
   o.AnkleL = [s * 20, 0, 0]; o.AnkleR = [-s * 20, 0, 0];
-  o.ArmL = [8, 0, 0]; o.ArmR = [8, 0, 0];
+  o.ArmL = [8 + s * 6, 0, 0]; o.ArmR = [8 - s * 6, 0, 0];
   for (let i = 1; i <= 5; i++) o["Tail" + i] = [Math.sin(w * 2 - i * 0.5) * 2, Math.sin(w - i * 0.6) * (2 + i), 0];
   return o;
 }
