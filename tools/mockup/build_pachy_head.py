@@ -7,7 +7,8 @@ os.makedirs("/tmp/troo", exist_ok=True)
 looks = {}
 VARIANTS = {"A": ["--head", "egg"], "B": ["--head", "helm"], "C": ["--head", "ram"], "D": ["--head", "crown"],
             # v0.2: Kepu's pick (Crowned Skull, the Battering Dome spikes always on) with a bulkier mid section
-            "E": ["--head", "crown", "--spikes", "--bulk", "1.25"], "F": ["--head", "crown", "--spikes", "--bulk", "1.4"]}
+            # v0.3: the refined Crowned Skull (crown2) with the spike crown on and a bulkier mid section
+            "E": ["--head", "crown2", "--spikes", "--bulk", "1.25"], "F": ["--head", "crown2", "--spikes", "--bulk", "1.4"]}
 for k, args in VARIANTS.items():
     out = f"/tmp/troo/p_{k}.json"
     subprocess.check_call([sys.executable, os.path.join(ROOT, "tools", "pachy_generator.py"), *args, "--json", out], stdout=subprocess.DEVNULL)

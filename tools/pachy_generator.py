@@ -99,10 +99,44 @@ def seg(name, root):
     order.append(name)
 
 
-def part(segname, key, size, center, pitch=0.0, yaw=0.0, roll=0.0, name=None, hidden=False):
+def part(segname, key, size, center, pitch=0.0, yaw=0.0, roll=0.0, name=None, hidden=False, R=None):
     segments[segname]["parts"].append({
         "name": name or f"{segname}_{key}",
-        "size": size, "center": center, "R": rot(pitch, yaw, roll), "key": key, "hidden": hidden})
+        "size": size, "center": center, "R": R or rot(pitch, yaw, roll), "key": key, "hidden": hidden})
+
+
+def _norm(v):
+    n = math.sqrt(sum(c * c for c in v))
+    return tuple(c / n for c in v)
+
+
+def _cross(a, b):
+    return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+
+def cone(segname, key, base, d, length, w, name, hidden=False, steps=((0.42, 1.0), (0.34, 0.64), (0.3, 0.32))):
+    """v1.4: a cone-like spike from `base` along direction `d`: stacked tapering square blocks (all named name*)."""
+    y = _norm(d)
+    ref = (0.0, 1.0, 0.0) if abs(y[1]) < 0.9 else (1.0, 0.0, 0.0)
+    x = _norm(_cross(y, ref))
+    z = _cross(x, y)
+    R = tuple(tuple((x, y, z)[j][i] for j in range(3)) for i in range(3))
+    p = base
+    for j, (fl, fw) in enumerate(steps):
+        ln = length * fl
+        c = tuple(p[i] + y[i] * ln / 2 for i in range(3))
+        part(segname, key, (w * fw, ln + 0.04, w * fw), c, name=name + ("", "b", "c")[j], hidden=hidden, R=R)
+        p = tuple(p[i] + y[i] * ln for i in range(3))
+
+
+def rounded_slab(segname, key, c, L, H, W, name):
+    """v1.4: a slab with its four upper edges chamfered (45-degree blocks), so a stack of them reads as a rounded dome."""
+    cx, cy = c
+    part(segname, key, (L * 0.86, H, W * 0.86), (cx, cy, 0.0), name=name)
+    e = H * 0.72
+    for side in (1, -1):
+        part(segname, key, (L * 0.8, e, e), (cx, cy + H * 0.12, side * (W / 2 - e * 0.36)), roll=45, name=f"{name}_side{'L' if side > 0 else 'R'}")
+        part(segname, key, (e, e, W * 0.8), (cx + side * (L / 2 - e * 0.36), cy + H * 0.12, 0.0), pitch=45, name=f"{name}_{'front' if side > 0 else 'back'}")
 
 
 def tilt_down(dx, dy):
@@ -217,6 +251,43 @@ else:
         spikes = [((2.85, 4.4, 0.0), 60, 0), ((2.95, 4.35, 0.42), 55, 25), ((2.95, 4.35, -0.42), 55, -25),
                   ((3.15, 4.15, 0.75), 40, 50), ((3.15, 4.15, -0.75), 40, -50), ((3.6, 4.1, 0.82), 20, 60),
                   ((3.6, 4.1, -0.82), 20, -60), ((5.15, 4.15, 0.45), -30, 30), ((5.15, 4.15, -0.45), -30, -30), ((5.35, 3.95, 0.0), -45, 0)]
+    elif HEAD == "crown2":
+        # D2 Crowned Skull, refined (Kepu 2026-11-02: "put more effort into the design. This looks really sloppy"): fewer,
+        # bigger, cleaner shapes in the block style. A thick, wide bone helmet (one big block and a smaller cap) sitting on
+        # the skull and overhanging it a little; a crown of ten chunky cone spikes (the Head_spike* parts) set into the
+        # helmet's rim round the back and sides, radiating out and slightly up, longest at the back; bone brow ridges flush
+        # with the skull over narrow slanted eyes; two small cone horns on each cheek; three knobs down the nose ridge
+        HORN = ((0.55, 1.0), (0.5, 0.5))  # two blocks: a chunky base and a point
+        part("Head", "main", (0.55, 1.0, 1.2), (3.45, 3.52, 0.0), name="Head_skullback")
+        # the dome grows out of the skull (same footprint, a little wider), sloping down at the front into the brow and at
+        # the back into the spike ring, with rounded sides and a low cap: it reads as a thick armoured skull, not a hat
+        part("Head", "dome", (1.75, 0.55, 1.36), (4.15, 4.2, 0.0), name="Head_dome1")
+        part("Head", "dome", (0.5, 0.42, 1.3), (4.86, 4.12, 0.0), pitch=-38, name="Head_domefront")
+        part("Head", "dome", (0.62, 0.5, 1.3), (3.33, 4.08, 0.0), pitch=40, name="Head_domeback")
+        part("Head", "dome", (1.2, 0.3, 1.06), (4.12, 4.57, 0.0), name="Head_dome2")
+        part("Head", "dome", (0.62, 0.16, 0.62), (4.12, 4.78, 0.0), name="Head_dome3")
+        part("Head", "main", (0.95, 0.8, 0.8), (5.3, 3.2, 0.0), pitch=-15, name="Head_snout")
+        part("Head", "main", (0.4, 0.5, 0.56), (5.85, 3.0, 0.0), pitch=-15, name="Head_beak")
+        for side in (1, -1):
+            s_ = "L" if side > 0 else "R"
+            part("Head", "dome", (0.62, 0.18, 0.2), (4.62, 3.88, side * 0.6), pitch=-14, name=f"Head_brow{s_}")
+            part("Head", "mask", (0.5, 0.24, 0.03), (4.55, 3.6, side * 0.64), pitch=-12, name=f"Head_mask{s_}")
+            part("Head", "eyes", (0.22, 0.12, 0.04), (4.58, 3.6, side * 0.655), pitch=-12, name=f"Head_eye{s_}")
+            part("Head", "pupil", (0.06, 0.11, 0.03), (4.6, 3.6, side * 0.675), pitch=-12, name=f"Head_pupil{s_}")
+            cone("Head", "knobs", (4.15, 3.02, side * 0.52), (-0.45, -0.4, side * 1.0), 0.45, 0.32, f"Head_cheekhorn{s_}", steps=HORN)
+        for j, t in enumerate((-0.3, 0.0, 0.3)):  # knobs on the nose ridge (the snout's top face)
+            x, y = 5.40 + 0.966 * t, 3.586 - 0.259 * t
+            sz = 0.24 - 0.03 * j
+            part("Head", "knobs", (sz, sz * 0.8, sz), (x, y + sz * 0.3, 0.0), pitch=-15, name=f"Head_nose{j + 1}")
+        n_ = 0
+        for k_, a in enumerate((12, 36, 60, 84, 108)):  # the 10 spikes: symmetric, round the back and sides of the dome's base
+            for side in (1, -1):
+                n_ += 1
+                ar = math.radians(a)
+                base = (4.12 - 0.92 * math.cos(ar), 4.02 + 0.06 * k_, side * 0.62 * math.sin(ar))
+                d = (-math.cos(ar), 0.12 + 0.05 * k_, side * math.sin(ar) * 1.1)
+                cone("Head", "knobs", base, d, 0.78 - 0.06 * k_, 0.42 - 0.025 * k_, f"Head_spike{n_}", hidden=not SPIKES_SHOWN, steps=HORN)
+        spikes = []
     elif HEAD == "ram":
         # B Battering Ram: the dome thrust forward with a flat, near-vertical bone face for hitting; a ridge of horn knobs
         # along the top edge of the face; a heavy brow; a shorter, deeper snout tucked under
@@ -282,6 +353,17 @@ for side in (1, -1):
     for i, dz in enumerate((-0.08, 0.0, 0.08)):
         part(f"Arm{s}", "claws", (0.06, 0.26, 0.05), (3.05, -1.02, z + dz), pitch=20, name=f"Arm{s}_claw{i + 1}")
 
+# v1.4: crown2 adds a neat row of small knobs down the spine (torso, neck, first two tail segments) to tie the body to the head
+if HEAD == "crown2":
+    for j, x in enumerate((-1.2, -0.6, 0.0, 0.6, 1.2, 1.8)):
+        top = 0.5 + 0.95 * BULK / math.cos(math.radians(BODY_P)) + (x - 0.6) * math.tan(math.radians(BODY_P))
+        sz = 0.26 + 0.04 * (j in (2, 3))
+        part("Torso", "knobs", (sz, sz * 0.8, sz), (x, top + 0.04, 0.0), pitch=BODY_P, name=f"Torso_spineknob{j + 1}")
+    for j, dd in enumerate((-0.15, 0.25)):
+        c_ = along((3.15, 2.4), NECK_P, dd)
+        nt = along(c_, NECK_P + 90, 0.62)
+        part("Neck", "knobs", (0.24, 0.2, 0.24), (nt[0], nt[1], 0.0), pitch=NECK_P, name=f"Neck_spineknob{j + 1}")
+
 # ---------------------------------------------------------------- tail (level, slightly down, striped)
 TAIL_RISE = -3.0
 tail = [  # segment length, block size, stripe offsets from the root
@@ -302,6 +384,11 @@ for i, (seglen, size, bands) in enumerate(tail):
     for j, d in enumerate(bands):
         part(name, "stripes", (0.2, size[1] + 0.04, size[2] + 0.04), (_root[0] + _dir[0] * d, _root[1] + _dir[1] * d, 0.0),
              pitch=-TAIL_RISE, name=f"{name}_stripe{j + 1}")
+    if HEAD == "crown2" and i < 2:  # v1.4: spine knobs on the first two tail segments
+        for j, d in enumerate((0.3, 0.9)):
+            sz = 0.22 - 0.03 * (i * 2 + j)
+            part(name, "knobs", (sz, sz * 0.8, sz), (_root[0] + _dir[0] * d, _root[1] + _dir[1] * d + size[1] / 2 + 0.03, 0.0), pitch=-TAIL_RISE,
+                 name=f"{name}_spineknob{j + 1}")
     _root = (_root[0] + _dir[0] * seglen, _root[1] + _dir[1] * seglen)
 
 # ---------------------------------------------------------------- legs (strong: thigh, shin, metatarsus, toes)
