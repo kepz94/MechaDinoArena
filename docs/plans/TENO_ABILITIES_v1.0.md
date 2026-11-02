@@ -7,6 +7,7 @@
 - Picks: "3. 4. 5. (9. But make it 50% less damage and 50 percent faster.). 11. 40% less damage. 12. And 14. 7. But make it so if anyone attacks in that period they're slowed down for 4 seconds."
 - "Remove the nest beacon."
 - Looks: "3,4,7 - A", "5,9,14 - b", 11 "needs a redesign" -> "Let's go D".
+- Red-team answers: Mud "gives a real shield"; Mortar "Auto-target"; build size not decided yet ("My pc isn't on so we can't do it yet"; default two builds, asked again at build time).
 
 **Chosen direction:** mockup `docs/mockups/teno_abilities_options.html` v0.3 (+ PICK.challenge = D). Sources `tools/mockup/teno_abilities_app.js` / `teno_abilities_head.html`, built by `tools/mockup/build_teno_abilities.py <three.min.js r128>`.
 
@@ -44,12 +45,12 @@
 | # | id | Name · area · look | I | II | III | ★ | Recharge |
 |---|---|---|---|---|---|---|---|
 | 3 | `tgrab` | Tail Grab & Fling · ATTACK · A Clamp Tail | Grab the nearest raptor-size dino within 12 studs with your tail and fling it 30 studs ahead: 8 damage, stunned 1 s on landing | Fling 45 studs | Grabs bigger dinos too (up to pachy size) | The flung dino crashes into others where it lands: 8 damage each | 16 s |
-| 4 | `tmortar` | Boulder Mortar · ATTACK · A Tail Catapult | Lob a boulder at the nearest enemy in front (up to 60 studs): 12 damage in a 10-stud splash, slowed 30% for 2 s | Splash 14 studs | 2 boulders side by side | Rubble patch for 4 s slows 30% | 14 s |
+| 4 | `tmortar` | Boulder Mortar · ATTACK · A Tail Catapult | Lob a boulder at the nearest enemy in front (up to 60 studs, auto-target; none -> 45 studs ahead): 12 damage in a 10-stud splash, slowed 30% for 2 s | Splash 14 studs | 2 boulders side by side | Rubble patch for 4 s slows 30% | 14 s |
 | 5 | `tstomp` | Stomp Shockwave · DEFENSE · B Iron Hoof Plates | Rear up and stomp: a 14-stud shockwave, 6 damage, stun 0.5 s, knocks latched raptors off | Stun 1 s | Shockwave 20 studs | Stomped dinos can't jump or pounce for 3 s | 15 s |
 | 9 | `tbellow` | Herd Bellow · HEALTH · B Crest Speakers | You + squadmates within 25 studs take 50% less damage and run 50% faster for 4 s | Lasts 6 s | Reaches 40 studs | Also clears stuns | 30 s |
 | 11 | `tchallenge` | Challenge Call · DEFENSE · D Target Painter | Enemies within 30 studs are marked for 5 s: bots go for you, and marked players deal 40% less damage to anyone but you | Mark 7 s | Reaches 45 studs | You take 20% less damage from marked enemies | 20 s |
 | 14 | `tleap` | Hydraulic Leap · SPEED · B Spring Coils | Leap 40 studs forward; the landing slams the tail: 10 damage in 12 studs (no slam charge used) | Leap 55 studs | Landing stuns 0.5 s | 2 leaps (2 charges) | 14 s |
-| 7 | `tmud` | Mud Armor · DEFENSE · A Mud Tank | A mud coat for 8 s soaks your next 3 hits; anyone who hits you is slowed 40% for 4 s; latched raptors slide off | Soaks 4 hits | Coat lasts 12 s | When the coat ends, a 12-stud mud splash slows enemies 40% for 4 s | 20 s |
+| 7 | `tmud` | Mud Armor · DEFENSE · A Mud Tank | A mud coat for 8 s blocks your next 3 hits completely (even a killing blow); anyone who hits you is slowed 40% for 4 s; latched raptors slide off | Soaks 4 hits | Coat lasts 12 s | When the coat ends, a 12-stud mud splash slows enemies 40% for 4 s | 20 s |
 
 The ids are prefixed `t` so they can't clash with existing paths (`stomp`, `leap`, `mud` are free today, but the raptor / pachy trees grew with similar names).
 
@@ -74,9 +75,9 @@ The areas follow the mockup. The teno also sees its Signature area for Buck Off,
 | Marked attacker hits someone else | the attacker is resolved by DamageBy, it is marked by teno X, and the victim is not X | refund 40% of that drop |
 | Marked attacker hits the teno (★) | — | refund 20% |
 | Leap | — | root impulse forward, landing (FloorMaterial back + 0.2 s) = slam 10 dmg in 12 studs; III stun 0.5 s |
-| Mud | coat on (MudUntil, MudHits > 0) | each health drop fully refunded, MudHits −1; the attacker (DamageBy) slowed 40% for 4 s; at the start, latched raptors released ("mud") |
-| Mud ends | MudHits = 0 or MudUntil passed | ★: splash 12 studs, enemies slowed 40% for 4 s |
-| A killing blow | health reaches 0 | not refunded (the same accepted rule as Brace) |
+| Mud | coat on (TenoMudUntil > now, TenoMudHits > 0) | a hidden ForceField "TenoMudShield" on the character (the Energy Shield mechanism: every Humanoid:TakeDamage is blocked: the ArenaPvP bridge, bot bites, Shock Cannon). Each blocked hit attempt (a new LastHitAt, or a bridged DummyHealth drop = ArenaPvPLastDelta write) = TenoMudHits −1 + the attacker (LastHitBy / DamageBy) slowed 40% for 4 s. At the start, latched raptors released ("mud") |
+| Mud ends | TenoMudHits = 0 or TenoMudUntil passed | the ForceField is removed; ★: splash 12 studs, enemies slowed 40% for 4 s |
+| A killing blow | health reaches 0 | Mud: blocked (ForceField). Bellow / Challenge: not refunded (the same rule as Brace) |
 
 ## Tasks
 1. **SkillTreeTenoParts.spec 1.0 + SkillTree 1.48** (Logic)
@@ -99,7 +100,8 @@ The areas follow the mockup. The teno also sees its Signature area for Buck Off,
    - Switches: `TenoMoves_<id>Enabled`.
 6. **TenoMovesServer 1.0 — support** (Wired)
    - Remotes DinoTenoBellowRequest, DinoTenoChallengeRequest, DinoTenoMudRequest.
-   - Refund hooks on Humanoid.HealthChanged (Bellow / Challenge / Mud) with DamageBy.
+   - Refund hooks on Humanoid.HealthChanged for Bellow / Challenge (with DamageBy).
+   - Mud: the hidden ForceField shield (EnergyShieldServer pattern; re-ground how it counts blocks before building). No damage server is edited.
    - BotServer 1.23 reads ChallengedBy as its target. This is a small additive read; the targeting logic itself is not changed.
 7. **Client** (Wired)
    - MechaButtons 1.26: 7 `TIMED_PARTS` entries.
@@ -114,7 +116,7 @@ The areas follow the mockup. The teno also sees its Signature area for Buck Off,
 
 ## Red-team (to answer before filing)
 1. **Attribution is the riskiest piece.** Mud's attacker slow and Challenge's 40% both need to know *who* hit. Today only some moves stamp an attacker. DamageBy (Task 2) reads the existing stamps; any source without a stamp is not slowed or reduced. Mitigation: inventory every damage source in Task 2's spec, and log unknown sources (TenoUnknownHits) so gaps show up in testing.
-2. **Refund-based reduction can't save a killing blow** (same as Brace). A one-shot T-Rex bite at low health still kills through Mud / Bellow. Accepted, or Mud could instead add a temporary health shield. That is Kepu's call.
+2. **Refund-based reduction can't save a killing blow** (same as Brace). Kepu picked "Mud gives a real shield". Grounding: every way a player loses health in a fight goes through Humanoid:TakeDamage (the ArenaPvP bridge, BotServer, ScreechServer), and a ForceField blocks that. This is how the raptor's Energy Shield already works. So Mud uses a hidden ForceField while the coat has hits left. Bellow / Challenge keep the refund (a killing blow still kills).
 3. **Herd Bellow 50/50** is the strongest thing on the roster for 4 s. With 2 tenos in a squad it could chain. Mitigation: a second Bellow refreshes the time and doesn't stack, and there's a 30 s recharge. Watch it in play.
-4. **Mortar aim changed from the mockup.** The mockup said "hold to aim with a landing circle". The plan auto-targets the nearest enemy in front, so there is no new aiming UI on phone. If Kepu wants manual aim, it's a UI addition with its own mockup.
-5. **Scope.** 7 parts is about the size of Herrera passes 2 + 3 together. Splitting into two builds (attacks first: Tasks 1–5 + 7 for those 4; then support) keeps each publish testable.
+4. **Mortar aim:** Kepu picked "Auto-target" (no new aiming UI).
+5. **Scope.** 7 parts is about the size of Herrera passes 2 + 3 together. Open (Dev Hub decision): two builds (attacks first: Tasks 1–5 + 7 for those 4; then support) or all 7 at once. Kepu answers when the PC is back.
