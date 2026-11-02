@@ -1,4 +1,4 @@
-# Dino roster v1.2
+# Dino roster v1.3
 
 The list of dinos that are in the game, and the ones planned for roll-out. Add new dinos at the bottom of "Planned" as
 Kepu sends them; each one goes model mockup → Kepu's pick → model data → kit plan → playable.
@@ -19,7 +19,7 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 | # | Dino | Status | Model | Roster | Role / Kepu's words | Notes |
 |---|---|---|---|---|---|---|
 | 6 | Troodon | Model saved (v1.0), not installed, not playable | TroodonModelData 1.0 = B Night Watcher (mockup docs/mockups/troodon_model_options.html v0.2) | Day 1 | Skirmisher build ("The troodon will be a skirmisher build") | 12 studs at scale 1 (~24 in game), between the Herrera and the raptor; true to the animal, feathered; long drooping arms; big eyes. Kit: not planned yet (the kit plan turns "skirmisher" into moves and numbers). |
-| 7 | Therizino (Therizinosaurus) | Listed; no model yet | — (model mockup first) | Not set | Slasher build ("Therizino. Slasher build") | Reference picture sent 2026-11-02 is film art (© UCS LLC and Amblin): the model is our own design of the animal (huge arm claws, long neck, small head, feathered pot-bellied body), not a copy of that film creature. Size / roster day: not set yet. |
+| 7 | Therizino (Therizinosaurus) | Model mockup v0.1 out for a pick (A / B / C) | — (mockup docs/mockups/therizino_model_options.html, tools/therizino_generator.py 0.1) | Day 1 | Slasher build ("Therizino. Slasher build") | Size "Between raptor and T-Rex (~32)": 16 studs at scale 1; style "True to the animal"; "Fully feathered". Our own design of the animal, not a copy of the film reference (© UCS LLC and Amblin). |
 
 ## Version log
 | Version | Change |
@@ -27,3 +27,4 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 | 1.0 | First list (Kepu 2026-11-01: "Let's save this model and I'll send you more Dino's that we're going to roll out so we can build on that list"). |
 | 1.1 | Troodon role: skirmisher build (Kepu 2026-11-02). Planned table gains a Role column. |
 | 1.2 | Added #7 Therizino, slasher build (Kepu 2026-11-02). |
+| 1.3 | Therizino: Day 1, ~32 in game, true to the animal, fully feathered; model mockup v0.1 (Kepu 2026-11-02 "Make the model"). |

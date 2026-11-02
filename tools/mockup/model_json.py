@@ -1,4 +1,4 @@
-# model_json.py v1.0 — converts a generated *ModelData.luau (segments / joints) into the three.js mockup JSON format
+# model_json.py v1.1 (1.1: joints sorted parent-first, the T-Rex data lists AnkleR before KneeR) — converts a generated *ModelData.luau (segments / joints) into the three.js mockup JSON format
 # ({segs: [{n, root, parts: [{n, s, cf, c}]}], joints: [{n, p0, p1, c0, c1}], hrp, hip}). Used for size comparisons.
 # Run: python3 tools/mockup/model_json.py src/shared/Models/RaptorModelData.luau OUT.json
 import json, re, sys
@@ -18,6 +18,12 @@ for line in src.splitlines():
     m = re.match(r'\s*\{name = "(\w+)", part0 = "(\w+)", part1 = "(\w+)", c0 = \{([^}]*)\}, c1 = \{([^}]*)\}', line)
     if m:
         joints.append({"n": m.group(1), "p0": m.group(2), "p1": m.group(3), "c0": nums(m.group(4)), "c1": nums(m.group(5))})
+done, ordered = {"HRP"}, []
+while len(ordered) < len(joints):
+    for j in joints:
+        if j not in ordered and j["p0"] in done:
+            ordered.append(j); done.add(j["p1"])
+joints = ordered
 hrp = nums(re.search(r'hrp = \{size = \{([^}]*)\}', src).group(1))
 hip = float(re.search(r'HipHeight = ([\d.]+)', src).group(1))
 json.dump({"segs": segs, "joints": joints, "hrp": hrp, "hip": hip}, open(sys.argv[2], "w"))
