@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dino Roster</title>
+<style>
+/* Same palette as the other Herrera / skins mockups. Fonts: system fallbacks (works offline). */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --volt: #7fe9ff;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding: 24px 16px 64px; }
+main { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); }
+h1 span { color: var(--accent); }
+h2 { margin: 0; font: 700 20px/1.2 var(--display); }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 84ch; }
+.muted { color: var(--muted); font-size: 13px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 700 16px/1.2 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left; }
+.tab small { display: block; font: 700 12px var(--body); color: var(--muted); }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,155,46,.2); }
+.btn { font: 700 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--volt); }
+.btn.go { border-color: var(--accent); }
+.stage { border: 2px solid var(--line); border-radius: 16px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; touch-action: none; cursor: grab; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+.card p { margin: 6px 0; }
+.sub { color: var(--accent); font-weight: 800; margin: 2px 0 6px; }
+.sw { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin: 8px 0; }
+.sw span { height: 18px; border-radius: 5px; border: 1px solid rgba(255,255,255,.15); }
+ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+</style>
+<style>
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.lbl { position: absolute; transform: translate(-50%, -100%); font: 800 13px var(--display); color: #fff; background: rgba(13,15,20,.78); border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; white-space: nowrap; }
+.lbl small { display: block; font: 700 11px var(--body); color: var(--muted); text-align: center; }
+.stage { position: relative; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+.stat b { display: block; font: 700 12px var(--body); color: var(--muted); }
+.tag { display: inline-block; font: 800 11px var(--body); padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); margin-left: 6px; }
+.tag.live { color: #7fe9a0; border-color: #2f6b45; } .tag.saved { color: var(--accent); border-color: #6b4a1f; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>Dino roster</span> · v1.0</h1>
+    <p class="lede">Every dino on the roster, built from its real model data in the repo, at its in-game size. Go through them one by one, or switch to the lineup to see them all side by side, smallest to biggest.</p>
+  </header>
+  <div class="row" role="group" aria-label="Mode">
+    <button class="tab" id="modeOne" aria-pressed="true">One by one<small>step through each dino</small></button>
+    <button class="tab" id="modeLine" aria-pressed="false">Lineup<small>all of them side by side</small></button>
+  </div>
+  <div class="row" role="group" aria-label="Dino" id="picker"></div>
+  <div class="row" role="group" aria-label="View">
+    <button class="btn" id="prev">◀ Prev</button>
+    <button class="btn" id="next">Next ▶</button>
+    <button class="btn" data-view="three">3/4 view</button>
+    <button class="btn" data-view="side">Side</button>
+    <button class="btn" data-view="front">Front</button>
+    <button class="btn" data-view="top">Top</button>
+    <button class="btn" id="spin" aria-pressed="false">Turntable</button>
+  </div>
+  <div class="stage"><canvas id="cv" aria-label="3D dino roster"></canvas><div class="labels" id="labels"></div></div>
+  <div class="card" id="info"></div>
+  <ul>
+    <li>Sizes are in-game: the T-Rex at scale 1, every other dino doubled (as the game builds them). Lengths are nose to tail tip.</li>
+    <li>Live = playable in the game now. Saved = model saved in the repo, not installed in Studio yet, no moves yet (HP and speed come with each kit plan).</li>
+    <li>Use the arrow keys or Prev / Next to step through. Drag the view to turn it.</li>
+  </ul>
+</main>
+<script>/*THREE*/</script>
+<script>

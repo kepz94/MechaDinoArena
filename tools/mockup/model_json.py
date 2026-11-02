@@ -1,4 +1,4 @@
-# model_json.py v1.1 (1.1: joints sorted parent-first, the T-Rex data lists AnkleR before KneeR) — converts a generated *ModelData.luau (segments / joints) into the three.js mockup JSON format
+# model_json.py v1.2 (1.1: joints sorted parent-first, the T-Rex data lists AnkleR before KneeR; 1.2: part transparency -> "t") — converts a generated *ModelData.luau (segments / joints) into the three.js mockup JSON format
 # ({segs: [{n, root, parts: [{n, s, cf, c}]}], joints: [{n, p0, p1, c0, c1}], hrp, hip}). Used for size comparisons.
 # Run: python3 tools/mockup/model_json.py src/shared/Models/RaptorModelData.luau OUT.json
 import json, re, sys
@@ -13,7 +13,11 @@ for line in src.splitlines():
         continue
     m = re.match(r'\s*\{name = "(\w+)", size = \{([^}]*)\}, cf = \{([^}]*)\}, color = "(\w+)"', line)
     if m and segs:
-        segs[-1]["parts"].append({"n": m.group(1), "s": nums(m.group(2)), "cf": nums(m.group(3)), "c": m.group(4)})
+        pe = {"n": m.group(1), "s": nums(m.group(2)), "cf": nums(m.group(3)), "c": m.group(4)}
+        tm = re.search(r'transparency = ([\d.]+)', line)  # v1.2: hidden parts (e.g. the pachy's Head_spike*)
+        if tm:
+            pe["t"] = float(tm.group(1))
+        segs[-1]["parts"].append(pe)
         continue
     m = re.match(r'\s*\{name = "(\w+)", part0 = "(\w+)", part1 = "(\w+)", c0 = \{([^}]*)\}, c1 = \{([^}]*)\}', line)
     if m:
