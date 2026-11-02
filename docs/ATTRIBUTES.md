@@ -2609,3 +2609,6 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoSupportPoseEnabled; TenoPoseState "tbellow"/"tchallenge"/"tmud" | teno model | true | TenoPose 1.5 |
 | TenoMovesFXSupportEnabled; parts TenoBellowAura, TenoMarkReticle, TenoPaintBeam, TenoMudCoat, TenoMudPuff | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.1 |
 | SkillEffectsTenoDinoEnabled | SkillEffects script | true | SkillEffects 1.36 |
+| TenoPartsStompBootEnabled | TenoPartsServer script | true (false = 1.0 hoof plates) | TenoPartsServer 1.1 |
+| TenoPoseFix16Enabled | teno model | true (false = 1.5 stomp / leap poses) | TenoPose 1.6 |
+| TenoMovesFXV12Enabled; parts TenoWave, TenoBellowAura2, TenoMudCoat2 (+ local mud tint on body parts) | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.2 |

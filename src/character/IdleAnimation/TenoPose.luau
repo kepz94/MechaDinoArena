@@ -1,4 +1,4 @@
--- TenoPose v1.5 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.6 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -62,8 +62,16 @@
 --   "tmud"       TenoMudStartedAt: 0.3 s 0 -> WALLOW (smooth; flat on the belly), a body roll RootJoint roll
 --                sin(9 t) x 20 x min(1, 3 t) x (1 - t / 1.2) degrees until 1.2 s, then 0.5 s -> 0.
 --   Switch: model attribute TenoSupportPoseEnabled (default true; false = 1.4).
+-- v1.6 (Kepu 2026-11-02 visual check, "fix all the failed ones": the stomp and the leap landing swung the tail straight up;
+--   on TenoModelData 1.4's high S-curve tail the mockup's STOMP / LEAP_SLAM tail angles point it at the sky):
+--   * "tstomp" uses STOMP2 = STOMP with Tail1 {14, 0, 0}, Tail2 0 (the tail root cancels the -14 body pitch, so the tail
+--     stays level while the front stomps down). Same timing.
+--   * "tleap": crouch 0.12 s, AIR, then over the last 0.25 s of the flight AIR -> LEAP_RAISE (a small lift: Tail1 -10,
+--     Tail2 -6, RootJoint -4, arms -10, neck -6); at the landing 0.12 s LEAP_RAISE -> SLAM_DOWN2 (easeIn; the mockup's SLAM_DOWN, deeper: Tail1 26, Tail2 14, Tail3 10, Tail4 4,
+--     Tail5 -4, RootJoint 6), held to 0.3 s, then 0.6 s -> 0. 1.3 never played the mockup's slam-down.
+--   Switch: model attribute TenoPoseFix16Enabled (default true; false = 1.5).
 local TenoPose = {}
-TenoPose.Version = "1.5"
+TenoPose.Version = "1.6"
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -397,6 +405,45 @@ do
 			return mix(WALLOW, ZERO, smooth((t - 1.2) / 0.5))
 		end
 		return anglesV14(phase, t, hold, s, now)
+	end
+end
+
+-- v1.6: stomp keeps the tail level; the leap landing slams the tail down
+local STOMP2 = {RootJoint = {-14, 0, 0}, LegL = {14, 0, 0}, LegR = {14, 0, 0}, ArmL = {-12, 0, 0}, ArmR = {-12, 0, 0},
+	Neck = {-16, 0, 0}, Head = {-12, 0, 0}, Jaw = {-8, 0, 0}, Tail1 = {14, 0, 0}}
+local SLAM_DOWN2 = {RootJoint = {6, 0, 0}, LegL = {-6, 0, 0}, LegR = {-6, 0, 0}, Neck = {-4, 0, 0}, Tail1 = {26, 0, 0},
+	Tail2 = {14, 0, 0}, Tail3 = {10, 0, 0}, Tail4 = {4, 0, 0}, Tail5 = {-4, 0, 0}}
+local LEAP_RAISE = {RootJoint = {-4, 0, 0}, ArmL = {-10, 0, 0}, ArmR = {-10, 0, 0}, Neck = {-6, 0, 0}, Tail1 = {-10, 0, 0},
+	Tail2 = {-6, 0, 0}}
+local fix16 = true
+do
+	local phaseV15 = TenoPose.phase
+	function TenoPose.phase(model, isOwner, serverNow)
+		fix16 = model:GetAttribute("TenoPoseFix16Enabled") ~= false
+		return phaseV15(model, isOwner, serverNow)
+	end
+	local anglesV15 = TenoPose.attackAngles
+	function TenoPose.attackAngles(phase, t, hold, s, now)
+		if fix16 and phase == "tstomp" then
+			if t < 0.4 then return mix(ZERO, REAR, smooth(t / 0.4)) end
+			if t < 0.5 then return mix(REAR, STOMP2, easeIn((t - 0.4) / 0.1)) end
+			if t < 0.8 then return mix(STOMP2, STOMP2, 0) end
+			return mix(STOMP2, ZERO, smooth((t - 0.8) / 0.9))
+		elseif fix16 and phase == "tleap" then
+			local L = leapLand or 1.0
+			if t < 0.12 then return mix(ZERO, CROUCH, ease(t / 0.12)) end
+			if t < L then
+				local a = mix(CROUCH, AIR, smooth((t - 0.12) / 0.25))
+				local k = smooth((t - (L - 0.25)) / 0.25)
+				if k > 0 then a = mix(a, LEAP_RAISE, k) end
+				return a
+			end
+			local u = t - L
+			if u < 0.12 then return mix(LEAP_RAISE, SLAM_DOWN2, easeIn(u / 0.12)) end
+			if u < 0.3 then return mix(SLAM_DOWN2, SLAM_DOWN2, 0) end
+			return mix(SLAM_DOWN2, ZERO, smooth((u - 0.3) / 0.6))
+		end
+		return anglesV15(phase, t, hold, s, now)
 	end
 end
 

@@ -1,4 +1,4 @@
--- TenoPartsServer v1.0 (Mecha Dino Arena) — puts the Tenontosaurus' mecha parts on (server-built, every client sees them)
+-- TenoPartsServer v1.1 (Mecha Dino Arena) — puts the Tenontosaurus' mecha parts on (server-built, every client sees them)
 -- and builds their Lab card models. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 4 (MDA-176); the looks are the picked
 -- mockup looks, same numbers (docs/mockups/teno_abilities_options.html v0.3, tools/mockup/teno_abilities_app.js
 -- buildLook; Kepu 2026-11-01: "3,4,7 - A", "5,9,14 - b", 11 "Let's go D"):
@@ -26,9 +26,15 @@
 -- Switches: script attribute TenoPartsServerEnabled (default true, read at start; false = no looks); per part
 --   TenoParts_<id>Enabled (default true, read on each apply). Diagnostics: script TenoPartsServerVersion; character
 --   TenoPartsBuilt ("<id>=<pieces>,..." of what is on).
+-- v1.1 (Kepu 2026-11-02 visual check, "fix all the failed ones": the hoof plates were "barely visible": the 1.0 sole sat
+--   below the hand, mostly under the ground): Stomp Shockwave look = an iron boot around each front hand (same B "Iron Hoof
+--   Plates" idea, same colours): a steel shell {0.78, 0.46, 0.7} around the hand, a dark rim {0.84, 0.1, 0.76} at its foot,
+--   4 dark rivets on each side, and the heat strip {0.8, 0.08, 0.72} on top of the shell (role "heat", hidden until the
+--   stomp; TenoMovesFX glows it). Lab cards use it too. Switch: script attribute TenoPartsStompBootEnabled (default true,
+--   read at each build; false = 1.0 plates).
 local Players = game:GetService("Players")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local function hex(h) return Color3.fromRGB(math.floor(h / 65536) % 256, math.floor(h / 256) % 256, h % 256) end
 local C = {
 	steel = {hex(0x9aa3ad), Enum.Material.Metal}, dark = {hex(0x3a3f47), Enum.Material.Metal},
@@ -117,6 +123,25 @@ local function mud()
 	}
 end
 local BUILD = {tgrab = grab, tmortar = mortar, tstomp = stomp, tbellow = bellow, tchallenge = challenge, tleap = leap, tmud = mud}
+-- v1.1: the stomp's iron boots
+if script:GetAttribute("TenoPartsStompBootEnabled") == nil then script:SetAttribute("TenoPartsStompBootEnabled", true) end
+BUILD.tstomp = function()
+	if script:GetAttribute("TenoPartsStompBootEnabled") == false then return stomp() end
+	local out = {}
+	for _, sd in ipairs({"L", "R"}) do
+		local a = "Arm" .. sd .. "_hand"
+		table.insert(out, {a, {0.78, 0.46, 0.7}, {0.04, 0.03, 0}, {0, 0, 0}, "steel", "plate"})
+		table.insert(out, {a, {0.84, 0.1, 0.76}, {0.04, -0.17, 0}, {0, 0, 0}, "dark", "plate"})
+		table.insert(out, {a, {0.8, 0.08, 0.72}, {0.04, 0.29, 0}, {0, 0, 0}, "heat", "heat"})
+		for _, x in ipairs({-0.24, 0.24}) do
+			for _, zz in ipairs({-0.36, 0.36}) do
+				table.insert(out, {a, {0.1, 0.1, 0.05}, {0.04 + x, 0.08, zz}, {0, 0, 0}, "dark", "rivet"})
+				table.insert(out, {a, {0.1, 0.1, 0.05}, {0.04 + x, -0.06, zz}, {0, 0, 0}, "dark", "rivet"})
+			end
+		end
+	end
+	return out
+end
 
 -- ---------- build / remove ----------
 local function find(char, name)

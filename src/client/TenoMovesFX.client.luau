@@ -1,4 +1,4 @@
--- TenoMovesFX v1.1 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
+-- TenoMovesFX v1.2 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
 -- StarterPlayerScripts; every client draws every teno). Plan docs/plans/TENO_ABILITIES_v1.0.md Task 7 (MDA-179), mockup
 -- docs/mockups/teno_abilities_options.html v0.3 (rings, dust, heat glow, the catapult boulder leaving the bucket).
 -- Reads TenoMovesServer 1.0's character stamps (the server also draws the boulders and rubble patches itself):
@@ -26,10 +26,21 @@
 --   Followers (auras, reticles, plates) are anchored local parts moved every RenderStepped (nothing welded to a body).
 --   Names resolve to player characters, then Workspace.DinoIsland.Bots children. Switch: script attribute
 --   TenoMovesFXSupportEnabled (default true, read at each event; false = 1.0).
+-- v1.2 (Kepu 2026-11-02 visual check, "fix all the failed ones"):
+--   * Stomp: a shockwave ring you can see. TenoStompAt -> "TenoWave": 28 Neon blocks in a circle that grow from 2 studs to
+--     TenoStompRange over 0.7 s and fade (heat orange), a second cream one 0.1 s later over 0.5 s, and 16 dust puffs
+--     thrown out to 0.6 x range (1.0's flat disc ring and 10 puffs stay).
+--   * Herd Bellow: TenoBellowAt -> three green waves (radius TenoBellowRange, 1.0 s each, 0.3 s apart) and, on each buffed
+--     dino, a second larger aura disc "TenoBellowAura2" (11 studs, Transparency 0.4) until its TenoBellowedUntil.
+--   * Mud Armor: the coat now shows. TenoMudCoatAt -> every visible body part of the teno (not mecha parts, not hitboxes)
+--     is tinted locally 50% toward mud brown, and "TenoMudCoat2" plates (3 per coat part, 0.3 x scale thick) sit on the
+--     face of each part that points up in the world. Both end at TenoMudEndedAt or TenoMudUntil; the tint puts the exact
+--     colours back. (1.1's plates used the part's own Y face, which is a side or inside face on these parts.)
+--   Switch: script attribute TenoMovesFXV12Enabled (default true, read at each event; false = 1.1).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local RING_TIME, ROCK_RELOAD = 0.5, 2.4
 local player = Players.LocalPlayer
 player:SetAttribute("TenoMovesFXVersion", VERSION)
@@ -350,3 +361,125 @@ local function onPlayer2(p)
 end
 Players.PlayerAdded:Connect(onPlayer2)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer2(p) end
+
+-- v1.2: stomp shockwave, bellow waves, visible mud coat ------------------------------------------------------------------
+if script:GetAttribute("TenoMovesFXV12Enabled") == nil then script:SetAttribute("TenoMovesFXV12Enabled", true) end
+local function on3() return on() and script:GetAttribute("TenoMovesFXV12Enabled") ~= false end
+local HEAT, CREAM = Color3.fromRGB(255, 120, 30), Color3.fromRGB(255, 241, 200)
+local function wave(pos, radius, color, time, segs)
+	local at = ground(pos) + Vector3.new(0, 0.6, 0)
+	local t0 = os.clock()
+	for i = 1, segs do
+		local a = (i / segs) * math.pi * 2
+		local seg = part("TenoWave", Enum.PartType.Block, Vector3.new(1.2, 1, 0.5), CFrame.new(at), color, 0.1)
+		follow(seg, function(p)
+			local u = (os.clock() - t0) / time
+			if u >= 1 then return false end
+			local e = 1 - (1 - u) ^ 2
+			local r = 2 + (math.max(2, radius) - 2) * e
+			local w = math.max(1.2, 2 * math.pi * r / segs * 0.8)
+			p.Size = Vector3.new(w, 1.2 * (1 - u) + 0.3, 0.6)
+			p.CFrame = CFrame.new(at + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)) * CFrame.Angles(0, -a + math.pi / 2, 0)
+			p.Transparency = 0.1 + 0.9 * u
+			return true
+		end)
+	end
+end
+local tinted = {} -- [char] = {coatAt, colors = {[part] = Color3}}
+local function untint(char)
+	local tn = tinted[char]
+	if not tn then return end
+	for bp, col in pairs(tn.colors) do if bp.Parent then bp.Color = col end end
+	tinted[char] = nil
+end
+RunService.Heartbeat:Connect(function()
+	for char, tn in pairs(tinted) do
+		local ended = char:GetAttribute("TenoMudEndedAt")
+		local u = char:GetAttribute("TenoMudUntil")
+		if not char.Parent or (typeof(ended) == "number" and ended >= tn.coatAt) or (typeof(u) == "number" and serverNow() >= u) then untint(char) end
+	end
+end)
+local function upFace(bp)
+	local best, axis, half = -2, Vector3.yAxis, bp.Size.Y / 2
+	for _, d in ipairs({{bp.CFrame.UpVector, Vector3.yAxis, bp.Size.Y}, {-bp.CFrame.UpVector, -Vector3.yAxis, bp.Size.Y},
+		{bp.CFrame.RightVector, Vector3.xAxis, bp.Size.X}, {-bp.CFrame.RightVector, -Vector3.xAxis, bp.Size.X},
+		{-bp.CFrame.LookVector, Vector3.zAxis, bp.Size.Z}, {bp.CFrame.LookVector, -Vector3.zAxis, bp.Size.Z}}) do
+		local dot = d[1]:Dot(Vector3.yAxis)
+		if dot > best then best, axis, half = dot, d[2], d[3] / 2 end
+	end
+	return axis, half
+end
+local function watch3(char)
+	char:GetAttributeChangedSignal("TenoStompAt"):Connect(function()
+		local c = char:GetAttribute("TenoStompCenter")
+		if not on3() or not fresh(char, "TenoStompAt") or typeof(c) ~= "Vector3" then return end
+		local r = num(char, "TenoStompRange", 14)
+		wave(c, r, HEAT, 0.7, 28)
+		task.delay(0.1, function() wave(c, r * 0.85, CREAM, 0.5, 22) end)
+		for _ = 1, 2 do puff(c + Vector3.new((math.random() - 0.5) * 4, 0, (math.random() - 0.5) * 4), r * 0.6, Color3.fromRGB(205, 196, 176)) end
+		puff(c, r * 0.35, Color3.fromRGB(205, 196, 176))
+		count("stompWave")
+	end)
+	char:GetAttributeChangedSignal("TenoBellowAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on3() or not fresh(char, "TenoBellowAt") or not root then return end
+		local r = num(char, "TenoBellowRange", 25)
+		for k = 0, 2 do
+			task.delay(k * 0.3, function()
+				local rr = char:FindFirstChild("HumanoidRootPart")
+				if rr then wave(rr.Position, r, GREEN, 1.0, 32) end
+			end)
+		end
+		for _, m in ipairs(namesOf(char, "TenoBellowTargets")) do disc(m, "TenoBellowAura2", GREEN, "TenoBellowedUntil", 11) end
+		count("bellowWave")
+	end)
+	char:GetAttributeChangedSignal("TenoMudCoatAt"):Connect(function()
+		if not on3() or not fresh(char, "TenoMudCoatAt") then return end
+		local coatAt = char:GetAttribute("TenoMudCoatAt")
+		untint(char)
+		local tn = {coatAt = coatAt, colors = {}}
+		for _, bp in ipairs(char:GetDescendants()) do
+			if bp:IsA("BasePart") and bp.Name ~= "HumanoidRootPart" and bp.Transparency < 1 and not bp:FindFirstAncestor("Hitboxes")
+				and not (bp.Parent and bp.Parent.Name:find("^TPart_")) then
+				tn.colors[bp] = bp.Color
+				bp.Color = bp.Color:Lerp(MUD, 0.5)
+			end
+		end
+		tinted[char] = tn
+		local sc = char:GetScale()
+		for _, n in ipairs(COAT_PARTS) do
+			local bp = char:FindFirstChild(n, true)
+			if bp and bp:IsA("BasePart") then
+				local axis, half = upFace(bp)
+				for i = 1, 3 do
+					local th = 0.3 * sc
+					local a1 = (axis.X ~= 0) and Vector3.yAxis or Vector3.xAxis
+					local a2 = axis:Cross(a1)
+					local span1 = math.abs(a1.X) * bp.Size.X + math.abs(a1.Y) * bp.Size.Y + math.abs(a1.Z) * bp.Size.Z
+					local span2 = math.abs(a2.X) * bp.Size.X + math.abs(a2.Y) * bp.Size.Y + math.abs(a2.Z) * bp.Size.Z
+					local w1, w2 = span1 * (0.35 + math.random() * 0.3), span2 * (0.45 + math.random() * 0.3)
+					local o1, o2 = (math.random() - 0.5) * (span1 - w1), (math.random() - 0.5) * (span2 - w2)
+					local off = CFrame.fromMatrix(axis * (half + th / 2 - 0.02 * sc) + a1 * o1 + a2 * o2, a1, axis)
+					local c = part("TenoMudCoat2", Enum.PartType.Block, Vector3.new(w1, th, w2), bp.CFrame * off, i % 2 == 1 and MUD or MUD2, 0)
+					c.Material = Enum.Material.Slate
+					follow(c, function(p)
+						if not bp.Parent or not char.Parent then return false end
+						local ended = char:GetAttribute("TenoMudEndedAt")
+						local u = char:GetAttribute("TenoMudUntil")
+						if typeof(ended) == "number" and ended >= coatAt then return false end
+						if typeof(u) == "number" and serverNow() >= u then return false end
+						p.CFrame = bp.CFrame * off
+						return true
+					end)
+				end
+			end
+		end
+		count("mudCoat2")
+	end)
+end
+local function onPlayer3(p)
+	p.CharacterAdded:Connect(watch3)
+	if p.Character then watch3(p.Character) end
+end
+Players.PlayerAdded:Connect(onPlayer3)
+for _, p in ipairs(Players:GetPlayers()) do onPlayer3(p) end
