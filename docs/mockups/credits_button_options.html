@@ -1,0 +1,203 @@
+<title>Credits Button</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* credits_button_options v0.1 (MainMenu 1.13 mockup). Today's hangar menu (MainMenu 1.12) with three CREDITS button
+   placements; the button opens a CREDITS panel. Single dark game look, same tokens as menu_lab_v2_options. */
+:root {
+  color-scheme: dark;
+  --page: #0d0f14; --panel: #14141a; --line: #2b3242;
+  --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --yellow: #ffc832; --orange: #ff9b2e; --volt: #7fe9ff;
+  --display: "Fredoka", "Fredoka One", system-ui, sans-serif;
+  --body: "Nunito", "Gotham", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); }
+h1 span { color: var(--volt); }
+.lede { margin: 0; color: var(--muted); max-width: 80ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > b { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: 800 14px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.chip:focus-visible, .s button:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.device { position: relative; margin: 0 auto; border-radius: 18px; border: 3px solid #2a2f3a; overflow: hidden; background: #000; box-shadow: 0 20px 60px rgb(0 0 0 / .45); }
+.device.pc { width: min(100%, 1140px); aspect-ratio: 16 / 9; }
+.device.phone { width: min(100%, 880px); aspect-ratio: 19.5 / 9; border-radius: 34px; border-width: 8px; }
+.s { position: absolute; inset: 0; container-type: size; font-family: var(--body); overflow: hidden; }
+.s button { font-family: inherit; cursor: pointer; }
+.robloxBtns { position: absolute; left: 1.6cqw; top: 2cqh; display: flex; gap: 1cqh; z-index: 30; pointer-events: none; }
+.robloxBtns i { display: block; height: 11cqh; border-radius: 99px; background: rgb(240 240 244 / .92); }
+.robloxBtns i:first-child { width: 11cqh; } .robloxBtns i:last-child { width: 30cqh; }
+.device.pc .robloxBtns i { height: 7cqh; } .device.pc .robloxBtns i:first-child { width: 7cqh; } .device.pc .robloxBtns i:last-child { width: 19cqh; }
+.device.pc .tagRow { top: 11cqh; }
+.lifted .pedestal { bottom: 36%; } .lifted .dino { bottom: 39%; height: 36cqh; }
+
+/* hangar (MainMenu 1.3+) */
+.hangar { position: absolute; inset: 0; background: linear-gradient(180deg, #151b27 0%, #1b2333 58%, #10141c 58.2%, #0c0f15 100%); }
+.hangar::before { content: ""; position: absolute; inset: 0 0 42% 0; background: repeating-linear-gradient(90deg, transparent 0 12cqw, rgb(255 255 255 / .05) 12cqw 12.3cqw), repeating-linear-gradient(0deg, transparent 0 9cqh, rgb(255 255 255 / .035) 9cqh 9.3cqh); }
+.stripe { position: absolute; left: 0; right: 0; top: 54%; height: 1.6cqh; background: repeating-linear-gradient(45deg, var(--yellow) 0 2cqh, #1b1406 2cqh 4cqh); opacity: .55; }
+.scrim { position: absolute; top: 0; bottom: 0; right: 0; width: 55%; background: linear-gradient(90deg, rgb(10 12 18 / 0) 0%, rgb(10 12 18 / .7) 30%, rgb(10 12 18 / .78) 100%); }
+.pedestal { position: absolute; left: 14%; width: 30%; bottom: 31%; height: 7cqh; border-radius: 50%; background: radial-gradient(closest-side, #39465c, #1c2230); box-shadow: 0 0 0 .5cqh rgb(127 233 255 / .35), 0 0 4cqh rgb(127 233 255 / .25); }
+.dino { position: absolute; left: 12%; width: 34%; bottom: 34%; height: 40cqh; }
+.tagRow { position: absolute; left: 4cqw; width: 47cqw; top: 15cqh; display: flex; justify-content: space-between; align-items: center; font: 600 max(1.6cqh, 8px) var(--mono); }
+.tagRow .t { color: var(--volt); background: rgb(0 0 0 / .4); padding: .3cqh 1cqh; border-radius: .6cqh; }
+.tagRow .h { color: var(--muted); font-family: var(--body); font-weight: 800; }
+.left { position: absolute; left: 4cqw; width: 47cqw; bottom: 6cqh; display: grid; gap: 1.6cqh; justify-items: center; }
+.row { display: flex; align-items: center; gap: 2cqw; }
+.gbtn { font-family: var(--display) !important; font-weight: 700; border: 0; border-radius: 1.6cqh; color: #1b1406; background: var(--yellow); box-shadow: inset 0 -.9cqh 0 rgb(0 0 0 / .22), 0 .6cqh 0 rgb(0 0 0 / .35); text-transform: uppercase; letter-spacing: .03em; }
+.gbtn.dark { background: var(--panel); color: #fff; border: .35cqh solid rgb(255 255 255 / .16); }
+.gbtn.volt { background: var(--volt); color: #062430; }
+.gbtn.orange { background: var(--orange); }
+.arrow { width: max(7.2cqh, 36px); height: max(7.2cqh, 36px); font-size: 3cqh; }
+.dname { font: 700 4.6cqh/1 var(--display); text-align: center; }
+.dsub { font: 800 max(1.9cqh, 10px) var(--body); color: var(--muted); text-align: center; }
+.slots { display: flex; flex-wrap: wrap; gap: 1cqh; justify-content: center; }
+.slot { display: flex; align-items: center; gap: 1cqh; padding: 0 1.4cqh; height: max(4.6cqh, 24px); border: .35cqh solid var(--orange); border-radius: 1.2cqh; background: rgb(255 255 255 / .05); font: 800 max(1.8cqh, 10px) var(--body); color: var(--grey); white-space: nowrap; }
+.slot .k { color: var(--orange); font-weight: 900; }
+.labBtn { height: max(7cqh, 34px); width: 100%; font-size: max(2.8cqh, 13px); }
+.right { position: absolute; right: 4cqw; width: 39cqw; top: 50%; transform: translateY(-50%); display: grid; gap: 2.2cqh; }
+.brand { font: 700 3.2cqh/1 var(--display); color: var(--yellow); }
+.bigT { font: 700 7.6cqh/.95 var(--display); text-shadow: 0 .6cqh 0 rgb(0 0 0 / .45); margin-bottom: .8cqh; }
+.mode { display: grid; grid-template-columns: 1fr auto; align-items: center; text-align: left; padding: 0 2.4cqh; height: 13cqh; }
+.mode .n { font-size: 5cqh; line-height: 1; }
+.mode .sub { font: 800 max(2.1cqh, 10px) var(--body); text-transform: none; letter-spacing: 0; opacity: .8; }
+.mode .tag { font: 900 max(1.9cqh, 9px) var(--body); background: rgb(0 0 0 / .2); border-radius: 1cqh; padding: .6cqh 1.2cqh; }
+.musicB { position: absolute; right: 4cqw; top: 10cqh; height: max(4.6cqh, 24px); padding: 0 1.6cqh; border-radius: 1.2cqh; background: rgb(20 20 26 / .9); border: .3cqh solid rgb(255 255 255 / .2); color: var(--volt); font: 900 max(1.8cqh, 10px) var(--body); }
+.creditLine { position: absolute; right: 4cqw; width: 39cqw; bottom: 1cqh; text-align: right; font: 700 max(1.3cqh, 8px)/1.3 var(--body); color: var(--muted); }
+
+/* CREDITS button placements */
+.credA { position: absolute; right: 4cqw; bottom: 2cqh; height: max(4.6cqh, 24px); padding: 0 1.6cqh; border-radius: 1.2cqh; background: rgb(20 20 26 / .9); border: .3cqh solid rgb(255 255 255 / .2); color: var(--grey); font: 900 max(1.8cqh, 10px) var(--body); letter-spacing: .04em; }
+.credB { height: max(5.4cqh, 26px); font-size: max(2.2cqh, 11px); color: var(--grey) !important; }
+.foot { position: absolute; left: 0; right: 0; bottom: 0; height: max(4.8cqh, 24px); background: rgb(10 12 18 / .92); border-top: .3cqh solid rgb(255 255 255 / .1); display: flex; align-items: center; justify-content: space-between; padding: 0 4cqw; gap: 2cqw; }
+.foot span { font: 700 max(1.5cqh, 8px) var(--body); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.foot button { height: 76%; padding: 0 1.4cqh; border-radius: 1cqh; background: transparent; border: .3cqh solid rgb(255 255 255 / .22); color: var(--grey); font: 900 max(1.6cqh, 9px) var(--body); letter-spacing: .04em; }
+.hot { box-shadow: 0 0 0 .4cqh var(--yellow); }
+
+/* CREDITS panel */
+.veil { position: absolute; inset: 0; background: rgb(5 6 10 / .62); display: grid; place-items: center; z-index: 20; }
+.card { width: min(64cqw, 92cqh * 1.25); max-height: 82cqh; background: var(--panel); border: .35cqh solid rgb(255 255 255 / .16); border-radius: 2.6cqh; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; box-shadow: 0 1cqh 0 rgb(0 0 0 / .35); }
+.cardTop { display: flex; align-items: center; justify-content: space-between; padding: 2cqh 2.4cqh 1.2cqh; border-bottom: .3cqh solid var(--yellow); }
+.cardTop h3 { margin: 0; font: 700 4.4cqh/1 var(--display); color: var(--yellow); letter-spacing: .03em; }
+.xB { width: max(5.4cqh, 26px); height: max(5.4cqh, 26px); border-radius: 1.4cqh; background: transparent; border: .3cqh solid rgb(255 255 255 / .22); color: #fff; font: 700 2.6cqh var(--display); }
+.list { overflow: auto; padding: 1.4cqh 2.4cqh; display: grid; gap: 1cqh; align-content: start; }
+.sec { font: 600 max(1.5cqh, 8px) var(--mono); letter-spacing: .14em; color: var(--volt); margin-top: .6cqh; }
+.song { display: grid; grid-template-columns: 1fr auto; gap: .2cqh 1.6cqh; align-items: center; background: rgb(255 255 255 / .04); border-radius: 1.2cqh; padding: 1cqh 1.4cqh; }
+.song .nm { font: 700 max(2.4cqh, 11px)/1.15 var(--display); }
+.song .by { grid-column: 1; font: 800 max(1.6cqh, 8px)/1.3 var(--body); color: var(--grey); }
+.song .where { grid-row: 1 / span 2; grid-column: 2; font: 900 max(1.5cqh, 8px) var(--body); color: #1b1406; background: var(--yellow); border-radius: .8cqh; padding: .3cqh 1cqh; }
+.song .where.off { background: transparent; color: var(--muted); border: .25cqh solid var(--line); }
+.lic { font: 800 max(1.5cqh, 8px)/1.4 var(--body); color: var(--muted); padding: 1.2cqh 2.4cqh 1.8cqh; border-top: .3cqh solid rgb(255 255 255 / .08); }
+
+/* notes */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.note.pick { border-color: var(--yellow); }
+.note h3 { margin: 0; font: 700 18px var(--display); }
+.note p, .note li { margin: 0; color: var(--grey); font-size: 14px; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.note .rec { font: 600 11px var(--mono); letter-spacing: .1em; color: var(--yellow); }
+</style>
+
+<div class="wrap">
+  <h1>Credits button <span>·</span> main menu</h1>
+  <p class="lede">A CREDITS button at the bottom of the main menu opens a CREDITS panel with every song, its artist and its license. Three places for the button. In every option the button replaces today's small grey credit line, which stays in the code behind its switch. Tap CREDITS in the frame to open the panel.</p>
+
+  <div class="controls">
+    <div class="group" role="group" aria-label="Option"><b>Option</b>
+      <button class="chip" data-k="opt" data-v="A" aria-pressed="true">A · Corner button</button>
+      <button class="chip" data-k="opt" data-v="B" aria-pressed="false">B · Under ARENA</button>
+      <button class="chip" data-k="opt" data-v="C" aria-pressed="false">C · Footer strip</button>
+      <button class="chip" data-k="opt" data-v="T" aria-pressed="false">Today (1.12)</button>
+    </div>
+    <div class="group" role="group" aria-label="Device"><b>Device</b>
+      <button class="chip" data-k="dev" data-v="phone" aria-pressed="true">Phone</button>
+      <button class="chip" data-k="dev" data-v="pc" aria-pressed="false">PC</button>
+    </div>
+    <div class="group" role="group" aria-label="Panel"><b>Panel</b>
+      <button class="chip" data-k="open" data-v="0" aria-pressed="true">Closed</button>
+      <button class="chip" data-k="open" data-v="1" aria-pressed="false">Open</button>
+    </div>
+  </div>
+
+  <div id="device" class="device phone"><div class="s" id="screen"></div></div>
+
+  <div class="notes">
+    <div class="note pick"><span class="rec">RECOMMENDED</span><h3>A · Corner button</h3><p>A small CREDITS pill in the bottom-right corner, styled like the MUSIC ON pill at the top-right. The two corner buttons mirror each other.</p><ul><li>Takes today's credit line's spot, so nothing else moves.</li><li>Easy to find, doesn't compete with SANDBOX / ARENA.</li></ul></div>
+    <div class="note"><h3>B · Under ARENA</h3><p>A slim dark block button, the full width of the right column, right under ARENA.</p><ul><li>Most visible.</li><li>Sits in the main play column, so it pulls a little attention from the play buttons, and the right column gets taller.</li></ul></div>
+    <div class="note"><h3>C · Footer strip</h3><p>A thin dark bar along the whole bottom edge: a short "Music by Kevin MacLeod · APM Music" line on the left, a CREDITS button on the right.</p><ul><li>The short credit is always on screen.</li><li>The bar costs ~5% of the screen height, so the left column moves up by that much.</li></ul></div>
+    <div class="note"><h3>The panel (all options)</h3><ul><li>Centred card over a dark veil; ✕ or a tap outside closes it. Scrolls if the list is taller than the screen.</li><li>Lists all 7 songs: the 4 new defaults (Kevin MacLeod, CC BY 4.0) and the 3 kept ones (Gymnopedie No. 2, Little Toys, Crazy Daisy).</li><li>Each song is tagged with where it plays: MENU, ISLAND or LAB, or KEPT for songs that are no longer the default.</li><li>Music only, since that's the credit we owe. Other credits (e.g. "Made by") can be added later if you want them.</li></ul></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const st = { opt: 'A', dev: 'phone', open: '0' };
+  const r = (x, y, w, h, c) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`;
+  function dinoSVG() {
+    const G = '#4f8f3a', Dk = '#2f5a24', L = '#6fb04f';
+    let s = `<svg class="dino" viewBox="0 0 220 140" aria-hidden="true">${r(20, 62, 60, 12, G)}${r(8, 60, 16, 9, G)}${r(70, 52, 70, 34, G)}${r(74, 56, 62, 6, L)}${r(132, 34, 16, 30, G)}${r(140, 22, 44, 22, G)}${r(176, 34, 14, 10, Dk)}${r(168, 27, 5, 5, '#111')}${r(86, 86, 12, 34, Dk)}${r(112, 86, 12, 34, Dk)}${r(82, 118, 20, 6, Dk)}${r(108, 118, 20, 6, Dk)}${r(132, 70, 14, 6, Dk)}`;
+    s += r(96, 40, 12, 13, '#5dff8a') + r(96, 37, 12, 4, '#3a4350');
+    s += r(118, 58, 22, 16, '#3a4350') + r(140, 62, 40, 8, '#8e9aa8') + r(150, 60, 4, 12, '#7fe9ff') + `<circle cx="183" cy="66" r="5" fill="#7fe9ff"/>`;
+    return s + '</svg>';
+  }
+  const KMC = 'Kevin MacLeod (incompetech.com)';
+  const SONGS = [
+    { sec: 'MUSIC' },
+    { n: 'Airship Serenity', by: KMC, w: 'MENU' },
+    { n: 'Bit Quest', by: KMC, w: 'ISLAND' },
+    { n: '8bit Dungeon Level', by: KMC, w: 'ISLAND' },
+    { n: 'Level Up', by: KMC, w: 'LAB' },
+    { sec: 'ALSO IN THE GAME' },
+    { n: 'Gymnopedie No. 2', by: 'Erik Satie · performed by ' + KMC, w: 'KEPT', off: true },
+    { n: 'Little Toys', by: 'Courtesy of APM Music', w: 'KEPT', off: true },
+    { n: 'Crazy Daisy', by: 'Courtesy of APM Music · album "Afro 8 Bit"', w: 'KEPT', off: true },
+  ];
+  const panel = () => `<div class="veil" data-close="1"><div class="card" role="dialog" aria-label="Credits">
+      <div class="cardTop"><h3>CREDITS</h3><button class="xB" data-close="1" aria-label="Close">✕</button></div>
+      <div class="list">${SONGS.map(x => x.sec ? `<div class="sec">${x.sec}</div>` :
+        `<div class="song"><div class="nm">${x.n}</div><div class="where${x.off ? ' off' : ''}">${x.w}</div><div class="by">${x.by}</div></div>`).join('')}</div>
+      <div class="lic">Songs by Kevin MacLeod (incompetech.com) are licensed under Creative Commons: By Attribution 4.0 · creativecommons.org/licenses/by/4.0</div>
+    </div></div>`;
+  function render() {
+    const o = st.opt, foot = o === 'C';
+    const lift = foot ? 'style="bottom:calc(6cqh + max(4.8cqh, 24px) - 2cqh)"' : '';
+    let h = `<div class="hangar"></div><div class="stripe"></div><div class="scrim"></div><div class="pedestal"></div>${dinoSVG()}
+      <div class="robloxBtns"><i></i><i></i></div>
+      <div class="tagRow"><span class="t">MECH VIEW</span><span class="h">TAP FOR PLAIN DINO</span><span></span></div>
+      <div class="left" ${lift}>
+        <div class="row"><button class="gbtn dark arrow" aria-label="Previous dino">◀</button><div><div class="dname">RAPTOR</div><div class="dsub">60 HP · pounce hunter</div></div><button class="gbtn dark arrow" aria-label="Next dino">▶</button></div>
+        <div class="slots"><span class="slot"><span class="k">R</span>Adrenaline Injector</span><span class="slot"><span class="k">C</span>Shock Cannon</span><span class="slot"><span class="k">T</span>Energy Shield</span></div>
+        <button class="gbtn volt labBtn">GO TO THE LAB</button>
+      </div>
+      <button class="musicB">MUSIC ON</button>
+      <div class="right">
+        <div><div class="brand">MECHA DINO</div><div class="bigT">ARENA</div></div>
+        <button class="gbtn mode"><div><div class="n">SANDBOX</div><div class="sub">Island with bots · no player damage</div></div><span class="tag">BOTS</span></button>
+        <button class="gbtn orange mode"><div><div class="n">ARENA</div><div class="sub">Same island · no bots · player damage on</div></div><span class="tag">PVP</span></button>
+        ${o === 'B' ? '<button class="gbtn dark credB" data-open="1">CREDITS</button>' : ''}
+      </div>`;
+    if (o === 'A') h += '<button class="credA" data-open="1">CREDITS</button>';
+    if (o === 'C') h += '<div class="foot"><span>Music by Kevin MacLeod (incompetech.com, CC BY 4.0) · APM Music</span><button data-open="1">CREDITS</button></div>';
+    if (o === 'T') h += '<div class="creditLine">Music: "Gymnopedie No. 2" (Erik Satie) by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 · "Little Toys" and "Crazy Daisy" courtesy of APM Music</div>';
+    if (st.open === '1' && o !== 'T') h += panel();
+    const sc = document.getElementById('screen'); sc.innerHTML = h; sc.classList.toggle('lifted', foot);
+    document.getElementById('device').className = 'device ' + st.dev;
+    document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(st[c.dataset.k] === c.dataset.v)));
+  }
+  document.addEventListener('click', e => {
+    const c = e.target.closest('.chip');
+    if (c) { st[c.dataset.k] = c.dataset.v; render(); return; }
+    if (e.target.closest('[data-open]')) { st.open = '1'; render(); return; }
+    const x = e.target.closest('[data-close]');
+    if (x && (e.target === x || x.classList.contains('xB'))) { st.open = '0'; render(); }
+  });
+  render();
+})();
+</script>
