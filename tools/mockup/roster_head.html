@@ -39,7 +39,7 @@ ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
 </style>
 <style>
 .labels { position: absolute; inset: 0; pointer-events: none; }
-.lbl { position: absolute; transform: translate(-50%, -100%); font: 800 13px var(--display); color: #fff; background: rgba(13,15,20,.78); border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; white-space: nowrap; }
+.lbl { position: absolute; transform: translate(-50%, 10px); font: 800 12px var(--display); color: #fff; background: rgba(13,15,20,.78); border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; white-space: nowrap; }
 .lbl small { display: block; font: 700 11px var(--body); color: var(--muted); text-align: center; }
 .stage { position: relative; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; }
@@ -52,8 +52,8 @@ ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
 <body>
 <main>
   <header>
-    <h1><span>Dino roster</span> · v1.0</h1>
-    <p class="lede">Every dino on the roster, built from its real model data in the repo, at its in-game size. Go through them one by one, or switch to the lineup to see them all side by side, smallest to biggest.</p>
+    <h1><span>Dino roster</span> · v1.1</h1>
+    <p class="lede"><b>v1.1:</b> the name tags in the lineup sit on the ground under each dino instead of over it, and "Names on" hides them.<br>Every dino on the roster, built from its real model data in the repo, at its in-game size. Go through them one by one, or switch to the lineup to see them all side by side, smallest to biggest.</p>
   </header>
   <div class="row" role="group" aria-label="Mode">
     <button class="tab" id="modeOne" aria-pressed="true">One by one<small>step through each dino</small></button>
@@ -68,6 +68,7 @@ ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
     <button class="btn" data-view="front">Front</button>
     <button class="btn" data-view="top">Top</button>
     <button class="btn" id="spin" aria-pressed="false">Turntable</button>
+    <button class="btn" id="names" aria-pressed="true">Names on</button>
   </div>
   <div class="stage"><canvas id="cv" aria-label="3D dino roster"></canvas><div class="labels" id="labels"></div></div>
   <div class="card" id="info"></div>

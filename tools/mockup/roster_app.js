@@ -1,4 +1,4 @@
-// Dino roster mockup app v1.0. DINOS = model_json.py exports of every src/shared/Models/*ModelData.luau + roster meta.
+// Dino roster mockup app v1.1 (name tags on the ground under each dino, toggle). DINOS = model_json.py exports of every src/shared/Models/*ModelData.luau + roster meta.
 const DINOS = __DINOS__;
 const $ = id => document.getElementById(id);
 const rad = THREE.MathUtils.degToRad;
@@ -54,7 +54,7 @@ const dinos = DINOS.map(D => buildDino(D.model, D.scale));
 dinos.forEach((d, i) => { pose(d); const sz = d.box.getSize(new THREE.Vector3()); d.len = sz.z; d.wid = sz.x; d.hgt = sz.y; });
 const order = dinos.map((d, i) => i).sort((a, b) => dinos[a].len - dinos[b].len); // lineup: smallest to biggest
 
-let mode = "one", idx = 0, view = "three", spin = false, yawUser = 0, lineTotal = 0;
+let mode = "one", idx = 0, view = "three", spin = false, yawUser = 0, lineTotal = 0, names = true;
 const picker = $("picker");
 DINOS.forEach((D, i) => {
   const b = document.createElement("button"); b.className = "tab"; b.dataset.i = i;
@@ -91,6 +91,7 @@ $("next").onclick = () => { if (mode === "line") setMode("one"); setIdx(idx + 1)
 document.addEventListener("keydown", e => { if (e.key === "ArrowRight") $("next").onclick(); if (e.key === "ArrowLeft") $("prev").onclick(); });
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { view = b.dataset.view; document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", x.dataset.view === view)); });
 $("spin").onclick = e => { spin = !spin; e.currentTarget.setAttribute("aria-pressed", spin); };
+$("names").onclick = e => { names = !names; e.currentTarget.setAttribute("aria-pressed", names); e.currentTarget.textContent = names ? "Names on" : "Names off"; };
 
 function resize() { const w = cv.clientWidth, h = cv.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
 window.addEventListener("resize", resize);
@@ -99,7 +100,7 @@ cv.addEventListener("pointerdown", e => { drag = e.clientX; cv.setPointerCapture
 cv.addEventListener("pointermove", e => { if (drag !== null) { yawUser += (e.clientX - drag) * 0.01; drag = e.clientX; } });
 cv.addEventListener("pointerup", () => { drag = null; });
 
-const labels = $("labels"), lblEls = DINOS.map(D => { const e = document.createElement("div"); e.className = "lbl"; e.innerHTML = `${D.name}<small>${D.role}</small>`; labels.appendChild(e); return e; });
+const labels = $("labels"), lblEls = DINOS.map(D => { const e = document.createElement("div"); e.className = "lbl"; e.textContent = D.name; labels.appendChild(e); return e; });
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -125,7 +126,7 @@ function frame(now) {
   }
   const c = b.getCenter(new THREE.Vector3()), size = b.getSize(new THREE.Vector3());
   const span = Math.max(size.z, size.x * 0.6, size.y * 1.8);
-  const r = mode === "line" ? (lineTotal * 0.5 + 6) / (Math.tan(rad(cam.fov / 2)) * cam.aspect) * (view === "three" ? 1.05 : 1.0) : span * 0.5 / Math.tan(rad(cam.fov / 2)) / Math.min(1.6, cam.aspect) * 1.25;
+  const r = mode === "line" ? (lineTotal * 0.5 + 6) / (Math.tan(rad(cam.fov / 2)) * cam.aspect) * (view === "three" ? 1.15 : 1.05) : span * 0.5 / Math.tan(rad(cam.fov / 2)) / Math.min(1.6, cam.aspect) * 1.25;
   if (view === "side") cam.position.set(c.x + r, c.y + r * 0.06, c.z);
   else if (view === "front") cam.position.set(c.x + 0.001, c.y + r * 0.12, c.z - r);
   else if (view === "top") cam.position.set(c.x + 0.01, c.y + r, c.z);
@@ -135,11 +136,13 @@ function frame(now) {
   // labels over each dino in the lineup
   const W = cv.clientWidth, H = cv.clientHeight;
   dinos.forEach((d, i) => {
-    const show = mode === "line" && view !== "top";
+    const show = names && mode === "line" && view !== "top";
     lblEls[i].style.display = show ? "block" : "none";
     if (!show) return;
-    const p = new THREE.Vector3((d.box.min.x + d.box.max.x) / 2, d.box.max.y + 1, (d.box.min.z + d.box.max.z) / 2).project(cam);
-    lblEls[i].style.left = ((p.x + 1) / 2 * W) + "px"; lblEls[i].style.top = ((1 - p.y) / 2 * H) + "px";
+    // on the ground under the dino (the nearest edge of its footprint), so the tag never covers the model
+    const p = new THREE.Vector3((d.box.min.x + d.box.max.x) / 2, 0, view === "side" ? (d.box.min.z + d.box.max.z) / 2 : d.box.min.z).project(cam);
+    const rank = order.indexOf(i); // alternate two rows so neighbouring tags never overlap
+    lblEls[i].style.left = ((p.x + 1) / 2 * W) + "px"; lblEls[i].style.top = ((1 - p.y) / 2 * H + (rank % 2) * 26) + "px";
   });
   requestAnimationFrame(frame);
 }
