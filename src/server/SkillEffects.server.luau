@@ -1,4 +1,4 @@
--- SkillEffects v1.34 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.35 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -218,6 +218,9 @@ local ServerStorage = game:GetService("ServerStorage")
 --   TenoMud (Time, Hits, SlowRadius, SlowMul, SlowTime, Splash, Cooldown). Read by TenoPartsServer 1.0 (looks),
 --   TenoMovesServer 1.0, MechaButtons 1.26. Switch: script attribute SkillEffectsTenoPartsEnabled (default true, read at
 --   start).
+-- v1.35 (SkillTree 1.52, Kepu 2026-11-02 Stomp star = latch drain): TenoStomp gains LatchDrain (effects stompLatchDrain: 50
+--   at star, off 0); TenoStompNoJump is 0 now. Switch: script attribute SkillEffectsStompDrainEnabled (default true, read at
+--   start; false = 1.34 list).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -226,6 +229,7 @@ VERSION = "1.31" -- v1.31 teno rows
 VERSION = "1.32" -- v1.32 Buck Off star 4th slam charge
 VERSION = "1.33" -- v1.33 teno mecha parts (MDA-175)
 VERSION = "1.34" -- v1.34 teno stats part 2 (1.33 reserved for the teno abilities, MDA-175)
+VERSION = "1.35" -- v1.35 Stomp star latch drain (SkillTree 1.52)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -273,6 +277,12 @@ local TPARTS = { -- v1.33: {path id, prefix, {attribute, effect field, off value
 	{"tmud", "TenoMud", {{"Time", "mudTime", 0}, {"Hits", "mudHits", 0}, {"SlowRadius", "mudSlowRadius", 0}, {"SlowMul", "mudSlowMul", 1},
 		{"SlowTime", "mudSlowTime", 0}, {"Splash", "mudSplash", 0}, {"Cooldown", "mudCooldown", 0}}},
 }
+if script:GetAttribute("SkillEffectsStompDrainEnabled") == nil then script:SetAttribute("SkillEffectsStompDrainEnabled", true) end -- v1.35
+if script:GetAttribute("SkillEffectsStompDrainEnabled") ~= false then
+	for _, def in ipairs(TPARTS) do
+		if def[1] == "tstomp" then table.insert(def[3], {"LatchDrain", "stompLatchDrain", 0}) end
+	end
+end
 if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
 local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false
 if script:GetAttribute("SkillEffectsHerreraPartsEnabled") == nil then script:SetAttribute("SkillEffectsHerreraPartsEnabled", true) end -- v1.27

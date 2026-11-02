@@ -1,7 +1,9 @@
--- SkillTreeTenoParts.spec v1.0 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
+-- SkillTreeTenoParts.spec v1.1 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.49 (plan docs/plans/TENO_ABILITIES_v1.0.md Task 1, MDA-173). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTenoParts_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-01 "two builds"): tgrab / tmortar / tstomp / tleap live; tbellow / tchallenge / tmud "soon".
+-- v1.1 (SkillTree 1.52, Kepu 2026-11-02: the stomp never knocks a latched raptor off; star: it loses 50 stamina from its
+--   current pounce): new step I / star texts, stompLatchDrain 50 at star, stompNoJump always 0.
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -22,6 +24,7 @@ local OTHERS = {"TRex", "Raptor", "Pachy", "Herrera"}
 
 eq("TENO_PARTS", ST.TENO_PARTS, true)
 eq("TENO_PARTS_SUPPORT_SOON", ST.TENO_PARTS_SUPPORT_SOON, true)
+eq("TENO_STOMP_DRAIN", ST.TENO_STOMP_DRAIN, true) -- v1.1
 local ROWS = {
 	tgrab = {"Tail Grab & Fling", "attack", false},
 	tmortar = {"Boulder Mortar", "attack", false},
@@ -67,10 +70,10 @@ if P.tmortar then
 	eq("mortar star", P.tmortar.steps[4], "Leaves a rubble patch for 4 s: enemies in it are slowed 30%")
 end
 if P.tstomp then
-	eq("stomp I", P.tstomp.steps[1], "Button: rear up and stomp. A 14-stud shockwave: 6 damage, stuns 0.5 s and knocks off latched raptors. Recharges in 15 s")
+	eq("stomp I", P.tstomp.steps[1], "Button: rear up and stomp. A 14-stud shockwave: 6 damage and stuns 0.5 s. Recharges in 15 s")
 	eq("stomp II", P.tstomp.steps[2], "Stun 1 s")
 	eq("stomp III", P.tstomp.steps[3], "Shockwave 20 studs")
-	eq("stomp star", P.tstomp.steps[4], "Stomped dinos can't jump or pounce for 3 s")
+	eq("stomp star", P.tstomp.steps[4], "A raptor latched on you loses 50 stamina from its pounce")
 end
 if P.tleap then
 	eq("leap I", P.tleap.steps[1], "Button: a hydraulic leap 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 14 s")
@@ -122,7 +125,7 @@ local off = E({})
 for k, v in pairs({grabRange = 0, grabFling = 0, grabDamage = 0, grabStun = 0, grabBig = false, grabCrash = 0, grabCrashRadius = 0,
 	grabCooldown = 0, mortarRange = 0, mortarMiss = 0, mortarCone = 0, mortarDamage = 0, mortarSplash = 0, mortarCount = 0,
 	mortarSlowMul = 1, mortarSlowTime = 0, mortarRubble = 0, mortarCooldown = 0, stompRange = 0, stompDamage = 0, stompStun = 0,
-	stompNoJump = 0, stompCooldown = 0, leapDist = 0, leapDamage = 0, leapRadius = 0, leapStun = 0, leapCharges = 0,
+	stompNoJump = 0, stompLatchDrain = 0, stompCooldown = 0, leapDist = 0, leapDamage = 0, leapRadius = 0, leapStun = 0, leapCharges = 0,
 	leapCooldown = 0, bellowRange = 0, bellowTime = 0, bellowDamageMul = 1, bellowRunMul = 1, bellowClearStun = false,
 	bellowCooldown = 0, challengeRange = 0, challengeTime = 0, challengeWeakMul = 1, challengeSlowMul = 1,
 	challengeCooldown = 0, mudTime = 0, mudHits = 0, mudSlowRadius = 0, mudSlowMul = 1, mudSlowTime = 0, mudSplash = 0,
@@ -154,7 +157,8 @@ eq("stomp I range", E({tstomp = 1}).stompRange, 14); eq("stomp I damage", E({tst
 eq("stomp I stun", E({tstomp = 1}).stompStun, 0.5); eq("stomp I no nojump", E({tstomp = 1}).stompNoJump, 0)
 eq("stomp I cooldown", E({tstomp = 1}).stompCooldown, 15)
 eq("stomp II stun", E({tstomp = 2}).stompStun, 1); eq("stomp II range", E({tstomp = 2}).stompRange, 14)
-eq("stomp III range", E({tstomp = 3}).stompRange, 20); eq("stomp star nojump", E({tstomp = 4}).stompNoJump, 3)
+eq("stomp III range", E({tstomp = 3}).stompRange, 20); eq("stomp star no nojump", E({tstomp = 4}).stompNoJump, 0) -- v1.1
+eq("stomp III no drain", E({tstomp = 3}).stompLatchDrain, 0); eq("stomp star drain", E({tstomp = 4}).stompLatchDrain, 50) -- v1.1
 -- leap
 eq("leap I dist", E({tleap = 1}).leapDist, 40); eq("leap I damage", E({tleap = 1}).leapDamage, 10)
 eq("leap I radius", E({tleap = 1}).leapRadius, 12); eq("leap I no stun", E({tleap = 1}).leapStun, 0)

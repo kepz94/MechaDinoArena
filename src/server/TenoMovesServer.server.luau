@@ -1,4 +1,4 @@
--- TenoMovesServer v1.0 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.1 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -56,12 +56,19 @@
 --   each, read at each use).
 -- Diagnostics: script TenoMovesServerVersion, TenoMovesMode, TenoMovesGrabs, TenoMovesMortars, TenoMovesStomps,
 --   TenoMovesLeaps, TenoMovesHits, TenoMovesSlows, TenoMovesSquadSkips; character results above.
+-- v1.1 (Kepu 2026-11-02: the stomp "doesn't knock it off, it lowers the stamina for the current pounce", -50; SkillTree
+--   1.52 / SkillEffects 1.35): the stomp no longer releases raptors latched on the teno (they are still not hit by the
+--   shockwave). Star (TenoStompLatchDrain > 0): each allowed raptor latched on the teno gets StaminaDrainAmount =
+--   TenoStompLatchDrain and StaminaDrainAt = now (StaminaServer 1.6 takes it off a player's stamina, so the latch ends
+--   sooner; BotServer 1.23 cuts a bot's latch time by amount / PounceLatchDrain). NoJumpUntil is no longer written
+--   (TenoStompNoJump is 0). Switch: script attribute TenoMovesStompDrainEnabled (default true, read at each stomp; false =
+--   1.0: latched raptors released). Diagnostic: character TenoStompDrained (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
 local STOMP_HIT = 0.5
@@ -69,6 +76,7 @@ local LEAP_TIME = 0.9
 local DY = 15
 
 script:SetAttribute("TenoMovesServerVersion", VERSION)
+if script:GetAttribute("TenoMovesStompDrainEnabled") == nil then script:SetAttribute("TenoMovesStompDrainEnabled", true) end -- v1.1
 for _, k in ipairs({"TenoMovesServerEnabled", "TenoMoves_tgrabEnabled", "TenoMoves_tmortarEnabled", "TenoMoves_tstompEnabled",
 	"TenoMoves_tleapEnabled", "TenoMovesModeRulesEnabled", "TenoMovesServerSquadEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
@@ -611,10 +619,19 @@ stompRemote.OnServerEvent:Connect(function(player, stamp)
 		local hl, hr = char:FindFirstChild("ArmL_hand", true), char:FindFirstChild("ArmR_hand", true)
 		local mid = (hl and hr) and (hl.Position + hr.Position) / 2 or (root.Position + flat(root.CFrame.LookVector) * 6)
 		local centre = onGround(mid)
+		local drain = num(char, "TenoStompLatchDrain", 0)
+		local drained = 0
 		for _, m in ipairs(latchedOnes(char)) do
-			m:SetAttribute("ShakeOffReason", "stomped")
-			m:SetAttribute("ShakeOffAt", tl)
+			if script:GetAttribute("TenoMovesStompDrainEnabled") == false then
+				m:SetAttribute("ShakeOffReason", "stomped")
+				m:SetAttribute("ShakeOffAt", tl)
+			elseif drain > 0 then -- v1.1: star drains the latch's stamina
+				m:SetAttribute("StaminaDrainAmount", drain)
+				m:SetAttribute("StaminaDrainAt", tl) -- last: StaminaServer / BotServer react
+				drained += 1
+			end
 		end
+		char:SetAttribute("TenoStompDrained", drained)
 		local n = 0
 		for _, m in ipairs(candidates(char)) do
 			local mr = rootOf(m)

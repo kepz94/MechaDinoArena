@@ -1,4 +1,4 @@
--- SkillTree v1.51 (1.49 teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.52 (1.49 teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -1790,6 +1790,29 @@ end
 SkillTree.PACHY_SPIKES_ALWAYS = true
 if SkillTree.PACHY_SPIKES_ALWAYS and SkillTree.PATHS.dome then
 	SkillTree.PATHS.dome.steps[4] = "A 3rd headbutt charge"
+end
+
+-- v1.52 (Kepu 2026-11-02: Stomp Shockwave "No, it just lowers the stamina for a raptor that's latched on" -> "It doesn't knock
+-- it off, it lowers the stamina for the current pounce", picked "Never knock off; star drains", -50). Switch
+-- SkillTree.TENO_STOMP_DRAIN (default true; false = 1.51 texts / numbers): tstomp step I no longer says it knocks latched
+-- raptors off; the star is "A raptor latched on you loses 50 stamina from its pounce": effects stompLatchDrain 50 at star
+-- (0 otherwise / other dinos), stompNoJump always 0 on the teno (TenoMovesServer 1.1 / SkillEffects 1.35).
+SkillTree.TENO_STOMP_DRAIN = true
+if SkillTree.TENO_PARTS and SkillTree.TENO_STOMP_DRAIN and SkillTree.PATHS.tstomp then
+	SkillTree.PATHS.tstomp.steps[1] = "Button: rear up and stomp. A 14-stud shockwave: 6 damage and stuns 0.5 s. Recharges in 15 s"
+	SkillTree.PATHS.tstomp.steps[4] = "A raptor latched on you loses 50 stamina from its pounce"
+end
+do
+	local effectsPre152 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre152(steps, dino)
+		if type(e) ~= "table" then return e end
+		local on = SkillTree.TENO_PARTS and SkillTree.TENO_STOMP_DRAIN and dino == "Teno" and SkillTree.PATHS.tstomp ~= nil
+		local st = on and (SkillTree.sanitize(steps, dino).tstomp or 0) or 0
+		if on then e.stompNoJump = 0 end
+		e.stompLatchDrain = st >= 4 and 50 or 0
+		return e
+	end
 end
 
 return SkillTree

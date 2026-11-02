@@ -1,4 +1,4 @@
--- BotServer v1.22 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.23 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -355,12 +355,17 @@
 --   * Smoke Pods (MDA-152): a player character whose SmokeHidden is true (inside its own smoke cloud) is dropped at once
 --     (like a cloak) and is not picked as a target. Script attribute BotSmokeEnabled (default true, read each step; false
 --     = 1.21). Diagnostics: bot BotSmokeDrops; script BotSmokeDrops.
+-- v1.23 (Kepu 2026-11-02, the teno's Stomp star; TenoMovesServer 1.1): while a bot is latched, a new StaminaDrainAt on the
+--   bot (set after the latch began) cuts its latch time: endAt -= StaminaDrainAmount / PounceLatchDrain (15 per s, the
+--   player's stamina drain; 50 -> 3.3 s sooner), so it lets go ("tired") like a player raptor whose stamina ran out.
+--   Script attribute BotLatchDrainEnabled (default true, read each step; false = 1.22). Diagnostic: bot BotLatchDrains.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.22"
+local VERSION = "1.23"
+if script:GetAttribute("BotLatchDrainEnabled") == nil then script:SetAttribute("BotLatchDrainEnabled", true) end -- v1.23
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -2553,6 +2558,11 @@ RunService.Heartbeat:Connect(function(dt)
 					endLatch(b, "gone")
 				elseif model:GetAttribute("DummyState") == "ko" then
 					endLatch(b, "ko")
+				elseif script:GetAttribute("BotLatchDrainEnabled") ~= false and typeof(model:GetAttribute("StaminaDrainAt")) == "number"
+					and model:GetAttribute("StaminaDrainAt") >= l.at and model:GetAttribute("StaminaDrainAt") ~= l.drainSeen then -- v1.23
+					l.drainSeen = model:GetAttribute("StaminaDrainAt")
+					l.endAt -= math.max(0, tonumber(model:GetAttribute("StaminaDrainAmount")) or 0) / math.max(1, tonumber(model:GetAttribute("PounceLatchDrain")) or 15)
+					show(b, "BotLatchDrains", (model:GetAttribute("BotLatchDrains") or 0) + 1)
 				elseif now >= l.endAt then
 					endLatch(b, "tired")
 				else

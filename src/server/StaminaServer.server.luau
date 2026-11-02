@@ -1,4 +1,4 @@
--- StaminaServer v1.5 (Dino Arcade) — TEST. Server-owned stamina for every player dino.
+-- StaminaServer v1.6 (Dino Arcade) — TEST. Server-owned stamina for every player dino.
 -- Stamina is stored as a straight-line curve so every client can draw it smoothly without updates:
 --   stamina(now) = clamp(StaminaValue + StaminaRate * (now - StaminaAt), 0, StaminaMax)
 --   (replicated character attributes; StaminaAt is server time, written last on every change).
@@ -29,6 +29,10 @@
 -- v1.5: stamina refund (Blade Claws star, PounceServer 1.6; MDA-60, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 3): a new
 --   StaminaRefundAt adds StaminaRefundAmount (clamped to StaminaMax; the current rate is kept). Ignored while
 --   StaminaEnabled is false. Diagnostics: StaminaRefundCount, StaminaLastEvent "refund"; script StaminaServerVersion.
+-- v1.6 (Kepu 2026-11-02, the teno's Stomp star; TenoMovesServer 1.1): a new StaminaDrainAt takes StaminaDrainAmount off the
+--   stamina (clamped at 0; the current rate is kept), so a latched raptor's pounce ends sooner (PounceServer releases at 0).
+--   Ignored while StaminaEnabled is false. Switch: script attribute StaminaDrainEnabled (default true, read at each drain).
+--   Diagnostics: StaminaDrainCount, StaminaLastEvent "drain".
 -- Exhaustion: when stamina reaches 0 (running or biting), Exhausted = true (replicated): SprintTest 1.4 blocks
 --   running and uses MoveCreepSpeed, CreepServer 1.1 holds Creeping = true (crouch walk). Refill works as
 --   normal; at StaminaRecoverFraction x StaminaMax (default 25%) Exhausted = false.
@@ -51,6 +55,8 @@ local DEFAULTS = {StaminaEnabled = true, StaminaMax = 100, StaminaRunTime = 15, 
 DEFAULTS.RamStaminaCost = 20 -- v1.3
 DEFAULTS.StaminaPounceOnly = false -- v1.4
 script:SetAttribute("StaminaServerVersion", "1.5") -- v1.5
+script:SetAttribute("StaminaServerVersion", "1.6") -- v1.6
+if script:GetAttribute("StaminaDrainEnabled") == nil then script:SetAttribute("StaminaDrainEnabled", true) end -- v1.6
 
 local remote = ReplicatedStorage:FindFirstChild("DinoRunRequest")
 if not remote then
@@ -227,6 +233,20 @@ local function onCharacter(char)
 		anchor(char, s, char:GetAttribute("StaminaRate") or 0, t)
 		char:SetAttribute("StaminaRefundCount", (char:GetAttribute("StaminaRefundCount") or 0) + 1)
 		char:SetAttribute("StaminaLastEvent", "refund")
+	end)
+	char:GetAttributeChangedSignal("StaminaDrainAt"):Connect(function() -- v1.6
+		local at = char:GetAttribute("StaminaDrainAt")
+		if at == nil or at == st.lastDrain then return end
+		st.lastDrain = at
+		if script:GetAttribute("StaminaDrainEnabled") == false or get(char, "StaminaEnabled") == false then return end
+		local amount = tonumber(char:GetAttribute("StaminaDrainAmount")) or 0
+		if amount <= 0 then return end
+		local t = workspace:GetServerTimeNow()
+		local s = math.max(0, current(char, t) - amount)
+		anchor(char, s, char:GetAttribute("StaminaRate") or 0, t)
+		char:SetAttribute("StaminaDrainCount", (char:GetAttribute("StaminaDrainCount") or 0) + 1)
+		char:SetAttribute("StaminaLastEvent", "drain")
+		step(char, st, t)
 	end)
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then states[char] = nil end
