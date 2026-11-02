@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teno Mecha Abilities</title>
+<style>
+/* Same palette as the other Mecha Dino Arena mockups. Fonts: system fallbacks (works offline). */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --yellow: #ffc832; --volt: #7fe9ff;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding: 24px 16px 64px; }
+main { max-width: 1100px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); }
+h1 span { color: var(--accent); }
+h2 { margin: 0; font: 700 20px/1.2 var(--display); }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 86ch; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lbl { font: 800 12px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 52px; }
+.grid8 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 720px) { .grid8 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tab { font: 700 15px/1.2 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; cursor: pointer; text-align: left; min-width: 0; }
+.tab small { display: block; font: 800 11px var(--body); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,155,46,.2); }
+.btn { font: 700 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--volt); }
+.btn.go { border-color: var(--accent); }
+.stage { position: relative; border: 2px solid var(--line); border-radius: 16px; overflow: hidden; user-select: none; -webkit-user-select: none; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; touch-action: none; }
+#pops, #tags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.pop { position: absolute; transform: translate(-50%, -50%); font: 800 20px var(--display); color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px #000; white-space: nowrap; }
+.pop.big { font-size: 30px; color: var(--yellow); }
+.pop.good { color: #7dff9a; }
+.pop.soft { color: #cfd3dc; font-size: 16px; }
+.st { position: absolute; transform: translate(-50%, -100%); font: 800 11px var(--body); letter-spacing: .04em; padding: 2px 6px; border-radius: 6px; background: rgba(10,12,18,.8); white-space: nowrap; }
+.st.red { color: #ff6b6b; border: 1px solid #ff6b6b; }
+.st.blue { color: #8fd0ff; border: 1px solid #8fd0ff; }
+.st.green { color: #7dff9a; border: 1px solid #7dff9a; }
+.st.yellow { color: var(--yellow); border: 1px solid var(--yellow); }
+.tag { position: absolute; left: 12px; top: 12px; font: 700 14px var(--display); background: rgba(15,19,25,.8); border-radius: 10px; padding: 6px 10px; max-width: 70%; }
+.tag b { color: var(--yellow); }
+#hud { position: absolute; right: 12px; bottom: 12px; display: grid; justify-items: center; gap: 4px; }
+#abtn { position: relative; width: 92px; height: 92px; border-radius: 18px; border: 3px solid var(--accent); background: #1d2230; color: #fff; font: 800 13px/1.1 var(--display); cursor: pointer; overflow: hidden; padding: 6px; }
+#abtn .k { position: absolute; left: 6px; top: 4px; color: var(--accent); font-size: 14px; }
+#cdfill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(0,0,0,.6); }
+#cdtxt { position: absolute; inset: 0; display: grid; place-items: center; font: 800 22px var(--display); color: #fff; text-shadow: 0 2px 0 #000; }
+#hits { display: flex; gap: 4px; min-height: 12px; }
+#hits i { width: 12px; height: 12px; border-radius: 3px; background: #6b4a2a; border: 1px solid #c79a62; display: block; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+.card p { margin: 6px 0; }
+.kind { font: 800 13px var(--body); letter-spacing: .06em; text-transform: uppercase; }
+.steps { display: grid; gap: 6px; margin: 8px 0; }
+.stp { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; color: var(--muted); }
+.stp .b { height: 30px; border-radius: 8px; display: grid; place-items: center; font: 800 14px var(--display); background: #262d3c; color: #8f99aa; }
+.stp.got { color: #fff; }
+.stp.got .b { color: #1a1208; }
+.stp.cur { color: #fff; font-weight: 800; }
+.note { color: var(--muted); font-size: 13px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+td, th { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+th { color: var(--muted); font: 800 12px var(--body); letter-spacing: .06em; text-transform: uppercase; }
+ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>Teno</span> mecha abilities · v0.1</h1>
+    <p class="lede">Your 8 picks on the real Teno model (TenoModelData 1.3). Pick an ability, flip between its two looks (A / B) and the four upgrade steps, and watch it play. Each one is a button part: it goes in one of the 4 slots (R / T / C / V) and only shows on the teno while it's slotted. Tell me the look you want for each, and any number to change.</p>
+  </header>
+  <div class="grid8" role="group" aria-label="Ability" id="abil"></div>
+  <div class="row" role="group" aria-label="Look"><span class="lbl">Look</span><span id="looks" class="row"></span></div>
+  <div class="row" role="group" aria-label="Step"><span class="lbl">Step</span>
+    <button class="btn" data-step="0">I</button><button class="btn" data-step="1">II</button><button class="btn" data-step="2">III</button><button class="btn" data-step="3">★</button>
+  </div>
+  <div class="row"><span class="lbl">Try</span>
+    <button class="btn go" id="play">Play again</button>
+    <button class="btn" id="loop" aria-pressed="true">Loop</button>
+    <button class="btn" id="slow" aria-pressed="false">Slow-mo ×0.3</button>
+    <button class="btn" data-view="side" aria-pressed="true">Side</button>
+    <button class="btn" data-view="three">3/4</button>
+    <button class="btn" data-view="top">Top</button>
+    <button class="btn" id="closeup" aria-pressed="false">Part close-up</button>
+  </div>
+  <div class="stage">
+    <canvas id="cv" aria-label="3D Teno using a mecha ability"></canvas>
+    <div id="tags"></div>
+    <div id="pops"></div>
+    <div class="tag"><b id="state"></b></div>
+    <div id="hud">
+      <div id="hits"></div>
+      <button id="abtn"><span class="k" id="akey">R</span><span id="aname"></span><div id="cdfill"></div><div id="cdtxt"></div></button>
+    </div>
+  </div>
+  <div class="card" id="info"></div>
+  <div class="card">
+    <h2>All 8 at a glance (proposal)</h2>
+    <table id="glance"></table>
+    <p class="note">Rule I followed after the Herrera fix: upgrades make an ability last longer, reach further or recharge faster; they don't stack the main % again. Cooldowns are first guesses and get tuned in Studio.</p>
+  </div>
+  <ul>
+    <li>Red dummies are enemies (Herrera models), small tenos with a green ring are your squad.</li>
+    <li>Look and feel only: the real hit areas, distances and timings are set in the build and tested in Studio.</li>
+  </ul>
+</main>
+<script>/*THREE*/</script>
+<script>
