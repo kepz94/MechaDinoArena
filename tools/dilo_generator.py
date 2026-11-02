@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Dilo generator v0.3 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+"""Dilo generator v0.4 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
 v0.2 (Kepu 2026-11-02: "The frill splits in the middle"): every frill is two halves, left and right, with a gap down the
 middle (--whole = the v0.1 one-piece frill). Colours and patterns stay our own.
 v0.3: look D = A Cobra Hood with a red frill and yellow markings (Kepu: "the quill stalker frill colors on the cobra hood").
+v0.4: D's hood is red / yellow / red rings out from the neck, like the quill bands (Kepu: "the frill itself to be red and yellow").
 
 Kepu 2026-11-02: "Next is the dilo" (two reference pictures of the film-style frilled dilophosaurus). Answers: role
 "Ranged spitter"; size "Raptor size (~26)"; frill "Crests + a frill" (the real animal had twin head crests and no frill;
@@ -26,7 +27,7 @@ The data file (DiloModelData.luau) comes after Kepu picks.
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.3"
+VERSION = "0.4"
 TARGET_LEN = 13.0    # studs at scale 1 (~26 in game, the raptor's size)
 HRP_SIZE_D0 = (3.0, 2.0, 1.1)
 ROLES = ["main", "stripes", "belly", "frill", "frillmark", "crest", "limbs", "claws", "eyes", "mask"]
@@ -43,7 +44,8 @@ LOOKS = {
                   "crest": "8A9A6A", "limbs": "26382A", "claws": "1A1A18", "eyes": "E8C23A", "mask": "0E1410"}},
     # v0.3 (Kepu 2026-11-02: "Let's do the quill stalker frill colors on the cobra hood. Red and yellow"): A's body, hood
     # and colours with C's red on the frill and yellow markings (spots); everything else is A
-    "D": {"name": "Cobra Hood Red", "style": "cobra", "fr": 1.0, "neck": 0,
+    # v0.4 (Kepu: "I want the frill itself to be red and yellow"): the hood in red / yellow / red rings (no spots)
+    "D": {"name": "Cobra Hood Red", "style": "cobra", "fr": 1.0, "neck": 0, "hood": "hoodband",
           "pal": {"main": "6E7A3A", "stripes": "3A3F22", "belly": "D8D0A0", "frill": "C8362E", "frillmark": "E2C23A",
                   "crest": "C24A2A", "limbs": "5A6430", "claws": "2C2822", "eyes": "F0E04A", "mask": "1C1C1A"}},
 }
@@ -144,7 +146,15 @@ def frill(segname, c, n, kind, R, a0, a1, count, fold=False, side=""):
                   L, 0.16, 0.06, ref=r, name=f"{segname}_{tag}{i + 1}")
             continue
         start = tuple(c[k] + r[k] * 0.3 for k in range(3))
-        if kind == "hood":
+        if kind == "hoodband":  # v0.4: the hood in rings out from the neck, red / yellow / red like the quill bands, dark rim
+            d = tuple(r[k] + n[k] * 0.12 for k in range(3))
+            wd = 2 * R * math.sin(math.radians(step) / 2) * 1.25 + 0.06
+            for j, (t0, t1, key) in enumerate(((0.0, 0.42, "frill"), (0.42, 0.72, "frillmark"), (0.72, 0.92, "frill"))):
+                blade(segname, key, tuple(start[k] + r[k] * R * t0 for k in range(3)), d, R * (t1 - t0) + 0.02, wd * (0.55 + 0.45 * t1), 0.06,
+                      ref=n, name=f"{segname}_{tag}{i + 1}{'abc'[j]}")
+            blade(segname, "mask", tuple(start[k] + r[k] * R * 0.9 for k in range(3)), d, R * 0.14, wd * 0.98, 0.07, ref=n,
+                  name=f"{segname}_{tag}rim{i + 1}")
+        elif kind == "hood":
             d = tuple(r[k] + n[k] * 0.12 for k in range(3))
             blade(segname, "frill", start, d, R, 2 * R * math.sin(math.radians(step) / 2) * 1.25 + 0.06, 0.06, ref=n, name=f"{segname}_{tag}{i + 1}")
             if i % 2 == 0:
@@ -276,9 +286,9 @@ if STYLE == "cobra":
         part("Neck", "main", sz, c, pitch=p, name=f"Neck_{i + 1}")
     part("Neck", "belly", (0.95, 0.08, 0.3), (2.05, 1.4, 0.0), pitch=72, name="Neck_throat")
     if SPLIT:
-        split_frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, 115, 12)
+        split_frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), L.get("hood", "hood"), 1.05 * FR, 115, 12)
     else:
-        frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, -115, 115, 11)
+        frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), L.get("hood", "hood"), 1.05 * FR, -115, 115, 11)
     if SPLIT:
         split_frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, 115, 8, fold=True)
     else:
