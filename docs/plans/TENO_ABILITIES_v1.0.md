@@ -81,7 +81,17 @@ The areas follow the mockup. The teno also sees its Signature area for Buck Off,
 | A killing blow | health reaches 0 | Mud: blocked (ForceField). Bellow: not refunded (the same rule as Brace) |
 
 ## Tasks
-Dev Hub tickets: MDA-173 (T1) … MDA-180 (T8). Open decision: build size.
+Dev Hub tickets: MDA-173 (T1) … MDA-180 (T8).
+
+**Two builds (Kepu 2026-11-01: "It's going to be two builds for the abilities"):**
+- **Build 1:** Tail Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap.
+  - Tasks 1, 3, 4 and 5, plus the client parts of 7 and the check in 8 for these 4.
+  - Task 1 and Task 4 carry all 7 entries but switch on only these 4: the support parts stay `soon` until build 2.
+  - Studio check, then publish.
+- **Build 2:** Herd Bellow, Challenge Call, Mud Armor.
+  - Tasks 2 and 6, plus the rest of 7 and 8.
+  - Studio check, then publish.
+- The tail slam rework (MDA-181) goes in before build 1, because both touch the teno's tail poses and its HUD.
 
 1. **SkillTreeTenoParts.spec 1.0 + SkillTree 1.49** (Logic)
    - Write the spec red first, then add the 7 paths through `part(id, name, area, steps)` with `dino = "Teno"` and an effects wrapper (numbers above).
@@ -123,4 +133,4 @@ Dev Hub tickets: MDA-173 (T1) … MDA-180 (T8). Open decision: build size.
 2. **Refund-based reduction can't save a killing blow** (same as Brace). Kepu picked "Mud gives a real shield". Grounding: every way a player loses health in a fight goes through Humanoid:TakeDamage (the ArenaPvP bridge, BotServer, ScreechServer), and a ForceField blocks that. This is how the raptor's Energy Shield already works. So Mud uses a hidden ForceField while the coat has hits left. Bellow keeps the refund (a killing blow still kills).
 3. **Herd Bellow 50/50** is the strongest thing on the roster for 4 s. With 2 tenos in a squad it could chain. Mitigation: a second Bellow refreshes the time and doesn't stack, and there's a 30 s recharge. Watch it in play.
 4. **Mortar aim:** Kepu picked "Auto-target" (no new aiming UI).
-5. **Scope.** 7 parts is about the size of Herrera passes 2 + 3 together. Open (Dev Hub decision): two builds (attacks first: Tasks 1–5 + 7 for those 4; then support) or all 7 at once. Kepu answers when the PC is back.
+5. **Scope.** 7 parts is about the size of Herrera passes 2 + 3 together. Kepu: two builds (see Tasks).
