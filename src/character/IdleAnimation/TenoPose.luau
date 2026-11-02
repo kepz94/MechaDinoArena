@@ -1,4 +1,4 @@
--- TenoPose v1.2 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.3 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -40,8 +40,20 @@
 --   joint yaw + = the tail to the right, aimYaw + = left). aimYaw = the owner's TenoLocalSlamYaw (TenoAttackTest 1.2,
 --   at once) or else the character's TenoSlamAimYaw (TenoAttackServer 1.2), read by phase() for each slam. Switch: model
 --   attribute TenoSlamYawEnabled (default true; false = 1.1, no turn).
+-- v1.3 (teno mecha abilities build 1, plan docs/plans/TENO_ABILITIES_v1.0.md Task 7, MDA-179; mockup
+--   docs/mockups/teno_abilities_options.html v0.3 poses, same angles): when no scratch / hold / slam is playing, phase()
+--   returns the latest ability move still running from TenoMovesServer 1.0's stamps (every client, the owner too):
+--   "tgrab"   TenoGrabStartedAt: 0.3 s 0 -> TAIL_DOWN (ease; the catch), 0.5 s -> TAIL_OVER (smooth; carried over the back),
+--             0.3 s -> TAIL_THROW (ease; the fling), 0.8 s -> 0 (smooth).
+--   "tmortar" TenoMortarStartedAt: 0.35 s 0 -> TAIL_DOWN (smooth), 0.25 s -> TAIL_THROW (ease; the whip), 1 s -> 0.
+--   "tstomp"  TenoStompStartedAt: 0.4 s 0 -> REAR (smooth), 0.1 s -> STOMP (easeIn; the hit at 0.5 s), held 0.3 s,
+--             0.9 s -> 0 (smooth).
+--   "tleap"   TenoLeapStartedAt: 0.12 s 0 -> CROUCH, 0.25 s -> AIR, AIR until the landing (TenoLeapLandedAt, or 1.0 s), then
+--             0.15 s -> LEAP_SLAM (the tail slams), held 0.15 s, 0.6 s -> 0.
+--   attackAngles handles these phases; IdleAnimation 1.37+ multiplies them on like the attacks (no IdleAnimation change).
+--   Switch: model attribute TenoAbilityPoseEnabled (default true; false = 1.2).
 local TenoPose = {}
-TenoPose.Version = "1.2"
+TenoPose.Version = "1.3"
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -53,6 +65,7 @@ TenoPose.Defaults = {
 	TenoLeapSmoothEnabled = true, TenoLeapAirBlend2 = 0.4, TenoLeapReachStart = 0.25, TenoLeapReachTime = 0.35,
 	TenoLeapReach = 0.45, TenoLeapLandIn = 0.35, TenoLeapLandTime2 = 0.55, TenoLeapFilterRate = 16,
 	TenoSlamYawEnabled = true, -- v1.2
+	TenoAbilityPoseEnabled = true, -- v1.3
 }
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5",
@@ -78,6 +91,26 @@ local SCRATCH_UP = {ArmR = {95, 0, 30}, Neck = {4, -10, 0}, Head = {6, 0, 0}, Ro
 	LegR = {-8, 0, 0}, Jaw = {-14, 0, 0}}
 local SCRATCH_DOWN = {ArmR = {-20, 0, -10}, Neck = {-6, 6, 0}, Head = {-6, 0, 0}, RootJoint = {-4, 0, 0}, LegL = {4, 0, 0},
 	LegR = {4, 0, 0}}
+-- v1.3: ability poses (mockup teno_abilities_app.js)
+local TAIL_DOWN = {Tail1 = {14, 0, 0}, Tail2 = {14, 0, 0}, Tail3 = {14, 0, 0}, Tail4 = {12, 0, 0}, Tail5 = {10, 0, 0}, RootJoint = {-4, 0, 0}}
+local TAIL_OVER = {Tail1 = {-80, 0, 0}, Tail2 = {-48, 0, 0}, Tail3 = {-42, 0, 0}, Tail4 = {-30, 0, 0}, Tail5 = {-20, 0, 0},
+	RootJoint = {-10, 0, 0}, LegL = {10, 0, 0}, LegR = {10, 0, 0}, Neck = {-10, 0, 0}}
+local TAIL_THROW = {Tail1 = {-95, 0, 0}, Tail2 = {-60, 0, 0}, Tail3 = {-50, 0, 0}, Tail4 = {-35, 0, 0}, Tail5 = {-25, 0, 0},
+	RootJoint = {-16, 0, 0}, LegL = {16, 0, 0}, LegR = {16, 0, 0}, Neck = {-14, 0, 0}}
+local REAR = {RootJoint = {40, 0, 0}, LegL = {-40, 0, 0}, LegR = {-40, 0, 0}, KneeL = {-30, 0, 0}, KneeR = {-30, 0, 0},
+	ArmL = {70, 0, 0}, ArmR = {60, 0, 0}, Neck = {12, 0, 0}, Head = {-6, 0, 0}, Jaw = {-20, 0, 0}, Tail1 = {-30, 0, 0},
+	Tail2 = {0, 0, 0}, Tail5 = {-12, 0, 0}}
+local STOMP = {RootJoint = {-14, 0, 0}, LegL = {14, 0, 0}, LegR = {14, 0, 0}, ArmL = {-12, 0, 0}, ArmR = {-12, 0, 0},
+	Neck = {-16, 0, 0}, Head = {-12, 0, 0}, Jaw = {-8, 0, 0}, Tail1 = {-20, 0, 0}, Tail2 = {-10, 0, 0}}
+local CROUCH = {RootJoint = {-8, 0, 0}, LegL = {30, 0, 0}, LegR = {30, 0, 0}, KneeL = {-40, 0, 0}, KneeR = {-40, 0, 0},
+	AnkleL = {12, 0, 0}, AnkleR = {12, 0, 0}, ArmL = {-25, 0, 0}, ArmR = {-25, 0, 0}, Neck = {-10, 0, 0}, Tail1 = {8, 0, 0},
+	Tail2 = {6, 0, 0}}
+local AIR = {RootJoint = {10, 0, 0}, LegL = {-30, 0, 0}, LegR = {-30, 0, 0}, KneeL = {-20, 0, 0}, KneeR = {-20, 0, 0},
+	ArmL = {55, 0, 0}, ArmR = {55, 0, 0}, Neck = {12, 0, 0}, Head = {-6, 0, 0}, Jaw = {-18, 0, 0}, Tail1 = {-16, 0, 0},
+	Tail2 = {-10, 0, 0}, Tail3 = {-8, 0, 0}, Tail4 = {-6, 0, 0}, Tail5 = {-6, 0, 0}}
+local LEAP_SLAM = {RootJoint = {-6, 0, 0}, LegL = {6, 0, 0}, LegR = {6, 0, 0}, ArmL = {-10, 0, 0}, ArmR = {-10, 0, 0},
+	Neck = {-8, 0, 0}, Tail1 = {-30, 0, 0}, Tail2 = {-12, 0, 0}, Tail3 = {-6, 0, 0}, Tail4 = {4, 0, 0}, Tail5 = {8, 0, 0}}
+local ABILITY_END = {tgrab = 1.9, tmortar = 1.6, tstomp = 1.7}
 local ZERO = {}
 TenoPose.TABLES = {J_REAR = J_REAR, J_AIR = J_AIR, J_LAND = J_LAND, D_UP = D_UP, D_DOWN = D_DOWN,
 	SCRATCH_UP = SCRATCH_UP, SCRATCH_DOWN = SCRATCH_DOWN}
@@ -188,7 +221,8 @@ end
 local function num(v) return typeof(v) == "number" and v or nil end
 
 local slamYaw = 0 -- v1.2: the aimed yaw of the current slam (this module copy belongs to one model)
-function TenoPose.phase(model, isOwner, serverNow)
+local leapLand = nil -- v1.3: landing time (s after the leap start) of the current leap
+local function phaseV12(model, isOwner, serverNow)
 	local s = TenoPose.settings(model)
 	slamYaw = 0
 	if s.TenoSlamYawEnabled ~= false then
@@ -219,6 +253,27 @@ function TenoPose.phase(model, isOwner, serverNow)
 		return "scratch", serverNow - sc, 0, "server"
 	end
 	return nil, 0, 0, "server"
+end
+-- v1.3: the ability moves when no attack plays
+function TenoPose.phase(model, isOwner, serverNow)
+	local ph, t, hold, src = phaseV12(model, isOwner, serverNow)
+	if ph or src == "off" or model:GetAttribute("TenoAbilityPoseEnabled") == false then return ph, t, hold, src end
+	local best, bestAt
+	for id, k in pairs({tgrab = "TenoGrabStartedAt", tmortar = "TenoMortarStartedAt", tstomp = "TenoStompStartedAt",
+		tleap = "TenoLeapStartedAt"}) do
+		local at = num(model:GetAttribute(k))
+		if at and at > 0 and serverNow >= at then
+			local dur = ABILITY_END[id]
+			if id == "tleap" then
+				local la = num(model:GetAttribute("TenoLeapLandedAt"))
+				leapLand = (la and la >= at) and (la - at) or nil
+				dur = (leapLand or 1.0) + 0.9
+			end
+			if serverNow - at < dur and (not bestAt or at > bestAt) then best, bestAt = id, at end
+		end
+	end
+	if best then return best, serverNow - bestAt, 0, "ability" end
+	return ph, t, hold, src
 end
 
 -- attack angles (degrees)
@@ -253,6 +308,28 @@ function TenoPose.attackAngles(phase, t, hold, s, now)
 			end
 		end
 		return a
+	elseif phase == "tgrab" then -- v1.3
+		if t < 0.3 then return mix(ZERO, TAIL_DOWN, ease(t / 0.3)) end
+		if t < 0.8 then return mix(TAIL_DOWN, TAIL_OVER, smooth((t - 0.3) / 0.5)) end
+		if t < 1.1 then return mix(TAIL_OVER, TAIL_THROW, ease((t - 0.8) / 0.3)) end
+		return mix(TAIL_THROW, ZERO, smooth((t - 1.1) / 0.8))
+	elseif phase == "tmortar" then
+		if t < 0.35 then return mix(ZERO, TAIL_DOWN, smooth(t / 0.35)) end
+		if t < 0.6 then return mix(TAIL_DOWN, TAIL_THROW, ease((t - 0.35) / 0.25)) end
+		return mix(TAIL_THROW, ZERO, smooth((t - 0.6) / 1))
+	elseif phase == "tstomp" then
+		if t < 0.4 then return mix(ZERO, REAR, smooth(t / 0.4)) end
+		if t < 0.5 then return mix(REAR, STOMP, easeIn((t - 0.4) / 0.1)) end
+		if t < 0.8 then return mix(STOMP, STOMP, 0) end
+		return mix(STOMP, ZERO, smooth((t - 0.8) / 0.9))
+	elseif phase == "tleap" then
+		local L = leapLand or 1.0
+		if t < 0.12 then return mix(ZERO, CROUCH, ease(t / 0.12)) end
+		if t < L then return mix(CROUCH, AIR, smooth((t - 0.12) / 0.25)) end
+		local u = t - L
+		if u < 0.15 then return mix(AIR, LEAP_SLAM, ease(u / 0.15)) end
+		if u < 0.3 then return mix(LEAP_SLAM, LEAP_SLAM, 0) end
+		return mix(LEAP_SLAM, ZERO, smooth((u - 0.3) / 0.6))
 	end
 	return {}
 end
