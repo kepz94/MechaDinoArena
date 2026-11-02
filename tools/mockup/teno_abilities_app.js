@@ -8,7 +8,7 @@ const rad = THREE.MathUtils.degToRad;
 const AREA = {attack: ["ATTACK", "#f05a4f"], defense: ["DEFENSE", "#5aa0ff"], speed: ["SPEED", "#ffd34d"], health: ["HEALTH", "#5fd16a"], eng: ["ENGINEER", "#ff9b2e"]};
 const STEEL = 0x9aa3ad, DARK = 0x3a3f47, BRASS = 0xc9a24a, RED = 0xe02a2a, MUD = 0x5b3d22, MUD2 = 0x7a5530, ROCKC = 0x8a8478, GREEN = 0x5fd16a, SKY = 0x8fc6e8;
 
-const PICK = {grab: 0, mortar: 0, mud: 0, stomp: 1, bellow: 1, leap: 1}; // Kepu 2026-11-01: 3, 4, 7 A; 5, 9, 14 B; 11 redesign
+const PICK = {grab: 0, mortar: 0, mud: 0, stomp: 1, bellow: 1, leap: 1, challenge: 1}; // + 11 D Target Painter (Kepu "Let's go D") // Kepu 2026-11-01: 3, 4, 7 A; 5, 9, 14 B; 11 redesign
 const AB = [
   {id: "grab", n: 3, name: "Tail Grab & Fling", area: "attack", key: "R", len: 4.2,
     steps: ["Button: grab the nearest raptor-size dino within 12 studs with your tail and fling it 30 studs ahead. 8 damage, stunned 1 s when it lands. Recharges in 16 s",
