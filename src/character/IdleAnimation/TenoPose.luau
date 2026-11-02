@@ -1,4 +1,4 @@
--- TenoPose v1.3 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.4 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -52,8 +52,11 @@
 --             0.15 s -> LEAP_SLAM (the tail slams), held 0.15 s, 0.6 s -> 0.
 --   attackAngles handles these phases; IdleAnimation 1.37+ multiplies them on like the attacks (no IdleAnimation change).
 --   Switch: model attribute TenoAbilityPoseEnabled (default true; false = 1.2).
+-- v1.4 (TenoMovesServer 1.2: the boulder leaves 0.15 s after the press, was 0.35): "tmortar" 0.15 s 0 -> TAIL_DOWN, 0.12 s
+--   -> TAIL_THROW (the whip), 0.8 s -> 0 (ends at 1.1 s). Switch: model attribute TenoMortarFastPoseEnabled (default true;
+--   false = 1.3 timing).
 local TenoPose = {}
-TenoPose.Version = "1.3"
+TenoPose.Version = "1.4"
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -222,6 +225,7 @@ local function num(v) return typeof(v) == "number" and v or nil end
 
 local slamYaw = 0 -- v1.2: the aimed yaw of the current slam (this module copy belongs to one model)
 local leapLand = nil -- v1.3: landing time (s after the leap start) of the current leap
+local fastMortar = true -- v1.4
 local function phaseV12(model, isOwner, serverNow)
 	local s = TenoPose.settings(model)
 	slamYaw = 0
@@ -272,6 +276,7 @@ function TenoPose.phase(model, isOwner, serverNow)
 			if serverNow - at < dur and (not bestAt or at > bestAt) then best, bestAt = id, at end
 		end
 	end
+	fastMortar = model:GetAttribute("TenoMortarFastPoseEnabled") ~= false -- v1.4
 	if best then return best, serverNow - bestAt, 0, "ability" end
 	return ph, t, hold, src
 end
@@ -313,6 +318,10 @@ function TenoPose.attackAngles(phase, t, hold, s, now)
 		if t < 0.8 then return mix(TAIL_DOWN, TAIL_OVER, smooth((t - 0.3) / 0.5)) end
 		if t < 1.1 then return mix(TAIL_OVER, TAIL_THROW, ease((t - 0.8) / 0.3)) end
 		return mix(TAIL_THROW, ZERO, smooth((t - 1.1) / 0.8))
+	elseif phase == "tmortar" and fastMortar then -- v1.4
+		if t < 0.15 then return mix(ZERO, TAIL_DOWN, smooth(t / 0.15)) end
+		if t < 0.27 then return mix(TAIL_DOWN, TAIL_THROW, ease((t - 0.15) / 0.12)) end
+		return mix(TAIL_THROW, ZERO, smooth((t - 0.27) / 0.8))
 	elseif phase == "tmortar" then
 		if t < 0.35 then return mix(ZERO, TAIL_DOWN, smooth(t / 0.35)) end
 		if t < 0.6 then return mix(TAIL_DOWN, TAIL_THROW, ease((t - 0.35) / 0.25)) end

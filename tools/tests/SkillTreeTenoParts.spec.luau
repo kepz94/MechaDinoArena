@@ -1,9 +1,10 @@
--- SkillTreeTenoParts.spec v1.1 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
+-- SkillTreeTenoParts.spec v1.2 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.49 (plan docs/plans/TENO_ABILITIES_v1.0.md Task 1, MDA-173). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTenoParts_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-01 "two builds"): tgrab / tmortar / tstomp / tleap live; tbellow / tchallenge / tmud "soon".
 -- v1.1 (SkillTree 1.52, Kepu 2026-11-02: the stomp never knocks a latched raptor off; star: it loses 50 stamina from its
 --   current pounce): new step I / star texts, stompLatchDrain 50 at star, stompNoJump always 0.
+-- v1.2 (SkillTree 1.53): Boulder Mortar step I = the crosshair + snap text.
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -25,6 +26,7 @@ local OTHERS = {"TRex", "Raptor", "Pachy", "Herrera"}
 eq("TENO_PARTS", ST.TENO_PARTS, true)
 eq("TENO_PARTS_SUPPORT_SOON", ST.TENO_PARTS_SUPPORT_SOON, true)
 eq("TENO_STOMP_DRAIN", ST.TENO_STOMP_DRAIN, true) -- v1.1
+eq("TENO_MORTAR_AIM", ST.TENO_MORTAR_AIM, true) -- v1.2
 local ROWS = {
 	tgrab = {"Tail Grab & Fling", "attack", false},
 	tmortar = {"Boulder Mortar", "attack", false},
@@ -64,7 +66,7 @@ if P.tgrab then
 	eq("grab star", P.tgrab.steps[4], "The flung dino crashes into others where it lands: 8 damage to each")
 end
 if P.tmortar then
-	eq("mortar I", P.tmortar.steps[1], "Button: lob a boulder at the nearest enemy in front, up to 60 studs (none: 45 studs ahead). 12 damage in a 10-stud splash, enemies slowed 30% for 2 s. Recharges in 14 s")
+	eq("mortar I", P.tmortar.steps[1], "Button: lob a boulder where your crosshair points (15-60 studs); it snaps onto a dino within 8 studs of that spot. 12 damage in a 10-stud splash, enemies slowed 30% for 2 s. Recharges in 14 s")
 	eq("mortar II", P.tmortar.steps[2], "Splash 14 studs")
 	eq("mortar III", P.tmortar.steps[3], "Lobs 2 boulders side by side")
 	eq("mortar star", P.tmortar.steps[4], "Leaves a rubble patch for 4 s: enemies in it are slowed 30%")

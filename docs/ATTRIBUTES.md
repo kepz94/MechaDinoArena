@@ -2584,3 +2584,13 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TurnLimitAimLook; TurnLimitAimLookEnabled | character (owner client); TurnLimit script | Vector3 while the slam view is flipped; true | ShoulderCam 1.7 / TurnLimit 1.2 |
 | TenoAttackTestCamAimEnabled | TenoAttackTest script | true | TenoAttackTest 1.4 |
 | TenoAttackCamAimEnabled; TenoSlamAimPref | TenoAttackServer script; character | true; degrees sent with the slam (or nil) | TenoAttackServer 1.4 |
+| SkillTree.TENO_STOMP_DRAIN / SkillTree.TENO_MORTAR_AIM | SkillTree module | true / true | SkillTree 1.52 / 1.53 |
+| TenoStompLatchDrain; SkillEffectsStompDrainEnabled | teno character (SkillEffects); SkillEffects script | 50 at Stomp star (off 0); true | SkillEffects 1.35 |
+| TenoMovesStompDrainEnabled; TenoStompDrained | TenoMovesServer script; character | true; count of latched raptors drained | TenoMovesServer 1.1 |
+| StaminaDrainAt / StaminaDrainAmount | latched raptor (player or bot) | server time / 50 | TenoMovesServer 1.1 (read by StaminaServer 1.6 / BotServer 1.23) |
+| StaminaDrainEnabled; StaminaDrainCount, StaminaLastEvent "drain" | StaminaServer script; player character | true; count | StaminaServer 1.6 |
+| BotLatchDrainEnabled; BotLatchDrains | BotServer script; bot | true; count | BotServer 1.23 |
+| TenoMovesGrabAnyDirEnabled / TenoMovesMortarAimEnabled | TenoMovesServer script | true / true | TenoMovesServer 1.2 |
+| TenoMortarMin / TenoMortarSnap (optional overrides); TenoMortarAimMode | teno character | 15 / 8; "crosshair" / "snap" / "auto" | TenoMovesServer 1.2 |
+| MechaButtonsMortarPointEnabled | MechaButtons script | true | MechaButtons 1.27 |
+| TenoMortarFastPoseEnabled | teno model | true | TenoPose 1.4 |

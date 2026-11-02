@@ -1,4 +1,4 @@
--- TenoMovesServer v1.1 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.2 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -63,20 +63,36 @@
 --   sooner; BotServer 1.23 cuts a bot's latch time by amount / PounceLatchDrain). NoJumpUntil is no longer written
 --   (TenoStompNoJump is 0). Switch: script attribute TenoMovesStompDrainEnabled (default true, read at each stomp; false =
 --   1.0: latched raptors released). Diagnostic: character TenoStompDrained (count).
+-- v1.2 (Kepu 2026-11-02 after playing v334: "the tail grab does nothing, the mortar is useless it only lands directly on the
+--   teno and is slow as hell"; picked "Any direction", "Crosshair + snap"):
+--   * Tail Grab: the target may be in any direction: the nearest allowed grabbable dino whose hitbox gap to the teno (the
+--     tail points, the root, Torso_chest, Neck_upper, Head_cranium) is within TenoGrabRange. Switch: script attribute
+--     TenoMovesGrabAnyDirEnabled (default true, read at each grab; false = 1.1, behind / beside only).
+--   * Boulder Mortar: DinoTenoMortarRequest(stamp, aimDir, aimPoint) - aimPoint = where the owner's crosshair ray hits
+--     (MechaButtons 1.27). Landing: the flat point from the root toward aimPoint, its distance clamped to TenoMortarMin (15)
+--     .. TenoMortarRange (60) (no aimPoint, or one more than 400 studs away: TenoMortarMiss along the aim); then it snaps
+--     to the nearest allowed enemy root within TenoMortarSnap (8) studs flat of that spot. Faster: MORTAR_FIRE 0.35 -> 0.15
+--     s, MORTAR_FLIGHT 1.3 -> 0.7 s, MORTAR_PEAK 30 -> 14 (press to impact 1.65 -> 0.85 s). Switch: script attribute
+--     TenoMovesMortarAimEnabled (default true, read at each shot; false = 1.1 aim and timing). Diagnostic: character
+--     TenoMortarAimMode ("crosshair" / "snap" / "auto").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
+local MORTAR_FIRE2, MORTAR_FLIGHT2, MORTAR_PEAK2 = 0.15, 0.7, 14 -- v1.2
 local STOMP_HIT = 0.5
 local LEAP_TIME = 0.9
 local DY = 15
 
 script:SetAttribute("TenoMovesServerVersion", VERSION)
 if script:GetAttribute("TenoMovesStompDrainEnabled") == nil then script:SetAttribute("TenoMovesStompDrainEnabled", true) end -- v1.1
+for _, k in ipairs({"TenoMovesGrabAnyDirEnabled", "TenoMovesMortarAimEnabled"}) do -- v1.2
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
 for _, k in ipairs({"TenoMovesServerEnabled", "TenoMoves_tgrabEnabled", "TenoMoves_tmortarEnabled", "TenoMoves_tstompEnabled",
 	"TenoMoves_tleapEnabled", "TenoMovesModeRulesEnabled", "TenoMovesServerSquadEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
@@ -364,6 +380,14 @@ local function pickGrab(char, t)
 	local range = num(char, "TenoGrabRange", 0)
 	local big = char:GetAttribute("TenoGrabBig") == true
 	local pts = tailPoints(char)
+	local anyDir = script:GetAttribute("TenoMovesGrabAnyDirEnabled") ~= false -- v1.2
+	if anyDir then
+		table.insert(pts, root.Position)
+		for _, n in ipairs({"Torso_chest", "Neck_upper", "Head_cranium"}) do
+			local p = char:FindFirstChild(n, true)
+			if p and p:IsA("BasePart") then table.insert(pts, p.Position) end
+		end
+	end
 	local best, bestD
 	local pool = candidates(char)
 	for _, m in ipairs(pool) do
@@ -372,7 +396,7 @@ local function pickGrab(char, t)
 		local okSize = SMALL[sp] or (big and BIG[sp])
 		if okSize and not shielded(m, t) and (not mr.Anchored or latchedOnMe(m, char)) then
 			local lp = root.CFrame:PointToObjectSpace(mr.Position)
-			if lp.Z >= 0 or latchedOnMe(m, char) then -- behind or beside the hips
+			if anyDir or lp.Z >= 0 or latchedOnMe(m, char) then -- behind or beside the hips (v1.2: any direction)
 				local d = math.huge
 				for _, p in ipairs(pts) do d = math.min(d, gap(m, p)) end
 				if d <= range and (not bestD or d < bestD) then best, bestD = m, d end
@@ -488,7 +512,7 @@ grabRemote.OnServerEvent:Connect(function(player, stamp)
 end)
 
 -- Boulder Mortar --------------------------------------------------------------------------------------------------------------------
-local function boulder(from, to)
+local function boulder(from, to, flight, peakUp)
 	local b = Instance.new("Part")
 	b.Name = "TenoBoulder"
 	b.Shape = Enum.PartType.Ball
@@ -497,11 +521,12 @@ local function boulder(from, to)
 	b.Anchored, b.CanCollide, b.CanQuery, b.CanTouch = true, false, false, false
 	b.CFrame = CFrame.new(from)
 	b.Parent = fx()
-	local peak = math.max(from.Y, to.Y) + MORTAR_PEAK
+	flight, peakUp = flight or MORTAR_FLIGHT, peakUp or MORTAR_PEAK -- v1.2
+	local peak = math.max(from.Y, to.Y) + peakUp
 	task.spawn(function()
 		local t0 = os.clock()
 		while b.Parent do
-			local u = math.min(1, (os.clock() - t0) / MORTAR_FLIGHT)
+			local u = math.min(1, (os.clock() - t0) / flight)
 			local base = from:Lerp(to, u)
 			local y0 = from.Y + (to.Y - from.Y) * u
 			local arc = 4 * (peak - math.max(from.Y, to.Y)) * u * (1 - u)
@@ -547,7 +572,7 @@ local function rubblePatch(char, player, pt, r, untilT, mul)
 		p:Destroy()
 	end)
 end
-mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 	local char, t = check(player, stamp, "tmortar", "TenoMortar", {aim = true, aimDir = aimDir})
 	if not char then return end
 	ok(char, "TenoMortar", t)
@@ -565,6 +590,34 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		if d > 1e-3 and d <= range and math.acos(math.clamp(aim:Dot(v.Unit), -1, 1)) <= cone and (not bestD or d < bestD) then best, bestD = m, d end
 	end
 	local centre = best and onGround(rootOf(best).Position) or onGround(root.Position + aim * miss)
+	local newAim = script:GetAttribute("TenoMovesMortarAimEnabled") ~= false -- v1.2: crosshair + snap
+	local fireT, flightT, peakT = MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK
+	if newAim then
+		fireT, flightT, peakT = MORTAR_FIRE2, MORTAR_FLIGHT2, MORTAR_PEAK2
+		local minR = num(char, "TenoMortarMin", 15)
+		local spot
+		if typeof(aimPoint) == "Vector3" and aimPoint == aimPoint and (aimPoint - root.Position).Magnitude <= 400 then
+			local v = flat(aimPoint - root.Position)
+			local d = math.clamp(v.Magnitude, minR, range)
+			local dir = v.Magnitude > 1e-3 and v.Unit or aim
+			spot = onGround(root.Position + dir * d)
+			char:SetAttribute("TenoMortarAimMode", "crosshair")
+		else
+			spot = onGround(root.Position + aim * math.clamp(miss, minR, range))
+			char:SetAttribute("TenoMortarAimMode", "auto")
+		end
+		local snapR = num(char, "TenoMortarSnap", 8)
+		best, bestD = nil, nil
+		for _, m in ipairs(candidates(char)) do
+			local d = flat(rootOf(m).Position - spot).Magnitude
+			if d <= snapR and (not bestD or d < bestD) then best, bestD = m, d end
+		end
+		if best then
+			spot = onGround(rootOf(best).Position)
+			char:SetAttribute("TenoMortarAimMode", "snap")
+		end
+		centre = spot
+	end
 	local right = aim:Cross(Vector3.yAxis).Unit
 	local pts = num(char, "TenoMortarCount", 1) >= 2 and {onGround(centre + right * MORTAR_PAIR), onGround(centre - right * MORTAR_PAIR)} or {centre}
 	local splash, dmg = num(char, "TenoMortarSplash", 10), num(char, "TenoMortarDamage", 12)
@@ -573,13 +626,13 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	char:SetAttribute("TenoMortarLand", centre)
 	char:SetAttribute("TenoMortarHits", 0)
 	char:SetAttribute("TenoMortarStartedAt", t) -- last: poses / FX
-	task.delay(MORTAR_FIRE, function()
+	task.delay(fireT, function()
 		if not char.Parent then return end
 		local tail = char:FindFirstChild("Tail3_main", true)
 		local from = (tail and tail:IsA("BasePart")) and (tail.CFrame * CFrame.new(0.1 * sc, 1.1 * sc, 0)).Position or root.Position + Vector3.new(0, 6, 0)
 		char:SetAttribute("TenoMortarFiredAt", now())
-		for _, pt in ipairs(pts) do boulder(from, pt) end
-		task.wait(MORTAR_FLIGHT)
+		for _, pt in ipairs(pts) do boulder(from, pt, flightT, peakT) end
+		task.wait(flightT)
 		local tl = now()
 		local hit, n = {}, 0
 		for _, m in ipairs(candidates(char)) do

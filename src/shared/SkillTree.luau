@@ -1,4 +1,4 @@
--- SkillTree v1.52 (1.49 teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.53 (1.49 teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -1813,6 +1813,14 @@ do
 		e.stompLatchDrain = st >= 4 and 50 or 0
 		return e
 	end
+end
+
+-- v1.53 (Kepu 2026-11-02: the mortar "only lands directly on the teno" -> picked "Crosshair + snap"; TenoMovesServer 1.2):
+-- Boulder Mortar step I text says it lands where the crosshair points (15-60 studs) and snaps onto a dino near that spot.
+-- Switch SkillTree.TENO_MORTAR_AIM (default true; false = 1.52 text). Numbers unchanged.
+SkillTree.TENO_MORTAR_AIM = true
+if SkillTree.TENO_PARTS and SkillTree.TENO_MORTAR_AIM and SkillTree.PATHS.tmortar then
+	SkillTree.PATHS.tmortar.steps[1] = "Button: lob a boulder where your crosshair points (15-60 studs); it snaps onto a dino within 8 studs of that spot. 12 damage in a 10-stud splash, enemies slowed 30% for 2 s. Recharges in 14 s"
 end
 
 return SkillTree

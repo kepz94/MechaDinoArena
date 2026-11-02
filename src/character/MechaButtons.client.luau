@@ -1,4 +1,4 @@
--- MechaButtons v1.26 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.27 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -222,12 +222,16 @@
 --   camera look (stamp, cam LookVector; auto-target on the server); the others are normal presses. The leap's ready / dim
 --   look: TenoLeapReadyAt is now while a charge is left, TenoLeapUntil while in the air. Switch: script attribute
 --   MechaButtonsTenoEnabled (default true, read at start; false = 1.25).
+-- v1.27 (Kepu 2026-11-02 picked "Crosshair + snap" for the mortar; TenoMovesServer 1.2): the mortar press also sends where
+--   the crosshair points: a ray from the camera along its look (400 studs, this character and Workspace.DinoFX_Local /
+--   DinoFX ignored) - its hit point, or nil when it hits nothing - as the 3rd argument. Switch: script attribute
+--   MechaButtonsMortarPointEnabled (default true, read at each press; false = 1.26).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.26"
+local VERSION = "1.27"
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -810,7 +814,20 @@ local function press(n, input)
 	if TENO_BTN and id == "tmortar" then -- v1.26: the mortar aims along the camera look (TenoMovesServer 1.0 auto-targets)
 		local r = ReplicatedStorage:FindFirstChild("DinoTenoMortarRequest")
 		local cam = workspace.CurrentCamera
-		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
+		local point -- v1.27: the crosshair's hit point
+		if cam and script:GetAttribute("MechaButtonsMortarPointEnabled") ~= false then
+			local rp = RaycastParams.new()
+			rp.FilterType = Enum.RaycastFilterType.Exclude
+			local ex = {char}
+			for _, n in ipairs({"DinoFX_Local", "DinoFX"}) do
+				local f = workspace:FindFirstChild(n)
+				if f then table.insert(ex, f) end
+			end
+			rp.FilterDescendantsInstances = ex
+			local hit = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 400, rp)
+			point = hit and hit.Position or nil
+		end
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector, point) end
 		return
 	end
 	if id == "hookarm" then -- v1.15: the hook fires along the camera look (HookServer 1.0)
