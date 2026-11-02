@@ -1,5 +1,5 @@
-// Teno mecha abilities mockup v0.1 (Kepu 2026-11-01 picks: 3 Tail Grab & Fling, 4 Boulder Mortar, 5 Stomp Shockwave,
-// 7 Mud Armor, 9 Herd Bellow, 11 Challenge Call, 12 Nest Beacon, 14 Hydraulic Leap). TENO = TenoModelData 1.3 (look E),
+// Teno mecha abilities mockup v0.2 (Kepu 2026-11-01 picks: 3 Tail Grab & Fling, 4 Boulder Mortar, 5 Stomp Shockwave,
+// 7 Mud Armor, 9 Herd Bellow, 11 Challenge Call, 14 Hydraulic Leap; v0.2: "Remove the nest beacon"). TENO = TenoModelData 1.3 (look E),
 // HERRERA = enemy dummies.
 const TENO = __TENO__;
 const HERRERA = __HERRERA__;
@@ -39,12 +39,6 @@ const AB = [
     note: "Your number: 40% less damage. The tank job: pull the fight onto the teno so the squad survives. Marked enemies get a red mark over their head so everyone sees who's marked.",
     looks: [{name: "A · Siren Crest", sub: "a red siren on the head", why: "A red siren light on top of the head that spins and flashes while the call is active."},
       {name: "B · Banner Mast", sub: "a war banner on the hips", why: "A steel mast on the hips with a red banner that snaps open and waves while enemies are marked."}]},
-  {id: "beacon", n: 12, name: "Nest Beacon", area: "eng", key: "T", len: 5.6,
-    steps: ["Button: plant a nest beacon (60 HP). You and your squad can respawn at it once. One beacon at a time; recharges 60 s after it's used or destroyed",
-      "Beacon has 100 HP", "2 respawns", "Respawning at the beacon gives a 3 s shield"],
-    note: "Enemies can break it (it shows on their screen with its health). Open question for later: how it works in Arena rounds vs the free island (I'd say island + squad only, not in 1v1 duels).",
-    looks: [{name: "A · Egg Beacon", sub: "a mecha egg carried on the back", why: "A big steel-and-glass egg in a cradle on the back. It drops, plants itself and its core pulses green."},
-      {name: "B · Totem Spike", sub: "a spike pole with a lantern", why: "A steel spike strapped along the side. It stabs into the ground and a green lantern lights on top."}]},
   {id: "leap", n: 14, name: "Hydraulic Leap", area: "speed", key: "C", len: 3.6,
     steps: ["Button: a hydraulic leap 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 14 s",
       "Leap 55 studs", "Landing stuns 0.5 s", "2 leaps (2 charges)"],
