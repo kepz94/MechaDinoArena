@@ -1,4 +1,4 @@
--- RaptorScale v1.3 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
+-- RaptorScale v1.5 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
 -- docs/plans/TERRITORIES_v1.0.md Task 4 (Kepu 2026-10-28: "the raptor bots might be a little too small ... esp with the
 -- camera angle"; answers: 2x, bots and players).
 -- Who: every player character whose Species is "Raptor" (CharacterAdded, also SpeciesServer's raptor body) and every
@@ -25,10 +25,17 @@
 --   RaptorScaleHerreraEnabled (default true) is on. (The header line read v1.1 through 1.2.)
 -- v1.4 (MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 3): player characters whose Species is "Teno" are scaled the same way
 --   by the script attribute TenoScale (default 2) while RaptorScaleTenoEnabled (default true) is on.
+-- v1.5 (MDA-193, plan docs/plans/TREX_REDESIGN_v1.0.md Task 2; Kepu 2026-11-02 picked X = the true-to-life T-Rex at roster
+--   scale): player characters whose Species is "TRex" (TRexModelData 2.0 / StarterCharacter 1.3, built at 38 studs) and
+--   models with BotSpecies "TRex" are scaled the same way (Model:ScaleTo, the GrowthCurve distance keys, ground lift) by
+--   the script attribute TRexScale (default 1.63 = 62 / 38). Switches: RaptorScaleTRexEnabled (players, default true) and
+--   RaptorScaleTRexBotsEnabled (bots, default true), read per new model; off = the true-to-life T-Rex at 38 studs. Growth:
+--   as for the other dinos (GrowthServer sets an absolute scale, RaptorScale multiplies once per model, marked by
+--   RaptorScaleApplied, so the two never stack twice). The VERSION constant (still "1.2" through 1.4) now reads "1.5".
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.2"
+local VERSION = "1.5"
 local DEFAULTS = {RaptorScaleEnabled = true, RaptorScale = 2}
 local FALLBACK = {BiteReachBack = 8, BiteLungeDist = 3, EatRange = 8, EatHeight = 20, CameraStartZoom = 35} -- = GrowthServer 1.2
 local GC = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("GrowthCurve"))
@@ -60,6 +67,9 @@ if script:GetAttribute("PachyScale") == nil then script:SetAttribute("PachyScale
 if script:GetAttribute("RaptorScalePachyBotsEnabled") == nil then script:SetAttribute("RaptorScalePachyBotsEnabled", true) end -- v1.2
 if script:GetAttribute("RaptorScaleHerreraEnabled") == nil then script:SetAttribute("RaptorScaleHerreraEnabled", true) end -- v1.3
 if script:GetAttribute("HerreraScale") == nil then script:SetAttribute("HerreraScale", 2) end -- v1.3
+if script:GetAttribute("RaptorScaleTRexEnabled") == nil then script:SetAttribute("RaptorScaleTRexEnabled", true) end -- v1.5
+if script:GetAttribute("RaptorScaleTRexBotsEnabled") == nil then script:SetAttribute("RaptorScaleTRexBotsEnabled", true) end -- v1.5
+if script:GetAttribute("TRexScale") == nil then script:SetAttribute("TRexScale", 1.63) end -- v1.5
 
 local function apply(model, factor) -- v1.1: factor = the pachy's scale (nil = RaptorScale)
 	if model:GetAttribute("RaptorScaleApplied") ~= nil or script:GetAttribute("RaptorScaleEnabled") == false then return end
@@ -98,6 +108,9 @@ local function onCharacter(char)
 	if char.Parent and char:GetAttribute("Species") == "Teno" and script:GetAttribute("RaptorScaleTenoEnabled") ~= false then -- v1.4
 		apply(char, tonumber(script:GetAttribute("TenoScale")) or 2)
 	end
+	if char.Parent and char:GetAttribute("Species") == "TRex" and script:GetAttribute("RaptorScaleTRexEnabled") ~= false then -- v1.5
+		apply(char, tonumber(script:GetAttribute("TRexScale")) or 1.63)
+	end
 end
 local function onPlayer(player)
 	player.CharacterAdded:Connect(onCharacter)
@@ -111,6 +124,9 @@ local function onModel(m)
 	if m:IsA("Model") and m:GetAttribute("BotSpecies") == "Raptor" then task.defer(apply, m) end
 	if m:IsA("Model") and m:GetAttribute("BotSpecies") == "Pachy" and script:GetAttribute("RaptorScalePachyBotsEnabled") ~= false then -- v1.2
 		task.defer(apply, m, tonumber(script:GetAttribute("PachyScale")) or 2)
+	end
+	if m:IsA("Model") and m:GetAttribute("BotSpecies") == "TRex" and script:GetAttribute("RaptorScaleTRexBotsEnabled") ~= false then -- v1.5
+		task.defer(apply, m, tonumber(script:GetAttribute("TRexScale")) or 1.63)
 	end
 end
 workspace.DescendantAdded:Connect(onModel)
