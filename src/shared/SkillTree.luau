@@ -1,4 +1,4 @@
--- SkillTree v1.51 (1.49 reserved for the teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.51 (1.49 teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,22 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.49 (teno mecha abilities, plan docs/plans/TENO_ABILITIES_v1.0.md Task 1, MDA-173; mockup
+--   docs/mockups/teno_abilities_options.html v0.3, step texts from it; Mortar I worded for the auto-target Kepu picked).
+--   Switch SkillTree.TENO_PARTS (default true): 7 teno-only mecha button parts (dino / OWNER "Teno", mech, BUTTONS):
+--   tgrab "Tail Grab & Fling" (attack), tmortar "Boulder Mortar" (attack), tstomp "Stomp Shockwave" (defense), tbellow
+--   "Herd Bellow" (health), tchallenge "Challenge Call" (defense), tleap "Hydraulic Leap" (speed), tmud "Mud Armor"
+--   (defense). SkillTree.TENO_PARTS_SUPPORT_SOON (default true; build 1, Kepu "two builds"): tbellow / tchallenge / tmud
+--   soon (not buyable, not LIVE_MECH); the other 4 are LIVE_MECH. effects() (teno only; off values elsewhere / unbought):
+--   grabRange 12, grabFling 30 / 45 (II), grabDamage 8, grabStun 1, grabBig (III: pachy / teno size too), grabCrash 8 +
+--   grabCrashRadius 8 (star), grabCooldown 16; mortarRange 60, mortarMiss 45, mortarCone 30, mortarDamage 12, mortarSplash
+--   10 / 14 (II), mortarCount 1 / 2 (III), mortarSlowMul 0.7, mortarSlowTime 2, mortarRubble 4 (star), mortarCooldown 14;
+--   stompRange 14 / 20 (III), stompDamage 6, stompStun 0.5 / 1 (II), stompNoJump 3 (star), stompCooldown 15; leapDist
+--   40 / 55 (II), leapDamage 10, leapRadius 12, leapStun 0.5 (III), leapCharges 1 / 2 (star), leapCooldown 14;
+--   bellowRange 25 / 40 (III), bellowTime 4 / 6 (II), bellowDamageMul 0.5, bellowRunMul 1.5, bellowClearStun (star),
+--   bellowCooldown 30; challengeRange 30 / 45 (III), challengeTime 5 / 7 (II), challengeWeakMul 0.6, challengeSlowMul 0.8
+--   (star), challengeCooldown 20; mudTime 8 / 12 (III), mudHits 3 / 4 (II), mudSlowRadius 15, mudSlowMul 0.6, mudSlowTime
+--   4, mudSplash 12 (star), mudCooldown 20. Off: 0 / 1 (muls) / false.
 -- v1.50 (teno stats part 2, plan docs/plans/TENO_STATS_v1.1.md, mockup docs/mockups/teno_stats_v0.2.html; Kepu 2026-11-01:
 --   "Let's do heals on kills. Add heavy tail and look for one more" -> "Add a and b" -> "I like it"). Switch
 --   SkillTree.TENO_STATS_2 (default true; false = 1.48 rows): three teno-only rows (dino / OWNER "Teno", mech false):
@@ -1599,6 +1615,101 @@ do
 		local s = SkillTree.sanitize(steps, dino)
 		local bo = (SkillTree.TENO_STATS and SkillTree.TENO_BUCK_CHARGE) and (s.buckoff or 0) or 0
 		e.buckCharge = bo >= 4 and 1 or 0
+		return e
+	end
+end
+
+
+-- v1.49: the teno's mecha button parts (see the header)
+SkillTree.TENO_PARTS = true
+SkillTree.TENO_PARTS_SUPPORT_SOON = true
+if SkillTree.TENO_PARTS and not SkillTree.PATHS.tgrab then
+	local function part(id, name, areaId, steps)
+		local p = path(id, name, true, false, steps)
+		p.area = areaId
+		p.dino = "Teno"
+		SkillTree.OWNER[id] = "Teno"
+		SkillTree.LIVE_MECH[id] = true
+		SkillTree.BUTTONS[id] = true
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		SkillTree.PATHS[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	part("tgrab", "Tail Grab & Fling", "attack", {
+		"Button: grab the nearest raptor-size dino within 12 studs with your tail and fling it 30 studs ahead. 8 damage, stunned 1 s when it lands. Recharges in 16 s",
+		"Fling 45 studs", "Grabs bigger dinos too (up to pachy size)", "The flung dino crashes into others where it lands: 8 damage to each"})
+	part("tmortar", "Boulder Mortar", "attack", {
+		"Button: lob a boulder at the nearest enemy in front, up to 60 studs (none: 45 studs ahead). 12 damage in a 10-stud splash, enemies slowed 30% for 2 s. Recharges in 14 s",
+		"Splash 14 studs", "Lobs 2 boulders side by side", "Leaves a rubble patch for 4 s: enemies in it are slowed 30%"})
+	part("tstomp", "Stomp Shockwave", "defense", {
+		"Button: rear up and stomp. A 14-stud shockwave: 6 damage, stuns 0.5 s and knocks off latched raptors. Recharges in 15 s",
+		"Stun 1 s", "Shockwave 20 studs", "Stomped dinos can't jump or pounce for 3 s"})
+	part("tbellow", "Herd Bellow", "health", {
+		"Button: you and squadmates within 25 studs take 50% less damage and run 50% faster for 4 s. Recharges in 30 s",
+		"Lasts 6 s", "Reaches 40 studs", "Also clears stuns on everyone it reaches"})
+	part("tchallenge", "Challenge Call", "defense", {
+		"Button: enemies within 30 studs are marked for 5 s: they deal 40% less damage, and bots go for you. Recharges in 20 s",
+		"Mark lasts 7 s", "Reaches 45 studs", "Marked enemies are also slowed 20%"})
+	part("tleap", "Hydraulic Leap", "speed", {
+		"Button: a hydraulic leap 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 14 s",
+		"Leap 55 studs", "Landing stuns 0.5 s", "2 leaps (2 charges)"})
+	part("tmud", "Mud Armor", "defense", {
+		"Button: wallow in mud. A mud coat for 8 s blocks your next 3 hits completely, and each blocked hit slows every enemy within 15 studs 40% for 4 s. Latched raptors slide off. Recharges in 20 s",
+		"Blocks 4 hits", "Coat lasts 12 s", "When the coat ends it splashes 12 studs around: enemies slowed 40% for 4 s"})
+	if SkillTree.TENO_PARTS_SUPPORT_SOON then
+		for _, id in ipairs({"tbellow", "tchallenge", "tmud"}) do
+			SkillTree.PATHS[id].soon = true
+			SkillTree.LIVE_MECH[id] = nil
+		end
+	end
+end
+do
+	local effectsPre149 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre149(steps, dino)
+		if type(e) ~= "table" then return e end
+		local on = SkillTree.TENO_PARTS and dino == "Teno" and SkillTree.PATHS.tgrab ~= nil
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local g, m, st, b, c, l, md = s.tgrab or 0, s.tmortar or 0, s.tstomp or 0, s.tbellow or 0, s.tchallenge or 0, s.tleap or 0, s.tmud or 0
+		e.grabRange, e.grabDamage, e.grabStun = g >= 1 and 12 or 0, g >= 1 and 8 or 0, g >= 1 and 1 or 0
+		e.grabFling = g >= 2 and 45 or (g >= 1 and 30 or 0)
+		e.grabBig = g >= 3
+		e.grabCrash, e.grabCrashRadius = g >= 4 and 8 or 0, g >= 4 and 8 or 0
+		e.grabCooldown = g >= 1 and 16 or 0
+		e.mortarRange, e.mortarMiss, e.mortarCone = m >= 1 and 60 or 0, m >= 1 and 45 or 0, m >= 1 and 30 or 0
+		e.mortarDamage = m >= 1 and 12 or 0
+		e.mortarSplash = m >= 2 and 14 or (m >= 1 and 10 or 0)
+		e.mortarCount = m >= 3 and 2 or (m >= 1 and 1 or 0)
+		e.mortarSlowMul, e.mortarSlowTime = m >= 1 and 0.7 or 1, m >= 1 and 2 or 0
+		e.mortarRubble = m >= 4 and 4 or 0
+		e.mortarCooldown = m >= 1 and 14 or 0
+		e.stompRange = st >= 3 and 20 or (st >= 1 and 14 or 0)
+		e.stompDamage = st >= 1 and 6 or 0
+		e.stompStun = st >= 2 and 1 or (st >= 1 and 0.5 or 0)
+		e.stompNoJump = st >= 4 and 3 or 0
+		e.stompCooldown = st >= 1 and 15 or 0
+		e.leapDist = l >= 2 and 55 or (l >= 1 and 40 or 0)
+		e.leapDamage, e.leapRadius = l >= 1 and 10 or 0, l >= 1 and 12 or 0
+		e.leapStun = l >= 3 and 0.5 or 0
+		e.leapCharges = l >= 4 and 2 or (l >= 1 and 1 or 0)
+		e.leapCooldown = l >= 1 and 14 or 0
+		e.bellowRange = b >= 3 and 40 or (b >= 1 and 25 or 0)
+		e.bellowTime = b >= 2 and 6 or (b >= 1 and 4 or 0)
+		e.bellowDamageMul, e.bellowRunMul = b >= 1 and 0.5 or 1, b >= 1 and 1.5 or 1
+		e.bellowClearStun = b >= 4
+		e.bellowCooldown = b >= 1 and 30 or 0
+		e.challengeRange = c >= 3 and 45 or (c >= 1 and 30 or 0)
+		e.challengeTime = c >= 2 and 7 or (c >= 1 and 5 or 0)
+		e.challengeWeakMul = c >= 1 and 0.6 or 1
+		e.challengeSlowMul = c >= 4 and 0.8 or 1
+		e.challengeCooldown = c >= 1 and 20 or 0
+		e.mudTime = md >= 3 and 12 or (md >= 1 and 8 or 0)
+		e.mudHits = md >= 2 and 4 or (md >= 1 and 3 or 0)
+		e.mudSlowRadius, e.mudSlowMul, e.mudSlowTime = md >= 1 and 15 or 0, md >= 1 and 0.6 or 1, md >= 1 and 4 or 0
+		e.mudSplash = md >= 4 and 12 or 0
+		e.mudCooldown = md >= 1 and 20 or 0
 		return e
 	end
 end
