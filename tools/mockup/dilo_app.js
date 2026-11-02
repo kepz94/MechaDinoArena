@@ -1,4 +1,4 @@
-// Dilo model mockup app v0.5 (side by side with the troodon). LOOKS = generator exports (tools/dilo_generator.py --json); RAPTOR / TREX = model_json.py exports.
+// Dilo model mockup app v0.8 (face options + face close-up view). LOOKS = generator exports (tools/dilo_generator.py --json); RAPTOR / TREX = model_json.py exports.
 const LOOKS = __LOOKS__;
 const RAPTOR = __RAPTOR__;
 const TREX = __TREX__;
@@ -8,6 +8,9 @@ const rad = THREE.MathUtils.degToRad;
 const INFO = {
   A: {why: "Slender, with a long S-shaped neck held high. The frill is a solid rounded hood around the head, like a spitting cobra, with two dark eye-spots and a dark rim. Tall, thin, arched twin crests run along the snout, and a long whip tail balances it.", pose: "Tall and alert, head high above the hood."},
   B: {why: "Stocky and upright with a bigger head. The frill is a full round sail like a frilled lizard: teal membrane, pale spines poking past the edge, dark eye-spots. A tall notched mohawk of double crests, and a thick tail.", pose: "Upright, chest out, sail flared."},
+  E: {why: "D's body with a Bruiser face: a short, deep snout on a wide boxy skull, a heavy brow ridge over the eyes, a deep jaw with a chin and big teeth, short thick crests. Wide and blunt, built to look tough.", pose: "Same body as D."},
+  F: {why: "D's body with a Croc face: a long, broad, flat snout that widens at the tip like a spoon, teeth poking out along the sides, eyes set high on bumps, low crests running along the snout. Wide but long.", pose: "Same body as D."},
+  G: {why: "D's body with a Viper face: a wedge head, very wide at the back with swollen yellow venom-gland cheeks (fits the spitter), tapering to a hooked point with two fangs, slit eyes under angled brows, crests that sweep back.", pose: "Same body as D."},
   D: {why: "The Cobra Hood made much thicker all around (body, neck, tail, legs and arms 70% thicker, head 35% bigger; long S-neck held high, the split hood around the head, tall thin twin crests, a long whip tail) with the frill itself red and yellow: rings out from the neck, red, yellow, red, then the dark rim, like the Quill Stalker's banded quills. The throat sac is yellow; everything else stays as A.", pose: "Tall and alert, head high above the hood."},
   C: {why: "Low and horizontal like a sprinter, neck stretched forward. The frill is a ruff of long banded red-and-white quills, like a lionfish. Short crests sweep back like horns, and the long tail is held level.", pose: "Low, neck out, quills up."},
 };
@@ -50,11 +53,11 @@ const corner = new THREE.Vector3();
 function pose(d, angles) {
   const W = {HRP: new THREE.Matrix4().makeRotationY(d.yaw)};
   for (const j of d.joints) { const v = angles[j.n] || [0, 0, 0]; W[j.p1] = W[j.p0].clone().multiply(j.c0).multiply(rot(v[0], v[1], v[2])).multiply(j.c1inv); }
-  let minY = Infinity; const box = new THREE.Box3();
+  let minY = Infinity; const box = new THREE.Box3(), hbox = new THREE.Box3();
   const S = new THREE.Matrix4().makeScale(d.scale, d.scale, d.scale);
   for (const n in d.segs) for (const p of d.segs[n]) {
     const m = S.clone().multiply(W[n]).multiply(p.local); p.mesh.matrix.copy(m);
-    for (let i = 0; i < 8; i++) { corner.set((i & 1 ? .5 : -.5) * p.size[0], (i & 2 ? .5 : -.5) * p.size[1], (i & 4 ? .5 : -.5) * p.size[2]).applyMatrix4(m); minY = Math.min(minY, corner.y); box.expandByPoint(corner); }
+    for (let i = 0; i < 8; i++) { corner.set((i & 1 ? .5 : -.5) * p.size[0], (i & 2 ? .5 : -.5) * p.size[1], (i & 4 ? .5 : -.5) * p.size[2]).applyMatrix4(m); minY = Math.min(minY, corner.y); box.expandByPoint(corner); if (n === "Head" || n === "Jaw") hbox.expandByPoint(corner); }
   }
   if (d.D.roles) for (const p of d.parts) {
     const isF = p.name.includes("_frill"), isFold = p.name.includes("_fold");
@@ -62,7 +65,7 @@ function pose(d, angles) {
   }
   const lift = new THREE.Matrix4().makeTranslation(d.x, -minY, d.z);
   for (const p of d.parts) p.mesh.matrix.premultiply(lift);
-  box.translate(new THREE.Vector3(d.x, -minY, d.z)); d.box = box;
+  box.translate(new THREE.Vector3(d.x, -minY, d.z)); d.box = box; hbox.translate(new THREE.Vector3(d.x, -minY, d.z)); d.hbox = hbox;
 }
 
 // ---------- state ----------
@@ -148,10 +151,15 @@ function frame(now) {
   else if (view === "top") cam.position.set(c.x + 0.01, c.y + r, c.z);
   else cam.position.set(c.x + r * 0.78, c.y + r * 0.3, c.z - r * 0.55);
   cam.lookAt(c.x, c.y * 0.8, c.z);
+  if (view === "face" && !compare && !vsTroo) { // close-up of the head, from the front-left
+    const hc = d.hbox.getCenter(new THREE.Vector3()), hs = d.hbox.getSize(new THREE.Vector3());
+    const hr = Math.max(hs.x, hs.y, hs.z) * 0.5 / Math.tan(rad(cam.fov / 2)) * 1.5;
+    cam.position.set(hc.x + hr * 0.75, hc.y + hr * 0.2, hc.z - hr * 0.65); cam.lookAt(hc.x, hc.y, hc.z);
+  }
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
-resize(); setLook("D"); setView("three");
+resize(); setLook("E"); setView("three");
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__run = t => { swingT = t; };

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Dilo generator v0.7 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+"""Dilo generator v0.8 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
 v0.2 (Kepu 2026-11-02: "The frill splits in the middle"): every frill is two halves, left and right, with a gap down the
 middle (--whole = the v0.1 one-piece frill). Colours and patterns stay our own.
 v0.3: look D = A Cobra Hood with a red frill and yellow markings (Kepu: "the quill stalker frill colors on the cobra hood").
 v0.4: D's hood is red / yellow / red rings out from the neck, like the quill bands (Kepu: "the frill itself to be red and yellow").
 v0.6: D is thicker: bulk 1.35 on the body, neck, tail, legs and arms, the head x1.18 (Kepu: "the Dilo is too thin"); A unchanged.
 v0.7: D thicker still: bulk 1.7, head x1.35 (Kepu: "Maybe even more thicker just all around").
+v0.8: three face options on the D body: E Bruiser, F Croc, G Viper (Kepu: "the face looks too skinny and narrow").
 
 Kepu 2026-11-02: "Next is the dilo" (two reference pictures of the film-style frilled dilophosaurus). Answers: role
 "Ranged spitter"; size "Raptor size (~26)"; frill "Crests + a frill" (the real animal had twin head crests and no frill;
@@ -23,13 +24,13 @@ Same 17-segment rig and joint names as the other dinos (rig 1.3). Dino space D =
 the hip centre. Scaled so its length is TARGET_LEN (13 studs at scale 1, doubled in game: ~26 like the raptor).
 Skin rule: 10 colour groups, no shared hex, no never-paint colour (teeth E8E2D2, pupil 111111, mouth 6E342E, HRP A3A2A5).
 Colours are a first pass per style and can move between styles.
-Run: python3 tools/dilo_generator.py --look A|B|C|D --json OUT   (the three.js viewer's format)
+Run: python3 tools/dilo_generator.py --look A|B|C|D|E|F|G --json OUT   (the three.js viewer's format)
 The data file (DiloModelData.luau) comes after Kepu picks.
 """
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.7"
+VERSION = "0.8"
 TARGET_LEN = 13.0    # studs at scale 1 (~26 in game, the raptor's size)
 HRP_SIZE_D0 = (3.0, 2.0, 1.1)
 ROLES = ["main", "stripes", "belly", "frill", "frillmark", "crest", "limbs", "claws", "eyes", "mask"]
@@ -50,6 +51,17 @@ LOOKS = {
     # v0.6 (Kepu: "I feel like the Dilo is too thin in these mockups"): D bulk 1.35 (body, neck, tail, legs, arms; head x1.18)
     # v0.7 (Kepu: "Maybe even more thicker just all around"): D bulk 1.7 (head x1.35)
     "D": {"name": "Cobra Hood Red", "style": "cobra", "fr": 1.0, "neck": 0, "hood": "hoodband", "bulk": 1.7,
+          "pal": {"main": "6E7A3A", "stripes": "3A3F22", "belly": "D8D0A0", "frill": "C8362E", "frillmark": "E2C23A",
+                  "crest": "C24A2A", "limbs": "5A6430", "claws": "2C2822", "eyes": "F0E04A", "mask": "1C1C1A"}},
+    # v0.8 (Kepu: "Redesign the face of the dilo as well with different options. The body build is fine I just think the
+    # face looks too skinny and narrow"): D's body and colours with three wider heads
+    "E": {"name": "Bruiser Face", "style": "cobra", "fr": 1.0, "neck": 0, "hood": "hoodband", "bulk": 1.7, "face": "bruiser",
+          "pal": {"main": "6E7A3A", "stripes": "3A3F22", "belly": "D8D0A0", "frill": "C8362E", "frillmark": "E2C23A",
+                  "crest": "C24A2A", "limbs": "5A6430", "claws": "2C2822", "eyes": "F0E04A", "mask": "1C1C1A"}},
+    "F": {"name": "Croc Face", "style": "cobra", "fr": 1.0, "neck": 0, "hood": "hoodband", "bulk": 1.7, "face": "croc",
+          "pal": {"main": "6E7A3A", "stripes": "3A3F22", "belly": "D8D0A0", "frill": "C8362E", "frillmark": "E2C23A",
+                  "crest": "C24A2A", "limbs": "5A6430", "claws": "2C2822", "eyes": "F0E04A", "mask": "1C1C1A"}},
+    "G": {"name": "Viper Face", "style": "cobra", "fr": 1.0, "neck": 0, "hood": "hoodband", "bulk": 1.7, "face": "viper",
           "pal": {"main": "6E7A3A", "stripes": "3A3F22", "belly": "D8D0A0", "frill": "C8362E", "frillmark": "E2C23A",
                   "crest": "C24A2A", "limbs": "5A6430", "claws": "2C2822", "eyes": "F0E04A", "mask": "1C1C1A"}},
 }
@@ -271,6 +283,103 @@ def head(base, snout_len, h, w, jaw_open, eye):
         part("Jaw", key, size, about(jr, c, -jaw_open), pitch=-jaw_open, name=nm)
 
 
+def face(kind, base, S, jaw_open=8):
+    """v0.8 (Kepu 2026-11-02: "Redesign the face of the dilo as well with different options ... the face looks too skinny
+    and narrow"): three wider, heavier heads for the D body. S = the head scale (HB). Head + Jaw segments, crests included.
+      bruiser - a short deep snout on a wide boxy skull, a heavy brow ridge, a deep jaw and big teeth, short thick crests;
+      croc    - a long, broad, flat snout that widens at the tip, teeth along the sides, eyes set high, low crests along
+                the snout;
+      viper   - a wedge: very wide at the back with swollen venom-gland cheeks, tapering to a hooked point, slit eyes under
+                angled brows, crests that sweep back."""
+    hx, hy = base
+    seg("Head", (hx, hy, 0.0))
+
+    def eyes(x, y, zz, ew, eh, brow_pitch, brow_len, slit=False):
+        for side in (1, -1):
+            s = "L" if side > 0 else "R"
+            part("Head", "mask", (ew * 1.5, eh * 1.6, 0.04), (x, y, side * zz), name=f"Head_eyering{s}")
+            part("Head", "eyes", (ew, eh, 0.05), (x + 0.01, y, side * (zz + 0.01)), name=f"Head_eye{s}")
+            part("Head", "pupil", (ew * (0.2 if slit else 0.32), eh * 0.85, 0.03), (x + 0.03, y, side * (zz + 0.03)), name=f"Head_pupil{s}")
+            part("Head", "mask", (brow_len, 0.12, 0.12), (x + 0.03, y + eh * 0.9, side * (zz - 0.03)), pitch=brow_pitch, name=f"Head_brow{s}")
+
+    def teeth(x0, x1, y, z, n, h, w, prefix="Head", seg_="Head", t=0.07):
+        for i in range(n):
+            x = x0 + (x1 - x0) * i / max(1, n - 1)
+            part(seg_, "tooth", (t, h, w), (x, y, z), name=f"{prefix}_tooth{i + 1}")
+
+    if kind == "bruiser":
+        part("Head", "main", (0.8 * S, 0.62 * S, 0.74 * S), (hx + 0.32, hy + 0.08, 0.0), name="Head_skull")
+        part("Head", "main", (0.42 * S, 0.42 * S, 0.84 * S), (hx + 0.28, hy - 0.12, 0.0), name="Head_cheeks")
+        part("Head", "main", (0.86, 0.5 * S, 0.62 * S), (hx + 1.05, hy - 0.04, 0.0), pitch=-4, name="Head_snout")
+        part("Head", "main", (0.3, 0.44 * S, 0.58 * S), (hx + 1.55, hy - 0.1, 0.0), pitch=-8, name="Head_tip")
+        part("Head", "mask", (0.55, 0.16, 0.8 * S), (hx + 0.45, hy + 0.08 + 0.31 * S + 0.05, 0.0), pitch=-12, name="Head_browridge")
+        part("Head", "mouth", (1.25, 0.05, 0.6 * S), (hx + 1.0, hy - 0.25 * S, 0.0), pitch=-4, name="Head_mouth")
+        teeth(hx + 0.65, hx + 1.55, hy - 0.25 * S - 0.06, 0.0, 6, 0.17, 0.62 * S, t=0.09)
+        eyes(hx + 0.45, hy + 0.24, 0.37 * S + 0.02, 0.17, 0.15, -14, 0.38)
+        for side in (1, -1):
+            part("Head", "mask", (0.08, 0.08, 0.04), (hx + 1.65, hy - 0.02, side * 0.29 * S), name=f"Head_nostril{'L' if side > 0 else 'R'}")
+        crests(hx + 0.55, hx + 1.45, hy + 0.08 + 0.31 * S - 0.05, 0.45, 0.2 * S, -6, 0.11)
+        jr = (hx + 0.1, hy - 0.3 * S, 0.0)
+        seg("Jaw", jr)
+        for key, size, c, nm in [("main", (1.5, 0.32 * S, 0.66 * S), (hx + 0.85, hy - 0.5 * S, 0.0), "Jaw_lower"),
+                                 ("main", (0.3, 0.34 * S, 0.6 * S), (hx + 1.55, hy - 0.5 * S, 0.0), "Jaw_chin"),
+                                 ("frillmark", (0.7, 0.36 * S, 0.56 * S), (hx + 0.4, hy - 0.72 * S, 0.0), "Jaw_sac")]:
+            part("Jaw", key, size, about(jr, c, -jaw_open), pitch=-jaw_open, name=nm)
+        for i in range(5):
+            c = (hx + 0.7 + i * 0.2, hy - 0.3 * S + 0.07, 0.0)
+            part("Jaw", "tooth", (0.08, 0.14, 0.62 * S), about(jr, c, -jaw_open), pitch=-jaw_open, name=f"Jaw_tooth{i + 1}")
+
+    elif kind == "croc":
+        part("Head", "main", (0.72 * S, 0.58 * S, 0.68 * S), (hx + 0.3, hy + 0.06, 0.0), name="Head_skull")
+        part("Head", "main", (1.45, 0.36 * S, 0.62 * S), (hx + 1.3, hy - 0.08, 0.0), pitch=-2, name="Head_snout")
+        part("Head", "main", (0.4, 0.38 * S, 0.8 * S), (hx + 2.15, hy - 0.11, 0.0), pitch=-2, name="Head_spoon")
+        part("Head", "mouth", (1.9, 0.05, 0.62 * S), (hx + 1.3, hy - 0.08 - 0.19 * S, 0.0), pitch=-2, name="Head_mouth")
+        for side in (1, -1):  # teeth poking out along the sides
+            s = "L" if side > 0 else "R"
+            for i in range(7):
+                x = hx + 0.75 + i * 0.24
+                zz = side * (0.31 * S + (0.09 * S if x > hx + 1.9 else 0.0))
+                part("Head", "tooth", (0.07, 0.16, 0.07), (x, hy - 0.08 - 0.22 * S, zz), name=f"Head_tooth{s}{i + 1}")
+            part("Head", "main", (0.32, 0.24, 0.24), (hx + 0.42, hy + 0.06 + 0.33 * S, side * 0.24 * S), name=f"Head_eyebump{s}")
+            part("Head", "mask", (0.08, 0.08, 0.04), (hx + 2.3, hy - 0.02, side * 0.3 * S), name=f"Head_nostril{s}")
+        eyes(hx + 0.45, hy + 0.06 + 0.33 * S, 0.24 * S + 0.12, 0.15, 0.13, -10, 0.3)
+        for side in (1, -1):  # low crests running along the snout sides
+            for i in range(6):
+                t = i / 5
+                hh = 0.38 * math.sin(math.pi * (0.15 + 0.8 * t))
+                part("Head", "crest", (0.2, hh, 0.07), (hx + 0.75 + 1.1 * t, hy - 0.08 + 0.18 * S + hh / 2, side * 0.26 * S),
+                     name=f"Head_crest{i + 1}{'L' if side > 0 else 'R'}")
+        jr = (hx + 0.1, hy - 0.3 * S, 0.0)
+        seg("Jaw", jr)
+        for key, size, c, nm in [("main", (2.0, 0.22 * S, 0.6 * S), (hx + 1.15, hy - 0.08 - 0.33 * S, 0.0), "Jaw_lower"),
+                                 ("main", (0.38, 0.22 * S, 0.76 * S), (hx + 2.12, hy - 0.08 - 0.33 * S, 0.0), "Jaw_spoon"),
+                                 ("frillmark", (0.6, 0.32 * S, 0.5 * S), (hx + 0.4, hy - 0.62 * S, 0.0), "Jaw_sac")]:
+            part("Jaw", key, size, about(jr, c, -jaw_open), pitch=-jaw_open, name=nm)
+
+    else:  # viper
+        part("Head", "main", (0.78, 0.6 * S, 0.98 * S), (hx + 0.3, hy + 0.05, 0.0), name="Head_skull")
+        for side in (1, -1):  # swollen venom-gland cheeks
+            part("Head", "frillmark", (0.5, 0.42 * S, 0.22), (hx + 0.32, hy - 0.08, side * 0.52 * S), name=f"Head_gland{'L' if side > 0 else 'R'}")
+        part("Head", "main", (0.62, 0.48 * S, 0.7 * S), (hx + 0.95, hy - 0.02, 0.0), pitch=-4, name="Head_snoutback")
+        part("Head", "main", (0.6, 0.38 * S, 0.44 * S), (hx + 1.52, hy - 0.08, 0.0), pitch=-8, name="Head_snoutfront")
+        part("Head", "main", (0.26, 0.34 * S, 0.3 * S), (hx + 1.9, hy - 0.16, 0.0), pitch=-28, name="Head_hook")
+        part("Head", "mouth", (1.55, 0.05, 0.5 * S), (hx + 1.15, hy - 0.24 * S, 0.0), pitch=-6, name="Head_mouth")
+        teeth(hx + 0.75, hx + 1.75, hy - 0.24 * S - 0.06, 0.0, 6, 0.13, 0.46 * S)
+        part("Head", "tooth", (0.08, 0.3, 0.08), (hx + 1.62, hy - 0.24 * S - 0.12, 0.17 * S), name="Head_fangL")
+        part("Head", "tooth", (0.08, 0.3, 0.08), (hx + 1.62, hy - 0.24 * S - 0.12, -0.17 * S), name="Head_fangR")
+        eyes(hx + 0.5, hy + 0.18, 0.49 * S + 0.02, 0.24, 0.12, -22, 0.44, slit=True)
+        for side in (1, -1):  # crests sweeping back off the snout
+            for k in range(4):
+                blade("Head", "crest", (hx + 1.35 - k * 0.3, hy + 0.12 + 0.05 * k, side * 0.16 * S), (-0.75, 0.66, 0), 0.55 + 0.08 * k, 0.16, 0.07,
+                      name=f"Head_crest{k + 1}{'L' if side > 0 else 'R'}")
+        jr = (hx + 0.1, hy - 0.3 * S, 0.0)
+        seg("Jaw", jr)
+        for key, size, c, nm in [("main", (0.7, 0.28 * S, 0.9 * S), (hx + 0.45, hy - 0.48 * S, 0.0), "Jaw_back"),
+                                 ("main", (1.1, 0.22 * S, 0.48 * S), (hx + 1.25, hy - 0.42 * S, 0.0), "Jaw_front"),
+                                 ("frillmark", (0.65, 0.34 * S, 0.62 * S), (hx + 0.4, hy - 0.7 * S, 0.0), "Jaw_sac")]:
+            part("Jaw", key, size, about(jr, c, -jaw_open), pitch=-jaw_open, name=nm)
+
+
 GROUND = -3.4
 
 if STYLE == "cobra":
@@ -299,8 +408,11 @@ if STYLE == "cobra":
         split_frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, 115, 8, fold=True)
     else:
         frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, -115, 115, 7, fold=True)
-    head((2.45, 2.35), 1.15, 0.5 * HB, 0.44 * HB, 8, 0.17)
-    crests(2.85, 3.85, 2.35 + 0.17 * HB, 0.6, 0.17 * HB, -4, 0.06)
+    if L.get("face"):  # v0.8: the redesigned heads
+        face(L["face"], (2.45, 2.35), HB)
+    else:
+        head((2.45, 2.35), 1.15, 0.5 * HB, 0.44 * HB, 8, 0.17)
+        crests(2.85, 3.85, 2.35 + 0.17 * HB, 0.6, 0.17 * HB, -4, 0.06)
     arms((1.35, 0.1), (1.55, -0.38), (1.92, -0.32), 0.35 * BK + 0.05 * (BK - 1), 0.14 * BK)
     tail([(1.35, (1.4, 0.5 * BK, 0.46 * BK), 4), (1.3, (1.35, 0.4 * BK, 0.36 * BK), 2), (1.25, (1.3, 0.3 * BK, 0.28 * BK), 0), (1.15, (1.2, 0.22 * BK, 0.2 * BK), -2), (1.05, (1.1, 0.15 * BK, 0.15 * BK), -3)], (-0.85, 0.22))
     legs((0.45, -1.45), (-0.4, -2.75), (-0.05, -3.3), 0.36 * BK, 0.38 * BK, 0.2 * BK)
