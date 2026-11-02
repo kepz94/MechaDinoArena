@@ -47,7 +47,8 @@
 --   TenoLeapChargesLeft, TenoLeapRefillAt; TenoLeapReadyAt = now while a charge is left, else the next refill. ok:
 --   TenoLeapDistNow = TenoLeapDist, TenoLeapFlightTime = LEAP_TIME (0.9), TenoLeapUntil = now + LEAP_TIME + 0.8,
 --   TenoLeapStartedAt (last: TenoLeapLaunch 1.0 on the owner's client launches the body). Landing = the first heartbeat
---   after now + 0.3 s with Humanoid.FloorMaterial not Air, or now + LEAP_TIME + 0.8: every allowed dino whose hitbox gap to
+--   after 0.6 x LEAP_TIME with the root back within 1.5 studs of its take-off height over the ground (the server's
+--   FloorMaterial of a player-owned body is not reliable), or now + LEAP_TIME + 0.8: every allowed dino whose hitbox gap to
 --   the root is within TenoLeapRadius (15 up / down): TenoLeapDamage; III (TenoLeapStun > 0): StunnedUntil = max(old, now +
 --   TenoLeapStun). No tail slam charge is used. Teno: TenoLeapLandedAt, TenoLeapHits, TenoLeapUntil = 0.
 -- Switches: script attributes TenoMovesServerEnabled, TenoMoves_tgrabEnabled, TenoMoves_tmortarEnabled,
@@ -690,11 +691,14 @@ leapRemote.OnServerEvent:Connect(function(player, stamp)
 	char:SetAttribute("TenoLeapUntil", t + LEAP_TIME + 0.8)
 	char:SetAttribute("TenoLeapHits", 0)
 	char:SetAttribute("TenoLeapStartedAt", t) -- last: TenoLeapLaunch launches the body
+	local r0 = rootOf(char)
+	local h0 = r0.Position.Y - groundY(r0.Position, r0.Position.Y - 3) -- standing height over the ground
 	task.spawn(function()
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		local w0 = os.clock()
 		while char.Parent and hum and hum.Parent and os.clock() - w0 < LEAP_TIME + 0.8 do
-			if os.clock() - w0 > 0.3 and hum.FloorMaterial ~= Enum.Material.Air then break end
+			local rr = rootOf(char)
+			if os.clock() - w0 >= LEAP_TIME * 0.6 and rr and rr.Position.Y - groundY(rr.Position, rr.Position.Y - 3) <= h0 + 1.5 then break end
 			RunService.Heartbeat:Wait()
 		end
 		local root = rootOf(char)
