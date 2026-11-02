@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Therizino generator v0.2 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+"""Therizino generator v1.0 (Mecha Dino Arena) — writes src/shared/Models/TherizinoModelData.luau.
+v1.0 (Kepu 2026-11-02: "Let's go with the reaper look"): Classic = A Reaper (default look); without --json the generator
+writes the data file (geometry + the T-Rex's attributes with every move off, Species "Therizino"). B / C stay reproducible
+with --look for the mockup.
+v0.2 (mockup stage): three different styles for Kepu to pick from.
 
 Kepu 2026-11-02: "Therizino. Slasher build" -> "Make the model". Answers: size "Between raptor and T-Rex (~32)";
 style "True to the animal"; feathers "Fully feathered"; roster "Day 1".
@@ -22,13 +26,17 @@ doubled in game like the raptor / Herrera / troodon: ~32; T-Rex ~40, raptor ~25.
 Skin rule: every visible block uses one authored colour per group (10 groups), no hex shared between groups, none equal
 to a never-paint colour (teeth E8E2D2, pupils 111111, mouth 6E342E, HRP A3A2A5). Colours are a first pass per style and
 can move between styles.
-Run: python3 tools/therizino_generator.py --look A|B|C --json OUT   (the three.js viewer's format)
-The data file (TherizinoModelData.luau, attributes, Classic colours) comes after Kepu picks.
+Run: python3 tools/therizino_generator.py                (writes the data file: A Reaper)
+     python3 tools/therizino_generator.py --look A|B|C --json OUT   (the three.js viewer's format)
 """
 import json, math, os, sys
 
+import re
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.2"
+OUT = os.path.join(ROOT, "src", "shared", "Models", "TherizinoModelData.luau")
+TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
+SMOOTH = {"eyes", "pupil", "tooth", "claws", "mouth"}
+VERSION = "1.0"
 TARGET_LEN = 16.0    # studs at scale 1 (~32 in game)
 HRP_SIZE_D0 = (3.0, 2.6, 1.6)
 ROLES = ["main", "back", "belly", "coat", "mane", "limbs", "claws", "eyes", "beak", "mask"]
@@ -45,7 +53,7 @@ LOOKS = {  # v0.2: three styles (body designs)
           "pal": {"main": "5A6046", "back": "D0702E", "belly": "B9B48E", "coat": "474D38", "mane": "7A8060",
                   "limbs": "3A3E2E", "claws": "24221E", "eyes": "F0D040", "beak": "2E2C26", "mask": "8E3A1E"}},
 }
-LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
+LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"  # v1.0: Classic = A Reaper
 L = LOOKS[LOOK]
 F, NECK_RAISE, STYLE = L["feather"], L["neck"], L["style"]
 C = {**L["pal"], "tooth": "E8E2D2", "pupil": "111111", "mouth": "6E342E"}
@@ -415,6 +423,46 @@ if "--json" in sys.argv:
             "stats": {"length": round(hi[0] - lo[0], 2), "height": round(hi[1] + HIP, 2), "width": round(hi[2] - lo[2], 2), "hip": round(HIP, 3)}}
     json.dump(data, open(out, "w"))
     print("json ->", out)
+if "--json" not in sys.argv:
+    # ------------------------------------------------------------ full data file (v1.0), same layout as HerreraModelData / TenoModelData
+    assert LOOK == "A", "the data file is the picked look: A Reaper"
+    def fmt(v):
+        return "{" + ",".join(f"{x:g}" for x in v) + "}"
+    hx, hy, hz = HRP_SIZE_D
+    body = [f'\thrp = {{size = {{{hz:.4g},{hy:.4g},{hx:.4g}}}, color = "A3A2A5", surface = {{"Studs","Inlet","Smooth","Smooth","Smooth","Smooth"}}}},',
+            f'\thumanoid = {{RigType = "R15", HipHeight = {HIP - hy / 2:.4g}, DisplayDistanceType = "None"}},',
+            '\tmodelStreamingMode = "Atomic",', "\tsegments = {"]
+    for n_ in order:
+        sg = segments[n_]
+        body.append(f'\t\t{{name = "{n_}", root = {fmt(cf(sg["root"]))}, parts = {{')
+        for p in sg["parts"]:
+            surface = '"Smooth"' if p["key"] in SMOOTH else '"Studs"'
+            body.append(f'\t\t\t{{name = "{p["name"]}", size = {fmt([round(v, 4) for v in p["size"]])}, '
+                        f'cf = {fmt(cf(p["center"], p["R"]))}, color = "{C[p["key"]]}", surface = {surface}}},')
+        body.append("\t\t}},")
+    body.append("\t},")
+    body.append("\tjoints = {")
+    for jn, p0, p1 in JOINTS:
+        c0 = cf((0.0, 0.0, 0.0)) if p0 == "HRP" else [round(segments[p1]["root"][i] - segments[p0]["root"][i], 5) + 0.0 for i in range(3)] + [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        body.append(f'\t\t{{name = "{jn}", part0 = "{p0}", part1 = "{p1}", c0 = {fmt(c0)}, c1 = {{0,0,0,1,0,0,0,1,0,0,0,1}}}},')
+    body.append("\t},")
+    trex = open(TREX).read()
+    block = trex[trex.index("attributes = {"):]
+    block = block[:block.index("\n\t},")]
+    attrs = {m.group(1): m.group(2) for m in re.finditer(r'^\t\t(\w+) = (.+?),$', block, re.M)}
+    attrs.update({"Species": '"Therizino"', "StyleVersion": '"1.0"', "TherizinoModelVersion": f'"{VERSION}"', "DisplayName": '"Therizino"',
+                  "RigHipHeight": f"{HIP:.4g}", "BiteEnabled": "false", "PounceEnabled": "false", "RamEnabled": "false",
+                  "RoarEnabled": "false", "JumpEnabled": "false", "CreepEnabled": "false"})
+    attrs.pop("StarterCharacterVersion", None)
+    lines = [f"-- TherizinoModelData v{VERSION} (Mecha Dino Arena) — block-style feathered Therizinosaurus ({LOOK} {L['name']}: tall and gaunt, feather cloak, scythe claws), rig 1.3 joint names, skin-ready colour groups.",
+             "-- Generated by tools/therizino_generator.py (do not edit by hand; change the generator and re-run). Mockup docs/mockups/therizino_model_options.html (v0.2, Kepu picked A Reaper).",
+             f"-- Scale: {hi[0] - lo[0]:.2f} studs long, hip {HIP:.4g} studs; doubled in game like the raptor / Herrera / troodon (~{2 * (hi[0] - lo[0]):.0f}; raptor ~25.7, T-Rex ~40).",
+             f"-- Colour groups (Classic = {L['name']}): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: teeth E8E2D2, pupil 111111, mouth 6E342E.",
+             "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB. Rebuild with DinoModelBuilder.build(require(TherizinoModelData)).",
+             "-- Not playable yet: no SpeciesServer entry, no kit (every move off). Those come with the therizino kit plan.",
+             "return {", f'\tversion = "{VERSION}", species = "Therizino", style = "1.0", rig = "1.3",'] + body + ["\tattributes = {"] + [f"\t\t{k} = {attrs[k]}," for k in sorted(attrs)] + ["\t},", "}"]
+    open(OUT, "w").write("\n".join(lines) + "\n")
+    print("data ->", OUT, f"({len(attrs)} attributes)")
 n = sum(len(segments[s_]["parts"]) for s_ in order)
 print(f"look {LOOK} ({L['name']}): {n} parts, {len(order)} segments, scale {K:.3f}, HIP {HIP:.3f}")
 print("length %.2f, height %.2f, width %.2f" % (hi[0] - lo[0], hi[1] + HIP, hi[2] - lo[2]))
