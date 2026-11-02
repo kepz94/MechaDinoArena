@@ -1,4 +1,4 @@
--- SkillEffects v1.32 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.34 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -214,6 +214,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local VERSION = "1.30" -- v1.28 (1.27 left this at "1.26"); v1.29 squads; v1.30 Herrera pass 3
 VERSION = "1.31" -- v1.31 teno rows
 VERSION = "1.32" -- v1.32 Buck Off star 4th slam charge
+VERSION = "1.34" -- v1.34 teno stats part 2 (1.33 reserved for the teno abilities, MDA-175)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -226,6 +227,21 @@ local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
 if script:GetAttribute("SkillEffectsTenoChargeEnabled") == nil then script:SetAttribute("SkillEffectsTenoChargeEnabled", true) end -- v1.32
 if script:GetAttribute("SkillEffectsTenoChargeEnabled") ~= false then
 	table.insert(TENO_ATTRS, {"TenoSlamExtraCharges", "buckCharge", 0}) -- v1.32: Buck Off star -> TenoAttackServer 1.2
+end
+-- v1.34 (teno stats part 2, MDA-183, plan docs/plans/TENO_STATS_v1.1.md; SkillTree 1.50): the Survivor / Heavy Tail / Front
+--   Claws fields join TENO_ATTRS (read by TenoAttackServer 1.3 / TenoAttackTest 1.3 / TenoStatsServer 1.1); Armored Hide
+--   uses the existing Thick Hide plumbing (Defense points, toss / stun multipliers). Switch: script attribute
+--   SkillEffectsTenoStats2Enabled (default true, read at start).
+if script:GetAttribute("SkillEffectsTenoStats2Enabled") == nil then script:SetAttribute("SkillEffectsTenoStats2Enabled", true) end
+if script:GetAttribute("SkillEffectsTenoStats2Enabled") ~= false then
+	for _, f in ipairs({
+		{"TenoSurvivorKillHeal", "survivorKillHeal", 0}, {"TenoSurvivorNearHeal", "survivorNearHeal", 0},
+		{"TenoSurvivorNearRange", "survivorNearRange", 0}, {"TenoSurvivorRefill", "survivorRefill", false},
+		{"TenoHeavyBonus", "heavyBonus", 0}, {"TenoHeavyRefillMul", "heavyRefillMul", 1}, {"TenoHeavyReachMul", "heavyReachMul", 1},
+		{"TenoHeavySlow", "heavySlow", 0}, {"TenoHeavySlowTime", "heavySlowTime", 0},
+		{"TenoClawBonus", "clawBonus", 0}, {"TenoClawCone", "clawCone", 0}, {"TenoClawGap", "clawGap", 0},
+		{"TenoClawSlow", "clawSlow", 0}, {"TenoClawSlowTime", "clawSlowTime", 0},
+	}) do table.insert(TENO_ATTRS, f) end
 end
 if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
 local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false

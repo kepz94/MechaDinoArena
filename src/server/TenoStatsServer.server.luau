@@ -1,4 +1,4 @@
--- TenoStatsServer v1.0 (Mecha Dino Arena) — the Tenontosaurus' stat rows in play: Charge Up, Brace and Buck Off. Plan
+-- TenoStatsServer v1.1 (Mecha Dino Arena) — the Tenontosaurus' stat rows in play: Charge Up, Brace and Buck Off. Plan
 -- docs/plans/TENO_STATS_v1.0.md (deterministic map), mockup docs/mockups/teno_stats_options.html (Kepu 2026-10-31: speed C,
 -- defense C, signature "Buck Off": "This only works when latched. If you're stunned and then latched it doesn't work",
 -- stun rule "Off only while stunned"). Reads the character attributes SkillEffects 1.31 writes (SkillTree 1.45 effects).
@@ -34,11 +34,21 @@
 -- Diagnostics: script TenoStatsServerVersion, TenoStatsBumps, TenoStatsRepelled, TenoStatsTicks; character TenoChargeLevel,
 --   TenoChargeMul, TenoBumpCount, TenoBumpLast, TenoBraceHits, TenoBraceBonus, TenoBraceRefunded (total), TenoBraceHealed,
 --   TenoLatchedCount, TenoLatchImmuneUntil, TenoBuckTicks.
+-- v1.1 (teno stats part 2, MDA-185, plan docs/plans/TENO_STATS_v1.1.md; SkillEffects 1.34 / SkillTree 1.50) Survivor. Switch:
+--   script attribute TenoStatsSurvivorEnabled (default true, read at each step; false = 1.0). Every 0.2 s each model in
+--   play (players' characters, DinoIsland.Bots) whose KilledAt changed is a death; for each living teno character:
+--   * KilledBy = the teno's name and TenoSurvivorKillHeal > 0 -> heal TenoSurvivorKillHeal x MaxHealth over 4 s (its own
+--     stream, capped at MaxHealth); with TenoSurvivorRefill (star) also +1 slam charge (TenoAttackServer 1.3's BindableEvent
+--     TenoAddCharge, never above the max).
+--   * else, TenoSurvivorNearHeal > 0, the dead model allowed for the teno (ModeRules, not a squadmate) and its root within
+--     TenoSurvivorNearRange studs (25) of the teno's root -> heal TenoSurvivorNearHeal x MaxHealth over 4 s (III).
+--   A kill by the teno never also gives the near heal. Diagnostics: character TenoSurvivorHeals (count), TenoSurvivorLast
+--   ("kill" / "near"); script TenoStatsSurvivorHeals.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local RUN_FRAC, DIP_GRACE, LEVEL1_T, LEVEL2_T = 0.8, 0.3, 2, 3
 local BUMP_AHEAD, BUMP_REACH, BUMP_CONE, BUMP_GAP, BUMP_TIME = 5, 3, math.rad(35), 1.5, 0.3
 
@@ -342,6 +352,82 @@ RunService.Heartbeat:Connect(function(dt)
 			end
 		end
 		for m in pairs(st.acc) do if not keep[m] then st.acc[m] = nil end end
+	end
+end)
+
+-- v1.1: Survivor --------------------------------------------------------------------------------------------------------
+if script:GetAttribute("TenoStatsSurvivorEnabled") == nil then script:SetAttribute("TenoStatsSurvivorEnabled", true) end
+script:SetAttribute("TenoStatsSurvivorHeals", 0)
+local SURVIVOR_TIME, SURVIVOR_POLL = 4, 0.2
+local seenKill = {} -- [model] = last KilledAt
+local streams = {} -- [char] = {{rate, untilT}, ...}
+local function survivorOn() return on() and script:GetAttribute("TenoStatsSurvivorEnabled") ~= false end
+local function addStream(char, frac, why)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 or frac <= 0 then return end
+	streams[char] = streams[char] or {}
+	table.insert(streams[char], {rate = frac * hum.MaxHealth / SURVIVOR_TIME, untilT = os.clock() + SURVIVOR_TIME})
+	char:SetAttribute("TenoSurvivorHeals", (char:GetAttribute("TenoSurvivorHeals") or 0) + 1)
+	char:SetAttribute("TenoSurvivorLast", why)
+	count("TenoStatsSurvivorHeals")
+end
+local function addCharge(char)
+	local tas = game:GetService("ServerScriptService"):FindFirstChild("TenoAttackServer")
+	local ev = tas and tas:FindFirstChild("TenoAddCharge")
+	if ev and ev:IsA("BindableEvent") then ev:Fire(char) end
+end
+local survAcc = 0
+RunService.Heartbeat:Connect(function(dt)
+	-- heal streams
+	local c = os.clock()
+	for char, list in pairs(streams) do
+		local hum = char.Parent and char:FindFirstChildOfClass("Humanoid")
+		if not hum or hum.Health <= 0 then
+			streams[char] = nil
+		else
+			local add = 0
+			for i = #list, 1, -1 do
+				local e = list[i]
+				add += e.rate * dt
+				if c >= e.untilT then table.remove(list, i) end
+			end
+			if add > 0 and hum.Health < hum.MaxHealth then hum.Health = math.min(hum.MaxHealth, hum.Health + add) end
+			if #list == 0 then streams[char] = nil end
+		end
+	end
+	survAcc += dt
+	if survAcc < SURVIVOR_POLL then return end
+	survAcc = 0
+	local on2 = survivorOn()
+	local deaths = {}
+	for _, m in ipairs(allModels()) do
+		local at = m:GetAttribute("KilledAt")
+		if typeof(at) == "number" and seenKill[m] ~= at then
+			if seenKill[m] ~= nil or (now() - at) < 1 then table.insert(deaths, m) end -- first sight: only a fresh death counts
+			seenKill[m] = at
+		end
+	end
+	for m in pairs(seenKill) do if not m.Parent then seenKill[m] = nil end end
+	if not on2 or #deaths == 0 then return end
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local char = pl.Character
+		local root = char and rootOf(char)
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if root and hum and hum.Health > 0 and isTeno(char) then
+			local killHeal, nearHeal = num(char, "TenoSurvivorKillHeal", 0), num(char, "TenoSurvivorNearHeal", 0)
+			local nearRange = num(char, "TenoSurvivorNearRange", 0)
+			for _, m in ipairs(deaths) do
+				if m ~= char then
+					if m:GetAttribute("KilledBy") == char.Name and killHeal > 0 then
+						addStream(char, killHeal, "kill")
+						if char:GetAttribute("TenoSurvivorRefill") == true then addCharge(char) end
+					elseif nearHeal > 0 and nearRange > 0 and m:GetAttribute("KilledBy") ~= char.Name and mayAffect(char, m) then
+						local r = rootOf(m)
+						if r and (r.Position - root.Position).Magnitude <= nearRange then addStream(char, nearHeal, "near") end
+					end
+				end
+			end
+		end
 	end
 end)
 

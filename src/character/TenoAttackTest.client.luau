@@ -1,4 +1,4 @@
--- TenoAttackTest v1.2 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
+-- TenoAttackTest v1.3 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
 -- release = rear tail slam. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 6 (server: TenoAttackServer 1.0), mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: "Tap = scratch, hold = slam").
 -- Active while the character has TenoAttackEnabled = true (TenoModelData 1.1); does nothing on other dinos.
@@ -32,13 +32,16 @@
 --   TenoLocalSlamYaw before TenoLocalState "slam", so the own tail turns at once (TenoPose 1.2); the server's aim
 --   (TenoSlamAimYaw) is the one that hits. Switch: script attribute TenoAttackTestAimEnabled (default true, read at each
 --   slam; false = yaw 0).
+-- v1.3 (teno stats part 2, plan docs/plans/TENO_STATS_v1.1.md): the local scratch gap is TenoClawGap when it is above 0
+--   (Front Claws III: 0.35 s; SkillEffects 1.34), else TenoScratchGap, matching TenoAttackServer 1.3. Switch: script
+--   attribute TenoAttackTestClawGapEnabled (default true, read at each press; false = 1.2).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local ACTION = "DinoTenoAttack"
 local ACTION_CLICK = "DinoTenoAttackClick"
 local DEFAULTS = {TenoAttackEnabled = false, TenoSlamHoldMin = 0.22, TenoScratchGap = 0.5, TenoLeftClickEnabled = true}
@@ -145,7 +148,10 @@ local function onRelease()
 		show("TenoInputResult", "slam")
 		return
 	end
-	if t - lastScratch < (tonumber(get("TenoScratchGap")) or 0.5) then
+	local gapNow = tonumber(get("TenoScratchGap")) or 0.5 -- v1.3: Front Claws III
+	local cg = tonumber(char:GetAttribute("TenoClawGap")) or 0
+	if script:GetAttribute("TenoAttackTestClawGapEnabled") ~= false and cg > 0 then gapNow = cg end
+	if t - lastScratch < gapNow then
 		setState("none", t)
 		show("TenoInputResult", "cooldown")
 		return

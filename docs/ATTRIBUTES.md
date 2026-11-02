@@ -2540,3 +2540,15 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoSlamYawEnabled | teno model (TenoPose default) | true | TenoPose 1.2 |
 | ArenaTouchTeno4thPip / AbilityBarTeno4thPip | ArenaTouch / AbilityBar scripts | true / true | ArenaTouch 1.10 / AbilityBar 1.21 |
 | SkillEffectsTenoChargeEnabled | SkillEffects script | true | SkillEffects 1.32 |
+| SkillTree.TENO_STATS_2 | SkillTree module | true | SkillTree 1.50 |
+| TenoSurvivorKillHeal / TenoSurvivorNearHeal / TenoSurvivorNearRange / TenoSurvivorRefill | teno character (SkillEffects) | 0.15 (I) / 0.25 (II+); 0.10 / 25 (III+); true (★) (off 0 / 0 / 0 / false) | SkillEffects 1.34 |
+| TenoHeavyBonus / TenoHeavyRefillMul / TenoHeavyReachMul / TenoHeavySlow / TenoHeavySlowTime | teno character (SkillEffects) | 3 / 0.75 (II+) / 1.2 (III+) / 0.3 / 3 (★) (off 0 / 1 / 1 / 0 / 0) | SkillEffects 1.34 |
+| TenoClawBonus / TenoClawCone / TenoClawGap / TenoClawSlow / TenoClawSlowTime | teno character (SkillEffects) | 3 / 130 (II+) / 0.35 (III+) / 0.3 / 1.5 (★) (off 0 / 0 / 0 / 0 / 0) | SkillEffects 1.34 |
+| SkillEffectsTenoStats2Enabled | SkillEffects script | true | SkillEffects 1.34 |
+| TenoAttackStats2Enabled; TenoAttackSlows / TenoAttackAddCharges; BindableEvent TenoAddCharge | TenoAttackServer script | true; counts | TenoAttackServer 1.3 |
+| TenoSlowUntil / TenoSlowMul | slowed player character | server time / 0.7 | TenoAttackServer 1.3 (read by SprintTest 1.18) |
+| TenoSlowed | slowed bot | true while its WalkSpeed is scaled | TenoAttackServer 1.3 |
+| TenoAttackTestClawGapEnabled | TenoAttackTest script | true | TenoAttackTest 1.3 |
+| SprintTenoSlowEnabled; MoveSpeedParts adds "tenoSlow" | SprintTest script / character | true | SprintTest 1.18 |
+| TenoStatsSurvivorEnabled; TenoStatsSurvivorHeals | TenoStatsServer script | true; count | TenoStatsServer 1.1 |
+| TenoSurvivorHeals / TenoSurvivorLast | teno character (server) | count / "kill" / "near" | TenoStatsServer 1.1 |

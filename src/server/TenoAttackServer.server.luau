@@ -1,4 +1,4 @@
--- TenoAttackServer v1.2 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.3 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -74,12 +74,25 @@
 --   The module is copied to ReplicatedStorage.TenoSlamAimShared at start (TenoAttackTest 1.2 predicts the aim for its
 --   pose). Diagnostics: character TenoSlamAimYaw, TenoSlamAimTarget, TenoSlamFrontLatched (count left on); script
 --   TenoAttackAimMode ("aim" / "arc" at the last slam).
+-- v1.3 (teno stats part 2, MDA-184, plan docs/plans/TENO_STATS_v1.1.md; SkillEffects 1.34 writes the Teno* attributes from
+--   SkillTree 1.50). Switch: script attribute TenoAttackStats2Enabled (default true, read at each use; false = 1.2):
+--   * Heavy Tail: slam damage + TenoHeavyBonus (I: 3); refill time x TenoHeavyRefillMul (II: 0.75); slam reach (aim
+--     TenoSlamReach and the 1.1 TenoSlamRange) x TenoHeavyReachMul (III: 1.2); star: every slammed dino is slowed
+--     (1 - TenoHeavySlow) for TenoHeavySlowTime s after its stun ends.
+--   * Front Claws: scratch damage + TenoClawBonus (I: 3); cone TenoClawCone degrees (II: 130; 0 = the 90 default); the gap
+--     between scratches TenoClawGap s (III: 0.35; 0 = TenoScratchGap); star: a scratch hit slows (1 - TenoClawSlow) for
+--     TenoClawSlowTime s.
+--   * Slows: a player target gets TenoSlowUntil / TenoSlowMul (SprintTest 1.18 multiplies its speed; the stronger / longer
+--     of two slows is kept); a bot's WalkSpeed is scaled while slowed (HerreraMovesServer's pattern; BotServer untouched;
+--     bot attribute TenoSlowed).
+--   * BindableEvent script.TenoAddCharge:Fire(char): +1 slam charge, never above the max (Survivor star, TenoStatsServer 1.1).
+--   Diagnostics: script TenoAttackSlows, TenoAttackAddCharges (counts).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local SCRATCH_HIT_AT = 0.17     -- s after the press: mockup T1 + T2 / 2
 local SCRATCH_CONE = math.rad(45)
 local SHOVE_TIME = 0.3
@@ -104,6 +117,14 @@ local function now() return workspace:GetServerTimeNow() end
 local function count(k, n) script:SetAttribute(k, (script:GetAttribute(k) or 0) + (n or 1)) end
 local function num(m, k, d) return tonumber(m:GetAttribute(k)) or d end
 local function get(char, k) return num(char, k, DEFAULTS[k]) end
+-- v1.3: teno stats part 2 helpers
+if script:GetAttribute("TenoAttackStats2Enabled") == nil then script:SetAttribute("TenoAttackStats2Enabled", true) end
+local function s2On() return script:GetAttribute("TenoAttackStats2Enabled") ~= false end
+local function s2(char, k, off) if not s2On() then return off end return num(char, k, off) end
+local function refillOf(char) return math.max(0.5, get(char, "TenoSlamRefill") * math.clamp(s2(char, "TenoHeavyRefillMul", 1), 0.1, 2)) end
+local function reachMulOf(char) return math.clamp(s2(char, "TenoHeavyReachMul", 1), 0.5, 3) end
+local function scratchGapOf(char) local g = s2(char, "TenoClawGap", 0) return g > 0 and g or get(char, "TenoScratchGap") end
+local function scratchConeOf(char) local c = s2(char, "TenoClawCone", 0) return c > 0 and math.rad(math.clamp(c, 10, 359) / 2) or SCRATCH_CONE end
 local function flat(v) return Vector3.new(v.X, 0, v.Z) end
 local function rootOf(m) return m:FindFirstChild("HumanoidRootPart") end
 
@@ -344,7 +365,7 @@ local function track(char)
 		st.charges = math.min(st.charges, mx)
 		if st.charges < mx and not st.refillAt then
 			local t = now()
-			st.refillStart, st.refillAt = t, t + math.max(0.5, get(char, "TenoSlamRefill"))
+			st.refillStart, st.refillAt = t, t + refillOf(char)
 		end
 		publish(char, st)
 	end
@@ -352,6 +373,21 @@ local function track(char)
 	char:GetAttributeChangedSignal("TenoSlamCharges"):Connect(onMax)
 	return st
 end
+-- v1.3: +1 slam charge (Survivor star)
+local addCharge = script:FindFirstChild("TenoAddCharge") or Instance.new("BindableEvent")
+addCharge.Name = "TenoAddCharge"
+addCharge.Parent = script
+addCharge.Event:Connect(function(char)
+	if typeof(char) ~= "Instance" then return end
+	local st = chars[char]
+	if not st then return end
+	local mx = maxCharges(char)
+	if st.charges >= mx then return end
+	st.charges += 1
+	count("TenoAttackAddCharges")
+	if st.charges >= mx then st.refillStart, st.refillAt = nil, nil end
+	publish(char, st)
+end)
 RunService.Heartbeat:Connect(function()
 	local t
 	for char, st in pairs(chars) do
@@ -360,7 +396,7 @@ RunService.Heartbeat:Connect(function()
 			if t >= st.refillAt then
 				st.charges = math.min(maxCharges(char), st.charges + 1)
 				if st.charges < maxCharges(char) then
-					st.refillStart, st.refillAt = st.refillAt, st.refillAt + math.max(0.5, get(char, "TenoSlamRefill"))
+					st.refillStart, st.refillAt = st.refillAt, st.refillAt + refillOf(char)
 				else
 					st.refillStart, st.refillAt = nil, nil
 				end
@@ -409,6 +445,50 @@ local function freeSlam(char, t)
 	return statsOn() and char:GetAttribute("TenoBuckFree") == true and num(char, "StunnedUntil", 0) <= t and #latchersOn(char) > 0
 end
 
+-- v1.3: slows (players: TenoSlowUntil / TenoSlowMul for SprintTest 1.18; bots: WalkSpeed scaled here)
+local botSlow = {} -- [model] = {hum, untilT, mul, base, set}
+local function slow(m, mul, untilT)
+	if not (mul and mul < 1 and untilT) then return end
+	count("TenoAttackSlows")
+	if Players:GetPlayerFromCharacter(m) then
+		local t0 = now()
+		local cu, cm = num(m, "TenoSlowUntil", 0), num(m, "TenoSlowMul", 1)
+		if cu <= t0 then cm = 1 end
+		m:SetAttribute("TenoSlowMul", math.min(cm, mul))
+		m:SetAttribute("TenoSlowUntil", math.max(cu, untilT))
+		return
+	end
+	local hum = m:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+	local e = botSlow[m]
+	if e then
+		e.untilT, e.mul = math.max(e.untilT, untilT), math.min(e.mul, mul)
+	else
+		botSlow[m] = {hum = hum, untilT = untilT, mul = mul}
+	end
+end
+RunService.Stepped:Connect(function()
+	local t = now()
+	for m, e in pairs(botSlow) do
+		local hum = e.hum
+		if not m.Parent or not hum.Parent then
+			botSlow[m] = nil
+		else
+			local cur = hum.WalkSpeed
+			if e.set == nil or math.abs(cur - e.set) > 1e-3 then e.base = cur end
+			if t < e.untilT then
+				e.set = e.base * math.clamp(e.mul, 0.05, 1)
+				hum.WalkSpeed = e.set
+				if m:GetAttribute("TenoSlowed") ~= true then m:SetAttribute("TenoSlowed", true) end
+			else
+				hum.WalkSpeed = e.base
+				m:SetAttribute("TenoSlowed", false)
+				botSlow[m] = nil
+			end
+		end
+	end
+end)
+
 local function doScratch(player, char, st, t, stamp)
 	st.lastScratch = t
 	char:SetAttribute("TenoScratchCount", (char:GetAttribute("TenoScratchCount") or 0) + 1)
@@ -430,9 +510,11 @@ local function doScratch(player, char, st, t, stamp)
 		local n, names = 0, {}
 		for _, m in ipairs(candidates(char)) do
 			local v = flat(rootOf(m).Position - root.Position)
-			if v.Magnitude > 1e-3 and math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1)) <= SCRATCH_CONE and gap(m, claw) <= reach then
-				damage(char, player, m, get(char, "TenoScratchDamage"), "scratch", ti)
+			if v.Magnitude > 1e-3 and math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1)) <= scratchConeOf(char) and gap(m, claw) <= reach then -- v1.3: Front Claws II cone
+				damage(char, player, m, get(char, "TenoScratchDamage") + math.max(0, s2(char, "TenoClawBonus", 0)), "scratch", ti) -- v1.3: + Front Claws I
 				if not shielded(m, ti) then shove(char, m, shoveDist, ti) end
+				local cs = s2(char, "TenoClawSlow", 0) -- v1.3: Front Claws star
+				if cs > 0 and not shielded(m, ti) then slow(m, 1 - math.clamp(cs, 0, 0.95), ti + math.max(0, s2(char, "TenoClawSlowTime", 0))) end
 				n += 1
 				table.insert(names, m.Name)
 			end
@@ -458,7 +540,7 @@ do
 end
 local function aimOn() return aimMod ~= nil and script:GetAttribute("TenoAttackRearAimEnabled") ~= false end
 local function aimSettings(char)
-	return {reach = math.max(0, get(char, "TenoSlamReach")) * char:GetScale(), aimMax = math.clamp(get(char, "TenoSlamAimMax"), 0, 90),
+	return {reach = math.max(0, get(char, "TenoSlamReach")) * char:GetScale() * reachMulOf(char), aimMax = math.clamp(get(char, "TenoSlamAimMax"), 0, 90),
 		cone = math.clamp(get(char, "TenoSlamCone"), 0, 180)}
 end
 local function latchedOn(m, char)
@@ -483,7 +565,7 @@ local function doSlam(player, char, st, t, hold)
 	local free = freeSlam(char, t) -- v1.1: Buck Off II
 	char:SetAttribute("TenoSlamFree", free)
 	if not free then st.charges -= 1 end
-	if not free and not st.refillAt then st.refillStart, st.refillAt = t, t + math.max(0.5, get(char, "TenoSlamRefill")) end
+	if not free and not st.refillAt then st.refillStart, st.refillAt = t, t + refillOf(char) end
 	publish(char, st)
 	local drop = math.max(0, get(char, "TenoSlamDropTime"))
 	st.slamUntil = t + drop
@@ -510,11 +592,12 @@ local function doSlam(player, char, st, t, hold)
 		local hips = root.Position
 		local back = -flat(root.CFrame.LookVector)
 		back = back.Magnitude > 1e-3 and back.Unit or -Vector3.zAxis
-		local range = math.max(0, get(char, "TenoSlamRange")) * s
+		local range = math.max(0, get(char, "TenoSlamRange")) * s * reachMulOf(char) -- v1.3: Heavy Tail III
 		local half = math.rad(math.clamp(get(char, "TenoSlamArc"), 0, 360) / 2)
 		local toss = math.max(0, get(char, "TenoSlamToss"))
 		local stun = math.max(0, get(char, "TenoSlamStun"))
-		local dmg = get(char, "TenoSlamDamage")
+		local dmg = get(char, "TenoSlamDamage") + math.max(0, s2(char, "TenoHeavyBonus", 0)) -- v1.3: Heavy Tail I
+		local heavySlow, heavySlowTime = s2(char, "TenoHeavySlow", 0), math.max(0, s2(char, "TenoHeavySlowTime", 0)) -- v1.3: Heavy Tail star
 		local braceBonus = statsOn() and math.max(0, num(char, "TenoBraceBonus", 0)) or 0 -- v1.1: Brace III
 		local buckBonus = (statsOn() and num(char, "StunnedUntil", 0) <= ti) and math.max(0, num(char, "TenoBuckBonus", 0)) or 0 -- v1.1: Buck Off I
 		local hit, bucked, names, buckedNames = {}, 0, {}, {}
@@ -551,6 +634,7 @@ local function doSlam(player, char, st, t, hold)
 			else
 				tossBot(m, hips, toss, stun)
 			end
+			if heavySlow > 0 and not shielded(m, ti) then slow(m, 1 - math.clamp(heavySlow, 0, 0.95), ti + TOSS_TIME + stun + heavySlowTime) end -- v1.3
 			if latched then
 				bucked += 1
 				table.insert(buckedNames, m.Name)
@@ -646,7 +730,7 @@ remote.OnServerEvent:Connect(function(player, kind, stamp, hold)
 	if not r and kind == "slam" and st.charges < 1 and not freeSlam(char, t) then -- v1.1: Buck Off II
 		kind, result = "scratch", "emptyScratch"
 	end
-	if not r and kind == "scratch" and t - st.lastScratch < math.max(0, get(char, "TenoScratchGap")) then
+	if not r and kind == "scratch" and t - st.lastScratch < math.max(0, scratchGapOf(char)) then -- v1.3: Front Claws III
 		r = "cooldown"
 	end
 	if r then
