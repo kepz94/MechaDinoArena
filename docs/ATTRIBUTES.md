@@ -2552,3 +2552,29 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | SprintTenoSlowEnabled; MoveSpeedParts adds "tenoSlow" | SprintTest script / character | true | SprintTest 1.18 |
 | TenoStatsSurvivorEnabled; TenoStatsSurvivorHeals | TenoStatsServer script | true; count | TenoStatsServer 1.1 |
 | TenoSurvivorHeals / TenoSurvivorLast | teno character (server) | count / "kill" / "near" | TenoStatsServer 1.1 |
+| SkillTree.TENO_PARTS / SkillTree.TENO_PARTS_SUPPORT_SOON | SkillTree module | true / true (build 1: tbellow / tchallenge / tmud soon) | SkillTree 1.49 |
+| TenoGrabEnabled / Range / Fling / Damage / Stun / Big / Crash / CrashRadius / Cooldown (prefix TenoGrab) | teno character (SkillEffects) | true / 12 / 30 (II 45) / 8 / 1 / III true / ★ 8 / ★ 8 / 16 when bought + slotted (off false / 0 / false / 0) | SkillEffects 1.33 |
+| TenoMortarEnabled / Range / Miss / Cone / Damage / Splash / Count / SlowMul / SlowTime / Rubble / Cooldown | teno character (SkillEffects) | true / 60 / 45 / 30 / 12 / 10 (II 14) / 1 (III 2) / 0.7 / 2 / ★ 4 / 14 (off false / 0 / 1 for SlowMul) | SkillEffects 1.33 |
+| TenoStompEnabled / Range / Damage / Stun / NoJump / Cooldown | teno character (SkillEffects) | true / 14 (III 20) / 6 / 0.5 (II 1) / ★ 3 / 15 (off false / 0) | SkillEffects 1.33 |
+| TenoLeapEnabled / Dist / Damage / Radius / Stun / Charges / Cooldown | teno character (SkillEffects) | true / 40 (II 55) / 10 / 12 / III 0.5 / 1 (★ 2) / 14 (off false / 0) | SkillEffects 1.33 |
+| TenoBellow* / TenoChallenge* / TenoMud* (build 2, soon) | teno character (SkillEffects) | off values until build 2 | SkillEffects 1.33 |
+| SkillEffectsTenoPartsEnabled | SkillEffects script | true | SkillEffects 1.33 |
+| TenoPartsServerEnabled / TenoParts_<id>Enabled; TenoPartsServerVersion | TenoPartsServer script | true / true; "1.0" | TenoPartsServer 1.0 |
+| TenoPartsBuilt | teno character | "<id>=<pieces>,..." | TenoPartsServer 1.0 |
+| TPartId (Model "TPart_<id>"), TPartRole / TPartBaseColor (pieces) | teno part models | id; role ("jaw", "rock", "heat", ...); colour | TenoPartsServer 1.0 |
+| LabTPartsEnabled | Lab script | true | Lab 1.11 |
+| MainMenuTPartsEnabled | MainMenu script | true | MainMenu 1.15 |
+| TenoMovesServerEnabled / TenoMoves_<id>Enabled / TenoMovesModeRulesEnabled / TenoMovesServerSquadEnabled | TenoMovesServer script | true each | TenoMovesServer 1.0 |
+| TenoMovesServerVersion / TenoMovesMode / TenoMovesGrabs / TenoMovesMortars / TenoMovesStomps / TenoMovesLeaps / TenoMovesHits / TenoMovesSlows / TenoMovesSquadSkips | TenoMovesServer script | "1.0" / mode / counts | TenoMovesServer 1.0 |
+| <Prefix>ServerResult / <Prefix>ServerResultAt / <Prefix>ReadyAt (TenoGrab, TenoMortar, TenoStomp, TenoLeap) | teno character (server) | "ok" / "badArg" / "dead" / "disabled" / "menu" / "stunned" / "pinned" / "dazed" / "active" / "cooldown" / "noTarget"; times | TenoMovesServer 1.0 |
+| TenoGrabTarget / TenoGrabThrowAt / TenoGrabLand / TenoGrabLandAt / TenoGrabCrashHits / TenoGrabStartedAt | teno character (server) | name / time / Vector3 / time / count / time | TenoMovesServer 1.0 |
+| TenoGrabbedBy / TenoGrabbedAt | grabbed dino | teno name / time | TenoMovesServer 1.0 |
+| TenoMortarTarget / TenoMortarLand / TenoMortarFiredAt / TenoMortarLandedAt / TenoMortarHits / TenoMortarStartedAt | teno character (server) | name / Vector3 / time / time / count / time | TenoMovesServer 1.0 |
+| TenoStompCenter / TenoStompHits / TenoStompStartedAt / TenoStompAt | teno character (server) | Vector3 / count / time / time | TenoMovesServer 1.0 |
+| NoJumpUntil | stomped dino | server time (★; no reader yet) | TenoMovesServer 1.0 |
+| TenoLeapChargesLeft / TenoLeapRefillAt / TenoLeapDistNow / TenoLeapFlightTime / TenoLeapUntil / TenoLeapStartedAt / TenoLeapLandedAt / TenoLeapHits | teno character (server) | count / time / studs / 0.9 / time / time / time / count | TenoMovesServer 1.0 |
+| TenoMoveSlowed | slowed bot | true while TenoMovesServer scales its WalkSpeed | TenoMovesServer 1.0 |
+| TenoLeapLaunchEnabled; TenoLeapLaunchVersion / TenoLeapLaunchState / TenoLeapLaunchMoved | teno character (owner client) | true; "1.0" / "idle" / "launching" / studs | TenoLeapLaunch 1.0 |
+| MechaButtonsTenoEnabled | MechaButtons script | true | MechaButtons 1.26 |
+| TenoAbilityPoseEnabled; TenoPoseState adds "tgrab" / "tmortar" / "tstomp" / "tleap" | teno model | true | TenoPose 1.3 |
+| TenoMovesFXEnabled; TenoMovesFXVersion / TenoMovesFXEvents / TenoMovesFXLast | TenoMovesFX script; LocalPlayer | true; "1.0" / count / event | TenoMovesFX 1.0 |
