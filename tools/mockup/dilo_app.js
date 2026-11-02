@@ -1,7 +1,8 @@
-// Dilo model mockup app v0.1. LOOKS = generator exports (tools/dilo_generator.py --json); RAPTOR / TREX = model_json.py exports.
+// Dilo model mockup app v0.5 (side by side with the troodon). LOOKS = generator exports (tools/dilo_generator.py --json); RAPTOR / TREX = model_json.py exports.
 const LOOKS = __LOOKS__;
 const RAPTOR = __RAPTOR__;
 const TREX = __TREX__;
+const TROODON = __TROODON__; // TroodonModelData 1.0 (model_json.py export)
 const $ = id => document.getElementById(id);
 const rad = THREE.MathUtils.degToRad;
 const INFO = {
@@ -65,11 +66,12 @@ function pose(d, angles) {
 }
 
 // ---------- state ----------
-let look = "A", view = "three", spin = false, swingT = -1, compare = false, frillOpen = true;
+let look = "A", view = "three", spin = false, swingT = -1, compare = false, frillOpen = true, vsTroo = false;
 const dinos = {};
 for (const k in LOOKS) { dinos[k] = buildDino(LOOKS[k], 2); dinos[k].g.visible = false; }
 const herr = buildDino(TREX, 1); herr.g.visible = false;
 const rap = buildDino(RAPTOR, 2); rap.g.visible = false;
+const troo = buildDino(TROODON, 2); troo.g.visible = false;
 const HERR_POSE = {RootJoint: [-24, 0, 0], Neck: [6, 0, 0], Head: [16, 0, 0], Jaw: [-3, 0, 0], ArmL: [30, 0, -18], ArmR: [30, 0, 18],
   LegL: [48, 0, -16], LegR: [48, 0, 16], KneeL: [-48, 0, 0], KneeR: [-48, 0, 0], AnkleL: [24, 0, 0], AnkleR: [24, 0, 0],
   Tail1: [26, 0, 0], Tail2: [4, 0, 0], Tail3: [8, 0, 0], Tail4: [14, 0, 0], Tail5: [20, 0, 0]};
@@ -99,7 +101,8 @@ document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => setView(
 $("run").onclick = () => { swingT = 0; };
 $("frill").onclick = e => { frillOpen = !frillOpen; e.currentTarget.setAttribute("aria-pressed", frillOpen); e.currentTarget.textContent = frillOpen ? "Frill open" : "Frill folded"; };
 $("spin").onclick = e => { spin = !spin; e.currentTarget.setAttribute("aria-pressed", spin); };
-$("compare").onclick = e => { compare = !compare; e.currentTarget.setAttribute("aria-pressed", compare); };
+$("compare").onclick = e => { compare = !compare; e.currentTarget.setAttribute("aria-pressed", compare); if (compare) { vsTroo = false; $("troo").setAttribute("aria-pressed", false); } };
+$("troo").onclick = e => { vsTroo = !vsTroo; e.currentTarget.setAttribute("aria-pressed", vsTroo); if (vsTroo) { compare = false; $("compare").setAttribute("aria-pressed", false); } };
 
 function resize() { const w = cv.clientWidth, h = cv.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
 window.addEventListener("resize", resize);
@@ -127,10 +130,18 @@ function frame(now) {
     herr.yaw = yawUser; herr.x = -ox; herr.z = -oz; pose(herr, {});
     rap.yaw = yawUser; rap.x = ox; rap.z = oz; pose(rap, {});
   }
-  const b = d.box.clone(); if (compare) { b.union(herr.box); b.union(rap.box); }
+  troo.g.visible = vsTroo;
+  if (vsTroo) { // the troodon right beside it, 12 studs apart across the screen
+    const vd = {three: [0.78, -0.55], side: [1, 0], front: [0, -0.7], top: [0, 1]}[view];
+    const vl = Math.hypot(vd[0], vd[1]);
+    const sep = view === "side" ? 15 : 9;
+    d.x = vd[1] / vl * sep; d.z = -vd[0] / vl * sep; pose(d, angles);
+    troo.yaw = yawUser; troo.x = -d.x; troo.z = -d.z; pose(troo, {});
+  }
+  const b = d.box.clone(); if (compare) { b.union(herr.box); b.union(rap.box); } if (vsTroo) b.union(troo.box);
   const c = b.getCenter(new THREE.Vector3()), size = b.getSize(new THREE.Vector3());
   // the dino faces -Z (HRP space = (z, y, -x)); length runs along Z
-  const span = Math.max(size.z, size.x * (compare ? 1 : 0.6), size.y * 1.8);
+  const span = Math.max(size.z, size.x * (compare || vsTroo ? 1 : 0.6), size.y * 1.8);
   const r = span * 0.5 / Math.tan(rad(cam.fov / 2)) / Math.min(1.6, cam.aspect) * 1.25;
   if (view === "side") cam.position.set(c.x + r, c.y + r * 0.06, c.z);
   else if (view === "front") cam.position.set(c.x + 0.001, c.y + r * 0.1, c.z - r * 0.7);
@@ -144,5 +155,5 @@ resize(); setLook("D"); setView("three");
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__run = t => { swingT = t; };
-window.__set = (k, v, c, sp, fo) => { setLook(k); setView(v); compare = !!c; spin = false; yawUser = sp || 0; frillOpen = fo === undefined ? true : fo; };
+window.__set = (k, v, c, sp, fo, vt) => { setLook(k); setView(v); compare = !!c; spin = false; yawUser = sp || 0; frillOpen = fo === undefined ? true : fo; vsTroo = !!vt; };
 window.__state = () => ({swingT, look, view});

@@ -10,6 +10,6 @@ for k in "ABCD":
     subprocess.check_call([sys.executable, os.path.join(ROOT, "tools", "dilo_generator.py"), "--look", k, "--json", out], stdout=subprocess.DEVNULL)
     looks[k] = json.load(open(out))
 h = open("dilo_head.html").read().replace('<script>/*THREE*/</script>', '<script>/* three.js r128 (MIT), inlined so the page works offline / in previews */\n' + open(three_path).read() + '\n</script>')
-js = open("dilo_app.js").read().replace("__LOOKS__", json.dumps(looks)).replace("__RAPTOR__", json.dumps(json.load(open("raptor_model.json")))).replace("__TREX__", json.dumps(json.load(open("trex_model.json"))))
+js = open("dilo_app.js").read().replace("__LOOKS__", json.dumps(looks)).replace("__RAPTOR__", json.dumps(json.load(open("raptor_model.json")))).replace("__TREX__", json.dumps(json.load(open("trex_model.json")))).replace("__TROODON__", json.dumps(json.load(open("troodon_model.json"))))
 open(os.path.join(ROOT, "docs", "mockups", "dilo_model_options.html"), "w").write(h + js + "\n</script>\n</body>\n</html>\n")
 print("built")
