@@ -1,4 +1,4 @@
-// Pachy head mockup app v0.1. LOOKS = tools/pachy_generator.py --head X --json exports; RAPTOR / TREX / TROODON = model_json.py exports.
+// Pachy head mockup app v0.2 (E / F: Kepu's pick with a bulkier mid section). LOOKS = tools/pachy_generator.py --head X --json exports; RAPTOR / TREX / TROODON = model_json.py exports.
 const LOOKS = __LOOKS__;
 const RAPTOR = __RAPTOR__;
 const TREX = __TREX__;
@@ -9,6 +9,8 @@ const INFO = {
   A: {why: "The head in the game now (PachyModelData 1.3): a three-tier cream dome stacked on the skull with a ring of small knobs. For comparison.", pose: "Current."},
   B: {why: "War Helm: a long, low helmet of bone that sweeps back over the neck and forward into a brow shelf hanging over the eyes, bone cheek guards down the sides, a row of big knobs along the back rim, deep-set eyes in a dark mask, and a heavier, down-turned snout.", pose: "Head-down brawler."},
   C: {why: "Battering Ram: the dome thrust forward into a flat, near-vertical bone face made for hitting, with a ridge of horn knobs along its top edge and another round the back, a heavy brow, and a shorter, deeper snout tucked under. When it lowers its head to charge, the flat face leads.", pose: "Built to charge."},
+  E: {why: "Your pick: the Crowned Skull with the Battering Dome spikes always on, and the mid section 25% bulkier (the body 25% thicker and taller, the chest, hips and throat 15%, the belly lower, the legs and arms set wider to match).", pose: "Bulkier, spikes always out."},
+  F: {why: "The same, but the mid section 40% bulkier (chest, hips and throat 24%). Compare with E to pick how heavy it should be.", pose: "Heaviest."},
   D: {why: "Crowned Skull: a low, broad dome studded all over with knobs and ringed by a crown of short cone knobs round the back and sides, dark skull-like eye sockets, and knobs down the nose.", pose: "Spiky and armoured."},
 };
 
@@ -86,7 +88,7 @@ function setLook(k) {
   look = k;
   document.querySelectorAll("[data-look]").forEach(b => b.setAttribute("aria-pressed", b.dataset.look === k));
   const D = LOOKS[k], I = INFO[k];
-  const NAMES = {A: "Now (egg dome)", B: "War Helm", C: "Battering Ram", D: "Crowned Skull"};
+  const NAMES = {A: "Now (egg dome)", B: "War Helm", C: "Battering Ram", D: "Crowned Skull", E: "Crowned Skull + spikes, body +25%", F: "Crowned Skull + spikes, body +40%"};
   $("info").innerHTML = `<h2>${k} · ${NAMES[k]}</h2><p>${I.why}</p><p><b>Feel:</b> ${I.pose}</p>
     <div class="sw">${Object.entries(D.roles).map(([r, h]) => `<span title="${r} #${h}" style="background:#${h}"></span>`).join("")}</div>
     <p class="muted">Colour groups: ${Object.keys(D.roles).join(", ")} (skin-ready, 10 groups). ${D.segs.reduce((n, s) => n + s.parts.length, 0)} blocks.</p>`;
@@ -155,7 +157,7 @@ function frame(now) {
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
-resize(); setLook("B"); setView("three");
+resize(); setLook("E"); setView("three");
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__run = t => { swingT = t; };

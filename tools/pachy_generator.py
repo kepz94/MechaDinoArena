@@ -118,15 +118,21 @@ def along(c, pitch, d):
 
 # ---------------------------------------------------------------- torso (thick, front raised 15 deg)
 BODY_P = 15
+# v1.4 (mockup stage; Kepu 2026-11-02: "I think the mid section could be a bit more bulkier"): --bulk B thickens the
+# mid section (body full B, chest / hips / throat 60% of it, the belly drops with the body) and spreads the legs / arms
+# to stay on the outside; default 1.0 = the shipped 1.3 body.
+import sys as _sys0
+BULK = float(_sys0.argv[_sys0.argv.index("--bulk") + 1]) if "--bulk" in _sys0.argv else 1.0
+BP = 1 + (BULK - 1) * 0.6
 seg("Torso", (0.0, 0.0, 0.0))
-part("Torso", "main", (3.0, 1.9, 1.7), (0.6, 0.5, 0.0), pitch=BODY_P, name="Torso_body")
-part("Torso", "main", (1.6, 1.9, 1.6), (2.0, 1.0, 0.0), pitch=25, name="Torso_chest")
-part("Torso", "main", (1.6, 1.7, 1.6), (-0.8, 0.3, 0.0), pitch=5, name="Torso_hips")
-part("Torso", "belly", (2.6, 0.35, 1.4), (0.9, -0.42, 0.0), pitch=BODY_P, name="Torso_belly")
-part("Torso", "belly", (0.6, 1.3, 1.1), (2.65, 1.0, 0.0), pitch=25, name="Torso_throat")
+part("Torso", "main", (3.0, 1.9 * BULK, 1.7 * BULK), (0.6, 0.5, 0.0), pitch=BODY_P, name="Torso_body")
+part("Torso", "main", (1.6, 1.9 * BP, 1.6 * BP), (2.0, 1.0, 0.0), pitch=25, name="Torso_chest")
+part("Torso", "main", (1.6, 1.7 * BP, 1.6 * BP), (-0.8, 0.3, 0.0), pitch=5, name="Torso_hips")
+part("Torso", "belly", (2.6, 0.35, 1.4 * BULK), (0.9, -0.42 - 0.95 * (BULK - 1), 0.0), pitch=BODY_P, name="Torso_belly")
+part("Torso", "belly", (0.6, 1.3 * BP, 1.1 * BP), (2.65 + 0.3 * (BP - 1), 1.0, 0.0), pitch=25, name="Torso_throat")
 for i, x in enumerate((-1.1, -0.4, 0.3, 1.0, 1.7)):
-    top = 0.5 + 0.95 / math.cos(math.radians(BODY_P)) + (x - 0.6) * math.tan(math.radians(BODY_P))
-    part("Torso", "stripes", (0.26, 1.0, 1.76), (x, top - 0.42, 0.0), pitch=BODY_P, name=f"Torso_stripe{i + 1}")
+    top = 0.5 + 0.95 * BULK / math.cos(math.radians(BODY_P)) + (x - 0.6) * math.tan(math.radians(BODY_P))
+    part("Torso", "stripes", (0.26, 1.0 * BULK, 1.76 * BULK), (x, top - 0.42 * BULK, 0.0), pitch=BODY_P, name=f"Torso_stripe{i + 1}")
 
 # ---------------------------------------------------------------- neck (thick, rising forward)
 NECK_P = 55
@@ -144,6 +150,8 @@ part("Neck", "stripes", (0.24, 1.3, 1.24), (ns[0], ns[1], 0.0), pitch=NECK_P, na
 # Head_spike* that PachyLook shows for the Battering Dome star, re-seated on the new dome) and only the existing colour roles.
 import sys as _sys
 HEAD = _sys.argv[_sys.argv.index("--head") + 1] if "--head" in _sys.argv else "egg"
+# --spikes: the 10 Head_spike* are part of the normal look (Kepu: "crowned skull with the battering dome spikes be the default look")
+SPIKES_SHOWN = "--spikes" in _sys.argv
 if HEAD == "egg":
     # ---------------------------------------------------------------- head (skull, 3-tier bone dome, snout, knob ring)
     seg("Head", (3.7, 3.2, 0.0))
@@ -253,7 +261,7 @@ else:
                   ((3.25, 4.3, 0.75), 35, 50), ((3.25, 4.3, -0.75), 35, -50), ((3.7, 4.65, 0.4), 25, 20),
                   ((3.7, 4.65, -0.4), 25, -20), ((5.3, 3.85, 0.28), -20, 15), ((5.3, 3.85, -0.28), -20, -15), ((5.65, 3.6, 0.0), -40, 0)]
     for i, ((x, y, z), p_, r_) in enumerate(spikes):  # the 10 hidden spikes (PachyLook), re-seated on the new dome
-        part("Head", "knobs", (0.22, 0.85, 0.22), (x, y, z), pitch=p_, roll=r_, name=f"Head_spike{i + 1}", hidden=True)
+        part("Head", "knobs", (0.22, 0.85, 0.22), (x, y, z), pitch=p_, roll=r_, name=f"Head_spike{i + 1}", hidden=not SPIKES_SHOWN)
 
 # ---------------------------------------------------------------- jaw (small beak jaw)
 seg("Jaw", (4.6, 2.9, 0.0))
@@ -263,9 +271,9 @@ part("Jaw", "belly", (0.9, 0.12, 0.7), (5.05, 2.5, 0.0), pitch=-10, name="Jaw_un
 # ---------------------------------------------------------------- arms (short, three claws)
 for side in (1, -1):
     s = "L" if side > 0 else "R"
-    z = side * 0.78
+    z = side * (0.78 + 0.6 * (BP - 1))
     sh, el, ha = (2.4, 0.4), (2.6, -0.2), (2.9, -0.7)
-    seg(f"Arm{s}", (sh[0], sh[1], side * 0.7))
+    seg(f"Arm{s}", (sh[0], sh[1], side * (0.7 + 0.6 * (BP - 1))))
     part(f"Arm{s}", "main", (0.34, 0.7, 0.32), ((sh[0] + el[0]) / 2, (sh[1] + el[1]) / 2, z),
          pitch=tilt_down(el[0] - sh[0], el[1] - sh[1]), name=f"Arm{s}_upper")
     part(f"Arm{s}", "main", (0.28, 0.62, 0.28), ((el[0] + ha[0]) / 2, (el[1] + ha[1]) / 2, z),
@@ -299,7 +307,7 @@ for i, (seglen, size, bands) in enumerate(tail):
 # ---------------------------------------------------------------- legs (strong: thigh, shin, metatarsus, toes)
 for side in (1, -1):
     s = "L" if side > 0 else "R"
-    z = side * 0.75
+    z = side * (0.75 + 0.45 * (BULK - 1))
     hip, knee, ankle, ball = (-0.2, 0.0), (0.35, -1.6), (-0.45, -2.9), (-0.1, -3.76)
     seg(f"Leg{s}", (hip[0], hip[1], z))
     part(f"Leg{s}", "main", (0.85, 1.8, 0.75), ((hip[0] + knee[0]) / 2, (hip[1] + knee[1]) / 2, z),
