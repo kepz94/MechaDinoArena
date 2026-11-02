@@ -80,6 +80,8 @@ The areas follow the mockup. The teno also sees its Signature area for Buck Off,
 | A killing blow | health reaches 0 | Mud: blocked (ForceField). Bellow / Challenge: not refunded (the same rule as Brace) |
 
 ## Tasks
+Dev Hub tickets: MDA-173 (T1) … MDA-180 (T8). Open decision: build size.
+
 1. **SkillTreeTenoParts.spec 1.0 + SkillTree 1.48** (Logic)
    - Write the spec red first, then add the 7 paths through `part(id, name, area, steps)` with `dino = "Teno"` and an effects wrapper (numbers above).
    - Switch: `SkillTree.TENO_PARTS`.
