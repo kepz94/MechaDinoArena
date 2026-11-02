@@ -1882,6 +1882,9 @@ BindableFunction ScentServer.BuildPreview (server only). Model Mecha_Scent: Mask
 | MusicSettingRequests | MusicServer script | 0.. | remote calls |
 | MainMenuMusicButtonEnabled | MainMenu script | true | false = no MUSIC button |
 | MainMenuCreditEnabled | MainMenu script | true | MainMenu 1.6: false = no music credit line |
+| MusicIdAirshipSerenity / MusicIdBitQuest / MusicIdDungeonLevel / MusicIdLevelUp | Music script (ReplicatedFirst) | "80098348329545" / "" (upload rejected: Violation) / "127870243903338" / "83762989764778" | Music 1.1 new default song ids; "" = keep the 1.0 song (island: the other playlist song alone) |
+| MusicNewDefaults | Music script | true (read at start) | Music 1.1: false = 1.0 songs everywhere |
+| MusicPlaylistIndex | player (local) | number | Music 1.1: island playlist position (0 = single song) |
 | MainMenuCreditsButtonEnabled | MainMenu script | true (read at start) | MainMenu 1.13: CREDITS button bottom-right + CREDITS panel; hides the 1.6 credit line; false = 1.12 |
 | MainMenuCreditsOpen | player (local) | bool | MainMenu 1.13: CREDITS panel up |
 
