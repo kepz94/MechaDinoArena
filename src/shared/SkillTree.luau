@@ -1,4 +1,4 @@
--- SkillTree v1.51 (1.49 / 1.50 reserved for teno stats 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.51 (1.49 reserved for the teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,17 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.50 (teno stats part 2, plan docs/plans/TENO_STATS_v1.1.md, mockup docs/mockups/teno_stats_v0.2.html; Kepu 2026-11-01:
+--   "Let's do heals on kills. Add heavy tail and look for one more" -> "Add a and b" -> "I like it"). Switch
+--   SkillTree.TENO_STATS_2 (default true; false = 1.48 rows): three teno-only rows (dino / OWNER "Teno", mech false):
+--   "survivor" Survivor (health), "heavytail" Heavy Tail (attack), "frontclaws" Front Claws (attack); the shared "hide"
+--   row re-opened for the teno (notFor.Teno cleared) as "Armored Hide" (nameFor / stepsFor Teno). The teno's rows read
+--   survivor, heavytail, frontclaws, hide, brace, chargeup, buckoff. effects() (teno only; off values elsewhere):
+--   survivorKillHeal 0.15 / 0.25 (II), survivorNearHeal 0.10 + survivorNearRange 25 (III), survivorRefill (star);
+--   heavyBonus 3, heavyRefillMul 0.75 (II), heavyReachMul 1.2 (III), heavySlow 0.3 + heavySlowTime 3 (star); clawBonus 3,
+--   clawCone 130 (II; 0 = the default 90), clawGap 0.35 (III; 0 = the default), clawSlow 0.3 + clawSlowTime 1.5 (star);
+--   Armored Hide: 2 Defense points at I (10%; Thick Hide gives 6 under the 35% rule), stunMul 0.7 at III (as Thick Hide);
+--   toss / immune as Thick Hide.
 -- v1.48 (Kepu 2026-11-01, tail slam rework): Buck Off star text + effects field buckCharge (1 at star, 0 otherwise / other
 --   dinos); SkillEffects 1.32 writes it as TenoSlamExtraCharges. Switch SkillTree.TENO_BUCK_CHARGE (default true).
 -- v1.47 (Kepu 2026-11-01: "the herrerra has too many stackable stat upgrades ... look over the redundant ones to make this
@@ -1588,6 +1599,74 @@ do
 		local s = SkillTree.sanitize(steps, dino)
 		local bo = (SkillTree.TENO_STATS and SkillTree.TENO_BUCK_CHARGE) and (s.buckoff or 0) or 0
 		e.buckCharge = bo >= 4 and 1 or 0
+		return e
+	end
+end
+
+
+-- v1.50: teno stats part 2 (see the header)
+SkillTree.TENO_STATS_2 = true
+if SkillTree.TENO_STATS and SkillTree.TENO_STATS_2 and SkillTree.PATHS.chargeup and not SkillTree.PATHS.survivor then
+	local P = SkillTree.PATHS
+	local function add(id, name, areaId, steps)
+		local p = path(id, name, false, false, steps)
+		p.area = areaId
+		p.dino = "Teno"
+		SkillTree.OWNER[id] = "Teno"
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		P[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	add("survivor", "Survivor", "health", {
+		"A kill heals 15% of your max health over 4 s",
+		"Kill heal 25%",
+		"Any enemy that dies within 25 studs of you heals you 10% (whoever killed it)",
+		"A kill also refills one tail slam charge"})
+	add("heavytail", "Heavy Tail", "attack", {
+		"Tail slam +3 damage (15 -> 18)",
+		"Slam charges refill 25% faster (8 s -> 6 s)",
+		"Your tail reaches 20% further",
+		"Slammed dinos are slowed 30% for 3 s after the stun"})
+	add("frontclaws", "Front Claws", "attack", {
+		"Scratch hits harder (8 -> 11)",
+		"A wider swipe in front (90° -> 130°)",
+		"Scratch faster (0.5 s -> 0.35 s between scratches)",
+		"A scratch hit slows the target 30% for 1.5 s"})
+	if P.hide then
+		if P.hide.notFor then P.hide.notFor.Teno = nil end
+		P.hide.nameFor = P.hide.nameFor or {}
+		P.hide.nameFor.Teno = "Armored Hide"
+		P.hide.stepsFor = P.hide.stepsFor or {}
+		P.hide.stepsFor.Teno = {
+			"Take 10% less damage, always",
+			"Thrown half as far by rams and shoves",
+			"Stuns are 30% shorter",
+			"No stuns while above 50% health"}
+	end
+end
+do
+	local effectsV148 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsV148(steps, dino)
+		if type(e) ~= "table" then return e end
+		local on = SkillTree.TENO_STATS and SkillTree.TENO_STATS_2 and dino == "Teno" and SkillTree.PATHS.survivor ~= nil
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local sv, ht, fc, h = s.survivor or 0, s.heavytail or 0, s.frontclaws or 0, s.hide or 0
+		e.survivorKillHeal = sv >= 2 and 0.25 or (sv >= 1 and 0.15 or 0)
+		e.survivorNearHeal, e.survivorNearRange = sv >= 3 and 0.10 or 0, sv >= 3 and 25 or 0
+		e.survivorRefill = sv >= 4
+		e.heavyBonus = ht >= 1 and 3 or 0
+		e.heavyRefillMul = ht >= 2 and 0.75 or 1
+		e.heavyReachMul = ht >= 3 and 1.2 or 1
+		e.heavySlow, e.heavySlowTime = ht >= 4 and 0.3 or 0, ht >= 4 and 3 or 0
+		e.clawBonus = fc >= 1 and 3 or 0
+		e.clawCone = fc >= 2 and 130 or 0
+		e.clawGap = fc >= 3 and 0.35 or 0
+		e.clawSlow, e.clawSlowTime = fc >= 4 and 0.3 or 0, fc >= 4 and 1.5 or 0
+		if on and h >= 1 then e.defensePts += 2 - (SkillTree.STRONG and 6 or 1) end -- Armored Hide: 2 points (10%) instead of Thick Hide's 6 (35% rule; 1 without it)
+		if on and h >= 3 then e.stunMul = 0.7 end -- = Thick Hide III under the 35% rule
 		return e
 	end
 end
