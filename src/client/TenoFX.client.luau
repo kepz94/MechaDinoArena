@@ -1,4 +1,4 @@
--- TenoFX v1.1 (Mecha Dino Arena) — the Tenontosaurus' scratch, tail-slam and leap effects on this client (LocalScript,
+-- TenoFX v1.2 (Mecha Dino Arena) — the Tenontosaurus' scratch, tail-slam and leap effects on this client (LocalScript,
 -- StarterPlayerScripts). MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 8, mockup docs/mockups/teno_attacks_options.html
 -- v0.2 (Kepu 2026-10-31: "way more animated with more effects to really sell the power of the slam"). Every size below is
 -- the mockup's (studs at scale 2) x (character scale / 2). Runs for every player character with TenoAttackEnabled (yours and
@@ -26,10 +26,14 @@
 -- v1.1 (Kepu 2026-10-31 after v302: "take away all the extra dust and seismic effects when jumping keep that consistent
 --   with other models"): the leap's takeoff dust and landing ring / dust / rocks / camera shake are off, like every other
 --   dino's jump (no jump effects). Switch: script attribute TenoFXLeapEnabled (default false, read each jump; true = 1.0).
+-- v1.2 (Kepu 2026-11-02: "remove the yellow circle when you hold the tail slam"): the GLOW ring under the hips during the hold
+--   is not drawn (its segments stay transparent); the tail glow stays. Switch: script attribute TenoFXHoldRingEnabled
+--   (default false, read each frame; true = 1.1 ring).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
+if script:GetAttribute("TenoFXHoldRingEnabled") == nil then script:SetAttribute("TenoFXHoldRingEnabled", false) end -- v1.2
 local SHAKE_RANGE = 90
 local DUST, ROCK, ROCK2, CRACK = Color3.fromHex("CBB487"), Color3.fromHex("7A6A50"), Color3.fromHex("5C4E3A"), Color3.fromHex("3A2E22")
 local WAVE, GLOW, STREAK = Color3.fromHex("FFF1C8"), Color3.fromHex("FFD24A"), Color3.fromHex("FFF0B0")
@@ -418,7 +422,7 @@ local function glowStep(char, owner)
 		local at = c + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
 		s.Size = Vector3.new(0.5 * k, 0.1, seg)
 		s.CFrame = CFrame.lookAt(at, at + Vector3.new(-math.sin(a), 0, math.cos(a)))
-		s.Transparency = 1 - 0.8 * g
+		s.Transparency = script:GetAttribute("TenoFXHoldRingEnabled") == true and 1 - 0.8 * g or 1 -- v1.2: no ring by default
 	end
 end
 
