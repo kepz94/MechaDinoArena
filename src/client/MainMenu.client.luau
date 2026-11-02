@@ -137,13 +137,18 @@
 --     Crazy Daisy (album "Afro 8 Bit"): courtesy of APM Music (all KEPT).
 --   Switch: script attribute MainMenuCreditsButtonEnabled (default true, read at start; false = 1.12: the credit line).
 --   Diagnostics: MainMenuCreditsOpen (player, bool); MainMenuLastPress "credits" / "creditsClose".
+-- v1.14 (Kepu 2026-11-02 "Publish" after Roblox rejected the Bit Quest upload): a new-default song row is left out of the
+--   CREDITS panel while its Music 1.1 id attribute on ReplicatedFirst.Music is "" / missing (read when the panel is
+--   built), so the panel lists only songs the game can play; a later id brings the row back. Switch: script attribute
+--   MainMenuCreditsHideMissing (default true, read at start; false = 1.13 list). Diagnostic: MainMenuCreditsRows (song
+--   rows shown).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.13"
+local VERSION = "1.14"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -1228,10 +1233,10 @@ if script:GetAttribute("MainMenuCreditsButtonEnabled") ~= false then
 	local KMC = "Kevin MacLeod (incompetech.com)"
 	local CREDITS = {
 		{sec = "MUSIC"},
-		{name = "Airship Serenity", by = KMC, tag = "MENU"},
-		{name = "Bit Quest", by = KMC, tag = "ISLAND"},
-		{name = "8bit Dungeon Level", by = KMC, tag = "ISLAND"},
-		{name = "Level Up", by = KMC, tag = "LAB"},
+		{name = "Airship Serenity", by = KMC, tag = "MENU", attr = "MusicIdAirshipSerenity"},
+		{name = "Bit Quest", by = KMC, tag = "ISLAND", attr = "MusicIdBitQuest"},
+		{name = "8bit Dungeon Level", by = KMC, tag = "ISLAND", attr = "MusicIdDungeonLevel"},
+		{name = "Level Up", by = KMC, tag = "LAB", attr = "MusicIdLevelUp"},
 		{sec = "ALSO IN THE GAME"},
 		{name = "Gymnopedie No. 2", by = "Erik Satie · performed by " .. KMC, tag = "KEPT", kept = true},
 		{name = "Little Toys", by = "Courtesy of APM Music", tag = "KEPT", kept = true},
@@ -1334,8 +1339,20 @@ if script:GetAttribute("MainMenuCreditsButtonEnabled") ~= false then
 	licRule.Parent = card
 
 	local rows = {} -- {kind = "sec" / "song", f = frame, ...}
+	-- v1.14: leave out a new-default song whose Music id attribute is not set (upload rejected / not done)
+	if script:GetAttribute("MainMenuCreditsHideMissing") == nil then script:SetAttribute("MainMenuCreditsHideMissing", true) end
+	local hideMissing = script:GetAttribute("MainMenuCreditsHideMissing") ~= false
+	local musicScript = game:GetService("ReplicatedFirst"):FindFirstChild("Music")
+	local function missing(e)
+		if not (hideMissing and e.attr and musicScript) then return false end
+		local v = musicScript:GetAttribute(e.attr)
+		return v == nil or v == "" or v == 0
+	end
+	local songRows = 0
 	for i, e in ipairs(CREDITS) do
-		if e.sec then
+		if not e.sec and missing(e) then
+			-- v1.14: no row
+		elseif e.sec then
 			local l = label(list, "Sec_" .. i, Enum.Font.Code, VOLT)
 			l.Text = e.sec
 			l.TextXAlignment = Enum.TextXAlignment.Left
@@ -1375,8 +1392,10 @@ if script:GetAttribute("MainMenuCreditsButtonEnabled") ~= false then
 			local tp = Instance.new("UIPadding")
 			tp.Parent = t
 			table.insert(rows, {kind = "song", f = f, fc = fc, n = n, b = b, t = t, tc = tc, tp = tp})
+			songRows += 1
 		end
 	end
+	player:SetAttribute("MainMenuCreditsRows", songRows) -- v1.14
 
 	local function layoutCredits()
 		measure()
