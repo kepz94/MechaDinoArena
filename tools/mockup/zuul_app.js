@@ -7,6 +7,7 @@ const rad = THREE.MathUtils.degToRad;
 const INFO = {
   A: {why: "A low, wide, flat-topped tank. Even bands of big cone spikes run across the whole back and down the sides, with armour bumps between them. A broad head with a horn crown, short thick legs, and a long tail lined with paired spikes that ends in a huge two-lobed club.", pose: "Low and level, tail straight out behind."},
   B: {why: "A high arched dome that bristles like a hedgehog: long spikes radiate out of the back and the side spikes are the longest. The head is held low with long swept-back horns, and the tail is curled round to the side, ready to swing a club ringed with spikes.", pose: "Hunched, head low, tail curled to swing."},
+  D: {why: "Your pick: the Thornback (a high arched dome bristling like a hedgehog, the longest spikes on the sides, the head low with long swept-back horns, the tail curled round to the side ready to swing) with the Battering Ram's heavy block mace at the end of the tail, spiked all round. Thornback colours, with the mace in the red of the back.", pose: "Hunched, head low, tail curled to swing the mace."},
   C: {why: "Front-heavy, like a battering ram: high armoured shoulders with huge spikes pointing forward and out, rows of flat keeled plates on the back instead of cones, side spikes growing toward the shoulders, brow horns pointing forward, and the tail held up straight with a heavy spiked mace.", pose: "Shoulders high, tail raised, mace ready."},
 };
 
@@ -135,7 +136,7 @@ function frame(now) {
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
-resize(); setLook("A"); setView("three");
+resize(); setLook("D"); setView("three");
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__run = t => { swingT = t; };

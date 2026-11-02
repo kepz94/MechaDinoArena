@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Zuul generator v0.1 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+"""Zuul generator v1.0 (Mecha Dino Arena) — writes src/shared/Models/ZuulModelData.luau.
+v1.0 (Kepu 2026-11-02: "I want the thorn back with the mace shape at the end of the tail from the battering ram build"):
+look D = B Thornback with C's mace club = Classic (default look, Thornback colours); without --json the generator writes
+the data file (geometry + the T-Rex's attributes with every move off, Species "Zuul"). A / B / C stay reproducible.
+v0.1 (mockup stage): three different styles for Kepu to pick from.
 
 Kepu 2026-11-02: "The zuul is my next dinosaur" (three reference pictures: a teal Zuul with pale spikes and a big tail
 club; a red-backed one with huge spikes and the tail swung round; a sandy model with rows of spikes). Answers: role
@@ -15,13 +19,17 @@ Same 17-segment rig and joint names as the other dinos (rig 1.3); Arm segments =
 space D = (x forward, y up, z left), origin at the hip centre. Scaled so its length is TARGET_LEN (20 studs at scale 1,
 doubled in game: ~40 like the T-Rex). Skin rule: 10 colour groups, no shared hex, no never-paint colour (pupil 111111,
 mouth 6E342E, HRP A3A2A5; teeth E8E2D2 unused). Colours are a first pass per style and can move between styles.
-Run: python3 tools/zuul_generator.py --look A|B|C --json OUT   (the three.js viewer's format)
-The data file (ZuulModelData.luau) comes after Kepu picks.
+Run: python3 tools/zuul_generator.py                (writes the data file: D Thornback Mace)
+     python3 tools/zuul_generator.py --look A|B|C|D [--straight] --json OUT   (the three.js viewer's format)
 """
 import json, math, os, sys
 
+import re
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.1"
+OUT = os.path.join(ROOT, "src", "shared", "Models", "ZuulModelData.luau")
+TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
+SMOOTH = {"eyes", "pupil", "tooth", "claws", "mouth"}
+VERSION = "1.0"
 TARGET_LEN = 20.0    # studs at scale 1 (~40 in game, the T-Rex's length)
 HRP_SIZE_D0 = (3.0, 1.8, 2.2)
 ROLES = ["main", "plates", "spikes", "belly", "headplate", "horns", "limbs", "claws", "eyes", "club"]
@@ -36,8 +44,12 @@ LOOKS = {
     "C": {"name": "Battering Ram", "style": "ram", "spk": 1.1, "neck": 0,
           "pal": {"main": "B08A62", "plates": "8E6A48", "spikes": "E2C8A0", "belly": "D6C4A0", "headplate": "9A7650",
                   "horns": "F0DCB8", "limbs": "7A5A3E", "claws": "2E2620", "eyes": "D8A030", "club": "6A4C34"}},
+    # v1.0: Kepu's pick = B Thornback (body, colours, curled tail) with C Battering Ram's mace at the end of the tail
+    "D": {"name": "Thornback Mace", "style": "thornback", "club": "mace", "spk": 1.2, "neck": 0, "k": 1.499,
+          "pal": {"main": "5E6A3E", "plates": "A8483A", "spikes": "E4D6B4", "belly": "B0A27A", "headplate": "B85440",
+                  "horns": "D9CBA6", "limbs": "4A5432", "claws": "2A2420", "eyes": "F0C040", "club": "8E3A2E"}},
 }
-LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
+LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "D"  # v1.0: Classic = D Thornback Mace
 L = LOOKS[LOOK]
 SPK, NECK_RAISE, STYLE = L["spk"], L["neck"], L["style"]
 F = 1.0
@@ -296,7 +308,7 @@ elif STYLE == "thornback":
     front_legs((2.5, -0.05), (2.72, -0.85), (2.6, -1.5), 1.0, 0.56, 0.5, 0.62)
     hind_legs((0.3, -0.8), (-0.05, -1.45), (0.15, -1.65), 0.95, 0.62, 0.5)
     tail([(1.4, (1.3, 0.8), 2, 6 * CURL), (1.35, (1.05, 0.64), 8, 16 * CURL), (1.3, (0.85, 0.5), 10, 22 * CURL), (1.2, (0.68, 0.4), 6, 24 * CURL), (1.1, (0.55, 0.32), 0, 22 * CURL)],
-         (-1.25, 0.3, 0.0), lambda i: [0.7, 0.65, 0.55, 0.45, 0.0][i], club="spiked", club_k=1.0)
+         (-1.25, 0.3, 0.0), lambda i: [0.7, 0.65, 0.55, 0.45, 0.0][i], club=L.get("club", "spiked"), club_k=1.0)
 
 else:
     # ------------------------------------------------------------ C Battering Ram: front-heavy with high armoured shoulders
@@ -406,6 +418,46 @@ if "--json" in sys.argv:
             "stats": {"length": round(hi[0] - lo[0], 2), "height": round(hi[1] + HIP, 2), "width": round(hi[2] - lo[2], 2), "hip": round(HIP, 3)}}
     json.dump(data, open(out, "w"))
     print("json ->", out)
+if "--json" not in sys.argv:
+    # ------------------------------------------------------------ full data file (v1.0), same layout as HerreraModelData / TenoModelData
+    assert LOOK == "D", "the data file is the picked look: D Thornback Mace"
+    def fmt(v):
+        return "{" + ",".join(f"{x:g}" for x in v) + "}"
+    hx, hy, hz = HRP_SIZE_D
+    body = [f'\thrp = {{size = {{{hz:.4g},{hy:.4g},{hx:.4g}}}, color = "A3A2A5", surface = {{"Studs","Inlet","Smooth","Smooth","Smooth","Smooth"}}}},',
+            f'\thumanoid = {{RigType = "R15", HipHeight = {HIP - hy / 2:.4g}, DisplayDistanceType = "None"}},',
+            '\tmodelStreamingMode = "Atomic",', "\tsegments = {"]
+    for n_ in order:
+        sg = segments[n_]
+        body.append(f'\t\t{{name = "{n_}", root = {fmt(cf(sg["root"]))}, parts = {{')
+        for p in sg["parts"]:
+            surface = '"Smooth"' if p["key"] in SMOOTH else '"Studs"'
+            body.append(f'\t\t\t{{name = "{p["name"]}", size = {fmt([round(v, 4) for v in p["size"]])}, '
+                        f'cf = {fmt(cf(p["center"], p["R"]))}, color = "{C[p["key"]]}", surface = {surface}}},')
+        body.append("\t\t}},")
+    body.append("\t},")
+    body.append("\tjoints = {")
+    for jn, p0, p1 in JOINTS:
+        c0 = cf((0.0, 0.0, 0.0)) if p0 == "HRP" else [round(segments[p1]["root"][i] - segments[p0]["root"][i], 5) + 0.0 for i in range(3)] + [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        body.append(f'\t\t{{name = "{jn}", part0 = "{p0}", part1 = "{p1}", c0 = {fmt(c0)}, c1 = {{0,0,0,1,0,0,0,1,0,0,0,1}}}},')
+    body.append("\t},")
+    trex = open(TREX).read()
+    block = trex[trex.index("attributes = {"):]
+    block = block[:block.index("\n\t},")]
+    attrs = {m.group(1): m.group(2) for m in re.finditer(r'^\t\t(\w+) = (.+?),$', block, re.M)}
+    attrs.update({"Species": '"Zuul"', "StyleVersion": '"1.0"', "ZuulModelVersion": f'"{VERSION}"', "DisplayName": '"Zuul"',
+                  "RigHipHeight": f"{HIP:.4g}", "BiteEnabled": "false", "PounceEnabled": "false", "RamEnabled": "false",
+                  "RoarEnabled": "false", "JumpEnabled": "false", "CreepEnabled": "false"})
+    attrs.pop("StarterCharacterVersion", None)
+    lines = [f"-- ZuulModelData v{VERSION} (Mecha Dino Arena) — block-style armoured Zuul ankylosaur ({LOOK} {L['name']}: Thornback body, Battering Ram mace on a curled tail), rig 1.3 joint names, skin-ready colour groups.",
+             "-- Generated by tools/zuul_generator.py (do not edit by hand; change the generator and re-run). Mockup docs/mockups/zuul_model_options.html (v0.3, Kepu picked D = B Thornback with C's mace).",
+             f"-- Scale: {hi[0] - lo[0]:.2f} studs long, hip {HIP:.4g} studs; doubled in game (~40 with the tail laid straight, like the T-Rex; the curled rest pose is shorter); four legs, Arm segments = front legs.",
+             f"-- Colour groups (Classic = {L['name']}): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: pupil 111111, mouth 6E342E.",
+             "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB. Rebuild with DinoModelBuilder.build(require(ZuulModelData)).",
+             "-- Not playable yet: no SpeciesServer entry, no kit (every move off). Those come with the Zuul kit plan.",
+             "return {", f'\tversion = "{VERSION}", species = "Zuul", style = "1.0", rig = "1.3",'] + body + ["\tattributes = {"] + [f"\t\t{k} = {attrs[k]}," for k in sorted(attrs)] + ["\t},", "}"]
+    open(OUT, "w").write("\n".join(lines) + "\n")
+    print("data ->", OUT, f"({len(attrs)} attributes)")
 n = sum(len(segments[s_]["parts"]) for s_ in order)
 print(f"look {LOOK} ({L['name']}): {n} parts, {len(order)} segments, scale {K:.3f}, HIP {HIP:.3f}")
 print("length %.2f, height %.2f, width %.2f" % (hi[0] - lo[0], hi[1] + HIP, hi[2] - lo[2]))

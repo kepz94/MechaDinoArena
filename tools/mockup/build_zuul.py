@@ -5,7 +5,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 three_path = sys.argv[1] if len(sys.argv) > 1 else '/tmp/ic/node_modules/three/build/three.min.js'
 os.makedirs("/tmp/troo", exist_ok=True)
 looks = {}
-for k in "ABC":
+for k in "ABCD":
     out = f"/tmp/troo/z_{k}.json"
     subprocess.check_call([sys.executable, os.path.join(ROOT, "tools", "zuul_generator.py"), "--look", k, "--json", out], stdout=subprocess.DEVNULL)
     looks[k] = json.load(open(out))
