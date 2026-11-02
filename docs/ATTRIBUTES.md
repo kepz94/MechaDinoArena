@@ -2524,3 +2524,12 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoModelVersion / RigHipHeight | teno model | "1.3" / 3.381 (were "1.2" / 3.298) | TenoModelData 1.3 |
 | LabHPartsEnabled | Lab script (StarterPlayerScripts) | true (false = Lab 1.9: only Mecha_* children refresh the stage) | Lab 1.10 |
 | LabVersion | player (this client) | "1.10" | Lab 1.10 |
+| TenoSlamDamage / TenoSlamStun | teno model | 15 / 0.5 (were 20 / 1) | TenoModelData 1.4 |
+| TenoSlamReach / TenoSlamAimMax / TenoSlamCone | teno model | 18.5 (× scale) / 35 / 70 | TenoModelData 1.4, TenoAttackServer 1.2 |
+| TenoAttackRearAimEnabled; TenoAttackAimMode | TenoAttackServer script | true; "aim" / "arc" | TenoAttackServer 1.2 |
+| TenoSlamAimYaw / TenoSlamAimTarget / TenoSlamFrontLatched | teno character | degrees (+ left) / name / count | TenoAttackServer 1.2 |
+| TenoSlamExtraCharges | teno character | 0 / 1 (Buck Off ★) | SkillEffects 1.32 |
+| TenoLocalSlamYaw; TenoAttackTestAimEnabled | teno character (owner); TenoAttackTest script | degrees; true | TenoAttackTest 1.2 |
+| TenoSlamYawEnabled | teno model (TenoPose default) | true | TenoPose 1.2 |
+| ArenaTouchTeno4thPip / AbilityBarTeno4thPip | ArenaTouch / AbilityBar scripts | true / true | ArenaTouch 1.10 / AbilityBar 1.21 |
+| SkillEffectsTenoChargeEnabled | SkillEffects script | true | SkillEffects 1.32 |

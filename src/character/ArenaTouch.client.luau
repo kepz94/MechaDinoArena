@@ -1,4 +1,4 @@
--- ArenaTouch v1.9 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.10 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -75,12 +75,15 @@
 --   ArenaTouchMainButton adds "Teno".
 -- Diagnostics (character attributes, this client): ArenaTouchVersion, ArenaTouchState ("off" / "on"),
 --   ArenaTouchLastPress (button name), ArenaTouchCASMode, ArenaTouchJumpHidden.
+-- v1.10 (tail slam rework, plan docs/plans/TENO_SLAM_REWORK_v1.0.md; Buck Off star = a 4th slam charge): the teno ATTACK pip
+--   row gets a 4th pip (a copy of the 3rd, LayoutOrder 4), shown only while TenoSlamChargesMax is 4; the pip count clamps
+--   to 1..4 (was 1..3). Switch: script attribute ArenaTouchTeno4thPip (default true, read at start; false = 1.9).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -448,6 +451,15 @@ for i = 1, 3 do
 	local f = tnPipRow:FindFirstChild("Charge_" .. i)
 	tnPips[i] = {f = f, fill = f:FindFirstChild("Fill"), ring = f:FindFirstChildOfClass("UIStroke")}
 end
+local TENO_MAX_PIPS = 3
+if script:GetAttribute("ArenaTouchTeno4thPip") ~= false then -- v1.10
+	local f = tnPips[3].f:Clone()
+	f.Name = "Charge_4"
+	f.LayoutOrder = 4
+	f.Parent = tnPipRow
+	tnPips[4] = {f = f, fill = f:FindFirstChild("Fill"), ring = f:FindFirstChildOfClass("UIStroke")}
+	TENO_MAX_PIPS = 4
+end
 
 -- overlay: Roblox's CAS button for each move, invisible, laid over its styled button every frame
 local OVERLAY = {
@@ -600,7 +612,7 @@ local RED_RING = Color3.fromRGB(240, 90, 79)
 RunService.RenderStepped:Connect(function()
 	if not wanted.Teno then return end
 	local now = workspace:GetServerTimeNow()
-	local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamChargesMax")) or 3), 1, 3)
+	local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamChargesMax")) or 3), 1, TENO_MAX_PIPS) -- v1.10: up to 4
 	local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamLeft")) or maxC), 0, maxC)
 	local rs, ra = tonumber(char:GetAttribute("TenoSlamRefillStart")) or 0, tonumber(char:GetAttribute("TenoSlamRefillAt")) or 0
 	local part = (ra > rs and nowC < maxC) and math.clamp((now - rs) / (ra - rs), 0, 1) or 0

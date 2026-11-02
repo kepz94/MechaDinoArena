@@ -24,9 +24,9 @@
 ## Global Constraints
 - Additive only. Every script change sits behind its own switch, and every number is an attribute with a default.
 - Versions:
-  - SkillTree 1.48, SkillTreeTenoParts.spec 1.0, SkillEffects 1.32.
+  - SkillTree 1.49, SkillTreeTenoParts.spec 1.0, SkillEffects 1.33 (1.48 / 1.32 went to the tail slam rework).
   - New: TenoPartsServer 1.0, TenoMovesServer 1.0, TenoMovesFX 1.0.
-  - StatServer 1.2 (Weak debuff), BotServer 1.23 (Weak + Slow + mark target), MechaButtons 1.26, TenoPose 1.2, IdleAnimation 1.39, SprintTest 1.18.
+  - StatServer 1.2 (Weak debuff), BotServer 1.23 (Weak + Slow + mark target), MechaButtons 1.26, TenoPose 1.3, IdleAnimation 1.39, SprintTest 1.18.
 - Install by multi_edit / execute_luau and verify by hash. Rows go in docs/VERSIONS.md and docs/ATTRIBUTES.md.
 - Publish only when Kepu says "publish". Test PC + gamepad + phone before publishing. Never test with a second player.
 - Rules that apply to every ability:
@@ -83,7 +83,7 @@ The areas follow the mockup. The teno also sees its Signature area for Buck Off,
 ## Tasks
 Dev Hub tickets: MDA-173 (T1) … MDA-180 (T8). Open decision: build size.
 
-1. **SkillTreeTenoParts.spec 1.0 + SkillTree 1.48** (Logic)
+1. **SkillTreeTenoParts.spec 1.0 + SkillTree 1.49** (Logic)
    - Write the spec red first, then add the 7 paths through `part(id, name, area, steps)` with `dino = "Teno"` and an effects wrapper (numbers above).
    - Switch: `SkillTree.TENO_PARTS`.
    - Check that the other dinos see none of them and the teno sees all 7 as BUTTONS.
@@ -91,7 +91,7 @@ Dev Hub tickets: MDA-173 (T1) … MDA-180 (T8). Open decision: build size.
    - StatServer: while a character's TenoWeakUntil > now, its ATTACK_KEYS values are written × TenoWeakMul; re-apply when the tag starts and ends. Switch `StatWeakEnabled`.
    - BotServer: a bot's damage × TenoWeakMul and its target = TenoMarkedBy while the tag lasts; WalkSpeed × TenoSlowMul while TenoSlowUntil > now. Switch `BotTenoTagsEnabled`.
    - No attacker tracking anywhere (Kepu).
-3. **SkillEffects 1.32** (Wired)
+3. **SkillEffects 1.33** (Wired)
    - A `TPARTS` list like `HPARTS` that writes TenoGrab*, TenoMortar*, TenoStomp*, TenoBellow*, TenoChallenge*, TenoLeap*, TenoMud* on teno characters.
    - Switch: `SkillEffectsTenoPartsEnabled`.
 4. **TenoPartsServer 1.0** (Wired)
@@ -110,7 +110,7 @@ Dev Hub tickets: MDA-173 (T1) … MDA-180 (T8). Open decision: build size.
 7. **Client** (Wired)
    - MechaButtons 1.26: 7 `TIMED_PARTS` entries.
    - TenoMovesFX 1.0: beams, boulder arc, rings, mud coat, slow / mark tags, as in the mockup.
-   - TenoPose 1.2 + IdleAnimation 1.39: grab curl / fling, catapult whip, rear + stomp, bellow, painter turn, spring-coil leap, wallow.
+   - TenoPose 1.3 + IdleAnimation 1.39: grab curl / fling, catapult whip, rear + stomp, bellow, painter turn, spring-coil leap, wallow.
    - SprintTest 1.18: TenoBellowRunMul and TenoSlowMul.
 8. **Studio check** (Wired)
    - Each ability at I and ★ against bots and a test target.

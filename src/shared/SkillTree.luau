@@ -1,4 +1,4 @@
--- SkillTree v1.47 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.48 (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -102,6 +102,8 @@
 --     strobeAngle 60 / 90 (III), strobeRange 20 / 25 (III), strobeDaze 1 / 1.5 (II), strobeDazedMul 1.2 (star),
 --       strobeCooldown 16;
 --     breaker (I), breakerPush 10 (II), breakerCooldown 20 / 14 (III), breakerImmune 1 (star).
+-- v1.48 (Kepu 2026-11-01, tail slam rework): Buck Off star text + effects field buckCharge (1 at star, 0 otherwise / other
+--   dinos); SkillEffects 1.32 writes it as TenoSlamExtraCharges. Switch SkillTree.TENO_BUCK_CHARGE (default true).
 -- v1.47 (Kepu 2026-11-01: "the herrerra has too many stackable stat upgrades ... look over the redundant ones to make this
 --   a fair dino" -> picked "Trim overlap"). Switch SkillTree.HERRERA_TRIM (default true; false = 1.46):
 --   * Removed for the Herrera (saved steps dropped by sanitize, so spent points come back): Regeneration (notFor.Herrera),
@@ -1568,6 +1570,24 @@ do
 		e.buckFree = bo >= 2
 		e.buckImmune = bo >= 3 and 2 or 0
 		e.buckDps = bo >= 4 and 3 or 0
+		return e
+	end
+end
+
+-- v1.48: Buck Off star also gives the tail slam a 4th charge (Kepu 2026-11-01: "4 charges at max" -> "3 base, 4 with an
+-- upgrade" -> "Buck Off star adds it"; plan docs/plans/TENO_SLAM_REWORK_v1.0.md). Switch SkillTree.TENO_BUCK_CHARGE.
+SkillTree.TENO_BUCK_CHARGE = true
+if SkillTree.TENO_STATS and SkillTree.TENO_BUCK_CHARGE and SkillTree.PATHS.buckoff then
+	SkillTree.PATHS.buckoff.steps[4] = "A raptor that latches on takes 3 damage per second until it lets go, and your tail slam gets a 4th charge"
+end
+do
+	local effectsV147 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsV147(steps, dino)
+		if type(e) ~= "table" then return e end
+		local s = SkillTree.sanitize(steps, dino)
+		local bo = (SkillTree.TENO_STATS and SkillTree.TENO_BUCK_CHARGE) and (s.buckoff or 0) or 0
+		e.buckCharge = bo >= 4 and 1 or 0
 		return e
 	end
 end

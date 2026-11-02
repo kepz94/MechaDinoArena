@@ -1,4 +1,4 @@
--- TenoAttackTest v1.1 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
+-- TenoAttackTest v1.2 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
 -- release = rear tail slam. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 6 (server: TenoAttackServer 1.0), mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: "Tap = scratch, hold = slam").
 -- Active while the character has TenoAttackEnabled = true (TenoModelData 1.1); does nothing on other dinos.
@@ -26,13 +26,19 @@
 --   and TenoLatchedCount > 0 (TenoStatsServer 1.0: raptors latched on you; never while stunned, the press is refused then);
 --   TenoAttackServer 1.1 makes that slam free. Switch: script attribute TenoAttackTestBuckEnabled (default true, read at
 --   each hold; false = 1.0).
+-- v1.2 (plan docs/plans/TENO_SLAM_REWORK_v1.0.md, the bite-like soft aim): at a slam release this client predicts the aim
+--   with ReplicatedStorage.TenoSlamAimShared (TenoSlamAim 1.0, copied there by TenoAttackServer 1.2) over the dinos it
+--   can see (other players' characters and DinoIsland.Bots models with a HumanoidRootPart, not knocked out) and sets
+--   TenoLocalSlamYaw before TenoLocalState "slam", so the own tail turns at once (TenoPose 1.2); the server's aim
+--   (TenoSlamAimYaw) is the one that hits. Switch: script attribute TenoAttackTestAimEnabled (default true, read at each
+--   slam; false = yaw 0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local ACTION = "DinoTenoAttack"
 local ACTION_CLICK = "DinoTenoAttackClick"
 local DEFAULTS = {TenoAttackEnabled = false, TenoSlamHoldMin = 0.22, TenoScratchGap = 0.5, TenoLeftClickEnabled = true}
@@ -92,6 +98,38 @@ local function onPress(src)
 	show("TenoInputResult", "press")
 end
 
+-- v1.2: predicted soft aim
+local aimShared
+local function predictYaw()
+	if script:GetAttribute("TenoAttackTestAimEnabled") == false then return 0 end
+	if not aimShared then
+		local m = ReplicatedStorage:FindFirstChild("TenoSlamAimShared")
+		if not m then return 0 end
+		local ok, mod = pcall(require, m)
+		if not ok then return 0 end
+		aimShared = mod
+	end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return 0 end
+	local s = char:GetScale()
+	local function n(k, d) return tonumber(char:GetAttribute(k)) or d end
+	local models = {}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl ~= player and pl.Character then table.insert(models, pl.Character) end end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local bots = isl and isl:FindFirstChild("Bots")
+	for _, b in ipairs(bots and bots:GetChildren() or {}) do table.insert(models, b) end
+	local cands = {}
+	for _, m in ipairs(models) do
+		local r = m:FindFirstChild("HumanoidRootPart")
+		if r and m:GetAttribute("DummyState") ~= "ko" and m:GetAttribute("PounceLatched") ~= true then
+			local lp = root.CFrame:PointToObjectSpace(r.Position)
+			table.insert(cands, {id = m, x = -lp.X, z = lp.Z, gap = math.max(0, (r.Position - root.Position).Magnitude - 2 * s)})
+		end
+	end
+	local ok, res = pcall(aimShared.pick, cands, {reach = n("TenoSlamReach", 18.5) * s, aimMax = n("TenoSlamAimMax", 35), cone = n("TenoSlamCone", 70)})
+	return ok and res.yaw or 0
+end
+
 local function onRelease()
 	local p = press
 	if not p then return end
@@ -100,6 +138,7 @@ local function onRelease()
 	if p.held then
 		local held = t - p.at
 		char:SetAttribute("TenoLocalHold", held)
+		char:SetAttribute("TenoLocalSlamYaw", predictYaw()) -- v1.2
 		setState("slam", t)
 		lastSent = t
 		fire("slam", t, held)

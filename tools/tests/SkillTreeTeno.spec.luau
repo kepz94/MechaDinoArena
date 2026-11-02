@@ -1,6 +1,7 @@
--- SkillTreeTeno.spec v1.0 (Mecha Dino Arena) — the Tenontosaurus rows of ServerStorage.DinoArcade.SkillTree 1.45 (plan
+-- SkillTreeTeno.spec v1.1 (Mecha Dino Arena) — the Tenontosaurus rows of ServerStorage.DinoArcade.SkillTree 1.45 (plan
 -- docs/plans/TENO_STATS_v1.0.md Task 1). Run in Studio Edit (copy in ServerStorage.DinoArcadeTools.SkillTreeTeno_spec,
 -- loadstring(Source)()); returns "PASS n" or "FAIL ...".
+-- v1.1: SkillTree 1.48 Buck Off star text + buckCharge.
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -38,7 +39,7 @@ for id, want in pairs({chargeup = {"Charge Up", "speed"}, brace = {"Brace", "def
 	end
 end
 if P.chargeup then eq("charge I text", P.chargeup.steps[1], "After 2 s of running: run 10% faster") end
-if P.buckoff then eq("buck star text", P.buckoff.steps[4], "A raptor that latches on takes 3 damage per second until it lets go") end
+if P.buckoff then eq("buck star text", P.buckoff.steps[4], "A raptor that latches on takes 3 damage per second until it lets go, and your tail slam gets a 4th charge") end -- v1.1
 -- shared rows hidden from the teno (and still shown to the others as before)
 for _, id in ipairs({"regen", "lifesteal", "jaws", "hide", "legs"}) do
 	eq(id .. " hidden teno", ST.seesPath(P[id], "Teno"), false)
@@ -79,6 +80,8 @@ eq("brace II no stack", E({brace = 2}).braceStack, 0); eq("brace star heal", E({
 eq("buck I bonus", E({buckoff = 1}).buckBonus, 10); eq("buck I no free", E({buckoff = 1}).buckFree, false)
 eq("buck II free", E({buckoff = 2}).buckFree, true); eq("buck III immune", E({buckoff = 3}).buckImmune, 2)
 eq("buck star dps", E({buckoff = 4}).buckDps, 3); eq("buck III no dps", E({buckoff = 3}).buckDps, 0)
+eq("buck star charge", E({buckoff = 4}).buckCharge, 1); eq("buck III no charge", E({buckoff = 3}).buckCharge, 0) -- v1.1
+eq("trex no buck charge", ST.effects({buckoff = 4}, "TRex").buckCharge, 0) -- v1.1
 eq("teno rows give no stat points", E({chargeup = 4, brace = 4, buckoff = 4}).speedPts, 0)
 -- the Herrera rows unchanged
 eq("herrera razor II", ST.effects({jaws = 2}, "Herrera").slashRefillMul, 0.65)

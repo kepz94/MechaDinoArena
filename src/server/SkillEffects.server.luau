@@ -1,4 +1,4 @@
--- SkillEffects v1.31 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.32 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -208,8 +208,12 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
+-- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
+--   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
+--   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
 local VERSION = "1.30" -- v1.28 (1.27 left this at "1.26"); v1.29 squads; v1.30 Herrera pass 3
 VERSION = "1.31" -- v1.31 teno rows
+VERSION = "1.32" -- v1.32 Buck Off star 4th slam charge
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -219,6 +223,10 @@ local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
 	{"TenoBuckBonus", "buckBonus", 0}, {"TenoBuckFree", "buckFree", false}, {"TenoBuckImmune", "buckImmune", 0},
 	{"TenoBuckDps", "buckDps", 0},
 }
+if script:GetAttribute("SkillEffectsTenoChargeEnabled") == nil then script:SetAttribute("SkillEffectsTenoChargeEnabled", true) end -- v1.32
+if script:GetAttribute("SkillEffectsTenoChargeEnabled") ~= false then
+	table.insert(TENO_ATTRS, {"TenoSlamExtraCharges", "buckCharge", 0}) -- v1.32: Buck Off star -> TenoAttackServer 1.2
+end
 if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
 local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false
 if script:GetAttribute("SkillEffectsHerreraPartsEnabled") == nil then script:SetAttribute("SkillEffectsHerreraPartsEnabled", true) end -- v1.27

@@ -1,4 +1,4 @@
--- TenoAttackServer v1.1 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.2 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -54,12 +54,32 @@
 --   * Buck Off I: a latched raptor also takes TenoBuckBonus, unless the teno is stunned at the impact.
 --   * Buck Off II (TenoBuckFree true, a raptor latched on the teno, the teno not stunned): "hold" is accepted at 0 charges
 --     and a "slam" at 0 charges stays a slam; no charge is used (character TenoSlamFree true; false otherwise).
+-- v1.2 (Kepu 2026-11-01, plan docs/plans/TENO_SLAM_REWORK_v1.0.md: "The tail slam only damages Dino's behind the Dino within
+--   the range of the tail not anywhere in the mid section or front of the teno. Also if a raptor latches on to the back half
+--   of a teno allow the tail slam to kick them off ... If a raptor is at the front half of the teno then the tail slam won't
+--   kick them off"; picks "Every dino in the tail zone", "Narrow"; "Have the teno's rear tail slam function like how the
+--   t-Rex bite soft aim works"; 4th charge from Buck Off star). Switch: script attribute TenoAttackRearAimEnabled (default
+--   true, read at each slam; false = the 1.1 arc / range zone and every latched raptor bucked):
+--   * Aim at the slam request (TenoSlamAim 1.0, ServerStorage.DinoArcade; the bite's soft aim): candidates = the targets
+--     above that are not latched on the teno, in HRP space (x left, z back) with gap = their nearest hitbox to the hips;
+--     reach = TenoSlamReach (18.5) x scale, aim limit TenoSlamAimMax (35 deg), zone width TenoSlamCone (70 deg).
+--     Character TenoSlamAimYaw (degrees, + = the tail swings to the teno's left; TenoPose 1.2 bends the tail) and
+--     TenoSlamAimTarget (name or "") are set before TenoSlamAt.
+--   * Impact: the members of the zone around that aimed yaw (positions re-read at the impact) are hit: behind the hips
+--     only, within reach. Latched raptors: only the ones whose PounceLatchPart centre is behind the hips (HRP-space z > 0)
+--     are slammed and shaken off; a raptor latched on the front half is not touched.
+--   * Charges: max = TenoSlamCharges + TenoSlamExtraCharges (SkillEffects 1.33: Buck Off star = 1); a change of either
+--     republishes TenoSlamChargesMax and starts the refill when below the new max.
+--   * Damage / stun come from the model (TenoModelData 1.4: TenoSlamDamage 15, TenoSlamStun 0.5).
+--   The module is copied to ReplicatedStorage.TenoSlamAimShared at start (TenoAttackTest 1.2 predicts the aim for its
+--   pose). Diagnostics: character TenoSlamAimYaw, TenoSlamAimTarget, TenoSlamFrontLatched (count left on); script
+--   TenoAttackAimMode ("aim" / "arc" at the last slam).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local SCRATCH_HIT_AT = 0.17     -- s after the press: mockup T1 + T2 / 2
 local SCRATCH_CONE = math.rad(45)
 local SHOVE_TIME = 0.3
@@ -67,14 +87,15 @@ local TOSS_TIME, TOSS_HEIGHT = 0.6, 8 -- StunClient / MineServer toss
 local HOLD_BACK = 1             -- s a hold stamp may be in the past
 local DEFAULTS = {TenoScratchDamage = 8, TenoScratchGap = 0.5, TenoScratchReach = 5.5, TenoScratchShove = 6,
 	TenoSlamDamage = 40, TenoSlamCharges = 3, TenoSlamRefill = 8, TenoSlamHoldMin = 0.22, TenoSlamRange = 15,
-	TenoSlamArc = 220, TenoSlamToss = 35, TenoSlamStun = 1, TenoSlamDropTime = 0.13}
+	TenoSlamArc = 220, TenoSlamToss = 35, TenoSlamStun = 1, TenoSlamDropTime = 0.13,
+	TenoSlamReach = 18.5, TenoSlamAimMax = 35, TenoSlamCone = 70, TenoSlamExtraCharges = 0} -- v1.2
 
 script:SetAttribute("TenoAttackServerVersion", VERSION)
 for _, k in ipairs({"TenoAttackRequests", "TenoAttackScratches", "TenoAttackSlams", "TenoAttackHits", "TenoAttackBucked",
 	"TenoAttackSquadSkips"}) do
 	script:SetAttribute(k, 0)
 end
-for _, k in ipairs({"TenoAttackServerEnabled", "TenoAttackModeRulesEnabled", "TenoAttackSquadEnabled", "TenoAttackStatsEnabled"}) do -- v1.1: + Stats
+for _, k in ipairs({"TenoAttackServerEnabled", "TenoAttackModeRulesEnabled", "TenoAttackSquadEnabled", "TenoAttackStatsEnabled", "TenoAttackRearAimEnabled"}) do -- v1.1: + Stats; v1.2: + RearAim
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local enabled = script:GetAttribute("TenoAttackServerEnabled") ~= false
@@ -298,7 +319,10 @@ end
 
 -- per-character state ------------------------------------------------------------------------------------------------------
 local chars = {} -- [char] = {charges, refillStart, refillAt, lastScratch, slamUntil}
-local function maxCharges(char) return math.max(1, math.floor(get(char, "TenoSlamCharges"))) end
+local function maxCharges(char)
+	local extra = script:GetAttribute("TenoAttackRearAimEnabled") ~= false and math.max(0, math.floor(get(char, "TenoSlamExtraCharges"))) or 0 -- v1.2: Buck Off star
+	return math.max(1, math.floor(get(char, "TenoSlamCharges")) + extra)
+end
 local function publish(char, st)
 	char:SetAttribute("TenoSlamChargesMax", maxCharges(char))
 	char:SetAttribute("TenoSlamLeft", st.charges)
@@ -315,6 +339,17 @@ local function track(char)
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then chars[char] = nil end
 	end)
+	local function onMax() -- v1.2: the max can change (Buck Off star)
+		local mx = maxCharges(char)
+		st.charges = math.min(st.charges, mx)
+		if st.charges < mx and not st.refillAt then
+			local t = now()
+			st.refillStart, st.refillAt = t, t + math.max(0.5, get(char, "TenoSlamRefill"))
+		end
+		publish(char, st)
+	end
+	char:GetAttributeChangedSignal("TenoSlamExtraCharges"):Connect(onMax)
+	char:GetAttributeChangedSignal("TenoSlamCharges"):Connect(onMax)
 	return st
 end
 RunService.Heartbeat:Connect(function()
@@ -409,6 +444,41 @@ local function doScratch(player, char, st, t, stamp)
 	end)
 end
 
+-- v1.2: the soft aim (TenoSlamAim 1.0)
+local aimMod
+do
+	local ok, m = pcall(function() return require(ServerStorage:WaitForChild("DinoArcade", 10):WaitForChild("TenoSlamAim", 10)) end)
+	if ok and type(m) == "table" then aimMod = m end
+	local src = ServerStorage:FindFirstChild("DinoArcade") and ServerStorage.DinoArcade:FindFirstChild("TenoSlamAim")
+	if src and not ReplicatedStorage:FindFirstChild("TenoSlamAimShared") then
+		local c = src:Clone()
+		c.Name = "TenoSlamAimShared"
+		c.Parent = ReplicatedStorage
+	end
+end
+local function aimOn() return aimMod ~= nil and script:GetAttribute("TenoAttackRearAimEnabled") ~= false end
+local function aimSettings(char)
+	return {reach = math.max(0, get(char, "TenoSlamReach")) * char:GetScale(), aimMax = math.clamp(get(char, "TenoSlamAimMax"), 0, 90),
+		cone = math.clamp(get(char, "TenoSlamCone"), 0, 180)}
+end
+local function latchedOn(m, char)
+	if m:GetAttribute("PounceLatched") ~= true or m:GetAttribute("PounceMode") == "pin" then return nil end
+	local v = m:FindFirstChild("PounceLatchPart")
+	if v and v:IsA("ObjectValue") and v.Value ~= nil and v.Value:IsDescendantOf(char) then return v.Value end
+	return nil
+end
+local function aimCands(char, root) -- HRP space: x = +left, z = +back
+	local list = {}
+	for _, m in ipairs(candidates(char)) do
+		if not latchedOn(m, char) then
+			local r = rootOf(m)
+			local lp = root.CFrame:PointToObjectSpace(r.Position)
+			table.insert(list, {id = m, x = -lp.X, z = lp.Z, gap = gap(m, root.Position)})
+		end
+	end
+	return list
+end
+
 local function doSlam(player, char, st, t, hold)
 	local free = freeSlam(char, t) -- v1.1: Buck Off II
 	char:SetAttribute("TenoSlamFree", free)
@@ -421,6 +491,15 @@ local function doSlam(player, char, st, t, hold)
 	count("TenoAttackSlams")
 	char:SetAttribute("TenoSlamHold", math.clamp(tonumber(hold) or 1, 0, 2))
 	char:SetAttribute("TenoHoldSince", 0)
+	local aimYaw, aiming = 0, aimOn() -- v1.2
+	script:SetAttribute("TenoAttackAimMode", aiming and "aim" or "arc")
+	if aiming then
+		local root0 = rootOf(char)
+		local r = root0 and aimMod.pick(aimCands(char, root0), aimSettings(char)) or {yaw = 0}
+		aimYaw = r.yaw
+		char:SetAttribute("TenoSlamAimTarget", r.target and r.target.id.Name or "")
+	end
+	char:SetAttribute("TenoSlamAimYaw", aimYaw)
 	char:SetAttribute("TenoSlamAt", t) -- last: poses + TenoFX wind-down
 	task.delay(drop, function()
 		local root = rootOf(char)
@@ -479,13 +558,27 @@ local function doSlam(player, char, st, t, hold)
 				table.insert(names, m.Name)
 			end
 		end
+		local frontLatched = 0 -- v1.2
 		-- latched raptors first (they may be inside the teno's own body, any side)
 		local all = {}
 		for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(all, pl.Character) end end
 		for _, b in ipairs(bots()) do table.insert(all, b) end
 		for _, m in ipairs(all) do
-			if m ~= char and latchedOnMe(m) and mayAffect(char, m) then apply(m, true) end
+			if m ~= char and latchedOnMe(m) and mayAffect(char, m) then
+				local part = aiming and latchedOn(m, char)
+				if not aiming or (part and aimMod.backHalf(root.CFrame:PointToObjectSpace(part.Position).Z)) then
+					apply(m, true)
+				else
+					frontLatched += 1 -- v1.2: the front half is not kicked off
+				end
+			end
 		end
+		char:SetAttribute("TenoSlamFrontLatched", frontLatched)
+		if aiming then -- v1.2: the aimed tail zone, behind the hips only
+			for _, c in ipairs(aimMod.members(aimCands(char, root), aimYaw, aimSettings(char))) do
+				if not hit[c.id] then apply(c.id, false) end
+			end
+		else
 		-- the rear zone
 		for _, m in ipairs(candidates(char)) do
 			if not hit[m] then
@@ -493,6 +586,7 @@ local function doSlam(player, char, st, t, hold)
 				local inArc = v.Magnitude < 1e-3 or math.acos(math.clamp(back:Dot(v.Unit), -1, 1)) <= half
 				if inArc and gap(m, hips) <= range then apply(m, false) end
 			end
+		end
 		end
 		local n = 0
 		for _ in pairs(hit) do n += 1 end

@@ -1,4 +1,4 @@
--- TenoPose v1.1 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.2 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -35,8 +35,13 @@
 --   * every leap frame is low-pass filtered (angles follow the target at TenoLeapFilterRate 16 per second; reset when a new
 --     leap starts after 0.25 s without leap frames). The filter state lives in this module, which each character's
 --     IdleAnimation requires from its own copy, so it belongs to one model.
+-- v1.2 (plan docs/plans/TENO_SLAM_REWORK_v1.0.md, Kepu 2026-11-01 "like how the t-Rex bite soft aim works"): the slam
+--   bends the tail toward the aimed yaw: Tail1..Tail5 yaw = -aimYaw x TenoSlamYawShare (0.3 / 0.25 / 0.2 / 0.15 / 0.1;
+--   joint yaw + = the tail to the right, aimYaw + = left). aimYaw = the owner's TenoLocalSlamYaw (TenoAttackTest 1.2,
+--   at once) or else the character's TenoSlamAimYaw (TenoAttackServer 1.2), read by phase() for each slam. Switch: model
+--   attribute TenoSlamYawEnabled (default true; false = 1.1, no turn).
 local TenoPose = {}
-TenoPose.Version = "1.1"
+TenoPose.Version = "1.2"
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -47,6 +52,7 @@ TenoPose.Defaults = {
 	-- v1.1: smooth leap
 	TenoLeapSmoothEnabled = true, TenoLeapAirBlend2 = 0.4, TenoLeapReachStart = 0.25, TenoLeapReachTime = 0.35,
 	TenoLeapReach = 0.45, TenoLeapLandIn = 0.35, TenoLeapLandTime2 = 0.55, TenoLeapFilterRate = 16,
+	TenoSlamYawEnabled = true, -- v1.2
 }
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5",
@@ -181,8 +187,13 @@ end
 
 local function num(v) return typeof(v) == "number" and v or nil end
 
+local slamYaw = 0 -- v1.2: the aimed yaw of the current slam (this module copy belongs to one model)
 function TenoPose.phase(model, isOwner, serverNow)
 	local s = TenoPose.settings(model)
+	slamYaw = 0
+	if s.TenoSlamYawEnabled ~= false then
+		slamYaw = num(isOwner and model:GetAttribute("TenoLocalSlamYaw")) or num(model:GetAttribute("TenoSlamAimYaw")) or 0
+	end
 	if s.TenoPoseEnabled == false then return nil, 0, 0, "off" end
 	local scratchEnd = s.TenoScratchUp + s.TenoScratchDown + s.TenoScratchRecover
 	local slamEnd = s.TenoSlamDropTime + s.TenoSlamRecover
@@ -226,11 +237,22 @@ function TenoPose.attackAngles(phase, t, hold, s, now)
 		return mix(SCRATCH_DOWN, ZERO, ease((t - T1 - T2) / T3))
 	elseif phase == "slam" then
 		local TD = s.TenoSlamDropTime
+		local a
 		if t < TD then
 			local up = mix(ZERO, D_UP, TenoPose.holdWeight(hold, s))
-			return mix(up, D_DOWN, easeIn(t / TD))
+			a = mix(up, D_DOWN, easeIn(t / TD))
+		else
+			a = mix(D_DOWN, ZERO, ease((t - TD) / s.TenoSlamRecover))
 		end
-		return mix(D_DOWN, ZERO, ease((t - TD) / s.TenoSlamRecover))
+		if slamYaw ~= 0 then -- v1.2: bend the tail toward the aim (fades with the recover)
+			local k = t < TD and 1 or 1 - ease((t - TD) / s.TenoSlamRecover)
+			for i, share in ipairs({0.3, 0.25, 0.2, 0.15, 0.1}) do
+				local j = "Tail" .. i
+				a[j] = a[j] or {0, 0, 0}
+				a[j][2] += -slamYaw * share * k
+			end
+		end
+		return a
 	end
 	return {}
 end

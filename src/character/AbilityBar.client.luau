@@ -1,4 +1,4 @@
--- AbilityBar v1.20 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.21 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -119,12 +119,15 @@
 --   "slam": stroke 4 px yellow) / "ready" (also at 0 charges: a tap still scratches; the refilling pip shows the time).
 --   Switch: script attribute AbilityBarTenoEnabled (default true, read at start; false = 1.19: no teno row, the fallback
 --   order). Diagnostics: AbilityBar_TenoAttack (state), AbilityBarTenoPips ("<ready>/<max>").
+-- v1.21 (tail slam rework, plan docs/plans/TENO_SLAM_REWORK_v1.0.md; Buck Off star = a 4th slam charge): the teno ATTACK
+--   tile's pip row gets a 4th pip (a copy of its 3rd, made the first time TenoSlamChargesMax is 4); the pip count clamps to
+--   1..4 (was 1..3). Switch: script attribute AbilityBarTeno4thPip (default true, read each frame; false = 1.20).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.20"
+local VERSION = "1.21"
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -736,7 +739,17 @@ local function update()
 				paint(e, "ready", 0, 0, nil)
 			end
 		elseif e.move.tenoPips then -- v1.20: teno ATTACK (slam charges; the scratch is always there)
-			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamChargesMax")) or 3), 1, 3)
+			local four = script:GetAttribute("AbilityBarTeno4thPip") ~= false -- v1.21
+			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamChargesMax")) or 3), 1, four and 4 or 3)
+			if maxC > #e.t.chargePips and #e.t.chargePips >= 1 then -- v1.21: grow the row to 4
+				local last = e.t.chargePips[#e.t.chargePips]
+				local f = last.f:Clone()
+				f.Name = "Charge_" .. (#e.t.chargePips + 1)
+				f.LayoutOrder = #e.t.chargePips + 1
+				f.Parent = last.f.Parent
+				table.insert(e.t.chargePips, {f = f, fill = f:FindFirstChild("Fill")})
+			end
+			maxC = math.min(maxC, #e.t.chargePips)
 			local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamLeft")) or maxC), 0, maxC)
 			local rs, ra = tonumber(char:GetAttribute("TenoSlamRefillStart")) or 0, tonumber(char:GetAttribute("TenoSlamRefillAt")) or 0
 			local part = (ra > rs and nowC < maxC) and math.clamp((now - rs) / (ra - rs), 0, 1) or 0
