@@ -8,6 +8,7 @@ const rad = THREE.MathUtils.degToRad;
 const AREA = {attack: ["ATTACK", "#f05a4f"], defense: ["DEFENSE", "#5aa0ff"], speed: ["SPEED", "#ffd34d"], health: ["HEALTH", "#5fd16a"], eng: ["ENGINEER", "#ff9b2e"]};
 const STEEL = 0x9aa3ad, DARK = 0x3a3f47, BRASS = 0xc9a24a, RED = 0xe02a2a, MUD = 0x5b3d22, MUD2 = 0x7a5530, ROCKC = 0x8a8478, GREEN = 0x5fd16a, SKY = 0x8fc6e8;
 
+const PICK = {grab: 0, mortar: 0, mud: 0, stomp: 1, bellow: 1, leap: 1}; // Kepu 2026-11-01: 3, 4, 7 A; 5, 9, 14 B; 11 redesign
 const AB = [
   {id: "grab", n: 3, name: "Tail Grab & Fling", area: "attack", key: "R", len: 4.2,
     steps: ["Button: grab the nearest raptor-size dino within 12 studs with your tail and fling it 30 studs ahead. 8 damage, stunned 1 s when it lands. Recharges in 16 s",
@@ -37,8 +38,9 @@ const AB = [
     steps: ["Button: enemies within 30 studs are marked for 5 s. Bots go for you, and marked players deal 40% less damage to anyone but you. Recharges in 20 s",
       "Mark lasts 7 s", "Reaches 45 studs", "You take 20% less damage from marked enemies"],
     note: "Your number: 40% less damage. The tank job: pull the fight onto the teno so the squad survives. Marked enemies get a red mark over their head so everyone sees who's marked.",
-    looks: [{name: "A · Siren Crest", sub: "a red siren on the head", why: "A red siren light on top of the head that spins and flashes while the call is active."},
-      {name: "B · Banner Mast", sub: "a war banner on the hips", why: "A steel mast on the hips with a red banner that snaps open and waves while enemies are marked."}]},
+    looks: [{name: "C · War Drum", sub: "the tail beats a drum on the back", why: "A big steel war drum with a red skin sits on the hips, and the tail tip wears a padded mallet. On the button the tail swings up over the back and beats the drum twice: BOOM, BOOM. Each beat sends a red shockwave out and marks the enemies it reaches. Uses the teno's own tail, so it reads as a teno move."},
+      {name: "D · Target Painter", sub: "a shoulder laser that tags each enemy", why: "A mecha laser turret on the shoulder. On the button it sweeps and fires a thin red beam at every enemy in range, and each one gets a red target ring that stays on them. 'Marked' is something you literally see happen."},
+      {name: "E · Tail Bell", sub: "a big bronze bell on the tail tip", why: "A heavy bronze bell hangs from the tail tip. On the button the teno thrashes its tail and the bell clangs, sending red rings out from the tail. A loud, unmistakable challenge from the back end of a tank."}]},
   {id: "leap", n: 14, name: "Hydraulic Leap", area: "speed", key: "C", len: 3.6,
     steps: ["Button: a hydraulic leap 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 14 s",
       "Leap 55 studs", "Landing stuns 0.5 s", "2 leaps (2 charges)"],
@@ -229,6 +231,8 @@ const AIR = {RootJoint: [10, 0, 0], LegL: [-30, 0, 0], LegR: [-30, 0, 0], KneeL:
 const SLAM_UP = {RootJoint: [-12, 0, 0], LegL: [12, 0, 0], LegR: [12, 0, 0], ArmL: [-14, 0, 0], ArmR: [-14, 0, 0], Neck: [-14, 0, 0], Head: [14, 0, 0], Jaw: [-16, 0, 0], Tail1: [-58, 0, 0], Tail2: [-24, 0, 0], Tail3: [-12, 0, 0], Tail4: [6, 0, 0], Tail5: [14, 0, 0]};
 const SLAM_DOWN = {RootJoint: [6, 0, 0], LegL: [-6, 0, 0], LegR: [-6, 0, 0], Neck: [-4, 0, 0], Tail1: [16, 0, 0], Tail2: [8, 0, 0], Tail3: [6, 0, 0], Tail4: [-2, 0, 0], Tail5: [-6, 0, 0]};
 const LEAP_SLAM = {RootJoint: [-6, 0, 0], LegL: [6, 0, 0], LegR: [6, 0, 0], ArmL: [-10, 0, 0], ArmR: [-10, 0, 0], Neck: [-8, 0, 0], Tail1: [-30, 0, 0], Tail2: [-12, 0, 0], Tail3: [-6, 0, 0], Tail4: [4, 0, 0], Tail5: [8, 0, 0]};
+const DRUM_UP = {Tail1: [-6, 0, 0], Tail2: [-34, 0, 0], Tail3: [-96, 0, 0], Tail4: [-45, 0, 0], Tail5: [-48, 0, 0], RootJoint: [-4, 0, 0]};
+const DRUM_HIT = {Tail1: [-1, 0, 0], Tail2: [-32, 0, 0], Tail3: [-100, 0, 0], Tail4: [-67, 0, 0], Tail5: [-94, 0, 0], RootJoint: [-4, 0, 0]}; // tip lands on the drum (searched in the page)
 const TAIL_DOWN = {Tail1: [14, 0, 0], Tail2: [14, 0, 0], Tail3: [14, 0, 0], Tail4: [12, 0, 0], Tail5: [10, 0, 0], RootJoint: [-4, 0, 0]};
 const TAIL_OVER = {Tail1: [-80, 0, 0], Tail2: [-48, 0, 0], Tail3: [-42, 0, 0], Tail4: [-30, 0, 0], Tail5: [-20, 0, 0], RootJoint: [-10, 0, 0], LegL: [10, 0, 0], LegR: [10, 0, 0], Neck: [-10, 0, 0]};
 const TAIL_THROW = {Tail1: [-95, 0, 0], Tail2: [-60, 0, 0], Tail3: [-50, 0, 0], Tail4: [-35, 0, 0], Tail5: [-25, 0, 0], RootJoint: [-16, 0, 0], LegL: [16, 0, 0], LegR: [16, 0, 0], Neck: [-14, 0, 0]};
@@ -296,15 +300,27 @@ function buildLook() {
     }
     piece("Head_cranium", [0.2, 0.12, 1.25], [-0.05, 0.42, 0], [0, 0, 0], STEEL);
   }
-  if (id === "challenge" && look === 0) {
-    piece("Head_cranium", [0.45, 0.12, 0.45], [-0.1, 0.56, 0], [0, 0, 0], DARK);
-    piece("Head_cranium", [0.38, 0.4, 0.38], [-0.1, 0.82, 0], [0, 0, 0], RED, {cyl: true, glow: true, alpha: 0.85});
-    piece("Head_cranium", [0.12, 0.3, 0.42], [0, 0, 0], [0, 0, 0], 0xffffff, {glow: true, extra: () => T(-0.1, 0.82, 0).multiply(RY(t * 12))});
+  if (id === "challenge" && look === 0) { // C War Drum
+    piece("Torso_hips", [1.6, 0.18, 1.6], [-0.1, 1.05, 0], [0, 0, 0], DARK, {cyl: true});
+    piece("Torso_hips", [1.5, 0.9, 1.5], [-0.1, 1.55, 0], [0, 0, 0], STEEL, {cyl: true});
+    piece("Torso_hips", [1.42, 0.06, 1.42], [-0.1, 2.02, 0], [0, 0, 0], RED, {cyl: true, glow: true, extra: () => SC(1, 1 + 3 * (sc.beat || 0), 1)});
+    for (const y of [1.2, 1.9]) piece("Torso_hips", [1.58, 0.08, 1.58], [-0.1, y, 0], [0, 0, 0], BRASS, {cyl: true});
+    piece("Tail5_main", [0.75, 0.75, 0.75], [-1.75, 0, 0], [0, 0, 0], BRASS, {sphere: true});
+    piece("Tail5_main", [0.5, 0.5, 0.5], [-2.05, 0, 0], [0, 0, 0], RED, {sphere: true, glow: true});
   }
-  if (id === "challenge" && look === 1) {
-    piece("Torso_hips", [0.14, 3.2, 0.14], [-0.3, 2.5, 0], [0, 0, 0], STEEL, {cyl: true});
-    piece("Torso_hips", [0.3, 0.3, 0.3], [-0.3, 4.15, 0], [0, 0, 0], BRASS, {sphere: true});
-    piece("Torso_hips", [1.6, 1.0, 0.05], [0, 0, 0], [0, 0, 0], RED, {extra: () => T(-1.1, 3.4, 0).multiply(RY(Math.sin(t * 6) * 0.25 * (sc.wave || 0.2))).multiply(SC(0.3 + 0.7 * (sc.unfurl === undefined ? 1 : sc.unfurl), 1, 1))});
+  if (id === "challenge" && look === 1) { // D Target Painter
+    const aim = () => RY(sc.sweep || 0);
+    piece("Torso_chest", [0.7, 0.35, 0.7], [0.1, 1.05, 0.45], [0, 0, 0], DARK);
+    piece("Torso_chest", [0.55, 0.45, 0.55], [0.1, 1.42, 0.45], [0, 0, 0], STEEL, {extra: aim});
+    piece("Torso_chest", [0.7, 0.16, 0.16], [0.1, 1.45, 0.45], [0, 0, 0], STEEL, {extra: () => aim().multiply(T(0.45, 0, 0))});
+    piece("Torso_chest", [0.22, 0.22, 0.22], [0.1, 1.45, 0.45], [0, 0, 0], RED, {sphere: true, glow: true, extra: () => aim().multiply(T(0.82, 0, 0))});
+  }
+  if (id === "challenge" && look === 2) { // E Tail Bell
+    const swing = () => RX(Math.sin(t * 22) * 0.5 * (sc.clang || 0));
+    piece("Tail5_main", [0.5, 0.2, 0.5], [-1.4, -0.25, 0], [0, 0, 0], DARK);
+    piece("Tail5_main", [0.5, 1.0, 1.1], [0, 0, 0], [0, 0, 0], BRASS, {cyl: "cone", extra: () => T(-1.4, -0.3, 0).multiply(swing()).multiply(T(0, -0.55, 0))});
+    piece("Tail5_main", [1.25, 0.1, 1.25], [0, 0, 0], [0, 0, 0], 0x8a6a2a, {cyl: true, extra: () => T(-1.4, -0.3, 0).multiply(swing()).multiply(T(0, -1.05, 0))});
+    piece("Tail5_main", [0.3, 0.3, 0.3], [0, 0, 0], [0, 0, 0], DARK, {sphere: true, extra: () => T(-1.4, -0.3, 0).multiply(swing()).multiply(T(0, -1.1, 0))});
   }
   if (id === "beacon" && look === 0) {
     const onBack = () => !sc.planted;
@@ -470,9 +486,29 @@ function scenario(dt) {
   }
   if (id === "challenge") {
     const go = 0.5, R = lvl(2) ? 45 : 30, mark = lvl(1) ? 7 : 5;
-    let P = t < go ? mix(A, BELLOW, smooth(t / go)) : t < go + 0.9 ? BELLOW : mix(BELLOW, A, smooth((t - go - 0.9) / 0.6));
-    sc.unfurl = clamp01((t - go) / 0.4); sc.wave = t > go ? 1 : 0.2;
-    if (once("call", t >= go)) { ring(new THREE.Vector3(0, 0, 0), R, 1.0, RED, 4); for (const d of foes) if (d.active && Math.hypot(d.x, d.z) <= R) d.mark = mark; }
+    let P;
+    const markAll = () => { for (const d of foes) if (d.active && Math.hypot(d.x, d.z) <= R) d.mark = mark; };
+    if (look === 0) { // War Drum: tail up over the back, two beats
+      const beats = [go, go + 0.45];
+      const bt = beats.map(b => Math.abs(t - b)), near = Math.min(...bt);
+      P = t < go - 0.35 ? mix(A, DRUM_UP, smooth(t / (go - 0.35))) : t < go + 0.8 ? mix(DRUM_UP, DRUM_HIT, near < 0.12 ? 1 - near / 0.12 : 0) : mix(DRUM_UP, A, smooth((t - go - 0.8) / 0.6));
+      sc.beat = near < 0.1 ? 1 - near / 0.1 : 0;
+      beats.forEach((b, k) => { if (once("beat" + k, t >= b)) { const dp = partPos(teno, "Torso_hips", [-0.1, 2.0, 0]); ring(new THREE.Vector3(0, 0, 0), R, 1.0, RED, 4); sphereRing(dp, R * 0.6, 0.8, RED); flash(dp, 2.5, 0xff8080); shake = 0.35; popNum(dp.clone().add(new THREE.Vector3(0, -4, 0)), "BOOM", "big"); if (k === 0) markAll(); } });
+    } else if (look === 1) { // Target Painter: sweep, one beam per enemy
+      P = t < go ? mix(A, BELLOW, smooth(t / go) * 0.4) : mix(mix(A, BELLOW, 0.4), A, smooth((t - go - 0.9) / 0.6));
+      sc.sweep = t < go ? 0 : Math.sin((t - go) * 7) * 0.8 * Math.max(0, 1 - (t - go) / 1.2);
+      if (once("paint", t >= go)) { markAll(); sc.beams = foes.filter(d => d.active && d.mark > 0).map((d, k) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 1), new THREE.MeshBasicMaterial({color: 0xff2a2a, transparent: true, opacity: 0.9})); scene.add(m); world.push(m); return {m, d, k}; });
+        sc.reticles = foes.filter(d => d.active && d.mark > 0).map(d => { const m = new THREE.Mesh(new THREE.RingGeometry(3.2, 3.8, 32), new THREE.MeshBasicMaterial({color: 0xff2a2a, side: THREE.DoubleSide, transparent: true, opacity: 0.9})); m.rotation.x = -Math.PI / 2; scene.add(m); world.push(m); return {m, d}; }); }
+      if (sc.beams) { const from = partPos(teno, "Torso_chest", [0.1, 1.45, 0.45]); for (const b of sc.beams) { const on = t >= go + b.k * 0.15 && t < go + 0.9 + b.k * 0.15; b.m.visible = on; if (on) { const to = new THREE.Vector3(b.d.x, b.d.y + 5, b.d.z); b.m.position.lerpVectors(from, to, 0.5); b.m.lookAt(to); b.m.scale.set(1, 1, from.distanceTo(to)); b.m.material.opacity = 0.6 + 0.4 * Math.random(); } } }
+      if (sc.reticles) for (const r of sc.reticles) { r.m.visible = r.d.mark > 0; r.m.position.set(r.d.x, 0.25, r.d.z); r.m.rotation.z = t * 2; }
+    } else { // Tail Bell: thrash the tail, clang clang clang
+      const on = t >= go - 0.2 && t < go + 1.0;
+      sc.clang = on ? 1 : Math.max(0, (sc.clang || 0) - 0.05);
+      const thrash = on ? Math.sin((t - go) * 14) * 26 : 0;
+      P = Object.assign({}, A, {Tail1: [-18, thrash * 0.4, 0], Tail2: [-10, thrash * 0.6, 0], Tail3: [-6, thrash * 0.8, 0], Tail4: [-4, thrash, 0], Tail5: [0, thrash * 1.2, 0], Neck: [10, 0, 0], Jaw: [-20, 0, 0]});
+      if (on && Math.floor((t - go) * 14 / Math.PI) !== sc.lastClang) { sc.lastClang = Math.floor((t - go) * 14 / Math.PI); const bp = partPos(teno, "Tail5_main", [-1.4, -1.2, 0]); sphereRing(bp, 9, 0.6, RED); popNum(bp.clone().add(new THREE.Vector3(0, -6, 0)), "CLANG", "soft"); }
+      if (once("bell", t >= go)) { ring(new THREE.Vector3(0, 0, 14), R, 1.0, RED, 4); markAll(); }
+    }
     for (const [i, d] of foes.entries()) if (d.active) setTag("m" + i, d, d.mark > 0 ? "◆ MARKED" : t > go ? "too far" : "", d.mark > 0 ? "red" : "", 12);
     if (t > go + 0.6) { for (const d of foes) if (d.active && d.mark > 0) { const dx = -d.x, dz = -d.z, L = Math.hypot(dx, dz); if (L > 18) { d.x += dx / L * dt * 12; d.z += dz / L * dt * 12; } d.yaw = Math.atan2(-dx, -dz); } }
     if (once("hitSquad", t >= go + 1.6)) popNum(new THREE.Vector3(squad[0].x, 0, squad[0].z), "-6 (was 10)", "soft");
@@ -563,9 +599,9 @@ function updateFoes(dt) {
 // ---------- UI ----------
 function areaStyle(a) { return AREA[a]; }
 function drawTabs() {
-  $("abil").innerHTML = AB.map((a, i) => `<button class="tab" data-ab="${i}" aria-pressed="${i === cur}"><span style="color:${areaStyle(a.area)[1]}">#${a.n}</span> ${a.name}<small style="color:${areaStyle(a.area)[1]}">${areaStyle(a.area)[0]}</small></button>`).join("");
-  document.querySelectorAll("[data-ab]").forEach(b => b.onclick = () => { cur = +b.dataset.ab; look = 0; drawAll(); resetScene(); });
-  $("looks").innerHTML = AB[cur].looks.map((l, i) => `<button class="tab" data-look="${i}" aria-pressed="${i === look}">${l.name}<small style="color:#8f99aa">${l.sub}</small></button>`).join("");
+  $("abil").innerHTML = AB.map((a, i) => `<button class="tab" data-ab="${i}" aria-pressed="${i === cur}"><span style="color:${areaStyle(a.area)[1]}">#${a.n}</span> ${a.name}<small style="color:${areaStyle(a.area)[1]}">${areaStyle(a.area)[0]}${a.id in PICK ? ` · <span style="color:#7dff9a">${"AB"[PICK[a.id]]} picked</span>` : a.id === "challenge" ? ' · <span style="color:#ffc832">new looks</span>' : ""}</small></button>`).join("");
+  document.querySelectorAll("[data-ab]").forEach(b => b.onclick = () => { cur = +b.dataset.ab; look = PICK[AB[cur].id] || 0; drawAll(); resetScene(); });
+  $("looks").innerHTML = AB[cur].looks.map((l, i) => `<button class="tab" data-look="${i}" aria-pressed="${i === look}">${l.name}${PICK[AB[cur].id] === i ? ' <span style="color:#7dff9a">✓ your pick</span>' : ""}<small style="color:#8f99aa">${l.sub}</small></button>`).join("");
   document.querySelectorAll("[data-look]").forEach(b => b.onclick = () => { look = +b.dataset.look; drawAll(); resetScene(); });
   document.querySelectorAll("[data-step]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.step === step));
 }
@@ -592,7 +628,7 @@ $("closeup").onclick = e => { closeup = !closeup; e.currentTarget.setAttribute("
 function resize() { const w = cv.clientWidth, h = cv.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
 window.addEventListener("resize", resize);
 const CENTER = {grab: [0, 6, 0], mortar: [0, 6, -26], stomp: [0, 6, -6], bellow: [0, 6, 2], challenge: [0, 6, -4], beacon: [6, 6, 4], leap: [0, 8, -26], mud: [0, 6, -4]};
-const PARTFOCUS = {grab: ["Tail5_main", 18], mortar: [look => look ? "Torso_hips" : "Tail3_main", 20], stomp: ["ArmL_hand", 16], bellow: ["Neck_upper", 14], challenge: [look => look ? "Torso_hips" : "Head_cranium", 18], beacon: ["Torso_barrel", 18], leap: [look => look ? "ShinL_shin" : "LegL_thigh", 16], mud: ["Torso_barrel", 18]};
+const PARTFOCUS = {grab: ["Tail5_main", 18], mortar: [look => look ? "Torso_hips" : "Tail3_main", 20], stomp: ["ArmL_hand", 16], bellow: ["Neck_upper", 14], challenge: [look => ["Torso_hips", "Torso_chest", "Tail5_main"][look], 22], beacon: ["Torso_barrel", 18], leap: [look => look ? "ShinL_shin" : "LegL_thigh", 16], mud: ["Torso_barrel", 18]};
 let last = performance.now();
 function frame(now) {
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -627,7 +663,7 @@ function frame(now) {
   if (loop && t > a.len + 1.2) resetScene();
   requestAnimationFrame(frame);
 }
-resize(); drawAll(); drawGlance(); resetScene();
+cur = AB.findIndex(a => a.id === "challenge"); resize(); drawAll(); drawGlance(); resetScene();
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__api = {set: (i, l, s) => { cur = i; look = l || 0; step = s === undefined ? 3 : s; drawAll(); resetScene(); }, seek: tt => { const n = Math.round(tt / 0.02); for (let k = 0; k < n; k++) { t += 0.02; const [A] = scenario(0.02); pose(teno, A); updateEquip(); updateFoes(0.02); updateFx(0.02); } }, view: v => { view = v; }, closeup: v => { closeup = v; }};
