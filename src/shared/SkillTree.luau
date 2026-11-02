@@ -1,4 +1,4 @@
--- SkillTree v1.53 (1.49 teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.54 (1.49 teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -1821,6 +1821,21 @@ end
 SkillTree.TENO_MORTAR_AIM = true
 if SkillTree.TENO_PARTS and SkillTree.TENO_MORTAR_AIM and SkillTree.PATHS.tmortar then
 	SkillTree.PATHS.tmortar.steps[1] = "Button: lob a boulder where your crosshair points (15-60 studs); it snaps onto a dino within 8 studs of that spot. 12 damage in a 10-stud splash, enemies slowed 30% for 2 s. Recharges in 14 s"
+end
+
+
+-- v1.54 (teno abilities build 2, plan docs/plans/TENO_ABILITIES_v1.0.md Tasks 2 + 6, MDA-174 / MDA-178; Kepu 2026-11-02
+-- "Next"): Herd Bellow, Challenge Call and Mud Armor go live: soon = false and LIVE_MECH again (buyable, slottable, their
+-- effects written; TenoMovesServer 1.3 runs them). Texts and numbers are the 1.49 ones. Switch SkillTree.TENO_SUPPORT_LIVE
+-- (default true; false = 1.53: the three stay "soon").
+SkillTree.TENO_SUPPORT_LIVE = true
+if SkillTree.TENO_PARTS and SkillTree.TENO_SUPPORT_LIVE then
+	for _, id in ipairs({"tbellow", "tchallenge", "tmud"}) do
+		if SkillTree.PATHS[id] then
+			SkillTree.PATHS[id].soon = false
+			SkillTree.LIVE_MECH[id] = true
+		end
+	end
 end
 
 return SkillTree

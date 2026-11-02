@@ -1,4 +1,4 @@
--- SprintTest v1.18 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.19 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -64,6 +64,9 @@
 -- v1.18 (teno stats part 2, TenoAttackServer 1.3: Heavy Tail / Front Claws stars): while TenoSlowUntil > now the speed is x
 --   TenoSlowMul with the other part multipliers; MoveSpeedParts can include "tenoSlow". Switch: script attribute
 --   SprintTenoSlowEnabled (default true, read each apply; false = 1.17).
+-- v1.19 (teno abilities build 2, Herd Bellow; TenoMovesServer 1.3): while TenoBellowedUntil > now the speed is x
+--   TenoBellowedRunMul (clamped 1..3) with the other part multipliers; MoveSpeedParts can include "bellow". Switch: script
+--   attribute SprintTenoBellowEnabled (default true, read each apply; false = 1.18).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -155,6 +158,14 @@ local function partSpeed()
 		if typeof(untilT) == "number" and typeof(m) == "number" and t < untilT and m ~= 1 then
 			mul *= math.clamp(m, 0.05, 1)
 			table.insert(names, "tenoSlow")
+			table.insert(ends, untilT)
+		end
+	end
+	if script:GetAttribute("SprintTenoBellowEnabled") ~= false then -- v1.19
+		local untilT, m = char:GetAttribute("TenoBellowedUntil"), char:GetAttribute("TenoBellowedRunMul")
+		if typeof(untilT) == "number" and typeof(m) == "number" and t < untilT and m ~= 1 then
+			mul *= math.clamp(m, 1, 3)
+			table.insert(names, "bellow")
 			table.insert(ends, untilT)
 		end
 	end
@@ -284,6 +295,9 @@ for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil"
 	"ServoDashUntil", "ServoDashSpeedMul", "SlashBurstUntil", "SlashBurstMul", "SlashFrenzyUntil", "SlashFrenzyMul", "IronClawEnabled", "IronClawSpeedMul",
 	"SmokeRunUntil", "SmokeRunMul", "SmokeSlowUntil", "SmokeSlowMul",
 	"CaltropSlowUntil", "CaltropSlowMul", "GooSlowUntil", "GooSlowMul", "TenoChargeMul", "TenoSlowUntil", "TenoSlowMul"}) do -- v1.18: + TenoSlow* -- v1.17: + TenoChargeMul -- v1.16: + Caltrop* / Goo* -- v1.15: + Smoke* -- v1.6; v1.7: + ScreechSlowUntil; v1.8: + MineSlowUntil / MineSlowMul; v1.9: + Headbutt*; v1.10: + ServoDash*
+	char:GetAttributeChangedSignal(a):Connect(apply)
+end
+for _, a in ipairs({"TenoBellowedUntil", "TenoBellowedRunMul"}) do -- v1.19
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 apply()

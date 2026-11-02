@@ -1,4 +1,4 @@
--- StatServer v1.1 (Mecha Dino Arena) — applies the 5-stat point sheet (StatSheet 1.0) to every player dino, and turns on
+-- StatServer v1.2 (Mecha Dino Arena) — applies the 5-stat point sheet (StatSheet 1.0) to every player dino, and turns on
 -- adult spawns. MDA-2, plan docs/plans/CLASSSTATS_v1.0.md (Task 2 + deterministic map), ADR-001.
 -- User: everyone spawns as an adult dino; build types via one stat sheet (option C); points added later by the stat
 --   trees (part 3) arrive as player attributes StatAdded_<Stat> (Health / Attack / Defense / Speed / Support).
@@ -27,13 +27,20 @@
 --   ServerScriptService.ArenaRules' ArenaSpeedScale (ArenaRules 1.3, default 0.65; missing / not a positive number -> 1),
 --   rounded to 0.1. The Speed points (StatSheet) still multiply the base first, so the skill steps keep their ratios.
 --   A change of ArenaSpeedScale re-applies every character. Diagnostic: character StatSpeedScale.
+-- v1.2 (teno abilities build 2, plan docs/plans/TENO_ABILITIES_v1.0.md Task 2, MDA-174; TenoMovesServer 1.3 Challenge Call):
+--   the Weak tag. While a player character's TenoWeakUntil > now (a debuff tag; nobody is tracked), every apply ("ready"
+--   and "disabled") writes each StatSheet ATTACK_KEYS value it has x TenoWeakMul (clamped 0..1); when the tag ends the
+--   next apply writes the plain values back. A 0.2 s check re-applies a character whose wanted multiplier differs from
+--   its StatWeakMul. Every move that reads these attributes (bite, pounce land / tick, headbutt, slash, teno scratch /
+--   slam) is weakened; moves with their own numbers (mecha parts) are not. Switch: script attribute StatWeakEnabled
+--   (default true, read at each apply; false = 1.1). Diagnostics: character StatWeakMul (1 = none); script StatWeakApplies.
 local Players = game:GetService("Players")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local BASE_WAIT = 5
-local DEFAULTS = {StatEnabled = true, ArenaAdultSpawns = true}
+local DEFAULTS = {StatEnabled = true, ArenaAdultSpawns = true, StatWeakEnabled = true} -- v1.2: + StatWeakEnabled
 
 local SS = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("StatSheet"))
 
@@ -132,6 +139,44 @@ local function apply(char, st, atSpawn)
 	set(char, "StatState", "ready")
 	script:SetAttribute("StatApplies", (script:GetAttribute("StatApplies") or 0) + 1)
 end
+
+-- v1.2: the Weak tag (Challenge Call) on top of every apply
+local function weakMul(char)
+	if get("StatWeakEnabled") == false then return 1 end
+	local u, m = char:GetAttribute("TenoWeakUntil"), char:GetAttribute("TenoWeakMul")
+	if typeof(u) ~= "number" or typeof(m) ~= "number" or m ~= m or workspace:GetServerTimeNow() >= u then return 1 end
+	return math.clamp(m, 0, 1)
+end
+do
+	local applyV11 = apply
+	apply = function(char, st, atSpawn)
+		applyV11(char, st, atSpawn)
+		if not char.Parent then return end
+		local state = char:GetAttribute("StatState")
+		if state ~= "ready" and state ~= "disabled" and state ~= "noHealth" then return end
+		local wm = weakMul(char)
+		if wm < 1 then
+			for _, k in ipairs(SS.ATTACK_KEYS) do
+				local v = char:GetAttribute(k)
+				if type(v) == "number" and st.base[k] ~= nil then set(char, k, v * wm) end
+			end
+			script:SetAttribute("StatWeakApplies", (script:GetAttribute("StatWeakApplies") or 0) + 1)
+		end
+		set(char, "StatWeakMul", wm)
+	end
+end
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		for char, st in pairs(chars) do
+			if char.Parent then
+				local want = weakMul(char)
+				local cur = char:GetAttribute("StatWeakMul")
+				if (cur == nil and want < 1) or (cur ~= nil and math.abs(cur - want) > 1e-6) then apply(char, st, false) end
+			end
+		end
+	end
+end)
 
 local function onCharacter(player, char)
 	local hum = char:WaitForChild("Humanoid", 10)

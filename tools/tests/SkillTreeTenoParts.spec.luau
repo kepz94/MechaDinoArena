@@ -1,10 +1,12 @@
--- SkillTreeTenoParts.spec v1.2 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
+-- SkillTreeTenoParts.spec v1.3 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.49 (plan docs/plans/TENO_ABILITIES_v1.0.md Task 1, MDA-173). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTenoParts_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-01 "two builds"): tgrab / tmortar / tstomp / tleap live; tbellow / tchallenge / tmud "soon".
 -- v1.1 (SkillTree 1.52, Kepu 2026-11-02: the stomp never knocks a latched raptor off; star: it loses 50 stamina from its
 --   current pounce): new step I / star texts, stompLatchDrain 50 at star, stompNoJump always 0.
 -- v1.2 (SkillTree 1.53): Boulder Mortar step I = the crosshair + snap text.
+-- v1.3 (SkillTree 1.54, build 2: Kepu "Next" 2026-11-02): tbellow / tchallenge / tmud live (SkillTree.TENO_SUPPORT_LIVE):
+--   not soon, buyable, slottable, and their effects follow the plan's numbers.
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -27,14 +29,15 @@ eq("TENO_PARTS", ST.TENO_PARTS, true)
 eq("TENO_PARTS_SUPPORT_SOON", ST.TENO_PARTS_SUPPORT_SOON, true)
 eq("TENO_STOMP_DRAIN", ST.TENO_STOMP_DRAIN, true) -- v1.1
 eq("TENO_MORTAR_AIM", ST.TENO_MORTAR_AIM, true) -- v1.2
+eq("TENO_SUPPORT_LIVE", ST.TENO_SUPPORT_LIVE, true) -- v1.3
 local ROWS = {
 	tgrab = {"Tail Grab & Fling", "attack", false},
 	tmortar = {"Boulder Mortar", "attack", false},
 	tstomp = {"Stomp Shockwave", "defense", false},
-	tbellow = {"Herd Bellow", "health", true},
-	tchallenge = {"Challenge Call", "defense", true},
+	tbellow = {"Herd Bellow", "health", false}, -- v1.3: live
+	tchallenge = {"Challenge Call", "defense", false}, -- v1.3: live
 	tleap = {"Hydraulic Leap", "speed", false},
-	tmud = {"Mud Armor", "defense", true},
+	tmud = {"Mud Armor", "defense", false}, -- v1.3: live
 }
 for id, want in pairs(ROWS) do
 	eq(id .. " exists", P[id] ~= nil, true)
@@ -99,10 +102,14 @@ end
 -- buying / slotting
 eq("canBuy grab teno", (ST.canBuy({}, "tgrab", 5, "Teno")), true)
 eq("canBuy grab raptor", select(2, ST.canBuy({}, "tgrab", 5, "Raptor")), "otherDino")
-eq("canBuy bellow soon", select(2, ST.canBuy({}, "tbellow", 5, "Teno")), "soon")
+eq("canBuy bellow live", (ST.canBuy({}, "tbellow", 5, "Teno")), true) -- v1.3
+eq("canBuy challenge live", (ST.canBuy({}, "tchallenge", 5, "Teno")), true)
+eq("canBuy mud live", (ST.canBuy({}, "tmud", 5, "Teno")), true)
+eq("canBuy bellow raptor", select(2, ST.canBuy({}, "tbellow", 5, "Raptor")), "otherDino")
 local lo = ST.sanitizeLoadout({"tgrab", "tmortar", "tstomp", "tleap"}, {tgrab = 1, tmortar = 1, tstomp = 1, tleap = 1}, "Teno")
 eq("slot 1", lo[1], "tgrab"); eq("slot 2", lo[2], "tmortar"); eq("slot 3", lo[3], "tstomp"); eq("slot 4", lo[4], "tleap")
-eq("soon not slotted", ST.sanitizeLoadout({"tbellow"}, {tbellow = 1}, "Teno")[1], false)
+local lo2 = ST.sanitizeLoadout({"tbellow", "tchallenge", "tmud", "tgrab"}, {tbellow = 1, tchallenge = 1, tmud = 1, tgrab = 1}, "Teno") -- v1.3
+eq("slot bellow", lo2[1], "tbellow"); eq("slot challenge", lo2[2], "tchallenge"); eq("slot mud", lo2[3], "tmud")
 eq("raptor cannot slot", ST.sanitizeLoadout({"tgrab"}, {tgrab = 1}, "Raptor")[1], false)
 -- the teno's button parts list
 local btn = {}
@@ -167,10 +174,28 @@ eq("leap I radius", E({tleap = 1}).leapRadius, 12); eq("leap I no stun", E({tlea
 eq("leap I charges", E({tleap = 1}).leapCharges, 1); eq("leap I cooldown", E({tleap = 1}).leapCooldown, 14)
 eq("leap II dist", E({tleap = 2}).leapDist, 55); eq("leap III stun", E({tleap = 3}).leapStun, 0.5)
 eq("leap star charges", E({tleap = 4}).leapCharges, 2)
--- build-2 parts are soon: no effects even when "bought"
-eq("bellow soon no effect", E({tbellow = 4}).bellowTime, 0)
-eq("challenge soon no effect", E({tchallenge = 4}).challengeTime, 0)
-eq("mud soon no effect", E({tmud = 4}).mudHits, 0)
+-- v1.3: build-2 parts live
+eq("bellow none", E({}).bellowTime, 0); eq("bellow none mul", E({}).bellowDamageMul, 1)
+eq("bellow I range", E({tbellow = 1}).bellowRange, 25); eq("bellow I time", E({tbellow = 1}).bellowTime, 4)
+eq("bellow I dmg mul", E({tbellow = 1}).bellowDamageMul, 0.5); eq("bellow I run mul", E({tbellow = 1}).bellowRunMul, 1.5)
+eq("bellow I no clear", E({tbellow = 1}).bellowClearStun, false); eq("bellow I cooldown", E({tbellow = 1}).bellowCooldown, 30)
+eq("bellow II time", E({tbellow = 2}).bellowTime, 6); eq("bellow II range", E({tbellow = 2}).bellowRange, 25)
+eq("bellow III range", E({tbellow = 3}).bellowRange, 40); eq("bellow star clear", E({tbellow = 4}).bellowClearStun, true)
+eq("bellow star dmg mul", E({tbellow = 4}).bellowDamageMul, 0.5)
+eq("challenge none", E({}).challengeTime, 0); eq("challenge none mul", E({}).challengeWeakMul, 1)
+eq("challenge I range", E({tchallenge = 1}).challengeRange, 30); eq("challenge I time", E({tchallenge = 1}).challengeTime, 5)
+eq("challenge I weak", E({tchallenge = 1}).challengeWeakMul, 0.6); eq("challenge I no slow", E({tchallenge = 1}).challengeSlowMul, 1)
+eq("challenge I cooldown", E({tchallenge = 1}).challengeCooldown, 20)
+eq("challenge II time", E({tchallenge = 2}).challengeTime, 7); eq("challenge III range", E({tchallenge = 3}).challengeRange, 45)
+eq("challenge star slow", E({tchallenge = 4}).challengeSlowMul, 0.8)
+eq("mud none", E({}).mudHits, 0)
+eq("mud I time", E({tmud = 1}).mudTime, 8); eq("mud I hits", E({tmud = 1}).mudHits, 3)
+eq("mud I slow radius", E({tmud = 1}).mudSlowRadius, 15); eq("mud I slow mul", E({tmud = 1}).mudSlowMul, 0.6)
+eq("mud I slow time", E({tmud = 1}).mudSlowTime, 4); eq("mud I no splash", E({tmud = 1}).mudSplash, 0)
+eq("mud I cooldown", E({tmud = 1}).mudCooldown, 20)
+eq("mud II hits", E({tmud = 2}).mudHits, 4); eq("mud II time", E({tmud = 2}).mudTime, 8)
+eq("mud III time", E({tmud = 3}).mudTime, 12); eq("mud star splash", E({tmud = 4}).mudSplash, 12)
+eq("bellow raptor none", ST.effects({tbellow = 4}, "Raptor").bellowTime, 0)
 -- existing rows unchanged
 eq("buck star charge", E({buckoff = 4}).buckCharge, 1)
 eq("heavy tail I", E({heavytail = 1}).heavyBonus, 3)

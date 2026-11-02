@@ -1,4 +1,4 @@
--- TenoMovesServer v1.2 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.3 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -75,21 +75,56 @@
 --     s, MORTAR_FLIGHT 1.3 -> 0.7 s, MORTAR_PEAK 30 -> 14 (press to impact 1.65 -> 0.85 s). Switch: script attribute
 --     TenoMovesMortarAimEnabled (default true, read at each shot; false = 1.1 aim and timing). Diagnostic: character
 --     TenoMortarAimMode ("crosshair" / "snap" / "auto").
+-- v1.3 (build 2, plan docs/plans/TENO_ABILITIES_v1.0.md Task 6, MDA-178, deterministic map; Kepu 2026-11-02 "Next"; SkillTree
+--   1.54 makes the parts live): Herd Bellow, Challenge Call, Mud Armor. Settings from the character (SkillEffects 1.33):
+--   TenoBellow* (Enabled, Range, Time, DamageMul, RunMul, ClearStun, Cooldown), TenoChallenge* (Enabled, Range, Time,
+--   WeakMul, SlowMul, Cooldown), TenoMud* (Enabled, Time, Hits, SlowRadius, SlowMul, SlowTime, Splash, Cooldown).
+--   Remotes DinoTenoBellowRequest(stamp), DinoTenoChallengeRequest(stamp), DinoTenoMudRequest(stamp) (MechaButtons 1.26
+--   entries); the same checks and results as the attacks; ok: <Prefix>ReadyAt = now + Cooldown, <Prefix>StartedAt = now
+--   (poses). Timings follow the mockup v0.3: the bellow / call land BELLOW_AT / CHALLENGE_AT (0.5) s after the press; mud:
+--   latched raptors slide off at MUD_SLIDE_AT (0.7) s, the coat goes on at MUD_COAT_AT (1.2) s (the end of the wallow).
+--   * Herd Bellow: the teno + every player character that is its squadmate (SquadRules sameChar) whose root is within
+--     TenoBellowRange (flat, 15 up / down): TenoBellowedUntil = max(old, now + TenoBellowTime) (a second bellow refreshes,
+--     never stacks), TenoBellowedDamageMul = TenoBellowDamageMul, TenoBellowedRunMul = TenoBellowRunMul (SprintTest 1.19),
+--     TenoBellowedBy. While TenoBellowedUntil > now, each Humanoid health drop is refunded drop x (1 - DamageMul) (a
+--     killing blow is not: the Brace rule; with Brace the two refunds add up). Star (TenoBellowClearStun): StunnedUntil
+--     = now on each one still stunned. Teno: TenoBellowTargets ("|"-joined names), TenoBellowCount, TenoBellowCleared,
+--     TenoBellowAt (last). Diagnostic on a buffed character: TenoBellowRefunded (total).
+--   * Challenge Call: every allowed enemy (players where ModeRules allows, bots; never a squadmate; not while its Energy
+--     Shield is up) whose root is within TenoChallengeRange (flat, 15 up / down) gets the debuff tags TenoMarkedBy (the
+--     teno's name), TenoMarkedByUserId, TenoWeakMul = min(an active one, TenoChallengeWeakMul), TenoWeakUntil = max(old,
+--     now + TenoChallengeTime) (StatServer 1.2 weakens a player's attack attributes; BotServer 1.24 weakens a bot's hits
+--     and sends it at TenoMarkedBy). Star (TenoChallengeSlowMul < 1): slowed x TenoChallengeSlowMul for the mark time.
+--     Teno: TenoChallengeTargets, TenoChallengeHits, TenoChallengeAt (last).
+--   * Mud Armor: raptors latched on the teno released (ShakeOffReason "mud"); then a hidden ForceField "TenoMudShield"
+--     (Visible false) under the character blocks every Humanoid:TakeDamage (bot bites, the ArenaPvP bridge, Screech) for
+--     TenoMudTime s or TenoMudHits blocks, whichever first. A block = a new LastHitAt or ArenaPvPLastDelta write on the
+--     teno (at most one per MUD_BLOCK_GAP 0.15 s): TenoMudHitsLeft - 1, TenoMudBlocks + 1, TenoMudBlockAt, and every
+--     allowed enemy within TenoMudSlowRadius is slowed x TenoMudSlowMul for TenoMudSlowTime s. End ("hits" / "time" /
+--     "dead" / "disabled"): the ForceField is destroyed, TenoMudHitsLeft 0, TenoMudEndReason, TenoMudEndedAt (last);
+--     star (TenoMudSplash > 0, not "dead"): every allowed enemy within TenoMudSplash is slowed the same way,
+--     TenoMudSplashHits, TenoMudSplashAt. Teno while on: TenoMudUntil, TenoMudHitsLeft, TenoMudCoatAt (last).
+--   Switches: script attributes TenoMoves_tbellowEnabled, TenoMoves_tchallengeEnabled, TenoMoves_tmudEnabled (default true
+--   each, read at each use). Diagnostics: script TenoMovesBellows, TenoMovesChallenges, TenoMovesMuds, TenoMovesMudBlocks.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
 local MORTAR_FIRE2, MORTAR_FLIGHT2, MORTAR_PEAK2 = 0.15, 0.7, 14 -- v1.2
 local STOMP_HIT = 0.5
+local BELLOW_AT, CHALLENGE_AT, MUD_SLIDE_AT, MUD_COAT_AT, MUD_BLOCK_GAP = 0.5, 0.5, 0.7, 1.2, 0.15 -- v1.3
 local LEAP_TIME = 0.9
 local DY = 15
 
 script:SetAttribute("TenoMovesServerVersion", VERSION)
 if script:GetAttribute("TenoMovesStompDrainEnabled") == nil then script:SetAttribute("TenoMovesStompDrainEnabled", true) end -- v1.1
+for _, k in ipairs({"TenoMoves_tbellowEnabled", "TenoMoves_tchallengeEnabled", "TenoMoves_tmudEnabled"}) do -- v1.3
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
 for _, k in ipairs({"TenoMovesGrabAnyDirEnabled", "TenoMovesMortarAimEnabled"}) do -- v1.2
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
@@ -789,6 +824,221 @@ leapRemote.OnServerEvent:Connect(function(player, stamp)
 		char:SetAttribute("TenoLeapHits", n)
 		char:SetAttribute("TenoLeapUntil", 0)
 		char:SetAttribute("TenoLeapLandedAt", tl) -- last: FX
+	end)
+end)
+
+-- v1.3: support moves (build 2) ------------------------------------------------------------------------------------------
+local bellowRemote, challengeRemote, mudRemote = remote("DinoTenoBellowRequest"), remote("DinoTenoChallengeRequest"), remote("DinoTenoMudRequest")
+local function sameSquad(a, b) -- squadmate() without the skip count
+	if script:GetAttribute("TenoMovesServerSquadEnabled") == false then return false end
+	if not squadMod then
+		local arc = ServerStorage:FindFirstChild("DinoArcade")
+		local m = arc and arc:FindFirstChild("SquadRules")
+		if not m then return false end
+		local okR, mod = pcall(require, m)
+		if not okR then return false end
+		squadMod = mod
+	end
+	return squadMod.sameChar(a, b) == true
+end
+local function within(m, pos, r)
+	local mr = rootOf(m)
+	return mr ~= nil and flat(mr.Position - pos).Magnitude <= r and math.abs(mr.Position.Y - pos.Y) <= DY
+end
+local function round1(v) return math.floor(v * 10 + 0.5) / 10 end
+local function alive(char)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	return char.Parent ~= nil and hum ~= nil and hum.Health > 0 and rootOf(char) ~= nil
+end
+
+-- Herd Bellow
+local bellowTrack = {} -- [character] = {last, own}
+local function trackBellow(m)
+	if bellowTrack[m] then return end
+	local hum = m:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+	local st = {last = hum.Health}
+	bellowTrack[m] = st
+	hum.HealthChanged:Connect(function(h)
+		if st.own and math.abs(h - st.own) < 1e-3 then st.own, st.last = nil, h return end
+		local drop = st.last - h
+		st.last = h
+		if drop <= 0 or h <= 0 or not on("tbellow") then return end
+		if num(m, "TenoBellowedUntil", 0) <= now() then return end
+		local mul = math.clamp(num(m, "TenoBellowedDamageMul", 1), 0, 1)
+		if mul >= 1 then return end
+		local refund = drop * (1 - mul)
+		local new = math.min(hum.MaxHealth, h + refund)
+		st.own, st.last = new, new
+		hum.Health = new
+		m:SetAttribute("TenoBellowRefunded", round1(num(m, "TenoBellowRefunded", 0) + refund))
+	end)
+	m.AncestryChanged:Connect(function()
+		if not m:IsDescendantOf(workspace) then bellowTrack[m] = nil end
+	end)
+end
+bellowRemote.OnServerEvent:Connect(function(player, stamp)
+	local char, t = check(player, stamp, "tbellow", "TenoBellow", {})
+	if not char then return end
+	ok(char, "TenoBellow", t)
+	count("TenoMovesBellows")
+	char:SetAttribute("TenoBellowStartedAt", t)
+	local range, time = num(char, "TenoBellowRange", 25), num(char, "TenoBellowTime", 4)
+	local dmul, rmul = num(char, "TenoBellowDamageMul", 1), num(char, "TenoBellowRunMul", 1)
+	local clear = char:GetAttribute("TenoBellowClearStun") == true
+	task.delay(BELLOW_AT, function()
+		if not alive(char) then return end
+		local tl = now()
+		local centre = rootOf(char).Position
+		local list = {char}
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local c = pl.Character
+			if c and c ~= char and alive(c) and within(c, centre, range) and sameSquad(char, c) then table.insert(list, c) end
+		end
+		local names, cleared = {}, 0
+		for _, m in ipairs(list) do
+			m:SetAttribute("TenoBellowedDamageMul", dmul)
+			m:SetAttribute("TenoBellowedRunMul", rmul)
+			m:SetAttribute("TenoBellowedBy", char.Name)
+			m:SetAttribute("TenoBellowedUntil", math.max(num(m, "TenoBellowedUntil", 0), tl + time))
+			trackBellow(m)
+			if clear and num(m, "StunnedUntil", 0) > tl then
+				m:SetAttribute("StunnedUntil", tl)
+				cleared += 1
+			end
+			table.insert(names, m.Name)
+		end
+		char:SetAttribute("TenoBellowTargets", table.concat(names, "|"))
+		char:SetAttribute("TenoBellowCount", #list)
+		char:SetAttribute("TenoBellowCleared", cleared)
+		char:SetAttribute("TenoBellowAt", tl) -- last: FX
+	end)
+end)
+
+-- Challenge Call
+challengeRemote.OnServerEvent:Connect(function(player, stamp)
+	local char, t = check(player, stamp, "tchallenge", "TenoChallenge", {})
+	if not char then return end
+	ok(char, "TenoChallenge", t)
+	count("TenoMovesChallenges")
+	char:SetAttribute("TenoChallengeStartedAt", t)
+	local range, time = num(char, "TenoChallengeRange", 30), num(char, "TenoChallengeTime", 5)
+	local weak, smul = math.clamp(num(char, "TenoChallengeWeakMul", 1), 0, 1), num(char, "TenoChallengeSlowMul", 1)
+	task.delay(CHALLENGE_AT, function()
+		if not alive(char) then return end
+		local tl = now()
+		local centre = rootOf(char).Position
+		local names = {}
+		for _, m in ipairs(candidates(char)) do
+			if within(m, centre, range) and not shielded(m, tl) then
+				local cu, cm = num(m, "TenoWeakUntil", 0), num(m, "TenoWeakMul", 1)
+				if cu <= tl then cm = 1 end
+				m:SetAttribute("TenoMarkedBy", char.Name)
+				m:SetAttribute("TenoMarkedByUserId", player.UserId)
+				m:SetAttribute("TenoWeakMul", math.min(cm, weak))
+				m:SetAttribute("TenoWeakUntil", math.max(cu, tl + time)) -- last: StatServer / BotServer react
+				if smul < 1 then slow(m, smul, tl + time, tl) end
+				table.insert(names, m.Name)
+			end
+		end
+		char:SetAttribute("TenoChallengeTargets", table.concat(names, "|"))
+		char:SetAttribute("TenoChallengeHits", #names)
+		char:SetAttribute("TenoChallengeAt", tl) -- last: FX
+	end)
+end)
+
+-- Mud Armor
+local mudState = {} -- [char] = {ff, conns, hitsLeft, untilT, lastBlock, done}
+local function mudSlowAround(char, r, mul, time, t)
+	if r <= 0 or mul >= 1 or time <= 0 then return 0 end
+	local root = rootOf(char)
+	if not root then return 0 end
+	local n = 0
+	for _, m in ipairs(candidates(char)) do
+		if within(m, root.Position, r) then
+			slow(m, mul, t + time, t)
+			n += 1
+		end
+	end
+	return n
+end
+local function mudEnd(char, st, reason)
+	if st.done then return end
+	st.done = true
+	mudState[char] = nil
+	for _, c in ipairs(st.conns) do c:Disconnect() end
+	if st.ff then st.ff:Destroy() end
+	local t = now()
+	if not char.Parent then return end
+	char:SetAttribute("TenoMudHitsLeft", 0)
+	if reason ~= "time" then char:SetAttribute("TenoMudUntil", t) end
+	char:SetAttribute("TenoMudEndReason", reason)
+	local splash = num(char, "TenoMudSplash", 0)
+	if splash > 0 and reason ~= "dead" and alive(char) then
+		local n = mudSlowAround(char, splash, num(char, "TenoMudSlowMul", 1), num(char, "TenoMudSlowTime", 4), t)
+		char:SetAttribute("TenoMudSplashHits", n)
+		char:SetAttribute("TenoMudSplashAt", t)
+	end
+	char:SetAttribute("TenoMudEndedAt", t) -- last: FX
+end
+local function mudBlock(char, st)
+	if st.done then return end
+	local t = now()
+	if st.lastBlock and t - st.lastBlock < MUD_BLOCK_GAP then return end
+	st.lastBlock = t
+	st.hitsLeft -= 1
+	count("TenoMovesMudBlocks")
+	char:SetAttribute("TenoMudHitsLeft", math.max(0, st.hitsLeft))
+	char:SetAttribute("TenoMudBlocks", num(char, "TenoMudBlocks", 0) + 1)
+	mudSlowAround(char, num(char, "TenoMudSlowRadius", 0), num(char, "TenoMudSlowMul", 1), num(char, "TenoMudSlowTime", 0), t)
+	char:SetAttribute("TenoMudBlockAt", t)
+	if st.hitsLeft <= 0 then mudEnd(char, st, "hits") end
+end
+mudRemote.OnServerEvent:Connect(function(player, stamp)
+	local char, t = check(player, stamp, "tmud", "TenoMud", {})
+	if not char then return end
+	ok(char, "TenoMud", t)
+	count("TenoMovesMuds")
+	if mudState[char] then mudEnd(char, mudState[char], "disabled") end
+	char:SetAttribute("TenoMudBlocks", 0)
+	char:SetAttribute("TenoMudStartedAt", t)
+	task.delay(MUD_SLIDE_AT, function()
+		if not alive(char) then return end
+		local tl = now()
+		for _, m in ipairs(latchedOnes(char)) do
+			m:SetAttribute("ShakeOffReason", "mud")
+			m:SetAttribute("ShakeOffAt", tl) -- last: PounceServer / BotServer release the latch
+		end
+	end)
+	task.delay(MUD_COAT_AT, function()
+		if not alive(char) or char:GetAttribute("TenoMudEnabled") ~= true or not on("tmud") then return end
+		local tc = now()
+		local ff = Instance.new("ForceField")
+		ff.Name = "TenoMudShield"
+		ff.Visible = false
+		ff.Parent = char
+		local st = {ff = ff, conns = {}, hitsLeft = math.max(1, math.floor(num(char, "TenoMudHits", 3))),
+			untilT = tc + num(char, "TenoMudTime", 8)}
+		mudState[char] = st
+		for _, k in ipairs({"LastHitAt", "ArenaPvPLastDelta"}) do
+			table.insert(st.conns, char:GetAttributeChangedSignal(k):Connect(function() mudBlock(char, st) end))
+		end
+		char:SetAttribute("TenoMudHitsLeft", st.hitsLeft)
+		char:SetAttribute("TenoMudUntil", st.untilT)
+		char:SetAttribute("TenoMudCoatAt", tc) -- last: FX
+		task.spawn(function()
+			while not st.done do
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if not char.Parent or not hum or hum.Health <= 0 then
+					mudEnd(char, st, "dead")
+				elseif char:GetAttribute("TenoMudEnabled") ~= true or not on("tmud") then
+					mudEnd(char, st, "disabled")
+				elseif now() >= st.untilT then
+					mudEnd(char, st, "time")
+				end
+				task.wait(0.1)
+			end
+		end)
 	end)
 end)
 

@@ -1,4 +1,4 @@
--- BotServer v1.23 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.24 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -359,13 +359,22 @@
 --   bot (set after the latch began) cuts its latch time: endAt -= StaminaDrainAmount / PounceLatchDrain (15 per s, the
 --   player's stamina drain; 50 -> 3.3 s sooner), so it lets go ("tired") like a player raptor whose stamina ran out.
 --   Script attribute BotLatchDrainEnabled (default true, read each step; false = 1.22). Diagnostic: bot BotLatchDrains.
+-- v1.24 (teno abilities build 2, plan docs/plans/TENO_ABILITIES_v1.0.md Task 2, MDA-174; TenoMovesServer 1.3 Challenge
+--   Call): a bot tagged Weak (TenoWeakUntil > now, the debuff tag; nobody is tracked):
+--   * its hits on players (hitDamage: bites, latch / pin bites, pachy headbutts) x TenoWeakMul (clamped 0..1);
+--   * before each step its target becomes the player whose character is named TenoMarkedBy (alive, within BotLoseRange),
+--     so "bots go for you"; the usual keep / lose rules still apply after that.
+--   Bot-on-bot bites are not weakened. Slows on bots stay with TenoMovesServer (its WalkSpeed scaling, as for the mortar).
+--   Script attribute BotTenoTagsEnabled (default true, read at each hit / step; false = 1.23). Diagnostics: bot BotWeakMul
+--   (the last weakened hit's multiplier), BotMarkedTarget (the player name, "" when none); script BotWeakHits, BotMarkRetargets.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.23"
+local VERSION = "1.24"
 if script:GetAttribute("BotLatchDrainEnabled") == nil then script:SetAttribute("BotLatchDrainEnabled", true) end -- v1.23
+if script:GetAttribute("BotTenoTagsEnabled") == nil then script:SetAttribute("BotTenoTagsEnabled", true) end -- v1.24
 local TICK = 0.1
 local BITE_HIT_DELAY = 0.25
 local ROLL_TIME = 0.4
@@ -1011,6 +1020,26 @@ local function hitDamage(b, char, hum, dmg, kind) -- v1.17: + kind ("bite" defau
 	end
 	show(b, "BotLastHitCrestMul", crestMul)
 	return dmg * mul * crestMul
+end
+-- v1.24: the Weak tag (Challenge Call) cuts a bot's hits on players
+local function tenoWeakMul(model)
+	if script:GetAttribute("BotTenoTagsEnabled") == false or not model then return 1 end
+	local u, m = model:GetAttribute("TenoWeakUntil"), model:GetAttribute("TenoWeakMul")
+	if typeof(u) ~= "number" or typeof(m) ~= "number" or m ~= m or workspace:GetServerTimeNow() >= u then return 1 end
+	return math.clamp(m, 0, 1)
+end
+do
+	local hitDamageV123 = hitDamage
+	hitDamage = function(b, char, hum, dmg, kind)
+		local d = hitDamageV123(b, char, hum, dmg, kind)
+		local wm = tenoWeakMul(b.model)
+		if wm < 1 then
+			d *= wm
+			show(b, "BotWeakMul", wm)
+			script:SetAttribute("BotWeakHits", (script:GetAttribute("BotWeakHits") or 0) + 1)
+		end
+		return d
+	end
 end
 
 local function randomGoal(b)
@@ -2262,6 +2291,31 @@ local function step(b)
 	end
 	hum:MoveTo(roamDetour and roamDetour(b) or b.goal) -- v1.8: roam sidestep
 	show(b, "BotState", "wander")
+end
+
+-- v1.24: a bot marked by a teno's Challenge Call goes for that teno
+do
+	local stepV123 = step
+	step = function(b)
+		if not b.removed and b.model and b.model.Parent and tenoWeakMul(b.model) < 1 then
+			local by = b.model:GetAttribute("TenoMarkedBy")
+			local pick
+			if typeof(by) == "string" and by ~= "" then
+				for _, pl in ipairs(Players:GetPlayers()) do
+					local char, _, thrp = aliveChar(pl)
+					if char and char.Name == by and b.hrp and flat(thrp.Position - b.hrp.Position).Magnitude <= get("BotLoseRange") then pick = pl end
+				end
+			end
+			if pick and b.target ~= pick then
+				b.target = pick
+				script:SetAttribute("BotMarkRetargets", (script:GetAttribute("BotMarkRetargets") or 0) + 1)
+			end
+			show(b, "BotMarkedTarget", pick and pick.Name or "")
+		elseif b.shown and b.shown.BotMarkedTarget and b.shown.BotMarkedTarget ~= "" then
+			show(b, "BotMarkedTarget", "")
+		end
+		return stepV123(b)
+	end
 end
 
 -- v1.2: latch release (leap off, or drop + stun)

@@ -1,4 +1,4 @@
--- TenoMovesFX v1.0 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
+-- TenoMovesFX v1.1 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
 -- StarterPlayerScripts; every client draws every teno). Plan docs/plans/TENO_ABILITIES_v1.0.md Task 7 (MDA-179), mockup
 -- docs/mockups/teno_abilities_options.html v0.3 (rings, dust, heat glow, the catapult boulder leaving the bucket).
 -- Reads TenoMovesServer 1.0's character stamps (the server also draws the boulders and rubble patches itself):
@@ -13,10 +13,23 @@
 --   (0.5) s while fading out; dust: 10 grey puffs thrown out flat and fading over 0.8 s. Nothing collides or is queried.
 -- Switch: script attribute TenoMovesFXEnabled (default true, read at each event; false = none of the above).
 -- Diagnostics (LocalPlayer): TenoMovesFXVersion, TenoMovesFXEvents (count), TenoMovesFXLast (event name).
+-- v1.1 (build 2, TenoMovesServer 1.3; mockup v0.3: green bellow rings, the Target Painter's red beams + reticles, the mud
+--   coat; Kepu 2026-11-02 "Next"):
+--   * Herd Bellow: TenoBellowAt -> a green ring (radius TenoBellowRange) at the teno and a green flash on each name in
+--     TenoBellowTargets; each of them gets a green disc "TenoBellowAura" under it until its TenoBellowedUntil passes.
+--   * Challenge Call: TenoChallengeAt -> one thin red beam "TenoPaintBeam" from the TPart_tchallenge "lens" (else
+--     Torso_chest) to each name in TenoChallengeTargets (k-th one 0.15 x k s later, 0.9 s each) and a red disc
+--     "TenoMarkReticle" under each until its TenoWeakUntil passes.
+--   * Mud Armor: TenoMudStartedAt -> brown puffs around the teno for the 1.2 s wallow; TenoMudCoatAt -> "TenoMudCoat"
+--     plates (3 on each of 13 body parts, two mud browns) that follow the body until TenoMudEndedAt or TenoMudUntil;
+--     TenoMudBlockAt -> a brown flash at the root; TenoMudSplashAt -> a brown ring (radius TenoMudSplash) and puffs.
+--   Followers (auras, reticles, plates) are anchored local parts moved every RenderStepped (nothing welded to a body).
+--   Names resolve to player characters, then Workspace.DinoIsland.Bots children. Switch: script attribute
+--   TenoMovesFXSupportEnabled (default true, read at each event; false = 1.0).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local RING_TIME, ROCK_RELOAD = 0.5, 2.4
 local player = Players.LocalPlayer
 player:SetAttribute("TenoMovesFXVersion", VERSION)
@@ -173,3 +186,167 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.1: build-2 effects ---------------------------------------------------------------------------------------------------
+local RunService = game:GetService("RunService")
+if script:GetAttribute("TenoMovesFXSupportEnabled") == nil then script:SetAttribute("TenoMovesFXSupportEnabled", true) end
+local function on2() return on() and script:GetAttribute("TenoMovesFXSupportEnabled") ~= false end
+local GREEN, RED, MUD, MUD2 = Color3.fromRGB(95, 209, 106), Color3.fromRGB(255, 42, 42), Color3.fromRGB(91, 61, 34), Color3.fromRGB(122, 85, 48)
+local function serverNow() return workspace:GetServerTimeNow() end
+local function modelNamed(name)
+	for _, pl in ipairs(Players:GetPlayers()) do
+		if pl.Character and pl.Character.Name == name then return pl.Character end
+	end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local bots = isl and isl:FindFirstChild("Bots")
+	return bots and bots:FindFirstChild(name) or nil
+end
+local function namesOf(char, k)
+	local out = {}
+	local v = char:GetAttribute(k)
+	if typeof(v) ~= "string" then return out end
+	for n in string.gmatch(v, "[^|]+") do
+		local m = modelNamed(n)
+		if m then table.insert(out, m) end
+	end
+	return out
+end
+local followers = {} -- {part, step(part) -> keep}
+RunService.RenderStepped:Connect(function()
+	for i = #followers, 1, -1 do
+		local f = followers[i]
+		local okF, keep = pcall(f.step, f.part)
+		if not okF or not keep or not f.part.Parent then
+			f.part:Destroy()
+			table.remove(followers, i)
+		end
+	end
+end)
+local function follow(part, step) table.insert(followers, {part = part, step = step}) end
+local discRay = RaycastParams.new()
+discRay.FilterType = Enum.RaycastFilterType.Exclude
+local function groundUnder(m, pos) -- like ground(), but also skips the model itself (a bot is not a player character)
+	local ex = {fx(), m}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+	discRay.FilterDescendantsInstances = ex
+	local g = workspace:Raycast(pos + Vector3.new(0, 2, 0), Vector3.new(0, -60, 0), discRay)
+	return g and g.Position or pos
+end
+local function disc(m, name, color, untilKey, size)
+	local d = part(name, Enum.PartType.Cylinder, Vector3.new(0.2, size, size), CFrame.new(0, -1000, 0), color, 0.55)
+	follow(d, function(p)
+		local r = m.Parent and m:FindFirstChild("HumanoidRootPart")
+		local u = m:GetAttribute(untilKey)
+		if not r or typeof(u) ~= "number" or serverNow() >= u then return false end
+		local g = groundUnder(m, r.Position)
+		p.CFrame = CFrame.new(g + Vector3.new(0, 0.25, 0)) * CFrame.Angles(0, os.clock() * 2, 0) * CFrame.Angles(0, 0, math.rad(90))
+		return true
+	end)
+end
+local function puff(pos, spread, color)
+	local at = ground(pos)
+	for i = 1, 6 do
+		local a = i * 1.047 + math.random() * 0.5
+		local sz = 1.2 + math.random()
+		local p = part("TenoMudPuff", Enum.PartType.Ball, Vector3.one * sz, CFrame.new(at + Vector3.new(0, sz / 2, 0)), color, 0.3)
+		p.Material = Enum.Material.SmoothPlastic
+		TweenService:Create(p, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{CFrame = CFrame.new(at + Vector3.new(math.cos(a) * spread, sz, math.sin(a) * spread)), Size = Vector3.one * sz * 1.6, Transparency = 1}):Play()
+		task.delay(0.8, function() p:Destroy() end)
+	end
+end
+local COAT_PARTS = {"Torso_hips", "Torso_barrel", "Torso_chest", "Neck_base", "Neck_upper", "Tail1_main", "Tail2_main", "Tail3_main",
+	"LegL_thigh", "LegR_thigh", "ArmL_upper", "ArmR_upper", "Head_cranium"}
+local function watch2(char)
+	char:GetAttributeChangedSignal("TenoBellowAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on2() or not fresh(char, "TenoBellowAt") or not root then return end
+		ring(root.Position, num(char, "TenoBellowRange", 25), GREEN)
+		for _, m in ipairs(namesOf(char, "TenoBellowTargets")) do
+			local r = m:FindFirstChild("HumanoidRootPart")
+			if r then
+				flash(r.Position, 5)
+				disc(m, "TenoBellowAura", GREEN, "TenoBellowedUntil", 7)
+			end
+		end
+		count("bellow")
+	end)
+	char:GetAttributeChangedSignal("TenoChallengeAt"):Connect(function()
+		if not on2() or not fresh(char, "TenoChallengeAt") then return end
+		local lens = roles(char, "tchallenge", "lens")[1] or char:FindFirstChild("Torso_chest", true)
+		for k, m in ipairs(namesOf(char, "TenoChallengeTargets")) do
+			disc(m, "TenoMarkReticle", RED, "TenoWeakUntil", 7)
+			task.delay(0.15 * (k - 1), function()
+				local b = part("TenoPaintBeam", Enum.PartType.Block, Vector3.new(0.25, 0.25, 1), CFrame.new(0, -1000, 0), RED, 0.1)
+				local t0 = os.clock()
+				follow(b, function(p)
+					local r = m.Parent and m:FindFirstChild("HumanoidRootPart")
+					if not r or not lens or not lens.Parent or os.clock() - t0 > 0.9 then return false end
+					local a, z = lens.Position, r.Position + Vector3.new(0, 2, 0)
+					local len = (z - a).Magnitude
+					p.Size = Vector3.new(0.25, 0.25, math.max(0.1, len))
+					p.CFrame = CFrame.lookAt((a + z) / 2, z)
+					return true
+				end)
+			end)
+		end
+		count("challenge")
+	end)
+	char:GetAttributeChangedSignal("TenoMudStartedAt"):Connect(function()
+		if not on2() or not fresh(char, "TenoMudStartedAt") then return end
+		task.spawn(function()
+			for _ = 1, 6 do
+				local root = char:FindFirstChild("HumanoidRootPart")
+				if not root then break end
+				puff(root.Position + Vector3.new((math.random() - 0.5) * 8, 0, (math.random() - 0.5) * 10), 4, MUD2)
+				task.wait(0.2)
+			end
+		end)
+		count("mudWallow")
+	end)
+	char:GetAttributeChangedSignal("TenoMudCoatAt"):Connect(function()
+		if not on2() or not fresh(char, "TenoMudCoatAt") then return end
+		local coatAt = char:GetAttribute("TenoMudCoatAt")
+		for _, n in ipairs(COAT_PARTS) do
+			local bp = char:FindFirstChild(n, true)
+			if bp and bp:IsA("BasePart") then
+				for i = 1, 3 do
+					local sz = Vector3.new(bp.Size.X * (0.3 + math.random() * 0.3), 0.12, bp.Size.Z * (0.4 + math.random() * 0.3))
+					local off = CFrame.new((math.random() - 0.5) * bp.Size.X * 0.6, bp.Size.Y / 2 + 0.03, (math.random() - 0.5) * bp.Size.Z * 0.4)
+					local c = part("TenoMudCoat", Enum.PartType.Block, sz, bp.CFrame * off, i % 2 == 1 and MUD or MUD2, 0)
+					c.Material = Enum.Material.Slate
+					follow(c, function(p)
+						if not bp.Parent or not char.Parent then return false end
+						local ended = char:GetAttribute("TenoMudEndedAt")
+						local u = char:GetAttribute("TenoMudUntil")
+						if typeof(ended) == "number" and ended >= coatAt then return false end
+						if typeof(u) == "number" and serverNow() >= u then return false end
+						p.CFrame = bp.CFrame * off
+						return true
+					end)
+				end
+			end
+		end
+		count("mudCoat")
+	end)
+	char:GetAttributeChangedSignal("TenoMudBlockAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on2() or not fresh(char, "TenoMudBlockAt") or not root then return end
+		flash(root.Position + Vector3.new(0, 2, 0), 6)
+		puff(root.Position, 5, MUD2)
+		count("mudBlock")
+	end)
+	char:GetAttributeChangedSignal("TenoMudSplashAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on2() or not fresh(char, "TenoMudSplashAt") or not root then return end
+		ring(root.Position, num(char, "TenoMudSplash", 12), MUD2)
+		puff(root.Position, 12, MUD2)
+		count("mudSplash")
+	end)
+end
+local function onPlayer2(p)
+	p.CharacterAdded:Connect(watch2)
+	if p.Character then watch2(p.Character) end
+end
+Players.PlayerAdded:Connect(onPlayer2)
+for _, p in ipairs(Players:GetPlayers()) do onPlayer2(p) end

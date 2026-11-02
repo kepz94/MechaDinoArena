@@ -2594,3 +2594,17 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoMortarMin / TenoMortarSnap (optional overrides); TenoMortarAimMode | teno character | 15 / 8; "crosshair" / "snap" / "auto" | TenoMovesServer 1.2 |
 | MechaButtonsMortarPointEnabled | MechaButtons script | true | MechaButtons 1.27 |
 | TenoMortarFastPoseEnabled | teno model | true | TenoPose 1.4 |
+| SkillTree.TENO_SUPPORT_LIVE | SkillTree module | true | SkillTree 1.54 |
+| TenoMoves_tbellowEnabled / TenoMoves_tchallengeEnabled / TenoMoves_tmudEnabled | TenoMovesServer script | true | TenoMovesServer 1.3 |
+| TenoBellowStartedAt, TenoBellowAt, TenoBellowTargets, TenoBellowCount, TenoBellowCleared; TenoBellowServerResult / ReadyAt | teno character | server time / "|"-joined names / counts | TenoMovesServer 1.3 |
+| TenoBellowedUntil / TenoBellowedDamageMul / TenoBellowedRunMul / TenoBellowedBy; TenoBellowRefunded | buffed character (teno + squadmates) | until / 0.5 / 1.5 / name; total refunded | TenoMovesServer 1.3 (read by SprintTest 1.19) |
+| TenoChallengeStartedAt, TenoChallengeAt, TenoChallengeTargets, TenoChallengeHits | teno character | server time / names / count | TenoMovesServer 1.3 |
+| TenoMarkedBy / TenoMarkedByUserId / TenoWeakMul / TenoWeakUntil (debuff tags) | marked enemy (player or bot) | teno name / user id / 0.6 / until | TenoMovesServer 1.3 (read by StatServer 1.2, BotServer 1.24, TenoMovesFX 1.1) |
+| TenoMudStartedAt, TenoMudCoatAt, TenoMudUntil, TenoMudHitsLeft, TenoMudBlocks, TenoMudBlockAt, TenoMudEndReason ("hits"/"time"/"dead"/"disabled"), TenoMudEndedAt, TenoMudSplashHits, TenoMudSplashAt | teno character | — | TenoMovesServer 1.3 |
+| ForceField "TenoMudShield" (Visible false) | teno character while the coat is on | — | TenoMovesServer 1.3 |
+| script TenoMovesBellows / TenoMovesChallenges / TenoMovesMuds / TenoMovesMudBlocks | TenoMovesServer script | counts | TenoMovesServer 1.3 |
+| StatWeakEnabled; StatWeakApplies; StatWeakMul | StatServer script; script; player character | true; count; 1 = none | StatServer 1.2 |
+| BotTenoTagsEnabled; BotWeakHits, BotMarkRetargets; BotWeakMul, BotMarkedTarget | BotServer script; script; bot | true; counts; last mul / player name | BotServer 1.24 |
+| SprintTenoBellowEnabled; MoveSpeedParts "bellow" | SprintTest script; character | true | SprintTest 1.19 |
+| TenoSupportPoseEnabled; TenoPoseState "tbellow"/"tchallenge"/"tmud" | teno model | true | TenoPose 1.5 |
+| TenoMovesFXSupportEnabled; parts TenoBellowAura, TenoMarkReticle, TenoPaintBeam, TenoMudCoat, TenoMudPuff | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.1 |

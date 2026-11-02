@@ -1,4 +1,4 @@
--- TenoPose v1.4 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.5 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -55,8 +55,15 @@
 -- v1.4 (TenoMovesServer 1.2: the boulder leaves 0.15 s after the press, was 0.35): "tmortar" 0.15 s 0 -> TAIL_DOWN, 0.12 s
 --   -> TAIL_THROW (the whip), 0.8 s -> 0 (ends at 1.1 s). Switch: model attribute TenoMortarFastPoseEnabled (default true;
 --   false = 1.3 timing).
+-- v1.5 (build 2, plan docs/plans/TENO_ABILITIES_v1.0.md Task 7, MDA-179; mockup v0.3 BELLOW / WALLOW angles): three more
+--   ability moves from TenoMovesServer 1.3's stamps, in the same layer (the latest running one wins over the build-1 moves):
+--   "tbellow"    TenoBellowStartedAt: 0.5 s 0 -> BELLOW (smooth; head up, jaw open), held to 1.7 s, 0.6 s -> 0.
+--   "tchallenge" TenoChallengeStartedAt: 0.5 s 0 -> 0.4 x BELLOW (smooth; the painter's turn), held to 1.4 s, 0.6 s -> 0.
+--   "tmud"       TenoMudStartedAt: 0.3 s 0 -> WALLOW (smooth; flat on the belly), a body roll RootJoint roll
+--                sin(9 t) x 20 x min(1, 3 t) x (1 - t / 1.2) degrees until 1.2 s, then 0.5 s -> 0.
+--   Switch: model attribute TenoSupportPoseEnabled (default true; false = 1.4).
 local TenoPose = {}
-TenoPose.Version = "1.4"
+TenoPose.Version = "1.5"
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -345,6 +352,52 @@ end
 
 function TenoPose.attack(phase, t, hold, s, now)
 	return toCF(TenoPose.attackAngles(phase, t, hold, s, now))
+end
+
+-- v1.5: build-2 ability poses (mockup teno_abilities_app.js BELLOW / WALLOW)
+local BELLOW = {Neck = {34, 0, 0}, Head = {18, 0, 0}, Jaw = {-38, 0, 0}, RootJoint = {6, 0, 0}, LegL = {-6, 0, 0}, LegR = {-6, 0, 0},
+	Tail1 = {-10, 0, 0}}
+local WALLOW = {RootJoint = {-6, 0, 0}, LegL = {40, 0, 0}, LegR = {40, 0, 0}, KneeL = {-60, 0, 0}, KneeR = {-60, 0, 0}, ArmL = {-40, 0, 0},
+	ArmR = {-40, 0, 0}, Neck = {-20, 0, 0}}
+local SUPPORT_END = {tbellow = 2.3, tchallenge = 2.0, tmud = 1.7}
+local SUPPORT_KEYS = {tbellow = "TenoBellowStartedAt", tchallenge = "TenoChallengeStartedAt", tmud = "TenoMudStartedAt"}
+do
+	local phaseV14 = TenoPose.phase
+	function TenoPose.phase(model, isOwner, serverNow)
+		local ph, t, hold, src = phaseV14(model, isOwner, serverNow)
+		if src == "off" or model:GetAttribute("TenoAbilityPoseEnabled") == false or model:GetAttribute("TenoSupportPoseEnabled") == false then
+			return ph, t, hold, src
+		end
+		if ph and src ~= "ability" then return ph, t, hold, src end -- a scratch / hold / slam plays
+		local best, bestAt
+		for id, k in pairs(SUPPORT_KEYS) do
+			local at = num(model:GetAttribute(k))
+			if at and at > 0 and serverNow >= at and serverNow - at < SUPPORT_END[id] and (not bestAt or at > bestAt) then best, bestAt = id, at end
+		end
+		if best and (not ph or bestAt > serverNow - t) then return best, serverNow - bestAt, 0, "ability" end
+		return ph, t, hold, src
+	end
+	local anglesV14 = TenoPose.attackAngles
+	function TenoPose.attackAngles(phase, t, hold, s, now)
+		if phase == "tbellow" then
+			if t < 0.5 then return mix(ZERO, BELLOW, smooth(t / 0.5)) end
+			if t < 1.7 then return mix(BELLOW, BELLOW, 0) end
+			return mix(BELLOW, ZERO, smooth((t - 1.7) / 0.6))
+		elseif phase == "tchallenge" then
+			local half = mix(ZERO, BELLOW, 0.4)
+			if t < 0.5 then return mix(ZERO, BELLOW, smooth(t / 0.5) * 0.4) end
+			if t < 1.4 then return half end
+			return mix(half, ZERO, smooth((t - 1.4) / 0.6))
+		elseif phase == "tmud" then
+			if t < 1.2 then
+				local a = mix(ZERO, WALLOW, smooth(t / 0.3))
+				a.RootJoint[3] += sin(t * 9) * 20 * min(1, t * 3) * (1 - t / 1.2)
+				return a
+			end
+			return mix(WALLOW, ZERO, smooth((t - 1.2) / 0.5))
+		end
+		return anglesV14(phase, t, hold, s, now)
+	end
 end
 
 return TenoPose
