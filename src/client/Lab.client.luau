@@ -1,4 +1,4 @@
--- Lab v1.10 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.11 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -123,16 +123,21 @@
 --   part child is now "Mecha_*" or "HPart_*" for the stage key, the watchers and the plain view. Raptor / pachy parts
 --   ("Mecha_*") and the teno (no parts) unchanged. Switch: script attribute LabHPartsEnabled (default true, read at each
 --   check; false = 1.9).
+-- v1.11 (teno mecha abilities, plan docs/plans/TENO_ABILITIES_v1.0.md Task 4, MDA-176): the teno's parts are Models
+--   "TPart_<id>" (TenoPartsServer 1.0), so a mecha part child is also "TPart_*" for the stage key, the watchers and the plain
+--   view. Switch: script attribute LabTPartsEnabled (default true, read at each check; false = 1.10).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 if script:GetAttribute("LabHPartsEnabled") == nil then script:SetAttribute("LabHPartsEnabled", true) end -- v1.10
-local function isMechaPart(name) -- v1.10: "Mecha_*" (raptor / pachy) or "HPart_*" (Herrera)
+if script:GetAttribute("LabTPartsEnabled") == nil then script:SetAttribute("LabTPartsEnabled", true) end -- v1.11
+local function isMechaPart(name) -- v1.10: "Mecha_*" (raptor / pachy) or "HPart_*" (Herrera); v1.11: + "TPart_*" (teno)
 	if name:sub(1, 6) == "Mecha_" then return true end
+	if script:GetAttribute("LabTPartsEnabled") ~= false and name:sub(1, 6) == "TPart_" then return true end -- v1.11
 	return script:GetAttribute("LabHPartsEnabled") ~= false and name:sub(1, 6) == "HPart_"
 end
 local SKIN = Color3.fromRGB(201, 162, 255) -- v1.6

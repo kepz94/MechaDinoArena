@@ -1,4 +1,4 @@
--- MainMenu v1.12 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.15 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -142,13 +142,17 @@
 --   built), so the panel lists only songs the game can play; a later id brings the row back. Switch: script attribute
 --   MainMenuCreditsHideMissing (default true, read at start; false = 1.13 list). Diagnostic: MainMenuCreditsRows (song
 --   rows shown).
+-- v1.15 (teno mecha abilities, plan docs/plans/TENO_ABILITIES_v1.0.md Task 4, MDA-176; the plan's "MainMenu 1.13", renumbered
+--   after the credits work): the teno's parts are Models "TPart_<id>" (TenoPartsServer 1.0), so a mecha part child is also
+--   "TPart_*" for the preview key, the watchers and the plain view. Switch: script attribute MainMenuTPartsEnabled (default
+--   true, read at each check; false = 1.14).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.14"
+local VERSION = "1.15"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -779,8 +783,10 @@ end
 
 -- ---------- preview ----------
 if script:GetAttribute("MainMenuHPartsEnabled") == nil then script:SetAttribute("MainMenuHPartsEnabled", true) end -- v1.11
-local function isMechaPart(name) -- v1.11: "Mecha_*" (raptor / pachy) or "HPart_*" (Herrera)
+if script:GetAttribute("MainMenuTPartsEnabled") == nil then script:SetAttribute("MainMenuTPartsEnabled", true) end -- v1.15
+local function isMechaPart(name) -- v1.11: "Mecha_*" (raptor / pachy) or "HPart_*" (Herrera); v1.15: + "TPart_*" (teno)
 	if name:sub(1, 6) == "Mecha_" then return true end
+	if script:GetAttribute("MainMenuTPartsEnabled") ~= false and name:sub(1, 6) == "TPart_" then return true end -- v1.15
 	return script:GetAttribute("MainMenuHPartsEnabled") ~= false and name:sub(1, 6) == "HPart_"
 end
 local function previewKey()
