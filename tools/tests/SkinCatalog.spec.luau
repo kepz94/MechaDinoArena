@@ -1,4 +1,4 @@
--- SkinCatalog.spec v1.7 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
+-- SkinCatalog.spec v1.8 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkinCatalog (MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...". Requires a
 -- fresh clone so a re-run in the same Studio session sees the installed source. Reads both model data modules to check
 -- that every authored colour is a skin role or on the never-paint list.
@@ -17,6 +17,10 @@
 -- v1.6 (plan docs/plans/TENO_MODEL_v1.0.md Task 2, MDA-171): Teno colour groups — every TenoModelData colour is a Teno role
 --   or never-paint, 10 roles, no hex shared, none never-paint, Teno classic (Goofy Noodle) round trip.
 -- v1.7 (SkinCatalog 1.8, TenoModelData 1.3): the Teno hexes are the Old Gardener colours.
+-- v1.8 (SkinCatalog 1.9; MDA-187 / 188 / 189 / 190): Troodon (Night Watcher), Therizino (Reaper), Zuul (Battering Ram) and
+--   Dilo (Classic) colour groups: 10 roles each, no hex shared, none never-paint, every colour of its model data (loaded with
+--   pcall: a missing module fails here, not by error) is a role or never-paint, Classic is the only skin and round-trips.
+--   The Version check follows the catalog (1.9).
 local da = game.ServerStorage:FindFirstChild("DinoArcade")
 local ok, SC = pcall(function()
 	local src = da.SkinCatalog
@@ -43,7 +47,7 @@ local function eq(name, got, want)
 end
 local function hex(c3) return c3:ToHex():upper() end
 
-eq("Version", SC.Version, "1.7")
+eq("Version", SC.Version, "1.9") -- v1.8 (was "1.7")
 eq("ALL_UNLOCKED is a boolean", type(UNLOCKED), "boolean") -- v1.5
 
 -- roles of the authored colours
@@ -270,6 +274,63 @@ do
 	eq("herrera owns free", SC.owns("Herrera", "herrera_canopy", {}), true)
 	eq("herrera sanitize pachy id", SC.sanitize("Herrera", "pachy_ember"), "classic")
 end
+
+
+-- v1.8: the four model-only dinos (SkinCatalog 1.9)
+local NEW = {
+	Troodon = {model = "TroodonModelData", roles = {["4E4A44"] = "main", ["2A2622"] = "stripes", ["B8AE98"] = "belly",
+		["3C3833"] = "feathers", ["6B5A48"] = "crest", ["3A3632"] = "limbs", ["1C1A18"] = "claws", ["F0A62A"] = "eyes",
+		["1E1C1A"] = "mask", ["8C7E6A"] = "tailfan"}},
+	Therizino = {model = "TherizinoModelData", roles = {["3E3B38"] = "main", ["2A2826"] = "back", ["8C857A"] = "belly",
+		["4A4642"] = "coat", ["6E6A64"] = "mane", ["2F2D2B"] = "limbs", ["E2DCCB"] = "claws", ["F2C83A"] = "eyes",
+		["1E1C1B"] = "beak", ["161514"] = "mask"}},
+	Zuul = {model = "ZuulModelData", roles = {["B08A62"] = "main", ["8E6A48"] = "plates", ["E2C8A0"] = "spikes",
+		["D6C4A0"] = "belly", ["9A7650"] = "headplate", ["F0DCB8"] = "horns", ["7A5A3E"] = "limbs", ["2E2620"] = "claws",
+		["D8A030"] = "eyes", ["6A4C34"] = "club"}},
+	Dilo = {model = "DiloModelData", roles = {["6E7A3A"] = "main", ["3A3F22"] = "stripes", ["D8D0A0"] = "belly",
+		["C8362E"] = "frill", ["E2C23A"] = "frillmark", ["C24A2A"] = "crest", ["5A6430"] = "limbs", ["2C2822"] = "claws",
+		["F0E04A"] = "eyes", ["1C1C1A"] = "mask"}},
+}
+for species, def in pairs(NEW) do
+	local n, seenRole = 0, {}
+	for h, role in pairs(def.roles) do
+		n += 1
+		eq(species .. " role " .. h, SC.roleOf(species, Color3.fromHex(h)), role)
+		eq(species .. " " .. h .. " not never-paint", SC.NEVER_PAINT[h], nil)
+		eq(species .. " role name " .. role .. " once", seenRole[role], nil)
+		seenRole[role] = true
+	end
+	eq(species .. " test roles", n, 10)
+	local have = 0
+	for _ in pairs((SC.ROLES or {})[species] or {}) do have += 1 end
+	eq(species .. " roles", have, 10)
+	local okD, d = pcall(data, def.model)
+	eq(species .. " model data loads", okD, true)
+	if okD then
+		local cols = 0
+		for _, seg in ipairs(d.segments) do
+			for _, p in ipairs(seg.parts) do
+				cols += 1
+				local h = p.color:upper()
+				local covered = (SC.ROLES[species] or {})[h] ~= nil or SC.NEVER_PAINT[h] == true
+				if not covered then eq(species .. " colour " .. h .. " covered", covered, true) end
+			end
+		end
+		eq(species .. " has parts", cols > 0, true)
+	end
+	local list = SC.SKINS[species]
+	eq(species .. " one skin", type(list) == "table" and #list, 1)
+	eq(species .. " default", SC.default(species), "classic")
+	local classic = SC.get(species, "classic")
+	eq(species .. " classic free", classic and classic.free, true)
+	for h, role in pairs(def.roles) do
+		eq(species .. " classic round trip " .. role, classic and classic.colors[role] and classic.colors[role]:upper(), h)
+	end
+	eq(species .. " sanitize other", SC.sanitize(species, "pachy_ember"), "classic")
+end
+eq("teno unchanged", SC.roleOf("Teno", Color3.fromHex("8A7350")), "main")
+eq("raptor unchanged", SC.roleOf("Raptor", Color3.fromHex("5E943E")), "main")
+eq("troodon colour on raptor -> nil", SC.roleOf("Raptor", Color3.fromHex("4E4A44")), nil)
 
 if #fails > 0 then return "FAIL " .. #fails .. " / " .. (passes + #fails) .. ": " .. table.concat(fails, "; ") end
 return "PASS " .. passes

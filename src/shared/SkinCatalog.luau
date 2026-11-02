@@ -1,4 +1,4 @@
--- SkinCatalog v1.7 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
+-- SkinCatalog v1.9 (Mecha Dino Arena) — dino skins: the colour roles of each dino and the skin list. MDA-105, plan
 -- docs/plans/SKINS_v1.0.md Task 1, mockup docs/mockups/skins_lab_tab.html (Kepu 2026-10-30: skins picked in the Lab's
 -- SKINS tab from the main menu; "whatever is chosen in the menu is what youre spawning with every time unless you choose
 -- a different skin"; buying with Robux is the next plan). Pure: no Instance access. Used by SkinServer 1.0 (server) and,
@@ -51,9 +51,15 @@
 --   (Goofy Noodle). Other species' lists, roles and the API unchanged.
 -- v1.8 (Kepu 2026-10-31: teno "a little too cartoonish" -> mockup v0.4 pick "E · S-curve tail"; TenoModelData 1.3): the
 --   Teno colour groups and its Classic skin take the Old Gardener colours (same 10 role names). Other species unchanged.
+-- v1.9 (model installs MDA-187 / 188 / 189 / 190; models only, not playable): colour groups and a Classic skin (the only
+--   skin) for Troodon (TroodonModelData 1.0, Night Watcher: main, stripes, belly, feathers, crest, limbs, claws, eyes, mask,
+--   tailfan), Therizino (TherizinoModelData 1.0, Reaper: main, back, belly, coat, mane, limbs, claws, eyes, beak, mask),
+--   Zuul (ZuulModelData 1.1, Battering Ram: main, plates, spikes, belly, headplate, horns, limbs, claws, eyes, club) and
+--   Dilo (DiloModelData 1.0: main, stripes, belly, frill, frillmark, crest, limbs, claws, eyes, mask). Teeth / pupils /
+--   mouths / the root stay never-paint. Other species' lists, roles, ALL_UNLOCKED and the API unchanged.
 local SkinCatalog = {}
 SkinCatalog.ALL_UNLOCKED = true -- v1.5: group test, every skin unlocked
-SkinCatalog.Version = "1.8"
+SkinCatalog.Version = "1.9"
 
 SkinCatalog.ROLES = {
 	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",
@@ -66,6 +72,14 @@ SkinCatalog.ROLES = {
 		["C9572E"] = "frill"}, -- v1.4
 	Teno = {["8A7350"] = "main", ["5A4632"] = "dorsal", ["D8C7A0"] = "belly", ["4A3A2A"] = "bands", ["6E5A3E"] = "limbs",
 		["2E2620"] = "claws", ["D9A23A"] = "eyes", ["3A332C"] = "beak", ["6B5236"] = "scutes", ["B89A6A"] = "mask"}, -- v1.8 (v1.7: Goofy Noodle hexes)
+	Troodon = {["4E4A44"] = "main", ["2A2622"] = "stripes", ["B8AE98"] = "belly", ["3C3833"] = "feathers", ["6B5A48"] = "crest",
+		["3A3632"] = "limbs", ["1C1A18"] = "claws", ["F0A62A"] = "eyes", ["1E1C1A"] = "mask", ["8C7E6A"] = "tailfan"}, -- v1.9
+	Therizino = {["3E3B38"] = "main", ["2A2826"] = "back", ["8C857A"] = "belly", ["4A4642"] = "coat", ["6E6A64"] = "mane",
+		["2F2D2B"] = "limbs", ["E2DCCB"] = "claws", ["F2C83A"] = "eyes", ["1E1C1B"] = "beak", ["161514"] = "mask"}, -- v1.9
+	Zuul = {["B08A62"] = "main", ["8E6A48"] = "plates", ["E2C8A0"] = "spikes", ["D6C4A0"] = "belly", ["9A7650"] = "headplate",
+		["F0DCB8"] = "horns", ["7A5A3E"] = "limbs", ["2E2620"] = "claws", ["D8A030"] = "eyes", ["6A4C34"] = "club"}, -- v1.9
+	Dilo = {["6E7A3A"] = "main", ["3A3F22"] = "stripes", ["D8D0A0"] = "belly", ["C8362E"] = "frill", ["E2C23A"] = "frillmark",
+		["C24A2A"] = "crest", ["5A6430"] = "limbs", ["2C2822"] = "claws", ["F0E04A"] = "eyes", ["1C1C1A"] = "mask"}, -- v1.9
 }
 
 SkinCatalog.NEVER_PAINT = {["E8E2D2"] = true, ["111111"] = true, ["963C3C"] = true, ["6E342E"] = true, ["F5F5F0"] = true,
@@ -149,6 +163,26 @@ SkinCatalog.SKINS = {
 		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
 			colors = {main = "8A7350", dorsal = "5A4632", belly = "D8C7A0", bands = "4A3A2A", limbs = "6E5A3E", claws = "2E2620",
 				eyes = "D9A23A", beak = "3A332C", scutes = "6B5236", mask = "B89A6A"}}, -- v1.8 Old Gardener (v1.7 Goofy Noodle)
+	},
+	Troodon = { -- v1.9 Night Watcher
+		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
+			colors = {main = "4E4A44", stripes = "2A2622", belly = "B8AE98", feathers = "3C3833", crest = "6B5A48", limbs = "3A3632",
+				claws = "1C1A18", eyes = "F0A62A", mask = "1E1C1A", tailfan = "8C7E6A"}},
+	},
+	Therizino = { -- v1.9 Reaper
+		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
+			colors = {main = "3E3B38", back = "2A2826", belly = "8C857A", coat = "4A4642", mane = "6E6A64", limbs = "2F2D2B",
+				claws = "E2DCCB", eyes = "F2C83A", beak = "1E1C1B", mask = "161514"}},
+	},
+	Zuul = { -- v1.9 Battering Ram
+		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
+			colors = {main = "B08A62", plates = "8E6A48", spikes = "E2C8A0", belly = "D6C4A0", headplate = "9A7650", horns = "F0DCB8",
+				limbs = "7A5A3E", claws = "2E2620", eyes = "D8A030", club = "6A4C34"}},
+	},
+	Dilo = { -- v1.9
+		{id = "classic", name = "Classic", rarity = "STARTER", free = true,
+			colors = {main = "6E7A3A", stripes = "3A3F22", belly = "D8D0A0", frill = "C8362E", frillmark = "E2C23A", crest = "C24A2A",
+				limbs = "5A6430", claws = "2C2822", eyes = "F0E04A", mask = "1C1C1A"}},
 	},
 }
 
