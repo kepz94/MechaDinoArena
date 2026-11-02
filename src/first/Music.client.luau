@@ -1,4 +1,4 @@
--- Music v1.0 (Mecha Dino Arena) — background music by screen (LocalScript in ReplicatedFirst, so it is running from the
+-- Music v1.1 (Mecha Dino Arena) — background music by screen (LocalScript in ReplicatedFirst, so it is running from the
 -- first loading screen; this client only). Kepu 2026-10-29: "I want [the island music] to start playing during the
 -- loading screen ... At the main menu screen up until you load up play gymnopedie on repeat ... In the lab play [its
 -- song]"; "From the loading screen to the island the music keeps playing it doesn't restart. It just begins the playlist
@@ -24,11 +24,25 @@
 -- Switch: script attribute MusicEnabled (default true, read at start; false = no music at all).
 -- Diagnostics (LocalPlayer attributes, this client): MusicVersion, MusicState ("menu" / "island" / "lab" / "off"),
 --   MusicTrack (the playing song's name, "" when silent), MusicLoaded (the playing song's TimeLength > 0).
+-- v1.1 (Kepu 2026-11-02: "I want these to be the default songs when you load in to these places. Airship Serenity for the
+--   main menu. Bitquest starts at the loading screen and continues on to the island. Level up for the lab. All the current
+--   songs can stay but they will no longer be the default load in songs. The 8bit dungeon level song will go on to the
+--   island as well."; all four by Kevin MacLeod, incompetech.com, CC BY 4.0 -> credit needed):
+--   new default tracks, each one's Roblox asset id read from a script attribute (set once Kepu has uploaded the mp3s):
+--     menu   = Airship Serenity          (MusicIdAirshipSerenity), looped;
+--     island = Bit Quest -> 8bit Dungeon Level -> Bit Quest ... (MusicIdBitQuest, MusicIdDungeonLevel): a playlist that
+--              starts with Bit Quest at the loading screen and runs on onto the island without restarting (same state);
+--              each song plays once, the next starts when it ends;
+--     lab    = Level Up                  (MusicIdLevelUp), looped.
+--   A state whose new id is not set yet (attribute "" / missing) keeps its 1.0 song, so nothing goes silent before the
+--   upload; on the island a missing Dungeon Level id just loops Bit Quest. The 1.0 songs stay in TRACKS (kept, not
+--   default). Switch: script attribute MusicNewDefaults (default true, read at start; false = 1.0 songs everywhere).
+--   Diagnostic: MusicPlaylistIndex (island: which playlist song is playing, 1-based; 0 otherwise).
 local Players = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local VOLUME = 0.4
 local FADE = 1.5
 local TRACKS = {
@@ -37,6 +51,25 @@ local TRACKS = {
 	lab = {name = "Crazy Daisy", id = "rbxassetid://1845556724"},
 }
 local LOADING = {splash = true, loading = true, hatching = true, hatched = true, fading = true, travel = true}
+-- v1.1: the new default songs (asset ids from script attributes; "" = not uploaded yet)
+local NEW = {
+	menu = {{name = "Airship Serenity", attr = "MusicIdAirshipSerenity"}},
+	island = {{name = "Bit Quest", attr = "MusicIdBitQuest"}, {name = "8bit Dungeon Level", attr = "MusicIdDungeonLevel"}},
+	lab = {{name = "Level Up", attr = "MusicIdLevelUp"}},
+}
+if script:GetAttribute("MusicNewDefaults") == nil then script:SetAttribute("MusicNewDefaults", true) end
+for _, list in pairs(NEW) do
+	for _, t in ipairs(list) do
+		if script:GetAttribute(t.attr) == nil then script:SetAttribute(t.attr, "") end
+	end
+end
+local useNew = script:GetAttribute("MusicNewDefaults") ~= false
+local function newId(t)
+	local v = script:GetAttribute(t.attr)
+	if type(v) == "number" then v = tostring(v) end
+	if type(v) ~= "string" or v == "" then return nil end
+	return v:match("^rbxassetid://") and v or ("rbxassetid://" .. v)
+end
 
 if script:GetAttribute("MusicEnabled") == nil then script:SetAttribute("MusicEnabled", true) end
 local player = Players.LocalPlayer
@@ -63,6 +96,31 @@ for key, t in pairs(TRACKS) do
 end
 
 local current = "off"
+-- v1.1: per state, the list of sounds to play in order (1 = looped single song); falls back to the 1.0 sound
+local lists = {}
+for state, old in pairs(sounds) do
+	local list = {}
+	if useNew and NEW[state] then
+		for i, t in ipairs(NEW[state]) do
+			local id = newId(t)
+			if id then
+				local s = Instance.new("Sound")
+				s.Name = state .. "_" .. i
+				s.SoundId = id
+				s.Volume = 0
+				s.Parent = folder
+				table.insert(list, {sound = s, name = t.name})
+			end
+		end
+	end
+	if #list == 0 then list = {{sound = old, name = TRACKS[state].name}} end
+	for _, e in ipairs(list) do e.sound.Looped = #list == 1 end
+	lists[state] = list
+end
+local index = 0 -- playlist position in the current state
+player:SetAttribute("MusicPlaylistIndex", 0)
+local function playing() local l = lists[current]; return l and l[index] and l[index].sound end
+
 local function wanted()
 	if player:GetAttribute("MusicMuted") == true then return "off" end
 	if player:GetAttribute("LabOpen") == "full" then return "lab" end
@@ -70,26 +128,40 @@ local function wanted()
 	if player:GetAttribute("MainMenuOpen") == true then return "menu" end
 	return "island"
 end
+local function startEntry(i)
+	local l = lists[current]
+	index = i
+	local e = l and l[i]
+	player:SetAttribute("MusicPlaylistIndex", (l and #l > 1) and i or 0)
+	if not e then
+		player:SetAttribute("MusicTrack", "")
+		return
+	end
+	e.sound.TimePosition = 0
+	e.sound.Volume = 0
+	e.sound:Play()
+	TweenService:Create(e.sound, TweenInfo.new(FADE), {Volume = VOLUME}):Play()
+	player:SetAttribute("MusicTrack", e.name)
+end
 local function setState(state)
 	if state == current then return end
-	local old = sounds[current]
+	local old = playing()
 	current = state
 	player:SetAttribute("MusicState", state)
 	if old then
 		TweenService:Create(old, TweenInfo.new(FADE), {Volume = 0}):Play()
 		task.delay(FADE, function()
-			if sounds[current] ~= old then old:Stop() end -- not if its state came back meanwhile
+			if playing() ~= old then old:Stop() end -- not if its state came back meanwhile
 		end)
 	end
-	local new = sounds[state]
-	if new then
-		new.TimePosition = 0
-		new.Volume = 0
-		new:Play()
-		TweenService:Create(new, TweenInfo.new(FADE), {Volume = VOLUME}):Play()
-		player:SetAttribute("MusicTrack", TRACKS[state].name)
-	else
-		player:SetAttribute("MusicTrack", "")
+	startEntry(1) -- a new state always starts its playlist from the first song
+end
+-- v1.1: a playlist song that ends (not looped) hands over to the next one, wrapping round
+for state, l in pairs(lists) do
+	for i, e in ipairs(l) do
+		e.sound.Ended:Connect(function()
+			if current == state and index == i and #l > 1 then startEntry(i % #l + 1) end
+		end)
 	end
 end
 local function check() setState(wanted()) end
@@ -101,7 +173,7 @@ check()
 task.spawn(function()
 	while folder.Parent do
 		check()
-		local s = sounds[current]
+		local s = playing()
 		player:SetAttribute("MusicLoaded", s ~= nil and s.TimeLength > 0)
 		task.wait(0.25)
 	end
