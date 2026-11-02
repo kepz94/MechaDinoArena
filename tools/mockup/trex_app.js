@@ -153,7 +153,7 @@ function frame(now) {
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
-resize(); setLook("A2"); setView("three");
+resize(); setLook("X"); setView("three");
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__run = t => { swingT = t; };

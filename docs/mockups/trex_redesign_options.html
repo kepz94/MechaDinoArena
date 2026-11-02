@@ -41,8 +41,8 @@ ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
 <body>
 <main>
   <header>
-    <h1><span>T-Rex</span> redesign · v0.2</h1>
-    <p class="lede"><b>v0.2:</b> A2 is Apex made true to life (real-size skull, head carried level with the back, longer tail), and X is A2 at roster scale (62 studs, the biggest dino like the real animal).<br>Three T-Rex designs with real proportions instead of the cartoon ones: a long, deep skull that is widest at the back, a small eye under a brow boss, a short thick neck, a deep ribcage, tiny arms, long powerful legs, and a long tail held level as a counterweight. They differ in build, not colour: the colours are the T-Rex's current skin colours, so its skins keep working. Same length as now (38 studs); N is the T-Rex in the game, for comparison.</p>
+    <h1><span>T-Rex</span> redesign · v0.3</h1>
+    <p class="lede"><b>Picked (Kepu 2026-11-02): X</b>, the true-to-life Apex at roster scale (62 studs). Plan: docs/plans/TREX_REDESIGN_v1.0.md. The other options stay here for reference.<br><b>v0.2:</b> A2 is Apex made true to life (real-size skull, head carried level with the back, longer tail), and X is A2 at roster scale (62 studs, the biggest dino like the real animal).<br>Three T-Rex designs with real proportions instead of the cartoon ones: a long, deep skull that is widest at the back, a small eye under a brow boss, a short thick neck, a deep ribcage, tiny arms, long powerful legs, and a long tail held level as a counterweight. They differ in build, not colour: the colours are the T-Rex's current skin colours, so its skins keep working. Same length as now (38 studs); N is the T-Rex in the game, for comparison.</p>
   </header>
   <div class="row" role="group" aria-label="Look">
     <button class="tab" data-look="N">N · Now<small>the cartoon T-Rex in the game</small></button>
@@ -52,7 +52,7 @@ ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
   </div>
   <div class="row" role="group" aria-label="True to life">
     <button class="tab" data-look="A2">A2 · Apex, true to life<small>real skull size, head level, longer tail · 38 studs</small></button>
-    <button class="tab" data-look="X">X · A2 at roster scale<small>the same, 62 studs: the biggest dino</small></button>
+    <button class="tab" data-look="X">X · A2 at roster scale ✓ picked<small>the same, 62 studs: the biggest dino</small></button>
   </div>
   <div class="row" role="group" aria-label="View">
     <button class="btn" data-view="three">3/4 view</button>
@@ -238,7 +238,7 @@ function frame(now) {
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
-resize(); setLook("A2"); setView("three");
+resize(); setLook("X"); setView("three");
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__run = t => { swingT = t; };
