@@ -1,4 +1,4 @@
--- MechaButtons v1.25 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.26 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -214,12 +214,20 @@
 --   pinned (PinHeld), and off cooldown (BreakerReadyAt / BreakerCooldown); otherwise the button is dimmed. Glider Wings
 --   has no key (it acts through JUMP). Switch: script attribute MechaButtonsHerreraEnabled (default true, read at start;
 --   false = 1.23).
+-- v1.26 (teno mecha abilities, plan docs/plans/TENO_ABILITIES_v1.0.md Task 7, MDA-179; TenoMovesServer 1.0): TIMED_PARTS +=
+--   tgrab ("TenoGrab", DinoTenoGrabRequest, "TAIL GRAB"), tmortar ("TenoMortar", DinoTenoMortarRequest, "MORTAR"), tstomp
+--   ("TenoStomp", DinoTenoStompRequest, "STOMP"), tleap ("TenoLeap", DinoTenoLeapRequest, "LEAP"), tbellow ("TenoBellow",
+--   DinoTenoBellowRequest, "BELLOW"), tchallenge ("TenoChallenge", DinoTenoChallengeRequest, "CHALLENGE"), tmud ("TenoMud",
+--   DinoTenoMudRequest, "MUD ARMOR"); the last three are "soon" in build 1 (can't be slotted). The mortar fires along the
+--   camera look (stamp, cam LookVector; auto-target on the server); the others are normal presses. The leap's ready / dim
+--   look: TenoLeapReadyAt is now while a charge is left, TenoLeapUntil while in the air. Switch: script attribute
+--   MechaButtonsTenoEnabled (default true, read at start; false = 1.25).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.25"
+local VERSION = "1.26"
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -289,6 +297,17 @@ if script:GetAttribute("MechaButtonsHerreraPass3Enabled") ~= false then
 	TIMED_PARTS.caltrops = {"Caltrop", "DinoCaltropRequest", "CALTROPS"}
 	TIMED_PARTS.goo = {"Goo", "DinoGooRequest", "GOO BLOB"}
 	TIMED_PARTS.hadren = {"Adrenaline", "DinoAdrenalineRequest", "ADRENALINE"}
+end
+if script:GetAttribute("MechaButtonsTenoEnabled") == nil then script:SetAttribute("MechaButtonsTenoEnabled", true) end -- v1.26
+local TENO_BTN = script:GetAttribute("MechaButtonsTenoEnabled") ~= false
+if TENO_BTN then -- v1.26: the teno's mecha parts
+	TIMED_PARTS.tgrab = {"TenoGrab", "DinoTenoGrabRequest", "TAIL GRAB"}
+	TIMED_PARTS.tmortar = {"TenoMortar", "DinoTenoMortarRequest", "MORTAR"}
+	TIMED_PARTS.tstomp = {"TenoStomp", "DinoTenoStompRequest", "STOMP"}
+	TIMED_PARTS.tleap = {"TenoLeap", "DinoTenoLeapRequest", "LEAP"}
+	TIMED_PARTS.tbellow = {"TenoBellow", "DinoTenoBellowRequest", "BELLOW"}
+	TIMED_PARTS.tchallenge = {"TenoChallenge", "DinoTenoChallengeRequest", "CHALLENGE"}
+	TIMED_PARTS.tmud = {"TenoMud", "DinoTenoMudRequest", "MUD ARMOR"}
 end
 -- v1.20: parts that use hold-to-aim
 local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off
@@ -784,6 +803,12 @@ local function press(n, input)
 	end
 	if HM_BTN and id == "quills" then -- v1.24: the quills fly along the camera look (HerreraMovesServer 1.0)
 		local r = ReplicatedStorage:FindFirstChild("DinoQuillRequest")
+		local cam = workspace.CurrentCamera
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
+		return
+	end
+	if TENO_BTN and id == "tmortar" then -- v1.26: the mortar aims along the camera look (TenoMovesServer 1.0 auto-targets)
+		local r = ReplicatedStorage:FindFirstChild("DinoTenoMortarRequest")
 		local cam = workspace.CurrentCamera
 		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
 		return
