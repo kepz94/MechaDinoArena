@@ -1,4 +1,4 @@
-# Dino roster v1.21
+# Dino roster v1.22
 
 The list of dinos that are in the game, and the ones planned for roll-out. Add new dinos at the bottom of "Planned" as
 Kepu sends them; each one goes model mockup → Kepu's pick → model data → kit plan → playable.
@@ -9,9 +9,9 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 ## In the game (playable)
 | # | Dino | Model data | HP | Run speed | Length in game | Role / Kepu's words |
 |---|---|---|---|---|---|---|
-| 1 | T-Rex | TRexModelData | 200 | 44 | ~40 | The heavy (bite, roar) |
+| 1 | T-Rex | TRexModelData | 200 | 44 | ~40 | The heavy (bite, roar). Redesign in mockup (docs/mockups/trex_redesign_options.html v0.1: A Apex / B Brawler / C Stalker, real proportions) |
 | 2 | Raptor | RaptorModelData 1.13 | 60 | 78 | ~25.7 | Pounce / latch hunter |
-| 3 | Pachy | PachyModelData | 90 | 56.9 | — | Headbutt / ram. Head rework in mockup (docs/mockups/pachy_head_options.html v0.4): Kepu picked D Crowned Skull with the Battering Dome spikes as the default look, plus a bulkier mid section (E +25% / F +40%, pick pending) |
+| 3 | Pachy | PachyModelData | 90 | 56.9 | — | Headbutt / ram. Head rework in mockup (docs/mockups/pachy_head_options.html v0.4): Kepu loves the refined Crowned Skull (v0.4) with the Battering Dome spikes as the default look, plus a bulkier mid section (E +25% / F +40%, pick pending) |
 | 4 | Herrera | HerreraModelData 1.3 | 40 | 90 | ~22.4 | "a Pain in the ass to deal with but easy to kill", most mecha utility, fastest |
 | 5 | Teno (Tenontosaurus) | TenoModelData 1.3 (1.4 written, not installed) | 150 | 52 | ~47 | Tank: scratch + rear tail slam |
 
@@ -48,3 +48,4 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 | 1.19 | Pachy head rework mockup v0.1: three more intimidating domes (Kepu 2026-11-02: "the pachy dome ... Looks too much like an egg ... should be a more intimidating Dino"). |
 | 1.20 | Pachy mockup v0.2: Crowned Skull + spikes always on (Kepu's pick) with a bulkier mid section, E +25% / F +40% (Kepu 2026-11-02). |
 | 1.21 | Pachy mockup v0.3 / v0.4: the Crowned Skull redone with more care (dome grows out of the skull, ten chunky horns round its base, flush brows, slit eyes, cheek horns, nose and spine knobs) (Kepu 2026-11-02: "put more effort into the design. This looks really sloppy"). |
+| 1.22 | T-Rex redesign mockup v0.1: three designs with real proportions, same colour roles and length (Kepu 2026-11-02: "the t-Rex needs a redesign. It looks way too cartoonish with its portions"). |
