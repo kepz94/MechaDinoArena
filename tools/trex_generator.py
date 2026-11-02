@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""T-Rex generator v2.0-draft (Mecha Dino Arena) — mockup stage: three realistic T-Rex designs for Kepu to pick from.
+"""T-Rex generator v2.0 (Mecha Dino Arena) — the true-to-life T-Rex (TRexModelData 2.0) and the redesign mockup looks.
+
+v2.0 (MDA-192, plan docs/plans/TREX_REDESIGN_v1.0.md Task 1; Kepu 2026-11-02 "Let's go with X" / "I'm good with this
+plan"): without --json the generator writes src/shared/Models/TRexModelData.luau 2.0 from look A2 at TARGET_LEN 38
+(X = A2 at roster scale: RaptorScale 1.5 scales it x1.63 in game). Attributes: every attribute of the place's
+StarterPlayer.StarterCharacter (StarterCharacter 1.2, dumped to tools/data/trex_starter_character_1.2_attrs.json: the
+1.24 file's keys plus GaitAlwaysRun, with the live speeds 32 / 60) carried unchanged, except RigHipHeight (from the new
+body), TRexModelVersion "2.0", StarterCharacterVersion "1.3" and StyleVersion "2.0" (labels). 1.24 stays in git for
+rollback. The 2.0-draft text below describes the mockup stage.
+
+v2.0-draft: mockup stage: three realistic T-Rex designs for Kepu to pick from.
 
 Kepu 2026-11-02: "the t-Rex needs a redesign. It looks way too cartoonish with its portions" (+ "I want you to always
 design the dinosaurs carefully from now on"). The shipped T-Rex (TRexModelData 1.24, style 1.1 StripeEye, preset B
@@ -15,18 +25,19 @@ Kept from the shipped T-Rex so a later install fits the game: the rig 1.3 segmen
 code finds (Head_mouth, Torso_body), and the three skin colour roles (main 666A4A, dark 50523A, belly B2A278) plus the
 never-paint teeth E8E2D2, eye 111111, eye shine F5F5F0, mouth 6E342E. Size: TARGET_LEN 38 studs (the shipped T-Rex is
 37.6 at scale 1; it is not doubled).
-Run: python3 tools/trex_generator.py --look A|B|C|A2 [--len STUDS] --json OUT
+Run: python3 tools/trex_generator.py --look A|B|C|A2 [--len STUDS] --json OUT   (mockup JSON)
+     python3 tools/trex_generator.py                                         (v2.0: writes TRexModelData 2.0, look A2, 38 studs)
 """
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "2.0-draft"
+VERSION = "2.0"
 TARGET_LEN = float(sys.argv[sys.argv.index("--len") + 1]) if "--len" in sys.argv else 38.0  # --len: the A2 roster-scale test
 HRP_SIZE_D0 = (4.0, 3.9, 3.0)
 ROLES = ["main", "dark", "belly"]
 NEVER = {"E8E2D2", "111111", "F5F5F0", "6E342E"}
 C = {"main": "666A4A", "dark": "50523A", "belly": "B2A278", "tooth": "E8E2D2", "eye": "111111", "shine": "F5F5F0", "mouth": "6E342E"}
-LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
+LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else ("A" if "--json" in sys.argv else "A2")  # v2.0: data file = A2
 M = ((0, 0, 1), (0, 1, 0), (-1, 0, 0))  # D -> HRP space
 NECK_RAISE = 0
 F = 1.0
@@ -326,6 +337,54 @@ if "--json" in sys.argv:
             "stats": {"length": round(hi[0] - lo[0], 2), "height": round(hi[1] + HIP, 2), "width": round(hi[2] - lo[2], 2), "hip": round(HIP, 3)}}
     json.dump(data, open(out, "w"))
     print("json ->", out)
+if "--json" not in sys.argv:
+    # ------------------------------------------------------------ v2.0: TRexModelData 2.0 (look A2, 38 studs), same layout as the other *ModelData files
+    assert LOOK == "A2" and abs(TARGET_LEN - 38.0) < 1e-9, "the data file is the picked look: A2 at 38 studs"
+    OUT = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
+    ATTRS = os.path.join(ROOT, "tools", "data", "trex_starter_character_1.2_attrs.json")
+
+    def fmt(v):
+        return "{" + ",".join(f"{x:g}" for x in v) + "}"
+
+    def lua(v):
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if isinstance(v, str):
+            return json.dumps(v)
+        return f"{v:g}"
+    hx, hy, hz = HRP_SIZE_D
+    body = [f'\thrp = {{size = {{{hz:.4g},{hy:.4g},{hx:.4g}}}, color = "A3A2A5", surface = {{"Studs","Inlet","Smooth","Smooth","Smooth","Smooth"}}}},',
+            f'\thumanoid = {{RigType = "R15", HipHeight = {HIP - hy / 2:.4g}, DisplayDistanceType = "None"}},',
+            '\tmodelStreamingMode = "Atomic",', "\tsegments = {"]
+    for n_ in order:
+        sg = segments[n_]
+        body.append(f'\t\t{{name = "{n_}", root = {fmt(cf(sg["root"]))}, parts = {{')
+        for p in sg["parts"]:
+            surface = '"Smooth"' if p["key"] in ("eye", "shine") else '"Studs"'
+            body.append(f'\t\t\t{{name = "{p["name"]}", size = {fmt([round(v, 4) for v in p["size"]])}, '
+                        f'cf = {fmt(cf(p["center"], p["R"]))}, color = "{C[p["key"]]}", surface = {surface}}},')
+        body.append("\t\t}},")
+    body.append("\t},")
+    body.append("\tjoints = {")
+    for jn, p0, p1 in JOINTS:
+        c0 = cf((0.0, 0.0, 0.0)) if p0 == "HRP" else [round(segments[p1]["root"][i] - segments[p0]["root"][i], 5) + 0.0 for i in range(3)] + [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        body.append(f'\t\t{{name = "{jn}", part0 = "{p0}", part1 = "{p1}", c0 = {fmt(c0)}, c1 = {{0,0,0,1,0,0,0,1,0,0,0,1}}}},')
+    body.append("\t},")
+    attrs = json.load(open(ATTRS))
+    attrs.update({"RigHipHeight": round(HIP, 4), "TRexModelVersion": VERSION, "StarterCharacterVersion": "1.3", "StyleVersion": "2.0"})
+    lines = [f"-- TRexModelData v{VERSION} (Mecha Dino Arena) — the true-to-life T-Rex (look A2 \"Apex, true to life\"), rig 1.3 joint names, skin-ready colour groups.",
+             "-- Generated by tools/trex_generator.py 2.0 (do not edit by hand; change the generator and re-run). MDA-192, plan docs/plans/TREX_REDESIGN_v1.0.md,",
+             "-- mockup docs/mockups/trex_redesign_options.html (Kepu 2026-11-02 picked X = A2 at roster scale: RaptorScale 1.5 scales it x1.63, 62 studs, in game).",
+             f"-- Scale: {hi[0] - lo[0]:.2f} studs long, {hi[1] + HIP:.2f} tall, hip {HIP:.4g} studs. Real proportions: skull ~13% of the length, head level with the",
+             "--   back on a short S-neck, deep ribcage, tiny two-claw arms, long legs with long metatarsals, the tail ~half the length held level.",
+             "-- Colour groups (same as 1.24, so every T-Rex skin still works): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: teeth E8E2D2, eye 111111, eye shine F5F5F0, mouth 6E342E.",
+             "-- Kept for code that finds parts by name: the 17 rig 1.3 segments / joints, Head_mouth (bite / roar / hitbox / bots), Torso_body (Mecha / Cloak).",
+             "-- Attributes: the place's StarterCharacter 1.2 set (tools/data/trex_starter_character_1.2_attrs.json) unchanged, except RigHipHeight (new body),",
+             "--   TRexModelVersion 2.0, StarterCharacterVersion 1.3, StyleVersion 2.0. Rollback: TRexModelData 1.24 is in git (commit before MDA-192).",
+             "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB. Rebuild with DinoModelBuilder.build(require(TRexModelData)).",
+             "return {", f'\tversion = "{VERSION}", species = "TRex", style = "2.0", rig = "1.3",'] + body + ["\tattributes = {"] + [f"\t\t{k} = {lua(attrs[k])}," for k in sorted(attrs)] + ["\t},", "}"]
+    open(OUT, "w").write("\n".join(lines) + "\n")
+    print("data ->", OUT, f"({len(attrs)} attributes)")
 n = sum(len(segments[s_]["parts"]) for s_ in order)
 print(f"look {LOOK} ({L['name']}): {n} parts, {len(order)} segments, scale {K:.3f}, HIP {HIP:.3f}")
 print("length %.2f, height %.2f, width %.2f" % (hi[0] - lo[0], hi[1] + HIP, hi[2] - lo[2]))
