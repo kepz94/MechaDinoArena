@@ -2578,3 +2578,9 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | MechaButtonsTenoEnabled | MechaButtons script | true | MechaButtons 1.26 |
 | TenoAbilityPoseEnabled; TenoPoseState adds "tgrab" / "tmortar" / "tstomp" / "tleap" | teno model | true | TenoPose 1.3 |
 | TenoMovesFXEnabled; TenoMovesFXVersion / TenoMovesFXEvents / TenoMovesFXLast | TenoMovesFX script; LocalPlayer | true; "1.0" / count / event | TenoMovesFX 1.0 |
+| TenoFXHoldRingEnabled | TenoFX script | false (true = the 1.1 yellow ring under the hips during the slam hold) | TenoFX 1.2 |
+| ShoulderCamTenoFlipEnabled; ShoulderCamFlipTime / ShoulderCamFlipHold | ShoulderCam script; character | true; 0.25 / 0.35 s | ShoulderCam 1.7 |
+| ShoulderCamSlamFlip / ShoulderCamSlamYaw | character (owner client) | 0..1 / degrees (+ = the teno's left) | ShoulderCam 1.7 |
+| TurnLimitAimLook; TurnLimitAimLookEnabled | character (owner client); TurnLimit script | Vector3 while the slam view is flipped; true | ShoulderCam 1.7 / TurnLimit 1.2 |
+| TenoAttackTestCamAimEnabled | TenoAttackTest script | true | TenoAttackTest 1.4 |
+| TenoAttackCamAimEnabled; TenoSlamAimPref | TenoAttackServer script; character | true; degrees sent with the slam (or nil) | TenoAttackServer 1.4 |

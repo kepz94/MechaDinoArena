@@ -1,4 +1,4 @@
--- ShoulderCam v1.6 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
+-- ShoulderCam v1.7 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
 -- The camera is Scriptable and placed every frame (RenderStep, Camera priority, after TurnLimit / PounceTest):
 --   focus  = HumanoidRootPart position + ShoulderCamFocusHeight up (only the HRP position is used, so the view stays
 --            steady while the body tilts, e.g. latched on a pounce target)
@@ -57,6 +57,16 @@
 --   The attribute is cleared when read; a new one restarts the turn. ShoulderCamLookAt (instant snap) is unchanged.
 --   Script attribute ShoulderCamTurnEnabled (default true; false = the attribute is cleared and ignored). Diagnostics:
 --   character ShoulderCamTurn ("turning" / "idle"), ShoulderCamTurnCount.
+-- v1.7 (Kepu 2026-11-02: "when the tail is lifted allow the camera to be flipped so you can see what you're slamming your
+--   tail into" -> picked "Swing behind"): while this teno's TenoLocalState is "hold" (TenoAttackTest: the tail is lifted),
+--   the view swings 180 degrees to look back over the tail over ShoulderCamFlipTime s (default 0.25, smoothstep, the
+--   shortest way round), and swings back after the slam lands (TenoLocalState "slam" for TenoSlamDropTime +
+--   ShoulderCamFlipHold s, default 0.35) or when the hold ends without a slam. The body does not turn while flipped: the
+--   flat facing at the flip start is written to the character attribute TurnLimitAimLook (TurnLimit 1.2 aims at it instead
+--   of the camera) and cleared when the view is back. Look input keeps working during the flip; the flipped view's flat
+--   direction, in the teno's frame, is written as ShoulderCamSlamYaw (degrees, + = the teno's left, the TenoSlamAim
+--   convention) for TenoAttackTest 1.4's aim nudge. Switch: script attribute ShoulderCamTenoFlipEnabled (default true, read
+--   each frame; false = 1.6). Diagnostics: character ShoulderCamSlamFlip (0..1, 0.05 steps), ShoulderCamSlamYaw.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -101,7 +111,7 @@ local boxCf, boxSize = char:GetBoundingBox()
 local top = math.max(1, boxCf.Position.Y + boxSize.Y / 2 - hrp.Position.Y)
 local width = char:GetExtentsSize().X
 local spawnScale, spawnTop, spawnWidth, framedScale = char:GetScale(), top, width, char:GetScale() -- v1.1
-char:SetAttribute("ShoulderCamVersion", "1.6")
+char:SetAttribute("ShoulderCamVersion", "1.7")
 local function framing()
 	local sc = char:GetScale() -- v1.1: growth re-fit
 	if math.abs(sc - framedScale) > 1e-4 then
@@ -121,6 +131,7 @@ end
 local cam = workspace.CurrentCamera
 local function lookYaw(v) return math.atan2(-v.X, -v.Z) end -- yaw of CFrame.Angles(0, yaw, 0) whose LookVector is v
 local yaw = lookYaw(hrp.CFrame.LookVector)
+local flipU, flipLook = 0, nil -- v1.7
 local TURN_TIME = 0.3 -- v1.6
 local camTurn -- v1.6: {delta, applied, t, dur}
 if script:GetAttribute("ShoulderCamTurnEnabled") == nil then script:SetAttribute("ShoulderCamTurnEnabled", true) end -- v1.6
@@ -267,6 +278,7 @@ end
 
 local function step(dt)
 	if not get("ShoulderCamEnabled") or hum.Health <= 0 then
+		if flipLook then flipLook, flipU = nil, 0; char:SetAttribute("TurnLimitAimLook", nil) end -- v1.7
 		release()
 		show("ShoulderCamState", "off")
 		return
@@ -356,9 +368,37 @@ local function step(dt)
 	local swap = math.max(0.02, get("ShoulderCamSwapTime"))
 	sideNow += (sideTarget - sideNow) * math.min(1, dt * 4 / swap)
 
+	-- v1.7: teno slam flip
+	local flipS = 0
+	if script:GetAttribute("ShoulderCamTenoFlipEnabled") == nil then script:SetAttribute("ShoulderCamTenoFlipEnabled", true) end
+	do
+		local st, at = char:GetAttribute("TenoLocalState"), tonumber(char:GetAttribute("TenoLocalAt"))
+		local want = false
+		if script:GetAttribute("ShoulderCamTenoFlipEnabled") ~= false and at then
+			if st == "hold" then
+				want = true
+			elseif st == "slam" and flipU > 0 then
+				local holdBack = tonumber(char:GetAttribute("ShoulderCamFlipHold")) or 0.35
+				want = workspace:GetServerTimeNow() - at < (tonumber(char:GetAttribute("TenoSlamDropTime")) or 0.13) + holdBack
+			end
+		end
+		local ft = math.max(0.05, tonumber(char:GetAttribute("ShoulderCamFlipTime")) or 0.25)
+		flipU = math.clamp(flipU + (want and dt or -dt) / ft, 0, 1)
+		flipS = flipU * flipU * (3 - 2 * flipU)
+		if flipU > 0 and not flipLook then
+			local lv = hrp.CFrame.LookVector
+			flipLook = Vector3.new(lv.X, 0, lv.Z).Unit
+			char:SetAttribute("TurnLimitAimLook", flipLook)
+		elseif flipU <= 0 and flipLook then
+			flipLook = nil
+			char:SetAttribute("TurnLimitAimLook", nil)
+		end
+		show("ShoulderCamSlamFlip", round(flipS, 0.05))
+	end
+
 	-- place the camera
 	local dist, focusH, side, height = framing()
-	local rot = CFrame.Angles(0, yaw, 0) * CFrame.Angles(pitch, 0, 0)
+	local rot = CFrame.Angles(0, yaw + math.pi * flipS, 0) * CFrame.Angles(pitch, 0, 0) -- v1.7: + the flip
 	local focus = hrp.Position + Vector3.new(0, focusH, 0)
 	local shoulder = focus + rot.RightVector * (side * sideNow) + Vector3.new(0, height, 0)
 	local wanted = shoulder - rot.LookVector * (dist * zoom)
@@ -366,6 +406,10 @@ local function step(dt)
 	spot += rot:VectorToWorldSpace(hum.CameraOffset) -- bite punch / roar shake
 	cam.CFrame = CFrame.new(spot) * rot.Rotation
 	cam.Focus = CFrame.new(focus)
+	if flipLook then -- v1.7: the flipped view's direction in the teno's frame (+ = its left)
+		local lp = hrp.CFrame:VectorToObjectSpace(rot.LookVector)
+		show("ShoulderCamSlamYaw", math.floor(math.deg(math.atan2(-lp.X, lp.Z)) + 0.5))
+	end
 
 	show("ShoulderCamState", free and "free" or "aim")
 	show("ShoulderCamYaw", math.floor(math.deg(yaw) + 0.5))

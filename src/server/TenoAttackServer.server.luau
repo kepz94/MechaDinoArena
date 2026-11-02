@@ -1,4 +1,4 @@
--- TenoAttackServer v1.3 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.4 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -87,12 +87,18 @@
 --     bot attribute TenoSlowed).
 --   * BindableEvent script.TenoAddCharge:Fire(char): +1 slam charge, never above the max (Survivor star, TenoStatsServer 1.1).
 --   Diagnostics: script TenoAttackSlows, TenoAttackAddCharges (counts).
+-- v1.4 (Kepu 2026-11-02, slam camera "Swing behind" with the look nudging the aim): DinoTenoAttack "slam" takes a 4th
+--   argument pref (degrees, + = left; TenoAttackTest 1.4 sends ShoulderCam 1.7's flipped view yaw). When it is a number
+--   within +-90 the soft aim is centred on it: only candidates within +-TenoSlamAimMax keep, each candidate's yaw is
+--   shifted by -pref for TenoSlamAim.pick (so the score favours dinos near pref), the chosen yaw = its yaw + pref clamped
+--   to +-TenoSlamAimMax; no target -> the slam swings to pref. Switch: script attribute TenoAttackCamAimEnabled (default
+--   true, read at each slam; false = 1.3). Diagnostic: character TenoSlamAimPref (the pref used, or nil).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local SCRATCH_HIT_AT = 0.17     -- s after the press: mockup T1 + T2 / 2
 local SCRATCH_CONE = math.rad(45)
 local SHOVE_TIME = 0.3
@@ -543,6 +549,25 @@ local function aimSettings(char)
 	return {reach = math.max(0, get(char, "TenoSlamReach")) * char:GetScale() * reachMulOf(char), aimMax = math.clamp(get(char, "TenoSlamAimMax"), 0, 90),
 		cone = math.clamp(get(char, "TenoSlamCone"), 0, 180)}
 end
+-- v1.4: the soft aim centred on a preferred yaw (the same rule as TenoAttackTest 1.4)
+if script:GetAttribute("TenoAttackCamAimEnabled") == nil then script:SetAttribute("TenoAttackCamAimEnabled", true) end
+local function pickPref(mod, cands, s, pref)
+	if type(pref) ~= "number" then return mod.pick(cands, s) end
+	pref = math.clamp(pref, -s.aimMax, s.aimMax)
+	local c, sn = math.cos(math.rad(pref)), math.sin(math.rad(pref))
+	local shifted, back = {}, {}
+	for _, k in ipairs(cands) do
+		if type(k.x) == "number" and type(k.z) == "number" and math.abs(math.deg(math.atan2(k.x, k.z))) <= s.aimMax then
+			local n = table.clone(k)
+			n.x, n.z = k.x * c - k.z * sn, k.z * c + k.x * sn
+			table.insert(shifted, n)
+			back[n] = k
+		end
+	end
+	local r = mod.pick(shifted, s)
+	local yaw = r.target and math.clamp(r.yaw + pref, -s.aimMax, s.aimMax) or pref
+	return {yaw = yaw, target = r.target and back[r.target] or nil, members = mod.members(cands, yaw, s)}
+end
 local function latchedOn(m, char)
 	if m:GetAttribute("PounceLatched") ~= true or m:GetAttribute("PounceMode") == "pin" then return nil end
 	local v = m:FindFirstChild("PounceLatchPart")
@@ -577,7 +602,10 @@ local function doSlam(player, char, st, t, hold)
 	script:SetAttribute("TenoAttackAimMode", aiming and "aim" or "arc")
 	if aiming then
 		local root0 = rootOf(char)
-		local r = root0 and aimMod.pick(aimCands(char, root0), aimSettings(char)) or {yaw = 0}
+		local pref = st.aimPref -- v1.4
+		st.aimPref = nil
+		char:SetAttribute("TenoSlamAimPref", pref)
+		local r = root0 and pickPref(aimMod, aimCands(char, root0), aimSettings(char), pref) or {yaw = 0}
 		aimYaw = r.yaw
 		char:SetAttribute("TenoSlamAimTarget", r.target and r.target.id.Name or "")
 	end
@@ -688,11 +716,15 @@ local function doSlam(player, char, st, t, hold)
 	end)
 end
 
-remote.OnServerEvent:Connect(function(player, kind, stamp, hold)
+remote.OnServerEvent:Connect(function(player, kind, stamp, hold, pref)
 	count("TenoAttackRequests")
 	local char = player.Character
 	if not char then return end
 	local st = track(char)
+	if st and kind == "slam" then -- v1.4: the camera nudge
+		st.aimPref = (script:GetAttribute("TenoAttackCamAimEnabled") ~= false and typeof(pref) == "number" and pref == pref
+			and math.abs(pref) <= 90) and pref or nil
+	end
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	local t = now()
 	local r

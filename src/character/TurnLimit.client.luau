@@ -1,4 +1,4 @@
--- TurnLimit v1.1 (Dino Arcade) — heavy turning for the player's own dino (runs on the owner's client only).
+-- TurnLimit v1.2 (Dino Arcade) — heavy turning for the player's own dino (runs on the owner's client only).
 -- Replaces the Humanoid's built-in turning (AutoRotate, about 580 deg/s) with a capped turn rate:
 --   * the body yaws toward the move input at most TurnLimitRate degrees per second (default 180, so a
 --     90 deg turn takes 0.5 s);
@@ -27,6 +27,10 @@
 --   TurnBodyYaw (deg, whole), TurnTargetYaw (deg, whole; nil while holding), TurnErrorLocal (deg, whole),
 --   TurnErrorSent (last value sent to the server), TurnRemote = "ok" / "missing",
 --   TurnInputSource = "inputAction" / "controlModule" / "none".
+-- v1.2 (Kepu 2026-11-02, the teno's slam camera flip, ShoulderCam 1.7): in aim mode, while the character attribute
+--   TurnLimitAimLook (Vector3) is set, the body aims at that flat direction instead of the camera's facing (the camera is
+--   looking back over the tail; the body must not turn round). Switch: script attribute TurnLimitAimLookEnabled (default
+--   true, read each frame; false = 1.1).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -158,6 +162,8 @@ local function step(dt)
 	if get("TurnLimitMode") == "aim" then
 		local cam = workspace.CurrentCamera
 		local lv = cam and cam.CFrame.LookVector or hrp.CFrame.LookVector
+		local held = char:GetAttribute("TurnLimitAimLook") -- v1.2
+		if typeof(held) == "Vector3" and script:GetAttribute("TurnLimitAimLookEnabled") ~= false then lv = held end
 		local flat = Vector3.new(lv.X, 0, lv.Z)
 		if flat.Magnitude > 1e-3 then
 			local aimYaw = yawOf(flat)

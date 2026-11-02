@@ -1,4 +1,4 @@
--- TenoAttackTest v1.3 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
+-- TenoAttackTest v1.4 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
 -- release = rear tail slam. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 6 (server: TenoAttackServer 1.0), mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: "Tap = scratch, hold = slam").
 -- Active while the character has TenoAttackEnabled = true (TenoModelData 1.1); does nothing on other dinos.
@@ -35,13 +35,18 @@
 -- v1.3 (teno stats part 2, plan docs/plans/TENO_STATS_v1.1.md): the local scratch gap is TenoClawGap when it is above 0
 --   (Front Claws III: 0.35 s; SkillEffects 1.34), else TenoScratchGap, matching TenoAttackServer 1.3. Switch: script
 --   attribute TenoAttackTestClawGapEnabled (default true, read at each press; false = 1.2).
+-- v1.4 (Kepu 2026-11-02, slam camera "Swing behind": the look left / right nudges the slam aim): while ShoulderCam 1.7's
+--   flip is past half way (ShoulderCamSlamFlip >= 0.5) the release sends the flipped view's yaw (ShoulderCamSlamYaw, degrees,
+--   + = left, clamped to +-TenoSlamAimMax) as a 4th slam argument; the predicted aim and TenoAttackServer 1.4 centre the
+--   soft aim on it (no target in the zone = the slam swings to that yaw). Switch: script attribute
+--   TenoAttackTestCamAimEnabled (default true, read at each release; false = 1.3).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local ACTION = "DinoTenoAttack"
 local ACTION_CLICK = "DinoTenoAttackClick"
 local DEFAULTS = {TenoAttackEnabled = false, TenoSlamHoldMin = 0.22, TenoScratchGap = 0.5, TenoLeftClickEnabled = true}
@@ -103,7 +108,33 @@ end
 
 -- v1.2: predicted soft aim
 local aimShared
-local function predictYaw()
+-- v1.4: the soft aim centred on a preferred yaw (degrees, + = left); the same rule as TenoAttackServer 1.4
+local function pickPref(mod, cands, s, pref)
+	if type(pref) ~= "number" then return mod.pick(cands, s) end
+	pref = math.clamp(pref, -s.aimMax, s.aimMax)
+	local c, sn = math.cos(math.rad(pref)), math.sin(math.rad(pref))
+	local shifted, back = {}, {}
+	for _, k in ipairs(cands) do
+		if type(k.x) == "number" and type(k.z) == "number" and math.abs(math.deg(math.atan2(k.x, k.z))) <= s.aimMax then
+			local n = table.clone(k)
+			n.x, n.z = k.x * c - k.z * sn, k.z * c + k.x * sn
+			table.insert(shifted, n)
+			back[n] = k
+		end
+	end
+	local r = mod.pick(shifted, s)
+	local yaw = r.target and math.clamp(r.yaw + pref, -s.aimMax, s.aimMax) or pref
+	return {yaw = yaw, target = r.target and back[r.target] or nil, members = mod.members(cands, yaw, s)}
+end
+local function camPref()
+	if script:GetAttribute("TenoAttackTestCamAimEnabled") == false then return nil end
+	if (tonumber(char:GetAttribute("ShoulderCamSlamFlip")) or 0) < 0.5 then return nil end
+	local y = tonumber(char:GetAttribute("ShoulderCamSlamYaw"))
+	if not y then return nil end
+	local mx = tonumber(char:GetAttribute("TenoSlamAimMax")) or 35
+	return math.clamp(y, -mx, mx)
+end
+local function predictYaw(pref)
 	if script:GetAttribute("TenoAttackTestAimEnabled") == false then return 0 end
 	if not aimShared then
 		local m = ReplicatedStorage:FindFirstChild("TenoSlamAimShared")
@@ -129,7 +160,7 @@ local function predictYaw()
 			table.insert(cands, {id = m, x = -lp.X, z = lp.Z, gap = math.max(0, (r.Position - root.Position).Magnitude - 2 * s)})
 		end
 	end
-	local ok, res = pcall(aimShared.pick, cands, {reach = n("TenoSlamReach", 18.5) * s, aimMax = n("TenoSlamAimMax", 35), cone = n("TenoSlamCone", 70)})
+	local ok, res = pcall(pickPref, aimShared, cands, {reach = n("TenoSlamReach", 18.5) * s, aimMax = n("TenoSlamAimMax", 35), cone = n("TenoSlamCone", 70)}, pref) -- v1.4: + pref
 	return ok and res.yaw or 0
 end
 
@@ -141,10 +172,11 @@ local function onRelease()
 	if p.held then
 		local held = t - p.at
 		char:SetAttribute("TenoLocalHold", held)
-		char:SetAttribute("TenoLocalSlamYaw", predictYaw()) -- v1.2
+		local pref = camPref() -- v1.4
+		char:SetAttribute("TenoLocalSlamYaw", predictYaw(pref)) -- v1.2; v1.4: + pref
 		setState("slam", t)
 		lastSent = t
-		fire("slam", t, held)
+		fire("slam", t, held, pref)
 		show("TenoInputResult", "slam")
 		return
 	end
