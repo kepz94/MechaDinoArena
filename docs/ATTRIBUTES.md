@@ -1882,6 +1882,8 @@ BindableFunction ScentServer.BuildPreview (server only). Model Mecha_Scent: Mask
 | MusicSettingRequests | MusicServer script | 0.. | remote calls |
 | MainMenuMusicButtonEnabled | MainMenu script | true | false = no MUSIC button |
 | MainMenuCreditEnabled | MainMenu script | true | MainMenu 1.6: false = no music credit line |
+| MainMenuCreditsButtonEnabled | MainMenu script | true (read at start) | MainMenu 1.13: CREDITS button bottom-right + CREDITS panel; hides the 1.6 credit line; false = 1.12 |
+| MainMenuCreditsOpen | player (local) | bool | MainMenu 1.13: CREDITS panel up |
 
 RemoteEvent ReplicatedStorage.MusicSetting:FireServer(muted). Sounds: SoundService.MDA_Music (menu / island / lab), client-side.
 Songs: menu rbxassetid://120675586878082 (Gymnopedie No. 2, Erik Satie, performed by Kevin MacLeod, CC BY), island rbxassetid://1835450413 (Little Toys, APM), lab rbxassetid://1845556724 (Crazy Daisy, APM "Afro 8 Bit").

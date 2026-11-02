@@ -117,13 +117,33 @@
 -- v1.12 (MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 3): {id = "Teno", name = "TENO", sub = "150 HP · tank, tail slam"}
 --   after the Herrera (the arrows cycle Raptor, T-Rex?, Pachy, Herrera, Teno as listed). Switch: script attribute
 --   MainMenuTenoEnabled (default true, read at start; false = 1.11).
+-- v1.13 (Kepu 2026-11-02: "Have a credits button at the bottom" -> picked A "Corner button", mockup
+--   docs/mockups/credits_button_options.html v0.1; the credit owed for Music 1.1's Kevin MacLeod songs, CC BY 4.0):
+--   * a CREDITS pill in the menu's bottom-right corner (right edge = the right column's right edge, bottom 2ch above the
+--     screen edge; same style as the MUSIC pill: height max(4.6ch, 28), GothamBlack max(1.8ch, 11), padding 1.6ch, dark
+--     panel 0.1, white stroke 0.8, corner 1.2ch; grey text). It replaces the v1.6 credit line (hidden while the button is
+--     on; its code and switch stay).
+--   * a tap opens the CREDITS panel (ScreenGui MainMenu, over everything in it): a veil rgb(5, 6, 10) at 0.38 over the
+--     whole screen (a tap on it closes), and a centred card (width min(64cw, 115ch), height up to 82ch, PANEL, white
+--     stroke 0.84, corner 2.6ch): top row "CREDITS" (FredokaOne max(4.4ch, 20), yellow) + an X button (GothamBlack; closes), a yellow
+--     line under it; a scrolling list: "MUSIC" (volt section label) then one row per song (name FredokaOne max(2.4ch,
+--     13), artist line GothamBold max(1.6ch, 10) grey, a tag on the right: yellow MENU / ISLAND / LAB where it plays by
+--     default), "ALSO IN THE GAME" then the kept 1.0 songs tagged KEPT (outlined, muted); under the list the license
+--     line "Songs by Kevin MacLeod (incompetech.com) are licensed under Creative Commons: By Attribution 4.0 ·
+--     creativecommons.org/licenses/by/4.0" (muted, wraps). Gamepad ButtonB also closes it; when gamepad selection is
+--     active, opening selects X. The panel closes when the menu closes.
+--   Songs: Airship Serenity (MENU), Bit Quest (ISLAND), 8bit Dungeon Level (ISLAND), Level Up (LAB): Kevin MacLeod
+--     (incompetech.com); Gymnopedie No. 2: Erik Satie, performed by Kevin MacLeod (incompetech.com); Little Toys and
+--     Crazy Daisy (album "Afro 8 Bit"): courtesy of APM Music (all KEPT).
+--   Switch: script attribute MainMenuCreditsButtonEnabled (default true, read at start; false = 1.12: the credit line).
+--   Diagnostics: MainMenuCreditsOpen (player, bool); MainMenuLastPress "credits" / "creditsClose".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.12"
+local VERSION = "1.13"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -1200,5 +1220,259 @@ player.AttributeChanged:Connect(function(name)
 	end
 end)
 root:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() if open then redraw() end end)
+
+-- ---------- v1.13: CREDITS button + panel ----------
+if script:GetAttribute("MainMenuCreditsButtonEnabled") == nil then script:SetAttribute("MainMenuCreditsButtonEnabled", true) end
+player:SetAttribute("MainMenuCreditsOpen", false)
+if script:GetAttribute("MainMenuCreditsButtonEnabled") ~= false then
+	local KMC = "Kevin MacLeod (incompetech.com)"
+	local CREDITS = {
+		{sec = "MUSIC"},
+		{name = "Airship Serenity", by = KMC, tag = "MENU"},
+		{name = "Bit Quest", by = KMC, tag = "ISLAND"},
+		{name = "8bit Dungeon Level", by = KMC, tag = "ISLAND"},
+		{name = "Level Up", by = KMC, tag = "LAB"},
+		{sec = "ALSO IN THE GAME"},
+		{name = "Gymnopedie No. 2", by = "Erik Satie · performed by " .. KMC, tag = "KEPT", kept = true},
+		{name = "Little Toys", by = "Courtesy of APM Music", tag = "KEPT", kept = true},
+		{name = "Crazy Daisy", by = 'Courtesy of APM Music · album "Afro 8 Bit"', tag = "KEPT", kept = true},
+	}
+	local LICENSE = "Songs by Kevin MacLeod (incompetech.com) are licensed under Creative Commons: By Attribution 4.0"
+		.. " · creativecommons.org/licenses/by/4.0"
+	credit.Visible = false -- the v1.6 line; the button takes its place
+
+	local credB = Instance.new("TextButton")
+	credB.Name = "Credits"
+	credB.AutoButtonColor = false
+	credB.BackgroundColor3 = PANEL
+	credB.BackgroundTransparency = 0.1
+	credB.BorderSizePixel = 0
+	credB.Font = Enum.Font.GothamBlack
+	credB.Text = "CREDITS"
+	credB.TextColor3 = GREY
+	credB.AutomaticSize = Enum.AutomaticSize.X
+	credB.AnchorPoint = Vector2.new(1, 1)
+	credB.Parent = root
+	local credCorner = corner(credB)
+	stroke(credB, WHITE, 0.8, 2)
+	local credPad = Instance.new("UIPadding")
+	credPad.Parent = credB
+
+	local veil = Instance.new("TextButton") -- a tap outside the card closes
+	veil.Name = "CreditsPanel"
+	veil.AutoButtonColor = false
+	veil.Text = ""
+	veil.Size = UDim2.fromScale(1, 1)
+	veil.BackgroundColor3 = Color3.fromRGB(5, 6, 10)
+	veil.BackgroundTransparency = 0.38
+	veil.BorderSizePixel = 0
+	veil.ZIndex = 20
+	veil.Visible = false
+	veil.Parent = gui
+	local card = Instance.new("TextButton") -- a button with no handler, so a tap on the card does not reach the veil
+	card.Name = "Card"
+	card.AutoButtonColor = false
+	card.Text = ""
+	card.AnchorPoint = Vector2.new(0.5, 0.5)
+	card.Position = UDim2.fromScale(0.5, 0.5)
+	card.BackgroundColor3 = PANEL
+	card.BorderSizePixel = 0
+	card.ClipsDescendants = true
+	card.ZIndex = 21
+	card.Parent = veil
+	local cardCorner = corner(card)
+	stroke(card, WHITE, 0.84, 2)
+	local title = label(card, "Title", Enum.Font.FredokaOne, YELLOW)
+	title.Text = "CREDITS"
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.ZIndex = 22
+	local xB = Instance.new("TextButton")
+	xB.Name = "Close"
+	xB.AutoButtonColor = false
+	xB.BackgroundTransparency = 1
+	xB.Font = Enum.Font.GothamBlack
+	xB.Text = "X" -- "✕" has no glyph in these fonts (Studio Play check)
+	xB.TextColor3 = WHITE
+	xB.AnchorPoint = Vector2.new(1, 0)
+	xB.ZIndex = 22
+	xB.Parent = card
+	local xCorner = corner(xB)
+	stroke(xB, WHITE, 0.78, 2)
+	local rule = Instance.new("Frame")
+	rule.Name = "Rule"
+	rule.BackgroundColor3 = YELLOW
+	rule.BorderSizePixel = 0
+	rule.ZIndex = 22
+	rule.Parent = card
+	local list = Instance.new("ScrollingFrame")
+	list.Name = "List"
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.ScrollBarImageColor3 = MUTED
+	list.ScrollingDirection = Enum.ScrollingDirection.Y
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.CanvasSize = UDim2.new()
+	list.ZIndex = 22
+	list.Parent = card
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Parent = list
+	local listPad = Instance.new("UIPadding")
+	listPad.Parent = list
+	local lic = label(card, "License", Enum.Font.GothamBold, MUTED)
+	lic.Text = LICENSE
+	lic.TextWrapped = true
+	lic.TextXAlignment = Enum.TextXAlignment.Left
+	lic.TextYAlignment = Enum.TextYAlignment.Top
+	lic.ZIndex = 22
+	local licRule = Instance.new("Frame")
+	licRule.Name = "LicenseRule"
+	licRule.BackgroundColor3 = WHITE
+	licRule.BackgroundTransparency = 0.92
+	licRule.BorderSizePixel = 0
+	licRule.ZIndex = 22
+	licRule.Parent = card
+
+	local rows = {} -- {kind = "sec" / "song", f = frame, ...}
+	for i, e in ipairs(CREDITS) do
+		if e.sec then
+			local l = label(list, "Sec_" .. i, Enum.Font.Code, VOLT)
+			l.Text = e.sec
+			l.TextXAlignment = Enum.TextXAlignment.Left
+			l.TextYAlignment = Enum.TextYAlignment.Bottom
+			l.LayoutOrder = i
+			l.ZIndex = 23
+			table.insert(rows, {kind = "sec", f = l})
+		else
+			local f = Instance.new("Frame")
+			f.Name = "Song_" .. i
+			f.BackgroundColor3 = WHITE
+			f.BackgroundTransparency = 0.96
+			f.BorderSizePixel = 0
+			f.LayoutOrder = i
+			f.ZIndex = 23
+			f.Parent = list
+			local fc = corner(f)
+			local n = label(f, "Name", Enum.Font.FredokaOne, WHITE)
+			n.Text = e.name
+			n.TextXAlignment = Enum.TextXAlignment.Left
+			n.TextTruncate = Enum.TextTruncate.AtEnd
+			n.ZIndex = 24
+			local b = label(f, "By", Enum.Font.GothamBold, GREY)
+			b.Text = e.by
+			b.TextXAlignment = Enum.TextXAlignment.Left
+			b.TextTruncate = Enum.TextTruncate.AtEnd
+			b.ZIndex = 24
+			local t = label(f, "Tag", Enum.Font.GothamBlack, e.kept and MUTED or DARK_TEXT)
+			t.Text = e.tag
+			t.BackgroundColor3 = YELLOW
+			t.BackgroundTransparency = e.kept and 1 or 0
+			t.AutomaticSize = Enum.AutomaticSize.X
+			t.AnchorPoint = Vector2.new(1, 0.5)
+			t.ZIndex = 24
+			local tc = corner(t)
+			if e.kept then stroke(t, Color3.fromRGB(43, 50, 66), 0, 1.5) end
+			local tp = Instance.new("UIPadding")
+			tp.Parent = t
+			table.insert(rows, {kind = "song", f = f, fc = fc, n = n, b = b, t = t, tc = tc, tp = tp})
+		end
+	end
+
+	local function layoutCredits()
+		measure()
+		if S.W <= 0 or S.H <= 0 then return end
+		local ch, cw = S.ch, S.cw
+		-- button: bottom-right corner
+		local mh = math.max(4.6 * ch, 28)
+		credB.TextSize = math.max(1.8 * ch, 11)
+		credB.Size = UDim2.fromOffset(0, mh)
+		credB.Position = UDim2.fromOffset(S.rightX + S.rightW, S.H - 2 * ch)
+		credCorner.CornerRadius = UDim.new(0, 1.2 * ch)
+		credPad.PaddingLeft, credPad.PaddingRight = UDim.new(0, 1.6 * ch), UDim.new(0, 1.6 * ch)
+		-- card
+		local w = math.min(64 * cw, 115 * ch)
+		local padX = 2.4 * ch
+		local titleS = math.max(4.4 * ch, 20)
+		local xS = math.max(5.4 * ch, 30)
+		local topH = 2 * ch + math.max(titleS, xS) + 1.2 * ch
+		title.TextSize = titleS
+		title.Position, title.Size = UDim2.fromOffset(padX, 2 * ch), UDim2.fromOffset(w - 2 * padX - xS, math.max(titleS, xS))
+		xB.TextSize = math.max(2.6 * ch, 14)
+		xB.Position, xB.Size = UDim2.fromOffset(w - padX, 2 * ch), UDim2.fromOffset(xS, xS)
+		xCorner.CornerRadius = UDim.new(0, 1.4 * ch)
+		rule.Position, rule.Size = UDim2.fromOffset(0, topH), UDim2.fromOffset(w, math.max(0.3 * ch, 2))
+		local nameS, byS, tagS, secS = math.max(2.4 * ch, 13), math.max(1.6 * ch, 10), math.max(1.5 * ch, 9), math.max(1.5 * ch, 9)
+		local rowH = ch + nameS + 0.3 * ch + byS + ch
+		local secH = secS + 1.4 * ch
+		local gap = ch
+		listLayout.Padding = UDim.new(0, gap)
+		listPad.PaddingLeft, listPad.PaddingRight = UDim.new(0, padX), UDim.new(0, padX)
+		listPad.PaddingTop, listPad.PaddingBottom = UDim.new(0, 0.6 * ch), UDim.new(0, 1.4 * ch)
+		local innerW = w - 2 * padX
+		local listH = 0.6 * ch + 1.4 * ch
+		for k, r in ipairs(rows) do
+			if r.kind == "sec" then
+				r.f.TextSize = secS
+				r.f.Size = UDim2.fromOffset(innerW, secH)
+				listH += secH
+			else
+				r.f.Size = UDim2.fromOffset(innerW, rowH)
+				r.fc.CornerRadius = UDim.new(0, 1.2 * ch)
+				local tagW = tagS * 5 + 2 * ch -- room kept for the tag (its own width is automatic)
+				r.n.TextSize, r.b.TextSize = nameS, byS
+				r.n.Position, r.n.Size = UDim2.fromOffset(1.4 * ch, ch), UDim2.fromOffset(innerW - 2.8 * ch - tagW, nameS)
+				r.b.Position, r.b.Size = UDim2.fromOffset(1.4 * ch, ch + nameS + 0.3 * ch), UDim2.fromOffset(innerW - 2.8 * ch - tagW, byS)
+				r.t.TextSize = tagS
+				r.t.Size = UDim2.fromOffset(0, tagS + 0.8 * ch)
+				r.t.Position = UDim2.new(1, -1.4 * ch, 0.5, 0)
+				r.tc.CornerRadius = UDim.new(0, 0.8 * ch)
+				r.tp.PaddingLeft, r.tp.PaddingRight = UDim.new(0, ch), UDim.new(0, ch)
+				listH += rowH
+			end
+			if k > 1 then listH += gap end
+		end
+		local licS = math.max(1.5 * ch, 9)
+		lic.TextSize = licS
+		local licLines = math.clamp(math.ceil(licS * 0.55 * #LICENSE / math.max(w - 2 * padX, 1)), 1, 4) -- ~0.55 em per character
+		local licH = 1.2 * ch + licS * 1.3 * licLines + 1.8 * ch
+		local h = math.min(82 * ch, topH + listH + licH)
+		card.Size = UDim2.fromOffset(w, h)
+		cardCorner.CornerRadius = UDim.new(0, 2.6 * ch)
+		list.Position, list.Size = UDim2.fromOffset(0, topH + rule.Size.Y.Offset), UDim2.fromOffset(w, h - topH - rule.Size.Y.Offset - licH)
+		list.ScrollBarThickness = math.max(0.6 * ch, 4)
+		licRule.Position, licRule.Size = UDim2.fromOffset(0, h - licH), UDim2.fromOffset(w, math.max(0.3 * ch, 2))
+		lic.Position, lic.Size = UDim2.fromOffset(padX, h - licH + 1.2 * ch), UDim2.fromOffset(w - 2 * padX, licH - 1.2 * ch)
+	end
+
+	local function setCredits(on)
+		veil.Visible = on
+		player:SetAttribute("MainMenuCreditsOpen", on)
+		if on then
+			layoutCredits()
+			list.CanvasPosition = Vector2.zero
+			if GuiService.SelectedObject ~= nil then GuiService.SelectedObject = xB end
+		elseif GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(veil) then
+			GuiService.SelectedObject = credB
+		end
+	end
+	credB.Activated:Connect(function()
+		press("credits")
+		setCredits(true)
+	end)
+	local function closeBy()
+		press("creditsClose")
+		setCredits(false)
+	end
+	xB.Activated:Connect(closeBy)
+	veil.Activated:Connect(closeBy)
+	UserInputService.InputBegan:Connect(function(input)
+		if veil.Visible and input.KeyCode == Enum.KeyCode.ButtonB then closeBy() end
+	end)
+	gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+		if gui.Enabled then layoutCredits() else setCredits(false) end
+	end)
+	root:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() if gui.Enabled then layoutCredits() end end)
+	layoutCredits()
+end
 
 setOpen(player:GetAttribute("InMenu") == true)
