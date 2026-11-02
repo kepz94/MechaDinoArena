@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Dilo generator v0.6 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+"""Dilo generator v0.7 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
 v0.2 (Kepu 2026-11-02: "The frill splits in the middle"): every frill is two halves, left and right, with a gap down the
 middle (--whole = the v0.1 one-piece frill). Colours and patterns stay our own.
 v0.3: look D = A Cobra Hood with a red frill and yellow markings (Kepu: "the quill stalker frill colors on the cobra hood").
 v0.4: D's hood is red / yellow / red rings out from the neck, like the quill bands (Kepu: "the frill itself to be red and yellow").
 v0.6: D is thicker: bulk 1.35 on the body, neck, tail, legs and arms, the head x1.18 (Kepu: "the Dilo is too thin"); A unchanged.
+v0.7: D thicker still: bulk 1.7, head x1.35 (Kepu: "Maybe even more thicker just all around").
 
 Kepu 2026-11-02: "Next is the dilo" (two reference pictures of the film-style frilled dilophosaurus). Answers: role
 "Ranged spitter"; size "Raptor size (~26)"; frill "Crests + a frill" (the real animal had twin head crests and no frill;
@@ -28,7 +29,7 @@ The data file (DiloModelData.luau) comes after Kepu picks.
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.6"
+VERSION = "0.7"
 TARGET_LEN = 13.0    # studs at scale 1 (~26 in game, the raptor's size)
 HRP_SIZE_D0 = (3.0, 2.0, 1.1)
 ROLES = ["main", "stripes", "belly", "frill", "frillmark", "crest", "limbs", "claws", "eyes", "mask"]
@@ -47,7 +48,8 @@ LOOKS = {
     # and colours with C's red on the frill and yellow markings (spots); everything else is A
     # v0.4 (Kepu: "I want the frill itself to be red and yellow"): the hood in red / yellow / red rings (no spots)
     # v0.6 (Kepu: "I feel like the Dilo is too thin in these mockups"): D bulk 1.35 (body, neck, tail, legs, arms; head x1.18)
-    "D": {"name": "Cobra Hood Red", "style": "cobra", "fr": 1.0, "neck": 0, "hood": "hoodband", "bulk": 1.35,
+    # v0.7 (Kepu: "Maybe even more thicker just all around"): D bulk 1.7 (head x1.35)
+    "D": {"name": "Cobra Hood Red", "style": "cobra", "fr": 1.0, "neck": 0, "hood": "hoodband", "bulk": 1.7,
           "pal": {"main": "6E7A3A", "stripes": "3A3F22", "belly": "D8D0A0", "frill": "C8362E", "frillmark": "E2C23A",
                   "crest": "C24A2A", "limbs": "5A6430", "claws": "2C2822", "eyes": "F0E04A", "mask": "1C1C1A"}},
 }
@@ -299,7 +301,7 @@ if STYLE == "cobra":
         frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, -115, 115, 7, fold=True)
     head((2.45, 2.35), 1.15, 0.5 * HB, 0.44 * HB, 8, 0.17)
     crests(2.85, 3.85, 2.35 + 0.17 * HB, 0.6, 0.17 * HB, -4, 0.06)
-    arms((1.35, 0.1), (1.55, -0.38), (1.92, -0.32), 0.35 * BK, 0.14 * BK)
+    arms((1.35, 0.1), (1.55, -0.38), (1.92, -0.32), 0.35 * BK + 0.05 * (BK - 1), 0.14 * BK)
     tail([(1.35, (1.4, 0.5 * BK, 0.46 * BK), 4), (1.3, (1.35, 0.4 * BK, 0.36 * BK), 2), (1.25, (1.3, 0.3 * BK, 0.28 * BK), 0), (1.15, (1.2, 0.22 * BK, 0.2 * BK), -2), (1.05, (1.1, 0.15 * BK, 0.15 * BK), -3)], (-0.85, 0.22))
     legs((0.45, -1.45), (-0.4, -2.75), (-0.05, -3.3), 0.36 * BK, 0.38 * BK, 0.2 * BK)
 
