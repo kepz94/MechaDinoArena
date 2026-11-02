@@ -37,6 +37,8 @@ Turning the scale switch off gives a true-to-life T-Rex at today's size (A2). Re
 - `GrowthServer`'s curve.
 
 ## Tasks
+Dev Hub: MDA-192 (T1), MDA-193 (T2), MDA-194 (T3), MDA-195 (T4); ADR-007. Approved by Kepu 2026-11-02 ("I'm good with this plan").
+
 1. **`trex_generator` 2.0 -> `TRexModelData` 2.0** (Logic + data).
    - Write the data file with the A2 geometry.
    - Carry over every 1.24 attribute; set `TRexModelVersion` 2.0, `RigHipHeight` and the HRP size from the new body.
