@@ -208,12 +208,23 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
+-- v1.33 (teno mecha abilities, plan docs/plans/TENO_ABILITIES_v1.0.md Task 3, MDA-175; SkillTree 1.49): a TPARTS list like
+--   HPARTS: on a character with Species "Teno" (or one that already has TenoGrabEnabled, so a switch away writes the off
+--   values), each teno part bought (SkillPath_<id> >= 1) AND slotted writes <Prefix><Field> from effects() and
+--   <Prefix>Enabled true; otherwise the off values and false. Prefixes: TenoGrab (Range, Fling, Damage, Stun, Big, Crash,
+--   CrashRadius, Cooldown), TenoMortar (Range, Miss, Cone, Damage, Splash, Count, SlowMul, SlowTime, Rubble, Cooldown),
+--   TenoStomp (Range, Damage, Stun, NoJump, Cooldown), TenoBellow (Range, Time, DamageMul, RunMul, ClearStun, Cooldown),
+--   TenoChallenge (Range, Time, WeakMul, SlowMul, Cooldown), TenoLeap (Dist, Damage, Radius, Stun, Charges, Cooldown),
+--   TenoMud (Time, Hits, SlowRadius, SlowMul, SlowTime, Splash, Cooldown). Read by TenoPartsServer 1.0 (looks),
+--   TenoMovesServer 1.0, MechaButtons 1.26. Switch: script attribute SkillEffectsTenoPartsEnabled (default true, read at
+--   start).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
 local VERSION = "1.30" -- v1.28 (1.27 left this at "1.26"); v1.29 squads; v1.30 Herrera pass 3
 VERSION = "1.31" -- v1.31 teno rows
 VERSION = "1.32" -- v1.32 Buck Off star 4th slam charge
+VERSION = "1.33" -- v1.33 teno mecha parts (MDA-175)
 VERSION = "1.34" -- v1.34 teno stats part 2 (1.33 reserved for the teno abilities, MDA-175)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
@@ -243,6 +254,25 @@ if script:GetAttribute("SkillEffectsTenoStats2Enabled") ~= false then
 		{"TenoClawSlow", "clawSlow", 0}, {"TenoClawSlowTime", "clawSlowTime", 0},
 	}) do table.insert(TENO_ATTRS, f) end
 end
+if script:GetAttribute("SkillEffectsTenoPartsEnabled") == nil then script:SetAttribute("SkillEffectsTenoPartsEnabled", true) end -- v1.33
+local TPARTS_ON = script:GetAttribute("SkillEffectsTenoPartsEnabled") ~= false
+local TPARTS = { -- v1.33: {path id, prefix, {attribute, effect field, off value}...}
+	{"tgrab", "TenoGrab", {{"Range", "grabRange", 0}, {"Fling", "grabFling", 0}, {"Damage", "grabDamage", 0}, {"Stun", "grabStun", 0},
+		{"Big", "grabBig", false}, {"Crash", "grabCrash", 0}, {"CrashRadius", "grabCrashRadius", 0}, {"Cooldown", "grabCooldown", 0}}},
+	{"tmortar", "TenoMortar", {{"Range", "mortarRange", 0}, {"Miss", "mortarMiss", 0}, {"Cone", "mortarCone", 0},
+		{"Damage", "mortarDamage", 0}, {"Splash", "mortarSplash", 0}, {"Count", "mortarCount", 0}, {"SlowMul", "mortarSlowMul", 1},
+		{"SlowTime", "mortarSlowTime", 0}, {"Rubble", "mortarRubble", 0}, {"Cooldown", "mortarCooldown", 0}}},
+	{"tstomp", "TenoStomp", {{"Range", "stompRange", 0}, {"Damage", "stompDamage", 0}, {"Stun", "stompStun", 0},
+		{"NoJump", "stompNoJump", 0}, {"Cooldown", "stompCooldown", 0}}},
+	{"tbellow", "TenoBellow", {{"Range", "bellowRange", 0}, {"Time", "bellowTime", 0}, {"DamageMul", "bellowDamageMul", 1},
+		{"RunMul", "bellowRunMul", 1}, {"ClearStun", "bellowClearStun", false}, {"Cooldown", "bellowCooldown", 0}}},
+	{"tchallenge", "TenoChallenge", {{"Range", "challengeRange", 0}, {"Time", "challengeTime", 0},
+		{"WeakMul", "challengeWeakMul", 1}, {"SlowMul", "challengeSlowMul", 1}, {"Cooldown", "challengeCooldown", 0}}},
+	{"tleap", "TenoLeap", {{"Dist", "leapDist", 0}, {"Damage", "leapDamage", 0}, {"Radius", "leapRadius", 0}, {"Stun", "leapStun", 0},
+		{"Charges", "leapCharges", 0}, {"Cooldown", "leapCooldown", 0}}},
+	{"tmud", "TenoMud", {{"Time", "mudTime", 0}, {"Hits", "mudHits", 0}, {"SlowRadius", "mudSlowRadius", 0}, {"SlowMul", "mudSlowMul", 1},
+		{"SlowTime", "mudSlowTime", 0}, {"Splash", "mudSplash", 0}, {"Cooldown", "mudCooldown", 0}}},
+}
 if script:GetAttribute("SkillEffectsHerreraEnabled") == nil then script:SetAttribute("SkillEffectsHerreraEnabled", true) end -- v1.26
 local HERRERA_ON = script:GetAttribute("SkillEffectsHerreraEnabled") ~= false
 if script:GetAttribute("SkillEffectsHerreraPartsEnabled") == nil then script:SetAttribute("SkillEffectsHerreraPartsEnabled", true) end -- v1.27
@@ -595,6 +625,21 @@ local function applyChar(char, st)
 				local v = x[f[2]]
 				if v == nil then v = f[3] end
 				if char:GetAttribute(f[1]) ~= v then char:SetAttribute(f[1], v) end
+			end
+		end
+	end
+	if TPARTS_ON then -- v1.33: the teno's mecha parts (bought AND slotted)
+		local tOn = char:GetAttribute("Species") == "Teno"
+		if tOn or char:GetAttribute("TenoGrabEnabled") ~= nil then
+			for _, def in ipairs(TPARTS) do
+				local id, prefix = def[1], def[2]
+				local pOn = live and tOn and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and inSlot(id)
+				for _, f in ipairs(def[3]) do
+					local v = f[3]
+					if pOn and e[f[2]] ~= nil then v = e[f[2]] end
+					if char:GetAttribute(prefix .. f[1]) ~= v then char:SetAttribute(prefix .. f[1], v) end
+				end
+				if char:GetAttribute(prefix .. "Enabled") ~= (pOn == true) then char:SetAttribute(prefix .. "Enabled", pOn == true) end
 			end
 		end
 	end
