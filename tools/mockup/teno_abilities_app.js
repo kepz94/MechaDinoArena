@@ -35,9 +35,9 @@ const AB = [
     looks: [{name: "A · Throat Horn", sub: "a brass horn on the throat", why: "A big brass horn on the throat that blares when the teno lifts its head and bellows. Green sound rings roll out."},
       {name: "B · Crest Speakers", sub: "two speakers on the head", why: "Two boxy speakers clamped on the sides of the head. They thump with each bellow, like a herd PA system."}]},
   {id: "challenge", n: 11, name: "Challenge Call", area: "defense", key: "R", len: 5.0,
-    steps: ["Button: enemies within 30 studs are marked for 5 s. Bots go for you, and marked players deal 40% less damage to anyone but you. Recharges in 20 s",
-      "Mark lasts 7 s", "Reaches 45 studs", "You take 20% less damage from marked enemies"],
-    note: "Your number: 40% less damage. The tank job: pull the fight onto the teno so the squad survives. Marked enemies get a red mark over their head so everyone sees who's marked.",
+    steps: ["Button: enemies within 30 studs are marked for 5 s: they deal 40% less damage, and bots go for you. Recharges in 20 s",
+      "Mark lasts 7 s", "Reaches 45 studs", "Marked enemies are also slowed 20%"],
+    note: "Your number: 40% less damage. It's a debuff tag on the marked dinos (their attacks are weaker while marked), so nothing has to track who hits whom. Bots also come for you.",
     looks: [{name: "C · War Drum", sub: "the tail beats a drum on the back", why: "A big steel war drum with a red skin sits on the hips, and the tail tip wears a padded mallet. On the button the tail swings up over the back and beats the drum twice: BOOM, BOOM. Each beat sends a red shockwave out and marks the enemies it reaches. Uses the teno's own tail, so it reads as a teno move."},
       {name: "D · Target Painter", sub: "a shoulder laser that tags each enemy", why: "A mecha laser turret on the shoulder. On the button it sweeps and fires a thin red beam at every enemy in range, and each one gets a red target ring that stays on them. 'Marked' is something you literally see happen."},
       {name: "E · Tail Bell", sub: "a big bronze bell on the tail tip", why: "A heavy bronze bell hangs from the tail tip. On the button the teno thrashes its tail and the bell clangs, sending red rings out from the tail. A loud, unmistakable challenge from the back end of a tank."}]},
@@ -48,9 +48,9 @@ const AB = [
     looks: [{name: "A · Leg Pistons", sub: "pistons on the hind legs", why: "Big hydraulic pistons on both thighs that slam out on take-off and hiss on landing."},
       {name: "B · Spring Coils", sub: "steel coil springs on the shins", why: "Heavy coil springs on both shins that squash down, then fling the teno up."}]},
   {id: "mud", n: 7, name: "Mud Armor", area: "defense", key: "V", len: 5.4,
-    steps: ["Button: wallow in mud. A mud coat for 8 s soaks your next 3 hits, and anyone who hits you is slowed 40% for 4 s. Latched raptors slide off. Recharges in 20 s",
-      "Soaks 4 hits", "Coat lasts 12 s", "When the coat ends it splashes 12 studs around: enemies slowed 40% for 4 s"],
-    note: "Your twist: anyone who attacks you while you're coated is slowed for 4 s. Soaked hits do 0 damage; the coat ends after the last soaked hit or when the time runs out.",
+    steps: ["Button: wallow in mud. A mud coat for 8 s blocks your next 3 hits completely, and each blocked hit slows every enemy within 15 studs 40% for 4 s. Latched raptors slide off. Recharges in 20 s",
+      "Blocks 4 hits", "Coat lasts 12 s", "When the coat ends it splashes 12 studs around: enemies slowed 40% for 4 s"],
+    note: "Your twist: attackers get slowed for 4 s. It's a slow tag on every enemy near you when the mud blocks a hit (no tracking of who hit). Blocked hits do 0 damage, even a killing blow; the coat ends after the last blocked hit or when the time runs out.",
     looks: [{name: "A · Mud Tank", sub: "a mud tank + spray nozzle", why: "A tank of mud on the back with a spray nozzle. It sprays the teno head to tail and then it rolls in it."},
       {name: "B · Mud Pods", sub: "mud pods on the flanks", why: "Three pods on each flank that burst and splatter mud over the body when you press the button."}]},
 ];
@@ -509,11 +509,11 @@ function scenario(dt) {
       if (on && Math.floor((t - go) * 14 / Math.PI) !== sc.lastClang) { sc.lastClang = Math.floor((t - go) * 14 / Math.PI); const bp = partPos(teno, "Tail5_main", [-1.4, -1.2, 0]); sphereRing(bp, 9, 0.6, RED); popNum(bp.clone().add(new THREE.Vector3(0, -6, 0)), "CLANG", "soft"); }
       if (once("bell", t >= go)) { ring(new THREE.Vector3(0, 0, 14), R, 1.0, RED, 4); markAll(); }
     }
-    for (const [i, d] of foes.entries()) if (d.active) setTag("m" + i, d, d.mark > 0 ? "◆ MARKED" : t > go ? "too far" : "", d.mark > 0 ? "red" : "", 12);
+    for (const [i, d] of foes.entries()) if (d.active) setTag("m" + i, d, d.mark > 0 ? (lvl(3) ? "◆ MARKED · -40% DMG · SLOW" : "◆ MARKED · -40% DMG") : t > go ? "too far" : "", d.mark > 0 ? "red" : "", 12);
     if (t > go + 0.6) { for (const d of foes) if (d.active && d.mark > 0) { const dx = -d.x, dz = -d.z, L = Math.hypot(dx, dz); if (L > 18) { d.x += dx / L * dt * 12; d.z += dz / L * dt * 12; } d.yaw = Math.atan2(-dx, -dz); } }
     if (once("hitSquad", t >= go + 1.6)) popNum(new THREE.Vector3(squad[0].x, 0, squad[0].z), "-6 (was 10)", "soft");
-    if (once("hitMe", t >= go + 2.4)) popNum(new THREE.Vector3(0, 0, 0), lvl(3) ? "-8 (marked: -20%)" : "-10");
-    stateTxt = t < go ? "R: challenge call" : `MARKED ${mark} s · bots come for you · marked players hit others 40% softer`;
+    if (once("hitMe", t >= go + 2.4)) popNum(new THREE.Vector3(0, 0, 0), "-6 (was 10)", "soft");
+    stateTxt = t < go ? "R: challenge call" : `MARKED ${mark} s · marked dinos deal 40% less damage · bots come for you${lvl(3) ? " · slowed 20%" : ""}`;
     return [P, stateTxt];
   }
   if (id === "beacon") {
@@ -563,7 +563,7 @@ function scenario(dt) {
     if (once("slide", t >= 0.7)) { const d = foes[2]; d.latched = false; launch(d, -10, 10, 8, 3); popNum(new THREE.Vector3(d.x, 8, d.z), "SLID OFF", "big"); }
     if (sc.hits === undefined) sc.hits = hits;
     const attacks = [[1.8, 0], [2.6, 1]];
-    for (const [at, i] of attacks) if (once("atk" + i, t >= at)) { const d = foes[i]; d.x = lerp(d.x, 0, 0.45); d.z = lerp(d.z, 0, 0.45); sc.hits--; popNum(new THREE.Vector3(0, 0, 0), "0 · soaked", "soft"); d.slowT = 4; }
+    for (const [at, i] of attacks) if (once("atk" + i, t >= at)) { const d = foes[i]; d.x = lerp(d.x, 0, 0.45); d.z = lerp(d.z, 0, 0.45); sc.hits--; popNum(new THREE.Vector3(0, 0, 0), "BLOCKED", "soft"); for (const o of foes) if (o.active && !o.latched && Math.hypot(o.x, o.z) < 30) o.slowT = 4; }
     for (const [i, d] of foes.entries()) if (d.active && !d.latched) setTag("s" + i, d, d.slowT > 0 ? `SLOWED 40% · ${d.slowT.toFixed(1)} s` : "", "blue", 11);
     hitsLeft(t >= wal ? sc.hits : 0);
     if (lvl(3) && once("end", t >= 4.2)) { ring(new THREE.Vector3(0, 0, 0), 12, 0.8, MUD2, 3); dust(new THREE.Vector3(0, 0, 0), 14, 8, 4, 1.2, MUD2); for (const d of foes) if (d.active && Math.hypot(d.x, d.z) < 16) d.slowT = 4; }
@@ -599,7 +599,7 @@ function updateFoes(dt) {
 // ---------- UI ----------
 function areaStyle(a) { return AREA[a]; }
 function drawTabs() {
-  $("abil").innerHTML = AB.map((a, i) => `<button class="tab" data-ab="${i}" aria-pressed="${i === cur}"><span style="color:${areaStyle(a.area)[1]}">#${a.n}</span> ${a.name}<small style="color:${areaStyle(a.area)[1]}">${areaStyle(a.area)[0]}${a.id in PICK ? ` · <span style="color:#7dff9a">${"AB"[PICK[a.id]]} picked</span>` : a.id === "challenge" ? ' · <span style="color:#ffc832">new looks</span>' : ""}</small></button>`).join("");
+  $("abil").innerHTML = AB.map((a, i) => `<button class="tab" data-ab="${i}" aria-pressed="${i === cur}"><span style="color:${areaStyle(a.area)[1]}">#${a.n}</span> ${a.name}<small style="color:${areaStyle(a.area)[1]}">${areaStyle(a.area)[0]}${a.id in PICK ? ` · <span style="color:#7dff9a">${a.looks[PICK[a.id]].name[0]} picked</span>` : a.id === "challenge" ? ' · <span style="color:#ffc832">new looks</span>' : ""}</small></button>`).join("");
   document.querySelectorAll("[data-ab]").forEach(b => b.onclick = () => { cur = +b.dataset.ab; look = PICK[AB[cur].id] || 0; drawAll(); resetScene(); });
   $("looks").innerHTML = AB[cur].looks.map((l, i) => `<button class="tab" data-look="${i}" aria-pressed="${i === look}">${l.name}${PICK[AB[cur].id] === i ? ' <span style="color:#7dff9a">✓ your pick</span>' : ""}<small style="color:#8f99aa">${l.sub}</small></button>`).join("");
   document.querySelectorAll("[data-look]").forEach(b => b.onclick = () => { look = +b.dataset.look; drawAll(); resetScene(); });
