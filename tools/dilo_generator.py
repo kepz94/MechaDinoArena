@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Dilo generator v0.2 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+"""Dilo generator v0.3 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
 v0.2 (Kepu 2026-11-02: "The frill splits in the middle"): every frill is two halves, left and right, with a gap down the
 middle (--whole = the v0.1 one-piece frill). Colours and patterns stay our own.
+v0.3: look D = A Cobra Hood with a red frill and yellow markings (Kepu: "the quill stalker frill colors on the cobra hood").
 
 Kepu 2026-11-02: "Next is the dilo" (two reference pictures of the film-style frilled dilophosaurus). Answers: role
 "Ranged spitter"; size "Raptor size (~26)"; frill "Crests + a frill" (the real animal had twin head crests and no frill;
@@ -19,13 +20,13 @@ Same 17-segment rig and joint names as the other dinos (rig 1.3). Dino space D =
 the hip centre. Scaled so its length is TARGET_LEN (13 studs at scale 1, doubled in game: ~26 like the raptor).
 Skin rule: 10 colour groups, no shared hex, no never-paint colour (teeth E8E2D2, pupil 111111, mouth 6E342E, HRP A3A2A5).
 Colours are a first pass per style and can move between styles.
-Run: python3 tools/dilo_generator.py --look A|B|C --json OUT   (the three.js viewer's format)
+Run: python3 tools/dilo_generator.py --look A|B|C|D --json OUT   (the three.js viewer's format)
 The data file (DiloModelData.luau) comes after Kepu picks.
 """
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.2"
+VERSION = "0.3"
 TARGET_LEN = 13.0    # studs at scale 1 (~26 in game, the raptor's size)
 HRP_SIZE_D0 = (3.0, 2.0, 1.1)
 ROLES = ["main", "stripes", "belly", "frill", "frillmark", "crest", "limbs", "claws", "eyes", "mask"]
@@ -40,6 +41,11 @@ LOOKS = {
     "C": {"name": "Quill Stalker", "style": "quills", "fr": 1.0, "neck": 0,
           "pal": {"main": "2F4A36", "stripes": "1C2A20", "belly": "A8B48E", "frill": "C8362E", "frillmark": "EDE6D6",
                   "crest": "8A9A6A", "limbs": "26382A", "claws": "1A1A18", "eyes": "E8C23A", "mask": "0E1410"}},
+    # v0.3 (Kepu 2026-11-02: "Let's do the quill stalker frill colors on the cobra hood. Red and yellow"): A's body, hood
+    # and colours with C's red on the frill and yellow markings (spots); everything else is A
+    "D": {"name": "Cobra Hood Red", "style": "cobra", "fr": 1.0, "neck": 0,
+          "pal": {"main": "6E7A3A", "stripes": "3A3F22", "belly": "D8D0A0", "frill": "C8362E", "frillmark": "E2C23A",
+                  "crest": "C24A2A", "limbs": "5A6430", "claws": "2C2822", "eyes": "F0E04A", "mask": "1C1C1A"}},
 }
 LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
 L = LOOKS[LOOK]
