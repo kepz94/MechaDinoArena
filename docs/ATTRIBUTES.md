@@ -2608,3 +2608,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | SprintTenoBellowEnabled; MoveSpeedParts "bellow" | SprintTest script; character | true | SprintTest 1.19 |
 | TenoSupportPoseEnabled; TenoPoseState "tbellow"/"tchallenge"/"tmud" | teno model | true | TenoPose 1.5 |
 | TenoMovesFXSupportEnabled; parts TenoBellowAura, TenoMarkReticle, TenoPaintBeam, TenoMudCoat, TenoMudPuff | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.1 |
+| SkillEffectsTenoDinoEnabled | SkillEffects script | true | SkillEffects 1.36 |

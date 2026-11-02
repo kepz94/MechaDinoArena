@@ -1,4 +1,4 @@
--- SkillEffects v1.35 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.36 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -221,6 +221,12 @@ local ServerStorage = game:GetService("ServerStorage")
 -- v1.35 (SkillTree 1.52, Kepu 2026-11-02 Stomp star = latch drain): TenoStomp gains LatchDrain (effects stompLatchDrain: 50
 --   at star, off 0); TenoStompNoJump is 0 now. Switch: script attribute SkillEffectsStompDrainEnabled (default true, read at
 --   start; false = 1.34 list).
+-- v1.36 (bug, Kepu 2026-11-02 after playing build 2: "Leap doesn't do crap. Tail grab doesn't do anything. The stomp has no
+--   cool down"): effects for a teno (character Species, else player DinoSpecies, = "Teno") are ST.effects(steps, "Teno").
+--   Since 1.33 a teno got ST.effects(steps) (no dino): SkillTree's teno blocks (1.49 parts, 1.50 stats part 2, 1.52 stomp
+--   drain) only fill their fields when dino == "Teno", so the parts were Enabled with every number 0 (range, cooldown,
+--   leap charges). The Species-change refresh (1.26) re-reads it. Other dinos unchanged. Switch: script attribute
+--   SkillEffectsTenoDinoEnabled (default true, read at each read; false = 1.35).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -230,6 +236,7 @@ VERSION = "1.32" -- v1.32 Buck Off star 4th slam charge
 VERSION = "1.33" -- v1.33 teno mecha parts (MDA-175)
 VERSION = "1.34" -- v1.34 teno stats part 2 (1.33 reserved for the teno abilities, MDA-175)
 VERSION = "1.35" -- v1.35 Stomp star latch drain (SkillTree 1.52)
+VERSION = "1.36" -- v1.36 teno effects read with dino "Teno"
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -367,6 +374,24 @@ local function effectsOf(player)
 	for _, id in ipairs(ST.PATH_ORDER) do steps[id] = player:GetAttribute("SkillPath_" .. id) end
 	if isHerrera(player) then return ST.effects(steps, "Herrera") end -- v1.26
 	return ST.effects(steps)
+end
+-- v1.36: a teno's effects are read as the teno's
+if script:GetAttribute("SkillEffectsTenoDinoEnabled") == nil then script:SetAttribute("SkillEffectsTenoDinoEnabled", true) end
+do
+	local effectsOfV135 = effectsOf
+	effectsOf = function(player)
+		if script:GetAttribute("SkillEffectsTenoDinoEnabled") ~= false then
+			local c = player.Character
+			local sp = c and c:GetAttribute("Species")
+			if type(sp) ~= "string" or sp == "" then sp = player:GetAttribute("DinoSpecies") end
+			if sp == "Teno" then
+				local steps = {}
+				for _, id in ipairs(ST.PATH_ORDER) do steps[id] = player:GetAttribute("SkillPath_" .. id) end
+				return ST.effects(steps, "Teno")
+			end
+		end
+		return effectsOfV135(player)
+	end
 end
 
 local chars = {} -- [char] = {player, hum, e, lastDrop, lastHealth, writing = {[attr] = value last written here}}
