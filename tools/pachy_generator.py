@@ -137,35 +137,123 @@ part("Neck", "belly", (1.6, 0.35, 1.0), (nb[0], nb[1], 0.0), pitch=NECK_P, name=
 ns = along((3.15, 2.4), NECK_P, -0.35)
 part("Neck", "stripes", (0.24, 1.3, 1.24), (ns[0], ns[1], 0.0), pitch=NECK_P, name="Neck_stripe1")
 
-# ---------------------------------------------------------------- head (skull, 3-tier bone dome, snout, knob ring)
-seg("Head", (3.7, 3.2, 0.0))
-part("Head", "main", (1.6, 1.2, 1.25), (4.2, 3.4, 0.0), name="Head_skull")
-part("Head", "dome", (1.55, 0.55, 1.2), (4.05, 4.25, 0.0), name="Head_dome1")
-part("Head", "dome", (1.15, 0.42, 0.95), (4.05, 4.7, 0.0), name="Head_dome2")
-part("Head", "dome", (0.65, 0.26, 0.6), (4.05, 5.03, 0.0), name="Head_dome3")
-part("Head", "main", (0.95, 0.8, 0.8), (5.3, 3.2, 0.0), pitch=-15, name="Head_snout")
-part("Head", "main", (0.4, 0.5, 0.56), (5.85, 3.0, 0.0), pitch=-15, name="Head_beak")
-part("Head", "mouth", (0.95, 0.08, 0.72), (5.25, 2.84, 0.0), name="Head_mouth")
-for side in (1, -1):
-    s = "L" if side > 0 else "R"
-    part("Head", "mask", (0.62, 0.5, 0.03), (4.45, 3.55, side * 0.64), name=f"Head_mask{s}")
-    part("Head", "eyes", (0.22, 0.22, 0.04), (4.5, 3.6, side * 0.655), name=f"Head_eye{s}")
-    part("Head", "pupil", (0.08, 0.18, 0.03), (4.52, 3.6, side * 0.675), name=f"Head_pupil{s}")
-    part("Head", "stripes", (0.1, 0.08, 0.05), (5.62, 3.3, side * 0.26), name=f"Head_nostril{s}")
-# knob ring (default look)
-KNOBS = [(3.35, 3.95, 0.0), (3.42, 3.85, 0.45), (3.42, 3.85, -0.45), (3.55, 3.55, 0.62), (3.55, 3.55, -0.62),
-         (3.55, 4.28, 0.36), (3.55, 4.28, -0.36), (4.0, 4.02, 0.66), (4.0, 4.02, -0.66), (4.6, 3.05, 0.66),
-         (4.6, 3.05, -0.66), (5.0, 3.68, 0.0), (5.3, 3.62, 0.3), (5.3, 3.62, -0.3), (5.58, 3.42, 0.0)]
-for i, (x, y, z) in enumerate(KNOBS):
-    part("Head", "knobs", (0.28, 0.28, 0.28), (x, y, z), name=f"Head_knob{i + 1}")
-# spikes (hidden: the fully upgraded attack look)
-SPIKES = [  # centre, pitch (+ = leaning back), roll (+ = leaning to the L side)
-    ((3.2, 4.15, 0.0), 50, 0), ((3.3, 4.05, 0.42), 45, 25), ((3.3, 4.05, -0.42), 45, -25),
-    ((3.5, 3.7, 0.66), 35, 45), ((3.5, 3.7, -0.66), 35, -45), ((3.5, 4.45, 0.3), 30, 15), ((3.5, 4.45, -0.3), 30, -15),
-    ((5.3, 3.8, 0.28), -20, 15), ((5.3, 3.8, -0.28), -20, -15), ((5.65, 3.55, 0.0), -40, 0),
-]
-for i, ((x, y, z), p, r) in enumerate(SPIKES):
-    part("Head", "knobs", (0.22, 0.85, 0.22), (x, y, z), pitch=p, roll=r, name=f"Head_spike{i + 1}", hidden=True)
+# ---------------------------------------------------------------- head
+# v1.4 (mockup stage; Kepu 2026-11-02: "the pachy dome could be reworked. Looks too much like an egg and I think it should be
+# a more intimidating Dino"): --head egg (default = the shipped 1.3 head) | helm | ram | crown (mockup
+# docs/mockups/pachy_head_options.html). Every option keeps the part names other code uses (Head_mouth; the 10 hidden
+# Head_spike* that PachyLook shows for the Battering Dome star, re-seated on the new dome) and only the existing colour roles.
+import sys as _sys
+HEAD = _sys.argv[_sys.argv.index("--head") + 1] if "--head" in _sys.argv else "egg"
+if HEAD == "egg":
+    # ---------------------------------------------------------------- head (skull, 3-tier bone dome, snout, knob ring)
+    seg("Head", (3.7, 3.2, 0.0))
+    part("Head", "main", (1.6, 1.2, 1.25), (4.2, 3.4, 0.0), name="Head_skull")
+    part("Head", "dome", (1.55, 0.55, 1.2), (4.05, 4.25, 0.0), name="Head_dome1")
+    part("Head", "dome", (1.15, 0.42, 0.95), (4.05, 4.7, 0.0), name="Head_dome2")
+    part("Head", "dome", (0.65, 0.26, 0.6), (4.05, 5.03, 0.0), name="Head_dome3")
+    part("Head", "main", (0.95, 0.8, 0.8), (5.3, 3.2, 0.0), pitch=-15, name="Head_snout")
+    part("Head", "main", (0.4, 0.5, 0.56), (5.85, 3.0, 0.0), pitch=-15, name="Head_beak")
+    part("Head", "mouth", (0.95, 0.08, 0.72), (5.25, 2.84, 0.0), name="Head_mouth")
+    for side in (1, -1):
+        s = "L" if side > 0 else "R"
+        part("Head", "mask", (0.62, 0.5, 0.03), (4.45, 3.55, side * 0.64), name=f"Head_mask{s}")
+        part("Head", "eyes", (0.22, 0.22, 0.04), (4.5, 3.6, side * 0.655), name=f"Head_eye{s}")
+        part("Head", "pupil", (0.08, 0.18, 0.03), (4.52, 3.6, side * 0.675), name=f"Head_pupil{s}")
+        part("Head", "stripes", (0.1, 0.08, 0.05), (5.62, 3.3, side * 0.26), name=f"Head_nostril{s}")
+    # knob ring (default look)
+    KNOBS = [(3.35, 3.95, 0.0), (3.42, 3.85, 0.45), (3.42, 3.85, -0.45), (3.55, 3.55, 0.62), (3.55, 3.55, -0.62),
+             (3.55, 4.28, 0.36), (3.55, 4.28, -0.36), (4.0, 4.02, 0.66), (4.0, 4.02, -0.66), (4.6, 3.05, 0.66),
+             (4.6, 3.05, -0.66), (5.0, 3.68, 0.0), (5.3, 3.62, 0.3), (5.3, 3.62, -0.3), (5.58, 3.42, 0.0)]
+    for i, (x, y, z) in enumerate(KNOBS):
+        part("Head", "knobs", (0.28, 0.28, 0.28), (x, y, z), name=f"Head_knob{i + 1}")
+    # spikes (hidden: the fully upgraded attack look)
+    SPIKES = [  # centre, pitch (+ = leaning back), roll (+ = leaning to the L side)
+        ((3.2, 4.15, 0.0), 50, 0), ((3.3, 4.05, 0.42), 45, 25), ((3.3, 4.05, -0.42), 45, -25),
+        ((3.5, 3.7, 0.66), 35, 45), ((3.5, 3.7, -0.66), 35, -45), ((3.5, 4.45, 0.3), 30, 15), ((3.5, 4.45, -0.3), 30, -15),
+        ((5.3, 3.8, 0.28), -20, 15), ((5.3, 3.8, -0.28), -20, -15), ((5.65, 3.55, 0.0), -40, 0),
+    ]
+    for i, ((x, y, z), p, r) in enumerate(SPIKES):
+        part("Head", "knobs", (0.22, 0.85, 0.22), (x, y, z), pitch=p, roll=r, name=f"Head_spike{i + 1}", hidden=True)
+
+else:
+    seg("Head", (3.7, 3.2, 0.0))
+    part("Head", "main", (1.6, 1.2, 1.25), (4.2, 3.4, 0.0), name="Head_skull")
+    part("Head", "mouth", (0.95, 0.08, 0.72), (5.25, 2.84, 0.0), name="Head_mouth")
+    for side in (1, -1):
+        s_ = "L" if side > 0 else "R"
+        part("Head", "stripes", (0.1, 0.08, 0.05), (5.62, 3.3, side * 0.26), name=f"Head_nostril{s_}")
+
+    def eyes_(x, y, brow_pitch, brow_key="dome", deep=False):
+        for side in (1, -1):
+            s_ = "L" if side > 0 else "R"
+            part("Head", "mask", (0.7 if deep else 0.62, 0.42, 0.03), (x - 0.03, y - 0.02, side * 0.64), name=f"Head_mask{s_}")
+            part("Head", "eyes", (0.22, 0.16, 0.04), (x, y, side * 0.655), name=f"Head_eye{s_}")
+            part("Head", "pupil", (0.08, 0.14, 0.03), (x + 0.02, y, side * 0.675), name=f"Head_pupil{s_}")
+            part("Head", brow_key, (0.62, 0.18, 0.2), (x + 0.02, y + 0.2, side * 0.58), pitch=brow_pitch, name=f"Head_brow{s_}")
+
+    if HEAD == "helm":
+        # A War Helm: a long, low helmet of bone sweeping back over the neck and forward into a brow shelf that hangs
+        # over the eyes; bone cheek guards; a row of big knobs along the back rim; the snout heavy and down-turned
+        part("Head", "dome", (2.1, 0.5, 1.42), (4.0, 4.2, 0.0), pitch=-6, name="Head_dome1")
+        part("Head", "dome", (1.65, 0.3, 1.18), (3.95, 4.55, 0.0), pitch=-6, name="Head_dome2")
+        part("Head", "dome", (0.55, 0.32, 1.48), (4.95, 3.92, 0.0), pitch=-20, name="Head_browshelf")
+        for side in (1, -1):
+            part("Head", "dome", (1.25, 0.55, 0.1), (4.1, 3.85, side * 0.68), pitch=-6, name=f"Head_cheekguard{'L' if side > 0 else 'R'}")
+        part("Head", "main", (0.95, 0.85, 0.85), (5.3, 3.15, 0.0), pitch=-20, name="Head_snout")
+        part("Head", "main", (0.42, 0.55, 0.6), (5.85, 2.92, 0.0), pitch=-20, name="Head_beak")
+        eyes_(4.62, 3.55, -22, brow_key="mask", deep=True)
+        rim = [(3.0, 4.2, 0.0), (3.08, 4.15, 0.42), (3.08, 4.15, -0.42), (3.25, 4.0, 0.68), (3.25, 4.0, -0.68),
+               (3.7, 3.98, 0.74), (3.7, 3.98, -0.74), (5.35, 3.68, 0.0), (5.6, 3.45, 0.22), (5.6, 3.45, -0.22)]
+        for i, (x, y, z) in enumerate(rim):
+            part("Head", "knobs", (0.36, 0.36, 0.36), (x, y, z), name=f"Head_knob{i + 1}")
+        spikes = [((2.85, 4.4, 0.0), 60, 0), ((2.95, 4.35, 0.42), 55, 25), ((2.95, 4.35, -0.42), 55, -25),
+                  ((3.15, 4.15, 0.75), 40, 50), ((3.15, 4.15, -0.75), 40, -50), ((3.6, 4.1, 0.82), 20, 60),
+                  ((3.6, 4.1, -0.82), 20, -60), ((5.15, 4.15, 0.45), -30, 30), ((5.15, 4.15, -0.45), -30, -30), ((5.35, 3.95, 0.0), -45, 0)]
+    elif HEAD == "ram":
+        # B Battering Ram: the dome thrust forward with a flat, near-vertical bone face for hitting; a ridge of horn knobs
+        # along the top edge of the face; a heavy brow; a shorter, deeper snout tucked under
+        part("Head", "dome", (1.75, 0.75, 1.36), (4.3, 4.15, 0.0), pitch=-22, name="Head_dome1")
+        part("Head", "dome", (1.25, 0.4, 1.05), (4.05, 4.62, 0.0), pitch=-22, name="Head_dome2")
+        part("Head", "dome", (0.45, 1.15, 1.38), (5.05, 3.95, 0.0), pitch=-22, name="Head_ramface")
+        part("Head", "main", (0.8, 0.85, 0.85), (5.35, 3.05, 0.0), pitch=-25, name="Head_snout")
+        part("Head", "main", (0.36, 0.55, 0.6), (5.78, 2.82, 0.0), pitch=-25, name="Head_beak")
+        eyes_(4.5, 3.5, -24, brow_key="dome")
+        front = [(5.42, 4.38, 0.0), (5.38, 4.32, 0.36), (5.38, 4.32, -0.36), (5.3, 4.18, 0.62), (5.3, 4.18, -0.62),
+                 (3.35, 4.3, 0.0), (3.42, 4.2, 0.45), (3.42, 4.2, -0.45), (3.6, 3.9, 0.68), (3.6, 3.9, -0.68)]
+        for i, (x, y, z) in enumerate(front):
+            part("Head", "knobs", (0.34, 0.34, 0.34), (x, y, z), name=f"Head_knob{i + 1}")
+        spikes = [((5.55, 4.6, 0.0), -35, 0), ((5.5, 4.55, 0.38), -35, 20), ((5.5, 4.55, -0.38), -35, -20),
+                  ((5.4, 4.35, 0.68), -25, 45), ((5.4, 4.35, -0.68), -25, -45), ((3.2, 4.45, 0.0), 50, 0),
+                  ((3.3, 4.35, 0.45), 45, 25), ((3.3, 4.35, -0.45), 45, -25), ((3.5, 4.0, 0.72), 35, 50), ((3.5, 4.0, -0.72), 35, -50)]
+    else:
+        # C Crowned Skull: a low, broad dome studded all over with knobs, ringed by a crown of short cone knobs round the
+        # back and sides; dark skull-like eye sockets; knobs down the nose
+        part("Head", "dome", (1.9, 0.5, 1.46), (4.0, 4.18, 0.0), name="Head_dome1")
+        part("Head", "dome", (1.4, 0.36, 1.12), (4.0, 4.58, 0.0), name="Head_dome2")
+        part("Head", "dome", (0.8, 0.2, 0.7), (4.0, 4.82, 0.0), name="Head_dome3")
+        part("Head", "main", (0.95, 0.8, 0.8), (5.3, 3.2, 0.0), pitch=-15, name="Head_snout")
+        part("Head", "main", (0.4, 0.5, 0.56), (5.85, 3.0, 0.0), pitch=-15, name="Head_beak")
+        eyes_(4.5, 3.58, -18, brow_key="mask", deep=True)
+        k = 0
+        for x in (3.6, 4.0, 4.4):  # studs on the dome
+            for z in (-0.3, 0.0, 0.3):
+                k += 1
+                part("Head", "knobs", (0.24, 0.18, 0.24), (x, 4.78 if x == 4.0 and z == 0.0 else 4.74, z), name=f"Head_knob{k}")
+        for i, a in enumerate(range(-120, 121, 30)):  # the crown: cones round the back and sides
+            ar = math.radians(a)
+            x, z = 4.0 - 1.0 * math.cos(ar), 0.78 * math.sin(ar)
+            k += 1
+            part("Head", "knobs", (0.4, 0.34, 0.4), (x, 4.2, z), roll=-a * 0.25, name=f"Head_knob{k}")
+            k += 1
+            part("Head", "knobs", (0.24, 0.3, 0.24), (x - 0.08 * math.cos(ar), 4.48, z * 1.06), roll=-a * 0.3, name=f"Head_knob{k}")
+        for i, x in enumerate((4.95, 5.25, 5.55)):  # nose knobs
+            k += 1
+            part("Head", "knobs", (0.22, 0.2, 0.22), (x, 3.72 - (x - 4.95) * 0.35, 0.0), name=f"Head_knob{k}")
+        spikes = [((2.9, 4.45, 0.0), 55, 0), ((3.0, 4.4, 0.45), 50, 25), ((3.0, 4.4, -0.45), 50, -25),
+                  ((3.25, 4.3, 0.75), 35, 50), ((3.25, 4.3, -0.75), 35, -50), ((3.7, 4.65, 0.4), 25, 20),
+                  ((3.7, 4.65, -0.4), 25, -20), ((5.3, 3.85, 0.28), -20, 15), ((5.3, 3.85, -0.28), -20, -15), ((5.65, 3.6, 0.0), -40, 0)]
+    for i, ((x, y, z), p_, r_) in enumerate(spikes):  # the 10 hidden spikes (PachyLook), re-seated on the new dome
+        part("Head", "knobs", (0.22, 0.85, 0.22), (x, y, z), pitch=p_, roll=r_, name=f"Head_spike{i + 1}", hidden=True)
 
 # ---------------------------------------------------------------- jaw (small beak jaw)
 seg("Jaw", (4.6, 2.9, 0.0))
@@ -328,6 +416,21 @@ for k in sorted(attrs):
     lines.append(f"\t\t{k} = {attrs[k]},")
 lines.append("\t},")
 lines.append("}")
+if "--json" in _sys.argv:  # v1.4: mockup export (the three.js viewer's format); the data file is not written
+    import json as _json
+    out = _sys.argv[_sys.argv.index("--json") + 1]
+    hx_, hy_, hz_ = HRP_SIZE_D
+    data = {"look": HEAD, "name": HEAD, "roles": {r: C[r] for r in ROLES},
+            "segs": [{"n": n_, "root": cf(segments[n_]["root"]),
+                      "parts": [dict({"n": p["name"], "s": [round(v, 4) for v in p["size"]], "cf": cf(p["center"], p["R"]), "c": C[p["key"]], "k": p["key"]},
+                                     **({"t": 1} if p["hidden"] else {})) for p in segments[n_]["parts"]]} for n_ in order],
+            "joints": [{"n": jn, "p0": p0, "p1": p1,
+                        "c0": cf((0.0, 0.0, 0.0)) if p0 == "HRP" else [round(segments[p1]["root"][i] - segments[p0]["root"][i], 6) + 0.0 for i in range(3)] + [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                        "c1": [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]} for jn, p0, p1 in JOINTS],
+            "hrp": [hz_, hy_, hx_], "hip": HIP - hy_ / 2}
+    _json.dump(data, open(out, "w"))
+    print("json ->", out, f"({count} parts, head {HEAD})")
+    raise SystemExit
 open(OUT, "w").write("\n".join(lines) + "\n")
 print(f"{count} parts ({sum(1 for n in order for p in segments[n]['parts'] if p['hidden'])} hidden spikes), {len(order)} segments -> {OUT}")
 print("D bounds (visible): x %.2f..%.2f (length %.2f)  y %.2f..%.2f (ground at %.2f, height %.2f)  z %.2f..%.2f (width %.2f)" % (

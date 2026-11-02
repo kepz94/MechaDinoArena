@@ -1,4 +1,4 @@
-# Dino roster v1.18
+# Dino roster v1.19
 
 The list of dinos that are in the game, and the ones planned for roll-out. Add new dinos at the bottom of "Planned" as
 Kepu sends them; each one goes model mockup → Kepu's pick → model data → kit plan → playable.
@@ -11,7 +11,7 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 |---|---|---|---|---|---|---|
 | 1 | T-Rex | TRexModelData | 200 | 44 | ~40 | The heavy (bite, roar) |
 | 2 | Raptor | RaptorModelData 1.13 | 60 | 78 | ~25.7 | Pounce / latch hunter |
-| 3 | Pachy | PachyModelData | 90 | 56.9 | — | Headbutt / ram |
+| 3 | Pachy | PachyModelData | 90 | 56.9 | — | Headbutt / ram. Head rework in mockup (docs/mockups/pachy_head_options.html v0.1: B War Helm / C Battering Ram / D Crowned Skull) |
 | 4 | Herrera | HerreraModelData 1.3 | 40 | 90 | ~22.4 | "a Pain in the ass to deal with but easy to kill", most mecha utility, fastest |
 | 5 | Teno (Tenontosaurus) | TenoModelData 1.3 (1.4 written, not installed) | 150 | 52 | ~47 | Tank: scratch + rear tail slam |
 
@@ -45,3 +45,4 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 | 1.16 | Dilo mockup v0.7: D 70% thicker all around, head +35% (Kepu 2026-11-02: "Maybe even more thicker just all around"). |
 | 1.17 | Dilo mockup v0.8: three wider face options on D's body, E Bruiser / F Croc / G Viper, and a face close-up view (Kepu 2026-11-02: "the face looks too skinny and narrow"). |
 | 1.18 | Dilo model saved: DiloModelData 1.0 = E, the Bruiser face on D's body (Kepu 2026-11-02: "I like the bruiser face."). |
+| 1.19 | Pachy head rework mockup v0.1: three more intimidating domes (Kepu 2026-11-02: "the pachy dome ... Looks too much like an egg ... should be a more intimidating Dino"). |
