@@ -1,4 +1,4 @@
-// Zuul model mockup app v0.1. LOOKS = generator exports (tools/zuul_generator.py --json); RAPTOR / TREX = model_json.py exports.
+// Zuul model mockup app v0.2 (run preview: tail up and down). LOOKS = generator exports (tools/zuul_generator.py --json); RAPTOR / TREX = model_json.py exports.
 const LOOKS = __LOOKS__;
 const RAPTOR = __RAPTOR__;
 const TREX = __TREX__;
@@ -69,14 +69,16 @@ const HERR_POSE = {RootJoint: [-24, 0, 0], Neck: [6, 0, 0], Head: [16, 0, 0], Ja
   LegL: [48, 0, -16], LegR: [48, 0, 16], KneeL: [-48, 0, 0], KneeR: [-48, 0, 0], AnkleL: [24, 0, 0], AnkleR: [24, 0, 0],
   Tail1: [26, 0, 0], Tail2: [4, 0, 0], Tail3: [8, 0, 0], Tail4: [14, 0, 0], Tail5: [20, 0, 0]};
 
-function runPose(t) { // preview run (Kepu's video): diagonal trot, body sway, tail wave growing toward the club
-  const w = t * Math.PI * 2 * 1.4, s = Math.sin(w), c = Math.cos(w);
-  const o = {RootJoint: [Math.abs(c) * 2 - 1, s * 7, s * 2], Neck: [0, -s * 5, 0], Head: [0, -s * 3, 0], Jaw: [0, 0, 0]};
+function runPose(t) { // preview run v0.2 (measured from Kepu's video): one stride cycle ~0.75 s, diagonal trot, the body
+  // nearly level (only a slight bob), and the tail bobbing UP AND DOWN in a wave that grows toward the club (side view:
+  // the club travels ~12% of the body length top to bottom each cycle; top view: almost no side-to-side swing)
+  const w = t * Math.PI * 2 / 0.75, s = Math.sin(w), c = Math.cos(w);
+  const o = {RootJoint: [Math.sin(w * 2) * 1.5, s * 1.5, 0], Neck: [-Math.sin(w * 2) * 1.5, 0, 0], Head: [0, 0, 0], Jaw: [0, 0, 0]};
   o.LegL = [s * 26, 0, 0]; o.LegR = [-s * 26, 0, 0];
   o.KneeL = [Math.min(0, -c) * 30, 0, 0]; o.KneeR = [Math.min(0, c) * 30, 0, 0];
   o.AnkleL = [-s * 12, 0, 0]; o.AnkleR = [s * 12, 0, 0];
   o.ArmR = [s * 22, 0, 0]; o.ArmL = [-s * 22, 0, 0];
-  for (let i = 1; i <= 5; i++) o["Tail" + i] = [0, Math.sin(w - i * 0.75) * (5 + i * 3), 0];
+  for (let i = 1; i <= 5; i++) o["Tail" + i] = [Math.sin(w - i * 0.55) * (1.5 + i * 1.3), 0, 0];
   return o;
 }
 
@@ -110,7 +112,7 @@ function frame(now) {
   if (spin) yawUser -= dt * 0.4;
   d.yaw = yawUser; d.x = 0; d.z = 0;
   let angles = {};
-  if (swingT >= 0) { swingT += dt; angles = runPose(swingT); if (swingT > 2.86) swingT = -1; }
+  if (swingT >= 0) { swingT += dt; angles = runPose(swingT); if (swingT > 3.0) swingT = -1; }
   pose(d, angles);
   herr.g.visible = compare; rap.g.visible = compare;
   if (compare) {
