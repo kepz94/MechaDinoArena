@@ -8,7 +8,7 @@ const rad = THREE.MathUtils.degToRad;
 const INFO = {
   A: {why: "Slender, with a long S-shaped neck held high. The frill is a solid rounded hood around the head, like a spitting cobra, with two dark eye-spots and a dark rim. Tall, thin, arched twin crests run along the snout, and a long whip tail balances it.", pose: "Tall and alert, head high above the hood."},
   B: {why: "Stocky and upright with a bigger head. The frill is a full round sail like a frilled lizard: teal membrane, pale spines poking past the edge, dark eye-spots. A tall notched mohawk of double crests, and a thick tail.", pose: "Upright, chest out, sail flared."},
-  D: {why: "The Cobra Hood (slender, long S-neck held high, the split hood around the head, tall thin twin crests, a long whip tail) with the frill itself red and yellow: rings out from the neck, red, yellow, red, then the dark rim, like the Quill Stalker's banded quills. The throat sac is yellow; everything else stays as A.", pose: "Tall and alert, head high above the hood."},
+  D: {why: "The Cobra Hood made thicker (body, neck, tail, legs and arms 35% thicker, head 18% bigger; long S-neck held high, the split hood around the head, tall thin twin crests, a long whip tail) with the frill itself red and yellow: rings out from the neck, red, yellow, red, then the dark rim, like the Quill Stalker's banded quills. The throat sac is yellow; everything else stays as A.", pose: "Tall and alert, head high above the hood."},
   C: {why: "Low and horizontal like a sprinter, neck stretched forward. The frill is a ruff of long banded red-and-white quills, like a lionfish. Short crests sweep back like horns, and the long tail is held level.", pose: "Low, neck out, quills up."},
 };
 

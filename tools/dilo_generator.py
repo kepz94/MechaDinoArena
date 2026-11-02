@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Dilo generator v0.4 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+"""Dilo generator v0.6 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
 v0.2 (Kepu 2026-11-02: "The frill splits in the middle"): every frill is two halves, left and right, with a gap down the
 middle (--whole = the v0.1 one-piece frill). Colours and patterns stay our own.
 v0.3: look D = A Cobra Hood with a red frill and yellow markings (Kepu: "the quill stalker frill colors on the cobra hood").
 v0.4: D's hood is red / yellow / red rings out from the neck, like the quill bands (Kepu: "the frill itself to be red and yellow").
+v0.6: D is thicker: bulk 1.35 on the body, neck, tail, legs and arms, the head x1.18 (Kepu: "the Dilo is too thin"); A unchanged.
 
 Kepu 2026-11-02: "Next is the dilo" (two reference pictures of the film-style frilled dilophosaurus). Answers: role
 "Ranged spitter"; size "Raptor size (~26)"; frill "Crests + a frill" (the real animal had twin head crests and no frill;
@@ -27,7 +28,7 @@ The data file (DiloModelData.luau) comes after Kepu picks.
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.4"
+VERSION = "0.6"
 TARGET_LEN = 13.0    # studs at scale 1 (~26 in game, the raptor's size)
 HRP_SIZE_D0 = (3.0, 2.0, 1.1)
 ROLES = ["main", "stripes", "belly", "frill", "frillmark", "crest", "limbs", "claws", "eyes", "mask"]
@@ -45,7 +46,8 @@ LOOKS = {
     # v0.3 (Kepu 2026-11-02: "Let's do the quill stalker frill colors on the cobra hood. Red and yellow"): A's body, hood
     # and colours with C's red on the frill and yellow markings (spots); everything else is A
     # v0.4 (Kepu: "I want the frill itself to be red and yellow"): the hood in red / yellow / red rings (no spots)
-    "D": {"name": "Cobra Hood Red", "style": "cobra", "fr": 1.0, "neck": 0, "hood": "hoodband",
+    # v0.6 (Kepu: "I feel like the Dilo is too thin in these mockups"): D bulk 1.35 (body, neck, tail, legs, arms; head x1.18)
+    "D": {"name": "Cobra Hood Red", "style": "cobra", "fr": 1.0, "neck": 0, "hood": "hoodband", "bulk": 1.35,
           "pal": {"main": "6E7A3A", "stripes": "3A3F22", "belly": "D8D0A0", "frill": "C8362E", "frillmark": "E2C23A",
                   "crest": "C24A2A", "limbs": "5A6430", "claws": "2C2822", "eyes": "F0E04A", "mask": "1C1C1A"}},
 }
@@ -273,18 +275,20 @@ if STYLE == "cobra":
     # ------------------------------------------------------------ A Cobra Hood: slender, a long S-neck held high, the frill
     # a solid rounded hood around the head like a spitting cobra, with two dark eye-spots and a dark rim; tall thin
     # arched twin crests; a long whip tail
+    BK = L.get("bulk", 1.0)  # v0.6: body thickness (A 1.0 = v0.1; D 1.35, Kepu: "the Dilo is too thin")
+    HB = 1 + (BK - 1) * 0.5   # the head grows half as much
     seg("Torso", (0.0, 0.0, 0.0))
-    part("Torso", "main", (1.0, 0.76, 0.7), (-0.35, 0.14, 0.0), pitch=8, name="Torso_hips")
-    part("Torso", "main", (1.25, 0.8, 0.74), (0.55, 0.22, 0.0), pitch=12, name="Torso_body")
-    part("Torso", "main", (0.82, 0.82, 0.66), (1.32, 0.4, 0.0), pitch=24, name="Torso_chest")
-    part("Torso", "belly", (1.8, 0.14, 0.5), (0.55, -0.18, 0.0), pitch=10, name="Torso_belly")
+    part("Torso", "main", (1.0, 0.76 * BK, 0.7 * BK), (-0.35, 0.14, 0.0), pitch=8, name="Torso_hips")
+    part("Torso", "main", (1.25, 0.8 * BK, 0.74 * BK), (0.55, 0.22, 0.0), pitch=12, name="Torso_body")
+    part("Torso", "main", (0.82, 0.82 * BK, 0.66 * BK), (1.32, 0.4, 0.0), pitch=24, name="Torso_chest")
+    part("Torso", "belly", (1.8, 0.14, 0.5 * BK), (0.55, 0.22 - 0.4 * BK, 0.0), pitch=10, name="Torso_belly")
     for i, x in enumerate([-0.6, -0.15, 0.3, 0.75, 1.15]):
         for side in (1, -1):
-            part("Torso", "stripes", (0.14, 0.56, 0.04), (x, 0.28 + x * 0.08, side * 0.37), pitch=-14, name=f"Torso_stripe{i + 1}{'L' if side > 0 else 'R'}")
+            part("Torso", "stripes", (0.14, 0.56 * BK, 0.04), (x, 0.28 + x * 0.08, side * (0.37 * BK + 0.005)), pitch=-14, name=f"Torso_stripe{i + 1}{'L' if side > 0 else 'R'}")
     seg("Neck", (1.6, 0.6, 0.0))
     for i, (sz, c, p) in enumerate([((0.7, 0.48, 0.44), (1.88, 0.98, 0.0), 58), ((0.65, 0.42, 0.4), (2.08, 1.55, 0.0), 80), ((0.6, 0.4, 0.38), (2.22, 2.05, 0.0), 62)]):
-        part("Neck", "main", sz, c, pitch=p, name=f"Neck_{i + 1}")
-    part("Neck", "belly", (0.95, 0.08, 0.3), (2.05, 1.4, 0.0), pitch=72, name="Neck_throat")
+        part("Neck", "main", (sz[0], sz[1] * BK, sz[2] * BK), c, pitch=p, name=f"Neck_{i + 1}")
+    part("Neck", "belly", (0.95, 0.08, 0.3 * BK), (2.05 + 0.1 * (BK - 1), 1.4 - 0.12 * (BK - 1), 0.0), pitch=72, name="Neck_throat")
     if SPLIT:
         split_frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), L.get("hood", "hood"), 1.05 * FR, 115, 12)
     else:
@@ -293,11 +297,11 @@ if STYLE == "cobra":
         split_frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, 115, 8, fold=True)
     else:
         frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, -115, 115, 7, fold=True)
-    head((2.45, 2.35), 1.15, 0.5, 0.44, 8, 0.17)
-    crests(2.85, 3.85, 2.52, 0.6, 0.17, -4, 0.06)
-    arms((1.35, 0.1), (1.55, -0.38), (1.92, -0.32), 0.35, 0.14)
-    tail([(1.35, (1.4, 0.5, 0.46), 4), (1.3, (1.35, 0.4, 0.36), 2), (1.25, (1.3, 0.3, 0.28), 0), (1.15, (1.2, 0.22, 0.2), -2), (1.05, (1.1, 0.15, 0.15), -3)], (-0.85, 0.22))
-    legs((0.45, -1.45), (-0.4, -2.75), (-0.05, -3.3), 0.36, 0.38, 0.2)
+    head((2.45, 2.35), 1.15, 0.5 * HB, 0.44 * HB, 8, 0.17)
+    crests(2.85, 3.85, 2.35 + 0.17 * HB, 0.6, 0.17 * HB, -4, 0.06)
+    arms((1.35, 0.1), (1.55, -0.38), (1.92, -0.32), 0.35 * BK, 0.14 * BK)
+    tail([(1.35, (1.4, 0.5 * BK, 0.46 * BK), 4), (1.3, (1.35, 0.4 * BK, 0.36 * BK), 2), (1.25, (1.3, 0.3 * BK, 0.28 * BK), 0), (1.15, (1.2, 0.22 * BK, 0.2 * BK), -2), (1.05, (1.1, 0.15 * BK, 0.15 * BK), -3)], (-0.85, 0.22))
+    legs((0.45, -1.45), (-0.4, -2.75), (-0.05, -3.3), 0.36 * BK, 0.38 * BK, 0.2 * BK)
 
 elif STYLE == "sail":
     # ------------------------------------------------------------ B Sunburst: stocky and upright with a bigger head; the frill
