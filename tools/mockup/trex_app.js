@@ -1,4 +1,4 @@
-// T-Rex redesign mockup app v0.1. LOOKS = N (TRexModelData now, model_json.py) + tools/trex_generator.py --look X --json; RAPTOR / TREX / TROODON = model_json.py exports.
+// T-Rex redesign mockup app v0.2 (A2 true to life + X roster scale). LOOKS = N (TRexModelData now, model_json.py) + tools/trex_generator.py --look X --json; RAPTOR / TREX / TROODON = model_json.py exports.
 const LOOKS = __LOOKS__;
 const RAPTOR = __RAPTOR__;
 const TREX = __TREX__;
@@ -8,6 +8,8 @@ const rad = THREE.MathUtils.degToRad;
 const INFO = {
   N: {why: "The T-Rex in the game now (TRexModelData 1.24, the cartoon preset): a huge boxy head, big square eyes, chunky short legs and a short thick tail. For comparison.", pose: "Current."},
   A: {why: "Apex, the museum T-Rex: a level body over long, powerful legs with big thighs and long feet; a long, deep skull that is widest at the back with bulging jaw muscles, a small eye under a dark brow boss, a ridge down to the nose and a full row of teeth; a short, thick S-shaped neck; tiny two-claw arms; and a long tail held level as a counterweight, tapering to a point. Low scutes run down the spine.", pose: "Balanced and powerful."},
+  A2: {why: "Apex, true to life. A's body and legs were already right (hip height 0.30 of the length, body depth 0.45 of the hip height, like a real adult T-Rex). A2 fixes the rest: the skull is cut to real size (about 13% of the length, A's is about 18%), the head is carried level with the back on a lower neck instead of held up, and the tail is longer (about half the length). Same 38 studs long as the T-Rex today.", pose: "Accurate."},
+  X: {why: "A2 at roster scale: the same true-to-life T-Rex made 62 studs long, so it's the biggest dino on the roster like the real animal (a real T-Rex is nearly twice as long as a Tenontosaurus or a Zuul; in the game today the T-Rex is 38, the Teno 47, the Zuul 40). Use 'Size vs T-Rex now + raptor' to see it next to today's T-Rex.", pose: "Accurate and huge."},
   B: {why: "Brawler: the same animal built heavier. A deeper, wider chest, a thicker neck and tail, a bigger skull with heavier brows, more scutes, and a lower stance with the knees more bent and the head held low and forward.", pose: "Heavy and menacing."},
   C: {why: "Stalker: leaner and taller. Longer legs, a slimmer body tilted forward, a longer and narrower snout held low and level, and the tail raised a little as a counterweight.", pose: "Fast hunter."},
 };
@@ -86,7 +88,7 @@ function setLook(k) {
   look = k;
   document.querySelectorAll("[data-look]").forEach(b => b.setAttribute("aria-pressed", b.dataset.look === k));
   const D = LOOKS[k], I = INFO[k];
-  const NAMES = {N: "Now (cartoon)", A: "Apex", B: "Brawler", C: "Stalker"};
+  const NAMES = {N: "Now (cartoon)", A: "Apex", B: "Brawler", C: "Stalker", A2: "Apex, true to life (38 studs)", X: "Apex, true to life, roster scale (62 studs)"};
   $("info").innerHTML = `<h2>${k} · ${NAMES[k]}</h2><p>${I.why}</p><p><b>Feel:</b> ${I.pose}</p>
     <div class="sw">${Object.entries(D.roles).map(([r, h]) => `<span title="${r} #${h}" style="background:#${h}"></span>`).join("")}</div>
     <p class="muted">Colour groups: ${Object.keys(D.roles).join(", ")} (skin-ready, 10 groups). ${D.segs.reduce((n, s) => n + s.parts.length, 0)} blocks.</p>`;
@@ -151,7 +153,7 @@ function frame(now) {
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
-resize(); setLook("A"); setView("three");
+resize(); setLook("A2"); setView("three");
 requestAnimationFrame(frame);
 window.__ready = true;
 window.__run = t => { swingT = t; };

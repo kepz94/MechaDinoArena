@@ -15,13 +15,13 @@ Kept from the shipped T-Rex so a later install fits the game: the rig 1.3 segmen
 code finds (Head_mouth, Torso_body), and the three skin colour roles (main 666A4A, dark 50523A, belly B2A278) plus the
 never-paint teeth E8E2D2, eye 111111, eye shine F5F5F0, mouth 6E342E. Size: TARGET_LEN 38 studs (the shipped T-Rex is
 37.6 at scale 1; it is not doubled).
-Run: python3 tools/trex_generator.py --look A|B|C --json OUT
+Run: python3 tools/trex_generator.py --look A|B|C|A2 [--len STUDS] --json OUT
 """
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VERSION = "2.0-draft"
-TARGET_LEN = 38.0
+TARGET_LEN = float(sys.argv[sys.argv.index("--len") + 1]) if "--len" in sys.argv else 38.0  # --len: the A2 roster-scale test
 HRP_SIZE_D0 = (4.0, 3.9, 3.0)
 ROLES = ["main", "dark", "belly"]
 NEVER = {"E8E2D2", "111111", "F5F5F0", "6E342E"}
@@ -233,6 +233,12 @@ STYLES = {
     "A": {"name": "Apex", "body": {"depth": 1.0, "width": 1.0, "pitch": 4}, "neck": {"angle": 38, "thick": 1.0},
           "head": {"len": 1.0, "depth": 1.0, "width": 1.0, "tilt": -6, "jaw": 10, "teeth": 7},
           "legs": {"len": 1.0, "thigh": 1.0, "bend": 0.0}, "tail": {"len": 1.0, "thick": 1.0, "rise": 4, "droop": 1.5}, "scutes": 9},
+    # A2 Apex, true to life (Kepu 2026-11-02, after "Is the museum t-Rex accurate to real life": "Okay do it"): A's body and
+    # legs (already true: hip height 0.30 of the length, body depth 0.45 of the hip height) with a real-size skull (~12-13%
+    # of the length, was ~18%), the head carried level with the back on a lower neck, and a longer tail (~48%, was ~40%).
+    "A2": {"name": "Apex (true to life)", "body": {"depth": 1.0, "width": 1.0, "pitch": 4}, "neck": {"angle": 8, "thick": 0.95},
+           "head": {"len": 0.7, "depth": 0.85, "width": 0.88, "tilt": -4, "jaw": 10, "teeth": 7},
+           "legs": {"len": 1.0, "thigh": 1.0, "bend": 0.0}, "tail": {"len": 1.2, "thick": 1.0, "rise": 3, "droop": 1.2}, "scutes": 9},
     # B Brawler: heavier all over: a deeper chest, thicker neck and tail, a bigger skull with heavier brows, a lower
     # stance with the knees more bent, the head held low and forward.
     "B": {"name": "Brawler", "body": {"depth": 1.15, "width": 1.15, "pitch": 2}, "neck": {"angle": 30, "thick": 1.2},

@@ -5,7 +5,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 three_path = sys.argv[1] if len(sys.argv) > 1 else '/tmp/ic/node_modules/three/build/three.min.js'
 os.makedirs("/tmp/troo", exist_ok=True)
 looks = {}
-VARIANTS = {"A": ["--look", "A"], "B": ["--look", "B"], "C": ["--look", "C"]}
+VARIANTS = {"A": ["--look", "A"], "B": ["--look", "B"], "C": ["--look", "C"],
+            # v0.2: A2 true to life at today's size, and X = A2 at roster scale (62 studs)
+            "A2": ["--look", "A2"], "X": ["--look", "A2", "--len", "62"]}
 for k, args in VARIANTS.items():
     out = f"/tmp/troo/tr_{k}.json"
     subprocess.check_call([sys.executable, os.path.join(ROOT, "tools", "trex_generator.py"), *args, "--json", out], stdout=subprocess.DEVNULL)
