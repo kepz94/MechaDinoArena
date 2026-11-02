@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Dilo generator v0.1 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+"""Dilo generator v0.2 (Mecha Dino Arena) — mockup stage: three different styles for Kepu to pick from.
+v0.2 (Kepu 2026-11-02: "The frill splits in the middle"): every frill is two halves, left and right, with a gap down the
+middle (--whole = the v0.1 one-piece frill). Colours and patterns stay our own.
 
 Kepu 2026-11-02: "Next is the dilo" (two reference pictures of the film-style frilled dilophosaurus). Answers: role
 "Ranged spitter"; size "Raptor size (~26)"; frill "Crests + a frill" (the real animal had twin head crests and no frill;
@@ -23,7 +25,7 @@ The data file (DiloModelData.luau) comes after Kepu picks.
 import json, math, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.1"
+VERSION = "0.2"
 TARGET_LEN = 13.0    # studs at scale 1 (~26 in game, the raptor's size)
 HRP_SIZE_D0 = (3.0, 2.0, 1.1)
 ROLES = ["main", "stripes", "belly", "frill", "frillmark", "crest", "limbs", "claws", "eyes", "mask"]
@@ -43,6 +45,8 @@ LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"
 L = LOOKS[LOOK]
 FR, NECK_RAISE, STYLE = L["fr"], L["neck"], L["style"]
 F = 1.0
+SPLIT = "--whole" not in sys.argv  # v0.2: the frill splits in the middle (--whole = v0.1)
+SPLIT_GAP = 16  # degrees each side of the middle line left open
 C = {**L["pal"], "tooth": "E8E2D2", "pupil": "111111", "mouth": "6E342E"}
 M = ((0, 0, 1), (0, 1, 0), (-1, 0, 0))  # D -> HRP space
 
@@ -113,7 +117,7 @@ def line(a, b, n):
     return [tuple(a[k] + (b[k] - a[k]) * i / max(1, n - 1) for k in range(len(a))) for i in range(n)]
 
 
-def frill(segname, c, n, kind, R, a0, a1, count, fold=False):
+def frill(segname, c, n, kind, R, a0, a1, count, fold=False, side=""):
     """A frill around the neck at centre c, in the plane facing along n (the neck direction, toward the head).
     kind: hood (solid fan, eye-spots), sail (round fan with spines past the edge), quills (separate banded quills).
     fold=True builds the folded-down version (laid back along the neck) for the frill toggle."""
@@ -122,7 +126,7 @@ def frill(segname, c, n, kind, R, a0, a1, count, fold=False):
     if u[1] < 0:
         u = tuple(-v for v in u)
     zv = (0.0, 0.0, 1.0)
-    tag = "fold" if fold else "frill"
+    tag = ("fold" if fold else "frill") + side
     step = (a1 - a0) / max(1, count - 1)
     for i in range(count):
         th = math.radians(a0 + step * i)
@@ -154,6 +158,14 @@ def frill(segname, c, n, kind, R, a0, a1, count, fold=False):
             p = blade(segname, "frill", start, d, R * 0.55, 0.12, 0.12, ref=n, name=f"{segname}_{tag}{i + 1}a")
             p = blade(segname, "frillmark", p, d, R * 0.3, 0.09, 0.09, ref=n, name=f"{segname}_{tag}{i + 1}b")
             blade(segname, "frill", p, d, R * 0.25, 0.05, 0.05, ref=n, name=f"{segname}_{tag}{i + 1}c")
+
+
+def split_frill(segname, c, n, kind, R, a1, count, fold=False, gap=SPLIT_GAP):
+    """v0.2 (Kepu 2026-11-02: "The frill splits in the middle"): the frill in two halves, left and right, with a gap down
+    the middle at the top (and the bottom where the fan reaches round); each half keeps the style's look."""
+    half = max(2, (count + 1) // 2)
+    frill(segname, c, n, kind, R, gap, a1, half, fold, side="L")
+    frill(segname, c, n, kind, R, -a1, -gap, half, fold, side="R")
 
 
 def crests(cx0, cx1, y0, h, z, lean, thick, name="Head_crest"):
@@ -257,8 +269,14 @@ if STYLE == "cobra":
     for i, (sz, c, p) in enumerate([((0.7, 0.48, 0.44), (1.88, 0.98, 0.0), 58), ((0.65, 0.42, 0.4), (2.08, 1.55, 0.0), 80), ((0.6, 0.4, 0.38), (2.22, 2.05, 0.0), 62)]):
         part("Neck", "main", sz, c, pitch=p, name=f"Neck_{i + 1}")
     part("Neck", "belly", (0.95, 0.08, 0.3), (2.05, 1.4, 0.0), pitch=72, name="Neck_throat")
-    frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, -115, 115, 11)
-    frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, -115, 115, 7, fold=True)
+    if SPLIT:
+        split_frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, 115, 12)
+    else:
+        frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, -115, 115, 11)
+    if SPLIT:
+        split_frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, 115, 8, fold=True)
+    else:
+        frill("Neck", (2.3, 2.15, 0.0), (0.85, 0.45, 0), "hood", 1.05 * FR, -115, 115, 7, fold=True)
     head((2.45, 2.35), 1.15, 0.5, 0.44, 8, 0.17)
     crests(2.85, 3.85, 2.52, 0.6, 0.17, -4, 0.06)
     arms((1.35, 0.1), (1.55, -0.38), (1.92, -0.32), 0.35, 0.14)
@@ -280,8 +298,14 @@ elif STYLE == "sail":
     seg("Neck", (1.3, 1.4, 0.0))
     part("Neck", "main", (0.75, 0.6, 0.56), (1.45, 1.8, 0.0), pitch=72, name="Neck_1")
     part("Neck", "main", (0.65, 0.55, 0.5), (1.6, 2.25, 0.0), pitch=58, name="Neck_2")
-    frill("Neck", (1.68, 2.35, 0.0), (0.7, 0.7, 0), "sail", 1.2 * FR, -168, 168, 15)
-    frill("Neck", (1.68, 2.35, 0.0), (0.7, 0.7, 0), "sail", 1.2 * FR, -150, 150, 9, fold=True)
+    if SPLIT:
+        split_frill("Neck", (1.68, 2.35, 0.0), (0.7, 0.7, 0), "sail", 1.2 * FR, 168, 16)
+    else:
+        frill("Neck", (1.68, 2.35, 0.0), (0.7, 0.7, 0), "sail", 1.2 * FR, -168, 168, 15)
+    if SPLIT:
+        split_frill("Neck", (1.68, 2.35, 0.0), (0.7, 0.7, 0), "sail", 1.2 * FR, 150, 10, fold=True)
+    else:
+        frill("Neck", (1.68, 2.35, 0.0), (0.7, 0.7, 0), "sail", 1.2 * FR, -150, 150, 9, fold=True)
     head((1.82, 2.55), 1.0, 0.62, 0.54, 12, 0.2)
     crests(2.1, 3.0, 2.82, 0.75, 0.2, -8, 0.08)
     for i in range(5):  # notches on the crest tops
@@ -306,8 +330,14 @@ else:
     seg("Neck", (1.75, 0.35, 0.0))
     part("Neck", "main", (0.7, 0.46, 0.42), (2.05, 0.55, 0.0), pitch=32, name="Neck_1")
     part("Neck", "main", (0.65, 0.42, 0.4), (2.55, 0.78, 0.0), pitch=14, name="Neck_2")
-    frill("Neck", (2.75, 0.85, 0.0), (0.95, 0.25, 0), "quills", 1.15 * FR, -150, 150, 13)
-    frill("Neck", (2.75, 0.85, 0.0), (0.95, 0.25, 0), "quills", 1.15 * FR, -140, 140, 9, fold=True)
+    if SPLIT:
+        split_frill("Neck", (2.75, 0.85, 0.0), (0.95, 0.25, 0), "quills", 1.15 * FR, 150, 14)
+    else:
+        frill("Neck", (2.75, 0.85, 0.0), (0.95, 0.25, 0), "quills", 1.15 * FR, -150, 150, 13)
+    if SPLIT:
+        split_frill("Neck", (2.75, 0.85, 0.0), (0.95, 0.25, 0), "quills", 1.15 * FR, 140, 10, fold=True)
+    else:
+        frill("Neck", (2.75, 0.85, 0.0), (0.95, 0.25, 0), "quills", 1.15 * FR, -140, 140, 9, fold=True)
     head((2.9, 0.92), 1.2, 0.48, 0.42, 6, 0.15)
     for side in (1, -1):  # short crests swept back like horns
         for k in range(3):
