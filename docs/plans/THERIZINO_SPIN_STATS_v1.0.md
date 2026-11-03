@@ -80,8 +80,16 @@ The shared rows Regeneration, Lifesteal, Jaws, Thick Hide and Sprint Legs all ge
 8. **TheriFX** (MDA-204, extended): spin trails and cut sparks along the flight, the skid dust.
 9. **Studio check:** leap distance (30–34 studs), cuts on bots along the path, every row at I and ★, other dinos unchanged. Then captures for Kepu.
 
-## Red-team (to answer before filing)
+## Red-team (answered by Kepu 2026-11-03)
 1. **Fourth Cut has no animation design yet.** The 4th sweep needs its own pose. Mitigation: a small mockup for that one hit before Task 7, and Tasks 1–6 ship without it.
 2. **Spin Dive damage vs. the old slam.** The old Diving Rake did 18 to everything in front. The Spin Dive does up to 21 to each dino it passes, but only along its line, so it can whiff more. Mitigation: the radius is an attribute (7 × scale), tuned in the Studio check.
 3. **The Lab's MECHA ABILITIES tab is still the shared default for the therizino.** It was not in the ask. Mitigation: a question for Kepu ("leave it, or plan therizino mecha abilities next?"). Out of scope here.
 4. **Flowing Cuts ★ refills a JUMP charge.** That needs a JumpServer hook (1.4) that other dinos never use. Mitigation: a BindableEvent that does nothing unless called; the JumpServer spec is unchanged for other dinos.
+
+**Kepu's answers:**
+1. "Mock it up first": Task 7 waits for a Fourth Cut mockup and Kepu's pick. Tasks 1–6, 8 and 9 build without it, and the Fourth Cut row shows in the Lab only once Task 7 lands (`SkillTree.THERI_FOURTH`, default false until then).
+2. "Yes, tune it in Studio": 7 per cut, max 3; `TheriSpinRadius` is tuned in Task 9. No landing hit.
+3. "Leave it for now": the Mecha Abilities tab is out of scope (a later plan).
+4. Accepted risk: JumpServer 1.4 gets a do-nothing-unless-called `JumpAddCharge` hook.
+
+Also: Kepu approved the Sidewinder run from the Studio stills ("Looks right", MDA-206).
