@@ -1,4 +1,4 @@
--- RaptorScale v1.5 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
+-- RaptorScale v1.6 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
 -- docs/plans/TERRITORIES_v1.0.md Task 4 (Kepu 2026-10-28: "the raptor bots might be a little too small ... esp with the
 -- camera angle"; answers: 2x, bots and players).
 -- Who: every player character whose Species is "Raptor" (CharacterAdded, also SpeciesServer's raptor body) and every
@@ -32,10 +32,12 @@
 --   RaptorScaleTRexBotsEnabled (bots, default true), read per new model; off = the true-to-life T-Rex at 38 studs. Growth:
 --   as for the other dinos (GrowthServer sets an absolute scale, RaptorScale multiplies once per model, marked by
 --   RaptorScaleApplied, so the two never stack twice). The VERSION constant (still "1.2" through 1.4) now reads "1.5".
+-- v1.6 (MDA-199, plan docs/plans/THERIZINO_KIT_v1.0.md Task 3): player characters whose Species is "Therizino" are scaled the
+--   same way by the script attribute TherizinoScale (default 2) while RaptorScaleTheriEnabled (default true) is on.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.5"
+local VERSION = "1.6"
 local DEFAULTS = {RaptorScaleEnabled = true, RaptorScale = 2}
 local FALLBACK = {BiteReachBack = 8, BiteLungeDist = 3, EatRange = 8, EatHeight = 20, CameraStartZoom = 35} -- = GrowthServer 1.2
 local GC = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("GrowthCurve"))
@@ -110,6 +112,9 @@ local function onCharacter(char)
 	end
 	if char.Parent and char:GetAttribute("Species") == "TRex" and script:GetAttribute("RaptorScaleTRexEnabled") ~= false then -- v1.5
 		apply(char, tonumber(script:GetAttribute("TRexScale")) or 1.63)
+	end
+	if char.Parent and char:GetAttribute("Species") == "Therizino" and script:GetAttribute("RaptorScaleTheriEnabled") ~= false then -- v1.6
+		apply(char, tonumber(script:GetAttribute("TherizinoScale")) or 2)
 	end
 end
 local function onPlayer(player)

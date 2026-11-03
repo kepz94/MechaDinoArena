@@ -1,4 +1,4 @@
--- MainMenu v1.15 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.16 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -146,13 +146,16 @@
 --   after the credits work): the teno's parts are Models "TPart_<id>" (TenoPartsServer 1.0), so a mecha part child is also
 --   "TPart_*" for the preview key, the watchers and the plain view. Switch: script attribute MainMenuTPartsEnabled (default
 --   true, read at each check; false = 1.14).
+-- v1.16 (MDA-199, plan docs/plans/THERIZINO_KIT_v1.0.md Task 3): {id = "Therizino", name = "THERIZINO", sub = "80 HP · slasher,
+--   claw combo"} after the teno (the arrows cycle Raptor, T-Rex, Pachy, Herrera, Teno, Therizino). Switch: script attribute
+--   MainMenuTheriEnabled (default true, read at start; false = 1.15).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.15"
+local VERSION = "1.16"
 local BIND = "MainMenuMouse"
 local SWITCH_LOCK = 2
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -178,6 +181,10 @@ end
 if script:GetAttribute("MainMenuTenoEnabled") == nil then script:SetAttribute("MainMenuTenoEnabled", true) end -- v1.12
 if script:GetAttribute("MainMenuTenoEnabled") ~= false then
 	table.insert(DINOS, {id = "Teno", name = "TENO", sub = "150 HP · tank, tail slam"})
+end
+if script:GetAttribute("MainMenuTheriEnabled") == nil then script:SetAttribute("MainMenuTheriEnabled", true) end -- v1.16
+if script:GetAttribute("MainMenuTheriEnabled") ~= false then
+	table.insert(DINOS, {id = "Therizino", name = "THERIZINO", sub = "80 HP · slasher, claw combo"})
 end
 local SLOT_KEYS = UserInputService.TouchEnabled and {"R", "C", "R▼", "C▼"} or {"R", "C", "T", "V"}
 

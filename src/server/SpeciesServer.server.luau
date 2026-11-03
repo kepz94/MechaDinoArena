@@ -1,4 +1,4 @@
--- SpeciesServer v1.4 (Dino Arcade) — TEST species switch: respawns a player as the dino they pick.
+-- SpeciesServer v1.6 (Dino Arcade) — TEST species switch: respawns a player as the dino they pick.
 -- Client -> server: ReplicatedStorage.DinoSpeciesRequest:FireServer(species) (sent by SpeciesPicker 1.0),
 --   species = "TRex" or "Raptor".
 -- TRex   -> player:LoadCharacter() (StarterPlayer.StarterCharacter, the T-Rex).
@@ -42,6 +42,10 @@
 --   built once from ServerStorage.DinoArcade.Models.TenoModelData while SpeciesTenoEnabled (default true, read at start)
 --   is on; "Teno" is then a known species (switch, respawn after a death, remembered choice). Script attribute
 --   SpeciesTenoTemplate ("ready" / "missing <reason>" / "off").
+-- v1.6 (MDA-199, plan docs/plans/THERIZINO_KIT_v1.0.md Task 3): sixth species "Therizino", exactly like the teno (1.5): a
+--   template built once from ServerStorage.DinoArcade.Models.TherizinoModelData while SpeciesTherizinoEnabled (default true,
+--   read at start) is on; "Therizino" is then a known species (switch, respawn after a death, remembered choice). Script
+--   attribute SpeciesTherizinoTemplate ("ready" / "missing <reason>" / "off").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -119,6 +123,22 @@ if script:GetAttribute("SpeciesTenoEnabled") ~= false then
 	if tenoTemplate then SPECIES.Teno = true end
 else
 	script:SetAttribute("SpeciesTenoTemplate", "off")
+end
+
+-- v1.6: therizino template
+if script:GetAttribute("SpeciesTherizinoEnabled") == nil then script:SetAttribute("SpeciesTherizinoEnabled", true) end
+local theriTemplate
+if script:GetAttribute("SpeciesTherizinoEnabled") ~= false then
+	local ok, err = pcall(function()
+		local folder = ServerStorage:WaitForChild("DinoArcade", 10)
+		local Builder = require(folder:WaitForChild("DinoModelBuilder"))
+		local data = require(folder:WaitForChild("Models"):WaitForChild("TherizinoModelData"))
+		theriTemplate = Builder.build(data, {name = "Therizino"})
+	end)
+	script:SetAttribute("SpeciesTherizinoTemplate", ok and theriTemplate and "ready" or ("missing " .. tostring(err)))
+	if theriTemplate then SPECIES.Therizino = true end
+else
+	script:SetAttribute("SpeciesTherizinoTemplate", "off")
 end
 
 local lastSwitch = {}
@@ -265,6 +285,22 @@ local function spawnTeno(player)
 	if old and old ~= char then old:Destroy() end
 end
 
+-- v1.6: same as spawnTeno, from the therizino template
+local function spawnTherizino(player)
+	local char = theriTemplate:Clone()
+	char.Name = player.Name
+	for _, s in ipairs(StarterPlayer.StarterCharacterScripts:GetChildren()) do
+		s:Clone().Parent = char
+	end
+	local hrp = char.HumanoidRootPart
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	char:PivotTo(spawnCFrame(player, hrp.Size.Y / 2 + hum.HipHeight))
+	local old = player.Character
+	char.Parent = workspace
+	player.Character = char
+	if old and old ~= char then old:Destroy() end
+end
+
 local function switch(player, species)
 	player:SetAttribute("DinoSpecies", species)
 	if species == "Raptor" then
@@ -275,6 +311,8 @@ local function switch(player, species)
 		spawnHerrera(player)
 	elseif species == "Teno" and tenoTemplate then -- v1.5
 		spawnTeno(player)
+	elseif species == "Therizino" and theriTemplate then -- v1.6
+		spawnTherizino(player)
 	else
 		player:LoadCharacter()
 	end
@@ -298,6 +336,10 @@ remote.OnServerEvent:Connect(function(player, species)
 		return
 	end
 	if species == "Teno" and not tenoTemplate then -- v1.5
+		player:SetAttribute("SpeciesLastResult", "noTemplate")
+		return
+	end
+	if species == "Therizino" and not theriTemplate then -- v1.6
 		player:SetAttribute("SpeciesLastResult", "noTemplate")
 		return
 	end
@@ -354,6 +396,11 @@ local function onPlayer(player)
 				if player.Character == char then spawnTeno(player) end
 			end)
 		end
+		if want == "Therizino" and theriTemplate and speciesOf(char) ~= "Therizino" then -- v1.6
+			task.defer(function()
+				if player.Character == char then spawnTherizino(player) end
+			end)
+		end
 	end)
 	-- v1.1: a body that spawned before the default was set
 	local char = player.Character
@@ -375,8 +422,10 @@ local function onPlayerV13(player) -- v1.3: a body that spawned (as another dino
 			elseif want == "Pachy" and pachyTemplate then spawnPachy(player)
 			elseif want == "Herrera" and herreraTemplate then spawnHerrera(player) -- v1.4
 			elseif want == "Teno" and tenoTemplate then spawnTeno(player) -- v1.5
+			elseif want == "Therizino" and theriTemplate then spawnTherizino(player) -- v1.6
 			elseif want == "TRex" and speciesOf(char) == "Herrera" then player:LoadCharacter() -- v1.4
 			elseif want == "TRex" and speciesOf(char) == "Teno" then player:LoadCharacter() -- v1.5
+			elseif want == "TRex" and speciesOf(char) == "Therizino" then player:LoadCharacter() -- v1.6
 			elseif want == "TRex" and (speciesOf(char) == "Raptor" or speciesOf(char) == "Pachy") then player:LoadCharacter() end
 		end)
 	end

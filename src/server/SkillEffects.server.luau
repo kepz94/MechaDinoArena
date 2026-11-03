@@ -1,4 +1,4 @@
--- SkillEffects v1.37 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.38 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -235,6 +235,11 @@ local ServerStorage = game:GetService("ServerStorage")
 --   landing slam; MechaButtons 1.28: the slot key does nothing). Otherwise the bases back (JumpCooldown from the 1.14
 --   loop), JumpCharges 0, TenoLeapOnJump false. Runs after applyChar (a wrapper). Switch: script attribute
 --   SkillEffectsTenoLeapJumpEnabled (default true, read at each write; false = 1.36: nothing written).
+-- v1.38 (MDA-199, plan docs/plans/THERIZINO_KIT_v1.0.md Task 3, red-team item 1): the 1.37 leap writer leaves a character with
+--   Species "Therizino" alone (its JumpCharges / TenoLeapOnJump / JumpBoost / JumpLaunchPower / JumpCooldown come from
+--   TherizinoModelData 1.3: the Diving Rake reuses the teno's leap-on-jump landing; without this every refresh wrote
+--   JumpCharges 0 and TenoLeapOnJump false). Switch: script attribute SkillEffectsTheriLeapKeepEnabled (default true, read at
+--   each write; false = 1.37).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -246,6 +251,7 @@ VERSION = "1.34" -- v1.34 teno stats part 2 (1.33 reserved for the teno abilitie
 VERSION = "1.35" -- v1.35 Stomp star latch drain (SkillTree 1.52)
 VERSION = "1.36" -- v1.36 teno effects read with dino "Teno"
 VERSION = "1.37" -- v1.37 teno leap on JUMP
+VERSION = "1.38" -- v1.38 therizino keeps its own leap values
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -696,6 +702,7 @@ do
 	applyChar = function(char, st)
 		applyCharV136(char, st)
 		if script:GetAttribute("SkillEffectsTenoLeapJumpEnabled") == false then return end
+		if char:GetAttribute("Species") == "Therizino" and script:GetAttribute("SkillEffectsTheriLeapKeepEnabled") ~= false then return end -- v1.38
 		local isTeno = char:GetAttribute("Species") == "Teno"
 		if not isTeno and char:GetAttribute("TenoLeapOnJump") == nil then return end
 		local e = st.e
