@@ -2681,3 +2681,9 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriGuardTakenMul / TheriGuardFinisherNoStun / TheriGuardShoveMul / TheriGuardKeepChain | therizino character | 1 / false / 1 / false off; I 0.85, II true, III 0.5, star true | SkillEffects 1.39 (Flow Guard) |
 | TheriHarvestHeal / TheriHarvestKillHeal / TheriHarvestLowDouble | therizino character | 0 / 0 / false off; I 0.04, II 0.06, III 0.15, star true | SkillEffects 1.39 (Reaper's Harvest) |
 | SkillEffectsTheriRows | therizino character | "flow=n,fury=n,fourth=n,guard=n,harvest=n" ("" off) | SkillEffects 1.39 diagnostic (sanitized steps) |
+| TheriAttackStatsEnabled | TheriAttackServer script | true (false = 1.0) | TheriAttackServer 1.1: the therizino rows act on the combo |
+| TheriAttackStatsRefills / TheriAttackStatsRefunds / TheriAttackStatsHeals | TheriAttackServer script | counts | TheriAttackServer 1.1 diagnostics |
+| TheriFuryLastBonus / TheriChainLive / TheriGuardRefunded / TheriGuardStunCleared / TheriGuardShoved / TheriHarvestHealed / TheriHarvestLast / TheriKeepChainCount / TheriRefillResult | therizino character | "+stack xfull"; bool; total; count; studs; total; "finisher" / "kill"; count; "fired" / "noHook" | TheriAttackServer 1.1 diagnostics |
+| TheriLocalStatsEnabled | therizino character | true (false = 1.0) | TheriAttackTest 1.1: local prediction uses the Flowing Cuts windows |
+| JumpAddChargeEnabled; JumpAddCharges | JumpServer script | true; count | JumpServer 1.4 hook (BindableEvent ServerStorage.JumpAddCharge) |
+| JumpAddChargeResult / JumpAddChargeAt | character the hook was fired for | "ok" / "full" / "noCharges" / "disabled"; time | JumpServer 1.4 diagnostics |
