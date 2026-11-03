@@ -7,13 +7,13 @@
 
 ## Global Constraints
 - Additive: every change behind a switch; raptor / T-Rex / pachy / Herrera / teno behaviour unchanged.
-- Versions: TherizinoModelData 1.3 (therizino_generator 1.2), StatSheet 1.5 (+ spec 1.5), SpeciesServer 1.6, RaptorScale 1.6, MainMenu 1.16, SkillEffects 1.38, TheriAttackServer 1.0, TheriAttackTest 1.0, ArenaTouch 1.11, AbilityBar 1.23, TheriPose 1.0, IdleAnimation 1.39, TheriFX 1.0, display_models_install 1.1.
-- Numbers (model attributes; distances at scale 1, x2 body in game): DinoMaxHealth 80; MoveRunSpeed 66 / MoveWalkSpeed 36; TheriAttackEnabled true; TheriHitDamage1 9, TheriHitDamage2 9, TheriHitDamage3 20; TheriHitDelay1 0.30, TheriHitDelay2 0.33, TheriHitDelay3 0.55 (press -> contact, from the mockup's measured contacts 0.33 / 0.74 / 1.34 s); TheriReach 7 (14 studs), TheriReach3 8 (16), TheriCone 100°; TheriMinGap 0.33 (earliest next tap), TheriChainWindow 0.8, TheriFinisherRecover 0.9. Leap: JumpEnabled true, JumpCharges 2, JumpCooldown 6 (refill per charge), JumpStaminaCost 0, JumpBoost / JumpLaunchPower tuned in Studio to a 30–34 stud leap at the 2x body; TenoLeapEnabled true, TenoLeapOnJump true, TenoLeapDamage 18, TenoLeapRadius 16, TenoLeapStun 0.
+- Versions: TherizinoModelData 1.3 (therizino_generator 1.2), StatSheet 1.5 (+ spec 1.5), SpeciesServer 1.6, RaptorScale 1.6, MainMenu 1.16, SkillEffects 1.38, DinoHitboxes 1.2, TenoMovesServer 1.5, TheriAttackServer 1.0, TheriAttackTest 1.0, ArenaTouch 1.11, AbilityBar 1.23, TheriPose 1.0, IdleAnimation 1.39, TheriFX 1.0, display_models_install 1.1.
+- Numbers (model attributes; distances at scale 1, x2 body in game): DinoMaxHealth 80; MoveRunSpeed 66 / MoveWalkSpeed 36; TheriAttackEnabled true; TheriHitDamage1 9, TheriHitDamage2 9, TheriHitDamage3 20; TheriHitDelay1 0.30, TheriHitDelay2 0.33, TheriHitDelay3 0.55 (press -> contact, from the mockup's measured contacts 0.33 / 0.74 / 1.34 s); TheriReach 7 (14 studs), TheriReach3 8 (16), TheriCone 100°; TheriMinGap 0.33 (earliest next tap), TheriChainWindow 0.8, TheriFinisherRecover 0.9. Leap: JumpEnabled true, JumpCharges 2, JumpCooldown 6 (refill per charge), JumpStaminaCost 0, JumpBoost / JumpLaunchPower tuned in Studio to a 30–34 stud leap at the 2x body; TenoLeapEnabled true, TenoLeapOnJump true, TenoLeapDamage 18, TenoLeapRadius 16, TenoLeapStun 0, TenoLeapArc 180 (front half only; Kepu "Front only"). HitboxSkipSegments "HandL|HandR" (no hitbox on the claws; Kepu "No hitbox on claws").
 - Rig: generator 1.2 turns on the --elbows split by default for the data file: ArmL/R (shoulder + upper arm), ForeL/R (elbow + forearm + fringe, joint ElbowL/R), HandL/R (hand + claws, joint WristL/R). Same 171 blocks, same rest pose; 21 segments.
 - Install via multi_edit / execute_luau, verify by hash; test with Studio tools only (no second player); publish only on Kepu's "publish" (both places).
 
 ## Do-not-touch
-DinoModelBuilder (generic, builds the extra segments as is), DinoHitboxes (generic per segment), JumpServer / JumpTest / TenoMovesServer / TenoLeapLaunch (reused through attributes only), TenoAttackServer / TenoAttackTest / TenoPose (copied patterns, not edited), BiteServer / PounceServer / SlashServer / HeadbuttServer, WalkPose / JumpPose, the other dinos' model data, SkinServer, SkillTree (no therizino skill paths yet), the Lab.
+DinoModelBuilder (generic, builds the extra segments as is), JumpServer / JumpTest / TenoLeapLaunch (reused through attributes only), TenoMovesServer's other moves (only the jumpSlam target filter gains the arc check), TenoAttackServer / TenoAttackTest / TenoPose (copied patterns, not edited), BiteServer / PounceServer / SlashServer / HeadbuttServer, WalkPose / JumpPose, the other dinos' model data, SkinServer, SkillTree (no therizino skill paths yet), the Lab.
 
 ## File structure
 | File | New / extend | Responsibility |
@@ -23,6 +23,8 @@ DinoModelBuilder (generic, builds the extra segments as is), DinoHitboxes (gener
 | src/shared/StatSheet.luau 1.5, tools/tests/StatSheet.spec.luau 1.5 | extend | SPECIES.Therizino |
 | src/server/SpeciesServer 1.6, RaptorScale 1.6, src/client/MainMenu 1.16 | extend | pickable, 2x, menu entry |
 | src/server/SkillEffects 1.38 | extend | its 1.37 leap writer leaves a therizino's JumpCharges / TenoLeapOnJump alone |
+| src/server/DinoHitboxes 1.2 | extend | skips the segments named in the model attribute HitboxSkipSegments |
+| src/server/TenoMovesServer 1.5 | extend | jumpSlam honours the character attribute TenoLeapArc (unset = all around, as 1.4) |
 | src/server/TheriAttackServer.server.luau 1.0 | new | combo authority, hits, stamps |
 | src/character/TheriAttackTest.client.luau 1.0 | new | ATTACK input, local prediction |
 | src/character/ArenaTouch 1.11, AbilityBar 1.23 | extend | touch ATTACK pips, PC tiles |
@@ -41,7 +43,9 @@ DinoModelBuilder (generic, builds the extra segments as is), DinoHitboxes (gener
 | Stunned / menu / pinned / dead mid-combo | any | step resets to 0; a pending hit is cancelled (TheriComboCancel) |
 | Squadmate / mode-protected / shielded | SquadRules / ModeRules / EnergyShieldUntil | not hit / hit with no damage (TenoAttackServer rules) |
 | JUMP | JumpEnabled, a charge left (JumpServer 1.3) | leap (JumpTest physics); TheriPose crouch → air (arms overhead) |
-| Landing | TenoMovesServer 1.4 jumpSlam: rose ≥ 2 studs then back ≤ 1.5 | TenoLeapDamage to every allowed dino within TenoLeapRadius; TenoLeapLandedAt → TheriPose land rake + TheriFX impact |
+| Landing | TenoMovesServer 1.5 jumpSlam: rose ≥ 2 studs then back ≤ 1.5 | TenoLeapDamage to every allowed dino within TenoLeapRadius whose root is inside TenoLeapArc (180°) centred on the facing; TenoLeapLandedAt → TheriPose land rake + TheriFX impact |
+| Landing, target behind | inside the radius, outside the arc | not hit |
+| Claws hit by others | a bite / pounce / slash aimed at the claws | no hitbox there (HitboxSkipSegments): only body / arm / forearm boxes can be hit |
 | No charge | JumpChargesLeft 0 | JUMP refused by JumpServer (existing) |
 | Death | any | respawns as a therizino (SpeciesServer remembered choice) |
 
@@ -59,6 +63,11 @@ DinoModelBuilder (generic, builds the extra segments as is), DinoHitboxes (gener
 ## Task 3 — Selectable · Mode: Wired
 **Files:** SpeciesServer 1.6 (template from TherizinoModelData, "Therizino" known, respawn, remembered; SpeciesTherizinoEnabled), RaptorScale 1.6 (TherizinoScale 2; RaptorScaleTheriEnabled), MainMenu 1.16 (DINOS entry "THERIZINO", "80 HP · slasher, claw combo"; MainMenuTheriEnabled), SkillEffects 1.38 (the 1.37 leap writer returns early for Species "Therizino"; switch SkillEffectsTheriLeapKeepEnabled).
 **Acceptance:** menu arrows reach THERIZINO; DinoSpeciesRequest "Therizino" ok; spawns 2x, 80 HP; after SkillEffects' refresh JumpCharges stays 2 and TenoLeapOnJump stays true; death respawns a therizino; the other five dinos spawn as before.
+
+## Task 3b — DinoHitboxes 1.2 + TenoMovesServer 1.5 · Mode: Wired
+**Files:** src/server/DinoHitboxes.server.luau, src/server/TenoMovesServer.server.luau.
+**Steps:** DinoHitboxes: a segment whose name is in the model attribute HitboxSkipSegments ("|" joined) gets no box (switch DinoHitboxesSkipEnabled, default true; diagnostic HitboxSkipped). TenoMovesServer jumpSlam: when the character has TenoLeapArc, a target counts only if the flat angle between the root's LookVector and (target root - root) is ≤ arc / 2 (switch TenoMovesLeapArcEnabled, default true); unset = 1.4.
+**Acceptance:** therizino Hitboxes folder has no Hitbox_HandL / HandR; every other dino's box count unchanged; a teno's leap still hits all around; a therizino landing hits a dummy in front, not one right behind.
 
 ## Task 4 — TheriAttackServer 1.0 · Mode: Wired
 **Files:** new src/server/TheriAttackServer.server.luau.
@@ -83,6 +92,7 @@ DinoModelBuilder (generic, builds the extra segments as is), DinoHitboxes (gener
 **Steps:** PC (+ forced touch): select, spawn, full combo on a dummy and on a bot, chain drop, recover, leap x2 + refill, landing damage, death / respawn, the display; Play check of a raptor, teno and Herrera after install; captures in docs/reference/therizino/.
 
 ## Red-team (Phase 4.5) — strongest challenges and mitigations
+Kepu's answers (2026-11-02): hitboxes "No hitbox on claws" → Task 3b DinoHitboxes 1.2 (replaces item 3's measure-first); landing "Front only" → Task 3b TenoMovesServer 1.5 arc (replaces item 4's accepted radius); width "Keep the width" (item 5 accepted). Items 1 and 2 stand as written (mitigations in Tasks 3 and 6).
 1. **The reused leap is switched off by SkillEffects.** SkillEffects 1.37's leap writer runs for every character that has a TenoLeapOnJump attribute: for a non-teno it writes JumpCharges 0 and TenoLeapOnJump false, which would silently kill the Diving Rake on every refresh. Mitigation: SkillEffects 1.38 returns early for Species "Therizino" (Task 3), with an acceptance check that the values survive a refresh.
 2. **The game animation may not match the approved mockup.** The mockup's angle axes are not Roblox's, it runs springs at 300 Hz, and its hits fire on real claw contact while the server uses fixed delays. Mitigation: map once and prove it numerically (claw-tip parity ±0.5 studs per key), keep the spring sub-stepping, set the server delays from the mockup's measured contacts, and put a side-by-side capture against the mockup video in Task 8.
 3. **The rig split changes hitboxes.** DinoHitboxes makes one box per segment, so the split gives HandL/R their own boxes around the open claw fan (in 1.2 the whole arm with its claws is one big box). The therizino may be easier (or harder) to bite and pounce than its 80 HP intends. Mitigation: Task 8 measures the hitbox sizes; if the hand boxes are larger than the old arm box, a DinoHitboxes 1.2 exclusion for Hand segments is Kepu's call (not in this plan).
