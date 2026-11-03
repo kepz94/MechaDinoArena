@@ -1,4 +1,4 @@
--- ShoulderCam v1.7 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
+-- ShoulderCam v1.8 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
 -- The camera is Scriptable and placed every frame (RenderStep, Camera priority, after TurnLimit / PounceTest):
 --   focus  = HumanoidRootPart position + ShoulderCamFocusHeight up (only the HRP position is used, so the view stays
 --            steady while the body tilts, e.g. latched on a pounce target)
@@ -67,6 +67,10 @@
 --   direction, in the teno's frame, is written as ShoulderCamSlamYaw (degrees, + = the teno's left, the TenoSlamAim
 --   convention) for TenoAttackTest 1.4's aim nudge. Switch: script attribute ShoulderCamTenoFlipEnabled (default true, read
 --   each frame; false = 1.6). Diagnostics: character ShoulderCamSlamFlip (0..1, 0.05 steps), ShoulderCamSlamYaw.
+-- v1.8 (Kepu 2026-11-02 17:46: "maybe just take off the camera flip for tail slams"): ShoulderCamTenoFlipEnabled now defaults
+--   to false (the view stays behind the teno while the tail is lifted and on the slam; TurnLimitAimLook is never set, so
+--   TenoAttackTest's aim nudge is off and the slam aims as before 1.7). The 1.7 code is kept: set the script attribute to
+--   true to bring the flip back.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -111,7 +115,7 @@ local boxCf, boxSize = char:GetBoundingBox()
 local top = math.max(1, boxCf.Position.Y + boxSize.Y / 2 - hrp.Position.Y)
 local width = char:GetExtentsSize().X
 local spawnScale, spawnTop, spawnWidth, framedScale = char:GetScale(), top, width, char:GetScale() -- v1.1
-char:SetAttribute("ShoulderCamVersion", "1.7")
+char:SetAttribute("ShoulderCamVersion", "1.8")
 local function framing()
 	local sc = char:GetScale() -- v1.1: growth re-fit
 	if math.abs(sc - framedScale) > 1e-4 then
@@ -370,7 +374,7 @@ local function step(dt)
 
 	-- v1.7: teno slam flip
 	local flipS = 0
-	if script:GetAttribute("ShoulderCamTenoFlipEnabled") == nil then script:SetAttribute("ShoulderCamTenoFlipEnabled", true) end
+	if script:GetAttribute("ShoulderCamTenoFlipEnabled") == nil then script:SetAttribute("ShoulderCamTenoFlipEnabled", false) end -- v1.8: off by default (was true)
 	do
 		local st, at = char:GetAttribute("TenoLocalState"), tonumber(char:GetAttribute("TenoLocalAt"))
 		local want = false

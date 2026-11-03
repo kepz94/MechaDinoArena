@@ -2625,3 +2625,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoMovesMortarBigEnabled; TenoMovesShieldFastEnabled; TenoMovesShieldCoatAt | TenoMovesServer script | true; true; 0.2 | TenoMovesServer 1.5 |
 | TenoMortarBigPoseEnabled | teno model | true | TenoPose 1.8 |
 | TenoMovesFXMortarBigEnabled; part TenoMortarFlash | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.4 |
+| ShoulderCamTenoFlipEnabled | ShoulderCam script | false (was true in 1.7) | ShoulderCam 1.8 |
