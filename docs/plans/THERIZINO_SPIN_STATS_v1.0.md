@@ -56,7 +56,7 @@
 
 The shared rows Regeneration, Lifesteal, Jaws, Thick Hide and Sprint Legs all get `notFor.Therizino`.
 
-## Tasks (Dev Hub tickets on filing)
+## Tasks (Dev Hub MDA-207 T1, MDA-208 T2, MDA-209 T3, MDA-210 T4, MDA-211 T5, MDA-212 T6, MDA-213 T7, MDA-214 T8+T9)
 1. **TherizinoModelData 1.5** (generator 1.3; Wired):
    - TenoLeapOnJump false, TenoLeapEnabled false.
    - TheriSpinEnabled true, plus TheriSpinDamage 7, TheriSpinMaxCuts 3, TheriSpinCutGap 0.16, TheriSpinRadius 7, TheriSpinTurns 2.
