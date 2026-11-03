@@ -2659,3 +2659,7 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriLocalStep / TheriLocalAt / TheriInputResult / TheriLastInput / TheriClickBound / TheriAttackTestVersion | therizino character (owner client) | 0-3 (set last); time; "hit1-3" / "cooldown" / "recover" / "dead" / "stunned" / "dazed" / "pinned" / "menu" / "denied:<reason>"; "click" / "key" / "touch"; bool; "1.0" | TheriAttackTest 1.0 |
 | AbilityBarTheriEnabled; AbilityBarTheriStep / AbilityBarTheriLeapPips | AbilityBar script; character | true; 0-3 / "<left>/<max>" | AbilityBar 1.23 (ATTACK + JUMP tiles) |
 | ArenaTouchTheriEnabled; ArenaTouchTheriStep | ArenaTouch script; character | true; 0-3 | ArenaTouch 1.11 (TheriMain ATTACK + 3 step pips; ArenaTouchMainButton "Theri") |
+| TheriPoseEnabled / TheriRunPoseEnabled / TheriLeapPoseEnabled / TheriGroundLockEnabled / TheriDragEnabled / TheriClawFloorEnabled | therizino model (switches) | true each | TheriPose 1.0 layers (IdleAnimation 1.39) |
+| TheriChainHold / TheriFadeTime / TheriLeapLandTime / TheriDragClearance / TheriClawFloor | therizino model | 0.8 / 0.5 / 1.4 s / 0.15 / 0.1 studs | TheriPose 1.0 timings and claw heights |
+| TheriPoseTestKey | therizino model (test hook) | unset; a key name shows that key exactly | TheriPose 1.0 tip parity check |
+| TheriPoseVersion / TheriPoseState / TheriPoseSource / TheriPoseWeight / TheriLeapPhase / TheriRunBlend / TheriGroundShift / TheriDragGap / TheriDragBend / TheriClawLift | therizino model (each client) | diagnostics | TheriPose 1.0 |

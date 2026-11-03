@@ -1,4 +1,4 @@
--- IdleAnimation v1.38 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.39 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -212,6 +212,13 @@
 -- v1.38 (Kepu 2026-10-31: teno jump "looks so rough"; TenoPose 1.1): on teno leap frames the crouch / push / air weight is
 --       the one TenoPose.leap returns (TenoPose 1.1: the crouch eases in from the walk / idle pose; 1.0 returned 1, so a
 --       model with TenoLeapSmoothEnabled false is unchanged). Every other model unchanged.
+-- v1.39 (Therizinosaurus kit, MDA-203, plan docs/plans/THERIZINO_KIT_v1.0.md Task 6; TheriPose 1.0): on models with Species
+--       "Therizino" and TheriPoseEnabled ~= false: (a) the leap: JumpPose's biped pose is off (js.JumpPoseEnabled false for
+--       this frame's settings) and after the leap tracker TheriPose.leap(jump) replaces the pose by its weight (Diving Rake
+--       crouch / push / air / land), while TheriLeapPoseEnabled ~= false; (b) after the teno layers, TheriPose.top multiplies
+--       the claw combo (owner: TheriLocalStep / TheriLocalAt, others: TheriComboStep / TheriComboAt) and the Sidewinder run
+--       (weight = walk blend x gait blend x (1 - creep)) on top, then the root push, ground lock and right-claw drag.
+--       Diagnostics: TheriPose's (TheriPoseState, TheriLeapPhase, TheriRunBlend, ...). Every other model unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -247,6 +254,7 @@ local SlashPose = require(script.SlashPose) -- v1.33
 local HerreraJumpPose = require(script.HerreraJumpPose) -- v1.34
 local HerreraMovesPose = require(script.HerreraMovesPose) -- v1.36
 local TenoPose = require(script.TenoPose) -- v1.37
+local TheriPose = require(script.TheriPose) -- v1.39
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -549,6 +557,7 @@ model:SetAttribute("IdleAnimationVersion", "1.35") -- v1.35
 model:SetAttribute("IdleAnimationVersion", "1.36") -- v1.36
 model:SetAttribute("IdleAnimationVersion", "1.37") -- v1.37
 model:SetAttribute("IdleAnimationVersion", "1.38") -- v1.38
+model:SetAttribute("IdleAnimationVersion", "1.39") -- v1.39
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -820,6 +829,7 @@ RunService.PreSimulation:Connect(function(dt)
 	local jumpState, jumpW = "none", 0
 	if hrp and geo and model:GetAttribute("JumpEnabled") == true then
 		local js = JumpPose.settings(model)
+		if TheriPose.leapOn(model) then js.JumpPoseEnabled = false end -- v1.39: the therizino's leap layer (below) replaces it
 		local serverNow = workspace:GetServerTimeNow()
 		-- start stamp: server, or the local prediction on the owner's client
 		local jStart, jSource = model:GetAttribute("JumpStartedAt"), "server"
@@ -927,6 +937,15 @@ RunService.PreSimulation:Connect(function(dt)
 		show("JumpSource", jump and jump.source or "server")
 		show("JumpState", jumpState)
 		show("JumpBlend", math.floor(jumpW * 10 + 0.5) / 10)
+		-- v1.39: therizino Diving Rake leap layer (TheriPose 1.0) replaces the pose by its weight
+		if TheriPose.leapOn(model) then
+			local tp, tw = TheriPose.leap(model, jump, serverNow, now, hrp, dt)
+			if tp and tw > 0 then
+				for name, off in pairs(tp) do
+					if motors[name] then pose[name] = (pose[name] or CFrame.identity):Lerp(off, tw) end
+				end
+			end
+		end
 	end
 	-- v1.36: Herrera glide (Glider Wings) replaces the pose by the glide weight
 	if hrp and scurryOn and scurryGeo and (model:GetAttribute("GliderEnabled") == true or model:GetAttribute("GlideLocal") ~= nil) then
@@ -1233,6 +1252,13 @@ RunService.PreSimulation:Connect(function(dt)
 		end
 		show("TenoPoseState", tPhase or "none")
 		show("TenoPoseSource", tSrc)
+	end
+	-- v1.39: therizino claw combo + Sidewinder run + root push / ground lock / claw drag on top (TheriPose 1.0)
+	if TheriPose.on(model) then
+		local lpZ = Players.LocalPlayer
+		TheriPose.top(model, pose, motors, hrp, {isOwner = lpZ ~= nil and lpZ.Character == model,
+			serverNow = workspace:GetServerTimeNow(), now = now, dt = dt, runW = blend * gaitBlend * (1 - creepBlend),
+			walkPhase = walkPhase, show = show})
 	end
 	-- roar on top of whatever the body is doing (upper body only)
 	local roarState = "none"
