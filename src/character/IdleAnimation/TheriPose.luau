@@ -72,13 +72,23 @@
 --   default true). Play check (TheriRunPoseEnabled true): lowest right tip flat 0.12-0.29 (255 frames), 14-degree ramp
 --   0.01-0.29 (315), never under the ground, claws clear in a leap; left claws tucked ((6.2, -5.8, -18) vs the mockup's
 --   (6.3, -4.5, -18.1)). TheriRunPoseEnabled defaults to true again (Kepu sees the run in Studio before any publish).
+-- v1.3 (MDA-209, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 3; Kepu 2026-11-03 "Corkscrew", mockup
+--   docs/mockups/therizino_spin_dive_v0.1.html style B): the leap is the Spin Dive. Push / air target = S_SCREW (body
+--   stretched, neck forward, arms straight out; solved arm angles, tools/therizino_spin_poses_v0.1.json) instead of J_AIR
+--   (J_CROUCH -> S_SCREW over 0.1 s, out; the down-rake into J_LAND before the touchdown and the landing are 1.2's), and the
+--   whole body rolls about its own forward axis through the torso's middle: TheriSpinTurns (2) turns over TheriSpinAirTime
+--   (0.6 s; the measured air time) after the lift-off, fast start and easing into exactly the full turns (it ends upright);
+--   a landing before that finishes the roll in 0.12 s. The roll is a RootJoint rotation (the legs and tail turn with the
+--   body), so the HRP and the physics do not turn. Switch: model attribute TheriSpinPoseEnabled (default true; false = 1.2's
+--   Diving Rake). Diagnostic TheriSpinRoll (degrees, whole). Key S_SCREW joins KEYS (test hook / tip parity).
 local TheriPose = {}
-TheriPose.Version = "1.2"
+TheriPose.Version = "1.3"
 TheriPose.Defaults = {
 	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
 	TheriClawFloorEnabled = true, TheriClawFloor = 0.1,
 	TheriRunOwnUpperEnabled = true, TheriDragShoulderEnabled = true, -- v1.2
+	TheriSpinPoseEnabled = true, TheriSpinTurns = 2, TheriSpinAirTime = 0.6, -- v1.3
 }
 local LEG_JOINTS = {LegL = true, LegR = true, KneeL = true, KneeR = true, AnkleL = true, AnkleR = true} -- v1.2
 
@@ -134,6 +144,9 @@ KEYS.J_LAND = {RootJoint = {-32, 0, 0}, Neck = {-20, 0, 0}, Head = {-8, 0, 0}, J
 KEYS.RUN_B = {RootJoint = {-24, 0, 0}, Neck = {-14, 0, 0}, Head = {12, 0, 0}, Jaw = {-6, 0, 0}, ArmL = {32, 27, 60},
 	ElbowL = {130, 0, 0}, WristL = {-26, 0, 0}, ArmR = {-14, 18, 2}, WristR = {9, 0, 0}, Tail1 = {-4, 0, 0}}
 local FWD = {R_W = -0.5, R_S = 1, R_F = 1.3, L_W = -0.5, L_S = 1, L_F = 1.3, REAR = -1, REAR2 = -1.4, CHOP = 2, CHOP_SET = 2}
+KEYS.S_SCREW = {RootJoint = {-10, 0, 0}, Neck = {-50, 0, 0}, Head = {30, 0, 0}, Jaw = {-16, 0, 0}, ArmL = {43, -20, -41},
+	WristL = {18, 0, 0}, ArmR = {43, 20, 41}, WristR = {18, 0, 0}, Tail1 = {-8, 0, 0}, LegL = {-20, 0, 0}, LegR = {-20, 0, 0},
+	KneeL = {-30, 0, 0}, KneeR = {-30, 0, 0}} -- v1.3: the Corkscrew body (mockup v0.1 B)
 KEYS.ZERO = {}
 TheriPose.KEYS = KEYS
 
@@ -278,7 +291,9 @@ end
 -- the state below belongs to one model (each character's IdleAnimation requires its own copy of this module)
 local combo = {step = 0, at = nil, from = nil, target = nil, springs = newSprings(kitK), w = 0}
 local run = {springs = newSprings(runK), phase = 0, lastPh = nil}
-local leapS = {springs = newSprings(kitK), w = 0, lockW = 0, fwd = 0, phase = "none", lastAt = -math.huge, landFrom = nil}
+local leapS = {springs = newSprings(kitK), w = 0, lockW = 0, fwd = 0, phase = "none", lastAt = -math.huge, landFrom = nil,
+	roll = 0, rollAtLand = nil} -- v1.3: roll (radians) of the Spin Dive
+local spinPivot -- v1.3: the torso's middle in the RootJoint pose frame (studs)
 local lockSmooth = 0
 local fk -- {FootL = chain, FootR = chain, HandR = chain, scale = s}
 
@@ -394,7 +409,11 @@ function TheriPose.leap(model, jump, serverNow, now, hrp, dt)
 		tg = mixP(keyPose("READY"), keyPose("J_CROUCH"), EASE.io(clamp(x / W, 0, 1)))
 		w, lock = EASE.io(clamp(x / max(0.01, W / 2), 0, 1)), 1
 	elseif phase == "push" or phase == "air" then
-		tg = mixP(keyPose("J_CROUCH"), keyPose("J_AIR"), EASE.out(clamp(x / 0.19, 0, 1)))
+		if s.TheriSpinPoseEnabled then -- v1.3: the Corkscrew body
+			tg = mixP(keyPose("J_CROUCH"), keyPose("S_SCREW"), EASE.out(clamp(x / 0.1, 0, 1)))
+		else
+			tg = mixP(keyPose("J_CROUCH"), keyPose("J_AIR"), EASE.out(clamp(x / 0.19, 0, 1)))
+		end
 		w, lock = 1, phase == "push" and 1 or 0
 		if phase == "air" then
 			local vy = hrp.AssemblyLinearVelocity.Y
@@ -414,6 +433,18 @@ function TheriPose.leap(model, jump, serverNow, now, hrp, dt)
 		lock = w
 	end
 	leapS.phase = phase
+	-- v1.3: the Spin Dive roll
+	local full = 2 * math.pi * (tonumber(s.TheriSpinTurns) or 2)
+	if s.TheriSpinPoseEnabled and phase == "air" then
+		local u = clamp(x / max(0.05, s.TheriSpinAirTime), 0, 1)
+		leapS.roll, leapS.rollAtLand = full * (1 - (1 - u) ^ 2.2), nil
+	elseif s.TheriSpinPoseEnabled and phase == "land" then
+		leapS.rollAtLand = leapS.rollAtLand or leapS.roll
+		local r0 = leapS.rollAtLand
+		leapS.roll = (r0 > 0.01 and r0 < full - 0.01) and (r0 + (full - r0) * EASE.out(clamp(x / 0.12, 0, 1))) or 0
+	else
+		leapS.roll, leapS.rollAtLand = 0, nil
+	end
 	if not tg then
 		leapS.w, leapS.lockW, leapS.fwd = 0, 0, 0
 		return nil, 0
@@ -424,6 +455,23 @@ function TheriPose.leap(model, jump, serverNow, now, hrp, dt)
 	leapS.w, leapS.lockW, leapS.fwd = w, lock * w, out.fwd
 	local cfs = {}
 	for n, v in pairs(out.a) do cfs[n] = rot(v) end
+	local roll = leapS.roll % (2 * math.pi)
+	if roll > 1e-3 and roll < 2 * math.pi - 1e-3 and cfs.RootJoint then -- v1.3: roll about the body's forward axis (+X)
+		local sc = model:IsA("Model") and model:GetScale() or 1
+		if spinPivot and spinPivot.scale ~= sc then spinPivot = nil end
+		if not spinPivot then
+			local torso = model:FindFirstChild("Torso")
+			local root = torso and torso:FindFirstChild("Root")
+			local sum, n = Vector3.zero, 0
+			for _, p in ipairs(root and torso:GetDescendants() or {}) do
+				if p:IsA("BasePart") and p ~= root then sum += root.CFrame:PointToObjectSpace(p.Position); n += 1 end
+			end
+			spinPivot = {p = n > 0 and Vector3.new(0, sum.Y / n, sum.Z / n) or Vector3.zero, scale = sc}
+		end
+		cfs.RootJoint = CFrame.new(spinPivot.p) * CFrame.Angles(roll, 0, 0) * CFrame.new(-spinPivot.p) * cfs.RootJoint
+	end
+	local rd = math.floor(math.deg(roll) + 0.5)
+	if model:GetAttribute("TheriSpinRoll") ~= rd then model:SetAttribute("TheriSpinRoll", rd) end
 	return cfs, w
 end
 

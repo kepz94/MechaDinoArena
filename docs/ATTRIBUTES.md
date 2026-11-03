@@ -2670,3 +2670,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriSpinServerEnabled / TheriSpinModeRulesEnabled / TheriSpinSquadEnabled | TheriSpinServer script | true each | TheriSpinServer 1.0 switches |
 | TheriSpinServerVersion; TheriSpinDives / CutsTotal / Timeouts / SquadSkips; TheriSpinMode | TheriSpinServer script | "1.0"; counts; mode | TheriSpinServer 1.0 diagnostics |
 | TheriSpinStartedAt / TheriSpinCuts / TheriSpinCutTarget / TheriSpinCutPoint / TheriSpinCutAt / TheriSpinLandedAt | therizino character | time; count; name; Vector3; time (set last); time (0 = no landing) | TheriSpinServer 1.0 (FX + poses) |
+| TheriSpinPoseEnabled / TheriSpinTurns / TheriSpinAirTime | therizino model (TheriPose defaults) | true / 2 / 0.6 s | TheriPose 1.3 Corkscrew leap |
+| TheriSpinRoll | therizino model (each client) | degrees | TheriPose 1.3 diagnostic |
