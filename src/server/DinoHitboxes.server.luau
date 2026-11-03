@@ -1,4 +1,4 @@
--- DinoHitboxes v1.1 (Dino Arcade) — gives every dino a hitbox over each body part.
+-- DinoHitboxes v1.2 (Dino Arcade) — gives every dino a hitbox over each body part.
 -- Builds a folder "Hitboxes" in each dino model with one invisible box per segment (Torso, Neck, Head,
 -- Jaw, Tail1-5, LegL/R, ShinL/R, FootL/R, ArmL/R). Each box is the segment's visual parts' bounding box
 -- in the segment's Root frame, welded to that Root, so it follows the animation on every client.
@@ -15,10 +15,14 @@
 -- Diagnostics (model attributes): HitboxCount, HitboxVersion.
 -- v1.1: Workspace models with a Species attribute added later (BotServer 1.0 bots) get hitboxes when they appear
 --   (DescendantAdded); a model that already has a "Hitboxes" folder is still left as it is.
+-- v1.2 (MDA-200, plan docs/plans/THERIZINO_KIT_v1.0.md Task 3b; Kepu 2026-11-02 "No hitbox on claws"): a segment whose name is
+--   listed in the model attribute HitboxSkipSegments ("|" joined, e.g. TherizinoModelData 1.3 "HandL|HandR") gets no box.
+--   Switch: script attribute DinoHitboxesSkipEnabled (default true, read at each build; false = 1.1). Diagnostic: model
+--   attribute HitboxSkipped (how many segments were left out).
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local GROUP = "DinoHitbox"
 local BLOCKS = {Torso = true, Neck = true, Head = true, Tail1 = true, Tail2 = true, Tail3 = true, Tail4 = true, Tail5 = true}
 local MOUTH_CLIPPED = {Head = true, Jaw = true}
@@ -45,8 +49,19 @@ local function segmentBounds(seg, root)
 	return lo, hi
 end
 
+if script:GetAttribute("DinoHitboxesSkipEnabled") == nil then script:SetAttribute("DinoHitboxesSkipEnabled", true) end -- v1.2
+local function skipSet(model) -- v1.2
+	local set = {}
+	local list = model:GetAttribute("HitboxSkipSegments")
+	if script:GetAttribute("DinoHitboxesSkipEnabled") ~= false and type(list) == "string" then
+		for name in list:gmatch("[^|]+") do set[name] = true end
+	end
+	return set
+end
+
 local function build(model)
 	if model:FindFirstChild("Hitboxes") then return end
+	local skip, skipped = skipSet(model), 0 -- v1.2
 	local head = model:FindFirstChild("Head")
 	local mouth = head and head:FindFirstChild("Head_mouth")
 	local mouthMid = mouth and mouth.Position
@@ -56,6 +71,7 @@ local function build(model)
 	local count = 0
 	for _, seg in ipairs(model:GetChildren()) do
 		local root = seg:IsA("Model") and seg:FindFirstChild("Root")
+		if root and skip[seg.Name] then skipped += 1; root = nil end -- v1.2
 		if root and root:IsA("BasePart") then
 			local lo, hi = segmentBounds(seg, root)
 			if lo then
@@ -91,6 +107,7 @@ local function build(model)
 	end
 	model:SetAttribute("HitboxCount", count)
 	model:SetAttribute("HitboxVersion", VERSION)
+	model:SetAttribute("HitboxSkipped", skipped) -- v1.2
 end
 
 -- player characters

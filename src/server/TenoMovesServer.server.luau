@@ -1,4 +1,4 @@
--- TenoMovesServer v1.5 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.6 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -118,6 +118,11 @@
 --     while a charge is left, else the refill), so the slot tile and phone button show the jump's charges.
 --   Switch: script attribute TenoMovesLeapOnJumpEnabled (default true, read at each use; false = 1.3). Diagnostic: script
 --   TenoMovesJumpLeaps.
+-- v1.6 (MDA-200, plan docs/plans/THERIZINO_KIT_v1.0.md Task 3b; Kepu 2026-11-02 landing "Front only"): the JUMP landing slam
+--   (1.4) counts a target only when the flat angle between the root's facing and the target's root is <= TenoLeapArc / 2
+--   (character attribute; TherizinoModelData 1.3 sets 180 = the front half). No TenoLeapArc (every teno) = all around, as
+--   1.4. Switch: script attribute TenoMovesLeapArcEnabled (default true, read at each landing; false = 1.5). Diagnostic:
+--   character TenoLeapArcSkips (targets in the radius left out by the arc at the last landing).
 -- v1.5 (Kepu 2026-11-02 17:29: "the mortar animation and range needs to be beefed up" -> range 90 (SkillTree 1.56), "Big
 --   wind-up + whip"; "the shield takes way too long to actually appear on screen"):
 --   * Boulder Mortar: the boulder leaves MORTAR_FIRE3 (0.55) s after the press (TenoPose 1.8's 0.5 s wind-up, then the whip),
@@ -135,6 +140,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local VERSION = "1.3"
 VERSION = "1.4" -- v1.4 leap on JUMP
 VERSION = "1.5" -- v1.5 mortar wind-up + 90 studs, shield at 0.2 s
+VERSION = "1.6" -- v1.6 TenoLeapArc (front-only landing)
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
 local MORTAR_FIRE2, MORTAR_FLIGHT2, MORTAR_PEAK2 = 0.15, 0.7, 14 -- v1.2
@@ -1120,6 +1126,15 @@ do
 		return leapPublishV13(char, st, t)
 	end
 end
+local function inLeapArc(char, root, mr) -- v1.6
+	if script:GetAttribute("TenoMovesLeapArcEnabled") == false then return true end
+	local arc = tonumber(char:GetAttribute("TenoLeapArc"))
+	if not arc or arc >= 360 then return true end
+	local d = (mr.Position - root.Position) * Vector3.new(1, 0, 1)
+	local f = root.CFrame.LookVector * Vector3.new(1, 0, 1)
+	if d.Magnitude < 0.5 or f.Magnitude < 1e-3 then return true end
+	return math.deg(math.acos(math.clamp(f.Unit:Dot(d.Unit), -1, 1))) <= arc / 2
+end
 local function jumpSlam(char)
 	local player = Players:GetPlayerFromCharacter(char)
 	local hum = char:FindFirstChildOfClass("Humanoid")
@@ -1150,16 +1165,19 @@ local function jumpSlam(char)
 		end
 		local tl = now()
 		local dmg, radius, stunT = num(char, "TenoLeapDamage", 10), num(char, "TenoLeapRadius", 12), num(char, "TenoLeapStun", 0)
-		local n = 0
+		local n, arcSkips = 0, 0
 		for _, m in ipairs(candidates(char)) do
 			local mr = rootOf(m)
-			if gap(m, root.Position) <= radius and math.abs(mr.Position.Y - root.Position.Y) <= DY then
+			local near = gap(m, root.Position) <= radius and math.abs(mr.Position.Y - root.Position.Y) <= DY
+			if near and not inLeapArc(char, root, mr) then near = false; arcSkips += 1 end -- v1.6
+			if near then
 				n += 1
 				damage(char, player, m, dmg, "leap", tl)
 				if stunT > 0 and not shielded(m, tl) then stun(m, tl + stunT) end
 			end
 		end
 		char:SetAttribute("TenoLeapHits", n)
+		char:SetAttribute("TenoLeapArcSkips", arcSkips) -- v1.6
 		char:SetAttribute("TenoLeapUntil", 0)
 		char:SetAttribute("TenoLeapLandedAt", tl) -- last: FX
 	end)
