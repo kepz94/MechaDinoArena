@@ -1,4 +1,4 @@
--- TheriAttackTest v1.0 (Mecha Dino Arena) — the Therizinosaurus' ATTACK input on the owner's client: each tap is the next
+-- TheriAttackTest v1.1 (Mecha Dino Arena) — the Therizinosaurus' ATTACK input on the owner's client: each tap is the next
 -- hit of the 3-hit claw combo. MDA-202, plan docs/plans/THERIZINO_KIT_v1.0.md Task 5 (server: TheriAttackServer 1.0), mockup
 -- docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02: "3-hit combo", "A Reaper Sweeps").
 -- Pattern: TenoAttackTest 1.4 (same bindings, blocks and refusal handling; no hold: the press is the tap).
@@ -15,12 +15,17 @@
 -- Switch: character attribute TheriLeftClickEnabled (default true; false = R2 / touch only).
 -- Diagnostics (character, this client): TheriAttackTestVersion, TheriLocalStep (0 = none), TheriLocalAt, TheriInputResult,
 --   TheriLastInput ("click" / "key" / "touch"), TheriClickBound.
+-- v1.1 (MDA-212, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 6): the local prediction uses the same Flowing Cuts windows
+--   as TheriAttackServer 1.1: on a character with Species "Therizino", TheriFlowWindow > 0 replaces TheriChainWindow,
+--   TheriFlowGap > 0 replaces TheriMinGap, TheriFlowRecover > 0 replaces TheriFinisherRecover (SkillEffects 1.39 writes them;
+--   0 = 1.0). Switch: character attribute TheriLocalStatsEnabled (default true, read at each tap; false = 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 Flowing Cuts windows
 local ACTION = "DinoTheriAttack"
 local ACTION_CLICK = "DinoTheriAttackClick"
 local DEFAULTS = {TheriAttackEnabled = false, TheriMinGap = 0.33, TheriChainWindow = 0.8, TheriFinisherRecover = 0.9,
@@ -38,6 +43,19 @@ local function get(k)
 	local v = char:GetAttribute(k)
 	if v == nil then v = DEFAULTS[k] end
 	return v
+end
+-- v1.1: Flowing Cuts windows (see the header)
+local FLOW_OVER = {TheriChainWindow = "TheriFlowWindow", TheriMinGap = "TheriFlowGap", TheriFinisherRecover = "TheriFlowRecover"}
+do
+	local getV10 = get
+	get = function(k)
+		local over = FLOW_OVER[k]
+		if over and char:GetAttribute("TheriLocalStatsEnabled") ~= false and char:GetAttribute("Species") == "Therizino" then
+			local v = tonumber(char:GetAttribute(over)) or 0
+			if v > 0 then return v end
+		end
+		return getV10(k)
+	end
 end
 local function show(k, v)
 	if char:GetAttribute(k) ~= v then char:SetAttribute(k, v) end

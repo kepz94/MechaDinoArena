@@ -1,4 +1,4 @@
--- TheriAttackServer v1.0 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
+-- TheriAttackServer v1.1 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
 -- docs/plans/THERIZINO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/therizino_kit_options_v0.3.html
 -- (Kepu 2026-11-02: attack "3-hit combo", payoff "Damage only", picks "A Reaper Sweeps"; animation "I like this one").
 -- Pattern: TenoAttackServer 1.4's scratch path (request -> server checks -> hit resolved at a fixed delay in a front zone),
@@ -29,11 +29,33 @@
 --   true; false = players can always be hit), TheriAttackSquadEnabled (default true).
 -- Diagnostics: script TheriAttackServerVersion, TheriAttackRequests, TheriAttackTaps, TheriAttackHits, TheriAttackCancels,
 --   TheriAttackSquadSkips, TheriAttackMode.
+-- v1.1 (MDA-212, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 6; SkillTree 1.57 / SkillEffects 1.39 THERI_ATTRS): the
+--   therizino's stat rows act on the combo. Every field is a character attribute; 0 / 1 / false (not bought) = 1.0.
+--   Switch: script attribute TheriAttackStatsEnabled (default true, read at each use; false = 1.0). Species "Therizino" only.
+--   Chain live (Flow Guard): steps 1-2 from the tap to tap + chain window; step 3 from the tap to tap + TheriHitDelay3 +
+--   finisher recovery (the windows below, after Flowing Cuts).
+--   * Flowing Cuts: TheriFlowWindow > 0 replaces TheriChainWindow, TheriFlowGap > 0 replaces TheriMinGap, TheriFlowRecover > 0
+--     replaces TheriFinisherRecover. Star (TheriFlowRefill): a finisher that takes health from >= 1 target fires the
+--     BindableEvent ServerStorage.JumpAddCharge (JumpServer 1.4: +1 JUMP charge, never above the max).
+--   * Building Fury: TheriFuryHit2 > 0 replaces TheriHitDamage2, TheriFuryFinisher > 0 replaces TheriHitDamage3. III: each
+--     earlier cut of this chain that took health from the same target adds TheriFuryStack to this hit. Star: a finisher on a
+--     target that cuts 1 and 2 of this chain both hit deals x TheriFuryFullMul. Hit = (base + stack) x full x takenMul.
+--   * Flow Guard: I each Humanoid health drop while the chain is live is refunded drop x (1 - TheriGuardTakenMul) (a killing
+--     blow is not refunded; TenoStatsServer 1.1's Brace I rule). II (TheriGuardFinisherNoStun): a stun set between the
+--     finisher tap and its hit is cleared (StunnedUntil = now). III: a HeadbuttShoveDist / StunTossDistance written on the
+--     therizino while the chain is live is scaled by TheriGuardShoveMul. Star (TheriGuardKeepChain): a pending hit cancelled
+--     by a stun / daze keeps the chain step (1.0 resets it to 0; the cancelled hit still deals nothing).
+--   * Reaper's Harvest: each finisher hit that takes health heals TheriHarvestHeal x MaxHealth; a combo kill (KilledWith
+--     "thericlaw") heals TheriHarvestKillHeal x MaxHealth over 3 s; star (TheriHarvestLowDouble): x2 while below 30% health.
+--   Diagnostics: script TheriAttackStatsRefills, TheriAttackStatsRefunds, TheriAttackStatsHeals; character TheriFuryLastBonus
+--   ("+stack xfull" of the last hit), TheriChainLive, TheriGuardRefunded (total), TheriGuardStunCleared (count),
+--   TheriGuardShoved (last scaled distance), TheriHarvestHealed (total), TheriKeepChainCount, TheriRefillResult.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 therizino stat rows
 local DEFAULTS = {TheriHitDamage1 = 9, TheriHitDamage2 = 9, TheriHitDamage3 = 20, TheriHitDelay1 = 0.3, TheriHitDelay2 = 0.33,
 	TheriHitDelay3 = 0.55, TheriReach = 7, TheriReach3 = 8, TheriCone = 100, TheriMinGap = 0.33, TheriChainWindow = 0.8,
 	TheriFinisherRecover = 0.9}
@@ -206,6 +228,181 @@ local function resolve(player, char, st, step)
 	char:SetAttribute("TheriHitCount", (char:GetAttribute("TheriHitCount") or 0) + 1)
 	char:SetAttribute("TheriHitAt", ti) -- last: TheriFX reacts to this one
 end
+
+
+local guards -- v1.1: Flow Guard state, set below
+-- v1.1: the therizino's stat rows (see the header) --------------------------------------------------------------------------
+for _, k in ipairs({"TheriAttackStatsRefills", "TheriAttackStatsRefunds", "TheriAttackStatsHeals"}) do script:SetAttribute(k, 0) end
+if script:GetAttribute("TheriAttackStatsEnabled") == nil then script:SetAttribute("TheriAttackStatsEnabled", true) end
+local function statsOn(char)
+	return script:GetAttribute("TheriAttackStatsEnabled") ~= false and char:GetAttribute("Species") == "Therizino"
+end
+local ROW_OVER = {TheriChainWindow = "TheriFlowWindow", TheriMinGap = "TheriFlowGap", TheriFinisherRecover = "TheriFlowRecover",
+	TheriHitDamage2 = "TheriFuryHit2", TheriHitDamage3 = "TheriFuryFinisher"}
+do
+	local getV10 = get
+	get = function(char, k)
+		local over = ROW_OVER[k]
+		if over and statsOn(char) then
+			local v = num(char, over, 0)
+			if v > 0 then return v end
+		end
+		return getV10(char, k)
+	end
+end
+local function chainLive(char, t)
+	local st = states[char]
+	if not st or not statsOn(char) then return false end
+	if st.step == 1 or st.step == 2 then return t - st.lastTap <= math.max(0, get(char, "TheriChainWindow")) end
+	if st.step == 3 then
+		return t - st.finisherAt <= math.clamp(get(char, "TheriHitDelay3"), 0, MAX_DELAY) + math.max(0, get(char, "TheriFinisherRecover"))
+	end
+	return false
+end
+local function healBy(char, amount, why)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 or amount <= 0 then return end
+	if char:GetAttribute("TheriHarvestLowDouble") == true and hum.Health < 0.3 * hum.MaxHealth then amount *= 2 end
+	local new = math.min(hum.MaxHealth, hum.Health + amount)
+	local got = new - hum.Health
+	if got <= 0 then return end
+	local g = guards and guards[char]
+	if g then g.own, g.last = new, new end
+	hum.Health = new
+	count("TheriAttackStatsHeals")
+	char:SetAttribute("TheriHarvestHealed", math.floor(((char:GetAttribute("TheriHarvestHealed") or 0) + got) * 10 + 0.5) / 10)
+	char:SetAttribute("TheriHarvestLast", why)
+end
+local cur -- the resolve in progress: {char, step, st, base, landed}
+do
+	local takeHealthV10 = takeHealth
+	takeHealth = function(m, d, char, player, t)
+		local c = cur
+		if not (c and c.char == char and statsOn(char)) then return takeHealthV10(m, d, char, player, t) end
+		local st = c.st
+		st.chainHits = st.chainHits or {}
+		local prior = st.chainHits[m] or 0
+		local stack = math.max(0, num(char, "TheriFuryStack", 0)) * prior
+		local full = 1
+		if c.step == 3 and prior >= 2 then full = math.max(1, num(char, "TheriFuryFullMul", 1)) end
+		if c.base > 0 and (stack > 0 or full ~= 1) then d = d * (c.base + stack) / c.base * full end
+		char:SetAttribute("TheriFuryLastBonus", ("+%g x%g"):format(stack, full))
+		local before = m:GetAttribute("DummyHealth")
+		takeHealthV10(m, d, char, player, t)
+		local after = m:GetAttribute("DummyHealth")
+		if typeof(before) ~= "number" or typeof(after) ~= "number" or after >= before then return end
+		st.chainHits[m] = prior + 1
+		c.landed += 1
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		if c.step == 3 then healBy(char, math.max(0, num(char, "TheriHarvestHeal", 0)) * hum.MaxHealth, "finisher") end
+		local kh = math.max(0, num(char, "TheriHarvestKillHeal", 0))
+		if before > 0 and after <= 0 and kh > 0 then -- a combo kill: heal over 3 s
+			local total = kh * hum.MaxHealth
+			task.spawn(function()
+				for _ = 1, 6 do
+					task.wait(0.5)
+					if not char.Parent or hum.Health <= 0 then return end
+					healBy(char, total / 6, "kill")
+				end
+			end)
+		end
+	end
+end
+do
+	local resolveV10 = resolve
+	resolve = function(player, char, st, step)
+		if not statsOn(char) then return resolveV10(player, char, st, step) end
+		if step == 1 then st.chainHits = {} end
+		local prevStep, cancelBefore = st.step, char:GetAttribute("TheriComboCancelAt")
+		cur = {char = char, step = step, st = st, base = math.max(0, get(char, "TheriHitDamage" .. step)), landed = 0}
+		local ok, err = pcall(resolveV10, player, char, st, step)
+		local c = cur
+		cur = nil
+		if not ok then warn("TheriAttackServer resolve: " .. tostring(err)) return end
+		if char:GetAttribute("TheriComboCancelAt") ~= cancelBefore then -- cancelled
+			local why = blocked(player, char, now())
+			if char:GetAttribute("TheriGuardKeepChain") == true and (why == "stunned" or why == "dazed") then
+				st.step = prevStep
+				char:SetAttribute("TheriKeepChainCount", (char:GetAttribute("TheriKeepChainCount") or 0) + 1)
+			end
+			return
+		end
+		if step == 3 and c.landed > 0 and char:GetAttribute("TheriFlowRefill") == true then
+			local ev = ServerStorage:FindFirstChild("JumpAddCharge")
+			if ev and ev:IsA("BindableEvent") then
+				ev:Fire(char)
+				count("TheriAttackStatsRefills")
+				char:SetAttribute("TheriRefillResult", "fired")
+			else
+				char:SetAttribute("TheriRefillResult", "noHook")
+			end
+		end
+	end
+end
+-- Flow Guard watchers (per therizino character)
+guards = setmetatable({}, {__mode = "k"}) -- [char] = {last, own, HeadbuttShoveDist / StunTossDistance own writes}
+local function guard(char)
+	if guards[char] then return end
+	local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid", 10)
+	if not hum then return end
+	local g = {last = hum.Health}
+	guards[char] = g
+	hum.HealthChanged:Connect(function(h)
+		if g.own and math.abs(h - g.own) < 1e-3 then g.own = nil g.last = h return end
+		local drop = g.last - h
+		g.last = h
+		if drop <= 0 or h <= 0 or not chainLive(char, now()) then return end
+		local mul = math.clamp(num(char, "TheriGuardTakenMul", 1), 0, 1)
+		if mul >= 1 then return end
+		local new = math.min(hum.MaxHealth, h + drop * (1 - mul))
+		g.own, g.last = new, new
+		hum.Health = new
+		count("TheriAttackStatsRefunds")
+		char:SetAttribute("TheriGuardRefunded", math.floor(((char:GetAttribute("TheriGuardRefunded") or 0) + drop * (1 - mul)) * 10 + 0.5) / 10)
+	end)
+	char:GetAttributeChangedSignal("StunnedUntil"):Connect(function()
+		local t, u = now(), num(char, "StunnedUntil", 0)
+		if u <= t or char:GetAttribute("TheriGuardFinisherNoStun") ~= true or not statsOn(char) then return end
+		local st = states[char]
+		if not (st and st.step == 3 and t - st.finisherAt <= math.clamp(get(char, "TheriHitDelay3"), 0, MAX_DELAY) + 0.05) then return end
+		char:SetAttribute("StunnedUntil", t)
+		char:SetAttribute("TheriGuardStunCleared", (char:GetAttribute("TheriGuardStunCleared") or 0) + 1)
+	end)
+	for _, k in ipairs({"HeadbuttShoveDist", "StunTossDistance"}) do
+		char:GetAttributeChangedSignal(k):Connect(function()
+			local d = char:GetAttribute(k)
+			if typeof(d) ~= "number" or d <= 0 or g[k] == d then return end
+			local mul = math.clamp(num(char, "TheriGuardShoveMul", 1), 0, 1)
+			if mul >= 1 or not chainLive(char, now()) then return end
+			g[k] = d * mul
+			char:SetAttribute(k, d * mul)
+			char:SetAttribute("TheriGuardShoved", math.floor(d * mul * 10 + 0.5) / 10)
+		end)
+	end
+	char:SetAttribute("TheriChainLive", false)
+end
+local function onChar(char)
+	if char:GetAttribute("Species") == "Therizino" then task.spawn(guard, char) end
+	char:GetAttributeChangedSignal("Species"):Connect(function()
+		if char:GetAttribute("Species") == "Therizino" then task.spawn(guard, char) end
+	end)
+end
+for _, pl in ipairs(Players:GetPlayers()) do
+	if pl.Character then onChar(pl.Character) end
+	pl.CharacterAdded:Connect(onChar)
+end
+Players.PlayerAdded:Connect(function(pl) pl.CharacterAdded:Connect(onChar) end)
+game:GetService("RunService").Heartbeat:Connect(function()
+	local t
+	for char in pairs(guards) do
+		if char.Parent then
+			t = t or now()
+			local live = chainLive(char, t)
+			if char:GetAttribute("TheriChainLive") ~= live then char:SetAttribute("TheriChainLive", live) end
+		end
+	end
+end)
 
 local remote = ReplicatedStorage:FindFirstChild("DinoTheriAttack")
 if not remote then

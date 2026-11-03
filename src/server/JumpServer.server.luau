@@ -1,4 +1,4 @@
--- JumpServer v1.3 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
+-- JumpServer v1.4 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
 -- Client -> server: ReplicatedStorage.DinoJumpRequest:FireServer(clientServerTime) (sent by JumpTest 1.0 at the
 --   key press, i.e. the start of the crouch).
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now], written to the character attribute
@@ -34,11 +34,20 @@
 --   (replicated): JumpChargesLeft, JumpChargeRefillAt (server time of the next refill, 0 when full). JumpCharges 0 / missing
 --   = the 1.2 cooldown rule. Switch: script attribute JumpChargesServerEnabled (default true, read at each request;
 --   false = 1.2).
+-- v1.4 (MDA-212, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 6, red-team item 4: "a do-nothing-unless-called hook"):
+--   BindableEvent ServerStorage.JumpAddCharge (created here). :Fire(character) gives that character one leap charge back:
+--   "ok" when the 1.3 charges are on for it (JumpCharges >= 1) and a charge is used (the furthest pending refill is dropped,
+--   so later refills keep their times); "full" when every charge is left; "noCharges" (JumpCharges 0 / missing: the 1.2
+--   cooldown rule); "disabled" (switch off); a non-Model argument is ignored. Never above the max. Only TheriAttackServer 1.1 (Flowing
+--   Cuts star) fires it today; nothing changes for a dino it is not fired for. Switch: script attribute JumpAddChargeEnabled
+--   (default true, read at each fire). Diagnostics: script JumpAddCharges (count of "ok"); character JumpAddChargeResult,
+--   JumpAddChargeAt.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DEFAULTS = {JumpEnabled = false, JumpStaminaCost = 15, JumpCooldown = 0.5, StaminaEnabled = true,
 	StaminaMax = 100}
 script:SetAttribute("JumpServerVersion", "1.3") -- v1.1; v1.2; v1.3
+script:SetAttribute("JumpServerVersion", "1.4") -- v1.4 JumpAddCharge hook
 if script:GetAttribute("JumpPinnedBlockEnabled") == nil then script:SetAttribute("JumpPinnedBlockEnabled", true) end
 local MAX_LAG = 0.3 -- seconds a client stamp may lag behind the server clock (same as BiteServer)
 
@@ -186,3 +195,38 @@ doubleRemote.OnServerEvent:Connect(function(player, stamp)
 		char:SetAttribute("JumpDoubleAt", math.clamp(stamp, now - MAX_LAG, now))
 	end
 end)
+
+-- v1.4: JumpAddCharge (see the header)
+if script:GetAttribute("JumpAddChargeEnabled") == nil then script:SetAttribute("JumpAddChargeEnabled", true) end
+script:SetAttribute("JumpAddCharges", 0)
+do
+	local SS = game:GetService("ServerStorage")
+	local addEv = SS:FindFirstChild("JumpAddCharge")
+	if not (addEv and addEv:IsA("BindableEvent")) then
+		addEv = Instance.new("BindableEvent")
+		addEv.Name = "JumpAddCharge"
+		addEv.Parent = SS
+	end
+	addEv.Event:Connect(function(char)
+		if typeof(char) ~= "Instance" or not char:IsA("Model") then return end
+		local result
+		if script:GetAttribute("JumpAddChargeEnabled") == false then
+			result = "disabled"
+		elseif not chargesOn(char) then
+			result = "noCharges"
+		else
+			local st = chargeStateOf(char)
+			if st.left >= st.max then
+				result = "full"
+			else
+				st.left += 1
+				table.remove(st.refills) -- the furthest pending refill
+				chargePublish(char, st)
+				script:SetAttribute("JumpAddCharges", (script:GetAttribute("JumpAddCharges") or 0) + 1)
+				result = "ok"
+			end
+		end
+		char:SetAttribute("JumpAddChargeResult", result)
+		char:SetAttribute("JumpAddChargeAt", workspace:GetServerTimeNow())
+	end)
+end
