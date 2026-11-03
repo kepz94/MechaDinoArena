@@ -9,7 +9,11 @@ character). Only the two arm segments change; the body, head, tail, legs, colour
   low    - C Low flare: arms down and out wide, hands low, the claws fanned out pointing forward and down
   high   - D High flare: hands raised out wide at shoulder height, the claws fanned up and curling forward
   lowup  - C2 Low flare, palms up (Kepu's pick 2026-11-02: "Low flare but claws facing up palms up"): C's arms, hands
-           low and out wide, palms turned up, the fanned claws reaching forward and curling up
+           low and out wide, palms turned up, the fanned claws reaching forward and curling up (TherizinoModelData 1.1,
+           never published; Kepu: "I want it open handed with the claws still hanging low")
+  lowopen - C3 Low flare, open hand (the pick, TherizinoModelData 1.2): C's arms, hands at hip height and out wide, the
+           three claws spread apart in the front plane (24 deg) like spread fingers, hanging down and a little out, the tips
+           kept off the ground (the HIP stays 5.74)
 The open stances keep the v1.0 scale (K from the close build) so wide arms never shrink the body. The data file's
 attributes are carried from the current TherizinoModelData (v1.0 took them from the T-Rex file, which has changed since).
 v1.0 (Kepu 2026-11-02: "Let's go with the reaper look"): Classic = A Reaper (default look); without --json the generator
@@ -48,7 +52,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "TherizinoModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 SMOOTH = {"eyes", "pupil", "tooth", "claws", "mouth"}
-VERSION = "1.1"  # v1.1: TherizinoModelData 1.1 = stance C2 (lowup)
+VERSION = "1.2"  # TherizinoModelData 1.2 = stance C3 (lowopen); 1.1 = C2 (lowup), never published
 TARGET_LEN = 16.0    # studs at scale 1 (~32 in game)
 HRP_SIZE_D0 = (3.0, 2.6, 1.6)
 ROLES = ["main", "back", "belly", "coat", "mane", "limbs", "claws", "eyes", "beak", "mask"]
@@ -67,8 +71,8 @@ LOOKS = {  # v0.2: three styles (body designs)
 }
 LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"  # v1.0: Classic = A Reaper
 STANCES = {"close": "A Close (v1.0)", "guard": "B Wide guard", "low": "C Low flare", "high": "D High flare",
-           "lowup": "C2 Low flare, palms up"}  # v1.1
-STANCE = sys.argv[sys.argv.index("--stance") + 1] if "--stance" in sys.argv else "lowup"  # v1.1: Kepu picked C2
+           "lowup": "C2 Low flare, palms up", "lowopen": "C3 Low flare, open hand"}  # v1.1
+STANCE = sys.argv[sys.argv.index("--stance") + 1] if "--stance" in sys.argv else "lowopen"  # v1.1: Kepu picked C3 (C2 lowup was the first try)
 assert STANCE in STANCES, "unknown stance"
 K_CLOSE = None  # v1.1: the close build's length scale, used for every stance
 L = LOOKS[LOOK]
@@ -208,13 +212,15 @@ def arm_open(side, sh, el, wr, root_z, upper_w, fore_w, hand, fringe_len):
     return nm, c
 
 
-def claws_fan(segname, wr, side, dirs, lens, widths, thicks, fan, start=0.12):
+def claws_fan(segname, wr, side, dirs, lens, widths, thicks, fan, start=0.12, axis="y"):
     """v1.1: three claws fanned apart: each claw's curve (`dirs`, outward z positive) is turned `fan` degrees further
     about the up axis than its neighbour (inner -fan, middle 0, outer +fan), so the tips flare."""
     for i, (k, lm) in enumerate(((-1, 0.88), (0, 1.0), (1, 0.8))):
         a = math.radians(fan * k)
         def turn(d):
             x, y, z = d[0], d[1], d[2]
+            if axis == "x":  # v1.1 open hand: the claws spread in the front plane (about the forward axis), like spread fingers
+                return (x, y * math.cos(a) - z * math.sin(a), side * (y * math.sin(a) + z * math.cos(a)))
             return (x * math.cos(a) - z * math.sin(a), y, side * (x * math.sin(a) + z * math.cos(a)))
         d0 = norm(turn(dirs[0]))
         pt = (wr[0] + d0[0] * start, wr[1] + d0[1] * start + k * 0.04, wr[2] + d0[2] * start)
@@ -229,6 +235,8 @@ ARM_STANCES = {  # v1.1: (shoulder, elbow, wrist as (x, y, |z|)), claw curve (x 
             ((0.82, -0.3, 0.48), (0.78, -0.55, 0.3), (0.5, -0.86, 0.1), (0.15, -0.99, 0.0)), 22),
     "lowup": ((1.75, 1.3, 1.0), (1.45, -0.05, 2.2), (2.35, -0.95, 3.0),  # v1.1 pick: C's arms, palms up, claws curl up
               ((0.86, 0.12, 0.46), (0.8, 0.48, 0.3), (0.48, 0.86, 0.12), (0.08, 0.99, 0.0)), 22),
+    "lowopen": ((1.75, 1.3, 1.0), (1.45, 0.2, 2.2), (2.2, -0.05, 2.85),  # v1.1 pick 2: C's arms, open hand, claws hang low
+                ((0.2, -0.8, 0.56), (0.15, -0.88, 0.45), (0.1, -0.95, 0.3), (0.05, -0.99, 0.12)), 24, "x"),
     "high": ((1.75, 1.3, 1.0), (1.45, 0.95, 2.35), (2.4, 2.05, 2.7),
              ((0.32, 0.9, 0.28), (0.72, 0.66, 0.2), (0.97, 0.18, 0.1), (0.88, -0.48, 0.0)), 18),
 }
@@ -327,9 +335,10 @@ if STYLE == "reaper":
             claws(nm, (3.2, -0.45), side * 1.15, side, ((0.9, -0.44), (0.6, -0.8), (0.2, -0.98), (-0.25, -0.97)),
                   (1.1, 1.0, 0.9, 0.7), (0.2, 0.16, 0.11, 0.06), (0.11, 0.09, 0.07, 0.05), 0.2)
         else:  # v1.1 open stances (same joint root as v1.0: z 1.15 * 0.85)
-            sh_, el_, wr_, cdirs, fan = ARM_STANCES[STANCE]
+            sh_, el_, wr_, cdirs, fan = ARM_STANCES[STANCE][:5]
+            fan_axis = ARM_STANCES[STANCE][5] if len(ARM_STANCES[STANCE]) > 5 else "y"
             nm, wpt = arm_open(side, sh_, el_, wr_, 1.15 * 0.85, 0.36, 0.26, (0.44, 0.32, 0.42), 0.6)
-            claws_fan(nm, wpt, side, cdirs, (1.1, 1.0, 0.9, 0.7), (0.2, 0.16, 0.11, 0.06), (0.11, 0.09, 0.07, 0.05), fan)
+            claws_fan(nm, wpt, side, cdirs, (1.1, 1.0, 0.9, 0.7), (0.2, 0.16, 0.11, 0.06), (0.11, 0.09, 0.07, 0.05), fan, axis=fan_axis)
     tail([(0.9, (0.95, 0.62, 0.58), -8), (0.85, (0.9, 0.48, 0.45), -10), (0.75, (0.8, 0.36, 0.34), -12),
           (0.65, (0.7, 0.27, 0.26), -10), (0.55, (0.6, 0.2, 0.2), -8)], (-0.9, 0.3))
     legs((0.55, -1.7), (-0.2, -3.1), (0.12, -3.6), 0.55, 0.6, 0.36, 0.32, 0.72)
@@ -533,7 +542,7 @@ if "--json" not in sys.argv:
     attrs.pop("StarterCharacterVersion", None)
     lines = [f"-- TherizinoModelData v{VERSION} (Mecha Dino Arena) — block-style feathered Therizinosaurus ({LOOK} {L['name']}: tall and gaunt, feather cloak, scythe claws), rig 1.3 joint names, skin-ready colour groups.",
              "-- Generated by tools/therizino_generator.py (do not edit by hand; change the generator and re-run). Mockup docs/mockups/therizino_model_options.html (v0.2, Kepu picked A Reaper).",
-             f"-- Arm stance: {STANCES[STANCE]} (v1.1, Kepu 2026-11-02 \"Low flare but claws facing up palms up\"; mockup docs/mockups/therizino_stance_options.html v0.2). v1.0 = stance close.",
+             f"-- Arm stance: {STANCES[STANCE]} (Kepu 2026-11-02 \"open handed with the claws still hanging low like the iconic wolverine stance\"; mockup docs/mockups/therizino_stance_options.html v0.3). v1.0 = close, v1.1 = lowup.",
              f"-- Scale: {hi[0] - lo[0]:.2f} studs long, hip {HIP:.4g} studs; doubled in game like the raptor / Herrera / troodon (~{2 * (hi[0] - lo[0]):.0f}; raptor ~25.7, T-Rex ~40).",
              f"-- Colour groups (Classic = {L['name']}): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: teeth E8E2D2, pupil 111111, mouth 6E342E.",
              "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB. Rebuild with DinoModelBuilder.build(require(TherizinoModelData)).",
