@@ -438,6 +438,27 @@ JOINTS = [("RootJoint", "HRP", "Torso"), ("Neck", "Torso", "Neck"), ("Head", "Ne
           ("LegL", "Torso", "LegL"), ("LegR", "Torso", "LegR"), ("KneeL", "LegL", "ShinL"), ("KneeR", "LegR", "ShinR"),
           ("AnkleL", "ShinL", "FootL"), ("AnkleR", "ShinR", "FootR")]
 
+# ---------------------------------------------------------------- v1.1 --elbows (kit mockup): elbow + wrist joints
+# Splits each arm segment into ArmL (shoulder + upper arm), ForeL (elbow + forearm + feather fringe, root at the elbow,
+# joint ElbowL) and HandL (hand + claws, root at the wrist, joint WristL); same for R. Same blocks, same rest pose: only
+# the joints are new, so the claws can bend at the elbow and flick at the wrist. Off unless --elbows is passed (the data
+# file stays the 17-segment rig until a kit plan adopts it).
+if "--elbows" in sys.argv:
+    for s_ in ("L", "R"):
+        arm_ = segments[f"Arm{s_}"]
+        elbow_ = next(p for p in arm_["parts"] if p["name"] == f"Arm{s_}_elbow")
+        hand_ = next(p for p in arm_["parts"] if p["name"] == f"Arm{s_}_hand")
+        fore_parts = [p for p in arm_["parts"] if p["name"] in (f"Arm{s_}_elbow", f"Arm{s_}_fore") or "_fringe" in p["name"]]
+        hand_parts = [p for p in arm_["parts"] if p["name"] == f"Arm{s_}_hand" or "_claw" in p["name"]]
+        arm_["parts"] = [p for p in arm_["parts"] if p not in fore_parts and p not in hand_parts]
+        seg(f"Fore{s_}", elbow_["center"])
+        segments[f"Fore{s_}"]["parts"] = fore_parts
+        seg(f"Hand{s_}", hand_["center"])
+        segments[f"Hand{s_}"]["parts"] = hand_parts
+        JOINTS.append((f"Elbow{s_}", f"Arm{s_}", f"Fore{s_}"))
+        JOINTS.append((f"Wrist{s_}", f"Fore{s_}", f"Hand{s_}"))
+
+
 # ---------------------------------------------------------------- posture: the look's neck lean (neck, head, jaw turn about the neck root)
 if NECK_RAISE:
     Rn = rot(NECK_RAISE)
