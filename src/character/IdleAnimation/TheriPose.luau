@@ -55,13 +55,32 @@
 -- v1.1 (Kepu 2026-11-02 "publish what is for sure done"): TheriRunPoseEnabled defaults to false: the Sidewinder drag does not
 --   reach the ground at full run yet (right claw tips 7-9 studs up; MDA-203 item 4). A model attribute TheriRunPoseEnabled =
 --   true turns the 1.0 run layer back on. Nothing else changed.
+-- v1.2 (MDA-206, Kepu 2026-11-03): the Sidewinder drag fixed. Root cause: the run layer multiplied RUN_B on top of WalkPose's
+--   run gait, but RUN_B (and the mockup's run motion) were made on a body without it: WalkPose folds both arms back by
+--   RunArmTuck (35 degrees, plus RunArmSwing), so at full run the right claws rode behind and up (HRP-local tip
+--   (-14.7, -3.6, 6.4) instead of (-14.7, -10.1, 1.2); measured in Play (-15, -2.7..-4.7, 6..8)), and its RunLean / neck /
+--   tail motion stacked on RUN_B's hunch (the tucked left claws hung at the ground). Now, while the run layer plays, every
+--   joint but the legs (RootJoint, Neck, Head, Jaw, Tail1-5, ArmL/R, ElbowL/R, WristL/R) blends from WalkPose's pose to the
+--   rest pose by the run weight before the run layer is multiplied on, so the upper body is the mockup's run; the legs keep
+--   WalkPose's world pose (LegL / LegR = (new RootJoint)^-1 * WalkPose's RootJoint * pose). Switch: model attribute
+--   TheriRunOwnUpperEnabled (default true; false = 1.1). Drag reach: the run's body bob / roll lifted the right hand out of
+--   the wrist's reach every other step (lowest tip 0.25 / 1.5 studs alternating); when the wrist leaves the tip more than
+--   0.15 studs above TheriDragClearance, the same solver rolls ArmR (axis r, within +-25 degrees) to bring it down. Switch
+--   TheriDragShoulderEnabled (default true); diagnostic TheriDragShoulder (degrees). Slopes: the solver measured the ground
+--   under each tip once and kept it while the bend moved the tips 2-4 studs, so on a 14-degree ramp the claws went up to
+--   0.94 studs into the slope; now the ground is measured again at every step (model attribute TheriClawRecastEnabled,
+--   default true). Play check (TheriRunPoseEnabled true): lowest right tip flat 0.12-0.29 (255 frames), 14-degree ramp
+--   0.01-0.29 (315), never under the ground, claws clear in a leap; left claws tucked ((6.2, -5.8, -18) vs the mockup's
+--   (6.3, -4.5, -18.1)). TheriRunPoseEnabled defaults to true again (Kepu sees the run in Studio before any publish).
 local TheriPose = {}
-TheriPose.Version = "1.1"
+TheriPose.Version = "1.2"
 TheriPose.Defaults = {
-	TheriPoseEnabled = true, TheriRunPoseEnabled = false, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
+	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
 	TheriClawFloorEnabled = true, TheriClawFloor = 0.1,
+	TheriRunOwnUpperEnabled = true, TheriDragShoulderEnabled = true, -- v1.2
 }
+local LEG_JOINTS = {LegL = true, LegR = true, KneeL = true, KneeR = true, AnkleL = true, AnkleR = true} -- v1.2
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ElbowL", "WristL", "ArmR", "ElbowR", "WristR", "Tail1", "Tail2",
 	"Tail3", "Tail4", "Tail5", "LegL", "LegR", "KneeL", "KneeR", "AnkleL", "AnkleR"}
@@ -426,17 +445,20 @@ end
 -- claw tip of that hand sits `target` studs above the ground under it (raycast at each tip; ground = terrain or anchored
 -- parts, so a target dino's body never counts); liftOnly = only when it is lower.
 -- The bend is applied x weight. Returns the gap after (nil = no ground under the tips) and the bend.
-local function solveWrist(motors, hrpCF, pose, side, target, liftOnly, weight, model)
-	local chain, wrist = fk["Hand" .. side], "Wrist" .. side
+local function solveWrist(motors, hrpCF, pose, side, target, liftOnly, weight, model, joint, axis, limit)
+	local chain, wrist = fk["Hand" .. side], joint or ("Wrist" .. side)
+	axis, limit = axis or 1, limit or 45
+	local function ang(b) local v = {0, 0, 0}; v[axis] = b; return rot(v) end
 	if not chain or not motors[wrist] or #chain.tips == 0 then return nil, 0 end
 	rayParams.FilterDescendantsInstances = {model}
 	local ground = {}
+	local s12 = model:GetAttribute("TheriClawRecastEnabled") ~= false -- v1.2
 	local function gapOf(first)
 		local cf = chainCF(motors, hrpCF, chain, pose)
 		local g = math.huge
 		for i, tip in ipairs(chain.tips) do
 			local p = cf * tip
-			if first then
+			if first or s12 then -- v1.2: the ground is measured again under the tip's new spot (bends move tips 2-4 studs)
 				local hit = workspace:Raycast(p + Vector3.new(0, 4, 0), Vector3.new(0, -10, 0), rayParams)
 				ground[i] = (hit and (hit.Instance:IsA("Terrain") or hit.Instance.Anchored)) and hit.Position.Y or false
 			end
@@ -452,14 +474,14 @@ local function solveWrist(motors, hrpCF, pose, side, target, liftOnly, weight, m
 	for _ = 1, 3 do
 		local err = gap - target
 		if math.abs(err) < 0.05 then break end
-		pose[wrist] = base * rot({b + 4, 0, 0})
+		pose[wrist] = base * ang(b + 4)
 		local slope = (gapOf(false) - gap) / 4
 		if math.abs(slope) < 0.005 then break end
-		b = clamp(b - clamp(err / slope, -20, 20), -45, 45)
-		pose[wrist] = base * rot({b, 0, 0})
+		b = clamp(b - clamp(err / slope, -20, 20), -limit, limit)
+		pose[wrist] = base * ang(b)
 		gap = gapOf(false)
 	end
-	pose[wrist] = base * rot({b * weight, 0, 0})
+	pose[wrist] = base * ang(b * weight)
 	if weight < 1 then gap = gapOf(false) end
 	return gap, b * weight
 end
@@ -528,13 +550,21 @@ function TheriPose.top(model, pose, motors, hrp, ctx)
 	end
 	-- apply: run (legs keep their world pose), then the combo
 	if rOut then
+		local own = s.TheriRunOwnUpperEnabled and rw or 0 -- v1.2: the run layer takes the upper body over from WalkPose's run
 		for n, v in pairs(rOut.a) do
-			if motors[n] and n ~= "RootJoint" then pose[n] = (pose[n] or CFrame.identity) * rot(v) end
+			if motors[n] and n ~= "RootJoint" then
+				local base = pose[n] or CFrame.identity
+				if own > 0 and not LEG_JOINTS[n] then base = base:Lerp(CFrame.identity, own) end
+				pose[n] = base * rot(v)
+			end
 		end
 		local E = rot(rOut.a.RootJoint)
-		if motors.RootJoint then pose.RootJoint = (pose.RootJoint or CFrame.identity) * E end
+		local Wr = pose.RootJoint or CFrame.identity
+		local Wl = own > 0 and Wr:Lerp(CFrame.identity, own) or Wr
+		if motors.RootJoint then pose.RootJoint = Wl * E end
+		local back = (Wl * E):Inverse() * Wr -- the legs keep WalkPose's world pose
 		for _, n in ipairs({"LegL", "LegR"}) do
-			if motors[n] then pose[n] = E:Inverse() * (pose[n] or CFrame.identity) end
+			if motors[n] then pose[n] = back * (pose[n] or CFrame.identity) end
 		end
 	end
 	if cOut then
@@ -569,8 +599,13 @@ function TheriPose.top(model, pose, motors, hrp, ctx)
 	local dragOn = rw > 0.05 and s.TheriDragEnabled
 	if dragOn then
 		local gap, bend = solveWrist(motors, hrpCF, pose, "R", s.TheriDragClearance, false, min(1, rw), model)
+		local shoulder = 0
+		if s.TheriDragShoulderEnabled and gap and gap > s.TheriDragClearance + 0.15 then -- v1.2: out of the wrist's reach
+			gap, shoulder = solveWrist(motors, hrpCF, pose, "R", s.TheriDragClearance, false, min(1, rw), model, "ArmR", 3, 25)
+		end
 		show("TheriDragGap", gap and math.floor(gap * 100 + 0.5) / 100 or -1)
 		show("TheriDragBend", math.floor((bend or 0) + 0.5))
+		show("TheriDragShoulder", math.floor((shoulder or 0) + 0.5))
 	end
 	if s.TheriClawFloorEnabled then
 		local lift = 0

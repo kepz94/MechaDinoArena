@@ -2663,3 +2663,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriChainHold / TheriFadeTime / TheriLeapLandTime / TheriDragClearance / TheriClawFloor | therizino model | 0.8 / 0.5 / 1.4 s / 0.15 / 0.1 studs | TheriPose 1.0 timings and claw heights |
 | TheriPoseTestKey | therizino model (test hook) | unset; a key name shows that key exactly | TheriPose 1.0 tip parity check |
 | TheriPoseVersion / TheriPoseState / TheriPoseSource / TheriPoseWeight / TheriLeapPhase / TheriRunBlend / TheriGroundShift / TheriDragGap / TheriDragBend / TheriClawLift | therizino model (each client) | diagnostics | TheriPose 1.0 |
+| TheriRunOwnUpperEnabled / TheriDragShoulderEnabled / TheriClawRecastEnabled | therizino model (switches) | true each | TheriPose 1.2 run fixes (upper body owned by the run layer, shoulder reach, ground re-measured) |
+| TheriDragShoulder | therizino model (each client) | degrees | TheriPose 1.2 diagnostic: ArmR roll added by the drag solver |
