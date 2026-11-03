@@ -2695,3 +2695,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriFourthDelay / TheriFourthRecover | therizino character (optional) | 0.3 s / 0.8 s (defaults) | TheriAttackServer 1.2: tap -> sweep hit; refuse window after a non-star 4th |
 | TheriLocalFourthEnabled | therizino character | true (false = 1.1) | TheriAttackTest 1.2: local step 4 prediction |
 | TheriFourthPoseEnabled; TheriFourthYaw | therizino model (TheriPose default); each client | true; degrees | TheriPose 1.4 Ground Scythe (step 4) + its whole-body yaw diagnostic |
+| AbilityBarTheriHitsLeftEnabled; AbilityBarTheriHitsLeft | AbilityBar script; character (this client) | true (false = 1.23 step count); "<left>/<max>" | AbilityBar 1.24: therizino ATTACK pips = hits left |
