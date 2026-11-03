@@ -52,10 +52,13 @@
 --   TheriPoseSource ("local" / "server"), TheriPoseWeight, TheriLeapPhase ("none" / "crouch" / "push" / "air" / "land"),
 --   TheriRunBlend, TheriGroundShift (studs), TheriDragGap (lowest right tip above the ground after the bend, studs; -1 = no
 --   ground), TheriDragBend (degrees), TheriClawLift (degrees, the largest claw-floor bend this frame).
+-- v1.1 (Kepu 2026-11-02 "publish what is for sure done"): TheriRunPoseEnabled defaults to false: the Sidewinder drag does not
+--   reach the ground at full run yet (right claw tips 7-9 studs up; MDA-203 item 4). A model attribute TheriRunPoseEnabled =
+--   true turns the 1.0 run layer back on. Nothing else changed.
 local TheriPose = {}
-TheriPose.Version = "1.0"
+TheriPose.Version = "1.1"
 TheriPose.Defaults = {
-	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
+	TheriPoseEnabled = true, TheriRunPoseEnabled = false, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
 	TheriClawFloorEnabled = true, TheriClawFloor = 0.1,
 }
