@@ -1,4 +1,4 @@
--- SkillEffects v1.36 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.37 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -227,6 +227,14 @@ local ServerStorage = game:GetService("ServerStorage")
 --   drain) only fill their fields when dino == "Teno", so the parts were Enabled with every number 0 (range, cooldown,
 --   leap charges). The Species-change refresh (1.26) re-reads it. Other dinos unchanged. Switch: script attribute
 --   SkillEffectsTenoDinoEnabled (default true, read at each read; false = 1.35).
+-- v1.37 (Kepu 2026-11-02 16:43: Hydraulic Leap fires through JUMP, "look at how we did it for the pachy"; SkillTree 1.55): on
+--   a teno with "tleap" bought AND slotted (TenoLeapEnabled true, effects leapOnJump), like Mecha Legs (1.15 / 1.16):
+--   JumpBoost = SkillBase_JumpBoost x leapBoostMul, JumpLaunchPower = SkillBase_JumpLaunchPower x leapPowerMul (bases kept
+--   at the first write), JumpCooldown = leapCooldown x moveCdMul, JumpCharges = leapCharges (JumpServer 1.3 / JumpTest 1.4:
+--   the leap uses charges, each refilling JumpCooldown s after the one before), TenoLeapOnJump true (TenoMovesServer 1.4:
+--   landing slam; MechaButtons 1.28: the slot key does nothing). Otherwise the bases back (JumpCooldown from the 1.14
+--   loop), JumpCharges 0, TenoLeapOnJump false. Runs after applyChar (a wrapper). Switch: script attribute
+--   SkillEffectsTenoLeapJumpEnabled (default true, read at each write; false = 1.36: nothing written).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -237,6 +245,7 @@ VERSION = "1.33" -- v1.33 teno mecha parts (MDA-175)
 VERSION = "1.34" -- v1.34 teno stats part 2 (1.33 reserved for the teno abilities, MDA-175)
 VERSION = "1.35" -- v1.35 Stomp star latch drain (SkillTree 1.52)
 VERSION = "1.36" -- v1.36 teno effects read with dino "Teno"
+VERSION = "1.37" -- v1.37 teno leap on JUMP
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -677,6 +686,32 @@ local function applyChar(char, st)
 				if char:GetAttribute(prefix .. "Enabled") ~= (pOn == true) then char:SetAttribute(prefix .. "Enabled", pOn == true) end
 			end
 		end
+	end
+end
+
+-- v1.37: Hydraulic Leap fires through JUMP (see the header)
+if script:GetAttribute("SkillEffectsTenoLeapJumpEnabled") == nil then script:SetAttribute("SkillEffectsTenoLeapJumpEnabled", true) end
+do
+	local applyCharV136 = applyChar
+	applyChar = function(char, st)
+		applyCharV136(char, st)
+		if script:GetAttribute("SkillEffectsTenoLeapJumpEnabled") == false then return end
+		local isTeno = char:GetAttribute("Species") == "Teno"
+		if not isTeno and char:GetAttribute("TenoLeapOnJump") == nil then return end
+		local e = st.e
+		local lOn = isTeno and on() and char:GetAttribute("TenoLeapEnabled") == true and e.leapOnJump == true
+		for _, k in ipairs({"JumpBoost", "JumpLaunchPower"}) do
+			if char:GetAttribute("SkillBase_" .. k) == nil and char:GetAttribute(k) ~= nil then
+				char:SetAttribute("SkillBase_" .. k, char:GetAttribute(k))
+			end
+		end
+		local bB, bP = char:GetAttribute("SkillBase_JumpBoost"), char:GetAttribute("SkillBase_JumpLaunchPower")
+		if bB then writeOwn(st, char, "JumpBoost", round(bB * (lOn and (e.leapBoostMul or 1) or 1), 0.01)) end
+		if bP then writeOwn(st, char, "JumpLaunchPower", round(bP * (lOn and (e.leapPowerMul or 1) or 1), 0.01)) end
+		if lOn then writeOwn(st, char, "JumpCooldown", round((e.leapCooldown or 6) * (e.moveCdMul or 1), 0.01)) end
+		local n = lOn and math.max(1, math.floor(tonumber(e.leapCharges) or 1)) or 0
+		if char:GetAttribute("JumpCharges") ~= n then char:SetAttribute("JumpCharges", n) end
+		if char:GetAttribute("TenoLeapOnJump") ~= lOn then char:SetAttribute("TenoLeapOnJump", lOn) end
 	end
 end
 

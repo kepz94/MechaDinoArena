@@ -1,4 +1,4 @@
--- JumpServer v1.2 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
+-- JumpServer v1.3 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
 -- Client -> server: ReplicatedStorage.DinoJumpRequest:FireServer(clientServerTime) (sent by JumpTest 1.0 at the
 --   key press, i.e. the start of the crouch).
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now], written to the character attribute
@@ -27,11 +27,18 @@
 --   the last DOUBLE_WINDOW s), "used" (a double jump already since that leap) -> "ok": JumpDoubleAt (server time, the
 --   stamp clamped like a leap), JumpDoubleCount. It is part of the same leap: no cooldown or stamina check of its own
 --   (one shared cooldown). Result in JumpDoubleResult. Switch: script attribute JumpDoubleServerEnabled (default true).
+-- v1.3 (leap charges, Kepu 2026-11-02: the teno's Hydraulic Leap fires through JUMP with "2 charges"; SkillEffects 1.37):
+--   while the character attribute JumpCharges is >= 1 the leap uses charges instead of the plain cooldown: a leap is
+--   accepted when a charge is left (and at least CHARGE_GAP 0.5 s since the last accepted leap; else "cooldown"); each used
+--   charge refills JumpCooldown s after the previous refill (one at a time, like the teno's slam / leap charges). Published
+--   (replicated): JumpChargesLeft, JumpChargeRefillAt (server time of the next refill, 0 when full). JumpCharges 0 / missing
+--   = the 1.2 cooldown rule. Switch: script attribute JumpChargesServerEnabled (default true, read at each request;
+--   false = 1.2).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DEFAULTS = {JumpEnabled = false, JumpStaminaCost = 15, JumpCooldown = 0.5, StaminaEnabled = true,
 	StaminaMax = 100}
-script:SetAttribute("JumpServerVersion", "1.2") -- v1.1; v1.2
+script:SetAttribute("JumpServerVersion", "1.3") -- v1.1; v1.2; v1.3
 if script:GetAttribute("JumpPinnedBlockEnabled") == nil then script:SetAttribute("JumpPinnedBlockEnabled", true) end
 local MAX_LAG = 0.3 -- seconds a client stamp may lag behind the server clock (same as BiteServer)
 
@@ -60,6 +67,41 @@ end
 local lastAccepted = {} -- character -> server time of the last accepted leap (weak keys)
 setmetatable(lastAccepted, {__mode = "k"})
 
+-- v1.3: leap charges ------------------------------------------------------------------------------------------------------
+if script:GetAttribute("JumpChargesServerEnabled") == nil then script:SetAttribute("JumpChargesServerEnabled", true) end
+local CHARGE_GAP = 0.5
+local chargeState = setmetatable({}, {__mode = "k"}) -- character -> {max, left, refills = {server times}}
+local function chargesOn(char)
+	return script:GetAttribute("JumpChargesServerEnabled") ~= false and (tonumber(char:GetAttribute("JumpCharges")) or 0) >= 1
+end
+local function chargePublish(char, st)
+	char:SetAttribute("JumpChargesLeft", st.left)
+	char:SetAttribute("JumpChargeRefillAt", st.refills[1] or 0)
+end
+local function chargeStateOf(char)
+	local mx = math.floor(tonumber(char:GetAttribute("JumpCharges")) or 0)
+	local st = chargeState[char]
+	if not st or st.max ~= mx then
+		st = {max = mx, left = mx, refills = {}}
+		chargeState[char] = st
+		chargePublish(char, st)
+	end
+	return st
+end
+game:GetService("RunService").Heartbeat:Connect(function()
+	local t
+	for char, st in pairs(chargeState) do
+		if char.Parent and st.refills[1] then
+			t = t or workspace:GetServerTimeNow()
+			if t >= st.refills[1] then
+				table.remove(st.refills, 1)
+				st.left = math.min(st.max, st.left + 1)
+				chargePublish(char, st)
+			end
+		end
+	end
+end)
+
 remote.OnServerEvent:Connect(function(player, stamp)
 	local char = player.Character
 	if not char then return end
@@ -78,6 +120,9 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "exhausted"
 	elseif get(char, "StaminaEnabled") ~= false and stamina(char, now) < get(char, "JumpStaminaCost") then
 		result = "stamina"
+	elseif chargesOn(char) then -- v1.3
+		local st = chargeStateOf(char)
+		if st.left < 1 or (lastAccepted[char] and now - lastAccepted[char] < CHARGE_GAP) then result = "cooldown" else result = "ok" end
 	elseif lastAccepted[char] and now - lastAccepted[char] < get(char, "JumpCooldown") then
 		result = "cooldown"
 	else
@@ -86,6 +131,13 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	char:SetAttribute("JumpServerResult", result)
 	if result == "ok" then
 		lastAccepted[char] = now
+		if chargesOn(char) then -- v1.3: use a charge
+			local st = chargeStateOf(char)
+			st.left -= 1
+			local last = st.refills[#st.refills]
+			table.insert(st.refills, math.max(now, last or now) + math.max(0.5, tonumber(get(char, "JumpCooldown")) or 0.5))
+			chargePublish(char, st)
+		end
 		char:SetAttribute("JumpCount", (char:GetAttribute("JumpCount") or 0) + 1)
 		char:SetAttribute("JumpStartedAt", math.clamp(stamp, now - MAX_LAG, now))
 	elseif result ~= "badArg" then

@@ -1,4 +1,4 @@
--- TenoMovesFX v1.2 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
+-- TenoMovesFX v1.3 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
 -- StarterPlayerScripts; every client draws every teno). Plan docs/plans/TENO_ABILITIES_v1.0.md Task 7 (MDA-179), mockup
 -- docs/mockups/teno_abilities_options.html v0.3 (rings, dust, heat glow, the catapult boulder leaving the bucket).
 -- Reads TenoMovesServer 1.0's character stamps (the server also draws the boulders and rubble patches itself):
@@ -37,15 +37,28 @@
 --     face of each part that points up in the world. Both end at TenoMudEndedAt or TenoMudUntil; the tint puts the exact
 --     colours back. (1.1's plates used the part's own Y face, which is a side or inside face on these parts.)
 --   Switch: script attribute TenoMovesFXV12Enabled (default true, read at each event; false = 1.1).
+-- v1.3 (Kepu 2026-11-02 16:43: "Change the mud armor to be a purple shield armor because the mud armor isn't doing enough
+--   visuals" -> "Look only", look "B Energy Armor"): with the switch on, none of the mud visuals play (1.1 puffs, coat,
+--   block flash, splash; 1.2 tint and plates). Instead:
+--   * TenoMudStartedAt: a purple flash at the root and a 0.5 s purple wave to 8 studs.
+--   * TenoMudCoatAt: "TenoShieldPlate" Neon purple shells (every visible body part over 2 cubic studs - not mecha parts,
+--     hitboxes or the root - at its size x 1.12 + 0.25, Transparency 0.62) follow the body until TenoMudEndedAt or
+--     TenoMudUntil. Each blocked hit (TenoMudBlockAt) flashes them to 0.2 for
+--     0.25 s; their resting transparency rises 0.06 per blocked hit (fewer hits left = fainter).
+--   * TenoMudEndedAt: a 0.4 s purple wave to 6 studs. TenoMudSplashAt (star): a 0.7 s purple wave to TenoMudSplash.
+--   Switch: script attribute TenoMovesFXShieldEnabled (default true, read at each event; false = 1.2 mud look).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.2"
+VERSION = "1.3" -- v1.3 purple shield look
 local RING_TIME, ROCK_RELOAD = 0.5, 2.4
 local player = Players.LocalPlayer
 player:SetAttribute("TenoMovesFXVersion", VERSION)
 if script:GetAttribute("TenoMovesFXEnabled") == nil then script:SetAttribute("TenoMovesFXEnabled", true) end
 local function on() return script:GetAttribute("TenoMovesFXEnabled") ~= false end
+if script:GetAttribute("TenoMovesFXShieldEnabled") == nil then script:SetAttribute("TenoMovesFXShieldEnabled", true) end -- v1.3
+local function shieldLook() return script:GetAttribute("TenoMovesFXShieldEnabled") ~= false end
 
 local folder
 local function fx()
@@ -304,7 +317,7 @@ local function watch2(char)
 		count("challenge")
 	end)
 	char:GetAttributeChangedSignal("TenoMudStartedAt"):Connect(function()
-		if not on2() or not fresh(char, "TenoMudStartedAt") then return end
+		if shieldLook() or not on2() or not fresh(char, "TenoMudStartedAt") then return end
 		task.spawn(function()
 			for _ = 1, 6 do
 				local root = char:FindFirstChild("HumanoidRootPart")
@@ -316,7 +329,7 @@ local function watch2(char)
 		count("mudWallow")
 	end)
 	char:GetAttributeChangedSignal("TenoMudCoatAt"):Connect(function()
-		if not on2() or not fresh(char, "TenoMudCoatAt") then return end
+		if shieldLook() or not on2() or not fresh(char, "TenoMudCoatAt") then return end
 		local coatAt = char:GetAttribute("TenoMudCoatAt")
 		for _, n in ipairs(COAT_PARTS) do
 			local bp = char:FindFirstChild(n, true)
@@ -342,14 +355,14 @@ local function watch2(char)
 	end)
 	char:GetAttributeChangedSignal("TenoMudBlockAt"):Connect(function()
 		local root = char:FindFirstChild("HumanoidRootPart")
-		if not on2() or not fresh(char, "TenoMudBlockAt") or not root then return end
+		if shieldLook() or not on2() or not fresh(char, "TenoMudBlockAt") or not root then return end
 		flash(root.Position + Vector3.new(0, 2, 0), 6)
 		puff(root.Position, 5, MUD2)
 		count("mudBlock")
 	end)
 	char:GetAttributeChangedSignal("TenoMudSplashAt"):Connect(function()
 		local root = char:FindFirstChild("HumanoidRootPart")
-		if not on2() or not fresh(char, "TenoMudSplashAt") or not root then return end
+		if shieldLook() or not on2() or not fresh(char, "TenoMudSplashAt") or not root then return end
 		ring(root.Position, num(char, "TenoMudSplash", 12), MUD2)
 		puff(root.Position, 12, MUD2)
 		count("mudSplash")
@@ -434,7 +447,7 @@ local function watch3(char)
 		count("bellowWave")
 	end)
 	char:GetAttributeChangedSignal("TenoMudCoatAt"):Connect(function()
-		if not on3() or not fresh(char, "TenoMudCoatAt") then return end
+		if shieldLook() or not on3() or not fresh(char, "TenoMudCoatAt") then return end
 		local coatAt = char:GetAttribute("TenoMudCoatAt")
 		untint(char)
 		local tn = {coatAt = coatAt, colors = {}}
@@ -483,3 +496,74 @@ local function onPlayer3(p)
 end
 Players.PlayerAdded:Connect(onPlayer3)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer3(p) end
+
+-- v1.3: the purple Shield Armor look (see the header) ------------------------------------------------------------------------
+local PURPLE, LILAC = Color3.fromRGB(150, 70, 255), Color3.fromRGB(205, 160, 255)
+local function on4() return on() and shieldLook() end
+local shells = {} -- [char] = {coatAt, plates = {parts}, flashUntil}
+local function shellAlpha(char, sh)
+	if os.clock() < (sh.flashUntil or 0) then return 0.2 end
+	local used = math.max(0, num(char, "TenoMudHits", 0) - num(char, "TenoMudHitsLeft", 0))
+	return math.min(0.9, 0.62 + 0.06 * used)
+end
+local function watch4(char)
+	char:GetAttributeChangedSignal("TenoMudStartedAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on4() or not fresh(char, "TenoMudStartedAt") or not root then return end
+		local f = part("TenoShieldFlash", Enum.PartType.Ball, Vector3.one * 3, CFrame.new(root.Position), LILAC, 0.2)
+		TweenService:Create(f, TweenInfo.new(0.4), {Size = Vector3.one * 12, Transparency = 1}):Play()
+		task.delay(0.45, function() f:Destroy() end)
+		wave(root.Position, 8, PURPLE, 0.5, 20)
+		count("shieldStart")
+	end)
+	char:GetAttributeChangedSignal("TenoMudCoatAt"):Connect(function()
+		if not on4() or not fresh(char, "TenoMudCoatAt") then return end
+		local coatAt = char:GetAttribute("TenoMudCoatAt")
+		local sh = {coatAt = coatAt, plates = {}}
+		shells[char] = sh
+		for _, bp in ipairs(char:GetDescendants()) do
+			if bp:IsA("BasePart") and bp.Name ~= "HumanoidRootPart" and bp.Transparency < 1 and not bp:FindFirstAncestor("Hitboxes")
+				and not (bp.Parent and bp.Parent.Name:find("^TPart_")) and bp.Size.X * bp.Size.Y * bp.Size.Z > 2 then
+				local c = part("TenoShieldPlate", Enum.PartType.Block, bp.Size * 1.12 + Vector3.new(0.25, 0.25, 0.25), bp.CFrame, PURPLE, 0.62)
+				table.insert(sh.plates, c)
+				follow(c, function(p)
+					if not bp.Parent or not char.Parent or shells[char] ~= sh then return false end
+					local ended = char:GetAttribute("TenoMudEndedAt")
+					local u = char:GetAttribute("TenoMudUntil")
+					if typeof(ended) == "number" and ended >= coatAt then return false end
+					if typeof(u) == "number" and serverNow() >= u then return false end
+					p.CFrame = bp.CFrame
+					p.Transparency = shellAlpha(char, sh)
+					return true
+				end)
+			end
+		end
+		count("shieldCoat")
+	end)
+	char:GetAttributeChangedSignal("TenoMudBlockAt"):Connect(function()
+		if not on4() or not fresh(char, "TenoMudBlockAt") then return end
+		local sh = shells[char]
+		if sh then sh.flashUntil = os.clock() + 0.25 end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if root then flash(root.Position, 6) end
+		count("shieldBlock")
+	end)
+	char:GetAttributeChangedSignal("TenoMudEndedAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on4() or not fresh(char, "TenoMudEndedAt") or not root then return end
+		wave(root.Position, 6, PURPLE, 0.4, 18)
+		count("shieldEnd")
+	end)
+	char:GetAttributeChangedSignal("TenoMudSplashAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on4() or not fresh(char, "TenoMudSplashAt") or not root then return end
+		wave(root.Position, num(char, "TenoMudSplash", 12), PURPLE, 0.7, 28)
+		count("shieldBurst")
+	end)
+end
+local function onPlayer4(p)
+	p.CharacterAdded:Connect(watch4)
+	if p.Character then watch4(p.Character) end
+end
+Players.PlayerAdded:Connect(onPlayer4)
+for _, p in ipairs(Players:GetPlayers()) do onPlayer4(p) end

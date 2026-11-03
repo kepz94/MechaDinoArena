@@ -1,4 +1,4 @@
--- TenoPartsServer v1.1 (Mecha Dino Arena) — puts the Tenontosaurus' mecha parts on (server-built, every client sees them)
+-- TenoPartsServer v1.2 (Mecha Dino Arena) — puts the Tenontosaurus' mecha parts on (server-built, every client sees them)
 -- and builds their Lab card models. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 4 (MDA-176); the looks are the picked
 -- mockup looks, same numbers (docs/mockups/teno_abilities_options.html v0.3, tools/mockup/teno_abilities_app.js
 -- buildLook; Kepu 2026-11-01: "3,4,7 - A", "5,9,14 - b", 11 "Let's go D"):
@@ -32,9 +32,15 @@
 --   4 dark rivets on each side, and the heat strip {0.8, 0.08, 0.72} on top of the shell (role "heat", hidden until the
 --   stomp; TenoMovesFX glows it). Lab cards use it too. Switch: script attribute TenoPartsStompBootEnabled (default true,
 --   read at each build; false = 1.0 plates).
+-- v1.2 (Kepu 2026-11-02 16:43: "Change the mud armor to be a purple shield armor" -> "Look only", picked look "B Energy
+--   Armor" from the Studio captures): the "tmud" part is twin shield pylons on the shoulders instead of the mud tank: on
+--   Torso_dorsalShoulder, at x -0.45 and +0.45: a dark pylon {0.225, 0.65, 0.225} (role "pylon"), a lilac Neon band
+--   {0.275, 0.06, 0.275} (role "band") and a purple Neon ball tip 0.25 (role "tip"). Lab cards use it too. Switch: script
+--   attribute TenoPartsShieldPylonsEnabled (default true, read at each build; false = 1.1 mud tank).
 local Players = game:GetService("Players")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 shield pylons
 local function hex(h) return Color3.fromRGB(math.floor(h / 65536) % 256, math.floor(h / 256) % 256, h % 256) end
 local C = {
 	steel = {hex(0x9aa3ad), Enum.Material.Metal}, dark = {hex(0x3a3f47), Enum.Material.Metal},
@@ -141,6 +147,23 @@ BUILD.tstomp = function()
 		end
 	end
 	return out
+end
+-- v1.2: Shield Armor pylons
+C.purple = {Color3.fromRGB(150, 70, 255), Enum.Material.Neon}
+C.lilac = {Color3.fromRGB(205, 160, 255), Enum.Material.Neon}
+if script:GetAttribute("TenoPartsShieldPylonsEnabled") == nil then script:SetAttribute("TenoPartsShieldPylonsEnabled", true) end
+do
+	local mudV11 = BUILD.tmud
+	BUILD.tmud = function()
+		if script:GetAttribute("TenoPartsShieldPylonsEnabled") == false then return mudV11() end
+		local out = {}
+		for _, x in ipairs({-0.45, 0.45}) do
+			table.insert(out, {"Torso_dorsalShoulder", {0.225, 0.65, 0.225}, {x, 0.434, -0.2}, {0, 0, 0}, "dark", "pylon"})
+			table.insert(out, {"Torso_dorsalShoulder", {0.275, 0.06, 0.275}, {x, 0.634, -0.2}, {0, 0, 0}, "lilac", "band"})
+			table.insert(out, {"Torso_dorsalShoulder", {0.25}, {x, 0.859, -0.2}, {0, 0, 0}, "purple", "tip", "ball"})
+		end
+		return out
+	end
 end
 
 -- ---------- build / remove ----------

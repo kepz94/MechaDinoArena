@@ -1,4 +1,4 @@
--- JumpTest v1.3 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
+-- JumpTest v1.4 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
 -- button. Only active while the character attribute JumpEnabled is true (default false: the T-Rex keeps the
 -- default Roblox jump untouched).
 -- v1.1 (pachy Mecha Legs star, MDA-123): while JumpDoubleEnabled (SkillEffects 1.15) is true, a NEW jump press (the
@@ -16,6 +16,12 @@
 --   a trunk / tree top), a press is refused (JumpInputResult "suppressed"), a crouch is cancelled, and a leap in the air
 --   ends at once (air hold off, Jumping state off) so the climb owns the body. Nothing sets it on other dinos. Switch:
 --   script attribute JumpSuppressEnabled (default true, read at start; false = 1.2).
+-- v1.4 (leap charges, Kepu 2026-11-02: the teno's Hydraulic Leap fires through JUMP with "2 charges"; JumpServer 1.3):
+--   while the character attribute JumpCharges is >= 1 a press needs a charge left (this client's own count, the same rule
+--   as JumpServer 1.3: each used charge refills JumpCooldown s after the previous refill) and 0.5 s since the last local
+--   leap, instead of the plain JumpCooldown; else "cooldown". A press uses a charge; a server "denied" sets the count to
+--   the replicated JumpChargesLeft. Diagnostic: JumpChargesLocal. Switch: script attribute JumpChargesEnabled (default
+--   true, read at start; false = 1.3).
 -- While enabled, the Humanoid's built-in Jumping state is turned off, so a press never jumps straight away. Instead:
 --   1. Press (when allowed): JumpPredictedAt = server time (this client only, so the crouch shows at once) and
 --      DinoJumpRequest:FireServer(that time) (JumpServer 1.0 validates and sets the replicated JumpStartedAt).
@@ -153,6 +159,29 @@ local function airHold(target)
 	end
 end
 local lastLeap = -math.huge
+-- v1.4: leap charges
+if script:GetAttribute("JumpChargesEnabled") == nil then script:SetAttribute("JumpChargesEnabled", true) end
+local CHARGES_ON = script:GetAttribute("JumpChargesEnabled") ~= false
+local cState = {max = 0, left = 0, refills = {}}
+local function chargeMode() return CHARGES_ON and (tonumber(char:GetAttribute("JumpCharges")) or 0) >= 1 end
+local function chargesNow()
+	local mx = math.floor(tonumber(char:GetAttribute("JumpCharges")) or 0)
+	if mx ~= cState.max then cState = {max = mx, left = mx, refills = {}} end
+	local t = os.clock()
+	while cState.refills[1] and t >= cState.refills[1] do
+		table.remove(cState.refills, 1)
+		cState.left = math.min(cState.max, cState.left + 1)
+	end
+	return cState.left
+end
+local function useCharge()
+	chargesNow()
+	cState.left -= 1
+	local last = cState.refills[#cState.refills]
+	local t = os.clock()
+	table.insert(cState.refills, math.max(t, last or t) + math.max(0.5, tonumber(get("JumpCooldown")) or 0.5))
+	char:SetAttribute("JumpChargesLocal", cState.left)
+end
 local enabledApplied -- last JumpEnabled value applied to the Humanoid
 
 local function applyEnabled()
@@ -187,6 +216,8 @@ local function tryPress()
 		result = "exhausted"
 	elseif get("StaminaEnabled") ~= false and staminaNow() < get("JumpStaminaCost") then
 		result = "stamina"
+	elseif chargeMode() then -- v1.4
+		if chargesNow() < 1 or os.clock() - lastLeap < 0.5 then result = "cooldown" end
 	elseif os.clock() - lastLeap < get("JumpCooldown") then
 		result = "cooldown"
 	end
@@ -197,6 +228,7 @@ local function tryPress()
 	stamp = workspace:GetServerTimeNow()
 	crouchAt = os.clock()
 	lastLeap = crouchAt
+	if chargeMode() then useCharge() end -- v1.4
 	state = "crouch"
 	char:SetAttribute("JumpPredictedAt", stamp)
 	if remote then remote:FireServer(stamp) end
@@ -286,6 +318,7 @@ local conn = RunService.PreSimulation:Connect(function()
 	elseif state == "crouch" then
 		if char:GetAttribute("JumpDeniedAt") == stamp then
 			state = "ready"
+			if chargeMode() then cState.left = math.floor(tonumber(char:GetAttribute("JumpChargesLeft")) or cState.left) end -- v1.4
 			show("JumpInputResult", "denied")
 		elseif now - crouchAt >= get("JumpWindup") then
 			launch()

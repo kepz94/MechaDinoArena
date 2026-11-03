@@ -1,4 +1,4 @@
--- MechaButtons v1.27 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.28 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -226,12 +226,18 @@
 --   the crosshair points: a ray from the camera along its look (400 studs, this character and Workspace.DinoFX_Local /
 --   DinoFX ignored) - its hit point, or nil when it hits nothing - as the 3rd argument. Switch: script attribute
 --   MechaButtonsMortarPointEnabled (default true, read at each press; false = 1.26).
+-- v1.28 (Kepu 2026-11-02 16:43: Hydraulic Leap fires through JUMP like Mecha Legs; "purple shield armor"): while the
+--   character's TenoLeapOnJump is true (SkillEffects 1.37), pressing the "tleap" slot does nothing (the leap is on JUMP;
+--   its readiness still shows from TenoLeapReadyAt, which TenoMovesServer 1.4 mirrors from the jump's charges); the
+--   "tmud" button reads "SHIELD ARMOR". Switch: script attribute MechaButtonsTenoJumpEnabled (default true, read at start;
+--   false = 1.27).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.27"
+VERSION = "1.28" -- v1.28 teno leap on JUMP, Shield Armor
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -313,6 +319,9 @@ if TENO_BTN then -- v1.26: the teno's mecha parts
 	TIMED_PARTS.tchallenge = {"TenoChallenge", "DinoTenoChallengeRequest", "CHALLENGE"}
 	TIMED_PARTS.tmud = {"TenoMud", "DinoTenoMudRequest", "MUD ARMOR"}
 end
+if script:GetAttribute("MechaButtonsTenoJumpEnabled") == nil then script:SetAttribute("MechaButtonsTenoJumpEnabled", true) end -- v1.28
+local TENO_JUMP_BTN = script:GetAttribute("MechaButtonsTenoJumpEnabled") ~= false
+if TENO_BTN and TENO_JUMP_BTN then TIMED_PARTS.tmud[3] = "SHIELD ARMOR" end
 -- v1.20: parts that use hold-to-aim
 local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off
 	return id == "screech" or (TETHER_BTN and id == "tether" and script:GetAttribute("MechaTetherAimMode") == false)
@@ -842,6 +851,7 @@ local function press(n, input)
 		if cloakRemote then cloakRemote:FireServer(workspace:GetServerTimeNow()) end
 	end
 	local tp = id and TIMED_PARTS[id] -- v1.5
+	if tp and TENO_JUMP_BTN and id == "tleap" and char:GetAttribute("TenoLeapOnJump") == true then tp = nil end -- v1.28: on JUMP
 	if tp then
 		local r = ReplicatedStorage:FindFirstChild(tp[2])
 		if r then r:FireServer(workspace:GetServerTimeNow()) end

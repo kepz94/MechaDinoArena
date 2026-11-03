@@ -1,4 +1,4 @@
--- SkillTreeTenoParts.spec v1.3 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
+-- SkillTreeTenoParts.spec v1.4 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.49 (plan docs/plans/TENO_ABILITIES_v1.0.md Task 1, MDA-173). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTenoParts_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-01 "two builds"): tgrab / tmortar / tstomp / tleap live; tbellow / tchallenge / tmud "soon".
@@ -7,6 +7,9 @@
 -- v1.2 (SkillTree 1.53): Boulder Mortar step I = the crosshair + snap text.
 -- v1.3 (SkillTree 1.54, build 2: Kepu "Next" 2026-11-02): tbellow / tchallenge / tmud live (SkillTree.TENO_SUPPORT_LIVE):
 --   not soon, buyable, slottable, and their effects follow the plan's numbers.
+-- v1.4 (SkillTree 1.55, Kepu 2026-11-02 16:43): TENO_LEAP_ON_JUMP (Hydraulic Leap fires through JUMP: new step I text,
+--   leapCooldown 6, leapBoostMul I 1.65 / II 2.1, leapPowerMul I 1.2 / II 1.45, leapOnJump) and TENO_SHIELD_ARMOR ("tmud"
+--   named "Shield Armor", shield texts). Other leap / mud numbers unchanged.
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -30,6 +33,8 @@ eq("TENO_PARTS_SUPPORT_SOON", ST.TENO_PARTS_SUPPORT_SOON, true)
 eq("TENO_STOMP_DRAIN", ST.TENO_STOMP_DRAIN, true) -- v1.1
 eq("TENO_MORTAR_AIM", ST.TENO_MORTAR_AIM, true) -- v1.2
 eq("TENO_SUPPORT_LIVE", ST.TENO_SUPPORT_LIVE, true) -- v1.3
+eq("TENO_LEAP_ON_JUMP", ST.TENO_LEAP_ON_JUMP, true) -- v1.4
+eq("TENO_SHIELD_ARMOR", ST.TENO_SHIELD_ARMOR, true) -- v1.4
 local ROWS = {
 	tgrab = {"Tail Grab & Fling", "attack", false},
 	tmortar = {"Boulder Mortar", "attack", false},
@@ -37,7 +42,7 @@ local ROWS = {
 	tbellow = {"Herd Bellow", "health", false}, -- v1.3: live
 	tchallenge = {"Challenge Call", "defense", false}, -- v1.3: live
 	tleap = {"Hydraulic Leap", "speed", false},
-	tmud = {"Mud Armor", "defense", false}, -- v1.3: live
+	tmud = {"Shield Armor", "defense", false}, -- v1.3: live; v1.4: Shield Armor
 }
 for id, want in pairs(ROWS) do
 	eq(id .. " exists", P[id] ~= nil, true)
@@ -81,7 +86,7 @@ if P.tstomp then
 	eq("stomp star", P.tstomp.steps[4], "A raptor latched on you loses 50 stamina from its pounce")
 end
 if P.tleap then
-	eq("leap I", P.tleap.steps[1], "Button: a hydraulic leap 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 14 s")
+	eq("leap I", P.tleap.steps[1], "Fires through JUMP: every jump is a hydraulic leap, 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 6 s") -- v1.4
 	eq("leap II", P.tleap.steps[2], "Leap 55 studs")
 	eq("leap III", P.tleap.steps[3], "Landing stuns 0.5 s")
 	eq("leap star", P.tleap.steps[4], "2 leaps (2 charges)")
@@ -95,8 +100,9 @@ if P.tchallenge then
 	eq("challenge star", P.tchallenge.steps[4], "Marked enemies are also slowed 20%")
 end
 if P.tmud then
-	eq("mud I", P.tmud.steps[1], "Button: wallow in mud. A mud coat for 8 s blocks your next 3 hits completely, and each blocked hit slows every enemy within 15 studs 40% for 4 s. Latched raptors slide off. Recharges in 20 s")
-	eq("mud star", P.tmud.steps[4], "When the coat ends it splashes 12 studs around: enemies slowed 40% for 4 s")
+	eq("mud I", P.tmud.steps[1], "Button: a purple energy shield for 8 s blocks your next 3 hits completely, and each blocked hit slows every enemy within 15 studs 40% for 4 s. Latched raptors are knocked off. Recharges in 20 s") -- v1.4
+	eq("mud III", P.tmud.steps[3], "Shield lasts 12 s") -- v1.4
+	eq("mud star", P.tmud.steps[4], "When the shield ends it bursts 12 studs around: enemies slowed 40% for 4 s") -- v1.4
 end
 
 -- buying / slotting
@@ -171,7 +177,11 @@ eq("stomp III no drain", E({tstomp = 3}).stompLatchDrain, 0); eq("stomp star dra
 -- leap
 eq("leap I dist", E({tleap = 1}).leapDist, 40); eq("leap I damage", E({tleap = 1}).leapDamage, 10)
 eq("leap I radius", E({tleap = 1}).leapRadius, 12); eq("leap I no stun", E({tleap = 1}).leapStun, 0)
-eq("leap I charges", E({tleap = 1}).leapCharges, 1); eq("leap I cooldown", E({tleap = 1}).leapCooldown, 14)
+eq("leap I charges", E({tleap = 1}).leapCharges, 1); eq("leap I cooldown", E({tleap = 1}).leapCooldown, 6) -- v1.4: 6 (was 14)
+eq("leap none boost", E({}).leapBoostMul, 1); eq("leap none power", E({}).leapPowerMul, 1); eq("leap none onJump", E({}).leapOnJump, false) -- v1.4
+eq("leap I boost", E({tleap = 1}).leapBoostMul, 1.65); eq("leap I power", E({tleap = 1}).leapPowerMul, 1.2); eq("leap I onJump", E({tleap = 1}).leapOnJump, true)
+eq("leap II boost", E({tleap = 2}).leapBoostMul, 2.1); eq("leap II power", E({tleap = 2}).leapPowerMul, 1.45)
+eq("leap raptor no boost", ST.effects({tleap = 4}, "Raptor").leapBoostMul, 1); eq("leap raptor no onJump", ST.effects({tleap = 4}, "Raptor").leapOnJump, false)
 eq("leap II dist", E({tleap = 2}).leapDist, 55); eq("leap III stun", E({tleap = 3}).leapStun, 0.5)
 eq("leap star charges", E({tleap = 4}).leapCharges, 2)
 -- v1.3: build-2 parts live

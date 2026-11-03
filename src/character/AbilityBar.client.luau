@@ -1,4 +1,4 @@
--- AbilityBar v1.21 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.22 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -127,7 +127,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+-- v1.22 (Kepu 2026-11-02 16:43: Hydraulic Leap fires through JUMP like Mecha Legs; SkillEffects 1.37): a slotted "tleap"
+--   tile shows "Space" as its key (like Mecha Legs; its cooldown comes from TenoLeapReadyAt, mirrored from the jump's
+--   charges by TenoMovesServer 1.4). Switch: script attribute AbilityBarTenoJumpEnabled (default true, read at start;
+--   false = 1.21).
 local VERSION = "1.21"
+VERSION = "1.22" -- v1.22 teno leap on JUMP
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -144,6 +149,8 @@ local function bloodLeft(char) -- v1.10: sacrifices possible right now (nil when
 end
 if script:GetAttribute("AbilityBarLegsEnabled") == nil then script:SetAttribute("AbilityBarLegsEnabled", true) end -- v1.9
 local LEGS_TILE = script:GetAttribute("AbilityBarLegsEnabled") ~= false
+if script:GetAttribute("AbilityBarTenoJumpEnabled") == nil then script:SetAttribute("AbilityBarTenoJumpEnabled", true) end -- v1.22
+local TENO_JUMP_TILE = script:GetAttribute("AbilityBarTenoJumpEnabled") ~= false
 local char = script.Parent
 local TIMED_PARTS = {adrenaline = "Adrenaline", shield = "EnergyShield"} -- v1.3: part id -> attribute prefix
 TIMED_PARTS.scent, TIMED_PARTS.screech = "Scent", "Screech" -- v1.4: raptor parts batch 2
@@ -421,6 +428,7 @@ local function rebuild()
 			or string.upper(okST and ST.PATHS[id] and ST.PATHS[id].name or id)
 		local key = (LEGS_TILE and id == "mechalegs") and "Space" or SLOT_KEYS[n] -- v1.9: Mecha Legs fires through the jump
 		if BLOOD_TILE and id == "bloodrush" then key = "LMB" end -- v1.10: Blood Rush fires through ATTACK
+		if TENO_JUMP_TILE and id == "tleap" then key = "Space" end -- v1.22: Hydraulic Leap fires through the jump
 		local t = makeTile("Slot_" .. n, key, title, id and ORANGE or WHITE, id == "thrusters")
 		if not id then t.stroke.Transparency = 0.5 end
 		table.insert(tiles, {id = "Slot_" .. n, kind = "slot", n = n, part = id, t = t})

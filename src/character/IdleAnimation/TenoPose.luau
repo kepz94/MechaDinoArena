@@ -1,4 +1,4 @@
--- TenoPose v1.6 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.7 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -70,8 +70,14 @@
 --     Tail2 -6, RootJoint -4, arms -10, neck -6); at the landing 0.12 s LEAP_RAISE -> SLAM_DOWN2 (easeIn; the mockup's SLAM_DOWN, deeper: Tail1 26, Tail2 14, Tail3 10, Tail4 4,
 --     Tail5 -4, RootJoint 6), held to 0.3 s, then 0.6 s -> 0. 1.3 never played the mockup's slam-down.
 --   Switch: model attribute TenoPoseFix16Enabled (default true; false = 1.5).
+-- v1.7 (Kepu 2026-11-02 16:43: Hydraulic Leap fires through JUMP; "purple shield armor", look B Energy Armor):
+--   * "tland" (model TenoLeapOnJump true; TenoMovesServer 1.4 stamps TenoLeapLandedAt at the JUMP leap's landing): 0.12 s
+--     0 -> SLAM_DOWN2 (easeIn), held to 0.3 s, 0.6 s -> 0. Only when no scratch / hold / slam plays.
+--   * "tmud" is a shield brace instead of the mud wallow: 0.25 s 0 -> BRACE (chest up, arms forward, head up), held to
+--     0.9 s, 0.5 s -> 0 (ends 1.4 s, inside SUPPORT_END 1.7).
+--   Switch: model attribute TenoPoseFix17Enabled (default true; false = 1.6).
 local TenoPose = {}
-TenoPose.Version = "1.6"
+TenoPose.Version = "1.7"
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -444,6 +450,38 @@ do
 			return mix(SLAM_DOWN2, ZERO, smooth((u - 0.3) / 0.6))
 		end
 		return anglesV15(phase, t, hold, s, now)
+	end
+end
+
+-- v1.7: the JUMP leap's landing slam; the shield brace
+local BRACE = {RootJoint = {10, 0, 0}, LegL = {-10, 0, 0}, LegR = {-10, 0, 0}, ArmL = {35, 0, 0}, ArmR = {35, 0, 0},
+	Neck = {16, 0, 0}, Head = {-8, 0, 0}, Jaw = {-16, 0, 0}, Tail1 = {-6, 0, 0}}
+local fix17 = true
+do
+	local phaseV16 = TenoPose.phase
+	function TenoPose.phase(model, isOwner, serverNow)
+		fix17 = model:GetAttribute("TenoPoseFix17Enabled") ~= false
+		local ph, t, hold, src = phaseV16(model, isOwner, serverNow)
+		if not fix17 or src == "off" or model:GetAttribute("TenoLeapOnJump") ~= true then return ph, t, hold, src end
+		if ph and src ~= "ability" then return ph, t, hold, src end -- a scratch / hold / slam plays
+		local la = num(model:GetAttribute("TenoLeapLandedAt"))
+		if la and la > 0 and serverNow >= la and serverNow - la < 0.9 and (not ph or la > serverNow - t) then
+			return "tland", serverNow - la, 0, "ability"
+		end
+		return ph, t, hold, src
+	end
+	local anglesV16 = TenoPose.attackAngles
+	function TenoPose.attackAngles(phase, t, hold, s, now)
+		if fix17 and phase == "tland" then
+			if t < 0.12 then return mix(ZERO, SLAM_DOWN2, easeIn(t / 0.12)) end
+			if t < 0.3 then return mix(SLAM_DOWN2, SLAM_DOWN2, 0) end
+			return mix(SLAM_DOWN2, ZERO, smooth((t - 0.3) / 0.6))
+		elseif fix17 and phase == "tmud" then
+			if t < 0.25 then return mix(ZERO, BRACE, smooth(t / 0.25)) end
+			if t < 0.9 then return mix(BRACE, BRACE, 0) end
+			return mix(BRACE, ZERO, smooth((t - 0.9) / 0.5))
+		end
+		return anglesV16(phase, t, hold, s, now)
 	end
 end
 

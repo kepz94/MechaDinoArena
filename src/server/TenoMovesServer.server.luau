@@ -1,4 +1,4 @@
--- TenoMovesServer v1.3 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.4 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -106,12 +106,25 @@
 --     TenoMudSplashHits, TenoMudSplashAt. Teno while on: TenoMudUntil, TenoMudHitsLeft, TenoMudCoatAt (last).
 --   Switches: script attributes TenoMoves_tbellowEnabled, TenoMoves_tchallengeEnabled, TenoMoves_tmudEnabled (default true
 --   each, read at each use). Diagnostics: script TenoMovesBellows, TenoMovesChallenges, TenoMovesMuds, TenoMovesMudBlocks.
+-- v1.4 (Kepu 2026-11-02 16:43: Hydraulic Leap fires through JUMP like the pachy's Mecha Legs, 2 charges; SkillEffects 1.37
+--   sets TenoLeapOnJump, JumpServer 1.3 owns the charges): while the character's TenoLeapOnJump is true:
+--   * DinoTenoLeapRequest is refused ("onJump", TenoLeapServerResult); the slot key no longer leaps (MechaButtons 1.28).
+--   * Each new JumpStartedAt (an accepted JUMP leap) with TenoLeapEnabled: TenoLeapUntil = start + 3, TenoLeapHits 0; the
+--     root must rise 2 studs above its standing height, then the landing = the first heartbeat back within 1.5 studs (or
+--     3 s): the same slam as 1.0 (TenoLeapDamage to every allowed dino within TenoLeapRadius, 15 up / down; III stun
+--     TenoLeapStun), TenoLeapHits, TenoLeapUntil 0, TenoLeapLandedAt (last: FX + TenoPose 1.7 landing pose). Never left the
+--     ground: TenoLeapUntil 0, no slam.
+--   * TenoLeapChargesLeft / TenoLeapRefillAt / TenoLeapReadyAt mirror JumpChargesLeft / JumpChargeRefillAt (ReadyAt = now
+--     while a charge is left, else the refill), so the slot tile and phone button show the jump's charges.
+--   Switch: script attribute TenoMovesLeapOnJumpEnabled (default true, read at each use; false = 1.3). Diagnostic: script
+--   TenoMovesJumpLeaps.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.3"
+VERSION = "1.4" -- v1.4 leap on JUMP
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
 local MORTAR_FIRE2, MORTAR_FLIGHT2, MORTAR_PEAK2 = 0.15, 0.7, 14 -- v1.2
@@ -770,6 +783,11 @@ RunService.Heartbeat:Connect(function()
 end)
 leapRemote.OnServerEvent:Connect(function(player, stamp)
 	local c0 = player.Character
+	if c0 and script:GetAttribute("TenoMovesLeapOnJumpEnabled") ~= false and c0:GetAttribute("TenoLeapOnJump") == true then -- v1.4
+		c0:SetAttribute("TenoLeapServerResult", "onJump")
+		c0:SetAttribute("TenoLeapServerResultAt", now())
+		return
+	end
 	if c0 and c0:GetAttribute("TenoLeapEnabled") == true then
 		local st = leapStateOf(c0, now())
 		leapPublish(c0, st, now())
@@ -1060,3 +1078,84 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.4: Hydraulic Leap through JUMP (see the header) ------------------------------------------------------------------------
+if script:GetAttribute("TenoMovesLeapOnJumpEnabled") == nil then script:SetAttribute("TenoMovesLeapOnJumpEnabled", true) end
+local function leapOnJump(char)
+	return script:GetAttribute("TenoMovesLeapOnJumpEnabled") ~= false and char:GetAttribute("TenoLeapOnJump") == true
+end
+local function leapMirror(char)
+	local t = now()
+	local left = math.floor(num(char, "JumpChargesLeft", num(char, "JumpCharges", 1)))
+	local refill = num(char, "JumpChargeRefillAt", 0)
+	char:SetAttribute("TenoLeapChargesLeft", left)
+	char:SetAttribute("TenoLeapRefillAt", refill)
+	char:SetAttribute("TenoLeapReadyAt", left > 0 and t or refill)
+end
+do
+	local leapPublishV13 = leapPublish
+	leapPublish = function(char, st, t)
+		if leapOnJump(char) then return leapMirror(char) end
+		return leapPublishV13(char, st, t)
+	end
+end
+local function jumpSlam(char)
+	local player = Players:GetPlayerFromCharacter(char)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local r0 = rootOf(char)
+	if not (player and hum and hum.Health > 0 and r0) then return end
+	local t0 = num(char, "JumpStartedAt", now())
+	count("TenoMovesJumpLeaps")
+	char:SetAttribute("TenoLeapHits", 0)
+	char:SetAttribute("TenoLeapUntil", t0 + 3)
+	local h0 = r0.Position.Y - groundY(r0.Position, r0.Position.Y - 3)
+	task.spawn(function()
+		local w0, left = os.clock(), false
+		while char.Parent and hum.Parent and hum.Health > 0 and os.clock() - w0 < 3 do
+			local rr = rootOf(char)
+			if not rr then break end
+			local h = rr.Position.Y - groundY(rr.Position, rr.Position.Y - 3)
+			if not left then
+				if h > h0 + 2 then left = true end
+			elseif h <= h0 + 1.5 then
+				break
+			end
+			RunService.Heartbeat:Wait()
+		end
+		local root = rootOf(char)
+		if not (left and char.Parent and root and hum.Health > 0) then
+			if char.Parent then char:SetAttribute("TenoLeapUntil", 0) end
+			return
+		end
+		local tl = now()
+		local dmg, radius, stunT = num(char, "TenoLeapDamage", 10), num(char, "TenoLeapRadius", 12), num(char, "TenoLeapStun", 0)
+		local n = 0
+		for _, m in ipairs(candidates(char)) do
+			local mr = rootOf(m)
+			if gap(m, root.Position) <= radius and math.abs(mr.Position.Y - root.Position.Y) <= DY then
+				n += 1
+				damage(char, player, m, dmg, "leap", tl)
+				if stunT > 0 and not shielded(m, tl) then stun(m, tl + stunT) end
+			end
+		end
+		char:SetAttribute("TenoLeapHits", n)
+		char:SetAttribute("TenoLeapUntil", 0)
+		char:SetAttribute("TenoLeapLandedAt", tl) -- last: FX
+	end)
+end
+local function watchJump(char)
+	local function mirrorNow() if leapOnJump(char) then leapMirror(char) end end
+	for _, k in ipairs({"JumpChargesLeft", "JumpChargeRefillAt", "TenoLeapOnJump", "TenoLeapEnabled"}) do
+		char:GetAttributeChangedSignal(k):Connect(function() task.defer(mirrorNow) end)
+	end
+	char:GetAttributeChangedSignal("JumpStartedAt"):Connect(function()
+		if leapOnJump(char) and char:GetAttribute("TenoLeapEnabled") == true then jumpSlam(char) end
+	end)
+	task.defer(mirrorNow)
+end
+local function onPlayerJ(p)
+	p.CharacterAdded:Connect(watchJump)
+	if p.Character then watchJump(p.Character) end
+end
+Players.PlayerAdded:Connect(onPlayerJ)
+for _, p in ipairs(Players:GetPlayers()) do onPlayerJ(p) end

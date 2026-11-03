@@ -2612,3 +2612,13 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoPartsStompBootEnabled | TenoPartsServer script | true (false = 1.0 hoof plates) | TenoPartsServer 1.1 |
 | TenoPoseFix16Enabled | teno model | true (false = 1.5 stomp / leap poses) | TenoPose 1.6 |
 | TenoMovesFXV12Enabled; parts TenoWave, TenoBellowAura2, TenoMudCoat2 (+ local mud tint on body parts) | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.2 |
+| JumpCharges; JumpChargesLeft, JumpChargeRefillAt; JumpChargesLocal | character (SkillEffects 1.37 writes JumpCharges; JumpServer 1.3 the rest; JumpTest 1.4 local) | 0 = plain cooldown; >= 1 = leap charges | JumpServer 1.3 / JumpTest 1.4 |
+| JumpChargesServerEnabled; JumpChargesEnabled | JumpServer script; JumpTest script | true | JumpServer 1.3 / JumpTest 1.4 |
+| TenoLeapOnJump | teno character | true while Hydraulic Leap is bought + slotted | SkillEffects 1.37 |
+| SkillEffectsTenoLeapJumpEnabled | SkillEffects script | true | SkillEffects 1.37 |
+| TenoMovesLeapOnJumpEnabled; TenoMovesJumpLeaps; TenoLeapServerResult "onJump" | TenoMovesServer script; script; character | true; count | TenoMovesServer 1.4 |
+| MechaButtonsTenoJumpEnabled | MechaButtons script | true | MechaButtons 1.28 |
+| AbilityBarTenoJumpEnabled | AbilityBar script | true | AbilityBar 1.22 |
+| TenoPoseFix17Enabled; TenoPoseState "tland" | teno model | true | TenoPose 1.7 |
+| TenoMovesFXShieldEnabled; parts TenoShieldPlate, TenoShieldFlash (+ TenoWave purple) | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.3 |
+| TenoPartsShieldPylonsEnabled; TPartRole pylon / band / tip | TenoPartsServer script; TPart_tmud parts | true | TenoPartsServer 1.2 |

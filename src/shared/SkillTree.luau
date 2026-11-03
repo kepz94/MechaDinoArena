@@ -1,4 +1,4 @@
--- SkillTree v1.54 (1.49 teno abilities; 1.50 teno stats part 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.55 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -1835,6 +1835,47 @@ if SkillTree.TENO_PARTS and SkillTree.TENO_SUPPORT_LIVE then
 			SkillTree.PATHS[id].soon = false
 			SkillTree.LIVE_MECH[id] = true
 		end
+	end
+end
+
+
+-- v1.55 (Kepu 2026-11-02 16:43: "You also didn't make the leap just a part of the jump button" -> "look at how we did it for
+-- the pachy"; picked "Same, but keep 2 charges"; "Change the mud armor to be a purple shield armor" -> "Look only", look
+-- "B Energy Armor"):
+--   * SkillTree.TENO_LEAP_ON_JUMP (default true; false = 1.54): Hydraulic Leap works like the pachy's Mecha Legs: it stays
+--     in BUTTONS (takes a slot) but fires through JUMP (JumpTest / JumpServer, the shared leap). Effects (1 / 0 when not
+--     bought): leapBoostMul (I 1.65, II 2.1) and leapPowerMul (I 1.2, II 1.45) on the teno's own JumpBoost /
+--     JumpLaunchPower (SkillEffects 1.37), leapCooldown 6 (was 14: Mecha Legs' cooldown), leapCharges I 1 / star 2 (each
+--     charge refills leapCooldown s after the one before), leapDamage / leapRadius / leapStun unchanged (TenoMovesServer
+--     1.4 slams on landing). leapDist stays 40 / 55 (the step texts' distance; Studio, sprinting: I 1.5 -> 37.6 studs,
+--     II 1.8 -> 50.1 studs, so the boost was raised to 1.65 / 2.1).
+--   * SkillTree.TENO_SHIELD_ARMOR (default true; false = 1.54 name / texts): "tmud" is named "Shield Armor" and its step
+--     texts say shield instead of mud. Numbers and rules unchanged.
+SkillTree.TENO_LEAP_ON_JUMP = true
+if SkillTree.TENO_PARTS and SkillTree.TENO_LEAP_ON_JUMP and SkillTree.PATHS.tleap then
+	SkillTree.PATHS.tleap.steps = {
+		"Fires through JUMP: every jump is a hydraulic leap, 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 6 s",
+		"Leap 55 studs", "Landing stuns 0.5 s", "2 leaps (2 charges)"}
+end
+SkillTree.TENO_SHIELD_ARMOR = true
+if SkillTree.TENO_PARTS and SkillTree.TENO_SHIELD_ARMOR and SkillTree.PATHS.tmud then
+	SkillTree.PATHS.tmud.name = "Shield Armor"
+	SkillTree.PATHS.tmud.steps = {
+		"Button: a purple energy shield for 8 s blocks your next 3 hits completely, and each blocked hit slows every enemy within 15 studs 40% for 4 s. Latched raptors are knocked off. Recharges in 20 s",
+		"Blocks 4 hits", "Shield lasts 12 s", "When the shield ends it bursts 12 studs around: enemies slowed 40% for 4 s"}
+end
+do
+	local effectsPre155 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre155(steps, dino)
+		if type(e) ~= "table" then return e end
+		local on = SkillTree.TENO_PARTS and SkillTree.TENO_LEAP_ON_JUMP and dino == "Teno" and SkillTree.PATHS.tleap ~= nil
+		local l = on and (SkillTree.sanitize(steps, dino).tleap or 0) or 0
+		e.leapBoostMul = l >= 2 and 2.1 or (l >= 1 and 1.65 or 1)
+		e.leapPowerMul = l >= 2 and 1.45 or (l >= 1 and 1.2 or 1)
+		if on and l >= 1 then e.leapCooldown = 6 end
+		e.leapOnJump = on and l >= 1
+		return e
 	end
 end
 
