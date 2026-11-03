@@ -1,10 +1,12 @@
--- StatSheet.spec v1.4 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.StatSheet (MDA-1, plan docs/plans/CLASSSTATS_v1.0.md).
+-- StatSheet.spec v1.5 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.StatSheet (MDA-1, plan docs/plans/CLASSSTATS_v1.0.md).
 -- Run in Studio Edit through execute_luau (copy in ServerStorage.DinoArcadeTools.StatSheet_spec); returns "PASS n" or "FAIL ...".
 -- v1.3 (MDA-134, plan docs/plans/HERRERA_KIT_v1.0.md Task 2): requires a fresh clone (a re-run sees the installed source);
 --   Version "1.3" (the 1.1 spec was not bumped for StatSheet 1.2); pachy sheet + HeadbuttDamage; Herrera sheet (Utility,
 --   2/3/2/10/1, "Dash-through slash", "Auto-climb") and SlashDamage +1 per Attack point.
 -- v1.4 (MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 2): Version "1.4"; Teno sheet (Tank, 9/5/8/3/1, "Scratch + tail
 --   slam", "Rearing leap"); TenoScratchDamage +1 and TenoSlamDamage +2 per Attack point; other dinos get neither key.
+-- v1.5 (MDA-198, plan docs/plans/THERIZINO_KIT_v1.0.md Task 2): Version "1.5"; Therizino sheet (Slasher, 4/9/3/7/1,
+--   "3-hit claw combo", "Diving Rake"); TheriHitDamage1 / 2 +1 and TheriHitDamage3 +2 per Attack point; other dinos get none.
 local ok, SS = pcall(function()
 	local src = game.ServerStorage.DinoArcade.StatSheet
 	local c = src:Clone()
@@ -26,7 +28,7 @@ local TREX = {MaxHealth = 200, BiteDamage = 25, MoveWalkSpeed = 20, MoveRunSpeed
 local RAPTOR = {MaxHealth = 60, BiteDamage = 8, PounceLandDamage = 8, PounceTickDamage = 4, MoveWalkSpeed = 30, MoveRunSpeed = 52,
 	MoveCreepSpeed = 10}
 
-eq("Version", SS.Version, "1.4")
+eq("Version", SS.Version, "1.5")
 eq("STATS", table.concat(SS.STATS, ","), "Health,Attack,Defense,Speed,Support")
 eq("MAX_ADDED", SS.MAX_ADDED, 10)
 eq("HEALTH_PER_POINT", SS.HEALTH_PER_POINT, 15)
@@ -149,6 +151,22 @@ eq("Teno Attack 2 scratch", v.TenoScratchDamage, 10)
 eq("Teno Attack 2 slam", v.TenoSlamDamage, 44)
 eq("Teno 0 health", (SS.values(TENO, SS.added("Teno", {}) or {})).MaxHealth, 150)
 eq("Herrera no teno key", SS.values(HERRERA, SS.added("Herrera", {Attack = 2})).TenoSlamDamage, nil)
+
+-- v1.5: Therizino sheet
+eq("Therizino class", SS.SPECIES.Therizino and SS.SPECIES.Therizino.class, "Slasher")
+if SS.SPECIES.Therizino then
+	eq("Therizino start", sheet("Therizino"), "4/9/3/7/1")
+	eq("Therizino abilities", table.concat(SS.SPECIES.Therizino.abilities, ","), "3-hit claw combo,Diving Rake")
+end
+eq("ATTACK theri hit 1", SS.ATTACK_PER_POINT.TheriHitDamage1, 1)
+eq("ATTACK theri hit 2", SS.ATTACK_PER_POINT.TheriHitDamage2, 1)
+eq("ATTACK theri hit 3", SS.ATTACK_PER_POINT.TheriHitDamage3, 2)
+local THERI = {MaxHealth = 80, TheriHitDamage1 = 9, TheriHitDamage2 = 9, TheriHitDamage3 = 20, MoveWalkSpeed = 36, MoveRunSpeed = 66}
+v = SS.values(THERI, SS.added("Therizino", {Attack = 2}) or {})
+eq("Therizino Attack 2 hit 1", v.TheriHitDamage1, 11)
+eq("Therizino Attack 2 hit 3", v.TheriHitDamage3, 24)
+eq("Therizino 0 health", (SS.values(THERI, SS.added("Therizino", {}) or {})).MaxHealth, 80)
+eq("Teno no theri key", SS.values(TENO, SS.added("Teno", {Attack = 2})).TheriHitDamage1, nil)
 
 if #fails > 0 then return "FAIL " .. #fails .. " (pass " .. passes .. ")\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes
