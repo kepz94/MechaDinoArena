@@ -4,10 +4,12 @@
 -- Each display = one anchored copy of ServerStorage.DinoArcade.Models.<Species>ModelData built with DinoModelBuilder, scaled
 -- 2x (as every dino is in game), standing on the flat beach strip east of the Teno display (z 925, ground y -0.4 from x 170
 -- to 335, checked by raycast 2026-11-02), heads toward the spawn side (-X), in a row:
---   Troodon_Display    x 185   (~24 studs long)
---   Dilo_Display       x 218   (~26)
---   Therizino_Display  x 257   (~32)
---   Zuul_Display       x 305   (~40)
+--   Troodon_Display    x 180   (~24 studs long)
+--   Dilo_Display       x 210   (~26)
+--   Therizino_Display  x 245   (~32)
+--   Zuul_Display       x 290   (~40; at x 305 its tail went into the rock step east of the beach)
+-- The Dilo frill is built twice (48 open "_frill" parts, 8 folded "_fold" parts): every "_fold" part is hidden
+-- (Transparency 1), so the display shows the frill open (MDA-190).
 -- Studio only: a Script in each folder destroys the folder on a live server (RunService:IsStudio() false), so publishing the
 -- place never shows the displays to players. Returns one line per display (ground, lift, size, visible part count).
 local VERSION = "1.0"
@@ -15,10 +17,10 @@ local SCALE = 2
 local Z = 925
 local FACE = Vector3.new(-1, 0, 0)
 local LIST = {
-	{species = "Troodon", x = 185},
-	{species = "Dilo", x = 218},
-	{species = "Therizino", x = 257},
-	{species = "Zuul", x = 305},
+	{species = "Troodon", x = 180},
+	{species = "Dilo", x = 210},
+	{species = "Therizino", x = 245},
+	{species = "Zuul", x = 290},
 }
 
 local SS = game:GetService("ServerStorage")
@@ -63,6 +65,9 @@ for _, e in ipairs(LIST) do
 	m:SetAttribute("DisplayModelsVersion", VERSION)
 	m.Parent = folder
 	-- stand on the ground: lowest visible point to groundY
+	for _, p in ipairs(m:GetDescendants()) do -- the folded frill copy stays hidden
+		if p:IsA("BasePart") and p.Name:find("_fold") then p.Transparency = 1 end
+	end
 	local lowest, parts = math.huge, 0
 	for _, p in ipairs(m:GetDescendants()) do
 		if p:IsA("BasePart") and p.Transparency < 1 then
