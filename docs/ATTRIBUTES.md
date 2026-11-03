@@ -2626,3 +2626,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoMortarBigPoseEnabled | teno model | true | TenoPose 1.8 |
 | TenoMovesFXMortarBigEnabled; part TenoMortarFlash | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.4 |
 | ShoulderCamTenoFlipEnabled | ShoulderCam script | false (was true in 1.7) | ShoulderCam 1.8 |
+| TherizinoModelVersion | therizino model | "1.1" (was "1.0") | TherizinoModelData 1.1: arm stance C2 Low flare, palms up (Kepu 2026-11-02). Every other therizino attribute unchanged (carried from 1.0). |
