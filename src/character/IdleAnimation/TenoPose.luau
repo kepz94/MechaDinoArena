@@ -1,4 +1,4 @@
--- TenoPose v1.7 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.8 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -76,8 +76,13 @@
 --   * "tmud" is a shield brace instead of the mud wallow: 0.25 s 0 -> BRACE (chest up, arms forward, head up), held to
 --     0.9 s, 0.5 s -> 0 (ends 1.4 s, inside SUPPORT_END 1.7).
 --   Switch: model attribute TenoPoseFix17Enabled (default true; false = 1.6).
+-- v1.8 (Kepu 2026-11-02 17:29: "the mortar animation ... needs to be beefed up" -> "Big wind-up + whip"; TenoMovesServer 1.5
+--   releases the boulder at 0.55 s): "tmortar" = 0.5 s 0 -> MORTAR_COIL (smooth: the body sinks into a crouch, the front
+--   dips, the tail drops low behind, curled down), 0.1 s -> MORTAR_WHIP (easeIn: the tail cracks up over the back, the
+--   chest lifts), held to 0.75 s, 0.7 s -> 0 (ends 1.45 s, inside ABILITY_END 1.6). Switch: model attribute
+--   TenoMortarBigPoseEnabled (default true; false = 1.7, the 1.4 quick whip).
 local TenoPose = {}
-TenoPose.Version = "1.7"
+TenoPose.Version = "1.8"
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -482,6 +487,32 @@ do
 			return mix(BRACE, ZERO, smooth((t - 0.9) / 0.5))
 		end
 		return anglesV16(phase, t, hold, s, now)
+	end
+end
+
+-- v1.8: the mortar's big wind-up and whip
+local MORTAR_COIL = {RootJoint = {-8, 0, 0}, LegL = {20, 0, 0}, LegR = {20, 0, 0}, KneeL = {-28, 0, 0}, KneeR = {-28, 0, 0},
+	AnkleL = {8, 0, 0}, AnkleR = {8, 0, 0}, ArmL = {-12, 0, 0}, ArmR = {-12, 0, 0}, Neck = {-10, 0, 0}, Head = {6, 0, 0},
+	Tail1 = {28, 0, 0}, Tail2 = {22, 0, 0}, Tail3 = {20, 0, 0}, Tail4 = {18, 0, 0}, Tail5 = {16, 0, 0}}
+local MORTAR_WHIP = {RootJoint = {10, 0, 0}, LegL = {-10, 0, 0}, LegR = {-10, 0, 0}, ArmL = {20, 0, 0}, ArmR = {20, 0, 0},
+	Neck = {12, 0, 0}, Head = {-8, 0, 0}, Jaw = {-14, 0, 0}, Tail1 = {-110, 0, 0}, Tail2 = {-70, 0, 0}, Tail3 = {-55, 0, 0},
+	Tail4 = {-40, 0, 0}, Tail5 = {-30, 0, 0}}
+local bigMortar = true
+do
+	local phaseV17 = TenoPose.phase
+	function TenoPose.phase(model, isOwner, serverNow)
+		bigMortar = model:GetAttribute("TenoMortarBigPoseEnabled") ~= false
+		return phaseV17(model, isOwner, serverNow)
+	end
+	local anglesV17 = TenoPose.attackAngles
+	function TenoPose.attackAngles(phase, t, hold, s, now)
+		if bigMortar and phase == "tmortar" then
+			if t < 0.5 then return mix(ZERO, MORTAR_COIL, smooth(t / 0.5)) end
+			if t < 0.6 then return mix(MORTAR_COIL, MORTAR_WHIP, easeIn((t - 0.5) / 0.1)) end
+			if t < 0.75 then return mix(MORTAR_WHIP, MORTAR_WHIP, 0) end
+			return mix(MORTAR_WHIP, ZERO, smooth((t - 0.75) / 0.7))
+		end
+		return anglesV17(phase, t, hold, s, now)
 	end
 end
 

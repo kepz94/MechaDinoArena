@@ -2622,3 +2622,6 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoPoseFix17Enabled; TenoPoseState "tland" | teno model | true | TenoPose 1.7 |
 | TenoMovesFXShieldEnabled; parts TenoShieldPlate, TenoShieldFlash (+ TenoWave purple) | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.3 |
 | TenoPartsShieldPylonsEnabled; TPartRole pylon / band / tip | TenoPartsServer script; TPart_tmud parts | true | TenoPartsServer 1.2 |
+| TenoMovesMortarBigEnabled; TenoMovesShieldFastEnabled; TenoMovesShieldCoatAt | TenoMovesServer script | true; true; 0.2 | TenoMovesServer 1.5 |
+| TenoMortarBigPoseEnabled | teno model | true | TenoPose 1.8 |
+| TenoMovesFXMortarBigEnabled; part TenoMortarFlash | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.4 |

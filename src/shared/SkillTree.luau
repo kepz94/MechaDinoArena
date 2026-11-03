@@ -1,4 +1,4 @@
--- SkillTree v1.55 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.56 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -1875,6 +1875,24 @@ do
 		e.leapPowerMul = l >= 2 and 1.45 or (l >= 1 and 1.2 or 1)
 		if on and l >= 1 then e.leapCooldown = 6 end
 		e.leapOnJump = on and l >= 1
+		return e
+	end
+end
+
+
+-- v1.56 (Kepu 2026-11-02 17:29: "the mortar animation and range needs to be beefed up" -> range "90 studs"): with
+-- SkillTree.TENO_MORTAR_90 (default true; false = 1.55) Boulder Mortar step I reaches 15-90 studs: mortarRange 60 -> 90 (the
+-- crosshair clamp, TenoMovesServer 1.5). Step I text says 15-90. Other numbers unchanged.
+SkillTree.TENO_MORTAR_90 = true
+if SkillTree.TENO_PARTS and SkillTree.TENO_MORTAR_90 and SkillTree.PATHS.tmortar then
+	SkillTree.PATHS.tmortar.steps[1] = "Button: lob a boulder where your crosshair points (15-90 studs); it snaps onto a dino within 8 studs of that spot. 12 damage in a 10-stud splash, enemies slowed 30% for 2 s. Recharges in 14 s"
+end
+do
+	local effectsPre156 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre156(steps, dino)
+		if type(e) ~= "table" then return e end
+		if SkillTree.TENO_PARTS and SkillTree.TENO_MORTAR_90 and dino == "Teno" and (e.mortarRange or 0) > 0 then e.mortarRange = 90 end
 		return e
 	end
 end

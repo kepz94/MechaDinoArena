@@ -1,4 +1,4 @@
--- TenoMovesFX v1.3 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
+-- TenoMovesFX v1.4 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
 -- StarterPlayerScripts; every client draws every teno). Plan docs/plans/TENO_ABILITIES_v1.0.md Task 7 (MDA-179), mockup
 -- docs/mockups/teno_abilities_options.html v0.3 (rings, dust, heat glow, the catapult boulder leaving the bucket).
 -- Reads TenoMovesServer 1.0's character stamps (the server also draws the boulders and rubble patches itself):
@@ -47,11 +47,16 @@
 --     0.25 s; their resting transparency rises 0.06 per blocked hit (fewer hits left = fainter).
 --   * TenoMudEndedAt: a 0.4 s purple wave to 6 studs. TenoMudSplashAt (star): a 0.7 s purple wave to TenoMudSplash.
 --   Switch: script attribute TenoMovesFXShieldEnabled (default true, read at each event; false = 1.2 mud look).
+-- v1.4 (Kepu 2026-11-02 17:29: the mortar "needs to be beefed up" -> "Big wind-up + whip ... with launch dust and a flash
+--   at the bucket"): on TenoMortarFiredAt, a white-hot flash (8 studs) at the catapult bucket's rock, dust around the teno's
+--   root (spread 10) and a 0.4 s cream wave to 10 studs on the ground. Switch: script attribute TenoMovesFXMortarBigEnabled
+--   (default true, read at each shot; false = 1.3).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 purple shield look
+VERSION = "1.4" -- v1.4 mortar launch FX
 local RING_TIME, ROCK_RELOAD = 0.5, 2.4
 local player = Players.LocalPlayer
 player:SetAttribute("TenoMovesFXVersion", VERSION)
@@ -567,3 +572,26 @@ local function onPlayer4(p)
 end
 Players.PlayerAdded:Connect(onPlayer4)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer4(p) end
+
+-- v1.4: mortar launch FX (see the header) ------------------------------------------------------------------------------------
+if script:GetAttribute("TenoMovesFXMortarBigEnabled") == nil then script:SetAttribute("TenoMovesFXMortarBigEnabled", true) end
+local function watch5(char)
+	char:GetAttributeChangedSignal("TenoMortarFiredAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on() or script:GetAttribute("TenoMovesFXMortarBigEnabled") == false or not fresh(char, "TenoMortarFiredAt") or not root then return end
+		local rock = roles(char, "tmortar", "rock")[1]
+		local at = rock and rock.Position or (root.Position + Vector3.new(0, 6, 0))
+		local f = part("TenoMortarFlash", Enum.PartType.Ball, Vector3.one * 2, CFrame.new(at), Color3.fromRGB(255, 244, 214), 0.05)
+		TweenService:Create(f, TweenInfo.new(0.3), {Size = Vector3.one * 8, Transparency = 1}):Play()
+		task.delay(0.35, function() f:Destroy() end)
+		dust(root.Position, 10)
+		wave(root.Position, 10, CREAM, 0.4, 20)
+		count("mortarLaunch")
+	end)
+end
+local function onPlayer5(p)
+	p.CharacterAdded:Connect(watch5)
+	if p.Character then watch5(p.Character) end
+end
+Players.PlayerAdded:Connect(onPlayer5)
+for _, p in ipairs(Players:GetPlayers()) do onPlayer5(p) end

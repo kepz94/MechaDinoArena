@@ -1,4 +1,4 @@
--- SkillTreeTenoParts.spec v1.4 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
+-- SkillTreeTenoParts.spec v1.5 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.49 (plan docs/plans/TENO_ABILITIES_v1.0.md Task 1, MDA-173). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTenoParts_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-01 "two builds"): tgrab / tmortar / tstomp / tleap live; tbellow / tchallenge / tmud "soon".
@@ -10,6 +10,7 @@
 -- v1.4 (SkillTree 1.55, Kepu 2026-11-02 16:43): TENO_LEAP_ON_JUMP (Hydraulic Leap fires through JUMP: new step I text,
 --   leapCooldown 6, leapBoostMul I 1.65 / II 2.1, leapPowerMul I 1.2 / II 1.45, leapOnJump) and TENO_SHIELD_ARMOR ("tmud"
 --   named "Shield Armor", shield texts). Other leap / mud numbers unchanged.
+-- v1.5 (SkillTree 1.56): TENO_MORTAR_90: mortar step I text 15-90 studs, mortarRange 90.
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -35,6 +36,7 @@ eq("TENO_MORTAR_AIM", ST.TENO_MORTAR_AIM, true) -- v1.2
 eq("TENO_SUPPORT_LIVE", ST.TENO_SUPPORT_LIVE, true) -- v1.3
 eq("TENO_LEAP_ON_JUMP", ST.TENO_LEAP_ON_JUMP, true) -- v1.4
 eq("TENO_SHIELD_ARMOR", ST.TENO_SHIELD_ARMOR, true) -- v1.4
+eq("TENO_MORTAR_90", ST.TENO_MORTAR_90, true) -- v1.5
 local ROWS = {
 	tgrab = {"Tail Grab & Fling", "attack", false},
 	tmortar = {"Boulder Mortar", "attack", false},
@@ -74,7 +76,7 @@ if P.tgrab then
 	eq("grab star", P.tgrab.steps[4], "The flung dino crashes into others where it lands: 8 damage to each")
 end
 if P.tmortar then
-	eq("mortar I", P.tmortar.steps[1], "Button: lob a boulder where your crosshair points (15-60 studs); it snaps onto a dino within 8 studs of that spot. 12 damage in a 10-stud splash, enemies slowed 30% for 2 s. Recharges in 14 s")
+	eq("mortar I", P.tmortar.steps[1], "Button: lob a boulder where your crosshair points (15-90 studs); it snaps onto a dino within 8 studs of that spot. 12 damage in a 10-stud splash, enemies slowed 30% for 2 s. Recharges in 14 s")
 	eq("mortar II", P.tmortar.steps[2], "Splash 14 studs")
 	eq("mortar III", P.tmortar.steps[3], "Lobs 2 boulders side by side")
 	eq("mortar star", P.tmortar.steps[4], "Leaves a rubble patch for 4 s: enemies in it are slowed 30%")
@@ -159,7 +161,7 @@ eq("grab II fling", E({tgrab = 2}).grabFling, 45); eq("grab II small only", E({t
 eq("grab III big", E({tgrab = 3}).grabBig, true); eq("grab III fling", E({tgrab = 3}).grabFling, 45)
 eq("grab star crash", E({tgrab = 4}).grabCrash, 8); eq("grab star crash radius", E({tgrab = 4}).grabCrashRadius, 8)
 -- mortar
-eq("mortar I range", E({tmortar = 1}).mortarRange, 60); eq("mortar I miss", E({tmortar = 1}).mortarMiss, 45)
+eq("mortar I range", E({tmortar = 1}).mortarRange, 90); eq("mortar I miss", E({tmortar = 1}).mortarMiss, 45)
 eq("mortar I cone", E({tmortar = 1}).mortarCone, 30); eq("mortar I damage", E({tmortar = 1}).mortarDamage, 12)
 eq("mortar I splash", E({tmortar = 1}).mortarSplash, 10); eq("mortar I count", E({tmortar = 1}).mortarCount, 1)
 eq("mortar I slow", E({tmortar = 1}).mortarSlowMul, 0.7); eq("mortar I slow time", E({tmortar = 1}).mortarSlowTime, 2)

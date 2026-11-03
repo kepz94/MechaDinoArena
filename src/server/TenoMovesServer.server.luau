@@ -1,4 +1,4 @@
--- TenoMovesServer v1.4 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.5 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -118,6 +118,15 @@
 --     while a charge is left, else the refill), so the slot tile and phone button show the jump's charges.
 --   Switch: script attribute TenoMovesLeapOnJumpEnabled (default true, read at each use; false = 1.3). Diagnostic: script
 --   TenoMovesJumpLeaps.
+-- v1.5 (Kepu 2026-11-02 17:29: "the mortar animation and range needs to be beefed up" -> range 90 (SkillTree 1.56), "Big
+--   wind-up + whip"; "the shield takes way too long to actually appear on screen"):
+--   * Boulder Mortar: the boulder leaves MORTAR_FIRE3 (0.55) s after the press (TenoPose 1.8's 0.5 s wind-up, then the whip),
+--     was 0.15. Shots past 60 studs fly longer and higher: flight 0.7 + 0.3 x k s, peak 14 + 8 x k studs, k = (distance - 60)
+--     / 30 clamped 0..1 (90 studs: 1.0 s, 22). Switch: script attribute TenoMovesMortarBigEnabled (default true, read at each
+--     shot; false = 1.4 timing).
+--   * Shield Armor: the shield (ForceField + TenoMudCoatAt) goes on TenoMovesShieldCoatAt (default 0.2) s after the press,
+--     was MUD_COAT_AT 1.2 (the old mud wallow). Latched raptors are still knocked off at MUD_SLIDE_AT 0.7. Switch: script
+--     attribute TenoMovesShieldFastEnabled (default true, read at each press; false = 1.2 s).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -125,12 +134,17 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.3"
 VERSION = "1.4" -- v1.4 leap on JUMP
+VERSION = "1.5" -- v1.5 mortar wind-up + 90 studs, shield at 0.2 s
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
 local MORTAR_FIRE2, MORTAR_FLIGHT2, MORTAR_PEAK2 = 0.15, 0.7, 14 -- v1.2
 local STOMP_HIT = 0.5
 local BELLOW_AT, CHALLENGE_AT, MUD_SLIDE_AT, MUD_COAT_AT, MUD_BLOCK_GAP = 0.5, 0.5, 0.7, 1.2, 0.15 -- v1.3
 local LEAP_TIME = 0.9
+local MORTAR_FIRE3 = 0.55 -- v1.5
+if script:GetAttribute("TenoMovesMortarBigEnabled") == nil then script:SetAttribute("TenoMovesMortarBigEnabled", true) end -- v1.5
+if script:GetAttribute("TenoMovesShieldFastEnabled") == nil then script:SetAttribute("TenoMovesShieldFastEnabled", true) end -- v1.5
+if script:GetAttribute("TenoMovesShieldCoatAt") == nil then script:SetAttribute("TenoMovesShieldCoatAt", 0.2) end -- v1.5
 local DY = 15
 
 script:SetAttribute("TenoMovesServerVersion", VERSION)
@@ -666,6 +680,11 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 		end
 		centre = spot
 	end
+	if newAim and script:GetAttribute("TenoMovesMortarBigEnabled") ~= false then -- v1.5: wind-up, longer shots fly longer
+		fireT = MORTAR_FIRE3
+		local k = math.clamp((flat(centre - root.Position).Magnitude - 60) / 30, 0, 1)
+		flightT, peakT = flightT + 0.3 * k, peakT + 8 * k
+	end
 	local right = aim:Cross(Vector3.yAxis).Unit
 	local pts = num(char, "TenoMortarCount", 1) >= 2 and {onGround(centre + right * MORTAR_PAIR), onGround(centre - right * MORTAR_PAIR)} or {centre}
 	local splash, dmg = num(char, "TenoMortarSplash", 10), num(char, "TenoMortarDamage", 12)
@@ -1028,7 +1047,9 @@ mudRemote.OnServerEvent:Connect(function(player, stamp)
 			m:SetAttribute("ShakeOffAt", tl) -- last: PounceServer / BotServer release the latch
 		end
 	end)
-	task.delay(MUD_COAT_AT, function()
+	local coatAt = MUD_COAT_AT
+	if script:GetAttribute("TenoMovesShieldFastEnabled") ~= false then coatAt = math.max(0, tonumber(script:GetAttribute("TenoMovesShieldCoatAt")) or 0.2) end -- v1.5
+	task.delay(coatAt, function()
 		if not alive(char) or char:GetAttribute("TenoMudEnabled") ~= true or not on("tmud") then return end
 		local tc = now()
 		local ff = Instance.new("ForceField")

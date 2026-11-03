@@ -1,0 +1,310 @@
+<title>Teno Ability Checklist</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one column of ability panels, each a list of check rows with two result columns (Claude's Studio run, Kepu's live run). */
+:root {
+  --bg: #f3f2ee; --panel: #ffffff; --ink: #1f2420; --muted: #5d655e; --line: #d9dbd3;
+  --accent: #b5651d; --pass: #2f7d3a; --pass-bg: #e3f1e3; --fail: #b3261e; --fail-bg: #f8e1df;
+  --wait: #6b6f68; --wait-bg: #ecece7; --key: #26302a; --key-fg: #f3f2ee;
+  --display: "Chakra Petch", "Trebuchet MS", sans-serif; --body: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #151816; --panel: #1d211e; --ink: #e8ebe5; --muted: #a2aa9f; --line: #333a34;
+  --accent: #e0914a; --pass: #7fd08a; --pass-bg: #1f3322; --fail: #ff8a80; --fail-bg: #3a1f1d;
+  --wait: #a6aaa2; --wait-bg: #2a2e2a; --key: #e8ebe5; --key-fg: #151816; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #151816; --panel: #1d211e; --ink: #e8ebe5; --muted: #a2aa9f; --line: #333a34;
+  --accent: #e0914a; --pass: #7fd08a; --pass-bg: #1f3322; --fail: #ff8a80; --fail-bg: #3a1f1d;
+  --wait: #a6aaa2; --wait-bg: #2a2e2a; --key: #e8ebe5; --key-fg: #151816; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 22px; }
+h1 { font: 700 30px/1.1 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+h2 { font: 700 19px/1.2 var(--display); margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 68ch; }
+.build { font: 500 12px var(--mono); color: var(--muted); }
+.process { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.step { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.step b { display: block; font: 700 13px var(--display); text-transform: uppercase; letter-spacing: .06em; color: var(--accent); margin-bottom: 2px; }
+.summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.sum { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 6px; font-size: 13px; }
+.sum .k { min-width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: var(--key); color: var(--key-fg); font: 700 12px var(--mono); padding: 0 4px; }
+.sum .n { font-variant-numeric: tabular-nums; color: var(--muted); }
+.sum.allpass { border-color: var(--pass); } .sum.anyfail { border-color: var(--fail); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.phead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.phead .k { font: 700 13px var(--mono); background: var(--key); color: var(--key-fg); border-radius: 6px; padding: 2px 8px; }
+.phead .meta { color: var(--muted); font-size: 13px; }
+.cols { display: grid; grid-template-columns: 1fr 150px 210px; gap: 12px; padding: 6px 16px; font: 600 11px var(--body); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); border-bottom: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 1fr 150px 210px; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); align-items: start; }
+.row:last-child { border-bottom: 0; }
+.what { min-width: 0; }
+.what p { margin: 0; }
+.what .how { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.chip { display: inline-block; font: 600 12px var(--body); border-radius: 6px; padding: 2px 8px; }
+.chip.pass { color: var(--pass); background: var(--pass-bg); } .chip.fail { color: var(--fail); background: var(--fail-bg); }
+.chip.wait { color: var(--wait); background: var(--wait-bg); }
+.cnote { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.mine { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.btns { display: flex; gap: 6px; }
+.btns button { flex: 1; font: 600 13px var(--body); border-radius: 6px; padding: 6px 8px; cursor: pointer; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.btns button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btns button.on.p { background: var(--pass-bg); color: var(--pass); border-color: var(--pass); }
+.btns button.on.f { background: var(--fail-bg); color: var(--fail); border-color: var(--fail); }
+textarea { width: 100%; box-sizing: border-box; min-height: 34px; resize: vertical; font: 13px/1.4 var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.state { font-size: 12px; color: var(--muted); }
+.vis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.vis figure { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.vis img { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); display: block; }
+.vis figcaption { font: 600 11px var(--body); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.subhead { padding: 8px 16px; font: 700 12px var(--display); text-transform: uppercase; letter-spacing: .08em; color: var(--accent); border-bottom: 1px solid var(--line); background: var(--bg); }
+.hero { display: flex; flex-direction: column; gap: 6px; }
+.hero img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); }
+.hero span { font-size: 12px; color: var(--muted); }
+@media (max-width: 720px) { .vis { grid-template-columns: 1fr; } }
+.banner { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--muted); }
+@media (max-width: 720px) {
+  .cols { display: none; }
+  .row { grid-template-columns: 1fr; }
+  .row .claude::before { content: "Claude: "; font-size: 12px; color: var(--muted); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Teno Ability Checklist</h1>
+    <p class="sub">Two passes per part. First the visual test: the part, its animation and its effects, captured in Studio, so you can judge them here without opening Roblox. When those pass, test the lines below them in the live game. Mark Pass or Fail with a note; I read this list back and fix the fails only.</p>
+    <p class="build">Build under test: SkillTree 1.56 · SkillEffects 1.37 · TenoMovesServer 1.5 · TenoPose 1.8 · TenoMovesFX 1.4 · TenoPartsServer 1.2 · JumpServer 1.3 · JumpTest 1.4 · numbers at ★</p>
+  </header>
+
+  <section class="process" aria-label="How a change gets checked off">
+    <div class="step"><b>1 · Written down</b>Every change gets lines here saying exactly what should happen, before it is built.</div>
+    <div class="step"><b>2 · Claude tests</b>Visual captures from Studio, then your save with real key presses. Results go in the Claude column.</div>
+    <div class="step"><b>3 · Both places</b>"Publish" goes to the Sandbox place and the Arena place, every time.</div>
+    <div class="step"><b>4 · You test</b>Visual lines here first; gameplay lines in the live game after. A line is only done when your column says Pass.</div>
+  </section>
+
+  <figure class="hero" style="margin:0"><img src="vis/body_all.jpg" alt="The teno with all seven mecha parts on, side view" width="900" height="288"><span>All seven parts on one teno (Studio, side view). Visuals: Studio Play, 2026-11-02, build above; not the live game.</span></figure>
+  <div id="banner" class="banner" hidden></div>
+  <div class="summary" id="summary" aria-label="Results per ability"></div>
+  <div id="panels" style="display:flex;flex-direction:column;gap:18px"></div>
+</div>
+
+<script>
+const ABILITIES = [
+  {id: "setup", key: "LAB", name: "Lab and slots", meta: "before testing", checks: [
+    {id: "p1", what: "Herd Bellow, Challenge Call and Shield Armor are buyable and slottable in the Lab (no SOON tag).", how: "Main menu → Lab → teno. Needs the Sandbox place published."},
+    {id: "p2", what: "Each slotted part shows on the teno's body and has its own button (R / C / T / V on PC).", how: "Spawn as the teno with 4 parts slotted."}
+  ]},
+  {id: "grab", key: "R", name: "Tail Grab & Fling", meta: "attack · recharge 16 s", checks: [
+    {id: "g1", what: "With a raptor, Herrera, pachy or teno within 12 studs in any direction, the tail grabs it and flings it 45 studs ahead of you.", how: "Stand next to a bot and press the button."},
+    {id: "g2", what: "The flung dino takes 8 damage and is stunned 1 s when it lands.", how: "Watch its health bar and that it lies still for a moment."},
+    {id: "g3", what: "★ It crashes into dinos within 8 studs of where it lands: 8 damage and 1 s stun each.", how: "Fling a bot into a group of bots."},
+    {id: "g4", what: "No dino in range: nothing happens and the recharge is not used.", how: "Press it with nobody near."},
+    {id: "g5", what: "After a grab, the button waits 16 s before it works again.", how: "Press twice."}
+  ]},
+  {id: "mortar", key: "T", name: "Boulder Mortar", meta: "attack · recharge 14 s", checks: [
+    {id: "m1", what: "The boulder lands where your crosshair points, 15 to 90 studs away (aim closer: it lands at 15; aim farther: at 90).", how: "Aim at the ground at different distances."},
+    {id: "m2", what: "It snaps onto a dino within 8 studs of the spot you aimed at.", how: "Aim just beside a bot."},
+    {id: "m3", what: "Big wind-up then a hard whip: the boulder leaves 0.55 s after the press and lands about 1.3-1.55 s after the press (farther shots fly longer).", how: "Feel check."},
+    {id: "m4", what: "12 damage in a 14-stud splash; hit dinos are slowed 30% for 2 s.", how: "Hit a bot and watch its health and speed."},
+    {id: "m5", what: "Two boulders land side by side; ★ they leave a rubble patch for 4 s that slows enemies in it 30%.", how: "Look at the landing."},
+    {id: "m6", what: "Recharge 14 s.", how: "Press twice."}
+  ]},
+  {id: "stomp", key: "C", name: "Stomp Shockwave", meta: "defense · recharge 15 s", checks: [
+    {id: "s1", what: "Rears up and stomps: a 20-stud shockwave around the front feet, 6 damage and 1 s stun to every enemy in it.", how: "Stomp next to bots."},
+    {id: "s2", what: "A ring and dust show where it hits.", how: "Look at the ground."},
+    {id: "s3", what: "★ A raptor latched on you is not knocked off; it loses 50 stamina from its pounce, so it lets go sooner.", how: "Needs a latched raptor (bot or player)."},
+    {id: "s4", what: "Recharge 15 s: a second press right after does nothing.", how: "Press twice."}
+  ]},
+  {id: "leap", key: "Space", name: "Hydraulic Leap", meta: "speed · fires through JUMP · recharge 6 s per charge", checks: [
+    {id: "l1", what: "With the part in a slot, JUMP is the hydraulic leap: about 55 studs forward. The slot key does nothing; its tile shows Space.", how: "Run on open ground and press JUMP (Space / the JUMP button)."},
+    {id: "l2", what: "The landing slams the tail: 10 damage to every enemy within 12 studs, stunned 0.5 s. No tail slam charge is used.", how: "Land next to bots."},
+    {id: "l3", what: "★ Two leaps in a row (2 charges); each used charge comes back 6 s later. With no charge left, JUMP does nothing until one comes back.", how: "Press JUMP twice quickly, then a third time."}
+  ]},
+  {id: "bellow", key: "—", name: "Herd Bellow", meta: "health · recharge 30 s", checks: [
+    {id: "b1", what: "You and squadmates within 40 studs take 50% less damage for 6 s.", how: "Get bitten by a bot right after bellowing: half the usual damage."},
+    {id: "b2", what: "Everyone it reaches runs 50% faster for 6 s.", how: "Run right after bellowing."},
+    {id: "b3", what: "★ It clears stuns on everyone it reaches.", how: "Needs a stunned squadmate."},
+    {id: "b4", what: "A green ring and a green disc under each buffed dino; recharge 30 s.", how: "Look and press twice."}
+  ]},
+  {id: "challenge", key: "—", name: "Challenge Call", meta: "defense · recharge 20 s", checks: [
+    {id: "c1", what: "Every enemy within 45 studs is marked for 7 s: a red beam to it and a red disc under it.", how: "Use it near bots."},
+    {id: "c2", what: "Marked enemies deal 40% less damage (a raptor bot bite goes from 8 to about 5).", how: "Let a marked bot bite you."},
+    {id: "c3", what: "Marked bots come for you.", how: "Watch the marked bots."},
+    {id: "c4", what: "★ Marked enemies are slowed 20%; recharge 20 s.", how: "Watch their speed; press twice."}
+  ]},
+  {id: "mud", key: "—", name: "Shield Armor", meta: "defense · recharge 20 s", checks: [
+    {id: "d1", what: "The purple shield is up 0.2 s after the press; latched raptors are knocked off at 0.7 s.", how: "Press it with a raptor latched on."},
+    {id: "d2", what: "The shield blocks your next 4 hits completely (even a killing blow), for up to 12 s.", how: "Let bots bite you: no health lost for 4 bites."},
+    {id: "d3", what: "Each blocked hit slows every enemy within 15 studs 40% for 4 s.", how: "Watch the biting bot."},
+    {id: "d4", what: "★ When the shield ends, a 12-stud purple burst slows enemies 40% for 4 s. Recharge 20 s.", how: "Wait for the coat to end near bots."}
+  ]}
+];
+
+const VIS = {
+  grab: {part: "tgrab", checks: [
+    {id: "vg1", what: "Part: the clamp on the tail tip looks right.", how: "Grey sleeve with two red-tipped prongs."},
+    {id: "vg2", what: "Animation: the tail grab and fling move looks right.", how: "Dips, curls over the back, then whips forward."},
+    {id: "vg3", what: "Effects: the grab, flight and landing look right.", how: "Raptor flies over the head, dust ring and stun stars on landing."}]},
+  mortar: {part: "tmortar", checks: [
+    {id: "vm1", what: "Part: the catapult bucket on the tail looks right.", how: "Black bucket with a grey boulder."},
+    {id: "vm2", what: "Animation: the big wind-up and whip look right.", how: "Body sinks, tail drops low behind for 0.5 s, then the tail cracks up over the back."},
+    {id: "vm3", what: "Effects: launch, boulders, splash and rubble look right.", how: "Flash at the bucket, dust and a ring at the feet on launch; two boulders arc 80-90 studs; splash and rubble."}]},
+  stomp: {part: "tstomp", checks: [
+    {id: "vs1", what: "Part: the iron boots on the front feet look right.", how: "Steel boot around each front foot, blue strip on top, dark rim and rivets."},
+    {id: "vs2", what: "Animation: rear up and stomp looks right.", how: "Rears up, then stomps down; the tail stays level."},
+    {id: "vs3", what: "Effects: the shockwave is easy to see.", how: "Orange ring, then a cream ring, growing out to 20 studs, with dust."}]},
+  leap: {part: "tleap", checks: [
+    {id: "vl1", what: "Part: the spring coils on the back legs look right.", how: "Blue coils with a yellow band."},
+    {id: "vl2", what: "Animation: the JUMP leap and its landing slam look right.", how: "Crouch, rear up into the air, then the tail slams down on landing."},
+    {id: "vl3", what: "Effects: the leap on JUMP and the landing look right.", how: "Arc of about 53-55 studs, ring and stars on the raptors where it lands."}]},
+  bellow: {part: "tbellow", checks: [
+    {id: "vb1", what: "Part: the speaker on the head looks right.", how: "Box with a glowing cyan cone."},
+    {id: "vb2", what: "Animation: the bellow looks right.", how: "Head and jaw lift for about a second."},
+    {id: "vb3", what: "Effects: the green rings and buff glow are easy to see.", how: "Three green rings growing out to 40 studs, green disc under each buffed dino."}]},
+  challenge: {part: "tchallenge", checks: [
+    {id: "vc1", what: "Part: the painter turret on the shoulder looks right.", how: "Small grey turret with a red lens."},
+    {id: "vc2", what: "Animation: the call looks right.", how: "Head lifts a little."},
+    {id: "vc3", what: "Effects: the red beams and marks look right.", how: "A beam to each enemy, red disc under each for 7 s."}]},
+  mud: {part: "tmud", checks: [
+    {id: "vd1", what: "Part: the twin shield pylons on the shoulders look right.", how: "Two dark pylons with a lilac band and a glowing purple tip."},
+    {id: "vd2", what: "Animation: the shield brace looks right.", how: "Chest and head lift, arms forward, for about a second."},
+    {id: "vd3", what: "Effects: the purple shield is easy to see.", how: "The whole body glows purple while the shield is up; a blocked hit flashes it, and it gets fainter as hits are used."}]}
+};
+const state = {kepu: {}, claude: {}, ready: false};
+let db = null;
+const $ = (s, r = document) => r.querySelector(s);
+
+function chip(v) {
+  const s = v && v.status;
+  if (s === "pass") return '<span class="chip pass">Pass</span>';
+  if (s === "fail") return '<span class="chip fail">Fail</span>';
+  return '<span class="chip wait">Not tested</span>';
+}
+function esc(t) { const d = document.createElement("div"); d.textContent = t == null ? "" : String(t); return d.innerHTML; }
+
+function buildPanels() {
+  const root = $("#panels");
+  root.innerHTML = "";
+  for (const a of ABILITIES) {
+    const sec = document.createElement("section");
+    sec.className = "panel";
+    sec.setAttribute("aria-labelledby", "h-" + a.id);
+    sec.innerHTML = `<div class="phead"><span class="k">${esc(a.key)}</span><h2 id="h-${a.id}">${esc(a.name)}</h2><span class="meta">${esc(a.meta)}</span></div>
+      ${VIS[a.id] ? `<div class="vis">
+        <figure><img src="vis/part_${VIS[a.id].part}.jpg?v=4" alt="${esc(a.name)} part close-up" loading="lazy"><figcaption>Part</figcaption></figure>
+        <figure><img src="vis/anim_${VIS[a.id].part}.gif?v=4" alt="${esc(a.name)} animation" loading="lazy"><figcaption>Animation (key poses)</figcaption></figure>
+        <figure><img src="vis/fx_${VIS[a.id].part}.gif?v=4" alt="${esc(a.name)} effects in play" loading="lazy"><figcaption>Effects in play</figcaption></figure>
+      </div>` : ""}
+      <div class="cols" aria-hidden="true"><span>Should happen</span><span>Claude</span><span>You</span></div>`;
+    const list = (VIS[a.id] ? VIS[a.id].checks.map(c => Object.assign({vis: true}, c)) : []).concat(a.checks);
+    let section = "";
+    for (const c of list) {
+      const sec2 = c.vis ? "Visual test (judge here)" : "Gameplay (test in the live game)";
+      if (sec2 !== section && VIS[a.id]) { section = sec2; const h = document.createElement("div"); h.className = "subhead"; h.textContent = sec2; sec.appendChild(h); }
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<div class="what"><p>${esc(c.what)}</p><p class="how">${esc(c.how)}</p></div>
+        <div class="claude" id="cl-${c.id}"></div>
+        <div class="mine">
+          <div class="btns" role="group" aria-label="Your result for ${esc(c.id)}">
+            <button type="button" class="p" id="pass-${c.id}" data-id="${c.id}" data-v="pass">Pass</button>
+            <button type="button" class="f" id="fail-${c.id}" data-id="${c.id}" data-v="fail">Fail</button>
+          </div>
+          <textarea id="note-${c.id}" data-id="${c.id}" placeholder="What happened (if it failed)" rows="1"></textarea>
+          <span class="state" id="st-${c.id}"></span>
+        </div>`;
+      sec.appendChild(row);
+    }
+    root.appendChild(sec);
+  }
+  root.addEventListener("click", onButton);
+  root.addEventListener("change", onNote);
+}
+
+function allChecks(a) { return (VIS[a.id] ? VIS[a.id].checks : []).concat(a.checks); }
+function render() {
+  for (const a of ABILITIES) for (const c of allChecks(a)) {
+    const cl = state.claude[c.id];
+    $("#cl-" + c.id).innerHTML = chip(cl) + (cl && cl.note ? `<div class="cnote">${esc(cl.note)}</div>` : "");
+    const k = state.kepu[c.id] || {};
+    $("#pass-" + c.id).classList.toggle("on", k.status === "pass");
+    $("#fail-" + c.id).classList.toggle("on", k.status === "fail");
+    $("#pass-" + c.id).setAttribute("aria-pressed", k.status === "pass");
+    $("#fail-" + c.id).setAttribute("aria-pressed", k.status === "fail");
+    const ta = $("#note-" + c.id);
+    if (document.activeElement !== ta) ta.value = k.note || "";
+  }
+  const sum = $("#summary");
+  sum.innerHTML = "";
+  for (const a of ABILITIES) {
+    let p = 0, f = 0;
+    const cs = allChecks(a);
+    for (const c of cs) { const s = (state.kepu[c.id] || {}).status; if (s === "pass") p++; else if (s === "fail") f++; }
+    const el = document.createElement("span");
+    el.className = "sum" + (p === cs.length ? " allpass" : "") + (f ? " anyfail" : "");
+    el.innerHTML = `<span class="k">${esc(a.key)}</span>${esc(a.name)} <span class="n">${p}/${cs.length} pass${f ? ` · ${f} fail` : ""}</span>`;
+    sum.appendChild(el);
+  }
+}
+
+async function save(id, patch, stEl) {
+  const cur = Object.assign({}, state.kepu[id] || {}, patch, {at: new Date().toISOString()});
+  state.kepu[id] = cur;
+  render();
+  if (!db) { stEl.textContent = "Not saved: sign in to claude.ai to save results."; return; }
+  stEl.textContent = "Saving…";
+  try {
+    await db.doc("kepu/" + id).set({status: cur.status || "", note: cur.note || "", at: cur.at});
+    stEl.textContent = "Saved";
+  } catch (e) {
+    stEl.textContent = "Not saved (" + (e && e.code || "error") + "). Try again.";
+  }
+}
+function onButton(ev) {
+  const b = ev.target.closest("button[data-id]");
+  if (!b) return;
+  const id = b.dataset.id, v = b.dataset.v;
+  const cur = (state.kepu[id] || {}).status;
+  save(id, {status: cur === v ? "" : v}, $("#st-" + id));
+}
+function onNote(ev) {
+  const t = ev.target;
+  if (!t.matches("textarea[data-id]")) return;
+  const id = t.dataset.id;
+  if ((state.kepu[id] || {}).note === t.value) return;
+  save(id, {note: t.value}, $("#st-" + id));
+}
+
+function snapTo(key) {
+  return (snap) => {
+    const m = {};
+    for (const d of snap.docs) m[d.id] = d.data() || {};
+    state[key] = m;
+    render();
+  };
+}
+
+buildPanels();
+render();
+const banner = $("#banner");
+const timer = setTimeout(() => { banner.hidden = false; banner.textContent = "Results can't be reached yet. Your clicks will show here but may not be saved."; }, 10000);
+(async () => {
+  try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
+  if (!db) {
+    clearTimeout(timer);
+    banner.hidden = false;
+    banner.textContent = "Results are saved only when you open this page signed in to claude.ai.";
+    return;
+  }
+  const done = () => { clearTimeout(timer); banner.hidden = true; };
+  db.collection("kepu").onSnapshot((s) => { snapTo("kepu")(s); if (!s.metadata || !s.metadata.fromCache) done(); },
+    (e) => { clearTimeout(timer); banner.hidden = false; banner.textContent = "Your results could not be loaded (" + (e && e.code) + ")."; });
+  db.collection("claude").onSnapshot(snapTo("claude"), () => {});
+})();
+</script>
