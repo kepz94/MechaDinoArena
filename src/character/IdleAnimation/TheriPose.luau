@@ -81,14 +81,25 @@
 --   a landing before that finishes the roll in 0.12 s. The roll is a RootJoint rotation (the legs and tail turn with the
 --   body), so the HRP and the physics do not turn. Switch: model attribute TheriSpinPoseEnabled (default true; false = 1.2's
 --   Diving Rake). Diagnostic TheriSpinRoll (degrees, whole). Key S_SCREW joins KEYS (test hook / tip parity).
+-- v1.4 (MDA-213, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 7; mockup docs/mockups/therizino_fourth_cut_v0.1.html, Kepu
+--   2026-11-03 picked "C" Ground Scythe): combo step 4 (the Fourth Cut, TheriAttackTest / TheriAttackServer 1.2). Key SCYTHE
+--   = J_LAND's crouch (RootJoint, Neck, Head, legs) with the arms out and angled down (the mockup's S_TORNADO arms), jaw open,
+--   tail dragged sideways. Step 4: 0 the target at the tap, 0.1 SCYTHE (out), 0.16 SCYTHE (in2), 0.62 SCYTHE (lin), 0.72
+--   CHOP_SET (out), 1.25 READY (io). Whole-body yaw (degrees, about the vertical through the HumanoidRootPart, applied to the
+--   RootJoint like 1.3's roll: the HRP and the physics do not turn): 0, 0.1 +25 (out), 0.16 0 (in2), 0.62 -700 (lin), 0.72 -720
+--   (out) = two full turns, ending facing forward. With the model attribute TheriFourthFast (Fourth Cut star) step 4 plays
+--   x FOURTH_FAST_MUL (1.5) faster. Switch: model attribute TheriFourthPoseEnabled (default true; false = step 4 is ignored, as
+--   1.3). Diagnostic TheriFourthYaw (degrees).
 local TheriPose = {}
 TheriPose.Version = "1.3"
+TheriPose.Version = "1.4" -- v1.4 Fourth Cut (Ground Scythe)
 TheriPose.Defaults = {
 	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
 	TheriClawFloorEnabled = true, TheriClawFloor = 0.1,
 	TheriRunOwnUpperEnabled = true, TheriDragShoulderEnabled = true, -- v1.2
 	TheriSpinPoseEnabled = true, TheriSpinTurns = 2, TheriSpinAirTime = 0.6, -- v1.3
+	TheriFourthPoseEnabled = true, -- v1.4
 }
 local LEG_JOINTS = {LegL = true, LegR = true, KneeL = true, KneeR = true, AnkleL = true, AnkleR = true} -- v1.2
 
@@ -147,6 +158,10 @@ local FWD = {R_W = -0.5, R_S = 1, R_F = 1.3, L_W = -0.5, L_S = 1, L_F = 1.3, REA
 KEYS.S_SCREW = {RootJoint = {-10, 0, 0}, Neck = {-50, 0, 0}, Head = {30, 0, 0}, Jaw = {-16, 0, 0}, ArmL = {43, -20, -41},
 	WristL = {18, 0, 0}, ArmR = {43, 20, 41}, WristR = {18, 0, 0}, Tail1 = {-8, 0, 0}, LegL = {-20, 0, 0}, LegR = {-20, 0, 0},
 	KneeL = {-30, 0, 0}, KneeR = {-30, 0, 0}} -- v1.3: the Corkscrew body (mockup v0.1 B)
+KEYS.SCYTHE = {RootJoint = {-32, 0, 0}, Neck = {-20, 0, 0}, Head = {-8, 0, 0}, Jaw = {-14, 0, 0}, ArmL = {45, -42, -11},
+	ElbowL = {0, 0, 0}, WristL = {22, 0, 0}, ArmR = {45, 42, 11}, ElbowR = {0, 0, 0}, WristR = {22, 0, 0}, Tail1 = {-4, 12, 0},
+	Tail2 = {0, 16, 0}, Tail3 = {0, 20, 0}, Tail4 = {0, 22, 0}, Tail5 = {0, 24, 0}, LegL = {36, 0, 0}, LegR = {36, 0, 0},
+	KneeL = {-64, 0, 0}, KneeR = {-64, 0, 0}, AnkleL = {26, 0, 0}, AnkleR = {26, 0, 0}} -- v1.4: Ground Scythe (mockup C)
 KEYS.ZERO = {}
 TheriPose.KEYS = KEYS
 
@@ -157,6 +172,10 @@ local STEPS = {
 		{1.36, "READY", "io"}},
 }
 local TREMBLE = {0.34, 0.46} -- step 3
+STEPS[4] = {{0, "$from"}, {0.1, "SCYTHE", "out"}, {0.16, "SCYTHE", "in2"}, {0.62, "SCYTHE", "lin"}, {0.72, "CHOP_SET", "out"},
+	{1.25, "READY", "io"}} -- v1.4: the Fourth Cut
+local YAW4 = {{0, 0}, {0.1, 25, "out"}, {0.16, 0, "in2"}, {0.62, -700, "lin"}, {0.72, -720, "out"}} -- v1.4 (degrees)
+local FOURTH_FAST_MUL = 1.5 -- v1.4: Fourth Cut star
 local LAND = {{0, "J_LAND"}, {0.31, "CHOP_SET", "out"}, {0.96, "READY", "io"}}
 
 local rad, sin, cos, min, max, clamp = math.rad, math.sin, math.cos, math.min, math.max, math.clamp
@@ -558,7 +577,8 @@ function TheriPose.top(model, pose, motors, hrp, ctx)
 		if c and at and c >= at then st = 0 end
 	end
 	st = st and math.floor(st) or 0
-	if st >= 1 and st <= 3 and at and (st ~= combo.step or at ~= combo.at) then
+	if st == 4 and not s.TheriFourthPoseEnabled then st = 0 end -- v1.4
+	if st >= 1 and st <= 4 and at and (st ~= combo.step or at ~= combo.at) then
 		combo.from = combo.target or keyPose("ZERO")
 		combo.step, combo.at = st, at
 	elseif st == 0 and combo.step ~= 0 then
@@ -566,7 +586,9 @@ function TheriPose.top(model, pose, motors, hrp, ctx)
 	end
 	local tg, cw = nil, 0
 	if combo.step ~= 0 then
-		tg, cw = comboTarget(s, max(0, ctx.serverNow - combo.at), ctx.now)
+		local ct = max(0, ctx.serverNow - combo.at)
+		if combo.step == 4 and model:GetAttribute("TheriFourthFast") == true then ct *= FOURTH_FAST_MUL end -- v1.4
+		tg, cw = comboTarget(s, ct, ctx.now)
 		if not tg then combo.step, combo.at = 0, nil end
 	end
 	combo.target, combo.w = tg, cw
@@ -620,6 +642,23 @@ function TheriPose.top(model, pose, motors, hrp, ctx)
 			if motors[n] then pose[n] = (pose[n] or CFrame.identity) * rot(v) end
 		end
 	end
+	-- v1.4: the Fourth Cut's whole-body yaw (about the vertical through the HRP), on top of the combo pose
+	local yaw4 = 0
+	if combo.step == 4 and combo.at and motors.RootJoint then
+		local t4 = max(0, ctx.serverNow - combo.at)
+		if model:GetAttribute("TheriFourthFast") == true then t4 *= FOURTH_FAST_MUL end
+		yaw4 = YAW4[#YAW4][2]
+		for i = 2, #YAW4 do
+			if t4 <= YAW4[i][1] then
+				local a, b = YAW4[i - 1], YAW4[i]
+				yaw4 = a[2] + (b[2] - a[2]) * EASE[b[3] or "io"]((t4 - a[1]) / (b[1] - a[1]))
+				break
+			end
+		end
+		local c0 = motors.RootJoint.restC0
+		pose.RootJoint = c0:Inverse() * CFrame.Angles(0, rad(yaw4), 0) * c0 * (pose.RootJoint or CFrame.identity)
+	end
+	show("TheriFourthYaw", math.floor(yaw4 + 0.5))
 	-- root push + ground lock (RootJoint translation, HRP space)
 	local rj = motors.RootJoint
 	if not (rj and hrp) then return end

@@ -1,4 +1,4 @@
--- SkillTree v1.57 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.58 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -1996,6 +1996,18 @@ do
 		e.harvestLowDouble = ha >= 4
 		return e
 	end
+end
+
+
+-- v1.58 (MDA-213, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 7; mockup docs/mockups/therizino_fourth_cut_v0.1.html, Kepu
+-- 2026-11-03 picked "C" Ground Scythe): the Fourth Cut row goes live for the therizino (TheriAttackServer / TheriAttackTest 1.2,
+-- TheriPose 1.4): SkillTree.THERI_FOURTH = true and the row's dino is "Therizino" again (it was "none" in 1.57). Texts and
+-- effects are 1.57's (fourthDamage I 10 / II 14, fourthReachMul III 1.3, fourthFast star). The therizino's STATS list reads
+-- harvest, fury, guard, flow, fourth. Switch SkillTree.THERI_FOURTH_LIVE (default true; false = 1.57: hidden).
+SkillTree.THERI_FOURTH_LIVE = true
+if SkillTree.THERI_STATS and SkillTree.THERI_FOURTH_LIVE and SkillTree.PATHS.fourth then
+	SkillTree.THERI_FOURTH = true
+	SkillTree.PATHS.fourth.dino = "Therizino"
 end
 
 return SkillTree

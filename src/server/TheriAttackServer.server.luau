@@ -1,4 +1,4 @@
--- TheriAttackServer v1.1 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
+-- TheriAttackServer v1.2 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
 -- docs/plans/THERIZINO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/therizino_kit_options_v0.3.html
 -- (Kepu 2026-11-02: attack "3-hit combo", payoff "Damage only", picks "A Reaper Sweeps"; animation "I like this one").
 -- Pattern: TenoAttackServer 1.4's scratch path (request -> server checks -> hit resolved at a fixed delay in a front zone),
@@ -50,16 +50,34 @@
 --   Diagnostics: script TheriAttackStatsRefills, TheriAttackStatsRefunds, TheriAttackStatsHeals; character TheriFuryLastBonus
 --   ("+stack xfull" of the last hit), TheriChainLive, TheriGuardRefunded (total), TheriGuardStunCleared (count),
 --   TheriGuardShoved (last scaled distance), TheriHarvestHealed (total), TheriKeepChainCount, TheriRefillResult.
+-- v1.2 (MDA-213, plan Task 7; mockup docs/mockups/therizino_fourth_cut_v0.1.html, Kepu 2026-11-03 picked "C" Ground Scythe):
+--   the Fourth Cut (step 4). Only for a therizino with TheriFourthDamage > 0 (SkillTree 1.58 THERI_FOURTH + the row bought;
+--   SkillEffects 1.39 writes TheriFourthDamage / TheriFourthReachMul / TheriFourthFast). A tap (checked before the 1.0 rules)
+--   while the last accepted tap was the finisher (step 3) and its time is from the finisher's hit (finisher tap +
+--   TheriHitDelay3) - 0.05 s to + FOURTH_WINDOW (0.8) s: the blocks as 1.0 ("dead" / "menu" / "stunned" / "dazed" /
+--   "pinned"), else accepted -> step 4: TheriComboStep 4, TheriComboAt (last), "ok". Hit at the stamp + TheriFourthDelay (0.3
+--   s; / 1.5 with TheriFourthFast): every allowed target (1.0's rules) whose nearest hitbox is within TheriReach3 x scale x
+--   TheriFourthReachMul of the root, all around (no cone), takes TheriFourthDamage x takenMul (none while shielded), once;
+--   through 1.1's takeHealth (Building Fury stack, Reaper's Harvest kill heal apply; the finisher heal does not); cancelled
+--   like 1.0 when blocked at the hit (TheriComboCancelAt). Stamps TheriHitStep 4, TheriHitTargets, TheriHitPoint (the root),
+--   TheriHitCount, TheriHitAt (last). After it: without TheriFourthFast a tap within TheriFourthRecover (0.8) s of the 4th tap
+--   is refused "recover"; after that (or at once, past TheriMinGap, with TheriFourthFast = the star) the next tap is cut 1.
+--   Switch: script attribute TheriAttackFourthEnabled (default true, read at each tap; false = 1.1: no step 4). Diagnostic:
+--   script TheriAttackFourths (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 therizino stat rows
+VERSION = "1.2" -- v1.2 the Fourth Cut (step 4)
 local DEFAULTS = {TheriHitDamage1 = 9, TheriHitDamage2 = 9, TheriHitDamage3 = 20, TheriHitDelay1 = 0.3, TheriHitDelay2 = 0.33,
 	TheriHitDelay3 = 0.55, TheriReach = 7, TheriReach3 = 8, TheriCone = 100, TheriMinGap = 0.33, TheriChainWindow = 0.8,
 	TheriFinisherRecover = 0.9}
 local MAX_DELAY = 0.6
+DEFAULTS.TheriFourthDelay, DEFAULTS.TheriFourthRecover = 0.3, 0.8 -- v1.2
+local FOURTH_WINDOW = 0.8 -- v1.2
+local fourthTap -- v1.2: set below, called first by the remote handler
 
 script:SetAttribute("TheriAttackServerVersion", VERSION)
 for _, k in ipairs({"TheriAttackRequests", "TheriAttackTaps", "TheriAttackHits", "TheriAttackCancels", "TheriAttackSquadSkips"}) do
@@ -404,6 +422,80 @@ game:GetService("RunService").Heartbeat:Connect(function()
 	end
 end)
 
+-- v1.2: the Fourth Cut (see the header) --------------------------------------------------------------------------------------
+script:SetAttribute("TheriAttackFourths", 0)
+if script:GetAttribute("TheriAttackFourthEnabled") == nil then script:SetAttribute("TheriAttackFourthEnabled", true) end
+local function fourthOn(char)
+	return script:GetAttribute("TheriAttackFourthEnabled") ~= false and statsOn(char) and num(char, "TheriFourthDamage", 0) > 0
+end
+local function sweep(player, char, st, at)
+	local ti = now()
+	if not char.Parent or st.step ~= 4 or st.fourthAt ~= at then return end
+	if blocked(player, char, ti) then
+		st.step = 0
+		count("TheriAttackCancels")
+		char:SetAttribute("TheriComboCancelAt", ti)
+		return
+	end
+	local root = rootOf(char)
+	local reach = math.max(0, get(char, "TheriReach3")) * char:GetScale() * math.max(0, num(char, "TheriFourthReachMul", 1))
+	local dmg = math.max(0, num(char, "TheriFourthDamage", 0))
+	cur = {char = char, step = 4, st = st, base = dmg, landed = 0}
+	local n, names = 0, {}
+	local ok, err = pcall(function()
+		for _, m in ipairs(candidates(char)) do
+			if gap(m, root.Position) <= reach then
+				if not shielded(m, ti) then takeHealth(m, dmg * takenMul(m, ti), char, player, ti) end
+				n += 1
+				table.insert(names, m.Name)
+			end
+		end
+	end)
+	cur = nil
+	if not ok then warn("TheriAttackServer sweep: " .. tostring(err)) end
+	count("TheriAttackHits", n)
+	char:SetAttribute("TheriHitStep", 4)
+	char:SetAttribute("TheriHitTargets", table.concat(names, "|"))
+	char:SetAttribute("TheriHitPoint", root.Position)
+	char:SetAttribute("TheriHitCount", (char:GetAttribute("TheriHitCount") or 0) + 1)
+	char:SetAttribute("TheriHitAt", ti) -- last
+end
+fourthTap = function(player, stamp)
+	local char = player.Character
+	if not char or typeof(stamp) ~= "number" or stamp ~= stamp then return false end
+	if not enabled or char:GetAttribute("TheriAttackEnabled") ~= true or not fourthOn(char) then return false end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 then return false end
+	local st = track(char)
+	local t = now()
+	local fast = char:GetAttribute("TheriFourthFast") == true
+	if st.step == 4 then
+		if not fast and t - (st.fourthAt or -math.huge) < math.max(0, get(char, "TheriFourthRecover")) and not blocked(player, char, t) then
+			setResult(char, "recover", t)
+			return true
+		end
+		return false
+	end
+	if st.step ~= 3 then return false end
+	local hitAt = st.finisherAt + math.clamp(get(char, "TheriHitDelay3"), 0, MAX_DELAY)
+	if t < hitAt - 0.05 or t > hitAt + FOURTH_WINDOW then return false end
+	local r = blocked(player, char, t)
+	if r then
+		setResult(char, r, t)
+		return true
+	end
+	st.step, st.lastTap, st.fourthAt = 4, t, t
+	count("TheriAttackTaps")
+	count("TheriAttackFourths")
+	setResult(char, "ok", t)
+	char:SetAttribute("TheriComboStep", 4)
+	char:SetAttribute("TheriComboAt", t) -- last: poses + FX
+	local d = math.clamp(math.max(0, get(char, "TheriFourthDelay")) / (fast and 1.5 or 1), 0, MAX_DELAY)
+	local delay = math.clamp(math.min(stamp, t) + d - t, 0, d)
+	task.delay(delay, sweep, player, char, st, t)
+	return true
+end
+
 local remote = ReplicatedStorage:FindFirstChild("DinoTheriAttack")
 if not remote then
 	remote = Instance.new("RemoteEvent")
@@ -413,6 +505,7 @@ end
 
 remote.OnServerEvent:Connect(function(player, stamp)
 	count("TheriAttackRequests")
+	if fourthTap and fourthTap(player, stamp) then return end -- v1.2: the Fourth Cut first
 	local char = player.Character
 	if not char then return end
 	local t = now()

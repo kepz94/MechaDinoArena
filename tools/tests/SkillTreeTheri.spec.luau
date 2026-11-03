@@ -1,7 +1,9 @@
--- SkillTreeTheri.spec v1.0 (Mecha Dino Arena) — the Therizinosaurus' own stat rows in ServerStorage.DinoArcade.SkillTree 1.57
+-- SkillTreeTheri.spec v1.1 (Mecha Dino Arena) — the Therizinosaurus' own stat rows in ServerStorage.DinoArcade.SkillTree 1.57
 -- (MDA-210, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 4; Kepu 2026-11-02/03: shared rows "None, all its own", theme
 -- "Combo flow", rows "Keep all five", Fourth Cut "Mock it up first"). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheri_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
+-- v1.1 (SkillTree 1.58, MDA-213: Kepu picked the Fourth Cut "C" Ground Scythe): THERI_FOURTH is true, the Fourth Cut row is the
+-- therizino's (rows harvest, fury, guard, flow, fourth) and its effects are live (I 10, II 14, III reach x1.3, star fast).
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -21,7 +23,7 @@ local P = ST.PATHS
 local function E(steps) return ST.effects(steps, "Therizino") end
 
 eq("THERI_STATS", ST.THERI_STATS, true)
-eq("THERI_FOURTH off until its mockup", ST.THERI_FOURTH, false)
+eq("THERI_FOURTH on (v1.1)", ST.THERI_FOURTH, true)
 -- the rows
 local ROWS = {flow = {"Flowing Cuts", "speed"}, fury = {"Building Fury", "attack"}, fourth = {"Fourth Cut", "sig"},
 	guard = {"Flow Guard", "defense"}, harvest = {"Reaper's Harvest", "health"}}
@@ -35,7 +37,7 @@ for id, want in pairs(ROWS) do
 		eq(id .. " owner", ST.OWNER[id], "Therizino")
 		eq(id .. " in order", table.find(ST.PATH_ORDER, id) ~= nil, true)
 		for _, d in ipairs({"TRex", "Raptor", "Pachy", "Herrera", "Teno"}) do eq(id .. " hidden " .. d, ST.seesPath(P[id], d), false) end
-		eq(id .. " theri sees", ST.seesPath(P[id], "Therizino"), id ~= "fourth") -- fourth: hidden until THERI_FOURTH
+		eq(id .. " theri sees", ST.seesPath(P[id], "Therizino"), true) -- v1.1: fourth too
 	end
 end
 if P.flow then eq("flow I text", P.flow.steps[1], "Chain window 0.8 -> 1.0 s: more time to tap the next cut") end
@@ -55,7 +57,7 @@ for _, a in ipairs(ST.AREAS) do
 		if not p.mech then table.insert(seen, p.id) end
 	end
 end
-eq("theri stat rows", table.concat(seen, ","), "harvest,fury,guard,flow")
+eq("theri stat rows", table.concat(seen, ","), "harvest,fury,guard,flow,fourth")
 -- the teno's list unchanged
 local tseen = {}
 for _, a in ipairs(ST.AREAS) do
@@ -89,7 +91,12 @@ eq("harvest I heal", E({harvest = 1}).harvestHeal, 0.04); eq("harvest I kill off
 eq("harvest II heal", E({harvest = 2}).harvestHeal, 0.06)
 eq("harvest III kill", E({harvest = 3}).harvestKillHeal, 0.15); eq("harvest III double off", E({harvest = 3}).harvestLowDouble, false)
 eq("harvest star double", E({harvest = 4}).harvestLowDouble, true)
-eq("fourth hidden: no effect", E({fourth = 4}).fourthDamage, 0)
+eq("fourth I damage", E({fourth = 1}).fourthDamage, 10); eq("fourth I reach off", E({fourth = 1}).fourthReachMul, 1)
+eq("fourth II damage", E({fourth = 2}).fourthDamage, 14); eq("fourth II fast off", E({fourth = 2}).fourthFast, false)
+eq("fourth III reach", E({fourth = 3}).fourthReachMul, 1.3); eq("fourth III damage", E({fourth = 3}).fourthDamage, 14)
+eq("fourth star fast", E({fourth = 4}).fourthFast, true)
+eq("sanitize keeps fourth", ST.sanitize({fourth = 2}, "Therizino").fourth, 2)
+eq("sanitize drops fourth on teno", ST.sanitize({fourth = 2}, "Teno").fourth, 0)
 -- sanitize / mastery
 eq("sanitize keeps flow", ST.sanitize({flow = 2}, "Therizino").flow, 2)
 eq("sanitize drops shared hide", ST.sanitize({hide = 3}, "Therizino").hide, 0)

@@ -1,4 +1,4 @@
--- TheriAttackTest v1.1 (Mecha Dino Arena) — the Therizinosaurus' ATTACK input on the owner's client: each tap is the next
+-- TheriAttackTest v1.2 (Mecha Dino Arena) — the Therizinosaurus' ATTACK input on the owner's client: each tap is the next
 -- hit of the 3-hit claw combo. MDA-202, plan docs/plans/THERIZINO_KIT_v1.0.md Task 5 (server: TheriAttackServer 1.0), mockup
 -- docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02: "3-hit combo", "A Reaper Sweeps").
 -- Pattern: TenoAttackTest 1.4 (same bindings, blocks and refusal handling; no hold: the press is the tap).
@@ -19,6 +19,12 @@
 --   as TheriAttackServer 1.1: on a character with Species "Therizino", TheriFlowWindow > 0 replaces TheriChainWindow,
 --   TheriFlowGap > 0 replaces TheriMinGap, TheriFlowRecover > 0 replaces TheriFinisherRecover (SkillEffects 1.39 writes them;
 --   0 = 1.0). Switch: character attribute TheriLocalStatsEnabled (default true, read at each tap; false = 1.0).
+-- v1.2 (MDA-213, plan Task 7; Kepu 2026-11-03 picked "C" Ground Scythe): the Fourth Cut predicted with TheriAttackServer 1.2's
+--   rules: on a therizino with TheriFourthDamage > 0, a tap while the local step is 3 and the time is from the finisher's hit
+--   (finisher tap + TheriHitDelay3, default 0.55) - 0.05 s to + 0.8 s is step 4 (the blocks as 1.0 first): TheriLocalAt,
+--   TheriLocalStep 4 (TheriPose 1.4 plays the Ground Scythe), DinoTheriAttack:FireServer(now), TheriInputResult "hit4". After
+--   it, without TheriFourthFast a tap within TheriFourthRecover (0.8) s is "recover"; then (at once with TheriFourthFast) the
+--   next tap is cut 1. Switch: character attribute TheriLocalFourthEnabled (default true, read at each tap; false = 1.1).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -26,6 +32,7 @@ local ContextActionService = game:GetService("ContextActionService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Flowing Cuts windows
+VERSION = "1.2" -- v1.2 the Fourth Cut
 local ACTION = "DinoTheriAttack"
 local ACTION_CLICK = "DinoTheriAttackClick"
 local DEFAULTS = {TheriAttackEnabled = false, TheriMinGap = 0.33, TheriChainWindow = 0.8, TheriFinisherRecover = 0.9,
@@ -106,6 +113,42 @@ local function onTap(src)
 	lastSent = t
 	fire(t)
 	show("TheriInputResult", "hit" .. nxt)
+end
+
+-- v1.2: the Fourth Cut (see the header)
+local FOURTH_WINDOW = 0.8
+local fourthAt = -math.huge
+do
+	local onTapV11 = onTap
+	onTap = function(src)
+		if get("TheriAttackEnabled") == true and char:GetAttribute("TheriLocalFourthEnabled") ~= false
+			and char:GetAttribute("Species") == "Therizino" and (tonumber(char:GetAttribute("TheriFourthDamage")) or 0) > 0 then
+			local t = now()
+			local fast = char:GetAttribute("TheriFourthFast") == true
+			if step == 4 and not fast and t - fourthAt < (tonumber(char:GetAttribute("TheriFourthRecover")) or 0.8) and not blocked() then
+				show("TheriLastInput", src)
+				show("TheriInputResult", "recover")
+				return
+			end
+			local hitAt = finisherAt + math.clamp(tonumber(char:GetAttribute("TheriHitDelay3")) or 0.55, 0, 0.6)
+			if step == 3 and t >= hitAt - 0.05 and t <= hitAt + FOURTH_WINDOW then
+				show("TheriLastInput", src)
+				local r = blocked()
+				if r then
+					show("TheriInputResult", r)
+					return
+				end
+				step, lastTap, fourthAt = 4, t, t
+				char:SetAttribute("TheriLocalAt", t)
+				char:SetAttribute("TheriLocalStep", 4) -- last: TheriPose reacts to this one
+				lastSent = t
+				fire(t)
+				show("TheriInputResult", "hit4")
+				return
+			end
+		end
+		return onTapV11(src)
+	end
 end
 
 -- server refusals stop the local swing
