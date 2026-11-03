@@ -1,4 +1,4 @@
--- AbilityBar v1.23 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.24 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -138,9 +138,21 @@ local UserInputService = game:GetService("UserInputService")
 --   JumpChargesLeft, the refilling one from JumpChargeRefillAt over JumpCooldown; "active" while JumpTestState is crouch /
 --   air; "empty" at 0). Switch: script attribute AbilityBarTheriEnabled (default true, read at start; false = 1.22: no
 --   therizino row, the fallback order). Diagnostics: AbilityBarTheriStep, AbilityBarTheriLeapPips ("<left>/<max>").
+-- v1.24 (Kepu 2026-11-03 16:49: "There's 3 bubbles for attack and they fill up instead of empty" -> mockup
+--   docs/mockups/therizino_attack_tile_v0.1.html, picked "A" Hits left): the therizino ATTACK pips show the hits left in the
+--   combo, like every other tile's charges: all full when ready, one empties per cut (right to left), refilled when the chain
+--   ends or the finisher's pause is over. Pips = 3, or 4 when the Fourth Cut is bought (TheriFourthDamage > 0; a 4th pip is
+--   copied from the 3rd the first time, as the teno's 1.21). From TheriLocalStep / TheriLocalAt with TheriAttackTest 1.2's
+--   windows (TheriFlowWindow / TheriFlowRecover over TheriChainWindow 0.8 / TheriFinisherRecover 0.9 when > 0): step 1-2
+--   within the chain window -> max - step; step 3 -> 1 while the Fourth Cut window is open (to TheriHitDelay3 + 0.8 s), else
+--   0 during the finisher's pause; step 4 -> 0 for TheriFourthRecover (0.8 s; none with TheriFourthFast); otherwise max. Tile
+--   states as 1.23. Switch: script attribute AbilityBarTheriHitsLeftEnabled (default true, read each frame; false = 1.23's
+--   step count). Diagnostic: AbilityBarTheriHitsLeft ("<left>/<max>").
 local VERSION = "1.21"
 VERSION = "1.22" -- v1.22 teno leap on JUMP
 VERSION = "1.23" -- v1.23 therizino ATTACK + JUMP tiles
+VERSION = "1.24" -- v1.24 therizino ATTACK pips = hits left
+if script:GetAttribute("AbilityBarTheriHitsLeftEnabled") == nil then script:SetAttribute("AbilityBarTheriHitsLeftEnabled", true) end -- v1.24
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -762,6 +774,52 @@ local function update()
 			else
 				paint(e, "ready", 0, 0, nil)
 			end
+		elseif e.move.theriPips and script:GetAttribute("AbilityBarTheriHitsLeftEnabled") ~= false then -- v1.24: hits left
+			local function eff(k, over, d)
+				local v = tonumber(char:GetAttribute(over)) or 0
+				if v > 0 then return v end
+				return tonumber(char:GetAttribute(k)) or d
+			end
+			local win = eff("TheriChainWindow", "TheriFlowWindow", 0.8)
+			local rec = eff("TheriFinisherRecover", "TheriFlowRecover", 0.9)
+			local hit3 = math.clamp(tonumber(char:GetAttribute("TheriHitDelay3")) or 0.55, 0, 0.6)
+			local four = (tonumber(char:GetAttribute("TheriFourthDamage")) or 0) > 0 and char:GetAttribute("TheriLocalFourthEnabled") ~= false
+			local maxC = four and 4 or 3
+			if maxC > #e.t.chargePips and #e.t.chargePips >= 1 then -- grow the row to 4 (the teno's 1.21 way)
+				local last = e.t.chargePips[#e.t.chargePips]
+				local f = last.f:Clone()
+				f.Name = "Charge_" .. (#e.t.chargePips + 1)
+				f.LayoutOrder = #e.t.chargePips + 1
+				f.Parent = last.f.Parent
+				table.insert(e.t.chargePips, {f = f, fill = f:FindFirstChild("Fill")})
+			end
+			maxC = math.min(maxC, #e.t.chargePips)
+			local st = math.clamp(math.floor(tonumber(char:GetAttribute("TheriLocalStep")) or 0), 0, 4)
+			local age = now - (tonumber(char:GetAttribute("TheriLocalAt")) or -math.huge)
+			local left = maxC
+			if st == 1 or st == 2 then
+				if age <= win then left = maxC - st end
+			elseif st == 3 then
+				if four and age <= hit3 + 0.8 then left = 1 elseif age < rec then left = 0 end
+			elseif st == 4 then
+				local fourRec = char:GetAttribute("TheriFourthFast") == true and 0 or (tonumber(char:GetAttribute("TheriFourthRecover")) or 0.8)
+				if age < fourRec then left = 0 end
+			end
+			left = math.clamp(left, 0, maxC)
+			for i, pip in ipairs(e.t.chargePips) do
+				pip.f.Visible = i <= maxC
+				pip.fill.Size = UDim2.fromScale(1, i <= left and 1 or 0)
+			end
+			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = Color3.new(0, 0, 0), 0.38
+			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif st > 0 and age < 0.45 then
+				paint(e, "active", 0, 0, nil)
+				e.t.stroke.Color = YELLOW
+			else
+				paint(e, "ready", 0, 0, nil)
+			end
+			show("AbilityBarTheriHitsLeft", left .. "/" .. maxC)
 		elseif e.move.theriPips then -- v1.23: therizino ATTACK (combo step)
 			local st = math.clamp(math.floor(tonumber(char:GetAttribute("TheriLocalStep")) or 0), 0, 3)
 			local age = now - (tonumber(char:GetAttribute("TheriLocalAt")) or -math.huge)
