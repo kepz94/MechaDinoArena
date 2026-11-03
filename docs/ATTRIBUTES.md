@@ -2687,3 +2687,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriLocalStatsEnabled | therizino character | true (false = 1.0) | TheriAttackTest 1.1: local prediction uses the Flowing Cuts windows |
 | JumpAddChargeEnabled; JumpAddCharges | JumpServer script | true; count | JumpServer 1.4 hook (BindableEvent ServerStorage.JumpAddCharge) |
 | JumpAddChargeResult / JumpAddChargeAt | character the hook was fired for | "ok" / "full" / "noCharges" / "disabled"; time | JumpServer 1.4 diagnostics |
+| TheriSpinNeedAirEnabled; TheriSpinGroundSkips | TheriSpinServer script | true (false = 1.0: cuts from JumpStartedAt + JumpWindup); count | TheriSpinServer 1.1: cuts only once the root is airborne |

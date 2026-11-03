@@ -1,4 +1,4 @@
--- TheriSpinServer v1.0 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive (Corkscrew): its JUMP leap cuts every dino it
+-- TheriSpinServer v1.1 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive (Corkscrew): its JUMP leap cuts every dino it
 -- passes. MDA-208, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 2, mockup docs/mockups/therizino_spin_dive_v0.1.html
 -- (Kepu 2026-11-02 "show more slicing ... a different jump" -> "Spin Dive"; 2026-11-03 "Corkscrew", damage "Yes, tune it in
 -- Studio").
@@ -22,11 +22,17 @@
 --   TheriSpinSquadEnabled (default true).
 -- Diagnostics (script): TheriSpinServerVersion, TheriSpinDives, TheriSpinCutsTotal, TheriSpinTimeouts, TheriSpinSquadSkips,
 --   TheriSpinMode.
+-- v1.1 (MDA-208 acceptance 3 "No cuts before lift-off", found in the MDA-212 Studio check: with the root held on the ground a
+--   JUMP still cut a bot 3 times, because 1.0 went live on the clock, JumpStartedAt + JumpWindup): cuts count only once the
+--   root is airborne (its height above the ground is more than LEFT_UP above the start height). A leap that never leaves
+--   the ground cuts nothing. Switch: script attribute TheriSpinNeedAirEnabled (default true, read each frame; false = 1.0).
+--   Diagnostic: script TheriSpinGroundSkips (frames skipped before lift-off while live).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 cuts need the root airborne
 local DEFAULTS = {TheriSpinDamage = 7, TheriSpinMaxCuts = 3, TheriSpinCutGap = 0.16, TheriSpinRadius = 7, JumpWindup = 0.27}
 local LIVE_MAX = 1.6   -- s after the take-off point the dive ends at the latest
 local LEFT_UP = 0.8    -- studs above the start height that count as airborne
@@ -34,6 +40,8 @@ local LAND_UP = 0.4    -- studs above the start height that count as landed agai
 
 script:SetAttribute("TheriSpinServerVersion", VERSION)
 for _, k in ipairs({"TheriSpinDives", "TheriSpinCutsTotal", "TheriSpinTimeouts", "TheriSpinSquadSkips"}) do script:SetAttribute(k, 0) end
+if script:GetAttribute("TheriSpinNeedAirEnabled") == nil then script:SetAttribute("TheriSpinNeedAirEnabled", true) end -- v1.1
+script:SetAttribute("TheriSpinGroundSkips", 0) -- v1.1
 for _, k in ipairs({"TheriSpinServerEnabled", "TheriSpinModeRulesEnabled", "TheriSpinSquadEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
@@ -187,7 +195,9 @@ local function dive(player, char, t0)
 			local cutGap = math.max(0, get(char, "TheriSpinCutGap"))
 			local dmg = math.max(0, get(char, "TheriSpinDamage"))
 			local mid = lastPos and (lastPos + pos) / 2 or pos
-			for _, m in ipairs(candidates(char)) do
+			local airOk = left or script:GetAttribute("TheriSpinNeedAirEnabled") == false -- v1.1
+			if not airOk then count("TheriSpinGroundSkips") end
+			for _, m in ipairs(airOk and candidates(char) or {}) do
 				local n = cuts[m] or 0
 				if n < maxCuts and t - (lastCut[m] or -math.huge) >= cutGap then
 					local d1, p1 = nearest(m, pos)
