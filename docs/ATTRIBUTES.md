@@ -2644,3 +2644,18 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoLeapArc | therizino model | 180° | front half only (TenoMovesServer 1.5; unset = all around) |
 | HitboxSkipSegments | therizino model | "HandL\|HandR" | no hitbox on the claws (DinoHitboxes 1.2) |
 | TherizinoModelVersion | therizino model | "1.4" | 1.3 elbow / wrist rig + kit attributes; 1.4 reach 9 / 10 |
+| SpeciesTherizinoEnabled; SpeciesTherizinoTemplate | SpeciesServer script | true; diagnostic "ready" | SpeciesServer 1.6 (Therizino selectable) |
+| RaptorScaleTheriEnabled; TherizinoScale | RaptorScale script | true; 2 | RaptorScale 1.6 |
+| MainMenuTheriEnabled | MainMenu script | true | MainMenu 1.16 (THERIZINO entry) |
+| SkillEffectsTheriLeapKeepEnabled | SkillEffects script | true (false = 1.37: the leap writer overwrites the therizino's leap values) | SkillEffects 1.38 |
+| DinoHitboxesSkipEnabled; HitboxSkipped | DinoHitboxes script; character | true; "\|" joined skipped segments | DinoHitboxes 1.2 |
+| TenoMovesLeapArcEnabled; TenoLeapArcSkips | TenoMovesServer script; character | true; count | TenoMovesServer 1.6 (TenoLeapArc filter) |
+| TheriAttackServerEnabled / TheriAttackModeRulesEnabled / TheriAttackSquadEnabled | TheriAttackServer script | true / true / true | TheriAttackServer 1.0 switches |
+| TheriAttackServerVersion; TheriAttackRequests / Taps / Hits / Cancels / SquadSkips; TheriAttackMode | TheriAttackServer script | "1.0"; counts; mode | TheriAttackServer 1.0 diagnostics |
+| TheriAttackServerResult / TheriAttackServerResultAt | therizino character | "ok" / "badArg" / "dead" / "disabled" / "menu" / "stunned" / "dazed" / "pinned" / "recover" / "cooldown"; time | TheriAttackServer 1.0 |
+| TheriComboStep / TheriComboAt / TheriComboCancelAt | therizino character | 1-3; time (set last); time | TheriAttackServer 1.0 (poses / FX read these on other clients) |
+| TheriHitStep / TheriHitTargets / TheriHitPoint / TheriHitCount / TheriHitAt | therizino character | step; "\|" joined names; Vector3; count; time (set last) | TheriAttackServer 1.0 (hit FX) |
+| TheriLeftClickEnabled | therizino character | true (false = R2 / touch only) | TheriAttackTest 1.0 |
+| TheriLocalStep / TheriLocalAt / TheriInputResult / TheriLastInput / TheriClickBound / TheriAttackTestVersion | therizino character (owner client) | 0-3 (set last); time; "hit1-3" / "cooldown" / "recover" / "dead" / "stunned" / "dazed" / "pinned" / "menu" / "denied:<reason>"; "click" / "key" / "touch"; bool; "1.0" | TheriAttackTest 1.0 |
+| AbilityBarTheriEnabled; AbilityBarTheriStep / AbilityBarTheriLeapPips | AbilityBar script; character | true; 0-3 / "<left>/<max>" | AbilityBar 1.23 (ATTACK + JUMP tiles) |
+| ArenaTouchTheriEnabled; ArenaTouchTheriStep | ArenaTouch script; character | true; 0-3 | ArenaTouch 1.11 (TheriMain ATTACK + 3 step pips; ArenaTouchMainButton "Theri") |

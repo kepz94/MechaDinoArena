@@ -1,4 +1,4 @@
--- ArenaTouch v1.10 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.11 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -78,12 +78,18 @@
 -- v1.10 (tail slam rework, plan docs/plans/TENO_SLAM_REWORK_v1.0.md; Buck Off star = a 4th slam charge): the teno ATTACK pip
 --   row gets a 4th pip (a copy of the 3rd, LayoutOrder 4), shown only while TenoSlamChargesMax is 4; the pip count clamps
 --   to 1..4 (was 1..3). Switch: script attribute ArenaTouchTeno4thPip (default true, read at start; false = 1.9).
+-- v1.11 (Therizinosaurus kit, MDA-202, plan docs/plans/THERIZINO_KIT_v1.0.md Task 5): the therizino's ATTACK (each tap = the
+--   next combo hit) as the big yellow ATTACK ("TheriMain", the teno's place) over CAS "DinoTheriAttack" (TheriAttackTest 1.0)
+--   for a dino with TheriAttackEnabled (and no other main button); under it 3 pips = the combo step: filled up to
+--   TheriLocalStep while the chain is open (TheriLocalAt + TheriChainWindow; after the finisher, all 3 while
+--   TheriFinisherRecover runs), else empty. Switch: script attribute ArenaTouchTheriEnabled (default true, read at start).
+--   Diagnostic ArenaTouchTheriStep; ArenaTouchMainButton adds "Theri".
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.10"
+local VERSION = "1.11"
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -461,6 +467,19 @@ if script:GetAttribute("ArenaTouchTeno4thPip") ~= false then -- v1.10
 	TENO_MAX_PIPS = 4
 end
 
+-- v1.11: therizino ATTACK main button + combo step pips
+if script:GetAttribute("ArenaTouchTheriEnabled") == nil then script:SetAttribute("ArenaTouchTheriEnabled", true) end
+local THERI_ON = script:GetAttribute("ArenaTouchTheriEnabled") ~= false
+local theriMain, _, theriMainScale = button("TheriMain", "ATTACK", nil, 0.05, 0.10, 0.135, true)
+theriMain.Visible = false
+local thPipRow = slPipRow:Clone()
+thPipRow.Parent = theriMain
+local thPips = {}
+for i = 1, 3 do
+	local f = thPipRow:FindFirstChild("Charge_" .. i)
+	if f then thPips[i] = {f = f, fill = f:FindFirstChild("Fill")} end
+end
+
 -- overlay: Roblox's CAS button for each move, invisible, laid over its styled button every frame
 local OVERLAY = {
 	{action = "DinoBiteTest", vis = bite, scale = biteScale, name = "Bite"},
@@ -471,6 +490,7 @@ local OVERLAY = {
 }
 if SLASH_ON then table.insert(OVERLAY, {action = "DinoSlash", vis = slashMain, scale = slashMainScale, name = "Slash"}) end -- v1.7
 if TENO_ON then table.insert(OVERLAY, {action = "DinoTenoAttack", vis = tenoMain, scale = tenoMainScale, name = "Teno"}) end -- v1.9
+if THERI_ON then table.insert(OVERLAY, {action = "DinoTheriAttack", vis = theriMain, scale = theriMainScale, name = "Theri"}) end -- v1.11
 local wanted = {Bite = true, Run = true, Ram = false, Pounce = false, Headbutt = false, Slash = false} -- set by refresh(); v1.5: + Headbutt; v1.7: + Slash
 local hooked = setmetatable({}, {__mode = "k"})
 local function hook(btn, o)
@@ -544,6 +564,9 @@ local function refresh()
 	-- v1.9: teno ATTACK as the main button
 	wanted.Teno = TENO_ON and char:GetAttribute("TenoAttackEnabled") == true and mainName == "none"
 	if wanted.Teno then mainName = "Teno" end
+	-- v1.11: therizino ATTACK as the main button
+	wanted.Theri = THERI_ON and char:GetAttribute("TheriAttackEnabled") == true and mainName == "none"
+	if wanted.Theri then mainName = "Theri" end
 	if char:GetAttribute("ArenaTouchMainButton") ~= mainName then char:SetAttribute("ArenaTouchMainButton", mainName) end
 	local mainReady = char:GetAttribute("PounceTestState") == "ready"
 	pounceMain.BackgroundTransparency = mainReady and 0.08 or 0.5
@@ -607,6 +630,22 @@ end)
 local WATCH = {BiteEnabled = true, HeadbuttEnabled = true, AutoRun = true, RamEnabled = true, RamLatchGate = true, PounceEnabled = true, JumpEnabled = true, RamTestState = true,
 	PounceTestState = true, JumpTestState = true, SlashEnabled = true, ClimbEnabled = true, ClimbLocalState = true} -- v1.7: + Slash / Climb
 WATCH.TenoAttackEnabled = true -- v1.9
+WATCH.TheriAttackEnabled = true -- v1.11
+-- v1.11: therizino combo step pips every frame
+RunService.RenderStepped:Connect(function()
+	if not wanted.Theri then return end
+	local now = workspace:GetServerTimeNow()
+	local st = math.clamp(math.floor(tonumber(char:GetAttribute("TheriLocalStep")) or 0), 0, 3)
+	local age = now - (tonumber(char:GetAttribute("TheriLocalAt")) or -math.huge)
+	local open = st == 3 and age < (tonumber(char:GetAttribute("TheriFinisherRecover")) or 0.9)
+		or (st > 0 and st < 3 and age <= (tonumber(char:GetAttribute("TheriChainWindow")) or 0.8))
+	local shown = open and st or 0
+	for i, pip in pairs(thPips) do
+		if pip.fill then pip.fill.Size = UDim2.fromScale(1, i <= shown and 1 or 0) end
+		pip.f.Visible = true
+	end
+	if char:GetAttribute("ArenaTouchTheriStep") ~= shown then char:SetAttribute("ArenaTouchTheriStep", shown) end
+end)
 -- v1.9: teno pips / glow every frame
 local RED_RING = Color3.fromRGB(240, 90, 79)
 RunService.RenderStepped:Connect(function()

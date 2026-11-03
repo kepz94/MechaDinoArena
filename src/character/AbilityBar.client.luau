@@ -1,4 +1,4 @@
--- AbilityBar v1.22 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.23 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -131,8 +131,16 @@ local UserInputService = game:GetService("UserInputService")
 --   tile shows "Space" as its key (like Mecha Legs; its cooldown comes from TenoLeapReadyAt, mirrored from the jump's
 --   charges by TenoMovesServer 1.4). Switch: script attribute AbilityBarTenoJumpEnabled (default true, read at start;
 --   false = 1.21).
+-- v1.23 (Therizinosaurus kit, MDA-202, plan docs/plans/THERIZINO_KIT_v1.0.md Task 5): SPECIES_MOVES.Therizino =
+--   TheriAttack (key "LMB", ATTACK, yellow; 3 pips = the combo step: filled up to TheriLocalStep while the chain is open
+--   (TheriLocalAt + TheriChainWindow; after the finisher all 3 while TheriFinisherRecover runs); "active" while a swing runs
+--   (0.45 s after TheriLocalAt), "stunned" while stunned) and TheriLeap (key "Space", JUMP; pips = JumpCharges filled from
+--   JumpChargesLeft, the refilling one from JumpChargeRefillAt over JumpCooldown; "active" while JumpTestState is crouch /
+--   air; "empty" at 0). Switch: script attribute AbilityBarTheriEnabled (default true, read at start; false = 1.22: no
+--   therizino row, the fallback order). Diagnostics: AbilityBarTheriStep, AbilityBarTheriLeapPips ("<left>/<max>").
 local VERSION = "1.21"
 VERSION = "1.22" -- v1.22 teno leap on JUMP
+VERSION = "1.23" -- v1.23 therizino ATTACK + JUMP tiles
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
 local BLOOD = Color3.fromRGB(224, 40, 74)
@@ -232,6 +240,14 @@ if script:GetAttribute("AbilityBarTenoEnabled") ~= false then -- v1.20: teno ATT
 	MOVES.TenoAttack = {enabled = "TenoAttackEnabled", enabledDefault = false, key = "LMB", name = "ATTACK", color = YELLOW,
 		slashPips = true, tenoPips = true}
 	SPECIES_MOVES.Teno = {"TenoAttack", "Leap"}
+end
+if script:GetAttribute("AbilityBarTheriEnabled") == nil then script:SetAttribute("AbilityBarTheriEnabled", true) end -- v1.23
+if script:GetAttribute("AbilityBarTheriEnabled") ~= false then -- v1.23: therizino ATTACK (combo step) + JUMP (leap charges)
+	MOVES.TheriAttack = {enabled = "TheriAttackEnabled", enabledDefault = false, key = "LMB", name = "ATTACK", color = YELLOW,
+		slashPips = true, theriPips = true}
+	MOVES.TheriLeap = {enabled = "JumpEnabled", enabledDefault = false, key = "Space", name = "JUMP", slashPips = true,
+		leapPips = true}
+	SPECIES_MOVES.Therizino = {"TheriAttack", "TheriLeap"}
 end
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 if script:GetAttribute("AbilityBarHerreraJumpEnabled") == nil then script:SetAttribute("AbilityBarHerreraJumpEnabled", true) end -- v1.17
@@ -746,6 +762,51 @@ local function update()
 			else
 				paint(e, "ready", 0, 0, nil)
 			end
+		elseif e.move.theriPips then -- v1.23: therizino ATTACK (combo step)
+			local st = math.clamp(math.floor(tonumber(char:GetAttribute("TheriLocalStep")) or 0), 0, 3)
+			local age = now - (tonumber(char:GetAttribute("TheriLocalAt")) or -math.huge)
+			local open = st == 3 and age < (tonumber(char:GetAttribute("TheriFinisherRecover")) or 0.9)
+				or (st > 0 and st < 3 and age <= (tonumber(char:GetAttribute("TheriChainWindow")) or 0.8))
+			local shown = open and st or 0
+			for i, pip in ipairs(e.t.chargePips) do
+				pip.f.Visible = i <= 3
+				pip.fill.Size = UDim2.fromScale(1, i <= shown and 1 or 0)
+			end
+			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = Color3.new(0, 0, 0), 0.38
+			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif st > 0 and age < 0.45 then
+				paint(e, "active", 0, 0, nil)
+				e.t.stroke.Color = YELLOW
+			else
+				paint(e, "ready", 0, 0, nil)
+			end
+			show("AbilityBarTheriStep", shown)
+		elseif e.move.leapPips then -- v1.23: therizino JUMP (Diving Rake charges, JumpServer 1.3)
+			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("JumpCharges")) or 2), 1, 3)
+			local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("JumpChargesLeft")) or maxC), 0, maxC)
+			local ra = tonumber(char:GetAttribute("JumpChargeRefillAt")) or 0
+			local cd = math.max(0.01, tonumber(char:GetAttribute("JumpCooldown")) or 6)
+			local part = (ra > now and nowC < maxC) and math.clamp(1 - (ra - now) / cd, 0, 1) or 0
+			for i, pip in ipairs(e.t.chargePips) do
+				pip.f.Visible = i <= maxC
+				pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0))
+			end
+			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = Color3.new(0, 0, 0), 0.38
+			local js = char:GetAttribute("JumpTestState")
+			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif js == "crouch" or js == "air" then
+				paint(e, "active", 0, 0, nil)
+				e.t.stroke.Color = YELLOW
+			elseif nowC <= 0 then
+				paint(e, "empty", 0.45, 0, nil)
+				e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = WHITE, 0.89
+				e.t.fill.Size = UDim2.fromScale(1, part)
+			else
+				paint(e, "ready", 0, 0, nil)
+			end
+			show("AbilityBarTheriLeapPips", nowC .. "/" .. maxC)
 		elseif e.move.tenoPips then -- v1.20: teno ATTACK (slam charges; the scratch is always there)
 			local four = script:GetAttribute("AbilityBarTeno4thPip") ~= false -- v1.21
 			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("TenoSlamChargesMax")) or 3), 1, four and 4 or 3)
