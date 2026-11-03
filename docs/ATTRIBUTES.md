@@ -2627,3 +2627,20 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoMovesFXMortarBigEnabled; part TenoMortarFlash | TenoMovesFX script; Workspace.DinoFX_Local.TenoMovesFX | true | TenoMovesFX 1.4 |
 | ShoulderCamTenoFlipEnabled | ShoulderCam script | false (was true in 1.7) | ShoulderCam 1.8 |
 | TherizinoModelVersion | therizino model | "1.2" (was "1.0"; 1.1 never published) | TherizinoModelData 1.2: arm stance C3 Low flare, open hand (Kepu 2026-11-02; 1.1 = C2 palms up, replaced). Every other therizino attribute unchanged (carried from 1.0). |
+
+## Therizino kit (TherizinoModelData 1.3, MDA-197; plan docs/plans/THERIZINO_KIT_v1.0.md)
+| Attribute | Where | Value | Meaning |
+|---|---|---|---|
+| DinoMaxHealth / MoveRunSpeed / MoveWalkSpeed | therizino model | 80 / 66 / 36 | 80 HP slasher; run between the raptor (78) and the teno (52) |
+| TheriAttackEnabled | therizino model | true | TheriAttackServer 1.0 takes this character's ATTACK taps |
+| TheriHitDamage1 / 2 / 3 | therizino model | 9 / 9 / 20 | combo hits: right cut, left cut, rear-up double chop |
+| TheriHitDelay1 / 2 / 3 | therizino model | 0.30 / 0.33 / 0.55 s | tap -> contact (the mockup v0.3's measured contacts) |
+| TheriReach / TheriReach3 / TheriCone | therizino model | 7 / 8 (x scale) / 100° | hit zone in front (finisher a little longer) |
+| TheriMinGap / TheriChainWindow / TheriFinisherRecover | therizino model | 0.33 / 0.8 / 0.9 s | earliest next tap / latest chaining tap / pause after the finisher |
+| JumpEnabled / JumpCharges / JumpCooldown / JumpStaminaCost | therizino model | true / 2 / 6 s / 0 | Diving Rake leap through JUMP (JumpServer 1.3 charges) |
+| JumpBoost / JumpLaunchPower / JumpWindup | therizino model | 14 / 54 / 0.27 | leap physics (JumpTest); tuned in the Studio check |
+| TenoLeapEnabled / TenoLeapOnJump | therizino model | true / true | TenoMovesServer's landing slam on each JUMP leap (reused) |
+| TenoLeapDamage / TenoLeapRadius / TenoLeapStun | therizino model | 18 / 16 / 0 | landing rake damage and radius |
+| TenoLeapArc | therizino model | 180° | front half only (TenoMovesServer 1.5; unset = all around) |
+| HitboxSkipSegments | therizino model | "HandL\|HandR" | no hitbox on the claws (DinoHitboxes 1.2) |
+| TherizinoModelVersion | therizino model | "1.3" | elbow / wrist rig + kit attributes |
