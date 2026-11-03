@@ -2667,3 +2667,6 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriDragShoulder | therizino model (each client) | degrees | TheriPose 1.2 diagnostic: ArmR roll added by the drag solver |
 | TheriSpinEnabled / TheriSpinDamage / TheriSpinMaxCuts / TheriSpinCutGap / TheriSpinRadius / TheriSpinTurns | therizino model | true / 7 / 3 / 0.16 s / 7 (x scale) / 2 | Spin Dive (TherizinoModelData 1.5; TheriSpinServer 1.0, TheriPose 1.3) |
 | TenoLeapEnabled / TenoLeapOnJump | therizino model | false / false (were true in 1.3-1.4) | TherizinoModelData 1.5: no teno landing slam on the therizino's JUMP |
+| TheriSpinServerEnabled / TheriSpinModeRulesEnabled / TheriSpinSquadEnabled | TheriSpinServer script | true each | TheriSpinServer 1.0 switches |
+| TheriSpinServerVersion; TheriSpinDives / CutsTotal / Timeouts / SquadSkips; TheriSpinMode | TheriSpinServer script | "1.0"; counts; mode | TheriSpinServer 1.0 diagnostics |
+| TheriSpinStartedAt / TheriSpinCuts / TheriSpinCutTarget / TheriSpinCutPoint / TheriSpinCutAt / TheriSpinLandedAt | therizino character | time; count; name; Vector3; time (set last); time (0 = no landing) | TheriSpinServer 1.0 (FX + poses) |
