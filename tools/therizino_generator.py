@@ -55,7 +55,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "TherizinoModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 SMOOTH = {"eyes", "pupil", "tooth", "claws", "mouth"}
-VERSION = "1.3"  # TherizinoModelData 1.3 = kit (MDA-197): elbow / wrist rig + kit attributes; 1.2 = stance C3 (lowopen)
+VERSION = "1.4"  # TherizinoModelData 1.4 = kit reach 9 / 10 (MDA-201 Play check); 1.3 = kit (MDA-197): elbow / wrist rig + kit attributes; 1.2 = stance C3
 GEN_VERSION = "1.2"
 TARGET_LEN = 16.0    # studs at scale 1 (~32 in game)
 HRP_SIZE_D0 = (3.0, 2.6, 1.6)
@@ -84,7 +84,7 @@ K_CLOSE = None  # v1.1: the close build's length scale, used for every stance
 KIT_ATTRS = {
     "DinoMaxHealth": "80", "MoveRunSpeed": "66", "MoveWalkSpeed": "36",
     "TheriAttackEnabled": "true", "TheriHitDamage1": "9", "TheriHitDamage2": "9", "TheriHitDamage3": "20",
-    "TheriHitDelay1": "0.3", "TheriHitDelay2": "0.33", "TheriHitDelay3": "0.55", "TheriReach": "7", "TheriReach3": "8",
+    "TheriHitDelay1": "0.3", "TheriHitDelay2": "0.33", "TheriHitDelay3": "0.55", "TheriReach": "9", "TheriReach3": "10",  # 1.4: 7 / 8 missed a raptor the claws touch (MDA-201)
     "TheriCone": "100", "TheriMinGap": "0.33", "TheriChainWindow": "0.8", "TheriFinisherRecover": "0.9",
     "JumpEnabled": "true", "JumpCharges": "2", "JumpCooldown": "6", "JumpStaminaCost": "0", "JumpBoost": "14",
     "JumpLaunchPower": "54", "JumpWindup": "0.27",
@@ -586,7 +586,7 @@ if "--json" not in sys.argv:
              f"-- Scale: {hi[0] - lo[0]:.2f} studs long, hip {HIP:.4g} studs; doubled in game like the raptor / Herrera / troodon (~{2 * (hi[0] - lo[0]):.0f}; raptor ~25.7, T-Rex ~40).",
              f"-- Colour groups (Classic = {L['name']}): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: teeth E8E2D2, pupil 111111, mouth 6E342E.",
              "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB. Rebuild with DinoModelBuilder.build(require(TherizinoModelData)).",
-             ("-- v1.3 kit (MDA-197, plan docs/plans/THERIZINO_KIT_v1.0.md): elbow / wrist rig (ForeL/R + HandL/R, joints ElbowL/R + WristL/R, same blocks) and the kit attributes (3-hit claw combo, Diving Rake on JUMP, 80 HP); playable through SpeciesServer 1.6." if "--no-kit" not in sys.argv else "-- Not playable yet: no SpeciesServer entry, no kit (every move off). Those come with the therizino kit plan."),
+             ("-- v1.3 kit (MDA-197, plan docs/plans/THERIZINO_KIT_v1.0.md): elbow / wrist rig (ForeL/R + HandL/R, joints ElbowL/R + WristL/R, same blocks) and the kit attributes (3-hit claw combo, Diving Rake on JUMP, 80 HP); playable through SpeciesServer 1.6.\n-- v1.4: TheriReach 9 / TheriReach3 10 (1.3's 7 / 8 missed a raptor the claws touch; MDA-201 Studio check)." if "--no-kit" not in sys.argv else "-- Not playable yet: no SpeciesServer entry, no kit (every move off). Those come with the therizino kit plan."),
              "return {", f'\tversion = "{VERSION}", species = "Therizino", style = "1.0", rig = "1.3",'] + body + ["\tattributes = {"] + [f"\t\t{k} = {attrs[k]}," for k in sorted(attrs)] + ["\t},", "}"]
     open(OUT, "w").write("\n".join(lines) + "\n")
     print("data ->", OUT, f"({len(attrs)} attributes)")

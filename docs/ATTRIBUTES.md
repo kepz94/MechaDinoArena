@@ -2635,7 +2635,7 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriAttackEnabled | therizino model | true | TheriAttackServer 1.0 takes this character's ATTACK taps |
 | TheriHitDamage1 / 2 / 3 | therizino model | 9 / 9 / 20 | combo hits: right cut, left cut, rear-up double chop |
 | TheriHitDelay1 / 2 / 3 | therizino model | 0.30 / 0.33 / 0.55 s | tap -> contact (the mockup v0.3's measured contacts) |
-| TheriReach / TheriReach3 / TheriCone | therizino model | 7 / 8 (x scale) / 100° | hit zone in front (finisher a little longer) |
+| TheriReach / TheriReach3 / TheriCone | therizino model | 9 / 10 (x scale; 1.3 had 7 / 8) / 100° | hit zone in front, root to the target's nearest hitbox (finisher a little longer) |
 | TheriMinGap / TheriChainWindow / TheriFinisherRecover | therizino model | 0.33 / 0.8 / 0.9 s | earliest next tap / latest chaining tap / pause after the finisher |
 | JumpEnabled / JumpCharges / JumpCooldown / JumpStaminaCost | therizino model | true / 2 / 6 s / 0 | Diving Rake leap through JUMP (JumpServer 1.3 charges) |
 | JumpBoost / JumpLaunchPower / JumpWindup | therizino model | 14 / 54 / 0.27 | leap physics (JumpTest); tuned in the Studio check |
@@ -2643,4 +2643,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoLeapDamage / TenoLeapRadius / TenoLeapStun | therizino model | 18 / 16 / 0 | landing rake damage and radius |
 | TenoLeapArc | therizino model | 180° | front half only (TenoMovesServer 1.5; unset = all around) |
 | HitboxSkipSegments | therizino model | "HandL\|HandR" | no hitbox on the claws (DinoHitboxes 1.2) |
-| TherizinoModelVersion | therizino model | "1.3" | elbow / wrist rig + kit attributes |
+| TherizinoModelVersion | therizino model | "1.4" | 1.3 elbow / wrist rig + kit attributes; 1.4 reach 9 / 10 |
