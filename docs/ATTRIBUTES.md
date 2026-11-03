@@ -2672,3 +2672,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriSpinStartedAt / TheriSpinCuts / TheriSpinCutTarget / TheriSpinCutPoint / TheriSpinCutAt / TheriSpinLandedAt | therizino character | time; count; name; Vector3; time (set last); time (0 = no landing) | TheriSpinServer 1.0 (FX + poses) |
 | TheriSpinPoseEnabled / TheriSpinTurns / TheriSpinAirTime | therizino model (TheriPose defaults) | true / 2 / 0.6 s | TheriPose 1.3 Corkscrew leap |
 | TheriSpinRoll | therizino model (each client) | degrees | TheriPose 1.3 diagnostic |
+| SkillTree.THERI_STATS | SkillTree module | true (false = 1.56: the therizino sees the shared rows) | SkillTree 1.57 (five therizino rows, notFor.Therizino on regen / lifesteal / jaws / hide / legs) |
+| SkillTree.THERI_FOURTH | SkillTree module | false (true once the Fourth Cut mockup is picked, MDA-213) | SkillTree 1.57: false = the Fourth Cut row has dino "none" (hidden, no effects) |

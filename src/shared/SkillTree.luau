@@ -1,4 +1,4 @@
--- SkillTree v1.56 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.57 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -1893,6 +1893,107 @@ do
 		local e = effectsPre156(steps, dino)
 		if type(e) ~= "table" then return e end
 		if SkillTree.TENO_PARTS and SkillTree.TENO_MORTAR_90 and dino == "Teno" and (e.mortarRange or 0) > 0 then e.mortarRange = 90 end
+		return e
+	end
+end
+
+
+-- v1.57 (Therizinosaurus stat rows, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 4, MDA-210, mockup
+-- docs/mockups/therizino_spin_dive_v0.1.html; Kepu 2026-11-02/03: shared rows "None, all its own", theme "Combo flow", rows
+-- "Keep all five", Fourth Cut "Mock it up first"). Switch SkillTree.THERI_STATS (default true; false = 1.56):
+--   * PATHS regen / lifesteal / jaws / hide / legs get notFor.Therizino (the therizino sees none of the shared stat rows).
+--   * Five therizino-only rows (dino / OWNER "Therizino", mech false): Flowing Cuts (flow, speed), Building Fury (fury,
+--     attack), Fourth Cut (fourth, sig), Flow Guard (guard, defense), Reaper's Harvest (harvest, health). The therizino's
+--     STATS list reads harvest, fury, guard, flow (+ fourth once it is live).
+--   * SkillTree.THERI_FOURTH (default false until the Fourth Cut mockup is picked, MDA-213): while false the fourth row has
+--     dino "none" (shown to nobody; saved steps dropped by sanitize) and its effects stay off.
+--   * Effects (off values when not bought / other dinos): flowWindow 0 (I 1.0 s chain window), flowGap 0 (II 0.26 s between
+--     taps), flowRecover 0 (III 0.55 s finisher recovery), flowRefill false (star: a landed finisher refills a JUMP charge);
+--     furyHit2 0 (I cut 2 = 12), furyFinisher 0 (II finisher = 26), furyStack 0 (III +2 per landed cut on the same dino),
+--     furyFullMul 1 (star 1.5 on a full 3-hit chain); fourthDamage 0 (I 10, II 14), fourthReachMul 1 (III 1.3), fourthFast
+--     false (star); guardTakenMul 1 (I 0.85 mid-chain), guardFinisherNoStun false (II), guardShoveMul 1 (III 0.5), guardKeepChain
+--     false (star); harvestHeal 0 (I 0.04, II 0.06 of max health per finisher hit), harvestKillHeal 0 (III 0.15 over 3 s),
+--     harvestLowDouble false (star: doubled under 30% health). SkillEffects 1.39 writes them; TheriAttackServer 1.1 acts on them.
+SkillTree.THERI_STATS = true
+SkillTree.THERI_FOURTH = false
+if SkillTree.THERI_STATS and not SkillTree.PATHS.flow then
+	local P = SkillTree.PATHS
+	for _, id in ipairs({"regen", "lifesteal", "jaws", "hide", "legs"}) do
+		if P[id] then
+			P[id].notFor = P[id].notFor or {}
+			P[id].notFor.Therizino = true
+		end
+	end
+	local hasSig = false
+	for _, a in ipairs(SkillTree.AREAS) do if a.id == "sig" then hasSig = true end end
+	if not hasSig then table.insert(SkillTree.AREAS, {id = "sig", name = "Signature", color = {201, 162, 255}, paths = {}}) end
+	local function add(id, name, areaId, steps)
+		local p = path(id, name, false, false, steps)
+		p.area = areaId
+		p.dino = "Therizino"
+		SkillTree.OWNER[id] = "Therizino"
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		P[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	add("flow", "Flowing Cuts", "speed", {
+		"Chain window 0.8 -> 1.0 s: more time to tap the next cut",
+		"Taps come faster (0.33 -> 0.26 s apart)",
+		"Finisher recovery 0.9 -> 0.55 s",
+		"A finisher that lands refills one Spin Dive charge"})
+	add("fury", "Building Fury", "attack", {
+		"Cut 2 hits harder (9 -> 12)",
+		"The finisher hits harder (20 -> 26)",
+		"Each landed cut on the same dino adds +2 to the next",
+		"A full 3-hit chain on one dino: the finisher deals x1.5"})
+	add("fourth", "Fourth Cut", "sig", {
+		"Tap after the finisher: a spinning sweep, 10 damage all around",
+		"Sweep 14 damage",
+		"The sweep reaches 30% further",
+		"The sweep comes out faster and chains back into cut 1"})
+	if not SkillTree.THERI_FOURTH then
+		P.fourth.dino = "none"
+		SkillTree.OWNER.fourth = "Therizino"
+	end
+	add("guard", "Flow Guard", "defense", {
+		"Take 15% less damage while a chain is going",
+		"Not stunned during the finisher",
+		"Shoves push you half as far mid-chain",
+		"A hit mid-chain does not break the chain"})
+	add("harvest", "Reaper's Harvest", "health", {
+		"Each finisher hit heals 4% of your max health",
+		"Finisher heal 6%",
+		"A combo kill heals 15% of your max health over 3 s",
+		"Combo heals doubled under 30% health"})
+end
+do
+	local effectsPre157 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre157(steps, dino)
+		if type(e) ~= "table" then return e end
+		local on = SkillTree.THERI_STATS and dino == "Therizino" and SkillTree.PATHS.flow ~= nil
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local fl, fu, fo, gu, ha = s.flow or 0, s.fury or 0, s.fourth or 0, s.guard or 0, s.harvest or 0
+		e.flowWindow = fl >= 1 and 1.0 or 0
+		e.flowGap = fl >= 2 and 0.26 or 0
+		e.flowRecover = fl >= 3 and 0.55 or 0
+		e.flowRefill = fl >= 4
+		e.furyHit2 = fu >= 1 and 12 or 0
+		e.furyFinisher = fu >= 2 and 26 or 0
+		e.furyStack = fu >= 3 and 2 or 0
+		e.furyFullMul = fu >= 4 and 1.5 or 1
+		e.fourthDamage = fo >= 2 and 14 or (fo >= 1 and 10 or 0)
+		e.fourthReachMul = fo >= 3 and 1.3 or 1
+		e.fourthFast = fo >= 4
+		e.guardTakenMul = gu >= 1 and 0.85 or 1
+		e.guardFinisherNoStun = gu >= 2
+		e.guardShoveMul = gu >= 3 and 0.5 or 1
+		e.guardKeepChain = gu >= 4
+		e.harvestHeal = ha >= 2 and 0.06 or (ha >= 1 and 0.04 or 0)
+		e.harvestKillHeal = ha >= 3 and 0.15 or 0
+		e.harvestLowDouble = ha >= 4
 		return e
 	end
 end
