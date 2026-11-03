@@ -1,0 +1,186 @@
+<title>Therizino Attack Tile</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;600;800&display=swap">
+<style>
+/* Layout: one column of three option cards, each a strip of the game's ability bar (ATTACK + JUMP tiles) over a beach backdrop, with a shared tap control. Single dark HUD look by choice (it sits over the game world). */
+:root {
+  --bg: #12161c;
+  --card: #1b2129;
+  --line: #2c3540;
+  --fg: #eef2f6;
+  --muted: #9aa6b4;
+  --yellow: #ffcf3f;
+  --tile: rgba(14, 18, 24, 0.62);
+  --tile-line: rgba(255, 255, 255, 0.55);
+  --sand: #e7d9a8;
+  --sea: #8fd3ea;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+main { max-width: 980px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 48px; display: grid; gap: 18px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; text-wrap: balance; }
+h1 span { color: var(--yellow); }
+h2 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.muted { color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button { font: 800 14px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 9px 14px; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+button.go { background: var(--yellow); color: #1b1600; border-color: var(--yellow); font-size: 16px; padding: 11px 20px; }
+button[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.state { font: 600 13px var(--body); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 16ch; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.opt { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.opt.rec { border-color: color-mix(in srgb, var(--yellow) 60%, var(--line)); }
+.tag { font: 800 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--yellow); }
+.scene { border-radius: 10px; background: linear-gradient(180deg, var(--sea) 0 38%, var(--sand) 38% 100%); padding: 22px 12px 14px; display: flex; justify-content: center; gap: 8px; }
+.tilebox { width: 74px; height: 74px; border-radius: 12px; background: var(--tile); border: 2px solid var(--tile-line); position: relative; overflow: hidden; color: #fff; transition: border-color .12s; }
+.tilebox.active { border-color: var(--yellow); box-shadow: 0 0 0 2px rgba(255, 207, 63, .35); }
+.tilebox .key { position: absolute; left: 6px; top: 4px; font: 800 10px var(--body); opacity: .85; }
+.tilebox .name { position: absolute; inset: 22px 0 auto; text-align: center; font: 700 13px var(--display); letter-spacing: .02em; }
+.tilebox .sub { position: absolute; inset: 38px 0 auto; text-align: center; font: 800 11px var(--body); color: var(--yellow); letter-spacing: .04em; }
+.pips { position: absolute; left: 0; right: 0; bottom: 7px; display: flex; justify-content: center; gap: 4px; }
+.pip { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--yellow); position: relative; overflow: hidden; box-sizing: border-box; }
+.pip i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--yellow); transition: height .1s; }
+.pip.glow { box-shadow: 0 0 6px 1px rgba(255, 207, 63, .9); }
+.bar { position: absolute; left: 8px; right: 8px; bottom: 9px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--yellow); }
+.why { font-size: 14px; }
+.trade { font-size: 13px; color: var(--muted); }
+.now { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+@media (prefers-reduced-motion: reduce) { .pip i, .tilebox { transition: none; } }
+</style>
+
+<main>
+  <header style="display:grid;gap:8px">
+    <h1><span>Therizino</span> ATTACK tile · v0.1</h1>
+    <p><b>Kepu 2026-11-03:</b> "There's 3 bubbles for attack and they fill up instead of empty." Today the ATTACK pips count the combo step (empty, then 1, 2, 3 filled), while every other tile on the bar (JUMP charges, the teno's slam charges) is full when ready and empties as you use it. Tap ATTACK below to play the real combo timing (0.8 s to chain, 0.9 s after the finisher) on today's tile and on three fixes.</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="Controls">
+    <button class="go" id="tap">Tap ATTACK</button>
+    <button id="auto" aria-pressed="false">Auto-play a full combo</button>
+    <button id="four" aria-pressed="false">Fourth Cut bought</button>
+    <span class="state" id="state" aria-live="polite">Ready</span>
+  </div>
+
+  <section class="now">
+    <div class="tag">Now (AbilityBar 1.23)</div>
+    <div class="scene" data-opt="now"></div>
+    <p class="trade">Pips fill as the combo goes on and snap back to empty, the opposite of the JUMP tile next to it. Stops at 3 even with the Fourth Cut.</p>
+  </section>
+
+  <div class="opts">
+    <section class="opt rec">
+      <div class="tag">A · Hits left (recommended)</div>
+      <h2>Empties like the other tiles</h2>
+      <div class="scene" data-opt="A"></div>
+      <p class="why">All pips full when the combo is ready. Each cut empties one, right to left. They refill when the chain ends or the finisher's pause is over. With the Fourth Cut there are 4 pips.</p>
+      <p class="trade">Reads the same as JUMP and the teno's ATTACK. Shows how much of the combo is left, not which hit is next.</p>
+    </section>
+    <section class="opt">
+      <div class="tag">B · Next hit</div>
+      <h2>The next cut glows</h2>
+      <div class="scene" data-opt="B"></div>
+      <p class="why">Pips stay as outlines; the pip for the next cut glows (cut 1 at rest, then 2, then the finisher). During the finisher's pause none glow. With the Fourth Cut, the 4th pip glows in its window.</p>
+      <p class="trade">Shows exactly where you are in the combo. No fill at all, so it does not look like charges.</p>
+    </section>
+    <section class="opt">
+      <div class="tag">C · Hit name + window</div>
+      <h2>No pips</h2>
+      <div class="scene" data-opt="C"></div>
+      <p class="why">The tile names the next hit (CUT 1, CUT 2, FINISH, SWEEP) and a thin bar drains for the time left to chain; during the finisher's pause the bar refills.</p>
+      <p class="trade">Teaches the combo and its timing. More text on a small tile, and it looks different from every other tile.</p>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  const WINDOW = 0.8, RECOVER = 0.9, HIT3 = 0.55, FOUR_WIN = 0.8, FOUR_RECOVER = 0.8, MIN_GAP = 0.33;
+  let four = false;
+  // combo state (same rules as TheriAttackTest 1.2)
+  const S = {step: 0, lastTap: -1e9, finisherAt: -1e9, fourthAt: -1e9};
+  const now = () => performance.now() / 1000;
+  function tap() {
+    const t = now(), since = t - S.lastTap;
+    if (four) {
+      if (S.step === 4 && t - S.fourthAt < FOUR_RECOVER) return "recover";
+      const hitAt = S.finisherAt + HIT3;
+      if (S.step === 3 && t >= hitAt - 0.05 && t <= hitAt + FOUR_WIN) { S.step = 4; S.lastTap = S.fourthAt = t; return "hit4"; }
+    }
+    if (S.step === 3 && t - S.finisherAt < RECOVER) return "recover";
+    if (since < MIN_GAP) return "cooldown";
+    let nxt = 1;
+    if ((S.step === 1 || S.step === 2) && since <= WINDOW) nxt = S.step + 1;
+    S.step = nxt; S.lastTap = t; if (nxt === 3) S.finisherAt = t;
+    return "hit" + nxt;
+  }
+  // what the HUD can see right now
+  function view() {
+    const t = now(), age = t - S.lastTap, max = four ? 4 : 3;
+    let used = 0, phase = "ready", left = 0;
+    if ((S.step === 1 || S.step === 2) && age <= WINDOW) { used = S.step; phase = "chain"; left = 1 - age / WINDOW; }
+    else if (S.step === 3 && t - S.finisherAt < RECOVER) {
+      used = 3; phase = "recover"; left = (t - S.finisherAt) / RECOVER;
+      if (four) { const w = t - (S.finisherAt + HIT3); if (w >= -0.05 && w <= FOUR_WIN) { phase = "fourth"; left = 1 - Math.max(0, w) / FOUR_WIN; } }
+    } else if (four && S.step === 3 && t - (S.finisherAt + HIT3) <= FOUR_WIN) { used = 3; phase = "fourth"; left = 1 - (t - S.finisherAt - HIT3) / FOUR_WIN; }
+    else if (S.step === 4 && t - S.fourthAt < FOUR_RECOVER) { used = 4; phase = "recover"; left = (t - S.fourthAt) / FOUR_RECOVER; }
+    return {max, used, phase, left: Math.max(0, Math.min(1, left)), active: S.step > 0 && age < 0.45};
+  }
+  // build tiles
+  const scenes = {};
+  document.querySelectorAll(".scene").forEach(sc => {
+    const k = sc.dataset.opt;
+    const atk = document.createElement("div"); atk.className = "tilebox";
+    atk.innerHTML = '<span class="key">LMB</span><span class="name">ATTACK</span>' + (k === "C" ? '<span class="sub"></span><div class="bar"><i></i></div>' : '<div class="pips"></div>');
+    const jmp = document.createElement("div"); jmp.className = "tilebox";
+    jmp.innerHTML = '<span class="key">Space</span><span class="name">JUMP</span><div class="pips"><span class="pip"><i style="height:100%"></i></span><span class="pip"><i style="height:100%"></i></span></div>';
+    sc.append(atk, jmp);
+    scenes[k] = atk;
+  });
+  function pipsFor(el, n) {
+    const box = el.querySelector(".pips");
+    if (box.children.length !== n) box.innerHTML = Array.from({length: n}, () => '<span class="pip"><i></i></span>').join("");
+    return Array.from(box.children);
+  }
+  const NAMES = ["CUT 1", "CUT 2", "FINISH", "SWEEP"];
+  function render() {
+    const v = view();
+    // now: fill up to the step, max 3
+    { const el = scenes.now, ps = pipsFor(el, 3); const shown = (v.phase === "chain" || v.phase === "recover" || v.phase === "fourth") ? Math.min(3, v.used) : 0;
+      ps.forEach((p, i) => p.firstChild.style.height = i < shown ? "100%" : "0"); el.classList.toggle("active", v.active); }
+    // A: hits left, empties right to left
+    { const el = scenes.A, ps = pipsFor(el, v.max); const leftHits = v.phase === "ready" ? v.max : Math.max(0, v.max - v.used);
+      const shownLeft = (v.phase === "recover" && !(four && v.used === 3)) ? 0 : leftHits;
+      ps.forEach((p, i) => p.firstChild.style.height = i < shownLeft ? "100%" : "0"); el.classList.toggle("active", v.active); }
+    // B: next hit glows
+    { const el = scenes.B, ps = pipsFor(el, v.max); let next = 0;
+      if (v.phase === "ready") next = 1; else if (v.phase === "chain") next = v.used + 1; else if (v.phase === "fourth") next = 4;
+      ps.forEach((p, i) => { p.firstChild.style.height = "0"; p.classList.toggle("glow", i + 1 === next); p.firstChild.style.height = i + 1 === next ? "100%" : "0"; });
+      el.classList.toggle("active", v.active); }
+    // C: next hit name + window bar
+    { const el = scenes.C; let name = "CUT 1", fill = 1;
+      if (v.phase === "chain") { name = NAMES[v.used]; fill = v.left; }
+      else if (v.phase === "fourth") { name = NAMES[3]; fill = v.left; }
+      else if (v.phase === "recover") { name = "· · ·"; fill = v.left; }
+      el.querySelector(".sub").textContent = name; el.querySelector(".bar i").style.width = (fill * 100).toFixed(0) + "%";
+      el.classList.toggle("active", v.active); }
+    requestAnimationFrame(render);
+  }
+  const stateEl = document.getElementById("state");
+  function doTap() { const r = tap(); stateEl.textContent = r === "hit4" ? "Fourth Cut" : r.startsWith("hit") ? "Cut " + r.slice(3) : r === "recover" ? "Finisher pause" : "Too soon"; }
+  document.getElementById("tap").onclick = doTap;
+  document.getElementById("four").onclick = e => { four = !four; e.currentTarget.setAttribute("aria-pressed", four); };
+  let autoT = [];
+  document.getElementById("auto").onclick = () => {
+    autoT.forEach(clearTimeout); autoT = [];
+    const times = four ? [0, 400, 800, 1450] : [0, 400, 800];
+    times.forEach(ms => autoT.push(setTimeout(doTap, ms)));
+  };
+  render();
+})();
+</script>
