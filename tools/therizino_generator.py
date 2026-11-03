@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Therizino generator v1.0 (Mecha Dino Arena) — writes src/shared/Models/TherizinoModelData.luau.
+"""Therizino generator v1.1 (Mecha Dino Arena) — writes src/shared/Models/TherizinoModelData.luau.
+v1.1 (Kepu 2026-11-02: "I want to redo the therizino stance. Let's have holding its close in a more open stance like
+wolverine does from the X men"): arm stances for A Reaper, picked with --stance (pose reference only; nothing copies the
+character). Only the two arm segments change; the body, head, tail, legs, colours and every joint position stay as v1.0:
+  close  - v1.0 (default until Kepu picks): arms hang in front at the body's side, scythes curl down and back
+  guard  - B Wide guard: elbows bent out to the sides, forearms forward, hands out wide at hip height, the three claws
+           fanned apart pointing forward
+  low    - C Low flare: arms down and out wide, hands low, the claws fanned out pointing forward and down
+  high   - D High flare: hands raised out wide at shoulder height, the claws fanned up and curling forward
+The open stances keep the v1.0 scale (K from the close build) so wide arms never shrink the body. The data file's
+attributes are carried from the current TherizinoModelData (v1.0 took them from the T-Rex file, which has changed since).
 v1.0 (Kepu 2026-11-02: "Let's go with the reaper look"): Classic = A Reaper (default look); without --json the generator
 writes the data file (geometry + the T-Rex's attributes with every move off, Species "Therizino"). B / C stay reproducible
 with --look for the mockup.
@@ -54,6 +64,10 @@ LOOKS = {  # v0.2: three styles (body designs)
                   "limbs": "3A3E2E", "claws": "24221E", "eyes": "F0D040", "beak": "2E2C26", "mask": "8E3A1E"}},
 }
 LOOK = sys.argv[sys.argv.index("--look") + 1] if "--look" in sys.argv else "A"  # v1.0: Classic = A Reaper
+STANCES = {"close": "A Close (v1.0)", "guard": "B Wide guard", "low": "C Low flare", "high": "D High flare"}  # v1.1
+STANCE = sys.argv[sys.argv.index("--stance") + 1] if "--stance" in sys.argv else "close"
+assert STANCE in STANCES, "unknown stance"
+K_CLOSE = None  # v1.1: the close build's length scale, used for every stance
 L = LOOKS[LOOK]
 F, NECK_RAISE, STYLE = L["feather"], L["neck"], L["style"]
 C = {**L["pal"], "tooth": "E8E2D2", "pupil": "111111", "mouth": "6E342E"}
@@ -167,6 +181,54 @@ def arm(side, sh, el, wr, z, upper_w, fore_w, hand, fringe_len):
     return nm
 
 
+def arm_open(side, sh, el, wr, root_z, upper_w, fore_w, hand, fringe_len):
+    """v1.1: an arm whose shoulder, elbow and wrist each have their own width (z), so it can reach out from the body.
+    sh / el / wr = (x, y, |z|); the segment root stays where v1.0 put it (same ArmL / ArmR joints)."""
+    s = "L" if side > 0 else "R"
+    nm = f"Arm{s}"
+    P = lambda q: (q[0], q[1], side * q[2])
+    a, b, c = P(sh), P(el), P(wr)
+    seg(nm, (sh[0], sh[1], side * root_z))
+    part(nm, "coat", (upper_w * 1.5, upper_w * 1.3, upper_w * 1.1), (a[0] - 0.05, a[1] - 0.25, a[2]), name=f"{nm}_shoulder")
+    d1 = tuple(b[i] - a[i] for i in range(3))
+    blade(nm, "coat", tuple(a[i] - norm(d1)[i] * 0.04 for i in range(3)), d1, math.dist(a, b) + 0.08, upper_w, upper_w * 0.95, ref=(0, 1, 0), name=f"{nm}_upper")
+    part(nm, "limbs", (fore_w * 1.1,) * 3, b, name=f"{nm}_elbow")
+    d2 = tuple(c[i] - b[i] for i in range(3))
+    blade(nm, "limbs", tuple(b[i] - norm(d2)[i] * 0.04 for i in range(3)), d2, math.dist(b, c) + 0.08, fore_w, fore_w, ref=(0, 1, 0), name=f"{nm}_fore")
+    part(nm, "limbs", hand, c, yaw=-side * math.degrees(math.atan2(d2[2], d2[0])), name=f"{nm}_hand")
+    n = nfe(5)
+    for i in range(n):  # feather fringe hanging under the forearm
+        t = i / max(1, n - 1)
+        st = (b[0] + d2[0] * t, b[1] + d2[1] * t - fore_w * 0.3, b[2] + d2[2] * t)
+        blade(nm, "coat", st, (-0.3, -0.95, 0), fringe_len * (0.8 + 0.4 * t) * F, 0.24, 0.05, ref=(-d2[2], 0, d2[0]) if abs(d2[0]) + abs(d2[2]) > 0.2 else (0, 0, 1),
+              name=f"{nm}_fringe{i + 1}")
+    return nm, c
+
+
+def claws_fan(segname, wr, side, dirs, lens, widths, thicks, fan, start=0.12):
+    """v1.1: three claws fanned apart: each claw's curve (`dirs`, outward z positive) is turned `fan` degrees further
+    about the up axis than its neighbour (inner -fan, middle 0, outer +fan), so the tips flare."""
+    for i, (k, lm) in enumerate(((-1, 0.88), (0, 1.0), (1, 0.8))):
+        a = math.radians(fan * k)
+        def turn(d):
+            x, y, z = d[0], d[1], d[2]
+            return (x * math.cos(a) - z * math.sin(a), y, side * (x * math.sin(a) + z * math.cos(a)))
+        d0 = norm(turn(dirs[0]))
+        pt = (wr[0] + d0[0] * start, wr[1] + d0[1] * start + k * 0.04, wr[2] + d0[2] * start)
+        for j, (dd, ln, w, t) in enumerate(zip(dirs, lens, widths, thicks)):
+            pt = blade(segname, "claws", pt, turn(dd), ln * lm, w, t, ref=(0, 0, 1), name=f"{segname}_claw{i + 1}{'abcd'[j]}")
+
+
+ARM_STANCES = {  # v1.1: (shoulder, elbow, wrist as (x, y, |z|)), claw curve (x fwd, y up, z out), claw fan degrees
+    "guard": ((1.75, 1.3, 1.0), (1.55, 0.15, 2.25), (2.85, -0.15, 2.75),
+              ((0.97, -0.05, 0.22), (0.95, -0.2, 0.18), (0.85, -0.45, 0.1), (0.6, -0.8, 0.0)), 20),
+    "low": ((1.75, 1.3, 1.0), (1.45, -0.05, 2.2), (2.35, -0.95, 3.0),
+            ((0.82, -0.3, 0.48), (0.78, -0.55, 0.3), (0.5, -0.86, 0.1), (0.15, -0.99, 0.0)), 22),
+    "high": ((1.75, 1.3, 1.0), (1.45, 0.95, 2.35), (2.4, 2.05, 2.7),
+             ((0.32, 0.9, 0.28), (0.72, 0.66, 0.2), (0.97, 0.18, 0.1), (0.88, -0.48, 0.0)), 18),
+}
+
+
 def legs(knee, ankle, ball, zoff, thigh_w, shin_w, meta_w, toe_l):
     for side in (1, -1):
         s = "L" if side > 0 else "R"
@@ -255,9 +317,14 @@ if STYLE == "reaper":
     for key, size, c, nm, pch in [("main", (0.72, 0.14, 0.3), (3.1, 4.6, 0.0), "Jaw_lower", -12), ("beak", (0.2, 0.14, 0.24), (3.48, 4.52, 0.0), "Jaw_beak", -20)]:
         part("Jaw", key, size, about((2.75, 4.62, 0.0), c, -10), pitch=-10 + pch, name=nm)
     for side in (1, -1):
-        nm = arm(side, (1.75, 1.3), (2.15, -0.05), (3.2, -0.45), side * 1.15, 0.36, 0.26, (0.44, 0.32, 0.42), 0.6)
-        claws(nm, (3.2, -0.45), side * 1.15, side, ((0.9, -0.44), (0.6, -0.8), (0.2, -0.98), (-0.25, -0.97)),
-              (1.1, 1.0, 0.9, 0.7), (0.2, 0.16, 0.11, 0.06), (0.11, 0.09, 0.07, 0.05), 0.2)
+        if STANCE == "close":  # v1.0 arms
+            nm = arm(side, (1.75, 1.3), (2.15, -0.05), (3.2, -0.45), side * 1.15, 0.36, 0.26, (0.44, 0.32, 0.42), 0.6)
+            claws(nm, (3.2, -0.45), side * 1.15, side, ((0.9, -0.44), (0.6, -0.8), (0.2, -0.98), (-0.25, -0.97)),
+                  (1.1, 1.0, 0.9, 0.7), (0.2, 0.16, 0.11, 0.06), (0.11, 0.09, 0.07, 0.05), 0.2)
+        else:  # v1.1 open stances (same joint root as v1.0: z 1.15 * 0.85)
+            sh_, el_, wr_, cdirs, fan = ARM_STANCES[STANCE]
+            nm, wpt = arm_open(side, sh_, el_, wr_, 1.15 * 0.85, 0.36, 0.26, (0.44, 0.32, 0.42), 0.6)
+            claws_fan(nm, wpt, side, cdirs, (1.1, 1.0, 0.9, 0.7), (0.2, 0.16, 0.11, 0.06), (0.11, 0.09, 0.07, 0.05), fan)
     tail([(0.9, (0.95, 0.62, 0.58), -8), (0.85, (0.9, 0.48, 0.45), -10), (0.75, (0.8, 0.36, 0.34), -12),
           (0.65, (0.7, 0.27, 0.26), -10), (0.55, (0.6, 0.2, 0.2), -8)], (-0.9, 0.3))
     legs((0.55, -1.7), (-0.2, -3.1), (0.12, -3.6), 0.55, 0.6, 0.36, 0.32, 0.72)
@@ -386,6 +453,11 @@ def bounds():
 
 lo, hi = bounds()
 K = TARGET_LEN / (hi[0] - lo[0])
+if STANCE != "close":  # v1.1: keep the v1.0 body scale (the close build's K), whatever the arms reach
+    K = float(os.popen(f'{sys.executable} "{os.path.abspath(__file__)}" --look {LOOK} --stance close --k-only').read().strip())
+if "--k-only" in sys.argv:
+    print(repr(K))
+    sys.exit(0)
 for n_ in order:
     s_ = segments[n_]
     s_["root"] = tuple(v * K for v in s_["root"])
@@ -412,7 +484,7 @@ assert used <= set(hexes) | {"E8E2D2", "111111", "6E342E"}, "a block colour is n
 if "--json" in sys.argv:
     out = sys.argv[sys.argv.index("--json") + 1]
     hx, hy, hz = HRP_SIZE_D
-    data = {"look": LOOK, "name": L["name"], "version": VERSION, "roles": {r: C[r] for r in ROLES},
+    data = {"look": LOOK, "name": L["name"], "version": VERSION, "stance": STANCE, "stanceName": STANCES[STANCE], "roles": {r: C[r] for r in ROLES},
             "segs": [{"n": n_, "root": cf(segments[n_]["root"]),
                       "parts": [{"n": p["name"], "s": [round(v, 4) for v in p["size"]], "cf": cf(p["center"], p["R"]),
                                  "c": C[p["key"]], "k": p["key"]} for p in segments[n_]["parts"]]} for n_ in order],
@@ -446,7 +518,7 @@ if "--json" not in sys.argv:
         c0 = cf((0.0, 0.0, 0.0)) if p0 == "HRP" else [round(segments[p1]["root"][i] - segments[p0]["root"][i], 5) + 0.0 for i in range(3)] + [1, 0, 0, 0, 1, 0, 0, 0, 1]
         body.append(f'\t\t{{name = "{jn}", part0 = "{p0}", part1 = "{p1}", c0 = {fmt(c0)}, c1 = {{0,0,0,1,0,0,0,1,0,0,0,1}}}},')
     body.append("\t},")
-    trex = open(TREX).read()
+    trex = open(OUT).read() if os.path.exists(OUT) else open(TREX).read()  # v1.1: carry the current therizino attributes
     block = trex[trex.index("attributes = {"):]
     block = block[:block.index("\n\t},")]
     attrs = {m.group(1): m.group(2) for m in re.finditer(r'^\t\t(\w+) = (.+?),$', block, re.M)}
