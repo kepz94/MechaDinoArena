@@ -2674,3 +2674,10 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriSpinRoll | therizino model (each client) | degrees | TheriPose 1.3 diagnostic |
 | SkillTree.THERI_STATS | SkillTree module | true (false = 1.56: the therizino sees the shared rows) | SkillTree 1.57 (five therizino rows, notFor.Therizino on regen / lifesteal / jaws / hide / legs) |
 | SkillTree.THERI_FOURTH | SkillTree module | false (true once the Fourth Cut mockup is picked, MDA-213) | SkillTree 1.57: false = the Fourth Cut row has dino "none" (hidden, no effects) |
+| SkillEffectsTheriStatsEnabled | SkillEffects script | true (false = 1.38) | SkillEffects 1.39: therizino effects read with dino "Therizino" + THERI_ATTRS written |
+| TheriFlowWindow / TheriFlowGap / TheriFlowRecover / TheriFlowRefill | therizino character | 0 / 0 / 0 / false off; I 1.0 s, II 0.26 s, III 0.55 s, star true | SkillEffects 1.39 (Flowing Cuts); 0 = model value |
+| TheriFuryHit2 / TheriFuryFinisher / TheriFuryStack / TheriFuryFullMul | therizino character | 0 / 0 / 0 / 1 off; I 12, II 26, III 2, star 1.5 | SkillEffects 1.39 (Building Fury); 0 = model value |
+| TheriFourthDamage / TheriFourthReachMul / TheriFourthFast | therizino character | 0 / 1 / false (always while SkillTree.THERI_FOURTH is false) | SkillEffects 1.39 (Fourth Cut, MDA-213) |
+| TheriGuardTakenMul / TheriGuardFinisherNoStun / TheriGuardShoveMul / TheriGuardKeepChain | therizino character | 1 / false / 1 / false off; I 0.85, II true, III 0.5, star true | SkillEffects 1.39 (Flow Guard) |
+| TheriHarvestHeal / TheriHarvestKillHeal / TheriHarvestLowDouble | therizino character | 0 / 0 / false off; I 0.04, II 0.06, III 0.15, star true | SkillEffects 1.39 (Reaper's Harvest) |
+| SkillEffectsTheriRows | therizino character | "flow=n,fury=n,fourth=n,guard=n,harvest=n" ("" off) | SkillEffects 1.39 diagnostic (sanitized steps) |

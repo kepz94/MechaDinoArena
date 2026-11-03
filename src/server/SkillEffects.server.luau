@@ -1,4 +1,4 @@
--- SkillEffects v1.38 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.39 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -240,6 +240,16 @@ local ServerStorage = game:GetService("ServerStorage")
 --   TherizinoModelData 1.3: the Diving Rake reuses the teno's leap-on-jump landing; without this every refresh wrote
 --   JumpCharges 0 and TenoLeapOnJump false). Switch: script attribute SkillEffectsTheriLeapKeepEnabled (default true, read at
 --   each write; false = 1.37).
+-- v1.39 (MDA-211, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 5; SkillTree 1.57): a therizino's effects (character
+--   Species, else player DinoSpecies, = "Therizino") are ST.effects(steps, "Therizino") (its own rows; the shared rows it no
+--   longer sees give it nothing), and its row fields are written as character attributes (THERI_ATTRS, off values when not
+--   bought; a character that is not a therizino but carries them gets the off values): TheriFlowWindow / TheriFlowGap /
+--   TheriFlowRecover / TheriFlowRefill, TheriFuryHit2 / TheriFuryFinisher / TheriFuryStack / TheriFuryFullMul,
+--   TheriFourthDamage / TheriFourthReachMul / TheriFourthFast, TheriGuardTakenMul / TheriGuardFinisherNoStun /
+--   TheriGuardShoveMul / TheriGuardKeepChain, TheriHarvestHeal / TheriHarvestKillHeal / TheriHarvestLowDouble (read by
+--   TheriAttackServer 1.1 / TheriAttackTest 1.1). Runs after applyChar (a wrapper). Switch: script attribute
+--   SkillEffectsTheriStatsEnabled (default true, read at each read / write; false = 1.38). Diagnostic: character
+--   SkillEffectsTheriRows = "flow=n,fury=n,fourth=n,guard=n,harvest=n" (sanitized steps; "" off).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -252,6 +262,7 @@ VERSION = "1.35" -- v1.35 Stomp star latch drain (SkillTree 1.52)
 VERSION = "1.36" -- v1.36 teno effects read with dino "Teno"
 VERSION = "1.37" -- v1.37 teno leap on JUMP
 VERSION = "1.38" -- v1.38 therizino keeps its own leap values
+VERSION = "1.39" -- v1.39 therizino stat rows (THERI_ATTRS)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -719,6 +730,59 @@ do
 		local n = lOn and math.max(1, math.floor(tonumber(e.leapCharges) or 1)) or 0
 		if char:GetAttribute("JumpCharges") ~= n then char:SetAttribute("JumpCharges", n) end
 		if char:GetAttribute("TenoLeapOnJump") ~= lOn then char:SetAttribute("TenoLeapOnJump", lOn) end
+	end
+end
+
+-- v1.39: the therizino's own stat rows (see the header)
+if script:GetAttribute("SkillEffectsTheriStatsEnabled") == nil then script:SetAttribute("SkillEffectsTheriStatsEnabled", true) end
+local THERI_ATTRS = { -- {attribute, effect field, off value}
+	{"TheriFlowWindow", "flowWindow", 0}, {"TheriFlowGap", "flowGap", 0}, {"TheriFlowRecover", "flowRecover", 0},
+	{"TheriFlowRefill", "flowRefill", false}, {"TheriFuryHit2", "furyHit2", 0}, {"TheriFuryFinisher", "furyFinisher", 0},
+	{"TheriFuryStack", "furyStack", 0}, {"TheriFuryFullMul", "furyFullMul", 1}, {"TheriFourthDamage", "fourthDamage", 0},
+	{"TheriFourthReachMul", "fourthReachMul", 1}, {"TheriFourthFast", "fourthFast", false},
+	{"TheriGuardTakenMul", "guardTakenMul", 1}, {"TheriGuardFinisherNoStun", "guardFinisherNoStun", false},
+	{"TheriGuardShoveMul", "guardShoveMul", 1}, {"TheriGuardKeepChain", "guardKeepChain", false},
+	{"TheriHarvestHeal", "harvestHeal", 0}, {"TheriHarvestKillHeal", "harvestKillHeal", 0},
+	{"TheriHarvestLowDouble", "harvestLowDouble", false},
+}
+local function theriStatsOn() return script:GetAttribute("SkillEffectsTheriStatsEnabled") ~= false and ST.THERI_STATS == true end
+do
+	local effectsOfV138 = effectsOf
+	effectsOf = function(player)
+		if theriStatsOn() then
+			local c = player.Character
+			local sp = c and c:GetAttribute("Species")
+			if type(sp) ~= "string" or sp == "" then sp = player:GetAttribute("DinoSpecies") end
+			if sp == "Therizino" then
+				local steps = {}
+				for _, id in ipairs(ST.PATH_ORDER) do steps[id] = player:GetAttribute("SkillPath_" .. id) end
+				return ST.effects(steps, "Therizino")
+			end
+		end
+		return effectsOfV138(player)
+	end
+end
+do
+	local applyCharV138 = applyChar
+	applyChar = function(char, st)
+		applyCharV138(char, st)
+		if not theriStatsOn() then return end
+		local isTheri = char:GetAttribute("Species") == "Therizino"
+		if not isTheri and char:GetAttribute("TheriFlowWindow") == nil then return end
+		local x = (on() and isTheri) and st.e or {}
+		for _, f in ipairs(THERI_ATTRS) do
+			local v = x[f[2]]
+			if v == nil then v = f[3] end
+			if char:GetAttribute(f[1]) ~= v then char:SetAttribute(f[1], v) end
+		end
+		local rows = ""
+		if on() and isTheri then
+			local steps = {}
+			for _, id in ipairs(ST.PATH_ORDER) do steps[id] = st.player:GetAttribute("SkillPath_" .. id) end
+			local c = ST.sanitize(steps, "Therizino")
+			rows = ("flow=%d,fury=%d,fourth=%d,guard=%d,harvest=%d"):format(c.flow or 0, c.fury or 0, c.fourth or 0, c.guard or 0, c.harvest or 0)
+		end
+		if char:GetAttribute("SkillEffectsTheriRows") ~= rows then char:SetAttribute("SkillEffectsTheriRows", rows) end
 	end
 end
 
