@@ -508,6 +508,48 @@ window.__ready = true;
 window.__setup = (co, ju, cm, kind) => { window.__manual = true; combo = co; jump = ju; camMode = cm; info(); fx.splice(0).forEach(e => scene.remove(e.obj)); for (const k in trails) trails[k].pts = []; start(kind); camTarget.set(15, 25, 40); for (let i = 0; i < 30; i++) { const p = play; play = null; step(1 / 30); play = p; } play.t = 0; play.fired = {}; };
 window.__step = dt => step(dt);
 window.__len = () => play ? play.track.len : 0;
+window.__posecheck = (P, v) => {
+  window.__manual = true;
+  theri.yaw = 0; theri.pos.set(-Math.sin(0) * ((P.root || {}).fwd || 0), 0, -((P.root || {}).fwd || 0)); theri.up = (P.root || {}).up || 0;
+  pose(theri, P);
+  rap.yaw = Math.PI / 2; rap.pos.set(0, 0, -15); pose(rap, {});
+  const arm = v.startsWith("arm");
+  const f = arm ? new THREE.Vector3(-8.8, 9, -8) : new THREE.Vector3(0, 11, -6);
+  const C = {front34: [-46, 22, -26], side: [-60, 12, -6], top: [-1, 70, -5], back: [-22, 26, 34], front: [0, 16, -60],
+    armside: [-44, 11, -9], armfront: [-12, 13, -42], armtop: [-9, 46, -6], armback: [-14, 18, 22], rf: [-48, 22, -38], lf: [48, 22, -38]}[v];
+  cam.position.set(C[0], C[1], C[2]); cam.lookAt(f);
+  renderer.render(scene, cam);
+};
+window.__tips = (P) => { // world points (dino at origin facing -Z; its right = -X): right hand, right middle claw tip, head
+  theri.yaw = 0; theri.pos.set(0, 0, 0); theri.up = 0; pose(theri, P);
+  const r = v => v.toArray().map(x => Math.round(x * 10) / 10);
+  const c = clawParts.R[1], hand = theri.parts.find(p => p.name === "ArmR_hand"), head = theri.parts.find(p => p.name === "Head_skull"), elbow = theri.parts.find(p => p.name === "ArmR_elbow");
+  const jaw = theri.parts.find(p => p.name === "Jaw_lower"), foot = theri.parts.find(p => p.name.startsWith("FootR_claw")), tail = theri.parts[theri.parts.length - 1], t5 = theri.segs.Tail5[0];
+  return {jaw: r(partPoint(theri, jaw, 0, 0, 0)), foot: r(partPoint(theri, foot, 0, 0, 0)), tail: r(partPoint(theri, t5, 0, 0, 0)), elbow: r(partPoint(theri, elbow, 0, 0, 0)), hand: r(partPoint(theri, hand, 0, 0, 0)), tip: r(partPoint(theri, c.d, 0, c.d.size[1] / 2, 0)), head: r(partPoint(theri, head, 0, 0, 0))};
+};
+window.__solve = (P, side, handT, tipT, seed, prev) => {
+  // finds Arm (p,y,r), Elbow p, Wrist p for one side so the hand and the middle claw tip get near the targets (world, dino
+  // at the origin facing -Z, its right = -X). Deterministic random search.
+  let s = seed || 1; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const A = "Arm" + side, El = "Elbow" + side, Wr = "Wrist" + side;
+  const lim = {a0: [-60, 170], a1: [-110, 90], a2: [-60, 120], e: [0, 130], w: [-70, 70]};
+  const hand = theri.parts.find(p => p.name === `Arm${side}_hand`), c = clawParts[side][1];
+  const H = new THREE.Vector3(...handT), T = new THREE.Vector3(...tipT);
+  const sgn = side === "R" ? 1 : -1;
+  const make = x => Object.assign({}, P, {[A]: [x[0], x[1] * sgn, x[2] * sgn], [El]: [x[3], 0, 0], [Wr]: [x[4], 0, 0]});
+  const cost = x => { theri.yaw = 0; theri.pos.set(0, 0, 0); theri.up = (P.root || {}).up || 0; pose(theri, make(x));
+    const reg = prev ? x.reduce((a, v, i) => a + Math.abs(v - prev[i]), 0) * 0.012 : 0;
+    return partPoint(theri, hand, 0, 0, 0).distanceTo(H) * 1.0 + partPoint(theri, c.d, 0, c.d.size[1] / 2, 0).distanceTo(T) * 0.8 + reg; };
+  const L = [lim.a0, lim.a1, lim.a2, lim.e, lim.w];
+  let best = prev ? prev.slice() : [0, 0, 0, 0, 0], bc = cost(best);
+  for (let r = 0; r < 40; r++) { const x = L.map(([a, b]) => a + rnd() * (b - a)); const c2 = cost(x); if (c2 < bc) { bc = c2; best = x; } }
+  let stepS = 40;
+  for (let it = 0; it < 1500; it++) {
+    const x = best.map((v, i) => Math.max(L[i][0], Math.min(L[i][1], v + (rnd() - .5) * 2 * stepS)));
+    const c2 = cost(x); if (c2 < bc) { bc = c2; best = x; } else if (it % 60 === 59) stepS = Math.max(1, stepS * 0.7);
+  }
+  return {x: best.map(v => Math.round(v)), cost: Math.round(bc * 10) / 10};
+};
 
 </script>
 </body>
