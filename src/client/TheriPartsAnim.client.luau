@@ -10,7 +10,7 @@
 --   zhook   TheriHookAt (with a TheriHookResult): up over 0.15 s, held to out + 0.2, down over 0.3 s, where out = 0.15 +
 --           TheriHookPullTime on "hit", else 0.15 + 0.25 (the chain's time in TheriMovesFX); while the chain is out the
 --           "hookhead" pieces are hidden (TheriMovesFX 1.2 draws the claw at the chain's tip).
---   zfeather TheriFeatherAt: up over 0.12 s, held to 0.6, down by 1.0.
+--   zfeather TheriFeatherAt: up over 0.12 s, held to 0.6, down by 1.0; the blades quiver while open (x 0.75 + 0.25 sin 6t).
 --   zgrapple TheriGrappleAt with result "zip": up over 0.12 s, held to TheriGrappleTime + 0.2, down over 0.2 s.
 --   zdeflect TheriDeflectAt .. TheriDeflectUntil: up over 0.15 s, down over 0.3 s after the end.
 --   zclock  TheriClockAt .. TheriClockUntil: up over 0.2 s, down over 0.3 s.
@@ -176,7 +176,9 @@ RunService.RenderStepped:Connect(function(dt)
 								end
 								motion = rotAbout(j.axis, j.angle)
 							elseif on and j.type == "swing" then
-								motion = rotAbout(j.axis, math.rad(j.amt) * u)
+								-- the Blade Wings quiver while open, as in the mockup: u x (0.75 + 0.25 sin 6t)
+								local k = info.id == "zfeather" and u * (0.75 + 0.25 * math.sin(6 * os.clock())) or u
+								motion = rotAbout(j.axis, math.rad(j.amt) * k)
 							elseif on and j.type == "slide" then
 								motion = CFrame.new((AXIS[j.axis] or Vector3.yAxis) * j.amt * sc * u)
 							end

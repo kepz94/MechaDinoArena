@@ -31,6 +31,7 @@
 --     pointing along the chain.
 --   * Deflect: no FX rotors (the Mane Rotor's own fins are the rotor); the block flash stays at the "hub" piece.
 --   * Overclock: the "ring" pieces pulse between the speed yellow (#ffc21a) and white instead of orange.
+--   * Feathers: the Blade Wings' "blade" pieces are not hidden after a fire (they are the wings, and fan open instead).
 --   Switch: TheriMovesFXV2Enabled (default true; false = the v1.1 FX on the v2 looks too). Diagnostics: TheriMovesFXLast
 --   gets "hook:<result>:v2" when the claw copy rides the chain.
 local Players = game:GetService("Players")
@@ -195,7 +196,8 @@ local function feathers(char, s)
 		local b = part(Vector3.new(0.12, 0.3, 1.6) * s / 2 * 1.5, FEATHER, Enum.Material.SmoothPlastic)
 		table.insert(blades, {p = b, d = d})
 	end
-	local racks = zpiece(char, "zfeather", "blade")
+	-- v1.2: the v2 Blade Wings' blades are the wings themselves (they fan open, TheriPartsAnim) and stay shown, as in the mockup
+	local racks = isV2(char, "zfeather") and {} or zpiece(char, "zfeather", "blade")
 	for _, r in ipairs(racks) do r.Transparency = 1 end
 	local t0 = os.clock()
 	local conn
