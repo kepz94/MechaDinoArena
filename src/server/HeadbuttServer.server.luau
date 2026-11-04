@@ -1,4 +1,4 @@
--- HeadbuttServer v1.14 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.15 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -125,12 +125,21 @@
 --   pachy's root in the target's back half-space), is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
 --   BoneCrest 1.5 plating() (stamps PlatingHits / PlatingLastMul / PlatingHitAt for HerreraPartsFX). Front hits unchanged.
 --   Switch: script attribute HeadbuttPlatingEnabled (default true, read at each hit; false = 1.13).
+-- v1.15 (MDA-233, plan docs/plans/PACHY_STATS_v1.0.md Task 4; SkillTree 1.59 Last Stand III): a refill that starts while the
+--   pachy's Humanoid.Health is under PachyLastStandBelow x MaxHealth runs x PachyLastStandRefillMul (0.714 = 40% faster; both
+--   written by SkillEffects 1.40, off values 0 / 1). The factor is taken whenever a refill length is set (a refill
+--   starting, a Blood Rush restart, or a running refill re-stretched by a new press, 1.2's tiers); health changes in between
+--   do not change a running refill. On top of HeadbuttRefillMul and the tiers. Switch: script attribute
+--   HeadbuttLastStandEnabled (default true, read at each refill; false = 1.14).
+--   Diagnostic: character HeadbuttRefillLowMul (the factor the last refill used, 1 = none).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.13"
 VERSION = "1.14" -- v1.14 Back Plating on headbutt hits
+VERSION = "1.15" -- v1.15 Last Stand III refill while low
+if script:GetAttribute("HeadbuttLastStandEnabled") == nil then script:SetAttribute("HeadbuttLastStandEnabled", true) end -- v1.15
 if script:GetAttribute("HeadbuttPlatingEnabled") == nil then script:SetAttribute("HeadbuttPlatingEnabled", true) end -- v1.14
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
 local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
@@ -205,6 +214,17 @@ local function maxCharges(char)
 end
 local function refillTime(char, missing) -- v1.2: + missing (tiered refill)
 	local base = math.max(0.5, (tonumber(get(char, "HeadbuttRefill")) or 5) * (tonumber(get(char, "HeadbuttRefillMul")) or 1))
+	do -- v1.15: Last Stand III (under the line when the refill starts)
+		local lowMul = 1
+		local below, mul = tonumber(char:GetAttribute("PachyLastStandBelow")) or 0, tonumber(char:GetAttribute("PachyLastStandRefillMul")) or 1
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if script:GetAttribute("HeadbuttLastStandEnabled") ~= false and below > 0 and mul > 0 and mul < 1 and hum
+			and hum.Health > 0 and hum.Health < below * hum.MaxHealth then
+			lowMul = mul
+		end
+		base *= lowMul
+		char:SetAttribute("HeadbuttRefillLowMul", lowMul)
+	end
 	if not TIERS_ON or not missing or missing < 2 then return base end
 	local k = missing >= 3 and (tonumber(char:GetAttribute("HeadbuttRefillTier3")) or 1.6)
 		or (tonumber(char:GetAttribute("HeadbuttRefillTier2")) or 1.3)
