@@ -2775,3 +2775,10 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriPartsAnimEnabled; TheriPartsAnimVersion / TheriPartsAnimJoints | TheriPartsAnim script (client) | true; "1.0" / joints written last frame | TheriPartsAnim 1.0 |
 | TheriPartsAnimActive ("<id>,..."); TheriPartsAnimTarget (Studio test) | character / model (this client); test model | parts moving now; true = animate this model too | TheriPartsAnim 1.0 |
 | TheriMovesFXV2Enabled; TheriMovesFXLast can be "hook:<result>:v2" / "deflect:v2" | TheriMovesFX script | true | TheriMovesFX 1.2 |
+| TheriMovesGrappleV2Enabled; TheriMovesClockPassiveEnabled | TheriMovesServer script | true; true | TheriMovesServer 1.3 (grapple v2; passive Overclock) |
+| TheriGrappleAir; TheriGrappleAirLatch | therizino character (server) | true when the last zip latched in the air; = the grapple v2 switch | TheriMovesServer 1.3, read by TheriGrappleZip 1.1 (marker) |
+| TheriClockPassive; TheriClockServerResult can be "passive" | therizino character (server) | true while Overclock is slotted (TheriClockUntil = now + 1e6) | TheriMovesServer 1.3, read by AbilityBar 1.30 / MechaButtons 1.31 / TheriMovesFX 1.3 / TheriPartsAnim 1.1 |
+| TheriGrappleZipV2Enabled; TheriGrappleMarkerEnabled; TheriGrappleMarkerState ("off" / "surface" / "air" / "none") | therizino character (owner client) | true; true; diagnostics | TheriGrappleZip 1.1 |
+| AbilityBarTheriClockPassiveEnabled; AbilityBar_Slot_<n> can be "passive" | AbilityBar script; character | true | AbilityBar 1.30 |
+| MechaButtonsTheriClockPassiveEnabled | MechaButtons script | true | MechaButtons 1.31 |
+| TheriMovesFXClockSteadyEnabled; TheriPartsAnimClockMoveEnabled | TheriMovesFX / TheriPartsAnim scripts | true; true | TheriMovesFX 1.3 / TheriPartsAnim 1.1 |
