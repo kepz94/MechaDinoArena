@@ -28,11 +28,16 @@
 --   DiloFXVenomEnabled, DiloFXRingEnabled (default true each).
 -- Diagnostics: script DiloFXVersion, DiloFXEvents (count), DiloFXLast ("dart" / "fizzle" / "bite" / "splash" / "venomTick"),
 --   DiloFXParts (effect parts alive), DiloFXVenomed (models glowing now), DiloFXRingTarget (name or "").
+-- v1.1 (Kepu 2026-11-04 after v409: "the spit projectile needs to be a bigger blob and just slightly slower. I can barely
+--   see it"; slower = DiloModelData 1.3 DiloDartSpeed 45): the glob is 2.6 x k (was 1.3), its stretch 1.8 x k 1.6 x k behind
+--   (was 0.8 / 0.9), the Trail 1.8 x k wide (was 0.9) and the light range 16 x k, brightness 3 (was 10 / 2). Switch: script
+--   attribute DiloFXBigDart (default true; false = the 1.0 sizes).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 bigger dart
 local HIT_WAIT, VENOM_SCAN, DRIP_RATE, SPLASH_DROPS, MAX_PARTS = 0.6, 0.2, 14, 26, 320
 local ARENA_PLACE_ID = 75433819286625 -- ModeRules 1.0
 local GREEN, GREEN_D, PALE, GLOW = Color3.fromHex("9CF05A"), Color3.fromHex("5CC22A"), Color3.fromHex("D8FF8A"),
@@ -41,7 +46,7 @@ local RING = Color3.fromHex("FFF2A0")
 
 script:SetAttribute("DiloFXVersion", VERSION)
 script:SetAttribute("DiloFXEvents", 0)
-for _, k in ipairs({"DiloFXEnabled", "DiloFXDartEnabled", "DiloFXHitEnabled", "DiloFXVenomEnabled", "DiloFXRingEnabled"}) do
+for _, k in ipairs({"DiloFXEnabled", "DiloFXDartEnabled", "DiloFXHitEnabled", "DiloFXVenomEnabled", "DiloFXRingEnabled", "DiloFXBigDart"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function on(k) return script:GetAttribute("DiloFXEnabled") ~= false and script:GetAttribute(k) ~= false end
@@ -233,13 +238,16 @@ local function spawnDart(char)
 		arrive()
 		return
 	end
-	local glob = part(Enum.PartType.Ball, Vector3.one * 1.3 * k, GREEN, 0)
-	local tail = part(Enum.PartType.Ball, Vector3.one * 0.8 * k, PALE, 0.35)
+	local big = script:GetAttribute("DiloFXBigDart") ~= false -- v1.1
+	local gs, ts, tb, tw = 1.3, 0.8, 0.9, 0.45
+	if big then gs, ts, tb, tw = 2.6, 1.8, 1.6, 0.9 end
+	local glob = part(Enum.PartType.Ball, Vector3.one * gs * k, GREEN, 0)
+	local tail = part(Enum.PartType.Ball, Vector3.one * ts * k, PALE, 0.35)
 	local a0 = Instance.new("Attachment")
-	a0.Position = Vector3.new(0, 0.45 * k, 0)
+	a0.Position = Vector3.new(0, tw * k, 0)
 	a0.Parent = glob
 	local a1 = Instance.new("Attachment")
-	a1.Position = Vector3.new(0, -0.45 * k, 0)
+	a1.Position = Vector3.new(0, -tw * k, 0)
 	a1.Parent = glob
 	local tr = Instance.new("Trail")
 	tr.Attachment0, tr.Attachment1 = a0, a1
@@ -251,7 +259,7 @@ local function spawnDart(char)
 	tr.WidthScale = NumberSequence.new(1, 0.2)
 	tr.Parent = glob
 	local light = Instance.new("PointLight")
-	light.Color, light.Range, light.Brightness = GREEN, 10 * k, 2
+	light.Color, light.Range, light.Brightness = GREEN, (big and 16 or 10) * k, big and 3 or 2
 	light.Parent = glob
 	local dir = (to - from).Magnitude > 1e-3 and (to - from).Unit or Vector3.zAxis
 	local done = false
@@ -260,7 +268,7 @@ local function spawnDart(char)
 		local u = math.clamp((now() - at) / flight, 0, 1)
 		local pos = from:Lerp(to, u)
 		glob.CFrame = CFrame.lookAt(pos, pos + dir)
-		tail.CFrame = CFrame.new(pos - dir * 0.9 * k)
+		tail.CFrame = CFrame.new(pos - dir * tb * k)
 		if u >= 1 then
 			done = true
 			glob.Transparency, tail.Transparency = 1, 1
