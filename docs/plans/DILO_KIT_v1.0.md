@@ -3,6 +3,7 @@
 **Goal:** the Dilo is a pickable 70 HP ranged spitter: pressing ATTACK bites up close at once; keeping it held 0.4 s and letting go also spits a fast venom dart (soft aim, near-sure hit); JUMP is a forward Cobra Leap with the frill flared.
 **Intent (Kepu 2026-11-02 / 11-03):** role "Ranged spitter", size "Raptor size (~26)", model E Bruiser Face (DiloModelData 1.0, live display v359) · picks "C and J1" from `docs/mockups/dilo_kit_options_v0.1.html` (artifact DpirXAuqWz7t4tEyghKJpi) · health "70 HP" · dart "Weaker dart" (6 + venom 2/s for 3 s) · leap "No refill just like the Raptor" (plain JUMP with the raptor's 0.5 s cooldown, no charges).
 **Chosen direction:** attack C · Bite + Spit Dart, jump J1 · Cobra Leap (mockup v0.1; its source with the key poses and timings: `tools/dilo_kit_mockup/app.js`, rebuilt with `node tools/dilo_kit_mockup/build.js`).
+**Tickets:** MDA-221 (T1) · 222 (T2) · 223 (T3) · 224 (T4) · 225 (T5) · 226 (T6) · 227 (T7) · 228 (T8).
 **Architecture:** the therizino playable pattern (THERIZINO_KIT_v1.0). Numbers are model attributes (DiloModelData 1.1). The attack is a new server + input pair (DiloAttackServer / DiloAttackTest) built from TheriAttackServer / TheriAttackTest's request → checks → timed resolve pattern; the dart uses the Goo Blob Shooter's soft-aim rule (HerreraMovesServer 1.2). The leap reuses JumpServer / JumpTest exactly like the raptor (JumpEnabled, JumpCooldown 0.5, no charges, no landing slam). Poses are a DiloPose module layered in IdleAnimation like TheriPose; effects in DiloFX.
 
 ## Global Constraints
