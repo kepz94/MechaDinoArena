@@ -1,4 +1,4 @@
--- SkillTree v1.58 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.59 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2008,6 +2008,62 @@ SkillTree.THERI_FOURTH_LIVE = true
 if SkillTree.THERI_STATS and SkillTree.THERI_FOURTH_LIVE and SkillTree.PATHS.fourth then
 	SkillTree.THERI_FOURTH = true
 	SkillTree.PATHS.fourth.dino = "Therizino"
+end
+
+-- v1.59 (pachy stat rows, MDA-230, plan docs/plans/PACHY_STATS_v1.0.md Task 1; mockup
+-- docs/mockups/pachy_health_defense_options.html v0.1; Kepu 2026-11-04 "Option B for health and option A for defense", star
+-- "Untouchable at 30%", step III "Shoves only"). Switch SkillTree.PACHY_STATS (default true; false = 1.58):
+--   * Two pachy-only rows (dino / OWNER "Pachy", mech false, no slot): Last Stand (laststand, health) and Head Down
+--     (headdown, defense). The pachy's STATS list reads laststand, dome, crest, headdown, legs. Regeneration / Lifesteal /
+--     Jaws / Thick Hide stay blocked for the pachy (Kepu 2026-10-30); nothing here heals.
+--   * Effects (off values when not bought / other dinos): lastStandMul 1 (I 0.85, II 0.75: damage taken below the line),
+--     lastStandBelow 0 (0.3 from I: the health fraction), lastStandRefillMul 1 (III 0.714: headbutt refill 40% faster while
+--     low), lastStandStar false / lastStandTime 0 (star: once per life, untouchable 1.5 s at the first drop below the line);
+--     headDownMul 1 (I 0.85, II 0.75 while charging a headbutt), headDownNoShove false (III), headDownNoStun false (star).
+--     SkillEffects 1.40 writes them; PachyStatsServer 1.0 and HeadbuttServer 1.15 act on them.
+SkillTree.PACHY_STATS = true
+if SkillTree.PACHY_STATS and not SkillTree.PATHS.laststand then
+	local P = SkillTree.PATHS
+	local function add(id, name, areaId, steps)
+		local p = path(id, name, false, false, steps)
+		p.area = areaId
+		p.dino = "Pachy"
+		SkillTree.OWNER[id] = "Pachy"
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		P[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	add("laststand", "Last Stand", "health", {
+		"Below 30% health: take 15% less damage",
+		"Below 30% health: take 25% less damage",
+		"Below 30% health: headbutt charges refill 40% faster",
+		"Once per life, the first time you drop below 30% health you are untouchable for 1.5 s"})
+	add("headdown", "Head Down", "defense", {
+		"While charging a headbutt: take 15% less damage",
+		"While charging: take 25% less damage",
+		"While charging: can't be shoved",
+		"While charging: can't be stunned"})
+end
+do
+	local effectsPre159 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre159(steps, dino)
+		if type(e) ~= "table" then return e end
+		local on = SkillTree.PACHY_STATS and dino == "Pachy" and SkillTree.PATHS.laststand ~= nil
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local ls, hd = s.laststand or 0, s.headdown or 0
+		e.lastStandMul = ls >= 2 and 0.75 or (ls >= 1 and 0.85 or 1)
+		e.lastStandBelow = ls >= 1 and 0.3 or 0
+		e.lastStandRefillMul = ls >= 3 and 0.714 or 1
+		e.lastStandStar = ls >= 4
+		e.lastStandTime = ls >= 4 and 1.5 or 0
+		e.headDownMul = hd >= 2 and 0.75 or (hd >= 1 and 0.85 or 1)
+		e.headDownNoShove = hd >= 3
+		e.headDownNoStun = hd >= 4
+		return e
+	end
 end
 
 return SkillTree
