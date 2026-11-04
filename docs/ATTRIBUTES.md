@@ -2726,13 +2726,13 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | DiloAttackEnabled; DiloBiteDamage / DiloBiteDelay / DiloBiteReach / DiloBiteCone; DiloHoldTime; DiloDartDamage / DiloVenomDps / DiloVenomTime / DiloDartRange / DiloDartSpeed / DiloDartCooldown; DiloAssistAngle / DiloAssistMin / DiloAssistMax; DiloMinGap | dilo model (DiloModelData 1.1) | true; 10 / 0.18 s / 5 / 70 deg; 0.4 s; 6 / 2 / 3 s / 30 / 60 / 1.5 s; 30 deg / 0 / 30; 0.35 s | DiloAttackServer 1.0 + DiloAttackTest 1.0 tuning (ranges x scale) |
 | SpeciesDiloEnabled; SpeciesDiloTemplate | SpeciesServer script | true; "ready" | SpeciesServer 1.7 dilo spawn |
 | RaptorScaleDiloEnabled; DiloScale | RaptorScale script | true; 2 | RaptorScale 1.7 |
-| MainMenuDiloEnabled | MainMenu (player) | true | MainMenu 1.17 DILO entry |
+| MainMenuDiloEnabled | MainMenu script | true | MainMenu 1.17 DILO entry |
 | DiloAttackServerEnabled / DiloAttackModeRulesEnabled / DiloAttackSquadEnabled / DiloAttackPlatingEnabled; DiloAttackServerVersion / DiloAttackRequests / DiloAttackHits / DiloVenomTicks / DiloAttackSquadSkips / DiloAttackMode | DiloAttackServer script | true each; diagnostics | DiloAttackServer 1.0 |
 | DiloAttackServerResult / DiloAttackServerResultAt; DiloBiteAt; DiloDartFrom / DiloDartTo / DiloDartTarget / DiloDartFlight / DiloDartAt; DiloHitKind / DiloHitTargets / DiloHitPoint / DiloHitAt | dilo character (server) | stamps | DiloAttackServer 1.0 (read by DiloPose / DiloFX) |
 | VenomUntil / VenomDps / VenomBy; VenomTicks | target (server) | stamps; count | DiloAttackServer 1.0 venom |
 | DiloLeftClickEnabled; DiloAttackTestVersion / DiloLocalState / DiloLocalAt / DiloHoldStart / DiloLocalBiteAt / DiloLocalDartAt / DiloInputResult / DiloLastInput / DiloClickBound | dilo character (owner client) | true; diagnostics + local stamps | DiloAttackTest 1.0 |
-| ArenaTouchDiloEnabled; ArenaTouchDiloHold / ArenaTouchDiloDart | ArenaTouch (character) | true; diagnostics | ArenaTouch 1.15 DiloMain |
-| AbilityBarDiloEnabled | AbilityBar (character) | true | AbilityBar 1.26 dilo tiles |
+| ArenaTouchDiloEnabled; ArenaTouchDiloHold / ArenaTouchDiloDart | ArenaTouch script; dilo character (diagnostics) | true; diagnostics | ArenaTouch 1.15 DiloMain |
+| AbilityBarDiloEnabled | AbilityBar script | true | AbilityBar 1.26 dilo tiles |
 | DiloPoseEnabled / DiloLeapPoseEnabled / DiloGroundLockEnabled / DiloFrillEnabled / DiloFrillPopEnabled / DiloSacEnabled; DiloLeapLandTime / DiloSacSwell | dilo model (switches, each client) | true each; 1.0 s / 1.55 | DiloPose 1.0 (IdleAnimation 1.43) |
 | DiloPoseTestKey; DiloFrillTest | dilo model (test hooks) | unset; key name / "open" / "fold" | DiloPose 1.0 key and frill checks |
 | DiloPoseVersion / DiloPoseState / DiloPoseSource / DiloLeapPhase / DiloFrillState / DiloFrillScale / DiloFrillParts / DiloSacScale / DiloGroundShift | dilo model (each client) | diagnostics | DiloPose 1.0 |
