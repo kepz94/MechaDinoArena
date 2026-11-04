@@ -2701,3 +2701,14 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ArenaTouchTheriJumpPipsEnabled; ArenaTouchTheriJumpPips | ArenaTouch script; character (this client) | true (false = 1.12); "<left>/<max>" | ArenaTouch 1.13: touch JUMP charge pips (therizino) |
 | AbilityBarTenoJumpPipsEnabled; AbilityBarTenoLeapPips | AbilityBar script; character (this client) | true (false = 1.24); "<left>/<max>" | AbilityBar 1.25: the teno's PC JUMP tile shows Hydraulic Leap charges |
 | ArenaTouchTenoJumpPipsEnabled | ArenaTouch script | true (false = 1.13, therizino only) | ArenaTouch 1.14: the teno's touch JUMP shows its charges (diagnostic ArenaTouchTheriJumpPips) |
+| BotGrabHoldEnabled; TenoGrabHeldUntil; BotState "grabbed" | BotServer script; bot (set by TenoMovesServer 1.7) | true (false = 1.24) | BotServer 1.25: a held bot stops walking and does nothing else (no lie-down) until TenoGrabHeldUntil |
+| BotDownRefreshEnabled; BotDownRefreshes | BotServer script; bot | true (false = 1.24) | BotServer 1.25: a bot moved while down gets up where it is |
+| BotOwnerGuardEnabled; BotOwnerFixes | BotServer script | true (false = 1.24) | BotServer 1.25: unanchored bots owned by a client go back to the server |
+| BotStandFixEnabled; BotStandFixes | BotServer script | true (false = 1.24) | BotServer 1.25: FallingDown / Ragdoll off at get-up (no sink-and-pop after a stun) |
+| TenoMovesGrabOverTopEnabled; TenoMovesGrabsFront / Back | TenoMovesServer script | true (false = 1.6) | TenoMovesServer 1.7: Over-the-Top grab timeline |
+| TenoGrabSide; TenoGrabCatchAt; TenoGrabThrowAtPlan; TenoGrabFlight; TenoGrabLandLift; TenoGrabTargetRef (ObjectValue) | teno character (server) | — | TenoMovesServer 1.7 grab stamps (read by TenoPose 1.9, TenoBotMotion 1.0, TenoMovesFX 1.5) |
+| TenoMovesLeapOnDinoEnabled; TenoLeapLandedOn | TenoMovesServer script; character | true; "ground" / "dino" | TenoMovesServer 1.7: the JUMP leap lands on a dino (0.15 s look-ahead) |
+| TenoMovesLeapShoveEnabled; TenoLeapShoves; TenoMoveFrom / To / At / Time / Peak | TenoMovesServer script; character; bot | true | TenoMovesServer 1.7: dinos under the landing body are shoved sideways clear (bots drawn by TenoBotMotion) |
+| TenoBotMotionEnabled; TenoBotMotionVersion / Active / Jobs | TenoBotMotion script; local player | true (false = nothing drawn) | TenoBotMotion 1.0: client-drawn grab carry / flight and shoves |
+| TenoMovesFXGrabCatchEnabled | TenoMovesFX script | true (false = 1.4, flash at 0.3 s) | TenoMovesFX 1.5: grab flash at the catch |
+| TenoGrabIKEnabled; TenoGrabIKMiss | teno model; teno model (this client) | true (false = TenoPose 1.8 keyframes) | TenoPose 1.9 + IdleAnimation 1.41: the tail IK reaches the grabbed dino |
