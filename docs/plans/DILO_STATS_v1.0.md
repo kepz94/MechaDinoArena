@@ -30,7 +30,7 @@ of anything that is not a dilo's dart or bite, StatServer's Attack points.
 | Toxic Blood (defense) | a dino that bites / slashes you is poisoned 1/s for 2 s | 1/s for 3 s | 2/s for 2 s | 2/s for 3 s |
 | Venom Feast (health) | heal 20% of the venom damage you deal | 30% | 40% | 50% |
 | Quick Draw (speed) | spit ready after a 0.35 s hold (was 0.4) | 0.3 s | dart recharges in 1.25 s (was 1.5) | 0.25 s hold and 1.0 s recharge |
-| Cold Blood (signature) | below 30% health: darts +25% damage | darts and venom +50% | +75% | double, and the dart recharges instantly once per life when you first drop below 30% |
+| Cold Blood (sig) | below 30% health: darts +25% damage | darts and venom +50% | +75% | double, and the dart recharges instantly once per life when you first drop below 30% |
 
 ## Deterministic map
 - Effects (SkillTree, off values when unbought / other dinos): venomBiteDps 0 / venomBiteTime 0; spitRangeMul 1 /
@@ -60,19 +60,25 @@ of anything that is not a dilo's dart or bite, StatServer's Attack points.
   DiloDartResetCount.
 
 ## Files
-- SkillTree 1.60 (rows, effects, notFor.Dilo on the five shared lines) + tools/tests/SkillTreeDilo.spec.luau 1.0 (Logic).
+- src/shared/SkillTree.luau 1.60 (rows, effects, notFor.Dilo on the five shared lines) + tools/tests/SkillTreeDilo.spec.luau 1.0 (Logic).
 - SkillEffects 1.41 (dilo effects, attributes, base capture).
 - DiloAttackServer 1.1 (venom rule, Venom Bite, Toxic Blood, Venom Feast, Cold Blood).
-- DiloAttackTest 1.1 (DiloDartResetAt), ArenaTouch 1.16 + AbilityBar 1.27 (pip reads DiloDartReadyAt).
+- src/character DiloAttackTest 1.1 (DiloDartResetAt), ArenaTouch 1.16 + AbilityBar 1.27 (pip reads DiloDartReadyAt).
 - Docs.
 
-## Tasks
+## Tasks (Dev Hub MDA-235 .. MDA-239)
 1. SkillTree 1.60 + spec · Logic (red, then green; other skill specs still pass).
 2. SkillEffects 1.41 · Wired.
 3. DiloAttackServer 1.1 · Wired.
 4. DiloAttackTest 1.1 + ArenaTouch 1.16 + AbilityBar 1.27 · Wired (PC and phone together).
 5. Studio check + docs · Wired: every line at each step on the test player only (SkillPath restored after), other dinos
    untouched.
+
+## Red-team rulings (Kepu 2026-11-04)
+- R1: "Close hits only" (24-stud rule as written).
+- R2: "Stronger one wins" (higher dps and later end; never stacked).
+- R3: "Yes, change both" (input + PC and phone buttons for the Cold Blood recharge).
+- R4: settled earlier by "Only its own". R5: accepted; tune after a phone test.
 
 ## Red-team
 - R1 Toxic Blood needs "who bit me". LastHitBy / LastHitAt are stamped by bots (BotServer), Arena players (ArenaPvP), the
