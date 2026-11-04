@@ -1,4 +1,4 @@
--- BotServer v1.24 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.25 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -367,12 +367,27 @@
 --   Bot-on-bot bites are not weakened. Slows on bots stay with TenoMovesServer (its WalkSpeed scaling, as for the mortar).
 --   Script attribute BotTenoTagsEnabled (default true, read at each hit / step; false = 1.23). Diagnostics: bot BotWeakMul
 --   (the last weakened hit's multiplier), BotMarkedTarget (the player name, "" when none); script BotWeakHits, BotMarkRetargets.
+-- v1.25 (MDA-215, plan docs/plans/TENO_TAIL_GRAB_v1.0.md Task 1; Kepu 2026-11-03 "it lags the dinos when I toss them",
+--   "when I land on dinos they start to glitch"). Three guards, each its own script attribute (default true, read each step):
+--   * BotGrabHoldEnabled: while the bot's TenoGrabHeldUntil (server time, TenoMovesServer 1.7) is in the future, the step does
+--     nothing but BotState "grabbed" (no lie-down, no AI; the teno's grab owns it). 1.24 lay it down at once on the grab's
+--     stun (it sank for 0.3 s) and remembered the grab spot as where to get up.
+--   * BotDownRefreshEnabled: standUp of a bot whose root is more than 1 stud (flat) from where it lay down re-reads the spot
+--     (downFrom position, downGround) from where it is now, so a bot moved while down gets up there (1.24 rolled it back up
+--     at the old spot). Diagnostic: bot BotDownRefreshes.
+--   * BotOwnerGuardEnabled: a not-anchored bot whose root has a network owner (a player's client, after an anchor /
+--     unanchor cycle hands it to automatic ownership) is given back to the server (SetNetworkOwner(nil)). Diagnostic:
+--     script BotOwnerFixes.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.24"
+VERSION = "1.25" -- v1.25 grab hold, get-up refresh, ownership guard
+for _, k in ipairs({"BotGrabHoldEnabled", "BotDownRefreshEnabled", "BotOwnerGuardEnabled"}) do -- v1.25
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
 if script:GetAttribute("BotLatchDrainEnabled") == nil then script:SetAttribute("BotLatchDrainEnabled", true) end -- v1.23
 if script:GetAttribute("BotTenoTagsEnabled") == nil then script:SetAttribute("BotTenoTagsEnabled", true) end -- v1.24
 local TICK = 0.1
@@ -806,6 +821,21 @@ local function standUp(b)
 		pcall(function() b.hrp:SetNetworkOwner(nil) end)
 		b.down, b.gettingUp = false, false
 	end)
+end
+-- v1.25: a bot moved while it lay down gets up where it is now (see the header)
+do
+	local standUpV124 = standUp
+	standUp = function(b)
+		if script:GetAttribute("BotDownRefreshEnabled") ~= false and b.downFrom and b.hrp.Parent then
+			local p, q = b.hrp.Position, b.downFrom.Position
+			if Vector3.new(p.X - q.X, 0, p.Z - q.Z).Magnitude > 1 then
+				b.downFrom = CFrame.new(p.X, q.Y, p.Z) * b.downFrom.Rotation
+				b.downGround = groundY(b.hrp, b.hum)
+				b.model:SetAttribute("BotDownRefreshes", (b.model:GetAttribute("BotDownRefreshes") or 0) + 1)
+			end
+		end
+		return standUpV124(b)
+	end
 end
 
 local spawnBot -- forward
@@ -2291,6 +2321,31 @@ local function step(b)
 	end
 	hum:MoveTo(roamDetour and roamDetour(b) or b.goal) -- v1.8: roam sidestep
 	show(b, "BotState", "wander")
+end
+-- v1.25: ownership guard + grab hold before the 1.24 step (see the header)
+do
+	local stepV124 = step
+	local ownerFixes = 0
+	step = function(b)
+		if b.removed or not b.model.Parent then return stepV124(b) end
+		if script:GetAttribute("BotOwnerGuardEnabled") ~= false and not b.hrp.Anchored then
+			local ok, owner = pcall(function() return b.hrp:GetNetworkOwner() end)
+			if ok and owner ~= nil and pcall(function() b.hrp:SetNetworkOwner(nil) end) then
+				ownerFixes += 1
+				script:SetAttribute("BotOwnerFixes", ownerFixes)
+			end
+		end
+		if script:GetAttribute("BotGrabHoldEnabled") ~= false then
+			local held = b.model:GetAttribute("TenoGrabHeldUntil")
+			if typeof(held) == "number" and held > workspace:GetServerTimeNow() then
+				b.target = nil
+				show(b, "BotTarget", "")
+				show(b, "BotState", "grabbed")
+				return
+			end
+		end
+		return stepV124(b)
+	end
 end
 
 -- v1.24: a bot marked by a teno's Challenge Call goes for that teno
