@@ -2722,3 +2722,17 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | HerreraMovesFXGooKickEnabled; GooKicks | HerreraMovesFX script | true; count | HerreraMovesFX 1.5 mortar kick + THUMP |
 | TheriFXScrapeEnabled; TheriFXGrooves; TheriFXScraping | TheriFX script | true; strips alive; therizinos scraping | TheriFX 1.2 run scrape |
 | TenoAttackPlatingEnabled / TheriAttackPlatingEnabled / TheriSpinPlatingEnabled | TenoAttackServer / TheriAttackServer / TheriSpinServer scripts | true | Back Plating on teno and therizino hits from behind (1.5 / 1.3 / 1.2) |
+| DinoMaxHealth 70 / MoveRunSpeed 66 / MoveWalkSpeed 36 / JumpCharges 0 / JumpCooldown 0.5 / JumpStaminaCost 0 / JumpBoost 14 / JumpLaunchPower 54 / JumpWindup 0.27 | dilo model (DiloModelData 1.1) | as listed | Dilo stats + Cobra Leap (raptor-style, no refill) |
+| DiloAttackEnabled; DiloBiteDamage / DiloBiteDelay / DiloBiteReach / DiloBiteCone; DiloHoldTime; DiloDartDamage / DiloVenomDps / DiloVenomTime / DiloDartRange / DiloDartSpeed / DiloDartCooldown; DiloAssistAngle / DiloAssistMin / DiloAssistMax; DiloMinGap | dilo model (DiloModelData 1.1) | true; 10 / 0.18 s / 5 / 70 deg; 0.4 s; 6 / 2 / 3 s / 30 / 60 / 1.5 s; 30 deg / 0 / 30; 0.35 s | DiloAttackServer 1.0 + DiloAttackTest 1.0 tuning (ranges x scale) |
+| SpeciesDiloEnabled; SpeciesDiloTemplate | SpeciesServer script | true; "ready" | SpeciesServer 1.7 dilo spawn |
+| RaptorScaleDiloEnabled; DiloScale | RaptorScale script | true; 2 | RaptorScale 1.7 |
+| MainMenuDiloEnabled | MainMenu (player) | true | MainMenu 1.17 DILO entry |
+| DiloAttackServerEnabled / DiloAttackModeRulesEnabled / DiloAttackSquadEnabled / DiloAttackPlatingEnabled; DiloAttackServerVersion / DiloAttackRequests / DiloAttackHits / DiloVenomTicks / DiloAttackSquadSkips / DiloAttackMode | DiloAttackServer script | true each; diagnostics | DiloAttackServer 1.0 |
+| DiloAttackServerResult / DiloAttackServerResultAt; DiloBiteAt; DiloDartFrom / DiloDartTo / DiloDartTarget / DiloDartFlight / DiloDartAt; DiloHitKind / DiloHitTargets / DiloHitPoint / DiloHitAt | dilo character (server) | stamps | DiloAttackServer 1.0 (read by DiloPose / DiloFX) |
+| VenomUntil / VenomDps / VenomBy; VenomTicks | target (server) | stamps; count | DiloAttackServer 1.0 venom |
+| DiloLeftClickEnabled; DiloAttackTestVersion / DiloLocalState / DiloLocalAt / DiloHoldStart / DiloLocalBiteAt / DiloLocalDartAt / DiloInputResult / DiloLastInput / DiloClickBound | dilo character (owner client) | true; diagnostics + local stamps | DiloAttackTest 1.0 |
+| ArenaTouchDiloEnabled; ArenaTouchDiloHold / ArenaTouchDiloDart | ArenaTouch (character) | true; diagnostics | ArenaTouch 1.15 DiloMain |
+| AbilityBarDiloEnabled | AbilityBar (character) | true | AbilityBar 1.26 dilo tiles |
+| DiloPoseEnabled / DiloLeapPoseEnabled / DiloGroundLockEnabled / DiloFrillEnabled / DiloFrillPopEnabled / DiloSacEnabled; DiloLeapLandTime / DiloSacSwell | dilo model (switches, each client) | true each; 1.0 s / 1.55 | DiloPose 1.0 (IdleAnimation 1.43) |
+| DiloPoseTestKey; DiloFrillTest | dilo model (test hooks) | unset; key name / "open" / "fold" | DiloPose 1.0 key and frill checks |
+| DiloPoseVersion / DiloPoseState / DiloPoseSource / DiloLeapPhase / DiloFrillState / DiloFrillScale / DiloFrillParts / DiloSacScale / DiloGroundShift | dilo model (each client) | diagnostics | DiloPose 1.0 |
