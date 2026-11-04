@@ -1,4 +1,4 @@
--- TheriPose v1.0 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
+-- TheriPose v1.6 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
 -- ("A Reaper Sweeps"), the Diving Rake leap (J1) and the Sidewinder run (B). MDA-203, plan docs/plans/THERIZINO_KIT_v1.0.md
 -- Task 6; mockups docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02 "I like this one") and
 -- docs/mockups/therizino_run_options.html v0.1 (Kepu: "B Sidewinder"). Key poses = tools/therizino_kit_keys_v0.3.py /
@@ -98,10 +98,27 @@
 --   beat. The lost time belongs to that step only (a new step starts from its own stamp). Only the owner (ctx.isOwner); other
 --   clients and the run / leap layers are untouched. Switch: model attribute TheriHitStopEnabled (default true; false = 1.4).
 --   Diagnostic TheriHitStops (count, this client).
+-- v1.6 (MDA-245, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 5; Kepu 2026-11-04 "Add the animations first"): a mecha-parts
+--   layer for build 1, multiplied onto the pose BEFORE the combo / run / leap layers (TheriPose.top is wrapped), with the
+--   picked looks' poses from docs/mockups/therizino_parts_options.html v0.1 (tools/mockup/therizino_parts_app.js, same angles,
+--   same {p, y, r} convention): Reaper's Hook C "Back Crane" HOOK_AIM {RootJoint -4, Neck -10}; Feather Barrage A "Arm Racks"
+--   FEATHER_PRE {ArmL 40 60 40, ArmR 40 -60 -40, RootJoint 4} then SWEEP {ArmL 55 -50 -30, ArmR 55 50 30, RootJoint -4};
+--   Harvest Field B "Arm Pistons" ARMS_UP {ArmL 75 30 25, ArmR 75 -30 -25, RootJoint 6, Neck 8} then STAB (crouch: RootJoint
+--   -22, Neck -14, Head -8, arms -10 0 +-10, legs 22, knees -30, ankles 10, Tail1 -14); Snare Wires A "Tail Spools" TAIL_FLICK
+--   {Tail1..5 -30 -30 -25 -20 -15, RootJoint -8}. Clocks (server stamps, every client): t = server now - <Prefix>At.
+--   Hook (TheriHookAt): 0 -> 0.15 HOOK_AIM (io), held to 0.15 + TheriHookPullTime + 0.2, out over 0.3 (io).
+--   Feather (TheriFeatherAt): 0 -> 0.12 FEATHER_PRE (io), -> 0.24 SWEEP (out), held to 0.6, out by 1.0 (io).
+--   Field (TheriFieldAt): 0 -> 0.2 ARMS_UP (io), -> 0.35 STAB (in2), held while the field lasts (TheriFieldUntil) and the
+--   body is not moving (flat HRP speed < 6 studs/s; once it moves the hold ends), out over 0.4 (io).
+--   Snare (TheriSnareAt): 0 -> 0.25 TAIL_FLICK (io), held to 0.6, out by 1.0 (io).
+--   The newest stamp wins (one part pose at a time). While the layer weighs, a ground lock (1.0's foot rule, this layer's own
+--   smoothing) keeps the feet on the ground for STAB's crouch. Switch: model attribute TheriPartsPoseEnabled (default true;
+--   false = 1.5). Diagnostics: TheriPartsPose ("none" / "hook" / "feather" / "field" / "snare"), TheriPartsPoseWeight.
 local TheriPose = {}
 TheriPose.Version = "1.3"
 TheriPose.Version = "1.4" -- v1.4 Fourth Cut (Ground Scythe)
 TheriPose.Version = "1.5" -- v1.5 hit-stop (MDA-204)
+TheriPose.Version = "1.6" -- v1.6 mecha-parts poses (build 1)
 TheriPose.Defaults = {
 	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
@@ -738,6 +755,109 @@ function TheriPose.top(model, pose, motors, hrp, ctx)
 			if b and math.abs(b) > math.abs(lift) then lift = b end
 		end
 		show("TheriClawLift", math.floor(lift + 0.5))
+	end
+end
+
+-- v1.6: mecha-parts poses (see the header) -------------------------------------------------------------------------------
+do
+	local P = {
+		HOOK_AIM = {RootJoint = {-4, 0, 0}, Neck = {-10, 0, 0}},
+		FEATHER_PRE = {ArmL = {40, 60, 40}, ArmR = {40, -60, -40}, RootJoint = {4, 0, 0}},
+		SWEEP = {ArmL = {55, -50, -30}, ArmR = {55, 50, 30}, RootJoint = {-4, 0, 0}},
+		ARMS_UP = {ArmL = {75, 30, 25}, ArmR = {75, -30, -25}, RootJoint = {6, 0, 0}, Neck = {8, 0, 0}},
+		STAB = {ArmL = {-10, 0, 10}, ArmR = {-10, 0, -10}, RootJoint = {-22, 0, 0}, Neck = {-14, 0, 0}, Head = {-8, 0, 0},
+			LegL = {22, 0, 0}, LegR = {22, 0, 0}, KneeL = {-30, 0, 0}, KneeR = {-30, 0, 0}, AnkleL = {10, 0, 0}, AnkleR = {10, 0, 0},
+			Tail1 = {-14, 0, 0}},
+		TAIL_FLICK = {Tail1 = {-30, 0, 0}, Tail2 = {-30, 0, 0}, Tail3 = {-25, 0, 0}, Tail4 = {-20, 0, 0}, Tail5 = {-15, 0, 0},
+			RootJoint = {-8, 0, 0}},
+	}
+	local ZERO = {}
+	local function mix(A, B, u)
+		local o = {}
+		for n, v in pairs(A) do o[n] = v end
+		for n in pairs(B) do o[n] = o[n] or {0, 0, 0} end
+		for n, a in pairs(o) do
+			local b = B[n] or {0, 0, 0}
+			local aa = A[n] or {0, 0, 0}
+			o[n] = {aa[1] + (b[1] - aa[1]) * u, aa[2] + (b[2] - aa[2]) * u, aa[3] + (b[3] - aa[3]) * u}
+		end
+		return o
+	end
+	local function ease(name, u) return EASE[name](clamp(u, 0, 1)) end
+	local states = setmetatable({}, {__mode = "k"}) -- [model] = {moved = at, lock = 0}
+	local function stamp(model, k) local v = model:GetAttribute(k) return typeof(v) == "number" and v or nil end
+	-- the target pose and its name for the newest part stamp; nil when nothing plays
+	local function partsTarget(model, serverNow, st, hrp)
+		local best, bestAt
+		for _, k in ipairs({"hook", "feather", "field", "snare"}) do
+			local at = stamp(model, k == "hook" and "TheriHookAt" or k == "feather" and "TheriFeatherAt" or k == "field" and "TheriFieldAt" or "TheriSnareAt")
+			if at and serverNow - at >= 0 and serverNow - at < 12 and (not bestAt or at > bestAt) then best, bestAt = k, at end
+		end
+		if not best then return nil end
+		local t = serverNow - bestAt
+		if best == "hook" then
+			if model:GetAttribute("TheriHookResult") == nil then return nil end
+			local hold = 0.15 + (stamp(model, "TheriHookPullTime") or 0) + 0.2
+			if t < 0.15 then return mix(ZERO, P.HOOK_AIM, ease("io", t / 0.15)), best end
+			if t < hold then return P.HOOK_AIM, best end
+			if t < hold + 0.3 then return mix(P.HOOK_AIM, ZERO, ease("io", (t - hold) / 0.3)), best end
+		elseif best == "feather" then
+			if t < 0.12 then return mix(ZERO, P.FEATHER_PRE, ease("io", t / 0.12)), best end
+			if t < 0.24 then return mix(P.FEATHER_PRE, P.SWEEP, ease("out", (t - 0.12) / 0.12)), best end
+			if t < 0.6 then return P.SWEEP, best end
+			if t < 1.0 then return mix(P.SWEEP, ZERO, ease("io", (t - 0.6) / 0.4)), best end
+		elseif best == "field" then
+			if t < 0.2 then return mix(ZERO, P.ARMS_UP, ease("io", t / 0.2)), best end
+			if t < 0.35 then return mix(P.ARMS_UP, P.STAB, ease("in2", (t - 0.2) / 0.15)), best end
+			local untilT = stamp(model, "TheriFieldUntil") or (bestAt + 3)
+			local v = hrp and hrp.AssemblyLinearVelocity or Vector3.zero
+			if st.fieldAt ~= bestAt then st.fieldAt, st.fieldEnd = bestAt, nil end
+			if not st.fieldEnd and (serverNow >= untilT or Vector3.new(v.X, 0, v.Z).Magnitude >= 6) then st.fieldEnd = serverNow end
+			if not st.fieldEnd then return P.STAB, best end
+			local u = (serverNow - st.fieldEnd) / 0.4
+			if u < 1 then return mix(P.STAB, ZERO, ease("io", u)), best end
+		else
+			if t < 0.25 then return mix(ZERO, P.TAIL_FLICK, ease("io", t / 0.25)), best end
+			if t < 0.6 then return P.TAIL_FLICK, best end
+			if t < 1.0 then return mix(P.TAIL_FLICK, ZERO, ease("io", (t - 0.6) / 0.4)), best end
+		end
+		return nil
+	end
+	local topV15 = TheriPose.top
+	function TheriPose.top(model, pose, motors, hrp, ctx)
+		local show = ctx.show
+		local st = states[model]
+		if not st then
+			st = {lock = 0}
+			states[model] = st
+		end
+		local tg, name
+		if model:GetAttribute("TheriPartsPoseEnabled") ~= false and model:GetAttribute("TheriPoseTestKey") == nil then
+			tg, name = partsTarget(model, ctx.serverNow, st, hrp)
+		end
+		if tg then
+			for n, v in pairs(tg) do
+				if motors[n] then pose[n] = (pose[n] or CFrame.identity) * rot(v) end
+			end
+		end
+		show("TheriPartsPose", name or "none")
+		topV15(model, pose, motors, hrp, ctx)
+		-- the layer's own ground lock (STAB crouches)
+		local want = (tg and name == "field") and 1 or 0
+		st.lock += (want - st.lock) * min(1, ctx.dt * 20)
+		if st.lock < 0.001 then st.lock = 0 end
+		show("TheriPartsPoseWeight", math.floor(st.lock * 10 + 0.5) / 10)
+		local rj = motors.RootJoint
+		if st.lock > 0 and rj and hrp and model:GetAttribute("TheriGroundLockEnabled") ~= false and ensureFK(model, motors, hrp) then
+			local sc = model:IsA("Model") and model:GetScale() or 2
+			local hrpCF = hrp.CFrame
+			local d = footLow(motors, hrpCF, {}) - footLow(motors, hrpCF, pose)
+			local up = clamp(d, -3 * sc / 2, 3 * sc / 2) * st.lock
+			if math.abs(up) > 1e-3 then
+				local v = hrpCF:VectorToObjectSpace(Vector3.new(0, up, 0))
+				pose.RootJoint = CFrame.new(rj.restC0.Rotation:Inverse() * v) * (pose.RootJoint or CFrame.identity)
+			end
+		end
 	end
 end
 
