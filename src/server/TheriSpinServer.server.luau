@@ -1,4 +1,4 @@
--- TheriSpinServer v1.1 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive (Corkscrew): its JUMP leap cuts every dino it
+-- TheriSpinServer v1.2 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive (Corkscrew): its JUMP leap cuts every dino it
 -- passes. MDA-208, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 2, mockup docs/mockups/therizino_spin_dive_v0.1.html
 -- (Kepu 2026-11-02 "show more slicing ... a different jump" -> "Spin Dive"; 2026-11-03 "Corkscrew", damage "Yes, tune it in
 -- Studio").
@@ -27,12 +27,17 @@
 --   root is airborne (its height above the ground is more than LEFT_UP above the start height). A leap that never leaves
 --   the ground cuts nothing. Switch: script attribute TheriSpinNeedAirEnabled (default true, read each frame; false = 1.0).
 --   Diagnostic: script TheriSpinGroundSkips (frames skipped before lift-off while live).
+-- v1.2 (MDA-153, Kepu 2026-11-03 "Yes respect back plates"): a Spin Dive cut on a Herrera with Back Plating slotted, from behind
+--   (the attacker's root in the target's back half-space) is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
+--   BoneCrest 1.5 plating() (stamps PlatingHits / PlatingLastMul / PlatingHitAt for HerreraPartsFX). Front hits unchanged.
+--   Switch: script attribute TheriSpinPlatingEnabled (default true, read at each hit; false = 1.1).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 cuts need the root airborne
+VERSION = "1.2" -- v1.2 Back Plating
 local DEFAULTS = {TheriSpinDamage = 7, TheriSpinMaxCuts = 3, TheriSpinCutGap = 0.16, TheriSpinRadius = 7, JumpWindup = 0.27}
 local LIVE_MAX = 1.6   -- s after the take-off point the dive ends at the latest
 local LEFT_UP = 0.8    -- studs above the start height that count as airborne
@@ -146,6 +151,23 @@ local function takeHealth(m, d, char, player, t)
 		m:SetAttribute("KilledByUserId", player.UserId)
 		m:SetAttribute("KilledWith", "therispin")
 		m:SetAttribute("KilledAt", t) -- last: KillRegenServer reacts to this one
+	end
+end
+-- v1.2: Back Plating (MDA-153; see the header)
+if script:GetAttribute("TheriSpinPlatingEnabled") == nil then script:SetAttribute("TheriSpinPlatingEnabled", true) end
+do
+	local crestCache
+	local takeHealthV11 = takeHealth
+	takeHealth = function(m, d, char, ...)
+		if script:GetAttribute("TheriSpinPlatingEnabled") ~= false and typeof(d) == "number" and d > 0 and typeof(char) == "Instance" then
+			if crestCache == nil then
+				crestCache = false
+				pcall(function() crestCache = require(ServerStorage:WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+			end
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if crestCache and crestCache.plating and root then d = d * crestCache.plating(m, root.Position) end
+		end
+		return takeHealthV11(m, d, char, ...)
 	end
 end
 

@@ -1,4 +1,4 @@
--- TheriAttackServer v1.2 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
+-- TheriAttackServer v1.3 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
 -- docs/plans/THERIZINO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/therizino_kit_options_v0.3.html
 -- (Kepu 2026-11-02: attack "3-hit combo", payoff "Damage only", picks "A Reaper Sweeps"; animation "I like this one").
 -- Pattern: TenoAttackServer 1.4's scratch path (request -> server checks -> hit resolved at a fixed delay in a front zone),
@@ -64,6 +64,10 @@
 --   is refused "recover"; after that (or at once, past TheriMinGap, with TheriFourthFast = the star) the next tap is cut 1.
 --   Switch: script attribute TheriAttackFourthEnabled (default true, read at each tap; false = 1.1: no step 4). Diagnostic:
 --   script TheriAttackFourths (count).
+-- v1.3 (MDA-153, Kepu 2026-11-03 "Yes respect back plates"): a claw cut (steps 1-3) or the Fourth Cut sweep on a Herrera with Back Plating slotted, from behind
+--   (the attacker's root in the target's back half-space) is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
+--   BoneCrest 1.5 plating() (stamps PlatingHits / PlatingLastMul / PlatingHitAt for HerreraPartsFX). Front hits unchanged.
+--   Switch: script attribute TheriAttackPlatingEnabled (default true, read at each hit; false = 1.2).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -71,6 +75,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 therizino stat rows
 VERSION = "1.2" -- v1.2 the Fourth Cut (step 4)
+VERSION = "1.3" -- v1.3 Back Plating
 local DEFAULTS = {TheriHitDamage1 = 9, TheriHitDamage2 = 9, TheriHitDamage3 = 20, TheriHitDelay1 = 0.3, TheriHitDelay2 = 0.33,
 	TheriHitDelay3 = 0.55, TheriReach = 7, TheriReach3 = 8, TheriCone = 100, TheriMinGap = 0.33, TheriChainWindow = 0.8,
 	TheriFinisherRecover = 0.9}
@@ -421,6 +426,24 @@ game:GetService("RunService").Heartbeat:Connect(function()
 		end
 	end
 end)
+
+-- v1.3: Back Plating (MDA-153; see the header)
+if script:GetAttribute("TheriAttackPlatingEnabled") == nil then script:SetAttribute("TheriAttackPlatingEnabled", true) end
+do
+	local crestCache
+	local takeHealthV12 = takeHealth
+	takeHealth = function(m, d, char, ...)
+		if script:GetAttribute("TheriAttackPlatingEnabled") ~= false and typeof(d) == "number" and d > 0 and typeof(char) == "Instance" then
+			if crestCache == nil then
+				crestCache = false
+				pcall(function() crestCache = require(ServerStorage:WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+			end
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if crestCache and crestCache.plating and root then d = d * crestCache.plating(m, root.Position) end
+		end
+		return takeHealthV12(m, d, char, ...)
+	end
+end
 
 -- v1.2: the Fourth Cut (see the header) --------------------------------------------------------------------------------------
 script:SetAttribute("TheriAttackFourths", 0)

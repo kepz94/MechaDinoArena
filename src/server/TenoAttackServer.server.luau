@@ -1,4 +1,4 @@
--- TenoAttackServer v1.4 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.5 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -93,12 +93,17 @@
 --   shifted by -pref for TenoSlamAim.pick (so the score favours dinos near pref), the chosen yaw = its yaw + pref clamped
 --   to +-TenoSlamAimMax; no target -> the slam swings to pref. Switch: script attribute TenoAttackCamAimEnabled (default
 --   true, read at each slam; false = 1.3). Diagnostic: character TenoSlamAimPref (the pref used, or nil).
+-- v1.5 (MDA-153, Kepu 2026-11-03 "Yes respect back plates"): a scratch or tail-slam hit on a Herrera with Back Plating slotted, from behind
+--   (the attacker's root in the target's back half-space) is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
+--   BoneCrest 1.5 plating() (stamps PlatingHits / PlatingLastMul / PlatingHitAt for HerreraPartsFX). Front hits unchanged.
+--   Switch: script attribute TenoAttackPlatingEnabled (default true, read at each hit; false = 1.4).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.4"
+VERSION = "1.5" -- v1.5 Back Plating
 local SCRATCH_HIT_AT = 0.17     -- s after the press: mockup T1 + T2 / 2
 local SCRATCH_CONE = math.rad(45)
 local SHOVE_TIME = 0.3
@@ -237,6 +242,23 @@ local function damage(char, player, m, base, with, t)
 	local d = math.max(0, base) * takenMul(m, t)
 	if d > 0 then takeHealth(m, d, char, player, with, t) end
 	return d
+end
+-- v1.5: Back Plating (MDA-153; see the header)
+if script:GetAttribute("TenoAttackPlatingEnabled") == nil then script:SetAttribute("TenoAttackPlatingEnabled", true) end
+do
+	local crestCache
+	local takeHealthV14 = takeHealth
+	takeHealth = function(m, d, char, ...)
+		if script:GetAttribute("TenoAttackPlatingEnabled") ~= false and typeof(d) == "number" and d > 0 and typeof(char) == "Instance" then
+			if crestCache == nil then
+				crestCache = false
+				pcall(function() crestCache = require(ServerStorage:WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+			end
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if crestCache and crestCache.plating and root then d = d * crestCache.plating(m, root.Position) end
+		end
+		return takeHealthV14(m, d, char, ...)
+	end
 end
 
 -- ground rays -------------------------------------------------------------------------------------------------------------
