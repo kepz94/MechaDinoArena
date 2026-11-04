@@ -244,7 +244,7 @@
 --   MechaButtonsTheriEnabled.
 -- v1.31 (passive Overclock, Kepu 2026-11-04 Overclock-A "Steady ON", mockup docs/mockups/therizino_grapple_overclock_v0.1.html; plan docs/plans/THERIZINO_GRAPPLE_CLOCK_v1.0.md, MDA-258; TheriMovesServer 1.3): a slotted
 --   "zclock" button whose character has TheriClockPassive true shows ON: ring speed yellow (#ffc21a), "OVERCLOCK" with "ON"
---   under it in yellow, no cooldown shade, and a tap does nothing (no request). Switch: script attribute
+--   under it in yellow (raised a little so a pull label below stays clear), no cooldown shade, and a tap does nothing (no request). Switch: script attribute
 --   MechaButtonsTheriClockPassiveEnabled (default true, read at each draw / press; false = 1.30: the timed button).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -1491,9 +1491,11 @@ draw = function()
 			s.main.TextTransparency = ready and 0 or 0.5
 			s.sub.Text = ""
 			s.sub.TextColor3 = Color3.new(1, 1, 1) -- v1.31
-			if clockPassive(id) then -- v1.31: passive Overclock = ON
+			s.sub.Position, s.sub.Size = UDim2.fromScale(0.1, 0.68), UDim2.fromScale(0.8, 0.22) -- v1.31: the usual place
+			if clockPassive(id) then -- v1.31: passive Overclock = ON (raised, so the pull label under it stays clear)
 				s.stroke.Color, s.stroke.Transparency = SPEED_YELLOW, 0
 				s.sub.Text, s.sub.TextColor3 = "ON", SPEED_YELLOW
+				s.sub.Position, s.sub.Size = UDim2.fromScale(0.1, 0.6), UDim2.fromScale(0.8, 0.16)
 			end
 			for i, p in ipairs(s.pips) do
 				p.Visible = id == "thrusters" and i <= max -- v1.4: pips are the dash charges only
