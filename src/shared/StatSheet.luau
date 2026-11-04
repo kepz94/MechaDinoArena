@@ -28,7 +28,11 @@ local StatSheet = {}
 -- v1.5 (MDA-198, plan docs/plans/THERIZINO_KIT_v1.0.md Task 2): SPECIES.Therizino (class "Slasher", start Health 4 / Attack 9 /
 --   Defense 3 / Speed 7 / Support 1, abilities "3-hit claw combo", "Diving Rake"); ATTACK_KEYS + "TheriHitDamage1" / "2" (1 per
 --   point) and "TheriHitDamage3" (2 per point) (only the therizino has them).
+-- v1.6 (MDA-222, plan docs/plans/DILO_KIT_v1.0.md Task 2): SPECIES.Dilo (class "Spitter", start Health 3 / Attack 6 / Defense 2 /
+--   Speed 7 / Support 1, abilities "Bite + Spit Dart", "Cobra Leap"); ATTACK_KEYS + "DiloBiteDamage" / "DiloDartDamage" (1 per
+--   point) (only the dilo has them).
 StatSheet.Version = "1.5"
+StatSheet.Version = "1.6" -- v1.6 Dilo
 StatSheet.STATS = {"Health", "Attack", "Defense", "Speed", "Support"}
 StatSheet.MAX_ADDED = 10
 StatSheet.MAX_ADDED_BY = {Speed = 16} -- v1.1
@@ -65,6 +69,12 @@ table.insert(StatSheet.ATTACK_KEYS, "TheriHitDamage3")
 StatSheet.ATTACK_PER_POINT.TheriHitDamage1 = 1
 StatSheet.ATTACK_PER_POINT.TheriHitDamage2 = 1
 StatSheet.ATTACK_PER_POINT.TheriHitDamage3 = 2
+StatSheet.SPECIES.Dilo = {class = "Spitter", start = {Health = 3, Attack = 6, Defense = 2, Speed = 7, Support = 1},
+	abilities = {"Bite + Spit Dart", "Cobra Leap"}} -- v1.6
+table.insert(StatSheet.ATTACK_KEYS, "DiloBiteDamage")
+table.insert(StatSheet.ATTACK_KEYS, "DiloDartDamage")
+StatSheet.ATTACK_PER_POINT.DiloBiteDamage = 1
+StatSheet.ATTACK_PER_POINT.DiloDartDamage = 1
 
 local function roundTo(x, step)
 	return math.floor(x / step + 0.5) * step
