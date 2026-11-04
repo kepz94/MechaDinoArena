@@ -57,7 +57,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--yellow); ou
 <main>
   <header>
     <h1><span>Therizino</span> · move animations <span id="ver" style="color:var(--muted);font-size:.6em"></span></h1>
-    <p class="lede">Your picks (Harvest-C, Snare-B, Dash-C, Hook-B) played on the real Therizino with its mecha parts, against a raptor. Each move runs wind-up → action → result → recovery. Use slow-mo, the scrubber or the phase chips to stop on any frame, and the camera buttons to see it from your own player camera.</p>
+    <p class="lede">Your picks (Harvest-C, Snare-B, Dash-C, Hook-B; the dash now gets its own part, pick A / B / C) played on the real Therizino with its mecha parts, against a raptor. Each move runs wind-up → action → result → recovery. Use slow-mo, the scrubber or the phase chips to stop on any frame, and the camera buttons to see it from your own player camera.</p>
   </header>
   <div class="moves" role="group" aria-label="Move" id="moves"></div>
   <div class="row">
@@ -66,6 +66,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--yellow); ou
     <span class="lbl" style="margin-left:6px">Camera</span>
     <button class="btn" data-view="three" aria-pressed="true">3/4</button><button class="btn" data-view="side" aria-pressed="false">Side</button>
     <button class="btn" data-view="game" aria-pressed="false">Player camera</button><button class="btn" data-view="top" aria-pressed="false">Top</button>
+    <span id="dashRow" class="row"><span class="lbl" style="margin-left:6px">Dash part</span><button class="btn" data-dash="A" aria-pressed="true">A · Flank Thrusters</button><button class="btn" data-dash="B" aria-pressed="false">B · Storm Core</button><button class="btn" data-dash="C" aria-pressed="false">C · Shoulder Jets</button></span>
     <span id="sizeRow" class="row"><span class="lbl" style="margin-left:6px">Ring size</span><button class="btn" data-size="16" aria-pressed="true">16 studs (picked)</button><button class="btn" data-size="30" aria-pressed="false">30 studs</button></span>
   </div>
   <div class="stage">

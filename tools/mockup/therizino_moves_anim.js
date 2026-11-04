@@ -3,7 +3,7 @@
 // fit the dinosaur ... the animation has to be crystal clear what the intent is". Plays each move on the real model
 // (core + looks of the redesign mockup v0.5, picked looks: Reaper Crane, Reaper Sleeves, Belly Winch, Tail Spool Rig).
 // Units: the model's (game studs / 2). Front = -Z, the camera side = +X.
-const ANIM_VERSION = "0.1";
+const ANIM_VERSION = "0.2"; // v0.2: the dash gets its own part (Kepu 16:47): A Flank Thrusters, B Storm Core (lightning), C Shoulder Jets
 // (from the redesign core's page section, which this page leaves out)
 const ease = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 const lerp = (a, b, u) => a + (b - a) * u;
@@ -29,26 +29,85 @@ island.children.forEach(c => { if (c.type === "Group") c.visible = false; }); //
 scene.background = new THREE.Color(0x8fc6e8); scene.fog = new THREE.Fog(0x8fc6e8, 90, 240);
 const LY = () => 0; // pose() already stands the model on y = 0
 pose({});
-// the picked parts
-GLOW = AREA.attack[2]; hookCrane();
-GLOW = AREA.attack[2]; harvestSleeves({fore: false});
-GLOW = AREA.speed[2]; grappleBelly();
-GLOW = AREA.eng[2]; snareSpools();
-for (const e of equip) theri.g.add(e.mesh);
-for (const c of cables) for (const m of c.segs) theri.g.add(m);
-// the crane's boom swings about its hinge (extra angle on top of the look's own motion)
+// ---------- v0.2: the dash parts (Kepu 16:47 "remove the grapple to dash mecha design and just give another mecha look like a
+// thruster basically or something new to switch it like lightning jolt"). Free spots (the other picks): flanks / belly / shoulders.
+let thrustYaw = 0, jetYaw = 0;
+function flankThrusters() { // A: two thruster pods on the flanks that swivel to blast away from the dash
+  const M = mount("Torso_body", [0, 0, 0]);
+  for (const [s, side] of SIDES) {
+    const podM = () => Tm(s * 1.78, 0.5, -0.75).multiply(RYm(thrustYaw)).multiply(new THREE.Matrix4().makeScale(1.35, 1.35, 1.35));
+    const add = (sh, size, p, r, key, role) => M.add(sh, size, [0, 0, 0], [0, 0, 0], key, {place: () => podM().multiply(Tm(...p)).multiply(rot(...(r || [0, 0, 0]))), role});
+    // mount arm from the flank armour
+    M.box([0.5, 0.8, 1.1], [s * 1.3, 0.5, -0.75], null, "shell"); M.box([0.56, 0.1, 1.16], [s * 1.3, 0.94, -0.75], null, "trim");
+    add("cyl", [0.62, 0.36, 0], [0, 0, 0], null, "brass", "pod" + side); // swivel ring
+    add("box", [0.86, 0.86, 1.5], [0, 0, 0.15], null, "shell"); // pod body (studded)
+    add("box", [0.92, 0.12, 1.2], [0, 0.48, 0.1], null, "plate");
+    add("box", [0.08, 0.5, 0.9], [s * 0.47, 0, 0.1], null, "glow"); // side vent strip
+    add("cyl", [0.78, 0.5, 0], [0, 0, 1.1], [90, 0, 0], "iron"); // nozzle collar (axis Z after the turn)
+    add("cone", [1.0, 0.6, 0], [0, 0, 1.55], [-90, 0, 0], "steel"); // flared bell (opens backward)
+    add("cyl", [0.5, 0.06, 0], [0, 0, 1.86], [90, 0, 0], "glow", "jet" + side); // the burner face
+    add("wedge", [0.12, 0.5, 0.7], [0, 0.55, -0.35], null, "plate"); // fin
+    M.hose([s * 1.1, 0.0, -0.2], [s * 1.5, 0.15, -0.3], 0.1, 0.12, 3);
+  }
+  M.hazard(1.4, 0.08, [0, -0.32, -1.92], null, 7);
+}
+function stormCore() { // B: a lightning capacitor under the belly + two Tesla coil horns on the shoulders
+  const M = mount("Torso_body", [0, 0, 0]);
+  M.box([1.9, 0.26, 1.5], [0, -0.42, -1.2], null, "shell"); // belly cradle
+  for (const e of [-1, 1]) { M.box([0.16, 0.9, 1.3], [e * 0.95, -0.85, -1.2], null, "plate"); M.cyl([0.5, 0.12, 0], [e * 0.86, -1.05, -1.2], [0, 0, 90], "brass"); }
+  M.cyl([0.86, 1.6, 0], [0, -1.05, -1.2], [0, 0, 90], "white", {alpha: 0.35}); // glass tank
+  M.cyl([0.4, 1.5, 0], [0, -1.05, -1.2], [0, 0, 90], "glow", {role: "core"}); // charged coil inside
+  for (let i = 0; i < 4; i++) M.cyl([0.92, 0.05, 0], [-0.6 + i * 0.4, -1.05, -1.2], [0, 0, 90], "brass", {detail: true}); // ribs
+  M.hazard(1.2, 0.07, [0, -0.28, -1.96], null, 6);
+  for (const [s, side] of SIDES) {
+    const C = mount(`Arm${side}_shoulder`, [0, 0, 0]);
+    const base = [s * 1.6, 2.05, -2.6];
+    C.box([0.9, 0.3, 0.8], base, null, "shell");
+    C.cyl([0.18, 1.3, 0], [base[0] + s * 0.15, base[1] + 0.75, base[2] + 0.1], [s * -12, 0, 0], "iron"); // rod
+    for (let r = 0; r < 3; r++) C.add("ring", [0.32 - r * 0.06, 0.07], [base[0] + s * (0.08 + r * 0.06), base[1] + 0.45 + r * 0.32, base[2] + 0.1], [0, 0, 90], "brass"); // coil rings
+    C.ball(0.36, [base[0] + s * 0.3, base[1] + 1.45, base[2] + 0.12], "glow", {role: "horn" + side}); // terminal
+    C.hose([base[0] - s * 0.3, base[1] - 0.1, base[2] + 0.3], [base[0] - s * 1.2, base[1] - 1.6, base[2] + 1.0], 0.2, 0.1, 5);
+  }
+}
+function shoulderJets() { // C: jump-jet pauldrons on both shoulders that swivel and fire
+  for (const [s, side] of SIDES) {
+    const M = mount(`Arm${side}_shoulder`, [0, 0, 0]);
+    const base = [s * 1.62, 2.05, -2.55];
+    M.box([1.3, 0.42, 1.3], base, null, "shell"); M.box([1.36, 0.08, 1.36], [base[0], base[1] + 0.25, base[2]], null, "trim");
+    M.wedge([1.0, 0.3, 0.5], [base[0], base[1] + 0.05, base[2] - 0.72], [0, 180, 0], "plate");
+    const jM = () => Tm(base[0] + s * 0.1, base[1] + 0.45, base[2] + 0.35).multiply(RYm(jetYaw)).multiply(RXm(rad(35))).multiply(new THREE.Matrix4().makeScale(1.5, 1.5, 1.5));
+    const add = (sh, size, p, r, key, role) => M.add(sh, size, [0, 0, 0], [0, 0, 0], key, {place: () => jM().multiply(Tm(...p)).multiply(rot(...(r || [0, 0, 0]))), role});
+    add("cyl", [0.5, 0.2, 0], [0, -0.1, 0], null, "brass", "jpod" + side);
+    for (const dx of [-0.24, 0.24]) {
+      add("cyl", [0.36, 0.9, 0], [dx, 0.25, 0.25], [90, 0, 0], "iron");
+      add("cone", [0.5, 0.4, 0], [dx, 0.25, 0.85], [-90, 0, 0], "steel");
+      add("cyl", [0.26, 0.05, 0], [dx, 0.25, 1.06], [90, 0, 0], "glow", dx < 0 ? "jjet" + side : undefined);
+    }
+    add("box", [0.7, 0.08, 0.5], [0, 0.55, 0.2], null, "glow");
+  }
+}
+const DASH_LOOKS = {A: flankThrusters, B: stormCore, C: shoulderJets};
+let dashLook = "A";
+let clawOut = false, harpoonOut = false;
 let boomA = 0;
-{
+function buildRig() {
+  for (const e of equip) if (e.mesh.parent) e.mesh.parent.remove(e.mesh); // they live under the rig (clearEquip only takes them off the scene)
+  for (const c of cables) for (const m of c.segs) if (m.parent) m.parent.remove(m);
+  clearEquip();
+  GLOW = AREA.attack[2]; hookCrane();
+  GLOW = AREA.attack[2]; harvestSleeves({fore: false});
+  GLOW = AREA.speed[2]; DASH_LOOKS[dashLook]();
+  GLOW = AREA.eng[2]; snareSpools();
+  for (const e of equip) theri.g.add(e.mesh);
+  for (const c of cables) for (const m of c.segs) theri.g.add(m);
+  // the crane's boom swings about its hinge (extra angle on top of the look's own motion)
   const hinge = Tm(0, 0.95, 0.5), hingeInv = Tm(0, -0.95, -0.5);
   for (const e of equip) if (e.place && (e.group === "boom" || e.group === "claw" || (e.group || "").startsWith("prong_")) && e.part === "Torso_body") {
     const orig = e.place; e.place = (u, tt) => hinge.clone().multiply(RXm(boomA)).multiply(hingeInv).multiply(orig(u, tt));
   }
+  for (const e of equip) if (e.role === "hookhead") e.show = () => !clawOut;
 }
-let clawOut = false, harpoonOut = false;
-for (const e of equip) {
-  if (e.role === "hookhead") e.show = () => !clawOut;
-  if (e.role === "prong" && e.part === "Torso_chest") e.show = () => !harpoonOut;
-}
+buildRig();
 const rig = theri.g;
 function worldOf(part, p) { rig.updateMatrixWorld(true); return rig.localToWorld(restOn(part, p)); }
 function centreOf(part, dp) { const e = theri.byName[part].cf.elements; return worldOf(part, [e[12] + (dp ? dp[0] : 0), e[13] + (dp ? dp[1] : 0), e[14] + (dp ? dp[2] : 0)]); }
@@ -111,7 +170,7 @@ const NUM = {n12: label("12"), n10: label("10"), n2: label("-2", "#ff6b6b"), n2b
 function pop(s, pos, k) { s.visible = k > 0 && k < 1; if (!s.visible) return; s.position.copy(pos).add(new THREE.Vector3(0, 2.5 + k * 1.6, 0)); s.material.opacity = 1 - Math.max(0, k - 0.6) / 0.4; }
 // dust puffs, ground rings, slash arcs, speed lines, drops
 const PUFFS = []; for (let i = 0; i < 18; i++) PUFFS.push(mk(BALL, MATS.dust));
-function puffs(center, k, spread, n, y0) { for (let i = 0; i < PUFFS.length; i++) { const m = PUFFS[i]; if (i >= n || k <= 0 || k >= 1) { m.visible = false; continue; } const a = i / n * Math.PI * 2 + i; m.visible = true; m.position.set(center.x + Math.cos(a) * spread * k, (y0 || 0.3) + k * 0.8 + (i % 3) * 0.15, center.z + Math.sin(a) * spread * k); m.scale.setScalar(0.6 + k * 1.2); m.material.opacity = 0.7 * (1 - k); } }
+function puffs(center, k, spread, n, y0) { for (let i = 0; i < PUFFS.length; i++) { const m = PUFFS[i]; if (i >= n || k <= 0 || k >= 1) { m.visible = false; continue; } const a = i / n * Math.PI * 2 + i; m.visible = true; m.material = MATS.dust; m.position.set(center.x + Math.cos(a) * spread * k, (y0 || 0.3) + k * 0.8 + (i % 3) * 0.15, center.z + Math.sin(a) * spread * k); m.scale.setScalar(0.6 + k * 1.2); m.material.opacity = 0.7 * (1 - k); } }
 const RING = mk(new THREE.RingGeometry(0.92, 1, 64), new THREE.MeshBasicMaterial({color: 0xff3b30, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false})); RING.rotation.x = -Math.PI / 2;
 const DISC = mk(new THREE.CircleGeometry(1, 64), MATS.redSoft); DISC.rotation.x = -Math.PI / 2;
 const SPIRAL = new THREE.Group(); fx.add(SPIRAL); SPIRAL.visible = false;
@@ -136,7 +195,53 @@ for (let i = 0; i < 6; i++) {
 const BOLA = new THREE.Group(); fx.add(BOLA); BOLA.visible = false; BOLA.scale.setScalar(1.8);
 { for (const e of [-1, 1]) { const w = new THREE.Mesh(BALL, MATS.brass); w.scale.setScalar(0.55); w.position.x = e * 1.1; BOLA.add(w); const c = new THREE.Mesh(BALL, MATS.orange); c.scale.setScalar(0.25); c.position.set(e * 1.1, 0.22, 0); BOLA.add(c); }
   const wr = new THREE.Mesh(CYL, MATS.wire); wr.scale.set(0.06, 2.2, 0.06); wr.rotation.z = Math.PI / 2; BOLA.add(wr); }
-function fxOff() { fx.children.forEach(c => c.visible = false); }
+function fxOff() { fx.children.forEach(c => c.visible = false); boltIdx = 0; }
+// v0.2 dash FX: flames, shock rings, lightning bolts, afterimages, steam, the dino's flash
+const ADD = (c, o) => new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false});
+const CONE = new THREE.ConeGeometry(0.5, 1, 14); CONE.translate(0, 0.5, 0); CONE.rotateX(Math.PI); CONE.translate(0, 1, 0); // base at 0, tip at +1
+const FLAMES = [0, 1].map(() => ({outer: mk(CONE, ADD(0xff8a1a, 0.75)), inner: mk(CONE, ADD(0xfff3b0, 0.95))}));
+function flame(i, at, out, len, w) {
+  const F = FLAMES[i]; if (len <= 0.05) return;
+  for (const [m, ww, ll] of [[F.outer, w, len], [F.inner, w * 0.55, len * 0.6]]) { m.visible = true; m.position.copy(at); m.quaternion.setFromUnitVectors(UP, out); m.scale.set(ww, ll, ww); }
+}
+const BURSTS = [0, 1].map(() => { const m = mk(new THREE.RingGeometry(0.8, 1, 48), ADD(0xffd34d, 0.9)); m.material.side = THREE.DoubleSide; return m; });
+let burstIdx = 0;
+function burst(pos, k, color, maxR) { const m = BURSTS[burstIdx++ % 2]; m.visible = k > 0 && k < 1; if (!m.visible) return; m.material.color.setHex(color); m.position.copy(pos); m.rotation.set(-Math.PI / 2, 0, 0); m.scale.setScalar(0.5 + (maxR || 3) * easeOut(k)); m.material.opacity = 0.9 * (1 - k); }
+const BOLTS = [], BOLTGLOW = [];
+for (let i = 0; i < 160; i++) { BOLTS.push(mk(CYL, ADD(0xfffbe0, 1))); BOLTGLOW.push(mk(CYL, ADD(0xffc21a, 0.45))); }
+let boltIdx = 0;
+function rnd(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+function bolt(a, b, n, amp, seed) {
+  const d = b.clone().sub(a), side = new THREE.Vector3().crossVectors(d, UP); if (side.length() < 1e-3) side.set(1, 0, 0); side.normalize();
+  const up2 = new THREE.Vector3().crossVectors(side, d).normalize();
+  let prev = a.clone();
+  for (let i = 1; i <= n; i++) {
+    const u = i / n, j = i === n ? 0 : 1;
+    const p = a.clone().addScaledVector(d, u).addScaledVector(side, (rnd(seed * 13 + i) - 0.5) * 2 * amp * j).addScaledVector(up2, (rnd(seed * 7 + i * 3) - 0.5) * 2 * amp * j);
+    if (boltIdx < BOLTS.length) { setSeg(BOLTS[boltIdx], prev, p, 0.12); setSeg(BOLTGLOW[boltIdx], prev, p, 0.45); boltIdx++; }
+    prev = p;
+  }
+}
+const GHOSTS = [];
+function ghosts(on, positions, alpha) {
+  if (!GHOSTS.length) for (let g = 0; g < 3; g++) { const G = new THREE.Group(); fx.add(G); G.visible = false; G.userData.ms = theri.parts.map(pt => { const m = new THREE.Mesh(pt.mesh.geometry, ADD(0xffd34d, 0.3)); m.matrixAutoUpdate = false; G.add(m); return m; }); GHOSTS.push(G); }
+  GHOSTS.forEach((G, g) => { G.visible = on; if (!on) return; G.position.copy(positions[g]); G.userData.ms.forEach((m, i) => { m.matrix.copy(theri.parts[i].mesh.matrix); m.material.opacity = 0.32 * alpha * (0.5 + g * 0.25); }); });
+}
+function dinoFlash(k) { for (const pt of theri.parts) { if (!pt.mesh.material.emissive) continue; pt.mesh.material.emissive.setRGB(1 * k * 0.7, 0.85 * k * 0.7, 0.2 * k * 0.7); } }
+const SMOKE = new THREE.MeshBasicMaterial({color: 0xb9bdc4, transparent: true, opacity: 0.6, depthWrite: false});
+const STEAM = []; for (let i = 0; i < 8; i++) STEAM.push(mk(BALL, new THREE.MeshLambertMaterial({color: 0xf2f4f8, transparent: true, opacity: 0.6, depthWrite: false})));
+function steam(k) { ["jjetL", "jjetR"].forEach((r, s2) => { const n = pieceWorld(r); for (let i = 0; i < 4; i++) { const m = STEAM[s2 * 4 + i], kk = (k + i * 0.25) % 1; m.visible = true; m.position.copy(n).add(new THREE.Vector3((i - 1.5) * 0.2, kk * 2.5, 0)); m.scale.setScalar(0.3 + kk * 0.8); m.material.opacity = 0.55 * (1 - kk) * (1 - k * 0.5); } }); }
+const DASH_TEXT = {
+  A: {sub: "A · Flank Thrusters", part: "Flank Thrusters (two swivel pods on the flanks)", why: "Two studded rocket pods on the flanks, hung on brass swivel rings. They turn to point away from where you're going and fire. Yellow = speed glow on the vents and burners.",
+    does: ["You move right; both pods swivel to point the other way and ignite", "The blast shoves you sideways, low and fast, with a flame and smoke trail", "A raptor's shot flies through where you were standing", "The pods cut out and swing back; you skid to a stop"],
+    phases: [[0, 0.12, "Pods swivel away from the dash and ignite"], [0.12, 0.42, "Blast · shoved sideways, flame + smoke trail"], [0.2, 0.7, "The shot misses behind you"], [0.42, 0.85, "Pods cut out · skid to a stop"], [0.85, 3.2, "—"]]},
+  B: {sub: "B · Storm Core (lightning)", part: "Storm Core (belly capacitor + two shoulder coils)", why: "A glass capacitor under the belly with a charged coil inside, and a Tesla coil on each shoulder. It charges, then the Therizino jolts across in a lightning bolt. Yellow = speed glow, as lightning.",
+    does: ["Lightning crackles between the two shoulder coils and the belly core: it's charging", "You jolt across in a bolt of lightning, the body flashing, leaving yellow afterimages", "A raptor's shot flies through where you were standing", "You land in a crackle: a shock ring and sparks fade out"],
+    phases: [[0, 0.16, "Charge · arcs between the shoulder coils and the core"], [0.16, 0.3, "Jolt · a lightning bolt across, afterimages"], [0.2, 0.7, "The shot misses behind you"], [0.3, 0.95, "Discharge · shock ring and sparks on landing"], [0.95, 3.2, "—"]]},
+  C: {sub: "C · Shoulder Jets", part: "Shoulder Jets (jump-jet pauldrons)", why: "Armoured pauldrons on both shoulders, each with twin jets on a swivel. They turn and fire for a short hop to the side. Yellow = speed glow on the burners and the pauldron strip.",
+    does: ["Both shoulder jets swivel away from the dash and ignite", "You hop sideways on two jet plumes, legs tucked", "A raptor's shot flies through where you were standing", "You land; the jets swing back and vent steam"],
+    phases: [[0, 0.12, "Shoulder jets swivel and ignite"], [0.12, 0.45, "Burst · a low hop sideways on two plumes"], [0.2, 0.7, "The shot misses behind you"], [0.45, 0.9, "Land · jets vent steam"], [0.9, 3.2, "—"]]},
+};
 
 // ---------- the enemy (a studded raptor dummy) ----------
 function makeRaptor() {
@@ -270,33 +375,53 @@ const MOVES = [
       pop(NUM.held, Rp.position.clone().add(new THREE.Vector3(0, 1.2, 0)), tt > 1.4 && tt < 3.0 ? 0.3 : -1);
       puffs(Rp.position, seg(tt, hitT, hitT + 0.6), 1.6, 6);
     } },
-  { id: "dash", name: "Grapple → Dash", sub: "C · Winch Dodge", area: "speed", len: 3.2,
-    part: "Belly Winch (chest launcher + belly drum)", partWhy: "The chest launcher fires its grapnel the way you're moving, it bites the ground, and the big belly drum reels you there low and fast. Yellow = speed glow on the launcher muzzle.",
-    does: ["You move right; the chest launcher fires the grapnel that way and it bites into the ground", "The belly drum spins and yanks you along the wire: low, legs tucked, leaning in", "A raptor's shot flies through where you were standing", "You skid to a stop; the grapnel pops free and reels back into the chest"],
-    nums: "Dashes the way you're moving (stick / WASD; standing still = forward) · 30 / 40 / 50 studs in 0.35 s · 2 charges (3 at the star) · recharge 6 / 5 s",
-    phases: [[0, 0.14, "Grapnel fires the way you move, bites the ground"], [0.14, 0.5, "Drum reels you in: low, fast, tucked"], [0.2, 0.75, "The shot misses behind you"], [0.5, 0.85, "Skid · grapnel reels back"], [0.85, 3.2, "—"]],
+  { id: "dash", name: "Dash", get sub() { return DASH_TEXT[dashLook].sub; }, area: "speed", len: 3.2,
+    get part() { return DASH_TEXT[dashLook].part; }, get partWhy() { return DASH_TEXT[dashLook].why; },
+    get does() { return DASH_TEXT[dashLook].does; },
+    nums: "Dashes the way you're moving (stick / WASD; standing still = forward) · 30 / 40 / 50 studs · 2 charges (3 at the star) · recharge 6 / 5 s",
+    get phases() { return DASH_TEXT[dashLook].phases; },
     focus: () => new THREE.Vector3(rig.position.x * 0.6 + 2, 3, -3), side: [4.5, 9.0, 39.0], three: [25.5, 16.5, 30.0], top: [8, 56, -3],
     update(tt) {
       const D = 20; // 40 studs
-      const k = easeOut(seg(tt, 0.14, 0.5)), skid = easeOut(seg(tt, 0.5, 0.85));
-      const x = D * k + 1.2 * skid;
-      rig.position.set(x, LY() + Math.sin(seg(tt, 0.14, 0.5) * Math.PI) * 0.6, 0); rig.rotation.set(0, 0, 0);
+      const L = dashLook;
+      let k, hop;
+      if (L === "B") { k = easeIO(seg(tt, 0.16, 0.28)); hop = 0; }
+      else if (L === "C") { k = easeOut(seg(tt, 0.12, 0.45)); hop = Math.sin(seg(tt, 0.12, 0.5) * Math.PI) * 2.4; }
+      else { k = easeOut(seg(tt, 0.12, 0.42)); hop = Math.sin(seg(tt, 0.12, 0.42) * Math.PI) * 0.4; }
+      const skid = easeOut(seg(tt, L === "B" ? 0.28 : 0.42, 0.8));
+      const x = D * k + (L === "B" ? 0.6 : 1.4) * skid;
+      rig.position.set(x, hop, 0); rig.rotation.set(0, 0, 0);
       let A = IDLE(tt);
-      A = mix(A, HOOK_SET, easeOut(seg(tt, 0, 0.12)) * 0.5);
-      A = mix(A, DODGE, easeOut(seg(tt, 0.1, 0.2)));
-      if (tt > 0.5) A = mix(A, SKID, easeOut(seg(tt, 0.5, 0.65)));
+      A = mix(A, DODGE, easeOut(seg(tt, 0.02, 0.14)));
+      if (L === "C") A = mix(A, {LegL: [40, 0, 0], LegR: [40, 0, 0], KneeL: [-80, 0, 0], KneeR: [-80, 0, 0]}, Math.sin(seg(tt, 0.12, 0.5) * Math.PI));
+      if (tt > 0.42) A = mix(A, SKID, easeOut(seg(tt, 0.42, 0.6)));
       if (tt > 0.75) A = mix(A, IDLE(tt), easeIO(seg(tt, 0.75, 1.2)));
-      pose(A); use = tt < 0.55 ? 1 : 0;
-      const anchor = new THREE.Vector3(D + 4, 0.2, -1.5);
-      const muzzle = worldOf("Torso_chest", [0, 1.5, -4.6]);
-      harpoonOut = tt < 0.95;
-      if (tt < 0.14) { const p = lerpV(muzzle, anchor, easeOut(tt / 0.14)); harpAt(p, anchor.clone().sub(muzzle), 0.2); setSeg(WIRE, muzzle, p, 0.12); }
-      else if (tt < 0.5) { harpAt(anchor, anchor.clone().sub(muzzle), 1); setSeg(WIRE, muzzle, anchor, 0.12); }
-      else if (tt < 0.95) { const u = easeIn(seg(tt, 0.55, 0.95)); const p = lerpV(anchor, muzzle, u); harpAt(p, anchor.clone().sub(muzzle), 1 - u); setSeg(WIRE, muzzle, p, 0.05); }
-      else { harp.visible = false; WIRE.visible = false; }
-      puffs(anchor, seg(tt, 0.12, 0.6), 1.4, 5);
-      puffs(new THREE.Vector3(x - 1, 0, 0), seg(tt, 0.5, 1.2), 2.4, 8);
-      SPEED.forEach((m, i) => { const on2 = tt > 0.16 && tt < 0.5; m.visible = on2; if (!on2) return; m.position.set(x - 3 - (i % 5) * 1.6, 1.5 + (i * 1.3) % 6, -2 + (i * 1.7) % 5); m.scale.set(2.8, 0.06, 0.06); });
+      pose(A); use = tt < 0.6 ? 1 : 0;
+      thrustYaw = -Math.PI / 2 * easeOut(seg(tt, 0, 0.1)) * (1 - easeIO(seg(tt, 0.8, 1.1)));
+      jetYaw = -Math.PI / 2 * easeOut(seg(tt, 0, 0.1)) * (1 - easeIO(seg(tt, 0.8, 1.1)));
+      updateEquip();
+      const start = new THREE.Vector3(0, 0, 0), dir = new THREE.Vector3(1, 0, 0);
+      if (L === "A" || L === "C") {
+        const jets = L === "A" ? ["jetL", "jetR"] : ["jjetL", "jjetR"], pods = L === "A" ? ["podL", "podR"] : ["jpodL", "jpodR"];
+        const burn = tt > 0.06 && tt < (L === "A" ? 0.46 : 0.5) ? 1 : 0;
+        jets.forEach((role, i) => {
+          const n = pieceWorld(role), c = pieceWorld(pods[i]);
+          const out = n.clone().sub(c).normalize();
+          const len = (L === "A" ? 3.6 : 3.4) * (0.85 + 0.15 * Math.sin(tt * 90 + i)) * burn * (tt < 0.12 ? seg(tt, 0.06, 0.12) : 1);
+          flame(i, n, out, len * 1.5, L === "A" ? 1.4 : 0.9);
+        });
+        if (tt > 0.06 && tt < 0.3) burst(pieceWorld(jets[0]).lerp(pieceWorld(jets[1]), 0.5), seg(tt, 0.06, 0.3), 0xffd34d);
+        for (let i = 0; i < 9; i++) { const u = i / 9; const bt = 0.12 + u * 0.3; const kk = seg(tt, bt, bt + 0.8); if (kk > 0 && kk < 1) { const m = PUFFS[i]; m.visible = true; m.material = SMOKE; m.position.set(D * easeOut(u) - 1.5, 1 + (L === "C" ? 2 : 0.3) + kk * 0.8, (i % 3 - 1) * 0.7); m.scale.setScalar(0.8 + kk * 1.8); m.material.opacity = 0.55 * (1 - kk); } }
+        if (L === "C" && tt > 0.45 && tt < 1.4) steam(seg(tt, 0.45, 1.4));
+      } else { // B: lightning
+        const core = pieceWorld("core"), hL = pieceWorld("hornL"), hR = pieceWorld("hornR");
+        if (tt < 0.18) { bolt(hL, hR, 9, 0.5, tt); bolt(hL, core, 9, 0.45, tt + 1); bolt(hR, core, 9, 0.45, tt + 2); }
+        const flashK = tt > 0.12 && tt < 0.34 ? 1 - Math.abs(seg(tt, 0.12, 0.34) * 2 - 1) : 0;
+        dinoFlash(flashK);
+        if (tt > 0.16 && tt < 0.45) { const fade = 1 - seg(tt, 0.3, 0.45); bolt(new THREE.Vector3(0, 4, 0), new THREE.Vector3(D, 4, 0), 16, 1.2 * fade + 0.2, Math.floor(tt * 30)); bolt(new THREE.Vector3(0, 1, 0), new THREE.Vector3(D, 1.5, 0), 14, 0.9 * fade + 0.2, Math.floor(tt * 30) + 7); }
+        ghosts(tt > 0.16 && tt < 0.5, [0.25, 0.5, 0.75].map(f => new THREE.Vector3(D * f * k, 0, 0)), 1 - seg(tt, 0.3, 0.5));
+        if (tt > 0.28 && tt < 0.95) { burst(new THREE.Vector3(x, 0.1, 0), seg(tt, 0.28, 0.95), 0xfff1a8, 6); for (let a = 0; a < 3; a++) { const r = 2 + a; const ang = a * 2.1 + tt * 3; bolt(new THREE.Vector3(x, 3, 0), new THREE.Vector3(x + Math.cos(ang) * r, 0.05, Math.sin(ang) * r), 6, 0.35, Math.floor(tt * 24) + a * 5); } }
+      }
       // the raptor on the left fires a dart at where you stood
       const Rp = raptors[0];
       raptorPose(Rp, {pos: new THREE.Vector3(-20, 0, -6), yaw: -Math.PI / 2 + 0.2, run: 0, runAmt: 0});
@@ -354,6 +479,8 @@ function renderMoves() {
   $("info").innerHTML = `<div class="kind" style="color:${AREA[m.area][1]}">${AREA[m.area][0]} · ${m.name} · ${m.sub}</div><h2>What you see, in order</h2><ul>${m.does.map(d => `<li>${d}</li>`).join("")}</ul><p class="note">${m.nums}</p>`;
   $("part").innerHTML = `<div class="kind" style="color:${AREA[m.area][1]}">The part that does it</div><h2>${m.part}</h2><p class="note">${m.partWhy}</p>`;
   $("sizeRow").hidden = m.id !== "harvest";
+  $("dashRow").hidden = m.id !== "dash";
+  document.querySelectorAll("[data-dash]").forEach(x => x.setAttribute("aria-pressed", x.dataset.dash === dashLook));
 }
 $("moves").addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (!b) return; cur = +b.dataset.i; tt = 0; fxOff(); renderMoves(); });
 $("phases").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; tt = +b.dataset.t + 0.06; playing = false; syncPlay(); });
@@ -362,6 +489,7 @@ function syncPlay() { $("play").textContent = playing ? "Pause" : "Play"; $("pla
 document.querySelectorAll("[data-speed]").forEach(b => b.onclick = () => { speed = +b.dataset.speed; document.querySelectorAll("[data-speed]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { view = b.dataset.view; document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
 document.querySelectorAll("[data-size]").forEach(b => b.onclick = () => { ringStuds = +b.dataset.size; document.querySelectorAll("[data-size]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+document.querySelectorAll("[data-dash]").forEach(b => b.onclick = () => { dashLook = b.dataset.dash; buildRig(); tt = 0; fxOff(); renderMoves(); });
 $("scrub").addEventListener("input", e => { tt = +e.target.value / 1000 * MOVES[cur].len; playing = false; syncPlay(); });
 renderMoves();
 
@@ -372,7 +500,7 @@ function frameM(now) {
   const m = MOVES[cur];
   if (playing) { tt += dt * speed; if (tt > m.len) { tt = 0; fxOff(); } }
   fxOff(); raptors.forEach(r => r.visible = true);
-  boomA = 0; clawOut = false; harpoonOut = false;
+  boomA = 0; clawOut = false; harpoonOut = false; thrustYaw = 0; jetYaw = 0; burstIdx = 0; dinoFlash(0);
   m.update(tt);
   updateEquip();
   $("scrub").value = Math.round(tt / m.len * 1000);
