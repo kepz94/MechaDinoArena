@@ -16,7 +16,7 @@
 --   zclock  TheriClockAt .. TheriClockUntil: up over 0.2 s, down over 0.3 s.
 --   zsnare  TheriSnareAt: up over 0.1 s, held to 0.6, down by 0.8.
 --   zharvest has no moving groups.
--- Film pieces (ZPartFilm, the shield disc) are shown see-through (Transparency 1 - 0.65 x u).
+-- Film pieces (ZPartFilm, the shield disc) are shown see-through (Transparency 1 - 0.35 x u: the mockup's 0.35 opacity).
 -- Who: every player's character, plus (Studio test hook) any workspace Model with attribute TheriPartsAnimTarget = true.
 -- Switch: script attribute TheriPartsAnimEnabled (default true, read each frame; false = every joint back at rest).
 -- Diagnostics: script TheriPartsAnimVersion, TheriPartsAnimJoints (joints driven, last frame); model TheriPartsAnimActive
@@ -116,7 +116,18 @@ local function track(model)
 	tracked[model] = st
 	local function add(zm)
 		if zm:IsA("Model") and zm.Name:sub(1, 6) == "ZPart_" and zm:GetAttribute("ZPartLooks") == "v2" then
-			task.defer(function() if zm.Parent then st.parts[zm] = scanPart(zm) end end)
+			-- scan now and again whenever more of it replicates in (with streaming, the welds can arrive after the model)
+			local pending = false
+			local function rescan()
+				if pending then return end
+				pending = true
+				task.defer(function()
+					pending = false
+					if zm.Parent then st.parts[zm] = scanPart(zm) end
+				end)
+			end
+			rescan()
+			zm.DescendantAdded:Connect(rescan)
 		end
 	end
 	for _, ch in ipairs(model:GetChildren()) do add(ch) end
@@ -187,7 +198,7 @@ RunService.RenderStepped:Connect(function(dt)
 						end
 					end
 					for _, h in ipairs(info.heads) do h.LocalTransparencyModifier = hide and 1 or 0 end
-					for _, f2 in ipairs(info.films) do f2.Transparency = 1 - 0.65 * u end
+					for _, f2 in ipairs(info.films) do f2.Transparency = 1 - 0.35 * u end
 				end
 			end
 			local s = table.concat(active, ",")
