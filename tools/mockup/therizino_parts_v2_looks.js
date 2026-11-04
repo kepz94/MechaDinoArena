@@ -96,32 +96,36 @@ function hookCrane() {
   S.box([1.05, 0.65, 1.15], [0, 0.6, 0.35], null, "shell");
   S.wedge([1.05, 0.4, 0.5], [0, 0.6, -0.48], null, "plate");
   S.box([0.5, 0.18, 0.05], [0, 0.72, -0.25], [0, 0, -35], "glow");
-  drumX(S, [0.72, 0.62, 0.45], 0.8, 0.32, "steel", (u, tt) => u * tt * 10);
+  drumX(S, [0.72, 0.62, 0.45], 0.8, 0.32, "steel", (u, tt) => u * tt * 10, {name: "drum", speed: 10});
   S.hazard(1.05, 0.08, [0, 0.98, -0.25], null, 6);
   // boom: lower arm on a hinge (rises / dips when used), piston, jib to the front, chain + reaper claw at the tip
   const lift = u => -0.35 * u * Math.max(0, Math.sin(loop(1.6) * Math.PI));
   const B = u => Tm(0, 0.95, 0.5).multiply(RXm(rad(-24) + lift(u)));
-  S.cyl([0.36, 0.95, 0], [0, 0, 0], null, "brass", {place: u => B(u).multiply(RZm(Math.PI / 2))});
-  S.box([0.42, 3.9, 0.42], [0, 0, 0], null, "shell", {place: u => B(u).multiply(Tm(0, 1.95, 0))});
-  S.box([0.5, 3.0, 0.14], [0, 0, 0], null, "plate", {place: u => B(u).multiply(Tm(0, 1.9, -0.26))});
-  S.cyl([0.2, 1.6, 0], [0, 0, 0], null, "steel", {place: u => B(u).multiply(Tm(0, 1.2, 0.42)).multiply(RXm(rad(-10)))});
-  S.cyl([0.3, 1.1, 0], [0, 0, 0], null, "iron", {place: u => B(u).multiply(Tm(0, 0.35, 0.45)).multiply(RXm(rad(-10)))});
+  const gb = S.group("boom", B(0), {type: "swing", axis: "X", amt: -20}); // v0.5 export: the boom dips 20 deg when used
+  const bo = (role) => ({group: gb, role});
+  S.cyl([0.36, 0.95, 0], [0, 0, 0], null, "brass", {place: u => B(u).multiply(RZm(Math.PI / 2)), ...bo()});
+  S.box([0.42, 3.9, 0.42], [0, 0, 0], null, "shell", {place: u => B(u).multiply(Tm(0, 1.95, 0)), ...bo()});
+  S.box([0.5, 3.0, 0.14], [0, 0, 0], null, "plate", {place: u => B(u).multiply(Tm(0, 1.9, -0.26)), ...bo()});
+  S.cyl([0.2, 1.6, 0], [0, 0, 0], null, "steel", {place: u => B(u).multiply(Tm(0, 1.2, 0.42)).multiply(RXm(rad(-10))), ...bo()});
+  S.cyl([0.3, 1.1, 0], [0, 0, 0], null, "iron", {place: u => B(u).multiply(Tm(0, 0.35, 0.45)).multiply(RXm(rad(-10))), ...bo()});
   const J = u => B(u).multiply(Tm(0, 3.9, 0)).multiply(RXm(rad(-58)));
-  S.cyl([0.46, 0.6, 0], [0, 0, 0], null, "brass", {place: u => B(u).multiply(Tm(0, 3.9, 0)).multiply(RZm(Math.PI / 2))});
-  S.box([0.36, 2.2, 0.36], [0, 0, 0], null, "shell", {place: u => J(u).multiply(Tm(0, 1.1, 0))});
-  S.box([0.42, 1.6, 0.1], [0, 0, 0], null, "plate", {place: u => J(u).multiply(Tm(0, 1.0, 0.22))});
-  S.cyl([0.5, 0.3, 0], [0, 0, 0], null, "steel", {place: u => J(u).multiply(Tm(0, 2.2, 0)).multiply(RZm(Math.PI / 2))});
-  S.box([0.14, 0.4, 0.06], [0, 0, 0], null, "glow", {place: u => J(u).multiply(Tm(0, 2.0, 0.24))});
+  S.cyl([0.46, 0.6, 0], [0, 0, 0], null, "brass", {place: u => B(u).multiply(Tm(0, 3.9, 0)).multiply(RZm(Math.PI / 2)), ...bo()});
+  S.box([0.36, 2.2, 0.36], [0, 0, 0], null, "shell", {place: u => J(u).multiply(Tm(0, 1.1, 0)), ...bo()});
+  S.box([0.42, 1.6, 0.1], [0, 0, 0], null, "plate", {place: u => J(u).multiply(Tm(0, 1.0, 0.22)), ...bo()});
+  S.cyl([0.5, 0.3, 0], [0, 0, 0], null, "steel", {place: u => J(u).multiply(Tm(0, 2.2, 0)).multiply(RZm(Math.PI / 2)), ...bo("jib")});
+  S.box([0.14, 0.4, 0.06], [0, 0, 0], null, "glow", {place: u => J(u).multiply(Tm(0, 2.0, 0.24)), ...bo()});
   // hanging chain and the claw (always hangs straight down in the boom's plane)
   const tipM = u => J(u).multiply(Tm(0, 2.2, 0));
   const down = u => { const m = tipM(u); const inv = new THREE.Matrix4().extractRotation(m).invert(); return m.multiply(inv); };
-  for (let i = 0; i < 4; i++) S.box(i % 2 ? [0.06, 0.26, 0.18] : [0.18, 0.26, 0.06], [0, 0, 0], null, "steel", {place: u => down(u).multiply(Tm(0, -0.25 - i * 0.22, 0))});
+  const gc = S.group("claw", down(0), {type: "swing", axis: "X", amt: 0}, gb); // hangs from the jib tip (rides the boom)
+  for (let i = 0; i < 4; i++) S.box(i % 2 ? [0.06, 0.26, 0.18] : [0.18, 0.26, 0.06], [0, 0, 0], null, "steel", {place: u => down(u).multiply(Tm(0, -0.25 - i * 0.22, 0)), group: gc, role: "hookhead"});
   const C = u => down(u).multiply(Tm(0, -1.2, 0)).multiply(rot(0, 0, 90));
-  S.ball(0.42, [0, 0, 0], "brass", {place: u => C(u)});
+  S.ball(0.42, [0, 0, 0], "brass", {place: u => C(u), group: gc, role: "hookhead"});
   for (let k = 0; k < 3; k++) {
     const pr = u => C(u).multiply(RZm(rad(k * 120))).multiply(RXm(-rad(20 + 40 * u))).multiply(Tm(0, 0.2, -0.45));
-    S.box([0.12, 0.16, 0.85], [0, 0, 0], null, "bone", {place: pr});
-    S.box([0.12, 0.45, 0.14], [0, 0, 0], null, "bone", {place: u => pr(u).multiply(Tm(0, -0.18, -0.42)).multiply(RXm(rad(28)))});
+    const gp = S.group(`prong_${k + 1}`, C(0).multiply(RZm(rad(k * 120))).multiply(RXm(-rad(20))), {type: "swing", axis: "X", amt: -40}, gc);
+    S.box([0.12, 0.16, 0.85], [0, 0, 0], null, "bone", {place: pr, group: gp, role: "hookhead"});
+    S.box([0.12, 0.45, 0.14], [0, 0, 0], null, "bone", {place: u => pr(u).multiply(Tm(0, -0.18, -0.42)).multiply(RXm(rad(28))), group: gp, role: "hookhead"});
   }
   S.hose([-0.5, 0.35, 0.8], [-0.85, -0.2, 1.3], 0.2, 0.15, 5);
 }
@@ -311,17 +315,19 @@ function deflectUmbrella(sides) { // v0.4: sides = which arms (default both)
 function deflectMane() {
   // Shield Liger: a ring of claw-fins around the base of the neck that spins up and throws a shield disc in front
   const N = mountM("Torso_chest", axisFrame([0, 3.3, -2.95], [0, 0.94, -0.34], [1, 0, 0]));
-  N.cyl([2.3, 0.32, 0], [0, -0.1, 0], null, "shell");
+  N.cyl([2.3, 0.32, 0], [0, -0.1, 0], null, "shell", {role: "hub"});
   N.add("ring", [1.2, 0.08, 0], [0, 0.1, 0], [0, 0, 90], "brass");
   for (let i = 0; i < 8; i++) N.box([0.2, 0.08, 0.2], [Math.cos(i * Math.PI / 4) * 1.15, 0.17, Math.sin(i * Math.PI / 4) * 1.15], null, "glow");
   const spin = u => u * t * 10;
+  const gcol = N.group("collar", Tm(0, 0, 0), {type: "spin", axis: "Y", amt: 10}); // v0.5 export
   for (let i = 0; i < 8; i++) {
     const R = u => RYm(rad(i * 45 + 22.5) + spin(u)).multiply(Tm(0, 0.1, 1.05)).multiply(RXm(rad(28 + 50 * u)));
-    N.wedge([0.14, 1.1, 0.5], [0, 0, 0], null, "bone", {place: u => R(u).multiply(Tm(0, 0.55, 0)).multiply(rot(0, 180, 0))});
-    N.box([0.2, 0.3, 0.3], [0, 0, 0], null, "iron", {place: u => R(u)});
+    const gf = N.group(`fin_${i + 1}`, R(0), {type: "swing", axis: "X", amt: 50}, gcol);
+    N.wedge([0.14, 1.1, 0.5], [0, 0, 0], null, "bone", {place: u => R(u).multiply(Tm(0, 0.55, 0)).multiply(rot(0, 180, 0)), group: gf, role: "fin"});
+    N.box([0.2, 0.3, 0.3], [0, 0, 0], null, "iron", {place: u => R(u), group: gf, role: "fin"});
   }
   const D = mount("Torso_chest", [0, 3.0, -4.7]);
-  D.cyl([4.6, 0.05, 0], [0, 0, 0], [0, 0, 90], "glow", {alpha: 0.35, show: u => u > 0.05});
+  D.cyl([4.6, 0.05, 0], [0, 0, 0], [0, 0, 90], "glow", {alpha: 0.35, show: u => u > 0.05, role: "film"});
   D.add("ring", [2.3, 0.06, 0], [0, 0, 0], null, "glow", {show: u => u > 0.05});
 }
 function deflectSaw() {
@@ -487,10 +493,10 @@ const PARTS = [
         ref: "the Zoids Twin Pile Bunker (heat fins plus a slide valve) and Armored Core's pile bunker, a short boxy housing with a long piston that slams out.",
         why: "Under each forearm sits a heavy studded bunker with stacked heat fins, a valve block, launch stripes and a red heat seam. A steel pile with a wedge tip points down past the claws.",
         use: "the dino crouches and both piles slam into the ground again and again.", on: "both forearms (ArmL_fore / ArmR_fore)."},
-      {name: "Reaper Sleeves", sub: "the claws · Thunderjaw", build: harvestSleeves, pose: POSES.STAB, focus: [5.6, -1.6, -3.8], closeYaw: 0.9, closePitch: 0.15, closeSide: 1,
+      {name: "Reaper Sleeves", sub: "the claws · Thunderjaw", build: () => harvestSleeves({fore: false}), pose: POSES.STAB, focus: [5.6, -1.6, -3.8], closeYaw: 0.9, closePitch: 0.15, closeSide: 1,
         ref: "Horizon's Thunderjaw and Rockbreaker: heavy machine claws for ripping the ground.",
-        why: "Steel sleeves with serrated teeth go over all three claws on each hand, each with a red glowing edge and a brass collar. The hands get studded wrist cuffs, and a piston runs up the forearm.",
-        use: "the claws stab down, the edges burn red, and the pistons shake.", on: "the claws, hands and forearms."},
+        why: "Steel sleeves with serrated teeth go over all three claws on each hand, each with a red glowing edge and a brass collar. The hands get studded wrist cuffs; the forearms stay free for other parts.",
+        use: "the claws stab down and the edges burn red.", on: "the claws and hands."},
     ]},
   {id: "grapple", short: "Grapple", name: "Grapple Zip", area: "speed", focus: [0, 0.5, -1.0],
     oldText: "Belly Winch (in the game now): a dark box and grey drum under the belly, a small yellow block on the chest.",

@@ -3,7 +3,7 @@
 // scope "Therizino first". THERI = TherizinoModelData (look A Reaper, tools/therizino_generator.py --json). Parts: the
 // looks file (therizino_parts_v2_looks.js) adds LOOKS[id] = [{name, sub, ref, why, build(k)}], OLD[id] = build(k).
 const THERI = __THERI__;
-const VERSION = "0.4"; // v0.4: Loadouts (all 7 parts at once, Kepu 2026-11-04 "Move some off the arms")
+const VERSION = "0.5"; // v0.5 export tags for the final picks (Kepu 14:49); v0.4: Loadouts (all 7 parts at once, Kepu 2026-11-04 "Move some off the arms")
 const $ = id => document.getElementById(id);
 const rad = THREE.MathUtils.degToRad;
 const AREA = {attack: ["ATTACK", "#f05a4f", 0xff3b30], defense: ["DEFENSE", "#5aa0ff", 0x3d9bff], speed: ["SPEED", "#ffd34d", 0xffc21a], eng: ["ENGINEER", "#ff9b2e", 0xff8a1a]};

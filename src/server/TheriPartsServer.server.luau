@@ -25,11 +25,13 @@
 --   TheriParts_<id>Enabled (default true, read on each apply). Diagnostics: script TheriPartsServerVersion,
 --   TheriPartsRestParts (rest CFrames loaded); character TheriPartsBuilt ("<id>=<pieces>,...").
 -- v1.1 (MDA-250, plan docs/plans/THERIZINO_PARTS_LOOKS_v2.0.md Task 2; Kepu 2026-11-04 14:13 picks from the redesign mockup
---   docs/mockups/therizino_parts_redesign.html): while script attribute TheriPartsLooksV2Enabled is true (default) the looks
---   come from ServerStorage.DinoArcade.TheriPartsLooksV2 1.0 (generated from the mockup): each piece at anchor.CFrame x
+--   docs/mockups/therizino_parts_redesign.html; final picks 14:49: Hook-B, Feathers-A, Harvest-B, Grapple-B, Deflect-B,
+--   Overclock-A, Snare-A): while script attribute TheriPartsLooksV2Enabled is true (default) the looks
+--   come from ServerStorage.DinoArcade.TheriPartsLooksV2 1.1 (generated from the mockup): each piece at anchor.CFrame x
 --   mount frame x piece frame (positions x the model's scale), the style kit (stud = Plastic with Studs on every face, plain =
 --   SmoothPlastic, metal = Metal, neon = Neon in the part's area colour), shapes box -> Part, wedge -> WedgePart, cyl -> Part
---   Cylinder (axis turned to the mockup's Y), ball -> Part Ball, cone -> 4 WedgeParts as a pyramid. A moving group is an
+--   Cylinder (axis turned to the mockup's Y), ball -> Part Ball, cone -> 4 WedgeParts as a pyramid, ring (a torus about the
+--   piece's Z) -> V2_RING_SEGMENTS (16) blocks. A moving group is an
 --   invisible root Part "ZPartGroup_<name>" hung on a Weld "ZPartJoint_<name>" (Part0 = the anchor or the parent group's
 --   root, C0 = the pivot; attributes ZPartType / ZPartAxis / ZPartAmt / ZPartRestC0 / ZPartBuiltScale for TheriPartsAnim
 --   1.0; a Weld, not a Motor6D, because IdleAnimation adopts every Motor6D); its pieces are welded to the root. Film pieces
@@ -231,6 +233,7 @@ local function v2Data()
 	end
 	return V2 or nil
 end
+local V2_RING_SEGMENTS = 16
 local KIND_MAT = {stud = Enum.Material.Plastic, plain = Enum.Material.SmoothPlastic, metal = Enum.Material.Metal, neon = Enum.Material.Neon}
 local FACES = {"Top", "Bottom", "Front", "Back", "Left", "Right"}
 local function frameOf(t, i, sc) -- t[i .. i + 5] = x, y, z, rx, ry, rz (degrees); position x sc
@@ -325,6 +328,13 @@ local function buildV2(model, id)
 				local p = v2Part("Part", Vector3.one * sx, cf, kit, L.glow, pc[13], film)
 				p.Shape = Enum.PartType.Ball
 				made[1] = p
+			elseif shape == "ring" then -- torus (radius sx, tube sy) about the piece's Z: a ring of blocks
+				local rad, tube = sx, sy
+				local seg = 2 * math.pi * rad / V2_RING_SEGMENTS
+				for k = 0, V2_RING_SEGMENTS - 1 do
+					local a = k / V2_RING_SEGMENTS * 2 * math.pi
+					made[#made + 1] = v2Part("Part", Vector3.new(math.max(0.02, tube * 2), math.max(0.02, seg * 1.05), math.max(0.02, tube * 2)), cf * CFrame.Angles(0, 0, a) * CFrame.new(rad, 0, 0), kit, L.glow, pc[13], film)
+				end
 			elseif shape == "cone" then -- 4 wedges: back faces on the axis, slopes facing out, tip at +Y
 				for k = 0, 3 do
 					made[#made + 1] = v2Part("WedgePart", Vector3.new(sx, sy, sx / 2), cf * CFrame.Angles(0, k * math.pi / 2, 0) * CFrame.new(0, 0, -sx / 4), kit, L.glow, pc[13], film)

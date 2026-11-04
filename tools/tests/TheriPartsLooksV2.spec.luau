@@ -1,4 +1,4 @@
--- TheriPartsLooksV2.spec v1.0 (Mecha Dino Arena) — data checks for ServerStorage.DinoArcade.TheriPartsLooksV2 1.0 (generated
+-- TheriPartsLooksV2.spec v1.1 (Mecha Dino Arena) — data checks for ServerStorage.DinoArcade.TheriPartsLooksV2 1.1 (generated
 -- from the redesign mockup v0.3 by tools/mockup/export_theri_parts_v2.js). Plan docs/plans/THERIZINO_PARTS_LOOKS_v2.0.md
 -- Task 1 (MDA-249). Run in Studio Edit (copy in ServerStorage.DinoArcadeTools.TheriPartsLooksV2_spec, clone + require);
 -- returns "PASS n" or "FAIL ...".
@@ -20,13 +20,13 @@ if not okM then return "FAIL model: " .. tostring(MD) end
 local PARTNAMES = {}
 for _, seg in ipairs(MD.segments) do for _, p in ipairs(seg.parts) do PARTNAMES[p.name] = true end end
 
-eq("version", D.Version, "1.0")
--- the mockup's pieces at rest (the hook's 10 chain links only show while the hook flies, so 55 - 10)
-local COUNT = {zhook = 45, zfeather = 78, zharvest = 62, zgrapple = 50, zdeflect = 54, zclock = 56, zsnare = 66}
-local GROUPS = {zhook = 1, zfeather = 12, zharvest = 2, zgrapple = 4, zdeflect = 14, zclock = 10, zsnare = 3}
-local SHAPES = {box = true, wedge = true, cyl = true, ball = true, cone = true}
-local ROLES = {zhook = {"muzzle", "hookhead", "drum"}, zfeather = {"blade"}, zharvest = {"pile"}, zgrapple = {"nozzle", "drum", "prong"},
-	zdeflect = {"hub", "rib", "film"}, zclock = {"ring", "gear", "fin"}, zsnare = {"spool"}}
+eq("version", D.Version, "1.1") -- v1.1: Kepu 2026-11-04 14:49 final picks (Hook-B, Harvest-B claws only, Deflect-B)
+-- the mockup's pieces at rest (+ the see-through shield film)
+local COUNT = {zhook = 55, zfeather = 78, zharvest = 78, zgrapple = 50, zdeflect = 27, zclock = 56, zsnare = 66}
+local GROUPS = {zhook = 6, zfeather = 12, zharvest = 0, zgrapple = 4, zdeflect = 9, zclock = 10, zsnare = 3}
+local SHAPES = {box = true, wedge = true, cyl = true, ball = true, cone = true, ring = true}
+local ROLES = {zhook = {"jib", "hookhead", "drum"}, zfeather = {"blade"}, zharvest = {}, zgrapple = {"nozzle", "drum", "prong"},
+	zdeflect = {"hub", "fin", "film"}, zclock = {"ring", "gear", "fin"}, zsnare = {"spool"}}
 local n = 0
 for id, want in pairs(COUNT) do
 	local L = D.LOOKS[id]
@@ -71,10 +71,17 @@ for id, want in pairs(COUNT) do
 	end
 end
 eq("7 looks", n, 7)
--- the hook (one-sided) sits on the camera side: the model's "...L" parts (+X)
-local allL = true
-for _, mt in ipairs(D.LOOKS.zhook.mounts) do if not mt[1]:find("L_") then allL = false end end
-eq("hook on the camera side", allL, true)
+-- no look sits on the far side only: nothing one-sided on the model's "...R" parts (the camera is over "...L" = +X)
+for id, L in pairs(D.LOOKS) do
+	local l, r = 0, 0
+	for _, mt in ipairs(L.mounts) do if mt[1]:find("R_") then r += 1 elseif mt[1]:find("L_") then l += 1 end end
+	eq(id .. " not far-side only", r == 0 or l > 0, true)
+end
+-- no two looks share a forearm (Kepu 2026-11-04 "Move some off the arms")
+local fore = {}
+for id, L in pairs(D.LOOKS) do for _, mt in ipairs(L.mounts) do if mt[1]:find("_fore") then fore[id] = true end end end
+local nf = 0 for _ in pairs(fore) do nf += 1 end
+eq("one look on the forearms", nf, 1)
 for _, b in ipairs(D.LOOKS.zhook.beams) do eq("hook beam camera side", b.a0:find("L_") ~= nil and b.a1:find("L_") ~= nil, true) end
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
