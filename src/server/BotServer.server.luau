@@ -378,6 +378,11 @@
 --   * BotOwnerGuardEnabled: a not-anchored bot whose root has a network owner (a player's client, after an anchor /
 --     unanchor cycle hands it to automatic ownership) is given back to the server (SetNetworkOwner(nil)). Diagnostic:
 --     script BotOwnerFixes.
+--   * BotStandFixEnabled: a bot rolled onto its side (lie down, toss) went into the Humanoid FallingDown state, which it kept
+--     after standUp unanchored it: the root sat HipHeight lower (sunk to its belly) for about 1.6 s, then popped up (Studio
+--     log 2026-11-03: y 608.6 -> 604.4 -> 608.6 after every stun). At standUp the bot's FallingDown and Ragdoll states are
+--     turned off (they stay off; bots lie down with their own roll) and a bot still in one of them is set to GettingUp.
+--     Diagnostic: script BotStandFixes.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
@@ -385,7 +390,7 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.24"
 VERSION = "1.25" -- v1.25 grab hold, get-up refresh, ownership guard
-for _, k in ipairs({"BotGrabHoldEnabled", "BotDownRefreshEnabled", "BotOwnerGuardEnabled"}) do -- v1.25
+for _, k in ipairs({"BotGrabHoldEnabled", "BotDownRefreshEnabled", "BotOwnerGuardEnabled", "BotStandFixEnabled"}) do -- v1.25
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 if script:GetAttribute("BotLatchDrainEnabled") == nil then script:SetAttribute("BotLatchDrainEnabled", true) end -- v1.23
@@ -833,6 +838,16 @@ do
 				b.downGround = groundY(b.hrp, b.hum)
 				b.model:SetAttribute("BotDownRefreshes", (b.model:GetAttribute("BotDownRefreshes") or 0) + 1)
 			end
+		end
+		if script:GetAttribute("BotStandFixEnabled") ~= false then
+			pcall(function()
+				local hum, ST = b.hum, Enum.HumanoidStateType
+				hum:SetStateEnabled(ST.FallingDown, false)
+				hum:SetStateEnabled(ST.Ragdoll, false)
+				local st = hum:GetState()
+				if st == ST.FallingDown or st == ST.Ragdoll then hum:ChangeState(ST.GettingUp) end
+			end)
+			script:SetAttribute("BotStandFixes", (script:GetAttribute("BotStandFixes") or 0) + 1)
 		end
 		return standUpV124(b)
 	end

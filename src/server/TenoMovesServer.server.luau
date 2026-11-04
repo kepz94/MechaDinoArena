@@ -156,7 +156,9 @@
 --   * landed also when, after the take-off, a ray straight down from the root or the Torso_chest part (h0 + 2 studs long;
 --     only the jumper, TallGrass and the FX folders left out) hits an allowed target while the root is not going up: the
 --     jumper stands on a dino. 1.6 only counted the ground (Bots and players left out), so it stood on the dino's back with
---     no slam until it slid off. Switch: script attribute TenoMovesLeapOnDinoEnabled (default true, read at each leap).
+--     no slam until it slid off. The ray also looks LEAP_LOOKAHEAD (0.15) s of the fall ahead (+ falling speed x 0.15), so
+--     the slam and the shove start just before the feet touch the dino. Switch: script attribute TenoMovesLeapOnDinoEnabled
+--     (default true, read at each leap).
 --     Diagnostic: character TenoLeapLandedOn ("ground" / "dino").
 --   * shove: each target hit by the slam whose root lies under the jumper's body (root space: |X| < half the jumper's width +
 --     half the target's width along it, |Z| < half the jumper's length) is moved sideways to the nearer side (root-space X sign,
@@ -194,6 +196,7 @@ for _, k in ipairs({"TenoMovesLeapOnDinoEnabled", "TenoMovesLeapShoveEnabled"}) 
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local LEAP_SHOVE_TIME, LEAP_SHOVE_PEAK, LEAP_SHOVE_GAP = 0.28, 3, 1.5 -- v1.7
+local LEAP_LOOKAHEAD = 0.15 -- v1.7
 
 script:SetAttribute("TenoMovesServerVersion", VERSION)
 if script:GetAttribute("TenoMovesStompDrainEnabled") == nil then script:SetAttribute("TenoMovesStompDrainEnabled", true) end -- v1.1
@@ -1337,7 +1340,7 @@ local function ownerModel(part)
 	while m and not m:FindFirstChild("Hitboxes") do m = m.Parent and m.Parent:FindFirstAncestorOfClass("Model") end
 	return m
 end
-local function onDino(char, set, h0)
+local function onDino(char, set, h0, ahead)
 	local ex = {char}
 	local isl = workspace:FindFirstChild("DinoIsland")
 	local tg = isl and isl:FindFirstChild("TallGrass")
@@ -1352,7 +1355,7 @@ local function onDino(char, set, h0)
 	local chest = char:FindFirstChild("Torso_chest", true)
 	if chest and chest:IsA("BasePart") then table.insert(origins, chest.Position) end
 	for _, o in ipairs(origins) do
-		local hit = workspace:Raycast(o, Vector3.new(0, -(h0 + 2), 0), dinoRay)
+		local hit = workspace:Raycast(o, Vector3.new(0, -(h0 + 2 + (ahead or 0)), 0), dinoRay)
 		local m = hit and ownerModel(hit.Instance)
 		if m and set[m] then return true end
 	end
@@ -1426,7 +1429,7 @@ local function jumpSlamV17(char)
 			elseif script:GetAttribute("TenoMovesLeapOnDinoEnabled") ~= false and rr.AssemblyLinearVelocity.Y <= 1 then
 				local set = {}
 				for _, m in ipairs(candidates(char)) do set[m] = true end
-				if next(set) and onDino(char, set, h0) then landedOn = "dino" break end
+				if next(set) and onDino(char, set, h0, math.max(0, -rr.AssemblyLinearVelocity.Y) * LEAP_LOOKAHEAD) then landedOn = "dino" break end
 			end
 			RunService.Heartbeat:Wait()
 		end
