@@ -1,4 +1,4 @@
--- AbilityBar v1.24 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.25 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -148,10 +148,19 @@ local UserInputService = game:GetService("UserInputService")
 --   0 during the finisher's pause; step 4 -> 0 for TheriFourthRecover (0.8 s; none with TheriFourthFast); otherwise max. Tile
 --   states as 1.23. Switch: script attribute AbilityBarTheriHitsLeftEnabled (default true, read each frame; false = 1.23's
 --   step count). Diagnostic: AbilityBarTheriHitsLeft ("<left>/<max>").
+-- v1.25 (Kepu 2026-11-03 17:33 "Yes": the teno's JUMP shows its Hydraulic Leap charges like the therizino's; PC and touch
+--   together, ArenaTouch 1.14): on a teno with JumpCharges >= 1 (Hydraulic Leap slotted on JUMP, SkillEffects 1.37) the JUMP
+--   tile (MOVES.Leap) gets the therizino JUMP tile's pips (a pip row like the slash one, made the first time): JumpCharges
+--   pips filled to JumpChargesLeft, the next filling over JumpCooldown from JumpChargeRefillAt; "active" while JumpTestState is
+--   crouch / air, "empty" (dim, the refill as a fill) at 0, "stunned" as before. Without charges the tile is the 1.24 cooldown
+--   tile (its pip row hidden). Switch: script attribute AbilityBarTenoJumpPipsEnabled (default true, read each frame; false =
+--   1.24). Diagnostic: AbilityBarTenoLeapPips ("<left>/<max>").
 local VERSION = "1.21"
 VERSION = "1.22" -- v1.22 teno leap on JUMP
 VERSION = "1.23" -- v1.23 therizino ATTACK + JUMP tiles
 VERSION = "1.24" -- v1.24 therizino ATTACK pips = hits left
+VERSION = "1.25" -- v1.25 teno JUMP charge pips
+if script:GetAttribute("AbilityBarTenoJumpPipsEnabled") == nil then script:SetAttribute("AbilityBarTenoJumpPipsEnabled", true) end -- v1.25
 if script:GetAttribute("AbilityBarTheriHitsLeftEnabled") == nil then script:SetAttribute("AbilityBarTheriHitsLeftEnabled", true) end -- v1.24
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
 local BLOOD_TILE = script:GetAttribute("AbilityBarBloodEnabled") ~= false
@@ -673,6 +682,61 @@ local function paint(e, state, dim, frac, secs, sub)
 	show("AbilityBar_" .. e.id, state)
 end
 
+-- v1.25: a pip row for a tile that was made without one (the slash pip row's look)
+local function makePipRow(t)
+	local row = Instance.new("Frame")
+	row.Name = "LeapChargePips"
+	row.BackgroundTransparency = 1
+	row.AnchorPoint = Vector2.new(0.5, 1)
+	row.Position = UDim2.fromScale(0.5, 0.935)
+	row.Size = UDim2.fromScale(0.9, 0.13)
+	row.ZIndex = 4
+	row.Parent = t.f
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.Padding = UDim.new(0.1, 0)
+	list.Parent = row
+	local pips = {}
+	for i = 1, 3 do
+		local pip = Instance.new("Frame")
+		pip.Name = "Charge_" .. i
+		pip.Size = UDim2.fromScale(1, 1)
+		pip.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		pip.BackgroundTransparency = 1
+		pip.ClipsDescendants = true
+		pip.ZIndex = 4
+		pip.LayoutOrder = i
+		pip.Parent = row
+		local pc = Instance.new("UICorner")
+		pc.CornerRadius = UDim.new(0.5, 0)
+		pc.Parent = pip
+		local ring = Instance.new("UIStroke")
+		ring.Color = YELLOW
+		ring.Thickness = 2
+		ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		ring.Parent = pip
+		local fillP = Instance.new("Frame")
+		fillP.Name = "Fill"
+		fillP.AnchorPoint = Vector2.new(0, 1)
+		fillP.Position = UDim2.fromScale(0, 1)
+		fillP.Size = UDim2.fromScale(1, 0)
+		fillP.BackgroundColor3 = YELLOW
+		fillP.BorderSizePixel = 0
+		fillP.ZIndex = 4
+		fillP.Parent = pip
+		local fc2 = Instance.new("UICorner")
+		fc2.CornerRadius = UDim.new(0.5, 0)
+		fc2.Parent = fillP
+		pips[i] = {f = pip, fill = fillP, ring = ring}
+	end
+	return row, pips
+end
+local function tenoJumpPips()
+	return script:GetAttribute("AbilityBarTenoJumpPipsEnabled") ~= false and char:GetAttribute("Species") == "Teno"
+		and (tonumber(char:GetAttribute("JumpCharges")) or 0) >= 1
+end
 local function update()
 	local on = script:GetAttribute("AbilityBarEnabled") ~= false
 	local skills = on and script:GetAttribute("AbilityBarHideOnSkills") ~= false and char:GetAttribute("SkillScreenOpen") == true -- v1.1
@@ -930,6 +994,33 @@ local function update()
 			else
 				paint(e, "ground", 0.5, 0, nil)
 			end
+		elseif e.move == MOVES.Leap and tenoJumpPips() then -- v1.25: the teno's JUMP with Hydraulic Leap charges
+			if not e.t.leapRow then e.t.leapRow, e.t.leapPips = makePipRow(e.t) end
+			e.t.leapRow.Visible = true
+			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("JumpCharges")) or 2), 1, 3)
+			local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("JumpChargesLeft")) or maxC), 0, maxC)
+			local ra = tonumber(char:GetAttribute("JumpChargeRefillAt")) or 0
+			local cd = math.max(0.01, tonumber(char:GetAttribute("JumpCooldown")) or 6)
+			local part = (ra > now and nowC < maxC) and math.clamp(1 - (ra - now) / cd, 0, 1) or 0
+			for i, pip in ipairs(e.t.leapPips) do
+				pip.f.Visible = i <= maxC
+				pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0))
+			end
+			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = Color3.new(0, 0, 0), 0.38
+			local js = char:GetAttribute("JumpTestState")
+			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif js == "crouch" or js == "air" then
+				paint(e, "active", 0, 0, nil)
+				e.t.stroke.Color = YELLOW
+			elseif nowC <= 0 then
+				paint(e, "empty", 0.45, 0, nil)
+				e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = WHITE, 0.89
+				e.t.fill.Size = UDim2.fromScale(1, part)
+			else
+				paint(e, "ready", 0, 0, nil)
+			end
+			show("AbilityBarTenoLeapPips", nowC .. "/" .. maxC)
 		elseif e.move.charges then -- v1.7: pachy headbutt (charges, no cooldown)
 			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("HeadbuttChargesMax")) or 2), 1, 3)
 			local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("HeadbuttChargesNow")) or maxC), 0, maxC)
@@ -978,6 +1069,7 @@ local function update()
 			show("AbilityBarHeadbuttPips", nowC .. "/" .. maxC)
 			show("AbilityBarHeadbuttSlowed", slowedUntil > now)
 		else
+			if e.t.leapRow then e.t.leapRow.Visible = false end -- v1.25: no charges: the plain cooldown tile
 			local m = e.move
 			local cd = math.max(0.01, char:GetAttribute(m.cd) or m.cdDefault)
 			local stamp = char:GetAttribute(m.stamp)

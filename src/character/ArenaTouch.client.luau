@@ -1,4 +1,4 @@
--- ArenaTouch v1.13 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.14 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -98,6 +98,9 @@
 --   next one filling as its refill runs (JumpChargeRefillAt over JumpCooldown); at 0 charges the button is dimmed (0.7, label
 --   0.5) like the PC tile's "empty". Other dinos unchanged. Switch: script attribute ArenaTouchTheriJumpPipsEnabled (default
 --   true, read each frame; false = 1.12). Diagnostic ArenaTouchTheriJumpPips ("<left>/<max>").
+-- v1.14 (Kepu 2026-11-03 17:33 "Yes": the teno too; PC and touch together, AbilityBar 1.25): the same JUMP pips on a teno with
+--   leap charges (JumpCharges >= 1: Hydraulic Leap slotted on JUMP). Switch: script attribute ArenaTouchTenoJumpPipsEnabled
+--   (default true, read each frame; false = 1.13, therizino only). The diagnostic ArenaTouchTheriJumpPips is written for both.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
@@ -106,6 +109,8 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.11"
 VERSION = "1.12" -- v1.12 therizino ATTACK pips = hits left
 VERSION = "1.13" -- v1.13 therizino JUMP charge pips
+VERSION = "1.14" -- v1.14 teno JUMP charge pips
+if script:GetAttribute("ArenaTouchTenoJumpPipsEnabled") == nil then script:SetAttribute("ArenaTouchTenoJumpPipsEnabled", true) end -- v1.14
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -717,7 +722,9 @@ for i = 1, 3 do
 	if f then jpPips[i] = {f = f, fill = f:FindFirstChild("Fill")} end
 end
 RunService.RenderStepped:Connect(function()
-	local on = script:GetAttribute("ArenaTouchTheriJumpPipsEnabled") ~= false and char:GetAttribute("Species") == "Therizino"
+	local sp = char:GetAttribute("Species")
+	local on = script:GetAttribute("ArenaTouchTheriJumpPipsEnabled") ~= false
+		and (sp == "Therizino" or (sp == "Teno" and script:GetAttribute("ArenaTouchTenoJumpPipsEnabled") ~= false)) -- v1.14: + teno
 		and (tonumber(char:GetAttribute("JumpCharges")) or 0) >= 1 and leap.Visible
 	if jpRow.Visible ~= on then jpRow.Visible = on end
 	if not on then return end
