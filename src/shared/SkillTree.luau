@@ -1,4 +1,4 @@
--- SkillTree v1.59 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.59 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2272,6 +2272,19 @@ do
 		e.snareRadius = sn >= 1 and 4 or 0
 		e.snareCooldown = sn >= 1 and 18 or 0
 		return e
+	end
+end
+
+-- v1.62 (therizino parts build 2, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 7, MDA-247; Kepu 2026-11-04 "Publish then
+-- continue building"): Grapple Zip (zgrapple), Deflector Claws (zdeflect) and Overclock Joints (zclock) go live: not soon,
+-- LIVE_MECH, buyable and slottable; their effects follow 1.61's numbers. Switch SkillTree.THERI_PARTS_B2_LIVE (default true;
+-- false = 1.61: soon).
+SkillTree.THERI_PARTS_B2_LIVE = true
+if SkillTree.THERI_PARTS and SkillTree.THERI_PARTS_B2_LIVE and SkillTree.PATHS.zgrapple then
+	SkillTree.THERI_PARTS_B2_SOON = false
+	for _, id in ipairs({"zgrapple", "zdeflect", "zclock"}) do
+		SkillTree.PATHS[id].soon = false
+		SkillTree.LIVE_MECH[id] = true
 	end
 end
 

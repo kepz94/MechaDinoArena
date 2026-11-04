@@ -1,4 +1,4 @@
--- SkillTreeTheriParts.spec v1.0 (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
+-- SkillTreeTheriParts.spec v1.1 (1.1: build 2 live, SkillTree 1.62) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.61 (plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheriParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-04 "Two builds"): zhook / zfeather / zharvest / zsnare live; zgrapple / zdeflect / zclock "soon".
@@ -21,12 +21,13 @@ local P = ST.PATHS
 local function E(steps) return ST.effects(steps, "Therizino") end
 
 eq("THERI_PARTS", ST.THERI_PARTS, true)
-eq("THERI_PARTS_B2_SOON", ST.THERI_PARTS_B2_SOON, true)
+eq("THERI_PARTS_B2_LIVE", ST.THERI_PARTS_B2_LIVE, true) -- v1.1
+eq("THERI_PARTS_B2_SOON", ST.THERI_PARTS_B2_SOON, false) -- v1.1
 local ROWS = {
 	zhook = {"Reaper's Hook", "attack", false}, zfeather = {"Feather Barrage", "attack", false},
 	zharvest = {"Harvest Field", "attack", false}, zsnare = {"Snare Wires", "eng", false},
-	zgrapple = {"Grapple Zip", "speed", true}, zdeflect = {"Deflector Claws", "defense", true},
-	zclock = {"Overclock Joints", "speed", true},
+	zgrapple = {"Grapple Zip", "speed", false}, zdeflect = {"Deflector Claws", "defense", false}, -- v1.1: live
+	zclock = {"Overclock Joints", "speed", false},
 }
 for id, want in pairs(ROWS) do
 	eq(id .. " exists", P[id] ~= nil, true)
@@ -83,14 +84,33 @@ chk("zharvest", "fieldRadius", {6, 8, 8, 10}); chk("zharvest", "fieldTime", {3, 
 chk("zharvest", "fieldSlowMul", {0.7, 0.7, 0.7, 0.7}); chk("zharvest", "fieldCooldown", {20, 20, 20, 20})
 chk("zsnare", "snareMax", {1, 2, 2, 3}); chk("zsnare", "snareDamage", {12, 12, 12, 12}); chk("zsnare", "snareRoot", {1, 1, 2, 2})
 chk("zsnare", "snareRadius", {4, 4, 4, 4}); chk("zsnare", "snareCooldown", {18, 18, 18, 18})
--- build-2 parts are soon: saved steps give nothing yet
-eq("grapple soon gives nothing", E({zgrapple = 4}).grappleRange, 0)
-eq("deflect soon gives nothing", E({zdeflect = 4}).deflectTime, 0)
-eq("clock soon gives nothing", E({zclock = 4}).clockTime, 0)
+-- v1.1: build-2 effects per step
+chk("zgrapple", "grappleRange", {40, 55, 70, 70}); chk("zgrapple", "grappleCharges", {1, 1, 1, 2})
+chk("zgrapple", "grappleCooldown", {12, 12, 10, 10})
+chk("zdeflect", "deflectTime", {1, 1.5, 2, 2}); chk("zdeflect", "deflectAngle", {70, 70, 70, 70})
+chk("zdeflect", "deflectLevel", {1, 2, 2, 2}); chk("zdeflect", "deflectReflect", {false, false, false, true})
+chk("zdeflect", "deflectCooldown", {16, 16, 13, 13})
+chk("zclock", "clockTime", {3, 4, 5, 5}); chk("zclock", "clockRunMul", {1.4, 1.4, 1.4, 1.4})
+chk("zclock", "clockTapMul", {1, 0.7, 0.7, 0.7}); chk("zclock", "clockNoSlow", {false, false, false, true})
+chk("zclock", "clockCooldown", {22, 22, 18, 18})
+local TEXT2 = {
+	zgrapple = {"Button: hook a tree or wall up to 40 studs away and zip there. Recharges in 12 s", "Reaches 55 studs",
+		"Reaches 70 studs; recharges in 10 s", "2 charges"},
+	zdeflect = {"Button: claws spin in front for 1 s and block darts. Recharges in 16 s", "Spin 1.5 s; blocks boulders and cannon shots too",
+		"Spin 2 s; recharges in 13 s", "Blocked shots bounce back at the shooter"},
+	zclock = {"Button: for 3 s, run 40% faster. Recharges in 22 s", "Lasts 4 s; cut taps come 30% faster too",
+		"Lasts 5 s; recharges in 18 s", "Slows don't work on you while it's on"},
+}
+for id, t in pairs(TEXT2) do
+	if P[id] then for i = 1, 4 do eq(id .. " text " .. i, P[id].steps[i], t[i]) end end
+end
 -- buying / slotting
 eq("canBuy hook theri", (ST.canBuy({}, "zhook", 5, "Therizino")), true)
 eq("canBuy hook raptor", select(2, ST.canBuy({}, "zhook", 5, "Raptor")), "otherDino")
-eq("canBuy grapple soon", select(2, ST.canBuy({}, "zgrapple", 5, "Therizino")), "soon")
+eq("canBuy grapple live", (ST.canBuy({}, "zgrapple", 5, "Therizino")), true) -- v1.1
+eq("canBuy clock live", (ST.canBuy({}, "zclock", 5, "Therizino")), true)
+local lo2 = ST.sanitizeLoadout({"zgrapple", "zdeflect", "zclock", "zhook"}, {zgrapple = 1, zdeflect = 1, zclock = 1, zhook = 1}, "Therizino")
+eq("slot grapple", lo2[1], "zgrapple"); eq("slot deflect", lo2[2], "zdeflect"); eq("slot clock", lo2[3], "zclock")
 local lo = ST.sanitizeLoadout({"zhook", "zfeather", "zharvest", "zsnare"}, {zhook = 1, zfeather = 1, zharvest = 1, zsnare = 1}, "Therizino")
 eq("slot 1", lo[1], "zhook"); eq("slot 2", lo[2], "zfeather"); eq("slot 3", lo[3], "zharvest"); eq("slot 4", lo[4], "zsnare")
 eq("raptor cannot slot", ST.sanitizeLoadout({"zhook"}, {zhook = 1}, "Raptor")[1], false)
