@@ -26,7 +26,7 @@ shove and Blood Rush logic (only the refill length gains a factor); other dinos'
 ## The two rows (texts as the mockup; numbers are attributes)
 | Row | I (1) | II (2) | III (3) | ★ (4) |
 |---|---|---|---|---|
-| Last Stand (Health) | below 30% health: take 15% less damage | 25% less | below 30%: headbutt charges refill 40% faster | see red-team R1 |
+| Last Stand (Health) | below 30% health: take 15% less damage | 25% less | below 30%: headbutt charges refill 40% faster | once per life, the first time you drop below 30% health you are untouchable for 1.5 s |
 | Head Down (Defense) | while charging a headbutt: take 15% less damage | 25% less | while charging: can't be shoved | while charging: can't be stunned |
 
 ## Deterministic map
@@ -43,6 +43,12 @@ shove and Blood Rush logic (only the refill length gains a factor); other dinos'
   when the charge ends; never fights TenoStatsServer (a pachy is never a teno).
 - Head Down ★: SkillEffects' StunnedUntil hook: charging and PachyHeadDownNoStun -> StunnedUntil = now,
   SkillStunTrimmed "headdown" (Brace II's branch). Dazes, blinds, tethers, pins are not stuns and still apply.
+- Last Stand ★ (R1): the first health drop of a life that ends below the 30% line (not a killing blow) starts the
+  untouchable window: PachyLastStandUntil = now + PachyLastStandTime (1.5), an invisible ForceField
+  "PachyLastStandField" under the character until then (blocks Humanoid:TakeDamage and ArenaPvP's player damage, like
+  the Energy Shield's), and any health drop inside the window is refunded in full (catches damage that skips the
+  ForceField); used once per character (a respawn is a new life). PachyLastStandUsed = true. A killing blow is never
+  refunded.
 - Last Stand III: HeadbuttServer refill length x PachyLastStandRefillMul (1 / 0.714 = 40% faster) while low at the
   moment a refill starts (a refill already running keeps its length).
 - Off / unbought: every new attribute at its off value (cut 1, refill mul 1, flags false) -> nothing happens.
@@ -68,19 +74,19 @@ shove and Blood Rush logic (only the refill length gains a factor); other dinos'
 5. **Studio check + docs · Wired** — bought rows (SkillPath set on the test player only, then cleared), held bot hits:
    charging cut 15 / 25%, low cut on the part under 30%, killing blow not refunded, shove skipped while charging (III),
    stun cleared while charging (★), refill 40% faster while low (III); nothing on raptor / teno / therizino; skill screen
-   shows both rows on the pachy only.
+   shows both rows on the pachy only; ★ window once per life (second dip below 30% does nothing).
 
-## Red-team (to settle before tickets)
+## Red-team (settled with Kepu 2026-11-04 00:0x)
 - **R1 — Last Stand ★ "survive a killing blow once per life" has no safe hook.** Damage reaches Humanoid.Health from about
   20 scripts, and each stamps the kill (KilledBy / KilledAt -> kill XP, kill heal, Teno Survivor, goals) before or as
   health hits 0; a Roblox Humanoid at 0 is dead and cannot be revived. A death guard would have to change every one of
   them. Proposal: ★ = "Once per life, the first time you drop below 30% health you are untouchable for 1.5 s" (an
-  invisible ForceField like the Energy Shield's; no death hook, no fake kills). Needs Kepu's pick.
+  invisible ForceField like the Energy Shield's; no death hook, no fake kills). **Kepu: "Untouchable at 30%".**
 - **R2 — the cut cannot stop a killing blow.** Like Brace, a hit that takes the pachy to 0 is not refunded. Last Stand
   helps over a fight, not against one big hit. Accepted risk unless Kepu objects.
 - **R3 — "can't be shoved or thrown" was the mockup text.** Only the shoves listed above go through HeadbuttShoveEnabled;
   Tail Grab flings, Shock Mine blasts and ram tosses use other paths. Proposal: III text "can't be shoved" (as in the
-  table above). Needs Kepu's OK.
+  table above). **Kepu: "Shoves only".**
 - **R4 — "can't be stunned" is StunnedUntil only** (same as Teno Brace II). Strobe daze, Ink blind, Tether, pins still
   land. Text stays "can't be stunned"; noted.
 - **R5 — overlap with the Teno's Brace** (damage cut while committing to an attack). Different trigger (charging a
