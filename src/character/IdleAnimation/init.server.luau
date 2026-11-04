@@ -1,4 +1,4 @@
--- IdleAnimation v1.40 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.41 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -225,6 +225,11 @@
 --       later played no Spin Dive (Studio log: phase none -> air -> land within 0.08 s, roll 0, then the launch; standing
 --       jumps spun). Now, on models with TheriPose.leapOn, airborne before t = JumpWindup (the crouch) does not count. Other
 --       dinos unchanged. Switch: model attribute TheriLeapAirAfterWindup (default true; false = 1.39).
+-- v1.41 (MDA-218, plan docs/plans/TENO_TAIL_GRAB_v1.0.md Task 4; Kepu 2026-11-03 "have the tail actually grab the Dino"):
+--       while the teno layer plays "tgrab", the tail offsets from TenoPose.grabTail (1.9: the Clamp Tail reaches the grabbed
+--       dino, lifts it over the back and throws it; IK through these motors and this frame's pose) are multiplied on after the
+--       attack offsets. Diagnostic: TenoGrabIKMiss (studs from the clamp to its goal, 0.1 steps). Switch: model attribute
+--       TenoGrabIKEnabled (read by TenoPose; false = the 1.8 keyframes).
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -565,6 +570,7 @@ model:SetAttribute("IdleAnimationVersion", "1.37") -- v1.37
 model:SetAttribute("IdleAnimationVersion", "1.38") -- v1.38
 model:SetAttribute("IdleAnimationVersion", "1.39") -- v1.39
 model:SetAttribute("IdleAnimationVersion", "1.40") -- v1.40
+model:SetAttribute("IdleAnimationVersion", "1.41") -- v1.41
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -1256,6 +1262,15 @@ RunService.PreSimulation:Connect(function(dt)
 		if tPhase then
 			for name, off in pairs(TenoPose.attack(tPhase, tT, tHold, TenoPose.settings(model), tsN)) do
 				if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+			end
+			if tPhase == "tgrab" and TenoPose.grabTail then -- v1.41: the grab's tail IK
+				local offs, miss = TenoPose.grabTail(model, motors, pose, tsN)
+				if offs then
+					for name, off in pairs(offs) do
+						if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+					end
+				end
+				if miss then show("TenoGrabIKMiss", math.floor(miss * 10 + 0.5) / 10) end
 			end
 		end
 		show("TenoPoseState", tPhase or "none")

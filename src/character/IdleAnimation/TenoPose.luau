@@ -1,4 +1,4 @@
--- TenoPose v1.8 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.9 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -81,8 +81,31 @@
 --   dips, the tail drops low behind, curled down), 0.1 s -> MORTAR_WHIP (easeIn: the tail cracks up over the back, the
 --   chest lifts), held to 0.75 s, 0.7 s -> 0 (ends 1.45 s, inside ABILITY_END 1.6). Switch: model attribute
 --   TenoMortarBigPoseEnabled (default true; false = 1.7, the 1.4 quick whip).
+-- v1.9 (MDA-218, plan docs/plans/TENO_TAIL_GRAB_v1.0.md Task 4, mockup docs/mockups/teno_tail_grab_v0.1.html; Kepu
+--   2026-11-03 picked A "Over the Top"): when the teno's grab is TenoMovesServer 1.7's (TenoGrabSide "front" / "back",
+--   TenoGrabCatchAt, TenoGrabThrowAtPlan, TenoGrabStartedAt younger than 4 s), "tgrab" no longer plays the 1.3 tail
+--   keyframes. Times t from TenoGrabStartedAt; catch / throw from the stamps; W = GRAB_WIND 0.25, R = GRAB_RECOVER 0.9:
+--   * body (attackAngles, no tail joints): GRAB_BRACE (legs braced) and, in front, GRAB_LEAN_FRONT (chest down, legs pushed);
+--     0 -> lean over W (ease), held, over the last 0.2 s before the throw + the whip lean (front RootJoint -14; back
+--     RootJoint -16, Neck -14; easeIn), then over R back to 0 (smooth). The phase lasts throw + R + 0.05 (was 1.9).
+--   * tail (grabTail, called by IdleAnimation 1.41 with its motors and this frame's pose): the clamp point (Tail5_main x
+--     (CLAMP_X -2.6 x scale, 0, 0), between the Clamp Tail's jaws) is driven to a goal in HumanoidRootPart space by
+--     coordinate descent on Tail1..Tail5 pitch / yaw offsets (pitch -118..48, yaw -82..82 degrees; cost = squared miss +
+--     0.0006 x angle^2 + 0.0012 x (neighbour difference)^2; IK_SWEEPS 6 sweeps of steps 6, 3, 1.5, 0.8, 0.4, 0.2 degrees,
+--     warm-started from the last frame) through the rig's forward kinematics (restC0 x pose x C1^-1 from the root).
+--     Landmarks at the grab's start (HRP space): rest = the clamp point with no tail offset, hips = Torso_hips, head =
+--     Head_cranium; k = |rest - hips| / 33.8 (the mockup's length). Target = the top of TenoGrabTargetRef's bounding box
+--     (front fallback head + (0, 0, -10k), back rest + (0, 0, 5k)). Goals:
+--       wind-up 0..W: the tail eases to TAIL_DOWN (angles, no IK);
+--       strike W..catch: front = bezier(wind tip, hips + (0, 29.2k, -2.5k), target) (ease); back = straight (ease);
+--       lift catch..throw - 0.2: clamp at the catch -> hips + (0, 23.2k, 0.5k) (+ 4k x sin(pi u) up; smooth);
+--       whip throw - 0.2..throw: -> front rest + (0, 5.4k, 6k) / back head + (0, 10.6k, -5k) (easeIn);
+--       recover throw..throw + R: front rest + (0, 1.4k, 3k) / back hips + (0, 3.2k, 3.5k), the offsets fading to 0
+--       (smooth). Returns {TailN = CFrame} and the miss (studs) for the diagnostic.
+--   Switch: model attribute TenoGrabIKEnabled (default true; false = 1.8 keyframes for every grab).
 local TenoPose = {}
 TenoPose.Version = "1.8"
+TenoPose.Version = "1.9" -- v1.9 Over-the-Top grab IK
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -514,6 +537,202 @@ do
 		end
 		return anglesV17(phase, t, hold, s, now)
 	end
+end
+
+-- v1.9: Over-the-Top grab (see the header)
+local GRAB_WIND, GRAB_RECOVER, CLAMP_X, IK_SWEEPS, MOCK_LEN = 0.25, 0.9, -2.6, 6, 33.8
+local GRAB_BRACE = {LegL = {12, 0, 0}, LegR = {12, 0, 0}, KneeL = {-10, 0, 0}, KneeR = {-10, 0, 0}}
+local GRAB_LEAN_FRONT = {RootJoint = {-10, 0, 0}, Neck = {-16, 0, 0}, Head = {-10, 0, 0}, LegL = {22, 0, 0}, LegR = {22, 0, 0},
+	KneeL = {-18, 0, 0}, KneeR = {-18, 0, 0}}
+local GRAB_WHIP = {front = {RootJoint = {-14, 0, 0}}, back = {RootJoint = {-16, 0, 0}, Neck = {-14, 0, 0}}}
+local TAILS = {"Tail1", "Tail2", "Tail3", "Tail4", "Tail5"}
+local LIM = {{-118, 48}, {-82, 82}}
+local IK_STEPS = {6, 3, 1.5, 0.8, 0.4, 0.2}
+local grab -- the current v1.7 grab {side, st, catch, throw} (relative times) or nil
+local function over(a, b) -- angle table a with b's joints added on top
+	local o = {}
+	for k, v in pairs(a) do o[k] = {v[1], v[2], v[3]} end
+	for k, v in pairs(b) do
+		local x = o[k] or {0, 0, 0}
+		o[k] = {x[1] + v[1], x[2] + v[2], x[3] + v[3]}
+	end
+	return o
+end
+do
+	local phaseV18 = TenoPose.phase
+	function TenoPose.phase(model, isOwner, serverNow)
+		grab = nil
+		ABILITY_END.tgrab = 1.9
+		if model:GetAttribute("TenoGrabIKEnabled") ~= false then
+			local st, side = num(model:GetAttribute("TenoGrabStartedAt")), model:GetAttribute("TenoGrabSide")
+			local ca, th = num(model:GetAttribute("TenoGrabCatchAt")), num(model:GetAttribute("TenoGrabThrowAtPlan"))
+			if st and ca and th and (side == "front" or side == "back") and ca > st and th > ca and serverNow - st < 4 then
+				grab = {side = side, st = st, catch = ca - st, throw = th - st}
+				ABILITY_END.tgrab = grab.throw + GRAB_RECOVER + 0.05
+			end
+		end
+		return phaseV18(model, isOwner, serverNow)
+	end
+	local anglesV18 = TenoPose.attackAngles
+	function TenoPose.attackAngles(phase, t, hold, s, now)
+		if phase == "tgrab" and grab then
+			local lean = grab.side == "front" and over(GRAB_BRACE, GRAB_LEAN_FRONT) or GRAB_BRACE
+			local whip = over(lean, GRAB_WHIP[grab.side])
+			if t < GRAB_WIND then return mix(ZERO, lean, ease(t / GRAB_WIND)) end
+			if t < grab.throw - 0.2 then return mix(lean, lean, 0) end
+			if t < grab.throw then return mix(lean, whip, easeIn((t - (grab.throw - 0.2)) / 0.2)) end
+			return mix(whip, ZERO, smooth((t - grab.throw) / GRAB_RECOVER))
+		end
+		return anglesV18(phase, t, hold, s, now)
+	end
+end
+
+-- the tail IK (IdleAnimation 1.41 calls this while the phase is "tgrab")
+local chain, chainScale, clampOff -- motor names from the root to Tail5's segment; Tail5 Root -> clamp point
+local sol, solKey -- warm start {TailN = {pitch, yaw}}, the grab it belongs to
+local marks -- landmarks of the current grab (HRP space)
+local function buildChain(model, motors, hrp)
+	local seg = model:FindFirstChild("Tail5")
+	local root = seg and seg:FindFirstChild("Root")
+	local main = model:FindFirstChild("Tail5_main", true)
+	if not (root and main) then return nil end
+	local names, part, guard = {}, root, 0
+	while part ~= hrp do
+		guard += 1
+		if guard > 16 then return nil end
+		local found
+		for name, e in pairs(motors) do
+			if e.motor.Part1 == part then found = name break end
+		end
+		if not found then return nil end
+		table.insert(names, 1, found)
+		part = motors[found].motor.Part0
+		if not part then return nil end
+	end
+	local sc = model:GetScale()
+	clampOff = root.CFrame:Inverse() * main.CFrame * CFrame.new(CLAMP_X * sc, 0, 0)
+	chainScale = sc
+	return names
+end
+local function fkClamp(motors, pose, ang)
+	local cf = CFrame.identity
+	for _, name in ipairs(chain) do
+		local e = motors[name]
+		local p = pose[name] or CFrame.identity
+		local a = ang and ang[name]
+		if a then p = p * rot({a[1], a[2], 0}) end
+		cf = cf * e.restC0 * p * e.motor.C1:Inverse()
+	end
+	return (cf * clampOff).Position
+end
+local function bez(a, b, c, u) return a * ((1 - u) * (1 - u)) + b * (2 * u * (1 - u)) + c * (u * u) end
+local function solve(motors, pose, goal)
+	local ang = {}
+	for _, n in ipairs(TAILS) do local v = sol and sol[n] or {0, 0} ang[n] = {v[1], v[2]} end
+	local function cost()
+		local d = fkClamp(motors, pose, ang) - goal
+		local c = d:Dot(d)
+		for i, n in ipairs(TAILS) do
+			local a = ang[n]
+			c += 0.0006 * (a[1] * a[1] + a[2] * a[2])
+			if i > 1 then
+				local b = ang[TAILS[i - 1]]
+				c += 0.0012 * ((a[1] - b[1]) ^ 2 + (a[2] - b[2]) ^ 2)
+			end
+		end
+		return c
+	end
+	local best = cost()
+	for sw = 1, IK_SWEEPS do
+		local st = IK_STEPS[math.min(sw, #IK_STEPS)]
+		for i = #TAILS, 1, -1 do
+			local a = ang[TAILS[i]]
+			for ax = 1, 2 do
+				for _, dir in ipairs({1, -1}) do
+					for _ = 1, 4 do
+						local old = a[ax]
+						a[ax] = math.clamp(old + dir * st, LIM[ax][1], LIM[ax][2])
+						local c = cost()
+						if c < best - 1e-6 then best = c else a[ax] = old break end
+					end
+				end
+			end
+		end
+	end
+	sol = ang
+	return ang, (fkClamp(motors, pose, ang) - goal).Magnitude
+end
+local function toOffsets(ang, w)
+	local out = {}
+	for _, n in ipairs(TAILS) do
+		local a = ang[n]
+		out[n] = CFrame.identity:Lerp(rot({a[1], a[2], 0}), w)
+	end
+	return out
+end
+function TenoPose.grabTail(model, motors, pose, serverNow)
+	if not grab then return nil end
+	local hrp = model:FindFirstChild("HumanoidRootPart")
+	if not hrp then return nil end
+	for _, n in ipairs(TAILS) do if not motors[n] then return nil end end
+	if not chain or chainScale ~= model:GetScale() then chain = buildChain(model, motors, hrp) end
+	if not chain then return nil end
+	local t = serverNow - grab.st
+	if solKey ~= grab.st then -- a new grab: landmarks from this frame's pose
+		solKey, sol = grab.st, nil
+		local rest = fkClamp(motors, pose, nil)
+		local hips, head = model:FindFirstChild("Torso_hips", true), model:FindFirstChild("Head_cranium", true)
+		local hipsL = hips and hrp.CFrame:PointToObjectSpace(hips.Position) or Vector3.zero
+		local headL = head and hrp.CFrame:PointToObjectSpace(head.Position) or Vector3.new(0, 0, -10)
+		marks = {rest = rest, hips = hipsL, head = headL, k = math.max(0.2, (rest - hipsL).Magnitude / MOCK_LEN)}
+	end
+	local k, M = marks.k, marks
+	local function target()
+		local ref = model:FindFirstChild("TenoGrabTargetRef")
+		local m = ref and ref:IsA("ObjectValue") and ref.Value
+		if m and m.Parent then
+			local cf, size = m:GetBoundingBox()
+			return hrp.CFrame:PointToObjectSpace(cf.Position + Vector3.new(0, size.Y / 2, 0))
+		end
+		return grab.side == "front" and M.head + Vector3.new(0, 0, -10 * k) or M.rest + Vector3.new(0, 0, 5 * k)
+	end
+	local DOWN = {}
+	for _, n in ipairs(TAILS) do DOWN[n] = {TAIL_DOWN[n][1], TAIL_DOWN[n][2]} end
+	if t < GRAB_WIND then
+		local u = ease(t / GRAB_WIND)
+		local ang = {}
+		for _, n in ipairs(TAILS) do ang[n] = {DOWN[n][1] * u, DOWN[n][2] * u} end
+		sol = ang
+		M.wind = nil
+		return toOffsets(ang, 1), nil
+	end
+	if not M.wind then M.wind = fkClamp(motors, pose, DOWN) end
+	local overPt = M.hips + Vector3.new(0, 23.2 * k, 0.5 * k)
+	local goal, w = nil, 1
+	if t < grab.catch then
+		local u = ease((t - GRAB_WIND) / math.max(0.05, grab.catch - GRAB_WIND))
+		if grab.side == "front" then
+			goal = bez(M.wind, M.hips + Vector3.new(0, 29.2 * k, -2.5 * k), target(), u)
+		else
+			goal = M.wind:Lerp(target(), u)
+		end
+		M.atCatch = nil
+	elseif t < grab.throw - 0.2 then
+		if not M.atCatch then M.atCatch = fkClamp(motors, pose, sol) end
+		local u = smooth((t - grab.catch) / math.max(0.05, grab.throw - 0.2 - grab.catch))
+		goal = M.atCatch:Lerp(overPt, u) + Vector3.new(0, 4 * k * math.sin(math.pi * u), 0)
+	elseif t < grab.throw then
+		local u = easeIn((t - (grab.throw - 0.2)) / 0.2)
+		local to = grab.side == "front" and M.rest + Vector3.new(0, 5.4 * k, 6 * k) or M.head + Vector3.new(0, 10.6 * k, -5 * k)
+		goal = overPt:Lerp(to, u)
+	elseif t < grab.throw + GRAB_RECOVER then
+		goal = grab.side == "front" and M.rest + Vector3.new(0, 1.4 * k, 3 * k) or M.hips + Vector3.new(0, 3.2 * k, 3.5 * k)
+		w = 1 - smooth((t - grab.throw) / GRAB_RECOVER)
+	else
+		return nil
+	end
+	local ang, miss = solve(motors, pose, goal)
+	return toOffsets(ang, w), miss
 end
 
 return TenoPose
