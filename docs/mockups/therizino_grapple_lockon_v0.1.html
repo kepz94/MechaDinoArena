@@ -1,0 +1,233 @@
+<title>Grapple Lock-On</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* Layout: a single column: the behaviour sandbox (top-down map you can play) on top, the lock-on look options under it.
+   Single dark game-HUD look, same palette as the other MDA mockups. */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --yellow: #ffc21a; --good: #7dff9a; --wire: #dfe6ee;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding-block: 20px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 18px; }
+main > * { min-width: 0; }
+h1 { margin: 0; font: 700 clamp(24px, 4vw, 32px)/1.1 var(--display); text-wrap: balance; }
+h1 span, h2 span { color: var(--accent); }
+h2 { margin: 0; font: 700 21px/1.2 var(--display); text-wrap: balance; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 72ch; margin-top: 6px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lbl { font: 800 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.trade { color: var(--muted); font-size: 13px; }
+.btn { font: 800 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 7px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.btn.go { background: var(--accent); border-color: var(--accent); color: #1a0f00; }
+button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.play { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 12px; align-items: center; }
+@media (max-width: 640px) { .play { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: #2d4a2b; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 4 / 3; touch-action: none; }
+.hud { position: absolute; left: 10px; top: 10px; font: 700 12px var(--body); background: rgba(13, 15, 20, .82); border-radius: 8px; padding: 4px 9px; font-variant-numeric: tabular-nums; max-width: calc(100% - 20px); }
+.pad { display: grid; gap: 10px; justify-items: center; }
+.gbtn { width: 108px; height: 108px; border-radius: 50%; border: 3px solid var(--accent); background: rgba(14, 18, 24, .85); color: #fff; font: 700 15px var(--display); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+.gbtn[data-held="true"] { transform: scale(.94); border-color: var(--yellow); box-shadow: 0 0 0 4px rgba(255, 194, 26, .25); }
+.turn { display: flex; gap: 8px; }
+.tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 720px) { .tabs { grid-template-columns: minmax(0, 1fr); } }
+.opt { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; cursor: pointer; text-align: left; color: var(--fg); font: inherit; min-width: 0; }
+.opt[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255, 155, 46, .2); }
+.opt b { font: 700 16px var(--display); }
+.opt small { font: 800 10px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.opt small.rec { color: var(--good); }
+.opt canvas { width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; display: block; background: #7cc5e6; }
+.opt p { color: var(--grey); font-size: 13px; }
+.rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 720px) { .rules { grid-template-columns: minmax(0, 1fr); } }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
+.box h3 { margin: 0; font: 600 15px var(--display); }
+.box ul { margin: 0; padding-left: 18px; color: var(--grey); font-size: 14px; }
+.pick { background: var(--card); border: 2px solid var(--good); border-radius: 14px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pick b { font: 700 16px var(--display); color: var(--good); }
+</style>
+
+<main>
+  <header>
+    <h1><span>Grapple Zip</span> · lock-on</h1>
+    <p class="lede">Nothing shows until you press GRAPPLE. Hold it and the grapple locks onto the furthest tree, rock or wall in front of you that it can reach; turn to switch targets; let go to zip. A quick tap zips to that same pick straight away. Try it on the map below, then pick how the lock should look.</p>
+  </header>
+
+  <section class="card" aria-labelledby="b-h">
+    <h2 id="b-h"><span>1</span> · How it picks (top-down map)</h2>
+    <div class="play">
+      <div class="stage">
+        <canvas id="map" aria-label="Top-down map: the therizino at the bottom, trees, rocks and a wall ahead, the lock cone in front"></canvas>
+        <div class="hud" id="hud"></div>
+      </div>
+      <div class="pad">
+        <button class="gbtn" id="gbtn" data-held="false" aria-label="Grapple: hold to lock, release to zip">GRAPPLE</button>
+        <span class="trade" style="text-align:center">hold, turn, let go<br>or just tap</span>
+        <div class="turn"><button class="btn" id="left" aria-label="Turn left">◀ turn</button><button class="btn" id="right" aria-label="Turn right">turn ▶</button></div>
+        <button class="btn" id="reset">Back to start</button>
+      </div>
+    </div>
+    <div class="rules">
+      <div class="box"><h3>The rules</h3><ul>
+        <li>Targets: trees, rocks, mountain steps and walls. Not the ground, not dinos.</li>
+        <li>Only ones inside the range (90 / 110 / 130 by tier) and inside a 30° cone either side of where the camera looks.</li>
+        <li>Of those, the <b>furthest</b> one you have a clear line to wins.</li>
+        <li>You zip to the side of it facing you, then fly on with 60% of the speed.</li>
+      </ul></div>
+      <div class="box"><h3>When nothing is in the cone</h3><ul>
+        <li>As now: the claw latches in the air at full range and still pulls you.</li>
+        <li>The lock shows a faint "air" mark at full range while you hold.</li>
+      </ul><p class="trade">If you'd rather it do nothing here, say "no air latch".</p></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="l-h">
+    <h2 id="l-h"><span>2</span> · How the lock looks (only while you hold)</h2>
+    <div class="tabs" id="looks"></div>
+    <div class="row"><span class="lbl">Your pick</span><b id="pickline" style="font:700 16px var(--display);color:var(--good)">none yet</b></div>
+  </section>
+  <p class="trade">Looks and feel only; nothing in the game changes from this page. The yellow ring from v437 goes away in every option.</p>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // ---------- the map (studs; +y = forward) ----------
+  const RANGE = 130, CONE = 30;
+  const OBJ = [
+    { k: "tree", x: -22, y: 34 }, { k: "tree", x: 18, y: 52 }, { k: "rock", x: -40, y: 76 }, { k: "tree", x: 10, y: 96 },
+    { k: "wall", x: 48, y: 118 }, { k: "tree", x: -8, y: 122 }, { k: "rock", x: 70, y: 60 }, { k: "tree", x: -70, y: 112 },
+    { k: "tree", x: 34, y: 150 }, { k: "rock", x: -36, y: 140 }
+  ];
+  let me = { x: 0, y: 0 }, yaw = 0, held = false, lock = null, zip = null, look = "A";
+  const cv = $("map"), ctx = cv.getContext("2d");
+  let W, H, S;
+  function fit() { const r = cv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); cv.width = r.width * d; cv.height = r.height * d; W = cv.width; H = cv.height; S = H / 190; }
+  const P = (x, y) => [W / 2 + (x - me.x * 0) * S, H - 18 * S - (y - 0) * S];
+  function dirOf(a) { return { x: Math.sin(a * Math.PI / 180), y: Math.cos(a * Math.PI / 180) }; }
+  function pick() {
+    let best = null;
+    for (const o of OBJ) {
+      const dx = o.x - me.x, dy = o.y - me.y, d = Math.hypot(dx, dy);
+      const ang = Math.atan2(dx, dy) * 180 / Math.PI - yaw;
+      const a = ((ang + 540) % 360) - 180;
+      if (d <= RANGE && d >= 6 && Math.abs(a) <= CONE && (!best || d > best.d)) best = { o, d };
+    }
+    if (best) return { x: best.o.x, y: best.o.y, d: best.d, what: best.o.k };
+    const v = dirOf(yaw); return { x: me.x + v.x * RANGE, y: me.y + v.y * RANGE, d: RANGE, what: "air", air: true };
+  }
+  function fire() {
+    const t = pick();
+    const stop = t.air ? t : { x: t.x - (t.x - me.x) / t.d * 4, y: t.y - (t.y - me.y) / t.d * 4 };
+    zip = { t0: performance.now(), from: { ...me }, to: stop, tg: t, dur: Math.min(1, Math.max(0.2, t.d / 150)) };
+    lock = null;
+  }
+  function draw(now) {
+    ctx.fillStyle = "#3c6b35"; ctx.fillRect(0, 0, W, H);
+    // range + cone
+    const [ox, oy] = P(me.x, me.y);
+    if (held) {
+      ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.beginPath(); ctx.moveTo(ox, oy);
+      const a0 = (yaw - CONE - 90) * Math.PI / 180, a1 = (yaw + CONE - 90) * Math.PI / 180;
+      ctx.arc(ox, oy, RANGE * S, a0, a1); ctx.closePath(); ctx.fill();
+    }
+    ctx.setLineDash([S * 2, S * 2]); ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(ox, oy, RANGE * S, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    // objects
+    for (const o of OBJ) {
+      const [x, y] = P(o.x, o.y);
+      if (o.k === "tree") { ctx.fillStyle = "#245c26"; ctx.beginPath(); ctx.arc(x, y, 5 * S, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#6b4a2b"; ctx.beginPath(); ctx.arc(x, y, 1.4 * S, 0, Math.PI * 2); ctx.fill(); }
+      else if (o.k === "rock") { ctx.fillStyle = "#8a8f99"; ctx.beginPath(); ctx.roundRect(x - 5 * S, y - 4 * S, 10 * S, 8 * S, 2 * S); ctx.fill(); }
+      else { ctx.fillStyle = "#b9a98a"; ctx.fillRect(x - 12 * S, y - 2 * S, 24 * S, 4 * S); }
+    }
+    // zip
+    if (zip) {
+      const e = (now - zip.t0) / 1000;
+      if (e < 0.12) { const [a, b] = P(me.x, me.y), [c, d] = P(zip.tg.x, zip.tg.y); const k = e / 0.12; ctx.strokeStyle = "#dfe6ee"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(a + (c - a) * k, b + (d - b) * k); ctx.stroke(); }
+      else if (e < 0.12 + zip.dur) { const k = (e - 0.12) / zip.dur; me = { x: zip.from.x + (zip.to.x - zip.from.x) * k, y: zip.from.y + (zip.to.y - zip.from.y) * k }; const [a, b] = P(me.x, me.y), [c, d] = P(zip.tg.x, zip.tg.y); ctx.strokeStyle = "#dfe6ee"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); }
+      else zip = null;
+    }
+    // lock (top-down stand-in for the in-game look)
+    if (held && !zip) {
+      lock = pick();
+      const [x, y] = P(lock.x, lock.y), r = (lock.air ? 4 : 8) * S, p = reduce ? 1 : 1 + 0.08 * Math.sin(now / 140);
+      ctx.strokeStyle = lock.air ? "rgba(255,194,26,.45)" : "#ffc21a"; ctx.lineWidth = 2.5;
+      if (lock.air) { ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+      else { const b = r * p, k = b * 0.45; for (const [ax, ay] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.beginPath(); ctx.moveTo(x + ax * b, y + ay * (b - k)); ctx.lineTo(x + ax * b, y + ay * b); ctx.lineTo(x + ax * (b - k), y + ay * b); ctx.stroke(); } }
+    }
+    // dino (arrow)
+    const [dx, dy] = P(me.x, me.y);
+    ctx.save(); ctx.translate(dx, dy); ctx.rotate(yaw * Math.PI / 180);
+    ctx.fillStyle = "#1b1f29"; ctx.strokeStyle = "#ff9b2e"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, -7 * S); ctx.lineTo(4.5 * S, 5 * S); ctx.lineTo(0, 2.5 * S); ctx.lineTo(-4.5 * S, 5 * S); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    const L = held ? lock : null;
+    $("hud").textContent = zip ? `zipping to the ${zip.tg.what} · ${Math.round(zip.tg.d)} studs` : (L ? (L.air ? `nothing in the cone · air latch at ${RANGE} studs` : `locked: ${L.what} at ${Math.round(L.d)} studs (furthest in the cone)`) : "press or hold GRAPPLE (nothing shows until you do)");
+    requestAnimationFrame(draw);
+  }
+  const g = $("gbtn");
+  let downAt = 0;
+  g.addEventListener("pointerdown", e => { if (zip) return; held = true; downAt = performance.now(); g.dataset.held = "true"; g.setPointerCapture(e.pointerId); });
+  const up = () => { if (!held) return; held = false; g.dataset.held = "false"; fire(); };
+  g.addEventListener("pointerup", up); g.addEventListener("pointercancel", () => { held = false; g.dataset.held = "false"; });
+  g.addEventListener("keydown", e => { if ((e.key === " " || e.key === "Enter") && !held && !zip) { held = true; g.dataset.held = "true"; e.preventDefault(); } });
+  g.addEventListener("keyup", e => { if (e.key === " " || e.key === "Enter") up(); });
+  $("left").onclick = () => { yaw -= 15; };
+  $("right").onclick = () => { yaw += 15; };
+  $("reset").onclick = () => { me = { x: 0, y: 0 }; yaw = 0; zip = null; };
+  addEventListener("resize", fit); fit(); requestAnimationFrame(draw);
+
+  // ---------- look options (what you see in the game while holding) ----------
+  const LOOKS = {
+    A: { name: "A · Outline the target", sub: "recommended", rec: true, why: "The tree / rock it will grab gets a thin yellow outline, like a highlight. Nothing floats in the air; you see which object, not a point." },
+    B: { name: "B · Lock-on brackets", sub: "corner brackets", why: "Four yellow corner brackets snap around the target and tighten when it locks. Reads as 'locked' at a glance, game-style." },
+    C: { name: "C · Wire preview", sub: "thin line from the winch", why: "A thin, faint wire runs from the belly winch to the grab point with a small claw at the end. Shows the path you'll fly." }
+  };
+  $("looks").innerHTML = Object.entries(LOOKS).map(([k, v]) => `<button class="opt" data-look="${k}" aria-pressed="false"><b>${v.name}</b><small class="${v.rec ? "rec" : ""}">${v.sub}</small><canvas data-c="${k}" aria-label="${v.name} on a palm tree"></canvas><p>${v.why}</p></button>`).join("");
+  document.querySelectorAll("[data-look]").forEach(b => b.onclick = () => { look = b.dataset.look; document.querySelectorAll("[data-look]").forEach(x => x.setAttribute("aria-pressed", x === b)); $("pickline").textContent = `Lock-${look}`; });
+  function scene(c, k, now) {
+    const r = c.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1);
+    if (c.width !== Math.round(r.width * d)) { c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); }
+    const x = c.getContext("2d"), w = c.width, h = c.height;
+    const sky = x.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, "#5fb4dc"); sky.addColorStop(1, "#bfe6f3"); x.fillStyle = sky; x.fillRect(0, 0, w, h);
+    x.fillStyle = "#6fbf5a"; x.fillRect(0, h * 0.72, w, h * 0.28);
+    // palm tree (blocky)
+    const tx = w * 0.62, ty = h * 0.72, th = h * 0.5, tw = w * 0.05;
+    const tree = () => { x.fillStyle = "#8a6238"; x.fillRect(tx - tw / 2, ty - th, tw, th); x.fillStyle = "#2f8a3a"; for (const a of [-0.9, -0.3, 0.3, 0.9]) { x.save(); x.translate(tx, ty - th); x.rotate(a); x.fillRect(0, -h * 0.025, w * 0.16, h * 0.05); x.restore(); } };
+    tree();
+    const gx = tx - tw / 2, gy = ty - th * 0.62; // grab point on the side facing you
+    const p = reduce ? 1 : 1 + 0.06 * Math.sin(now / 160);
+    // dino silhouette from behind-right (bottom-left)
+    x.fillStyle = "#1b1f29"; x.beginPath(); x.ellipse(w * 0.18, h * 0.8, w * 0.1, h * 0.09, 0, 0, Math.PI * 2); x.fill();
+    x.fillRect(w * 0.2, h * 0.5, w * 0.03, h * 0.25);
+    x.fillStyle = "#c9a24a"; x.fillRect(w * 0.22, h * 0.8, w * 0.04, h * 0.035);
+    x.strokeStyle = "#ffc21a"; x.lineWidth = Math.max(2, w * 0.008);
+    if (k === "A") {
+      x.save(); x.shadowColor = "rgba(255,194,26,.9)"; x.shadowBlur = w * 0.02;
+      x.strokeRect(tx - tw / 2 - 2, ty - th - 2, tw + 4, th + 4);
+      for (const a of [-0.9, -0.3, 0.3, 0.9]) { x.save(); x.translate(tx, ty - th); x.rotate(a); x.strokeRect(-1, -h * 0.025 - 1, w * 0.16 + 2, h * 0.05 + 2); x.restore(); }
+      x.restore();
+      x.fillStyle = "#ffc21a"; x.beginPath(); x.arc(gx, gy, w * 0.008, 0, Math.PI * 2); x.fill();
+    } else if (k === "B") {
+      const cx = tx, cy = ty - th * 0.6, bw = w * 0.2 * (2 - p), bh = h * 0.42 * (2 - p), kk = Math.min(bw, bh) * 0.35;
+      for (const [ax, ay] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { x.beginPath(); x.moveTo(cx + ax * bw / 2, cy + ay * (bh / 2 - kk)); x.lineTo(cx + ax * bw / 2, cy + ay * bh / 2); x.lineTo(cx + ax * (bw / 2 - kk), cy + ay * bh / 2); x.stroke(); }
+    } else {
+      x.strokeStyle = "rgba(223,230,238,.75)"; x.lineWidth = Math.max(1.5, w * 0.004); x.setLineDash([w * 0.012, w * 0.01]);
+      x.beginPath(); x.moveTo(w * 0.26, h * 0.81); x.lineTo(gx, gy); x.stroke(); x.setLineDash([]);
+      x.fillStyle = "#c9a24a"; x.beginPath(); x.moveTo(gx, gy); x.lineTo(gx - w * 0.02, gy - h * 0.02); x.lineTo(gx - w * 0.02, gy + h * 0.02); x.closePath(); x.fill();
+    }
+  }
+  function loop(now) { document.querySelectorAll("canvas[data-c]").forEach(c => scene(c, c.dataset.c, now)); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+})();
+</script>
