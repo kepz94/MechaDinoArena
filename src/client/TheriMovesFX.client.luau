@@ -1,4 +1,4 @@
--- TheriMovesFX v1.1 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
+-- TheriMovesFX v1.2 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
 -- draws them for every therizino). Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 5 (MDA-245); looks from the mockup
 -- docs/mockups/therizino_parts_options.html v0.1 (chain links, feather blades, red field); server TheriMovesServer 1.0.
 --   * Reaper's Hook: TheriHookAt -> a steel chain (alternating light / dark links, CHAIN_STEP studs apart) from the
@@ -24,11 +24,21 @@
 --   * Overclock Joints: while TheriClockUntil is in the future the ZPart_zclock "ring" pieces turn hot orange Neon (pulsing),
 --     back to their own colour / material after.
 --   Switches: TheriMovesFX_<grapple | deflect | clock>Enabled (default true; read at each event).
+-- v1.2 (therizino parts looks v2, MDA-252, plan docs/plans/THERIZINO_PARTS_LOOKS_v2.0.md Task 4; looks TheriPartsServer 1.1,
+-- motion TheriPartsAnim 1.0), only on a part model with ZPartLooks "v2" (the v1 looks keep the v1.1 FX):
+--   * Hook: the chain leaves the role "muzzle" piece if there is one, else "jib" (the Reaper Crane's pulley) as before; a copy
+--     of the crane's own claw (its "hookhead" pieces, which TheriPartsAnim hides while the chain is out) rides the chain's tip,
+--     pointing along the chain.
+--   * Deflect: no FX rotors (the Mane Rotor's own fins are the rotor); the block flash stays at the "hub" piece.
+--   * Overclock: the "ring" pieces pulse between the speed yellow (#ffc21a) and white instead of orange.
+--   Switch: TheriMovesFXV2Enabled (default true; false = the v1.1 FX on the v2 looks too). Diagnostics: TheriMovesFXLast
+--   gets "hook:<result>:v2" when the claw copy rides the chain.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 grapple wire, deflect rotors, overclock rings
+VERSION = "1.2" -- v1.2 FX for the v2 looks (hook claw at the chain tip, no rotors on v2 deflect, yellow v2 overclock)
 local CHAIN_STEP, SHOOT_TIME, BLADE_TIME = 1.7, 0.15, 0.3
 local LIGHT, DARK = Color3.fromRGB(184, 192, 200), Color3.fromRGB(124, 132, 142)
 local FEATHER = Color3.fromRGB(240, 234, 216)
@@ -71,6 +81,11 @@ local function part(size, color, mat, transp)
 	p.Parent = fx()
 	return p
 end
+if script:GetAttribute("TheriMovesFXV2Enabled") == nil then script:SetAttribute("TheriMovesFXV2Enabled", true) end -- v1.2
+local function isV2(char, id) -- v1.2: the part on this dino is a v2 look and the v2 FX are on
+	local m = char:FindFirstChild("ZPart_" .. id)
+	return m ~= nil and m:GetAttribute("ZPartLooks") == "v2" and script:GetAttribute("TheriMovesFXV2Enabled") ~= false
+end
 local function zpiece(char, id, role)
 	local m = char:FindFirstChild("ZPart_" .. id)
 	local out = {}
@@ -95,14 +110,42 @@ local function chain(char, s)
 	local links = {}
 	local t0 = os.clock()
 	local total = SHOOT_TIME + (result == "hit" and pull or 0.25)
+	-- v1.2: the v2 crane's claw rides the tip (copies of its "hookhead" pieces, kept in the claw's frame at the fire)
+	local head = {}
+	local v2 = isV2(char, "zhook")
+	local function origin()
+		local o = v2 and zpiece(char, "zhook", "muzzle")[1] or nil
+		o = o or zpiece(char, "zhook", "jib")[1]
+		return o and o.Position or (char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position)
+	end
+	if v2 then
+		local hp = zpiece(char, "zhook", "hookhead")
+		local o = origin()
+		if #hp > 0 and o then
+			local c = Vector3.zero
+			for _, p in ipairs(hp) do c += p.Position end
+			c /= #hp
+			local down = (c - o).Magnitude > 0.01 and (c - o).Unit or Vector3.new(0, -1, 0)
+			local base = CFrame.lookAt(c, c + down)
+			for _, p in ipairs(hp) do
+				local k = p:Clone()
+				k:ClearAllChildren() -- drop its WeldConstraint (it would weld the anchored copy to the dino)
+				k.Anchored, k.CanCollide, k.CanQuery, k.CanTouch, k.Massless = true, false, false, false, true
+				k.LocalTransparencyModifier = 0
+				for name in pairs(k:GetAttributes()) do k:SetAttribute(name, nil) end
+				k.Parent = fx()
+				table.insert(head, {p = k, rel = base:ToObjectSpace(p.CFrame)})
+			end
+		end
+	end
 	local conn
 	conn = RunService.RenderStepped:Connect(function()
 		local e = os.clock() - t0
-		local jib = zpiece(char, "zhook", "jib")[1]
-		local from = jib and jib.Position or (char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position)
+		local from = origin()
 		if e >= total or not from or not char.Parent then
 			conn:Disconnect()
 			for _, l in ipairs(links) do l:Destroy() end
+			for _, h in ipairs(head) do h.p:Destroy() end
 			return
 		end
 		local tip
@@ -128,8 +171,12 @@ local function chain(char, s)
 				l.Transparency = 1
 			end
 		end
+		if #head > 0 and d.Magnitude > 0.01 then -- v1.2
+			local at = CFrame.lookAt(tip, tip + d.Unit)
+			for _, h in ipairs(head) do h.p.CFrame = at * h.rel end
+		end
 	end)
-	note("hook:" .. tostring(result))
+	note("hook:" .. tostring(result) .. (#head > 0 and ":v2" or ""))
 end
 
 -- Feather Barrage -----------------------------------------------------------------------------------------------------------
@@ -258,6 +305,7 @@ local rotors = setmetatable({}, {__mode = "k"}) -- [char] = {parts, conn}
 local function deflect(char, s)
 	local untilT = num(char, "TheriDeflectUntil", 0)
 	if rotors[char] then return end
+	if isV2(char, "zdeflect") then note("deflect:v2") return end -- v1.2: the Mane Rotor's own fins turn (TheriPartsAnim)
 	local hubs = zpiece(char, "zdeflect", "hub")
 	if #hubs == 0 then return end
 	local set = {}
@@ -323,12 +371,14 @@ end
 
 -- v1.1: Overclock Joints ----------------------------------------------------------------------------------------------------
 local HOT = Color3.fromRGB(255, 98, 18)
+local SPEED_YELLOW = Color3.fromRGB(255, 194, 26) -- v1.2: the v2 looks' speed glow
 local glowing = setmetatable({}, {__mode = "k"}) -- [char] = true while the rings glow (one glow at a time)
 local function clock(char)
 	if glowing[char] then return end
 	local rings = zpiece(char, "zclock", "ring")
 	if #rings == 0 then return end
 	glowing[char] = true
+	local v2 = isV2(char, "zclock") -- v1.2
 	local keep = {}
 	for i, r in ipairs(rings) do keep[i] = {r.Color, r.Material} end
 	local conn
@@ -346,7 +396,7 @@ local function clock(char)
 		for _, r in ipairs(rings) do
 			if r.Parent then
 				r.Material = Enum.Material.Neon
-				r.Color = HOT:Lerp(Color3.fromRGB(255, 200, 80), k)
+				r.Color = v2 and SPEED_YELLOW:Lerp(Color3.new(1, 1, 1), k) or HOT:Lerp(Color3.fromRGB(255, 200, 80), k)
 			end
 		end
 	end)
