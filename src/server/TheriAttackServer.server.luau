@@ -1,4 +1,4 @@
--- TheriAttackServer v1.3 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
+-- TheriAttackServer v1.4 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
 -- docs/plans/THERIZINO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/therizino_kit_options_v0.3.html
 -- (Kepu 2026-11-02: attack "3-hit combo", payoff "Damage only", picks "A Reaper Sweeps"; animation "I like this one").
 -- Pattern: TenoAttackServer 1.4's scratch path (request -> server checks -> hit resolved at a fixed delay in a front zone),
@@ -68,6 +68,12 @@
 --   (the attacker's root in the target's back half-space) is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
 --   BoneCrest 1.5 plating() (stamps PlatingHits / PlatingLastMul / PlatingHitAt for HerreraPartsFX). Front hits unchanged.
 --   Switch: script attribute TheriAttackPlatingEnabled (default true, read at each hit; false = 1.2).
+-- v1.4 (MDA-244, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4; Reaper's Hook star "cut 1 starts on it"): BindableFunction
+--   "TheriStartCut" under this script (server only; TheriMovesServer 1.0 invokes it after a hook pull): Invoke(player) runs a
+--   cut 1 for that player's therizino exactly as a tap would start one (TheriComboStep 1, TheriComboAt = now, resolve after
+--   TheriHitDelay1), when TheriAttackEnabled is true and the shared checks pass (blocked()); it skips the tap gap / recover
+--   checks. Returns "ok" or the reason. Switch: script attribute TheriAttackHookCutEnabled (default true, read at each call;
+--   false = returns "off", nothing happens). Diagnostic: script TheriAttackHookCuts (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -76,6 +82,7 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 therizino stat rows
 VERSION = "1.2" -- v1.2 the Fourth Cut (step 4)
 VERSION = "1.3" -- v1.3 Back Plating
+VERSION = "1.4" -- v1.4 TheriStartCut (Reaper's Hook star)
 local DEFAULTS = {TheriHitDamage1 = 9, TheriHitDamage2 = 9, TheriHitDamage3 = 20, TheriHitDelay1 = 0.3, TheriHitDelay2 = 0.33,
 	TheriHitDelay3 = 0.55, TheriReach = 7, TheriReach3 = 8, TheriCone = 100, TheriMinGap = 0.33, TheriChainWindow = 0.8,
 	TheriFinisherRecover = 0.9}
@@ -565,3 +572,32 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	local delay = math.clamp(math.min(stamp, t) + d - t, 0, d)
 	task.delay(delay, resolve, player, char, st, step)
 end)
+
+-- v1.4: TheriStartCut (see the header) ----------------------------------------------------------------------------------------
+if script:GetAttribute("TheriAttackHookCutEnabled") == nil then script:SetAttribute("TheriAttackHookCutEnabled", true) end
+script:SetAttribute("TheriAttackHookCuts", 0)
+do
+	local fn = Instance.new("BindableFunction")
+	fn.Name = "TheriStartCut"
+	fn.OnInvoke = function(player)
+		if script:GetAttribute("TheriAttackHookCutEnabled") == false then return "off" end
+		local char = typeof(player) == "Instance" and player:IsA("Player") and player.Character or nil
+		if not char then return "noChar" end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum or hum.Health <= 0 then return "dead" end
+		if not enabled or char:GetAttribute("TheriAttackEnabled") ~= true then return "disabled" end
+		local t = now()
+		local r = blocked(player, char, t)
+		if r then return r end
+		local st = track(char)
+		st.step, st.lastTap = 1, t
+		count("TheriAttackTaps")
+		count("TheriAttackHookCuts")
+		setResult(char, "ok", t)
+		char:SetAttribute("TheriComboStep", 1)
+		char:SetAttribute("TheriComboAt", t) -- last: poses + FX
+		task.delay(math.clamp(get(char, "TheriHitDelay1"), 0, MAX_DELAY), resolve, player, char, st, 1)
+		return "ok"
+	end
+	fn.Parent = script
+end
