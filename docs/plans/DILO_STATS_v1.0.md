@@ -93,3 +93,8 @@ of anything that is not a dilo's dart or bite, StatServer's Attack points.
   gets the points back (Therizino precedent, Kepu's "Only its own").
 - R5 Balance at max: Venom Feast 50% heals about 3 per dart; Cold Blood doubles a dart to 12 + venom 4/s under 30% health.
   Numbers are attributes; tune after a phone test.
+
+## Build notes (2026-11-04)
+- Cold Blood II+ multiplies every poison the dilo applies (dart, bite, Toxic Blood), matching the step text "darts and poison".
+- Effects add coldVenom (II up) next to coldMul / coldBelow / coldReset.
+- Built and checked in Studio: see docs/VERSIONS.md "Dilo stats Studio check".

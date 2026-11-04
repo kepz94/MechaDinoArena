@@ -2743,3 +2743,10 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | PachyStatsServerEnabled; PachyStatsServerVersion / PachyStatsRefunds | PachyStatsServer script | true; diagnostics | PachyStatsServer 1.0 |
 | PachyStatsCut / PachyStatsRefunded / PachyStatsLow / PachyStatsCharging / PachyLastStandUsed / PachyLastStandUntil | pachy character (server) | diagnostics | PachyStatsServer 1.0 |
 | HeadbuttLastStandEnabled; HeadbuttRefillLowMul | HeadbuttServer script; pachy character | true; 1 = no low-health factor | HeadbuttServer 1.15 |
+| DiloVenomBiteDps / DiloVenomBiteTime; DiloToxicDps / DiloToxicTime; DiloFeastFrac; DiloColdMul / DiloColdBelow / DiloColdVenom / DiloColdReset | dilo character (SkillEffects 1.41) | 0 / 0; 0 / 0; 0; 1 / 0 / false / false (off) | Dilo stat rows (SkillTree 1.60), read by DiloAttackServer 1.1 |
+| SkillDiloBase_DiloHoldTime / _DiloDartCooldown / _DiloDartRange / _DiloAssistMax / _DiloDartSpeed | dilo character (SkillEffects 1.41) | the model values (0.4 / 1.5 / 30 / 30 / 45) | captured once per character; the spit attributes are written from them |
+| SkillEffectsDiloStatsEnabled; SkillEffectsDiloRows | SkillEffects script; dilo character | true; "venombite=n,longspit=n,toxicblood=n,venomfeast=n,quickdraw=n,coldblood=n" | SkillEffects 1.41 |
+| DiloAttackStatsEnabled; DiloAttackStatsVersion, DiloToxicHits, DiloFeastHeals, DiloDartResets | DiloAttackServer script | true; "1.1", counts | DiloAttackServer 1.1 |
+| DiloVenomFeastHealed / DiloToxicHits / DiloColdActive / DiloDartResetCount / DiloDartResetAt | dilo character (server) | diagnostics; DiloDartResetAt = the Cold Blood star stamp | DiloAttackServer 1.1 |
+| DiloDartReadyAt; DiloAttackTestResetEnabled | dilo character (owner client); DiloAttackTest script | server time of a Cold Blood reset; true | DiloAttackTest 1.1 |
+| ArenaTouchDiloResetEnabled; AbilityBarDiloResetEnabled | ArenaTouch / AbilityBar scripts | true | ArenaTouch 1.16 / AbilityBar 1.27: dart pip full while DiloDartReadyAt > DiloLocalDartAt |
