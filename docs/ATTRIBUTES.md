@@ -2738,3 +2738,8 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | DiloPoseVersion / DiloPoseState / DiloPoseSource / DiloLeapPhase / DiloFrillState / DiloFrillScale / DiloFrillParts / DiloSacScale / DiloGroundShift | dilo model (each client) | diagnostics | DiloPose 1.0 |
 | HeadbuttCloseMul | pachy model (PachyModelData 1.5) | 0.72 (HeadbuttServer default 0.5) | share of HeadbuttDamage a short run-up deals (25 x 0.72 = 18) |
 | DiloFXEnabled / DiloFXDartEnabled / DiloFXHitEnabled / DiloFXVenomEnabled / DiloFXRingEnabled / DiloFXBigDart (1.1); DiloFXVersion / DiloFXEvents / DiloFXLast / DiloFXParts / DiloFXVenomed / DiloFXRingTarget | DiloFX script (each client) | true each; diagnostics | DiloFX 1.0 |
+| PachyLastStandMul / PachyLastStandBelow / PachyLastStandRefillMul / PachyLastStandStar / PachyLastStandTime; PachyHeadDownMul / PachyHeadDownNoShove / PachyHeadDownNoStun | pachy character (SkillEffects 1.40) | 1 / 0 / 1 / false / 0; 1 / false / false (off) | Last Stand + Head Down rows (SkillTree 1.59), read by PachyStatsServer 1.0 / HeadbuttServer 1.15 |
+| SkillEffectsPachyStatsEnabled; SkillEffectsPachyRows | SkillEffects script; pachy character | true; "laststand=n,headdown=n" | SkillEffects 1.40 |
+| PachyStatsServerEnabled; PachyStatsServerVersion / PachyStatsRefunds | PachyStatsServer script | true; diagnostics | PachyStatsServer 1.0 |
+| PachyStatsCut / PachyStatsRefunded / PachyStatsLow / PachyStatsCharging / PachyLastStandUsed / PachyLastStandUntil | pachy character (server) | diagnostics | PachyStatsServer 1.0 |
+| HeadbuttLastStandEnabled; HeadbuttRefillLowMul | HeadbuttServer script; pachy character | true; 1 = no low-health factor | HeadbuttServer 1.15 |
