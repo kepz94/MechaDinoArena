@@ -2721,3 +2721,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | GooPosePoseEnabled; GooKickPoseState | Herrera model; each client | true; "kick" / "none" | HerreraMovesPose 1.1 / IdleAnimation 1.42 goo recoil |
 | HerreraMovesFXGooKickEnabled; GooKicks | HerreraMovesFX script | true; count | HerreraMovesFX 1.5 mortar kick + THUMP |
 | TheriFXScrapeEnabled; TheriFXGrooves; TheriFXScraping | TheriFX script | true; strips alive; therizinos scraping | TheriFX 1.2 run scrape |
+| TenoAttackPlatingEnabled / TheriAttackPlatingEnabled / TheriSpinPlatingEnabled | TenoAttackServer / TheriAttackServer / TheriSpinServer scripts | true | Back Plating on teno and therizino hits from behind (1.5 / 1.3 / 1.2) |
