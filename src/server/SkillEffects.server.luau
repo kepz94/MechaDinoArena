@@ -1,4 +1,4 @@
--- SkillEffects v1.39 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.40 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -250,6 +250,17 @@ local ServerStorage = game:GetService("ServerStorage")
 --   TheriAttackServer 1.1 / TheriAttackTest 1.1). Runs after applyChar (a wrapper). Switch: script attribute
 --   SkillEffectsTheriStatsEnabled (default true, read at each read / write; false = 1.38). Diagnostic: character
 --   SkillEffectsTheriRows = "flow=n,fury=n,fourth=n,guard=n,harvest=n" (sanitized steps; "" off).
+-- v1.40 (MDA-231, plan docs/plans/PACHY_STATS_v1.0.md Task 2; SkillTree 1.59 Last Stand + Head Down): for a pachy (character
+--   Species "Pachy") the two rows' fields are read with ST.effects(steps, "Pachy") (only for these attributes; the pachy's
+--   other effects are read as before) and written as character attributes (PACHY_ATTRS, off values when not bought; a
+--   character that is not a pachy but carries them gets the off values): PachyLastStandMul, PachyLastStandBelow,
+--   PachyLastStandRefillMul, PachyLastStandStar, PachyLastStandTime, PachyHeadDownMul, PachyHeadDownNoShove,
+--   PachyHeadDownNoStun (read by PachyStatsServer 1.0 and HeadbuttServer 1.15). Head Down star: when StunnedUntil is set into
+--   the future while PachyHeadDownNoStun is true and a headbutt charge is running (HeadbuttStartedAt newer than
+--   HeadbuttEndedAt and HeadbuttHitAt), StunnedUntil = now and SkillStunTrimmed = "headdown" (Brace II's branch, before the
+--   Thick Hide rules). Runs after applyChar (a wrapper, after the therizino's). Switch: script attribute
+--   SkillEffectsPachyStatsEnabled (default true, read at each write / stun; false = 1.39). Diagnostic: character
+--   SkillEffectsPachyRows = "laststand=n,headdown=n" (sanitized steps; "" off).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -263,6 +274,7 @@ VERSION = "1.36" -- v1.36 teno effects read with dino "Teno"
 VERSION = "1.37" -- v1.37 teno leap on JUMP
 VERSION = "1.38" -- v1.38 therizino keeps its own leap values
 VERSION = "1.39" -- v1.39 therizino stat rows (THERI_ATTRS)
+VERSION = "1.40" -- v1.40 pachy Last Stand + Head Down (PACHY_ATTRS)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -786,6 +798,43 @@ do
 	end
 end
 
+-- v1.40: the pachy's Last Stand + Head Down rows (see the header)
+if script:GetAttribute("SkillEffectsPachyStatsEnabled") == nil then script:SetAttribute("SkillEffectsPachyStatsEnabled", true) end
+local PACHY_ATTRS = { -- {attribute, effect field, off value}
+	{"PachyLastStandMul", "lastStandMul", 1}, {"PachyLastStandBelow", "lastStandBelow", 0},
+	{"PachyLastStandRefillMul", "lastStandRefillMul", 1}, {"PachyLastStandStar", "lastStandStar", false},
+	{"PachyLastStandTime", "lastStandTime", 0}, {"PachyHeadDownMul", "headDownMul", 1},
+	{"PachyHeadDownNoShove", "headDownNoShove", false}, {"PachyHeadDownNoStun", "headDownNoStun", false},
+}
+local function pachyStatsOn() return script:GetAttribute("SkillEffectsPachyStatsEnabled") ~= false and ST.PACHY_STATS == true end
+local function pachyCharging(char)
+	local s = tonumber(char:GetAttribute("HeadbuttStartedAt")) or 0
+	return s > 0 and s > (tonumber(char:GetAttribute("HeadbuttEndedAt")) or 0) and s > (tonumber(char:GetAttribute("HeadbuttHitAt")) or 0)
+end
+do
+	local applyCharV139 = applyChar
+	applyChar = function(char, st)
+		applyCharV139(char, st)
+		if not pachyStatsOn() then return end
+		local isPachy = char:GetAttribute("Species") == "Pachy"
+		if not isPachy and char:GetAttribute("PachyLastStandMul") == nil then return end
+		local x, rows = {}, ""
+		if on() and isPachy then
+			local steps = {}
+			for _, id in ipairs(ST.PATH_ORDER) do steps[id] = st.player:GetAttribute("SkillPath_" .. id) end
+			x = ST.effects(steps, "Pachy")
+			local c = ST.sanitize(steps, "Pachy")
+			rows = ("laststand=%d,headdown=%d"):format(c.laststand or 0, c.headdown or 0)
+		end
+		for _, f in ipairs(PACHY_ATTRS) do
+			local v = x[f[2]]
+			if v == nil then v = f[3] end
+			if char:GetAttribute(f[1]) ~= v then char:SetAttribute(f[1], v) end
+		end
+		if char:GetAttribute("SkillEffectsPachyRows") ~= rows then char:SetAttribute("SkillEffectsPachyRows", rows) end
+	end
+end
+
 -- healing (regen / lifesteal), overflow into the shield
 local function heal(char, st, amount, source)
 	local hum = st.hum
@@ -1071,6 +1120,11 @@ local function onCharacter(player, char)
 		if TENO_ON and char:GetAttribute("TenoBraceNoStun") == true and (tonumber(char:GetAttribute("TenoHoldSince")) or 0) > 0 then -- v1.31: Brace II
 			writeOwn(st, char, "StunnedUntil", t)
 			char:SetAttribute("SkillStunTrimmed", "braced")
+			return
+		end
+		if pachyStatsOn() and char:GetAttribute("PachyHeadDownNoStun") == true and pachyCharging(char) then -- v1.40: Head Down star
+			writeOwn(st, char, "StunnedUntil", t)
+			char:SetAttribute("SkillStunTrimmed", "headdown")
 			return
 		end
 		if e.stunImmuneAbove > 0 and hum.Health > e.stunImmuneAbove * hum.MaxHealth then
