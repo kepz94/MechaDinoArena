@@ -2768,3 +2768,10 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriGrappleZipEnabled; TheriGrappleZipVersion / TheriGrappleZipState ("idle" / "zip") / TheriGrappleZipMoved | therizino character (owner client) | true; diagnostics | TheriGrappleZip 1.0 |
 | TheriAttackClockEnabled; TheriAttackTestClockEnabled; SprintTheriClockEnabled | TheriAttackServer / TheriAttackTest / SprintTest scripts | true | switches: TheriAttackServer 1.5 / TheriAttackTest 1.3 (TheriMinGap x TheriClockTapMul while TheriClockUntil), SprintTest 1.20 (x TheriClockRunMul; MoveSpeedParts "overclock", "+noSlow" at the star) |
 | TheriMovesFX_<grapple | deflect | clock>Enabled; TheriPartsPose can be "grapple" / "deflect" | TheriMovesFX script; character | true | TheriMovesFX 1.1 / TheriPose 1.7 |
+| TheriPartsLooksV2Enabled; TheriPartsDetail ("full" / "lite") | TheriPartsServer script | true; "full" | TheriPartsServer 1.1 (v2 looks; lite skips detail pieces) |
+| ZPartLooks ("v2"), ZPartBuiltScale, ZPartId | ZPart_<id> model | set at build | TheriPartsServer 1.1, read by TheriPartsAnim 1.0 / TheriMovesFX 1.2 |
+| ZPartType ("spin" / "swing" / "slide"), ZPartAxis, ZPartAmt, ZPartRestC0, ZPartBuiltScale, ZPartPartId | Weld ZPartJoint_<group> | set at build | TheriPartsServer 1.1, read by TheriPartsAnim 1.0 |
+| ZPartRole, ZPartBaseColor, ZPartFilm | v2 part pieces | role name; colour; true on the shield film | TheriPartsServer 1.1, read by TheriPartsAnim 1.0 / TheriMovesFX 1.2 |
+| TheriPartsAnimEnabled; TheriPartsAnimVersion / TheriPartsAnimJoints | TheriPartsAnim script (client) | true; "1.0" / joints written last frame | TheriPartsAnim 1.0 |
+| TheriPartsAnimActive ("<id>,..."); TheriPartsAnimTarget (Studio test) | character / model (this client); test model | parts moving now; true = animate this model too | TheriPartsAnim 1.0 |
+| TheriMovesFXV2Enabled; TheriMovesFXLast can be "hook:<result>:v2" / "deflect:v2" | TheriMovesFX script | true | TheriMovesFX 1.2 |
