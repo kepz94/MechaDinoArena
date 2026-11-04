@@ -1,0 +1,390 @@
+<title>Grapple and Overclock Fixes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* Layout: one column of decision cards; each card = live scene on top, option tabs, then what changes. Single dark game-HUD look (same palette as the other MDA mockups). */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --yellow: #ffc21a; --good: #7dff9a; --bad: #ff5a4e; --wire: #dfe6ee; --sky: #8fd3ea; --sand: #e7d9a8; --grass: #6fbf5a;
+  --tile: rgba(14, 18, 24, 0.72); --tile-line: rgba(255, 255, 255, 0.55);
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding-block: 20px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 18px; }
+main > * { min-width: 0; }
+h1 { margin: 0; font: 700 clamp(24px, 4vw, 32px)/1.1 var(--display); text-wrap: balance; }
+h1 span, h2 span { color: var(--accent); }
+h2 { margin: 0; font: 700 21px/1.2 var(--display); text-wrap: balance; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 70ch; margin-top: 6px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lbl { font: 800 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 56px; }
+.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.tabs.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) { .tabs, .tabs.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tab { font: 700 14px/1.2 var(--display); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 9px 10px; cursor: pointer; text-align: left; min-width: 0; }
+.tab small { display: block; font: 800 10px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+.tab .rec { color: var(--good); }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255, 155, 46, .2); }
+.btn { font: 800 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 7px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.btn.go { background: var(--accent); border-color: var(--accent); color: #1a0f00; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.stage { position: relative; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: #101218; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 7; touch-action: none; cursor: crosshair; }
+.hud { position: absolute; left: 10px; top: 10px; font: 700 12px var(--body); background: rgba(13, 15, 20, .82); border-radius: 8px; padding: 4px 9px; font-variant-numeric: tabular-nums; max-width: calc(100% - 20px); }
+@media (max-width: 640px) { .stage canvas { aspect-ratio: 4 / 3; } .hint { display: none; } }
+.hint { position: absolute; right: 10px; bottom: 8px; font: 700 11px var(--body); color: var(--muted); background: rgba(13, 15, 20, .7); border-radius: 8px; padding: 2px 8px; }
+.what { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 720px) { .what { grid-template-columns: minmax(0, 1fr); } }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
+.box h3 { margin: 0; font: 600 15px var(--display); }
+.box ul { margin: 0; padding-left: 18px; color: var(--grey); font-size: 14px; }
+.box li { margin: 2px 0; }
+.trade { color: var(--muted); font-size: 13px; }
+.nums { font-variant-numeric: tabular-nums; }
+/* HUD tiles (AbilityBar look) + phone buttons (MechaButtons look) */
+.hudrow { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 720px) { .hudrow { grid-template-columns: minmax(0, 1fr); } }
+.scene { border-radius: 12px; background: linear-gradient(180deg, var(--sky) 0 42%, var(--sand) 42% 100%); padding: 18px 10px 14px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 130px; align-items: flex-end; position: relative; }
+.scene .cap { position: absolute; left: 10px; top: 6px; font: 800 10px var(--body); letter-spacing: .08em; text-transform: uppercase; color: #20303a; }
+.tile { width: 70px; height: 70px; border-radius: 12px; background: var(--tile); border: 2px solid var(--tile-line); position: relative; overflow: hidden; color: #fff; flex: none; }
+.tile .key { position: absolute; left: 6px; top: 4px; font: 800 10px var(--body); opacity: .85; }
+.tile .nm { position: absolute; inset: 22px 2px auto; text-align: center; font: 700 9.5px/1.15 var(--display); letter-spacing: .02em; }
+.tile .sub { position: absolute; inset: auto 0 6px; text-align: center; font: 800 11px var(--body); color: var(--yellow); }
+.tile.ready { border-color: #ffb347; }
+.tile.on { border-color: var(--yellow); box-shadow: inset 0 0 14px rgba(255, 194, 26, .45); }
+.tile.dim { opacity: .62; border-style: dashed; }
+.tile .fill { position: absolute; inset: auto 0 0; height: 5px; background: var(--yellow); }
+.tile .gear { position: absolute; right: 5px; top: 4px; width: 14px; height: 14px; border-radius: 50%; border: 3px dotted var(--yellow); }
+.phone { display: grid; grid-template-columns: repeat(2, 64px); gap: 10px; justify-content: center; }
+.pb { width: 64px; height: 64px; border-radius: 50%; background: rgba(14, 18, 24, .72); border: 3px solid rgba(255, 255, 255, .7); display: grid; place-items: center; text-align: center; font: 700 9px/1.1 var(--display); color: #fff; position: relative; }
+.pb.on { border-color: var(--yellow); box-shadow: 0 0 12px rgba(255, 194, 26, .6); }
+.pb.dim { opacity: .62; border-style: dashed; }
+.pb b { display: block; color: var(--yellow); font: 800 11px var(--body); }
+.legs canvas { display: block; width: 100%; max-width: 560px; margin-inline: auto; aspect-ratio: 16 / 7; border-radius: 10px; background: #101218; }
+.pick { background: var(--card); border: 2px solid var(--good); border-radius: 14px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pick b { font: 700 16px var(--display); color: var(--good); overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .tile, .pb { transition: none; } }
+</style>
+
+<main>
+  <header>
+    <h1><span>Therizino</span> · Grapple Zip and Overclock</h1>
+    <p class="lede">Two fixes from your phone test. The Grapple Zip gets a real pull and shows where it will latch. Overclock Joints becomes passive: always on while it sits in a slot, with the same numbers as the button. Pick one option in each card; your picks build up in the green line at the bottom.</p>
+  </header>
+
+  <section class="card" aria-labelledby="g-h">
+    <h2 id="g-h"><span>1</span> · Grapple Zip (Belly Winch)</h2>
+    <div class="tabs" role="group" aria-label="Grapple option" id="gtabs"></div>
+    <div class="row">
+      <span class="lbl">Upgrade</span>
+      <button class="btn" data-tier="1" aria-pressed="true">I</button>
+      <button class="btn" data-tier="2" aria-pressed="false">II</button>
+      <button class="btn" data-tier="3" aria-pressed="false">III</button>
+      <span class="lbl" style="margin-left:6px">Aim</span>
+      <button class="btn" data-aim="-6">Low</button>
+      <button class="btn" data-aim="4">Level</button>
+      <button class="btn" data-aim="16">Up</button>
+      <button class="btn go" id="fire">Fire</button>
+    </div>
+    <div class="stage">
+      <canvas id="gcv" aria-label="Side view of the arena: the therizino on the left, a tree, a rock ledge, a wall and a cliff at their real distances in studs"></canvas>
+      <div class="hud" id="ghud"></div>
+      <div class="hint">drag on the picture to aim</div>
+    </div>
+    <div class="what">
+      <div class="box"><h3 id="g-name"></h3><ul id="g-list"></ul></div>
+      <div class="box"><h3>Trade-off</h3><p class="trade" id="g-trade"></p><p class="trade nums" id="g-nums"></p></div>
+    </div>
+    <div class="row"><button class="btn go" id="gpick">Pick this grapple</button></div>
+  </section>
+
+  <section class="card" aria-labelledby="o-h">
+    <h2 id="o-h"><span>2</span> · Overclock Joints (passive in its slot)</h2>
+    <p class="trade">Same numbers as the button, always on while slotted: run +40% (all tiers), cut taps 30% faster from II, no slows at the star. It still takes one of the 4 slots. Its slot key does nothing and there is no cooldown.</p>
+    <div class="tabs three" role="group" aria-label="Overclock tile option" id="otabs"></div>
+    <div class="hudrow">
+      <div class="scene" aria-label="PC ability bar"><span class="cap">PC · ability bar</span><div class="row" id="pcrow" style="justify-content:center"></div></div>
+      <div class="scene" aria-label="Phone buttons"><span class="cap">Phone · buttons</span><div class="phone" id="phrow"></div></div>
+    </div>
+    <div class="box"><h3 id="o-name"></h3><p class="trade" id="o-trade"></p></div>
+    <div class="row"><span class="lbl">Legs</span>
+      <button class="tab" data-legs="move" aria-pressed="true" style="flex:1 1 220px">Gears spin while you move<small class="rec">recommended · rings glow steady</small></button>
+      <button class="tab" data-legs="always" aria-pressed="false" style="flex:1 1 220px">Gears always at full spin<small>rings pulse the whole time</small></button>
+      <button class="btn" id="run" aria-pressed="true">Running</button>
+    </div>
+    <p class="trade" id="legcap" aria-live="polite"></p>
+    <div class="legs"><canvas id="lcv" aria-label="Close-up of the Piston Legs knee gear and glow ring"></canvas></div>
+    <div class="row"><button class="btn go" id="opick">Pick this overclock</button></div>
+  </section>
+
+  <div class="pick"><span class="lbl">Your picks</span><b id="pickline">none yet</b><button class="btn" id="copy">Copy</button></div>
+  <p class="trade">Looks and feel only; nothing in the game changes from this page. Distances are studs at the game's scale (the therizino stands about 14 studs tall at size 2).</p>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // ---------------- Grapple options (numbers are what each option would ship) ----------------
+  const G = {
+    now: { tab: "Now", sub: "in the game", range: [40, 55, 70], speed: 120, maxT: 0.9, keep: 0.25, marker: "none", miss: "fizzle", cone: 0,
+      name: "Now (TheriMovesServer 1.2)", list: ["Range 40 / 55 / 70 studs, shot straight where the camera looks.", "Only latches on a tree, rock or wall; anything else is a miss.", "No marker: you find out where it went after you fire.", "Stops 3 studs off the anchor and keeps 25% of the speed."],
+      trade: "This is what you tested: with no wall inside 40 studs it does nothing, and a hit only moves you a few dino-lengths." },
+    A: { tab: "A · Always pulls", sub: "recommended", rec: true, range: [90, 110, 130], speed: 150, maxT: 1.0, keep: 0.6, marker: "always", miss: "air", cone: 0,
+      name: "A · Always pulls (marker + air latch)", list: ["Range 90 / 110 / 130 studs (more than double).", "A marker sits where it will latch: solid yellow on a tree / rock / wall, hollow at full range if there's nothing.", "Nothing hit: the claw latches in the air at full range and still pulls you the whole way.", "Faster zip (150 studs/s), you keep 60% of the speed and fly on past the anchor."],
+      trade: "Never wasted, works in open ground too, so it doubles as a long dash. Least 'grapple-like' when it latches on air." },
+    B: { tab: "B · Surfaces + marker", sub: "only real anchors", range: [90, 110, 130], speed: 150, maxT: 1.0, keep: 0.5, marker: "valid", miss: "block", cone: 0,
+      name: "B · Surfaces only, with a marker", list: ["Range 90 / 110 / 130 studs.", "Green marker on a surface it can grab; a red ✕ at full range when there's nothing.", "With the red ✕ the button won't fire and no charge is spent.", "Faster zip (150 studs/s), keeps 50% of the speed."],
+      trade: "Feels most like a real grapple. Still useless in open ground, but you always know before you press." },
+    C: { tab: "C · Auto-target", sub: "aim assist", range: [100, 120, 140], speed: 150, maxT: 1.0, keep: 0.5, marker: "snap", miss: "block", cone: 25,
+      name: "C · Auto-target the nearest anchor", list: ["Range 100 / 120 / 140 studs.", "Brackets lock onto the nearest tree / rock / wall within 25° of where you look.", "Fires there even if your aim is a bit off; red ✕ when nothing is in the cone.", "Faster zip (150 studs/s), keeps 50% of the speed."],
+      trade: "Easiest on a phone (no precise aim). Less control: it may pick a different anchor than the one you meant." }
+  };
+  const ORDER = ["now", "A", "B", "C"];
+  let gopt = "A", tier = 1, aimDeg = 4, picked = { g: null, o: null, legs: "move" };
+  // world (studs): x forward from the dino's chest, y up from the ground
+  const SCALE_TALL = 14;
+  const OBJ = [
+    { kind: "tree", x: 34, w: 6, h: 30 },
+    { kind: "rock", x: 72, w: 18, h: 10 },
+    { kind: "wall", x: 104, w: 5, h: 34 },
+    { kind: "cliff", x: 148, w: 60, h: 46 }
+  ];
+  const ORIGIN = { x: 2, y: 10 };
+  const cv = $("gcv"), ctx = cv.getContext("2d");
+  let W = 0, H = 0, sx = 1, x0 = 0, gy = 0;
+  function fit() {
+    const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    W = cv.width; H = cv.height; sx = (W * 0.9) / 175; x0 = W * 0.08; gy = H * 0.84;
+  }
+  const P = (x, y) => [x0 + x * sx, gy - y * sx];
+  function rayHit(o, dir, range) { // first object face hit along the ray (axis boxes), else null
+    let best = null;
+    for (const ob of OBJ) {
+      const minx = ob.x - ob.w / 2, maxx = ob.x + ob.w / 2, miny = 0, maxy = ob.h;
+      let t0 = -Infinity, t1 = Infinity;
+      for (const [p, d, lo, hi] of [[o.x, dir.x, minx, maxx], [o.y, dir.y, miny, maxy]]) {
+        if (Math.abs(d) < 1e-9) { if (p < lo || p > hi) { t0 = Infinity; } continue; }
+        let a = (lo - p) / d, b = (hi - p) / d; if (a > b) [a, b] = [b, a];
+        t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+      }
+      if (t0 <= t1 && t0 > 0 && t0 <= range && (!best || t0 < best.t)) best = { t: t0, ob };
+    }
+    if (dir.y < 0) { const tg = -o.y / dir.y; if (tg > 0 && tg <= range && (!best || tg < best.t)) best = { t: tg, ob: { kind: "ground" } }; }
+    return best;
+  }
+  function target() { // what this option would latch on, given aim + tier
+    const o = G[gopt], range = o.range[tier - 1], a = aimDeg * Math.PI / 180;
+    const dir = { x: Math.cos(a), y: Math.sin(a) };
+    if (o.marker === "snap") {
+      let best = null;
+      for (const ob of OBJ) {
+        const tx = ob.x - ob.w / 2, ty = Math.min(ob.h * 0.7, ob.h - 2);
+        const dx = tx - ORIGIN.x, dy = ty - ORIGIN.y, d = Math.hypot(dx, dy), ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (d <= range && Math.abs(ang - aimDeg) <= o.cone && (!best || d < best.d)) best = { d, x: tx, y: ty, ob };
+      }
+      return best ? { ok: true, x: best.x, y: best.y, d: best.d, what: best.ob.kind, snap: true } : { ok: false, x: ORIGIN.x + dir.x * range, y: Math.max(0.5, ORIGIN.y + dir.y * range), d: range, what: "nothing" };
+    }
+    const hit = rayHit(ORIGIN, dir, range);
+    const grabbable = hit && hit.ob.kind !== "ground";
+    if (grabbable) return { ok: true, x: ORIGIN.x + dir.x * hit.t, y: ORIGIN.y + dir.y * hit.t, d: hit.t, what: hit.ob.kind };
+    const t = hit ? hit.t : range;
+    const pt = { x: ORIGIN.x + dir.x * t, y: Math.max(0.5, ORIGIN.y + dir.y * t), d: t };
+    if (o.miss === "air") return { ok: true, air: true, ...pt, what: hit ? "ground" : "air" };
+    return { ok: false, ...pt, what: hit ? "ground" : "nothing" };
+  }
+  let anim = null; // {t0, from, to, dur, keep, phase}
+  let dino = { x: 0, y: 0 };
+  function fire() {
+    const o = G[gopt], tg = target();
+    if (!tg.ok) { flash = 0.6; return; }
+    const stop = { x: tg.x - 3, y: Math.max(0, tg.y - (tg.air ? 4 : 6)) };
+    const d = Math.hypot(stop.x - dino.x, stop.y - dino.y);
+    const dur = Math.min(o.maxT, Math.max(0.2, d / o.speed));
+    anim = { t0: performance.now(), from: { ...dino }, to: stop, dur, keep: o.keep, speed: d / dur, tg };
+  }
+  let flash = 0;
+  function drawDino(x, y, hang) {
+    const [px, py] = P(x - 6, y);
+    const s = sx;
+    ctx.save(); ctx.translate(px, py);
+    ctx.fillStyle = "#2a2f3c"; ctx.strokeStyle = "#11141b"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(0, -9 * s, 6 * s, 3.4 * s, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); // body
+    ctx.beginPath(); ctx.moveTo(3 * s, -11 * s); ctx.lineTo(6 * s, -SCALE_TALL * s); ctx.lineTo(8.5 * s, -13.6 * s); ctx.lineTo(5 * s, -10 * s); ctx.closePath(); ctx.fill(); ctx.stroke(); // neck + head
+    ctx.beginPath(); ctx.moveTo(-5 * s, -9 * s); ctx.lineTo(-13 * s, -7 * s); ctx.lineTo(-5 * s, -7.4 * s); ctx.closePath(); ctx.fill(); // tail
+    ctx.strokeStyle = "#2a2f3c"; ctx.lineWidth = 1.4 * s;
+    const leg = hang ? 2.5 : 6;
+    ctx.beginPath(); ctx.moveTo(-1 * s, -7 * s); ctx.lineTo(-1.5 * s, -(7 - leg) * s); ctx.moveTo(2 * s, -7 * s); ctx.lineTo(2.5 * s, -(7 - leg) * s); ctx.stroke();
+    ctx.fillStyle = "#c9a24a"; ctx.fillRect(3.5 * s, -8.6 * s, 2.4 * s, 1.6 * s); // belly winch
+    ctx.fillStyle = "#ffc21a"; ctx.fillRect(5.6 * s, -8.2 * s, 0.6 * s, 0.8 * s);
+    ctx.restore();
+  }
+  function marker(tg, now) {
+    const o = G[gopt]; if (o.marker === "none") return;
+    const [mx, my] = P(tg.x, tg.y), r = 2.4 * sx;
+    if (!tg.ok) {
+      if (o.marker === "always") return;
+      ctx.strokeStyle = "#ff5a4e"; ctx.lineWidth = Math.max(2, sx * 0.6);
+      ctx.beginPath(); ctx.moveTo(mx - r, my - r); ctx.lineTo(mx + r, my + r); ctx.moveTo(mx + r, my - r); ctx.lineTo(mx - r, my + r); ctx.stroke();
+      return;
+    }
+    const pulse = reduce ? 1 : 1 + 0.12 * Math.sin(now / 160);
+    const col = o.marker === "valid" ? "#7dff9a" : "#ffc21a";
+    ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, sx * 0.55);
+    if (tg.snap) { // corner brackets
+      const b = r * 1.6 * pulse, k = b * 0.45;
+      for (const [ax, ay] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.beginPath(); ctx.moveTo(mx + ax * b, my + ay * (b - k)); ctx.lineTo(mx + ax * b, my + ay * b); ctx.lineTo(mx + ax * (b - k), my + ay * b); ctx.stroke(); }
+    }
+    ctx.beginPath(); ctx.arc(mx, my, r * pulse, 0, Math.PI * 2); ctx.stroke();
+    if (!tg.air) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(mx, my, r * 0.35, 0, Math.PI * 2); ctx.fill(); }
+  }
+  function draw(now) {
+    ctx.clearRect(0, 0, W, H);
+    const sky = ctx.createLinearGradient(0, 0, 0, gy); sky.addColorStop(0, "#5fb4dc"); sky.addColorStop(1, "#bfe6f3");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, gy);
+    ctx.fillStyle = "#e7d9a8"; ctx.fillRect(0, gy, W, H - gy);
+    ctx.fillStyle = "#6fbf5a"; ctx.fillRect(0, gy, W, Math.max(3, sx * 0.8));
+    // distance ticks every 20 studs
+    ctx.fillStyle = "#6d6248"; ctx.font = `700 ${Math.max(10, sx * 2.4)}px Nunito, sans-serif`; ctx.textAlign = "center";
+    for (let d = 0; d <= 160; d += 20) { const [tx] = P(d, 0); ctx.fillRect(tx - 1, gy + 3, 2, sx * 1.4); ctx.fillText(d + "", tx, gy + sx * 4.6); }
+    // objects
+    for (const ob of OBJ) {
+      const [l, t] = P(ob.x - ob.w / 2, ob.h), w = ob.w * sx, h = ob.h * sx;
+      if (ob.kind === "tree") { ctx.fillStyle = "#6b4a2b"; ctx.fillRect(l + w * 0.35, t + h * 0.35, w * 0.3, h * 0.65); ctx.fillStyle = "#3f8f3a"; ctx.beginPath(); ctx.ellipse(l + w / 2, t + h * 0.3, w * 1.4, h * 0.32, 0, 0, Math.PI * 2); ctx.fill(); }
+      else if (ob.kind === "rock") { ctx.fillStyle = "#8a8f99"; ctx.beginPath(); ctx.roundRect(l, t, w, h, sx * 2); ctx.fill(); }
+      else if (ob.kind === "wall") { ctx.fillStyle = "#b9a98a"; ctx.fillRect(l, t, w, h); ctx.fillStyle = "rgba(0,0,0,.15)"; for (let y = t; y < t + h; y += sx * 4) ctx.fillRect(l, y, w, 1.5); }
+      else { ctx.fillStyle = "#9c8a66"; ctx.beginPath(); ctx.moveTo(l, gy); ctx.lineTo(l + sx * 6, t); ctx.lineTo(l + w, t); ctx.lineTo(l + w, gy); ctx.closePath(); ctx.fill(); }
+    }
+    const o = G[gopt], range = o.range[tier - 1];
+    // range arc
+    ctx.setLineDash([sx * 1.5, sx * 1.5]); ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.5;
+    const [ox, oy] = P(ORIGIN.x + dino.x, ORIGIN.y + dino.y);
+    ctx.beginPath(); ctx.arc(ox, oy, range * sx, -Math.PI / 3, Math.PI / 10); ctx.stroke(); ctx.setLineDash([]);
+    if (o.cone) { // aim-assist cone
+      ctx.fillStyle = "rgba(255,194,26,.10)"; ctx.beginPath(); ctx.moveTo(ox, oy);
+      ctx.arc(ox, oy, range * sx, -(aimDeg + o.cone) * Math.PI / 180, -(aimDeg - o.cone) * Math.PI / 180); ctx.closePath(); ctx.fill();
+    }
+    // zip animation
+    let hang = false, wireTo = null;
+    if (anim) {
+      const e = (now - anim.t0) / 1000;
+      const shoot = 0.12;
+      if (e < shoot) { const k = e / shoot; wireTo = { x: ORIGIN.x + anim.from.x + (anim.tg.x - anim.from.x - ORIGIN.x) * k, y: ORIGIN.y + anim.from.y + (anim.tg.y - anim.from.y - ORIGIN.y) * k }; }
+      else if (e < shoot + anim.dur) { const k = (e - shoot) / anim.dur; dino = { x: anim.from.x + (anim.to.x - anim.from.x) * k, y: anim.from.y + (anim.to.y - anim.from.y) * k }; hang = true; wireTo = anim.tg; }
+      else { // carry: keep x speed, fall under gravity
+        const f = e - shoot - anim.dur, vx = anim.speed * anim.keep * Math.sign(anim.to.x - anim.from.x || 1);
+        const x = anim.to.x + vx * f * (1 - Math.min(1, f / 1.6) * 0.5), y = anim.to.y + (anim.keep * 8) * f - 0.5 * 90 * f * f;
+        dino = { x: Math.min(x, anim.tg.x - 4 + (anim.tg.air ? 40 : 0)), y: Math.max(0, y) };
+        if (y <= 0 && f > 0.05) { setTimeout(() => { dino = { x: 0, y: 0 }; }, reduce ? 0 : 900); anim = null; }
+      }
+    }
+    const tg = target();
+    if (!anim) marker(tg, now);
+    if (wireTo) { const [a, b] = P(ORIGIN.x + dino.x + 1, ORIGIN.y + dino.y - 1); const [c, d] = P(wireTo.x, wireTo.y); ctx.strokeStyle = "#dfe6ee"; ctx.lineWidth = Math.max(2, sx * 0.4); ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); ctx.fillStyle = "#c9a24a"; ctx.fillRect(c - sx, d - sx, sx * 2, sx * 2); }
+    drawDino(dino.x, dino.y, hang);
+    if (flash > 0) { ctx.fillStyle = `rgba(255,90,78,${flash * 0.25})`; ctx.fillRect(0, 0, W, H); flash = Math.max(0, flash - 0.03); }
+    // readout
+    const t = tg.ok ? Math.min(o.maxT, Math.max(0.2, Math.hypot(tg.x, tg.y) / o.speed)) : 0;
+    const status = tg.ok ? (tg.air ? `latches in the air at ${Math.round(tg.d)} studs` : `latches on the ${tg.what} at ${Math.round(tg.d)} studs`) : (o.miss === "fizzle" ? "no anchor in range · fires and misses" : "no anchor · button won't fire");
+    $("ghud").textContent = `${o.tab} · range ${range} · ${status}${tg.ok ? ` · zip ${t.toFixed(2)} s` : ""}`;
+    requestAnimationFrame(draw);
+  }
+  function renderG() {
+    const o = G[gopt];
+    $("gtabs").innerHTML = ORDER.map(k => `<button class="tab" data-g="${k}" aria-pressed="${k === gopt}">${G[k].tab}<small class="${G[k].rec ? "rec" : ""}">${G[k].sub}</small></button>`).join("");
+    $("g-name").textContent = o.name;
+    $("g-list").innerHTML = o.list.map(s => `<li>${s}</li>`).join("");
+    $("g-trade").textContent = o.trade;
+    $("g-nums").textContent = `Range I / II / III: ${o.range.join(" / ")} studs · zip speed ${o.speed} studs/s (at most ${o.maxT} s) · speed kept after: ${Math.round(o.keep * 100)}%`;
+    $("gpick").disabled = gopt === "now";
+    $("gpick").textContent = picked.g === gopt ? "Picked ✓" : "Pick this grapple";
+  }
+  $("gtabs").addEventListener("click", e => { const b = e.target.closest("[data-g]"); if (!b) return; gopt = b.dataset.g; anim = null; dino = { x: 0, y: 0 }; renderG(); });
+  document.querySelectorAll("[data-tier]").forEach(b => b.onclick = () => { tier = +b.dataset.tier; document.querySelectorAll("[data-tier]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  document.querySelectorAll("[data-aim]").forEach(b => b.onclick = () => { aimDeg = +b.dataset.aim; });
+  $("fire").onclick = () => { anim = null; dino = { x: 0, y: 0 }; fire(); };
+  function aimFrom(ev) { const r = cv.getBoundingClientRect(), dpr = cv.width / r.width; const x = (ev.clientX - r.left) * dpr, y = (ev.clientY - r.top) * dpr; const [ox, oy] = P(ORIGIN.x, ORIGIN.y); aimDeg = Math.max(-25, Math.min(50, Math.atan2(oy - y, x - ox) * 180 / Math.PI)); }
+  let dragging = false;
+  cv.addEventListener("pointerdown", e => { dragging = true; cv.setPointerCapture(e.pointerId); aimFrom(e); });
+  cv.addEventListener("pointermove", e => { if (dragging) aimFrom(e); });
+  cv.addEventListener("pointerup", () => { dragging = false; });
+  $("gpick").onclick = () => { picked.g = gopt; renderG(); line(); };
+
+  // ---------------- Overclock tile options ----------------
+  const O = {
+    A: { tab: "A · ON badge", sub: "recommended", rec: true, name: "A · Steady ON",
+      pc: `<span class="key">C</span><span class="nm">OVERCLOCK<br>JOINTS</span><span class="gear"></span><span class="sub">ON</span><span class="fill"></span>`, cls: "on",
+      ph: `OVER<br>CLOCK<b>ON</b>`, phcls: "on",
+      trade: "Lit yellow all the time with a full bar, so it reads as 'working' next to tiles that empty and refill. Tapping it does nothing." },
+    B: { tab: "B · Show the boost", sub: "number on the tile", name: "B · Shows the boost",
+      pc: `<span class="key">C</span><span class="nm">OVERCLOCK<br>JOINTS</span><span class="sub">RUN +40%</span>`, cls: "on",
+      ph: `OVER<br>CLOCK<b>+40%</b>`, phcls: "on",
+      trade: "Tells you what it gives. At II the line reads 'RUN +40% · CUTS'; at the star it adds 'NO SLOW'. Busier text on a small tile." },
+    C: { tab: "C · Greyed passive", sub: "looks like a stat", name: "C · Dim passive tile",
+      pc: `<span class="key">·</span><span class="nm">OVERCLOCK<br>JOINTS</span><span class="sub" style="color:#cfd3dc">PASSIVE</span>`, cls: "dim",
+      ph: `OVER<br>CLOCK<b style="color:#cfd3dc;font-size:9px">PASSIVE</b>`, phcls: "dim",
+      trade: "Dashed border and no key, so nobody tries to press it. It can read as 'switched off' at a glance." }
+  };
+  let oopt = "A";
+  const otherPC = [["R", "REAPER'S<br>HOOK", "ready"], ["T", "GRAPPLE<br>ZIP", "ready"], [null], ["V", "DEFLECTOR<br>CLAWS", "ready"]];
+  function renderO() {
+    const o = O[oopt];
+    $("otabs").innerHTML = Object.keys(O).map(k => `<button class="tab" data-o="${k}" aria-pressed="${k === oopt}">${O[k].tab}<small class="${O[k].rec ? "rec" : ""}">${O[k].sub}</small></button>`).join("");
+    $("pcrow").innerHTML = otherPC.map(t => t[0] === null ? `<div class="tile ${o.cls}">${o.pc}</div>` : `<div class="tile ${t[2]}"><span class="key">${t[0]}</span><span class="nm">${t[1]}</span></div>`).join("");
+    $("phrow").innerHTML = [`<div class="pb">REAPER'S<br>HOOK</div>`, `<div class="pb">GRAPPLE<br>ZIP</div>`, `<div class="pb ${o.phcls}">${o.ph}</div>`, `<div class="pb">DEFLECT</div>`].join("");
+    $("o-name").textContent = o.name; $("o-trade").textContent = o.trade;
+    $("opick").textContent = picked.o === oopt ? "Picked ✓" : "Pick this overclock";
+  }
+  $("otabs").addEventListener("click", e => { const b = e.target.closest("[data-o]"); if (!b) return; oopt = b.dataset.o; renderO(); });
+  $("opick").onclick = () => { picked.o = oopt; renderO(); line(); };
+  // legs close-up
+  const lc = $("lcv"), lx = lc.getContext("2d");
+  let running = true, ang = 0, last = performance.now();
+  document.querySelectorAll("[data-legs]").forEach(b => b.onclick = () => { picked.legs = b.dataset.legs; document.querySelectorAll("[data-legs]").forEach(x => x.setAttribute("aria-pressed", x === b)); line(); });
+  $("run").onclick = () => { running = !running; $("run").setAttribute("aria-pressed", running); $("run").textContent = running ? "Running" : "Standing"; };
+  function legs(now) {
+    const r = lc.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+    if (lc.width !== Math.round(r.width * dpr)) { lc.width = Math.round(r.width * dpr); lc.height = Math.round(r.height * dpr); }
+    const w = lc.width, h = lc.height, dt = (now - last) / 1000; last = now;
+    const always = picked.legs === "always", spd = always ? 12 : (running ? 12 : 0.3);
+    if (!reduce) ang += spd * dt;
+    lx.clearRect(0, 0, w, h);
+    lx.fillStyle = "#1d2230"; lx.fillRect(0, 0, w, h);
+    const cx = w * 0.5, cy = h * 0.5, R = h * 0.3;
+    lx.fillStyle = "#2a2f3c"; lx.fillRect(cx - R * 2.6, cy - R * 0.5, R * 5.2, R); // shin
+    const glow = always ? 0.5 + 0.5 * Math.sin(now / 70) : 1;
+    lx.strokeStyle = `rgb(255, ${Math.round(194 + 61 * (always ? glow : 0))}, ${Math.round(26 + 229 * (always ? glow : 0))})`;
+    lx.lineWidth = R * 0.22; lx.beginPath(); lx.arc(cx, cy, R * 1.25, 0, Math.PI * 2); lx.stroke(); // glow ring
+    lx.save(); lx.translate(cx, cy); lx.rotate(ang);
+    lx.fillStyle = "#c9a24a";
+    for (let i = 0; i < 10; i++) { lx.rotate(Math.PI / 5); lx.fillRect(-R * 0.12, -R * 1.02, R * 0.24, R * 0.3); }
+    lx.beginPath(); lx.arc(0, 0, R * 0.8, 0, Math.PI * 2); lx.fill();
+    lx.fillStyle = "#6b5520"; lx.beginPath(); lx.arc(0, 0, R * 0.25, 0, Math.PI * 2); lx.fill();
+    lx.fillRect(-R * 0.06, -R * 0.75, R * 0.12, R * 0.5);
+    lx.restore();
+    const cap = always ? "Gears at full spin and the ring pulsing, all the time." : (running ? "Moving: gears at full spin, ring lit yellow." : "Standing: gears turn slowly, ring still lit yellow.");
+    if ($("legcap").textContent !== cap) $("legcap").textContent = cap;
+    requestAnimationFrame(legs);
+  }
+  function line() {
+    const parts = [];
+    if (picked.g) parts.push(`Grapple-${picked.g}`);
+    if (picked.o) parts.push(`Overclock-${picked.o}`);
+    if (picked.g || picked.o) parts.push(picked.legs === "move" ? "Legs spin while moving" : "Legs always spinning");
+    $("pickline").textContent = parts.length ? parts.join(", ") : "none yet";
+  }
+  $("copy").onclick = () => { const t = $("pickline").textContent; navigator.clipboard?.writeText(t).catch(() => {}); };
+  addEventListener("resize", fit);
+  fit(); renderG(); renderO(); line();
+  requestAnimationFrame(draw); requestAnimationFrame(legs);
+})();
+</script>
