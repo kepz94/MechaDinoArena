@@ -1,4 +1,4 @@
--- IdleAnimation v1.39 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.40 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -219,6 +219,12 @@
 --       the claw combo (owner: TheriLocalStep / TheriLocalAt, others: TheriComboStep / TheriComboAt) and the Sidewinder run
 --       (weight = walk blend x gait blend x (1 - creep)) on top, then the root push, ground lock and right-claw drag.
 --       Diagnostics: TheriPose's (TheriPoseState, TheriLeapPhase, TheriRunBlend, ...). Every other model unchanged.
+-- v1.40 (bug, Kepu 2026-11-03 17:11: "sometimes i jump and he just jumps and sometimes ... it spins"): on a therizino the leap
+--       tracker counted the body as airborne at the press while running (the run's bob over uneven ground put the ground gap
+--       over 0.6), set jump.air during the crouch, then saw the feet down a frame later and set landAt, so the real leap 0.27 s
+--       later played no Spin Dive (Studio log: phase none -> air -> land within 0.08 s, roll 0, then the launch; standing
+--       jumps spun). Now, on models with TheriPose.leapOn, airborne before t = JumpWindup (the crouch) does not count. Other
+--       dinos unchanged. Switch: model attribute TheriLeapAirAfterWindup (default true; false = 1.39).
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -558,6 +564,7 @@ model:SetAttribute("IdleAnimationVersion", "1.36") -- v1.36
 model:SetAttribute("IdleAnimationVersion", "1.37") -- v1.37
 model:SetAttribute("IdleAnimationVersion", "1.38") -- v1.38
 model:SetAttribute("IdleAnimationVersion", "1.39") -- v1.39
+model:SetAttribute("IdleAnimationVersion", "1.40") -- v1.40
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -884,7 +891,8 @@ RunService.PreSimulation:Connect(function(dt)
 			local gap = hit and (y - hit.Position.Y - base) or nil
 			show("JumpGroundDist", gap and math.floor(gap * 10 + 0.5) / 10 or 99)
 			local airborne = gap == nil or gap > (jump.air and 0.25 or 0.6)
-			if not jump.air and airborne and t >= 0 then jump.air = true end
+			local theriCrouch = t < W and TheriPose.leapOn(model) and model:GetAttribute("TheriLeapAirAfterWindup") ~= false -- v1.40
+			if not jump.air and airborne and t >= 0 and not theriCrouch then jump.air = true end
 			if jump.air and not jump.landAt and not airborne then jump.landAt = now end
 			local jp
 			if t > JUMP_MAX_TIME or t < -0.05 then

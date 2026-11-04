@@ -1,4 +1,4 @@
--- ArenaTouch v1.12 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.13 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -91,6 +91,12 @@
 --   (TheriFlowWindow / TheriFlowRecover over TheriChainWindow 0.8 / TheriFinisherRecover 0.9; step 3 keeps 1 while the Fourth
 --   Cut window is open; step 4 empty for TheriFourthRecover 0.8 s unless TheriFourthFast). Switch: script attribute
 --   ArenaTouchTheriHitsLeftEnabled (default true, read each frame; false = 1.11). Diagnostic ArenaTouchTheriHitsLeft.
+-- v1.13 (Kepu 2026-11-03 17:11: "You need a visual for the jump button too cause it's not showing me the cooldown"): on a
+--   therizino with leap charges (JumpCharges >= 1, JumpServer 1.3), the touch JUMP button gets the same charge pips as the PC
+--   JUMP tile (AbilityBar 1.23): a copy of the ATTACK pip row under it, JumpCharges pips, filled up to JumpChargesLeft, the
+--   next one filling as its refill runs (JumpChargeRefillAt over JumpCooldown); at 0 charges the button is dimmed (0.7, label
+--   0.5) like the PC tile's "empty". Other dinos unchanged. Switch: script attribute ArenaTouchTheriJumpPipsEnabled (default
+--   true, read each frame; false = 1.12). Diagnostic ArenaTouchTheriJumpPips ("<left>/<max>").
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
@@ -98,6 +104,7 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.11"
 VERSION = "1.12" -- v1.12 therizino ATTACK pips = hits left
+VERSION = "1.13" -- v1.13 therizino JUMP charge pips
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -693,6 +700,39 @@ RunService.RenderStepped:Connect(function()
 		pip.f.Visible = true
 	end
 	if char:GetAttribute("ArenaTouchTheriStep") ~= shown then char:SetAttribute("ArenaTouchTheriStep", shown) end
+end)
+-- v1.13: the therizino's JUMP charges on the touch JUMP button (see the header)
+if script:GetAttribute("ArenaTouchTheriJumpPipsEnabled") == nil then script:SetAttribute("ArenaTouchTheriJumpPipsEnabled", true) end
+local jpRow = slPipRow:Clone()
+jpRow.Name = "JumpPips"
+jpRow.Visible = false
+jpRow.Parent = leap
+local jpPips = {}
+for i = 1, 3 do
+	local f = jpRow:FindFirstChild("Charge_" .. i)
+	if f then jpPips[i] = {f = f, fill = f:FindFirstChild("Fill")} end
+end
+RunService.RenderStepped:Connect(function()
+	local on = script:GetAttribute("ArenaTouchTheriJumpPipsEnabled") ~= false and char:GetAttribute("Species") == "Therizino"
+		and (tonumber(char:GetAttribute("JumpCharges")) or 0) >= 1 and leap.Visible
+	if jpRow.Visible ~= on then jpRow.Visible = on end
+	if not on then return end
+	local now = workspace:GetServerTimeNow()
+	local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("JumpCharges")) or 2), 1, 3)
+	local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("JumpChargesLeft")) or maxC), 0, maxC)
+	local ra = tonumber(char:GetAttribute("JumpChargeRefillAt")) or 0
+	local cd = math.max(0.01, tonumber(char:GetAttribute("JumpCooldown")) or 6)
+	local part = (ra > now and nowC < maxC) and math.clamp(1 - (ra - now) / cd, 0, 1) or 0
+	for i, pip in pairs(jpPips) do
+		pip.f.Visible = i <= maxC
+		if pip.fill then pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0)) end
+	end
+	if nowC <= 0 then
+		leap.BackgroundTransparency = 0.7
+		leapLabel.TextTransparency = 0.5
+	end
+	local d = nowC .. "/" .. maxC
+	if char:GetAttribute("ArenaTouchTheriJumpPips") ~= d then char:SetAttribute("ArenaTouchTheriJumpPips", d) end
 end)
 -- v1.9: teno pips / glow every frame
 local RED_RING = Color3.fromRGB(240, 90, 79)
