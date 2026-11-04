@@ -92,7 +92,9 @@ local function rotAbout(axis, a)
 end
 
 -- tracked models: [model] = {parts = {[ZPart model] = {joints = {...}, heads = {...}, films = {...}}}}
-local tracked = setmetatable({}, {__mode = "k"})
+-- (a plain table: a weak-keyed table can drop an Instance whose Lua wrapper is collected; a model leaves it 5 s after it is
+-- unparented and still gone, e.g. a dead character)
+local tracked = {}
 local function scanPart(zm)
 	local info = {joints = {}, heads = {}, films = {}, id = zm:GetAttribute("ZPartId")}
 	for _, d in ipairs(zm:GetDescendants()) do
@@ -133,6 +135,9 @@ local function track(model)
 	for _, ch in ipairs(model:GetChildren()) do add(ch) end
 	model.ChildAdded:Connect(add)
 	model.ChildRemoved:Connect(function(ch) st.parts[ch] = nil end)
+	model.AncestryChanged:Connect(function()
+		if model.Parent == nil then task.delay(5, function() if model.Parent == nil then tracked[model] = nil end end) end
+	end)
 end
 local function onPlayer(p)
 	p.CharacterAdded:Connect(track)
@@ -203,8 +208,6 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 			local s = table.concat(active, ",")
 			if model:GetAttribute("TheriPartsAnimActive") ~= s then model:SetAttribute("TheriPartsAnimActive", s) end
-		else
-			tracked[model] = nil -- the character left
 		end
 	end
 	script:SetAttribute("TheriPartsAnimJoints", driven)
