@@ -14,7 +14,7 @@
 --   "dart" with targets: the splash (green-white flash 9 x k, SPLASH_DROPS 26 droplets flung out, 6 mist puffs; nothing is
 --     left on the ground) and a green pop "-N" (DiloDartDamage, default 6; "BLOCKED" as above). No targets: the fizzle.
 -- Venom (every VENOM_SCAN 0.2 s over players' characters and DinoIsland.Bots): a model whose VenomUntil is in the future
---   gets a green Highlight "DiloVenomGlow" (FillTransparency 0.8 +- 0.06 pulse, no outline) and drips green droplets off
+--   gets a green Highlight "DiloVenomGlow" (FillTransparency 0.7 +- 0.08 pulse, no outline) and drips green droplets off
 --   random visible parts (DRIP_RATE 14 / s; they fall and fade before they could pool); each VenomTicks increase pops a
 --   small green "-N" (N = VenomDps x 0.5, the server's tick). Off at VenomUntil.
 -- Lock ring (your own dilo only, while DiloLocalState is "armed"): the soft-aim pick of DiloAttackServer 1.0 run here (the
@@ -362,7 +362,7 @@ RunService.Heartbeat:Connect(function(dt)
 					local hl = Instance.new("Highlight")
 					hl.Name = "DiloVenomGlow"
 					hl.FillColor = GREEN
-					hl.FillTransparency = 0.8
+					hl.FillTransparency = 0.7
 					hl.OutlineTransparency = 1
 					hl.DepthMode = Enum.HighlightDepthMode.Occluded
 					hl.Adornee = m
@@ -387,7 +387,7 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 	local clock = os.clock()
 	for m, v in pairs(venom) do
-		v.hl.FillTransparency = 0.8 + math.sin(clock * 9) * 0.06
+		v.hl.FillTransparency = 0.7 + math.sin(clock * 9) * 0.08
 		v.acc += dt * DRIP_RATE
 		local k = scaleK(m)
 		while v.acc >= 1 do
@@ -395,7 +395,7 @@ RunService.Heartbeat:Connect(function(dt)
 			local p = #v.parts > 0 and v.parts[math.random(1, #v.parts)]
 			if p and p.Parent then
 				droplet(p.Position, Vector3.new((math.random() - 0.5) * 2, -3, (math.random() - 0.5) * 2) * k,
-					(0.35 + math.random() * 0.25) * k, 0.6 + math.random() * 0.3, 30 * k)
+					(0.55 + math.random() * 0.35) * k, 0.6 + math.random() * 0.3, 30 * k)
 			end
 		end
 	end
