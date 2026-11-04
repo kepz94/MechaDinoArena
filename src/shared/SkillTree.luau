@@ -1,4 +1,4 @@
--- SkillTree v1.59 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.59 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2160,6 +2160,117 @@ do
 		e.coldBelow = cb >= 1 and 0.3 or 0
 		e.coldVenom = cb >= 2
 		e.coldReset = cb >= 4
+		return e
+	end
+end
+
+-- v1.61 (therizino mecha button parts, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241; mockup
+-- docs/mockups/therizino_parts_options.html v0.1; Kepu 2026-11-04 picks 1, 3, 5, 12, 16, 18, 19; red-team "Across", "Yes, in
+-- build 2", "Reuse the Tether chain", "Two builds"). Switch SkillTree.THERI_PARTS (default true; false = 1.60): 7
+-- therizino-only mecha button parts (dino / OWNER "Therizino", mech, BUTTONS): zhook "Reaper's Hook" (attack), zfeather
+-- "Feather Barrage" (attack), zharvest "Harvest Field" (attack), zgrapple "Grapple Zip" (speed), zdeflect "Deflector Claws"
+-- (defense), zclock "Overclock Joints" (speed), zsnare "Snare Wires" (eng). SkillTree.THERI_PARTS_B2_SOON (default true;
+-- build 1): zgrapple / zdeflect / zclock soon (not buyable, not LIVE_MECH). effects() (therizino only; off values elsewhere /
+-- unbought): hookRange 50 / 65 (II) / 80 (III), hookCone 20, hookStun 1 + hookCut (star), hookCooldown 18 / 15 (III);
+-- featherCount 8 / 10 (II) / 12 (star), featherRange 20 / 25 (II) / 30 (star), featherFan 60, featherDamage 3,
+-- featherSlowMul 0.75, featherSlowTime 1 / 2 (III), featherCooldown 14; fieldRadius 6 / 8 (II) / 10 (star) (Kepu "Across":
+-- 12 / 16 / 20 studs wide), fieldTime 3 / 4 (III) / 5 (star), fieldBleed 4, fieldSlowMul 0.7, fieldCooldown 20;
+-- grappleRange 40 / 55 (II) / 70 (III), grappleCharges 1 / 2 (star), grappleCooldown 12 / 10 (III); deflectTime 1 / 1.5
+-- (II) / 2 (III), deflectAngle 70, deflectLevel 1 (darts) / 2 (II: + boulders, cannon shots), deflectReflect (star),
+-- deflectCooldown 16 / 13 (III); clockTime 3 / 4 (II) / 5 (III), clockRunMul 1.4, clockTapMul 0.7 (II), clockNoSlow (star),
+-- clockCooldown 22 / 18 (III); snareMax 1 / 2 (II) / 3 (star), snareDamage 12, snareRoot 1 / 2 (III), snareRadius 4,
+-- snareCooldown 18. Off: 0 / 1 (muls) / false.
+SkillTree.THERI_PARTS = true
+SkillTree.THERI_PARTS_B2_SOON = true
+if SkillTree.THERI_PARTS and not SkillTree.PATHS.zhook then
+	local function part(id, name, areaId, steps)
+		local p = path(id, name, true, false, steps)
+		p.area = areaId
+		p.dino = "Therizino"
+		SkillTree.OWNER[id] = "Therizino"
+		SkillTree.LIVE_MECH[id] = true
+		SkillTree.BUTTONS[id] = true
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		SkillTree.PATHS[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	part("zhook", "Reaper's Hook", "attack", {
+		"Button: fire a claw chain up to 50 studs and yank the dino in. Recharges in 18 s",
+		"Chain reaches 65 studs", "Chain reaches 80 studs; recharges in 15 s",
+		"The yanked dino is stunned 1 s and cut 1 starts on it"})
+	part("zfeather", "Feather Barrage", "attack", {
+		"Button: fire 8 feather blades in a 20-stud fan: 3 damage each, hit dinos slowed 25% for 1 s. Recharges in 14 s",
+		"10 blades, fan reaches 25 studs", "Slow lasts 2 s", "12 blades, fan reaches 30 studs"})
+	part("zharvest", "Harvest Field", "attack", {
+		"Button: stab the claws down: a 12-stud-wide circle for 3 s. Enemies inside bleed 4/s and are slowed 30%. Recharges in 20 s",
+		"Circle 16 studs wide", "Lasts 4 s", "Circle 20 studs wide, lasts 5 s"})
+	part("zgrapple", "Grapple Zip", "speed", {
+		"Button: hook a tree or wall up to 40 studs away and zip there. Recharges in 12 s",
+		"Reaches 55 studs", "Reaches 70 studs; recharges in 10 s", "2 charges"})
+	part("zdeflect", "Deflector Claws", "defense", {
+		"Button: claws spin in front for 1 s and block darts. Recharges in 16 s",
+		"Spin 1.5 s; blocks boulders and cannon shots too", "Spin 2 s; recharges in 13 s",
+		"Blocked shots bounce back at the shooter"})
+	part("zclock", "Overclock Joints", "speed", {
+		"Button: for 3 s, run 40% faster. Recharges in 22 s",
+		"Lasts 4 s; cut taps come 30% faster too", "Lasts 5 s; recharges in 18 s",
+		"Slows don't work on you while it's on"})
+	part("zsnare", "Snare Wires", "eng", {
+		"Button: lay a wire trap. The first dino to cross it is rooted 1 s and takes 12. Recharges in 18 s",
+		"2 traps at once", "Rooted 2 s", "3 traps at once"})
+	if SkillTree.THERI_PARTS_B2_SOON then
+		for _, id in ipairs({"zgrapple", "zdeflect", "zclock"}) do
+			SkillTree.PATHS[id].soon = true
+			SkillTree.LIVE_MECH[id] = nil
+		end
+	end
+end
+do
+	local effectsPre161 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre161(steps, dino)
+		if type(e) ~= "table" then return e end
+		local on = SkillTree.THERI_PARTS and dino == "Therizino" and SkillTree.PATHS.zhook ~= nil
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local h, f, fd, g, d, c, sn = s.zhook or 0, s.zfeather or 0, s.zharvest or 0, s.zgrapple or 0, s.zdeflect or 0,
+			s.zclock or 0, s.zsnare or 0
+		e.hookRange = h >= 3 and 80 or (h >= 2 and 65 or (h >= 1 and 50 or 0))
+		e.hookCone = h >= 1 and 20 or 0
+		e.hookStun = h >= 4 and 1 or 0
+		e.hookCut = h >= 4
+		e.hookCooldown = h >= 3 and 15 or (h >= 1 and 18 or 0)
+		e.featherCount = f >= 4 and 12 or (f >= 2 and 10 or (f >= 1 and 8 or 0))
+		e.featherRange = f >= 4 and 30 or (f >= 2 and 25 or (f >= 1 and 20 or 0))
+		e.featherFan = f >= 1 and 60 or 0
+		e.featherDamage = f >= 1 and 3 or 0
+		e.featherSlowMul = f >= 1 and 0.75 or 1
+		e.featherSlowTime = f >= 3 and 2 or (f >= 1 and 1 or 0)
+		e.featherCooldown = f >= 1 and 14 or 0
+		e.fieldRadius = fd >= 4 and 10 or (fd >= 2 and 8 or (fd >= 1 and 6 or 0))
+		e.fieldTime = fd >= 4 and 5 or (fd >= 3 and 4 or (fd >= 1 and 3 or 0))
+		e.fieldBleed = fd >= 1 and 4 or 0
+		e.fieldSlowMul = fd >= 1 and 0.7 or 1
+		e.fieldCooldown = fd >= 1 and 20 or 0
+		e.grappleRange = g >= 3 and 70 or (g >= 2 and 55 or (g >= 1 and 40 or 0))
+		e.grappleCharges = g >= 4 and 2 or (g >= 1 and 1 or 0)
+		e.grappleCooldown = g >= 3 and 10 or (g >= 1 and 12 or 0)
+		e.deflectTime = d >= 3 and 2 or (d >= 2 and 1.5 or (d >= 1 and 1 or 0))
+		e.deflectAngle = d >= 1 and 70 or 0
+		e.deflectLevel = d >= 2 and 2 or (d >= 1 and 1 or 0)
+		e.deflectReflect = d >= 4
+		e.deflectCooldown = d >= 3 and 13 or (d >= 1 and 16 or 0)
+		e.clockTime = c >= 3 and 5 or (c >= 2 and 4 or (c >= 1 and 3 or 0))
+		e.clockRunMul = c >= 1 and 1.4 or 1
+		e.clockTapMul = c >= 2 and 0.7 or 1
+		e.clockNoSlow = c >= 4
+		e.clockCooldown = c >= 3 and 18 or (c >= 1 and 22 or 0)
+		e.snareMax = sn >= 4 and 3 or (sn >= 2 and 2 or (sn >= 1 and 1 or 0))
+		e.snareDamage = sn >= 1 and 12 or 0
+		e.snareRoot = sn >= 3 and 2 or (sn >= 1 and 1 or 0)
+		e.snareRadius = sn >= 1 and 4 or 0
+		e.snareCooldown = sn >= 1 and 18 or 0
 		return e
 	end
 end
