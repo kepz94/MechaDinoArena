@@ -42,12 +42,14 @@ SMOOTH = {"eyes", "pupil", "tooth", "claws", "mouth"}
 VERSION = "1.0"
 VERSION = "1.1"  # v1.1 kit attributes (MDA-221, plan docs/plans/DILO_KIT_v1.0.md Task 1)
 # v1.1 (Kepu 2026-11-03: picks "C and J1", "70 HP", "Weaker dart", leap "No refill just like the Raptor"); --no-kit = 1.0
+VERSION = "1.2"  # v1.2 bite gap 1.0 s (MDA-229; Kepu 2026-11-04 "Let's go with your suggestions": 0.35 s let the bite land
+# ~29 damage / s; 1.0 s = 10 / s)
 KIT_ATTRS = {
     "DinoMaxHealth": "70", "MoveRunSpeed": "66", "MoveWalkSpeed": "36",
     "DiloAttackEnabled": "true", "DiloBiteDamage": "10", "DiloBiteDelay": "0.18", "DiloBiteReach": "5", "DiloBiteCone": "70",
     "DiloHoldTime": "0.4", "DiloDartDamage": "6", "DiloVenomDps": "2", "DiloVenomTime": "3", "DiloDartRange": "30",
     "DiloDartSpeed": "60", "DiloDartCooldown": "1.5", "DiloAssistAngle": "30", "DiloAssistMin": "0", "DiloAssistMax": "30",
-    "DiloMinGap": "0.35",
+    "DiloMinGap": "1.0",  # v1.2 (was 0.35)
     "JumpEnabled": "true", "JumpCharges": "0", "JumpCooldown": "0.5", "JumpStaminaCost": "0", "JumpBoost": "14",
     "JumpLaunchPower": "54", "JumpWindup": "0.27", "TenoLeapEnabled": "false", "TenoLeapOnJump": "false",
 }
@@ -615,7 +617,7 @@ if "--json" not in sys.argv:
              f"-- Scale: {hi[0] - lo[0]:.2f} studs long, hip {HIP:.4g} studs; doubled in game (~26, the raptor's size). The frill is built twice: open (\"_frill\" parts) and folded (\"_fold\" parts); the kit plan decides which shows when.",
              f"-- Colour groups (Classic = {L['name']}): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: teeth E8E2D2, pupil 111111, mouth 6E342E.",
              "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB. Rebuild with DinoModelBuilder.build(require(DiloModelData)).",
-             ("-- v1.1 kit (MDA-221, plan docs/plans/DILO_KIT_v1.0.md): 70 HP, Bite + Spit Dart (DiloAttack*), Cobra Leap on JUMP (no charges, 0.5 s cooldown like the raptor, no landing slam); playable through SpeciesServer." if "--no-kit" not in sys.argv else "-- Not playable yet: no SpeciesServer entry, no kit (every move off). Those come with the Dilo kit plan."),
+             ("-- v1.1 kit (MDA-221, plan docs/plans/DILO_KIT_v1.0.md): 70 HP, Bite + Spit Dart (DiloAttack*), Cobra Leap on JUMP (no charges, 0.5 s cooldown like the raptor, no landing slam); playable through SpeciesServer.\n-- v1.2: bite gap DiloMinGap 1.0 s (was 0.35; MDA-229)." if "--no-kit" not in sys.argv else "-- Not playable yet: no SpeciesServer entry, no kit (every move off). Those come with the Dilo kit plan."),
              "return {", f'\tversion = "{VERSION}", species = "Dilo", style = "1.0", rig = "1.3",'] + body + ["\tattributes = {"] + [f"\t\t{k} = {attrs[k]}," for k in sorted(attrs)] + ["\t},", "}"]
     open(OUT, "w").write("\n".join(lines) + "\n")
     print("data ->", OUT, f"({len(attrs)} attributes)")
