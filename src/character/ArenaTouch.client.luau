@@ -1,4 +1,4 @@
--- ArenaTouch v1.14 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.15 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -101,6 +101,14 @@
 -- v1.14 (Kepu 2026-11-03 17:33 "Yes": the teno too; PC and touch together, AbilityBar 1.25): the same JUMP pips on a teno with
 --   leap charges (JumpCharges >= 1: Hydraulic Leap slotted on JUMP). Switch: script attribute ArenaTouchTenoJumpPipsEnabled
 --   (default true, read each frame; false = 1.13, therizino only). The diagnostic ArenaTouchTheriJumpPips is written for both.
+-- v1.15 (Dilophosaurus kit, MDA-225, plan docs/plans/DILO_KIT_v1.0.md Task 5; PC and touch together with AbilityBar 1.26):
+--   the dilo's ATTACK as the big yellow ATTACK ("DiloMain", the therizino's place) over CAS "DinoDiloAttack" (DiloAttackTest
+--   1.0: press = bite, hold DiloHoldTime then release = spit dart) for a dino with DiloAttackEnabled (and no other main
+--   button). While held (DiloLocalState "coil" / "armed") a white disc grows inside the button from the centre to full size
+--   over DiloHoldTime (from DiloHoldStart); "armed" lights a white ring around it. Under it 1 pip = the dart: full when
+--   ready, filling over DiloDartCooldown after DiloLocalDartAt. The JUMP button is the usual one (no charges). Switch: script
+--   attribute ArenaTouchDiloEnabled (default true, read at start). Diagnostics ArenaTouchDiloHold (0..1, 0.1 steps),
+--   ArenaTouchDiloDart ("ready" / "cooling"); ArenaTouchMainButton adds "Dilo".
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
@@ -110,6 +118,7 @@ local VERSION = "1.11"
 VERSION = "1.12" -- v1.12 therizino ATTACK pips = hits left
 VERSION = "1.13" -- v1.13 therizino JUMP charge pips
 VERSION = "1.14" -- v1.14 teno JUMP charge pips
+VERSION = "1.15" -- v1.15 dilo ATTACK (hold disc + dart pip)
 if script:GetAttribute("ArenaTouchTenoJumpPipsEnabled") == nil then script:SetAttribute("ArenaTouchTenoJumpPipsEnabled", true) end -- v1.14
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -501,6 +510,37 @@ for i = 1, 3 do
 	if f then thPips[i] = {f = f, fill = f:FindFirstChild("Fill")} end
 end
 
+-- v1.15: dilo ATTACK main button + hold disc + dart pip
+if script:GetAttribute("ArenaTouchDiloEnabled") == nil then script:SetAttribute("ArenaTouchDiloEnabled", true) end
+local DILO_ON = script:GetAttribute("ArenaTouchDiloEnabled") ~= false
+local diloMain, diloMainLabel, diloMainScale = button("DiloMain", "ATTACK", nil, 0.05, 0.10, 0.135, true)
+diloMain.Visible = false
+if diloMainLabel then diloMainLabel.ZIndex = 3 end
+local dlHold = Instance.new("Frame")
+dlHold.Name = "HoldDisc"
+dlHold.AnchorPoint = Vector2.new(0.5, 0.5)
+dlHold.Position = UDim2.fromScale(0.5, 0.5)
+dlHold.Size = UDim2.fromScale(0, 0)
+dlHold.BackgroundColor3 = Color3.new(1, 1, 1)
+dlHold.BackgroundTransparency = 0.55
+dlHold.BorderSizePixel = 0
+dlHold.ZIndex = 2
+dlHold.Parent = diloMain
+local dlHoldCorner = Instance.new("UICorner")
+dlHoldCorner.CornerRadius = UDim.new(0.5, 0)
+dlHoldCorner.Parent = dlHold
+local dlGlowRing = slGlowRing:Clone()
+dlGlowRing.Parent = diloMain
+local dlGlow = dlGlowRing:FindFirstChild("Glow")
+if dlGlow then dlGlow.Color = Color3.new(1, 1, 1) end
+local dlPipRow = slPipRow:Clone()
+dlPipRow.Parent = diloMain
+local dlPips = {}
+for i = 1, 3 do
+	local f = dlPipRow:FindFirstChild("Charge_" .. i)
+	if f then dlPips[i] = {f = f, fill = f:FindFirstChild("Fill")} end
+end
+
 -- overlay: Roblox's CAS button for each move, invisible, laid over its styled button every frame
 local OVERLAY = {
 	{action = "DinoBiteTest", vis = bite, scale = biteScale, name = "Bite"},
@@ -512,6 +552,7 @@ local OVERLAY = {
 if SLASH_ON then table.insert(OVERLAY, {action = "DinoSlash", vis = slashMain, scale = slashMainScale, name = "Slash"}) end -- v1.7
 if TENO_ON then table.insert(OVERLAY, {action = "DinoTenoAttack", vis = tenoMain, scale = tenoMainScale, name = "Teno"}) end -- v1.9
 if THERI_ON then table.insert(OVERLAY, {action = "DinoTheriAttack", vis = theriMain, scale = theriMainScale, name = "Theri"}) end -- v1.11
+if DILO_ON then table.insert(OVERLAY, {action = "DinoDiloAttack", vis = diloMain, scale = diloMainScale, name = "Dilo"}) end -- v1.15
 local wanted = {Bite = true, Run = true, Ram = false, Pounce = false, Headbutt = false, Slash = false} -- set by refresh(); v1.5: + Headbutt; v1.7: + Slash
 local hooked = setmetatable({}, {__mode = "k"})
 local function hook(btn, o)
@@ -652,6 +693,37 @@ local WATCH = {BiteEnabled = true, HeadbuttEnabled = true, AutoRun = true, RamEn
 	PounceTestState = true, JumpTestState = true, SlashEnabled = true, ClimbEnabled = true, ClimbLocalState = true} -- v1.7: + Slash / Climb
 WATCH.TenoAttackEnabled = true -- v1.9
 WATCH.TheriAttackEnabled = true -- v1.11
+WATCH.DiloAttackEnabled = true -- v1.15
+do -- v1.15: the dilo's ATTACK becomes the main button when nothing else is
+	local refreshV114 = refresh
+	refresh = function()
+		refreshV114()
+		wanted.Dilo = DILO_ON and char:GetAttribute("DiloAttackEnabled") == true and char:GetAttribute("ArenaTouchMainButton") == "none"
+		if wanted.Dilo then char:SetAttribute("ArenaTouchMainButton", "Dilo") end
+	end
+end
+RunService.RenderStepped:Connect(function()
+	if not wanted.Dilo then return end
+	local now = workspace:GetServerTimeNow()
+	local st = char:GetAttribute("DiloLocalState")
+	local holdT = math.max(0.05, tonumber(char:GetAttribute("DiloHoldTime")) or 0.4)
+	local k = 0
+	if st == "coil" or st == "armed" then
+		k = math.clamp((now - (tonumber(char:GetAttribute("DiloHoldStart")) or now)) / holdT, 0, 1)
+	end
+	dlHold.Size = UDim2.fromScale(k, k)
+	if dlGlow then dlGlow.Transparency = st == "armed" and 0.1 or 1 end
+	local cd = math.max(0.01, tonumber(char:GetAttribute("DiloDartCooldown")) or 1.5)
+	local part = math.clamp((now - (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge)) / cd, 0, 1)
+	for i, pip in ipairs(dlPips) do
+		pip.f.Visible = i == 1
+		if pip.fill then pip.fill.Size = UDim2.fromScale(1, i == 1 and part or 0) end
+	end
+	local hk = math.floor(k * 10 + 0.5) / 10
+	if char:GetAttribute("ArenaTouchDiloHold") ~= hk then char:SetAttribute("ArenaTouchDiloHold", hk) end
+	local ds = part >= 1 and "ready" or "cooling"
+	if char:GetAttribute("ArenaTouchDiloDart") ~= ds then char:SetAttribute("ArenaTouchDiloDart", ds) end
+end)
 -- v1.12: hits left (see the header)
 if script:GetAttribute("ArenaTouchTheriHitsLeftEnabled") == nil then script:SetAttribute("ArenaTouchTheriHitsLeftEnabled", true) end
 local function theriHitsLeft(now)

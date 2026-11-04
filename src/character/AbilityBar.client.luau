@@ -1,4 +1,4 @@
--- AbilityBar v1.25 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.26 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -155,11 +155,19 @@ local UserInputService = game:GetService("UserInputService")
 --   crouch / air, "empty" (dim, the refill as a fill) at 0, "stunned" as before. Without charges the tile is the 1.24 cooldown
 --   tile (its pip row hidden). Switch: script attribute AbilityBarTenoJumpPipsEnabled (default true, read each frame; false =
 --   1.24). Diagnostic: AbilityBarTenoLeapPips ("<left>/<max>").
+-- v1.26 (Dilophosaurus kit, MDA-225, plan docs/plans/DILO_KIT_v1.0.md Task 5; PC and touch together, ArenaTouch 1.15):
+--   SPECIES_MOVES.Dilo = DiloAttack (key "LMB", ATTACK, yellow; press = bite, hold then release = spit dart, DiloAttackTest
+--   1.0) and the usual JUMP tile (MOVES.Leap: JumpCooldown 0.5, no charges, like the raptor). DiloAttack: 1 pip = the dart
+--   (full when ready, filling over DiloDartCooldown after DiloLocalDartAt); while held (DiloLocalState "coil" / "armed") the
+--   tile is "active" and its fill rises with the hold (DiloHoldStart over DiloHoldTime; "SPIT" under the name once armed);
+--   "active" for a bite / spit, "stunned" while stunned, else "ready". Switch: script attribute AbilityBarDiloEnabled (default
+--   true, read at start; false = no dilo row, the fallback order). Diagnostics: AbilityBarDiloHold (0..1), AbilityBarDiloDart.
 local VERSION = "1.21"
 VERSION = "1.22" -- v1.22 teno leap on JUMP
 VERSION = "1.23" -- v1.23 therizino ATTACK + JUMP tiles
 VERSION = "1.24" -- v1.24 therizino ATTACK pips = hits left
 VERSION = "1.25" -- v1.25 teno JUMP charge pips
+VERSION = "1.26" -- v1.26 dilo ATTACK + JUMP tiles
 if script:GetAttribute("AbilityBarTenoJumpPipsEnabled") == nil then script:SetAttribute("AbilityBarTenoJumpPipsEnabled", true) end -- v1.25
 if script:GetAttribute("AbilityBarTheriHitsLeftEnabled") == nil then script:SetAttribute("AbilityBarTheriHitsLeftEnabled", true) end -- v1.24
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
@@ -269,6 +277,12 @@ if script:GetAttribute("AbilityBarTheriEnabled") ~= false then -- v1.23: therizi
 	MOVES.TheriLeap = {enabled = "JumpEnabled", enabledDefault = false, key = "Space", name = "JUMP", slashPips = true,
 		leapPips = true}
 	SPECIES_MOVES.Therizino = {"TheriAttack", "TheriLeap"}
+end
+if script:GetAttribute("AbilityBarDiloEnabled") == nil then script:SetAttribute("AbilityBarDiloEnabled", true) end -- v1.26
+if script:GetAttribute("AbilityBarDiloEnabled") ~= false then -- v1.26: dilo ATTACK (bite + dart) + the usual JUMP
+	MOVES.DiloAttack = {enabled = "DiloAttackEnabled", enabledDefault = false, key = "LMB", name = "ATTACK", color = YELLOW,
+		slashPips = true, diloPips = true}
+	SPECIES_MOVES.Dilo = {"DiloAttack", "Leap"}
 end
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 if script:GetAttribute("AbilityBarHerreraJumpEnabled") == nil then script:SetAttribute("AbilityBarHerreraJumpEnabled", true) end -- v1.17
@@ -838,6 +852,29 @@ local function update()
 			else
 				paint(e, "ready", 0, 0, nil)
 			end
+		elseif e.move.diloPips then -- v1.26: dilo ATTACK (hold + dart pip)
+			local cd = math.max(0.01, tonumber(char:GetAttribute("DiloDartCooldown")) or 1.5)
+			local part = math.clamp((now - (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge)) / cd, 0, 1)
+			for i, pip in ipairs(e.t.chargePips) do
+				pip.f.Visible = i == 1
+				pip.fill.Size = UDim2.fromScale(1, i == 1 and part or 0)
+			end
+			local st = char:GetAttribute("DiloLocalState")
+			local holdT = math.max(0.05, tonumber(char:GetAttribute("DiloHoldTime")) or 0.4)
+			local k = (st == "coil" or st == "armed")
+				and math.clamp((now - (tonumber(char:GetAttribute("DiloHoldStart")) or now)) / holdT, 0, 1) or 0
+			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = WHITE, 0.6
+			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif st == "coil" or st == "armed" then
+				paint(e, "active", 0, k, nil, st == "armed" and "SPIT" or nil)
+			elseif st == "bite" or st == "spit" then
+				paint(e, "active", 0, 0, nil)
+			else
+				paint(e, "ready", 0, 0, nil)
+			end
+			show("AbilityBarDiloHold", math.floor(k * 10 + 0.5) / 10)
+			show("AbilityBarDiloDart", part >= 1 and "ready" or "cooling")
 		elseif e.move.theriPips and script:GetAttribute("AbilityBarTheriHitsLeftEnabled") ~= false then -- v1.24: hits left
 			local function eff(k, over, d)
 				local v = tonumber(char:GetAttribute(over)) or 0
