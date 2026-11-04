@@ -282,7 +282,7 @@ function camGoal() {
     if (L && L.closeDist) gDist = L.closeDist; gPitch = (L && L.closePitch !== undefined) ? L.closePitch : 0.22; if (L && L.closeYaw !== undefined) gYaw = L.closeYaw; }
   if (view === "side") { gDist = 30; gPitch = 0.05; gYaw = Math.PI / 2; gFocus.set(0, 1.5 + ly, -0.5); }
   if (view === "front") { gDist = 28; gPitch = 0.08; gYaw = 0; gFocus.set(0, 1.5 + ly, -2); }
-  if (view === "game") { gDist = 46; gPitch = 0.32; gYaw = 2.5; gFocus.set(0, 1.5 + ly, 0); }
+  if (view === "game") { gFocus.set(0, ly, 0); } // ShoulderCam 1.8 framing, set in frame()
   lab.visible = view !== "game"; island.visible = view === "game";
   scene.background = new THREE.Color(view === "game" ? 0x8fc6e8 : 0x101218); scene.fog = view === "game" ? new THREE.Fog(0x8fc6e8, 120, 300) : null;
 }
@@ -308,8 +308,14 @@ function frame(now) {
   pose(A); updateEquip();
   if (spin && !drag && userTurned <= 0 && view !== "side" && view !== "front") gYaw += dt * 0.35; userTurned -= dt;
   yaw = lerp(yaw, gYaw, 1 - Math.pow(0.002, dt)); pitch = lerp(pitch, gPitch, 1 - Math.pow(0.002, dt)); dist = lerp(dist, gDist, 1 - Math.pow(0.002, dt)); focus.lerp(gFocus, 1 - Math.pow(0.002, dt));
-  cam.position.set(focus.x + Math.sin(yaw) * Math.cos(pitch) * dist, focus.y + Math.sin(pitch) * dist, focus.z - Math.cos(yaw) * Math.cos(pitch) * dist);
-  cam.lookAt(focus);
+  if (view === "game") { // ShoulderCam 1.8 at the start (right shoulder): HRP + up x focus height + right x side + up x height - look x distance,
+    // looking straight ahead. Therizino (game scale 2, top ~16 studs): distance 35, focus 0.75 x top, side 0.9 x top + 1, height 0.35 x top (/2 here).
+    const top = 8, ly = -(restMinY || 0), c = new THREE.Vector3(0.9 * top + 0.5, ly + 0.75 * top + 0.35 * top, 17.5); // right = RightVector = +X
+    cam.position.copy(c); cam.lookAt(c.x, c.y - 1.2, c.z - 10);
+  } else {
+    cam.position.set(focus.x + Math.sin(yaw) * Math.cos(pitch) * dist, focus.y + Math.sin(pitch) * dist, focus.z - Math.cos(yaw) * Math.cos(pitch) * dist);
+    cam.lookAt(focus);
+  }
   resize(); renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }

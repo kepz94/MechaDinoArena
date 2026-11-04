@@ -1,3 +1,5 @@
+// One-sided parts go on the dino's RIGHT = +X = the model's "...L" parts (the L / R names are mirrored): ShoulderCam 1.8 starts
+// over the right shoulder, shoulder = focus + RightVector x side, and a dino facing -Z has RightVector = +X.
 // Therizino parts redesign v0.2 — the looks. Coordinates: rest model space (scale 1, HRP frame; front = -Z, left = +X).
 // Each look: mounts on body parts (mount = world-aligned, mountOn = in the part's frame, mountM(axisFrame) = along a limb).
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -51,7 +53,7 @@ const BACK = () => new THREE.Matrix4().makeTranslation(0, 2.2, -0.55).multiply(r
 
 // ============================================ 1 · REAPER'S HOOK ============================================
 function hookGauntlet() {
-  const s = -1, M = mountM("ArmR_fore", foreFrame(s));
+  const s = 1, M = mountM("ArmL_fore", foreFrame(s));
   // armoured sleeve wrapping the forearm
   M.box([0.66, 1.45, 0.62], [0, -0.05, 0], null, "shell");
   M.box([0.74, 1.25, 0.14], [0, 0.0, 0.39], null, "plate");
@@ -78,7 +80,7 @@ function hookGauntlet() {
   M.box([0.11, 0.6, 0.06], [0, 0, 0], null, "glow", {place: u => H(u).multiply(Tm(0, 0.42, -0.2)).multiply(RXm(rad(-40)))});
   for (let i = 0; i < 10; i++) M.box(i % 2 ? [0.06, 0.24, 0.16] : [0.16, 0.24, 0.06], [0, 0, 0], null, "steel", {place: u => Tm(0, 2.1 + out(u) * (i + 0.5) / 10, -0.48), show: u => out(u) > 0.2});
   M.hose([0, -0.72, -0.25], [0.1, -1.1, -0.6], 0.15, 0.14, 4);
-  cable("ArmR_fore", M.toRest([0.1, -1.1, -0.6]), "ArmR_upper", [-2.6, 1.25, -2.15], 0.2, 0.14);
+  cable("ArmL_fore", M.toRest([-0.1, -1.1, -0.6]), "ArmL_upper", [2.6, 1.25, -2.15], 0.2, 0.14);
 }
 function hookCrane() {
   const S = mountM("Torso_body", BACK());
@@ -446,10 +448,10 @@ const PARTS = [
   {id: "hook", short: "Hook", name: "Reaper's Hook", area: "attack", focus: [-3.2, 2.0, -3.6],
     oldText: "Back Crane (in the game now): a box on the back, one grey bar and a yellow bar over the head, a grey drum.",
     looks: [
-      {name: "Harpoon Gauntlet", sub: "right arm · Roadhog / Sekiro", build: hookGauntlet, pose: POSES.ARM_R_FWD, focus: [-4.3, 1.0, -3.6], closeYaw: -0.8, closePitch: 0.2, closeSide: -1,
+      {name: "Harpoon Gauntlet", sub: "right arm · Roadhog / Sekiro", build: hookGauntlet, pose: POSES.ARM_L_FWD, focus: [-4.3, 1.0, -3.6], closeYaw: 0.8, closePitch: 0.2, closeSide: 1,
         ref: "Roadhog's chain hook (Overwatch) and Sekiro's arm prosthetic: the launcher is built into the arm, with one oversized hook you can read from across the map.",
         why: "A studded armour sleeve wraps the right forearm, strapped and bolted on. A harpoon barrel runs under it past the claws with a big bone reaper sickle loaded in the muzzle, and a chain drum sits at the elbow. A hose runs into the upper arm, and the red glow is the lamp on top plus the muzzle ring.",
-        use: "the arm points, the drum spins, and the sickle flies out on a real chain and is reeled back in.", on: "the right forearm (ArmR_fore), with a hose into the upper arm."},
+        use: "the arm points, the drum spins, and the sickle flies out on a real chain and is reeled back in.", on: "the right forearm, the camera side (the model's ArmL_fore: its L / R names are mirrored), with a hose into the upper arm."},
       {name: "Reaper Crane", sub: "back · rebuilt crane", build: hookCrane, pose: POSES.HOOK_AIM, focus: [0, 6, -2], closeYaw: 2.2, closePitch: 0.3,
         ref: "your old Back Crane pick, rebuilt like a Horizon machine part: a saddle that follows the back, visible hinges and pistons, and a real claw instead of a bar.",
         why: "A studded saddle is strapped to the back with a turret on it. A two-part crane arm, with a hydraulic piston, a brass hinge and a chain drum, reaches up and over the head. A chain hangs from the tip to a three-pronged bone claw. Red glows on the turret window and the jib tip.",
@@ -490,10 +492,10 @@ const PARTS = [
         ref: "your old Belly Winch pick, rebuilt: a cradle strapped round the body, a real cable drum, and a grapnel launcher on the chest (Horizon's ropecaster bolt).",
         why: "A studded cradle under the belly holds a wide cable drum between two brass-bossed cheeks, with straps up both flanks. A chest launcher carries a folded three-pronged grapnel, fed by a hose from the drum. Yellow glows at the muzzle and the cradle stripe.",
         use: "the drum spins and the grapnel's prongs open.", on: "under the body (Torso_body), with the launcher on the chest (Torso_chest)."},
-      {name: "Arm Grapnel", sub: "left arm · Sekiro / Titanfall", build: grappleWrist, pose: POSES.ARM_L_FWD, focus: [4.3, 1.0, -3.6], closeYaw: 1.0, closePitch: 0.25, closeSide: 1,
+      {name: "Arm Grapnel", sub: "right arm · Sekiro / Titanfall", build: grappleWrist, pose: POSES.ARM_L_FWD, focus: [4.3, 1.0, -3.6], closeYaw: 1.0, closePitch: 0.25, closeSide: 1,
         ref: "Sekiro's prosthetic grapple (built into the arm) and Titanfall 2's wrist grapple, with Pathfinder's \"in range\" light.",
-        why: "Low launcher plating lies along the top of the left forearm, with brass rails and a folded grapnel at the wrist. A side spool and a round yellow range lamp complete it, so the arm looks like a tool.",
-        use: "the arm points, the grapnel snaps open and the spool spins.", on: "the left forearm (ArmL_fore)."},
+        why: "Low launcher plating lies along the top of the right forearm, with brass rails and a folded grapnel at the wrist. A side spool and a round yellow range lamp complete it, so the arm looks like a tool.",
+        use: "the arm points, the grapnel snaps open and the spool spins.", on: "the right forearm, the camera side (the model's ArmL_fore: its L / R names are mirrored)."},
     ]},
   {id: "deflect", short: "Deflect", name: "Deflector Claws", area: "defense", focus: [4.2, 0.4, -3.4],
     oldText: "Spinner Hubs (in the game now): a grey puck and a small yellow cube on each hand.",
