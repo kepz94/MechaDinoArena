@@ -1,4 +1,4 @@
--- SkillEffects v1.41 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.42 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -273,6 +273,15 @@ local ServerStorage = game:GetService("ServerStorage")
 --   back. Runs after applyChar (a wrapper, after the pachy's). Switch: script attribute SkillEffectsDiloStatsEnabled (default
 --   true, read at each read / write; false = 1.40 plus the bases written back). Diagnostic: character SkillEffectsDiloRows =
 --   "venombite=n,longspit=n,toxicblood=n,venomfeast=n,quickdraw=n,coldblood=n" (sanitized steps; "" off).
+-- v1.42 (MDA-242, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 2; SkillTree 1.61): a ZPARTS list like TPARTS: on a character
+--   with Species "Therizino" (or one that already has TheriHookEnabled, so a switch away writes the off values), each
+--   therizino part bought (SkillPath_<id> >= 1) AND slotted (SkillSlot1..SLOTS) writes <Prefix><Field> from effects() and
+--   <Prefix>Enabled true; otherwise the off values and false. Prefixes: TheriHook (Range, Cone, Stun, Cut, Cooldown),
+--   TheriFeather (Count, Range, Fan, Damage, SlowMul, SlowTime, Cooldown), TheriField (Radius, Time, Bleed, SlowMul,
+--   Cooldown), TheriGrapple (Range, Charges, Cooldown), TheriDeflect (Time, Angle, Level, Reflect, Cooldown), TheriClock
+--   (Time, RunMul, TapMul, NoSlow, Cooldown), TheriSnare (Max, Damage, Root, Radius, Cooldown). Read by TheriPartsServer 1.0
+--   (looks), TheriMovesServer 1.0, MechaButtons. Runs after applyChar (a wrapper, after the dilo's). Switch: script attribute
+--   SkillEffectsTheriPartsEnabled (default true, read at each write; false = 1.41 plus the off values written).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -288,6 +297,7 @@ VERSION = "1.38" -- v1.38 therizino keeps its own leap values
 VERSION = "1.39" -- v1.39 therizino stat rows (THERI_ATTRS)
 VERSION = "1.40" -- v1.40 pachy Last Stand + Head Down (PACHY_ATTRS)
 VERSION = "1.41" -- v1.41 dilo stat rows (DILO_ATTRS + spit numbers)
+VERSION = "1.42" -- v1.42 therizino button parts (ZPARTS)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -922,6 +932,50 @@ do
 	end
 end
 
+-- v1.42: the therizino's mecha button parts (see the header)
+if script:GetAttribute("SkillEffectsTheriPartsEnabled") == nil then script:SetAttribute("SkillEffectsTheriPartsEnabled", true) end
+local ZPARTS = { -- {path id, prefix, {attribute, effect field, off value}...}
+	{"zhook", "TheriHook", {{"Range", "hookRange", 0}, {"Cone", "hookCone", 0}, {"Stun", "hookStun", 0}, {"Cut", "hookCut", false},
+		{"Cooldown", "hookCooldown", 0}}},
+	{"zfeather", "TheriFeather", {{"Count", "featherCount", 0}, {"Range", "featherRange", 0}, {"Fan", "featherFan", 0},
+		{"Damage", "featherDamage", 0}, {"SlowMul", "featherSlowMul", 1}, {"SlowTime", "featherSlowTime", 0}, {"Cooldown", "featherCooldown", 0}}},
+	{"zharvest", "TheriField", {{"Radius", "fieldRadius", 0}, {"Time", "fieldTime", 0}, {"Bleed", "fieldBleed", 0},
+		{"SlowMul", "fieldSlowMul", 1}, {"Cooldown", "fieldCooldown", 0}}},
+	{"zgrapple", "TheriGrapple", {{"Range", "grappleRange", 0}, {"Charges", "grappleCharges", 0}, {"Cooldown", "grappleCooldown", 0}}},
+	{"zdeflect", "TheriDeflect", {{"Time", "deflectTime", 0}, {"Angle", "deflectAngle", 0}, {"Level", "deflectLevel", 0},
+		{"Reflect", "deflectReflect", false}, {"Cooldown", "deflectCooldown", 0}}},
+	{"zclock", "TheriClock", {{"Time", "clockTime", 0}, {"RunMul", "clockRunMul", 1}, {"TapMul", "clockTapMul", 1},
+		{"NoSlow", "clockNoSlow", false}, {"Cooldown", "clockCooldown", 0}}},
+	{"zsnare", "TheriSnare", {{"Max", "snareMax", 0}, {"Damage", "snareDamage", 0}, {"Root", "snareRoot", 0},
+		{"Radius", "snareRadius", 0}, {"Cooldown", "snareCooldown", 0}}},
+}
+do
+	local applyCharV141 = applyChar
+	applyChar = function(char, st)
+		applyCharV141(char, st)
+		local isTheri = char:GetAttribute("Species") == "Therizino"
+		if not isTheri and char:GetAttribute("TheriHookEnabled") == nil then return end
+		local partsOn = script:GetAttribute("SkillEffectsTheriPartsEnabled") ~= false
+		local e = st.e
+		local function inSlot(id)
+			for n = 1, ST.SLOTS or 2 do
+				if st.player:GetAttribute("SkillSlot" .. n) == id then return true end
+			end
+			return false
+		end
+		for _, def in ipairs(ZPARTS) do
+			local id, prefix = def[1], def[2]
+			local pOn = partsOn and on() and isTheri and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and inSlot(id)
+			for _, f in ipairs(def[3]) do
+				local v = f[3]
+				if pOn and e[f[2]] ~= nil then v = e[f[2]] end
+				if char:GetAttribute(prefix .. f[1]) ~= v then char:SetAttribute(prefix .. f[1], v) end
+			end
+			if char:GetAttribute(prefix .. "Enabled") ~= (pOn == true) then char:SetAttribute(prefix .. "Enabled", pOn == true) end
+		end
+	end
+end
+
 -- healing (regen / lifesteal), overflow into the shield
 local function heal(char, st, amount, source)
 	local hum = st.hum
@@ -1260,5 +1314,8 @@ script:GetAttributeChangedSignal("SkillEffectsEnabled"):Connect(function()
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)
 script:GetAttributeChangedSignal("SkillEffectsDiloStatsEnabled"):Connect(function() -- v1.41
+	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
+end)
+script:GetAttributeChangedSignal("SkillEffectsTheriPartsEnabled"):Connect(function() -- v1.42
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)
