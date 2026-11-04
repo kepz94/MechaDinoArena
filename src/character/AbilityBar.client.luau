@@ -1,4 +1,4 @@
--- AbilityBar v1.27 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.28 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -166,6 +166,10 @@ local UserInputService = game:GetService("UserInputService")
 --   DiloAttack dart pip is full while the character's DiloDartReadyAt (DiloAttackTest 1.1) is newer than DiloLocalDartAt (the
 --   dart was recharged at once). Switch: script attribute AbilityBarDiloResetEnabled (default true, read each frame; false =
 --   1.26).
+-- v1.28 (therizino parts build 1, MDA-245, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 5; PC and touch together with
+--   MechaButtons 1.29): TIMED_PARTS += zhook "TheriHook", zfeather "TheriFeather", zharvest "TheriField", zsnare "TheriSnare"
+--   (the slot tiles show cooling / ready from <Prefix>ReadyAt / <Prefix>Cooldown). Switch: script attribute
+--   AbilityBarTheriPartsEnabled (default true, read at start; false = 1.27).
 local VERSION = "1.21"
 VERSION = "1.22" -- v1.22 teno leap on JUMP
 VERSION = "1.23" -- v1.23 therizino ATTACK + JUMP tiles
@@ -173,6 +177,7 @@ VERSION = "1.24" -- v1.24 therizino ATTACK pips = hits left
 VERSION = "1.25" -- v1.25 teno JUMP charge pips
 VERSION = "1.26" -- v1.26 dilo ATTACK + JUMP tiles
 VERSION = "1.27" -- v1.27 dilo dart pip full after a Cold Blood reset
+VERSION = "1.28" -- v1.28 therizino parts build 1 tiles
 if script:GetAttribute("AbilityBarDiloResetEnabled") == nil then script:SetAttribute("AbilityBarDiloResetEnabled", true) end -- v1.27
 if script:GetAttribute("AbilityBarTenoJumpPipsEnabled") == nil then script:SetAttribute("AbilityBarTenoJumpPipsEnabled", true) end -- v1.25
 if script:GetAttribute("AbilityBarTheriHitsLeftEnabled") == nil then script:SetAttribute("AbilityBarTheriHitsLeftEnabled", true) end -- v1.24
@@ -218,6 +223,10 @@ end
 if script:GetAttribute("AbilityBarHerreraPass3Enabled") == nil then script:SetAttribute("AbilityBarHerreraPass3Enabled", true) end
 if script:GetAttribute("AbilityBarHerreraPass3Enabled") ~= false then
 	TIMED_PARTS.caltrops, TIMED_PARTS.goo, TIMED_PARTS.hadren = "Caltrop", "Goo", "Adrenaline"
+end
+if script:GetAttribute("AbilityBarTheriPartsEnabled") == nil then script:SetAttribute("AbilityBarTheriPartsEnabled", true) end -- v1.28
+if script:GetAttribute("AbilityBarTheriPartsEnabled") ~= false then
+	TIMED_PARTS.zhook, TIMED_PARTS.zfeather, TIMED_PARTS.zharvest, TIMED_PARTS.zsnare = "TheriHook", "TheriFeather", "TheriField", "TheriSnare"
 end
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
