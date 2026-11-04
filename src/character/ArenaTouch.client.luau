@@ -1,4 +1,4 @@
--- ArenaTouch v1.15 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.16 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -109,6 +109,9 @@
 --   ready, filling over DiloDartCooldown after DiloLocalDartAt. The JUMP button is the usual one (no charges). Switch: script
 --   attribute ArenaTouchDiloEnabled (default true, read at start). Diagnostics ArenaTouchDiloHold (0..1, 0.1 steps),
 --   ArenaTouchDiloDart ("ready" / "cooling"); ArenaTouchMainButton adds "Dilo".
+-- v1.16 (MDA-238, plan docs/plans/DILO_STATS_v1.0.md Task 4; PC and touch together with AbilityBar 1.27): Cold Blood star. The
+--   dart pip is full while the character's DiloDartReadyAt (DiloAttackTest 1.1) is newer than DiloLocalDartAt (the dart was
+--   recharged at once). Switch: script attribute ArenaTouchDiloResetEnabled (default true, read each frame; false = 1.15).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
@@ -119,6 +122,7 @@ VERSION = "1.12" -- v1.12 therizino ATTACK pips = hits left
 VERSION = "1.13" -- v1.13 therizino JUMP charge pips
 VERSION = "1.14" -- v1.14 teno JUMP charge pips
 VERSION = "1.15" -- v1.15 dilo ATTACK (hold disc + dart pip)
+VERSION = "1.16" -- v1.16 dilo dart pip full after a Cold Blood reset
 if script:GetAttribute("ArenaTouchTenoJumpPipsEnabled") == nil then script:SetAttribute("ArenaTouchTenoJumpPipsEnabled", true) end -- v1.14
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -513,6 +517,7 @@ end
 -- v1.15: dilo ATTACK main button + hold disc + dart pip
 if script:GetAttribute("ArenaTouchDiloEnabled") == nil then script:SetAttribute("ArenaTouchDiloEnabled", true) end
 local DILO_ON = script:GetAttribute("ArenaTouchDiloEnabled") ~= false
+if script:GetAttribute("ArenaTouchDiloResetEnabled") == nil then script:SetAttribute("ArenaTouchDiloResetEnabled", true) end -- v1.16
 local diloMain, diloMainLabel, diloMainScale = button("DiloMain", "ATTACK", nil, 0.05, 0.10, 0.135, true)
 diloMain.Visible = false
 if diloMainLabel then diloMainLabel.ZIndex = 3 end
@@ -715,6 +720,10 @@ RunService.RenderStepped:Connect(function()
 	if dlGlow then dlGlow.Transparency = st == "armed" and 0.1 or 1 end
 	local cd = math.max(0.01, tonumber(char:GetAttribute("DiloDartCooldown")) or 1.5)
 	local part = math.clamp((now - (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge)) / cd, 0, 1)
+	if script:GetAttribute("ArenaTouchDiloResetEnabled") ~= false
+		and (tonumber(char:GetAttribute("DiloDartReadyAt")) or -math.huge) > (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge) then
+		part = 1 -- v1.16: Cold Blood reset
+	end
 	for i, pip in ipairs(dlPips) do
 		pip.f.Visible = i == 1
 		if pip.fill then pip.fill.Size = UDim2.fromScale(1, i == 1 and part or 0) end

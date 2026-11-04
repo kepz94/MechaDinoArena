@@ -1,4 +1,4 @@
--- AbilityBar v1.26 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.27 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -162,12 +162,18 @@ local UserInputService = game:GetService("UserInputService")
 --   tile is "active" and its fill rises with the hold (DiloHoldStart over DiloHoldTime; "SPIT" under the name once armed);
 --   "active" for a bite / spit, "stunned" while stunned, else "ready". Switch: script attribute AbilityBarDiloEnabled (default
 --   true, read at start; false = no dilo row, the fallback order). Diagnostics: AbilityBarDiloHold (0..1), AbilityBarDiloDart.
+-- v1.27 (MDA-238, plan docs/plans/DILO_STATS_v1.0.md Task 4; PC and touch together with ArenaTouch 1.16): Cold Blood star. The
+--   DiloAttack dart pip is full while the character's DiloDartReadyAt (DiloAttackTest 1.1) is newer than DiloLocalDartAt (the
+--   dart was recharged at once). Switch: script attribute AbilityBarDiloResetEnabled (default true, read each frame; false =
+--   1.26).
 local VERSION = "1.21"
 VERSION = "1.22" -- v1.22 teno leap on JUMP
 VERSION = "1.23" -- v1.23 therizino ATTACK + JUMP tiles
 VERSION = "1.24" -- v1.24 therizino ATTACK pips = hits left
 VERSION = "1.25" -- v1.25 teno JUMP charge pips
 VERSION = "1.26" -- v1.26 dilo ATTACK + JUMP tiles
+VERSION = "1.27" -- v1.27 dilo dart pip full after a Cold Blood reset
+if script:GetAttribute("AbilityBarDiloResetEnabled") == nil then script:SetAttribute("AbilityBarDiloResetEnabled", true) end -- v1.27
 if script:GetAttribute("AbilityBarTenoJumpPipsEnabled") == nil then script:SetAttribute("AbilityBarTenoJumpPipsEnabled", true) end -- v1.25
 if script:GetAttribute("AbilityBarTheriHitsLeftEnabled") == nil then script:SetAttribute("AbilityBarTheriHitsLeftEnabled", true) end -- v1.24
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
@@ -855,6 +861,10 @@ local function update()
 		elseif e.move.diloPips then -- v1.26: dilo ATTACK (hold + dart pip)
 			local cd = math.max(0.01, tonumber(char:GetAttribute("DiloDartCooldown")) or 1.5)
 			local part = math.clamp((now - (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge)) / cd, 0, 1)
+			if script:GetAttribute("AbilityBarDiloResetEnabled") ~= false
+				and (tonumber(char:GetAttribute("DiloDartReadyAt")) or -math.huge) > (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge) then
+				part = 1 -- v1.27: Cold Blood reset
+			end
 			for i, pip in ipairs(e.t.chargePips) do
 				pip.f.Visible = i == 1
 				pip.fill.Size = UDim2.fromScale(1, i == 1 and part or 0)

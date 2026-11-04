@@ -1,4 +1,4 @@
--- DiloAttackTest v1.0 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
+-- DiloAttackTest v1.1 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
 -- StarterCharacterScripts). MDA-225, plan docs/plans/DILO_KIT_v1.0.md Task 5 (Kepu 2026-11-03: "C and J1", "Bite on press",
 -- "Soft aim, near-sure hit"); server DiloAttackServer 1.0.
 -- Only while the character's DiloAttackEnabled is true (the dilo). Inputs: CAS action "DinoDiloAttack" (the phone's big
@@ -19,13 +19,18 @@
 -- Switch: character attribute DiloLeftClickEnabled (default true; false = no mouse binding). Diagnostics (character, this
 --   client): DiloAttackTestVersion, DiloLocalState, DiloLocalAt, DiloHoldStart, DiloLocalBiteAt, DiloLocalDartAt,
 --   DiloInputResult, DiloLastInput ("click" / "touch" / "key"), DiloClickBound.
+-- v1.1 (MDA-238, plan docs/plans/DILO_STATS_v1.0.md Task 4; Kepu 2026-11-04 "Yes, change both"): Cold Blood star. When the
+--   server stamps the character's DiloDartResetAt (DiloAttackServer 1.1) later than this client's last spit, the local dart
+--   recharge is cleared (the dart is ready at once) and DiloDartReadyAt = server now is stamped (ArenaTouch 1.16 / AbilityBar
+--   1.27 show the dart pip full from it). Switch: script attribute DiloAttackTestResetEnabled (default true, read at each
+--   stamp; false = 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1" -- v1.1 Cold Blood dart reset
 local ACTION = "DinoDiloAttack"
 local ACTION_CLICK = "DinoDiloAttackClick"
 local DEFAULTS = {DiloAttackEnabled = false, DiloMinGap = 0.35, DiloHoldTime = 0.4, DiloDartCooldown = 1.5,
@@ -145,6 +150,16 @@ char:GetAttributeChangedSignal("DiloAttackServerResultAt"):Connect(function()
 	if r == "ok" or at < lastSent - 0.05 then return end
 	show("DiloInputResult", "denied:" .. tostring(r))
 	if state == "spit" then setState("idle") end
+end)
+
+-- v1.1: Cold Blood star (see the header)
+if script:GetAttribute("DiloAttackTestResetEnabled") == nil then script:SetAttribute("DiloAttackTestResetEnabled", true) end
+char:GetAttributeChangedSignal("DiloDartResetAt"):Connect(function()
+	if script:GetAttribute("DiloAttackTestResetEnabled") == false then return end
+	local at = tonumber(char:GetAttribute("DiloDartResetAt")) or 0
+	if at <= 0 or at <= lastDart then return end
+	lastDart = -math.huge
+	char:SetAttribute("DiloDartReadyAt", now())
 end)
 
 -- bindings
