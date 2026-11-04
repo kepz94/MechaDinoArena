@@ -1,0 +1,156 @@
+<title>Therizino Moves Rework</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* Layout: one card per move (Harvest, Snare, Grapple -> Dash, Reaper Hook). Each card: option tabs, a looping top-down
+   arena clip of what the move does, then one plain line of what it does + numbers + trade-off. Dark game-HUD look. */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --yellow: #ffc21a; --good: #7dff9a; --red: #ff3b30; --orange: #ff8a1a;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding-block: 20px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 18px; }
+main > * { min-width: 0; }
+h1 { margin: 0; font: 700 clamp(24px, 4vw, 32px)/1.1 var(--display); text-wrap: balance; }
+h1 span, h2 span { color: var(--accent); }
+h2 { margin: 0; font: 700 21px/1.2 var(--display); text-wrap: balance; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 72ch; margin-top: 6px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) { .tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tab { font: 700 14px/1.2 var(--display); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 9px 10px; cursor: pointer; text-align: left; min-width: 0; }
+.tab small { display: block; font: 800 10px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+.tab small.rec { color: var(--good); }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255, 155, 46, .2); }
+.body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 760px) { .body { grid-template-columns: minmax(0, 1fr); } }
+canvas { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; border: 2px solid var(--line); background: #3c6b35; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.box h3 { margin: 0; font: 600 16px var(--display); }
+.does { font: 700 15px var(--body); color: var(--fg); }
+.nums { color: var(--grey); font-size: 13px; font-variant-numeric: tabular-nums; }
+.trade { color: var(--muted); font-size: 13px; }
+.btn { font: 800 13px var(--body); color: #1a0f00; background: var(--accent); border: 2px solid var(--accent); border-radius: 10px; padding: 7px 12px; cursor: pointer; justify-self: start; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.pick { background: var(--card); border: 2px solid var(--good); border-radius: 14px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; bottom: env(safe-area-inset-bottom, 0px); }
+.pick b { font: 700 16px var(--display); color: var(--good); overflow-wrap: anywhere; }
+.lbl { font: 800 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.copy { font: 800 13px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+</style>
+
+<main>
+  <header>
+    <h1><span>Therizino</span> · moves rework</h1>
+    <p class="lede">Four moves that don't read. Each card plays a top-down clip: you are the orange arrow, enemy dinos are the red dots. "Now" is what's in the game. Pick one option per card; the green line at the bottom builds your answer (e.g. "Harvest-A, Snare-B, Dash-A, Hook-A").</p>
+  </header>
+  <div id="cards" style="display:grid;gap:18px"></div>
+  <div class="pick"><span class="lbl">Your picks</span><b id="pickline">none yet</b><button class="copy" id="copy">Copy</button></div>
+  <p class="trade">Looks and numbers to react to; nothing in the game changes from this page. Upgrade tiers keep the same shape (bigger / longer / faster, star = the extra effect).</p>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const C = { me: "#ff9b2e", foe: "#ff3b30", hit: "#ffffff", blood: "#c0182a", wire: "#dfe6ee", brass: "#c9a24a", yellow: "#ffc21a", grass: "#3c6b35", dark: "#1b1f29" };
+  // ---------- tiny drawing kit (world = studs, 0,0 = centre, +y up the screen) ----------
+  function kit(cv) {
+    const r = cv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1);
+    if (cv.width !== Math.round(r.width * d)) { cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
+    const x = cv.getContext("2d"), W = cv.width, H = cv.height, S = H / 60;
+    const P = (a, b) => [W / 2 + a * S, H * 0.62 - b * S];
+    x.fillStyle = C.grass; x.fillRect(0, 0, W, H);
+    x.fillStyle = "rgba(255,255,255,.04)"; for (let i = -40; i <= 40; i += 10) { const [gx] = P(i, 0); x.fillRect(gx, 0, 1, H); }
+    return { x, W, H, S, P,
+      circle(a, b, rad, fill, stroke, lw) { const [px, py] = P(a, b); x.beginPath(); x.arc(px, py, rad * S, 0, Math.PI * 2); if (fill) { x.fillStyle = fill; x.fill(); } if (stroke) { x.strokeStyle = stroke; x.lineWidth = (lw || 0.4) * S; x.stroke(); } },
+      line(a, b, c, e, col, lw, dash) { const [p1, q1] = P(a, b), [p2, q2] = P(c, e); x.strokeStyle = col; x.lineWidth = (lw || 0.4) * S; x.setLineDash(dash ? [dash * S, dash * S] : []); x.beginPath(); x.moveTo(p1, q1); x.lineTo(p2, q2); x.stroke(); x.setLineDash([]); },
+      me(a, b, yaw, spin) { const [px, py] = P(a, b); x.save(); x.translate(px, py); x.rotate((yaw || 0) + (spin || 0)); x.fillStyle = C.dark; x.strokeStyle = C.me; x.lineWidth = 0.5 * S; x.beginPath(); x.moveTo(0, -3 * S); x.lineTo(2 * S, 2.2 * S); x.lineTo(0, 1.2 * S); x.lineTo(-2 * S, 2.2 * S); x.closePath(); x.fill(); x.stroke(); x.restore(); },
+      foe(a, b, state) { const [px, py] = P(a, b); x.fillStyle = state === "hit" ? C.hit : C.foe; x.beginPath(); x.arc(px, py, 1.6 * S, 0, Math.PI * 2); x.fill();
+        if (state === "root") { x.strokeStyle = C.wire; x.lineWidth = 0.35 * S; for (let k = 0; k < 3; k++) { x.beginPath(); x.ellipse(px, py, 2.3 * S, 0.9 * S, k * 1.05, 0, Math.PI * 2); x.stroke(); } }
+        if (state === "bleed") { x.fillStyle = C.blood; for (let k = 0; k < 3; k++) { x.beginPath(); x.arc(px + (k - 1) * 0.9 * S, py + 2.3 * S + ((performance.now() / 200 + k) % 1) * 1.5 * S, 0.35 * S, 0, Math.PI * 2); x.fill(); } }
+        if (state === "slow") { x.fillStyle = "#8fd3ea"; x.font = `800 ${2.2 * S}px Nunito, "Segoe UI", sans-serif`; x.textAlign = "center"; x.fillText("slow", px, py - 2.4 * S); } },
+      text(a, b, t, col, size) { const [px, py] = P(a, b); x.fillStyle = col || "#fff"; x.font = `800 ${(size || 2.4) * S}px Nunito, "Segoe UI", sans-serif`; x.textAlign = "center"; x.fillText(t, px, py); }
+    };
+  }
+  const ease = t => t < 0 ? 0 : t > 1 ? 1 : 1 - Math.pow(1 - t, 3);
+  // ---------- the four moves ----------
+  const MOVES = [
+    { id: "Harvest", title: "Harvest Field", tag: "attack", opts: {
+      Now: { sub: "in the game", does: "A faint red circle on the ground for 3 s. Enemies inside bleed 4/s and are slowed 30%.", nums: "12 / 16 / 20 studs wide · 3 / 4 / 5 s · recharge 20 s", trade: "Nothing tells you or them what's happening: no hit, no number, the circle is hard to see.",
+        draw(k, t) { k.me(0, 0); const r = 8; if (t > 0.3 && t < 3.3) { k.circle(0, 0, r, "rgba(192,24,42,.22)", "rgba(255,60,60,.45)", 0.3); } [[5, 3], [-4, -2], [12, 4]].forEach(([a, b]) => k.foe(a, b, t > 0.3 && t < 3.3 && Math.hypot(a, b) < r ? "bleed" : "")); } },
+      A: { sub: "recommended · spin slash", rec: true, does: "One big 360° claw spin around you. Everyone it hits flashes, takes a hit and keeps bleeding.", nums: "radius 7 / 9 / 11 studs · hit 8, then bleed 4/s for 3 s · slowed 30% for 1.5 s · recharge 14 s", trade: "Instant and obvious; no zone left behind, so it rewards being close.",
+        draw(k, t) { const sp = t < 0.5 ? ease(t / 0.5) * Math.PI * 2 : 0; k.me(0, 0, 0, sp); const r = 9;
+          if (t > 0.05 && t < 0.7) { const a1 = -Math.PI / 2 + ease((t - 0.05) / 0.45) * Math.PI * 2; const [cx, cy] = k.P(0, 0); k.x.strokeStyle = "rgba(255,255,255,.85)"; k.x.lineWidth = 1.2 * k.S; k.x.beginPath(); k.x.arc(cx, cy, r * k.S, Math.max(-Math.PI / 2, a1 - 1.6), a1); k.x.stroke(); k.x.strokeStyle = "rgba(255,59,48,.8)"; k.x.lineWidth = 0.5 * k.S; k.x.beginPath(); k.x.arc(cx, cy, (r + 0.8) * k.S, Math.max(-Math.PI / 2, a1 - 1.6), a1); k.x.stroke(); }
+          [[5, 3], [-4, -2], [12, 4]].forEach(([a, b]) => { const inR = Math.hypot(a, b) < r; k.foe(a, b, inR ? (t > 0.2 && t < 0.4 ? "hit" : t >= 0.4 && t < 3.4 ? "bleed" : "") : ""); if (inR && t > 0.25 && t < 1.2) k.text(a, b + 3 + (t - 0.25) * 3, "8", "#fff"); }); } },
+      B: { sub: "readable zone", does: "Stab the claws in: three red claw scratches rip out to a glowing ring. Enemies inside bleed and show a slow icon; the ring shrinks as time runs out.", nums: "same numbers as now (12 / 16 / 20 wide, 4/s, slow 30%, 3 / 4 / 5 s)", trade: "Keeps the zone idea, just visible. Still slow damage.",
+        draw(k, t) { k.me(0, 0); const r = 8, life = 3; const g = ease((t - 0.3) / 0.25); const left = 1 - Math.max(0, t - 0.55) / life;
+          if (t > 0.3 && t < 0.3 + life) { k.circle(0, 0, r * Math.max(0.2, left), "rgba(192,24,42,.18)", "rgba(255,59,48,.95)", 0.6); for (let i = 0; i < 3; i++) { const a = -0.5 + i * 0.5 + Math.PI / 2; k.line(Math.cos(a) * 1.5, Math.sin(a) * 1.5, Math.cos(a) * r * g, Math.sin(a) * r * g, "rgba(255,59,48,.9)", 0.5); } }
+          [[5, 3], [-4, -2], [12, 4]].forEach(([a, b]) => { const inR = Math.hypot(a, b) < r * Math.max(0.2, left) && t > 0.5 && t < 0.3 + life; k.foe(a, b, inR ? "bleed" : ""); if (inR) k.foe(a, b, "slow"); }); } },
+      C: { sub: "pulls them in", does: "Stab the claws in: a spinning blade ring drags enemies toward you while they bleed.", nums: "12 / 16 / 20 wide · pull 6 studs/s · bleed 4/s · 3 / 4 / 5 s · recharge 20 s", trade: "Sets up your cuts; strongest crowd control of the three.",
+        draw(k, t) { k.me(0, 0); const r = 9; if (t > 0.3 && t < 3.3) { k.circle(0, 0, r, "rgba(192,24,42,.15)", "rgba(255,59,48,.8)", 0.4); const [cx, cy] = k.P(0, 0); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + t * 3; k.x.fillStyle = "#e2dccb"; k.x.save(); k.x.translate(cx + Math.cos(a) * r * k.S, cy + Math.sin(a) * r * k.S); k.x.rotate(a); k.x.fillRect(-1.2 * k.S, -0.3 * k.S, 2.4 * k.S, 0.6 * k.S); k.x.restore(); } }
+          [[5, 3], [-4, -2], [12, 4]].forEach(([a, b]) => { const d = Math.hypot(a, b); let f = 1; if (d < r && t > 0.3) f = Math.max(0.35, 1 - Math.min(3, t - 0.3) * 6 / d); k.foe(a * f, b * f, d < r && t > 0.3 && t < 3.3 ? "bleed" : ""); }); } } } },
+    { id: "Snare", title: "Snare Wires", tag: "engineer", opts: {
+      Now: { sub: "in the game", does: "Two posts and a red wire appear 8 studs ahead and sit there 60 s. The first dino to walk into it is held 1 s and takes 12.", nums: "1 / 2 / 3 traps · held 1 / 2 s · recharge 18 s", trade: "Nobody walks into it in a fight, and you can't tell it did anything.",
+        draw(k, t) { k.me(0, -8); k.line(-3, 0, 3, 0, "rgba(255,59,48,.8)", 0.3); k.circle(-3, 0, 0.7, "#9aa3ad"); k.circle(3, 0, 0.7, "#9aa3ad"); k.foe(14 - t * 2, 10, ""); } },
+      A: { sub: "bear trap", does: "Drop a big steel jaw trap in front of you. It snaps shut on the first dino that steps in: held in place and hurt.", nums: "1 / 2 / 3 traps · held 1.5 / 2.5 s · 12 damage · lasts 30 s · recharge 18 s", trade: "Clear when it snaps, but still a trap: only good where enemies will walk.",
+        draw(k, t) { k.me(0, -8); const shut = t > 1.6; const jaw = shut ? 0.4 : 2.2; k.x.save(); const [cx, cy] = k.P(0, 6); k.x.translate(cx, cy); k.x.fillStyle = "#6d737c"; k.x.beginPath(); k.x.arc(0, 0, 2.6 * k.S, 0, Math.PI * 2); k.x.fill(); k.x.fillStyle = "#c9ced6"; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; k.x.fillRect(Math.cos(a) * jaw * k.S - 0.3 * k.S, Math.sin(a) * jaw * k.S - 0.3 * k.S, 0.6 * k.S, 0.6 * k.S); } k.x.restore(); const fx = shut ? 0 : 10 - t * 6.2, fy = 6; k.foe(fx, fy, shut && t < 3.6 ? "root" : ""); if (shut && t < 2.4) k.text(0, 10, "SNAP 12", "#fff"); } },
+      B: { sub: "recommended · bola", rec: true, does: "Throw a spinning bola at the nearest enemy ahead. It wraps their legs: they stop dead and take damage.", nums: "reach 35 / 45 studs · auto-aims within 25° · held 1 / 2 s · 12 damage · 1 / 2 / 3 charges at the star · recharge 14 s", trade: "Instant and aimed at someone, so it always does something. No traps left on the map.",
+        draw(k, t) { k.me(0, -8); const fx = 4, fy = 14; const fly = ease(t / 0.45); if (t < 0.45) { const bx = fx * fly, by = -8 + (fy + 8) * fly; const [cx, cy] = k.P(bx, by); k.x.save(); k.x.translate(cx, cy); k.x.rotate(t * 30); k.x.strokeStyle = C.wire; k.x.lineWidth = 0.3 * k.S; k.x.beginPath(); k.x.moveTo(-1.6 * k.S, 0); k.x.lineTo(1.6 * k.S, 0); k.x.stroke(); k.x.fillStyle = C.brass; k.x.beginPath(); k.x.arc(-1.6 * k.S, 0, 0.6 * k.S, 0, Math.PI * 2); k.x.arc(1.6 * k.S, 0, 0.6 * k.S, 0, Math.PI * 2); k.x.fill(); k.x.restore(); }
+          k.foe(t < 0.45 ? fx + 4 - t * 4 : fx, fy, t >= 0.45 && t < 2.2 ? "root" : ""); if (t > 0.45 && t < 1.3) k.text(fx, fy + 4, "12", "#fff"); } },
+      C: { sub: "wire net", does: "Fire a wire net in a cone ahead. Everyone it lands on is held in place for a moment.", nums: "cone 15 / 20 studs long · held 1 / 1.5 s · 8 damage · recharge 16 s", trade: "Catches groups up close; short reach.",
+        draw(k, t) { k.me(0, -8); const g = ease(t / 0.35); if (t < 1.8) { const L = 18 * g; k.x.fillStyle = "rgba(223,230,238,.18)"; const [a1, b1] = k.P(0, -6), [a2, b2] = k.P(-L * 0.5, -6 + L), [a3, b3] = k.P(L * 0.5, -6 + L); k.x.beginPath(); k.x.moveTo(a1, b1); k.x.lineTo(a2, b2); k.x.lineTo(a3, b3); k.x.closePath(); k.x.fill(); for (let i = 1; i < 5; i++) k.line(-L * 0.5 * i / 5, -6 + L * i / 5, L * 0.5 * i / 5, -6 + L * i / 5, "rgba(223,230,238,.5)", 0.15); }
+          [[2, 6], [-3, 9], [10, 18]].forEach(([a, b]) => k.foe(a, b, t > 0.35 && t < 2.2 && Math.abs(a) < (b + 6) * 0.5 && b < 12 ? "root" : "")); } } } },
+    { id: "Dash", title: "Grapple Zip → Dash", tag: "speed", opts: {
+      Now: { sub: "in the game", does: "Hold to lock onto the furthest tree / rock, let go to zip there.", nums: "90 / 110 / 130 studs · 1 / 2 charges · recharge 12 / 10 s", trade: "You asked to replace it with a dash.",
+        draw(k, t) { k.me(0, -12); k.circle(6, 22, 3, "#245c26"); if (t > 0.2 && t < 1.2) k.line(0, -12, 6, 22, C.wire, 0.25); } },
+      A: { sub: "recommended · winch dash", rec: true, does: "Burst forward the way the camera faces. A wire snaps out ahead and yanks you; you keep some speed after.", nums: "40 / 50 / 60 studs in 0.35 s · 1 / 2 charges (star) · recharge 8 / 6 s (III)", trade: "Simple and always works. Flat: it won't climb.",
+        draw(k, t) { const d = t < 0.15 ? 0 : ease((t - 0.15) / 0.35) * 30; k.me(0, -14 + d); if (t < 0.5) k.line(0, -14 + d, 0, 16, C.wire, 0.25); if (t > 0.15 && t < 0.6) for (let i = 0; i < 4; i++) k.line(-1.2 + i * 0.8, -18 + d, -1.2 + i * 0.8, -24 + d, "rgba(255,255,255,.35)", 0.2); } },
+      B: { sub: "hop dash", does: "Burst forward in a low arc that hops over rocks and bushes.", nums: "35 / 45 / 55 studs · 10 studs high · 1 / 2 charges · recharge 8 / 6 s", trade: "Gets over things; a little slower to land.",
+        draw(k, t) { const p = t < 0.15 ? 0 : ease((t - 0.15) / 0.6); k.circle(0, 2, 3, "#8a8f99"); k.me(0, -14 + p * 30); if (p > 0 && p < 1) k.text(5, -14 + p * 30, `↑${Math.round(Math.sin(p * Math.PI) * 10)}`, "#8fd3ea", 2); } },
+      C: { sub: "dodge dash", does: "Burst the way you're moving (stick / WASD): sideways or back to dodge, forward to chase.", nums: "30 / 40 / 50 studs · 2 / 3 charges · recharge 6 / 5 s", trade: "Best for dodging; shorter.",
+        draw(k, t) { const d = t < 0.15 ? 0 : ease((t - 0.15) / 0.3) * 20; k.me(-10 + d, 0, Math.PI / 2); k.text(12, 6, "← shot", "#ff8a8a", 2); if (t > 0.2 && t < 1.2) k.line(18, 0, 18 - (t - 0.2) * 40, 0, "#ff5a4e", 0.4); } } } },
+    { id: "Hook", title: "Reaper's Hook", tag: "attack", opts: {
+      Now: { sub: "in the game", does: "Aim with the camera; a chain shoots from the back crane and yanks the first dino within 20° and 50 studs to in front of you.", nums: "50 / 65 / 80 studs · cone 20° · star: stun 1 s + a cut · recharge 18 / 15 s", trade: "Easy to miss (20°), and after the pull nothing happens unless you have the star.",
+        draw(k, t) { k.me(0, -12); const fx = 8, fy = 18; const pull = t > 0.3 ? ease((t - 0.3) / 0.6) : 0; const px = fx + (0 - fx) * pull, py = fy + (-6 - fy) * pull; if (t > 0.1 && t < 1) k.line(0, -12, px, py, "#b8c0c8", 0.35, 0.6); k.foe(px, py, ""); } },
+      A: { sub: "recommended · yank + slam", rec: true, does: "Hooks the nearest enemy ahead (wide 35° cone), yanks it in and slams it into the ground in front of you: it takes a hit and is stunned.", nums: "50 / 65 / 80 studs · cone 35° · slam 10 + stun 0.6 s (1.2 s at the star) · recharge 16 / 13 s", trade: "Always pays off when it lands; still need someone in front of you.",
+        draw(k, t) { k.me(0, -12); const fx = 12, fy = 18; const pull = t > 0.25 ? ease((t - 0.25) / 0.45) : 0; const px = fx + (0 - fx) * pull, py = fy + (-5 - fy) * pull; if (t > 0.08 && t < 0.75) k.line(0, -12, px, py, "#b8c0c8", 0.35, 0.6); const slam = t > 0.7 && t < 1.0; k.foe(px, py, slam ? "hit" : t >= 1.0 && t < 1.8 ? "root" : ""); if (t > 0.7 && t < 1.6) { k.circle(px, py, 2 + (t - 0.7) * 6, null, `rgba(255,255,255,${Math.max(0, 0.8 - (t - 0.7))})`, 0.4); k.text(px, py + 4, "10 STUN", "#fff", 2.2); } } },
+      B: { sub: "fly to them", does: "Hooks the nearest enemy ahead and reels YOU to them, landing with a claw slash.", nums: "50 / 65 / 80 studs · cone 35° · slash 10 · recharge 14 s", trade: "A gap-closer for chasing; puts you in their face.",
+        draw(k, t) { const fx = 6, fy = 20; const pull = t > 0.25 ? ease((t - 0.25) / 0.45) : 0; const mx = fx * pull, my = -12 + (fy - 4 + 12) * pull; k.me(mx, my); if (t > 0.08 && t < 0.75) k.line(mx, my, fx, fy, "#b8c0c8", 0.35, 0.6); k.foe(fx, fy, t > 0.7 && t < 0.95 ? "hit" : ""); if (t > 0.7 && t < 1.5) k.text(fx, fy + 4, "10", "#fff"); } },
+      C: { sub: "fling behind", does: "Hooks the nearest enemy ahead and flings it over your head to land behind you.", nums: "50 / 65 / 80 studs · cone 35° · 6 damage on landing · recharge 16 s", trade: "Fun and disruptive; less damage.",
+        draw(k, t) { k.me(0, -4); const fx = 6, fy = 18; const p = t > 0.25 ? ease((t - 0.25) / 0.7) : 0; const px = fx + (-4 - fx) * p, py = fy + (-20 - fy) * p; if (t > 0.08 && t < 0.9) k.line(0, -4, px, py, "#b8c0c8", 0.35, 0.6); k.foe(px, py, t > 0.95 && t < 1.2 ? "hit" : ""); if (p > 0 && p < 1) k.text(px + 4, py, `↑${Math.round(Math.sin(p * Math.PI) * 12)}`, "#8fd3ea", 2); } } } }
+  ];
+  const sel = {}, picked = {};
+  const cards = $("cards");
+  cards.innerHTML = MOVES.map((m, i) => `<section class="card" aria-labelledby="h-${m.id}">
+    <h2 id="h-${m.id}"><span>${i + 1}</span> · ${m.title} <small class="lbl" style="margin-left:6px">${m.tag}</small></h2>
+    <div class="tabs" role="group" aria-label="${m.title} option">${Object.entries(m.opts).map(([k, o]) => `<button class="tab" data-m="${m.id}" data-o="${k}" aria-pressed="false">${k === "Now" ? "Now" : k + " · " + o.sub.split(" · ").pop()}<small class="${o.rec ? "rec" : ""}">${k === "Now" ? "in the game" : o.rec ? "recommended" : "option"}</small></button>`).join("")}</div>
+    <div class="body"><canvas id="cv-${m.id}" aria-label="${m.title} clip"></canvas>
+      <div class="box"><h3 id="name-${m.id}"></h3><p class="does" id="does-${m.id}"></p><p class="nums" id="nums-${m.id}"></p><p class="trade" id="trade-${m.id}"></p><button class="btn" id="pick-${m.id}">Pick this</button></div></div>
+  </section>`).join("");
+  function show(mid, ok) {
+    const m = MOVES.find(x => x.id === mid), o = m.opts[ok]; sel[mid] = ok;
+    document.querySelectorAll(`[data-m="${mid}"]`).forEach(b => b.setAttribute("aria-pressed", b.dataset.o === ok));
+    $(`name-${mid}`).textContent = ok === "Now" ? "Now (in the game)" : `${ok} · ${o.sub.replace("recommended · ", "")}`;
+    $(`does-${mid}`).textContent = o.does; $(`nums-${mid}`).textContent = o.nums; $(`trade-${mid}`).textContent = o.trade;
+    const pb = $(`pick-${mid}`); pb.disabled = ok === "Now"; pb.textContent = picked[mid] === ok ? "Picked ✓" : "Pick this";
+  }
+  cards.addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (b) show(b.dataset.m, b.dataset.o); });
+  MOVES.forEach(m => { show(m.id, Object.keys(m.opts).find(k => m.opts[k].rec) || "A"); $(`pick-${m.id}`).onclick = () => { picked[m.id] = sel[m.id]; show(m.id, sel[m.id]); line(); }; });
+  function line() { const parts = MOVES.filter(m => picked[m.id]).map(m => `${m.id}-${picked[m.id]}`); $("pickline").textContent = parts.length ? parts.join(", ") : "none yet"; }
+  $("copy").onclick = () => { navigator.clipboard?.writeText($("pickline").textContent).catch(() => {}); };
+  const LOOP = 4;
+  function frame(now) {
+    const t = reduce ? 1.0 : (now / 1000) % LOOP;
+    MOVES.forEach(m => { const cv = $(`cv-${m.id}`); const k = kit(cv); m.opts[sel[m.id]].draw(k, t); });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
