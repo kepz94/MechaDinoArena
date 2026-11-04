@@ -1,4 +1,4 @@
--- SkillEffects v1.40 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.41 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -261,6 +261,18 @@ local ServerStorage = game:GetService("ServerStorage")
 --   Thick Hide rules). Runs after applyChar (a wrapper, after the therizino's). Switch: script attribute
 --   SkillEffectsPachyStatsEnabled (default true, read at each write / stun; false = 1.39). Diagnostic: character
 --   SkillEffectsPachyRows = "laststand=n,headdown=n" (sanitized steps; "" off).
+-- v1.41 (MDA-236, plan docs/plans/DILO_STATS_v1.0.md Task 2; SkillTree 1.60 dilo rows): a dilo's effects (character Species,
+--   else player DinoSpecies, = "Dilo") are ST.effects(steps, "Dilo") (its own rows; the shared rows it no longer sees give it
+--   nothing), and its row fields are written as character attributes (DILO_ATTRS, off values when not bought; a character
+--   that is not a dilo but carries them gets the off values): DiloVenomBiteDps / DiloVenomBiteTime, DiloToxicDps /
+--   DiloToxicTime, DiloFeastFrac, DiloColdMul / DiloColdBelow / DiloColdVenom / DiloColdReset (read by DiloAttackServer 1.1).
+--   Spit numbers go onto the attributes the readers already use (DiloAttackServer, DiloAttackTest, ArenaTouch, AbilityBar),
+--   from the character's own model values captured once per character as SkillDiloBase_<key>: DiloHoldTime = drawHold (when
+--   > 0) else base; DiloDartCooldown = drawCooldown (when > 0) else base; DiloDartRange / DiloAssistMax = base x spitRangeMul;
+--   DiloDartSpeed = base x spitSpeedMul (0.001 steps). Not bought, switch off or SkillEffectsEnabled false = the bases written
+--   back. Runs after applyChar (a wrapper, after the pachy's). Switch: script attribute SkillEffectsDiloStatsEnabled (default
+--   true, read at each read / write; false = 1.40 plus the bases written back). Diagnostic: character SkillEffectsDiloRows =
+--   "venombite=n,longspit=n,toxicblood=n,venomfeast=n,quickdraw=n,coldblood=n" (sanitized steps; "" off).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -275,6 +287,7 @@ VERSION = "1.37" -- v1.37 teno leap on JUMP
 VERSION = "1.38" -- v1.38 therizino keeps its own leap values
 VERSION = "1.39" -- v1.39 therizino stat rows (THERI_ATTRS)
 VERSION = "1.40" -- v1.40 pachy Last Stand + Head Down (PACHY_ATTRS)
+VERSION = "1.41" -- v1.41 dilo stat rows (DILO_ATTRS + spit numbers)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -835,6 +848,80 @@ do
 	end
 end
 
+-- v1.41: the dilo's own stat rows (see the header)
+if script:GetAttribute("SkillEffectsDiloStatsEnabled") == nil then script:SetAttribute("SkillEffectsDiloStatsEnabled", true) end
+local DILO_ATTRS = { -- {attribute, effect field, off value}
+	{"DiloVenomBiteDps", "venomBiteDps", 0}, {"DiloVenomBiteTime", "venomBiteTime", 0}, {"DiloToxicDps", "toxicDps", 0},
+	{"DiloToxicTime", "toxicTime", 0}, {"DiloFeastFrac", "feastFrac", 0}, {"DiloColdMul", "coldMul", 1},
+	{"DiloColdBelow", "coldBelow", 0}, {"DiloColdVenom", "coldVenom", false}, {"DiloColdReset", "coldReset", false},
+}
+local DILO_SPIT = {"DiloHoldTime", "DiloDartCooldown", "DiloDartRange", "DiloAssistMax", "DiloDartSpeed"}
+local function diloStatsOn() return script:GetAttribute("SkillEffectsDiloStatsEnabled") ~= false and ST.DILO_STATS == true end
+do
+	local effectsOfV140 = effectsOf
+	effectsOf = function(player)
+		if diloStatsOn() then
+			local c = player.Character
+			local sp = c and c:GetAttribute("Species")
+			if type(sp) ~= "string" or sp == "" then sp = player:GetAttribute("DinoSpecies") end
+			if sp == "Dilo" then
+				local steps = {}
+				for _, id in ipairs(ST.PATH_ORDER) do steps[id] = player:GetAttribute("SkillPath_" .. id) end
+				return ST.effects(steps, "Dilo")
+			end
+		end
+		return effectsOfV140(player)
+	end
+end
+do
+	local applyCharV140 = applyChar
+	applyChar = function(char, st)
+		applyCharV140(char, st)
+		local isDilo = char:GetAttribute("Species") == "Dilo"
+		-- bases: the character's own model values, once per character
+		if isDilo then
+			for _, k in ipairs(DILO_SPIT) do
+				if char:GetAttribute("SkillDiloBase_" .. k) == nil and typeof(char:GetAttribute(k)) == "number" then
+					char:SetAttribute("SkillDiloBase_" .. k, char:GetAttribute(k))
+				end
+			end
+		end
+		local live = on() and isDilo and diloStatsOn()
+		local x = live and st.e or {}
+		-- spit numbers (bases back when not live)
+		for _, k in ipairs(DILO_SPIT) do
+			local base = char:GetAttribute("SkillDiloBase_" .. k)
+			if typeof(base) == "number" then
+				local v = base
+				if live then
+					if k == "DiloHoldTime" and (tonumber(x.drawHold) or 0) > 0 then v = x.drawHold
+					elseif k == "DiloDartCooldown" and (tonumber(x.drawCooldown) or 0) > 0 then v = x.drawCooldown
+					elseif k == "DiloDartRange" or k == "DiloAssistMax" then v = base * (tonumber(x.spitRangeMul) or 1)
+					elseif k == "DiloDartSpeed" then v = base * (tonumber(x.spitSpeedMul) or 1) end
+				end
+				v = round(v, 0.001)
+				if char:GetAttribute(k) ~= v then char:SetAttribute(k, v) end
+			end
+		end
+		if not diloStatsOn() then return end
+		if not isDilo and char:GetAttribute("DiloVenomBiteDps") == nil then return end
+		for _, f in ipairs(DILO_ATTRS) do
+			local v = x[f[2]]
+			if v == nil then v = f[3] end
+			if char:GetAttribute(f[1]) ~= v then char:SetAttribute(f[1], v) end
+		end
+		local rows = ""
+		if live then
+			local steps = {}
+			for _, id in ipairs(ST.PATH_ORDER) do steps[id] = st.player:GetAttribute("SkillPath_" .. id) end
+			local c = ST.sanitize(steps, "Dilo")
+			rows = ("venombite=%d,longspit=%d,toxicblood=%d,venomfeast=%d,quickdraw=%d,coldblood=%d"):format(c.venombite or 0,
+				c.longspit or 0, c.toxicblood or 0, c.venomfeast or 0, c.quickdraw or 0, c.coldblood or 0)
+		end
+		if char:GetAttribute("SkillEffectsDiloRows") ~= rows then char:SetAttribute("SkillEffectsDiloRows", rows) end
+	end
+end
+
 -- healing (regen / lifesteal), overflow into the shield
 local function heal(char, st, amount, source)
 	local hum = st.hum
@@ -1170,5 +1257,8 @@ Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, p) end
 
 script:GetAttributeChangedSignal("SkillEffectsEnabled"):Connect(function()
+	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
+end)
+script:GetAttributeChangedSignal("SkillEffectsDiloStatsEnabled"):Connect(function() -- v1.41
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)

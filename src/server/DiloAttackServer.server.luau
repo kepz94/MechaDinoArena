@@ -1,4 +1,4 @@
--- DiloAttackServer v1.0 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
+-- DiloAttackServer v1.1 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
 -- docs/plans/DILO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/dilo_kit_options_v0.1.html attack C
 -- (Kepu 2026-11-03: picks "C and J1"; dart "Weaker dart"; red-team "Bite on press", "Soft aim, near-sure hit").
 -- Remote ReplicatedStorage.DinoDiloAttack (RemoteEvent), client -> server: (kind, stamp). kind "bite" = the ATTACK press
@@ -31,11 +31,33 @@
 --   DiloAttackSquadEnabled, DiloAttackPlatingEnabled (default true each, read at each use).
 -- Diagnostics: script DiloAttackServerVersion, DiloAttackRequests, DiloAttackHits, DiloVenomTicks, DiloAttackSquadSkips,
 --   DiloAttackMode; character DiloAttackServerResult, DiloAttackServerResultAt.
+-- v1.1 (MDA-237, plan docs/plans/DILO_STATS_v1.0.md Task 3; SkillTree 1.60 dilo rows written by SkillEffects 1.41). Switch:
+--   script attribute DiloAttackStatsEnabled (default true, read at each use; false = 1.0 everywhere below). All the dilo's
+--   numbers are character attributes; off values (nothing bought) = 1.0's behaviour.
+--   * Venom rule (Kepu 2026-11-04 "Stronger one wins"): a new venom on a target whose venom is still running keeps the higher
+--     of the two VenomDps and the later VenomUntil; never stacked. VenomBy = the new dilo when its dps >= the running one,
+--     else unchanged. (Dart after dart at the same dps = 1.0's refresh.)
+--   * Venom Bite: a bite hit (not shielded) with the dilo's DiloVenomBiteDps > 0 applies venom DiloVenomBiteDps for
+--     DiloVenomBiteTime s.
+--   * Cold Blood: while the dilo's Humanoid health < DiloColdBelow x MaxHealth (DiloColdBelow > 0): dart damage x DiloColdMul;
+--     with DiloColdVenom also every venom it applies (dart, bite, Toxic Blood) x DiloColdMul. Star (DiloColdReset): the first
+--     drop of a life (each character is one life) from at or above the line to under it (health > 0) clears the server's dart
+--     recharge and stamps the dilo's DiloDartResetAt = now (DiloAttackTest 1.1 clears its own recharge and stamps
+--     DiloDartReadyAt for ArenaTouch 1.16 / AbilityBar 1.27).
+--   * Toxic Blood (Kepu "Close hits only"): when a dilo's LastHitAt changes, with DiloToxicDps > 0 and LastHitBy naming a
+--     player character or a Workspace.DinoIsland.Bots model whose root is within TOXIC_RANGE (12) x the dilo's scale studs of
+--     the dilo's root, that is a target (isTarget) and mayAffect allows it: that model gets venom DiloToxicDps for
+--     DiloToxicTime s (VenomBy the dilo).
+--   * Venom Feast: each venom tick heals the dilo named in VenomBy (a player character, alive) by the damage the tick took off
+--     DummyHealth x its DiloFeastFrac, never above MaxHealth.
+--   Diagnostics: script DiloAttackStatsVersion, DiloToxicHits, DiloFeastHeals, DiloDartResets; dilo character
+--   DiloVenomFeastHealed (total, 0.1 steps), DiloToxicHits (count), DiloColdActive (under the line now, with Cold Blood),
+--   DiloDartResetCount, DiloDartResetAt.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1" -- v1.1 dilo stat rows
 local DEFAULTS = {DiloBiteDamage = 10, DiloBiteDelay = 0.18, DiloBiteReach = 5, DiloBiteCone = 70, DiloHoldTime = 0.4,
 	DiloDartDamage = 6, DiloVenomDps = 2, DiloVenomTime = 3, DiloDartRange = 30, DiloDartSpeed = 60, DiloDartCooldown = 1.5,
 	DiloAssistAngle = 30, DiloAssistMin = 0, DiloAssistMax = 30, DiloMinGap = 0.35}
@@ -51,6 +73,12 @@ for _, k in ipairs({"DiloAttackServerEnabled", "DiloAttackModeRulesEnabled", "Di
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local enabled = script:GetAttribute("DiloAttackServerEnabled") ~= false
+-- v1.1
+if script:GetAttribute("DiloAttackStatsEnabled") == nil then script:SetAttribute("DiloAttackStatsEnabled", true) end
+for _, k in ipairs({"DiloToxicHits", "DiloFeastHeals", "DiloDartResets"}) do script:SetAttribute(k, 0) end
+script:SetAttribute("DiloAttackStatsVersion", "1.1")
+local TOXIC_RANGE = 12
+local function statsOn() return script:GetAttribute("DiloAttackStatsEnabled") ~= false end
 
 local function now() return workspace:GetServerTimeNow() end
 local function count(k, n) script:SetAttribute(k, (script:GetAttribute(k) or 0) + (n or 1)) end
@@ -206,6 +234,27 @@ local function stampHit(char, kind, names, point, t)
 end
 
 -- venom ---------------------------------------------------------------------------------------------------------------------
+-- v1.1: Venom Feast (the dilo named in VenomBy heals part of each tick)
+local function diloChar(name)
+	if type(name) ~= "string" or name == "" then return nil end
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local c = pl.Character
+		if c and c.Name == name and c:GetAttribute("Species") == "Dilo" then return c end
+	end
+	return nil
+end
+local function feast(byName, dealt)
+	local c = diloChar(byName)
+	local frac = c and num(c, "DiloFeastFrac", 0) or 0
+	if not c or frac <= 0 or dealt <= 0 then return end
+	local hum = c:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 then return end
+	local add = math.min(hum.MaxHealth - hum.Health, dealt * frac)
+	if add <= 0 then return end
+	hum.Health += add
+	c:SetAttribute("DiloVenomFeastHealed", math.floor(((c:GetAttribute("DiloVenomFeastHealed") or 0) + add) * 10 + 0.5) / 10)
+	count("DiloFeastHeals")
+end
 local venomLoops = setmetatable({}, {__mode = "k"})
 local function venomLoop(m, killerName, killerId)
 	if venomLoops[m] then return end
@@ -219,7 +268,9 @@ local function venomLoop(m, killerName, killerId)
 			if not shielded(m, t) then
 				local d = math.max(0, num(m, "VenomDps", 0)) * VENOM_TICK * takenMul(m, t)
 				if d > 0 then
+					local hpBefore = m:GetAttribute("DummyHealth") -- v1.1: Venom Feast
 					takeHealth(m, d, m:GetAttribute("VenomBy") or killerName, killerId, "dilovenom", t)
+					if statsOn() and typeof(hpBefore) == "number" then feast(m:GetAttribute("VenomBy"), math.min(d, math.max(0, hpBefore))) end
 					m:SetAttribute("VenomTicks", (m:GetAttribute("VenomTicks") or 0) + 1)
 					count("DiloVenomTicks")
 				end
@@ -227,6 +278,31 @@ local function venomLoop(m, killerName, killerId)
 		end
 		venomLoops[m] = nil
 	end)
+end
+-- v1.1: the venom rule (stronger one wins, later end, never stacked); switch off = 1.0's overwrite
+local function applyVenom(m, dps, dur, char, player, t)
+	if dps <= 0 or dur <= 0 then return end
+	local untilT, by = t + dur, char.Name
+	if statsOn() and num(m, "VenomUntil", 0) > t then
+		local curDps = math.max(0, num(m, "VenomDps", 0))
+		if curDps > dps then by = m:GetAttribute("VenomBy") or by end
+		dps = math.max(curDps, dps)
+		untilT = math.max(num(m, "VenomUntil", 0), untilT)
+	end
+	m:SetAttribute("VenomDps", dps)
+	m:SetAttribute("VenomBy", by)
+	m:SetAttribute("VenomUntil", untilT) -- last
+	venomLoop(m, char.Name, player and player.UserId or 0)
+end
+-- v1.1: Cold Blood
+local function coldLow(char)
+	local below = num(char, "DiloColdBelow", 0)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	return statsOn() and below > 0 and hum ~= nil and hum.Health > 0 and hum.Health < below * hum.MaxHealth
+end
+local function coldDartMul(char) return coldLow(char) and math.max(1, num(char, "DiloColdMul", 1)) or 1 end
+local function coldVenomMul(char)
+	return (coldLow(char) and char:GetAttribute("DiloColdVenom") == true) and math.max(1, num(char, "DiloColdMul", 1)) or 1
 end
 
 -- bite ----------------------------------------------------------------------------------------------------------------------
@@ -248,6 +324,9 @@ local function resolveBite(player, char, at)
 		if inCone and gap(m, origin) <= reach then
 			if not shielded(m, t) then
 				takeHealth(m, dmg * takenMul(m, t) * plating(m, root.Position), char.Name, player.UserId, "dilobite", t)
+				if statsOn() and num(char, "DiloVenomBiteDps", 0) > 0 and isTarget(m, char) then -- v1.1: Venom Bite
+					applyVenom(m, num(char, "DiloVenomBiteDps", 0) * coldVenomMul(char), num(char, "DiloVenomBiteTime", 0), char, player, t)
+				end
 			end
 			table.insert(names, m.Name)
 		end
@@ -294,12 +373,18 @@ local function fireDart(player, char, t)
 			if tr and (tr.Position - to).Magnitude <= DART_TOLERANCE * s then
 				point = tr.Position
 				if not shielded(target, ti) then
-					local dmg = math.max(0, get(char, "DiloDartDamage"))
+					local dmg = math.max(0, get(char, "DiloDartDamage")) * coldDartMul(char) -- v1.1: Cold Blood
 					takeHealth(target, dmg * takenMul(target, ti) * plating(target, from), char.Name, player.UserId, "dilodart", ti)
-					target:SetAttribute("VenomDps", math.max(0, get(char, "DiloVenomDps")))
-					target:SetAttribute("VenomBy", char.Name)
-					target:SetAttribute("VenomUntil", ti + math.max(0, get(char, "DiloVenomTime"))) -- last
-					venomLoop(target, char.Name, player.UserId)
+					if statsOn() then -- v1.1: the venom rule, Cold Blood venom
+						if isTarget(target, char) then
+							applyVenom(target, math.max(0, get(char, "DiloVenomDps")) * coldVenomMul(char), math.max(0, get(char, "DiloVenomTime")), char, player, ti)
+						end
+					else
+						target:SetAttribute("VenomDps", math.max(0, get(char, "DiloVenomDps")))
+						target:SetAttribute("VenomBy", char.Name)
+						target:SetAttribute("VenomUntil", ti + math.max(0, get(char, "DiloVenomTime"))) -- last
+						venomLoop(target, char.Name, player.UserId)
+					end
 				end
 				table.insert(names, target.Name)
 			end
@@ -351,3 +436,58 @@ remote.OnServerEvent:Connect(function(player, kind, stamp)
 		fireDart(player, char, t)
 	end
 end)
+
+-- v1.1: Toxic Blood + the Cold Blood star, per dilo character -----------------------------------------------------------------
+local function findModel(name)
+	if type(name) ~= "string" or name == "" then return nil end
+	for _, pl in ipairs(Players:GetPlayers()) do
+		if pl.Character and pl.Character.Name == name then return pl.Character end
+	end
+	for _, b in ipairs(bots()) do
+		if b.Name == name then return b end
+	end
+	return nil
+end
+local function watchDilo(player, char)
+	local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid", 10)
+	if not hum then return end
+	local last = hum.Health
+	local resetUsed = false
+	hum.HealthChanged:Connect(function(h)
+		local prev = last
+		last = h
+		if char:GetAttribute("Species") ~= "Dilo" then return end
+		local below = num(char, "DiloColdBelow", 0)
+		local line = below * hum.MaxHealth
+		local low = statsOn() and below > 0 and h > 0 and h < line
+		if char:GetAttribute("DiloColdActive") ~= low then char:SetAttribute("DiloColdActive", low) end
+		if low and prev >= line and not resetUsed and char:GetAttribute("DiloColdReset") == true then
+			resetUsed = true
+			local t = now()
+			track(char).lastDart = -math.huge
+			char:SetAttribute("DiloDartResetCount", (char:GetAttribute("DiloDartResetCount") or 0) + 1)
+			char:SetAttribute("DiloDartResetAt", t)
+			count("DiloDartResets")
+		end
+	end)
+	char:GetAttributeChangedSignal("LastHitAt"):Connect(function()
+		if not statsOn() or char:GetAttribute("Species") ~= "Dilo" then return end
+		local dps, dur = num(char, "DiloToxicDps", 0), num(char, "DiloToxicTime", 0)
+		if dps <= 0 or dur <= 0 or hum.Health <= 0 then return end
+		local m = findModel(char:GetAttribute("LastHitBy"))
+		local r, mr = rootOf(char), m and rootOf(m)
+		if not m or m == char or not r or not mr then return end
+		if (mr.Position - r.Position).Magnitude > TOXIC_RANGE * char:GetScale() then return end
+		if not isTarget(m, char) or not mayAffect(char, m) then return end
+		local t = now()
+		applyVenom(m, dps * coldVenomMul(char), dur, char, player, t)
+		char:SetAttribute("DiloToxicHits", (char:GetAttribute("DiloToxicHits") or 0) + 1)
+		count("DiloToxicHits")
+	end)
+end
+local function onPlayer(pl)
+	pl.CharacterAdded:Connect(function(c) task.defer(watchDilo, pl, c) end)
+	if pl.Character then task.defer(watchDilo, pl, pl.Character) end
+end
+Players.PlayerAdded:Connect(onPlayer)
+for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
