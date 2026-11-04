@@ -1,4 +1,4 @@
--- TenoMovesFX v1.4 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
+-- TenoMovesFX v1.5 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
 -- StarterPlayerScripts; every client draws every teno). Plan docs/plans/TENO_ABILITIES_v1.0.md Task 7 (MDA-179), mockup
 -- docs/mockups/teno_abilities_options.html v0.3 (rings, dust, heat glow, the catapult boulder leaving the bucket).
 -- Reads TenoMovesServer 1.0's character stamps (the server also draws the boulders and rubble patches itself):
@@ -51,12 +51,17 @@
 --   at the bucket"): on TenoMortarFiredAt, a white-hot flash (8 studs) at the catapult bucket's rock, dust around the teno's
 --   root (spread 10) and a 0.4 s cream wave to 10 studs on the ground. Switch: script attribute TenoMovesFXMortarBigEnabled
 --   (default true, read at each shot; false = 1.3).
+-- v1.5 (MDA-217, plan docs/plans/TENO_TAIL_GRAB_v1.0.md; TenoMovesServer 1.7 Over-the-Top grab): the Tail Grab's white flash
+--   at the tail tip comes at the catch, TenoGrabCatchAt (when it is newer than TenoGrabStartedAt), instead of 0.3 s after the
+--   press. Switch: script attribute TenoMovesFXGrabCatchEnabled (default true, read at each grab; false = 1.4).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 purple shield look
 VERSION = "1.4" -- v1.4 mortar launch FX
+VERSION = "1.5" -- v1.5 grab flash at the catch
+if script:GetAttribute("TenoMovesFXGrabCatchEnabled") == nil then script:SetAttribute("TenoMovesFXGrabCatchEnabled", true) end -- v1.5
 local RING_TIME, ROCK_RELOAD = 0.5, 2.4
 local player = Players.LocalPlayer
 player:SetAttribute("TenoMovesFXVersion", VERSION)
@@ -148,10 +153,16 @@ local function fresh(char, k) -- a stamp younger than 2 s
 	return typeof(at) == "number" and math.abs(workspace:GetServerTimeNow() - at) < 2
 end
 
+-- v1.5: the grab flash waits for the catch (see the header)
+local function grabFlashDelay(char)
+	local st, ca = tonumber(char:GetAttribute("TenoGrabStartedAt")), tonumber(char:GetAttribute("TenoGrabCatchAt"))
+	if script:GetAttribute("TenoMovesFXGrabCatchEnabled") == false or not st or not ca or ca <= st then return 0.3 end
+	return math.clamp(ca - workspace:GetServerTimeNow(), 0, 2)
+end
 local function watch(char)
 	char:GetAttributeChangedSignal("TenoGrabStartedAt"):Connect(function()
 		if not on() or not fresh(char, "TenoGrabStartedAt") then return end
-		task.delay(0.3, function()
+		task.delay(grabFlashDelay(char), function()
 			local tip = char:FindFirstChild("Tail5_main", true)
 			if tip and tip:IsA("BasePart") then
 				flash((tip.CFrame * CFrame.new(-1.6 * char:GetScale(), 0, 0)).Position, 4)
