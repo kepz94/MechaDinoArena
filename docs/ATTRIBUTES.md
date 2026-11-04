@@ -2699,3 +2699,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ArenaTouchTheriHitsLeftEnabled; ArenaTouchTheriHitsLeft | ArenaTouch script; character (this client) | true (false = 1.11 step count); "<left>/<max>" | ArenaTouch 1.12: touch ATTACK pips = hits left (same as AbilityBar 1.24) |
 | TheriLeapAirAfterWindup | therizino model | true (false = IdleAnimation 1.39) | IdleAnimation 1.40: airborne during the crouch does not start the leap's air phase (running jumps spin) |
 | ArenaTouchTheriJumpPipsEnabled; ArenaTouchTheriJumpPips | ArenaTouch script; character (this client) | true (false = 1.12); "<left>/<max>" | ArenaTouch 1.13: touch JUMP charge pips (therizino) |
+| AbilityBarTenoJumpPipsEnabled; AbilityBarTenoLeapPips | AbilityBar script; character (this client) | true (false = 1.24); "<left>/<max>" | AbilityBar 1.25: the teno's PC JUMP tile shows Hydraulic Leap charges |
+| ArenaTouchTenoJumpPipsEnabled | ArenaTouch script | true (false = 1.13, therizino only) | ArenaTouch 1.14: the teno's touch JUMP shows its charges (diagnostic ArenaTouchTheriJumpPips) |
