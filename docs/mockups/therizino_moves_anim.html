@@ -65,7 +65,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--yellow); ou
     <span class="lbl">Speed</span><button class="btn" data-speed="1" aria-pressed="true">1×</button><button class="btn" data-speed="0.3" aria-pressed="false">0.3×</button>
     <span class="lbl" style="margin-left:6px">Camera</span>
     <button class="btn" data-view="three" aria-pressed="true">3/4</button><button class="btn" data-view="side" aria-pressed="false">Side</button>
-    <button class="btn" data-view="game" aria-pressed="false">Player camera</button><button class="btn" data-view="top" aria-pressed="false">Top</button>
+    <button class="btn" data-view="game" aria-pressed="false">Player camera</button><button class="btn" data-view="close" aria-pressed="false">Part close-up</button><button class="btn" data-view="top" aria-pressed="false">Top</button>
     <span id="dashRow" class="row"><span class="lbl" style="margin-left:6px">Dash part</span><button class="btn" data-dash="A" aria-pressed="true">A · Flank Thrusters</button><button class="btn" data-dash="B" aria-pressed="false">B · Storm Core</button><button class="btn" data-dash="C" aria-pressed="false">C · Shoulder Jets</button></span>
     <span id="sizeRow" class="row"><span class="lbl" style="margin-left:6px">Ring size</span><button class="btn" data-size="16" aria-pressed="true">16 studs (picked)</button><button class="btn" data-size="30" aria-pressed="false">30 studs</button></span>
   </div>
@@ -772,7 +772,8 @@ function oldSnare() { for (const tp of ["Tail2_main", "Tail3_main", "Tail4_main"
 // fit the dinosaur ... the animation has to be crystal clear what the intent is". Plays each move on the real model
 // (core + looks of the redesign mockup v0.5, picked looks: Reaper Crane, Reaper Sleeves, Belly Winch, Tail Spool Rig).
 // Units: the model's (game studs / 2). Front = -Z, the camera side = +X.
-const ANIM_VERSION = "0.2"; // v0.2: the dash gets its own part (Kepu 16:47): A Flank Thrusters, B Storm Core (lightning), C Shoulder Jets
+const ANIM_VERSION = "0.3"; // v0.3: the Reaper's Hook moves to the chest (Kepu 16:54 "can move to the chest now cause it looks so goofy like that")
+// v0.2: the dash gets its own part (Kepu 16:47): A Flank Thrusters, B Storm Core (lightning), C Shoulder Jets
 // (from the redesign core's page section, which this page leaves out)
 const ease = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 const lerp = (a, b, u) => a + (b - a) * u;
@@ -855,6 +856,34 @@ function shoulderJets() { // C: jump-jet pauldrons on both shoulders that swivel
     add("box", [0.7, 0.08, 0.5], [0, 0.55, 0.2], null, "glow");
   }
 }
+// v0.3: Reaper's Hook on the chest (the winch's old spot): a studded chest plate, a launcher barrel with the reaper claw seated
+// in its muzzle, and a chain drum under it that reels you in. The claw leaves the muzzle when fired (role "hookhead").
+let hookDrumSpin = 0;
+function chestHook() {
+  const M = mount("Torso_chest", [0, 0, 0]);
+  // chest plate (studded) with trim, bolts, a red glow strip and launch stripes
+  M.box([1.9, 1.7, 0.32], [0, 1.95, -3.45], null, "shell");
+  M.box([2.0, 0.12, 0.38], [0, 2.82, -3.45], null, "trim"); M.box([2.0, 0.12, 0.38], [0, 1.08, -3.45], null, "trim");
+  for (const [x, y] of [[-0.8, 2.6], [0.8, 2.6], [-0.8, 1.3], [0.8, 1.3]]) M.bolt([x, y, -3.63], "z", 0.14);
+  for (const e of [-1, 1]) { M.box([0.3, 1.5, 0.5], [e * 1.02, 1.95, -3.2], null, "plate"); M.box([0.06, 1.1, 0.04], [e * 0.72, 1.95, -3.63], null, "glow"); }
+  M.hazard(1.5, 0.1, [0, 1.18, -3.64], null, 8);
+  // launcher barrel (along -Z) with a brass muzzle and a red glow ring inside
+  M.box([0.95, 0.8, 0.9], [0, 2.2, -3.95], null, "plate");
+  M.cyl([0.66, 1.25, 0], [0, 2.2, -4.45], [90, 0, 0], "iron");
+  M.cyl([0.84, 0.2, 0], [0, 2.2, -5.05], [90, 0, 0], "brass");
+  M.cyl([0.5, 0.06, 0], [0, 2.2, -5.16], [90, 0, 0], "glow", {role: "muzzle"});
+  for (const e of [-1, 1]) M.cyl([0.16, 1.0, 0], [e * 0.42, 2.55, -4.4], [90, 0, 0], "steel"); // recoil rails
+  // the reaper claw seated in the muzzle (prongs folded forward)
+  grapnel(M, [0, 2.2, -5.45], 0.95, () => 0.15, "bone");
+  for (const e of equip.slice(-7)) e.role = "hookhead";
+  // chain drum under the barrel (spins while reeling) + brass flanges
+  const drum = () => Tm(0, 1.45, -3.95).multiply(RXm(hookDrumSpin));
+  M.add("cyl", [0.78, 1.25, 0], [0, 0, 0], [0, 0, 0], "steel", {place: () => drum().multiply(rot(0, 0, 90))});
+  for (let k = 0; k < 4; k++) M.add("box", [1.24, 0.06, 0.82], [0, 0, 0], [0, 0, 0], "iron", {place: () => drum().multiply(RXm(k * Math.PI / 4))});
+  for (const e of [-1, 1]) M.add("cyl", [0.98, 0.08, 0], [0, 0, 0], [0, 0, 0], "brass", {place: () => drum().multiply(Tm(e * 0.66, 0, 0)).multiply(rot(0, 0, 90))});
+  // hoses up to the shoulders
+  for (const e of [-1, 1]) M.hose([e * 0.6, 2.6, -3.3], [e * 1.4, 2.2, -2.7], 0.15, 0.12, 4);
+}
 const DASH_LOOKS = {A: flankThrusters, B: stormCore, C: shoulderJets};
 let dashLook = "A";
 let clawOut = false, harpoonOut = false;
@@ -863,7 +892,7 @@ function buildRig() {
   for (const e of equip) if (e.mesh.parent) e.mesh.parent.remove(e.mesh); // they live under the rig (clearEquip only takes them off the scene)
   for (const c of cables) for (const m of c.segs) if (m.parent) m.parent.remove(m);
   clearEquip();
-  GLOW = AREA.attack[2]; hookCrane();
+  GLOW = AREA.attack[2]; chestHook();
   GLOW = AREA.attack[2]; harvestSleeves({fore: false});
   GLOW = AREA.speed[2]; DASH_LOOKS[dashLook]();
   GLOW = AREA.eng[2]; snareSpools();
@@ -1049,7 +1078,7 @@ const BOLA_WIND = {RootJoint: [-6, 18, 0], Neck: [0, -14, 0], Tail1: [-6, -22, 0
 const BOLA_THROW = {RootJoint: [-10, -16, 0], Neck: [-4, 16, 0], Tail1: [-18, 26, 0], Tail2: [-18, 30, 0], Tail3: [-14, 30, 0], Tail4: [-10, 28, 0], Tail5: [-6, 26, 0], LegR: [10, 0, 0], KneeR: [-16, 0, 0]};
 const DODGE = {RootJoint: [-14, 0, 16], LegL: [36, 0, 0], LegR: [26, 0, 0], KneeL: [-62, 0, 0], KneeR: [-52, 0, 0], AnkleL: [22, 0, 0], AnkleR: [18, 0, 0], ArmL: [34, 0, 16], ArmR: [34, 0, -16], Neck: [-6, 0, -10], Tail1: [8, 0, -10], Tail2: [6, 0, -8]};
 const SKID = {RootJoint: [-6, 0, 6], LegL: [18, 0, 0], LegR: [-10, 0, 0], KneeL: [-30, 0, 0], KneeR: [-20, 0, 0], ArmL: [20, 0, 10], ArmR: [20, 0, -10]};
-const HOOK_SET = {RootJoint: [-6, 0, 0], Neck: [-12, 0, 0], ArmL: [30, 0, 10], ArmR: [30, 0, -10], LegL: [12, 0, 0], LegR: [-6, 0, 0], KneeL: [-20, 0, 0], KneeR: [-10, 0, 0]};
+const HOOK_SET = {RootJoint: [-6, 0, 0], Neck: [-14, 0, 0], ArmL: [40, 0, 40], ArmR: [40, 0, -40], LegL: [12, 0, 0], LegR: [-6, 0, 0], KneeL: [-20, 0, 0], KneeR: [-10, 0, 0]};
 const REEL = {RootJoint: [-20, 0, 0], Neck: [-10, 0, 0], ArmL: [100, -20, 20], ArmR: [100, 20, -20], LegL: [48, 0, 0], LegR: [36, 0, 0], KneeL: [-74, 0, 0], KneeR: [-62, 0, 0], AnkleL: [24, 0, 0], AnkleR: [20, 0, 0], Tail1: [12, 0, 0], Tail2: [8, 0, 0]};
 const SLASH_P = {RootJoint: [-26, 0, 0], Neck: [-16, 0, 0], Head: [-6, 0, 0], ArmL: [-24, 30, 34], ArmR: [-24, -30, -34], LegL: [26, 0, 0], LegR: [-8, 0, 0], KneeL: [-38, 0, 0], KneeR: [-16, 0, 0], Tail1: [-10, 0, 0]};
 
@@ -1060,7 +1089,7 @@ const MOVES = [
     does: ["Rears up, claw sleeves glow red", "Slams both claws into the ground: red cracks race out to the ring's edge", "Six bone sickles shoot out of the wrist cuffs and lock into a spinning ring", "Everyone inside is dragged toward you and bleeds (-2 ticks)", "Sickles fly back into the cuffs, you stand up"],
     nums: "Ring 12 / 16 / 20 studs wide (your pick) · pulls 6 studs/s · bleed 4/s · 3 / 4 / 5 s · recharge 20 s",
     phases: [[0, 0.4, "Wind-up · rears up, sleeves glow"], [0.4, 0.58, "Stab · claws into the ground, cracks race out"], [0.58, 0.95, "Sickles launch from the wrist cuffs"], [0.95, 3.9, "Vortex · ring spins, drags them in, they bleed"], [3.9, 4.3, "Sickles return · stand up"], [4.3, 4.8, "—"]],
-    focus: () => new THREE.Vector3(0, 3, -5), side: [37.5, 7.5, -1.5], three: [24.0, 16.5, 22.5], top: [0, 52, -5],
+    close: ["ArmL_hand", [7, 3, -9]], focus: () => new THREE.Vector3(0, 3, -5), side: [37.5, 7.5, -1.5], three: [24.0, 16.5, 22.5], top: [0, 52, -5],
     update(tt) {
       const R = ringStuds / 4; // radius in model units (studs / 2 / 2)
       const centre = new THREE.Vector3(0, 0, -5);
@@ -1114,7 +1143,7 @@ const MOVES = [
     does: ["Tail swings out to the side, the spools spin, the bola unspools and whirls at the tail tip", "The tail whips across and slings the bola at the nearest enemy ahead", "The bola spins through the air (you can see it coming)", "It wraps around the raptor's legs: it trips and stops dead, 12 damage", "Held in place, wire glinting on its legs; then the wire snaps off"],
     nums: "Reach 35 / 45 studs · auto-aims at the nearest enemy within 25° · held 1 / 2 s · 12 damage · recharge 14 s",
     phases: [[0, 0.45, "Wind-up · tail swings out, bola whirls"], [0.45, 0.6, "Throw · the tail whips"], [0.6, 1.05, "Bola flies at the raptor"], [1.05, 1.25, "Wraps its legs: it trips, 12 damage"], [1.25, 3.0, "Held in place"], [3.0, 3.8, "Wire snaps off · raptor runs on"]],
-    focus: () => new THREE.Vector3(2, 3, -7), side: [42.0, 9.0, -3.0], three: [30.0, 19.5, 24.0], top: [2, 60, -7],
+    close: ["Tail3_main", [10, 5, 7]], focus: () => new THREE.Vector3(2, 3, -7), side: [42.0, 9.0, -3.0], three: [30.0, 19.5, 24.0], top: [2, 60, -7],
     update(tt) {
       rig.position.set(0, LY(), 0); rig.rotation.set(0, 0, 0);
       let A = IDLE(tt);
@@ -1149,7 +1178,7 @@ const MOVES = [
     get does() { return DASH_TEXT[dashLook].does; },
     nums: "Dashes the way you're moving (stick / WASD; standing still = forward) · 30 / 40 / 50 studs · 2 charges (3 at the star) · recharge 6 / 5 s",
     get phases() { return DASH_TEXT[dashLook].phases; },
-    focus: () => new THREE.Vector3(rig.position.x * 0.6 + 2, 3, -3), side: [4.5, 9.0, 39.0], three: [25.5, 16.5, 30.0], top: [8, 56, -3],
+    close: () => ({A: ["Torso_body", [11, 3, -4]], B: ["Torso_body", [9, -1, -11]], C: ["ArmL_shoulder", [8, 5, -9]]})[dashLook], focus: () => new THREE.Vector3(rig.position.x * 0.6 + 2, 3, -3), side: [4.5, 9.0, 39.0], three: [25.5, 16.5, 30.0], top: [8, 56, -3],
     update(tt) {
       const D = 20; // 40 studs
       const L = dashLook;
@@ -1199,11 +1228,11 @@ const MOVES = [
       DART.visible = dk > 0 && dk < 1; if (DART.visible) { DART.position.set(-18 + dk * 40, 3.2, -6 + dk * 5.5); DART.scale.set(2.6, 0.35, 0.35); DART.rotation.y = -0.14; }
     } },
   { id: "hook", name: "Reaper's Hook", sub: "B · Reaper Reel", area: "attack", len: 3.8,
-    part: "Reaper Crane (back crane, chain + claw, winch drum)", partWhy: "The crane swings its boom forward over your head, the claw flies out on the chain and clamps on, and the turret's drum reels YOU in. Red = attack glow on the turret and the jib.",
-    does: ["Crouch: the crane boom swings forward over your head, the claw opens", "The claw shoots out on its chain at the nearest enemy ahead and clamps on", "The drum reels you in: you fly at it with both claws raised", "You land a big double claw slash: 10 damage", "The claw lets go and swings back onto the crane"],
+    part: "Reaper Launcher (chest: launcher barrel + reaper claw + chain drum)", partWhy: "Moved off the back onto the chest. The reaper claw sits in the launcher's muzzle; it fires on its chain, clamps on, and the drum under the barrel reels YOU in. Red = attack glow on the chest strips and the muzzle.",
+    does: ["Brace: chest out, arms swing wide, the claw opens in the muzzle", "The claw shoots out on its chain at the nearest enemy ahead and clamps on", "The drum reels you in: you fly at it with both claws raised", "You land a big double claw slash: 10 damage", "The claw lets go and reels back into the muzzle"],
     nums: "Reach 50 / 65 / 80 studs · auto-aims at the nearest enemy within 35° · slash 10 · recharge 14 s",
-    phases: [[0, 0.3, "Aim · boom swings forward, claw opens"], [0.3, 0.52, "Claw flies out and clamps the raptor"], [0.52, 1.0, "Reel · the drum pulls YOU in, claws up"], [1.0, 1.22, "Slash · double claw, 10 damage"], [1.22, 1.8, "Claw lets go, boom swings back"], [1.8, 3.8, "—"]],
-    focus: () => new THREE.Vector3(rig.position.x * 0.5 + 1, 3, (rig.position.z - 25) * 0.5), side: [42.0, 9.0, -4.5], three: [30.0, 18.0, 21.0], top: [0, 64, -12],
+    phases: [[0, 0.3, "Brace · chest out, arms wide, claw opens"], [0.3, 0.52, "Claw flies out and clamps the raptor"], [0.52, 1.0, "Reel · the drum pulls YOU in, claws up"], [1.0, 1.22, "Slash · double claw, 10 damage"], [1.22, 1.8, "Claw lets go, reels back into the chest"], [1.8, 3.8, "—"]],
+    close: ["Torso_chest", [8, 2, -12]], focus: () => new THREE.Vector3(rig.position.x * 0.5 + 1, 3, (rig.position.z - 25) * 0.5), side: [42.0, 9.0, -4.5], three: [30.0, 18.0, 21.0], top: [0, 64, -12],
     update(tt) {
       const target = new THREE.Vector3(2.5, 0, -25);
       const stop = target.clone().add(new THREE.Vector3(0, 0, 8.5));
@@ -1217,7 +1246,7 @@ const MOVES = [
       A = mix(A, SLASH_P, easeOut(seg(tt, 0.98, 1.12)));
       if (tt > 1.25) A = mix(A, IDLE(tt), easeIO(seg(tt, 1.25, 1.8)));
       pose(A);
-      boomA = -1.0 * easeIO(seg(tt, 0, 0.3)) * (1 - easeIO(seg(tt, 1.25, 1.8)));
+      hookDrumSpin = tt > 0.3 && tt < 1.8 ? (tt - 0.3) * (tt < 1.0 ? -18 : 12) : 0;
       use = tt < 1.3 ? 1 : 0;
       const Rp = raptors[0];
       const hit = tt > 1.02;
@@ -1225,7 +1254,7 @@ const MOVES = [
       raptors[1].visible = raptors[2].visible = false;
       // chain from the jib tip to the claw
       updateEquip();
-      const jib = pieceWorld("jib", "Torso_body");
+      const jib = pieceWorld("muzzle", "Torso_chest");
       const grip = target.clone().add(new THREE.Vector3(0, 2.8, 0.6));
       clawOut = tt > 0.3 && tt < 1.5;
       if (tt <= 0.3 || tt >= 1.5) { claw.visible = false; chainOff(); }
@@ -1285,6 +1314,9 @@ function frameM(now) {
     const off = new THREE.Vector3(0.9 * top + 0.5, 0.75 * top + 0.35 * top + 2, 26).applyAxisAngle(UP, h); // pulled back a little to match the game's framing in Studio
     goalPos = rig.position.clone().setY(-(restMinY || 0)).add(off); // the redesign mockup's ShoulderCam framing (its height includes the rest lift)
     goalLook = goalPos.clone().add(new THREE.Vector3(0, -1.2, -10).applyAxisAngle(UP, h));
+  } else if (view === "close") { // the part itself, up close (follows the dino)
+    const c = typeof m.close === "function" ? m.close() : m.close;
+    goalLook = centreOf(c[0]); goalPos = goalLook.clone().add(new THREE.Vector3(...c[1]));
   } else if (view === "top") { const o = m.top; goalPos = new THREE.Vector3(o[0], o[1], o[2] + 0.01); goalLook = new THREE.Vector3(o[0], 0, o[2]); }
   else { const o = m[view]; goalPos = f.clone().add(new THREE.Vector3(o[0], o[1], o[2])); goalLook = f; }
   const kk = 1 - Math.pow(0.001, dt);
