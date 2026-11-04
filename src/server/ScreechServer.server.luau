@@ -1,4 +1,4 @@
--- ScreechServer v1.11 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.12 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -101,6 +101,11 @@
 --   picked "Everything harmful"): mayAffect(source, target) is also false for a squadmate (wraps the ModeRules check), so no squadmate is ever picked, hit or slowed. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
 --   SquadTestId counts). Switch: script attribute ScreechServerSquadEnabled (default true, read at each check; false = 1.10).
 --   Diagnostic: script ScreechServerSquadSkips (count of squadmate skips / refusals).
+-- v1.12 (therizino Deflector Claws, MDA-247, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 7; Kepu "Yes, in build 2"): a Shock
+--   Cannon ball (b.shock) reaching a dino asks DeflectRules 1.0 (kind "cannon", from 20 studs back along its flight) after the
+--   Dome Visor check; blocked = no stun / damage on it (shooter ScreechLastHit "deflect:<name>"); reflect (the star) = the
+--   same ball hits the shooter instead (credited to the therizino; a reflected ball is never deflected again). Switch: script
+--   attribute ScreechDeflectEnabled (default true, read at each hit; false = 1.11).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -108,6 +113,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local VERSION = "1.11"
+VERSION = "1.12" -- v1.12 Deflector Claws
 local PITCH_MAX = math.rad(20) -- v1.8
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
@@ -294,6 +300,22 @@ local function visorMod()
 	end
 	return visorModCache or nil
 end
+-- v1.12: Deflector Claws
+if script:GetAttribute("ScreechDeflectEnabled") == nil then script:SetAttribute("ScreechDeflectEnabled", true) end
+local deflectMod -- DeflectRules 1.0 (ServerStorage.DinoArcade), loaded on first use
+local function deflected(target, fromPos, kind, t, switch)
+	if script:GetAttribute(switch) == false then return false, false end
+	if deflectMod == nil then
+		deflectMod = false
+		pcall(function()
+			local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+			local m = arc and arc:FindFirstChild("DeflectRules")
+			if m then deflectMod = require(m) end
+		end)
+	end
+	if not deflectMod then return false, false end
+	return deflectMod.check(target, fromPos, kind, t)
+end
 local function hit(b, target)
 	local t = now()
 	if b.shock and script:GetAttribute("ScreechVisorEnabled") ~= false then -- v1.9: Dome Visor
@@ -301,6 +323,16 @@ local function hit(b, target)
 		if VM and VM.visorFront(target, b.pos - b.dir * 20) then
 			b.shooter:SetAttribute("ScreechLastHit", "visor:" .. target.Name)
 			VM.visorBlock(target, b.shooter, "cannon")
+			return
+		end
+	end
+	if b.shock and not b.reflected then -- v1.12: Deflector Claws
+		local defl, refl = deflected(target, b.pos - b.dir * 20, "cannon", t, "ScreechDeflectEnabled")
+		if defl then
+			b.shooter:SetAttribute("ScreechLastHit", "deflect:" .. target.Name)
+			if refl and b.shooter and b.shooter.Parent then
+				hit(setmetatable({reflected = true, shooter = target}, {__index = b}), b.shooter)
+			end
 			return
 		end
 	end

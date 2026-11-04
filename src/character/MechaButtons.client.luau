@@ -1,4 +1,4 @@
--- MechaButtons v1.29 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.30 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -237,6 +237,11 @@
 --   "SNARE"). The hook and the feathers fire along the camera look (stamp, cam LookVector); the field and the snare are
 --   normal presses. PC keys and phone buttons together (this script draws both). Switch: script attribute
 --   MechaButtonsTheriEnabled (default true, read at start; false = 1.28).
+-- v1.30 (therizino parts build 2, MDA-248, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 8; TheriMovesServer 1.2): TIMED_PARTS
+--   += zgrapple ("TheriGrapple", DinoTheriGrappleRequest, "GRAPPLE"; fires along the camera look, 3D, like the hook),
+--   zdeflect ("TheriDeflect", DinoTheriDeflectRequest, "DEFLECT"), zclock ("TheriClock", DinoTheriClockRequest,
+--   "OVERCLOCK"). The grapple's ready / dim look follows TheriGrappleReadyAt (now while a charge is left). Same switch
+--   MechaButtonsTheriEnabled.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -245,6 +250,7 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.27"
 VERSION = "1.28" -- v1.28 teno leap on JUMP, Shield Armor
 VERSION = "1.29" -- v1.29 therizino parts build 1
+VERSION = "1.30" -- v1.30 therizino parts build 2
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -336,6 +342,9 @@ if THERI_BTN then -- v1.29: the therizino's mecha parts (build 1)
 	TIMED_PARTS.zfeather = {"TheriFeather", "DinoTheriFeatherRequest", "FEATHERS"}
 	TIMED_PARTS.zharvest = {"TheriField", "DinoTheriFieldRequest", "HARVEST"}
 	TIMED_PARTS.zsnare = {"TheriSnare", "DinoTheriSnareRequest", "SNARE"}
+	TIMED_PARTS.zgrapple = {"TheriGrapple", "DinoTheriGrappleRequest", "GRAPPLE"} -- v1.30
+	TIMED_PARTS.zdeflect = {"TheriDeflect", "DinoTheriDeflectRequest", "DEFLECT"}
+	TIMED_PARTS.zclock = {"TheriClock", "DinoTheriClockRequest", "OVERCLOCK"}
 end
 -- v1.20: parts that use hold-to-aim
 local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off
@@ -854,7 +863,7 @@ local function press(n, input)
 		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector, point) end
 		return
 	end
-	if THERI_BTN and (id == "zhook" or id == "zfeather") then -- v1.29: along the camera look (TheriMovesServer 1.0)
+	if THERI_BTN and (id == "zhook" or id == "zfeather" or id == "zgrapple") then -- v1.29: along the camera look (TheriMovesServer 1.0); v1.30: + grapple
 		local r = ReplicatedStorage:FindFirstChild(TIMED_PARTS[id][2])
 		local cam = workspace.CurrentCamera
 		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end

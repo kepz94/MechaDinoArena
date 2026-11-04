@@ -1,4 +1,4 @@
--- TenoMovesServer v1.7 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.8 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -168,6 +168,10 @@
 --     LEAP_SHOVE_TIME (unanchored when it is not stunned). A player (only with a stun, TenoLeapStun > 0): StunTossFrom /
 --     StunTossDistance / StunTossAt set before the stun, so StunClient tosses it sideways. Switch: script attribute
 --     TenoMovesLeapShoveEnabled (default true, read at each landing). Diagnostic: character TenoLeapShoves.
+-- v1.8 (therizino Deflector Claws, MDA-247, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 7; Kepu "Yes, in build 2"): a mortar
+--   boulder landing on a dino asks DeflectRules 1.0 (kind "boulder", from the teno's root) before its damage / slow; blocked
+--   = nothing for that dino; reflect (the star) = the boulder's damage to the teno instead (KilledWith "deflect"). Switch:
+--   script attribute TenoMovesDeflectEnabled (default true, read at each landing; false = 1.7).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -178,6 +182,7 @@ VERSION = "1.4" -- v1.4 leap on JUMP
 VERSION = "1.5" -- v1.5 mortar wind-up + 90 studs, shield at 0.2 s
 VERSION = "1.6" -- v1.6 TenoLeapArc (front-only landing)
 VERSION = "1.7" -- v1.7 Over-the-Top grab, leap landing on dinos + shove
+VERSION = "1.8" -- v1.8 Deflector Claws (mortar)
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
 local MORTAR_FIRE2, MORTAR_FLIGHT2, MORTAR_PEAK2 = 0.15, 0.7, 14 -- v1.2
@@ -471,6 +476,23 @@ local function ok(char, prefix, t, setCooldown)
 	char:SetAttribute(prefix .. "ServerResult", "ok")
 	char:SetAttribute(prefix .. "ServerResultAt", t)
 	if setCooldown ~= false then char:SetAttribute(prefix .. "ReadyAt", t + math.max(0.5, num(char, prefix .. "Cooldown", 15))) end
+end
+
+-- v1.8: Deflector Claws
+if script:GetAttribute("TenoMovesDeflectEnabled") == nil then script:SetAttribute("TenoMovesDeflectEnabled", true) end
+local deflectMod -- DeflectRules 1.0 (ServerStorage.DinoArcade), loaded on first use
+local function deflected(target, fromPos, kind, t, switch)
+	if script:GetAttribute(switch) == false then return false, false end
+	if deflectMod == nil then
+		deflectMod = false
+		pcall(function()
+			local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+			local m = arc and arc:FindFirstChild("DeflectRules")
+			if m then deflectMod = require(m) end
+		end)
+	end
+	if not deflectMod then return false, false end
+	return deflectMod.check(target, fromPos, kind, t)
 end
 
 -- Tail Grab & Fling ---------------------------------------------------------------------------------------------------------------
@@ -863,9 +885,18 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 			for _, pt in ipairs(pts) do
 				if not hit[m] and flat(mr.Position - pt).Magnitude <= splash and math.abs(mr.Position.Y - pt.Y) <= DY then
 					hit[m] = true
-					n += 1
-					damage(char, player, m, dmg, "mortar", tl)
-					slow(m, smul, tl + stime, tl)
+					local cr = rootOf(char)
+					local defl, refl = deflected(m, cr and cr.Position or pt, "boulder", tl, "TenoMovesDeflectEnabled") -- v1.8
+					if defl then
+						if refl then
+							local mp = Players:GetPlayerFromCharacter(m)
+							damage(m, mp or {UserId = 0}, char, dmg, "deflect", tl)
+						end
+					else
+						n += 1
+						damage(char, player, m, dmg, "mortar", tl)
+						slow(m, smul, tl + stime, tl)
+					end
 				end
 			end
 		end

@@ -1,4 +1,4 @@
--- DiloAttackServer v1.2 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
+-- DiloAttackServer v1.3 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
 -- docs/plans/DILO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/dilo_kit_options_v0.1.html attack C
 -- (Kepu 2026-11-03: picks "C and J1"; dart "Weaker dart"; red-team "Bite on press", "Soft aim, near-sure hit").
 -- Remote ReplicatedStorage.DinoDiloAttack (RemoteEvent), client -> server: (kind, stamp). kind "bite" = the ATTACK press
@@ -62,12 +62,18 @@
 --   first. A dino that fully left the spot still dodges. Switch: script attribute DiloAttackBodyHitEnabled (default true, read
 --   at each arrival; false = 1.1). Diagnostics: script DiloDartBodyHits (count); character DiloDartHitRule ("root" / "body" /
 --   "miss", the last locked dart).
+-- v1.3 (therizino Deflector Claws, MDA-247, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 7; Kepu "Yes, in build 2"): a locked
+--   dart that would hit (root or body rule) asks DeflectRules 1.0 (kind "dart", from DiloDartFrom); blocked = no damage, no
+--   venom, DiloDartHitRule "deflected", no hit target (DiloFX fizzles); reflect (the star) = the dart's damage (with Cold
+--   Blood) comes off the dilo's DummyHealth instead (KilledWith "deflect", credit to the therizino). Switch: script attribute
+--   DiloAttackDeflectEnabled (default true, read at each arrival; false = 1.2).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.1" -- v1.1 dilo stat rows
 VERSION = "1.2" -- v1.2 dart hits where it lands (body rule)
+VERSION = "1.3" -- v1.3 Deflector Claws
 local DEFAULTS = {DiloBiteDamage = 10, DiloBiteDelay = 0.18, DiloBiteReach = 5, DiloBiteCone = 70, DiloHoldTime = 0.4,
 	DiloDartDamage = 6, DiloVenomDps = 2, DiloVenomTime = 3, DiloDartRange = 30, DiloDartSpeed = 60, DiloDartCooldown = 1.5,
 	DiloAssistAngle = 30, DiloAssistMin = 0, DiloAssistMax = 30, DiloMinGap = 0.35}
@@ -350,6 +356,22 @@ local function resolveBite(player, char, at)
 end
 
 -- dart ----------------------------------------------------------------------------------------------------------------------
+-- v1.3: Deflector Claws
+if script:GetAttribute("DiloAttackDeflectEnabled") == nil then script:SetAttribute("DiloAttackDeflectEnabled", true) end
+local deflectMod -- DeflectRules 1.0 (ServerStorage.DinoArcade), loaded on first use
+local function deflected(target, fromPos, kind, t, switch)
+	if script:GetAttribute(switch) == false then return false, false end
+	if deflectMod == nil then
+		deflectMod = false
+		pcall(function()
+			local arc = game:GetService("ServerStorage"):FindFirstChild("DinoArcade")
+			local m = arc and arc:FindFirstChild("DeflectRules")
+			if m then deflectMod = require(m) end
+		end)
+	end
+	if not deflectMod then return false, false end
+	return deflectMod.check(target, fromPos, kind, t)
+end
 local function pickTarget(char, from, fwd)
 	local s = char:GetScale()
 	local half = math.rad(math.clamp(get(char, "DiloAssistAngle"), 0, 180))
@@ -391,8 +413,18 @@ local function fireDart(player, char, t)
 				rule = "body"
 				count("DiloDartBodyHits")
 			end
+			if rule ~= "miss" then -- v1.3: Deflector Claws
+				local defl, refl = deflected(target, from, "dart", ti, "DiloAttackDeflectEnabled")
+				if defl then
+					rule = "deflected"
+					if refl then
+						local tp = Players:GetPlayerFromCharacter(target)
+						takeHealth(char, math.max(0, get(char, "DiloDartDamage")) * coldDartMul(char), target.Name, tp and tp.UserId or 0, "deflect", ti)
+					end
+				end
+			end
 			char:SetAttribute("DiloDartHitRule", rule)
-			if rule ~= "miss" then
+			if rule ~= "miss" and rule ~= "deflected" then
 				point = rule == "root" and tr.Position or to
 				if not shielded(target, ti) then
 					local dmg = math.max(0, get(char, "DiloDartDamage")) * coldDartMul(char) -- v1.1: Cold Blood

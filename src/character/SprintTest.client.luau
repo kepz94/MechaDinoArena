@@ -1,4 +1,4 @@
--- SprintTest v1.19 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.20 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -67,6 +67,12 @@
 -- v1.19 (teno abilities build 2, Herd Bellow; TenoMovesServer 1.3): while TenoBellowedUntil > now the speed is x
 --   TenoBellowedRunMul (clamped 1..3) with the other part multipliers; MoveSpeedParts can include "bellow". Switch: script
 --   attribute SprintTenoBellowEnabled (default true, read each apply; false = 1.18).
+-- v1.20 (therizino Overclock Joints, MDA-247, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 7; TheriMovesServer 1.2): while
+--   TheriClockUntil > now the part speed is x TheriClockRunMul (clamped 1..3); MoveSpeedParts can include "overclock". With
+--   TheriClockNoSlow true (the star) the slow factors are taken back out while it lasts: ScreechSlowUntil (x SCREECH_SLOW),
+--   MineSlow, TenoSlow, SmokeSlow, CaltropSlow, GooSlow, HeadbuttSlow (not the self-slow) and the roar debuff's speed, each
+--   only while active and below 1; MoveSpeedParts then adds "noSlow". Switch: script attribute SprintTheriClockEnabled
+--   (default true, read each apply; false = 1.19).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -202,6 +208,48 @@ local function partSpeed()
 	end
 	return mul, (#names > 0 and table.concat(names, "+") or "none"), ends
 end
+-- v1.20: Overclock Joints (see the header)
+if script:GetAttribute("SprintTheriClockEnabled") == nil then script:SetAttribute("SprintTheriClockEnabled", true) end
+local function clockOn(t)
+	return script:GetAttribute("SprintTheriClockEnabled") ~= false and (tonumber(char:GetAttribute("TheriClockUntil")) or 0) > t
+end
+local function slowBack(t) -- the product of the active slow factors (< 1), to divide back out
+	local back = 1
+	local su = char:GetAttribute("ScreechSlowUntil")
+	if typeof(su) == "number" and t < su then back *= SCREECH_SLOW end
+	for _, h in ipairs({{"MineSlowUntil", "MineSlowMul"}, {"TenoSlowUntil", "TenoSlowMul"}, {"SmokeSlowUntil", "SmokeSlowMul"},
+		{"CaltropSlowUntil", "CaltropSlowMul"}, {"GooSlowUntil", "GooSlowMul"}, {"HeadbuttSlowUntil", "HeadbuttSlowMul"}}) do
+		local u, m = char:GetAttribute(h[1]), char:GetAttribute(h[2])
+		if typeof(u) == "number" and typeof(m) == "number" and t < u and m < 1 then back *= math.clamp(m, 0.05, 1) end
+	end
+	return back
+end
+do
+	local partSpeedV119 = partSpeed
+	partSpeed = function()
+		local mul, names, ends = partSpeedV119()
+		local t = workspace:GetServerTimeNow()
+		if clockOn(t) then
+			local untilT = tonumber(char:GetAttribute("TheriClockUntil"))
+			mul *= math.clamp(tonumber(char:GetAttribute("TheriClockRunMul")) or 1, 1, 3)
+			names = (names == "none" and "" or names .. "+") .. "overclock"
+			if char:GetAttribute("TheriClockNoSlow") == true then
+				local back = slowBack(t)
+				if back < 1 then mul /= back end
+				names ..= "+noSlow"
+			end
+			table.insert(ends, untilT)
+		end
+		return mul, names, ends
+	end
+	local debuffSpeedV119 = debuffSpeed
+	debuffSpeed = function()
+		local m, u = debuffSpeedV119()
+		local t = workspace:GetServerTimeNow()
+		if clockOn(t) and char:GetAttribute("TheriClockNoSlow") == true and m < 1 then return 1, u end
+		return m, u
+	end
+end
 local scheduledPartEnds = {} -- v1.6: [end time] = true once a re-apply is scheduled
 
 local sprinting = false
@@ -298,6 +346,9 @@ for _, a in ipairs({"AdrenalineUntil", "AdrenalineSpeedMul", "EnergyShieldUntil"
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 for _, a in ipairs({"TenoBellowedUntil", "TenoBellowedRunMul"}) do -- v1.19
+	char:GetAttributeChangedSignal(a):Connect(apply)
+end
+for _, a in ipairs({"TheriClockUntil", "TheriClockRunMul", "TheriClockNoSlow"}) do -- v1.20
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 apply()

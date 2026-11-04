@@ -1,4 +1,4 @@
--- TheriMovesFX v1.0 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
+-- TheriMovesFX v1.1 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
 -- draws them for every therizino). Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 5 (MDA-245); looks from the mockup
 -- docs/mockups/therizino_parts_options.html v0.1 (chain links, feather blades, red field); server TheriMovesServer 1.0.
 --   * Reaper's Hook: TheriHookAt -> a steel chain (alternating light / dark links, CHAIN_STEP studs apart) from the
@@ -14,10 +14,21 @@
 -- Everything lives in Workspace.DinoFX_Local.TheriMovesFX (no collision / query / touch, anchored). Switches: script
 -- attributes TheriMovesFXEnabled (default true), TheriMovesFX_<hook | feather | field>Enabled (default true; read at each
 -- event). Diagnostics: script TheriMovesFXVersion, TheriMovesFXEvents (count), TheriMovesFXLast.
+-- v1.1 (therizino parts build 2, MDA-248, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 8; mockup v0.1 looks 12-C, 16-A, 18-C):
+--   * Grapple Zip: TheriGrappleAt (result "zip") -> a thin wire (WIRE colour, Neon) from the ZPart_zgrapple "nozzle" (else the
+--     root) to TheriGrappleAnchor, shooting out in 0.12 s, held while the body zips (TheriGrappleTime), then gone; a brass
+--     claw head sits on the anchor.
+--   * Deflector Claws: while TheriDeflectUntil is in the future, a spinning rotor in front of each ZPart_zdeflect "hub"
+--     (a translucent disc + 4 claw blades, 1.6 x scale studs across, 22 rad/s, opposite ways); TheriDeflectBlockAt -> a white
+--     flash and sparks at the nearer rotor.
+--   * Overclock Joints: while TheriClockUntil is in the future the ZPart_zclock "ring" pieces turn hot orange Neon (pulsing),
+--     back to their own colour / material after.
+--   Switches: TheriMovesFX_<grapple | deflect | clock>Enabled (default true; read at each event).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 grapple wire, deflect rotors, overclock rings
 local CHAIN_STEP, SHOOT_TIME, BLADE_TIME = 1.7, 0.15, 0.3
 local LIGHT, DARK = Color3.fromRGB(184, 192, 200), Color3.fromRGB(124, 132, 142)
 local FEATHER = Color3.fromRGB(240, 234, 216)
@@ -207,9 +218,144 @@ local function field(char, s)
 	note("field")
 end
 
+-- v1.1: Grapple Zip ----------------------------------------------------------------------------------------------------------
+for _, k in ipairs({"TheriMovesFX_grappleEnabled", "TheriMovesFX_deflectEnabled", "TheriMovesFX_clockEnabled"}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
+local WIRE = Color3.fromRGB(223, 230, 238)
+local BRASS = Color3.fromRGB(201, 162, 74)
+local function grapple(char, s)
+	if char:GetAttribute("TheriGrappleResult") ~= "zip" then return end
+	local anchor = char:GetAttribute("TheriGrappleAnchor")
+	if typeof(anchor) ~= "Vector3" then return end
+	local dur = num(char, "TheriGrappleTime", 0.5)
+	local wire = part(Vector3.new(0.15 * s, 0.15 * s, 1), WIRE, Enum.Material.Neon)
+	local head = part(Vector3.new(0.6, 0.6, 0.6) * s, BRASS, Enum.Material.Metal)
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local e = os.clock() - t0
+		local nz = zpiece(char, "zgrapple", "nozzle")[1]
+		local from = nz and nz.Position or (char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position)
+		if e >= 0.12 + dur or not from or not char.Parent then
+			conn:Disconnect()
+			wire:Destroy()
+			head:Destroy()
+			return
+		end
+		local tip = e < 0.12 and from:Lerp(anchor, e / 0.12) or anchor
+		local d = tip - from
+		wire.Size = Vector3.new(0.15 * s, 0.15 * s, math.max(0.1, d.Magnitude))
+		wire.CFrame = CFrame.lookAt(from + d / 2, tip)
+		head.CFrame = CFrame.new(tip)
+	end)
+	note("grapple")
+end
+
+-- v1.1: Deflector Claws -----------------------------------------------------------------------------------------------------
+local BLADE = Color3.fromRGB(226, 220, 203)
+local rotors = setmetatable({}, {__mode = "k"}) -- [char] = {parts, conn}
+local function deflect(char, s)
+	local untilT = num(char, "TheriDeflectUntil", 0)
+	if rotors[char] then return end
+	local hubs = zpiece(char, "zdeflect", "hub")
+	if #hubs == 0 then return end
+	local set = {}
+	for i, h in ipairs(hubs) do
+		local disc = part(Vector3.new(0.1 * s, 1.6 * s, 1.6 * s), Color3.fromRGB(200, 230, 255), Enum.Material.Neon, 0.7)
+		disc.Shape = Enum.PartType.Cylinder
+		local blades = {}
+		for b = 1, 4 do blades[b] = part(Vector3.new(0.12 * s, 0.14 * s, 1.5 * s), BLADE, Enum.Material.SmoothPlastic) end
+		set[i] = {hub = h, disc = disc, blades = blades, dir = i % 2 == 0 and -1 or 1}
+	end
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		if now() >= num(char, "TheriDeflectUntil", untilT) or not char.Parent then
+			conn:Disconnect()
+			for _, r in ipairs(set) do
+				r.disc:Destroy()
+				for _, b in ipairs(r.blades) do b:Destroy() end
+			end
+			rotors[char] = nil
+			return
+		end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		local fwd = root and root.CFrame.LookVector or Vector3.zAxis
+		for _, r in ipairs(set) do
+			if r.hub.Parent then
+				local c = r.hub.Position + fwd * 0.8 * s
+				local face = CFrame.lookAt(c, c + fwd)
+				r.disc.CFrame = face * CFrame.Angles(0, math.rad(90), 0)
+				local a = os.clock() * 22 * r.dir
+				for b, bl in ipairs(r.blades) do
+					bl.CFrame = face * CFrame.Angles(0, 0, a + b * math.pi / 2) * CFrame.new(0, 0.4 * s, 0) * CFrame.Angles(math.rad(90), 0, 0)
+				end
+			end
+		end
+	end)
+	rotors[char] = {set = set, conn = conn}
+	note("deflect")
+end
+local function deflectBlock(char, s)
+	local from = char:GetAttribute("TheriDeflectBlockFrom")
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local hubs = zpiece(char, "zdeflect", "hub")
+	local at = root.Position
+	if #hubs > 0 then
+		at = hubs[1].Position
+		if typeof(from) == "Vector3" and hubs[2] and (hubs[2].Position - from).Magnitude < (at - from).Magnitude then at = hubs[2].Position end
+	end
+	local f = part(Vector3.one * 2 * s, Color3.new(1, 1, 1), Enum.Material.Neon, 0.1)
+	f.Shape = Enum.PartType.Ball
+	f.CFrame = CFrame.new(at)
+	task.spawn(function()
+		for i = 1, 8 do
+			if not f.Parent then return end
+			f.Size = Vector3.one * (2 + i * 0.5) * s
+			f.Transparency = 0.1 + i / 9
+			task.wait(0.03)
+		end
+		f:Destroy()
+	end)
+	note("deflectBlock")
+end
+
+-- v1.1: Overclock Joints ----------------------------------------------------------------------------------------------------
+local HOT = Color3.fromRGB(255, 98, 18)
+local function clock(char)
+	local rings = zpiece(char, "zclock", "ring")
+	if #rings == 0 then return end
+	local keep = {}
+	for i, r in ipairs(rings) do keep[i] = {r.Color, r.Material} end
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local untilT = num(char, "TheriClockUntil", 0)
+		if now() >= untilT or not char.Parent then
+			conn:Disconnect()
+			for i, r in ipairs(rings) do
+				if r.Parent then r.Color, r.Material = keep[i][1], keep[i][2] end
+			end
+			return
+		end
+		local k = 0.5 + 0.5 * math.sin(os.clock() * 14)
+		for _, r in ipairs(rings) do
+			if r.Parent then
+				r.Material = Enum.Material.Neon
+				r.Color = HOT:Lerp(Color3.fromRGB(255, 200, 80), k)
+			end
+		end
+	end)
+	note("clock")
+end
+
 -- watch every character ------------------------------------------------------------------------------------------------------
 local function watch(char)
 	local function s() return char:GetScale() end
+	char:GetAttributeChangedSignal("TheriGrappleAt"):Connect(function() if on("grapple") then grapple(char, s()) end end) -- v1.1
+	char:GetAttributeChangedSignal("TheriDeflectAt"):Connect(function() if on("deflect") then deflect(char, s()) end end) -- v1.1
+	char:GetAttributeChangedSignal("TheriDeflectBlockAt"):Connect(function() if on("deflect") then deflectBlock(char, s()) end end) -- v1.1
+	char:GetAttributeChangedSignal("TheriClockAt"):Connect(function() if on("clock") then clock(char) end end) -- v1.1
 	char:GetAttributeChangedSignal("TheriHookAt"):Connect(function() if on("hook") then chain(char, s()) end end)
 	char:GetAttributeChangedSignal("TheriFeatherAt"):Connect(function() if on("feather") then feathers(char, s()) end end)
 	char:GetAttributeChangedSignal("TheriFieldAt"):Connect(function() if on("field") then field(char, s()) end end)

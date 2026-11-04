@@ -1,4 +1,4 @@
--- TheriMovesServer v1.1 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.2 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -50,6 +50,21 @@
 --   height, and a smaller dino's hitboxes sit lower than the therizino's root, so a blade passed over it. A blade's point is
 --   now taken at the target root's height (flat fan, as the mockup draws it). Switch: script attribute
 --   TheriMovesFlatBladesEnabled (default true, read at each fire; false = 1.0).
+-- v1.2 (therizino parts build 2, MDA-247, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 7; SkillTree 1.62): three more remotes,
+--   same checks (prefixes TheriGrapple / TheriDeflect / TheriClock):
+--   * Grapple Zip: DinoTheriGrappleRequest(stamp, aimDir). A ray from the root (+ 2 x scale up) along aimDir (the camera look,
+--     3D) up to TheriGrappleRange studs against the world only (characters, bots, tall grass, FX ignored). A hit at least
+--     GRAPPLE_MIN (6) studs away -> TheriGrappleTo = hit point + normal x 3 x scale, TheriGrappleTime = clamp(distance /
+--     ZIP_SPEED (120), 0.2, 0.9) s, TheriGrappleResult "zip", TheriGrappleAt (last): the owner's client (TheriGrappleZip 1.0)
+--     flies the body there. Nothing hit / too close -> "noAnchor" (no charge used). Charges: TheriGrappleCharges (1; 2 at the
+--     star); each zip uses one, which comes back TheriGrappleCooldown s later; TheriGrappleReadyAt = now while a charge is
+--     left, else the next refill (MechaButtons reads it); TheriGrappleLeft (charges left).
+--   * Deflector Claws: DinoTheriDeflectRequest(stamp) -> TheriDeflectUntil = now + TheriDeflectTime, TheriDeflectAt (last).
+--     DeflectRules 1.0 (ServerStorage.DinoArcade) does the blocking inside DiloAttackServer 1.3, TenoMovesServer 1.8 and
+--     ScreechServer 1.12.
+--   * Overclock Joints: DinoTheriClockRequest(stamp) -> TheriClockUntil = now + TheriClockTime, TheriClockAt (last); SprintTest
+--     1.20 runs faster (and drops slows at the star), TheriAttackServer 1.5 / TheriAttackTest 1.3 shorten the tap gap.
+--   Switches: TheriMoves_zgrappleEnabled, TheriMoves_zdeflectEnabled, TheriMoves_zclockEnabled (default true, read at each use).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -57,6 +72,7 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 flat feather blades
+VERSION = "1.2" -- v1.2 build 2: Grapple Zip, Deflector Claws, Overclock Joints
 local HOOK_SPEED, HOOK_GAP = 140, 5
 local BLADE_WIDTH = 1.5
 local FIELD_TICK = 0.5
@@ -623,4 +639,83 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 	if changed then trapCount() end
+end)
+
+-- v1.2: build 2 (see the header) ---------------------------------------------------------------------------------------------------
+for _, k in ipairs({"TheriMoves_zgrappleEnabled", "TheriMoves_zdeflectEnabled", "TheriMoves_zclockEnabled"}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
+local GRAPPLE_MIN, ZIP_SPEED = 6, 120
+local grappleRemote, deflectRemote, clockRemote = remote("DinoTheriGrappleRequest"), remote("DinoTheriDeflectRequest"), remote("DinoTheriClockRequest")
+local zips = setmetatable({}, {__mode = "k"}) -- [char] = {refills = {times}}
+local function grappleLeft(char, t)
+	local st = zips[char]
+	if not st then
+		st = {refills = {}}
+		zips[char] = st
+	end
+	for i = #st.refills, 1, -1 do
+		if st.refills[i] <= t then table.remove(st.refills, i) end
+	end
+	local max = math.max(1, math.floor(num(char, "TheriGrappleCharges", 1)))
+	return max - #st.refills, st, max
+end
+local function grapplePublish(char, t)
+	local left, st = grappleLeft(char, t)
+	local nextAt = math.huge
+	for _, r in ipairs(st.refills) do nextAt = math.min(nextAt, r) end
+	char:SetAttribute("TheriGrappleLeft", left)
+	char:SetAttribute("TheriGrappleReadyAt", left > 0 and t or nextAt)
+	if left <= 0 and nextAt < math.huge then
+		task.delay(nextAt - t + 0.02, function() if char.Parent then grapplePublish(char, now()) end end)
+	end
+end
+grappleRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+	local c0 = player.Character
+	if c0 then grappleLeft(c0, now()) grapplePublish(c0, now()) end -- refills first, so ReadyAt is current for check()
+	local char, t = check(player, stamp, "zgrapple", "TheriGrapple", aimDir, true)
+	if not char then return end
+	local left, st = grappleLeft(char, t)
+	if left <= 0 then
+		char:SetAttribute("TheriGrappleServerResult", "cooldown")
+		char:SetAttribute("TheriGrappleServerResultAt", t)
+		return
+	end
+	local root = rootOf(char)
+	local s = char:GetScale()
+	local dir = typeof(aimDir) == "Vector3" and aimDir.Magnitude > 0.5 and aimDir.Unit or root.CFrame.LookVector
+	local from = root.Position + Vector3.new(0, 2 * s, 0)
+	local range = math.max(0, num(char, "TheriGrappleRange", 40))
+	local hit = workspace:Raycast(from, dir * range, worldOnly())
+	if not hit or (hit.Position - from).Magnitude < GRAPPLE_MIN then
+		char:SetAttribute("TheriGrappleResult", "noAnchor")
+		char:SetAttribute("TheriGrappleServerResult", "noAnchor")
+		char:SetAttribute("TheriGrappleServerResultAt", t)
+		return
+	end
+	local to = hit.Position + hit.Normal * 3 * s
+	local dist = (to - root.Position).Magnitude
+	table.insert(st.refills, t + math.max(0.5, num(char, "TheriGrappleCooldown", 12)))
+	char:SetAttribute("TheriGrappleServerResult", "ok")
+	char:SetAttribute("TheriGrappleServerResultAt", t)
+	grapplePublish(char, t)
+	char:SetAttribute("TheriGrappleAnchor", hit.Position)
+	char:SetAttribute("TheriGrappleTo", to)
+	char:SetAttribute("TheriGrappleTime", math.clamp(dist / ZIP_SPEED, 0.2, 0.9))
+	char:SetAttribute("TheriGrappleResult", "zip")
+	char:SetAttribute("TheriGrappleAt", t) -- last: TheriGrappleZip + FX
+end)
+deflectRemote.OnServerEvent:Connect(function(player, stamp)
+	local char, t = check(player, stamp, "zdeflect", "TheriDeflect", nil, false)
+	if not char then return end
+	ok(char, "TheriDeflect", t)
+	char:SetAttribute("TheriDeflectUntil", t + math.max(0, num(char, "TheriDeflectTime", 1)))
+	char:SetAttribute("TheriDeflectAt", t) -- last: FX + poses
+end)
+clockRemote.OnServerEvent:Connect(function(player, stamp)
+	local char, t = check(player, stamp, "zclock", "TheriClock", nil, false)
+	if not char then return end
+	ok(char, "TheriClock", t)
+	char:SetAttribute("TheriClockUntil", t + math.max(0, num(char, "TheriClockTime", 3)))
+	char:SetAttribute("TheriClockAt", t) -- last: FX
 end)

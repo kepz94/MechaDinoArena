@@ -1,4 +1,4 @@
--- TheriAttackTest v1.2 (Mecha Dino Arena) — the Therizinosaurus' ATTACK input on the owner's client: each tap is the next
+-- TheriAttackTest v1.3 (Mecha Dino Arena) — the Therizinosaurus' ATTACK input on the owner's client: each tap is the next
 -- hit of the 3-hit claw combo. MDA-202, plan docs/plans/THERIZINO_KIT_v1.0.md Task 5 (server: TheriAttackServer 1.0), mockup
 -- docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02: "3-hit combo", "A Reaper Sweeps").
 -- Pattern: TenoAttackTest 1.4 (same bindings, blocks and refusal handling; no hold: the press is the tap).
@@ -25,6 +25,10 @@
 --   TheriLocalStep 4 (TheriPose 1.4 plays the Ground Scythe), DinoTheriAttack:FireServer(now), TheriInputResult "hit4". After
 --   it, without TheriFourthFast a tap within TheriFourthRecover (0.8) s is "recover"; then (at once with TheriFourthFast) the
 --   next tap is cut 1. Switch: character attribute TheriLocalFourthEnabled (default true, read at each tap; false = 1.1).
+-- v1.3 (MDA-247, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 7; Overclock Joints II+ "cut taps come 30% faster too"): while
+--   the character's TheriClockUntil (TheriMovesServer 1.2) is in the future, the local tap gap (TheriMinGap, after Flowing
+--   Cuts) is x TheriClockTapMul (0.7), the same rule as TheriAttackServer 1.5. Switch: script attribute
+--   TheriAttackTestClockEnabled (default true, read at each tap; false = 1.2).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -33,6 +37,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Flowing Cuts windows
 VERSION = "1.2" -- v1.2 the Fourth Cut
+VERSION = "1.3" -- v1.3 Overclock tap gap
 local ACTION = "DinoTheriAttack"
 local ACTION_CLICK = "DinoTheriAttackClick"
 local DEFAULTS = {TheriAttackEnabled = false, TheriMinGap = 0.33, TheriChainWindow = 0.8, TheriFinisherRecover = 0.9,
@@ -62,6 +67,20 @@ do
 			if v > 0 then return v end
 		end
 		return getV10(k)
+	end
+end
+-- v1.3: Overclock Joints tap gap (see the header)
+if script:GetAttribute("TheriAttackTestClockEnabled") == nil then script:SetAttribute("TheriAttackTestClockEnabled", true) end
+do
+	local getV12 = get
+	get = function(k)
+		local v = getV12(k)
+		if k == "TheriMinGap" and script:GetAttribute("TheriAttackTestClockEnabled") ~= false
+			and (tonumber(char:GetAttribute("TheriClockUntil")) or 0) > workspace:GetServerTimeNow() then
+			local m = tonumber(char:GetAttribute("TheriClockTapMul")) or 1
+			if m > 0 and m < 1 then v = (tonumber(v) or 0.33) * m end
+		end
+		return v
 	end
 end
 local function show(k, v)

@@ -1,4 +1,4 @@
--- TheriPose v1.6 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
+-- TheriPose v1.7 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
 -- ("A Reaper Sweeps"), the Diving Rake leap (J1) and the Sidewinder run (B). MDA-203, plan docs/plans/THERIZINO_KIT_v1.0.md
 -- Task 6; mockups docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02 "I like this one") and
 -- docs/mockups/therizino_run_options.html v0.1 (Kepu: "B Sidewinder"). Key poses = tools/therizino_kit_keys_v0.3.py /
@@ -114,11 +114,18 @@
 --   The newest stamp wins (one part pose at a time). While the layer weighs, a ground lock (1.0's foot rule, this layer's own
 --   smoothing) keeps the feet on the ground for STAB's crouch. Switch: model attribute TheriPartsPoseEnabled (default true;
 --   false = 1.5). Diagnostics: TheriPartsPose ("none" / "hook" / "feather" / "field" / "snare"), TheriPartsPoseWeight.
+-- v1.7 (therizino parts build 2, MDA-248, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 8; mockup v0.1, looks 12-C / 16-A):
+--   two more poses in the parts layer: Grapple Zip (TheriGrappleAt, result "zip"): 0 -> 0.12 GRAPPLE_AIM {RootJoint -6} (io),
+--   then the zip pose ARMS_FWD + legs tucked {LegL -30, LegR -20, KneeL -50, KneeR -60, RootJoint -18, Tail1 10} (0.12 s, io)
+--   held to 0.12 + TheriGrappleTime, then ARMS_FWD out over 0.3 (io). Deflector Claws (TheriDeflectAt): ARMS_FWD {ArmL 62 0 8,
+--   ArmR 62 0 -8, RootJoint -6} in over 0.15 (io), held to TheriDeflectUntil, out over 0.4 (io). Overclock Joints has no pose
+--   (the run plays). The newest of all six stamps wins. Same switch TheriPartsPoseEnabled.
 local TheriPose = {}
 TheriPose.Version = "1.3"
 TheriPose.Version = "1.4" -- v1.4 Fourth Cut (Ground Scythe)
 TheriPose.Version = "1.5" -- v1.5 hit-stop (MDA-204)
 TheriPose.Version = "1.6" -- v1.6 mecha-parts poses (build 1)
+TheriPose.Version = "1.7" -- v1.7 grapple + deflect poses (build 2)
 TheriPose.Defaults = {
 	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
@@ -770,6 +777,10 @@ do
 			Tail1 = {-14, 0, 0}},
 		TAIL_FLICK = {Tail1 = {-30, 0, 0}, Tail2 = {-30, 0, 0}, Tail3 = {-25, 0, 0}, Tail4 = {-20, 0, 0}, Tail5 = {-15, 0, 0},
 			RootJoint = {-8, 0, 0}},
+		GRAPPLE_AIM = {RootJoint = {-6, 0, 0}}, -- v1.7
+		ARMS_FWD = {ArmL = {62, 0, 8}, ArmR = {62, 0, -8}, RootJoint = {-6, 0, 0}},
+		ZIP = {ArmL = {62, 0, 8}, ArmR = {62, 0, -8}, LegL = {-30, 0, 0}, LegR = {-20, 0, 0}, KneeL = {-50, 0, 0}, KneeR = {-60, 0, 0},
+			RootJoint = {-18, 0, 0}, Tail1 = {10, 0, 0}},
 	}
 	local ZERO = {}
 	local function mix(A, B, u)
@@ -789,8 +800,10 @@ do
 	-- the target pose and its name for the newest part stamp; nil when nothing plays
 	local function partsTarget(model, serverNow, st, hrp)
 		local best, bestAt
-		for _, k in ipairs({"hook", "feather", "field", "snare"}) do
-			local at = stamp(model, k == "hook" and "TheriHookAt" or k == "feather" and "TheriFeatherAt" or k == "field" and "TheriFieldAt" or "TheriSnareAt")
+		local ATTR = {hook = "TheriHookAt", feather = "TheriFeatherAt", field = "TheriFieldAt", snare = "TheriSnareAt",
+			grapple = "TheriGrappleAt", deflect = "TheriDeflectAt"} -- v1.7: + grapple, deflect
+		for _, k in ipairs({"hook", "feather", "field", "snare", "grapple", "deflect"}) do
+			local at = stamp(model, ATTR[k])
 			if at and serverNow - at >= 0 and serverNow - at < 12 and (not bestAt or at > bestAt) then best, bestAt = k, at end
 		end
 		if not best then return nil end
@@ -816,6 +829,20 @@ do
 			if not st.fieldEnd then return P.STAB, best end
 			local u = (serverNow - st.fieldEnd) / 0.4
 			if u < 1 then return mix(P.STAB, ZERO, ease("io", u)), best end
+		elseif best == "grapple" then -- v1.7
+			if model:GetAttribute("TheriGrappleResult") ~= "zip" then return nil end
+			local zt = stamp(model, "TheriGrappleTime") or 0.5
+			if t < 0.12 then return mix(ZERO, P.GRAPPLE_AIM, ease("io", t / 0.12)), best end
+			if t < 0.24 then return mix(P.GRAPPLE_AIM, P.ZIP, ease("io", (t - 0.12) / 0.12)), best end
+			if t < 0.12 + zt then return P.ZIP, best end
+			if t < 0.12 + zt + 0.12 then return mix(P.ZIP, P.ARMS_FWD, ease("io", (t - 0.12 - zt) / 0.12)), best end
+			if t < 0.12 + zt + 0.42 then return mix(P.ARMS_FWD, ZERO, ease("io", (t - 0.24 - zt) / 0.3)), best end
+		elseif best == "deflect" then -- v1.7
+			local untilT = stamp(model, "TheriDeflectUntil") or (bestAt + 1)
+			local hold = untilT - bestAt
+			if t < 0.15 then return mix(ZERO, P.ARMS_FWD, ease("io", t / 0.15)), best end
+			if t < hold then return P.ARMS_FWD, best end
+			if t < hold + 0.4 then return mix(P.ARMS_FWD, ZERO, ease("io", (t - hold) / 0.4)), best end
 		else
 			if t < 0.25 then return mix(ZERO, P.TAIL_FLICK, ease("io", t / 0.25)), best end
 			if t < 0.6 then return P.TAIL_FLICK, best end
