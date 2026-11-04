@@ -100,7 +100,7 @@
 --       strike W..catch: front = bezier(coil, hips + (0, 29.2k, -2.5k), target) (ease); back = straight (ease);
 --       lift catch..throw - 0.2: clamp at the catch -> hips + (0, 23.2k, 0.5k) (+ 4k x sin(pi u) up; smooth);
 --       whip throw - 0.2..throw: -> front rest + (0, 5.4k, 6k) / back head + (0, 10.6k, -5k) (easeIn);
---       recover throw..throw + R: from the whip's end to front rest + (0, 1.4k, 3k) / back hips + (0, 3.2k, 3.5k)
+--       recover throw..throw + R: from the whip's end to front rest + (0, 1.4k, 3k) / back rest + (0, 3k, -2k)
 --       (smooth over the first 1 / 1.6 of R), the offsets fading to 0 (smooth). Returns {TailN = CFrame} and the miss
 --       (studs) for the diagnostic.
 --   Switch: model attribute TenoGrabIKEnabled (default true; false = 1.8 keyframes for every grab).
@@ -700,7 +700,7 @@ function TenoPose.grabTail(model, motors, pose, serverNow)
 	M.wind = M.wind or M.rest + Vector3.new(0, 2 * k, 3 * k) -- the coil: back and a little up (stays off the ground)
 	local overPt = M.hips + Vector3.new(0, 23.2 * k, 0.5 * k)
 	local whipTo = grab.side == "front" and M.rest + Vector3.new(0, 5.4 * k, 6 * k) or M.head + Vector3.new(0, 10.6 * k, -5 * k)
-	local follow = grab.side == "front" and M.rest + Vector3.new(0, 1.4 * k, 3 * k) or M.hips + Vector3.new(0, 3.2 * k, 3.5 * k)
+	local follow = grab.side == "front" and M.rest + Vector3.new(0, 1.4 * k, 3 * k) or M.rest + Vector3.new(0, 3 * k, -2 * k)
 	local goal, w = nil, 1
 	if t < GRAB_WIND then
 		goal = M.rest:Lerp(M.wind, ease(t / GRAB_WIND))
