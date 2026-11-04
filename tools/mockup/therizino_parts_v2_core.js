@@ -3,7 +3,7 @@
 // scope "Therizino first". THERI = TherizinoModelData (look A Reaper, tools/therizino_generator.py --json). Parts: the
 // looks file (therizino_parts_v2_looks.js) adds LOOKS[id] = [{name, sub, ref, why, build(k)}], OLD[id] = build(k).
 const THERI = __THERI__;
-const VERSION = "0.2";
+const VERSION = "0.4"; // v0.4: Loadouts (all 7 parts at once, Kepu 2026-11-04 "Move some off the arms")
 const $ = id => document.getElementById(id);
 const rad = THREE.MathUtils.degToRad;
 const AREA = {attack: ["ATTACK", "#f05a4f", 0xff3b30], defense: ["DEFENSE", "#5aa0ff", 0x3d9bff], speed: ["SPEED", "#ffd34d", 0xffc21a], eng: ["ENGINEER", "#ff9b2e", 0xff8a1a]};
@@ -146,7 +146,7 @@ function mountM(part, base) {
       const rest = base.clone().multiply(local); // rest model space
       const mountOff = theri.byName[part].cf.clone().invert().multiply(base);
       const e = {mesh: m, part, off: mountOff.clone().multiply(local), mountOff, place: o.place, rest, anim: o.anim, pivot: o.pivot, glow: key === "glow", show: o.show, sh, s, key, role: o.role, alpha: o.alpha,
-        group: o.group, detail: o.detail || self.detailMode, film: !!o.alpha};
+        group: o.group, detail: o.detail || self.detailMode, film: !!o.alpha, glowColor: GLOW};
       if (o.alpha) { mat.transparent = true; mat.opacity = o.alpha; mat.depthWrite = false; }
       equip.push(e); return e;
     },
@@ -205,7 +205,7 @@ function updateEquip() {
       if (a) { if (e.pivot) m.multiply(Tm(...e.pivot)).multiply(a).multiply(Tm(-e.pivot[0], -e.pivot[1], -e.pivot[2])); else m.multiply(a); }
     }
     e.mesh.matrix.copy(m); e.mesh.visible = e.show ? e.show(use, t) : true;
-    if (e.glow) { const k = 0.6 + 0.4 * Math.max(use, 0.5 + 0.5 * Math.sin(t * 3)); e.mesh.material.color.setHex(GLOW).multiplyScalar(k); if (e.alpha) e.mesh.material.opacity = e.alpha * use; }
+    if (e.glow) { const k = 0.6 + 0.4 * Math.max(use, 0.5 + 0.5 * Math.sin(t * 3)); e.mesh.material.color.setHex(e.glowColor || GLOW).multiplyScalar(k); if (e.alpha) e.mesh.material.opacity = e.alpha * use; }
   }
   updateCables();
 }
@@ -222,8 +222,10 @@ const lerp = (a, b, u) => a + (b - a) * u;
 function mix(A, B, u) { const o = {}; for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) { const a = A[k] || [0, 0, 0], b = B[k] || [0, 0, 0]; o[k] = [lerp(a[0], b[0], u), lerp(a[1], b[1], u), lerp(a[2], b[2], u)]; } return o; }
 const IDLE = tt => ({Neck: [Math.sin(tt * 1.3) * 2, Math.sin(tt * 0.5) * 3, 0], Head: [Math.sin(tt * 1.3 + 1) * 3, 0, 0], Tail1: [0, Math.sin(tt * 0.8) * 3, 0], Tail2: [0, Math.sin(tt * 0.8 - 0.5) * 4, 0], Tail3: [0, Math.sin(tt * 0.8 - 1) * 5, 0], Tail4: [0, Math.sin(tt * 0.8 - 1.5) * 6, 0], Tail5: [0, Math.sin(tt * 0.8 - 2) * 7, 0]});
 
+let plan = -1; // v0.4: -1 = one part at a time; else LOADOUTS[plan] (all 7 at once)
 function build() {
   clearEquip();
+  if (plan >= 0) { for (const [pid, fn] of LOADOUTS[plan].parts) { GLOW = AREA[PARTS.find(x => x.id === pid).area][2]; fn(); } return; }
   GLOW = AREA[P().area][2];
   if (old) OLD[P().id](); else P().looks[look].build();
 }
@@ -233,23 +235,36 @@ function renderTabs() {
     const b = document.createElement("button"); b.className = "tab"; b.setAttribute("aria-pressed", i === cur);
     const pk = PICK[p.id] !== undefined ? `<span class="pk">✓ ${"ABC"[PICK[p.id]]}</span>` : "";
     b.innerHTML = `${pk}${p.name}<small style="color:${AREA[p.area][1]}">${AREA[p.area][0]}</small>`;
-    b.onclick = () => { cur = i; look = PICK[p.id] !== undefined ? PICK[p.id] : 0; old = false; using = false; useT = 0; renderAll(); };
+    b.onclick = () => { cur = i; look = PICK[p.id] !== undefined ? PICK[p.id] : 0; old = false; plan = -1; using = false; useT = 0; renderAll(); };
     $("parts").appendChild(b);
   });
   $("looks").innerHTML = "";
   P().looks.forEach((L, i) => {
     const b = document.createElement("button"); b.className = "tab"; b.setAttribute("aria-pressed", i === look && !old);
     b.innerHTML = `${"ABC"[i]} · ${L.name}<small style="color:var(--muted)">${L.sub}</small>`;
-    b.onclick = () => { look = i; old = false; renderAll(); };
+    b.onclick = () => { look = i; old = false; plan = -1; renderAll(); };
     $("looks").appendChild(b);
   });
   $("pickbtn").setAttribute("aria-pressed", PICK[P().id] === look && !old);
   $("pickbtn").textContent = PICK[P().id] === look && !old ? "Picked ✓" : "Pick this look";
   $("old").setAttribute("aria-pressed", old); $("use").setAttribute("aria-pressed", using);
   const line = PARTS.filter(p => PICK[p.id] !== undefined).map(p => `${p.short}-${"ABC"[PICK[p.id]]}`);
+  if (PICK.plan !== undefined) line.unshift(`Loadout-${"ABC"[PICK.plan]}`);
+  $("plans").innerHTML = "";
+  LOADOUTS.forEach((Lo, i) => { const b = document.createElement("button"); b.className = "tab"; b.setAttribute("aria-pressed", plan === i);
+    b.innerHTML = `${PICK.plan === i ? '<span class="pk">✓</span>' : ""}${"ABC"[i]} · ${Lo.name}<small style="color:var(--muted)">${Lo.sub}</small>`;
+    b.onclick = () => { plan = plan === i ? -1 : i; old = false; renderAll(); }; $("plans").appendChild(b); });
+  if (plan >= 0) { $("pickbtn").setAttribute("aria-pressed", PICK.plan === plan); $("pickbtn").textContent = PICK.plan === plan ? "Picked ✓" : "Pick this loadout"; }
   $("pickline").textContent = line.length ? line.join(", ") : "none yet";
 }
 function renderInfo() {
+  if (plan >= 0) {
+    const Lo = LOADOUTS[plan];
+    $("info").innerHTML = `<div class="kind" style="color:var(--accent)">LOADOUT · all 7 parts at once</div><h2>${Lo.name}</h2><p>${Lo.why}</p>
+      <table>${Lo.rows.map(r => `<tr><td style="color:${AREA[PARTS.find(x => x.id === r[0]).area][1]};white-space:nowrap">${PARTS.find(x => x.id === r[0]).name}</td><td>${r[1]}</td></tr>`).join("")}</table>`;
+    $("state").textContent = `Loadout ${"ABC"[plan]} · ${Lo.name}`;
+    return;
+  }
   const p = P(), L = p.looks[look], a = AREA[p.area];
   $("info").innerHTML = old ? `<div class="kind" style="color:${a[1]}">${a[0]} · ${p.name}</div><h2>Old look (in the game now)</h2><p>${p.oldText}</p>`
     : `<div class="kind" style="color:${a[1]}">${a[0]} · ${p.name} · look ${"ABC"[look]}</div><h2>${L.name}</h2><p>${L.why}</p>
@@ -258,7 +273,8 @@ function renderInfo() {
   $("state").textContent = old ? `${p.name} · old look` : `${p.name} · ${"ABC"[look]} ${L.name}`;
 }
 function renderAll() { renderTabs(); renderInfo(); build(); pose(IDLE(t)); updateEquip(); camGoal(); }
-$("pickbtn").onclick = () => { if (old) return; if (PICK[P().id] === look) delete PICK[P().id]; else PICK[P().id] = look; savePick(); renderTabs(); };
+$("pickbtn").onclick = () => { if (plan >= 0) { if (PICK.plan === plan) delete PICK.plan; else PICK.plan = plan; savePick(); renderTabs(); return; }
+  if (old) return; if (PICK[P().id] === look) delete PICK[P().id]; else PICK[P().id] = look; savePick(); renderTabs(); };
 $("copy").onclick = () => { const s = $("pickline").textContent; try { navigator.clipboard.writeText(s); $("copy").textContent = "Copied"; setTimeout(() => $("copy").textContent = "Copy", 1200); } catch (e) {} };
 $("use").onclick = () => { using = !using; renderTabs(); };
 $("old").onclick = () => { old = !old; renderAll(); };
@@ -308,7 +324,7 @@ function frame(now) {
   // use: rises to 1 over 0.45 s while "Use it" is on, the motion loops inside the look's own anim (via t)
   useT = using ? Math.min(1, useT + dt / 0.45) : Math.max(0, useT - dt / 0.45); use = ease(useT);
   const L = old ? null : P().looks[look];
-  const PZ = (L && L.pose) || P().pose || {};
+  const PZ = plan >= 0 ? {} : ((L && L.pose) || P().pose || {});
   const A = mix(IDLE(t), typeof PZ === "function" ? PZ(t) : PZ, use);
   pose(A); updateEquip();
   if (spin && !drag && userTurned <= 0 && view !== "side" && view !== "front") gYaw += dt * 0.35; userTurned -= dt;

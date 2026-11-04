@@ -31,7 +31,7 @@ h2 { margin: 0; font: 700 19px/1.2 var(--display); }
 .tab small { display: block; font: 800 10px var(--body); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
 .tab .pk { float: right; color: var(--good); font: 800 11px var(--body); }
 .tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,155,46,.2); }
-#looks .tab { flex: 1 1 200px; }
+#looks .tab, #plans .tab { flex: 1 1 220px; }
 .btn { font: 700 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
 .btn[aria-pressed="true"] { border-color: var(--volt); }
 .btn.go { border-color: var(--accent); }
@@ -64,6 +64,7 @@ li { margin: 2px 0; }
   </header>
   <div class="parts" role="group" aria-label="Part" id="parts"></div>
   <div class="row" role="group" aria-label="Look"><span class="lbl">Look</span><span id="looks" class="row" style="flex:1"></span></div>
+  <div class="row" role="group" aria-label="Loadout"><span class="lbl">Loadouts</span><span id="plans" class="row" style="flex:1"></span></div>
   <div class="pickbar"><button class="btn go" id="pickbtn" aria-pressed="false">Pick this look</button><span class="lbl">Your picks</span><b id="pickline">none yet</b><button class="btn" id="copy">Copy</button></div>
   <div class="row"><span class="lbl">View</span>
     <button class="btn" data-view="lab" aria-pressed="true">Lab</button>

@@ -194,7 +194,8 @@ function harvestPiles() {
     M.hose([0, -0.72, -0.3], [s * 0.1, -1.05, -0.65], 0.1, 0.14, 3);
   }
 }
-function harvestSleeves() {
+function harvestSleeves(opt) { // v0.4: opt.fore = false leaves the forearm (wrist cuffs + claw sleeves only)
+  const fore = !(opt && opt.fore === false);
   for (const [s, side] of SIDES) {
     // steel sleeves on the 3 claws (segments b and c), a serrated red edge, a wrist cuff with a piston from the forearm
     for (let c = 1; c <= 3; c++) {
@@ -211,6 +212,7 @@ function harvestSleeves() {
     H.box([0.86, 0.36, 0.84], [0, 0.12, 0], null, "shell");
     H.box([0.9, 0.08, 0.88], [0, 0.33, 0], null, "brass");
     H.box([0.3, 0.06, 0.3], [0, 0.38, 0], null, "glow");
+    if (!fore) continue;
     const M = mountM(`Arm${side}_fore`, foreFrame(s));
     M.box([0.56, 1.2, 0.5], [0, -0.1, 0.05], null, "shell");
     bandY(M, 0.56, 0.5, 0.1, [0, -0.55, 0.05]);
@@ -284,8 +286,8 @@ function grappleWrist() {
 function oldGrapple() { const M = mount("Torso_body", [0, 0, 0]); M.box([1.9, 1.0, 1.8], [0, -0.75, -1.2], null, "trim"); M.cyl([1.2, 1.4, 0], [0, -0.75, -1.2], [0, 0, 90], "steel"); const C = mount("Torso_chest", [0, 0, 0]); C.box([0.5, 0.5, 1.2], [0, 1.4, -3.5], null, "brass"); }
 
 // ============================================ 16 · DEFLECTOR CLAWS ============================================
-function deflectUmbrella() {
-  for (const [s, side] of SIDES) {
+function deflectUmbrella(sides) { // v0.4: sides = which arms (default both)
+  for (const [s, side] of (sides || SIDES)) {
     const M = mountM(`Arm${side}_fore`, foreFrame(s));
     M.box([0.56, 1.3, 0.52], [0, -0.15, 0.02], null, "shell");
     bandY(M, 0.56, 0.52, 0.12, [0, -0.7, 0.02]);
@@ -550,6 +552,22 @@ const PARTS = [
         why: "A strap across the back holds three holsters. Each holds a trap post with steel jaw teeth and a glowing orange lens.",
         use: "the posts pop out of their holsters one after another.", on: "the back (Torso_body)."},
     ]},
+];
+// v0.4: Loadouts — all 7 parts on at once, no two on the same spot (Kepu 2026-11-04 "Move some off the arms": keep 2 on the arms)
+const ARMS_FREE_HARVEST = () => harvestSleeves({fore: false});
+const LOADOUTS = [
+  {name: "Hook + Harvest on the arms", sub: "feathers to the back, deflect to the neck",
+    why: "The hook keeps your camera-side forearm and Harvest moves down onto the claws. Feathers become the Fin Rack on the back, and Deflect becomes the Mane Rotor around the neck, so the left forearm stays bare.",
+    parts: [["hook", hookGauntlet], ["harvest", ARMS_FREE_HARVEST], ["feather", featherFins], ["deflect", deflectMane], ["grapple", grappleBelly], ["overclock", clockPistons], ["snare", snareSpools]],
+    rows: [["hook", "Harpoon Gauntlet · camera-side forearm (your pick)"], ["harvest", "Reaper Sleeves · steel sleeves on the claws + wrist cuffs (moved off the forearm)"], ["feather", "Fin Rack · back (moved off the arms)"], ["deflect", "Mane Rotor · neck collar (moved off the arms)"], ["grapple", "Belly Winch · belly + chest (your pick)"], ["overclock", "Piston Legs · legs (your pick)"], ["snare", "Tail Spool Rig · tail (your pick)"]]},
+  {name: "Weapon arm + shield arm", sub: "hook on one arm, deflector on the other",
+    why: "A classic mech split: the harpoon on the camera-side forearm and the umbrella shield on the other forearm only. Harvest moves onto the claws, and Feathers become the Fin Rack on the back.",
+    parts: [["hook", hookGauntlet], ["deflect", () => deflectUmbrella([[-1, "R"]])], ["harvest", ARMS_FREE_HARVEST], ["feather", featherFins], ["grapple", grappleBelly], ["overclock", clockPistons], ["snare", snareSpools]],
+    rows: [["hook", "Harpoon Gauntlet · camera-side forearm (your pick)"], ["deflect", "Umbrella Gauntlet · the other forearm only (one shield, not two)"], ["harvest", "Reaper Sleeves · claws + wrist cuffs (moved off the forearm)"], ["feather", "Fin Rack · back (moved off the arms)"], ["grapple", "Belly Winch · belly + chest (your pick)"], ["overclock", "Piston Legs · legs (your pick)"], ["snare", "Tail Spool Rig · tail (your pick)"]]},
+  {name: "Feathers + Harvest on the arms", sub: "hook to the back crane, deflect to the neck",
+    why: "The Blade Wings keep both forearms and Harvest moves down onto the claws. The hook becomes the Reaper Crane on the back, and Deflect becomes the Mane Rotor around the neck.",
+    parts: [["feather", featherWings], ["harvest", ARMS_FREE_HARVEST], ["hook", hookCrane], ["deflect", deflectMane], ["grapple", grappleBelly], ["overclock", clockPistons], ["snare", snareSpools]],
+    rows: [["feather", "Blade Wings · both forearms (your pick)"], ["harvest", "Reaper Sleeves · claws + wrist cuffs (moved off the forearm)"], ["hook", "Reaper Crane · back (moved off the arm)"], ["deflect", "Mane Rotor · neck collar (moved off the arms)"], ["grapple", "Belly Winch · belly + chest (your pick)"], ["overclock", "Piston Legs · legs (your pick)"], ["snare", "Tail Spool Rig · tail (your pick)"]]},
 ];
 const OLD = {hook: oldHook, feather: oldFeather, harvest: oldHarvest, grapple: oldGrapple, deflect: oldDeflect, overclock: oldClock, snare: oldSnare};
 pose({}); camGoal(); renderAll(); requestAnimationFrame(frame);
