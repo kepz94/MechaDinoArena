@@ -2712,3 +2712,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoBotMotionEnabled; TenoBotMotionVersion / Active / Jobs | TenoBotMotion script; local player | true (false = nothing drawn) | TenoBotMotion 1.0: client-drawn grab carry / flight and shoves |
 | TenoMovesFXGrabCatchEnabled | TenoMovesFX script | true (false = 1.4, flash at 0.3 s) | TenoMovesFX 1.5: grab flash at the catch |
 | TenoGrabIKEnabled; TenoGrabIKMiss | teno model; teno model (this client) | true (false = TenoPose 1.8 keyframes) | TenoPose 1.9 + IdleAnimation 1.41: the tail IK reaches the grabbed dino |
+| TenoBotMotionLandThroughEnabled; TenoLandThroughs | TenoBotMotion script; local player | true (false = 1.0) | TenoBotMotion 1.1: the own slam leap comes down through the dino under it (local no-collide 1 s) |
