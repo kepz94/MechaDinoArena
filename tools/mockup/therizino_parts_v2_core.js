@@ -145,7 +145,8 @@ function mountM(part, base) {
       const local = new THREE.Matrix4().makeTranslation(...p).multiply(rot(...(r2 || [0, 0, 0])));
       const rest = base.clone().multiply(local); // rest model space
       const mountOff = theri.byName[part].cf.clone().invert().multiply(base);
-      const e = {mesh: m, part, off: mountOff.clone().multiply(local), mountOff, place: o.place, rest, anim: o.anim, pivot: o.pivot, glow: key === "glow", show: o.show, sh, s, key, role: o.role, alpha: o.alpha};
+      const e = {mesh: m, part, off: mountOff.clone().multiply(local), mountOff, place: o.place, rest, anim: o.anim, pivot: o.pivot, glow: key === "glow", show: o.show, sh, s, key, role: o.role, alpha: o.alpha,
+        group: o.group, detail: o.detail || self.detailMode, film: !!o.alpha};
       if (o.alpha) { mat.transparent = true; mat.opacity = o.alpha; mat.depthWrite = false; }
       equip.push(e); return e;
     },
@@ -154,13 +155,15 @@ function mountM(part, base) {
     wedge(s, p, r2, key, o) { return self.add("wedge", s, p, r2, key, o); },
     ball(s, p, key, o) { return self.add("ball", [s, s, s], p, [0, 0, 0], key, o); },
     // a bolt head (brass) at p, facing local axis dir ("x" / "y" / "z")
-    bolt(p, dir, d, key) { const r2 = dir === "x" ? [90, 0, 0] : dir === "z" ? [0, 0, 90] : [0, 0, 0]; return self.add("cyl", [d || 0.13, 0.06, 0], p, r2, key || "brass"); },
+    bolt(p, dir, d, key) { const r2 = dir === "x" ? [90, 0, 0] : dir === "z" ? [0, 0, 90] : [0, 0, 0]; return self.add("cyl", [d || 0.13, 0.06, 0], p, r2, key || "brass", {detail: true}); },
+    // v0.3 (export): a moving group's pivot frame (mount-local matrix) + its motion {type: "spin" | "swing" | "slide", axis: "X" | "Y" | "Z", amt}; parent = an outer group
+    group(name, local, motion, parent) { const mo = theri.byName[part].cf.clone().invert().multiply(base); GROUPS.push({name, part, mountOff: mo, local: local.clone(), pivot: mo.clone().multiply(local), motion, parent}); return name; },
     // a strap band around a box-shaped limb section (w x h) at local p, thickness th
     band(w, h, len, p, key) { const th = 0.06; key = key || "trim";
       self.box([w + th * 2, th, len], [p[0], p[1] + h / 2 + th / 2, p[2]], null, key); self.box([w + th * 2, th, len], [p[0], p[1] - h / 2 - th / 2, p[2]], null, key);
       self.box([th, h, len], [p[0] + w / 2 + th / 2, p[1], p[2]], null, key); self.box([th, h, len], [p[0] - w / 2 - th / 2, p[1], p[2]], null, key); },
     // yellow / black launch stripes on a flat strip (along local x)
-    hazard(len, h, p, r2, n) { n = n || 6; const w = len / n; for (let i = 0; i < n; i++) self.box([w, h, 0.03], [p[0] - len / 2 + w * (i + 0.5), p[1], p[2]], r2, i % 2 ? "hazK" : "hazY"); },
+    hazard(len, h, p, r2, n) { n = n || 6; const w = len / n; for (let i = 0; i < n; i++) self.box([w, h, 0.03], [p[0] - len / 2 + w * (i + 0.5), p[1], p[2]], r2, i % 2 ? "hazK" : "hazY", {detail: true}); },
     // a hose of n cylinder links from a to b (local) sagging by sag along -y
     hose(a, b, sag, d, n) { n = n || 6; d = d || 0.16; const P = u => { const x = a[0] + (b[0] - a[0]) * u, y = a[1] + (b[1] - a[1]) * u - Math.sin(u * Math.PI) * sag, z = a[2] + (b[2] - a[2]) * u; return new THREE.Vector3(x, y, z); };
       for (let i = 0; i < n; i++) { const p0 = P(i / n), p1 = P((i + 1) / n), mid = p0.clone().add(p1).multiplyScalar(0.5), dir = p1.clone().sub(p0), len = dir.length() + d * 0.4;
@@ -171,6 +174,7 @@ function mountM(part, base) {
 }
 // a cable between two body parts that follows both (drawn every frame; a Beam in the game)
 const cables = [];
+const GROUPS = []; // v0.3: moving groups of the built look (export)
 function cable(pa, a, pb, b, sag, d) {
   const n = 8, segs = [];
   for (let i = 0; i < n; i++) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 8), material("rubber")); m.matrixAutoUpdate = false; scene.add(m); segs.push(m); }
@@ -188,6 +192,7 @@ function updateCables() {
 function clearEquip() {
   for (const e of equip) { scene.remove(e.mesh); e.mesh.geometry.dispose(); } equip.length = 0;
   for (const c of cables) for (const m of c.segs) { scene.remove(m); m.geometry.dispose(); } cables.length = 0;
+  GROUPS.length = 0;
 }
 const Tm = (x, y, z) => new THREE.Matrix4().makeTranslation(x, y, z), RXm = a => new THREE.Matrix4().makeRotationX(a),
   RYm = a => new THREE.Matrix4().makeRotationY(a), RZm = a => new THREE.Matrix4().makeRotationZ(a);
