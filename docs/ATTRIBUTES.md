@@ -2752,3 +2752,11 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | ArenaTouchDiloResetEnabled; AbilityBarDiloResetEnabled | ArenaTouch / AbilityBar scripts | true | ArenaTouch 1.16 / AbilityBar 1.27: dart pip full while DiloDartReadyAt > DiloLocalDartAt |
 | DiloAttackBodyHitEnabled; DiloDartBodyHits | DiloAttackServer script | true; count | DiloAttackServer 1.2: a locked dart also hits when the glob lands within 1.5 x scale studs of the target's hitboxes |
 | DiloDartHitRule | dilo character (server) | "root" / "body" / "miss" | DiloAttackServer 1.2: the last locked dart's arrival rule |
+| TheriHook* / TheriFeather* / TheriField* / TheriGrapple* / TheriDeflect* / TheriClock* / TheriSnare* (+ Enabled) | therizino character (SkillEffects 1.42) | off: 0 / 1 (muls) / false | therizino button parts (SkillTree 1.61), read by TheriPartsServer 1.0 / TheriMovesServer 1.1 / MechaButtons 1.29 |
+| <Prefix>ReadyAt, <Prefix>ServerResult(At) for TheriHook / TheriFeather / TheriField / TheriSnare | therizino character (server) | server time; reason | TheriMovesServer 1.1 |
+| TheriHookAimEnd / TheriHookTarget / TheriHookResult / TheriHookPullTime / TheriHookCutResult / TheriHookAt; TheriFeatherDir / TheriFeatherHits / TheriFeatherAt; TheriFieldCenter / TheriFieldRadiusNow / TheriFieldUntil / TheriFieldAt; TheriSnareCount / TheriSnareAt / TheriSnareHitTarget / TheriSnareHitAt | therizino character (server) | stamps (… At last) | TheriMovesServer 1.1, read by TheriMovesFX 1.0 |
+| TheriSnaredUntil / TheriSnaredBy; TheriMoveSlowed | target (server) | snare hold; bot slowed by this script | TheriMovesServer 1.1 |
+| TheriMovesServerEnabled, TheriMoves_<id>Enabled, TheriMovesModeRulesEnabled, TheriMovesSquadEnabled, TheriMovesFlatBladesEnabled | TheriMovesServer script | true | switches |
+| TheriPartsServerEnabled, TheriParts_<id>Enabled; TheriPartsBuilt; ZPartRole | TheriPartsServer script; character; part pieces | true; "<id>=<n>,..."; role name | TheriPartsServer 1.0 |
+| TheriAttackHookCutEnabled; TheriAttackHookCuts | TheriAttackServer script | true; count | TheriAttackServer 1.4 TheriStartCut |
+| MechaButtonsTheriEnabled; AbilityBarTheriPartsEnabled; LabZPartsEnabled; MainMenuZPartsEnabled; SkillEffectsTheriPartsEnabled; TheriMovesFXEnabled / TheriMovesFX_<hook|feather|field>Enabled | scripts | true | switches |
