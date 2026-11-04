@@ -2716,3 +2716,8 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoMovesFXGrabCatchEnabled | TenoMovesFX script | true (false = 1.4, flash at 0.3 s) | TenoMovesFX 1.5: grab flash at the catch |
 | TenoGrabIKEnabled; TenoGrabIKMiss | teno model; teno model (this client) | true (false = TenoPose 1.8 keyframes) | TenoPose 1.9 + IdleAnimation 1.41: the tail IK reaches the grabbed dino |
 | TenoBotMotionLandThroughEnabled; TenoLandThroughs | TenoBotMotion script; local player | true (false = 1.0) | TenoBotMotion 1.1: the own slam leap comes down through the dino under it (local no-collide 1 s) |
+| SlashPlatingEnabled | SlashServer script | true | SlashServer 1.8: Back Plating on slash hits from behind |
+| HeadbuttPlatingEnabled | HeadbuttServer script | true | HeadbuttServer 1.14: Back Plating on headbutt hits from behind |
+| GooPosePoseEnabled; GooKickPoseState | Herrera model; each client | true; "kick" / "none" | HerreraMovesPose 1.1 / IdleAnimation 1.42 goo recoil |
+| HerreraMovesFXGooKickEnabled; GooKicks | HerreraMovesFX script | true; count | HerreraMovesFX 1.5 mortar kick + THUMP |
+| TheriFXScrapeEnabled; TheriFXGrooves; TheriFXScraping | TheriFX script | true; strips alive; therizinos scraping | TheriFX 1.2 run scrape |

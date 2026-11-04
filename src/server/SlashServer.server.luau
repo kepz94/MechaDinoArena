@@ -131,13 +131,14 @@ local function glideDive(char) -- v1.5: gliding with Glider Wings II
 	return script:GetAttribute("SlashGlideEnabled") ~= false and char:GetAttribute("Gliding") == true and char:GetAttribute("GliderDrop") == true
 end
 -- v1.8 (MDA-153, Kepu 2026-11-03 "153- fix it"): a slash hit on a Herrera with Back Plating slotted, from behind (the
---   attacker's root in the target's back half-space), is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
+--   dash's start point SlashFrom in the target's back half-space: the dash runs through the target, so where it came from,
+--   not where the attacker is at the hit; the root when there is no start point), is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
 --   BoneCrest 1.5 plating() (which stamps PlatingHits / PlatingLastMul / PlatingHitAt: HerreraPartsFX sparks + "-N% PLATED").
 --   Front / side hits and bleed ticks unchanged. Switch: script attribute SlashPlatingEnabled (default true, read at each hit;
 --   false = 1.7).
 if script:GetAttribute("SlashPlatingEnabled") == nil then script:SetAttribute("SlashPlatingEnabled", true) end
 local crestCache
-local function platingMul(model, char)
+local function platingMul(model, char, fromPos)
 	if script:GetAttribute("SlashPlatingEnabled") == false then return 1 end
 	if crestCache == nil then
 		crestCache = false
@@ -145,7 +146,7 @@ local function platingMul(model, char)
 	end
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not (crestCache and crestCache.plating and root) then return 1 end
-	return crestCache.plating(model, root.Position)
+	return crestCache.plating(model, typeof(fromPos) == "Vector3" and fromPos or root.Position)
 end
 local function takenMul(model, t) -- v1.5: daze star x Stun Breaker star
 	if not dazeOn() then return 1 end
@@ -484,7 +485,7 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	if IRONCLAW and char:GetAttribute("IronClawEnabled") == true then icMul = math.max(0, tonumber(char:GetAttribute("IronClawDamageMul")) or 1) end
 	char:SetAttribute("SlashIronClawMul", icMul)
 	mul *= takenMul(model, t) -- v1.5
-	mul *= platingMul(model, char) -- v1.8: Back Plating (1 when off / not from behind)
+	mul *= platingMul(model, char, st.active.from) -- v1.8: Back Plating (1 when off / not from behind)
 	if st.active.glide then icMul *= math.max(0, tonumber(char:GetAttribute("GliderDropMul")) or 1) end -- v1.5: glide dive
 	local d = math.floor((get(char, "SlashDamage") + bonus) * mul * icMul + 0.5)
 	local killed = takeHealth(model, d, char.Name, player.UserId, "slash", t)
