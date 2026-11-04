@@ -2782,3 +2782,6 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | AbilityBarTheriClockPassiveEnabled; AbilityBar_Slot_<n> can be "passive" | AbilityBar script; character | true | AbilityBar 1.30 |
 | MechaButtonsTheriClockPassiveEnabled | MechaButtons script | true | MechaButtons 1.31 |
 | TheriMovesFXClockSteadyEnabled; TheriPartsAnimClockMoveEnabled | TheriMovesFX / TheriPartsAnim scripts | true; true | TheriMovesFX 1.3 / TheriPartsAnim 1.1 |
+| TheriGrappleLockOnEnabled; TheriGrappleHolding; TheriGrappleLockState ("off" / "target" / "air"), TheriGrappleLockTarget, TheriGrappleLockDist; BindableFunction TheriGrapplePick | therizino character (owner client) | true; set by MechaButtons while held; diagnostics | TheriGrappleZip 1.2 |
+| MechaButtonsGrappleHoldEnabled; MechaGrappleFired | MechaButtons script; character | true; count | MechaButtons 1.32 |
+| SkillTree.THERI_GRAPPLE_LOCKON | SkillTree module | true | SkillTree 1.64 (grapple text) |
