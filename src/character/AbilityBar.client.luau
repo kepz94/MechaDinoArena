@@ -1,4 +1,4 @@
--- AbilityBar v1.29 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.30 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -172,6 +172,10 @@ local UserInputService = game:GetService("UserInputService")
 --   AbilityBarTheriPartsEnabled (default true, read at start; false = 1.27).
 -- v1.29 (therizino parts build 2, MDA-248; with MechaButtons 1.30): TIMED_PARTS += zgrapple "TheriGrapple", zdeflect
 --   "TheriDeflect", zclock "TheriClock". Same switch AbilityBarTheriPartsEnabled.
+-- v1.30 (passive Overclock, Kepu 2026-11-04 Overclock-A "Steady ON", mockup docs/mockups/therizino_grapple_overclock_v0.1.html; plan docs/plans/THERIZINO_GRAPPLE_CLOCK_v1.0.md, MDA-258; TheriMovesServer 1.3): a slotted
+--   "zclock" tile whose character has TheriClockPassive true shows ON: border speed yellow (#ffc21a, 3 px), sub "ON" in
+--   yellow, no timer, no cooldown fill (diagnostic AbilityBar_Slot_<n> = "passive"). Switch: script attribute
+--   AbilityBarTheriClockPassiveEnabled (default true, read each frame; false = 1.29: the timed tile).
 local VERSION = "1.21"
 VERSION = "1.22" -- v1.22 teno leap on JUMP
 VERSION = "1.23" -- v1.23 therizino ATTACK + JUMP tiles
@@ -181,6 +185,9 @@ VERSION = "1.26" -- v1.26 dilo ATTACK + JUMP tiles
 VERSION = "1.27" -- v1.27 dilo dart pip full after a Cold Blood reset
 VERSION = "1.28" -- v1.28 therizino parts build 1 tiles
 VERSION = "1.29" -- v1.29 therizino parts build 2 tiles
+VERSION = "1.30" -- v1.30 passive Overclock tile (ON)
+if script:GetAttribute("AbilityBarTheriClockPassiveEnabled") == nil then script:SetAttribute("AbilityBarTheriClockPassiveEnabled", true) end -- v1.30
+local SPEED_YELLOW = Color3.fromRGB(255, 194, 26) -- v1.30
 if script:GetAttribute("AbilityBarDiloResetEnabled") == nil then script:SetAttribute("AbilityBarDiloResetEnabled", true) end -- v1.27
 if script:GetAttribute("AbilityBarTenoJumpPipsEnabled") == nil then script:SetAttribute("AbilityBarTenoJumpPipsEnabled", true) end -- v1.25
 if script:GetAttribute("AbilityBarTheriHitsLeftEnabled") == nil then script:SetAttribute("AbilityBarTheriHitsLeftEnabled", true) end -- v1.24
@@ -854,6 +861,11 @@ local function update()
 				else
 					paint(e, "waiting", 0.25, 0, nil)
 				end
+			elseif e.part == "zclock" and char:GetAttribute("TheriClockPassive") == true
+				and script:GetAttribute("AbilityBarTheriClockPassiveEnabled") ~= false then -- v1.30: passive Overclock = ON
+				paint(e, "passive", 0, 0, nil, "ON")
+				e.t.stroke.Thickness, e.t.stroke.Color = 3, SPEED_YELLOW
+				e.t.sub.TextColor3 = SPEED_YELLOW
 			elseif TIMED_PARTS[e.part] then -- v1.3: Adrenaline / Energy Shield
 				local px = TIMED_PARTS[e.part]
 				local readyAt = tonumber(char:GetAttribute(px .. "ReadyAt")) or 0

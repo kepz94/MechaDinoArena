@@ -1,4 +1,4 @@
--- SkillTree v1.59 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.63 (1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2286,6 +2286,34 @@ if SkillTree.THERI_PARTS and SkillTree.THERI_PARTS_B2_LIVE and SkillTree.PATHS.z
 		SkillTree.PATHS[id].soon = false
 		SkillTree.LIVE_MECH[id] = true
 	end
+end
+
+-- v1.63 (Kepu 2026-11-04 15:21 "The grappling hook feels off, also the overclocked legs should always be on but passive and
+-- take up a slot"; mockup docs/mockups/therizino_grapple_overclock_v0.1.html picks Grapple-A, Overclock-A; plan
+-- docs/plans/THERIZINO_GRAPPLE_CLOCK_v1.0.md, MDA-255 / MDA-257):
+--   * SkillTree.THERI_GRAPPLE_V2 (default true): grappleRange 90 / 110 (II) / 130 (III) (was 40 / 55 / 70); new zgrapple texts
+--     (the marker, the air latch). Charges and recharge as before. false = 1.62.
+--   * SkillTree.THERI_CLOCK_PASSIVE (default true): new zclock texts (always on while slotted, same numbers; TheriMovesServer
+--     1.3 makes it passive). Effects unchanged (clockTime / clockCooldown are no longer used while passive). false = 1.62.
+SkillTree.THERI_GRAPPLE_V2 = true
+SkillTree.THERI_CLOCK_PASSIVE = true
+if SkillTree.THERI_PARTS and SkillTree.PATHS.zgrapple and SkillTree.THERI_GRAPPLE_V2 then
+	SkillTree.PATHS.zgrapple.steps = {
+		"Button: zip to the yellow marker, up to 90 studs. With nothing to grab it latches in the air. Recharges in 12 s",
+		"Reaches 110 studs", "Reaches 130 studs; recharges in 10 s", "2 charges"}
+	local effectsPre163 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre163(steps, dino)
+		if type(e) ~= "table" or not SkillTree.THERI_GRAPPLE_V2 then return e end
+		local r = tonumber(e.grappleRange) or 0
+		if r >= 70 then e.grappleRange = 130 elseif r >= 55 then e.grappleRange = 110 elseif r >= 40 then e.grappleRange = 90 end
+		return e
+	end
+end
+if SkillTree.THERI_PARTS and SkillTree.PATHS.zclock and SkillTree.THERI_CLOCK_PASSIVE then
+	SkillTree.PATHS.zclock.steps = {
+		"Always on while slotted (no button): run 40% faster", "Cut taps come 30% faster too",
+		"Nothing extra yet (it's always on now)", "Slows don't work on you"}
 end
 
 return SkillTree

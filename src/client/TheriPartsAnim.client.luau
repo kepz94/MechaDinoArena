@@ -1,4 +1,4 @@
--- TheriPartsAnim v1.0 (Mecha Dino Arena) — makes the machinery on the Therizinosaurus' redesigned mecha parts move (every
+-- TheriPartsAnim v1.1 (Mecha Dino Arena) — makes the machinery on the Therizinosaurus' redesigned mecha parts move (every
 -- client, every therizino). MDA-251, plan docs/plans/THERIZINO_PARTS_LOOKS_v2.0.md Task 3; looks TheriPartsServer 1.1 +
 -- TheriPartsLooksV2 1.1 (Kepu 2026-11-04 14:49 picks), motions as in docs/mockups/therizino_parts_redesign.html v0.5.
 -- What moves: every Weld "ZPartJoint_<group>" inside a "ZPart_<id>" model (TheriPartsServer 1.1). Its C0 is set here each
@@ -17,6 +17,11 @@
 --   zsnare  TheriSnareAt: up over 0.1 s, held to 0.6, down by 0.8.
 --   zharvest has no moving groups.
 -- Film pieces (ZPartFilm, the shield disc) are shown see-through (Transparency 1 - 0.35 x u: the mockup's 0.35 opacity).
+-- v1.1 (passive Overclock, Kepu 2026-11-04 "gears spin while you move", plan docs/plans/THERIZINO_GRAPPLE_CLOCK_v1.0.md,
+--   MDA-258; TheriMovesServer 1.3): while the model's TheriClockPassive is true, zclock's u follows how fast it moves:
+--   target = clamp(flat root speed / PASSIVE_FULL (8) studs/s, 0, 1), eased toward at PASSIVE_RATE (6) per s (gears at full
+--   spin while moving, idling at 0.3 rad/s standing; fins out while moving). Switch TheriPartsAnimClockMoveEnabled (default
+--   true; false = 1.0: full spin the whole time).
 -- Who: every player's character, plus (Studio test hook) any workspace Model with attribute TheriPartsAnimTarget = true.
 -- Switch: script attribute TheriPartsAnimEnabled (default true, read each frame; false = every joint back at rest).
 -- Diagnostics: script TheriPartsAnimVersion, TheriPartsAnimJoints (joints driven, last frame); model TheriPartsAnimActive
@@ -25,6 +30,10 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 passive Overclock legs follow movement
+local PASSIVE_FULL, PASSIVE_RATE = 8, 6
+if script:GetAttribute("TheriPartsAnimClockMoveEnabled") == nil then script:SetAttribute("TheriPartsAnimClockMoveEnabled", true) end
+local clockEase = setmetatable({}, {__mode = "k"}) -- [model] = {u, at} (losing it only resets the easing)
 script:SetAttribute("TheriPartsAnimVersion", VERSION)
 if script:GetAttribute("TheriPartsAnimEnabled") == nil then script:SetAttribute("TheriPartsAnimEnabled", true) end
 
@@ -70,6 +79,18 @@ local ACT = {
 		return math.max(0, 1 - up(t - un, 0.3))
 	end,
 	zclock = function(c, t)
+		if c:GetAttribute("TheriClockPassive") == true and script:GetAttribute("TheriPartsAnimClockMoveEnabled") ~= false then -- v1.1
+			local r = c:FindFirstChild("HumanoidRootPart")
+			local v = r and r.AssemblyLinearVelocity or Vector3.zero
+			local target = math.clamp(Vector3.new(v.X, 0, v.Z).Magnitude / PASSIVE_FULL, 0, 1)
+			local st = clockEase[c] or {u = 0, at = os.clock()}
+			clockEase[c] = st
+			local dt = math.min(0.1, os.clock() - st.at)
+			st.at = os.clock()
+			st.u += (target - st.u) * math.min(1, PASSIVE_RATE * dt)
+			if st.u < 0.01 then st.u = 0 end
+			return st.u
+		end
 		local e = t - num(c, "TheriClockAt", -1e9)
 		local un = num(c, "TheriClockUntil", -1e9)
 		if e < 0 then return 0 end

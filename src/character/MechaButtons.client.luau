@@ -1,4 +1,4 @@
--- MechaButtons v1.30 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.31 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -242,6 +242,10 @@
 --   zdeflect ("TheriDeflect", DinoTheriDeflectRequest, "DEFLECT"), zclock ("TheriClock", DinoTheriClockRequest,
 --   "OVERCLOCK"). The grapple's ready / dim look follows TheriGrappleReadyAt (now while a charge is left). Same switch
 --   MechaButtonsTheriEnabled.
+-- v1.31 (passive Overclock, Kepu 2026-11-04 Overclock-A "Steady ON", mockup docs/mockups/therizino_grapple_overclock_v0.1.html; plan docs/plans/THERIZINO_GRAPPLE_CLOCK_v1.0.md, MDA-258; TheriMovesServer 1.3): a slotted
+--   "zclock" button whose character has TheriClockPassive true shows ON: ring speed yellow (#ffc21a), "OVERCLOCK" with "ON"
+--   under it in yellow, no cooldown shade, and a tap does nothing (no request). Switch: script attribute
+--   MechaButtonsTheriClockPassiveEnabled (default true, read at each draw / press; false = 1.30: the timed button).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -251,6 +255,14 @@ local VERSION = "1.27"
 VERSION = "1.28" -- v1.28 teno leap on JUMP, Shield Armor
 VERSION = "1.29" -- v1.29 therizino parts build 1
 VERSION = "1.30" -- v1.30 therizino parts build 2
+VERSION = "1.31" -- v1.31 passive Overclock button (ON)
+if script:GetAttribute("MechaButtonsTheriClockPassiveEnabled") == nil then script:SetAttribute("MechaButtonsTheriClockPassiveEnabled", true) end -- v1.31
+local SPEED_YELLOW = Color3.fromRGB(255, 194, 26) -- v1.31
+local function clockPassive(id) -- v1.31
+	local c = Players.LocalPlayer.Character
+	return id == "zclock" and c ~= nil and c:GetAttribute("TheriClockPassive") == true
+		and script:GetAttribute("MechaButtonsTheriClockPassiveEnabled") ~= false
+end
 if script:GetAttribute("MechaButtonsBloodEnabled") == nil then script:SetAttribute("MechaButtonsBloodEnabled", true) end -- v1.17
 local BLOOD_BTN = script:GetAttribute("MechaButtonsBloodEnabled") ~= false
 if script:GetAttribute("MechaButtonsLegsEnabled") == nil then script:SetAttribute("MechaButtonsLegsEnabled", true) end -- v1.16
@@ -824,6 +836,7 @@ char.AncestryChanged:Connect(function(_, parent) if not parent then tacEnd(false
 local function press(n, input)
 	local id = slotPart(n)
 	char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(n, id or "empty"))
+	if clockPassive(id) then return end -- v1.31: passive Overclock: nothing to press
 	if tacOn() and id == "tether" then -- v1.22: tap = aim mode, tap again = fire
 		if tac then tacEnd(true, "fired") else tacStart(n) end
 		return
@@ -919,6 +932,7 @@ local function partState(id)
 		local left = readyAt - now
 		return char:GetAttribute("BreakerEnabled") == true and held and now >= readyAt, (cd > 0 and left > 0) and math.clamp(left / cd, 0, 1) or 0
 	end
+	if clockPassive(id) then return true, 0 end -- v1.31: always on
 	local tp = TIMED_PARTS[id] -- v1.5
 	if tp then
 		local px = tp[1]
@@ -1476,6 +1490,11 @@ draw = function()
 			s.main.Text = partName(id) -- v1.4 (was: thrusters -> DASH, else the id)
 			s.main.TextTransparency = ready and 0 or 0.5
 			s.sub.Text = ""
+			s.sub.TextColor3 = Color3.new(1, 1, 1) -- v1.31
+			if clockPassive(id) then -- v1.31: passive Overclock = ON
+				s.stroke.Color, s.stroke.Transparency = SPEED_YELLOW, 0
+				s.sub.Text, s.sub.TextColor3 = "ON", SPEED_YELLOW
+			end
 			for i, p in ipairs(s.pips) do
 				p.Visible = id == "thrusters" and i <= max -- v1.4: pips are the dash charges only
 				p.BackgroundColor3 = i <= left and ORANGE or Color3.fromRGB(85, 85, 85)
@@ -1527,6 +1546,7 @@ local WATCH = {DashEnabled = true, DashCharges = true, DashChargesLeft = true, A
 	CloakEnabled = true, CloakState = true, CloakReadyAt = true} -- v1.4: + cloak
 WATCH.MechaLegsEnabled, WATCH.JumpPredictedAt = true, true -- v1.16
 WATCH.BloodRushEnabled, WATCH.HeadbuttChargesNow, WATCH.HeadbuttSacrifices = true, true, true -- v1.17
+WATCH.TheriClockPassive = true -- v1.31
 for _, tp in pairs(TIMED_PARTS) do -- v1.5
 	for _, k in ipairs({"Enabled", "Until", "ReadyAt"}) do WATCH[tp[1] .. k] = true end
 end

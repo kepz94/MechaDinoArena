@@ -1,4 +1,4 @@
--- SkillTreeTheriParts.spec v1.1 (1.1: build 2 live, SkillTree 1.62) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
+-- SkillTreeTheriParts.spec v1.2 (1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.61 (plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheriParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-04 "Two builds"): zhook / zfeather / zharvest / zsnare live; zgrapple / zdeflect / zclock "soon".
@@ -23,6 +23,8 @@ local function E(steps) return ST.effects(steps, "Therizino") end
 eq("THERI_PARTS", ST.THERI_PARTS, true)
 eq("THERI_PARTS_B2_LIVE", ST.THERI_PARTS_B2_LIVE, true) -- v1.1
 eq("THERI_PARTS_B2_SOON", ST.THERI_PARTS_B2_SOON, false) -- v1.1
+eq("THERI_GRAPPLE_V2", ST.THERI_GRAPPLE_V2, true) -- v1.2
+eq("THERI_CLOCK_PASSIVE", ST.THERI_CLOCK_PASSIVE, true) -- v1.2
 local ROWS = {
 	zhook = {"Reaper's Hook", "attack", false}, zfeather = {"Feather Barrage", "attack", false},
 	zharvest = {"Harvest Field", "attack", false}, zsnare = {"Snare Wires", "eng", false},
@@ -85,7 +87,7 @@ chk("zharvest", "fieldSlowMul", {0.7, 0.7, 0.7, 0.7}); chk("zharvest", "fieldCoo
 chk("zsnare", "snareMax", {1, 2, 2, 3}); chk("zsnare", "snareDamage", {12, 12, 12, 12}); chk("zsnare", "snareRoot", {1, 1, 2, 2})
 chk("zsnare", "snareRadius", {4, 4, 4, 4}); chk("zsnare", "snareCooldown", {18, 18, 18, 18})
 -- v1.1: build-2 effects per step
-chk("zgrapple", "grappleRange", {40, 55, 70, 70}); chk("zgrapple", "grappleCharges", {1, 1, 1, 2})
+chk("zgrapple", "grappleRange", {90, 110, 130, 130}); chk("zgrapple", "grappleCharges", {1, 1, 1, 2}) -- v1.2: range (SkillTree 1.63)
 chk("zgrapple", "grappleCooldown", {12, 12, 10, 10})
 chk("zdeflect", "deflectTime", {1, 1.5, 2, 2}); chk("zdeflect", "deflectAngle", {70, 70, 70, 70})
 chk("zdeflect", "deflectLevel", {1, 2, 2, 2}); chk("zdeflect", "deflectReflect", {false, false, false, true})
@@ -94,12 +96,12 @@ chk("zclock", "clockTime", {3, 4, 5, 5}); chk("zclock", "clockRunMul", {1.4, 1.4
 chk("zclock", "clockTapMul", {1, 0.7, 0.7, 0.7}); chk("zclock", "clockNoSlow", {false, false, false, true})
 chk("zclock", "clockCooldown", {22, 22, 18, 18})
 local TEXT2 = {
-	zgrapple = {"Button: hook a tree or wall up to 40 studs away and zip there. Recharges in 12 s", "Reaches 55 studs",
-		"Reaches 70 studs; recharges in 10 s", "2 charges"},
+	zgrapple = {"Button: zip to the yellow marker, up to 90 studs. With nothing to grab it latches in the air. Recharges in 12 s",
+		"Reaches 110 studs", "Reaches 130 studs; recharges in 10 s", "2 charges"}, -- v1.2
 	zdeflect = {"Button: claws spin in front for 1 s and block darts. Recharges in 16 s", "Spin 1.5 s; blocks boulders and cannon shots too",
 		"Spin 2 s; recharges in 13 s", "Blocked shots bounce back at the shooter"},
-	zclock = {"Button: for 3 s, run 40% faster. Recharges in 22 s", "Lasts 4 s; cut taps come 30% faster too",
-		"Lasts 5 s; recharges in 18 s", "Slows don't work on you while it's on"},
+	zclock = {"Always on while slotted (no button): run 40% faster", "Cut taps come 30% faster too",
+		"Nothing extra yet (it's always on now)", "Slows don't work on you"}, -- v1.2
 }
 for id, t in pairs(TEXT2) do
 	if P[id] then for i = 1, 4 do eq(id .. " text " .. i, P[id].steps[i], t[i]) end end

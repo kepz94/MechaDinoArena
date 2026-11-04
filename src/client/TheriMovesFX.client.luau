@@ -1,4 +1,4 @@
--- TheriMovesFX v1.2 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
+-- TheriMovesFX v1.3 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
 -- draws them for every therizino). Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 5 (MDA-245); looks from the mockup
 -- docs/mockups/therizino_parts_options.html v0.1 (chain links, feather blades, red field); server TheriMovesServer 1.0.
 --   * Reaper's Hook: TheriHookAt -> a steel chain (alternating light / dark links, CHAIN_STEP studs apart) from the
@@ -34,12 +34,18 @@
 --   * Feathers: the Blade Wings' "blade" pieces are not hidden after a fire (they are the wings, and fan open instead).
 --   Switch: TheriMovesFXV2Enabled (default true; false = the v1.1 FX on the v2 looks too). Diagnostics: TheriMovesFXLast
 --   gets "hook:<result>:v2" when the claw copy rides the chain.
+-- v1.3 (passive Overclock, Kepu 2026-11-04 Overclock-A, plan docs/plans/THERIZINO_GRAPPLE_CLOCK_v1.0.md, MDA-258;
+--   TheriMovesServer 1.3): while the character's TheriClockPassive is true the v2 "ring" pieces glow a steady speed yellow
+--   (no pulse) and go back to their own colour when it ends. Switch TheriMovesFXClockSteadyEnabled (default true; false =
+--   the 1.2 pulse).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 grapple wire, deflect rotors, overclock rings
 VERSION = "1.2" -- v1.2 FX for the v2 looks (hook claw at the chain tip, no rotors on v2 deflect, yellow v2 overclock)
+VERSION = "1.3" -- v1.3 steady rings while Overclock is passive
+if script:GetAttribute("TheriMovesFXClockSteadyEnabled") == nil then script:SetAttribute("TheriMovesFXClockSteadyEnabled", true) end -- v1.3
 local CHAIN_STEP, SHOOT_TIME, BLADE_TIME = 1.7, 0.15, 0.3
 local LIGHT, DARK = Color3.fromRGB(184, 192, 200), Color3.fromRGB(124, 132, 142)
 local FEATHER = Color3.fromRGB(240, 234, 216)
@@ -394,7 +400,15 @@ local function clock(char)
 			end
 			return
 		end
+		if v2 and rings[1] and rings[1].Parent == nil then -- v1.3: the part was rebuilt (passive lasts): take the new rings
+			local fresh = zpiece(char, "zclock", "ring")
+			if #fresh > 0 then
+				rings, keep = fresh, {}
+				for i, r in ipairs(rings) do keep[i] = {r.Color, r.Material} end
+			end
+		end
 		local k = 0.5 + 0.5 * math.sin(os.clock() * 14)
+		if v2 and char:GetAttribute("TheriClockPassive") == true and script:GetAttribute("TheriMovesFXClockSteadyEnabled") ~= false then k = 0 end -- v1.3: steady
 		for _, r in ipairs(rings) do
 			if r.Parent then
 				r.Material = Enum.Material.Neon
@@ -412,6 +426,8 @@ local function watch(char)
 	char:GetAttributeChangedSignal("TheriDeflectAt"):Connect(function() if on("deflect") then deflect(char, s()) end end) -- v1.1
 	char:GetAttributeChangedSignal("TheriDeflectBlockAt"):Connect(function() if on("deflect") then deflectBlock(char, s()) end end) -- v1.1
 	char:GetAttributeChangedSignal("TheriClockAt"):Connect(function() if on("clock") then clock(char) end end) -- v1.1
+	char:GetAttributeChangedSignal("TheriClockPassive"):Connect(function() if on("clock") then clock(char) end end) -- v1.3
+	task.delay(2, function() if char.Parent and char:GetAttribute("TheriClockPassive") == true and on("clock") then clock(char) end end) -- v1.3: already passive when seen
 	char:GetAttributeChangedSignal("TheriHookAt"):Connect(function() if on("hook") then chain(char, s()) end end)
 	char:GetAttributeChangedSignal("TheriFeatherAt"):Connect(function() if on("feather") then feathers(char, s()) end end)
 	char:GetAttributeChangedSignal("TheriFieldAt"):Connect(function() if on("field") then field(char, s()) end end)

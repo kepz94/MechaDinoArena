@@ -1,4 +1,4 @@
--- TheriMovesServer v1.2 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.3 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -65,6 +65,20 @@
 --   * Overclock Joints: DinoTheriClockRequest(stamp) -> TheriClockUntil = now + TheriClockTime, TheriClockAt (last); SprintTest
 --     1.20 runs faster (and drops slows at the star), TheriAttackServer 1.5 / TheriAttackTest 1.3 shorten the tap gap.
 --   Switches: TheriMoves_zgrappleEnabled, TheriMoves_zdeflectEnabled, TheriMoves_zclockEnabled (default true, read at each use).
+-- v1.3 (Kepu 2026-11-04 15:21: the grapple "Barely even pulls you a significant distance for the slot. Also it's not obvious
+--   where it's shooting to latch on to"; "overclocked legs should always be on but passive and take up a slot", "Same numbers,
+--   always on"; mockup docs/mockups/therizino_grapple_overclock_v0.1.html picks Grapple-A, Overclock-A; plan
+--   docs/plans/THERIZINO_GRAPPLE_CLOCK_v1.0.md, MDA-255 / MDA-257; SkillTree 1.63 ranges 90 / 110 / 130):
+--   * Grapple v2 (script attribute TheriMovesGrappleV2Enabled, default true, read at each use; false = 1.2): zip time =
+--     clamp(distance / ZIP_SPEED_V2 (150), 0.2, ZIP_MAX_V2 (1.0)) s; nothing hit inside the range -> it latches in the air:
+--     TheriGrappleTo = TheriGrappleAnchor = the ray's end (origin + aim x range), TheriGrappleAir = true (false on a surface).
+--     A hit closer than GRAPPLE_MIN is still "noAnchor". Characters get TheriGrappleAirLatch (= the switch) for the client
+--     marker (TheriGrappleZip 1.1).
+--   * Passive Overclock (script attribute TheriMovesClockPassiveEnabled, default true; false = 1.2 button): every
+--     CLOCK_TICK (0.25) s, for each player's character: TheriClockEnabled true (bought + slotted, SkillEffects) -> TheriClockPassive
+--     true, TheriClockUntil = now + 1e6 and TheriClockAt = now when it turns on (SprintTest / TheriAttackServer / TheriAttackTest
+--     read TheriClockUntil as before); otherwise, if it was passive -> TheriClockPassive false, TheriClockUntil = now. A clock
+--     request while passive -> TheriClockServerResult "passive", nothing changes.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -73,6 +87,7 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 flat feather blades
 VERSION = "1.2" -- v1.2 build 2: Grapple Zip, Deflector Claws, Overclock Joints
+VERSION = "1.3" -- v1.3 grapple v2 (air latch, faster), passive Overclock
 local HOOK_SPEED, HOOK_GAP = 140, 5
 local BLADE_WIDTH = 1.5
 local FIELD_TICK = 0.5
@@ -646,6 +661,9 @@ for _, k in ipairs({"TheriMoves_zgrappleEnabled", "TheriMoves_zdeflectEnabled", 
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local GRAPPLE_MIN, ZIP_SPEED = 6, 120
+local ZIP_SPEED_V2, ZIP_MAX_V2 = 150, 1.0 -- v1.3
+if script:GetAttribute("TheriMovesGrappleV2Enabled") == nil then script:SetAttribute("TheriMovesGrappleV2Enabled", true) end -- v1.3
+if script:GetAttribute("TheriMovesClockPassiveEnabled") == nil then script:SetAttribute("TheriMovesClockPassiveEnabled", true) end -- v1.3
 local grappleRemote, deflectRemote, clockRemote = remote("DinoTheriGrappleRequest"), remote("DinoTheriDeflectRequest"), remote("DinoTheriClockRequest")
 local zips = setmetatable({}, {__mode = "k"}) -- [char] = {refills = {times}}
 local function grappleLeft(char, t)
@@ -687,6 +705,21 @@ grappleRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local from = root.Position + Vector3.new(0, 2 * s, 0)
 	local range = math.max(0, num(char, "TheriGrappleRange", 40))
 	local hit = workspace:Raycast(from, dir * range, worldOnly())
+	local v2 = script:GetAttribute("TheriMovesGrappleV2Enabled") ~= false -- v1.3
+	if v2 and not hit and range > 0 then -- v1.3: nothing to grab -> latch in the air at full range
+		local to = from + dir * range
+		table.insert(st.refills, t + math.max(0.5, num(char, "TheriGrappleCooldown", 12)))
+		char:SetAttribute("TheriGrappleServerResult", "ok")
+		char:SetAttribute("TheriGrappleServerResultAt", t)
+		grapplePublish(char, t)
+		char:SetAttribute("TheriGrappleAir", true)
+		char:SetAttribute("TheriGrappleAnchor", to)
+		char:SetAttribute("TheriGrappleTo", to)
+		char:SetAttribute("TheriGrappleTime", math.clamp((to - root.Position).Magnitude / ZIP_SPEED_V2, 0.2, ZIP_MAX_V2))
+		char:SetAttribute("TheriGrappleResult", "zip")
+		char:SetAttribute("TheriGrappleAt", t) -- last: TheriGrappleZip + FX
+		return
+	end
 	if not hit or (hit.Position - from).Magnitude < GRAPPLE_MIN then
 		char:SetAttribute("TheriGrappleResult", "noAnchor")
 		char:SetAttribute("TheriGrappleServerResult", "noAnchor")
@@ -701,7 +734,12 @@ grappleRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	grapplePublish(char, t)
 	char:SetAttribute("TheriGrappleAnchor", hit.Position)
 	char:SetAttribute("TheriGrappleTo", to)
-	char:SetAttribute("TheriGrappleTime", math.clamp(dist / ZIP_SPEED, 0.2, 0.9))
+	char:SetAttribute("TheriGrappleAir", false) -- v1.3
+	if v2 then -- v1.3: faster, up to 1 s
+		char:SetAttribute("TheriGrappleTime", math.clamp(dist / ZIP_SPEED_V2, 0.2, ZIP_MAX_V2))
+	else
+		char:SetAttribute("TheriGrappleTime", math.clamp(dist / ZIP_SPEED, 0.2, 0.9))
+	end
 	char:SetAttribute("TheriGrappleResult", "zip")
 	char:SetAttribute("TheriGrappleAt", t) -- last: TheriGrappleZip + FX
 end)
@@ -713,9 +751,45 @@ deflectRemote.OnServerEvent:Connect(function(player, stamp)
 	char:SetAttribute("TheriDeflectAt", t) -- last: FX + poses
 end)
 clockRemote.OnServerEvent:Connect(function(player, stamp)
+	local c0 = player.Character -- v1.3: passive -> the button does nothing
+	if c0 and c0:GetAttribute("TheriClockPassive") == true and script:GetAttribute("TheriMovesClockPassiveEnabled") ~= false then
+		c0:SetAttribute("TheriClockServerResult", "passive")
+		c0:SetAttribute("TheriClockServerResultAt", now())
+		return
+	end
 	local char, t = check(player, stamp, "zclock", "TheriClock", nil, false)
 	if not char then return end
 	ok(char, "TheriClock", t)
 	char:SetAttribute("TheriClockUntil", t + math.max(0, num(char, "TheriClockTime", 3)))
 	char:SetAttribute("TheriClockAt", t) -- last: FX
+end)
+
+-- v1.3: passive Overclock + the air-latch flag for the marker (see the header) -----------------------------------------------------
+local CLOCK_TICK = 0.25
+task.spawn(function()
+	while true do
+		task.wait(CLOCK_TICK)
+		local t = now()
+		local passiveOn = script:GetAttribute("TheriMovesClockPassiveEnabled") ~= false and on("zclock")
+		local air = script:GetAttribute("TheriMovesGrappleV2Enabled") ~= false
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local char = pl.Character
+			if char and char.Parent then
+				if char:GetAttribute("TheriGrappleEnabled") ~= nil and char:GetAttribute("TheriGrappleAirLatch") ~= air then
+					char:SetAttribute("TheriGrappleAirLatch", air)
+				end
+				local want = passiveOn and char:GetAttribute("TheriClockEnabled") == true
+				if want then
+					if char:GetAttribute("TheriClockPassive") ~= true or num(char, "TheriClockUntil", 0) < t + 1e5 then
+						char:SetAttribute("TheriClockPassive", true)
+						char:SetAttribute("TheriClockUntil", t + 1e6)
+						char:SetAttribute("TheriClockAt", t) -- last: FX
+					end
+				elseif char:GetAttribute("TheriClockPassive") == true then
+					char:SetAttribute("TheriClockPassive", false)
+					char:SetAttribute("TheriClockUntil", t)
+				end
+			end
+		end
+	end
 end)
