@@ -2736,3 +2736,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | DiloPoseEnabled / DiloLeapPoseEnabled / DiloGroundLockEnabled / DiloFrillEnabled / DiloFrillPopEnabled / DiloSacEnabled; DiloLeapLandTime / DiloSacSwell | dilo model (switches, each client) | true each; 1.0 s / 1.55 | DiloPose 1.0 (IdleAnimation 1.43) |
 | DiloPoseTestKey; DiloFrillTest | dilo model (test hooks) | unset; key name / "open" / "fold" | DiloPose 1.0 key and frill checks |
 | DiloPoseVersion / DiloPoseState / DiloPoseSource / DiloLeapPhase / DiloFrillState / DiloFrillScale / DiloFrillParts / DiloSacScale / DiloGroundShift | dilo model (each client) | diagnostics | DiloPose 1.0 |
+| HeadbuttCloseMul | pachy model (PachyModelData 1.5) | 1 (HeadbuttServer default 0.5) | share of HeadbuttDamage a short run-up deals; 1 = flat damage at any run-up |
