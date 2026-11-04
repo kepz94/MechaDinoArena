@@ -1,4 +1,4 @@
--- TenoBotMotion v1.0 (Mecha Dino Arena) — draws bots that a teno grabs, throws or shoves, on every client (LocalScript in
+-- TenoBotMotion v1.1 (Mecha Dino Arena) — draws bots that a teno grabs, throws or shoves, on every client (LocalScript in
 -- StarterPlayerScripts). MDA-217, plan docs/plans/TENO_TAIL_GRAB_v1.0.md Task 3, mockup docs/mockups/teno_tail_grab_v0.1.html
 -- (Kepu 2026-11-03: "It lags the dinos when I toss them", picked A "Over the Top" + L1 "Shove Clear").
 -- Why: TenoMovesServer 1.6 moved the anchored bot from the server every Heartbeat; clients only got about 30 updates a second
@@ -21,10 +21,22 @@
 -- Only anchored roots are written. Switch: script attribute TenoBotMotionEnabled (default true, read each frame; false =
 --   nothing drawn, the bot stays where the server has it). Diagnostics (local player): TenoBotMotionVersion,
 --   TenoBotMotionActive (jobs running), TenoBotMotionJobs (jobs started).
+-- v1.1 (Kepu 2026-11-03 19:02 "Teno landing polish": after 1.0 the teno still stood ~0.25 s on the dino's back while the
+--   server's shove slid it out - the server only hears of the landing after the body has touched it): on this client's own
+--   character, during a slam leap (JumpStartedAt with TenoLeapOnJump, or TenoLeapStartedAt, younger than 3 s) while the root is falling, a ray straight
+--   down from the root and the Torso_chest part (HipHeight + half the root + 2 + falling speed x LAND_AHEAD (0.25) s long,
+--   only this character left out) that hits another dino (a model with a Hitboxes folder) makes that dino's parts
+--   non-colliding on this client for LAND_THROUGH_TIME (1.0) s (then put back as they were). The body then comes down
+--   through it to the ground while TenoMovesServer 1.7's slam shoves it out sideways; nothing changes for the server or
+--   other players. Switch: script attribute TenoBotMotionLandThroughEnabled (default true, read each frame). Diagnostic
+--   (local player): TenoLandThroughs (dinos let through).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 land through the dino under a leap
+local LAND_AHEAD, LAND_THROUGH_TIME = 0.25, 1.0 -- v1.1
+if script:GetAttribute("TenoBotMotionLandThroughEnabled") == nil then script:SetAttribute("TenoBotMotionLandThroughEnabled", true) end -- v1.1
 local PULL_TIME, CLAMP_X, FLING_PEAK, BLEND_TIME = 0.12, -2.6, 16, 0.1
 local lp = Players.LocalPlayer
 if script:GetAttribute("TenoBotMotionEnabled") == nil then script:SetAttribute("TenoBotMotionEnabled", true) end
@@ -187,4 +199,59 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 	if lp:GetAttribute("TenoBotMotionActive") ~= n then lp:SetAttribute("TenoBotMotionActive", n) end
+end)
+
+-- v1.1: the own leap comes down through the dino under it (see the header) ----------------------------------------------------
+local landRay = RaycastParams.new()
+landRay.FilterType = Enum.RaycastFilterType.Exclude
+local through = {} -- dino model -> {until = os.clock() time, parts = {part = old CanCollide}}
+local throughs = 0
+local function dinoOf(part)
+	local m = part:FindFirstAncestorOfClass("Model")
+	while m and not m:FindFirstChild("Hitboxes") do m = m.Parent and m.Parent:FindFirstAncestorOfClass("Model") end
+	return m
+end
+local function letThrough(m)
+	local rec = through[m]
+	if rec then rec.untilAt = os.clock() + LAND_THROUGH_TIME return end
+	rec = {untilAt = os.clock() + LAND_THROUGH_TIME, parts = {}}
+	for _, d in ipairs(m:GetDescendants()) do
+		if d:IsA("BasePart") and d.CanCollide then
+			rec.parts[d] = true
+			d.CanCollide = false
+		end
+	end
+	through[m] = rec
+	throughs += 1
+	lp:SetAttribute("TenoLandThroughs", throughs)
+end
+RunService.Heartbeat:Connect(function()
+	local nowC = os.clock()
+	for m, rec in pairs(through) do
+		if nowC >= rec.untilAt or not m.Parent then
+			for part in pairs(rec.parts) do if part.Parent then part.CanCollide = true end end
+			through[m] = nil
+		end
+	end
+	if script:GetAttribute("TenoBotMotionLandThroughEnabled") == false then return end
+	local char = lp.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (hrp and hum and hum.Health > 0) then return end
+	local t = now()
+	local js = char:GetAttribute("TenoLeapOnJump") == true and num(char, "JumpStartedAt") or 0 -- only leaps that slam (TenoMovesServer)
+	local ls = num(char, "TenoLeapStartedAt") or 0
+	if t - math.max(js, ls) > 3 then return end
+	local vy = hrp.AssemblyLinearVelocity.Y
+	if vy > 0 then return end
+	landRay.FilterDescendantsInstances = {char}
+	local len = hum.HipHeight + hrp.Size.Y / 2 + 2 + (-vy) * LAND_AHEAD
+	local origins = {hrp.Position}
+	local chest = char:FindFirstChild("Torso_chest", true)
+	if chest and chest:IsA("BasePart") then table.insert(origins, chest.Position) end
+	for _, o in ipairs(origins) do
+		local hit = workspace:Raycast(o, Vector3.new(0, -len, 0), landRay)
+		local m = hit and dinoOf(hit.Instance)
+		if m and m ~= char then letThrough(m) end
+	end
 end)
