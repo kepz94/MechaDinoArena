@@ -220,7 +220,7 @@ function wmesh(geo, color, o) {
     : new THREE.MeshLambertMaterial({color, emissive: o.glow ? color : 0x000000, emissiveIntensity: o.glow || 0, transparent: !!o.alpha, opacity: o.alpha || 1});
   const m = new THREE.Mesh(geo, mat); scene.add(m); world.push(m); return m;
 }
-function clearWorld() { for (const m of world) { scene.remove(m); m.geometry.dispose(); } world.length = 0; }
+function clearWorld() { for (const m of world) { scene.remove(m); if (m.geometry) m.geometry.dispose(); } world.length = 0; }
 const UP = new THREE.Vector3(0, 1, 0);
 function beam(m, a, b, r) { // a unit cylinder (height 1 along y) stretched from a to b
   const d = b.clone().sub(a), L = d.length(); m.visible = L > 0.05;
@@ -445,15 +445,15 @@ function scenario(dt) {
     sc.fan = L === 1 ? smooth((t - 0.6) / 0.15) * (1 - smooth((t - 1.2) / 0.4)) : 0;
     A = Object.assign(IDLE(t), t < 0.7 ? mix({}, pre, smooth((t - 0.15) / 0.4)) : mix(pre, rel, smooth((t - 0.7) / 0.15)));
     if (t > 1.3) A = Object.assign(A, mix(rel, {}, smooth((t - 1.3) / 0.5)));
-    if (once("fan", t > 0.4)) { const m = wmesh(new THREE.CircleGeometry(30, 40, rad(90 - 35), rad(70)), 0xffffff, {basic: true, alpha: 0.16, side: THREE.DoubleSide}); m.rotation.x = -Math.PI / 2; m.position.y = 0.15; sc.fanMesh = m; }
-    if (sc.fanMesh) sc.fanMesh.material.opacity = 0.16 * (t < 2.4 ? 1 : 1 - clamp01((t - 2.4) / 0.6));
+    if (once("fan", t > 0.4)) { const m = wmesh(new THREE.CircleGeometry(30, 40, rad(90 - 35), rad(70)), 0xffffff, {basic: true, alpha: 0.3, side: THREE.DoubleSide}); m.rotation.x = -Math.PI / 2; m.position.y = 0.15; sc.fanMesh = m; }
+    if (sc.fanMesh) sc.fanMesh.material.opacity = 0.3 * (t < 2.4 ? 1 : 1 - clamp01((t - 2.4) / 0.6));
     if (once("fire", t > 0.75)) {
       sc.fired = true; sc.blades = [];
       for (let k = 0; k < 12; k++) {
         const a = rad(-35 + k * (70 / 11)), dir = V(Math.sin(a), 0, -Math.cos(a));
         let o;
         if (L === 0) o = partPos(theri, k % 2 ? "ArmL_fore" : "ArmR_fore"); else if (L === 1) o = restOn(theri, "Torso_body", [0, 4.4, 0.6]); else o = partPos(theri, "Torso_chest").add(V(0, 2, 0));
-        const m = wmesh(new THREE.BoxGeometry(0.16, 0.5, 2.0), FEATHER, {glow: 0.35});
+        const m = wmesh(new THREE.BoxGeometry(0.4, 1.2, 3.6), 0xffb84a, {glow: 0.55});
         m.position.copy(o); sc.blades.push({m, dir, y0: o.y, d: 0, live: true, delay: k * 0.015});
       }
     }
@@ -489,7 +489,7 @@ function scenario(dt) {
     txt = t < 0.85 ? "Harvest Field ★ · claws up…" : on ? `20-stud circle · ${(5.85 - t).toFixed(1)} s left · bleed 4/s, slowed 30%` : "the field fades";
   }
   if (id === "grapple") {
-    const legs = [[V(16, 9, -58), V(12.5, 0, -54.5)], [V(-26, 9, -102), V(-22, 0, -98)]]; // [hook point, landing point]
+    const legs = [[V(-14, 9, -58), V(-11, 0, -54.5)], [V(22, 9, -102), V(19, 0, -98)]]; // [hook point, landing point]
     const st = [0, 0.4, 0.75, 1.55], gap = 2.0;
     let leg = t < st[0] + gap ? 0 : 1; const lt = t - leg * gap;
     const from = leg === 0 ? V(0, 0, 0) : legs[0][1], [hp, land] = legs[leg];
@@ -502,6 +502,7 @@ function scenario(dt) {
       if (Math.random() < 0.6) streak(partPos(theri, "Torso_body").add(V((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, 0)).add(V(-(land.x - from.x), 0, -(land.z - from.z)).normalize().multiplyScalar(3)), 4);
       txt = "…and zips there"; if (once("hit" + leg, true)) { flash(hp, 1.5, 0xffffff); sparks(hp, 6); } }
     else { theri.y = 0; sc.head.visible = false; if (once("land" + leg, true)) { dust(V(land.x, 0, land.z), 8, 5, 2, 0.9); sc.yaw0 = theri.yaw; } A = Object.assign(IDLE(t), mix(ARMS_FWD, {}, smooth((lt - st[3]) / 0.3))); txt = leg === 0 ? "1 charge left" : "both charges used · recharging"; }
+    sc.cam = (sc.cam || V(4, 5, -20)).lerp(V((theri.x + hp.x) / 2, 5, (theri.z + hp.z) / 2), clamp01(dt * 3));
     $("hits").innerHTML = [0, 1].map(k => `<i class="${k < sc.charges ? "on" : ""}"></i>`).join("");
   }
   if (id === "deflect") {
@@ -545,8 +546,7 @@ function scenario(dt) {
     if (on && (sc.stm = (sc.stm || 0) + dt) > 0.12) { sc.stm = 0;
       if (L === 1) for (const s of [1, -1]) steam(restOn(theri, "Torso_body", [s * 0.55, 5.9, 0.5]), 1, V(0, 1, 1).normalize());
       else steam(partPos(theri, Math.random() < 0.5 ? "ShinL_knee" : "ShinR_knee"), 1, V(0, 0.6, 1).normalize()); }
-    if (once("cut", t > 1.2)) popNum(V(theri.x, theri.y + 4, theri.z), "CUT TAPS 30% FASTER", "soft");
-    if (inMud(theri.z) && on) setTag("mud", theri, "SLOWS DON'T WORK", "green", 16); else setTag("mud", theri, "");
+    if (inMud(theri.z) && on) setTag("mud", theri, "SLOWS DON'T WORK", "green", 16); else setTag("mud", theri, on ? (t > 1.0 && t < 2.8 ? "CUT TAPS 30% FASTER" : "+40% RUN") : "", on ? "yellow" : "", 16);
     setTag("gh", ghost, inMud(ghost.z) ? "normal · SLOWED" : "normal speed", "blue", 15);
     txt = on ? `Overclock Joints ★ · ${(5.3 - t).toFixed(1)} s · run 40% faster` : t < 0.3 ? "Overclock Joints ★" : "back to normal speed";
   }
@@ -613,10 +613,10 @@ function resetScene() {
   sc.head = wmesh(new THREE.ConeGeometry(0.7, 1.8, 4), STEEL); sc.head.geometry.rotateX(Math.PI / 2); sc.head.geometry.rotateY(Math.PI); sc.head.visible = false;
   if (id === "hook") { foe(0, 0, -80); const m = wmesh(new THREE.RingGeometry(79.6, 80.4, 96, 1, rad(70), rad(40)), 0xffffff, {basic: true, alpha: 0.5, side: THREE.DoubleSide}); m.rotation.x = -Math.PI / 2; m.position.y = 0.12; }
   if (id === "feather") { foe(0, -9, -24, Math.PI, {vz: 3}); foe(1, 2, -27, Math.PI, {vz: 3}); foe(2, 12, -21, Math.PI, {vz: 3}); foe(3, -27, -6, Math.PI * 0.6); }
-  if (id === "harvest") { foe(0, 6, -9, Math.PI * 0.9); foe(1, -5, -12, Math.PI * 1.1); foe(2, -24, -15, -Math.PI / 2, {vx: 4.5}); foe(3, 22, 8, Math.PI * 1.4); }
+  if (id === "harvest") { foe(0, 6, -9, Math.PI * 0.9); foe(1, -5, -12, Math.PI * 1.1); foe(2, -24, -15, -Math.PI / 2, {vx: 4.5}); }
   if (id === "grapple") { sc.charges = 2;
     const tree = (x, z) => { const tr = wmesh(new THREE.BoxGeometry(2.4, 18, 2.4), BARK); tr.position.set(x, 9, z); const lf = wmesh(new THREE.BoxGeometry(10, 7, 10), LEAF); lf.position.set(x, 20, z); };
-    tree(16, -60); const wall = wmesh(new THREE.BoxGeometry(14, 16, 3), ROCKC); wall.position.set(-26, 8, -104);
+    tree(-16, -60); const wall = wmesh(new THREE.BoxGeometry(14, 16, 3), ROCKC); wall.position.set(24, 8, -104);
     const m = wmesh(new THREE.RingGeometry(69.5, 70.5, 96), 0xffffff, {basic: true, alpha: 0.35, side: THREE.DoubleSide}); m.rotation.x = -Math.PI / 2; m.position.y = 0.12; }
   if (id === "deflect") { foe(0, 0, -46);
     sc.rotors = [rotor(6, 3.0), rotor(6, 3.0)]; sc.orbit = new THREE.Group(); scene.add(sc.orbit); world.push(sc.orbit);
@@ -625,17 +625,17 @@ function resetScene() {
     sc.shots = [wmesh(new THREE.ConeGeometry(0.25, 1.6, 6).rotateX(-Math.PI / 2), 0x6bd16a), wmesh(new THREE.CylinderGeometry(0.4, 0.4, 2.2, 8).rotateX(Math.PI / 2), 0xd04030),
       wmesh(new THREE.DodecahedronGeometry(1.3), ROCKC), wmesh(new THREE.SphereGeometry(0.8, 12, 10), 0x202226)];
     sc.shots.forEach(s => s.visible = false); }
-  if (id === "overclock") { ghost.g.visible = true; ghost.x = 13; ghost.z = 0; ghost.yaw = 0;
-    const mud = wmesh(new THREE.PlaneGeometry(40, 18), MUDC, {alpha: 0.9}); mud.rotation.x = -Math.PI / 2; mud.position.set(6, 0.1, -55);
-    const lane = wmesh(new THREE.PlaneGeometry(0.4, 200), 0xffffff, {basic: true, alpha: 0.4}); lane.rotation.x = -Math.PI / 2; lane.position.set(6.5, 0.11, -80); }
+  if (id === "overclock") { ghost.g.visible = true; ghost.x = -14; ghost.z = 0; ghost.yaw = 0;
+    const mud = wmesh(new THREE.PlaneGeometry(40, 18), MUDC, {alpha: 0.9}); mud.rotation.x = -Math.PI / 2; mud.position.set(-5, 0.1, -55);
+    const lane = wmesh(new THREE.PlaneGeometry(0.4, 200), 0xffffff, {basic: true, alpha: 0.4}); lane.rotation.x = -Math.PI / 2; lane.position.set(-7, 0.11, -80); }
   if (id === "snare") {
     sc.traps = [0, 1, 2].map(() => { const g = new THREE.Group(); scene.add(g); world.push(g);
-      for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.4, 0.5), new THREE.MeshLambertMaterial({color: DARK})); post.position.set(s * 3, 0.7, 0); g.add(post); }
-      const wire = new THREE.Mesh(new THREE.BoxGeometry(6, 0.1, 0.1), new THREE.MeshBasicMaterial({color: WIRE})); wire.position.y = 0.9; g.add(wire);
+      for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.7, 2.0, 0.7), new THREE.MeshLambertMaterial({color: DARK})); post.position.set(s * 3.4, 1.0, 0); g.add(post); }
+      const wire = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.18, 0.18), new THREE.MeshBasicMaterial({color: WIRE})); wire.position.y = 1.2; g.add(wire);
       const box = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 0.8), new THREE.MeshLambertMaterial({color: STEEL})); box.position.y = 0.25; g.add(box);
       const light = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.3), new THREE.MeshBasicMaterial({color: 0xff3030})); light.position.y = 0.6; g.add(light);
       g.visible = false; return {g, wire, light, sprung: false}; });
-    foe(0, 0.5, -52, Math.PI, {go: 1.5, spd: 15}); foe(1, 10.5, -50, Math.PI, {go: 2.4, spd: 14}); }
+    foe(0, 0.5, -52, Math.PI, {go: 1.3, spd: 18}); foe(1, 10.5, -50, Math.PI, {go: 2.0, spd: 16}); }
   buildLook();
 }
 
@@ -657,7 +657,7 @@ function drawTabs() {
 function drawInfo() {
   const a = P(), [an, ac] = AREA[a.area], Lk = a.looks[look];
   $("info").innerHTML = `<div class="kind" style="color:${ac}">${an} · MECHA PART · BUTTON (any slot: R / T / C / V)</div><h2 style="margin-top:4px">${a.name} <span style="color:var(--muted);font-size:15px">(your #${a.n})</span></h2>
-    <p class="maxed"><span class="b" style="background:${ac}">★</span> <b>Maxed:</b> ${a.maxed}</p>
+    <p class="maxed"><span class="b" style="background:${ac}">★</span><span><b>Maxed:</b> ${a.maxed}</span></p>
     <p><b>Look ${Lk.name}:</b> ${Lk.why}</p>`;
   $("akey").textContent = SLOTS[cur % 4]; $("aname").textContent = a.name.replace(/^Reaper's /, "").split(" ")[0].toUpperCase();
 }
@@ -677,7 +677,7 @@ $("closeup").onclick = e => { closeup = !closeup; e.currentTarget.setAttribute("
 // ---------- frame ----------
 function resize() { const w = cv.clientWidth, h = cv.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
 window.addEventListener("resize", resize);
-const CAM = {hook: [[0, 5, -40], 92], feather: [[0, 5, -13], 56], harvest: [[0, 4, -4], 50], grapple: [[-4, 6, -50], 118], deflect: [[0, 6, -22], 64], overclock: [null, 52], snare: [[2, 4, -22], 54]};
+const CAM = {hook: [[0, 5, -40], 92], feather: [[0, 5, -13], 56], harvest: [[0, 4, -4], 50], grapple: [null, 72], deflect: [[0, 6, -22], 64], overclock: [null, 52], snare: [[2, 4, -22], 54]};
 let last = performance.now(), paused = false;
 function step(dt) {
   t += dt;
@@ -699,7 +699,7 @@ function frame(now) {
   $("cdfill").style.height = (frac * 100) + "%"; $("cdtxt").textContent = frac > 0 ? Math.ceil(frac * cdTotal) + "s" : "";
   $("state").textContent = txt;
   const [cc, d] = CAM[a.id];
-  const c = cc ? V(...cc) : V(6, 5, theri.z - 8);
+  const c = cc ? V(...cc) : sc.cam ? sc.cam.clone() : V(-2, 5, theri.z - 8);
   let cp;
   if (closeup) { const pp = partPos(theri, a.looks[look].mount); c.copy(pp); cp = pp.clone().add(V(14, 6, -8)); }
   else if (view === "side") cp = c.clone().add(V(d, d * 0.2, 0));
