@@ -3,7 +3,7 @@
 -- Scale: T-Rex 40.1 studs ~ 12.3 m; pachy ~4.5 m -> about 14.8 studs long, hip 4.0 studs (doubled in game like the raptor).
 -- Colour groups: main 7A6A4E, stripes 3E5A55, belly C8B898, dome E6DCC4, knobs 8C7A5A, mask 3F6F7A, limbs 5E5240, claws 2E2620, eyes 8A2A1E; never painted: pupil 111111, mouth 6E342E.
 -- v1.4: refined Crowned Skull head, the 10 Head_spike* horns shown (Transparency 0, PachyLook 1.1 keeps them on), mid section +25%.
--- v1.5: HeadbuttDamage 25 (was 20), HeadbuttCloseMul 1: a flat 25 per headbutt at any run-up (Kepu 2026-11-03).
+-- v1.5: HeadbuttDamage 25 (was 20), HeadbuttCloseMul 0.72: a short run-up hits 18 (was 10), a full one 25 (Kepu 2026-11-03).
 -- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB.
 -- Rebuild with DinoModelBuilder.build(require(PachyModelData)).
 return {
@@ -240,7 +240,7 @@ return {
 		HeadLeadPoseVersion = "1.0",
 		HeadLeadSmooth = 10,
 		HeadbuttCharges = 2,
-		HeadbuttCloseMul = 1,
+		HeadbuttCloseMul = 0.72,
 		HeadbuttDamage = 25,
 		HeadbuttEnabled = true,
 		HeadbuttMaxTime = 1.8,

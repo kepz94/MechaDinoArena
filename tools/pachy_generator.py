@@ -42,10 +42,11 @@ v1.4 (Kepu 2026-11-02: "the pachy dome ... Looks too much like an egg and I thin
 v1.3 (Kepu 2026-10-31: "let's shorten the cool down for the pachy headbutts for each refill"; picked "3 s per charge"):
       HeadbuttRefill 3 (was 5). HeadbuttServer's tiers (x1.3 with 2 missing, x1.6 with 3) and the Bone Dome skill
       multiplier (x0.7) are unchanged: 3 / 3.9 / 4.8 s, 2.1 s with the skill. Everything else unchanged.
-v1.5 (Kepu 2026-11-03: "turn the pachy up in damage" -> "Let's just do flat 25 for now"): HeadbuttDamage 25 (was 20) and
-      HeadbuttCloseMul 1 (HeadbuttServer's default 0.5 halved a short run-up: 10..20), so every headbutt hits 25 before
-      the multipliers (Battering Dome, Blood Rush, Servo Dash charge, roar debuff, Weak tag) and Attack points. The run-up
-      still sets nothing else (shove / slow unchanged). The T-Rex 2.0-only key TRexModelVersion is no longer copied in
+v1.5 (Kepu 2026-11-03: "turn the pachy up in damage" -> "flat 25" -> "Actually never mind let's just bump up the minimum
+      to 18 instead and keep the same rules as before" -> full run-up "25"): HeadbuttDamage 25 (was 20) and
+      HeadbuttCloseMul 0.72 (HeadbuttServer's default 0.5): a short run-up hits 18 (25 x 0.72; was 10), a full run-up 25
+      (was 20), in between as before (HeadbuttServer's run-up rules unchanged), before the multipliers (Battering Dome,
+      Blood Rush, Servo Dash charge, roar debuff, Weak tag) and Attack points. Shove / slow unchanged. The T-Rex 2.0-only key TRexModelVersion is no longer copied in
       (it leaked into a fresh run since TRexModelData 2.0; the 1.4 data file never had it). Everything else unchanged.
 """
 import math, re, os
@@ -451,7 +452,7 @@ OVERRIDES = {
     "RunStrideStretch": "1.22", "WalkSideStepReach": "1.2",
     "RunNeckDrop": "12", "WalkTailWhip": "0.3", "RunTailWhip": "0.2", "IdleTailSway": "0.4",
     "HeadbuttEnabled": "true", "HeadbuttCharges": "2", "HeadbuttWindup": "0.15", "HeadbuttSpeedMul": "1.7",
-    "HeadbuttMaxTime": "1.8", "HeadbuttTurnMul": "2", "HeadbuttDamage": "25", "HeadbuttCloseMul": "1", "HeadbuttShove": "40",
+    "HeadbuttMaxTime": "1.8", "HeadbuttTurnMul": "2", "HeadbuttDamage": "25", "HeadbuttCloseMul": "0.72", "HeadbuttShove": "40",
     "HeadbuttShoveTime": "0.35", "HeadbuttSlowMul": "0.65", "HeadbuttSlowTime": "3", "HeadbuttRefill": "3",
     "HeadbuttSelfSlowMul": "0.65", "HeadbuttSelfSlowTime": "2.5", "HeadbuttReach": "2",
 }
@@ -476,7 +477,7 @@ lines.append(f"-- Scale: T-Rex 40.1 studs ~ 12.3 m; pachy ~4.5 m -> about 14.8 s
 lines.append("-- Colour groups: " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: pupil 111111, mouth 6E342E.")
 lines.append("-- Head_spike* parts are hidden (Transparency 1): the fully upgraded attack look, shown by the abilities plan." if not SPIKES_SHOWN else
              "-- v1.4: refined Crowned Skull head, the 10 Head_spike* horns shown (Transparency 0, PachyLook 1.1 keeps them on), mid section +25%.")
-lines.append("-- v1.5: HeadbuttDamage 25 (was 20), HeadbuttCloseMul 1: a flat 25 per headbutt at any run-up (Kepu 2026-11-03).")
+lines.append("-- v1.5: HeadbuttDamage 25 (was 20), HeadbuttCloseMul 0.72: a short run-up hits 18 (was 10), a full one 25 (Kepu 2026-11-03).")
 lines.append("-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB.")
 lines.append("-- Rebuild with DinoModelBuilder.build(require(PachyModelData)).")
 lines.append("return {")
