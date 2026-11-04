@@ -323,9 +323,12 @@ end
 
 -- v1.1: Overclock Joints ----------------------------------------------------------------------------------------------------
 local HOT = Color3.fromRGB(255, 98, 18)
+local glowing = setmetatable({}, {__mode = "k"}) -- [char] = true while the rings glow (one glow at a time)
 local function clock(char)
+	if glowing[char] then return end
 	local rings = zpiece(char, "zclock", "ring")
 	if #rings == 0 then return end
+	glowing[char] = true
 	local keep = {}
 	for i, r in ipairs(rings) do keep[i] = {r.Color, r.Material} end
 	local conn
@@ -333,6 +336,7 @@ local function clock(char)
 		local untilT = num(char, "TheriClockUntil", 0)
 		if now() >= untilT or not char.Parent then
 			conn:Disconnect()
+			glowing[char] = nil
 			for i, r in ipairs(rings) do
 				if r.Parent then r.Color, r.Material = keep[i][1], keep[i][2] end
 			end
