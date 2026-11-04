@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Therizino Mecha Parts</title>
+<style>
+/* Same palette as the other Mecha Dino Arena mockups. Fonts: system fallbacks (works offline). */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --yellow: #ffc832; --volt: #7fe9ff;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding: 24px max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px)); }
+main { max-width: 1100px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); }
+h1 span { color: var(--accent); }
+h2 { margin: 0; font: 700 20px/1.2 var(--display); }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 86ch; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lbl { font: 800 12px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 52px; }
+.grid8 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 720px) { .grid8 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tab { font: 700 15px/1.2 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; cursor: pointer; text-align: left; min-width: 0; }
+.tab small { display: block; font: 800 11px var(--body); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,155,46,.2); }
+.btn { font: 700 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--volt); }
+.btn.go { border-color: var(--accent); }
+.stage { position: relative; border: 2px solid var(--line); border-radius: 16px; overflow: hidden; user-select: none; -webkit-user-select: none; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; touch-action: none; }
+#pops, #tags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.pop { position: absolute; transform: translate(-50%, -50%); font: 800 20px var(--display); color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px #000; white-space: nowrap; }
+.pop.big { font-size: 30px; color: var(--yellow); }
+.pop.good { color: #7dff9a; }
+.pop.soft { color: #cfd3dc; font-size: 16px; }
+.st { position: absolute; transform: translate(-50%, -100%); font: 800 11px var(--body); letter-spacing: .04em; padding: 2px 6px; border-radius: 6px; background: rgba(10,12,18,.8); white-space: nowrap; }
+.st.red { color: #ff6b6b; border: 1px solid #ff6b6b; }
+.st.blue { color: #8fd0ff; border: 1px solid #8fd0ff; }
+.st.green { color: #7dff9a; border: 1px solid #7dff9a; }
+.st.yellow { color: var(--yellow); border: 1px solid var(--yellow); }
+.tag { position: absolute; left: 12px; top: 12px; font: 700 14px var(--display); background: rgba(15,19,25,.8); border-radius: 10px; padding: 6px 10px; max-width: 70%; }
+.tag b { color: var(--yellow); }
+#hud { position: absolute; right: 12px; bottom: 12px; display: grid; justify-items: center; gap: 4px; }
+#abtn { position: relative; width: 92px; height: 92px; border-radius: 18px; border: 3px solid var(--accent); background: #1d2230; color: #fff; font: 800 13px/1.1 var(--display); cursor: pointer; overflow: hidden; padding: 6px; }
+#abtn .k { position: absolute; left: 6px; top: 4px; color: var(--accent); font-size: 14px; }
+#cdfill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(0,0,0,.6); }
+#cdtxt { position: absolute; inset: 0; display: grid; place-items: center; font: 800 22px var(--display); color: #fff; text-shadow: 0 2px 0 #000; }
+#hits { display: flex; gap: 4px; min-height: 12px; }
+#hits i { width: 12px; height: 12px; border-radius: 3px; background: #6b4a2a; border: 1px solid #c79a62; display: block; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+.card p { margin: 6px 0; }
+.kind { font: 800 13px var(--body); letter-spacing: .06em; text-transform: uppercase; }
+.steps { display: grid; gap: 6px; margin: 8px 0; }
+.stp { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; color: var(--muted); }
+.stp .b { height: 30px; border-radius: 8px; display: grid; place-items: center; font: 800 14px var(--display); background: #262d3c; color: #8f99aa; }
+.stp.got { color: #fff; }
+.stp.got .b { color: #1a1208; }
+.stp.cur { color: #fff; font-weight: 800; }
+.note { color: var(--muted); font-size: 13px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+td, th { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+th { color: var(--muted); font: 800 12px var(--body); letter-spacing: .06em; text-transform: uppercase; }
+ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+.grid8 .tab:last-child:nth-child(odd) { grid-column: span 1; }
+#looks { flex: 1; }
+#looks .tab { flex: 1 1 180px; }
+#hits i { border-radius: 50%; background: #262d3c; border: 1px solid #8f99aa; }
+#hits i.on { background: var(--volt); border-color: var(--volt); }
+.pop.red { color: #ff6b6b; }
+.maxed { display: flex; gap: 10px; align-items: baseline; font-size: 16px; }
+.maxed .b { flex: none; width: 30px; height: 30px; border-radius: 8px; display: inline-grid; place-items: center; font: 800 14px var(--display); color: #1a1208; }
+.pickbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.pickbar b { font: 700 16px var(--display); color: #7dff9a; }
+#pickbtn[aria-pressed="true"] { border-color: #7dff9a; }
+.draft { display: inline-block; font: 800 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: #1a1208; background: var(--yellow); border-radius: 6px; padding: 2px 6px; margin-left: 8px; vertical-align: middle; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+#ladder { min-width: 760px; font-size: 13px; }
+#ladder td.star { color: #fff; background: rgba(255,200,50,.08); }
+@media (max-width: 520px) { #abtn { width: 72px; height: 72px; font-size: 11px; } .tag { font-size: 12px; max-width: 64%; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>Therizino</span> mecha parts · looks <span id="ver" style="color:var(--muted);font-size:.6em"></span></h1>
+    <p class="lede">Your 7 picks from the 20-option list (1, 3, 5, 12, 16, 18, 19) on the real Therizino model (TherizinoModelData, Classic A Reaper). Each one is a button part: it goes in one of the 4 slots (R / T / C / V) and only shows on the dino while it's slotted. Pick a part, flip between its looks (A / B / C) and watch the <b>maxed ★</b> effect loop. Tap <b>Pick</b> on the look you want; your picks build up in the line below so you can send them back (e.g. "1-A, 3-B …").</p>
+  </header>
+  <div class="grid8" role="group" aria-label="Part" id="parts"></div>
+  <div class="row" role="group" aria-label="Look"><span class="lbl">Look</span><span id="looks" class="row"></span></div>
+  <div class="pickbar"><button class="btn go" id="pickbtn" aria-pressed="false">Pick</button><span class="lbl">Your picks</span><b id="pickline">none yet</b><button class="btn" id="copy">Copy</button></div>
+  <div class="row"><span class="lbl">Try</span>
+    <button class="btn go" id="play">Play again</button>
+    <button class="btn" id="loop" aria-pressed="true">Loop</button>
+    <button class="btn" id="slow" aria-pressed="false">Slow-mo ×0.3</button>
+    <button class="btn" data-view="side">Side</button>
+    <button class="btn" data-view="three" aria-pressed="true">3/4</button>
+    <button class="btn" data-view="top">Top</button>
+    <button class="btn" id="closeup" aria-pressed="false">Part close-up</button>
+  </div>
+  <div class="stage">
+    <canvas id="cv" aria-label="3D Therizino using a mecha part"></canvas>
+    <div id="tags"></div>
+    <div id="pops"></div>
+    <div class="tag"><b id="state"></b></div>
+    <div id="hud">
+      <div id="hits"></div>
+      <button id="abtn"><span class="k" id="akey">R</span><span id="aname"></span><div id="cdfill"></div><div id="cdtxt"></div></button>
+    </div>
+  </div>
+  <div class="card" id="info"></div>
+  <div class="card">
+    <h2>Step ladder <span class="draft">draft, to confirm in the plan</span></h2>
+    <p class="note">★ is your picked maxed text. I / II / III are my first guess, using the Teno rule: steps make a part last longer, reach further or recharge faster, and the main % is never stacked again. Recharge times are first guesses to tune in Studio.</p>
+    <div class="scroll"><table id="ladder"></table></div>
+  </div>
+  <ul>
+    <li>Red dummies are enemies (Herrera models). In Overclock the see-through dino runs at normal speed next to you for comparison.</li>
+    <li>Looks and feel only: real hit areas, distances and timings are set in the build and tested in Studio. Nothing in the game changes from this page.</li>
+    <li>Harvest Field shows "20-stud circle" as 20 studs across (10 out from the dino), to confirm in the plan.</li>
+  </ul>
+</main>
+<script>/*THREE*/</script>
+<script>

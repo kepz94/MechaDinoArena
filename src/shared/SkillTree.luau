@@ -1,4 +1,4 @@
--- SkillTree v1.59 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.59 (1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2062,6 +2062,104 @@ do
 		e.headDownMul = hd >= 2 and 0.75 or (hd >= 1 and 0.85 or 1)
 		e.headDownNoShove = hd >= 3
 		e.headDownNoStun = hd >= 4
+		return e
+	end
+end
+
+
+-- v1.60 (dilo stat rows, MDA-235, plan docs/plans/DILO_STATS_v1.0.md Task 1; Kepu 2026-11-04 picks 2 Venom Bite, 3 Quick Draw,
+-- 5 Long Spit, 9 Toxic Blood, 14 Venom Feast, 20 Cold Blood; shared lines "Only its own"). Switch SkillTree.DILO_STATS
+-- (default true; false = 1.59):
+--   * PATHS regen / lifesteal / jaws / hide / legs get notFor.Dilo (the dilo sees none of the shared stat rows; saved steps on
+--     them are dropped by sanitize for the dilo, so the points come back).
+--   * Six dilo-only rows (dino / OWNER "Dilo", mech false, no slot): Venom Feast (venomfeast, health), Venom Bite (venombite,
+--     attack), Long Spit (longspit, attack), Toxic Blood (toxicblood, defense), Quick Draw (quickdraw, speed), Cold Blood
+--     (coldblood, sig). The dilo's STATS list reads venomfeast, venombite, longspit, toxicblood, quickdraw, coldblood.
+--   * Effects (off values when not bought / other dinos): venomBiteDps 0 / venomBiteTime 0 (I 1/s 2 s, II 1/s 3 s, III 2/s 2 s,
+--     star 2/s 3 s: bite poison); spitRangeMul 1 (I 7/6, II-III 4/3, star 1.5: dart range and soft-aim reach), spitSpeedMul 1
+--     (III-star 1.4); toxicDps 0 / toxicTime 0 (Venom Bite's ladder: poison on a close attacker); feastFrac 0 (0.2 / 0.3 / 0.4
+--     / 0.5 of the poison damage dealt is healed); drawHold 0 (= the model's hold; I 0.35, II-III 0.3, star 0.25), drawCooldown
+--     0 (= the model's recharge; III 1.25, star 1.0); coldMul 1 (1.25 / 1.5 / 1.75 / 2), coldBelow 0 (0.3 from I), coldVenom
+--     false (II up: the poison too), coldReset false (star: the dart recharges once per life at the first drop below the line).
+--     SkillEffects 1.41 writes them; DiloAttackServer 1.1 / DiloAttackTest 1.1 act on them.
+SkillTree.DILO_STATS = true
+if SkillTree.DILO_STATS and not SkillTree.PATHS.venombite then
+	local P = SkillTree.PATHS
+	for _, id in ipairs({"regen", "lifesteal", "jaws", "hide", "legs"}) do
+		if P[id] then
+			P[id].notFor = P[id].notFor or {}
+			P[id].notFor.Dilo = true
+		end
+	end
+	local hasSig = false
+	for _, a in ipairs(SkillTree.AREAS) do if a.id == "sig" then hasSig = true end end
+	if not hasSig then table.insert(SkillTree.AREAS, {id = "sig", name = "Signature", color = {201, 162, 255}, paths = {}}) end
+	local function add(id, name, areaId, steps)
+		local p = path(id, name, false, false, steps)
+		p.area = areaId
+		p.dino = "Dilo"
+		SkillTree.OWNER[id] = "Dilo"
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		P[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	add("venomfeast", "Venom Feast", "health", {
+		"Heal 20% of the poison damage you deal",
+		"Heal 30% of your poison damage",
+		"Heal 40% of your poison damage",
+		"Heal 50% of your poison damage"})
+	add("venombite", "Venom Bite", "attack", {
+		"Bites poison 1/s for 2 s",
+		"Bite poison lasts 3 s",
+		"Bite poison 2/s for 2 s",
+		"Bites poison 2/s for 3 s"})
+	add("longspit", "Long Spit", "attack", {
+		"Dart range 60 -> 70 studs",
+		"Dart range 80 studs",
+		"Darts fly 40% faster",
+		"Dart range 90 studs"})
+	add("toxicblood", "Toxic Blood", "defense", {
+		"A dino that hits you up close is poisoned 1/s for 2 s",
+		"Its poison lasts 3 s",
+		"Its poison 2/s for 2 s",
+		"Its poison 2/s for 3 s"})
+	add("quickdraw", "Quick Draw", "speed", {
+		"Spit ready after a 0.35 s hold (was 0.4)",
+		"Spit ready after a 0.3 s hold",
+		"Dart recharges in 1.25 s (was 1.5)",
+		"0.25 s hold, and the dart recharges in 1.0 s"})
+	add("coldblood", "Cold Blood", "sig", {
+		"Below 30% health: darts deal 25% more damage",
+		"Below 30% health: darts and poison deal 50% more",
+		"Below 30% health: darts and poison deal 75% more",
+		"Below 30% health: double damage, and once per life the dart recharges the moment you drop below 30%"})
+end
+do
+	local effectsPre160 = SkillTree.effects
+	local function ladder(n) -- poison dps / time: I 1/2, II 1/3, III 2/2, star 2/3
+		if n >= 4 then return 2, 3 elseif n == 3 then return 2, 2 elseif n == 2 then return 1, 3 elseif n == 1 then return 1, 2 end
+		return 0, 0
+	end
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre160(steps, dino)
+		if type(e) ~= "table" then return e end
+		local on = SkillTree.DILO_STATS and dino == "Dilo" and SkillTree.PATHS.venombite ~= nil
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local vb, ls, tb, vf, qd, cb = s.venombite or 0, s.longspit or 0, s.toxicblood or 0, s.venomfeast or 0, s.quickdraw or 0,
+			s.coldblood or 0
+		e.venomBiteDps, e.venomBiteTime = ladder(vb)
+		e.spitRangeMul = ls >= 4 and 1.5 or (ls >= 2 and 4 / 3 or (ls >= 1 and 7 / 6 or 1))
+		e.spitSpeedMul = ls >= 3 and 1.4 or 1
+		e.toxicDps, e.toxicTime = ladder(tb)
+		e.feastFrac = vf >= 4 and 0.5 or (vf >= 3 and 0.4 or (vf >= 2 and 0.3 or (vf >= 1 and 0.2 or 0)))
+		e.drawHold = qd >= 4 and 0.25 or (qd >= 2 and 0.3 or (qd >= 1 and 0.35 or 0))
+		e.drawCooldown = qd >= 4 and 1.0 or (qd >= 3 and 1.25 or 0)
+		e.coldMul = cb >= 4 and 2 or (cb >= 3 and 1.75 or (cb >= 2 and 1.5 or (cb >= 1 and 1.25 or 1)))
+		e.coldBelow = cb >= 1 and 0.3 or 0
+		e.coldVenom = cb >= 2
+		e.coldReset = cb >= 4
 		return e
 	end
 end

@@ -1,4 +1,4 @@
--- SkillTreePachy.spec v1.0 (Mecha Dino Arena) — the Pachycephalosaurus' Last Stand (Health) and Head Down (Defense) rows in
+-- SkillTreePachy.spec v1.1 (1.1: the dilo rows line follows SkillTree 1.60 DILO_STATS) (Mecha Dino Arena) — the Pachycephalosaurus' Last Stand (Health) and Head Down (Defense) rows in
 -- ServerStorage.DinoArcade.SkillTree 1.59 (MDA-230, plan docs/plans/PACHY_STATS_v1.0.md Task 1; Kepu 2026-11-04 "Option B for
 -- health and option A for defense", star "Untouchable at 30%", step III "Shoves only"). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreePachy_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
@@ -63,7 +63,7 @@ eq("pachy stat rows", list("Pachy"), "laststand,dome,crest,headdown,legs")
 eq("raptor rows", list("Raptor"), "regen,lifesteal,blade,hide,legs")
 eq("herrera rows", list("Herrera"), "lifesteal,jaws,frenzy,hide,plating,legs,stalker")
 eq("trex rows", list("TRex"), "lifesteal,jaws,hide,legs")
-eq("dilo rows", list("Dilo"), "regen,lifesteal,jaws,hide,legs")
+eq("dilo rows", list("Dilo"), ST.DILO_STATS and "venomfeast,venombite,longspit,toxicblood,quickdraw,coldblood" or "regen,lifesteal,jaws,hide,legs") -- v1.1
 eq("theri rows", list("Therizino"), "harvest,fury,guard,flow,fourth")
 eq("teno rows", list("Teno"), "survivor,heavytail,frontclaws,hide,brace,chargeup,buckoff")
 -- still blocked for the pachy (Kepu 2026-10-30)
