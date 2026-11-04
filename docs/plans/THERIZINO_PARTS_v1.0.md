@@ -75,7 +75,14 @@ Shoulder Rocket part is "soon" (SkillTree), so no rocket exists to block (red-te
    Deflector (`DeflectRules` module + one-line checks in DiloAttackServer, TenoMovesServer, ScreechServer).
 8. **Client build 2 + Studio check 2**, then publish.
 
-## Red-team (open — Kepu's answers go here)
+## Red-team rulings (Kepu 2026-11-04)
+- 1 Harvest Field: "Across" (12 / 16 / 20 studs wide; radius 6 / 8 / 10).
+- 2 Deflector Claws: "Yes, in build 2" (one guarded line each in DiloAttackServer, TenoMovesServer, ScreechServer).
+- 3 Snare root: "Reuse the Tether chain".
+- 4 Reaper's Hook star cut-1 hook: kept as recommended (one guarded call).
+- 5 Builds: "Two builds".
+
+## Red-team
 1. Harvest Field "12 / 16 / 20-stud circle": across or out from the centre? Across = 12 / 16 / 20 studs wide (10 out at
    max, about the therizino's own length). Out from the centre = 24 / 32 / 40 studs wide (a big zone). Recommended: across
    (the mockup drew it that way; bleed 4/s plus a 30% slow in a 40-wide zone would cover most fights).
