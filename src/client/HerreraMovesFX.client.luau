@@ -1,4 +1,4 @@
--- HerreraMovesFX v1.4 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
+-- HerreraMovesFX v1.5 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/HERRERA_PARTS_v1.0.md Parts 3, 4, 7, 8 and "Pass 2 — build map"; the moves are
 -- HerreraMovesServer 1.0, the looks HerreraPartsServer 1.2. Runs for every player character (yours and others') and for
 -- Workspace.DinoIsland.Bots. Everything is local (Workspace "HerreraMovesFX"), nothing is replicated.
@@ -52,11 +52,18 @@
 --   facing, 0.25 x scale studs, + small roll), then the copies are removed and the pieces shown again. Switches: script
 --   attributes HerreraMovesFXCaltropDropEnabled and HerreraMovesFXCaltropKickEnabled (default true, read at each patch /
 --   drop; false = 1.3). Diagnostics: script CaltropFlights (spikes animated), CaltropKicks.
+-- v1.5 (MDA-166, plan docs/plans/HERRERA_PARTS_v1.0.md Part 10 "On fire: the tube kicks back 0.25 along its axis (0.35 s),
+--   ... 'THUMP!' pop"; Kepu 2026-11-03 "166- make it"): when a character's GooFiredAt changes (HerreraMovesServer 1.2), the
+--   Hump Mortar's "tube" and "muzzle" pieces (HPart_goo) are hidden locally (LocalTransparencyModifier 1) and anchored
+--   copies follow them for 0.35 s pushed back along the tube's axis (-UpVector) by 0.25 x scale x k (k up over the first
+--   15%, then eased back to 0); then the copies go and the pieces show again. A lime "THUMP!" pop at the muzzle. Switch:
+--   script attribute HerreraMovesFXGooKickEnabled (default true, read at each shot). Diagnostic: script GooKicks.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.4"
+VERSION = "1.5" -- v1.5 goo mortar kick
 local QUILL_GAP, QUILL_SPEED = 0.045, 90
 local SMOKE_PUFFS = 70
 local HOT = Color3.fromRGB(255, 98, 18)
@@ -732,4 +739,61 @@ do
 		folder.ChildAdded:Connect(track)
 		for _, c in ipairs(folder:GetChildren()) do task.spawn(track, c) end
 	end
+end
+
+-- v1.5: the Goo Blob Shooter's mortar kick + "THUMP!" (see the header) ---------------------------------------------------------
+do
+	local LIME = Color3.fromRGB(166, 226, 46)
+	if script:GetAttribute("HerreraMovesFXGooKickEnabled") == nil then script:SetAttribute("HerreraMovesFXGooKickEnabled", true) end
+	script:SetAttribute("GooKicks", 0)
+	local function gooKick(char)
+		if script:GetAttribute("HerreraMovesFXGooKickEnabled") == false or not on() then return end
+		local src = {}
+		for _, role in ipairs({"tube", "muzzle"}) do
+			for _, p in ipairs(pieces(char, "goo", role)) do table.insert(src, p) end
+		end
+		if #src == 0 then return end
+		script:SetAttribute("GooKicks", (script:GetAttribute("GooKicks") or 0) + 1)
+		local tube = pieces(char, "goo", "tube")[1] or src[1]
+		local muzzle = pieces(char, "goo", "muzzle")[1] or tube
+		local copies = {}
+		for _, p in ipairs(src) do
+			local c = p:Clone()
+			for _, x in ipairs(c:GetChildren()) do
+				if x:IsA("Constraint") or x:IsA("JointInstance") or x:IsA("WeldConstraint") then x:Destroy() end
+			end
+			c.Anchored, c.CanCollide, c.CanQuery, c.CanTouch = true, false, false, false
+			c.Parent = fxFolder
+			p.LocalTransparencyModifier = 1
+			table.insert(copies, {p, c})
+		end
+		local s = char:GetScale()
+		pop("THUMP!", LIME, muzzle.Position + muzzle.CFrame.UpVector * 1.5 * s + Vector3.new(0, 1.5 * s, 0), 5, 0.6)
+		count()
+		animate(0.35, function(u)
+			local k
+			if u < 0.15 then k = 1 - (1 - u / 0.15) ^ 2 else local v = (u - 0.15) / 0.85 k = 1 - v * v * (3 - 2 * v) end
+			local axis = tube.Parent and tube.CFrame.UpVector or Vector3.zero
+			for _, pc in ipairs(copies) do
+				if pc[1].Parent then pc[2].CFrame = pc[1].CFrame - axis * 0.25 * s * k end
+			end
+		end, function()
+			for _, pc in ipairs(copies) do
+				pc[2]:Destroy()
+				if pc[1].Parent then pc[1].LocalTransparencyModifier = 0 end
+			end
+		end)
+	end
+	local gooWatched = setmetatable({}, {__mode = "k"})
+	local function watchGoo(char)
+		if gooWatched[char] then return end
+		gooWatched[char] = true
+		char:GetAttributeChangedSignal("GooFiredAt"):Connect(function() gooKick(char) end)
+	end
+	local function onGooPlayer(p)
+		p.CharacterAdded:Connect(watchGoo)
+		if p.Character then watchGoo(p.Character) end
+	end
+	Players.PlayerAdded:Connect(onGooPlayer)
+	for _, p in ipairs(Players:GetPlayers()) do onGooPlayer(p) end
 end

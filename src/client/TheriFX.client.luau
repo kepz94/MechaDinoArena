@@ -1,4 +1,4 @@
--- TheriFX v1.1 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive effects on this client (LocalScript, StarterPlayerScripts).
+-- TheriFX v1.2 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive effects on this client (LocalScript, StarterPlayerScripts).
 -- MDA-214, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 8, mockup docs/mockups/therizino_spin_dive_v0.1.html (Kepu
 -- 2026-11-03 "Corkscrew": "Cuts along the whole flight ... The last cut gets a bigger hit flash"; "No landing slam ... it lands
 -- claws-down into a skid, dust only"). The combo's effects (MDA-204) are not in this version.
@@ -47,11 +47,21 @@
 --   Diagnostics: script TheriFXComboHits (count of hit events with targets), TheriFXComboTrails (therizinos with combo trails
 --   on now), TheriFXLive (combo effect objects alive), TheriFXLast "combo1".."combo4" / "hit" / "hitBig" / "hitSweep" /
 --   "impact" / "scytheRing".
+-- v1.2 (MDA-204 run scrape, mockup docs/mockups/therizino_run_options.html v0.1 option B "Sidewinder" scrape(); Kepu
+--   2026-11-03 "204-build it"): while a therizino runs (TheriRunBlend >= SCRAPE_RUN 0.5, written on this client by its
+--   TheriPose) each right claw tip ("ArmR_claw%dd" part, its +Y end) that is less than SCRAPE_HEIGHT (1.6) x k studs above
+--   the ground under it cuts a groove: a flat dark (4A3622) strip 0.42 x k wide on the ground from the last point to the
+--   tip, laid down every GROOVE_STEP (2.5) x k studs of tip travel; solid (0.15) for 2.2 s, then fades out by 3.7 s. At most
+--   GROOVE_MAX (240) strips on this client (the oldest go first). Sparks (2, up and back, half orange) at a random touching
+--   tip at 34 per second, and a dust ball at 9 per second (the mockup's rates, per therizino, not per claw).
+--   Switch: script attribute TheriFXScrapeEnabled (default true, read each frame; TheriFXEnabled false turns it off too).
+--   Diagnostics: script TheriFXGrooves (strips alive), TheriFXScraping (therizinos scraping now).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 combo effects (MDA-204)
+VERSION = "1.2" -- v1.2 run scrape (MDA-204)
 local LIVE_MAX = 1.6
 local TRAIL_LIFE = 0.2
 local DUST, SPARK, HOT = Color3.fromHex("CBB487"), Color3.fromHex("FFF0B0"), Color3.fromHex("FF9A3C")
@@ -672,6 +682,98 @@ do
 		watchV10(char)
 		watchCombo(char)
 	end
+end
+
+-- v1.2: the Sidewinder run scrape (MDA-204; see the header) -------------------------------------------------------------------
+do
+	local GROOVE = Color3.fromHex("4A3622")
+	local SCRAPE_RUN, SCRAPE_HEIGHT, GROOVE_STEP, GROOVE_MAX = 0.5, 1.6, 2.5, 240
+	if script:GetAttribute("TheriFXScrapeEnabled") == nil then script:SetAttribute("TheriFXScrapeEnabled", true) end
+	script:SetAttribute("TheriFXGrooves", 0)
+	script:SetAttribute("TheriFXScraping", 0)
+	local function scrapeOn() return script:GetAttribute("TheriFXEnabled") ~= false and script:GetAttribute("TheriFXScrapeEnabled") ~= false end
+	local grooves = {} -- {p, t}
+	local last = setmetatable({}, {__mode = "k"}) -- [claw part] = last ground point while touching
+	local clawCache = setmetatable({}, {__mode = "k"}) -- [char] = {right claw parts}
+	local function rightClaws(char)
+		local list = clawCache[char]
+		if list then return list end
+		list = {}
+		for _, d in ipairs(char:GetDescendants()) do
+			if d:IsA("BasePart") and d.Name:match("^ArmR_claw%dd$") then table.insert(list, d) end
+		end
+		clawCache[char] = list
+		return list
+	end
+	local function groove(a, b, k)
+		local L = (b - a).Magnitude
+		if L < 0.05 then return end
+		local p = part(Enum.PartType.Block, Vector3.new(0.42 * k, 0.05, L + 0.15 * k), GROOVE, 0.15)
+		local mid = (a + b) / 2
+		p.CFrame = CFrame.lookAt(mid, mid + (b - a))
+		table.insert(grooves, {p = p, t = 0})
+		while #grooves > GROOVE_MAX do
+			local g = table.remove(grooves, 1)
+			g.p:Destroy()
+		end
+	end
+	RunService.Heartbeat:Connect(function(dt)
+		local scraping = 0
+		if scrapeOn() then
+			for _, pl in ipairs(Players:GetPlayers()) do
+				local char = pl.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				if root and char:GetAttribute("Species") == "Therizino" and (tonumber(char:GetAttribute("TheriRunBlend")) or 0) >= SCRAPE_RUN then
+					local k = scaleK(char)
+					local touching = {}
+					for _, c in ipairs(rightClaws(char)) do
+						if c.Parent then
+							local tip = (c.CFrame * CFrame.new(0, c.Size.Y / 2, 0)).Position
+							local g = groundAt(tip)
+							if tip.Y - g.Y < SCRAPE_HEIGHT * k and g ~= tip then
+								local gp = g + Vector3.new(0, 0.06, 0)
+								table.insert(touching, gp)
+								local q = last[c]
+								if not q then
+									last[c] = gp
+								elseif (gp - q).Magnitude >= GROOVE_STEP * k then
+									groove(q, gp, k)
+									last[c] = gp
+								end
+							else
+								if last[c] then groove(last[c], g + Vector3.new(0, 0.06, 0), k) end
+								last[c] = nil
+							end
+						end
+					end
+					if #touching > 0 then
+						scraping += 1
+						local back = -Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+						back = back.Magnitude > 1e-3 and back.Unit or Vector3.zAxis
+						if math.random() < dt * 34 then
+							local at = touching[math.random(1, #touching)] + Vector3.new(0, 0.4 * k, 0)
+							sparksC(at, (Vector3.yAxis + back).Unit, 2, math.random() < 0.5, k * 0.6)
+						end
+						if math.random() < dt * 9 then dust(touching[math.random(1, #touching)], 1, 0.5, 4, 0.8, k) end
+					end
+				elseif char then
+					for _, c in ipairs(clawCache[char] or {}) do last[c] = nil end
+				end
+			end
+		end
+		for i = #grooves, 1, -1 do
+			local g = grooves[i]
+			g.t += dt
+			if g.t > 3.7 or not g.p.Parent then
+				g.p:Destroy()
+				table.remove(grooves, i)
+			elseif g.t > 2.2 then
+				g.p.Transparency = 0.15 + 0.85 * (g.t - 2.2) / 1.5
+			end
+		end
+		if script:GetAttribute("TheriFXGrooves") ~= #grooves then script:SetAttribute("TheriFXGrooves", #grooves) end
+		if script:GetAttribute("TheriFXScraping") ~= scraping then script:SetAttribute("TheriFXScraping", scraping) end
+	end)
 end
 
 local function onPlayer(pl)

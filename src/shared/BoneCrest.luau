@@ -1,4 +1,4 @@
--- BoneCrest v1.4 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
+-- BoneCrest v1.5 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
 -- (ModuleScript, ServerStorage.DinoArcade.BoneCrest, server only). SkillTree 1.30 / SkillEffects 1.23.
 -- Kepu 2026-10-30: "We'll do the bone crest to replace the thick hide. Whoever bites your dome does 40% less damage";
 --   answers: builds up to 40% (I 20%, II 30%, III 40%, star: the biter takes 5 damage back), "Bites from the front",
@@ -63,11 +63,16 @@
 --   StunBreakBlocked (count); otherwise the 1.3 result's mul is x the victim's DazedDamageMul while its DazedUntil is in
 --   the future (Strobe Frill star 1.2). Covers every caller of factor (BotServer bites / pounces, BiteServer,
 --   PounceServer). Switch: module attribute BoneCrestHerreraMovesEnabled (default true, read at each call; false = 1.3).
+-- v1.5 (MDA-153, Kepu 2026-11-03 "153- fix it"): plating(victim, attackerPos) -> the Back Plating multiplier alone (the 1.3
+--   platingRear maths and stamps: PlatingRearMul from behind, else 1), for hits that do not go through factor because
+--   the crest / visor rules are not theirs: SlashServer 1.8 (slash) and HeadbuttServer 1.14 (headbutt). Same switch as 1.3:
+--   BoneCrestPlatingEnabled (false = always 1).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local M = {}
 M.VERSION = "1.4"
+M.VERSION = "1.5" -- v1.5 plating()
 M.CONE = 60
 local REFLECT_GAP = 0.4
 
@@ -141,6 +146,11 @@ function M.factor(victim, attackerPos)
 	if look.Magnitude < 1e-3 then return 1, false end
 	local front = d.Magnitude < 1e-3 or look.Unit:Dot(d.Unit) >= math.cos(math.rad(M.CONE))
 	return front and math.max(0, mul) or 1, front
+end
+
+-- v1.5: the Back Plating multiplier on its own (slash / headbutt)
+function M.plating(victim, attackerPos)
+	return platingRear(victim, attackerPos) or 1
 end
 
 -- v1.4: Stun Breaker immunity and the Strobe Frill daze star around the 1.3 factor

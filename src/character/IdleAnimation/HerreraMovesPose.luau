@@ -1,4 +1,4 @@
--- HerreraMovesPose v1.0 (Mecha Dino Arena) — the Herrera's Glider Wings glide pose and the Strobe Frill rear-up, used by
+-- HerreraMovesPose v1.1 (Mecha Dino Arena) — the Herrera's Glider Wings glide pose and the Strobe Frill rear-up, used by
 -- IdleAnimation 1.36. Plan docs/plans/HERRERA_PARTS_v1.0.md Part 2 (glide pose) and Part 7 (rear-up), "Pass 2 — build map".
 -- Joint frames as ScurryPose 1.0: pitch about Z (+ lifts the front / swings a limb forward; Tail + = lower), yaw about Y,
 --   roll about X; RootJoint carries the whole-body pitch.
@@ -11,9 +11,14 @@
 --   STROBE_UP (0.15 s), held STROBE_HOLD (0.2 s), down over STROBE_DOWN (0.2 s): RootJoint +18 x k, Neck +18 x k,
 --   Jaw -20 x k. strobe(model, serverNow) -> {[joint] = CFrame} or nil.
 -- Switches (model attributes): GlidePoseEnabled, StrobePoseEnabled (default true each).
+-- v1.1 (MDA-166, plan docs/plans/HERRERA_PARTS_v1.0.md Part 10 "On fire: ... body pitch -7 deg (gooKick)"; Kepu 2026-11-03
+--   "166- make it"): gooKick(model, serverNow) -> {RootJoint = pitch -7 x k} or nil, from the model's GooFiredAt
+--   (HerreraMovesServer 1.2) for GOO_KICK (0.35 s): k rises to 1 over the first 15% (out) and eases back to 0 (in-out).
+--   Switch: model attribute GooPosePoseEnabled (default true; false = nil).
 local ScurryPose = require(script.Parent:WaitForChild("ScurryPose"))
 local M = {}
 M.Version = "1.0"
+M.Version = "1.1" -- v1.1 gooKick
 M.Defaults = {GlideArmRoll = 55, GlideArmPitch = 20, GlideLegTrail = 45, GlideTailKeep = 0.2, GlidePitch = 14}
 local GLIDE_IN, GLIDE_OUT = 0.2, 0.25
 local STROBE_UP, STROBE_HOLD, STROBE_DOWN = 0.15, 0.2, 0.2
@@ -79,6 +84,19 @@ function M.strobe(model, serverNow)
 	else k = 1 - (t - STROBE_UP - STROBE_HOLD) / STROBE_DOWN end
 	k = k * k * (3 - 2 * k)
 	return {RootJoint = rot(18 * k), Neck = rot(18 * k), Jaw = rot(-20 * k)}
+end
+
+-- v1.1: the Goo Blob Shooter's recoil
+local GOO_KICK = 0.35
+function M.gooKick(model, serverNow)
+	if model:GetAttribute("GooPosePoseEnabled") == false then return nil end
+	local at = model:GetAttribute("GooFiredAt")
+	if typeof(at) ~= "number" then return nil end
+	local u = (serverNow - at) / GOO_KICK
+	if u < 0 or u > 1 then return nil end
+	local k
+	if u < 0.15 then k = 1 - (1 - u / 0.15) ^ 2 else local v = (u - 0.15) / 0.85 k = 1 - v * v * (3 - 2 * v) end
+	return {RootJoint = rot(-7 * k)}
 end
 
 return M

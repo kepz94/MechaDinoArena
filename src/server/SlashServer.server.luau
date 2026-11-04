@@ -1,4 +1,4 @@
--- SlashServer v1.7 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.8 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -102,6 +102,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.7"
+VERSION = "1.8" -- v1.8 Back Plating on slash hits
 local TIME_SLACK = 0.6      -- s after the dash time a claim is still accepted (client -> server lag)
 local PATH_TOLERANCE = 6    -- studs (x scale) between the target's hitboxes and the dash path, on top of SlashReach
 local DIVE_SLACK = 3        -- studs (x scale) added to SlashDiveRange for the request check (the target moves)
@@ -128,6 +129,23 @@ end
 local function dazeOn() return script:GetAttribute("SlashDazeEnabled") ~= false end -- v1.5
 local function glideDive(char) -- v1.5: gliding with Glider Wings II
 	return script:GetAttribute("SlashGlideEnabled") ~= false and char:GetAttribute("Gliding") == true and char:GetAttribute("GliderDrop") == true
+end
+-- v1.8 (MDA-153, Kepu 2026-11-03 "153- fix it"): a slash hit on a Herrera with Back Plating slotted, from behind (the
+--   attacker's root in the target's back half-space), is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
+--   BoneCrest 1.5 plating() (which stamps PlatingHits / PlatingLastMul / PlatingHitAt: HerreraPartsFX sparks + "-N% PLATED").
+--   Front / side hits and bleed ticks unchanged. Switch: script attribute SlashPlatingEnabled (default true, read at each hit;
+--   false = 1.7).
+if script:GetAttribute("SlashPlatingEnabled") == nil then script:SetAttribute("SlashPlatingEnabled", true) end
+local crestCache
+local function platingMul(model, char)
+	if script:GetAttribute("SlashPlatingEnabled") == false then return 1 end
+	if crestCache == nil then
+		crestCache = false
+		pcall(function() crestCache = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end)
+	end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not (crestCache and crestCache.plating and root) then return 1 end
+	return crestCache.plating(model, root.Position)
 end
 local function takenMul(model, t) -- v1.5: daze star x Stun Breaker star
 	if not dazeOn() then return 1 end
@@ -466,6 +484,7 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	if IRONCLAW and char:GetAttribute("IronClawEnabled") == true then icMul = math.max(0, tonumber(char:GetAttribute("IronClawDamageMul")) or 1) end
 	char:SetAttribute("SlashIronClawMul", icMul)
 	mul *= takenMul(model, t) -- v1.5
+	mul *= platingMul(model, char) -- v1.8: Back Plating (1 when off / not from behind)
 	if st.active.glide then icMul *= math.max(0, tonumber(char:GetAttribute("GliderDropMul")) or 1) end -- v1.5: glide dive
 	local d = math.floor((get(char, "SlashDamage") + bonus) * mul * icMul + 0.5)
 	local killed = takeHealth(model, d, char.Name, player.UserId, "slash", t)

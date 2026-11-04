@@ -1,4 +1,4 @@
--- HeadbuttServer v1.13 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.14 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -121,11 +121,17 @@
 --   check, so no damage, slow, shove or visor knockback between squadmates. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
 --   SquadTestId counts). Switch: script attribute HeadbuttServerSquadEnabled (default true, read at each check; false = 1.12).
 --   Diagnostic: script HeadbuttServerSquadSkips (count of squadmate skips / refusals).
+-- v1.14 (MDA-153, Kepu 2026-11-03 "153- fix it"): a headbutt hit on a Herrera with Back Plating slotted, from behind (the
+--   pachy's root in the target's back half-space), is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
+--   BoneCrest 1.5 plating() (stamps PlatingHits / PlatingLastMul / PlatingHitAt for HerreraPartsFX). Front hits unchanged.
+--   Switch: script attribute HeadbuttPlatingEnabled (default true, read at each hit; false = 1.13).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.13"
+VERSION = "1.14" -- v1.14 Back Plating on headbutt hits
+if script:GetAttribute("HeadbuttPlatingEnabled") == nil then script:SetAttribute("HeadbuttPlatingEnabled", true) end -- v1.14
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
 local SAC_FULL_RESET = script:GetAttribute("HeadbuttSacrificeFullResetEnabled") ~= false
 if script:GetAttribute("HeadbuttSacrificeRestartsRefill") == nil then script:SetAttribute("HeadbuttSacrificeRestartsRefill", true) end -- v1.7
@@ -504,6 +510,11 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	if script:GetAttribute("HeadbuttDazeEnabled") ~= false then -- v1.11: daze star / Stun Breaker star
 		if (tonumber(model:GetAttribute("DazedUntil")) or 0) > t then mul *= math.max(1, tonumber(model:GetAttribute("DazedDamageMul")) or 1) end
 		if (tonumber(model:GetAttribute("StunBreakImmuneUntil")) or 0) > t then mul = 0 end
+	end
+	if script:GetAttribute("HeadbuttPlatingEnabled") ~= false then -- v1.14: Back Plating from behind
+		local VM = visorMod()
+		local aRoot = char:FindFirstChild("HumanoidRootPart")
+		if VM and VM.plating and aRoot then mul *= VM.plating(model, aRoot.Position) end
 	end
 	local runMul = 1 -- v1.3: less damage without a run-up
 	if RUNUP_ON then

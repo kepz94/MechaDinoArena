@@ -1,4 +1,4 @@
--- IdleAnimation v1.41 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.42 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -230,6 +230,9 @@
 --       dino, lifts it over the back and throws it; IK through these motors and this frame's pose) are multiplied on after the
 --       attack offsets. Diagnostic: TenoGrabIKMiss (studs from the clamp to its goal, 0.1 steps). Switch: model attribute
 --       TenoGrabIKEnabled (read by TenoPose; false = the 1.8 keyframes).
+-- v1.42 (MDA-166, Kepu 2026-11-03 "166- make it"): right after the Strobe Frill rear-up, models with a GooFiredAt get
+--       HerreraMovesPose 1.1 gooKick (body pitch -7 deg over 0.35 s, the Goo Blob Shooter's recoil) multiplied on top.
+--       Diagnostic GooKickPoseState ("kick" / "none"). Switch: model attribute GooPosePoseEnabled (read by HerreraMovesPose).
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -571,6 +574,7 @@ model:SetAttribute("IdleAnimationVersion", "1.38") -- v1.38
 model:SetAttribute("IdleAnimationVersion", "1.39") -- v1.39
 model:SetAttribute("IdleAnimationVersion", "1.40") -- v1.40
 model:SetAttribute("IdleAnimationVersion", "1.41") -- v1.41
+model:SetAttribute("IdleAnimationVersion", "1.42") -- v1.42
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -1253,6 +1257,16 @@ RunService.PreSimulation:Connect(function(dt)
 			end
 		end
 		show("StrobePoseState", sp and "rear" or "none")
+	end
+	-- v1.42: Goo Blob Shooter recoil on top
+	if model:GetAttribute("GooFiredAt") ~= nil and HerreraMovesPose.gooKick then
+		local gk = HerreraMovesPose.gooKick(model, workspace:GetServerTimeNow())
+		if gk then
+			for name, off in pairs(gk) do
+				if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+			end
+		end
+		show("GooKickPoseState", gk and "kick" or "none")
 	end
 	-- v1.37: teno scratch / tail-slam wind-up / tail slam on top
 	if model:GetAttribute("TenoAttackEnabled") == true then
