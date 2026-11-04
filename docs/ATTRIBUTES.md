@@ -2697,3 +2697,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriFourthPoseEnabled; TheriFourthYaw | therizino model (TheriPose default); each client | true; degrees | TheriPose 1.4 Ground Scythe (step 4) + its whole-body yaw diagnostic |
 | AbilityBarTheriHitsLeftEnabled; AbilityBarTheriHitsLeft | AbilityBar script; character (this client) | true (false = 1.23 step count); "<left>/<max>" | AbilityBar 1.24: therizino ATTACK pips = hits left |
 | ArenaTouchTheriHitsLeftEnabled; ArenaTouchTheriHitsLeft | ArenaTouch script; character (this client) | true (false = 1.11 step count); "<left>/<max>" | ArenaTouch 1.12: touch ATTACK pips = hits left (same as AbilityBar 1.24) |
+| TheriLeapAirAfterWindup | therizino model | true (false = IdleAnimation 1.39) | IdleAnimation 1.40: airborne during the crouch does not start the leap's air phase (running jumps spin) |
+| ArenaTouchTheriJumpPipsEnabled; ArenaTouchTheriJumpPips | ArenaTouch script; character (this client) | true (false = 1.12); "<left>/<max>" | ArenaTouch 1.13: touch JUMP charge pips (therizino) |

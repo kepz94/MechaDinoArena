@@ -93,7 +93,8 @@
 --   ArenaTouchTheriHitsLeftEnabled (default true, read each frame; false = 1.11). Diagnostic ArenaTouchTheriHitsLeft.
 -- v1.13 (Kepu 2026-11-03 17:11: "You need a visual for the jump button too cause it's not showing me the cooldown"): on a
 --   therizino with leap charges (JumpCharges >= 1, JumpServer 1.3), the touch JUMP button gets the same charge pips as the PC
---   JUMP tile (AbilityBar 1.23): a copy of the ATTACK pip row under it, JumpCharges pips, filled up to JumpChargesLeft, the
+--   JUMP tile (AbilityBar 1.23): a copy of the ATTACK pip row inside the button above its label (in the Studio check the big
+--   ATTACK covered the button's lower third, yellow on yellow), JumpCharges pips, filled up to JumpChargesLeft, the
 --   next one filling as its refill runs (JumpChargeRefillAt over JumpCooldown); at 0 charges the button is dimmed (0.7, label
 --   0.5) like the PC tile's "empty". Other dinos unchanged. Switch: script attribute ArenaTouchTheriJumpPipsEnabled (default
 --   true, read each frame; false = 1.12). Diagnostic ArenaTouchTheriJumpPips ("<left>/<max>").
@@ -706,7 +707,10 @@ if script:GetAttribute("ArenaTouchTheriJumpPipsEnabled") == nil then script:SetA
 local jpRow = slPipRow:Clone()
 jpRow.Name = "JumpPips"
 jpRow.Visible = false
+jpRow.Position = UDim2.fromScale(0.5, 0.17) -- inside the circle, above "JUMP" (ATTACK overlaps the lower third)
+jpRow.ZIndex = 6
 jpRow.Parent = leap
+for _, d in ipairs(jpRow:GetDescendants()) do if d:IsA("GuiObject") then d.ZIndex = 6 end end
 local jpPips = {}
 for i = 1, 3 do
 	local f = jpRow:FindFirstChild("Charge_" .. i)
