@@ -1,4 +1,4 @@
--- DiloAttackServer v1.1 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
+-- DiloAttackServer v1.2 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
 -- docs/plans/DILO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/dilo_kit_options_v0.1.html attack C
 -- (Kepu 2026-11-03: picks "C and J1"; dart "Weaker dart"; red-team "Bite on press", "Soft aim, near-sure hit").
 -- Remote ReplicatedStorage.DinoDiloAttack (RemoteEvent), client -> server: (kind, stamp). kind "bite" = the ATTACK press
@@ -53,11 +53,21 @@
 --   Diagnostics: script DiloAttackStatsVersion, DiloToxicHits, DiloFeastHeals, DiloDartResets; dilo character
 --   DiloVenomFeastHealed (total, 0.1 steps), DiloToxicHits (count), DiloColdActive (under the line now, with Cold Blood),
 --   DiloDartResetCount, DiloDartResetAt.
+-- v1.2 (Kepu 2026-11-04 11:53 "sometimes it appears to fly right through the Dino in front of me"; fix "Hits where it lands"):
+--   cause: the dart flies to the locked target's root as it was at the spit and 1.0 only counted the hit when that root was
+--   still within DART_TOLERANCE (4) x scale studs of To at the arrival; a dino moving during the flight (0.34 s at 40 studs)
+--   kept its body on To while its root slid past 8 studs (Studio: bot moved 10 studs, To 1.4 studs from its hitboxes, miss).
+--   Now the arrival also counts a hit when the locked target's nearest hitbox is within DART_BODY_REACH (1.5) x scale studs
+--   of To (the glob lands on its body); then DiloHitPoint = To (where the glob landed). The root rule is unchanged and checked
+--   first. A dino that fully left the spot still dodges. Switch: script attribute DiloAttackBodyHitEnabled (default true, read
+--   at each arrival; false = 1.1). Diagnostics: script DiloDartBodyHits (count); character DiloDartHitRule ("root" / "body" /
+--   "miss", the last locked dart).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.1" -- v1.1 dilo stat rows
+VERSION = "1.2" -- v1.2 dart hits where it lands (body rule)
 local DEFAULTS = {DiloBiteDamage = 10, DiloBiteDelay = 0.18, DiloBiteReach = 5, DiloBiteCone = 70, DiloHoldTime = 0.4,
 	DiloDartDamage = 6, DiloVenomDps = 2, DiloVenomTime = 3, DiloDartRange = 30, DiloDartSpeed = 60, DiloDartCooldown = 1.5,
 	DiloAssistAngle = 30, DiloAssistMin = 0, DiloAssistMax = 30, DiloMinGap = 0.35}
@@ -78,6 +88,10 @@ if script:GetAttribute("DiloAttackStatsEnabled") == nil then script:SetAttribute
 for _, k in ipairs({"DiloToxicHits", "DiloFeastHeals", "DiloDartResets"}) do script:SetAttribute(k, 0) end
 script:SetAttribute("DiloAttackStatsVersion", "1.1")
 local TOXIC_RANGE = 12
+-- v1.2
+if script:GetAttribute("DiloAttackBodyHitEnabled") == nil then script:SetAttribute("DiloAttackBodyHitEnabled", true) end
+script:SetAttribute("DiloDartBodyHits", 0)
+local DART_BODY_REACH = 1.5
 local function statsOn() return script:GetAttribute("DiloAttackStatsEnabled") ~= false end
 
 local function now() return workspace:GetServerTimeNow() end
@@ -370,8 +384,16 @@ local function fireDart(player, char, t)
 		local point = to
 		if target and target.Parent and isTarget(target, char) then
 			local tr = rootOf(target)
+			local rule = "miss" -- v1.2: root rule first, then the body rule
 			if tr and (tr.Position - to).Magnitude <= DART_TOLERANCE * s then
-				point = tr.Position
+				rule = "root"
+			elseif tr and script:GetAttribute("DiloAttackBodyHitEnabled") ~= false and gap(target, to) <= DART_BODY_REACH * s then
+				rule = "body"
+				count("DiloDartBodyHits")
+			end
+			char:SetAttribute("DiloDartHitRule", rule)
+			if rule ~= "miss" then
+				point = rule == "root" and tr.Position or to
 				if not shielded(target, ti) then
 					local dmg = math.max(0, get(char, "DiloDartDamage")) * coldDartMul(char) -- v1.1: Cold Blood
 					takeHealth(target, dmg * takenMul(target, ti) * plating(target, from), char.Name, player.UserId, "dilodart", ti)

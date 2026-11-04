@@ -2750,3 +2750,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | DiloVenomFeastHealed / DiloToxicHits / DiloColdActive / DiloDartResetCount / DiloDartResetAt | dilo character (server) | diagnostics; DiloDartResetAt = the Cold Blood star stamp | DiloAttackServer 1.1 |
 | DiloDartReadyAt; DiloAttackTestResetEnabled | dilo character (owner client); DiloAttackTest script | server time of a Cold Blood reset; true | DiloAttackTest 1.1 |
 | ArenaTouchDiloResetEnabled; AbilityBarDiloResetEnabled | ArenaTouch / AbilityBar scripts | true | ArenaTouch 1.16 / AbilityBar 1.27: dart pip full while DiloDartReadyAt > DiloLocalDartAt |
+| DiloAttackBodyHitEnabled; DiloDartBodyHits | DiloAttackServer script | true; count | DiloAttackServer 1.2: a locked dart also hits when the glob lands within 1.5 x scale studs of the target's hitboxes |
+| DiloDartHitRule | dilo character (server) | "root" / "body" / "miss" | DiloAttackServer 1.2: the last locked dart's arrival rule |
