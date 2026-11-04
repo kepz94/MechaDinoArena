@@ -2690,6 +2690,9 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriSpinNeedAirEnabled; TheriSpinGroundSkips | TheriSpinServer script | true (false = 1.0: cuts from JumpStartedAt + JumpWindup); count | TheriSpinServer 1.1: cuts only once the root is airborne |
 | TheriFXEnabled / TheriFXSpinEnabled | TheriFX script (StarterPlayerScripts) | true / true | TheriFX 1.0 switches (Spin Dive trails, cut flash + sparks + pops, landing skid dust) |
 | TheriFXVersion; TheriFXEvents; TheriFXLast; TheriFXTrails | TheriFX script (each client) | "1.0"; count; "dive" / "cut" / "cutBig" / "land"; trails on now | TheriFX 1.0 diagnostics |
+| TheriFXComboEnabled / TheriFXCameraEnabled | TheriFX script (StarterPlayerScripts) | true / true | TheriFX 1.1 switches (combo trails, hit flash / sparks / claw marks / damage numbers, finisher impact, Fourth Cut ring + dust; your own camera shake + FOV punch) |
+| TheriFXComboHits; TheriFXComboTrails; TheriFXLive; TheriFXLast (1.1 values) | TheriFX script (each client) | count; therizinos with combo trails on; combo effect objects alive; "combo1".."combo4" / "hit" / "hitBig" / "hitSweep" / "impact" / "scytheRing" | TheriFX 1.1 diagnostics |
+| TheriHitStopEnabled; TheriHitStops | therizino model (TheriPose default); each client | true; count | TheriPose 1.5 owner-only hit-stop (combo clock x0.04 for 0.08 / 0.08 / 0.15 / 0.06 s) + its count |
 | SkillTree.THERI_FOURTH_LIVE | SkillTree module | true (false = 1.57: Fourth Cut hidden) | SkillTree 1.58: THERI_FOURTH true, the fourth row is the therizino's |
 | TheriAttackFourthEnabled; TheriAttackFourths | TheriAttackServer script | true (false = 1.1); count | TheriAttackServer 1.2 the Fourth Cut (step 4) |
 | TheriFourthDelay / TheriFourthRecover | therizino character (optional) | 0.3 s / 0.8 s (defaults) | TheriAttackServer 1.2: tap -> sweep hit; refuse window after a non-star 4th |

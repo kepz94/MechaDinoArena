@@ -90,9 +90,18 @@
 --   (out) = two full turns, ending facing forward. With the model attribute TheriFourthFast (Fourth Cut star) step 4 plays
 --   x FOURTH_FAST_MUL (1.5) faster. Switch: model attribute TheriFourthPoseEnabled (default true; false = step 4 is ignored, as
 --   1.3). Diagnostic TheriFourthYaw (degrees).
+-- v1.5 (MDA-204, plan docs/plans/THERIZINO_KIT_v1.0.md Task 7; mockups docs/mockups/therizino_kit_options_v0.3.html onHit and
+--   docs/mockups/therizino_fourth_cut_v0.1.html onHit): hit-stop on your own therizino. When TheriHitAt changes (TheriAttackServer:
+--   a cut resolved) with TheriHitTargets not empty and TheriHitStep = the step this client is playing, the combo layer's clock
+--   runs at HIT_STOP_RATE (0.04) for HIT_STOP[step] seconds (steps 1 / 2: 0.08, 3: 0.15, 4: 0.06): the step time (and the
+--   Fourth Cut's yaw time) loses that much and the combo springs step with dt x 0.04, so the claws hang in the target for a
+--   beat. The lost time belongs to that step only (a new step starts from its own stamp). Only the owner (ctx.isOwner); other
+--   clients and the run / leap layers are untouched. Switch: model attribute TheriHitStopEnabled (default true; false = 1.4).
+--   Diagnostic TheriHitStops (count, this client).
 local TheriPose = {}
 TheriPose.Version = "1.3"
 TheriPose.Version = "1.4" -- v1.4 Fourth Cut (Ground Scythe)
+TheriPose.Version = "1.5" -- v1.5 hit-stop (MDA-204)
 TheriPose.Defaults = {
 	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
@@ -100,6 +109,7 @@ TheriPose.Defaults = {
 	TheriRunOwnUpperEnabled = true, TheriDragShoulderEnabled = true, -- v1.2
 	TheriSpinPoseEnabled = true, TheriSpinTurns = 2, TheriSpinAirTime = 0.6, -- v1.3
 	TheriFourthPoseEnabled = true, -- v1.4
+	TheriHitStopEnabled = true, -- v1.5
 }
 local LEG_JOINTS = {LegL = true, LegR = true, KneeL = true, KneeR = true, AnkleL = true, AnkleR = true} -- v1.2
 
@@ -176,6 +186,7 @@ STEPS[4] = {{0, "$from"}, {0.1, "SCYTHE", "out"}, {0.16, "SCYTHE", "in2"}, {0.62
 	{1.25, "READY", "io"}} -- v1.4: the Fourth Cut
 local YAW4 = {{0, 0}, {0.1, 25, "out"}, {0.16, 0, "in2"}, {0.62, -700, "lin"}, {0.72, -720, "out"}} -- v1.4 (degrees)
 local FOURTH_FAST_MUL = 1.5 -- v1.4: Fourth Cut star
+local HIT_STOP, HIT_STOP_RATE = {0.08, 0.08, 0.15, 0.06}, 0.04 -- v1.5 (seconds by step; clock rate)
 local LAND = {{0, "J_LAND"}, {0.31, "CHOP_SET", "out"}, {0.96, "READY", "io"}}
 
 local rad, sin, cos, min, max, clamp = math.rad, math.sin, math.cos, math.min, math.max, math.clamp
@@ -314,6 +325,7 @@ local leapS = {springs = newSprings(kitK), w = 0, lockW = 0, fwd = 0, phase = "n
 	roll = 0, rollAtLand = nil} -- v1.3: roll (radians) of the Spin Dive
 local spinPivot -- v1.3: the torso's middle in the RootJoint pose frame (studs)
 local lockSmooth = 0
+local hitStop = {seen = nil, left = 0, lag = 0, at = nil, n = 0} -- v1.5
 local fk -- {FootL = chain, FootR = chain, HandR = chain, scale = s}
 
 local function stepEnd(step, s)
@@ -584,9 +596,34 @@ function TheriPose.top(model, pose, motors, hrp, ctx)
 	elseif st == 0 and combo.step ~= 0 then
 		combo.step, combo.at = 0, nil
 	end
+	-- v1.5: hit-stop (owner only; see the header)
+	local hsRate, hsLag = 1, 0
+	do
+		local ha = num(model:GetAttribute("TheriHitAt"))
+		if hitStop.seen == nil then hitStop.seen = ha or -1 end
+		if ha and ha ~= hitStop.seen then
+			hitStop.seen = ha
+			local hst = num(model:GetAttribute("TheriHitStep"))
+			local tgs = model:GetAttribute("TheriHitTargets")
+			if s.TheriHitStopEnabled and ctx.isOwner and combo.step ~= 0 and combo.at and hst and math.floor(hst) == combo.step
+				and typeof(tgs) == "string" and tgs ~= "" then
+				if hitStop.at ~= combo.at then hitStop.at, hitStop.lag = combo.at, 0 end
+				hitStop.left = HIT_STOP[combo.step] or 0
+				hitStop.n += 1
+			end
+		end
+		if hitStop.at ~= combo.at then hitStop.left = 0 end
+		if hitStop.left > 0 then
+			hitStop.lag += min(ctx.dt, hitStop.left) * (1 - HIT_STOP_RATE)
+			hitStop.left -= ctx.dt
+			hsRate = HIT_STOP_RATE
+		end
+		if hitStop.at == combo.at and combo.at then hsLag = hitStop.lag end
+		show("TheriHitStops", hitStop.n)
+	end
 	local tg, cw = nil, 0
 	if combo.step ~= 0 then
-		local ct = max(0, ctx.serverNow - combo.at)
+		local ct = max(0, ctx.serverNow - combo.at - hsLag) -- v1.5: - hsLag (0 without a hit-stop)
 		if combo.step == 4 and model:GetAttribute("TheriFourthFast") == true then ct *= FOURTH_FAST_MUL end -- v1.4
 		tg, cw = comboTarget(s, ct, ctx.now)
 		if not tg then combo.step, combo.at = 0, nil end
@@ -594,7 +631,7 @@ function TheriPose.top(model, pose, motors, hrp, ctx)
 	combo.target, combo.w = tg, cw
 	local cOut
 	if tg or not combo.springs.settled then
-		cOut = springStep(combo.springs, tg or keyPose("ZERO"), ctx.dt, false)
+		cOut = springStep(combo.springs, tg or keyPose("ZERO"), ctx.dt * hsRate, false) -- v1.5: x hsRate (1 without a hit-stop)
 	end
 	show("TheriPoseState", combo.step ~= 0 and ("step" .. combo.step) or "none")
 	show("TheriPoseSource", src)
@@ -645,7 +682,7 @@ function TheriPose.top(model, pose, motors, hrp, ctx)
 	-- v1.4: the Fourth Cut's whole-body yaw (about the vertical through the HRP), on top of the combo pose
 	local yaw4 = 0
 	if combo.step == 4 and combo.at and motors.RootJoint then
-		local t4 = max(0, ctx.serverNow - combo.at)
+		local t4 = max(0, ctx.serverNow - combo.at - hsLag) -- v1.5: - hsLag
 		if model:GetAttribute("TheriFourthFast") == true then t4 *= FOURTH_FAST_MUL end
 		yaw4 = YAW4[#YAW4][2]
 		for i = 2, #YAW4 do
