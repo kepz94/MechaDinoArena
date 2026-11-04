@@ -1,0 +1,186 @@
+<title>Pachy Health &amp; Defense Lines</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<style>
+/* Layout: the game's Lab skill-screen look (Teno stat rows mockup); two pick bands (Health, Defense), then the tree with your picks. Single dark look on purpose. */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --card2: #232a3a; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #e8743a; --volt: #7fe9ff; --gold: #ffd666;
+  --health: #5fd16a; --attack: #f05a4f; --defense: #5aa0ff; --speed: #ffd34d; --warn: #ffb347;
+  --display: "Fredoka", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--fg); font: 15px/1.5 var(--body);
+  padding-block: 24px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 22px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--accent); }
+h2 { margin: 0; font: 700 21px/1.2 var(--display); display: flex; align-items: center; gap: 10px; }
+h2 i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.lede { margin: 6px 0 0; color: var(--grey); max-width: 80ch; }
+.tag { font: 600 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.rule { background: #1a1410; border: 2px solid var(--warn); border-radius: 14px; padding: 12px 16px; color: var(--grey); }
+.rule b { color: var(--warn); }
+.now { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 10px; }
+.now .rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.mini { background: var(--card); border-radius: 12px; padding: 10px 12px; border-left: 4px solid var(--c, var(--line)); min-width: 0; }
+.mini .n { font: 800 15px var(--body); }
+.mini .a { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.mini.gone { opacity: .55; border-left-style: dashed; }
+.mini.gone .n { text-decoration: line-through; }
+.band { display: grid; gap: 12px; }
+.band .head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.opt { position: relative; text-align: left; background: linear-gradient(180deg, #161b26, #1b2130); border: 2px solid var(--line); border-radius: 18px;
+  padding: 16px; color: var(--fg); font: inherit; cursor: pointer; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.opt:hover { border-color: #46506a; }
+.opt:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.opt[aria-pressed="true"] { border-color: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); }
+.opt .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.opt .letter { font: 700 13px var(--mono); color: var(--c); letter-spacing: .1em; }
+.opt .name { font: 700 22px/1.15 var(--display); }
+.opt .pitch { color: var(--grey); margin: 0; }
+.pick { font: 800 12px var(--body); padding: 4px 10px; border-radius: 999px; background: #0f131c; color: var(--muted); white-space: nowrap; }
+.opt[aria-pressed="true"] .pick { background: var(--c); color: #0d0f14; }
+.rec { font: 800 11px var(--body); padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); white-space: nowrap; }
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ol.steps li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start; background: var(--card); border-radius: 10px; padding: 8px 10px; }
+ol.steps .s { font: 700 13px var(--mono); color: var(--c); }
+ol.steps .s.star { color: var(--gold); }
+ol.steps .cost { font: 600 11px var(--mono); color: var(--muted); white-space: nowrap; }
+.notes { display: grid; gap: 4px; font-size: 13.5px; color: var(--grey); }
+.notes p { margin: 0; }
+.notes b { color: var(--fg); }
+.notes .flag { color: var(--warn); }
+.tree { background: linear-gradient(180deg, #10141d, #1a2130 60%, #0e1219); border: 2px solid var(--volt); border-radius: 18px; padding: 16px; display: grid; gap: 12px; }
+.tree .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.area { background: #0f131c; border-radius: 12px; padding: 10px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.area .t { font: 800 12px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--c); }
+.line { background: var(--card2); border-radius: 10px; padding: 8px 10px; font-weight: 800; border-left: 4px solid var(--c); }
+.line.new { box-shadow: inset 0 0 0 2px var(--c); }
+.line small { display: block; font: 600 11px var(--mono); color: var(--muted); letter-spacing: .06em; }
+.empty { color: var(--muted); font-style: italic; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 10px; }
+.math { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.stat { background: var(--card); border-radius: 12px; padding: 10px 12px; }
+.stat .v { font: 700 24px var(--display); font-variant-numeric: tabular-nums; }
+.stat .k { font-size: 13px; color: var(--grey); }
+footer { color: var(--muted); font-size: 13px; }
+footer code { font-family: var(--mono); font-size: 12px; color: var(--grey); }
+@media (prefers-reduced-motion: no-preference) { .opt { transition: border-color .15s, box-shadow .15s; } }
+</style>
+
+<main>
+  <header>
+    <div class="tag">Mecha Dino Arena · Pachy skill tree · options v0.1</div>
+    <h1>Pachy <span>Health</span> &amp; <span style="color: var(--defense)">Defense</span> lines</h1>
+    <p class="lede">The pachy has 3 passive stat lines; every other finished dino has 5 to 7. These are new pachy-only lines for the two weakest areas. Pick one Health line and one Defense line. Nothing is built until you pick.</p>
+  </header>
+
+  <div class="rule"><b>Your rule, kept:</b> "health regen should never be a skill for pachy" and no health steal (2026-10-30). None of the Health options below heal. The built-in kill heal (25% over 5 s) stays as it is.</div>
+
+  <section class="now" aria-label="The pachy's passive lines today">
+    <div class="tag">The pachy's passive lines today (SkillTree 1.58)</div>
+    <div class="rows">
+      <div class="mini" style="--c: var(--attack)"><div class="a">Attack</div><div class="n">Battering Dome</div></div>
+      <div class="mini" style="--c: var(--defense)"><div class="a">Defense</div><div class="n">Bone Crest</div></div>
+      <div class="mini" style="--c: var(--speed)"><div class="a">Speed</div><div class="n">Sprint Legs</div></div>
+      <div class="mini gone" style="--c: var(--health)"><div class="a">Health · removed</div><div class="n">Regeneration, Lifesteal</div></div>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="h-health">
+    <div class="head">
+      <h2 id="h-health"><i style="background: var(--health)"></i>Health</h2>
+      <span class="tag">pick one · steps cost 1 · 2 · 3 · 4</span>
+    </div>
+    <div class="opts" id="health"></div>
+  </section>
+
+  <section class="band" aria-labelledby="h-def">
+    <div class="head">
+      <h2 id="h-def"><i style="background: var(--defense)"></i>Defense</h2>
+      <span class="tag">pick one · next to Bone Crest</span>
+    </div>
+    <div class="opts" id="defense"></div>
+  </section>
+
+  <section class="tree" aria-labelledby="h-tree">
+    <h2 id="h-tree">The pachy's tree with your picks</h2>
+    <div class="cols" id="cols"></div>
+    <div class="math" id="math"></div>
+  </section>
+
+  <footer>Grounded in the repo: PachyModelData 1.5 (90 HP, headbutt 18 short / 25 full run-up, 2 charges, 3 s refill), HeadbuttServer (Blood Rush costs 25% of max health, only above half health, 2 sacrifices), SkillTree 1.58 (40 points, 3 lines at step III or higher, 4 slots, Bone Crest). The step numbers are proposals for you to change.</footer>
+</main>
+
+<script>
+const OPTIONS = {
+  health: [
+    { id: "thick", letter: "A", name: "Thick Build", pitch: "More max health, always on. The simplest way to make the pachy harder to kill.",
+      steps: ["Max health +10 (90 → 100)", "Max health +20 (110)", "Max health +30 (120)", "Max health +40 (130), and Blood Rush also works down to 40% health (was above 50%)"],
+      notes: [["Plays like", "a bigger health bar. No timing, no conditions."], ["Trade-off", "least fun of the three; Blood Rush costs 25% of max health, so a bigger bar also makes each sacrifice cost more."]],
+      ehp: 130 },
+    { id: "stand", letter: "B", name: "Last Stand", rec: true, pitch: "Gets tougher when it is about to go down. Comeback moments without any healing.",
+      steps: ["Below 30% health: take 15% less damage", "Below 30% health: take 25% less damage", "Below 30% health: headbutt charges refill 40% faster", "Once per life, a killing blow leaves you at 1 health and untouchable for 1.5 s"],
+      notes: [["Plays like", "Blood Rush for the first half of the fight (it needs more than half health), Last Stand for the end."], ["Trade-off", "does nothing until you are low; the star needs a clear visual so nobody thinks it is a bug."]],
+      ehp: 90 },
+    { id: "pact", letter: "C", name: "Blood Pact", pitch: "Makes Blood Rush, the pachy's pay-health-for-headbutts part, cheaper and stronger.",
+      steps: ["Blood Rush costs 20% of max health (was 25%)", "Costs 15%", "A sacrifice headbutt that lands gives a barrier of 15% of max health for 4 s", "Blood Rush works down to 30% health and allows 3 sacrifices (was 2)"],
+      notes: [["Plays like", "an all-in pachy that spends health to keep headbutting."], ["Trade-off", "only does anything with the Blood Rush part equipped (one of your 4 slots)."], ["Check", "step III is a temporary shield, not healing. Tell me if that still counts as healing for you.", true]],
+      ehp: 90 },
+  ],
+  defense: [
+    { id: "headdown", letter: "A", name: "Head Down", rec: true, pitch: "Armored while it charges. Rewards the run-up you just tuned (18 → 25).",
+      steps: ["While charging a headbutt: take 15% less damage", "While charging: take 25% less damage", "While charging: can't be shoved or thrown", "While charging: can't be stunned"],
+      notes: [["Plays like", "commit to the charge and you will get there; you can't be swatted out of it."], ["Trade-off", "only while charging; close to the Teno's Brace idea (Brace works while holding a tail slam)."]] },
+    { id: "hard", letter: "B", name: "Hard Headed", pitch: "Shrugs off stuns and knockback, any time. The half of Thick Hide that Bone Crest never replaced.",
+      steps: ["Stuns are 20% shorter", "Thrown half as far by rams and shoves", "Stuns are 35% shorter", "No stuns while above 50% health"],
+      notes: [["Plays like", "a bruiser that stays in the fight when the Raptor's Shock Cannon or the Teno's stomp lands."], ["Trade-off", "no damage cut; the most generic of the three."]] },
+    { id: "spiked", letter: "C", name: "Spiked Hide", pitch: "Punishes anyone who fights it up close, and raptors that latch on.",
+      steps: ["Anything that bites, pounces or slashes you takes 3 damage back", "Takes 5 back", "A raptor latched on you takes 3 damage per second", "A latch on you is shaken off after 2 s"],
+      notes: [["Plays like", "a porcupine: raptors and Herreras think twice."], ["Trade-off", "Bone Crest's star already returns 5 for bites on the dome, so the two overlap from the front."]] },
+  ],
+};
+const COL = { health: "var(--health)", defense: "var(--defense)" };
+const picked = { health: "stand", defense: "headdown" };
+try { const s = JSON.parse(localStorage.getItem("pachyHDPick") || "null"); if (s && s.health && s.defense) Object.assign(picked, s); } catch (e) {}
+
+function card(area, o) {
+  const b = document.createElement("button");
+  b.className = "opt"; b.type = "button"; b.id = "opt-" + o.id;
+  b.style.setProperty("--c", COL[area]);
+  b.setAttribute("aria-pressed", String(picked[area] === o.id));
+  const steps = o.steps.map((t, i) => `<li><span class="s${i === 3 ? " star" : ""}">${["I", "II", "III", "★"][i]}</span><span>${t}</span><span class="cost">${i + 1} pt</span></li>`).join("");
+  const notes = o.notes.map(([k, v, flag]) => `<p${flag ? ' class="flag"' : ""}><b>${k}:</b> ${v}</p>`).join("");
+  b.innerHTML = `<div class="top"><span class="letter">OPTION ${o.letter}</span><span style="display:flex;gap:6px;align-items:center">${o.rec ? '<span class="rec">Recommended</span>' : ""}<span class="pick">${picked[area] === o.id ? "Picked" : "Pick"}</span></span></div>
+    <div class="name">${o.name}</div><p class="pitch">${o.pitch}</p><ol class="steps">${steps}</ol><div class="notes">${notes}</div>`;
+  b.addEventListener("click", () => { picked[area] = o.id; try { localStorage.setItem("pachyHDPick", JSON.stringify(picked)); } catch (e) {} render(); });
+  return b;
+}
+function render() {
+  for (const area of ["health", "defense"]) {
+    const box = document.getElementById(area);
+    box.replaceChildren(...OPTIONS[area].map(o => card(area, o)));
+  }
+  const h = OPTIONS.health.find(o => o.id === picked.health), d = OPTIONS.defense.find(o => o.id === picked.defense);
+  const areas = [
+    ["Health", "var(--health)", [[h.name, true]]],
+    ["Attack", "var(--attack)", [["Battering Dome", false]]],
+    ["Defense", "var(--defense)", [["Bone Crest", false], [d.name, true]]],
+    ["Speed", "var(--speed)", [["Sprint Legs", false]]],
+  ];
+  document.getElementById("cols").replaceChildren(...areas.map(([t, c, lines]) => {
+    const a = document.createElement("div"); a.className = "area"; a.style.setProperty("--c", c);
+    a.innerHTML = `<div class="t">${t}</div>` + lines.map(([n, isNew]) => `<div class="line${isNew ? " new" : ""}">${n}<small>${isNew ? "new · pachy only" : "today"}</small></div>`).join("");
+    return a;
+  }));
+  const st = [
+    ["5", "passive lines (was 3), the same as the Raptor and Therizino"],
+    ["36 / 40", "points to max every passive line under the 3-line rule (3 lines to ★ = 30, the other 2 to II = 6); 4 left for parts"],
+    [String(h.ehp), h.id === "thick" ? "max health at ★ (90 today)" : "max health (unchanged; this line never heals)"],
+  ];
+  document.getElementById("math").replaceChildren(...st.map(([v, k]) => { const e = document.createElement("div"); e.className = "stat"; e.innerHTML = `<div class="v">${v}</div><div class="k">${k}</div>`; return e; }));
+}
+render();
+</script>
