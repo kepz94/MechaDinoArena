@@ -370,7 +370,7 @@
 -- v1.25 (MDA-215, plan docs/plans/TENO_TAIL_GRAB_v1.0.md Task 1; Kepu 2026-11-03 "it lags the dinos when I toss them",
 --   "when I land on dinos they start to glitch"). Three guards, each its own script attribute (default true, read each step):
 --   * BotGrabHoldEnabled: while the bot's TenoGrabHeldUntil (server time, TenoMovesServer 1.7) is in the future, the step does
---     nothing but BotState "grabbed" (no lie-down, no AI; the teno's grab owns it). 1.24 lay it down at once on the grab's
+--     nothing but BotState "grabbed" (stops walking, no lie-down, no AI; the teno's grab owns it). 1.24 lay it down at once on the grab's
 --     stun (it sank for 0.3 s) and remembered the grab spot as where to get up.
 --   * BotDownRefreshEnabled: standUp of a bot whose root is more than 1 stud (flat) from where it lay down re-reads the spot
 --     (downFrom position, downGround) from where it is now, so a bot moved while down gets up there (1.24 rolled it back up
@@ -2338,6 +2338,7 @@ do
 		if script:GetAttribute("BotGrabHoldEnabled") ~= false then
 			local held = b.model:GetAttribute("TenoGrabHeldUntil")
 			if typeof(held) == "number" and held > workspace:GetServerTimeNow() then
+				if b.shown.BotState ~= "grabbed" then b.hum:MoveTo(b.hrp.Position) end -- stop walking once
 				b.target = nil
 				show(b, "BotTarget", "")
 				show(b, "BotState", "grabbed")

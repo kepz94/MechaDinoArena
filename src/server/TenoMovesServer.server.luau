@@ -1,4 +1,4 @@
--- TenoMovesServer v1.6 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.7 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -132,6 +132,40 @@
 --   * Shield Armor: the shield (ForceField + TenoMudCoatAt) goes on TenoMovesShieldCoatAt (default 0.2) s after the press,
 --     was MUD_COAT_AT 1.2 (the old mud wallow). Latched raptors are still knocked off at MUD_SLIDE_AT 0.7. Switch: script
 --     attribute TenoMovesShieldFastEnabled (default true, read at each press; false = 1.2 s).
+-- v1.7 (MDA-216, plan docs/plans/TENO_TAIL_GRAB_v1.0.md Task 2, mockup docs/mockups/teno_tail_grab_v0.1.html; Kepu
+--   2026-11-03 "have the tail actually grab the Dino and throw it ... If the Dino is in front ... Same for behind", picked A
+--   "Over the Top"): Tail Grab & Fling, same target rules / numbers, new timeline, nothing stepped by the server:
+--   * side = "front" when the target's root is ahead of the teno's root (HRP space Z < 0), else "back". From the press t:
+--     front catch t + 0.70, throw t + 1.35; back catch t + 0.45, throw t + 1.10; flight OT_FLIGHT 0.85 s.
+--   * stamps (teno): ObjectValue child TenoGrabTargetRef = the target, TenoGrabSide, TenoGrabCatchAt, TenoGrabThrowAtPlan,
+--     TenoGrabFlight, TenoGrabTarget, TenoGrabCrashHits 0, TenoGrabStartedAt last (IdleAnimation 1.41 aims the tail;
+--     TenoBotMotion 1.0 draws the bot). TenoGrabLand (the ground point) + TenoGrabLandLift are stamped OT_LAND_LEAD (0.15) s
+--     before the throw; TenoGrabThrowAt at the throw; TenoGrabLandAt at the landing (as 1.6).
+--   * landing point (flat facing at OT_LAND_LEAD before the throw): front -> root - fwd x TenoGrabFling (thrown out behind),
+--     back -> root + fwd x TenoGrabFling (thrown out ahead). Height: the target's root height over the ground (as 1.6).
+--   * a bot: TenoGrabHeldUntil = landing + 0.05 (BotServer 1.25 holds it), Bitable false while held, stunned to landing +
+--     TenoGrabStun, anchored at the press (a raptor latched on the teno: at the catch, after its release) and never moved by
+--     this script until the landing: then its root is put at the landing point facing away from the teno, Bitable restored,
+--     TenoGrabDamage + the crash (as 1.6). Cancelled (teno or target gone): hold cleared, Bitable restored, unanchored.
+--   * a player: stunned from the catch (StunClient's toss must come within 1 s of the stun start) and thrown by StunClient
+--     at the throw toward the landing point (StunTossFrom / StunTossDistance / StunTossAt, as 1.6).
+--   Switch: script attribute TenoMovesGrabOverTopEnabled (default true, read at each grab; false = 1.6). Diagnostics: script
+--   TenoMovesGrabsFront, TenoMovesGrabsBack; teno TenoGrabSide.
+-- v1.7 (MDA-219, plan Task 5; Kepu picked L1 "Shove Clear"): the JUMP leap's landing slam (1.4 path, every jumper that uses
+--   it) when it comes down on a dino:
+--   * landed also when, after the take-off, a ray straight down from the root or the Torso_chest part (h0 + 2 studs long;
+--     only the jumper, TallGrass and the FX folders left out) hits an allowed target while the root is not going up: the
+--     jumper stands on a dino. 1.6 only counted the ground (Bots and players left out), so it stood on the dino's back with
+--     no slam until it slid off. Switch: script attribute TenoMovesLeapOnDinoEnabled (default true, read at each leap).
+--     Diagnostic: character TenoLeapLandedOn ("ground" / "dino").
+--   * shove: each target hit by the slam whose root lies under the jumper's body (root space: |X| < half the jumper's width +
+--     half the target's width along it, |Z| < half the jumper's length) is moved sideways to the nearer side (root-space X sign,
+--     0 -> right) until its near edge is LEAP_SHOVE_GAP (1.5) studs past the body. A bot: TenoGrabHeldUntil = now +
+--     LEAP_SHOVE_TIME + 0.05 (BotServer 1.25 holds it), anchored, TenoMoveFrom / TenoMoveTo / TenoMoveTime (LEAP_SHOVE_TIME
+--     0.28) / TenoMovePeak (3) then TenoMoveAt last (TenoBotMotion 1.0 draws the slide), its root put at TenoMoveTo after
+--     LEAP_SHOVE_TIME (unanchored when it is not stunned). A player (only with a stun, TenoLeapStun > 0): StunTossFrom /
+--     StunTossDistance / StunTossAt set before the stun, so StunClient tosses it sideways. Switch: script attribute
+--     TenoMovesLeapShoveEnabled (default true, read at each landing). Diagnostic: character TenoLeapShoves.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -141,6 +175,7 @@ local VERSION = "1.3"
 VERSION = "1.4" -- v1.4 leap on JUMP
 VERSION = "1.5" -- v1.5 mortar wind-up + 90 studs, shield at 0.2 s
 VERSION = "1.6" -- v1.6 TenoLeapArc (front-only landing)
+VERSION = "1.7" -- v1.7 Over-the-Top grab, leap landing on dinos + shove
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
 local MORTAR_FIRE2, MORTAR_FLIGHT2, MORTAR_PEAK2 = 0.15, 0.7, 14 -- v1.2
@@ -152,6 +187,13 @@ if script:GetAttribute("TenoMovesMortarBigEnabled") == nil then script:SetAttrib
 if script:GetAttribute("TenoMovesShieldFastEnabled") == nil then script:SetAttribute("TenoMovesShieldFastEnabled", true) end -- v1.5
 if script:GetAttribute("TenoMovesShieldCoatAt") == nil then script:SetAttribute("TenoMovesShieldCoatAt", 0.2) end -- v1.5
 local DY = 15
+local OT_TIMES = {front = {catch = 0.70, throw = 1.35}, back = {catch = 0.45, throw = 1.10}} -- v1.7
+local OT_FLIGHT, OT_LAND_LEAD = 0.85, 0.15 -- v1.7
+if script:GetAttribute("TenoMovesGrabOverTopEnabled") == nil then script:SetAttribute("TenoMovesGrabOverTopEnabled", true) end -- v1.7
+for _, k in ipairs({"TenoMovesLeapOnDinoEnabled", "TenoMovesLeapShoveEnabled"}) do -- v1.7
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
+local LEAP_SHOVE_TIME, LEAP_SHOVE_PEAK, LEAP_SHOVE_GAP = 0.28, 3, 1.5 -- v1.7
 
 script:SetAttribute("TenoMovesServerVersion", VERSION)
 if script:GetAttribute("TenoMovesStompDrainEnabled") == nil then script:SetAttribute("TenoMovesStompDrainEnabled", true) end -- v1.1
@@ -483,6 +525,107 @@ local function flyBot(m, hrp, from, to, dur, peak, rot)
 		RunService.Heartbeat:Wait()
 	end
 end
+-- v1.7: Over-the-Top grab (see the header)
+local function grabOverTop(char, player, target, t, fling, dmg, stunT, crash, crashR)
+	local root, hrp0 = rootOf(char), rootOf(target)
+	local side = root.CFrame:PointToObjectSpace(hrp0.Position).Z < 0 and "front" or "back"
+	local tm = OT_TIMES[side]
+	local catchAt, throwAt = t + tm.catch, t + tm.throw
+	local landAt = throwAt + OT_FLIGHT
+	count(side == "front" and "TenoMovesGrabsFront" or "TenoMovesGrabsBack")
+	local isPlayer = Players:GetPlayerFromCharacter(target) ~= nil
+	local latched = latchedOnMe(target, char)
+	local ref = char:FindFirstChild("TenoGrabTargetRef")
+	if not (ref and ref:IsA("ObjectValue")) then
+		ref = Instance.new("ObjectValue")
+		ref.Name = "TenoGrabTargetRef"
+		ref.Parent = char
+	end
+	ref.Value = target
+	char:SetAttribute("TenoGrabSide", side)
+	char:SetAttribute("TenoGrabCatchAt", catchAt)
+	char:SetAttribute("TenoGrabThrowAtPlan", throwAt)
+	char:SetAttribute("TenoGrabFlight", OT_FLIGHT)
+	char:SetAttribute("TenoGrabTarget", target.Name)
+	char:SetAttribute("TenoGrabCrashHits", 0)
+	char:SetAttribute("TenoGrabStartedAt", t) -- last: poses / bot motion / FX
+	target:SetAttribute("TenoGrabbedBy", char.Name)
+	target:SetAttribute("TenoGrabbedAt", t)
+	if latched then
+		target:SetAttribute("ShakeOffReason", "grabbed")
+		target:SetAttribute("ShakeOffAt", t) -- last: PounceServer / BotServer release the latch
+	end
+	local lift = math.clamp(hrp0.Position.Y - groundY(hrp0.Position, hrp0.Position.Y - 3), 1, 12)
+	local bitable = target:GetAttribute("Bitable")
+	if not isPlayer then
+		target:SetAttribute("TenoGrabHeldUntil", landAt + 0.05) -- before the stun: BotServer 1.25 holds instead of lying down
+		target:SetAttribute("Bitable", false)
+		stun(target, landAt + stunT)
+		if not latched then hrp0.Anchored = true end
+	end
+	local function cancel()
+		if isPlayer or not target.Parent then return end
+		target:SetAttribute("TenoGrabHeldUntil", 0)
+		target:SetAttribute("Bitable", bitable)
+		local h = rootOf(target)
+		if h then h.Anchored = false end
+	end
+	task.spawn(function()
+		task.wait(math.max(0, catchAt - now()))
+		if latched then
+			local w0 = os.clock()
+			while target.Parent and target:GetAttribute("PounceLatched") == true and os.clock() - w0 < 0.5 do RunService.Heartbeat:Wait() end
+		end
+		local hrp, r = rootOf(target), rootOf(char)
+		if not (hrp and r and char.Parent and target.Parent) then cancel() return end
+		if isPlayer then stun(target, landAt + stunT) else hrp.Anchored = true end
+		task.wait(math.max(0, throwAt - OT_LAND_LEAD - now()))
+		if not (target.Parent and r.Parent) then cancel() return end
+		local fwd = flat(r.CFrame.LookVector)
+		fwd = fwd.Magnitude > 1e-3 and fwd.Unit or -Vector3.zAxis
+		local dir = side == "front" and -fwd or fwd
+		local land = onGround(r.Position + dir * fling)
+		local landPos = land + Vector3.new(0, lift, 0)
+		char:SetAttribute("TenoGrabLandLift", lift)
+		char:SetAttribute("TenoGrabLand", land)
+		task.wait(math.max(0, throwAt - now()))
+		if not target.Parent then cancel() return end
+		char:SetAttribute("TenoGrabThrowAt", now())
+		if isPlayer then
+			local start = hrp.Position
+			local d = flat(landPos - start)
+			local dist = d.Magnitude
+			d = dist > 1e-3 and d.Unit or dir
+			target:SetAttribute("StunTossFrom", start - d * 2)
+			target:SetAttribute("StunTossDistance", dist)
+			target:SetAttribute("StunTossAt", now()) -- last: StunClient throws it
+		end
+		task.wait(math.max(0, landAt - now()))
+		if not isPlayer and target.Parent then
+			hrp.CFrame = CFrame.new(landPos) * CFrame.lookAt(Vector3.zero, dir)
+			target:SetAttribute("Bitable", bitable)
+		end
+		local tl = now()
+		char:SetAttribute("TenoGrabLandAt", tl)
+		if target.Parent then
+			damage(char, player, target, dmg, "tailgrab", tl)
+			if not shielded(target, tl) then stun(target, tl + stunT) end
+		end
+		if crash > 0 and crashR > 0 then
+			local n = 0
+			for _, m in ipairs(candidates(char)) do
+				local mr = rootOf(m)
+				if m ~= target and flat(mr.Position - land).Magnitude <= crashR and math.abs(mr.Position.Y - land.Y) <= DY then
+					damage(char, player, m, crash, "tailgrab", tl)
+					if not shielded(m, tl) then stun(m, tl + 1) end
+					n += 1
+				end
+			end
+			char:SetAttribute("TenoGrabCrashHits", n)
+		end
+	end)
+end
+
 grabRemote.OnServerEvent:Connect(function(player, stamp)
 	local char, t = check(player, stamp, "tgrab", "TenoGrab", {})
 	if not char then return end
@@ -498,6 +641,10 @@ grabRemote.OnServerEvent:Connect(function(player, stamp)
 	local fling = num(char, "TenoGrabFling", 30)
 	local dmg, stunT = num(char, "TenoGrabDamage", 8), num(char, "TenoGrabStun", 1)
 	local crash, crashR = num(char, "TenoGrabCrash", 0), num(char, "TenoGrabCrashRadius", 0)
+	if script:GetAttribute("TenoMovesGrabOverTopEnabled") ~= false then -- v1.7
+		grabOverTop(char, player, target, t, fling, dmg, stunT, crash, crashR)
+		return
+	end
 	char:SetAttribute("TenoGrabTarget", target.Name)
 	char:SetAttribute("TenoGrabCrashHits", 0)
 	char:SetAttribute("TenoGrabStartedAt", t) -- last: poses / FX
@@ -1181,6 +1328,145 @@ local function jumpSlam(char)
 		char:SetAttribute("TenoLeapUntil", 0)
 		char:SetAttribute("TenoLeapLandedAt", tl) -- last: FX
 	end)
+end
+-- v1.7: landing on a dino + shove (see the header)
+local dinoRay = RaycastParams.new()
+dinoRay.FilterType = Enum.RaycastFilterType.Exclude
+local function ownerModel(part)
+	local m = part:FindFirstAncestorOfClass("Model")
+	while m and not m:FindFirstChild("Hitboxes") do m = m.Parent and m.Parent:FindFirstAncestorOfClass("Model") end
+	return m
+end
+local function onDino(char, set, h0)
+	local ex = {char}
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local tg = isl and isl:FindFirstChild("TallGrass")
+	if tg then table.insert(ex, tg) end
+	for _, n in ipairs({"DinoFX_Local", "DinoFX", "TenoFX"}) do
+		local f = workspace:FindFirstChild(n)
+		if f then table.insert(ex, f) end
+	end
+	dinoRay.FilterDescendantsInstances = ex
+	local root = rootOf(char)
+	local origins = {root.Position}
+	local chest = char:FindFirstChild("Torso_chest", true)
+	if chest and chest:IsA("BasePart") then table.insert(origins, chest.Position) end
+	for _, o in ipairs(origins) do
+		local hit = workspace:Raycast(o, Vector3.new(0, -(h0 + 2), 0), dinoRay)
+		local m = hit and ownerModel(hit.Instance)
+		if m and set[m] then return true end
+	end
+	return false
+end
+local function widthAlong(m, axis) -- the model's extent along a flat axis
+	local cf, size = m:GetBoundingBox()
+	return math.abs(axis:Dot(cf.RightVector)) * size.X + math.abs(axis:Dot(cf.UpVector)) * size.Y + math.abs(axis:Dot(cf.LookVector)) * size.Z
+end
+local function leapShove(char, root, m, tl, stunT)
+	local mr = rootOf(m)
+	if not mr then return false end
+	local right = flat(root.CFrame.RightVector)
+	right = right.Magnitude > 1e-3 and right.Unit or Vector3.xAxis
+	local lp = root.CFrame:PointToObjectSpace(mr.Position)
+	local myCF, mySize = char:GetBoundingBox()
+	local halfW = (math.abs(right:Dot(myCF.RightVector)) * mySize.X + math.abs(right:Dot(myCF.LookVector)) * mySize.Z) / 2
+	local fwd = flat(root.CFrame.LookVector)
+	local halfL = fwd.Magnitude > 1e-3 and widthAlong(char, fwd.Unit) / 2 or mySize.Z / 2
+	local halfT = widthAlong(m, right) / 2
+	if math.abs(lp.X) >= halfW + halfT or math.abs(lp.Z) >= halfL then return false end
+	local sgn = lp.X >= 0 and 1 or -1
+	local move = sgn * (halfW + halfT + LEAP_SHOVE_GAP) - lp.X
+	local from = mr.Position
+	local over = math.clamp(from.Y - groundY(from, from.Y - 3), 1, 12)
+	local to = onGround(from + right * move) + Vector3.new(0, over, 0)
+	if Players:GetPlayerFromCharacter(m) then
+		if stunT <= 0 then return false end
+		local d = flat(to - from)
+		if d.Magnitude < 1e-3 then return false end
+		m:SetAttribute("StunTossFrom", from - d.Unit * 2)
+		m:SetAttribute("StunTossDistance", d.Magnitude)
+		m:SetAttribute("StunTossAt", tl) -- before the stun: StunClient takes the toss at the stun start
+		return true
+	end
+	m:SetAttribute("TenoGrabHeldUntil", tl + LEAP_SHOVE_TIME + 0.05)
+	mr.Anchored = true
+	m:SetAttribute("TenoMoveFrom", from)
+	m:SetAttribute("TenoMoveTo", to)
+	m:SetAttribute("TenoMoveTime", LEAP_SHOVE_TIME)
+	m:SetAttribute("TenoMovePeak", LEAP_SHOVE_PEAK)
+	m:SetAttribute("TenoMoveAt", tl) -- last: TenoBotMotion draws the slide
+	local rot = mr.CFrame - mr.Position
+	task.delay(LEAP_SHOVE_TIME, function()
+		if not (m.Parent and mr.Parent) then return end
+		mr.CFrame = CFrame.new(to) * rot
+		if num(m, "StunnedUntil", 0) <= now() then mr.Anchored = false end
+	end)
+	return true
+end
+local function jumpSlamV17(char)
+	local player = Players:GetPlayerFromCharacter(char)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local r0 = rootOf(char)
+	if not (player and hum and hum.Health > 0 and r0) then return end
+	local t0 = num(char, "JumpStartedAt", now())
+	count("TenoMovesJumpLeaps")
+	char:SetAttribute("TenoLeapHits", 0)
+	char:SetAttribute("TenoLeapUntil", t0 + 3)
+	local h0 = r0.Position.Y - groundY(r0.Position, r0.Position.Y - 3)
+	task.spawn(function()
+		local w0, left, landedOn = os.clock(), false, "ground"
+		while char.Parent and hum.Parent and hum.Health > 0 and os.clock() - w0 < 3 do
+			local rr = rootOf(char)
+			if not rr then break end
+			local h = rr.Position.Y - groundY(rr.Position, rr.Position.Y - 3)
+			if not left then
+				if h > h0 + 2 then left = true end
+			elseif h <= h0 + 1.5 then
+				break
+			elseif script:GetAttribute("TenoMovesLeapOnDinoEnabled") ~= false and rr.AssemblyLinearVelocity.Y <= 1 then
+				local set = {}
+				for _, m in ipairs(candidates(char)) do set[m] = true end
+				if next(set) and onDino(char, set, h0) then landedOn = "dino" break end
+			end
+			RunService.Heartbeat:Wait()
+		end
+		local root = rootOf(char)
+		if not (left and char.Parent and root and hum.Health > 0) then
+			if char.Parent then char:SetAttribute("TenoLeapUntil", 0) end
+			return
+		end
+		char:SetAttribute("TenoLeapLandedOn", landedOn)
+		local tl = now()
+		local dmg, radius, stunT = num(char, "TenoLeapDamage", 10), num(char, "TenoLeapRadius", 12), num(char, "TenoLeapStun", 0)
+		local n, arcSkips, shoves = 0, 0, 0
+		local shoveOn = script:GetAttribute("TenoMovesLeapShoveEnabled") ~= false
+		for _, m in ipairs(candidates(char)) do
+			local mr = rootOf(m)
+			local near = gap(m, root.Position) <= radius and math.abs(mr.Position.Y - root.Position.Y) <= DY
+			if near and not inLeapArc(char, root, mr) then near = false; arcSkips += 1 end
+			if near then
+				n += 1
+				local shoved = shoveOn and not shielded(m, tl) and leapShove(char, root, m, tl, stunT)
+				if shoved then shoves += 1 end
+				damage(char, player, m, dmg, "leap", tl)
+				if stunT > 0 and not shielded(m, tl) then stun(m, tl + stunT) end
+			end
+		end
+		char:SetAttribute("TenoLeapHits", n)
+		char:SetAttribute("TenoLeapArcSkips", arcSkips)
+		char:SetAttribute("TenoLeapShoves", shoves)
+		char:SetAttribute("TenoLeapUntil", 0)
+		char:SetAttribute("TenoLeapLandedAt", tl) -- last: FX
+	end)
+end
+do
+	local jumpSlamV16 = jumpSlam
+	jumpSlam = function(char)
+		if script:GetAttribute("TenoMovesLeapOnDinoEnabled") ~= false or script:GetAttribute("TenoMovesLeapShoveEnabled") ~= false then
+			return jumpSlamV17(char)
+		end
+		return jumpSlamV16(char)
+	end
 end
 local function watchJump(char)
 	local function mirrorNow() if leapOnJump(char) then leapMirror(char) end end
