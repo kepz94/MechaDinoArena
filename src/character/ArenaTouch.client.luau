@@ -1,4 +1,4 @@
--- ArenaTouch v1.11 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.12 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -84,12 +84,20 @@
 --   TheriLocalStep while the chain is open (TheriLocalAt + TheriChainWindow; after the finisher, all 3 while
 --   TheriFinisherRecover runs), else empty. Switch: script attribute ArenaTouchTheriEnabled (default true, read at start).
 --   Diagnostic ArenaTouchTheriStep; ArenaTouchMainButton adds "Theri".
+-- v1.12 (Kepu 2026-11-03 17:01 after v382: the bubbles still fill up; AbilityBar 1.24 had fixed only the PC bar; same pick "A"
+--   Hits left, mockup docs/mockups/therizino_attack_tile_v0.1.html): the touch ATTACK pips show the hits left like AbilityBar
+--   1.24: all full when ready, one empties per cut (right to left), refilled when the chain ends or the pause is over; a 4th
+--   pip (copy of the 3rd) shows when the Fourth Cut is bought (TheriFourthDamage > 0). Same windows as AbilityBar 1.24
+--   (TheriFlowWindow / TheriFlowRecover over TheriChainWindow 0.8 / TheriFinisherRecover 0.9; step 3 keeps 1 while the Fourth
+--   Cut window is open; step 4 empty for TheriFourthRecover 0.8 s unless TheriFourthFast). Switch: script attribute
+--   ArenaTouchTheriHitsLeftEnabled (default true, read each frame; false = 1.11). Diagnostic ArenaTouchTheriHitsLeft.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.11"
+VERSION = "1.12" -- v1.12 therizino ATTACK pips = hits left
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW, YELLOW_TEXT = Color3.fromRGB(255, 200, 50), Color3.fromRGB(30, 26, 10)
@@ -631,10 +639,50 @@ local WATCH = {BiteEnabled = true, HeadbuttEnabled = true, AutoRun = true, RamEn
 	PounceTestState = true, JumpTestState = true, SlashEnabled = true, ClimbEnabled = true, ClimbLocalState = true} -- v1.7: + Slash / Climb
 WATCH.TenoAttackEnabled = true -- v1.9
 WATCH.TheriAttackEnabled = true -- v1.11
+-- v1.12: hits left (see the header)
+if script:GetAttribute("ArenaTouchTheriHitsLeftEnabled") == nil then script:SetAttribute("ArenaTouchTheriHitsLeftEnabled", true) end
+local function theriHitsLeft(now)
+	local function eff(k, over, d)
+		local v = tonumber(char:GetAttribute(over)) or 0
+		if v > 0 then return v end
+		return tonumber(char:GetAttribute(k)) or d
+	end
+	local win = eff("TheriChainWindow", "TheriFlowWindow", 0.8)
+	local rec = eff("TheriFinisherRecover", "TheriFlowRecover", 0.9)
+	local hit3 = math.clamp(tonumber(char:GetAttribute("TheriHitDelay3")) or 0.55, 0, 0.6)
+	local four = (tonumber(char:GetAttribute("TheriFourthDamage")) or 0) > 0 and char:GetAttribute("TheriLocalFourthEnabled") ~= false
+	if four and not thPips[4] and thPips[3] then
+		local f = thPips[3].f:Clone()
+		f.Name = "Charge_4"
+		f.LayoutOrder = 4
+		f.Parent = thPips[3].f.Parent
+		thPips[4] = {f = f, fill = f:FindFirstChild("Fill")}
+	end
+	local maxC = (four and thPips[4]) and 4 or 3
+	local st = math.clamp(math.floor(tonumber(char:GetAttribute("TheriLocalStep")) or 0), 0, 4)
+	local age = now - (tonumber(char:GetAttribute("TheriLocalAt")) or -math.huge)
+	local left = maxC
+	if st == 1 or st == 2 then
+		if age <= win then left = maxC - st end
+	elseif st == 3 then
+		if four and age <= hit3 + 0.8 then left = 1 elseif age < rec then left = 0 end
+	elseif st == 4 then
+		local fourRec = char:GetAttribute("TheriFourthFast") == true and 0 or (tonumber(char:GetAttribute("TheriFourthRecover")) or 0.8)
+		if age < fourRec then left = 0 end
+	end
+	left = math.clamp(left, 0, maxC)
+	for i, pip in pairs(thPips) do
+		pip.f.Visible = i <= maxC
+		if pip.fill then pip.fill.Size = UDim2.fromScale(1, i <= left and 1 or 0) end
+	end
+	local d = left .. "/" .. maxC
+	if char:GetAttribute("ArenaTouchTheriHitsLeft") ~= d then char:SetAttribute("ArenaTouchTheriHitsLeft", d) end
+end
 -- v1.11: therizino combo step pips every frame
 RunService.RenderStepped:Connect(function()
 	if not wanted.Theri then return end
 	local now = workspace:GetServerTimeNow()
+	if script:GetAttribute("ArenaTouchTheriHitsLeftEnabled") ~= false then theriHitsLeft(now) return end -- v1.12
 	local st = math.clamp(math.floor(tonumber(char:GetAttribute("TheriLocalStep")) or 0), 0, 3)
 	local age = now - (tonumber(char:GetAttribute("TheriLocalAt")) or -math.huge)
 	local open = st == 3 and age < (tonumber(char:GetAttribute("TheriFinisherRecover")) or 0.9)
