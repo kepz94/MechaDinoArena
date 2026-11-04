@@ -1,4 +1,4 @@
--- TheriPartsServer v1.0 (Mecha Dino Arena) — puts the Therizinosaurus' mecha parts on (server-built, every client sees them)
+-- TheriPartsServer v1.1 (Mecha Dino Arena) — puts the Therizinosaurus' mecha parts on (server-built, every client sees them)
 -- and builds their Lab card models. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 3 (MDA-243); the looks are Kepu's picks
 -- from docs/mockups/therizino_parts_options.html v0.1 (tools/mockup/therizino_parts_app.js buildLook, same numbers; Kepu
 -- 2026-11-04 11:07 "1-C, 3-A, 5-B, 12-C, 16-A, 18-C, 19-A"):
@@ -24,10 +24,23 @@
 -- Switches: script attribute TheriPartsServerEnabled (default true, read at start; false = no looks); per part
 --   TheriParts_<id>Enabled (default true, read on each apply). Diagnostics: script TheriPartsServerVersion,
 --   TheriPartsRestParts (rest CFrames loaded); character TheriPartsBuilt ("<id>=<pieces>,...").
+-- v1.1 (MDA-250, plan docs/plans/THERIZINO_PARTS_LOOKS_v2.0.md Task 2; Kepu 2026-11-04 14:13 picks from the redesign mockup
+--   docs/mockups/therizino_parts_redesign.html): while script attribute TheriPartsLooksV2Enabled is true (default) the looks
+--   come from ServerStorage.DinoArcade.TheriPartsLooksV2 1.0 (generated from the mockup): each piece at anchor.CFrame x
+--   mount frame x piece frame (positions x the model's scale), the style kit (stud = Plastic with Studs on every face, plain =
+--   SmoothPlastic, metal = Metal, neon = Neon in the part's area colour), shapes box -> Part, wedge -> WedgePart, cyl -> Part
+--   Cylinder (axis turned to the mockup's Y), ball -> Part Ball, cone -> 4 WedgeParts as a pyramid. A moving group is an
+--   invisible root Part "ZPartGroup_<name>" hung on a Weld "ZPartJoint_<name>" (Part0 = the anchor or the parent group's
+--   root, C0 = the pivot; attributes ZPartType / ZPartAxis / ZPartAmt / ZPartRestC0 / ZPartBuiltScale for TheriPartsAnim
+--   1.0; a Weld, not a Motor6D, because IdleAnimation adopts every Motor6D); its pieces are welded to the root. Film pieces
+--   start invisible (ZPartFilm). Beams "ZPartBeam_<n>" (rubber, straight) join two anchors. Model attribute ZPartLooks
+--   "v2"; Lab cards use the same build. Script attribute TheriPartsDetail: "full" (default) / "lite" (skips the pieces the
+--   data marks as detail: bolts, teeth, stripes). Missing module or switch false = the v1.0 looks.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 the redesigned looks (TheriPartsLooksV2)
 local RING_SEGMENTS = 10
 local function hex(h) return Color3.fromRGB(math.floor(h / 65536) % 256, math.floor(h / 256) % 256, h % 256) end
 local C = {
@@ -203,6 +216,159 @@ local function buildPart(model, id)
 	return m, n
 end
 
+-- v1.1: the redesigned looks (see the header) ------------------------------------------------------------------------------
+if script:GetAttribute("TheriPartsLooksV2Enabled") == nil then script:SetAttribute("TheriPartsLooksV2Enabled", true) end
+if script:GetAttribute("TheriPartsDetail") == nil then script:SetAttribute("TheriPartsDetail", "full") end
+local V2
+local function v2Data()
+	if V2 == nil then
+		V2 = false
+		pcall(function()
+			local arc = ServerStorage:FindFirstChild("DinoArcade")
+			local m = arc and arc:FindFirstChild("TheriPartsLooksV2")
+			if m then V2 = require(m) end
+		end)
+	end
+	return V2 or nil
+end
+local KIND_MAT = {stud = Enum.Material.Plastic, plain = Enum.Material.SmoothPlastic, metal = Enum.Material.Metal, neon = Enum.Material.Neon}
+local FACES = {"Top", "Bottom", "Front", "Back", "Left", "Right"}
+local function frameOf(t, i, sc) -- t[i .. i + 5] = x, y, z, rx, ry, rz (degrees); position x sc
+	return CFrame.new(t[i] * sc, t[i + 1] * sc, t[i + 2] * sc) * CFrame.Angles(math.rad(t[i + 3]), math.rad(t[i + 4]), math.rad(t[i + 5]))
+end
+local function v2Part(cls, size, cf, kit, glow, role, film)
+	local p = Instance.new(cls)
+	p.Size = size
+	p.CFrame = cf
+	local kind = kit[2]
+	p.Material = KIND_MAT[kind] or Enum.Material.SmoothPlastic
+	p.Color = kind == "neon" and glow or hex(kit[1])
+	local surf = kind == "stud" and Enum.SurfaceType.Studs or Enum.SurfaceType.Smooth
+	for _, f in ipairs(FACES) do p[f .. "Surface"] = surf end
+	p.CanCollide, p.CanQuery, p.CanTouch, p.Massless = false, false, false, true
+	p.CastShadow = kind ~= "neon"
+	if role and role ~= "" then p:SetAttribute("ZPartRole", role) end
+	p:SetAttribute("ZPartBaseColor", p.Color)
+	if film then
+		p.Transparency = 1
+		p:SetAttribute("ZPartFilm", true)
+	end
+	return p
+end
+local function weldTo(p, part0)
+	local w = Instance.new("WeldConstraint")
+	w.Part0, w.Part1 = part0, p
+	w.Parent = p
+end
+local function buildV2(model, id)
+	local D = v2Data()
+	local L = D and D.LOOKS[id]
+	if not L then return buildPart(model, id) end
+	local sc = model:GetScale()
+	local lite = script:GetAttribute("TheriPartsDetail") == "lite"
+	local m = Instance.new("Model")
+	m.Name = "ZPart_" .. id
+	m:SetAttribute("ZPartLooks", "v2")
+	m:SetAttribute("ZPartBuiltScale", sc)
+	local mounts = {}
+	for i, mt in ipairs(L.mounts) do
+		local anchor = find(model, mt[1])
+		if anchor then mounts[i] = {anchor = anchor, cf = anchor.CFrame * frameOf(mt, 2, sc)} end
+	end
+	-- groups: an invisible root on a Weld (parents come before their children in the data)
+	local roots = {}
+	for _, g in ipairs(L.groups) do
+		local mt = mounts[g[2]]
+		if mt then
+			local pivot = mt.cf * frameOf(g, 3, sc)
+			local root = Instance.new("Part")
+			root.Name = "ZPartGroup_" .. g[1]
+			root.Size = Vector3.one * 0.1 * sc
+			root.Transparency = 1
+			root.CanCollide, root.CanQuery, root.CanTouch, root.Massless = false, false, false, true
+			root.CFrame = pivot
+			root:SetAttribute("ZPartGroup", g[1])
+			local part0 = (g[12] ~= "" and roots[g[12]]) or mt.anchor
+			local w = Instance.new("Weld")
+			w.Name = "ZPartJoint_" .. g[1]
+			w.Part0, w.Part1 = part0, root
+			w.C0 = part0.CFrame:ToObjectSpace(pivot)
+			w.C1 = CFrame.identity
+			w:SetAttribute("ZPartType", g[9])
+			w:SetAttribute("ZPartAxis", g[10])
+			w:SetAttribute("ZPartAmt", g[11])
+			w:SetAttribute("ZPartRestC0", w.C0)
+			w:SetAttribute("ZPartBuiltScale", sc)
+			w:SetAttribute("ZPartPartId", id)
+			root.Parent = m
+			w.Parent = root
+			roots[g[1]] = root
+		end
+	end
+	local n = 0
+	for _, pc in ipairs(L.pieces) do
+		local mt = mounts[pc[1]]
+		local kit = D.KIT[pc[12]]
+		local flags = pc[15]
+		if mt and kit and not (lite and flags % 2 == 1) then
+			local cf = mt.cf * frameOf(pc, 6, sc)
+			local shape, sx, sy, sz = pc[2], pc[3] * sc, pc[4] * sc, pc[5] * sc
+			local film = flags >= 2
+			local made = {}
+			if shape == "wedge" then
+				made[1] = v2Part("WedgePart", Vector3.new(sx, sy, sz), cf, kit, L.glow, pc[13], film)
+			elseif shape == "cyl" then
+				local p = v2Part("Part", Vector3.new(math.max(0.02, sy), math.max(0.02, sx), math.max(0.02, sx)), cf * CFrame.Angles(0, 0, math.rad(90)), kit, L.glow, pc[13], film)
+				p.Shape = Enum.PartType.Cylinder
+				made[1] = p
+			elseif shape == "ball" then
+				local p = v2Part("Part", Vector3.one * sx, cf, kit, L.glow, pc[13], film)
+				p.Shape = Enum.PartType.Ball
+				made[1] = p
+			elseif shape == "cone" then -- 4 wedges: back faces on the axis, slopes facing out, tip at +Y
+				for k = 0, 3 do
+					made[#made + 1] = v2Part("WedgePart", Vector3.new(sx, sy, sx / 2), cf * CFrame.Angles(0, k * math.pi / 2, 0) * CFrame.new(0, 0, -sx / 4), kit, L.glow, pc[13], film)
+				end
+			else
+				made[1] = v2Part("Part", Vector3.new(math.max(0.02, sx), math.max(0.02, sy), math.max(0.02, sz)), cf, kit, L.glow, pc[13], film)
+			end
+			for _, p in ipairs(made) do
+				p.Name = (pc[13] ~= "" and pc[13] or "Piece") .. "_" .. mt.anchor.Name
+				p.Parent = m
+				weldTo(p, (pc[14] ~= "" and roots[pc[14]]) or mt.anchor)
+				n += 1
+			end
+		end
+	end
+	for i, b in ipairs(L.beams or {}) do
+		local a0, a1 = find(model, b.a0), find(model, b.a1)
+		if a0 and a1 then
+			local t0, t1 = Instance.new("Attachment"), Instance.new("Attachment")
+			t0.Name, t1.Name = "ZPartBeamA_" .. i, "ZPartBeamB_" .. i
+			t0.Position = Vector3.new(b.p0[1], b.p0[2], b.p0[3]) * sc
+			t1.Position = Vector3.new(b.p1[1], b.p1[2], b.p1[3]) * sc
+			t0.Parent, t1.Parent = a0, a1
+			local beam = Instance.new("Beam")
+			beam.Name = "ZPartBeam_" .. i
+			beam.Attachment0, beam.Attachment1 = t0, t1
+			beam.Color = ColorSequence.new(hex(D.KIT.rubber[1]))
+			beam.Width0, beam.Width1 = b.width * sc, b.width * sc
+			beam.FaceCamera = true
+			beam.LightInfluence = 1
+			beam.Segments = 1
+			beam.Parent = m
+			-- the attachments live on the body parts: remove them with the look
+			m.Destroying:Connect(function() t0:Destroy() t1:Destroy() end)
+		end
+	end
+	m:SetAttribute("ZPartId", id)
+	m.Parent = model
+	return m, n
+end
+local function builder()
+	return (script:GetAttribute("TheriPartsLooksV2Enabled") ~= false and v2Data()) and buildV2 or buildPart
+end
+
 local function apply(char)
 	if not char.Parent then return end
 	local isT = enabled and char:GetAttribute("Species") == "Therizino"
@@ -212,7 +378,7 @@ local function apply(char)
 		local old = char:FindFirstChild("ZPart_" .. p.id)
 		if want then
 			if not old then
-				local _, n = buildPart(char, p.id)
+				local _, n = builder()(char, p.id) -- v1.1
 				table.insert(built, p.id .. "=" .. n)
 			else
 				table.insert(built, p.id .. "=" .. #old:GetChildren())
@@ -244,7 +410,7 @@ for _, p in ipairs(PARTS) do
 	fn.Name = "BuildPreview_" .. p.id
 	fn.OnInvoke = function(model)
 		if typeof(model) ~= "Instance" then return nil end
-		return (buildPart(model, p.id))
+		return (builder()(model, p.id)) -- v1.1
 	end
 	fn.Parent = script
 end
