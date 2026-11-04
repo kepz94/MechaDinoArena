@@ -1,4 +1,4 @@
--- TheriMovesServer v1.0 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.1 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -46,12 +46,17 @@
 --   TheriMovesModeRulesEnabled, TheriMovesSquadEnabled (default true each, read at each use).
 -- Diagnostics: script TheriMovesServerVersion, TheriMovesHits, TheriMovesSlows, TheriMovesSquadSkips, TheriMovesMode,
 --   TheriMovesTraps (alive, all owners).
+-- v1.1 (MDA-246 Studio check: a raptor bot 22 studs straight ahead took no blade): the blade test measured from the root's
+--   height, and a smaller dino's hitboxes sit lower than the therizino's root, so a blade passed over it. A blade's point is
+--   now taken at the target root's height (flat fan, as the mockup draws it). Switch: script attribute
+--   TheriMovesFlatBladesEnabled (default true, read at each fire; false = 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 flat feather blades
 local HOOK_SPEED, HOOK_GAP = 140, 5
 local BLADE_WIDTH = 1.5
 local FIELD_TICK = 0.5
@@ -63,6 +68,7 @@ for _, k in ipairs({"TheriMovesServerEnabled", "TheriMoves_zhookEnabled", "Theri
 	"TheriMoves_zsnareEnabled", "TheriMovesModeRulesEnabled", "TheriMovesSquadEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
+if script:GetAttribute("TheriMovesFlatBladesEnabled") == nil then script:SetAttribute("TheriMovesFlatBladesEnabled", true) end -- v1.1
 local function on(id)
 	return script:GetAttribute("TheriMovesServerEnabled") ~= false and script:GetAttribute("TheriMoves_" .. id .. "Enabled") ~= false
 end
@@ -448,8 +454,10 @@ featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		local mr = rootOf(m)
 		local blades = 0
 		for _, d in ipairs(dirs) do
-			local along = math.clamp((mr.Position - origin):Dot(d), 0, range)
-			if gap(m, origin + d * along) <= BLADE_WIDTH then blades += 1 end
+			local along = math.clamp(flat(mr.Position - origin):Dot(d), 0, range)
+			local pt = origin + d * along
+			if script:GetAttribute("TheriMovesFlatBladesEnabled") ~= false then pt = Vector3.new(pt.X, mr.Position.Y, pt.Z) end -- v1.1
+			if gap(m, pt) <= BLADE_WIDTH then blades += 1 end
 		end
 		if blades > 0 then
 			for _ = 1, blades do damage(char, player, m, dmg, "therifeather", t) end
