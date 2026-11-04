@@ -1,4 +1,4 @@
--- SkillTree v1.63 (1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.64 (1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2314,6 +2314,13 @@ if SkillTree.THERI_PARTS and SkillTree.PATHS.zclock and SkillTree.THERI_CLOCK_PA
 	SkillTree.PATHS.zclock.steps = {
 		"Always on while slotted (no button): run 40% faster", "Cut taps come 30% faster too",
 		"Nothing extra yet (it's always on now)", "Slows don't work on you"}
+end
+
+-- v1.64 (grapple lock-on, Kepu 2026-11-04 pick "A"; plan docs/plans/THERIZINO_GRAPPLE_LOCKON_v1.0.md, MDA-260): with
+-- SkillTree.THERI_GRAPPLE_LOCKON (default true) the zgrapple step 1 text says hold to lock, let go to zip. false = 1.63.
+SkillTree.THERI_GRAPPLE_LOCKON = true
+if SkillTree.THERI_PARTS and SkillTree.PATHS.zgrapple and SkillTree.THERI_GRAPPLE_LOCKON then
+	SkillTree.PATHS.zgrapple.steps[1] = "Button: hold to lock onto the furthest tree or rock ahead (up to 90 studs), let go to zip there. Nothing ahead: it latches in the air. Recharges in 12 s"
 end
 
 return SkillTree

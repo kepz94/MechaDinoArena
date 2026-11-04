@@ -1,4 +1,4 @@
--- SkillTreeTheriParts.spec v1.2 (1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
+-- SkillTreeTheriParts.spec v1.3 (1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.61 (plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheriParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-04 "Two builds"): zhook / zfeather / zharvest / zsnare live; zgrapple / zdeflect / zclock "soon".
@@ -25,6 +25,7 @@ eq("THERI_PARTS_B2_LIVE", ST.THERI_PARTS_B2_LIVE, true) -- v1.1
 eq("THERI_PARTS_B2_SOON", ST.THERI_PARTS_B2_SOON, false) -- v1.1
 eq("THERI_GRAPPLE_V2", ST.THERI_GRAPPLE_V2, true) -- v1.2
 eq("THERI_CLOCK_PASSIVE", ST.THERI_CLOCK_PASSIVE, true) -- v1.2
+eq("THERI_GRAPPLE_LOCKON", ST.THERI_GRAPPLE_LOCKON, true) -- v1.3
 local ROWS = {
 	zhook = {"Reaper's Hook", "attack", false}, zfeather = {"Feather Barrage", "attack", false},
 	zharvest = {"Harvest Field", "attack", false}, zsnare = {"Snare Wires", "eng", false},
@@ -96,8 +97,8 @@ chk("zclock", "clockTime", {3, 4, 5, 5}); chk("zclock", "clockRunMul", {1.4, 1.4
 chk("zclock", "clockTapMul", {1, 0.7, 0.7, 0.7}); chk("zclock", "clockNoSlow", {false, false, false, true})
 chk("zclock", "clockCooldown", {22, 22, 18, 18})
 local TEXT2 = {
-	zgrapple = {"Button: zip to the yellow marker, up to 90 studs. With nothing to grab it latches in the air. Recharges in 12 s",
-		"Reaches 110 studs", "Reaches 130 studs; recharges in 10 s", "2 charges"}, -- v1.2
+	zgrapple = {"Button: hold to lock onto the furthest tree or rock ahead (up to 90 studs), let go to zip there. Nothing ahead: it latches in the air. Recharges in 12 s",
+		"Reaches 110 studs", "Reaches 130 studs; recharges in 10 s", "2 charges"}, -- v1.2; v1.3 step 1
 	zdeflect = {"Button: claws spin in front for 1 s and block darts. Recharges in 16 s", "Spin 1.5 s; blocks boulders and cannon shots too",
 		"Spin 2 s; recharges in 13 s", "Blocked shots bounce back at the shooter"},
 	zclock = {"Always on while slotted (no button): run 40% faster", "Cut taps come 30% faster too",

@@ -1,4 +1,4 @@
--- MechaButtons v1.31 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.32 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -246,6 +246,13 @@
 --   "zclock" button whose character has TheriClockPassive true shows ON: ring speed yellow (#ffc21a), "OVERCLOCK" with "ON"
 --   under it in yellow (raised a little so a pull label below stays clear), no cooldown shade, and a tap does nothing (no request). Switch: script attribute
 --   MechaButtonsTheriClockPassiveEnabled (default true, read at each draw / press; false = 1.30: the timed button).
+-- v1.32 (grapple lock-on, Kepu 2026-11-04 15:53 + pick "A"; plan docs/plans/THERIZINO_GRAPPLE_LOCKON_v1.0.md, MDA-260; with
+--   TheriGrappleZip 1.2): "zgrapple" becomes a hold-to-aim part (aim kind "zgrapple"): key / touch down sets the character's
+--   TheriGrappleHolding true (TheriGrappleZip shows the lock); key / touch up fires DinoTheriGrappleRequest(stamp, dir) with
+--   dir from the character's BindableFunction TheriGrapplePick (else the camera look) and sets TheriGrappleHolding false. A
+--   quick tap does the same at once; on a pull button a tap with no aim yet still fires. Diagnostics: MechaGrappleFired
+--   (count). Switch: script attribute MechaButtonsGrappleHoldEnabled (default true, read at each press; false = 1.31: a press
+--   fires along the camera look).
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -256,6 +263,8 @@ VERSION = "1.28" -- v1.28 teno leap on JUMP, Shield Armor
 VERSION = "1.29" -- v1.29 therizino parts build 1
 VERSION = "1.30" -- v1.30 therizino parts build 2
 VERSION = "1.31" -- v1.31 passive Overclock button (ON)
+VERSION = "1.32" -- v1.32 grapple hold-to-lock
+if script:GetAttribute("MechaButtonsGrappleHoldEnabled") == nil then script:SetAttribute("MechaButtonsGrappleHoldEnabled", true) end -- v1.32
 if script:GetAttribute("MechaButtonsTheriClockPassiveEnabled") == nil then script:SetAttribute("MechaButtonsTheriClockPassiveEnabled", true) end -- v1.31
 local SPEED_YELLOW = Color3.fromRGB(255, 194, 26) -- v1.31
 local function clockPassive(id) -- v1.31
@@ -361,6 +370,7 @@ end
 -- v1.20: parts that use hold-to-aim
 local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off
 	return id == "screech" or (TETHER_BTN and id == "tether" and script:GetAttribute("MechaTetherAimMode") == false)
+		or (id == "zgrapple" and script:GetAttribute("MechaButtonsGrappleHoldEnabled") ~= false) -- v1.32
 end
 local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
 local aim -- v1.8: {slot, t0, input, gesture, part}
@@ -381,6 +391,11 @@ local function aimRange()
 	end
 end
 local function aimCancel()
+	if aim and aim.kind == "zgrapple" then -- v1.32: the grapple lock ends
+		aim = nil
+		char:SetAttribute("TheriGrappleHolding", false)
+		return
+	end
 	if aim and aim.part then aim.part:Destroy() end
 	local wasTether = aim and aim.kind == "tether" -- v1.20
 	aim = nil
@@ -389,6 +404,11 @@ end
 local function aimStart(n, input, isGesture)
 	aimCancel()
 	if not hrp then return end
+	if slotPart(n) == "zgrapple" then -- v1.32: hold = TheriGrappleZip shows the lock
+		aim = {slot = n, t0 = os.clock(), input = input, gesture = isGesture == true, kind = "zgrapple"}
+		char:SetAttribute("TheriGrappleHolding", true)
+		return
+	end
 	if TETHER_BTN and slotPart(n) == "tether" then -- v1.20: the landing circle
 		local splash = math.max(1, tonumber(char:GetAttribute("TetherSplash")) or 8)
 		local disc = Instance.new("Part")
@@ -435,6 +455,20 @@ local function aimStart(n, input, isGesture)
 end
 local function aimRelease()
 	if not aim then return end
+	if aim.kind == "zgrapple" then -- v1.32: fire toward the lock
+		local pickFn = char:FindFirstChild("TheriGrapplePick")
+		local ok, dir = false, nil
+		if pickFn and pickFn:IsA("BindableFunction") then ok, dir = pcall(function() return pickFn:Invoke() end) end
+		aimCancel()
+		local cam = workspace.CurrentCamera
+		if not (ok and typeof(dir) == "Vector3") then dir = cam and cam.CFrame.LookVector or nil end
+		local r = ReplicatedStorage:FindFirstChild("DinoTheriGrappleRequest")
+		if r and dir then
+			r:FireServer(workspace:GetServerTimeNow(), dir)
+			char:SetAttribute("MechaGrappleFired", (char:GetAttribute("MechaGrappleFired") or 0) + 1)
+		end
+		return
+	end
 	if aim.kind == "tether" then -- v1.20: fire at the circle
 		local pos = aim.landPos
 		aimCancel()
@@ -580,6 +614,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if not aim then return end
 	if not char.Parent or not hum or hum.Health <= 0 or slotPart(aim.slot) ~= aim.kind then aimCancel() return end -- v1.20: aim.kind
 	if aim.kind == "tether" then tetherStep(dt) return end -- v1.20
+	if aim.kind == "zgrapple" then return end -- v1.32: TheriGrappleZip draws the lock
 	local len = math.max(0.1, aimRange())
 	local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
 	if look.Magnitude < 1e-3 then return end
@@ -1355,7 +1390,14 @@ local function endGesture()
 	local chosen = pulled and g.n + 2 or g.n
 	if aimedPart(slotPart(chosen)) then -- v1.8: the release fires the aimed Screech (v1.20: + tether)
 		char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(chosen, slotPart(chosen)))
-		if aim and aim.slot == chosen then aimRelease() else aimCancel() end
+		if aim and aim.slot == chosen then
+			aimRelease()
+		elseif slotPart(chosen) == "zgrapple" then -- v1.32: a tap with no aim yet still fires
+			aimStart(chosen, nil, true)
+			aimRelease()
+		else
+			aimCancel()
+		end
 		return
 	end
 	aimCancel()
