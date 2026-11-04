@@ -181,3 +181,17 @@ each RenderStepped. Diagnostics: script `TheriPartsAnimVersion`, `TheriPartsAnim
    accepted risk.
 5. **Mockup → game drift.** The exporter takes the numbers from the page itself, with the spec plus side-by-side captures
    in Task 2.
+
+## Final picks and build notes (Kepu 2026-11-04 14:49, after "Move some off the arms")
+Hook-B **Reaper Crane** (back), Feathers-A **Blade Wings** (both forearms, the only look on the forearms), Harvest-B
+**Reaper Sleeves** (claws + wrist cuffs only), Grapple-B **Belly Winch**, Deflect-B **Mane Rotor** (neck collar + chest
+shield film), Overclock-A **Piston Legs**, Snare-A **Tail Spool Rig**. These replace the gauntlet / pile bunker / umbrella
+rows in the map above:
+- zhook: `boom` swings, `claw` + `prong_1..3` open; the chain leaves the `jib` (pulley); the `hookhead` claw hides and a
+  copy rides the chain tip (TheriMovesFX 1.2). Task 5 (arm aim pose) is not needed: the crane keeps TheriPose 1.6's
+  HOOK_AIM (MDA-253).
+- zharvest: no moving groups.
+- zdeflect: `collar` spins (Y), `fin_1..8` open; the shield `film` shows at 0.35 opacity; no FX rotors.
+- zfeather: the wing blades stay shown after a fire (they are the wings in the mockup) and quiver while open.
+- Worst 4-slot piece count: 278 (feather + harvest + clock + snare), over the 260 target; `TheriPartsDetail = "lite"` is the
+  fallback if the phone test stutters.
