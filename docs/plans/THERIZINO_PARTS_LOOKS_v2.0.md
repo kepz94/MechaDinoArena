@@ -107,7 +107,8 @@ Group roots carry a Weld named `ZPartJoint_<group>` (Part0 = anchor, Part1 = gro
 `ZPartBeam_<n>` (rubber colour, width × scale, Segments 6, CurveSize0 −0.6) between two Attachments. Lab cards use the same
 build.
 - [ ] Add the material kit and the shape mapping (Global constraints).
-- [ ] Add `buildV2(model, id)` next to `buildPart` and choose between them by `TheriPartsLooksV2Enabled`.
+- [ ] Add `buildV2(model, id)` next to `buildPart` and choose between them by `TheriPartsLooksV2Enabled`. Script
+  attribute `TheriPartsDetail` ("full" default / "lite" skips pieces tagged `detail` in the data: bolts, teeth, stripes).
 - [ ] Install, then check in Studio Play: all 7 slotted, the counts in `TheriPartsBuilt`, each look captured from the Player
   camera and compared with the mockup's Player camera / close-up.
 - [ ] Commit.
@@ -165,11 +166,12 @@ each RenderStepped. Diagnostics: script `TheriPartsAnimVersion`, `TheriPartsAnim
 - [ ] Add the VERSIONS / ATTRIBUTES rows.
 - [ ] Report with Added / Removed / Next, and wait for "Publish". Kepu checks on his phone after the publish.
 
-## Red-team (draft, waiting on Kepu)
+## Red-team (synthesized; Kepu 2026-11-04 "Full detail")
 1. **Phone frame rate.** 4 slots can put about 260 extra pieces and about 40 moving joints on one therizino, and several
    therizinos in a server multiply that. Mitigation: TheriPartsAnim only updates groups while a move plays, and a
-   `TheriPartsDetail = "lite"` switch drops bolts, teeth and stripes (about 30% of the pieces). Kepu's phone test after
-   the publish decides whether lite becomes the default.
+   `TheriPartsDetail = "lite"` switch drops bolts, teeth and stripes (about 30% of the pieces). Kepu's pick: **full detail** by
+   default (the mockup); `lite` stays a switch to flip if the phone test stutters (Task 2 builds both; Task 6 notes the
+   piece counts of each).
 2. **Other players seeing the motion.** Weld C0 is changed locally on every client, the way IdleAnimation already poses
    joints. The rule says no second player, so Task 3 checks it with a server-made therizino dummy whose stamps the server
    sets, which the test client must see move.
