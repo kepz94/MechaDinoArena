@@ -70,6 +70,7 @@ ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
 <main>
   <header>
     <h1><span>Teno</span> tail grab &amp; leap landing · v0.1</h1>
+    <p class="lede" style="color:#7dff9a"><b>Picked (Kepu 2026-11-03):</b> A · Over the Top and L1 · Shove Clear.</p>
     <p class="lede">Your report: the toss lags, every dino gets the same throw, and dinos glitch when you land on them. Below are 3 ways for the tail to really grab a dino <b>in front</b> or <b>behind</b> and throw it, and 2 ways to handle landing a leap <b>on top</b> of a dino. Your Clamp Tail (look A) is on the tail tip. Pick one of each.</p>
   </header>
   <div class="row" role="group" aria-label="Move"><span class="lbl">Move</span>
@@ -102,7 +103,7 @@ ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
       <li><b>Toss lag:</b> the server moves the dino every frame, but your screen only gets the new spot about 30 times a second, so it steps instead of flying. During the 0.5 s carry it doesn't move at all.</li>
       <li><b>Snap back:</b> the grab stuns the bot, and the bot's "lie down" code remembers where it was grabbed. When the stun ends it gets up <i>there</i>, under the ground, about 75 studs from where it landed.</li>
       <li><b>Sinks first:</b> that same lie-down starts before the tail catches it, so the dino sinks into the ground for 0.3 s first.</li>
-      <li><b>One throw:</b> only dinos behind or beside the hips can be grabbed, and every throw goes straight ahead.</li>
+      <li><b>One throw:</b> a dino on any side can already be grabbed, but the tail plays the same lift and every throw goes straight ahead.</li>
       <li><b>Leap landing:</b> the landing check doesn't count a dino as ground, so if you land on one you stand on its back with no slam. The slam only fires when you slide off (0.6 s later), then the dino lies down and gets up inside your body and gets shoved around.</li>
     </ul>
     <p class="note">The fixes for these go in with whichever options you pick: the dino's flight is drawn on every screen (smooth), it gets up where it landed, and it never sinks first. Look and feel only here; real distances and timings get tested in Studio.</p>
@@ -583,7 +584,7 @@ function drawUI() {
   const o = OPTS()[opt];
   $("info").innerHTML = `<div class="kind" style="color:${mode === "grab" ? "#f05a4f" : "#ffd34d"}">${mode === "grab" ? "TAIL GRAB & FLING · R" : "HYDRAULIC LEAP · JUMP"}</div>
     <h2 style="margin-top:4px">${o.name}${o.rec ? ' <span style="color:#7dff9a;font-size:15px">my pick</span>' : ""}</h2><p>${o.why}</p><p class="note"><b>Trade-off:</b> ${o.trade}</p>` +
-    (mode === "grab" ? `<p class="note">Same numbers as now: 8 damage and 1 s stun on landing, thrown 45 studs (II). New: a dino in front within reach can be grabbed too (now only behind or beside your hips).</p>` :
+    (mode === "grab" ? `<p class="note">Same numbers as now: 8 damage and 1 s stun on landing, thrown 45 studs (II). Who can be grabbed stays the same (any side, within reach).</p>` :
       `<p class="note">Same numbers as now: 10 damage in 12 studs, stun 0.5 s (III). This only changes what happens when you come down on top of a dino.</p>`);
 }
 document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { mode = b.dataset.mode; opt = 0; view = "three"; syncView(); drawUI(); resetScene(); });
