@@ -158,8 +158,8 @@
 --     jumper stands on a dino. 1.6 only counted the ground (Bots and players left out), so it stood on the dino's back with
 --     no slam until it slid off. The ray also looks LEAP_LOOKAHEAD (0.15) s of the fall ahead (+ falling speed x 0.15), so
 --     the slam and the shove start just before the feet touch the dino. Switch: script attribute TenoMovesLeapOnDinoEnabled
---     (default true, read at each leap).
---     Diagnostic: character TenoLeapLandedOn ("ground" / "dino").
+--     (default true, read at each leap). On a dino the slam's reach is measured from where the root will stand on it (the
+--     ray's hit + h0) and the dino under it is always hit. Diagnostic: character TenoLeapLandedOn ("ground" / "dino").
 --   * shove: each target hit by the slam whose root lies under the jumper's body (root space: |X| < half the jumper's width +
 --     half the target's width along it, |Z| < half the jumper's length) is moved sideways to the nearer side (root-space X sign,
 --     0 -> right) until its near edge is LEAP_SHOVE_GAP (1.5) studs past the body. A bot: TenoGrabHeldUntil = now +
@@ -1357,7 +1357,7 @@ local function onDino(char, set, h0, ahead)
 	for _, o in ipairs(origins) do
 		local hit = workspace:Raycast(o, Vector3.new(0, -(h0 + 2 + (ahead or 0)), 0), dinoRay)
 		local m = hit and ownerModel(hit.Instance)
-		if m and set[m] then return true end
+		if m and set[m] then return true, m, hit.Position end
 	end
 	return false
 end
@@ -1417,7 +1417,7 @@ local function jumpSlamV17(char)
 	char:SetAttribute("TenoLeapUntil", t0 + 3)
 	local h0 = r0.Position.Y - groundY(r0.Position, r0.Position.Y - 3)
 	task.spawn(function()
-		local w0, left, landedOn = os.clock(), false, "ground"
+		local w0, left, landedOn, dinoHit, dinoY = os.clock(), false, "ground", nil, nil
 		while char.Parent and hum.Parent and hum.Health > 0 and os.clock() - w0 < 3 do
 			local rr = rootOf(char)
 			if not rr then break end
@@ -1429,7 +1429,9 @@ local function jumpSlamV17(char)
 			elseif script:GetAttribute("TenoMovesLeapOnDinoEnabled") ~= false and rr.AssemblyLinearVelocity.Y <= 1 then
 				local set = {}
 				for _, m in ipairs(candidates(char)) do set[m] = true end
-				if next(set) and onDino(char, set, h0, math.max(0, -rr.AssemblyLinearVelocity.Y) * LEAP_LOOKAHEAD) then landedOn = "dino" break end
+				local onIt, dm, dp = false, nil, nil
+				if next(set) then onIt, dm, dp = onDino(char, set, h0, math.max(0, -rr.AssemblyLinearVelocity.Y) * LEAP_LOOKAHEAD) end
+				if onIt then landedOn, dinoHit, dinoY = "dino", dm, dp.Y break end
 			end
 			RunService.Heartbeat:Wait()
 		end
@@ -1443,9 +1445,11 @@ local function jumpSlamV17(char)
 		local dmg, radius, stunT = num(char, "TenoLeapDamage", 10), num(char, "TenoLeapRadius", 12), num(char, "TenoLeapStun", 0)
 		local n, arcSkips, shoves = 0, 0, 0
 		local shoveOn = script:GetAttribute("TenoMovesLeapShoveEnabled") ~= false
+		local slamPos = root.Position -- on a dino: where the root will be standing on it (the look-ahead fires above it)
+		if dinoY then slamPos = Vector3.new(slamPos.X, math.min(slamPos.Y, dinoY + h0), slamPos.Z) end
 		for _, m in ipairs(candidates(char)) do
 			local mr = rootOf(m)
-			local near = gap(m, root.Position) <= radius and math.abs(mr.Position.Y - root.Position.Y) <= DY
+			local near = m == dinoHit or (gap(m, slamPos) <= radius and math.abs(mr.Position.Y - slamPos.Y) <= DY)
 			if near and not inLeapArc(char, root, mr) then near = false; arcSkips += 1 end
 			if near then
 				n += 1
