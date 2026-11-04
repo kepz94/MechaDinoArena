@@ -1,6 +1,6 @@
 # Mecha Dino Arena v1.0 — Dilo kit (playable ranged spitter: Bite + Spit Dart, Cobra Leap on JUMP)
 
-**Goal:** the Dilo is a pickable 70 HP ranged spitter: a tap of ATTACK is a quick bite up close; holding ATTACK 0.4 s and letting go spits a fast straight venom dart (soft aim); JUMP is a forward Cobra Leap with the frill flared.
+**Goal:** the Dilo is a pickable 70 HP ranged spitter: pressing ATTACK bites up close at once; keeping it held 0.4 s and letting go also spits a fast venom dart (soft aim, near-sure hit); JUMP is a forward Cobra Leap with the frill flared.
 **Intent (Kepu 2026-11-02 / 11-03):** role "Ranged spitter", size "Raptor size (~26)", model E Bruiser Face (DiloModelData 1.0, live display v359) · picks "C and J1" from `docs/mockups/dilo_kit_options_v0.1.html` (artifact DpirXAuqWz7t4tEyghKJpi) · health "70 HP" · dart "Weaker dart" (6 + venom 2/s for 3 s) · leap "No refill just like the Raptor" (plain JUMP with the raptor's 0.5 s cooldown, no charges).
 **Chosen direction:** attack C · Bite + Spit Dart, jump J1 · Cobra Leap (mockup v0.1; its source with the key poses and timings: `tools/dilo_kit_mockup/app.js`, rebuilt with `node tools/dilo_kit_mockup/build.js`).
 **Architecture:** the therizino playable pattern (THERIZINO_KIT_v1.0). Numbers are model attributes (DiloModelData 1.1). The attack is a new server + input pair (DiloAttackServer / DiloAttackTest) built from TheriAttackServer / TheriAttackTest's request → checks → timed resolve pattern; the dart uses the Goo Blob Shooter's soft-aim rule (HerreraMovesServer 1.2). The leap reuses JumpServer / JumpTest exactly like the raptor (JumpEnabled, JumpCooldown 0.5, no charges, no landing slam). Poses are a DiloPose module layered in IdleAnimation like TheriPose; effects in DiloFX.
@@ -32,12 +32,12 @@ DinoModelBuilder, JumpServer / JumpTest (reused through attributes), BiteServer 
 ## Deterministic map
 | State | Condition | Result |
 |---|---|---|
-| Tap | ATTACK pressed and released before DiloHoldTime; alive, not menu / stunned / dazed / pinned; ≥ DiloMinGap since the last bite | bite: at press + DiloBiteDelay every allowed target in DiloBiteReach x scale and DiloBiteCone in front takes DiloBiteDamage x takenMul (shield blocks) |
-| Tap too soon | < DiloMinGap | refused "cooldown" |
+| Press | ATTACK pressed; alive, not menu / stunned / dazed / pinned; ≥ DiloMinGap since the last bite | bite (on press, Kepu 2026-11-03 "Bite on press"): at press + DiloBiteDelay every allowed target in DiloBiteReach x scale and DiloBiteCone in front takes DiloBiteDamage x takenMul (shield blocks) |
+| Press too soon | < DiloMinGap | no bite ("cooldown"); the hold can still arm the dart |
 | Hold | held ≥ DiloHoldTime | armed (frill opens, ring full); no damage yet |
 | Release armed | dart cooldown ready | dart: target = closest allowed enemy within DiloAssistAngle of the facing and DiloAssistMax x scale; else straight ahead to DiloDartRange x scale. Hit at release + distance / speed if the target is still within 4 x scale studs of the predicted point: DiloDartDamage + venom (DiloVenomDps per second for DiloVenomTime, refreshed by a new dart, no stacking; ticks skipped while shielded) |
-| Release armed, on cooldown | < DiloDartCooldown since the last dart | refused "dartCooldown" (no bite) |
-| Release before armed | < DiloHoldTime | it was a tap (bite row) |
+| Release armed, on cooldown | < DiloDartCooldown since the last dart | refused "dartCooldown" (the press's bite already happened) |
+| Release before armed | < DiloHoldTime | nothing more (the bite already fired on the press) |
 | Stunned / menu / pinned / dead while held or in flight | any | hold cancelled (no dart); a dart already in flight still lands |
 | Squadmate / mode-protected / shielded | SquadRules / ModeRules / EnergyShieldUntil | not a target / no damage (TheriAttackServer rules) |
 | Back Plating | target with PlatingRearMul, attacker root (bite) or the dart's start point (dart) behind it | x PlatingRearMul (BoneCrest.plating), as every other attack |
@@ -77,6 +77,7 @@ Dart (green glowing glob + trail) from the mouth along DiloDartFrom → DiloDart
 VERSIONS / ATTRIBUTES rows; Play checks of every map row on a held bot; regression of the other six dinos; captures in docs/reference/dilo/.
 
 ## Red-team (Phase 4.5) — strongest challenges and proposed answers
+Kepu's answers (2026-11-03): item 2 "Bite on press" (bite fires on the press; a held press also arms the dart: bite + dart); item 1 "Soft aim, near-sure hit" (kept as written). Items 3-5 stand with their mitigations.
 1. **A dart that homes on the soft-aim target always hits.** With a 120 studs/s dart and the server deciding the hit at arrival, a target that keeps running sideways is still hit if it stays within 4 x scale studs of the predicted point. Proposed: keep it (it matches "no aim mode" on phones); the dodge window is the 0.4 s hold + flight time. Accepted risk unless Kepu wants a miss chance.
 2. **Tap vs hold on one button can feel laggy.** The bite only fires on release before 0.4 s, so every bite is delayed by the press length. Proposed: the bite fires on press (like every other ATTACK) and holding past 0.4 s ALSO arms the dart — so a hold = bite + dart. Needs Kepu's call: "bite on press" (snappier, bite + dart combo) or "bite on release" (mockup behaviour).
 3. **SkillEffects' leap writer may rewrite the dilo's jump numbers** (it wrote the therizino's to 0 before 1.38). Mitigation: Task 3 checks it in Play and adds a guard only if needed.
