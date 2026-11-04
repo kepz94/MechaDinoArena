@@ -363,11 +363,12 @@ function numberPop(p, n, style) { // style: "hit" (white / yellow), "venom" (sma
   addFx(s, ven ? 0.8 : 0.95, (o, u, dt) => { o.position.y += (14 - u * 22) * dt; o.position.x += vx * dt; const pop = u < 0.12 ? E.back(u / 0.12) : 1; o.scale.set(base * pop, base * 0.5 * pop, 1); o.material.opacity = u > 0.65 ? (1 - u) / 0.35 : 1; });
 }
 function textTag(p, text, color, life) {
-  const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
-  x.fillStyle = "rgba(10,20,14,.78)"; const w = 200; x.beginPath(); x.roundRect ? x.roundRect(128 - w / 2, 8, w, 48, 24) : x.rect(128 - w / 2, 8, w, 48); x.fill();
-  x.font = `800 30px "Trebuchet MS", system-ui, sans-serif`; x.textAlign = "center"; x.fillStyle = color; x.fillText(text, 128, 43);
+  const c = document.createElement("canvas"); c.width = 320; c.height = 64; const x = c.getContext("2d");
+  x.font = `800 28px "Trebuchet MS", system-ui, sans-serif`; const w = Math.min(310, x.measureText(text).width + 36);
+  x.fillStyle = "rgba(10,20,14,.78)"; x.beginPath(); x.roundRect ? x.roundRect(160 - w / 2, 8, w, 48, 24) : x.rect(160 - w / 2, 8, w, 48); x.fill();
+  x.textAlign = "center"; x.fillStyle = color; x.fillText(text, 160, 42);
   const s = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(c), transparent: true, depthTest: false})); s.renderOrder = 9;
-  s.position.copy(p); s.scale.set(9, 2.25, 1);
+  s.position.copy(p); s.scale.set(12, 2.4, 1);
   return addFx(s, life, (o, u) => { o.material.opacity = u < 0.08 ? u / 0.08 : u > 0.85 ? (1 - u) / 0.15 : 1; });
 }
 
@@ -387,7 +388,7 @@ const dashTex = (() => { const c = document.createElement("canvas"); c.width = 1
 const aimLine = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1), new THREE.MeshBasicMaterial({map: dashTex, color: 0xffffff, transparent: true, opacity: 1, depthWrite: false})); aimLine.rotation.x = -Math.PI / 2; aimLine.visible = false;
 const aimLineG = new THREE.Group(); aimLineG.add(aimLine); aimLineG.position.y = 0.11; scene.add(aimLineG);
 const reticle = new THREE.Mesh(new THREE.RingGeometry(5.2, 6, 40), new THREE.MeshBasicMaterial({color: 0xfff2a0, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide})); reticle.rotation.x = -Math.PI / 2; reticle.position.y = 0.12; reticle.visible = false; scene.add(reticle);
-function setCone(g, vis, fade) { g.visible = vis; if (vis) g.children.forEach((m, i) => m.material.opacity = g.userData.op * (i === 0 ? 1 : i === 3 ? 2.2 : 3.2) * fade); }
+function setCone(g, vis, fade) { vis = !!vis; g.visible = vis; if (vis) g.children.forEach((m, i) => m.material.opacity = g.userData.op * (i === 0 ? 1 : i === 3 ? 2.2 : 3.2) * fade); }
 
 // projectiles
 const globGeo = new THREE.IcosahedronGeometry(1.25, 1);
@@ -479,24 +480,26 @@ const TRACKS = {
       hud: {mode: "pips", hint: "Tap ATTACK", what: "3 charges (pips) · 1 refills per 2.5 s"}};
   },
   B() {
-    place(R0, -5, -15, 0); R0.yaw = yawTo(R0.pos, dilo.pos) + 1.2;
-    place(R1, 6.5, -19, 0); R1.yaw = yawTo(R1.pos, dilo.pos) - 1.0;
+    place(R0, -4, -18, 0); R0.yaw = yawTo(R0.pos, dilo.pos) + 1.45;
+    place(R1, 5, -27, 0); R1.yaw = yawTo(R1.pos, dilo.pos) + 1.6;
     const S0 = 0.2, S1 = 2.0;
     let tick = S0 + 0.12, em = 0;
-    return {kind: "attack", len: 3.7, frame: [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -22)],
+    return {kind: "attack", len: 3.7, frame: [new THREE.Vector3(0, 0, 2), new THREE.Vector3(0, 0, -28)],
       keys: [{t: 0, pose: READY}, {t: 0.16, pose: B_SET, e: "out"}, {t: S1, pose: B_SET, e: "io"}, {t: S1 + 0.5, pose: READY, e: "io"}],
       frill: [[0.08, S1 + 0.25]], sac: [[0.04, 0.3]], sway: [S0, S1],
       ev: [{t: 0, f: () => { hud.held = true; }}, {t: S1, f: () => { hud.held = false; }}],
       update(t, dt) {
         setCone(sprayCone, t > 0.1 && t < S1 + 0.3, Math.min(1, (t - 0.1) / 0.15) * (t > S1 ? Math.max(0, 1 - (t - S1) / 0.3) : 1));
+        { const m0 = mouthPoint(); sprayCone.position.set(m0.x, 0.09, m0.z); } // the cone starts at the mouth
         if (t > S0 && t < S1) { // meter drains (2 s full); droplets stream out of the mouth inside the cone
           hud.meter = Math.max(0, 1 - (t - S0) / 2.0);
-          em += dt * 120; const m = mouthPoint(), hd = headDir(); const base = Math.atan2(hd.x, hd.z);
+          em += dt * 170; const m = mouthPoint(), hd = headDir(); const base = Math.atan2(hd.x, hd.z);
+          if (Math.random() < dt * 30) { const c = sprite(T_DROP, 0xd8ffa0, 3.2 + Math.random() * 1.5, true); c.position.copy(m); addFx(c, 0.12, (o, u) => { o.material.opacity = 1 - u; }); }
           while (em >= 1) { em -= 1; const a = base + rad((Math.random() - .5) * 38), e = rad(-4 + (Math.random() - .5) * 10), sp = 40 + Math.random() * 16;
-            droplet(m.clone(), new THREE.Vector3(Math.sin(a) * Math.cos(e) * sp, Math.sin(e) * sp, Math.cos(a) * Math.cos(e) * sp), 0.55 + Math.random() * 0.7, 0.36 + Math.random() * 0.1, 26);
-            if (Math.random() < 0.18) { const s = sprite(T_MIST, 0xffffff, 2, false); s.position.copy(m); const v = new THREE.Vector3(Math.sin(a) * sp * 0.45, 1, Math.cos(a) * sp * 0.45); addFx(s, 0.55, (o, u, dd) => { o.position.addScaledVector(v, dd); o.scale.setScalar(2 + u * 7); o.material.opacity = 0.32 * (1 - u); }); } }
+            droplet(m.clone(), new THREE.Vector3(Math.sin(a) * Math.cos(e) * sp, Math.sin(e) * sp, Math.cos(a) * Math.cos(e) * sp), 0.9 + Math.random() * 1.0, 0.36 + Math.random() * 0.1, 26);
+            if (Math.random() < 0.35) { const s = sprite(T_MIST, 0xffffff, 2, false); s.position.copy(m); const v = new THREE.Vector3(Math.sin(a) * sp * 0.42, 0.5, Math.cos(a) * sp * 0.42); addFx(s, 0.6, (o, u, dd) => { o.position.addScaledVector(v, dd); o.scale.setScalar(2.2 + u * 8); o.material.opacity = 0.5 * (1 - u); }); } }
           if (t >= tick) { tick += 0.25; for (const R of [R0, R1]) { const p = rapChest(R); numberPop(p.clone().add(new THREE.Vector3((Math.random() - .5) * 3, 4, 0)), 4, "venom"); R.flinch = Math.max(R.flinch, 0.45); R.flash = 0.08; R.flashCol = [0.3, 0.9, 0.12]; R.slow = 1.2;
-            if (!R.tagged) { R.tagged = true; textTag(p.clone().add(new THREE.Vector3(0, 9, 0)), "SLOWED −30%", "#a8f0ff", 2.6); } }
+            if (!R.tagged) { R.tagged = true; textTag(p.clone().add(new THREE.Vector3(0, 13, 0)), "SLOWED −30%", "#a8f0ff", 2.4); } }
             hitStop = Math.max(hitStop, 0.02); shake = Math.max(shake, 0.25); }
         } else if (t >= S1) hud.meter = Math.min(1, hud.meter + dt / 3.0 * (t > S1 + 0.5 ? 1 : 0));
       },
@@ -504,7 +507,7 @@ const TRACKS = {
       hud: {mode: "meter", hint: "Hold ATTACK", what: "spit meter (ring): 2 s of spray, refills"}};
   },
   C() {
-    place(R0, -1, -17, Math.PI / 2 - 0.25);
+    place(R0, -1.5, -23.5, 0); R0.yaw = yawTo(R0.pos, dilo.pos);
     place(R1, 26, -24, 0); R1.yaw = yawTo(R1.pos, dilo.pos) + 0.7;
     const end = new THREE.Vector3(-11, 0, -46);
     R0.path = [[0.62, R0.pos.clone(), R0.yaw, 0], [0.78, R0.pos.clone().add(new THREE.Vector3(-0.5, 0, -2)), yawTo(R0.pos, end), 0.6], [1.32, end.clone(), yawTo(R0.pos, end), 1], [1.55, end.clone(), yawTo(end, dilo.pos) + 1.2, 0]];
@@ -514,7 +517,7 @@ const TRACKS = {
              {t: H0 + 0.3, pose: C_COIL, e: "io"}, {t: REL - 0.02, pose: addPose(C_COIL, {Neck: [3, 0, 0], Head: [-2, 0, 0]}, 1), e: "io"}, {t: REL + 0.05, pose: C_DART, e: "in2"}, {t: REL + 0.25, pose: addPose(C_DART, {Neck: [-4, 0, 0]}, 1), e: "out"}, {t: REL + 0.8, pose: READY, e: "io"}],
       frill: [[H0 + 0.08, REL + 0.75]], sac: [[H0 + 0.05, REL + 0.05]], tremble: [REL - 0.2, REL],
       ev: [{t: 0, f: () => { hud.press = 0.25; }},
-           {t: 0.16, f: () => { const p = rapChest(R0).add(new THREE.Vector3(0, 1, 2.5)); hitStop = 0.08; shake = 0.8; fovPunch = 2; flash(p, 10); sparks(p, new THREE.Vector3(0, 0.3, -1), 14);
+           {t: 0.16, f: () => { const p = partPoint(R0.rig.segs.Head[0]).add(new THREE.Vector3(0, 0, 1)); hitStop = 0.08; shake = 0.8; fovPunch = 2; flash(p, 10); sparks(p, new THREE.Vector3(0, 0.3, -1), 14);
               numberPop(p.clone().add(new THREE.Vector3(0, 5, 0)), 10, "hit"); R0.flinch = 1; R0.side = 1; R0.flash = 0.12; R0.flashCol = [0.9, 0.1, 0.05]; R0.push = 1.2; R0.pushDir.set(0, 0, -1); }},
            {t: H0, f: () => { hud.held = true; aimAt(R0, aimCone.C, 1); }},
            {t: REL, f: () => { hud.held = false; hud.hold = 0; const from = mouthPoint();
@@ -530,22 +533,22 @@ const TRACKS = {
       keys: [{t: 0, pose: READY}, {t: LEAP.T0, pose: J_CROUCH, e: "io"}, {t: LEAP.T0 + 0.1, pose: J_PUSH, e: "out"}, {t: LEAP.T0 + 0.3, pose: J_AIR, e: "io"}, {t: t1 - 0.14, pose: J_AIR, e: "io"},
              {t: t1 - 0.02, pose: J_DOWN, e: "io"}, {t: t1 + 0.12, pose: J_LAND, e: "out"}, {t: t1 + 0.7, pose: READY, e: "io"}],
       frill: [[0.16, t1 + 0.32]], sac: [],
-      ev: [{t: 0, f: () => { hud.jpress = 0.18; }}, {t: t1, f: () => { textTag(dilo.pos.clone().add(new THREE.Vector3(0, 1.5, -4)), "plain landing", "#ffffff", 1.1); }}],
+      ev: [{t: 0, f: () => { hud.jpress = 0.3; }}, {t: t1, f: () => { textTag(dilo.pos.clone().add(new THREE.Vector3(0, 1.5, -4)), "plain landing", "#ffffff", 1.1); }}],
       cap: [[0, "<b>Tap JUMP</b>: crouch, neck coils back like a cobra, <b>frill flares</b>"], [LEAP.T0, "<b>Cobra Leap</b>: ~30 studs forward"], [t1, "<b>Plain landing</b>: no dust, no shockwave (house rule) · frill folds"]],
       hud: {mode: "jump", hint: "Tap JUMP", what: "no damage: it is a get-away / close-the-gap move"}};
   },
   J2() {
     leapCfg = LEAP2;
     const t1 = LEAP2.T0 + LEAP2.AIR, top = LEAP2.T0 + LEAP2.AIR * 0.42;
-    place(R0, -6, -48, 0); R0.yaw = yawTo(R0.pos, dilo.pos) + 1.2; R1.show = false;
-    return {kind: "jump", leap: true, len: 4.6, frame: [new THREE.Vector3(0, 0, 4), new THREE.Vector3(0, 0, -50)],
+    place(R0, -7, -53, 0); R0.yaw = yawTo(R0.pos, dilo.pos) + 1.2; R1.show = false;
+    return {kind: "jump", leap: true, len: 4.6, frame: [new THREE.Vector3(0, 0, 4), new THREE.Vector3(0, 0, -54)],
       keys: [{t: 0, pose: READY}, {t: LEAP2.T0, pose: J_CROUCH, e: "io"}, {t: LEAP2.T0 + 0.1, pose: J_PUSH, e: "out"}, {t: top - 0.1, pose: J_AIR, e: "io"}, {t: top + 0.02, pose: J2_SPIT, e: "in2"}, {t: top + 0.2, pose: J2_SPIT, e: "out"}, {t: t1 - 0.12, pose: J_AIR, e: "io"},
              {t: t1 - 0.02, pose: J_DOWN, e: "io"}, {t: t1 + 0.12, pose: J_LAND, e: "out"}, {t: t1 + 0.7, pose: READY, e: "io"}],
       frill: [[0.16, t1 + 0.32]], sac: [[top - 0.18, top + 0.02]],
-      ev: [{t: 0, f: () => { hud.jpress = 0.18; aimAt(R0, aimCone.J, 1); }},
-           {t: top, f: () => { const from = mouthPoint(); spawnShot({kind: "glob", from, target: () => rapChest(R0).setY(3), T: 0.36, H: 1, onHit: p => { venomHit(R0, p, 8, {rate: 2, dur: 3}, 0.9); aim.on = 0; }}); }},
+      ev: [{t: 0, f: () => { hud.jpress = 0.3; aimAt(R0, aimCone.J, 1); }},
+           {t: top, f: () => { const from = mouthPoint(); spawnShot({kind: "glob", from, target: () => rapChest(R0).setY(3), T: 0.4, H: 1, onHit: p => { venomHit(R0, p, 8, {rate: 2, dur: 3}, 0.9); aim.on = 0; }}); }},
            {t: t1, f: () => { textTag(dilo.pos.clone().add(new THREE.Vector3(0, 1.5, -4)), "plain landing", "#ffffff", 1.1); }}],
-      cap: [[0, "<b>Tap JUMP</b>: crouch, neck coils, <b>frill flares</b>"], [LEAP2.T0, "Leap · soft aim picks the raptor in the 30° cone"], [top, "<b>Top of the leap: spits one glob</b> down and forward"], [top + 0.36, "<b>Splat: 8</b> + venom 2/s for 3 s"], [t1, "<b>Plain landing</b>: no dust, no shockwave · frill folds"]],
+      cap: [[0, "<b>Tap JUMP</b>: crouch, neck coils, <b>frill flares</b>"], [LEAP2.T0, "Leap · soft aim picks the raptor in the 30° cone"], [top, "<b>Top of the leap: spits one glob</b> down and forward"], [top + 0.4, "<b>Splat: 8</b> + venom 2/s for 3 s"], [t1, "<b>Plain landing</b>: no dust, no shockwave · frill folds"]],
       hud: {mode: "jump", hint: "Tap JUMP", what: "the spit fires by itself at the top"}};
   },
 };
@@ -563,8 +566,9 @@ function start(kind) {
   leapCfg = LEAP;
   const track = TRACKS[key]();
   play = {track, t: 0, fired: new Set(), key, kind, cap: -1};
-  Object.assign(hud, {mode: track.hud.mode, held: false, hold: 0, press: 0, jpress: 0});
-  if (key === "A") { hud.charges = 3; hud.refill = 1; } if (key === "B") hud.meter = 1;
+  Object.assign(hud, {mode: track.hud.mode, held: false, hold: 0, press: 0, jpress: 0, meter: 1, charges: 3, refill: 1});
+  frill.open = false; frill.t = 9; dilo.sac = 1;
+  for (const k in aimCone) aimCone[k].visible = false; sprayCone.visible = false;
   aim.on = 0; aim.R = null; aim.cone = null;
   $("hudHint").textContent = track.hud.hint; $("hudWhat").textContent = track.hud.what;
   $("tag").textContent = (kind === "attack" ? "Attack " : "Jump ") + key + " · " + INFO[key].name;
