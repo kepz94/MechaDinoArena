@@ -1,4 +1,4 @@
--- IdleAnimation v1.42 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.43 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -233,6 +233,13 @@
 -- v1.42 (MDA-166, Kepu 2026-11-03 "166- make it"): right after the Strobe Frill rear-up, models with a GooFiredAt get
 --       HerreraMovesPose 1.1 gooKick (body pitch -7 deg over 0.35 s, the Goo Blob Shooter's recoil) multiplied on top.
 --       Diagnostic GooKickPoseState ("kick" / "none"). Switch: model attribute GooPosePoseEnabled (read by HerreraMovesPose).
+-- v1.43 (Dilophosaurus kit, MDA-226, plan docs/plans/DILO_KIT_v1.0.md Task 6; DiloPose 1.0, mockup
+--       docs/mockups/dilo_kit_options_v0.1.html attack C + J1): on models with Species "Dilo" and DiloPoseEnabled ~= false:
+--       (a) the leap: JumpPose's biped pose is off (js.JumpPoseEnabled false for this frame's settings) and after the leap
+--       tracker DiloPose.leap(jump) replaces the pose by its weight (Cobra Leap crouch / push / air / land), while
+--       DiloLeapPoseEnabled ~= false; (b) after the therizino layer, DiloPose.top multiplies the Bite + Spit Dart layer on
+--       top (bite / coil / spit, root push, ground lock x (1 - walk blend)) and runs the local frill (open / folded) and
+--       throat sac. Diagnostics: DiloPose's (DiloPoseState, DiloLeapPhase, DiloFrillState, ...). Every other model unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -269,6 +276,7 @@ local HerreraJumpPose = require(script.HerreraJumpPose) -- v1.34
 local HerreraMovesPose = require(script.HerreraMovesPose) -- v1.36
 local TenoPose = require(script.TenoPose) -- v1.37
 local TheriPose = require(script.TheriPose) -- v1.39
+local DiloPose = require(script.DiloPose) -- v1.43
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -575,6 +583,7 @@ model:SetAttribute("IdleAnimationVersion", "1.39") -- v1.39
 model:SetAttribute("IdleAnimationVersion", "1.40") -- v1.40
 model:SetAttribute("IdleAnimationVersion", "1.41") -- v1.41
 model:SetAttribute("IdleAnimationVersion", "1.42") -- v1.42
+model:SetAttribute("IdleAnimationVersion", "1.43") -- v1.43
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -847,6 +856,7 @@ RunService.PreSimulation:Connect(function(dt)
 	if hrp and geo and model:GetAttribute("JumpEnabled") == true then
 		local js = JumpPose.settings(model)
 		if TheriPose.leapOn(model) then js.JumpPoseEnabled = false end -- v1.39: the therizino's leap layer (below) replaces it
+		if DiloPose.leapOn(model) then js.JumpPoseEnabled = false end -- v1.43: the dilo's Cobra Leap layer (below) replaces it
 		local serverNow = workspace:GetServerTimeNow()
 		-- start stamp: server, or the local prediction on the owner's client
 		local jStart, jSource = model:GetAttribute("JumpStartedAt"), "server"
@@ -961,6 +971,15 @@ RunService.PreSimulation:Connect(function(dt)
 			if tp and tw > 0 then
 				for name, off in pairs(tp) do
 					if motors[name] then pose[name] = (pose[name] or CFrame.identity):Lerp(off, tw) end
+				end
+			end
+		end
+		-- v1.43: dilo Cobra Leap layer (DiloPose 1.0) replaces the pose by its weight
+		if DiloPose.leapOn(model) then
+			local dp, dw = DiloPose.leap(model, jump, serverNow, now, hrp, dt)
+			if dp and dw > 0 then
+				for name, off in pairs(dp) do
+					if motors[name] then pose[name] = (pose[name] or CFrame.identity):Lerp(off, dw) end
 				end
 			end
 		end
@@ -1296,6 +1315,12 @@ RunService.PreSimulation:Connect(function(dt)
 		TheriPose.top(model, pose, motors, hrp, {isOwner = lpZ ~= nil and lpZ.Character == model,
 			serverNow = workspace:GetServerTimeNow(), now = now, dt = dt, runW = blend * gaitBlend * (1 - creepBlend),
 			walkPhase = walkPhase, show = show})
+	end
+	-- v1.43: dilo Bite + Spit Dart + root push / ground lock + frill / sac on top (DiloPose 1.0)
+	if DiloPose.on(model) then
+		local lpD = Players.LocalPlayer
+		DiloPose.top(model, pose, motors, hrp, {isOwner = lpD ~= nil and lpD.Character == model,
+			serverNow = workspace:GetServerTimeNow(), now = now, dt = dt, moveW = blend, show = show})
 	end
 	-- roar on top of whatever the body is doing (upper body only)
 	local roarState = "none"
