@@ -58,7 +58,7 @@ Shoulder Rocket part is "soon" (SkillTree), so no rocket exists to block (red-te
 | Overclock | TheriClockUntil = now + T | SprintTest run / walk x 1.4; II+ TheriAttackServer's tap gap x 0.7 (read-only hook); ★ slow tags ignored (SprintTest and TheriMovesServer skip TenoSlowMul while on) |
 | Snare | trap placed 8 studs ahead on the ground, up to the step count alive at once (the oldest goes) | the first allowed dino whose root comes within 4 studs: 12 damage, rooted (TetheredUntil-style root: TetherServer's rope with reach 0) for 1 / 2 s, trap gone |
 
-## Tasks (two builds, like the teno)
+## Tasks (two builds, like the teno) — Dev Hub MDA-241 .. MDA-248
 **Build 1 (fight parts on proven patterns):** Reaper's Hook, Feather Barrage, Harvest Field, Snare Wires.
 **Build 2 (movement + cross-server):** Grapple Zip, Overclock Joints, Deflector Claws.
 
