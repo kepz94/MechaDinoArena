@@ -2,7 +2,8 @@
 // piece kit, camera, loop). Kepu 2026-11-05 16:09: "the teno mecha parts and animation is a bit underwhelming" -> "Looks first".
 // TENO = TenoModelData (look E Old Gardener, tools/teno_generator.py --json). The looks file (teno_parts_v2_looks.js) adds PARTS, OLD, LOADOUTS.
 const TENO = __TENO__;
-const VERSION = "0.1"; // v0.5 export tags for the final picks (Kepu 14:49); v0.4: Loadouts (all 7 parts at once, Kepu 2026-11-04 "Move some off the arms")
+const VERSION = "0.2"; // v0.2: export tags on the 7 picks (no visual change)
+// v0.1: the 21 looks. Earlier notes (from the therizino core): v0.5 export tags for the final picks (Kepu 14:49); v0.4: Loadouts (all 7 parts at once, Kepu 2026-11-04 "Move some off the arms")
 const $ = id => document.getElementById(id);
 const rad = THREE.MathUtils.degToRad;
 const AREA = {attack: ["ATTACK", "#f05a4f", 0xff3b30], defense: ["DEFENSE", "#5aa0ff", 0x3d9bff], speed: ["SPEED", "#ffd34d", 0xffc21a], eng: ["ENGINEER", "#ff9b2e", 0xff8a1a], health: ["HEALTH", "#5ad17a", 0x3ddc84]};
