@@ -83,7 +83,7 @@
 --   storyboard tools/mockup/therizino_moves_anim.js v0.3 = the timings; plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md
 --   "Deterministic map", MDA-263; SkillTree 1.65, SkillEffects 1.43). Same remotes and part ids; each rework has its own script
 --   switch (default true, read at each request; false = the 1.3 move, whose handler returns early while its rework is on):
---   * TheriMovesVortexEnabled — Reaper Vortex (DinoTheriFieldRequest): centre VORTEX_AHEAD (10) x scale studs ahead of the root
+--   * TheriMovesVortexEnabled — Reaper Vortex (DinoTheriFieldRequest): centre VORTEX_AHEAD (5) x scale studs ahead of the root
 --     on the ground, radius TheriFieldRadius; active from t + VORTEX_START (0.95) to + TheriFieldTime. While active: every
 --     Heartbeat each allowed, unshielded dino with a hitbox inside is moved VORTEX_PULL (6) studs/s (flat) toward the centre,
 --     stopping 3 x its scale from it (bot: root CFrame here; player: its own client, TheriVortexPull 1.0, from the stamps
@@ -838,7 +838,7 @@ task.spawn(function()
 end)
 
 -- v1.4: the moves rework (see the header) ------------------------------------------------------------------------------------------
-local VORTEX_AHEAD, VORTEX_START, VORTEX_PULL = 10, 0.95, 6
+local VORTEX_AHEAD, VORTEX_START, VORTEX_PULL = 5, 0.95, 6
 local BOLA_CONE, BOLA_WIND, BOLA_SPEED = 25, 0.6, 80
 local DASH_MIN, DASH_DELAY, DASH_SPEED = 4, 0.16, 330
 local REEL_BRACE, REEL_CLAW_SPEED, REEL_SPEED, REEL_GAP, REEL_REACH, REEL_SLASH = 0.3, 220, 90, 7, 12, 10

@@ -41,7 +41,7 @@
 --     (default true). Diagnostics: TheriGrappleZipState "charge" / "dash", TheriDashMoved (studs).
 --   * Reaper Reel: a fresh TheriReelAt with result "hit": after TheriReelBrace + TheriReelFly s (the claw clamps) it flies the
 --     root for TheriReelTime s to TheriReelGap studs short of the target's root (TheriReelTarget, followed live, flat), on an arc
---     REEL_ARC (4) x scale studs high, then keeps REEL_KEEP (0.2) of the flat speed. Switch: TheriReelZipEnabled (default true).
+--     REEL_ARC (2) x scale studs high, then keeps REEL_KEEP (0.2) of the flat speed. Switch: TheriReelZipEnabled (default true).
 --     Diagnostics: TheriGrappleZipState "reel", TheriReelMoved (studs).
 --   Both stop when dead, stunned or a newer zip / dash / reel starts.
 local Players = game:GetService("Players")
@@ -364,7 +364,7 @@ end)
 char.AncestryChanged:Connect(function() if not char.Parent and hl then hl:Destroy() end end)
 
 -- v1.3: dash + reaper reel movers (see the header) -------------------------------------------------------------------------------
-local DASH_MAX, DASH_KEEP, REEL_ARC, REEL_KEEP, REEL_MAX = 450, 0.15, 4, 0.2, 220
+local DASH_MAX, DASH_KEEP, REEL_ARC, REEL_KEEP, REEL_MAX = 450, 0.15, 2, 0.2, 220
 local function stunnedNow() return (tonumber(char:GetAttribute("StunnedUntil")) or 0) > workspace:GetServerTimeNow() end
 local function drive(my, c, dur, velFn, onEnd)
 	local t0 = os.clock()

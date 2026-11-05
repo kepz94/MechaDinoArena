@@ -1,7 +1,7 @@
 -- TheriMovesFX2 v1.0 (Mecha Dino Arena) — client effects for the Therizinosaurus' reworked moves (every client draws them for
 -- every therizino). Plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md (MDA-264); server TheriMovesServer 1.4; looks
 -- TheriPartsLooksV2 1.2 (Reaper Launcher, Storm Core). Timings and shapes = the storyboard tools/mockup/therizino_moves_anim.js
--- v0.3 (U = 2 x scale studs per storyboard unit). t = server now - the stamp.
+-- v0.3 (U = scale studs per storyboard unit: 2 on an adult, as the looks). t = server now - the stamp.
 --   * Reaper Vortex (TheriVortexAt; TheriVortexCenter / TheriVortexRadius / TheriVortexStart / TheriFieldUntil): 0.48..0.75 six red
 --     cracks race out from the centre to the ring's edge (dust puffs 0.48..1.1); 0.7..0.95 a soft red disc, a red edge ring and a
 --     3-arm spiral grow to the radius (the spiral turns at -2.2 rad/s); 0.58..0.95 six bone sickles (red edge, brass hub) fly
@@ -203,13 +203,13 @@ end
 -- Reaper Vortex ----------------------------------------------------------------------------------------------------------------
 local function sickle(U)
 	local g = {}
-	g.blade = part(Vector3.new(1.5, 0.12, 0.42) * 1.8 * U / 2, BONE)
-	g.tip = part(Vector3.new(0.45, 0.12, 0.3) * 1.8 * U / 2, BONE)
-	g.edge = part(Vector3.new(1.5, 0.13, 0.06) * 1.8 * U / 2, RED, Enum.Material.Neon)
-	g.hub = part(Vector3.one * 0.32 * 1.8 * U / 2, BRASS, Enum.Material.Metal, 0, Enum.PartType.Ball)
+	g.blade = part(Vector3.new(1.5, 0.12, 0.42) * 1.8 * U, BONE)
+	g.tip = part(Vector3.new(0.45, 0.12, 0.3) * 1.8 * U, BONE)
+	g.edge = part(Vector3.new(1.5, 0.13, 0.06) * 1.8 * U, RED, Enum.Material.Neon)
+	g.hub = part(Vector3.one * 0.32 * 1.8 * U, BRASS, Enum.Material.Metal, 0, Enum.PartType.Ball)
 	return g
 end
-local function placeSickle(g, cf, k) -- cf = the sickle's frame (Y up); k = sickle scale unit (1.8 x U / 2)
+local function placeSickle(g, cf, k) -- cf = the sickle's frame (Y up); k = sickle scale unit (1.8 x U)
 	g.blade.CFrame = cf * CFrame.new(0.5 * k, 0, 0)
 	g.tip.CFrame = cf * CFrame.new(1.35 * k, 0, -0.25 * k) * CFrame.Angles(0, 0.6, 0)
 	g.edge.CFrame = cf * CFrame.new(0.5 * k, 0, -0.22 * k)
@@ -221,7 +221,7 @@ local function vortex(char)
 	local c = char:GetAttribute("TheriVortexCenter")
 	if typeof(c) ~= "Vector3" then return end
 	local s = char:GetScale()
-	local U = 2 * s
+	local U = s
 	local R = num(char, "TheriVortexRadius", 15)
 	local start = num(char, "TheriVortexStart", at + 0.95) - at
 	local stop = num(char, "TheriFieldUntil", at + 4) - at
@@ -237,7 +237,7 @@ local function vortex(char)
 	local sickles = {}
 	for i = 1, 6 do sickles[i] = sickle(U) sickleShow(sickles[i], false) end
 	local drops = {}
-	for i = 1, 16 do drops[i] = part(Vector3.one * 0.35 * U / 2, RED_SOFT, Enum.Material.Neon, 1, Enum.PartType.Ball) end
+	for i = 1, 16 do drops[i] = part(Vector3.one * 0.35 * U, RED_SOFT, Enum.Material.Neon, 1, Enum.PartType.Ball) end
 	local cuffL, cuffR = bodyPart(char, "ArmL_hand"), bodyPart(char, "ArmR_hand")
 	local floor = CFrame.new(c)
 	local victims, nextScan = {}, 0
@@ -289,7 +289,7 @@ local function vortex(char)
 			for _, e in ipairs(spiral) do e.p.Transparency = 1 end
 		end
 		-- sickles: cuffs -> ring -> orbit -> back
-		local k = 1.8 * U / 2
+		local k = 1.8 * U
 		for i, g in ipairs(sickles) do
 			local a0 = (i - 1) / 6 * math.pi * 2
 			local ang = a0 + (t > start and (t - start) * 3.2 or 0)
@@ -368,7 +368,7 @@ end
 local function bola(char)
 	local at = num(char, "TheriBolaAt", 0)
 	local s = char:GetScale()
-	local U = 2 * s
+	local U = s
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	local flight = num(char, "TheriBolaFlight", 0.4)
@@ -376,7 +376,7 @@ local function bola(char)
 	local troot = tm and tm:FindFirstChild("HumanoidRootPart")
 	local endPos = char:GetAttribute("TheriBolaEnd")
 	if typeof(endPos) ~= "Vector3" then endPos = root.Position + root.CFrame.LookVector * 35 end
-	local k = 1.8 * U / 2
+	local k = 1.8 * U
 	local w = {}
 	for e = 1, 2 do
 		w[e] = part(Vector3.one * 0.55 * k, BRASS, Enum.Material.Metal, 1, Enum.PartType.Ball)
@@ -499,7 +499,7 @@ local function dash(char)
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if typeof(from) ~= "Vector3" or typeof(to) ~= "Vector3" or not root then return end
 	local s = char:GetScale()
-	local U = 2 * s
+	local U = s
 	local D, T = num(char, "TheriDashDelay", 0.16), num(char, "TheriDashTime", 0.12)
 	local jolt0, jolt1 = D, D + T
 	local arcs = {newBolt(9), newBolt(9), newBolt(9)}
@@ -535,10 +535,10 @@ local function dash(char)
 		-- charge: arcs horn <-> horn <-> core
 		local hL, hR, core = zpiece(char, "zgrapple", "hornL"), zpiece(char, "zgrapple", "hornR"), zpiece(char, "zgrapple", "core")
 		if t < jolt0 + 0.02 and hL and hR then
-			drawBolt(arcs[1], hL.Position, hR.Position, 0.5 * U / 2, seed, 0.06 * U)
+			drawBolt(arcs[1], hL.Position, hR.Position, 0.5 * U, seed, 0.06 * U)
 			if core then
-				drawBolt(arcs[2], hL.Position, core.Position, 0.45 * U / 2, seed + 1, 0.06 * U)
-				drawBolt(arcs[3], hR.Position, core.Position, 0.45 * U / 2, seed + 2, 0.06 * U)
+				drawBolt(arcs[2], hL.Position, core.Position, 0.45 * U, seed + 1, 0.06 * U)
+				drawBolt(arcs[3], hR.Position, core.Position, 0.45 * U, seed + 2, 0.06 * U)
 			end
 		else
 			for _, b in ipairs(arcs) do hideBolt(b) end
@@ -551,8 +551,8 @@ local function dash(char)
 		-- bolts along the path
 		if t > jolt0 and t < jolt1 + 0.3 then
 			local f = 1 - seg(t, jolt1 + 0.12, jolt1 + 0.3)
-			drawBolt(path[1], from + Vector3.new(0, 1.5 * U, 0), to + Vector3.new(0, 1.5 * U, 0), (1.2 * f + 0.2) * U / 2, seed, 0.1 * U)
-			drawBolt(path[2], from - Vector3.new(0, 1.0 * U, 0), to - Vector3.new(0, 0.8 * U, 0), (0.9 * f + 0.2) * U / 2, seed + 7, 0.08 * U)
+			drawBolt(path[1], from + Vector3.new(0, 1.5 * U, 0), to + Vector3.new(0, 1.5 * U, 0), (1.2 * f + 0.2) * U, seed, 0.1 * U)
+			drawBolt(path[2], from - Vector3.new(0, 1.0 * U, 0), to - Vector3.new(0, 0.8 * U, 0), (0.9 * f + 0.2) * U, seed + 7, 0.08 * U)
 		else
 			for _, b in ipairs(path) do hideBolt(b) end
 		end
@@ -577,12 +577,12 @@ local function dash(char)
 			local u = seg(t, jolt1, jolt1 + 0.67)
 			local here = root.Position
 			local floorCF = CFrame.new(here.X, gy + 0.15, here.Z)
-			placeRing(shock, floorCF, (0.5 + 6 * easeOut(u)) * U / 2 * 1.6, 0.25 * U / 2, 0.08)
+			placeRing(shock, floorCF, (0.5 + 6 * easeOut(u)) * U * 1.6, 0.25 * U, 0.08)
 			for _, p in ipairs(shock) do p.Transparency = 0.1 + 0.9 * u end
 			for a = 1, 3 do
-				local r = (2 + a) * U / 2
+				local r = (2 + a) * U
 				local ang = a * 2.1 + t * 3
-				drawBolt(sparks[a], here + Vector3.new(0, 0.5 * U, 0), Vector3.new(here.X + math.cos(ang) * r, gy + 0.1, here.Z + math.sin(ang) * r), 0.35 * U / 2, math.floor(t * 24) + a * 5, 0.05 * U)
+				drawBolt(sparks[a], here + Vector3.new(0, 0.5 * U, 0), Vector3.new(here.X + math.cos(ang) * r, gy + 0.1, here.Z + math.sin(ang) * r), 0.35 * U, math.floor(t * 24) + a * 5, 0.05 * U)
 			end
 		else
 			for _, p in ipairs(shock) do p.Transparency = 1 end
@@ -597,7 +597,7 @@ local CHAIN_MAX = 90
 local function reel(char)
 	local at = num(char, "TheriReelAt", 0)
 	local s = char:GetScale()
-	local U = 2 * s
+	local U = s
 	local brace, fly = num(char, "TheriReelBrace", 0.3), num(char, "TheriReelFly", 0.2)
 	local result = char:GetAttribute("TheriReelResult")
 	local isHit = result == "hit"
@@ -664,8 +664,8 @@ local function reel(char)
 		-- chain + claw
 		if tip then
 			local d = tip - from
-			local n = math.clamp(math.floor(d.Magnitude / (0.75 * U / 2 * 1.8)), 1, CHAIN_MAX)
-			for i = #links + 1, n do links[i] = part(Vector3.new(0.3, 0.1, 0.9) * U / 2 * 1.8, i % 2 == 0 and STEEL or DARK, Enum.Material.Metal) end
+			local n = math.clamp(math.floor(d.Magnitude / (0.75 * U * 1.8)), 1, CHAIN_MAX)
+			for i = #links + 1, n do links[i] = part(Vector3.new(0.3, 0.1, 0.9) * U * 1.8, i % 2 == 0 and STEEL or DARK, Enum.Material.Metal) end
 			for i, l in ipairs(links) do
 				if i <= n and d.Magnitude > 0.05 then
 					local p = from + d * ((i - 0.5) / n)
@@ -687,9 +687,9 @@ local function reel(char)
 		local rcf = root.CFrame
 		for i, l in ipairs(speed) do
 			if reeling then
-				local off = Vector3.new(-2 + (i % 5) * 1.0, (i * 1.3) % 5 - 1, 4 + (i * 1.1) % 4) * U / 2 * 1.4
+				local off = Vector3.new(-2 + (i % 5) * 1.0, (i * 1.3) % 5 - 1, 4 + (i * 1.1) % 4) * U * 1.4
 				local p = (rcf * CFrame.new(off)).Position
-				l.Size = Vector3.new(0.06, 0.06, 3) * U / 2 * 1.4
+				l.Size = Vector3.new(0.06, 0.06, 3) * U * 1.4
 				l.CFrame = CFrame.lookAt(p, p + rcf.LookVector)
 				l.Transparency = 0.5
 			else
@@ -703,12 +703,12 @@ local function reel(char)
 				local sgn = a == 1 and -1 or 1
 				local c = (rcf * CFrame.new(0, 1 * U, -5 * U)).Position
 				local cf = CFrame.new(c) * rcf.Rotation * CFrame.Angles(0.4, sgn * 0.5, sgn * -(0.6 + ks * 2.2))
-				local r = 4 * U / 2 * 1.2
+				local r = 4 * U * 1.2
 				for i, p in ipairs(arc) do
 					local u0, u1 = (i - 1) / #arc * math.pi * 0.9, i / #arc * math.pi * 0.9
 					local a0 = (cf * CFrame.new(math.cos(u0) * r, math.sin(u0) * r, 0)).Position
 					local a1 = (cf * CFrame.new(math.cos(u1) * r, math.sin(u1) * r, 0)).Position
-					setSeg(p, a0, a1, 0.25 * U / 2 * (1 - math.abs((i - 0.5) / #arc - 0.5)))
+					setSeg(p, a0, a1, 0.25 * U * (1 - math.abs((i - 0.5) / #arc - 0.5)))
 					p.Transparency = 0.1 + 0.9 * ks
 				end
 			else
@@ -720,7 +720,7 @@ local function reel(char)
 			flash(tm, RED, 0.3, 0.8)
 		end
 		local gy = groundBelow(root.Position, root.Position.Y - 3 * U)
-		drawPuffs(dust, Vector3.new(root.Position.X, gy, root.Position.Z) + rcf.LookVector * 3 * U / 2, isHit and seg(t, finish, finish + 0.6) or 0, 2.2, U / 2 * 1.6)
+		drawPuffs(dust, Vector3.new(root.Position.X, gy, root.Position.Z) + rcf.LookVector * 3 * U, isHit and seg(t, finish, finish + 0.6) or 0, 2.2, U * 1.6)
 	end)
 	note("reel:" .. tostring(result) .. (#head > 0 and ":claw" or ""))
 end
