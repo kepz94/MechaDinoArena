@@ -1,4 +1,4 @@
--- SkillTree v1.66 (1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.67 (1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2405,6 +2405,27 @@ do
 		if not (SkillTree.THERI_CLOCK_JUMP and SkillTree.THERI_PARTS and dino == "Therizino" and SkillTree.PATHS.zclock) then return e end
 		local s = SkillTree.sanitize(steps, dino) or {}
 		if (s.zclock or 0) >= 3 then e.clockJump = 1 end
+		return e
+	end
+end
+
+-- v1.67 (Kepu 2026-11-05 15:01 "I think the feather thing needs more range", pick "35 / 40 / 50"): SkillTree.THERI_FEATHER_RANGE2
+-- (default true; false = 1.66): zfeather texts say 35 / 40 / 50 studs; effect featherRange = 35 (step 1) / 40 (II) / 50 (star)
+-- for a therizino with the part (0 below / off / other dinos, as before). Nothing else of zfeather changes.
+SkillTree.THERI_FEATHER_RANGE2 = true
+if SkillTree.THERI_PARTS and SkillTree.PATHS.zfeather and SkillTree.THERI_FEATHER_RANGE2 then
+	SkillTree.PATHS.zfeather.steps[1] = "Button: fire 8 feather blades in a 35-stud fan: 3 damage each, hit dinos slowed 25% for 1 s. Recharges in 14 s"
+	SkillTree.PATHS.zfeather.steps[2] = "10 blades, fan reaches 40 studs"
+	SkillTree.PATHS.zfeather.steps[4] = "12 blades, fan reaches 50 studs"
+end
+do
+	local effectsPre167 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre167(steps, dino)
+		if type(e) ~= "table" then return e end
+		if not (SkillTree.THERI_FEATHER_RANGE2 and SkillTree.THERI_PARTS and dino == "Therizino" and SkillTree.PATHS.zfeather) then return e end
+		local f = (SkillTree.sanitize(steps, dino) or {}).zfeather or 0
+		if f >= 1 and (e.featherRange or 0) > 0 then e.featherRange = f >= 4 and 50 or (f >= 2 and 40 or 35) end
 		return e
 	end
 end

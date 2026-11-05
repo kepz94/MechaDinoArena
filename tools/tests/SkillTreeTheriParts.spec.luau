@@ -1,4 +1,4 @@
--- SkillTreeTheriParts.spec v1.5 (1.5: Overclock III extra jump, SkillTree 1.66; 1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
+-- SkillTreeTheriParts.spec v1.6 (1.6: feather range 35 / 40 / 50, SkillTree 1.67; 1.5: Overclock III extra jump, SkillTree 1.66; 1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.61 (plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheriParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-04 "Two builds"): zhook / zfeather / zharvest / zsnare live; zgrapple / zdeflect / zclock "soon".
@@ -56,7 +56,9 @@ local TEXT = {
 		"Chain reaches 65 studs", "Chain reaches 80 studs", "The slashed dino is stunned 1 s and cut 1 starts on it"} -- v1.4
 		or {"Button: fire a claw chain up to 50 studs and yank the dino in. Recharges in 18 s", "Chain reaches 65 studs",
 		"Chain reaches 80 studs; recharges in 15 s", "The yanked dino is stunned 1 s and cut 1 starts on it"},
-	zfeather = {"Button: fire 8 feather blades in a 20-stud fan: 3 damage each, hit dinos slowed 25% for 1 s. Recharges in 14 s",
+	zfeather = ST.THERI_FEATHER_RANGE2 and {"Button: fire 8 feather blades in a 35-stud fan: 3 damage each, hit dinos slowed 25% for 1 s. Recharges in 14 s",
+		"10 blades, fan reaches 40 studs", "Slow lasts 2 s", "12 blades, fan reaches 50 studs"} -- v1.6
+		or {"Button: fire 8 feather blades in a 20-stud fan: 3 damage each, hit dinos slowed 25% for 1 s. Recharges in 14 s",
 		"10 blades, fan reaches 25 studs", "Slow lasts 2 s", "12 blades, fan reaches 30 studs"},
 	zharvest = VX and {"Button: stab the claws in: a spinning sickle ring 30 studs wide drags enemies toward you for 3 s. They bleed 4/s and are slowed 30%. Recharges in 20 s",
 		"Ring 34 studs wide", "Lasts 4 s", "Ring 38 studs wide, lasts 5 s"} or {"Button: stab the claws down: a 12-stud-wide circle for 3 s. Enemies inside bleed 4/s and are slowed 30%. Recharges in 20 s",
@@ -85,7 +87,8 @@ end
 local function chk(id, field, want) for i = 1, 4 do eq(("%s %d %s"):format(id, i, field), E({[id] = i})[field], want[i], 1e-6) end end
 chk("zhook", "hookRange", {50, 65, 80, 80}); chk("zhook", "hookCone", RE and {35, 35, 35, 35} or {20, 20, 20, 20}); chk("zhook", "hookStun", {0, 0, 0, 1})
 chk("zhook", "hookCut", {false, false, false, true}); chk("zhook", "hookCooldown", RE and {14, 14, 14, 14} or {18, 18, 15, 15})
-chk("zfeather", "featherCount", {8, 10, 10, 12}); chk("zfeather", "featherRange", {20, 25, 25, 30})
+chk("zfeather", "featherCount", {8, 10, 10, 12}); chk("zfeather", "featherRange", ST.THERI_FEATHER_RANGE2 and {35, 40, 40, 50} or {20, 25, 25, 30}) -- v1.6
+eq("THERI_FEATHER_RANGE2", ST.THERI_FEATHER_RANGE2, true) -- v1.6
 chk("zfeather", "featherFan", {60, 60, 60, 60}); chk("zfeather", "featherDamage", {3, 3, 3, 3})
 chk("zfeather", "featherSlowMul", {0.75, 0.75, 0.75, 0.75}); chk("zfeather", "featherSlowTime", {1, 1, 2, 2})
 chk("zfeather", "featherCooldown", {14, 14, 14, 14})

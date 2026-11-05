@@ -2806,3 +2806,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriFeatherVolley, TheriFeatherOrigin, TheriVolleyRelease, TheriVolleyFlight, TheriVolleyResult ("windup" / "fired" / "cancelled"), TheriVolleyDarts ("i=name\|..."), TheriVolleyFiredAt, TheriVolleyLanded ("name=blades\|..."), TheriVolleyLandedAt | therizino character (server) | the Wing Volley stamps; every client follows TheriFeatherVolley | TheriMovesServer 1.6 |
 | TheriPoseVolleyEnabled | character model | switch (nil = true; false = the 1.6 FEATHER pose); TheriPartsPose shows "volley" | TheriPose 1.10 |
 | TheriMovesFX2_volleyEnabled | TheriMovesFX2 script | switch (default true) | TheriMovesFX2 1.1 |
+| SkillTree.THERI_FEATHER_RANGE2 | SkillTree module flag | true = Feather Barrage range 35 / 40 / 50 (false = 20 / 25 / 30); feeds TheriFeatherRange | SkillTree 1.67 |
