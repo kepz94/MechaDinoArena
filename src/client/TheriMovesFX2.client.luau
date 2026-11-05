@@ -33,7 +33,8 @@
 --     transparency 1 - (0.1 + 0.35 k), edges 1 - (0.3 + 0.7 k).
 --   * Darts (TheriFeatherCount, one per fan direction, the server's angles): at the release each leaves its wing (the forearm
 --     on the dart's side of the heading, ArmL_fore / ArmR_fore x (+-0.5, 0.2, -0.3) U) and flies P(v) = lerp(from, to, v) +
---     up x sin(pi v) x 4.5 U, v = easeOut(0.7 u + 0.3 u^2), u = (t - release) / flight, spinning 20 rad/s; to = the dart's
+--     up x sin(pi v) x h, h = max(4.5 U, the head's top + 2 U - the mid height) (over the head, so the camera behind sees
+--     them), v = easeOut(0.7 u + 0.3 u^2), u = (t - release) / flight, spinning 20 rad/s; to = the dart's
 --     target (TheriVolleyDarts "i=name": its Hitbox_Torso, else root; followed every frame) or the ground at the fan's end.
 --     Dart = bone blade 0.24 x 0.75 x 3.3 U, a bone diamond tip, a red Neon edge, a brass quill; red Neon trail
 --     P(v(u - 0.22)) -> the dart, 0.48 U thick; red Neon glow ball 1.65 U.
@@ -863,7 +864,19 @@ local function volley(char)
 		d.quill.CFrame = cf * CFrame.new(0, 0, 1.875 * U)
 		for _, p in ipairs(dartParts(d)) do p.Transparency = tr end
 	end
-	local P = function(from, to, v) return from:Lerp(to, v) + Vector3.new(0, math.sin(v * math.pi) * 4.5 * U, 0) end
+	-- the arc clears the dino's own head (Studio check from the player camera: a 4.5 U arc stayed behind the body)
+	local head = char:FindFirstChild("Head", true)
+	local headTop = root.Position.Y + 6 * U
+	if head and head:IsA("Model") then
+		local hcf, hsz = head:GetBoundingBox()
+		headTop = hcf.Position.Y + hsz.Y / 2
+	elseif head and head:IsA("BasePart") then
+		headTop = head.Position.Y + head.Size.Y / 2
+	end
+	local P = function(from, to, v)
+		local h = math.max(4.5 * U, headTop + 2 * U - (from.Y + to.Y) / 2)
+		return from:Lerp(to, v) + Vector3.new(0, math.sin(v * math.pi) * h, 0)
+	end
 	local function E(u) u = clamp01(u) return easeOut(0.7 * u + 0.3 * u * u) end
 	local targets -- [i] = model (from TheriVolleyDarts)
 	local cancelled = false
