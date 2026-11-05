@@ -92,3 +92,9 @@ Press (DinoTheriFeatherRequest): check() + ok() exactly as 1.5 (recharge starts 
    same size). Accepted; the part counts are in the FX diagnostics (TheriMovesFX2Last).
 5. **Targets that die / leave / get shielded in flight**: skipped at landing (stillTarget) or 0 inside damage(); the dart still
    sticks visually where it was going (FX can't know) — only on a 0.6 s window. Accepted.
+
+## Build notes (2026-11-05, Studio checks)
+- From the player camera (about 68 studs behind, 30 up) the storyboard's 4.5 U arc stayed hidden behind the dino's body, so the
+  darts now lob over the dino's head: arc height = max(4.5 U, head top + 2 U - the mid height). Same flight time (0.6 s).
+- The "3" pops did not draw as AlwaysOnTop billboards in Workspace; they are in PlayerGui and not AlwaysOnTop (like the game's
+  own TargetBar). Side finding (not changed, Do-Not-Touch): the Bola's HELD tag uses the same AlwaysOnTop + Workspace setup.
