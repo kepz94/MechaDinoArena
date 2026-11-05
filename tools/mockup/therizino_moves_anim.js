@@ -3,7 +3,8 @@
 // fit the dinosaur ... the animation has to be crystal clear what the intent is". Plays each move on the real model
 // (core + looks of the redesign mockup v0.5, picked looks: Reaper Crane, Reaper Sleeves, Belly Winch, Tail Spool Rig).
 // Units: the model's (game studs / 2). Front = -Z, the camera side = +X.
-const ANIM_VERSION = "0.4"; // v0.4: Feather Barrage (Kepu 18:03 "The feather animation can barely even be fucking seen"): Now vs A / B / C
+const ANIM_VERSION = "0.5"; // v0.5: Deflector Claws + Overclock Joints (Kepu 2026-11-05 15:30 "Therizino's last two moves"): Now vs A / B / C each
+const ANIM_VERSION_04 = "0.4"; // v0.4: Feather Barrage (Kepu 18:03 "The feather animation can barely even be fucking seen"): Now vs A / B / C
 const ANIM_VERSION_03 = "0.3"; // v0.3: the Reaper's Hook moves to the chest (Kepu 16:54 "can move to the chest now cause it looks so goofy like that")
 // v0.2: the dash gets its own part (Kepu 16:47): A Flank Thrusters, B Storm Core (lightning), C Shoulder Jets
 // (from the redesign core's page section, which this page leaves out)
@@ -121,7 +122,15 @@ let dashLook = "A";
 let clawOut = false, harpoonOut = false;
 let wingEmpty = {L: false, R: false}; // v0.4: the Blade Wings fired their blades
 let featherUse = 0; // v0.4
+let deflectUse = 0, clockUse = 0, maneFilm = true; // v0.5: the Mane Rotor and the piston legs move by their own use
 let boomA = 0;
+function wrapUse(e, getU, isFilm) { // v0.5: drive one look's pieces by its own use value
+  if (e.place) { const o = e.place; e.place = (u, tt) => o(getU(), tt); }
+  if (e.anim) { const o = e.anim; e.anim = (u, tt) => o(getU(), tt); }
+  const os = e.show;
+  if (isFilm || e.film) { const a = e.alpha || 0.35; e.glow = false; e.show = () => { e.mesh.material.opacity = a * getU(); return (!isFilm || maneFilm) && getU() > 0.05; }; }
+  else if (os) e.show = (u, tt) => os(getU(), tt);
+}
 function buildRig() {
   for (const e of equip) if (e.mesh.parent) e.mesh.parent.remove(e.mesh); // they live under the rig (clearEquip only takes them off the scene)
   for (const c of cables) for (const m of c.segs) if (m.parent) m.parent.remove(m);
@@ -132,6 +141,11 @@ function buildRig() {
   GLOW = AREA.eng[2]; snareSpools();
   GLOW = AREA.attack[2]; const w0 = equip.length; featherWings(); // v0.4: the wings fan by their own featherUse
   for (const e of equip.slice(w0)) if (e.place) { const orig = e.place; e.place = (u, tt) => orig(featherUse, tt); }
+  // v0.5: the live Deflector (Mane Rotor) and Overclock (Piston Legs) looks, each on its own use
+  GLOW = AREA.defense[2]; const m0 = equip.length; deflectMane();
+  for (const e of equip.slice(m0)) wrapUse(e, () => deflectUse, e.role === "film");
+  GLOW = AREA.speed[2]; const c0 = equip.length; clockPistons();
+  for (const e of equip.slice(c0)) wrapUse(e, () => clockUse, false);
   for (const e of equip) theri.g.add(e.mesh);
   for (const c of cables) for (const m of c.segs) theri.g.add(m);
   // the crane's boom swings about its hinge (extra angle on top of the look's own motion)
@@ -652,8 +666,249 @@ MOVES.push({ id: "feather", name: "Feather Barrage", get sub() { return FEATHER_
       // reload: blades slide back in (the fan closes and reopens)
     } });
 
+// ---------- v0.5: Deflector Claws + Overclock Joints (Kepu 2026-11-05 15:30: "Therizino's last two moves") ----------
+const DBLUE = 0x3d9bff;
+const DN = (c, o) => new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide});
+let deflectLook = "A", clockLook = "A";
+// the shots: a dart (red), a boulder (grey, lobbed), a side dart (red)
+const SHOT_DART = mk(BOX, new THREE.MeshBasicMaterial({color: 0xff5a4e}));
+const SHOT_DART2 = mk(BOX, new THREE.MeshBasicMaterial({color: 0xff5a4e}));
+const SHOT_ROCK = mk(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({color: 0x8a8f96}));
+const SHOT_TRAIL = mk(BOX, DN(0xffd34d, 0.7));
+// A: the curved shield wall (14 panels of 10 deg, unrolled from the middle out), its rims and ripples
+const WALL_R = 9, WALL_H = 9, WALL_N = 14;
+const WALL = [...Array(WALL_N)].map((_, i) => mk(new THREE.CylinderGeometry(WALL_R, WALL_R, 1, 3, 1, true, Math.PI - (70 - i * 10) * Math.PI / 180, 10 * Math.PI / 180), DN(DBLUE, 0.22)));
+const WALL_RIMS = [0, 1, 2, 3].map(i => mk(new THREE.TorusGeometry(WALL_R, i === 3 ? 0.12 : 0.05, 6, 48, 140 * Math.PI / 180), DN(i === 3 ? 0x9fd0ff : DBLUE, i === 3 ? 0.95 : 0.55)));
+const WALL_EDGES = [0, 1].map(() => mk(BOX, DN(0x9fd0ff, 0.95)));
+const RIPPLES = [0, 1, 2].map(() => mk(new THREE.RingGeometry(0.8, 1, 40), DN(0xd6ecff, 0.9)));
+const DSPARKS = [...Array(3)].map(() => [...Array(8)].map(() => mk(BOX, DN(0xffffff, 1))));
+const GROUND_ARC = mk(new THREE.RingGeometry(WALL_R - 0.25, WALL_R + 0.25, 40, 1, Math.PI / 2 - 70 * Math.PI / 180, 140 * Math.PI / 180), DN(DBLUE, 0.6));
+const GROUND_FAN = mk(new THREE.CircleGeometry(WALL_R, 40, Math.PI / 2 - 70 * Math.PI / 180, 140 * Math.PI / 180), DN(DBLUE, 0.12));
+// B: two claw-whirl discs, three claw blades each
+const WHIRL = [0, 1].map(() => ({disc: mk(new THREE.CircleGeometry(2.4, 40), DN(0xbfe0ff, 0.28)), rim: mk(new THREE.RingGeometry(2.3, 2.45, 40), DN(DBLUE, 0.9)), blades: [0, 1, 2].map(() => mk(BOX, MATS.bone))}));
+// C: the swat arc
+const SWAT = mk(new THREE.TorusGeometry(3.2, 0.22, 6, 40, Math.PI * 0.8), DN(0xffffff, 0.9));
+function wideLabel(text, color) { // v0.5: longer words than label() fits
+  const c = document.createElement("canvas"); c.width = 1024; c.height = 96; const g = c.getContext("2d");
+  g.font = "800 64px Nunito, Segoe UI, sans-serif"; g.textAlign = "center"; g.lineWidth = 10; g.strokeStyle = "rgba(0,0,0,.75)"; g.strokeText(text, 512, 70); g.fillStyle = color || "#fff"; g.fillText(text, 512, 70);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(c), transparent: true, depthTest: false})); sp.scale.set(12.8, 1.2, 1); sp.visible = false; fx.add(sp); return sp;
+}
+function dinoRed(k) { for (const pt of theri.parts) { if (!pt.mesh.material.emissive) continue; pt.mesh.material.emissive.setRGB(0.9 * k, 0.05 * k, 0.05 * k); } }
+const LBL = {blocked: wideLabel("BLOCKED", "#9fd0ff"), back: wideLabel("BOUNCED BACK", "#ffd34d"), side: wideLabel("SIDE SHOT GETS THROUGH", "#ff6b6b"), hit3: label("HIT", "#ff6b6b")};
+const GUARD = {ArmL: [72, 42, 34], ArmR: [72, -42, -34], RootJoint: [6, 0, 0], Neck: [-6, 0, 0], Head: [-4, 0, 0], LegL: [18, 0, 0], KneeL: [-30, 0, 0], LegR: [-6, 0, 0], KneeR: [-14, 0, 0], AnkleL: [10, 0, 0]};
+const WHIRLP = {ArmL: [70, 0, 10], ArmR: [70, 0, -10], RootJoint: [-4, 0, 0], Neck: [-6, 0, 0], LegL: [14, 0, 0], KneeL: [-24, 0, 0], LegR: [-6, 0, 0], KneeR: [-10, 0, 0]};
+const WATCH = {ArmL: [40, 10, 25], ArmR: [40, -10, -25], RootJoint: [-8, 0, 0], Neck: [-10, 0, 0], LegL: [18, 0, 0], KneeL: [-32, 0, 0], LegR: [10, 0, 0], KneeR: [-22, 0, 0]};
+const SWAT_L = {ArmL: [55, -70, -70], RootJoint: [-6, 14, 0], Neck: [-4, -8, 0]};
+const SWAT_R = {ArmR: [55, 70, 70], RootJoint: [-6, -14, 0], Neck: [-4, 8, 0]};
+const ARMS_FWD_P = {ArmL: [62, 0, 8], ArmR: [62, 0, -8], RootJoint: [-6, 0, 0]};
+// the scene: three raptors (stand-ins for whatever shoots: a Dilo's dart, a Teno's boulder)
+const DPOS = [new THREE.Vector3(-7, 0, -16), new THREE.Vector3(8, 0, -15), new THREE.Vector3(15, 0, -3)];
+const D_ON = 0.15, D_OFF = 1.65; // shield up / down (step II: 1.5 s)
+const SHOTS = [ // from raptor, fire time, hit time, kind
+  {r: 0, tf: 0.3, th: 0.55, kind: "dart"},
+  {r: 1, tf: 0.75, th: 1.1, kind: "rock"},
+  {r: 2, tf: 1.25, th: 1.42, kind: "side"},
+];
+function shieldPoint(from) { // where a shot from `from` meets the wall (ring radius around the chest), at chest height
+  const c = new THREE.Vector3(rig.position.x, 3.2, rig.position.z), d = from.clone().setY(3.2).sub(c).normalize();
+  return c.clone().addScaledVector(d, WALL_R);
+}
+function dsparks(n, pos, k, col) { DSPARKS[n].forEach((m, j) => { if (k <= 0 || k >= 1) { m.visible = false; return; } const a = j / 8 * Math.PI * 2; const o = pos.clone().add(new THREE.Vector3(Math.cos(a) * k * 2.2, Math.sin(a * 1.3) * k * 1.6 + 0.3 * k, Math.sin(a) * k * 2.2)); setSeg(m, o.clone().lerp(pos, 0.45), o, 0.12); m.material.color.setHex(col || 0xffffff); m.material.opacity = 1 - k; }); }
+function ripple(n, pos, normal, k) { const m = RIPPLES[n]; m.visible = k > 0 && k < 1; if (!m.visible) return; m.position.copy(pos); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal); m.scale.setScalar(0.4 + 3.2 * easeOut(k)); m.material.opacity = 0.9 * (1 - k); }
+function shotFly(m, a, b, k, kind) { // k 0..1 along the path
+  m.visible = k >= 0 && k <= 1; if (!m.visible) return;
+  const p = a.clone().lerp(b, k); if (kind === "rock") p.y += Math.sin(k * Math.PI) * 4;
+  m.position.copy(p);
+  if (kind === "rock") { m.scale.setScalar(0.9); m.rotation.set(k * 9, k * 6, 0); }
+  else { m.scale.set(0.25, 0.25, 1.4); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), b.clone().sub(a).normalize()); }
+}
+// a deflected shot: from p0 flying off along dir (k 0..1), tumbling and falling
+function shotOff(m, p0, dir, k, fall) { m.visible = k >= 0 && k < 1; if (!m.visible) return; const p = p0.clone().addScaledVector(dir, k * 9); p.y += k * 3 - k * k * (fall || 7); m.position.copy(p); m.rotation.set(k * 14, k * 9, k * 5); }
+const DEFLECT_TEXT = {
+  now: {sub: "Now · live (v455)", why: "What's in the game now: the collar around the neck spins and a faint disc shows in front of the chest; a blocked shot just disappears with a small flash at the collar. You can't tell where it covers or what it did.",
+    does: ["Arms go forward; the neck collar spins up", "A faint disc shows in front of the chest", "The dart disappears when it reaches you (a small flash at the collar)", "★: the boulder disappears too and the thrower flashes", "A shot from the side hits you; nothing shows why"],
+    phases: [[0, 0.15, "Arms forward, collar spins up"], [0.15, 1.65, "Faint disc in front of the chest"], [0.55, 0.8, "Dart vanishes, small flash"], [1.1, 1.5, "Boulder vanishes, thrower flashes (★)"], [1.42, 1.8, "Side dart hits"], [1.65, 2.6, "—"]]},
+  A: {sub: "A · Shield Wall", why: "The Mane Rotor on the neck spins up and throws a curved blue energy wall in front of you, the exact front arc it covers (140°), from the ground to above your head. Blue = defense glow.",
+    does: ["Brace: you crouch and cross your arms; the neck collar spins up and its fins flare", "A blue wall unrolls from the middle out in front of you, and its arc shows on the ground", "Dart hits the wall: the wall ripples, sparks fly, BLOCKED, the dart bounces off", "★ Boulder hits the wall and flies straight back at the thrower: BOUNCED BACK", "A dart from the side gets past the wall and hits you (it only covers the front)", "The wall rolls back up into the collar"],
+    phases: [[0, 0.15, "Brace · collar spins, wall unrolls"], [0.15, 1.65, "The wall is up (front 140°, ground arc)"], [0.55, 0.9, "Dart hits: ripple, sparks, BLOCKED"], [1.1, 1.55, "★ Boulder: BOUNCED BACK at the thrower"], [1.42, 1.85, "Side dart gets through"], [1.65, 1.95, "Wall rolls back into the collar"], [1.95, 2.6, "—"]], rec: true},
+  B: {sub: "B · Claw Whirl", why: "No energy wall: the claws themselves become the shield. Both forearms whirl like propellers in front of you while the collar spins; shots clang off the spinning claws. The covered arc shows faintly on the ground.",
+    does: ["Arms up in front; both claws start to whirl into two spinning discs; the collar spins", "The front arc shows faintly on the ground", "Dart clangs off a whirling claw: orange sparks, BLOCKED, it's batted away", "★ Boulder is smashed straight back at the thrower: BOUNCED BACK", "A dart from the side gets past and hits you", "The claws slow down and stop"],
+    phases: [[0, 0.15, "Claws whirl up into two discs"], [0.15, 1.65, "Whirling claws in front (ground arc)"], [0.55, 0.9, "Dart clangs off: sparks, BLOCKED"], [1.1, 1.55, "★ Boulder smashed back: BOUNCED BACK"], [1.42, 1.85, "Side dart gets through"], [1.65, 1.95, "Claws slow and stop"], [1.95, 2.6, "—"]]},
+  C: {sub: "C · Parry Swat", why: "A watchful guard: the collar spins and the front arc glows on the ground. When a shot comes in, the nearest claw snaps out and swats it away. Very clear on every hit, but nothing big shows between hits.",
+    does: ["Low guard: you crouch and watch; the collar spins; the front arc glows on the ground", "Dart comes in: the right claw snaps out and swats it away (white arc), BLOCKED", "★ Boulder: the left claw swats it straight back: BOUNCED BACK", "A dart from the side is outside the arc and hits you", "Guard drops"],
+    phases: [[0, 0.15, "Low guard, ground arc glows"], [0.15, 1.65, "Watching (ground arc)"], [0.45, 0.85, "Swat! Dart batted away: BLOCKED"], [1.0, 1.55, "★ Swat! Boulder back: BOUNCED BACK"], [1.42, 1.85, "Side dart gets through"], [1.65, 1.95, "Guard drops"], [1.95, 2.6, "—"]]},
+};
+MOVES.push({ id: "deflect", name: "Deflector Claws", get sub() { return DEFLECT_TEXT[deflectLook].sub; }, area: "defense", len: 2.6,
+    part: "Mane Rotor (the claw-fin collar around the neck)", get partWhy() { return DEFLECT_TEXT[deflectLook].why; },
+    get does() { return DEFLECT_TEXT[deflectLook].does; },
+    nums: "Same numbers as now: up 1 / 1.5 / 2 s (shown: 1.5) · blocks darts (I), boulders and cannon shots too (II) · front 140° only · recharge 16 / 13 s · ★ blocked shots bounce back at the shooter",
+    get phases() { return DEFLECT_TEXT[deflectLook].phases; },
+    close: ["Torso_chest", [8, 6, -9]], focus: () => new THREE.Vector3(0, 3, -6), side: [34, 9, -4], three: [22, 15, 20], top: [2, 52, -6],
+    update(tt) {
+      rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0);
+      const L = deflectLook;
+      const up = seg(tt, 0, D_ON), down = 1 - seg(tt, D_OFF, D_OFF + 0.3);
+      const k = Math.min(easeOut(up), down); // shield amount
+      deflectUse = k; maneFilm = L === "now"; use = 0;
+      let A = IDLE(tt);
+      if (L === "now") A = mix(A, ARMS_FWD_P, k);
+      else if (L === "A") A = mix(A, GUARD, k);
+      else if (L === "B") { A = mix(A, WHIRLP, k); const w = Math.sin(tt * 26) * 28 * k; A = mix(A, {ArmL: [w, 0, 0], ArmR: [-w, 0, 0]}, 1 * k); }
+      else A = mix(A, WATCH, k);
+      // recoil on blocked hits
+      for (const S of SHOTS.slice(0, 2)) { const r = seg(tt, S.th, S.th + 0.25); if (r > 0 && r < 1) A = mix(A, {RootJoint: [8, 0, 0]}, Math.sin(r * Math.PI) * 0.8); }
+      // C: swats
+      if (L === "C") {
+        const sw = (t0, P) => { const u = seg(tt, t0 - 0.12, t0 + 0.05), o = seg(tt, t0 + 0.05, t0 + 0.35); return u > 0 && o < 1 ? Math.min(easeOut(u), 1 - easeIO(o)) : 0; };
+        A = mix(A, SWAT_R, sw(SHOTS[0].th, SWAT_R)); A = mix(A, SWAT_L, sw(SHOTS[1].th, SWAT_L));
+      }
+      // side hit flinch
+      const sh = seg(tt, SHOTS[2].th, SHOTS[2].th + 0.3); if (sh > 0 && sh < 1) A = mix(A, {RootJoint: [0, 0, -10], Neck: [0, 10, 0]}, Math.sin(sh * Math.PI));
+      pose(A);
+      dinoRed(sh > 0 && sh < 0.4 ? 0.8 * (1 - sh / 0.4) : 0);
+      // raptors
+      DPOS.forEach((p, i) => { const S = SHOTS[i]; const hitBack = i === 1 && tt > S.th + 0.35 && tt < S.th + 0.5;
+        raptorPose(raptors[i], {pos: p, yaw: Math.atan2(-p.x, -p.z) + Math.PI, run: 0, runAmt: 0, flash: hitBack}); });
+      // the shield visuals
+      const c = new THREE.Vector3(0, 0, 0);
+      const showArc = (a) => { for (const m of [GROUND_ARC, GROUND_FAN]) { m.visible = a > 0.02; m.position.set(0, 0.05, 0); m.rotation.set(-Math.PI / 2, 0, 0); } GROUND_ARC.material.opacity = 0.6 * a; GROUND_FAN.material.opacity = 0.12 * a; };
+      if (L === "A") {
+        const unroll = seg(tt, 0.02, D_ON + 0.08), roll = seg(tt, D_OFF, D_OFF + 0.3);
+        WALL.forEach((m, i) => { const fromMid = Math.abs(i - (WALL_N - 1) / 2) / (WALL_N / 2); const on = unroll > fromMid * 0.9 && roll < 1 - fromMid * 0.9; m.visible = on; if (!on) return; m.position.set(0, WALL_H / 2 * (1 - roll), 0); m.scale.set(1, WALL_H * (1 - roll) * Math.min(1, unroll * 1.4), 1); m.material.opacity = 0.18 + 0.06 * Math.sin(tt * 18 + i); });
+        WALL_RIMS.forEach((m, i) => { m.visible = k > 0.05; m.position.set(0, i === 3 ? WALL_H * k : (i + 1) * WALL_H / 4 * k, 0); m.rotation.set(Math.PI / 2, 0, Math.PI / 2 - 70 * Math.PI / 180 - Math.PI / 2 + Math.PI); m.rotation.set(-Math.PI / 2, 0, -Math.PI / 2 - 70 * Math.PI / 180 + Math.PI); m.material.opacity = (i === 3 ? 0.95 : 0.45) * k; });
+        WALL_EDGES.forEach((m, e) => { const a = (e ? 70 : -70) * Math.PI / 180; const x = Math.sin(a) * WALL_R, z = -Math.cos(a) * WALL_R; m.visible = k > 0.05; if (m.visible) setSeg(m, new THREE.Vector3(x, 0, z), new THREE.Vector3(x, WALL_H * k, z), 0.22); });
+        showArc(k);
+      } else if (L === "B") {
+        ["L", "R"].forEach((sd, j) => { const W = WHIRL[j]; const hp = centreOf(`Arm${sd}_hand`).add(new THREE.Vector3(0, 0.3, -1.4)); const on = k > 0.05; for (const m of [W.disc, W.rim]) { m.visible = on; m.position.copy(hp); m.rotation.set(0, 0, 0); m.scale.setScalar(k); } W.blades.forEach((b, q) => { b.visible = on; const a = tt * 26 * (j ? -1 : 1) + q * 2.09; b.position.copy(hp).add(new THREE.Vector3(Math.cos(a) * 1.2 * k, Math.sin(a) * 1.2 * k, 0)); b.rotation.set(0, 0, a); b.scale.set(2.2 * k, 0.3, 0.15); }); });
+        showArc(k * 0.6);
+      } else if (L === "C") {
+        showArc(k * (0.6 + 0.4 * Math.sin(tt * 10)));
+      }
+      // the shots
+      SHOTS.forEach((S, i) => {
+        const from = raptors[i].position.clone().add(new THREE.Vector3(0, 3, 0));
+        const m = S.kind === "rock" ? SHOT_ROCK : (i === 0 ? SHOT_DART : SHOT_DART2);
+        const blocked = S.kind !== "side";
+        const hitP = blocked ? (L === "now" ? worldOf("Torso_chest", [0, 3.0, -4.7]) : L === "B" ? centreOf(i === 0 ? "ArmR_hand" : "ArmL_hand").add(new THREE.Vector3(0, 0.3, -1.4)) : L === "C" ? centreOf(i === 0 ? "ArmR_hand" : "ArmL_hand") : shieldPoint(from)) : centreOf("Torso_body");
+        const kf = (tt - S.tf) / (S.th - S.tf);
+        if (kf < 1) { shotFly(m, from, hitP, kf, S.kind === "rock" ? "rock" : "dart"); if (kf >= 0 && kf < 1) setSeg(SHOT_TRAIL, from.clone().lerp(hitP, Math.max(0, kf - 0.25)), from.clone().lerp(hitP, kf), 0.12); }
+        const lt = tt - S.th;
+        if (lt < 0) return;
+        if (!blocked) { pop(LBL.side, centreOf("Torso_body"), lt / 1.0); pop(LBL.hit3, centreOf("Torso_body").add(new THREE.Vector3(0, 1.4, 0)), lt / 0.9); return; }
+        const normal = from.clone().sub(hitP).setY(0).normalize();
+        if (L === "now") { burst(worldOf("Torso_chest", [0, 3.3, -2.95]), seg(lt, 0, 0.25), 0xffffff, 1.2); if (i === 1) burst(from, seg(lt, 0.35, 0.6), 0xffffff, 1.5); return; }
+        // ripple / sparks / label
+        if (L === "A") ripple(i, hitP, normal, seg(lt, 0, 0.45));
+        dsparks(i, hitP, seg(lt, 0, 0.3), L === "B" ? 0xffa040 : 0xd6ecff);
+        if (L === "C") { const sw = SWAT; sw.visible = lt < 0.25; if (sw.visible) { sw.position.copy(hitP); sw.rotation.set(Math.PI / 2, 0, (i === 0 ? 0.4 : 2.4) + lt * 6); sw.material.opacity = 0.9 * (1 - lt / 0.25); } }
+        if (i === 0) { shotOff(m, hitP, new THREE.Vector3(L === "C" ? 0.9 : 0.6, 0, 0.3).normalize().add(normal.clone().multiplyScalar(0.6)).normalize(), lt / 0.6, 9); pop(LBL.blocked, hitP, lt / 1.0); }
+        else { const back = seg(lt, 0, 0.35); if (back < 1) { m.visible = true; const p = hitP.clone().lerp(from, back); p.y += Math.sin(back * Math.PI) * 1.5; m.position.copy(p); m.rotation.set(back * 9, 0, 0); setSeg(SHOT_TRAIL, hitP.clone().lerp(from, Math.max(0, back - 0.3)), p, 0.2); } pop(LBL.back, from, seg(lt, 0.2, 1.3)); dsparks(2, from, seg(lt, 0.35, 0.65), 0xffd34d); }
+      });
+    } });
+
+// Overclock Joints (passive): you run; a screech tries to slow you (★ ignores it); a third jump (III)
+const SLOW_RING = mk(new THREE.TorusGeometry(1, 0.22, 6, 40), DN(0xb06bff, 0.9));
+const SHRUG = mk(new THREE.RingGeometry(0.85, 1, 12), DN(0xffd34d, 0.95)); // a 12-toothed "gear" ring
+const STREAKS = [...Array(8)].map(() => mk(BOX, DN(0xffe680, 0.55)));
+const VENT = [...Array(12)].map(() => mk(BALL, new THREE.MeshLambertMaterial({color: 0xf2f4f8, transparent: true, opacity: 0.6, depthWrite: false})));
+const KSPARK = [...Array(8)].map(() => mk(BOX, DN(0xffd34d, 1)));
+const PRINTS = [...Array(10)].map(() => mk(new THREE.CircleGeometry(1.0, 12), DN(0xff9b2e, 0.8)));
+const CHEV = wideLabel("3rd JUMP", "#ffd34d"), IMMUNE = wideLabel("SLOW IGNORED", "#ffd34d"), SLOWED = label("SLOW", "#b06bff");
+const CLOCK_SPEED = 9 * 1.4; // units / s while running (40% faster)
+const JUMPS = [2.2, 2.62, 3.05]; // the third is Overclock III's extra charge
+function jumpY(tt) { // three jumps, each resets the rise (v0 12, g 34)
+  let y = 0, v = 0, last = null;
+  for (const j of JUMPS) if (tt >= j) last = j;
+  if (last === null) return 0;
+  // integrate from the first jump
+  let tcur = JUMPS[0]; y = 0; v = 12;
+  for (let i = 1; i <= JUMPS.length; i++) {
+    const tn = i < JUMPS.length && JUMPS[i] <= tt ? JUMPS[i] : tt;
+    const d = tn - tcur; y = y + v * d - 0.5 * 34 * d * d; v = v - 34 * d;
+    if (y <= 0 && v < 0) return 0;
+    tcur = tn; if (i < JUMPS.length && JUMPS[i] <= tt) v = 12; else break;
+  }
+  return Math.max(0, y);
+}
+const CLOCK_TEXT = {
+  now: {sub: "Now · live (v455)", why: "What's in the game now: the piston legs' knee gears spin and the heat fins open while you move, and the canisters glow yellow. You run faster, but nothing shows the speed, the ignored slow, or the extra jump.",
+    does: ["You run 40% faster; the knee gears spin and the fins open", "A raptor's screech hits you: nothing shows (★ ignores slows)", "Jump, air jump, and a third jump (III): nothing shows it's the extra one"],
+    phases: [[0, 1.6, "Running · gears spin, fins open"], [1.55, 2.0, "Screech hits: no sign"], [2.2, 3.7, "Three jumps, no sign of the extra"], [3.7, 4.4, "—"]]},
+  A: {sub: "A · Steam Engine", why: "The piston legs work like a steam engine: every stride the pistons pump, the heat fins vent a puff of steam, and the knee gears spark on each footfall; yellow speed streaks run along your flanks. Yellow = speed glow.",
+    does: ["Running: pistons pump with each stride, a steam puff vents from each haunch, the knees spark on every footfall, speed streaks along the flanks", "A raptor's screech (purple ring) hits you: a yellow gear-ring bursts out and shatters it: SLOW IGNORED (★)", "Jump, air jump, then the extra jump (III): the pistons slam down, a steam blast ring under you: 3rd JUMP"],
+    phases: [[0, 1.6, "Running · pistons pump, steam, knee sparks, streaks"], [1.55, 2.0, "★ Screech shattered: SLOW IGNORED"], [2.2, 3.0, "Jump + air jump"], [3.05, 3.5, "Extra jump: steam blast, 3rd JUMP"], [3.5, 4.4, "—"]], rec: true},
+  B: {sub: "B · Afterburner", why: "The coolant canisters on the haunches become afterburners: short yellow-orange flames blow out backward while you run, and your feet leave glowing prints. Hot, loud, very obviously fast.",
+    does: ["Running: flames out the back of both haunch canisters; glowing footprints behind you", "Screech hits you: the flames flare and burn the purple ring away: SLOW IGNORED (★)", "Extra jump (III): both flames turn down and blast you up: 3rd JUMP"],
+    phases: [[0, 1.6, "Running · haunch flames, glowing prints"], [1.55, 2.0, "★ Flames burn the slow off"], [2.2, 3.0, "Jump + air jump"], [3.05, 3.5, "Extra jump: downward blast"], [3.5, 4.4, "—"]]},
+  C: {sub: "C · Clockwork Blur", why: "Pure speed read: yellow afterimages of you trail behind while you run and the knee gears glow. No smoke or fire, just a clean speed effect.",
+    does: ["Running: three yellow afterimages trail behind you; the knee gears glow", "Screech hits you: a yellow gear-ring flashes: SLOW IGNORED (★)", "Extra jump (III): a gear-ring flash under your feet: 3rd JUMP"],
+    phases: [[0, 1.6, "Running · afterimages, glowing gears"], [1.55, 2.0, "★ Gear flash: SLOW IGNORED"], [2.2, 3.0, "Jump + air jump"], [3.05, 3.5, "Extra jump: gear flash"], [3.5, 4.4, "—"]]},
+};
+MOVES.push({ id: "overclock", name: "Overclock Joints", get sub() { return CLOCK_TEXT[clockLook].sub; }, area: "speed", len: 4.4,
+    part: "Piston Legs (haunch canisters, pistons, knee gears)", get partWhy() { return CLOCK_TEXT[clockLook].why; },
+    get does() { return CLOCK_TEXT[clockLook].does; },
+    nums: "Same numbers as now: always on while slotted (no button) · run 40% faster · cut taps 30% faster (II) · one extra jump (III) · slows don't work on you (★)",
+    get phases() { return CLOCK_TEXT[clockLook].phases; },
+    close: ["LegL_thigh", [7, 2, 4]], focus: () => new THREE.Vector3(rig.position.x, 3, rig.position.z - 4), side: [32, 8, 0], three: [20, 14, 20], top: [0, 70, -30],
+    update(tt) {
+      const L = clockLook;
+      const z = -CLOCK_SPEED * tt;
+      const y = jumpY(tt);
+      rig.position.set(0, y, z); rig.rotation.set(0, 0, 0);
+      clockUse = 1; use = 0;
+      const air = y > 0.05;
+      let A = RUN(tt * 1.25);
+      if (air) A = mix(A, {LegL: [40, 0, 0], LegR: [30, 0, 0], KneeL: [-70, 0, 0], KneeR: [-60, 0, 0], ArmL: [30, 0, 10], ArmR: [30, 0, -10], RootJoint: [-6, 0, 0]}, 0.8);
+      pose(A);
+      raptors[1].visible = raptors[2].visible = false;
+      // the screecher ahead-left
+      const rp = new THREE.Vector3(-10, 0, -CLOCK_SPEED * 1.75 - 6);
+      raptorPose(raptors[0], {pos: rp, yaw: Math.atan2(rp.x - 0, rp.z - z) , run: 0, runAmt: 0});
+      const sk = seg(tt, 1.25, 1.6); // the screech ring flies to you
+      const me = new THREE.Vector3(0, 3 + y, z - 2);
+      if (sk > 0 && sk < 1) { SLOW_RING.visible = true; SLOW_RING.position.copy(rp.clone().setY(3).lerp(me, sk)); SLOW_RING.lookAt(me); SLOW_RING.scale.setScalar(1 + sk * 2.5); SLOW_RING.material.opacity = 0.85; }
+      const hit = seg(tt, 1.6, 2.0);
+      if (L === "now") { if (hit > 0 && hit < 0.4) { SLOW_RING.visible = true; SLOW_RING.position.copy(me); SLOW_RING.scale.setScalar(3.5); SLOW_RING.material.opacity = 0.85 * (1 - hit / 0.4); } }
+      else if (hit > 0 && hit < 1) {
+        // the shatter (purple ring breaks) + a yellow ring out
+        SLOW_RING.visible = hit < 0.3; SLOW_RING.position.copy(me); SLOW_RING.scale.setScalar(3.5 + hit * 6); SLOW_RING.material.opacity = 0.85 * (1 - hit / 0.3);
+        SHRUG.visible = true; SHRUG.position.copy(me); SHRUG.lookAt(me.clone().add(new THREE.Vector3(10, 0, 0))); SHRUG.scale.setScalar(1 + 6 * easeOut(hit)); SHRUG.rotation.z = hit * 3; SHRUG.material.opacity = 0.95 * (1 - hit);
+        SHRUG.material.color.setHex(L === "B" ? 0xff8a1a : 0xffd34d);
+        pop(IMMUNE, me.clone().add(new THREE.Vector3(0, 1.5, 0)), hit);
+      }
+      // running effects
+      const ph = tt * 1.25 * 11;
+      const onGround = !air;
+      if (L === "A") {
+        for (let i = 0; i < 12; i++) { // a steam puff every half stride from alternating haunches
+          const birth = Math.floor(ph / Math.PI) - Math.floor(i / 2), side = (birth % 2 === 0) ? 1 : -1;
+          const bt = birth * Math.PI / (1.25 * 11), kk = (tt - bt) / 0.55; const m = VENT[i];
+          if (i % 2 || kk < 0 || kk > 1 || bt < 0) { m.visible = false; continue; }
+          const hp = pieceWorld("ring", side > 0 ? "LegL_haunch" : "LegR_haunch");
+          const p = new THREE.Vector3(hp.x + side * (0.6 + kk * 1.6), hp.y + 0.5 + kk * 2.4, hp.z + (tt - bt) * CLOCK_SPEED * 0.85);
+          m.visible = true; m.position.copy(p); m.scale.setScalar(1.0 + kk * 2.4); m.material.opacity = 0.75 * (1 - kk);
+        }
+        KSPARK.forEach((m, j) => { const footL = Math.sin(ph) > 0.95, footR = Math.sin(ph) < -0.95; const on = onGround && (j < 4 ? footL : footR); m.visible = on; if (!on) return; const kp = pieceWorld("gear", j < 4 ? "ShinL_knee" : "ShinR_knee"); const a = j * 1.7; setSeg(m, kp, kp.clone().add(new THREE.Vector3(Math.cos(a) * 1.6, 0.8 + Math.sin(a) * 0.7, 1.4)), 0.14); });
+        STREAKS.forEach((m, j) => { const sd = j % 2 ? 1 : -1; const yy = 1.2 + (j >> 1) * 1.3 + y; const off = ((tt * 3 + j * 0.37) % 1); const zz = z + 2 + off * 7; setSeg(m, new THREE.Vector3(sd * (4.2 + (j >> 1) * 0.3), yy, zz), new THREE.Vector3(sd * (4.2 + (j >> 1) * 0.3), yy, zz + 4.5), 0.16); m.material.opacity = 0.8 * (1 - off); });
+      } else if (L === "B") {
+        ["L", "R"].forEach((sd, i) => { const s2 = sd === "L" ? 1 : -1; const hp = pieceWorld("ring", `Leg${sd}_haunch`).add(new THREE.Vector3(s2 * 0.2, 0, 0.5)); const down = seg(tt, 3.05, 3.12) * (1 - seg(tt, 3.35, 3.5)); const dir = new THREE.Vector3(0, -down, 1 - down).normalize(); const flare = (hit > 0 && hit < 0.5 ? 1.8 : 1) * (down > 0 ? 2.2 : 1); flame(i, hp, dir, 4.0 * flare * (0.85 + 0.15 * Math.sin(tt * 70 + i)), 1.4); });
+        PRINTS.forEach((m, j) => { const n = Math.floor(ph / Math.PI) - j; if (n < 0) { m.visible = false; return; } const bt = n * Math.PI / (1.25 * 11); const age = tt - bt; const fz = -CLOCK_SPEED * bt; m.visible = age < 1.2 && jumpY(bt) < 0.05; if (!m.visible) return; m.position.set(n % 2 ? 1.1 : -1.1, 0.04, fz - 1); m.rotation.set(-Math.PI / 2, 0, 0); m.material.opacity = 0.7 * (1 - age / 1.2); });
+      } else if (L === "C") {
+        ghosts(true, [3, 2, 1].map(g => new THREE.Vector3(0, jumpY(Math.max(0, tt - g * 0.16)), -CLOCK_SPEED * Math.max(0, tt - g * 0.16))), 0.55);
+        dinoFlash(0);
+      }
+      // the extra jump
+      const xj = seg(tt, JUMPS[2], JUMPS[2] + 0.45);
+      if (xj > 0 && xj < 1 && L !== "now") {
+        pop(CHEV, new THREE.Vector3(0, y + 4, z), xj);
+        if (L === "A") { burst(new THREE.Vector3(0, jumpY(JUMPS[2]) - 0.2, -CLOCK_SPEED * JUMPS[2]), xj, 0xffffff, 5); for (let i = 0; i < 6; i++) { const m = VENT[i * 2 + 1]; m.visible = true; const a = i / 6 * Math.PI * 2; m.position.set(Math.cos(a) * 2.5 * xj, jumpY(JUMPS[2]) - 0.5 - xj, -CLOCK_SPEED * JUMPS[2] + Math.sin(a) * 2.5 * xj); m.scale.setScalar(0.8 + xj * 1.5); m.material.opacity = 0.6 * (1 - xj); } }
+        else if (L === "C") { SHRUG.visible = true; SHRUG.position.set(0, jumpY(JUMPS[2]) - 0.3, -CLOCK_SPEED * JUMPS[2]); SHRUG.rotation.set(-Math.PI / 2, 0, xj * 3); SHRUG.scale.setScalar(1 + 4 * xj); SHRUG.material.opacity = 0.95 * (1 - xj); SHRUG.material.color.setHex(0xffd34d); }
+        else burst(new THREE.Vector3(0, jumpY(JUMPS[2]) - 0.2, -CLOCK_SPEED * JUMPS[2]), xj, 0xff8a1a, 5);
+      }
+    } });
+
 // ---------- UI ----------
-let cur = Math.max(0, MOVES.findIndex(m => m.id === "feather")), playing = true, speed = 1, view = "three", tt = 0;
+let cur = Math.max(0, MOVES.findIndex(m => m.id === "deflect")), playing = true, speed = 1, view = "three", tt = 0;
 function renderMoves() {
   $("moves").innerHTML = MOVES.map((m, i) => `<button class="tab" data-i="${i}" aria-pressed="${i === cur}">${m.name}<small style="color:${AREA[m.area][1]}">${m.sub}</small></button>`).join("");
   const m = MOVES[cur];
@@ -663,6 +918,9 @@ function renderMoves() {
   $("sizeRow").hidden = m.id !== "harvest";
   $("dashRow").hidden = m.id !== "dash";
   $("featherRow").hidden = m.id !== "feather"; // v0.4
+  $("deflectRow").hidden = m.id !== "deflect"; $("clockRow").hidden = m.id !== "overclock"; // v0.5
+  document.querySelectorAll("[data-deflect]").forEach(x => x.setAttribute("aria-pressed", x.dataset.deflect === deflectLook));
+  document.querySelectorAll("[data-clock]").forEach(x => x.setAttribute("aria-pressed", x.dataset.clock === clockLook));
   document.querySelectorAll("[data-feather]").forEach(x => x.setAttribute("aria-pressed", x.dataset.feather === featherLook));
   document.querySelectorAll("[data-dash]").forEach(x => x.setAttribute("aria-pressed", x.dataset.dash === dashLook));
 }
@@ -673,6 +931,8 @@ function syncPlay() { $("play").textContent = playing ? "Pause" : "Play"; $("pla
 document.querySelectorAll("[data-speed]").forEach(b => b.onclick = () => { speed = +b.dataset.speed; document.querySelectorAll("[data-speed]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { view = b.dataset.view; document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
 document.querySelectorAll("[data-size]").forEach(b => b.onclick = () => { ringStuds = +b.dataset.size; document.querySelectorAll("[data-size]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+document.querySelectorAll("[data-deflect]").forEach(b => b.onclick = () => { deflectLook = b.dataset.deflect; tt = 0; fxOff(); renderMoves(); }); // v0.5
+document.querySelectorAll("[data-clock]").forEach(b => b.onclick = () => { clockLook = b.dataset.clock; tt = 0; fxOff(); renderMoves(); });
 document.querySelectorAll("[data-feather]").forEach(b => b.onclick = () => { featherLook = b.dataset.feather; tt = 0; fxOff(); renderMoves(); }); // v0.4
 document.querySelectorAll("[data-dash]").forEach(b => b.onclick = () => { dashLook = b.dataset.dash; buildRig(); tt = 0; fxOff(); renderMoves(); });
 $("scrub").addEventListener("input", e => { tt = +e.target.value / 1000 * MOVES[cur].len; playing = false; syncPlay(); });
@@ -685,7 +945,7 @@ function frameM(now) {
   const m = MOVES[cur];
   if (playing) { tt += dt * speed; if (tt > m.len) { tt = 0; fxOff(); } }
   fxOff(); raptors.forEach(r => r.visible = true);
-  boomA = 0; clawOut = false; harpoonOut = false; wingEmpty = {L: false, R: false}; featherUse = 0; thrustYaw = 0; jetYaw = 0; burstIdx = 0; dinoFlash(0);
+  boomA = 0; clawOut = false; harpoonOut = false; wingEmpty = {L: false, R: false}; featherUse = 0; deflectUse = 0; clockUse = 0; maneFilm = true; rig.position.y = 0; thrustYaw = 0; jetYaw = 0; burstIdx = 0; dinoFlash(0);
   m.update(tt);
   updateEquip();
   $("scrub").value = Math.round(tt / m.len * 1000);
@@ -698,14 +958,18 @@ function frameM(now) {
   let goalPos, goalLook;
   if (view === "game") { // ShoulderCam: behind-right of the dino, looking ahead
     const top = 8, h = rig.rotation.y;
-    const off = new THREE.Vector3(0.9 * top + 0.5, 0.75 * top + 0.35 * top + 2, 26).applyAxisAngle(UP, h); // pulled back a little to match the game's framing in Studio
-    goalPos = rig.position.clone().setY(-(restMinY || 0)).add(off); // the redesign mockup's ShoulderCam framing (its height includes the rest lift)
-    goalLook = goalPos.clone().add(new THREE.Vector3(0, -1.2, -10).applyAxisAngle(UP, h));
+    // v0.5: measured in Studio (2026-11-05, adult therizino): the camera sits 68 studs behind, 26 right and 19 above the root
+    // (root 11.5 studs up), looking 1.3 deg down = 34 / 13 / 15.3 units from the feet
+    const off = new THREE.Vector3(13, 15.3, 34).applyAxisAngle(UP, h); void top;
+    goalPos = rig.position.clone().setY(rig.position.y).add(off);
+    goalLook = goalPos.clone().add(new THREE.Vector3(-0.05, -0.023, -1).applyAxisAngle(UP, h));
   } else if (view === "close") { // the part itself, up close (follows the dino)
     const c = typeof m.close === "function" ? m.close() : m.close;
     goalLook = centreOf(c[0]); goalPos = goalLook.clone().add(new THREE.Vector3(...c[1]));
   } else if (view === "top") { const o = m.top; goalPos = new THREE.Vector3(o[0], o[1], o[2] + 0.01); goalLook = new THREE.Vector3(o[0], 0, o[2]); }
   else { const o = m[view]; goalPos = f.clone().add(new THREE.Vector3(o[0], o[1], o[2])); goalLook = f; }
+  const fovWant = view === "game" ? 70 : 34; // v0.5: Roblox's default field of view for the player camera
+  if (cam.fov !== fovWant) { cam.fov = fovWant; cam.updateProjectionMatrix(); }
   const kk = 1 - Math.pow(0.001, dt);
   camPos.lerp(goalPos, kk); camLook.lerp(goalLook, kk);
   cam.position.copy(camPos); cam.lookAt(camLook);
