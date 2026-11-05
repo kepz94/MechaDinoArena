@@ -108,7 +108,8 @@
 --     chest muzzle (role "muzzle", else "jib", else the root) the world blocks. None / blocked -> TheriReelResult "noTarget" /
 --     "blocked", no recharge. Else recharge; fly = clamp(d / REEL_CLAW_SPEED (220), 0.12, 0.35), reel = clamp((d - gap) /
 --     REEL_SPEED (90), 0.3, 0.8), gap = REEL_GAP (7) x scale. Shielded -> "shielded" (nothing more). "hit": the target is held
---     for REEL_BRACE (0.3) + fly + reel (bot: root held in place; player: slowed x 0.1; HookHeldUntil); then, if it is within
+--     for REEL_BRACE (0.3) + fly + reel + REEL_SETTLE (0.3) (bot: root held in place; player: slowed x 0.1; HookHeldUntil); then
+--     (REEL_SETTLE after the reel's end, so the owner's reel has replicated), if it is within
 --     gap + REEL_REACH (12) studs (flat) of the root: REEL_SLASH (10) damage ("therihook"), TheriReelHitAt, star -> stunned
 --     TheriHookStun s + TheriStartCut (as 1.3); else TheriReelResult "missed". Stamps: TheriReelTarget, TheriReelEnd,
 --     TheriReelBrace, TheriReelFly, TheriReelTime, TheriReelGap, TheriReelResult, TheriReelAt (last).
@@ -842,6 +843,7 @@ local VORTEX_AHEAD, VORTEX_START, VORTEX_PULL = 5, 0.95, 6
 local BOLA_CONE, BOLA_WIND, BOLA_SPEED = 25, 0.6, 80
 local DASH_MIN, DASH_DELAY, DASH_SPEED = 4, 0.16, 330
 local REEL_BRACE, REEL_CLAW_SPEED, REEL_SPEED, REEL_GAP, REEL_REACH, REEL_SLASH = 0.3, 220, 90, 7, 12, 10
+local REEL_SETTLE = 0.3 -- the owner's reel replicates late: judge the slash this long after the reel ends
 for _, k in ipairs({"TheriMovesVortexes", "TheriMovesBolaHits", "TheriMovesReelHits", "TheriMovesDashes"}) do script:SetAttribute(k, 0) end
 local function forward(char)
 	local f = flat(rootOf(char).CFrame.LookVector)
@@ -1136,18 +1138,18 @@ hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	char:SetAttribute("TheriReelAt", t) -- last: TheriGrappleZip 1.3 + FX + pose
 	if result ~= "hit" then return end
 	local total = REEL_BRACE + fly + reel
-	best:SetAttribute("HookHeldUntil", t + total)
+	best:SetAttribute("HookHeldUntil", t + total + REEL_SETTLE)
 	if Players:GetPlayerFromCharacter(best) then
-		slow(best, 0.1, t + total, t)
+		slow(best, 0.1, t + total + REEL_SETTLE, t)
 	else
 		local br = rootOf(best)
 		local at = br.Position
 		task.spawn(slideBot, best, function()
 			local r2 = rootOf(best)
 			return Vector3.new(at.X, r2 and r2.Position.Y or at.Y, at.Z)
-		end, total)
+		end, total + REEL_SETTLE)
 	end
-	task.wait(total)
+	task.wait(total + REEL_SETTLE)
 	local t2 = now()
 	local r, br = rootOf(char), rootOf(best)
 	if not (char.Parent and r and br and stillTarget(char, best)) or flat(br.Position - r.Position).Magnitude > gapS + REEL_REACH then
