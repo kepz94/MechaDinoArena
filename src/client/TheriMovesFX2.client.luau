@@ -777,7 +777,7 @@ local function popTag(model, text, U, off)
 	if not r then return nil end
 	local g = Instance.new("BillboardGui")
 	g.Name = "TheriVolleyPop"
-	g.AlwaysOnTop = true
+	g.AlwaysOnTop = false -- Studio check: AlwaysOnTop pops did not draw; the game's own TargetBar billboards are not on top either
 	g.Size = UDim2.fromOffset(60, 40)
 	g.LightInfluence = 0
 	g.Adornee = r
@@ -790,7 +790,7 @@ local function popTag(model, text, U, off)
 	tl.TextColor3 = POP_RED
 	tl.TextStrokeTransparency = 0.2
 	tl.Parent = g
-	-- in PlayerGui: a BillboardGui left in Workspace.DinoFX_Local did not draw (Studio check)
+	-- in PlayerGui (as the Studio check that drew)
 	local lp = Players.LocalPlayer
 	g.Parent = (lp and lp:FindFirstChildOfClass("PlayerGui")) or fx()
 	return {g = g, tl = tl, base = 5 * model:GetScale() / 2 + 2 * U, off = off}
