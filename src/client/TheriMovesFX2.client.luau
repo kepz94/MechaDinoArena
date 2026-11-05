@@ -458,12 +458,13 @@ local function bola(char)
 			local held = snaredUntil > now()
 			if not held and not snapAt then snapAt = t end
 			local ts = tm and tm:GetScale() or 1
+			local feet = r and groundBelow(r.Position, r.Position.Y - 3 * ts) or 0
 			for i, l in ipairs(loops) do
 				local drop = snapAt and seg(t, snapAt, snapAt + 0.4) or 0
-				if r then
-					local cf = CFrame.new(r.Position + Vector3.new(0, (-1.6 + i * 0.35) * ts * 1.4 - drop * 2 * ts, 0))
+				if r then -- around the legs: 0.5 + 0.35 i storyboard units above the feet
+					local cf = CFrame.new(Vector3.new(r.Position.X, feet + (0.5 + (i - 1) * 0.35) * ts * (1 - drop), r.Position.Z))
 						* CFrame.Angles((i % 2 == 0) and 0.35 or -0.35, t * 0.5, 0)
-					placeRing(l, cf, 0.55 * 1.6 * ts * 1.6 * (0.6 + 0.4 * seg(t, hitT, hitT + 0.12)), 0.09 * ts, 0.09 * ts)
+					placeRing(l, cf, 1.2 * ts * (0.6 + 0.4 * seg(t, hitT, hitT + 0.12)), 0.09 * ts, 0.09 * ts)
 					for _, p in ipairs(l) do p.Transparency = drop end
 				else
 					for _, p in ipairs(l) do p.Transparency = 1 end
@@ -566,7 +567,7 @@ local function dash(char)
 			for i, p in ipairs(set) do
 				if vis then
 					p.CFrame = base * snap[i].rel
-					p.Transparency = 1 - 0.32 * alpha * (0.5 + (g - 1) * 0.25)
+					p.Transparency = 1 - 0.6 * alpha * (0.6 + (g - 1) * 0.2) -- brighter than the storyboard's 0.32: no additive glow here
 				else
 					p.Transparency = 1
 				end
