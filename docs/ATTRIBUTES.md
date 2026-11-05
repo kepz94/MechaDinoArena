@@ -2807,3 +2807,7 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriPoseVolleyEnabled | character model | switch (nil = true; false = the 1.6 FEATHER pose); TheriPartsPose shows "volley" | TheriPose 1.10 |
 | TheriMovesFX2_volleyEnabled | TheriMovesFX2 script | switch (default true) | TheriMovesFX2 1.1 |
 | SkillTree.THERI_FEATHER_RANGE2 | SkillTree module flag | true = Feather Barrage range 35 / 40 / 50 (false = 20 / 25 / 30); feeds TheriFeatherRange | SkillTree 1.67 |
+| TheriMovesDeflectWallEnabled | TheriMovesServer script | switch (default true; false = the 1.6 Deflector look) | TheriMovesServer 1.7 |
+| TheriDeflectWall | therizino character (server, each Deflector press) | true = every client draws the Shield Wall look | TheriMovesServer 1.7 |
+| TheriPoseGuardEnabled | character model | switch (nil = true; false = ARMS_FWD); TheriPartsPose shows "guard" | TheriPose 1.11 |
+| TheriMovesFX2_wallEnabled, TheriMovesFX2_steamEnabled | TheriMovesFX2 script | switches (default true); TheriMovesFX2Last shows wall / wallBlock(:back) / slowIgnored / thirdJump | TheriMovesFX2 1.2 |
