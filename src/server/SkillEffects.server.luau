@@ -1,4 +1,4 @@
--- SkillEffects v1.42 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.43 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -282,6 +282,9 @@ local ServerStorage = game:GetService("ServerStorage")
 --   (Time, RunMul, TapMul, NoSlow, Cooldown), TheriSnare (Max, Damage, Root, Radius, Cooldown). Read by TheriPartsServer 1.0
 --   (looks), TheriMovesServer 1.0, MechaButtons. Runs after applyChar (a wrapper, after the dilo's). Switch: script attribute
 --   SkillEffectsTheriPartsEnabled (default true, read at each write; false = 1.41 plus the off values written).
+-- v1.43 (therizino moves rework, SkillTree 1.65 snareRange, plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md, MDA-262): the
+--   TheriSnare row gains Range (effect snareRange, off 0): the bola's reach (TheriMovesServer 1.4). Switch: script attribute
+--   SkillEffectsTheriBolaRangeEnabled (default true, read at start; false = 1.42, no TheriSnareRange).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -298,6 +301,7 @@ VERSION = "1.39" -- v1.39 therizino stat rows (THERI_ATTRS)
 VERSION = "1.40" -- v1.40 pachy Last Stand + Head Down (PACHY_ATTRS)
 VERSION = "1.41" -- v1.41 dilo stat rows (DILO_ATTRS + spit numbers)
 VERSION = "1.42" -- v1.42 therizino button parts (ZPARTS)
+VERSION = "1.43" -- v1.43 TheriSnareRange (bola reach)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -973,6 +977,14 @@ do
 			end
 			if char:GetAttribute(prefix .. "Enabled") ~= (pOn == true) then char:SetAttribute(prefix .. "Enabled", pOn == true) end
 		end
+	end
+end
+
+-- v1.43: the bola's reach (see the header)
+if script:GetAttribute("SkillEffectsTheriBolaRangeEnabled") == nil then script:SetAttribute("SkillEffectsTheriBolaRangeEnabled", true) end
+if script:GetAttribute("SkillEffectsTheriBolaRangeEnabled") ~= false then
+	for _, def in ipairs(ZPARTS) do
+		if def[1] == "zsnare" then table.insert(def[3], {"Range", "snareRange", 0}) end
 	end
 end
 

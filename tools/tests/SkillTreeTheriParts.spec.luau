@@ -1,4 +1,4 @@
--- SkillTreeTheriParts.spec v1.3 (1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
+-- SkillTreeTheriParts.spec v1.4 (1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.61 (plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheriParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-04 "Two builds"): zhook / zfeather / zharvest / zsnare live; zgrapple / zdeflect / zclock "soon".
@@ -26,10 +26,12 @@ eq("THERI_PARTS_B2_SOON", ST.THERI_PARTS_B2_SOON, false) -- v1.1
 eq("THERI_GRAPPLE_V2", ST.THERI_GRAPPLE_V2, true) -- v1.2
 eq("THERI_CLOCK_PASSIVE", ST.THERI_CLOCK_PASSIVE, true) -- v1.2
 eq("THERI_GRAPPLE_LOCKON", ST.THERI_GRAPPLE_LOCKON, true) -- v1.3
+for _, k in ipairs({"THERI_VORTEX", "THERI_BOLA", "THERI_DASH", "THERI_REEL"}) do eq(k, ST[k], true) end -- v1.4
+local VX, BO, DA, RE = ST.THERI_VORTEX, ST.THERI_BOLA, ST.THERI_DASH, ST.THERI_REEL -- v1.4
 local ROWS = {
 	zhook = {"Reaper's Hook", "attack", false}, zfeather = {"Feather Barrage", "attack", false},
 	zharvest = {"Harvest Field", "attack", false}, zsnare = {"Snare Wires", "eng", false},
-	zgrapple = {"Grapple Zip", "speed", false}, zdeflect = {"Deflector Claws", "defense", false}, -- v1.1: live
+	zgrapple = {DA and "Dash" or "Grapple Zip", "speed", false}, zdeflect = {"Deflector Claws", "defense", false}, -- v1.1: live
 	zclock = {"Overclock Joints", "speed", false},
 }
 for id, want in pairs(ROWS) do
@@ -50,13 +52,17 @@ for id, want in pairs(ROWS) do
 end
 -- the step texts the Lab shows
 local TEXT = {
-	zhook = {"Button: fire a claw chain up to 50 studs and yank the dino in. Recharges in 18 s", "Chain reaches 65 studs",
+	zhook = RE and {"Button: fire the chest claw at the nearest enemy ahead (50 studs) and reel yourself in for a double claw slash: 10 damage. Recharges in 14 s",
+		"Chain reaches 65 studs", "Chain reaches 80 studs", "The slashed dino is stunned 1 s and cut 1 starts on it"} -- v1.4
+		or {"Button: fire a claw chain up to 50 studs and yank the dino in. Recharges in 18 s", "Chain reaches 65 studs",
 		"Chain reaches 80 studs; recharges in 15 s", "The yanked dino is stunned 1 s and cut 1 starts on it"},
 	zfeather = {"Button: fire 8 feather blades in a 20-stud fan: 3 damage each, hit dinos slowed 25% for 1 s. Recharges in 14 s",
 		"10 blades, fan reaches 25 studs", "Slow lasts 2 s", "12 blades, fan reaches 30 studs"},
-	zharvest = {"Button: stab the claws down: a 12-stud-wide circle for 3 s. Enemies inside bleed 4/s and are slowed 30%. Recharges in 20 s",
+	zharvest = VX and {"Button: stab the claws in: a spinning sickle ring 30 studs wide drags enemies toward you for 3 s. They bleed 4/s and are slowed 30%. Recharges in 20 s",
+		"Ring 34 studs wide", "Lasts 4 s", "Ring 38 studs wide, lasts 5 s"} or {"Button: stab the claws down: a 12-stud-wide circle for 3 s. Enemies inside bleed 4/s and are slowed 30%. Recharges in 20 s",
 		"Circle 16 studs wide", "Lasts 4 s", "Circle 20 studs wide, lasts 5 s"},
-	zsnare = {"Button: lay a wire trap. The first dino to cross it is rooted 1 s and takes 12. Recharges in 18 s",
+	zsnare = BO and {"Button: sling a bola from the tail at the nearest enemy ahead (35 studs). It wraps their legs: held 1 s, 12 damage. Recharges in 14 s",
+		"2 bolas ready at once", "Held 2 s; reaches 45 studs", "3 bolas ready at once"} or {"Button: lay a wire trap. The first dino to cross it is rooted 1 s and takes 12. Recharges in 18 s",
 		"2 traps at once", "Rooted 2 s", "3 traps at once"},
 }
 for id, t in pairs(TEXT) do
@@ -68,7 +74,7 @@ local OFF = {hookRange = 0, hookCone = 0, hookStun = 0, hookCut = false, hookCoo
 	fieldBleed = 0, fieldSlowMul = 1, fieldCooldown = 0, grappleRange = 0, grappleCharges = 0, grappleCooldown = 0,
 	deflectTime = 0, deflectAngle = 0, deflectLevel = 0, deflectReflect = false, deflectCooldown = 0, clockTime = 0,
 	clockRunMul = 1, clockTapMul = 1, clockNoSlow = false, clockCooldown = 0, snareMax = 0, snareDamage = 0, snareRoot = 0,
-	snareRadius = 0, snareCooldown = 0}
+	snareRadius = 0, snareCooldown = 0, snareRange = 0}
 local ALL = {zhook = 4, zfeather = 4, zharvest = 4, zsnare = 4, zgrapple = 4, zdeflect = 4, zclock = 4}
 local z = E({})
 for k, v in pairs(OFF) do
@@ -77,19 +83,20 @@ for k, v in pairs(OFF) do
 end
 -- effects per step (build 1)
 local function chk(id, field, want) for i = 1, 4 do eq(("%s %d %s"):format(id, i, field), E({[id] = i})[field], want[i], 1e-6) end end
-chk("zhook", "hookRange", {50, 65, 80, 80}); chk("zhook", "hookCone", {20, 20, 20, 20}); chk("zhook", "hookStun", {0, 0, 0, 1})
-chk("zhook", "hookCut", {false, false, false, true}); chk("zhook", "hookCooldown", {18, 18, 15, 15})
+chk("zhook", "hookRange", {50, 65, 80, 80}); chk("zhook", "hookCone", RE and {35, 35, 35, 35} or {20, 20, 20, 20}); chk("zhook", "hookStun", {0, 0, 0, 1})
+chk("zhook", "hookCut", {false, false, false, true}); chk("zhook", "hookCooldown", RE and {14, 14, 14, 14} or {18, 18, 15, 15})
 chk("zfeather", "featherCount", {8, 10, 10, 12}); chk("zfeather", "featherRange", {20, 25, 25, 30})
 chk("zfeather", "featherFan", {60, 60, 60, 60}); chk("zfeather", "featherDamage", {3, 3, 3, 3})
 chk("zfeather", "featherSlowMul", {0.75, 0.75, 0.75, 0.75}); chk("zfeather", "featherSlowTime", {1, 1, 2, 2})
 chk("zfeather", "featherCooldown", {14, 14, 14, 14})
-chk("zharvest", "fieldRadius", {6, 8, 8, 10}); chk("zharvest", "fieldTime", {3, 3, 4, 5}); chk("zharvest", "fieldBleed", {4, 4, 4, 4})
+chk("zharvest", "fieldRadius", VX and {15, 17, 17, 19} or {6, 8, 8, 10}); chk("zharvest", "fieldTime", {3, 3, 4, 5}); chk("zharvest", "fieldBleed", {4, 4, 4, 4})
 chk("zharvest", "fieldSlowMul", {0.7, 0.7, 0.7, 0.7}); chk("zharvest", "fieldCooldown", {20, 20, 20, 20})
 chk("zsnare", "snareMax", {1, 2, 2, 3}); chk("zsnare", "snareDamage", {12, 12, 12, 12}); chk("zsnare", "snareRoot", {1, 1, 2, 2})
-chk("zsnare", "snareRadius", {4, 4, 4, 4}); chk("zsnare", "snareCooldown", {18, 18, 18, 18})
+chk("zsnare", "snareRadius", {4, 4, 4, 4}); chk("zsnare", "snareCooldown", BO and {14, 14, 14, 14} or {18, 18, 18, 18})
+chk("zsnare", "snareRange", BO and {35, 35, 45, 45} or {0, 0, 0, 0}) -- v1.4
 -- v1.1: build-2 effects per step
-chk("zgrapple", "grappleRange", {90, 110, 130, 130}); chk("zgrapple", "grappleCharges", {1, 1, 1, 2}) -- v1.2: range (SkillTree 1.63)
-chk("zgrapple", "grappleCooldown", {12, 12, 10, 10})
+chk("zgrapple", "grappleRange", DA and {30, 40, 50, 50} or {90, 110, 130, 130}); chk("zgrapple", "grappleCharges", DA and {2, 2, 2, 3} or {1, 1, 1, 2}) -- v1.2: range (SkillTree 1.63)
+chk("zgrapple", "grappleCooldown", DA and {6, 6, 5, 5} or {12, 12, 10, 10})
 chk("zdeflect", "deflectTime", {1, 1.5, 2, 2}); chk("zdeflect", "deflectAngle", {70, 70, 70, 70})
 chk("zdeflect", "deflectLevel", {1, 2, 2, 2}); chk("zdeflect", "deflectReflect", {false, false, false, true})
 chk("zdeflect", "deflectCooldown", {16, 16, 13, 13})
@@ -97,7 +104,8 @@ chk("zclock", "clockTime", {3, 4, 5, 5}); chk("zclock", "clockRunMul", {1.4, 1.4
 chk("zclock", "clockTapMul", {1, 0.7, 0.7, 0.7}); chk("zclock", "clockNoSlow", {false, false, false, true})
 chk("zclock", "clockCooldown", {22, 22, 18, 18})
 local TEXT2 = {
-	zgrapple = {"Button: hold to lock onto the furthest tree or rock ahead (up to 90 studs), let go to zip there. Nothing ahead: it latches in the air. Recharges in 12 s",
+	zgrapple = DA and {"Button: jolt 30 studs the way you're moving (standing still: forward). 2 charges, each back in 6 s",
+		"Dashes 40 studs", "Dashes 50 studs; charges back in 5 s", "3 charges"} or {"Button: hold to lock onto the furthest tree or rock ahead (up to 90 studs), let go to zip there. Nothing ahead: it latches in the air. Recharges in 12 s",
 		"Reaches 110 studs", "Reaches 130 studs; recharges in 10 s", "2 charges"}, -- v1.2; v1.3 step 1
 	zdeflect = {"Button: claws spin in front for 1 s and block darts. Recharges in 16 s", "Spin 1.5 s; blocks boulders and cannon shots too",
 		"Spin 2 s; recharges in 13 s", "Blocked shots bounce back at the shooter"},

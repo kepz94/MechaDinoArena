@@ -1,4 +1,4 @@
--- SkillTree v1.64 (1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.65 (1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2321,6 +2321,72 @@ end
 SkillTree.THERI_GRAPPLE_LOCKON = true
 if SkillTree.THERI_PARTS and SkillTree.PATHS.zgrapple and SkillTree.THERI_GRAPPLE_LOCKON then
 	SkillTree.PATHS.zgrapple.steps[1] = "Button: hold to lock onto the furthest tree or rock ahead (up to 90 studs), let go to zip there. Nothing ahead: it latches in the air. Recharges in 12 s"
+end
+
+-- v1.65 (therizino moves rework, Kepu 2026-11-04 picks "Harvest-C, Snare-B, Dash-C, Hook-B", dash look "Storm Core", ring "30
+-- studs"; storyboard tools/mockup/therizino_moves_anim.js v0.3; plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md, MDA-262). Same
+-- ids, steps and slots; new texts and numbers, one switch each (default true; false = 1.64 for that part):
+--   * SkillTree.THERI_VORTEX (zharvest, Reaper Vortex): fieldRadius 15 / 17 (II) / 19 (star) = 30 / 34 / 38 studs wide
+--     (1.61's +4-stud steps kept); time, bleed, slow, recharge as before (TheriMovesServer 1.4 pulls 6 studs/s).
+--   * SkillTree.THERI_BOLA (zsnare, Bola): snareRange 35 / 45 (III) (new; 0 off), snareCooldown 14 (was 18); snareMax = charges
+--     1 / 2 (II) / 3 (star), snareRoot 1 / 2 (III), snareDamage 12 as before.
+--   * SkillTree.THERI_DASH (zgrapple, name "Dash", Storm Core): grappleRange 30 / 40 (II) / 50 (III), grappleCharges 2 / 3
+--     (star), grappleCooldown 6 / 5 (III).
+--   * SkillTree.THERI_REEL (zhook, Reaper Reel): hookCone 35 (was 20), hookCooldown 14 (was 18 / 15); range 50 / 65 / 80 and the
+--     star (stun 1 s + cut 1) as before.
+SkillTree.THERI_VORTEX = true
+SkillTree.THERI_BOLA = true
+SkillTree.THERI_DASH = true
+SkillTree.THERI_REEL = true
+if SkillTree.THERI_PARTS and SkillTree.PATHS.zhook then
+	local P = SkillTree.PATHS
+	if SkillTree.THERI_VORTEX and P.zharvest then
+		P.zharvest.steps = {
+			"Button: stab the claws in: a spinning sickle ring 30 studs wide drags enemies toward you for 3 s. They bleed 4/s and are slowed 30%. Recharges in 20 s",
+			"Ring 34 studs wide", "Lasts 4 s", "Ring 38 studs wide, lasts 5 s"}
+	end
+	if SkillTree.THERI_BOLA and P.zsnare then
+		P.zsnare.steps = {
+			"Button: sling a bola from the tail at the nearest enemy ahead (35 studs). It wraps their legs: held 1 s, 12 damage. Recharges in 14 s",
+			"2 bolas ready at once", "Held 2 s; reaches 45 studs", "3 bolas ready at once"}
+	end
+	if SkillTree.THERI_DASH and P.zgrapple then
+		P.zgrapple.name = "Dash"
+		P.zgrapple.steps = {
+			"Button: jolt 30 studs the way you're moving (standing still: forward). 2 charges, each back in 6 s",
+			"Dashes 40 studs", "Dashes 50 studs; charges back in 5 s", "3 charges"}
+	end
+	if SkillTree.THERI_REEL and P.zhook then
+		P.zhook.steps = {
+			"Button: fire the chest claw at the nearest enemy ahead (50 studs) and reel yourself in for a double claw slash: 10 damage. Recharges in 14 s",
+			"Chain reaches 65 studs", "Chain reaches 80 studs", "The slashed dino is stunned 1 s and cut 1 starts on it"}
+	end
+	local effectsPre165 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre165(steps, dino)
+		if type(e) ~= "table" then return e end
+		e.snareRange = 0
+		if dino ~= "Therizino" then return e end
+		local s = SkillTree.sanitize(steps, dino) or {}
+		local fd, sn, g, h = s.zharvest or 0, s.zsnare or 0, s.zgrapple or 0, s.zhook or 0
+		if SkillTree.THERI_VORTEX and fd >= 1 and (tonumber(e.fieldRadius) or 0) > 0 then
+			e.fieldRadius = fd >= 4 and 19 or (fd >= 2 and 17 or 15)
+		end
+		if SkillTree.THERI_BOLA and sn >= 1 and (tonumber(e.snareDamage) or 0) > 0 then
+			e.snareRange = sn >= 3 and 45 or 35
+			e.snareCooldown = 14
+		end
+		if SkillTree.THERI_DASH and g >= 1 and (tonumber(e.grappleRange) or 0) > 0 then
+			e.grappleRange = g >= 3 and 50 or (g >= 2 and 40 or 30)
+			e.grappleCharges = g >= 4 and 3 or 2
+			e.grappleCooldown = g >= 3 and 5 or 6
+		end
+		if SkillTree.THERI_REEL and h >= 1 and (tonumber(e.hookRange) or 0) > 0 then
+			e.hookCone = 35
+			e.hookCooldown = 14
+		end
+		return e
+	end
 end
 
 return SkillTree
