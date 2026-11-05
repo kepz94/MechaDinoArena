@@ -2798,3 +2798,6 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriReworkPoseEnabled; TheriReworkPose ("none" / "vortex" / "bola" / "dash" / "reel"), TheriReworkPoseWeight | therizino model | true; diagnostics | TheriPose 1.8 |
 | TheriPartsAnimReworkEnabled | TheriPartsAnim script | true | TheriPartsAnim 1.2 |
 | TheriMovesFX2Enabled; TheriMovesFX2_<vortex / bola / dash / reel>Enabled; TheriMovesFX2Version, TheriMovesFX2Events, TheriMovesFX2Last | TheriMovesFX2 script | true each; diagnostics | TheriMovesFX2 1.0 |
+| SkillTree.THERI_CLOCK_JUMP | SkillTree module | true | SkillTree 1.66 (Overclock III extra jump) |
+| TheriClockJump; SkillEffectsTheriClockJumpEnabled | therizino character (server); SkillEffects script | extra jump charges (1 from Overclock III, 0 off); true | SkillEffects 1.44 |
+| TheriMovesClockJumpEnabled; TheriClockJumpAdded, TheriClockJumpBase | TheriMovesServer script; therizino character (server) | true; diagnostics (JumpCharges before the extra) | TheriMovesServer 1.5 |
