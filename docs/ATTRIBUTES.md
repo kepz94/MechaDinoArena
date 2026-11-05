@@ -2785,3 +2785,16 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriGrappleLockOnEnabled; TheriGrappleHolding; TheriGrappleLockState ("off" / "target" / "air"), TheriGrappleLockTarget, TheriGrappleLockDist; BindableFunction TheriGrapplePick | therizino character (owner client) | true; set by MechaButtons while held; diagnostics | TheriGrappleZip 1.2 |
 | MechaButtonsGrappleHoldEnabled; MechaGrappleFired | MechaButtons script; character | true; count | MechaButtons 1.32 |
 | SkillTree.THERI_GRAPPLE_LOCKON | SkillTree module | true | SkillTree 1.64 (grapple text) |
+| SkillTree.THERI_VORTEX; THERI_BOLA; THERI_DASH; THERI_REEL | SkillTree module | true each | SkillTree 1.65 (rework numbers + texts; zgrapple name "Dash") |
+| TheriSnareRange; SkillEffectsTheriBolaRangeEnabled | therizino character (server); SkillEffects script | bola reach 35 / 45 (0 off); true | SkillEffects 1.43 |
+| TheriMovesVortexEnabled; TheriMovesBolaEnabled; TheriMovesDashEnabled; TheriMovesReelEnabled; TheriMovesVortexes, TheriMovesBolaHits, TheriMovesReelHits, TheriMovesDashes | TheriMovesServer script | true each; diagnostics | TheriMovesServer 1.4 |
+| TheriVortexCenter, TheriVortexRadius, TheriVortexStart, TheriVortexAt (+ TheriFieldUntil) | therizino character (server) | the vortex stamps | TheriMovesServer 1.4, read by TheriMovesFX2 / TheriPose 1.8 |
+| TheriVortexBy, TheriVortexCenter, TheriVortexPull, TheriVortexUntil; TheriVortexPullEnabled, TheriVortexPullVersion, TheriVortexPulled | victim player character (server stamps; own client) | pull stamps; true; diagnostics | TheriMovesServer 1.4 -> TheriVortexPull 1.0 |
+| TheriBolaTarget, TheriBolaEnd, TheriBolaFlight, TheriBolaResult ("thrown" / "hit" / "missed" / "shielded" / "noTarget"), TheriBolaAt, TheriBolaHitAt; TheriSnareLeft | therizino character (server) | bola stamps; charges left | TheriMovesServer 1.4 |
+| TheriDashMode; TheriDashFrom, TheriDashTo, TheriDashDelay, TheriDashTime, TheriDashResult ("dash" / "blocked"), TheriDashAt | therizino character (server) | = the Dash switch; dash stamps | TheriMovesServer 1.4, read by MechaButtons 1.33 / TheriGrappleZip 1.3 / TheriMovesFX2 / TheriPose 1.8 / TheriPartsAnim 1.2 |
+| TheriReelTarget, TheriReelEnd, TheriReelBrace, TheriReelFly, TheriReelTime, TheriReelGap, TheriReelResult ("hit" / "missed" / "shielded" / "noTarget" / "blocked"), TheriReelAt, TheriReelHitAt | therizino character (server) | reel stamps | TheriMovesServer 1.4 |
+| TheriDashZipEnabled; TheriReelZipEnabled; TheriGrappleZipState can be "charge" / "dash" / "reel"; TheriDashMoved, TheriReelMoved | therizino character (owner client) | true; true; diagnostics | TheriGrappleZip 1.3 |
+| MechaButtonsDashEnabled; MechaDashFired | MechaButtons script; character | true; count | MechaButtons 1.33 |
+| TheriReworkPoseEnabled; TheriReworkPose ("none" / "vortex" / "bola" / "dash" / "reel"), TheriReworkPoseWeight | therizino model | true; diagnostics | TheriPose 1.8 |
+| TheriPartsAnimReworkEnabled | TheriPartsAnim script | true | TheriPartsAnim 1.2 |
+| TheriMovesFX2Enabled; TheriMovesFX2_<vortex / bola / dash / reel>Enabled; TheriMovesFX2Version, TheriMovesFX2Events, TheriMovesFX2Last | TheriMovesFX2 script | true each; diagnostics | TheriMovesFX2 1.0 |
