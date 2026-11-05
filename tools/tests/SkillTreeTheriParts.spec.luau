@@ -1,4 +1,4 @@
--- SkillTreeTheriParts.spec v1.4 (1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
+-- SkillTreeTheriParts.spec v1.5 (1.5: Overclock III extra jump, SkillTree 1.66; 1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.61 (plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheriParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-04 "Two builds"): zhook / zfeather / zharvest / zsnare live; zgrapple / zdeflect / zclock "soon".
@@ -74,7 +74,7 @@ local OFF = {hookRange = 0, hookCone = 0, hookStun = 0, hookCut = false, hookCoo
 	fieldBleed = 0, fieldSlowMul = 1, fieldCooldown = 0, grappleRange = 0, grappleCharges = 0, grappleCooldown = 0,
 	deflectTime = 0, deflectAngle = 0, deflectLevel = 0, deflectReflect = false, deflectCooldown = 0, clockTime = 0,
 	clockRunMul = 1, clockTapMul = 1, clockNoSlow = false, clockCooldown = 0, snareMax = 0, snareDamage = 0, snareRoot = 0,
-	snareRadius = 0, snareCooldown = 0, snareRange = 0}
+	snareRadius = 0, snareCooldown = 0, snareRange = 0, clockJump = 0}
 local ALL = {zhook = 4, zfeather = 4, zharvest = 4, zsnare = 4, zgrapple = 4, zdeflect = 4, zclock = 4}
 local z = E({})
 for k, v in pairs(OFF) do
@@ -103,6 +103,8 @@ chk("zdeflect", "deflectCooldown", {16, 16, 13, 13})
 chk("zclock", "clockTime", {3, 4, 5, 5}); chk("zclock", "clockRunMul", {1.4, 1.4, 1.4, 1.4})
 chk("zclock", "clockTapMul", {1, 0.7, 0.7, 0.7}); chk("zclock", "clockNoSlow", {false, false, false, true})
 chk("zclock", "clockCooldown", {22, 22, 18, 18})
+eq("THERI_CLOCK_JUMP", ST.THERI_CLOCK_JUMP, true) -- v1.5
+chk("zclock", "clockJump", ST.THERI_CLOCK_JUMP and {0, 0, 1, 1} or {0, 0, 0, 0}) -- v1.5
 local TEXT2 = {
 	zgrapple = DA and {"Button: jolt 30 studs the way you're moving (standing still: forward). 2 charges, each back in 6 s",
 		"Dashes 40 studs", "Dashes 50 studs; charges back in 5 s", "3 charges"} or {"Button: hold to lock onto the furthest tree or rock ahead (up to 90 studs), let go to zip there. Nothing ahead: it latches in the air. Recharges in 12 s",
@@ -110,7 +112,7 @@ local TEXT2 = {
 	zdeflect = {"Button: claws spin in front for 1 s and block darts. Recharges in 16 s", "Spin 1.5 s; blocks boulders and cannon shots too",
 		"Spin 2 s; recharges in 13 s", "Blocked shots bounce back at the shooter"},
 	zclock = {"Always on while slotted (no button): run 40% faster", "Cut taps come 30% faster too",
-		"Nothing extra yet (it's always on now)", "Slows don't work on you"}, -- v1.2
+		ST.THERI_CLOCK_JUMP and "One extra jump charge" or "Nothing extra yet (it's always on now)", "Slows don't work on you"}, -- v1.2; v1.5 step 3
 }
 for id, t in pairs(TEXT2) do
 	if P[id] then for i = 1, 4 do eq(id .. " text " .. i, P[id].steps[i], t[i]) end end

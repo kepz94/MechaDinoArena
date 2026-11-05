@@ -1,4 +1,4 @@
--- SkillEffects v1.43 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.44 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -285,6 +285,9 @@ local ServerStorage = game:GetService("ServerStorage")
 -- v1.43 (therizino moves rework, SkillTree 1.65 snareRange, plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md, MDA-262): the
 --   TheriSnare row gains Range (effect snareRange, off 0): the bola's reach (TheriMovesServer 1.4). Switch: script attribute
 --   SkillEffectsTheriBolaRangeEnabled (default true, read at start; false = 1.42, no TheriSnareRange).
+-- v1.44 (Kepu 2026-11-04 17:54 "Make it overclock tier 3 to give you an extra jump", SkillTree 1.66 clockJump): the TheriClock
+--   row gains Jump (effect clockJump, off 0): TheriClockJump, the extra jump charges TheriMovesServer 1.5 adds. Switch: script
+--   attribute SkillEffectsTheriClockJumpEnabled (default true, read at start; false = 1.43, no TheriClockJump).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -302,6 +305,7 @@ VERSION = "1.40" -- v1.40 pachy Last Stand + Head Down (PACHY_ATTRS)
 VERSION = "1.41" -- v1.41 dilo stat rows (DILO_ATTRS + spit numbers)
 VERSION = "1.42" -- v1.42 therizino button parts (ZPARTS)
 VERSION = "1.43" -- v1.43 TheriSnareRange (bola reach)
+VERSION = "1.44" -- v1.44 TheriClockJump (Overclock III extra jump)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -985,6 +989,14 @@ if script:GetAttribute("SkillEffectsTheriBolaRangeEnabled") == nil then script:S
 if script:GetAttribute("SkillEffectsTheriBolaRangeEnabled") ~= false then
 	for _, def in ipairs(ZPARTS) do
 		if def[1] == "zsnare" then table.insert(def[3], {"Range", "snareRange", 0}) end
+	end
+end
+
+-- v1.44: Overclock III's extra jump (see the header)
+if script:GetAttribute("SkillEffectsTheriClockJumpEnabled") == nil then script:SetAttribute("SkillEffectsTheriClockJumpEnabled", true) end
+if script:GetAttribute("SkillEffectsTheriClockJumpEnabled") ~= false then
+	for _, def in ipairs(ZPARTS) do
+		if def[1] == "zclock" then table.insert(def[3], {"Jump", "clockJump", 0}) end
 	end
 end
 

@@ -1,4 +1,4 @@
--- SkillTree v1.65 (1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.66 (1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2385,6 +2385,26 @@ if SkillTree.THERI_PARTS and SkillTree.PATHS.zhook then
 			e.hookCone = 35
 			e.hookCooldown = 14
 		end
+		return e
+	end
+end
+
+-- v1.66 (Kepu 2026-11-04 17:54 "Make it overclock tier 3 to give you an extra jump"): SkillTree.THERI_CLOCK_JUMP (default true;
+-- false = 1.65): zclock step 3 text "One extra jump charge"; effect clockJump = 1 from step 3 (0 below / off / other dinos).
+-- SkillEffects 1.44 writes it as TheriClockJump; TheriMovesServer 1.5 adds it to JumpCharges while Overclock is passive.
+SkillTree.THERI_CLOCK_JUMP = true
+if SkillTree.THERI_PARTS and SkillTree.PATHS.zclock and SkillTree.THERI_CLOCK_JUMP then
+	SkillTree.PATHS.zclock.steps[3] = "One extra jump charge"
+end
+do
+	local effectsPre166 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre166(steps, dino)
+		if type(e) ~= "table" then return e end
+		e.clockJump = 0
+		if not (SkillTree.THERI_CLOCK_JUMP and SkillTree.THERI_PARTS and dino == "Therizino" and SkillTree.PATHS.zclock) then return e end
+		local s = SkillTree.sanitize(steps, dino) or {}
+		if (s.zclock or 0) >= 3 then e.clockJump = 1 end
 		return e
 	end
 end

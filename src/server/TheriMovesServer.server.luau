@@ -1,4 +1,4 @@
--- TheriMovesServer v1.4 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.5 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -114,6 +114,13 @@
 --     TheriHookStun s + TheriStartCut (as 1.3); else TheriReelResult "missed". Stamps: TheriReelTarget, TheriReelEnd,
 --     TheriReelBrace, TheriReelFly, TheriReelTime, TheriReelGap, TheriReelResult, TheriReelAt (last).
 --   Diagnostics: script TheriMovesVortexes (alive), TheriMovesBolaHits, TheriMovesReelHits, TheriMovesDashes.
+-- v1.5 (Kepu 2026-11-04 17:54 "Make it overclock tier 3 to give you an extra jump"; SkillTree 1.66, SkillEffects 1.44): every
+--   CLOCK_TICK (0.25) s, for each player's character: Overclock passive (TheriClockPassive true) and TheriClockJump >= 1 ->
+--   JumpCharges = TheriClockJumpBase + TheriClockJump, where TheriClockJumpBase is the character's own JumpCharges when the
+--   extra is first added (taken again if something else rewrites JumpCharges while it is added); TheriClockJumpAdded true.
+--   Otherwise, if it was added -> JumpCharges = TheriClockJumpBase, TheriClockJumpAdded false. JumpServer 1.3 / JumpTest 1.4 /
+--   AbilityBar / ArenaTouch read JumpCharges as before (pips up to 3). Switch: script attribute TheriMovesClockJumpEnabled
+--   (default true, read each tick; false = the extra is taken back).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -124,6 +131,7 @@ VERSION = "1.1" -- v1.1 flat feather blades
 VERSION = "1.2" -- v1.2 build 2: Grapple Zip, Deflector Claws, Overclock Joints
 VERSION = "1.3" -- v1.3 grapple v2 (air latch, faster), passive Overclock
 VERSION = "1.4" -- v1.4 moves rework: vortex, bola, dash, reel
+VERSION = "1.5" -- v1.5 Overclock III: extra jump charge
 local HOOK_SPEED, HOOK_GAP = 140, 5
 local BLADE_WIDTH = 1.5
 local FIELD_TICK = 0.5
@@ -1172,5 +1180,35 @@ hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 			cr = okCall and tostring(res) or "error"
 		end
 		char:SetAttribute("TheriHookCutResult", cr)
+	end
+end)
+
+-- v1.5: Overclock III's extra jump charge (see the header) -------------------------------------------------------------------------
+if script:GetAttribute("TheriMovesClockJumpEnabled") == nil then script:SetAttribute("TheriMovesClockJumpEnabled", true) end
+task.spawn(function()
+	while true do
+		task.wait(CLOCK_TICK)
+		local switchOn = script:GetAttribute("TheriMovesClockJumpEnabled") ~= false
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local char = pl.Character
+			if char and char.Parent then
+				local add = math.max(0, math.floor(num(char, "TheriClockJump", 0)))
+				local want = switchOn and add >= 1 and char:GetAttribute("TheriClockPassive") == true
+				local added = char:GetAttribute("TheriClockJumpAdded") == true
+				local cur = math.floor(num(char, "JumpCharges", 0))
+				if want then
+					local base = math.floor(num(char, "TheriClockJumpBase", cur))
+					if not added or cur ~= base + add then
+						if added and cur ~= base + add then base = cur end -- something else rewrote JumpCharges: that is the new base
+						char:SetAttribute("TheriClockJumpBase", base)
+						char:SetAttribute("JumpCharges", base + add)
+						char:SetAttribute("TheriClockJumpAdded", true)
+					end
+				elseif added then
+					char:SetAttribute("JumpCharges", math.floor(num(char, "TheriClockJumpBase", cur)))
+					char:SetAttribute("TheriClockJumpAdded", false)
+				end
+			end
+		end
 	end
 end)
