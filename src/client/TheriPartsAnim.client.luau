@@ -1,4 +1,4 @@
--- TheriPartsAnim v1.3 (Mecha Dino Arena) — makes the machinery on the Therizinosaurus' redesigned mecha parts move (every
+-- TheriPartsAnim v1.4 (Mecha Dino Arena) — makes the machinery on the Therizinosaurus' redesigned mecha parts move (every
 -- client, every therizino). MDA-251, plan docs/plans/THERIZINO_PARTS_LOOKS_v2.0.md Task 3; looks TheriPartsServer 1.1 +
 -- TheriPartsLooksV2 1.1 (Kepu 2026-11-04 14:49 picks), motions as in docs/mockups/therizino_parts_redesign.html v0.5.
 -- What moves: every Weld "ZPartJoint_<group>" inside a "ZPart_<id>" model (TheriPartsServer 1.1). Its C0 is set here each
@@ -35,6 +35,9 @@
 --   model's TheriFeatherVolley is true (and TheriPartsAnimReworkEnabled): u up over 0.3 s (the wings fan for the wind-up), held
 --   to 1.3, down over 0.3 s; the wing's "blade" pieces are hidden from the release (0.42) to 1.2 s (the wings are empty while
 --   TheriMovesFX2 1.1 flies the darts), unless TheriVolleyResult is "cancelled". Otherwise the 1.0 zfeather.
+-- v1.4 (Deflector Shield Wall, plan docs/plans/THERIZINO_DEFLECT_CLOCK_v2.0.md, MDA-269; TheriMovesServer 1.7): while the
+--   model's TheriDeflectWall is true (and TheriPartsAnimReworkEnabled) the zdeflect film pieces (the old chest disc) stay
+--   hidden: TheriMovesFX2 1.2 draws the Shield Wall instead. The collar still spins and its fins flare as before.
 -- Who: every player's character, plus (Studio test hook) any workspace Model with attribute TheriPartsAnimTarget = true.
 -- Switch: script attribute TheriPartsAnimEnabled (default true, read each frame; false = every joint back at rest).
 -- Diagnostics: script TheriPartsAnimVersion, TheriPartsAnimJoints (joints driven, last frame); model TheriPartsAnimActive
@@ -46,6 +49,7 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 passive Overclock legs follow movement
 VERSION = "1.2" -- v1.2 moves rework stamps (reel, dash, bola)
 VERSION = "1.3" -- v1.3 Wing Volley wings
+VERSION = "1.4" -- v1.4 Shield Wall hides the old disc
 local PASSIVE_FULL, PASSIVE_RATE = 8, 6
 if script:GetAttribute("TheriPartsAnimClockMoveEnabled") == nil then script:SetAttribute("TheriPartsAnimClockMoveEnabled", true) end
 local clockEase = setmetatable({}, {__mode = "k"}) -- [model] = {u, at} (losing it only resets the easing)
@@ -289,7 +293,8 @@ RunService.RenderStepped:Connect(function(dt)
 						end
 					end
 					for _, h in ipairs(info.heads) do h.LocalTransparencyModifier = hide and 1 or 0 end
-					for _, f2 in ipairs(info.films) do f2.Transparency = 1 - 0.35 * u end
+					local wallOn = info.id == "zdeflect" and model:GetAttribute("TheriDeflectWall") == true and script:GetAttribute("TheriPartsAnimReworkEnabled") ~= false -- v1.4
+					for _, f2 in ipairs(info.films) do f2.Transparency = wallOn and 1 or (1 - 0.35 * u) end
 				end
 			end
 			local s = table.concat(active, ",")

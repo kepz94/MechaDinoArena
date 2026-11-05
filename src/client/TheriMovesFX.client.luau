@@ -1,4 +1,4 @@
--- TheriMovesFX v1.4 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
+-- TheriMovesFX v1.5 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
 -- draws them for every therizino). Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 5 (MDA-245); looks from the mockup
 -- docs/mockups/therizino_parts_options.html v0.1 (chain links, feather blades, red field); server TheriMovesServer 1.0.
 --   * Reaper's Hook: TheriHookAt -> a steel chain (alternating light / dark links, CHAIN_STEP studs apart) from the
@@ -40,6 +40,8 @@
 --   the 1.2 pulse).
 -- v1.4 (Wing Volley, plan docs/plans/THERIZINO_FEATHER_VOLLEY_v1.0.md, MDA-267; TheriMovesServer 1.6): feathers() draws
 --   nothing when the character's TheriFeatherVolley is true (TheriMovesFX2 1.1 draws the volley); false / nil = the 1.3 blades.
+-- v1.5 (Deflector Shield Wall, plan docs/plans/THERIZINO_DEFLECT_CLOCK_v2.0.md, MDA-270; TheriMovesServer 1.7): deflectBlock()
+--   draws nothing when the character's TheriDeflectWall is true (TheriMovesFX2 1.2 draws the wall's ripple instead).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -48,6 +50,7 @@ VERSION = "1.1" -- v1.1 grapple wire, deflect rotors, overclock rings
 VERSION = "1.2" -- v1.2 FX for the v2 looks (hook claw at the chain tip, no rotors on v2 deflect, yellow v2 overclock)
 VERSION = "1.3" -- v1.3 steady rings while Overclock is passive
 VERSION = "1.4" -- v1.4 no feather blades while the Wing Volley draws
+VERSION = "1.5" -- v1.5 no collar flash while the Shield Wall draws
 if script:GetAttribute("TheriMovesFXClockSteadyEnabled") == nil then script:SetAttribute("TheriMovesFXClockSteadyEnabled", true) end -- v1.3
 local CHAIN_STEP, SHOOT_TIME, BLADE_TIME = 1.7, 0.15, 0.3
 local LIGHT, DARK = Color3.fromRGB(184, 192, 200), Color3.fromRGB(124, 132, 142)
@@ -357,6 +360,7 @@ local function deflect(char, s)
 	note("deflect")
 end
 local function deflectBlock(char, s)
+	if char:GetAttribute("TheriDeflectWall") == true then return end -- v1.5: TheriMovesFX2 1.2 draws the Shield Wall's ripple
 	local from = char:GetAttribute("TheriDeflectBlockFrom")
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then return end

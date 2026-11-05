@@ -1,4 +1,4 @@
--- TheriMovesServer v1.6 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.7 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -134,6 +134,10 @@
 --   "fired", TheriVolleyFiredAt t1 (last). After the flight, t2: each judged dino still a target (stillTarget) takes damage x
 --   its blades ("therifeather"; none while shielded) and the slow -> TheriVolleyLanded ("name=blades|..."),
 --   TheriVolleyLandedAt t2 (last). Diagnostics: script TheriMovesVolleys, TheriMovesVolleyHits.
+-- v1.7 (Deflector Shield Wall, Kepu 2026-11-05 15:52 picks, "Build" 15:55; plan docs/plans/THERIZINO_DEFLECT_CLOCK_v2.0.md,
+--   MDA-269): each Deflector press stamps the character's TheriDeflectWall (= script switch TheriMovesDeflectWallEnabled,
+--   default true) before TheriDeflectAt, so every client draws the same look (TheriPose 1.11, TheriPartsAnim 1.4, TheriMovesFX2
+--   1.2). Nothing else of the move changes (DeflectRules 1.0 still judges every block).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -146,6 +150,7 @@ VERSION = "1.3" -- v1.3 grapple v2 (air latch, faster), passive Overclock
 VERSION = "1.4" -- v1.4 moves rework: vortex, bola, dash, reel
 VERSION = "1.5" -- v1.5 Overclock III: extra jump charge
 VERSION = "1.6" -- v1.6 Wing Volley (Feather Barrage rework)
+VERSION = "1.7" -- v1.7 Deflector Shield Wall stamp
 local HOOK_SPEED, HOOK_GAP = 140, 5
 local BLADE_WIDTH = 1.5
 local FIELD_TICK = 0.5
@@ -816,6 +821,8 @@ deflectRemote.OnServerEvent:Connect(function(player, stamp)
 	if not char then return end
 	ok(char, "TheriDeflect", t)
 	char:SetAttribute("TheriDeflectUntil", t + math.max(0, num(char, "TheriDeflectTime", 1)))
+	if script:GetAttribute("TheriMovesDeflectWallEnabled") == nil then script:SetAttribute("TheriMovesDeflectWallEnabled", true) end -- v1.7
+	char:SetAttribute("TheriDeflectWall", script:GetAttribute("TheriMovesDeflectWallEnabled") ~= false) -- v1.7
 	char:SetAttribute("TheriDeflectAt", t) -- last: FX + poses
 end)
 clockRemote.OnServerEvent:Connect(function(player, stamp)

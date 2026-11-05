@@ -1,4 +1,4 @@
--- TheriPose v1.10 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
+-- TheriPose v1.11 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
 -- ("A Reaper Sweeps"), the Diving Rake leap (J1) and the Sidewinder run (B). MDA-203, plan docs/plans/THERIZINO_KIT_v1.0.md
 -- Task 6; mockups docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02 "I like this one") and
 -- docs/mockups/therizino_run_options.html v0.1 (Kepu: "B Sidewinder"). Key poses = tools/therizino_kit_keys_v0.3.py /
@@ -141,6 +141,12 @@
 --   VOLLEY_CROSS {ArmL 60 70 45, ArmR 60 -70 -45, RootJoint 8, Neck 10, Tail1 -8} 0..0.35 (io), VOLLEY_WIDE {ArmL 40 -80 -60,
 --   ArmR 40 80 60, RootJoint -10, Neck -8, LegL 10, KneeL -14} 0.35..0.48 (out), held to 1.0, out by 1.5 (io). Switch: model
 --   attribute TheriPoseVolleyEnabled (nil = true; false = the 1.6 FEATHER poses). Diagnostics: TheriPartsPose "volley".
+-- v1.11 (Deflector Shield Wall, plan docs/plans/THERIZINO_DEFLECT_CLOCK_v2.0.md, MDA-269; TheriMovesServer 1.7; storyboard
+--   therizino_moves_anim.js v0.5 A): the parts layer's deflect branch, when the model's TheriDeflectWall is true: GUARD {ArmL 72
+--   42 34, ArmR 72 -42 -34, RootJoint 6, Neck -6, Head -4, LegL 18, KneeL -30, LegR -6, KneeR -14, AnkleL 10} in over 0.15 s
+--   (io), held to TheriDeflectUntil, out over 0.3 s (io); for 0.25 s after each TheriDeflectBlockAt a recoil RootJoint +8 x
+--   sin(pi u). Switch: model attribute TheriPoseGuardEnabled (nil = true; false = 1.7's ARMS_FWD). Diagnostics: TheriPartsPose
+--   "guard".
 local TheriPose = {}
 TheriPose.Version = "1.3"
 TheriPose.Version = "1.4" -- v1.4 Fourth Cut (Ground Scythe)
@@ -150,6 +156,7 @@ TheriPose.Version = "1.7" -- v1.7 grapple + deflect poses (build 2)
 TheriPose.Version = "1.8" -- v1.8 moves rework poses (vortex, bola, dash, reel)
 TheriPose.Version = "1.9" -- v1.9 leap probe ignores other dinos
 TheriPose.Version = "1.10" -- v1.10 Wing Volley pose
+TheriPose.Version = "1.11" -- v1.11 Deflector guard pose
 TheriPose.Defaults = {
 	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
@@ -817,6 +824,8 @@ do
 		VOLLEY_CROSS = {ArmL = {60, 70, 45}, ArmR = {60, -70, -45}, RootJoint = {8, 0, 0}, Neck = {10, 0, 0}, Tail1 = {-8, 0, 0}}, -- v1.10
 		VOLLEY_WIDE = {ArmL = {40, -80, -60}, ArmR = {40, 80, 60}, RootJoint = {-10, 0, 0}, Neck = {-8, 0, 0}, LegL = {10, 0, 0},
 			KneeL = {-14, 0, 0}}, -- v1.10
+		GUARD = {ArmL = {72, 42, 34}, ArmR = {72, -42, -34}, RootJoint = {6, 0, 0}, Neck = {-6, 0, 0}, Head = {-4, 0, 0}, LegL = {18, 0, 0},
+			KneeL = {-30, 0, 0}, LegR = {-6, 0, 0}, KneeR = {-14, 0, 0}, AnkleL = {10, 0, 0}}, -- v1.11
 		ARMS_FWD = {ArmL = {62, 0, 8}, ArmR = {62, 0, -8}, RootJoint = {-6, 0, 0}},
 		ZIP = {ArmL = {62, 0, 8}, ArmR = {62, 0, -8}, LegL = {-30, 0, 0}, LegR = {-20, 0, 0}, KneeL = {-50, 0, 0}, KneeR = {-60, 0, 0},
 			RootJoint = {-18, 0, 0}, Tail1 = {10, 0, 0}},
@@ -881,6 +890,19 @@ do
 			if t < 0.12 + zt then return P.ZIP, best end
 			if t < 0.12 + zt + 0.12 then return mix(P.ZIP, P.ARMS_FWD, ease("io", (t - 0.12 - zt) / 0.12)), best end
 			if t < 0.12 + zt + 0.42 then return mix(P.ARMS_FWD, ZERO, ease("io", (t - 0.24 - zt) / 0.3)), best end
+		elseif best == "deflect" and model:GetAttribute("TheriDeflectWall") == true and model:GetAttribute("TheriPoseGuardEnabled") ~= false then -- v1.11
+			local untilT = stamp(model, "TheriDeflectUntil") or (bestAt + 1)
+			local hold = untilT - bestAt
+			local g
+			if t < 0.15 then g = mix(ZERO, P.GUARD, ease("io", t / 0.15))
+			elseif t < hold then g = P.GUARD
+			elseif t < hold + 0.3 then g = mix(P.GUARD, ZERO, ease("io", (t - hold) / 0.3)) end
+			if g then
+				local bAt = stamp(model, "TheriDeflectBlockAt")
+				local r = bAt and (serverNow - bAt) / 0.25 or -1
+				if r >= 0 and r < 1 and bAt >= bestAt then g = mix(g, {RootJoint = {8, 0, 0}}, math.sin(r * math.pi) * 0.8) end
+				return g, "guard"
+			end
 		elseif best == "deflect" then -- v1.7
 			local untilT = stamp(model, "TheriDeflectUntil") or (bestAt + 1)
 			local hold = untilT - bestAt

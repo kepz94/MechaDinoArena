@@ -1,4 +1,4 @@
--- TheriMovesFX2 v1.1 (Mecha Dino Arena) — client effects for the Therizinosaurus' reworked moves (every client draws them for
+-- TheriMovesFX2 v1.2 (Mecha Dino Arena) — client effects for the Therizinosaurus' reworked moves (every client draws them for
 -- every therizino). Plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md (MDA-264); server TheriMovesServer 1.4; looks
 -- TheriPartsLooksV2 1.2 (Reaper Launcher, Storm Core). Timings and shapes = the storyboard tools/mockup/therizino_moves_anim.js
 -- v0.3 (U = scale studs per storyboard unit: 2 on an adult, as the looks). t = server now - the stamp.
@@ -43,15 +43,32 @@
 --     ground at the fan's end with a dust puff and fades + 0.2 .. + 0.5.
 --   * TheriVolleyResult "cancelled" (stunned / dead at the release): the fan fades over 0.2 s, no darts.
 --   Switch TheriMovesFX2_volleyEnabled (default true). TheriMovesFX 1.4 draws nothing for these presses.
+-- v1.2 (Kepu 2026-11-05 15:52 picks Deflector A "Shield Wall" + Overclock A "Steam Engine", "Build" 15:55; plan
+--   docs/plans/THERIZINO_DEFLECT_CLOCK_v2.0.md, MDA-270 / MDA-271; TheriMovesServer 1.7; storyboard therizino_moves_anim.js v0.5):
+--   * Shield Wall (TheriDeflectAt with the character's TheriDeflectWall true; t = server now - the stamp; R = H = 9 U): 14 blue
+--     Neon panels (transparency 0.82, shimmer) over the front +-TheriDeflectAngle (70) deg at radius R, R tall from the ground,
+--     unrolling from the middle out over 0.02 .. 0.23 s, turning with the root's flat facing every frame; a top rim, a middle
+--     line, two edge posts; the arc (14 segments) + a faint fan (7 slices) on the ground. At TheriDeflectUntil they roll up from
+--     the ends over 0.3 s. Each TheriDeflectBlockAt: where the line from TheriDeflectBlockFrom meets the wall, a ripple ring
+--     (0.45 s), 8 sparks (0.3 s) and a "BLOCKED" pop; with TheriDeflectReflect a copy of the shot (TheriDeflectBlockKind: dart /
+--     boulder / cannon) flies back to TheriDeflectBlockFrom in 0.35 s with a yellow trail and a "BOUNCED BACK" pop.
+--   * Steam Engine (every character with TheriClockPassive true): while its flat root speed >= 8 studs/s on the ground, every
+--     STRIDE (0.23) s, alternating sides, a steam puff from that haunch's canister ("ring_Leg?_haunch") drifts out / up 0.55 s
+--     and 4 yellow sparks leave that knee's gear ("gear_Shin?_knee"); 8 yellow streaks slide back along both flanks. With
+--     TheriClockNoSlow: a slow attribute (SprintTest 1.20's list + DebuffUntil with DebuffSpeedMul < 1) set into the future ->
+--     a yellow toothed ring bursts from the chest (0.6 s) + "SLOW IGNORED". With TheriClockJumpAdded: a jump (JumpStartedAt)
+--     that leaves JumpChargesLeft 0 -> a steam ring on the ground (0.45 s) + 6 puffs + "3rd JUMP". Pooled parts, hidden when idle.
+--   Switches TheriMovesFX2_wallEnabled, TheriMovesFX2_steamEnabled (default true).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Wing Volley
+VERSION = "1.2" -- v1.2 Shield Wall + Steam Engine
 script:SetAttribute("TheriMovesFX2Version", VERSION)
 script:SetAttribute("TheriMovesFX2Events", 0)
 for _, k in ipairs({"TheriMovesFX2Enabled", "TheriMovesFX2_vortexEnabled", "TheriMovesFX2_bolaEnabled", "TheriMovesFX2_dashEnabled",
-	"TheriMovesFX2_reelEnabled", "TheriMovesFX2_volleyEnabled"}) do -- v1.1: + volley
+	"TheriMovesFX2_reelEnabled", "TheriMovesFX2_volleyEnabled", "TheriMovesFX2_wallEnabled", "TheriMovesFX2_steamEnabled"}) do -- v1.1: + volley; v1.2: + wall, steam
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function on(k) return script:GetAttribute("TheriMovesFX2Enabled") ~= false and script:GetAttribute("TheriMovesFX2_" .. k .. "Enabled") ~= false end
@@ -1008,6 +1025,331 @@ local function volley(char)
 	note("volley")
 end
 
+-- v1.2: Shield Wall + Steam Engine (see the header) ------------------------------------------------------------------------------
+local WALL_BLUE, WALL_LIGHT, GOLD, STEAM_WHITE = Color3.fromRGB(61, 155, 255), Color3.fromRGB(159, 208, 255), Color3.fromRGB(255, 211, 77), Color3.fromRGB(242, 244, 248)
+local function popAt(pos, text, color, U)
+	local anchor = part(Vector3.one * 0.2, color, Enum.Material.SmoothPlastic, 1)
+	anchor.CFrame = CFrame.new(pos)
+	local g = Instance.new("BillboardGui")
+	g.Name = "TheriMovesFX2Pop"
+	g.AlwaysOnTop = false -- as TheriVolleyPop (Studio check)
+	g.Size = UDim2.fromOffset(170, 40)
+	g.LightInfluence = 0
+	g.Adornee = anchor
+	local tl = Instance.new("TextLabel")
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.BackgroundTransparency = 1
+	tl.Text = text
+	tl.Font = Enum.Font.FredokaOne
+	tl.TextScaled = true
+	tl.TextColor3 = color
+	tl.TextStrokeTransparency = 0.2
+	tl.Parent = g
+	local lp = Players.LocalPlayer
+	g.Parent = (lp and lp:FindFirstChildOfClass("PlayerGui")) or fx()
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local k = (os.clock() - t0) / 0.9
+		if k >= 1 then conn:Disconnect() g:Destroy() anchor:Destroy() return end
+		g.StudsOffsetWorldSpace = Vector3.new(0, k * 3 * U, 0)
+		tl.TextTransparency = k > 0.66 and (k - 0.66) / 0.34 or 0
+		tl.TextStrokeTransparency = 0.2 + 0.8 * math.max(0, (k - 0.66) / 0.34)
+	end)
+end
+local function sparkBurst(pos, n, color, U, len, dur)
+	local list = {}
+	for i = 1, n do list[i] = part(Vector3.one * 0.1, color, Enum.Material.Neon, 1) end
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local k = (os.clock() - t0) / dur
+		if k >= 1 then conn:Disconnect() kill(list) return end
+		for i, p in ipairs(list) do
+			local a = i / n * math.pi * 2
+			local o = pos + Vector3.new(math.cos(a) * k * len * U, (math.sin(a * 1.3) * 0.7 + 0.3) * k * len * U, math.sin(a) * k * len * U)
+			setSeg(p, o:Lerp(pos, 0.45), o, 0.1 * U)
+			p.Transparency = k
+		end
+	end)
+end
+local function flatLook(root)
+	local f = root.CFrame.LookVector
+	f = Vector3.new(f.X, 0, f.Z)
+	return f.Magnitude > 1e-3 and f.Unit or Vector3.new(0, 0, -1)
+end
+local walls = setmetatable({}, {__mode = "k"}) -- [char] = {at}
+local function wall(char)
+	local at = num(char, "TheriDeflectAt", 0)
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local U = char:GetScale()
+	local R, H = 9 * U, 9 * U
+	local half = math.rad(math.clamp(num(char, "TheriDeflectAngle", 70), 5, 90))
+	local N, SL = 14, 7
+	local step = 2 * half / N
+	local panels, rims, lines, arc, fan, posts = {}, {}, {}, {}, {}, {}
+	for i = 1, N do
+		panels[i] = part(Vector3.one, WALL_BLUE, Enum.Material.Neon, 1)
+		rims[i] = part(Vector3.one, WALL_LIGHT, Enum.Material.Neon, 1)
+		lines[i] = part(Vector3.one, WALL_BLUE, Enum.Material.Neon, 1)
+		arc[i] = part(Vector3.one, WALL_BLUE, Enum.Material.Neon, 1)
+	end
+	for i = 1, SL do fan[i] = {wedge(WALL_BLUE, 1), wedge(WALL_BLUE, 1)} end
+	for i = 1, 2 do posts[i] = part(Vector3.one, WALL_LIGHT, Enum.Material.Neon, 1) end
+	walls[char] = {at = at, R = R}
+	local chord = 2 * R * math.sin(step / 2) * 1.04
+	local conn
+	local function cleanup()
+		conn:Disconnect()
+		kill(panels) kill(rims) kill(lines) kill(arc) kill(posts)
+		for _, w in ipairs(fan) do w[1]:Destroy() w[2]:Destroy() end
+		if walls[char] and walls[char].at == at then walls[char] = nil end
+	end
+	conn = RunService.RenderStepped:Connect(function()
+		local t = now() - at
+		local hold = num(char, "TheriDeflectUntil", at + 1) - at
+		if not char.Parent or num(char, "TheriDeflectAt", 0) ~= at or t > hold + 0.4 or not root.Parent then cleanup() return end
+		local gy = groundBelow(root.Position, root.Position.Y - 3 * U)
+		local base = CFrame.lookAt(Vector3.new(root.Position.X, gy, root.Position.Z), Vector3.new(root.Position.X, gy, root.Position.Z) + flatLook(root))
+		local unroll = seg(t, 0.02, 0.23)
+		local roll = seg(t, hold, hold + 0.3)
+		local k = math.min(easeOut(seg(t, 0, 0.15)), 1 - roll)
+		for i = 1, N do
+			local a = -half + (i - 0.5) * step
+			local fromMid = math.abs(i - (N + 1) / 2) / (N / 2)
+			local on = unroll > fromMid * 0.9 and roll < 1 - fromMid * 0.9
+			local h = H * (1 - roll) * math.min(1, unroll * 1.4)
+			local cf = base * CFrame.Angles(0, -a, 0)
+			if on and h > 0.05 then
+				panels[i].Size = Vector3.new(chord, h, 0.12 * U)
+				panels[i].CFrame = cf * CFrame.new(0, h / 2, -R)
+				panels[i].Transparency = 0.82 + 0.04 * math.sin(t * 18 + i)
+				rims[i].Size = Vector3.new(chord, 0.25 * U, 0.25 * U)
+				rims[i].CFrame = cf * CFrame.new(0, h, -R)
+				rims[i].Transparency = 0.05
+				lines[i].Size = Vector3.new(chord, 0.1 * U, 0.14 * U)
+				lines[i].CFrame = cf * CFrame.new(0, h / 2, -R)
+				lines[i].Transparency = 0.45
+			else
+				hide(panels[i]) hide(rims[i]) hide(lines[i])
+			end
+			arc[i].Size = Vector3.new(chord, 0.06, 0.5 * U)
+			arc[i].CFrame = cf * CFrame.new(0, 0.05, -R)
+			arc[i].Transparency = k > 0.02 and 1 - 0.6 * k or 1
+		end
+		for j = 1, SL do
+			local a0, a1 = -half + (j - 1) * 2 * half / SL, -half + j * 2 * half / SL
+			local apex = base.Position + Vector3.new(0, 0.06, 0)
+			local p0 = (base * CFrame.Angles(0, -a0, 0) * CFrame.new(0, 0.06, -R)).Position
+			local p1 = (base * CFrame.Angles(0, -a1, 0) * CFrame.new(0, 0.06, -R)).Position
+			tri(fan[j][1], fan[j][2], apex, p0, p1, 0.05)
+			fan[j][1].Transparency, fan[j][2].Transparency = k > 0.02 and 1 - 0.12 * k or 1, k > 0.02 and 1 - 0.12 * k or 1
+		end
+		for e = 1, 2 do
+			local a = (e == 1 and -half or half)
+			local cf = base * CFrame.Angles(0, -a, 0) * CFrame.new(0, 0, -R)
+			local h = H * k
+			if h > 0.05 then setSeg(posts[e], cf.Position, cf.Position + Vector3.new(0, h, 0), 0.22 * U) posts[e].Transparency = 0.05 else hide(posts[e]) end
+		end
+	end)
+	note("wall")
+end
+local function wallBlock(char)
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local from = char:GetAttribute("TheriDeflectBlockFrom")
+	if not root or typeof(from) ~= "Vector3" then return end
+	local U = char:GetScale()
+	local w = walls[char]
+	local R = w and w.R or 9 * U
+	local d = Vector3.new(from.X - root.Position.X, 0, from.Z - root.Position.Z)
+	d = d.Magnitude > 1e-3 and d.Unit or flatLook(root)
+	local P = root.Position + d * R + Vector3.new(0, 1 * U, 0)
+	-- ripple: a ring on the wall facing the shot
+	local ring = ringParts(16, WALL_LIGHT, Enum.Material.Neon, 1)
+	local cf = CFrame.lookAt(P, P + d) * CFrame.Angles(math.pi / 2, 0, 0)
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local k = (os.clock() - t0) / 0.45
+		if k >= 1 then conn:Disconnect() kill(ring) return end
+		placeRing(ring, cf, (0.4 + 3.2 * easeOut(k)) * U, 0.18 * U, 0.12 * U)
+		for _, p in ipairs(ring) do p.Transparency = 0.1 + 0.9 * k end
+	end)
+	sparkBurst(P, 8, Color3.fromRGB(214, 236, 255), U, 2.2, 0.3)
+	local reflect = char:GetAttribute("TheriDeflectReflect") == true
+	popAt(P + Vector3.new(0, 1.5 * U, 0), reflect and "BOUNCED BACK" or "BLOCKED", reflect and GOLD or WALL_LIGHT, U)
+	if reflect then
+		local kind = tostring(char:GetAttribute("TheriDeflectBlockKind") or "dart")
+		local shot
+		if kind == "boulder" then shot = part(Vector3.one * 1.8 * U, Color3.fromRGB(138, 143, 150), Enum.Material.Slate, 0, Enum.PartType.Ball)
+		elseif kind == "cannon" then shot = part(Vector3.one * 1.2 * U, DARK, Enum.Material.Metal, 0, Enum.PartType.Ball)
+		else shot = part(Vector3.new(0.25, 0.25, 1.4) * U, Color3.fromRGB(255, 90, 78), Enum.Material.Neon, 0) end
+		local trail = part(Vector3.one * 0.2, GOLD, Enum.Material.Neon, 1)
+		local t1 = os.clock()
+		local c2
+		c2 = RunService.RenderStepped:Connect(function()
+			local k = (os.clock() - t1) / 0.35
+			if k >= 1 then c2:Disconnect() shot:Destroy() trail:Destroy() sparkBurst(from, 6, GOLD, U, 1.6, 0.3) return end
+			local pos = P:Lerp(from, k) + Vector3.new(0, math.sin(k * math.pi) * 1.5 * U, 0)
+			shot.CFrame = CFrame.lookAt(pos, from) * CFrame.Angles(k * 9, 0, 0)
+			setSeg(trail, P:Lerp(from, math.max(0, k - 0.3)), pos, 0.2 * U)
+			trail.Transparency = 0.3
+		end)
+	end
+	note("wallBlock" .. (reflect and ":back" or ""))
+end
+
+-- Steam Engine ------------------------------------------------------------------------------------------------------------------
+local STRIDE, PUFF_LIFE, RUN_MIN = 0.23, 0.55, 8
+local SLOW_KEYS = {"ScreechSlowUntil", "MineSlowUntil", "TenoSlowUntil", "SmokeSlowUntil", "CaltropSlowUntil", "GooSlowUntil", "HeadbuttSlowUntil", "DebuffUntil"}
+local steams = {} -- [char] = state
+local function zNamed(char, name)
+	local m = char:FindFirstChild("ZPart_zclock")
+	if not m then return nil end
+	for _, d in ipairs(m:GetDescendants()) do if d:IsA("BasePart") and d.Name == name then return d end end
+	return nil
+end
+local function steamState(char)
+	local st = steams[char]
+	if st then return st end
+	st = {puffs = {}, sparks = {}, streaks = {}, next = 0, side = 1, puffI = 0, sparkI = 0}
+	for i = 1, 8 do
+		st.puffs[i] = {p = part(Vector3.one, STEAM_WHITE, Enum.Material.SmoothPlastic, 1, Enum.PartType.Ball), born = -1e9}
+		st.sparks[i] = {p = part(Vector3.one * 0.1, YELLOW, Enum.Material.Neon, 1), born = -1e9}
+		st.streaks[i] = part(Vector3.one * 0.1, Color3.fromRGB(255, 230, 128), Enum.Material.Neon, 1)
+	end
+	steams[char] = st
+	return st
+end
+local function steamHide(st)
+	for i = 1, 8 do st.puffs[i].p.Transparency = 1 st.sparks[i].p.Transparency = 1 st.streaks[i].Transparency = 1 end
+end
+local function steamKill(char)
+	local st = steams[char]
+	if not st then return end
+	for i = 1, 8 do st.puffs[i].p:Destroy() st.sparks[i].p:Destroy() st.streaks[i]:Destroy() end
+	steams[char] = nil
+end
+RunService.RenderStepped:Connect(function()
+	local tnow = os.clock()
+	for char, st in pairs(steams) do
+		if not char.Parent then steamKill(char) end
+	end
+	if not on("steam") then for _, st in pairs(steams) do steamHide(st) end return end
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local char = pl.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if root and hum and char:GetAttribute("TheriClockPassive") == true then
+			local st = steamState(char)
+			local U = char:GetScale()
+			local v = root.AssemblyLinearVelocity
+			local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+			local running = speed >= RUN_MIN and hum.FloorMaterial ~= Enum.Material.Air
+			if running and tnow >= st.next then
+				st.next = tnow + STRIDE
+				st.side = -st.side
+				local sd = st.side > 0 and "L" or "R"
+				local can = zNamed(char, "ring_Leg" .. sd .. "_haunch")
+				local knee = zNamed(char, "gear_Shin" .. sd .. "_knee")
+				st.puffI = st.puffI % 8 + 1
+				local pf = st.puffs[st.puffI]
+				pf.born, pf.at, pf.sideV, pf.vel = tnow, (can and can.Position or root.Position), root.CFrame.RightVector * (sd == "L" and 1 or -1), Vector3.new(v.X, 0, v.Z)
+				local kp = knee and knee.Position or (root.Position - Vector3.new(0, 3 * U, 0))
+				for q = 1, 4 do
+					st.sparkI = st.sparkI % 8 + 1
+					local sp = st.sparks[st.sparkI]
+					local a = (st.sparkI * 1.7) % (2 * math.pi)
+					sp.born, sp.at, sp.dir = tnow, kp, (root.CFrame.RightVector * (sd == "L" and 1 or -1) * math.cos(a) + Vector3.new(0, 0.6 + math.sin(a) * 0.4, 0) + root.CFrame.LookVector * -0.8).Unit
+				end
+			end
+			for i = 1, 8 do
+				local pf = st.puffs[i]
+				local k = (tnow - pf.born) / PUFF_LIFE
+				if k >= 0 and k < 1 and pf.at then
+					pf.p.Size = Vector3.one * (1 + 2.4 * k) * U
+					pf.p.CFrame = CFrame.new(pf.at + pf.sideV * (0.6 + 1.6 * k) * U + Vector3.new(0, (0.5 + 2.4 * k) * U, 0) + pf.vel * (tnow - pf.born) * 0.15)
+					pf.p.Transparency = 0.25 + 0.75 * k
+				else
+					pf.p.Transparency = 1
+				end
+				local sp = st.sparks[i]
+				local ks = (tnow - sp.born) / 0.2
+				if ks >= 0 and ks < 1 and sp.at then
+					setSeg(sp.p, sp.at + sp.dir * ks * 0.6 * U, sp.at + sp.dir * (0.4 + ks * 1.8) * U, 0.14 * U)
+					sp.p.Transparency = ks
+				else
+					sp.p.Transparency = 1
+				end
+				local sk = st.streaks[i]
+				if running then
+					local sd2 = i % 2 == 1 and 1 or -1
+					local row = math.floor((i - 1) / 2)
+					local off = (tnow * 3 + i * 0.37) % 1
+					local x = sd2 * (4.2 + row * 0.3) * U
+					local y = (-4.5 + row * 1.3) * U
+					local a = root.CFrame * CFrame.new(x, y, (2 + off * 7) * U)
+					local b = root.CFrame * CFrame.new(x, y, (6.5 + off * 7) * U)
+					setSeg(sk, a.Position, b.Position, 0.16 * U)
+					sk.Transparency = 0.2 + 0.8 * off
+				else
+					sk.Transparency = 1
+				end
+			end
+		elseif char and steams[char] then
+			steamHide(steams[char])
+		end
+	end
+end)
+local function slowIgnored(char)
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local U = char:GetScale()
+	local ring = ringParts(24, GOLD, Enum.Material.Neon, 1)
+	local teeth = ringParts(12, GOLD, Enum.Material.Neon, 1)
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local k = (os.clock() - t0) / 0.6
+		if k >= 1 or not root.Parent then conn:Disconnect() kill(ring) kill(teeth) return end
+		local cf = CFrame.new(root.Position + Vector3.new(0, 1 * U, 0)) * CFrame.fromMatrix(Vector3.zero, root.CFrame.RightVector, root.CFrame.LookVector) * CFrame.Angles(0, k * 3, 0)
+		local r = (1 + 6 * easeOut(k)) * U
+		placeRing(ring, cf, r, 0.2 * U, 0.2 * U)
+		placeRing(teeth, cf, r + 0.35 * U, 0.45 * U, 0.3 * U)
+		for _, p in ipairs(ring) do p.Transparency = 0.05 + 0.95 * k end
+		for _, p in ipairs(teeth) do p.Transparency = 0.05 + 0.95 * k end
+	end)
+	popAt(root.Position + Vector3.new(0, 5 * U, 0), "SLOW IGNORED", GOLD, U)
+	note("slowIgnored")
+end
+local function thirdJump(char)
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local U = char:GetScale()
+	local gy = groundBelow(root.Position, root.Position.Y - 6 * U)
+	local c = Vector3.new(root.Position.X, gy + 0.2, root.Position.Z)
+	local ring = ringParts(24, STEAM_WHITE, Enum.Material.Neon, 1)
+	local puffs = {}
+	for i = 1, 6 do puffs[i] = part(Vector3.one, STEAM_WHITE, Enum.Material.SmoothPlastic, 1, Enum.PartType.Ball) end
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local k = (os.clock() - t0) / 0.45
+		if k >= 1 then conn:Disconnect() kill(ring) kill(puffs) return end
+		placeRing(ring, CFrame.new(c), (0.5 + 5 * easeOut(k)) * U, 0.3 * U, 0.15 * U)
+		for _, p in ipairs(ring) do p.Transparency = 0.1 + 0.9 * k end
+		for i, p in ipairs(puffs) do
+			local a = i / 6 * math.pi * 2
+			p.Size = Vector3.one * (0.8 + 1.5 * k) * U
+			p.CFrame = CFrame.new(c + Vector3.new(math.cos(a) * 2.5 * k * U, (0.5 + k) * U, math.sin(a) * 2.5 * k * U))
+			p.Transparency = 0.3 + 0.7 * k
+		end
+	end)
+	popAt(root.Position + Vector3.new(0, 5 * U, 0), "3rd JUMP", GOLD, U)
+	note("thirdJump")
+end
+
 -- watch every character ------------------------------------------------------------------------------------------------------
 local function watch(char)
 	char:GetAttributeChangedSignal("TheriVortexAt"):Connect(function() if on("vortex") then vortex(char) end end)
@@ -1016,6 +1358,26 @@ local function watch(char)
 	char:GetAttributeChangedSignal("TheriReelAt"):Connect(function() if on("reel") then reel(char) end end)
 	char:GetAttributeChangedSignal("TheriFeatherAt"):Connect(function() -- v1.1
 		if on("volley") and char:GetAttribute("TheriFeatherVolley") == true then volley(char) end
+	end)
+	char:GetAttributeChangedSignal("TheriDeflectAt"):Connect(function() -- v1.2
+		if on("wall") and char:GetAttribute("TheriDeflectWall") == true then wall(char) end
+	end)
+	char:GetAttributeChangedSignal("TheriDeflectBlockAt"):Connect(function() -- v1.2
+		if on("wall") and char:GetAttribute("TheriDeflectWall") == true then wallBlock(char) end
+	end)
+	for _, key in ipairs(SLOW_KEYS) do -- v1.2: Overclock star
+		char:GetAttributeChangedSignal(key):Connect(function()
+			if not on("steam") or char:GetAttribute("TheriClockPassive") ~= true or char:GetAttribute("TheriClockNoSlow") ~= true then return end
+			if num(char, key, 0) <= now() then return end
+			if key == "DebuffUntil" and num(char, "DebuffSpeedMul", 1) >= 1 then return end
+			slowIgnored(char)
+		end)
+	end
+	char:GetAttributeChangedSignal("JumpStartedAt"):Connect(function() -- v1.2: Overclock III
+		if not on("steam") or char:GetAttribute("TheriClockPassive") ~= true or char:GetAttribute("TheriClockJumpAdded") ~= true then return end
+		task.delay(0.05, function()
+			if char.Parent and num(char, "JumpChargesLeft", 1) == 0 then thirdJump(char) end
+		end)
 	end)
 end
 local function onPlayer(p)
