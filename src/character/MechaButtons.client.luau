@@ -258,6 +258,7 @@
 --   DinoTheriGrappleRequest(stamp, moveDir) at once, moveDir = the Humanoid's MoveDirection (WASD / thumbstick; zero = the
 --   server dashes forward); label "DASH". Same on PC keys and phone buttons (one press path). Diagnostics: MechaDashFired
 --   (count). Switch: script attribute MechaButtonsDashEnabled (default true, read at each press / draw; false = 1.32).
+local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
