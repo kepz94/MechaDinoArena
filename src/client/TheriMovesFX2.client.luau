@@ -1,4 +1,4 @@
--- TheriMovesFX2 v1.0 (Mecha Dino Arena) — client effects for the Therizinosaurus' reworked moves (every client draws them for
+-- TheriMovesFX2 v1.1 (Mecha Dino Arena) — client effects for the Therizinosaurus' reworked moves (every client draws them for
 -- every therizino). Plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md (MDA-264); server TheriMovesServer 1.4; looks
 -- TheriPartsLooksV2 1.2 (Reaper Launcher, Storm Core). Timings and shapes = the storyboard tools/mockup/therizino_moves_anim.js
 -- v0.3 (U = scale studs per storyboard unit: 2 on an adult, as the looks). t = server now - the stamp.
@@ -23,14 +23,34 @@
 -- Everything lives in Workspace.DinoFX_Local.TheriMovesFX2 (anchored, no collision / query / touch). Switches: script attributes
 -- TheriMovesFX2Enabled, TheriMovesFX2_<vortex | bola | dash | reel>Enabled (default true; read at each event). Diagnostics:
 -- script TheriMovesFX2Version, TheriMovesFX2Events (count), TheriMovesFX2Last.
+-- v1.1 (Wing Volley, Kepu 2026-11-04 18:03 "The feather animation can barely even be fucking seen", pick "A"; plan
+--   docs/plans/THERIZINO_FEATHER_VOLLEY_v1.0.md, MDA-267; TheriMovesServer 1.6; storyboard therizino_moves_anim.js v0.4 A):
+--   TheriFeatherAt with the character's TheriFeatherVolley true -> volley(). t = server now - the stamp; release =
+--   TheriVolleyRelease (0.42), flight = TheriVolleyFlight (0.6); fan = TheriFeatherFan around TheriFeatherDir from
+--   TheriFeatherOrigin, radius TheriFeatherRange + 1 U, on the ground under the origin.
+--   * Ground fan 0.05 .. 0.8: 12 slices (two WedgeParts each, red Neon) + an arc of 16 Neon segments and the two side edges;
+--     brightness k = 0.3 + 0.7 x seg(0.05, 0.4) x (0.8 + 0.2 sin 40t) until the release, then 1 - seg(0.42, 0.8); fill
+--     transparency 1 - (0.1 + 0.35 k), edges 1 - (0.3 + 0.7 k).
+--   * Darts (TheriFeatherCount, one per fan direction, the server's angles): at the release each leaves its wing (the forearm
+--     on the dart's side of the heading, ArmL_fore / ArmR_fore x (+-0.5, 0.2, -0.3) U) and flies P(v) = lerp(from, to, v) +
+--     up x sin(pi v) x 4.5 U, v = easeOut(0.7 u + 0.3 u^2), u = (t - release) / flight, spinning 20 rad/s; to = the dart's
+--     target (TheriVolleyDarts "i=name": its Hitbox_Torso, else root; followed every frame) or the ground at the fan's end.
+--     Dart = bone blade 0.24 x 0.75 x 3.3 U, a bone diamond tip, a red Neon edge, a brass quill; red Neon trail
+--     P(v(u - 0.22)) -> the dart, 0.48 U thick; red Neon glow ball 1.65 U.
+--   * Land: a hit dart sticks 0.6 U into the target (follows it), six orange sparks fly out 0.3 s, the target flashes red,
+--     a "<TheriFeatherDamage>" pop rises 0 .. 0.9 s; it fades release + flight + 0.6 .. + 0.9. A missed dart dives into the
+--     ground at the fan's end with a dust puff and fades + 0.2 .. + 0.5.
+--   * TheriVolleyResult "cancelled" (stunned / dead at the release): the fan fades over 0.2 s, no darts.
+--   Switch TheriMovesFX2_volleyEnabled (default true). TheriMovesFX 1.4 draws nothing for these presses.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 Wing Volley
 script:SetAttribute("TheriMovesFX2Version", VERSION)
 script:SetAttribute("TheriMovesFX2Events", 0)
 for _, k in ipairs({"TheriMovesFX2Enabled", "TheriMovesFX2_vortexEnabled", "TheriMovesFX2_bolaEnabled", "TheriMovesFX2_dashEnabled",
-	"TheriMovesFX2_reelEnabled"}) do
+	"TheriMovesFX2_reelEnabled", "TheriMovesFX2_volleyEnabled"}) do -- v1.1: + volley
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function on(k) return script:GetAttribute("TheriMovesFX2Enabled") ~= false and script:GetAttribute("TheriMovesFX2_" .. k .. "Enabled") ~= false end
@@ -726,12 +746,262 @@ local function reel(char)
 	note("reel:" .. tostring(result) .. (#head > 0 and ":claw" or ""))
 end
 
+-- v1.1: Wing Volley (see the header) -------------------------------------------------------------------------------------------
+local function wedge(color, transp)
+	local w = Instance.new("WedgePart")
+	w.Anchored, w.CanCollide, w.CanQuery, w.CanTouch = true, false, false, false
+	w.CastShadow = false
+	w.Color, w.Material, w.Transparency = color, Enum.Material.Neon, transp or 1
+	w.Size = Vector3.one * 0.2
+	w.Parent = fx()
+	return w
+end
+local function tri(w1, w2, a, b, c, th) -- a flat triangle a, b, c from two wedges
+	local ab, ac, bc = b - a, c - a, c - b
+	local abd, acd, bcd = ab:Dot(ab), ac:Dot(ac), bc:Dot(bc)
+	if abd > acd and abd > bcd then c, a = a, c elseif acd > bcd and acd > abd then a, b = b, a end
+	ab, ac, bc = b - a, c - a, c - b
+	local right = ac:Cross(ab).Unit
+	local upv = bc:Cross(right).Unit
+	local back = bc.Unit
+	local h = math.abs(ab:Dot(upv))
+	w1.Size = Vector3.new(th, h, math.abs(ab:Dot(back)))
+	w1.CFrame = CFrame.fromMatrix((a + b) / 2, right, upv, back)
+	w2.Size = Vector3.new(th, h, math.abs(ac:Dot(back)))
+	w2.CFrame = CFrame.fromMatrix((a + c) / 2, -right, upv, -back)
+end
+local DART_RED, POP_RED = Color3.fromRGB(255, 42, 31), Color3.fromRGB(255, 107, 107)
+local function popTag(model, text, U, off)
+	local r = model:FindFirstChild("HumanoidRootPart")
+	if not r then return nil end
+	local g = Instance.new("BillboardGui")
+	g.Name = "TheriVolleyPop"
+	g.AlwaysOnTop = true
+	g.Size = UDim2.fromOffset(60, 40)
+	g.LightInfluence = 0
+	g.Adornee = r
+	local tl = Instance.new("TextLabel")
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.BackgroundTransparency = 1
+	tl.Text = text
+	tl.Font = Enum.Font.FredokaOne
+	tl.TextScaled = true
+	tl.TextColor3 = POP_RED
+	tl.TextStrokeTransparency = 0.2
+	tl.Parent = g
+	g.Parent = fx()
+	return {g = g, tl = tl, base = 5 * model:GetScale() / 2 + 2 * U, off = off}
+end
+local function volley(char)
+	local at = num(char, "TheriFeatherAt", 0)
+	local s = char:GetScale()
+	local U = s
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local dir = char:GetAttribute("TheriFeatherDir")
+	if not root or typeof(dir) ~= "Vector3" then return end
+	dir = Vector3.new(dir.X, 0, dir.Z)
+	if dir.Magnitude < 1e-3 then return end
+	dir = dir.Unit
+	local origin = char:GetAttribute("TheriFeatherOrigin")
+	if typeof(origin) ~= "Vector3" then origin = root.Position end
+	local release = num(char, "TheriVolleyRelease", 0.42)
+	local flight = math.max(0.1, num(char, "TheriVolleyFlight", 0.6))
+	local n = math.clamp(math.floor(num(char, "TheriFeatherCount", 8)), 1, 16)
+	local range = math.max(1, num(char, "TheriFeatherRange", 20))
+	local fan = math.rad(math.clamp(num(char, "TheriFeatherFan", 60), 0, 180))
+	local dmg = math.max(0, num(char, "TheriFeatherDamage", 3))
+	local gy = groundBelow(origin, origin.Y - 3 * s)
+	local apex = Vector3.new(origin.X, gy + 0.08, origin.Z)
+	local R = range + U
+	local function along(a) return (CFrame.Angles(0, a, 0) * dir).Unit end
+	-- the ground fan
+	local fill, edges = {}, {}
+	local SL = 12
+	for i = 1, SL do
+		local a0, a1 = -fan / 2 + fan * (i - 1) / SL, -fan / 2 + fan * i / SL
+		local w1, w2 = wedge(RED, 1), wedge(RED, 1)
+		tri(w1, w2, apex, apex + along(a0) * R, apex + along(a1) * R, 0.05)
+		table.insert(fill, w1)
+		table.insert(fill, w2)
+	end
+	local AR = 16
+	for i = 1, AR do
+		local a0, a1 = -fan / 2 + fan * (i - 1) / AR, -fan / 2 + fan * i / AR
+		local e = part(Vector3.one * 0.2, RED, Enum.Material.Neon, 1)
+		setSeg(e, apex + along(a0) * R + Vector3.new(0, 0.05, 0), apex + along(a1) * R + Vector3.new(0, 0.05, 0), 0.3 * U)
+		e.Size = Vector3.new(0.3 * U, 0.1, e.Size.Z + 0.1 * U)
+		table.insert(edges, e)
+	end
+	for _, a in ipairs({-fan / 2, fan / 2}) do
+		local e = part(Vector3.one * 0.2, RED, Enum.Material.Neon, 1)
+		setSeg(e, apex + Vector3.new(0, 0.05, 0), apex + along(a) * R + Vector3.new(0, 0.05, 0), 0.3 * U)
+		e.Size = Vector3.new(0.3 * U, 0.1, e.Size.Z)
+		table.insert(edges, e)
+	end
+	-- the darts
+	local armL, armR = bodyPart(char, "ArmL_fore"), bodyPart(char, "ArmR_fore")
+	local darts = {}
+	for i = 1, n do
+		local a = n == 1 and 0 or (-fan / 2 + fan * (i - 1) / (n - 1))
+		local d = {i = i, d = along(a)}
+		d.blade = part(Vector3.new(0.24, 0.75, 3.3) * U, BONE, Enum.Material.SmoothPlastic, 1)
+		d.tip = part(Vector3.new(0.24, 0.55, 0.55) * U, BONE, Enum.Material.SmoothPlastic, 1)
+		d.edge = part(Vector3.new(0.27, 0.18, 3.45) * U, DART_RED, Enum.Material.Neon, 1)
+		d.quill = part(Vector3.new(0.3, 0.3, 0.75) * U, BRASS, Enum.Material.Metal, 1)
+		d.trail = part(Vector3.one * 0.2, DART_RED, Enum.Material.Neon, 1)
+		d.glow = part(Vector3.one * 1.65 * U, DART_RED, Enum.Material.Neon, 1, Enum.PartType.Ball)
+		d.sparks = {}
+		for k = 1, 6 do d.sparks[k] = part(Vector3.one * 0.1, ORANGE, Enum.Material.Neon, 1) end
+		d.puffs = puffSet(3)
+		table.insert(darts, d)
+	end
+	local function dartParts(d) return {d.blade, d.tip, d.edge, d.quill} end
+	local function placeDart(d, cf, tr)
+		d.blade.CFrame = cf
+		d.tip.CFrame = cf * CFrame.new(0, 0, -1.65 * U) * CFrame.Angles(math.rad(45), 0, 0)
+		d.edge.CFrame = cf * CFrame.new(0, 0.36 * U, 0)
+		d.quill.CFrame = cf * CFrame.new(0, 0, 1.875 * U)
+		for _, p in ipairs(dartParts(d)) do p.Transparency = tr end
+	end
+	local P = function(from, to, v) return from:Lerp(to, v) + Vector3.new(0, math.sin(v * math.pi) * 4.5 * U, 0) end
+	local function E(u) u = clamp01(u) return easeOut(0.7 * u + 0.3 * u * u) end
+	local targets -- [i] = model (from TheriVolleyDarts)
+	local cancelled = false
+	local pops = {}
+	local function readDarts()
+		if num(char, "TheriVolleyFiredAt", -1e9) < at then return end
+		local res = char:GetAttribute("TheriVolleyResult")
+		if res == "cancelled" then cancelled = true return end
+		if res ~= "fired" and res ~= nil then return end
+		targets = {}
+		for pair in string.gmatch(tostring(char:GetAttribute("TheriVolleyDarts") or ""), "[^|]+") do
+			local i, name = string.match(pair, "^(%d+)=(.+)$")
+			if i then targets[tonumber(i)] = findModel(name) end
+		end
+	end
+	local function aimOf(m)
+		local hb = m and (bodyPart(m, "Hitbox_Torso") or m:FindFirstChild("HumanoidRootPart"))
+		return hb
+	end
+	local function sideArm(d)
+		if not (armL and armR) then return armL or armR end
+		local rv = root.CFrame.RightVector
+		local sl = (armL.Position - root.Position):Dot(rv)
+		local sd = d.d:Dot(rv)
+		if (sl >= 0) == (sd >= 0) then return armL end
+		return armR
+	end
+	local cancelAt
+	local conn
+	local function cleanup()
+		conn:Disconnect()
+		kill(fill) kill(edges)
+		for _, d in ipairs(darts) do
+			kill(dartParts(d)) d.trail:Destroy() d.glow:Destroy() kill(d.sparks) kill(d.puffs)
+		end
+		for _, p in ipairs(pops) do if p.g then p.g:Destroy() end end
+	end
+	conn = RunService.RenderStepped:Connect(function()
+		local t = now() - at
+		if t > release + flight + 1.0 or not char.Parent or num(char, "TheriFeatherAt", 0) ~= at then cleanup() return end
+		if not targets and not cancelled and t >= release - 0.05 then readDarts() end
+		if cancelled and not cancelAt then cancelAt = t end
+		-- fan
+		local k
+		if cancelAt then k = (1 - seg(t, cancelAt, cancelAt + 0.2)) * 0.6
+		elseif t < release then k = (t < 0.05) and 0 or (0.3 + 0.7 * seg(t, 0.05, 0.4) * (0.8 + 0.2 * math.sin(t * 40)))
+		else k = 1 - seg(t, release, 0.8) end
+		for _, w in ipairs(fill) do w.Transparency = k > 0 and 1 - (0.1 + 0.35 * k) or 1 end
+		for _, e in ipairs(edges) do e.Transparency = k > 0 and 1 - (0.3 + 0.7 * k) or 1 end
+		if cancelled then
+			for _, d in ipairs(darts) do placeDart(d, d.blade.CFrame, 1) d.trail.Transparency, d.glow.Transparency = 1, 1 end
+			return
+		end
+		for _, d in ipairs(darts) do
+			local st = t - release
+			if st < 0 then
+				placeDart(d, d.blade.CFrame, 1)
+				d.trail.Transparency, d.glow.Transparency = 1, 1
+			else
+				if not d.from then
+					local arm = sideArm(d)
+					local ap = arm and arm.Position or (root.Position + Vector3.new(0, 1.5 * s, 0))
+					local sign = (arm == armL) and 1 or -1
+					d.from = arm and (arm.CFrame * CFrame.new(sign * 0.5 * U, 0.2 * U, -0.3 * U)).Position or ap
+				end
+				local tm = targets and targets[d.i]
+				local tp = tm and aimOf(tm)
+				local to = tp and tp.Position or Vector3.new(origin.X, gy + 0.2, origin.Z) + d.d * range
+				local u = st / flight
+				if u < 1 then
+					local v = E(u)
+					local pos = P(d.from, to, v)
+					local ahead = P(d.from, to, E(math.min(1, u + 0.02)))
+					local behind = P(d.from, to, E(math.max(0, u - 0.02)))
+					local fwd = (ahead - behind)
+					if fwd.Magnitude < 1e-3 then fwd = d.d end
+					placeDart(d, CFrame.lookAt(pos, pos + fwd) * CFrame.Angles(0, 0, st * 20), 0)
+					d.lastFwd = fwd.Unit
+					setSeg(d.trail, P(d.from, to, E(math.max(0, u - 0.22))), pos, 0.48 * U)
+					d.trail.Transparency = 0.4
+					d.glow.CFrame = CFrame.new(pos)
+					d.glow.Transparency = 0.65
+				else
+					d.trail.Transparency, d.glow.Transparency = 1, 1
+					local lt = st - flight
+					if tp then
+						if not d.stuck then
+							local f = d.lastFwd or d.d
+							d.stuck = tp.CFrame:ToObjectSpace(CFrame.lookAt(to + f * 0.6 * U, to + f * 2 * U))
+							flash(tm, RED, 0.15, 0.6)
+							local pp = popTag(tm, tostring(math.floor(dmg + 0.5)), U, (d.i % 3 - 1) * 1.2)
+							if pp then table.insert(pops, pp) d.pop = pp end
+						end
+						local cf = tp.CFrame * d.stuck
+						local fade = seg(lt, 0.6, 0.9)
+						placeDart(d, cf, fade >= 1 and 1 or fade)
+						local sk = seg(lt, 0, 0.3)
+						for j, sp in ipairs(d.sparks) do
+							if sk <= 0 or sk >= 1 then sp.Transparency = 1 else
+								local a = j / 6 * math.pi * 2
+								local c = cf.Position
+								local o = c + Vector3.new(math.cos(a) * sk * 1.4 * U, (math.sin(a * 1.7) * sk * 1.1 + 0.3) * U, math.sin(a) * sk * 1.4 * U)
+								setSeg(sp, o:Lerp(c, 0.5), o, 0.1 * U)
+								sp.Transparency = sk
+							end
+						end
+						if d.pop then
+							local pk = lt / 0.9
+							d.pop.g.StudsOffsetWorldSpace = Vector3.new(d.pop.off, d.pop.base + pk * 3 * U, 0)
+							d.pop.tl.TextTransparency = pk > 0.66 and (pk - 0.66) / 0.34 or 0
+							d.pop.tl.TextStrokeTransparency = 0.2 + 0.8 * math.max(0, (pk - 0.66) / 0.34)
+							if pk >= 1 then d.pop.g:Destroy() d.pop = nil end
+						end
+					else
+						local f = d.lastFwd or d.d
+						local flatF = Vector3.new(f.X, 0, f.Z)
+						if flatF.Magnitude < 1e-3 then flatF = d.d end
+						local look = (flatF.Unit - Vector3.new(0, 0.35, 0)).Unit
+						local fade = seg(lt, 0.2, 0.5)
+						placeDart(d, CFrame.lookAt(to, to + look), fade >= 1 and 1 or fade)
+						drawPuffs(d.puffs, Vector3.new(to.X, gy, to.Z), seg(lt, 0, 0.45), 1.2, U * 0.6)
+					end
+				end
+			end
+		end
+	end)
+	note("volley")
+end
+
 -- watch every character ------------------------------------------------------------------------------------------------------
 local function watch(char)
 	char:GetAttributeChangedSignal("TheriVortexAt"):Connect(function() if on("vortex") then vortex(char) end end)
 	char:GetAttributeChangedSignal("TheriBolaAt"):Connect(function() if on("bola") then bola(char) end end)
 	char:GetAttributeChangedSignal("TheriDashAt"):Connect(function() if on("dash") then dash(char) end end)
 	char:GetAttributeChangedSignal("TheriReelAt"):Connect(function() if on("reel") then reel(char) end end)
+	char:GetAttributeChangedSignal("TheriFeatherAt"):Connect(function() -- v1.1
+		if on("volley") and char:GetAttribute("TheriFeatherVolley") == true then volley(char) end
+	end)
 end
 local function onPlayer(p)
 	p.CharacterAdded:Connect(watch)

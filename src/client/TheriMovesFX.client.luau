@@ -1,4 +1,4 @@
--- TheriMovesFX v1.3 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
+-- TheriMovesFX v1.4 (Mecha Dino Arena) — client effects for the Therizinosaurus' mecha button parts, build 1 (every client
 -- draws them for every therizino). Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 5 (MDA-245); looks from the mockup
 -- docs/mockups/therizino_parts_options.html v0.1 (chain links, feather blades, red field); server TheriMovesServer 1.0.
 --   * Reaper's Hook: TheriHookAt -> a steel chain (alternating light / dark links, CHAIN_STEP studs apart) from the
@@ -38,6 +38,8 @@
 --   TheriMovesServer 1.3): while the character's TheriClockPassive is true the v2 "ring" pieces glow a steady speed yellow
 --   (no pulse) and go back to their own colour when it ends. Switch TheriMovesFXClockSteadyEnabled (default true; false =
 --   the 1.2 pulse).
+-- v1.4 (Wing Volley, plan docs/plans/THERIZINO_FEATHER_VOLLEY_v1.0.md, MDA-267; TheriMovesServer 1.6): feathers() draws
+--   nothing when the character's TheriFeatherVolley is true (TheriMovesFX2 1.1 draws the volley); false / nil = the 1.3 blades.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -45,6 +47,7 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 grapple wire, deflect rotors, overclock rings
 VERSION = "1.2" -- v1.2 FX for the v2 looks (hook claw at the chain tip, no rotors on v2 deflect, yellow v2 overclock)
 VERSION = "1.3" -- v1.3 steady rings while Overclock is passive
+VERSION = "1.4" -- v1.4 no feather blades while the Wing Volley draws
 if script:GetAttribute("TheriMovesFXClockSteadyEnabled") == nil then script:SetAttribute("TheriMovesFXClockSteadyEnabled", true) end -- v1.3
 local CHAIN_STEP, SHOOT_TIME, BLADE_TIME = 1.7, 0.15, 0.3
 local LIGHT, DARK = Color3.fromRGB(184, 192, 200), Color3.fromRGB(124, 132, 142)
@@ -188,6 +191,7 @@ end
 
 -- Feather Barrage -----------------------------------------------------------------------------------------------------------
 local function feathers(char, s)
+	if char:GetAttribute("TheriFeatherVolley") == true then return end -- v1.4: TheriMovesFX2 1.1 draws the Wing Volley
 	local dir = char:GetAttribute("TheriFeatherDir")
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if typeof(dir) ~= "Vector3" or not root then return end

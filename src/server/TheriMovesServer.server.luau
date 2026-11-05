@@ -1,4 +1,4 @@
--- TheriMovesServer v1.5 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.6 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -121,6 +121,19 @@
 --   Otherwise, if it was added -> JumpCharges = TheriClockJumpBase, TheriClockJumpAdded false. JumpServer 1.3 / JumpTest 1.4 /
 --   AbilityBar / ArenaTouch read JumpCharges as before (pips up to 3). Switch: script attribute TheriMovesClockJumpEnabled
 --   (default true, read each tick; false = the extra is taken back).
+-- v1.6 (Kepu 2026-11-04 18:03 "The feather animation can barely even be fucking seen", pick 19:08 "A", "Build" 2026-11-05
+--   13:38; plan docs/plans/THERIZINO_FEATHER_VOLLEY_v1.0.md, MDA-265; storyboard tools/mockup/therizino_moves_anim.js v0.4 A):
+--   Feather Barrage -> Wing Volley. Switch: script attribute TheriMovesFeatherVolleyEnabled (default true). Off -> the 1.5
+--   handler, which now also stamps TheriFeatherVolley false. On -> the 1.5 handler returns at its top and the volley runs: the
+--   same check() / ok() (recharge at the press), dir = heading(aimDir), origin = the root at the press; stamps
+--   TheriFeatherVolley true, TheriFeatherDir, TheriFeatherOrigin, TheriVolleyRelease (VOLLEY_RELEASE 0.42), TheriVolleyFlight
+--   (VOLLEY_FLIGHT 0.6), TheriVolleyResult "windup", TheriVolleyDarts "", TheriFeatherHits "", TheriFeatherAt (last). After
+--   the release, t1: the therizino gone / dead / StunnedUntil > t1 -> TheriVolleyResult "cancelled", TheriVolleyFiredAt t1;
+--   else the 1.5 blade test from origin + dir against candidates() at t1; each dart i that touches a dino is given the one
+--   nearest along its line -> TheriFeatherHits ("name=blades|..."), TheriVolleyDarts ("i=name|..."), TheriVolleyResult
+--   "fired", TheriVolleyFiredAt t1 (last). After the flight, t2: each judged dino still a target (stillTarget) takes damage x
+--   its blades ("therifeather"; none while shielded) and the slow -> TheriVolleyLanded ("name=blades|..."),
+--   TheriVolleyLandedAt t2 (last). Diagnostics: script TheriMovesVolleys, TheriMovesVolleyHits.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -132,6 +145,7 @@ VERSION = "1.2" -- v1.2 build 2: Grapple Zip, Deflector Claws, Overclock Joints
 VERSION = "1.3" -- v1.3 grapple v2 (air latch, faster), passive Overclock
 VERSION = "1.4" -- v1.4 moves rework: vortex, bola, dash, reel
 VERSION = "1.5" -- v1.5 Overclock III: extra jump charge
+VERSION = "1.6" -- v1.6 Wing Volley (Feather Barrage rework)
 local HOOK_SPEED, HOOK_GAP = 140, 5
 local BLADE_WIDTH = 1.5
 local FIELD_TICK = 0.5
@@ -513,6 +527,7 @@ end)
 
 -- Feather Barrage -----------------------------------------------------------------------------------------------------------------
 featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+	if script:GetAttribute("TheriMovesFeatherVolleyEnabled") ~= false then return end -- v1.6: the Wing Volley below
 	local char, t = check(player, stamp, "zfeather", "TheriFeather", aimDir, true)
 	if not char then return end
 	ok(char, "TheriFeather", t)
@@ -547,6 +562,7 @@ featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	end
 	char:SetAttribute("TheriFeatherDir", dir)
 	char:SetAttribute("TheriFeatherHits", table.concat(hits, "|"))
+	char:SetAttribute("TheriFeatherVolley", false) -- v1.6: clients draw the 1.5 look
 	char:SetAttribute("TheriFeatherAt", t) -- last: FX
 end)
 
@@ -1211,4 +1227,87 @@ task.spawn(function()
 			end
 		end
 	end
+end)
+
+-- v1.6: Wing Volley (see the header) -----------------------------------------------------------------------------------------------
+if script:GetAttribute("TheriMovesFeatherVolleyEnabled") == nil then script:SetAttribute("TheriMovesFeatherVolleyEnabled", true) end
+local VOLLEY_RELEASE, VOLLEY_FLIGHT = 0.42, 0.6
+script:SetAttribute("TheriMovesVolleys", 0)
+script:SetAttribute("TheriMovesVolleyHits", 0)
+featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+	if script:GetAttribute("TheriMovesFeatherVolleyEnabled") == false then return end
+	local char, t = check(player, stamp, "zfeather", "TheriFeather", aimDir, true)
+	if not char then return end
+	ok(char, "TheriFeather", t)
+	local root = rootOf(char)
+	local dir = heading(char, aimDir)
+	local origin = root.Position
+	local n = math.max(1, math.floor(num(char, "TheriFeatherCount", 8)))
+	local range = math.max(0, num(char, "TheriFeatherRange", 20))
+	local fan = math.rad(math.clamp(num(char, "TheriFeatherFan", 60), 0, 180))
+	local dmg = math.max(0, num(char, "TheriFeatherDamage", 3))
+	local slowMul, slowT = num(char, "TheriFeatherSlowMul", 1), math.max(0, num(char, "TheriFeatherSlowTime", 0))
+	count("TheriMovesVolleys")
+	char:SetAttribute("TheriFeatherVolley", true)
+	char:SetAttribute("TheriFeatherDir", dir)
+	char:SetAttribute("TheriFeatherOrigin", origin)
+	char:SetAttribute("TheriVolleyRelease", VOLLEY_RELEASE)
+	char:SetAttribute("TheriVolleyFlight", VOLLEY_FLIGHT)
+	char:SetAttribute("TheriVolleyResult", "windup")
+	char:SetAttribute("TheriVolleyDarts", "")
+	char:SetAttribute("TheriFeatherHits", "")
+	char:SetAttribute("TheriFeatherAt", t) -- last: pose / FX / wings
+	task.wait(VOLLEY_RELEASE)
+	if char:GetAttribute("TheriFeatherAt") ~= t then return end -- a newer press took over
+	local t1 = now()
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not (char.Parent and hum and hum.Health > 0 and rootOf(char)) or num(char, "StunnedUntil", 0) > t1 then
+		char:SetAttribute("TheriVolleyResult", "cancelled")
+		char:SetAttribute("TheriVolleyFiredAt", t1)
+		return
+	end
+	local dirs = {}
+	for i = 1, n do
+		local a = n == 1 and 0 or (-fan / 2 + fan * (i - 1) / (n - 1))
+		table.insert(dirs, (CFrame.Angles(0, a, 0) * dir).Unit)
+	end
+	local judged, hits, dartOf, dartAlong = {}, {}, {}, {}
+	for _, m in ipairs(candidates(char)) do
+		local mr = rootOf(m)
+		local blades = 0
+		for i, d in ipairs(dirs) do
+			local along = math.clamp(flat(mr.Position - origin):Dot(d), 0, range)
+			local pt = origin + d * along
+			if script:GetAttribute("TheriMovesFlatBladesEnabled") ~= false then pt = Vector3.new(pt.X, mr.Position.Y, pt.Z) end
+			if gap(m, pt) <= BLADE_WIDTH then
+				blades += 1
+				if dartAlong[i] == nil or along < dartAlong[i] then dartOf[i], dartAlong[i] = m, along end
+			end
+		end
+		if blades > 0 then
+			table.insert(judged, {m = m, blades = blades})
+			table.insert(hits, m.Name .. "=" .. blades)
+		end
+	end
+	local darts = {}
+	for i = 1, n do
+		if dartOf[i] then table.insert(darts, i .. "=" .. dartOf[i].Name) end
+	end
+	char:SetAttribute("TheriFeatherHits", table.concat(hits, "|"))
+	char:SetAttribute("TheriVolleyDarts", table.concat(darts, "|"))
+	char:SetAttribute("TheriVolleyResult", "fired")
+	char:SetAttribute("TheriVolleyFiredAt", t1) -- last: the darts leave
+	task.wait(VOLLEY_FLIGHT)
+	local t2 = now()
+	local landed = {}
+	for _, j in ipairs(judged) do
+		if char.Parent and stillTarget(char, j.m) then
+			for _ = 1, j.blades do damage(char, player, j.m, dmg, "therifeather", t2) end
+			slow(j.m, slowMul, t2 + slowT, t2)
+			count("TheriMovesVolleyHits")
+			table.insert(landed, j.m.Name .. "=" .. j.blades)
+		end
+	end
+	char:SetAttribute("TheriVolleyLanded", table.concat(landed, "|"))
+	char:SetAttribute("TheriVolleyLandedAt", t2) -- last: the darts land
 end)

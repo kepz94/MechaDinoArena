@@ -1,4 +1,4 @@
--- TheriPartsAnim v1.2 (Mecha Dino Arena) — makes the machinery on the Therizinosaurus' redesigned mecha parts move (every
+-- TheriPartsAnim v1.3 (Mecha Dino Arena) — makes the machinery on the Therizinosaurus' redesigned mecha parts move (every
 -- client, every therizino). MDA-251, plan docs/plans/THERIZINO_PARTS_LOOKS_v2.0.md Task 3; looks TheriPartsServer 1.1 +
 -- TheriPartsLooksV2 1.1 (Kepu 2026-11-04 14:49 picks), motions as in docs/mockups/therizino_parts_redesign.html v0.5.
 -- What moves: every Weld "ZPartJoint_<group>" inside a "ZPart_<id>" model (TheriPartsServer 1.1). Its C0 is set here each
@@ -31,6 +31,10 @@
 --           0.2 s (the glass film shows while it charges and jolts).
 --   zsnare  TheriBolaAt: as TheriSnareAt (the spools spin while the bola winds up and flies).
 --   Switch: script attribute TheriPartsAnimReworkEnabled (default true; false = 1.1).
+-- v1.3 (Wing Volley, plan docs/plans/THERIZINO_FEATHER_VOLLEY_v1.0.md, MDA-266; TheriMovesServer 1.6): zfeather, when the
+--   model's TheriFeatherVolley is true (and TheriPartsAnimReworkEnabled): u up over 0.3 s (the wings fan for the wind-up), held
+--   to 1.3, down over 0.3 s; the wing's "blade" pieces are hidden from the release (0.42) to 1.2 s (the wings are empty while
+--   TheriMovesFX2 1.1 flies the darts), unless TheriVolleyResult is "cancelled". Otherwise the 1.0 zfeather.
 -- Who: every player's character, plus (Studio test hook) any workspace Model with attribute TheriPartsAnimTarget = true.
 -- Switch: script attribute TheriPartsAnimEnabled (default true, read each frame; false = every joint back at rest).
 -- Diagnostics: script TheriPartsAnimVersion, TheriPartsAnimJoints (joints driven, last frame); model TheriPartsAnimActive
@@ -41,6 +45,7 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 passive Overclock legs follow movement
 VERSION = "1.2" -- v1.2 moves rework stamps (reel, dash, bola)
+VERSION = "1.3" -- v1.3 Wing Volley wings
 local PASSIVE_FULL, PASSIVE_RATE = 8, 6
 if script:GetAttribute("TheriPartsAnimClockMoveEnabled") == nil then script:SetAttribute("TheriPartsAnimClockMoveEnabled", true) end
 local clockEase = setmetatable({}, {__mode = "k"}) -- [model] = {u, at} (losing it only resets the easing)
@@ -153,6 +158,16 @@ do
 		if e < 1.0 then return 1 end
 		return 1 - up(e - 1.0, 0.2)
 	end
+	local featherV10 = ACT.zfeather -- v1.3: the Wing Volley
+	ACT.zfeather = function(c, t)
+		if not rw() or c:GetAttribute("TheriFeatherVolley") ~= true then return featherV10(c, t) end
+		local e = t - num(c, "TheriFeatherAt", -1e9)
+		if e < 0 or e > 1.6 then return 0, false end
+		local hide = c:GetAttribute("TheriVolleyResult") ~= "cancelled" and e >= 0.42 and e < 1.2
+		if e < 0.3 then return up(e, 0.3), false end
+		if e < 1.3 then return 1, hide end
+		return 1 - up(e - 1.3, 0.3), false
+	end
 end
 
 local AXIS = {X = Vector3.xAxis, Y = Vector3.yAxis, Z = Vector3.zAxis}
@@ -177,6 +192,7 @@ local function scanPart(zm)
 			end
 		elseif d:IsA("BasePart") then
 			if d:GetAttribute("ZPartRole") == "hookhead" then table.insert(info.heads, d) end
+			if info.id == "zfeather" and d:GetAttribute("ZPartRole") == "blade" then table.insert(info.heads, d) end -- v1.3: hidden while empty
 			if d:GetAttribute("ZPartFilm") == true then table.insert(info.films, d) end
 		end
 	end

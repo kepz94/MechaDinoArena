@@ -1,4 +1,4 @@
--- TheriPose v1.9 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
+-- TheriPose v1.10 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
 -- ("A Reaper Sweeps"), the Diving Rake leap (J1) and the Sidewinder run (B). MDA-203, plan docs/plans/THERIZINO_KIT_v1.0.md
 -- Task 6; mockups docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02 "I like this one") and
 -- docs/mockups/therizino_run_options.html v0.1 (Kepu: "B Sidewinder"). Key poses = tools/therizino_kit_keys_v0.3.py /
@@ -136,6 +136,11 @@
 -- v1.9 (bug, Kepu 2026-11-04 18:03, with IdleAnimation 1.44): the Diving Rake's air-phase probe (when the down-rake starts)
 --   also ignores other dinos (every player's character, DinoIsland.Bots, the FX folders) while JumpProbeIgnoreDinosEnabled
 --   ~= false, so a latched raptor under the body does not start the rake early.
+-- v1.10 (Wing Volley, plan docs/plans/THERIZINO_FEATHER_VOLLEY_v1.0.md, MDA-266; TheriMovesServer 1.6; storyboard
+--   tools/mockup/therizino_moves_anim.js v0.4 A): the parts layer's feather branch, when the model's TheriFeatherVolley is true:
+--   VOLLEY_CROSS {ArmL 60 70 45, ArmR 60 -70 -45, RootJoint 8, Neck 10, Tail1 -8} 0..0.35 (io), VOLLEY_WIDE {ArmL 40 -80 -60,
+--   ArmR 40 80 60, RootJoint -10, Neck -8, LegL 10, KneeL -14} 0.35..0.48 (out), held to 1.0, out by 1.5 (io). Switch: model
+--   attribute TheriPoseVolleyEnabled (nil = true; false = the 1.6 FEATHER poses). Diagnostics: TheriPartsPose "volley".
 local TheriPose = {}
 TheriPose.Version = "1.3"
 TheriPose.Version = "1.4" -- v1.4 Fourth Cut (Ground Scythe)
@@ -144,6 +149,7 @@ TheriPose.Version = "1.6" -- v1.6 mecha-parts poses (build 1)
 TheriPose.Version = "1.7" -- v1.7 grapple + deflect poses (build 2)
 TheriPose.Version = "1.8" -- v1.8 moves rework poses (vortex, bola, dash, reel)
 TheriPose.Version = "1.9" -- v1.9 leap probe ignores other dinos
+TheriPose.Version = "1.10" -- v1.10 Wing Volley pose
 TheriPose.Defaults = {
 	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
@@ -808,6 +814,9 @@ do
 		TAIL_FLICK = {Tail1 = {-30, 0, 0}, Tail2 = {-30, 0, 0}, Tail3 = {-25, 0, 0}, Tail4 = {-20, 0, 0}, Tail5 = {-15, 0, 0},
 			RootJoint = {-8, 0, 0}},
 		GRAPPLE_AIM = {RootJoint = {-6, 0, 0}}, -- v1.7
+		VOLLEY_CROSS = {ArmL = {60, 70, 45}, ArmR = {60, -70, -45}, RootJoint = {8, 0, 0}, Neck = {10, 0, 0}, Tail1 = {-8, 0, 0}}, -- v1.10
+		VOLLEY_WIDE = {ArmL = {40, -80, -60}, ArmR = {40, 80, 60}, RootJoint = {-10, 0, 0}, Neck = {-8, 0, 0}, LegL = {10, 0, 0},
+			KneeL = {-14, 0, 0}}, -- v1.10
 		ARMS_FWD = {ArmL = {62, 0, 8}, ArmR = {62, 0, -8}, RootJoint = {-6, 0, 0}},
 		ZIP = {ArmL = {62, 0, 8}, ArmR = {62, 0, -8}, LegL = {-30, 0, 0}, LegR = {-20, 0, 0}, KneeL = {-50, 0, 0}, KneeR = {-60, 0, 0},
 			RootJoint = {-18, 0, 0}, Tail1 = {10, 0, 0}},
@@ -844,6 +853,11 @@ do
 			if t < 0.15 then return mix(ZERO, P.HOOK_AIM, ease("io", t / 0.15)), best end
 			if t < hold then return P.HOOK_AIM, best end
 			if t < hold + 0.3 then return mix(P.HOOK_AIM, ZERO, ease("io", (t - hold) / 0.3)), best end
+		elseif best == "feather" and model:GetAttribute("TheriFeatherVolley") == true and model:GetAttribute("TheriPoseVolleyEnabled") ~= false then -- v1.10
+			if t < 0.35 then return mix(ZERO, P.VOLLEY_CROSS, ease("io", t / 0.35)), "volley" end
+			if t < 0.48 then return mix(P.VOLLEY_CROSS, P.VOLLEY_WIDE, ease("out", (t - 0.35) / 0.13)), "volley" end
+			if t < 1.0 then return P.VOLLEY_WIDE, "volley" end
+			if t < 1.5 then return mix(P.VOLLEY_WIDE, ZERO, ease("io", (t - 1.0) / 0.5)), "volley" end
 		elseif best == "feather" then
 			if t < 0.12 then return mix(ZERO, P.FEATHER_PRE, ease("io", t / 0.12)), best end
 			if t < 0.24 then return mix(P.FEATHER_PRE, P.SWEEP, ease("out", (t - 0.12) / 0.12)), best end
