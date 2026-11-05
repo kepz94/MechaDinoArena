@@ -1,4 +1,4 @@
--- TheriMovesServer v1.3 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.4 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -79,6 +79,40 @@
 --     true, TheriClockUntil = now + 1e6 and TheriClockAt = now when it turns on (SprintTest / TheriAttackServer / TheriAttackTest
 --     read TheriClockUntil as before); otherwise, if it was passive -> TheriClockPassive false, TheriClockUntil = now. A clock
 --     request while passive -> TheriClockServerResult "passive", nothing changes.
+-- v1.4 (therizino moves rework, Kepu 2026-11-04 picks "Harvest-C, Snare-B, Dash-C, Hook-B", "Storm Core + 30 studs";
+--   storyboard tools/mockup/therizino_moves_anim.js v0.3 = the timings; plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md
+--   "Deterministic map", MDA-263; SkillTree 1.65, SkillEffects 1.43). Same remotes and part ids; each rework has its own script
+--   switch (default true, read at each request; false = the 1.3 move, whose handler returns early while its rework is on):
+--   * TheriMovesVortexEnabled — Reaper Vortex (DinoTheriFieldRequest): centre VORTEX_AHEAD (10) x scale studs ahead of the root
+--     on the ground, radius TheriFieldRadius; active from t + VORTEX_START (0.95) to + TheriFieldTime. While active: every
+--     Heartbeat each allowed, unshielded dino with a hitbox inside is moved VORTEX_PULL (6) studs/s (flat) toward the centre,
+--     stopping 3 x its scale from it (bot: root CFrame here; player: its own client, TheriVortexPull 1.0, from the stamps
+--     TheriVortexBy / TheriVortexCenter / TheriVortexPull / TheriVortexUntil, Until = now when it leaves or it ends); every
+--     FIELD_TICK s bleed x 0.5 ("therifield") and slowed x TheriFieldSlowMul until 0.6 s later. One per therizino. Stamps:
+--     TheriVortexCenter, TheriVortexRadius, TheriVortexStart, TheriFieldUntil, TheriVortexAt (last).
+--   * TheriMovesBolaEnabled — Bola (DinoTheriSnareRequest(stamp, aimDir?)): heading as the hook; target = the nearest allowed dino
+--     within TheriSnareRange studs (flat) and BOLA_CONE (25) degrees. Charges TheriSnareMax, each back TheriSnareCooldown s
+--     after use (TheriSnareLeft, TheriSnareReadyAt = now while one is left). None -> TheriBolaResult "noTarget" (thrown to
+--     TheriBolaEnd at full reach, no charge used). Else a charge; flight = clamp(distance / BOLA_SPEED (80), 0.25, 0.6); at
+--     t + BOLA_WIND (0.6) + flight: target gone / not allowed / further than reach + 15 -> "missed"; shielded -> "shielded";
+--     else TheriSnareDamage ("therisnare"), held TheriSnareRoot s (1.3's rope from a stake at its root + slowed x 0.1),
+--     TheriSnaredUntil / TheriSnaredBy on it, "hit", TheriBolaHitAt + TheriSnareHitTarget / TheriSnareHitAt. Stamps:
+--     TheriBolaTarget, TheriBolaEnd, TheriBolaFlight, TheriBolaResult, TheriBolaAt (last, at the throw).
+--   * TheriMovesDashEnabled — Dash (DinoTheriGrappleRequest(stamp, moveDir)): characters get TheriDashMode = the switch (read by
+--     MechaButtons 1.33). Direction = flat moveDir (else the root's look). Charges / refills = 1.3's grapple ones. A world ray at
+--     root height along it for TheriGrappleRange studs; a hit -> stop 3 x scale short. Shorter than DASH_MIN (4) -> "blocked"
+--     (no charge). The end keeps the start's height above the ground. Stamps: TheriDashFrom, TheriDashTo, TheriDashDelay
+--     (DASH_DELAY 0.16), TheriDashTime (clamp(distance / DASH_SPEED (330), 0.08, 0.16)), TheriDashResult "dash" / "blocked",
+--     TheriDashAt (last); TheriGrappleZip 1.3 moves the owner.
+--   * TheriMovesReelEnabled — Reaper Reel (DinoTheriHookRequest): target as the hook (TheriHookCone 35, TheriHookRange); from the
+--     chest muzzle (role "muzzle", else "jib", else the root) the world blocks. None / blocked -> TheriReelResult "noTarget" /
+--     "blocked", no recharge. Else recharge; fly = clamp(d / REEL_CLAW_SPEED (220), 0.12, 0.35), reel = clamp((d - gap) /
+--     REEL_SPEED (90), 0.3, 0.8), gap = REEL_GAP (7) x scale. Shielded -> "shielded" (nothing more). "hit": the target is held
+--     for REEL_BRACE (0.3) + fly + reel (bot: root held in place; player: slowed x 0.1; HookHeldUntil); then, if it is within
+--     gap + REEL_REACH (12) studs (flat) of the root: REEL_SLASH (10) damage ("therihook"), TheriReelHitAt, star -> stunned
+--     TheriHookStun s + TheriStartCut (as 1.3); else TheriReelResult "missed". Stamps: TheriReelTarget, TheriReelEnd,
+--     TheriReelBrace, TheriReelFly, TheriReelTime, TheriReelGap, TheriReelResult, TheriReelAt (last).
+--   Diagnostics: script TheriMovesVortexes (alive), TheriMovesBolaHits, TheriMovesReelHits, TheriMovesDashes.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -88,6 +122,7 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 flat feather blades
 VERSION = "1.2" -- v1.2 build 2: Grapple Zip, Deflector Claws, Overclock Joints
 VERSION = "1.3" -- v1.3 grapple v2 (air latch, faster), passive Overclock
+VERSION = "1.4" -- v1.4 moves rework: vortex, bola, dash, reel
 local HOOK_SPEED, HOOK_GAP = 140, 5
 local BLADE_WIDTH = 1.5
 local FIELD_TICK = 0.5
@@ -103,6 +138,10 @@ if script:GetAttribute("TheriMovesFlatBladesEnabled") == nil then script:SetAttr
 local function on(id)
 	return script:GetAttribute("TheriMovesServerEnabled") ~= false and script:GetAttribute("TheriMoves_" .. id .. "Enabled") ~= false
 end
+for _, k in ipairs({"Vortex", "Bola", "Dash", "Reel"}) do -- v1.4
+	if script:GetAttribute("TheriMoves" .. k .. "Enabled") == nil then script:SetAttribute("TheriMoves" .. k .. "Enabled", true) end
+end
+local function rework(k) return script:GetAttribute("TheriMoves" .. k .. "Enabled") ~= false end -- v1.4
 local function now() return workspace:GetServerTimeNow() end
 local function count(k, n) script:SetAttribute(k, (script:GetAttribute(k) or 0) + (n or 1)) end
 local function num(m, k, d) return tonumber(m:GetAttribute(k)) or d end
@@ -390,6 +429,7 @@ local function cutFn()
 	return startCut
 end
 hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+	if rework("Reel") then return end -- v1.4: the Reaper Reel below
 	local char, t = check(player, stamp, "zhook", "TheriHook", aimDir, true)
 	if not char then return end
 	local root = rootOf(char)
@@ -504,6 +544,7 @@ end)
 -- Harvest Field ---------------------------------------------------------------------------------------------------------------------
 local fields = {} -- [char] = {center, radius, untilT, nextTick, player, bleed, slowMul}
 fieldRemote.OnServerEvent:Connect(function(player, stamp)
+	if rework("Vortex") then return end -- v1.4: the Reaper Vortex below
 	local char, t = check(player, stamp, "zharvest", "TheriField", nil, false)
 	if not char then return end
 	ok(char, "TheriField", t)
@@ -582,6 +623,7 @@ local function hold(char, m, pos, rootT, t)
 	end)
 end
 snareRemote.OnServerEvent:Connect(function(player, stamp)
+	if rework("Bola") then return end -- v1.4: the Bola below
 	local char, t = check(player, stamp, "zsnare", "TheriSnare", nil, false)
 	if not char then return end
 	ok(char, "TheriSnare", t)
@@ -689,6 +731,7 @@ local function grapplePublish(char, t)
 	end
 end
 grappleRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+	if rework("Dash") then return end -- v1.4: the Dash below
 	local c0 = player.Character
 	if c0 then grappleLeft(c0, now()) grapplePublish(c0, now()) end -- refills first, so ReadyAt is current for check()
 	local char, t = check(player, stamp, "zgrapple", "TheriGrapple", aimDir, true)
@@ -791,5 +834,342 @@ task.spawn(function()
 				end
 			end
 		end
+	end
+end)
+
+-- v1.4: the moves rework (see the header) ------------------------------------------------------------------------------------------
+local VORTEX_AHEAD, VORTEX_START, VORTEX_PULL = 10, 0.95, 6
+local BOLA_CONE, BOLA_WIND, BOLA_SPEED = 25, 0.6, 80
+local DASH_MIN, DASH_DELAY, DASH_SPEED = 4, 0.16, 330
+local REEL_BRACE, REEL_CLAW_SPEED, REEL_SPEED, REEL_GAP, REEL_REACH, REEL_SLASH = 0.3, 220, 90, 7, 12, 10
+for _, k in ipairs({"TheriMovesVortexes", "TheriMovesBolaHits", "TheriMovesReelHits", "TheriMovesDashes"}) do script:SetAttribute(k, 0) end
+local function forward(char)
+	local f = flat(rootOf(char).CFrame.LookVector)
+	return f.Magnitude > 1e-3 and f.Unit or -Vector3.zAxis
+end
+local function nearestInCone(char, dir, range, coneDeg)
+	local root = rootOf(char)
+	local half = math.rad(math.clamp(coneDeg, 0, 90))
+	local best, bestD = nil, math.huge
+	for _, m in ipairs(candidates(char)) do
+		local v = flat(rootOf(m).Position - root.Position)
+		local d = v.Magnitude
+		if d > 1e-3 and d <= range and math.acos(math.clamp(dir:Dot(v.Unit), -1, 1)) <= half and d < bestD then best, bestD = m, d end
+	end
+	return best, bestD
+end
+local function stillTarget(char, m)
+	return m.Parent ~= nil and isTarget(m, char) and mayAffect(char, m)
+end
+
+-- Reaper Vortex --------------------------------------------------------------------------------------------------------------------
+local vortexes = {} -- [char] = {center, radius, startT, untilT, nextTick, player, bleed, slowMul, victims = {[model] = true}}
+local function vortexCount()
+	local n = 0
+	for _ in pairs(vortexes) do n += 1 end
+	script:SetAttribute("TheriMovesVortexes", n)
+end
+local function vortexRelease(v, m, t)
+	v.victims[m] = nil
+	if m.Parent and Players:GetPlayerFromCharacter(m) then m:SetAttribute("TheriVortexUntil", t) end
+end
+fieldRemote.OnServerEvent:Connect(function(player, stamp)
+	if not rework("Vortex") then return end
+	local char, t = check(player, stamp, "zharvest", "TheriField", nil, false)
+	if not char then return end
+	ok(char, "TheriField", t)
+	local root = rootOf(char)
+	local s = char:GetScale()
+	local p = root.Position + forward(char) * VORTEX_AHEAD * s
+	local c = Vector3.new(p.X, groundY(p, root.Position.Y - 6 * s), p.Z)
+	local old = vortexes[char]
+	if old then for m in pairs(old.victims) do vortexRelease(old, m, t) end end
+	local start = t + VORTEX_START
+	local v = {center = c, radius = math.max(0, num(char, "TheriFieldRadius", 15)), startT = start,
+		untilT = start + math.max(0, num(char, "TheriFieldTime", 3)), nextTick = start, player = player,
+		bleed = math.max(0, num(char, "TheriFieldBleed", 4)), slowMul = num(char, "TheriFieldSlowMul", 1), victims = {}}
+	vortexes[char] = v
+	vortexCount()
+	char:SetAttribute("TheriVortexCenter", c)
+	char:SetAttribute("TheriVortexRadius", v.radius)
+	char:SetAttribute("TheriVortexStart", start)
+	char:SetAttribute("TheriFieldUntil", v.untilT)
+	char:SetAttribute("TheriVortexAt", t) -- last: FX + pose
+end)
+RunService.Heartbeat:Connect(function(dt)
+	local t = now()
+	local changed = false
+	for char, v in pairs(vortexes) do
+		if not char.Parent or t >= v.untilT or not on("zharvest") or not rework("Vortex") then
+			for m in pairs(v.victims) do vortexRelease(v, m, t) end
+			vortexes[char] = nil
+			changed = true
+		elseif t >= v.startT then
+			local tick = t >= v.nextTick
+			if tick then v.nextTick = t + FIELD_TICK end
+			local inside = {}
+			for _, m in ipairs(candidates(char)) do
+				local mr = rootOf(m)
+				if gap(m, Vector3.new(v.center.X, mr.Position.Y, v.center.Z)) <= v.radius and not shielded(m, t) then
+					inside[m] = true
+					if Players:GetPlayerFromCharacter(m) then
+						if not v.victims[m] or num(m, "TheriVortexUntil", 0) ~= v.untilT then
+							m:SetAttribute("TheriVortexBy", char.Name)
+							m:SetAttribute("TheriVortexCenter", v.center)
+							m:SetAttribute("TheriVortexPull", VORTEX_PULL)
+							m:SetAttribute("TheriVortexUntil", v.untilT) -- last: TheriVortexPull 1.0
+						end
+					else
+						local d = flat(v.center - mr.Position)
+						local stop = 3 * m:GetScale()
+						if d.Magnitude > stop then
+							mr.CFrame += d.Unit * math.min(VORTEX_PULL * dt, d.Magnitude - stop)
+						end
+					end
+					v.victims[m] = true
+					if tick then
+						damage(char, v.player, m, v.bleed * FIELD_TICK, "therifield", t)
+						slow(m, v.slowMul, t + 0.6, t)
+					end
+				end
+			end
+			for m in pairs(v.victims) do if not inside[m] then vortexRelease(v, m, t) end end
+		end
+	end
+	if changed then vortexCount() end
+end)
+
+-- Bola -----------------------------------------------------------------------------------------------------------------------------
+local bolas = setmetatable({}, {__mode = "k"}) -- [char] = {refills = {times}}
+local function bolaLeft(char, t)
+	local st = bolas[char]
+	if not st then
+		st = {refills = {}}
+		bolas[char] = st
+	end
+	for i = #st.refills, 1, -1 do
+		if st.refills[i] <= t then table.remove(st.refills, i) end
+	end
+	return math.max(1, math.floor(num(char, "TheriSnareMax", 1))) - #st.refills, st
+end
+local function bolaPublish(char, t)
+	local left, st = bolaLeft(char, t)
+	local nextAt = math.huge
+	for _, r in ipairs(st.refills) do nextAt = math.min(nextAt, r) end
+	char:SetAttribute("TheriSnareLeft", left)
+	char:SetAttribute("TheriSnareReadyAt", left > 0 and t or nextAt)
+	if left <= 0 and nextAt < math.huge then
+		task.delay(nextAt - t + 0.02, function() if char.Parent then bolaPublish(char, now()) end end)
+	end
+end
+snareRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+	if not rework("Bola") then return end
+	local c0 = player.Character
+	if c0 then bolaPublish(c0, now()) end -- refills first, so ReadyAt is current for check()
+	local char, t = check(player, stamp, "zsnare", "TheriSnare", aimDir, true)
+	if not char then return end
+	local left, st = bolaLeft(char, t)
+	if left <= 0 then
+		char:SetAttribute("TheriSnareServerResult", "cooldown")
+		char:SetAttribute("TheriSnareServerResultAt", t)
+		return
+	end
+	local root = rootOf(char)
+	local dir = heading(char, aimDir)
+	local range = math.max(0, num(char, "TheriSnareRange", 35))
+	local best, d = nearestInCone(char, dir, range, BOLA_CONE)
+	if not best then
+		local e = root.Position + dir * range
+		char:SetAttribute("TheriBolaTarget", "")
+		char:SetAttribute("TheriBolaEnd", Vector3.new(e.X, groundY(e, root.Position.Y - 6), e.Z))
+		char:SetAttribute("TheriBolaFlight", math.clamp(range / BOLA_SPEED, 0.25, 0.6))
+		char:SetAttribute("TheriBolaResult", "noTarget")
+		char:SetAttribute("TheriSnareServerResult", "noTarget")
+		char:SetAttribute("TheriSnareServerResultAt", t)
+		char:SetAttribute("TheriBolaAt", t) -- last: FX (a miss, no charge used)
+		return
+	end
+	table.insert(st.refills, t + math.max(0.5, num(char, "TheriSnareCooldown", 14)))
+	bolaPublish(char, t)
+	char:SetAttribute("TheriSnareServerResult", "ok")
+	char:SetAttribute("TheriSnareServerResultAt", t)
+	local flight = math.clamp(d / BOLA_SPEED, 0.25, 0.6)
+	char:SetAttribute("TheriBolaTarget", best.Name)
+	char:SetAttribute("TheriBolaEnd", rootOf(best).Position)
+	char:SetAttribute("TheriBolaFlight", flight)
+	char:SetAttribute("TheriBolaResult", "thrown")
+	char:SetAttribute("TheriSnareAt", t) -- the tail spools spin (TheriPartsAnim)
+	char:SetAttribute("TheriBolaAt", t) -- last: FX + pose
+	task.wait(BOLA_WIND + flight)
+	local t2 = now()
+	local r, br = rootOf(char), rootOf(best)
+	local result
+	if not (char.Parent and r and br and stillTarget(char, best)) or flat(br.Position - r.Position).Magnitude > range + 15 then
+		result = "missed"
+	elseif shielded(best, t2) then
+		result = "shielded"
+	else
+		result = "hit"
+		local rootT = math.max(0, num(char, "TheriSnareRoot", 1))
+		damage(char, player, best, num(char, "TheriSnareDamage", 12), "therisnare", t2)
+		hold(char, best, br.Position, rootT, t2)
+		slow(best, 0.1, t2 + rootT, t2)
+		count("TheriMovesBolaHits")
+		char:SetAttribute("TheriSnareHitTarget", best.Name)
+		char:SetAttribute("TheriSnareHitAt", t2)
+		char:SetAttribute("TheriBolaHitAt", t2)
+	end
+	char:SetAttribute("TheriBolaResult", result)
+end)
+
+-- Dash -----------------------------------------------------------------------------------------------------------------------------
+grappleRemote.OnServerEvent:Connect(function(player, stamp, moveDir)
+	if not rework("Dash") then return end
+	local c0 = player.Character
+	if c0 then grappleLeft(c0, now()) grapplePublish(c0, now()) end
+	local char, t = check(player, stamp, "zgrapple", "TheriGrapple", nil, false)
+	if not char then return end
+	local left, st = grappleLeft(char, t)
+	if left <= 0 then
+		char:SetAttribute("TheriGrappleServerResult", "cooldown")
+		char:SetAttribute("TheriGrappleServerResultAt", t)
+		return
+	end
+	local root = rootOf(char)
+	local s = char:GetScale()
+	local dir = typeof(moveDir) == "Vector3" and moveDir == moveDir and flat(moveDir) or Vector3.zero
+	dir = dir.Magnitude > 0.1 and dir.Unit or forward(char)
+	local range = math.max(0, num(char, "TheriGrappleRange", 30))
+	local from = root.Position
+	local hit = workspace:Raycast(from, dir * range, worldOnly())
+	local dist = hit and math.max(0, flat(hit.Position - from).Magnitude - 3 * s) or range
+	if dist < DASH_MIN then
+		char:SetAttribute("TheriDashResult", "blocked")
+		char:SetAttribute("TheriGrappleServerResult", "blocked")
+		char:SetAttribute("TheriGrappleServerResultAt", t)
+		return
+	end
+	local to = from + dir * dist
+	local g0 = groundY(from, nil)
+	local g1 = groundY(to, nil)
+	if g0 and g1 then to = Vector3.new(to.X, g1 + (from.Y - g0), to.Z) end
+	table.insert(st.refills, t + math.max(0.5, num(char, "TheriGrappleCooldown", 6)))
+	char:SetAttribute("TheriGrappleServerResult", "ok")
+	char:SetAttribute("TheriGrappleServerResultAt", t)
+	grapplePublish(char, t)
+	count("TheriMovesDashes")
+	char:SetAttribute("TheriDashFrom", from)
+	char:SetAttribute("TheriDashTo", to)
+	char:SetAttribute("TheriDashDelay", DASH_DELAY)
+	char:SetAttribute("TheriDashTime", math.clamp(dist / DASH_SPEED, 0.08, 0.16))
+	char:SetAttribute("TheriDashResult", "dash")
+	char:SetAttribute("TheriDashAt", t) -- last: TheriGrappleZip 1.3 + FX + pose
+end)
+task.spawn(function() -- TheriDashMode for MechaButtons
+	while true do
+		task.wait(0.5)
+		local mode = rework("Dash")
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local char = pl.Character
+			if char and char:GetAttribute("TheriGrappleEnabled") ~= nil and char:GetAttribute("TheriDashMode") ~= mode then
+				char:SetAttribute("TheriDashMode", mode)
+			end
+		end
+	end
+end)
+
+-- Reaper Reel ----------------------------------------------------------------------------------------------------------------------
+local function muzzleOf(char)
+	local m = char:FindFirstChild("ZPart_zhook")
+	if m then
+		local jib
+		for _, p in ipairs(m:GetChildren()) do
+			if p:IsA("BasePart") then
+				local role = p:GetAttribute("ZPartRole")
+				if role == "muzzle" then return p.Position end
+				if role == "jib" then jib = p.Position end
+			end
+		end
+		if jib then return jib end
+	end
+	return rootOf(char).Position
+end
+hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+	if not rework("Reel") then return end
+	local char, t = check(player, stamp, "zhook", "TheriHook", aimDir, true)
+	if not char then return end
+	local root = rootOf(char)
+	local s = char:GetScale()
+	local dir = heading(char, aimDir)
+	local range = math.max(0, num(char, "TheriHookRange", 50))
+	local best, d = nearestInCone(char, dir, range, num(char, "TheriHookCone", 35))
+	local from = muzzleOf(char)
+	local result, aimEnd = "noTarget", from + dir * range
+	if best then
+		local to = rootOf(best).Position
+		aimEnd = to
+		local hit = workspace:Raycast(from, to - from, worldOnly())
+		if hit then
+			result, aimEnd = "blocked", hit.Position
+		elseif shielded(best, t) then
+			result = "shielded"
+		else
+			result = "hit"
+		end
+	end
+	local gapS = REEL_GAP * s
+	local fly = math.clamp((aimEnd - from).Magnitude / REEL_CLAW_SPEED, 0.12, 0.35)
+	local reel = (result == "hit") and math.clamp(math.max(0, d - gapS) / REEL_SPEED, 0.3, 0.8) or 0
+	char:SetAttribute("TheriReelTarget", (result == "hit" or result == "shielded") and best.Name or "")
+	char:SetAttribute("TheriReelEnd", aimEnd)
+	char:SetAttribute("TheriReelBrace", REEL_BRACE)
+	char:SetAttribute("TheriReelFly", fly)
+	char:SetAttribute("TheriReelTime", reel)
+	char:SetAttribute("TheriReelGap", gapS)
+	char:SetAttribute("TheriReelResult", result)
+	if result == "noTarget" or result == "blocked" then
+		char:SetAttribute("TheriHookServerResult", result)
+		char:SetAttribute("TheriHookServerResultAt", t)
+		char:SetAttribute("TheriReelAt", t) -- last: FX (claw out and back, no recharge)
+		return
+	end
+	ok(char, "TheriHook", t)
+	char:SetAttribute("TheriReelAt", t) -- last: TheriGrappleZip 1.3 + FX + pose
+	if result ~= "hit" then return end
+	local total = REEL_BRACE + fly + reel
+	best:SetAttribute("HookHeldUntil", t + total)
+	if Players:GetPlayerFromCharacter(best) then
+		slow(best, 0.1, t + total, t)
+	else
+		local br = rootOf(best)
+		local at = br.Position
+		task.spawn(slideBot, best, function()
+			local r2 = rootOf(best)
+			return Vector3.new(at.X, r2 and r2.Position.Y or at.Y, at.Z)
+		end, total)
+	end
+	task.wait(total)
+	local t2 = now()
+	local r, br = rootOf(char), rootOf(best)
+	if not (char.Parent and r and br and stillTarget(char, best)) or flat(br.Position - r.Position).Magnitude > gapS + REEL_REACH then
+		char:SetAttribute("TheriReelResult", "missed")
+		return
+	end
+	if shielded(best, t2) then
+		char:SetAttribute("TheriReelResult", "shielded")
+		return
+	end
+	damage(char, player, best, REEL_SLASH, "therihook", t2)
+	count("TheriMovesReelHits")
+	char:SetAttribute("TheriReelHitAt", t2)
+	if char:GetAttribute("TheriHookCut") == true then
+		stun(best, t2 + math.max(0, num(char, "TheriHookStun", 1)))
+		local fn = cutFn()
+		local cr = "noCut"
+		if fn then
+			local okCall, res = pcall(function() return fn:Invoke(player) end)
+			cr = okCall and tostring(res) or "error"
+		end
+		char:SetAttribute("TheriHookCutResult", cr)
 	end
 end)
