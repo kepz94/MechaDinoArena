@@ -790,7 +790,9 @@ local function popTag(model, text, U, off)
 	tl.TextColor3 = POP_RED
 	tl.TextStrokeTransparency = 0.2
 	tl.Parent = g
-	g.Parent = fx()
+	-- in PlayerGui: a BillboardGui left in Workspace.DinoFX_Local did not draw (Studio check)
+	local lp = Players.LocalPlayer
+	g.Parent = (lp and lp:FindFirstChildOfClass("PlayerGui")) or fx()
 	return {g = g, tl = tl, base = 5 * model:GetScale() / 2 + 2 * U, off = off}
 end
 local function volley(char)
