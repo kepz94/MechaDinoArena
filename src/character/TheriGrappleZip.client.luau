@@ -1,4 +1,4 @@
--- TheriGrappleZip v1.2 (Mecha Dino Arena) — flies the owner's own therizino to its Grapple Zip anchor (owner's client).
+-- TheriGrappleZip v1.3 (Mecha Dino Arena) — flies the owner's own therizino to its Grapple Zip anchor (owner's client).
 -- MDA-247, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 7; server TheriMovesServer 1.2 (pattern: HookPull 1.0).
 -- TheriMovesServer stamps the character: TheriGrappleTo (where to stop), TheriGrappleTime (s), TheriGrappleResult "zip",
 --   TheriGrappleAt (server time, set last). A fresh stamp (younger than FRESH (1) s) drives the root for TheriGrappleTime s
@@ -33,12 +33,24 @@
 --   * While held: the target gets a Highlight (no fill, speed-yellow outline, always on top); the air pick gets a faint small
 --     ring (70% see-through). Diagnostics: TheriGrappleLockState ("off" / "target" / "air"), TheriGrappleLockTarget (name),
 --     TheriGrappleLockDist (studs).
+-- v1.3 (therizino moves rework, plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md, MDA-264; TheriMovesServer 1.4; timings from
+--   the storyboard tools/mockup/therizino_moves_anim.js v0.3):
+--   * Dash: a fresh TheriDashAt (result "dash") holds the root still (LinearVelocity 0) until TheriDashDelay s after the stamp
+--     (the Storm Core charge), then moves it to TheriDashTo in TheriDashTime s (speed = distance left / time left, at most
+--     DASH_MAX (450)), then keeps DASH_KEEP (0.15) of the speed (the skid). Switch: character attribute TheriDashZipEnabled
+--     (default true). Diagnostics: TheriGrappleZipState "charge" / "dash", TheriDashMoved (studs).
+--   * Reaper Reel: a fresh TheriReelAt with result "hit": after TheriReelBrace + TheriReelFly s (the claw clamps) it flies the
+--     root for TheriReelTime s to TheriReelGap studs short of the target's root (TheriReelTarget, followed live, flat), on an arc
+--     REEL_ARC (4) x scale studs high, then keeps REEL_KEEP (0.2) of the flat speed. Switch: TheriReelZipEnabled (default true).
+--     Diagnostics: TheriGrappleZipState "reel", TheriReelMoved (studs).
+--   Both stop when dead, stunned or a newer zip / dash / reel starts.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 keeps 60% speed, latch marker
 VERSION = "1.2" -- v1.2 hold-to-lock on the furthest anchor (outline)
+VERSION = "1.3" -- v1.3 dash + reaper reel movers
 local FRESH, MAX_SPEED, ARRIVE, KEEP = 1, 220, 2, 0.25
 local ACCEL = 20000
 local KEEP_V2, MIN_D = 0.6, 6 -- v1.1
@@ -350,3 +362,109 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 char.AncestryChanged:Connect(function() if not char.Parent and hl then hl:Destroy() end end)
+
+-- v1.3: dash + reaper reel movers (see the header) -------------------------------------------------------------------------------
+local DASH_MAX, DASH_KEEP, REEL_ARC, REEL_KEEP, REEL_MAX = 450, 0.15, 4, 0.2, 220
+local function stunnedNow() return (tonumber(char:GetAttribute("StunnedUntil")) or 0) > workspace:GetServerTimeNow() end
+local function drive(my, c, dur, velFn, onEnd)
+	local t0 = os.clock()
+	local last = Vector3.zero
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		local e = os.clock() - t0
+		local v = (my == token and e < dur and hum.Health > 0 and not stunnedNow() and hrp.Parent ~= nil) and velFn(e, dur - e) or nil
+		if v == nil then
+			conn:Disconnect()
+			if my == token then
+				c.Enabled = false
+				onEnd(last)
+			end
+			return
+		end
+		last = v
+		c.VectorVelocity = v
+	end)
+end
+local function onDash()
+	if char:GetAttribute("TheriDashZipEnabled") == false or char:GetAttribute("TheriDashResult") ~= "dash" then return end
+	local at, to = char:GetAttribute("TheriDashAt"), char:GetAttribute("TheriDashTo")
+	local delay, time = tonumber(char:GetAttribute("TheriDashDelay")) or 0, tonumber(char:GetAttribute("TheriDashTime"))
+	if typeof(at) ~= "number" or typeof(to) ~= "Vector3" or not time or time <= 0 then return end
+	local age = workspace:GetServerTimeNow() - at
+	if math.abs(age) > FRESH or hum.Health <= 0 then return end
+	token += 1
+	local my = token
+	local c = ensure()
+	c.MaxForce = hrp.AssemblyMass * ACCEL
+	c.VectorVelocity = Vector3.zero
+	c.Enabled = true
+	char:SetAttribute("TheriGrappleZipState", "charge")
+	local start = hrp.Position
+	drive(my, c, math.max(0, delay - math.max(0, age)), function() return Vector3.zero end, function()
+		c.Enabled = true
+		char:SetAttribute("TheriGrappleZipState", "dash")
+		drive(my, c, time, function(_, left)
+			local d = to - hrp.Position
+			if d.Magnitude <= ARRIVE then return nil end
+			local v = d / math.max(left, 0.03)
+			if v.Magnitude > DASH_MAX then v = v.Unit * DASH_MAX end
+			return v
+		end, function(last)
+			hrp.AssemblyLinearVelocity = Vector3.new(last.X, 0, last.Z) * DASH_KEEP
+			char:SetAttribute("TheriGrappleZipState", "idle")
+			char:SetAttribute("TheriDashMoved", math.floor((hrp.Position - start).Magnitude * 10 + 0.5) / 10)
+		end)
+	end)
+end
+char:GetAttributeChangedSignal("TheriDashAt"):Connect(onDash)
+local function findModel(name)
+	if type(name) ~= "string" or name == "" then return nil end
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character and pl.Character.Name == name then return pl.Character end end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local bots = isl and isl:FindFirstChild("Bots")
+	local m = bots and bots:FindFirstChild(name)
+	return m or workspace:FindFirstChild(name, true)
+end
+local function onReel()
+	if char:GetAttribute("TheriReelZipEnabled") == false or char:GetAttribute("TheriReelResult") ~= "hit" then return end
+	local at = char:GetAttribute("TheriReelAt")
+	local wait0 = (tonumber(char:GetAttribute("TheriReelBrace")) or 0.3) + (tonumber(char:GetAttribute("TheriReelFly")) or 0.2)
+	local time = tonumber(char:GetAttribute("TheriReelTime")) or 0
+	local gapS = tonumber(char:GetAttribute("TheriReelGap")) or 7
+	local tm = findModel(char:GetAttribute("TheriReelTarget"))
+	local troot = tm and tm:FindFirstChild("HumanoidRootPart")
+	if typeof(at) ~= "number" or time <= 0 or not troot then return end
+	local age = workspace:GetServerTimeNow() - at
+	if math.abs(age) > FRESH or hum.Health <= 0 then return end
+	token += 1
+	local my = token
+	local c = ensure()
+	local start = hrp.Position
+	local s = char:GetScale()
+	task.delay(math.max(0, wait0 - math.max(0, age)), function()
+		if my ~= token or hum.Health <= 0 or not troot.Parent then return end
+		c.MaxForce = hrp.AssemblyMass * ACCEL
+		c.Enabled = true
+		char:SetAttribute("TheriGrappleZipState", "reel")
+		local y0 = hrp.Position.Y
+		drive(my, c, time, function(e, left)
+			if not troot.Parent then return nil end
+			local tp = troot.Position
+			local f = Vector3.new(tp.X - hrp.Position.X, 0, tp.Z - hrp.Position.Z)
+			local dist = f.Magnitude
+			if dist <= gapS then return nil end
+			local goal = Vector3.new(tp.X, 0, tp.Z) - f.Unit * gapS
+			local flatV = (goal - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)) / math.max(left, 0.03)
+			if flatV.Magnitude > REEL_MAX then flatV = flatV.Unit * REEL_MAX end
+			local k = math.clamp(e / time, 0, 1)
+			local yGoal = y0 + REEL_ARC * s * math.sin(math.pi * k)
+			local vy = (yGoal - hrp.Position.Y) * 12 + REEL_ARC * s * math.pi / time * math.cos(math.pi * k)
+			return Vector3.new(flatV.X, vy, flatV.Z)
+		end, function(last)
+			hrp.AssemblyLinearVelocity = Vector3.new(last.X, 0, last.Z) * REEL_KEEP
+			char:SetAttribute("TheriGrappleZipState", "idle")
+			char:SetAttribute("TheriReelMoved", math.floor((hrp.Position - start).Magnitude * 10 + 0.5) / 10)
+		end)
+	end)
+end
+char:GetAttributeChangedSignal("TheriReelAt"):Connect(onReel)

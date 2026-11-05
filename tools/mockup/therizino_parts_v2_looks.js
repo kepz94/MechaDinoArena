@@ -500,7 +500,7 @@ function dashStorm() {
     const base = [s * 1.6, 2.05, -2.6];
     C.box([0.9, 0.3, 0.8], base, null, "shell");
     C.cyl([0.18, 1.3, 0], [base[0] + s * 0.15, base[1] + 0.75, base[2] + 0.1], [s * -12, 0, 0], "iron");
-    for (let r = 0; r < 3; r++) C.add("ring", [0.32 - r * 0.06, 0.07], [base[0] + s * (0.08 + r * 0.06), base[1] + 0.45 + r * 0.32, base[2] + 0.1], [0, 0, 90], "brass");
+    for (let r = 0; r < 3; r++) C.add("ring", [0.32 - r * 0.06, 0.07, 0], [base[0] + s * (0.08 + r * 0.06), base[1] + 0.45 + r * 0.32, base[2] + 0.1], [0, 0, 90], "brass");
     C.ball(0.36, [base[0] + s * 0.3, base[1] + 1.45, base[2] + 0.12], "glow", {role: "horn" + side});
     C.hose([base[0] - s * 0.3, base[1] - 0.1, base[2] + 0.3], [base[0] - s * 1.2, base[1] - 1.6, base[2] + 1.0], 0.2, 0.1, 5);
   }

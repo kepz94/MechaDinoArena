@@ -1,4 +1,4 @@
--- MechaButtons v1.32 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.33 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -253,7 +253,11 @@
 --   quick tap does the same at once; on a pull button a tap with no aim yet still fires. Diagnostics: MechaGrappleFired
 --   (count). Switch: script attribute MechaButtonsGrappleHoldEnabled (default true, read at each press; false = 1.31: a press
 --   fires along the camera look).
-local Players = game:GetService("Players")
+-- v1.33 (therizino moves rework, plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md, MDA-264; TheriMovesServer 1.4): while the
+--   character's TheriDashMode is true (the server's Dash switch) "zgrapple" is the Dash: not hold-to-aim, a press fires
+--   DinoTheriGrappleRequest(stamp, moveDir) at once, moveDir = the Humanoid's MoveDirection (WASD / thumbstick; zero = the
+--   server dashes forward); label "DASH". Same on PC keys and phone buttons (one press path). Diagnostics: MechaDashFired
+--   (count). Switch: script attribute MechaButtonsDashEnabled (default true, read at each press / draw; false = 1.32).
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -264,7 +268,9 @@ VERSION = "1.29" -- v1.29 therizino parts build 1
 VERSION = "1.30" -- v1.30 therizino parts build 2
 VERSION = "1.31" -- v1.31 passive Overclock button (ON)
 VERSION = "1.32" -- v1.32 grapple hold-to-lock
+VERSION = "1.33" -- v1.33 the grapple button is the Dash (move direction)
 if script:GetAttribute("MechaButtonsGrappleHoldEnabled") == nil then script:SetAttribute("MechaButtonsGrappleHoldEnabled", true) end -- v1.32
+if script:GetAttribute("MechaButtonsDashEnabled") == nil then script:SetAttribute("MechaButtonsDashEnabled", true) end -- v1.33
 if script:GetAttribute("MechaButtonsTheriClockPassiveEnabled") == nil then script:SetAttribute("MechaButtonsTheriClockPassiveEnabled", true) end -- v1.31
 local SPEED_YELLOW = Color3.fromRGB(255, 194, 26) -- v1.31
 local function clockPassive(id) -- v1.31
@@ -370,7 +376,8 @@ end
 -- v1.20: parts that use hold-to-aim
 local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off
 	return id == "screech" or (TETHER_BTN and id == "tether" and script:GetAttribute("MechaTetherAimMode") == false)
-		or (id == "zgrapple" and script:GetAttribute("MechaButtonsGrappleHoldEnabled") ~= false) -- v1.32
+		or (id == "zgrapple" and script:GetAttribute("MechaButtonsGrappleHoldEnabled") ~= false
+			and not (script:GetAttribute("MechaButtonsDashEnabled") ~= false and char:GetAttribute("TheriDashMode") == true)) -- v1.32; v1.33 not the Dash
 end
 local AIM_TIME = 1 -- v1.8: s for the aim line to reach ScreechRange
 local aim -- v1.8: {slot, t0, input, gesture, part}
@@ -911,6 +918,16 @@ local function press(n, input)
 		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector, point) end
 		return
 	end
+	if THERI_BTN and id == "zgrapple" and script:GetAttribute("MechaButtonsDashEnabled") ~= false and char:GetAttribute("TheriDashMode") == true then -- v1.33: the Dash
+		local r = ReplicatedStorage:FindFirstChild("DinoTheriGrappleRequest")
+		local h = char:FindFirstChildOfClass("Humanoid")
+		local md = h and h.MoveDirection or Vector3.zero
+		if r then
+			r:FireServer(workspace:GetServerTimeNow(), Vector3.new(md.X, 0, md.Z))
+			char:SetAttribute("MechaDashFired", (char:GetAttribute("MechaDashFired") or 0) + 1)
+		end
+		return
+	end
 	if THERI_BTN and (id == "zhook" or id == "zfeather" or id == "zgrapple") then -- v1.29: along the camera look (TheriMovesServer 1.0); v1.30: + grapple
 		local r = ReplicatedStorage:FindFirstChild(TIMED_PARTS[id][2])
 		local cam = workspace.CurrentCamera
@@ -988,6 +1005,7 @@ local function partName(id)
 	if id == "thrusters" then return "DASH" end
 	if LEGS_BTN and id == "mechalegs" then return "MECHA LEGS" end -- v1.16
 	if BLOOD_BTN and id == "bloodrush" then return "BLOOD RUSH" end -- v1.17
+	if id == "zgrapple" and TIMED_PARTS[id] and script:GetAttribute("MechaButtonsDashEnabled") ~= false and char:GetAttribute("TheriDashMode") == true then return "DASH" end -- v1.33
 	if TIMED_PARTS[id] then return TIMED_PARTS[id][3] end -- v1.5
 	return string.upper(id)
 end

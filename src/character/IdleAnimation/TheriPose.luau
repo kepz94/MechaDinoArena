@@ -1,4 +1,4 @@
--- TheriPose v1.7 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
+-- TheriPose v1.8 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
 -- ("A Reaper Sweeps"), the Diving Rake leap (J1) and the Sidewinder run (B). MDA-203, plan docs/plans/THERIZINO_KIT_v1.0.md
 -- Task 6; mockups docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02 "I like this one") and
 -- docs/mockups/therizino_run_options.html v0.1 (Kepu: "B Sidewinder"). Key poses = tools/therizino_kit_keys_v0.3.py /
@@ -120,12 +120,26 @@
 --   held to 0.12 + TheriGrappleTime, then ARMS_FWD out over 0.3 (io). Deflector Claws (TheriDeflectAt): ARMS_FWD {ArmL 62 0 8,
 --   ArmR 62 0 -8, RootJoint -6} in over 0.15 (io), held to TheriDeflectUntil, out over 0.4 (io). Overclock Joints has no pose
 --   (the run plays). The newest of all six stamps wins. Same switch TheriPartsPoseEnabled.
+-- v1.8 (therizino moves rework, plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md, MDA-264; TheriMovesServer 1.4): a rework layer
+--   multiplied on before the 1.7 parts layer, with the storyboard's poses and times (tools/mockup/therizino_moves_anim.js v0.3,
+--   same {p, y, r}); t = server now - the stamp, the newest of the four plays:
+--   Vortex (TheriVortexAt): ARMS_UP in 0..0.4 (io), VORTEX (STAB with the arms {-14, +-12, +-18}) 0.4..0.52 (in2), held while
+--     the vortex lasts (TheriFieldUntil) and the body stands (flat speed < 6), out over 0.4 (io).
+--   Bola (TheriBolaAt): BOLA_WIND 0..0.45 (io), BOLA_THROW 0.45..0.6 (out), out 0.9..1.5 (io).
+--   Dash (TheriDashAt, result "dash"): DODGE 0.02..0.14 (out), SKID 0.42..0.6 (out), out 0.75..1.2 (io).
+--   Reel (TheriReelAt): HOOK_SET 0..brace (io); "hit": REEL from brace + fly - 0.02 over 0.12 (io), SLASH from end - 0.02 over
+--     0.14 (out) (end = brace + fly + TheriReelTime), out end + 0.25..end + 0.8 (io); otherwise HOOK_SET held to brace + 2 x
+--     fly, out over 0.4 (io).
+--   Its own ground lock (the crouches of VORTEX / DODGE / SKID / REEL / SLASH) as 1.6's. Switch: model attribute
+--   TheriReworkPoseEnabled (default true). Diagnostics: TheriReworkPose ("none" / "vortex" / "bola" / "dash" / "reel"),
+--   TheriReworkPoseWeight.
 local TheriPose = {}
 TheriPose.Version = "1.3"
 TheriPose.Version = "1.4" -- v1.4 Fourth Cut (Ground Scythe)
 TheriPose.Version = "1.5" -- v1.5 hit-stop (MDA-204)
 TheriPose.Version = "1.6" -- v1.6 mecha-parts poses (build 1)
 TheriPose.Version = "1.7" -- v1.7 grapple + deflect poses (build 2)
+TheriPose.Version = "1.8" -- v1.8 moves rework poses (vortex, bola, dash, reel)
 TheriPose.Defaults = {
 	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
@@ -874,6 +888,137 @@ do
 		st.lock += (want - st.lock) * min(1, ctx.dt * 20)
 		if st.lock < 0.001 then st.lock = 0 end
 		show("TheriPartsPoseWeight", math.floor(st.lock * 10 + 0.5) / 10)
+		local rj = motors.RootJoint
+		if st.lock > 0 and rj and hrp and model:GetAttribute("TheriGroundLockEnabled") ~= false and ensureFK(model, motors, hrp) then
+			local sc = model:IsA("Model") and model:GetScale() or 2
+			local hrpCF = hrp.CFrame
+			local d = footLow(motors, hrpCF, {}) - footLow(motors, hrpCF, pose)
+			local up = clamp(d, -3 * sc / 2, 3 * sc / 2) * st.lock
+			if math.abs(up) > 1e-3 then
+				local v = hrpCF:VectorToObjectSpace(Vector3.new(0, up, 0))
+				pose.RootJoint = CFrame.new(rj.restC0.Rotation:Inverse() * v) * (pose.RootJoint or CFrame.identity)
+			end
+		end
+	end
+end
+
+-- v1.8: the moves rework poses (see the header) -------------------------------------------------------------------------------
+do
+	local STAB = {ArmL = {-10, 0, 10}, ArmR = {-10, 0, -10}, RootJoint = {-22, 0, 0}, Neck = {-14, 0, 0}, Head = {-8, 0, 0},
+		LegL = {22, 0, 0}, LegR = {22, 0, 0}, KneeL = {-30, 0, 0}, KneeR = {-30, 0, 0}, AnkleL = {10, 0, 0}, AnkleR = {10, 0, 0},
+		Tail1 = {-14, 0, 0}}
+	local VORTEX = table.clone(STAB)
+	VORTEX.ArmL, VORTEX.ArmR = {-14, 12, 18}, {-14, -12, -18}
+	local P = {
+		ARMS_UP = {ArmL = {75, 30, 25}, ArmR = {75, -30, -25}, RootJoint = {6, 0, 0}, Neck = {8, 0, 0}, Tail1 = {-6, 0, 0}},
+		VORTEX = VORTEX,
+		BOLA_WIND = {RootJoint = {-6, 18, 0}, Neck = {0, -14, 0}, Tail1 = {-6, -22, 0}, Tail2 = {-6, -24, 0}, Tail3 = {-4, -26, 0},
+			Tail4 = {0, -26, 0}, Tail5 = {4, -26, 0}, LegL = {8, 0, 0}, KneeL = {-14, 0, 0}},
+		BOLA_THROW = {RootJoint = {-10, -16, 0}, Neck = {-4, 16, 0}, Tail1 = {-18, 26, 0}, Tail2 = {-18, 30, 0}, Tail3 = {-14, 30, 0},
+			Tail4 = {-10, 28, 0}, Tail5 = {-6, 26, 0}, LegR = {10, 0, 0}, KneeR = {-16, 0, 0}},
+		DODGE = {RootJoint = {-14, 0, 16}, LegL = {36, 0, 0}, LegR = {26, 0, 0}, KneeL = {-62, 0, 0}, KneeR = {-52, 0, 0},
+			AnkleL = {22, 0, 0}, AnkleR = {18, 0, 0}, ArmL = {34, 0, 16}, ArmR = {34, 0, -16}, Neck = {-6, 0, -10}, Tail1 = {8, 0, -10},
+			Tail2 = {6, 0, -8}},
+		SKID = {RootJoint = {-6, 0, 6}, LegL = {18, 0, 0}, LegR = {-10, 0, 0}, KneeL = {-30, 0, 0}, KneeR = {-20, 0, 0},
+			ArmL = {20, 0, 10}, ArmR = {20, 0, -10}},
+		HOOK_SET = {RootJoint = {-6, 0, 0}, Neck = {-14, 0, 0}, ArmL = {40, 0, 40}, ArmR = {40, 0, -40}, LegL = {12, 0, 0},
+			LegR = {-6, 0, 0}, KneeL = {-20, 0, 0}, KneeR = {-10, 0, 0}},
+		REEL = {RootJoint = {-20, 0, 0}, Neck = {-10, 0, 0}, ArmL = {100, -20, 20}, ArmR = {100, 20, -20}, LegL = {48, 0, 0},
+			LegR = {36, 0, 0}, KneeL = {-74, 0, 0}, KneeR = {-62, 0, 0}, AnkleL = {24, 0, 0}, AnkleR = {20, 0, 0}, Tail1 = {12, 0, 0},
+			Tail2 = {8, 0, 0}},
+		SLASH = {RootJoint = {-26, 0, 0}, Neck = {-16, 0, 0}, Head = {-6, 0, 0}, ArmL = {-24, 30, 34}, ArmR = {-24, -30, -34},
+			LegL = {26, 0, 0}, LegR = {-8, 0, 0}, KneeL = {-38, 0, 0}, KneeR = {-16, 0, 0}, Tail1 = {-10, 0, 0}},
+	}
+	local ZERO = {}
+	local function mix(A, B, u)
+		local o = {}
+		for n in pairs(A) do o[n] = true end
+		for n in pairs(B) do o[n] = true end
+		local r = {}
+		for n in pairs(o) do
+			local a, b = A[n] or {0, 0, 0}, B[n] or {0, 0, 0}
+			r[n] = {a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u, a[3] + (b[3] - a[3]) * u}
+		end
+		return r
+	end
+	local function seg(t, a, b) return clamp((t - a) / (b - a), 0, 1) end
+	local function e(name, u) return EASE[name](clamp(u, 0, 1)) end
+	local function stamp(model, k) local v = model:GetAttribute(k) return typeof(v) == "number" and v or nil end
+	local states = setmetatable({}, {__mode = "k"})
+	local CROUCH = {vortex = true, dash = true, reel = true}
+	local function target(model, serverNow, st, hrp)
+		local best, bestAt
+		for k, attr in pairs({vortex = "TheriVortexAt", bola = "TheriBolaAt", dash = "TheriDashAt", reel = "TheriReelAt"}) do
+			local at = stamp(model, attr)
+			if at and serverNow - at >= 0 and serverNow - at < 12 and (not bestAt or at > bestAt) then best, bestAt = k, at end
+		end
+		if not best then return nil end
+		local t = serverNow - bestAt
+		if best == "vortex" then
+			local A = mix(ZERO, P.ARMS_UP, e("io", t / 0.4))
+			A = mix(A, P.VORTEX, e("in2", seg(t, 0.4, 0.52)))
+			if t < 0.52 then return A, best end
+			local untilT = stamp(model, "TheriFieldUntil") or (bestAt + 4)
+			local v = hrp and hrp.AssemblyLinearVelocity or Vector3.zero
+			if st.vAt ~= bestAt then st.vAt, st.vEnd = bestAt, nil end
+			if not st.vEnd and (serverNow >= untilT or Vector3.new(v.X, 0, v.Z).Magnitude >= 6) then st.vEnd = serverNow end
+			if not st.vEnd then return P.VORTEX, best end
+			local u = (serverNow - st.vEnd) / 0.4
+			if u < 1 then return mix(P.VORTEX, ZERO, e("io", u)), best end
+		elseif best == "bola" then
+			if t >= 1.5 then return nil end
+			local A = mix(ZERO, P.BOLA_WIND, e("io", t / 0.45))
+			A = mix(A, P.BOLA_THROW, e("out", seg(t, 0.45, 0.6)))
+			if t > 0.9 then A = mix(A, ZERO, e("io", seg(t, 0.9, 1.5))) end
+			return A, best
+		elseif best == "dash" then
+			if model:GetAttribute("TheriDashResult") ~= "dash" or t >= 1.2 then return nil end
+			local A = mix(ZERO, P.DODGE, e("out", seg(t, 0.02, 0.14)))
+			if t > 0.42 then A = mix(A, P.SKID, e("out", seg(t, 0.42, 0.6))) end
+			if t > 0.75 then A = mix(A, ZERO, e("io", seg(t, 0.75, 1.2))) end
+			return A, best
+		else
+			local brace = stamp(model, "TheriReelBrace") or 0.3
+			local fly = stamp(model, "TheriReelFly") or 0.2
+			local A = mix(ZERO, P.HOOK_SET, e("io", t / brace))
+			if model:GetAttribute("TheriReelResult") == "hit" or model:GetAttribute("TheriReelResult") == "missed" then
+				local finish = brace + fly + (stamp(model, "TheriReelTime") or 0.5)
+				if t >= finish + 0.8 then return nil end
+				A = mix(A, P.REEL, e("io", seg(t, brace + fly - 0.02, brace + fly + 0.1)))
+				A = mix(A, P.SLASH, e("out", seg(t, finish - 0.02, finish + 0.12)))
+				if t > finish + 0.25 then A = mix(A, ZERO, e("io", seg(t, finish + 0.25, finish + 0.8))) end
+				return A, best
+			end
+			local hold = brace + 2 * fly
+			if t >= hold + 0.4 then return nil end
+			if t > hold then A = mix(A, ZERO, e("io", seg(t, hold, hold + 0.4))) end
+			return A, best
+		end
+		return nil
+	end
+	local topV17 = TheriPose.top
+	function TheriPose.top(model, pose, motors, hrp, ctx)
+		local show = ctx.show
+		local st = states[model]
+		if not st then
+			st = {lock = 0}
+			states[model] = st
+		end
+		local tg, name
+		if model:GetAttribute("TheriReworkPoseEnabled") ~= false and model:GetAttribute("TheriPoseTestKey") == nil then
+			tg, name = target(model, ctx.serverNow, st, hrp)
+		end
+		if tg then
+			for n, v in pairs(tg) do
+				if motors[n] then pose[n] = (pose[n] or CFrame.identity) * rot(v) end
+			end
+		end
+		show("TheriReworkPose", name or "none")
+		topV17(model, pose, motors, hrp, ctx)
+		local want = (tg and CROUCH[name]) and 1 or 0
+		st.lock += (want - st.lock) * min(1, ctx.dt * 20)
+		if st.lock < 0.001 then st.lock = 0 end
+		show("TheriReworkPoseWeight", math.floor(st.lock * 10 + 0.5) / 10)
 		local rj = motors.RootJoint
 		if st.lock > 0 and rj and hrp and model:GetAttribute("TheriGroundLockEnabled") ~= false and ensureFK(model, motors, hrp) then
 			local sc = model:IsA("Model") and model:GetScale() or 2

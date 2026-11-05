@@ -1,4 +1,4 @@
--- TheriPartsAnim v1.1 (Mecha Dino Arena) — makes the machinery on the Therizinosaurus' redesigned mecha parts move (every
+-- TheriPartsAnim v1.2 (Mecha Dino Arena) — makes the machinery on the Therizinosaurus' redesigned mecha parts move (every
 -- client, every therizino). MDA-251, plan docs/plans/THERIZINO_PARTS_LOOKS_v2.0.md Task 3; looks TheriPartsServer 1.1 +
 -- TheriPartsLooksV2 1.1 (Kepu 2026-11-04 14:49 picks), motions as in docs/mockups/therizino_parts_redesign.html v0.5.
 -- What moves: every Weld "ZPartJoint_<group>" inside a "ZPart_<id>" model (TheriPartsServer 1.1). Its C0 is set here each
@@ -22,6 +22,15 @@
 --   target = clamp(flat root speed / PASSIVE_FULL (8) studs/s, 0, 1), eased toward at PASSIVE_RATE (6) per s (gears at full
 --   spin while moving, idling at 0.3 rad/s standing; fins out while moving). Switch TheriPartsAnimClockMoveEnabled (default
 --   true; false = 1.0: full spin the whole time).
+-- v1.2 (therizino moves rework, plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md, MDA-264; TheriMovesServer 1.4, looks
+--   TheriPartsLooksV2 1.2): the newest of the old and the new stamps drives each part:
+--   zhook   TheriReelAt (Reaper Launcher): up over the brace (TheriReelBrace: the prongs open in the muzzle, the chain drum
+--           spins), held while the claw is out, down over 0.3 s; the "hookhead" pieces are hidden from the brace's end until the
+--           claw is back (hit / missed: brace + fly + TheriReelTime + 0.5; otherwise brace + 2 x fly). TheriMovesFX2 draws it.
+--   zgrapple TheriDashAt (result "dash", Storm Core): up over 0.05 s, held to TheriDashDelay + TheriDashTime + 0.25, down over
+--           0.2 s (the glass film shows while it charges and jolts).
+--   zsnare  TheriBolaAt: as TheriSnareAt (the spools spin while the bola winds up and flies).
+--   Switch: script attribute TheriPartsAnimReworkEnabled (default true; false = 1.1).
 -- Who: every player's character, plus (Studio test hook) any workspace Model with attribute TheriPartsAnimTarget = true.
 -- Switch: script attribute TheriPartsAnimEnabled (default true, read each frame; false = every joint back at rest).
 -- Diagnostics: script TheriPartsAnimVersion, TheriPartsAnimJoints (joints driven, last frame); model TheriPartsAnimActive
@@ -31,6 +40,7 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 passive Overclock legs follow movement
+VERSION = "1.2" -- v1.2 moves rework stamps (reel, dash, bola)
 local PASSIVE_FULL, PASSIVE_RATE = 8, 6
 if script:GetAttribute("TheriPartsAnimClockMoveEnabled") == nil then script:SetAttribute("TheriPartsAnimClockMoveEnabled", true) end
 local clockEase = setmetatable({}, {__mode = "k"}) -- [model] = {u, at} (losing it only resets the easing)
@@ -105,6 +115,45 @@ local ACT = {
 		return 1 - up(e - 0.6, 0.2)
 	end,
 }
+
+-- v1.2: the moves rework stamps (see the header) --------------------------------------------------------------------------
+if script:GetAttribute("TheriPartsAnimReworkEnabled") == nil then script:SetAttribute("TheriPartsAnimReworkEnabled", true) end
+do
+	local function rw() return script:GetAttribute("TheriPartsAnimReworkEnabled") ~= false end
+	local hookV11, grappleV11, snareV11 = ACT.zhook, ACT.zgrapple, ACT.zsnare
+	ACT.zhook = function(c, t)
+		local at = num(c, "TheriReelAt", -1e9)
+		if not rw() or at < num(c, "TheriHookAt", -1e9) then return hookV11(c, t) end
+		local e = t - at
+		local brace, fly = math.max(0.05, num(c, "TheriReelBrace", 0.3)), math.max(0, num(c, "TheriReelFly", 0.2))
+		local res = c:GetAttribute("TheriReelResult")
+		local back = (res == "hit" or res == "missed") and (brace + fly + math.max(0, num(c, "TheriReelTime", 0.5)) + 0.5) or (brace + 2 * fly)
+		if e < 0 or e > back + 0.3 then return 0, false end
+		local hide = e >= brace and e < back
+		if e < brace then return up(e, brace), false end
+		if e < back then return 1, hide end
+		return 1 - up(e - back, 0.3), false
+	end
+	ACT.zgrapple = function(c, t)
+		local at = num(c, "TheriDashAt", -1e9)
+		if not rw() or at < num(c, "TheriGrappleAt", -1e9) or c:GetAttribute("TheriDashResult") ~= "dash" then return grappleV11(c, t) end
+		local e = t - at
+		local hold = math.max(0, num(c, "TheriDashDelay", 0.16)) + math.max(0, num(c, "TheriDashTime", 0.12)) + 0.25
+		if e < 0 or e > hold + 0.2 then return 0 end
+		if e < 0.05 then return up(e, 0.05) end
+		if e < hold then return 1 end
+		return 1 - up(e - hold, 0.2)
+	end
+	ACT.zsnare = function(c, t)
+		local at = num(c, "TheriBolaAt", -1e9)
+		if not rw() or at < num(c, "TheriSnareAt", -1e9) then return snareV11(c, t) end
+		local e = t - at
+		if e < 0 or e > 1.2 then return 0 end
+		if e < 0.1 then return up(e, 0.1) end
+		if e < 1.0 then return 1 end
+		return 1 - up(e - 1.0, 0.2)
+	end
+end
 
 local AXIS = {X = Vector3.xAxis, Y = Vector3.yAxis, Z = Vector3.zAxis}
 local function rotAbout(axis, a)

@@ -998,7 +998,6 @@ snareRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	char:SetAttribute("TheriBolaEnd", rootOf(best).Position)
 	char:SetAttribute("TheriBolaFlight", flight)
 	char:SetAttribute("TheriBolaResult", "thrown")
-	char:SetAttribute("TheriSnareAt", t) -- the tail spools spin (TheriPartsAnim)
 	char:SetAttribute("TheriBolaAt", t) -- last: FX + pose
 	task.wait(BOLA_WIND + flight)
 	local t2 = now()
