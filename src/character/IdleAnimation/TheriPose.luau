@@ -1,4 +1,4 @@
--- TheriPose v1.8 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
+-- TheriPose v1.9 (Mecha Dino Arena) — the Therizinosaurus' animation layers for IdleAnimation 1.39: the 3-hit claw combo
 -- ("A Reaper Sweeps"), the Diving Rake leap (J1) and the Sidewinder run (B). MDA-203, plan docs/plans/THERIZINO_KIT_v1.0.md
 -- Task 6; mockups docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02 "I like this one") and
 -- docs/mockups/therizino_run_options.html v0.1 (Kepu: "B Sidewinder"). Key poses = tools/therizino_kit_keys_v0.3.py /
@@ -133,6 +133,9 @@
 --   Its own ground lock (the crouches of VORTEX / DODGE / SKID / REEL / SLASH) as 1.6's. Switch: model attribute
 --   TheriReworkPoseEnabled (default true). Diagnostics: TheriReworkPose ("none" / "vortex" / "bola" / "dash" / "reel"),
 --   TheriReworkPoseWeight.
+-- v1.9 (bug, Kepu 2026-11-04 18:03, with IdleAnimation 1.44): the Diving Rake's air-phase probe (when the down-rake starts)
+--   also ignores other dinos (every player's character, DinoIsland.Bots, the FX folders) while JumpProbeIgnoreDinosEnabled
+--   ~= false, so a latched raptor under the body does not start the rake early.
 local TheriPose = {}
 TheriPose.Version = "1.3"
 TheriPose.Version = "1.4" -- v1.4 Fourth Cut (Ground Scythe)
@@ -140,6 +143,7 @@ TheriPose.Version = "1.5" -- v1.5 hit-stop (MDA-204)
 TheriPose.Version = "1.6" -- v1.6 mecha-parts poses (build 1)
 TheriPose.Version = "1.7" -- v1.7 grapple + deflect poses (build 2)
 TheriPose.Version = "1.8" -- v1.8 moves rework poses (vortex, bola, dash, reel)
+TheriPose.Version = "1.9" -- v1.9 leap probe ignores other dinos
 TheriPose.Defaults = {
 	TheriPoseEnabled = true, TheriRunPoseEnabled = true, TheriLeapPoseEnabled = true, TheriGroundLockEnabled = true,
 	TheriDragEnabled = true, TheriChainHold = 0.8, TheriFadeTime = 0.5, TheriLeapLandTime = 1.4, TheriDragClearance = 0.15,
@@ -489,6 +493,18 @@ function TheriPose.leap(model, jump, serverNow, now, hrp, dt)
 			local hum = model:FindFirstChildOfClass("Humanoid")
 			local base = hrp.Size.Y / 2 + (hum and hum.HipHeight or 0)
 			rayParams.FilterDescendantsInstances = {model}
+			if model:GetAttribute("JumpProbeIgnoreDinosEnabled") ~= false then -- v1.9: a latched raptor is not the ground
+				local ex = {model}
+				for _, pl in ipairs(game:GetService("Players"):GetPlayers()) do if pl.Character and pl.Character ~= model then table.insert(ex, pl.Character) end end
+				local isl = workspace:FindFirstChild("DinoIsland")
+				local bots = isl and isl:FindFirstChild("Bots")
+				if bots then table.insert(ex, bots) end
+				for _, n in ipairs({"DinoFX_Local", "DinoFX", "TenoFX"}) do
+					local f = workspace:FindFirstChild(n)
+					if f then table.insert(ex, f) end
+				end
+				rayParams.FilterDescendantsInstances = ex
+			end
 			local hit = workspace:Raycast(hrp.Position, Vector3.new(0, -(base + 40), 0), rayParams)
 			if hit and vy < -1 then
 				local tl = max(0, hrp.Position.Y - hit.Position.Y - base) / -vy

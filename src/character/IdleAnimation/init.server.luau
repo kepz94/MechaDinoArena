@@ -1,4 +1,4 @@
--- IdleAnimation v1.43 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.44 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -240,6 +240,12 @@
 --       DiloLeapPoseEnabled ~= false; (b) after the therizino layer, DiloPose.top multiplies the Bite + Spit Dart layer on
 --       top (bite / coil / spit, root push, ground lock x (1 - walk blend)) and runs the local frill (open / folded) and
 --       throat sac. Diagnostics: DiloPose's (DiloPoseState, DiloLeapPhase, DiloFrillState, ...). Every other model unchanged.
+-- v1.44 (bug, Kepu 2026-11-04 18:03: a raptor latched on the therizino, "I do my jump animation it doesn't show shit it just
+--       shows the jump with the damage happening"): the leap's ground probe (straight down from the HRP) only ignored this
+--       model, so a latched raptor hanging under the body was "the ground" (Studio: JumpGroundDist -8.1, the leap never
+--       reached "air", no Diving Rake air / land poses). While the model attribute JumpProbeIgnoreDinosEnabled ~= false
+--       (default true) the probe also ignores every player's character, Workspace.DinoIsland.Bots and the FX folders
+--       (DinoFX_Local, DinoFX, TenoFX). Every dino's leap uses it (the same bug would hit any dino with a raptor under it).
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -320,6 +326,23 @@ local JUMP_VY_SMOOTH = 20      -- v1.15: vertical speed smoothing (per second)
 local jumpParams = RaycastParams.new() -- v1.15: ground probe (ignores this model)
 jumpParams.FilterType = Enum.RaycastFilterType.Exclude
 jumpParams.FilterDescendantsInstances = {model}
+local function jumpProbe() -- v1.44: the ground probe ignores other dinos (a latched raptor is not the ground)
+	if model:GetAttribute("JumpProbeIgnoreDinosEnabled") == false then
+		jumpParams.FilterDescendantsInstances = {model}
+		return jumpParams
+	end
+	local ex = {model}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character and pl.Character ~= model then table.insert(ex, pl.Character) end end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local bots = isl and isl:FindFirstChild("Bots")
+	if bots then table.insert(ex, bots) end
+	for _, n in ipairs({"DinoFX_Local", "DinoFX", "TenoFX"}) do
+		local f = workspace:FindFirstChild(n)
+		if f then table.insert(ex, f) end
+	end
+	jumpParams.FilterDescendantsInstances = ex
+	return jumpParams
+end
 local pounceLatchClock, pounceLetGoAt, pounceLast -- v1.16: local latch start, let-go time, last latched pose
 local pounceSlash -- v1.28: PounceSlash tracker of the current latch (nil when not latched)
 local RAM_FADE = 0.25        -- v1.19: s the ram pose eases out after a charge that missed
@@ -584,6 +607,7 @@ model:SetAttribute("IdleAnimationVersion", "1.40") -- v1.40
 model:SetAttribute("IdleAnimationVersion", "1.41") -- v1.41
 model:SetAttribute("IdleAnimationVersion", "1.42") -- v1.42
 model:SetAttribute("IdleAnimationVersion", "1.43") -- v1.43
+model:SetAttribute("IdleAnimationVersion", "1.44") -- v1.44
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -881,7 +905,7 @@ RunService.PreSimulation:Connect(function(dt)
 			if jumpTreeWas and not onTree and (not clockOn or not jump or jump.done) then
 				local hm = model:FindFirstChildOfClass("Humanoid")
 				local base = hrp.Size.Y / 2 + (hm and hm.HipHeight or 0)
-				local g = workspace:Raycast(hrp.Position, Vector3.new(0, -(base + 40), 0), jumpParams)
+				local g = workspace:Raycast(hrp.Position, Vector3.new(0, -(base + 40), 0), jumpProbe())
 				local gapNow = g and (hrp.Position.Y - g.Position.Y - base) or nil
 				if gapNow == nil or gapNow > 1 then
 					jump = {start = serverNow - (model:GetAttribute("JumpWindup") or 0.12), source = "tree", air = true}
@@ -907,7 +931,7 @@ RunService.PreSimulation:Connect(function(dt)
 			-- ground gap under the body (nil = no ground within 40 studs)
 			local hum = model:FindFirstChildOfClass("Humanoid")
 			local base = hrp.Size.Y / 2 + (hum and hum.HipHeight or 0)
-			local hit = workspace:Raycast(hrp.Position, Vector3.new(0, -(base + 40), 0), jumpParams)
+			local hit = workspace:Raycast(hrp.Position, Vector3.new(0, -(base + 40), 0), jumpProbe())
 			local gap = hit and (y - hit.Position.Y - base) or nil
 			show("JumpGroundDist", gap and math.floor(gap * 10 + 0.5) / 10 or 99)
 			local airborne = gap == nil or gap > (jump.air and 0.25 or 0.6)
