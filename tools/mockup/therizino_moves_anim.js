@@ -3,7 +3,8 @@
 // fit the dinosaur ... the animation has to be crystal clear what the intent is". Plays each move on the real model
 // (core + looks of the redesign mockup v0.5, picked looks: Reaper Crane, Reaper Sleeves, Belly Winch, Tail Spool Rig).
 // Units: the model's (game studs / 2). Front = -Z, the camera side = +X.
-const ANIM_VERSION = "0.3"; // v0.3: the Reaper's Hook moves to the chest (Kepu 16:54 "can move to the chest now cause it looks so goofy like that")
+const ANIM_VERSION = "0.4"; // v0.4: Feather Barrage (Kepu 18:03 "The feather animation can barely even be fucking seen"): Now vs A / B / C
+const ANIM_VERSION_03 = "0.3"; // v0.3: the Reaper's Hook moves to the chest (Kepu 16:54 "can move to the chest now cause it looks so goofy like that")
 // v0.2: the dash gets its own part (Kepu 16:47): A Flank Thrusters, B Storm Core (lightning), C Shoulder Jets
 // (from the redesign core's page section, which this page leaves out)
 const ease = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
@@ -118,6 +119,8 @@ function chestHook() {
 const DASH_LOOKS = {A: flankThrusters, B: stormCore, C: shoulderJets};
 let dashLook = "A";
 let clawOut = false, harpoonOut = false;
+let wingEmpty = {L: false, R: false}; // v0.4: the Blade Wings fired their blades
+let featherUse = 0; // v0.4
 let boomA = 0;
 function buildRig() {
   for (const e of equip) if (e.mesh.parent) e.mesh.parent.remove(e.mesh); // they live under the rig (clearEquip only takes them off the scene)
@@ -127,6 +130,8 @@ function buildRig() {
   GLOW = AREA.attack[2]; harvestSleeves({fore: false});
   GLOW = AREA.speed[2]; DASH_LOOKS[dashLook]();
   GLOW = AREA.eng[2]; snareSpools();
+  GLOW = AREA.attack[2]; const w0 = equip.length; featherWings(); // v0.4: the wings fan by their own featherUse
+  for (const e of equip.slice(w0)) if (e.place) { const orig = e.place; e.place = (u, tt) => orig(featherUse, tt); }
   for (const e of equip) theri.g.add(e.mesh);
   for (const c of cables) for (const m of c.segs) theri.g.add(m);
   // the crane's boom swings about its hinge (extra angle on top of the look's own motion)
@@ -135,6 +140,7 @@ function buildRig() {
     const orig = e.place; e.place = (u, tt) => hinge.clone().multiply(RXm(boomA)).multiply(hingeInv).multiply(orig(u, tt));
   }
   for (const e of equip) if (e.role === "hookhead") e.show = () => !clawOut;
+  for (const e of equip) if (e.role === "blade" && /^Arm[LR]_fore$/.test(e.part)) { const sd = e.part[3]; e.show = () => !wingEmpty[sd]; } // v0.4
 }
 buildRig();
 const rig = theri.g;
@@ -499,8 +505,155 @@ const MOVES = [
     } },
 ];
 
+// ---------- v0.4: Feather Barrage (Kepu 18:03: "The feather animation can barely even be fucking seen. It's so fucking mid") ----------
+let featherLook = "A";
+const FN = (c, o) => new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: o, depthWrite: false}); // normal blend: stays red on the bright sky
+const FEATHER_N = 10, FEATHER_FAN = Math.PI / 3, FEATHER_R = 12.5; // tier II: 10 blades, 25 studs, 60 degrees
+const FDIRS = [...Array(FEATHER_N)].map((_, i) => { const a = -FEATHER_FAN / 2 + FEATHER_FAN * i / (FEATHER_N - 1); return {a, d: new THREE.Vector3(Math.sin(a), 0, -Math.cos(a))}; });
+const HITI = [1, 5, 8], FHITS = {1: 11, 5: 12, 8: 10}; // dart index -> raptor distance (units); spread so the player camera sees them beside the neck
+function makeDart() {
+  const g = new THREE.Group(); fx.add(g); g.visible = false;
+  const blade = new THREE.Mesh(BOX, MATS.bone); blade.scale.set(0.16, 0.5, 2.2); g.add(blade);
+  const tip = new THREE.Mesh(CONE, MATS.bone); tip.scale.set(0.42, 0.7, 0.18); tip.rotation.x = -Math.PI / 2; tip.position.z = -1.1; g.add(tip);
+  const edge = new THREE.Mesh(BOX, FN(0xff2a1f, 1)); edge.scale.set(0.18, 0.12, 2.3); edge.position.y = 0.24; g.add(edge);
+  const quill = new THREE.Mesh(BOX, MATS.brass); quill.scale.set(0.2, 0.2, 0.5); quill.position.z = 1.25; g.add(quill);
+  const trail = mk(BOX, FN(0xff2a1f, 0.6));
+  const glow = mk(BALL, FN(0xff4a3a, 0.35));
+  return {g, trail, glow};
+}
+const DARTS = [...Array(12)].map(makeDart);
+const SMALL = [...Array(12)].map(() => mk(BOX, new THREE.MeshLambertMaterial({color: 0xf0ead8})));
+const CONEF = mk(new THREE.CircleGeometry(1, 40, Math.PI / 2 - FEATHER_FAN / 2, FEATHER_FAN), new THREE.MeshBasicMaterial({color: 0xff2a1f, transparent: true, opacity: 0.3, depthWrite: false})); CONEF.material.side = THREE.DoubleSide;
+const CONEEDGE = mk(new THREE.RingGeometry(0.95, 1, 40, 1, Math.PI / 2 - FEATHER_FAN / 2, FEATHER_FAN), new THREE.MeshBasicMaterial({color: 0xff2a1f, transparent: true, opacity: 0.9, depthWrite: false})); CONEEDGE.material.side = THREE.DoubleSide;
+const SPARKS = [...Array(3)].map(() => [...Array(6)].map(() => mk(BOX, FN(0xffb020, 1))));
+const NUM3 = [label("3", "#ff6b6b"), label("3", "#ff6b6b"), label("3", "#ff6b6b")];
+function fanCone(on, k, a0, a1) { // k = brightness 0..1, a0..a1 = the part of the fan (radians from forward)
+  for (const m of [CONEF, CONEEDGE]) {
+    m.visible = on; if (!on) continue;
+    m.position.set(rig.position.x, 0.06, rig.position.z); m.rotation.set(-Math.PI / 2, 0, 0); m.scale.setScalar(FEATHER_R + 1);
+  }
+  if (on) { CONEF.material.opacity = 0.08 + 0.22 * k; CONEEDGE.material.opacity = 0.3 + 0.7 * k; }
+}
+function wingPoint(sd) { return centreOf(`Arm${sd}_fore`, [sd === "L" ? 0.5 : -0.5, 0.2, -0.3]); }
+// one dart: fired at tf from wing sd along FDIRS[i]; hit raptors stick
+function dart(slot, i, sd, tt, tf, flight, scale) {
+  const D = DARTS[slot]; const st = tt - tf;
+  if (st < 0) return;
+  const from = wingPoint(sd);
+  const hitD = FHITS[i];
+  const Rp = hitD ? raptors[HITI.indexOf(i)] : null;
+  const to = Rp ? Rp.position.clone().add(new THREE.Vector3(0, 2.5, 0)) : new THREE.Vector3(rig.position.x, 0.6, rig.position.z).addScaledVector(FDIRS[i].d, FEATHER_R);
+  const u = st / flight;
+  const ARC = 4.5; // units above the straight line at mid-flight
+  const P = v => { const q = lerpV(from, to, v); q.y += Math.sin(v * Math.PI) * ARC; return q; };
+  const E = v => easeOut(Math.min(1, v) * 0.7 + 0.3 * Math.min(1, v) * Math.min(1, v));
+  let pos, dir, stuck = false, fade = 1;
+  if (u < 1) { pos = P(E(u)); dir = P(E(Math.min(1, u + 0.02))).sub(P(E(Math.max(0, u - 0.02)))).normalize(); }
+  else if (Rp && st < flight + 0.9) { dir = to.clone().sub(P(0.97)).normalize(); pos = to.clone().addScaledVector(dir, 0.6); stuck = true; fade = 1 - seg(st, flight + 0.6, flight + 0.9); }
+  else if (!Rp && st < flight + 0.5) { dir = to.clone().sub(P(0.97)).normalize(); pos = to.clone(); pos.y = 0.2; fade = 1 - seg(st, flight + 0.2, flight + 0.5); }
+  else return;
+  D.g.visible = fade > 0.02; D.g.position.copy(pos); D.g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), dir);
+  if (!stuck) D.g.rotateZ(st * 20);
+  D.g.scale.setScalar(scale * (fade < 1 ? Math.max(0.3, fade) : 1));
+  if (u < 1) {
+    const tail = P(E(Math.max(0, u - 0.22)));
+    setSeg(D.trail, tail, pos, 0.32 * scale); D.trail.material.opacity = 0.6;
+    D.glow.visible = true; D.glow.position.copy(pos); D.glow.scale.setScalar(1.1 * scale);
+  }
+  return {hit: Rp && u >= 1 && st < flight + 0.06, Rp};
+}
+function sparks(n, pos, k) { if (k <= 0 || k >= 1) return; SPARKS[n].forEach((m, j) => { const a = j / 6 * Math.PI * 2; m.visible = true; m.position.copy(pos).add(new THREE.Vector3(Math.cos(a) * k * 1.4, Math.sin(a * 1.7) * k * 1.1 + 0.3, Math.sin(a) * k * 1.4)); m.scale.set(0.08, 0.08, 0.5 * (1 - k)); m.lookAt(pos); m.material.opacity = 1 - k; }); }
+function featherRaptors(tt, hitAt) { // hitAt[k] = time raptor k is hit (or Infinity)
+  HITI.forEach((i, k) => {
+    const Rp = raptors[k]; const h = hitAt[k];
+    const base = new THREE.Vector3(rig.position.x, 0, rig.position.z).addScaledVector(FDIRS[i].d, FHITS[i]);
+    const kb = tt > h ? easeOut(seg(tt, h, h + 0.25)) * 0.8 : 0;
+    const walk = isFinite(h) ? 1.2 * (1 - seg(tt, 0, h)) : 0; // they walk in toward the dino until hit
+    raptorPose(Rp, {pos: base.clone().addScaledVector(FDIRS[i].d, kb + walk), yaw: Math.atan2(FDIRS[i].d.x, FDIRS[i].d.z), run: tt * 6, runAmt: tt > h ? 0.15 : 0.6, trip: tt > h ? 0.35 * (1 - seg(tt, h + 0.4, h + 1.0)) : 0, flash: tt > h && tt < h + 0.08});
+    if (isFinite(h)) { sparks(k, base.clone().add(new THREE.Vector3(0, 2.5, 0)), seg(tt, h, h + 0.3)); pop(NUM3[k], Rp.position, tt > h ? (tt - h) / 0.9 : -1); }
+  });
+}
+const CROSS = {ArmL: [60, 70, 45], ArmR: [60, -70, -45], RootJoint: [8, 0, 0], Neck: [10, 0, 0], Tail1: [-8, 0, 0]};
+const WIDE = {ArmL: [40, -80, -60], ArmR: [40, 80, 60], RootJoint: [-10, 0, 0], Neck: [-8, 0, 0], LegL: [10, 0, 0], KneeL: [-14, 0, 0]};
+const COCK_L = {ArmL: [60, 75, 50], ArmR: [30, 0, -20], RootJoint: [4, -18, 0], Neck: [6, 10, 0]};
+const SWEEP_L = {ArmL: [45, -80, -60], ArmR: [30, 0, -20], RootJoint: [-6, 14, 0], Neck: [-4, -8, 0]};
+const COCK_R = {ArmL: [45, -80, -60], ArmR: [60, -75, -50], RootJoint: [4, 18, 0], Neck: [6, -10, 0]};
+const SWEEP_R = {ArmL: [45, -80, -60], ArmR: [45, 80, 60], RootJoint: [-8, -10, 0], Neck: [-6, 6, 0]};
+const DISPLAY = {ArmL: [95, -30, 70], ArmR: [95, 30, -70], RootJoint: [10, 0, 0], Neck: [14, 0, 0], Head: [6, 0, 0], Tail1: [-10, 0, 0], Tail2: [-8, 0, 0]};
+const THRUST = {ArmL: [70, 10, 6], ArmR: [70, -10, -6], RootJoint: [-16, 0, 0], Neck: [-14, 0, 0], LegL: [24, 0, 0], KneeL: [-32, 0, 0], LegR: [-8, 0, 0], AnkleL: [8, 0, 0]};
+const FEATHER_TEXT = {
+  now: {sub: "Now · live (v447)", does: ["Arms swing in, then out (0.24 s)", "8-12 small pale blades leave the chest", "They cross the whole fan in 0.3 s and vanish", "No sign of where they go or what they hit"],
+    phases: [[0, 0.24, "Arms in, then out"], [0, 0.39, "Small blades fly 0.3 s and vanish"], [0.39, 2.6, "—"]], why: "What's in the game now: the blades are thumb-sized, pale and gone in a third of a second, from the middle of the chest, not the wings."},
+  A: {sub: "A · Wing Volley", does: ["Wind-up: arms cross over the chest, both Blade Wings fan out, edges glow red; a red fan lights up on the ground (where they will go)", "Release: arms whip open wide and both wings fire their blades together", "Big bone darts with red edges and red trails fly the fan, spinning (about 0.55 s, so you see them)", "Hits: darts stick in the raptors with sparks, each hit shows 3", "Misses skid into the ground; the wings are empty, then the blades slide back in"],
+    phases: [[0, 0.35, "Wind-up · arms cross, wings fan, red fan on the ground"], [0.35, 0.48, "Release · arms whip open, both wings fire"], [0.42, 0.97, "Darts fly the fan with red trails"], [0.97, 1.6, "Hits stick + spark, misses skid"], [1.2, 1.6, "Blades slide back into the wings"], [1.6, 2.6, "—"]], why: "One clear tell (cross + fan on the ground), one big release, darts big and slow enough to follow. Recommended."},
+  B: {sub: "B · Twin Sweep", does: ["Right arm (camera side) cocks across the chest; its half of the fan lights", "Right arm sweeps out and its wing throws 5 blades", "Left arm sweeps out a beat later; its wing throws the other 5", "Darts stick or skid as in A; wings reload"],
+    phases: [[0, 0.25, "Right arm cocks, right half lights"], [0.25, 0.4, "Right sweep · right wing throws"], [0.4, 0.62, "Left sweep · left wing throws"], [0.62, 1.6, "Darts land, stick or skid"], [1.6, 2.6, "—"]], why: "Two slashes that throw blades: reads like the claw combo. Longer, two beats."},
+  C: {sub: "C · Peacock Burst", does: ["Rear up: both arms spread high, wings fanned behind like a display, quivering (a big tell)", "Slam forward: arms punch down and every blade fires at once as a wall", "A red shock line races along the ground fan", "Darts stick or skid as in A; wings reload"],
+    phases: [[0, 0.45, "Rear up · wings fanned high, quivering"], [0.45, 0.56, "Slam forward · all blades fire as a wall"], [0.5, 1.1, "Wall of darts + ground shock line"], [1.1, 1.7, "Hits stick, misses skid"], [1.7, 2.6, "—"]], why: "The biggest wind-up; very readable from far away, slowest to fire."},
+};
+
+MOVES.push({ id: "feather", name: "Feather Barrage", get sub() { return FEATHER_TEXT[featherLook].sub; }, area: "attack", len: 2.6,
+    part: "Blade Wings (both forearms)", get partWhy() { return FEATHER_TEXT[featherLook].why; },
+    get does() { return FEATHER_TEXT[featherLook].does; },
+    nums: "Same numbers as now: 8 / 10 / 12 blades · 20 / 25 / 30 studs · 60° fan · 3 damage each · slowed 25% for 1 / 2 s · recharge 14 s",
+    get phases() { return FEATHER_TEXT[featherLook].phases; },
+    close: ["ArmL_fore", [9, 3, -8]], focus: () => new THREE.Vector3(0, 3, -6), side: [36, 8, -2], three: [24, 16, 22], top: [0, 50, -6],
+    update(tt) {
+      rig.position.set(0, LY(), 0); rig.rotation.set(0, 0, 0);
+      const L = featherLook;
+      let A = IDLE(tt);
+      wingEmpty = {L: false, R: false}; featherUse = 0;
+      if (L === "now") {
+        A = mix(A, {ArmL: [40, 60, 40], ArmR: [40, -60, -40], RootJoint: [4, 0, 0]}, easeIO(seg(tt, 0, 0.12)));
+        A = mix(A, {ArmL: [55, -50, -30], ArmR: [55, 50, 30], RootJoint: [-4, 0, 0]}, easeOut(seg(tt, 0.12, 0.24)));
+        if (tt > 0.6) A = mix(A, IDLE(tt), easeIO(seg(tt, 0.6, 1.0)));
+        pose(A); use = 0; featherUse = tt < 1.0 ? 1 : 0;
+        const o = centreOf("Torso_chest");
+        FDIRS.forEach((f, i) => { const k = tt / 0.3; const m = SMALL[i]; m.visible = k < 1.3; if (!m.visible) return; const p = o.clone().addScaledVector(f.d, FEATHER_R * Math.min(k, 1)); m.position.copy(p); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), f.d); m.rotateZ(tt * 20); m.scale.set(0.09, 0.22, 1.2); m.material.transparent = true; m.material.opacity = k > 1 ? 1 - (k - 1) / 0.3 : 1; });
+        featherRaptors(tt, [0.25, 0.3, 0.27]);
+        return;
+      }
+      let fires; // [{i, sd, tf}]
+      const flight = 0.6;
+      if (L === "A") {
+        A = mix(A, CROSS, easeIO(seg(tt, 0, 0.35)));
+        A = mix(A, WIDE, easeOut(seg(tt, 0.35, 0.48)));
+        if (tt > 1.0) A = mix(A, IDLE(tt), easeIO(seg(tt, 1.0, 1.5)));
+        fanCone(tt > 0.05 && tt < 0.8, tt < 0.42 ? 0.3 + 0.7 * seg(tt, 0.05, 0.4) * (0.8 + 0.2 * Math.sin(tt * 40)) : 1 - seg(tt, 0.42, 0.8));
+        fires = FDIRS.map((f, i) => ({i, sd: f.a >= 0 ? "L" : "R", tf: 0.42}));
+        wingEmpty = {L: tt > 0.42 && tt < 1.2, R: tt > 0.42 && tt < 1.2};
+        use = 0; featherUse = tt < 0.42 ? seg(tt, 0, 0.3) : (tt > 1.2 ? 1 - seg(tt, 1.3, 1.6) : 1);
+      } else if (L === "B") {
+        A = mix(A, COCK_L, easeIO(seg(tt, 0, 0.25)));
+        A = mix(A, SWEEP_L, easeOut(seg(tt, 0.25, 0.36)));
+        A = mix(A, COCK_R, easeIO(seg(tt, 0.36, 0.45)));
+        A = mix(A, SWEEP_R, easeOut(seg(tt, 0.45, 0.56)));
+        if (tt > 1.0) A = mix(A, IDLE(tt), easeIO(seg(tt, 1.0, 1.5)));
+        fanCone(tt > 0.05 && tt < 0.9, tt < 0.32 ? seg(tt, 0.05, 0.3) : 1 - seg(tt, 0.55, 0.9));
+        fires = FDIRS.map((f, i) => ({i, sd: f.a >= 0 ? "L" : "R", tf: f.a >= 0 ? 0.32 : 0.52}));
+        wingEmpty = {L: tt > 0.32 && tt < 1.25, R: tt > 0.52 && tt < 1.35};
+        use = 0; featherUse = tt < 0.42 ? seg(tt, 0, 0.3) : (tt > 1.2 ? 1 - seg(tt, 1.3, 1.6) : 1);
+      } else {
+        A = mix(A, DISPLAY, easeIO(seg(tt, 0, 0.45)));
+        if (tt < 0.45) A = mix(A, {ArmL: [Math.sin(tt * 60) * 3, 0, 0], ArmR: [Math.sin(tt * 60 + 1) * 3, 0, 0]}, seg(tt, 0.2, 0.45));
+        A = mix(A, THRUST, easeOut(seg(tt, 0.45, 0.56)));
+        if (tt > 1.1) A = mix(A, IDLE(tt), easeIO(seg(tt, 1.1, 1.6)));
+        fanCone(tt > 0.1 && tt < 1.0, tt < 0.5 ? 0.4 * seg(tt, 0.1, 0.45) : 1 - seg(tt, 0.5, 1.0));
+        fires = FDIRS.map((f, i) => ({i, sd: f.a >= 0 ? "L" : "R", tf: 0.5}));
+        wingEmpty = {L: tt > 0.5 && tt < 1.3, R: tt > 0.5 && tt < 1.3};
+        use = 0; featherUse = tt < 0.5 ? seg(tt, 0, 0.35) : (tt > 1.3 ? 1 - seg(tt, 1.4, 1.7) : 1);
+        // ground shock line racing out along the fan's arc
+        const k = seg(tt, 0.5, 0.9); if (k > 0 && k < 1) burst(new THREE.Vector3(rig.position.x, 0.08, rig.position.z), k, 0xff3b30, FEATHER_R);
+      }
+      pose(A);
+      const hitAt = [Infinity, Infinity, Infinity];
+      fires.forEach((f, slot) => { dart(slot, f.i, f.sd, tt, f.tf, flight, 1.5); const k = HITI.indexOf(f.i); if (k >= 0) hitAt[k] = f.tf + flight; });
+      featherRaptors(tt, hitAt);
+      // reload: blades slide back in (the fan closes and reopens)
+    } });
+
 // ---------- UI ----------
-let cur = 0, playing = true, speed = 1, view = "three", tt = 0;
+let cur = Math.max(0, MOVES.findIndex(m => m.id === "feather")), playing = true, speed = 1, view = "three", tt = 0;
 function renderMoves() {
   $("moves").innerHTML = MOVES.map((m, i) => `<button class="tab" data-i="${i}" aria-pressed="${i === cur}">${m.name}<small style="color:${AREA[m.area][1]}">${m.sub}</small></button>`).join("");
   const m = MOVES[cur];
@@ -509,6 +662,8 @@ function renderMoves() {
   $("part").innerHTML = `<div class="kind" style="color:${AREA[m.area][1]}">The part that does it</div><h2>${m.part}</h2><p class="note">${m.partWhy}</p>`;
   $("sizeRow").hidden = m.id !== "harvest";
   $("dashRow").hidden = m.id !== "dash";
+  $("featherRow").hidden = m.id !== "feather"; // v0.4
+  document.querySelectorAll("[data-feather]").forEach(x => x.setAttribute("aria-pressed", x.dataset.feather === featherLook));
   document.querySelectorAll("[data-dash]").forEach(x => x.setAttribute("aria-pressed", x.dataset.dash === dashLook));
 }
 $("moves").addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (!b) return; cur = +b.dataset.i; tt = 0; fxOff(); renderMoves(); });
@@ -518,6 +673,7 @@ function syncPlay() { $("play").textContent = playing ? "Pause" : "Play"; $("pla
 document.querySelectorAll("[data-speed]").forEach(b => b.onclick = () => { speed = +b.dataset.speed; document.querySelectorAll("[data-speed]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { view = b.dataset.view; document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
 document.querySelectorAll("[data-size]").forEach(b => b.onclick = () => { ringStuds = +b.dataset.size; document.querySelectorAll("[data-size]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+document.querySelectorAll("[data-feather]").forEach(b => b.onclick = () => { featherLook = b.dataset.feather; tt = 0; fxOff(); renderMoves(); }); // v0.4
 document.querySelectorAll("[data-dash]").forEach(b => b.onclick = () => { dashLook = b.dataset.dash; buildRig(); tt = 0; fxOff(); renderMoves(); });
 $("scrub").addEventListener("input", e => { tt = +e.target.value / 1000 * MOVES[cur].len; playing = false; syncPlay(); });
 renderMoves();
@@ -529,7 +685,7 @@ function frameM(now) {
   const m = MOVES[cur];
   if (playing) { tt += dt * speed; if (tt > m.len) { tt = 0; fxOff(); } }
   fxOff(); raptors.forEach(r => r.visible = true);
-  boomA = 0; clawOut = false; harpoonOut = false; thrustYaw = 0; jetYaw = 0; burstIdx = 0; dinoFlash(0);
+  boomA = 0; clawOut = false; harpoonOut = false; wingEmpty = {L: false, R: false}; featherUse = 0; thrustYaw = 0; jetYaw = 0; burstIdx = 0; dinoFlash(0);
   m.update(tt);
   updateEquip();
   $("scrub").value = Math.round(tt / m.len * 1000);

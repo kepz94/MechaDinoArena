@@ -25,8 +25,8 @@ p { margin: 0; }
 .lede { color: var(--muted); max-width: 90ch; margin-top: 4px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .lbl { font: 800 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.moves { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-@media (max-width: 640px) { .moves { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.moves { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) { .moves { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .tab { font: 700 15px/1.2 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 9px 11px; cursor: pointer; text-align: left; min-width: 0; }
 .tab small { display: block; font: 800 10px var(--body); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
 .tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,155,46,.2); }
@@ -67,6 +67,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--yellow); ou
     <button class="btn" data-view="three" aria-pressed="true">3/4</button><button class="btn" data-view="side" aria-pressed="false">Side</button>
     <button class="btn" data-view="game" aria-pressed="false">Player camera</button><button class="btn" data-view="close" aria-pressed="false">Part close-up</button><button class="btn" data-view="top" aria-pressed="false">Top</button>
     <span id="dashRow" class="row"><span class="lbl" style="margin-left:6px">Dash part</span><button class="btn" data-dash="A" aria-pressed="true">A · Flank Thrusters</button><button class="btn" data-dash="B" aria-pressed="false">B · Storm Core</button><button class="btn" data-dash="C" aria-pressed="false">C · Shoulder Jets</button></span>
+    <span id="featherRow" class="row"><span class="lbl" style="margin-left:6px">Feather</span><button class="btn" data-feather="now" aria-pressed="false">Now (live)</button><button class="btn" data-feather="A" aria-pressed="true">A · Wing Volley</button><button class="btn" data-feather="B" aria-pressed="false">B · Twin Sweep</button><button class="btn" data-feather="C" aria-pressed="false">C · Peacock Burst</button></span>
     <span id="sizeRow" class="row"><span class="lbl" style="margin-left:6px">Ring size</span><button class="btn" data-size="16" aria-pressed="true">16 studs (picked)</button><button class="btn" data-size="30" aria-pressed="false">30 studs</button></span>
   </div>
   <div class="stage">

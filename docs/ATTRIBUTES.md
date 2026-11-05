@@ -2801,3 +2801,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | SkillTree.THERI_CLOCK_JUMP | SkillTree module | true | SkillTree 1.66 (Overclock III extra jump) |
 | TheriClockJump; SkillEffectsTheriClockJumpEnabled | therizino character (server); SkillEffects script | extra jump charges (1 from Overclock III, 0 off); true | SkillEffects 1.44 |
 | TheriMovesClockJumpEnabled; TheriClockJumpAdded, TheriClockJumpBase | TheriMovesServer script; therizino character (server) | true; diagnostics (JumpCharges before the extra) | TheriMovesServer 1.5 |
+| JumpProbeIgnoreDinosEnabled; IdleAnimationVersion | character model (any client sets it locally to test) | true (nil = true): the leap ground probe ignores other dinos (players, DinoIsland.Bots) and FX folders; false = only the own model (1.43); diagnostics | IdleAnimation 1.44 / TheriPose 1.9 |
