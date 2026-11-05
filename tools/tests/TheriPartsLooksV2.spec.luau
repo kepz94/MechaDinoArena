@@ -1,7 +1,9 @@
--- TheriPartsLooksV2.spec v1.1 (Mecha Dino Arena) — data checks for ServerStorage.DinoArcade.TheriPartsLooksV2 1.1 (generated
+-- TheriPartsLooksV2.spec v1.2 (Mecha Dino Arena) — data checks for ServerStorage.DinoArcade.TheriPartsLooksV2 1.2 (generated
 -- from the redesign mockup v0.3 by tools/mockup/export_theri_parts_v2.js). Plan docs/plans/THERIZINO_PARTS_LOOKS_v2.0.md
 -- Task 1 (MDA-249). Run in Studio Edit (copy in ServerStorage.DinoArcadeTools.TheriPartsLooksV2_spec, clone + require);
 -- returns "PASS n" or "FAIL ...".
+-- v1.2 (moves rework, MDA-261): zhook = Reaper Launcher (48 pieces, 4 groups: 3 prongs + drum), zgrapple = Storm Core (39
+-- pieces, no groups; roles core / hornL / hornR).
 local fails, passes = {}, 0
 local function eq(name, got, want)
 	if got == want then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
@@ -20,12 +22,12 @@ if not okM then return "FAIL model: " .. tostring(MD) end
 local PARTNAMES = {}
 for _, seg in ipairs(MD.segments) do for _, p in ipairs(seg.parts) do PARTNAMES[p.name] = true end end
 
-eq("version", D.Version, "1.1") -- v1.1: Kepu 2026-11-04 14:49 final picks (Hook-B, Harvest-B claws only, Deflect-B)
+eq("version", D.Version, "1.2") -- v1.1: Kepu 2026-11-04 14:49 final picks (Hook-B, Harvest-B claws only, Deflect-B)
 -- the mockup's pieces at rest (+ the see-through shield film)
-local COUNT = {zhook = 55, zfeather = 78, zharvest = 78, zgrapple = 50, zdeflect = 27, zclock = 56, zsnare = 66}
-local GROUPS = {zhook = 6, zfeather = 12, zharvest = 0, zgrapple = 4, zdeflect = 9, zclock = 10, zsnare = 3}
+local COUNT = {zhook = 48, zfeather = 78, zharvest = 78, zgrapple = 39, zdeflect = 27, zclock = 56, zsnare = 66}
+local GROUPS = {zhook = 4, zfeather = 12, zharvest = 0, zgrapple = 0, zdeflect = 9, zclock = 10, zsnare = 3}
 local SHAPES = {box = true, wedge = true, cyl = true, ball = true, cone = true, ring = true}
-local ROLES = {zhook = {"jib", "hookhead", "drum"}, zfeather = {"blade"}, zharvest = {}, zgrapple = {"nozzle", "drum", "prong"},
+local ROLES = {zhook = {"muzzle", "hookhead", "drum"}, zfeather = {"blade"}, zharvest = {}, zgrapple = {"core", "hornL", "hornR"},
 	zdeflect = {"hub", "fin", "film"}, zclock = {"ring", "gear", "fin"}, zsnare = {"spool"}}
 local n = 0
 for id, want in pairs(COUNT) do

@@ -457,7 +457,7 @@ function frame(now) {
 
 // One-sided parts go on the dino's RIGHT = +X = the model's "...L" parts (the L / R names are mirrored): ShoulderCam 1.8 starts
 // over the right shoulder, shoulder = focus + RightVector x side, and a dino facing -Z has RightVector = +X.
-// Therizino parts redesign v0.3 — the looks (v0.3: export tags only on the 7 picked looks: group / role / detail; no visual change). Coordinates: rest model space (scale 1, HRP frame; front = -Z, left = +X).
+// Therizino parts redesign v0.5 — the looks (v0.5: + Reaper Launcher (hook) and Storm Core (grapple), the moves rework picks; v0.3: export tags only on the 7 picked looks: group / role / detail; no visual change). Coordinates: rest model space (scale 1, HRP frame; front = -Z, left = +X).
 // Each look: mounts on body parts (mount = world-aligned, mountOn = in the part's frame, mountM(axisFrame) = along a limb).
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 const SIDES = [[1, "L"], [-1, "R"]];
@@ -917,6 +917,52 @@ function snareBandolier() {
 }
 function oldSnare() { for (const tp of ["Tail2_main", "Tail3_main", "Tail4_main"]) { const y = theri.byName[tp].cf.elements[13], z = theri.byName[tp].cf.elements[14]; const M = mount(tp, [0, 0, 0]); M.cyl([0.9, 0.6, 0], [0, y + 0.55, z], [0, 0, 90], "steel"); M.cyl([0.5, 0.65, 0], [0, y + 0.55, z], [0, 0, 90], "glow"); } }
 
+// v0.5 (moves rework, Kepu 2026-11-04 16:54 / "Build" pick Storm Core; plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md, MDA-261):
+// the storyboard's (tools/mockup/therizino_moves_anim.js v0.3) chest Reaper Launcher and Storm Core, with export tags.
+function hookChest() {
+  const M = mount("Torso_chest", [0, 0, 0]);
+  // chest plate (studded) with trim, bolts, red glow strips and launch stripes
+  M.box([1.9, 1.7, 0.32], [0, 1.95, -3.45], null, "shell");
+  M.box([2.0, 0.12, 0.38], [0, 2.82, -3.45], null, "trim"); M.box([2.0, 0.12, 0.38], [0, 1.08, -3.45], null, "trim");
+  for (const [x, y] of [[-0.8, 2.6], [0.8, 2.6], [-0.8, 1.3], [0.8, 1.3]]) M.bolt([x, y, -3.63], "z", 0.14);
+  for (const e of [-1, 1]) { M.box([0.3, 1.5, 0.5], [e * 1.02, 1.95, -3.2], null, "plate"); M.box([0.06, 1.1, 0.04], [e * 0.72, 1.95, -3.63], null, "glow"); }
+  M.hazard(1.5, 0.1, [0, 1.18, -3.64], null, 8);
+  // launcher barrel (along -Z), brass muzzle, red glow ring inside (role "muzzle": the chain leaves from here)
+  M.box([0.95, 0.8, 0.9], [0, 2.2, -3.95], null, "plate");
+  M.cyl([0.66, 1.25, 0], [0, 2.2, -4.45], [90, 0, 0], "iron");
+  M.cyl([0.84, 0.2, 0], [0, 2.2, -5.05], [90, 0, 0], "brass");
+  M.cyl([0.5, 0.06, 0], [0, 2.2, -5.16], [90, 0, 0], "glow", {role: "muzzle"});
+  for (const e of [-1, 1]) M.cyl([0.16, 1.0, 0], [e * 0.42, 2.55, -4.4], [90, 0, 0], "steel");
+  // the reaper claw seated in the muzzle (prong groups open when fired); every claw piece is "hookhead" (hidden while out)
+  const n0 = equip.length;
+  grapnel(M, [0, 2.2, -5.45], 0.95, () => 0.15, "bone", "prong_");
+  for (const e of equip.slice(n0)) e.role = "hookhead";
+  // chain drum under the barrel (spins while reeling) + brass flanges
+  const gd = M.group("drum", Tm(0, 1.45, -3.95), {type: "spin", axis: "X", amt: -18});
+  M.cyl([0.78, 1.25, 0], [0, 1.45, -3.95], [0, 0, 90], "steel", {group: gd, role: "drum"});
+  for (let k = 0; k < 4; k++) M.box([1.24, 0.06, 0.82], [0, 1.45, -3.95], [k * 45, 0, 0], "iron", {group: gd});
+  for (const e of [-1, 1]) M.cyl([0.98, 0.08, 0], [e * 0.66, 1.45, -3.95], [0, 0, 90], "brass", {group: gd});
+  for (const e of [-1, 1]) M.hose([e * 0.6, 2.6, -3.3], [e * 1.4, 2.2, -2.7], 0.15, 0.12, 4);
+}
+function dashStorm() {
+  const M = mount("Torso_body", [0, 0, 0]);
+  M.box([1.9, 0.26, 1.5], [0, -0.42, -1.2], null, "shell"); // belly cradle
+  for (const e of [-1, 1]) { M.box([0.16, 0.9, 1.3], [e * 0.95, -0.85, -1.2], null, "plate"); M.cyl([0.5, 0.12, 0], [e * 0.86, -1.05, -1.2], [0, 0, 90], "brass"); }
+  M.cyl([0.86, 1.6, 0], [0, -1.05, -1.2], [0, 0, 90], "white", {alpha: 0.35}); // glass tank (film: shown while charging)
+  M.cyl([0.4, 1.5, 0], [0, -1.05, -1.2], [0, 0, 90], "glow", {role: "core"}); // charged coil inside
+  for (let i = 0; i < 4; i++) M.cyl([0.92, 0.05, 0], [-0.6 + i * 0.4, -1.05, -1.2], [0, 0, 90], "brass", {detail: true});
+  M.hazard(1.2, 0.07, [0, -0.28, -1.96], null, 6);
+  for (const [s, side] of SIDES) {
+    const C = mount(`Arm${side}_shoulder`, [0, 0, 0]);
+    const base = [s * 1.6, 2.05, -2.6];
+    C.box([0.9, 0.3, 0.8], base, null, "shell");
+    C.cyl([0.18, 1.3, 0], [base[0] + s * 0.15, base[1] + 0.75, base[2] + 0.1], [s * -12, 0, 0], "iron");
+    for (let r = 0; r < 3; r++) C.add("ring", [0.32 - r * 0.06, 0.07], [base[0] + s * (0.08 + r * 0.06), base[1] + 0.45 + r * 0.32, base[2] + 0.1], [0, 0, 90], "brass");
+    C.ball(0.36, [base[0] + s * 0.3, base[1] + 1.45, base[2] + 0.12], "glow", {role: "horn" + side});
+    C.hose([base[0] - s * 0.3, base[1] - 0.1, base[2] + 0.3], [base[0] - s * 1.2, base[1] - 1.6, base[2] + 1.0], 0.2, 0.1, 5);
+  }
+}
+
 // ============================================ the list ============================================
 const PARTS = [
   {id: "hook", short: "Hook", name: "Reaper's Hook", area: "attack", focus: [-3.2, 2.0, -3.6],
@@ -930,6 +976,10 @@ const PARTS = [
         ref: "your old Back Crane pick, rebuilt like a Horizon machine part: a saddle that follows the back, visible hinges and pistons, and a real claw instead of a bar.",
         why: "A studded saddle is strapped to the back with a turret on it. A two-part crane arm, with a hydraulic piston, a brass hinge and a chain drum, reaches up and over the head. A chain hangs from the tip to a three-pronged bone claw. Red glows on the turret window and the jib tip.",
         use: "the boom dips forward, the claw's prongs open, and the drum winds.", on: "the back (Torso_body), the same spot as now."},
+      {name: "Reaper Launcher", sub: "chest · rework pick", build: hookChest, pose: POSES.CHEST_OUT, focus: [0, 2.2, -4.2], closeYaw: 0.4, closePitch: 0.15,
+        ref: "the moves storyboard v0.3 (Kepu 16:54: the hook moves to the chest).",
+        why: "A studded chest plate with a launcher barrel, a brass muzzle with the reaper claw seated in it, and a chain drum under the barrel.",
+        use: "the claw fires on its chain, the drum reels you in.", on: "the chest (Torso_chest)."},
     ]},
   {id: "feather", short: "Feathers", name: "Feather Barrage", area: "attack", focus: [3.6, 0.6, -2.8],
     oldText: "Arm Racks (in the game now): a flat dark block on each forearm with 6 thin white sticks.",
@@ -970,6 +1020,10 @@ const PARTS = [
         ref: "Sekiro's prosthetic grapple (built into the arm) and Titanfall 2's wrist grapple, with Pathfinder's \"in range\" light.",
         why: "Low launcher plating lies along the top of the right forearm, with brass rails and a folded grapnel at the wrist. A side spool and a round yellow range lamp complete it, so the arm looks like a tool.",
         use: "the arm points, the grapnel snaps open and the spool spins.", on: "the right forearm, the camera side (the model's ArmL_fore: its L / R names are mirrored)."},
+      {name: "Storm Core", sub: "belly + shoulders · rework pick", build: dashStorm, pose: POSES.ARMS_FWD, focus: [0, 0.4, -1.8], closeYaw: 0.6, closePitch: -0.05,
+        ref: "the moves storyboard v0.3 dash look B (Kepu: \"lightning jolt\").",
+        why: "A glass capacitor under the belly with a charged coil inside, and a Tesla coil on each shoulder.",
+        use: "arcs jump between the coils and the core, then the dino jolts across.", on: "under the body (Torso_body) and both shoulders."},
     ]},
   {id: "deflect", short: "Deflect", name: "Deflector Claws", area: "defense", focus: [4.2, 0.4, -3.4],
     oldText: "Spinner Hubs (in the game now): a grey puck and a small yellow cube on each hand.",
