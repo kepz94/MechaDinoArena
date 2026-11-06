@@ -1,4 +1,4 @@
--- DiloPose v1.0 (Mecha Dino Arena) — the Dilophosaurus' animation layers for IdleAnimation 1.43: Bite + Spit Dart (attack C)
+-- DiloPose v1.1 (Mecha Dino Arena) — the Dilophosaurus' animation layers for IdleAnimation 1.43: Bite + Spit Dart (attack C)
 -- and the Cobra Leap (J1), plus the frill (folded at rest, snapping open on the attack and the leap) and the throat sac.
 -- MDA-226, plan docs/plans/DILO_KIT_v1.0.md Task 6; mockup docs/mockups/dilo_kit_options_v0.1.html (Kepu 2026-11-03 "C and
 -- J1"; source tools/dilo_kit_mockup/app.js). Key poses, timings, springs, frill pop and sac = the mockup's.
@@ -51,8 +51,24 @@
 --   "release" / "spit" / "test:<key>"), DiloPoseSource ("local" / "server"), DiloLeapPhase ("none" / "crouch" / "push" /
 --   "air" / "land"), DiloFrillState ("open" / "folded" / "off"), DiloFrillScale (0.01 steps), DiloFrillParts (open / fold
 --   counts, "a/b"), DiloSacScale (0.01 steps), DiloGroundShift (studs, 0.1 steps).
+-- v1.1 (plan docs/plans/DILO_MOVES_ANIM_v1.0.md Task 3, MDA-301; Kepu 2026-11-05 22:32 "A for all of them"; mockup
+--   docs/mockups/dilo_moves_anim.html v0.1, keys from tools/mockup/dilo_moves_anim.js):
+--   * Cobra Strike (model DiloCobraStrikeEnabled, default true): the bite track is {0 $from, 0.1 DRAW (io), 0.17 STRIKE (in2),
+--     0.24 CLAMP (out), 0.42 CLAMP (io), 0.6 C_BITE2 (io), 1.0 READY (io)} with a head shake between 0.2 and 0.42 s (Neck yaw
+--     + 12 sin(55 (t - 0.2)) x (1 - (t - 0.2) / 0.22), Head 0.6 of it); the frill opens from 0.01 to 0.5 s. The server's hit
+--     time (0.18 s) is unchanged.
+--   * Hood Flare (model DiloHoodFlareEnabled, default true): the coil track is {0 $from, 0.27 FLARE_COIL (io), 0.75
+--     FLARE_COIL2 (io)}, the spit track {0 $from, 0.05 THRUST (in2), 0.18 RECOIL (out), 0.9 READY (io)}; the frill is x1.25
+--     while the coil / spit shows it; the sac pumps (DiloSacSwell) while (coil time mod 0.24) is in [0.03, 0.15).
+--     Other clients play the coil from DiloCoilAt (DiloAttackServer 1.4) while it is newer than DiloCoilEndAt / DiloDartAt
+--     (armed tremble from 0.25 s; it ends after 3 s without an end stamp); the end stamp starts the release.
+--   * Spring Coil (model DiloSpringCoilEnabled, default true): the leap crouch is J_DEEP, the push J_DEEP -> J_STRETCH over
+--     0.08 s (out5) then J_STRETCH -> J_AIR over 0.24 s (io), the landing {0 J_DOWN, 0.14 J_SOFTLAND (out), 0.8 READY (io)};
+--     the frill opens 0.1 s after the start (was 0.16). Leap timing unchanged.
+--   Diagnostics: DiloPoseSet ("1.1"); DiloPoseState "coil:server" / "armed:server" on other clients' coils.
 local DiloPose = {}
 DiloPose.Version = "1.0"
+DiloPose.Version = "1.1" -- v1.1 Cobra Strike, Hood Flare, Spring Coil
 DiloPose.Defaults = {
 	DiloPoseEnabled = true, DiloLeapPoseEnabled = true, DiloGroundLockEnabled = true, DiloFrillEnabled = true,
 	DiloFrillPopEnabled = true, DiloSacEnabled = true, DiloLeapLandTime = 1.0, DiloSacSwell = 1.55,
@@ -105,8 +121,23 @@ KEYS.J_DOWN = BOTH({RootJoint = {-6, 0, 0}, Neck = {16, 0, 0}, Head = {-12, 0, 0
 	KneeL = {-30, 0, 0}, AnkleL = {12, 0, 0}, Tail1 = {-4, 0, 0}})
 KEYS.J_LAND = BOTH({RootJoint = {-6, 0, 0}, Neck = {8, 0, 0}, Head = {-6, 0, 0}, ArmL = {6, 0, 0}, LegL = {24, 0, 0},
 	KneeL = {-42, 0, 0}, AnkleL = {18, 0, 0}, Tail1 = {6, 0, 0}})
+-- v1.1 keys (the mockup's dilo_moves_anim.js)
+KEYS.DRAW = BOTH({RootJoint = {6, 0, 0}, Neck = {26, 0, 0}, Head = {-18, 0, 0}, Jaw = {-6, 0, 0}, ArmL = {-12, 0, 0}})
+KEYS.STRIKE = KEYS.C_BITE
+KEYS.CLAMP = plus(KEYS.C_BITE, {Jaw = {2, 0, 0}})
+KEYS.FLARE_COIL = plus(KEYS.C_COIL, {Neck = {6, 0, 0}, Head = {-4, 0, 0}, Jaw = {-10, 0, 0}})
+KEYS.FLARE_COIL2 = plus(KEYS.FLARE_COIL, {Neck = {3, 0, 0}})
+KEYS.THRUST = plus(KEYS.C_DART, {Neck = {-8, 0, 0}})
+KEYS.RECOIL = plus(KEYS.C_DART, {RootJoint = {10, 0, 0}, Neck = {10, 0, 0}})
+KEYS.J_DEEP = plus(KEYS.J_CROUCH, {Neck = {10, 0, 0}, Head = {-6, 0, 0}, KneeL = {-10, 0, 0}, KneeR = {-10, 0, 0}, Tail1 = {6, 0, 0},
+	Tail2 = {6, 0, 0}, Tail3 = {4, 0, 0}})
+KEYS.J_STRETCH = BOTH({RootJoint = {-14, 0, 0}, Neck = {-18, 0, 0}, Head = {6, 0, 0}, Jaw = {-14, 0, 0}, ArmL = {30, 0, 0},
+	LegL = {-40, 0, 0}, KneeL = {-2, 0, 0}, AnkleL = {-30, 0, 0}, Tail1 = {-6, 0, 0}})
+KEYS.J_SOFTLAND = plus(KEYS.J_LAND, {KneeL = {-12, 0, 0}, KneeR = {-12, 0, 0}, Neck = {6, 0, 0}})
 DiloPose.KEYS = KEYS
 local FWD = {C_BWIND = -0.6, C_BITE = 3.4, C_BITE2 = 3.4, C_COIL = -1, C_COIL2 = -1, C_DART = 2, C_DART2 = 2}
+FWD.DRAW, FWD.STRIKE, FWD.CLAMP = -1.2, 4.0, 4.0 -- v1.1
+FWD.FLARE_COIL, FWD.FLARE_COIL2, FWD.THRUST, FWD.RECOIL = -1, -1, 2.8, 0.4
 
 local TRACKS = {
 	bite = {{0, "$from"}, {0.1, "C_BWIND", "io"}, {0.17, "C_BITE", "in2"}, {0.32, "C_BITE2", "out"}, {0.7, "READY", "io"}},
@@ -115,6 +146,21 @@ local TRACKS = {
 	spit = {{0, "$from"}, {0.05, "C_DART", "in2"}, {0.25, "C_DART2", "out"}, {0.8, "READY", "io"}},
 }
 local LAND = {{0, "J_DOWN"}, {0.12, "J_LAND", "out"}, {0.7, "READY", "io"}}
+-- v1.1 tracks
+TRACKS.bite_cs = {{0, "$from"}, {0.1, "DRAW", "io"}, {0.17, "STRIKE", "in2"}, {0.24, "CLAMP", "out"}, {0.42, "CLAMP", "io"},
+	{0.6, "C_BITE2", "io"}, {1.0, "READY", "io"}}
+TRACKS.coil_hf = {{0, "$from"}, {0.27, "FLARE_COIL", "io"}, {0.75, "FLARE_COIL2", "io"}}
+TRACKS.spit_hf = {{0, "$from"}, {0.05, "THRUST", "in2"}, {0.18, "RECOIL", "out"}, {0.9, "READY", "io"}}
+local LAND_SC = {{0, "J_DOWN"}, {0.14, "J_SOFTLAND", "out"}, {0.8, "READY", "io"}}
+local function cobraOn(model) return model:GetAttribute("DiloCobraStrikeEnabled") ~= false end
+local function flareOn(model) return model:GetAttribute("DiloHoodFlareEnabled") ~= false end
+local function springOn(model) return model:GetAttribute("DiloSpringCoilEnabled") ~= false end
+local function trackKey(model, kind)
+	if kind == "bite" and cobraOn(model) then return "bite_cs" end
+	if kind == "coil" and flareOn(model) then return "coil_hf" end
+	if kind == "spit" and flareOn(model) then return "spit_hf" end
+	return kind
+end
 local SPIT_FRILL, LEAP_FRILL_FROM, LEAP_FRILL_AFTER = 0.75, 0.16, 0.32
 local SAC_SPIT_OWN, SAC_SPIT_OTHER = 0.05, 0.12
 
@@ -125,6 +171,7 @@ local EASE = {
 	out = function(u) return 1 - (1 - u) ^ 3 end,
 	["in"] = function(u) return u * u * u end,
 	in2 = function(u) return u * u end,
+	out5 = function(u) return 1 - (1 - u) ^ 5 end, -- v1.1
 	back = function(u) local c = 1.9; return 1 + (c + 1) * (u - 1) ^ 3 + c * (u - 1) ^ 2 end,
 }
 local function rot(v) return CFrame.fromEulerAngles(rad(v[3]), rad(v[2]), rad(v[1]), Enum.RotationOrder.ZYX) end
@@ -318,11 +365,19 @@ function DiloPose.leap(model, jump, serverNow, now, hrp, dt)
 		elseif t >= 0 and t < W then phase, x = "crouch", t
 		elseif t >= W then phase, x = "push", t - W end
 	end
+	local SC = springOn(model) -- v1.1: Spring Coil
+	local CROUCH = SC and "J_DEEP" or "J_CROUCH"
 	if phase == "crouch" then
-		tg = mixP(keyPose("READY"), keyPose("J_CROUCH"), EASE.io(clamp(x / W, 0, 1)))
+		tg = mixP(keyPose("READY"), keyPose(CROUCH), EASE.io(clamp(x / W, 0, 1)))
 		w, lock = EASE.io(clamp(x / max(0.01, W / 2), 0, 1)), 1
 	elseif phase == "push" or phase == "air" then
-		if x < 0.1 then
+		if SC then -- v1.1
+			if x < 0.08 then
+				tg = mixP(keyPose("J_DEEP"), keyPose("J_STRETCH"), EASE.out5(clamp(x / 0.08, 0, 1)))
+			else
+				tg = mixP(keyPose("J_STRETCH"), keyPose("J_AIR"), EASE.io(clamp((x - 0.08) / 0.24, 0, 1)))
+			end
+		elseif x < 0.1 then
 			tg = mixP(keyPose("J_CROUCH"), keyPose("J_PUSH"), EASE.out(clamp(x / 0.1, 0, 1)))
 		else
 			tg = mixP(keyPose("J_PUSH"), keyPose("J_AIR"), EASE.io(clamp((x - 0.1) / 0.2, 0, 1)))
@@ -341,13 +396,13 @@ function DiloPose.leap(model, jump, serverNow, now, hrp, dt)
 			end
 		end
 	elseif phase == "land" then
-		tg = sample(LAND, x, nil)
+		tg = sample(SC and LAND_SC or LAND, x, nil)
 		w = x < 0.7 and 1 or 1 - EASE.io(clamp((x - 0.7) / max(0.01, s.DiloLeapLandTime - 0.7), 0, 1))
 		lock = w
 	end
 	leapS.phase = phase
 	-- frill window: 0.16 s after the start (crouch on) to 0.32 s after the landing
-	leapS.frill = (phase == "crouch" and x >= LEAP_FRILL_FROM) or phase == "push" or phase == "air"
+	leapS.frill = (phase == "crouch" and x >= (SC and 0.1 or LEAP_FRILL_FROM)) or phase == "push" or phase == "air"
 		or (phase == "land" and x < LEAP_FRILL_AFTER)
 	if not tg then
 		leapS.w, leapS.lockW = 0, 0
@@ -461,7 +516,7 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		atk.kind, atk.at = kind, at
 	end
 	if atk.seen == nil then
-		atk.seen = {bite = biteAt, dart = dartAt}
+		atk.seen = {bite = biteAt, dart = dartAt, coil = num(model:GetAttribute("DiloCoilAt"))}
 		atk.lastState = st
 	else
 		if biteAt and biteAt ~= atk.seen.bite then start("bite", biteAt) end
@@ -472,12 +527,22 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 			if st == "coil" and atk.lastState ~= "coil" and atk.lastState ~= "armed" then start("coil", stAt or ctx.serverNow) end
 			if atk.kind == "coil" and not holding then start("release", ctx.serverNow) end
 			atk.lastState = st
+		elseif flareOn(model) then -- v1.1: other clients see the coil (DiloAttackServer 1.4 stamps)
+			local cAt, cEnd = num(model:GetAttribute("DiloCoilAt")), num(model:GetAttribute("DiloCoilEndAt")) or 0
+			if cAt and cAt ~= atk.seen.coil and cAt > cEnd and cAt > (dartAt or 0) then start("coil", cAt) end
+			atk.seen.coil = cAt
+			if atk.kind == "coil" then
+				if cEnd >= atk.at - 1e-3 and not (dartAt and dartAt >= atk.at) then start("release", ctx.serverNow)
+				elseif ctx.serverNow - atk.at > 3 then start("release", ctx.serverNow) end
+			end
+			st = atk.kind == "coil" and (ctx.serverNow - atk.at >= 0.25 and "armed" or "coil") or nil
+			src = atk.kind == "coil" and "server" or src
 		end
 	end
 	local tg
 	local t = atk.at and max(0, ctx.serverNow - atk.at) or 0
 	if atk.kind then
-		local keys = TRACKS[atk.kind]
+		local keys = TRACKS[trackKey(model, atk.kind)] -- v1.1: the picked versions
 		if atk.kind ~= "coil" and t > keys[#keys][1] then
 			atk.kind, atk.at = nil, nil
 		else
@@ -488,6 +553,13 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 					tg.a[n] = {v[1] + sin(ctx.now * 80 + #n) * 1.6, v[2], v[3]}
 				end
 			end
+			if atk.kind == "bite" and cobraOn(model) and t > 0.2 and t < 0.42 then -- v1.1: the clamp's head shake
+				local w = 12 * sin(55 * (t - 0.2)) * (1 - (t - 0.2) / 0.22)
+				local v = tg.a.Neck or {0, 0, 0}
+				tg.a.Neck = {v[1], v[2] + w, v[3]}
+				local h = tg.a.Head or {0, 0, 0}
+				tg.a.Head = {h[1], h[2] + w * 0.6, h[3]}
+			end
 		end
 	end
 	atk.target = tg
@@ -497,7 +569,9 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 	end
 	if not tested then
 		local nm = atk.kind == "coil" and (st == "armed" and "armed" or "coil") or atk.kind or "none"
+		if atk.kind == "coil" and not ctx.isOwner then nm ..= ":server" end -- v1.1
 		show("DiloPoseState", nm)
+		show("DiloPoseSet", "1.1")
 	end
 	show("DiloPoseSource", src)
 	show("DiloLeapPhase", leapS.phase)
@@ -511,12 +585,16 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		local P = frillParts(model)
 		if P then
 			local want = atk.kind == "coil" or (atk.kind == "spit" and t < SPIT_FRILL) or (s.DiloLeapPoseEnabled and leapS.frill)
+				or (atk.kind == "bite" and cobraOn(model) and t >= 0.01 and t < 0.5) -- v1.1: Cobra Strike's hood
 			local ft = model:GetAttribute("DiloFrillTest")
 			if ft == "open" then want = true elseif ft == "fold" then want = false end
 			frill.t += ctx.dt
 			if want ~= frill.open then frill.open, frill.t = want, 0 end
 			local S = frillScale()
-			local swell = s.DiloSacEnabled and (atk.kind == "coil"
+			local flare = flareOn(model) and (atk.kind == "coil" or atk.kind == "spit") -- v1.1: Hood Flare
+			if flare then S *= 1.25 end
+			local coilSwell = atk.kind == "coil" and (not flareOn(model) or (t % 0.24) >= 0.03 and (t % 0.24) < 0.15)
+			local swell = s.DiloSacEnabled and (coilSwell
 				or (atk.kind == "spit" and t < (ctx.isOwner and SAC_SPIT_OWN or SAC_SPIT_OTHER))) and s.DiloSacSwell or 1
 			frill.sac += (swell - frill.sac) * min(1, ctx.dt * 25)
 			if math.abs(frill.sac - swell) < 0.002 then frill.sac = swell end

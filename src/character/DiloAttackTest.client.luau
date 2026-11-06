@@ -1,4 +1,4 @@
--- DiloAttackTest v1.1 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
+-- DiloAttackTest v1.2 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
 -- StarterCharacterScripts). MDA-225, plan docs/plans/DILO_KIT_v1.0.md Task 5 (Kepu 2026-11-03: "C and J1", "Bite on press",
 -- "Soft aim, near-sure hit"); server DiloAttackServer 1.0.
 -- Only while the character's DiloAttackEnabled is true (the dilo). Inputs: CAS action "DinoDiloAttack" (the phone's big
@@ -24,6 +24,12 @@
 --   recharge is cleared (the dart is ready at once) and DiloDartReadyAt = server now is stamped (ArenaTouch 1.16 / AbilityBar
 --   1.27 show the dart pip full from it). Switch: script attribute DiloAttackTestResetEnabled (default true, read at each
 --   stamp; false = 1.0).
+-- v1.2 (plan docs/plans/DILO_MOVES_ANIM_v1.0.md Task 2, MDA-300; Kepu 2026-11-05 22:32 picked Spit Dart "A · Hood Flare": the
+--   other players see the coil too): when the local state first becomes "coil" or "armed" in a hold ->
+--   DinoDiloAttack:FireServer("coil", server time) (DiloAttackServer 1.4 stamps DiloCoilAt); when that hold then goes back
+--   to "idle" without a spit (release not armed, stun / daze / pin / menu) -> FireServer("uncoil", server time). A spit
+--   ends it on the server by itself. Switch: character attribute DiloCoilStampEnabled (default true, read at each change;
+--   false = 1.1). Diagnostic: DiloCoilSent (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -31,6 +37,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.1" -- v1.1 Cold Blood dart reset
+VERSION = "1.2" -- v1.2 coil stamps
 local ACTION = "DinoDiloAttack"
 local ACTION_CLICK = "DinoDiloAttackClick"
 local DEFAULTS = {DiloAttackEnabled = false, DiloMinGap = 0.35, DiloHoldTime = 0.4, DiloDartCooldown = 1.5,
@@ -67,6 +74,25 @@ local function setState(s)
 	state = s
 	char:SetAttribute("DiloLocalState", s)
 	char:SetAttribute("DiloLocalAt", now()) -- after the state
+end
+-- v1.2: tell the server when the coil shows, so other players see it
+local coilSent = false
+local setState11 = setState
+setState = function(s)
+	local before = state
+	setState11(s)
+	if state == before then return end
+	if char:GetAttribute("DiloCoilStampEnabled") == false then coilSent = false return end
+	if (state == "coil" or state == "armed") and not coilSent then
+		coilSent = true
+		fire("coil", now())
+		char:SetAttribute("DiloCoilSent", (char:GetAttribute("DiloCoilSent") or 0) + 1)
+	elseif state == "idle" and coilSent then
+		coilSent = false
+		fire("uncoil", now())
+	elseif state == "spit" or state == "bite" then
+		coilSent = false
+	end
 end
 
 local function blocked()

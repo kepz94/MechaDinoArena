@@ -1,4 +1,4 @@
--- DiloAttackServer v1.3 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
+-- DiloAttackServer v1.4 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
 -- docs/plans/DILO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/dilo_kit_options_v0.1.html attack C
 -- (Kepu 2026-11-03: picks "C and J1"; dart "Weaker dart"; red-team "Bite on press", "Soft aim, near-sure hit").
 -- Remote ReplicatedStorage.DinoDiloAttack (RemoteEvent), client -> server: (kind, stamp). kind "bite" = the ATTACK press
@@ -67,6 +67,15 @@
 --   venom, DiloDartHitRule "deflected", no hit target (DiloFX fizzles); reflect (the star) = the dart's damage (with Cold
 --   Blood) comes off the dilo's DummyHealth instead (KilledWith "deflect", credit to the therizino). Switch: script attribute
 --   DiloAttackDeflectEnabled (default true, read at each arrival; false = 1.2).
+-- v1.4 (plan docs/plans/DILO_MOVES_ANIM_v1.0.md Task 1, MDA-299; Kepu 2026-11-05 22:32 "A for all of them"): stamps for the
+--   animation pass (no rule changes). Kinds "coil" / "uncoil" (sent by DiloAttackTest 1.2 when a hold reaches the coil / ends
+--   without a spit): with a number stamp, the character alive, DiloAttackEnabled and the player not InMenu (else ignored; at
+--   most one of each kind per 0.1 s): character DiloCoilAt = now ("coil") or DiloCoilEndAt = now ("uncoil"); no result, no cooldown. An
+--   accepted "dart" also stamps DiloCoilEndAt = now before the dart's stamps. Toxic Blood: each venom it applies stamps on the
+--   dilo DiloToxicTarget (the model's name) then DiloToxicAt (last). Venom Feast: each heal stamps on the dilo DiloFeastFrom
+--   (the ticking model's name), DiloFeastAmount (healed, 0.1 steps), then DiloFeastAt (last). DiloPose 1.1 / DiloFX 1.2 read
+--   them. Switch: script attribute DiloAttackAnimStampsEnabled (default true, read at each use; false = 1.3). Diagnostic:
+--   script DiloCoilStamps (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -74,6 +83,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local VERSION = "1.1" -- v1.1 dilo stat rows
 VERSION = "1.2" -- v1.2 dart hits where it lands (body rule)
 VERSION = "1.3" -- v1.3 Deflector Claws
+VERSION = "1.4" -- v1.4 animation stamps
 local DEFAULTS = {DiloBiteDamage = 10, DiloBiteDelay = 0.18, DiloBiteReach = 5, DiloBiteCone = 70, DiloHoldTime = 0.4,
 	DiloDartDamage = 6, DiloVenomDps = 2, DiloVenomTime = 3, DiloDartRange = 30, DiloDartSpeed = 60, DiloDartCooldown = 1.5,
 	DiloAssistAngle = 30, DiloAssistMin = 0, DiloAssistMax = 30, DiloMinGap = 0.35}
@@ -103,6 +113,10 @@ local function statsOn() return script:GetAttribute("DiloAttackStatsEnabled") ~=
 local function now() return workspace:GetServerTimeNow() end
 local function count(k, n) script:SetAttribute(k, (script:GetAttribute(k) or 0) + (n or 1)) end
 local function num(m, k, d) return tonumber(m:GetAttribute(k)) or d end
+-- v1.4
+if script:GetAttribute("DiloAttackAnimStampsEnabled") == nil then script:SetAttribute("DiloAttackAnimStampsEnabled", true) end
+script:SetAttribute("DiloCoilStamps", 0)
+local function animStamps() return script:GetAttribute("DiloAttackAnimStampsEnabled") ~= false end
 local function get(char, k) return num(char, k, DEFAULTS[k]) end
 local function flat(v) return Vector3.new(v.X, 0, v.Z) end
 local function rootOf(m) return m:FindFirstChild("HumanoidRootPart") end
@@ -263,7 +277,7 @@ local function diloChar(name)
 	end
 	return nil
 end
-local function feast(byName, dealt)
+local function feast(byName, dealt, fromModel) -- v1.4: + fromModel (the ticking model, for the stamps)
 	local c = diloChar(byName)
 	local frac = c and num(c, "DiloFeastFrac", 0) or 0
 	if not c or frac <= 0 or dealt <= 0 then return end
@@ -274,6 +288,11 @@ local function feast(byName, dealt)
 	hum.Health += add
 	c:SetAttribute("DiloVenomFeastHealed", math.floor(((c:GetAttribute("DiloVenomFeastHealed") or 0) + add) * 10 + 0.5) / 10)
 	count("DiloFeastHeals")
+	if fromModel and animStamps() then -- v1.4
+		c:SetAttribute("DiloFeastFrom", fromModel.Name)
+		c:SetAttribute("DiloFeastAmount", math.floor(add * 10 + 0.5) / 10)
+		c:SetAttribute("DiloFeastAt", now()) -- last: DiloFX motes
+	end
 end
 local venomLoops = setmetatable({}, {__mode = "k"})
 local function venomLoop(m, killerName, killerId)
@@ -290,7 +309,7 @@ local function venomLoop(m, killerName, killerId)
 				if d > 0 then
 					local hpBefore = m:GetAttribute("DummyHealth") -- v1.1: Venom Feast
 					takeHealth(m, d, m:GetAttribute("VenomBy") or killerName, killerId, "dilovenom", t)
-					if statsOn() and typeof(hpBefore) == "number" then feast(m:GetAttribute("VenomBy"), math.min(d, math.max(0, hpBefore))) end
+					if statsOn() and typeof(hpBefore) == "number" then feast(m:GetAttribute("VenomBy"), math.min(d, math.max(0, hpBefore)), m) end
 					m:SetAttribute("VenomTicks", (m:GetAttribute("VenomTicks") or 0) + 1)
 					count("DiloVenomTicks")
 				end
@@ -463,6 +482,16 @@ remote.OnServerEvent:Connect(function(player, kind, stamp)
 	local t = now()
 	local st = track(char)
 	local r
+	if (kind == "coil" or kind == "uncoil") and animStamps() then -- v1.4: animation stamps only
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if typeof(stamp) ~= "number" or stamp ~= stamp or not hum or hum.Health <= 0 or not enabled
+			or char:GetAttribute("DiloAttackEnabled") ~= true or player:GetAttribute("InMenu") == true then return end
+		if t - (st["last_" .. kind] or -1) < 0.1 then return end
+		st["last_" .. kind] = t
+		char:SetAttribute(kind == "coil" and "DiloCoilAt" or "DiloCoilEndAt", t)
+		count("DiloCoilStamps")
+		return
+	end
 	if (kind ~= "bite" and kind ~= "dart") or typeof(stamp) ~= "number" or stamp ~= stamp then
 		r = "badArg"
 	elseif not char:FindFirstChildOfClass("Humanoid") or char:FindFirstChildOfClass("Humanoid").Health <= 0 then
@@ -487,6 +516,7 @@ remote.OnServerEvent:Connect(function(player, kind, stamp)
 		task.delay(delay, resolveBite, player, char, t)
 	else
 		st.lastDart = t
+		if animStamps() then char:SetAttribute("DiloCoilEndAt", t) end -- v1.4
 		fireDart(player, char, t)
 	end
 end)
@@ -536,6 +566,10 @@ local function watchDilo(player, char)
 		local t = now()
 		applyVenom(m, dps * coldVenomMul(char), dur, char, player, t)
 		char:SetAttribute("DiloToxicHits", (char:GetAttribute("DiloToxicHits") or 0) + 1)
+		if animStamps() then -- v1.4
+			char:SetAttribute("DiloToxicTarget", m.Name)
+			char:SetAttribute("DiloToxicAt", t) -- last: DiloFX spines
+		end
 		count("DiloToxicHits")
 	end)
 end

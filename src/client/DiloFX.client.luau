@@ -1,4 +1,4 @@
--- DiloFX v1.0 (Mecha Dino Arena) — the Dilophosaurus' effects on this client (LocalScript, StarterPlayerScripts). MDA-227,
+-- DiloFX v1.2 (Mecha Dino Arena) — the Dilophosaurus' effects on this client (LocalScript, StarterPlayerScripts). MDA-227,
 -- plan docs/plans/DILO_KIT_v1.0.md Task 7; mockup docs/mockups/dilo_kit_options_v0.1.html attack C (Kepu 2026-11-03 "C and
 -- J1"; source tools/dilo_kit_mockup/app.js: spawnShot / splash / droplet / numberPop). Server: DiloAttackServer 1.0.
 -- Runs for every player character with Species "Dilo" (yours and others'). Everything is local (Workspace "DiloFX"),
@@ -32,12 +32,32 @@
 --   see it"; slower = DiloModelData 1.3 DiloDartSpeed 45): the glob is 2.6 x k (was 1.3), its stretch 1.8 x k 1.6 x k behind
 --   (was 0.8 / 0.9), the Trail 1.8 x k wide (was 0.9) and the light range 16 x k, brightness 3 (was 10 / 2). Switch: script
 --   attribute DiloFXBigDart (default true; false = the 1.0 sizes).
+-- v1.2 (plan docs/plans/DILO_MOVES_ANIM_v1.0.md Task 4, MDA-302; Kepu 2026-11-05 22:32 "A for all of them"; red-team: bubbles +
+--   keep the glow, light icy tint, TOXIC BLOOD tag at most every 3 s, motes for everyone). Script switches (default true, read
+--   at each event / frame):
+--   DiloFXStrikeEnabled   Cobra Strike: a bite with targets adds 5 sparks at the point 0.12 s later (the clamp), when the
+--                         dilo's DiloCobraStrikeEnabled is not false.
+--   DiloFXFlareEnabled    Hood Flare: a pulsing green glow ball at the snout (Head_tip) while the dilo is armed (yours:
+--                         DiloLocalState "armed"; others: DiloCoilAt newer than DiloCoilEndAt / DiloDartAt, from 0.25 s to
+--                         3 s after it); each DiloDartAt sprays 9 green droplets out of the snout.
+--   DiloFXBubblesEnabled  Venom: the drips are replaced by green bubbles rising off the body (16 / s, each pops in a small
+--                         flash); each tick adds a burst of 6 round the root. The green glow stays.
+--   DiloFXSpinesEnabled   Toxic Blood (DiloToxicAt, DiloAttackServer 1.4): 9 green spines fly from the dilo's neck at
+--                         DiloToxicTarget (0.32 s) with a green flash; a "TOXIC BLOOD" tag over the dilo at most once per 3 s.
+--   DiloFXMotesEnabled    Venom Feast (DiloFeastAt): a green mote flies from DiloFeastFrom's root to the dilo's snout over
+--                         0.42 s (curved up), then a small flash and "+<DiloFeastAmount>".
+--   DiloFXFrostEnabled    Cold Blood (DiloColdActive): turning true -> an icy flash and an icy ground ring (your own dilo: a
+--                         short icy screen tint); while true -> a light icy Highlight "DiloColdTint" (FillTransparency 0.85,
+--                         no outline) and a breath puff from the snout every 0.45 s; darts spat while true are icy (glob,
+--                         light, trail) and a hit shows "x<DiloColdMul>" (only when > 1).
+--   Diagnostics: script DiloFX12Events (count).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 bigger dart
+VERSION = "1.2" -- v1.2 the animation pass effects
 local HIT_WAIT, VENOM_SCAN, DRIP_RATE, SPLASH_DROPS, MAX_PARTS = 0.6, 0.2, 14, 26, 320
 local ARENA_PLACE_ID = 75433819286625 -- ModeRules 1.0
 local GREEN, GREEN_D, PALE, GLOW = Color3.fromHex("9CF05A"), Color3.fromHex("5CC22A"), Color3.fromHex("D8FF8A"),
@@ -141,6 +161,7 @@ local function pop(model, text, style)
 	l.TextScaled = true
 	l.Text = text
 	l.TextColor3 = style == "bite" and Color3.fromHex("FFE58A") or (style == "dart" and Color3.fromHex("E6FFC2") or Color3.fromHex("9CF05A"))
+	if style == "ice" then l.TextColor3 = Color3.fromHex("CFF4FF") end -- v1.2
 	l.TextStrokeColor3 = style == "bite" and Color3.fromHex("2A1504") or Color3.fromHex("0F2A06")
 	l.TextStrokeTransparency = 0.15
 	l.Parent = bb
@@ -186,6 +207,8 @@ RunService.Heartbeat:Connect(function(dt)
 			f.l.TextTransparency, f.l.TextStrokeTransparency = tr, 0.15 + 0.85 * tr
 		elseif f.kind == "dart" then
 			f.update(f, dt)
+		elseif f.kind == "custom" then -- v1.2
+			f.update(f, dt, u)
 		end
 	end
 	script:SetAttribute("DiloFXParts", nParts)
@@ -310,6 +333,9 @@ local function onHit(char)
 		flash(point, 6 * k, Color3.new(1, 1, 1))
 		sparks(point, 8, k)
 		note("bite")
+		if on("DiloFXStrikeEnabled") and char:GetAttribute("DiloCobraStrikeEnabled") ~= false then -- v1.2: the clamp
+			task.delay(0.12, function() sparks(point, 5, k) end)
+		end
 		local d = math.floor((num(char, "DiloBiteDamage") or 10) + 0.5)
 		for _, n in ipairs(list) do
 			local m = findModel(n)
@@ -337,6 +363,7 @@ Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
 
 -- venom --------------------------------------------------------------------------------------------------------------------
+local BUBBLE -- v1.2: set below (bubble(pos, size, k))
 local venom = {} -- [model] = {hl, acc, ticks, parts}
 local function visibleParts(m)
 	local list = {}
@@ -384,6 +411,11 @@ RunService.Heartbeat:Connect(function(dt)
 					local txt = per == math.floor(per) and tostring(math.floor(per)) or string.format("%.1f", per)
 					for _ = 1, math.min(3, ticks - v.ticks) do pop(m, "-" .. txt, "venom") end
 					note("venomTick")
+					local rr = m:FindFirstChild("HumanoidRootPart")
+					if on("DiloFXBubblesEnabled") and BUBBLE and rr then -- v1.2: a burst per tick
+						local kk = scaleK(m)
+						for _ = 1, 6 do BUBBLE(rr.Position + Vector3.new((math.random() - 0.5) * 4, (math.random() - 0.5) * 3, (math.random() - 0.5) * 4) * kk, 0.8 * kk, kk) end
+					end
 				end
 				v.ticks = ticks
 			end
@@ -398,6 +430,15 @@ RunService.Heartbeat:Connect(function(dt)
 		v.hl.FillTransparency = 0.7 + math.sin(clock * 9) * 0.08
 		v.acc += dt * DRIP_RATE
 		local k = scaleK(m)
+		if on("DiloFXBubblesEnabled") and BUBBLE then -- v1.2: bubbles instead of the drips (the glow stays)
+			v.bacc = (v.bacc or 0) + dt * 16
+			while v.bacc >= 1 do
+				v.bacc -= 1
+				local p = #v.parts > 0 and v.parts[math.random(1, #v.parts)]
+				if p and p.Parent then BUBBLE(p.Position, (0.5 + math.random() * 0.35) * k, k) end
+			end
+			v.acc = 0
+		end
 		while v.acc >= 1 do
 			v.acc -= 1
 			local p = #v.parts > 0 and v.parts[math.random(1, #v.parts)]
@@ -523,3 +564,250 @@ RunService.RenderStepped:Connect(function()
 	ring.CFrame = CFrame.new(r.Position.X, y + 0.15, r.Position.Z)
 	ringStroke.Thickness = math.max(4, 0.8 * k * ringGui.PixelsPerStud)
 end)
+
+-- v1.2: the animation pass effects -------------------------------------------------------------------------------------------
+do
+	for _, k in ipairs({"DiloFXStrikeEnabled", "DiloFXFlareEnabled", "DiloFXBubblesEnabled", "DiloFXSpinesEnabled", "DiloFXMotesEnabled",
+		"DiloFXFrostEnabled"}) do
+		if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+	end
+	local ICE, ICE_W = Color3.fromRGB(191, 232, 255), Color3.fromRGB(234, 246, 255)
+	local function ev() script:SetAttribute("DiloFX12Events", (script:GetAttribute("DiloFX12Events") or 0) + 1) end
+	local function custom(p, life, update, onEnd) return add({kind = "custom", p = p, life = life, update = update, onEnd = onEnd}) end
+	local function snout(c)
+		local t = c:FindFirstChild("Head_tip", true)
+		return t and t:IsA("BasePart") and t or nil
+	end
+	BUBBLE = function(pos, size, k)
+		if full() then return end
+		local p = part(Enum.PartType.Ball, Vector3.one * size * 0.5, PALE, 0.25)
+		p.Position = pos
+		local v = Vector3.new((math.random() - 0.5) * 2, 4 + math.random() * 3, (math.random() - 0.5) * 2) * k
+		custom(p, 0.7 + math.random() * 0.3, function(f, dt, u)
+			f.p.Position += v * dt
+			local sz = size * (0.5 + u * 0.9)
+			f.p.Size = Vector3.new(sz, sz, sz)
+			f.p.Transparency = 0.25 + 0.45 * u
+		end, function() flash(p.Position, size * 1.4, GLOW) end)
+	end
+	local function spray(c)
+		local tip = snout(c)
+		if not tip then return end
+		local k = scaleK(c)
+		local d = tip.CFrame.LookVector
+		for _ = 1, 9 do
+			droplet(tip.Position, (d * (30 + math.random() * 20) + Vector3.new((math.random() - 0.5) * 14, 4 + math.random() * 6, (math.random() - 0.5) * 14)) * k,
+				0.5 * k, 0.45, 40 * k)
+		end
+	end
+	local function spine(from, dir, k)
+		if full() then return end
+		local p = part(Enum.PartType.Block, Vector3.new(0.25, 0.25, 2.4) * k, GREEN, 0)
+		local v = dir.Unit * 60 * k
+		p.CFrame = CFrame.lookAt(from, from + v)
+		custom(p, 0.32, function(f, dt, u)
+			local pos = f.p.Position + v * dt
+			f.p.CFrame = CFrame.lookAt(pos, pos + v)
+			f.p.Transparency = u * u
+		end)
+	end
+	local lastTag = setmetatable({}, {__mode = "k"})
+	local function toxic(c)
+		if not on("DiloFXSpinesEnabled") then return end
+		local neck = c:FindFirstChild("Neck")
+		local nr = neck and neck:FindFirstChild("Root")
+		local m = findModel(c:GetAttribute("DiloToxicTarget"))
+		local mr = m and (m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart)
+		if not (nr and nr:IsA("BasePart")) then return end
+		local k = scaleK(c)
+		flash(nr.Position, 7 * k, GLOW)
+		if mr then
+			for _ = 1, 9 do
+				local d = (mr.Position - nr.Position).Unit + Vector3.new((math.random() - 0.5) * 0.8, (math.random() - 0.2) * 0.6, (math.random() - 0.5) * 0.8)
+				spine(nr.Position, d, k)
+			end
+		end
+		if os.clock() - (lastTag[c] or -1e9) >= 3 then
+			lastTag[c] = os.clock()
+			pop(c, "TOXIC BLOOD", "toxic")
+		end
+		ev()
+	end
+	local function feastMote(c)
+		if not on("DiloFXMotesEnabled") or full() then return end
+		local tip = snout(c)
+		if not tip then return end
+		local m = findModel(c:GetAttribute("DiloFeastFrom"))
+		local mr = m and (m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart)
+		local from = mr and mr.Position or tip.Position
+		local k = scaleK(c)
+		local amt = num(c, "DiloFeastAmount") or 0
+		local p = part(Enum.PartType.Ball, Vector3.one * 0.9 * k, GREEN, 0)
+		p.Position = from
+		local mid = from:Lerp(tip.Position, 0.5) + Vector3.new((math.random() - 0.5) * 6, 8, (math.random() - 0.5) * 6) * k
+		custom(p, 0.42, function(f, dt, u)
+			local to = tip.Parent and tip.Position or from
+			local a, b = from:Lerp(mid, u), mid:Lerp(to, u)
+			f.p.Position = a:Lerp(b, u)
+		end, function()
+			if tip.Parent then
+				flash(tip.Position, 3 * k, GLOW)
+				pop(c, "+" .. (amt == math.floor(amt) and tostring(amt) or string.format("%.1f", amt)), "venom")
+			end
+		end)
+		ev()
+	end
+	local function iceRing(c)
+		local r = c:FindFirstChild("HumanoidRootPart")
+		if not r or full() then return end
+		local k = scaleK(c)
+		local p = part(Enum.PartType.Cylinder, Vector3.new(0.15, 1, 1), ICE, 0.3)
+		local y = r.Position.Y - c:GetExtentsSize().Y * 0.45
+		custom(p, 0.6, function(f, dt, u)
+			local d = (2 + 30 * (1 - (1 - u) ^ 3)) * k
+			f.p.Size = Vector3.new(0.15, d, d)
+			f.p.CFrame = CFrame.new(r.Position.X, y, r.Position.Z) * CFrame.Angles(0, 0, math.pi / 2)
+			f.p.Transparency = 0.3 + 0.7 * u
+		end)
+	end
+	local function screenTint()
+		local pg = me:FindFirstChildOfClass("PlayerGui")
+		if not pg then return end
+		local g = Instance.new("ScreenGui")
+		g.Name = "DiloFrostTint"
+		g.IgnoreGuiInset = true
+		g.ResetOnSpawn = false
+		local fr = Instance.new("Frame")
+		fr.Size = UDim2.fromScale(1, 1)
+		fr.BackgroundColor3 = ICE
+		fr.BackgroundTransparency = 0.7
+		fr.BorderSizePixel = 0
+		fr.Parent = g
+		g.Parent = pg
+		add({kind = "custom", life = 0.45, update = function(f, dt, u) fr.BackgroundTransparency = 0.7 + 0.3 * u end, onEnd = function() g:Destroy() end})
+	end
+	local function coldChanged(c)
+		if not on("DiloFXFrostEnabled") or c:GetAttribute("DiloColdActive") ~= true then return end
+		local r = c:FindFirstChild("HumanoidRootPart")
+		if r then flash(r.Position, 22 * scaleK(c), ICE) end
+		iceRing(c)
+		if c == me.Character then screenTint() end
+		ev()
+	end
+	local function dartAt(c)
+		if script:GetAttribute("DiloFXEnabled") == false then return end
+		if on("DiloFXFlareEnabled") and c:GetAttribute("DiloHoodFlareEnabled") ~= false then spray(c) end
+		if on("DiloFXFrostEnabled") and c:GetAttribute("DiloColdActive") == true then task.defer(function() -- icy dart (the newest glob)
+			for i = #fx, 1, -1 do
+				local f = fx[i]
+				if f.kind == "dart" and f.p and f.p.Parent and f.t < 0.05 then
+					f.p.Color = ICE_W
+					local tr, li = f.p:FindFirstChildOfClass("Trail"), f.p:FindFirstChildOfClass("PointLight")
+					if tr then tr.Color = ColorSequence.new(ICE_W, ICE) end
+					if li then li.Color = ICE end
+					break
+				end
+			end
+		end) end
+	end
+	local function hitAt(c)
+		if not on("DiloFXFrostEnabled") or c:GetAttribute("DiloColdActive") ~= true or c:GetAttribute("DiloHitKind") ~= "dart" then return end
+		local mul = num(c, "DiloColdMul") or 1
+		local names, point = c:GetAttribute("DiloHitTargets"), c:GetAttribute("DiloHitPoint")
+		if mul <= 1 or typeof(names) ~= "string" or names == "" then return end
+		if typeof(point) == "Vector3" then flash(point, 9 * scaleK(c), ICE) end
+		for n in names:gmatch("[^|]+") do
+			local m = findModel(n)
+			if m then pop(m, "×" .. (mul == math.floor(mul) and tostring(mul) or string.format("%.2f", mul):gsub("0+$", "")), "ice") end
+		end
+	end
+	local w12 = setmetatable({}, {__mode = "k"})
+	local function watch12(c)
+		if w12[c] then return end
+		w12[c] = true
+		c:GetAttributeChangedSignal("DiloToxicAt"):Connect(function() toxic(c) end)
+		c:GetAttributeChangedSignal("DiloFeastAt"):Connect(function() feastMote(c) end)
+		c:GetAttributeChangedSignal("DiloColdActive"):Connect(function() coldChanged(c) end)
+		c:GetAttributeChangedSignal("DiloDartAt"):Connect(function() dartAt(c) end)
+		c:GetAttributeChangedSignal("DiloHitAt"):Connect(function() hitAt(c) end)
+	end
+	local function on12(pl)
+		pl.CharacterAdded:Connect(watch12)
+		if pl.Character then watch12(pl.Character) end
+	end
+	Players.PlayerAdded:Connect(on12)
+	for _, pl in ipairs(Players:GetPlayers()) do on12(pl) end
+	-- every frame: the armed snout glow, the cold tint + breath
+	local glows, tints, breath = {}, {}, setmetatable({}, {__mode = "k"})
+	RunService.RenderStepped:Connect(function(dt)
+		local t = now()
+		local alive = {}
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local c = pl.Character
+			if c and c.Parent and c:GetAttribute("Species") == "Dilo" then
+				alive[c] = true
+				local k = scaleK(c)
+				-- armed glow
+				local armed
+				if c == me.Character then armed = c:GetAttribute("DiloLocalState") == "armed"
+				else
+					local cAt = num(c, "DiloCoilAt") or 0
+					local cEnd = math.max(num(c, "DiloCoilEndAt") or 0, num(c, "DiloDartAt") or 0)
+					armed = cAt > cEnd and t - cAt >= 0.25 and t - cAt < 3
+				end
+				armed = armed and on("DiloFXFlareEnabled") and c:GetAttribute("DiloHoodFlareEnabled") ~= false
+				local tip = snout(c)
+				local g = glows[c]
+				if armed and tip then
+					if not g then
+						g = Instance.new("Part")
+						g.Name = "DiloArmedGlow"
+						g.Anchored, g.CanCollide, g.CanQuery, g.CanTouch, g.CastShadow = true, false, false, false, false
+						g.Shape, g.Material, g.Color = Enum.PartType.Ball, Enum.Material.Neon, Color3.fromHex("B8FF70")
+						g.Parent = folder
+						glows[c] = g
+					end
+					local sz = (1.4 + 0.5 * math.sin(os.clock() * 30)) * k
+					g.Size = Vector3.new(sz, sz, sz)
+					g.Transparency = 0.35
+					g.CFrame = CFrame.new(tip.Position + tip.CFrame.LookVector * 0.6 * k)
+				elseif g then
+					g:Destroy()
+					glows[c] = nil
+				end
+				-- cold tint + breath
+				local cold = on("DiloFXFrostEnabled") and c:GetAttribute("DiloColdActive") == true
+				local hl = tints[c]
+				if cold and not hl then
+					hl = Instance.new("Highlight")
+					hl.Name = "DiloColdTint"
+					hl.FillColor, hl.FillTransparency, hl.OutlineTransparency = ICE, 0.85, 1
+					hl.DepthMode = Enum.HighlightDepthMode.Occluded
+					hl.Adornee = c
+					hl.Parent = folder
+					tints[c] = hl
+				elseif not cold and hl then
+					hl:Destroy()
+					tints[c] = nil
+				end
+				if cold and tip then
+					breath[c] = (breath[c] or 0) + dt
+					if breath[c] >= 0.45 and not full() then
+						breath[c] = 0
+						local p = part(Enum.PartType.Ball, Vector3.one * 0.7 * k, ICE_W, 0.4, Enum.Material.SmoothPlastic)
+						local v = (tip.CFrame.LookVector * 4 + Vector3.new(0, 1.5, 0)) * k
+						p.Position = tip.Position
+						custom(p, 0.8, function(f, ddt, u)
+							f.p.Position += v * ddt
+							local s2 = (0.7 + 1.7 * u) * k
+							f.p.Size = Vector3.new(s2, s2, s2)
+							f.p.Transparency = 0.4 + 0.6 * u
+						end)
+					end
+				end
+			end
+		end
+		for c, g in pairs(glows) do if not alive[c] then g:Destroy(); glows[c] = nil end end
+		for c, hl in pairs(tints) do if not alive[c] then hl:Destroy(); tints[c] = nil end end
+	end)
+end
