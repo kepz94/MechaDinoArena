@@ -170,3 +170,15 @@ Accepted risks: the wind-ups add 0.25–0.45 s press-to-effect (on the picked ca
 fire time from the press aim; the anchor / hunker poses play over the run gait (pose only, speed unchanged).
 
 Tickets: MDA-291 (Task 1), MDA-292 (Task 2), MDA-293 (Task 3), MDA-294 (Task 4), MDA-295 (Task 5), MDA-296 (Task 6), MDA-297 (Task 7) — see Dev Hub.
+
+## Build notes (2026-11-05, "Build" 20:49)
+- Installed and verified in Studio (see docs/VERSIONS.md row). Deviations from the task text, all recorded in the headers:
+  - Task 4: the jab's head yaw is −34 / −20 (the mockup's +34 / +20 turned the head away from the +X injector in the rig);
+    Anchor and the smoke hunker carry a body drop (0.52 / 1.12 studs at scale 1) so the bent legs keep the feet planted;
+    adrenaline keys follow the mockup (ROARUP at F + 0.2, back to 0 at F + 0.5).
+  - Task 6: the frill bulbs' charge-up is in HerreraMovesFX 1.6 (the LEDs are FX pieces, not moving groups); ironclaw
+    needed no change (blades already at rest before SlashStartedAt).
+  - Task 7: the Cross arcs live in HerreraMovesFX 1.6 (HerreraMovesFXCrossEnabled), so SlashFX stays 1.0; the strobe's
+    flattened cone is the 1.5 flash's 13 flat rays (no extra cone part).
+- Not seen live yet (parts not slotted on the test player): Strobe bulbs, coil arcs, caltrop tail lift with the chute,
+  the jab plunger; their code paths share the stamps verified above.

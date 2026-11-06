@@ -2853,3 +2853,21 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | HerreraPartsAnimActive | character model (client) | diagnostic: "<id>,..." parts moving now on this client | HerreraPartsAnim 1.0 |
 | HerreraMoves_gooMuzzleEnabled | HerreraMovesServer script | switch (default true; false = goo blob from above the hump as 1.3) | HerreraMovesServer 1.4 |
 | GooMuzzleShots | HerreraMovesServer script | diagnostic: goo blobs started at an HPart_goo "muzzle" piece | HerreraMovesServer 1.4 |
+| HerreraMoves_windupsEnabled | HerreraMovesServer script | switch (default true; false = 1.4 timing, strobe 0.15 s) | HerreraMovesServer 1.5 |
+| HerreraMoves_quillWindup / _smokeWindup / _strobeWindup / _gooWindup / _breakerWindup | HerreraMovesServer script | wind-up seconds (0.35 / 0.25 / 0.40 / 0.35 / 0.30) | HerreraMovesServer 1.5 |
+| HerreraMovesWindups; HerreraMovesWindupCancels | HerreraMovesServer script | diagnostics: wind-ups started; cancelled (death / removal in the wait) | HerreraMovesServer 1.5 |
+| QuillWindupAt, SmokeWindupAt, GooWindupAt, BreakerWindupAt (+ <P>WindupTime, <P>WindupResult "winding" / "fired" / "cancelled"); StrobeWindupTime | character | the press stamp of a move's wind-up (server time); fire stamps (QuillStartedAt, SmokeStartedAt, StrobeAt, GooFiredAt, BreakerAt) come after it | HerreraMovesServer 1.5 |
+| AdrenalineHerreraWindupEnabled; AdrenalineHerreraWindup | AdrenalineServer script | switch (default true; false = 1.5 on a Herrera too); wind-up seconds (0.45) | AdrenalineServer 1.6 |
+| AdrenalineWindupAt, AdrenalineWindupTime, AdrenalineWindupUntil, AdrenalineWindupResult | character (Herrera) | the jab wind-up stamps; a request in the wind-up -> AdrenalineServerResult "windup" | AdrenalineServer 1.6 |
+| SlashCoilEnabled; SlashCoilTime | character | switch (default true; false = SlashTest 1.5); coil seconds (default 0.15) | SlashTest 1.6 |
+| SlashLocalCoilAt, SlashLocalCoilTime; SlashLocalState "coil"; SlashInputResult "coil" / "coilCancelled" | character (owner client) | the coil before the dash | SlashTest 1.6 |
+| SlashPoseCrossRakeEnabled | character model | switch (default true; false = SlashPose 1.1 one-arm rake) | SlashPose 1.2 |
+| QuillAnimPoseEnabled, SmokeAnimPoseEnabled, StrobeAnimPoseEnabled, BreakerAnimPoseEnabled, CaltropAnimPoseEnabled, GooAnimPoseEnabled, AdrenAnimPoseEnabled | character model | per-move pose switches (default true; strobe / goo off = the 1.1 rear-up / recoil) | HerreraMovesPose 1.2 |
+| GlideBankEnabled; GlideBankGain (0.35); GlideBankMax (26) | character model | Banking Glide switch and tuning | HerreraMovesPose 1.2 |
+| GlideCorkscrewEnabled | character model | switch (default true): a drop from a glide rolls one full turn | HerreraMovesPose 1.2 |
+| GlideBankRoll; GlideCorkscrews | character model (client) | diagnostics: bank roll degrees (owner); corkscrews played | HerreraMovesPose 1.2 |
+| HerreraMovesPoseLayerEnabled | character model | switch (default true; false = IdleAnimation 1.44 layers) | IdleAnimation 1.45 |
+| HerreraMovesPoseSet; HerreraMovesPoseLast | character model (client) | diagnostics: pose module version; move pose playing ("" none) | IdleAnimation 1.45 |
+| HerreraPartsAnimWindupEnabled | HerreraPartsAnim script | switch (default true; false = 1.0: parts move at the fire stamps) | HerreraPartsAnim 1.1 |
+| HerreraMovesFXAnchorEnabled, HerreraMovesFXHazeEnabled, HerreraMovesFXChargeEnabled, HerreraMovesFXArcsEnabled, HerreraMovesFXStimEnabled, HerreraMovesFXCrossEnabled | HerreraMovesFX script | per-effect switches (default true) | HerreraMovesFX 1.6 |
+| HerreraMovesFX16Events | HerreraMovesFX script | diagnostic: 1.6 effects played | HerreraMovesFX 1.6 |

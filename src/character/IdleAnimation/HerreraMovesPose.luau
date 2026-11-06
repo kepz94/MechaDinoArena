@@ -32,9 +32,12 @@
 --     caltrops  CaltropDroppedAt D: -> tail lift by D + 0.2, held to D + 0.7, -> 0 by D + 1.3.  switch CaltropAnimPoseEnabled
 --     goo       GooWindupAt / GooFiredAt: -> PULLBACK by F, -> SNAPFWD by F + 0.07 (ease out), -> SNAPFWD + RECOIL by
 --               F + 0.3, -> 0 by F + 0.95; gooKick() (1.1) returns nil while on.  switch GooAnimPoseEnabled
---     adrenaline (Species "Herrera") AdrenalineWindupAt / AdrenalineStartedAt: -> LOOKSHOULDER by W + 0.25, held to
+--     adrenaline (Species "Herrera") AdrenalineWindupAt / AdrenalineStartedAt: -> LOOKSHOULDER (head turned to the +X
+--               injector side: Studio check, the mockup's yaw sign is mirrored in the rig) by W + 0.25, held to
 --               W + 0.3, -> shiver (SHAKE at 20 rad/s) by W + 0.5, -> ROARUP by F + 0.2 (ease out), -> 0 by F + 0.5 (the
 --               mockup's times).                                                switch AdrenAnimPoseEnabled
+--   ANCHOR and LOW + TAIL_UP carry a body drop (_drop, studs at scale 1: 0.52 / 1.12, measured in Studio: the bent legs lifted
+--   the feet that much) applied as a RootJoint lowering x the model scale, blended with the pose.
 --   bank(model, hrp, dt, glideWeight, isOwner) -> RootJoint roll CFrame or nil (Banking Glide): the HRP's flat yaw rate
 --   (smoothed over 0.15 s) x GlideBankGain (0.35) degrees, clamped to +-GlideBankMax (26), x the glide weight. Switch
 --   GlideBankEnabled. Diagnostic (owner): GlideBankRoll.
@@ -137,17 +140,17 @@ local function easeOut(u) u = clamp(u, 0, 1) return 1 - (1 - u) * (1 - u) end
 local Z = {}
 local ANCHOR = {RootJoint = {-8, 0, 0}, LegL = {26, 16, 0}, LegR = {26, -16, 0}, KneeL = {-36, 0, 0}, KneeR = {-36, 0, 0},
 	AnkleL = {12, 0, 0}, AnkleR = {12, 0, 0}, ArmL = {10, 0, -12}, ArmR = {10, 0, 12}, Neck = {-10, 0, 0}, Head = {8, 0, 0},
-	Tail1 = {10, 0, 0}, Tail2 = {6, 0, 0}}
+	Tail1 = {10, 0, 0}, Tail2 = {6, 0, 0}, _drop = {0.52, 0, 0}}
 local LOWTAIL = {RootJoint = {-24, 0, 0}, LegL = {40, 0, 0}, LegR = {40, 0, 0}, KneeL = {-62, 0, 0}, KneeR = {-62, 0, 0},
 	AnkleL = {22, 0, 0}, AnkleR = {22, 0, 0}, ArmL = {30, 0, -10}, ArmR = {30, 0, 10}, Neck = {-12, 0, 0}, Head = {6, 0, 0},
-	Tail1 = {-4, 0, 0}, Tail2 = {-6, 0, 0}, Tail3 = {-8, 0, 0}}
+	Tail1 = {-4, 0, 0}, Tail2 = {-6, 0, 0}, Tail3 = {-8, 0, 0}, _drop = {1.12, 0, 0}}
 local PULLBACK = {RootJoint = {10, 0, 0}, Neck = {28, 0, 0}, Head = {-18, 0, 0}, Jaw = {-10, 0, 0}, ArmL = {10, 0, 0}, ArmR = {10, 0, 0}}
 local SNAPFWD = {RootJoint = {-10, 0, 0}, Neck = {-16, 0, 0}, Head = {8, 0, 0}, Jaw = {-34, 0, 0}, LegL = {16, 0, 0}, KneeL = {-16, 0, 0}}
 local SNAPRECOIL = {RootJoint = {-4, 0, 0}, Neck = {-10, 0, 0}, Head = {8, 0, 0}, Jaw = {-34, 0, 0}, LegL = {16, 0, 0}, KneeL = {-16, 0, 0}}
 local ROARUP = {RootJoint = {14, 0, 0}, Neck = {32, 0, 0}, Head = {10, 0, 0}, Jaw = {-40, 0, 0}, ArmL = {20, 0, -20},
 	ArmR = {20, 0, 20}, Tail1 = {-10, 0, 0}}
 local TAILLIFT = {Tail1 = {-20, 0, 0}, Tail2 = {-14, 0, 0}, Tail3 = {-8, 0, 0}, RootJoint = {-10, 0, 0}}
-local LOOKSHOULDER = {Neck = {-6, 34, 0}, Head = {-14, 20, 0}, ArmL = {16, 0, 0}, RootJoint = {-4, 0, 0}}
+local LOOKSHOULDER = {Neck = {-6, -34, 0}, Head = {-14, -20, 0}, ArmL = {16, 0, 0}, RootJoint = {-4, 0, 0}} -- yaw toward the injector (+X)
 local STOOP = {RootJoint = {-40, 0, 0}, ArmL = {-30, 0, -10}, ArmR = {-30, 0, 10}, LegL = {-60, 0, 0}, LegR = {-60, 0, 0},
 	Neck = {-8, 0, 0}, Head = {10, 0, 0}, Jaw = {-20, 0, 0}, Tail1 = {-10, 0, 0}, Tail2 = {-6, 0, 0}}
 local function shake(t, rate)
@@ -285,7 +288,13 @@ function M.moves(model, serverNow)
 	local sum, last = M.movesAngles(model, serverNow)
 	if not sum then return nil, nil end
 	local out = {}
-	for n, v in pairs(sum) do out[n] = rot3(v[1], v[2], v[3]) end
+	for n, v in pairs(sum) do
+		if n ~= "_drop" then out[n] = rot3(v[1], v[2], v[3]) end
+	end
+	local dr = sum._drop and sum._drop[1] or 0
+	if dr > 1e-3 then -- the body lowered so the bent legs keep the feet on the ground
+		out.RootJoint = CFrame.new(0, -dr * model:GetScale(), 0) * (out.RootJoint or CFrame.identity)
+	end
 	return out, last
 end
 
