@@ -21,7 +21,7 @@ working through the same `HPartRole` names.
   rows change. No HUD change (PC and phone untouched). Saved progress untouched.
 - Versions: HerreraPartsServer 1.4, new HerreraPartsLooksV2 1.0 (generated), new HerreraPartsAnim 1.0, new
   tools/mockup/export_herrera_parts_v2.js 1.0, new tools/tests/HerreraPartsLooksV2.spec 1.0, HerreraMovesServer 1.4,
-  HerreraPartsFX 1.1, mockup v0.2 (export tags only, no visual change). VERSIONS.md + ATTRIBUTES.md rows.
+  HerreraPartsFX 1.1, mockup v0.2 (Lamellar merged + export tags). VERSIONS.md + ATTRIBUTES.md rows.
 - Style kit as Teno v2 (studded shell / plate, SmoothPlastic trim / bone / rubber / hazard, Metal brass / steel / iron /
   bright / copper, Neon glow in the Lab area colour: attack #ff3b30, defense #3d9bff, health #3ddc84, speed #ffc21a,
   engineer #ff8a1a; goo lime #a6e22e, blood #d0202a, adrenaline #46e08a). Massless, no collide / query / touch.
@@ -39,7 +39,7 @@ SlashTest, BoneCrest, AdrenalineServer, every HerreraMovesServer rule except the
 ## File structure
 | File | New / changed | Job |
 |---|---|---|
-| tools/mockup/herrera_parts_v2_looks.js | v0.2 | `group` / `role` / `detail` tags on the 11 picked looks (no visual change) |
+| tools/mockup/herrera_parts_v2_looks.js | v0.2 | Lamellar merged (done), then `group` / `role` / `detail` tags on the 11 picked looks |
 | tools/mockup/export_herrera_parts_v2.js | new | headless export of the picks → src/shared/HerreraPartsLooksV2.luau |
 | src/shared/HerreraPartsLooksV2.luau | new (generated) | mounts, pieces, groups per part id |
 | tools/tests/HerreraPartsLooksV2.spec.luau | new | data checks (Studio Edit) |
@@ -83,7 +83,7 @@ plating 0, siphon 0, strobe 0, breaker 0, caltrops 0, goo 0, hadren 0; Beams exp
 src/shared/HerreraPartsLooksV2.luau, new tools/tests/HerreraPartsLooksV2.spec.luau.
 Acceptance: spec passes in Studio Edit: 11 ids; every anchor exists on HerreraModelData; every group in the map exists with
 its type / axis / amount; every role listed in the map present; rest offsets equal the mockup's at use = 0 to 0.001; piece
-counts reported (Lamellar ≤ 110, others ≤ 60).
+counts reported (every part ≤ 60; Lamellar 50).
 
 ### Task 2 — Build the looks · Mode: Wired
 HerreraPartsServer 1.4: `buildV2` (from TenoPartsServer 1.3, prefix "HPart", attribute HPartRole), films invisible until
@@ -111,5 +111,13 @@ Acceptance: a goo shot leaves the jaw nozzle; the slash trail draws along the bl
 ### Task 5 — Docs, report, wait for "Publish"
 VERSIONS / ATTRIBUTES rows, Dev Hub notes, report Added / Removed / Next. Then the animation-pass mockup.
 
-## Red-team
-(see the report to Kepu; resolved answers are folded in here after his reply)
+## Red-team (resolved, Kepu 2026-11-05)
+1. **Lamellar piece count** (~110 plates, over the Teno 90 cap; phone frame rate): **merge to ~60** — mockup v0.2 merges
+   the plates into 2 columns of wider plates: 50 pieces (44 plates + 6 cords). Task 1 acceptance: Lamellar ≤ 60.
+2. **Sword Wings always on show** (folded blades ~5 studs along the flanks while running, vs today's stub): **keep as the
+   mockup**.
+3. **Goo blob from the mouth** (a HerreraMovesServer change): **from the mouth** (Task 4, switch
+   HerreraMoves_gooMuzzleEnabled; same arc and landing spot).
+4. Accepted without a question: the siphon tubes are Beams across the jaw → neck joints (they stretch with the bite, never
+   detach); the Missile Pods keep the 7 back quills visible (HIDES.quills only for the 1.3 look); one player can't be
+   tested as a second viewer (other clients' view = same script, same stamps).

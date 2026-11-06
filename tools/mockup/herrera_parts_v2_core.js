@@ -4,7 +4,7 @@
 // with lupa). The looks file (herrera_parts_v2_looks.js) adds PARTS, OLD, LOADOUTS.
 const HERR = __HERR__;
 const OLDP = __OLDP__;
-const VERSION = "0.1"; // v0.1: the 11 parts x 3 looks + the Now look of each
+const VERSION = "0.2"; // v0.2: Lamellar merged to ~50 pieces (Kepu red-team pick); v0.1: the 11 parts x 3 looks + the Now look of each
 const $ = id => document.getElementById(id);
 const rad = THREE.MathUtils.degToRad;
 const AREA = {attack: ["ATTACK", "#f05a4f", 0xff3b30], defense: ["DEFENSE", "#5aa0ff", 0x3d9bff], speed: ["SPEED", "#ffd34d", 0xffc21a], eng: ["ENGINEER", "#ff9b2e", 0xff8a1a], health: ["HEALTH", "#5ad17a", 0x3ddc84]};

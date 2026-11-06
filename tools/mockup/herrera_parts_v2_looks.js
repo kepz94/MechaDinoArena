@@ -1,4 +1,4 @@
-// Herrera parts redesign v0.1 — the looks (Kepu 2026-11-05 19:10 "Next it looks good" -> "Herrera looks + animations": the same
+// Herrera parts redesign v0.2 (Lamellar plates merged, ~50 pieces) — the looks (Kepu 2026-11-05 19:10 "Next it looks good" -> "Herrera looks + animations": the same
 // treatment as the Teno / Therizino). 11 parts x 3 looks, each borrowing one real game part, + the Now look (HerreraPartsServer 1.3).
 // Coordinates: rest model space (scale 1 = studs / 2, HRP frame; front = -Z, +X = the camera side = the model's "...L" parts).
 // mountOn(part) frames: local X = along the part toward the head (tail: -X = toward the tip), Y = up, Z = +X (camera side).
@@ -315,13 +315,13 @@ function plateLamellar() {
   hideBody(QUILLS);
   let n0 = 0;
   for (const seg of ["Torso_hips", "Torso_waist", "Torso_chest", "Torso_hump", "Tail1_main", "Tail2_main"]) {
-    const M = mountOn(seg), sz = dino.byName[seg].size, n = Math.max(2, Math.round(sz[0] / 0.26)), top = sz[1] / 2 + 0.04, side = seg.startsWith("Torso") && seg !== "Torso_hump";
-    const cols = [[0, top, -1], [1, top, 0], [0, top, 1]];
+    const M = mountOn(seg), sz = dino.byName[seg].size, n = Math.max(2, Math.round(sz[0] / 0.42)), top = sz[1] / 2 + 0.04, side = seg.startsWith("Torso") && seg !== "Torso_hump";
+    const cols = [[0, top, -1], [1, top, 1]]; // v0.2: merged plates (Kepu 19:4x red-team "Merge to ~60")
     for (let i = 0; i < n; i++) { const x = (i + 0.5) / n * sz[0] - sz[0] / 2, k = n0 + i;
-      for (const [c, y, zc] of cols) at(M, "box", [sz[0] / n + 0.06, 0.05, sz[2] / 3 + 0.05], c ? "plate" : "steel", (u, tt) => Tm(x, y + u * 0.05 * Math.max(0, Math.sin(tt * 8 - k * 0.7)), zc * sz[2] / 3).multiply(RZm(rad(-10))), {role: "plate"});
+      for (const [c, y, zc] of cols) at(M, "box", [sz[0] / n + 0.06, 0.05, sz[2] / 2 + 0.06], c ? "plate" : "steel", (u, tt) => Tm(x, y + u * 0.05 * Math.max(0, Math.sin(tt * 8 - k * 0.7)), zc * sz[2] / 4).multiply(RZm(rad(-10))), {role: "plate"});
       if (side) for (const zs of [1, -1]) at(M, "box", [sz[0] / n + 0.06, sz[1] * 0.4, 0.05], "steel", (u, tt) => Tm(x, sz[1] * 0.18, zs * (sz[2] / 2 + 0.04 + u * 0.04 * Math.max(0, Math.sin(tt * 8 - k * 0.7)))).multiply(RZm(rad(-10))), {role: "plate"}); }
     n0 += n;
-    for (const zc of [-1, 1]) M.box([sz[0], 0.03, 0.03], [0, top + 0.035, zc * sz[2] / 6], null, "glow", D);
+    M.box([sz[0], 0.03, 0.05], [0, top + 0.035, 0], null, "glow", D);
   }
 }
 // B · Riot Shield — Rainbow Six Siege: Montagne's shield that extends to cover him
