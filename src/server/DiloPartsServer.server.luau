@@ -40,11 +40,20 @@
 --   body. Same picked looks, sizes and colours; moving pieces keep their joints (the pivot moves with the group); muzzles move
 --   with their group. Switch: script attribute DiloPartsSeatV2Enabled (default true, read at each build; false = the 1.0
 --   seats, no brackets).
+-- v1.2 (MDA-328 follow-up; Kepu 2026-11-06 13:35 "Build" after the review: the gatling still looked tacked on and its jaw
+--   clipped it, its drum touched the mortar tube, the tail booster was an oversized tube on posts): fit layer FIT[id] = the
+--   final piece list for that part (replaces its 1.0 pieces + 1.1 seat). dgatling: shorter repeater pods on neck brackets
+--   (barrels end at z -3.4, 0.11 outside the jaw edge at x 0.52, instead of running along the jaw to -3.9), the drum on top
+--   of each pod (clear of the mortar tube). djets: a low booster (radius 0.22, was 0.3) lying on a saddle plate on Tail1's top
+--   with side straps, nozzle 0.26, the 3 charge pips on its +X side. Roles kept (body / barrel / drum / nozzle / pip1-3,
+--   muzzles). Switch: script attribute DiloPartsFitV3Enabled (default true, read at each build; false = 1.1).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 seat layer (parts on the body surface + mount brackets)
+VERSION = "1.2" -- v1.2 fit layer (gatling pods, low tail booster)
+if script:GetAttribute("DiloPartsFitV3Enabled") == nil then script:SetAttribute("DiloPartsFitV3Enabled", true) end -- v1.2
 if script:GetAttribute("DiloPartsSeatV2Enabled") == nil then script:SetAttribute("DiloPartsSeatV2Enabled", true) end -- v1.1
 local TORUS_SEGMENTS = 12
 local function hex(h) return Color3.fromRGB(math.floor(h / 65536) % 256, math.floor(h / 256) % 256, h % 256) end
@@ -265,8 +274,38 @@ SEAT.dover = {
 SEAT.dpump = {
 	group = function() return "tank" end,
 	groups = {tank = {move = Vector3.new(0, 0, -0.15)}}}
+-- ---------- v1.2 fit layer (final piece lists, rest model space, scale 1) ----------
+local FIT = {}
+FIT.dgatling = function()
+	local L = {}
+	for _, s in ipairs({1, -1}) do
+		add(L, "Neck", "box", {0.22, 0.34, 0.5}, "dark", {0.47 * s, 1.95, -2.4}, nil, {role = "bracket"})
+		add(L, "Neck", "box", {0.3, 0.32, 0.62}, "gun", {0.72 * s, 1.95, -2.45}, nil, {role = "body"})
+		add(L, "Neck", "box", {0.31, 0.07, 0.42}, "yellow", {0.72 * s, 2.13, -2.5})
+		add(L, "Neck", "cylX", {0.15, 0.2}, "lit", {0.72 * s, 2.25, -2.3}, nil, {role = "drum"})
+		add(L, "Neck", "cylZ", {0.09, 0.6}, "steel", {0.72 * s, 1.95, -3.06}, nil, {anim = "recoil", role = "barrel"})
+		add(L, "Neck", "cylZ", {0.13, 0.14}, "dark", {0.72 * s, 1.95, -3.38}, nil, {anim = "recoil", role = "barrel"})
+		add(L, "Neck", "muzzle", {}, nil, {0.72 * s, 1.95, -3.48})
+	end
+	return L
+end
+FIT.djets = function()
+	local L = {}
+	add(L, "Tail1", "box", {0.96, 0.07, 1.25}, "dark", {0, 0.84, 1.8}, nil, {role = "bracket"})
+	for _, x in ipairs({-0.49, 0.49}) do
+		for _, z in ipairs({1.4, 2.2}) do add(L, "Tail1", "box", {0.06, 0.32, 0.18}, "dark", {x, 0.7, z}, nil, {role = "bracket"}) end
+	end
+	add(L, "Tail1", "cylZ", {0.22, 1.2}, "gun", {0, 1.1, 1.8}, nil, {role = "body"})
+	add(L, "Tail1", "cylZ", {0.23, 0.12}, "yellow", {0, 1.1, 1.35})
+	add(L, "Tail1", "cylZ", {0.26, 0.32}, "dark", {0, 1.1, 2.55}, nil, {role = "nozzle"})
+	for _, x in ipairs({-0.17, 0.17}) do add(L, "Tail1", "box", {0.04, 0.2, 0.3}, "gun", {x, 1.3, 2.3}) end
+	for i = 0, 2 do add(L, "Tail1", "box", {0.04, 0.08, 0.12}, "lit", {0.23, 1.1, 1.55 + i * 0.18}, nil, {role = "pip" .. (i + 1)}) end
+	add(L, "Tail1", "muzzle", {}, nil, {0, 1.1, 2.75})
+	return L
+end
 local function seatOn() return script:GetAttribute("DiloPartsSeatV2Enabled") ~= false end
 local function seated(id)
+	if seatOn() and script:GetAttribute("DiloPartsFitV3Enabled") ~= false and FIT[id] then return FIT[id]() end -- v1.2
 	local list = P[id]()
 	local S = seatOn() and SEAT[id]
 	if not S then return list end

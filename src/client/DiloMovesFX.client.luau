@@ -50,6 +50,12 @@
 --   (from the press, DiloJetsLaunch 1.1); other clients: DiloJetsAt + DiloJetsDelay .. + DiloJetsTime. The 1.1 nozzle heat and
 --   orange sparks are off while this is on; the poison trail mist and the charge lights stay. Switch: script attribute
 --   DiloJetsThrusterFXEnabled (default true, read every frame; false = 1.1). Diagnostic: script DiloJetsFlameOn (count).
+-- v1.3 (MDA-329 follow-up; review 2026-11-06: next to a Raptor Thrusters burst the jets flame was a small glow — measured in
+--   Studio: the Raptor fires 2 nozzles x 150 particles/s of size 3.14 for its whole 1.85 s boost (~550), the dilo 1 nozzle x
+--   150/s of size 2.88 for ~0.37 s (~55)): the jets flame uses the Raptor's measured size (3.14 x scale / 2), a 40-particle
+--   puff at the burst start, rate 900/s while the burst runs and 300/s for a 0.45 s tail after it (the stretch the flame
+--   would still burn on a Thrusters boost), so the trail along the 40-stud dash reads as dense as a Thrusters trail.
+--   Switch: script attribute DiloJetsFlameV2Enabled (default true, read every frame; false = 1.2).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -58,6 +64,8 @@ local Debris = game:GetService("Debris")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 hiss / pump / jets
 VERSION = "1.2" -- v1.2 Spring Jets with the Thrusters' FX
+VERSION = "1.3" -- v1.3 jets flame as dense as a Thrusters trail
+if script:GetAttribute("DiloJetsFlameV2Enabled") == nil then script:SetAttribute("DiloJetsFlameV2Enabled", true) end -- v1.3
 if script:GetAttribute("DiloJetsThrusterFXEnabled") == nil then script:SetAttribute("DiloJetsThrusterFXEnabled", true) end -- v1.2
 for _, k in ipairs({"PartsFXHissEnabled", "PartsFXPumpEnabled", "PartsFXJetsEnabled"}) do -- v1.1
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
@@ -685,8 +693,22 @@ RunService.RenderStepped:Connect(function()
 				end
 			end
 			local kit = (burning or (st.jk and st.jk.on)) and jetsKit(char, st) or st.jk
+			local v2 = script:GetAttribute("DiloJetsFlameV2Enabled") ~= false -- v1.3
 			if kit then
-				if burning then kit.offAt = os.clock() + 0.1 end
+				if v2 then
+					local sz = 3.14 * ((char:IsA("Model") and char:GetScale() or 2) / 2)
+					if kit.v2sz ~= sz then kit.v2sz = sz kit.f.Size = NumberSequence.new(sz, 0.4) end
+					if burning and not kit.wasBurning then kit.f:Emit(40) end
+					kit.f.Rate = burning and 900 or 300
+					if burning then kit.offAt = os.clock() + 0.45 end
+				elseif kit.v2sz then
+					kit.v2sz = nil
+					local sc = char:IsA("Model") and char:GetScale() or 2
+					kit.f.Size = NumberSequence.new(0.6 * sc * 2.4, 0.4)
+					kit.f.Rate = 150
+				end
+				kit.wasBurning = burning
+				if burning and not v2 then kit.offAt = os.clock() + 0.1 end
 				local want = os.clock() < kit.offAt
 				if want ~= kit.on then
 					kit.on = want
