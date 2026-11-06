@@ -161,5 +161,12 @@ Per effect a script switch (default true). All parts non-colliding, non-query, c
 - Slash coil cancelled (stun / pin / death) → no request, no charge spent.
 - Glide with no steering → roll eases to 0; a ground slash → no corkscrew.
 
-## Red-team
-Open — see the questions to Kepu (Q1 slash coil for others, Q2 interrupt rule, Q3 breaker timing, Q4 adrenaline scope).
+## Red-team (resolved, Kepu 2026-11-05)
+1. Slash coil: **others see the dash only** (the coil is local before the request; SlashServer untouched).
+2. Interrupt: **still fires** after a stun in the wind-up; only death / removal cancels (as the strobe today).
+3. Breaker: **free + immune at the press, push at 0.30**.
+4. Adrenaline wind-up: **Herrera only** (Raptor instant, 1.5).
+Accepted risks: the wind-ups add 0.25–0.45 s press-to-effect (on the picked cards); the quill target is picked at the
+fire time from the press aim; the anchor / hunker poses play over the run gait (pose only, speed unchanged).
+
+Tickets: MDA-291 (Task 1), MDA-292 (Task 2), MDA-293 (Task 3), MDA-294 (Task 4), MDA-295 (Task 5), MDA-296 (Task 6), MDA-297 (Task 7) — see Dev Hub.
