@@ -2820,3 +2820,11 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoPartsAnimTarget | workspace model (Studio test hook) | true = animate this model's TPart_ looks | TenoPartsAnim 1.0 |
 | TenoMovesMortarMuzzleEnabled | TenoMovesServer script | switch (default true; false = boulder from Tail3 as 1.8) | TenoMovesServer 1.9 |
 | TenoMovesFXMuzzleEnabled | TenoMovesFX script | switch (default true; false = launch flash at the rock as 1.5) | TenoMovesFX 1.6 |
+| TenoTailClipEnabled; TenoLocalLandEnabled; TenoPoseFixVersion | TenoPoseFix script | switches (default true each); diagnostic | TenoPoseFix 1.0 |
+| TenoTailClipActive | character model (owner client) | true while the tail hitboxes pass through the world | TenoPoseFix 1.0 |
+| TenoLocalLandAt | character model (owner client, not replicated) | server time of the local touchdown after a Teno leap | TenoPoseFix 1.0 |
+| TenoLocalLandEnabled | character model | switch (nil = true; false = tland from the server's TenoLeapLandedAt as 1.9) | TenoPose 1.10 |
+| TenoGrabClampAttrEnabled | character model | switch (nil = true; false = CLAMP_X -2.6 as 1.9) | TenoPose 1.10 |
+| TenoGrabClampX | character model (server) | grab clamp x in the Tail5_main frame: -3.7 with the v2 Pincer Tail, nil otherwise | TenoPartsServer 1.4 |
+| TenoPartsGrabClampEnabled | TenoPartsServer script | switch (default true; false = no TenoGrabClampX) | TenoPartsServer 1.4 |
+| TenoBotMotionClampAttrEnabled | TenoBotMotion script | switch (default true; false = hold point at CLAMP_X -2.6 as 1.1) | TenoBotMotion 1.2 |
