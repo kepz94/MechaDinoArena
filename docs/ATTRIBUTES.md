@@ -2914,3 +2914,7 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | PachyMovesFXEnabled; PachyFXBullEnabled, PachyFXPactEnabled, PachyFXPistonEnabled, PachyFXHookEnabled, PachyFXServoEnabled, PachyFXInkEnabled, PachyFXTetherEnabled, PachyFXLastStandEnabled, PachyFXHeadDownEnabled | PachyMovesFX script (each client) | switches (default true) | PachyMovesFX 1.0 |
 | PachyFXInkRestoreEnabled | PachyMovesFX script | switch (default true): the ink window gets back its own colour + material; false = 1.0 | PachyMovesFX 1.1 |
 | PachyMovesFXVersion; PachyFXEvents; PachyFXParts | PachyMovesFX script | "1.1"; effects played; live parts in Workspace.PachyFX_Local | PachyMovesFX 1.1 |
+
+| Attribute | Where | Value | Set by |
+|---|---|---|---|
+| Publish v483 | Sandbox v483 + Arena | Kepu 2026-11-06 00:20 "Publish": Pachy animation pass (17 scripts, PachyMovesPose 1.1, PachyMovesFX 1.1). Pre-checks: hashes = repo, no ZZ_ / TestPad, only BotServer.BotHidingEnabled / BotFightEnabled off. Arena overwrite: "Successfully published!" first try; Studio still on the Sandbox place. |
