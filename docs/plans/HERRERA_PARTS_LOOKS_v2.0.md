@@ -20,8 +20,7 @@ working through the same `HPartRole` names.
 - Additive, every change behind a switch; off = today's look exactly. No numbers, remotes, buttons, Lab texts or SkillTree
   rows change. No HUD change (PC and phone untouched). Saved progress untouched.
 - Versions: HerreraPartsServer 1.4, new HerreraPartsLooksV2 1.0 (generated), new HerreraPartsAnim 1.0, new
-  tools/mockup/export_herrera_parts_v2.js 1.0, new tools/tests/HerreraPartsLooksV2.spec 1.0, HerreraMovesServer 1.4,
-  HerreraPartsFX 1.1, mockup v0.2 (Lamellar merged + export tags). VERSIONS.md + ATTRIBUTES.md rows.
+  tools/mockup/export_herrera_parts_v2.js 1.0, new tools/tests/HerreraPartsLooksV2.spec 1.0, HerreraMovesServer 1.4, mockup v0.2 (Lamellar merged + export tags). VERSIONS.md + ATTRIBUTES.md rows.
 - Style kit as Teno v2 (studded shell / plate, SmoothPlastic trim / bone / rubber / hazard, Metal brass / steel / iron /
   bright / copper, Neon glow in the Lab area colour: attack #ff3b30, defense #3d9bff, health #3ddc84, speed #ffc21a,
   engineer #ff8a1a; goo lime #a6e22e, blood #d0202a, adrenaline #46e08a). Massless, no collide / query / touch.
@@ -46,7 +45,7 @@ SlashTest, BoneCrest, AdrenalineServer, every HerreraMovesServer rule except the
 | src/server/HerreraPartsServer.server.luau | 1.4 | builds v2 looks + Lab cards from the module (Model "HPart_<id>", same names, HPartRole kept) |
 | src/client/HerreraPartsAnim.client.luau | new | every client: drives the groups from the Herrera stamps |
 | src/server/HerreraMovesServer.server.luau | 1.4 | the goo blob leaves the jaw nozzle ("muzzle") when there is one |
-| src/client/HerreraPartsFX.client.luau | 1.1 | Iron Claw trail attachments on the blade tips (v2) |
+| src/client/HerreraPartsFX.client.luau | (unchanged) | Iron Claw trail attachments on the blade tips are made by HerreraPartsServer 1.4 instead (build note) |
 
 ## Deterministic map (part · look → roles kept → moving groups → driven by → rest)
 | Part · look | Sits on | Roles (existing FX) | Groups (HerreraPartsAnim) | Driven by (server time) | Rest |
@@ -123,3 +122,7 @@ VERSIONS / ATTRIBUTES rows, Dev Hub notes, report Added / Removed / Next. Then t
    tested as a second viewer (other clients' view = same script, same stamps).
 
 Tickets: MDA-287 (Task 1), MDA-288 (Task 2), MDA-289 (Task 3), MDA-290 (Task 4) — see Dev Hub.
+
+## Build notes (2026-11-05)
+- Task 4's trail move was done in HerreraPartsServer 1.4 (it makes the attachments), switch HerreraPartsBladeTrailEnabled; HerreraPartsFX stays 1.0.
+- Tesla coil winding exported as a copper drum + 3 bands (5 parts, not 50); Spit Sacs one cage ring each (mockup v0.2).

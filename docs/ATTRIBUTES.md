@@ -2842,3 +2842,14 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoMortarAnchorPoseEnabled; TenoStompQuakePoseEnabled; TenoBellowShriekPoseEnabled; TenoChallengeAlarmPoseEnabled; TenoShieldPulsePoseEnabled; TenoLeapPistonEnabled | character model | switches (nil = true; false = the 1.11 poses) | TenoPose 1.12 |
 | TenoPartsAnimShriekEnabled | TenoPartsAnim script | switch (default true; false = 1.0 sacs) | TenoPartsAnim 1.1 |
 | TenoMovesFXMortarSmokeEnabled; TenoMovesFXStompCracksEnabled; TenoMovesFXChallengeScanEnabled; TenoMovesFXLeapSteamEnabled; TenoMovesFXShieldPulseEnabled | TenoMovesFX script | switches (default true) | TenoMovesFX 1.7 |
+| HerreraPartsLooksV2Enabled | HerreraPartsServer script | switch (default true, read at each build; false = the 1.3 looks, quill hiding and glide rebuild) | HerreraPartsServer 1.4 |
+| HerreraPartsDetail | HerreraPartsServer script | "full" (default) / "lite" (skips detail pieces) | HerreraPartsServer 1.4 |
+| HerreraPartsBladeTrailEnabled | HerreraPartsServer script | switch (default true; false = Iron Claw trail on the hand as 1.3) | HerreraPartsServer 1.4 |
+| HPartLooks; HPartBuiltScale; HPartBuiltAt; HPartHidesQuills; HPartId | HPart_<id> model | "v2"; scale at build; server time of the build (older stamps ignored); hides the 7 back quills; part id | HerreraPartsServer 1.4 |
+| HPartType; HPartAxis; HPartAmt; HPartRestC0; HPartBuiltScale; HPartPartId | HPartJoint_<group> Weld | moving group: swing / slide / spin, axis, amount (deg / units), rest C0 | HerreraPartsServer 1.4 (read by HerreraPartsAnim 1.0) |
+| HPartGroup; HPartFilm; HPartAlpha; HPartBaseSize; HPartHidden | v2 pieces | group root name; film (shown only while used); rest opacity; size at build; hidden at rest | HerreraPartsServer 1.4 |
+| HerreraPartsAnimEnabled | HerreraPartsAnim script | switch (default true; false = every group at rest) | HerreraPartsAnim 1.0 |
+| HerreraPartsAnimVersion; HerreraPartsAnimJoints | HerreraPartsAnim script | diagnostics: version, joints written last frame | HerreraPartsAnim 1.0 |
+| HerreraPartsAnimActive | character model (client) | diagnostic: "<id>,..." parts moving now on this client | HerreraPartsAnim 1.0 |
+| HerreraMoves_gooMuzzleEnabled | HerreraMovesServer script | switch (default true; false = goo blob from above the hump as 1.3) | HerreraMovesServer 1.4 |
+| GooMuzzleShots | HerreraMovesServer script | diagnostic: goo blobs started at an HPart_goo "muzzle" piece | HerreraMovesServer 1.4 |
