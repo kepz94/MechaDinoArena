@@ -121,3 +121,5 @@ VERSIONS / ATTRIBUTES rows, Dev Hub notes, report Added / Removed / Next. Then t
 4. Accepted without a question: the siphon tubes are Beams across the jaw → neck joints (they stretch with the bite, never
    detach); the Missile Pods keep the 7 back quills visible (HIDES.quills only for the 1.3 look); one player can't be
    tested as a second viewer (other clients' view = same script, same stamps).
+
+Tickets: MDA-287 (Task 1), MDA-288 (Task 2), MDA-289 (Task 3), MDA-290 (Task 4) — see Dev Hub.
