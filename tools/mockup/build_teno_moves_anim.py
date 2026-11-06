@@ -1,4 +1,4 @@
-# build_teno_moves_anim.py v0.1 (Mecha Dino Arena) — builds docs/mockups/teno_moves_anim.html: the Teno move
+# build_teno_moves_anim.py v0.2 (Mecha Dino Arena) — builds docs/mockups/teno_moves_anim.html: the Teno move
 # animations (the animation pass, Kepu 2026-11-05 17:33) on the real model with the 7 picked v2 part looks.
 # Reuses the redesign mockup's core (scene, dino, kit; up to its page section) and looks (up to its list).
 # Usage: python3 tools/mockup/build_teno_moves_anim.py [three.min.js r128]; env ART_OUT=path writes the artifact variant.

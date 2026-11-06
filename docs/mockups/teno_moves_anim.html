@@ -846,7 +846,7 @@ function oldShield() { const M = mountOn("Torso_dorsalShoulder");
 // Bellow-A Shriek Sacs, Challenge-C Alarm Beacon, Leap-A Chicken-Leg Rams, Shield-B Shield Mane), against a raptor.
 // v0.1: Tail Grab & Fling — Now (v461, as the game plays it) vs A Scorpion Strike / B Hammer Spin / C Snap Line, front + behind.
 // Units: the model's (game studs / 2). Front = -Z, the camera side = +X. Tail joints: p+ = down, y+ = toward +X.
-const ANIM_VERSION = "0.1";
+const ANIM_VERSION = "0.2"; // v0.2 (Kepu 18:32 "Next"): the other six moves, Now vs A / B / C each; the grab's A is live (v465)
 const ease = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 const lerp = (a, b, u) => a + (b - a) * u;
 function mix(A, B, u) { const o = {}; for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) { const a = A[k] || [0, 0, 0], b = B[k] || [0, 0, 0]; o[k] = [lerp(a[0], b[0], u), lerp(a[1], b[1], u), lerp(a[2], b[2], u)]; } return o; }
@@ -872,18 +872,26 @@ const rig = dino.g;
 let jaw = 0.3; // 0 = shut, 1 = wide open (the pincer)
 let headOff = null; // C: the pincer head's world offset from its dock (null = docked)
 let HEAD = []; // the pincer head's pieces (C flies them)
+// v0.2: each look moves by its own use value u and its own clock t (the looks' built-in loops: cannon charge, rear-up, leap)
+const LU = {mortar: {u: 0, t: null}, stomp: {u: 0, t: null}, bellow: {u: 0, t: null}, chal: {u: 0, t: null}, leap: {u: 0, t: null}, shield: {u: 0, t: null}};
+function lookU(key, u, lt) { LU[key].u = u; LU[key].t = lt === undefined ? null : lt; }
+function wrapLook(list, key) {
+  const T = tt => LU[key].t === null ? tt : LU[key].t;
+  for (const e of list) {
+    if (e.place) { const o = e.place; e.place = (u, tt) => o(LU[key].u, T(tt)); }
+    if (e.anim) { const o = e.anim; e.anim = (u, tt) => o(LU[key].u, T(tt)); }
+    if (e.show) { const o = e.show; e.show = (u, tt) => o(LU[key].u, T(tt)); }
+  }
+}
 function buildRig() {
   clearEquip();
   GLOW = AREA.attack[2]; const g0 = equip.length; grabPincer();
   const grab = equip.slice(g0);
   for (const e of grab) if (e.role === "pincer" && e.place) { const o = e.place; e.place = () => o(jaw, Math.PI / 6); } // sin(3t) = 1: open = 8 + 38 x jaw deg
   HEAD = grab.filter(e => e.part === "Tail5_main" && (e.role === "pincer" || e.role === "tip" || e.key === "iron" || e.key === "brass"));
-  GLOW = AREA.attack[2]; mortarCannon();
-  GLOW = AREA.defense[2]; stompQuake();
-  GLOW = AREA.health[2]; bellowSacs();
-  GLOW = AREA.defense[2]; challengeBeacon();
-  GLOW = AREA.speed[2]; leapRams();
-  GLOW = AREA.defense[2]; shieldMane();
+  const look = (fn, key, area) => { GLOW = AREA[area][2]; const n0 = equip.length; fn(); wrapLook(equip.slice(n0), key); };
+  look(mortarCannon, "mortar", "attack"); look(stompQuake, "stomp", "defense"); look(bellowSacs, "bellow", "health");
+  look(challengeBeacon, "chal", "defense"); look(leapRams, "leap", "speed"); look(shieldMane, "shield", "defense");
   for (const e of equip) { scene.remove(e.mesh); rig.add(e.mesh); }
   for (const c of cables) for (const m of c.segs) { scene.remove(m); rig.add(m); }
 }
@@ -993,10 +1001,11 @@ function makeRaptor() {
   return R;
 }
 const raptor = makeRaptor();
+const raptor2 = makeRaptor(), raptor3 = makeRaptor(); // v0.2
 const GRIP_Y = 2.5; // torso centre above the feet
 // o: {pos (feet), yaw, run, runAmt, flash, held (torso centre world pos when held), spin [x, y, z] (radians, about the torso), lie (0..1)}
 function raptorPose(o) {
-  const R = raptor, u = R.userData, ph = o.run || 0, a = o.runAmt === undefined ? 1 : o.runAmt;
+  const R = o.R || raptor, u = R.userData, ph = o.run || 0, a = o.runAmt === undefined ? 1 : o.runAmt;
   R.visible = o.visible !== false; if (!R.visible) return;
   if (o.held) R.position.copy(o.held).add(new THREE.Vector3(0, -GRIP_Y, 0)); else R.position.copy(o.pos);
   R.rotation.set(0, o.yaw || 0, 0);
@@ -1004,7 +1013,8 @@ function raptorPose(o) {
   u.body.position.y = GRIP_Y - (o.lie || 0) * 1.8;
   u.legs.forEach((l, i) => { const s = Math.sin(ph + i * Math.PI); l.L.rotation.x = s * 0.7 * a; l.sh.rotation.x = -Math.max(0, Math.cos(ph + i * Math.PI)) * 0.9 * a; });
   u.neck.rotation.x = 0.5 + (o.held ? Math.sin(ph * 0.7) * 0.4 : 0);
-  u.mat.color.setHex(o.flash ? 0xffffff : u.base);
+  u.mat.color.setHex(o.flash ? 0xffffff : (o.color || u.base));
+  u.neck.rotation.y = o.look || 0;
 }
 const grabPoint = p => p.clone().add(new THREE.Vector3(0, GRIP_Y + 0.15, 0)); // the jaws close on the torso
 // a thrown body: from p0 (torso centre) to the landing spot (feet) over T s with a peak; returns {held, spin, done}
@@ -1022,7 +1032,7 @@ const SPIN_LEAN = {RootJoint: [-6, 0, 8], LegL: [16, 0, -6], LegR: [16, 0, 6], K
 const HIPS = () => new THREE.Vector3(0, 3.42, 0.25);
 
 // ---------- the scene for one frame ----------
-let side = "front", variant = "now";
+let side = "front", variant = "now"; // (v0.2: "now" opens the Mortar)
 const FRONT_Z = -11, BACK_Z = 23; // where the raptor stands (feet): at the edge of TenoGrabRange (12 studs = 6 units from Head_cranium / the tail tip)
 const LAND_DIST = 22.5; // 45 studs (TenoGrabFling)
 const st = {}; // per-frame scratch shared with the camera / caption
@@ -1207,25 +1217,342 @@ V.C = {name: "C · Snap Line", sub: "the pincer fires out on a chain", len: 3.8,
     st.reach = clampOf(A).distanceTo(target);
   }};
 
+
+// ============================== v0.2: the other six moves ==============================
+const AT = (tt, keys) => { // keyframes [[t, pose (object or fn(tt)), ease], ...] -> pose
+  const P = k => typeof k[1] === "function" ? k[1](tt) : k[1];
+  if (tt <= keys[0][0]) return P(keys[0]);
+  for (let i = 1; i < keys.length; i++) if (tt < keys[i][0]) return mix(P(keys[i - 1]), P(keys[i]), (keys[i][2] || ease)(seg(tt, keys[i - 1][0], keys[i][0])));
+  return P(keys[keys.length - 1]);
+};
+const plus = (...ps) => { const o = {}; for (const q of ps) for (const k in q) { const a = o[k] || [0, 0, 0]; o[k] = [a[0] + q[k][0], a[1] + q[k][1], a[2] + q[k][2]]; } return o; };
+const sm2 = u => { u = clamp01(u); return u * u * (3 - 2 * u); };
+// the game's poses (TenoPose 1.11)
+const G_REAR = {RootJoint: [40, 0, 0], LegL: [-40, 0, 0], LegR: [-40, 0, 0], KneeL: [-30, 0, 0], KneeR: [-30, 0, 0], ArmL: [70, 0, 0], ArmR: [60, 0, 0], Neck: [12, 0, 0], Head: [-6, 0, 0], Jaw: [-20, 0, 0], Tail1: [-30, 0, 0], Tail5: [-12, 0, 0]};
+const G_STOMP2 = {RootJoint: [-14, 0, 0], LegL: [14, 0, 0], LegR: [14, 0, 0], ArmL: [-12, 0, 0], ArmR: [-12, 0, 0], Neck: [-16, 0, 0], Head: [-12, 0, 0], Jaw: [-8, 0, 0], Tail1: [14, 0, 0]};
+const G_BELLOW = {Neck: [34, 0, 0], Head: [18, 0, 0], Jaw: [-38, 0, 0], RootJoint: [6, 0, 0], LegL: [-6, 0, 0], LegR: [-6, 0, 0], Tail1: [-10, 0, 0]};
+const G_BRACE = {RootJoint: [10, 0, 0], LegL: [-10, 0, 0], LegR: [-10, 0, 0], ArmL: [35, 0, 0], ArmR: [35, 0, 0], Neck: [16, 0, 0], Head: [-8, 0, 0], Jaw: [-16, 0, 0], Tail1: [-6, 0, 0]};
+const G_COIL = {RootJoint: [-8, 0, 0], LegL: [20, 0, 0], LegR: [20, 0, 0], KneeL: [-28, 0, 0], KneeR: [-28, 0, 0], AnkleL: [8, 0, 0], AnkleR: [8, 0, 0], ArmL: [-12, 0, 0], ArmR: [-12, 0, 0], Neck: [-10, 0, 0], Head: [6, 0, 0], Tail1: [28, 0, 0], Tail2: [22, 0, 0], Tail3: [20, 0, 0], Tail4: [18, 0, 0], Tail5: [16, 0, 0]};
+const G_WHIP = {RootJoint: [10, 0, 0], LegL: [-10, 0, 0], LegR: [-10, 0, 0], ArmL: [20, 0, 0], ArmR: [20, 0, 0], Neck: [12, 0, 0], Head: [-8, 0, 0], Jaw: [-14, 0, 0], Tail1: [-110, 0, 0], Tail2: [-70, 0, 0], Tail3: [-55, 0, 0], Tail4: [-40, 0, 0], Tail5: [-30, 0, 0]};
+const G_JREAR = {RootJoint: [40, 0, 0], LegL: [-40, 0, 0], LegR: [-40, 0, 0], KneeL: [-30, 0, 0], KneeR: [-30, 0, 0], ArmL: [60, 0, 0], ArmR: [60, 0, 0], Neck: [12, 0, 0], Tail1: [-30, 0, 0], Tail5: [-12, 0, 0]};
+const G_JAIR = {RootJoint: [10, 0, 0], LegL: [-30, 0, 0], LegR: [-30, 0, 0], KneeL: [-20, 0, 0], KneeR: [-20, 0, 0], ArmL: [55, 0, 0], ArmR: [55, 0, 0], Neck: [12, 0, 0], Head: [-6, 0, 0], Jaw: [-18, 0, 0], Tail1: [-16, 0, 0], Tail2: [-10, 0, 0], Tail3: [-8, 0, 0], Tail4: [-6, 0, 0], Tail5: [-6, 0, 0]};
+const G_JLAND = {RootJoint: [-10, 0, 0], LegL: [24, 0, 0], LegR: [24, 0, 0], KneeL: [-30, 0, 0], KneeR: [-30, 0, 0], ArmL: [-20, 0, 0], ArmR: [-20, 0, 0], Neck: [-14, 0, 0], Head: [-8, 0, 0], Tail1: [10, 0, 0], Tail2: [8, 0, 0], Tail3: [6, 0, 0]};
+const G_SLAM2 = {RootJoint: [6, 0, 0], LegL: [-6, 0, 0], LegR: [-6, 0, 0], Neck: [-4, 0, 0], Tail1: [26, 0, 0], Tail2: [14, 0, 0], Tail3: [10, 0, 0], Tail4: [4, 0, 0], Tail5: [-4, 0, 0]};
+// new poses
+const ANCHOR = {RootJoint: [-6, 0, 0], LegL: [26, 18, 0], LegR: [26, -18, 0], KneeL: [-34, 0, 0], KneeR: [-34, 0, 0], AnkleL: [10, 0, 0], AnkleR: [10, 0, 0], ArmL: [-10, 0, 0], ArmR: [-10, 0, 0], Neck: [-8, 0, 0], Tail1: [22, 0, 0], Tail2: [12, 0, 0], Tail3: [4, 0, 0], Tail4: [-2, 0, 0], Tail5: [-4, 0, 0]};
+const KICK = {RootJoint: [9, 0, 0], Neck: [8, 0, 0], Head: [-6, 0, 0], ArmL: [10, 0, 0], ArmR: [10, 0, 0]};
+const REAR_HI = {RootJoint: [52, 0, 0], LegL: [-50, 0, 0], LegR: [-50, 0, 0], KneeL: [-26, 0, 0], KneeR: [-26, 0, 0], ArmL: [85, 0, 0], ArmR: [80, 0, 0], Neck: [6, 0, 0], Head: [-10, 0, 0], Jaw: [-28, 0, 0], Tail1: [-36, 0, 0], Tail2: [6, 0, 0], Tail5: [-12, 0, 0]};
+const SMASH = {RootJoint: [-18, 0, 0], LegL: [18, 0, 0], LegR: [18, 0, 0], KneeL: [-12, 0, 0], KneeR: [-12, 0, 0], ArmL: [-16, 0, 0], ArmR: [-16, 0, 0], Neck: [-20, 0, 0], Head: [-14, 0, 0], Jaw: [-12, 0, 0], Tail1: [18, 0, 0]};
+const TUCK = {RootJoint: [4, 0, 0], LegL: [40, 0, 0], LegR: [40, 0, 0], KneeL: [-70, 0, 0], KneeR: [-70, 0, 0], AnkleL: [30, 0, 0], AnkleR: [30, 0, 0], ArmL: [40, 0, 0], ArmR: [40, 0, 0], Neck: [6, 0, 0], Tail1: [-10, 0, 0]};
+const SQUAT = {RootJoint: [-6, 0, 0], LegL: [36, 0, 0], LegR: [36, 0, 0], KneeL: [-62, 0, 0], KneeR: [-62, 0, 0], AnkleL: [26, 0, 0], AnkleR: [26, 0, 0], ArmL: [-14, 0, 0], ArmR: [-14, 0, 0], Neck: [-8, 0, 0], Tail1: [10, 0, 0]};
+const SLAP_L = {RootJoint: [10, 0, -4], ArmL: [60, 0, 0], Neck: [6, 0, 0], LegL: [-6, 0, 0], LegR: [-6, 0, 0]}, SLAP_R = {RootJoint: [10, 0, 4], ArmR: [60, 0, 0], Neck: [6, 0, 0], LegL: [-6, 0, 0], LegR: [-6, 0, 0]};
+const SLAP_DN = {RootJoint: [-6, 0, 0], ArmL: [-14, 0, 0], ArmR: [-14, 0, 0], Neck: [-8, 0, 0]};
+const INHALE = {RootJoint: [8, 0, 0], Neck: [24, 0, 0], Head: [26, 0, 0], Jaw: [-6, 0, 0], ArmL: [10, 0, 0], ArmR: [10, 0, 0], Tail1: [-8, 0, 0]};
+const SHRIEK = {RootJoint: [-6, 0, 0], Neck: [-4, 0, 0], Head: [-6, 0, 0], Jaw: [-46, 0, 0], LegL: [10, 0, 0], LegR: [-4, 0, 0], KneeL: [-12, 0, 0], Tail1: [6, 0, 0]};
+const HOWL = {RootJoint: [12, 0, 0], Neck: [56, 0, 0], Head: [30, 0, 0], Jaw: [-40, 0, 0], LegL: [-8, 0, 0], LegR: [-8, 0, 0], Tail1: [-12, 0, 0]};
+const DISPLAY = {RootJoint: [22, 0, 0], LegL: [-20, 0, 0], LegR: [-20, 0, 0], KneeL: [-10, 0, 0], KneeR: [-10, 0, 0], ArmL: [60, 30, 40], ArmR: [60, -30, -40], Neck: [20, 0, 0], Head: [-4, 0, 0], Jaw: [-34, 0, 0], Tail1: [-18, 0, 0]};
+const HEADLOW = {RootJoint: [-8, 0, 0], Neck: [-20, 0, 0], Head: [-8, 0, 0], LegL: [8, 0, 0], LegR: [8, 0, 0], KneeL: [-8, 0, 0], KneeR: [-8, 0, 0]};
+const PAW = {ArmR: [40, 0, 0]}, PAW_DN = {ArmR: [-24, 0, 0]};
+const LIGER = {RootJoint: [-10, 0, 0], Neck: [-18, 0, 0], Head: [-10, 0, 0], ArmL: [10, 16, 10], ArmR: [10, -16, -10], LegL: [16, 10, 0], LegR: [16, -10, 0], KneeL: [-18, 0, 0], KneeR: [-18, 0, 0], Tail1: [6, 0, 0]};
+const HUNKER = {RootJoint: [-6, 0, 0], LegL: [40, 0, 0], LegR: [40, 0, 0], KneeL: [-62, 0, 0], KneeR: [-62, 0, 0], AnkleL: [22, 0, 0], AnkleR: [22, 0, 0], ArmL: [-30, 0, 0], ArmR: [-30, 0, 0], Neck: [-14, 0, 0], Head: [-6, 0, 0], Tail1: [14, 0, 0], Tail2: [6, 0, 0]};
+const PUSH = {RootJoint: [-4, 0, 0], Neck: [-6, 0, 0], ArmL: [30, 0, 0], ArmR: [30, 0, 0], LegL: [24, 0, 0], LegR: [-10, 0, 0], KneeL: [-24, 0, 0]};
+const POUNCE = {RootJoint: [-16, 0, 0], LegL: [-40, 0, 0], LegR: [-40, 0, 0], KneeL: [-10, 0, 0], KneeR: [-10, 0, 0], AnkleL: [-20, 0, 0], AnkleR: [-20, 0, 0], ArmL: [70, 0, 0], ArmR: [70, 0, 0], Neck: [-6, 0, 0], Jaw: [-20, 0, 0], Tail1: [-6, 0, 0], Tail2: [-4, 0, 0]};
+const LOWCROUCH = {RootJoint: [-14, 0, 0], LegL: [40, 0, 0], LegR: [40, 0, 0], KneeL: [-66, 0, 0], KneeR: [-66, 0, 0], AnkleL: [24, 0, 0], AnkleR: [24, 0, 0], ArmL: [-6, 0, 0], ArmR: [-6, 0, 0], Neck: [-14, 0, 0], Tail1: [6, 0, 0]};
+const FRONTLAND = {RootJoint: [-22, 0, 0], ArmL: [-30, 0, 0], ArmR: [-30, 0, 0], Neck: [-18, 0, 0], LegL: [-10, 0, 0], LegR: [-10, 0, 0], Tail1: [-20, 0, 0], Tail2: [-10, 0, 0]};
+const TAILPRESS = {RootJoint: [14, 0, 0], LegL: [-8, 0, 0], LegR: [-8, 0, 0], KneeL: [-30, 0, 0], KneeR: [-30, 0, 0], Tail1: [30, 0, 0], Tail2: [26, 0, 0], Tail3: [18, 0, 0], Tail4: [10, 0, 0], ArmL: [30, 0, 0], ArmR: [30, 0, 0]};
+const TAILFLICK = {RootJoint: [20, 0, 0], LegL: [-30, 0, 0], LegR: [-30, 0, 0], Tail1: [-30, 0, 0], Tail2: [-20, 0, 0], Tail3: [-14, 0, 0], ArmL: [50, 0, 0], ArmR: [50, 0, 0], Neck: [10, 0, 0]};
+const HINDLAND = {RootJoint: [16, 0, 0], LegL: [20, 0, 0], LegR: [20, 0, 0], KneeL: [-40, 0, 0], KneeR: [-40, 0, 0], ArmL: [40, 0, 0], ArmR: [40, 0, 0], Neck: [6, 0, 0], Tail1: [20, 0, 0], Tail2: [10, 0, 0]};
+
+// ---------- v0.2 FX ----------
+const ROCK = mk(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({color: 0x8a8478, map: studTex}));
+const CASING = mk(new THREE.CylinderGeometry(0.3, 0.3, 0.9, 10), new THREE.MeshPhongMaterial({color: 0xc9a24a, specular: 0xaaaaaa, shininess: 60}));
+const SMOKES = []; for (let i = 0; i < 10; i++) SMOKES.push(mk(BALL, new THREE.MeshLambertMaterial({color: 0xb9bdc4, transparent: true, opacity: 0.6, depthWrite: false})));
+function smoke(pos, dir, k, n, spread) { for (let i = 0; i < (n || 6); i++) { const m = SMOKES[i]; if (k <= 0 || k >= 1) continue; m.visible = true; m.position.copy(pos).addScaledVector(dir, k * (1.5 + i * 0.5)).add(new THREE.Vector3(((i * 7) % 5 - 2) * 0.3 * (spread || 1) * k, k * (0.5 + (i % 3) * 0.3), ((i * 3) % 5 - 2) * 0.3 * (spread || 1) * k)); m.scale.setScalar(0.6 + k * 1.8); m.material.opacity = 0.6 * (1 - k); } }
+const GRINGS = [0, 1, 2].map(() => { const m = mk(new THREE.RingGeometry(0.9, 1, 64), new THREE.MeshBasicMaterial({color: 0x3d9bff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false})); m.rotation.x = -Math.PI / 2; return m; });
+function gring(i, pos, k, R, color) { const m = GRINGS[i]; m.visible = k > 0 && k < 1; if (!m.visible) return; m.position.copy(pos).setY(0.12); m.scale.setScalar(0.5 + R * easeOut(k)); m.material.color.setHex(color || 0x3d9bff); m.material.opacity = 0.9 * (1 - k * k); }
+const CRACK2 = []; for (let i = 0; i < 10; i++) CRACK2.push(mk(BOX, new THREE.MeshBasicMaterial({color: 0x3d9bff})));
+function cracksFwd(from, k, len, spreadDeg) { CRACK2.forEach((m, i) => { if (k <= 0 || k >= 1.4) { m.visible = false; return; } const a = rad(-spreadDeg / 2 + spreadDeg * i / 9), L = len * Math.min(1, k) * (0.6 + 0.4 * ((i * 7) % 5) / 4); m.visible = true; m.position.set(from.x + Math.sin(a) * L / 2, 0.05, from.z - Math.cos(a) * L / 2); m.rotation.set(0, -a, 0); m.scale.set(0.18, 0.05, L); m.material.opacity = 1; }); }
+const CONE2 = mk(new THREE.CircleGeometry(1, 40, Math.PI / 2 - 0.35, 0.7), new THREE.MeshBasicMaterial({color: 0x3d9bff, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false})); CONE2.rotation.x = -Math.PI / 2;
+const MARKS = [0, 1, 2].map(() => label("!", "#ffd34d"));
+const HEALS = [0, 1].map(() => label("+HEAL", "#7dffb0", 384));
+const DARTS2 = [0, 1, 2].map(() => mk(BOX, new THREE.MeshBasicMaterial({color: 0xff5a4e})));
+const SPARK2 = []; for (let i = 0; i < 16; i++) SPARK2.push(mk(BOX, new THREE.MeshBasicMaterial({color: 0xcda0ff, transparent: true, opacity: 1, depthWrite: false})));
+function sparks2(n0, pos, k) { for (let j = 0; j < 8; j++) { const m = SPARK2[n0 * 8 + j]; if (k <= 0 || k >= 1) continue; const a = j / 8 * Math.PI * 2; const o = pos.clone().add(new THREE.Vector3(Math.cos(a) * k * 2, Math.sin(a * 1.3) * k * 1.4, Math.sin(a) * k * 0.6)); setSeg(m, o.clone().lerp(pos, 0.5), o, 0.1); m.material.opacity = 1 - k; } }
+const STEAMS = []; for (let i = 0; i < 8; i++) STEAMS.push(mk(BALL, new THREE.MeshLambertMaterial({color: 0xf2f4f8, transparent: true, opacity: 0.6, depthWrite: false})));
+function steamAt(i0, pos, k, up) { for (let i = 0; i < 4; i++) { const m = STEAMS[i0 * 4 + i]; if (k <= 0 || k >= 1) continue; m.visible = true; m.position.copy(pos).add(new THREE.Vector3(((i * 5) % 3 - 1) * 0.4, k * (up || 2.5) * (0.6 + i * 0.2), ((i * 3) % 3 - 1) * 0.4)); m.scale.setScalar(0.3 + k * 1.1); m.material.opacity = 0.6 * (1 - k); } }
+const GDOME = mk(new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({color: 0x3ddc84, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false}));
+const PRING = mk(new THREE.TorusGeometry(1, 0.08, 6, 48), new THREE.MeshBasicMaterial({color: 0xcda0ff, transparent: true, opacity: 0.9, depthWrite: false}));
+function pieceAt(role) { const e = equip.find(x => x.role === role); if (!e) return new THREE.Vector3(); rig.updateMatrixWorld(true); return new THREE.Vector3().setFromMatrixPosition(e.mesh.matrix).applyMatrix4(rig.matrixWorld); }
+function arcPos(a, b, k, peak) { const p = lerpV(a, b, clamp01(k)); p.y += Math.sin(clamp01(k) * Math.PI) * peak; return p; }
+const ENEMY = 0x9b2c22, ALLY = 0x2f8f6a;
+
+// ---------- Boulder Mortar (Back Cannon) ----------
+const MORT_T = new THREE.Vector3(1.5, 0, -30); // the target raptor (60 studs ahead)
+function mortarScene(tt, tFire, tHit, peak, from) {
+  const R = raptor; const hitK = tt - tHit;
+  if (tt < tHit) raptorPose({pos: MORT_T, yaw: Math.PI, run: tt * 3, runAmt: 0.15, color: ENEMY});
+  else raptorPose({pos: MORT_T, yaw: Math.PI, lie: hitK < 1.2 ? 1 : 1 - clamp01((hitK - 1.2) / 0.4), flash: hitK < 0.08, color: ENEMY});
+  if (tt >= tFire && tt < tHit) { if (!st.rockFrom) st.rockFrom = from(); ROCK.visible = true; ROCK.position.copy(arcPos(st.rockFrom, MORT_T.clone().setY(1.5), seg(tt, tFire, tHit), peak)); ROCK.rotation.set(tt * 7, tt * 5, 0); ROCK.scale.setScalar(1.1); }
+  if (tt < tFire) st.rockFrom = null;
+  if (hitK > 0) { puffs(MORT_T, clamp01(hitK / 0.7), 4, 12); burst(MORT_T.clone().setY(0.2), clamp01(hitK / 0.45), 0xff8a1a, 6, true); pop(NUM.dmg, MORT_T, clamp01(hitK / 1.1)); }
+}
+const VM = {}; // move id -> {now, A, B, C}
+VM.tmortar = {
+  now: {name: "Now", sub: "as the game plays it (v465)", len: 3.2, timing: "fire 0.55 s after the press",
+    ref: "Big wind-up + whip (Kepu 2026-11-02), from when the boulder came off the tail; since v460 it leaves the Back Cannon.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.8, "Crouch · the tail curls down low behind"], [0.8, 0.9, "The tail cracks up over the back"], [0.85, 1.0, "…and the boulder pops out of the cannon"], [1.0, 2.05, "The boulder flies"], [2.05, 3.2, "Hit · the raptor goes down"]],
+    notes: ["The tail does a big whip, but the boulder comes out of the back cannon: the two don't match, so it reads as a tail throw from nowhere.", "The cannon barely moves: no aim, no kick, no smoke."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.8, G_COIL, sm2], [0.9, G_WHIP, easeIn], [1.05, G_WHIP], [1.75, A0, sm2]])); lookU("mortar", tt > PRESS && tt < 1.4 ? 1 : 0, tt - 0.85 + 1.12);
+      mortarScene(tt, 0.85, 2.05, 14, () => pieceAt("muzzle")); }},
+  A: {name: "A · Anchored Shot", sub: "brace, aim, BOOM with recoil", len: 3.4, rec: true, timing: "fire 0.70 s after the press",
+    ref: "Anchored Attack Stance (TV Tropes): C&C Juggernaut walkers and Warframe's Voidrig plant themselves before firing big guns; Zoids Gordos carries its guns on its back.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.65, "Brace · legs spread, tail drops flat as an anchor, barrel swings up to aim"], [0.65, 1.0, "Charge · red rings fill up the barrel"], [1.0, 1.15, "BOOM · recoil shoves the body back, smoke, a casing flies out"], [1.15, 2.1, "The boulder flies"], [2.1, 3.4, "Hit · the raptor goes down · the stance lifts"]],
+    notes: ["Every part of the body tells you it's a cannon shot: the stance, the aim, the kick.", "The tail stays on the ground as the anchor, so nothing whips around for no reason.", "Game change: TenoPose's mortar poses + the release moves from 0.55 s to 0.70 s after the press."],
+    update(tt) { const A0 = IDLE(tt); let P = AT(tt, [[PRESS, A0], [0.65, ANCHOR, sm2], [1.0, ANCHOR], [1.06, plus(ANCHOR, KICK), easeOut], [1.4, ANCHOR, sm2], [2.2, ANCHOR], [2.8, A0, sm2]]);
+      pose(P); rig.position.z = 0.7 * (tt > 1.0 ? Math.exp(-(tt - 1.0) * 5) * Math.min(1, (tt - 1.0) / 0.04) : 0);
+      lookU("mortar", sm2(seg(tt, PRESS, 0.65)) * (tt < 2.6 ? 1 : 0), tt - 1.0 + 1.12);
+      if (tt > 1.0) { const k = (tt - 1.0) / 0.9; smoke(pieceAt("muzzle"), new THREE.Vector3(0, 0.6, -0.8).normalize(), k, 8, 1.4);
+        if (tt < 1.7) { CASING.visible = true; const c0 = partNow("Torso_barrel").add(new THREE.Vector3(2.2, 1.5, 0)); const u = tt - 1.0; CASING.position.copy(c0).add(new THREE.Vector3(u * 6, 5 * u - 12 * u * u, u * 2)); CASING.position.y = Math.max(0.3, CASING.position.y); CASING.rotation.set(u * 14, 0, u * 9); } }
+      if (tt > 1.0 && tt < 1.6) puffs(partNow("Tail4_main").setY(0), (tt - 1.0) / 0.6, 2, 6);
+      mortarScene(tt, 1.0, 2.1, 14, () => pieceAt("muzzle")); }},
+  B: {name: "B · Quick Lob", sub: "barrel snaps up, fire on the move", len: 3.0, timing: "fire 0.30 s after the press",
+    ref: "Horizon Zero Dawn Ravager Cannon (a short charge-up, then the shot) and tank-style turret recoil: only the gun moves.",
+    phases: [[0, PRESS, "Ready (you can keep walking)"], [PRESS, 0.5, "The barrel snaps up and a quick charge glows"], [0.6, 0.72, "Fire · the barrel kicks back, puff of smoke"], [0.72, 1.7, "The boulder flies"], [1.7, 3.0, "Hit · the raptor goes down"]],
+    notes: ["The fastest and the least in the way: your body barely moves, only the cannon fires.", "Less weight than A: it reads as a gun shot, not a siege cannon.", "Game change: release from 0.55 s to 0.30 s after the press (faster), TenoPose plays only a small flinch."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[0.6, A0], [0.66, plus(A0, {RootJoint: [4, 0, 0], Neck: [4, 0, 0]}), easeOut], [1.0, A0, sm2]]));
+      lookU("mortar", tt > PRESS ? sm2(seg(tt, PRESS, 0.45)) * (tt < 1.6 ? 1 : 1 - seg(tt, 1.6, 2.0)) : 0, tt - 0.6 + 1.12);
+      if (tt > 0.6) smoke(pieceAt("muzzle"), new THREE.Vector3(0, 0.6, -0.8).normalize(), (tt - 0.6) / 0.7, 5, 0.8);
+      mortarScene(tt, 0.6, 1.7, 14, () => pieceAt("muzzle")); }},
+  C: {name: "C · Rear-Up Mortar", sub: "rears up, fires sky-high", len: 3.6, timing: "fire 0.60 s after the press",
+    ref: "A real mortar fires almost straight up so the shell drops on the target; Horizon's Behemoth rears up before its big moves.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.85, "Rears up on the hind legs, the back cannon points at the sky"], [0.9, 1.0, "FIRE straight up · smoke"], [1.0, 1.35, "Drops back down on all fours · dust"], [1.0, 2.5, "The boulder goes sky-high and drops"], [2.5, 3.6, "It lands on the raptor from above"]],
+    notes: ["The most dramatic: the boulder visibly rises and comes straight down, so the raptor sees it coming (shadow).", "Slower to land (about 1.6 s of flight).", "Game change: TenoPose rear-up + release at 0.60 s, and the server flight time grows (1.0 s → 1.6 s)."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.85, plus(G_REAR, {RootJoint: [14, 0, 0]}), sm2], [0.95, plus(G_REAR, {RootJoint: [18, 0, 0]})], [1.3, G_STOMP2, easeIn], [2.0, A0, sm2]]));
+      lookU("mortar", tt > PRESS && tt < 2.2 ? 1 : 0, tt - 0.9 + 1.12);
+      if (tt > 0.9) smoke(pieceAt("muzzle"), new THREE.Vector3(0, 1, 0.2).normalize(), (tt - 0.9) / 0.8, 6, 1);
+      if (tt > 1.28 && tt < 1.9) puffs(new THREE.Vector3(0, 0, -3), (tt - 1.28) / 0.6, 3, 8);
+      mortarScene(tt, 0.9, 2.5, 34, () => pieceAt("muzzle")); }},
+};
+
+// ---------- Stomp Shockwave (Quake Hooves) ----------
+const STOMP_R = 9; // ring radius (units)
+function stompScene(tt, tHit, wave) {
+  const k = tt - tHit, foes = [[raptor, new THREE.Vector3(6, 0, -12)], [raptor2, new THREE.Vector3(-7, 0, -10)]];
+  foes.forEach(([Rp, p0], i) => { const hit = k > 0.05 * (i + 1); const away = p0.clone().setY(0).normalize();
+    if (!hit) raptorPose({R: Rp, pos: p0, yaw: Math.atan2(-p0.x, -p0.z) + Math.PI, run: tt * 3, runAmt: 0.15, color: ENEMY});
+    else { const u = clamp01((k - 0.05) / 0.5); raptorPose({R: Rp, pos: p0.clone().addScaledVector(away, 4 * easeOut(u)).setY(Math.sin(u * Math.PI) * 1.5), yaw: Math.atan2(-p0.x, -p0.z) + Math.PI, lie: k < 1.4 ? Math.min(1, u * 2) : 1 - clamp01((k - 1.4) / 0.4), flash: k < 0.15, color: ENEMY}); } });
+  if (k > 0) { const c = partNow("ArmL_hand").lerp(partNow("ArmR_hand"), 0.5).setY(0); gring(0, c, clamp01(k / 0.6), STOMP_R); gring(1, c, clamp01((k - 0.1) / 0.6), STOMP_R * 0.7); puffs(c, clamp01(k / 0.8), 4, 12); if (wave) cracksFwd(c, k / 0.45, 12, 40); }
+}
+VM.tstomp = {
+  now: {name: "Now", sub: "as the game plays it", len: 3.0, timing: "hit 0.50 s after the press",
+    ref: "Horizon Zero Dawn Behemoth \"Quake Smash\" (the Quake Hooves' reference): rears up and smashes down.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.7, "Rears up"], [0.7, 0.8, "Stomps down"], [0.8, 1.1, "Shockwave ring · raptors knocked back"], [1.1, 3.0, "Recover"]],
+    notes: ["It already reads, but it's small: a quick rear and a flat stomp, no pause at the top, no weight on the landing.", "The resonator rings spin but nothing builds up before the hit."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.7, G_REAR, sm2], [0.8, G_STOMP2, easeIn], [1.1, G_STOMP2], [2.0, A0, sm2]])); lookU("stomp", tt > PRESS && tt < 2 ? 1 : 0, tt - 0.8 + 1.06); stompScene(tt, 0.8); }},
+  A: {name: "A · Quake Smash", sub: "higher rear, hang, crushing slam", len: 3.2, rec: true, timing: "hit 0.60 s after the press",
+    ref: "Horizon Zero Dawn Behemoth \"Quake Smash\": \"rears up and smashes down, sending a forward-moving seismic shockwave\".",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.68, "Rears up HIGH, the resonator rings spin up"], [0.68, 0.82, "Hangs at the top (the tell)"], [0.82, 0.9, "SMASH · both hooves, the body drops with it"], [0.9, 1.3, "Shockwave ring + cracks racing forward · raptors thrown"], [1.3, 3.2, "Stands back up"]],
+    notes: ["The hang at the top is the warning everyone can read, and the slam has weight (the whole body drops).", "Forward cracks show where the shockwave goes.", "Game change: TenoPose stomp poses + the hit moves from 0.50 s to 0.60 s after the press."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.68, REAR_HI, sm2], [0.82, plus(REAR_HI, {RootJoint: [3, 0, 0]})], [0.9, SMASH, easeIn], [1.25, SMASH], [2.1, A0, sm2]]));
+      rig.position.y = tt > 0.9 && tt < 1.2 ? -0.35 * Math.sin(seg(tt, 0.9, 1.2) * Math.PI) : 0;
+      lookU("stomp", tt > PRESS && tt < 2.1 ? 1 : 0, tt - 0.9 + 1.06); stompScene(tt, 0.9, true); }},
+  B: {name: "B · Ground Pound", sub: "hop up, tuck, slam down", len: 3.0, timing: "hit 0.50 s after the press",
+    ref: "Super Mario 64's Ground Pound: jump, freeze for a beat in the air, then drop straight down.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.6, "A short hop, legs tucked"], [0.6, 0.7, "Hangs in the air"], [0.7, 0.8, "Drops straight down"], [0.8, 1.2, "All four feet hit · big ring · raptors thrown"], [1.2, 3.0, "Recover"]],
+    notes: ["Very readable and fun, the same timing as now.", "The whole dino leaves the ground (~3 studs), so it looks lighter than a rear-up."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.42, SQUAT, sm2], [0.6, TUCK, easeOut], [0.7, TUCK], [0.8, SMASH, easeIn], [1.2, SMASH], [2.0, A0, sm2]]));
+      rig.position.y = tt < 0.42 ? 0 : tt < 0.7 ? 1.6 * Math.sin(seg(tt, 0.42, 0.7) * Math.PI / 2) : tt < 0.8 ? 1.6 * (1 - easeIn(seg(tt, 0.7, 0.8))) : 0;
+      lookU("stomp", tt > PRESS && tt < 2 ? 1 : 0, tt - 0.8 + 1.06); stompScene(tt, 0.8); }},
+  C: {name: "C · Hoof Drum", sub: "left, right, left… BOOM", len: 3.2, timing: "hit 0.55 s after the press",
+    ref: "Donkey Kong's Hand Slap: quick slaps on the ground in a rhythm, then the big one.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.48, "Left hoof slap (small ring)"], [0.48, 0.62, "Right hoof slap"], [0.62, 0.75, "Rears a little"], [0.75, 0.85, "BOOM · both hooves · the real shockwave"], [0.85, 3.2, "Recover"]],
+    notes: ["The rhythm builds up to the hit, so you can feel it coming.", "Busier: three small rings before the real one could be read as three hits."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.38, plus(A0, SLAP_L), easeOut], [0.44, plus(A0, SLAP_DN), easeIn], [0.52, plus(A0, SLAP_R), easeOut], [0.58, plus(A0, SLAP_DN), easeIn], [0.75, plus(G_REAR, {RootJoint: [-12, 0, 0]}), sm2], [0.85, G_STOMP2, easeIn], [1.15, G_STOMP2], [2.0, A0, sm2]]));
+      for (const [i, th] of [[2, 0.44]]) gring(i, partNow("ArmL_hand").setY(0), (tt - th) / 0.35, 2.5, 0x9fd0ff);
+      if (tt > 0.58 && tt < 0.95) gring(1, partNow("ArmR_hand").setY(0), (tt - 0.58) / 0.35, 2.5, 0x9fd0ff);
+      lookU("stomp", tt > PRESS && tt < 2 ? 1 : 0, tt - 0.85 + 1.06); stompScene(tt, 0.85); }},
+};
+
+// ---------- Herd Bellow (Shriek Sacs) ----------
+function bellowScene(tt, tHeal) {
+  const allies = [[raptor, new THREE.Vector3(-7, 0, -4)], [raptor2, new THREE.Vector3(8, 0, 4)]];
+  allies.forEach(([Rp, p0], i) => { const k = tt - tHeal - 0.12 * i; raptorPose({R: Rp, pos: p0, yaw: Math.atan2(-p0.x, -p0.z) + Math.PI, run: tt * 3, runAmt: 0.15, color: k > 0 && k < 0.15 ? 0x7dffb0 : ALLY}); pop(HEALS[i], p0, clamp01(k / 1.2)); });
+  if (tt > tHeal) { gring(0, new THREE.Vector3(0, 0, 0), clamp01((tt - tHeal) / 0.8), 12, 0x3ddc84); }
+}
+VM.tbellow = {
+  now: {name: "Now", sub: "as the game plays it", len: 3.2, timing: "the call lands 0.50 s after the press",
+    ref: "Horizon Zero Dawn Longleg's concussion sacs (the Shriek Sacs' reference).",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.8, "Head lifts, jaw opens"], [0.8, 2.0, "Holds the pose · sacs pump · green rings"], [2.0, 3.2, "Head comes down"]],
+    notes: ["A long, static hold: the body stops for 1.2 s and nothing builds up before the call.", "The sacs pump the same way the whole time."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.8, G_BELLOW, sm2], [2.0, G_BELLOW], [2.6, A0, sm2]])); lookU("bellow", tt > 0.8 && tt < 2.0 ? 1 : 0); bellowScene(tt, 0.8); }},
+  A: {name: "A · Concussion Shriek", sub: "inhale, sacs balloon, SHRIEK", len: 3.0, rec: true, timing: "the call lands 0.50 s after the press",
+    ref: "Horizon Zero Dawn Longleg \"Stun Blast\": it shrieks at the target using its concussion sacs.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.7, "Inhale · head pulls back, the sacs balloon up"], [0.7, 0.8, "SHRIEK · head thrusts forward, sacs squeeze flat"], [0.8, 1.4, "Green rings blast out · allies heal"], [1.4, 3.0, "Sacs refill, head comes back"]],
+    notes: ["A clear in-out: big breath in (sacs grow), then the push out (sacs shrink) is the moment it happens.", "Shorter hold (0.6 s instead of 1.2 s), so you're back in control sooner.", "Game change: TenoPose bellow poses, TenoPartsAnim sac size follows the inhale / shriek."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.7, INHALE, sm2], [0.8, SHRIEK, easeIn], [1.4, SHRIEK], [2.1, A0, sm2]]));
+      const u = tt < PRESS ? 0 : tt < 0.7 ? sm2(seg(tt, PRESS, 0.7)) * 1.6 : tt < 0.8 ? 1.6 - 1.4 * seg(tt, 0.7, 0.8) : tt < 1.4 ? 0.9 : 0.9 * (1 - seg(tt, 1.4, 1.9));
+      lookU("bellow", u, tt < 0.8 ? Math.PI / 12 : t); bellowScene(tt, 0.8); }},
+  B: {name: "B · Sky Howl", sub: "head to the sky, three pulses", len: 3.4, timing: "the call lands 0.50 s after the press",
+    ref: "A wolf's howl / Monster Hunter's Hunting Horn (its songs buff the whole team): the call goes up and comes down over everyone.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.8, "Head goes straight up"], [0.8, 2.0, "Three pulses: sacs squeeze, rings rise up"], [0.8, 2.0, "A green dome falls over the herd"], [2.0, 3.4, "Head comes down"]],
+    notes: ["The dome shows exactly who gets healed.", "Same long hold as now (1.2 s)."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.8, HOWL, sm2], [2.0, HOWL], [2.6, A0, sm2]]));
+      const pulse = tt > 0.8 && tt < 2.0 ? Math.max(0, Math.sin((tt - 0.8) / 0.4 * Math.PI)) : 0; lookU("bellow", tt > 0.8 && tt < 2 ? 0.4 + 0.6 * pulse : 0);
+      if (tt > 0.8 && tt < 2.4) { GDOME.visible = true; GDOME.position.set(0, 0, 0); GDOME.scale.setScalar(12 * easeOut(seg(tt, 0.8, 1.3))); GDOME.material.opacity = 0.18 * (1 - seg(tt, 2.0, 2.4)); }
+      bellowScene(tt, 0.9); }},
+  C: {name: "C · Rally Sweep", sub: "sweeps the call left to right", len: 3.2, timing: "the call lands 0.50 s after the press",
+    ref: "Monster Hunter's Hunting Horn performance: the player swings the horn round while playing so the song reaches everyone.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.8, "Head lifts, turns to the left"], [0.8, 1.9, "Bellows while sweeping left → right · rings fan out"], [1.9, 3.2, "Head comes back"]],
+    notes: ["Shows the call going round you (it heals all around).", "Your head turns away from where you're looking for about a second."],
+    update(tt) { const A0 = IDLE(tt); const sw = tt < 0.8 ? -30 * sm2(seg(tt, PRESS, 0.8)) : tt < 1.9 ? -30 + 60 * sm2(seg(tt, 0.8, 1.9)) : 30 * (1 - sm2(seg(tt, 1.9, 2.5)));
+      pose(plus(AT(tt, [[PRESS, A0], [0.8, G_BELLOW, sm2], [1.9, G_BELLOW], [2.5, A0, sm2]]), {Neck: [0, sw, 0], RootJoint: [0, sw * 0.3, 0]})); lookU("bellow", tt > 0.8 && tt < 1.9 ? 1 : 0); bellowScene(tt, 0.8); }},
+};
+
+// ---------- Challenge Call (Alarm Beacon) ----------
+const CH_FOES = [new THREE.Vector3(9, 0, -14), new THREE.Vector3(-10, 0, -12), new THREE.Vector3(14, 0, -2)];
+function chalScene(tt, tCall, turnAt) {
+  [raptor, raptor2, raptor3].forEach((Rp, i) => { const p0 = CH_FOES[i], toMe = Math.atan2(-p0.x, -p0.z) + Math.PI, away = toMe + Math.PI * 0.7;
+    const k = tt - (turnAt ? turnAt[i] : tCall); const yaw = k > 0 ? lerp(away, toMe, easeOut(clamp01(k / 0.3))) : away;
+    raptorPose({R: Rp, pos: p0, yaw, run: tt * 3, runAmt: 0.15, color: ENEMY, flash: k > 0 && k < 0.08}); pop(MARKS[i], p0, k > 0 ? Math.min(0.55, k / 1.4) : -1, 0.6); });
+}
+VM.tchallenge = {
+  now: {name: "Now", sub: "as the game plays it", len: 3.0, timing: "the call lands 0.50 s after the press",
+    ref: "The mockup v0.3 \"painter's turn\" (a small head lift).",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.8, "Head lifts a little"], [0.8, 1.7, "Holds · antennae up, the beacon spins and flashes"], [1.7, 3.0, "Head comes down"]],
+    notes: ["The body barely does anything, so it doesn't look like a challenge.", "You can't tell which raptors got called."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.8, mix({}, G_BELLOW, 0.4), sm2], [1.7, mix({}, G_BELLOW, 0.4)], [2.3, A0, sm2]])); lookU("chal", tt > PRESS && tt < 1.9 ? 1 : 0); chalScene(tt, 0.8); }},
+  A: {name: "A · Watcher Alarm", sub: "snap to the enemy, scan, alarm", len: 3.2, rec: true, timing: "the call lands 0.50 s after the press",
+    ref: "Horizon Zero Dawn Watcher: its head snaps toward a threat, the eye scans, then it raises the alarm for the herd (the Alarm Beacon's family).",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.5, "Head snaps toward the nearest raptor, antennae spring up"], [0.5, 0.95, "A blue scan cone sweeps across them · each one pinged (!)"], [0.95, 1.6, "ALARM · the beacon spins fast and flashes · they all turn to you"], [1.6, 3.2, "Head comes back"]],
+    notes: ["You see who got called: the cone passes over them and they turn.", "Quick snap at the start, so the move reads at once.", "Game change: TenoPose head-turn toward the target + the cone FX; the server picks the same targets."],
+    update(tt) { const A0 = IDLE(tt); const yaw = -26 * (tt < PRESS ? 0 : tt < 0.5 ? easeOut(seg(tt, PRESS, 0.5)) : tt < 0.95 ? 1 - 2 * sm2(seg(tt, 0.5, 0.95)) : -1 + sm2(seg(tt, 1.6, 2.2)));
+      pose(plus(AT(tt, [[PRESS, A0], [0.5, mix({}, G_BELLOW, 0.3), easeOut], [1.6, mix({}, G_BELLOW, 0.5)], [2.2, A0, sm2]]), {Neck: [0, yaw, 0], Head: [0, yaw * 0.5, 0]}));
+      lookU("chal", tt > PRESS && tt < 1.9 ? (tt > 0.95 ? 1 : 0.5) : 0);
+      if (tt > 0.5 && tt < 0.95) { CONE2.visible = true; const hd = partNow("Head_cranium"); CONE2.position.set(hd.x, 0.15, hd.z); CONE2.scale.setScalar(22); CONE2.rotation.set(-Math.PI / 2, 0, rad(-60 + 120 * sm2(seg(tt, 0.5, 0.95)))); }
+      chalScene(tt, 0.95, [0.62, 0.86, 0.95]); if (tt > 0.95) gring(0, new THREE.Vector3(0, 0, -1), clamp01((tt - 0.95) / 0.7), 16, 0x3d9bff); }},
+  B: {name: "B · Threat Display", sub: "rears tall, arms wide, roars", len: 3.0, timing: "the call lands 0.50 s after the press",
+    ref: "Real animal threat displays (a frilled lizard spreading its frill, a bear standing tall): look as big as possible to pull attention.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.8, "Rears tall, arms spread wide, jaw open"], [0.8, 1.5, "The beacon flares · a big blue pulse · they all turn"], [1.5, 3.0, "Drops back down"]],
+    notes: ["Very clear \"look at me\" body language.", "Rearing makes the move feel slow and leaves your belly open."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.8, DISPLAY, sm2], [1.5, DISPLAY], [2.1, A0, sm2]])); lookU("chal", tt > 0.6 && tt < 1.7 ? 1 : 0);
+      chalScene(tt, 0.85); if (tt > 0.8) gring(0, new THREE.Vector3(0, 0, -1), clamp01((tt - 0.8) / 0.7), 16, 0x3d9bff); }},
+  C: {name: "C · Bull Paw", sub: "paws the ground, snorts, calls", len: 3.2, timing: "the call lands 0.50 s after the press",
+    ref: "A bull pawing the ground before it charges: everyone knows what's coming.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.85, "Head down, the front hoof paws the ground twice · dust · steam snorts"], [0.85, 1.5, "Beacon flashes with each paw · they turn to face you"], [1.5, 3.2, "Head comes up"]],
+    notes: ["Reads as \"come at me\" without rearing up, and you keep looking ahead.", "Small: from far away only the dust and the beacon show."],
+    update(tt) { const A0 = IDLE(tt); const paw = tt > PRESS && tt < 1.1 ? Math.max(0, Math.sin((tt - PRESS) / 0.4 * Math.PI * 2)) : 0;
+      pose(plus(AT(tt, [[PRESS, A0], [0.5, plus(A0, HEADLOW), sm2], [1.5, plus(A0, HEADLOW)], [2.1, A0, sm2]]), mix(PAW_DN, PAW, paw)));
+      lookU("chal", tt > 0.5 && tt < 1.8 ? 1 : 0);
+      for (const [i, th] of [[0, 0.5], [1, 0.9]]) { if (tt > th && tt < th + 0.6) puffs(partNow("ArmR_hand").setY(0), (tt - th) / 0.6, 1.5, 4); if (tt > th) steamAt(i, partNow("Head_snout"), (tt - th) / 0.6, 1.2); }
+      chalScene(tt, 0.85, [0.55, 0.95, 0.95]); }},
+};
+
+// ---------- Hydraulic Leap (Chicken-Leg Rams, on JUMP) ----------
+function leapPath(tt, t0, t1, dist, peak) { const u = seg(tt, t0, t1); return {u, z: -dist * u, y: tt > t0 && tt < t1 ? Math.sin(u * Math.PI) * peak : 0}; }
+function leapScene(tt, tLand, z) { const p = new THREE.Vector3(0, 0, z); if (tt > tLand) { gring(0, p, clamp01((tt - tLand) / 0.6), 6, 0xffc21a); puffs(p, clamp01((tt - tLand) / 0.8), 4, 12); }
+  const p0 = new THREE.Vector3(5, 0, z - 3); const k = tt - tLand; raptorPose({pos: k > 0.05 ? p0.clone().add(new THREE.Vector3(3 * easeOut(clamp01(k / 0.4)), 0, 0)) : p0, yaw: -Math.PI / 2, lie: k > 0.05 ? (k < 1.3 ? 1 : 1 - clamp01((k - 1.3) / 0.4)) : 0, flash: k > 0 && k < 0.1, run: tt * 3, runAmt: 0.15, color: ENEMY}); }
+VM.tleap = {
+  now: {name: "Now", sub: "as the game plays it (v461 landing fix)", len: 3.2, timing: "JUMP · lands ~1.0 s later",
+    ref: "Rearing leap J2 (Kepu 2026-10-31 \"I want the second leap\") + the landing tail slam.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.55, "Rears up (the crouch)"], [0.55, 1.55, "In the air"], [1.55, 1.7, "Lands · the tail slams down"], [1.7, 3.2, "Recover"]],
+    notes: ["The take-off rears up instead of crouching, so the leg rams don't look like they push.", "The rams and the gauge barely show during the jump."],
+    update(tt) { const A0 = IDLE(tt); const L = leapPath(tt, 0.55, 1.55, 12, 5); rig.position.set(0, L.y, tt > 1.55 ? -12 : L.z);
+      pose(AT(tt, [[PRESS, A0], [0.55, G_JREAR, sm2], [0.95, G_JAIR, sm2], [1.55, G_JAIR], [1.67, G_SLAM2, easeIn], [1.85, G_SLAM2], [2.45, A0, sm2]]));
+      lookU("leap", tt > PRESS && tt < 1.6 ? 1 : 0, tt < 0.55 ? (tt - PRESS) / 0.25 * 0.99 : 1.0); leapScene(tt, 1.55, -12); }},
+  A: {name: "A · Piston Launch", sub: "deep crouch, rams fire, absorb", len: 3.4, rec: true, timing: "JUMP · lifts off 0.25 s later (as now)",
+    ref: "Armored Core 6 reverse-joint legs (the Chicken-Leg Rams' reference): a deep crouch charges the jump, the legs fire like pistons.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.55, "Deep crouch · the rams squeeze, the gauge fills, the knee gears spin"], [0.55, 0.65, "The rams FIRE · steam blasts out"], [0.65, 1.55, "In the air, legs tucked"], [1.55, 1.75, "Lands on the rams (they squash) · dust ring"], [1.75, 1.95, "The tail slams"], [1.95, 3.4, "Stands up"]],
+    notes: ["The parts do the work you see: squeeze → fire → squash.", "Same take-off timing as now (0.25 s), so nothing changes in how the jump plays.", "Game change: TenoPose leap poses (crouch, tuck, absorb), TenoPartsAnim ram squeeze + steam."],
+    update(tt) { const A0 = IDLE(tt); const L = leapPath(tt, 0.6, 1.55, 12, 5.5); rig.position.set(0, L.y - (tt > 1.55 && tt < 1.8 ? 0.4 * Math.sin(seg(tt, 1.55, 1.8) * Math.PI) : 0), tt > 1.55 ? -12 : L.z);
+      pose(AT(tt, [[PRESS, A0], [0.55, LOWCROUCH, sm2], [0.66, G_JAIR, easeOut], [0.95, TUCK, sm2], [1.45, TUCK], [1.55, G_JLAND, sm2], [1.72, SQUAT, easeOut], [1.88, plus(SQUAT, {Tail1: [24, 0, 0], Tail2: [12, 0, 0]}), easeIn], [2.6, A0, sm2]]));
+      lookU("leap", tt > PRESS && tt < 1.9 ? 1 : 0, tt < 0.55 ? 0.99 * sm2(seg(tt, PRESS, 0.55)) : tt < 1.55 ? 1.05 : 0.99 * sm2(seg(tt, 1.55, 1.72)));
+      if (tt > 0.55) { steamAt(0, partNow("FootL_meta"), (tt - 0.55) / 0.6, 2); steamAt(1, partNow("FootR_meta"), (tt - 0.58) / 0.6, 2); }
+      if (tt > 0.55 && tt < 1.1) puffs(new THREE.Vector3(0, 0, 0), (tt - 0.55) / 0.55, 3, 8);
+      leapScene(tt, 1.55, -12); }},
+  B: {name: "B · Pounce", sub: "low and long, lands front-first", len: 3.2, timing: "JUMP · lifts off 0.20 s later",
+    ref: "A raptor's pounce (the game's own Pounce, and Path of Titans' pounce update): low, long and front-first.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.5, "Low crouch, head down"], [0.5, 1.35, "Long flat leap, arms reaching forward"], [1.35, 1.5, "Lands front-first on the hooves · ring"], [1.5, 3.2, "Back up"]],
+    notes: ["Feels fast and aggressive; the landing hits where you're looking.", "No tail slam, so the landing looks different from the old one."],
+    update(tt) { const A0 = IDLE(tt); const L = leapPath(tt, 0.5, 1.35, 14, 3); rig.position.set(0, L.y, tt > 1.35 ? -14 : L.z);
+      pose(AT(tt, [[PRESS, A0], [0.5, LOWCROUCH, sm2], [0.62, POUNCE, easeOut], [1.25, POUNCE], [1.38, FRONTLAND, easeIn], [1.6, FRONTLAND], [2.3, A0, sm2]]));
+      lookU("leap", tt > PRESS && tt < 1.4 ? 1 : 0, tt < 0.5 ? 0.99 * sm2(seg(tt, PRESS, 0.5)) : 1.05); leapScene(tt, 1.35, -14); }},
+  C: {name: "C · Spring Tail", sub: "tail pushes off like a spring", len: 3.4, timing: "JUMP · lifts off 0.30 s later",
+    ref: "A kangaroo's tail (it pushes off with it) and Horizon's Rollerback hammer tail.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.6, "The tail presses into the ground, the body tips up"], [0.6, 0.7, "The tail flicks · launch"], [0.7, 1.65, "High arc"], [1.65, 1.85, "Lands on the hind legs · the tail slams"], [1.85, 3.4, "Recover"]],
+    notes: ["Unusual and very \"teno\" (big tail).", "The rams on the legs aren't the ones doing the work here, so the part and the move don't match."],
+    update(tt) { const A0 = IDLE(tt); const L = leapPath(tt, 0.65, 1.65, 11, 7); rig.position.set(0, L.y, tt > 1.65 ? -11 : L.z);
+      pose(AT(tt, [[PRESS, A0], [0.6, TAILPRESS, sm2], [0.7, TAILFLICK, easeOut], [1.0, G_JAIR, sm2], [1.6, G_JAIR], [1.7, HINDLAND, easeIn], [1.85, G_SLAM2, easeIn], [2.6, A0, sm2]]));
+      if (tt > 0.6 && tt < 1.2) puffs(partNow("Tail3_main").setY(0), (tt - 0.6) / 0.6, 2.5, 8);
+      lookU("leap", 0); leapScene(tt, 1.65, -11); }},
+};
+
+// ---------- Shield Armor (Shield Mane) ----------
+const SH_FOES = [new THREE.Vector3(8, 0, -22), new THREE.Vector3(-9, 0, -20)];
+function shieldScene(tt, tUp, up, push) {
+  SH_FOES.forEach((p0, i) => raptorPose({R: i ? raptor2 : raptor, pos: push && tt > push ? p0.clone().add(p0.clone().setY(0).normalize().multiplyScalar(3 * easeOut(clamp01((tt - push) / 0.4)))) : p0, yaw: Math.atan2(-p0.x, -p0.z) + Math.PI, run: tt * 3, runAmt: 0.15, color: ENEMY}));
+  const disc = pieceAt("disc"), shots = [[0, 1.0], [1, 1.5], [0, 2.1]];
+  shots.forEach(([fi, t0], j) => { const k = (tt - t0) / 0.4, from = SH_FOES[fi].clone().setY(3.5), m = DARTS2[j]; if (k < 0 || k > 1.6) return;
+    const hitAt = up(t0 + 0.4) > 0.5 ? disc : partNow("Torso_chest"); if (k < 1) { m.visible = true; m.position.copy(lerpV(from, hitAt, k)); m.lookAt(hitAt); m.scale.set(0.2, 0.2, 1.2); } else sparks2(j % 2, hitAt, (k - 1) / 0.6); });
+}
+VM.tmud = {
+  now: {name: "Now", sub: "as the game plays it", len: 3.2, timing: "shield up 0.20 s after the press",
+    ref: "Zoids Shield Liger (the Shield Mane's reference): its shield generator sits in the mane.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.55, "Chest up, arms forward (brace)"], [0.5, 1.2, "Mane blades swing forward, purple disc"], [1.0, 2.6, "Shots hit the disc"], [1.2, 3.2, "The body relaxes, the shield stays"]],
+    notes: ["The brace lifts the chest up, which looks like a bellow, not like hiding behind a shield.", "The disc sits in front of the chest while the head pokes out above it."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.55, G_BRACE, sm2], [1.2, G_BRACE], [1.7, A0, sm2]])); const up = x => x > 0.5 ? sm2(seg(x, 0.5, 0.65)) : 0; lookU("shield", up(tt)); shieldScene(tt, 0.5, up); }},
+  A: {name: "A · Liger Guard", sub: "head down behind the mane", len: 3.2, rec: true, timing: "shield up 0.20 s after the press",
+    ref: "Zoids Shield Liger: it lowers its head and the mane blades fan forward into the shield in front of it.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.5, "Head drops low, forelegs plant wide"], [0.4, 0.55, "The mane blades fan forward into a ring, the purple disc fills"], [1.0, 2.6, "Shots spark off the disc"], [0.55, 3.2, "Holds the guard while the shield lasts"]],
+    notes: ["The head and chest are behind the disc, so it reads as \"protected\".", "Same shield-up timing as now.", "Game change: TenoPose shield pose (held while TenoMudUntil), TenoPartsAnim unchanged."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.5, plus(A0, LIGER), sm2]])); const up = x => x > 0.4 ? sm2(seg(x, 0.4, 0.55)) : 0; lookU("shield", up(tt)); shieldScene(tt, 0.4, up); }},
+  B: {name: "B · Turtle Hunker", sub: "drops low, shield over the head", len: 3.2, timing: "shield up 0.20 s after the press",
+    ref: "Horizon Forbidden West Shellsnapper: it pulls into its shell to soak hits.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.5, "Drops low to the ground, tail tucked"], [0.4, 0.55, "Mane closes over the head, disc"], [1.0, 2.6, "Shots spark off"], [0.55, 3.2, "Stays low while the shield lasts"]],
+    notes: ["The most \"hiding\" look.", "Looks slow and defensive; the low body can look stuck."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.5, HUNKER, sm2]])); rig.position.y = -0.5 * sm2(seg(tt, PRESS, 0.5)); const up = x => x > 0.4 ? sm2(seg(x, 0.4, 0.55)) : 0; lookU("shield", up(tt)); shieldScene(tt, 0.4, up); }},
+  C: {name: "C · Shield Pulse", sub: "shield forms with a push-wave", len: 3.2, timing: "shield up 0.20 s after the press",
+    ref: "Overwatch Reinhardt's barrier / the Shield Liger: the shield snaps up with a pulse that shoves the air in front.",
+    phases: [[0, PRESS, "Ready"], [PRESS, 0.5, "Shoulders forward, a short shove"], [0.45, 0.6, "The disc snaps up with a lilac pulse ring"], [0.6, 1.0, "The pulse pushes the raptors back a bit (look only)"], [1.0, 3.2, "Guard pose while the shield lasts · shots spark"]],
+    notes: ["A clear \"shield ON\" moment.", "The push is only a look: the raptors don't really move in the game unless we add that."],
+    update(tt) { const A0 = IDLE(tt); pose(AT(tt, [[PRESS, A0], [0.45, plus(A0, PUSH), easeOut], [0.9, plus(A0, mix({}, LIGER, 0.6)), sm2]])); const up = x => x > 0.45 ? sm2(seg(x, 0.45, 0.55)) : 0; lookU("shield", up(tt));
+      if (tt > 0.45 && tt < 1.2) { PRING.visible = true; PRING.position.copy(pieceAt("disc")); PRING.rotation.set(0, 0, 0); PRING.scale.setScalar(1.5 + 9 * easeOut(seg(tt, 0.45, 1.2))); PRING.material.opacity = 0.9 * (1 - seg(tt, 0.45, 1.2)); }
+      shieldScene(tt, 0.45, up, 0.6); }},
+};
+const MOVE_META = {
+  tmortar: {area: "attack", part: "Back Cannon (turret, barrel, charge rings, ammo hopper)", partWhy: "The barrel lifts to aim, the red rings charge up it one by one, then it fires with a kick and a muzzle flash. Red = attack glow.", focus: new THREE.Vector3(0, 5, -10), side: 70, nums: "Numbers unchanged: only the animation and (A / B / C) the moment the boulder leaves change."},
+  tstomp: {area: "defense", part: "Quake Hooves (boots, spinning resonators, forearm rams, shoulder exhausts)", partWhy: "The resonator rings spin up on the rear-up, the forearm rams punch at the slam and the shoulder stacks puff. Blue = defense glow.", focus: new THREE.Vector3(0, 4, -3), side: 52, nums: "Numbers unchanged: radius, damage and knock-back as now."},
+  tbellow: {area: "health", part: "Shriek Sacs (two green sacs in iron cages on the neck)", partWhy: "The sacs pump and the green rings roll out of the mouth. Green = health glow.", focus: new THREE.Vector3(0, 5, -2), side: 50, nums: "Numbers unchanged: heal / buff and radius as now."},
+  tchallenge: {area: "defense", part: "Alarm Beacon (head antennae + shoulder siren)", partWhy: "The antennae stand up and buzz, the siren light spins fast and flashes. Blue = defense glow.", focus: new THREE.Vector3(2, 5, -6), side: 60, nums: "Numbers unchanged: who gets called and for how long."},
+  tleap: {area: "speed", part: "Chicken-Leg Rams (leg rams, knee gears, thigh gauge)", partWhy: "The gauge fills while crouching, the knee gears spin, the rams push. Yellow = speed glow.", focus: new THREE.Vector3(0, 5, -6), side: 62, nums: "Numbers unchanged: leap distance, slam damage and radius."},
+  tmud: {area: "defense", part: "Shield Mane (ten blades round the neck + generators)", partWhy: "The mane blades swing forward into a ring and the purple disc fills it. Purple = the shield.", focus: new THREE.Vector3(0, 5, -8), side: 60, nums: "Numbers unchanged: shield time and what it blocks."},
+};
+
 const MOVES = [
   {id: "tgrab", name: "Tail Grab & Fling", area: "attack", variants: ["now", "A", "B", "C"],
     part: "Pincer Tail (armoured tail + two pincer blades)", partWhy: "The pincer blades open wide on the wind-up and snap shut on the raptor's back; the armour plates ride along. Red = attack glow on the plates' top line and the blade edges.",
     nums: "Unchanged numbers: 8 damage · stun 1 s · thrown 45 studs (TenoGrabFling) · reach 12 studs · recharge 16 s. Only the animation and when the catch / throw happen change."},
-  {id: "tmortar", name: "Boulder Mortar", soon: true}, {id: "tstomp", name: "Stomp Shockwave", soon: true}, {id: "tbellow", name: "Herd Bellow", soon: true},
-  {id: "tchallenge", name: "Challenge Call", soon: true}, {id: "tleap", name: "Hydraulic Leap", soon: true}, {id: "tmud", name: "Shield Armor", soon: true},
+  ...["tmortar", "tstomp", "tbellow", "tchallenge", "tleap", "tmud"].map(id => Object.assign({id, name: {tmortar: "Boulder Mortar", tstomp: "Stomp Shockwave", tbellow: "Herd Bellow", tchallenge: "Challenge Call", tleap: "Hydraulic Leap", tmud: "Shield Armor"}[id], variants: ["now", "A", "B", "C"]}, MOVE_META[id])),
 ];
+// the grab's versions as a move too; A is in the game since v465
+VM.tgrab = V;
+V.A.sub = "picked · in the game since v465"; V.A.rec = false; V.now.name = "Before"; V.now.sub = "v461 (before the pick)";
+for (const id in VM) if (id !== "tgrab") for (const k in VM[id]) { const v = VM[id][k], ph = v.phases, tm = v.timing; v.phases = () => ph; v.timing = () => tm; }
 
 // ---------- UI ----------
-let cur = 0, playing = true, speed = 1, view = "side", tt = 0;
-const M = () => MOVES[cur], VV = () => V[variant];
+let cur = 1, playing = true, speed = 1, view = "side", tt = 0; // v0.2: opens on the Mortar
+const M = () => MOVES[cur], VV = () => VM[M().id][variant];
 function renderAll() {
-  $("moves").innerHTML = MOVES.map((m, i) => `<button class="tab" data-i="${i}" aria-pressed="${i === cur}" ${m.soon ? "disabled" : ""}>${m.name}<small style="color:${m.soon ? "var(--muted)" : AREA[m.area][1]}">${m.soon ? "next in this pass" : "4 versions"}</small></button>`).join("");
-  $("varRow").innerHTML = '<span class="lbl">Version</span>' + M().variants.map(k => `<button class="var" data-var="${k}" aria-pressed="${k === variant}">${V[k].name}${V[k].rec ? ' <span class="rec">· recommended</span>' : ""}<small>${V[k].sub}</small></button>`).join("");
+  const VS = VM[M().id];
+  $("moves").innerHTML = MOVES.map((m, i) => `<button class="tab" data-i="${i}" aria-pressed="${i === cur}">${m.name}<small style="color:${AREA[m.area][1]}">${m.id === "tgrab" ? "A picked · live" : "4 versions"}</small></button>`).join("");
+  $("varRow").innerHTML = '<span class="lbl">Version</span>' + M().variants.map(k => `<button class="var" data-var="${k}" aria-pressed="${k === variant}">${VS[k].name}${VS[k].rec ? ' <span class="rec">· recommended</span>' : ""}<small>${VS[k].sub}</small></button>`).join("");
+  document.querySelectorAll("[data-side]").forEach(x => x.parentElement && (x.style.display = M().id === "tgrab" ? "" : "none"));
   const v = VV(), ph = v.phases(side);
   $("phases").innerHTML = ph.map(p => `<button class="ph" data-t="${p[0]}" aria-current="false"><i>${p[0].toFixed(2)}–${p[1].toFixed(2)} s</i>${p[2]}</button>`).join("");
-  const rows = M().variants.map(k => `<tr><th>${V[k].name}</th><td>${V[k].timing(side)}</td></tr>`).join("");
-  $("info").innerHTML = `<div class="kind" style="color:${AREA.attack[1]}">ATTACK · Tail Grab & Fling · ${v.name} · target ${side === "front" ? "in front" : "behind"}</div><h2>What you see, in order</h2><ul>${ph.slice(1).map(p => `<li>${p[2]}</li>`).join("")}</ul><p class="note"><b>Borrowed from:</b> ${v.ref}</p><table class="cmp">${rows}</table><p class="note">${M().nums}</p>`;
-  $("part").innerHTML = `<div class="kind" style="color:${AREA.attack[1]}">The part that does it</div><h2>${M().part}</h2><p class="note">${M().partWhy}</p>${NOTES[variant]}`;
+  const rows = M().variants.map(k => `<tr><th>${VS[k].name}</th><td>${VS[k].timing(side)}</td></tr>`).join("");
+  const AR = AREA[M().area];
+  $("info").innerHTML = `<div class="kind" style="color:${AR[1]}">${AR[0]} · ${M().name} · ${v.name}${M().id === "tgrab" ? " · target " + (side === "front" ? "in front" : "behind") : ""}</div><h2>What you see, in order</h2><ul>${ph.slice(1).map(p => `<li>${p[2]}</li>`).join("")}</ul><p class="note"><b>Borrowed from:</b> ${v.ref}</p><table class="cmp">${rows}</table><p class="note">${M().nums}</p>`;
+  const notes = M().id === "tgrab" ? NOTES[variant] : `<h2 style="margin-top:6px">${variant === "now" ? "What's off about it now" : "What it does better · what it costs"}</h2><ul>${v.notes.map(n => `<li>${n}</li>`).join("")}</ul>`;
+  $("part").innerHTML = `<div class="kind" style="color:${AR[1]}">The part that does it</div><h2>${M().part}</h2><p class="note">${M().partWhy}</p>${notes}`;
 }
 const NOTES = {
   now: `<h2 style="margin-top:6px">What's wrong with it now</h2><ul><li>In front, the tail can't reach over your head: it stops short (red line) and the raptor is <b>yanked</b> ~20 studs through the air into the jaws in 0.12 s.</li><li>Behind, it's yanked ~11 studs.</li><li>It's lifted ~32 studs high, much higher than the tail looks like it could hold it.</li><li>The throw misses its aim by up to ~6 studs, so the raptor pops away from the jaws when it's let go.</li></ul>`,
@@ -1233,7 +1560,7 @@ const NOTES = {
   B: `<h2 style="margin-top:6px">Why it fixes it</h2><ul><li>In front, you stomp round first so the tail sweeps low into the raptor: it's caught where it stands, no yank.</li><li>The spin is the clearest wind-up any throw can have: you see it coming and you see where it goes (always ahead of you, ~60 studs).</li><li>Cost: your body (and camera) turns for over a second, and it's the slowest.</li></ul><p class="note">Game change: the body turn needs the server to rotate the teno (TurnLimit off for 1.3 s) + a new TenoPose spin path.</p>`,
   C: `<h2 style="margin-top:6px">Why it fixes it</h2><ul><li>The pull is still there, but now you see what pulls it: the pincer head fires out on a chain, clamps on, and the chain reels it in.</li><li>Reach can grow (the chain sets it, not the tail), so a raptor 12 studs out in front is no problem.</li><li>Cost: a new piece on the Pincer Tail (a chain drum inside the last tail segment) and the slowest catch-to-throw.</li></ul><p class="note">Game change: TenoPartsAnim flies the head group on a chain (Beam), TenoBotMotion follows the reel path.</p>`,
 };
-$("moves").addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (!b || b.disabled) return; cur = +b.dataset.i; tt = 0; reset(); renderAll(); });
+$("moves").addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (!b || b.disabled) return; cur = +b.dataset.i; variant = MOVES[cur].id === "tgrab" ? "A" : "now"; tt = 0; reset(); renderAll(); });
 $("varRow").addEventListener("click", e => { const b = e.target.closest("[data-var]"); if (!b) return; variant = b.dataset.var; tt = 0; reset(); renderAll(); });
 $("phases").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; tt = +b.dataset.t + 0.06; playing = false; syncPlay(); });
 $("play").onclick = () => { playing = !playing; syncPlay(); };
@@ -1243,7 +1570,7 @@ document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { view =
 document.querySelectorAll("[data-side]").forEach(b => b.onclick = () => { side = b.dataset.side; tt = 0; reset(); document.querySelectorAll("[data-side]").forEach(x => x.setAttribute("aria-pressed", x === b)); renderAll(); });
 $("scrub").addEventListener("input", e => { tt = +e.target.value / 1000 * VV().len; playing = false; syncPlay(); sol = null; });
 // test hooks (Playwright): set a frame and read the numbers
-window.__teno = {set(v, s, time, cam) { variant = v; side = s; tt = time; playing = false; if (cam) view = cam; reset(); renderAll(); syncPlay(); }, st, get miss() { return ikMiss; }};
+window.__teno = {set(v, s, time, cam, mv) { if (mv) cur = MOVES.findIndex(m => m.id === mv); variant = v; side = s; tt = time; playing = false; if (cam) view = cam; reset(); renderAll(); syncPlay(); }, st, get miss() { return ikMiss; }};
 window.__tt = x => { tt = x; };
 renderAll();
 
@@ -1255,7 +1582,8 @@ function frameM(now) {
   if (playing) { tt += dt * speed; if (tt > v.len) { tt = 0; reset(); } }
   if (tt < lastTT) { sol = null; for (const k in st) delete st[k]; }
   lastTT = tt;
-  fxOff(); raptor.visible = true; use = 0; headOff = null; rig.rotation.y = 0; rig.position.set(0, 0, 0);
+  fxOff(); raptor.visible = true; raptor2.visible = raptor3.visible = false; use = 0; headOff = null; rig.rotation.y = 0; rig.position.set(0, 0, 0);
+  for (const k in LU) lookU(k, 0); jaw = 0.3;
   // replay from the start of the move each frame for the scratch values that depend on order (from / rel)
   v.update(tt);
   updateEquip();
@@ -1266,14 +1594,14 @@ function frameM(now) {
   $("cap").textContent = ph ? ph[2] : "…";
   document.querySelectorAll(".ph").forEach(b => b.setAttribute("aria-current", ph && +b.dataset.t === ph[0]));
   // camera
-  const f = new THREE.Vector3(0, 4.5, side === "front" ? 1 : 7).add(rig.position);
+  const MM = M(); const f = MM.focus ? MM.focus.clone().add(new THREE.Vector3(0, rig.position.y * 0.5, rig.position.z * 0.5)) : new THREE.Vector3(0, 4.5, side === "front" ? 1 : 7).add(rig.position);
   let goalPos, goalLook;
   if (view === "game") { // ShoulderCam: behind-right of the dino, looking ahead (follows the body's facing)
     const h = rig.rotation.y, off = new THREE.Vector3(13, 15.3, 34).applyAxisAngle(UP, h);
     goalPos = off; goalLook = goalPos.clone().add(new THREE.Vector3(-0.05, -0.12, -1).applyAxisAngle(UP, h));
-  } else if (view === "top") { goalPos = new THREE.Vector3(0, 70, 4.01); goalLook = new THREE.Vector3(0, 0, 4); }
-  else if (view === "side") { goalPos = f.clone().add(new THREE.Vector3(56, 4, 0)); goalLook = f; }
-  else { goalPos = f.clone().add(side === "front" ? new THREE.Vector3(40, 18, -22) : new THREE.Vector3(40, 18, 26)); goalLook = f; }
+  } else if (view === "top") { const fz = MM.focus ? MM.focus.z : 4; goalPos = new THREE.Vector3(0, 80, fz + 0.01); goalLook = new THREE.Vector3(0, 0, fz); }
+  else if (view === "side") { goalPos = f.clone().add(new THREE.Vector3(MM.side || 56, 4, 0)); goalLook = f; }
+  else { goalPos = f.clone().add(MM.focus ? new THREE.Vector3(0.7, 0.32, -0.45).multiplyScalar(MM.side || 56) : side === "front" ? new THREE.Vector3(40, 18, -22) : new THREE.Vector3(40, 18, 26)); goalLook = f; }
   const fovWant = view === "game" ? 70 : 34;
   if (cam.fov !== fovWant) { cam.fov = fovWant; cam.updateProjectionMatrix(); }
   const kk = playing ? 1 - Math.pow(0.001, dt) : 1;
