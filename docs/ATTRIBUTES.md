@@ -2885,3 +2885,32 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | DiloPoseSet; DiloPoseState "coil:server" / "armed:server" | dilo model (each client) | "1.1"; other clients' coil | DiloPose 1.1 |
 | DiloFXStrikeEnabled / DiloFXFlareEnabled / DiloFXBubblesEnabled / DiloFXSpinesEnabled / DiloFXMotesEnabled / DiloFXFrostEnabled; DiloFX12Events | DiloFX script (each client) | true each; count | DiloFX 1.2 (Workspace.DiloFX: DiloArmedGlow part, DiloColdTint Highlight; PlayerGui DiloFrostTint 0.45 s) |
 | Publish v479 | Sandbox v479 + Arena | Kepu 2026-11-05 22:57 "Publish": Dilo animation pass (DiloAttackServer 1.4, DiloAttackTest 1.2, DiloPose 1.1, DiloFX 1.2). Pre-checks: hashes = repo, no ZZ_ / TestPad, only BotServer.BotHidingEnabled / BotFightEnabled off. Arena overwrite: "Successfully published!" first try. |
+
+## Pachy animation pass (MDA-303..313; StaggerPose 1.0 / PachyMovesPose 1.1 / PachyMovesFX 1.1 / IdleAnimation 1.46 + server stamps)
+
+| Attribute | Where | Value | Set by |
+|---|---|---|---|
+| HeadbuttStaggerStampEnabled | HeadbuttServer script | switch (default true; false = 1.15) | HeadbuttServer 1.16 |
+| HookStaggerStampEnabled | HookServer script | switch (default true; false = 1.8) | HookServer 1.9 |
+| StaggerFrom / StaggerPower / StaggerAt | hit model (player or bot) | attacker name; "big" (headbutt) / "mid" (hook smash, x0.7); server time (last) | HeadbuttServer 1.16 / HookServer 1.9; read by StaggerPose 1.0 |
+| StaggerPoseEnabled | any model | switch (default true): the 0.9 s stagger; none while dead / KO | StaggerPose 1.0 |
+| StaggerPoseState | model (client) | diagnostic "on" / "none" | IdleAnimation 1.46 |
+| PachyAnimLayerEnabled | pachy model | switch (default true; false = IdleAnimation 1.45 layers) | IdleAnimation 1.46 |
+| BullChargeEnabled; BloodPactEnabled | pachy model | switches (default true; false = the HeadbuttPose 1.0 charge / no pact pose) | HeadbuttPose 1.1 |
+| HookBraceEnabled | pachy model | switch (default true; false = HookPose 1.2) | HookPose 1.3 |
+| PachyMovesPoseEnabled; PachyServoPoseEnabled, PachyVisorPoseEnabled, PachyInkPoseEnabled, PachyTetherPoseEnabled, PachyMedPoseEnabled, PachyLastStandPoseEnabled, PachyLeapPoseEnabled | pachy model | switches (default true, read every frame) | PachyMovesPose 1.0 |
+| PachyMovesPlantEnabled | pachy model | switch (default true): per-key body drop keeps the feet on the ground; false = 1.0 | PachyMovesPose 1.1 |
+| PachyMovesDrop | pachy model (client) | diagnostic: studs the body is moved down now (0.01 steps; negative = up) | PachyMovesPose 1.1 |
+| PachyMovesPoseState; PachyLeapAccent | pachy model (client) | diagnostics: move ids playing ("servo+ink", "none"); leap accent "on" / "none" | IdleAnimation 1.46 |
+| ServoDashSquatEnabled; ServoDashBlastAt | ServoDashServer script; character | switch (default true; false = 1.1); server time of the blast (press + 0.06); ServoDashUntil = blast + ServoDashTime | ServoDashServer 1.2 |
+| ServoDashLaunchWaitEnabled | character | switch (default true): the launch waits for ServoDashBlastAt | ServoDashLaunch 1.2 |
+| VisorSequenceEnabled | VisorServer script | switch (default true): panels in middle-out within 0.1 s, fold edge-first 0.25 s; false = 1.1 | VisorServer 1.2 |
+| BoneCrestVisorStampEnabled; VisorBlockAt | BoneCrest flag; character | switch; server time of a hit blocked by the visor | BoneCrest 1.6 |
+| InkAimDelayEnabled; InkFireAt; InkCancelAt | InkServer script; character | switch (default true; false = 1.6 instant fire); fire = press + 0.1; cancel stamp (death / stun in the wait; refund, InkResult "cancelled"); cooldown from the press | InkServer 1.7 |
+| TetherAimStampsEnabled; TetherAimStamps; TetherAimAt / TetherAimEndAt | TetherServer script; character | switch; diagnostic count; aim start / end (remote DinoTetherAim "aim" / "end"; a release also stamps the end) | TetherServer 1.4 |
+| MechaTetherAimStampEnabled; TetherAimLocalAt / TetherAimLocalEndAt | MechaButtons script; character (owner client) | switch; the owner's own aim start / end | MechaButtons 1.34 |
+| MedDeployEnabled; MedDeployAt; MedDeployState | MedStationServer script; character | switch (default true; false = 1.2 instant pad); press stamp; "drop" / "pad" / "fold" — capsule flies 0.3 s to 4 x scale behind, heal from landing | MedStationServer 1.3 |
+| PachyLastStandStampEnabled; PachyLastStandAt | PachyStatsServer script; character | switch; server time a drop crossed under PachyLastStandBelow | PachyStatsServer 1.1 |
+| PachyMovesFXEnabled; PachyFXBullEnabled, PachyFXPactEnabled, PachyFXPistonEnabled, PachyFXHookEnabled, PachyFXServoEnabled, PachyFXInkEnabled, PachyFXTetherEnabled, PachyFXLastStandEnabled, PachyFXHeadDownEnabled | PachyMovesFX script (each client) | switches (default true) | PachyMovesFX 1.0 |
+| PachyFXInkRestoreEnabled | PachyMovesFX script | switch (default true): the ink window gets back its own colour + material; false = 1.0 | PachyMovesFX 1.1 |
+| PachyMovesFXVersion; PachyFXEvents; PachyFXParts | PachyMovesFX script | "1.1"; effects played; live parts in Workspace.PachyFX_Local | PachyMovesFX 1.1 |

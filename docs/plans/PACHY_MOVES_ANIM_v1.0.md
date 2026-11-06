@@ -167,3 +167,21 @@ others' screens for up to 3 s; the dome glow shows enemies the pachy is low.
 
 Tickets: MDA-303 (Task 1), MDA-304 (Task 2), MDA-305 (Task 3), MDA-306 (Task 4), MDA-307 (Task 5), MDA-308 (Task 6), MDA-309 (Task 7),
 MDA-310 (Task 8), MDA-311 (Task 9), MDA-312 (Task 10), MDA-313 (Task 11) — see Dev Hub.
+
+## Build notes (2026-11-06, commits ce2f11c + next)
+- Installed by multi_edit, hashes = repo (len/hash): HeadbuttServer 41122/995823300, HookServer 32900/918424504, StaggerPose
+  3881/210241083, HeadbuttPose 11843/592343380, HookPose 8837/612874345, PachyMovesPose 16828/90183671, IdleAnimation
+  90900/195617738, ServoDashServer 18283/450428923, ServoDashLaunch 8381/974322498, VisorServer 18168/193246418, BoneCrest
+  22165/404483879, InkServer 36930/45160794, TetherServer 27800/433416279, MechaButtons 94607/919231889, MedStationServer
+  22721/171847968, PachyStatsServer 8693/236307216, PachyMovesFX 22759/920501141. All 17 compile (loadstring) in Studio.
+- Deviations from the plan: Task 3's PachyLeapPose is folded into PachyMovesPose.leap (one module); the FX of Tasks 2 / 3 / 4
+  live in the new PachyMovesFX instead of HeadbuttFX / MechaLegsFX / HookFX (those stay untouched).
+- Fixes from the Play test: PachyMovesPose 1.1 body drop (the bent legs lifted the feet up to 1.42 studs in LAY; now 0.00-0.04);
+  PachyMovesFX 1.1 ink window restores its own colour + material.
+- Play-tested as Pachy (Sandbox, test pad, slots saved / restored): stagger on Bot_TRex_1 (0.9 s, "big", attacker named),
+  Bull Charge FX, Blood Pact (4th press, red edge), leap + double jump accents, Servo blast +0.06 s, ink fire +0.1 s, visor
+  panels + fold, tether cock / whip / flick + tip hidden, med drop -> pad (heal from landing), Last Stand ring + shell + red
+  dome (local stamps; Last Stand not bought on the test profile). No script errors.
+- Not run: the Grappling Hook (Brace & Reel, hook stagger "mid", reel sparks): HookEnabled is false for every pachy since
+  SkillTree 1.61 (c8abd36, MDA-241) — its therizino wrapper sets e.hookRange to 0 for every non-therizino dino. Separate bug,
+  not touched. Head Down (not bought). The other-client paths (no second player, house rule).

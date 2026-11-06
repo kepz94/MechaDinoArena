@@ -25,8 +25,14 @@
 --                          ball; double jump (JumpDoubleAt / JumpDoublePredictedAt): KICK 0.05 s (out5) -> ball again by
 --                          0.22 s; landing (0.25 s): knees soak it. No landing FX.
 -- moves(model, serverNow, isOwner) -> offsets or nil, id. leap(model, state, t, W, landAge, serverNow, isOwner) -> offsets or nil.
+-- v1.1 (MDA-305 Play test 2026-11-06: the bent legs lifted the feet off the ground, up to 1.4 studs in LAY): each key has a
+--   body drop (DROP, studs at model scale 2, measured in Studio as the foot lift of that key; x model scale / 2) blended like
+--   the angles and put on the RootJoint as a downward move, so the feet stay on the ground. BLAST keeps its lift (the
+--   launch kick). Switch: model attribute PachyMovesPlantEnabled (default true, read every frame; false = 1.0).
+--   Diagnostic: model PachyMovesDrop (studs, 0.01 steps, set on change).
 local PachyMovesPose = {}
 PachyMovesPose.Version = "1.0"
+PachyMovesPose.Version = "1.1" -- v1.1 body drop
 
 local rad, sin, min, max = math.rad, math.sin, math.min, math.max
 local function clamp(x, a, b) return max(a, min(b, x)) end
@@ -78,6 +84,10 @@ K.L_BALL = BOTH({Neck = {-20, 0, 0}, Head = {-24, 0, 0}, ArmL = {-5, 0, 0}, LegL
 K.L_KICK = BOTH({RootJoint = {10, 0, 0}, Neck = {16, 0, 0}, Head = {8, 0, 0}, ArmL = {5, 0, 0}, LegL = {-46, 0, 0}, KneeL = {56, 0, 0}, AnkleL = {-60, 0, 0}, Tail1 = {-16, 0, 0}, Tail2 = {-8, 0, 0}})
 K.L_ABSORB = BOTH({Neck = {-6, 0, 0}, LegL = {6, 0, 0}, KneeL = {-16, 0, 0}})
 PachyMovesPose.KEYS = K
+-- v1.1: studs the body moves down at full weight (model scale 2); negative = up (the key sinks the feet)
+local DROP = {SQUAT = 0.98, DASH_RUN = -0.17, BRAKE = 0.61, BRACE = 0.68, BRACE_HIT = 0.68, INK_TURN = -0.09, INK_KICK = -0.2,
+	SLING_COCK = 0.37, SLING_WHIP = 0.04, LAY = 1.38, HURT = 0.37, ROAR = 0.38}
+PachyMovesPose.DROP = DROP
 
 local NAMES = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5", "LegL", "LegR", "KneeL", "KneeR", "AnkleL", "AnkleR"}
 -- keys {{t, name, ease}, ...} -> {joint = {p, y, r}}; t before the first key = the first key, after the last = the last
@@ -93,18 +103,32 @@ local function sample(keys, t)
 		local va, vb = A[n] or {0, 0, 0}, B[n] or {0, 0, 0}
 		o[n] = {va[1] + (vb[1] - va[1]) * u, va[2] + (vb[2] - va[2]) * u, va[3] + (vb[3] - va[3]) * u}
 	end
+	local da, db = DROP[a[2]] or 0, DROP[b[2]] or 0 -- v1.1
+	o._drop = da + (db - da) * u
 	return o
 end
-local function toCF(p, w)
+local function toCF(p, w, model)
 	local out = {}
 	for n, v in pairs(p) do
-		if v[1] ~= 0 or v[2] ~= 0 or v[3] ~= 0 then out[n] = CFrame.Angles(rad(v[3] * w), rad(v[2] * w), rad(v[1] * w)) end
+		if n ~= "_drop" and (v[1] ~= 0 or v[2] ~= 0 or v[3] ~= 0) then out[n] = CFrame.Angles(rad(v[3] * w), rad(v[2] * w), rad(v[1] * w)) end
+	end
+	if model then -- v1.1: the body drop
+		local d = 0
+		if model:GetAttribute("PachyMovesPlantEnabled") ~= false and p._drop and p._drop ~= 0 then
+			d = p._drop * w * (model:IsA("Model") and model:GetScale() or 2) / 2
+			out.RootJoint = CFrame.new(0, -d, 0) * (out.RootJoint or CFrame.identity)
+		end
+		local r = math.floor(d * 100 + 0.5) / 100
+		if model:GetAttribute("PachyMovesDrop") ~= r then model:SetAttribute("PachyMovesDrop", r) end
 	end
 	return out
 end
 local function num(m, k) local v = m:GetAttribute(k) return typeof(v) == "number" and v == v and v or nil end
 local function on(m, k) return m:GetAttribute(k) ~= false end
-local function add(acc, p) for _, n in ipairs(NAMES) do local a, b = acc[n], p[n]; acc[n] = {a[1] + b[1], a[2] + b[2], a[3] + b[3]} end end
+local function add(acc, p)
+	for _, n in ipairs(NAMES) do local a, b = acc[n], p[n]; acc[n] = {a[1] + b[1], a[2] + b[2], a[3] + b[3]} end
+	acc._drop = (acc._drop or 0) + (p._drop or 0) -- v1.1
+end
 
 -- each returns {joint = {p, y, r}} or nil
 local function servo(m, T)
@@ -165,7 +189,11 @@ local function tether(m, T, isOwner)
 		if endAt < aimAt then w = EASE.io((T - aimAt) / 0.25)
 		elseif T < endAt + 0.12 then w = EASE.io((endAt - aimAt) / 0.25) * (1 - EASE.io((T - endAt) / 0.12))
 		else w = 0 end
-		if w > 0 then for n, v in pairs(K.SLING_COCK) do p[n] = {p[n][1] + v[1] * w, p[n][2] + v[2] * w, p[n][3] + v[3] * w} end; any = true end
+		if w > 0 then
+			for n, v in pairs(K.SLING_COCK) do p[n] = {p[n][1] + v[1] * w, p[n][2] + v[2] * w, p[n][3] + v[3] * w} end
+			p._drop = (p._drop or 0) + DROP.SLING_COCK * w -- v1.1
+			any = true
+		end
 	end
 	if T >= rel and T < rel + 0.4 then add(p, sample({{rel, "ZERO"}, {rel + 0.08, "SLING_WHIP", "out5"}, {rel + 0.4, "ZERO", "io"}}, T)); any = true end
 	if T >= land and T < land + 0.5 then add(p, sample({{land, "ZERO"}, {land + 0.1, "SLING_FLICK", "out"}, {land + 0.5, "ZERO", "io"}}, T)); any = true end
@@ -201,8 +229,11 @@ function PachyMovesPose.moves(model, serverNow, isOwner)
 			end
 		end
 	end
-	if not acc then return nil, "" end
-	return toCF(acc, 1), table.concat(ids, "+")
+	if not acc then
+		if model:GetAttribute("PachyMovesDrop") ~= nil and model:GetAttribute("PachyMovesDrop") ~= 0 then model:SetAttribute("PachyMovesDrop", 0) end -- v1.1
+		return nil, ""
+	end
+	return toCF(acc, 1, model), table.concat(ids, "+") -- v1.1: + model (the body drop)
 end
 
 -- state: IdleAnimation's jump state ("crouch" / "push" / "rise" / "fall" / "land" / "none"); t = s since the leap start;

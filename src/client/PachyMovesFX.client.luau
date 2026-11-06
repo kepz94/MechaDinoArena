@@ -26,12 +26,17 @@
 --   PachyFXHeadDownEnabled   Steel Dome: while charging a headbutt with PachyHeadDownMul < 1 the dome glows steel-blue; a hit
 --                            (LastHitAt) while charging throws blue sparks off the dome.
 -- Diagnostics: script PachyFXEvents (count), PachyFXParts (live parts).
+-- v1.1 (MDA-313 Play test 2026-11-06): the ink window gets back its own colour and material (1.0 put back Glass), kept from
+--   before the first pump, so a press during a pump does not keep the neon. Switch: script attribute PachyFXInkRestoreEnabled
+--   (default true, read at each pump; false = 1.0).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 ink window restore
+if script:GetAttribute("PachyFXInkRestoreEnabled") == nil then script:SetAttribute("PachyFXInkRestoreEnabled", true) end -- v1.1
 script:SetAttribute("PachyMovesFXVersion", VERSION)
 for _, k in ipairs({"PachyFXBullEnabled", "PachyFXPactEnabled", "PachyFXPistonEnabled", "PachyFXHookEnabled", "PachyFXServoEnabled",
 	"PachyFXInkEnabled", "PachyFXTetherEnabled", "PachyFXLastStandEnabled", "PachyFXHeadDownEnabled"}) do
@@ -200,7 +205,19 @@ local function watch(m)
 		local f = num(m, "InkFireAt")
 		if not f then return end
 		local win = partOf(m, "Mecha_InkTank", "Window")
-		if win then
+		if win and script:GetAttribute("PachyFXInkRestoreEnabled") ~= false then -- v1.1
+			st.inkWin = st.inkWin or {win.Color, win.Material}
+			local saved = st.inkWin
+			st.inkPump = (st.inkPump or 0) + 1
+			local my = st.inkPump
+			win.Color = Color3.fromRGB(110, 90, 255)
+			win.Material = Enum.Material.Neon
+			task.delay(math.max(0.05, f - now()), function()
+				if st.inkPump ~= my then return end -- a newer pump restores
+				if win.Parent then win.Color, win.Material = saved[1], saved[2] end
+				st.inkWin = nil
+			end)
+		elseif win then
 			local c = win.Color
 			win.Color = Color3.fromRGB(110, 90, 255)
 			win.Material = Enum.Material.Neon
