@@ -1,4 +1,4 @@
--- DiloMovesFX v1.0 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
+-- DiloMovesFX v1.1 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/DILO_PARTS_v1.0.md Task 6 (MDA-319); mockup docs/mockups/dilo_parts_options.html
 -- v0.1 (tools/mockup/dilo_parts_looks.js: the picked looks' motion and FX). Every player character with Species "Dilo" that
 -- wears DPart_* models (DiloPartsServer 1.0) is watched; the stamps come from DiloMovesServer 1.0. No landing FX.
@@ -24,12 +24,30 @@
 --                          the core.
 --   Script switches (default true, read at each event / frame) plus PartsFXMotionEnabled (the part motion and the hood pieces).
 -- Diagnostics: script DiloMovesFXVersion, DiloMovesFXEvents (count), DiloMovesFXParts (live effect parts).
+-- v1.1 (dilo parts build 2, MDA-321, plan docs/plans/DILO_PARTS_v1.0.md Task 8; DiloMovesServer 1.1; the looks mockup's hiss /
+--   pump / jets tracks). Script switches (default true, read at each event / frame):
+--   PartsFXHissEnabled  from DiloHissAt the Hood Speakers' cones (role "cone") glow up over DiloHissWindup; at DiloHissBlastAt
+--                       a flash at the cones and 6 sound-wave arcs (thin neon rings) rolling out along the facing to
+--                       DiloHissRange studs over 0.55 s; every model named in DiloHissHits gets a "SILENCED" tag above it (a
+--                       BillboardGui, this client only) until its SilencedUntil.
+--   PartsFXPumpEnabled  piston (DPartAnim "pump", role "piston"): up 0.32 x scale x pump, pump 0 -> 1 over 0.45 s from
+--                       DiloPumpAt, back down to the jolt (DiloPumpAt + DiloPumpWindup); at DiloPumpJoltAt a blue flash at the
+--                       tank, a ground ring and "+N" (DiloPumpHealed) above the dilo; while DiloImmuneUntil a see-through blue
+--                       shell round the dilo and an "IMMUNE" tag; each DiloImmuneBlockAt a white-blue flash on the shell.
+--   PartsFXJetsEnabled  the Tail Booster's nozzle (role "nozzle") heats up orange from DiloJetsAt over DiloJetsDelay, then
+--                       orange sparks stream from it (the muzzle Attachment on Tail1's Root) to the dash's end + 0.1 s; its
+--                       charge lights (roles "pip1".."pip3") show DiloPartJetsLeft of DiloPartJetsCharges (unused: dark);
+--                       while DiloJetsTrailUntil a green poison mist along DiloJetsFrom -> DiloJetsTo. No landing FX.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 hiss / pump / jets
+for _, k in ipairs({"PartsFXHissEnabled", "PartsFXPumpEnabled", "PartsFXJetsEnabled"}) do -- v1.1
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
 script:SetAttribute("DiloMovesFXVersion", VERSION)
 for _, k in ipairs({"PartsFXGatlingEnabled", "PartsFXMortarEnabled", "PartsFXSpineEnabled", "PartsFXOverEnabled", "PartsFXMotionEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
@@ -249,6 +267,7 @@ local function animCF(kind, st, sc)
 	if kind == "mortar" then return CFrame.Angles(math.rad(-20 - 30 * st.elev), 0, 0) * CFrame.new(0, -st.mRecoil * 0.2 * k * 2, 0) end
 	if kind == "extend" then return CFrame.new(0, 0.08 * st.extend * k * 2, 0) end
 	if kind == "fins" then return CFrame.Angles(math.rad(-22 * st.glow), 0, 0) end
+	if kind == "pump" then return CFrame.new(0, 0.32 * (st.pump or 0) * k * 2, 0) end -- v1.1
 	return CFrame.identity
 end
 local function ease(u) u = math.clamp(u, 0, 1) return u * u * (3 - 2 * u) end
@@ -330,6 +349,203 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 	script:SetAttribute("DiloMovesFXParts", live)
+end)
+
+-- ---------------------------------------------------------------- v1.1: build 2 (hiss, pump, jets)
+local PURPLE, BLUE, ORANGE_HOT = Color3.fromRGB(201, 184, 255), Color3.fromRGB(159, 230, 255), Color3.fromRGB(255, 176, 80)
+local function findModel(name)
+	if type(name) ~= "string" or name == "" then return nil end
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character and pl.Character.Name == name then return pl.Character end end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local bots = isl and isl:FindFirstChild("Bots")
+	return bots and bots:FindFirstChild(name) or nil
+end
+local function tag(model, text, color, untilT, offsetY)
+	local r = model:FindFirstChild("HumanoidRootPart")
+	if not r then return end
+	local g = Instance.new("BillboardGui")
+	g.Name = "DiloFXTag"
+	g.AlwaysOnTop = true
+	g.Size = UDim2.fromOffset(150, 28)
+	g.StudsOffsetWorldSpace = Vector3.new(0, offsetY or 14 * scaleK(model), 0)
+	g.Adornee = r
+	local l = Instance.new("TextLabel")
+	l.Size = UDim2.fromScale(1, 1)
+	l.BackgroundTransparency = 1
+	l.Font = Enum.Font.GothamBlack
+	l.TextScaled = true
+	l.TextColor3 = color
+	l.TextStrokeTransparency = 0.3
+	l.Text = text
+	l.Parent = g
+	g.Parent = folder
+	Debris:AddItem(g, math.max(0.2, untilT - now()))
+	return g
+end
+local function rolePart(char, role)
+	for _, p in ipairs(pieces(char)) do if p:GetAttribute("DPartRole") == role then return p end end
+end
+local function nozzleMuzzle(char)
+	local t1 = char:FindFirstChild("Tail1")
+	local root = t1 and t1:FindFirstChild("Root")
+	if root then
+		for _, a in ipairs(root:GetChildren()) do if a:IsA("Attachment") and a.Name:sub(1, 12) == "DPartMuzzle_" then return a end end
+	end
+	local n = rolePart(char, "nozzle")
+	return n
+end
+local function watchB2(char)
+	local st = W[char]
+	if not st or st.b2 then return end
+	st.b2 = true
+	char:GetAttributeChangedSignal("DiloHissBlastAt"):Connect(function()
+		local at = num(char, "DiloHissBlastAt")
+		if not at or not on("PartsFXHissEnabled") or now() - at > 1 then return end
+		local r = char:FindFirstChild("HumanoidRootPart")
+		local k = scaleK(char)
+		for _, p in ipairs(pieces(char)) do
+			if p:GetAttribute("DPartRole") == "cone" then flash(p.Position, 3 * k, PURPLE, 0.18) end
+		end
+		if r then
+			local fwd = Vector3.new(r.CFrame.LookVector.X, 0, r.CFrame.LookVector.Z)
+			fwd = fwd.Magnitude > 1e-3 and fwd.Unit or -Vector3.zAxis
+			local range = num(char, "DiloHissRange") or 20
+			local from = r.Position + Vector3.new(0, 3 * k, 0) + fwd * 3 * k
+			for i = 0, 5 do
+				task.delay(i * 0.05, function()
+					local w = part(Vector3.new(0.2, 2, 2), PURPLE, Enum.Material.Neon, CFrame.lookAt(from, from + fwd) * CFrame.Angles(0, math.pi / 2, 0), 0.25, Enum.PartType.Cylinder)
+					local to = from + fwd * range
+					local d = range * math.tan(math.rad(num(char, "DiloHissAngle") or 35)) * 2
+					TweenService:Create(w, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+						{CFrame = CFrame.lookAt(to, to + fwd) * CFrame.Angles(0, math.pi / 2, 0), Size = Vector3.new(0.2, d * 0.55, d), Transparency = 1}):Play()
+					Debris:AddItem(w, 0.6)
+				end)
+			end
+		end
+		for name in string.gmatch(char:GetAttribute("DiloHissHits") or "", "[^|]+") do
+			local m = findModel(name)
+			if m then
+				task.delay(0.08, function()
+					local u = num(m, "SilencedUntil") or (now() + 1.5)
+					local left = math.max(0, u - now())
+					tag(m, ("SILENCED · %d s"):format(math.floor(left + 0.5)), PURPLE, u)
+					local mr = m:FindFirstChild("HumanoidRootPart")
+					if mr then flash(mr.Position, 6 * k, PURPLE, 0.18) end
+				end)
+			end
+		end
+		ev()
+	end)
+	char:GetAttributeChangedSignal("DiloPumpJoltAt"):Connect(function()
+		local at = num(char, "DiloPumpJoltAt")
+		if not at or not on("PartsFXPumpEnabled") or now() - at > 1 then return end
+		local k = scaleK(char)
+		local tank = rolePart(char, "fluid") or rolePart(char, "tank")
+		if tank then flash(tank.Position, 12 * k, BLUE, 0.22) end
+		local r = char:FindFirstChild("HumanoidRootPart")
+		if r then
+			local feet = r.Position.Y - r.Size.Y / 2 - ((char:FindFirstChildOfClass("Humanoid") or {HipHeight = 0}).HipHeight or 0)
+			ring(Vector3.new(r.Position.X, feet + 0.2, r.Position.Z), 24 * k, BLUE, 0.5)
+			local healed = num(char, "DiloPumpHealed") or 0
+			if healed > 0 then tag(char, ("+%d"):format(math.floor(healed + 0.5)), Color3.fromRGB(184, 255, 112), now() + 1.2, 12 * k) end
+		end
+		ev()
+	end)
+	char:GetAttributeChangedSignal("DiloImmuneBlockAt"):Connect(function()
+		if not on("PartsFXPumpEnabled") then return end
+		local r = char:FindFirstChild("HumanoidRootPart")
+		if r then flash(r.Position + Vector3.new(0, 2 * scaleK(char), 0), 14 * scaleK(char), Color3.fromRGB(220, 245, 255), 0.2) end
+		ev()
+	end)
+	char:GetAttributeChangedSignal("DiloJetsAt"):Connect(function()
+		if char:GetAttribute("DiloJetsResult") ~= "dash" or not on("PartsFXJetsEnabled") then return end
+		ev()
+	end)
+end
+local watchV10 = watch
+watch = function(char)
+	watchV10(char)
+	watchB2(char)
+end
+local function ease2(u) u = math.clamp(u, 0, 1) return u * u * (3 - 2 * u) end
+RunService.RenderStepped:Connect(function(dt)
+	local T = now()
+	for char, st in pairs(W) do
+		if char.Parent then
+			local k = scaleK(char)
+			-- pump piston
+			local pa = num(char, "DiloPumpAt")
+			local pw = num(char, "DiloPumpWindup") or 0.62
+			local pump = 0
+			if pa and T >= pa and T < pa + pw then
+				pump = T < pa + 0.45 and ease2((T - pa) / 0.45) or 1 - ((T - pa - 0.45) / math.max(0.05, pw - 0.45)) ^ 2
+			end
+			st.pump = on("PartsFXPumpEnabled") and math.clamp(pump, 0, 1) or 0
+			-- immune shell
+			local iu = num(char, "DiloImmuneUntil")
+			local r = char:FindFirstChild("HumanoidRootPart")
+			if on("PartsFXPumpEnabled") and iu and iu > T and r then
+				if not (st.shell and st.shell.Parent) then
+					st.shell = part(Vector3.one * 26 * k, BLUE, Enum.Material.ForceField, r.CFrame, 0.35, Enum.PartType.Ball)
+					st.shell.Name = "DiloImmuneShell"
+					st.shellTag = tag(char, "IMMUNE", BLUE, iu, 16 * k)
+				end
+				st.shell.CFrame = CFrame.new(r.Position)
+			elseif st.shell then
+				st.shell:Destroy()
+				st.shell = nil
+				if st.shellTag then st.shellTag:Destroy() st.shellTag = nil end
+			end
+			-- hiss cones glow
+			local ha, hw = num(char, "DiloHissAt"), num(char, "DiloHissWindup") or 0.5
+			local hot = (on("PartsFXHissEnabled") and ha and T >= ha and T < ha + hw + 0.3) and (T < ha + hw and (T - ha) / hw or 1 - (T - ha - hw) / 0.3) or 0
+			-- jets heat + sparks
+			local ja, jd, jt = num(char, "DiloJetsAt"), num(char, "DiloJetsDelay") or 0.34, num(char, "DiloJetsTime") or 0.25
+			local heat = 0
+			local dashing = false
+			if on("PartsFXJetsEnabled") and ja and char:GetAttribute("DiloJetsResult") == "dash" and T >= ja then
+				if T < ja + jd then heat = (T - ja) / jd
+				elseif T < ja + jd + jt + 0.1 then heat, dashing = 1, true
+				elseif T < ja + jd + jt + 0.6 then heat = 1 - (T - ja - jd - jt - 0.1) / 0.5 end
+			end
+			if dashing then
+				local mz = nozzleMuzzle(char)
+				if mz then
+					local pos = mz:IsA("Attachment") and mz.WorldPosition or mz.Position
+					local back = r and -r.CFrame.LookVector or Vector3.zAxis
+					burst(pos, ORANGE_HOT, Color3.fromRGB(255, 120, 40), 3, 18 * k, 0.9 * k, 0.18, 20, back)
+				end
+			end
+			-- trail mist
+			local tu = num(char, "DiloJetsTrailUntil")
+			local tf, tt = char:GetAttribute("DiloJetsFrom"), char:GetAttribute("DiloJetsTo")
+			if on("PartsFXJetsEnabled") and tu and tu > T and typeof(tf) == "Vector3" and typeof(tt) == "Vector3" and math.random() < dt * 14 then
+				local p = tf:Lerp(tt, math.random()) + Vector3.new((math.random() - 0.5) * 3 * k, -2 * k, (math.random() - 0.5) * 3 * k)
+				burst(p, GREEN, GREEN_D, 2, 2 * k, 2.2 * k, 1.2, 60, Vector3.yAxis)
+			end
+			-- part colours: cones, nozzle, charge lights
+			local left = num(char, "DiloPartJetsLeft")
+			local maxC = num(char, "DiloPartJetsCharges") or 0
+			for _, p in ipairs(pieces(char)) do
+				local role = p:GetAttribute("DPartRole")
+				local base = p:GetAttribute("DPartBaseColor")
+				if typeof(base) == "Color3" then
+					local c
+					if role == "cone" then c = base:Lerp(Color3.fromRGB(240, 230, 255), math.clamp(hot, 0, 1))
+					elseif role == "nozzle" then c = base:Lerp(ORANGE_HOT, math.clamp(heat, 0, 1))
+					elseif role and role:match("^pip%d$") and on("PartsFXJetsEnabled") then
+						local i = tonumber(role:sub(4))
+						if i > maxC then c = Color3.fromRGB(40, 40, 46)
+						elseif left and i > left then c = base:Lerp(Color3.fromRGB(40, 40, 46), 0.75)
+						else c = base end
+					end
+					if c and p.Color ~= c then p.Color = c end
+				end
+			end
+		else
+			if st.shell then st.shell:Destroy() st.shell = nil end
+		end
+	end
 end)
 
 -- ---------------------------------------------------------------- who to watch

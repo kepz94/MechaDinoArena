@@ -1,4 +1,4 @@
--- DiloPose v1.1 (Mecha Dino Arena) — the Dilophosaurus' animation layers for IdleAnimation 1.43: Bite + Spit Dart (attack C)
+-- DiloPose v1.3 (Mecha Dino Arena) — the Dilophosaurus' animation layers for IdleAnimation 1.43: Bite + Spit Dart (attack C)
 -- and the Cobra Leap (J1), plus the frill (folded at rest, snapping open on the attack and the leap) and the throat sac.
 -- MDA-226, plan docs/plans/DILO_KIT_v1.0.md Task 6; mockup docs/mockups/dilo_kit_options_v0.1.html (Kepu 2026-11-03 "C and
 -- J1"; source tools/dilo_kit_mockup/app.js). Key poses, timings, springs, frill pop and sac = the mockup's.
@@ -79,10 +79,19 @@
 --     (io)}; the hood stays open from 0.6 s after the press until DiloOverdriveUntil.
 --   A part track and a bite / spit replace each other (the newer start wins). Switch: model attribute DiloPartPosesEnabled
 --   (default true, read each frame; false = 1.1). Diagnostics: DiloPoseState "p_gatling" / ..., DiloPoseSet "1.2".
+-- v1.3 (dilo parts build 2, MDA-321, plan docs/plans/DILO_PARTS_v1.0.md Task 8; DiloMovesServer 1.1; keys from
+--   tools/mockup/dilo_parts_looks.js v0.1): three more part tracks, same rules as 1.2:
+--   * p_hiss (DiloHissAt): {0 $from, 0.45 HISS_WIND (io), 0.55 HISS_BLAST (out5), 0.9 HISS_BLAST, 1.5 READY (io)}; hood open
+--     0.15 - 1.4 s (the Hood Speakers sit on it).
+--   * p_pump (DiloPumpAt): {0 $from, 0.5 PRIME (io), 0.62 JOLT (out5), 1.07 PROUD (io), 2.02 READY (io)}.
+--   * p_jets (DiloJetsAt, only when DiloJetsResult is "dash"): {0 $from, 0.3 DASH_LOW (io), 0.38 DASH_GO (out5), 0.62 DASH_GO,
+--     0.84 DASH_SKID (out), 1.52 READY (io)} (DiloJetsLaunch 1.0 moves the body; no root push on these keys).
+--   Same switch DiloPartPosesEnabled. Diagnostics: DiloPoseState "p_hiss" / "p_pump" / "p_jets", DiloPoseSet "1.3".
 local DiloPose = {}
 DiloPose.Version = "1.0"
 DiloPose.Version = "1.1" -- v1.1 Cobra Strike, Hood Flare, Spring Coil
 DiloPose.Version = "1.2" -- v1.2 mecha part move poses
+DiloPose.Version = "1.3" -- v1.3 build-2 part move poses
 DiloPose.Defaults = {
 	DiloPoseEnabled = true, DiloLeapPoseEnabled = true, DiloGroundLockEnabled = true, DiloFrillEnabled = true,
 	DiloFrillPopEnabled = true, DiloSacEnabled = true, DiloLeapLandTime = 1.0, DiloSacSwell = 1.55,
@@ -163,11 +172,28 @@ KEYS.ROAR = BOTH({RootJoint = {8, 0, 0}, Neck = {22, 0, 0}, Head = {8, 0, 0}, Ja
 	Tail1 = {-10, 0, 0}, Tail2 = {-6, 0, 0}})
 KEYS.SPIT_SET = BOTH({RootJoint = {2, 0, 0}, Neck = {12, 0, 0}, Head = {-10, 0, 0}, Jaw = {-10, 0, 0}, ArmL = {-12, 0, 0},
 	KneeL = {-8, 0, 0}})
+-- v1.3 keys (dilo_parts_looks.js)
+KEYS.HISS_BLAST = BOTH({RootJoint = {-6, 0, 0}, Neck = {-14, 0, 0}, Head = {10, 0, 0}, Jaw = {-46, 0, 0}, ArmL = {-14, 0, 0},
+	KneeL = {-8, 0, 0}, Tail1 = {-8, 0, 0}, Tail2 = {-4, 0, 0}})
+KEYS.PRIME = BOTH({RootJoint = {2, 0, 0}, Neck = {6, 0, 0}, Head = {-6, 0, 0}, Jaw = {-4, 0, 0}, ArmL = {-14, 0, 0},
+	KneeL = {-12, 0, 0}, LegL = {6, 0, 0}, Tail1 = {4, 0, 0}})
+KEYS.JOLT = BOTH({RootJoint = {14, 0, 0}, Neck = {34, 0, 0}, Head = {-24, 0, 0}, Jaw = {-24, 0, 0}, ArmL = {-24, 0, -20},
+	Tail1 = {-12, 0, 0}, Tail2 = {-8, 0, 0}})
+KEYS.PROUD = BOTH({RootJoint = {4, 0, 0}, Neck = {10, 0, 0}, Head = {-6, 0, 0}, ArmL = {-6, 0, 0}, Tail1 = {-4, 0, 0}})
+KEYS.DASH_LOW = BOTH({RootJoint = {-10, 0, 0}, Neck = {-6, 0, 0}, Head = {8, 0, 0}, Jaw = {-6, 0, 0}, ArmL = {-10, 0, 0},
+	LegL = {24, 0, 0}, KneeL = {-44, 0, 0}, AnkleL = {18, 0, 0}, Tail1 = {-10, 0, 0}, Tail2 = {-6, 0, 0}})
+KEYS.DASH_GO = BOTH({RootJoint = {-16, 0, 0}, Neck = {-20, 0, 0}, Head = {6, 0, 0}, ArmL = {30, 0, 0}, KneeL = {-8, 0, 0},
+	Tail1 = {-14, 0, 0}, Tail2 = {-8, 0, 0}, Tail3 = {-4, 0, 0}}, {LegL = {-26, 0, 0}, LegR = {22, 0, 0}, KneeR = {-26, 0, 0},
+	AnkleL = {-12, 0, 0}})
+KEYS.DASH_SKID = BOTH({RootJoint = {10, 0, 0}, Neck = {18, 0, 0}, Head = {-8, 0, 0}, ArmL = {-16, 0, 0}, Tail1 = {10, 0, 0},
+	Tail2 = {6, 0, 0}}, {LegL = {28, 0, 0}, KneeL = {-30, 0, 0}, AnkleL = {10, 0, 0}, LegR = {8, 0, 0}, KneeR = {-40, 0, 0},
+	AnkleR = {16, 0, 0}})
 DiloPose.KEYS = KEYS
 local FWD = {C_BWIND = -0.6, C_BITE = 3.4, C_BITE2 = 3.4, C_COIL = -1, C_COIL2 = -1, C_DART = 2, C_DART2 = 2}
 FWD.DRAW, FWD.STRIKE, FWD.CLAMP = -1.2, 4.0, 4.0 -- v1.1
 FWD.FLARE_COIL, FWD.FLARE_COIL2, FWD.THRUST, FWD.RECOIL = -1, -1, 2.8, 0.4
 FWD.A_WIND, FWD.MORTAR_KICK, FWD.BURST, FWD.HISS_WIND, FWD.ROAR = -1.2, -2.4, -0.6, -1.2, -0.4 -- v1.2
+FWD.HISS_BLAST, FWD.JOLT = 0.6, -0.8 -- v1.3
 
 local TRACKS = {
 	bite = {{0, "$from"}, {0.1, "C_BWIND", "io"}, {0.17, "C_BITE", "in2"}, {0.32, "C_BITE2", "out"}, {0.7, "READY", "io"}},
@@ -188,6 +214,14 @@ TRACKS.p_mortar = {{0, "$from"}, {0.45, "A_WIND", "io"}, {0.57, "MORTAR_KICK", "
 TRACKS.p_spine = {{0, "$from"}, {0.35, "CURL", "io"}, {0.46, "BURST", "out5"}, {0.82, "BURST"}, {1.52, "READY", "io"}}
 TRACKS.p_over = {{0, "$from"}, {0.55, "HISS_WIND", "io"}, {0.75, "ROAR", "out5"}, {1.2, "ROAR"}, {1.55, "SPIT_SET", "io"}, {2.0, "READY", "io"}}
 local PART_STAMPS = {{"p_gatling", "DiloGatlingAt"}, {"p_mortar", "DiloMortarAt"}, {"p_spine", "DiloSpineAt"}, {"p_over", "DiloOverdriveAt"}}
+-- v1.3 part tracks (see the header)
+TRACKS.p_hiss = {{0, "$from"}, {0.45, "HISS_WIND", "io"}, {0.55, "HISS_BLAST", "out5"}, {0.9, "HISS_BLAST"}, {1.5, "READY", "io"}}
+TRACKS.p_pump = {{0, "$from"}, {0.5, "PRIME", "io"}, {0.62, "JOLT", "out5"}, {1.07, "PROUD", "io"}, {2.02, "READY", "io"}}
+TRACKS.p_jets = {{0, "$from"}, {0.3, "DASH_LOW", "io"}, {0.38, "DASH_GO", "out5"}, {0.62, "DASH_GO"}, {0.84, "DASH_SKID", "out"},
+	{1.52, "READY", "io"}}
+table.insert(PART_STAMPS, {"p_hiss", "DiloHissAt"})
+table.insert(PART_STAMPS, {"p_pump", "DiloPumpAt"})
+table.insert(PART_STAMPS, {"p_jets", "DiloJetsAt"})
 local function partPosesOn(model) return model:GetAttribute("DiloPartPosesEnabled") ~= false end
 local partSeen = nil -- v1.2: [stamp attribute] = last seen value
 local function cobraOn(model) return model:GetAttribute("DiloCobraStrikeEnabled") ~= false end
@@ -585,7 +619,8 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		end
 		for _, ps in ipairs(PART_STAMPS) do
 			local at = num(model:GetAttribute(ps[2]))
-			if at and at ~= partSeen[ps[2]] and partPosesOn(model) and ctx.serverNow - at < 1.5 then start(ps[1], at) end
+			if at and at ~= partSeen[ps[2]] and partPosesOn(model) and ctx.serverNow - at < 1.5
+				and not (ps[1] == "p_jets" and model:GetAttribute("DiloJetsResult") ~= "dash") then start(ps[1], at) end -- v1.3: jets only on a dash
 			partSeen[ps[2]] = at
 		end
 	end
@@ -630,7 +665,7 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		local nm = atk.kind == "coil" and (st == "armed" and "armed" or "coil") or atk.kind or "none"
 		if atk.kind == "coil" and not ctx.isOwner then nm ..= ":server" end -- v1.1
 		show("DiloPoseState", nm)
-		show("DiloPoseSet", "1.2")
+		show("DiloPoseSet", DiloPose.Version) -- v1.3 (was "1.2")
 	end
 	show("DiloPoseSource", src)
 	show("DiloLeapPhase", leapS.phase)
@@ -647,6 +682,7 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 				or (atk.kind == "bite" and cobraOn(model) and t >= 0.01 and t < 0.5) -- v1.1: Cobra Strike's hood
 			if partPosesOn(model) then -- v1.2: the part moves' hood windows
 				if (atk.kind == "p_gatling" and t >= 0.1 and t < 1.6) or (atk.kind == "p_spine" and t >= 0.08 and t < 1.22) then want = true end
+				if atk.kind == "p_hiss" and t >= 0.15 and t < 1.4 then want = true end -- v1.3
 				local oa, ou = num(model:GetAttribute("DiloOverdriveAt")), num(model:GetAttribute("DiloOverdriveUntil"))
 				if oa and ou and ctx.serverNow >= oa + 0.6 and ctx.serverNow < ou then want = true end
 			end

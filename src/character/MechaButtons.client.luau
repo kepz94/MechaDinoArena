@@ -1,4 +1,4 @@
--- MechaButtons v1.35 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.36 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -272,6 +272,16 @@ VERSION = "1.32" -- v1.32 grapple hold-to-lock
 VERSION = "1.33" -- v1.33 the grapple button is the Dash (move direction)
 VERSION = "1.34" -- v1.34 tether aim stamps
 VERSION = "1.35" -- v1.35 dilo parts build 1
+VERSION = "1.36" -- v1.36 dilo parts build 2 + SILENCED
+-- v1.36 (dilo parts build 2, MDA-321, plan docs/plans/DILO_PARTS_v1.0.md Task 8; DiloMovesServer 1.1; red-team 1 "Buttons + dilo
+--   server"): TIMED_PARTS += dhiss ("DiloPartHiss", DinoDiloHissRequest, "SONIC HISS"), dpump ("DiloPartPump",
+--   DinoDiloPumpRequest, "ANTIVENOM"), djets ("DiloPartJets", DinoDiloJetsRequest, "SPRING JETS"). Hiss and pump are normal
+--   presses; Spring Jets sends (stamp, move direction): the Humanoid's MoveDirection (flat), else the camera's flat look while
+--   standing. The touch slot of djets shows its charges as "left / max" in the sub label (DiloPartJetsLeft of
+--   DiloPartJetsCharges; the slot's 2 pips stay the Thrusters' only). Switch: MechaButtonsDiloEnabled (as 1.35).
+--   SILENCED: while the character's SilencedUntil (Sonic Hiss, DiloMovesServer 1.1) is in the future every slot with a part is
+--   dimmed with the sub label "SILENCED" and a press does nothing (MechaButtonsSilencedPresses += 1); redrawn when it starts
+--   and ends. Switch: script attribute MechaButtonsSilenceEnabled (default true, read each press / draw; false = 1.35).
 -- v1.35 (dilo parts build 1, MDA-319, plan docs/plans/DILO_PARTS_v1.0.md Task 6; DiloMovesServer 1.0): TIMED_PARTS += dgatling
 --   ("DiloPartGatling", DinoDiloGatlingRequest, "VENOM GATLING"), dmortar ("DiloPartMortar", DinoDiloMortarRequest, "TOXIN
 --   MORTAR"), dspine ("DiloPartSpine", DinoDiloSpineRequest, "SPINE BURST"), dover ("DiloPartOver", DinoDiloOverRequest,
@@ -397,6 +407,14 @@ if DILO_BTN then -- v1.35: the dilo's mecha parts (build 1)
 	TIMED_PARTS.dmortar = {"DiloPartMortar", "DinoDiloMortarRequest", "TOXIN MORTAR"}
 	TIMED_PARTS.dspine = {"DiloPartSpine", "DinoDiloSpineRequest", "SPINE BURST"}
 	TIMED_PARTS.dover = {"DiloPartOver", "DinoDiloOverRequest", "OVERDRIVE"}
+	TIMED_PARTS.dhiss = {"DiloPartHiss", "DinoDiloHissRequest", "SONIC HISS"} -- v1.36: build 2
+	TIMED_PARTS.dpump = {"DiloPartPump", "DinoDiloPumpRequest", "ANTIVENOM"}
+	TIMED_PARTS.djets = {"DiloPartJets", "DinoDiloJetsRequest", "SPRING JETS"}
+end
+if script:GetAttribute("MechaButtonsSilenceEnabled") == nil then script:SetAttribute("MechaButtonsSilenceEnabled", true) end -- v1.36
+local function silencedNow() -- v1.36
+	return script:GetAttribute("MechaButtonsSilenceEnabled") ~= false
+		and (tonumber(char:GetAttribute("SilencedUntil")) or 0) > workspace:GetServerTimeNow()
 end
 -- v1.20: parts that use hold-to-aim
 local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off
@@ -903,6 +921,10 @@ char.AncestryChanged:Connect(function(_, parent) if not parent then tacEnd(false
 local function press(n, input)
 	local id = slotPart(n)
 	char:SetAttribute("MechaButtonsLastPress", ("slot%d:%s"):format(n, id or "empty"))
+	if id and silencedNow() then -- v1.36: Sonic Hiss silence
+		script:SetAttribute("MechaButtonsSilencedPresses", (script:GetAttribute("MechaButtonsSilencedPresses") or 0) + 1)
+		return
+	end
 	if clockPassive(id) then return end -- v1.31: passive Overclock: nothing to press
 	if tacOn() and id == "tether" then -- v1.22: tap = aim mode, tap again = fire
 		if tac then tacEnd(true, "fired") else tacStart(n) end
@@ -941,6 +963,19 @@ local function press(n, input)
 			point = hit and hit.Position or nil
 		end
 		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector, point) end
+		return
+	end
+	if DILO_BTN and id == "djets" then -- v1.36: the move direction (flat), else the camera's flat look
+		local r = ReplicatedStorage:FindFirstChild(TIMED_PARTS[id][2])
+		local h = char:FindFirstChildOfClass("Humanoid")
+		local md = h and h.MoveDirection or Vector3.zero
+		md = Vector3.new(md.X, 0, md.Z)
+		if md.Magnitude < 0.1 then
+			local cam = workspace.CurrentCamera
+			local lv = cam and cam.CFrame.LookVector or Vector3.zero
+			md = Vector3.new(lv.X, 0, lv.Z)
+		end
+		if r then r:FireServer(workspace:GetServerTimeNow(), md.Magnitude > 1e-3 and md.Unit or Vector3.zero) end
 		return
 	end
 	if DILO_BTN and (id == "dgatling" or id == "dmortar") then -- v1.35: along the camera look; the mortar + the crosshair point
@@ -1605,6 +1640,14 @@ draw = function()
 				p.Visible = id == "thrusters" and i <= max -- v1.4: pips are the dash charges only
 				p.BackgroundColor3 = i <= left and ORANGE or Color3.fromRGB(85, 85, 85)
 			end
+			if DILO_BTN and id == "djets" then -- v1.36: Spring Jets charges
+				local jm = tonumber(char:GetAttribute("DiloPartJetsCharges")) or 0
+				if jm > 1 then s.sub.Text = ("%d / %d"):format(tonumber(char:GetAttribute("DiloPartJetsLeft")) or jm, jm) end
+			end
+			if silencedNow() then -- v1.36: Sonic Hiss silence
+				s.stroke.Transparency, s.main.TextTransparency = 0.6, 0.6
+				s.sub.Text, s.sub.TextColor3 = "SILENCED", Color3.fromRGB(201, 184, 255)
+			end
 		else
 			s.stroke.Color, s.stroke.Transparency = Color3.new(1, 1, 1), 0.5
 			s.main.Text, s.main.TextTransparency = "+", 0.4
@@ -1627,6 +1670,7 @@ end
 
 local lastCloakReady -- v1.4: redraw when the cloak's readiness flips (cooldown runs out)
 local lastTimedReady = {} -- v1.5: the same for the timed parts
+local lastSilenced = false -- v1.36
 RunService.RenderStepped:Connect(function()
 	local nextAt = tonumber(char:GetAttribute("DashNextChargeAt")) or 0
 	local rc = tonumber(char:GetAttribute("DashRecharge")) or 8
@@ -1645,6 +1689,8 @@ RunService.RenderStepped:Connect(function()
 		s.cd.Size = UDim2.fromScale(1, id == "thrusters" and frac or id == "cloak" and cFrac or tFrac)
 	end
 	if cReady ~= lastCloakReady then lastCloakReady = cReady; redraw = true end
+	local sil = silencedNow() -- v1.36: the silence ends
+	if sil ~= lastSilenced then lastSilenced = sil; redraw = true end
 	if redraw then draw() end
 end)
 
@@ -1653,6 +1699,7 @@ local WATCH = {DashEnabled = true, DashCharges = true, DashChargesLeft = true, A
 WATCH.MechaLegsEnabled, WATCH.JumpPredictedAt = true, true -- v1.16
 WATCH.BloodRushEnabled, WATCH.HeadbuttChargesNow, WATCH.HeadbuttSacrifices = true, true, true -- v1.17
 WATCH.TheriClockPassive = true -- v1.31
+WATCH.SilencedUntil, WATCH.DiloPartJetsLeft, WATCH.DiloPartJetsCharges = true, true, true -- v1.36
 for _, tp in pairs(TIMED_PARTS) do -- v1.5
 	for _, k in ipairs({"Enabled", "Until", "ReadyAt"}) do WATCH[tp[1] .. k] = true end
 end

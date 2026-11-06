@@ -1,4 +1,4 @@
--- SprintTest v1.20 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.21 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -73,6 +73,11 @@
 --   MineSlow, TenoSlow, SmokeSlow, CaltropSlow, GooSlow, HeadbuttSlow (not the self-slow) and the roar debuff's speed, each
 --   only while active and below 1; MoveSpeedParts then adds "noSlow". Switch: script attribute SprintTheriClockEnabled
 --   (default true, read each apply; false = 1.19).
+-- v1.21 (dilo parts build 2, MDA-321, plan docs/plans/DILO_PARTS_v1.0.md Task 8; DiloMovesServer 1.1 Antivenom Pump star):
+--   while DiloImmuneUntil > now the slow factors are taken back out (the v1.20 slowBack list: ScreechSlow, MineSlow,
+--   TenoSlow, SmokeSlow, CaltropSlow, GooSlow, HeadbuttSlow) and a roar-debuff speed below 1 counts as 1; MoveSpeedParts then
+--   adds "immune". Re-applied when DiloImmuneUntil changes and when it ends. Switch: script attribute SprintDiloImmuneEnabled
+--   (default true, read each apply; false = 1.20).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -250,6 +255,31 @@ do
 		return m, u
 	end
 end
+-- v1.21: Antivenom Pump immunity (see the header)
+if script:GetAttribute("SprintDiloImmuneEnabled") == nil then script:SetAttribute("SprintDiloImmuneEnabled", true) end
+local function immuneOn(t)
+	return script:GetAttribute("SprintDiloImmuneEnabled") ~= false and (tonumber(char:GetAttribute("DiloImmuneUntil")) or 0) > t
+end
+do
+	local partSpeedV120 = partSpeed
+	partSpeed = function()
+		local mul, names, ends = partSpeedV120()
+		local t = workspace:GetServerTimeNow()
+		if immuneOn(t) and not (clockOn(t) and char:GetAttribute("TheriClockNoSlow") == true) then
+			local back = slowBack(t)
+			if back < 1 then mul /= back end
+			names = (names == "none" and "" or names .. "+") .. "immune"
+			table.insert(ends, tonumber(char:GetAttribute("DiloImmuneUntil")))
+		end
+		return mul, names, ends
+	end
+	local debuffSpeedV120 = debuffSpeed
+	debuffSpeed = function()
+		local m, u = debuffSpeedV120()
+		if immuneOn(workspace:GetServerTimeNow()) and m < 1 then return 1, u end
+		return m, u
+	end
+end
 local scheduledPartEnds = {} -- v1.6: [end time] = true once a re-apply is scheduled
 
 local sprinting = false
@@ -351,6 +381,7 @@ end
 for _, a in ipairs({"TheriClockUntil", "TheriClockRunMul", "TheriClockNoSlow"}) do -- v1.20
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
+char:GetAttributeChangedSignal("DiloImmuneUntil"):Connect(apply) -- v1.21
 apply()
 
 local function cleanup()
