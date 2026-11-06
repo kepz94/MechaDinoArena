@@ -31,10 +31,21 @@
 -- Switches: script attribute DiloPartsServerEnabled (default true, read at start; false = no looks); per part
 --   DiloParts_<id>Enabled (default true, read on each apply). Diagnostics: script DiloPartsServerVersion, DiloPartsSegRoots
 --   (segment roots loaded); character DiloPartsBuilt ("<id>=<pieces>,...").
+-- v1.1 (MDA-328, plan docs/plans/DILO_PARTS_FIT_v1.0.md Task 1; Kepu 2026-11-06 12:22 "parts of it that are sinking into the
+--   body and it just looks sloppy" -> "Yes, reseat + screenshots"): seat layer. Measured in Studio (each part built by its
+--   BuildPreview on a still Dilo, 125 points per piece, share of the part's volume inside visible body parts): Jets 50%,
+--   Overdrive 42%, Mortar 24%, Hiss 20%, Spine 10%, Gatling 6%, Pump 0%. With the seat layer on, each part's pieces move as
+--   rigid groups out to the body surface (SEAT: a shift per group in rest model space, scale 1; frill-riding pieces lift
+--   along their frill plate's face normal), and dark mount brackets (role "bracket") are added where a part meets the
+--   body. Same picked looks, sizes and colours; moving pieces keep their joints (the pivot moves with the group); muzzles move
+--   with their group. Switch: script attribute DiloPartsSeatV2Enabled (default true, read at each build; false = the 1.0
+--   seats, no brackets).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 seat layer (parts on the body surface + mount brackets)
+if script:GetAttribute("DiloPartsSeatV2Enabled") == nil then script:SetAttribute("DiloPartsSeatV2Enabled", true) end -- v1.1
 local TORUS_SEGMENTS = 12
 local function hex(h) return Color3.fromRGB(math.floor(h / 65536) % 256, math.floor(h / 256) % 256, h % 256) end
 local MAT = {
@@ -183,6 +194,102 @@ P.dover = function()
 	return L
 end
 
+-- ---------- v1.1 seat layer ----------
+-- SEAT[id] = {group = function(piece) -> key, groups = {[key] = {move = Vector3 (rest model space, scale 1), tilt = {axis
+--   Vector3, degrees, centre Vector3} | nil}}, lift = studs along the frill plate's face normal for frill-riding pieces,
+--   extra = function() -> bracket pieces (P format; opts.grp = the group they move with, or "fixed")}. Order per piece:
+--   tilt about its centre, then move. Numbers tuned in Studio with the plan's measurement (see the plan's build notes).
+local SEAT = {}
+local function sgn(v) return v >= 0 and 1 or -1 end
+local CHEST_N = Vector3.new(0, 0.407, -0.914) -- the chest front face normal (DiloModelData Torso_chest)
+local CHEST_DOWN = Vector3.new(0, -0.914, -0.407) -- down along that face (below Neck_1, which the 1.0 core cut into)
+SEAT.dgatling = {
+	group = function(pc) return pc[5][1] >= 0 and "L" or "R" end,
+	groups = {L = {move = Vector3.new(0.12, 0, 0)}, R = {move = Vector3.new(-0.12, 0, 0)}},
+	extra = function()
+		local L = {}
+		for _, s in ipairs({1, -1}) do
+			add(L, "Neck", "box", {0.24, 0.26, 0.5}, "dark", {0.51 * s, 1.85, -2.5}, nil, {role = "bracket", grp = "fixed"})
+		end
+		return L
+	end}
+SEAT.dmortar = {
+	group = function(pc) return pc[5][2] < 0 and "tank" or "tube" end,
+	groups = {tank = {move = Vector3.new(0, -0.3, 0)}, tube = {move = Vector3.new(0.25, 0, 0)}},
+	extra = function()
+		local L = {}
+		for _, x in ipairs({-0.22, 0.22}) do add(L, "Torso", "box", {0.1, 0.6, 0.5}, "dark", {x, -0.57, -1.5}, nil, {role = "bracket", grp = "fixed"}) end
+		add(L, "Torso", "box", {0.35, 0.34, 0.46}, "dark", {0.705, 0.9, -1.75}, nil, {role = "bracket", grp = "fixed"})
+		return L
+	end}
+SEAT.dhiss = {lift = 0.16,
+	group = function() return "amp" end,
+	groups = {amp = {move = Vector3.new(0.15, 0.1, 0.5)}}, -- back to the neck base: clear of the gatling, spine and mortar
+	extra = function()
+		local L = {}
+		add(L, "Neck", "box", {0.32, 0.5, 0.4}, "dark", {0.41, 1.7, -1.8}, nil, {role = "bracket", grp = "fixed"})
+		return L
+	end}
+SEAT.dspine = {lift = 0.12,
+	group = function(pc) return pc[5][1] >= 0 and "L" or "R" end,
+	groups = {L = {move = Vector3.new(0.1, -0.4, 0.1)}, R = {move = Vector3.new(-0.1, -0.4, 0.1)}}, -- lower: clear of the gatling
+	extra = function()
+		local L = {}
+		for _, s in ipairs({1, -1}) do add(L, "Neck", "box", {0.23, 0.42, 0.3}, "dark", {0.445 * s, 1.15, -2.25}, nil, {role = "bracket", grp = "fixed"}) end
+		return L
+	end}
+SEAT.djets = {
+	group = function() return "booster" end,
+	groups = {booster = {move = Vector3.new(0, 0.4, 0)}},
+	extra = function()
+		local L = {}
+		for _, z in ipairs({1.45, 2.05}) do add(L, "Tail1", "box", {0.34, 0.62, 0.16}, "dark", {0, 0.72, z}, nil, {role = "bracket", grp = "fixed"}) end
+		return L
+	end}
+SEAT.dover = {
+	group = function(pc) return pc[5][3] < -2 and "core" or "fins" end,
+	groups = {core = {tilt = {Vector3.new(1, 0, 0), 24, Vector3.new(0, 0.45, -2.2)}, move = CHEST_N * 0.1 + CHEST_DOWN * 0.35},
+		fins = {move = Vector3.new(0, 0.4, 0)}},
+	extra = function()
+		local L = {}
+		add(L, "Torso", "box", {0.16, 0.52, 0.9}, "dark", {0, 1.26, -1.25}, nil, {role = "bracket", grp = "fixed"})
+		add(L, "Torso", "cylZ", {0.3, 0.3}, "dark", {0, 0.45, -2.05}, nil, {role = "bracket", grp = "core"})
+		return L
+	end}
+local function seatOn() return script:GetAttribute("DiloPartsSeatV2Enabled") ~= false end
+local function seated(id)
+	local list = P[id]()
+	local S = seatOn() and SEAT[id]
+	if not S then return list end
+	if S.extra then for _, pc in ipairs(S.extra()) do table.insert(list, pc) end end
+	for _, pc in ipairs(list) do
+		local o = pc[7]
+		if o.frill then
+			local rest = PART[o.frill]
+			if rest and (S.lift or 0) ~= 0 then
+				local n = -rest.LookVector -- the plate's face normal (its +Z column)
+				pc[5] = {pc[5][1] + n.X * S.lift, pc[5][2] + n.Y * S.lift, pc[5][3] + n.Z * S.lift}
+			end
+		elseif o.grp ~= "fixed" then
+			local g = S.groups and S.groups[o.grp or (S.group and S.group(pc))]
+			if g then
+				local pos = Vector3.new(pc[5][1], pc[5][2], pc[5][3])
+				if g.tilt then
+					local turn = CFrame.fromAxisAngle(g.tilt[1], math.rad(g.tilt[2]))
+					local c = g.tilt[3]
+					pos = c + turn:VectorToWorldSpace(pos - c)
+					local r = turn * CFrame.Angles(math.rad(pc[6][1]), math.rad(pc[6][2]), math.rad(pc[6][3]))
+					local rx, ry, rz = r:ToEulerAnglesXYZ()
+					pc[6] = {math.deg(rx), math.deg(ry), math.deg(rz)}
+				end
+				if g.move then pos += g.move end
+				pc[5] = {pos.X, pos.Y, pos.Z}
+			end
+		end
+	end
+	return list
+end
+
 -- the rest pose of a moving piece (the mockup's MS values at rest)
 local function animRest(kind)
 	if kind == "mortar" then return CFrame.Angles(math.rad(-20), 0, 0) end
@@ -239,7 +346,7 @@ local function buildPart(model, id)
 	local m = Instance.new("Model")
 	m.Name = "DPart_" .. id
 	local n, muzzles = 0, 0
-	for _, pc in ipairs(P[id]()) do
+	for _, pc in ipairs(seated(id)) do -- v1.1: seat layer
 		local seg, shape, dims, matKey, pos, rot, o = pc[1], pc[2], pc[3], pc[4], pc[5], pc[6], pc[7]
 		local root, rest = segRoot(model, seg), SEG[seg]
 		if o.frill then -- ride the frill part itself (DiloPose moves it locally when the hood pops)
