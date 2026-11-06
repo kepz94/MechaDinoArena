@@ -2513,6 +2513,18 @@ if SkillTree.DILO_PARTS and not SkillTree.PATHS.dgatling then
 		end
 	end
 end
+-- v1.70 (dilo parts build 2, MDA-320, plan docs/plans/DILO_PARTS_v1.0.md Task 7; Kepu 2026-11-06 "Publish then build"):
+-- SkillTree.DILO_PARTS_B2_LIVE (default true; false = 1.69): dhiss / dpump / djets lose `soon` and become LIVE_MECH (buyable,
+-- slottable; SkillEffects 1.45 then writes their DiloPart* attributes, DiloMovesServer 1.1 acts on them). Texts / effects unchanged.
+SkillTree.DILO_PARTS_B2_LIVE = true
+if SkillTree.DILO_PARTS and SkillTree.DILO_PARTS_B2_LIVE and SkillTree.PATHS.dgatling then
+	for _, id in ipairs({"dhiss", "dpump", "djets"}) do
+		if SkillTree.PATHS[id] then
+			SkillTree.PATHS[id].soon = nil
+			SkillTree.LIVE_MECH[id] = true
+		end
+	end
+end
 do
 	local effectsPre169 = SkillTree.effects
 	function SkillTree.effects(steps, dino)

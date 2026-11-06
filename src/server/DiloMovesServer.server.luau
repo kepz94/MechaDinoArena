@@ -41,12 +41,47 @@
 -- Switches: script DiloMovesServerEnabled, DiloMoves_<id>Enabled (dgatling / dmortar / dspine / dover), DiloMovesModeRulesEnabled,
 --   DiloMovesSquadEnabled (default true, read at each use). Diagnostics: script DiloMovesServerVersion, DiloMovesHits,
 --   DiloMovesVenoms, DiloMovesSquadSkips, DiloMovesMode.
+-- v1.1 (dilo parts build 2, MDA-320, plan docs/plans/DILO_PARTS_v1.0.md Task 7; Kepu 2026-11-06 "Publish then build"; red-team
+--   1 "Buttons + dilo server", 2 "One watcher", 3 "Same venom system"; timings from tools/mockup/dilo_parts_looks.js v0.1).
+--   Settings (SkillEffects 1.45, live with SkillTree 1.70): DiloPartHiss* (Enabled, Range, Angle, Knock, Silence, Cooldown),
+--   DiloPartPump* (Enabled, Heal, Immune, Cooldown), DiloPartJets* (Enabled, Dist, Charges, Trail, Cooldown). Same check()
+--   order and results as 1.0. Remotes: DinoDiloHissRequest(stamp), DinoDiloPumpRequest(stamp), DinoDiloJetsRequest(stamp,
+--   moveDir) (MechaButtons 1.36).
+-- * Sonic Hiss (wind-up HISS_WINDUP 0.5 s: the hood flares, the speakers charge): at the blast, every target whose root is
+--   within DiloPartHissRange studs (flat) and DiloPartHissAngle (35) degrees of the dilo's facing (or within 4 x scale/2 studs,
+--   any angle) and 12 studs up / down: pushed DiloPartHissKnock studs straight away (players: HeadbuttShove 1.0's stamps
+--   HeadbuttShoveFrom / Dist / Time HISS_SHOVE_TIME 0.3 / At, like TenoAttackServer 1.4; bots: an anchored glide over the
+--   same time unless latched / anchored) and SilencedUntil = max(old, now + DiloPartHissSilence), SilencedBy (dilo name),
+--   SilencedAt (last). No damage. Stamps: DiloHissWindup / DiloHissRange / DiloHissAngle, DiloHissAt (the press, last);
+--   DiloHissHits ("name|..."), DiloHissBlastAt (the blast).
+-- * Antivenom Pump (wind-up PUMP_WINDUP 0.62 s: the piston primes): at the jolt every clearable tag on the dilo still in the
+--   future is set to now: VenomUntil, StunnedUntil, DazedUntil, InkedUntil and SprintTest 1.20's slow tags ScreechSlowUntil,
+--   MineSlowUntil, HeadbuttSlowUntil, SmokeSlowUntil, CaltropSlowUntil, GooSlowUntil, TenoSlowUntil (the pachy's own
+--   HeadbuttSelfSlowUntil is not a debuff and stays); Humanoid.Health += DiloPartPumpHeal (capped at MaxHealth); with
+--   DiloPartPumpImmune > 0 (the star): DiloImmuneUntil = now + DiloPartPumpImmune. Stamps: DiloPumpWindup, DiloPumpAt (the
+--   press, last); DiloPumpCleared ("Tag|..."), DiloPumpHealed (0.1 steps), DiloPumpJoltAt (the jolt).
+--   Immunity watcher (red-team 2, the only place): while DiloImmuneUntil > now, any change that puts StunnedUntil, DazedUntil,
+--   InkedUntil or one of the slow tags above into the future on that dilo is set back to now (task.defer) and DiloImmuneBlockAt
+--   = now (FX). Venom is not blocked (the star text: slows, stuns and blinds).
+-- * Spring Jets: DiloPartJetsCharges charges, each back DiloPartJetsCooldown s after its use (TheriMovesServer 1.4's grapple
+--   refills): DiloPartJetsLeft, DiloPartJetsReadyAt (= now while a charge is left, else the next refill). Direction = flat
+--   moveDir (the client sends its move direction, or the camera's flat look when standing), else the root's look. A world ray
+--   from the root along it, DiloPartJetsDist studs: a hit -> the dash stops 3 x scale/2 short; under JETS_MIN (4) studs ->
+--   DiloJetsResult "blocked", no charge used. The end keeps the start's height above the ground. Stamps: DiloJetsFrom,
+--   DiloJetsTo, DiloJetsDelay (JETS_DELAY 0.34, the wind-up), DiloJetsTime (clamp(distance / JETS_SPEED 150, 0.15, 0.3)),
+--   DiloJetsResult "dash", DiloJetsAt (last; DiloJetsLaunch 1.0 moves the owner). With DiloPartJetsTrail > 0 (III): a poison
+--   trail along From -> To for DiloPartJetsTrail s from the dash's end: every TRAIL_TICK 0.5 s each target whose root is within
+--   TRAIL_WIDTH (4) x scale/2 studs of the segment (flat, 12 up / down) gets dart venom (DiloVenomApply); DiloJetsTrailUntil.
+-- Switches: script DiloMoves_dhissEnabled, DiloMoves_dpumpEnabled, DiloMoves_djetsEnabled, DiloMovesImmuneWatchEnabled (default
+--   true, read at each use; false = 1.0 for that move). Diagnostics: DiloMovesSilenced, DiloMovesCleared, DiloMovesImmuneBlocks,
+--   DiloMovesJets.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 Sonic Hiss, Antivenom Pump, Spring Jets
 local GATLING_WINDUP, MORTAR_WINDUP, MORTAR_FLIGHT, SPINE_WINDUP, SPINE_FLIGHT, OVER_WINDUP = 0.4, 0.55, 1.15, 0.42, 0.2, 0.7
 local CLOUD_TICK, CLOUD_HEIGHT = 0.5, 12
 local SPINE_WIDTH = 1.5
@@ -447,4 +482,248 @@ overRemote.OnServerEvent:Connect(function(player, stamp)
 	char:SetAttribute("DiloOverdriveStartAt", t + OVER_WINDUP)
 	char:SetAttribute("DiloOverdriveUntil", t + OVER_WINDUP + dur)
 	char:SetAttribute("DiloOverdriveAt", t) -- last: pose / FX
+end)
+
+-- v1.1: build 2 (see the header) ------------------------------------------------------------------------------------------------
+local HISS_WINDUP, HISS_SHOVE_TIME, HISS_NEAR = 0.5, 0.3, 4
+local PUMP_WINDUP = 0.62
+local JETS_DELAY, JETS_SPEED, JETS_MIN = 0.34, 150, 4
+local TRAIL_TICK, TRAIL_WIDTH = 0.5, 4
+for _, k in ipairs({"DiloMoves_dhissEnabled", "DiloMoves_dpumpEnabled", "DiloMoves_djetsEnabled", "DiloMovesImmuneWatchEnabled"}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
+for _, k in ipairs({"DiloMovesSilenced", "DiloMovesCleared", "DiloMovesImmuneBlocks", "DiloMovesJets"}) do script:SetAttribute(k, 0) end
+local hissRemote, pumpRemote, jetsRemote = remote("DinoDiloHissRequest"), remote("DinoDiloPumpRequest"), remote("DinoDiloJetsRequest")
+
+-- Sonic Hiss -----------------------------------------------------------------------------------------------------------------------
+local function shove(src, m, dist, t) -- TenoAttackServer 1.4 shove's pattern
+	local sRoot, mRoot = rootOf(src), rootOf(m)
+	if not (sRoot and mRoot) or dist <= 0 then return false end
+	if Players:GetPlayerFromCharacter(m) then
+		m:SetAttribute("HeadbuttShoveFrom", sRoot.Position)
+		m:SetAttribute("HeadbuttShoveDist", dist)
+		m:SetAttribute("HeadbuttShoveTime", HISS_SHOVE_TIME)
+		m:SetAttribute("HeadbuttShoveAt", t) -- last: HeadbuttShove 1.0 pushes it
+		return true
+	elseif m:GetAttribute("PounceLatched") == true or mRoot.Anchored then
+		return false
+	end
+	local start = mRoot.Position
+	local away = flat(start - sRoot.Position)
+	away = away.Magnitude > 1e-3 and away.Unit or Vector3.zAxis
+	local land = start + away * dist
+	local lift = start.Y - groundY(start, start.Y - 3)
+	local landPos = Vector3.new(land.X, groundY(land, start.Y - lift) + lift, land.Z)
+	local rot = mRoot.CFrame - mRoot.Position
+	mRoot.Anchored = true
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < HISS_SHOVE_TIME do
+			local u = math.clamp((os.clock() - t0) / HISS_SHOVE_TIME, 0, 1)
+			if not mRoot.Parent then return end
+			mRoot.CFrame = CFrame.new(start:Lerp(landPos, 1 - (1 - u) * (1 - u))) * rot
+			task.wait()
+		end
+		if mRoot.Parent then
+			mRoot.CFrame = CFrame.new(landPos) * rot
+			mRoot.Anchored = false
+		end
+	end)
+	return true
+end
+hissRemote.OnServerEvent:Connect(function(player, stamp)
+	local char, t = check(player, stamp, "dhiss", "DiloPartHiss")
+	if not char then return end
+	ok(char, "DiloPartHiss", t)
+	local range = math.max(1, num(char, "DiloPartHissRange", 20))
+	local angle = math.clamp(num(char, "DiloPartHissAngle", 35), 1, 180)
+	char:SetAttribute("DiloHissWindup", HISS_WINDUP)
+	char:SetAttribute("DiloHissRange", range)
+	char:SetAttribute("DiloHissAngle", angle)
+	char:SetAttribute("DiloHissHits", "")
+	char:SetAttribute("DiloHissAt", t) -- last: pose / FX (the speakers charge)
+	task.wait(HISS_WINDUP)
+	if char:GetAttribute("DiloHissAt") ~= t then return end
+	if not canStill(char) then cancel(char, "DiloPartHiss") return end
+	local root = rootOf(char)
+	local fwd = flat(root.CFrame.LookVector)
+	fwd = fwd.Magnitude > 1e-3 and fwd.Unit or -Vector3.zAxis
+	local s = char:GetScale()
+	local knock = math.max(0, num(char, "DiloPartHissKnock", 18))
+	local silence = math.max(0, num(char, "DiloPartHissSilence", 1.5))
+	local t2 = now()
+	local hits = {}
+	for _, m in ipairs(candidates(char)) do
+		local p = rootOf(m).Position
+		local v = flat(p - root.Position)
+		local d = v.Magnitude
+		local inCone = d <= HISS_NEAR * s / 2 or (d <= range and math.deg(math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1))) <= angle)
+		if inCone and math.abs(p.Y - root.Position.Y) <= CLOUD_HEIGHT then
+			shove(char, m, knock, t2)
+			if silence > 0 then
+				m:SetAttribute("SilencedUntil", math.max(num(m, "SilencedUntil", 0), t2 + silence))
+				m:SetAttribute("SilencedBy", char.Name)
+				m:SetAttribute("SilencedAt", t2) -- last: MechaButtons 1.36 / DiloMovesFX 1.1
+				count("DiloMovesSilenced")
+			end
+			table.insert(hits, m.Name)
+		end
+	end
+	char:SetAttribute("DiloHissHits", table.concat(hits, "|"))
+	char:SetAttribute("DiloHissBlastAt", t2) -- the blast
+end)
+
+-- Antivenom Pump -------------------------------------------------------------------------------------------------------------------
+local CLEAR_TAGS = {"VenomUntil", "StunnedUntil", "DazedUntil", "InkedUntil", "ScreechSlowUntil", "MineSlowUntil",
+	"HeadbuttSlowUntil", "SmokeSlowUntil", "CaltropSlowUntil", "GooSlowUntil", "TenoSlowUntil"}
+local IMMUNE_TAGS = {"StunnedUntil", "DazedUntil", "InkedUntil", "ScreechSlowUntil", "MineSlowUntil", "HeadbuttSlowUntil",
+	"SmokeSlowUntil", "CaltropSlowUntil", "GooSlowUntil", "TenoSlowUntil"}
+local watched = setmetatable({}, {__mode = "k"})
+local function watchImmune(char)
+	if watched[char] then return end
+	watched[char] = true
+	for _, tag in ipairs(IMMUNE_TAGS) do
+		char:GetAttributeChangedSignal(tag):Connect(function()
+			if script:GetAttribute("DiloMovesImmuneWatchEnabled") == false or script:GetAttribute("DiloMovesServerEnabled") == false then return end
+			local t = now()
+			if num(char, "DiloImmuneUntil", 0) <= t or num(char, tag, 0) <= t then return end
+			task.defer(function()
+				local t2 = now()
+				if num(char, "DiloImmuneUntil", 0) > t2 and num(char, tag, 0) > t2 then
+					char:SetAttribute(tag, t2)
+					char:SetAttribute("DiloImmuneBlockAt", t2) -- FX
+					count("DiloMovesImmuneBlocks")
+				end
+			end)
+		end)
+	end
+end
+pumpRemote.OnServerEvent:Connect(function(player, stamp)
+	local char, t = check(player, stamp, "dpump", "DiloPartPump")
+	if not char then return end
+	ok(char, "DiloPartPump", t)
+	watchImmune(char)
+	char:SetAttribute("DiloPumpWindup", PUMP_WINDUP)
+	char:SetAttribute("DiloPumpAt", t) -- last: pose / FX (the piston primes)
+	task.wait(PUMP_WINDUP)
+	if char:GetAttribute("DiloPumpAt") ~= t then return end
+	if not canStill(char) then cancel(char, "DiloPartPump") return end
+	local t2 = now()
+	local cleared = {}
+	for _, tag in ipairs(CLEAR_TAGS) do
+		if num(char, tag, 0) > t2 then
+			char:SetAttribute(tag, t2)
+			table.insert(cleared, tag)
+		end
+	end
+	count("DiloMovesCleared", #cleared)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local healed = 0
+	if hum and hum.Health > 0 then
+		local before = hum.Health
+		hum.Health = math.min(hum.MaxHealth, before + math.max(0, num(char, "DiloPartPumpHeal", 15)))
+		healed = hum.Health - before
+	end
+	local immune = math.max(0, num(char, "DiloPartPumpImmune", 0))
+	if immune > 0 then char:SetAttribute("DiloImmuneUntil", t2 + immune) end
+	char:SetAttribute("DiloPumpCleared", table.concat(cleared, "|"))
+	char:SetAttribute("DiloPumpHealed", math.floor(healed * 10 + 0.5) / 10)
+	char:SetAttribute("DiloPumpJoltAt", t2) -- the jolt
+end)
+
+-- Spring Jets ----------------------------------------------------------------------------------------------------------------------
+local jets = setmetatable({}, {__mode = "k"}) -- [char] = {refills = {times}}
+local function jetsLeft(char, t)
+	local st = jets[char]
+	if not st then
+		st = {refills = {}}
+		jets[char] = st
+	end
+	for i = #st.refills, 1, -1 do
+		if st.refills[i] <= t then table.remove(st.refills, i) end
+	end
+	local max = math.max(1, math.floor(num(char, "DiloPartJetsCharges", 1)))
+	return max - #st.refills, st
+end
+local function jetsPublish(char, t)
+	local left, st = jetsLeft(char, t)
+	local nextAt = math.huge
+	for _, r in ipairs(st.refills) do nextAt = math.min(nextAt, r) end
+	char:SetAttribute("DiloPartJetsLeft", math.max(0, left))
+	char:SetAttribute("DiloPartJetsReadyAt", left > 0 and t or nextAt)
+	if nextAt < math.huge then
+		task.delay(nextAt - t + 0.02, function() if char.Parent then jetsPublish(char, now()) end end)
+	end
+end
+local function segGap(p, a, b) -- flat distance from p to the segment a-b
+	local ab = flat(b - a)
+	local ap = flat(p - a)
+	local L2 = ab:Dot(ab)
+	local u = L2 > 1e-6 and math.clamp(ap:Dot(ab) / L2, 0, 1) or 0
+	return (ap - ab * u).Magnitude
+end
+jetsRemote.OnServerEvent:Connect(function(player, stamp, moveDir)
+	local c0 = player.Character
+	if c0 then jetsPublish(c0, now()) end
+	if moveDir ~= nil and (typeof(moveDir) ~= "Vector3" or moveDir ~= moveDir) then
+		if c0 then
+			c0:SetAttribute("DiloPartJetsServerResult", "badArg")
+			c0:SetAttribute("DiloPartJetsServerResultAt", now())
+		end
+		return
+	end
+	local char, t = check(player, stamp, "djets", "DiloPartJets")
+	if not char then return end
+	local left, st = jetsLeft(char, t)
+	if left <= 0 then
+		char:SetAttribute("DiloPartJetsServerResult", "cooldown")
+		char:SetAttribute("DiloPartJetsServerResultAt", t)
+		return
+	end
+	local root = rootOf(char)
+	local s = char:GetScale()
+	local dir = typeof(moveDir) == "Vector3" and flat(moveDir) or Vector3.zero
+	if dir.Magnitude > 0.1 then dir = dir.Unit else
+		dir = flat(root.CFrame.LookVector)
+		dir = dir.Magnitude > 1e-3 and dir.Unit or -Vector3.zAxis
+	end
+	local range = math.max(0, num(char, "DiloPartJetsDist", 25))
+	local from = root.Position
+	local hit = workspace:Raycast(from, dir * range, worldOnly())
+	local dist = hit and math.max(0, flat(hit.Position - from).Magnitude - 3 * s / 2) or range
+	if dist < JETS_MIN then
+		char:SetAttribute("DiloJetsResult", "blocked")
+		char:SetAttribute("DiloPartJetsServerResult", "blocked")
+		char:SetAttribute("DiloPartJetsServerResultAt", t)
+		return
+	end
+	local to = from + dir * dist
+	local g0, g1 = groundY(from, nil), groundY(to, nil)
+	if g0 and g1 then to = Vector3.new(to.X, g1 + (from.Y - g0), to.Z) end
+	table.insert(st.refills, t + math.max(0.5, num(char, "DiloPartJetsCooldown", 6)))
+	char:SetAttribute("DiloPartJetsServerResult", "ok")
+	char:SetAttribute("DiloPartJetsServerResultAt", t)
+	jetsPublish(char, t)
+	count("DiloMovesJets")
+	local time = math.clamp(dist / JETS_SPEED, 0.15, 0.3)
+	char:SetAttribute("DiloJetsFrom", from)
+	char:SetAttribute("DiloJetsTo", to)
+	char:SetAttribute("DiloJetsDelay", JETS_DELAY)
+	char:SetAttribute("DiloJetsTime", time)
+	char:SetAttribute("DiloJetsResult", "dash")
+	char:SetAttribute("DiloJetsAt", t) -- last: DiloJetsLaunch 1.0 + FX + pose
+	local trail = math.max(0, num(char, "DiloPartJetsTrail", 0))
+	if trail <= 0 then return end
+	task.wait(JETS_DELAY + time)
+	if not char.Parent then return end
+	local t0 = now()
+	char:SetAttribute("DiloJetsTrailUntil", t0 + trail)
+	local width = TRAIL_WIDTH * s / 2
+	while char.Parent and now() < t0 + trail do
+		for _, m in ipairs(candidates(char)) do
+			local p = rootOf(m).Position
+			if segGap(p, from, to) <= width and math.abs(p.Y - from.Y) <= CLOUD_HEIGHT then venom(char, m) end
+		end
+		task.wait(TRAIL_TICK)
+	end
 end)

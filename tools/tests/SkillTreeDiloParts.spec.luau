@@ -1,7 +1,8 @@
--- SkillTreeDiloParts.spec v1.0 (Mecha Dino Arena) — the Dilophosaurus' 7 mecha button parts in ServerStorage.DinoArcade.SkillTree
+-- SkillTreeDiloParts.spec v1.1 (Mecha Dino Arena) — the Dilophosaurus' 7 mecha button parts in ServerStorage.DinoArcade.SkillTree
 -- 1.69 (plan docs/plans/DILO_PARTS_v1.0.md Task 1, MDA-314). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeDiloParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-06 two builds): dgatling / dmortar / dspine / dover live; dhiss / dpump / djets "soon".
+-- v1.1 (build 2, MDA-320; SkillTree 1.70 DILO_PARTS_B2_LIVE): all 7 live; the build-2 texts, ladders, buying and slotting.
 -- The no-overwrite check (the 1.61 hookRange lesson): a second clone with "SkillTree.DILO_PARTS = true" switched to false is
 -- required too, and every other dino's effects table (minus the new d* fields) must be identical between the two.
 local function load(off)
@@ -33,11 +34,12 @@ local function E(steps) return ST.effects(steps, "Dilo") end
 
 eq("DILO_PARTS", ST.DILO_PARTS, true)
 eq("DILO_PARTS_B2_SOON", ST.DILO_PARTS_B2_SOON, true)
+eq("DILO_PARTS_B2_LIVE", ST.DILO_PARTS_B2_LIVE, true) -- v1.1
 eq("off clone has no dgatling", OFF.PATHS.dgatling == nil, true)
 local ROWS = {
 	dgatling = {"Venom Gatling", "attack", false}, dmortar = {"Toxin Mortar", "attack", false},
-	dhiss = {"Sonic Hiss", "attack", true}, dspine = {"Spine Burst", "defense", false},
-	dpump = {"Antivenom Pump", "defense", true}, djets = {"Spring Jets", "speed", true},
+	dhiss = {"Sonic Hiss", "attack", false}, dspine = {"Spine Burst", "defense", false}, -- v1.1: build 2 live
+	dpump = {"Antivenom Pump", "defense", false}, djets = {"Spring Jets", "speed", false},
 	dover = {"Venom Overdrive", "sig", false},
 }
 for id, want in pairs(ROWS) do
@@ -63,6 +65,12 @@ local TEXT = {
 		"Reaches 50 studs, cloud 20 studs wide", "Cloud lasts 4 s", "Reaches 60 studs, cloud 24 studs wide, lasts 5 s"},
 	dspine = {"Button: the frill fires 6 spines all around: 4 damage each. Recharges in 12 s", "8 spines", "Spines add dart venom", "12 spines"},
 	dover = {"Button: for 4 s your darts recharge at once. Recharges in 30 s", "Lasts 6 s", "Your venom does double damage while it's on", "Lasts 8 s"},
+	dhiss = {"Button: the hood speakers blast a 20-stud cone: dinos are knocked back and their mecha parts are silenced 1.5 s. Recharges in 15 s",
+		"Cone reaches 25 studs", "Silence lasts 2 s; recharges in 12 s", "Cone reaches 30 studs, silence lasts 3 s"},
+	dpump = {"Button: the back pump clears your debuffs and heals 15. Recharges in 20 s", "Heals 20", "Heals 30",
+		"Then 4 s immune to slows, stuns and blinds"},
+	djets = {"Button: the tail booster dashes you 25 studs the way you move. Recharges in 6 s", "30 studs, 2 charges",
+		"40 studs; leaves a poison trail", "3 charges"},
 }
 for id, t in pairs(TEXT) do
 	if P[id] then for i = 1, 4 do eq(id .. " text " .. i, P[id].steps[i], t[i]) end end
@@ -83,10 +91,12 @@ chk("dspine", "dSpineCount", {6, 8, 8, 12}); chk("dspine", "dSpineDamage", {4, 4
 chk("dspine", "dSpineRange", {22, 22, 22, 22}); chk("dspine", "dSpineVenom", {false, false, true, true})
 chk("dspine", "dSpineCooldown", {12, 12, 12, 12})
 chk("dover", "dOverTime", {4, 6, 6, 8}); chk("dover", "dOverVenomMul", {1, 1, 2, 2}); chk("dover", "dOverCooldown", {30, 30, 30, 30})
--- build-2 parts are soon: their steps are dropped, so they read off
-eq("dhiss soon off", E({dhiss = 4}).dHissRange, 0)
-eq("dpump soon off", E({dpump = 4}).dPumpHeal, 0)
-eq("djets soon off", E({djets = 4}).dJetsDist, 0)
+-- v1.1: build-2 ladders (live now)
+chk("dhiss", "dHissRange", {20, 25, 25, 30}); chk("dhiss", "dHissAngle", {35, 35, 35, 35}); chk("dhiss", "dHissKnock", {18, 18, 18, 18})
+chk("dhiss", "dHissSilence", {1.5, 1.5, 2, 3}); chk("dhiss", "dHissCooldown", {15, 15, 12, 12})
+chk("dpump", "dPumpHeal", {15, 20, 30, 30}); chk("dpump", "dPumpImmune", {0, 0, 0, 4}); chk("dpump", "dPumpCooldown", {20, 20, 20, 20})
+chk("djets", "dJetsDist", {25, 30, 40, 40}); chk("djets", "dJetsCharges", {1, 2, 2, 3}); chk("djets", "dJetsTrail", {0, 0, 6, 6})
+chk("djets", "dJetsCooldown", {6, 6, 6, 6})
 -- other dinos read the off values, and their own fields are untouched by DILO_PARTS
 eq("raptor dgatling off", ST.effects({dgatling = 4}, "Raptor").dGatlingCount, 0)
 eq("pachy dmortar off", ST.effects({dmortar = 4}, "Pachy").dMortarRange, 0)
@@ -111,7 +121,10 @@ eq("pachy hook effect same as off clone", ST.effects({hookarm = 4}, "Pachy").hoo
 -- buying / slotting
 eq("canBuy gatling dilo", (ST.canBuy({}, "dgatling", 5, "Dilo")), true)
 eq("canBuy gatling raptor", select(2, ST.canBuy({}, "dgatling", 5, "Raptor")), "otherDino")
-eq("canBuy hiss soon", (ST.canBuy({}, "dhiss", 5, "Dilo")), false)
+eq("canBuy hiss live", (ST.canBuy({}, "dhiss", 5, "Dilo")), true) -- v1.1
+eq("canBuy jets raptor", select(2, ST.canBuy({}, "djets", 5, "Raptor")), "otherDino")
+local lo2 = ST.sanitizeLoadout({"dhiss", "dpump", "djets", "dover"}, {dhiss = 1, dpump = 1, djets = 1, dover = 1}, "Dilo")
+eq("b2 slot 1", lo2[1], "dhiss"); eq("b2 slot 2", lo2[2], "dpump"); eq("b2 slot 3", lo2[3], "djets"); eq("b2 slot 4", lo2[4], "dover")
 local lo = ST.sanitizeLoadout({"dgatling", "dmortar", "dspine", "dover"}, {dgatling = 1, dmortar = 1, dspine = 1, dover = 1}, "Dilo")
 eq("slot 1", lo[1], "dgatling"); eq("slot 2", lo[2], "dmortar"); eq("slot 3", lo[3], "dspine"); eq("slot 4", lo[4], "dover")
 eq("raptor cannot slot", ST.sanitizeLoadout({"dgatling"}, {dgatling = 1}, "Raptor")[1], false)
