@@ -2982,3 +2982,18 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | MechaButtonsSecondsEnabled | MechaButtons script | switch (default true, read every frame; false = 1.36, no seconds on the touch slots) | MechaButtons 1.37 |
 | ArenaTouchMoveTimersEnabled | ArenaTouch script | switch (default true, read every frame; false = 1.16, BITE / POUNCE / RAM / JUMP only dim) | ArenaTouch 1.17 |
 | ArenaTouchMoveTimers | character (client) | diagnostic: moves cooling now ("Pounce 1.7, Jump 1.5" or "") | ArenaTouch 1.17 |
+
+## Four fixes 2026-11-06 (MDA-323..326; HerreraModelData 1.4 / SkillTree 1.71 / TenoMovesServer 1.12 / BotServer 1.26 / PounceServer 1.14 / TenoAttackServer 1.6 / TenoPose 1.13 / TenoFX 1.3)
+
+| Attribute | Where | Value | Set by |
+|---|---|---|---|
+| ScurryStride; ScurryMaxHz | herrera model | 6 (studs per cycle at scale 1); 3.5 (Hz cap) — the switch is the attributes themselves (removed = ScurryPose defaults 3.2 / 5) | HerreraModelData 1.4 (herrera_generator 1.4) |
+| SkillTree.THERI_BOLA_RANGE_V2 | SkillTree module flag | default true: therizino snareRange 60 (I-II) / 80 (III+), step texts; false = 35 / 45 | SkillTree 1.71 |
+| TenoGrabPluckEnabled; TenoMovesGrabsPluck | TenoMovesServer script | switch (default true; false = 1.11); diagnostic count | TenoMovesServer 1.12 |
+| TenoGrabPluckAt | grabbed raptor (bot or player) | server time of the teno's catch; the latch rides until then (at most 2 s ahead) | TenoMovesServer 1.12; read by BotServer 1.26 / PounceServer 1.14 |
+| BotLatchGrabHoldEnabled; BotGrabPlucks | BotServer script | switch (default true; false = leap off at once, 1.25); diagnostic count | BotServer 1.26 |
+| PounceGrabHoldEnabled; PounceGrabHolds | PounceServer script | switch (default true; false = released at the press, 1.13); diagnostic frames held | PounceServer 1.14 |
+| TenoScratchAlternateEnabled | TenoAttackServer script | switch (default true; false = right arm always, 1.5) | TenoAttackServer 1.6 |
+| TenoScratchArm; TenoScratchAlternate | teno character | "R" / "L" (odd / even TenoScratchCount); true while alternating; stamped before TenoScratchAt | TenoAttackServer 1.6; read by TenoPose 1.13 / TenoFX 1.3 |
+| TenoPoseScratchMirrorEnabled | teno model | switch (nil = true; false = right-arm pose always) | TenoPose 1.13 |
+| TenoFXRakeMarksEnabled; TenoFXRakeSurfaceEnabled | TenoFX script | switches (default true): rake marks + flash on hits / bars at the target's near box surface (false = half its width) | TenoFX 1.3 |

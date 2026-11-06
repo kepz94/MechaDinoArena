@@ -39,12 +39,16 @@
 --     the target's side that faces the teno, at mid height; they grow in over the first 1/6 and fade over RAKE_TIME
 --     (0.45 s); plus a Highlight on the target: white for 0.08 s, then red, gone at 0.25 s. The pops stay.
 --   Switch: script attribute TenoFXRakeMarksEnabled (default true, read at each scratch / hit; false = 1.2).
+--   Studio 2026-11-06: a raptor facing the teno has its near side at its snout (~12 studs out), not at half its width, so
+--   the bars sat inside its body; they now go where the line from the box centre toward the teno leaves the target's
+--   oriented bounding box (x 0.9). Switch: script attribute TenoFXRakeSurfaceEnabled (default true; false = the half-width).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 rake marks + scratching arm
 if script:GetAttribute("TenoFXRakeMarksEnabled") == nil then script:SetAttribute("TenoFXRakeMarksEnabled", true) end -- v1.3
+if script:GetAttribute("TenoFXRakeSurfaceEnabled") == nil then script:SetAttribute("TenoFXRakeSurfaceEnabled", true) end -- v1.3
 local RAKE, RAKE_TIME = Color3.fromHex("FF3B2F"), 0.45 -- v1.3
 local function rakeOn() return script:GetAttribute("TenoFXRakeMarksEnabled") ~= false end -- v1.3
 if script:GetAttribute("TenoFXHoldRingEnabled") == nil then script:SetAttribute("TenoFXHoldRingEnabled", false) end -- v1.2
@@ -339,8 +343,16 @@ local function rakeMarks(char, list)
 			local cf, size = m:GetBoundingBox()
 			local to = Vector3.new(root.Position.X - cf.Position.X, 0, root.Position.Z - cf.Position.Z)
 			to = to.Magnitude > 1e-3 and to.Unit or Vector3.xAxis
-			local half = math.min(size.X, size.Z) * 0.5
-			local face = cf.Position + to * (half * 0.6) + Vector3.new(0, size.Y * 0.08, 0)
+			local half = math.min(size.X, size.Z) * 0.5 * 0.6
+			if script:GetAttribute("TenoFXRakeSurfaceEnabled") ~= false then -- where the line toward the teno leaves the box
+				local d = cf:VectorToObjectSpace(to)
+				local ex = math.huge
+				for _, ax in ipairs({{d.X, size.X}, {d.Y, size.Y}, {d.Z, size.Z}}) do
+					if math.abs(ax[1]) > 1e-3 then ex = math.min(ex, ax[2] * 0.5 / math.abs(ax[1])) end
+				end
+				if ex < math.huge then half = ex * 0.9 end
+			end
+			local face = cf.Position + to * half + Vector3.new(0, size.Y * 0.08, 0)
 			local across = Vector3.yAxis:Cross(to).Unit
 			for i = 1, 3 do
 				local at = face + across * ((i - 2) * 1.4 * k)
