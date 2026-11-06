@@ -87,11 +87,18 @@
 --   * p_jets (DiloJetsAt, only when DiloJetsResult is "dash"): {0 $from, 0.3 DASH_LOW (io), 0.38 DASH_GO (out5), 0.62 DASH_GO,
 --     0.84 DASH_SKID (out), 1.52 READY (io)} (DiloJetsLaunch 1.0 moves the body; no root push on these keys).
 --   Same switch DiloPartPosesEnabled. Diagnostics: DiloPoseState "p_hiss" / "p_pump" / "p_jets", DiloPoseSet "1.3".
+-- v1.4 (MDA-329, plan docs/plans/DILO_PARTS_FIT_v1.0.md Task 2; Kepu 2026-11-06 "Instant burst + Thrusters FX"): the Spring
+--   Jets pose has no wind-up when the dash is instant (DiloJetsDelay under 0.05 s, or none yet): p_jets_i = {0 $from, 0.06
+--   DASH_GO (out5), 0.32 DASH_GO, 0.54 DASH_SKID (out), 1.2 READY (io)} (same keys, the DASH_LOW crouch dropped). On the
+--   owner's client it starts on the press (DiloJetsPredictedAt, set by DiloJetsLaunch 1.1 when its burst starts); the server
+--   stamp for that press (DiloJetsAt within 1 s after it) does not restart it. Switch: model attribute DiloJetsInstantPoseEnabled (default true, read at
+--   each start; false = 1.3's p_jets). Diagnostic: DiloPoseSet "1.4".
 local DiloPose = {}
 DiloPose.Version = "1.0"
 DiloPose.Version = "1.1" -- v1.1 Cobra Strike, Hood Flare, Spring Coil
 DiloPose.Version = "1.2" -- v1.2 mecha part move poses
 DiloPose.Version = "1.3" -- v1.3 build-2 part move poses
+DiloPose.Version = "1.4" -- v1.4 Spring Jets without the wind-up
 DiloPose.Defaults = {
 	DiloPoseEnabled = true, DiloLeapPoseEnabled = true, DiloGroundLockEnabled = true, DiloFrillEnabled = true,
 	DiloFrillPopEnabled = true, DiloSacEnabled = true, DiloLeapLandTime = 1.0, DiloSacSwell = 1.55,
@@ -222,6 +229,14 @@ TRACKS.p_jets = {{0, "$from"}, {0.3, "DASH_LOW", "io"}, {0.38, "DASH_GO", "out5"
 table.insert(PART_STAMPS, {"p_hiss", "DiloHissAt"})
 table.insert(PART_STAMPS, {"p_pump", "DiloPumpAt"})
 table.insert(PART_STAMPS, {"p_jets", "DiloJetsAt"})
+-- v1.4: the instant jets track + the owner's press
+TRACKS.p_jets_i = {{0, "$from"}, {0.06, "DASH_GO", "out5"}, {0.32, "DASH_GO"}, {0.54, "DASH_SKID", "out"}, {1.2, "READY", "io"}}
+table.insert(PART_STAMPS, {"p_jets", "DiloJetsPredictedAt"})
+local function jetsInstant(model)
+	if model:GetAttribute("DiloJetsInstantPoseEnabled") == false then return false end
+	local d = model:GetAttribute("DiloJetsDelay")
+	return typeof(d) ~= "number" or d < 0.05
+end
 local function partPosesOn(model) return model:GetAttribute("DiloPartPosesEnabled") ~= false end
 local partSeen = nil -- v1.2: [stamp attribute] = last seen value
 local function cobraOn(model) return model:GetAttribute("DiloCobraStrikeEnabled") ~= false end
@@ -231,6 +246,7 @@ local function trackKey(model, kind)
 	if kind == "bite" and cobraOn(model) then return "bite_cs" end
 	if kind == "coil" and flareOn(model) then return "coil_hf" end
 	if kind == "spit" and flareOn(model) then return "spit_hf" end
+	if kind == "p_jets" and jetsInstant(model) then return "p_jets_i" end -- v1.4
 	return kind
 end
 local SPIT_FRILL, LEAP_FRILL_FROM, LEAP_FRILL_AFTER = 0.75, 0.16, 0.32
@@ -619,8 +635,12 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		end
 		for _, ps in ipairs(PART_STAMPS) do
 			local at = num(model:GetAttribute(ps[2]))
-			if at and at ~= partSeen[ps[2]] and partPosesOn(model) and ctx.serverNow - at < 1.5
-				and not (ps[1] == "p_jets" and model:GetAttribute("DiloJetsResult") ~= "dash") then start(ps[1], at) end -- v1.3: jets only on a dash
+			local pressAt = num(model:GetAttribute("DiloJetsPredictedAt")) -- v1.4
+			local isPress = ps[2] == "DiloJetsPredictedAt"
+			local ownPress = ps[2] == "DiloJetsAt" and at and pressAt and at - pressAt > -0.05 and at - pressAt < 1 and jetsInstant(model)
+			if at and at ~= partSeen[ps[2]] and partPosesOn(model) and ctx.serverNow - at < 1.5 and not ownPress
+				and (isPress and jetsInstant(model) or not isPress)
+				and not (ps[1] == "p_jets" and not isPress and model:GetAttribute("DiloJetsResult") ~= "dash") then start(ps[1], at) end -- v1.3: jets only on a dash
 			partSeen[ps[2]] = at
 		end
 	end
@@ -665,7 +685,7 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		local nm = atk.kind == "coil" and (st == "armed" and "armed" or "coil") or atk.kind or "none"
 		if atk.kind == "coil" and not ctx.isOwner then nm ..= ":server" end -- v1.1
 		show("DiloPoseState", nm)
-		show("DiloPoseSet", DiloPose.Version) -- v1.3 (was "1.2")
+		show("DiloPoseSet", DiloPose.Version) -- v1.4 (was "1.3")
 	end
 	show("DiloPoseSource", src)
 	show("DiloLeapPhase", leapS.phase)

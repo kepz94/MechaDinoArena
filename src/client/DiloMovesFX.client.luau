@@ -38,6 +38,18 @@
 --                       orange sparks stream from it (the muzzle Attachment on Tail1's Root) to the dash's end + 0.1 s; its
 --                       charge lights (roles "pip1".."pip3") show DiloPartJetsLeft of DiloPartJetsCharges (unused: dark);
 --                       while DiloJetsTrailUntil a green poison mist along DiloJetsFrom -> DiloJetsTo. No landing FX.
+-- v1.2 (MDA-329, plan docs/plans/DILO_PARTS_FIT_v1.0.md Task 2; Kepu 2026-11-06 12:22 "the vfx for it IS TOTAL SHIT", "you're not
+--   consistent" -> "Instant burst + Thrusters FX"): the Spring Jets burst uses the Raptor Thrusters' FX recipe (MechaServer
+--   1.2 + MechaButtons 1.2), out of the Tail Booster: a ParticleEmitter "JetsFlame" with Roblox's fire texture, colours
+--   FFE27A -> FF7A1A, size booster width x 2.4 -> 0.4, life 0.4-0.7 s, rate 150, speed 12-20, spread 8, light emission 1;
+--   a PointLight (FF9632, range booster width x 4, brightness 3); a neon jet (FFBE3C, nozzle width x 0.8, booster length x
+--   1.2) behind the nozzle at transparency 0.15; the boost roar (Sound rbxassetid://9114554567, the Thrusters' default,
+--   volume 0.8, roll-off 300) - all on while the burst runs (+ 0.1 s), on every client (local copies on the Tail1 Root, at
+--   the jets muzzle). The owner also gets the Thrusters' boost feel: FOV + 15 x k and a 0.6 degree shake, 40 speed lines
+--   (ScreenGui "DiloJetsSpeedLines"), k 0 -> 1 in 0.15 s and back in 0.3 s. Burst = the owner's DiloJetsLaunchState "dash"
+--   (from the press, DiloJetsLaunch 1.1); other clients: DiloJetsAt + DiloJetsDelay .. + DiloJetsTime. The 1.1 nozzle heat and
+--   orange sparks are off while this is on; the poison trail mist and the charge lights stay. Switch: script attribute
+--   DiloJetsThrusterFXEnabled (default true, read every frame; false = 1.1). Diagnostic: script DiloJetsFlameOn (count).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -45,6 +57,8 @@ local Debris = game:GetService("Debris")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 hiss / pump / jets
+VERSION = "1.2" -- v1.2 Spring Jets with the Thrusters' FX
+if script:GetAttribute("DiloJetsThrusterFXEnabled") == nil then script:SetAttribute("DiloJetsThrusterFXEnabled", true) end -- v1.2
 for _, k in ipairs({"PartsFXHissEnabled", "PartsFXPumpEnabled", "PartsFXJetsEnabled"}) do -- v1.1
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
@@ -503,7 +517,8 @@ RunService.RenderStepped:Connect(function(dt)
 			local ja, jd, jt = num(char, "DiloJetsAt"), num(char, "DiloJetsDelay") or 0.34, num(char, "DiloJetsTime") or 0.25
 			local heat = 0
 			local dashing = false
-			if on("PartsFXJetsEnabled") and ja and char:GetAttribute("DiloJetsResult") == "dash" and T >= ja then
+			if on("PartsFXJetsEnabled") and script:GetAttribute("DiloJetsThrusterFXEnabled") == false -- v1.2: 1.1's heat only when off
+				and ja and char:GetAttribute("DiloJetsResult") == "dash" and T >= ja then
 				if T < ja + jd then heat = (T - ja) / jd
 				elseif T < ja + jd + jt + 0.1 then heat, dashing = 1, true
 				elseif T < ja + jd + jt + 0.6 then heat = 1 - (T - ja - jd - jt - 0.1) / 0.5 end
@@ -544,6 +559,158 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		else
 			if st.shell then st.shell:Destroy() st.shell = nil end
+		end
+	end
+end)
+
+-- ---------------------------------------------------------------- v1.2: Spring Jets with the Thrusters' FX
+local THR_SOUND = "rbxassetid://9114554567" -- MechaServer's MechaBoostSoundId default
+local function thrOn() return on("PartsFXJetsEnabled") and script:GetAttribute("DiloJetsThrusterFXEnabled") ~= false end
+local function jetsKit(char, st)
+	local mz = nozzleMuzzle(char)
+	if not (mz and mz:IsA("Attachment")) then return nil end
+	if st.jk and st.jk.at.Parent and st.jk.src == mz then return st.jk end
+	if st.jk then st.jk.at:Destroy() if st.jk.jet then st.jk.jet:Destroy() end end
+	local sc = char:IsA("Model") and char:GetScale() or 2
+	local bw, bl, nw = 0.6 * sc, 1.5 * sc, 0.68 * sc -- booster width / length, nozzle width (DiloPartsServer djets)
+	local at = Instance.new("Attachment")
+	at.Name = "DiloJetsFlameAt"
+	at.CFrame = mz.CFrame
+	at.Parent = mz.Parent
+	local f = Instance.new("ParticleEmitter")
+	f.Name = "JetsFlame"
+	f.Enabled = false
+	f.EmissionDirection = Enum.NormalId.Back
+	f.Color = ColorSequence.new(Color3.fromRGB(255, 226, 122), Color3.fromRGB(255, 122, 26))
+	f.Texture = "rbxasset://textures/particles/fire_main.dds"
+	f.Size = NumberSequence.new(bw * 2.4, 0.4)
+	f.Lifetime = NumberRange.new(0.4, 0.7)
+	f.Rate = 150
+	f.Speed = NumberRange.new(12, 20)
+	f.SpreadAngle = Vector2.new(8, 8)
+	f.LightEmission = 1
+	f.LightInfluence = 0
+	f.Parent = at
+	local glow = Instance.new("PointLight")
+	glow.Color = Color3.fromRGB(255, 150, 50)
+	glow.Range = bw * 4
+	glow.Brightness = 3
+	glow.Enabled = false
+	glow.Parent = at
+	local snd = Instance.new("Sound")
+	snd.Name = "JetsRoar"
+	snd.SoundId = THR_SOUND
+	snd.Volume = 0.8
+	snd.RollOffMaxDistance = 300
+	snd.Parent = at
+	local jet = part(Vector3.new(nw * 0.8, nw * 0.8, bl * 1.2), Color3.fromRGB(255, 190, 60), Enum.Material.Neon, at.WorldCFrame, 1)
+	jet.Name = "DiloJetsJet"
+	st.jk = {at = at, src = mz, f = f, glow = glow, snd = snd, jet = jet, len = bl * 1.2, on = false, offAt = 0}
+	return st.jk
+end
+-- the owner's boost feel (MechaButtons 1.2's numbers)
+local FXB = "DiloJetsBoostCam"
+local fb = {boosting = false, k = 0, baseFov = nil, gui = nil, lines = nil, t = 0}
+local function fbBuild()
+	local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
+	if not pg then return end
+	local old = pg:FindFirstChild("DiloJetsSpeedLines")
+	if old then old:Destroy() end
+	fb.gui = Instance.new("ScreenGui")
+	fb.gui.Name = "DiloJetsSpeedLines"
+	fb.gui.ResetOnSpawn = true
+	fb.gui.DisplayOrder = 4
+	fb.gui.IgnoreGuiInset = true
+	fb.lines = {}
+	for i = 1, 40 do
+		local fr = Instance.new("Frame")
+		fr.Name = "Line_" .. i
+		fr.AnchorPoint = Vector2.new(0.5, 0.5)
+		fr.BackgroundColor3 = Color3.new(1, 1, 1)
+		fr.BorderSizePixel = 0
+		fr.Parent = fb.gui
+		fb.lines[i] = {f = fr, a = math.random() * math.pi * 2, r = 0.45 + math.random() * 0.55, len = 100 + math.random() * 120}
+	end
+	fb.gui.Parent = pg
+end
+local function fbStep(dt)
+	fb.t += dt
+	if fb.boosting then fb.k = math.min(1, fb.k + dt / 0.15) else fb.k = math.max(0, fb.k - dt / 0.3) end
+	local cam = workspace.CurrentCamera
+	if cam and fb.baseFov then
+		cam.FieldOfView = fb.baseFov + 15 * fb.k
+		local amp = math.rad(0.6) * fb.k
+		cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(fb.t * 18, 1.3) * amp, math.noise(fb.t * 18, 7.1) * amp, 0)
+	end
+	if fb.gui and fb.lines then
+		local size = fb.gui.AbsoluteSize
+		local half = math.sqrt(size.X * size.X + size.Y * size.Y) / 2
+		for _, l in ipairs(fb.lines) do
+			l.r += dt * 2.2
+			if l.r > 1.05 then l.a, l.r, l.len = math.random() * math.pi * 2, 0.45 + math.random() * 0.2, 100 + math.random() * 120 end
+			l.f.Position = UDim2.fromOffset(size.X / 2 + math.cos(l.a) * l.r * half, size.Y / 2 + math.sin(l.a) * l.r * half)
+			l.f.Size = UDim2.fromOffset(l.len, 4)
+			l.f.Rotation = math.deg(l.a)
+			l.f.BackgroundTransparency = 1 - 0.65 * fb.k
+		end
+		fb.gui.Enabled = fb.k > 0
+	end
+	if fb.k <= 0 and not fb.boosting then
+		if cam and fb.baseFov then cam.FieldOfView = fb.baseFov end
+		fb.baseFov = nil
+		pcall(function() RunService:UnbindFromRenderStep(FXB) end)
+	end
+end
+local function fbSet(on2)
+	fb.boosting = on2
+	if on2 and not fb.baseFov then
+		fb.baseFov = workspace.CurrentCamera and workspace.CurrentCamera.FieldOfView or 70
+		if not (fb.gui and fb.gui.Parent) then fbBuild() end
+		pcall(function() RunService:UnbindFromRenderStep(FXB) end)
+		RunService:BindToRenderStep(FXB, Enum.RenderPriority.Camera.Value + 2, fbStep)
+	end
+end
+RunService.RenderStepped:Connect(function()
+	local T = now()
+	local me = Players.LocalPlayer.Character
+	for char, st in pairs(W) do
+		if char.Parent then
+			local burning = false
+			if thrOn() then
+				if char == me then
+					burning = char:GetAttribute("DiloJetsLaunchState") == "dash"
+				else
+					local ja, jd, jt = num(char, "DiloJetsAt"), num(char, "DiloJetsDelay") or 0, num(char, "DiloJetsTime") or 0.25
+					burning = ja ~= nil and char:GetAttribute("DiloJetsResult") == "dash" and T >= ja + jd and T < ja + jd + jt
+				end
+			end
+			local kit = (burning or (st.jk and st.jk.on)) and jetsKit(char, st) or st.jk
+			if kit then
+				if burning then kit.offAt = os.clock() + 0.1 end
+				local want = os.clock() < kit.offAt
+				if want ~= kit.on then
+					kit.on = want
+					kit.f.Enabled, kit.glow.Enabled = want, want
+					kit.jet.Transparency = want and 0.15 or 1
+					if want then
+						kit.snd.TimePosition = 0
+						kit.snd:Play()
+						script:SetAttribute("DiloJetsFlameOn", (script:GetAttribute("DiloJetsFlameOn") or 0) + 1)
+						ev()
+					else
+						kit.snd:Stop()
+					end
+				end
+				if kit.on and kit.at.Parent then kit.jet.CFrame = kit.at.WorldCFrame * CFrame.new(0, 0, kit.len / 2) end
+			end
+			if char == me then
+				local b = burning and thrOn()
+				if b ~= fb.boosting then fbSet(b) end
+			end
+		elseif st.jk then
+			st.jk.at:Destroy()
+			if st.jk.jet then st.jk.jet:Destroy() end
+			st.jk = nil
 		end
 	end
 end)

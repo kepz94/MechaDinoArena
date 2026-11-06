@@ -85,6 +85,11 @@
 --     applyDebuff) to now when in the future; clearing DebuffUntil also sets DebuffState "none" (RoarServer's own reset only
 --     fires when DebuffUntil is unchanged). The immunity watcher list is unchanged. Switch: script DiloPumpClearMoreEnabled
 --     (default true, read at each jolt; false = 1.1).
+-- v1.3 (MDA-329, plan docs/plans/DILO_PARTS_FIT_v1.0.md Task 2; Kepu 2026-11-06 12:22 "This dash has a fucking pause before it
+--   takes off" -> "Instant burst + Thrusters FX"): Spring Jets has no wind-up. The dash is stamped DiloJetsDelay 0 (was
+--   JETS_DELAY 0.34) and the trail starts after the burst alone; distance, charges, recharge and trail unchanged. The owner's
+--   client already starts the burst on the press (DiloJetsLaunch 1.1). Switch: script DiloJetsInstantEnabled (default true,
+--   read at each press; false = the 0.34 s wind-up of 1.1).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -93,6 +98,8 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Sonic Hiss, Antivenom Pump, Spring Jets
 VERSION = "1.2" -- v1.2 the pump breaks free + clears bleeds / the roar debuff
+VERSION = "1.3" -- v1.3 Spring Jets without the wind-up
+if script:GetAttribute("DiloJetsInstantEnabled") == nil then script:SetAttribute("DiloJetsInstantEnabled", true) end -- v1.3
 local GATLING_WINDUP, MORTAR_WINDUP, MORTAR_FLIGHT, SPINE_WINDUP, SPINE_FLIGHT, OVER_WINDUP = 0.4, 0.55, 1.15, 0.42, 0.2, 0.7
 local CLOUD_TICK, CLOUD_HEIGHT = 0.5, 12
 local SPINE_WIDTH = 1.5
@@ -736,15 +743,16 @@ jetsRemote.OnServerEvent:Connect(function(player, stamp, moveDir)
 	jetsPublish(char, t)
 	count("DiloMovesJets")
 	local time = math.clamp(dist / JETS_SPEED, 0.15, 0.3)
+	local delay = script:GetAttribute("DiloJetsInstantEnabled") ~= false and 0 or JETS_DELAY -- v1.3: no wind-up
 	char:SetAttribute("DiloJetsFrom", from)
 	char:SetAttribute("DiloJetsTo", to)
-	char:SetAttribute("DiloJetsDelay", JETS_DELAY)
+	char:SetAttribute("DiloJetsDelay", delay)
 	char:SetAttribute("DiloJetsTime", time)
 	char:SetAttribute("DiloJetsResult", "dash")
 	char:SetAttribute("DiloJetsAt", t) -- last: DiloJetsLaunch 1.0 + FX + pose
 	local trail = math.max(0, num(char, "DiloPartJetsTrail", 0))
 	if trail <= 0 then return end
-	task.wait(JETS_DELAY + time)
+	task.wait(delay + time) -- v1.3: was JETS_DELAY + time
 	if not char.Parent then return end
 	local t0 = now()
 	char:SetAttribute("DiloJetsTrailUntil", t0 + trail)

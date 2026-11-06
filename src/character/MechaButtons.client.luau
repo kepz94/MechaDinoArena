@@ -274,6 +274,13 @@ VERSION = "1.34" -- v1.34 tether aim stamps
 VERSION = "1.35" -- v1.35 dilo parts build 1
 VERSION = "1.36" -- v1.36 dilo parts build 2 + SILENCED
 VERSION = "1.37" -- v1.37 seconds left on cooling slot buttons
+VERSION = "1.38" -- v1.38 Spring Jets press marked locally
+-- v1.38 (MDA-329, plan docs/plans/DILO_PARTS_FIT_v1.0.md Task 2; Kepu 2026-11-06 "Instant burst + Thrusters FX"): a Spring Jets
+--   press also sets the character's local attributes DiloJetsPressDir (the flat direction sent) and DiloJetsPressAt (server
+--   time, last) on this client, so DiloJetsLaunch 1.1 / DiloPose 1.4 / DiloMovesFX 1.2 start the burst on the press like the
+--   Thrusters, without waiting for the server's stamp. Request and server unchanged. Switch: script attribute
+--   MechaButtonsJetsPressEnabled (default true, read at each press; false = 1.37).
+if script:GetAttribute("MechaButtonsJetsPressEnabled") == nil then script:SetAttribute("MechaButtonsJetsPressEnabled", true) end
 -- v1.37 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 2; Kepu 2026-11-06 "Sweep + seconds"): while a slot part
 --   is cooling, the touch slot's sub label shows the seconds left in the PC format ("3.2s", AbilityBar paint), next to the
 --   existing sweep. Seconds = <Prefix>ReadyAt - now for the timed parts, CloakReadyAt for the cloak, the leap stamp +
@@ -982,7 +989,12 @@ local function press(n, input)
 			local lv = cam and cam.CFrame.LookVector or Vector3.zero
 			md = Vector3.new(lv.X, 0, lv.Z)
 		end
-		if r then r:FireServer(workspace:GetServerTimeNow(), md.Magnitude > 1e-3 and md.Unit or Vector3.zero) end
+		local dir = md.Magnitude > 1e-3 and md.Unit or Vector3.zero
+		if script:GetAttribute("MechaButtonsJetsPressEnabled") ~= false then -- v1.38: the press, locally (last)
+			char:SetAttribute("DiloJetsPressDir", dir)
+			char:SetAttribute("DiloJetsPressAt", workspace:GetServerTimeNow())
+		end
+		if r then r:FireServer(workspace:GetServerTimeNow(), dir) end
 		return
 	end
 	if DILO_BTN and (id == "dgatling" or id == "dmortar") then -- v1.35: along the camera look; the mortar + the crosshair point
