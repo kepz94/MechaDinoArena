@@ -3044,3 +3044,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooAttackTestVersion; TrooLocalState / TrooLocalAt; TrooLocalLeft; TrooInputResult; TrooLastInput; TrooClickBound | troodon character (owner client) | "1.0"; "idle" / "throw", time; local pod charges; "throw" / reason / "denied:<r>" / "cancelled"; "click" / "touch" / "key"; bool | TrooAttackTest 1.0 |
 | ArenaTouchTrooPipsEnabled; ArenaTouchTrooPips | ArenaTouch script; troodon character | true (ATTACK button read at start, JUMP pips each frame); "<left>/<max>" | ArenaTouch 1.18 |
 | AbilityBarTrooEnabled; AbilityBarTrooPips | AbilityBar script; troodon character | true (read at start); "<left>/<max>" | AbilityBar 1.33 |
+| SprintTestTrooSlowEnabled | SprintTest script | nil = true (read each apply) | SprintTest 1.22: x TrooSlowMul while TrooSlowUntil |
+| StatusBadgesTrooSlowEnabled | StatusBadges script | true (read at start) | StatusBadges 1.4: SLOW badge while TrooSlowUntil |

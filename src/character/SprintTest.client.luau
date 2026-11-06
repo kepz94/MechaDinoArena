@@ -1,4 +1,4 @@
--- SprintTest v1.21 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.22 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -78,6 +78,11 @@
 --   TenoSlow, SmokeSlow, CaltropSlow, GooSlow, HeadbuttSlow) and a roar-debuff speed below 1 counts as 1; MoveSpeedParts then
 --   adds "immune". Re-applied when DiloImmuneUntil changes and when it ends. Switch: script attribute SprintDiloImmuneEnabled
 --   (default true, read each apply; false = 1.20).
+-- v1.22 (Troodon glow zone slow, MDA-336, plan docs/plans/TROODON_KIT_v1.0.md Task 7; TrooAttackServer 1.0): while
+--   TrooSlowUntil > now the speed is x TrooSlowMul (clamped 0.05..1; 0.75 inside an enemy troodon's zone, refreshed every
+--   0.2 s to now + 0.3) with the other part multipliers; MoveSpeedParts can include "trooSlow". Re-applied when the stamps
+--   change and when the slow ends. Switch: script attribute SprintTestTrooSlowEnabled (default true, read each apply;
+--   false = 1.21).
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -280,6 +285,24 @@ do
 		return m, u
 	end
 end
+-- v1.22: troodon glow zone slow (see the header)
+if script:GetAttribute("SprintTestTrooSlowEnabled") == nil then script:SetAttribute("SprintTestTrooSlowEnabled", true) end
+do
+	local partSpeedV121 = partSpeed
+	partSpeed = function()
+		local mul, names, ends = partSpeedV121()
+		if script:GetAttribute("SprintTestTrooSlowEnabled") ~= false then
+			local t = workspace:GetServerTimeNow()
+			local untilT, m = char:GetAttribute("TrooSlowUntil"), char:GetAttribute("TrooSlowMul")
+			if typeof(untilT) == "number" and typeof(m) == "number" and t < untilT and m ~= 1 then
+				mul *= math.clamp(m, 0.05, 1)
+				names = (names == "none" and "" or names .. "+") .. "trooSlow"
+				table.insert(ends, untilT)
+			end
+		end
+		return mul, names, ends
+	end
+end
 local scheduledPartEnds = {} -- v1.6: [end time] = true once a re-apply is scheduled
 
 local sprinting = false
@@ -382,6 +405,8 @@ for _, a in ipairs({"TheriClockUntil", "TheriClockRunMul", "TheriClockNoSlow"}) 
 	char:GetAttributeChangedSignal(a):Connect(apply)
 end
 char:GetAttributeChangedSignal("DiloImmuneUntil"):Connect(apply) -- v1.21
+char:GetAttributeChangedSignal("TrooSlowUntil"):Connect(apply) -- v1.22
+char:GetAttributeChangedSignal("TrooSlowMul"):Connect(apply) -- v1.22
 apply()
 
 local function cleanup()
