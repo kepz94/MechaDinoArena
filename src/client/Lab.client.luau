@@ -1,4 +1,4 @@
--- Lab v1.12 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
+-- Lab v1.13 (Mecha Dino Arena) — the workbench: your dino with every applied upgrade, every mech part as a card with its
 -- own 3D model, and buying / upgrading / equipping in one screen (LocalScript in StarterPlayerScripts, all devices;
 -- survives respawns). Replaces SkillScreen 1.4 (deleted, Kepu: "Delete it"). MDA-97, plan docs/plans/LAB_v1.0.md Task 2,
 -- mockup docs/mockups/lab_options.html A "Workbench" (Kepu 2026-10-29: "a dedicated screen for selecting the Dino upgrades
@@ -134,6 +134,11 @@ local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.11"
 VERSION = "1.12" -- v1.12 therizino parts (ZPart_*)
+VERSION = "1.13" -- v1.13 dilo parts (DPart_*)
+-- v1.13 (MDA-316, plan docs/plans/DILO_PARTS_v1.0.md Task 3): isMechaPart also knows "DPart_*" (DiloPartsServer 1.0, the
+--   dilo's parts): stage key, watchers and plain view as for ZPart_*. Switch: script attribute LabDPartsEnabled (default
+--   true, read at each check; false = 1.12).
+if script:GetAttribute("LabDPartsEnabled") == nil then script:SetAttribute("LabDPartsEnabled", true) end
 -- v1.12 (MDA-243, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 3): isMechaPart also knows "ZPart_*" (TheriPartsServer 1.0, the
 --   therizino's parts): stage key, watchers and plain view as for TPart_*. Switch: script attribute LabZPartsEnabled (default
 --   true, read at each check; false = 1.11).
@@ -144,6 +149,7 @@ local function isMechaPart(name) -- v1.10: "Mecha_*" (raptor / pachy) or "HPart_
 	if name:sub(1, 6) == "Mecha_" then return true end
 	if script:GetAttribute("LabTPartsEnabled") ~= false and name:sub(1, 6) == "TPart_" then return true end -- v1.11
 	if script:GetAttribute("LabZPartsEnabled") ~= false and name:sub(1, 6) == "ZPart_" then return true end -- v1.12
+	if script:GetAttribute("LabDPartsEnabled") ~= false and name:sub(1, 6) == "DPart_" then return true end -- v1.13
 	return script:GetAttribute("LabHPartsEnabled") ~= false and name:sub(1, 6) == "HPart_"
 end
 local SKIN = Color3.fromRGB(201, 162, 255) -- v1.6

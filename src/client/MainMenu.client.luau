@@ -1,4 +1,4 @@
--- MainMenu v1.18 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.19 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -160,6 +160,10 @@ local GuiService = game:GetService("GuiService")
 local VERSION = "1.16"
 VERSION = "1.17" -- v1.17 Dilo
 VERSION = "1.18" -- v1.18 therizino parts (ZPart_*)
+VERSION = "1.19" -- v1.19 dilo parts (DPart_*)
+-- v1.19 (MDA-316, plan docs/plans/DILO_PARTS_v1.0.md Task 3): isMechaPart also knows "DPart_*" (DiloPartsServer 1.0).
+--   Switch: script attribute MainMenuDPartsEnabled (default true, read at each check; false = 1.18).
+if script:GetAttribute("MainMenuDPartsEnabled") == nil then script:SetAttribute("MainMenuDPartsEnabled", true) end
 -- v1.18 (MDA-243, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 3): isMechaPart also knows "ZPart_*" (TheriPartsServer 1.0).
 --   Switch: script attribute MainMenuZPartsEnabled (default true, read at each check; false = 1.17).
 if script:GetAttribute("MainMenuZPartsEnabled") == nil then script:SetAttribute("MainMenuZPartsEnabled", true) end
@@ -806,6 +810,7 @@ local function isMechaPart(name) -- v1.11: "Mecha_*" (raptor / pachy) or "HPart_
 	if name:sub(1, 6) == "Mecha_" then return true end
 	if script:GetAttribute("MainMenuTPartsEnabled") ~= false and name:sub(1, 6) == "TPart_" then return true end -- v1.15
 	if script:GetAttribute("MainMenuZPartsEnabled") ~= false and name:sub(1, 6) == "ZPart_" then return true end -- v1.18
+	if script:GetAttribute("MainMenuDPartsEnabled") ~= false and name:sub(1, 6) == "DPart_" then return true end -- v1.19
 	return script:GetAttribute("MainMenuHPartsEnabled") ~= false and name:sub(1, 6) == "HPart_"
 end
 local function previewKey()
