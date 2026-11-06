@@ -2972,3 +2972,13 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | SprintDiloImmuneEnabled; MoveSpeedParts "+immune" | SprintTest script; character | switch (default true; false = 1.20); diagnostic | SprintTest 1.21 |
 | PartsFXHissEnabled, PartsFXPumpEnabled, PartsFXJetsEnabled | DiloMovesFX script | switches (default true) | DiloMovesFX 1.1 |
 | DiloPoseState "p_hiss" / "p_pump" / "p_jets"; DiloPoseSet "1.3" | dilo model (client) | diagnostics | DiloPose 1.3 |
+
+## Cooldowns on screen (MDA-322; AbilityBar 1.32 / MechaButtons 1.37 / ArenaTouch 1.17)
+
+| Attribute | Where | Value | Set by |
+|---|---|---|---|
+| AbilityBarTenoDiloTimersEnabled | AbilityBar script | switch (default true, read at start; false = 1.31: teno + dilo part tiles always "ready") | AbilityBar 1.32 |
+| AbilityBar_Slot_<n> | character (client) | now also "cooling" / "active" for tgrab, tmortar, tstomp, tbellow, tchallenge, tmud, tleap, dgatling, dmortar, dhiss, dspine, dpump, djets, dover | AbilityBar 1.32 |
+| MechaButtonsSecondsEnabled | MechaButtons script | switch (default true, read every frame; false = 1.36, no seconds on the touch slots) | MechaButtons 1.37 |
+| ArenaTouchMoveTimersEnabled | ArenaTouch script | switch (default true, read every frame; false = 1.16, BITE / POUNCE / RAM / JUMP only dim) | ArenaTouch 1.17 |
+| ArenaTouchMoveTimers | character (client) | diagnostic: moves cooling now ("Pounce 1.7, Jump 1.5" or "") | ArenaTouch 1.17 |

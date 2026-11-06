@@ -48,3 +48,22 @@ ReadyAt stamps; (b) seconds text on the big phone ATTACK / JUMP buttons crowding
 sub line, not over the main label; (c) BITE / JUMP cooldowns under 1 s flicker "0.4s" — shown like the PC (which already
 does this). Phone seconds are checked by forcing the touch layout in Studio (device emulator) where possible; otherwise by
 reading the drawn text in Play.
+
+## Build notes (2026-11-06)
+- Installed by multi_edit, hashes = repo (len/hash): AbilityBar 68552/912967003, MechaButtons 102575/414023073, ArenaTouch
+  52892/613867675; all three compile (loadstring).
+- Play test (one player; SkillServer saving off for the session; slots set only on the client copy of the player and
+  restored on the server to the loaded values; ready attributes stamped on the character locally, so no part was bought):
+  - PC, all 14 tiles: tgrab / tmortar / tstomp / tbellow / tchallenge / dgatling / dmortar / dhiss / dspine cooling with
+    fill + seconds and back to ready; tmud and dpump / dover "active" with seconds during TenoMudUntil / DiloImmuneUntil /
+    DiloOverdriveUntil; tleap "1 / 2" ready, then "0 / 2" cooling with seconds; djets "2 / 3". Pachy hookarm unchanged.
+  - Phone (forced with the existing ArenaTouchForceTouch / MechaButtonsForceTouch test switches on the Play copies): POUNCE
+    and JUMP sweep + seconds (diag "Pounce 1.7, Jump 1.5"), cleared at ready; slot buttons "3.5s" / "4.5s", cleared at ready;
+    capture shows ATTACK "19.6s" with the dark fill rising and JUMP "14.6s".
+  - Switches off: ArenaTouch (no fill / text), MechaButtons (no seconds; a stale "x.xs" is now cleared when switched off
+    mid-countdown — fix found in the test), AbilityBar (teno tile back to always "ready"; hook still counts down).
+  - Console errors 0.
+- Deviations: Spring Jets / Hydraulic Leap show "left / max" while charges remain and fill + seconds only at 0 left (their
+  ReadyAt only moves when the last charge is spent; no next-charge time exists without a server change). Bite / Ram not
+  seen on the raptor (hidden there); same code path as POUNCE / JUMP.
+- Not run: a real phone, the T-Rex BITE / RAM buttons, gamepad.

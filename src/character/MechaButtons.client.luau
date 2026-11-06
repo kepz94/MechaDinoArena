@@ -1722,6 +1722,8 @@ RunService.RenderStepped:Connect(function()
 			elseif s.sub.Text:match("^%d+%.%ds$") then
 				s.sub.Text = ""
 			end
+		elseif id and script:GetAttribute("MechaButtonsSecondsEnabled") == false and s.sub.Text:match("^%d+%.%ds$") then
+			s.sub.Text = "" -- v1.37: switched off mid-countdown
 		end
 	end
 	if cReady ~= lastCloakReady then lastCloakReady = cReady; redraw = true end
