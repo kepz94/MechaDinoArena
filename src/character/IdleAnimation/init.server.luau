@@ -1,4 +1,4 @@
--- IdleAnimation v1.45 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.46 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -254,6 +254,15 @@
 --       adrenaline poses) multiplied on top. Switch: model attribute HerreraMovesPoseLayerEnabled (default true; false =
 --       1.44). Diagnostics: HerreraMovesPoseSet ("1.2"), HerreraMovesPoseLast (the move id, else ""). Every other model
 --       unchanged.
+-- v1.46 (plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Tasks 1 / 2 / 3 / 4 / 5, MDA-303..307; Kepu 2026-11-05 23:34 "A for
+--       everything" + victim stagger "Look only"): (a) HeadbuttPose.get gets the model (HeadbuttPose 1.1 Bull Charge / Blood
+--       Pact); (b) on pachy models, after the leap layers, PachyMovesPose.leap multiplies the Coiled Spring accents on the
+--       biped leap (crouch / push / air / double-jump kick / landing); (c) after the stun layer, PachyMovesPose.moves (Servo
+--       Dash / Visor / Ink / Tether / Med-Station / Last Stand poses) on pachy models and StaggerPose (every model: the
+--       headbutt / hook-smash stagger from StaggerAt) multiplied on top. Switch: model attribute PachyAnimLayerEnabled
+--       (default true; false = 1.45, except HeadbuttPose / HookPose's own switches). Diagnostics: PachyMovesPoseState (move
+--       ids or "none"), PachyLeapAccent ("on" / "none"), StaggerPoseState ("on" / "none"). Every other model only gets the
+--       stagger (StaggerPoseEnabled).
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -291,6 +300,9 @@ local HerreraMovesPose = require(script.HerreraMovesPose) -- v1.36
 local TenoPose = require(script.TenoPose) -- v1.37
 local TheriPose = require(script.TheriPose) -- v1.39
 local DiloPose = require(script.DiloPose) -- v1.43
+local StaggerPose = require(script.StaggerPose) -- v1.46
+local PachyMovesPose = require(script.PachyMovesPose) -- v1.46
+local function pachyLayerOn() return model:GetAttribute("PachyAnimLayerEnabled") ~= false end -- v1.46
 local Players = game:GetService("Players")
 
 for _, defaults in ipairs({IdlePose.Defaults, WalkPose.Defaults, RoarPose.Defaults, BitePose.Defaults, TurnPose.Defaults, HeadLeadPose.Defaults}) do
@@ -617,6 +629,7 @@ model:SetAttribute("IdleAnimationVersion", "1.42") -- v1.42
 model:SetAttribute("IdleAnimationVersion", "1.43") -- v1.43
 model:SetAttribute("IdleAnimationVersion", "1.44") -- v1.44
 model:SetAttribute("IdleAnimationVersion", "1.45") -- v1.45
+model:SetAttribute("IdleAnimationVersion", "1.46") -- v1.46
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -995,6 +1008,18 @@ RunService.PreSimulation:Connect(function(dt)
 				jumpW = 0
 			end
 		end
+		-- v1.46: the pachy's Coiled Spring accents on top of the leap
+		if pachyLayerOn() and jump and PachyMovesPose.on(model) then
+			local W46 = model:GetAttribute("JumpWindup") or 0.12
+			local acc = PachyMovesPose.leap(model, jumpState, serverNow - jump.start, W46, jump.landAt and (now - jump.landAt) or nil,
+				serverNow, lp ~= nil and lp.Character == model)
+			if acc then
+				for name, off in pairs(acc) do
+					if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+				end
+			end
+			show("PachyLeapAccent", acc and "on" or "none")
+		end
 		show("JumpSource", jump and jump.source or "server")
 		show("JumpState", jumpState)
 		show("JumpBlend", math.floor(jumpW * 10 + 0.5) / 10)
@@ -1276,7 +1301,7 @@ RunService.PreSimulation:Connect(function(dt)
 	show("RamSource", ramSource)
 	-- v1.29: headbutt charge on top of the body and head lead
 	if hbPhase then
-		for name, off in pairs(HeadbuttPose.get(hbPhase, hbU, 1, now)) do
+		for name, off in pairs(HeadbuttPose.get(hbPhase, hbU, 1, now, pachyLayerOn() and model or nil)) do -- v1.46: + model (1.1)
 			if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
 		end
 	end
@@ -1410,6 +1435,27 @@ RunService.PreSimulation:Connect(function(dt)
 	end
 	show("StunPose", stunBlend > 0 and "kicking" or "none")
 	show("StunBlend", math.floor(stunBlend * 10 + 0.5) / 10)
+	-- v1.46: pachy part-move poses + the hit stagger on top
+	if pachyLayerOn() then
+		local sNow = workspace:GetServerTimeNow()
+		if PachyMovesPose.on(model) then
+			local lpP = Players.LocalPlayer
+			local mvP, ids = PachyMovesPose.moves(model, sNow, lpP ~= nil and lpP.Character == model)
+			if mvP then
+				for name, off in pairs(mvP) do
+					if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+				end
+			end
+			show("PachyMovesPoseState", ids ~= nil and ids ~= "" and ids or "none")
+		end
+		local stg = StaggerPose.get(model, hrp, sNow)
+		if stg then
+			for name, off in pairs(stg) do
+				if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+			end
+		end
+		if model:GetAttribute("StaggerAt") ~= nil then show("StaggerPoseState", stg and "on" or "none") end
+	end
 	-- v1.27: Thrusters boost lean + booster swivel (BoostPose 1.0)
 	local bps = BoostPose.settings(model)
 	if boostMv and dt > 0 and boostMv.Magnitude / dt > bps.BoostDirMinSpeed and hrp and motors.RootJoint then

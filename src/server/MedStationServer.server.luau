@@ -1,4 +1,4 @@
--- MedStationServer v1.2 (Mecha Dino Arena) — the pachy's Med-Station, a Health slot part (path "medstation"). MDA-125,
+-- MedStationServer v1.3 (Mecha Dino Arena) — the pachy's Med-Station, a Health slot part (path "medstation"). MDA-125,
 -- plan docs/plans/PACHY_MEDSTATION_v1.0.md, mockup docs/mockups/pachy_medstation_options.html look "C · Pulse pad".
 -- Kepu 2026-10-30: "drop a Machine that provides heals in an area for 5 seconds and heals your health up to 50 percent in
 --   those 5 seconds. It can't be dropped while pinned down by another dinosaur or stunned. This gives the pachy heals but
@@ -50,6 +50,18 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.2"
+-- v1.3 (MDA-312, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 10; Kepu 2026-11-05 "A · Deploy Drop", red-team "Keep the
+--   delays"): with script attribute MedDeployEnabled (default true, read at each press / stop; false = 1.2) an accepted press
+--   stamps MedDeployAt (the pachy's lay pose, PachyMovesPose 1.0), then a capsule (light steel box with a green band,
+--   1.5 x 1.2 x 1.5 x scale) pops out of the pachy's back and lands DROP_TIME (0.3 s) later on the ground BACK_DIST (4 x scale)
+--   studs behind it, where the pad is built and unfolds (Base / Rim / Core grow from 10% in 0.3 s, the edge ring fades in);
+--   the heal and the waves start at the landing and run MedTime as before (MedActiveUntil = press + 0.3 + MedTime). At the
+--   end (any reason) the pad folds: every piece shrinks to 10%, sinks 0.5 x scale and fades in FOLD_TIME (0.4 s), then is
+--   destroyed. Heal numbers / radius / cooldown unchanged. Diagnostic: MedDeployState ("drop" / "pad" / "idle").
+VERSION = "1.3" -- v1.3 Deploy Drop
+local DROP_TIME, BACK_DIST, FOLD_TIME = 0.3, 4, 0.4 -- v1.3
+if script:GetAttribute("MedDeployEnabled") == nil then script:SetAttribute("MedDeployEnabled", true) end -- v1.3
+local pendingDrop = {} -- v1.3: [char] = token while the capsule flies
 local PREVIEW_RADIUS = 5 -- v1.1
 local TICK = 0.25
 local PAD_SIZE = 3.5
@@ -239,7 +251,17 @@ local function stop(char, reason)
 	for m in pairs(st.mates or {}) do -- v1.2
 		if m.Parent then m:SetAttribute("MedSquadInside", nil) end
 	end
-	if st.model then st.model:Destroy() end
+	if st.model and st.deploy and script:GetAttribute("MedDeployEnabled") ~= false then -- v1.3: fold and sink
+		local m, s = st.model, st.scale or 1
+		for _, p in ipairs(m:GetDescendants()) do
+			if p:IsA("BasePart") then
+				TweenService:Create(p, TweenInfo.new(FOLD_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+					{Size = p.Size * Vector3.new(1, 0.1, 0.1), CFrame = p.CFrame - Vector3.new(0, 0.5 * s, 0), Transparency = 1}):Play()
+			elseif p:IsA("PointLight") then p.Enabled = false end
+		end
+		task.delay(FOLD_TIME + 0.05, function() if m.Parent then m:Destroy() end end)
+	elseif st.model then st.model:Destroy() end
+	if char.Parent and st.deploy then char:SetAttribute("MedDeployState", "idle") end
 	if char.Parent then
 		if reason ~= "time" then char:SetAttribute("MedActiveUntil", now()) end
 		char:SetAttribute("MedInside", nil)
@@ -279,6 +301,73 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	if pads[char] then stop(char, "replaced") end
 	local radius = math.max(1, tonumber(char:GetAttribute("MedRadius")) or 12)
 	local dur = math.max(0.5, tonumber(char:GetAttribute("MedTime")) or 5)
+	if script:GetAttribute("MedDeployEnabled") ~= false then -- v1.3: the Deploy Drop
+		local s = 1
+		pcall(function() s = char:GetScale() end)
+		local look = root.CFrame.LookVector * Vector3.new(1, 0, 1)
+		look = look.Magnitude > 1e-3 and look.Unit or Vector3.new(0, 0, -1)
+		local spot = root.Position - look * BACK_DIST * s
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = {char, folder}
+		params.RespectCanCollide = true
+		local hit = workspace:Raycast(spot + Vector3.new(0, 4 * s, 0), Vector3.new(0, -70, 0), params)
+		local center = hit and hit.Position or groundUnder(char, root)
+		local token = {}
+		pendingDrop[char] = token
+		char:SetAttribute("MedReadyAt", t + (tonumber(char:GetAttribute("MedCooldown")) or 30))
+		char:SetAttribute("MedActiveUntil", t + DROP_TIME + dur)
+		char:SetAttribute("MedHealed", 0)
+		char:SetAttribute("MedCount", (char:GetAttribute("MedCount") or 0) + 1)
+		char:SetAttribute("MedDeployState", "drop")
+		script:SetAttribute("MedDrops", (script:GetAttribute("MedDrops") or 0) + 1)
+		setResult(char, "ok")
+		char:SetAttribute("MedDeployAt", t)
+		char:SetAttribute("MedDroppedAt", t) -- last
+		-- the capsule: from the pachy's back to the landing spot in an arc
+		local from = root.Position + Vector3.new(0, 2.5 * s, 0) - look * 1 * s
+		local cap = part("MedCapsule", Vector3.new(1.5, 1.2, 1.5) * s, Color3.fromRGB(223, 230, 238), Enum.Material.SmoothPlastic, CFrame.new(from), folder)
+		local band = part("Band", Vector3.new(1.55, 0.25, 1.55) * s, GREEN, Enum.Material.Neon, CFrame.new(from), cap)
+		local to = center + Vector3.new(0, 0.6 * s, 0)
+		local t0 = os.clock()
+		local conn
+		conn = RunService.Heartbeat:Connect(function()
+			local u = math.min(1, (os.clock() - t0) / DROP_TIME)
+			local p = from:Lerp(to, u) + Vector3.new(0, 4 * 3 * s * u * (1 - u), 0)
+			local cf = CFrame.new(p) * CFrame.Angles(u * 2.5, u * 1.5, 0)
+			cap.CFrame = cf
+			band.CFrame = cf
+			if u >= 1 then
+				conn:Disconnect()
+				cap:Destroy()
+				if pendingDrop[char] ~= token then return end
+				pendingDrop[char] = nil
+				if not char.Parent or pads[char] then return end
+				local m, edge, core, glow = build(char, center, radius)
+				-- unfold: the disc pieces grow out of the base, the edge ring fades in
+				for _, pc in ipairs(m:GetChildren()) do
+					if pc:IsA("BasePart") then
+						if pc.Name == "Base" or pc.Name == "Rim" or pc.Name == "Core" then
+							local full = pc.Size
+							pc.Size = full * Vector3.new(1, 0.1, 0.1)
+							TweenService:Create(pc, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = full}):Play()
+						else
+							local tr = pc.Transparency
+							pc.Transparency = 1
+							TweenService:Create(pc, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.15), {Transparency = tr}):Play()
+						end
+					end
+				end
+				local tl = now()
+				pads[char] = {model = m, center = center, radius = radius, rate = tonumber(char:GetAttribute("MedRate")) or 0.10,
+					untilT = tl + dur, acc = 0, secAcc = 0, secHealed = 0, waveAcc = 1, edge = edge, core = core, glow = glow,
+					deploy = true, scale = s}
+				char:SetAttribute("MedActiveUntil", tl + dur)
+				char:SetAttribute("MedDeployState", "pad")
+			end
+		end)
+		return
+	end
 	local center = groundUnder(char, root)
 	local m, edge, core, glow = build(char, center, radius)
 	pads[char] = {model = m, center = center, radius = radius, rate = tonumber(char:GetAttribute("MedRate")) or 0.10,

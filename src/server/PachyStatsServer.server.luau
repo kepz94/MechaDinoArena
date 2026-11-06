@@ -1,4 +1,4 @@
--- PachyStatsServer v1.0 (Mecha Dino Arena) — the Pachycephalosaurus' Last Stand and Head Down rows in play. MDA-232, plan
+-- PachyStatsServer v1.1 (Mecha Dino Arena) — the Pachycephalosaurus' Last Stand and Head Down rows in play. MDA-232, plan
 -- docs/plans/PACHY_STATS_v1.0.md Task 3 (deterministic map); mockup docs/mockups/pachy_health_defense_options.html v0.1
 -- (Kepu 2026-11-04 "Option B for health and option A for defense", star "Untouchable at 30%", step III "Shoves only").
 -- Reads the character attributes SkillEffects 1.40 writes (SkillTree 1.59 effects); all off values = nothing happens.
@@ -31,7 +31,13 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+-- v1.1 (MDA-313, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 11; Kepu 2026-11-05 "A · Battle Roar", red-team "Keep both"):
+--   when a drop takes the pachy (Last Stand bought: PachyLastStandBelow > 0) from at or above the line to under it,
+--   PachyLastStandAt = now (each crossing; PachyMovesPose 1.0 roars, PachyMovesFX 1.0 bursts a ring). Switch: script
+--   attribute PachyLastStandStampEnabled (default true, read at each drop; false = 1.0).
+VERSION = "1.1" -- v1.1 Last Stand crossing stamp
 local FIELD = "PachyLastStandField"
+if script:GetAttribute("PachyLastStandStampEnabled") == nil then script:SetAttribute("PachyLastStandStampEnabled", true) end -- v1.1
 
 script:SetAttribute("PachyStatsServerVersion", VERSION)
 script:SetAttribute("PachyStatsRefunds", 0)
@@ -91,6 +97,10 @@ local function track(char)
 		show(char, "PachyStatsCut", round((new - h) / drop, 0.01))
 		-- star: the first drop of this life that ends under the line
 		local below = math.clamp(num(char, "PachyLastStandBelow", 0), 0, 1)
+		if script:GetAttribute("PachyLastStandStampEnabled") ~= false and below > 0 and new > 0 and new < below * max
+			and h + drop >= below * max then -- v1.1: crossed the line on this drop
+			char:SetAttribute("PachyLastStandAt", t)
+		end
 		if char:GetAttribute("PachyLastStandStar") == true and not st.used and below > 0 and new > 0 and new < below * max then
 			st.used = true
 			st.untilT = t + math.max(0, num(char, "PachyLastStandTime", 1.5))

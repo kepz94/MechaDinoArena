@@ -1,4 +1,4 @@
--- HeadbuttServer v1.15 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.16 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -125,6 +125,10 @@
 --   pachy's root in the target's back half-space), is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
 --   BoneCrest 1.5 plating() (stamps PlatingHits / PlatingLastMul / PlatingHitAt for HerreraPartsFX). Front hits unchanged.
 --   Switch: script attribute HeadbuttPlatingEnabled (default true, read at each hit; false = 1.13).
+-- v1.16 (MDA-303, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 1; Kepu 2026-11-05 "A for everything" + victim stagger, red-team
+--   "Look only"): each accepted hit stamps on the hit model StaggerFrom (this pachy's name), StaggerPower ("big"), StaggerAt
+--   (server time, last); StaggerPose 1.0 (IdleAnimation 1.46) plays the stagger on every client. Looks only: no other
+--   change. Switch: script attribute HeadbuttStaggerStampEnabled (default true, read at each hit; false = 1.15).
 -- v1.15 (MDA-233, plan docs/plans/PACHY_STATS_v1.0.md Task 4; SkillTree 1.59 Last Stand III): a refill that starts while the
 --   pachy's Humanoid.Health is under PachyLastStandBelow x MaxHealth runs x PachyLastStandRefillMul (0.714 = 40% faster; both
 --   written by SkillEffects 1.40, off values 0 / 1). The factor is taken whenever a refill length is set (a refill
@@ -139,6 +143,8 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.13"
 VERSION = "1.14" -- v1.14 Back Plating on headbutt hits
 VERSION = "1.15" -- v1.15 Last Stand III refill while low
+VERSION = "1.16" -- v1.16 victim stagger stamps
+if script:GetAttribute("HeadbuttStaggerStampEnabled") == nil then script:SetAttribute("HeadbuttStaggerStampEnabled", true) end -- v1.16
 if script:GetAttribute("HeadbuttLastStandEnabled") == nil then script:SetAttribute("HeadbuttLastStandEnabled", true) end -- v1.15
 if script:GetAttribute("HeadbuttPlatingEnabled") == nil then script:SetAttribute("HeadbuttPlatingEnabled", true) end -- v1.14
 if script:GetAttribute("HeadbuttSacrificeFullResetEnabled") == nil then script:SetAttribute("HeadbuttSacrificeFullResetEnabled", true) end -- v1.6
@@ -609,6 +615,11 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		model:SetAttribute("HeadbuttTakenAt", t)
 	end
 	model:SetAttribute("HeadbuttHitBy", char.Name)
+	if script:GetAttribute("HeadbuttStaggerStampEnabled") ~= false then -- v1.16: the victim's stagger (looks only)
+		model:SetAttribute("StaggerFrom", char.Name)
+		model:SetAttribute("StaggerPower", "big")
+		model:SetAttribute("StaggerAt", t) -- last
+	end
 	char:SetAttribute("HeadbuttHitDamage", d)
 	char:SetAttribute("HeadbuttHitTarget", model.Name)
 	char:SetAttribute("HeadbuttHitCount", (char:GetAttribute("HeadbuttHitCount") or 0) + 1)

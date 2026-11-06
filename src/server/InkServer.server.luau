@@ -1,4 +1,4 @@
--- InkServer v1.6 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
+-- InkServer v1.7 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
 -- MDA-128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Neck ink tank +
 --   barrel". Kepu 2026-10-30: "How about an ink shooter that blinds your enemy for 2 seconds. Turns their screen black";
 --   answers: fully black (HUD stays), an aimed shot like the Grappling Hook (first dino hit), bots lose you, steps II 80
@@ -81,6 +81,14 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local VERSION = "1.6"
+-- v1.7 (MDA-310, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 8; Kepu 2026-11-05 "A · Shoulder Cannon", red-team "Keep the
+--   delays"): an accepted press stamps InkReadyAt (the recharge still counts from the press), InkFireAt = press + AIM_DELAY
+--   (0.1 s) and InkStartedAt = the press; the shot (aim, assist, glob, blind) runs AIM_DELAY later. Dead / stunned / pinned /
+--   dazed by then: no shot, InkCancelAt = now, InkReadyAt put back, result "cancelled". Switch: script attribute
+--   InkAimDelayEnabled (default true, read at each press; false = 1.6: the shot at the press).
+VERSION = "1.7" -- v1.7 the 0.1 s aim
+local AIM_DELAY = 0.1 -- v1.7
+if script:GetAttribute("InkAimDelayEnabled") == nil then script:SetAttribute("InkAimDelayEnabled", true) end -- v1.7
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25)
 local PITCH_MIN_SHOULDER = math.rad(-20) -- v1.3: the shoulder muzzle sits high, so the shot may aim down to the ground ahead
 local AIM_HELP = 4
@@ -577,6 +585,29 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		r = "cooldown"
 	end
 	if r then setResult(char, r) return end
+	local pressT -- v1.7: the 0.1 s aim before the shot
+	if script:GetAttribute("InkAimDelayEnabled") ~= false then
+		pressT = t
+		local prevReady = char:GetAttribute("InkReadyAt")
+		char:SetAttribute("InkReadyAt", t + math.max(0.5, tonumber(char:GetAttribute("InkCooldown")) or 15))
+		char:SetAttribute("InkFireAt", t + AIM_DELAY)
+		char:SetAttribute("InkStartedAt", t)
+		setResult(char, "ok")
+		task.wait(AIM_DELAY)
+		local h2 = char:FindFirstChildOfClass("Humanoid")
+		local t2 = now()
+		if not char.Parent or not h2 or h2.Health <= 0 or (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t2
+			or char:GetAttribute("PinHeld") == true
+			or (script:GetAttribute("InkDazeEnabled") ~= false and (tonumber(char:GetAttribute("DazedUntil")) or 0) > t2) then
+			if char.Parent then
+				char:SetAttribute("InkReadyAt", prevReady or 0)
+				char:SetAttribute("InkCancelAt", t2)
+				setResult(char, "cancelled")
+			end
+			return
+		end
+		t = t2
+	end
 	setResult(char, "ok")
 	setLook(char)
 	local s = char:GetScale()
@@ -649,14 +680,14 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	end
 	local fly = (aimEnd - origin).Magnitude / INK_SPEED
 	local arrive = t + fly
-	char:SetAttribute("InkReadyAt", t + math.max(0.5, tonumber(char:GetAttribute("InkCooldown")) or 15))
+	char:SetAttribute("InkReadyAt", (pressT or t) + math.max(0.5, tonumber(char:GetAttribute("InkCooldown")) or 15)) -- v1.7: from the press
 	char:SetAttribute("InkAimDir", dir)
 	char:SetAttribute("InkAimEnd", aimEnd)
 	char:SetAttribute("InkResult", result)
 	char:SetAttribute("InkHitTarget", (result == "hit" or result == "shielded") and best.Name or "")
 	char:SetAttribute("InkArriveAt", arrive)
 	char:SetAttribute("InkCount", (char:GetAttribute("InkCount") or 0) + 1)
-	char:SetAttribute("InkStartedAt", t) -- last
+	char:SetAttribute("InkStartedAt", pressT or t) -- last (v1.7: the press)
 	script:SetAttribute("InkShots", (script:GetAttribute("InkShots") or 0) + 1)
 	glob(origin, aimEnd, fly)
 	local target = best

@@ -1,4 +1,4 @@
--- TetherServer v1.3 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
+-- TetherServer v1.4 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
 -- MDA-129, mockup docs/mockups/pachy_tether_options.html B "Tail-base launcher". Kepu 2026-10-30: "a tether spike where if
 --   it lands it latches the person to a chain to the ground. Makes them not mobile past the chain for a couple seconds"
 --   -> "this will not shoot straight like a gun tho. It will launch like a splash. So it will shoot vertical and do a
@@ -58,6 +58,15 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local VERSION = "1.3"
+-- v1.4 (MDA-311, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 9; Kepu 2026-11-05 "A · Tail Sling", red-team "Keep both"):
+--   remote ReplicatedStorage.DinoTetherAim(kind "aim" | "end", stamp) from MechaButtons 1.34 when the aim mode opens /
+--   closes: with the character alive, TetherEnabled, the player not InMenu (else ignored; at most one of each kind per
+--   0.1 s): TetherAimAt / TetherAimEndAt = now. A release (DinoTetherRequest ok) stamps TetherAimEndAt first.
+--   PachyMovesPose 1.0 cocks the tail on other clients from these. Switch: script attribute TetherAimStampsEnabled
+--   (default true, read at each message; false = 1.3, the remote ignores everything). Diagnostic: TetherAimStamps.
+VERSION = "1.4" -- v1.4 aim stamps
+if script:GetAttribute("TetherAimStampsEnabled") == nil then script:SetAttribute("TetherAimStampsEnabled", true) end -- v1.4
+script:SetAttribute("TetherAimStamps", 0)
 local FLIGHT, ARC_HEIGHT, RANGE_SLACK, YANK_SPEED = 0.8, 22, 4, 60
 local STEEL, DARK, YELLOW = Color3.fromRGB(154, 166, 184), Color3.fromRGB(58, 64, 76), Color3.fromRGB(255, 200, 50)
 
@@ -484,6 +493,7 @@ remote.OnServerEvent:Connect(function(player, stamp, landPos)
 	if r then setResult(char, r) return end
 	setResult(char, "ok")
 	setLook(char)
+	if script:GetAttribute("TetherAimStampsEnabled") ~= false then char:SetAttribute("TetherAimEndAt", t) end -- v1.4
 	-- clamp to range, then onto the ground
 	local range = (tonumber(char:GetAttribute("TetherRange")) or 60) + RANGE_SLACK
 	local flat = Vector3.new(landPos.X - hrp.Position.X, 0, landPos.Z - hrp.Position.Z)
@@ -556,3 +566,26 @@ do
 	end
 	fn.Parent = script
 end
+
+-- v1.4: aim stamps (see the header)
+local aimRemote = ReplicatedStorage:FindFirstChild("DinoTetherAim")
+if not aimRemote then
+	aimRemote = Instance.new("RemoteEvent")
+	aimRemote.Name = "DinoTetherAim"
+	aimRemote.Parent = ReplicatedStorage
+end
+local aimLast = setmetatable({}, {__mode = "k"})
+aimRemote.OnServerEvent:Connect(function(player, kind, stamp)
+	if script:GetAttribute("TetherAimStampsEnabled") == false then return end
+	if (kind ~= "aim" and kind ~= "end") or typeof(stamp) ~= "number" or stamp ~= stamp then return end
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 or char:GetAttribute("TetherEnabled") ~= true or player:GetAttribute("InMenu") == true then return end
+	local t = now()
+	local L = aimLast[char] or {}
+	aimLast[char] = L
+	if t - (L[kind] or -1) < 0.1 then return end
+	L[kind] = t
+	char:SetAttribute(kind == "aim" and "TetherAimAt" or "TetherAimEndAt", t)
+	script:SetAttribute("TetherAimStamps", (script:GetAttribute("TetherAimStamps") or 0) + 1)
+end)

@@ -1,4 +1,4 @@
--- ServoDashLaunch v1.1 (Mecha Dino Arena) — the instant forward shove of the pachy's Overclocked Servo Dash (owner's client).
+-- ServoDashLaunch v1.2 (Mecha Dino Arena) — the instant forward shove of the pachy's Overclocked Servo Dash (owner's client).
 -- MDA-126, plan docs/plans/PACHY_PARTS_B3_v1.0.md; Kepu 2026-10-30: "Launch + steerable speed".
 -- ServoDashServer 1.0 stamps the owner's character ServoDashStartedAt (server time, set last). A fresh stamp (younger than
 --   FRESH s) pushes the body forward along its flat facing with a LinearVelocity in plane mode: LAUNCH_DIST studs over
@@ -16,10 +16,14 @@
 --     from the middle of the screen toward the edges, transparency 1 - 0.65 x k (hidden at k 0).
 --   Switch: character attribute ServoDashFxEnabled (default true; false = no punch, no lines). Diagnostic ServoDashFx (k,
 --   0.1 steps).
+-- v1.2 (MDA-308, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 6; Kepu "A · Thruster Kick"): the shove waits for
+--   ServoDashBlastAt (ServoDashServer 1.2; the 0.06 s squat) when it is up to 0.5 s after the start. Switch: character
+--   attribute ServoDashLaunchWaitEnabled (default true; false = 1.1: shove at the stamp).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 waits for the blast
 local FRESH = 1
 local ACCEL = 20000
 
@@ -53,6 +57,12 @@ local function launch()
 	if char:GetAttribute("ServoDashLaunchEnabled") == false then return end
 	local stamp = char:GetAttribute("ServoDashStartedAt")
 	if typeof(stamp) ~= "number" or workspace:GetServerTimeNow() - stamp > FRESH then return end
+	local blastAt = char:GetAttribute("ServoDashBlastAt") -- v1.2
+	if char:GetAttribute("ServoDashLaunchWaitEnabled") ~= false and typeof(blastAt) == "number" and blastAt > stamp and blastAt - stamp <= 0.5 then
+		local wait = blastAt - workspace:GetServerTimeNow()
+		if wait > 0 then task.wait(wait) end
+		if char:GetAttribute("ServoDashStartedAt") ~= stamp or not char.Parent then return end
+	end
 	local look = hrp.CFrame.LookVector
 	local dir = Vector3.new(look.X, 0, look.Z)
 	if dir.Magnitude < 1e-3 then return end

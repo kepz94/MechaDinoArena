@@ -1,4 +1,4 @@
--- HookServer v1.8 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.9 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -75,11 +75,16 @@
 --   smash re-check drops a squadmate ("gone"). Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
 --   SquadTestId counts). Switch: script attribute HookServerSquadEnabled (default true, read at each check; false = 1.7).
 --   Diagnostic: script HookServerSquadSkips (count of squadmate skips / refusals).
+-- v1.9 (MDA-303, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 1; Kepu 2026-11-05 victim stagger, "Look only"): a smash
+--   that lands stamps on the target StaggerFrom (pachy name), StaggerPower ("mid"), StaggerAt (server time, last) for
+--   StaggerPose 1.0. Switch: script attribute HookStaggerStampEnabled (default true, read at each smash; false = 1.8).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.8"
+VERSION = "1.9" -- v1.9 victim stagger stamps
+if script:GetAttribute("HookStaggerStampEnabled") == nil then script:SetAttribute("HookStaggerStampEnabled", true) end -- v1.9
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25) -- v1.1 clamp; v1.2 min -8 -> -2
 local WINDUP = 0.15        -- s arm raise before the claw flies
 local CLAW_SPEED = 220     -- studs/s (world)
@@ -449,6 +454,11 @@ local function smash(char, player, target, hb)
 		end
 	end
 	target:SetAttribute("HookSmashedBy", char.Name)
+	if script:GetAttribute("HookStaggerStampEnabled") ~= false then -- v1.9: the victim's stagger (looks only)
+		target:SetAttribute("StaggerFrom", char.Name)
+		target:SetAttribute("StaggerPower", "mid")
+		target:SetAttribute("StaggerAt", t) -- last
+	end
 	char:SetAttribute("HookHitDamage", d)
 	char:SetAttribute("HookHitTarget", target.Name)
 	char:SetAttribute("HookHitCount", (char:GetAttribute("HookHitCount") or 0) + 1)

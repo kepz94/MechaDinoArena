@@ -1,4 +1,4 @@
--- MechaButtons v1.33 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.34 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -270,6 +270,13 @@ VERSION = "1.30" -- v1.30 therizino parts build 2
 VERSION = "1.31" -- v1.31 passive Overclock button (ON)
 VERSION = "1.32" -- v1.32 grapple hold-to-lock
 VERSION = "1.33" -- v1.33 the grapple button is the Dash (move direction)
+VERSION = "1.34" -- v1.34 tether aim stamps
+-- v1.34 (MDA-311, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 9; Kepu 2026-11-05 "A · Tail Sling"): when the character
+--   attribute TetherAiming turns true / false (the v1.22 tactical aim) this client stamps TetherAimLocalAt /
+--   TetherAimLocalEndAt (server time, for its own pose) and fires ReplicatedStorage.DinoTetherAim("aim" | "end", server time)
+--   (TetherServer 1.4 stamps TetherAimAt / TetherAimEndAt for the other clients). Switch: script attribute
+--   MechaTetherAimStampEnabled (default true, read at each change; false = 1.33).
+if script:GetAttribute("MechaTetherAimStampEnabled") == nil then script:SetAttribute("MechaTetherAimStampEnabled", true) end
 if script:GetAttribute("MechaButtonsGrappleHoldEnabled") == nil then script:SetAttribute("MechaButtonsGrappleHoldEnabled", true) end -- v1.32
 if script:GetAttribute("MechaButtonsDashEnabled") == nil then script:SetAttribute("MechaButtonsDashEnabled", true) end -- v1.33
 if script:GetAttribute("MechaButtonsTheriClockPassiveEnabled") == nil then script:SetAttribute("MechaButtonsTheriClockPassiveEnabled", true) end -- v1.31
@@ -1623,3 +1630,13 @@ end)
 layout()
 draw()
 gui.Parent = pg
+
+-- v1.34: tether aim stamps (see the header)
+char:GetAttributeChangedSignal("TetherAiming"):Connect(function()
+	if script:GetAttribute("MechaTetherAimStampEnabled") == false then return end
+	local on = char:GetAttribute("TetherAiming") == true
+	local t = workspace:GetServerTimeNow()
+	char:SetAttribute(on and "TetherAimLocalAt" or "TetherAimLocalEndAt", t)
+	local r = ReplicatedStorage:FindFirstChild("DinoTetherAim")
+	if r then r:FireServer(on and "aim" or "end", t) end
+end)

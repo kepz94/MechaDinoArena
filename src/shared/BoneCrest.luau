@@ -1,4 +1,4 @@
--- BoneCrest v1.5 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
+-- BoneCrest v1.6 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
 -- (ModuleScript, ServerStorage.DinoArcade.BoneCrest, server only). SkillTree 1.30 / SkillEffects 1.23.
 -- Kepu 2026-10-30: "We'll do the bone crest to replace the thick hide. Whoever bites your dome does 40% less damage";
 --   answers: builds up to 40% (I 20%, II 30%, III 40%, star: the biter takes 5 damage back), "Bites from the front",
@@ -67,12 +67,17 @@
 --   platingRear maths and stamps: PlatingRearMul from behind, else 1), for hits that do not go through factor because
 --   the crest / visor rules are not theirs: SlashServer 1.8 (slash) and HeadbuttServer 1.14 (headbutt). Same switch as 1.3:
 --   BoneCrestPlatingEnabled (false = always 1).
+-- v1.6 (MDA-309, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 7; Kepu 2026-11-05 "A · Turtle Brace"): the Dome Visor
+--   block look also stamps VisorBlockAt (server time) on the blocking pachy, so PachyMovesPose 1.0 plays the brace hit.
+--   Switch: this module's attribute BoneCrestVisorStampEnabled (default true; false = 1.5).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local M = {}
 M.VERSION = "1.4"
 M.VERSION = "1.5" -- v1.5 plating()
+M.VERSION = "1.6" -- v1.6 VisorBlockAt
+if script:GetAttribute("BoneCrestVisorStampEnabled") == nil then script:SetAttribute("BoneCrestVisorStampEnabled", true) end -- v1.6
 M.CONE = 60
 local REFLECT_GAP = 0.4
 
@@ -237,6 +242,7 @@ end
 
 -- v1.2: Dome Visor block look (cyan sparks + "BLOCK")
 local function visorLook(victim)
+	if script:GetAttribute("BoneCrestVisorStampEnabled") ~= false then victim:SetAttribute("VisorBlockAt", workspace:GetServerTimeNow()) end -- v1.6
 	local head = victim:FindFirstChild("Head")
 	local anchor = head and (head:IsA("BasePart") and head or head:FindFirstChild("Root") or head:FindFirstChildWhichIsA("BasePart"))
 	anchor = anchor or victim:FindFirstChild("HumanoidRootPart")

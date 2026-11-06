@@ -1,4 +1,4 @@
--- VisorServer v1.1 (Mecha Dino Arena) — the pachy's Dome Visor, a Defense slot part (path "visor").
+-- VisorServer v1.2 (Mecha Dino Arena) — the pachy's Dome Visor, a Defense slot part (path "visor").
 -- MDA-127, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Armored
 --   faceplate". Kepu 2026-10-30: "Okay let's do the dome visor for sure"; "All the recommended ones"; it blocks
 --   "Melee + Shock Cannon" from the front.
@@ -42,8 +42,14 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+-- v1.2 (MDA-309, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 7; Kepu 2026-11-05 "A · Turtle Brace"): the force field's
+--   panels come in from the middle out inside the same 0.1 s (panel i waits 0.06 x |i - 5| / 4 s, then fades in 0.04 s)
+--   and fold away from the edges in (edge panels first, 0.25 s in all). Block window unchanged (VisorUntil). Switch:
+--   script attribute VisorSequenceEnabled (default true, read at each on / off; false = 1.1 fades).
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 middle-out panels
+if script:GetAttribute("VisorSequenceEnabled") == nil then script:SetAttribute("VisorSequenceEnabled", true) end -- v1.2
 local DROP_TIME, RAISE_TIME = 0.1, 0.2
 local STEEL, DARK, CYAN = Color3.fromRGB(154, 166, 184), Color3.fromRGB(58, 64, 76), Color3.fromRGB(95, 227, 255)
 script:SetAttribute("VisorServerVersion", VERSION)
@@ -165,10 +171,15 @@ local function setField(char, on, instant) -- instant: no fade-in (the Lab card 
 	local old = m:FindFirstChild("ForceField")
 	if not on then
 		if old then
+			local seq = script:GetAttribute("VisorSequenceEnabled") ~= false -- v1.2
 			for _, p in ipairs(old:GetChildren()) do
-				if p:IsA("BasePart") then TweenService:Create(p, TweenInfo.new(0.2), {Transparency = 1}):Play() end
+				if p:IsA("BasePart") then
+					local i = tonumber(p.Name:match("_(%d+)$")) or 5
+					local d = seq and 0.12 * (1 - math.abs(i - (FIELD_PANELS + 1) / 2) / ((FIELD_PANELS - 1) / 2)) or 0
+					TweenService:Create(p, TweenInfo.new(seq and 0.13 or 0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, 0, false, d), {Transparency = 1}):Play()
+				end
 			end
-			task.delay(0.22, function() if old.Parent then old:Destroy() end end)
+			task.delay(seq and 0.27 or 0.22, function() if old.Parent then old:Destroy() end end)
 		end
 	elseif not old then
 		local root, lo, hi, x, y, back = headFrame(char)
@@ -187,7 +198,14 @@ local function setField(char, on, instant) -- instant: no fade-in (the Lab card 
 				local p = part("Panel_" .. i, Vector3.new(w, Hd * 0.3, 0.15), root.CFrame * c0, CYAN, f, Enum.Material.ForceField)
 				p.Transparency = instant and 0 or 1
 				weld("PanelWeld", root, p, c0)
-				if not instant then TweenService:Create(p, TweenInfo.new(0.1), {Transparency = 0}):Play() end
+				if not instant then
+					if script:GetAttribute("VisorSequenceEnabled") ~= false then -- v1.2: middle out
+						local d = 0.06 * math.abs(i - (FIELD_PANELS + 1) / 2) / ((FIELD_PANELS - 1) / 2)
+						TweenService:Create(p, TweenInfo.new(0.04, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, 0, false, d), {Transparency = 0}):Play()
+					else
+						TweenService:Create(p, TweenInfo.new(0.1), {Transparency = 0}):Play()
+					end
+				end
 			end
 			f.Parent = m
 		end

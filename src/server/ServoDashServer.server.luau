@@ -1,4 +1,4 @@
--- ServoDashServer v1.1 (Mecha Dino Arena) — the pachy's Overclocked Servo Dash, a Speed slot part (path "servodash").
+-- ServoDashServer v1.2 (Mecha Dino Arena) — the pachy's Overclocked Servo Dash, a Speed slot part (path "servodash").
 -- MDA-126, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Hip thrusters".
 -- Kepu 2026-10-30: "An active thruster burn that gives an instantaneous burst of top-speed forward velocity. It instantly
 --   overrides the headbutt empty-charge speed debuff for 1.5 seconds, letting you quickly escape after missing a charge."
@@ -37,9 +37,17 @@
 --   Character diagnostic ServoDashBursts (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- v1.2 (MDA-308, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 6; Kepu 2026-11-05 23:34 "A · Thruster Kick", red-team "Keep
+--   the delays"): an accepted press stamps ServoDashBlastAt = press + SQUAT (0.06 s) before ServoDashStartedAt (last); the
+--   flames / burst / glow start at the blast (task.delay) and ServoDashUntil = blast + ServoDashTime, so the 2x window is as
+--   long as before. ServoDashLaunch 1.2 shoves at ServoDashBlastAt; PachyMovesPose 1.0 plays the squat. Switch: script
+--   attribute ServoDashSquatEnabled (default true, read at each press; false = 1.1: blast at the press).
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 the 0.06 s squat
+local SQUAT = 0.06 -- v1.2
+if script:GetAttribute("ServoDashSquatEnabled") == nil then script:SetAttribute("ServoDashSquatEnabled", true) end -- v1.2
 local STEEL, DARK = Color3.fromRGB(154, 166, 184), Color3.fromRGB(58, 64, 76)
 script:SetAttribute("ServoDashServerVersion", VERSION)
 script:SetAttribute("ServoDashRequests", 0)
@@ -335,17 +343,23 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	end
 	if r then setResult(char, r) return end
 	local dur = math.max(0.2, tonumber(char:GetAttribute("ServoDashTime")) or 1.5)
-	running[char] = t + dur
-	char:SetAttribute("ServoDashUntil", t + dur)
+	local sq = script:GetAttribute("ServoDashSquatEnabled") ~= false and SQUAT or 0 -- v1.2
+	running[char] = t + sq + dur
+	char:SetAttribute("ServoDashUntil", t + sq + dur)
 	char:SetAttribute("ServoDashReadyAt", t + (tonumber(char:GetAttribute("ServoDashCooldown")) or 12))
 	char:SetAttribute("ServoDashCount", (char:GetAttribute("ServoDashCount") or 0) + 1)
 	setLook(char)
-	setFire(char, true)
-	if script:GetAttribute("ServoDashBurstEnabled") ~= false then -- v1.1
-		pcall(burst, char)
-		setGlow(char, true)
+	local function blastNow()
+		if not char.Parent or (running[char] or 0) <= now() then return end
+		setFire(char, true)
+		if script:GetAttribute("ServoDashBurstEnabled") ~= false then -- v1.1
+			pcall(burst, char)
+			setGlow(char, true)
+		end
 	end
+	if sq > 0 then task.delay(sq, blastNow) else blastNow() end
 	setResult(char, "ok")
+	char:SetAttribute("ServoDashBlastAt", t + sq) -- v1.2
 	char:SetAttribute("ServoDashStartedAt", t) -- last
 end)
 
