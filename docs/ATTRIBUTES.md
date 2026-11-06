@@ -3034,3 +3034,9 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | RaptorScaleTroodonEnabled; TroodonScale | RaptorScale script | true; 2 | RaptorScale 1.8 |
 | MainMenuTroodonEnabled | MainMenu script | true (read at start) | MainMenu 1.20: DINOS entry TROODON |
 | SkillEffectsTrooLeapKeepEnabled | SkillEffects script | nil = true (read at each write) | SkillEffects 1.46: the leap writer leaves the troodon's JumpCharges / JumpCooldown / JumpHopBack |
+| TrooAttackServerEnabled; TrooAttackModeRulesEnabled; TrooAttackSquadEnabled; TrooAttackPlatingEnabled | TrooAttackServer script | true each (Enabled read at start; others at each use) | TrooAttackServer 1.0 switches |
+| TrooTestAllyName | TrooAttackServer script | unset (Studio-only test hook; must stay unset at publish) | a bot with this name counts as an ally for the heal path |
+| TrooAttackServerVersion; TrooAttackRequests / TrooZoneHits / TrooZoneHeals / TrooSelfHeals / TrooThrowCancels; TrooAttackMode | TrooAttackServer script | "1.0"; counts; mode | TrooAttackServer 1.0 diagnostics |
+| TrooAttackServerResult / TrooAttackServerResultAt; TrooPodLeft / TrooPodRefillAt; TrooThrowAt; TrooThrowCancelAt | troodon character (server) | result, server time; charges left, next refill (0 = full); press stamp; wind-up cancel stamp | TrooAttackServer 1.0 |
+| TrooPodFrom / TrooPodTo / TrooPodFlight / TrooPodTarget / TrooPodAt; TrooZoneId / TrooZoneCenter / TrooZoneUntil / TrooZoneAt | troodon character (server) | the pod (TrooPodAt last); the zone (TrooZoneAt last) | TrooAttackServer 1.0 (read by TrooPose / TrooFX) |
+| TrooHitKind / TrooHitBy / TrooHitAt; TrooHealAmount / TrooHealAt; TrooSlowUntil / TrooSlowMul; TrooZoneOf | target (players and bots; TrooHeal* also on the troodon) | "splat" / "tick", name, time; HP added, time; slow end, 0.75; newest zone id (nil outside) | TrooAttackServer 1.0 |
