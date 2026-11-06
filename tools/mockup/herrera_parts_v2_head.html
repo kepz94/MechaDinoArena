@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Herrera Parts Redesign</title>
+<style>
+/* Mecha Dino Arena mockup palette (same tokens as the other mockups). The page is dark like the in-game Lab. */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --yellow: #ffc832; --volt: #7fe9ff; --good: #7dff9a;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+:root[data-theme="light"] { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding: 20px max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px)); }
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+main > * { min-width: 0; }
+h1 { margin: 0; font: 700 clamp(24px, 4vw, 32px)/1.1 var(--display); }
+h1 span { color: var(--accent); }
+h2 { margin: 0; font: 700 19px/1.2 var(--display); }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 92ch; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lbl { font: 800 12px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 52px; }
+.parts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 900px) { .parts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .parts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tab { font: 700 14px/1.2 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; cursor: pointer; text-align: left; min-width: 0; }
+.tab small { display: block; font: 800 10px var(--body); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
+.tab .pk { float: right; color: var(--good); font: 800 11px var(--body); }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,155,46,.2); }
+#looks .tab, #plans .tab { flex: 1 1 220px; }
+.btn { font: 700 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--volt); }
+.btn.go { border-color: var(--accent); }
+.stage { position: relative; border: 2px solid var(--line); border-radius: 16px; overflow: hidden; user-select: none; -webkit-user-select: none; background: #101218; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; touch-action: none; cursor: grab; }
+.tag { position: absolute; left: 12px; top: 12px; font: 700 13px var(--display); background: rgba(15,19,25,.82); border-radius: 10px; padding: 6px 10px; max-width: 70%; }
+.tag b { color: var(--yellow); }
+.hint { position: absolute; right: 12px; bottom: 10px; font: 700 12px var(--body); color: var(--muted); background: rgba(15,19,25,.7); border-radius: 8px; padding: 3px 8px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+.card p { margin: 6px 0; }
+.kind { font: 800 12px var(--body); letter-spacing: .06em; text-transform: uppercase; }
+.pickbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.pickbar b { font: 700 16px var(--display); color: var(--good); overflow-wrap: anywhere; }
+#pickbtn[aria-pressed="true"] { border-color: var(--good); }
+.cols { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 820px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { font: 700 12px var(--body); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; color: var(--grey); }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; border: 1px solid rgba(255,255,255,.25); }
+ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+li { margin: 2px 0; }
+.note { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>Herrerasaurus</span> mecha parts · redesign <span id="ver" style="color:var(--muted);font-size:.6em"></span></h1>
+    <p class="lede">The Herrera's 11 mecha parts rebuilt on the real Herrera model, in the same style as the Teno and Therizino redesigns: studded block armour that wraps the body, real moving machinery, and one glowing core per part in its Lab colour (red attack, blue defense, green health, yellow speed, orange engineer). Each part has 3 new looks, each borrowed from a real game part; <b>Old look</b> shows the one in the game now. Press <b>Use it</b> to see it work.</p>
+  </header>
+  <div class="parts" role="group" aria-label="Part" id="parts"></div>
+  <div class="row" role="group" aria-label="Look"><span class="lbl">Look</span><span id="looks" class="row" style="flex:1"></span></div>
+  <div class="row" role="group" aria-label="Loadout"><span class="lbl">Loadouts</span><span id="plans" class="row" style="flex:1"></span></div>
+  <div class="pickbar"><button class="btn go" id="pickbtn" aria-pressed="false">Pick this look</button><span class="lbl">Your picks</span><b id="pickline">none yet</b><button class="btn" id="copy">Copy</button></div>
+  <div class="row"><span class="lbl">View</span>
+    <button class="btn" data-view="lab" aria-pressed="true">Lab</button>
+    <button class="btn" data-view="close">Close-up</button>
+    <button class="btn" data-view="side">Side</button>
+    <button class="btn" data-view="front">Front</button>
+    <button class="btn" data-view="game">Player camera</button>
+    <span class="lbl" style="margin-left:8px">Try</span>
+    <button class="btn go" id="use" aria-pressed="false">Use it</button>
+    <button class="btn" id="spin" aria-pressed="true">Turn</button>
+    <button class="btn" id="old" aria-pressed="false">Old look</button>
+  </div>
+  <div class="stage">
+    <canvas id="cv" aria-label="3D Herrerasaurus wearing a mecha part"></canvas>
+    <div class="tag"><b id="state"></b></div>
+    <div class="hint">drag to turn · pinch / wheel to zoom</div>
+  </div>
+  <div class="cols">
+    <div class="card" id="info"></div>
+    <div class="card" id="kit">
+      <h2>One kit, eleven parts</h2>
+      <p class="note">The rules every look follows, so the Herrera's parts read as one set and not as random boxes:</p>
+      <ul>
+        <li><b>Armour, not boxes:</b> housings are studded plates in the dino's own block style that wrap the arm, back or tail they sit on, with straps and bolts holding them on.</li>
+        <li><b>Machinery you can see:</b> drums, pistons, gears and hinges that actually move when the part is used.</li>
+        <li><b>Plugged in:</b> black hoses run from each part into the body.</li>
+        <li><b>One glow per part</b>, in its Lab colour, at the spot the move comes out of (the hook's muzzle, the feather vents …).</li>
+        <li><b>Bone-white blades</b> match the Herrera's own claws and teeth; brass on every moving joint; yellow-black stripes only where something launches.</li>
+      </ul>
+      <div class="chips" id="swatches"></div>
+    </div>
+  </div>
+  <ul>
+    <li>Looks only — nothing in the game changes from this page. Once you've picked, I'll plan the build (same numbers and moves as now; only the models change, plus small pose tweaks if a look needs them).</li>
+    <li>Sizes are on the real model at the game's scale; studs are drawn the way the game draws them.</li>
+  </ul>
+</main>
+<script>/*THREE*/</script>
+<script>
