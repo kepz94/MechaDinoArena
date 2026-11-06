@@ -66,8 +66,8 @@
 --   * Stomp (TenoMovesFXStompCracksEnabled), TenoStompAt: 10 blue crack strips fanning 40 degrees ahead of the root from the
 --     ground between the hands, growing to TenoStompRange over 0.45 s, fading out over 0.6 s.
 --   * Challenge (TenoMovesFXChallengeScanEnabled), TenoChallengeStartedAt: a blue scan fan (7 rays, 70 degrees, length
---     TenoChallengeRange) from the head, its centre turning from TenoChallengeAimYaw + 35 to TenoChallengeAimYaw - 35 degrees
---     (+ = toward the root's +X) between start + 0.2 and start + 0.65; TenoChallengeAt: a yellow "!" above each
+--     TenoChallengeRange) from the head, its centre turning from TenoChallengeAimYaw to -TenoChallengeAimYaw degrees with
+--     the head (+ = toward the root's +X) between start + 0.2 and start + 0.65; TenoChallengeAt: a yellow "!" above each
 --     TenoChallengeTargets model for 0.8 s and a 0.7 s blue wave to TenoChallengeRange.
 --   * Leap (TenoMovesFXLeapSteamEnabled), on a teno with TenoLeapOnJump: JumpStartedAt + JumpWindup (0.12) and
 --     TenoLeapLandedAt: 4 white steam puffs rising from each FootL_meta / FootR_meta.
@@ -724,7 +724,7 @@ local function watch7(char)
 				local head = partOf(char, "Head_cranium")
 				if not (head and root.Parent) then return false end
 				local u = math.clamp((e - 0.2) / 0.45, 0, 1)
-				local centre = (Y + 35) - 70 * (u * u * (3 - 2 * u))
+				local centre = Y * (1 - 2 * (u * u * (3 - 2 * u))) -- follows the head (TenoPose 1.12: Y -> -Y)
 				local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
 				local d = (CFrame.Angles(0, -math.rad(centre + off), 0) * CFrame.new(Vector3.zero, look)).LookVector
 				local from = ground(head.Position) + Vector3.new(0, 0.3, 0)

@@ -149,8 +149,8 @@
 --   * "tmud" (TenoShieldPulsePoseEnabled) Shield Pulse: 0 -> PUSH by 0.25 (easeOut); -> GUARD by 0.7 (smooth); held to 1.2;
 --     -> 0 by 1.7 (Kepu: guard ~1 s, then normal; the shield stays as before).
 --   * JUMP leap (settings TenoLeapPistonEnabled, model attribute, default true) Piston Launch, the smooth leap's tables:
---     crouch LOWCROUCH (JumpWindup unchanged, 0.12 s); air LOWCROUCH -> J_AIR over 0.1 s (the push), -> TUCK by 0.35 s, plus
---     the existing reach toward J_LAND; land: from the touchdown pose -> SQUAT over TenoLeapLandIn, then the fade. "tland"
+--     crouch LOWCROUCH (JumpWindup unchanged, 0.12 s); air LOWCROUCH -> J_AIR over 0.15 s (the push), -> TUCK by 0.4 s, then
+--     the legs reach out to J_LAND from 0.5 s over 0.3 s (fully, so the feet are down for the touchdown); land: from the touchdown pose -> SQUAT (knees -40) over TenoLeapLandIn, then the fade. "tland"
 --     plays on top unchanged.
 local TenoPose = {}
 TenoPose.Version = "1.8"
@@ -963,8 +963,8 @@ local P12 = {
 		AnkleR = {24, 0, 0}, ArmL = {-6, 0, 0}, ArmR = {-6, 0, 0}, Neck = {-14, 0, 0}, Tail1 = {6, 0, 0}},
 	TUCK = {RootJoint = {4, 0, 0}, LegL = {40, 0, 0}, LegR = {40, 0, 0}, KneeL = {-70, 0, 0}, KneeR = {-70, 0, 0}, AnkleL = {30, 0, 0},
 		AnkleR = {30, 0, 0}, ArmL = {40, 0, 0}, ArmR = {40, 0, 0}, Neck = {6, 0, 0}, Tail1 = {-10, 0, 0}},
-	SQUAT = {RootJoint = {-6, 0, 0}, LegL = {36, 0, 0}, LegR = {36, 0, 0}, KneeL = {-62, 0, 0}, KneeR = {-62, 0, 0}, AnkleL = {26, 0, 0},
-		AnkleR = {26, 0, 0}, ArmL = {-14, 0, 0}, ArmR = {-14, 0, 0}, Neck = {-8, 0, 0}, Tail1 = {10, 0, 0}},
+	SQUAT = {RootJoint = {-8, 0, 0}, LegL = {26, 0, 0}, LegR = {26, 0, 0}, KneeL = {-40, 0, 0}, KneeR = {-40, 0, 0}, AnkleL = {16, 0, 0},
+		AnkleR = {16, 0, 0}, ArmL = {-14, 0, 0}, ArmR = {-14, 0, 0}, Neck = {-8, 0, 0}, Tail1 = {10, 0, 0}}, -- Studio: the mockup's deeper squat (knees -62) lifted the feet 1.4 studs off the ground (the root height is fixed)
 }
 local function easeOut12(u) return 1 - (1 - clamp01(u)) ^ 3 end
 local cur12 = {} -- this frame's switches and stamps (set by phase(), read by attackAngles())
@@ -1032,9 +1032,10 @@ local function leapPiston(phase, x, s, clock)
 	if phase == "crouch" then
 		A, w = mix(P12.LOWCROUCH, P12.LOWCROUCH, 0, JOINTS), smooth(x)
 	elseif phase == "air" then
-		if x < 0.1 then A = mix(P12.LOWCROUCH, J_AIR, smooth(x / 0.1), JOINTS)
-		else A = mix(J_AIR, P12.TUCK, smooth((x - 0.1) / 0.25), JOINTS) end
-		A = mix(A, J_LAND, s.TenoLeapReach * smooth((x - s.TenoLeapReachStart) / max(0.01, s.TenoLeapReachTime)), JOINTS)
+		if x < 0.15 then A = mix(P12.LOWCROUCH, J_AIR, smooth(x / 0.15), JOINTS)
+		else A = mix(J_AIR, P12.TUCK, smooth((x - 0.15) / 0.25), JOINTS) end
+		-- Studio: the tuck was still on at the touchdown (feet 1.5 studs up): the legs reach out fully to J_LAND from 0.5 s
+		A = mix(A, J_LAND, smooth((x - 0.5) / 0.3), JOINTS)
 		w = 1
 	elseif phase == "land" then
 		local from = filt.landFrom or filt.a or P12.TUCK

@@ -2837,3 +2837,8 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoGrabStepEnabled | TenoPoseFix script | switch (default true) | TenoPoseFix 1.1 |
 | TenoGrabStepDone | character model (owner client) | studs moved by the last reach step | TenoPoseFix 1.1 |
 | TenoBotMotionPeakAttrEnabled | TenoBotMotion script | switch (default true; false = arc 16 and pull 0.12 s as 1.2) | TenoBotMotion 1.3 |
+| TenoMovesMortarAnchorEnabled; TenoMovesStompQuakeEnabled; TenoMovesChallengeAimEnabled | TenoMovesServer script | switches (default true; mortar 0.70 / stomp 0.60 / challenge aim) | TenoMovesServer 1.11 |
+| TenoChallengeAimYaw | character model (server) | degrees to the nearest candidate, + = root +X, ±40, 0 = none | TenoMovesServer 1.11 |
+| TenoMortarAnchorPoseEnabled; TenoStompQuakePoseEnabled; TenoBellowShriekPoseEnabled; TenoChallengeAlarmPoseEnabled; TenoShieldPulsePoseEnabled; TenoLeapPistonEnabled | character model | switches (nil = true; false = the 1.11 poses) | TenoPose 1.12 |
+| TenoPartsAnimShriekEnabled | TenoPartsAnim script | switch (default true; false = 1.0 sacs) | TenoPartsAnim 1.1 |
+| TenoMovesFXMortarSmokeEnabled; TenoMovesFXStompCracksEnabled; TenoMovesFXChallengeScanEnabled; TenoMovesFXLeapSteamEnabled; TenoMovesFXShieldPulseEnabled | TenoMovesFX script | switches (default true) | TenoMovesFX 1.7 |
