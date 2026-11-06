@@ -1,4 +1,4 @@
--- IdleAnimation v1.46 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.47 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -263,6 +263,13 @@
 --       (default true; false = 1.45, except HeadbuttPose / HookPose's own switches). Diagnostics: PachyMovesPoseState (move
 --       ids or "none"), PachyLeapAccent ("on" / "none"), StaggerPoseState ("on" / "none"). Every other model only gets the
 --       stagger (StaggerPoseEnabled).
+-- v1.47 (Troodon kit, MDA-337, plan docs/plans/TROODON_KIT_v1.0.md Task 8; TrooPose 1.0, mockup
+--       docs/mockups/troodon_kit_options_v0.1.html attack A + J2): on models with Species "Troodon" and TrooPoseEnabled ~= false:
+--       (a) the Evade Hop (JumpHopBack true, TrooHopPoseEnabled ~= false): JumpPose's biped pose is off for this frame's settings
+--       and after the dilo leap layer TrooPose.leap(jump) replaces the pose by its weight (crouch / air / land); (b) after the
+--       dilo layer, TrooPose.top multiplies the Glow Pod Toss layer on top (wind-up / throw / follow-through / recovery, root
+--       push, ground lock x (1 - walk blend)) and flares the eyes locally. Diagnostics: TrooPose's (TrooPoseState,
+--       TrooHopPhase, TrooEyeFlare, ...). Every other model unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -300,6 +307,7 @@ local HerreraMovesPose = require(script.HerreraMovesPose) -- v1.36
 local TenoPose = require(script.TenoPose) -- v1.37
 local TheriPose = require(script.TheriPose) -- v1.39
 local DiloPose = require(script.DiloPose) -- v1.43
+local TrooPose = require(script.TrooPose) -- v1.47
 local StaggerPose = require(script.StaggerPose) -- v1.46
 local PachyMovesPose = require(script.PachyMovesPose) -- v1.46
 local function pachyLayerOn() return model:GetAttribute("PachyAnimLayerEnabled") ~= false end -- v1.46
@@ -630,6 +638,7 @@ model:SetAttribute("IdleAnimationVersion", "1.43") -- v1.43
 model:SetAttribute("IdleAnimationVersion", "1.44") -- v1.44
 model:SetAttribute("IdleAnimationVersion", "1.45") -- v1.45
 model:SetAttribute("IdleAnimationVersion", "1.46") -- v1.46
+model:SetAttribute("IdleAnimationVersion", "1.47") -- v1.47
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -903,6 +912,7 @@ RunService.PreSimulation:Connect(function(dt)
 		local js = JumpPose.settings(model)
 		if TheriPose.leapOn(model) then js.JumpPoseEnabled = false end -- v1.39: the therizino's leap layer (below) replaces it
 		if DiloPose.leapOn(model) then js.JumpPoseEnabled = false end -- v1.43: the dilo's Cobra Leap layer (below) replaces it
+		if TrooPose.hopOn(model) then js.JumpPoseEnabled = false end -- v1.47: the troodon's Evade Hop layer (below) replaces it
 		local serverNow = workspace:GetServerTimeNow()
 		-- start stamp: server, or the local prediction on the owner's client
 		local jStart, jSource = model:GetAttribute("JumpStartedAt"), "server"
@@ -1038,6 +1048,15 @@ RunService.PreSimulation:Connect(function(dt)
 			if dp and dw > 0 then
 				for name, off in pairs(dp) do
 					if motors[name] then pose[name] = (pose[name] or CFrame.identity):Lerp(off, dw) end
+				end
+			end
+		end
+		-- v1.47: troodon Evade Hop layer (TrooPose 1.0) replaces the pose by its weight
+		if TrooPose.hopOn(model) then
+			local tp, tw = TrooPose.leap(model, jump, serverNow, now, hrp, dt)
+			if tp and tw > 0 then
+				for name, off in pairs(tp) do
+					if motors[name] then pose[name] = (pose[name] or CFrame.identity):Lerp(off, tw) end
 				end
 			end
 		end
@@ -1401,6 +1420,12 @@ RunService.PreSimulation:Connect(function(dt)
 	if DiloPose.on(model) then
 		local lpD = Players.LocalPlayer
 		DiloPose.top(model, pose, motors, hrp, {isOwner = lpD ~= nil and lpD.Character == model,
+			serverNow = workspace:GetServerTimeNow(), now = now, dt = dt, moveW = blend, show = show})
+	end
+	-- v1.47: troodon Glow Pod Toss + root push / ground lock + eyes flare on top (TrooPose 1.0)
+	if TrooPose.on(model) then
+		local lpT = Players.LocalPlayer
+		TrooPose.top(model, pose, motors, hrp, {isOwner = lpT ~= nil and lpT.Character == model,
 			serverNow = workspace:GetServerTimeNow(), now = now, dt = dt, moveW = blend, show = show})
 	end
 	-- roar on top of whatever the body is doing (upper body only)
