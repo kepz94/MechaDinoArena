@@ -3048,3 +3048,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | StatusBadgesTrooSlowEnabled | StatusBadges script | true (read at start) | StatusBadges 1.4: SLOW badge while TrooSlowUntil |
 | TrooFXEnabled; TrooFXPodEnabled / TrooFXZoneEnabled / TrooFXHitEnabled / TrooFXHealEnabled / TrooFXRingEnabled | TrooFX script | true each (read each event / frame) | TrooFX 1.0 switches |
 | TrooFXVersion; TrooFXEvents / TrooFXLast / TrooFXParts / TrooFXZones / TrooFXRingTarget | TrooFX script (this client) | "1.0"; diagnostics | TrooFX 1.0 |
+| JumpHopBackEnabled | JumpTest script | nil = true (read at each press) | JumpTest 1.5: Evade Hop while the character's JumpHopBack is true |
+| JumpHopLocal; JumpHopMoved; JumpHopYawDrift | troodon character (owner client) | "hop" / "landed"; flat studs launch -> landing; deg | JumpTest 1.5 diagnostics |

@@ -77,6 +77,7 @@ CAS "DinoTrooAttack" (MouseButton1 via the click handler, ButtonR2, touch ATTACK
 ### Task 6 — Evade Hop: JumpTest 1.5 · Wired
 While the character attribute JumpHopBack is true: after JumpHopWindup, a LinearVelocity (this client's own, like the air hold) moves the root along -facing at JumpHopDistance x scale / JumpHopTime for JumpHopTime, with JumpHopPower up; AutoRotate off for the hop (facing held), restored on landing; no air-hold steering and no double jump during a hop. Charges and the server request are the 1.4 path (JumpServer 1.3 untouched). Switch: script attribute JumpHopBackEnabled (default true; false = 1.4 leap). Diagnostics: JumpHopLocal ("hop" / "landed"), JumpHopMoved (studs).
 **Acceptance:** 18 ± 2 studs back, ~4 studs high, facing unchanged with W / S / no input held; 2 charges, 4 s each; raptor / dilo / therizino / teno / pachy leaps unchanged (JumpHopBack absent).
+**Build note (MDA-335):** Kepu 2026-11-06: hop ~5.3 studs high, JumpHopPower 40; ~4 studs made the Humanoid land at the top (JumpHopPower 36: Landed 0.22 s after launch in 7 of 8 hops, the hop cut to ~9 studs; 40: 17.1 studs back every time).
 
 ### Task 7 — Slow: SprintTest 1.22 + StatusBadges · Wired
 SprintTest: while TrooSlowUntil > now the speed is x TrooSlowMul with the other part multipliers (MoveSpeedParts "trooSlow"; switch SprintTestTrooSlowEnabled). StatusBadges: the existing SLOW badge also shows while TrooSlowUntil (switch StatusBadgesTrooSlowEnabled).

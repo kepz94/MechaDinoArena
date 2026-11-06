@@ -1,4 +1,4 @@
--- JumpTest v1.4 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
+-- JumpTest v1.5 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
 -- button. Only active while the character attribute JumpEnabled is true (default false: the T-Rex keeps the
 -- default Roblox jump untouched).
 -- v1.1 (pachy Mecha Legs star, MDA-123): while JumpDoubleEnabled (SkillEffects 1.15) is true, a NEW jump press (the
@@ -22,6 +22,19 @@
 --   leap, instead of the plain JumpCooldown; else "cooldown". A press uses a charge; a server "denied" sets the count to
 --   the replicated JumpChargesLeft. Diagnostic: JumpChargesLocal. Switch: script attribute JumpChargesEnabled (default
 --   true, read at start; false = 1.3).
+-- v1.5 (Troodon Evade Hop, MDA-335, plan docs/plans/TROODON_KIT_v1.0.md Task 6; Kepu 2026-11-06 jump J2): while the character
+--   attribute JumpHopBack is true (only TroodonModelData 1.1 sets it) a leap is an Evade Hop: the same press, charges and
+--   DinoJumpRequest path as 1.4 (JumpServer 1.3), but the crouch lasts JumpHopWindup (0.1 s) and the launch is a quick low
+--   hop straight BACK: the body's flat facing at the launch is kept for the whole hop (yaw re-set every frame, so W / S /
+--   no input never turn it; Humanoid.AutoRotate off, put back on landing), vertical speed JumpHopPower, and this client's
+--   own LinearVelocity "JumpHopDrive" (Plane mode, X/Z) holds -facing x JumpHopDistance x scale / JumpHopTime for
+--   JumpHopTime s, then holds zero horizontal speed until landing (move input never steers or lengthens the hop). No
+--   air-hold steering, no double jump during a hop; plain landing (no FX). Switch: script attribute
+--   JumpHopBackEnabled (default true, read at each press; false = the 1.4 leap). Diagnostics: JumpHopLocal ("hop" /
+--   "landed"), JumpHopMoved (flat studs launch -> landing, 0.1 steps), JumpHopYawDrift (deg the facing moved during the
+--   hop, 0.1 steps).
+--   Kepu 2026-11-06: hop ~5.3 studs high, JumpHopPower 40 (TroodonModelData 1.1); ~4 studs (power 36) made the Humanoid land
+--   at the top of the arc (Landed 0.22 s after launch, the hop cut to ~9 studs).
 -- While enabled, the Humanoid's built-in Jumping state is turned off, so a press never jumps straight away. Instead:
 --   1. Press (when allowed): JumpPredictedAt = server time (this client only, so the crouch shows at once) and
 --      DinoJumpRequest:FireServer(that time) (JumpServer 1.0 validates and sets the replicated JumpStartedAt).
@@ -75,6 +88,9 @@ if script:GetAttribute("JumpSuppressEnabled") == nil then script:SetAttribute("J
 local SUPPRESS_ON = script:GetAttribute("JumpSuppressEnabled") ~= false
 local function suppressed() return SUPPRESS_ON and char:GetAttribute("JumpSuppressed") == true end
 char:SetAttribute("JumpTestVersion", "1.3") -- v1.3 (the model data carries "1.0")
+char:SetAttribute("JumpTestVersion", "1.5") -- v1.5 (1.4 did not bump this line)
+if script:GetAttribute("JumpHopBackEnabled") == nil then script:SetAttribute("JumpHopBackEnabled", true) end -- v1.5
+local function hopMode() return script:GetAttribute("JumpHopBackEnabled") ~= false and char:GetAttribute("JumpHopBack") == true end
 
 local function get(k)
 	local v = char:GetAttribute(k)
@@ -286,7 +302,86 @@ local function doubleJump()
 	show("JumpDoubleLocalCount", (char:GetAttribute("JumpDoubleLocalCount") or 0) + 1)
 end
 
+-- v1.5: Evade Hop
+local hopping, hopFace, hopUntil, hopYaw0, hopAutoRotate = false, nil, 0, 0, nil
+local hopLV
+local function hopDrive(v)
+	if v then
+		if not hopLV then
+			local att = Instance.new("Attachment")
+			att.Name = "JumpHopAttachment"
+			att.Parent = hrp
+			hopLV = Instance.new("LinearVelocity")
+			hopLV.Name = "JumpHopDrive"
+			hopLV.Attachment0 = att
+			hopLV.RelativeTo = Enum.ActuatorRelativeTo.World
+			hopLV.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+			hopLV.PrimaryTangentAxis = Vector3.new(1, 0, 0)
+			hopLV.SecondaryTangentAxis = Vector3.new(0, 0, 1)
+			hopLV.ForceLimitsEnabled = true
+			hopLV.Enabled = false
+			hopLV.Parent = hrp
+		end
+		hopLV.MaxForce = hrp.AssemblyMass * JUMP_HOLD_ACCEL
+		hopLV.PlaneVelocity = Vector2.new(v.X, v.Z)
+		hopLV.Enabled = true
+	elseif hopLV then
+		hopLV.Enabled = false
+	end
+end
+local function yawDeg(lv) return math.deg(math.atan2(-lv.Z, lv.X)) end
+local function holdFacing()
+	local pos = hrp.Position
+	hrp.CFrame = CFrame.lookAt(pos, pos + hopFace)
+end
+local function launchHop()
+	local f = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+	hopFace = f.Magnitude > 1e-3 and f.Unit or Vector3.new(0, 0, -1)
+	hopYaw0 = yawDeg(hopFace)
+	local s = 1
+	pcall(function() s = char:GetScale() end)
+	local T = math.max(0.1, tonumber(char:GetAttribute("JumpHopTime")) or 0.42)
+	local speed = math.max(0, tonumber(char:GetAttribute("JumpHopDistance")) or 9) * s / T
+	local power = math.max(0, tonumber(char:GetAttribute("JumpHopPower")) or 40)
+	hopAutoRotate = hum.AutoRotate
+	hum.AutoRotate = false
+	local hv = -hopFace * speed
+	leapSpeed = speed
+	hum.UseJumpPower = true
+	hum.JumpPower = power
+	hum:SetStateEnabled(JUMPING, true)
+	hum:ChangeState(JUMPING)
+	hrp.AssemblyLinearVelocity = Vector3.new(hv.X, power, hv.Z)
+	hopDrive(hv)
+	hopping, hopUntil = true, os.clock() + T
+	launchAt = os.clock()
+	leftGround = false
+	takeoffY, peakY = hrp.Position.Y, hrp.Position.Y
+	launchPos = hrp.Position
+	state = "air"
+	doubleUsed = true -- no double jump during a hop
+	show("JumpHopLocal", "hop")
+	show("JumpLaunchCount", (char:GetAttribute("JumpLaunchCount") or 0) + 1)
+	show("JumpLeapSpeed", math.floor(speed * 2 + 0.5) / 2)
+end
+local function endHop()
+	if not hopping then return end
+	hopping = false
+	hopDrive(nil)
+	if hopAutoRotate ~= nil then hum.AutoRotate = hopAutoRotate end
+	hopAutoRotate = nil
+	local d = hrp.Position - launchPos
+	show("JumpHopMoved", math.floor(Vector3.new(d.X, 0, d.Z).Magnitude * 10 + 0.5) / 10)
+	local f = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+	if f.Magnitude > 1e-3 then
+		local drift = (yawDeg(f.Unit) - hopYaw0 + 180) % 360 - 180
+		show("JumpHopYawDrift", math.floor(math.abs(drift) * 10 + 0.5) / 10)
+	end
+	show("JumpHopLocal", "landed")
+end
+
 local function land(result)
+	endHop() -- v1.5
 	hum:SetStateEnabled(JUMPING, false)
 	airHold(nil)
 	show("JumpAirHoldState", "off")
@@ -320,10 +415,14 @@ local conn = RunService.PreSimulation:Connect(function()
 			state = "ready"
 			if chargeMode() then cState.left = math.floor(tonumber(char:GetAttribute("JumpChargesLeft")) or cState.left) end -- v1.4
 			show("JumpInputResult", "denied")
-		elseif now - crouchAt >= get("JumpWindup") then
-			launch()
+		elseif now - crouchAt >= (hopMode() and (tonumber(char:GetAttribute("JumpHopWindup")) or 0.1) or get("JumpWindup")) then -- v1.5
+			if hopMode() then launchHop() else launch() end
 		end
 	elseif state == "air" then
+		if hopping then -- v1.5: facing held, drive for JumpHopTime, then no horizontal push until landing
+			holdFacing()
+			if os.clock() >= hopUntil and hopLV and hopLV.PlaneVelocity.Magnitude > 0 then hopDrive(Vector3.zero) end
+		end
 		local y = hrp.Position.Y
 		if y > peakY then peakY = y end
 		if not leftGround then
@@ -340,7 +439,7 @@ local conn = RunService.PreSimulation:Connect(function()
 				local d = hrp.Position - launchPos
 				show("JumpAirDistance", math.floor(Vector3.new(d.X, 0, d.Z).Magnitude * 10 + 0.5) / 10)
 				land(nil)
-			elseif get("JumpAirHold") then
+			elseif get("JumpAirHold") and not hopping then -- v1.5: no air-hold steering during a hop
 				-- keep the boosted leap speed while steering with input held
 				local md = hum.MoveDirection
 				local m = md.Magnitude
@@ -360,6 +459,7 @@ end)
 local function cleanup()
 	conn:Disconnect()
 	if airLV then airLV.Enabled = false end
+	if hopLV then hopLV.Enabled = false end -- v1.5
 end
 hum.Died:Connect(cleanup)
 char.AncestryChanged:Connect(function(_, parent)

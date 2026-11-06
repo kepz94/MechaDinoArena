@@ -36,7 +36,7 @@ SMOOTH = {"eyes", "pupil", "tooth", "claws", "mouth"}
 VERSION = "1.0"
 VERSION = "1.1"  # v1.1 kit attributes (MDA-330, plan docs/plans/TROODON_KIT_v1.0.md Task 1); --no-kit = 1.0
 # v1.1 numbers (distances at scale 1, x2 body in game). The plan's "WalkSpeed 39 / RunSpeed 74" are the game's speed keys
-# MoveWalkSpeed / MoveRunSpeed (the Dilo's KIT_ATTRS pattern). JumpHopPower: Studio-tuned in MDA-336 (~4 studs high at 2x).
+# MoveWalkSpeed / MoveRunSpeed (the Dilo's KIT_ATTRS pattern). JumpHopPower 40: Kepu 2026-11-06 hop ~5.3 studs high (MDA-335; ~4 studs made the Humanoid land at the top).
 KIT_ATTRS = {
     "DinoMaxHealth": "55", "MoveWalkSpeed": "39", "MoveRunSpeed": "74",
     "TrooAttackEnabled": "true", "TrooPodWindup": "0.34", "TrooPodFlight": "0.55", "TrooPodRange": "22.5",
