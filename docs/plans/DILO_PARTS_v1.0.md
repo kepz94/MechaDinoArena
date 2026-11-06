@@ -142,5 +142,5 @@ stand), applied through DiloAttackServer so Venom Feast and Cold Blood count it.
 - Not verified: PC / phone key + touch presses (Studio's input tool did not reach the game window this session), the
   touch SILENCED grey-out and the Jets charge text (phone layout), poses / FX by eye beyond one screenshot (immune shell +
   part looks), other players' view, squad / player targets.
-- AbilityBar seconds text (build-1 gap, not changed): AbilityBar's TIMED_PARTS (lines 213-241) has no dilo part entries, so
-  the dilo tiles fall to the final `paint(e, "ready")` (line ~889) and never show a cooldown.
+- AbilityBar seconds text (build-1 gap, not changed): AbilityBar 1.31's TIMED_PARTS (lines 219-247) has no dilo part entries, so
+  the dilo tiles fall to the final `paint(e, "ready")` (line 894) and never show a cooldown.
