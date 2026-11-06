@@ -75,6 +75,16 @@
 -- Switches: script DiloMoves_dhissEnabled, DiloMoves_dpumpEnabled, DiloMoves_djetsEnabled, DiloMovesImmuneWatchEnabled (default
 --   true, read at each use; false = 1.0 for that move). Diagnostics: DiloMovesSilenced, DiloMovesCleared, DiloMovesImmuneBlocks,
 --   DiloMovesJets.
+-- v1.2 (MDA-327, plan docs/plans/FIXES_2026-11-06_v1.0.md Fix 5; Kepu 2026-11-06 04:27 "Pump: work while stunned", 12:01
+--   "Let's build it"): the Antivenom Pump breaks free.
+--   * Break free: check() skips the "stunned" (StunnedUntil) and "dazed" (DazedUntil) refusals for dpump only (pinned /
+--     silenced / dead / menu / cooldown unchanged), and the pump's wind-up is not cancelled by a stun / daze (death / pin
+--     still cancel). The jolt then clears the stun / daze as before. Switch: script DiloPumpBreakFreeEnabled (default true,
+--     read at each press; false = 1.1). Diagnostic: DiloMovesBreakFree (presses made while stunned or dazed).
+--   * Clear more: the jolt also sets SkillBleedUntil, SlashBleedUntil, CaltropBleedUntil and the roar debuff DebuffUntil (RoarServer
+--     applyDebuff) to now when in the future; clearing DebuffUntil also sets DebuffState "none" (RoarServer's own reset only
+--     fires when DebuffUntil is unchanged). The immunity watcher list is unchanged. Switch: script DiloPumpClearMoreEnabled
+--     (default true, read at each jolt; false = 1.1).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -82,6 +92,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Sonic Hiss, Antivenom Pump, Spring Jets
+VERSION = "1.2" -- v1.2 the pump breaks free + clears bleeds / the roar debuff
 local GATLING_WINDUP, MORTAR_WINDUP, MORTAR_FLIGHT, SPINE_WINDUP, SPINE_FLIGHT, OVER_WINDUP = 0.4, 0.55, 1.15, 0.42, 0.2, 0.7
 local CLOUD_TICK, CLOUD_HEIGHT = 0.5, 12
 local SPINE_WIDTH = 1.5
@@ -98,6 +109,13 @@ local function on(id)
 end
 local function now() return workspace:GetServerTimeNow() end
 local function count(k, n) script:SetAttribute(k, (script:GetAttribute(k) or 0) + (n or 1)) end
+for _, k in ipairs({"DiloPumpBreakFreeEnabled", "DiloPumpClearMoreEnabled"}) do -- v1.2
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
+script:SetAttribute("DiloMovesBreakFree", 0) -- v1.2
+local function breakFree(id) -- v1.2: the pump may be used while stunned / dazed
+	return id == "dpump" and script:GetAttribute("DiloPumpBreakFreeEnabled") ~= false
+end
 local function num(m, k, d) return tonumber(m:GetAttribute(k)) or d end
 local function flat(v) return Vector3.new(v.X, 0, v.Z) end
 local function rootOf(m) return m:FindFirstChild("HumanoidRootPart") end
@@ -269,11 +287,11 @@ local function check(player, stamp, id, prefix, aimDir, aimPoint)
 		r = "disabled"
 	elseif player:GetAttribute("InMenu") == true then
 		r = "menu"
-	elseif num(char, "StunnedUntil", 0) > t then
+	elseif num(char, "StunnedUntil", 0) > t and not breakFree(id) then -- v1.2: not for the pump
 		r = "stunned"
 	elseif char:GetAttribute("PinHeld") == true then
 		r = "pinned"
-	elseif num(char, "DazedUntil", 0) > t then
+	elseif num(char, "DazedUntil", 0) > t and not breakFree(id) then -- v1.2: not for the pump
 		r = "dazed"
 	elseif num(char, "SilencedUntil", 0) > t then
 		r = "silenced"
@@ -291,11 +309,11 @@ local function ok(char, prefix, t)
 	char:SetAttribute(prefix .. "ServerResultAt", t)
 	char:SetAttribute(prefix .. "ReadyAt", t + math.max(0.5, num(char, prefix .. "Cooldown", 15)))
 end
-local function canStill(char)
+local function canStill(char, freeOk) -- v1.2: freeOk = a stun / daze doesn't cancel (the pump breaking free)
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	local t = now()
-	return char.Parent ~= nil and hum ~= nil and hum.Health > 0 and rootOf(char) ~= nil and num(char, "StunnedUntil", 0) <= t
-		and num(char, "DazedUntil", 0) <= t and char:GetAttribute("PinHeld") ~= true
+	return char.Parent ~= nil and hum ~= nil and hum.Health > 0 and rootOf(char) ~= nil and (freeOk or num(char, "StunnedUntil", 0) <= t)
+		and (freeOk or num(char, "DazedUntil", 0) <= t) and char:GetAttribute("PinHeld") ~= true
 end
 local function cancel(char, prefix)
 	char:SetAttribute(prefix .. "ServerResult", "cancelled")
@@ -576,6 +594,7 @@ end)
 -- Antivenom Pump -------------------------------------------------------------------------------------------------------------------
 local CLEAR_TAGS = {"VenomUntil", "StunnedUntil", "DazedUntil", "InkedUntil", "ScreechSlowUntil", "MineSlowUntil",
 	"HeadbuttSlowUntil", "SmokeSlowUntil", "CaltropSlowUntil", "GooSlowUntil", "TenoSlowUntil"}
+local CLEAR_MORE = {"SkillBleedUntil", "SlashBleedUntil", "CaltropBleedUntil", "DebuffUntil"} -- v1.2
 local IMMUNE_TAGS = {"StunnedUntil", "DazedUntil", "InkedUntil", "ScreechSlowUntil", "MineSlowUntil", "HeadbuttSlowUntil",
 	"SmokeSlowUntil", "CaltropSlowUntil", "GooSlowUntil", "TenoSlowUntil"}
 local watched = setmetatable({}, {__mode = "k"})
@@ -602,18 +621,29 @@ pumpRemote.OnServerEvent:Connect(function(player, stamp)
 	local char, t = check(player, stamp, "dpump", "DiloPartPump")
 	if not char then return end
 	ok(char, "DiloPartPump", t)
+	local free = breakFree("dpump") -- v1.2
+	if free and (num(char, "StunnedUntil", 0) > t or num(char, "DazedUntil", 0) > t) then count("DiloMovesBreakFree") end
 	watchImmune(char)
 	char:SetAttribute("DiloPumpWindup", PUMP_WINDUP)
 	char:SetAttribute("DiloPumpAt", t) -- last: pose / FX (the piston primes)
 	task.wait(PUMP_WINDUP)
 	if char:GetAttribute("DiloPumpAt") ~= t then return end
-	if not canStill(char) then cancel(char, "DiloPartPump") return end
+	if not canStill(char, free) then cancel(char, "DiloPartPump") return end -- v1.2: free = a stun / daze doesn't cancel
 	local t2 = now()
 	local cleared = {}
 	for _, tag in ipairs(CLEAR_TAGS) do
 		if num(char, tag, 0) > t2 then
 			char:SetAttribute(tag, t2)
 			table.insert(cleared, tag)
+		end
+	end
+	if script:GetAttribute("DiloPumpClearMoreEnabled") ~= false then -- v1.2: bleeds + the roar debuff
+		for _, tag in ipairs(CLEAR_MORE) do
+			if num(char, tag, 0) > t2 then
+				char:SetAttribute(tag, t2)
+				table.insert(cleared, tag)
+				if tag == "DebuffUntil" then char:SetAttribute("DebuffState", "none") end
+			end
 		end
 	end
 	count("DiloMovesCleared", #cleared)
