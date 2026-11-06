@@ -2811,3 +2811,12 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TheriDeflectWall | therizino character (server, each Deflector press) | true = every client draws the Shield Wall look | TheriMovesServer 1.7 |
 | TheriPoseGuardEnabled | character model | switch (nil = true; false = ARMS_FWD); TheriPartsPose shows "guard" | TheriPose 1.11 |
 | TheriMovesFX2_wallEnabled, TheriMovesFX2_steamEnabled | TheriMovesFX2 script | switches (default true); TheriMovesFX2Last shows wall / wallBlock(:back) / slowIgnored / thirdJump | TheriMovesFX2 1.2 |
+| TenoPartsLooksV2Enabled; TenoPartsDetail ("full" / "lite") | TenoPartsServer script | true; "full" | TenoPartsServer 1.3 (v2 looks from TenoPartsLooksV2; lite skips detail pieces) |
+| TPartLooks ("v2"), TPartBuiltScale, TPartBuiltAt | TPart_<id> model | set at build | TenoPartsServer 1.3 |
+| TPartType / TPartAxis / TPartAmt / TPartRestC0 / TPartBuiltScale / TPartPartId; TPartAimAnchor, TPartAimPoint (aim struts) | Weld TPartJoint_<group> | set at build | TenoPartsServer 1.3 (read by TenoPartsAnim 1.0) |
+| TPartRole (muzzle, rock, charge1..4, flash, puff, sac, dome, lens, flashball, gauge1..5, disc, rim, pincer, tip, ram), TPartFilm, TPartHidden, TPartAlpha, TPartBaseSize | TPart_<id> pieces | set at build | TenoPartsServer 1.3 |
+| TenoPartsAnimEnabled; TenoPartsAnimVersion, TenoPartsAnimJoints | TenoPartsAnim script | switch (default true); diagnostics | TenoPartsAnim 1.0 |
+| TenoPartsAnimActive | character model (each client) | "<id>,..." parts moving now | TenoPartsAnim 1.0 |
+| TenoPartsAnimTarget | workspace model (Studio test hook) | true = animate this model's TPart_ looks | TenoPartsAnim 1.0 |
+| TenoMovesMortarMuzzleEnabled | TenoMovesServer script | switch (default true; false = boulder from Tail3 as 1.8) | TenoMovesServer 1.9 |
+| TenoMovesFXMuzzleEnabled | TenoMovesFX script | switch (default true; false = launch flash at the rock as 1.5) | TenoMovesFX 1.6 |
