@@ -3046,3 +3046,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | AbilityBarTrooEnabled; AbilityBarTrooPips | AbilityBar script; troodon character | true (read at start); "<left>/<max>" | AbilityBar 1.33 |
 | SprintTestTrooSlowEnabled | SprintTest script | nil = true (read each apply) | SprintTest 1.22: x TrooSlowMul while TrooSlowUntil |
 | StatusBadgesTrooSlowEnabled | StatusBadges script | true (read at start) | StatusBadges 1.4: SLOW badge while TrooSlowUntil |
+| TrooFXEnabled; TrooFXPodEnabled / TrooFXZoneEnabled / TrooFXHitEnabled / TrooFXHealEnabled / TrooFXRingEnabled | TrooFX script | true each (read each event / frame) | TrooFX 1.0 switches |
+| TrooFXVersion; TrooFXEvents / TrooFXLast / TrooFXParts / TrooFXZones / TrooFXRingTarget | TrooFX script (this client) | "1.0"; diagnostics | TrooFX 1.0 |
