@@ -70,7 +70,7 @@ stand), applied through DiloAttackServer so Venom Feast and Cold Blood count it.
 | Jets | move direction (camera forward if standing) | the owner's client dashes the root L studs (DiloJetsLaunch, the ServoDashLaunch / TenoLeapLaunch client-launch pattern); III+: a 6 s trail, every 0.5 s dinos on it get dart venom |
 | Overdrive | `DiloOverdriveUntil` = now + T | DiloAttackServer: the dart cooldown is 0 while on; III+: venom dps x2 (one guarded read each) |
 
-## Tasks (two builds) — tickets after red-team
+## Tasks (two builds) — Dev Hub MDA-314 .. MDA-321 (T1..T8)
 **Build 1 (projectiles + venom, proven patterns):** Venom Gatling, Toxin Mortar, Spine Burst, Venom Overdrive.
 **Build 2 (cross-cutting):** Sonic Hiss (silence), Antivenom Pump (immunity), Spring Jets (client launch + trail).
 
