@@ -3021,3 +3021,12 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | DiloJetsInstantPoseEnabled | dilo model | switch (nil = true, read at each start): p_jets_i without the crouch; false = 1.3's p_jets | DiloPose 1.4 |
 | DiloJetsThrusterFXEnabled; DiloJetsFlameOn | DiloMovesFX script | switch (default true, read every frame): the Thrusters' flame / light / neon jet / roar + owner boost feel, 1.1 heat + sparks off; false = 1.1. Diagnostic: flame-on count | DiloMovesFX 1.2 |
 | DiloJetsFlameAt (Attachment: JetsFlame, PointLight, Sound JetsRoar); DiloJetsJet (part); DiloJetsSpeedLines (ScreenGui); render step DiloJetsBoostCam | Tail1 Root / FX folder / PlayerGui (local) | the burst FX kit | DiloMovesFX 1.2 |
+
+## Troodon kit (TroodonModelData 1.1, MDA-330..339; plan docs/plans/TROODON_KIT_v1.0.md)
+
+| Attribute | Where | Value | Set by |
+|---|---|---|---|
+| DinoMaxHealth; MoveWalkSpeed / MoveRunSpeed | troodon model (TroodonModelData 1.1) | 55; 39 / 74 | troodon_generator 1.1 |
+| TrooAttackEnabled; TrooPodWindup / TrooPodFlight / TrooPodRange / TrooPodCharges / TrooPodRefill / TrooPodDamage / TrooPodLead; TrooMinGap; TrooAssistAngle / TrooAssistMax | troodon model (TroodonModelData 1.1) | true; 0.34 s / 0.55 s / 22.5 (x scale) / 2 / 3 s / 6 / true; 0.35 s; 30 deg / 22.5 (x scale) | TrooAttackServer 1.0 + TrooAttackTest 1.0 tuning |
+| TrooZoneRadius / TrooZoneTime / TrooZoneDps / TrooZoneSlowMul / TrooZoneHeal; TrooSelfHeal | troodon model (TroodonModelData 1.1) | 5 (x scale) / 3 s / 3 per s / 0.75 / 5 (splat + each tick); 2 per enemy hit | TrooAttackServer 1.0 zone tuning |
+| JumpHopBack; JumpHopDistance / JumpHopTime / JumpHopWindup / JumpHopPower; JumpCharges / JumpCooldown; JumpStaminaCost; TenoLeapOnJump | troodon model (TroodonModelData 1.1) | true; 9 (x scale) / 0.42 s / 0.1 s / 40 (start value, tuned in MDA-336); 2 / 4 s; 0; false | JumpTest 1.5 Evade Hop; JumpServer 1.3 charges |
