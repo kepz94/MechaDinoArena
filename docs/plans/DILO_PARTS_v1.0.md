@@ -123,3 +123,24 @@ stand), applied through DiloAttackServer so Venom Feast and Cold Blood count it.
 - Test note: setting SkillSlot attributes directly is overwritten by SkillServer's publish (death / respawn); the test kept
   them with a 0.2 s loop and SkillServer SkillSaveEnabled false for the Play session only.
 - Pre-existing: SkillTree_spec fails 34 checks (it expects SkillTree v1.0); not changed.
+
+## Build 2 notes (2026-11-06)
+- Installed (Studio hash = repo): DiloMovesServer 1.1 37437/446748103, SkillTree 1.70 149682/640325869,
+  SkillTreeDiloParts.spec 1.1 9443/847179817 (PASS 327), MechaButtons 1.36 100222/185608103, SprintTest 1.21
+  22672/409093190, DiloMovesFX 1.1 29150/543288436, DiloPose 1.3 40222/810727846, DiloJetsLaunch 1.0 4180/455390915,
+  AbilityBar 1.31 66094/962577180. All compile.
+- Deviations: AbilityBar 1.31 added (SILENCED tiles on PC: MechaButtons' touch slots are not drawn on PC, and the PC + phone
+  rule needs both). The Jets' charges show as "left / max" in the touch slot's sub label (the slot has only 2 pips, kept for
+  the Thrusters). The Pump can't be used while stunned / dazed (the shared check order, like every other part).
+- Verified in Play (Dilo, all three maxed, raptor bots held in place): Hiss blast at +0.5 s, the 2 bots in the cone
+  silenced 3 s (SilencedBy set) and pushed back, the bot behind untouched, SILENCED tags; Pump jolt +0.66 s cleared venom /
+  ink / teno slow, +30, 4 s immunity, shell shows; immunity watcher reset stun / daze / ink / goo slow (4 blocks), venom
+  not blocked, watcher switch off works; SprintTest: full speed while immune with a goo slow on, slowed after; Jets 38.8 of
+  40 studs in 0.27 s, 3 charges then "cooldown", trail venom on a bot beside the path (VenomBy = the dilo); while silenced
+  the server refuses ("silenced") and all 4 PC tiles show SILENCED (switch off -> "ready"); switches off -> "disabled";
+  0 console errors; slots restored (empty, as loaded); SkillServer saving off for the Play sessions only.
+- Not verified: PC / phone key + touch presses (Studio's input tool did not reach the game window this session), the
+  touch SILENCED grey-out and the Jets charge text (phone layout), poses / FX by eye beyond one screenshot (immune shell +
+  part looks), other players' view, squad / player targets.
+- AbilityBar seconds text (build-1 gap, not changed): AbilityBar's TIMED_PARTS (lines 213-241) has no dilo part entries, so
+  the dilo tiles fall to the final `paint(e, "ready")` (line ~889) and never show a cooldown.

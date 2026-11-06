@@ -1,4 +1,4 @@
--- AbilityBar v1.30 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.31 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -186,6 +186,12 @@ VERSION = "1.27" -- v1.27 dilo dart pip full after a Cold Blood reset
 VERSION = "1.28" -- v1.28 therizino parts build 1 tiles
 VERSION = "1.29" -- v1.29 therizino parts build 2 tiles
 VERSION = "1.30" -- v1.30 passive Overclock tile (ON)
+VERSION = "1.31" -- v1.31 SILENCED part tiles
+-- v1.31 (dilo parts build 2, MDA-321, plan docs/plans/DILO_PARTS_v1.0.md Task 8; red-team 1 "Buttons + dilo server"; PC and
+--   touch together with MechaButtons 1.36): while the character's SilencedUntil (Sonic Hiss, DiloMovesServer 1.1) is in the
+--   future every slot tile with a part is painted "silenced": dimmed (0.6), no fill, no seconds, sub label "SILENCED"
+--   (diagnostic AbilityBar_Slot_<n> = "silenced"). Nothing else changes. Switch: script attribute AbilityBarSilenceEnabled
+--   (default true, read each frame; false = 1.30).
 if script:GetAttribute("AbilityBarTheriClockPassiveEnabled") == nil then script:SetAttribute("AbilityBarTheriClockPassiveEnabled", true) end -- v1.30
 local SPEED_YELLOW = Color3.fromRGB(255, 194, 26) -- v1.30
 if script:GetAttribute("AbilityBarDiloResetEnabled") == nil then script:SetAttribute("AbilityBarDiloResetEnabled", true) end -- v1.27
@@ -785,10 +791,14 @@ local function update()
 	if not on or skills then return end
 	rebuild()
 	local now = workspace:GetServerTimeNow()
+	local silenced = script:GetAttribute("AbilityBarSilenceEnabled") ~= false
+		and (tonumber(char:GetAttribute("SilencedUntil")) or 0) > now -- v1.31
 	for _, e in ipairs(tiles) do
 		if e.kind == "slot" then
 			if not e.part then
 				paint(e, "empty", 0, 0, nil)
+			elseif silenced then -- v1.31: Sonic Hiss silence
+				paint(e, "silenced", 0.6, 0, nil, "SILENCED")
 			elseif e.part == "thrusters" then
 				local total = math.max(1, char:GetAttribute("DashCharges") or 1)
 				local left = char:GetAttribute("DashChargesLeft") or total

@@ -2949,3 +2949,26 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | DiloPartPosesEnabled | DiloPose module | switch (default true; false = 1.1) | DiloPose 1.2 |
 | DiloMovesFXEnabled; PartsFXGatlingEnabled / Mortar / Spine / Over / Motion | DiloMovesFX script (each client) | switches (default true) | DiloMovesFX 1.0 |
 | DiloMovesFXVersion; DiloMovesFXEvents; DiloMovesFXParts | DiloMovesFX script | "1.0"; effects played; live parts in Workspace.DiloMovesFX_Local | DiloMovesFX 1.0 |
+
+## Dilo parts build 2 (MDA-320 / 321; DiloMovesServer 1.1 / SkillTree 1.70 / DiloJetsLaunch 1.0 / MechaButtons 1.36 / AbilityBar 1.31 / SprintTest 1.21 / DiloMovesFX 1.1 / DiloPose 1.3)
+
+| Attribute | Where | Value | Set by |
+|---|---|---|---|
+| SkillTree.DILO_PARTS_B2_LIVE | SkillTree module flag | true: dhiss / dpump / djets not soon, LIVE_MECH (false = 1.69) | SkillTree 1.70 |
+| DiloMoves_dhissEnabled, DiloMoves_dpumpEnabled, DiloMoves_djetsEnabled, DiloMovesImmuneWatchEnabled | DiloMovesServer script | switches (default true; false = "disabled" / no immunity watcher) | DiloMovesServer 1.1 |
+| DiloMovesSilenced, DiloMovesCleared, DiloMovesImmuneBlocks, DiloMovesJets | DiloMovesServer script | diagnostics (counts) | DiloMovesServer 1.1 |
+| DiloPartHiss* / DiloPartPump* / DiloPartJets* (Enabled, Range, Angle, Knock, Silence / Heal, Immune / Dist, Charges, Trail, Cooldown) | dilo character | written while bought + slotted (SkillEffects 1.45; live from SkillTree 1.70) | SkillEffects 1.45 |
+| DiloPart<Hiss/Pump/Jets>ServerResult (+ ResultAt), DiloPart<..>ReadyAt | dilo character | "ok" / "badArg" / "dead" / "disabled" / "menu" / "stunned" / "pinned" / "dazed" / "silenced" / "cooldown" / "cancelled" (+ jets "blocked") | DiloMovesServer 1.1 |
+| DiloHissWindup, DiloHissRange, DiloHissAngle, DiloHissAt (last); DiloHissHits ("name|..."), DiloHissBlastAt | dilo character | Sonic Hiss press / blast stamps | DiloMovesServer 1.1 |
+| SilencedUntil, SilencedBy, SilencedAt (last) | hit model (player or bot) | server time the silence ends (max kept); the dilo's name; the blast | DiloMovesServer 1.1; read by MechaButtons 1.36, AbilityBar 1.31, DiloMovesServer checks |
+| HeadbuttShoveFrom / Dist / Time / At | hit player character | Sonic Hiss knock-back through HeadbuttShove 1.0 (Time 0.3) | DiloMovesServer 1.1 |
+| DiloPumpWindup, DiloPumpAt (last); DiloPumpCleared ("Tag|..."), DiloPumpHealed, DiloPumpJoltAt | dilo character | Antivenom Pump stamps | DiloMovesServer 1.1 |
+| DiloImmuneUntil; DiloImmuneBlockAt | dilo character | star immunity end; last debuff the watcher reset | DiloMovesServer 1.1; read by SprintTest 1.21, DiloMovesFX 1.1 |
+| DiloPartJetsLeft | dilo character | charges left (ReadyAt = now while one is left) | DiloMovesServer 1.1 |
+| DiloJetsFrom, DiloJetsTo, DiloJetsDelay, DiloJetsTime, DiloJetsResult ("dash" / "blocked"), DiloJetsAt (last); DiloJetsTrailUntil | dilo character | Spring Jets stamps | DiloMovesServer 1.1 |
+| DiloJetsLaunchEnabled; DiloJetsLaunchVersion, DiloJetsLaunchState, DiloJetsMoved | dilo character (owner client) | switch (default true); diagnostics | DiloJetsLaunch 1.0 |
+| MechaButtonsSilenceEnabled; MechaButtonsSilencedPresses | MechaButtons script | switch (default true; false = 1.35); refused presses | MechaButtons 1.36 |
+| AbilityBarSilenceEnabled; AbilityBar_Slot_<n> = "silenced" | AbilityBar script; character | switch (default true; false = 1.30); diagnostic | AbilityBar 1.31 |
+| SprintDiloImmuneEnabled; MoveSpeedParts "+immune" | SprintTest script; character | switch (default true; false = 1.20); diagnostic | SprintTest 1.21 |
+| PartsFXHissEnabled, PartsFXPumpEnabled, PartsFXJetsEnabled | DiloMovesFX script | switches (default true) | DiloMovesFX 1.1 |
+| DiloPoseState "p_hiss" / "p_pump" / "p_jets"; DiloPoseSet "1.3" | dilo model (client) | diagnostics | DiloPose 1.3 |
