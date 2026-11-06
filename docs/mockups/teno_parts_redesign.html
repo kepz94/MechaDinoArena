@@ -877,7 +877,7 @@ function leapRams() {
     const Hm = mountOn(`Leg${side}_haunch`);
     Hm.box([0.7, 0.6, 0.18], [-0.35, 0.25, s * 0.3], null, "shell"); Hm.cyl([0.36, 0.3, 0], [-0.4, 0.3, s * 0.42], [0, 0, 90], "brass");
     strut(Hm, `Leg${side}_haunch`, hp, `Foot${side}_meta`, fp, 0.02, 0.58, 0.48, "iron");
-    strut(Hm, `Leg${side}_haunch`, hp, `Foot${side}_meta`, fp, 0.5, 0.96, 0.26, "steel");
+    strut(Hm, `Leg${side}_haunch`, hp, `Foot${side}_meta`, fp, 0.3, 0.96, 0.26, "steel"); // v0.2: rod from 0.3 so it still overlaps the housing when the leg stretches (Studio: up to 1.06 x rest)
     strut(Hm, `Leg${side}_haunch`, hp, `Foot${side}_meta`, fp, 0.52, 0.58, 0.56, "brass");
     const Fm = mountOn(`Foot${side}_meta`); Fm.box([0.3, 0.3, 0.34], [-0.15, 0.1, s * 0.25], null, "dark");
     // charge gauge on the thigh fills while crouching
