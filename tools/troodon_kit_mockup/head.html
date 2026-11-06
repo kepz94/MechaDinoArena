@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troodon Kit Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* Troodon kit options v0.1 (built on the dilo kit options v0.1 page). Same structure as therizino_kit_options.html. Light + dark themes (dark = the therizino mockup look). */
+:root {
+  --page: #f2eee6; --panel: #ffffff; --card: #f7f3eb; --line: #dcd3c2; --fg: #1a1d24; --grey: #3c4250; --muted: #5d6676;
+  --accent: #c25e08; --accent-soft: rgba(194,94,8,.16); --venom: #3b8a1a; --venom-soft: rgba(59,138,26,.12); --volt: #1c7aa3;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+    --accent: #ff9b2e; --accent-soft: rgba(255,155,46,.2); --venom: #8ee05a; --venom-soft: rgba(142,224,90,.12); --volt: #7fe9ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --accent-soft: rgba(255,155,46,.2); --venom: #8ee05a; --venom-soft: rgba(142,224,90,.12); --volt: #7fe9ff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding: 24px 16px 64px; overflow-x: hidden; }
+main { max-width: 1100px; margin: 0 auto; display: grid; gap: 14px; min-width: 0; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); }
+h1 span { color: var(--accent); }
+h2 { margin: 0; font: 700 20px/1.2 var(--display); }
+h3 { margin: 10px 0 2px; font: 700 14px/1.3 var(--body); color: var(--grey); text-transform: uppercase; letter-spacing: .05em; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 84ch; }
+.lede b { color: var(--fg); }
+.muted { color: var(--muted); font-size: 13px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+.rowlab { font: 800 12px var(--body); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; width: 100%; margin-bottom: -2px; }
+.tab { font: 700 16px/1.2 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left; flex: 1 1 210px; max-width: 340px; }
+.tab small { display: block; font: 700 12px var(--body); color: var(--muted); margin-top: 2px; }
+.tab .rec { display: inline-block; font: 800 10px var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--venom); border: 1.5px solid var(--venom); border-radius: 99px; padding: 0 6px; margin-left: 6px; vertical-align: 2px; }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.btn { font: 700 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--volt); }
+.btn.go { border-color: var(--accent); }
+.stage { position: relative; border: 2px solid var(--line); border-radius: 16px; overflow: hidden; background: #8cc3e6; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; }
+#vig { position: absolute; inset: 0; bottom: auto; aspect-ratio: 16 / 9; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, rgba(160,255,120,0) 50%, rgba(70,170,30,.45) 100%); }
+.cap { position: absolute; left: 10px; top: 10px; max-width: calc(100% - 20px); font: 700 13px/1.3 var(--body); color: #fff; background: rgba(12,16,22,.62); border-radius: 9px; padding: 5px 10px; pointer-events: none; }
+.cap b { color: #b6f27a; }
+.tag { position: absolute; right: 10px; top: 10px; font: 700 11px var(--body); color: #fff; background: rgba(12,16,22,.5); border-radius: 99px; padding: 3px 9px; pointer-events: none; }
+/* phone HUD strip: game look in both themes (ArenaTouch: ATTACK = yellow 255,200,50 + dark text, JUMP = panel 20,20,26 + white text, FredokaOne, white stroke) */
+.hud { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 10px 16px 12px; background: linear-gradient(180deg, #1a2230, #10141b); color: #fff; min-height: 112px; }
+.hud .info { font: 700 12px/1.35 var(--body); color: #aeb7c6; min-width: 0; }
+.hud .info b { display: block; font: 600 17px/1.2 "Fredoka", "Trebuchet MS", sans-serif; color: #fff; margin-top: 3px; }
+.hud .info i { font-style: normal; color: #ffc832; }
+.hbtns { position: relative; width: 168px; height: 96px; flex: 0 0 auto; }
+.hb { position: absolute; border-radius: 50%; display: grid; place-items: center; font-family: "Fredoka", "Trebuchet MS", sans-serif; font-weight: 600; user-select: none; transition: transform .07s, box-shadow .07s; }
+.hb.atk { right: 0; top: 4px; width: 76px; height: 76px; background: #ffc832; color: #1e1a0a; font-size: 15px; border: 2px solid #fff; }
+.hb.jmp { right: 96px; top: 0; width: 54px; height: 54px; background: rgba(20,20,26,.6); color: #fff; font-size: 13px; border: 2px solid rgba(255,255,255,.6); }
+.hb.on { transform: scale(.9); }
+.hb.atk.on { box-shadow: 0 0 0 5px rgba(255,200,50,.45); }
+.hb.jmp.on { background: rgba(255,255,255,.3); }
+.hb.dim { opacity: .55; }
+.hb svg { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); transform: rotate(-90deg); pointer-events: none; }
+.hb svg circle { fill: none; stroke-width: 4.5; }
+.pips { position: absolute; right: 0; width: 76px; bottom: -6px; display: flex; gap: 5px; justify-content: center; }
+.pip { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #ffc832; background: rgba(20,24,31,.7); overflow: hidden; position: relative; }
+.pip i { position: absolute; left: 0; right: 0; bottom: 0; background: #ffc832; }
+.hudlab { position: absolute; right: 12px; top: 6px; font: 700 10px var(--body); color: #6d7889; text-transform: uppercase; letter-spacing: .08em; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 16px; min-width: 0; }
+.card p { margin: 6px 0; }
+.card.rec { border-color: var(--venom); background: linear-gradient(0deg, var(--venom-soft), var(--venom-soft)), var(--panel); }
+.badge { display: inline-block; font: 800 11px var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--venom); border: 2px solid var(--venom); border-radius: 99px; padding: 1px 8px; margin-left: 8px; vertical-align: 3px; }
+.kind { font: 800 12px var(--body); color: var(--accent); text-transform: uppercase; letter-spacing: .06em; }
+ul { margin: 4px 0 0; padding-left: 20px; }
+.card ul { color: var(--grey); font-size: 14px; }
+.card li { margin: 2px 0; }
+@media (max-width: 720px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .tab { max-width: none; }
+}
+@media (max-width: 560px) {
+  .stage canvas, #vig { aspect-ratio: 4 / 3; }
+  .cap { font-size: 11.5px; padding: 4px 8px; left: 6px; top: 6px; max-width: calc(100% - 12px); }
+  .tag { display: none; }
+  .hud { padding: 10px 12px 12px; }
+  .hud .info b { font-size: 15px; }
+  .hbtns { width: 150px; }
+  .hb.atk { width: 68px; height: 68px; font-size: 13.5px; }
+  .pips { width: 68px; }
+  .hb.jmp { right: 86px; width: 48px; height: 48px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>Troodon</span> kit · v0.1</h1>
+    <p class="lede"><b>Role (Kepu 2026-11-06): area control + support.</b> "A projectile that damages enemies and heals teammates" · shape "a shot that splashes a zone" · solo: "a small self-heal on hit". The real Troodon model (TroodonModelData 1.0, look B · Night Watcher, 188 blocks) at the 2x game body, doing each proposed move game-style: wind-up, throw, follow-through, hit-stop. Every attack ends in the same <b>glow zone</b>: enemies inside take damage and are slowed, <b>squadmates</b> inside heal (blue ring = squadmate; squads exist in the Arena), and the troodon heals a little for each enemy the splash hits, so it still matters when you play alone. Its big amber eyes flare on every throw: that is its signature look. Soft aim like the Dilo (the faint 30° cone; no aim mode on phones). Jumps land plainly. <b>Pick one attack (A, B or C) and one jump (J1 or J2).</b></p>
+  </header>
+  <div class="row" role="group" aria-label="Attack">
+    <div class="rowlab">Attack (ATTACK button)</div>
+    <button class="tab" data-attack="A">A · Glow Pod Toss<span class="rec">Recommended</span><small>tap: both arms fling a pod in an arc, 2 charges</small></button>
+    <button class="tab" data-attack="B">B · Spit Bolt<small>tap: fast straight bolt from the mouth, 1.2 s cooldown</small></button>
+    <button class="tab" data-attack="C">C · Claw Rake + Pod<small>tap: claw rake · hold + let go: pod</small></button>
+  </div>
+  <div class="row" role="group" aria-label="Jump">
+    <div class="rowlab">Jump (JUMP button)</div>
+    <button class="tab" data-jump="J1">J1 · Leap<small>the raptor / dilo leap, plain landing</small></button>
+    <button class="tab" data-jump="J2">J2 · Evade Hop<span class="rec">Recommended</span><small>quick low hop back, still facing the fight</small></button>
+  </div>
+  <div class="row" role="group" aria-label="Controls">
+    <button class="btn go" id="again">↻ Play again</button>
+    <button class="btn" id="runAtk">▶ Attack</button>
+    <button class="btn" id="runJump">▶ Jump</button>
+    <button class="btn" id="slow" aria-pressed="false">Slow motion</button>
+    <button class="btn" data-cam="hero">Hero 3/4</button>
+    <button class="btn" data-cam="game">Game camera</button>
+    <button class="btn" data-cam="side">Side</button>
+    <button class="btn" data-cam="close">Eyes close-up</button>
+  </div>
+  <div class="stage">
+    <canvas id="cv" aria-label="Troodon move preview"></canvas><div id="vig"></div>
+    <div class="cap" id="cap"></div><div class="tag" id="tag"></div>
+    <div class="hud" aria-label="Phone HUD">
+      <div class="info"><span id="hudWhat">Phone: same layout for every dino</span><b id="hudHint">Tap ATTACK</b></div>
+      <div class="hbtns">
+        <div class="hb jmp" id="hJump">JUMP</div>
+        <div class="hb atk" id="hAtk"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" stroke="rgba(255,255,255,.18)"></circle><circle id="ring" cx="50" cy="50" r="46" stroke="#ffb43a" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"></circle></svg>ATTACK</div>
+        <div class="pips" id="pips"></div>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card" id="infoAtk"></div>
+    <div class="card" id="infoJump"></div>
+  </div>
+  <div class="card rec"><h2>Recommended: A · Glow Pod Toss + J2 · Evade Hop</h2>
+    <p>A uses what only the troodon has (the long drooping arms: no other dino throws), and the lobbed arc can drop the zone on top of a fight, behind a squadmate or over cover, which is what an area-control support needs. B is easier to hit but it is the Dilo's spit again. J2 keeps it at range: hop back out of a bite and throw again. J1 is the safe pick if you want every leaping dino to jump the same way.</p></div>
+  <div class="card"><h2>Proposed numbers (all tunable attributes)</h2>
+    <ul>
+      <li><b>Health 55</b> (Herrera 40, Raptor 60, Dilo 70): a support that has to be protected, between its size neighbours.</li>
+      <li><b>Run 74 / walk 39</b> (Dilo 66, Raptor 78): quick enough to reposition, slower than the hunters.</li>
+      <li><b>Glow zone</b>: 20 studs wide (the Goo puddle is 16, the Toxin Mortar cloud 16 / 20 upgraded: this is the troodon's main move, so the upgraded size), 3 s. Enemies: 6 on the splat + 3/s, slowed 25%. Squadmates: +5/s. Troodon: +2 per enemy the splat hits. Zones don't stack on one dino (the newest one counts).</li>
+      <li>Against a raptor (60 HP) one pod = 15 damage; a squadmate standing in it gets +15.</li>
+    </ul></div>
+  <div class="card"><h2>House rules this follows</h2>
+    <ul>
+      <li><b>No aim mode on phones</b> (Kepu 2026-10-31): the shot goes to the closest enemy within ~30° of facing (the cone and line), else straight ahead.</li>
+      <li><b>No dust or seismic effects on a jump landing</b> (Kepu 2026-10-31): both jumps land plainly.</li>
+      <li><b>One phone layout for every dino</b>: big yellow ATTACK + JUMP (strip under the preview). A shows 2 charge pips; B a cooldown ring; C the hold ring.</li>
+      <li><b>Squads</b>: heals only reach squadmates (SquadRules, the same check the Med-Station uses); squads exist in the Arena. With no squad the self-heal is the heal side.</li>
+      <li><b>Every move: wind-up → action → result → recovery</b>, and moves read like the older dinos' (the soft aim and the pips are the Dilo's).</li>
+    </ul>
+    <p class="muted">Times in the preview are the real proposed ones; turn on Slow motion to see the throw. The squadmate and the enemies are raptors only because that model is in the page.</p>
+  </div>
+</main>
