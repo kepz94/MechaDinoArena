@@ -89,6 +89,13 @@ stand), applied through DiloAttackServer so Venom Feast and Cold Blood count it.
 8. **Client build 2**: DiloJetsLaunch, MechaButtons 3 entries + SILENCED grey-out, SprintTest immunity skip, FX + poses.
    Studio check 2, then publish.
 
+## Red-team rulings (Kepu 2026-11-06)
+- 1 Silence: "Buttons + dilo server" (MechaButtons grey-out + DiloMovesServer refuses; other part servers untouched).
+- 2 Immunity: "One watcher" (DiloMovesServer resets new debuffs while DiloImmuneUntil; SprintTest skips slows).
+- 3 Venom: "Same venom system" (DiloAttackServer 1.5 DiloVenomApply API).
+- 4 Numbers: "Use the proposals" (the table above; all tunable attributes).
+- 5 Scope: not asked; the plan's two builds stand.
+
 ## Red-team
 1. **Silence reach.** Silence only means something if every part server refuses a silenced player. Options: (a) MechaButtons
    greys the buttons + DiloMovesServer refuses (one client file; other dinos' servers untouched, so a modified client could
