@@ -2828,3 +2828,12 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoGrabClampX | character model (server) | grab clamp x in the Tail5_main frame: -3.7 with the v2 Pincer Tail, nil otherwise | TenoPartsServer 1.4 |
 | TenoPartsGrabClampEnabled | TenoPartsServer script | switch (default true; false = no TenoGrabClampX) | TenoPartsServer 1.4 |
 | TenoBotMotionClampAttrEnabled | TenoBotMotion script | switch (default true; false = hold point at CLAMP_X -2.6 as 1.1) | TenoBotMotion 1.2 |
+| TenoMovesGrabScorpionEnabled | TenoMovesServer script | switch (default true; false = Over-the-Top 1.9 timings) | TenoMovesServer 1.10 |
+| TenoMovesGrabsScorpion | TenoMovesServer script | diagnostic: Scorpion grabs | TenoMovesServer 1.10 |
+| TenoGrabStyle | character model (server) | "scorpion" / "overtop" | TenoMovesServer 1.10 |
+| TenoGrabFlightPeak | character model (server) | thrown bot arc peak in studs (8), nil = 16 | TenoMovesServer 1.10 |
+| TenoGrabScorpionEnabled | character model | switch (nil = true; false = the 1.10 Over-the-Top path) | TenoPose 1.11 |
+| TenoGrabStepWant; TenoGrabStepFor | character model (owner client, not replicated) | reach step (world vector) for the grab started at TenoGrabStepFor | TenoPose 1.11 |
+| TenoGrabStepEnabled | TenoPoseFix script | switch (default true) | TenoPoseFix 1.1 |
+| TenoGrabStepDone | character model (owner client) | studs moved by the last reach step | TenoPoseFix 1.1 |
+| TenoBotMotionPeakAttrEnabled | TenoBotMotion script | switch (default true; false = arc 16 and pull 0.12 s as 1.2) | TenoBotMotion 1.3 |
