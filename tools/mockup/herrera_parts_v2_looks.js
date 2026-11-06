@@ -1,4 +1,4 @@
-// Herrera parts redesign v0.2 (Lamellar plates merged, ~50 pieces) — the looks (Kepu 2026-11-05 19:10 "Next it looks good" -> "Herrera looks + animations": the same
+// Herrera parts redesign v0.2 (Lamellar plates merged, ~50 pieces; export tags — group / role — on the 11 picks, no visual change) — the looks (Kepu 2026-11-05 19:10 "Next it looks good" -> "Herrera looks + animations": the same
 // treatment as the Teno / Therizino). 11 parts x 3 looks, each borrowing one real game part, + the Now look (HerreraPartsServer 1.3).
 // Coordinates: rest model space (scale 1 = studs / 2, HRP frame; front = -Z, +X = the camera side = the model's "...L" parts).
 // mountOn(part) frames: local X = along the part toward the head (tail: -X = toward the tip), Y = up, Z = +X (camera side).
@@ -129,10 +129,11 @@ function clawWing() {
     for (const y of [0.32, -0.4]) F.box([0.48, 0.07, 0.46], [0, y, 0], null, "trim");
     F.box([0.06, 0.5, 0.16], [0.22, -0.05, 0], null, "glow"); F.bolt([0.22, 0.28, 0.12], "x"); F.bolt([0.22, 0.28, -0.12], "x");
     for (let i = 0; i < 3; i++) {
-      const root = [-0.2, 0.25 - i * 0.3, 0], len = 1.05 - i * 0.12;
-      const th = (u, tt) => rad(lerp(200 + i * 14, 292 - i * 10, u) + u * 8 * Math.sin(tt * 5));
-      at(F, "box", [len, 0.16, 0.07], "bone", (u, tt) => Tm(...root).multiply(RZm(th(u, tt))).multiply(Tm(len / 2, 0, 0)), {role: "blade"});
-      at(F, "box", [len * 0.9, 0.05, 0.09], "glow", (u, tt) => Tm(...root).multiply(RZm(th(u, tt))).multiply(Tm(len * 0.5, -0.08, 0)), {role: "edge"});
+      const root = [-0.2, 0.25 - i * 0.3, 0], len = 1.05 - i * 0.12, a0 = 200 + i * 14, a1 = 292 - i * 10;
+      const th = (u, tt) => rad(lerp(a0, a1, u) + u * 8 * Math.sin(tt * 5));
+      const g = F.group(`blade_${side}${i + 1}`, Tm(...root).multiply(RZm(rad(a0))), {type: "swing", axis: "Z", amt: a1 - a0}); // v0.2 export
+      at(F, "box", [len, 0.16, 0.07], "bone", (u, tt) => Tm(...root).multiply(RZm(th(u, tt))).multiply(Tm(len / 2, 0, 0)), {role: "blade", group: g});
+      at(F, "box", [len * 0.9, 0.05, 0.09], "glow", (u, tt) => Tm(...root).multiply(RZm(th(u, tt))).multiply(Tm(len * 0.5, -0.08, 0)), {role: "edge", group: g});
       F.cyl([0.16, 0.14, 0], root, [0, 0, 90], "brass");
     }
   }
@@ -181,11 +182,14 @@ function wingSword() {
     M.cyl([0.24, 0.36, 0], [0, 0.12, 0], null, "brass"); M.ball(0.18, [s * 0.18, 0.05, -0.2], "glow");
     for (let i = 0; i < 4; i++) {
       const len = [2.7, 2.3, 1.85, 1.35][i], sw = 8 + 17 * i;
-      const fr = u => { const af = rad(-90 + 4 * s), ao = s > 0 ? rad(-sw) : rad(-180 + sw), dr = lerp(rad(-12 - 2 * i), rad(6 - 3 * i), u);
-        return Tm(0, 0.16 - 0.05 * i, 0.06 * i).multiply(RYm(lerp(af, ao, u))).multiply(RZm(dr)); };
-      at(M, "box", [len, 0.07, 0.24], "steel", u => fr(u).multiply(Tm(len / 2, 0, 0)), {role: "blade"});
-      at(M, "box", [len * 0.95, 0.05, 0.06], "bone", u => fr(u).multiply(Tm(len * 0.5, 0, -0.15 * s)));
-      film(M, "box", [len * 0.92, 0.03, 0.5], 0xffb340, u => fr(u).multiply(Tm(len * 0.48, -0.02, 0.36 * s)), u => u * 0.55, {show: u => u > 0.15, role: "membrane"});
+      const af = rad(-90 + 4 * s), ao = s > 0 ? rad(-sw) : rad(-180 + sw), d0 = rad(-12 - 2 * i), d1 = rad(6 - 3 * i);
+      const base = Tm(0, 0.16 - 0.05 * i, 0.06 * i);
+      const gy = M.group(`wing_${side}${i + 1}`, base.clone().multiply(RYm(af)), {type: "swing", axis: "Y", amt: THREE.MathUtils.radToDeg(ao - af)}); // v0.2 export
+      const gd = M.group(`droop_${side}${i + 1}`, base.clone().multiply(RYm(af)).multiply(RZm(d0)), {type: "swing", axis: "Z", amt: THREE.MathUtils.radToDeg(d1 - d0)}, gy);
+      const fr = u => base.clone().multiply(RYm(lerp(af, ao, u))).multiply(RZm(lerp(d0, d1, u)));
+      at(M, "box", [len, 0.07, 0.24], "steel", u => fr(u).multiply(Tm(len / 2, 0, 0)), {role: "blade", group: gd});
+      at(M, "box", [len * 0.95, 0.05, 0.06], "bone", u => fr(u).multiply(Tm(len * 0.5, 0, -0.15 * s)), {group: gd});
+      film(M, "box", [len * 0.92, 0.03, 0.5], 0xffb340, u => fr(u).multiply(Tm(len * 0.48, -0.02, 0.36 * s)), u => u * 0.55, {show: u => u > 0.15, role: "membrane", group: gd});
     }
   }
 }
@@ -244,9 +248,10 @@ function quillPods() {
     const M = mount("Torso_hump", [s * 0.56, 1.15, -0.95], [-10 * s, 0, 0]);
     M.box([0.42, 0.44, 1.1], [0, 0, 0], null, "shell"); M.box([0.46, 0.08, 1.14], [0, -0.2, 0], null, "trim");
     M.cyl([0.12, 0.46, 0], [0, 0.22, 0.55], [90, 0, 0], "brass");
-    for (const x of [-0.1, 0.1]) for (const y of [-0.08, 0.1]) M.cyl([0.13, 0.04, 0], [x, y, -0.56], [0, 0, 90], "glow");
-    at(M, "box", [0.46, 0.08, 1.12], "plate", u => Tm(0, 0.25, 0.55).multiply(RXm(u * rad(58))).multiply(Tm(0, 0, -0.56)), {role: "lid"});
-    at(M, "box", [0.4, 0.04, 0.08], "hazY", u => Tm(0, 0.25, 0.55).multiply(RXm(u * rad(58))).multiply(Tm(0, 0.05, -1.06)), {detail: true});
+    for (const x of [-0.1, 0.1]) for (const y of [-0.08, 0.1]) M.cyl([0.13, 0.04, 0], [x, y, -0.56], [0, 0, 90], "glow", {role: "tip"});
+    const gl = M.group(`lid_${side}`, Tm(0, 0.25, 0.55), {type: "swing", axis: "X", amt: 58}); // v0.2 export
+    at(M, "box", [0.46, 0.08, 1.12], "plate", u => Tm(0, 0.25, 0.55).multiply(RXm(u * rad(58))).multiply(Tm(0, 0, -0.56)), {role: "lid", group: gl});
+    at(M, "box", [0.4, 0.04, 0.08], "hazY", u => Tm(0, 0.25, 0.55).multiply(RXm(u * rad(58))).multiply(Tm(0, 0.05, -1.06)), {detail: true, group: gl});
     for (const x of [-0.1, 0.1]) M.add("cone", [0.09, 0.4], [x, 0.12, -0.25], [0, 0, -90], "bone");
     flights(M, 4, 0.8, "cone", [0.1, 0.45], "bone", (d, k) => Tm((k % 2 ? 0.1 : -0.1) + s * 0.6 * d, 0.1 + 2.4 * d - 1.4 * d * d, -0.6 - 13 * d).multiply(RXm(-Math.PI / 2)));
     M.hose([0, -0.15, 0.4], [-s * 0.45, -0.35, 0.2], 0.1, 0.1, 4);
@@ -273,9 +278,10 @@ function oldQuills() { hideBody(QUILLS); oldPieces(OLDP.pieces.quills); }
 function smokeStealth() {
   const M = mountOn("Tail1_main"); // X = toward the body, Y = up
   M.box([0.85, 0.3, 0.56], [0, 0.36, 0], null, "shell"); M.box([0.9, 0.06, 0.6], [0, 0.22, 0], null, "trim");
-  M.box([0.5, 0.06, 0.2], [0, 0.53, 0], null, "glow");
-  for (let k = 0; k < 4; k++) { const x = -0.3 + k * 0.2;
-    at(M, "box", [0.05, 0.5, 0.32], k % 2 ? "steel" : "plate", (u, tt) => Tm(x, 0.5, 0).multiply(RXm((k % 2 ? 1 : -1) * u * 0.7 * (0.8 + 0.2 * Math.sin(tt * 6 + k)))).multiply(Tm(0, 0.25, 0)), {role: "fin"}); }
+  M.box([0.5, 0.06, 0.2], [0, 0.53, 0], null, "glow", {role: "nozzle"});
+  for (let k = 0; k < 4; k++) { const x = -0.3 + k * 0.2, sg = k % 2 ? 1 : -1;
+    const g = M.group(`fin_${k + 1}`, Tm(x, 0.5, 0), {type: "swing", axis: "X", amt: sg * 40}); // v0.2 export
+    at(M, "box", [0.05, 0.5, 0.32], k % 2 ? "steel" : "plate", (u, tt) => Tm(x, 0.5, 0).multiply(RXm(sg * u * 0.7 * (0.8 + 0.2 * Math.sin(tt * 6 + k)))).multiply(Tm(0, 0.25, 0)), {role: "fin", group: g}); }
   M.hose([0.4, 0.25, 0.22], [0.75, 0.05, 0.25], 0.08, 0.1, 4);
   puffs(M, 8, 2.2, [0, 0.8, 0], [0, 0.25, 1], 3.2, 0.9); puffs(M, 8, 2.2, [0, 0.8, 0], [0, 0.25, -1], 3.2, 0.9);
   film(mount("Torso_hips", [0, 0, 0]), "ball", [1, 1, 1], 0x9fc4ff, (u, tt) => Tm(0, -0.4, -0.6).multiply(SC(5.5, 4, 7)), u => u * 0.05, {show: u => u > 0.05});
@@ -313,15 +319,16 @@ function oldSmoke() { oldPieces(OLDP.pieces.smoke); }
 // A · Lamellar Armour — samurai o-yoroi: rows of small steel plates laced together with coloured cord
 function plateLamellar() {
   hideBody(QUILLS);
-  let n0 = 0;
+  let n0 = 0, r = 0;
   for (const seg of ["Torso_hips", "Torso_waist", "Torso_chest", "Torso_hump", "Tail1_main", "Tail2_main"]) {
     const M = mountOn(seg), sz = dino.byName[seg].size, n = Math.max(2, Math.round(sz[0] / 0.42)), top = sz[1] / 2 + 0.04, side = seg.startsWith("Torso") && seg !== "Torso_hump";
-    const cols = [[0, top, -1], [1, top, 1]]; // v0.2: merged plates (Kepu 19:4x red-team "Merge to ~60")
+    const g = M.group(`row_${++r}`, Tm(0, 0, 0), {type: "slide", axis: "Y", amt: 0.05}); // v0.2 export: one ripple row per body segment
+    const cols = [[0, top, -1], [1, top, 1]]; // v0.2: merged plates (Kepu red-team "Merge to ~60")
     for (let i = 0; i < n; i++) { const x = (i + 0.5) / n * sz[0] - sz[0] / 2, k = n0 + i;
-      for (const [c, y, zc] of cols) at(M, "box", [sz[0] / n + 0.06, 0.05, sz[2] / 2 + 0.06], c ? "plate" : "steel", (u, tt) => Tm(x, y + u * 0.05 * Math.max(0, Math.sin(tt * 8 - k * 0.7)), zc * sz[2] / 4).multiply(RZm(rad(-10))), {role: "plate"});
-      if (side) for (const zs of [1, -1]) at(M, "box", [sz[0] / n + 0.06, sz[1] * 0.4, 0.05], "steel", (u, tt) => Tm(x, sz[1] * 0.18, zs * (sz[2] / 2 + 0.04 + u * 0.04 * Math.max(0, Math.sin(tt * 8 - k * 0.7)))).multiply(RZm(rad(-10))), {role: "plate"}); }
+      for (const [c, y, zc] of cols) at(M, "box", [sz[0] / n + 0.06, 0.05, sz[2] / 2 + 0.06], c ? "plate" : "steel", (u, tt) => Tm(x, y + u * 0.05 * Math.max(0, Math.sin(tt * 8 - k * 0.7)), zc * sz[2] / 4).multiply(RZm(rad(-10))), {role: "plate", group: g});
+      if (side) for (const zs of [1, -1]) at(M, "box", [sz[0] / n + 0.06, sz[1] * 0.4, 0.05], "steel", (u, tt) => Tm(x, sz[1] * 0.18, zs * (sz[2] / 2 + 0.04 + u * 0.04 * Math.max(0, Math.sin(tt * 8 - k * 0.7)))).multiply(RZm(rad(-10))), {role: "plate", group: g}); }
     n0 += n;
-    M.box([sz[0], 0.03, 0.05], [0, top + 0.035, 0], null, "glow", D);
+    M.box([sz[0], 0.03, 0.05], [0, top + 0.035, 0], null, "glow", {detail: true, group: g});
   }
 }
 // B · Riot Shield — Rainbow Six Siege: Montagne's shield that extends to cover him
@@ -366,9 +373,8 @@ function siphonFang() {
   for (const [s, side] of SIDES) {
     J.box([0.4, 0.14, 0.12], [0.75, 0.05, s * 0.42], null, "dark");
     J.add("cone", [0.1, 0.42], [0.82, -0.18, s * 0.42], [180, 0, 0], "bone", {role: "fang"});
-    // a glass tank on the neck side, filling red
-    film(N, "cyl", [0.32, 0.62, 0], 0xcfe8ff, () => Tm(0, -0.02, s * 0.37).multiply(RZm(Math.PI / 2)), () => 0.3, {role: "glass"});
-    at(N, "cyl", [0.26, 1, 0], "blood", (u, tt) => { const lv = 0.15 + 0.4 * (u ? (0.5 + 0.5 * Math.sin(tt * 1.4)) : 0.2); return Tm(-0.3 + lv / 2, -0.02, s * 0.37).multiply(RZm(Math.PI / 2)).multiply(SC(1, lv, 1)); });
+    film(N, "cyl", [0.32, 0.62, 0], 0xcfe8ff, () => Tm(0, -0.02, s * 0.37).multiply(RZm(Math.PI / 2)), () => 0.3, {role: "glass"}).solid = 0.3;
+    at(N, "cyl", [0.26, 1, 0], "blood", (u, tt) => { const lv = 0.15 + 0.4 * (u ? (0.5 + 0.5 * Math.sin(tt * 1.4)) : 0.2); return Tm(-0.3 + lv / 2, -0.02, s * 0.37).multiply(RZm(Math.PI / 2)).multiply(SC(1, lv, 1)); }, {role: "core"});
     for (const x of [-0.33, 0.33]) N.cyl([0.36, 0.06, 0], [x, -0.02, s * 0.37], [0, 0, 90], "brass");
     N.cyl([0.2, 0.05, 0], [0.37, -0.02, s * 0.37], [0, 0, 90], "glow");
     cable("Jaw_lower", [s * 0.42, -0.05, -4.5], "Neck_main", [s * 0.37, 0.64, -2.2], 0.15, 0.08);
@@ -415,7 +421,7 @@ function strobeCrest() {
     const F = mountOn(`Head_frill${k}`), R = mountOn(`Head_frillrim${k}`); // frill: X = forward, Y = out from the head
     F.box([0.04, 0.78, 0.44], [0.07, 0, 0], null, "bright");
     R.box([0.12, 0.2, 0.36], [0.02, 0, 0], null, "dark");
-    R.ball(0.2, [0.12, 0.05, 0], "glow", {role: "bulb"});
+    R.ball(0.2, [0.12, 0.05, 0], "glow", {role: "led"});
     film(R, "ball", [0.5, 0.5, 0.5], FLASH, () => Tm(0.14, 0.05, 0), (u, tt) => u * flash(tt), {show: u => u > 0.1});
   }
   flashCone();
@@ -457,8 +463,8 @@ function breakTesla() {
   for (const [s, side] of SIDES) {
     const M = mount("Torso_hump", [s * 0.4, 1.32, -1.0]); tops.push(M);
     M.cyl([0.36, 0.18, 0], [0, 0, 0], null, "dark"); M.cyl([0.14, 0.9, 0], [0, 0.5, 0], null, "steel");
-    coilY(M, [0, 0.45, 0], 0.12, 0.6, 5, 0.04, "copper");
-    M.add("ring", [0.2, 0.05], [0, 0.95, 0], [0, 0, 90], "brass"); M.ball(0.24, [0, 1.06, 0], "bright");
+    M.cyl([0.3, 0.6, 0], [0, 0.45, 0], null, "copper"); for (const y of [0.25, 0.45, 0.65]) M.cyl([0.33, 0.035, 0], [0, y, 0], null, "trim"); // v0.2: the winding as a copper drum (export: 5 parts, not 50)
+    M.cyl([0.46, 0.06, 0], [0, 0.95, 0], null, "brass", {role: "band"}); M.ball(0.24, [0, 1.06, 0], "bright", {role: "tip"});
     M.ball(0.12, [0, 1.06, 0.13], "glow");
     arc(M, [0, 1.06, 0], [s * 1.6, GROUND - 1.32, 0.3], 6, VOLT, 0.35);
   }
@@ -502,8 +508,9 @@ function calChute() {
   const M = mountOn("Tail1_main"); // X = toward the body
   M.box([0.62, 0.4, 0.56], [0.15, 0.42, 0], null, "shell"); M.box([0.66, 0.06, 0.6], [0.15, 0.24, 0], null, "trim");
   M.box([0.1, 0.06, 0.4], [0.47, 0.6, 0], null, "glow");
-  M.box([0.5, 0.05, 0.36], [-0.4, 0.3, 0], [24, 0, 0], "steel");
-  at(M, "box", [0.05, 0.36, 0.5], "plate", u => Tm(-0.16, 0.6, 0).multiply(RZm(-u * 1.2)).multiply(Tm(0, -0.18, 0)), {role: "door"});
+  M.box([0.5, 0.05, 0.36], [-0.4, 0.3, 0], [24, 0, 0], "steel", {role: "chute"});
+  const g = M.group("door", Tm(-0.16, 0.6, 0), {type: "swing", axis: "Z", amt: -THREE.MathUtils.radToDeg(1.2)}); // v0.2 export
+  at(M, "box", [0.05, 0.36, 0.5], "plate", u => Tm(-0.16, 0.6, 0).multiply(RZm(-u * 1.2)).multiply(Tm(0, -0.18, 0)), {role: "door", group: g});
   M.hazard(0.5, 0.06, [0.15, 0.62, 0.29], null, 6);
   drops(mount("Tail1_main", [0, 0.75, 1.5]), 8, 2.4, [0, 0, 0.3], k => [Math.sin(k * 2.4) * 1.6, GROUND - 0.75 + 0.05, 1.2 + (k % 4) * 0.7], 0.3);
 }
@@ -547,11 +554,11 @@ function gooSpit() {
   const N = mountOn("Neck_main");
   for (const [s, side] of SIDES) {
     const sq = (u, tt) => { const p = (tt % 1.2) / 1.2; return 1 + 0.12 * Math.sin(tt * 2) - u * (p > 0.55 && p < 0.7 ? 0.35 : 0); };
-    film(N, "ball", [0.62, 0.55, 0.5], LIME, (u, tt) => Tm(-0.02, -0.1, s * 0.38).multiply(SC(sq(u, tt), sq(u, tt), sq(u, tt))), () => 0.6, {role: "sac"});
-    for (const x of [-0.18, 0.12]) at(N, "ring", [0.26, 0.03], "iron", (u, tt) => Tm(x, -0.1, s * 0.38).multiply(RYm(Math.PI / 2)).multiply(SC(sq(u, tt), sq(u, tt), 1)));
+    film(N, "ball", [0.62, 0.55, 0.5], LIME, (u, tt) => Tm(-0.02, -0.1, s * 0.38).multiply(SC(sq(u, tt), sq(u, tt), sq(u, tt))), () => 0.6, {role: "sac"}).solid = 0.6;
+    for (const x of [-0.03]) at(N, "ring", [0.3, 0.035], "iron", (u, tt) => Tm(x, -0.1, s * 0.38).multiply(RYm(Math.PI / 2)).multiply(SC(sq(u, tt), sq(u, tt), 1)));
     N.cyl([0.14, 0.12, 0], [-0.02, 0.2, s * 0.38], null, "brass"); N.cyl([0.1, 0.05, 0], [-0.02, 0.28, s * 0.38], null, "glow");
   }
-  const J = mountOn("Jaw_lower"); J.box([0.5, 0.14, 0.36], [0.55, -0.25, 0], null, "shell"); J.cyl([0.16, 0.3, 0], [0.9, -0.25, 0], [0, 0, -90], "steel"); J.cyl([0.17, 0.04, 0], [1.05, -0.25, 0], [0, 0, -90], "glow");
+  const J = mountOn("Jaw_lower"); J.box([0.5, 0.14, 0.36], [0.55, -0.25, 0], null, "shell"); J.cyl([0.16, 0.3, 0], [0.9, -0.25, 0], [0, 0, -90], "steel", {role: "tube"}); J.cyl([0.17, 0.04, 0], [1.05, -0.25, 0], [0, 0, -90], "glow", {role: "muzzle"});
   blobShot(mount("Head_cranium", [0, 0, 0]), [0, -0.2, -4.6], 1.2, 0.5);
 }
 // B · Ink Tank — Splatoon: the ink tank on the back that feeds the ink gun through a hose
@@ -591,13 +598,14 @@ function veins() { for (const seg of ["Torso_chest", "Torso_waist", "Torso_hips"
 function adrStim() {
   const M = mountM("Torso_chest", axisFrame([0.36, 0.95, -1.45], [0.55, 0.8, 0.25], [0, 0, -1]));
   M.add("cone", [0.06, 0.35], [0, -0.2, 0], [180, 0, 0], "steel");
-  film(M, "cyl", [0.32, 0.9, 0], 0xd8fff0, () => Tm(0, 0.45, 0), () => 0.3, {role: "glass"});
+  film(M, "cyl", [0.32, 0.9, 0], 0xd8fff0, () => Tm(0, 0.45, 0), () => 0.3, {role: "glass"}).solid = 0.3;
   const inj = (u, tt) => u ? sm(((tt % 1.6) / 1.6) / 0.5) : 0;
-  at(M, "cyl", [0.26, 1, 0], "adr", (u, tt) => { const lv = 0.82 * (1 - inj(u, tt)) + 0.02; return Tm(0, 0.04 + lv / 2, 0).multiply(SC(1, lv, 1)); });
+  at(M, "cyl", [0.26, 1, 0], "adr", (u, tt) => { const lv = 0.82 * (1 - inj(u, tt)) + 0.02; return Tm(0, 0.04 + lv / 2, 0).multiply(SC(1, lv, 1)); }, {role: "fluid"});
   for (const y of [0, 0.9]) M.cyl([0.38, 0.06, 0], [0, y, 0], null, "brass");
   M.box([0.6, 0.06, 0.12], [0, 0.95, 0], null, "trim");
-  at(M, "cyl", [0.08, 0.9, 0], "steel", (u, tt) => Tm(0, 1.35 - inj(u, tt) * 0.8, 0));
-  at(M, "cyl", [0.3, 0.07, 0], "glow", (u, tt) => Tm(0, 1.82 - inj(u, tt) * 0.8, 0));
+  const g = M.group("plunger", Tm(0, 1.35, 0), {type: "slide", axis: "Y", amt: -0.8}); // v0.2 export
+  at(M, "cyl", [0.08, 0.9, 0], "steel", (u, tt) => Tm(0, 1.35 - inj(u, tt) * 0.8, 0), {group: g});
+  at(M, "cyl", [0.3, 0.07, 0], "glow", (u, tt) => Tm(0, 1.82 - inj(u, tt) * 0.8, 0), {group: g});
   veins();
 }
 // B · Nitro Bottles — racing games' nitrous bottles (Need for Speed's NOS): open the valve for a burst of speed

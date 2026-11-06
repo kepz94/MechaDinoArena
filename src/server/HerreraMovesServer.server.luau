@@ -1,4 +1,4 @@
--- HerreraMovesServer v1.3 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
+-- HerreraMovesServer v1.4 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
 -- (MDA-151), Smoke Pods (MDA-152), Strobe Frill (MDA-155), Stun Breaker (MDA-156), and the Glider Wings' glide state
 -- (MDA-150). Plan docs/plans/HERRERA_PARTS_v1.0.md (Parts 2, 3, 4, 7, 8 and "Pass 2 — build map"); Kepu 2026-10-31.
 -- Settings come from the character (SkillEffects 1.27, a Herrera with the part bought AND slotted):
@@ -85,12 +85,17 @@
 --   + CALTROP_ARM_FLY (0.42 s); the trigger loop skips a spike while now < armAt. The patch publishes the two numbers as
 --   Configuration attributes ArmGap / ArmFly so the clients animate on the same clock. Switch: script attribute
 --   HerreraMoves_caltropArmOnLandEnabled (default true, read at each drop; false = 1.2, armed on press, ArmGap / ArmFly 0).
+-- v1.4 (plan docs/plans/HERRERA_PARTS_LOOKS_v2.0.md Task 4, MDA-290; Kepu 2026-11-05 red-team "From the mouth"): a goo
+--   blob starts at the character's HPart_goo piece with HPartRole "muzzle" (the Spit Sacs' jaw nozzle, HerreraPartsServer
+--   1.4) when there is one, else above the hump as 1.3. Same arc, landing point, timing and puddle. Switch: script attribute
+--   HerreraMoves_gooMuzzleEnabled (default true, read at each shot). Diagnostic: script GooMuzzleShots.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.3"
+VERSION = "1.4" -- v1.4 goo blob from the jaw nozzle
 local QUILL_GAP, QUILL_SPEED, QUILL_CONE = 0.045, 90, math.rad(35)
 local SMOKE_TICK = 0.1
 local STROBE_WINDUP = 0.15
@@ -100,7 +105,7 @@ script:SetAttribute("HerreraMovesServerVersion", VERSION)
 for _, k in ipairs({"HerreraMovesServerEnabled", "HerreraMoves_quillsEnabled", "HerreraMoves_smokeEnabled",
 	"HerreraMoves_strobeEnabled", "HerreraMoves_breakerEnabled", "HerreraMoves_gliderEnabled", "HerreraMovesModeRulesEnabled",
 	"HerreraMoves_caltropsEnabled", "HerreraMoves_gooEnabled", "HerreraMoves_gooAssistEnabled",
-	"HerreraMoves_caltropArmOnLandEnabled"}) do -- v1.2: + pass 3; v1.3: + arm on land
+	"HerreraMoves_caltropArmOnLandEnabled", "HerreraMoves_gooMuzzleEnabled"}) do -- v1.2: + pass 3; v1.3: + arm on land; v1.4: + goo muzzle
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function on(id)
@@ -729,6 +734,18 @@ gooRemote.OnServerEvent:Connect(function(player, stamp)
 	end
 	local hump = char:FindFirstChild("Torso_hump", true)
 	local from = hump and hump:IsA("BasePart") and (hump.Position + Vector3.new(0, 2 * s, 0)) or (root.Position + Vector3.new(0, 3 * s, 0))
+	if script:GetAttribute("HerreraMoves_gooMuzzleEnabled") ~= false then -- v1.4: out of the Spit Sacs' jaw nozzle
+		local gm = char:FindFirstChild("HPart_goo")
+		if gm then
+			for _, p in ipairs(gm:GetChildren()) do
+				if p:IsA("BasePart") and p:GetAttribute("HPartRole") == "muzzle" then
+					from = p.Position
+					script:SetAttribute("GooMuzzleShots", (script:GetAttribute("GooMuzzleShots") or 0) + 1)
+					break
+				end
+			end
+		end
+	end
 	for i, pt in ipairs(pts) do
 		task.delay((i - 1) * 0.12, flyBlob, char, from, pt, glide, radius, life)
 	end
