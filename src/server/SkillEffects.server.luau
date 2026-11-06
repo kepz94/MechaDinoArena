@@ -288,6 +288,15 @@ local ServerStorage = game:GetService("ServerStorage")
 -- v1.44 (Kepu 2026-11-04 17:54 "Make it overclock tier 3 to give you an extra jump", SkillTree 1.66 clockJump): the TheriClock
 --   row gains Jump (effect clockJump, off 0): TheriClockJump, the extra jump charges TheriMovesServer 1.5 adds. Switch: script
 --   attribute SkillEffectsTheriClockJumpEnabled (default true, read at start; false = 1.43, no TheriClockJump).
+-- v1.45 (MDA-315, plan docs/plans/DILO_PARTS_v1.0.md Task 2; SkillTree 1.69): a DPARTS list like ZPARTS: on a character with
+--   Species "Dilo" (or one that already has DiloPartGatlingEnabled, so a switch away writes the off values), each dilo part
+--   bought (SkillPath_<id> >= 1) AND slotted (SkillSlot1..SLOTS) writes DiloPart<Name><Field> from effects(steps, "Dilo") and
+--   DiloPart<Name>Enabled true; otherwise the off values and false. DiloPartGatling (Count, Damage, Cone, Time, Cooldown),
+--   DiloPartMortar (Range, Radius, Time, Cooldown), DiloPartHiss (Range, Angle, Knock, Silence, Cooldown), DiloPartSpine
+--   (Count, Damage, Range, Venom, Cooldown), DiloPartPump (Heal, Immune, Cooldown), DiloPartJets (Dist, Charges, Trail,
+--   Cooldown), DiloPartOver (Time, VenomMul, Cooldown). Read by DiloPartsServer 1.0 (looks), DiloMovesServer 1.0,
+--   DiloAttackServer 1.5, MechaButtons 1.35. Switch: script attribute SkillEffectsDiloPartsEnabled (default true, read at each
+--   write; false = 1.44 plus the off values written).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -306,6 +315,7 @@ VERSION = "1.41" -- v1.41 dilo stat rows (DILO_ATTRS + spit numbers)
 VERSION = "1.42" -- v1.42 therizino button parts (ZPARTS)
 VERSION = "1.43" -- v1.43 TheriSnareRange (bola reach)
 VERSION = "1.44" -- v1.44 TheriClockJump (Overclock III extra jump)
+VERSION = "1.45" -- v1.45 dilo button parts (DPARTS)
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -1000,6 +1010,50 @@ if script:GetAttribute("SkillEffectsTheriClockJumpEnabled") ~= false then
 	end
 end
 
+-- v1.45: the dilo's mecha button parts (see the header)
+if script:GetAttribute("SkillEffectsDiloPartsEnabled") == nil then script:SetAttribute("SkillEffectsDiloPartsEnabled", true) end
+local DPARTS = { -- {path id, prefix, {attribute, effect field, off value}...}
+	{"dgatling", "DiloPartGatling", {{"Count", "dGatlingCount", 0}, {"Damage", "dGatlingDamage", 0}, {"Cone", "dGatlingCone", 0},
+		{"Time", "dGatlingTime", 0}, {"Cooldown", "dGatlingCooldown", 0}}},
+	{"dmortar", "DiloPartMortar", {{"Range", "dMortarRange", 0}, {"Radius", "dMortarRadius", 0}, {"Time", "dMortarTime", 0},
+		{"Cooldown", "dMortarCooldown", 0}}},
+	{"dhiss", "DiloPartHiss", {{"Range", "dHissRange", 0}, {"Angle", "dHissAngle", 0}, {"Knock", "dHissKnock", 0},
+		{"Silence", "dHissSilence", 0}, {"Cooldown", "dHissCooldown", 0}}},
+	{"dspine", "DiloPartSpine", {{"Count", "dSpineCount", 0}, {"Damage", "dSpineDamage", 0}, {"Range", "dSpineRange", 0},
+		{"Venom", "dSpineVenom", false}, {"Cooldown", "dSpineCooldown", 0}}},
+	{"dpump", "DiloPartPump", {{"Heal", "dPumpHeal", 0}, {"Immune", "dPumpImmune", 0}, {"Cooldown", "dPumpCooldown", 0}}},
+	{"djets", "DiloPartJets", {{"Dist", "dJetsDist", 0}, {"Charges", "dJetsCharges", 0}, {"Trail", "dJetsTrail", 0},
+		{"Cooldown", "dJetsCooldown", 0}}},
+	{"dover", "DiloPartOver", {{"Time", "dOverTime", 0}, {"VenomMul", "dOverVenomMul", 1}, {"Cooldown", "dOverCooldown", 0}}},
+}
+do
+	local applyCharV144 = applyChar
+	applyChar = function(char, st)
+		applyCharV144(char, st)
+		local isDilo = char:GetAttribute("Species") == "Dilo"
+		if not isDilo and char:GetAttribute("DiloPartGatlingEnabled") == nil then return end
+		local partsOn = script:GetAttribute("SkillEffectsDiloPartsEnabled") ~= false and ST.DILO_PARTS == true
+		local e = st.e or {}
+		local function inSlot(id)
+			for n = 1, ST.SLOTS or 2 do
+				if st.player:GetAttribute("SkillSlot" .. n) == id then return true end
+			end
+			return false
+		end
+		for _, def in ipairs(DPARTS) do
+			local id, prefix = def[1], def[2]
+			local pOn = partsOn and on() and isDilo and ST.PATHS[id] ~= nil and not ST.PATHS[id].soon
+				and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and inSlot(id)
+			for _, f in ipairs(def[3]) do
+				local v = f[3]
+				if pOn and e[f[2]] ~= nil then v = e[f[2]] end
+				if char:GetAttribute(prefix .. f[1]) ~= v then char:SetAttribute(prefix .. f[1], v) end
+			end
+			if char:GetAttribute(prefix .. "Enabled") ~= (pOn == true) then char:SetAttribute(prefix .. "Enabled", pOn == true) end
+		end
+	end
+end
+
 -- healing (regen / lifesteal), overflow into the shield
 local function heal(char, st, amount, source)
 	local hum = st.hum
@@ -1341,5 +1395,8 @@ script:GetAttributeChangedSignal("SkillEffectsDiloStatsEnabled"):Connect(functio
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)
 script:GetAttributeChangedSignal("SkillEffectsTheriPartsEnabled"):Connect(function() -- v1.42
+	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
+end)
+script:GetAttributeChangedSignal("SkillEffectsDiloPartsEnabled"):Connect(function() -- v1.45
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)
