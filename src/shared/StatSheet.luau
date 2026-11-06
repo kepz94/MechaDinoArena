@@ -1,4 +1,4 @@
--- StatSheet v1.3 (Mecha Dino Arena) — the 5-stat point sheet: species starting points (natural build type) and the
+-- StatSheet v1.7 (Mecha Dino Arena) — the 5-stat point sheet: species starting points (natural build type) and the
 -- stat -> attribute formula. MDA-1, plan docs/plans/CLASSSTATS_v1.0.md, ADR-001. Pure: no Instance access.
 -- User: option C "Stat points"; "stamina isnt a tree because stamina is unlimited" (no Stamina stat); Speed alone for
 --   Roamer. Red-team answers: the cap is on ADDED points (+10 per stat); Health and Attack points are flat (same gain on
@@ -31,8 +31,12 @@ local StatSheet = {}
 -- v1.6 (MDA-222, plan docs/plans/DILO_KIT_v1.0.md Task 2): SPECIES.Dilo (class "Spitter", start Health 3 / Attack 6 / Defense 2 /
 --   Speed 7 / Support 1, abilities "Bite + Spit Dart", "Cobra Leap"); ATTACK_KEYS + "DiloBiteDamage" / "DiloDartDamage" (1 per
 --   point) (only the dilo has them).
+-- v1.7 (MDA-331, plan docs/plans/TROODON_KIT_v1.0.md Task 2): SPECIES.Troodon (class "Support", start Health 3 / Attack 4 /
+--   Defense 3 / Speed 8 / Support 9, abilities "Glow Pod Toss", "Evade Hop (JUMP)"); ATTACK_KEYS + "TrooPodDamage" (1 per
+--   point) (only the troodon has it). The Support stat still has no effect.
 StatSheet.Version = "1.5"
 StatSheet.Version = "1.6" -- v1.6 Dilo
+StatSheet.Version = "1.7" -- v1.7 Troodon
 StatSheet.STATS = {"Health", "Attack", "Defense", "Speed", "Support"}
 StatSheet.MAX_ADDED = 10
 StatSheet.MAX_ADDED_BY = {Speed = 16} -- v1.1
@@ -75,6 +79,10 @@ table.insert(StatSheet.ATTACK_KEYS, "DiloBiteDamage")
 table.insert(StatSheet.ATTACK_KEYS, "DiloDartDamage")
 StatSheet.ATTACK_PER_POINT.DiloBiteDamage = 1
 StatSheet.ATTACK_PER_POINT.DiloDartDamage = 1
+StatSheet.SPECIES.Troodon = {class = "Support", start = {Health = 3, Attack = 4, Defense = 3, Speed = 8, Support = 9},
+	abilities = {"Glow Pod Toss", "Evade Hop (JUMP)"}} -- v1.7
+table.insert(StatSheet.ATTACK_KEYS, "TrooPodDamage")
+StatSheet.ATTACK_PER_POINT.TrooPodDamage = 1
 
 local function roundTo(x, step)
 	return math.floor(x / step + 0.5) * step
