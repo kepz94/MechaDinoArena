@@ -103,7 +103,8 @@ local function onPress()
 	local T = workspace:GetServerTimeNow()
 	local lastDelay = num("DiloJetsDelay")
 	if lastDelay and lastDelay >= 0.05 then return end -- the wind-up mode (server switch off): 1.0 path
-	if char:GetAttribute("DiloPartJetsEnabled") ~= true or (num("DiloPartJetsLeft") or 0) <= 0 then return end
+	-- DiloPartJetsLeft is published after the first use only: none yet = all charges (DiloPartJetsCharges)
+	if char:GetAttribute("DiloPartJetsEnabled") ~= true or (num("DiloPartJetsLeft") or num("DiloPartJetsCharges") or 1) <= 0 then return end
 	if hum.Health <= 0 or stunnedNow() or char:GetAttribute("PinHeld") == true or (num("DazedUntil") or 0) > T
 		or (num("SilencedUntil") or 0) > T then return end
 	local d = char:GetAttribute("DiloJetsPressDir")

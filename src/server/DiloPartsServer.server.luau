@@ -205,11 +205,14 @@ local CHEST_N = Vector3.new(0, 0.407, -0.914) -- the chest front face normal (Di
 local CHEST_DOWN = Vector3.new(0, -0.914, -0.407) -- down along that face (below Neck_1, which the 1.0 core cut into)
 SEAT.dgatling = {
 	group = function(pc) return pc[5][1] >= 0 and "L" or "R" end,
-	groups = {L = {move = Vector3.new(0.12, 0, 0)}, R = {move = Vector3.new(-0.12, 0, 0)}},
+	-- 6 degrees muzzle-up about the gun body, 0.17 out, 0.13 back: the barrels clear Jaw_lower when the head comes back in
+	-- the A_WIND / HISS_WIND keys and when it turns (p_mortar / p_hiss / p_spine / p_gatling poses; Play measure)
+	groups = {L = {tilt = {Vector3.new(1, 0, 0), 6, Vector3.new(0.6, 1.85, -2.55)}, move = Vector3.new(0.17, 0, 0.13)},
+		R = {tilt = {Vector3.new(1, 0, 0), 6, Vector3.new(-0.6, 1.85, -2.55)}, move = Vector3.new(-0.17, 0, 0.13)}},
 	extra = function()
 		local L = {}
 		for _, s in ipairs({1, -1}) do
-			add(L, "Neck", "box", {0.24, 0.26, 0.5}, "dark", {0.51 * s, 1.85, -2.5}, nil, {role = "bracket", grp = "fixed"})
+			add(L, "Neck", "box", {0.29, 0.26, 0.5}, "dark", {0.535 * s, 1.85, -2.37}, nil, {role = "bracket", grp = "fixed"})
 		end
 		return L
 	end}
@@ -224,18 +227,20 @@ SEAT.dmortar = {
 	end}
 SEAT.dhiss = {lift = 0.16,
 	group = function() return "amp" end,
-	groups = {amp = {move = Vector3.new(0.15, 0.1, 0.5)}}, -- back to the neck base: clear of the gatling, spine and mortar
+	groups = {amp = {move = Vector3.new(0.15, 0.2, 0.5)}}, -- back to the neck base: clear of the gatling, spine and mortar;
+	-- y 0.2 (was 0.1): clear of Torso_chest in the p_mortar pose (Play measure)
 	extra = function()
 		local L = {}
-		add(L, "Neck", "box", {0.32, 0.5, 0.4}, "dark", {0.41, 1.7, -1.8}, nil, {role = "bracket", grp = "fixed"})
+		add(L, "Neck", "box", {0.32, 0.5, 0.4}, "dark", {0.41, 1.8, -1.8}, nil, {role = "bracket", grp = "fixed"})
 		return L
 	end}
 SEAT.dspine = {lift = 0.12,
 	group = function(pc) return pc[5][1] >= 0 and "L" or "R" end,
-	groups = {L = {move = Vector3.new(0.1, -0.4, 0.1)}, R = {move = Vector3.new(-0.1, -0.4, 0.1)}}, -- lower: clear of the gatling
+	-- lower: clear of the gatling; x 0.15 (was 0.1): clear of Jaw_lower in the p_mortar pose (Play measure)
+	groups = {L = {move = Vector3.new(0.15, -0.4, 0.1)}, R = {move = Vector3.new(-0.15, -0.4, 0.1)}},
 	extra = function()
 		local L = {}
-		for _, s in ipairs({1, -1}) do add(L, "Neck", "box", {0.23, 0.42, 0.3}, "dark", {0.445 * s, 1.15, -2.25}, nil, {role = "bracket", grp = "fixed"}) end
+		for _, s in ipairs({1, -1}) do add(L, "Neck", "box", {0.28, 0.42, 0.3}, "dark", {0.47 * s, 1.15, -2.25}, nil, {role = "bracket", grp = "fixed"}) end
 		return L
 	end}
 SEAT.djets = {
@@ -248,14 +253,18 @@ SEAT.djets = {
 	end}
 SEAT.dover = {
 	group = function(pc) return pc[5][3] < -2 and "core" or "fins" end,
-	groups = {core = {tilt = {Vector3.new(1, 0, 0), 24, Vector3.new(0, 0.45, -2.2)}, move = CHEST_N * 0.1 + CHEST_DOWN * 0.35},
-		fins = {move = Vector3.new(0, 0.4, 0)}},
+	groups = {core = {tilt = {Vector3.new(1, 0, 0), 24, Vector3.new(0, 0.45, -2.2)}, move = CHEST_N * 0.1 + CHEST_DOWN * 0.45}, -- 0.45 (was 0.35): clear of Neck_1 in p_jets
+		fins = {move = Vector3.new(0, 0.4, 0.5)}}, -- z 0.5: clear of Jaw_sac / Neck_1 in the p_over / p_pump poses (Play measure)
 	extra = function()
 		local L = {}
-		add(L, "Torso", "box", {0.16, 0.52, 0.9}, "dark", {0, 1.26, -1.25}, nil, {role = "bracket", grp = "fixed"})
+		add(L, "Torso", "box", {0.16, 0.54, 0.8}, "dark", {0, 1.25, -0.8}, nil, {role = "bracket", grp = "fixed"})
 		add(L, "Torso", "cylZ", {0.3, 0.3}, "dark", {0, 0.45, -2.05}, nil, {role = "bracket", grp = "core"})
 		return L
 	end}
+-- the pump sits 0.15 forward: its rear ring cleared the Tail Booster when the tail lifts in the p_pump pose (Play measure)
+SEAT.dpump = {
+	group = function() return "tank" end,
+	groups = {tank = {move = Vector3.new(0, 0, -0.15)}}}
 local function seatOn() return script:GetAttribute("DiloPartsSeatV2Enabled") ~= false end
 local function seated(id)
 	local list = P[id]()

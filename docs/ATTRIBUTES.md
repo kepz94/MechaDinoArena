@@ -3006,3 +3006,18 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | DiloPumpClearMoreEnabled | DiloMovesServer script | switch (default true, read at each jolt): the jolt also clears SkillBleedUntil, SlashBleedUntil, CaltropBleedUntil, DebuffUntil (+ DebuffState "none"); false = 1.1 | DiloMovesServer 1.2 |
 | DiloMovesBreakFree | DiloMovesServer script | diagnostic: pump presses made while stunned or dazed | DiloMovesServer 1.2 |
 | DiloPumpCleared | dilo character | now may also list SkillBleedUntil / SlashBleedUntil / CaltropBleedUntil / DebuffUntil | DiloMovesServer 1.2 |
+
+## Dilo parts fit + Spring Jets instant (MDA-328 / 329; DiloPartsServer 1.1 / DiloMovesServer 1.3 / MechaButtons 1.38 / DiloJetsLaunch 1.1 / DiloPose 1.4 / DiloMovesFX 1.2)
+
+| Attribute | Where | Value | Set by |
+|---|---|---|---|
+| DiloPartsSeatV2Enabled | DiloPartsServer script | switch (default true, read at each build): the seat layer + mount brackets; false = the 1.0 seats, no brackets | DiloPartsServer 1.1 |
+| DPartRole "bracket" | DPart_<id> pieces | the new mount brackets (dark), measured apart from the part | DiloPartsServer 1.1 |
+| DiloJetsInstantEnabled | DiloMovesServer script | switch (default true, read at each press): DiloJetsDelay 0; false = the 0.34 s wind-up of 1.2 | DiloMovesServer 1.3 |
+| MechaButtonsJetsPressEnabled | MechaButtons script | switch (default true, read at each press): mark the Spring Jets press locally; false = 1.37 | MechaButtons 1.38 |
+| DiloJetsPressDir; DiloJetsPressAt | dilo character (owner client, not replicated) | flat press direction; server time of the press (set last) | MechaButtons 1.38 |
+| DiloJetsPredictEnabled | dilo character | switch (nil = true, read at each press): start the burst on the press; false = 1.0 (wait for the server stamp) | DiloJetsLaunch 1.1 |
+| DiloJetsPredicted; DiloJetsPredictedAt; DiloJetsPressLag | dilo character (owner client) | count of bursts started on the press; = the press stamp (set when the burst starts; read by DiloPose 1.4 / DiloMovesFX 1.2); press -> first move frame (s, 0.001 steps) | DiloJetsLaunch 1.1 |
+| DiloJetsInstantPoseEnabled | dilo model | switch (nil = true, read at each start): p_jets_i without the crouch; false = 1.3's p_jets | DiloPose 1.4 |
+| DiloJetsThrusterFXEnabled; DiloJetsFlameOn | DiloMovesFX script | switch (default true, read every frame): the Thrusters' flame / light / neon jet / roar + owner boost feel, 1.1 heat + sparks off; false = 1.1. Diagnostic: flame-on count | DiloMovesFX 1.2 |
+| DiloJetsFlameAt (Attachment: JetsFlame, PointLight, Sound JetsRoar); DiloJetsJet (part); DiloJetsSpeedLines (ScreenGui); render step DiloJetsBoostCam | Tail1 Root / FX folder / PlayerGui (local) | the burst FX kit | DiloMovesFX 1.2 |
