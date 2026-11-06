@@ -1,0 +1,3373 @@
+{
+ "_meta": {
+  "source": "computed from the src/server/*.server.luau builders + src/shared/Models/PachyModelData.luau v1.5, rest (bind) pose",
+  "scale": "ALL sizes and positions are PRE-scale = model scale 1 (PachyModelData values). In game the pachy is ScaleTo(2): multiply every size and position by 2 (rotations unchanged). The builders read live part sizes / GetExtentsSize / segment boxes, so they scale linearly, EXCEPT the literals called out per part (Visor panel thickness 0.15; MedStation radius, edge pieces and some heights).",
+  "Hd": 8.86,
+  "HdNote": "Hd = char:GetExtentsSize().Y = 8.86 at scale 1 (toe bottom y -4.0 to Head_dome3 top y 4.86, HRP space); 17.72 at scale 2. Assumes the rest pose and no other mecha models already built. Hd is read live at build time, so an animated pose (idle crouch) or an already-built Visor field (panels reach y 5.1) shifts it slightly.",
+  "hrpFrame": "HumanoidRootPart frame: forward = -Z (head at z -4..-6, tail toward +Z), up = +Y, +X = the dino's RIGHT (Roblox RightVector). Data parts named *L (ArmL, LegL, ShinL, FootL, Head_eyeL) sit at +X = the dino's RIGHT side; *R parts on its LEFT. HookServer v1.4 relies on this (segment ArmL = the real right arm).",
+  "segmentRootFrame": "Every segment Root (invisible 0.2 cube at seg.root) has rotation {0,0,1, 0,1,0, -1,0,0} vs the HRP = Angles(0,-90deg,0): Root +X = forward (HRP -Z), Root +Y = up, Root +Z = dino right (HRP +X), Root -X = back. The Root-anchored builders use x = Root +Z (right), y = Root +Y (up), back = x:Cross(y) = Root -X; each takes the segment's visual-part bounding box in Root space (\"rootBox\", listed per part) and offsets from its centre by its half-extents.",
+  "mechaSideNames": "In the mecha builders (ServoDash, BloodVials, Visor goggles) suffix \"L\" = side -1 = -x = the dino's real LEFT (HRP -X) - the OPPOSITE of the data-part naming. The Ink tank sits on the real left (-x); the Tether drum on the real right (+x); the hook arm on segment ArmL = real right.",
+  "pieceFields": "pos / rotDeg = the piece CFrame relative to \"anchor\" (anchor:Inverse() * piece). rotDeg = degrees for CFrame.Angles(rx,ry,rz) = Rx*Ry*Rz (the same matrix as a three.js Euler with order \"XYZ\"). posHRP / rotDegHRP = the same piece in HumanoidRootPart space at the rest pose (HRP at the origin). Cylinder = Roblox cylinder: axis along local X, size.x = length, size.y = size.z = diameter (three.js CylinderGeometry is along Y: rotate it -90deg about Z first). Every piece: Massless, CanCollide / CanQuery / CanTouch false; Ink/Tether/Servo/Visor/Vials also CastShadow false, Smooth surfaces.",
+  "mirroredMatrix": "ServoDash housings/bells are built with CFrame.fromMatrix(c, x, y, -back), a LEFT-handed (mirrored) basis. rotDeg given for them is the proper rotation with the same Up and Look vectors (Right flipped) - identical for a symmetric box; positions are computed with the real matrix.",
+  "segmentRootsHRP": {
+   "Torso": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Neck": [
+    0.0,
+    1.6,
+    -2.6
+   ],
+   "Head": [
+    0.0,
+    3.2,
+    -3.7
+   ],
+   "Jaw": [
+    0.0,
+    2.9,
+    -4.6
+   ],
+   "ArmL": [
+    0.79,
+    0.4,
+    -2.4
+   ],
+   "ArmR": [
+    -0.79,
+    0.4,
+    -2.4
+   ],
+   "Tail1": [
+    0.0,
+    0.35,
+    1.5
+   ],
+   "Tail2": [
+    0.0,
+    0.2663,
+    3.0978
+   ],
+   "Tail3": [
+    0.0,
+    0.1878,
+    4.5957
+   ],
+   "Tail4": [
+    0.0,
+    0.1145,
+    5.9938
+   ],
+   "Tail5": [
+    0.0,
+    0.0465,
+    7.292
+   ],
+   "LegL": [
+    0.8625,
+    0.0,
+    0.2
+   ],
+   "ShinL": [
+    0.8625,
+    -1.6,
+    -0.35
+   ],
+   "FootL": [
+    0.8625,
+    -2.9,
+    0.45
+   ],
+   "LegR": [
+    -0.8625,
+    0.0,
+    0.2
+   ],
+   "ShinR": [
+    -0.8625,
+    -1.6,
+    -0.35
+   ],
+   "FootR": [
+    -0.8625,
+    -2.9,
+    0.45
+   ]
+  }
+ },
+ "hookArm": {
+  "seg_or_anchor": "ArmL (part ArmL_fore; every piece WeldConstraint Part0 = ArmL_fore)",
+  "model": "Mecha_HookArm (sub-model \"Hook\")",
+  "builder": "src/server/HookServer.server.luau:246 buildProsthesis; hideArm :224; ARM_HIDE :94 remapped to HookArmSide \"ArmL\" :112-114; setLook :309",
+  "pieces": [
+   {
+    "n": "Strap",
+    "shape": "Block",
+    "size": [
+     0.49,
+     0.49,
+     0.1786
+    ],
+    "color": "6E4828",
+    "material": "Leather",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.0,
+     0.243,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.2416,
+     -2.625
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.225,
+      -0.6416,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "Buckle",
+    "shape": "Block",
+    "size": [
+     0.14,
+     0.0616,
+     0.1116
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.266,
+     0.243,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.1047,
+     -2.853
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.453,
+      -0.5047,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "Socket",
+    "shape": "Block",
+    "size": [
+     0.42,
+     0.42,
+     0.1116
+    ],
+    "color": "5D6878",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.0,
+     0.1203,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.3469,
+     -2.6881
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.2881,
+      -0.7469,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "Housing",
+    "shape": "Block",
+    "size": [
+     0.406,
+     0.406,
+     0.1339
+    ],
+    "color": "C9A34A",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.0,
+     0.0087,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.4426,
+     -2.7455
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.3455,
+      -0.8426,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "RailTL",
+    "shape": "Block",
+    "size": [
+     0.056,
+     0.056,
+     0.7366
+    ],
+    "color": "C9A34A",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.1736,
+     -0.3596,
+     -0.1736
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.6964,
+     -0.669,
+     -3.0839
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.6839,
+      -1.069,
+      -0.0936
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "RailTR",
+    "shape": "Block",
+    "size": [
+     0.056,
+     0.056,
+     0.7366
+    ],
+    "color": "C9A34A",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.1736,
+     -0.3596,
+     0.1736
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     1.0436,
+     -0.669,
+     -3.0839
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.6839,
+      -1.069,
+      0.2536
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "RailBL",
+    "shape": "Block",
+    "size": [
+     0.056,
+     0.056,
+     0.7366
+    ],
+    "color": "C9A34A",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     -0.1736,
+     -0.3596,
+     -0.1736
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.6964,
+     -0.8477,
+     -2.7862
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.3862,
+      -1.2477,
+      -0.0936
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "RailBR",
+    "shape": "Block",
+    "size": [
+     0.056,
+     0.056,
+     0.7366
+    ],
+    "color": "C9A34A",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     -0.1736,
+     -0.3596,
+     0.1736
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     1.0436,
+     -0.8477,
+     -2.7862
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.3862,
+      -1.2477,
+      0.2536
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "Nut",
+    "shape": "Cylinder",
+    "size": [
+     0.0781,
+     0.28,
+     0.28
+    ],
+    "color": "5D6878",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.0,
+     -0.0918,
+     0.0
+    ],
+    "rotDeg": [
+     0.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.5287,
+     -2.7972
+    ],
+    "rotDegHRP": [
+     -59.036,
+     90.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.3972,
+      -0.9287,
+      0.08
+     ],
+     "rotDeg": [
+      0.0,
+      0.0,
+      -59.036
+     ]
+    }
+   },
+   {
+    "n": "Spool",
+    "shape": "Cylinder",
+    "size": [
+     0.3794,
+     0.2464,
+     0.2464
+    ],
+    "color": "C4A06E",
+    "material": "Fabric",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.0,
+     -0.315,
+     0.0
+    ],
+    "rotDeg": [
+     0.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.7201,
+     -2.912
+    ],
+    "rotDegHRP": [
+     -59.036,
+     90.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.512,
+      -1.1201,
+      0.08
+     ],
+     "rotDeg": [
+      0.0,
+      0.0,
+      -59.036
+     ]
+    }
+   },
+   {
+    "n": "RedRing",
+    "shape": "Cylinder",
+    "size": [
+     0.067,
+     0.2688,
+     0.2688
+    ],
+    "color": "B42828",
+    "material": "SmoothPlastic",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.0,
+     -0.5047,
+     0.0
+    ],
+    "rotDeg": [
+     0.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.8828,
+     -3.0097
+    ],
+    "rotDegHRP": [
+     -59.036,
+     90.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.6097,
+      -1.2828,
+      0.08
+     ],
+     "rotDeg": [
+      0.0,
+      0.0,
+      -59.036
+     ]
+    }
+   },
+   {
+    "n": "Rod",
+    "shape": "Block",
+    "size": [
+     0.056,
+     0.056,
+     0.2009
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.0,
+     -0.6274,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.988,
+     -3.0728
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.6728,
+      -1.388,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "YokeTop",
+    "shape": "Block",
+    "size": [
+     0.448,
+     0.0728,
+     0.1116
+    ],
+    "color": "C9A34A",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.1736,
+     -0.7279,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.9848,
+     -3.2734
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.8734,
+      -1.3848,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "YokeBottom",
+    "shape": "Block",
+    "size": [
+     0.448,
+     0.0728,
+     0.1116
+    ],
+    "color": "C9A34A",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     -0.1736,
+     -0.7279,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -1.1635,
+     -2.9756
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.5756,
+      -1.5635,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "Barrel",
+    "shape": "Block",
+    "size": [
+     0.084,
+     0.084,
+     1.0602
+    ],
+    "color": "5D6878",
+    "material": "Metal",
+    "transp": 1,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.0,
+     -0.2201,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -0.6387,
+     -2.8632
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.4632,
+      -1.0387,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    }
+   },
+   {
+    "n": "Shank",
+    "shape": "Block",
+    "size": [
+     0.084,
+     0.084,
+     0.2232
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     0.0,
+     -0.8395,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -1.1698,
+     -3.1819
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.7819,
+      -1.5698,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    },
+    "group": "Hook"
+   },
+   {
+    "n": "Bend",
+    "shape": "Block",
+    "size": [
+     0.084,
+     0.364,
+     0.084
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     -0.14,
+     -0.9399,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -1.328,
+     -3.1135
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.7135,
+      -1.728,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    },
+    "group": "Hook"
+   },
+   {
+    "n": "Barb",
+    "shape": "Block",
+    "size": [
+     0.084,
+     0.084,
+     0.2232
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     -0.294,
+     -0.8395,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -1.3211,
+     -2.9298
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.5298,
+      -1.7211,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    },
+    "group": "Hook"
+   },
+   {
+    "n": "Point",
+    "shape": "Block",
+    "size": [
+     0.0728,
+     0.168,
+     0.0728
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ArmL_fore",
+    "pos": [
+     -0.238,
+     -0.739,
+     0.0
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "posHRP": [
+     0.87,
+     -1.2062,
+     -2.9261
+    ],
+    "rotDegHRP": [
+     -59.036,
+     0.0,
+     0.0
+    ],
+    "relArmLRoot": {
+     "pos": [
+      0.5261,
+      -1.6062,
+      0.08
+     ],
+     "rotDeg": [
+      -90.0,
+      -30.964,
+      -90.0
+     ]
+    },
+    "group": "Hook"
+   }
+  ],
+  "hiddenBodyParts": [
+   "ArmL_fore",
+   "ArmL_hand",
+   "ArmL_claw1",
+   "ArmL_claw2",
+   "ArmL_claw3"
+  ],
+  "derived": {
+   "w": 0.28,
+   "L": 1.116,
+   "wFormula": "min(fore.Size.X, fore.Size.Z)",
+   "LFormula": "fore.Size.Y*1.8",
+   "frame": "base = CFrame.lookAt(elbow, elbow+axis) (world up); piece = base*CFrame.new(at.X*w, at.Y*w, -at.Z*L); cylinders then * Angles(0,90deg,0)",
+   "elbowHRP": [
+    0.87,
+    -0.1842,
+    -2.5905
+   ],
+   "axisHRP": [
+    0.0,
+    -0.8575,
+    -0.5145
+   ],
+   "elbowRelFore": [
+    0.0,
+    0.31,
+    0.0
+   ],
+   "axisRelFore": [
+    0.0,
+    -1.0,
+    0.0
+   ],
+   "clawLaunchHRP": [
+    0.87,
+    -1.0933,
+    -3.136
+   ],
+   "clawLaunchRelFore": [
+    0.0,
+    -0.7502,
+    0.0
+   ],
+   "shotOriginHRP": [
+    0.79,
+    0.4,
+    -2.4
+   ]
+  },
+  "notes": "Shown while HookLook is true (Species Pachy). With it on, ArmL_fore / _hand / _claw1-3 get Transparency 1 (old value kept in attribute HookArmOrigT, restored when the look goes); ArmL_upper stays. Elbow = the ArmL_fore end nearer ArmL_upper (fore centre + UpVector*Size.Y/2); axis = elbow -> hand side (down-forward, about 59 deg below horizontal at rest). MOVING: the \"Hook\" sub-model (Shank, Bend, Barb, Point) is hidden on each client by HookFX 1.2 (LocalTransparencyModifier 1) while the claw is out / reeling / returning, shown again when it is home. \"Barrel\" is invisible (Transparency 1); the flying claw leaves its tip = Barrel.Position + Barrel.LookVector*Size.Z/2 = elbow + axis*0.95L (clawLaunch*). Server aim origin = the ArmL Root position (shotOriginHRP), not the barrel. HookPose 1.2 lifts ArmL level along the shot; the prosthesis follows ArmL_fore. Rotations relative to fore assume the arm was at rest when built (lookAt uses world up). Strap Leather, Spool Fabric, RedRing SmoothPlastic, the rest Metal. Pre-scale; all w / L multiples scale with the model."
+ },
+ "servoDash": {
+  "seg_or_anchor": "Torso (Root)",
+  "model": "Mecha_ServoDash",
+  "builder": "src/server/ServoDashServer.server.luau:107 build (setLook :278, burst :202)",
+  "pieces": [
+   {
+    "n": "Housing_L",
+    "shape": "Block",
+    "size": [
+     0.6202,
+     0.6202,
+     0.886
+    ],
+    "color": "3A404C",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Torso.Root",
+    "pos": [
+     -0.3168,
+     0.3208,
+     -1.3171
+    ],
+    "rotDeg": [
+     0.0,
+     90.0,
+     0.0
+    ],
+    "posHRP": [
+     -1.3171,
+     0.3208,
+     0.3168
+    ],
+    "rotDegHRP": [
+     -180.0,
+     0.0,
+     -180.0
+    ],
+    "mirroredMatrix": true,
+    "side": "dino real left (HRP -X)"
+   },
+   {
+    "n": "Bell_L",
+    "shape": "Block",
+    "size": [
+     0.4962,
+     0.4962,
+     0.3101
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Torso.Root",
+    "pos": [
+     -0.8661,
+     0.3208,
+     -1.3171
+    ],
+    "rotDeg": [
+     0.0,
+     90.0,
+     0.0
+    ],
+    "posHRP": [
+     -1.3171,
+     0.3208,
+     0.8661
+    ],
+    "rotDegHRP": [
+     -180.0,
+     0.0,
+     -180.0
+    ],
+    "mirroredMatrix": true,
+    "weldedTo": "Housing_L"
+   },
+   {
+    "n": "Housing_R",
+    "shape": "Block",
+    "size": [
+     0.6202,
+     0.6202,
+     0.886
+    ],
+    "color": "3A404C",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Torso.Root",
+    "pos": [
+     -0.3168,
+     0.3208,
+     1.3171
+    ],
+    "rotDeg": [
+     0.0,
+     90.0,
+     0.0
+    ],
+    "posHRP": [
+     1.3171,
+     0.3208,
+     0.3168
+    ],
+    "rotDegHRP": [
+     -180.0,
+     0.0,
+     -180.0
+    ],
+    "mirroredMatrix": true,
+    "side": "dino real right (HRP +X)"
+   },
+   {
+    "n": "Bell_R",
+    "shape": "Block",
+    "size": [
+     0.4962,
+     0.4962,
+     0.3101
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Torso.Root",
+    "pos": [
+     -0.8661,
+     0.3208,
+     1.3171
+    ],
+    "rotDeg": [
+     0.0,
+     90.0,
+     0.0
+    ],
+    "posHRP": [
+     1.3171,
+     0.3208,
+     0.8661
+    ],
+    "rotDegHRP": [
+     -180.0,
+     0.0,
+     -180.0
+    ],
+    "mirroredMatrix": true,
+    "weldedTo": "Housing_R"
+   }
+  ],
+  "exhaust": {
+   "L": {
+    "localToBell": [
+     0.0,
+     0.0,
+     -0.1772
+    ],
+    "posRelTorsoRoot": [
+     -1.0433,
+     0.3208,
+     -1.3171
+    ],
+    "posHRP": [
+     -1.3171,
+     0.3208,
+     1.0433
+    ],
+    "emitDirHRP": [
+     0.0,
+     0.0,
+     1.0
+    ]
+   },
+   "R": {
+    "localToBell": [
+     0.0,
+     0.0,
+     -0.1772
+    ],
+    "posRelTorsoRoot": [
+     -1.0433,
+     0.3208,
+     1.3171
+    ],
+    "posHRP": [
+     1.3171,
+     0.3208,
+     1.0433
+    ],
+    "emitDirHRP": [
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  "derived": {
+   "w": 0.6202,
+   "len": 0.886,
+   "formula": "w = Hd*0.07, len = Hd*0.1; centre = box centre + x*side*(ext_x + 0.35w) + back*(0.45 ext_back) - y*(0.15 ext_y); frame fromMatrix(c, x, y, -back): local -Z (look) points BACKWARD; bell = housing*CFrame.new(0,0,-0.62 len) (behind it)",
+   "torsoRootBoxLo": [
+    -1.6822,
+    -1.163,
+    -1.1
+   ],
+   "torsoRootBoxHi": [
+    3.2828,
+    2.3282,
+    1.1
+   ]
+  },
+  "notes": "Static pieces. FX only: Attachment \"Exhaust\" in each bell at local (0,0,-0.2 len) holds ParticleEmitter \"Flame\" (EmissionDirection Front = backward; FFF0A0 -> FF9A2E -> C83C14, size Hd*0.063 -> Hd*0.014, speed Hd*1.2-1.8, life 0.12-0.22 s, rate 160) and from v1.1 \"Blast\" (Emit 45 at the press, size Hd*0.2 -> 0.05, speed Hd*2.4-3.6) + PointLight \"Glow\" (FF9632, range Hd*0.8) on the bell; Trail \"SpeedLine\" between bell attachments TrailA (0,+0.3w,0) / TrailB (0,-0.3w,0), white, life 0.35 s. Flame / SpeedLine / Glow on only while ServoDashUntil runs. Ground ring \"ServoDashRing\" (neon FFD696 cylinder 0.2 thick, 2 -> Hd*2.2 across in 0.35 s, transp 0.2 -> 1) at the ground under the HRP + 0.15."
+ },
+ "inkShooter": {
+  "seg_or_anchor": "Torso (Root)",
+  "model": "Mecha_InkTank",
+  "builder": "src/server/InkServer.server.luau:261 buildShoulder (chosen by build :294 while InkShoulderMount is true, the default)",
+  "pieces": [
+   {
+    "n": "Tank",
+    "shape": "Block",
+    "size": [
+     0.7088,
+     0.886,
+     0.7088
+    ],
+    "color": "2A2D38",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Torso.Root",
+    "pos": [
+     2.1657,
+     2.7269,
+     -0.605
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     -0.605,
+     2.7269,
+     -2.1657
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "n": "Window",
+    "shape": "Block",
+    "size": [
+     0.7372,
+     0.4873,
+     0.3544
+    ],
+    "color": "0B0B12",
+    "material": "Glass",
+    "transp": 0,
+    "anchor": "Torso.Root",
+    "pos": [
+     2.1657,
+     2.6826,
+     -0.605
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     -0.605,
+     2.6826,
+     -2.1657
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "weldedTo": "Tank"
+   },
+   {
+    "n": "Cap",
+    "shape": "Block",
+    "size": [
+     0.4962,
+     0.0886,
+     0.4962
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Torso.Root",
+    "pos": [
+     2.1657,
+     3.2142,
+     -0.605
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     -0.605,
+     3.2142,
+     -2.1657
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "weldedTo": "Tank"
+   },
+   {
+    "n": "Barrel",
+    "shape": "Block",
+    "size": [
+     0.2268,
+     0.2268,
+     1.0632
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Torso.Root",
+    "pos": [
+     3.0517,
+     2.8155,
+     -0.605
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     -0.605,
+     2.8155,
+     -3.0517
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "weldedTo": "Tank"
+   }
+  ],
+  "muzzle": {
+   "attachment": "Muzzle on Barrel",
+   "localToBarrel": [
+    0.0,
+    0.0,
+    -0.5316
+   ],
+   "posRelTorsoRoot": [
+    3.5833,
+    2.8155,
+    -0.605
+   ],
+   "posHRP": [
+    -0.605,
+    2.8155,
+    -3.5833
+   ],
+   "dirHRP": [
+    0.0,
+    0.0,
+    -1.0
+   ]
+  },
+  "derived": {
+   "w": 0.7088,
+   "h": 0.886,
+   "d": 0.7088,
+   "barrelLen": 1.0632,
+   "formula": "w,h,d = Hd*(0.08,0.10,0.08); centre = box centre + y*(ext_y + 0.45h) - back*(0.55 ext_back) [forward] - x*(0.55 ext_x) [dino left]; frame fromMatrix(c, x, y, back): local -Z = forward; barrel = tank*CFrame.new(0, 0.1h, -(d/2 + len/2)), len = Hd*0.12; muzzle = barrel tip (0,0,-len/2)"
+  },
+  "notes": "On top of the torso box, front part, the dino's real LEFT (HRP -X; the hook is on the right). Window: Material Glass, Transparency 0, ink colour 0B0B12. No moving pieces. Shot origin = Muzzle.WorldPosition (fallback head hitbox, then HRP). FX: InkGlob black ball 1.6 dia (literal, unscaled) flies muzzle -> InkAimEnd at 160 studs/s; splat cylinder 0.2 x 7 x 7 (hidden on a hit) + 30 drops; pitch clamp -20..+25 deg (shoulder mount); aim assist 12 deg."
+ },
+ "tether": {
+  "seg_or_anchor": "Tail1 (Root)",
+  "model": "Mecha_TetherLauncher",
+  "builder": "src/server/TetherServer.server.luau:178 build",
+  "pieces": [
+   {
+    "n": "Base",
+    "shape": "Block",
+    "size": [
+     0.7974,
+     0.5316,
+     1.1518
+    ],
+    "color": "3A404C",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Tail1.Root",
+    "pos": [
+     -0.5061,
+     1.0237,
+     0.0
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     0.0,
+     1.3737,
+     2.0061
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "n": "Barrel",
+    "shape": "Block",
+    "size": [
+     0.319,
+     0.319,
+     1.4176
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Tail1.Root",
+    "pos": [
+     0.3048,
+     1.6163,
+     0.0
+    ],
+    "rotDeg": [
+     90.0,
+     -55.0,
+     90.0
+    ],
+    "posHRP": [
+     0.0,
+     1.9663,
+     1.1952
+    ],
+    "rotDegHRP": [
+     35.0,
+     0.0,
+     0.0
+    ],
+    "weldedTo": "Base"
+   },
+   {
+    "n": "Drum",
+    "shape": "Cylinder",
+    "size": [
+     0.2791,
+     0.5848,
+     0.5848
+    ],
+    "color": "FFC832",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Tail1.Root",
+    "pos": [
+     -0.6789,
+     1.0237,
+     0.4944
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     0.4944,
+     1.3737,
+     2.1789
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "weldedTo": "Base"
+   },
+   {
+    "n": "Tip",
+    "shape": "Block",
+    "size": [
+     0.1754,
+     0.1754,
+     0.3119
+    ],
+    "color": "9AA6B8",
+    "material": "DiamondPlate",
+    "transp": 0,
+    "anchor": "Tail1.Root",
+    "pos": [
+     0.9435,
+     2.0636,
+     0.0
+    ],
+    "rotDeg": [
+     90.0,
+     -55.0,
+     90.0
+    ],
+    "posHRP": [
+     0.0,
+     2.4136,
+     0.5565
+    ],
+    "rotDegHRP": [
+     35.0,
+     0.0,
+     0.0
+    ],
+    "weldedTo": "Barrel"
+   }
+  ],
+  "muzzle": {
+   "attachment": "Muzzle on Barrel",
+   "localToBarrel": [
+    0.0,
+    0.0,
+    -0.7088
+   ],
+   "posRelTail1Root": [
+    0.8855,
+    2.0229,
+    0.0
+   ],
+   "posHRP": [
+    0.0,
+    2.3729,
+    0.6145
+   ],
+   "dirHRP": [
+    0.0,
+    0.5736,
+    -0.8192
+   ]
+  },
+  "derived": {
+   "w": 0.7974,
+   "h": 0.5316,
+   "d": 1.1518,
+   "barrelLen": 1.4176,
+   "formula": "w,h,d = Hd*(0.09,0.06,0.13); centre = box centre + y*(ext_y + 0.5h) - back*(0.35 ext_back); frame fromMatrix(c,x,y,back) (-Z forward); barrel = base*CFrame.new(0,0.35h,-0.2d)*Angles(35deg,0,0)*CFrame.new(0,0,-len/2), len = Hd*0.16; tip = barrel*CFrame.new(0,0,-0.55 len); drum = base*CFrame.new(0.62w,0,0.15d)",
+   "tail1RootBoxLo": [
+    -1.7317,
+    -0.7381,
+    -0.62
+   ],
+   "tail1RootBoxHi": [
+    0.0839,
+    0.7579,
+    0.62
+   ]
+  },
+  "notes": "Barrel pitched 35 deg up, pointing forward over the back. Drum (yellow cylinder, axis sideways) on the dino's real RIGHT (+x). No moving pieces (the Tip stays in the barrel). Launch point = Muzzle.WorldPosition (fallback HRP + (0,3,0)). FX: TetherSpike part 0.7 x 0.7 x 3.2 (literal, steel DiamondPlate, yellow ChainTrail) lobs muzzle -> landing point in 0.8 s, peak 22 studs above the higher end; landing ring yellow (FFC832) neon cylinder 0.2 thick growing 2 -> 2*TetherSplash (16) in 0.3 s; RopeConstraint \"TetherChain\" yellow, thickness 0.3."
+ },
+ "bloodVials": {
+  "seg_or_anchor": "Neck (Root)",
+  "model": "Mecha_BloodVials",
+  "builder": "src/server/BloodVialServer.server.luau:117 build (horizontal branch :139-143, BloodVialHorizontal default true)",
+  "pieces": [
+   {
+    "n": "Glass_L",
+    "shape": "Block",
+    "size": [
+     0.3987,
+     1.1518,
+     0.3987
+    ],
+    "color": "D6E2EC",
+    "material": "Glass",
+    "transp": 0.55,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     -1.265
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     -1.265,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     90.0
+    ],
+    "side": "dino real left (HRP -X), vial 1"
+   },
+   {
+    "n": "Blood_L",
+    "shape": "Block",
+    "size": [
+     0.3269,
+     0.9905,
+     0.3269
+    ],
+    "color": "960C1E",
+    "material": "SmoothPlastic",
+    "transp": 0,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     -1.265
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     -1.265,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     90.0
+    ],
+    "weldedTo": "Glass_L via Weld FluidHinge"
+   },
+   {
+    "n": "CapTop_L",
+    "shape": "Block",
+    "size": [
+     0.4784,
+     0.1152,
+     0.4784
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     -1.8639
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     -1.8639,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     90.0
+    ],
+    "weldedTo": "Glass_L"
+   },
+   {
+    "n": "CapBottom_L",
+    "shape": "Block",
+    "size": [
+     0.4784,
+     0.1152,
+     0.4784
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     -0.6661
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     -0.6661,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     90.0
+    ],
+    "weldedTo": "Glass_L"
+   },
+   {
+    "n": "Nozzle_L",
+    "shape": "Block",
+    "size": [
+     0.1595,
+     0.1382,
+     0.1595
+    ],
+    "color": "3A404C",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     -1.9791
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     -1.9791,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     90.0
+    ],
+    "weldedTo": "Glass_L"
+   },
+   {
+    "n": "Glass_R",
+    "shape": "Block",
+    "size": [
+     0.3987,
+     1.1518,
+     0.3987
+    ],
+    "color": "D6E2EC",
+    "material": "Glass",
+    "transp": 0.55,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     1.265
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -180.0
+    ],
+    "posHRP": [
+     1.265,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "side": "dino real right (HRP +X), vial 2"
+   },
+   {
+    "n": "Blood_R",
+    "shape": "Block",
+    "size": [
+     0.3269,
+     0.9905,
+     0.3269
+    ],
+    "color": "960C1E",
+    "material": "SmoothPlastic",
+    "transp": 0,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     1.265
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -180.0
+    ],
+    "posHRP": [
+     1.265,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "weldedTo": "Glass_R via Weld FluidHinge"
+   },
+   {
+    "n": "CapTop_R",
+    "shape": "Block",
+    "size": [
+     0.4784,
+     0.1152,
+     0.4784
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     1.8639
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -180.0
+    ],
+    "posHRP": [
+     1.8639,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "weldedTo": "Glass_R"
+   },
+   {
+    "n": "CapBottom_R",
+    "shape": "Block",
+    "size": [
+     0.4784,
+     0.1152,
+     0.4784
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     0.6661
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -180.0
+    ],
+    "posHRP": [
+     0.6661,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "weldedTo": "Glass_R"
+   },
+   {
+    "n": "Nozzle_R",
+    "shape": "Block",
+    "size": [
+     0.1595,
+     0.1382,
+     0.1595
+    ],
+    "color": "3A404C",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Neck.Root",
+    "pos": [
+     0.55,
+     0.8,
+     1.9791
+    ],
+    "rotDeg": [
+     -90.0,
+     0.0,
+     -180.0
+    ],
+    "posHRP": [
+     1.9791,
+     2.4,
+     -3.15
+    ],
+    "rotDegHRP": [
+     -90.0,
+     0.0,
+     -90.0
+    ],
+    "weldedTo": "Glass_R"
+   }
+  ],
+  "sprayPoints": {
+   "L": {
+    "posHRP": [
+     -1.9791,
+     2.4,
+     -3.15
+    ],
+    "sprayDirHRP": [
+     -1.0,
+     0.0,
+     0.0
+    ]
+   },
+   "R": {
+    "posHRP": [
+     1.9791,
+     2.4,
+     -3.15
+    ],
+    "sprayDirHRP": [
+     1.0,
+     0.0,
+     0.0
+    ]
+   }
+  },
+  "derived": {
+   "w": 0.3987,
+   "h": 1.1518,
+   "fullBloodLen": 0.9905,
+   "formula": "w = Hd*0.045, h = Hd*0.13; centre = neck box centre + out*(ext_x + 0.5h + 0.06h), out = x*side; frame fromMatrix(p, back*side, out): local +Y points straight out sideways (long axis horizontal); caps at +-0.52h, nozzle at +0.62h",
+   "neckRootBoxLo": [
+    -0.5069,
+    -0.3367,
+    -0.62
+   ],
+   "neckRootBoxHi": [
+    1.6069,
+    1.9367,
+    0.62
+   ]
+  },
+  "notes": "Shown while BloodRushEnabled (Species Pachy). Glass: Material Glass, Transparency 0.55. MOVING: Blood_<s> level: Size.Y = full*f (full = 0.86h), FluidHinge C0 = CFrame.new(0, -(full - Size.Y)/2, 0) relative to the glass, so it keeps its inner (neck-side, local -Y) end and drains from the tip back to the neck; Transparency 1 when empty. Vial i is full while HeadbuttSacrifices < i; drain 0.3 s, refill 0.6 s. On HeadbuttSacrificeAt the drained vial's Nozzle ParticleEmitter \"Spray\" (EmissionDirection Top = local +Y = straight out; AA0A1E -> 6E0012, 220/s, speed 18-28, accel (0,-60,0), drag 1.5, size w -> 0.3w, life 0.4-0.8 s) runs 0.45 s."
+ },
+ "domeVisor": {
+  "seg_or_anchor": "Head (Root)",
+  "model": "Mecha_DomeVisor (attribute Goggles = true); field = sub-model \"ForceField\"",
+  "builder": "src/server/VisorServer.server.luau:202 buildGoggles (headFrame :149); field :162 setField; chosen in setLook :260 (VisorGogglesLook default true)",
+  "pieces": [
+   {
+    "n": "Rim_L",
+    "shape": "Cylinder",
+    "size": [
+     0.1418,
+     0.846,
+     0.846
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     1.1006,
+     0.738,
+     -1.3091
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     -1.3091,
+     3.938,
+     -4.8006
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "side": "dino real left (HRP -X)"
+   },
+   {
+    "n": "Lens_L",
+    "shape": "Cylinder",
+    "size": [
+     0.1772,
+     0.6508,
+     0.6508
+    ],
+    "color": "5FE3FF",
+    "material": "Neon",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     1.1006,
+     0.738,
+     -1.3977
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     -1.3977,
+     3.938,
+     -4.8006
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "light": "PointLight LensGlow 5FE3FF range Hd*0.4, brightness 2, on only while the field is up"
+   },
+   {
+    "n": "Rim_R",
+    "shape": "Cylinder",
+    "size": [
+     0.1418,
+     0.846,
+     0.846
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     1.1006,
+     0.738,
+     1.3091
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     1.3091,
+     3.938,
+     -4.8006
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "side": "dino real right (HRP +X)"
+   },
+   {
+    "n": "Lens_R",
+    "shape": "Cylinder",
+    "size": [
+     0.1772,
+     0.6508,
+     0.6508
+    ],
+    "color": "5FE3FF",
+    "material": "Neon",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     1.1006,
+     0.738,
+     1.3977
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     1.3977,
+     3.938,
+     -4.8006
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "light": "PointLight LensGlow 5FE3FF range Hd*0.4, brightness 2, on only while the field is up"
+   },
+   {
+    "n": "Panel_1",
+    "shape": "Block",
+    "size": [
+     0.7125,
+     2.658,
+     0.15
+    ],
+    "color": "5FE3FF",
+    "material": "ForceField",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     2.2905,
+     0.5753,
+     2.3508
+    ],
+    "rotDeg": [
+     -180.0,
+     -36.667,
+     -180.0
+    ],
+    "posHRP": [
+     2.3508,
+     3.7753,
+     -5.9905
+    ],
+    "rotDegHRP": [
+     0.0,
+     -53.333,
+     0.0
+    ],
+    "group": "ForceField",
+    "arcAngleDeg": -53.333
+   },
+   {
+    "n": "Panel_2",
+    "shape": "Block",
+    "size": [
+     0.7125,
+     2.658,
+     0.15
+    ],
+    "color": "5FE3FF",
+    "material": "ForceField",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     2.7854,
+     0.5753,
+     1.8838
+    ],
+    "rotDeg": [
+     -180.0,
+     -50.0,
+     -180.0
+    ],
+    "posHRP": [
+     1.8838,
+     3.7753,
+     -6.4854
+    ],
+    "rotDegHRP": [
+     0.0,
+     -40.0,
+     0.0
+    ],
+    "group": "ForceField",
+    "arcAngleDeg": -40.0
+   },
+   {
+    "n": "Panel_3",
+    "shape": "Block",
+    "size": [
+     0.7125,
+     2.658,
+     0.15
+    ],
+    "color": "5FE3FF",
+    "material": "ForceField",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     3.1594,
+     0.5753,
+     1.3153
+    ],
+    "rotDeg": [
+     -180.0,
+     -63.333,
+     -180.0
+    ],
+    "posHRP": [
+     1.3153,
+     3.7753,
+     -6.8594
+    ],
+    "rotDegHRP": [
+     0.0,
+     -26.667,
+     0.0
+    ],
+    "group": "ForceField",
+    "arcAngleDeg": -26.667
+   },
+   {
+    "n": "Panel_4",
+    "shape": "Block",
+    "size": [
+     0.7125,
+     2.658,
+     0.15
+    ],
+    "color": "5FE3FF",
+    "material": "ForceField",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     3.3921,
+     0.5753,
+     0.6759
+    ],
+    "rotDeg": [
+     -180.0,
+     -76.667,
+     -180.0
+    ],
+    "posHRP": [
+     0.6759,
+     3.7753,
+     -7.0921
+    ],
+    "rotDegHRP": [
+     0.0,
+     -13.333,
+     0.0
+    ],
+    "group": "ForceField",
+    "arcAngleDeg": -13.333
+   },
+   {
+    "n": "Panel_5",
+    "shape": "Block",
+    "size": [
+     0.7125,
+     2.658,
+     0.15
+    ],
+    "color": "5FE3FF",
+    "material": "ForceField",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     3.4711,
+     0.5753,
+     0.0
+    ],
+    "rotDeg": [
+     0.0,
+     -90.0,
+     0.0
+    ],
+    "posHRP": [
+     0.0,
+     3.7753,
+     -7.1711
+    ],
+    "rotDegHRP": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "group": "ForceField",
+    "arcAngleDeg": 0.0
+   },
+   {
+    "n": "Panel_6",
+    "shape": "Block",
+    "size": [
+     0.7125,
+     2.658,
+     0.15
+    ],
+    "color": "5FE3FF",
+    "material": "ForceField",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     3.3921,
+     0.5753,
+     -0.6759
+    ],
+    "rotDeg": [
+     0.0,
+     -76.667,
+     0.0
+    ],
+    "posHRP": [
+     -0.6759,
+     3.7753,
+     -7.0921
+    ],
+    "rotDegHRP": [
+     0.0,
+     13.333,
+     0.0
+    ],
+    "group": "ForceField",
+    "arcAngleDeg": 13.333
+   },
+   {
+    "n": "Panel_7",
+    "shape": "Block",
+    "size": [
+     0.7125,
+     2.658,
+     0.15
+    ],
+    "color": "5FE3FF",
+    "material": "ForceField",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     3.1594,
+     0.5753,
+     -1.3153
+    ],
+    "rotDeg": [
+     0.0,
+     -63.333,
+     0.0
+    ],
+    "posHRP": [
+     -1.3153,
+     3.7753,
+     -6.8594
+    ],
+    "rotDegHRP": [
+     0.0,
+     26.667,
+     0.0
+    ],
+    "group": "ForceField",
+    "arcAngleDeg": 26.667
+   },
+   {
+    "n": "Panel_8",
+    "shape": "Block",
+    "size": [
+     0.7125,
+     2.658,
+     0.15
+    ],
+    "color": "5FE3FF",
+    "material": "ForceField",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     2.7854,
+     0.5753,
+     -1.8838
+    ],
+    "rotDeg": [
+     0.0,
+     -50.0,
+     0.0
+    ],
+    "posHRP": [
+     -1.8838,
+     3.7753,
+     -6.4854
+    ],
+    "rotDegHRP": [
+     0.0,
+     40.0,
+     0.0
+    ],
+    "group": "ForceField",
+    "arcAngleDeg": 40.0
+   },
+   {
+    "n": "Panel_9",
+    "shape": "Block",
+    "size": [
+     0.7125,
+     2.658,
+     0.15
+    ],
+    "color": "5FE3FF",
+    "material": "ForceField",
+    "transp": 0,
+    "anchor": "Head.Root",
+    "pos": [
+     2.2905,
+     0.5753,
+     -2.3508
+    ],
+    "rotDeg": [
+     0.0,
+     -36.667,
+     0.0
+    ],
+    "posHRP": [
+     -2.3508,
+     3.7753,
+     -5.9905
+    ],
+    "rotDegHRP": [
+     0.0,
+     53.333,
+     0.0
+    ],
+    "group": "ForceField",
+    "arcAngleDeg": 53.333
+   }
+  ],
+  "field": {
+   "count": 9,
+   "radius": 2.9307,
+   "radiusFormula": "extent(headBox, back) + Hd*0.12, from the head Root-box centre, in the horizontal plane",
+   "centreRelHeadRoot": [
+    0.5404,
+    0.5753,
+    0.0
+   ],
+   "centreHRP": [
+    0.0,
+    3.7753,
+    -4.2404
+   ],
+   "angleRangeDeg": [
+    -60,
+    60
+   ],
+   "stepDeg": 13.3333,
+   "panelAnglesDeg": [
+    -53.333,
+    -40.0,
+    -26.667,
+    -13.333,
+    0.0,
+    13.333,
+    26.667,
+    40.0,
+    53.333
+   ],
+   "panelSize": [
+    0.7125,
+    2.658,
+    0.15
+   ],
+   "panelFormula": "base = fromMatrix(c, x, y, back); panel_i = base*Angles(0, a_i, 0)*CFrame.new(0,0,-R), a_i = -60deg + step*(i-0.5), step = 120/9 deg; width = 2R*tan(step/2)*1.04, height = Hd*0.3 (both scale), thickness 0.15 (literal, NOT scaled)"
+  },
+  "derived": {
+   "d": 0.6508,
+   "th": 0.1772,
+   "formula": "d = 0.6 ext_y (lens dia), th = max(0.1, Hd*0.02); eye = box centre + y*(0.15 ext_y) - back*(0.3 ext_back) [forward]; disc centre = eye + x*side*(ext_x + th/2); rim shifted -side*0.3th (inward), lens +side*0.2th (outward); frame fromMatrix(pos,x,y,back): cylinder axis = local X = sideways",
+   "eyeRelHeadRoot": [
+    1.1006,
+    0.738,
+    0.0
+   ],
+   "headRootBoxLo": [
+    -1.3271,
+    -0.5093,
+    -1.2737
+   ],
+   "headRootBoxHi": [
+    2.4079,
+    1.66,
+    1.2737
+   ]
+  },
+  "notes": "Goggles worn whenever VisorLook is true. MOVING: the ForceField panels exist only while VisorUntil is in the future (VisorTime 1.5 s, 2 at II): made at the press with Transparency 1 tweened to 0 in 0.1 s; at the end tweened to 1 in 0.2 s and destroyed after 0.22 s (Lab preview: instant, Transparency 0). Each panel: Weld \"PanelWeld\" to Head.Root, C0 = pos/rotDeg here. LensGlow lights on only while the field shows; character VisorDown = field showing. The +-60 deg arc = BoneCrest's front block cone."
+ },
+ "mechaLegs": {
+  "seg_or_anchor": "ShinL / ShinR (part <seg>_shin) and FootL / FootR (part <seg>_meta); WeldConstraint Part0 = that part",
+  "model": "Mecha_Legs",
+  "builder": "src/server/MechaLegsServer.server.luau:43 apply (add :28)",
+  "pieces": [
+   {
+    "n": "CoverL",
+    "shape": "Block",
+    "size": [
+     0.625,
+     1.28,
+     0.625
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ShinL_shin",
+    "pos": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rotDeg": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     0.8625,
+     -2.25,
+     0.05
+    ],
+    "rotDegHRP": [
+     -31.607,
+     90.0,
+     0.0
+    ]
+   },
+   {
+    "n": "PistonL",
+    "shape": "Block",
+    "size": [
+     0.11,
+     1.44,
+     0.11
+    ],
+    "color": "5D6878",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ShinL_shin",
+    "pos": [
+     0.0,
+     0.0,
+     0.375
+    ],
+    "rotDeg": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     1.2375,
+     -2.25,
+     0.05
+    ],
+    "rotDegHRP": [
+     -31.607,
+     90.0,
+     0.0
+    ]
+   },
+   {
+    "n": "VentL",
+    "shape": "Block",
+    "size": [
+     0.483,
+     0.3,
+     0.483
+    ],
+    "color": "5D6878",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "FootL_meta",
+    "pos": [
+     0.0,
+     -0.35,
+     0.0
+    ],
+    "rotDeg": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     0.8625,
+     -3.6542,
+     0.1431
+    ],
+    "rotDegHRP": [
+     22.145,
+     90.0,
+     0.0
+    ]
+   },
+   {
+    "n": "CoverR",
+    "shape": "Block",
+    "size": [
+     0.625,
+     1.28,
+     0.625
+    ],
+    "color": "9AA6B8",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ShinR_shin",
+    "pos": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rotDeg": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     -0.8625,
+     -2.25,
+     0.05
+    ],
+    "rotDegHRP": [
+     -31.607,
+     90.0,
+     0.0
+    ]
+   },
+   {
+    "n": "PistonR",
+    "shape": "Block",
+    "size": [
+     0.11,
+     1.44,
+     0.11
+    ],
+    "color": "5D6878",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "ShinR_shin",
+    "pos": [
+     0.0,
+     0.0,
+     0.375
+    ],
+    "rotDeg": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     -0.4875,
+     -2.25,
+     0.05
+    ],
+    "rotDegHRP": [
+     -31.607,
+     90.0,
+     0.0
+    ]
+   },
+   {
+    "n": "VentR",
+    "shape": "Block",
+    "size": [
+     0.483,
+     0.3,
+     0.483
+    ],
+    "color": "5D6878",
+    "material": "Metal",
+    "transp": 0,
+    "anchor": "FootR_meta",
+    "pos": [
+     0.0,
+     -0.35,
+     0.0
+    ],
+    "rotDeg": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "posHRP": [
+     -0.8625,
+     -3.6542,
+     0.1431
+    ],
+    "rotDegHRP": [
+     22.145,
+     90.0,
+     0.0
+    ]
+   }
+  ],
+  "notes": "Shown while MechaLegsLook is true. Sizes are multiples of the anchor part's live Size: Cover = shin*(1.25,0.8,1.25) at the shin centre; Piston = shin*(0.22,0.9,0.22) at shin local (0,0,0.75*shin.Z); shin local +Z = HRP +X for BOTH legs, so it sits on the outer side of ShinL but the inner side of ShinR; Vent = meta*(1.15,0.3,1.15) at meta local (0,-0.35*meta.Y,0) (lower end). STEEL 9AA6B8 / DARK 5D6878, Metal. Static (ride the shin/foot animation)."
+ },
+ "medStation": {
+  "seg_or_anchor": "world (Workspace.MedStations.MedPad), centred on the ground point under the pachy HRP",
+  "model": "MedPad",
+  "builder": "src/server/MedStationServer.server.luau:113 build (groundUnder :102, drop :282, wave :146)",
+  "pieces": [
+   {
+    "n": "Base",
+    "shape": "Cylinder",
+    "size": [
+     0.4,
+     3.5,
+     3.5
+    ],
+    "color": "2E3440",
+    "material": "SmoothPlastic",
+    "transp": 0,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     0,
+     0.2,
+     0
+    ],
+    "rotDeg": [
+     0,
+     0,
+     90
+    ]
+   },
+   {
+    "n": "Rim",
+    "shape": "Cylinder",
+    "size": [
+     0.2,
+     4.13,
+     4.13
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     0,
+     0.1,
+     0
+    ],
+    "rotDeg": [
+     0,
+     0,
+     90
+    ]
+   },
+   {
+    "n": "Core",
+    "shape": "Cylinder",
+    "size": [
+     0.1,
+     1.75,
+     1.75
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.5,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     0,
+     0.42,
+     0
+    ],
+    "rotDeg": [
+     0,
+     0,
+     90
+    ],
+    "light": "PointLight Glow 46E08A, range clamp(MedRadius,8,60), brightness 2, enabled only while the owner is inside"
+   },
+   {
+    "n": "Edge_1",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     11.8973,
+     0.08,
+     1.5663
+    ],
+    "rotDeg": [
+     0.0,
+     172.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_2",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     11.0866,
+     0.08,
+     4.5922
+    ],
+    "rotDeg": [
+     0.0,
+     157.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_3",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     9.5202,
+     0.08,
+     7.3051
+    ],
+    "rotDeg": [
+     0.0,
+     142.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_4",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     7.3051,
+     0.08,
+     9.5202
+    ],
+    "rotDeg": [
+     0.0,
+     127.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_5",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     4.5922,
+     0.08,
+     11.0866
+    ],
+    "rotDeg": [
+     0.0,
+     112.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_6",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     1.5663,
+     0.08,
+     11.8973
+    ],
+    "rotDeg": [
+     0.0,
+     97.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_7",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -1.5663,
+     0.08,
+     11.8973
+    ],
+    "rotDeg": [
+     0.0,
+     82.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_8",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -4.5922,
+     0.08,
+     11.0866
+    ],
+    "rotDeg": [
+     0.0,
+     67.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_9",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -7.3051,
+     0.08,
+     9.5202
+    ],
+    "rotDeg": [
+     0.0,
+     52.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_10",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -9.5202,
+     0.08,
+     7.3051
+    ],
+    "rotDeg": [
+     0.0,
+     37.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_11",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -11.0866,
+     0.08,
+     4.5922
+    ],
+    "rotDeg": [
+     0.0,
+     22.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_12",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -11.8973,
+     0.08,
+     1.5663
+    ],
+    "rotDeg": [
+     0.0,
+     7.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_13",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -11.8973,
+     0.08,
+     -1.5663
+    ],
+    "rotDeg": [
+     0.0,
+     -7.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_14",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -11.0866,
+     0.08,
+     -4.5922
+    ],
+    "rotDeg": [
+     0.0,
+     -22.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_15",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -9.5202,
+     0.08,
+     -7.3051
+    ],
+    "rotDeg": [
+     0.0,
+     -37.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_16",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -7.3051,
+     0.08,
+     -9.5202
+    ],
+    "rotDeg": [
+     0.0,
+     -52.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_17",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -4.5922,
+     0.08,
+     -11.0866
+    ],
+    "rotDeg": [
+     0.0,
+     -67.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_18",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     -1.5663,
+     0.08,
+     -11.8973
+    ],
+    "rotDeg": [
+     0.0,
+     -82.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_19",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     1.5663,
+     0.08,
+     -11.8973
+    ],
+    "rotDeg": [
+     0.0,
+     -97.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_20",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     4.5922,
+     0.08,
+     -11.0866
+    ],
+    "rotDeg": [
+     0.0,
+     -112.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_21",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     7.3051,
+     0.08,
+     -9.5202
+    ],
+    "rotDeg": [
+     0.0,
+     -127.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_22",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     9.5202,
+     0.08,
+     -7.3051
+    ],
+    "rotDeg": [
+     0.0,
+     -142.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_23",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     11.0866,
+     0.08,
+     -4.5922
+    ],
+    "rotDeg": [
+     0.0,
+     -157.5,
+     0.0
+    ]
+   },
+   {
+    "n": "Edge_24",
+    "shape": "Block",
+    "size": [
+     0.5,
+     0.16,
+     1.7279
+    ],
+    "color": "46E08A",
+    "material": "Neon",
+    "transp": 0,
+    "transpOwnerOutside": 0.6,
+    "anchor": "ground centre (world; pos = world offset; anchored, not welded)",
+    "pos": [
+     11.8973,
+     0.08,
+     -1.5663
+    ],
+    "rotDeg": [
+     0.0,
+     -172.5,
+     0.0
+    ]
+   }
+  ],
+  "wave": {
+   "n": "MedWave",
+   "shape": "Cylinder",
+   "sizeStart": [
+    0.06,
+    3.5,
+    3.5
+   ],
+   "sizeEnd": "[0.06, 2*MedRadius, 2*MedRadius] (24 at MedRadius 12)",
+   "color": "46E08A",
+   "material": "Neon",
+   "transpStart": 0.35,
+   "transpEnd": 1,
+   "pos": [
+    0,
+    0.12,
+    0
+   ],
+   "rotDeg": [
+    0,
+    0,
+    90
+   ],
+   "tween": "0.9 s Quad Out, one every 1 s while the pad runs"
+  },
+  "notes": "Not attached to the pachy. Disc = cylinder * Angles(0,0,90deg) (axis vertical). SCALING: Base / Rim / Core sizes and heights use s = char:GetScale() and are listed at s = 1; at s = 2: Base [0.8,7,7] y 0.4, Rim [0.4,8.26,8.26] y 0.2, Core [0.2,3.5,3.5] y 0.84. NOT scaled: MedRadius (12 studs; 18 from tier II), edge pieces [0.5, 0.16, 0.55*2*pi*R/24] at y 0.08, MedWave thickness 0.06 and y 0.12 (start diameter = Base.Size.Y = 3.5*s). Edge_i at a = (i-0.5)/24*360 deg: pos (R cos a, 0.08, R sin a), lookAt along the tangent (-sin a, 0, cos a) -> rotDeg [0, 180-a, 0] (listed for R = 12; 45% gaps). While the owner is outside the circle: edges Transparency 0.6, Core 0.5, Glow off. Lab preview: s = 1, R = 5. Lasts MedTime (5 s; 7 at III; 10 at star)."
+ }
+}

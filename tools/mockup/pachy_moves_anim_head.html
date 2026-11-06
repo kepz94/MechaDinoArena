@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pachy Move Animations</title>
+<style>
+/* Pachy move animations v0.1 (same layout as the Dilo move animations). Layout: move tabs, version picker (Now / A / B / C), transport, the 3D stage, phase strip,
+   notes. Dark game-HUD look, same tokens as the other MDA mockups. */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --yellow: #ffc21a; --good: #7dff9a; --red: #ff3b30;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding-block: 18px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 12px; }
+main > * { min-width: 0; }
+h1 { margin: 0; font: 700 clamp(22px, 4vw, 30px)/1.1 var(--display); text-wrap: balance; }
+h1 span { color: var(--accent); }
+h2 { margin: 0; font: 700 19px/1.2 var(--display); }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 90ch; margin-top: 4px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lbl { font: 800 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.moves { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.tab[disabled] { opacity: .45; cursor: default; }
+.var { font: 700 14px/1.2 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; cursor: pointer; text-align: left; }
+.var small { display: block; font: 800 10px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+.var[aria-pressed="true"] { border-color: var(--yellow); box-shadow: 0 0 0 3px rgba(255,194,26,.2); }
+.var .rec { color: var(--good); }
+.cmp { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cmp td, .cmp th { border-top: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+.cmp th { color: var(--muted); font-weight: 800; }
+@media (max-width: 900px) { .moves { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .moves { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tab { font: 700 15px/1.2 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 9px 11px; cursor: pointer; text-align: left; min-width: 0; }
+.tab small { display: block; font: 800 10px var(--body); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,155,46,.2); }
+.btn { font: 800 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); }
+.btn.go { background: var(--accent); border-color: var(--accent); color: #1a0f00; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.stage { position: relative; border: 2px solid var(--line); border-radius: 16px; overflow: hidden; background: #8fc6e8; }
+#vig { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; touch-action: none; }
+.cap { position: absolute; left: 12px; bottom: 12px; right: 12px; display: flex; justify-content: center; pointer-events: none; }
+.cap b { font: 700 clamp(14px, 2.2vw, 20px)/1.2 var(--display); background: rgba(13,15,20,.82); border-radius: 12px; padding: 7px 14px; text-align: center; max-width: 100%; }
+.clock { position: absolute; right: 12px; top: 12px; font: 800 12px var(--body); background: rgba(13,15,20,.82); border-radius: 8px; padding: 3px 9px; font-variant-numeric: tabular-nums; }
+.scrub { width: 100%; accent-color: var(--accent); }
+.phases { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.ph { flex: 0 0 auto; font: 700 12px/1.25 var(--body); color: var(--grey); background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 6px 9px; cursor: pointer; max-width: 230px; text-align: left; }
+.ph i { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; display: block; font-size: 10px; }
+.ph[aria-current="true"] { border-color: var(--yellow); color: var(--fg); }
+.cols { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 820px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 16px; display: grid; gap: 6px; min-width: 0; }
+.card ul { margin: 0; padding-left: 18px; color: var(--grey); font-size: 14px; }
+.card li { margin: 2px 0; }
+.note { color: var(--muted); font-size: 13px; }
+.kind { font: 800 12px var(--body); letter-spacing: .06em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>Pachy</span> · move animations <span id="ver" style="color:var(--muted);font-size:.6em"></span></h1>
+    <p class="lede">The animation pass on the real Pachy (PachyModelData 1.5, game scale 2) against raptor dummies: its Headbutt and Leap, the eight mecha parts it can buy (Grappling Hook, Mecha Legs double jump, Overclocked Servo Dash, Dome Visor, Ink Shooter, Tether Spike, Blood Rush, Med-Station) and the two rows that today show nothing (Last Stand, Head Down). <b>Now</b> is what the game plays today (v479); <b>A / B / C</b> are new versions, each with a wind-up, the action, the result and the recovery. Headbutt and hook-smash victims now stagger. Damage, range, recharge and timing don't change unless a version says so.</p>
+  </header>
+  <div class="moves" role="group" aria-label="Move" id="moves"></div>
+  <div class="row" id="varRow"></div>
+  <div class="row">
+    <button class="btn go" id="play" aria-pressed="true">Pause</button>
+    <span class="lbl">Speed</span><button class="btn" data-speed="1" aria-pressed="true">1×</button><button class="btn" data-speed="0.3" aria-pressed="false">0.3×</button>
+    <span class="lbl" style="margin-left:6px">Camera</span>
+    <button class="btn" data-view="hero" aria-pressed="true">3/4</button><button class="btn" data-view="side" aria-pressed="false">Side</button>
+    <button class="btn" data-view="game" aria-pressed="false">Player camera</button><button class="btn" data-view="close" aria-pressed="false">Close-up</button>
+  </div>
+  <div class="stage">
+    <canvas id="cv" aria-label="3D Pachy doing the selected move"></canvas><div id="vig"></div>
+    <div class="clock" id="clock"></div>
+    <div class="cap"><b id="cap"></b></div>
+  </div>
+  <input class="scrub" id="scrub" type="range" min="0" max="1000" value="0" aria-label="Scrub the move">
+  <div class="phases" id="phases"></div>
+  <div class="cols">
+    <div class="card" id="info"></div>
+    <div class="card" id="part"></div>
+  </div>
+</main>
+<script>/*THREE*/</script>
+<script>
