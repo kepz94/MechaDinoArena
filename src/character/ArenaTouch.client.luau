@@ -1,4 +1,4 @@
--- ArenaTouch v1.17 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.18 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -112,6 +112,14 @@
 -- v1.16 (MDA-238, plan docs/plans/DILO_STATS_v1.0.md Task 4; PC and touch together with AbilityBar 1.27): Cold Blood star. The
 --   dart pip is full while the character's DiloDartReadyAt (DiloAttackTest 1.1) is newer than DiloLocalDartAt (the dart was
 --   recharged at once). Switch: script attribute ArenaTouchDiloResetEnabled (default true, read each frame; false = 1.15).
+-- v1.18 (Troodon kit, MDA-334, plan docs/plans/TROODON_KIT_v1.0.md Task 5; PC and touch together with AbilityBar 1.33): the
+--   troodon's ATTACK (tap = Glow Pod Toss, TrooAttackTest 1.0) as the big yellow ATTACK ("TrooMain", the dilo's place) over
+--   CAS "DinoTrooAttack" for a dino with TrooAttackEnabled (and no other main button); under it the slash / dilo pip row:
+--   TrooPodCharges (2) pips filled up to TrooLocalLeft (the press drains one at once), the next one filling over TrooPodRefill
+--   (3 s) up to the server's TrooPodRefillAt; the button dims at 0 charges (the slash button's rule). JUMP: the therizino /
+--   teno JUMP charge pips (1.13 / 1.14) also show on a troodon with JumpCharges >= 1 (the Evade Hop's 2 charges). Switch:
+--   script attribute ArenaTouchTrooPipsEnabled (default true; read at start for the ATTACK button, each frame for the JUMP
+--   pips; false = 1.17). Diagnostic ArenaTouchTrooPips ("<left>/<max>"); ArenaTouchMainButton adds "Troo".
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
@@ -124,6 +132,7 @@ VERSION = "1.14" -- v1.14 teno JUMP charge pips
 VERSION = "1.15" -- v1.15 dilo ATTACK (hold disc + dart pip)
 VERSION = "1.16" -- v1.16 dilo dart pip full after a Cold Blood reset
 VERSION = "1.17" -- v1.17 BITE / POUNCE / RAM / JUMP cooldown sweep + seconds
+VERSION = "1.18" -- v1.18 troodon ATTACK pod pips + JUMP hop pips
 -- v1.17 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 3; Kepu 2026-11-06 "Sweep + seconds"): BITE, POUNCE (the
 --   raptor's ATTACK), RAM and JUMP get the slot buttons' cooldown look (MechaButtons: a black fill at 0.45 rising from the
 --   bottom, here cut to the circle by a UIGradient step) and the seconds left in the PC format ("%.1fs", AbilityBar paint)
@@ -555,6 +564,19 @@ for i = 1, 3 do
 	if f then dlPips[i] = {f = f, fill = f:FindFirstChild("Fill")} end
 end
 
+-- v1.18: troodon ATTACK main button + pod charge pips
+if script:GetAttribute("ArenaTouchTrooPipsEnabled") == nil then script:SetAttribute("ArenaTouchTrooPipsEnabled", true) end
+local TROO_ON = script:GetAttribute("ArenaTouchTrooPipsEnabled") ~= false
+local trooMain, trooMainLabel, trooMainScale = button("TrooMain", "ATTACK", nil, 0.05, 0.10, 0.135, true)
+trooMain.Visible = false
+local trPipRow = slPipRow:Clone()
+trPipRow.Parent = trooMain
+local trPips = {}
+for i = 1, 3 do
+	local f = trPipRow:FindFirstChild("Charge_" .. i)
+	if f then trPips[i] = {f = f, fill = f:FindFirstChild("Fill")} end
+end
+
 -- overlay: Roblox's CAS button for each move, invisible, laid over its styled button every frame
 local OVERLAY = {
 	{action = "DinoBiteTest", vis = bite, scale = biteScale, name = "Bite"},
@@ -567,6 +589,7 @@ if SLASH_ON then table.insert(OVERLAY, {action = "DinoSlash", vis = slashMain, s
 if TENO_ON then table.insert(OVERLAY, {action = "DinoTenoAttack", vis = tenoMain, scale = tenoMainScale, name = "Teno"}) end -- v1.9
 if THERI_ON then table.insert(OVERLAY, {action = "DinoTheriAttack", vis = theriMain, scale = theriMainScale, name = "Theri"}) end -- v1.11
 if DILO_ON then table.insert(OVERLAY, {action = "DinoDiloAttack", vis = diloMain, scale = diloMainScale, name = "Dilo"}) end -- v1.15
+if TROO_ON then table.insert(OVERLAY, {action = "DinoTrooAttack", vis = trooMain, scale = trooMainScale, name = "Troo"}) end -- v1.18
 local wanted = {Bite = true, Run = true, Ram = false, Pounce = false, Headbutt = false, Slash = false} -- set by refresh(); v1.5: + Headbutt; v1.7: + Slash
 local hooked = setmetatable({}, {__mode = "k"})
 local function hook(btn, o)
@@ -742,6 +765,33 @@ RunService.RenderStepped:Connect(function()
 	local ds = part >= 1 and "ready" or "cooling"
 	if char:GetAttribute("ArenaTouchDiloDart") ~= ds then char:SetAttribute("ArenaTouchDiloDart", ds) end
 end)
+-- v1.18: the troodon's ATTACK becomes the main button when nothing else is; its pod pips every frame
+WATCH.TrooAttackEnabled = true
+do
+	local refreshV117 = refresh
+	refresh = function()
+		refreshV117()
+		wanted.Troo = TROO_ON and char:GetAttribute("TrooAttackEnabled") == true and char:GetAttribute("ArenaTouchMainButton") == "none"
+		if wanted.Troo then char:SetAttribute("ArenaTouchMainButton", "Troo") end
+	end
+end
+RunService.RenderStepped:Connect(function()
+	if not wanted.Troo then return end
+	local now = workspace:GetServerTimeNow()
+	local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("TrooPodCharges")) or 2), 1, 3)
+	local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("TrooLocalLeft")) or tonumber(char:GetAttribute("TrooPodLeft")) or maxC), 0, maxC)
+	local ra = tonumber(char:GetAttribute("TrooPodRefillAt")) or 0
+	local cd = math.max(0.01, tonumber(char:GetAttribute("TrooPodRefill")) or 3)
+	local part = (ra > now and nowC < maxC) and math.clamp(1 - (ra - now) / cd, 0, 1) or 0
+	for i, pip in pairs(trPips) do
+		pip.f.Visible = i <= maxC
+		if pip.fill then pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0)) end
+	end
+	trooMain.BackgroundTransparency = nowC > 0 and 0.08 or 0.5
+	if trooMainLabel then trooMainLabel.TextTransparency = nowC > 0 and 0 or 0.5 end
+	local d = nowC .. "/" .. maxC
+	if char:GetAttribute("ArenaTouchTrooPips") ~= d then char:SetAttribute("ArenaTouchTrooPips", d) end
+end)
 -- v1.12: hits left (see the header)
 if script:GetAttribute("ArenaTouchTheriHitsLeftEnabled") == nil then script:SetAttribute("ArenaTouchTheriHitsLeftEnabled", true) end
 local function theriHitsLeft(now)
@@ -814,7 +864,8 @@ end
 RunService.RenderStepped:Connect(function()
 	local sp = char:GetAttribute("Species")
 	local on = script:GetAttribute("ArenaTouchTheriJumpPipsEnabled") ~= false
-		and (sp == "Therizino" or (sp == "Teno" and script:GetAttribute("ArenaTouchTenoJumpPipsEnabled") ~= false)) -- v1.14: + teno
+		and (sp == "Therizino" or (sp == "Teno" and script:GetAttribute("ArenaTouchTenoJumpPipsEnabled") ~= false) -- v1.14: + teno
+			or (sp == "Troodon" and script:GetAttribute("ArenaTouchTrooPipsEnabled") ~= false)) -- v1.18: + troodon
 		and (tonumber(char:GetAttribute("JumpCharges")) or 0) >= 1 and leap.Visible
 	if jpRow.Visible ~= on then jpRow.Visible = on end
 	if not on then return end

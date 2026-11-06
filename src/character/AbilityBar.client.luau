@@ -1,4 +1,4 @@
--- AbilityBar v1.32 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.33 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -188,6 +188,7 @@ VERSION = "1.29" -- v1.29 therizino parts build 2 tiles
 VERSION = "1.30" -- v1.30 passive Overclock tile (ON)
 VERSION = "1.31" -- v1.31 SILENCED part tiles
 VERSION = "1.32" -- v1.32 teno + dilo part countdowns
+VERSION = "1.33" -- v1.33 troodon ATTACK + JUMP tiles
 -- v1.32 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 1; Kepu 2026-11-06 "I need all cool downs to be [shown] on
 --   screen"): the 6 teno slot parts (tgrab / tmortar / tstomp / tbellow / tchallenge / tmud), the teno Hydraulic Leap slot
 --   tile (tleap) and the 7 dilo parts (dgatling / dmortar / dhiss / dspine / dpump / djets / dover) join TIMED_PARTS, so their
@@ -201,6 +202,14 @@ VERSION = "1.32" -- v1.32 teno + dilo part countdowns
 --   future every slot tile with a part is painted "silenced": dimmed (0.6), no fill, no seconds, sub label "SILENCED"
 --   (diagnostic AbilityBar_Slot_<n> = "silenced"). Nothing else changes. Switch: script attribute AbilityBarSilenceEnabled
 --   (default true, read each frame; false = 1.30).
+-- v1.33 (Troodon kit, MDA-334, plan docs/plans/TROODON_KIT_v1.0.md Task 5; PC and touch together with ArenaTouch 1.18):
+--   SPECIES_MOVES.Troodon = TrooAttack (key "LMB", ATTACK, yellow; tap = Glow Pod Toss, TrooAttackTest 1.0) and TrooLeap
+--   (key "Space", JUMP: the therizino JUMP tile's leap pips = JumpCharges filled to JumpChargesLeft, the next filling over
+--   JumpCooldown from JumpChargeRefillAt; the Evade Hop's 2 charges). TrooAttack: the slash tile's charge pips = TrooPodCharges
+--   filled to TrooLocalLeft (drains on the press), the next filling over TrooPodRefill up to TrooPodRefillAt; "active" while
+--   TrooLocalState is "throw", "empty" at 0 charges (the slash tile's look), "stunned" while stunned, else "ready". Switch:
+--   script attribute AbilityBarTrooEnabled (default true, read at start; false = no troodon row, the fallback order).
+--   Diagnostic: AbilityBarTrooPips ("<left>/<max>").
 if script:GetAttribute("AbilityBarTheriClockPassiveEnabled") == nil then script:SetAttribute("AbilityBarTheriClockPassiveEnabled", true) end -- v1.30
 local SPEED_YELLOW = Color3.fromRGB(255, 194, 26) -- v1.30
 if script:GetAttribute("AbilityBarDiloResetEnabled") == nil then script:SetAttribute("AbilityBarDiloResetEnabled", true) end -- v1.27
@@ -335,6 +344,14 @@ if script:GetAttribute("AbilityBarDiloEnabled") ~= false then -- v1.26: dilo ATT
 	MOVES.DiloAttack = {enabled = "DiloAttackEnabled", enabledDefault = false, key = "LMB", name = "ATTACK", color = YELLOW,
 		slashPips = true, diloPips = true}
 	SPECIES_MOVES.Dilo = {"DiloAttack", "Leap"}
+end
+if script:GetAttribute("AbilityBarTrooEnabled") == nil then script:SetAttribute("AbilityBarTrooEnabled", true) end -- v1.33
+if script:GetAttribute("AbilityBarTrooEnabled") ~= false then -- v1.33: troodon ATTACK (pod charges) + JUMP (hop charges)
+	MOVES.TrooAttack = {enabled = "TrooAttackEnabled", enabledDefault = false, key = "LMB", name = "ATTACK", color = YELLOW,
+		slashPips = true, trooPips = true}
+	MOVES.TrooLeap = {enabled = "JumpEnabled", enabledDefault = false, key = "Space", name = "JUMP", slashPips = true,
+		leapPips = true}
+	SPECIES_MOVES.Troodon = {"TrooAttack", "TrooLeap"}
 end
 local FALLBACK_ORDER = {"Bite", "Pounce", "Leap", "Ram"}
 if script:GetAttribute("AbilityBarHerreraJumpEnabled") == nil then script:SetAttribute("AbilityBarHerreraJumpEnabled", true) end -- v1.17
@@ -919,6 +936,30 @@ local function update()
 			else
 				paint(e, "ready", 0, 0, nil)
 			end
+		elseif e.move.trooPips then -- v1.33: troodon ATTACK (pod charges)
+			local maxC = math.clamp(math.floor(tonumber(char:GetAttribute("TrooPodCharges")) or 2), 1, 3)
+			local nowC = math.clamp(math.floor(tonumber(char:GetAttribute("TrooLocalLeft")) or tonumber(char:GetAttribute("TrooPodLeft")) or maxC), 0, maxC)
+			local ra = tonumber(char:GetAttribute("TrooPodRefillAt")) or 0
+			local cd = math.max(0.01, tonumber(char:GetAttribute("TrooPodRefill")) or 3)
+			local part = (ra > now and nowC < maxC) and math.clamp(1 - (ra - now) / cd, 0, 1) or 0
+			for i, pip in ipairs(e.t.chargePips) do
+				pip.f.Visible = i <= maxC
+				pip.fill.Size = UDim2.fromScale(1, i <= nowC and 1 or (i == nowC + 1 and part or 0))
+			end
+			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = Color3.new(0, 0, 0), 0.38
+			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif char:GetAttribute("TrooLocalState") == "throw" then
+				paint(e, "active", 0, 0, nil)
+				e.t.stroke.Color = YELLOW
+			elseif nowC <= 0 then
+				paint(e, "empty", 0.45, 0, nil)
+				e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = WHITE, 0.89
+				e.t.fill.Size = UDim2.fromScale(1, part)
+			else
+				paint(e, "ready", 0, 0, nil)
+			end
+			show("AbilityBarTrooPips", nowC .. "/" .. maxC)
 		elseif e.move.diloPips then -- v1.26: dilo ATTACK (hold + dart pip)
 			local cd = math.max(0.01, tonumber(char:GetAttribute("DiloDartCooldown")) or 1.5)
 			local part = math.clamp((now - (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge)) / cd, 0, 1)
