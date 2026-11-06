@@ -2568,4 +2568,23 @@ do
 	end
 end
 
+-- v1.71 (Bola reach, MDA-324, plan docs/plans/FIXES_2026-11-06_v1.0.md Fix 2; Kepu 2026-11-06 "B: 60 / 80"): with
+-- SkillTree.THERI_BOLA_RANGE_V2 (default true; false = 1.70: 35 / 45) the zsnare (Bola) reach is 60 studs (I-II) and 80 (III+)
+-- and the step texts say so. Only the therizino's own snareRange is set (other dinos keep the 1.65 wrapper's 0). SkillEffects
+-- 1.43 writes it as TheriSnareRange; TheriMovesServer reads it (flight clamp(d / 80, 0.25, 0.6) unchanged: faster at 80).
+SkillTree.THERI_BOLA_RANGE_V2 = true
+if SkillTree.THERI_PARTS and SkillTree.THERI_BOLA and SkillTree.THERI_BOLA_RANGE_V2 and SkillTree.PATHS.zsnare then
+	local st = SkillTree.PATHS.zsnare.steps
+	st[1] = "Button: sling a bola from the tail at the nearest enemy ahead (60 studs). It wraps their legs: held 1 s, 12 damage. Recharges in 14 s"
+	st[3] = "Held 2 s; reaches 80 studs"
+	local effectsPre171 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre171(steps, dino)
+		if type(e) ~= "table" or dino ~= "Therizino" then return e end
+		local r = tonumber(e.snareRange) or 0
+		if r > 0 then e.snareRange = r >= 45 and 80 or 60 end
+		return e
+	end
+end
+
 return SkillTree
