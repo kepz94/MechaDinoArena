@@ -36,7 +36,9 @@
 --   (default true, read each frame).
 -- v1.3 (MDA-281, plan docs/plans/TENO_GRAB_SCORPION_v1.0.md Task 4; Kepu 2026-11-05 picked A "Scorpion Strike", fling kept
 --   45 over a 0.6 s flight): the thrown bot's arc peak = the teno's TenoGrabFlightPeak (TenoMovesServer 1.10: 8) when it is
---   set, else FLING_PEAK (16). Switch: script attribute TenoBotMotionPeakAttrEnabled (default true, read each frame).
+--   set, else FLING_PEAK (16); and with TenoGrabStyle "scorpion" the pull to the jaws takes PULL_SC (0.05 s) instead of
+--   PULL_TIME (Studio: the 0.12 s pull dragged the bot up toward the striking tail). Switch: script attribute
+--   TenoBotMotionPeakAttrEnabled (default true, read each frame; both).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -49,6 +51,7 @@ if script:GetAttribute("TenoBotMotionClampAttrEnabled") == nil then script:SetAt
 local LAND_AHEAD, LAND_THROUGH_TIME = 0.25, 1.0 -- v1.1
 if script:GetAttribute("TenoBotMotionLandThroughEnabled") == nil then script:SetAttribute("TenoBotMotionLandThroughEnabled", true) end -- v1.1
 local PULL_TIME, CLAMP_X, FLING_PEAK, BLEND_TIME = 0.12, -2.6, 16, 0.1
+local PULL_SC = 0.05 -- v1.3
 local lp = Players.LocalPlayer
 if script:GetAttribute("TenoBotMotionEnabled") == nil then script:SetAttribute("TenoBotMotionEnabled", true) end
 lp:SetAttribute("TenoBotMotionVersion", VERSION)
@@ -123,6 +126,8 @@ end
 
 local function stepGrab(j, t)
 	local hrp = j.hrp
+	local PULL_TIME = PULL_TIME -- v1.3: the Scorpion Strike's tail reaches the bot, only the last PULL_SC closes the gap
+	if script:GetAttribute("TenoBotMotionPeakAttrEnabled") ~= false and j.char:GetAttribute("TenoGrabStyle") == "scorpion" then PULL_TIME = PULL_SC end
 	if t < j.catchAt - PULL_TIME then
 		j.rest = hrp.CFrame -- where the server has it (anchored at the press)
 		return true

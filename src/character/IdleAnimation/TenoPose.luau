@@ -121,10 +121,10 @@
 --     catch; catch..S -> GRAB_BRACE (smooth); S..throw -> SC_SLAM[side] (front RootJoint 6, back RootJoint -10 / Neck -10 on
 --     the brace; easeIn); throw..throw + R -> 0 (smooth).
 --   * tail goals: 0..W rest -> coil (front (0.4, 10.08, 2.25), back (0.4, 7.58, 12.75)) (ease); W..catch the strike =
---     bezier(coil, coil + (0, 2, -6 front / +6 back), target) (easeIn), "tight" IK (smoothing x 0.08, IK_SWEEPS + 4) from
+--     bezier(coil, coil + (0, 2, -6 front / +6 back), target fixed at W) (easeIn, on the target SC_EARLY 0.05 s before the catch), "tight" IK (smoothing x 0.08, IK_SWEEPS + 4) from
 --     70 % of the strike; catch..S bezier(clamp at the catch, its midpoint to carry + (0, 3, 0), carry) (smooth), carry front
 --     (0.4, 7.08, 2.75) / back (0.4, 7.08, 0.75); S..throw -> slam front (0.6, 1.58, 15.75) / back (0.6, 1.58, -9.25)
---     (easeIn); throw..throw + R -> recover front (0.4, 3.58, 14.75) / back (0.4, 4.58, 8.75) over the first 1 / 1.6, the
+--     (easeIn); throw..throw + R -> bezier(slam, carry, recover) to front (0.4, 3.58, 14.75) / back (0.4, 4.58, 8.75) over the first 1 / 1.6, the
 --     offsets fading to 0 (smooth).
 --   * reach step (owner only): at a new grab the tail is pre-solved (tight, 10 sweeps) onto the target from this frame's pose;
 --     a miss over 0.5 k2 sets the character's local TenoGrabStepWant = the flat world vector toward the target of length
@@ -773,7 +773,7 @@ function TenoPose.grabTail(model, motors, pose, serverNow)
 end
 
 -- v1.11: Scorpion Strike grab (see the header)
-local SC_LEN, SC_STRIKE, SC_SLAM_T = 17.9, 0.15, 0.15
+local SC_LEN, SC_STRIKE, SC_SLAM_T, SC_EARLY = 17.9, 0.15, 0.15, 0.05
 local SC_BODY = {
 	front = {RootJoint = {-12, 0, 0}, Neck = {-12, 0, 0}, Head = {-8, 0, 0}, LegL = {24, 0, 0}, LegR = {24, 0, 0}, KneeL = {-24, 0, 0},
 		KneeR = {-24, 0, 0}, AnkleL = {8, 0, 0}, AnkleR = {8, 0, 0}, ArmL = {-14, 0, 0}, ArmR = {-14, 0, 0}},
@@ -895,10 +895,11 @@ do
 		local goal, w, tight = nil, 1, false
 		if t < W then
 			goal = M.rest:Lerp(coil, ease(t / math.max(0.05, W)))
-			M.scCatch = nil
+			M.scCatch, M.scTarget = nil, nil
 		elseif t < grab.catch then
-			local u = clamp01((t - W) / SC_STRIKE)
-			goal = bez(coil, coil + Vector3.new(0, 2 * k, G.dz * k), target(M), easeIn(u))
+			local u = clamp01((t - W) / (SC_STRIKE - SC_EARLY)) -- on the target SC_EARLY before the catch, held there
+			if not M.scTarget then M.scTarget = target(M) end -- fixed at the strike's start (the bot is pulled to the jaws after)
+			goal = bez(coil, coil + Vector3.new(0, 2 * k, G.dz * k), M.scTarget, easeIn(u))
 			tight = u > 0.7
 			M.scCatch = nil
 		elseif t < S then
@@ -909,7 +910,7 @@ do
 			goal = carry:Lerp(slam, easeIn((t - S) / SC_SLAM_T))
 		elseif t < grab.throw + GRAB_RECOVER then
 			local u = (t - grab.throw) / GRAB_RECOVER
-			goal = slam:Lerp(rec, smooth(u * 1.6))
+			goal = bez(slam, carry, rec, smooth(u * 1.6)) -- back up over the body (a straight line went through it and the ground)
 			w = 1 - smooth(u)
 		else
 			return nil

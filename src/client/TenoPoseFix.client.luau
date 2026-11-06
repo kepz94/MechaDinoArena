@@ -19,8 +19,9 @@
 --   of the Scorpion Strike grab. When the character's TenoGrabStepFor equals its TenoGrabStartedAt (TenoPose 1.11 set the
 --   local TenoGrabStepWant for this grab) and TenoGrabStyle is "scorpion", the root slides along TenoGrabStepWant (a flat
 --   world vector) from TenoGrabStartedAt to TenoGrabCatchAt - 0.1 (smoothstep), on Heartbeat, only while FloorMaterial is
---   not Air. Each frame a ray from the root along the step (STEP_PROBE + the frame's move; the character left out) stops it
---   1 stud short of anything that collides. Switch: script attribute TenoGrabStepEnabled (default true, read each frame).
+--   not Air. Each frame a ray along the step (STEP_PROBE + the frame's move) from the leading end of the body (Head_cranium
+--   toward the front, Torso_hips toward the back, at the root's height; the character and the grabbed target left out) stops
+--   it 1 stud short of anything that collides. Switch: script attribute TenoGrabStepEnabled (default true, read each frame).
 --   Diagnostic: character TenoGrabStepDone (studs moved for the last grab).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -94,7 +95,7 @@ end
 player.CharacterAdded:Connect(watch)
 -- v1.1: the grab's reach step
 local STEP_PROBE = 2
-local stepFor, stepDone = nil, 0
+local stepFor, stepDone, stepMoved = nil, 0, 0 -- stepDone: progress (L once blocked), stepMoved: studs really moved
 RunService.Heartbeat:Connect(function()
 	local c = player.Character
 	if not c or script:GetAttribute("TenoGrabStepEnabled") == false then return end
@@ -103,7 +104,7 @@ RunService.Heartbeat:Connect(function()
 	if not st or c:GetAttribute("TenoGrabStyle") ~= "scorpion" or c:GetAttribute("TenoGrabStepFor") ~= st or typeof(want) ~= "Vector3" then return end
 	local catch = tonumber(c:GetAttribute("TenoGrabCatchAt"))
 	if not catch or catch - 0.1 <= st then return end
-	if stepFor ~= st then stepFor, stepDone = st, 0 end
+	if stepFor ~= st then stepFor, stepDone, stepMoved = st, 0, 0 end
 	local L = want.Magnitude
 	if L < 1e-3 or stepDone >= L - 1e-3 then return end
 	local hum, root = c:FindFirstChildOfClass("Humanoid"), c:FindFirstChild("HumanoidRootPart")
@@ -115,15 +116,21 @@ RunService.Heartbeat:Connect(function()
 	local dir = Vector3.new(want.X, 0, want.Z).Unit
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = {c}
-	local hit = workspace:Raycast(root.Position, dir * (STEP_PROBE + d), params)
+	local ref = c:FindFirstChild("TenoGrabTargetRef")
+	local tgt = ref and ref:IsA("ObjectValue") and ref.Value
+	params.FilterDescendantsInstances = tgt and {c, tgt} or {c}
+	-- from the end of the body that leads the step: the head (toward the front) or the hips (back; the tail is coiled up)
+	local lead = c:FindFirstChild(dir:Dot(root.CFrame.LookVector) > 0 and "Head_cranium" or "Torso_hips", true)
+	local from = lead and Vector3.new(lead.Position.X, root.Position.Y, lead.Position.Z) or root.Position
+	local hit = workspace:Raycast(from, dir * (STEP_PROBE + d), params)
 	if hit and hit.Instance.CanCollide then
 		local free = hit.Distance - 1
-		if free <= 0 then stepDone = L c:SetAttribute("TenoGrabStepDone", stepDone) return end -- blocked: stop here
+		if free <= 0 then stepDone = L return end -- blocked: stop here
 		d = math.min(d, free)
 	end
 	root.CFrame += dir * d
 	stepDone += d
-	c:SetAttribute("TenoGrabStepDone", math.floor(stepDone * 100 + 0.5) / 100)
+	stepMoved += d
+	c:SetAttribute("TenoGrabStepDone", math.floor(stepMoved * 100 + 0.5) / 100)
 end)
 if player.Character then task.spawn(watch, player.Character) end
