@@ -1,4 +1,4 @@
--- MechaButtons v1.36 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.37 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -273,6 +273,13 @@ VERSION = "1.33" -- v1.33 the grapple button is the Dash (move direction)
 VERSION = "1.34" -- v1.34 tether aim stamps
 VERSION = "1.35" -- v1.35 dilo parts build 1
 VERSION = "1.36" -- v1.36 dilo parts build 2 + SILENCED
+VERSION = "1.37" -- v1.37 seconds left on cooling slot buttons
+-- v1.37 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 2; Kepu 2026-11-06 "Sweep + seconds"): while a slot part
+--   is cooling, the touch slot's sub label shows the seconds left in the PC format ("3.2s", AbilityBar paint), next to the
+--   existing sweep. Seconds = <Prefix>ReadyAt - now for the timed parts, CloakReadyAt for the cloak, the leap stamp +
+--   JumpCooldown for Mecha Legs, BreakerReadyAt for the Stun Breaker; the Thrusters keep their pips (no text). SILENCED,
+--   the passive Overclock "ON" and the Spring Jets "left / max" keep priority. Updated every frame; cleared at ready.
+--   Switch: script attribute MechaButtonsSecondsEnabled (default true, read every frame; false = 1.36).
 -- v1.36 (dilo parts build 2, MDA-321, plan docs/plans/DILO_PARTS_v1.0.md Task 8; DiloMovesServer 1.1; red-team 1 "Buttons + dilo
 --   server"): TIMED_PARTS += dhiss ("DiloPartHiss", DinoDiloHissRequest, "SONIC HISS"), dpump ("DiloPartPump",
 --   DinoDiloPumpRequest, "ANTIVENOM"), djets ("DiloPartJets", DinoDiloJetsRequest, "SPRING JETS"). Hiss and pump are normal
@@ -1080,6 +1087,23 @@ local function partState(id)
 	if id == "thrusters" and nextAt > 0 and rc > 0 then frac = math.clamp((nextAt - now) / rc, 0, 1) end
 	return char:GetAttribute("DashEnabled") == true, frac
 end
+-- v1.37: seconds left on a part's cooldown (nil when none)
+if script:GetAttribute("MechaButtonsSecondsEnabled") == nil then script:SetAttribute("MechaButtonsSecondsEnabled", true) end
+local function partSecs(id)
+	local now = workspace:GetServerTimeNow()
+	local left
+	if LEGS_BTN and id == "mechalegs" then
+		local stamp = char:GetAttribute("JumpPredictedAt")
+		left = typeof(stamp) == "number" and (stamp + (tonumber(char:GetAttribute("JumpCooldown")) or 6) - now) or 0
+	elseif id == "cloak" then
+		left = (tonumber(char:GetAttribute("CloakReadyAt")) or 0) - now
+	elseif HM_BTN and id == "breaker" then
+		left = (tonumber(char:GetAttribute("BreakerReadyAt")) or 0) - now
+	elseif TIMED_PARTS[id] and not clockPassive(id) then
+		left = (tonumber(char:GetAttribute(TIMED_PARTS[id][1] .. "ReadyAt")) or 0) - now
+	end
+	return left and left > 0 and left or nil
+end
 local function partName(id)
 	if id == "thrusters" then return "DASH" end
 	if LEGS_BTN and id == "mechalegs" then return "MECHA LEGS" end -- v1.16
@@ -1687,6 +1711,18 @@ RunService.RenderStepped:Connect(function()
 			if r ~= lastTimedReady[id] then lastTimedReady[id] = r; redraw = true end
 		end
 		s.cd.Size = UDim2.fromScale(1, id == "thrusters" and frac or id == "cloak" and cFrac or tFrac)
+		if id and id ~= "thrusters" and script:GetAttribute("MechaButtonsSecondsEnabled") ~= false and not silencedNow()
+			and not clockPassive(id)
+			and not (DILO_BTN and id == "djets" and (tonumber(char:GetAttribute("DiloPartJetsCharges")) or 0) > 1)
+			and not (gesture and gesture.n == n and gesture.pulling) then -- v1.37: seconds left
+			local sec = partSecs(id)
+			if sec then
+				local txt = ("%.1fs"):format(sec)
+				if s.sub.Text ~= txt then s.sub.Text = txt end
+			elseif s.sub.Text:match("^%d+%.%ds$") then
+				s.sub.Text = ""
+			end
+		end
 	end
 	if cReady ~= lastCloakReady then lastCloakReady = cReady; redraw = true end
 	local sil = silencedNow() -- v1.36: the silence ends

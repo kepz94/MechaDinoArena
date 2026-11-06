@@ -1,4 +1,4 @@
--- AbilityBar v1.31 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.32 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -187,6 +187,15 @@ VERSION = "1.28" -- v1.28 therizino parts build 1 tiles
 VERSION = "1.29" -- v1.29 therizino parts build 2 tiles
 VERSION = "1.30" -- v1.30 passive Overclock tile (ON)
 VERSION = "1.31" -- v1.31 SILENCED part tiles
+VERSION = "1.32" -- v1.32 teno + dilo part countdowns
+-- v1.32 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 1; Kepu 2026-11-06 "I need all cool downs to be [shown] on
+--   screen"): the 6 teno slot parts (tgrab / tmortar / tstomp / tbellow / tchallenge / tmud), the teno Hydraulic Leap slot
+--   tile (tleap) and the 7 dilo parts (dgatling / dmortar / dhiss / dspine / dpump / djets / dover) join TIMED_PARTS, so their
+--   tiles show the existing cooling fill + seconds (they fell through to "ready" before). Active windows: TenoMudUntil,
+--   TenoLeapUntil, DiloOverdriveUntil (Venom Overdrive), DiloImmuneUntil (Antivenom Pump star). Charge parts (djets:
+--   DiloPartJetsLeft / DiloPartJetsCharges; tleap: TenoLeapChargesLeft / TenoLeapCharges): "left / max" in the sub text
+--   while charges remain (their ReadyAt only moves when the last charge is spent), fill + seconds at 0 left. SILENCED still
+--   wins. Switch: script attribute AbilityBarTenoDiloTimersEnabled (default true, read at start; false = 1.31).
 -- v1.31 (dilo parts build 2, MDA-321, plan docs/plans/DILO_PARTS_v1.0.md Task 8; red-team 1 "Buttons + dilo server"; PC and
 --   touch together with MechaButtons 1.36): while the character's SilencedUntil (Sonic Hiss, DiloMovesServer 1.1) is in the
 --   future every slot tile with a part is painted "silenced": dimmed (0.6), no fill, no seconds, sub label "SILENCED"
@@ -244,6 +253,17 @@ if script:GetAttribute("AbilityBarTheriPartsEnabled") == nil then script:SetAttr
 if script:GetAttribute("AbilityBarTheriPartsEnabled") ~= false then
 	TIMED_PARTS.zhook, TIMED_PARTS.zfeather, TIMED_PARTS.zharvest, TIMED_PARTS.zsnare = "TheriHook", "TheriFeather", "TheriField", "TheriSnare"
 	TIMED_PARTS.zgrapple, TIMED_PARTS.zdeflect, TIMED_PARTS.zclock = "TheriGrapple", "TheriDeflect", "TheriClock" -- v1.29
+end
+if script:GetAttribute("AbilityBarTenoDiloTimersEnabled") == nil then script:SetAttribute("AbilityBarTenoDiloTimersEnabled", true) end -- v1.32
+local UNTIL_ATTR, CHARGE_ATTR = {}, {} -- v1.32: part id -> its active-until attribute / {left, max} charge attributes
+if script:GetAttribute("AbilityBarTenoDiloTimersEnabled") ~= false then
+	TIMED_PARTS.tgrab, TIMED_PARTS.tmortar, TIMED_PARTS.tstomp = "TenoGrab", "TenoMortar", "TenoStomp"
+	TIMED_PARTS.tbellow, TIMED_PARTS.tchallenge, TIMED_PARTS.tmud, TIMED_PARTS.tleap = "TenoBellow", "TenoChallenge", "TenoMud", "TenoLeap"
+	TIMED_PARTS.dgatling, TIMED_PARTS.dmortar, TIMED_PARTS.dhiss = "DiloPartGatling", "DiloPartMortar", "DiloPartHiss"
+	TIMED_PARTS.dspine, TIMED_PARTS.dpump, TIMED_PARTS.djets, TIMED_PARTS.dover = "DiloPartSpine", "DiloPartPump", "DiloPartJets", "DiloPartOver"
+	UNTIL_ATTR.dover, UNTIL_ATTR.dpump = "DiloOverdriveUntil", "DiloImmuneUntil"
+	CHARGE_ATTR.djets = {"DiloPartJetsLeft", "DiloPartJetsCharges"}
+	CHARGE_ATTR.tleap = {"TenoLeapChargesLeft", "TenoLeapCharges"}
 end
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
@@ -879,16 +899,22 @@ local function update()
 			elseif TIMED_PARTS[e.part] then -- v1.3: Adrenaline / Energy Shield
 				local px = TIMED_PARTS[e.part]
 				local readyAt = tonumber(char:GetAttribute(px .. "ReadyAt")) or 0
-				local untilT = tonumber(char:GetAttribute(px .. "Until")) or 0
+				local untilT = tonumber(char:GetAttribute(UNTIL_ATTR[e.part] or (px .. "Until"))) or 0 -- v1.32: + UNTIL_ATTR
 				local cd = math.max(0.01, tonumber(char:GetAttribute(px .. "Cooldown")) or 1)
+				local chg, chgText = CHARGE_ATTR[e.part], nil -- v1.32: charge parts
+				if chg then
+					local mx = math.floor(tonumber(char:GetAttribute(chg[2])) or 0)
+					local left = math.floor(tonumber(char:GetAttribute(chg[1])) or mx)
+					if mx > 1 then chgText = ("%d / %d"):format(math.max(0, left), mx) end
+				end
 				if char:GetAttribute(px .. "Enabled") ~= true then
 					paint(e, "off", 0.5, 0, nil)
 				elseif untilT > now then
-					paint(e, "active", 0, 0, untilT - now)
+					paint(e, "active", 0, 0, untilT - now, chgText)
 				elseif now < readyAt then
-					paint(e, "cooling", 0.25, (readyAt - now) / cd, readyAt - now)
+					paint(e, "cooling", 0.25, (readyAt - now) / cd, readyAt - now, chgText)
 				else
-					paint(e, "ready", 0, 0, nil)
+					paint(e, "ready", 0, 0, nil, chgText)
 				end
 			else
 				paint(e, "ready", 0, 0, nil)

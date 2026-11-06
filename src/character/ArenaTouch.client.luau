@@ -1,4 +1,4 @@
--- ArenaTouch v1.16 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.17 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -123,6 +123,15 @@ VERSION = "1.13" -- v1.13 therizino JUMP charge pips
 VERSION = "1.14" -- v1.14 teno JUMP charge pips
 VERSION = "1.15" -- v1.15 dilo ATTACK (hold disc + dart pip)
 VERSION = "1.16" -- v1.16 dilo dart pip full after a Cold Blood reset
+VERSION = "1.17" -- v1.17 BITE / POUNCE / RAM / JUMP cooldown sweep + seconds
+-- v1.17 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 3; Kepu 2026-11-06 "Sweep + seconds"): BITE, POUNCE (the
+--   raptor's ATTACK), RAM and JUMP get the slot buttons' cooldown look (MechaButtons: a black fill at 0.45 rising from the
+--   bottom, here cut to the circle by a UIGradient step) and the seconds left in the PC format ("%.1fs", AbilityBar paint)
+--   in a small line under the label, every frame. Source = AbilityBar's MOVES table: stamp <Move>PredictedAt + cooldown
+--   (BiteCooldown 0.8, PounceCooldown 3, RamCooldown 6, JumpCooldown 0.5 defaults). JUMP with leap charge pips (teno /
+--   therizino) keeps its pips (no sweep); the other pips buttons (headbutt, slash, teno, therizino, dilo ATTACK) are not
+--   touched. The existing dimming stays. Switch: script attribute ArenaTouchMoveTimersEnabled (default true, read every
+--   frame; false = 1.16). Diagnostic: ArenaTouchMoveTimers ("Bite 0.4" ... or "").
 if script:GetAttribute("ArenaTouchTenoJumpPipsEnabled") == nil then script:SetAttribute("ArenaTouchTenoJumpPipsEnabled", true) end -- v1.14
 local LEAP_HOLD = 0.15
 local PANEL = Color3.fromRGB(20, 20, 26)
@@ -825,6 +834,82 @@ RunService.RenderStepped:Connect(function()
 	end
 	local d = nowC .. "/" .. maxC
 	if char:GetAttribute("ArenaTouchTheriJumpPips") ~= d then char:SetAttribute("ArenaTouchTheriJumpPips", d) end
+end)
+-- v1.17: cooldown sweep + seconds on BITE / POUNCE / RAM / JUMP
+if script:GetAttribute("ArenaTouchMoveTimersEnabled") == nil then script:SetAttribute("ArenaTouchMoveTimersEnabled", true) end
+local function timerParts(b)
+	local f = Instance.new("Frame")
+	f.Name = "Cooldown"
+	f.Size = UDim2.fromScale(1, 1)
+	f.BackgroundColor3 = Color3.new(0, 0, 0)
+	f.BackgroundTransparency = 0.45
+	f.BorderSizePixel = 0
+	f.Visible = false
+	f.ZIndex = 2
+	f.Parent = b
+	local fc = Instance.new("UICorner")
+	fc.CornerRadius = UDim.new(0.5, 0)
+	fc.Parent = f
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Parent = f
+	local t = Instance.new("TextLabel")
+	t.Name = "CooldownSecs"
+	t.BackgroundTransparency = 1
+	t.Position = UDim2.fromScale(0.15, 0.64)
+	t.Size = UDim2.fromScale(0.7, 0.2)
+	t.Font = Enum.Font.FredokaOne
+	t.TextScaled = true
+	t.TextColor3 = Color3.new(1, 1, 1)
+	t.TextStrokeTransparency = 0.5
+	t.Text = ""
+	t.ZIndex = 3
+	t.Parent = b
+	local tc = Instance.new("UITextSizeConstraint")
+	tc.MaxTextSize = 14
+	tc.Parent = t
+	for _, l in ipairs(b:GetChildren()) do -- the button's own labels stay above the fill
+		if l:IsA("TextLabel") and l ~= t and l.ZIndex < 3 then l.ZIndex = 3 end
+	end
+	return {f = f, g = g, t = t, frac = -1}
+end
+local MOVE_TIMERS = {
+	{name = "Bite", b = bite, stamp = "BitePredictedAt", cd = "BiteCooldown", cdDefault = 0.8},
+	{name = "Pounce", b = pounceMain, stamp = "PouncePredictedAt", cd = "PounceCooldown", cdDefault = 3},
+	{name = "Ram", b = ram, stamp = "RamPredictedAt", cd = "RamCooldown", cdDefault = 6},
+	{name = "Jump", b = leap, stamp = "JumpPredictedAt", cd = "JumpCooldown", cdDefault = 0.5, skip = function() return jpRow.Visible end},
+}
+for _, m in ipairs(MOVE_TIMERS) do m.p = timerParts(m.b) end
+RunService.RenderStepped:Connect(function()
+	local on = script:GetAttribute("ArenaTouchMoveTimersEnabled") ~= false
+	local now = workspace:GetServerTimeNow()
+	local diag = {}
+	for _, m in ipairs(MOVE_TIMERS) do
+		local left, frac = 0, 0
+		if on and m.b.Visible and not (m.skip and m.skip()) then
+			local cd = tonumber(char:GetAttribute(m.cd)) or m.cdDefault
+			local st = char:GetAttribute(m.stamp)
+			if cd > 0 and typeof(st) == "number" then
+				left = math.max(0, st + cd - now)
+				frac = math.clamp(left / cd, 0, 1)
+			end
+		end
+		local p = m.p
+		if math.abs(p.frac - frac) > 0.002 then
+			p.frac = frac
+			p.f.Visible = frac > 0
+			if frac > 0 then
+				local cut = math.clamp(1 - frac, 0.002, 0.998)
+				p.g.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(cut - 0.001, 1),
+					NumberSequenceKeypoint.new(cut, 0), NumberSequenceKeypoint.new(1, 0)})
+			end
+		end
+		local txt = left > 0 and ("%.1fs"):format(left) or ""
+		if p.t.Text ~= txt then p.t.Text = txt end
+		if left > 0 then table.insert(diag, m.name .. " " .. ("%.1f"):format(left)) end
+	end
+	local d = table.concat(diag, ", ")
+	if char:GetAttribute("ArenaTouchMoveTimers") ~= d then char:SetAttribute("ArenaTouchMoveTimers", d) end
 end)
 -- v1.9: teno pips / glow every frame
 local RED_RING = Color3.fromRGB(240, 90, 79)
