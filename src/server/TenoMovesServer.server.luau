@@ -1,4 +1,4 @@
--- TenoMovesServer v1.10 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.11 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -183,6 +183,16 @@
 --   arcs the thrown bot with it). Landing point, fling, damage, stun, crash unchanged. Switch: script attribute
 --   TenoMovesGrabScorpionEnabled (default true, read at each grab; false = 1.9: OT_TIMES, OT_FLIGHT, TenoGrabStyle
 --   "overtop", TenoGrabFlightPeak nil). Diagnostic: script TenoMovesGrabsScorpion.
+-- v1.11 (MDA-282, plan docs/plans/TENO_MOVES_ANIM_v1.0.md Task 1, mockup docs/mockups/teno_moves_anim.html v0.2; Kepu
+--   2026-11-05 18:47 picked Mortar A "Anchored Shot", Stomp A "Quake Smash", Challenge A "Watcher Alarm"):
+--   * Boulder Mortar: the boulder leaves MORTAR_FIRE_A (0.70) s after the press (TenoPose 1.12's brace + aim + charge), was
+--     MORTAR_FIRE3 0.55. Switch: script attribute TenoMovesMortarAnchorEnabled (default true, read at each shot).
+--   * Stomp Shockwave: the hit (TenoStompAt) comes STOMP_HIT_A (0.60) s after the press (the higher rear + hang), was
+--     STOMP_HIT 0.5. Switch: script attribute TenoMovesStompQuakeEnabled (default true, read at each stomp).
+--   * Challenge Call: at the press, TenoChallengeAimYaw = the flat yaw in degrees from the teno's facing to the nearest
+--     candidate within TenoChallengeRange (15 up / down), + toward the root's +X side, clamped to +-40; 0 when none.
+--     Stamped before TenoChallengeStartedAt (TenoPose 1.12 snaps the head to it, TenoMovesFX 1.7 sweeps the scan cone).
+--     Switch: script attribute TenoMovesChallengeAimEnabled (default true; false = no stamp).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -196,6 +206,7 @@ VERSION = "1.7" -- v1.7 Over-the-Top grab, leap landing on dinos + shove
 VERSION = "1.8" -- v1.8 Deflector Claws (mortar)
 VERSION = "1.9" -- v1.9 boulder from the cannon muzzle
 VERSION = "1.10" -- v1.10 Scorpion Strike grab timeline
+VERSION = "1.11" -- v1.11 animation pass timings (mortar 0.70, stomp 0.60, challenge aim)
 if script:GetAttribute("TenoMovesMortarMuzzleEnabled") == nil then script:SetAttribute("TenoMovesMortarMuzzleEnabled", true) end -- v1.9
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
@@ -212,6 +223,10 @@ local OT_TIMES = {front = {catch = 0.70, throw = 1.35}, back = {catch = 0.45, th
 local OT_FLIGHT, OT_LAND_LEAD = 0.85, 0.15 -- v1.7
 local SC_TIMES = {front = {catch = 0.55, throw = 1.15}, back = {catch = 0.40, throw = 1.00}} -- v1.10
 local SC_FLIGHT, SC_PEAK = 0.6, 8 -- v1.10
+local MORTAR_FIRE_A, STOMP_HIT_A, CHALLENGE_AIM_MAX = 0.70, 0.60, 40 -- v1.11
+for _, k in ipairs({"TenoMovesMortarAnchorEnabled", "TenoMovesStompQuakeEnabled", "TenoMovesChallengeAimEnabled"}) do -- v1.11
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
 if script:GetAttribute("TenoMovesGrabScorpionEnabled") == nil then script:SetAttribute("TenoMovesGrabScorpionEnabled", true) end -- v1.10
 if script:GetAttribute("TenoMovesGrabOverTopEnabled") == nil then script:SetAttribute("TenoMovesGrabOverTopEnabled", true) end -- v1.7
 for _, k in ipairs({"TenoMovesLeapOnDinoEnabled", "TenoMovesLeapShoveEnabled"}) do -- v1.7
@@ -882,6 +897,7 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 	end
 	if newAim and script:GetAttribute("TenoMovesMortarBigEnabled") ~= false then -- v1.5: wind-up, longer shots fly longer
 		fireT = MORTAR_FIRE3
+		if script:GetAttribute("TenoMovesMortarAnchorEnabled") ~= false then fireT = MORTAR_FIRE_A end -- v1.11
 		local k = math.clamp((flat(centre - root.Position).Magnitude - 60) / 30, 0, 1)
 		flightT, peakT = flightT + 0.3 * k, peakT + 8 * k
 	end
@@ -948,7 +964,7 @@ stompRemote.OnServerEvent:Connect(function(player, stamp)
 		num(char, "TenoStompNoJump", 0)
 	char:SetAttribute("TenoStompHits", 0)
 	char:SetAttribute("TenoStompStartedAt", t)
-	task.delay(STOMP_HIT, function()
+	task.delay(script:GetAttribute("TenoMovesStompQuakeEnabled") ~= false and STOMP_HIT_A or STOMP_HIT, function() -- v1.11
 		local root = rootOf(char)
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not (char.Parent and root and hum and hum.Health > 0) then return end
@@ -1175,8 +1191,22 @@ challengeRemote.OnServerEvent:Connect(function(player, stamp)
 	if not char then return end
 	ok(char, "TenoChallenge", t)
 	count("TenoMovesChallenges")
-	char:SetAttribute("TenoChallengeStartedAt", t)
 	local range, time = num(char, "TenoChallengeRange", 30), num(char, "TenoChallengeTime", 5)
+	if script:GetAttribute("TenoMovesChallengeAimEnabled") ~= false then -- v1.11: where the head snaps
+		local root, yaw, bestD = rootOf(char), 0, nil
+		if root then
+			for _, m in ipairs(candidates(char)) do
+				local mr = rootOf(m)
+				local d = mr and flat(mr.Position - root.Position).Magnitude
+				if d and d <= range and math.abs(mr.Position.Y - root.Position.Y) <= DY and (not bestD or d < bestD) then
+					local lp = root.CFrame:PointToObjectSpace(mr.Position)
+					yaw, bestD = math.clamp(math.deg(math.atan2(lp.X, -lp.Z)), -CHALLENGE_AIM_MAX, CHALLENGE_AIM_MAX), d
+				end
+			end
+		end
+		char:SetAttribute("TenoChallengeAimYaw", math.floor(yaw * 10 + 0.5) / 10)
+	end
+	char:SetAttribute("TenoChallengeStartedAt", t)
 	local weak, smul = math.clamp(num(char, "TenoChallengeWeakMul", 1), 0, 1), num(char, "TenoChallengeSlowMul", 1)
 	task.delay(CHALLENGE_AT, function()
 		if not alive(char) then return end

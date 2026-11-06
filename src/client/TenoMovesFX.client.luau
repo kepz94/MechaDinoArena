@@ -1,4 +1,4 @@
--- TenoMovesFX v1.6 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
+-- TenoMovesFX v1.7 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
 -- StarterPlayerScripts; every client draws every teno). Plan docs/plans/TENO_ABILITIES_v1.0.md Task 7 (MDA-179), mockup
 -- docs/mockups/teno_abilities_options.html v0.3 (rings, dust, heat glow, the catapult boulder leaving the bucket).
 -- Reads TenoMovesServer 1.0's character stamps (the server also draws the boulders and rubble patches itself):
@@ -57,6 +57,22 @@
 -- v1.6 (MDA-276, plan docs/plans/TENO_PARTS_LOOKS_v2.0.md Task 4; TenoMovesServer 1.9): the mortar launch flash (1.4) sits at the
 --   TPart_tmortar "muzzle" piece (the Back Cannon's barrel tip, TenoPartsServer 1.3) when there is one, else at the rock as
 --   1.5. Switch: script attribute TenoMovesFXMuzzleEnabled (default true, read at each shot; false = 1.5).
+-- v1.7 (MDA-286, plan docs/plans/TENO_MOVES_ANIM_v1.0.md Task 5, mockup docs/mockups/teno_moves_anim.html v0.2; Kepu
+--   2026-11-05 18:47 picks): the new effects of the animation pass, each with its own switch (script attribute, default true,
+--   read at each event). Every piece is Neon / SmoothPlastic, anchored, no collide / query / touch, destroyed after.
+--   * Mortar (TenoMovesFXMortarSmokeEnabled), TenoMortarFiredAt: 6 grey smoke puffs out of the TPart_tmortar "muzzle" along
+--     its barrel (UpVector) over 0.9 s; a brass casing thrown out of the cannon toward the root's +X side on a 0.7 s arc;
+--     dust under Tail4_main (the anchored tail).
+--   * Stomp (TenoMovesFXStompCracksEnabled), TenoStompAt: 10 blue crack strips fanning 40 degrees ahead of the root from the
+--     ground between the hands, growing to TenoStompRange over 0.45 s, fading out over 0.6 s.
+--   * Challenge (TenoMovesFXChallengeScanEnabled), TenoChallengeStartedAt: a blue scan fan (7 rays, 70 degrees, length
+--     TenoChallengeRange) from the head, its centre turning from TenoChallengeAimYaw + 35 to TenoChallengeAimYaw - 35 degrees
+--     (+ = toward the root's +X) between start + 0.2 and start + 0.65; TenoChallengeAt: a yellow "!" above each
+--     TenoChallengeTargets model for 0.8 s and a 0.7 s blue wave to TenoChallengeRange.
+--   * Leap (TenoMovesFXLeapSteamEnabled), on a teno with TenoLeapOnJump: JumpStartedAt + JumpWindup (0.12) and
+--     TenoLeapLandedAt: 4 white steam puffs rising from each FootL_meta / FootR_meta.
+--   * Shield (TenoMovesFXShieldPulseEnabled), TenoMudCoatAt: a lilac disc from the TPart_tmud "disc" (its size and facing)
+--     growing to 10 x scale studs across over 0.75 s while fading (look only).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
@@ -65,6 +81,7 @@ VERSION = "1.3" -- v1.3 purple shield look
 VERSION = "1.4" -- v1.4 mortar launch FX
 VERSION = "1.5" -- v1.5 grab flash at the catch
 VERSION = "1.6" -- v1.6 launch flash at the cannon muzzle
+VERSION = "1.7" -- v1.7 animation pass effects
 if script:GetAttribute("TenoMovesFXMuzzleEnabled") == nil then script:SetAttribute("TenoMovesFXMuzzleEnabled", true) end -- v1.6
 if script:GetAttribute("TenoMovesFXGrabCatchEnabled") == nil then script:SetAttribute("TenoMovesFXGrabCatchEnabled", true) end -- v1.5
 local RING_TIME, ROCK_RELOAD = 0.5, 2.4
@@ -613,3 +630,163 @@ local function onPlayer5(p)
 end
 Players.PlayerAdded:Connect(onPlayer5)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer5(p) end
+
+
+-- v1.7: the animation pass effects (see the header) ---------------------------------------------------------------------------
+for _, k in ipairs({"TenoMovesFXMortarSmokeEnabled", "TenoMovesFXStompCracksEnabled", "TenoMovesFXChallengeScanEnabled",
+	"TenoMovesFXLeapSteamEnabled", "TenoMovesFXShieldPulseEnabled"}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
+local function on7(k) return on() and script:GetAttribute(k) ~= false end
+local SMOKE, STEAM, BRASS, SCAN, MARK = Color3.fromRGB(185, 189, 196), Color3.fromRGB(242, 244, 248), Color3.fromRGB(201, 162, 74),
+	Color3.fromRGB(61, 155, 255), Color3.fromRGB(255, 211, 77)
+local function softBall(name, pos, size, color, alpha)
+	local p = part(name, Enum.PartType.Ball, Vector3.one * size, CFrame.new(pos), color, alpha)
+	p.Material = Enum.Material.SmoothPlastic
+	return p
+end
+local function drift(p, to, grow, time)
+	TweenService:Create(p, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{CFrame = CFrame.new(to), Size = p.Size * grow, Transparency = 1}):Play()
+	task.delay(time + 0.05, function() p:Destroy() end)
+end
+local function steam(pos, sc)
+	for i = 1, 4 do
+		local p = softBall("TenoSteam", pos + Vector3.new((math.random() - 0.5) * sc, 0, (math.random() - 0.5) * sc), 0.8 * sc, STEAM, 0.35)
+		drift(p, p.Position + Vector3.new((math.random() - 0.5) * sc, (2 + i * 0.6) * sc, (math.random() - 0.5) * sc), 2.4, 0.6 + i * 0.08)
+	end
+end
+local function partOf(char, n) local p = char:FindFirstChild(n, true) return p and p:IsA("BasePart") and p or nil end
+local function watch7(char)
+	-- mortar smoke + casing + anchored tail dust
+	char:GetAttributeChangedSignal("TenoMortarFiredAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on7("TenoMovesFXMortarSmokeEnabled") or not fresh(char, "TenoMortarFiredAt") or not root then return end
+		local sc = char:GetScale()
+		local muzzle = roles(char, "tmortar", "muzzle")[1]
+		if muzzle then
+			local dir = muzzle.CFrame.UpVector
+			for i = 1, 6 do
+				local p = softBall("TenoMortarSmoke", muzzle.Position + dir * sc, (1 + i * 0.25) * sc, SMOKE, 0.3)
+				drift(p, muzzle.Position + dir * (2 + i * 1.1) * sc + Vector3.new((math.random() - 0.5) * 2 * sc, i * 0.4 * sc, (math.random() - 0.5) * 2 * sc), 2.2, 0.9)
+			end
+			local c = part("TenoMortarCasing", Enum.PartType.Cylinder, Vector3.new(0.9, 0.6, 0.6) * sc, CFrame.new(muzzle.Position), BRASS, 0)
+			c.Material = Enum.Material.Metal
+			local from, side, t0 = muzzle.Position - dir * 1.5 * sc, root.CFrame.RightVector, os.clock()
+			follow(c, function(q)
+				local u = os.clock() - t0
+				if u > 0.7 then return false end
+				q.CFrame = CFrame.new(from + side * u * 9 * sc + Vector3.new(0, (5 * u - 12 * u * u) * sc, 0)) * CFrame.Angles(u * 14, 0, u * 9)
+				q.Transparency = math.max(0, (u - 0.5) / 0.2)
+				return true
+			end)
+		end
+		local t4 = partOf(char, "Tail4_main")
+		if t4 then dust(t4.Position, 4 * sc) end
+		count("mortarSmoke")
+	end)
+	-- stomp cracks
+	char:GetAttributeChangedSignal("TenoStompAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on7("TenoMovesFXStompCracksEnabled") or not fresh(char, "TenoStompAt") or not root then return end
+		local hl, hr = partOf(char, "ArmL_hand"), partOf(char, "ArmR_hand")
+		local c = ground((hl and hr) and (hl.Position + hr.Position) / 2 or root.Position) + Vector3.new(0, 0.15, 0)
+		local fwd = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
+		local range, t0 = num(char, "TenoStompRange", 14), os.clock()
+		for i = 0, 9 do
+			local a = math.rad(-20 + 40 * i / 9)
+			local d = (CFrame.Angles(0, a, 0) * CFrame.new(Vector3.zero, fwd)).LookVector
+			local len = range * (0.6 + 0.4 * ((i * 7) % 5) / 4)
+			local k = part("TenoStompCrack", Enum.PartType.Block, Vector3.new(0.5, 0.15, 0.1), CFrame.new(c), SCAN, 0)
+			follow(k, function(q)
+				local u = os.clock() - t0
+				if u > 1.05 then return false end
+				local L = len * math.min(1, u / 0.45)
+				q.Size = Vector3.new(0.5, 0.15, math.max(0.1, L))
+				q.CFrame = CFrame.lookAt(c + d * L / 2, c + d * L)
+				q.Transparency = u < 0.45 and 0 or (u - 0.45) / 0.6
+				return true
+			end)
+		end
+		count("stompCracks")
+	end)
+	-- challenge scan fan, marks, wave
+	char:GetAttributeChangedSignal("TenoChallengeStartedAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on7("TenoMovesFXChallengeScanEnabled") or not fresh(char, "TenoChallengeStartedAt") or not root then return end
+		local st, Y, range = char:GetAttribute("TenoChallengeStartedAt"), num(char, "TenoChallengeAimYaw", 0), num(char, "TenoChallengeRange", 30)
+		for i = 0, 6 do
+			local off = -35 + 70 * i / 6
+			local ray = part("TenoScanRay", Enum.PartType.Block, Vector3.new(0.3, 0.15, 1), CFrame.new(0, -1000, 0), SCAN, 1)
+			follow(ray, function(q)
+				local e = serverNow() - st
+				if e > 0.8 then return false end
+				local head = partOf(char, "Head_cranium")
+				if not (head and root.Parent) then return false end
+				local u = math.clamp((e - 0.2) / 0.45, 0, 1)
+				local centre = (Y + 35) - 70 * (u * u * (3 - 2 * u))
+				local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
+				local d = (CFrame.Angles(0, -math.rad(centre + off), 0) * CFrame.new(Vector3.zero, look)).LookVector
+				local from = ground(head.Position) + Vector3.new(0, 0.3, 0)
+				q.Size = Vector3.new(0.3, 0.15, range)
+				q.CFrame = CFrame.lookAt(from + d * range / 2, from + d * range)
+				q.Transparency = (e < 0.2 or e > 0.7) and 1 or 0.35
+				return true
+			end)
+		end
+		count("challengeScan")
+	end)
+	char:GetAttributeChangedSignal("TenoChallengeAt"):Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not on7("TenoMovesFXChallengeScanEnabled") or not fresh(char, "TenoChallengeAt") or not root then return end
+		wave(root.Position, num(char, "TenoChallengeRange", 30), SCAN, 0.7, 28)
+		for _, m in ipairs(namesOf(char, "TenoChallengeTargets")) do
+			local r = m:FindFirstChild("HumanoidRootPart")
+			if r then
+				local bb = Instance.new("BillboardGui")
+				bb.Name = "TenoChallengeMark" bb.Size = UDim2.fromOffset(60, 60) bb.StudsOffsetWorldSpace = Vector3.new(0, 9, 0)
+				bb.AlwaysOnTop = true bb.Adornee = r
+				local l = Instance.new("TextLabel")
+				l.Size = UDim2.fromScale(1, 1) l.BackgroundTransparency = 1 l.Text = "!" l.TextScaled = true l.Font = Enum.Font.FredokaOne
+				l.TextColor3 = MARK l.TextStrokeTransparency = 0.2 l.Parent = bb
+				bb.Parent = fx()
+				task.delay(0.8, function() bb:Destroy() end)
+			end
+		end
+		count("challengeMarks")
+	end)
+	-- leap steam at the take-off and the landing
+	local function legSteam()
+		local sc = char:GetScale()
+		for _, n in ipairs({"FootL_meta", "FootR_meta"}) do local f = partOf(char, n) if f then steam(f.Position, sc) end end
+	end
+	char:GetAttributeChangedSignal("JumpStartedAt"):Connect(function()
+		if not on7("TenoMovesFXLeapSteamEnabled") or char:GetAttribute("TenoLeapOnJump") ~= true or not fresh(char, "JumpStartedAt") then return end
+		task.delay(num(char, "JumpWindup", 0.12), legSteam)
+		count("leapSteam")
+	end)
+	char:GetAttributeChangedSignal("TenoLeapLandedAt"):Connect(function()
+		if not on7("TenoMovesFXLeapSteamEnabled") or char:GetAttribute("TenoLeapOnJump") ~= true or not fresh(char, "TenoLeapLandedAt") then return end
+		legSteam()
+	end)
+	-- shield pulse
+	char:GetAttributeChangedSignal("TenoMudCoatAt"):Connect(function()
+		if not on7("TenoMovesFXShieldPulseEnabled") or not fresh(char, "TenoMudCoatAt") then return end
+		local d = roles(char, "tmud", "disc")[1]
+		if not d then return end
+		local sz, cf, sc = d.Size, d.CFrame, char:GetScale()
+		local thin = (sz.X <= sz.Y and sz.X <= sz.Z) and "X" or (sz.Y <= sz.Z and "Y" or "Z")
+		local p = part("TenoShieldPulse", d:IsA("Part") and d.Shape or Enum.PartType.Block, sz, cf, Color3.fromRGB(205, 160, 255), 0.2)
+		local target = 10 * sc
+		local goal = Vector3.new(thin == "X" and sz.X or target, thin == "Y" and sz.Y or target, thin == "Z" and sz.Z or target)
+		TweenService:Create(p, TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = goal, Transparency = 1}):Play()
+		task.delay(0.8, function() p:Destroy() end)
+		count("shieldPulse")
+	end)
+end
+local function onPlayer7(p)
+	p.CharacterAdded:Connect(watch7)
+	if p.Character then watch7(p.Character) end
+end
+Players.PlayerAdded:Connect(onPlayer7)
+for _, p in ipairs(Players:GetPlayers()) do onPlayer7(p) end

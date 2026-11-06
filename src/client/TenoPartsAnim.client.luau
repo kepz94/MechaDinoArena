@@ -1,4 +1,4 @@
--- TenoPartsAnim v1.0 (Mecha Dino Arena) — makes the machinery on the Tenontosaurus' redesigned mecha parts move (every
+-- TenoPartsAnim v1.1 (Mecha Dino Arena) — makes the machinery on the Tenontosaurus' redesigned mecha parts move (every
 -- client, every teno). MDA-275, plan docs/plans/TENO_PARTS_LOOKS_v2.0.md Task 3; looks TenoPartsServer 1.3 + TenoPartsLooksV2
 -- 1.0 (Kepu 2026-11-05 16:48 picks), motions as in docs/mockups/teno_parts_redesign.html v0.2. Built from TheriPartsAnim 1.0's
 -- loop (that script is not edited).
@@ -28,6 +28,10 @@
 --   tmud    TenoMudCoatAt (newer than TenoMudEndedAt) while TenoMudUntil > now: the 10 mane blades swing forward over 0.15 s,
 --           the "disc" film shows (0.3 + 0.08 sin 4t) x u and the "rim" 0.9 u; at TenoMudEndedAt (or TenoMudUntil) they fold
 --           back over 0.3 s.
+-- v1.1 (MDA-285, plan docs/plans/TENO_MOVES_ANIM_v1.0.md Task 4; Kepu 2026-11-05 picked Bellow A "Concussion Shriek"):
+--   tbellow: the sacs' pulse is multiplied by an inflate factor: from TenoBellowStartedAt 1 + 0.5 x smoothstep(t / 0.4) up to
+--   TenoBellowAt (else start + 0.5: the inhale), then 0.8 over 0.06 s (the shriek squeezes them), back to 1 over the next
+--   0.5 s. Switch: script attribute TenoPartsAnimShriekEnabled (default true, read each frame).
 -- Who: every player's character, plus (Studio test hook) any workspace Model with attribute TenoPartsAnimTarget = true.
 -- Switch: script attribute TenoPartsAnimEnabled (default true, read each frame; false = every joint at rest, lights off).
 -- Diagnostics: script TenoPartsAnimVersion, TenoPartsAnimJoints (joints written, last frame); model TenoPartsAnimActive
@@ -36,6 +40,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 the bellow sacs inhale / squeeze
+if script:GetAttribute("TenoPartsAnimShriekEnabled") == nil then script:SetAttribute("TenoPartsAnimShriekEnabled", true) end -- v1.1
 script:SetAttribute("TenoPartsAnimVersion", VERSION)
 if script:GetAttribute("TenoPartsAnimEnabled") == nil then script:SetAttribute("TenoPartsAnimEnabled", true) end
 
@@ -102,6 +108,15 @@ local ACT = {
 			u = t < fin and up(t - s, 0.15) or math.max(0, 1 - up(t - fin, 0.3))
 		end
 		local f = 1 + 0.04 * math.sin(2 * t) + 0.35 * u * (0.5 + 0.5 * math.sin(6 * t))
+		if s and script:GetAttribute("TenoPartsAnimShriekEnabled") ~= false then -- v1.1: inhale, squeeze, refill
+			local at = stamp(c, "TenoBellowAt", s) or (s + 0.5)
+			local inflate
+			if t < at then local k = math.clamp((t - s) / 0.4, 0, 1) inflate = 1 + 0.5 * k * k * (3 - 2 * k)
+			elseif t < at + 0.06 then inflate = 1.5 - 0.7 * ((t - at) / 0.06)
+			elseif t < at + 0.56 then local k = (t - at - 0.06) / 0.5 inflate = 0.8 + 0.2 * k * k * (3 - 2 * k)
+			else inflate = 1 end
+			f *= inflate
+		end
 		return {u = u, pulse = {sac = f}, op = {sac = 0.55 + 0.25 * u}}
 	end,
 	tchallenge = function(c, t, built)

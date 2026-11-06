@@ -1,4 +1,4 @@
--- TenoPose v1.11 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.12 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -131,11 +131,33 @@
 --     (miss - 0.5 k2), capped at 2 k2 front / 5 k2 back (TenoPoseFix 1.1 slides the root by it), and TenoGrabStepFor = the
 --     grab's TenoGrabStartedAt; else TenoGrabStepWant = Vector3.zero.
 --   Switch: model attribute TenoGrabScorpionEnabled (nil = true; false = the 1.10 Over-the-Top path for every grab).
+-- v1.12 (MDA-283 / MDA-284, plan docs/plans/TENO_MOVES_ANIM_v1.0.md Tasks 2 + 3, mockup docs/mockups/teno_moves_anim.html
+--   v0.2; Kepu 2026-11-05 18:47 picked Mortar A, Stomp A, Bellow A, Challenge A, Leap A, Shield C). Times t from the move's
+--   StartedAt. Each move has its own model switch (nil = true; false = the 1.11 pose):
+--   * "tmortar" (TenoMortarAnchorPoseEnabled) Anchored Shot: F = TenoMortarFiredAt - start when newer, else 0.70.
+--     0 -> ANCHOR by 0.35 (smooth: legs splayed, knees bent, the tail flat on the ground); held to F; F -> ANCHOR + KICK
+--     (RootJoint +9, Neck +8, Head -6, arms +10) in 0.06 (easeOut); -> ANCHOR by F + 0.4 (smooth); held to F + 1.2; -> 0 by
+--     F + 1.8. The phase lasts 2.6 s (ABILITY_END.tmortar, was 1.6).
+--   * "tstomp" (TenoStompQuakePoseEnabled) Quake Smash: H = TenoStompAt - start when newer, else 0.60. 0 -> REAR_HI by
+--     H - 0.22 (smooth); the hang (RootJoint +3) to H - 0.08; -> SMASH by H (easeIn); held to H + 0.35; -> 0 by H + 1.2.
+--     The phase lasts 1.9 s (was 1.7).
+--   * "tbellow" (TenoBellowShriekPoseEnabled) Concussion Shriek: 0 -> INHALE by 0.4 (smooth); -> SHRIEK by 0.5 (easeIn);
+--     held to 1.1; -> 0 by 1.8.
+--   * "tchallenge" (TenoChallengeAlarmPoseEnabled) Watcher Alarm: Y = -TenoChallengeAimYaw (the joint's yaw sign);
+--     0 -> 0.3 x BELLOW with Neck yaw Y, Head yaw Y / 2 by 0.2 (easeOut: the snap); the yaw sweeps Y -> -Y by 0.65 (smooth:
+--     the scan) while the body goes to 0.5 x BELLOW; held to 1.3; -> 0 by 1.9.
+--   * "tmud" (TenoShieldPulsePoseEnabled) Shield Pulse: 0 -> PUSH by 0.25 (easeOut); -> GUARD by 0.7 (smooth); held to 1.2;
+--     -> 0 by 1.7 (Kepu: guard ~1 s, then normal; the shield stays as before).
+--   * JUMP leap (settings TenoLeapPistonEnabled, model attribute, default true) Piston Launch, the smooth leap's tables:
+--     crouch LOWCROUCH (JumpWindup unchanged, 0.12 s); air LOWCROUCH -> J_AIR over 0.1 s (the push), -> TUCK by 0.35 s, plus
+--     the existing reach toward J_LAND; land: from the touchdown pose -> SQUAT over TenoLeapLandIn, then the fade. "tland"
+--     plays on top unchanged.
 local TenoPose = {}
 TenoPose.Version = "1.8"
 TenoPose.Version = "1.9" -- v1.9 Over-the-Top grab IK
 TenoPose.Version = "1.10" -- v1.10 local landing slam, the look's clamp point
 TenoPose.Version = "1.11" -- v1.11 Scorpion Strike grab
+TenoPose.Version = "1.12" -- v1.12 animation pass: mortar, stomp, bellow, challenge, shield, leap
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -917,6 +939,133 @@ do
 		end
 		local ang, miss = solveSc(motors, pose, goal, tight)
 		return toOffsets(ang, w), miss
+	end
+end
+
+-- v1.12: the animation pass (see the header)
+TenoPose.Defaults.TenoLeapPistonEnabled = true
+local P12 = {
+	ANCHOR = {RootJoint = {-6, 0, 0}, LegL = {26, 18, 0}, LegR = {26, -18, 0}, KneeL = {-34, 0, 0}, KneeR = {-34, 0, 0}, AnkleL = {10, 0, 0},
+		AnkleR = {10, 0, 0}, ArmL = {-10, 0, 0}, ArmR = {-10, 0, 0}, Neck = {-8, 0, 0}, Tail1 = {22, 0, 0}, Tail2 = {12, 0, 0},
+		Tail3 = {4, 0, 0}, Tail4 = {-2, 0, 0}, Tail5 = {-4, 0, 0}},
+	KICK = {RootJoint = {9, 0, 0}, Neck = {8, 0, 0}, Head = {-6, 0, 0}, ArmL = {10, 0, 0}, ArmR = {10, 0, 0}},
+	REAR_HI = {RootJoint = {52, 0, 0}, LegL = {-50, 0, 0}, LegR = {-50, 0, 0}, KneeL = {-26, 0, 0}, KneeR = {-26, 0, 0}, ArmL = {85, 0, 0},
+		ArmR = {80, 0, 0}, Neck = {6, 0, 0}, Head = {-10, 0, 0}, Jaw = {-28, 0, 0}, Tail1 = {-36, 0, 0}, Tail2 = {6, 0, 0}, Tail5 = {-12, 0, 0}},
+	SMASH = {RootJoint = {-18, 0, 0}, LegL = {18, 0, 0}, LegR = {18, 0, 0}, KneeL = {-12, 0, 0}, KneeR = {-12, 0, 0}, ArmL = {-16, 0, 0},
+		ArmR = {-16, 0, 0}, Neck = {-20, 0, 0}, Head = {-14, 0, 0}, Jaw = {-12, 0, 0}, Tail1 = {18, 0, 0}},
+	INHALE = {RootJoint = {8, 0, 0}, Neck = {24, 0, 0}, Head = {26, 0, 0}, Jaw = {-6, 0, 0}, ArmL = {10, 0, 0}, ArmR = {10, 0, 0}, Tail1 = {-8, 0, 0}},
+	SHRIEK = {RootJoint = {-6, 0, 0}, Neck = {-4, 0, 0}, Head = {-6, 0, 0}, Jaw = {-46, 0, 0}, LegL = {10, 0, 0}, LegR = {-4, 0, 0},
+		KneeL = {-12, 0, 0}, Tail1 = {6, 0, 0}},
+	PUSH = {RootJoint = {-4, 0, 0}, Neck = {-6, 0, 0}, ArmL = {30, 0, 0}, ArmR = {30, 0, 0}, LegL = {24, 0, 0}, LegR = {-10, 0, 0}, KneeL = {-24, 0, 0}},
+	GUARD = {RootJoint = {-6, 0, 0}, Neck = {-10.8, 0, 0}, Head = {-6, 0, 0}, ArmL = {6, 9.6, 6}, ArmR = {6, -9.6, -6}, LegL = {9.6, 6, 0},
+		LegR = {9.6, -6, 0}, KneeL = {-10.8, 0, 0}, KneeR = {-10.8, 0, 0}, Tail1 = {3.6, 0, 0}},
+	LOWCROUCH = {RootJoint = {-14, 0, 0}, LegL = {40, 0, 0}, LegR = {40, 0, 0}, KneeL = {-66, 0, 0}, KneeR = {-66, 0, 0}, AnkleL = {24, 0, 0},
+		AnkleR = {24, 0, 0}, ArmL = {-6, 0, 0}, ArmR = {-6, 0, 0}, Neck = {-14, 0, 0}, Tail1 = {6, 0, 0}},
+	TUCK = {RootJoint = {4, 0, 0}, LegL = {40, 0, 0}, LegR = {40, 0, 0}, KneeL = {-70, 0, 0}, KneeR = {-70, 0, 0}, AnkleL = {30, 0, 0},
+		AnkleR = {30, 0, 0}, ArmL = {40, 0, 0}, ArmR = {40, 0, 0}, Neck = {6, 0, 0}, Tail1 = {-10, 0, 0}},
+	SQUAT = {RootJoint = {-6, 0, 0}, LegL = {36, 0, 0}, LegR = {36, 0, 0}, KneeL = {-62, 0, 0}, KneeR = {-62, 0, 0}, AnkleL = {26, 0, 0},
+		AnkleR = {26, 0, 0}, ArmL = {-14, 0, 0}, ArmR = {-14, 0, 0}, Neck = {-8, 0, 0}, Tail1 = {10, 0, 0}},
+}
+local function easeOut12(u) return 1 - (1 - clamp01(u)) ^ 3 end
+local cur12 = {} -- this frame's switches and stamps (set by phase(), read by attackAngles())
+do
+	local phaseV111 = TenoPose.phase
+	function TenoPose.phase(model, isOwner, serverNow)
+		local on = function(k) return model:GetAttribute(k) ~= false end
+		cur12.mortar, cur12.stomp = on("TenoMortarAnchorPoseEnabled"), on("TenoStompQuakePoseEnabled")
+		cur12.bellow, cur12.chal, cur12.shield = on("TenoBellowShriekPoseEnabled"), on("TenoChallengeAlarmPoseEnabled"), on("TenoShieldPulsePoseEnabled")
+		ABILITY_END.tmortar = cur12.mortar and 2.6 or 1.6
+		ABILITY_END.tstomp = cur12.stomp and 1.9 or 1.7
+		local function rel(k, startK, d)
+			local st, v = num(model:GetAttribute(startK)), num(model:GetAttribute(k))
+			if st and v and v > st then return v - st end
+			return d
+		end
+		cur12.F = rel("TenoMortarFiredAt", "TenoMortarStartedAt", 0.70)
+		cur12.H = rel("TenoStompAt", "TenoStompStartedAt", 0.60)
+		cur12.Y = -(num(model:GetAttribute("TenoChallengeAimYaw")) or 0)
+		return phaseV111(model, isOwner, serverNow)
+	end
+	local anglesV111 = TenoPose.attackAngles
+	function TenoPose.attackAngles(phase, t, hold, s, now)
+		if phase == "tmortar" and cur12.mortar then
+			local F, A, K = cur12.F, P12.ANCHOR, over(P12.ANCHOR, P12.KICK)
+			if t < 0.35 then return mix(ZERO, A, smooth(t / 0.35)) end
+			if t < F then return mix(A, A, 0) end
+			if t < F + 0.06 then return mix(A, K, easeOut12((t - F) / 0.06)) end
+			if t < F + 0.4 then return mix(K, A, smooth((t - F - 0.06) / 0.34)) end
+			if t < F + 1.2 then return mix(A, A, 0) end
+			return mix(A, ZERO, smooth((t - F - 1.2) / 0.6))
+		elseif phase == "tstomp" and cur12.stomp then
+			local H, R, Rh, S = cur12.H, P12.REAR_HI, over(P12.REAR_HI, {RootJoint = {3, 0, 0}}), P12.SMASH
+			if t < H - 0.22 then return mix(ZERO, R, smooth(t / math.max(0.05, H - 0.22))) end
+			if t < H - 0.08 then return mix(R, Rh, smooth((t - (H - 0.22)) / 0.14)) end
+			if t < H then return mix(Rh, S, easeIn((t - (H - 0.08)) / 0.08)) end
+			if t < H + 0.35 then return mix(S, S, 0) end
+			return mix(S, ZERO, smooth((t - H - 0.35) / 0.85))
+		elseif phase == "tbellow" and cur12.bellow then
+			if t < 0.4 then return mix(ZERO, P12.INHALE, smooth(t / 0.4)) end
+			if t < 0.5 then return mix(P12.INHALE, P12.SHRIEK, easeIn((t - 0.4) / 0.1)) end
+			if t < 1.1 then return mix(P12.SHRIEK, P12.SHRIEK, 0) end
+			return mix(P12.SHRIEK, ZERO, smooth((t - 1.1) / 0.7))
+		elseif phase == "tchallenge" and cur12.chal then
+			local Y = cur12.Y
+			local lo, hi = mix(ZERO, BELLOW, 0.3), mix(ZERO, BELLOW, 0.5)
+			local body, yaw
+			if t < 0.2 then body, yaw = mix(ZERO, lo, easeOut12(t / 0.2)), Y * easeOut12(t / 0.2)
+			elseif t < 0.65 then local u = smooth((t - 0.2) / 0.45) body, yaw = mix(lo, hi, u), Y * (1 - 2 * u)
+			elseif t < 1.3 then body, yaw = mix(hi, hi, 0), -Y
+			else local u = smooth((t - 1.3) / 0.6) body, yaw = mix(hi, ZERO, u), -Y * (1 - u) end
+			return over(body, {Neck = {0, yaw, 0}, Head = {0, yaw / 2, 0}})
+		elseif phase == "tmud" and cur12.shield then
+			if t < 0.25 then return mix(ZERO, P12.PUSH, easeOut12(t / 0.25)) end
+			if t < 0.7 then return mix(P12.PUSH, P12.GUARD, smooth((t - 0.25) / 0.45)) end
+			if t < 1.2 then return mix(P12.GUARD, P12.GUARD, 0) end
+			return mix(P12.GUARD, ZERO, smooth((t - 1.2) / 0.5))
+		end
+		return anglesV111(phase, t, hold, s, now)
+	end
+end
+-- the Piston Launch leap: the smooth leap's filter with new tables
+local function leapPiston(phase, x, s, clock)
+	local A, w
+	if phase == "crouch" then
+		A, w = mix(P12.LOWCROUCH, P12.LOWCROUCH, 0, JOINTS), smooth(x)
+	elseif phase == "air" then
+		if x < 0.1 then A = mix(P12.LOWCROUCH, J_AIR, smooth(x / 0.1), JOINTS)
+		else A = mix(J_AIR, P12.TUCK, smooth((x - 0.1) / 0.25), JOINTS) end
+		A = mix(A, J_LAND, s.TenoLeapReach * smooth((x - s.TenoLeapReachStart) / max(0.01, s.TenoLeapReachTime)), JOINTS)
+		w = 1
+	elseif phase == "land" then
+		local from = filt.landFrom or filt.a or P12.TUCK
+		if not filt.landFrom then filt.landFrom = from end
+		local inF = math.clamp(s.TenoLeapLandIn, 0.05, 0.95)
+		if x < inF then
+			A, w = mix(from, P12.SQUAT, smooth(x / inF), JOINTS), 1
+		else
+			A, w = mix(P12.SQUAT, P12.SQUAT, 0, JOINTS), 1 - smooth((x - inF) / (1 - inF))
+		end
+	else
+		return mix(ZERO, ZERO, 0, JOINTS), 0
+	end
+	if phase ~= "land" then filt.landFrom = nil end
+	local now = clock or os.clock()
+	if not filt.a or now - filt.at > 0.25 then
+		filt.a = A
+	else
+		filt.a = mix(filt.a, A, 1 - math.exp(-s.TenoLeapFilterRate * math.max(0, now - filt.at)), JOINTS)
+	end
+	filt.at = now
+	return filt.a, w
+end
+do
+	local leapV111 = TenoPose.leap
+	function TenoPose.leap(phase, x, s)
+		if s.TenoLeapSmoothEnabled ~= false and s.TenoLeapPistonEnabled ~= false then
+			local a, w = leapPiston(phase, x, s)
+			return toCF(a), w
+		end
+		return leapV111(phase, x, s)
 	end
 end
 
