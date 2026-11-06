@@ -157,13 +157,13 @@ Last Stand (HURT → ROAR on PachyLastStandAt). Keys from the mockup. Diagnostic
   PachyLastStandUntil.
 - Every switch off → the 1.x path.
 
-## Red-team (open — Kepu to answer)
-1. Leap A "vents steam" at the landing is landing FX (house rule): drop the steam, keep the pistons absorbing?
-2. Timing costs: Servo Dash +0.06 s, Ink +0.1 s, Med-Station waves +0.3 s. Accept, or keep the action instant and play the
-   wind-up overlapped (weaker tell)?
-3. Tether A: others see the cocked tail while you aim = a warning for the victim (it can step out of the circle). Accept?
-4. Last Stand A: the red dome glow tells enemies the pachy is under 30% (they may focus it). Accept, or only the roar +
-   ring at the crossing?
-5. Stagger: pose only (no control loss) on players' own dinos too? (A stagger that stops input would be a balance change.)
+## Red-team (resolved, Kepu 2026-11-05)
+1. Leap landing: **drop the steam**; the pistons still squash at touchdown (no landing FX).
+2. Timing: **keep the delays** (Servo Dash +0.06 s, Ink +0.1 s, Med-Station waves +0.3 s).
+3. Tells: **keep both** (others see the cocked tail while aiming; the red dome glow while under the Last Stand line).
+4. Stagger: **look only** (no control loss; the shove works as now).
+Accepted risks: one extra remote message per tether aim (+ one per cancelled aim); a lost "cancel" leaves the cocked tail on
+others' screens for up to 3 s; the dome glow shows enemies the pachy is low.
 
-Tickets: filed after the red-team answers.
+Tickets: MDA-303 (Task 1), MDA-304 (Task 2), MDA-305 (Task 3), MDA-306 (Task 4), MDA-307 (Task 5), MDA-308 (Task 6), MDA-309 (Task 7),
+MDA-310 (Task 8), MDA-311 (Task 9), MDA-312 (Task 10), MDA-313 (Task 11) — see Dev Hub.
