@@ -2452,4 +2452,108 @@ do
 	end
 end
 
+
+-- v1.69 (dilo mecha button parts, plan docs/plans/DILO_PARTS_v1.0.md Task 1, MDA-314; mockup docs/mockups/dilo_parts_options.html
+-- v0.1; Kepu 2026-11-06 picks 1, 3, 9, 13, 15, 16, 20, looks "All recommended except Venom Gatling - C, Toxin Mortar - C",
+-- red-team "Use the proposals", "Same venom system"). Switch SkillTree.DILO_PARTS (default true; false = 1.68): 7 dilo-only mecha
+-- button parts (dino / OWNER "Dilo", mech, BUTTONS): dgatling "Venom Gatling" (attack), dmortar "Toxin Mortar" (attack), dhiss
+-- "Sonic Hiss" (attack), dspine "Spine Burst" (defense), dpump "Antivenom Pump" (defense), djets "Spring Jets" (speed), dover
+-- "Venom Overdrive" (sig). SkillTree.DILO_PARTS_B2_SOON (default true; build 1): dhiss / dpump / djets soon (not buyable, not
+-- LIVE_MECH). effects() writes ONLY new d* fields (the 1.61 lesson: never a field another dino uses); dilo only, off values
+-- (0 / 1 for muls / false) elsewhere or unbought: dGatlingCount 4 / 6 (II) / 8 (star), dGatlingDamage 3, dGatlingCone 25,
+-- dGatlingTime 1, dGatlingCooldown 12 / 10 (III); dMortarRange 40 / 50 (II) / 60 (star), dMortarRadius 8 / 10 (II) / 12 (star)
+-- (16 / 20 / 24 studs wide), dMortarTime 3 / 4 (III) / 5 (star), dMortarCooldown 16; dHissRange 20 / 25 (II) / 30 (star),
+-- dHissAngle 35, dHissKnock 18, dHissSilence 1.5 / 2 (III) / 3 (star), dHissCooldown 15 / 12 (III); dSpineCount 6 / 8 (II) / 12
+-- (star), dSpineDamage 4, dSpineRange 22, dSpineVenom (III), dSpineCooldown 12; dPumpHeal 15 / 20 (II) / 30 (III), dPumpImmune
+-- 4 (star), dPumpCooldown 20; dJetsDist 25 / 30 (II) / 40 (III), dJetsCharges 1 / 2 (II) / 3 (star), dJetsTrail 6 (III, s),
+-- dJetsCooldown 6 (per charge); dOverTime 4 / 6 (II) / 8 (star), dOverVenomMul 2 (III), dOverCooldown 30.
+SkillTree.DILO_PARTS = true
+SkillTree.DILO_PARTS_B2_SOON = true
+if SkillTree.DILO_PARTS and not SkillTree.PATHS.dgatling then
+	local function part(id, name, areaId, steps)
+		local p = path(id, name, true, false, steps)
+		p.area = areaId
+		p.dino = "Dilo"
+		SkillTree.OWNER[id] = "Dilo"
+		SkillTree.LIVE_MECH[id] = true
+		SkillTree.BUTTONS[id] = true
+		local found = false
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p); found = true end
+		end
+		if not found then table.insert(SkillTree.AREAS, {id = areaId, name = "Signature", color = {201, 162, 255}, paths = {p}}) end
+		SkillTree.PATHS[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	part("dgatling", "Venom Gatling", "attack", {
+		"Button: the hood barrels fire 4 auto-aimed darts in 1 s: 3 damage each plus dart venom. Recharges in 12 s",
+		"6 darts", "Recharges in 10 s", "8 darts"})
+	part("dmortar", "Toxin Mortar", "attack", {
+		"Button: the chest launcher lobs a canister up to 40 studs: a 16-stud poison cloud for 3 s. Recharges in 16 s",
+		"Reaches 50 studs, cloud 20 studs wide", "Cloud lasts 4 s", "Reaches 60 studs, cloud 24 studs wide, lasts 5 s"})
+	part("dhiss", "Sonic Hiss", "attack", {
+		"Button: the hood speakers blast a 20-stud cone: dinos are knocked back and their mecha parts are silenced 1.5 s. Recharges in 15 s",
+		"Cone reaches 25 studs", "Silence lasts 2 s; recharges in 12 s", "Cone reaches 30 studs, silence lasts 3 s"})
+	part("dspine", "Spine Burst", "defense", {
+		"Button: the frill fires 6 spines all around: 4 damage each. Recharges in 12 s",
+		"8 spines", "Spines add dart venom", "12 spines"})
+	part("dpump", "Antivenom Pump", "defense", {
+		"Button: the back pump clears your debuffs and heals 15. Recharges in 20 s",
+		"Heals 20", "Heals 30", "Then 4 s immune to slows, stuns and blinds"})
+	part("djets", "Spring Jets", "speed", {
+		"Button: the tail booster dashes you 25 studs the way you move. Recharges in 6 s",
+		"30 studs, 2 charges", "40 studs; leaves a poison trail", "3 charges"})
+	part("dover", "Venom Overdrive", "sig", {
+		"Button: for 4 s your darts recharge at once. Recharges in 30 s",
+		"Lasts 6 s", "Your venom does double damage while it's on", "Lasts 8 s"})
+	if SkillTree.DILO_PARTS_B2_SOON then
+		for _, id in ipairs({"dhiss", "dpump", "djets"}) do
+			SkillTree.PATHS[id].soon = true
+			SkillTree.LIVE_MECH[id] = nil
+		end
+	end
+end
+do
+	local effectsPre169 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre169(steps, dino)
+		if type(e) ~= "table" then return e end
+		if not SkillTree.DILO_PARTS or not SkillTree.PATHS.dgatling then return e end
+		local on = dino == "Dilo"
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local g, m, h, sp, pu, j, o = s.dgatling or 0, s.dmortar or 0, s.dhiss or 0, s.dspine or 0, s.dpump or 0, s.djets or 0,
+			s.dover or 0
+		e.dGatlingCount = g >= 4 and 8 or (g >= 2 and 6 or (g >= 1 and 4 or 0))
+		e.dGatlingDamage = g >= 1 and 3 or 0
+		e.dGatlingCone = g >= 1 and 25 or 0
+		e.dGatlingTime = g >= 1 and 1 or 0
+		e.dGatlingCooldown = g >= 3 and 10 or (g >= 1 and 12 or 0)
+		e.dMortarRange = m >= 4 and 60 or (m >= 2 and 50 or (m >= 1 and 40 or 0))
+		e.dMortarRadius = m >= 4 and 12 or (m >= 2 and 10 or (m >= 1 and 8 or 0))
+		e.dMortarTime = m >= 4 and 5 or (m >= 3 and 4 or (m >= 1 and 3 or 0))
+		e.dMortarCooldown = m >= 1 and 16 or 0
+		e.dHissRange = h >= 4 and 30 or (h >= 2 and 25 or (h >= 1 and 20 or 0))
+		e.dHissAngle = h >= 1 and 35 or 0
+		e.dHissKnock = h >= 1 and 18 or 0
+		e.dHissSilence = h >= 4 and 3 or (h >= 3 and 2 or (h >= 1 and 1.5 or 0))
+		e.dHissCooldown = h >= 3 and 12 or (h >= 1 and 15 or 0)
+		e.dSpineCount = sp >= 4 and 12 or (sp >= 2 and 8 or (sp >= 1 and 6 or 0))
+		e.dSpineDamage = sp >= 1 and 4 or 0
+		e.dSpineRange = sp >= 1 and 22 or 0
+		e.dSpineVenom = sp >= 3
+		e.dSpineCooldown = sp >= 1 and 12 or 0
+		e.dPumpHeal = pu >= 3 and 30 or (pu >= 2 and 20 or (pu >= 1 and 15 or 0))
+		e.dPumpImmune = pu >= 4 and 4 or 0
+		e.dPumpCooldown = pu >= 1 and 20 or 0
+		e.dJetsDist = j >= 3 and 40 or (j >= 2 and 30 or (j >= 1 and 25 or 0))
+		e.dJetsCharges = j >= 4 and 3 or (j >= 2 and 2 or (j >= 1 and 1 or 0))
+		e.dJetsTrail = j >= 3 and 6 or 0
+		e.dJetsCooldown = j >= 1 and 6 or 0
+		e.dOverTime = o >= 4 and 8 or (o >= 2 and 6 or (o >= 1 and 4 or 0))
+		e.dOverVenomMul = o >= 3 and 2 or 1
+		e.dOverCooldown = o >= 1 and 30 or 0
+		return e
+	end
+end
+
 return SkillTree
