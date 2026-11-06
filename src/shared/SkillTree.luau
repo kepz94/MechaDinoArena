@@ -1,4 +1,4 @@
--- SkillTree v1.67 (1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.68 (1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2426,6 +2426,28 @@ do
 		if not (SkillTree.THERI_FEATHER_RANGE2 and SkillTree.THERI_PARTS and dino == "Therizino" and SkillTree.PATHS.zfeather) then return e end
 		local f = (SkillTree.sanitize(steps, dino) or {}).zfeather or 0
 		if f >= 1 and (e.featherRange or 0) > 0 then e.featherRange = f >= 4 and 50 or (f >= 2 and 40 or 35) end
+		return e
+	end
+end
+
+-- v1.68 (Kepu 2026-11-05 21:53 "make it 50% slower and even when they step out they're slow for 3 seconds. Make the splash
+-- area 1.3x bigger"): SkillTree.HERRERA_GOO_TUNE (default true; false = 1.67): goo effects gooRadius x 1.3 (8 -> 10.4,
+-- II 11 -> 14.3) and gooSlowMul 0.5 (was 0.6) for a Herrera with the part (0 / 1 below or off, as before); the texts say the
+-- 21-stud puddle (29 at II), 50% and the 3 s after leaving (HerreraMovesServer 1.6 keeps the slow 3 s after the last tick).
+-- Nothing else of goo changes.
+SkillTree.HERRERA_GOO_TUNE = true
+if SkillTree.HERRERA_PARTS and SkillTree.PATHS.goo and SkillTree.HERRERA_GOO_TUNE then
+	SkillTree.PATHS.goo.steps[1] = "Button: toss a goo blob 30 studs ahead (straight down while gliding). It splats into a 21-stud puddle for 5 s; enemies in it are slowed 50%, and stay slowed for 3 s after they leave. Recharges in 14 s"
+	SkillTree.PATHS.goo.steps[2] = "Puddle 29 studs wide"
+end
+do
+	local effectsPre168 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre168(steps, dino)
+		if type(e) ~= "table" then return e end
+		if not (SkillTree.HERRERA_GOO_TUNE and SkillTree.HERRERA_PARTS and SkillTree.PATHS.goo) then return e end
+		if (e.gooRadius or 0) > 0 then e.gooRadius = math.floor(e.gooRadius * 1.3 * 10 + 0.5) / 10 end
+		if (e.gooSlowMul or 1) < 1 then e.gooSlowMul = 0.5 end
 		return e
 	end
 end

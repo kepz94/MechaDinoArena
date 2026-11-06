@@ -1,4 +1,4 @@
--- HerreraMovesServer v1.5 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
+-- HerreraMovesServer v1.6 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
 -- (MDA-151), Smoke Pods (MDA-152), Strobe Frill (MDA-155), Stun Breaker (MDA-156), and the Glider Wings' glide state
 -- (MDA-150). Plan docs/plans/HERRERA_PARTS_v1.0.md (Parts 2, 3, 4, 7, 8 and "Pass 2 — build map"); Kepu 2026-10-31.
 -- Settings come from the character (SkillEffects 1.27, a Herrera with the part bought AND slotted):
@@ -103,6 +103,12 @@
 --   BreakerPushed and BreakerAt come after the wind-up. Switch: script attribute HerreraMoves_windupsEnabled (default
 --   true, read at each press; false = 1.4: no wait, strobe 0.15). Diagnostics: script HerreraMovesWindups,
 --   HerreraMovesWindupCancels.
+-- v1.6 (Kepu 2026-11-05 21:53 "Apply the slow badge as well as make it 50% slower and even when they step out they're
+--   slow for 3 seconds. Make the splash area 1.3x bigger"; the 1.3x and 50% are SkillTree 1.68's goo numbers): a goo
+--   puddle tick keeps an enemy slowed until now + HerreraMoves_gooLinger (3 s) instead of now + 0.3, so the slow lasts 3 s
+--   after it steps out; a bot also gets GooSlowUntil / GooSlowMul stamped (StatusBadges 1.3 shows its SLOW badge; its speed
+--   is still the botSlow walk-speed scale). Switch: script attribute HerreraMoves_gooLingerEnabled (default true, read at
+--   each tick; false = 1.5). Diagnostic: script GooSlowTicks.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -111,6 +117,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local VERSION = "1.3"
 VERSION = "1.4" -- v1.4 goo blob from the jaw nozzle
 VERSION = "1.5" -- v1.5 move wind-ups
+VERSION = "1.6" -- v1.6 goo slow lingers 3 s
 local QUILL_GAP, QUILL_SPEED, QUILL_CONE = 0.045, 90, math.rad(35)
 local SMOKE_TICK = 0.1
 local STROBE_WINDUP = 0.15
@@ -120,7 +127,7 @@ script:SetAttribute("HerreraMovesServerVersion", VERSION)
 for _, k in ipairs({"HerreraMovesServerEnabled", "HerreraMoves_quillsEnabled", "HerreraMoves_smokeEnabled",
 	"HerreraMoves_strobeEnabled", "HerreraMoves_breakerEnabled", "HerreraMoves_gliderEnabled", "HerreraMovesModeRulesEnabled",
 	"HerreraMoves_caltropsEnabled", "HerreraMoves_gooEnabled", "HerreraMoves_gooAssistEnabled",
-	"HerreraMoves_caltropArmOnLandEnabled", "HerreraMoves_gooMuzzleEnabled", "HerreraMoves_windupsEnabled"}) do -- v1.2: + pass 3; v1.3: + arm on land; v1.4: + goo muzzle
+	"HerreraMoves_caltropArmOnLandEnabled", "HerreraMoves_gooMuzzleEnabled", "HerreraMoves_windupsEnabled", "HerreraMoves_gooLingerEnabled"}) do -- v1.2: + pass 3; v1.3: + arm on land; v1.4: + goo muzzle
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function on(id)
@@ -823,6 +830,7 @@ end)
 
 -- v1.2: caltrop triggers / bleeds and goo slows ---------------------------------------------------------------------------
 local p3Acc, gooAcc = 0, 0
+if script:GetAttribute("HerreraMoves_gooLinger") == nil then script:SetAttribute("HerreraMoves_gooLinger", 3) end -- v1.6
 local function slowTarget(m, prefix, mul, untilT)
 	if Players:GetPlayerFromCharacter(m) then
 		m:SetAttribute(prefix .. "SlowMul", mul)
@@ -908,7 +916,17 @@ RunService.Heartbeat:Connect(function(dt)
 					for _, m in ipairs(candidates(pd.owner)) do
 						local r = rootOf(m).Position
 						if flat(r - pd.center).Magnitude <= pd.radius and math.abs(r.Y - pd.center.Y) <= 10 * s then
-							slowTarget(m, "Goo", mul, t + 0.3)
+							if script:GetAttribute("HerreraMoves_gooLingerEnabled") ~= false then -- v1.6: 3 s after leaving
+								local untilG = t + math.clamp(tonumber(script:GetAttribute("HerreraMoves_gooLinger")) or 3, 0.3, 10)
+								slowTarget(m, "Goo", mul, untilG)
+								if not Players:GetPlayerFromCharacter(m) then
+									m:SetAttribute("GooSlowMul", mul)
+									m:SetAttribute("GooSlowUntil", untilG)
+								end
+								count("GooSlowTicks")
+							else
+								slowTarget(m, "Goo", mul, t + 0.3)
+							end
 						end
 					end
 				end

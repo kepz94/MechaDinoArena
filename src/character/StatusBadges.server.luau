@@ -1,4 +1,4 @@
--- StatusBadges v1.2 (Dino Arcade) — buff / debuff badges above a dino, on every player's client.
+-- StatusBadges v1.3 (Dino Arcade) — buff / debuff badges above a dino, on every player's client.
 -- Script, RunContext Client: runs for every dino character on every client (and as a copy inside the display
 -- dino), reading the replicated effect attributes set by RoarServer 1.1 on this model:
 --   DEF badge (blue, down arrow): DebuffDamageTakenMul > 1 while DebuffUntil (server time) is in the future.
@@ -20,6 +20,11 @@
 --   with a 1 px dark edge so they show against the sky), so it reads as being dragged down. The
 --   BillboardGui widens to 3 badges + room for the lines. Switch: script attribute StatusBadgesSlowEnabled (default true,
 --   read at start; false = 1.1). StatusBadgesState adds "slow"; StatusBadgesSlowLeft (s, 0.1 steps).
+-- v1.3 (Kepu 2026-11-05 21:53 "Apply the slow badge" to the Herrera's Goo Blob): the SLOW badge also shows while
+--   GooSlowUntil (a goo puddle, HerreraMovesServer 1.6: players and bots, refreshed every 0.2 s while inside, 3 s after
+--   leaving) is in the future. A newer stamp while the slow is already showing and the goo stamp is the newest refills the
+--   timer without a pop (no pop every 0.2 s while standing in the puddle); a goo slow that starts fresh pops as before.
+--   Switch: script attribute StatusBadgesGooSlowEnabled (default true, read at start; false = 1.2).
 -- Diagnostics (client-side model attributes): StatusBadgesState = "none" / "def" / "def,spd" / ...,
 --   StatusBadgesVersion.
 if not script.Parent:IsA("Model") then return end
@@ -30,6 +35,7 @@ local Players = game:GetService("Players")
 
 local model = script.Parent
 local VERSION = "1.2"
+VERSION = "1.3" -- v1.3 goo slow
 
 local BADGE_W, BADGE_H, BAR_H, GAP = 76, 22, 4, 6
 local GUI_OFFSET = Vector3.new(0, 9, 0) -- same anchor height as BiteTargetHealth's bar
@@ -54,6 +60,11 @@ local BADGES = {
 local function slowUntil(m) -- v1.2
 	return math.max(tonumber(m:GetAttribute("HeadbuttSlowUntil")) or 0, tonumber(m:GetAttribute("HeadbuttSelfSlowUntil")) or 0)
 end
+if script:GetAttribute("StatusBadgesGooSlowEnabled") == nil then script:SetAttribute("StatusBadgesGooSlowEnabled", true) end -- v1.3
+local GOO_ON = script:GetAttribute("StatusBadgesGooSlowEnabled") ~= false
+local function gooUntil(m) return GOO_ON and (tonumber(m:GetAttribute("GooSlowUntil")) or 0) or 0 end
+local slowUntil12 = slowUntil
+slowUntil = function(m) return math.max(slowUntil12(m), gooUntil(m)) end
 if SLOW_ON then
 	table.insert(BADGES, {key = "slow", text = "▼ SLOW", color = SLOW_COLOR, own = true})
 end
@@ -204,8 +215,9 @@ conn = RunService.RenderStepped:Connect(function()
 	local sU = SLOW_ON and slowUntil(model) or 0
 	if sU > now and sU ~= slowSeenUntil then
 		local fresh = slowSeenUntil == nil or sU > slowSeenUntil
+		local gooRefresh = GOO_ON and slowSeenUntil ~= nil and slowSeenUntil > now and gooUntil(model) >= sU - 1e-3 -- v1.3
 		slowSeenUntil, slowSeenAt = sU, now
-		if fresh and items.slow then pop(items.slow) end
+		if fresh and items.slow and not gooRefresh then pop(items.slow) end
 	end
 	local slowLive = sU > now
 	local slowFrac = (slowLive and slowSeenAt and sU > slowSeenAt) and math.clamp((sU - now) / (sU - slowSeenAt), 0, 1) or 0

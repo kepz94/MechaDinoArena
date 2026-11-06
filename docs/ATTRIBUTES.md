@@ -2871,3 +2871,8 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | HerreraPartsAnimWindupEnabled | HerreraPartsAnim script | switch (default true; false = 1.0: parts move at the fire stamps) | HerreraPartsAnim 1.1 |
 | HerreraMovesFXAnchorEnabled, HerreraMovesFXHazeEnabled, HerreraMovesFXChargeEnabled, HerreraMovesFXArcsEnabled, HerreraMovesFXStimEnabled, HerreraMovesFXCrossEnabled | HerreraMovesFX script | per-effect switches (default true) | HerreraMovesFX 1.6 |
 | HerreraMovesFX16Events | HerreraMovesFX script | diagnostic: 1.6 effects played | HerreraMovesFX 1.6 |
+| SkillTree.HERRERA_GOO_TUNE | SkillTree module flag | default true: goo gooRadius x 1.3 (10.4 / 14.3), gooSlowMul 0.5, texts 21 / 29 studs, 50%, 3 s after leaving; false = 1.67 | SkillTree 1.68 |
+| HerreraMoves_gooLingerEnabled; HerreraMoves_gooLinger (3) | HerreraMovesServer script | switch (default true; false = slow ends 0.3 s after leaving, 1.5); seconds the goo slow lasts after the last puddle tick | HerreraMovesServer 1.6 |
+| GooSlowUntil, GooSlowMul (bots) | bot model | goo slow stamps on bots too (the SLOW badge reads them; the bot's speed is still the walk-speed scale) | HerreraMovesServer 1.6 |
+| GooSlowTicks | HerreraMovesServer script | diagnostic: goo slow refreshes | HerreraMovesServer 1.6 |
+| StatusBadgesGooSlowEnabled | StatusBadges script | switch (default true, read at start): SLOW badge also for GooSlowUntil, no pop on in-puddle refreshes; false = 1.2 | StatusBadges 1.3 |
