@@ -76,8 +76,10 @@ behind the switches), every other Teno move, BotServer.
 - step: miss ≤ 0.5 k2 → no step; blocked → stops early (the catch then uses the 0.12 s pull for what is left).
 - player target: same path for the tail; StunClient toss as now.
 
-## Red-team (open — Kepu's call)
-1. The reach step moves your dino during the grab (up to ~4 studs front / ~10 behind at adult size).
-2. Fling distance: keep 45 studs (0.6 s, peak 8) or the mockup's shorter slam (~36 front / ~30 behind).
-3. A player target can't be tested here (no second player): only the bot path is verified.
-4. Uneven ground: the mockup is flat; Studio checks add a raptor on a 4-stud rock.
+## Red-team (resolved, Kepu 2026-11-05)
+1. Reach gap: **short step** (Task 3) — only as far as needed, capped, stops at walls, never in the air.
+2. Fling: **keep 45 studs** (0.6 s flight, 8-stud arc).
+3. Accepted risk: a player target can't be tested here (no second player); only the bot path is verified.
+4. Uneven ground: the Studio check adds a raptor on a 4-stud rock (MDA-279 acceptance).
+
+Tickets: MDA-278 (Task 1), MDA-279 (Task 2), MDA-280 (Task 3), MDA-281 (Task 4).
