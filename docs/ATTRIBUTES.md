@@ -3030,3 +3030,7 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooAttackEnabled; TrooPodWindup / TrooPodFlight / TrooPodRange / TrooPodCharges / TrooPodRefill / TrooPodDamage / TrooPodLead; TrooMinGap; TrooAssistAngle / TrooAssistMax | troodon model (TroodonModelData 1.1) | true; 0.34 s / 0.55 s / 22.5 (x scale) / 2 / 3 s / 6 / true; 0.35 s; 30 deg / 22.5 (x scale) | TrooAttackServer 1.0 + TrooAttackTest 1.0 tuning |
 | TrooZoneRadius / TrooZoneTime / TrooZoneDps / TrooZoneSlowMul / TrooZoneHeal; TrooSelfHeal | troodon model (TroodonModelData 1.1) | 5 (x scale) / 3 s / 3 per s / 0.75 / 5 (splat + each tick); 2 per enemy hit | TrooAttackServer 1.0 zone tuning |
 | JumpHopBack; JumpHopDistance / JumpHopTime / JumpHopWindup / JumpHopPower; JumpCharges / JumpCooldown; JumpStaminaCost; TenoLeapOnJump | troodon model (TroodonModelData 1.1) | true; 9 (x scale) / 0.42 s / 0.1 s / 40 (start value, tuned in MDA-336); 2 / 4 s; 0; false | JumpTest 1.5 Evade Hop; JumpServer 1.3 charges |
+| SpeciesTroodonEnabled; SpeciesTroodonTemplate | SpeciesServer script | true (read at start); "ready" / "missing <reason>" / "off" | SpeciesServer 1.8 |
+| RaptorScaleTroodonEnabled; TroodonScale | RaptorScale script | true; 2 | RaptorScale 1.8 |
+| MainMenuTroodonEnabled | MainMenu script | true (read at start) | MainMenu 1.20: DINOS entry TROODON |
+| SkillEffectsTrooLeapKeepEnabled | SkillEffects script | nil = true (read at each write) | SkillEffects 1.46: the leap writer leaves the troodon's JumpCharges / JumpCooldown / JumpHopBack |

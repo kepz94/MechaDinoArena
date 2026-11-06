@@ -1,4 +1,4 @@
--- RaptorScale v1.7 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
+-- RaptorScale v1.8 (Mecha Dino Arena) — makes every raptor bigger: player raptors and raptor bots. MDA-20, plan
 -- docs/plans/TERRITORIES_v1.0.md Task 4 (Kepu 2026-10-28: "the raptor bots might be a little too small ... esp with the
 -- camera angle"; answers: 2x, bots and players).
 -- Who: every player character whose Species is "Raptor" (CharacterAdded, also SpeciesServer's raptor body) and every
@@ -36,11 +36,14 @@
 --   same way by the script attribute TherizinoScale (default 2) while RaptorScaleTheriEnabled (default true) is on.
 -- v1.7 (MDA-223, plan docs/plans/DILO_KIT_v1.0.md Task 3): player characters whose Species is "Dilo" are scaled the same way by
 --   the script attribute DiloScale (default 2) while RaptorScaleDiloEnabled (default true) is on.
+-- v1.8 (MDA-332, plan docs/plans/TROODON_KIT_v1.0.md Task 3): player characters whose Species is "Troodon" are scaled the same
+--   way by the script attribute TroodonScale (default 2) while RaptorScaleTroodonEnabled (default true) is on.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.6"
 VERSION = "1.7" -- v1.7 Dilo
+VERSION = "1.8" -- v1.8 Troodon
 local DEFAULTS = {RaptorScaleEnabled = true, RaptorScale = 2}
 local FALLBACK = {BiteReachBack = 8, BiteLungeDist = 3, EatRange = 8, EatHeight = 20, CameraStartZoom = 35} -- = GrowthServer 1.2
 local GC = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("GrowthCurve"))
@@ -121,6 +124,9 @@ local function onCharacter(char)
 	end
 	if char.Parent and char:GetAttribute("Species") == "Dilo" and script:GetAttribute("RaptorScaleDiloEnabled") ~= false then -- v1.7
 		apply(char, tonumber(script:GetAttribute("DiloScale")) or 2)
+	end
+	if char.Parent and char:GetAttribute("Species") == "Troodon" and script:GetAttribute("RaptorScaleTroodonEnabled") ~= false then -- v1.8
+		apply(char, tonumber(script:GetAttribute("TroodonScale")) or 2)
 	end
 end
 local function onPlayer(player)

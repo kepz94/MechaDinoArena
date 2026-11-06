@@ -1,4 +1,4 @@
--- MainMenu v1.19 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
+-- MainMenu v1.20 (Mecha Dino Arena) — the main menu: dino select with a 3D preview (plain / mech view), the loadout slots,
 -- and SANDBOX / ARENA (LocalScript in StarterPlayerScripts, all devices; survives respawns). MDA-90, plan
 -- docs/plans/MAIN_MENU_v1.0.md Task 6, ADR-005, mockup docs/mockups/main_menu_options.html option A "One-screen lobby"
 -- (Kepu 2026-10-29: "a main menu that says sandbox and then arena ... a Dino select screen. It would show the current
@@ -151,6 +151,8 @@
 --   MainMenuTheriEnabled (default true, read at start; false = 1.15).
 -- v1.17 (MDA-223, plan docs/plans/DILO_KIT_v1.0.md Task 3): {id = "Dilo", name = "DILO", sub = "70 HP · spitter, venom dart"} after
 --   the therizino. Switch: script attribute MainMenuDiloEnabled (default true, read at start; false = 1.16).
+-- v1.20 (MDA-332, plan docs/plans/TROODON_KIT_v1.0.md Task 3): {id = "Troodon", name = "TROODON", sub = "55 HP · area control +
+--   support"} after the dilo. Switch: script attribute MainMenuTroodonEnabled (default true, read at start; false = 1.19).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -161,6 +163,7 @@ local VERSION = "1.16"
 VERSION = "1.17" -- v1.17 Dilo
 VERSION = "1.18" -- v1.18 therizino parts (ZPart_*)
 VERSION = "1.19" -- v1.19 dilo parts (DPart_*)
+VERSION = "1.20" -- v1.20 Troodon
 -- v1.19 (MDA-316, plan docs/plans/DILO_PARTS_v1.0.md Task 3): isMechaPart also knows "DPart_*" (DiloPartsServer 1.0).
 --   Switch: script attribute MainMenuDPartsEnabled (default true, read at each check; false = 1.18).
 if script:GetAttribute("MainMenuDPartsEnabled") == nil then script:SetAttribute("MainMenuDPartsEnabled", true) end
@@ -200,6 +203,10 @@ end
 if script:GetAttribute("MainMenuDiloEnabled") == nil then script:SetAttribute("MainMenuDiloEnabled", true) end -- v1.17
 if script:GetAttribute("MainMenuDiloEnabled") ~= false then
 	table.insert(DINOS, {id = "Dilo", name = "DILO", sub = "70 HP · spitter, venom dart"})
+end
+if script:GetAttribute("MainMenuTroodonEnabled") == nil then script:SetAttribute("MainMenuTroodonEnabled", true) end -- v1.20
+if script:GetAttribute("MainMenuTroodonEnabled") ~= false then
+	table.insert(DINOS, {id = "Troodon", name = "TROODON", sub = "55 HP · area control + support"})
 end
 local SLOT_KEYS = UserInputService.TouchEnabled and {"R", "C", "R▼", "C▼"} or {"R", "C", "T", "V"}
 

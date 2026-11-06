@@ -1,4 +1,4 @@
--- SkillEffects v1.44 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.46 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -297,6 +297,10 @@ local ServerStorage = game:GetService("ServerStorage")
 --   Cooldown), DiloPartOver (Time, VenomMul, Cooldown). Read by DiloPartsServer 1.0 (looks), DiloMovesServer 1.0,
 --   DiloAttackServer 1.5, MechaButtons 1.35. Switch: script attribute SkillEffectsDiloPartsEnabled (default true, read at each
 --   write; false = 1.44 plus the off values written).
+-- v1.46 (MDA-332, plan docs/plans/TROODON_KIT_v1.0.md Task 3): the 1.37 leap writer also leaves a character with Species
+--   "Troodon" alone, like the therizino (1.38): its JumpCharges 2 / JumpCooldown 4 / JumpHopBack come from TroodonModelData 1.1
+--   (the Evade Hop; without this every refresh wrote JumpCharges 0). Switch: script attribute SkillEffectsTrooLeapKeepEnabled
+--   (default true, read at each write; false = 1.45).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -316,6 +320,7 @@ VERSION = "1.42" -- v1.42 therizino button parts (ZPARTS)
 VERSION = "1.43" -- v1.43 TheriSnareRange (bola reach)
 VERSION = "1.44" -- v1.44 TheriClockJump (Overclock III extra jump)
 VERSION = "1.45" -- v1.45 dilo button parts (DPARTS)
+VERSION = "1.46" -- v1.46 troodon keeps its own hop values
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -767,6 +772,7 @@ do
 		applyCharV136(char, st)
 		if script:GetAttribute("SkillEffectsTenoLeapJumpEnabled") == false then return end
 		if char:GetAttribute("Species") == "Therizino" and script:GetAttribute("SkillEffectsTheriLeapKeepEnabled") ~= false then return end -- v1.38
+		if char:GetAttribute("Species") == "Troodon" and script:GetAttribute("SkillEffectsTrooLeapKeepEnabled") ~= false then return end -- v1.46
 		local isTeno = char:GetAttribute("Species") == "Teno"
 		if not isTeno and char:GetAttribute("TenoLeapOnJump") == nil then return end
 		local e = st.e
