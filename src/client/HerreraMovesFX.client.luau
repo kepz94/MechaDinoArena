@@ -1,4 +1,4 @@
--- HerreraMovesFX v1.5 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
+-- HerreraMovesFX v1.6 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/HERRERA_PARTS_v1.0.md Parts 3, 4, 7, 8 and "Pass 2 — build map"; the moves are
 -- HerreraMovesServer 1.0, the looks HerreraPartsServer 1.2. Runs for every player character (yours and others') and for
 -- Workspace.DinoIsland.Bots. Everything is local (Workspace "HerreraMovesFX"), nothing is replicated.
@@ -58,12 +58,34 @@
 --   copies follow them for 0.35 s pushed back along the tube's axis (-UpVector) by 0.25 x scale x k (k up over the first
 --   15%, then eased back to 0); then the copies go and the pieces show again. A lime "THUMP!" pop at the muzzle. Switch:
 --   script attribute HerreraMovesFXGooKickEnabled (default true, read at each shot). Diagnostic: script GooKicks.
+-- v1.6 (plan docs/plans/HERRERA_MOVES_ANIM_v1.0.md Task 7, MDA-297; Kepu 2026-11-05 20:40 picks): wind-up and impact FX
+--   on the wind-up stamps (HerreraMovesServer 1.5 / AdrenalineServer 1.6). Each has a script switch (default true, read at
+--   each event); all parts are anchored, non-colliding, non-query, in the HerreraMovesFX folder and destroyed after.
+--   Anchor (QuillWindupAt; HerreraMovesFXAnchorEnabled): 8 tan dust puffs round the feet (0.5 s); at QuillStartedAt a grey
+--     puff at a pod "tip" per quill (QuillShot, 0.045 s apart, alternating the tips).
+--   Haze (SmokeWindupAt; HerreraMovesFXHazeEnabled): 10 grey puffs pour from the HPart_smoke "nozzle" pieces over
+--     SmokeWindupTime + 0.6 s; from SmokeStartedAt + 0.5 to SmokeUntil a faint blue (0x9fc4ff) shimmer sphere round the
+--     character (radius 4 x scale, transparency 0.86..0.92 pulsing).
+--   Charge (StrobeStartedAt; HerreraMovesFXChargeEnabled): the HPart_strobe "led" pieces turn white one by one until
+--     StrobeStartedAt + StrobeWindupTime (the 1.5 flash at StrobeAt blinks them and puts their colour back). The 1.5
+--     flash's 13 flat rays already make the flattened cone, so no extra cone part.
+--   Arcs (BreakerWindupAt; HerreraMovesFXArcsEnabled): every 0.05 s until BreakerWindupAt + BreakerWindupTime, 2 bolts
+--     between the HPart_breaker "tip" pieces; at BreakerAt a cyan shock dome (to 4 x scale, 0.3 s) and 2 ground rings
+--     (to 6 / 9 x scale, 0.45 s).
+--   Stim (AdrenalineStartedAt on a Species "Herrera"; HerreraMovesFXStimEnabled): a green ground ring (to 4 x scale,
+--     0.4 s); until AdrenalineUntil, while moving faster than 4 studs/s, a green speed streak behind the body every 0.08 s
+--     (fades 0.25 s).
+--   Cross (SlashHitAt of a character with SlashEnabled and SlashPoseCrossRakeEnabled ~= false;
+--     HerreraMovesFXCrossEnabled): two red crossed arcs at the SlashHitTarget's root (0.3 s). (Plan Task 7 named it
+--     SlashFX 1.1; kept here so SlashFX stays untouched.)
+--   Diagnostic: script HerreraMovesFX16Events.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.4"
 VERSION = "1.5" -- v1.5 goo mortar kick
+VERSION = "1.6" -- v1.6 wind-up FX
 local QUILL_GAP, QUILL_SPEED = 0.045, 90
 local SMOKE_PUFFS = 70
 local HOT = Color3.fromRGB(255, 98, 18)
@@ -796,4 +818,252 @@ do
 	end
 	Players.PlayerAdded:Connect(onGooPlayer)
 	for _, p in ipairs(Players:GetPlayers()) do onGooPlayer(p) end
+end
+
+-- v1.6: wind-up and impact FX -------------------------------------------------------------------------------------------
+do
+	for _, k in ipairs({"HerreraMovesFXAnchorEnabled", "HerreraMovesFXHazeEnabled", "HerreraMovesFXChargeEnabled",
+		"HerreraMovesFXArcsEnabled", "HerreraMovesFXStimEnabled", "HerreraMovesFXCrossEnabled"}) do
+		if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+	end
+	local TAN, GREY2, SHIM = Color3.fromRGB(216, 201, 160), Color3.fromRGB(201, 206, 214), Color3.fromRGB(159, 196, 255)
+	local GREENS, RED = Color3.fromRGB(61, 220, 132), Color3.fromRGB(255, 59, 48)
+	local function sw(k) return on() and script:GetAttribute(k) ~= false end
+	local function ev() script:SetAttribute("HerreraMovesFX16Events", (script:GetAttribute("HerreraMovesFX16Events") or 0) + 1) end
+	local function stampOf(c, k) local v = c:GetAttribute(k) return typeof(v) == "number" and v or nil end
+	local function fresh(t) return t and math.abs(workspace:GetServerTimeNow() - t) < 1.5 end
+	local function puff(pos, color, r0, r1, dur, drift)
+		local b = fxPart(Vector3.one * r0, color, CFrame.new(pos), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+		b.Transparency = 0.3
+		animate(dur, function(u)
+			b.Size = Vector3.one * (r0 + (r1 - r0) * (1 - (1 - u) ^ 2))
+			b.CFrame = CFrame.new(pos + (drift or Vector3.zero) * u)
+			b.Transparency = 0.3 + 0.7 * u
+		end, function() b:Destroy() end)
+	end
+	local function groundAt(pos)
+		local rp = RaycastParams.new()
+		rp.FilterType = Enum.RaycastFilterType.Exclude
+		local ex = {fxFolder}
+		for _, p in ipairs(Players:GetPlayers()) do if p.Character then table.insert(ex, p.Character) end end
+		rp.FilterDescendantsInstances = ex
+		local r = workspace:Raycast(pos, Vector3.new(0, -40, 0), rp)
+		return r and r.Position or (pos - Vector3.new(0, 3, 0))
+	end
+	local function ring(center, color, r1, dur, thick)
+		local d = fxPart(Vector3.new(0.2, 0.2, 0.2), color, CFrame.new(center) * CFrame.Angles(0, 0, math.pi / 2), Enum.Material.Neon,
+			Enum.PartType.Cylinder)
+		animate(dur, function(u)
+			local r = 0.5 + (r1 - 0.5) * (1 - (1 - u) ^ 2)
+			d.Size = Vector3.new(thick or 0.15, r * 2, r * 2)
+			d.Transparency = 0.35 + 0.65 * u
+		end, function() d:Destroy() end)
+	end
+
+	local function anchorFX(c)
+		if not sw("HerreraMovesFXAnchorEnabled") or not fresh(stampOf(c, "QuillWindupAt")) then return end
+		local root = rootOf(c)
+		if not root then return end
+		ev()
+		local s = c:GetScale()
+		local g = groundAt(root.Position)
+		for i = 1, 8 do
+			local a = i / 8 * 2 * math.pi
+			local p = g + Vector3.new(math.cos(a) * 1.6 * s, 0.3 * s, math.sin(a) * 1.6 * s)
+			puff(p, TAN, 0.6 * s, 1.6 * s, 0.5, Vector3.new(math.cos(a), 0.4, math.sin(a)) * 1.5 * s)
+		end
+	end
+	local function podPuffs(c)
+		if not sw("HerreraMovesFXAnchorEnabled") or not fresh(stampOf(c, "QuillStartedAt")) then return end
+		local tips = pieces(c, "quills", "tip")
+		if #tips == 0 then return end
+		ev()
+		local s = c:GetScale()
+		local n = math.clamp(math.floor(tonumber(c:GetAttribute("QuillShot")) or 5), 1, 20)
+		for i = 1, n do
+			task.delay((i - 1) * 0.045, function()
+				local tp = tips[(i - 1) % #tips + 1]
+				if tp.Parent then puff(tp.Position, GREY2, 0.35 * s, 1.1 * s, 0.45, Vector3.new(0, 1.2 * s, 0)) end
+			end)
+		end
+	end
+	local function hazeFX(c)
+		if not sw("HerreraMovesFXHazeEnabled") or not fresh(stampOf(c, "SmokeWindupAt")) then return end
+		local noz = pieces(c, "smoke", "nozzle")
+		local root = rootOf(c)
+		if not root then return end
+		ev()
+		local s = c:GetScale()
+		local dur = (tonumber(c:GetAttribute("SmokeWindupTime")) or 0.25) + 0.6
+		for i = 1, 10 do
+			task.delay((i - 1) * dur / 10, function()
+				local src = #noz > 0 and noz[(i - 1) % #noz + 1]
+				local p = (src and src.Parent and src.Position) or (root.Position + Vector3.new(0, 1.5 * s, 0))
+				local out = Vector3.new(math.random() - 0.5, 0.15, math.random() - 0.5)
+				puff(p, GREY2, 0.5 * s, 2.2 * s, 0.9, out.Unit * 3 * s)
+			end)
+		end
+	end
+	local shimmers = setmetatable({}, {__mode = "k"})
+	local function shimmerFX(c)
+		if not sw("HerreraMovesFXHazeEnabled") or not fresh(stampOf(c, "SmokeStartedAt")) then return end
+		local untilT = stampOf(c, "SmokeUntil") or 0
+		local root = rootOf(c)
+		if not root or shimmers[c] then return end
+		ev()
+		local s = c:GetScale()
+		local sph = fxPart(Vector3.one * 8 * s, SHIM, root.CFrame, Enum.Material.ForceField, Enum.PartType.Ball)
+		sph.Transparency = 1
+		shimmers[c] = sph
+		local t0 = os.clock()
+		local conn
+		conn = RunService.RenderStepped:Connect(function()
+			local now = workspace:GetServerTimeNow()
+			local r = rootOf(c)
+			if not r or not c.Parent or now > (stampOf(c, "SmokeUntil") or untilT) or not sw("HerreraMovesFXHazeEnabled") then
+				conn:Disconnect()
+				sph:Destroy()
+				shimmers[c] = nil
+				return
+			end
+			local e = os.clock() - t0
+			sph.CFrame = r.CFrame
+			sph.Transparency = e < 0.5 and 1 or (0.89 + 0.03 * math.sin(e * 6))
+		end)
+	end
+	local function chargeFX(c)
+		if not sw("HerreraMovesFXChargeEnabled") or not fresh(stampOf(c, "StrobeStartedAt")) then return end
+		local leds = pieces(c, "strobe", "led")
+		if #leds == 0 then return end
+		ev()
+		local wt = math.max(0.05, tonumber(c:GetAttribute("StrobeWindupTime")) or 0.4)
+		local lit = 0
+		animate(wt, function(u)
+			local k = math.floor(u * #leds + 0.001)
+			while lit < k do
+				lit += 1
+				local p = leds[lit]
+				if p and p.Parent then p.Color = WHITE end
+			end
+		end)
+	end
+	local function arcsFX(c)
+		if not sw("HerreraMovesFXArcsEnabled") or not fresh(stampOf(c, "BreakerWindupAt")) then return end
+		local tips = pieces(c, "breaker", "tip")
+		local root = rootOf(c)
+		if not root then return end
+		ev()
+		local s = c:GetScale()
+		local wt = math.max(0.05, tonumber(c:GetAttribute("BreakerWindupTime")) or 0.3)
+		for k = 0, math.floor(wt / 0.05) - 1 do
+			task.delay(k * 0.05, function()
+				for j = 1, 2 do
+					local a = #tips > 0 and tips[math.random(1, #tips)]
+					local b = #tips > 1 and tips[math.random(1, #tips)]
+					local from = (a and a.Parent and a.Position) or root.Position + Vector3.new(0, 2 * s, 0)
+					local to = (b and b ~= a and b.Parent and b.Position) or (from + Vector3.new(math.random() - 0.5, 0.6, math.random() - 0.5) * 2.5 * s)
+					local d = to - from
+					if d.Magnitude > 0.05 then bolt(from, d.Unit, d.Magnitude, s * 0.6) end
+				end
+			end)
+		end
+	end
+	local function boomFX(c)
+		if not sw("HerreraMovesFXArcsEnabled") or not fresh(stampOf(c, "BreakerAt")) then return end
+		if not stampOf(c, "BreakerWindupAt") then return end
+		local root = rootOf(c)
+		if not root then return end
+		ev()
+		local s = c:GetScale()
+		local center = root.Position
+		local dome = fxPart(Vector3.one, VOLT, CFrame.new(center), Enum.Material.Neon, Enum.PartType.Ball)
+		animate(0.3, function(u)
+			dome.Size = Vector3.one * (1 + 7 * s * (1 - (1 - u) ^ 2))
+			dome.Transparency = 0.6 + 0.4 * u
+		end, function() dome:Destroy() end)
+		local g = groundAt(center) + Vector3.new(0, 0.15, 0)
+		ring(g, VOLT, 6 * s, 0.45)
+		task.delay(0.08, function() ring(g, WHITE, 9 * s, 0.45) end)
+	end
+	local stims = setmetatable({}, {__mode = "k"})
+	local function stimFX(c)
+		if not sw("HerreraMovesFXStimEnabled") or c:GetAttribute("Species") ~= "Herrera" then return end
+		if not fresh(stampOf(c, "AdrenalineStartedAt")) then return end
+		local root = rootOf(c)
+		if not root then return end
+		ev()
+		local s = c:GetScale()
+		ring(groundAt(root.Position) + Vector3.new(0, 0.15, 0), GREENS, 4 * s, 0.4)
+		if stims[c] then stims[c]:Disconnect() end
+		local last = 0
+		local conn
+		conn = RunService.RenderStepped:Connect(function()
+			local r = rootOf(c)
+			if not r or not c.Parent or workspace:GetServerTimeNow() > (stampOf(c, "AdrenalineUntil") or 0) or not sw("HerreraMovesFXStimEnabled") then
+				conn:Disconnect()
+				if stims[c] == conn then stims[c] = nil end
+				return
+			end
+			local v = r.AssemblyLinearVelocity
+			local flat = Vector3.new(v.X, 0, v.Z)
+			if flat.Magnitude < 4 or os.clock() - last < 0.08 then return end
+			last = os.clock()
+			local dir = flat.Unit
+			local side = dir:Cross(Vector3.yAxis)
+			local p = r.Position - dir * 2.5 * s + side * (math.random() - 0.5) * 2.4 * s + Vector3.new(0, (math.random() - 0.3) * 1.6 * s, 0)
+			local st = fxPart(Vector3.new(0.12 * s, 0.12 * s, 2.4 * s), GREENS, CFrame.lookAt(p, p + dir), Enum.Material.Neon)
+			animate(0.25, function(u) st.Transparency = 0.3 + 0.7 * u end, function() st:Destroy() end)
+		end)
+		stims[c] = conn
+	end
+	local function crossFX(c)
+		if not sw("HerreraMovesFXCrossEnabled") or c:GetAttribute("SlashEnabled") ~= true then return end
+		if c:GetAttribute("SlashPoseCrossRakeEnabled") == false or not fresh(stampOf(c, "SlashHitAt")) then return end
+		local tgt = findTarget(c:GetAttribute("SlashHitTarget"))
+		local tr, ar = rootOf(tgt), rootOf(c)
+		if not (tr and ar) then return end
+		ev()
+		local s = c:GetScale()
+		local face = tr.Position - ar.Position
+		face = Vector3.new(face.X, 0, face.Z)
+		face = face.Magnitude > 1e-3 and face.Unit or Vector3.zAxis
+		local base = CFrame.lookAt(tr.Position, tr.Position + face)
+		for _, tilt in ipairs({math.rad(45), math.rad(-45)}) do
+			local segs = {}
+			local R = 2.6 * s
+			for i = 0, 7 do
+				local a0, a1 = -1.2 + 2.4 * i / 8, -1.2 + 2.4 * (i + 1) / 8
+				local p0 = Vector3.new(math.sin(a0) * R, math.cos(a0) * R * 0.25, 0)
+				local p1 = Vector3.new(math.sin(a1) * R, math.cos(a1) * R * 0.25, 0)
+				local cf = base * CFrame.Angles(0, 0, tilt)
+				local w0, w1 = cf:PointToWorldSpace(p0), cf:PointToWorldSpace(p1)
+				table.insert(segs, fxPart(Vector3.new(0.18 * s, 0.18 * s, (w1 - w0).Magnitude + 0.05), RED, CFrame.lookAt((w0 + w1) / 2, w1),
+					Enum.Material.Neon))
+			end
+			animate(0.3, function(u) for _, sg in ipairs(segs) do sg.Transparency = u * u end end, function()
+				for _, sg in ipairs(segs) do sg:Destroy() end
+			end)
+		end
+	end
+
+	local watched16 = setmetatable({}, {__mode = "k"})
+	local function watch16(c)
+		if watched16[c] then return end
+		watched16[c] = true
+		c:GetAttributeChangedSignal("QuillWindupAt"):Connect(function() anchorFX(c) end)
+		c:GetAttributeChangedSignal("QuillStartedAt"):Connect(function() podPuffs(c) end)
+		c:GetAttributeChangedSignal("SmokeWindupAt"):Connect(function() hazeFX(c) end)
+		c:GetAttributeChangedSignal("SmokeStartedAt"):Connect(function() shimmerFX(c) end)
+		c:GetAttributeChangedSignal("StrobeStartedAt"):Connect(function() chargeFX(c) end)
+		c:GetAttributeChangedSignal("BreakerWindupAt"):Connect(function() arcsFX(c) end)
+		c:GetAttributeChangedSignal("BreakerAt"):Connect(function() boomFX(c) end)
+		c:GetAttributeChangedSignal("AdrenalineStartedAt"):Connect(function() stimFX(c) end)
+		c:GetAttributeChangedSignal("SlashHitAt"):Connect(function() crossFX(c) end)
+	end
+	local function on16(p)
+		p.CharacterAdded:Connect(watch16)
+		if p.Character then watch16(p.Character) end
+	end
+	Players.PlayerAdded:Connect(on16)
+	for _, p in ipairs(Players:GetPlayers()) do on16(p) end
 end

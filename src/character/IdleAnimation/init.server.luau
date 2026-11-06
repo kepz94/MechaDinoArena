@@ -1,4 +1,4 @@
--- IdleAnimation v1.44 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.45 (Dino Arcade): idle + walk animation for this model, on each player's client.
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -246,6 +246,14 @@
 --       reached "air", no Diving Rake air / land poses). While the model attribute JumpProbeIgnoreDinosEnabled ~= false
 --       (default true) the probe also ignores every player's character, Workspace.DinoIsland.Bots and the FX folders
 --       (DinoFX_Local, DinoFX, TenoFX). Every dino's leap uses it (the same bug would hit any dino with a raptor under it).
+-- v1.45 (plan docs/plans/HERRERA_MOVES_ANIM_v1.0.md Tasks 3-5, MDA-293 / 294 / 295; Kepu 2026-11-05 20:40 "A for
+--       everything except B for glide and drop"): on Herrera models (a) inside the glide layer, HerreraMovesPose 1.2 bank
+--       (the Banking Glide roll from the turn rate) is multiplied on RootJoint after the glide lerp; (b) after the slash
+--       layer (SlashPose 1.2: coil / Cross Rake), HerreraMovesPose.corkscrew (a dive from a glide rolls one full turn);
+--       (c) after the goo recoil layer, HerreraMovesPose.moves (quills / smoke / strobe / breaker / caltrops / goo /
+--       adrenaline poses) multiplied on top. Switch: model attribute HerreraMovesPoseLayerEnabled (default true; false =
+--       1.44). Diagnostics: HerreraMovesPoseSet ("1.2"), HerreraMovesPoseLast (the move id, else ""). Every other model
+--       unchanged.
 -- Tune with model attributes: Idle*, IdleLook*, Walk*, Run* (see WalkPose.Defaults), MoveWalkSpeed, MoveRunSpeed.
 -- Rig attribute: RigHipHeight (hip-to-ground studs at scale 1; multiplied by model scale).
 -- Diagnostics (client-side attributes): IdleState, IdleJointCount, IdleLookState,
@@ -608,6 +616,7 @@ model:SetAttribute("IdleAnimationVersion", "1.41") -- v1.41
 model:SetAttribute("IdleAnimationVersion", "1.42") -- v1.42
 model:SetAttribute("IdleAnimationVersion", "1.43") -- v1.43
 model:SetAttribute("IdleAnimationVersion", "1.44") -- v1.44
+model:SetAttribute("IdleAnimationVersion", "1.45") -- v1.45
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -1018,6 +1027,10 @@ RunService.PreSimulation:Connect(function(dt)
 				if motors[name] then pose[name] = (pose[name] or CFrame.identity):Lerp(off, gw) end
 			end
 		end
+		if HerreraMovesPose.bank and model:GetAttribute("HerreraMovesPoseLayerEnabled") ~= false then -- v1.45: Banking Glide
+			local bk = HerreraMovesPose.bank(model, hrp, dt, gw, lpG ~= nil and lpG.Character == model)
+			if bk and motors.RootJoint then pose.RootJoint = (pose.RootJoint or CFrame.identity) * bk end
+		end
 		show("GlidePoseBlend", math.floor(gw * 10 + 0.5) / 10)
 	end
 	-- v1.16: pounce (wind-up / lunge / latched / let-go fade) replaces the pose by the pounce weight
@@ -1287,6 +1300,14 @@ RunService.PreSimulation:Connect(function(dt)
 				if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
 			end
 		end
+		if HerreraMovesPose.corkscrew and model:GetAttribute("HerreraMovesPoseLayerEnabled") ~= false then -- v1.45
+			local ck = HerreraMovesPose.corkscrew(model, lpS ~= nil and lpS.Character == model, slPhase, slKind, slU)
+			if ck then
+				for name, off in pairs(ck) do
+					if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+				end
+			end
+		end
 		show("SlashPoseState", slPhase or "none")
 		show("SlashPoseKind", slKind)
 		show("SlashPoseSource", slSource)
@@ -1310,6 +1331,17 @@ RunService.PreSimulation:Connect(function(dt)
 			end
 		end
 		show("GooKickPoseState", gk and "kick" or "none")
+	end
+	-- v1.45: Herrera move poses (HerreraMovesPose 1.2) on top
+	if HerreraMovesPose.moves and model:GetAttribute("Species") == "Herrera" and model:GetAttribute("HerreraMovesPoseLayerEnabled") ~= false then
+		local mv, mvId = HerreraMovesPose.moves(model, workspace:GetServerTimeNow())
+		if mv then
+			for name, off in pairs(mv) do
+				if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+			end
+		end
+		show("HerreraMovesPoseSet", HerreraMovesPose.Version)
+		show("HerreraMovesPoseLast", mvId or "")
 	end
 	-- v1.37: teno scratch / tail-slam wind-up / tail slam on top
 	if model:GetAttribute("TenoAttackEnabled") == true then

@@ -1,4 +1,4 @@
--- AdrenalineServer v1.5 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
+-- AdrenalineServer v1.6 (Mecha Dino Arena) — Adrenaline Injector, a raptor button part (raptor parts batch 1): heal over
 -- a few seconds and run faster while it lasts. MDA-62, plan docs/plans/RAPTOR_PARTS_B1_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b1_options.html option A "Neck injector" (Kepu 2026-10-29).
 -- Settings come from the character (SkillEffects 1.6): AdrenalineEnabled (bought AND slotted), AdrenalineHeal (share of
@@ -62,12 +62,21 @@
 --   AdrenalineHerreraLookOff (default true, read at each build; false = the raptor look on a Herrera too). Star: on an "ok"
 --   request with the character's AdrenalineSlashRefill = true, the character gets SlashRefillAllAt = now (SlashServer 1.7
 --   refills every slash charge). Switch: AdrenalineSlashRefillEnabled (default true, read at each request).
+-- v1.6 (plan docs/plans/HERRERA_MOVES_ANIM_v1.0.md Task 2, MDA-292; Kepu 2026-11-05 picked "A · Jab & Sprint", red-team
+--   "Herrera only"): on a character with Species "Herrera", an "ok" request first stamps AdrenalineWindupTime (script
+--   AdrenalineHerreraWindup, 0.45 s), AdrenalineWindupUntil, AdrenalineWindupResult "winding", AdrenalineWindupAt (last;
+--   HerreraMovesPose 1.2 plays the jab, HerreraPartsAnim 1.1 pushes the plunger), waits it, then runs the 1.5 "ok" body
+--   with the time of that moment (stun re-checked then: the star still clears it). Cancelled ("cancelled") when the
+--   character left workspace, died or lost its state in the wait; else "fired". A request while AdrenalineWindupUntil >
+--   now -> "windup" (checked before "active"). Every other species: 1.5 exactly. Switch: script attribute
+--   AdrenalineHerreraWindupEnabled (default true, read at each request).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.5"
+VERSION = "1.6" -- v1.6 Herrera jab wind-up
 local GREEN, DARK, GREY = Color3.fromRGB(95, 209, 106), Color3.fromRGB(44, 52, 64), Color3.fromRGB(154, 166, 182)
 
 script:SetAttribute("AdrenalineServerVersion", VERSION)
@@ -76,6 +85,12 @@ script:SetAttribute("AdrenalineRequests", 0)
 if script:GetAttribute("AdrenalineLookStyle") == nil then script:SetAttribute("AdrenalineLookStyle", "tanks") end -- v1.1
 local function on() return script:GetAttribute("AdrenalineServerEnabled") ~= false end
 local function now() return workspace:GetServerTimeNow() end
+-- v1.6
+if script:GetAttribute("AdrenalineHerreraWindupEnabled") == nil then script:SetAttribute("AdrenalineHerreraWindupEnabled", true) end
+if script:GetAttribute("AdrenalineHerreraWindup") == nil then script:SetAttribute("AdrenalineHerreraWindup", 0.45) end
+local function herreraWindup(char)
+	return script:GetAttribute("AdrenalineHerreraWindupEnabled") ~= false and char:GetAttribute("Species") == "Herrera"
+end
 
 local remote = ReplicatedStorage:FindFirstChild("DinoAdrenalineRequest")
 if not remote then
@@ -410,6 +425,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "stunned"
 	elseif char:GetAttribute("PounceLatched") == true then
 		result = "latched"
+	elseif herreraWindup(char) and (tonumber(char:GetAttribute("AdrenalineWindupUntil")) or 0) > t then -- v1.6
+		result = "windup"
 	elseif (tonumber(char:GetAttribute("AdrenalineUntil")) or 0) > t then
 		result = "active"
 	elseif t < (tonumber(char:GetAttribute("AdrenalineReadyAt")) or 0) then
@@ -419,6 +436,21 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	end
 	char:SetAttribute("AdrenalineServerResult", result)
 	if result ~= "ok" then return end
+	if herreraWindup(char) then -- v1.6: the jab wind-up
+		local w = math.clamp(tonumber(script:GetAttribute("AdrenalineHerreraWindup")) or 0.45, 0, 2)
+		char:SetAttribute("AdrenalineWindupTime", w)
+		char:SetAttribute("AdrenalineWindupUntil", t + w)
+		char:SetAttribute("AdrenalineWindupResult", "winding")
+		char:SetAttribute("AdrenalineWindupAt", t) -- last
+		if w > 0 then task.wait(w) end
+		if not char:IsDescendantOf(workspace) or chars[char] ~= st or not hum or hum.Health <= 0 then
+			char:SetAttribute("AdrenalineWindupResult", "cancelled")
+			return
+		end
+		char:SetAttribute("AdrenalineWindupResult", "fired")
+		t = now()
+		stunned = (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t and char:GetAttribute("AdrenalineStunClear") == true
+	end
 	if stunned then -- star: ends the stun at once
 		char:SetAttribute("StunnedUntil", t)
 		char:SetAttribute("AdrenalineStunCleared", (char:GetAttribute("AdrenalineStunCleared") or 0) + 1)

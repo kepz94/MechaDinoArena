@@ -1,4 +1,4 @@
--- HerreraMovesServer v1.4 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
+-- HerreraMovesServer v1.5 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
 -- (MDA-151), Smoke Pods (MDA-152), Strobe Frill (MDA-155), Stun Breaker (MDA-156), and the Glider Wings' glide state
 -- (MDA-150). Plan docs/plans/HERRERA_PARTS_v1.0.md (Parts 2, 3, 4, 7, 8 and "Pass 2 — build map"); Kepu 2026-10-31.
 -- Settings come from the character (SkillEffects 1.27, a Herrera with the part bought AND slotted):
@@ -89,6 +89,20 @@
 --   blob starts at the character's HPart_goo piece with HPartRole "muzzle" (the Spit Sacs' jaw nozzle, HerreraPartsServer
 --   1.4) when there is one, else above the hump as 1.3. Same arc, landing point, timing and puddle. Switch: script attribute
 --   HerreraMoves_gooMuzzleEnabled (default true, read at each shot). Diagnostic: script GooMuzzleShots.
+-- v1.5 (plan docs/plans/HERRERA_MOVES_ANIM_v1.0.md Task 1, MDA-291; Kepu 2026-11-05 20:40 picks "A for everything except
+--   B for glide and drop"; red-team: wind-ups still fire through a stun, only death cancels; breaker free at the press):
+--   each move gets a wind-up between the press and its effect, so the new poses (HerreraMovesPose 1.2) can show it.
+--   Script attributes (seconds): HerreraMoves_quillWindup 0.35, HerreraMoves_smokeWindup 0.25, HerreraMoves_strobeWindup
+--   0.40, HerreraMoves_gooWindup 0.35, HerreraMoves_breakerWindup 0.30. At the press (after the checks; the cooldown is
+--   spent then, as 1.4): <P>WindupTime, then <P>WindupAt = now (QuillWindupAt, SmokeWindupAt, GooWindupAt,
+--   BreakerWindupAt; the strobe keeps StrobeStartedAt + StrobeWindupTime). The request then waits the wind-up; when the
+--   character is still in workspace, alive and has its root, <P>WindupResult "fired" and the 1.4 body runs with the time
+--   of that moment (quills: the press's aim, the target from the root then; smoke: the cloud centred there; goo: the
+--   muzzle there); else <P>WindupResult "cancelled" and nothing happens. Strobe: the flash delay is the strobe wind-up.
+--   Breaker: StunnedUntil, the pin release and StunBreakImmuneUntil (press + BreakerImmune) stay at the press; the push,
+--   BreakerPushed and BreakerAt come after the wind-up. Switch: script attribute HerreraMoves_windupsEnabled (default
+--   true, read at each press; false = 1.4: no wait, strobe 0.15). Diagnostics: script HerreraMovesWindups,
+--   HerreraMovesWindupCancels.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -96,6 +110,7 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.3"
 VERSION = "1.4" -- v1.4 goo blob from the jaw nozzle
+VERSION = "1.5" -- v1.5 move wind-ups
 local QUILL_GAP, QUILL_SPEED, QUILL_CONE = 0.045, 90, math.rad(35)
 local SMOKE_TICK = 0.1
 local STROBE_WINDUP = 0.15
@@ -105,7 +120,7 @@ script:SetAttribute("HerreraMovesServerVersion", VERSION)
 for _, k in ipairs({"HerreraMovesServerEnabled", "HerreraMoves_quillsEnabled", "HerreraMoves_smokeEnabled",
 	"HerreraMoves_strobeEnabled", "HerreraMoves_breakerEnabled", "HerreraMoves_gliderEnabled", "HerreraMovesModeRulesEnabled",
 	"HerreraMoves_caltropsEnabled", "HerreraMoves_gooEnabled", "HerreraMoves_gooAssistEnabled",
-	"HerreraMoves_caltropArmOnLandEnabled", "HerreraMoves_gooMuzzleEnabled"}) do -- v1.2: + pass 3; v1.3: + arm on land; v1.4: + goo muzzle
+	"HerreraMoves_caltropArmOnLandEnabled", "HerreraMoves_gooMuzzleEnabled", "HerreraMoves_windupsEnabled"}) do -- v1.2: + pass 3; v1.3: + arm on land; v1.4: + goo muzzle
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function on(id)
@@ -166,6 +181,37 @@ local function num(m, k, d) return tonumber(m:GetAttribute(k)) or d end
 
 -- targets (InkServer 1.4's rules) ------------------------------------------------------------------------------------
 local function rootOf(m) return m:FindFirstChild("HumanoidRootPart") end
+
+-- v1.5: move wind-ups -------------------------------------------------------------------------------------------------
+local WINDUP_DEFAULTS = {quill = 0.35, smoke = 0.25, strobe = 0.40, goo = 0.35, breaker = 0.30}
+for id, v in pairs(WINDUP_DEFAULTS) do
+	if script:GetAttribute("HerreraMoves_" .. id .. "Windup") == nil then script:SetAttribute("HerreraMoves_" .. id .. "Windup", v) end
+end
+script:SetAttribute("HerreraMovesWindups", script:GetAttribute("HerreraMovesWindups") or 0)
+script:SetAttribute("HerreraMovesWindupCancels", script:GetAttribute("HerreraMovesWindupCancels") or 0)
+local function windupsOn() return script:GetAttribute("HerreraMoves_windupsEnabled") ~= false end
+local function windupTime(id)
+	local v = tonumber(script:GetAttribute("HerreraMoves_" .. id .. "Windup"))
+	return math.clamp(v or WINDUP_DEFAULTS[id], 0, 2)
+end
+-- stamps the press, waits the wind-up; returns the fire time, or nil (cancelled). Switch off: returns t at once.
+local function windup(char, prefix, id, t)
+	if not windupsOn() then return t end
+	local w = windupTime(id)
+	char:SetAttribute(prefix .. "WindupTime", w)
+	char:SetAttribute(prefix .. "WindupResult", "winding")
+	char:SetAttribute(prefix .. "WindupAt", t) -- last: HerreraMovesPose / HerreraPartsAnim / HerreraMovesFX start the wind-up
+	count("HerreraMovesWindups")
+	if w > 0 then task.wait(w) end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not char:IsDescendantOf(workspace) or not hum or hum.Health <= 0 or not rootOf(char) then
+		char:SetAttribute(prefix .. "WindupResult", "cancelled")
+		count("HerreraMovesWindupCancels")
+		return nil
+	end
+	char:SetAttribute(prefix .. "WindupResult", "fired")
+	return now()
+end
 local function isTarget(m, self)
 	if not (m:IsA("Model") and m ~= self and m:IsDescendantOf(workspace)) then return false end
 	if not m:FindFirstChild("Hitboxes") or m:GetAttribute("Bitable") ~= true then return false end
@@ -272,6 +318,8 @@ end
 quillRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local char, t = check(player, stamp, "quills", "Quill", {attack = true, aim = true, aimDir = aimDir})
 	if not char then return end
+	t = windup(char, "Quill", "quill", t) -- v1.5
+	if not t then return end
 	local root = rootOf(char)
 	local s = char:GetScale()
 	local range = math.max(1, num(char, "QuillRange", 40)) * s
@@ -336,6 +384,8 @@ local botSlow = {} -- [bot] = {hum, base, set, untilT, mul}
 smokeRemote.OnServerEvent:Connect(function(player, stamp)
 	local char, t = check(player, stamp, "smoke", "Smoke", {})
 	if not char then return end
+	t = windup(char, "Smoke", "smoke", t) -- v1.5
+	if not t then return end
 	local root = rootOf(char)
 	local s = char:GetScale()
 	local c = {center = root.Position, radius = math.max(1, num(char, "SmokeRadius", 12)) * s,
@@ -436,8 +486,14 @@ end)
 strobeRemote.OnServerEvent:Connect(function(player, stamp)
 	local char, t = check(player, stamp, "strobe", "Strobe", {attack = true})
 	if not char then return end
+	local strobeWait = STROBE_WINDUP -- v1.5
+	if windupsOn() then
+		strobeWait = windupTime("strobe")
+		char:SetAttribute("StrobeWindupTime", strobeWait)
+		count("HerreraMovesWindups")
+	end
 	char:SetAttribute("StrobeStartedAt", t) -- the rear-up (HerreraMovesPose)
-	task.delay(STROBE_WINDUP, function()
+	task.delay(strobeWait, function()
 		local root = char.Parent and rootOf(char)
 		if not root then return end
 		local ta = now()
@@ -535,6 +591,13 @@ breakerRemote.OnServerEvent:Connect(function(player, stamp)
 			char:SetAttribute("PinHeld", nil)
 		end
 	end
+	local pressT = t -- v1.5: free + immune at the press, the push after the wind-up
+	if windupsOn() then
+		local imm0 = math.max(0, num(char, "BreakerImmune", 0))
+		if imm0 > 0 then char:SetAttribute("StunBreakImmuneUntil", pressT + imm0) end
+		t = windup(char, "Breaker", "breaker", t)
+		if not t then return end
+	end
 	local s = char:GetScale()
 	local dist = math.max(0, num(char, "BreakerPush", 0)) * s
 	local n = 0
@@ -546,6 +609,7 @@ breakerRemote.OnServerEvent:Connect(function(player, stamp)
 	end
 	local imm = math.max(0, num(char, "BreakerImmune", 0))
 	if imm > 0 then char:SetAttribute("StunBreakImmuneUntil", t + imm) end
+	if pressT ~= t and imm > 0 then char:SetAttribute("StunBreakImmuneUntil", pressT + imm) end -- v1.5: counted from the press
 	char:SetAttribute("BreakerPushed", n)
 	char:SetAttribute("BreakerAt", t) -- last: HerreraMovesFX bolts
 	count("BreakerBreaks")
@@ -705,6 +769,8 @@ end
 gooRemote.OnServerEvent:Connect(function(player, stamp)
 	local char, t = check(player, stamp, "goo", "Goo", {})
 	if not char then return end
+	t = windup(char, "Goo", "goo", t) -- v1.5
+	if not t then return end
 	local root = rootOf(char)
 	local s = char:GetScale()
 	local fwd = facing(root)

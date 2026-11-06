@@ -1,4 +1,4 @@
--- HerreraPartsAnim v1.0 (Mecha Dino Arena) — makes the machinery on the Herrerasaurus' redesigned mecha parts move (every
+-- HerreraPartsAnim v1.1 (Mecha Dino Arena) — makes the machinery on the Herrerasaurus' redesigned mecha parts move (every
 -- client, every Herrera). MDA-289, plan docs/plans/HERRERA_PARTS_LOOKS_v2.0.md Task 3; looks HerreraPartsServer 1.4 +
 -- HerreraPartsLooksV2 1.0 (Kepu 2026-11-05 19:39 picks), motions as in docs/mockups/herrera_parts_redesign.html v0.2. Built
 -- from TenoPartsAnim 1.1's loop (that script is not edited).
@@ -24,10 +24,23 @@
 -- Switch: script attribute HerreraPartsAnimEnabled (default true, read each frame; false = every joint at rest).
 -- Diagnostics: script HerreraPartsAnimVersion, HerreraPartsAnimJoints (joints written, last frame); model
 --   HerreraPartsAnimActive ("<id>,..." parts moving now, this client).
+-- v1.1 (plan docs/plans/HERRERA_MOVES_ANIM_v1.0.md Task 6, MDA-296): the parts move on the wind-ups (HerreraMovesServer
+--   1.5 / AdrenalineServer 1.6). W = the wind-up stamp; a pair counts when W is newer than the fire stamp (winding) or the
+--   fire stamp is at most 2 s after W:
+--   quills  QuillWindupAt: the lids open over 0.15 s from W (held while winding), then held to QuillLandedAt + 0.1, shut
+--           over 0.3 s.
+--   smoke   SmokeWindupAt: the fins fan open over 0.25 s from W, held to SmokeUntil, close over 0.4 s.
+--   goo     GooWindupAt: while winding the sacs swell 1 -> 1.25 (smooth) over GooWindupTime, then the 1.0 squeeze.
+--   hadren  AdrenalineWindupAt: the plunger pushes in over 0.15 s from W + 0.15, held to AdrenalineStartedAt +
+--           AdrenalineTime, back out as 1.0.
+--   (The frill bulbs' charge-up is HerreraMovesFX 1.6: the LEDs are FX pieces, not moving groups.)
+--   Without a wind-up stamp (or switch off): 1.0. Switch: script attribute HerreraPartsAnimWindupEnabled (default true,
+--   read each frame).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 wind-ups
 script:SetAttribute("HerreraPartsAnimVersion", VERSION)
 if script:GetAttribute("HerreraPartsAnimEnabled") == nil then script:SetAttribute("HerreraPartsAnimEnabled", true) end
 
@@ -106,6 +119,50 @@ local ACT = {
 		return {u = pulse(t - s, 0.5, math.max(0, T - 0.5), math.max(1, CD - T))}
 	end,
 }
+
+-- v1.1: the wind-ups
+if script:GetAttribute("HerreraPartsAnimWindupEnabled") == nil then script:SetAttribute("HerreraPartsAnimWindupEnabled", true) end
+local ACT10 = {}
+for k, f in pairs(ACT) do ACT10[k] = f end
+-- W, F (fire stamp or nil while winding), winding; nil when no usable wind-up
+local function wpair(c, wk, fk, built)
+	if script:GetAttribute("HerreraPartsAnimWindupEnabled") == false then return nil end
+	local w = stamp(c, wk, built)
+	if not w then return nil end
+	local f = stamp(c, fk, built)
+	if not f or w > f + 1e-3 then return w, nil, true end
+	if f - w <= 2 then return w, f, false end
+	return nil
+end
+ACT.quills = function(c, t, built, mem)
+	local w, f, winding = wpair(c, "QuillWindupAt", "QuillStartedAt", built)
+	if not w then return ACT10.quills(c, t, built, mem) end
+	if t - w > 8 then return {u = 0} end
+	if winding then return {u = up(t - w, 0.15)} end
+	local landed = stamp(c, "QuillLandedAt", f) or (f + 1.5)
+	return {u = pulse(t - w, 0.15, math.max(0, landed + 0.1 - w - 0.15), 0.3)}
+end
+ACT.smoke = function(c, t, built, mem)
+	local w, f, winding = wpair(c, "SmokeWindupAt", "SmokeStartedAt", built)
+	if not w then return ACT10.smoke(c, t, built, mem) end
+	if winding then return {u = up(t - w, 0.25)} end
+	local untilT = num(c, "SmokeUntil", f + 4)
+	if untilT < f then untilT = f + 4 end
+	return {u = pulse(t - w, 0.25, math.max(0, untilT - w - 0.25), 0.4)}
+end
+ACT.goo = function(c, t, built, mem)
+	local w, f, winding = wpair(c, "GooWindupAt", "GooFiredAt", built)
+	if not w or not winding then return ACT10.goo(c, t, built, mem) end
+	local wt = math.max(0.05, num(c, "GooWindupTime", 0.35))
+	return {u = 1, pulse = {sac = (1 + 0.06 * math.sin(2 * t)) * (1 + 0.25 * sm((t - w) / wt))}}
+end
+ACT.hadren = function(c, t, built, mem)
+	local w, f, winding = wpair(c, "AdrenalineWindupAt", "AdrenalineStartedAt", built)
+	if not w then return ACT10.hadren(c, t, built, mem) end
+	if winding then return {u = up(t - w - 0.15, 0.15)} end
+	local T, CD = num(c, "AdrenalineTime", 3), num(c, "AdrenalineCooldown", 20)
+	return {u = pulse(t - w - 0.15, 0.15, math.max(0, f + T - w - 0.3), math.max(1, CD - T))}
+end
 
 local AXIS = {X = Vector3.xAxis, Y = Vector3.yAxis, Z = Vector3.zAxis}
 local function rotAbout(axis, a)

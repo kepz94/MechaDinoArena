@@ -1,4 +1,4 @@
--- SlashTest v1.5 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
+-- SlashTest v1.6 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 9 (server: SlashServer 1.1), mockup docs/mockups/herrera_kit_options.html.
 -- Kepu 2026-10-30: "Dash-through slash"; the drop attack "should be able to happen if I press the dash aimed at a nearby
 --   target but not be its own dedicated button".
@@ -50,6 +50,13 @@
 --   the dive pick and the contact loop), so no claim or dive is ever sent for a squadmate.
 --   Squadmates = ReplicatedStorage.SquadShared.SquadRules (SquadServer 1.0's copy) sameChar. Switch: script attribute
 --   SlashTestSquadEnabled (default true, read at each check; false = 1.4).
+-- v1.6 (plan docs/plans/HERRERA_MOVES_ANIM_v1.0.md Task 3, MDA-293; Kepu 2026-11-05 picked "A · Cross Rake", red-team
+--   "others see the dash only"): a press that passes the local checks first coils: state "coil" for the character's
+--   SlashCoilTime (default 0.15 s; SlashLocalCoilTime, then SlashLocalCoilAt = server time, last; SlashPose 1.2 drops the
+--   body and pulls both arms back), then the 1.5 press runs as now (checks again, facing, kind, dive target, request,
+--   pass-through all taken at the dash start). Death, a stun or a pin in the coil -> state "ready", nothing sent, no
+--   charge spent (SlashInputResult "coilCancelled"). A press during the coil is "busy". Switch: character attribute
+--   SlashCoilEnabled (default true, read at each press; false = 1.5).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -57,6 +64,7 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
 local VERSION = "1.5"
+VERSION = "1.6" -- v1.6 Cross Rake coil
 local ACTION = "DinoSlash"
 local ACTION_CLICK = "DinoSlashClick"
 local BIND = "DinoSlashDrive"
@@ -245,7 +253,8 @@ local function finishLocal(nextState)
 	phaseAt = os.clock()
 end
 
-local function tryPress(source)
+local coilToken -- v1.6
+local function tryPress(source, fromCoil)
 	local result
 	local t = workspace:GetServerTimeNow()
 	if get("SlashEnabled") ~= true then
@@ -265,6 +274,29 @@ local function tryPress(source)
 	if result then
 		show("SlashInputResult", result)
 		return
+	end
+	if not fromCoil and char:GetAttribute("SlashCoilEnabled") ~= false then -- v1.6: the coil before the dash
+		local ct = math.clamp(tonumber(char:GetAttribute("SlashCoilTime")) or 0.15, 0, 1)
+		if ct > 0 then
+			show("SlashLocalCoilTime", ct)
+			show("SlashLocalCoilAt", t)
+			setState("coil")
+			show("SlashInputResult", "coil")
+			local token = {}
+			coilToken = token
+			task.delay(ct, function()
+				if coilToken ~= token or state ~= "coil" then return end
+				coilToken = nil
+				local t2 = workspace:GetServerTimeNow()
+				setState("ready")
+				if hum.Health <= 0 or (tonumber(char:GetAttribute("StunnedUntil")) or 0) > t2 or char:GetAttribute("PinHeld") == true then
+					show("SlashInputResult", "coilCancelled")
+					return
+				end
+				tryPress(source, true)
+			end)
+			return
+		end
 	end
 	findTargets()
 	local scale = char:GetScale()
@@ -312,6 +344,7 @@ local function drive()
 		finishLocal("ready")
 		return
 	end
+	if state == "coil" then return end -- v1.6: the coil's own timer starts the dash
 	if state == "recover" then
 		if t >= RECOVER then setState("ready") end
 		return
