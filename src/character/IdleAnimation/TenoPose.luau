@@ -1,4 +1,4 @@
--- TenoPose v1.10 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.11 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -112,10 +112,30 @@
 --     (the same landing). Other clients keep the server stamp. Switch: model attribute TenoLocalLandEnabled (nil = true).
 --   * the grab's clamp point x (Tail5_main frame, scale 1) = the character's TenoGrabClampX (TenoPartsServer 1.4: -3.7 with
 --     the Pincer Tail) when it is set, else CLAMP_X (-2.6). Switch: model attribute TenoGrabClampAttrEnabled (nil = true).
+-- v1.11 (MDA-279, plan docs/plans/TENO_GRAB_SCORPION_v1.0.md Task 2, mockup docs/mockups/teno_moves_anim.html v0.1; Kepu
+--   2026-11-05 18:10 picked A "Scorpion Strike"): when the grab's TenoGrabStyle is "scorpion" (TenoMovesServer 1.10) the
+--   v1.9 grab plays the Scorpion path. W = catch - 0.15 (the strike), S = throw - 0.15 (the slam), R = GRAB_RECOVER 0.9.
+--   k2 = |rest - hips| / 17.9 (the v0.1 mockup's clamp-to-hips length); goals = hips + offset x k2 (HRP space):
+--   * body (attackAngles): 0..W 0 -> SC_BODY[side] (front nose down: RootJoint -12, Neck -12, Head -8, legs 24 / knees -24 /
+--     ankles 8, arms -14; back rearing: RootJoint 10, Neck 8, Head -4, legs -6, knees -14, arms 16) (ease); held to the
+--     catch; catch..S -> GRAB_BRACE (smooth); S..throw -> SC_SLAM[side] (front RootJoint 6, back RootJoint -10 / Neck -10 on
+--     the brace; easeIn); throw..throw + R -> 0 (smooth).
+--   * tail goals: 0..W rest -> coil (front (0.4, 10.08, 2.25), back (0.4, 7.58, 12.75)) (ease); W..catch the strike =
+--     bezier(coil, coil + (0, 2, -6 front / +6 back), target) (easeIn), "tight" IK (smoothing x 0.08, IK_SWEEPS + 4) from
+--     70 % of the strike; catch..S bezier(clamp at the catch, its midpoint to carry + (0, 3, 0), carry) (smooth), carry front
+--     (0.4, 7.08, 2.75) / back (0.4, 7.08, 0.75); S..throw -> slam front (0.6, 1.58, 15.75) / back (0.6, 1.58, -9.25)
+--     (easeIn); throw..throw + R -> recover front (0.4, 3.58, 14.75) / back (0.4, 4.58, 8.75) over the first 1 / 1.6, the
+--     offsets fading to 0 (smooth).
+--   * reach step (owner only): at a new grab the tail is pre-solved (tight, 10 sweeps) onto the target from this frame's pose;
+--     a miss over 0.5 k2 sets the character's local TenoGrabStepWant = the flat world vector toward the target of length
+--     (miss - 0.5 k2), capped at 2 k2 front / 5 k2 back (TenoPoseFix 1.1 slides the root by it), and TenoGrabStepFor = the
+--     grab's TenoGrabStartedAt; else TenoGrabStepWant = Vector3.zero.
+--   Switch: model attribute TenoGrabScorpionEnabled (nil = true; false = the 1.10 Over-the-Top path for every grab).
 local TenoPose = {}
 TenoPose.Version = "1.8"
 TenoPose.Version = "1.9" -- v1.9 Over-the-Top grab IK
 TenoPose.Version = "1.10" -- v1.10 local landing slam, the look's clamp point
+TenoPose.Version = "1.11" -- v1.11 Scorpion Strike grab
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -750,6 +770,153 @@ function TenoPose.grabTail(model, motors, pose, serverNow)
 	end
 	local ang, miss = solve(motors, pose, goal)
 	return toOffsets(ang, w), miss
+end
+
+-- v1.11: Scorpion Strike grab (see the header)
+local SC_LEN, SC_STRIKE, SC_SLAM_T = 17.9, 0.15, 0.15
+local SC_BODY = {
+	front = {RootJoint = {-12, 0, 0}, Neck = {-12, 0, 0}, Head = {-8, 0, 0}, LegL = {24, 0, 0}, LegR = {24, 0, 0}, KneeL = {-24, 0, 0},
+		KneeR = {-24, 0, 0}, AnkleL = {8, 0, 0}, AnkleR = {8, 0, 0}, ArmL = {-14, 0, 0}, ArmR = {-14, 0, 0}},
+	back = {RootJoint = {10, 0, 0}, Neck = {8, 0, 0}, Head = {-4, 0, 0}, LegL = {-6, 0, 0}, LegR = {-6, 0, 0}, KneeL = {-14, 0, 0},
+		KneeR = {-14, 0, 0}, ArmL = {16, 0, 0}, ArmR = {16, 0, 0}},
+}
+local SC_SLAM = {front = over(GRAB_BRACE, {RootJoint = {6, 0, 0}}), back = over(GRAB_BRACE, {RootJoint = {-10, 0, 0}, Neck = {-10, 0, 0}})}
+local SC_GOALS = {
+	front = {coil = Vector3.new(0.4, 10.08, 2.25), dz = -6, carry = Vector3.new(0.4, 7.08, 2.75), slam = Vector3.new(0.6, 1.58, 15.75),
+		rec = Vector3.new(0.4, 3.58, 14.75), cap = 2},
+	back = {coil = Vector3.new(0.4, 7.58, 12.75), dz = 6, carry = Vector3.new(0.4, 7.08, 0.75), slam = Vector3.new(0.6, 1.58, -9.25),
+		rec = Vector3.new(0.4, 4.58, 8.75), cap = 5},
+}
+local function scorpionOn(model) -- this frame's grab plays the Scorpion path
+	return grab ~= nil and grab.style == "scorpion" and model:GetAttribute("TenoGrabScorpionEnabled") ~= false
+end
+local function solveSc(motors, pose, goal, tight, sweeps) -- solve() with weak smoothing ("tight": the jaws ON the target)
+	local ang = {}
+	for _, n in ipairs(TAILS) do local v = sol and sol[n] or {0, 0} ang[n] = {v[1], v[2]} end
+	local w = tight and 0.08 or 1
+	local function cost()
+		local d = fkClamp(motors, pose, ang) - goal
+		local c = d:Dot(d)
+		for i, n in ipairs(TAILS) do
+			local a = ang[n]
+			c += w * 0.0006 * (a[1] * a[1] + a[2] * a[2])
+			if i > 1 then
+				local b = ang[TAILS[i - 1]]
+				c += w * 0.0012 * ((a[1] - b[1]) ^ 2 + (a[2] - b[2]) ^ 2)
+			end
+		end
+		return c
+	end
+	local best = cost()
+	for sw = 1, sweeps or (IK_SWEEPS + (tight and 4 or 0)) do
+		local st = IK_STEPS[math.min(sw, #IK_STEPS)]
+		for i = #TAILS, 1, -1 do
+			local a = ang[TAILS[i]]
+			for ax = 1, 2 do
+				for _, dir in ipairs({1, -1}) do
+					for _ = 1, 4 do
+						local old = a[ax]
+						a[ax] = math.clamp(old + dir * st, LIM[ax][1], LIM[ax][2])
+						local c = cost()
+						if c < best - 1e-6 then best = c else a[ax] = old break end
+					end
+				end
+			end
+		end
+	end
+	sol = ang
+	return ang, (fkClamp(motors, pose, ang) - goal).Magnitude
+end
+do
+	local phaseV110 = TenoPose.phase
+	function TenoPose.phase(model, isOwner, serverNow)
+		local r1, r2, r3, r4 = phaseV110(model, isOwner, serverNow)
+		if grab then grab.style, grab.owner = model:GetAttribute("TenoGrabStyle"), isOwner grab.scOn = scorpionOn(model) end
+		return r1, r2, r3, r4
+	end
+	local anglesV110 = TenoPose.attackAngles
+	function TenoPose.attackAngles(phase, t, hold, s, now)
+		if phase == "tgrab" and grab and grab.style == "scorpion" and grab.scOn then
+			local body = SC_BODY[grab.side]
+			local W, S = grab.catch - SC_STRIKE, grab.throw - SC_SLAM_T
+			if t < W then return mix(ZERO, body, ease(t / math.max(0.05, W))) end
+			if t < grab.catch then return mix(body, body, 0) end
+			if t < S then return mix(body, GRAB_BRACE, smooth((t - grab.catch) / math.max(0.05, S - grab.catch))) end
+			if t < grab.throw then return mix(GRAB_BRACE, SC_SLAM[grab.side], easeIn((t - S) / SC_SLAM_T)) end
+			return mix(SC_SLAM[grab.side], ZERO, smooth((t - grab.throw) / GRAB_RECOVER))
+		end
+		return anglesV110(phase, t, hold, s, now)
+	end
+	local grabTailV110 = TenoPose.grabTail
+	function TenoPose.grabTail(model, motors, pose, serverNow)
+		if grab then grab.scOn = scorpionOn(model) end
+		if not (grab and grab.scOn) then return grabTailV110(model, motors, pose, serverNow) end
+		local hrp = model:FindFirstChild("HumanoidRootPart")
+		if not hrp then return nil end
+		for _, n in ipairs(TAILS) do if not motors[n] then return nil end end
+		if not chain or chainScale ~= model:GetScale() or chainClampX ~= clampX(model) then chain = buildChain(model, motors, hrp) end
+		if not chain then return nil end
+		local t = serverNow - grab.st
+		local G = SC_GOALS[grab.side]
+		local function target(M)
+			local ref = model:FindFirstChild("TenoGrabTargetRef")
+			local m = ref and ref:IsA("ObjectValue") and ref.Value
+			if m and m.Parent then
+				local cf, size = m:GetBoundingBox()
+				return hrp.CFrame:PointToObjectSpace(cf.Position + Vector3.new(0, size.Y / 2, 0))
+			end
+			return grab.side == "front" and M.head + Vector3.new(0, 0, -10 * M.k) or M.rest + Vector3.new(0, 0, 5 * M.k)
+		end
+		if solKey ~= grab.st then -- a new grab: landmarks from this frame's pose
+			solKey, sol = grab.st, nil
+			local rest = fkClamp(motors, pose, nil)
+			local hips, head = model:FindFirstChild("Torso_hips", true), model:FindFirstChild("Head_cranium", true)
+			local hipsL = hips and hrp.CFrame:PointToObjectSpace(hips.Position) or Vector3.zero
+			local headL = head and hrp.CFrame:PointToObjectSpace(head.Position) or Vector3.new(0, 0, -10)
+			marks = {rest = rest, hips = hipsL, head = headL, k = math.max(0.1, (rest - hipsL).Magnitude / SC_LEN)}
+			if grab.owner then -- the reach step
+				local tg = target(marks)
+				local _, miss = solveSc(motors, pose, tg, true, 10)
+				sol = nil
+				local want = Vector3.zero
+				local over2 = miss - 0.5 * marks.k
+				local flatL = Vector3.new(tg.X - hipsL.X, 0, tg.Z - hipsL.Z)
+				if over2 > 0 and flatL.Magnitude > 1e-3 then
+					want = hrp.CFrame:VectorToWorldSpace(flatL.Unit * math.min(over2, G.cap * marks.k))
+				end
+				model:SetAttribute("TenoGrabStepWant", want)
+				model:SetAttribute("TenoGrabStepFor", grab.st)
+			end
+		end
+		local M, k = marks, marks.k
+		local P = function(v) return M.hips + v * k end
+		local coil, carry, slam, rec = P(G.coil), P(G.carry), P(G.slam), P(G.rec)
+		local W, S = grab.catch - SC_STRIKE, grab.throw - SC_SLAM_T
+		local goal, w, tight = nil, 1, false
+		if t < W then
+			goal = M.rest:Lerp(coil, ease(t / math.max(0.05, W)))
+			M.scCatch = nil
+		elseif t < grab.catch then
+			local u = clamp01((t - W) / SC_STRIKE)
+			goal = bez(coil, coil + Vector3.new(0, 2 * k, G.dz * k), target(M), easeIn(u))
+			tight = u > 0.7
+			M.scCatch = nil
+		elseif t < S then
+			if not M.scCatch then M.scCatch = fkClamp(motors, pose, sol) end
+			local u = smooth((t - grab.catch) / math.max(0.05, S - grab.catch))
+			goal = bez(M.scCatch, M.scCatch:Lerp(carry, 0.5) + Vector3.new(0, 3 * k, 0), carry, u)
+		elseif t < grab.throw then
+			goal = carry:Lerp(slam, easeIn((t - S) / SC_SLAM_T))
+		elseif t < grab.throw + GRAB_RECOVER then
+			local u = (t - grab.throw) / GRAB_RECOVER
+			goal = slam:Lerp(rec, smooth(u * 1.6))
+			w = 1 - smooth(u)
+		else
+			return nil
+		end
+		local ang, miss = solveSc(motors, pose, goal, tight)
+		return toOffsets(ang, w), miss
+	end
 end
 
 return TenoPose

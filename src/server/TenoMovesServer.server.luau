@@ -1,4 +1,4 @@
--- TenoMovesServer v1.9 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.10 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -176,6 +176,13 @@
 --   when the character's TPart_tmortar holds a part with TPartRole "muzzle" (TenoPartsServer 1.3), the boulders start at
 --   that part's position (the cannon's barrel tip) instead of Tail3_main's bucket. No muzzle = 1.8. Switch: script attribute
 --   TenoMovesMortarMuzzleEnabled (default true, read at each shot; false = 1.8).
+-- v1.10 (MDA-278, plan docs/plans/TENO_GRAB_SCORPION_v1.0.md Task 1, mockup docs/mockups/teno_moves_anim.html v0.1; Kepu
+--   2026-11-05 18:10 picked A "Scorpion Strike", fling kept 45): the Over-the-Top grab (1.7) on the Scorpion timeline. From
+--   the press t: front catch t + 0.55, throw t + 1.15; back catch t + 0.40, throw t + 1.00 (SC_TIMES); flight SC_FLIGHT 0.6.
+--   Stamps before TenoGrabStartedAt: TenoGrabStyle "scorpion" and TenoGrabFlightPeak SC_PEAK (8 studs; TenoBotMotion 1.3
+--   arcs the thrown bot with it). Landing point, fling, damage, stun, crash unchanged. Switch: script attribute
+--   TenoMovesGrabScorpionEnabled (default true, read at each grab; false = 1.9: OT_TIMES, OT_FLIGHT, TenoGrabStyle
+--   "overtop", TenoGrabFlightPeak nil). Diagnostic: script TenoMovesGrabsScorpion.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -188,6 +195,7 @@ VERSION = "1.6" -- v1.6 TenoLeapArc (front-only landing)
 VERSION = "1.7" -- v1.7 Over-the-Top grab, leap landing on dinos + shove
 VERSION = "1.8" -- v1.8 Deflector Claws (mortar)
 VERSION = "1.9" -- v1.9 boulder from the cannon muzzle
+VERSION = "1.10" -- v1.10 Scorpion Strike grab timeline
 if script:GetAttribute("TenoMovesMortarMuzzleEnabled") == nil then script:SetAttribute("TenoMovesMortarMuzzleEnabled", true) end -- v1.9
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
@@ -202,6 +210,9 @@ if script:GetAttribute("TenoMovesShieldCoatAt") == nil then script:SetAttribute(
 local DY = 15
 local OT_TIMES = {front = {catch = 0.70, throw = 1.35}, back = {catch = 0.45, throw = 1.10}} -- v1.7
 local OT_FLIGHT, OT_LAND_LEAD = 0.85, 0.15 -- v1.7
+local SC_TIMES = {front = {catch = 0.55, throw = 1.15}, back = {catch = 0.40, throw = 1.00}} -- v1.10
+local SC_FLIGHT, SC_PEAK = 0.6, 8 -- v1.10
+if script:GetAttribute("TenoMovesGrabScorpionEnabled") == nil then script:SetAttribute("TenoMovesGrabScorpionEnabled", true) end -- v1.10
 if script:GetAttribute("TenoMovesGrabOverTopEnabled") == nil then script:SetAttribute("TenoMovesGrabOverTopEnabled", true) end -- v1.7
 for _, k in ipairs({"TenoMovesLeapOnDinoEnabled", "TenoMovesLeapShoveEnabled"}) do -- v1.7
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
@@ -560,9 +571,12 @@ end
 local function grabOverTop(char, player, target, t, fling, dmg, stunT, crash, crashR)
 	local root, hrp0 = rootOf(char), rootOf(target)
 	local side = root.CFrame:PointToObjectSpace(hrp0.Position).Z < 0 and "front" or "back"
-	local tm = OT_TIMES[side]
+	local scorpion = script:GetAttribute("TenoMovesGrabScorpionEnabled") ~= false -- v1.10
+	local tm = scorpion and SC_TIMES[side] or OT_TIMES[side]
+	local flightT = scorpion and SC_FLIGHT or OT_FLIGHT
 	local catchAt, throwAt = t + tm.catch, t + tm.throw
-	local landAt = throwAt + OT_FLIGHT
+	local landAt = throwAt + flightT
+	if scorpion then count("TenoMovesGrabsScorpion") end
 	count(side == "front" and "TenoMovesGrabsFront" or "TenoMovesGrabsBack")
 	local isPlayer = Players:GetPlayerFromCharacter(target) ~= nil
 	local latched = latchedOnMe(target, char)
@@ -576,7 +590,9 @@ local function grabOverTop(char, player, target, t, fling, dmg, stunT, crash, cr
 	char:SetAttribute("TenoGrabSide", side)
 	char:SetAttribute("TenoGrabCatchAt", catchAt)
 	char:SetAttribute("TenoGrabThrowAtPlan", throwAt)
-	char:SetAttribute("TenoGrabFlight", OT_FLIGHT)
+	char:SetAttribute("TenoGrabFlight", flightT) -- v1.10 (was OT_FLIGHT)
+	char:SetAttribute("TenoGrabStyle", scorpion and "scorpion" or "overtop") -- v1.10
+	char:SetAttribute("TenoGrabFlightPeak", scorpion and SC_PEAK or nil) -- v1.10
 	char:SetAttribute("TenoGrabTarget", target.Name)
 	char:SetAttribute("TenoGrabCrashHits", 0)
 	char:SetAttribute("TenoGrabStartedAt", t) -- last: poses / bot motion / FX

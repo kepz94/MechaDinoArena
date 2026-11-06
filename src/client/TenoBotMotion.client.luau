@@ -1,4 +1,4 @@
--- TenoBotMotion v1.2 (Mecha Dino Arena) — draws bots that a teno grabs, throws or shoves, on every client (LocalScript in
+-- TenoBotMotion v1.3 (Mecha Dino Arena) — draws bots that a teno grabs, throws or shoves, on every client (LocalScript in
 -- StarterPlayerScripts). MDA-217, plan docs/plans/TENO_TAIL_GRAB_v1.0.md Task 3, mockup docs/mockups/teno_tail_grab_v0.1.html
 -- (Kepu 2026-11-03: "It lags the dinos when I toss them", picked A "Over the Top" + L1 "Shove Clear").
 -- Why: TenoMovesServer 1.6 moved the anchored bot from the server every Heartbeat; clients only got about 30 updates a second
@@ -34,12 +34,17 @@
 --   further out than the Clamp Tail): the hold point's x (Tail5_main frame, scale 1) = the teno's TenoGrabClampX
 --   (TenoPartsServer 1.4) when it is set, else CLAMP_X (-2.6). Switch: script attribute TenoBotMotionClampAttrEnabled
 --   (default true, read each frame).
+-- v1.3 (MDA-281, plan docs/plans/TENO_GRAB_SCORPION_v1.0.md Task 4; Kepu 2026-11-05 picked A "Scorpion Strike", fling kept
+--   45 over a 0.6 s flight): the thrown bot's arc peak = the teno's TenoGrabFlightPeak (TenoMovesServer 1.10: 8) when it is
+--   set, else FLING_PEAK (16). Switch: script attribute TenoBotMotionPeakAttrEnabled (default true, read each frame).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 land through the dino under a leap
 VERSION = "1.2" -- v1.2 the look's clamp point
+VERSION = "1.3" -- v1.3 the throw's arc from TenoGrabFlightPeak
+if script:GetAttribute("TenoBotMotionPeakAttrEnabled") == nil then script:SetAttribute("TenoBotMotionPeakAttrEnabled", true) end -- v1.3
 if script:GetAttribute("TenoBotMotionClampAttrEnabled") == nil then script:SetAttribute("TenoBotMotionClampAttrEnabled", true) end -- v1.2
 local LAND_AHEAD, LAND_THROUGH_TIME = 0.25, 1.0 -- v1.1
 if script:GetAttribute("TenoBotMotionLandThroughEnabled") == nil then script:SetAttribute("TenoBotMotionLandThroughEnabled", true) end -- v1.1
@@ -154,7 +159,9 @@ local function stepGrab(j, t)
 	local face = CFrame.lookAt(Vector3.zero, dir)
 	local r0 = (j.release or hrp.CFrame) - (j.release or hrp.CFrame).Position
 	local turn = r0:Lerp(face, smooth(u / 0.2))
-	local pos = from:Lerp(to, u) + Vector3.new(0, 4 * FLING_PEAK * u * (1 - u), 0)
+	local peak = FLING_PEAK -- v1.3
+	if script:GetAttribute("TenoBotMotionPeakAttrEnabled") ~= false then peak = tonumber(j.char:GetAttribute("TenoGrabFlightPeak")) or FLING_PEAK end
+	local pos = from:Lerp(to, u) + Vector3.new(0, 4 * peak * u * (1 - u), 0)
 	hrp.CFrame = CFrame.new(pos) * turn * CFrame.Angles(-2 * math.pi * smooth(u), 0, 0)
 	return true
 end

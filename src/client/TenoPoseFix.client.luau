@@ -1,4 +1,4 @@
--- TenoPoseFix v1.0 (Mecha Dino Arena) — two fixes for the teno's own character on its owner's client (LocalScript in
+-- TenoPoseFix v1.1 (Mecha Dino Arena) — two fixes for the teno's own character on its owner's client (LocalScript in
 -- StarterPlayerScripts). Kepu 2026-11-05 17:40: "The jump is like glitching when I land". Studio (v460, frame recording):
 --   * the landing tail slam (TenoPose "tland", SLAM_DOWN2) and the mortar wind-up (MORTAR_COIL) push the tail into the
 --     ground; the tail hitboxes (DinoHitboxes 1.2: Hitbox_Tail1..5 CanCollide true, so the tail can't pass into the world)
@@ -15,16 +15,25 @@
 --     replicated); other players still see the slam at the server's stamp.
 -- Switches: script attributes TenoTailClipEnabled, TenoLocalLandEnabled (default true each, read each frame / each landing).
 -- Diagnostics: script TenoPoseFixVersion; character TenoTailClipActive (true while the tail passes through), TenoLocalLandAt.
+-- v1.1 (MDA-280, plan docs/plans/TENO_GRAB_SCORPION_v1.0.md Task 3; Kepu 2026-11-05 picked the "short step"): the reach step
+--   of the Scorpion Strike grab. When the character's TenoGrabStepFor equals its TenoGrabStartedAt (TenoPose 1.11 set the
+--   local TenoGrabStepWant for this grab) and TenoGrabStyle is "scorpion", the root slides along TenoGrabStepWant (a flat
+--   world vector) from TenoGrabStartedAt to TenoGrabCatchAt - 0.1 (smoothstep), on Heartbeat, only while FloorMaterial is
+--   not Air. Each frame a ray from the root along the step (STEP_PROBE + the frame's move; the character left out) stops it
+--   1 stud short of anything that collides. Switch: script attribute TenoGrabStepEnabled (default true, read each frame).
+--   Diagnostic: character TenoGrabStepDone (studs moved for the last grab).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 grab reach step
 local LAND_RISE = 2
 local TAIL_DOWN = {tland = true, tmortar = true, tgrab = true, tleap = true}
-script:SetAttribute("TenoPoseFixVersion", VERSION)
 if script:GetAttribute("TenoTailClipEnabled") == nil then script:SetAttribute("TenoTailClipEnabled", true) end
 if script:GetAttribute("TenoLocalLandEnabled") == nil then script:SetAttribute("TenoLocalLandEnabled", true) end
+if script:GetAttribute("TenoGrabStepEnabled") == nil then script:SetAttribute("TenoGrabStepEnabled", true) end -- v1.1
 
+script:SetAttribute("TenoPoseFixVersion", VERSION)
 local player = Players.LocalPlayer
 local char, clipped = nil, {} -- clipped: [part] = true (we turned its collision off)
 
@@ -83,4 +92,38 @@ local function watch(c)
 	end)
 end
 player.CharacterAdded:Connect(watch)
+-- v1.1: the grab's reach step
+local STEP_PROBE = 2
+local stepFor, stepDone = nil, 0
+RunService.Heartbeat:Connect(function()
+	local c = player.Character
+	if not c or script:GetAttribute("TenoGrabStepEnabled") == false then return end
+	local st = tonumber(c:GetAttribute("TenoGrabStartedAt"))
+	local want = c:GetAttribute("TenoGrabStepWant")
+	if not st or c:GetAttribute("TenoGrabStyle") ~= "scorpion" or c:GetAttribute("TenoGrabStepFor") ~= st or typeof(want) ~= "Vector3" then return end
+	local catch = tonumber(c:GetAttribute("TenoGrabCatchAt"))
+	if not catch or catch - 0.1 <= st then return end
+	if stepFor ~= st then stepFor, stepDone = st, 0 end
+	local L = want.Magnitude
+	if L < 1e-3 or stepDone >= L - 1e-3 then return end
+	local hum, root = c:FindFirstChildOfClass("Humanoid"), c:FindFirstChild("HumanoidRootPart")
+	if not (hum and root) or hum.FloorMaterial == Enum.Material.Air then return end
+	local u = math.clamp((workspace:GetServerTimeNow() - st) / (catch - 0.1 - st), 0, 1)
+	local goal = L * u * u * (3 - 2 * u)
+	local d = goal - stepDone
+	if d <= 1e-4 then return end
+	local dir = Vector3.new(want.X, 0, want.Z).Unit
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {c}
+	local hit = workspace:Raycast(root.Position, dir * (STEP_PROBE + d), params)
+	if hit and hit.Instance.CanCollide then
+		local free = hit.Distance - 1
+		if free <= 0 then stepDone = L c:SetAttribute("TenoGrabStepDone", stepDone) return end -- blocked: stop here
+		d = math.min(d, free)
+	end
+	root.CFrame += dir * d
+	stepDone += d
+	c:SetAttribute("TenoGrabStepDone", math.floor(stepDone * 100 + 0.5) / 100)
+end)
 if player.Character then task.spawn(watch, player.Character) end
