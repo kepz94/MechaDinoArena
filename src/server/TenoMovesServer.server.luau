@@ -1,4 +1,4 @@
--- TenoMovesServer v1.11 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.12 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -193,6 +193,13 @@
 --     candidate within TenoChallengeRange (15 up / down), + toward the root's +X side, clamped to +-40; 0 when none.
 --     Stamped before TenoChallengeStartedAt (TenoPose 1.12 snaps the head to it, TenoMovesFX 1.7 sweeps the scan cone).
 --     Switch: script attribute TenoMovesChallengeAimEnabled (default true; false = no stamp).
+-- v1.12 (MDA-325, plan docs/plans/FIXES_2026-11-06_v1.0.md Fix 3, mockup docs/mockups/teno_grab_attack_options.html v0.1;
+--   Kepu 2026-11-06 "A" Back Pluck + red-team "Bots and players"): a Tail Grab on a raptor latched on this teno plays the back
+--   timeline (side "back": catch t + 0.40, throw t + 1.00) and, before ShakeOffAt, stamps on the target TenoGrabPluckAt = the
+--   catch time. BotServer 1.26 / PounceServer 1.14 keep the raptor riding at its latch point until then (no leap-off), so the
+--   Scorpion strike (TenoPose 1.11 aims at the target's live box) clamps it where it clings. Unlatched targets unchanged.
+--   Switch: script attribute TenoGrabPluckEnabled (default true, read at each grab; false = 1.11). Diagnostic: script
+--   TenoMovesGrabsPluck.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -207,6 +214,8 @@ VERSION = "1.8" -- v1.8 Deflector Claws (mortar)
 VERSION = "1.9" -- v1.9 boulder from the cannon muzzle
 VERSION = "1.10" -- v1.10 Scorpion Strike grab timeline
 VERSION = "1.11" -- v1.11 animation pass timings (mortar 0.70, stomp 0.60, challenge aim)
+VERSION = "1.12" -- v1.12 Back Pluck on a latched raptor
+if script:GetAttribute("TenoGrabPluckEnabled") == nil then script:SetAttribute("TenoGrabPluckEnabled", true) end -- v1.12
 if script:GetAttribute("TenoMovesMortarMuzzleEnabled") == nil then script:SetAttribute("TenoMovesMortarMuzzleEnabled", true) end -- v1.9
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
@@ -586,6 +595,8 @@ end
 local function grabOverTop(char, player, target, t, fling, dmg, stunT, crash, crashR)
 	local root, hrp0 = rootOf(char), rootOf(target)
 	local side = root.CFrame:PointToObjectSpace(hrp0.Position).Z < 0 and "front" or "back"
+	local pluck = script:GetAttribute("TenoGrabPluckEnabled") ~= false and latchedOnMe(target, char) -- v1.12
+	if pluck then side = "back" end -- v1.12: the tail comes over the back to where it clings
 	local scorpion = script:GetAttribute("TenoMovesGrabScorpionEnabled") ~= false -- v1.10
 	local tm = scorpion and SC_TIMES[side] or OT_TIMES[side]
 	local flightT = scorpion and SC_FLIGHT or OT_FLIGHT
@@ -614,6 +625,10 @@ local function grabOverTop(char, player, target, t, fling, dmg, stunT, crash, cr
 	target:SetAttribute("TenoGrabbedBy", char.Name)
 	target:SetAttribute("TenoGrabbedAt", t)
 	if latched then
+		if pluck then -- v1.12: ride until the clamp
+			target:SetAttribute("TenoGrabPluckAt", catchAt)
+			count("TenoMovesGrabsPluck")
+		end
 		target:SetAttribute("ShakeOffReason", "grabbed")
 		target:SetAttribute("ShakeOffAt", t) -- last: PounceServer / BotServer release the latch
 	end

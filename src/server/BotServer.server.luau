@@ -1,4 +1,4 @@
--- BotServer v1.25 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.26 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -383,6 +383,11 @@
 --     log 2026-11-03: y 608.6 -> 604.4 -> 608.6 after every stun). At standUp the bot's FallingDown and Ragdoll states are
 --     turned off (they stay off; bots lie down with their own roll) and a bot still in one of them is set to GettingUp.
 --     Diagnostic: script BotStandFixes.
+-- v1.26 (MDA-325, plan docs/plans/FIXES_2026-11-06_v1.0.md Fix 3; Kepu 2026-11-06 "A" Back Pluck): a latched bot whose
+--   ShakeOffReason is "grabbed" keeps riding at its latch point while its TenoGrabPluckAt (TenoMovesServer 1.12, the teno's
+--   catch time) is in the future; then the latch ends with reason "grabbed" and the bot stays anchored where it clung (no
+--   leap-off velocity; BotState "grabbed") for the teno's clamp. Script attribute BotLatchGrabHoldEnabled (default true,
+--   read at each step / release; false = 1.25: leap off at once). Diagnostic: script BotGrabPlucks.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
@@ -390,6 +395,9 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.24"
 VERSION = "1.25" -- v1.25 grab hold, get-up refresh, ownership guard
+VERSION = "1.26" -- v1.26 grabbed latch: ride to the pluck, no leap-off
+if script:GetAttribute("BotLatchGrabHoldEnabled") == nil then script:SetAttribute("BotLatchGrabHoldEnabled", true) end -- v1.26
+local function grabHoldOn() return script:GetAttribute("BotLatchGrabHoldEnabled") ~= false end -- v1.26
 for _, k in ipairs({"BotGrabHoldEnabled", "BotDownRefreshEnabled", "BotOwnerGuardEnabled", "BotStandFixEnabled"}) do -- v1.25
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
@@ -2409,6 +2417,14 @@ local function endLatch(b, reason)
 	end
 	b.nextPounce = os.clock() + get("BotPounceCooldown")
 	if reason == "rammed" and tossOff(b) then return end -- v1.3: flung away from the tree, then lies stunned
+	if reason == "grabbed" and grabHoldOn() then -- v1.26: stays where it clung for the teno's clamp (TenoMovesServer owns it)
+		if l and l.part.Parent then hrp.CFrame = l.part.CFrame * l.offset end
+		hrp.Anchored = true
+		hrp.AssemblyLinearVelocity = Vector3.zero
+		script:SetAttribute("BotGrabPlucks", (script:GetAttribute("BotGrabPlucks") or 0) + 1)
+		show(b, "BotState", "grabbed")
+		return
+	end
 	if reason == "rammed" then
 		-- stunned: drop to the ground and lie on its side (step() keeps it down until StunnedUntil)
 		b.down = false
@@ -2677,7 +2693,12 @@ RunService.Heartbeat:Connect(function(dt)
 				local char = l.char
 				local thum = char and char:FindFirstChildOfClass("Humanoid")
 				local shakeAt = model:GetAttribute("ShakeOffAt")
-				if typeof(shakeAt) == "number" and shakeAt >= l.at then
+				local pluckAt = model:GetAttribute("TenoGrabPluckAt") -- v1.26
+				if typeof(shakeAt) == "number" and shakeAt >= l.at and model:GetAttribute("ShakeOffReason") == "grabbed" and grabHoldOn()
+					and typeof(pluckAt) == "number" and pluckAt > workspace:GetServerTimeNow() and pluckAt < workspace:GetServerTimeNow() + 2 then
+					-- v1.26: keep riding at the latch point (no bite ticks) until the teno's clamp
+					if l.part.Parent then hrp.CFrame = l.part.CFrame * l.offset end
+				elseif typeof(shakeAt) == "number" and shakeAt >= l.at then
 					endLatch(b, model:GetAttribute("ShakeOffReason") or "shaken")
 				elseif not (char and char.Parent and l.part.Parent and thum and thum.Health > 0) then
 					endLatch(b, "gone")

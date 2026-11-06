@@ -1,4 +1,4 @@
--- TenoPose v1.12 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.13 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -152,12 +152,19 @@
 --     crouch LOWCROUCH (JumpWindup unchanged, 0.12 s); air LOWCROUCH -> J_AIR over 0.15 s (the push), -> TUCK by 0.4 s, then
 --     the legs reach out to J_LAND from 0.5 s over 0.3 s (fully, so the feet are down for the touchdown); land: from the touchdown pose -> SQUAT (knees -40) over TenoLeapLandIn, then the fade. "tland"
 --     plays on top unchanged.
+-- v1.13 (MDA-326, plan docs/plans/FIXES_2026-11-06_v1.0.md Fix 4, mockup docs/mockups/teno_grab_attack_options.html v0.1;
+--   Kepu 2026-11-06 "A" rake marks + both legs): a scratch on the left arm plays SCRATCH_UP / SCRATCH_DOWN mirrored (ArmL,
+--   LegL <-> LegR, every yaw / roll negated). Which arm: other clients read the server's TenoScratchArm (TenoAttackServer
+--   1.6, "R" / "L", stamped before TenoScratchAt); the owner reads the same stamp, or predicts the other arm than the last
+--   stamped one while its own local scratch is newer than the server's TenoScratchAt (only while the server's
+--   TenoScratchAlternate is true). Switch: model attribute TenoPoseScratchMirrorEnabled (nil = true; false = right arm always).
 local TenoPose = {}
 TenoPose.Version = "1.8"
 TenoPose.Version = "1.9" -- v1.9 Over-the-Top grab IK
 TenoPose.Version = "1.10" -- v1.10 local landing slam, the look's clamp point
 TenoPose.Version = "1.11" -- v1.11 Scorpion Strike grab
 TenoPose.Version = "1.12" -- v1.12 animation pass: mortar, stomp, bellow, challenge, shield, leap
+TenoPose.Version = "1.13" -- v1.13 left / right scratch
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -327,6 +334,26 @@ local function num(v) return typeof(v) == "number" and v or nil end
 local slamYaw = 0 -- v1.2: the aimed yaw of the current slam (this module copy belongs to one model)
 local leapLand = nil -- v1.3: landing time (s after the leap start) of the current leap
 local fastMortar = true -- v1.4
+local scratchLeft = false -- v1.13: this frame's scratch is on the left arm
+local function mirrorPose(T) -- v1.13: L <-> R, yaw / roll negated
+	local o = {}
+	for n, v in pairs(T) do
+		local m = n:sub(-1) == "L" and n:sub(1, -2) .. "R" or (n:sub(-1) == "R" and n:sub(1, -2) .. "L" or n)
+		o[m] = {v[1], -v[2], -v[3]}
+	end
+	return o
+end
+local SCRATCH_UP_L, SCRATCH_DOWN_L -- built on first use (the tables are defined above)
+local function scratchArmLeft(model, src, localAt) -- v1.13
+	if model:GetAttribute("TenoPoseScratchMirrorEnabled") == false then return false end
+	local arm = model:GetAttribute("TenoScratchArm")
+	if src == "local" and localAt and model:GetAttribute("TenoScratchAlternate") == true then
+		local sc = model:GetAttribute("TenoScratchAt")
+		sc = typeof(sc) == "number" and sc or 0
+		if localAt > sc + 0.05 then return arm ~= "L" end -- pending: the other arm than the last stamped one
+	end
+	return arm == "L"
+end
 local function phaseV12(model, isOwner, serverNow)
 	local s = TenoPose.settings(model)
 	slamYaw = 0
@@ -341,7 +368,7 @@ local function phaseV12(model, isOwner, serverNow)
 		if not at then return nil, 0, 0, "local" end
 		local t = serverNow - at
 		if st == "hold" then return "hold", t, t, "local" end
-		if st == "scratch" and t >= 0 and t < scratchEnd then return "scratch", t, 0, "local" end
+		if st == "scratch" and t >= 0 and t < scratchEnd then scratchLeft = scratchArmLeft(model, "local", at) return "scratch", t, 0, "local" end
 		if st == "slam" and t >= 0 and t < slamEnd then
 			return "slam", t, num(model:GetAttribute("TenoLocalHold")) or 1, "local"
 		end
@@ -355,6 +382,7 @@ local function phaseV12(model, isOwner, serverNow)
 		return "slam", serverNow - sl, num(model:GetAttribute("TenoSlamHold")) or 1, "server"
 	end
 	if sc > 0 and sc > sl and serverNow - sc >= 0 and serverNow - sc < scratchEnd then
+		scratchLeft = scratchArmLeft(model, "server") -- v1.13
 		return "scratch", serverNow - sc, 0, "server"
 	end
 	return nil, 0, 0, "server"
@@ -393,9 +421,14 @@ function TenoPose.attackAngles(phase, t, hold, s, now)
 		return a
 	elseif phase == "scratch" then
 		local T1, T2, T3 = s.TenoScratchUp, s.TenoScratchDown, s.TenoScratchRecover
-		if t < T1 then return mix(ZERO, SCRATCH_UP, ease(t / T1)) end
-		if t < T1 + T2 then return mix(SCRATCH_UP, SCRATCH_DOWN, easeIn((t - T1) / T2)) end
-		return mix(SCRATCH_DOWN, ZERO, ease((t - T1 - T2) / T3))
+		local UP, DOWN = SCRATCH_UP, SCRATCH_DOWN
+		if scratchLeft then -- v1.13
+			if not SCRATCH_UP_L then SCRATCH_UP_L, SCRATCH_DOWN_L = mirrorPose(SCRATCH_UP), mirrorPose(SCRATCH_DOWN) end
+			UP, DOWN = SCRATCH_UP_L, SCRATCH_DOWN_L
+		end
+		if t < T1 then return mix(ZERO, UP, ease(t / T1)) end
+		if t < T1 + T2 then return mix(UP, DOWN, easeIn((t - T1) / T2)) end
+		return mix(DOWN, ZERO, ease((t - T1 - T2) / T3))
 	elseif phase == "slam" then
 		local TD = s.TenoSlamDropTime
 		local a

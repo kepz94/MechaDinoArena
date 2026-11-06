@@ -1,4 +1,4 @@
--- TenoFX v1.2 (Mecha Dino Arena) — the Tenontosaurus' scratch, tail-slam and leap effects on this client (LocalScript,
+-- TenoFX v1.3 (Mecha Dino Arena) — the Tenontosaurus' scratch, tail-slam and leap effects on this client (LocalScript,
 -- StarterPlayerScripts). MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 8, mockup docs/mockups/teno_attacks_options.html
 -- v0.2 (Kepu 2026-10-31: "way more animated with more effects to really sell the power of the slam"). Every size below is
 -- the mockup's (studs at scale 2) x (character scale / 2). Runs for every player character with TenoAttackEnabled (yours and
@@ -29,10 +29,24 @@
 -- v1.2 (Kepu 2026-11-02: "remove the yellow circle when you hold the tail slam"): the GLOW ring under the hips during the hold
 --   is not drawn (its segments stay transparent); the tail glow stays. Switch: script attribute TenoFXHoldRingEnabled
 --   (default false, read each frame; true = 1.1 ring).
+-- v1.3 (MDA-326, plan docs/plans/FIXES_2026-11-06_v1.0.md Fix 4, mockup docs/mockups/teno_grab_attack_options.html v0.1;
+--   Kepu 2026-11-06 "A" rake marks + both legs):
+--   * the scratch streaks start at the scratching arm: TenoAttackServer 1.6's TenoScratchArm ("L" -> the ArmL joint); on your
+--     own teno, while your local scratch is newer than the server's TenoScratchAt and TenoScratchAlternate is true, the
+--     other arm than the last stamped one (as TenoPose 1.13).
+--   * rake marks on every hit target (TenoScratchTargets at TenoScratchHitAt): three thick bars (0.45 x 7 x 0.45 x k,
+--     k = the teno's scale / 2, 1.4 x k apart, tilted 0.6 rad, colour RAKE FF3B2F with a white core look from Neon) on
+--     the target's side that faces the teno, at mid height; they grow in over the first 1/6 and fade over RAKE_TIME
+--     (0.45 s); plus a Highlight on the target: white for 0.08 s, then red, gone at 0.25 s. The pops stay.
+--   Switch: script attribute TenoFXRakeMarksEnabled (default true, read at each scratch / hit; false = 1.2).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.2"
+VERSION = "1.3" -- v1.3 rake marks + scratching arm
+if script:GetAttribute("TenoFXRakeMarksEnabled") == nil then script:SetAttribute("TenoFXRakeMarksEnabled", true) end -- v1.3
+local RAKE, RAKE_TIME = Color3.fromHex("FF3B2F"), 0.45 -- v1.3
+local function rakeOn() return script:GetAttribute("TenoFXRakeMarksEnabled") ~= false end -- v1.3
 if script:GetAttribute("TenoFXHoldRingEnabled") == nil then script:SetAttribute("TenoFXHoldRingEnabled", false) end -- v1.2
 local SHAKE_RANGE = 90
 local DUST, ROCK, ROCK2, CRACK = Color3.fromHex("CBB487"), Color3.fromHex("7A6A50"), Color3.fromHex("5C4E3A"), Color3.fromHex("3A2E22")
@@ -260,6 +274,16 @@ RunService.Heartbeat:Connect(function(dt)
 			elseif f.kind == "streak" then
 				f.p.Transparency = u
 				f.p.Size = Vector3.new(f.p.Size.X, f.p.Size.Y, f.len * (0.4 + u))
+			elseif f.kind == "rake" then -- v1.3: grow in over the first 1/6, then fade
+				local g = math.min(1, u * 6)
+				f.p.Size = Vector3.new(f.w, f.len * g, f.w)
+				f.p.CFrame = f.cf
+				f.p.Transparency = u < 1 / 6 and 0 or (u - 1 / 6) / (5 / 6)
+			elseif f.kind == "hl" then -- v1.3: white, then red
+				if f.h.Parent then
+					f.h.FillColor = (u * f.life) < 0.08 and Color3.new(1, 1, 1) or RAKE
+					f.h.FillTransparency = 0.35 + 0.65 * u
+				end
 			elseif f.kind == "pop" then
 				f.bb.StudsOffsetWorldSpace = Vector3.new(0, f.y0 + u * 5, 0)
 				local tr = u < 0.7 and 0 or (u - 0.7) / 0.3
@@ -270,6 +294,7 @@ RunService.Heartbeat:Connect(function(dt)
 			if f.p then f.p:Destroy() end
 			if f.segs then for _, s in ipairs(f.segs) do s:Destroy() end end
 			if f.bb then f.bb:Destroy() end
+			if f.h then f.h:Destroy() end -- v1.3
 			table.remove(fx, i)
 		end
 	end
@@ -301,6 +326,40 @@ local function pops(list, text, big)
 	end
 end
 
+-- v1.3: three thick claw bars across each hit target's side facing the teno + a white / red Highlight
+local function rakeMarks(char, list)
+	if typeof(list) ~= "string" or list == "" then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local k = scaleK(char)
+	for name in string.gmatch(list, "[^|]+") do
+		local m = findModel(name)
+		local mr = m and (m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart)
+		if mr then
+			local cf, size = m:GetBoundingBox()
+			local to = Vector3.new(root.Position.X - cf.Position.X, 0, root.Position.Z - cf.Position.Z)
+			to = to.Magnitude > 1e-3 and to.Unit or Vector3.xAxis
+			local half = math.min(size.X, size.Z) * 0.5
+			local face = cf.Position + to * (half * 0.6) + Vector3.new(0, size.Y * 0.08, 0)
+			local across = Vector3.yAxis:Cross(to).Unit
+			for i = 1, 3 do
+				local at = face + across * ((i - 2) * 1.4 * k)
+				local bcf = CFrame.lookAt(at, at + to) * CFrame.Angles(0, 0, 0.6)
+				local p = part(Enum.PartType.Block, Vector3.new(0.45 * k, 0.1, 0.45 * k), RAKE, 1, Enum.Material.Neon) -- shown by the step
+				p.CFrame = bcf
+				add({kind = "rake", p = p, cf = bcf, w = 0.45 * k, len = 7 * k, life = RAKE_TIME, delay = (i - 1) * 0.02})
+			end
+			local h = Instance.new("Highlight")
+			h.FillColor, h.FillTransparency, h.OutlineTransparency = Color3.new(1, 1, 1), 0.35, 1
+			h.DepthMode = Enum.HighlightDepthMode.Occluded
+			h.Adornee = m
+			h.Parent = folder
+			add({kind = "hl", h = h, life = 0.25})
+		end
+	end
+	note("rake")
+end
+
 local function scratchFX(char)
 	if not on() or not char.Parent then return end
 	local root = char:FindFirstChild("HumanoidRootPart")
@@ -308,7 +367,16 @@ local function scratchFX(char)
 	local k = scaleK(char)
 	local fwd = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 	fwd = fwd.Magnitude > 1e-3 and fwd.Unit or Vector3.zAxis
-	local claw = jointPos(char, "ArmR") or (root.Position + fwd * 4.7 * k * 2)
+	local arm = "ArmR"
+	if rakeOn() then -- v1.3: the scratching arm
+		local a = char:GetAttribute("TenoScratchArm")
+		if char == player.Character and char:GetAttribute("TenoScratchAlternate") == true and char:GetAttribute("TenoLocalState") == "scratch" then
+			local la, sa = tonumber(char:GetAttribute("TenoLocalAt")) or 0, tonumber(char:GetAttribute("TenoScratchAt")) or 0
+			if la > sa + 0.05 then a = (a == "L") and "R" or "L" end
+		end
+		if a == "L" then arm = "ArmL" end
+	end
+	local claw = jointPos(char, arm) or (root.Position + fwd * 4.7 * k * 2)
 	claws(claw + fwd * 2 * k, fwd, k)
 	shakeAt(claw, 0.25)
 	note("scratch")
@@ -466,6 +534,7 @@ local function watch(char, pl)
 		if not on() or not isTeno() then return end
 		local d = math.floor((tonumber(char:GetAttribute("TenoScratchDamage")) or 8) + 0.5)
 		pops(char:GetAttribute("TenoScratchTargets"), "-" .. d, false)
+		if rakeOn() then rakeMarks(char, char:GetAttribute("TenoScratchTargets")) end -- v1.3
 	end)
 	c(char:GetAttributeChangedSignal("TenoSlamImpactAt"), function()
 		if not on() or not isTeno() then return end

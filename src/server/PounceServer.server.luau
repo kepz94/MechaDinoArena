@@ -1,4 +1,4 @@
--- PounceServer v1.13 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.14 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -112,6 +112,12 @@
 --   Dome Visor check, so nothing pins, latches, hurts or knocks back anyone. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
 --   SquadTestId counts). Switch: script attribute PounceServerSquadEnabled (default true, read at each check; false = 1.12).
 --   Diagnostic: script PounceServerSquadSkips (count of squadmate skips / refusals).
+-- v1.14 (MDA-325, plan docs/plans/FIXES_2026-11-06_v1.0.md Fix 3; Kepu 2026-11-06 Back Pluck "Bots and players"): a latched
+--   player whose ShakeOffReason is "grabbed" stays latched (riding, PounceTest keeps it on its latch point) while its
+--   TenoGrabPluckAt (TenoMovesServer 1.12, the teno's catch time, at most 2 s ahead) is in the future; then it is released
+--   with reason "grabbed" (PounceTest lets go without the leap-off) and TenoMovesServer stuns / tosses it as before. Switch:
+--   script attribute PounceGrabHoldEnabled (default true, read each Heartbeat; false = 1.13: released at the press).
+--   Diagnostic: script PounceGrabHolds (frames held).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -152,6 +158,8 @@ local OFFSET_MAX = 8        -- studs the latch spot may sit from the part's cent
 local MAX_LATCH = 30        -- safety: seconds a latch may last
 
 script:SetAttribute("PounceServerVersion", "1.13") -- v1.13 (1.12 left this at "1.11")
+script:SetAttribute("PounceServerVersion", "1.14") -- v1.14 grabbed latch rides to the pluck
+if script:GetAttribute("PounceGrabHoldEnabled") == nil then script:SetAttribute("PounceGrabHoldEnabled", true) end -- v1.14
 if script:GetAttribute("PounceChargeBlockEnabled") == nil then script:SetAttribute("PounceChargeBlockEnabled", true) end -- v1.11
 if script:GetAttribute("PounceHeadbuttCancelEnabled") == nil then script:SetAttribute("PounceHeadbuttCancelEnabled", true) end -- v1.11
 if script:GetAttribute("PounceVisorEnabled") == nil then script:SetAttribute("PounceVisorEnabled", true) end -- v1.10
@@ -468,6 +476,11 @@ RunService.Heartbeat:Connect(function()
 			release(char, "disabled")
 		elseif not l.part.Parent or not l.model:IsDescendantOf(workspace) then
 			release(char, "gone")
+		elseif typeof(char:GetAttribute("ShakeOffAt")) == "number" and char:GetAttribute("ShakeOffAt") >= l.at
+			and char:GetAttribute("ShakeOffReason") == "grabbed" and script:GetAttribute("PounceGrabHoldEnabled") ~= false
+			and typeof(char:GetAttribute("TenoGrabPluckAt")) == "number" and char:GetAttribute("TenoGrabPluckAt") > now
+			and char:GetAttribute("TenoGrabPluckAt") < now + 2 then -- v1.14: ride until the teno's clamp
+			script:SetAttribute("PounceGrabHolds", (script:GetAttribute("PounceGrabHolds") or 0) + 1)
 		elseif typeof(char:GetAttribute("ShakeOffAt")) == "number" and char:GetAttribute("ShakeOffAt") >= l.at then -- v1.2
 			release(char, char:GetAttribute("ShakeOffReason") or "shaken")
 		elseif l.mode ~= "pin" and (l.model:GetAttribute("DummyState") == "ko" or (l.model:GetAttribute("DummyHealth") or 1) <= 0) then

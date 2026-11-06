@@ -1,4 +1,4 @@
--- TenoAttackServer v1.5 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.6 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -97,6 +97,12 @@
 --   (the attacker's root in the target's back half-space) is x the target's PlatingRearMul (0.9 / 0.85 / 0.78 / 0.7) through
 --   BoneCrest 1.5 plating() (stamps PlatingHits / PlatingLastMul / PlatingHitAt for HerreraPartsFX). Front hits unchanged.
 --   Switch: script attribute TenoAttackPlatingEnabled (default true, read at each hit; false = 1.4).
+-- v1.6 (MDA-326, plan docs/plans/FIXES_2026-11-06_v1.0.md Fix 4; Kepu 2026-11-06 "A" rake marks + both legs): scratches
+--   alternate arms: the n-th accepted scratch (TenoScratchCount) uses ArmR when n is odd, ArmL when even. Before TenoScratchAt
+--   the character gets TenoScratchArm ("R" / "L") and TenoScratchAlternate (true; TenoPose 1.13 mirrors the pose, TenoFX 1.x
+--   draws the rake marks); the hit's claw point is that arm's joint. Reach, cone, damage, shove unchanged. Switch: script
+--   attribute TenoScratchAlternateEnabled (default true, read at each scratch; false = 1.5: ArmR, TenoScratchArm "R",
+--   TenoScratchAlternate false).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -104,6 +110,8 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.4"
 VERSION = "1.5" -- v1.5 Back Plating
+VERSION = "1.6" -- v1.6 alternating scratch arms
+if script:GetAttribute("TenoScratchAlternateEnabled") == nil then script:SetAttribute("TenoScratchAlternateEnabled", true) end -- v1.6
 local SCRATCH_HIT_AT = 0.17     -- s after the press: mockup T1 + T2 / 2
 local SCRATCH_CONE = math.rad(45)
 local SHOVE_TIME = 0.3
@@ -522,6 +530,10 @@ local function doScratch(player, char, st, t, stamp)
 	char:SetAttribute("TenoScratchCount", (char:GetAttribute("TenoScratchCount") or 0) + 1)
 	count("TenoAttackScratches")
 	char:SetAttribute("TenoHoldSince", 0)
+	local alt = script:GetAttribute("TenoScratchAlternateEnabled") ~= false -- v1.6
+	local arm = (alt and (char:GetAttribute("TenoScratchCount") or 1) % 2 == 0) and "L" or "R"
+	char:SetAttribute("TenoScratchArm", arm)
+	char:SetAttribute("TenoScratchAlternate", alt)
 	char:SetAttribute("TenoScratchAt", t) -- last: poses + TenoFX
 	local delay = math.clamp(math.min(stamp, t) + SCRATCH_HIT_AT - t, 0, SCRATCH_HIT_AT)
 	task.delay(delay, function()
@@ -532,7 +544,7 @@ local function doScratch(player, char, st, t, stamp)
 		local s = char:GetScale()
 		local fwd = flat(root.CFrame.LookVector)
 		fwd = fwd.Magnitude > 1e-3 and fwd.Unit or Vector3.zAxis
-		local claw = jointPos(char, "ArmR", root.Position + fwd * 4.7 * s)
+		local claw = jointPos(char, arm == "L" and "ArmL" or "ArmR", root.Position + fwd * 4.7 * s) -- v1.6: the scratching arm
 		local reach = math.max(0, get(char, "TenoScratchReach")) * s
 		local shoveDist = math.max(0, get(char, "TenoScratchShove")) * s
 		local n, names = 0, {}
