@@ -1,4 +1,4 @@
--- TenoMovesServer v1.8 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.9 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -172,6 +172,10 @@
 --   boulder landing on a dino asks DeflectRules 1.0 (kind "boulder", from the teno's root) before its damage / slow; blocked
 --   = nothing for that dino; reflect (the star) = the boulder's damage to the teno instead (KilledWith "deflect"). Switch:
 --   script attribute TenoMovesDeflectEnabled (default true, read at each landing; false = 1.7).
+-- v1.9 (MDA-276, plan docs/plans/TENO_PARTS_LOOKS_v2.0.md Task 4; Kepu 2026-11-05 picked the Back Cannon look): at the shot,
+--   when the character's TPart_tmortar holds a part with TPartRole "muzzle" (TenoPartsServer 1.3), the boulders start at
+--   that part's position (the cannon's barrel tip) instead of Tail3_main's bucket. No muzzle = 1.8. Switch: script attribute
+--   TenoMovesMortarMuzzleEnabled (default true, read at each shot; false = 1.8).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -183,6 +187,8 @@ VERSION = "1.5" -- v1.5 mortar wind-up + 90 studs, shield at 0.2 s
 VERSION = "1.6" -- v1.6 TenoLeapArc (front-only landing)
 VERSION = "1.7" -- v1.7 Over-the-Top grab, leap landing on dinos + shove
 VERSION = "1.8" -- v1.8 Deflector Claws (mortar)
+VERSION = "1.9" -- v1.9 boulder from the cannon muzzle
+if script:GetAttribute("TenoMovesMortarMuzzleEnabled") == nil then script:SetAttribute("TenoMovesMortarMuzzleEnabled", true) end -- v1.9
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
 local MORTAR_FIRE, MORTAR_FLIGHT, MORTAR_PEAK, MORTAR_PAIR = 0.35, 1.3, 30, 4.5
 local MORTAR_FIRE2, MORTAR_FLIGHT2, MORTAR_PEAK2 = 0.15, 0.7, 14 -- v1.2
@@ -875,6 +881,14 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 		if not char.Parent then return end
 		local tail = char:FindFirstChild("Tail3_main", true)
 		local from = (tail and tail:IsA("BasePart")) and (tail.CFrame * CFrame.new(0.1 * sc, 1.1 * sc, 0)).Position or root.Position + Vector3.new(0, 6, 0)
+		if script:GetAttribute("TenoMovesMortarMuzzleEnabled") ~= false then -- v1.9: the Back Cannon's barrel tip
+			local tp = char:FindFirstChild("TPart_tmortar")
+			if tp then
+				for _, d in ipairs(tp:GetDescendants()) do
+					if d:IsA("BasePart") and d:GetAttribute("TPartRole") == "muzzle" then from = d.Position break end
+				end
+			end
+		end
 		char:SetAttribute("TenoMortarFiredAt", now())
 		for _, pt in ipairs(pts) do boulder(from, pt, flightT, peakT) end
 		task.wait(flightT)

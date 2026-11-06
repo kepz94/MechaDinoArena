@@ -14,7 +14,7 @@
 --   group = {name, mount, frame (6: the pivot), type ("spin" | "swing" | "slide"), axis ("X" | "Y" | "Z"), amt (spin rad/s;
 --     swing degrees at full; slide units at full, x scale), parent ("" = none)}
 --   strut = {a0, p0, a1, p1 (anchor-relative points), f0, f1 (the stretch of the a0 -> a1 line it covers), d (diameter), mat}:
---     a telescoping ram: built on the a0 end when f0 < 0.5 (aims at p1), else on the a1 end (aims at p0); TenoPartsAnim aims it.
+--     a telescoping ram: built on the a0 end when (f0 + f1) / 2 < 0.6 (aims at p1), else on the a1 end (aims at p0); TenoPartsAnim aims it.
 -- The camera side is +X = the model's "...L" parts.
 local M = {}
 M.Version = "1.0"

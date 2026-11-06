@@ -1,4 +1,4 @@
--- TenoPartsServer v1.2 (Mecha Dino Arena) — puts the Tenontosaurus' mecha parts on (server-built, every client sees them)
+-- TenoPartsServer v1.3 (Mecha Dino Arena) — puts the Tenontosaurus' mecha parts on (server-built, every client sees them)
 -- and builds their Lab card models. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 4 (MDA-176); the looks are the picked
 -- mockup looks, same numbers (docs/mockups/teno_abilities_options.html v0.3, tools/mockup/teno_abilities_app.js
 -- buildLook; Kepu 2026-11-01: "3,4,7 - A", "5,9,14 - b", 11 "Let's go D"):
@@ -37,10 +37,31 @@
 --   Torso_dorsalShoulder, at x -0.45 and +0.45: a dark pylon {0.225, 0.65, 0.225} (role "pylon"), a lilac Neon band
 --   {0.275, 0.06, 0.275} (role "band") and a purple Neon ball tip 0.25 (role "tip"). Lab cards use it too. Switch: script
 --   attribute TenoPartsShieldPylonsEnabled (default true, read at each build; false = 1.1 mud tank).
+-- v1.3 (plan docs/plans/TENO_PARTS_LOOKS_v2.0.md Task 2, MDA-274; Kepu 2026-11-05 16:48 picks from
+--   docs/mockups/teno_parts_redesign.html: Grab-B Pincer Tail, Mortar-B Back Cannon, Stomp-A Quake Hooves, Bellow-A Shriek
+--   Sacs, Challenge-C Alarm Beacon, Leap-A Chicken-Leg Rams, Shield-B Shield Mane): while script attribute
+--   TenoPartsLooksV2Enabled is true (default, read at each build) the looks come from ServerStorage.DinoArcade.TenoPartsLooksV2
+--   1.0 (generated from the mockup by tools/mockup/export_teno_parts_v2.js): the TheriPartsServer 1.1 build (each piece at
+--   anchor.CFrame x mount frame x piece frame, positions and sizes x the model's scale; stud = Plastic with Studs on every
+--   face, plain = SmoothPlastic, metal = Metal, neon = Neon in the part's area colour or the piece's own colour; box -> Part,
+--   wedge -> WedgePart, cyl -> Part Cylinder, ball -> Part Ball (an ellipsoid when its sizes differ: a Block with a Sphere
+--   SpecialMesh), cone -> 4 WedgeParts, ring -> 16 blocks). Same Model name "TPart_<id>" and TPartRole attribute (TenoMovesFX
+--   reads "rock" / "lens"; new roles muzzle, charge1..4, flash, puff, sac, dome, gauge1..5, disc, rim, pincer, tip). A moving
+--   group = an invisible root Part "TPartGroup_<name>" on a Weld "TPartJoint_<name>" (Part0 = the anchor or the parent group's
+--   root; C0 = the pivot; attributes TPartType / TPartAxis / TPartAmt / TPartRestC0 / TPartBuiltScale / TPartPartId for
+--   TenoPartsAnim 1.0; a Weld, not a Motor6D: IdleAnimation adopts every Motor6D). A strut (the leg rams) = a group of
+--   TPartType "aim" on the end nearer its middle ((f0 + f1) / 2 < 0.6 -> the a0 end, else the a1 end), its Y pointing at the
+--   other end's point (attributes TPartAimAnchor, TPartAimPoint (scale 1)); TenoPartsAnim re-aims it every frame so the rams
+--   telescope with the legs. Pieces: film (flag 2) start invisible (TPartFilm); hidden (flag 4) start invisible (TPartHidden);
+--   alpha < 1 -> Transparency 1 - alpha (TPartAlpha); TPartBaseSize kept for TenoPartsAnim's pulses. Model attributes
+--   TPartLooks "v2", TPartBuiltScale, TPartBuiltAt (server time). Script attribute TenoPartsDetail "full" (default) / "lite" (skips detail pieces). Lab
+--   cards use the same build. Missing module or switch false = the 1.2 looks.
 local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 shield pylons
+VERSION = "1.3" -- v1.3 the redesigned looks (TenoPartsLooksV2)
 local function hex(h) return Color3.fromRGB(math.floor(h / 65536) % 256, math.floor(h / 256) % 256, h % 256) end
 local C = {
 	steel = {hex(0x9aa3ad), Enum.Material.Metal}, dark = {hex(0x3a3f47), Enum.Material.Metal},
@@ -220,6 +241,192 @@ local function buildPart(char, id)
 	return m, n
 end
 
+-- v1.3: the redesigned looks (see the header) ------------------------------------------------------------------------------
+if script:GetAttribute("TenoPartsLooksV2Enabled") == nil then script:SetAttribute("TenoPartsLooksV2Enabled", true) end
+if script:GetAttribute("TenoPartsDetail") == nil then script:SetAttribute("TenoPartsDetail", "full") end
+local V2
+local function v2Data()
+	if V2 == nil then
+		V2 = false
+		pcall(function()
+			local arc = ServerStorage:FindFirstChild("DinoArcade")
+			local m = arc and arc:FindFirstChild("TenoPartsLooksV2")
+			if m then V2 = require(m) end
+		end)
+	end
+	return V2 or nil
+end
+local V2_RING_SEGMENTS = 16
+local KIND_MAT = {stud = Enum.Material.Plastic, plain = Enum.Material.SmoothPlastic, metal = Enum.Material.Metal, neon = Enum.Material.Neon}
+local FACES = {"Top", "Bottom", "Front", "Back", "Left", "Right"}
+local function frameOf(t, i, sc) -- t[i .. i + 5] = x, y, z, rx, ry, rz (degrees); position x sc
+	return CFrame.new(t[i] * sc, t[i + 1] * sc, t[i + 2] * sc) * CFrame.Angles(math.rad(t[i + 3]), math.rad(t[i + 4]), math.rad(t[i + 5]))
+end
+local function v2Part(cls, size, cf, kit, glow, role, flags, colour, alpha)
+	local p = Instance.new(cls)
+	p.Size = size
+	p.CFrame = cf
+	local kind = kit[2]
+	p.Material = KIND_MAT[kind] or Enum.Material.SmoothPlastic
+	p.Color = (colour and colour ~= 0) and hex(colour) or (kind == "neon" and glow or hex(kit[1]))
+	local surf = kind == "stud" and Enum.SurfaceType.Studs or Enum.SurfaceType.Smooth
+	for _, f in ipairs(FACES) do p[f .. "Surface"] = surf end
+	p.CanCollide, p.CanQuery, p.CanTouch, p.Massless = false, false, false, true
+	p.CastShadow = kind ~= "neon"
+	if role and role ~= "" then p:SetAttribute("TPartRole", role) end
+	p:SetAttribute("TPartBaseColor", p.Color)
+	p:SetAttribute("TPartBaseSize", size)
+	if alpha and alpha < 1 then
+		p.Transparency = 1 - alpha
+		p:SetAttribute("TPartAlpha", alpha)
+	end
+	if flags and math.floor(flags / 2) % 2 == 1 then
+		p.Transparency = 1
+		p:SetAttribute("TPartFilm", true)
+	end
+	if flags and math.floor(flags / 4) % 2 == 1 then
+		p.Transparency = 1
+		p:SetAttribute("TPartHidden", true)
+	end
+	return p
+end
+local function weldTo(p, part0)
+	local w = Instance.new("WeldConstraint")
+	w.Part0, w.Part1 = part0, p
+	w.Parent = p
+end
+local function groupRoot(m, name, part0, pivot, sc, id, gtype, axis, amt)
+	local root = Instance.new("Part")
+	root.Name = "TPartGroup_" .. name
+	root.Size = Vector3.one * 0.1 * sc
+	root.Transparency = 1
+	root.CanCollide, root.CanQuery, root.CanTouch, root.Massless = false, false, false, true
+	root.CFrame = pivot
+	root:SetAttribute("TPartGroup", name)
+	local w = Instance.new("Weld")
+	w.Name = "TPartJoint_" .. name
+	w.Part0, w.Part1 = part0, root
+	w.C0 = part0.CFrame:ToObjectSpace(pivot)
+	w.C1 = CFrame.identity
+	w:SetAttribute("TPartType", gtype)
+	w:SetAttribute("TPartAxis", axis)
+	w:SetAttribute("TPartAmt", amt)
+	w:SetAttribute("TPartRestC0", w.C0)
+	w:SetAttribute("TPartBuiltScale", sc)
+	w:SetAttribute("TPartPartId", id)
+	root.Parent = m
+	w.Parent = root
+	return root, w
+end
+-- one piece row -> the parts that make it (welded to part0)
+local function v2Piece(m, D, L, pc, cf, sc, part0, anchorName)
+	local kit = D.KIT[pc[12]]
+	if not kit then return 0 end
+	local shape, sx, sy, sz = pc[2], pc[3] * sc, pc[4] * sc, pc[5] * sc
+	local flags, colour, alpha, role = pc[15], pc[16], pc[17], pc[13]
+	local made = {}
+	if shape == "wedge" then
+		made[1] = v2Part("WedgePart", Vector3.new(sx, sy, sz), cf, kit, L.glow, role, flags, colour, alpha)
+	elseif shape == "cyl" then
+		local p = v2Part("Part", Vector3.new(math.max(0.02, sy), math.max(0.02, sx), math.max(0.02, sx)), cf * CFrame.Angles(0, 0, math.rad(90)), kit, L.glow, role, flags, colour, alpha)
+		p.Shape = Enum.PartType.Cylinder
+		made[1] = p
+	elseif shape == "ball" then
+		if math.abs(sx - sy) < 1e-3 and math.abs(sx - sz) < 1e-3 then
+			local p = v2Part("Part", Vector3.one * sx, cf, kit, L.glow, role, flags, colour, alpha)
+			p.Shape = Enum.PartType.Ball
+			made[1] = p
+		else -- an ellipsoid: a Block with a Sphere mesh
+			local p = v2Part("Part", Vector3.new(math.max(0.02, sx), math.max(0.02, sy), math.max(0.02, sz)), cf, kit, L.glow, role, flags, colour, alpha)
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = p
+			made[1] = p
+		end
+	elseif shape == "ring" then -- torus (radius sx, tube sy) about the piece's Z: a ring of blocks
+		local rad, tube = sx, sy
+		local seg = 2 * math.pi * rad / V2_RING_SEGMENTS
+		for k = 0, V2_RING_SEGMENTS - 1 do
+			local a = k / V2_RING_SEGMENTS * 2 * math.pi
+			made[#made + 1] = v2Part("Part", Vector3.new(math.max(0.02, tube * 2), math.max(0.02, seg * 1.05), math.max(0.02, tube * 2)), cf * CFrame.Angles(0, 0, a) * CFrame.new(rad, 0, 0), kit, L.glow, role, flags, colour, alpha)
+		end
+	elseif shape == "cone" then -- 4 wedges: back faces on the axis, slopes facing out, tip at +Y
+		for k = 0, 3 do
+			made[#made + 1] = v2Part("WedgePart", Vector3.new(sx, sy, sx / 2), cf * CFrame.Angles(0, k * math.pi / 2, 0) * CFrame.new(0, 0, -sx / 4), kit, L.glow, role, flags, colour, alpha)
+		end
+	else
+		made[1] = v2Part("Part", Vector3.new(math.max(0.02, sx), math.max(0.02, sy), math.max(0.02, sz)), cf, kit, L.glow, role, flags, colour, alpha)
+	end
+	for _, p in ipairs(made) do
+		p.Name = (role ~= "" and role or "Piece") .. "_" .. anchorName
+		p.Parent = m
+		weldTo(p, part0)
+	end
+	return #made
+end
+local function buildV2(char, id)
+	local D = v2Data()
+	local L = D and D.LOOKS[id]
+	if not L then return buildPart(char, id) end
+	local sc = char:GetScale()
+	local lite = script:GetAttribute("TenoPartsDetail") == "lite"
+	local m = Instance.new("Model")
+	m.Name = "TPart_" .. id
+	m:SetAttribute("TPartLooks", "v2")
+	m:SetAttribute("TPartBuiltScale", sc)
+	local mounts = {}
+	for i, mt in ipairs(L.mounts) do
+		local anchor = find(char, mt[1])
+		if anchor then mounts[i] = {anchor = anchor, cf = anchor.CFrame * frameOf(mt, 2, sc)} end
+	end
+	local roots = {}
+	for _, g in ipairs(L.groups) do -- parents come before their children in the data
+		local mt = mounts[g[2]]
+		if mt then
+			local part0 = (g[12] ~= "" and roots[g[12]]) or mt.anchor
+			roots[g[1]] = groupRoot(m, g[1], part0, mt.cf * frameOf(g, 3, sc), sc, id, g[9], g[10], g[11])
+		end
+	end
+	local n = 0
+	for _, pc in ipairs(L.pieces) do
+		local mt = mounts[pc[1]]
+		if mt and not (lite and pc[15] % 2 == 1) then
+			n += v2Piece(m, D, L, pc, mt.cf * frameOf(pc, 6, sc), sc, (pc[14] ~= "" and roots[pc[14]]) or mt.anchor, mt.anchor.Name)
+		end
+	end
+	for i, s in ipairs(L.struts or {}) do
+		local a0, a1 = find(char, s.a0), find(char, s.a1)
+		if a0 and a1 then
+			local A = a0.CFrame * (Vector3.new(s.p0[1], s.p0[2], s.p0[3]) * sc)
+			local B = a1.CFrame * (Vector3.new(s.p1[1], s.p1[2], s.p1[3]) * sc)
+			local nearA = (s.f0 + s.f1) / 2 < 0.6
+			local base, aimAt, aimName, aimPoint, from = a0, B, s.a1, s.p1, A:Lerp(B, s.f0)
+			if not nearA then base, aimAt, aimName, aimPoint, from = a1, A, s.a0, s.p0, B:Lerp(A, 1 - s.f1) end
+			local len = (s.f1 - s.f0) * (B - A).Magnitude
+			local pivot = CFrame.lookAt(from, aimAt, base.CFrame.RightVector) * CFrame.Angles(-math.pi / 2, 0, 0) -- Y toward the other end (up hint = the anchor's X: the legs are near vertical)
+			local root, w = groupRoot(m, "strut_" .. i, base, pivot, sc, id, "aim", "Y", 0)
+			w:SetAttribute("TPartAimAnchor", aimName)
+			w:SetAttribute("TPartAimPoint", Vector3.new(aimPoint[1], aimPoint[2], aimPoint[3]))
+			local kit = D.KIT[s.mat]
+			if kit then
+				local p = v2Part("Part", Vector3.new(math.max(0.02, len), s.d * sc, s.d * sc), pivot * CFrame.new(0, len / 2, 0) * CFrame.Angles(0, 0, math.rad(90)), kit, L.glow, "ram", 0, 0, 1)
+				p.Shape = Enum.PartType.Cylinder
+				p.Name = "ram_" .. base.Name
+				p.Parent = m
+				weldTo(p, root)
+				n += 1
+			end
+		end
+	end
+	m:SetAttribute("TPartId", id)
+	m:SetAttribute("TPartBuiltAt", workspace:GetServerTimeNow()) -- TenoPartsAnim ignores stamps older than this
+	m.Parent = char
+	return m, n
+end
+local function builder()
+	return (script:GetAttribute("TenoPartsLooksV2Enabled") ~= false and v2Data()) and buildV2 or buildPart
+end
+
 local function apply(char)
 	if not char.Parent then return end
 	local isT = enabled and char:GetAttribute("Species") == "Teno"
@@ -229,7 +436,7 @@ local function apply(char)
 		local old = char:FindFirstChild("TPart_" .. p.id)
 		if want then
 			if not old then
-				local _, n = buildPart(char, p.id)
+				local _, n = builder()(char, p.id) -- v1.3
 				table.insert(built, p.id .. "=" .. n)
 			else
 				table.insert(built, p.id .. "=" .. #old:GetChildren())
@@ -261,7 +468,7 @@ for _, p in ipairs(PARTS) do
 	fn.Name = "BuildPreview_" .. p.id
 	fn.OnInvoke = function(model)
 		if typeof(model) ~= "Instance" then return nil end
-		return (buildPart(model, p.id))
+		return (builder()(model, p.id)) -- v1.3
 	end
 	fn.Parent = script
 end

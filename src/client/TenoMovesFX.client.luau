@@ -1,4 +1,4 @@
--- TenoMovesFX v1.5 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
+-- TenoMovesFX v1.6 (Mecha Dino Arena) — the client effects of the teno's mecha moves, build 1 (LocalScript in
 -- StarterPlayerScripts; every client draws every teno). Plan docs/plans/TENO_ABILITIES_v1.0.md Task 7 (MDA-179), mockup
 -- docs/mockups/teno_abilities_options.html v0.3 (rings, dust, heat glow, the catapult boulder leaving the bucket).
 -- Reads TenoMovesServer 1.0's character stamps (the server also draws the boulders and rubble patches itself):
@@ -54,6 +54,9 @@
 -- v1.5 (MDA-217, plan docs/plans/TENO_TAIL_GRAB_v1.0.md; TenoMovesServer 1.7 Over-the-Top grab): the Tail Grab's white flash
 --   at the tail tip comes at the catch, TenoGrabCatchAt (when it is newer than TenoGrabStartedAt), instead of 0.3 s after the
 --   press. Switch: script attribute TenoMovesFXGrabCatchEnabled (default true, read at each grab; false = 1.4).
+-- v1.6 (MDA-276, plan docs/plans/TENO_PARTS_LOOKS_v2.0.md Task 4; TenoMovesServer 1.9): the mortar launch flash (1.4) sits at the
+--   TPart_tmortar "muzzle" piece (the Back Cannon's barrel tip, TenoPartsServer 1.3) when there is one, else at the rock as
+--   1.5. Switch: script attribute TenoMovesFXMuzzleEnabled (default true, read at each shot; false = 1.5).
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
@@ -61,6 +64,8 @@ local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 purple shield look
 VERSION = "1.4" -- v1.4 mortar launch FX
 VERSION = "1.5" -- v1.5 grab flash at the catch
+VERSION = "1.6" -- v1.6 launch flash at the cannon muzzle
+if script:GetAttribute("TenoMovesFXMuzzleEnabled") == nil then script:SetAttribute("TenoMovesFXMuzzleEnabled", true) end -- v1.6
 if script:GetAttribute("TenoMovesFXGrabCatchEnabled") == nil then script:SetAttribute("TenoMovesFXGrabCatchEnabled", true) end -- v1.5
 local RING_TIME, ROCK_RELOAD = 0.5, 2.4
 local player = Players.LocalPlayer
@@ -592,6 +597,8 @@ local function watch5(char)
 		if not on() or script:GetAttribute("TenoMovesFXMortarBigEnabled") == false or not fresh(char, "TenoMortarFiredAt") or not root then return end
 		local rock = roles(char, "tmortar", "rock")[1]
 		local at = rock and rock.Position or (root.Position + Vector3.new(0, 6, 0))
+		local muzzle = script:GetAttribute("TenoMovesFXMuzzleEnabled") ~= false and roles(char, "tmortar", "muzzle")[1] -- v1.6
+		if muzzle then at = muzzle.Position end
 		local f = part("TenoMortarFlash", Enum.PartType.Ball, Vector3.one * 2, CFrame.new(at), Color3.fromRGB(255, 244, 214), 0.05)
 		TweenService:Create(f, TweenInfo.new(0.3), {Size = Vector3.one * 8, Transparency = 1}):Play()
 		task.delay(0.35, function() f:Destroy() end)
