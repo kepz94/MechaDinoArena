@@ -1,4 +1,4 @@
--- DiloAttackServer v1.4 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
+-- DiloAttackServer v1.5 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
 -- docs/plans/DILO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/dilo_kit_options_v0.1.html attack C
 -- (Kepu 2026-11-03: picks "C and J1"; dart "Weaker dart"; red-team "Bite on press", "Soft aim, near-sure hit").
 -- Remote ReplicatedStorage.DinoDiloAttack (RemoteEvent), client -> server: (kind, stamp). kind "bite" = the ATTACK press
@@ -76,6 +76,18 @@
 --   (the ticking model's name), DiloFeastAmount (healed, 0.1 steps), then DiloFeastAt (last). DiloPose 1.1 / DiloFX 1.2 read
 --   them. Switch: script attribute DiloAttackAnimStampsEnabled (default true, read at each use; false = 1.3). Diagnostic:
 --   script DiloCoilStamps (count).
+-- v1.5 (plan docs/plans/DILO_PARTS_v1.0.md Task 4, MDA-317; red-team "Same venom system"): two guarded hooks for the dilo's mecha
+--   parts (DiloMovesServer 1.0); bite / dart / leap rules otherwise unchanged.
+--   * Venom API: a BindableFunction "DiloVenomApply" under this script; Invoke(target, char, mul) applies the dilo char's own
+--     dart venom (DiloVenomDps x Cold Blood's venom mul x mul (default 1), for DiloVenomTime s) to target through applyVenom
+--     (the stronger-wins rule, the venom ticks, Venom Feast) when the target is a target (isTarget) and mayAffect allows it;
+--     returns true when applied. Switch: script attribute DiloAttackVenomApiEnabled (default true, read at each call; false =
+--     returns false). Diagnostic: script DiloVenomApiCalls (applied count).
+--   * Venom Overdrive (the dilo's DiloOverdriveUntil > now, stamped by DiloMovesServer; DiloPartOverEnabled true): a dart
+--     request skips the "dartCooldown" check, and an accepted dart stamps DiloDartResetAt = now (DiloAttackTest 1.1 clears
+--     its own recharge on it, so the dart is ready at once); with DiloPartOverVenomMul > 1 (III) every venom the dilo applies
+--     while it runs (dart, bite, Toxic Blood, part venom) has its dps x that mul. Switch: script attribute
+--     DiloAttackOverdriveEnabled (default true, read at each use; false = 1.4). Diagnostic: script DiloOverdriveDarts (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -84,6 +96,7 @@ local VERSION = "1.1" -- v1.1 dilo stat rows
 VERSION = "1.2" -- v1.2 dart hits where it lands (body rule)
 VERSION = "1.3" -- v1.3 Deflector Claws
 VERSION = "1.4" -- v1.4 animation stamps
+VERSION = "1.5" -- v1.5 dilo parts: venom API + Venom Overdrive
 local DEFAULTS = {DiloBiteDamage = 10, DiloBiteDelay = 0.18, DiloBiteReach = 5, DiloBiteCone = 70, DiloHoldTime = 0.4,
 	DiloDartDamage = 6, DiloVenomDps = 2, DiloVenomTime = 3, DiloDartRange = 30, DiloDartSpeed = 60, DiloDartCooldown = 1.5,
 	DiloAssistAngle = 30, DiloAssistMin = 0, DiloAssistMax = 30, DiloMinGap = 0.35}
@@ -318,8 +331,18 @@ local function venomLoop(m, killerName, killerId)
 		venomLoops[m] = nil
 	end)
 end
+-- v1.5: Venom Overdrive (see the header)
+for _, k in ipairs({"DiloAttackVenomApiEnabled", "DiloAttackOverdriveEnabled"}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
+for _, k in ipairs({"DiloVenomApiCalls", "DiloOverdriveDarts"}) do script:SetAttribute(k, 0) end
+local function overdriveOn(char, t)
+	return script:GetAttribute("DiloAttackOverdriveEnabled") ~= false and char:GetAttribute("DiloPartOverEnabled") == true
+		and num(char, "DiloOverdriveUntil", 0) > t
+end
 -- v1.1: the venom rule (stronger one wins, later end, never stacked); switch off = 1.0's overwrite
 local function applyVenom(m, dps, dur, char, player, t)
+	if overdriveOn(char, t) then dps *= math.max(1, num(char, "DiloPartOverVenomMul", 1)) end -- v1.5
 	if dps <= 0 or dur <= 0 then return end
 	local untilT, by = t + dur, char.Name
 	if statsOn() and num(m, "VenomUntil", 0) > t then
@@ -502,7 +525,7 @@ remote.OnServerEvent:Connect(function(player, kind, stamp)
 		r = blocked(player, char, t)
 	end
 	if not r and kind == "bite" and t - st.lastBite < math.max(0, get(char, "DiloMinGap")) then r = "cooldown" end
-	if not r and kind == "dart" and t - st.lastDart < math.max(0, get(char, "DiloDartCooldown")) then r = "dartCooldown" end
+	if not r and kind == "dart" and t - st.lastDart < math.max(0, get(char, "DiloDartCooldown")) and not overdriveOn(char, t) then r = "dartCooldown" end -- v1.5: + Overdrive
 	if r then
 		setResult(char, r, t)
 		return
@@ -518,6 +541,10 @@ remote.OnServerEvent:Connect(function(player, kind, stamp)
 		st.lastDart = t
 		if animStamps() then char:SetAttribute("DiloCoilEndAt", t) end -- v1.4
 		fireDart(player, char, t)
+		if overdriveOn(char, t) then -- v1.5: the client's recharge clears too
+			char:SetAttribute("DiloDartResetAt", t)
+			count("DiloOverdriveDarts")
+		end
 	end
 end)
 
@@ -579,3 +606,23 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+
+-- v1.5: the venom API for the dilo's mecha parts (see the header) --------------------------------------------------------------
+do
+	local fn = Instance.new("BindableFunction")
+	fn.Name = "DiloVenomApply"
+	fn.OnInvoke = function(target, char, mul)
+		if script:GetAttribute("DiloAttackVenomApiEnabled") == false then return false end
+		if typeof(target) ~= "Instance" or not target:IsA("Model") or typeof(char) ~= "Instance" or not char:IsA("Model") then return false end
+		if target == char or not isTarget(target, char) or not mayAffect(char, target) then return false end
+		local t = now()
+		local m = tonumber(mul) or 1
+		local dps = math.max(0, get(char, "DiloVenomDps")) * coldVenomMul(char) * math.max(0, m)
+		local dur = math.max(0, get(char, "DiloVenomTime"))
+		if dps <= 0 or dur <= 0 then return false end
+		applyVenom(target, dps, dur, char, Players:GetPlayerFromCharacter(char), t)
+		count("DiloVenomApiCalls")
+		return true
+	end
+	fn.Parent = script
+end

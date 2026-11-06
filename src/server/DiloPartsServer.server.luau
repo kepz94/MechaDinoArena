@@ -19,8 +19,9 @@
 --   pyramid. Static pieces: WeldConstraint to the Root. Moving pieces (attribute DPartAnim: "recoil", "mortar", "extend",
 --   "pump", "fins"): a Weld "DPartJoint" (Part0 = Root, C0 = pivot x anim(rest), C1 = the geometry offset inverse; attribute
 --   DPartPivot = the pivot) that DiloMovesFX 1.0 moves locally (a Weld, not a Motor6D, because IdleAnimation adopts every
---   Motor6D). Pieces on the hood carry DPartFrill = the frill part they ride (DiloMovesFX shows them only while that frill
---   part shows; the hood is local per client, DiloPose). Muzzles: Attachments "DPartMuzzle_<n>" on the Root (rest).
+--   Motor6D). Pieces on the hood are welded to the frill part they ride (its rest CFrame from the model data) and carry
+--   DPartFrill = that part's name, so they follow DiloPose's local hood pop; DiloMovesFX 1.0 shows them only while that
+--   frill part shows (the hood is local per client). Muzzles: Attachments "DPartMuzzle_<n>" on the Root (rest).
 --   Massless, CanCollide / CanQuery / CanTouch false, CastShadow false for Neon / Glass. Colours (the mockup's MAT): gun Metal
 --   #3b4049, dark Metal #22252c, steel Metal #9aa1ac, yellow SmoothPlastic #ffc21a, copper Metal #c8843e, rubber SmoothPlastic
 --   #16171a, lit / green Neon #9cf05a, glassG Glass #9cf05a, glassB Glass #8fd8ff, purple Neon #b8a6ff. Pieces carry
@@ -241,6 +242,11 @@ local function buildPart(model, id)
 	for _, pc in ipairs(P[id]()) do
 		local seg, shape, dims, matKey, pos, rot, o = pc[1], pc[2], pc[3], pc[4], pc[5], pc[6], pc[7]
 		local root, rest = segRoot(model, seg), SEG[seg]
+		if o.frill then -- ride the frill part itself (DiloPose moves it locally when the hood pops)
+			local neck = model:FindFirstChild("Neck")
+			local fpart = neck and neck:FindFirstChild(o.frill)
+			root, rest = (fpart and fpart:IsA("BasePart")) and fpart or nil, PART[o.frill]
+		end
 		if root and rest then
 			local at = CFrame.new(pos[1], pos[2], pos[3]) * CFrame.Angles(math.rad(rot[1]), math.rad(rot[2]), math.rad(rot[3]))
 			local pivot = rest:Inverse() * at

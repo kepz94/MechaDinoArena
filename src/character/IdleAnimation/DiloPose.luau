@@ -66,9 +66,23 @@
 --     0.08 s (out5) then J_STRETCH -> J_AIR over 0.24 s (io), the landing {0 J_DOWN, 0.14 J_SOFTLAND (out), 0.8 READY (io)};
 --     the frill opens 0.1 s after the start (was 0.16). Leap timing unchanged.
 --   Diagnostics: DiloPoseSet ("1.1"); DiloPoseState "coil:server" / "armed:server" on other clients' coils.
+-- v1.2 (dilo parts build 1, MDA-319, plan docs/plans/DILO_PARTS_v1.0.md Task 6; keys from the looks mockup
+--   tools/mockup/dilo_parts_looks.js v0.1, picked looks): the mecha part moves play as attack tracks, started on every client
+--   (the owner too) by DiloMovesServer 1.0's server stamps, each wind-up -> action -> result -> recovery, ground lock as the
+--   other attack tracks:
+--   * p_gatling (DiloGatlingAt): {0 $from, 0.35 GAT_BRACE (io), 1.35 GAT_BRACE, 1.8 READY (io)}; hood open 0.1 - 1.6 s (the
+--     Twin Hood Repeaters sit under it); a recoil buzz on the neck (+-1.5 deg, 70 rad/s) while the darts fly (0.4 - 1.4 s).
+--   * p_mortar (DiloMortarAt): {0 $from, 0.45 A_WIND (io), 0.57 MORTAR_KICK (out5), 1.05 A_WIND (io), 1.55 READY (io)}.
+--   * p_spine (DiloSpineAt): {0 $from, 0.35 CURL (io), 0.46 BURST (out5), 0.82 BURST, 1.52 READY (io)}; hood open 0.08 -
+--     1.22 s; a tremble (the armed one) 0.05 - 0.42 s.
+--   * p_over (DiloOverdriveAt): {0 $from, 0.55 HISS_WIND (io), 0.75 ROAR (out5), 1.2 ROAR, 1.55 SPIT_SET (io), 2.0 READY
+--     (io)}; the hood stays open from 0.6 s after the press until DiloOverdriveUntil.
+--   A part track and a bite / spit replace each other (the newer start wins). Switch: model attribute DiloPartPosesEnabled
+--   (default true, read each frame; false = 1.1). Diagnostics: DiloPoseState "p_gatling" / ..., DiloPoseSet "1.2".
 local DiloPose = {}
 DiloPose.Version = "1.0"
 DiloPose.Version = "1.1" -- v1.1 Cobra Strike, Hood Flare, Spring Coil
+DiloPose.Version = "1.2" -- v1.2 mecha part move poses
 DiloPose.Defaults = {
 	DiloPoseEnabled = true, DiloLeapPoseEnabled = true, DiloGroundLockEnabled = true, DiloFrillEnabled = true,
 	DiloFrillPopEnabled = true, DiloSacEnabled = true, DiloLeapLandTime = 1.0, DiloSacSwell = 1.55,
@@ -134,10 +148,26 @@ KEYS.J_DEEP = plus(KEYS.J_CROUCH, {Neck = {10, 0, 0}, Head = {-6, 0, 0}, KneeL =
 KEYS.J_STRETCH = BOTH({RootJoint = {-14, 0, 0}, Neck = {-18, 0, 0}, Head = {6, 0, 0}, Jaw = {-14, 0, 0}, ArmL = {30, 0, 0},
 	LegL = {-40, 0, 0}, KneeL = {-2, 0, 0}, AnkleL = {-30, 0, 0}, Tail1 = {-6, 0, 0}})
 KEYS.J_SOFTLAND = plus(KEYS.J_LAND, {KneeL = {-12, 0, 0}, KneeR = {-12, 0, 0}, Neck = {6, 0, 0}})
+-- v1.2 keys (the looks mockup's dilo_parts_looks.js + dilo_kit_mockup A_WIND)
+KEYS.GAT_BRACE = BOTH({RootJoint = {-4, 0, 0}, Neck = {-6, 0, 0}, Head = {2, 0, 0}, ArmL = {-12, 0, 0}, KneeL = {-16, 0, 0},
+	AnkleL = {6, 0, 0}, Tail1 = {-4, 0, 0}}, {LegL = {14, 0, 0}, LegR = {-6, 0, 0}})
+KEYS.A_WIND = BOTH({RootJoint = {10, 0, 0}, Neck = {32, 0, 0}, Head = {-22, 0, 0}, Jaw = {-8, 0, 0}, ArmL = {-14, 0, 0},
+	LegL = {5, 0, 0}, KneeL = {-8, 0, 0}, Tail1 = {7, 0, 0}, Tail2 = {4, 0, 0}})
+KEYS.MORTAR_KICK = plus(KEYS.A_WIND, {RootJoint = {6, 0, 0}})
+KEYS.CURL = BOTH({RootJoint = {-4, 0, 0}, Neck = {18, 0, 0}, Head = {-18, 0, 0}, Jaw = {-8, 0, 0}, ArmL = {-26, 0, 0},
+	LegL = {16, 0, 0}, KneeL = {-30, 0, 0}, AnkleL = {12, 0, 0}, Tail1 = {8, 0, 0}, Tail2 = {6, 0, 0}})
+KEYS.BURST = BOTH({RootJoint = {12, 0, 0}, Neck = {28, 0, 0}, Head = {-14, 0, 0}, Jaw = {-36, 0, 0}, ArmL = {-34, 0, -26},
+	LegL = {-4, 0, 0}, KneeL = {-6, 0, 0}, Tail1 = {-14, 0, 0}, Tail2 = {-8, 0, 0}})
+KEYS.HISS_WIND = plus(KEYS.A_WIND, {Jaw = {-22, 0, 0}, Head = {-4, 0, 0}})
+KEYS.ROAR = BOTH({RootJoint = {8, 0, 0}, Neck = {22, 0, 0}, Head = {8, 0, 0}, Jaw = {-44, 0, 0}, ArmL = {-24, 0, -14},
+	Tail1 = {-10, 0, 0}, Tail2 = {-6, 0, 0}})
+KEYS.SPIT_SET = BOTH({RootJoint = {2, 0, 0}, Neck = {12, 0, 0}, Head = {-10, 0, 0}, Jaw = {-10, 0, 0}, ArmL = {-12, 0, 0},
+	KneeL = {-8, 0, 0}})
 DiloPose.KEYS = KEYS
 local FWD = {C_BWIND = -0.6, C_BITE = 3.4, C_BITE2 = 3.4, C_COIL = -1, C_COIL2 = -1, C_DART = 2, C_DART2 = 2}
 FWD.DRAW, FWD.STRIKE, FWD.CLAMP = -1.2, 4.0, 4.0 -- v1.1
 FWD.FLARE_COIL, FWD.FLARE_COIL2, FWD.THRUST, FWD.RECOIL = -1, -1, 2.8, 0.4
+FWD.A_WIND, FWD.MORTAR_KICK, FWD.BURST, FWD.HISS_WIND, FWD.ROAR = -1.2, -2.4, -0.6, -1.2, -0.4 -- v1.2
 
 local TRACKS = {
 	bite = {{0, "$from"}, {0.1, "C_BWIND", "io"}, {0.17, "C_BITE", "in2"}, {0.32, "C_BITE2", "out"}, {0.7, "READY", "io"}},
@@ -152,6 +182,14 @@ TRACKS.bite_cs = {{0, "$from"}, {0.1, "DRAW", "io"}, {0.17, "STRIKE", "in2"}, {0
 TRACKS.coil_hf = {{0, "$from"}, {0.27, "FLARE_COIL", "io"}, {0.75, "FLARE_COIL2", "io"}}
 TRACKS.spit_hf = {{0, "$from"}, {0.05, "THRUST", "in2"}, {0.18, "RECOIL", "out"}, {0.9, "READY", "io"}}
 local LAND_SC = {{0, "J_DOWN"}, {0.14, "J_SOFTLAND", "out"}, {0.8, "READY", "io"}}
+-- v1.2 part tracks (see the header)
+TRACKS.p_gatling = {{0, "$from"}, {0.35, "GAT_BRACE", "io"}, {1.35, "GAT_BRACE"}, {1.8, "READY", "io"}}
+TRACKS.p_mortar = {{0, "$from"}, {0.45, "A_WIND", "io"}, {0.57, "MORTAR_KICK", "out5"}, {1.05, "A_WIND", "io"}, {1.55, "READY", "io"}}
+TRACKS.p_spine = {{0, "$from"}, {0.35, "CURL", "io"}, {0.46, "BURST", "out5"}, {0.82, "BURST"}, {1.52, "READY", "io"}}
+TRACKS.p_over = {{0, "$from"}, {0.55, "HISS_WIND", "io"}, {0.75, "ROAR", "out5"}, {1.2, "ROAR"}, {1.55, "SPIT_SET", "io"}, {2.0, "READY", "io"}}
+local PART_STAMPS = {{"p_gatling", "DiloGatlingAt"}, {"p_mortar", "DiloMortarAt"}, {"p_spine", "DiloSpineAt"}, {"p_over", "DiloOverdriveAt"}}
+local function partPosesOn(model) return model:GetAttribute("DiloPartPosesEnabled") ~= false end
+local partSeen = nil -- v1.2: [stamp attribute] = last seen value
 local function cobraOn(model) return model:GetAttribute("DiloCobraStrikeEnabled") ~= false end
 local function flareOn(model) return model:GetAttribute("DiloHoodFlareEnabled") ~= false end
 local function springOn(model) return model:GetAttribute("DiloSpringCoilEnabled") ~= false end
@@ -539,6 +577,18 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 			src = atk.kind == "coil" and "server" or src
 		end
 	end
+	-- v1.2: the mecha part moves (server stamps, every client)
+	if not tested then
+		if partSeen == nil then
+			partSeen = {}
+			for _, ps in ipairs(PART_STAMPS) do partSeen[ps[2]] = num(model:GetAttribute(ps[2])) end
+		end
+		for _, ps in ipairs(PART_STAMPS) do
+			local at = num(model:GetAttribute(ps[2]))
+			if at and at ~= partSeen[ps[2]] and partPosesOn(model) and ctx.serverNow - at < 1.5 then start(ps[1], at) end
+			partSeen[ps[2]] = at
+		end
+	end
 	local tg
 	local t = atk.at and max(0, ctx.serverNow - atk.at) or 0
 	if atk.kind then
@@ -548,6 +598,15 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		else
 			tg = sample(keys, t, atk.from)
 			if atk.kind == "coil" and st == "armed" then
+				for _, n in ipairs({"Neck", "Head"}) do
+					local v = tg.a[n] or {0, 0, 0}
+					tg.a[n] = {v[1] + sin(ctx.now * 80 + #n) * 1.6, v[2], v[3]}
+				end
+			end
+			if atk.kind == "p_gatling" and t > 0.4 and t < 1.4 then -- v1.2: the recoil buzz
+				local v = tg.a.Neck or {0, 0, 0}
+				tg.a.Neck = {v[1] + sin(ctx.now * 70) * 1.5, v[2], v[3]}
+			elseif atk.kind == "p_spine" and t > 0.05 and t < 0.42 then -- v1.2: the tremble before the burst
 				for _, n in ipairs({"Neck", "Head"}) do
 					local v = tg.a[n] or {0, 0, 0}
 					tg.a[n] = {v[1] + sin(ctx.now * 80 + #n) * 1.6, v[2], v[3]}
@@ -571,7 +630,7 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		local nm = atk.kind == "coil" and (st == "armed" and "armed" or "coil") or atk.kind or "none"
 		if atk.kind == "coil" and not ctx.isOwner then nm ..= ":server" end -- v1.1
 		show("DiloPoseState", nm)
-		show("DiloPoseSet", "1.1")
+		show("DiloPoseSet", "1.2")
 	end
 	show("DiloPoseSource", src)
 	show("DiloLeapPhase", leapS.phase)
@@ -586,6 +645,11 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		if P then
 			local want = atk.kind == "coil" or (atk.kind == "spit" and t < SPIT_FRILL) or (s.DiloLeapPoseEnabled and leapS.frill)
 				or (atk.kind == "bite" and cobraOn(model) and t >= 0.01 and t < 0.5) -- v1.1: Cobra Strike's hood
+			if partPosesOn(model) then -- v1.2: the part moves' hood windows
+				if (atk.kind == "p_gatling" and t >= 0.1 and t < 1.6) or (atk.kind == "p_spine" and t >= 0.08 and t < 1.22) then want = true end
+				local oa, ou = num(model:GetAttribute("DiloOverdriveAt")), num(model:GetAttribute("DiloOverdriveUntil"))
+				if oa and ou and ctx.serverNow >= oa + 0.6 and ctx.serverNow < ou then want = true end
+			end
 			local ft = model:GetAttribute("DiloFrillTest")
 			if ft == "open" then want = true elseif ft == "fold" then want = false end
 			frill.t += ctx.dt

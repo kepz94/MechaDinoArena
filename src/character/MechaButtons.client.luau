@@ -1,4 +1,4 @@
--- MechaButtons v1.34 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.35 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -271,6 +271,15 @@ VERSION = "1.31" -- v1.31 passive Overclock button (ON)
 VERSION = "1.32" -- v1.32 grapple hold-to-lock
 VERSION = "1.33" -- v1.33 the grapple button is the Dash (move direction)
 VERSION = "1.34" -- v1.34 tether aim stamps
+VERSION = "1.35" -- v1.35 dilo parts build 1
+-- v1.35 (dilo parts build 1, MDA-319, plan docs/plans/DILO_PARTS_v1.0.md Task 6; DiloMovesServer 1.0): TIMED_PARTS += dgatling
+--   ("DiloPartGatling", DinoDiloGatlingRequest, "VENOM GATLING"), dmortar ("DiloPartMortar", DinoDiloMortarRequest, "TOXIN
+--   MORTAR"), dspine ("DiloPartSpine", DinoDiloSpineRequest, "SPINE BURST"), dover ("DiloPartOver", DinoDiloOverRequest,
+--   "OVERDRIVE"). The gatling fires along the camera look (stamp, cam LookVector); the mortar also sends the crosshair's hit
+--   point (the teno mortar's ray, v1.27: 400 studs from the camera, this character and Workspace.DinoFX_Local / DinoFX
+--   ignored; nil when it hits nothing); the spine burst and the overdrive are normal presses. Ready / dim from
+--   <Prefix>Enabled / ReadyAt / Cooldown as every timed part. PC keys and phone buttons together (this script draws both).
+--   Switch: script attribute MechaButtonsDiloEnabled (default true, read at start; false = 1.34).
 -- v1.34 (MDA-311, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 9; Kepu 2026-11-05 "A · Tail Sling"): when the character
 --   attribute TetherAiming turns true / false (the v1.22 tactical aim) this client stamps TetherAimLocalAt /
 --   TetherAimLocalEndAt (server time, for its own pose) and fires ReplicatedStorage.DinoTetherAim("aim" | "end", server time)
@@ -380,6 +389,14 @@ if THERI_BTN then -- v1.29: the therizino's mecha parts (build 1)
 	TIMED_PARTS.zgrapple = {"TheriGrapple", "DinoTheriGrappleRequest", "GRAPPLE"} -- v1.30
 	TIMED_PARTS.zdeflect = {"TheriDeflect", "DinoTheriDeflectRequest", "DEFLECT"}
 	TIMED_PARTS.zclock = {"TheriClock", "DinoTheriClockRequest", "OVERCLOCK"}
+end
+if script:GetAttribute("MechaButtonsDiloEnabled") == nil then script:SetAttribute("MechaButtonsDiloEnabled", true) end -- v1.35
+local DILO_BTN = script:GetAttribute("MechaButtonsDiloEnabled") ~= false
+if DILO_BTN then -- v1.35: the dilo's mecha parts (build 1)
+	TIMED_PARTS.dgatling = {"DiloPartGatling", "DinoDiloGatlingRequest", "VENOM GATLING"}
+	TIMED_PARTS.dmortar = {"DiloPartMortar", "DinoDiloMortarRequest", "TOXIN MORTAR"}
+	TIMED_PARTS.dspine = {"DiloPartSpine", "DinoDiloSpineRequest", "SPINE BURST"}
+	TIMED_PARTS.dover = {"DiloPartOver", "DinoDiloOverRequest", "OVERDRIVE"}
 end
 -- v1.20: parts that use hold-to-aim
 local function aimedPart(id) -- v1.22: the tether holds-to-aim only when its aim mode is off
@@ -912,6 +929,25 @@ local function press(n, input)
 		local cam = workspace.CurrentCamera
 		local point -- v1.27: the crosshair's hit point
 		if cam and script:GetAttribute("MechaButtonsMortarPointEnabled") ~= false then
+			local rp = RaycastParams.new()
+			rp.FilterType = Enum.RaycastFilterType.Exclude
+			local ex = {char}
+			for _, n in ipairs({"DinoFX_Local", "DinoFX"}) do
+				local f = workspace:FindFirstChild(n)
+				if f then table.insert(ex, f) end
+			end
+			rp.FilterDescendantsInstances = ex
+			local hit = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 400, rp)
+			point = hit and hit.Position or nil
+		end
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector, point) end
+		return
+	end
+	if DILO_BTN and (id == "dgatling" or id == "dmortar") then -- v1.35: along the camera look; the mortar + the crosshair point
+		local r = ReplicatedStorage:FindFirstChild(TIMED_PARTS[id][2])
+		local cam = workspace.CurrentCamera
+		local point
+		if cam and id == "dmortar" then
 			local rp = RaycastParams.new()
 			rp.FilterType = Enum.RaycastFilterType.Exclude
 			local ex = {char}
