@@ -1,4 +1,4 @@
--- TenoPose v1.9 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
+-- TenoPose v1.10 (Mecha Dino Arena) — the Tenontosaurus' poses: rearing leap (J2), claw scratch, tail-slam wind-up (hold)
 -- and rear tail slam, for IdleAnimation 1.37. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Tasks 4 + 7, mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: slam D "a rear slam it lifts and slams its tail in that
 -- back", jump "I want the second leap"). Every angle below is the mockup's (degrees {pitch, yaw, roll}).
@@ -104,9 +104,18 @@
 --       (smooth over the first 1 / 1.6 of R), the offsets fading to 0 (smooth). Returns {TailN = CFrame} and the miss
 --       (studs) for the diagnostic.
 --   Switch: model attribute TenoGrabIKEnabled (default true; false = 1.8 keyframes for every grab).
+-- v1.10 (Kepu 2026-11-05 17:40 "the jump is like glitching when I land and some of the tail grab animations ain't looking
+--   good"; Studio: the landing slam started ~0.2 s after the touchdown (the server's TenoLeapLandedAt), and the grab's clamp
+--   point was the old Clamp Tail's while the v460 Pincer Tail grips ~2 units further out):
+--   * "tland" on the owner's client starts at the character's local TenoLocalLandAt (TenoPoseFix 1.0, the touchdown on this
+--     client) when it is newer than the server's TenoLeapLandedAt, or when the server's stamp comes less than 1 s after it
+--     (the same landing). Other clients keep the server stamp. Switch: model attribute TenoLocalLandEnabled (nil = true).
+--   * the grab's clamp point x (Tail5_main frame, scale 1) = the character's TenoGrabClampX (TenoPartsServer 1.4: -3.7 with
+--     the Pincer Tail) when it is set, else CLAMP_X (-2.6). Switch: model attribute TenoGrabClampAttrEnabled (nil = true).
 local TenoPose = {}
 TenoPose.Version = "1.8"
 TenoPose.Version = "1.9" -- v1.9 Over-the-Top grab IK
+TenoPose.Version = "1.10" -- v1.10 local landing slam, the look's clamp point
 TenoPose.Defaults = {
 	TenoPoseEnabled = true,
 	TenoLeapAirBlend = 0.34,   -- s from launch to the full air pose (mockup TA 0.62 / 1.8)
@@ -482,6 +491,14 @@ do
 	end
 end
 
+-- v1.10: the landing time the "tland" slam starts from (see the header)
+local function landTime(model, isOwner)
+	local la = num(model:GetAttribute("TenoLeapLandedAt"))
+	if not isOwner or model:GetAttribute("TenoLocalLandEnabled") == false then return la end
+	local ll = num(model:GetAttribute("TenoLocalLandAt"))
+	if ll and (not la or la < ll or la - ll < 1.0) then return ll end
+	return la
+end
 -- v1.7: the JUMP leap's landing slam; the shield brace
 local BRACE = {RootJoint = {10, 0, 0}, LegL = {-10, 0, 0}, LegR = {-10, 0, 0}, ArmL = {35, 0, 0}, ArmR = {35, 0, 0},
 	Neck = {16, 0, 0}, Head = {-8, 0, 0}, Jaw = {-16, 0, 0}, Tail1 = {-6, 0, 0}}
@@ -493,7 +510,7 @@ do
 		local ph, t, hold, src = phaseV16(model, isOwner, serverNow)
 		if not fix17 or src == "off" or model:GetAttribute("TenoLeapOnJump") ~= true then return ph, t, hold, src end
 		if ph and src ~= "ability" then return ph, t, hold, src end -- a scratch / hold / slam plays
-		local la = num(model:GetAttribute("TenoLeapLandedAt"))
+		local la = landTime(model, isOwner) -- v1.10 (was the server's TenoLeapLandedAt)
 		if la and la > 0 and serverNow >= la and serverNow - la < 0.9 and (not ph or la > serverNow - t) then
 			return "tland", serverNow - la, 0, "ability"
 		end
@@ -590,6 +607,11 @@ end
 
 -- the tail IK (IdleAnimation 1.41 calls this while the phase is "tgrab")
 local chain, chainScale, clampOff -- motor names from the root to Tail5's segment; Tail5 Root -> clamp point
+local chainClampX -- v1.10: the clamp x the chain was built with
+local function clampX(model) -- v1.10
+	if model:GetAttribute("TenoGrabClampAttrEnabled") == false then return CLAMP_X end
+	return num(model:GetAttribute("TenoGrabClampX")) or CLAMP_X
+end
 local sol, solKey -- warm start {TailN = {pitch, yaw}}, the grab it belongs to
 local marks -- landmarks of the current grab (HRP space)
 local function buildChain(model, motors, hrp)
@@ -611,7 +633,8 @@ local function buildChain(model, motors, hrp)
 		if not part then return nil end
 	end
 	local sc = model:GetScale()
-	clampOff = root.CFrame:Inverse() * main.CFrame * CFrame.new(CLAMP_X * sc, 0, 0)
+	chainClampX = clampX(model) -- v1.10 (was CLAMP_X)
+	clampOff = root.CFrame:Inverse() * main.CFrame * CFrame.new(chainClampX * sc, 0, 0)
 	chainScale = sc
 	return names
 end
@@ -676,7 +699,7 @@ function TenoPose.grabTail(model, motors, pose, serverNow)
 	local hrp = model:FindFirstChild("HumanoidRootPart")
 	if not hrp then return nil end
 	for _, n in ipairs(TAILS) do if not motors[n] then return nil end end
-	if not chain or chainScale ~= model:GetScale() then chain = buildChain(model, motors, hrp) end
+	if not chain or chainScale ~= model:GetScale() or chainClampX ~= clampX(model) then chain = buildChain(model, motors, hrp) end -- v1.10: + clamp x
 	if not chain then return nil end
 	local t = serverNow - grab.st
 	if solKey ~= grab.st then -- a new grab: landmarks from this frame's pose

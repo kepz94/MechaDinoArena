@@ -1,4 +1,4 @@
--- TenoPartsServer v1.3 (Mecha Dino Arena) — puts the Tenontosaurus' mecha parts on (server-built, every client sees them)
+-- TenoPartsServer v1.4 (Mecha Dino Arena) — puts the Tenontosaurus' mecha parts on (server-built, every client sees them)
 -- and builds their Lab card models. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 4 (MDA-176); the looks are the picked
 -- mockup looks, same numbers (docs/mockups/teno_abilities_options.html v0.3, tools/mockup/teno_abilities_app.js
 -- buildLook; Kepu 2026-11-01: "3,4,7 - A", "5,9,14 - b", 11 "Let's go D"):
@@ -56,12 +56,21 @@
 --   alpha < 1 -> Transparency 1 - alpha (TPartAlpha); TPartBaseSize kept for TenoPartsAnim's pulses. Model attributes
 --   TPartLooks "v2", TPartBuiltScale, TPartBuiltAt (server time). Script attribute TenoPartsDetail "full" (default) / "lite" (skips detail pieces). Lab
 --   cards use the same build. Missing module or switch false = the 1.2 looks.
+-- v1.4 (Kepu 2026-11-05 17:40 tail grab "ain't looking good": the grab's clamp point was the Clamp Tail's): while a
+--   character has the v2 "tgrab" look (Pincer Tail) its attribute TenoGrabClampX = GRIP_X (-3.7: the middle of the pincer
+--   jaws, Tail5_main frame, scale 1; from TenoPartsLooksV2: the jaws' first segments span mount x -3.3 .. -4.9, mount at
+--   Tail5 x +1.12, so -2.2 .. -3.8, and close past it), read by TenoPose 1.10 (the tail IK) and TenoBotMotion 1.2 (where the
+--   held bot hangs); nil otherwise (they use the Clamp Tail's -2.6). Switch: script attribute TenoPartsGrabClampEnabled
+--   (default true, read at each apply).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 shield pylons
 VERSION = "1.3" -- v1.3 the redesigned looks (TenoPartsLooksV2)
+VERSION = "1.4" -- v1.4 TenoGrabClampX for the Pincer Tail
+local GRIP_X = -3.7
+if script:GetAttribute("TenoPartsGrabClampEnabled") == nil then script:SetAttribute("TenoPartsGrabClampEnabled", true) end
 local function hex(h) return Color3.fromRGB(math.floor(h / 65536) % 256, math.floor(h / 256) % 256, h % 256) end
 local C = {
 	steel = {hex(0x9aa3ad), Enum.Material.Metal}, dark = {hex(0x3a3f47), Enum.Material.Metal},
@@ -446,6 +455,10 @@ local function apply(char)
 		end
 	end
 	char:SetAttribute("TenoPartsBuilt", table.concat(built, ","))
+	-- v1.4: the Pincer Tail's clamp point
+	local g = char:FindFirstChild("TPart_tgrab")
+	local pincer = g and g:GetAttribute("TPartLooks") == "v2" and script:GetAttribute("TenoPartsGrabClampEnabled") ~= false
+	char:SetAttribute("TenoGrabClampX", pincer and GRIP_X or nil)
 end
 
 local function onCharacter(char)

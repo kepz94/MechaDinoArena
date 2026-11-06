@@ -1,4 +1,4 @@
--- TenoBotMotion v1.1 (Mecha Dino Arena) — draws bots that a teno grabs, throws or shoves, on every client (LocalScript in
+-- TenoBotMotion v1.2 (Mecha Dino Arena) — draws bots that a teno grabs, throws or shoves, on every client (LocalScript in
 -- StarterPlayerScripts). MDA-217, plan docs/plans/TENO_TAIL_GRAB_v1.0.md Task 3, mockup docs/mockups/teno_tail_grab_v0.1.html
 -- (Kepu 2026-11-03: "It lags the dinos when I toss them", picked A "Over the Top" + L1 "Shove Clear").
 -- Why: TenoMovesServer 1.6 moved the anchored bot from the server every Heartbeat; clients only got about 30 updates a second
@@ -30,11 +30,17 @@
 --   through it to the ground while TenoMovesServer 1.7's slam shoves it out sideways; nothing changes for the server or
 --   other players. Switch: script attribute TenoBotMotionLandThroughEnabled (default true, read each frame). Diagnostic
 --   (local player): TenoLandThroughs (dinos let through).
+-- v1.2 (Kepu 2026-11-05 17:40 "some of the tail grab animations ain't looking good"; the v460 Pincer Tail grips ~2 units
+--   further out than the Clamp Tail): the hold point's x (Tail5_main frame, scale 1) = the teno's TenoGrabClampX
+--   (TenoPartsServer 1.4) when it is set, else CLAMP_X (-2.6). Switch: script attribute TenoBotMotionClampAttrEnabled
+--   (default true, read each frame).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 land through the dino under a leap
+VERSION = "1.2" -- v1.2 the look's clamp point
+if script:GetAttribute("TenoBotMotionClampAttrEnabled") == nil then script:SetAttribute("TenoBotMotionClampAttrEnabled", true) end -- v1.2
 local LAND_AHEAD, LAND_THROUGH_TIME = 0.25, 1.0 -- v1.1
 if script:GetAttribute("TenoBotMotionLandThroughEnabled") == nil then script:SetAttribute("TenoBotMotionLandThroughEnabled", true) end -- v1.1
 local PULL_TIME, CLAMP_X, FLING_PEAK, BLEND_TIME = 0.12, -2.6, 16, 0.1
@@ -96,7 +102,9 @@ local function holdPoint(j)
 	local tail = j.char:FindFirstChild("Tail5_main", true)
 	if not (tail and tail:IsA("BasePart")) then return nil end
 	local sc = j.char:GetScale()
-	return (tail.CFrame * CFrame.new(CLAMP_X * sc, 0, 0)).Position + Vector3.new(0, j.hang or 0, 0)
+	local cx = CLAMP_X
+	if script:GetAttribute("TenoBotMotionClampAttrEnabled") ~= false then cx = tonumber(j.char:GetAttribute("TenoGrabClampX")) or CLAMP_X end -- v1.2
+	return (tail.CFrame * CFrame.new(cx * sc, 0, 0)).Position + Vector3.new(0, j.hang or 0, 0)
 end
 local function predictLand(j)
 	local root = j.char:FindFirstChild("HumanoidRootPart")
