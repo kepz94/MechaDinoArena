@@ -108,3 +108,18 @@ stand), applied through DiloAttackServer so Venom Feast and Cold Blood count it.
    Feast, Cold Blood and the venom ticks stay one system, vs a second venom loop in DiloMovesServer. Recommended: the API.
 4. **Numbers.** Only the ★ texts were picked; the I–III ladders, the gatling dart damage 3 and the recharges are proposals.
 5. **Scope.** 7 parts ≈ the therizino's two builds. Recommended: two builds as above.
+
+## Build 1 notes (2026-11-06)
+- Installed (Studio hash = repo): SkillTree 1.69 149007/519608414, SkillTreeDiloParts.spec 1.0 7939/362767414 (PASS 252),
+  SkillEffects 1.45 92674/568023128, DiloPartsServer 1.0 18022/526335896, Lab 1.13 78212/479075335, MainMenu 1.19
+  72519/39287555, DiloAttackServer 1.5 33836/947748107, DiloMovesServer 1.0 22951/546305223, MechaButtons 1.35
+  96998/194805260, DiloPose 1.2 37001/835330355, DiloMovesFX 1.0 18526/117986659.
+- Deviations: IdleAnimation not bumped (DiloPose.top already runs inside it). Hood pieces (speakers, barbs) weld to the
+  frill part and copy its LocalTransparencyModifier so they follow DiloPose's frill pop. Overdrive's instant dart reuses
+  DiloDartResetAt (DiloAttackTest unchanged). DiloMovesServer does not stamp LastHitBy / LastHitAt (TheriMovesServer doesn't).
+- Verified in Play: see docs/VERSIONS.md (Dilo parts build 1 row): all 4 moves ok with damage, venom through the API,
+  Venom Feast, Overdrive x2 + dart recharge, switches, keys R / T, FX cleanup, 0 errors.
+- Not verified: touch buttons, AbilityBar seconds text during cooldown (blank), poses by eye, other players' view.
+- Test note: setting SkillSlot attributes directly is overwritten by SkillServer's publish (death / respawn); the test kept
+  them with a 0.2 s loop and SkillServer SkillSaveEnabled false for the Play session only.
+- Pre-existing: SkillTree_spec fails 34 checks (it expects SkillTree v1.0); not changed.

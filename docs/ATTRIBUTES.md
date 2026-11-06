@@ -2918,3 +2918,34 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | Attribute | Where | Value | Set by |
 |---|---|---|---|
 | Publish v483 | Sandbox v483 + Arena | Kepu 2026-11-06 00:20 "Publish": Pachy animation pass (17 scripts, PachyMovesPose 1.1, PachyMovesFX 1.1). Pre-checks: hashes = repo, no ZZ_ / TestPad, only BotServer.BotHidingEnabled / BotFightEnabled off. Arena overwrite: "Successfully published!" first try; Studio still on the Sandbox place. |
+
+## Dilo parts build 1 (MDA-314..319; plan docs/plans/DILO_PARTS_v1.0.md)
+| Attribute | Where | Value | Set by |
+|---|---|---|---|
+| SkillTree.DILO_PARTS; SkillTree.DILO_PARTS_B2_SOON | SkillTree module flags | true; true (dhiss / dpump / djets soon, not LIVE_MECH) | SkillTree 1.69 |
+| SkillEffectsDiloPartsEnabled | SkillEffects script | switch (default true; false = 1.44) | SkillEffects 1.45 |
+| DiloPartGatlingEnabled / Count / Damage / Cone / Time / Cooldown | dilo character | while dgatling bought + slotted (★ 8 / 3 / 25 / 1 / 10) | SkillEffects 1.45 |
+| DiloPartMortarEnabled / Range / Radius / Time / Cooldown | dilo character | dmortar (★ 60 / 12 / 5 / 16) | SkillEffects 1.45 |
+| DiloPartSpineEnabled / Count / Damage / Range / Venom / Cooldown | dilo character | dspine (★ 12 / 4 / 22 / true / 12) | SkillEffects 1.45 |
+| DiloPartOverEnabled / Time / VenomMul / Cooldown | dilo character | dover (★ 8 / 2 / 30) | SkillEffects 1.45 |
+| DiloPartHiss* / DiloPartPump* / DiloPartJets* | dilo character | written only when the path is not soon (build 2) | SkillEffects 1.45 |
+| DiloPartsServerEnabled; DiloParts_<id>Enabled | DiloPartsServer script | switches (default true) | DiloPartsServer 1.0 |
+| DiloPartsServerVersion; DiloPartsSegRoots | DiloPartsServer script | "1.0"; segment roots found | DiloPartsServer 1.0 |
+| DiloPartsBuilt | dilo character | "id=pieces,..." of the DPart_<id> models shown | DiloPartsServer 1.0 |
+| DPartRole; DPartBaseColor; DPartFrill | DPart_<id> pieces | role (glow / core / drum / ...); base colour; hood piece welded to its frill part | DiloPartsServer 1.0 |
+| DPartAnim; DPartPivot; DPartBuiltScale | Weld DPartJoint | recoil / mortar / extend / pump / fins; rest pivot; scale at build | DiloPartsServer 1.0 |
+| LabDPartsEnabled; MainMenuDPartsEnabled | Lab / MainMenu scripts | switches: DPart_ counts as a mecha part | Lab 1.13 / MainMenu 1.19 |
+| DiloAttackVenomApiEnabled; DiloVenomApiCalls | DiloAttackServer script | switch (false = DiloVenomApply returns false); applied count | DiloAttackServer 1.5 |
+| DiloAttackOverdriveEnabled; DiloOverdriveDarts | DiloAttackServer script | switch (false = 1.4); darts that skipped the cooldown | DiloAttackServer 1.5 |
+| DiloDartResetAt | dilo character | stamped on an overdrive dart (DiloAttackTest clears its recharge) | DiloAttackServer 1.5 |
+| DiloMovesServerEnabled; DiloMoves_dgatlingEnabled / dmortar / dspine / dover; DiloMovesModeRulesEnabled; DiloMovesSquadEnabled | DiloMovesServer script | switches (default true) | DiloMovesServer 1.0 |
+| DiloMovesServerVersion; DiloMovesMode; DiloMovesHits; DiloMovesVenoms; DiloMovesSquadSkips | DiloMovesServer script | "1.0"; mode; diagnostics | DiloMovesServer 1.0 |
+| DiloPartGatling / Mortar / Spine / Over + ServerResult, ServerResultAt, ReadyAt | dilo character | ok / badArg / dead / disabled / menu / stunned / pinned / dazed / silenced / cooldown / cancelled; server time; press + cooldown | DiloMovesServer 1.0 |
+| DiloGatlingAt / Count / Windup / Time; DiloGatlingShot; DiloGatlingHit | dilo character | press (last); "i;from;to;flight;target" per dart; "name;i" per hit | DiloMovesServer 1.0 |
+| DiloMortarFrom / To / Flight / Radius / Time / At; DiloMortarFireAt; DiloMortarLandAt | dilo character | launch, landing, cloud; press (last); fire; cloud start | DiloMovesServer 1.0 |
+| DiloSpineCount / Dir / At; DiloSpineBurstAt; DiloSpineHits | dilo character | burst setup + press (last); burst time; "name=n|..." | DiloMovesServer 1.0 |
+| DiloOverdriveAt; DiloOverdriveStartAt; DiloOverdriveUntil | dilo character | press; start (press + 0.7); end | DiloMovesServer 1.0 |
+| MechaButtonsDiloEnabled | MechaButtons script | switch (default true, read at start; false = 1.34) | MechaButtons 1.35 |
+| DiloPartPosesEnabled | DiloPose module | switch (default true; false = 1.1) | DiloPose 1.2 |
+| DiloMovesFXEnabled; PartsFXGatlingEnabled / Mortar / Spine / Over / Motion | DiloMovesFX script (each client) | switches (default true) | DiloMovesFX 1.0 |
+| DiloMovesFXVersion; DiloMovesFXEvents; DiloMovesFXParts | DiloMovesFX script | "1.0"; effects played; live parts in Workspace.DiloMovesFX_Local | DiloMovesFX 1.0 |
