@@ -2997,3 +2997,12 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TenoScratchArm; TenoScratchAlternate | teno character | "R" / "L" (odd / even TenoScratchCount); true while alternating; stamped before TenoScratchAt | TenoAttackServer 1.6; read by TenoPose 1.13 / TenoFX 1.3 |
 | TenoPoseScratchMirrorEnabled | teno model | switch (nil = true; false = right-arm pose always) | TenoPose 1.13 |
 | TenoFXRakeMarksEnabled; TenoFXRakeSurfaceEnabled | TenoFX script | switches (default true): rake marks + flash on hits / bars at the target's near box surface (false = half its width) | TenoFX 1.3 |
+
+## Antivenom Pump breaks free (MDA-327; DiloMovesServer 1.2)
+
+| Attribute | Where | Value | Set by |
+|---|---|---|---|
+| DiloPumpBreakFreeEnabled | DiloMovesServer script | switch (default true, read at each press): the pump skips the "stunned" / "dazed" refusals and a stun / daze doesn't cancel its wind-up; false = 1.1 | DiloMovesServer 1.2 |
+| DiloPumpClearMoreEnabled | DiloMovesServer script | switch (default true, read at each jolt): the jolt also clears SkillBleedUntil, SlashBleedUntil, CaltropBleedUntil, DebuffUntil (+ DebuffState "none"); false = 1.1 | DiloMovesServer 1.2 |
+| DiloMovesBreakFree | DiloMovesServer script | diagnostic: pump presses made while stunned or dazed | DiloMovesServer 1.2 |
+| DiloPumpCleared | dilo character | now may also list SkillBleedUntil / SlashBleedUntil / CaltropBleedUntil / DebuffUntil | DiloMovesServer 1.2 |
