@@ -102,3 +102,10 @@ Accepted risks: the coil now costs one extra remote message per hold ("coil", pl
 "uncoil" leaves the coil on others' screens for up to 3 s (timeout).
 
 Tickets: MDA-299 (Task 1), MDA-300 (Task 2), MDA-301 (Task 3), MDA-302 (Task 4) — see Dev Hub.
+
+## Build notes (2026-11-05, commit after 15b3c19)
+- Installed by multi_edit, hashes = repo: DiloAttackServer 1.4 30595/361831384, DiloAttackTest 1.2 11447/653994513, DiloPose 1.1
+  31955/47902874, DiloFX 1.2 36344/876946424.
+- DiloFX fix during the test: Head_tip's own facing is not the snout's, so the glow / spray / breath use the head Root -> Head_tip
+  direction; the Toxic Blood flash is green 4 x k (was the pale glow at 7 x k, too big next to the camera).
+- Not run: the other-client coil path (no second player, house rule).

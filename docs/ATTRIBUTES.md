@@ -2876,3 +2876,11 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | GooSlowUntil, GooSlowMul (bots) | bot model | goo slow stamps on bots too (the SLOW badge reads them; the bot's speed is still the walk-speed scale) | HerreraMovesServer 1.6 |
 | GooSlowTicks | HerreraMovesServer script | diagnostic: goo slow refreshes | HerreraMovesServer 1.6 |
 | StatusBadgesGooSlowEnabled | StatusBadges script | switch (default true, read at start): SLOW badge also for GooSlowUntil, no pop on in-puddle refreshes; false = 1.2 | StatusBadges 1.3 |
+| DiloAttackAnimStampsEnabled; DiloCoilStamps | DiloAttackServer script | true; count | DiloAttackServer 1.4 (false = 1.3: "coil" / "uncoil" = badArg, no stamps) |
+| DiloCoilAt / DiloCoilEndAt | dilo character (server) | server time of the last accepted "coil" / "uncoil" (a dart also sets DiloCoilEndAt) | DiloAttackServer 1.4; read by DiloPose 1.1 / DiloFX 1.2 on other clients |
+| DiloToxicTarget / DiloToxicAt | dilo character (server) | model name; server time (last) of each Toxic Blood venom | DiloAttackServer 1.4; DiloFX 1.2 spines |
+| DiloFeastFrom / DiloFeastAmount / DiloFeastAt | dilo character (server) | ticking model's name; healed (0.1 steps); server time (last) of each Venom Feast heal | DiloAttackServer 1.4; DiloFX 1.2 motes |
+| DiloCoilStampEnabled; DiloCoilSent | dilo character (owner client) | true; count | DiloAttackTest 1.2 |
+| DiloCobraStrikeEnabled / DiloHoodFlareEnabled / DiloSpringCoilEnabled | dilo model (each client) | true each (false = the 1.0 bite / coil + spit / leap) | DiloPose 1.1 |
+| DiloPoseSet; DiloPoseState "coil:server" / "armed:server" | dilo model (each client) | "1.1"; other clients' coil | DiloPose 1.1 |
+| DiloFXStrikeEnabled / DiloFXFlareEnabled / DiloFXBubblesEnabled / DiloFXSpinesEnabled / DiloFXMotesEnabled / DiloFXFrostEnabled; DiloFX12Events | DiloFX script (each client) | true each; count | DiloFX 1.2 (Workspace.DiloFX: DiloArmedGlow part, DiloColdTint Highlight; PlayerGui DiloFrostTint 0.45 s) |

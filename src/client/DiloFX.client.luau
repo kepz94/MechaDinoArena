@@ -578,6 +578,12 @@ do
 		local t = c:FindFirstChild("Head_tip", true)
 		return t and t:IsA("BasePart") and t or nil
 	end
+	local function snoutDir(c, tip) -- the head Root -> Head_tip (Head_tip's own facing is not the snout's)
+		local h = c:FindFirstChild("Head")
+		local r = h and h:FindFirstChild("Root")
+		local d = r and r:IsA("BasePart") and (tip.Position - r.Position) or Vector3.zero
+		return d.Magnitude > 1e-3 and d.Unit or tip.CFrame.LookVector
+	end
 	BUBBLE = function(pos, size, k)
 		if full() then return end
 		local p = part(Enum.PartType.Ball, Vector3.one * size * 0.5, PALE, 0.25)
@@ -594,7 +600,7 @@ do
 		local tip = snout(c)
 		if not tip then return end
 		local k = scaleK(c)
-		local d = tip.CFrame.LookVector
+		local d = snoutDir(c, tip)
 		for _ = 1, 9 do
 			droplet(tip.Position, (d * (30 + math.random() * 20) + Vector3.new((math.random() - 0.5) * 14, 4 + math.random() * 6, (math.random() - 0.5) * 14)) * k,
 				0.5 * k, 0.45, 40 * k)
@@ -620,7 +626,7 @@ do
 		local mr = m and (m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart)
 		if not (nr and nr:IsA("BasePart")) then return end
 		local k = scaleK(c)
-		flash(nr.Position, 7 * k, GLOW)
+		flash(nr.Position, 4 * k, GREEN)
 		if mr then
 			for _ = 1, 9 do
 				local d = (mr.Position - nr.Position).Unit + Vector3.new((math.random() - 0.5) * 0.8, (math.random() - 0.2) * 0.6, (math.random() - 0.5) * 0.8)
@@ -770,7 +776,7 @@ do
 					local sz = (1.4 + 0.5 * math.sin(os.clock() * 30)) * k
 					g.Size = Vector3.new(sz, sz, sz)
 					g.Transparency = 0.35
-					g.CFrame = CFrame.new(tip.Position + tip.CFrame.LookVector * 0.6 * k)
+					g.CFrame = CFrame.new(tip.Position + snoutDir(c, tip) * 0.7 * k)
 				elseif g then
 					g:Destroy()
 					glows[c] = nil
@@ -795,7 +801,7 @@ do
 					if breath[c] >= 0.45 and not full() then
 						breath[c] = 0
 						local p = part(Enum.PartType.Ball, Vector3.one * 0.7 * k, ICE_W, 0.4, Enum.Material.SmoothPlastic)
-						local v = (tip.CFrame.LookVector * 4 + Vector3.new(0, 1.5, 0)) * k
+						local v = (snoutDir(c, tip) * 4 + Vector3.new(0, 1.5, 0)) * k
 						p.Position = tip.Position
 						custom(p, 0.8, function(f, ddt, u)
 							f.p.Position += v * ddt
