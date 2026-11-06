@@ -52,8 +52,8 @@ the 7 looks' geometry (TenoPartsServer / TenoPartsLooksV2), TenoPoseFix's tail c
 - Challenge (`TenoChallengeAlarmPoseEnabled`): yaw Y = TenoChallengeAimYaw; 0 → 0.3 × BELLOW + Neck yaw Y, Head yaw Y/2
   by 0.2 (easeOut, the snap); the yaw sweeps Y → −Y by 0.65 (smooth, the scan); 0.5 × BELLOW held to 1.3; → 0 by 1.9.
 - Shield (`TenoShieldPulsePoseEnabled`): 0 → PUSH by 0.25 (easeOut; arms 30, legs 24 / −10, RootJoint −4); → GUARD
-  (0.6 × LIGER: head −11, neck −11, arms splayed) by 0.7 (smooth); held while TenoMudUntil > now (max 10 s); → 0 over 0.5 s.
-  The phase lasts to TenoMudUntil + 0.5 (was SUPPORT_END 1.7).
+  (0.6 × LIGER: head −11, neck −11, arms splayed) by 0.7 (smooth); held to 1.2; → 0 by 1.7 (inside SUPPORT_END 1.7; the
+  purple shield itself stays as now).
 - Diagnostic: model `TenoPoseMoveSet` ("1.12").
 - Acceptance (Studio, adult, flat pad): each move's frame at its hit / release matches the mockup's (screenshot); switches
   off = 1.11.
@@ -87,11 +87,13 @@ the 7 looks' geometry (TenoPartsServer / TenoPartsLooksV2), TenoPoseFix's tail c
 ## Deterministic map
 - Each move: switch on → new path; off → 1.11 / 1.10 path; stamps missing → fallbacks above.
 - Challenge with no candidate in range: AimYaw 0 → the snap and sweep are centred ahead.
-- Shield ended early (TenoMudEndedAt) → the guard fades from that time.
+- Shield ended before 1.7 s (TenoMudEndedAt) → the pose still finishes its 1.7 s (pose only).
 - Leap with TenoLeapOnJump false → untouched (other jumps).
 
-## Red-team (open — Kepu's call)
-1. Mortar fires 0.15 s later (0.70) and the stomp hits 0.10 s later (0.60): on the cards; confirm.
-2. Leap crouch: JumpWindup is 0.12 s, so the deep crouch is quick (the mockup used 0.25 s).
-3. Shield guard held the whole shield time (up to 8 s): head low while you walk / bite.
-4. Mortar recoil: pose-only kick (the mockup also slid the body back ~1.4 studs; that would move your character).
+## Red-team (resolved, Kepu 2026-11-05)
+1. Mortar 0.70 / stomp 0.60: on the picked cards — accepted.
+2. Leap crouch: **keep JumpWindup 0.12 s** (a quick dip; take-off unchanged).
+3. Shield: **guard ~1 s, then normal** (pose ends at 1.7 s; the shield stays).
+4. Mortar recoil: **pose only** (no root move).
+
+Tickets: MDA-282 (Task 1), MDA-283 (Task 2), MDA-284 (Task 3), MDA-285 (Task 4), MDA-286 (Task 5) — see Dev Hub.
