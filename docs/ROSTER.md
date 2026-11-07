@@ -1,4 +1,4 @@
-# Dino roster v1.27
+# Dino roster v1.28
 
 The list of dinos that are in the game, and the ones planned for roll-out. Add new dinos at the bottom of "Planned" as
 Kepu sends them; each one goes model mockup → Kepu's pick → model data → kit plan → playable.
@@ -14,7 +14,7 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 | 3 | Pachy | PachyModelData 1.4 (installed, published v319) | 90 | 56.9 | — | Headbutt / ram. Redesign saved: refined Crowned Skull, horns always on, mid section +25%, cream dome; Battering Dome star = stat boosts only |
 | 4 | Herrera | HerreraModelData 1.3 | 40 | 90 | ~22.4 | "a Pain in the ass to deal with but easy to kill", most mecha utility, fastest |
 | 5 | Teno (Tenontosaurus) | TenoModelData 1.4 (installed, published v323) | 150 | 52 | ~47 | Tank: scratch + rear tail slam |
-| 6 | Troodon | TroodonModelData 1.1 (B Night Watcher + kit attributes; kit plan docs/plans/TROODON_KIT_v1.0.md, MDA-330..339) | 55 | 74 | ~24 | Area control + support (Kepu 2026-11-06, replaces the 1.1 "skirmisher"): Glow Pod Toss (a lobbed pod that splashes a glow zone 20 studs across for 3 s: 6 + 3 x 3 to enemies, slow 25%, +5 x 4 heal to squadmates, +2 self-heal per enemy hit; 2 charges) and the Evade Hop (~18 studs straight back, ~5.3 high, 2 charges). Not published yet |
+| 6 | Troodon | TroodonModelData 1.3 (B Night Watcher + kit attributes; kit plan docs/plans/TROODON_KIT_v1.0.md, MDA-330..339; Flap & Glide plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md, MDA-340..343) | 55 | 86 | ~24 | Area control + support (Kepu 2026-11-06, replaces the 1.1 "skirmisher"): Glow Pod Toss (a lobbed pod, 80 studs range, that splashes a glow zone 20 studs across for 3 s: 6 + 3 x 3 to enemies, slow 25%, +5 x 4 heal to squadmates, +2 self-heal per enemy hit; 2 charges) and Flap & Glide on JUMP (Kepu 17:38 / 17:50: a leap ~11 studs up + 2 wing flaps in the air, then it glides by itself, falling 8 studs/s at run speed; replaces the Evade Hop). Not published yet |
 | 7 | Therizino (Therizinosaurus) | TherizinoModelData 1.5 (A Reaper, stance C3 Low flare, open hand; kit plan docs/plans/THERIZINO_KIT_v1.0.md) | 80 | 66 | ~32 | Slasher build ("Therizino. Slasher build") |
 | 9 | Dilo (Dilophosaurus) | DiloModelData 1.3 (E Bruiser Face, split hood frill; kit plan docs/plans/DILO_KIT_v1.0.md) | 70 | 66 | ~26 | Ranged spitter (venom dart + Cobra Leap) |
 
@@ -54,3 +54,4 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 | 1.25 | Pachy redesign saved: PachyModelData 1.4 (E +25%, cream, star = stat boosts only); T-Rex plan approved (Kepu 2026-11-02: "I'm good with this plan"). |
 | 1.26 | Status catch-up from the repo (2026-11-02): T-Rex 2.0, Pachy 1.4 and Teno 1.4 are installed and published; Troodon / Therizino / Zuul / Dilo models are installed in Studio with Studio-only displays (published v359 / v361), Therizino stance 1.2 (open hand, claws hanging low). None of the four is playable; no kit plan yet. |
 | 1.27 | Troodon kit (plan TROODON_KIT_v1.0, MDA-330..339, 2026-11-06): troodon role "Area control + support" (replaces 1.1's "skirmisher"), playable (SpeciesServer 1.8), model data 1.1. Therizino (kit plan THERIZINO_KIT_v1.0, model data 1.5) and Dilo (kit plan DILO_KIT_v1.0, model data 1.3) were already playable: moved to "In the game". Zuul stays planned. |
+| 1.28 | Troodon: run 86 / walk 46 and pod range 80 studs (TroodonModelData 1.2, Kepu 2026-11-06 17:38); JUMP is Flap & Glide (TroodonModelData 1.3, plan TROODON_FLAP_GLIDE_v1.0, MDA-340..343: leap + 2 flaps, then an automatic glide; the Evade Hop is off). |
