@@ -60,6 +60,11 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .stage { position: relative; border: 2px solid var(--line); border-radius: 16px; overflow: hidden; background: #8cc3e6; }
 #vig { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
 .stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; touch-action: none; }
+.stage { touch-action: none; cursor: grab; }
+.zoomctl { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 6px; z-index: 3; }
+.zoomctl button { min-width: 44px; height: 44px; border-radius: 10px; border: 1px solid rgba(255,255,255,.5); background: rgba(16,20,26,.72); color: #fff; font: 800 20px system-ui, sans-serif; cursor: pointer; }
+.zoomctl button#zreset { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.zoomctl button:focus-visible { outline: 2px solid #3fe0c8; outline-offset: 2px; }
 .cap { position: absolute; left: 12px; bottom: 12px; right: 12px; display: flex; justify-content: center; pointer-events: none; }
 .cap b { font: 700 clamp(13px, 2.1vw, 19px)/1.2 var(--display); color: #fff; background: rgba(13,15,20,.8); border-radius: 12px; padding: 6px 13px; text-align: center; max-width: 100%; }
 .clock { position: absolute; right: 12px; top: 12px; font: 800 12px var(--body); color: #fff; background: rgba(13,15,20,.8); border-radius: 8px; padding: 3px 9px; font-variant-numeric: tabular-nums; }

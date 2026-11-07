@@ -926,7 +926,8 @@ const PIDS = MOVES.filter(m => m.id !== "all").map(m => m.id);
 const MEAS = typeof TROO_MEAS !== "undefined" ? TROO_MEAS : null;
 
 // ---------- the player ----------
-let cur = 0, variant = REC.mender, playing = true, speed = 1, camMode = "hero"; // v0.2: opens on the tight 3/4 view (Kepu 2026-11-06 21:14: the far camera made the mockup unreadable)
+let cur = 0, variant = REC.mender, playing = true, speed = 1, camMode = "hero";
+const view = {zoom: 1, yaw: 0, pitch: 0}; // v0.2: your own zoom / orbit (wheel, pinch, drag, + / - buttons) // v0.2: opens on the tight 3/4 view (Kepu 2026-11-06 21:14: the far camera made the mockup unreadable)
 const allOn = {}; PIDS.forEach(p => { allOn[p] = true; });
 let lookOverride = null; // measurement: a set of looks to show
 const M = () => MOVES[cur];
@@ -1059,6 +1060,13 @@ function render(dt) {
   else if (camMode === "side") cp = mid.clone().add(V(1, 0.14, 0).normalize().multiplyScalar(vfit * 0.75)); // v0.2: was 1.05
   else if (camMode === "top") { cp = mid.clone().add(V(0.12, 1, 0.3).normalize().multiplyScalar(vfit * 0.7)); } // v0.2: was 0.95
   else { const c = M().id === "all" ? partPoint(hero.segs.Torso[0]).add(V(0, 1, 0)) : partCentre(); const d = M().id === "all" ? 24 : 12; /* v0.2: closer (was 34 / 17) */ cp = c.clone().add(V(0.78, 0.42, -0.46).normalize().multiplyScalar(d)); look = c; snap = 0.3; }
+  if (camMode !== "part") { const fz = Math.max(0, Math.min(1, (1 - view.zoom) / 0.5)); // v0.2: zooming in slides the view onto the troodon
+    if (fz > 0) { const d = heroHRP().add(V(0, 3, 0)).sub(look).multiplyScalar(fz); look = look.clone().add(d); cp = cp.clone().add(d); } }
+  { const off = cp.clone().sub(look); // v0.2: apply the viewer's zoom / orbit around the framed point
+    off.applyAxisAngle(V(0, 1, 0), view.yaw);
+    const horiz = Math.hypot(off.x, off.z), el = Math.atan2(off.y, horiz) + view.pitch, len = off.length() * view.zoom;
+    const e = Math.max(-0.2, Math.min(1.35, el)), hd = horiz > 1e-4 ? V(off.x / horiz, 0, off.z / horiz) : V(1, 0, 0);
+    cp = look.clone().add(hd.multiplyScalar(Math.cos(e) * len)).add(V(0, Math.sin(e) * len, 0)); }
   camPos.lerp(cp, snap); camLook.lerp(look, snap + 0.05);
   const sh = shake * shake;
   cam.position.copy(camPos).add(V((Math.random() - .5) * sh, (Math.random() - .5) * sh, (Math.random() - .5) * sh));
@@ -1247,3 +1255,23 @@ requestAnimationFrame(loop);
 window.__troo = {set(id, v, time, cm) { window.__manual = true; cur = MOVES.findIndex(m => m.id === id); variant = v; if (cm) camMode = cm; start(); renderAll(); seek(time); },
   measure: () => { window.__manual = true; return measureAll(); }, len: () => LEN(), cap: () => $("cap").textContent, state: () => ({t: play.t, fx: fx.length, vis: MECH.filter(p => p.mesh.visible).length})};
 window.__ready = true;
+// ---------- v0.2: viewer zoom / orbit (Kepu 2026-11-06 21:17 "Allow me to zoom in") ----------
+(function () {
+  const cvs = document.getElementById("cv").parentNode, clampZ = z => Math.max(0.12, Math.min(2.5, z)); // the whole stage (overlays sit on top of the canvas)
+  cvs.addEventListener("wheel", e => { e.preventDefault(); view.zoom = clampZ(view.zoom * Math.exp(e.deltaY * 0.0012)); }, {passive: false});
+  const pts = new Map(); let pinch0 = 0, zoom0 = 1;
+  cvs.addEventListener("pointerdown", e => { if (e.target.closest(".zoomctl")) return; cvs.setPointerCapture(e.pointerId); pts.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); zoom0 = view.zoom; } });
+  cvs.addEventListener("pointermove", e => { const p = pts.get(e.pointerId); if (!p) return;
+    if (pts.size === 1) { view.yaw -= (e.clientX - p.x) * 0.008; view.pitch = Math.max(-0.6, Math.min(1.0, view.pitch + (e.clientY - p.y) * 0.006)); }
+    p.x = e.clientX; p.y = e.clientY;
+    if (pts.size === 2 && pinch0 > 0) { const [a, b] = [...pts.values()]; view.zoom = clampZ(zoom0 * pinch0 / Math.max(1, Math.hypot(a.x - b.x, a.y - b.y))); } });
+  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = 0; };
+  cvs.addEventListener("pointerup", up); cvs.addEventListener("pointercancel", up);
+  const bar = document.createElement("div"); bar.className = "zoomctl"; bar.setAttribute("aria-label", "Zoom");
+  bar.innerHTML = '<button type="button" id="zin" aria-label="Zoom in">+</button><button type="button" id="zout" aria-label="Zoom out">&minus;</button><button type="button" id="zreset" aria-label="Reset view">Reset</button>';
+  cvs.appendChild(bar);
+  document.getElementById("zin").onclick = () => { view.zoom = clampZ(view.zoom * 0.7); };
+  document.getElementById("zout").onclick = () => { view.zoom = clampZ(view.zoom / 0.7); };
+  document.getElementById("zreset").onclick = () => { view.zoom = 1; view.yaw = 0; view.pitch = 0; };
+})();
