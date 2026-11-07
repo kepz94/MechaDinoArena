@@ -100,8 +100,8 @@ ul { margin: 4px 0 0; padding-left: 20px; }
 <body>
 <main>
   <header>
-    <h1><span>Troodon</span> kit · v0.1</h1>
-    <p class="lede"><b>Role (Kepu 2026-11-06): area control + support.</b> "A projectile that damages enemies and heals teammates" · shape "a shot that splashes a zone" · solo: "a small self-heal on hit". The real Troodon model (TroodonModelData 1.0, look B · Night Watcher, 188 blocks) at the 2x game body, doing each proposed move game-style: wind-up, throw, follow-through, hit-stop. Every attack ends in the same <b>glow zone</b>: enemies inside take damage and are slowed, <b>squadmates</b> inside heal (blue ring = squadmate; squads exist in the Arena), and the troodon heals a little for each enemy the splash hits, so it still matters when you play alone. Its big amber eyes flare on every throw: that is its signature look. Soft aim like the Dilo (the faint 30° cone; no aim mode on phones). Jumps land plainly. <b>Pick one attack (A, B or C) and one jump (J1 or J2).</b></p>
+    <h1><span>Troodon</span> kit · v0.2</h1>
+    <p class="lede"><b>Role (Kepu 2026-11-06): area control + support.</b> "A projectile that damages enemies and heals teammates" · shape "a shot that splashes a zone" · solo: "a small self-heal on hit". The real Troodon model (TroodonModelData 1.0, look B · Night Watcher, 188 blocks) at the 2x game body, doing each proposed move game-style: wind-up, throw, follow-through, hit-stop. Every attack ends in the same <b>glow zone</b>: enemies inside take damage and are slowed, <b>squadmates</b> inside heal (blue ring = squadmate; squads exist in the Arena), and the troodon heals a little for each enemy the splash hits, so it still matters when you play alone. Its big amber eyes flare on every throw: that is its signature look. Soft aim like the Dilo (the faint 30° cone; no aim mode on phones). Jumps land plainly. <b>v0.2: the new jump J3 · Flap &amp; Glide (attack A is live).</b></p>
   </header>
   <div class="row" role="group" aria-label="Attack">
     <div class="rowlab">Attack (ATTACK button)</div>
@@ -112,7 +112,8 @@ ul { margin: 4px 0 0; padding-left: 20px; }
   <div class="row" role="group" aria-label="Jump">
     <div class="rowlab">Jump (JUMP button)</div>
     <button class="tab" data-jump="J1">J1 · Leap<small>the raptor / dilo leap, plain landing</small></button>
-    <button class="tab" data-jump="J2">J2 · Evade Hop<span class="rec">Recommended</span><small>quick low hop back, still facing the fight</small></button>
+    <button class="tab" data-jump="J3">J3 · Flap &amp; Glide<span class="rec">New</span><small>leap + 2 flaps in the air, then glides by itself</small></button>
+    <button class="tab" data-jump="J2">J2 · Evade Hop<small>live now: quick low hop back</small></button>
   </div>
   <div class="row" role="group" aria-label="Controls">
     <button class="btn go" id="again">↻ Play again</button>
@@ -140,8 +141,8 @@ ul { margin: 4px 0 0; padding-left: 20px; }
     <div class="card" id="infoAtk"></div>
     <div class="card" id="infoJump"></div>
   </div>
-  <div class="card rec"><h2>Recommended: A · Glow Pod Toss + J2 · Evade Hop</h2>
-    <p>A uses what only the troodon has (the long drooping arms: no other dino throws), and the lobbed arc can drop the zone on top of a fight, behind a squadmate or over cover, which is what an area-control support needs. B is easier to hit but it is the Dilo's spit again. J2 keeps it at range: hop back out of a bite and throw again. J1 is the safe pick if you want every leaping dino to jump the same way.</p></div>
+  <div class="card rec"><h2>v0.2: J3 · Flap &amp; Glide (Kepu 2026-11-06 17:38)</h2>
+    <p>"Have it be able to flap up and basically start to fly but more like a triple jump and glide since it has feathers" · "Glides by itself after the 3rd flap". J3 replaces the live Evade Hop (J2, shown for comparison). It reuses two moves already in the game: the pachy's Mecha Legs air jump (here two of them) and the Herrera's Glider Wings glide (same fall rate), so it plays like moves players already know. Also live in Studio since v0.1: run 86 / walk 46 and a pod range of 80 studs (not published yet).</p></div>
   <div class="card"><h2>Proposed numbers (all tunable attributes)</h2>
     <ul>
       <li><b>Health 55</b> (Herrera 40, Raptor 60, Dilo 70): a support that has to be protected, between its size neighbours.</li>

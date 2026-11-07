@@ -34,6 +34,13 @@ const TJ_LAND = BOTH({RootJoint: [-6, 0, 0], Neck: [8, 0, 0], Head: [-6, 0, 0], 
 const TH_SET = BOTH({RootJoint: [-4, 0, 0], Neck: [10, 0, 0], Head: [-8, 0, 0], ArmL: [-8, 0, 0], LegL: [20, 0, 0], KneeL: [-40, 0, 0], AnkleL: [18, 0, 0], Tail1: [4, 0, 0]});
 const TH_AIR = BOTH({RootJoint: [6, 0, 0], Neck: [6, 0, 0], Head: [-4, 0, 0], ArmL: [20, 0, 0], LegL: [-14, 0, 0], KneeL: [-36, 0, 0], AnkleL: [16, 0, 0], Tail1: [-10, 0, 0], Tail2: [-6, 0, 0]});
 
+// J3 · Flap & Glide (Kepu 2026-11-06 17:38: "flap up and basically start to fly but more like a triple jump and glide since
+// it has feathers"; "Glides by itself after the 3rd flap"): wing up-stroke (long feathered arms raised out to the sides),
+// down-stroke (arms swept down and back: the push), glide (arms held straight out, legs tucked, tail straight)
+const TF_UP = BOTH({RootJoint: [4, 0, 0], Neck: [12, 0, 0], Head: [-10, 0, 0], ArmL: [-30, -25, -130], LegL: [34, 0, 0], KneeL: [-64, 0, 0], AnkleL: [30, 0, 0], Tail1: [-6, 0, 0], Tail2: [-4, 0, 0]});
+const TF_DOWN = BOTH({RootJoint: [-6, 0, 0], Neck: [18, 0, 0], Head: [-14, 0, 0], ArmL: [-10, 15, 25], LegL: [40, 0, 0], KneeL: [-72, 0, 0], AnkleL: [34, 0, 0], Tail1: [-10, 0, 0], Tail2: [-6, 0, 0], Tail3: [-3, 0, 0]});
+const TF_GLIDE = BOTH({RootJoint: [-2, 0, 0], Neck: [-4, 0, 0], Head: [2, 0, 0], ArmL: [-25, -15, -98], LegL: [44, 0, 0], KneeL: [-78, 0, 0], AnkleL: [36, 0, 0], Tail1: [-6, 0, 0], Tail2: [-3, 0, 0], Tail3: [-2, 0, 0]});
+
 // ---------- troodon FX: the glow pod, the zone, heal crosses, numbers ----------
 const AMBER = 0xffb43a, AMBER_D = 0xd9821c, HEALC = 0x6dff8a, ZONEC = 0x2fe6c8, ZONER = 0xa8fff0;
 const T_POD = radialTex("rgba(255,236,170,1)", "rgba(255,150,40,0)", 0.45);
@@ -129,6 +136,7 @@ const LEAP = {T0: 0.28, AIR: 0.72, DIST: 30, H: 10};
 const HOP = {T0: 0.1, AIR: 0.42, DIST: -18, H: 4};
 let leapCfg = LEAP;
 function leapOffset(t) {
+  if (leapCfg.custom) return leapCfg.custom(t); // J3
   const u = (t - leapCfg.T0) / leapCfg.AIR;
   if (u <= 0) return {fwd: 0, up: 0, air: false};
   if (u >= 1) return {fwd: leapCfg.DIST, up: 0, air: false};
@@ -197,6 +205,31 @@ const TRACKS = {
       cap: [[0, "<b>Tap JUMP</b>: crouch"], [LEAP.T0, "<b>Leap</b>: ~30 studs forward, arms tucked up"], [t1, "<b>Plain landing</b>: no dust, no shockwave (house rule)"]],
       hud: {mode: "jump", hint: "Tap JUMP", what: "the raptor / dilo leap: 0.5 s cooldown, no charges"}};
   },
+  J3() {
+    R0.show = false; R1.show = false; S.show = false;
+    // flight path (game studs, Roblox gravity 196.2): leap 11 studs up; each flap sets the climb to 7 studs more; after the
+    // 3rd flap's top it glides: falls 8 studs/s (the Herrera's Glider Wings GliderFall) while moving forward at 45 studs/s
+    const G = 196.2, T0 = 0.28, FLAPS = [T0 + 0.42, T0 + 0.84], V0 = Math.sqrt(2 * G * 11), VF = Math.sqrt(2 * G * 7), HV = 45, GLIDE_FALL = 8;
+    const path = []; let y = 0, vy = V0, x = 0, tt = T0, fi = 0, glideAt = null, landAt = null; const DT = 1 / 240;
+    while (tt < 9) { path.push([tt, x, y, glideAt !== null]); if (fi < FLAPS.length && tt >= FLAPS[fi]) { vy = VF; fi++; }
+      if (glideAt === null && fi >= FLAPS.length && vy <= 0) glideAt = tt;
+      if (glideAt !== null) vy = -GLIDE_FALL; else vy -= G * DT;
+      y += vy * DT; x += HV * DT; tt += DT; if (y <= 0 && tt > T0 + 0.1) { landAt = tt; path.push([tt, x, 0, false]); break; } }
+    leapCfg = {custom: q => { if (q <= T0) return {fwd: 0, up: 0, air: false}; if (q >= landAt) return {fwd: path[path.length - 1][1], up: 0, air: false};
+      const k = Math.min(path.length - 1, Math.floor((q - T0) / DT)); return {fwd: path[k][1], up: path[k][2], air: true}; }};
+    const fl = (a) => [{t: a - 0.12, pose: TF_UP, e: "io"}, {t: a + 0.06, pose: TF_DOWN, e: "in2"}];
+    const keys = [{t: 0, pose: T_READY}, {t: T0, pose: TJ_CROUCH, e: "io"}, {t: T0 + 0.05, pose: TF_DOWN, e: "in2"}, ...fl(FLAPS[0]), ...fl(FLAPS[1]), {t: glideAt - 0.1, pose: TF_UP, e: "io"}, {t: glideAt + 0.15, pose: TF_GLIDE, e: "out"}, {t: landAt - 0.12, pose: TF_GLIDE, e: "io"}, {t: landAt, pose: TJ_DOWN, e: "io"}, {t: landAt + 0.12, pose: TJ_LAND, e: "out"}, {t: landAt + 0.7, pose: T_READY, e: "io"}];
+    const peak = Math.max(...path.map(p => p[2])), dist = path[path.length - 1][1];
+    const puff = () => { const p = partPoint(hero.segs.Torso[0]); for (let i = 0; i < 10; i++) { const s = sprite(T_FLASH, 0xd9cdb6, 1.6, false); s.position.copy(p).add(new THREE.Vector3((Math.random() - .5) * 6, -2 - Math.random() * 2, (Math.random() - .5) * 4)); const v = new THREE.Vector3((Math.random() - .5) * 8, -6 - Math.random() * 6, (Math.random() - .5) * 8); addFx(s, 0.5, (o, u, d) => { o.position.addScaledVector(v, d); o.material.opacity = 0.5 * (1 - u); o.scale.setScalar(1.6 + u * 3); }); } };
+    return {kind: "jump", leap: true, follow: true, len: landAt + 1.0, frame: [new THREE.Vector3(0, 0, 4), new THREE.Vector3(0, 0, -40)],
+      keys,
+      ev: [{t: 0, f: () => { hud.jpress = 0.3; }}, {t: T0 + 0.05, f: puff}, {t: FLAPS[0], f: () => { hud.jpress = 0.3; puff(); }},
+           {t: FLAPS[1], f: () => { hud.jpress = 0.3; puff(); }},
+                      {t: landAt, f: () => { textTag(hero.pos.clone().add(new THREE.Vector3(0, 1.5, -4)), "plain landing", "#ffffff", 1.1); }}],
+      cap: [[0, "<b>Tap JUMP</b>: crouch, then a leap with a <b>wing beat</b> (~11 studs up)"], [FLAPS[0] - 0.15, "<b>Tap JUMP again in the air: flap 2</b> (+7 studs)"], [FLAPS[1] - 0.15, "<b>Tap JUMP again: flap 3</b> (+7 studs)"],
+            [glideAt, "<b>Glides by itself</b> after the 3rd flap: arms out like wings, falls 8 studs/s (the Herrera glider's rate), steer with the stick"], [landAt, `<b>Plain landing</b> · peak ~${peak.toFixed(0)} studs · ~${dist.toFixed(0)} studs covered · flaps reset on landing`]],
+      hud: {mode: "jump", hint: "Tap JUMP · tap again in the air (x2)", what: "3 beats per jump (leap + 2 flaps), then an automatic glide"}};
+  },
   J2() {
     leapCfg = HOP; R1.show = false; S.show = false;
     place(R0, 0, -34, 0); R0.yaw = yawTo(R0.pos, hero.pos);
@@ -214,7 +247,7 @@ const TRACKS = {
 };
 
 // ---------- state ----------
-let attack = "A", jump = "J1", camMode = "hero", slowMo = false, seq = "attack";
+let attack = "A", jump = "J3", camMode = "hero", slowMo = false, seq = "attack";
 let play = null, hitStop = 0, shake = 0, clockT = 0, idleT = 0, fovPunch = 0;
 const hud = {mode: "pips", charges: 2, refill: 1, cool: 0, hold: 0, held: false, press: 0, jpress: 0};
 function resetFx() { fx.splice(0).forEach(e => scene.remove(e.obj)); tshots.splice(0).forEach(s => { scene.remove(s.mesh); scene.remove(s.glow); }); zones.splice(0).forEach(Z => scene.remove(Z.g)); selfHeal.splice(0); }
@@ -317,11 +350,13 @@ function step(dt) {
   if (hud.mode === "pips" && hud.charges < 2) { hud.refill += mdt / 3; if (hud.refill >= 1) { hud.charges++; hud.refill = hud.charges < 2 ? 0 : 1; } }
   drawHud();
   shake = Math.max(0, shake - dt * 4.2); fovPunch = Math.max(0, fovPunch - dt * 14);
-  const fr = tr ? tr.frame : [new THREE.Vector3(), new THREE.Vector3(0, 0, -30)];
+  const fr = tr ? (tr.follow ? [hero.pos.clone().setY(0).add(new THREE.Vector3(0, 0, 22)), hero.pos.clone().setY(0).add(new THREE.Vector3(0, 0, -30))] : tr.frame) : [new THREE.Vector3(), new THREE.Vector3(0, 0, -30)];
   const mid = fr[0].clone().lerp(fr[1], 0.5).setY(9), span = fr[0].distanceTo(fr[1]) + 30;
+  if (tr && tr.follow) mid.y = hero.y + 7;
   const hfov = 2 * Math.atan(Math.tan(rad(cam.fov / 2)) * cam.aspect), vfit = span * 0.5 / Math.tan(hfov / 2);
   let cp, look = mid;
-  if (camMode === "hero") cp = mid.clone().add(new THREE.Vector3(-1, 0.4, -0.16).normalize().multiplyScalar(vfit * 1.08));
+  if (camMode === "hero" && tr && tr.follow) { cp = new THREE.Vector3(hero.pos.x - 22, hero.y + 14, hero.pos.z + 30); look = new THREE.Vector3(hero.pos.x, hero.y + 6, hero.pos.z - 12); } // J3: chase view so the spread arms read
+  else if (camMode === "hero") cp = mid.clone().add(new THREE.Vector3(-1, 0.4, -0.16).normalize().multiplyScalar(vfit * 1.08));
   else if (camMode === "side") cp = mid.clone().add(new THREE.Vector3(-1, 0.14, 0).normalize().multiplyScalar(vfit * 1.1));
   else if (camMode === "game") { cp = hero.pos.clone().add(new THREE.Vector3(-10, 30, 44)); look = hero.pos.clone().add(new THREE.Vector3(0, 8, -26)); }
   else { const h = partPoint(mouthParts.skull); cp = h.clone().add(new THREE.Vector3(-15, 3, -15)); look = h.clone().add(new THREE.Vector3(0, -3, 0)); }
@@ -371,12 +406,16 @@ const INFO = {
     look: "Crouch, spring ~30 studs forward with the long arms tucked up, and land plainly: no dust, no shockwave.",
     nums: ["~30-stud leap, ~0.7 s in the air", "No damage", "Same jump as the Raptor and the Dilo: 0.5 s cooldown, no charges (JumpServer reused as is)"],
     trade: "Consistent with the other leaping dinos and nothing new to build. It moves you toward the fight, not away from it."},
+  J3: {name: "Flap & Glide", input: "Tap JUMP · tap twice more in the air",
+    look: "A crouch and a leap with a downward wing beat of the long feathered arms (a puff of loose down falls away). Tap JUMP again in the air for a 2nd and a 3rd beat, each lifting it higher. After the 3rd beat it spreads its arms straight out like wings and glides down by itself, steering with the stick, and lands plainly.",
+    nums: ["Leap ~11 studs up; flaps 2 and 3: +7 studs each (each one resets the climb, like the pachy's Mecha Legs double jump)", "Auto glide after the 3rd flap: falls 8 studs/s (the Herrera's Glider Wings rate), forward at run speed, steer with the stick", "Peak ~25 studs; ~150 studs covered in the preview's straight line", "Flaps reset on landing; 0.5 s before the next jump (the raptor / dilo rule, no charges)", "No damage; no landing dust or shockwave"],
+    trade: "The most mobile jump in the game after the Herrera's climb: reaches ledges, crosses gaps and escapes fights, which suits a support that has to stay alive. It replaces the backward hop, so there is no quick dodge in place any more. Reuses the double jump and the Herrera glider code, so it plays like moves players already know."},
   J2: {name: "Evade Hop", input: "Tap JUMP",
     look: "A quick low hop ~18 studs straight back, still facing the fight, so whatever was lunging at it bites air. Plain landing.",
     nums: ["~18 studs back, ~0.4 s in the air, low (~4 studs high)", "No damage", "2 hop charges, 1 refills every 4 s (proposed)"],
     trade: "Fits a dino that wants to stay at range and keep its zone on the fight, and it's a real dodge. New jump behaviour (backwards), so it is more to build and test than J1; it can't jump up onto ledges as well as a forward leap."},
 };
-const REC = {A: true, J2: true};
+const REC = {A: true, J3: true};
 function infoCard(k, kind) {
   const I = INFO[k];
   return `<div class="kind">${kind} · ${I.input}</div><h2>${k} · ${I.name}${REC[k] ? '<span class="badge">Recommended</span>' : ""}</h2>
@@ -400,3 +439,7 @@ window.__setup = (a, j, kind, cm) => { window.__manual = true; attack = a || att
 window.__step = dt => step(dt);
 window.__len = () => play ? play.track.len : 0;
 window.__t = () => play ? play.t : 0;
+window.__pose = (P, view) => { window.__manual = true; hero.yaw = 0; hero.pos.set(0, 0, 0); hero.y = 0; pose(hero, P);
+  let minY = Infinity; for (const p of heroFeet) for (let i = 0; i < 8; i++) { _c.set((i & 1 ? .5 : -.5) * p.size[0], (i & 2 ? .5 : -.5) * p.size[1], (i & 4 ? .5 : -.5) * p.size[2]).applyMatrix4(p.mesh.matrix); minY = Math.min(minY, _c.y); }
+  hero.y = -minY + 6; pose(hero, P); raps.forEach(R => R.rig.g.visible = false); allyRing.visible = allyTag.visible = false;
+  const C = {side: [-40, 12, -2], front: [-4, 14, -40], three: [-30, 18, -26], back: [-4, 16, 34]}[view || "side"]; cam.position.set(C[0], C[1], C[2]); cam.lookAt(0, 10, -3); cam.fov = 38; cam.updateProjectionMatrix(); renderer.render(scene, cam); };
