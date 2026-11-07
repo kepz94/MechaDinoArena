@@ -1,4 +1,4 @@
--- TrooPose v1.4 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
+-- TrooPose v1.5 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
 -- the Evade Hop (jump J2) and the eyes flaring during the throw. MDA-337, plan docs/plans/TROODON_KIT_v1.0.md Task 8; mockup
 -- docs/mockups/troodon_kit_options_v0.1.html (Kepu 2026-11-06 15:38 "Let's go with your recommendations"; source
 -- tools/troodon_kit_mockup/app_tail.js TA_WIND / TA_HOLD / TA_THROW / TA_FOLLOW, TH_SET / TH_AIR / TJ_LAND, and the
@@ -65,11 +65,18 @@
 --   0.45 PORT_FLING in2 (rings 0.4 / 0.52), 0.82 PORT_FLING out, 1.57 READY io}. Each = wind-up -> action -> result ->
 --   recovery; a newer press replaces the running track. Switch: model attribute TrooPartPoseEnabled (default true, read
 --   each frame; false = 1.3). Test keys (TrooPoseTestKey) for each new key name.
+-- v1.5 (MDA-351, Kepu 2026-11-07 "Widen the grab pose 6-8 deg": the Arc Lantern hand grab put the hip lantern 5.9 % into the
+--   body at 0.35 s, over the 5 % fit line): the lantern track's grab keys LANT_GRAB and LANT_COCK swing the +X arm (ArmL) out
+--   by TrooLanternGrabWideDeg (default 7 deg, roll -deg; the same "wider" direction as 1.3's TA_WIND_W) = keys LANT_GRAB_W /
+--   LANT_COCK_W; the throw / follow keys are unchanged. Switch: model attribute TrooLanternGrabWideEnabled (default true,
+--   read each frame; false = 1.4's keys). Test keys LANT_GRAB_W / LANT_COCK_W (at the default 7 deg).
 local TrooPose = {}
 TrooPose.Version = "1.3"
 TrooPose.Version = "1.4" -- v1.4 part move poses
+TrooPose.Version = "1.5" -- v1.5 wider lantern grab
 TrooPose.Defaults = {TrooPoseEnabled = true, TrooHopPoseEnabled = true, TrooEyeFlareEnabled = true, TrooGroundLockEnabled = true,
-	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true, TrooPoseFallEnabled = true, TrooThrowWideEnabled = true, TrooPartPoseEnabled = true}
+	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true, TrooPoseFallEnabled = true, TrooThrowWideEnabled = true, TrooPartPoseEnabled = true,
+	TrooLanternGrabWideEnabled = true, TrooLanternGrabWideDeg = 7}
 local Players = game:GetService("Players")
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5", "LegL",
@@ -181,6 +188,24 @@ TRACKS.sap = TRACKS.throwWide
 TRACKS.shed = {{0, "$from"}, {0.13, "SHED_TENSE", "io"}, {0.21, "SHED_BURST", "out5"}, {0.5, "SHED_BURST"}, {0.75, "TJ_LAND", "io"},
 	{1.4, "READY", "io"}}
 TRACKS.portal = {{0, "$from"}, {0.35, "PORT_SET", "io"}, {0.45, "PORT_FLING", "in2"}, {0.82, "PORT_FLING", "out"}, {1.57, "READY", "io"}}
+-- v1.5: the wider lantern grab (ArmL roll -deg on LANT_GRAB / LANT_COCK), cached per deg
+local lanternWideCache = {}
+local function lanternWide(deg)
+	local c = lanternWideCache[deg]
+	if c then return c end
+	local d = {ArmL = {0, 0, -deg}}
+	KEYS["LANT_GRAB_W" .. deg] = plus(KEYS.LANT_GRAB, d)
+	FWD["LANT_GRAB_W" .. deg] = FWD.LANT_GRAB
+	KEYS["LANT_COCK_W" .. deg] = plus(KEYS.LANT_COCK, d)
+	FWD["LANT_COCK_W" .. deg] = FWD.LANT_COCK
+	c = {{0, "$from"}, {0.3, "LANT_GRAB_W" .. deg, "io"}, {0.36, "LANT_COCK_W" .. deg, "io"}, {0.44, "LANT_THROW", "in2"},
+		{0.64, "LANT_FOLLOW", "out"}, {1.32, "READY", "io"}}
+	lanternWideCache[deg] = c
+	return c
+end
+lanternWide(7)
+KEYS.LANT_GRAB_W, FWD.LANT_GRAB_W = KEYS.LANT_GRAB_W7, FWD.LANT_GRAB
+KEYS.LANT_COCK_W, FWD.LANT_COCK_W = KEYS.LANT_COCK_W7, FWD.LANT_COCK
 local PART_STAMPS = {{"TrooMenderAt", "mender"}, {"TrooMenderEndAt", "menderBack"}, {"TrooLanternAt", "lantern"}, {"TrooSapAt", "sap"},
 	{"TrooShedAt", "shed"}, {"TrooPortalAt", "portal"}}
 local REL, EYES_FROM, EYES_TO = 0.34, 0.05, 1.0
@@ -602,6 +627,9 @@ function TrooPose.top(model, pose, motors, hrp, ctx)
 	if atk.kind then
 		local keys = TRACKS[atk.kind]
 		if atk.kind == "throw" and s.TrooThrowWideEnabled then keys = TRACKS.throwWide end -- v1.3
+		if atk.kind == "lantern" and s.TrooLanternGrabWideEnabled then -- v1.5
+			keys = lanternWide(math.floor(clamp(s.TrooLanternGrabWideDeg, -30, 30) * 10 + 0.5) / 10)
+		end
 		if t > keys[#keys][1] then
 			atk.kind, atk.at = nil, nil
 		else
