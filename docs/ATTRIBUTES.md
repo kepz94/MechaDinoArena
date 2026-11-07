@@ -3063,3 +3063,6 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | JumpDoubleEnabled / JumpDoubleMul / JumpDoubleForward / GliderEnabled / GliderAuto / GliderFall | troodon character | true / 0.8 / 0 / true / true / 8 (TroodonModelData 1.3) | the flaps (JumpTest 1.6) and the auto glide (GliderTest 1.1) |
 | SkillEffectsTrooFlapKeepEnabled | SkillEffects script | true (read at each write) | SkillEffects 1.47: the troodon keeps its flap / glide values |
 | MechaLegsFXTrooSkipEnabled | MechaLegsFX script | true (read at each double jump) | MechaLegsFX 1.2: no Mecha Legs effect on a troodon flap |
+| GliderAuto | character (TroodonModelData 1.3: true) | missing = the held glide | GliderTest 1.1: the glide starts by itself at the top of the last air jump |
+| GliderAutoEnabled | GliderTest script | nil = true (read each frame) | GliderTest 1.1 |
+| GliderAutoState; GlideForwardSpeed | character (owner client) | "off" / "armed" / "gliding"; studs/s of the forward hold | GliderTest 1.1 diagnostics |

@@ -1,4 +1,4 @@
--- GliderTest v1.0 (Mecha Dino Arena) — the Herrera's Glider Wings glide on the owner's client (LocalScript in
+-- GliderTest v1.1 (Mecha Dino Arena) — the Herrera's Glider Wings glide on the owner's client (LocalScript in
 -- StarterCharacterScripts). MDA-150, plan docs/plans/HERRERA_PARTS_v1.0.md Part 2 (Kepu 2026-10-31 "Glide strike", look A
 -- "Bat Membranes") and "Pass 2 — build map".
 -- Runs only while the character attribute GliderEnabled is true (SkillEffects 1.27: Glider Wings bought AND slotted).
@@ -18,17 +18,38 @@
 -- Switch: script attribute GliderTestEnabled (default true, read each frame; false = no glide).
 -- Diagnostics (character, this client): GliderTestVersion, GlideLocal, GlideLocalReason ("start" / "landed" / "tree" /
 --   "released" / "slash" / "stunned" / "off" / "dead"), GlideCount, GlideFallSpeed (last vertical speed while gliding).
+-- v1.1 (Troodon Flap & Glide, MDA-341, plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md Task 2; Kepu 2026-11-06 17:38 "Glides by
+--   itself after the 3rd flap"): auto mode while the character attribute GliderAuto is true (only TroodonModelData 1.3 sets
+--   it) and the script attribute GliderAutoEnabled ~= false (default true, read each frame; false = 1.0's held mode for it):
+--   * no held start: the glide is armed when JumpTest 1.6's JumpAirJumpsLocal reaches JumpAirJumps (the last air jump of this
+--     leap) and starts at the top of that jump (airborne and vertical speed <= 0), JUMP held or not (reason "auto");
+--   * it ends only on landing, a stun / pin, death, a tree / slash or the part going off (never on JUMP released);
+--   * landing before the last air jump (or a fall without a leap) disarms it: no glide;
+--   * forward with no stick input: the run speed (character MoveRunSpeed, the scaled run WalkSpeed; at least the current
+--     Humanoid.WalkSpeed), so a glide from a standing leap still goes forward at run speed; fall / steering as 1.0.
+--   The Herrera (no GliderAuto) keeps the 1.0 held mode exactly. Diagnostics: GliderAutoState ("off" / "armed" / "gliding"),
+--   GlideForwardSpeed (the speed the forward hold uses).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local REQUEST_FRESH = 0.1
 local char = script.Parent
 local hum = char:WaitForChild("Humanoid")
 local hrp = char:WaitForChild("HumanoidRootPart")
 char:SetAttribute("GliderTestVersion", VERSION)
 if script:GetAttribute("GliderTestEnabled") == nil then script:SetAttribute("GliderTestEnabled", true) end
+if script:GetAttribute("GliderAutoEnabled") == nil then script:SetAttribute("GliderAutoEnabled", true) end -- v1.1
+local function autoMode() -- v1.1
+	return script:GetAttribute("GliderAutoEnabled") ~= false and char:GetAttribute("GliderAuto") == true
+end
+local armed, armedAt = false, 0 -- v1.1: the last air jump of this leap was used
+local function airJumpLimit() return math.max(1, math.floor(tonumber(char:GetAttribute("JumpAirJumps")) or 1)) end
+char:GetAttributeChangedSignal("JumpAirJumpsLocal"):Connect(function() -- v1.1 (JumpTest 1.6)
+	local n = tonumber(char:GetAttribute("JumpAirJumpsLocal")) or 0
+	if n >= airJumpLimit() then armed, armedAt = true, os.clock() elseif n == 0 then armed = false end
+end)
 local remote = ReplicatedStorage:WaitForChild("DinoGlideRequest", 20)
 
 -- jump input (JumpTest 1.3's rule)
@@ -108,13 +129,21 @@ local conn = RunService.PreSimulation:Connect(function()
 	local t = workspace:GetServerTimeNow()
 	local why = blocked(t)
 	local vy = hrp.AssemblyLinearVelocity.Y
+	local auto = autoMode() -- v1.1
+	if auto and armed and not gliding and not airborne() and os.clock() - armedAt > 0.15 then armed = false end -- landed first
 	if gliding then
 		if why then set(false, why)
 		elseif not airborne() then set(false, "landed")
-		elseif not jumpHeld() then set(false, "released") end
+		elseif not auto and not jumpHeld() then set(false, "released") end -- v1.1: auto mode never ends on release
+	elseif auto then -- v1.1: no held start; the glide starts at the top of the last air jump
+		if armed and not why and airborne() and vy <= 0 then
+			armed = false
+			set(true, "auto")
+		end
 	elseif not why and jumpHeld() and airborne() and vy < -1 then
 		set(true, "start")
 	end
+	if auto then char:SetAttribute("GliderAutoState", gliding and "gliding" or (armed and "armed" or "off")) end -- v1.1
 	if not gliding then return end
 	local fall = math.max(1, tonumber(char:GetAttribute("GliderFall")) or 8)
 	local mass = hrp.AssemblyMass
@@ -130,7 +159,10 @@ local conn = RunService.PreSimulation:Connect(function()
 		local look = hrp.CFrame.LookVector
 		local f = Vector3.new(look.X, 0, look.Z)
 		f = f.Magnitude > 1e-3 and f.Unit or Vector3.zAxis
-		local v = f * hum.WalkSpeed
+		local speed = hum.WalkSpeed
+		if auto then speed = math.max(speed, tonumber(char:GetAttribute("MoveRunSpeed")) or 0) end -- v1.1: run speed
+		char:SetAttribute("GlideForwardSpeed", math.floor(speed * 10 + 0.5) / 10)
+		local v = f * speed
 		fwdLV.MaxForce = mass * 400
 		fwdLV.PlaneVelocity = Vector2.new(v.X, v.Z)
 		fwdLV.Enabled = true
