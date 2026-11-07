@@ -5,6 +5,7 @@
 **Looks (all recommended, mockup v0.2):** Mender Drone A Shoulder Dock, Arc Lantern A Hip Lantern, Sap Wall B Shoulder Pod, Feather Shed A Flank Plates, Portal Feathers A Tail Rings, Last Feather A Tail-Base Cell, Overheal Plume A Tail Plume, Fortify Field B Neck Pylon, Ricochet Pod A Spring Cups. Clash check: all 9 together 0% part-vs-part, worst piece inside the body 3.2% (Ricochet A in the throw).
 **Animation / VFX spec:** tools/mockup/troodon_parts_looks.js (part meshes, key poses, timings, the layered VFX and the Roblox pieces each maps to, the existing effects each follows).
 
+**Tickets:** MDA-345 (1) · 346 (2) · 347 (3) · 348 (4) · 349 (5, Build 2) · 350 (6) · 351 (7) · 352 (8).
 **Architecture:** the Dilo parts pattern (docs/plans/DILO_PARTS_v1.0.md + DILO_PARTS_FIT_v1.0.md):
 - SkillTree adds troodon-only parts (`dino = "Troodon"`, LIVE_MECH, all 9 in BUTTONS so each takes a slot, like Mecha Legs), ids prefixed `o` (no clash): omender, olantern, osapwall, oshed, oportal, olastfeather, oplume, ofortify, oricochet.
 - SkillEffects writes `TrooPart*` character attributes while a part is bought AND slotted AND the species is Troodon.
