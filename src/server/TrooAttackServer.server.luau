@@ -1,4 +1,4 @@
--- TrooAttackServer v1.1 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
+-- TrooAttackServer v1.2 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
 -- docs/plans/TROODON_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/troodon_kit_options_v0.1.html attack A
 -- (Kepu 2026-11-06 15:38: "Let's go with your recommendations": attack A, the proposed numbers; red-team "Lead the target").
 -- Patterns copied, not edited: DiloAttackServer 1.5 (request -> checks -> timed resolve, soft aim, targets, mode / squad
@@ -56,6 +56,22 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 TrooSlowApply for the Feather Shed star
+VERSION = "1.2" -- v1.2 Sap Wall stops the zone's harm through it (heals unchanged)
+-- v1.2 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute TrooAttackServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   TrooAttackServerSapWallBlocks (count), TrooAttackServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("TrooAttackServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("TrooAttackServerSapWallBlocks", (script:GetAttribute("TrooAttackServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("TrooAttackServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("TrooAttackServerSapWallEnabled") == nil then script:SetAttribute("TrooAttackServerSapWallEnabled", true) end
+end
 local DEFAULTS = {TrooPodWindup = 0.34, TrooPodFlight = 0.55, TrooPodRange = 22.5, TrooPodCharges = 2, TrooPodRefill = 3,
 	TrooMinGap = 0.35, TrooAssistAngle = 30, TrooAssistMax = 22.5, TrooZoneRadius = 5, TrooZoneTime = 3, TrooPodDamage = 6,
 	TrooZoneDps = 3, TrooZoneSlowMul = 0.75, TrooZoneHeal = 5, TrooSelfHeal = 2}
@@ -321,7 +337,7 @@ local function splat(z, t)
 					stampHeal(m, added, t)
 					count("TrooZoneHeals")
 				end
-			elseif mayHarm(z, m) and not shielded(m, t) then
+			elseif mayHarm(z, m) and not shielded(m, t) and not sapBlocked(z.center + Vector3.yAxis * 2, m) then -- v1.2: Sap Wall
 				local d = z.podDamage * takenMul(m, t) * plating(m, z.center)
 				if takeHealth(m, d, z.ownerName, z.ownerId, "troopod", t) then
 					hits += 1
@@ -350,7 +366,7 @@ local function tick(z, t)
 					stampHeal(m, added, t)
 					count("TrooZoneHeals")
 				end
-			elseif mayHarm(z, m) and not shielded(m, t) then
+			elseif mayHarm(z, m) and not shielded(m, t) and not sapBlocked(z.center + Vector3.yAxis * 2, m) then -- v1.2: Sap Wall
 				if takeHealth(m, z.dps * takenMul(m, t), z.ownerName, z.ownerId, "troozone", t) then
 					stampHit(m, "tick", z.ownerName, t)
 					count("TrooZoneHits")

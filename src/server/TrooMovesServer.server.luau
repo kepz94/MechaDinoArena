@@ -1,4 +1,4 @@
--- TrooMovesServer v1.0 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.1 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -74,6 +74,22 @@ local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 Sap Wall stops the lantern zaps / the shed burst through it
+-- v1.1 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute TrooMovesServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   TrooMovesServerSapWallBlocks (count), TrooMovesServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("TrooMovesServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("TrooMovesServerSapWallBlocks", (script:GetAttribute("TrooMovesServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("TrooMovesServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("TrooMovesServerSapWallEnabled") == nil then script:SetAttribute("TrooMovesServerSapWallEnabled", true) end
+end
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderTick = 0.25, menderHopFly = 0.5,
 	lanternWindup = 0.42, lanternFly = 0.55, lanternZapDelay = 0.32, lanternZapRadius = 16, lanternChainStep = 0.12,
 	sapWindup = 0.34, sapFly = 0.5, sapHeight = 18, sapThick = 2, sapSegments = 5, sapClear = 3,
@@ -419,7 +435,7 @@ remote("DinoTrooLanternRequest").OnServerEvent:Connect(function(player, stamp, a
 			for _, m in ipairs(enemies(char)) do
 				if not hits[m] then
 					local d = (rootOf(m).Position - from).Magnitude
-					if d <= reach and d < bestD then best, bestD = m, d end
+					if d <= reach and d < bestD and not sapBlocked(i == 1 and to + Vector3.yAxis * 2 or from, m) then best, bestD = m, d end -- v1.1: Sap Wall
 				end
 			end
 			if not best then break end
@@ -633,7 +649,7 @@ remote("DinoTrooShedRequest").OnServerEvent:Connect(function(player, stamp)
 		if r > 0 then
 			local root = rootOf(char)
 			for _, m in ipairs(enemies(char)) do
-				if (rootOf(m).Position - root.Position).Magnitude <= r and not shielded(m, tb) then
+				if (rootOf(m).Position - root.Position).Magnitude <= r and not shielded(m, tb) and not sapBlocked(root, m) then -- v1.1: Sap Wall
 					shove(char, m, r, tb)
 					slow(m, num(char, "TrooPartShedSlowMul", 0.75), tb + num(char, "TrooPartShedSlowTime", 2))
 					stampHit(m, "shed", char.Name, tb)

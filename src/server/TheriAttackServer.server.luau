@@ -1,4 +1,4 @@
--- TheriAttackServer v1.5 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
+-- TheriAttackServer v1.6 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
 -- docs/plans/THERIZINO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/therizino_kit_options_v0.3.html
 -- (Kepu 2026-11-02: attack "3-hit combo", payoff "Damage only", picks "A Reaper Sweeps"; animation "I like this one").
 -- Pattern: TenoAttackServer 1.4's scratch path (request -> server checks -> hit resolved at a fixed delay in a front zone),
@@ -87,6 +87,22 @@ VERSION = "1.2" -- v1.2 the Fourth Cut (step 4)
 VERSION = "1.3" -- v1.3 Back Plating
 VERSION = "1.4" -- v1.4 TheriStartCut (Reaper's Hook star)
 VERSION = "1.5" -- v1.5 Overclock tap gap
+VERSION = "1.6" -- v1.6 Sap Wall stops claw hits through it
+-- v1.6 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute TheriAttackServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   TheriAttackServerSapWallBlocks (count), TheriAttackServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("TheriAttackServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("TheriAttackServerSapWallBlocks", (script:GetAttribute("TheriAttackServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("TheriAttackServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("TheriAttackServerSapWallEnabled") == nil then script:SetAttribute("TheriAttackServerSapWallEnabled", true) end
+end
 local DEFAULTS = {TheriHitDamage1 = 9, TheriHitDamage2 = 9, TheriHitDamage3 = 20, TheriHitDelay1 = 0.3, TheriHitDelay2 = 0.33,
 	TheriHitDelay3 = 0.55, TheriReach = 7, TheriReach3 = 8, TheriCone = 100, TheriMinGap = 0.33, TheriChainWindow = 0.8,
 	TheriFinisherRecover = 0.9}
@@ -249,7 +265,7 @@ local function resolve(player, char, st, step)
 	local n, names = 0, {}
 	for _, m in ipairs(candidates(char)) do
 		local v = flat(rootOf(m).Position - root.Position)
-		if v.Magnitude > 1e-3 and math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1)) <= half and gap(m, root.Position) <= reach then
+		if v.Magnitude > 1e-3 and math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1)) <= half and gap(m, root.Position) <= reach and not sapBlocked(root, m) then -- v1.6: Sap Wall
 			if not shielded(m, ti) then takeHealth(m, dmg * takenMul(m, ti), char, player, ti) end
 			n += 1
 			table.insert(names, m.Name)
@@ -478,7 +494,7 @@ local function sweep(player, char, st, at)
 	local n, names = 0, {}
 	local ok, err = pcall(function()
 		for _, m in ipairs(candidates(char)) do
-			if gap(m, root.Position) <= reach then
+			if gap(m, root.Position) <= reach and not sapBlocked(root, m) then -- v1.6: Sap Wall
 				if not shielded(m, ti) then takeHealth(m, dmg * takenMul(m, ti), char, player, ti) end
 				n += 1
 				table.insert(names, m.Name)

@@ -1,4 +1,4 @@
--- TheriSpinServer v1.2 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive (Corkscrew): its JUMP leap cuts every dino it
+-- TheriSpinServer v1.3 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive (Corkscrew): its JUMP leap cuts every dino it
 -- passes. MDA-208, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 2, mockup docs/mockups/therizino_spin_dive_v0.1.html
 -- (Kepu 2026-11-02 "show more slicing ... a different jump" -> "Spin Dive"; 2026-11-03 "Corkscrew", damage "Yes, tune it in
 -- Studio").
@@ -38,6 +38,22 @@ local ServerStorage = game:GetService("ServerStorage")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 cuts need the root airborne
 VERSION = "1.2" -- v1.2 Back Plating
+VERSION = "1.3" -- v1.3 Sap Wall stops spin cuts through it
+-- v1.3 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute TheriSpinServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   TheriSpinServerSapWallBlocks (count), TheriSpinServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("TheriSpinServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("TheriSpinServerSapWallBlocks", (script:GetAttribute("TheriSpinServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("TheriSpinServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("TheriSpinServerSapWallEnabled") == nil then script:SetAttribute("TheriSpinServerSapWallEnabled", true) end
+end
 local DEFAULTS = {TheriSpinDamage = 7, TheriSpinMaxCuts = 3, TheriSpinCutGap = 0.16, TheriSpinRadius = 7, JumpWindup = 0.27}
 local LIVE_MAX = 1.6   -- s after the take-off point the dive ends at the latest
 local LEFT_UP = 0.8    -- studs above the start height that count as airborne
@@ -226,7 +242,7 @@ local function dive(player, char, t0)
 					local d2, p2 = nearest(m, mid)
 					local d, p = d1, p1
 					if d2 < d1 then d, p = d2, p2 end
-					if d <= radius then
+					if d <= radius and not sapBlocked(char, m) then -- v1.3: Sap Wall
 						cuts[m], lastCut[m] = n + 1, t
 						total += 1
 						count("TheriSpinCutsTotal")

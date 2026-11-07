@@ -1,4 +1,4 @@
--- SkillEffects v1.48 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.49 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -339,6 +339,22 @@ VERSION = "1.45" -- v1.45 dilo button parts (DPARTS)
 VERSION = "1.46" -- v1.46 troodon keeps its own hop values
 VERSION = "1.47" -- v1.47 troodon keeps its flap / glide values
 VERSION = "1.48" -- v1.48 troodon button parts (OPARTS)
+VERSION = "1.49" -- v1.49 Sap Wall: no hit bleed / crush through it
+-- v1.49 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute SkillEffectsSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   SkillEffectsSapWallBlocks (count), SkillEffectsSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("SkillEffectsSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("SkillEffectsSapWallBlocks", (script:GetAttribute("SkillEffectsSapWallBlocks") or 0) + 1)
+		script:SetAttribute("SkillEffectsSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("SkillEffectsSapWallEnabled") == nil then script:SetAttribute("SkillEffectsSapWallEnabled", true) end
+end
 if script:GetAttribute("SkillEffectsTrooFlapKeepEnabled") == nil then script:SetAttribute("SkillEffectsTrooFlapKeepEnabled", true) end -- v1.47
 local function trooFlapKeep(char) -- v1.47
 	return char:GetAttribute("Species") == "Troodon" and script:GetAttribute("SkillEffectsTrooFlapKeepEnabled") ~= false
@@ -1222,6 +1238,7 @@ local function onHit(char, st, damage, targetName, isPounce) -- v1.6: + isPounce
 		if isPlayer then bleedTime = math.min(bleedTime, tonumber(script:GetAttribute("SkillBleedPlayerTime")) or 2) end
 	end
 	if not bot or (tonumber(bot:GetAttribute("DummyHealth")) or 0) <= 0 then return end
+	if sapBlocked(char, bot) then return end -- v1.49: Sap Wall
 	local t = now()
 	if isPlayer and bleedDps <= 0 then return end
 	if bleedDps > 0 then

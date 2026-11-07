@@ -1,4 +1,4 @@
--- TheriMovesServer v1.7 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.8 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -151,6 +151,22 @@ VERSION = "1.4" -- v1.4 moves rework: vortex, bola, dash, reel
 VERSION = "1.5" -- v1.5 Overclock III: extra jump charge
 VERSION = "1.6" -- v1.6 Wing Volley (Feather Barrage rework)
 VERSION = "1.7" -- v1.7 Deflector Shield Wall stamp
+VERSION = "1.8" -- v1.8 Sap Wall stops feathers / fields / snares / vortex / bola / reel through it
+-- v1.8 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute TheriMovesServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   TheriMovesServerSapWallBlocks (count), TheriMovesServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("TheriMovesServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("TheriMovesServerSapWallBlocks", (script:GetAttribute("TheriMovesServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("TheriMovesServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("TheriMovesServerSapWallEnabled") == nil then script:SetAttribute("TheriMovesServerSapWallEnabled", true) end
+end
 local HOOK_SPEED, HOOK_GAP = 140, 5
 local BLADE_WIDTH = 1.5
 local FIELD_TICK = 0.5
@@ -559,7 +575,7 @@ featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 			if script:GetAttribute("TheriMovesFlatBladesEnabled") ~= false then pt = Vector3.new(pt.X, mr.Position.Y, pt.Z) end -- v1.1
 			if gap(m, pt) <= BLADE_WIDTH then blades += 1 end
 		end
-		if blades > 0 then
+		if blades > 0 and not sapBlocked(origin, m) then -- v1.8: Sap Wall
 			for _ = 1, blades do damage(char, player, m, dmg, "therifeather", t) end
 			slow(m, slowMul, t + slowT, t)
 			table.insert(hits, m.Name .. "=" .. blades)
@@ -686,7 +702,7 @@ RunService.Heartbeat:Connect(function()
 			f.nextTick = t + FIELD_TICK
 			for _, m in ipairs(candidates(char)) do
 				local mr = rootOf(m)
-				if gap(m, Vector3.new(f.center.X, mr.Position.Y, f.center.Z)) <= f.radius then
+				if gap(m, Vector3.new(f.center.X, mr.Position.Y, f.center.Z)) <= f.radius and not sapBlocked(f.center + Vector3.yAxis * 2, m) then
 					damage(char, f.player, m, f.bleed * FIELD_TICK, "therifield", t)
 					slow(m, f.slowMul, t + 0.6, t)
 				end
@@ -703,7 +719,7 @@ RunService.Heartbeat:Connect(function()
 			if not gone then
 				for _, m in ipairs(candidates(char)) do
 					local mr = rootOf(m)
-					if flat(mr.Position - tr.pos).Magnitude <= radius and not shielded(m, t) then
+					if flat(mr.Position - tr.pos).Magnitude <= radius and not shielded(m, t) and not sapBlocked(tr.pos + Vector3.yAxis * 2, m) then
 						damage(char, tr.player, m, num(char, "TheriSnareDamage", 12), "therisnare", t)
 						hold(char, m, tr.pos, math.max(0, num(char, "TheriSnareRoot", 1)), t)
 						char:SetAttribute("TheriSnareHitTarget", m.Name)
@@ -943,7 +959,7 @@ RunService.Heartbeat:Connect(function(dt)
 			local inside = {}
 			for _, m in ipairs(candidates(char)) do
 				local mr = rootOf(m)
-				if gap(m, Vector3.new(v.center.X, mr.Position.Y, v.center.Z)) <= v.radius and not shielded(m, t) then
+				if gap(m, Vector3.new(v.center.X, mr.Position.Y, v.center.Z)) <= v.radius and not shielded(m, t) and not sapBlocked(v.center + Vector3.yAxis * 2, m) then
 					inside[m] = true
 					if Players:GetPlayerFromCharacter(m) then
 						if not v.victims[m] or num(m, "TheriVortexUntil", 0) ~= v.untilT then
@@ -1038,6 +1054,8 @@ snareRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local result
 	if not (char.Parent and r and br and stillTarget(char, best)) or flat(br.Position - r.Position).Magnitude > range + 15 then
 		result = "missed"
+	elseif sapBlocked(r, best) then -- v1.8: Sap Wall
+		result = "wall"
 	elseif shielded(best, t2) then
 		result = "shielded"
 	else
@@ -1187,6 +1205,10 @@ hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		char:SetAttribute("TheriReelResult", "missed")
 		return
 	end
+	if sapBlocked(char, best) then -- v1.8: Sap Wall
+		char:SetAttribute("TheriReelResult", "wall")
+		return
+	end
 	if shielded(best, t2) then
 		char:SetAttribute("TheriReelResult", "shielded")
 		return
@@ -1308,7 +1330,7 @@ featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local t2 = now()
 	local landed = {}
 	for _, j in ipairs(judged) do
-		if char.Parent and stillTarget(char, j.m) then
+		if char.Parent and stillTarget(char, j.m) and not sapBlocked(char, j.m) then -- v1.8: Sap Wall
 			for _ = 1, j.blades do damage(char, player, j.m, dmg, "therifeather", t2) end
 			slow(j.m, slowMul, t2 + slowT, t2)
 			count("TheriMovesVolleyHits")
