@@ -51,8 +51,9 @@
 --   TrooShedAt (press, last); TrooShedBurstAt, TrooShedHits.
 -- * Portal Feathers (wind-up 0.4 / 0.52 for the two rings; open at +0.75 / +1.32): ring A TrooMoves_portalNear (10) studs
 --   ahead on the ground, ring B at aimPoint (flat distance clamped to TrooPartPortalRange, at least portalNear + 8). No
---   portal into terrain: each ring's spot needs TrooMoves_portalClear (a box 6 x 8 x 6 studs above the ground, world only)
---   free; B is pulled back towards A in 4-stud steps until free; none free -> "blocked" (no recharge used). Open from the
+--   portal into terrain: each ring's spot needs a 6 x 8 x 6 stud box (TrooMoves_portalClearW / portalClearH) above the ground
+--   free of collidable world parts (exact shapes, GetPartsInPart; players, bots, FX and sap walls left out);
+--   B is pulled back towards A in 4-stud steps until free; none free -> "blocked" (no recharge used). Open from the
 --   second ring's opening for TrooPartPortalTime s. Every TrooMoves_portalTick (0.1) s a user (you; your squadmates too with
 --   TrooPartPortalSquad; never bots) whose root is within TrooMoves_portalRadius (6) studs of a ring (flat, 10 up / down) and
 --   whose TrooPortalLockUntil has passed is moved to the other ring (root height kept above the ground, facing kept),
@@ -647,10 +648,16 @@ end)
 
 -- Portal Feathers ----------------------------------------------------------------------------------------------------------
 local portals = {} -- [owner char] = {a, b, untilT, squad}
+local probe = Instance.new("Part") -- the exact-shape spot check (GetPartsInPart; a bounds box flags big rotated rocks)
+probe.Name = "TrooPortalProbe"
+probe.Anchored, probe.CanCollide, probe.CanQuery, probe.CanTouch, probe.Transparency = true, false, false, false, 1
+probe.Parent = wallFolder
 local function spotFree(p)
 	worldExclude()
 	local w, h = cfg("portalClearW"), cfg("portalClearH")
-	local parts = workspace:GetPartBoundsInBox(CFrame.new(p + Vector3.new(0, h / 2 + 0.5, 0)), Vector3.new(w, h, w), overlap)
+	probe.Size = Vector3.new(w, h, w)
+	probe.CFrame = CFrame.new(p + Vector3.new(0, h / 2 + 0.5, 0))
+	local parts = workspace:GetPartsInPart(probe, overlap)
 	for _, q in ipairs(parts) do
 		if q.CanCollide then return false end
 	end
