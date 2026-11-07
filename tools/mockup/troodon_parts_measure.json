@@ -1,6 +1,6 @@
 {
  "version": "0.1",
- "when": "2026-11-07T03:47",
+ "when": "2026-11-07T03:51",
  "looks": {
   "mender.A": {
    "idle": 0,
@@ -324,8 +324,8 @@
    "pieces": 10,
    "brackets": 2,
    "floating": [],
-   "kit": 4,
-   "kitWorst": "ricochet.A#12 cyl@ArmR 4% at 1.83 s"
+   "kit": 3.2,
+   "kitWorst": "ricochet.A#12 cyl@ArmR 3.2% at 1.83 s"
   },
   "ricochet.B": {
    "idle": 0,
@@ -435,7 +435,7 @@
   "lantern|ricochet": 4.5,
   "sapwall|shed": 0.15,
   "portal|sapwall": 5.6,
-  "portal|shed": 3.24,
+  "portal|shed": 3.23,
   "portal|ricochet": 8.63,
   "lastfeather|mender": 1.37,
   "lastfeather|sapwall": 3.26,

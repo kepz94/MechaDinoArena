@@ -659,9 +659,9 @@ function shedTrack(L) {
 function portalTrack(L) {
   const cs = MK[isLook("portal", L)].carries;
   const A = V(0, 0, -10), B = V(0, 0, -54);
-  place(S, 7, 4, 0);
+  place(S, -7, 4, 0);
   const T0 = 0.6, REL1 = T0 + 0.4, REL2 = T0 + 0.52, OPEN1 = REL1 + 0.35, OPEN2 = REL2 + 0.8, W0 = OPEN2 + 0.25, IN = W0 + 0.7, OUT = IN + 0.08, W1 = OUT + 0.45, SIN = IN + 0.45, CLOSE = W1 + 1.6, RE = CLOSE + 0.5;
-  S.path = [[0, S.pos.clone(), 0, 0], [W0 + 0.2, S.pos.clone(), 0, 0], [W0 + 0.3, V(5, 0, 0), yawTo(V(7, 0, 4), A), 1], [SIN, V(0, 0, -10.5), 0, 1], [SIN + 0.02, V(0, 0, -54.5), 0, 1], [SIN + 0.5, V(5, 0, -62), yawTo(V(0, 0, -54), V(5, 0, -62)), 0.5], [SIN + 0.7, V(5, 0, -62), 0, 0]];
+  S.path = [[0, S.pos.clone(), 0, 0], [W0 + 0.2, S.pos.clone(), 0, 0], [W0 + 0.3, V(-5, 0, 0), yawTo(V(-7, 0, 4), A), 1], [SIN, V(0, 0, -10.5), 0, 1], [SIN + 0.02, V(0, 0, -54.5), 0, 1], [SIN + 0.5, V(-5, 0, -62), yawTo(V(0, 0, -54), V(-5, 0, -62)), 0.5], [SIN + 0.7, V(-5, 0, -62), 0, 0]];
   const keys = idleIntro([K(T0 + 0.35, PORT_SET, "io"), K(REL1 + 0.05, PORT_FLING, "in2"), K(REL2 + 0.3, PORT_FLING, "out"), K(W0, T_READY, "io"), K(W1 + 0.3, T_READY)], T0);
   const portals = [];
   const film = (() => { const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d"); const g = x.createRadialGradient(64, 64, 4, 64, 64, 64); g.addColorStop(0, "rgba(220,255,250,.9)"); g.addColorStop(0.6, "rgba(60,230,200,.45)"); g.addColorStop(1, "rgba(30,180,160,.15)"); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
