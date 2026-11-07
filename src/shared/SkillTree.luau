@@ -1,4 +1,4 @@
--- SkillTree v1.68 (1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.72 (1.72 troodon mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2583,6 +2583,110 @@ if SkillTree.THERI_PARTS and SkillTree.THERI_BOLA and SkillTree.THERI_BOLA_RANGE
 		if type(e) ~= "table" or dino ~= "Therizino" then return e end
 		local r = tonumber(e.snareRange) or 0
 		if r > 0 then e.snareRange = r >= 45 and 80 or 60 end
+		return e
+	end
+end
+
+
+-- v1.72 (troodon mecha parts, plan docs/plans/TROODON_PARTS_v1.0.md ticket 2, MDA-346; looks + moves mockup
+-- docs/mockups/troodon_parts_options.html v0.2; Kepu 2026-11-06 19:44 picks H1 / A6 / D1 / D18 / S6 / H7 / H12 / D5 / A10,
+-- passives "Slotted parts", 21:24 "the areas should be doubled", 21:3x "two builds", "Do 50 studs", bounce "30 / 40").
+-- Switch SkillTree.TROO_PARTS (default true; false = 1.71): 9 troodon-only mecha parts (dino / OWNER "Troodon", mech, all in
+-- BUTTONS so each takes a slot, like Mecha Legs): buttons omender "Mender Drone" (health), olantern "Arc Lantern" (attack),
+-- osapwall "Sap Wall" (defense), oshed "Feather Shed" (defense), oportal "Portal Feathers" (speed); always on (still take a
+-- slot) olastfeather "Last Feather" (health), oplume "Overheal Plume" (health), ofortify "Fortify Field" (defense), oricochet
+-- "Ricochet Pod" (attack). SkillTree.TROO_PARTS_B2_SOON (default true; build 1): the 4 always-on parts are listed but "soon"
+-- (not buyable, not LIVE_MECH; their effects come in build 2, MDA-349). effects() writes ONLY new o* fields (the 1.61
+-- lesson); troodon only (dino == "Troodon"), off values (0 / false) elsewhere or unbought. Studs are game studs (the texts):
+-- oMenderHeal 4 (per s), oMenderTime 4 / 5.4 (II), oMenderRange 40, oMenderHop (star), oMenderCooldown 20 / 14.8 (III);
+-- oLanternRange 40, oLanternChain 24 / 32.4 (II), oLanternTargets 2 / 3 (star), oLanternDamage 8, oLanternCooldown 14 / 10.3
+-- (III); oSapRange 40, oSapWidth 50 / 67.5 (II), oSapTime 2.1 / 2.9 (III) / 4 (star), oSapCooldown 18; oShedImmune 1 / 1.4
+-- (II), oShedCooldown 24 / 17.7 (III), oShedKnockRadius 20 (star), oShedSlowMul 0.75 (star; 1 below), oShedSlowTime 2 (star);
+-- oPortalRange 40 / 54 (II), oPortalTime 6 / 8.1 (III), oPortalSquad (star), oPortalCooldown 20.
+SkillTree.TROO_PARTS = true
+SkillTree.TROO_PARTS_B2_SOON = true
+if SkillTree.TROO_PARTS and not SkillTree.PATHS.omender then
+	local function part(id, name, areaId, steps)
+		local p = path(id, name, true, false, steps)
+		p.area = areaId
+		p.dino = "Troodon"
+		SkillTree.OWNER[id] = "Troodon"
+		SkillTree.LIVE_MECH[id] = true
+		SkillTree.BUTTONS[id] = true
+		local found = false
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p); found = true end
+		end
+		if not found then table.insert(SkillTree.AREAS, {id = areaId, name = "Signature", color = {201, 162, 255}, paths = {p}}) end
+		SkillTree.PATHS[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	part("omender", "Mender Drone", "health", {
+		"Button: the drone heals the most hurt squadmate within 40 studs (you, with no squad) 4 per second for 4 s. Recharges in 20 s",
+		"Heals for 5.4 s", "Recharges in 14.8 s", "When its target is full it moves on to the next most hurt squadmate"})
+	part("olantern", "Arc Lantern", "attack", {
+		"Button: throw a lantern up to 40 studs; it zaps the nearest enemy near it, then chains to 1 more within 24 studs: 8 damage each. Recharges in 14 s",
+		"Chains reach 32.4 studs", "Recharges in 10.3 s", "Chains to 3 enemies"})
+	part("osapwall", "Sap Wall", "defense", {
+		"Button: throw a sap pod up to 40 studs: it hardens into a 50-stud wall that blocks dinos and shots for 2.1 s. Recharges in 18 s",
+		"Wall 67.5 studs wide", "Lasts 2.9 s", "Lasts 4 s"})
+	part("oshed", "Feather Shed", "defense", {
+		"Button: shed your feathers to break out of a stun, pin or grab; immune to them for 1 s. Recharges in 24 s",
+		"Immune 1.4 s", "Recharges in 17.7 s", "The burst knocks dinos within 20 studs back and slows them 25% for 2 s"})
+	part("oportal", "Portal Feathers", "speed", {
+		"Button: fling two linked feather rings, one just ahead and one up to 40 studs away; walk into one, come out of the other. They last 6 s, you only. Recharges in 20 s",
+		"The far ring reaches 54 studs", "They last 8.1 s", "Squadmates can use them too"})
+	part("olastfeather", "Last Feather", "health", {
+		"Always on (takes a slot): once per life a killing hit leaves you at 1 HP, untouchable for 0.7 s",
+		"You also burst up into a glide (a free flap)", "Untouchable 1 s", "You drop a glow zone (40 studs) where you were"})
+	part("oplume", "Overheal Plume", "health", {
+		"Always on (takes a slot): healing above your max becomes a plume that soaks up to 10 damage; it fades after 5 s",
+		"Soaks up to 14", "Fades after 7 s", "Squadmates you heal above their max get a plume too"})
+	part("ofortify", "Fortify Field", "defense", {
+		"Always on (takes a slot): squadmates inside your glow zones (40 studs) take 25% less damage",
+		"It lingers 1 s after they leave", "Lingers 1.4 s", "You're fortified too inside your own zones"})
+	part("oricochet", "Ricochet Pod", "attack", {
+		"Always on (takes a slot): the pod bounces once and splats a second, half-size zone (20 studs) on the next enemy within 30 studs; it lasts 2.2 s",
+		"Bounce reach 40 studs", "The second zone lasts the full 3 s", "The second zone is full size (40 studs)"})
+	if SkillTree.TROO_PARTS_B2_SOON then
+		for _, id in ipairs({"olastfeather", "oplume", "ofortify", "oricochet"}) do
+			SkillTree.PATHS[id].soon = true
+			SkillTree.LIVE_MECH[id] = nil
+		end
+	end
+end
+do
+	local effectsPre172 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre172(steps, dino)
+		if type(e) ~= "table" then return e end
+		if not SkillTree.TROO_PARTS or not SkillTree.PATHS.omender then return e end
+		local on = dino == "Troodon"
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local m, l, w, h, p = s.omender or 0, s.olantern or 0, s.osapwall or 0, s.oshed or 0, s.oportal or 0
+		e.oMenderHeal = m >= 1 and 4 or 0
+		e.oMenderTime = m >= 2 and 5.4 or (m >= 1 and 4 or 0)
+		e.oMenderRange = m >= 1 and 40 or 0
+		e.oMenderHop = m >= 4
+		e.oMenderCooldown = m >= 3 and 14.8 or (m >= 1 and 20 or 0)
+		e.oLanternRange = l >= 1 and 40 or 0
+		e.oLanternChain = l >= 2 and 32.4 or (l >= 1 and 24 or 0)
+		e.oLanternTargets = l >= 4 and 3 or (l >= 1 and 2 or 0)
+		e.oLanternDamage = l >= 1 and 8 or 0
+		e.oLanternCooldown = l >= 3 and 10.3 or (l >= 1 and 14 or 0)
+		e.oSapRange = w >= 1 and 40 or 0
+		e.oSapWidth = w >= 2 and 67.5 or (w >= 1 and 50 or 0)
+		e.oSapTime = w >= 4 and 4 or (w >= 3 and 2.9 or (w >= 1 and 2.1 or 0))
+		e.oSapCooldown = w >= 1 and 18 or 0
+		e.oShedImmune = h >= 2 and 1.4 or (h >= 1 and 1 or 0)
+		e.oShedCooldown = h >= 3 and 17.7 or (h >= 1 and 24 or 0)
+		e.oShedKnockRadius = h >= 4 and 20 or 0
+		e.oShedSlowMul = h >= 4 and 0.75 or 1
+		e.oShedSlowTime = h >= 4 and 2 or 0
+		e.oPortalRange = p >= 2 and 54 or (p >= 1 and 40 or 0)
+		e.oPortalTime = p >= 3 and 8.1 or (p >= 1 and 6 or 0)
+		e.oPortalSquad = p >= 4
+		e.oPortalCooldown = p >= 1 and 20 or 0
 		return e
 	end
 end
