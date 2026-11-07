@@ -1,4 +1,4 @@
--- TrooPose v1.1 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
+-- TrooPose v1.2 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
 -- the Evade Hop (jump J2) and the eyes flaring during the throw. MDA-337, plan docs/plans/TROODON_KIT_v1.0.md Task 8; mockup
 -- docs/mockups/troodon_kit_options_v0.1.html (Kepu 2026-11-06 15:38 "Let's go with your recommendations"; source
 -- tools/troodon_kit_mockup/app_tail.js TA_WIND / TA_HOLD / TA_THROW / TA_FOLLOW, TH_SET / TH_AIR / TJ_LAND, and the
@@ -42,10 +42,17 @@
 --   touchdown, or the glide ending): $from -> TJ_DOWN 0.05 (io) -> TJ_LAND 0.12 (out) -> READY 0.7 (io), the weight fading
 --   to 0 by TrooHopLandTime (0.8). Foot ground lock in the crouch and the landing. No landing FX. The hop mode (1.0) unchanged.
 --   Diagnostics TrooFlapPhase ("crouch" / "beat" / "glide" / "land" / "none"), TrooFlapBeats (beats this leap).
+-- v1.2 (MDA-344, P1 bug, Kepu 2026-11-06 18:37: "walking in the air instead of gliding"; a fall without a leap had no air
+--   pose, so the walk cycle ran in the air): in flap mode, with TrooPoseFallEnabled ~= false, the layer also covers air time
+--   without a leap: gliding (GlideLocal / Gliding; GliderTest 1.2 starts it on a fall) -> TF_GLIDE (the 1.1 glide track);
+--   airborne (ground more than 2 studs under the feet by a raycast, falling faster than 1 stud/s, for 0.1 s) and not gliding
+--   -> TF_UP (arms raised, legs tucked) in over 0.15 s; touchdown after 0.25 s or more in the air -> the 1.1 land track. A
+--   glide that ends while still airborne no longer shows the landing keys mid-air (it falls back to TF_UP). Diagnostic
+--   TrooFlapPhase adds "fall".
 local TrooPose = {}
-TrooPose.Version = "1.1"
+TrooPose.Version = "1.2"
 TrooPose.Defaults = {TrooPoseEnabled = true, TrooHopPoseEnabled = true, TrooEyeFlareEnabled = true, TrooGroundLockEnabled = true,
-	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true}
+	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true, TrooPoseFallEnabled = true}
 local Players = game:GetService("Players")
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5", "LegL",
@@ -114,6 +121,7 @@ local FLAP = { -- v1.1
 	leap = {{0, "$from"}, {0.05, "TF_DOWN", "in2"}, {0.13, "TF_DOWN"}, {0.38, "TF_UP", "io"}},
 	flap = {{0, "$from"}, {0.06, "TF_DOWN", "in2"}, {0.14, "TF_DOWN"}, {0.39, "TF_UP", "io"}},
 	glide = {{0, "$from"}, {0.15, "TF_GLIDE", "out"}},
+	fall = {{0, "$from"}, {0.15, "TF_UP", "io"}}, -- v1.2
 	land = {{0, "$from"}, {0.05, "TJ_DOWN", "io"}, {0.12, "TJ_LAND", "out"}, {0.7, "READY", "io"}},
 }
 local REL, EYES_FROM, EYES_TO = 0.34, 0.05, 1.0
@@ -242,7 +250,19 @@ end
 local atk = {kind = nil, at = nil, from = nil, target = nil, springs = newSprings(), seen = nil, lastState = nil}
 local hopS = {springs = newSprings(), w = 0, lockW = 0, phase = "none", lastAt = -math.huge}
 local flS = {springs = newSprings(), start = nil, beats = {}, seenD = nil, glideAt = nil, landAt = nil, phase = "none",
-	seg = nil, segAt = 0, from = nil, target = nil, lastAt = -math.huge} -- v1.1
+	seg = nil, segAt = 0, from = nil, target = nil, lastAt = -math.huge, -- v1.1
+	airSince = nil, airLandAt = nil} -- v1.2
+local gapParams = RaycastParams.new() -- v1.2
+gapParams.FilterType = Enum.RaycastFilterType.Exclude
+local function airborneNow(model, hrp) -- v1.2: ground > 2 studs under the feet and falling
+	if not hrp then return false end
+	gapParams.FilterDescendantsInstances = {model}
+	local hum = model:FindFirstChildOfClass("Humanoid")
+	local base = hrp.Size.Y / 2 + (hum and hum.HipHeight or 0)
+	local hit = workspace:Raycast(hrp.Position, Vector3.new(0, -(base + 40), 0), gapParams)
+	local gap = hit and (hrp.Position.Y - hit.Position.Y - base) or math.huge
+	return gap > 2 and hrp.AssemblyLinearVelocity.Y < -1, gap
+end
 local lockSmooth = 0
 local fk
 local eyes = {on = false, parts = nil}
@@ -320,11 +340,20 @@ local function flapLeap(model, jump, serverNow, now, hrp, dt, s)
 		if srv and (not dAt or srv > dAt + 0.3) then dAt = srv end
 	end
 	local gliding = model:GetAttribute(isOwner and "GlideLocal" or "Gliding") == true
-	if jump and jump.start ~= flS.start then -- a new leap
-		flS.start, flS.beats, flS.glideAt, flS.landAt = jump.start, {jump.start + W}, nil, nil
+	if jump and jump.start ~= flS.start and jump.start > (flS.start or -math.huge) then -- a new leap
+		flS.start, flS.beats, flS.glideAt, flS.landAt, flS.noLeap = jump.start, {jump.start + W}, nil, nil, false
 		flS.seenD = dAt
 	end
-	if not flS.start then flS.phase = "none" hopS.w, hopS.lockW = 0, 0 return nil, 0 end
+	-- v1.2: air time without a leap
+	local fallOn = model:GetAttribute("TrooPoseFallEnabled") ~= false
+	local airRaw = fallOn and airborneNow(model, hrp) or false
+	if airRaw then flS.airSince = flS.airSince or now
+	else
+		if flS.airSince and now - flS.airSince >= 0.25 then flS.airLandAt = now end
+		flS.airSince = nil
+	end
+	local air = flS.airSince ~= nil and now - flS.airSince >= 0.1
+	if not flS.start then flS.start, flS.beats, flS.noLeap = -math.huge, {}, true end
 	if dAt and dAt ~= flS.seenD then
 		flS.seenD = dAt
 		if dAt > flS.start and not flS.landAt then table.insert(flS.beats, dAt) end
@@ -332,7 +361,7 @@ local function flapLeap(model, jump, serverNow, now, hrp, dt, s)
 	if gliding and not flS.glideAt and not flS.landAt then flS.glideAt = now end
 	if not flS.landAt then
 		if jump and jump.start == flS.start and jump.landAt then flS.landAt = jump.landAt
-		elseif flS.glideAt and not gliding then flS.landAt = now end
+		elseif flS.glideAt and not gliding and not (fallOn and air) then flS.landAt = now end -- v1.2: not mid-air
 	end
 	local t = serverNow - flS.start
 	local phase, seg, segT, w, lock = "none", nil, 0, 0, 0
@@ -343,13 +372,30 @@ local function flapLeap(model, jump, serverNow, now, hrp, dt, s)
 			w = x < 0.7 and 1 or 1 - EASE.io(clamp((x - 0.7) / max(0.01, s.TrooHopLandTime - 0.7), 0, 1))
 			lock = w
 		end
-	elseif flS.glideAt then
+	elseif flS.glideAt and gliding then
 		phase, seg, segT, w = "glide", "glide", now - flS.glideAt, 1
-	elseif t >= 0 and t < W and not (jump and jump.air) then
+	elseif not flS.noLeap and t >= 0 and t < W and not (jump and jump.air) then
 		phase, w, lock = "crouch", EASE.io(clamp(t / max(0.01, W / 2), 0, 1)), 1
-	elseif t >= W and t < 4 and (jump and not jump.done or jump and jump.air) then
+	elseif not flS.noLeap and not flS.glideAt and t >= W and t < 4 and (jump and not jump.done or jump and jump.air) then
 		local b = flS.beats[#flS.beats]
 		phase, seg, segT, w = "beat", (#flS.beats == 1) and "leap" or "flap", serverNow - b, 1
+	end
+	if phase == "none" and fallOn then -- v1.2: no leap layer: glide / fall / landing after air time
+		if gliding then
+			flS.fallGlideAt = flS.fallGlideAt or now
+			phase, seg, segT, w = "glide", "glide", now - flS.fallGlideAt, 1
+		else
+			flS.fallGlideAt = nil
+			if air then
+				phase, seg, segT = "fall", "fall", now - flS.airSince - 0.1
+				w = EASE.io(clamp(segT / 0.15, 0, 1))
+			elseif flS.airLandAt and now - flS.airLandAt < s.TrooHopLandTime then
+				local x = now - flS.airLandAt
+				phase, seg, segT = "land", "land", x
+				w = x < 0.7 and 1 or 1 - EASE.io(clamp((x - 0.7) / max(0.01, s.TrooHopLandTime - 0.7), 0, 1))
+				lock = w
+			end
+		end
 	end
 	flS.phase = phase
 	if model:GetAttribute("TrooFlapPhase") ~= phase then model:SetAttribute("TrooFlapPhase", phase) end

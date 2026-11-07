@@ -1,4 +1,4 @@
--- GliderTest v1.1 (Mecha Dino Arena) — the Herrera's Glider Wings glide on the owner's client (LocalScript in
+-- GliderTest v1.2 (Mecha Dino Arena) — the Herrera's Glider Wings glide on the owner's client (LocalScript in
 -- StarterCharacterScripts). MDA-150, plan docs/plans/HERRERA_PARTS_v1.0.md Part 2 (Kepu 2026-10-31 "Glide strike", look A
 -- "Bat Membranes") and "Pass 2 — build map".
 -- Runs only while the character attribute GliderEnabled is true (SkillEffects 1.27: Glider Wings bought AND slotted).
@@ -29,11 +29,19 @@
 --     Humanoid.WalkSpeed), so a glide from a standing leap still goes forward at run speed; fall / steering as 1.0.
 --   The Herrera (no GliderAuto) keeps the 1.0 held mode exactly. Diagnostics: GliderAutoState ("off" / "armed" / "gliding"),
 --   GlideForwardSpeed (the speed the forward hold uses).
+-- v1.2 (MDA-344, P1 bug, Kepu 2026-11-06 18:37 live on mobile: "that shit is literally walking in the air instead of gliding";
+--   pick "Glide automatically"): in auto mode the glide also starts when the body simply falls: Humanoid state Freefall,
+--   vertical speed <= -12 studs/s and the ground more than 6 studs under the feet (raycast; no ground within 200 studs counts),
+--   not on a tree / in a slash / stunned / pinned / dead (reason "fall"). During a leap that still has air jumps left it waits
+--   until the body is 2 studs below the leap's takeoff height (so the flaps keep their window; a leap off a ledge still
+--   glides). The same rule restarts a glide that ended mid-air (a stun) while still that high. Small steps / curbs (gap <= 6)
+--   never start it. The Herrera's held mode unchanged. Switch: script attribute GliderFallAutoEnabled (default true, read each
+--   frame; false = 1.1). Diagnostic: GlideGroundGap (studs, 0.1 steps, while airborne).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local REQUEST_FRESH = 0.1
 local char = script.Parent
 local hum = char:WaitForChild("Humanoid")
@@ -50,6 +58,18 @@ char:GetAttributeChangedSignal("JumpAirJumpsLocal"):Connect(function() -- v1.1 (
 	local n = tonumber(char:GetAttribute("JumpAirJumpsLocal")) or 0
 	if n >= airJumpLimit() then armed, armedAt = true, os.clock() elseif n == 0 then armed = false end
 end)
+if script:GetAttribute("GliderFallAutoEnabled") == nil then script:SetAttribute("GliderFallAutoEnabled", true) end -- v1.2
+local FALL_SPEED, FALL_GAP, LEAP_BELOW = 12, 6, 2 -- v1.2
+local leapY = nil -- v1.2: the takeoff height of the current leap (nil = not in a leap)
+char:GetAttributeChangedSignal("JumpLaunchCount"):Connect(function() leapY = hrp.Position.Y end) -- v1.2 (JumpTest 1.0+)
+local gapParams = RaycastParams.new() -- v1.2
+gapParams.FilterType = Enum.RaycastFilterType.Exclude
+local function groundGap() -- v1.2: studs between the feet and the ground below (math.huge = none within 200)
+	gapParams.FilterDescendantsInstances = {char}
+	local hit = workspace:Raycast(hrp.Position, Vector3.new(0, -200, 0), gapParams)
+	if not hit then return math.huge end
+	return hrp.Position.Y - hit.Position.Y - (hrp.Size.Y / 2 + hum.HipHeight)
+end
 local remote = ReplicatedStorage:WaitForChild("DinoGlideRequest", 20)
 
 -- jump input (JumpTest 1.3's rule)
@@ -131,6 +151,9 @@ local conn = RunService.PreSimulation:Connect(function()
 	local vy = hrp.AssemblyLinearVelocity.Y
 	local auto = autoMode() -- v1.1
 	if auto and armed and not gliding and not airborne() and os.clock() - armedAt > 0.15 then armed = false end -- landed first
+	if leapY and not airborne() and hum:GetState() ~= Enum.HumanoidStateType.Jumping then -- v1.2: on the ground again
+		if not char:GetAttribute("JumpLaunchCount") or hrp.AssemblyLinearVelocity.Y <= 1 then leapY = nil end
+	end
 	if gliding then
 		if why then set(false, why)
 		elseif not airborne() then set(false, "landed")
@@ -139,6 +162,15 @@ local conn = RunService.PreSimulation:Connect(function()
 		if armed and not why and airborne() and vy <= 0 then
 			armed = false
 			set(true, "auto")
+		elseif not why and script:GetAttribute("GliderFallAutoEnabled") ~= false -- v1.2: or when falling
+			and hum:GetState() == Enum.HumanoidStateType.Freefall and vy <= -FALL_SPEED then
+			local gap = groundGap()
+			char:SetAttribute("GlideGroundGap", gap == math.huge and 999 or math.floor(gap * 10 + 0.5) / 10)
+			local flapsLeft = leapY ~= nil and (tonumber(char:GetAttribute("JumpAirJumpsLocal")) or 0) < airJumpLimit()
+			if gap > FALL_GAP and (not flapsLeft or hrp.Position.Y < leapY - LEAP_BELOW) then
+				armed = false
+				set(true, "fall")
+			end
 		end
 	elseif not why and jumpHeld() and airborne() and vy < -1 then
 		set(true, "start")

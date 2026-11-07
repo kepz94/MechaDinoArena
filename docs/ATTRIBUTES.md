@@ -3070,3 +3070,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooFlapPhase; TrooFlapBeats | troodon character (this client) | "crouch" / "beat" / "glide" / "land" / "none"; beats this leap | TrooPose 1.1 diagnostics |
 | TrooFXPuffEnabled; TrooFXPuffs | TrooFX script | true; count | TrooFX 1.1: down puff per wing beat |
 | AbilityBarTrooPlainJumpEnabled | AbilityBar script | true (read at each row build) | AbilityBar 1.34: plain JUMP tile for a troodon without charges |
+| GliderFallAutoEnabled; GlideGroundGap | GliderTest script; character (owner client) | true (read each frame); studs (999 = no ground within 200) | GliderTest 1.2: auto glide on a fall (GliderAuto models) |
+| TrooPoseFallEnabled | troodon character | nil = true (read each frame) | TrooPose 1.2: fall / glide / landing pose without a leap (TrooFlapPhase "fall") |
