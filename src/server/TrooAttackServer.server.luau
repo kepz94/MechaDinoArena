@@ -1,4 +1,4 @@
--- TrooAttackServer v1.2 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
+-- TrooAttackServer v1.3 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
 -- docs/plans/TROODON_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/troodon_kit_options_v0.1.html attack A
 -- (Kepu 2026-11-06 15:38: "Let's go with your recommendations": attack A, the proposed numbers; red-team "Lead the target").
 -- Patterns copied, not edited: DiloAttackServer 1.5 (request -> checks -> timed resolve, soft aim, targets, mode / squad
@@ -71,6 +71,28 @@ local sapBlocked do
 		return true
 	end
 	if script:GetAttribute("TrooAttackServerSapWallEnabled") == nil then script:SetAttribute("TrooAttackServerSapWallEnabled", true) end
+end
+VERSION = "1.3" -- v1.3 a pod whose arc goes through a Sap Wall is stopped there
+-- v1.3 (MDA-353, Kepu 2026-11-07 lobbed shots "Can go over"): the pod's real flight (the TrooFX 1.x arc: TrooPodFrom -> TrooPodTo, 4 x
+--   TrooAttackPodArc (9) x scale / 2 x u x (1 - u) above the line) is checked at the splat by SapWallBlock 1.2 arcBlocks: an arc
+--   through a live wall stops the pod (no splat damage, no zone; character TrooPodWallAt / TrooPodWallPos), an arc over the
+--   wall lands as before (the zone's centre -> target check stays).
+--   Switch: script attribute TrooAttackServerSapArcEnabled (default true, read at each shot; false = the previous behaviour: no check of the
+--   flight itself). Diagnostics: script TrooAttackServerSapArcBlocks (count), TrooAttackServerSapArcBlockedAt (server time).
+if script:GetAttribute("TrooAttackPodArc") == nil then script:SetAttribute("TrooAttackPodArc", 9) end
+local sapArcBlocked do
+	local mod
+	sapArcBlocked = function(from, to, peak)
+		if script:GetAttribute("TrooAttackServerSapArcEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.arcBlocks) then return false end
+		local b, _, u, pos = mod.arcBlocks(from, to, peak)
+		if not b then return false end
+		script:SetAttribute("TrooAttackServerSapArcBlocks", (script:GetAttribute("TrooAttackServerSapArcBlocks") or 0) + 1)
+		script:SetAttribute("TrooAttackServerSapArcBlockedAt", workspace:GetServerTimeNow())
+		return true, u, pos
+	end
+	if script:GetAttribute("TrooAttackServerSapArcEnabled") == nil then script:SetAttribute("TrooAttackServerSapArcEnabled", true) end
 end
 local DEFAULTS = {TrooPodWindup = 0.34, TrooPodFlight = 0.55, TrooPodRange = 22.5, TrooPodCharges = 2, TrooPodRefill = 3,
 	TrooMinGap = 0.35, TrooAssistAngle = 30, TrooAssistMax = 22.5, TrooZoneRadius = 5, TrooZoneTime = 3, TrooPodDamage = 6,
@@ -531,7 +553,15 @@ local function release(player, char, st)
 	local c = {owner = char, player = player, scale = s, radius = get(char, "TrooZoneRadius"), zoneTime = get(char, "TrooZoneTime"),
 		dps = get(char, "TrooZoneDps"), heal = get(char, "TrooZoneHeal"), podDamage = get(char, "TrooPodDamage"),
 		selfHeal = get(char, "TrooSelfHeal"), slowMul = get(char, "TrooZoneSlowMul")}
-	task.delay(flight, function() makeZone(c, to, now()) end)
+	task.delay(flight, function()
+		local wall, _, wpos = sapArcBlocked(from, to, (tonumber(script:GetAttribute("TrooAttackPodArc")) or 9) * s / 2) -- v1.3
+		if wall then
+			char:SetAttribute("TrooPodWallPos", wpos)
+			char:SetAttribute("TrooPodWallAt", now())
+			return
+		end
+		makeZone(c, to, now())
+	end)
 end
 
 -- remote ------------------------------------------------------------------------------------------------------------------------

@@ -1,4 +1,4 @@
--- TenoMovesServer v1.13 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.14 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -230,6 +230,27 @@ local sapBlocked do
 		return true
 	end
 	if script:GetAttribute("TenoMovesServerSapWallEnabled") == nil then script:SetAttribute("TenoMovesServerSapWallEnabled", true) end
+end
+VERSION = "1.14" -- v1.14 a boulder whose arc goes through a Sap Wall stops there
+-- v1.14 (MDA-353, Kepu 2026-11-07 lobbed shots "Can go over"): each Boulder Mortar boulder's real flight (boulder(): from:Lerp(point, u) + 4 x
+--   peak x u x (1 - u), peak = the shot's MORTAR_PEAK*) is checked when it fires by SapWallBlock 1.2 arcBlocks: an arc through a
+--   live wall stops that boulder at the wall (it flies only to the hit, then breaks; no landing damage / slow / rubble for that
+--   point; character TenoMortarWallAt), an arc over the wall lands as before (the landing centre -> target check stays).
+--   Switch: script attribute TenoMovesServerSapArcEnabled (default true, read at each shot; false = the previous behaviour: no check of the
+--   flight itself). Diagnostics: script TenoMovesServerSapArcBlocks (count), TenoMovesServerSapArcBlockedAt (server time).
+local sapArcBlocked do
+	local mod
+	sapArcBlocked = function(from, to, peak)
+		if script:GetAttribute("TenoMovesServerSapArcEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.arcBlocks) then return false end
+		local b, _, u, pos = mod.arcBlocks(from, to, peak)
+		if not b then return false end
+		script:SetAttribute("TenoMovesServerSapArcBlocks", (script:GetAttribute("TenoMovesServerSapArcBlocks") or 0) + 1)
+		script:SetAttribute("TenoMovesServerSapArcBlockedAt", workspace:GetServerTimeNow())
+		return true, u, pos
+	end
+	if script:GetAttribute("TenoMovesServerSapArcEnabled") == nil then script:SetAttribute("TenoMovesServerSapArcEnabled", true) end
 end
 if script:GetAttribute("TenoGrabPluckEnabled") == nil then script:SetAttribute("TenoGrabPluckEnabled", true) end -- v1.12
 if script:GetAttribute("TenoMovesMortarMuzzleEnabled") == nil then script:SetAttribute("TenoMovesMortarMuzzleEnabled", true) end -- v1.9
@@ -820,7 +841,7 @@ grabRemote.OnServerEvent:Connect(function(player, stamp)
 end)
 
 -- Boulder Mortar --------------------------------------------------------------------------------------------------------------------
-local function boulder(from, to, flight, peakUp)
+local function boulder(from, to, flight, peakUp, stopU) -- v1.14: stopU = the arc fraction where a Sap Wall stops it
 	local b = Instance.new("Part")
 	b.Name = "TenoBoulder"
 	b.Shape = Enum.PartType.Ball
@@ -834,12 +855,12 @@ local function boulder(from, to, flight, peakUp)
 	task.spawn(function()
 		local t0 = os.clock()
 		while b.Parent do
-			local u = math.min(1, (os.clock() - t0) / flight)
+			local u = math.min(stopU or 1, (os.clock() - t0) / flight)
 			local base = from:Lerp(to, u)
 			local y0 = from.Y + (to.Y - from.Y) * u
 			local arc = 4 * (peak - math.max(from.Y, to.Y)) * u * (1 - u)
 			b.CFrame = CFrame.new(base.X, y0 + arc, base.Z) * CFrame.Angles(u * 9, u * 5, 0)
-			if u >= 1 then break end
+			if u >= (stopU or 1) then break end
 			RunService.Heartbeat:Wait()
 		end
 		b:Destroy()
@@ -953,14 +974,19 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 			end
 		end
 		char:SetAttribute("TenoMortarFiredAt", now())
-		for _, pt in ipairs(pts) do boulder(from, pt, flightT, peakT) end
+		local walled = {} -- v1.14: points whose real arc goes through a live Sap Wall
+		for i, pt in ipairs(pts) do
+			local w, wu = sapArcBlocked(from, pt, peakT)
+			if w then walled[i] = true; char:SetAttribute("TenoMortarWallAt", now()) end
+			boulder(from, pt, flightT, peakT, w and (wu or 0) or nil)
+		end
 		task.wait(flightT)
 		local tl = now()
 		local hit, n = {}, 0
 		for _, m in ipairs(candidates(char)) do
 			local mr = rootOf(m)
-			for _, pt in ipairs(pts) do
-				if not hit[m] and flat(mr.Position - pt).Magnitude <= splash and math.abs(mr.Position.Y - pt.Y) <= DY and not sapBlocked(pt + Vector3.yAxis * 2, m) then
+			for i, pt in ipairs(pts) do
+				if not hit[m] and not walled[i] and flat(mr.Position - pt).Magnitude <= splash and math.abs(mr.Position.Y - pt.Y) <= DY and not sapBlocked(pt + Vector3.yAxis * 2, m) then
 					hit[m] = true
 					local cr = rootOf(char)
 					local defl, refl = deflected(m, cr and cr.Position or pt, "boulder", tl, "TenoMovesDeflectEnabled") -- v1.8
@@ -980,7 +1006,7 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 		char:SetAttribute("TenoMortarHits", n)
 		char:SetAttribute("TenoMortarLandedAt", tl)
 		if rubble > 0 and smul < 1 then
-			for _, pt in ipairs(pts) do rubblePatch(char, player, pt, splash * 0.8, tl + rubble, smul) end
+			for i, pt in ipairs(pts) do if not walled[i] then rubblePatch(char, player, pt, splash * 0.8, tl + rubble, smul) end end
 		end
 	end)
 end)

@@ -1,4 +1,4 @@
--- TrooMovesServer v1.1 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.2 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -90,8 +90,29 @@ local sapBlocked do
 	end
 	if script:GetAttribute("TrooMovesServerSapWallEnabled") == nil then script:SetAttribute("TrooMovesServerSapWallEnabled", true) end
 end
+VERSION = "1.2" -- v1.2 a lantern whose arc goes through a Sap Wall is stopped
+-- v1.2 (MDA-353, Kepu 2026-11-07 lobbed shots "Can go over"): the Arc Lantern's real flight (TrooPartsFX 1.x: TrooLanternFrom -> TrooLanternTo + 0.8 x
+--   scale / 2 up, 4 x TrooMoves_lanternArc (6) x scale / 2 x u x (1 - u) above the line) is checked at the landing by
+--   SapWallBlock 1.2 arcBlocks: an arc through a live wall stops it (no zaps; character TrooLanternWallAt), an arc over the
+--   wall lands and zaps as before (the zap line checks stay).
+--   Switch: script attribute TrooMovesServerSapArcEnabled (default true, read at each shot; false = the previous behaviour: no check of the
+--   flight itself). Diagnostics: script TrooMovesServerSapArcBlocks (count), TrooMovesServerSapArcBlockedAt (server time).
+local sapArcBlocked do
+	local mod
+	sapArcBlocked = function(from, to, peak)
+		if script:GetAttribute("TrooMovesServerSapArcEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.arcBlocks) then return false end
+		local b, _, u, pos = mod.arcBlocks(from, to, peak)
+		if not b then return false end
+		script:SetAttribute("TrooMovesServerSapArcBlocks", (script:GetAttribute("TrooMovesServerSapArcBlocks") or 0) + 1)
+		script:SetAttribute("TrooMovesServerSapArcBlockedAt", workspace:GetServerTimeNow())
+		return true, u, pos
+	end
+	if script:GetAttribute("TrooMovesServerSapArcEnabled") == nil then script:SetAttribute("TrooMovesServerSapArcEnabled", true) end
+end
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderTick = 0.25, menderHopFly = 0.5,
-	lanternWindup = 0.42, lanternFly = 0.55, lanternZapDelay = 0.32, lanternZapRadius = 16, lanternChainStep = 0.12,
+	lanternWindup = 0.42, lanternFly = 0.55, lanternZapDelay = 0.32, lanternZapRadius = 16, lanternChainStep = 0.12, lanternArc = 6,
 	sapWindup = 0.34, sapFly = 0.5, sapHeight = 18, sapThick = 2, sapSegments = 5, sapClear = 3,
 	shedWindup = 0.15, shedShoveTime = 0.3,
 	portalWindup1 = 0.4, portalWindup2 = 0.52, portalOpen1 = 0.35, portalOpen2 = 0.8, portalNear = 10, portalRadius = 6,
@@ -424,6 +445,12 @@ remote("DinoTrooLanternRequest").OnServerEvent:Connect(function(player, stamp, a
 	task.delay(cfg("lanternWindup"), function()
 		if not canStill(char) then result(char, "TrooPartLantern", "cancelled", now()) return end
 		task.wait(cfg("lanternFly"))
+		local lf, sc = char:GetAttribute("TrooLanternFrom"), char:GetScale() -- v1.2: the lantern's real arc
+		if typeof(lf) == "Vector3" and sapArcBlocked(lf, to + Vector3.new(0, 0.8 * sc / 2, 0), cfg("lanternArc") * sc / 2) then
+			char:SetAttribute("TrooLanternChainList", "")
+			char:SetAttribute("TrooLanternWallAt", now())
+			return
+		end
 		char:SetAttribute("TrooLanternLandAt", now())
 		task.wait(cfg("lanternZapDelay"))
 		local hits, names = {}, {}

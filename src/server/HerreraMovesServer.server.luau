@@ -1,4 +1,4 @@
--- HerreraMovesServer v1.7 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
+-- HerreraMovesServer v1.8 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
 -- (MDA-151), Smoke Pods (MDA-152), Strobe Frill (MDA-155), Stun Breaker (MDA-156), and the Glider Wings' glide state
 -- (MDA-150). Plan docs/plans/HERRERA_PARTS_v1.0.md (Parts 2, 3, 4, 7, 8 and "Pass 2 — build map"); Kepu 2026-10-31.
 -- Settings come from the character (SkillEffects 1.27, a Herrera with the part bought AND slotted):
@@ -133,6 +133,27 @@ local sapBlocked do
 		return true
 	end
 	if script:GetAttribute("HerreraMovesServerSapWallEnabled") == nil then script:SetAttribute("HerreraMovesServerSapWallEnabled", true) end
+end
+VERSION = "1.8" -- v1.8 a goo blob whose arc goes through a Sap Wall stops there
+-- v1.8 (MDA-353, Kepu 2026-11-07 lobbed shots "Can go over"): each Goo Blob's real flight (flyBlob(): from:Lerp(to, u), y + 4 x (peak - (y0 + y1) / 2)
+--   x u x (1 - u), peak = the higher end + 14 x scale; straight down while gliding) is checked when it leaves by SapWallBlock
+--   1.2 arcBlocks: an arc through a live wall stops the blob at the wall (it flies only to the hit; no puddle; character
+--   GooWallAt), an arc over the wall lands as before (the puddle centre -> target check stays).
+--   Switch: script attribute HerreraMovesServerSapArcEnabled (default true, read at each shot; false = the previous behaviour: no check of the
+--   flight itself). Diagnostics: script HerreraMovesServerSapArcBlocks (count), HerreraMovesServerSapArcBlockedAt (server time).
+local sapArcBlocked do
+	local mod
+	sapArcBlocked = function(from, to, peak)
+		if script:GetAttribute("HerreraMovesServerSapArcEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.arcBlocks) then return false end
+		local b, _, u, pos = mod.arcBlocks(from, to, peak)
+		if not b then return false end
+		script:SetAttribute("HerreraMovesServerSapArcBlocks", (script:GetAttribute("HerreraMovesServerSapArcBlocks") or 0) + 1)
+		script:SetAttribute("HerreraMovesServerSapArcBlockedAt", workspace:GetServerTimeNow())
+		return true, u, pos
+	end
+	if script:GetAttribute("HerreraMovesServerSapArcEnabled") == nil then script:SetAttribute("HerreraMovesServerSapArcEnabled", true) end
 end
 local QUILL_GAP, QUILL_SPEED, QUILL_CONE = 0.045, 90, math.rad(35)
 local SMOKE_TICK = 0.1
@@ -773,9 +794,14 @@ local function flyBlob(char, from, to, glide, radius, life)
 	ball.Parent = gooFolder()
 	local T = glide and 0.45 or 0.85
 	local peak = math.max(from.Y, to.Y) + 14 * s
+	local stopU -- v1.8: the arc fraction where a live Sap Wall stops the blob
+	do
+		local w, wu = sapArcBlocked(from, to, glide and 0 or (peak - (from.Y + to.Y) / 2))
+		if w then stopU = wu or 0 end
+	end
 	local t0 = os.clock()
 	while true do
-		local u = math.min(1, (os.clock() - t0) / T)
+		local u = math.min(stopU or 1, (os.clock() - t0) / T)
 		local p = from:Lerp(to, u)
 		if not glide then
 			-- parabola through from, peak, to (y only)
@@ -783,10 +809,11 @@ local function flyBlob(char, from, to, glide, radius, life)
 			p = Vector3.new(p.X, y0 + (y1 - y0) * u + 4 * (peak - (y0 + y1) / 2) * u * (1 - u), p.Z)
 		end
 		ball.CFrame = CFrame.new(p)
-		if u >= 1 then break end
+		if u >= (stopU or 1) then break end
 		RunService.Heartbeat:Wait()
 	end
 	ball:Destroy()
+	if stopU then char:SetAttribute("GooWallAt", now()) return end -- v1.8
 	makePuddle(char, to, radius, life)
 end
 gooRemote.OnServerEvent:Connect(function(player, stamp)

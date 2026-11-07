@@ -1,4 +1,4 @@
--- DiloMovesServer v1.4 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
+-- DiloMovesServer v1.5 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
 -- Toxin Mortar, Spine Burst, Venom Overdrive. Plan docs/plans/DILO_PARTS_v1.0.md Task 5 (deterministic map), MDA-318; mockup
 -- docs/mockups/dilo_parts_options.html v0.1 (timings from tools/mockup/dilo_parts_looks.js); Kepu 2026-11-06 picks + red-team
 -- "Same venom system", "Use the proposals". Build 2 (Sonic Hiss, Antivenom Pump, Spring Jets) comes in 1.1.
@@ -114,6 +114,30 @@ local sapBlocked do
 		return true
 	end
 	if script:GetAttribute("DiloMovesServerSapWallEnabled") == nil then script:SetAttribute("DiloMovesServerSapWallEnabled", true) end
+end
+VERSION = "1.5" -- v1.5 a mortar canister whose arc goes through a Sap Wall is stopped; the cloud checks the wall
+-- v1.5 (MDA-353, Kepu 2026-11-07 lobbed shots "Can go over"): the Toxin Mortar canister's real flight (DiloMovesFX 1.x: DiloMortarFrom -> DiloMortarTo,
+--   4 x (|dY| + DiloMovesMortarArc (6.5) x scale / 2) x u x (1 - u) above the line) is checked at the landing by SapWallBlock
+--   1.2 arcBlocks: an arc through a live wall stops it (no DiloMortarLandAt, no cloud; character DiloMortarWallAt), an arc
+--   over the wall lands as before. The cloud's venom ticks now check the cloud centre -> target line too (the MDA-353 splash
+--   rule the 1.4 hooks missed; switch DiloMovesSapCloudEnabled, default true).
+--   Switch: script attribute DiloMovesServerSapArcEnabled (default true, read at each shot; false = the previous behaviour: no check of the
+--   flight itself). Diagnostics: script DiloMovesServerSapArcBlocks (count), DiloMovesServerSapArcBlockedAt (server time).
+if script:GetAttribute("DiloMovesMortarArc") == nil then script:SetAttribute("DiloMovesMortarArc", 6.5) end
+if script:GetAttribute("DiloMovesSapCloudEnabled") == nil then script:SetAttribute("DiloMovesSapCloudEnabled", true) end
+local sapArcBlocked do
+	local mod
+	sapArcBlocked = function(from, to, peak)
+		if script:GetAttribute("DiloMovesServerSapArcEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.arcBlocks) then return false end
+		local b, _, u, pos = mod.arcBlocks(from, to, peak)
+		if not b then return false end
+		script:SetAttribute("DiloMovesServerSapArcBlocks", (script:GetAttribute("DiloMovesServerSapArcBlocks") or 0) + 1)
+		script:SetAttribute("DiloMovesServerSapArcBlockedAt", workspace:GetServerTimeNow())
+		return true, u, pos
+	end
+	if script:GetAttribute("DiloMovesServerSapArcEnabled") == nil then script:SetAttribute("DiloMovesServerSapArcEnabled", true) end
 end
 if script:GetAttribute("DiloJetsInstantEnabled") == nil then script:SetAttribute("DiloJetsInstantEnabled", true) end -- v1.3
 local GATLING_WINDUP, MORTAR_WINDUP, MORTAR_FLIGHT, SPINE_WINDUP, SPINE_FLIGHT, OVER_WINDUP = 0.4, 0.55, 1.15, 0.42, 0.2, 0.7
@@ -450,6 +474,10 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 	char:SetAttribute("DiloMortarFireAt", now()) -- the canister leaves
 	task.wait(MORTAR_FLIGHT)
 	if char:GetAttribute("DiloMortarAt") ~= t or not char.Parent then return end
+	if sapArcBlocked(from, land, math.abs(from.Y - land.Y) + (tonumber(script:GetAttribute("DiloMovesMortarArc")) or 6.5) * char:GetScale() / 2) then -- v1.5
+		char:SetAttribute("DiloMortarWallAt", now())
+		return
+	end
 	local t0 = now()
 	char:SetAttribute("DiloMortarLandAt", t0) -- the cloud starts
 	clouds[char] = t
@@ -457,7 +485,8 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 	while char.Parent and clouds[char] == t and now() < untilT do
 		for _, m in ipairs(candidates(char)) do
 			local p = rootOf(m).Position
-			if flat(p - land).Magnitude <= radius and math.abs(p.Y - land.Y) <= CLOUD_HEIGHT then venom(char, m) end
+			if flat(p - land).Magnitude <= radius and math.abs(p.Y - land.Y) <= CLOUD_HEIGHT
+				and not (script:GetAttribute("DiloMovesSapCloudEnabled") ~= false and sapBlocked(land + Vector3.yAxis * 2, m)) then venom(char, m) end -- v1.5
 		end
 		task.wait(CLOUD_TICK)
 	end
