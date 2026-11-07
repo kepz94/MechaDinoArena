@@ -926,7 +926,7 @@ const PIDS = MOVES.filter(m => m.id !== "all").map(m => m.id);
 const MEAS = typeof TROO_MEAS !== "undefined" ? TROO_MEAS : null;
 
 // ---------- the player ----------
-let cur = 0, variant = REC.mender, playing = true, speed = 1, camMode = "game";
+let cur = 0, variant = REC.mender, playing = true, speed = 1, camMode = "hero"; // v0.2: opens on the tight 3/4 view (Kepu 2026-11-06 21:14: the far camera made the mockup unreadable)
 const allOn = {}; PIDS.forEach(p => { allOn[p] = true; });
 let lookOverride = null; // measurement: a set of looks to show
 const M = () => MOVES[cur];
@@ -1050,15 +1050,15 @@ function partCentreOf(look) { const c = new THREE.Vector3(); let n = 0; for (con
 function render(dt) {
   const tr0 = play.track;
   shake = Math.max(0, shake - dt * 4.2); fovPunch = Math.max(0, fovPunch - dt * 14);
-  const fr = tr0.frame; const mid = fr[0].clone().lerp(fr[1], 0.5).setY(8), span = fr[0].distanceTo(fr[1]) + 30;
+  const fr = tr0.frame; const mid = fr[0].clone().lerp(fr[1], 0.5).setY(8), span = fr[0].distanceTo(fr[1]) + 12; // v0.2: tighter framing (was + 30)
   let fov = 38, cp, look = mid, snap = 0.15;
   const hfov = 2 * Math.atan(Math.tan(rad(fov / 2)) * cam.aspect), vfit = span * 0.5 / Math.tan(Math.min(hfov, rad(fov)) / 2);
   if (camMode === "game") { fov = 70; const f = heroHRP().add(V(0, CAMF.focus, 0)); const back = V(0, Math.sin(CAMF.pitch), Math.cos(CAMF.pitch)).multiplyScalar(CAMF.dist);
     cp = f.clone().add(V(CAMF.side, CAMF.height, 0)).add(back); look = cp.clone().sub(back); snap = 0.25; }
-  else if (camMode === "hero") cp = mid.clone().add(V(1, 0.5, -0.6).normalize().multiplyScalar(vfit * 0.8));
-  else if (camMode === "side") cp = mid.clone().add(V(1, 0.14, 0).normalize().multiplyScalar(vfit * 1.05));
-  else if (camMode === "top") { cp = mid.clone().add(V(0.12, 1, 0.3).normalize().multiplyScalar(vfit * 0.95)); }
-  else { const c = M().id === "all" ? partPoint(hero.segs.Torso[0]).add(V(0, 1, 0)) : partCentre(); const d = M().id === "all" ? 34 : 17; cp = c.clone().add(V(0.78, 0.42, -0.46).normalize().multiplyScalar(d)); look = c; snap = 0.3; }
+  else if (camMode === "hero") cp = mid.clone().add(V(1, 0.5, -0.6).normalize().multiplyScalar(vfit * 0.55)); // v0.2: was 0.8
+  else if (camMode === "side") cp = mid.clone().add(V(1, 0.14, 0).normalize().multiplyScalar(vfit * 0.75)); // v0.2: was 1.05
+  else if (camMode === "top") { cp = mid.clone().add(V(0.12, 1, 0.3).normalize().multiplyScalar(vfit * 0.7)); } // v0.2: was 0.95
+  else { const c = M().id === "all" ? partPoint(hero.segs.Torso[0]).add(V(0, 1, 0)) : partCentre(); const d = M().id === "all" ? 24 : 12; /* v0.2: closer (was 34 / 17) */ cp = c.clone().add(V(0.78, 0.42, -0.46).normalize().multiplyScalar(d)); look = c; snap = 0.3; }
   camPos.lerp(cp, snap); camLook.lerp(look, snap + 0.05);
   const sh = shake * shake;
   cam.position.copy(camPos).add(V((Math.random() - .5) * sh, (Math.random() - .5) * sh, (Math.random() - .5) * sh));
