@@ -3073,3 +3073,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | AbilityBarTrooPlainJumpEnabled | AbilityBar script | true (read at each row build) | AbilityBar 1.34: plain JUMP tile for a troodon without charges |
 | GliderFallAutoEnabled; GlideGroundGap | GliderTest script; character (owner client) | true (read each frame); studs (999 = no ground within 200) | GliderTest 1.2: auto glide on a fall (GliderAuto models) |
 | TrooPoseFallEnabled | troodon character | nil = true (read each frame) | TrooPose 1.2: fall / glide / landing pose without a leap (TrooFlapPhase "fall") |
+| TrooZoneRadius | troodon character | 10 (TroodonModelData 1.5; was 5) | the glow zone radius x scale (40 studs wide) |
+| TrooThrowWideEnabled | troodon character | nil = true (read each frame of a throw) | TrooPose 1.3: the 12 deg wider wind-up |

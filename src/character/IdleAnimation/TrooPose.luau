@@ -1,4 +1,4 @@
--- TrooPose v1.2 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
+-- TrooPose v1.3 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
 -- the Evade Hop (jump J2) and the eyes flaring during the throw. MDA-337, plan docs/plans/TROODON_KIT_v1.0.md Task 8; mockup
 -- docs/mockups/troodon_kit_options_v0.1.html (Kepu 2026-11-06 15:38 "Let's go with your recommendations"; source
 -- tools/troodon_kit_mockup/app_tail.js TA_WIND / TA_HOLD / TA_THROW / TA_FOLLOW, TH_SET / TH_AIR / TJ_LAND, and the
@@ -49,10 +49,14 @@
 --   -> TF_UP (arms raised, legs tucked) in over 0.15 s; touchdown after 0.25 s or more in the air -> the 1.1 land track. A
 --   glide that ends while still airborne no longer shows the landing keys mid-air (it falls back to TF_UP). Diagnostic
 --   TrooFlapPhase adds "fall".
+-- v1.3 (Troodon parts, MDA-345, plan docs/plans/TROODON_PARTS_v1.0.md ticket 1; Kepu 2026-11-06 21:24 "Yes, 12 deg wider";
+--   mockup tools/mockup/troodon_parts_looks.js TA_WIND_W / TA_HOLD_W): the throw track's wind-up keys swing the long arms 12 deg
+--   wider (ArmL roll -12, ArmR +12, added to TA_WIND / TA_HOLD) so the hands pass outside the knees. Switch: model attribute
+--   TrooThrowWideEnabled (default true, read at each frame of a throw; false = 1.2's keys).
 local TrooPose = {}
-TrooPose.Version = "1.2"
+TrooPose.Version = "1.3"
 TrooPose.Defaults = {TrooPoseEnabled = true, TrooHopPoseEnabled = true, TrooEyeFlareEnabled = true, TrooGroundLockEnabled = true,
-	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true, TrooPoseFallEnabled = true}
+	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true, TrooPoseFallEnabled = true, TrooThrowWideEnabled = true}
 local Players = game:GetService("Players")
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5", "LegL",
@@ -124,6 +128,13 @@ local FLAP = { -- v1.1
 	fall = {{0, "$from"}, {0.15, "TF_UP", "io"}}, -- v1.2
 	land = {{0, "$from"}, {0.05, "TJ_DOWN", "io"}, {0.12, "TJ_LAND", "out"}, {0.7, "READY", "io"}},
 }
+-- v1.3: the wider wind-up (mockup TA_WIND_W / TA_HOLD_W)
+KEYS.TA_WIND_W = plus(KEYS.TA_WIND, {ArmL = {0, 0, -12}, ArmR = {0, 0, 12}})
+FWD.TA_WIND_W = FWD.TA_WIND
+KEYS.TA_HOLD_W = plus(KEYS.TA_HOLD, {ArmL = {0, 0, -12}, ArmR = {0, 0, 12}})
+FWD.TA_HOLD_W = FWD.TA_HOLD
+TRACKS.throwWide = {{0, "$from"}, {0.2, "TA_WIND_W", "io"}, {0.27, "TA_HOLD_W", "io"}, {0.34, "TA_THROW", "in2"},
+	{0.52, "TA_FOLLOW", "out"}, {1.15, "READY", "io"}}
 local REL, EYES_FROM, EYES_TO = 0.34, 0.05, 1.0
 local FLARE_TO = Color3.fromHex("FFD27A")
 
@@ -528,6 +539,7 @@ function TrooPose.top(model, pose, motors, hrp, ctx)
 	local t = atk.at and max(0, ctx.serverNow - atk.at) or 0
 	if atk.kind then
 		local keys = TRACKS[atk.kind]
+		if atk.kind == "throw" and s.TrooThrowWideEnabled then keys = TRACKS.throwWide end -- v1.3
 		if t > keys[#keys][1] then
 			atk.kind, atk.at = nil, nil
 		else
