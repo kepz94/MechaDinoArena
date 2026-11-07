@@ -1,6 +1,6 @@
 {
  "version": "0.1",
- "when": "2026-11-07T03:37",
+ "when": "2026-11-07T03:43",
  "looks": {
   "mender.A": {
    "idle": 0,
@@ -51,8 +51,8 @@
    "pieces": 11,
    "brackets": 1,
    "floating": [],
-   "kit": 0.8,
-   "kitWorst": "lantern.A#11 cyl@LegL 0.8% at 1.48 s"
+   "kit": 0,
+   "kitWorst": ""
   },
   "lantern.B": {
    "idle": 0,
@@ -429,10 +429,10 @@
   "lantern|mender": 1.45,
   "lantern|sapwall": 2.23,
   "lantern|shed": 0.44,
-  "lantern|portal": 3.27,
+  "lantern|portal": 3.23,
   "lantern|lastfeather": 1.46,
   "lantern|plume": 8.38,
-  "lantern|ricochet": 4.43,
+  "lantern|ricochet": 4.5,
   "sapwall|shed": 0.15,
   "portal|sapwall": 5.6,
   "portal|shed": 3.23,
@@ -440,10 +440,10 @@
   "lastfeather|mender": 1.37,
   "lastfeather|sapwall": 3.26,
   "lastfeather|shed": 1.3,
-  "lastfeather|portal": 1.69,
+  "lastfeather|portal": 1.7,
   "lastfeather|plume": 6.7,
   "lastfeather|ricochet": 7.1,
-  "plume|sapwall": 10.62,
+  "plume|sapwall": 10.63,
   "plume|shed": 8.25,
   "plume|portal": 2.99,
   "plume|ricochet": 13.84,

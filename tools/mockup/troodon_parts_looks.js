@@ -175,7 +175,10 @@ function zap(a, b, life, color) {
     glowS.forEach((s, i) => { const k = (i + 0.5) / glowS.length; s.position.copy(A.clone().lerp(B, k)); s.material.opacity = o.material.opacity * 0.6; if (u >= 0.99) scene.remove(s); }); });
 }
 // a simple projectile: any mesh / group from a point to a target along an arc
-const flies = [];
+const flies = [], OWNED = [];
+function own(o) { scene.add(o); OWNED.push(o); return o; }
+function tether(a, b, color, life, w, op) { const m = new THREE.Mesh(new THREE.CylinderGeometry(w || 0.25, w || 0.25, 1, 8, 1, true), new THREE.MeshBasicMaterial({color, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending}));
+  return addFx(m, life, (o, u) => { const A = a(), B = b(); o.position.copy(A).lerp(B, 0.5); o.scale.set(1, Math.max(0.01, A.distanceTo(B)), 1); o.quaternion.setFromUnitVectors(V(0, 1, 0), B.clone().sub(A).normalize()); o.material.opacity = (op || 0.5) * Math.min(1, u * life / 0.1) * Math.min(1, (1 - u) * life / 0.2) * (0.75 + 0.25 * Math.sin(clockT * 30)); }); }
 function fly(o) { // o: {obj, from, to: () => V, T, H, spin, onHit, trail: color}
   scene.add(o.obj); flies.push(Object.assign({t: 0, prev: o.from.clone(), em: 0}, o));
 }
@@ -262,7 +265,7 @@ const MK = {}; // named points per look (launch points, centres)
     const x0 = V(0, 0, 0).applyMatrix4(F).x, cx = x0 + 0.3;
     piece(lk, "LegL", G.box(cx - x0 + 0.03, 0.08, 0.08), MAT.gun, T3((x0 + cx) / 2, h.p.y, h.p.z));
     piece(lk, "LegL", G.box(0.07, 0.12, 0.07), MAT.gun, T3(cx, h.p.y - 0.06, h.p.z));
-    const c = V(cx, h.p.y - 0.62, h.p.z);
+    const c = V(cx, h.p.y - 0.52, h.p.z);
     MK[lk] = {carry: makeCarry(lanternAt(lk, "LegL", c, 1), "LegL", c)}; }
   // B · Tail Lure: a boom on Tail3 that arcs up and back, the bulb hanging from its tip like an angler fish's lure
   { const lk = P + ".B", z = 3.72; const h = topHit(0, z, onSeg("Tail3")); const F = bracket(lk, "Tail3", h, 0.22, 0.24, 0.05);
@@ -521,7 +524,11 @@ function menderTrack(L) {
   const orbitP = (R, t, ph) => rapChest(R).add(V(Math.cos(t * 2.6 + ph) * 4.5, 5.5 + Math.sin(t * 5) * 0.4, Math.sin(t * 2.6 + ph) * 4.5));
   let from = null, last = null;
   const bez = (a, b, h, u) => { const m = a.clone().lerp(b, 0.5).add(V(0, h, 0)); return a.clone().multiplyScalar((1 - u) * (1 - u)).add(m.multiplyScalar(2 * u * (1 - u))).add(b.clone().multiplyScalar(u * u)); };
-  const ev = [{t: GO, f: () => { textTag(rapChest(S).add(V(0, 13, 0)), "MOST HURT", "#8dffb6", 1.6); flash(carryPos(c), 4, HEAL_GREEN); }},
+  const ev = [{t: T0, f: () => { glowAt(() => carryPos(c), HEAL_GREEN, 3.5, GO - T0 + 0.2, 0.9); sparks(carryPos(c), V(0, 1, 0), 6, 0xffffff, 0.3); }},
+    {t: GO, f: () => { textTag(rapChest(S).add(V(0, 13, 0)), "MOST HURT", "#8dffb6", 1.6); flash(carryPos(c), 5, HEAL_GREEN); orb(carryPos(c), 2.5, HEAL_GREEN, 0.3); trailOn(() => carryPos(c), HEAL_GREEN, BACK - GO, 36, 1.1); glowAt(() => carryPos(c), HEAL_GREEN, 3, BACK - GO, 0.55); }},
+    {t: ARR, f: () => { aura(() => S.rig.pos, 5.5, HEAL_GREEN, HOP - ARR + 0.2); tether(() => carryPos(c), () => rapChest(S), HEAL_GREEN, HOP - ARR, 0.18, 0.45); }},
+    {t: ARR2, f: () => { aura(() => S2.rig.pos, 5.5, HEAL_GREEN, END - ARR2 + 0.2); tether(() => carryPos(c), () => rapChest(S2), HEAL_GREEN, END - ARR2, 0.18, 0.45); }},
+    {t: BACK, f: () => { flash(carryPos(c), 4, HEAL_GREEN); sparks(carryPos(c), V(0, 1, 0), 6, 0xd8ffe0, 0.3); }},
     {t: HOP - 0.05, f: () => textTag(rapChest(S).add(V(0, 13, 0)), "FULL", "#8dffb6", 1.0)},
     {t: HOP + 0.1, f: () => textTag(rapChest(S2).add(V(0, 13, 0)), "NEXT MOST HURT", "#8dffb6", 1.4)}];
   for (let i = 0; i < 3; i++) ev.push({t: ARR + 0.1 + i * TK, f: () => healTick(S, 4, last)});
@@ -563,10 +570,14 @@ function lanternTrack(L) {
   else keys = idleIntro([K(T0 + 0.3, L === "A" ? LANT_GRAB : LANT_COCK, "io"), K(REL - 0.06, LANT_COCK, "io"), K(REL + 0.02, LANT_THROW, "in2"), K(REL + 0.22, LANT_FOLLOW, "out"), K(REL + 0.9, T_READY, "io")], T0);
   let p0 = null, landM = null;
   const chain = [R0, R1, R2];
-  const ev = [{t: REL, f: () => { p0 = carryPos(c); flash(p0, 3, VOLT); }}];
+  const ev = [{t: T0, f: () => { glowAt(() => carryPos(c), VOLT, 3, REL - T0 + 0.1, 0.8); for (let i = 0; i < 4; i++) later(i * 0.09, () => { const q = () => carryPos(c).add(V((Math.random() - .5) * 1.6, (Math.random() - .5) * 1.6, (Math.random() - .5) * 1.6)); zap(q, q, 0.08, 0xe1faff); }); }},
+    {t: REL, f: () => { p0 = carryPos(c); flash(p0, 4, VOLT); trailOn(() => carryPos(c), VOLT, FLY, 44, 1.1); }},
+    {t: LAND, f: () => { orb(carryPos(c), 4, VOLT, 0.3); groundRing(Lp, 16, VOLT, 0.5, 2); glowAt(() => carryPos(c).add(V(0, 1.5, 0)), VOLT, 7, GONE - LAND, 0.7); }},
+    {t: LAND + 0.12, f: () => { for (let i = 0; i < 3; i++) later(i * 0.06, () => { const q = () => carryPos(c).add(V((Math.random() - .5) * 4, 1 + Math.random() * 2, (Math.random() - .5) * 4)); zap(() => carryPos(c).add(V(0, 1.5, 0)), q, 0.1, 0xe1faff); }); }},
+    {t: GONE - 0.05, f: () => { puff(carryPos(c).add(V(0, 1, 0)), V(0, 3, 0), 2.5, 0x9aa3ad, 0.8, 0.5); }}];
   chain.forEach((R, i) => ev.push({t: Z1 + i * 0.12, f: () => {
     const a = i === 0 ? () => carryPos(c).add(V(0, 0.8, 0)) : () => rapChest(chain[i - 1]); zap(a, () => rapChest(R), 0.32);
-    const cp = rapChest(R); flash(cp, 6, VOLT); sparks(cp, V(0, 0.5, 0), 8, 0xc8f8ff, 0.6); popNum(cp.clone().add(V(0, 5, 0)), 8, "hit"); R.flinch = 1; R.flash = 0.14; R.flashCol = [0.5, 0.9, 1]; hitStop = Math.max(hitStop, 0.03); shake = Math.max(shake, 0.35);
+    const cp = rapChest(R); flash(cp, 6, VOLT); orb(cp, 6, VOLT, 0.35); crackle(R, 0.45); sparks(cp, V(0, 0.5, 0), 10, 0xc8f8ff, 0.6); popNum(cp.clone().add(V(0, 5, 0)), 8, "hit"); R.flinch = 1; R.flash = 0.14; R.flashCol = [0.5, 0.9, 1]; hitStop = Math.max(hitStop, 0.03); shake = Math.max(shake, 0.35);
     textTag(cp.clone().add(V(0, 11, 0)), "ZAP " + (i + 1) + " / 3", "#bff6ff", 1.2); }}));
   ev.push({t: GONE - 0.1, f: () => { sparks(carryPos(c), V(0, 0.4, 0), 10, 0xc8f8ff, 0.5); }});
   return {frame: [V(0, 0, 4), V(0, 0, -54)], keys, ev, eyes: [[T0 + 0.1, REL + 0.3]],
@@ -592,9 +603,13 @@ function sapTrack(L) {
   const keys = idleIntro(THROW(T0), T0);
   let p0 = null, wall = null;
   const sapM = lam(0xffb43a, {emissive: 0x8a4a00, transparent: true, opacity: 0.6});
-  const ev = [{t: REL, f: () => { p0 = carryPos(c); }},
+  const ev = [{t: T0, f: () => glowAt(() => carryPos(c), 0xffb43a, 3.5, REL - T0 + 0.1, 0.8)},
+    {t: REL, f: () => { p0 = carryPos(c); trailOn(() => carryPos(c), 0xffb43a, FLY, 40, 1.2); }},
+    {t: SPLAT + 0.05, f: () => { groundRing(Wc, 11, 0xffd27a, 0.45, 1); rising(() => Wc.clone().add(V((Math.random() - .5) * 18, Math.random() * 7, 0)), 0xffe7a8, 0.8, 30, 1); }},
+    {t: HARD, f: () => { const sw = own(new THREE.Mesh(new THREE.PlaneGeometry(1.2, 10), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending}))); sw.position.set(Wc.x - 9.5, 5, Wc.z + 1.05);
+      addFx(new THREE.Object3D(), 0.45, (o, u) => { sw.position.x = Wc.x - 9.5 + 19 * u; sw.material.opacity = 0.7 * Math.sin(Math.PI * u); if (u >= 0.99) scene.remove(sw); }); textTag(Wc.clone().add(V(0, 11, 0)), "HARDENED", "#ffd38a", 1.0); }},
     {t: SPLAT, f: () => { const p = Wc.clone().setY(1); flash(p, 12, 0xffe2a0); splash(p, 30, 1.2); hitStop = 0.05; shake = Math.max(shake, 0.6);
-      wall = new THREE.Group(); wall.position.copy(Wc); scene.add(wall);
+      wall = own(new THREE.Group()); wall.position.copy(Wc);
       [[-7.6, 3.9, 8.4, 0.2], [-3.8, 3.8, 9.6, -0.15], [0, 4.0, 10.2, 0.1], [3.9, 3.8, 9.2, -0.2], [7.6, 3.8, 8.0, 0.15]].forEach(([x, w, h, z]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 1.8), sapM); m.position.set(x, h / 2, z); m.rotation.z = z * 0.15; m.castShadow = true; wall.add(m); });
       const rim = new THREE.Mesh(new THREE.BoxGeometry(19.4, 0.5, 2.1), lam(0xffe2a0, {emissive: 0xb86a10})); rim.position.y = 0.25; wall.add(rim);
       wall.scale.set(1, 0.01, 1); textTag(Wc.clone().add(V(0, 13, 0)), "SAP WALL · 19 studs · 4 s", "#ffd38a", 2.6); }},
@@ -602,7 +617,7 @@ function sapTrack(L) {
     {t: SPLAT + 1.05, f: () => { const from = rapChest(R1); flash(from, 4, VOLT); const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 3, 8).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({color: 0xbff6ff}));
       fly({obj: bolt, from, to: () => V(6, 5, -25), T: 0.3, H: 0.1, trail: VOLT, onHit: p => { flash(p, 7, VOLT); sparks(p, V(0, 0.3, -1), 12, 0xc8f8ff); textTag(p.clone().add(V(0, 8, 0)), "BLOCKED", "#bff6ff", 1.2); }}); R1.lunge = 0.6; }},
     {t: END, f: () => { if (wall) { for (const m of wall.children) { const q = m.clone(); q.material = sapM.clone(); const p = m.getWorldPosition(new THREE.Vector3()); q.position.copy(p); const v = V((Math.random() - .5) * 6, 4 + Math.random() * 6, (Math.random() - .5) * 6);
-      addFx(q, 0.6, (o, u, dt) => { v.y -= 30 * dt; o.position.addScaledVector(v, dt); o.rotation.x += dt * 2; o.scale.setScalar(1 - u * 0.8); o.material.opacity = 0.8 * (1 - u); }); } scene.remove(wall); wall = null; } }}];
+      addFx(q, 0.6, (o, u, dt) => { v.y -= 30 * dt; o.position.addScaledVector(v, dt); o.rotation.x += dt * 2; o.scale.setScalar(1 - u * 0.8); o.material.opacity = 0.8 * (1 - u); }); } for (let i = 0; i < 8; i++) puff(Wc.clone().add(V(-8 + i * 2.3, 1 + Math.random() * 3, 0)), V(0, 2, 0), 3, 0xe8c08a, 0.9, 0.5); sparks(Wc.clone().setY(4), V(0, 1, 0), 14, 0xffe7a8, 0.6); scene.remove(wall); wall = null; } }}];
   return {frame: [V(0, 0, 4), V(0, 0, -50)], keys, ev, eyes: [[T0 + 0.05, REL + 0.4]],
     update(t, dt) {
       PGLOW.sapwall = t > T0 && t < SPLAT ? 1 : 0; c.k = t < END ? 1 : E.back(win(t, END, END + 0.4));
@@ -626,10 +641,12 @@ function shedTrack(L) {
   const PRESS = 0.9, GO = PRESS + 0.15, FREE = GO + 0.45, REG = GO + 1.5;
   const keys = [K(0, PINNED), K(PRESS, PINNED), K(GO - 0.02, SHED_TENSE, "io"), K(GO + 0.06, SHED_BURST, "out5"), K(GO + 0.35, SHED_BURST), K(FREE + 0.15, TJ_LAND, "io"), K(FREE + 0.8, T_READY, "io")];
   let tags = [];
-  const ev = [{t: 0.01, f: () => { tags = [textTag(heroHRP().add(V(0, 15, 0)), "PINNED", "#ff8a7a", 9), textTag(heroHRP().add(V(0, 12.4, 0)), "STUNNED", "#ffd38a", 9)]; }},
+  const ev = [{t: PRESS, f: () => { glowAt(() => torsoPt(), 0xffb43a, 9, GO - PRESS + 0.05, 0.7); MK[lk].shed.filter(q => q.mesh.material.userData && q.mesh.material.userData.part).forEach(q => sparks(V(0, 0, 0).applyMatrix4(q.mesh.matrix), V(0, 1, 0), 3, 0xffd27a, 0.3)); }},
+    {t: REG, f: () => { MK[lk].shed.forEach((q, i) => { if (i % 2) return; later(0.1, () => flash(V(0, 0, 0).applyMatrix4(q.mesh.matrix), 2.5, 0xffe7a8)); }); }},
+    {t: 0.01, f: () => { tags = [textTag(heroHRP().add(V(0, 15, 0)), "PINNED", "#ff8a7a", 9), textTag(heroHRP().add(V(0, 12.4, 0)), "STUNNED", "#ffd38a", 9)]; }},
     {t: 0.3, f: () => { popNum(torsoPt().add(V(0, 5, 0)), 3, "hit"); hero.hp -= 3; }}, {t: 0.7, f: () => { popNum(torsoPt().add(V(0, 5, 0)), 3, "hit"); hero.hp -= 3; }},
     {t: GO, f: () => { const ctr = torsoPt(); burst(sp, ctr, 1.1); MS.regrow = 0; tags.forEach(killFx); hitStop = 0.08; shake = 1; fovPunch = 3;
-      flash(ctr, 14, 0xfff4e0); feathers(ctr, 34, [0x8c7e6a, 0xd9cdb6, 0x6b5a48, 0xffffff], 1.4, 8); groundRing(V(hero.pos.x, 0, hero.pos.z), 10, 0xffffff, 0.45);
+      flash(ctr, 14, 0xfff4e0); orb(ctr, 9, 0xffffff, 0.3); groundRing(V(hero.pos.x, 0, hero.pos.z), 14, 0xffe0a0, 0.5, 2); feathers(ctr, 34, [0x8c7e6a, 0xd9cdb6, 0x6b5a48, 0xffffff], 1.4, 8); groundRing(V(hero.pos.x, 0, hero.pos.z), 10, 0xffffff, 0.45);
       R0.bite = 0; R0.flinch = 1; R0.push = 12; R0.pushDir.set(0, 0, -1); R0.slow = 2; textTag(rapChest(R0).add(V(0, 11, 0)), "KNOCKED BACK · SLOWED 2 s", "#ffd38a", 1.6);
       textTag(heroHRP().add(V(0, 15, 0)), "BROKE FREE", "#ffffff", 1.4); later(0.25, () => textTag(heroHRP().add(V(0, 12.5, 0)), "IMMUNE 1.4 s", "#cfe6ff", 1.6)); shimmer(() => heroHRP().add(V(0, 1.5, 0)), 9, 0xe6f2ff, 1.4, 0.3); }}];
   return {frame: [V(0, 0, 10), V(0, 0, -26)], keys, ev, tremble: [0, GO],
@@ -641,29 +658,31 @@ function shedTrack(L) {
 
 function portalTrack(L) {
   const cs = MK[isLook("portal", L)].carries;
-  const A = V(0, 0, -10), B = V(0, 0, -62);
+  const A = V(0, 0, -10), B = V(0, 0, -54);
   place(S, 7, 4, 0);
   const T0 = 0.6, REL1 = T0 + 0.4, REL2 = T0 + 0.52, OPEN1 = REL1 + 0.35, OPEN2 = REL2 + 0.8, W0 = OPEN2 + 0.25, IN = W0 + 0.7, OUT = IN + 0.08, W1 = OUT + 0.45, SIN = IN + 0.45, CLOSE = W1 + 1.6, RE = CLOSE + 0.5;
-  S.path = [[0, S.pos.clone(), 0, 0], [W0 + 0.2, S.pos.clone(), 0, 0], [W0 + 0.3, V(5, 0, 0), yawTo(V(7, 0, 4), A), 1], [SIN, V(0, 0, -10.5), 0, 1], [SIN + 0.02, V(0, 0, -62.5), 0, 1], [SIN + 0.5, V(5, 0, -70), yawTo(V(0, 0, -62), V(5, 0, -70)), 0.5], [SIN + 0.7, V(5, 0, -70), 0, 0]];
+  S.path = [[0, S.pos.clone(), 0, 0], [W0 + 0.2, S.pos.clone(), 0, 0], [W0 + 0.3, V(5, 0, 0), yawTo(V(7, 0, 4), A), 1], [SIN, V(0, 0, -10.5), 0, 1], [SIN + 0.02, V(0, 0, -54.5), 0, 1], [SIN + 0.5, V(5, 0, -62), yawTo(V(0, 0, -54), V(5, 0, -62)), 0.5], [SIN + 0.7, V(5, 0, -62), 0, 0]];
   const keys = idleIntro([K(T0 + 0.35, PORT_SET, "io"), K(REL1 + 0.05, PORT_FLING, "in2"), K(REL2 + 0.3, PORT_FLING, "out"), K(W0, T_READY, "io"), K(W1 + 0.3, T_READY)], T0);
   const portals = [];
   const film = (() => { const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d"); const g = x.createRadialGradient(64, 64, 4, 64, 64, 64); g.addColorStop(0, "rgba(220,255,250,.9)"); g.addColorStop(0.6, "rgba(60,230,200,.45)"); g.addColorStop(1, "rgba(30,180,160,.15)"); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
     x.strokeStyle = "rgba(255,255,255,.55)"; x.lineWidth = 5; for (let i = 0; i < 4; i++) { x.beginPath(); x.arc(64, 64, 14 + i * 12, i, i + 2.2); x.stroke(); } return new THREE.CanvasTexture(c); })();
-  const openPortal = (at, k) => { const g = new THREE.Group(); g.position.copy(at).setY(4.8); scene.add(g);
+  const openPortal = (at, k) => { const g = own(new THREE.Group()); g.position.copy(at).setY(4.8);
     g.add(new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.32, 10, 48), gm("portal", "teal")));
     const f = new THREE.Mesh(new THREE.CircleGeometry(4.0, 40), new THREE.MeshBasicMaterial({map: film, transparent: true, depthWrite: false, side: THREE.DoubleSide})); g.add(f); g.userData.film = f;
     for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; const v = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.5, 0.5), MAT.brass); v.position.set(Math.cos(a) * 5.0, Math.sin(a) * 5.0, 0); v.rotation.z = a - Math.PI / 2; g.add(v); }
-    g.scale.setScalar(0.05); portals[k] = g; flash(g.position, 10, 0xb8fff0); groundRing(at, 6, 0x2fe6c8, 0.5); return g; };
+    g.scale.setScalar(0.05); portals[k] = g; flash(g.position, 10, 0xb8fff0); orb(g.position, 5, 0xa8fff0, 0.3); groundRing(at, 7, 0x2fe6c8, 0.5); glowAt(() => g.position, 0x2fe6c8, 11, CLOSE - (k ? OPEN2 : OPEN1) + 0.3, 0.35); rising(() => g.position.clone().add(V(0, -4.6, 0)), 0xa8fff0, CLOSE - (k ? OPEN2 : OPEN1), 10, 7); return g; };
   let pA = [null, null];
-  const ev = [{t: REL1, f: () => { pA[0] = carryPos(cs[0]); }}, {t: REL2, f: () => { pA[1] = carryPos(cs[1]); }},
-    {t: OPEN1, f: () => openPortal(A, 0)}, {t: OPEN2, f: () => { openPortal(B, 1); textTag(B.clone().add(V(0, 13, 0)), "LINKED · 54 studs", "#a8fff0", 1.8);
-      const line = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 52), new THREE.MeshBasicMaterial({map: dashTex, color: 0x2fe6c8, transparent: true, depthWrite: false})); line.rotation.x = -Math.PI / 2; line.position.set(0, 0.14, -36);
+  const ev = [{t: T0, f: () => { cs.forEach(c => { glowAt(() => carryPos(c), 0x2fe6c8, 2.8, 0.5, 0.8); }); rising(() => torsoPt().add(V(0, 0, 6)), 0xa8fff0, 0.45, 26, 4); }},
+    {t: REL1, f: () => { pA[0] = carryPos(cs[0]); trailOn(() => carryPos(cs[0]), 0x2fe6c8, OPEN1 - REL1, 40, 1.1); }}, {t: REL2, f: () => { pA[1] = carryPos(cs[1]); trailOn(() => carryPos(cs[1]), 0x2fe6c8, OPEN2 - REL2, 40, 1.1); }},
+    {t: CLOSE, f: () => { portals.forEach(g => { if (g) { orb(g.position, 4, 0xa8fff0, 0.3); sparks(g.position, V(0, 0.5, 0), 10, 0xa8fff0, 0.6); } }); }},
+    {t: OPEN1, f: () => openPortal(A, 0)}, {t: OPEN2, f: () => { openPortal(B, 1); textTag(B.clone().add(V(0, 13, 0)), "LINKED · 44 studs apart", "#a8fff0", 1.8);
+      const line = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 44), new THREE.MeshBasicMaterial({map: dashTex, color: 0x2fe6c8, transparent: true, depthWrite: false})); line.rotation.x = -Math.PI / 2; line.position.set(0, 0.14, -32);
       addFx(line, 1.2, (o, u) => { o.material.opacity = 0.9 * (1 - u); dashTex.offset.y = -clockT * 3; }); }},
     {t: IN, f: () => { flash(A.clone().setY(5), 12, 0xb8fff0); feathers(A.clone().setY(5), 10, [0x8ff7e6, 0xffffff], 0.8, 4); }},
     {t: OUT, f: () => { flash(B.clone().setY(5), 14, 0xb8fff0); feathers(B.clone().setY(5), 12, [0x8ff7e6, 0xffffff], 0.9, 4); shake = 0.3; }},
     {t: RE, f: () => cs.forEach(c => { const p = carryPos(c); flash(p, 3, 0xb8fff0); sparks(p, V(0, 0.5, 0), 5, 0xa8fff0, 0.4); })},
     {t: SIN, f: () => { flash(A.clone().setY(5), 9, 0xb8fff0); later(0.03, () => { flash(B.clone().setY(5), 10, 0xb8fff0); textTag(rapChest(S).add(V(0, 11, 0)), "SQUADMATE THROUGH", "#8fd0ff", 1.3); }); }}];
-  return {frame: [V(0, 0, 6), V(0, 0, -72)], keys, ev, eyes: [[T0 + 0.1, REL2 + 0.3]],
+  return {frame: [V(0, 0, 6), V(0, 0, -64)], keys, ev, eyes: [[T0 + 0.1, REL2 + 0.3]],
     update(t, dt) {
       PGLOW.portal = t > T0 && t < CLOSE ? 1 : 0; MS.walk = (t > W0 && t < W1) ? 1 : 0;
       portals.forEach((g, i) => { if (!g) return; const o = i ? OPEN2 : OPEN1; const k = t < CLOSE ? E.back(win(t, o, o + 0.3)) : 1 - E.io(win(t, CLOSE, CLOSE + 0.35)); g.scale.setScalar(Math.max(0.01, k)); g.userData.film.rotation.z = t * 2; if (t > CLOSE + 0.36) { scene.remove(g); portals[i] = null; } });
@@ -674,9 +693,9 @@ function portalTrack(L) {
         if (t < r) { carryOff(c); return; }
         if (t < o) { const u = win(t, r, o); const p = pA[i].clone().lerp(to.clone().setY(4.8), u); p.y += 4 * (i ? 9 : 2.5) * u * (1 - u); carryAt(c, new THREE.Matrix4().compose(p, new THREE.Quaternion().setFromEuler(new THREE.Euler(0, t * 12, 0)), V(2, 2, 2).multiplyScalar(1 + 4 * u))); return; }
         carryOff(c); if (t < CLOSE) c.k = 0.001; }); },
-    move(t) { const w = t < W0 ? 0 : t < IN ? -10.5 * win(t, W0, IN) : t < W1 ? -62.5 - 8 * win(t, OUT, W1) : -70.5; return {z: t < IN ? w : t < OUT ? -10.5 : w}; },
+    move(t) { const w = t < W0 ? 0 : t < IN ? -10.5 * win(t, W0, IN) : t < W1 ? -54.5 - 8 * win(t, OUT, W1) : -62.5; return {z: t < IN ? w : t < OUT ? -10.5 : w}; },
     hide: t => t >= IN && t < OUT,
-    phases: [[0, T0, "Slotted: two portal rings on the troodon"], [T0, REL1, "Wind-up: crouch, the rings light up"], [REL1, OPEN2, "Flings both rings: one opens just ahead, one 54 studs away"], [OPEN2, IN, "Linked: walks into the near ring"], [IN, W1, "Out of the far ring; a squadmate follows (star)"], [W1, CLOSE, "The rings stay open 8 s (shown faster)"], [CLOSE, RE + 0.6, "Recovery: they close; new rings grow on the mounts"]],
+    phases: [[0, T0, "Slotted: two portal rings on the troodon"], [T0, REL1, "Wind-up: crouch, the rings light up"], [REL1, OPEN2, "Flings both rings: one opens just ahead, one 54 studs out"], [OPEN2, IN, "Linked: walks into the near ring"], [IN, W1, "Out of the far ring; a squadmate follows (star)"], [W1, CLOSE, "The rings stay open 8 s (shown faster)"], [CLOSE, RE + 0.6, "Recovery: they close; new rings grow on the mounts"]],
     len: RE + 0.7};
 }
 
@@ -696,8 +715,8 @@ function lastTrack(L) {
     {t: BITE, f: () => { const p = torsoPt(); popNum(p.clone().add(V(0, 5, 0)), 12, "big"); flash(p, 8); hero.hp = 1; hitStop = 0.14; shake = 0.9; fovPunch = 4;
       const v = $("vig"); v.style.background = "radial-gradient(ellipse at center, transparent 45%, rgba(255,215,110,.7))"; v.style.transition = "none"; v.style.opacity = 0.8; requestAnimationFrame(() => { v.style.transition = "opacity .7s"; v.style.opacity = 0; });
       textTag(heroHRP().add(V(0, 16, 0)), "LAST FEATHER · 1 HP", "#ffe08a", 1.8); }},
-    {t: SAVE, f: () => { const p = partPoint(hero.segs.Torso[2]); flash(V(0, 0, 0).applyMatrix4(MECH.find(m => m.look === lk && !m.bracket).mesh.matrix), 9, 0xffe08a); feathers(p, 40, [0xffffff, 0xffe08a, 0xd9cdb6], 1.3, 9);
-      zoneBurst(V(hero.pos.x, 0.5, hero.pos.z)); textTag(V(hero.pos.x, 12, hero.pos.z + 4), "GLOW ZONE DROPPED (star)", "#a8fff0", 1.6); }},
+    {t: SAVE, f: () => { orb(torsoPt(), 10, 0xffe08a, 0.4); trailOn(() => partPoint(HAND.L).add(V(0, 1, 0)), 0xfff2c8, land - SAVE - 0.2, 26, 1.2); trailOn(() => partPoint(HAND.R).add(V(0, 1, 0)), 0xfff2c8, land - SAVE - 0.2, 26, 1.2); const p = partPoint(hero.segs.Torso[2]); flash(V(0, 0, 0).applyMatrix4(MECH.find(m => m.look === lk && !m.bracket).mesh.matrix), 9, 0xffe08a); feathers(p, 40, [0xffffff, 0xffe08a, 0xd9cdb6], 1.3, 9);
+      zoneBurst(V(hero.pos.x, 0.5, hero.pos.z)); selfHeal.splice(0); textTag(V(hero.pos.x, 12, hero.pos.z + 4), "ZONE DROPPED (★)", "#a8fff0", 1.6); }},
     {t: SAVE + 0.05, f: () => { textTag(heroHRP().add(V(0, 13, 0)), "UNTOUCHABLE 1 s", "#cfe6ff", 1.2); shimmer(() => heroHRP().add(V(0, 1, 0)), 9, SHIELD_BLUE, 1.0, 0.5); }},
     {t: SAVE + 0.38, f: () => { R1.lunge = 1; later(0.18, () => textTag(V(-1.5, 9, 8), "MISS", "#ffffff", 1.1)); }}];
   return {frame: [V(0, 0, 22), V(0, 0, -40)], keys, ev, eyes: [[BITE, UNT]],
@@ -708,15 +727,16 @@ function lastTrack(L) {
 }
 
 function plumeTrack(L) {
-  zoneScene(); place(R2, 6.5, -8.5); R2.yaw = yawTo(R2.pos, V(0, 0, 0));
+  zoneScene(); place(R2, -9, -6); R2.yaw = yawTo(R2.pos, V(0, 0, 0));
   heroBar.on = true; hero.hp = 55; hero.max = 55; hero.plume = 0; S.max = 60; setHp(S, 60); S.hpShow = true; S.plume = 0;
   const T0 = 0.6, REL = T0 + 0.34, FLY = 0.55, SPLAT = REL + FLY, OVER = SPLAT + 0.35, TICK = SPLAT + 1.0, BITE = SPLAT + 1.35;
   const keys = idleIntro(THROW(T0), T0);
   const ev = [{t: REL, f: () => throwPod({kind: "pod", from: handsPoint(), target: () => R0.pos.clone().setY(1), T: FLY, H: 9, onHit: p => { zoneBurst(p); selfHeal.splice(0); }})},
-    {t: OVER, f: () => { const p = partPoint(mouthParts.skull).add(V(0, 6, 0)); popNum(p, "+4", "heal"); textTag(p.clone().add(V(0, 6, 0)), "FULL · +4 PLUME", "#ffe08a", 1.6); hero.plume = 4; heroHeal = 0.4; }},
-    {t: TICK + 0.02, f: () => { S.plume = 5; textTag(rapChest(S).add(V(0, 14, 0)), "SQUADMATE +5 PLUME (star)", "#ffe08a", 1.6); shimmer(() => rapChest(S), 6.5, GOLD, 2.2, 0.35); }},
+    {t: OVER, f: () => { const p = partPoint(mouthParts.skull).add(V(0, 6, 0)); popNum(p, "+4", "heal"); textTag(p.clone().add(V(0, 6, 0)), "FULL · +4 PLUME", "#ffe08a", 1.6); hero.plume = 4; heroHeal = 0.4;
+      const pc = () => partCentreOf(isLook("plume", L)); rising(() => torsoPt(), GOLD, 0.5, 30, 3); later(0.3, () => { flash(pc(), 5, GOLD); glowAt(pc, GOLD, 5, BITE - OVER - 0.3, 0.6); }); }},
+    {t: TICK + 0.02, f: () => { S.plume = 5; textTag(rapChest(S).add(V(0, 14, 0)), "+5 PLUME (★)", "#ffe08a", 1.6); shimmer(() => rapChest(S), 6.5, GOLD, 2.2, 0.35); }},
     {t: BITE - 0.3, f: () => { R2.lunge = 1; }},
-    {t: BITE, f: () => { const p = torsoPt(); shimmer(() => heroHRP().add(V(0, 1, 0)), 8, 0xffffff, 0.3, 0.7); flash(p, 9, 0xffffff); popNum(p.clone().add(V(0, 5, 0)), 2, "hit"); hero.plume = 0; hero.hp = 53; textTag(heroHRP().add(V(0, 15, 0)), "6 HIT · PLUME SOAKS 4", "#ffe08a", 1.6); shake = 0.4; }}];
+    {t: BITE, f: () => { const p = torsoPt(); orb(p, 7, 0xffffff, 0.25); sparks(p, V(0, 1, 0), 10, GOLD, 0.6); shimmer(() => heroHRP().add(V(0, 1, 0)), 8, 0xffffff, 0.3, 0.7); flash(p, 9, 0xffffff); popNum(p.clone().add(V(0, 5, 0)), 2, "hit"); hero.plume = 0; hero.hp = 53; textTag(heroHRP().add(V(0, 15, 0)), "6 HIT · PLUME SOAKS 4", "#ffe08a", 1.6); shake = 0.4; }}];
   return {frame: [V(0, 0, 2), V(0, 0, -46)], keys, ev, eyes: [[T0, REL + 0.4]],
     update(t) { MS.plume = hero.plume / 14; PGLOW.plume = hero.plume > 0 ? 1.2 + Math.sin(t * 10) * 0.3 : t > BITE && t < BITE + 0.25 ? 3 : -0.6; },
     phases: [[0, T0, "Slotted: the plume is dark (no overheal yet)"], [T0, SPLAT, "At full health it throws a glow pod"], [SPLAT, OVER, "The splat hits 2 enemies: +4 self-heal"], [OVER, TICK, "Already full: the +4 becomes a gold plume (it lights up)"], [TICK, BITE, "The zone heals a full squadmate: its +5 becomes a plume too (star)"], [BITE, BITE + 1.2, "A raptor bites for 6: the plume soaks 4, health takes 2"]],
@@ -730,10 +750,10 @@ function fortifyTrack(L) {
   const keys = idleIntro(THROW(T0), T0);
   let shell = null;
   const ev = [{t: REL, f: () => throwPod({kind: "pod", from: handsPoint(), target: () => R0.pos.clone().setY(1), T: FLY, H: 9, onHit: p => { zoneBurst(p); }})},
-    {t: SPLAT + 0.05, f: () => { shell = shimmer(() => rapChest(S), 6.5, 0x2fe6c8, OFF - SPLAT, 0.55); textTag(rapChest(S).add(V(0, 14, 0)), "FORTIFIED · −25% DAMAGE", "#a8fff0", 2); }},
+    {t: SPLAT + 0.05, f: () => { aura(() => S.rig.pos, 5, 0x2fe6c8, OFF - SPLAT, 0.3); tether(() => V(R0.pos.x, 1, R0.pos.z), () => rapChest(S), 0x8ff7e6, 0.6, 0.15, 0.6); flash(partCentreOf(isLook("fortify", L)), 5, 0x8ff7e6); shell = shimmer(() => rapChest(S), 6.5, 0x2fe6c8, OFF - SPLAT, 0.55); textTag(rapChest(S).add(V(0, 14, 0)), "FORTIFIED −25%", "#a8fff0", 2); }},
     {t: BITE - 0.25, f: () => { R0.lunge = 1; }},
-    {t: BITE, f: () => { const p = rapChest(S); flash(p, 7, 0xa8fff0); popNum(p.clone().add(V(0, 5, 0)), 6, "hit"); textTag(p.clone().add(V(0, 9.5, 0)), "8 → 6", "#a8fff0", 1.3); S.flinch = 0.7; setHp(S, S.hp - 6); }},
-    {t: OUTZ, f: () => textTag(rapChest(S).add(V(0, 12, 0)), "LEFT THE ZONE · LINGERS 1.4 s", "#a8fff0", 1.4)}];
+    {t: BITE, f: () => { const p = rapChest(S); flash(p, 7, 0xa8fff0); orb(p, 6.5, 0x8ff7e6, 0.25); popNum(p.clone().add(V(0, 5, 0)), 6, "hit"); textTag(p.clone().add(V(0, 9.5, 0)), "8 → 6", "#a8fff0", 1.3); S.flinch = 0.7; setHp(S, S.hp - 6); }},
+    {t: OUTZ, f: () => textTag(rapChest(S).add(V(0, 12, 0)), "LINGERS 1.4 s", "#a8fff0", 1.4)}];
   return {frame: [V(0, 0, 2), V(0, 0, -46)], keys, ev, eyes: [[T0, REL + 0.4]],
     update(t) { PGLOW.fortify = t > SPLAT && t < SPLAT + 3 ? 1.2 + Math.sin(t * 8) * 0.4 : 0; },
     phases: [[0, T0, "Slotted: the emitter idles"], [T0, SPLAT, "Throws a glow pod (the normal attack)"], [SPLAT, BITE, "Squadmates inside the zone are fortified: −25% damage"], [BITE, LEAVE, "A raptor bites for 8: the squadmate takes 6"], [LEAVE, OFF, "It walks out: the fortify lingers 1.4 s (III)"], [OFF, OFF + 0.6, "Off"]],
@@ -744,8 +764,8 @@ function ricochetTrack(L) {
   place(R0, -2, -40); place(R1, 11, -52); R0.yaw = yawTo(R0.pos, V(0, 0, 0)); R1.yaw = yawTo(R1.pos, V(0, 0, 0));
   const T0 = 0.6, REL = T0 + 0.34, FLY = 0.55, SPLAT = REL + FLY, B2 = SPLAT + 0.47;
   const keys = idleIntro(THROW(T0), T0);
-  const ev = [{t: REL, f: () => { MS.kick = 1; throwPod({kind: "pod", from: handsPoint(), target: () => R0.pos.clone().setY(1), T: FLY, H: 9, onHit: p => { zoneBurst(p); selfHeal.splice(0);
-      textTag(p.clone().add(V(0, 12, 0)), "BOUNCE", "#ffd38a", 1.1); sparks(p, V(0.6, 1, -0.5), 8, 0xffe7a8, 0.6);
+  const ev = [{t: REL, f: () => { for (const hnd of [HAND.L, HAND.R]) { const q = partPoint(hnd); flash(q, 3, 0xffd27a); sparks(q, V(0, 0.5, -1), 5, 0xffe7a8, 0.5); } throwPod({kind: "pod", from: handsPoint(), target: () => R0.pos.clone().setY(1), T: FLY, H: 9, onHit: p => { zoneBurst(p); selfHeal.splice(0);
+      textTag(p.clone().add(V(0, 12, 0)), "BOUNCE", "#ffd38a", 1.1); sparks(p, V(0.6, 1, -0.5), 12, 0xffe7a8, 0.7); orb(p, 3.5, 0xffd27a, 0.25);
       throwPod({kind: "pod", from: p.clone().add(V(0, 1.5, 0)), target: () => R1.pos.clone().setY(1), T: B2 - SPLAT, H: 6, onHit: q => { zoneBurst(q); selfHeal.splice(0); textTag(q.clone().add(V(0, 12, 0)), "2ND ZONE · 20 studs", "#a8fff0", 1.4); }}); }}); }}];
   return {frame: [V(0, 0, 2), V(0, 0, -56)], keys, ev, eyes: [[T0, REL + 0.4]],
     update(t) { MS.spring = t < T0 ? 0 : t < REL ? E.io(win(t, T0, REL)) : 1 - E.out(win(t, REL, REL + 0.12)); PGLOW.ricochet = t > T0 && t < REL + 0.3 ? 1.5 : t > SPLAT && t < B2 ? 1 : 0; },
@@ -759,6 +779,16 @@ function allTrack() { // the kit's moves that swing the long arms / tail most: p
   return {frame: [V(0, 0, 8), V(0, 0, -10)], keys, ev: [], phases: [[0, 1.2, "All chosen parts on at once (idle)"], [1.2, 2.4, "Pod throw (arms forward, neck down)"], [2.4, 3.5, "Flap up / down (arms raised out to the sides)"], [3.5, 4.6, "Glide (arms spread wide)"], [4.6, 6.2, "One-arm wind-up (arm back)"]], len: 6.2};
 }
 
+// a text tag sized to its text (replaces the engine's fixed 320-px one; the last declaration wins)
+function textTag(p, text, color, life) {
+  const c = document.createElement("canvas"); const x0 = c.getContext("2d"); x0.font = `800 28px "Trebuchet MS", system-ui, sans-serif`; const tw = Math.ceil(x0.measureText(text).width) + 40;
+  c.width = Math.max(120, tw); c.height = 64; const x = c.getContext("2d"); x.font = `800 28px "Trebuchet MS", system-ui, sans-serif`;
+  x.fillStyle = "rgba(10,20,14,.8)"; x.beginPath(); x.roundRect ? x.roundRect(2, 8, c.width - 4, 48, 24) : x.rect(2, 8, c.width - 4, 48); x.fill();
+  x.textAlign = "center"; x.fillStyle = color; x.fillText(text, c.width / 2, 42);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(c), transparent: true, depthTest: false})); s.renderOrder = 9;
+  s.position.copy(p); s.scale.set(2.4 * c.width / 64, 2.4, 1);
+  return addFx(s, life, (o, u) => { o.material.opacity = u < 0.08 ? u / 0.08 : u > 0.85 ? (1 - u) / 0.15 : 1; });
+}
 // ---------- layered VFX helpers (each maps to a Roblox piece: glow = Neon + PointLight, trail = Trail / ParticleEmitter,
 // orb = the MineBurst neon ball, crackle = MineServer's re-drawn zap Beams, aura = TenoBellowAura disc) ----------
 function glowAt(fn, color, size, life, op) { const s = sprite(T_FLASH, color, size, true); return addFx(s, life, (o, u) => { o.position.copy(fn()); o.material.opacity = (op || 0.8) * Math.min(1, u * life / 0.1) * (1 - u * u); o.scale.setScalar(size * (0.9 + 0.1 * Math.sin(clockT * 20))); }); }
@@ -906,7 +936,7 @@ function lookOn(look) {
   if (id !== "all") return pid === id && L === variant;
   return allOn[pid] && (variant === "R" ? REC[pid] === L : L === variant);
 }
-function resetFx() { fx.splice(0).forEach(e => scene.remove(e.obj)); tshots.splice(0).forEach(s => { scene.remove(s.mesh); scene.remove(s.glow); }); zones.splice(0).forEach(Z => scene.remove(Z.g)); selfHeal.splice(0); flies.splice(0).forEach(f => scene.remove(f.obj)); delayed = []; CARRY.forEach(c => { carryOff(c); c.k = 1; }); }
+function resetFx() { fx.splice(0).forEach(e => scene.remove(e.obj)); tshots.splice(0).forEach(s => { scene.remove(s.mesh); scene.remove(s.glow); }); zones.splice(0).forEach(Z => scene.remove(Z.g)); selfHeal.splice(0); flies.splice(0).forEach(f => scene.remove(f.obj)); OWNED.splice(0).forEach(o => scene.remove(o)); delayed = []; CARRY.forEach(c => { carryOff(c); c.k = 1; }); }
 function start() {
   resetFx(); msReset();
   for (const R of raps) { Object.assign(R, {flinch: 0, flash: 0, push: 0, slow: 0, tagged: false, path: null, run: 0, heal: 0, lunge: 0, bite: 0, show: false, hpShow: false, plume: 0, _bit: 0}); }
@@ -1016,6 +1046,7 @@ function partCentre() {
   for (const p of MECH) if (p.mesh.visible && !p.bracket) { c.add(_pa.setFromMatrixPosition(p.mesh.matrix)); n++; }
   return n ? c.divideScalar(n) : partPoint(hero.segs.Torso[2]);
 }
+function partCentreOf(look) { const c = new THREE.Vector3(); let n = 0; for (const p of MECH) if (p.look === look && p.mesh.visible && !p.bracket) { c.add(_pa.setFromMatrixPosition(p.mesh.matrix)); n++; } return n ? c.divideScalar(n) : torsoPt(); }
 function render(dt) {
   const tr0 = play.track;
   shake = Math.max(0, shake - dt * 4.2); fovPunch = Math.max(0, fovPunch - dt * 14);
@@ -1024,7 +1055,7 @@ function render(dt) {
   const hfov = 2 * Math.atan(Math.tan(rad(fov / 2)) * cam.aspect), vfit = span * 0.5 / Math.tan(Math.min(hfov, rad(fov)) / 2);
   if (camMode === "game") { fov = 70; const f = heroHRP().add(V(0, CAMF.focus, 0)); const back = V(0, Math.sin(CAMF.pitch), Math.cos(CAMF.pitch)).multiplyScalar(CAMF.dist);
     cp = f.clone().add(V(CAMF.side, CAMF.height, 0)).add(back); look = cp.clone().sub(back); snap = 0.25; }
-  else if (camMode === "hero") cp = mid.clone().add(V(1, 0.5, -0.6).normalize().multiplyScalar(vfit * 1.0));
+  else if (camMode === "hero") cp = mid.clone().add(V(1, 0.5, -0.6).normalize().multiplyScalar(vfit * 0.8));
   else if (camMode === "side") cp = mid.clone().add(V(1, 0.14, 0).normalize().multiplyScalar(vfit * 1.05));
   else if (camMode === "top") { cp = mid.clone().add(V(0.12, 1, 0.3).normalize().multiplyScalar(vfit * 0.95)); }
   else { const c = M().id === "all" ? partPoint(hero.segs.Torso[0]).add(V(0, 1, 0)) : partCentre(); const d = M().id === "all" ? 34 : 17; cp = c.clone().add(V(0.78, 0.42, -0.46).normalize().multiplyScalar(d)); look = c; snap = 0.3; }
