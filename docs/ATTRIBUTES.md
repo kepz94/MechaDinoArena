@@ -3087,3 +3087,9 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooPartShedEnabled / Immune / Cooldown / KnockRadius / SlowMul / SlowTime | troodon character | while oshed bought + slotted (I 1 / 24 / 0 / 1 / 0; ★ 1.4 / 17.7 / 20 / 0.75 / 2) | SkillEffects 1.48 |
 | TrooPartPortalEnabled / Range / Time / Squad / Cooldown | troodon character | while oportal bought + slotted (I 40 / 6 / false / 20; ★ 54 / 8.1 / true / 20) | SkillEffects 1.48 |
 | TrooPartsSlotted | troodon character | diagnostic: comma list of the part ids written on ("" none) | SkillEffects 1.48 |
+| TrooPartsServerEnabled; TrooPartsFitEnabled; TrooParts_<id>Enabled | TrooPartsServer script | true (read at start); true (read at each build; false = the mockup's seats); true per part (read on each apply) | TrooPartsServer 1.0 |
+| TrooPartsServerVersion; TrooPartsLooksVersion; TrooPartsSegRoots | TrooPartsServer script | "1.0"; "1.0" / "missing"; 17 | TrooPartsServer 1.0 diagnostics |
+| TrooPartsBuilt | troodon character | diagnostic "<id>=<pieces>,..." | TrooPartsServer 1.0 |
+| OPartRole / OPartAnim / OPartGlow / OPartBaseColor / OPartIndex (pieces); OPartFrame / OPartBuiltScale (Weld OPartJoint); OPartId (model, marks) | OPart_<id> pieces | role "" / carry / carry1 / carry2 / shed / bracket; anim "" / spin / open / spring; glow key | TrooPartsServer 1.0 -> TrooPartsFX |
+| LabOPartsEnabled | Lab script | true (read at each check; false = 1.13) | Lab 1.14 |
+| MainMenuOPartsEnabled | MainMenu script | true (read at each check; false = 1.20) | MainMenu 1.21 |
