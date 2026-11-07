@@ -3055,3 +3055,11 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooPoseTestKey | troodon character (Studio test hook) | nil (unset in play); a key name holds that key exactly | TrooPose 1.0 |
 | TrooPoseVersion; TrooPoseState; TrooPoseSource; TrooHopPhase; TrooEyeFlare; TrooGroundShift | troodon character (this client) | "1.0"; "throw" / "cancel" / "none" / "test:<key>"; "local" / "server"; "crouch" / "air" / "land" / "none"; bool; studs | TrooPose 1.0 diagnostics |
 | DisplayModelsVersion | Workspace.DinoArcade_<Species> folder and its <Species>_Display model (Studio only) | "1.0" / "1.1" (the installer version that built it) | tools/display_models_install 1.1 |
+| JumpAirJumps | character (TroodonModelData 1.3: 2) | missing = 1 (one double jump per leap, the pachy) | JumpTest 1.6 / JumpServer 1.5: air jumps per leap |
+| JumpAirJumpsEnabled | JumpTest script | nil = true (read at each air jump) | JumpTest 1.6 |
+| JumpAirJumpsLocal; JumpAirJumpsLocalAt | character (owner client) | air jumps used in this leap (0 at launch); os.clock of the last one | JumpTest 1.6 diagnostics (GliderTest 1.1 reads JumpAirJumpsLocal) |
+| JumpServerAirJumpsEnabled | JumpServer script | nil = true (read at each request) | JumpServer 1.5 |
+| JumpAirJumpsUsed | character (server) | air jumps accepted in the current leap | JumpServer 1.5 diagnostic |
+| JumpDoubleEnabled / JumpDoubleMul / JumpDoubleForward / GliderEnabled / GliderAuto / GliderFall | troodon character | true / 0.8 / 0 / true / true / 8 (TroodonModelData 1.3) | the flaps (JumpTest 1.6) and the auto glide (GliderTest 1.1) |
+| SkillEffectsTrooFlapKeepEnabled | SkillEffects script | true (read at each write) | SkillEffects 1.47: the troodon keeps its flap / glide values |
+| MechaLegsFXTrooSkipEnabled | MechaLegsFX script | true (read at each double jump) | MechaLegsFX 1.2: no Mecha Legs effect on a troodon flap |

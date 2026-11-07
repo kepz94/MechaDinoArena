@@ -1,4 +1,4 @@
--- JumpTest v1.5 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
+-- JumpTest v1.6 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
 -- button. Only active while the character attribute JumpEnabled is true (default false: the T-Rex keeps the
 -- default Roblox jump untouched).
 -- v1.1 (pachy Mecha Legs star, MDA-123): while JumpDoubleEnabled (SkillEffects 1.15) is true, a NEW jump press (the
@@ -35,6 +35,14 @@
 --   hop, 0.1 steps).
 --   Kepu 2026-11-06: hop ~5.3 studs high, JumpHopPower 40 (TroodonModelData 1.1); ~4 studs (power 36) made the Humanoid land
 --   at the top of the arc (Landed 0.22 s after launch, the hop cut to ~9 studs).
+-- v1.6 (Troodon Flap & Glide, MDA-340, plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md Task 1; Kepu 2026-11-06 17:50 "Build",
+--   mockup v0.2 J3): the character attribute JumpAirJumps (number; missing / below 1 = 1, the pachy's Mecha Legs rule) sets
+--   how many 1.1 double jumps (air jumps) one leap allows: each one needs a NEW press in mid-air and reuses the 1.1 code
+--   (vertical speed JumpLaunchPower x JumpDoubleMul, DinoJumpDoubleRequest -> JumpServer 1.5, JumpDoublePredictedAt). After
+--   the last one a press does nothing. Only TroodonModelData 1.3 sets it (2: a leap + 2 wing flaps). Switch: script attribute
+--   JumpAirJumpsEnabled (default true, read at each air jump; false = 1.5: one per leap). Diagnostics: JumpAirJumpsLocal (air
+--   jumps used in the current leap; GliderTest 1.1's auto glide starts after the last one), JumpAirJumpsLocalAt (os.clock
+--   of the last one, this client).
 -- While enabled, the Humanoid's built-in Jumping state is turned off, so a press never jumps straight away. Instead:
 --   1. Press (when allowed): JumpPredictedAt = server time (this client only, so the crouch shows at once) and
 --      DinoJumpRequest:FireServer(that time) (JumpServer 1.0 validates and sets the replicated JumpStartedAt).
@@ -89,6 +97,8 @@ local SUPPRESS_ON = script:GetAttribute("JumpSuppressEnabled") ~= false
 local function suppressed() return SUPPRESS_ON and char:GetAttribute("JumpSuppressed") == true end
 char:SetAttribute("JumpTestVersion", "1.3") -- v1.3 (the model data carries "1.0")
 char:SetAttribute("JumpTestVersion", "1.5") -- v1.5 (1.4 did not bump this line)
+char:SetAttribute("JumpTestVersion", "1.6") -- v1.6
+if script:GetAttribute("JumpAirJumpsEnabled") == nil then script:SetAttribute("JumpAirJumpsEnabled", true) end -- v1.6
 if script:GetAttribute("JumpHopBackEnabled") == nil then script:SetAttribute("JumpHopBackEnabled", true) end -- v1.5
 local function hopMode() return script:GetAttribute("JumpHopBackEnabled") ~= false and char:GetAttribute("JumpHopBack") == true end
 
@@ -252,6 +262,11 @@ local function tryPress()
 end
 
 local doubleUsed, wasHeld = false, false -- v1.2: declared before launch() (see header)
+local airUsed = 0 -- v1.6: air jumps used in this leap
+local function airLimit() -- v1.6: JumpAirJumps (missing / < 1 = 1)
+	if script:GetAttribute("JumpAirJumpsEnabled") == false then return 1 end
+	return math.max(1, math.floor(tonumber(char:GetAttribute("JumpAirJumps")) or 1))
+end
 local function launch()
 	local v = hrp.AssemblyLinearVelocity
 	local hv = Vector3.new(v.X, 0, v.Z)
@@ -274,6 +289,8 @@ local function launch()
 	launchPos = hrp.Position
 	state = "air"
 	doubleUsed = false -- v1.1
+	airUsed = 0 -- v1.6
+	show("JumpAirJumpsLocal", 0)
 	show("JumpDoubleLocal", "ready")
 	show("JumpLaunchCount", (char:GetAttribute("JumpLaunchCount") or 0) + 1)
 	show("JumpTakeoffSpeed", math.floor(takeoff * 2 + 0.5) / 2)
@@ -284,7 +301,10 @@ end
 -- v1.1: Mecha Legs double jump
 local doubleRemote
 local function doubleJump()
-	doubleUsed = true
+	airUsed += 1 -- v1.6
+	doubleUsed = airUsed >= airLimit()
+	show("JumpAirJumpsLocal", airUsed)
+	show("JumpAirJumpsLocalAt", os.clock())
 	local v = hrp.AssemblyLinearVelocity
 	local power = get("JumpLaunchPower") * (tonumber(char:GetAttribute("JumpDoubleMul")) or 0.894)
 	local fwdAdd = tonumber(char:GetAttribute("JumpDoubleForward")) or 0 -- v1.2

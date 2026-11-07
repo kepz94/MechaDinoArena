@@ -1,4 +1,4 @@
--- JumpServer v1.4 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
+-- JumpServer v1.5 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
 -- Client -> server: ReplicatedStorage.DinoJumpRequest:FireServer(clientServerTime) (sent by JumpTest 1.0 at the
 --   key press, i.e. the start of the crouch).
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now], written to the character attribute
@@ -42,12 +42,19 @@
 --   Cuts star) fires it today; nothing changes for a dino it is not fired for. Switch: script attribute JumpAddChargeEnabled
 --   (default true, read at each fire). Diagnostics: script JumpAddCharges (count of "ok"); character JumpAddChargeResult,
 --   JumpAddChargeAt.
+-- v1.5 (Troodon Flap & Glide, MDA-340, plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md Task 1): the 1.2 double jump accepts up
+--   to JumpAirJumps requests per accepted leap (character attribute; missing / below 1 = 1, the 1.2 rule for the pachy); the
+--   one after the last is "used". Each "ok" stamps JumpDoubleAt / JumpDoubleCount as 1.2 and sets JumpAirJumpsUsed (count in
+--   this leap). Only TroodonModelData 1.3 sets JumpAirJumps (2). Switch: script attribute JumpServerAirJumpsEnabled (default
+--   true, read at each request; false = 1.4: one per leap).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DEFAULTS = {JumpEnabled = false, JumpStaminaCost = 15, JumpCooldown = 0.5, StaminaEnabled = true,
 	StaminaMax = 100}
 script:SetAttribute("JumpServerVersion", "1.3") -- v1.1; v1.2; v1.3
 script:SetAttribute("JumpServerVersion", "1.4") -- v1.4 JumpAddCharge hook
+script:SetAttribute("JumpServerVersion", "1.5") -- v1.5 JumpAirJumps
+if script:GetAttribute("JumpServerAirJumpsEnabled") == nil then script:SetAttribute("JumpServerAirJumpsEnabled", true) end -- v1.5
 if script:GetAttribute("JumpPinnedBlockEnabled") == nil then script:SetAttribute("JumpPinnedBlockEnabled", true) end
 local MAX_LAG = 0.3 -- seconds a client stamp may lag behind the server clock (same as BiteServer)
 
@@ -166,6 +173,11 @@ if not doubleRemote then
 	doubleRemote.Parent = ReplicatedStorage
 end
 local doubleFor = setmetatable({}, {__mode = "k"}) -- character -> the leap time its double jump was used on
+local airCount = setmetatable({}, {__mode = "k"}) -- v1.5: character -> air jumps accepted since doubleFor's leap
+local function airLimit(char) -- v1.5
+	if script:GetAttribute("JumpServerAirJumpsEnabled") == false then return 1 end
+	return math.max(1, math.floor(tonumber(char:GetAttribute("JumpAirJumps")) or 1))
+end
 doubleRemote.OnServerEvent:Connect(function(player, stamp)
 	local char = player.Character
 	if not char then return end
@@ -183,13 +195,15 @@ doubleRemote.OnServerEvent:Connect(function(player, stamp)
 		result = "pinned"
 	elseif not leap or now - leap > DOUBLE_WINDOW then
 		result = "noLeap"
-	elseif doubleFor[char] == leap then
+	elseif doubleFor[char] == leap and (airCount[char] or 1) >= airLimit(char) then -- v1.5: up to JumpAirJumps
 		result = "used"
 	else
 		result = "ok"
 	end
 	char:SetAttribute("JumpDoubleResult", result)
 	if result == "ok" then
+		airCount[char] = (doubleFor[char] == leap and (airCount[char] or 1) or 0) + 1 -- v1.5
+		char:SetAttribute("JumpAirJumpsUsed", airCount[char])
 		doubleFor[char] = leap
 		char:SetAttribute("JumpDoubleCount", (char:GetAttribute("JumpDoubleCount") or 0) + 1)
 		char:SetAttribute("JumpDoubleAt", math.clamp(stamp, now - MAX_LAG, now))

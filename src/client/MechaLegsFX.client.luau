@@ -1,4 +1,4 @@
--- MechaLegsFX v1.1 (Mecha Dino Arena) — the Mecha Legs double-jump effect on this client (LocalScript,
+-- MechaLegsFX v1.2 (Mecha Dino Arena) — the Mecha Legs double-jump effect on this client (LocalScript,
 -- StarterPlayerScripts). MDA-123, plan docs/plans/PACHY_PARTS_v1.0.md Drop B Task 10 (mockup: heel vents puff + a ring).
 -- For every player character: a fresh JumpDoubleAt (JumpServer 1.2; other players) or JumpDoublePredictedAt (own
 --   character, set by JumpTest 1.1 at once) shows, under the feet: a white ring that widens and fades (0.35 s) and an
@@ -16,10 +16,16 @@
 --   Double jump: the same burst at 1.6 x size and 10 speed lines, on top of the 1.0 ring and puffs.
 --   Switch: character attribute MechaLegsFXLeapEnabled (default true; false = 1.0, double jump ring and puffs only).
 --   Diagnostic: MechaLegsFXLeapCount.
+-- v1.2 (Troodon Flap & Glide, MDA-340, plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md Task 1): the troodon's wing flaps are the
+--   same double jump (JumpTest 1.6 / JumpServer 1.5 JumpAirJumps), so its JumpDoubleAt / JumpDoublePredictedAt fired this
+--   ring / heel puffs / fire burst on every flap (seen in Play: MechaLegsFXCount 3 after a leap + 2 flaps). A character with
+--   Species "Troodon" gets no Mecha Legs effect (its flaps get TrooFX 1.1's feather puff). The pachy unchanged. Switch: script
+--   attribute MechaLegsFXTrooSkipEnabled (default true, read at each double jump; false = 1.1).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
+if script:GetAttribute("MechaLegsFXTrooSkipEnabled") == nil then script:SetAttribute("MechaLegsFXTrooSkipEnabled", true) end -- v1.2
 local STALE = 1
 local ORANGE = Color3.fromRGB(255, 170, 60)
 local player = Players.LocalPlayer
@@ -153,6 +159,7 @@ end
 
 local lastShown = setmetatable({}, {__mode = "k"})
 local function maybe(char, at)
+	if char:GetAttribute("Species") == "Troodon" and script:GetAttribute("MechaLegsFXTrooSkipEnabled") ~= false then return end -- v1.2
 	if typeof(at) ~= "number" or math.abs(workspace:GetServerTimeNow() - at) > STALE then return end
 	if lastShown[char] and math.abs(at - lastShown[char]) < 0.5 then return end -- one effect per jump
 	lastShown[char] = at

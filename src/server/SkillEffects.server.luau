@@ -1,4 +1,4 @@
--- SkillEffects v1.46 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.47 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -301,6 +301,12 @@ local ServerStorage = game:GetService("ServerStorage")
 --   "Troodon" alone, like the therizino (1.38): its JumpCharges 2 / JumpCooldown 4 / JumpHopBack come from TroodonModelData 1.1
 --   (the Evade Hop; without this every refresh wrote JumpCharges 0). Switch: script attribute SkillEffectsTrooLeapKeepEnabled
 --   (default true, read at each write; false = 1.45).
+-- v1.47 (Troodon Flap & Glide, MDA-340, plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md Task 1): on a character with Species
+--   "Troodon" the Mecha Legs writer (1.15 / 1.16) leaves JumpDoubleEnabled / JumpDoubleMul / JumpDoubleForward alone and the
+--   Herrera parts writer (1.27) skips the Glider Wings row (GliderEnabled / GliderFall / GliderDrop / GliderDropMul /
+--   GliderBurst): the troodon's flaps and glide come from TroodonModelData 1.3 (JumpAirJumps / GliderAuto are written by no
+--   writer). Every other dino as 1.46. Switch: script attribute SkillEffectsTrooFlapKeepEnabled (default true, read at each
+--   write; false = 1.46).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -321,6 +327,11 @@ VERSION = "1.43" -- v1.43 TheriSnareRange (bola reach)
 VERSION = "1.44" -- v1.44 TheriClockJump (Overclock III extra jump)
 VERSION = "1.45" -- v1.45 dilo button parts (DPARTS)
 VERSION = "1.46" -- v1.46 troodon keeps its own hop values
+VERSION = "1.47" -- v1.47 troodon keeps its flap / glide values
+if script:GetAttribute("SkillEffectsTrooFlapKeepEnabled") == nil then script:SetAttribute("SkillEffectsTrooFlapKeepEnabled", true) end -- v1.47
+local function trooFlapKeep(char) -- v1.47
+	return char:GetAttribute("Species") == "Troodon" and script:GetAttribute("SkillEffectsTrooFlapKeepEnabled") ~= false
+end
 if script:GetAttribute("SkillEffectsTenoEnabled") == nil then script:SetAttribute("SkillEffectsTenoEnabled", true) end -- v1.31
 local TENO_ON = script:GetAttribute("SkillEffectsTenoEnabled") ~= false
 local TENO_ATTRS = { -- v1.31: {attribute, effect field, off value}
@@ -681,9 +692,11 @@ local function applyChar(char, st)
 		if mlOn then
 			writeOwn(st, char, "JumpCooldown", round(e.legsCooldown * (e.legsCdMul or 1) * (e.moveCdMul or 1), 0.01))
 		end
-		char:SetAttribute("JumpDoubleEnabled", mlOn and e.doubleJump == true)
-		char:SetAttribute("JumpDoubleMul", e.legsDoubleMul or 0.894) -- v1.16 (was 0.894)
-		char:SetAttribute("JumpDoubleForward", mlOn and e.legsDoubleForward or 0) -- v1.16
+		if not trooFlapKeep(char) then -- v1.47: the troodon's flaps come from its model data
+			char:SetAttribute("JumpDoubleEnabled", mlOn and e.doubleJump == true)
+			char:SetAttribute("JumpDoubleMul", e.legsDoubleMul or 0.894) -- v1.16 (was 0.894)
+			char:SetAttribute("JumpDoubleForward", mlOn and e.legsDoubleForward or 0) -- v1.16
+		end
 		char:SetAttribute("MechaLegsLook", mlOn and e.legsLook == true)
 	end
 	if BLOOD_ON then -- v1.17: Blood Rush (pachy only, slotted)
@@ -700,6 +713,7 @@ local function applyChar(char, st)
 		local isH = char:GetAttribute("Species") == "Herrera"
 		for _, def in ipairs(HPARTS) do
 			local id, prefix = def[1], def[2]
+			if id == "glider" and trooFlapKeep(char) then continue end -- v1.47: the troodon's glide comes from its model data
 			local passive = script:GetAttribute("SkillEffectsHerreraPassiveEnabled") ~= false and ST.BUTTONS[id] ~= true -- v1.28
 			local on = live and isH and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and (inSlot(id) or passive)
 			for _, f in ipairs(def[3]) do
