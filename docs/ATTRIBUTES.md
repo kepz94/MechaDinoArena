@@ -3050,3 +3050,6 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooFXVersion; TrooFXEvents / TrooFXLast / TrooFXParts / TrooFXZones / TrooFXRingTarget | TrooFX script (this client) | "1.0"; diagnostics | TrooFX 1.0 |
 | JumpHopBackEnabled | JumpTest script | nil = true (read at each press) | JumpTest 1.5: Evade Hop while the character's JumpHopBack is true |
 | JumpHopLocal; JumpHopMoved; JumpHopYawDrift | troodon character (owner client) | "hop" / "landed"; flat studs launch -> landing; deg | JumpTest 1.5 diagnostics |
+| TrooPoseEnabled; TrooHopPoseEnabled; TrooEyeFlareEnabled; TrooGroundLockEnabled; TrooHopLandTime | troodon character | nil = true each (read each frame); 0.8 s | TrooPose 1.0 (IdleAnimation 1.47): throw layer / hop layer / eyes flare / foot ground lock; hop land fade |
+| TrooPoseTestKey | troodon character (Studio test hook) | nil (unset in play); a key name holds that key exactly | TrooPose 1.0 |
+| TrooPoseVersion; TrooPoseState; TrooPoseSource; TrooHopPhase; TrooEyeFlare; TrooGroundShift | troodon character (this client) | "1.0"; "throw" / "cancel" / "none" / "test:<key>"; "local" / "server"; "crouch" / "air" / "land" / "none"; bool; studs | TrooPose 1.0 diagnostics |
