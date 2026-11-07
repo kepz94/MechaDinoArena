@@ -1,4 +1,4 @@
--- HerreraMovesServer v1.6 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
+-- HerreraMovesServer v1.7 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
 -- (MDA-151), Smoke Pods (MDA-152), Strobe Frill (MDA-155), Stun Breaker (MDA-156), and the Glider Wings' glide state
 -- (MDA-150). Plan docs/plans/HERRERA_PARTS_v1.0.md (Parts 2, 3, 4, 7, 8 and "Pass 2 — build map"); Kepu 2026-10-31.
 -- Settings come from the character (SkillEffects 1.27, a Herrera with the part bought AND slotted):
@@ -118,6 +118,22 @@ local VERSION = "1.3"
 VERSION = "1.4" -- v1.4 goo blob from the jaw nozzle
 VERSION = "1.5" -- v1.5 move wind-ups
 VERSION = "1.6" -- v1.6 goo slow lingers 3 s
+VERSION = "1.7" -- v1.7 Sap Wall stops quills / caltrops / goo through it
+-- v1.7 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute HerreraMovesServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   HerreraMovesServerSapWallBlocks (count), HerreraMovesServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("HerreraMovesServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("HerreraMovesServerSapWallBlocks", (script:GetAttribute("HerreraMovesServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("HerreraMovesServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("HerreraMovesServerSapWallEnabled") == nil then script:SetAttribute("HerreraMovesServerSapWallEnabled", true) end
+end
 local QUILL_GAP, QUILL_SPEED, QUILL_CONE = 0.045, 90, math.rad(35)
 local SMOKE_TICK = 0.1
 local STROBE_WINDUP = 0.15
@@ -365,7 +381,7 @@ quillRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		local launch = (i - 1) * QUILL_GAP
 		task.delay(launch + fly, function()
 			local ta = now()
-			if target.Parent and isTarget(target, char) and mayAffect(char, target) and not shielded(target, ta) then -- v1.1: + mayAffect (squad / mode) on arrival
+			if target.Parent and isTarget(target, char) and mayAffect(char, target) and not shielded(target, ta) and not sapBlocked(origin, target) then -- v1.1: + mayAffect (squad / mode) on arrival
 				local d = math.floor(dmg * takenMul(target, ta) * 10 + 0.5) / 10
 				if d > 0 then
 					takeHealth(target, d, char, player, "quills", ta)
@@ -867,7 +883,7 @@ RunService.Heartbeat:Connect(function(dt)
 						local reach = 1.6 * pt.scale + 1.5 * scaleOf(m)
 						for _, sp in ipairs(pt.spikes) do
 							if not sp.used and t >= (sp.armAt or 0) and flat(root.Position - sp.pos).Magnitude <= reach -- v1.3: armAt
-								and math.abs(root.Position.Y - sp.pos.Y) <= 12 * pt.scale then
+								and math.abs(root.Position.Y - sp.pos.Y) <= 12 * pt.scale and not sapBlocked(sp.pos + Vector3.yAxis * 2, m) then
 								sp.used, changed = true, true
 								pt.last[m] = t
 								local bt = math.max(0.5, num(char, "CaltropBleedTime", 3))
@@ -915,7 +931,7 @@ RunService.Heartbeat:Connect(function(dt)
 					local s = scaleOf(pd.owner)
 					for _, m in ipairs(candidates(pd.owner)) do
 						local r = rootOf(m).Position
-						if flat(r - pd.center).Magnitude <= pd.radius and math.abs(r.Y - pd.center.Y) <= 10 * s then
+						if flat(r - pd.center).Magnitude <= pd.radius and math.abs(r.Y - pd.center.Y) <= 10 * s and not sapBlocked(pd.center + Vector3.yAxis * 2, m) then
 							if script:GetAttribute("HerreraMoves_gooLingerEnabled") ~= false then -- v1.6: 3 s after leaving
 								local untilG = t + math.clamp(tonumber(script:GetAttribute("HerreraMoves_gooLinger")) or 3, 0.3, 10)
 								slowTarget(m, "Goo", mul, untilG)

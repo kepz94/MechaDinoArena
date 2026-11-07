@@ -1,4 +1,4 @@
--- TenoMovesServer v1.12 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.13 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -215,6 +215,22 @@ VERSION = "1.9" -- v1.9 boulder from the cannon muzzle
 VERSION = "1.10" -- v1.10 Scorpion Strike grab timeline
 VERSION = "1.11" -- v1.11 animation pass timings (mortar 0.70, stomp 0.60, challenge aim)
 VERSION = "1.12" -- v1.12 Back Pluck on a latched raptor
+VERSION = "1.13" -- v1.13 Sap Wall stops grabs / crashes / mortar / stomp / leaps through it
+-- v1.13 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute TenoMovesServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   TenoMovesServerSapWallBlocks (count), TenoMovesServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("TenoMovesServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("TenoMovesServerSapWallBlocks", (script:GetAttribute("TenoMovesServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("TenoMovesServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("TenoMovesServerSapWallEnabled") == nil then script:SetAttribute("TenoMovesServerSapWallEnabled", true) end
+end
 if script:GetAttribute("TenoGrabPluckEnabled") == nil then script:SetAttribute("TenoGrabPluckEnabled", true) end -- v1.12
 if script:GetAttribute("TenoMovesMortarMuzzleEnabled") == nil then script:SetAttribute("TenoMovesMortarMuzzleEnabled", true) end -- v1.9
 local GRAB_CATCH, GRAB_CARRY, FLING_TIME, FLING_PEAK = 0.3, 0.5, 0.9, 16
@@ -575,7 +591,7 @@ local function pickGrab(char, t)
 			if anyDir or lp.Z >= 0 or latchedOnMe(m, char) then -- behind or beside the hips (v1.2: any direction)
 				local d = math.huge
 				for _, p in ipairs(pts) do d = math.min(d, gap(m, p)) end
-				if d <= range and (not bestD or d < bestD) then best, bestD = m, d end
+				if d <= range and (not bestD or d < bestD) and not sapBlocked(root, m) then best, bestD = m, d end -- v1.13: Sap Wall
 			end
 		end
 	end
@@ -692,7 +708,7 @@ local function grabOverTop(char, player, target, t, fling, dmg, stunT, crash, cr
 			local n = 0
 			for _, m in ipairs(candidates(char)) do
 				local mr = rootOf(m)
-				if m ~= target and flat(mr.Position - land).Magnitude <= crashR and math.abs(mr.Position.Y - land.Y) <= DY then
+				if m ~= target and flat(mr.Position - land).Magnitude <= crashR and math.abs(mr.Position.Y - land.Y) <= DY and not sapBlocked(land + Vector3.yAxis * 2, m) then
 					damage(char, player, m, crash, "tailgrab", tl)
 					if not shielded(m, tl) then stun(m, tl + 1) end
 					n += 1
@@ -792,7 +808,7 @@ grabRemote.OnServerEvent:Connect(function(player, stamp)
 			local n = 0
 			for _, m in ipairs(candidates(char)) do
 				local mr = rootOf(m)
-				if m ~= target and flat(mr.Position - land).Magnitude <= crashR and math.abs(mr.Position.Y - land.Y) <= DY then
+				if m ~= target and flat(mr.Position - land).Magnitude <= crashR and math.abs(mr.Position.Y - land.Y) <= DY and not sapBlocked(land + Vector3.yAxis * 2, m) then
 					damage(char, player, m, crash, "tailgrab", tl)
 					if not shielded(m, tl) then stun(m, tl + 1) end
 					n += 1
@@ -944,7 +960,7 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 		for _, m in ipairs(candidates(char)) do
 			local mr = rootOf(m)
 			for _, pt in ipairs(pts) do
-				if not hit[m] and flat(mr.Position - pt).Magnitude <= splash and math.abs(mr.Position.Y - pt.Y) <= DY then
+				if not hit[m] and flat(mr.Position - pt).Magnitude <= splash and math.abs(mr.Position.Y - pt.Y) <= DY and not sapBlocked(pt + Vector3.yAxis * 2, m) then
 					hit[m] = true
 					local cr = rootOf(char)
 					local defl, refl = deflected(m, cr and cr.Position or pt, "boulder", tl, "TenoMovesDeflectEnabled") -- v1.8
@@ -1003,7 +1019,7 @@ stompRemote.OnServerEvent:Connect(function(player, stamp)
 		local n = 0
 		for _, m in ipairs(candidates(char)) do
 			local mr = rootOf(m)
-			if not latchedOnMe(m, char) and gap(m, centre) <= range and math.abs(mr.Position.Y - centre.Y) <= DY then
+			if not latchedOnMe(m, char) and gap(m, centre) <= range and math.abs(mr.Position.Y - centre.Y) <= DY and not sapBlocked(centre + Vector3.yAxis * 2, m) then
 				n += 1
 				damage(char, player, m, dmg, "stomp", tl)
 				if not shielded(m, tl) then
@@ -1100,7 +1116,7 @@ leapRemote.OnServerEvent:Connect(function(player, stamp)
 		local n = 0
 		for _, m in ipairs(candidates(char)) do
 			local mr = rootOf(m)
-			if gap(m, root.Position) <= radius and math.abs(mr.Position.Y - root.Position.Y) <= DY then
+			if gap(m, root.Position) <= radius and math.abs(mr.Position.Y - root.Position.Y) <= DY and not sapBlocked(root, m) then -- v1.13: Sap Wall
 				n += 1
 				damage(char, player, m, dmg, "leap", tl)
 				if stunT > 0 and not shielded(m, tl) then stun(m, tl + stunT) end
@@ -1426,6 +1442,7 @@ local function jumpSlam(char)
 			local mr = rootOf(m)
 			local near = gap(m, root.Position) <= radius and math.abs(mr.Position.Y - root.Position.Y) <= DY
 			if near and not inLeapArc(char, root, mr) then near = false; arcSkips += 1 end -- v1.6
+			if near and sapBlocked(root, m) then near = false end -- v1.13: Sap Wall
 			if near then
 				n += 1
 				damage(char, player, m, dmg, "leap", tl)
@@ -1557,6 +1574,7 @@ local function jumpSlamV17(char)
 			local mr = rootOf(m)
 			local near = m == dinoHit or (gap(m, slamPos) <= radius and math.abs(mr.Position.Y - slamPos.Y) <= DY)
 			if near and not inLeapArc(char, root, mr) then near = false; arcSkips += 1 end
+			if near and sapBlocked(root, m) then near = false end -- v1.13: Sap Wall
 			if near then
 				n += 1
 				local shoved = shoveOn and not shielded(m, tl) and leapShove(char, root, m, tl, stunT)

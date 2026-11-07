@@ -1,4 +1,4 @@
--- BotServer v1.26 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.27 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -396,6 +396,22 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.24"
 VERSION = "1.25" -- v1.25 grab hold, get-up refresh, ownership guard
 VERSION = "1.26" -- v1.26 grabbed latch: ride to the pluck, no leap-off
+VERSION = "1.27" -- v1.27 Sap Wall stops bot bites / headbutts through it
+-- v1.27 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute BotServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   BotServerSapWallBlocks (count), BotServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("BotServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("BotServerSapWallBlocks", (script:GetAttribute("BotServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("BotServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("BotServerSapWallEnabled") == nil then script:SetAttribute("BotServerSapWallEnabled", true) end
+end
 if script:GetAttribute("BotLatchGrabHoldEnabled") == nil then script:SetAttribute("BotLatchGrabHoldEnabled", true) end -- v1.26
 local function grabHoldOn() return script:GetAttribute("BotLatchGrabHoldEnabled") ~= false end -- v1.26
 for _, k in ipairs({"BotGrabHoldEnabled", "BotDownRefreshEnabled", "BotOwnerGuardEnabled", "BotStandFixEnabled"}) do -- v1.25
@@ -1175,6 +1191,7 @@ local function bite(b, player, dip, skip) -- v1.4: + skip
 		local char, hum = aliveChar(player)
 		if not char then return end
 		if distanceTo(char, dippedSnout(b.model, dip), skip) > b.cfg.biteReach + 1 then return end -- v1.2: dipped; v1.4: skip
+		if sapBlocked(b.model, char) then show(b, "BotBiteResult", "wall") return end -- v1.27: Sap Wall
 		local dmg = hitDamage(b, char, hum, b.cfg.biteDamage) -- v1.6: growth cap
 		hum:TakeDamage(dmg)
 		local at = workspace:GetServerTimeNow()
@@ -1805,6 +1822,7 @@ local function biteAnimal(b, target, dip, fight)
 		if b.removed or not b.model.Parent or b.down or b.koAt then return end
 		if not animalUp(target) then return end
 		if distanceTo(target, dippedSnout(b.model, dip)) > b.cfg.biteReach + 1 then return end
+		if sapBlocked(b.model, target) then return end -- v1.27: Sap Wall
 		local hp = target:GetAttribute("DummyHealth") or 0
 		local dmg = b.cfg.biteDamage
 		local at = workspace:GetServerTimeNow()
@@ -2027,6 +2045,7 @@ end
 local function pachyHit(b, char, hum)
 	local model, root = b.model, b.hrp
 	local t = workspace:GetServerTimeNow()
+	if sapBlocked(root, char) then return "wall" end -- v1.27: Sap Wall
 	local BC = crestMod()
 	if BC and BC.visorFront(char, root.Position) then -- Dome Visor up, bot in front
 		BC.visorBlock(char, model, "headbutt")

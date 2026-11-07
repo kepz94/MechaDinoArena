@@ -1,4 +1,4 @@
--- DiloAttackServer v1.5 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
+-- DiloAttackServer v1.6 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
 -- docs/plans/DILO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/dilo_kit_options_v0.1.html attack C
 -- (Kepu 2026-11-03: picks "C and J1"; dart "Weaker dart"; red-team "Bite on press", "Soft aim, near-sure hit").
 -- Remote ReplicatedStorage.DinoDiloAttack (RemoteEvent), client -> server: (kind, stamp). kind "bite" = the ATTACK press
@@ -97,6 +97,22 @@ VERSION = "1.2" -- v1.2 dart hits where it lands (body rule)
 VERSION = "1.3" -- v1.3 Deflector Claws
 VERSION = "1.4" -- v1.4 animation stamps
 VERSION = "1.5" -- v1.5 dilo parts: venom API + Venom Overdrive
+VERSION = "1.6" -- v1.6 Sap Wall stops bites / darts through it
+-- v1.6 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute DiloAttackServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   DiloAttackServerSapWallBlocks (count), DiloAttackServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("DiloAttackServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("DiloAttackServerSapWallBlocks", (script:GetAttribute("DiloAttackServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("DiloAttackServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("DiloAttackServerSapWallEnabled") == nil then script:SetAttribute("DiloAttackServerSapWallEnabled", true) end
+end
 local DEFAULTS = {DiloBiteDamage = 10, DiloBiteDelay = 0.18, DiloBiteReach = 5, DiloBiteCone = 70, DiloHoldTime = 0.4,
 	DiloDartDamage = 6, DiloVenomDps = 2, DiloVenomTime = 3, DiloDartRange = 30, DiloDartSpeed = 60, DiloDartCooldown = 1.5,
 	DiloAssistAngle = 30, DiloAssistMin = 0, DiloAssistMax = 30, DiloMinGap = 0.35}
@@ -383,7 +399,7 @@ local function resolveBite(player, char, at)
 	for _, m in ipairs(candidates(char)) do
 		local v = flat(rootOf(m).Position - root.Position)
 		local inCone = v.Magnitude < 1e-3 or math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1)) <= half
-		if inCone and gap(m, origin) <= reach then
+		if inCone and gap(m, origin) <= reach and not sapBlocked(root, m) then -- v1.6: Sap Wall
 			if not shielded(m, t) then
 				takeHealth(m, dmg * takenMul(m, t) * plating(m, root.Position), char.Name, player.UserId, "dilobite", t)
 				if statsOn() and num(char, "DiloVenomBiteDps", 0) > 0 and isTarget(m, char) then -- v1.1: Venom Bite
@@ -454,6 +470,10 @@ local function fireDart(player, char, t)
 			elseif tr and script:GetAttribute("DiloAttackBodyHitEnabled") ~= false and gap(target, to) <= DART_BODY_REACH * s then
 				rule = "body"
 				count("DiloDartBodyHits")
+			end
+			if rule ~= "miss" and sapBlocked(from, target) then -- v1.6: Sap Wall: the dart stops at the wall
+				rule = "miss"
+				char:SetAttribute("DiloDartWallAt", ti)
 			end
 			if rule ~= "miss" then -- v1.3: Deflector Claws
 				local defl, refl = deflected(target, from, "dart", ti, "DiloAttackDeflectEnabled")

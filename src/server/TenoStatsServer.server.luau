@@ -1,4 +1,4 @@
--- TenoStatsServer v1.1 (Mecha Dino Arena) — the Tenontosaurus' stat rows in play: Charge Up, Brace and Buck Off. Plan
+-- TenoStatsServer v1.2 (Mecha Dino Arena) — the Tenontosaurus' stat rows in play: Charge Up, Brace and Buck Off. Plan
 -- docs/plans/TENO_STATS_v1.0.md (deterministic map), mockup docs/mockups/teno_stats_options.html (Kepu 2026-10-31: speed C,
 -- defense C, signature "Buck Off": "This only works when latched. If you're stunned and then latched it doesn't work",
 -- stun rule "Off only while stunned"). Reads the character attributes SkillEffects 1.31 writes (SkillTree 1.45 effects).
@@ -49,6 +49,22 @@ local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 Sap Wall check on Buck Off ticks
+-- v1.2 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute TenoStatsServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   TenoStatsServerSapWallBlocks (count), TenoStatsServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("TenoStatsServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("TenoStatsServerSapWallBlocks", (script:GetAttribute("TenoStatsServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("TenoStatsServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("TenoStatsServerSapWallEnabled") == nil then script:SetAttribute("TenoStatsServerSapWallEnabled", true) end
+end
 local RUN_FRAC, DIP_GRACE, LEVEL1_T, LEVEL2_T = 0.8, 0.3, 2, 3
 local BUMP_AHEAD, BUMP_REACH, BUMP_CONE, BUMP_GAP, BUMP_TIME = 5, 3, math.rad(35), 1.5, 0.3
 
@@ -337,7 +353,7 @@ RunService.Heartbeat:Connect(function(dt)
 						count("TenoStatsRepelled")
 					else
 						local dps = math.max(0, num(char, "TenoBuckDps", 0))
-						if dps > 0 and not shielded(m, t) then -- star: a tick per full second latched
+						if dps > 0 and not shielded(m, t) and not sapBlocked(char, m) then -- star: a tick per full second latched; v1.2: Sap Wall
 							keep[m] = true
 							st.acc[m] = (st.acc[m] or 0) + dt
 							while st.acc[m] >= 1 do

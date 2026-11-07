@@ -1,4 +1,4 @@
--- DiloMovesServer v1.1 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
+-- DiloMovesServer v1.4 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
 -- Toxin Mortar, Spine Burst, Venom Overdrive. Plan docs/plans/DILO_PARTS_v1.0.md Task 5 (deterministic map), MDA-318; mockup
 -- docs/mockups/dilo_parts_options.html v0.1 (timings from tools/mockup/dilo_parts_looks.js); Kepu 2026-11-06 picks + red-team
 -- "Same venom system", "Use the proposals". Build 2 (Sonic Hiss, Antivenom Pump, Spring Jets) comes in 1.1.
@@ -99,6 +99,22 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Sonic Hiss, Antivenom Pump, Spring Jets
 VERSION = "1.2" -- v1.2 the pump breaks free + clears bleeds / the roar debuff
 VERSION = "1.3" -- v1.3 Spring Jets without the wind-up
+VERSION = "1.4" -- v1.4 Sap Wall stops gatling darts / spines / the hiss through it
+-- v1.4 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute DiloMovesServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   DiloMovesServerSapWallBlocks (count), DiloMovesServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("DiloMovesServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("DiloMovesServerSapWallBlocks", (script:GetAttribute("DiloMovesServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("DiloMovesServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("DiloMovesServerSapWallEnabled") == nil then script:SetAttribute("DiloMovesServerSapWallEnabled", true) end
+end
 if script:GetAttribute("DiloJetsInstantEnabled") == nil then script:SetAttribute("DiloJetsInstantEnabled", true) end -- v1.3
 local GATLING_WINDUP, MORTAR_WINDUP, MORTAR_FLIGHT, SPINE_WINDUP, SPINE_FLIGHT, OVER_WINDUP = 0.4, 0.55, 1.15, 0.42, 0.2, 0.7
 local CLOUD_TICK, CLOUD_HEIGHT = 0.5, 12
@@ -390,6 +406,7 @@ gatlingRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 			local tr = rootOf(target)
 			local hit = (tr and (tr.Position - to).Magnitude <= DART_TOLERANCE * s) or gap(target, to) <= DART_BODY_REACH * s
 			if not hit then return end
+			if sapBlocked(from, target) then return end -- v1.4: Sap Wall
 			local tt = now()
 			damage(char, player, target, dmg, "dilogatling", tt)
 			venom(char, target)
@@ -479,7 +496,7 @@ spineRemote.OnServerEvent:Connect(function(player, stamp)
 			pt = Vector3.new(pt.X, mr.Position.Y, pt.Z)
 			if gap(m, pt) <= SPINE_WIDTH then k += 1 end
 		end
-		if k > 0 then
+		if k > 0 and not sapBlocked(origin, m) then -- v1.4: Sap Wall
 			table.insert(judged, {m = m, k = k})
 			table.insert(hits, m.Name .. "=" .. k)
 		end
@@ -583,7 +600,7 @@ hissRemote.OnServerEvent:Connect(function(player, stamp)
 		local v = flat(p - root.Position)
 		local d = v.Magnitude
 		local inCone = d <= HISS_NEAR * s / 2 or (d <= range and math.deg(math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1))) <= angle)
-		if inCone and math.abs(p.Y - root.Position.Y) <= CLOUD_HEIGHT then
+		if inCone and math.abs(p.Y - root.Position.Y) <= CLOUD_HEIGHT and not sapBlocked(root, m) then -- v1.4: Sap Wall
 			shove(char, m, knock, t2)
 			if silence > 0 then
 				m:SetAttribute("SilencedUntil", math.max(num(m, "SilencedUntil", 0), t2 + silence))

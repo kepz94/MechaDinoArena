@@ -1,4 +1,4 @@
--- TenoAttackServer v1.6 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.7 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -111,6 +111,22 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.4"
 VERSION = "1.5" -- v1.5 Back Plating
 VERSION = "1.6" -- v1.6 alternating scratch arms
+VERSION = "1.7" -- v1.7 Sap Wall stops scratches / tail slams through it
+-- v1.7 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute TenoAttackServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   TenoAttackServerSapWallBlocks (count), TenoAttackServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("TenoAttackServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("TenoAttackServerSapWallBlocks", (script:GetAttribute("TenoAttackServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("TenoAttackServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("TenoAttackServerSapWallEnabled") == nil then script:SetAttribute("TenoAttackServerSapWallEnabled", true) end
+end
 if script:GetAttribute("TenoScratchAlternateEnabled") == nil then script:SetAttribute("TenoScratchAlternateEnabled", true) end -- v1.6
 local SCRATCH_HIT_AT = 0.17     -- s after the press: mockup T1 + T2 / 2
 local SCRATCH_CONE = math.rad(45)
@@ -550,7 +566,7 @@ local function doScratch(player, char, st, t, stamp)
 		local n, names = 0, {}
 		for _, m in ipairs(candidates(char)) do
 			local v = flat(rootOf(m).Position - root.Position)
-			if v.Magnitude > 1e-3 and math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1)) <= scratchConeOf(char) and gap(m, claw) <= reach then -- v1.3: Front Claws II cone
+			if v.Magnitude > 1e-3 and math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1)) <= scratchConeOf(char) and gap(m, claw) <= reach and not sapBlocked(root, m) then -- v1.3: Front Claws II cone; v1.7: Sap Wall
 				damage(char, player, m, get(char, "TenoScratchDamage") + math.max(0, s2(char, "TenoClawBonus", 0)), "scratch", ti) -- v1.3: + Front Claws I
 				if not shielded(m, ti) then shove(char, m, shoveDist, ti) end
 				local cs = s2(char, "TenoClawSlow", 0) -- v1.3: Front Claws star
@@ -670,6 +686,7 @@ local function doSlam(player, char, st, t, hold)
 		end
 		local function apply(m, latched)
 			if hit[m] then return end
+			if sapBlocked(char, m) then return end -- v1.7: Sap Wall
 			hit[m] = true
 			damage(char, player, m, dmg + braceBonus + (latched and buckBonus or 0), "tailslam", ti) -- v1.1: + bonuses
 			local isPlayer = Players:GetPlayerFromCharacter(m) ~= nil
