@@ -24,13 +24,13 @@
 |---|---|---|---|---|
 | Mender Drone (button) | heals the most hurt squadmate within 40 studs (you, with no squad) 4/s for 4 s; recharge 20 s | heals for 5.4 s | recharge 14.8 s | moves on to the next most hurt squadmate |
 | Arc Lantern (button) | throw up to 40 studs; zaps the nearest enemy, chains to 1 more within **24** studs, 8 each; recharge 14 s | chain reach **32.4** | recharge 10.3 s | chains to 3 |
-| Sap Wall (button) | throw up to 40 studs: a **28**-stud wall that blocks dinos and shots for 2.1 s; recharge 18 s | **38** wide | lasts 2.9 s | lasts 4 s |
+| Sap Wall (button) | throw up to 40 studs: a **50**-stud wall that blocks dinos and shots for 2.1 s; recharge 18 s | **67.5** wide | lasts 2.9 s | lasts 4 s |
 | Feather Shed (button) | break a stun / pin / grab, immune 1 s; recharge 24 s | immune 1.4 s | recharge 17.7 s | burst knocks dinos within **20** studs back, slows 25% for 2 s |
 | Portal Feathers (button) | two linked rings, the far one up to 40 studs, last 6 s, you only; recharge 20 s | far ring 54 studs | last 8.1 s | squadmates can use them |
 | Last Feather (always on) | once per life a killing hit leaves you at 1 HP, untouchable 0.7 s | bursts up into a glide | untouchable 1 s | drops a glow zone (**40** studs) |
 | Overheal Plume (always on) | heals above max become a plume soaking up to 10; fades after 5 s | up to 14 | fades after 7 s | squadmates you heal get plumes |
 | Fortify Field (always on) | squadmates inside your zones (**40** studs) take 25% less damage | lingers 1 s after leaving | lingers 1.4 s | you're fortified too |
-| Ricochet Pod (always on) | the pod bounces once: a second zone **20** studs wide on the next enemy within 15 studs, 2.2 s | bounce reach 20.3 | lasts the full 3 s | full size (**40** studs) |
+| Ricochet Pod (always on) | the pod bounces once: a second zone **20** studs wide on the next enemy within **30** studs, 2.2 s | bounce reach **40** | lasts the full 3 s | full size (**40** studs) |
 Kit change with it: the main glow zone 20 -> **40** studs wide (TrooZoneRadius 5 -> 10; TroodonModelData 1.5); per-second numbers unchanged.
 
 ## Tickets (one per task, build order)
@@ -43,9 +43,14 @@ Kit change with it: the main glow zone 20 -> **40** studs wide (TrooZoneRadius 5
 7. **TrooPartsFX 1.0 + TrooPose part poses** · Wired — the mockup's layered VFX, roster-consistent; captures.
 8. **Docs + full Studio check** · Wired.
 
+## Kepu's answers (2026-11-06 21:3x)
+- Ricochet bounce reach doubled: "Yes, 30 / 40".
+- "Two builds": Build 1 = tickets 1-4 + the 5 buttons' parts of 6-7; Build 2 = ticket 5 (the 4 always-on parts) + their parts of 6-8. Each gets its own Studio check and publish.
+- Sap Wall: "Do 50 studs" -> 50 studs wide at I, 67.5 at II (the 35% rule). Blocking stays as proposed (dinos + flying shots; instant-hit bites / soft-aim darts not stopped) since the answer didn't ask for more.
+
 ## Red-team (Phase 4.5)
 1. **Always-on parts need hooks in every damage / heal path.** Many servers write DummyHealth directly; "survive a killing hit" (Last Feather), "25% less damage" (Fortify) and "heal above max becomes a plume" (Overheal) only work if every path honours them. Proposed: Fortify through the shared damage-taken multiplier the attack servers already read (takenMul), Overheal on the troodon's own heals only (zone, drone, self-heal), and Last Feather at the one place health reaches 0 (DinoHealthServer / the ArenaPvP bridge). If there is no single place, the build stops that ticket and reports the options.
 2. **The doubled main zone makes the Ricochet bounce overlap the first zone.** With a 40-stud zone, a second zone "within 15 studs" lands mostly inside the first. Proposed: double the bounce reach too (30 / 40.5). Needs Kepu's OK.
-3. **A 28-38-stud wall that blocks dinos and shots.** It can trap players / bots against terrain and only blocks shots whose server checks for walls (raycast projectiles); soft-aim darts that resolve by distance would pass through. Proposed: blocks characters + raycast projectiles; the build lists which attacks it stops; walls can't be placed overlapping a dino.
+3. **A 50-67.5-stud wall that blocks dinos and shots.** It can trap players / bots against terrain and only blocks shots whose server checks for walls (raycast projectiles); soft-aim darts that resolve by distance would pass through. Proposed: blocks characters + raycast projectiles; the build lists which attacks it stops; walls can't be placed overlapping a dino.
 4. **Portal Feathers teleport characters.** Proposed: server-side move with a per-dino 1 s re-use lock, no portals into terrain, bots can't use them.
 5. **Scope.** 9 parts is the biggest set yet (the dilo had 7). Proposed: two builds like the teno (decision #9): Build 1 = tickets 1-4 + 6-7 for the 5 buttons; Build 2 = ticket 5 (the 4 always-on parts) + the rest of 6-8. Each build gets its own Studio check and publish.
