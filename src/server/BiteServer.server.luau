@@ -1,4 +1,4 @@
--- BiteServer v1.10 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
+-- BiteServer v1.11 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
 -- hit at the moment the jaws shut.
 -- Client -> server: ReplicatedStorage.DinoBiteRequest:FireServer(clientServerTime) (sent by BiteTest)
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now] (so every client's pose lines up with
@@ -103,6 +103,22 @@ local DEFAULTS = {BiteEnabled = true, BiteCooldown = 0.8, BiteWindup = 0.15, Bit
 	BiteDipMax = 60, -- v1.5
 	BiteAimMax = 45, BiteAimSlack = 2} -- v1.7
 script:SetAttribute("BiteServerVersion", "1.10") -- v1.10 (1.9 left this at "1.8")
+script:SetAttribute("BiteServerVersion", "1.11") -- v1.11 Sap Wall stops bites through it
+-- v1.11 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute BiteServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   BiteServerSapWallBlocks (count), BiteServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("BiteServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("BiteServerSapWallBlocks", (script:GetAttribute("BiteServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("BiteServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("BiteServerSapWallEnabled") == nil then script:SetAttribute("BiteServerSapWallEnabled", true) end
+end
 local crestMod -- v1.8: Bone Crest / Thick Hide vs players (ServerStorage.DinoArcade.BoneCrest), loaded on first hit
 local function crest()
 	if crestMod == nil then
@@ -251,6 +267,7 @@ end
 
 local function applyHit(char, model, point, source, part)
 	if squadmate(char, model) then return end -- v1.10: backstop
+	if sapBlocked(char, model) then char:SetAttribute("BiteLastContact", "wall") return end -- v1.11: Sap Wall
 	local base = get(char, "BiteDamage")
 	local zone, seg, zoneMul = zoneOf(model, part)
 	local debuffMul = debuffOf(model)

@@ -1,4 +1,4 @@
--- SlashServer v1.8 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.9 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -103,6 +103,22 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.7"
 VERSION = "1.8" -- v1.8 Back Plating on slash hits
+VERSION = "1.9" -- v1.9 Sap Wall stops slashes through it
+-- v1.9 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute SlashServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   SlashServerSapWallBlocks (count), SlashServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("SlashServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("SlashServerSapWallBlocks", (script:GetAttribute("SlashServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("SlashServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("SlashServerSapWallEnabled") == nil then script:SetAttribute("SlashServerSapWallEnabled", true) end
+end
 local TIME_SLACK = 0.6      -- s after the dash time a claim is still accepted (client -> server lag)
 local PATH_TOLERANCE = 6    -- studs (x scale) between the target's hitboxes and the dash path, on top of SlashReach
 local DIVE_SLACK = 3        -- studs (x scale) added to SlashDiveRange for the request check (the target moves)
@@ -466,6 +482,8 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		result = "used"
 	elseif model:GetAttribute("DummyState") == "ko" then
 		result = "ko"
+	elseif sapBlocked(char, model) then -- v1.9: Sap Wall
+		result = "wall"
 	else
 		local scale = char:GetScale()
 		local gap = gapToPath(hb, st.active.from, st.active.to)
@@ -531,7 +549,7 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 			if bf then for _, b in ipairs(bf:GetChildren()) do table.insert(list, b) end end
 			for _, m in ipairs(list) do
 				if m ~= char and m ~= model and targetOk(m) and not squadmate(char, m) and m:GetAttribute("DummyState") ~= "ko" -- v1.6: squad
-					and (tonumber(m:GetAttribute("EnergyShieldUntil")) or 0) <= t and (rootOf(m) - land).Magnitude <= burst then
+					and (tonumber(m:GetAttribute("EnergyShieldUntil")) or 0) <= t and (rootOf(m) - land).Magnitude <= burst and not sapBlocked(land, m) then
 					local tick = math.max(0.1, get(char, "SlashBleedTick"))
 					bleeds[m] = {untilT = t + get(char, "SlashBleedTime"), nextTick = t + tick, by = char.Name, byId = player.UserId,
 						dps = get(char, "SlashBleedDps"), tick = tick, char = char}

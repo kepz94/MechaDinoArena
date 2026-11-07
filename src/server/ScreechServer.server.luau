@@ -1,4 +1,4 @@
--- ScreechServer v1.12 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.13 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -114,6 +114,22 @@ local Debris = game:GetService("Debris")
 
 local VERSION = "1.11"
 VERSION = "1.12" -- v1.12 Deflector Claws
+VERSION = "1.13" -- v1.13 Sap Wall stops bolts through it
+-- v1.13 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute ScreechServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   ScreechServerSapWallBlocks (count), ScreechServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("ScreechServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("ScreechServerSapWallBlocks", (script:GetAttribute("ScreechServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("ScreechServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("ScreechServerSapWallEnabled") == nil then script:SetAttribute("ScreechServerSapWallEnabled", true) end
+end
 local PITCH_MAX = math.rad(20) -- v1.8
 local MIN_RANGE, BOLT_SPEED, BOLT_AHEAD, HIT_RADIUS = 8, 110, 4, 4 -- v1.1: speed 110 (was 70)
 local GLOW_SIZE = 2.2 -- v1.1: glow ball round the dart tip (the 1.0 ball was 2.4)
@@ -317,6 +333,10 @@ local function deflected(target, fromPos, kind, t, switch)
 	return deflectMod.check(target, fromPos, kind, t)
 end
 local function hit(b, target)
+	if sapBlocked(b.pos - b.dir * 4, target) then -- v1.13: Sap Wall
+		if b.shooter.Parent then b.shooter:SetAttribute("ScreechLastHit", "wall:" .. target.Name) end
+		return
+	end
 	local t = now()
 	if b.shock and script:GetAttribute("ScreechVisorEnabled") ~= false then -- v1.9: Dome Visor
 		local VM = visorMod()

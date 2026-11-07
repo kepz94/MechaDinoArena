@@ -1,4 +1,4 @@
--- MineServer v1.8 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.9 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -99,6 +99,22 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local VERSION = "1.8"
+VERSION = "1.9" -- v1.9 Sap Wall between the mine and the dino stops the zap
+-- v1.9 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute MineServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   MineServerSapWallBlocks (count), MineServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("MineServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("MineServerSapWallBlocks", (script:GetAttribute("MineServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("MineServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("MineServerSapWallEnabled") == nil then script:SetAttribute("MineServerSapWallEnabled", true) end
+end
 local THROW_DIST, ARC_TIME, ARC_HEIGHT, ARM_TIME = 30, 0.6, 8, 0.5
 local TRIGGER, LIFETIME, BLINK = 6, 60, 0.25
 local VOLT, VOLT_CORE = Color3.fromRGB(127, 233, 255), Color3.fromRGB(225, 250, 255)
@@ -445,6 +461,7 @@ local function zapSound(pos)
 end
 
 local function hit(m, target)
+	if sapBlocked(m.to + Vector3.new(0, 1, 0), target) then return end -- v1.9: Sap Wall
 	local t = now()
 	local owner = m.owner
 	local pl = Players:GetPlayerFromCharacter(target)

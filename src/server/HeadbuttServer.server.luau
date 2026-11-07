@@ -1,4 +1,4 @@
--- HeadbuttServer v1.16 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.17 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -144,6 +144,22 @@ local VERSION = "1.13"
 VERSION = "1.14" -- v1.14 Back Plating on headbutt hits
 VERSION = "1.15" -- v1.15 Last Stand III refill while low
 VERSION = "1.16" -- v1.16 victim stagger stamps
+VERSION = "1.17" -- v1.17 Sap Wall stops headbutts through it
+-- v1.17 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute HeadbuttServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   HeadbuttServerSapWallBlocks (count), HeadbuttServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("HeadbuttServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("HeadbuttServerSapWallBlocks", (script:GetAttribute("HeadbuttServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("HeadbuttServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("HeadbuttServerSapWallEnabled") == nil then script:SetAttribute("HeadbuttServerSapWallEnabled", true) end
+end
 if script:GetAttribute("HeadbuttStaggerStampEnabled") == nil then script:SetAttribute("HeadbuttStaggerStampEnabled", true) end -- v1.16
 if script:GetAttribute("HeadbuttLastStandEnabled") == nil then script:SetAttribute("HeadbuttLastStandEnabled", true) end -- v1.15
 if script:GetAttribute("HeadbuttPlatingEnabled") == nil then script:SetAttribute("HeadbuttPlatingEnabled", true) end -- v1.14
@@ -508,6 +524,8 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		result = "squad"
 	elseif model:GetAttribute("DummyState") == "ko" then
 		result = "ko"
+	elseif sapBlocked(char, model) then -- v1.17: Sap Wall
+		result = "wall"
 	else
 		local hp = headPos(char)
 		local scale = char:GetScale()

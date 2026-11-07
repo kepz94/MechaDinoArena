@@ -1,4 +1,4 @@
--- HookServer v1.9 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.10 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -84,6 +84,22 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.8"
 VERSION = "1.9" -- v1.9 victim stagger stamps
+VERSION = "1.10" -- v1.10 Sap Wall stops the hook and the smash through it
+-- v1.10 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute HookServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   HookServerSapWallBlocks (count), HookServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("HookServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("HookServerSapWallBlocks", (script:GetAttribute("HookServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("HookServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("HookServerSapWallEnabled") == nil then script:SetAttribute("HookServerSapWallEnabled", true) end
+end
 if script:GetAttribute("HookStaggerStampEnabled") == nil then script:SetAttribute("HookStaggerStampEnabled", true) end -- v1.9
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25) -- v1.1 clamp; v1.2 min -8 -> -2
 local WINDUP = 0.15        -- s arm raise before the claw flies
@@ -406,6 +422,7 @@ local function smash(char, player, target, hb)
 		local s = char:GetScale()
 		if not hp or gapTo(hp, hb) > SMASH_TOL * s then result = "escaped" end
 	end
+	if not result and sapBlocked(char, target) then result = "wall" end -- v1.10: Sap Wall
 	if not result and script:GetAttribute("HookVisorEnabled") ~= false then -- v1.6: Dome Visor
 		local VM = visorMod()
 		local aRoot = char:FindFirstChild("HumanoidRootPart")
@@ -537,6 +554,8 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 			local los = workspace:Raycast(origin, bestPoint - origin, params)
 			if los then
 				result, aimEnd = "blocked", los.Position
+			elseif sapBlocked(origin, bestPoint) then -- v1.10: Sap Wall
+				result = "blocked"
 			elseif (tonumber(best:GetAttribute("EnergyShieldUntil")) or 0) > t then
 				result, aimEnd = "shielded", bestPoint
 			else

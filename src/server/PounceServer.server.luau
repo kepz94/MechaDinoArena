@@ -1,4 +1,4 @@
--- PounceServer v1.14 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.15 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -159,6 +159,22 @@ local MAX_LATCH = 30        -- safety: seconds a latch may last
 
 script:SetAttribute("PounceServerVersion", "1.13") -- v1.13 (1.12 left this at "1.11")
 script:SetAttribute("PounceServerVersion", "1.14") -- v1.14 grabbed latch rides to the pluck
+script:SetAttribute("PounceServerVersion", "1.15") -- v1.15 Sap Wall stops pounces through it
+-- v1.15 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
+--   SapWallBlock.between). Switch: script attribute PounceServerSapWallEnabled (default true, read at each hit). Diagnostics: script
+--   PounceServerSapWallBlocks (count), PounceServerSapWallBlockedAt (server time).
+local sapBlocked do
+	local mod
+	sapBlocked = function(from, to)
+		if script:GetAttribute("PounceServerSapWallEnabled") == false then return false end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage").DinoArcade.SapWallBlock) end) end
+		if not (mod and mod.between and mod.between(from, to)) then return false end
+		script:SetAttribute("PounceServerSapWallBlocks", (script:GetAttribute("PounceServerSapWallBlocks") or 0) + 1)
+		script:SetAttribute("PounceServerSapWallBlockedAt", workspace:GetServerTimeNow())
+		return true
+	end
+	if script:GetAttribute("PounceServerSapWallEnabled") == nil then script:SetAttribute("PounceServerSapWallEnabled", true) end
+end
 if script:GetAttribute("PounceGrabHoldEnabled") == nil then script:SetAttribute("PounceGrabHoldEnabled", true) end -- v1.14
 if script:GetAttribute("PounceChargeBlockEnabled") == nil then script:SetAttribute("PounceChargeBlockEnabled", true) end -- v1.11
 if script:GetAttribute("PounceHeadbuttCancelEnabled") == nil then script:SetAttribute("PounceHeadbuttCancelEnabled", true) end -- v1.11
@@ -251,6 +267,7 @@ local function tickInterval(char)
 end
 
 local function hit(char, model, dmg, now, extra)
+	if sapBlocked(char, model) then return end -- v1.15: Sap Wall
 	local mul = 1
 	local untilT, dmul = model:GetAttribute("DebuffUntil"), model:GetAttribute("DebuffDamageTakenMul")
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and now < untilT then mul = dmul end
@@ -412,6 +429,8 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 			elseif script:GetAttribute("PounceChargeBlockEnabled") ~= false and hrp and chargingFront(model, hrp.Position, now) then
 				result = "charging" -- v1.11: head-on into a headbutt charge
 				model:SetAttribute("PounceChargeBlocks", (model:GetAttribute("PounceChargeBlocks") or 0) + 1)
+			elseif sapBlocked(char, model) then
+				result = "wall" -- v1.15: Sap Wall between the raptor and its target
 			else
 				result = "ok"
 			end
