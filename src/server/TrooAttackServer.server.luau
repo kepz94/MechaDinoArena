@@ -1,4 +1,4 @@
--- TrooAttackServer v1.0 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
+-- TrooAttackServer v1.1 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
 -- docs/plans/TROODON_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/troodon_kit_options_v0.1.html attack A
 -- (Kepu 2026-11-06 15:38: "Let's go with your recommendations": attack A, the proposed numbers; red-team "Lead the target").
 -- Patterns copied, not edited: DiloAttackServer 1.5 (request -> checks -> timed resolve, soft aim, targets, mode / squad
@@ -46,12 +46,16 @@
 --   TrooAttackSquadEnabled, TrooAttackPlatingEnabled (default true each, read at each use).
 -- Diagnostics: script TrooAttackServerVersion, TrooAttackRequests, TrooZoneHits (enemy damage events), TrooZoneHeals (ally heal
 --   events), TrooSelfHeals, TrooThrowCancels, TrooAttackMode; character TrooAttackServerResult, TrooAttackServerResultAt.
+-- v1.1 (MDA-348, plan docs/plans/TROODON_PARTS_v1.0.md ticket 4): BindableFunction TrooSlowApply(model, mul, untilT) under this
+--   script runs slowTarget, so TrooMovesServer 1.0's Feather Shed star slows a bot through the same WalkSpeed loop (one owner of
+--   a bot's slowed speed). Switch: script attribute TrooAttackSlowApplyEnabled (default true, read at each call; false = no-op).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 TrooSlowApply for the Feather Shed star
 local DEFAULTS = {TrooPodWindup = 0.34, TrooPodFlight = 0.55, TrooPodRange = 22.5, TrooPodCharges = 2, TrooPodRefill = 3,
 	TrooMinGap = 0.35, TrooAssistAngle = 30, TrooAssistMax = 22.5, TrooZoneRadius = 5, TrooZoneTime = 3, TrooPodDamage = 6,
 	TrooZoneDps = 3, TrooZoneSlowMul = 0.75, TrooZoneHeal = 5, TrooSelfHeal = 2}
@@ -407,6 +411,18 @@ local function slowTarget(m, mul, untilT)
 			botSlow[m] = e
 		end
 	end
+end
+do -- v1.1: TrooSlowApply for TrooMovesServer
+	if script:GetAttribute("TrooAttackSlowApplyEnabled") == nil then script:SetAttribute("TrooAttackSlowApplyEnabled", true) end
+	local fn = Instance.new("BindableFunction")
+	fn.Name = "TrooSlowApply"
+	fn.OnInvoke = function(m, mul, untilT)
+		if script:GetAttribute("TrooAttackSlowApplyEnabled") == false then return false end
+		if typeof(m) ~= "Instance" or not m:IsA("Model") or typeof(mul) ~= "number" or typeof(untilT) ~= "number" then return false end
+		slowTarget(m, math.clamp(mul, 0.05, 1), untilT)
+		return true
+	end
+	fn.Parent = script
 end
 
 -- zone loop: ticks at +1 / +2 / +3 s, the slow every 0.2 s, TrooZoneOf ----------------------------------------------------------
