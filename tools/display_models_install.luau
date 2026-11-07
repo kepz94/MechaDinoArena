@@ -1,4 +1,4 @@
--- display_models_install v1.0 (Mecha Dino Arena) — Edit-mode builder for the display models of the four model-only dinos
+-- display_models_install v1.1 (Mecha Dino Arena) — Edit-mode builder for the display models of the four model-only dinos
 -- (MDA-187 Troodon, MDA-188 Therizino, MDA-189 Zuul, MDA-190 Dilo; the display_teno_install 1.0 pattern). Run once with
 -- execute_luau on the Edit datamodel; re-running replaces each Workspace.DinoArcade_<Species> folder.
 -- Each display = one anchored copy of ServerStorage.DinoArcade.Models.<Species>ModelData built with DinoModelBuilder, scaled
@@ -12,7 +12,11 @@
 -- (Transparency 1), so the display shows the frill open (MDA-190).
 -- Studio only: a Script in each folder destroys the folder on a live server (RunService:IsStudio() false), so publishing the
 -- place never shows the displays to players. Returns one line per display (ground, lift, size, visible part count).
-local VERSION = "1.0"
+-- v1.1 (MDA-339, plan docs/plans/TROODON_KIT_v1.0.md Task 10): ONLY = a list of species to rebuild (nil = all four); set to
+--   {"Troodon"} to rebuild the troodon display from TroodonModelData 1.1 (same spot, x 180 z 925, same build) and leave the
+--   other three displays as they are. The StudioOnly guard's comment names the version that built it.
+local VERSION = "1.1"
+local ONLY = {"Troodon"} -- v1.1: species to rebuild this run; nil = every display in LIST
 local SCALE = 2
 local Z = 925
 local FACE = Vector3.new(-1, 0, 0)
@@ -33,7 +37,11 @@ params.FilterType = Enum.RaycastFilterType.Include
 params.FilterDescendantsInstances = {workspace.DinoIsland:FindFirstChild("Ground")} -- ground only (not trees)
 
 local out = {}
+local only = nil -- v1.1
+if ONLY then only = {} for _, n in ipairs(ONLY) do only[n] = true end end
+
 for _, e in ipairs(LIST) do
+	if only and not only[e.species] then continue end -- v1.1
 	local src = da.Models:FindFirstChild(e.species .. "ModelData")
 	if not src then
 		table.insert(out, e.species .. ": model data missing")
@@ -52,7 +60,7 @@ for _, e in ipairs(LIST) do
 	folder:SetAttribute("DisplayModelsVersion", VERSION)
 	local guard = Instance.new("Script")
 	guard.Name = "StudioOnly"
-	guard.Source = "-- display_models_install 1.0: this display model is for Studio only\n"
+	guard.Source = "-- display_models_install " .. VERSION .. ": this display model is for Studio only\n"
 		.. "if not game:GetService(\"RunService\"):IsStudio() then script.Parent:Destroy() end\n"
 	guard.Parent = folder
 

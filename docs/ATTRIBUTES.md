@@ -3053,3 +3053,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooPoseEnabled; TrooHopPoseEnabled; TrooEyeFlareEnabled; TrooGroundLockEnabled; TrooHopLandTime | troodon character | nil = true each (read each frame); 0.8 s | TrooPose 1.0 (IdleAnimation 1.47): throw layer / hop layer / eyes flare / foot ground lock; hop land fade |
 | TrooPoseTestKey | troodon character (Studio test hook) | nil (unset in play); a key name holds that key exactly | TrooPose 1.0 |
 | TrooPoseVersion; TrooPoseState; TrooPoseSource; TrooHopPhase; TrooEyeFlare; TrooGroundShift | troodon character (this client) | "1.0"; "throw" / "cancel" / "none" / "test:<key>"; "local" / "server"; "crouch" / "air" / "land" / "none"; bool; studs | TrooPose 1.0 diagnostics |
+| DisplayModelsVersion | Workspace.DinoArcade_<Species> folder and its <Species>_Display model (Studio only) | "1.0" / "1.1" (the installer version that built it) | tools/display_models_install 1.1 |
