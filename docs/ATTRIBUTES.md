@@ -3104,3 +3104,4 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooShedImmuneUntil; TrooShedBroke / At / BurstAt / Hits / BlockAt | troodon character | Feather Shed: its own immunity (stun / snare / daze / pin), NOT StunBreakImmuneUntil; stamps | TrooMovesServer 1.0 |
 | TrooPortalA / B / OpenAt / Open2At / Until / At / EndAt (owner); TrooPortalLockUntil / From / To / UsedAt (user) | troodon character; user | Portal Feathers stamps; per-dino 1 s lock | TrooMovesServer 1.0 |
 | TrooAttackSlowApplyEnabled; BindableFunction TrooSlowApply(model, mul, untilT) | TrooAttackServer script | true (read at each call) | TrooAttackServer 1.1 |
+| SapWallBlock.ENABLED; SapWallBlockVersion / SapWallBlockChecks / SapWallBlockHits | SapWallBlock module (flag; script attributes) | true; diagnostics | SapWallBlock 1.0 (MDA-353; server hooks still to add) |
