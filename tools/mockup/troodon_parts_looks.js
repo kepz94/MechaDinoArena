@@ -1168,10 +1168,10 @@ function fitLine(look) {
   if (!MEAS || !MEAS.looks[look]) return '<p class="note">Fit not measured in this build.</p>';
   const r = MEAS.looks[look], ok = r.idle <= 5 && r.move <= 5 && !r.floating.length;
   const clashes = Object.entries(MEAS.any || {}).filter(([k]) => k.split(" × ").includes(look)).map(([k, v]) => k.split(" × ").find(x => x !== look) + " " + v + "%");
-  return `<h3>Fit (measured)</h3><table class="cmp"><tr><th>Inside the body, worst piece</th><td class="n"><span class="${r.idle <= 5 ? "ok" : "badn"}">${r.idle}%</span> idle · <span class="${r.move <= 5 ? "ok" : "badn"}">${r.move}%</span> in its move</td></tr>
-    <tr><th>Worst piece in the move</th><td>${r.moveWorst || "none inside"}</td></tr><tr><th>Pieces / brackets</th><td class="n">${r.pieces} / ${r.brackets} (brackets ${r.bracketIdle}% · ${r.bracketMove}% in the body: set into the surface on purpose)</td></tr>
+  return `<h3>Fit (measured)</h3><div class="tw"><table class="cmp"><tr><th>Inside the body, worst piece</th><td class="n"><span class="${r.idle <= 5 ? "ok" : "badn"}">${r.idle}%</span> idle · <span class="${r.move <= 5 ? "ok" : "badn"}">${r.move}%</span> in its move</td></tr>
+    <tr><th>In the kit's throw / flap / glide poses</th><td class="n"><span class="${r.kit <= 5 ? "ok" : "badn"}">${r.kit}%</span></td></tr><tr><th>Worst piece in the move</th><td>${r.moveWorst || "none inside"}</td></tr><tr><th>Pieces / brackets</th><td>${r.pieces} / ${r.brackets} (brackets ${r.bracketIdle}% · ${r.bracketMove}% in the body: set into the surface on purpose)</td></tr>
     <tr><th>Floating pieces</th><td>${r.floating.length ? '<span class="badn">' + r.floating.join(", ") + "</span>" : '<span class="ok">none</span>'}</td></tr>
-    <tr><th>Clips another part's look</th><td>${clashes.length ? '<span class="badn">' + clashes.join(", ") + "</span> (don't slot those together)" : '<span class="ok">no look of any other part, in any move</span>'}</td></tr></table>
+    <tr><th>Clips another part's look</th><td>${clashes.length ? '<span class="badn">' + clashes.join(", ") + "</span> (don't slot those together)" : '<span class="ok">no look of any other part, in any move</span>'}</td></tr></table></div>
     <p class="note">${ok ? "Passes the ≤ 5% rule." : "Over the 5% rule."} Measured ${MEAS.when} UTC, page v${MEAS.version}.</p>`;
 }
 function renderAll() {
