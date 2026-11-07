@@ -1,4 +1,4 @@
--- SkillEffects v1.47 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.48 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -307,6 +307,16 @@ local ServerStorage = game:GetService("ServerStorage")
 --   GliderBurst): the troodon's flaps and glide come from TroodonModelData 1.3 (JumpAirJumps / GliderAuto are written by no
 --   writer). Every other dino as 1.46. Switch: script attribute SkillEffectsTrooFlapKeepEnabled (default true, read at each
 --   write; false = 1.46).
+-- v1.48 (MDA-346, plan docs/plans/TROODON_PARTS_v1.0.md ticket 2; SkillTree 1.72): an OPARTS list like DPARTS: on a character
+--   with Species "Troodon" (or one that already has TrooPartMenderEnabled, so a switch away writes the off values), each
+--   troodon button part bought (SkillPath_<id> >= 1, not soon) AND slotted (SkillSlot1..SLOTS) writes TrooPart<Name><Field>
+--   from ST.effects(steps, "Troodon") (read here only: the troodon's other rows keep ST.effects(steps), dino nil, as 1.47) and
+--   TrooPart<Name>Enabled true; otherwise the off values and false. TrooPartMender (Heal, Time, Range, Hop, Cooldown),
+--   TrooPartLantern (Range, Chain, Targets, Damage, Cooldown), TrooPartSap (Range, Width, Time, Cooldown), TrooPartShed
+--   (Immune, Cooldown, KnockRadius, SlowMul, SlowTime), TrooPartPortal (Range, Time, Squad, Cooldown). The 4 always-on parts
+--   (build 2, MDA-349) get no rows yet. Read by TrooPartsServer 1.0 (looks), TrooMovesServer 1.0, MechaButtons. Switch: script
+--   attribute SkillEffectsTrooPartsEnabled (default true, read at each write; false = 1.47 plus the off values written).
+--   Diagnostic: character TrooPartsSlotted (the ids written on, comma list, "" when none).
 -- v1.32 (tail slam rework, SkillTree 1.48, plan docs/plans/TENO_SLAM_REWORK_v1.0.md): the teno attribute TenoSlamExtraCharges
 --   (effects buckCharge: 1 at Buck Off star, else 0) joins TENO_ATTRS; TenoAttackServer 1.2 adds it to the slam charges.
 --   Switch: script attribute SkillEffectsTenoChargeEnabled (default true, read at start).
@@ -328,6 +338,7 @@ VERSION = "1.44" -- v1.44 TheriClockJump (Overclock III extra jump)
 VERSION = "1.45" -- v1.45 dilo button parts (DPARTS)
 VERSION = "1.46" -- v1.46 troodon keeps its own hop values
 VERSION = "1.47" -- v1.47 troodon keeps its flap / glide values
+VERSION = "1.48" -- v1.48 troodon button parts (OPARTS)
 if script:GetAttribute("SkillEffectsTrooFlapKeepEnabled") == nil then script:SetAttribute("SkillEffectsTrooFlapKeepEnabled", true) end -- v1.47
 local function trooFlapKeep(char) -- v1.47
 	return char:GetAttribute("Species") == "Troodon" and script:GetAttribute("SkillEffectsTrooFlapKeepEnabled") ~= false
@@ -1074,6 +1085,57 @@ do
 	end
 end
 
+-- v1.48: the troodon's mecha button parts (see the header)
+if script:GetAttribute("SkillEffectsTrooPartsEnabled") == nil then script:SetAttribute("SkillEffectsTrooPartsEnabled", true) end
+local OPARTS = { -- {path id, prefix, {attribute, effect field, off value}...}
+	{"omender", "TrooPartMender", {{"Heal", "oMenderHeal", 0}, {"Time", "oMenderTime", 0}, {"Range", "oMenderRange", 0},
+		{"Hop", "oMenderHop", false}, {"Cooldown", "oMenderCooldown", 0}}},
+	{"olantern", "TrooPartLantern", {{"Range", "oLanternRange", 0}, {"Chain", "oLanternChain", 0}, {"Targets", "oLanternTargets", 0},
+		{"Damage", "oLanternDamage", 0}, {"Cooldown", "oLanternCooldown", 0}}},
+	{"osapwall", "TrooPartSap", {{"Range", "oSapRange", 0}, {"Width", "oSapWidth", 0}, {"Time", "oSapTime", 0},
+		{"Cooldown", "oSapCooldown", 0}}},
+	{"oshed", "TrooPartShed", {{"Immune", "oShedImmune", 0}, {"Cooldown", "oShedCooldown", 0}, {"KnockRadius", "oShedKnockRadius", 0},
+		{"SlowMul", "oShedSlowMul", 1}, {"SlowTime", "oShedSlowTime", 0}}},
+	{"oportal", "TrooPartPortal", {{"Range", "oPortalRange", 0}, {"Time", "oPortalTime", 0}, {"Squad", "oPortalSquad", false},
+		{"Cooldown", "oPortalCooldown", 0}}},
+}
+do
+	local applyCharV147 = applyChar
+	applyChar = function(char, st)
+		applyCharV147(char, st)
+		local isTroo = char:GetAttribute("Species") == "Troodon"
+		if not isTroo and char:GetAttribute("TrooPartMenderEnabled") == nil then return end
+		local partsOn = script:GetAttribute("SkillEffectsTrooPartsEnabled") ~= false and ST.TROO_PARTS == true
+		local e = {}
+		if partsOn and isTroo then
+			local steps = {}
+			for _, id in ipairs(ST.PATH_ORDER) do steps[id] = st.player:GetAttribute("SkillPath_" .. id) end
+			e = ST.effects(steps, "Troodon") or {}
+		end
+		local function inSlot(id)
+			for n = 1, ST.SLOTS or 2 do
+				if st.player:GetAttribute("SkillSlot" .. n) == id then return true end
+			end
+			return false
+		end
+		local list = {}
+		for _, def in ipairs(OPARTS) do
+			local id, prefix = def[1], def[2]
+			local pOn = partsOn and on() and isTroo and ST.PATHS[id] ~= nil and not ST.PATHS[id].soon
+				and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and inSlot(id)
+			for _, f in ipairs(def[3]) do
+				local v = f[3]
+				if pOn and e[f[2]] ~= nil then v = e[f[2]] end
+				if char:GetAttribute(prefix .. f[1]) ~= v then char:SetAttribute(prefix .. f[1], v) end
+			end
+			if char:GetAttribute(prefix .. "Enabled") ~= (pOn == true) then char:SetAttribute(prefix .. "Enabled", pOn == true) end
+			if pOn then table.insert(list, id) end
+		end
+		local diag = table.concat(list, ",")
+		if char:GetAttribute("TrooPartsSlotted") ~= diag then char:SetAttribute("TrooPartsSlotted", diag) end
+	end
+end
+
 -- healing (regen / lifesteal), overflow into the shield
 local function heal(char, st, amount, source)
 	local hum = st.hum
@@ -1418,5 +1480,8 @@ script:GetAttributeChangedSignal("SkillEffectsTheriPartsEnabled"):Connect(functi
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)
 script:GetAttributeChangedSignal("SkillEffectsDiloPartsEnabled"):Connect(function() -- v1.45
+	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
+end)
+script:GetAttributeChangedSignal("SkillEffectsTrooPartsEnabled"):Connect(function() -- v1.48
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)

@@ -3075,3 +3075,15 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooPoseFallEnabled | troodon character | nil = true (read each frame) | TrooPose 1.2: fall / glide / landing pose without a leap (TrooFlapPhase "fall") |
 | TrooZoneRadius | troodon character | 10 (TroodonModelData 1.5; was 5) | the glow zone radius x scale (40 studs wide) |
 | TrooThrowWideEnabled | troodon character | nil = true (read each frame of a throw) | TrooPose 1.3: the 12 deg wider wind-up |
+
+## Troodon parts build 1 (MDA-346..353; plan docs/plans/TROODON_PARTS_v1.0.md)
+| Attribute | On | Values / default | Written / read by |
+|---|---|---|---|
+| SkillTree.TROO_PARTS; SkillTree.TROO_PARTS_B2_SOON | SkillTree module flags | true; true (olastfeather / oplume / ofortify / oricochet soon, not LIVE_MECH) | SkillTree 1.72 |
+| SkillEffectsTrooPartsEnabled | SkillEffects script | switch (default true, read at each write; false = 1.47 + off values) | SkillEffects 1.48 |
+| TrooPartMenderEnabled / Heal / Time / Range / Hop / Cooldown | troodon character | while omender bought + slotted (I 4 / 4 / 40 / false / 20; ★ 4 / 5.4 / 40 / true / 14.8) | SkillEffects 1.48 |
+| TrooPartLanternEnabled / Range / Chain / Targets / Damage / Cooldown | troodon character | while olantern bought + slotted (I 40 / 24 / 2 / 8 / 14; ★ 40 / 32.4 / 3 / 8 / 10.3) | SkillEffects 1.48 |
+| TrooPartSapEnabled / Range / Width / Time / Cooldown | troodon character | while osapwall bought + slotted (I 40 / 50 / 2.1 / 18; ★ 40 / 67.5 / 4 / 18) | SkillEffects 1.48 |
+| TrooPartShedEnabled / Immune / Cooldown / KnockRadius / SlowMul / SlowTime | troodon character | while oshed bought + slotted (I 1 / 24 / 0 / 1 / 0; ★ 1.4 / 17.7 / 20 / 0.75 / 2) | SkillEffects 1.48 |
+| TrooPartPortalEnabled / Range / Time / Squad / Cooldown | troodon character | while oportal bought + slotted (I 40 / 6 / false / 20; ★ 54 / 8.1 / true / 20) | SkillEffects 1.48 |
+| TrooPartsSlotted | troodon character | diagnostic: comma list of the part ids written on ("" none) | SkillEffects 1.48 |
