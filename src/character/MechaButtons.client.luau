@@ -1,4 +1,4 @@
--- MechaButtons v1.37 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.39 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -275,6 +275,7 @@ VERSION = "1.35" -- v1.35 dilo parts build 1
 VERSION = "1.36" -- v1.36 dilo parts build 2 + SILENCED
 VERSION = "1.37" -- v1.37 seconds left on cooling slot buttons
 VERSION = "1.38" -- v1.38 Spring Jets press marked locally
+VERSION = "1.39" -- v1.39 troodon button parts
 -- v1.38 (MDA-329, plan docs/plans/DILO_PARTS_FIT_v1.0.md Task 2; Kepu 2026-11-06 "Instant burst + Thrusters FX"): a Spring Jets
 --   press also sets the character's local attributes DiloJetsPressDir (the flat direction sent) and DiloJetsPressAt (server
 --   time, last) on this client, so DiloJetsLaunch 1.1 / DiloPose 1.4 / DiloMovesFX 1.2 start the burst on the press like the
@@ -287,6 +288,14 @@ if script:GetAttribute("MechaButtonsJetsPressEnabled") == nil then script:SetAtt
 --   JumpCooldown for Mecha Legs, BreakerReadyAt for the Stun Breaker; the Thrusters keep their pips (no text). SILENCED,
 --   the passive Overclock "ON" and the Spring Jets "left / max" keep priority. Updated every frame; cleared at ready.
 --   Switch: script attribute MechaButtonsSecondsEnabled (default true, read every frame; false = 1.36).
+-- v1.39 (troodon parts build 1, MDA-350, plan docs/plans/TROODON_PARTS_v1.0.md ticket 6; TrooMovesServer 1.0): TIMED_PARTS +=
+--   omender ("TrooPartMender", DinoTrooMenderRequest, "MENDER DRONE"), olantern ("TrooPartLantern", DinoTrooLanternRequest,
+--   "ARC LANTERN"), osapwall ("TrooPartSap", DinoTrooSapRequest, "SAP WALL"), oshed ("TrooPartShed", DinoTrooShedRequest,
+--   "FEATHER SHED"), oportal ("TrooPartPortal", DinoTrooPortalRequest, "PORTAL FEATHERS"): PC keys, gamepad and the touch
+--   slots together, recharge fill + seconds from <prefix>ReadyAt / <prefix>Cooldown like every timed part. Mender and Shed
+--   send (stamp); Lantern, Sap Wall and Portal send (stamp, the camera's flat look, the crosshair's hit point: a ray from the
+--   camera 400 studs, the character and the FX / wall folders left out; nil when nothing is hit). Switch: script attribute
+--   MechaButtonsTrooEnabled (default true, read at start; false = 1.38).
 -- v1.36 (dilo parts build 2, MDA-321, plan docs/plans/DILO_PARTS_v1.0.md Task 8; DiloMovesServer 1.1; red-team 1 "Buttons + dilo
 --   server"): TIMED_PARTS += dhiss ("DiloPartHiss", DinoDiloHissRequest, "SONIC HISS"), dpump ("DiloPartPump",
 --   DinoDiloPumpRequest, "ANTIVENOM"), djets ("DiloPartJets", DinoDiloJetsRequest, "SPRING JETS"). Hiss and pump are normal
@@ -424,6 +433,15 @@ if DILO_BTN then -- v1.35: the dilo's mecha parts (build 1)
 	TIMED_PARTS.dhiss = {"DiloPartHiss", "DinoDiloHissRequest", "SONIC HISS"} -- v1.36: build 2
 	TIMED_PARTS.dpump = {"DiloPartPump", "DinoDiloPumpRequest", "ANTIVENOM"}
 	TIMED_PARTS.djets = {"DiloPartJets", "DinoDiloJetsRequest", "SPRING JETS"}
+end
+if script:GetAttribute("MechaButtonsTrooEnabled") == nil then script:SetAttribute("MechaButtonsTrooEnabled", true) end -- v1.39
+local TROO_BTN = script:GetAttribute("MechaButtonsTrooEnabled") ~= false
+if TROO_BTN then -- v1.39: the troodon's mecha button parts (build 1)
+	TIMED_PARTS.omender = {"TrooPartMender", "DinoTrooMenderRequest", "MENDER DRONE"}
+	TIMED_PARTS.olantern = {"TrooPartLantern", "DinoTrooLanternRequest", "ARC LANTERN"}
+	TIMED_PARTS.osapwall = {"TrooPartSap", "DinoTrooSapRequest", "SAP WALL"}
+	TIMED_PARTS.oshed = {"TrooPartShed", "DinoTrooShedRequest", "FEATHER SHED"}
+	TIMED_PARTS.oportal = {"TrooPartPortal", "DinoTrooPortalRequest", "PORTAL FEATHERS"}
 end
 if script:GetAttribute("MechaButtonsSilenceEnabled") == nil then script:SetAttribute("MechaButtonsSilenceEnabled", true) end -- v1.36
 local function silencedNow() -- v1.36
@@ -995,6 +1013,26 @@ local function press(n, input)
 			char:SetAttribute("DiloJetsPressAt", workspace:GetServerTimeNow())
 		end
 		if r then r:FireServer(workspace:GetServerTimeNow(), dir) end
+		return
+	end
+	if TROO_BTN and (id == "olantern" or id == "osapwall" or id == "oportal") then -- v1.39: the camera's flat look + the crosshair point
+		local r = ReplicatedStorage:FindFirstChild(TIMED_PARTS[id][2])
+		local cam = workspace.CurrentCamera
+		if r and cam then
+			local lv = cam.CFrame.LookVector
+			local flatLook = Vector3.new(lv.X, 0, lv.Z)
+			flatLook = flatLook.Magnitude > 1e-3 and flatLook.Unit or Vector3.zAxis
+			local rp = RaycastParams.new()
+			rp.FilterType = Enum.RaycastFilterType.Exclude
+			local ex = {char}
+			for _, n in ipairs({"DinoFX_Local", "DinoFX", "TrooFX", "TrooPartsFX", "TrooWalls"}) do
+				local f = workspace:FindFirstChild(n)
+				if f then table.insert(ex, f) end
+			end
+			rp.FilterDescendantsInstances = ex
+			local hit = workspace:Raycast(cam.CFrame.Position, lv * 400, rp)
+			r:FireServer(workspace:GetServerTimeNow(), flatLook, hit and hit.Position or nil)
+		end
 		return
 	end
 	if DILO_BTN and (id == "dgatling" or id == "dmortar") then -- v1.35: along the camera look; the mortar + the crosshair point

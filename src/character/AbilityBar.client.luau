@@ -1,4 +1,4 @@
--- AbilityBar v1.34 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.35 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -190,6 +190,7 @@ VERSION = "1.31" -- v1.31 SILENCED part tiles
 VERSION = "1.32" -- v1.32 teno + dilo part countdowns
 VERSION = "1.33" -- v1.33 troodon ATTACK + JUMP tiles
 VERSION = "1.34" -- v1.34 troodon plain JUMP tile without charges
+VERSION = "1.35" -- v1.35 troodon button part timers
 -- v1.32 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 1; Kepu 2026-11-06 "I need all cool downs to be [shown] on
 --   screen"): the 6 teno slot parts (tgrab / tmortar / tstomp / tbellow / tchallenge / tmud), the teno Hydraulic Leap slot
 --   tile (tleap) and the 7 dilo parts (dgatling / dmortar / dhiss / dspine / dpump / djets / dover) join TIMED_PARTS, so their
@@ -203,6 +204,11 @@ VERSION = "1.34" -- v1.34 troodon plain JUMP tile without charges
 --   future every slot tile with a part is painted "silenced": dimmed (0.6), no fill, no seconds, sub label "SILENCED"
 --   (diagnostic AbilityBar_Slot_<n> = "silenced"). Nothing else changes. Switch: script attribute AbilityBarSilenceEnabled
 --   (default true, read each frame; false = 1.30).
+-- v1.35 (troodon parts build 1, MDA-350, plan docs/plans/TROODON_PARTS_v1.0.md ticket 6, with MechaButtons 1.39): the 5
+--   troodon button parts join TIMED_PARTS (omender "TrooPartMender", olantern "TrooPartLantern", osapwall "TrooPartSap", oshed
+--   "TrooPartShed", oportal "TrooPartPortal"): recharge fill + seconds from <prefix>ReadyAt / <prefix>Cooldown; "active" while
+--   UNTIL_ATTR is in the future (omender TrooMenderUntil, oshed TrooShedImmuneUntil, oportal TrooPortalUntil). Switch: script
+--   attribute AbilityBarTrooPartsEnabled (default true, read at start; false = 1.34).
 -- v1.33 (Troodon kit, MDA-334, plan docs/plans/TROODON_KIT_v1.0.md Task 5; PC and touch together with ArenaTouch 1.18):
 --   SPECIES_MOVES.Troodon = TrooAttack (key "LMB", ATTACK, yellow; tap = Glow Pod Toss, TrooAttackTest 1.0) and TrooLeap
 --   (key "Space", JUMP: the therizino JUMP tile's leap pips = JumpCharges filled to JumpChargesLeft, the next filling over
@@ -279,6 +285,12 @@ if script:GetAttribute("AbilityBarTenoDiloTimersEnabled") ~= false then
 	UNTIL_ATTR.dover, UNTIL_ATTR.dpump = "DiloOverdriveUntil", "DiloImmuneUntil"
 	CHARGE_ATTR.djets = {"DiloPartJetsLeft", "DiloPartJetsCharges"}
 	CHARGE_ATTR.tleap = {"TenoLeapChargesLeft", "TenoLeapCharges"}
+end
+if script:GetAttribute("AbilityBarTrooPartsEnabled") == nil then script:SetAttribute("AbilityBarTrooPartsEnabled", true) end -- v1.35
+if script:GetAttribute("AbilityBarTrooPartsEnabled") ~= false then -- v1.35: the troodon's 5 button parts
+	TIMED_PARTS.omender, TIMED_PARTS.olantern, TIMED_PARTS.osapwall = "TrooPartMender", "TrooPartLantern", "TrooPartSap"
+	TIMED_PARTS.oshed, TIMED_PARTS.oportal = "TrooPartShed", "TrooPartPortal"
+	UNTIL_ATTR.omender, UNTIL_ATTR.oshed, UNTIL_ATTR.oportal = "TrooMenderUntil", "TrooShedImmuneUntil", "TrooPortalUntil"
 end
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
