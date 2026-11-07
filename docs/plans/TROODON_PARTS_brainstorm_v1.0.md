@@ -1,0 +1,129 @@
+# Mecha Dino Arena — Troodon mecha part ideas v1.0 (brainstorm)
+
+**Ask (Kepu 2026-11-06 19:34):** "create a list of 20 different abilities for each stat category. I want you to pull inspiration from different games to create something unique for this Dino".
+**Page:** docs/mockups/troodon_parts_brainstorm_v1.0.html (source tools/troodon_parts_brainstorm). Rules: visible hardware, works against any dino, no repeat of a live part, heals reach squadmates only. Numbers come with the plan after Kepu picks.
+
+## Health — Keep the squad alive. Heals, saves and second chances.
+
+| # | Part | What it does | Looks like | Inspired by |
+|---|---|---|---|---|
+| H1 | Mender Drone | A little feathered drone orbits the most hurt squadmate nearby and heals it; with no squad it orbits you. | Drone docked between the shoulder blades | Mercy's Guardian Angel, Lifeline's D.O.C. (Overwatch, Apex) |
+| H2 | Share Link | Tether one squadmate: for 4 s you each take half of the damage the other one takes. | Cable reel on the left wrist | Taric's Bastion (League), Soul Bind (Dota) |
+| H3 | Sour Sap | Your pods also put anti-heal on enemies: they heal 50% less for 4 s. | Second sap canister on the throwing hand | Ana's Biotic Grenade (Overwatch) |
+| H4 | Night Bloom | When you go down you burst into a healing flower that heals squadmates around it for 4 s. | Seed pod set into the chest | Lifeweaver's Tree of Life (Overwatch) |
+| H5 | Rescue Pull | Yank a squadmate to your side and out of danger. | Grab-claw launcher on the forearm | Lifeweaver's Life Grip (Overwatch) |
+| H6 | Pulse Collar | Heals you and squadmates nearby every 2 s; double while you stand still. | Glowing ring collar around the neck | Lucio's Crossfade (Overwatch) |
+| H7 | Last Feather | Once per life a killing hit leaves you at 1 HP and you glide away untouchable for 1 s. | Small reserve battery on the tail base | Baptiste's Immortality Field, Zarya-style clutch saves (Overwatch) |
+| H8 | Nest Beacon | Plant a nest; your squad's next respawn happens at the nest. | Folded nest drone on the hip | Rocket's Revive beacon (Marvel Rivals), Mobile Respawn Beacon (Apex) |
+| H9 | Feather Cocoon | Wrap yourself or a squadmate in feathers: can't be hurt for 1.5 s but can't move. | Feather spool on the back | Mei's Cryo-Freeze, Kiriko's protection (Overwatch) |
+| H10 | Glow Siphon | Damage your zones deal heals you for half of it. | Siphon tubes from the pod rack to the chest | Moira's Biotic Orb (Overwatch) |
+| H11 | Cleansing Chime | A chime from the crest clears slows, stuns and poison from you and squadmates nearby. | Bell crest on the head | Kiriko's Protection Suzu (Overwatch) |
+| H12 | Overheal Plume | Healing above max health turns into a temporary armour plume that soaks the next hits. | Feather fan that lights up on the tail | Brigitte's Repair Pack overhealth (Overwatch) |
+| H13 | Seed Pylon | Drop a little pylon that fires healing seeds at squadmates in sight for 8 s. | Pylon clipped to the thigh | Illari's Healing Pylon (Overwatch) |
+| H14 | Roost | Crouch still for 2 s to heal fast; any move or hit stops it. | Folding perch legs on the belly | Pokemon's Roost / Rest |
+| H15 | Harmony Eye | Mark a squadmate; it heals over time and your pods aim at whoever hits it. | Eye-scope over one eye | Zenyatta's Harmony Orb (Overwatch) |
+| H16 | Sky Medic | While gliding, drop healing feathers straight down onto squadmates below. | Feather dispenser under the tail | Healing drops from the air: Mercy's Valkyrie (Overwatch) |
+| H17 | Bandage Dart | Fire a sticky bandage that heals a squadmate it hits over 3 s. | Dart tube on the right forearm | Ana's Biotic Rifle (Overwatch), Luna Snow (Marvel Rivals) |
+| H18 | Shared Meal | Food you eat also heals squadmates nearby. | Crop pouch on the throat | Monster Hunter's Wide-Range skill |
+| H19 | Feather Barrier | Give a squadmate a feather shield that soaks 20 damage for 5 s. | Shield emitter in the arm fan | Janna's Eye of the Storm (League), Lulu |
+| H20 | Rally Call | When a squadmate falls under 25% you get a speed burst toward them and heal them when you reach them. | Signal antenna on the crest | Lifeline's Combat Revive (Apex), Mercy (Overwatch) |
+
+## Attack — Hurt, mark and disrupt from range. Built around the pod.
+
+| # | Part | What it does | Looks like | Inspired by |
+|---|---|---|---|---|
+| A1 | Sleeper Dart | A wrist dart that puts a dino to sleep for 2 s; any damage wakes it. | Dart tube on the left wrist | Ana's Sleep Dart (Overwatch) |
+| A2 | Prey Marks | Each pod splat marks enemies; 3 marks = exposed, they take 25% more from everyone for 4 s. | Three-light mark counter on the neck | The Isle's troodon venom stacks |
+| A3 | Discord Eye | Stare a dino down: it takes 20% more damage while it stays in your sight. | Red lens over the left eye | Zenyatta's Orb of Discord (Overwatch) |
+| A4 | Pod Fan | Throw 3 small pods in a fan instead of one big one. | Triple pod rack on the back | Junkrat's grenades, Splatoon Splat Bombs |
+| A5 | Sticky Pod | The pod sticks to the dino it hits and the zone follows it around. | Barbed pod cups on the hands | Tracer's Pulse Bomb (Overwatch) |
+| A6 | Arc Lantern | Throw a lantern that zaps up to 3 enemies near it in a chain. | Lantern hook on the hip | Ukulele (Risk of Rain), Zeus (Dota) |
+| A7 | Blackout Bomb | Enemies hit see a dark tunnel (screen dims) for 2 s. | Ink bulb on the chest | Omen's Paranoia (Valorant) |
+| A8 | Seeker Moths | Release 2 glowing moths that home on the nearest enemy and daze it 1 s. | Moth hive on the lower back | Skye's Seekers (Valorant) |
+| A9 | Sickle Kick | A big sickle-claw kick that knocks a dino back away from you and your squad. | Steel sleeve on the raised sickle claw | Lucio's Soundwave boop (Overwatch) |
+| A10 | Ricochet Pod | The pod bounces once and splats a second zone on the next enemy. | Spring cup on the throwing hand | Moira's orb bounce, Junkrat |
+| A11 | Gravity Pod | The zone pulls enemies toward its middle for 1.5 s. | Heavy black pod in a cage on the back | Zarya's Graviton Surge (Overwatch), Horizon (Apex) |
+| A12 | Overcharge | Your next pod is huge: double damage, double size zone. | Charge coils along the arms | Lucio's Amp It Up (Overwatch) |
+| A13 | Talon Laser | Hold a laser beam from the claws that ramps up the longer it stays on one dino. | Laser emitters in the fingers | Symmetra's Photon Projector (Overwatch) |
+| A14 | Fear Hoot | A hoot that makes nearby enemies run away from you for 1.5 s. | Horn speaker on the throat | Fiddlesticks' Terrify (League), Roar (Pokemon) |
+| A15 | Pin Feather | Shoot a feather spike that roots a dino in place for 1 s. | Spike quiver on the forearm | Morgana's Dark Binding (League) |
+| A16 | Air Raid | While gliding, drop 3 pods straight down in a line. | Bomb bay under the belly | Valkyrie's Missile Swarm (Apex) |
+| A17 | Cooldown Leech | Pod hits add 1 s to the target's mecha part cooldowns. | Leech needle on the pod rack | Zilean / time steal (League), Sombra (Overwatch) |
+| A18 | Splinter Pod | When the zone ends it bursts into 6 small splinters that hit anything nearby. | Shrapnel ring on each pod | Cluster grenades (Battlefield) |
+| A19 | Glow Spit | A quick close-range spit cone that hurts and slows (for when something is on top of you). | Nozzle under the jaw | Viper's Snake Bite (Valorant) |
+| A20 | Hunter's Focus | Hold still and aim for 1 s: your next pod flies twice as far and twice as fast. | Sniper brace on the knees | Widowmaker scope (Overwatch) |
+
+## Defense — Survive a fight a small dino shouldn't win, and protect others.
+
+| # | Part | What it does | Looks like | Inspired by |
+|---|---|---|---|---|
+| D1 | Sap Wall | Throw a pod that hardens into a wall that blocks dinos and shots for 4 s. | Wall pod on the shoulder | Mei's Ice Wall (Overwatch), Catalyst (Apex) |
+| D2 | Feather Decoy | Leave a chirping feather dummy behind; bots chase it and it pops into a small zone. | Decoy pack on the tail | Mirage's Psyche Out (Apex), Loki (Marvel Rivals) |
+| D3 | Reflex | After you take a big hit, your next JUMP is instant and you're untouchable for 0.5 s. | Reflex sensor along the spine | Skirmisher Reflex (XCOM 2) |
+| D4 | Quill Jacket | Dinos that bite or claw you take 4 back. | Spiked quill vest | Thornmail (League) |
+| D5 | Fortify Field | Your zones also give squadmates inside 25% damage reduction. | Shield panel on the pod rack | Baptiste's field, Lucio (Overwatch) |
+| D6 | Escort Kite | A floating shield panel follows a squadmate and blocks shots from the front. | Kite drone on the back | Newcastle's Mobile Shield (Apex) |
+| D7 | Rewind | Jump back to where you were 3 s ago, with the health you had then. | Clock dial on the chest | Tracer's Recall (Overwatch) |
+| D8 | Hardlight Plumes | Light-feather armour that soaks 15 damage and refills when you're out of fight for 5 s. | Glowing feather plates on the flanks | Apex body shields |
+| D9 | Rear Watch | Your big eyes warn you: an arrow shows any dino closing in from behind within 40 studs. | Rear-facing lens on the crest | Seer, Cypher's camera (Apex, Valorant) |
+| D10 | Grounding Talons | Plant your claws: can't be knocked back, flung or grabbed for 3 s. | Anchor spikes on the feet | Unstoppable (League), Brigitte (Overwatch) |
+| D11 | Escape Plume | Below 20% health you burst away and go hidden for 1.5 s (once per life). | Smoke-plume canister on the tail | Wraith's Into the Void (Apex) |
+| D12 | Bubble Pod | Trap a dino in a bubble for 2 s: it can't attack and can't be hurt. Save a squadmate or stall an enemy. | Bubble pod in a cage on the back | Nami's Aqua Prison (League), Zarya's bubble |
+| D13 | Sanctuary Ring | A ring on the ground: the first hit each squadmate takes inside it does nothing. | Ring emitter on the hip | Baptiste's Immortality Field (Overwatch) |
+| D14 | Flock Shield | Your arm feathers lock into a shield in front of you while you hold the button (slow walk). | Armoured feather fans on the arms | Reinhardt's Barrier (Overwatch) |
+| D15 | Dazzle Feathers | When hit, feathers flash: the attacker's next attack misses. | Mirror feathers on the back | Dodge evasion (Dota's Butterfly) |
+| D16 | Pressure Pads | Take 30% less damage while gliding or in the air. | Air bladders under the arms | Pharah / flying armor (Overwatch) |
+| D17 | Bodyguard Swap | Switch places with a squadmate who's being hit. | Swap beacon on the crest | Kiriko's Swift Step (Overwatch), Bard (League) |
+| D18 | Feather Shed | Shed your feathers to break out of a stun, pin or grab. | Quick-release feather harness | Stun breakers / QSS (League) |
+| D19 | Night Camouflage | While standing still in grass you fade almost invisible. | Light-bending mesh on the back | Predator camo, Hunt: Showdown |
+| D20 | Counter Zone | Getting hit drops a small zone under you automatically (8 s cooldown). | Reactive pod under the belly | Reactive traps (Path of Exile) |
+
+## Speed — Move the squad, not just yourself. Lean into flight.
+
+| # | Part | What it does | Looks like | Inspired by |
+|---|---|---|---|---|
+| S1 | Tailwind | Squadmates you glide over get 30% speed for 4 s. | Turbine fan on the tail | Tailwind (Pokemon) |
+| S2 | Updraft Vent | Drop a vent that launches anyone who steps on it high into the air into a glide. | Folded vent on the back | Revali's Gale (Zelda), Horizon's lift, Octane's pad (Apex) |
+| S3 | Wing Dash | A quick dash in the air in any direction. | Air jets under the arms | Celeste air dash, Ori |
+| S4 | Wall Run | Run along walls for 1.5 s. | Grip talons on the toes | Titanfall wall run, Genji (Overwatch) |
+| S5 | Thermal Rider | Your glide gains height over your own zones and sunny ground. | Heat fins along the arms | Paraglider updrafts (Zelda) |
+| S6 | Portal Feathers | Place two feather rings; walking into one comes out of the other. | Ring launchers on the back | Wraith's Dimensional Rift (Apex), Bard (League) |
+| S7 | Slipstream | Squadmates running behind you get a speed boost. | Wake vanes on the tail | Mario Kart slipstream |
+| S8 | Speed Ring | Throw a big ring; squadmates who run through it get 40% speed for 3 s. | Ring projector on the arm | Juno's Hyper Ring (Overwatch) |
+| S9 | Ground Skim | Glide low over the ground twice as fast. | Skid plates on the belly | Spyro's glide |
+| S10 | Hover | Hold JUMP at the top of a flap to hover in place for 1.5 s. | Hover fans in the arm fans | Pharah's Hover Jets (Overwatch) |
+| S11 | Stim Beacon | Place a beacon; squadmates near it get faster cooldowns and speed for 6 s. | Beacon stake on the hip | Brimstone's Stim Beacon (Valorant) |
+| S12 | Hit and Fly | After every pod throw you get a 1 s speed burst. | Spring heels | Hit and Run (XCOM 2) |
+| S13 | Carry Talons | Grab a squadmate with your feet and fly them with your glide. | Hooked foot talons | Banjo-Kazooie, Rocket & Groot (Marvel Rivals) |
+| S14 | Wall Kick | Kick off a wall to get one more flap. | Spring pads on the feet | Mega Man X, Mario wall jump |
+| S15 | Dive Bomb | Fold your wings and drop straight down fast from a glide. | Dive fins on the shoulders | Valkyrie's Skyward Dive (Apex) |
+| S16 | Momentum Feathers | Each flap stores speed; when you land you sprint 2x for 1.5 s. | Charge lights on the tail feathers | Sonic's Boost |
+| S17 | Rally Path | Leave a glowing trail that makes squadmates on it faster. | Glow dripper on the tail tip | Splatoon ink |
+| S18 | Fourth Flap | One more flap in the air (4 beats instead of 3). | Bigger arm fans | Kirby's multi-jump |
+| S19 | Quick Feet | Your run speed stays full while throwing pods (no slowdown). | Gyro stabiliser on the hips | Run-and-gun perks (Call of Duty) |
+| S20 | Ally Leap | Leap straight to a squadmate in range. | Grapple-free leap boosters on the thighs | Kiriko's Swift Step (Overwatch) |
+
+## Engineer — Control the map: traps, scouting and things you build.
+
+| # | Part | What it does | Looks like | Inspired by |
+|---|---|---|---|---|
+| E1 | Lantern Sentry | A sentry that shoots slowing pods at enemies and healing seeds at squadmates. | Folded lantern turret on the back | Killjoy's Turret (Valorant), Illari's Pylon (Overwatch) |
+| E2 | Alarm Chirper | A hidden chirper that screams and reveals any enemy that walks near it. | Chirper eggs in a belly pouch | Killjoy's Alarmbot (Valorant) |
+| E3 | Light Fence | Place two posts; a light fence between them slows and hurts enemies who cross it. | Fence posts on the hips | Wattson's Perimeter Security (Apex) |
+| E4 | Owl Scout | Fly a scout drone to look around; it marks enemies it sees. | Owl drone perched on the crest | Sova's Owl Drone (Valorant), Crypto (Apex) |
+| E5 | Mimic Call | Play a fake roar or footsteps at a spot to pull bots and players there. | Speaker throat sac | The Isle troodon's sound mimicry |
+| E6 | Night Vision Pulse | Your eyes pulse: every dino within 60 studs shows through walls for 3 s. | Pulse emitter around the eyes | Bloodhound's Eye of the Allfather (Apex) |
+| E7 | Sap Lockdown | After a 2 s build-up, a big area traps every enemy inside for 3 s. | Lockdown core on the back | Killjoy's Lockdown (Valorant) |
+| E8 | Bind Link | Tether two enemies together; if they move apart they get pulled back and dazed. | Twin tether spool | Grimstroke's Soulbind (Dota) |
+| E9 | Wind Lantern | A lantern that blows enemies out of an area and blocks shots coming through it. | Fan lantern on the hip | Janna's Howling Gale, Yasuo's Wind Wall (League) |
+| E10 | Spore Fog | A fog cloud enemies can't see through, but your squad can. | Spore tank on the back | Brimstone's smoke (Valorant) |
+| E11 | Pod Mines | Hide pods in the ground; they burst into zones when an enemy steps on them. | Mine rack on the tail | Junkrat's traps (Overwatch) |
+| E12 | Light Bridge | Make a short glowing platform in the air to stand on. | Platform projector on the chest | Lifeweaver's Petal Platform (Overwatch) |
+| E13 | Firefly Swarm | A swarm that follows the nearest enemy and keeps it visible; it can't hide or cloak. | Firefly jar on the hip | Fade's Prowler (Valorant), Seer (Apex) |
+| E14 | Shared Sight | Squadmates see enemies you see on their screens. | Antenna crest | Team spotting (Battlefield), Apex ping |
+| E15 | Nest Fort | Build a small nest of walls around you in 1 s. | Folded panels on the back | Fortnite build, Rampart's cover (Apex) |
+| E16 | Zone Anchor | Your zones last twice as long and are 50% bigger. | Anchor spikes on every pod | Upgrade-style perk |
+| E17 | Glow Trap Net | A net trap that sticks a dino in place and makes it glow (easy to find). | Net launcher on the forearm | Hunter's net (Monster Hunter) |
+| E18 | Echo Location | Each chirp shows you the outline of every dino near you for 1 s. | Sonar dish on the crest | Echolocation (Batman Arkham detective mode) |
+| E19 | Pod Drone | A drone carries your pod and drops it where you point. | Drone docked on the back | Crypto's drone (Apex) |
+| E20 | Watch Tower | Plant a tall perch; while standing on it your zones and sight reach 50% farther. | Folding perch pole on the back | Rampart's turret spots, sniper perches |
