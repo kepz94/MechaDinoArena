@@ -1,4 +1,4 @@
--- TrooPose v1.3 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
+-- TrooPose v1.4 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
 -- the Evade Hop (jump J2) and the eyes flaring during the throw. MDA-337, plan docs/plans/TROODON_KIT_v1.0.md Task 8; mockup
 -- docs/mockups/troodon_kit_options_v0.1.html (Kepu 2026-11-06 15:38 "Let's go with your recommendations"; source
 -- tools/troodon_kit_mockup/app_tail.js TA_WIND / TA_HOLD / TA_THROW / TA_FOLLOW, TH_SET / TH_AIR / TJ_LAND, and the
@@ -53,10 +53,23 @@
 --   mockup tools/mockup/troodon_parts_looks.js TA_WIND_W / TA_HOLD_W): the throw track's wind-up keys swing the long arms 12 deg
 --   wider (ArmL roll -12, ArmR +12, added to TA_WIND / TA_HOLD) so the hands pass outside the knees. Switch: model attribute
 --   TrooThrowWideEnabled (default true, read at each frame of a throw; false = 1.2's keys).
+-- v1.4 (Troodon parts build 1, MDA-351, plan docs/plans/TROODON_PARTS_v1.0.md ticket 7; mockup
+--   tools/mockup/troodon_parts_looks.js key poses MEND_SET / MEND_GO, LANT_GRAB / LANT_COCK / LANT_THROW / LANT_FOLLOW,
+--   PINNED -> SHED_TENSE / SHED_BURST, PORT_SET / PORT_FLING, unchanged numbers): the 5 button parts' move tracks on the
+--   attack layer (same springs, root push and foot lock as the throw), started on every client by TrooMovesServer 1.x's
+--   press stamps (server time): TrooMenderAt -> mender {0 $from, 0.3 MEND_SET io, 0.5 MEND_GO out, 1.05 READY io};
+--   TrooMenderEndAt (the drone comes back) -> menderBack {0 $from, 0.25 MEND_SET io, 0.85 READY io}; TrooLanternAt -> lantern
+--   {0.3 LANT_GRAB io, 0.36 LANT_COCK io, 0.44 LANT_THROW in2 (release 0.42), 0.64 LANT_FOLLOW out, 1.32 READY io};
+--   TrooSapAt -> sap = the wide throw (release 0.34 = the sap wind-up); TrooShedAt -> shed {0.13 SHED_TENSE io, 0.21
+--   SHED_BURST out5 (burst 0.15), 0.5 SHED_BURST, 0.75 TJ_LAND io, 1.4 READY io}; TrooPortalAt -> portal {0.35 PORT_SET io,
+--   0.45 PORT_FLING in2 (rings 0.4 / 0.52), 0.82 PORT_FLING out, 1.57 READY io}. Each = wind-up -> action -> result ->
+--   recovery; a newer press replaces the running track. Switch: model attribute TrooPartPoseEnabled (default true, read
+--   each frame; false = 1.3). Test keys (TrooPoseTestKey) for each new key name.
 local TrooPose = {}
 TrooPose.Version = "1.3"
+TrooPose.Version = "1.4" -- v1.4 part move poses
 TrooPose.Defaults = {TrooPoseEnabled = true, TrooHopPoseEnabled = true, TrooEyeFlareEnabled = true, TrooGroundLockEnabled = true,
-	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true, TrooPoseFallEnabled = true, TrooThrowWideEnabled = true}
+	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true, TrooPoseFallEnabled = true, TrooThrowWideEnabled = true, TrooPartPoseEnabled = true}
 local Players = game:GetService("Players")
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5", "LegL",
@@ -135,6 +148,41 @@ KEYS.TA_HOLD_W = plus(KEYS.TA_HOLD, {ArmL = {0, 0, -12}, ArmR = {0, 0, 12}})
 FWD.TA_HOLD_W = FWD.TA_HOLD
 TRACKS.throwWide = {{0, "$from"}, {0.2, "TA_WIND_W", "io"}, {0.27, "TA_HOLD_W", "io"}, {0.34, "TA_THROW", "in2"},
 	{0.52, "TA_FOLLOW", "out"}, {1.15, "READY", "io"}}
+-- v1.4: the button parts' key poses (troodon_parts_looks.js) and tracks
+KEYS.MEND_SET = BOTH({RootJoint = {4, 0, 0}, Neck = {10, 0, 0}, Head = {-8, 0, 0}, ArmL = {-12, 0, 0}, Tail1 = {3, 0, 0}})
+KEYS.MEND_GO = BOTH({RootJoint = {-3, 0, 0}, Neck = {22, 0, 0}, Head = {-20, 0, 0}, Jaw = {-8, 0, 0}, ArmL = {6, 0, 0}, Tail1 = {-4, 0, 0}})
+KEYS.LANT_GRAB = {RootJoint = {6, 0, -4}, Neck = {10, 0, 0}, Head = {-8, 0, 0}, ArmL = {-62, 0, -14}, ArmR = {-12, 0, 0}, LegL = {4, 0, 0},
+	KneeL = {-10, 0, 0}, Tail1 = {4, 0, 0}}
+FWD.LANT_GRAB = -0.6
+KEYS.LANT_COCK = {RootJoint = {8, 0, 4}, Neck = {16, 0, 0}, Head = {-12, 0, 0}, ArmL = {-82, 0, -26}, ArmR = {-14, 0, 0}, Tail1 = {6, 0, 0}}
+FWD.LANT_COCK = -0.9
+KEYS.LANT_THROW = {RootJoint = {-8, 0, -2}, Neck = {-12, 0, 0}, Head = {8, 0, 0}, ArmL = {105, 0, 10}, ArmR = {18, 0, 0}, LegL = {-6, 0, 0},
+	LegR = {12, 0, 0}, KneeR = {-16, 0, 0}, Tail1 = {-8, 0, 0}}
+FWD.LANT_THROW = 1.4
+KEYS.LANT_FOLLOW = {RootJoint = {-6, 0, 0}, Neck = {-8, 0, 0}, Head = {6, 0, 0}, ArmL = {70, 0, 6}, ArmR = {10, 0, 0}, Tail1 = {-6, 0, 0}}
+FWD.LANT_FOLLOW = 1.6
+KEYS.PINNED = BOTH({RootJoint = {-12, 0, 0}, Neck = {-24, 0, 0}, Head = {12, 0, 0}, Jaw = {-16, 0, 0}, ArmL = {-34, 0, -16}, LegL = {22, 0, 0},
+	KneeL = {-44, 0, 0}, AnkleL = {18, 0, 0}, Tail1 = {10, 0, 0}, Tail2 = {6, 0, 0}})
+KEYS.SHED_TENSE = plus(KEYS.PINNED, {RootJoint = {4, 0, 0}, Neck = {8, 0, 0}, ArmL = {-10, 0, -10}, ArmR = {-10, 0, 10}})
+KEYS.SHED_BURST = BOTH({RootJoint = {12, 0, 0}, Neck = {26, 0, 0}, Head = {-14, 0, 0}, Jaw = {-30, 0, 0}, ArmL = {-26, -20, -100},
+	LegL = {-6, 0, 0}, KneeL = {-10, 0, 0}, Tail1 = {-14, 0, 0}, Tail2 = {-8, 0, 0}})
+FWD.SHED_BURST = -1
+KEYS.PORT_SET = BOTH({RootJoint = {6, 0, 0}, Neck = {14, 0, 0}, Head = {-12, 0, 0}, ArmL = {-24, 0, 0}, LegL = {8, 0, 0}, KneeL = {-16, 0, 0},
+	AnkleL = {6, 0, 0}, Tail1 = {14, 0, 0}, Tail2 = {10, 0, 0}, Tail3 = {8, 0, 0}})
+FWD.PORT_SET = -0.6
+KEYS.PORT_FLING = BOTH({RootJoint = {-8, 0, 0}, Neck = {-12, 0, 0}, Head = {8, 0, 0}, ArmL = {60, 0, 0}, Tail1 = {-16, 0, 0},
+	Tail2 = {-30, 0, 0}, Tail3 = {-22, 0, 0}}, {LegL = {-14, 0, 0}, KneeL = {-6, 0, 0}, LegR = {10, 0, 0}})
+FWD.PORT_FLING = 1.2
+TRACKS.mender = {{0, "$from"}, {0.3, "MEND_SET", "io"}, {0.5, "MEND_GO", "out"}, {1.05, "READY", "io"}}
+TRACKS.menderBack = {{0, "$from"}, {0.25, "MEND_SET", "io"}, {0.85, "READY", "io"}}
+TRACKS.lantern = {{0, "$from"}, {0.3, "LANT_GRAB", "io"}, {0.36, "LANT_COCK", "io"}, {0.44, "LANT_THROW", "in2"},
+	{0.64, "LANT_FOLLOW", "out"}, {1.32, "READY", "io"}}
+TRACKS.sap = TRACKS.throwWide
+TRACKS.shed = {{0, "$from"}, {0.13, "SHED_TENSE", "io"}, {0.21, "SHED_BURST", "out5"}, {0.5, "SHED_BURST"}, {0.75, "TJ_LAND", "io"},
+	{1.4, "READY", "io"}}
+TRACKS.portal = {{0, "$from"}, {0.35, "PORT_SET", "io"}, {0.45, "PORT_FLING", "in2"}, {0.82, "PORT_FLING", "out"}, {1.57, "READY", "io"}}
+local PART_STAMPS = {{"TrooMenderAt", "mender"}, {"TrooMenderEndAt", "menderBack"}, {"TrooLanternAt", "lantern"}, {"TrooSapAt", "sap"},
+	{"TrooShedAt", "shed"}, {"TrooPortalAt", "portal"}}
 local REL, EYES_FROM, EYES_TO = 0.34, 0.05, 1.0
 local FLARE_TO = Color3.fromHex("FFD27A")
 
@@ -145,6 +193,7 @@ local EASE = {
 	out = function(u) return 1 - (1 - u) ^ 3 end,
 	["in"] = function(u) return u * u * u end,
 	in2 = function(u) return u * u end,
+	out5 = function(u) return 1 - (1 - u) ^ 5 end, -- v1.4
 }
 local function rot(v) return CFrame.fromEulerAngles(rad(v[3]), rad(v[2]), rad(v[1]), Enum.RotationOrder.ZYX) end
 TrooPose.rot = rot
@@ -534,6 +583,19 @@ function TrooPose.top(model, pose, motors, hrp, ctx)
 			start("cancel", ctx.serverNow)
 		end
 		atk.seen.cancel = cancelAt
+	end
+	if s.TrooPartPoseEnabled then -- v1.4: the button parts' tracks from the server press stamps
+		atk.parts = atk.parts or {}
+		for _, pk in ipairs(PART_STAMPS) do
+			local v = num(model:GetAttribute(pk[1]))
+			local seen = atk.parts[pk[1]]
+			if seen == nil then
+				atk.parts[pk[1]] = v or false
+			elseif v and v ~= seen then
+				atk.parts[pk[1]] = v
+				if ctx.serverNow - v < 1 then start(pk[2], v) end
+			end
+		end
 	end
 	local tg
 	local t = atk.at and max(0, ctx.serverNow - atk.at) or 0
