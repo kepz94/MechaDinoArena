@@ -1,4 +1,4 @@
--- TrooFX v1.0 (Mecha Dino Arena) — the Troodon's Glow Pod Toss effects on this client (LocalScript, StarterPlayerScripts).
+-- TrooFX v1.1 (Mecha Dino Arena) — the Troodon's Glow Pod Toss effects on this client (LocalScript, StarterPlayerScripts).
 -- MDA-338, plan docs/plans/TROODON_KIT_v1.0.md Task 9; mockup docs/mockups/troodon_kit_options_v0.1.html attack A (Kepu
 -- 2026-11-06 15:38; source tools/troodon_kit_mockup/app_tail.js: throwPod / updatePods / zoneBurst / updateZones). Server:
 -- TrooAttackServer 1.0. Pattern copied from DiloFX 1.2 (not edited): effect list, flash / spark parts, the lock ring.
@@ -25,11 +25,18 @@
 --   TrooFXHitEnabled, TrooFXHealEnabled, TrooFXRingEnabled (default true each).
 -- Diagnostics: script TrooFXVersion, TrooFXEvents (count), TrooFXLast ("pod" / "zone" / "hit" / "heal"), TrooFXParts (effect
 --   parts alive), TrooFXZones (zones showing), TrooFXRingTarget (name or "").
+-- v1.1 (Troodon Flap & Glide, MDA-342, plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md Task 3; mockup v0.2 J3 puff()): on each wing
+--   beat of a troodon in flap mode (JumpHopBack ~= true) a puff of loose down falls away under the body: the leap (the
+--   JumpPredictedAt press on your own troodon, JumpStartedAt for others, + JumpWindup, at takeoff) and each flap
+--   (JumpDoublePredictedAt on your own, JumpDoubleAt for others; one puff per beat, stamps within 0.2 s of the last are the
+--   same beat, older than 1 s are skipped). 10 soft balls (SmoothPlastic, D9CDB6, 1.6 x k growing to 4.6 x k, transparency
+--   0.5 -> 1 over 0.5 s) from the torso, offset (+-3, -2..-4, +-2) x k, drifting (+-4, -6..-12, +-4) x k studs/s. No landing
+--   effect. Switch: script attribute TrooFXPuffEnabled (default true). Diagnostic: TrooFXLast "puff", TrooFXPuffs (count).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local SCAN, MAX_PARTS, EMBER_RATE, SPORE_RATE = 0.1, 360, 40, 26
 local ARENA_PLACE_ID = 75433819286625 -- ModeRules 1.0
 local POD, POD_GLOW, AMBER, AMBER_L = Color3.fromHex("FFC35A"), Color3.fromHex("FFD27A"), Color3.fromHex("FFB43A"), Color3.fromHex("FFE7A8")
@@ -41,7 +48,8 @@ local RING = Color3.fromHex("FFF2A0") -- DiloFX's lock ring
 
 script:SetAttribute("TrooFXVersion", VERSION)
 script:SetAttribute("TrooFXEvents", 0)
-for _, k in ipairs({"TrooFXEnabled", "TrooFXPodEnabled", "TrooFXZoneEnabled", "TrooFXHitEnabled", "TrooFXHealEnabled", "TrooFXRingEnabled"}) do
+for _, k in ipairs({"TrooFXEnabled", "TrooFXPodEnabled", "TrooFXZoneEnabled", "TrooFXHitEnabled", "TrooFXHealEnabled", "TrooFXRingEnabled",
+	"TrooFXPuffEnabled"}) do -- v1.1: + TrooFXPuffEnabled
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function on(k) return script:GetAttribute("TrooFXEnabled") ~= false and script:GetAttribute(k) ~= false end
@@ -350,8 +358,60 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
+-- v1.1: a puff of loose down on each wing beat ----------------------------------------------------------------------------------
+local DOWN = Color3.fromHex("D9CDB6")
+local lastPuff = setmetatable({}, {__mode = "k"})
+script:SetAttribute("TrooFXPuffs", 0)
+local function puff(char)
+	local tb = char:FindFirstChild("Torso_body", true)
+	local base = tb and tb:IsA("BasePart") and tb.Position or (rootOf(char) and rootOf(char).Position)
+	if not base then return end
+	local k = scaleK(char)
+	note("puff")
+	script:SetAttribute("TrooFXPuffs", (script:GetAttribute("TrooFXPuffs") or 0) + 1)
+	for _ = 1, 10 do
+		if full() then return end
+		local p = part(Enum.PartType.Ball, Vector3.one * 1.6 * k, DOWN, 0.5, Enum.Material.SmoothPlastic)
+		p.Position = base + Vector3.new((math.random() - 0.5) * 6, -2 - math.random() * 2, (math.random() - 0.5) * 4) * k
+		local v = Vector3.new((math.random() - 0.5) * 8, -6 - math.random() * 6, (math.random() - 0.5) * 8) * k
+		custom(p, 0.5, function(f, dt, u)
+			f.p.Position += v * dt
+			local sz = (1.6 + u * 3) * k
+			f.p.Size = Vector3.new(sz, sz, sz)
+			f.p.Transparency = 0.5 + 0.5 * u
+		end)
+	end
+end
+local function maybePuff(char, at, delay)
+	if not on("TrooFXPuffEnabled") or char:GetAttribute("Species") ~= "Troodon" or char:GetAttribute("JumpHopBack") == true then return end
+	if typeof(at) ~= "number" or math.abs(now() - at) > 1 then return end
+	if lastPuff[char] and math.abs(at - lastPuff[char]) < 0.2 then return end
+	lastPuff[char] = at
+	if delay and delay > 0 then
+		task.delay(delay, function() if char.Parent then puff(char) end end)
+	else
+		puff(char)
+	end
+end
+local function watchBeats(char)
+	local mine = char == Players.LocalPlayer.Character
+	local function leap(attr)
+		local at = char:GetAttribute(attr)
+		if typeof(at) ~= "number" then return end
+		local w = tonumber(char:GetAttribute("JumpWindup")) or 0.12
+		maybePuff(char, at + w, math.max(0, at + w - now()))
+	end
+	if mine then
+		char:GetAttributeChangedSignal("JumpPredictedAt"):Connect(function() leap("JumpPredictedAt") end)
+		char:GetAttributeChangedSignal("JumpDoublePredictedAt"):Connect(function() maybePuff(char, char:GetAttribute("JumpDoublePredictedAt")) end)
+	end
+	char:GetAttributeChangedSignal("JumpStartedAt"):Connect(function() leap("JumpStartedAt") end)
+	char:GetAttributeChangedSignal("JumpDoubleAt"):Connect(function() maybePuff(char, char:GetAttribute("JumpDoubleAt")) end)
+end
+
 -- troodon characters: pod + zone ------------------------------------------------------------------------------------------------
 local function watch(char)
+	watchBeats(char) -- v1.1
 	char:GetAttributeChangedSignal("TrooPodAt"):Connect(function()
 		if script:GetAttribute("TrooFXEnabled") ~= false and char:GetAttribute("Species") == "Troodon" then spawnPod(char) end
 	end)

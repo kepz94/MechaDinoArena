@@ -1,4 +1,4 @@
--- AbilityBar v1.33 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.34 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -189,6 +189,7 @@ VERSION = "1.30" -- v1.30 passive Overclock tile (ON)
 VERSION = "1.31" -- v1.31 SILENCED part tiles
 VERSION = "1.32" -- v1.32 teno + dilo part countdowns
 VERSION = "1.33" -- v1.33 troodon ATTACK + JUMP tiles
+VERSION = "1.34" -- v1.34 troodon plain JUMP tile without charges
 -- v1.32 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 1; Kepu 2026-11-06 "I need all cool downs to be [shown] on
 --   screen"): the 6 teno slot parts (tgrab / tmortar / tstomp / tbellow / tchallenge / tmud), the teno Hydraulic Leap slot
 --   tile (tleap) and the 7 dilo parts (dgatling / dmortar / dhiss / dspine / dpump / djets / dover) join TIMED_PARTS, so their
@@ -210,6 +211,11 @@ VERSION = "1.33" -- v1.33 troodon ATTACK + JUMP tiles
 --   TrooLocalState is "throw", "empty" at 0 charges (the slash tile's look), "stunned" while stunned, else "ready". Switch:
 --   script attribute AbilityBarTrooEnabled (default true, read at start; false = no troodon row, the fallback order).
 --   Diagnostic: AbilityBarTrooPips ("<left>/<max>").
+-- v1.34 (Troodon Flap & Glide, MDA-342, plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md Task 3: "hide the troodon JUMP pips (no
+--   charges)"): a troodon with JumpCharges < 1 (TroodonModelData 1.3: the flaps have no charges) gets the plain JUMP tile
+--   (MOVES.Leap: JumpCooldown 0.5, no pips, the raptor / dilo tile) instead of TrooLeap, whose leapPips showed 1 pip at
+--   JumpCharges 0. JumpCharges >= 1 (the 1.1 Evade Hop) keeps TrooLeap. Switch: script attribute AbilityBarTrooPlainJumpEnabled
+--   (default true, read at each row build; false = 1.33).
 if script:GetAttribute("AbilityBarTheriClockPassiveEnabled") == nil then script:SetAttribute("AbilityBarTheriClockPassiveEnabled", true) end -- v1.30
 local SPEED_YELLOW = Color3.fromRGB(255, 194, 26) -- v1.30
 if script:GetAttribute("AbilityBarDiloResetEnabled") == nil then script:SetAttribute("AbilityBarDiloResetEnabled", true) end -- v1.27
@@ -494,8 +500,13 @@ local function ramUsable()
 	return char:GetAttribute("RamLatchGate") ~= "closed" or (st ~= nil and st ~= "ready" and st ~= "off")
 end
 
+if script:GetAttribute("AbilityBarTrooPlainJumpEnabled") == nil then script:SetAttribute("AbilityBarTrooPlainJumpEnabled", true) end -- v1.34
 local function moveList()
 	local order = SPECIES_MOVES[char:GetAttribute("Species")] or FALLBACK_ORDER
+	if order == SPECIES_MOVES.Troodon and script:GetAttribute("AbilityBarTrooPlainJumpEnabled") ~= false
+		and (tonumber(char:GetAttribute("JumpCharges")) or 0) < 1 then -- v1.34: no charges -> the plain JUMP tile
+		order = {"TrooAttack", "Leap"}
+	end
 	local list = {}
 	for _, id in ipairs(order) do
 		local m = MOVES[id]

@@ -1,4 +1,4 @@
--- TrooPose v1.0 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
+-- TrooPose v1.1 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
 -- the Evade Hop (jump J2) and the eyes flaring during the throw. MDA-337, plan docs/plans/TROODON_KIT_v1.0.md Task 8; mockup
 -- docs/mockups/troodon_kit_options_v0.1.html (Kepu 2026-11-06 15:38 "Let's go with your recommendations"; source
 -- tools/troodon_kit_mockup/app_tail.js TA_WIND / TA_HOLD / TA_THROW / TA_FOLLOW, TH_SET / TH_AIR / TJ_LAND, and the
@@ -29,10 +29,24 @@
 -- Diagnostics (model, this client): TrooPoseVersion, TrooPoseState ("throw" / "cancel" / "none" / "test:<key>"),
 --   TrooPoseSource ("local" / "server"), TrooHopPhase ("crouch" / "air" / "land" / "none"), TrooEyeFlare (bool),
 --   TrooGroundShift (studs, 0.1 steps).
+-- v1.1 (Troodon Flap & Glide, MDA-342, plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md Task 3; mockup
+--   docs/mockups/troodon_kit_options_v0.2.html J3, keys TF_UP / TF_DOWN / TF_GLIDE / TJ_CROUCH / TJ_DOWN from
+--   tools/troodon_kit_mockup/app_tail.js, unchanged numbers): while the model is not in hop mode (JumpHopBack ~= true; TroodonModelData
+--   1.3) and TrooPoseFlapEnabled ~= false, TrooPose.hopOn is true too (so IdleAnimation 1.47 turns the biped JumpPose off and
+--   calls TrooPose.leap, unchanged) and TrooPose.leap draws the Flap & Glide layer (replaces the pose by its weight, sprung):
+--   crouch (t < JumpWindup): READY -> TJ_CROUCH (io); each beat = the leap's launch (start + JumpWindup) and every new
+--   JumpDoublePredictedAt (owner) / JumpDoubleAt (others): $from -> TF_DOWN (in2) in 0.05 s (the leap) / 0.06 s (a flap: the
+--   mockup's down-stroke 0.06 s after the press), held to +0.13 / +0.14, then -> TF_UP (io) by +0.38 / +0.39 (the recovery,
+--   which is also the wind-up of the next beat: a live press cannot be anticipated, so the up-stroke comes before it);
+--   glide (GlideLocal on the owner, Gliding for others): $from -> TF_GLIDE (out) over 0.15 s, held; land (the leap tracker's
+--   touchdown, or the glide ending): $from -> TJ_DOWN 0.05 (io) -> TJ_LAND 0.12 (out) -> READY 0.7 (io), the weight fading
+--   to 0 by TrooHopLandTime (0.8). Foot ground lock in the crouch and the landing. No landing FX. The hop mode (1.0) unchanged.
+--   Diagnostics TrooFlapPhase ("crouch" / "beat" / "glide" / "land" / "none"), TrooFlapBeats (beats this leap).
 local TrooPose = {}
-TrooPose.Version = "1.0"
+TrooPose.Version = "1.1"
 TrooPose.Defaults = {TrooPoseEnabled = true, TrooHopPoseEnabled = true, TrooEyeFlareEnabled = true, TrooGroundLockEnabled = true,
-	TrooHopLandTime = 0.8}
+	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true}
+local Players = game:GetService("Players")
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5", "LegL",
 	"LegR", "KneeL", "KneeR", "AnkleL", "AnkleR"}
@@ -77,6 +91,17 @@ KEYS.TH_AIR = BOTH({RootJoint = {6, 0, 0}, Neck = {6, 0, 0}, Head = {-4, 0, 0}, 
 	KneeL = {-36, 0, 0}, AnkleL = {16, 0, 0}, Tail1 = {-10, 0, 0}, Tail2 = {-6, 0, 0}})
 KEYS.TJ_LAND = BOTH({RootJoint = {-6, 0, 0}, Neck = {8, 0, 0}, Head = {-6, 0, 0}, ArmL = {6, 0, 0}, LegL = {24, 0, 0},
 	KneeL = {-42, 0, 0}, AnkleL = {18, 0, 0}, Tail1 = {6, 0, 0}})
+-- v1.1: Flap & Glide (J3) keys and the J2 jump keys they use
+KEYS.TF_UP = BOTH({RootJoint = {4, 0, 0}, Neck = {12, 0, 0}, Head = {-10, 0, 0}, ArmL = {-30, -25, -130}, LegL = {34, 0, 0},
+	KneeL = {-64, 0, 0}, AnkleL = {30, 0, 0}, Tail1 = {-6, 0, 0}, Tail2 = {-4, 0, 0}})
+KEYS.TF_DOWN = BOTH({RootJoint = {-6, 0, 0}, Neck = {18, 0, 0}, Head = {-14, 0, 0}, ArmL = {-10, 15, 25}, LegL = {40, 0, 0},
+	KneeL = {-72, 0, 0}, AnkleL = {34, 0, 0}, Tail1 = {-10, 0, 0}, Tail2 = {-6, 0, 0}, Tail3 = {-3, 0, 0}})
+KEYS.TF_GLIDE = BOTH({RootJoint = {-2, 0, 0}, Neck = {-4, 0, 0}, Head = {2, 0, 0}, ArmL = {-25, -15, -98}, LegL = {44, 0, 0},
+	KneeL = {-78, 0, 0}, AnkleL = {36, 0, 0}, Tail1 = {-6, 0, 0}, Tail2 = {-3, 0, 0}, Tail3 = {-2, 0, 0}})
+KEYS.TJ_CROUCH = BOTH({RootJoint = {-8, 0, 0}, Neck = {20, 0, 0}, Head = {-16, 0, 0}, ArmL = {-20, 0, 0}, LegL = {34, 0, 0},
+	KneeL = {-58, 0, 0}, AnkleL = {26, 0, 0}, Tail1 = {6, 0, 0}})
+KEYS.TJ_DOWN = BOTH({RootJoint = {-6, 0, 0}, Neck = {14, 0, 0}, Head = {-10, 0, 0}, ArmL = {10, 0, 0}, LegL = {22, 0, 0},
+	KneeL = {-30, 0, 0}, AnkleL = {12, 0, 0}, Tail1 = {-4, 0, 0}})
 TrooPose.KEYS, TrooPose.FWD = KEYS, FWD
 
 local TRACKS = {
@@ -85,6 +110,12 @@ local TRACKS = {
 	cancel = {{0, "$from"}, {0.35, "READY", "io"}},
 }
 local HOP_LAND = {{0, "TH_AIR"}, {0.1, "TJ_LAND", "out"}, {0.6, "READY", "io"}}
+local FLAP = { -- v1.1
+	leap = {{0, "$from"}, {0.05, "TF_DOWN", "in2"}, {0.13, "TF_DOWN"}, {0.38, "TF_UP", "io"}},
+	flap = {{0, "$from"}, {0.06, "TF_DOWN", "in2"}, {0.14, "TF_DOWN"}, {0.39, "TF_UP", "io"}},
+	glide = {{0, "$from"}, {0.15, "TF_GLIDE", "out"}},
+	land = {{0, "$from"}, {0.05, "TJ_DOWN", "io"}, {0.12, "TJ_LAND", "out"}, {0.7, "READY", "io"}},
+}
 local REL, EYES_FROM, EYES_TO = 0.34, 0.05, 1.0
 local FLARE_TO = Color3.fromHex("FFD27A")
 
@@ -198,13 +229,20 @@ end
 function TrooPose.on(model)
 	return model:GetAttribute("Species") == "Troodon" and model:GetAttribute("TrooPoseEnabled") ~= false
 end
-function TrooPose.hopOn(model)
+function TrooPose.flapOn(model) -- v1.1: Flap & Glide (not the hop)
+	return TrooPose.on(model) and model:GetAttribute("TrooPoseFlapEnabled") ~= false and model:GetAttribute("JumpHopBack") ~= true
+		and model:GetAttribute("JumpEnabled") == true
+end
+function TrooPose.hopOn(model) -- v1.1: also true in flap mode (the leap layer is ours either way)
+	if TrooPose.flapOn(model) then return true end
 	return TrooPose.on(model) and model:GetAttribute("TrooHopPoseEnabled") ~= false and model:GetAttribute("JumpHopBack") == true
 end
 
 -- per-model state (each character's IdleAnimation requires its own copy of this module)
 local atk = {kind = nil, at = nil, from = nil, target = nil, springs = newSprings(), seen = nil, lastState = nil}
 local hopS = {springs = newSprings(), w = 0, lockW = 0, phase = "none", lastAt = -math.huge}
+local flS = {springs = newSprings(), start = nil, beats = {}, seenD = nil, glideAt = nil, landAt = nil, phase = "none",
+	seg = nil, segAt = 0, from = nil, target = nil, lastAt = -math.huge} -- v1.1
 local lockSmooth = 0
 local fk
 local eyes = {on = false, parts = nil}
@@ -271,8 +309,77 @@ end
 
 -- hop layer ----------------------------------------------------------------------------------------------------------------
 -- jump = IdleAnimation's leap tracker {start, air, landAt (os.clock), done}; returns {joint = CFrame}, weight
+-- v1.1: Flap & Glide layer
+local function flapLeap(model, jump, serverNow, now, hrp, dt, s)
+	local W = num(model:GetAttribute("JumpWindup")) or 0.12
+	local lp = Players.LocalPlayer
+	local isOwner = lp ~= nil and lp.Character == model
+	local dAt = num(model:GetAttribute(isOwner and "JumpDoublePredictedAt" or "JumpDoubleAt"))
+	if isOwner then
+		local srv = num(model:GetAttribute("JumpDoubleAt"))
+		if srv and (not dAt or srv > dAt + 0.3) then dAt = srv end
+	end
+	local gliding = model:GetAttribute(isOwner and "GlideLocal" or "Gliding") == true
+	if jump and jump.start ~= flS.start then -- a new leap
+		flS.start, flS.beats, flS.glideAt, flS.landAt = jump.start, {jump.start + W}, nil, nil
+		flS.seenD = dAt
+	end
+	if not flS.start then flS.phase = "none" hopS.w, hopS.lockW = 0, 0 return nil, 0 end
+	if dAt and dAt ~= flS.seenD then
+		flS.seenD = dAt
+		if dAt > flS.start and not flS.landAt then table.insert(flS.beats, dAt) end
+	end
+	if gliding and not flS.glideAt and not flS.landAt then flS.glideAt = now end
+	if not flS.landAt then
+		if jump and jump.start == flS.start and jump.landAt then flS.landAt = jump.landAt
+		elseif flS.glideAt and not gliding then flS.landAt = now end
+	end
+	local t = serverNow - flS.start
+	local phase, seg, segT, w, lock = "none", nil, 0, 0, 0
+	if flS.landAt then
+		local x = now - flS.landAt
+		if x < s.TrooHopLandTime then
+			phase, seg, segT = "land", "land", x
+			w = x < 0.7 and 1 or 1 - EASE.io(clamp((x - 0.7) / max(0.01, s.TrooHopLandTime - 0.7), 0, 1))
+			lock = w
+		end
+	elseif flS.glideAt then
+		phase, seg, segT, w = "glide", "glide", now - flS.glideAt, 1
+	elseif t >= 0 and t < W and not (jump and jump.air) then
+		phase, w, lock = "crouch", EASE.io(clamp(t / max(0.01, W / 2), 0, 1)), 1
+	elseif t >= W and t < 4 and (jump and not jump.done or jump and jump.air) then
+		local b = flS.beats[#flS.beats]
+		phase, seg, segT, w = "beat", (#flS.beats == 1) and "leap" or "flap", serverNow - b, 1
+	end
+	flS.phase = phase
+	if model:GetAttribute("TrooFlapPhase") ~= phase then model:SetAttribute("TrooFlapPhase", phase) end
+	if model:GetAttribute("TrooFlapBeats") ~= #flS.beats then model:SetAttribute("TrooFlapBeats", #flS.beats) end
+	if phase == "none" then
+		flS.seg, flS.target = nil, nil
+		hopS.w, hopS.lockW = 0, 0
+		return nil, 0
+	end
+	local tg
+	if phase == "crouch" then
+		tg = mixP(keyPose("READY"), keyPose("TJ_CROUCH"), EASE.io(clamp(t / W, 0, 1)))
+	else
+		local segKey = seg .. ":" .. tostring(seg == "flap" and flS.beats[#flS.beats] or seg)
+		if segKey ~= flS.seg then flS.seg, flS.from = segKey, flS.target or keyPose("ZERO") end
+		tg = sample(FLAP[seg], max(0, segT), flS.from)
+	end
+	flS.target = tg
+	local init = now - flS.lastAt > 0.25
+	flS.lastAt = now
+	local out = springStep(flS.springs, tg, dt, init)
+	hopS.w, hopS.lockW = w, lock * w
+	local cfs = {}
+	for n, v in pairs(out.a) do cfs[n] = rot(v) end
+	return cfs, w
+end
+
 function TrooPose.leap(model, jump, serverNow, now, hrp, dt)
 	local s = TrooPose.settings(model)
+	if TrooPose.flapOn(model) then return flapLeap(model, jump, serverNow, now, hrp, dt, s) end -- v1.1
 	local W = num(model:GetAttribute("JumpHopWindup")) or 0.1
 	local phase, x, tg, w, lock = "none", 0, nil, 0, 0
 	local t = jump and serverNow - jump.start or 0
