@@ -1,4 +1,4 @@
--- TenoMovesServer v1.17 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.18 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -267,6 +267,23 @@ VERSION = "1.17" -- v1.17 faster Boulder Mortar
 --   pass; ~0.47 -> ~0.23 s at mid range). Switch: script attribute TenoMortarFastEnabled (default true, read at each shot;
 --   false = 1.16).
 if script:GetAttribute("TenoMortarFastEnabled") == nil then script:SetAttribute("TenoMortarFastEnabled", true) end -- v1.17
+VERSION = "1.18" -- v1.18 Tail Grab: landing skips trees, in-range hint
+-- v1.18 (Kepu 2026-11-09 after v589 "we need to fix the teno tail grab. There's no indicator when a Dino is out of range. Also glitches sometimes when grabbing dinosaurs"; picks "Button lights up in
+--   range"; glitch "Dino teleports/snaps", "Dino stuck or floating", "Player jitters"):
+--   * landing ground (Studio: 2.6% of random landing rays stopped on a tree canopy / palm frond 35-47 studs up; a bot standing
+--     under a tree got a lift measured to the canopy above it, clamped to 1 -> landed with its root 1 stud over the ground,
+--     sunk): the Over-the-Top grab's press-time lift and its landing point use a ground ray that also leaves out
+--     Workspace.DinoIsland.Trees. Switch: script attribute TenoGrabSkipTreesEnabled (default true, read at each grab; false
+--     = 1.17's ray). Diagnostic: script TenoMovesGrabTreeSkips (grabs whose 1.17 ray would have hit a tree).
+--   * in-range hint: every RANGE_HINT_GAP (0.1) s, for each player character with Species "Teno" and TenoGrabEnabled, the
+--     same pick as a press (pickGrab: sizes, range, shield, Sap Wall, squad / mode rules) -> character attributes
+--     TenoGrabInRange (boolean) and TenoGrabInRangeTarget (the model's name, "" when none), set on change.
+--     MechaButtons 1.43 / AbilityBar 1.37 light the TAIL GRAB button / tile with it. Switch: script attribute
+--     TenoGrabRangeHintEnabled (default true, read each step; false = attributes cleared to nil).
+--   The player throw (a grabbed player was never thrown: the stun starts at the catch, the toss stamps come at the throw)
+--   is fixed in StunClient 1.4 (late toss); this script's stamps are unchanged.
+if script:GetAttribute("TenoGrabSkipTreesEnabled") == nil then script:SetAttribute("TenoGrabSkipTreesEnabled", true) end -- v1.18
+if script:GetAttribute("TenoGrabRangeHintEnabled") == nil then script:SetAttribute("TenoGrabRangeHintEnabled", true) end -- v1.18
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.15
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.15
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.15
@@ -497,6 +514,24 @@ local function groundY(pos, fallback)
 	return g and g.Position.Y or fallback
 end
 local function onGround(p) return Vector3.new(p.X, groundY(p, p.Y), p.Z) end
+-- v1.18: the grab's ground ray also leaves out the island's trees (canopies / fronds)
+local treeRay = RaycastParams.new()
+treeRay.FilterType = Enum.RaycastFilterType.Exclude
+local function grabGroundY(pos, fallback)
+	local y = groundY(pos, fallback)
+	if script:GetAttribute("TenoGrabSkipTreesEnabled") == false then return y end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local trees = isl and isl:FindFirstChild("Trees")
+	if not trees then return y end
+	local ex = table.clone(rayParams.FilterDescendantsInstances)
+	table.insert(ex, trees)
+	treeRay.FilterDescendantsInstances = ex
+	local g = workspace:Raycast(Vector3.new(pos.X, pos.Y + 60, pos.Z), Vector3.new(0, -200, 0), treeRay)
+	local y2 = g and g.Position.Y or fallback
+	if y2 ~= y then script:SetAttribute("TenoMovesGrabTreeSkips", (script:GetAttribute("TenoMovesGrabTreeSkips") or 0) + 1) end
+	return y2
+end
+local function grabOnGround(p) return Vector3.new(p.X, grabGroundY(p, p.Y), p.Z) end
 
 -- slows -----------------------------------------------------------------------------------------------------------------------
 local botSlow = {} -- [model] = {hum, untilT, mul, base, set, yielded}
@@ -703,7 +738,7 @@ local function grabOverTop(char, player, target, t, fling, dmg, stunT, crash, cr
 		target:SetAttribute("ShakeOffReason", "grabbed")
 		target:SetAttribute("ShakeOffAt", t) -- last: PounceServer / BotServer release the latch
 	end
-	local lift = math.clamp(hrp0.Position.Y - groundY(hrp0.Position, hrp0.Position.Y - 3), 1, 12)
+	local lift = math.clamp(hrp0.Position.Y - grabGroundY(hrp0.Position, hrp0.Position.Y - 3), 1, 12) -- v1.18: grabGroundY
 	local bitable = target:GetAttribute("Bitable")
 	if not isPlayer then
 		target:SetAttribute("TenoGrabHeldUntil", landAt + 0.05) -- before the stun: BotServer 1.25 holds instead of lying down
@@ -732,7 +767,7 @@ local function grabOverTop(char, player, target, t, fling, dmg, stunT, crash, cr
 		local fwd = flat(r.CFrame.LookVector)
 		fwd = fwd.Magnitude > 1e-3 and fwd.Unit or -Vector3.zAxis
 		local dir = side == "front" and -fwd or fwd
-		local land = onGround(r.Position + dir * fling)
+		local land = grabOnGround(r.Position + dir * fling) -- v1.18: grabOnGround
 		local landPos = land + Vector3.new(0, lift, 0)
 		char:SetAttribute("TenoGrabLandLift", lift)
 		char:SetAttribute("TenoGrabLand", land)
@@ -1690,3 +1725,33 @@ local function onPlayerJ(p)
 end
 Players.PlayerAdded:Connect(onPlayerJ)
 for _, p in ipairs(Players:GetPlayers()) do onPlayerJ(p) end
+
+-- v1.18: Tail Grab in-range hint (see the v1.18 notes)
+do
+	local RANGE_HINT_GAP = 0.1
+	local acc = 0
+	local function clearHint(c)
+		if c:GetAttribute("TenoGrabInRange") ~= nil then c:SetAttribute("TenoGrabInRange", nil) end
+		if c:GetAttribute("TenoGrabInRangeTarget") ~= nil then c:SetAttribute("TenoGrabInRangeTarget", nil) end
+	end
+	RunService.Heartbeat:Connect(function(dt)
+		acc += dt
+		if acc < RANGE_HINT_GAP then return end
+		acc = 0
+		local hintOn = script:GetAttribute("TenoGrabRangeHintEnabled") ~= false
+		local t = now()
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local c = pl.Character
+			if c and c.Parent then
+				if hintOn and c:GetAttribute("Species") == "Teno" and c:GetAttribute("TenoGrabEnabled") == true and on("tgrab") and rootOf(c) then
+					local ok, target = pcall(pickGrab, c, t)
+					local name = ok and target and target.Name or ""
+					if c:GetAttribute("TenoGrabInRange") ~= (name ~= "") then c:SetAttribute("TenoGrabInRange", name ~= "") end
+					if c:GetAttribute("TenoGrabInRangeTarget") ~= name then c:SetAttribute("TenoGrabInRangeTarget", name) end
+				else
+					clearHint(c)
+				end
+			end
+		end
+	end)
+end

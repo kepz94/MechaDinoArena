@@ -1,4 +1,4 @@
--- MechaButtons v1.42 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.43 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -386,6 +386,13 @@ for k, v in pairs({MechaAirUpEnabled = true, MechaAirUpHeight = 30, MechaAirUpTi
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 
+VERSION = "1.43" -- v1.43 TAIL GRAB lights up while a dino is in reach
+-- v1.43 (Kepu 2026-11-09 after v589 "There's no indicator when a Dino is out of range" (Tail Grab) -> "Button lights up in range"; PC and touch together with AbilityBar
+--   1.37): on the TAIL GRAB button (main slot or the pull label) while the part is ready: the character's TenoGrabInRange
+--   (TenoMovesServer 1.18, the same pick as a press) true -> lit: stroke GRAB_GREEN rgb(110, 235, 130) at 0, Thickness 3.5,
+--   name at 0; false -> dimmed: stroke and name at 0.5 (as a part on cooldown, no seconds). Cooling, silenced or pulled:
+--   1.42's look. TenoGrabInRange nil (server hint off) -> 1.42's look. Switch: script attribute MechaButtonsGrabHintEnabled
+--   (default true, read at each draw; false = 1.42). Diagnostic: character MechaButtonsGrabHint ("lit" / "dim" / "off").
 local char = script.Parent
 local player = Players.LocalPlayer
 local hum = char:WaitForChild("Humanoid", 10)
@@ -1842,6 +1849,51 @@ draw = function()
 	end
 end
 
+-- v1.43: TAIL GRAB in-range look (see the v1.43 notes)
+if script:GetAttribute("MechaButtonsGrabHintEnabled") == nil then script:SetAttribute("MechaButtonsGrabHintEnabled", true) end
+local GRAB_GREEN = Color3.fromRGB(110, 235, 130)
+do
+	local drawPre143 = draw
+	draw = function()
+		drawPre143()
+		local hint = char:GetAttribute("TenoGrabInRange")
+		local look = "off"
+		if script:GetAttribute("MechaButtonsGrabHintEnabled") ~= false and typeof(hint) == "boolean" and not silencedNow() then
+			for n, s in ipairs(slots) do
+				if not (gesture and gesture.n == n and gesture.pulling) then
+					if slotPart(n) == "tgrab" and partState("tgrab") then
+						look = hint and "lit" or "dim"
+						if hint then
+							s.stroke.Color, s.stroke.Transparency, s.stroke.Thickness = GRAB_GREEN, 0, 3.5
+							s.main.TextTransparency = 0
+						else
+							s.stroke.Transparency, s.stroke.Thickness = 0.5, 2.5
+							s.main.TextTransparency = 0.5
+						end
+					elseif s.stroke.Thickness == 3.5 then
+						s.stroke.Thickness = 2.5 -- the slot no longer holds a lit TAIL GRAB
+					end
+					if pullOn() and slotPart(n + 2) == "tgrab" and partState("tgrab") then
+						look = hint and "lit" or "dim"
+						s.pull.TextTransparency = hint and 0 or 0.5
+						s.pull.TextColor3 = hint and GRAB_GREEN or PULL_COLOR
+					elseif s.pull.TextColor3 == GRAB_GREEN then
+						s.pull.TextColor3 = PULL_COLOR
+					end
+				end
+			end
+		else
+			for n, s in ipairs(slots) do
+				if not (gesture and gesture.n == n and gesture.pulling) then
+					if s.stroke.Thickness == 3.5 then s.stroke.Thickness = 2.5 end
+					if s.pull.TextColor3 == GRAB_GREEN then s.pull.TextColor3 = PULL_COLOR end
+				end
+			end
+		end
+		if char:GetAttribute("MechaButtonsGrabHint") ~= look then char:SetAttribute("MechaButtonsGrabHint", look) end
+	end
+end
+
 local lastCloakReady -- v1.4: redraw when the cloak's readiness flips (cooldown runs out)
 local lastTimedReady = {} -- v1.5: the same for the timed parts
 local lastSilenced = false -- v1.36
@@ -1891,6 +1943,7 @@ WATCH.SilencedUntil, WATCH.DiloPartJetsLeft, WATCH.DiloPartJetsCharges = true, t
 for _, tp in pairs(TIMED_PARTS) do -- v1.5
 	for _, k in ipairs({"Enabled", "Until", "ReadyAt"}) do WATCH[tp[1] .. k] = true end
 end
+WATCH.TenoGrabInRange = true -- v1.43
 char.AttributeChanged:Connect(function(name)
 	if name == "AutoRun" then layout() end
 	if WATCH[name] then draw() end

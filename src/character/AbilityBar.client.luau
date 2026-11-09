@@ -1,4 +1,4 @@
--- AbilityBar v1.36 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.37 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -192,6 +192,13 @@ VERSION = "1.33" -- v1.33 troodon ATTACK + JUMP tiles
 VERSION = "1.34" -- v1.34 troodon plain JUMP tile without charges
 VERSION = "1.35" -- v1.35 troodon button part timers
 VERSION = "1.36" -- v1.36 dilo spit only: the dart pip fills over DiloSpitGap
+VERSION = "1.37" -- v1.37 TAIL GRAB tile lights up while a dino is in reach
+-- v1.37 (Kepu 2026-11-09 after v589 "There's no indicator when a Dino is out of range" (Tail Grab) -> "Button lights up in range"; PC and touch together with MechaButtons
+--   1.43): after each frame's update, the slot tile holding "tgrab" while its state is "ready": the character's
+--   TenoGrabInRange (TenoMovesServer 1.18) true -> lit: stroke GRAB_GREEN rgb(110, 235, 130), Thickness 3.5; false ->
+--   dimmed like "cooling" (panel 0.3 + 0.5 x 0.7, texts 0.5). Other states and TenoGrabInRange nil: 1.36's look. Switch:
+--   script attribute AbilityBarGrabHintEnabled (default true, read each frame; false = 1.36). Diagnostic: character
+--   AbilityBarGrabHint ("lit" / "dim" / "off").
 -- v1.36 (MDA-360; Kepu 2026-11-09 dilo spit only, tap to spit; PC and touch together with ArenaTouch 1.19 / DiloAttackTest 1.3):
 --   on a character with DiloSpitOnly true the DiloAttack tile's dart pip fills over DiloSpitGap (0.35; Quick Draw 0.26 / 0.19 /
 --   0.14) after DiloLocalDartAt instead of DiloDartCooldown; no hold (no fill / "SPIT" text), "active" while a spit shows.
@@ -1266,6 +1273,34 @@ local function update()
 				paint(e, "ready", 0, 0, nil)
 			end
 		end
+	end
+end
+
+-- v1.37: TAIL GRAB in-range look (see the v1.37 notes)
+if script:GetAttribute("AbilityBarGrabHintEnabled") == nil then script:SetAttribute("AbilityBarGrabHintEnabled", true) end
+do
+	local GRAB_GREEN = Color3.fromRGB(110, 235, 130)
+	local updatePre137 = update
+	update = function()
+		updatePre137()
+		local hint = char:GetAttribute("TenoGrabInRange")
+		local look = "off"
+		if script:GetAttribute("AbilityBarGrabHintEnabled") ~= false and typeof(hint) == "boolean" and gui.Enabled then
+			for _, e in ipairs(tiles) do
+				if e.kind == "slot" and e.part == "tgrab" and char:GetAttribute("AbilityBar_" .. e.id) == "ready" then
+					local t = e.t
+					if hint then
+						look = "lit"
+						t.stroke.Thickness, t.stroke.Color = 3.5, GRAB_GREEN
+					else
+						look = "dim"
+						t.f.BackgroundTransparency = 0.3 + 0.5 * 0.7
+						t.name.TextTransparency, t.key.TextTransparency, t.sub.TextTransparency = 0.5, 0.5, 0.5
+					end
+				end
+			end
+		end
+		show("AbilityBarGrabHint", look)
 	end
 end
 

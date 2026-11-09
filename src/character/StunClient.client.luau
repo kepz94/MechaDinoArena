@@ -1,4 +1,4 @@
--- StunClient v1.3 (Dino Arcade) — the player's own dino while stunned (LocalScript).
+-- StunClient v1.4 (Dino Arcade) — the player's own dino while stunned (LocalScript).
 -- Stunned = the character attribute StunnedUntil (server time, set by ShakeOffServer 1.0 when a T-Rex rams a tree with
 -- this raptor latched on) is in the future. While stunned: Humanoid.PlatformStand = true and the HumanoidRootPart is
 -- anchored lying on its side on the ground below (ground ray, dinos and grass ignored; rolled 90 degrees about its
@@ -26,6 +26,13 @@
 --   when PinHeld clears. Shield / Adrenaline buttons still work (their servers do not check it). Script attribute
 --   StunPinHoldEnabled (default true; false = 1.2: a pin does nothing here). StunState reads "pinned" while held;
 --   StunLeft is 0 then.
+-- v1.4 (Kepu 2026-11-09 Tail Grab "Player jitters"; Studio: a grabbed player was never thrown, it rolled over where it
+--   stood): TenoMovesServer 1.7+ stuns a grabbed player at the catch and stamps the toss (StunTossAt / StunTossFrom /
+--   StunTossDistance) at the throw, 0.6 s later; 1.1-1.3 only look for a toss when the stun starts. Late toss: while
+--   "stunned" (not "tossed", not "pinned"), a StunTossAt newer than this stun's start (server time) and within TOSS_FRESH of
+--   now, not used yet, starts the toss from where the body is now (the flight / landing / get-up as 1.1); its landing ray
+--   also leaves out Workspace.DinoIsland.Trees. Tosses that come with the stun (ShakeOffServer) are unchanged. Switch:
+--   script attribute StunLateTossEnabled (default true, read each frame; false = 1.3). Diagnostic: StunLateTosses (count).
 -- Diagnostics (character attributes, this client): StunState ("none" / "stunned" / "getup"), StunLeft (seconds, 0.1
 -- steps).
 local Players = game:GetService("Players")
@@ -42,6 +49,9 @@ local TOSS_HEIGHT = 6      -- v1.1: studs above the straight line at the middle 
 local TOSS_FRESH = 1       -- v1.1: s between the stun start and StunTossAt for the stun to be a toss
 local ISLAND_LIMIT = 230   -- v1.1: |X| / |Z| the landing point is kept within (edge walls at 237)
 local VERSION = "1.3"      -- v1.3
+VERSION = "1.4"            -- v1.4 late toss
+if script:GetAttribute("StunLateTossEnabled") == nil then script:SetAttribute("StunLateTossEnabled", true) end -- v1.4
+local stunStartAt, usedTossAt, lateTosses = 0, nil, 0 -- v1.4
 char:SetAttribute("StunClientVersion", VERSION)
 if script:GetAttribute("StunPinHoldEnabled") == nil then script:SetAttribute("StunPinHoldEnabled", true) end -- v1.3
 
@@ -140,8 +150,27 @@ local function step()
 			frames()
 			toss = nil -- v1.1
 			state = tossFrames(now) and "tossed" or "stunned"
+			stunStartAt = now -- v1.4
+			usedTossAt = state == "tossed" and char:GetAttribute("StunTossAt") or nil -- v1.4
 			hum.PlatformStand = true
 			hrp.Anchored = true
+		end
+		if state == "stunned" and script:GetAttribute("StunLateTossEnabled") ~= false then -- v1.4: late toss
+			local at = char:GetAttribute("StunTossAt")
+			if typeof(at) == "number" and at > stunStartAt and at ~= usedTossAt and math.abs(now - at) <= TOSS_FRESH then
+				usedTossAt = at
+				local ignore = table.clone(params.FilterDescendantsInstances)
+				local island = workspace:FindFirstChild("DinoIsland")
+				local trees = island and island:FindFirstChild("Trees")
+				if trees then table.insert(ignore, trees) end
+				params.FilterDescendantsInstances = ignore
+				if tossFrames(now) then
+					state = "tossed"
+					t0 = os.clock()
+					lateTosses += 1
+					show("StunLateTosses", lateTosses)
+				end
+			end
 		end
 		hum.PlatformStand = true -- every frame: a latch release in the same moment may switch it off
 		hrp.Anchored = true

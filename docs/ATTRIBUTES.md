@@ -3186,3 +3186,13 @@ Model numbers are generator output (old version = the flag in the last column, b
 | ArenaTouchDiloSpitEnabled / AbilityBarDiloSpitEnabled | ArenaTouch / AbilityBar scripts | true | false = the dart pip fills over DiloDartCooldown (1.18 / 1.35) |
 | SkillEffectsDiloSpitOnlyEnabled | SkillEffects script | true | false = DiloSpitGap = the base, spit venom adds 0 (1.49) |
 | SkillTree.DILO_SPIT_ONLY / SkillTree.SPIT | SkillTree constant | true | 1.75: Quick Draw spitGap, Venom Bite = "Venom Spit" (false = 1.74) |
+
+## Teno Tail Grab fix (TenoMovesServer 1.18, StunClient 1.4, MechaButtons 1.43, AbilityBar 1.37; 2026-11-09)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| TenoGrabInRange / TenoGrabInRangeTarget | Teno player character (TenoMovesServer 1.18) | nil | every 0.1 s: true + the model's name when a Tail Grab press would catch a dino now (the press's own pick), false + "" when none; nil while the hint is off |
+| TenoGrabSkipTreesEnabled / TenoGrabRangeHintEnabled | TenoMovesServer script | true | false = 1.17's landing ray (trees counted) / no in-range hint; diag TenoMovesGrabTreeSkips |
+| StunLateTossEnabled | StunClient script | true | false = 1.3 (a toss that arrives during a stun is ignored); diag character StunLateTosses |
+| MechaButtonsGrabHintEnabled | MechaButtons script | true | false = 1.42 look; diag character MechaButtonsGrabHint ("lit" / "dim" / "off") |
+| AbilityBarGrabHintEnabled | AbilityBar script | true | false = 1.36 look; diag character AbilityBarGrabHint ("lit" / "dim" / "off") |
