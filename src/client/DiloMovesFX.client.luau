@@ -1,4 +1,4 @@
--- DiloMovesFX v1.4 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
+-- DiloMovesFX v1.5 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/DILO_PARTS_v1.0.md Task 6 (MDA-319); mockup docs/mockups/dilo_parts_options.html
 -- v0.1 (tools/mockup/dilo_parts_looks.js: the picked looks' motion and FX). Every player character with Species "Dilo" that
 -- wears DPart_* models (DiloPartsServer 1.0) is watched; the stamps come from DiloMovesServer 1.0. No landing FX.
@@ -71,6 +71,14 @@ VERSION = "1.4" -- v1.4 shot pass: faster shots, strong aim assist
 --   docs/plans/SHOT_PASS_v1.0.md): the Spine Burst spines fly the server's reach DiloSpineRange (was a fixed 22)
 --   over DiloSpineFlight (was 0.2 s) and the ground ring grows with the reach (40 x reach / 22). Switch: script
 --   attribute ShotPassEnabled (default true; false = 1.3).
+VERSION = "1.5" -- v1.5 big and bright gatling / mortar / spines
+-- v1.5 (Kepu 2026-11-09 "the Gatling and spine ... the animation itself is so small you can barely notice WHAT THE FUCK IS
+--   GOING ON", mortar "not big enough of a splatter" -> "Big and bright"): Venom Gatling darts 3x bigger with a glowing green
+--   trail + light, muzzle flash 2.3x, hit splat 2.5x the bits at 2x size, barrel recoil 3x; Toxin Mortar canister 3x with a
+--   trail + light, muzzle flash 2.4x, smoke 2x, landing splash 2x the bits at 2x size and 1.6x speed, a landing flash, ring
+--   0.8 s, the cloud mist sized and dense in step with the radius (radius / 8), tube recoil 2.5x; Spine Burst spines 3x with
+--   trails, flash 2x, a green burst at the chest, ring 0.8 s, barbs extend 3x. Switch: script attribute DiloFXBigEnabled
+--   (default true, read at each event / frame; false = 1.4's sizes).
 if script:GetAttribute("DiloJetsFlameV2Enabled") == nil then script:SetAttribute("DiloJetsFlameV2Enabled", true) end -- v1.3
 if script:GetAttribute("DiloJetsThrusterFXEnabled") == nil then script:SetAttribute("DiloJetsThrusterFXEnabled", true) end -- v1.2
 for _, k in ipairs({"PartsFXHissEnabled", "PartsFXPumpEnabled", "PartsFXJetsEnabled"}) do -- v1.1
@@ -142,6 +150,28 @@ local function parseV(s)
 	local x, y, z = s:match("^([%-%d%.]+),([%-%d%.]+),([%-%d%.]+)$")
 	return x and Vector3.new(tonumber(x), tonumber(y), tonumber(z)) or nil
 end
+if script:GetAttribute("DiloFXBigEnabled") == nil then script:SetAttribute("DiloFXBigEnabled", true) end -- v1.5
+local function big() return script:GetAttribute("DiloFXBigEnabled") ~= false end -- v1.5
+local function bigF(m) return big() and m or 1 end -- v1.5: m with the big look, 1 without
+local function glowTrail(p, color, life, range) -- v1.5: a glowing trail + light on a flying part (big look only)
+	if not big() then return end
+	local half = math.max(p.Size.X, p.Size.Y) * 0.5
+	local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+	a0.Position, a1.Position = Vector3.new(0, half, 0), Vector3.new(0, -half, 0)
+	a0.Parent, a1.Parent = p, p
+	local tr = Instance.new("Trail")
+	tr.Attachment0, tr.Attachment1 = a0, a1
+	tr.Color = ColorSequence.new(color)
+	tr.LightEmission = 1
+	tr.Lifetime = life
+	tr.FaceCamera = true
+	tr.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1)})
+	tr.WidthScale = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.2)})
+	tr.Parent = p
+	local l = Instance.new("PointLight")
+	l.Color, l.Range, l.Brightness = color, range, 2
+	l.Parent = p
+end
 local function fly(p, from, to, flight, apex, onDone)
 	local t0 = os.clock()
 	local conn
@@ -185,8 +215,9 @@ local function watch(char)
 		st.recoil = 1
 		st.drumFlash = os.clock()
 		local k = scaleK(char)
-		flash(from, 2.6 * k, Color3.fromRGB(216, 255, 138), 0.1)
-		local d = part(Vector3.new(0.35, 0.35, 1.2) * k, GREEN, Enum.Material.Neon, CFrame.lookAt(from, to), 0)
+		flash(from, 2.6 * k * bigF(2.3), Color3.fromRGB(216, 255, 138), 0.1 * bigF(1.5)) -- v1.5: x bigF
+		local d = part(Vector3.new(0.35, 0.35, 1.2) * k * bigF(3), GREEN, Enum.Material.Neon, CFrame.lookAt(from, to), 0) -- v1.5: x3
+		glowTrail(d, GREEN, 0.18, 8 * k) -- v1.5
 		fly(d, from, to, tonumber(fl) or 0.3, 0.4 * k)
 		ev()
 	end)
@@ -196,7 +227,7 @@ local function watch(char)
 		local name = s:match("^([^;]+);")
 		local target = name and (workspace:FindFirstChild(name) or (workspace:FindFirstChild("DinoIsland") and workspace.DinoIsland:FindFirstChild("Bots") and workspace.DinoIsland.Bots:FindFirstChild(name)))
 		local r = target and target:FindFirstChild("HumanoidRootPart")
-		if r then burst(r.Position, GREEN, GREEN_D, 8, 14 * scaleK(char), 0.7 * scaleK(char), 0.4, 180, nil, Vector3.new(0, -40, 0)) end
+		if r then burst(r.Position, GREEN, GREEN_D, math.floor(8 * bigF(2.5)), 14 * scaleK(char), 0.7 * scaleK(char) * bigF(2), 0.4, 180, nil, Vector3.new(0, -40, 0)) end -- v1.5: x bigF
 	end)
 	-- mortar
 	char:GetAttributeChangedSignal("DiloMortarAt"):Connect(function()
@@ -214,9 +245,10 @@ local function watch(char)
 		if typeof(from) ~= "Vector3" or typeof(to) ~= "Vector3" or not on("PartsFXMortarEnabled") then return end
 		st.mRecoil = 1
 		local k = scaleK(char)
-		flash(from, 5 * k, Color3.fromRGB(216, 255, 176), 0.16)
-		burst(from, Color3.fromRGB(232, 232, 232), Color3.fromRGB(190, 190, 190), 10, 8 * k, 1.6 * k, 0.8, 50, Vector3.yAxis)
-		local can = part(Vector3.one * 1.1 * k, GREEN, Enum.Material.Neon, CFrame.new(from), 0, Enum.PartType.Ball)
+		flash(from, 5 * k * bigF(2.4), Color3.fromRGB(216, 255, 176), 0.16 * bigF(1.5)) -- v1.5: x bigF
+		burst(from, Color3.fromRGB(232, 232, 232), Color3.fromRGB(190, 190, 190), math.floor(10 * bigF(2)), 8 * k, 1.6 * k * bigF(1.8), 0.8, 50, Vector3.yAxis) -- v1.5
+		local can = part(Vector3.one * 1.1 * k * bigF(3), GREEN, Enum.Material.Neon, CFrame.new(from), 0, Enum.PartType.Ball) -- v1.5: x3
+		glowTrail(can, GREEN, 0.35, 14 * k) -- v1.5
 		fly(can, from, to, num(char, "DiloMortarFlight") or 1.15, math.max(from.Y, to.Y) - math.min(from.Y, to.Y) + 6.5 * k)
 		ev()
 	end)
@@ -226,18 +258,20 @@ local function watch(char)
 		if st.ring then st.ring:Destroy() st.ring = nil end
 		local r, life = num(char, "DiloMortarRadius") or 8, num(char, "DiloMortarTime") or 3
 		local k = scaleK(char)
-		burst(to + Vector3.new(0, 1, 0), GREEN, GREEN_D, 30, 26 * k, 1.2 * k, 0.6, 70, Vector3.yAxis, Vector3.new(0, -50, 0))
-		ring(to + Vector3.new(0, 0.3, 0), r * 2, Color3.fromRGB(184, 255, 112), 0.5)
+		burst(to + Vector3.new(0, 1, 0), GREEN, GREEN_D, math.floor(30 * bigF(2)), 26 * k * bigF(1.6), 1.2 * k * bigF(2), 0.6 * bigF(1.3), 70, Vector3.yAxis, Vector3.new(0, -50, 0)) -- v1.5
+		ring(to + Vector3.new(0, 0.3, 0), r * 2, Color3.fromRGB(184, 255, 112), 0.5 * bigF(1.6)) -- v1.5: 0.8 s
+		if big() then flash(to + Vector3.new(0, 1, 0), r * 1.2, Color3.fromRGB(216, 255, 176), 0.25) end -- v1.5: a landing flash
 		local disc = part(Vector3.new(0.1, r * 2, r * 2), Color3.fromRGB(126, 208, 64), Enum.Material.Neon, CFrame.new(to + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.pi / 2), 0.78, Enum.PartType.Cylinder)
 		local holder = part(Vector3.new(r * 1.6, 2, r * 1.6), GREEN, Enum.Material.SmoothPlastic, CFrame.new(to + Vector3.new(0, 3 * k, 0)), 1)
 		local pe = Instance.new("ParticleEmitter")
 		pe.Color = ColorSequence.new(GREEN, GREEN_D)
 		pe.LightEmission = 0.2
-		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 4 * k), NumberSequenceKeypoint.new(1, 7 * k)})
+		local mist = big() and math.max(1, r / 8) or 1 -- v1.5: the mist grows with the radius
+		pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 4 * k * mist), NumberSequenceKeypoint.new(1, 7 * k * mist)})
 		pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.55), NumberSequenceKeypoint.new(1, 1)})
 		pe.Speed = NumberRange.new(0.5, 2)
 		pe.Lifetime = NumberRange.new(1.2, 2)
-		pe.Rate = 26
+		pe.Rate = 26 * mist -- v1.5 (was 26)
 		pe.SpreadAngle = Vector2.new(180, 180)
 		pe.Parent = holder
 		task.delay(life, function() if pe.Parent then pe.Enabled = false end
@@ -266,12 +300,14 @@ local function watch(char)
 		for i = 0, n - 1 do
 			local d = CFrame.Angles(0, i * 2 * math.pi / n, 0) * fwd
 			local from = origin + d * 2 * k
-			local sp = part(Vector3.new(0.25, 0.25, 1.6) * k, GREEN, Enum.Material.Neon, CFrame.lookAt(from, from + d), 0)
+			local sp = part(Vector3.new(0.25, 0.25, 1.6) * k * bigF(3), GREEN, Enum.Material.Neon, CFrame.lookAt(from, from + d), 0) -- v1.5: x3
+			glowTrail(sp, GREEN, 0.2, 6 * k) -- v1.5
 			fly(sp, from, origin + d * sReach + Vector3.new(0, -1.5 * k, 0), sFly, 0) -- v1.4 (was 22 studs, 0.2 s)
 		end
-		flash(origin, 7 * k, Color3.fromRGB(216, 255, 176), 0.18)
+		flash(origin, 7 * k * bigF(2), Color3.fromRGB(216, 255, 176), 0.18 * bigF(1.5)) -- v1.5: x bigF
+		if big() then burst(origin, GREEN, GREEN_D, 24, 30 * k, 1.4 * k, 0.45, 180, nil, Vector3.zero) end -- v1.5
 		local feet = r.Position.Y - r.Size.Y / 2 - ((char:FindFirstChildOfClass("Humanoid") or {HipHeight = 0}).HipHeight or 0)
-		ring(Vector3.new(r.Position.X, feet + 0.2, r.Position.Z), sRing, Color3.fromRGB(184, 255, 112), 0.45) -- v1.4 (was 40)
+		ring(Vector3.new(r.Position.X, feet + 0.2, r.Position.Z), sRing, Color3.fromRGB(184, 255, 112), 0.45 * bigF(1.8)) -- v1.4 (was 40); v1.5: 0.8 s
 		st.barbsHiddenUntil = os.clock() + 1.2
 		ev()
 	end)
@@ -297,9 +333,9 @@ end
 -- ---------------------------------------------------------------- every frame: part motion, hood pieces, glow
 local function animCF(kind, st, sc)
 	local k = sc / 2
-	if kind == "recoil" then return CFrame.new(0, 0, st.recoil * 0.2 * k * 2) end
-	if kind == "mortar" then return CFrame.Angles(math.rad(-20 - 30 * st.elev), 0, 0) * CFrame.new(0, -st.mRecoil * 0.2 * k * 2, 0) end
-	if kind == "extend" then return CFrame.new(0, 0.08 * st.extend * k * 2, 0) end
+	if kind == "recoil" then return CFrame.new(0, 0, st.recoil * 0.2 * k * 2 * bigF(3)) end -- v1.5: x3
+	if kind == "mortar" then return CFrame.Angles(math.rad(-20 - 30 * st.elev), 0, 0) * CFrame.new(0, -st.mRecoil * 0.2 * k * 2 * bigF(2.5), 0) end -- v1.5: x2.5
+	if kind == "extend" then return CFrame.new(0, 0.08 * st.extend * k * 2 * bigF(3), 0) end -- v1.5: x3
 	if kind == "fins" then return CFrame.Angles(math.rad(-22 * st.glow), 0, 0) end
 	if kind == "pump" then return CFrame.new(0, 0.32 * (st.pump or 0) * k * 2, 0) end -- v1.1
 	return CFrame.identity

@@ -1,4 +1,4 @@
--- SkillTree v1.75 (1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.76 (1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2883,6 +2883,44 @@ do
 		local qd, vb = math.clamp(s.quickdraw or 0, 0, 4), math.clamp(s.venombite or 0, 0, 4)
 		if qd >= 1 then e.spitGap = S.gaps[qd] end
 		if vb >= 1 then e.spitVenomAddDps, e.spitVenomAddTime = S.addDps[vb], S.addTime[vb] end
+		return e
+	end
+end
+-- v1.76 (Kepu 2026-11-09 Spring Jets "a bit longer" -> "Longer + faster"; mortar "not big enough of a splatter" -> "1.5x cloud
+--   + damage area"): with SkillTree.DILO_FX_PASS (default true) effects() sets dJetsDist 25 / 30 / 40 -> 40 / 50 / 65 studs
+--   (DiloMovesServer 1.8 also flies the burst at 200 studs/s) and dMortarRadius x1.5 (8 / 10 / 12 -> 12 / 15 / 18: the cloud
+--   and its damage area). The Lab texts that name them are rewritten (DILO_FX_TEXTS, exact old -> new; a miss counts in
+--   SkillTree.DILO_FX_TEXT_MISSES). DILO_FX_PASS = false restores 1.75.
+SkillTree.DILO_FX_PASS = true
+SkillTree.DILO_JETS_DIST = {[25] = 40, [30] = 50, [40] = 65}
+SkillTree.DILO_MORTAR_RADIUS_MUL = 1.5
+SkillTree.DILO_FX_TEXTS = {
+	{"dmortar", 1, "a 16-stud poison cloud", "a 24-stud poison cloud"}, {"dmortar", 2, "cloud 20 studs wide", "cloud 30 studs wide"},
+	{"dmortar", 4, "cloud 24 studs wide", "cloud 36 studs wide"},
+	{"djets", 1, "dashes you 25 studs", "dashes you 40 studs"}, {"djets", 2, "30 studs, 2 charges", "50 studs, 2 charges"},
+	{"djets", 3, "40 studs; leaves", "65 studs; leaves"},
+}
+SkillTree.DILO_FX_TEXT_MISSES = 0
+if SkillTree.DILO_FX_PASS then
+	for _, row in ipairs(SkillTree.DILO_FX_TEXTS) do
+		local path = SkillTree.PATHS[row[1]]
+		local text = path and path.steps and path.steps[row[2]]
+		local a, b
+		if type(text) == "string" then a, b = text:find(row[3], 1, true) end
+		if a then
+			path.steps[row[2]] = text:sub(1, a - 1) .. row[4] .. text:sub(b + 1)
+		else
+			SkillTree.DILO_FX_TEXT_MISSES += 1
+		end
+	end
+end
+do
+	local effectsPre176 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre176(steps, dino)
+		if type(e) ~= "table" or not SkillTree.DILO_FX_PASS then return e end
+		if type(e.dJetsDist) == "number" and SkillTree.DILO_JETS_DIST[e.dJetsDist] then e.dJetsDist = SkillTree.DILO_JETS_DIST[e.dJetsDist] end
+		if type(e.dMortarRadius) == "number" and e.dMortarRadius > 0 then e.dMortarRadius = e.dMortarRadius * SkillTree.DILO_MORTAR_RADIUS_MUL end
 		return e
 	end
 end

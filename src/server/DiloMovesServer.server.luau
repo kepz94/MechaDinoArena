@@ -1,4 +1,4 @@
--- DiloMovesServer v1.7 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
+-- DiloMovesServer v1.8 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
 -- Toxin Mortar, Spine Burst, Venom Overdrive. Plan docs/plans/DILO_PARTS_v1.0.md Task 5 (deterministic map), MDA-318; mockup
 -- docs/mockups/dilo_parts_options.html v0.1 (timings from tools/mockup/dilo_parts_looks.js); Kepu 2026-11-06 picks + red-team
 -- "Same venom system", "Use the proposals". Build 2 (Sonic Hiss, Antivenom Pump, Spring Jets) comes in 1.1.
@@ -147,6 +147,15 @@ local function snareBlocked(char) -- v1.7: Snare Wires bola / Reaper Hook hold
 	return on
 end
 local SNARE_MOVES = {djets = true} -- v1.7: the movement parts
+VERSION = "1.8" -- v1.8 faster Spring Jets, the gatling keeps its dart speed
+-- v1.8 (Kepu 2026-11-09 Spring Jets "a bit longer" -> "Longer + faster"; spit "Dart flies slower"): the Spring Jets burst
+--   speed JETS_SPEED 150 -> JETS_SPEED_V18 200 (the dash time is still clamped 0.15..0.3 s; the distances 40 / 50 / 65 come from
+--   SkillTree 1.76); the Venom Gatling's darts fly at the character attribute DiloGatlingDartSpeed (DiloModelData 1.8: 67.5,
+--   the shot-pass speed) instead of DiloDartSpeed (now 45, the spit). Switch: script attribute DiloMovesV18Enabled (default
+--   true, read at each dash / shot; false = 1.7).
+local JETS_SPEED_V18 = 200 -- v1.8
+if script:GetAttribute("DiloMovesV18Enabled") == nil then script:SetAttribute("DiloMovesV18Enabled", true) end -- v1.8
+local function v18() return script:GetAttribute("DiloMovesV18Enabled") ~= false end -- v1.8
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.6
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.6
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.6
@@ -451,6 +460,7 @@ gatlingRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		end
 		local to = best and rootOf(best).Position or (from + dir * reach)
 		local speed = math.max(1, num(char, "DiloDartSpeed", 45)) * s
+		if v18() and num(char, "DiloGatlingDartSpeed", 0) > 0 then speed = num(char, "DiloGatlingDartSpeed", 67.5) * s end -- v1.8
 		local flight = (to - from).Magnitude / speed
 		char:SetAttribute("DiloGatlingShot", ("%d;%s;%s;%.3f;%s"):format(i, v3s(from), v3s(to), flight, best and best.Name or ""))
 		local target = best
@@ -841,7 +851,7 @@ jetsRemote.OnServerEvent:Connect(function(player, stamp, moveDir)
 	char:SetAttribute("DiloPartJetsServerResultAt", t)
 	jetsPublish(char, t)
 	count("DiloMovesJets")
-	local time = math.clamp(dist / JETS_SPEED, 0.15, 0.3)
+	local time = math.clamp(dist / (v18() and JETS_SPEED_V18 or JETS_SPEED), 0.15, 0.3) -- v1.8 (was JETS_SPEED)
 	local delay = script:GetAttribute("DiloJetsInstantEnabled") ~= false and 0 or JETS_DELAY -- v1.3: no wind-up
 	char:SetAttribute("DiloJetsFrom", from)
 	char:SetAttribute("DiloJetsTo", to)
