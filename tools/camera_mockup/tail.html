@@ -44,6 +44,7 @@
       </tbody>
     </table></div>
     <p class="muted" style="margin:8px 0 0"><b>Proposed Classic rule:</b> one helper picks the aim: Classic → the body's flat facing (pitch 0; the server soft-aim where it exists), and the crosshair point → body facing × the part's range. Toggle it in the readout above to feel the difference with the gatling and mortar.</p>
+    <p class="muted" style="margin:6px 0 0"><b>Tether Spike bug to fix with Classic:</b> the tactical aim sets the camera Scriptable every frame (MechaButtons 1.39 line 792) and its end only puts <code>ShoulderCamEnabled</code> back (line 765). ShoulderCam's <code>release()</code> resets the camera to Custom only while it was <i>active</i> (ShoulderCam 1.8 lines 272–281), so in Classic the view would stay frozen after a tether shot. The fix: the tether end sets <code>CameraType = Custom</code> itself when the shoulder cam is off.</p>
   </section>
 
   <section class="box">
