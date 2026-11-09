@@ -29,8 +29,22 @@ Speeds are model values; in game x ArenaSpeedScale 0.65 (shown as eff). "Kill a 
 | Raptor | latch (MDA-357) | 5.67 s, 8 + 11 x 4 = 52 (Blade max ~93) | 2.5 s, 8 + 5 x 5 = 33 (Blade max ~54) |
 | Pachy | headbutt reach / trapped (MDA-355 / 356) | 4-stud grow on every side; works while trapped | front, short reach (tail counts); no movement moves while trapped |
 | Every dino | JumpCooldown (leap) | Raptor / Pachy / Dilo / Troodon 0.5 s, Teno / T-Rex 1 s | 0.25 s |
-| Every dino | movement mecha parts / movement moves | (table to come, MDA ticket) | about 30% shorter cooldowns, 35% rule kept |
+| Every dino | movement mecha parts / movement moves | see the table below | about 30% shorter cooldowns, 35% rule kept |
 | Every dino | armor (Thick Hide / Armored Hide / Wiry Frame = StatDamageTakenMul) | bites + pounces only (BoneCrest.defense in BiteServer, PounceServer, BotServer) | every damage path |
+
+## Movement parts, x0.7 (source: SkillTree / SkillEffects / model data, main 74200b6)
+| Dino | Part / move | Attribute (file:line) | Before I / II / III / star | After |
+|---|---|---|---|---|
+| Raptor | Thrusters recharge | SkillDashRecharge (SkillEffects:480) | 8 | 5.6 |
+| Raptor | Adrenaline Injector | adrenCooldown (SkillTree:1290 / 1292) | 20 / 20 / 14.8 / 14.8 | 14 / 14 / 10.3 / 10.3 |
+| Pachy | Mecha Legs | legsCooldown (SkillTree:1347; legsCdMul 0.65 at :1349 kept) | 6 / 6 / 3.9 / 3.9 | 4.2 / 4.2 / 2.73 / 2.73 |
+| Pachy | Servo Dash | servoCd (SkillTree:1179 / 1181) | 12 / 12 / 8 / 8 | 8.4 / 8.4 / 5.6 / 5.6 |
+| Herrera | Adrenaline Injector | adrenCooldown (SkillTree:1522) | 20 / 20 / 14.8 / 14.8 | 14 / 14 / 10.3 / 10.3 |
+| Teno | Hydraulic Leap | leapCooldown (SkillTree:1876) | 6 | 4.2 |
+| Therizino | Dash | grappleCooldown (SkillTree:2382) | 6 / 6 / 5 / 5 (fails the 35% rule: 1.2) | 4.2 / 4.2 / 3.0 / 3.0 (1.4) |
+| Dilo | Spring Jets | dJetsCooldown (SkillTree:2563) | 6 | 4.2 |
+| Troodon | Portal Feathers (not live) | oPortalCooldown (SkillTree:2689) | 20 | 14 |
+Jump: JumpCooldown 0.25 for Raptor / Pachy / Dilo / Troodon (model data 0.5), Teno (1), T-Rex (TRexJump:19 default 1); Therizino Spin Dive JumpCharges 3 / JumpCooldown 3 (very strong); Herrera stays 0 (HerreraJump:19). Step texts to update: SkillTree:673, 675, 726, 844, 998, 1857, 2356-2357, 2504, 2637. Floors: JumpServer clamps charged refills to >= 0.5 s; Dilo / Troo / Theri moves servers clamp to >= 0.5 s (none of the new values hit them).
 
 Stat-tree rows and parts keep their current additions on top of the new base numbers.
 
