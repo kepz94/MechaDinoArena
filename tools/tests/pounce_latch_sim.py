@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""pounce_latch_sim v1.1 (Mecha Dino Arena) — MDA-357 latch check, a faithful Python port of the PounceServer 1.16 latch loop
+"""pounce_latch_sim v1.2 (Mecha Dino Arena) — MDA-357 latch check, a faithful Python port of the PounceServer 1.16 latch loop
 and the StaminaServer 1.6 curve it reads (plan docs/plans/BALANCE_PASS_v1.0.md; no Lua / Luau runner in the repo).
 
 What is ported (file:line as of balance/pass1):
@@ -18,6 +18,10 @@ v1.1 (MDA-357, Kepu 2026-11-09 raptor bots "Yes, same as players"): BOT_SCENARIO
 stamina; the Heartbeat order: end check unless a tick is due at the end (1.28) -> tick -> 1.28 end after that tick) and the
 1.27 order (end checked before the tick, BotLatchTime 6.7, tick 4) for the before row; Teno Stomp cut (endAt -= amount /
 PounceLatchDrain) included.
+v1.2 (MDA-357, Kepu 2026-11-09 Blade max "Trim to ~54"): BLEED_SCENARIOS port the SkillEffects 1.51 hit bleed on a Blade Claws
+max latch: every pounce hit (land + each tick, PounceBiteAt) restarts the bleed (BladeBleedDps 3 for BladeBleedTime 4 s; on a
+player's dino min(4, SkillBleedPlayerTime 2) s, onHit :1238); the bleed loop ticks every BLEED_TICK 0.5 s on its own clock
+(phase scanned 0..0.45 s) while now <= untilT, 1.5 per tick. Total = 41 direct + bleed, min / max over the phases.
 Run: python3 tools/tests/pounce_latch_sim.py      (prints one line per scenario; exit 1 and "FAIL" if an expectation misses)
 """
 import sys
@@ -42,6 +46,7 @@ def simulate(drain, tick_dmg, cap, land=8, interval=0.5, blade_land=0.0, blade_m
     def stamina(now):
         return max(0.0, min(stam_max, s_val + s_rate * (now - s_at)))
     latched, at, next_tick, ticks, dmg, reason, end = False, None, None, 0, 0, None, None
+    hits = []  # v1.2: server times of each hit (land + ticks)
     interval = interval * max(0.2, min(1.0, blade_mul))
     for now in frames:
         # the claim (remote event) arrives before this frame's Heartbeats
@@ -52,6 +57,7 @@ def simulate(drain, tick_dmg, cap, land=8, interval=0.5, blade_land=0.0, blade_m
             s_val, s_rate, s_at = s_cur, s_rate, claim_at
             next_tick = at + interval
             dmg += int(land * (1 + blade_land) + 0.5)
+            hits.append(claim_at)
         # StaminaServer Heartbeat (rate choice, re-anchor on change)
         s = stamina(now)
         if latched and s > 0:
@@ -77,6 +83,7 @@ def simulate(drain, tick_dmg, cap, land=8, interval=0.5, blade_land=0.0, blade_m
             next_tick += interval
             ticks += 1
             dmg += tick_dmg
+            hits.append(now)  # v1.2
             if cap and now - at >= cap:
                 reason, end = "time", now
         elif cap and now - at >= cap:
@@ -84,7 +91,18 @@ def simulate(drain, tick_dmg, cap, land=8, interval=0.5, blade_land=0.0, blade_m
         if reason:
             break
     return {"ticks": ticks, "damage": dmg, "length": round(end - at, 3), "reason": reason,
-            "stamina_left": round(stamina(end), 1)}
+            "stamina_left": round(stamina(end), 1), "hits": hits}
+
+
+def bleed_total(hits, bleed_time, dps=3.0, tick=0.5, phase=0.0):
+    """v1.2: the SkillEffects bleed loop over the hits (each hit sets untilT = hit + bleed_time)."""
+    total, t = 0.0, phase
+    while t <= hits[-1] + bleed_time + tick:
+        past = [h for h in hits if h < t]
+        if past and t <= past[-1] + bleed_time:
+            total += dps * tick
+        t += tick
+    return total
 
 
 def simulate_bot(end_time, tick_dmg, balance=True, land=8, interval=0.5, latch_at=0.0, fps=60.0, hitch_at=None, hitch_len=0.0,
@@ -152,6 +170,13 @@ SCENARIOS = [
 ]
 
 
+# v1.2: name, latch kwargs, bleed time after each hit, want total min / max (direct + bleed, all phases)
+BLEED_SCENARIOS = [
+    ("Blade max on a player's dino (bleed min(4, 2) = 2 s after the last hit)", dict(NEW, **BLADE), 2.0, 52.0, 56.0),
+    ("Blade max on a bot (bleed 4 s after the last hit, = the measured ~59)", dict(NEW, **BLADE), 4.0, 58.0, 62.0),
+]
+
+
 def main():
     fails = 0
     for name, kw, want_ticks, want_dmg, want_reason in SCENARIOS:
@@ -166,7 +191,14 @@ def main():
         fails += 0 if ok else 1
         print(("PASS" if ok else "FAIL") + f"  {name}: ticks {r['ticks']} (want {want_ticks}), damage {r['damage']} (want {want_dmg}),"
               f" length {r['length']} s")
-    n = len(SCENARIOS) + len(BOT_SCENARIOS)
+    for name, kw, btime, lo, hi in BLEED_SCENARIOS:  # v1.2
+        r = simulate(**kw)
+        tots = [r["damage"] + bleed_total(r["hits"], btime, phase=r["hits"][0] + i * 0.05) for i in range(10)]
+        ok = lo <= min(tots) and max(tots) <= hi
+        fails += 0 if ok else 1
+        print(("PASS" if ok else "FAIL") + f"  {name}: direct {r['damage']}, total {min(tots)}..{max(tots)} (want {lo}..{hi}),"
+              f" last hit at +{round(r['hits'][-1] - r['hits'][0], 2)} s")
+    n = len(SCENARIOS) + len(BOT_SCENARIOS) + len(BLEED_SCENARIOS)
     print(f"{'FAIL' if fails else 'PASS'} {n - fails}/{n}")
     return 1 if fails else 0
 
