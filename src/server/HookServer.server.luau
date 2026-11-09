@@ -1,4 +1,4 @@
--- HookServer v1.10 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.11 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -88,6 +88,16 @@ VERSION = "1.10" -- v1.10 Sap Wall stops the hook and the smash through it
 -- v1.10 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute HookServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   HookServerSapWallBlocks (count), HookServerSapWallBlockedAt (server time).
+VERSION = "1.11" -- v1.11 shot pass: faster shots, strong aim assist
+-- v1.11 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer
+--   range" -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): the claw flies CLAW_SPEED x 1.5 (220 -> 330) and, before the line check, the aim
+--   snaps onto the nearest-angle hitbox of an enemy within 45 degrees of the aim, within HookRange and in line of
+--   sight (as the Ink Shooter). Diag HookAssistDeg (degrees snapped, -1 = no snap). The range comes from SkillTree
+--   1.74 (HookRange). Switch: script attribute ShotPassEnabled (default true; false = 1.10).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.11
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.11
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.11
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -530,6 +540,25 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local origin = armOrigin(char) or char:GetPivot().Position
 	local range = tonumber(char:GetAttribute("HookRange")) or 60
 	local params = worldExclude()
+	if shotPass() then -- v1.11: strong aim assist
+		local maxAng, snapDir, snapAng = math.rad(SHOT_ASSIST_DEG), nil, nil
+		for _, c in ipairs(candidates(char)) do
+			for _, p in ipairs(c.hb:GetChildren()) do
+				if p:IsA("BasePart") then
+					local v = p.Position - origin
+					local d = v.Magnitude
+					if d > 0.5 and d <= range then
+						local ang = math.acos(math.clamp(dir:Dot(v / d), -1, 1))
+						if ang <= maxAng and (not snapAng or ang < snapAng) and not workspace:Raycast(origin, v, params) then
+							snapDir, snapAng = v / d, ang
+						end
+					end
+				end
+			end
+		end
+		if snapDir then dir = snapDir end
+		char:SetAttribute("HookAssistDeg", snapAng and math.floor(math.deg(snapAng) + 0.5) or -1)
+	end
 	local wall = workspace:Raycast(origin, dir * range, params)
 	local wallDist = wall and (wall.Position - origin).Magnitude or math.huge
 	-- first dino near the line
@@ -565,7 +594,7 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	elseif wall then
 		result = "miss"
 	end
-	local fly = (aimEnd - origin).Magnitude / CLAW_SPEED
+	local fly = (aimEnd - origin).Magnitude / (shotPass() and CLAW_SPEED * SHOT_SPEED_MUL or CLAW_SPEED) -- v1.11
 	local launchAt = t + WINDUP
 	local contactAt = result == "hit" and (launchAt + fly) or 0
 	local smashAt = result == "hit" and (contactAt + PULL_TIME) or 0

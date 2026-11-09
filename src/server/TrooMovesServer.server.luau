@@ -1,4 +1,4 @@
--- TrooMovesServer v1.3 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.4 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -117,6 +117,17 @@ VERSION = "1.3" -- v1.3 the Sap Wall's mockup look (opaque amber slabs, stepped 
 --   and the segment heights follow the mockup's stepped tops, TrooMoves_sapProfile "0.82,0.94,1,0.9,0.78" (x TrooMoves_sapHeight,
 --   repeated if there are more segments; the tallest stays sapHeight). TrooPartsFX 1.1 draws the rise / wet -> set / rim on
 --   every client. Switch: script attribute TrooMovesSapLookEnabled (default true, read at each wall; false = 1.2's parts).
+VERSION = "1.4" -- v1.4 shot pass: faster shots, strong aim assist
+-- v1.4 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer range"
+--   -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): the Arc Lantern and the sap pod fly 1.5x faster (lanternFly / sapFly / 1.5;
+--   TrooLanternFlight / TrooSapFlight); when no enemy is within lanternZapRadius of the aimed spot, the lantern
+--   lands on the nearest enemy within 45 degrees of the aim and within TrooPartLanternRange (diag TrooLanternAssist
+--   = its name or ""). The Sap Wall does not snap (it is placed). Ranges come from SkillTree 1.74. Switch: script
+--   attribute ShotPassEnabled (default true; false = 1.3).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.4
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.4
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.4
 if script:GetAttribute("TrooMovesSapLookEnabled") == nil then script:SetAttribute("TrooMovesSapLookEnabled", true) end
 if script:GetAttribute("TrooMoves_sapProfile") == nil then script:SetAttribute("TrooMoves_sapProfile", "0.82,0.94,1,0.9,0.78") end
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderTick = 0.25, menderHopFly = 0.5,
@@ -445,14 +456,37 @@ remote("DinoTrooLanternRequest").OnServerEvent:Connect(function(player, stamp, a
 	local char, t = check(player, stamp, "olantern", "TrooPartLantern", aimDir, aimPoint)
 	if not char then return end
 	ok(char, "TrooPartLantern", t)
-	local to = landing(char, aimDir, aimPoint, math.max(1, num(char, "TrooPartLanternRange", 40)))
+	local lRange = math.max(1, num(char, "TrooPartLanternRange", 40))
+	local to = landing(char, aimDir, aimPoint, lRange)
+	local lFly = shotPass() and cfg("lanternFly") / SHOT_SPEED_MUL or cfg("lanternFly") -- v1.4
+	if shotPass() then -- v1.4: strong aim assist
+		local root, near, snap = rootOf(char), false, nil
+		for _, m in ipairs(enemies(char)) do
+			if (rootOf(m).Position - to).Magnitude <= cfg("lanternZapRadius") then near = true break end
+		end
+		if not near and root then
+			local aimV = flat(to - root.Position)
+			aimV = aimV.Magnitude > 1e-3 and aimV.Unit or heading(char, aimDir)
+			local cosA, bestD = math.cos(math.rad(SHOT_ASSIST_DEG)), nil
+			for _, m in ipairs(enemies(char)) do
+				local v = flat(rootOf(m).Position - root.Position)
+				local d = v.Magnitude
+				if d > 1e-3 and d <= lRange and v.Unit:Dot(aimV) >= cosA and (not bestD or d < bestD) then snap, bestD = m, d end
+			end
+		end
+		if snap then
+			local sp = rootOf(snap).Position
+			to = Vector3.new(sp.X, groundY(sp, sp.Y - 3 * char:GetScale()), sp.Z)
+		end
+		char:SetAttribute("TrooLanternAssist", snap and snap.Name or "")
+	end
 	char:SetAttribute("TrooLanternFrom", handPos(char))
 	char:SetAttribute("TrooLanternTo", to)
-	char:SetAttribute("TrooLanternFlight", cfg("lanternFly"))
+	char:SetAttribute("TrooLanternFlight", lFly)
 	char:SetAttribute("TrooLanternAt", t) -- last: TrooPartsFX
 	task.delay(cfg("lanternWindup"), function()
 		if not canStill(char) then result(char, "TrooPartLantern", "cancelled", now()) return end
-		task.wait(cfg("lanternFly"))
+		task.wait(lFly) -- v1.4 (was cfg("lanternFly"))
 		local lf, sc = char:GetAttribute("TrooLanternFrom"), char:GetScale() -- v1.2: the lantern's real arc
 		if typeof(lf) == "Vector3" and sapArcBlocked(lf, to + Vector3.new(0, 0.8 * sc / 2, 0), cfg("lanternArc") * sc / 2) then
 			char:SetAttribute("TrooLanternChainList", "")
@@ -526,13 +560,14 @@ remote("DinoTrooSapRequest").OnServerEvent:Connect(function(player, stamp, aimDi
 	local life = math.max(0.1, num(char, "TrooPartSapTime", 2.1))
 	char:SetAttribute("TrooSapFrom", handPos(char))
 	char:SetAttribute("TrooSapTo", to)
-	char:SetAttribute("TrooSapFlight", cfg("sapFly"))
+	local sFly = shotPass() and cfg("sapFly") / SHOT_SPEED_MUL or cfg("sapFly") -- v1.4
+	char:SetAttribute("TrooSapFlight", sFly)
 	char:SetAttribute("TrooSapWidth", width)
 	char:SetAttribute("TrooSapTime", life)
 	char:SetAttribute("TrooSapAt", t) -- last: TrooPartsFX
 	task.delay(cfg("sapWindup"), function()
 		if not canStill(char) then result(char, "TrooPartSap", "cancelled", now()) return end
-		task.wait(cfg("sapFly"))
+		task.wait(sFly) -- v1.4 (was cfg("sapFly"))
 		local ts = now()
 		char:SetAttribute("TrooSapSplatAt", ts)
 		if occupied(cf, width, char) then

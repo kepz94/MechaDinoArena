@@ -1,4 +1,4 @@
--- HerreraMovesServer v1.8 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
+-- HerreraMovesServer v1.9 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
 -- (MDA-151), Smoke Pods (MDA-152), Strobe Frill (MDA-155), Stun Breaker (MDA-156), and the Glider Wings' glide state
 -- (MDA-150). Plan docs/plans/HERRERA_PARTS_v1.0.md (Parts 2, 3, 4, 7, 8 and "Pass 2 — build map"); Kepu 2026-10-31.
 -- Settings come from the character (SkillEffects 1.27, a Herrera with the part bought AND slotted):
@@ -141,6 +141,16 @@ VERSION = "1.8" -- v1.8 a goo blob whose arc goes through a Sap Wall stops there
 --   GooWallAt), an arc over the wall lands as before (the puddle centre -> target check stays).
 --   Switch: script attribute HerreraMovesServerSapArcEnabled (default true, read at each shot; false = the previous behaviour: no check of the
 --   flight itself). Diagnostics: script HerreraMovesServerSapArcBlocks (count), HerreraMovesServerSapArcBlockedAt (server time).
+VERSION = "1.9" -- v1.9 shot pass: faster shots, strong aim assist
+-- v1.9 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer range"
+--   -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): quills fly QUILL_SPEED x 1.5 (published as the character attribute QuillSpeed for
+--   HerreraMovesFX 1.7) and lock on within 45 degrees (was QUILL_CONE 35); the goo blob flies 1.5x faster (0.85 /
+--   0.45 s -> / 1.5). Quill range, goo toss and goo assist come from SkillTree 1.74. Switch: script attribute
+--   ShotPassEnabled (default true; false = 1.8).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.9
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.9
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.9
 local sapArcBlocked do
 	local mod
 	sapArcBlocked = function(from, to, peak)
@@ -373,13 +383,14 @@ quillRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local origin = root.Position + Vector3.new(0, 1.2 * s, 0)
 	local params = worldExclude()
 	local best, bestAng
+	local qCone = shotPass() and math.max(QUILL_CONE, math.rad(SHOT_ASSIST_DEG)) or QUILL_CONE -- v1.9
 	for _, m in ipairs(candidates(char)) do
 		local p = rootOf(m).Position
 		local v = p - origin
 		local fv = flat(v)
 		if v.Magnitude <= range and fv.Magnitude > 1e-3 then
 			local ang = math.acos(math.clamp(heading:Dot(fv.Unit), -1, 1))
-			if ang <= QUILL_CONE and (not bestAng or ang < bestAng) and not workspace:Raycast(origin, v, params) then
+			if ang <= qCone and (not bestAng or ang < bestAng) and not workspace:Raycast(origin, v, params) then -- v1.9 (was QUILL_CONE)
 				best, bestAng = m, ang
 			end
 		end
@@ -387,7 +398,9 @@ quillRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local n = math.max(1, math.floor(num(char, "QuillCount", 5)))
 	local dmg = math.max(0, num(char, "QuillDamage", 4))
 	local aimEnd = best and rootOf(best).Position or (origin + heading * range)
-	local fly = (aimEnd - origin).Magnitude / QUILL_SPEED
+	local qSpeed = shotPass() and QUILL_SPEED * SHOT_SPEED_MUL or QUILL_SPEED -- v1.9
+	local fly = (aimEnd - origin).Magnitude / qSpeed
+	char:SetAttribute("QuillSpeed", qSpeed) -- v1.9: HerreraMovesFX flies the quills at this speed
 	char:SetAttribute("QuillResult", best and "hit" or "miss")
 	char:SetAttribute("QuillTarget", best and best.Name or "")
 	char:SetAttribute("QuillShot", n)
@@ -792,7 +805,7 @@ local function flyBlob(char, from, to, glide, radius, life)
 	local ball = fxPart("GooBlob", Enum.PartType.Ball, Vector3.new(2.4, 2.4, 2.4) * s, LIME, 0)
 	ball.CFrame = CFrame.new(from)
 	ball.Parent = gooFolder()
-	local T = glide and 0.45 or 0.85
+	local T = (glide and 0.45 or 0.85) / (shotPass() and SHOT_SPEED_MUL or 1) -- v1.9: 1.5x faster
 	local peak = math.max(from.Y, to.Y) + 14 * s
 	local stopU -- v1.8: the arc fraction where a live Sap Wall stops the blob
 	do

@@ -1,4 +1,4 @@
--- ScreechServer v1.13 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.14 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -118,6 +118,17 @@ VERSION = "1.13" -- v1.13 Sap Wall stops bolts through it
 -- v1.13 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute ScreechServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   ScreechServerSapWallBlocks (count), ScreechServerSapWallBlockedAt (server time).
+VERSION = "1.14" -- v1.14 shot pass: faster shots, strong aim assist
+-- v1.14 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer
+--   range" -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): the Shock Cannon ball flies SHOCK_SPEED x 1.5 (75 -> 112.5) and the old dart
+--   BOLT_SPEED x 1.5; after the aim direction is set, it snaps toward the root of the nearest-angle enemy within 45
+--   degrees of it, within the shot's range and in line of sight. Diag ScreechAssistDeg (degrees snapped, -1 = no
+--   snap). The range comes from SkillTree 1.74 (ScreechRange). Switch: script attribute ShotPassEnabled (default
+--   true; false = 1.13).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.14
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.14
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.14
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -765,6 +776,27 @@ remote.OnServerEvent:Connect(function(player, stamp, held, aimDir) -- v1.7: + ai
 		pitch = math.clamp(math.asin(math.clamp(u.Y, -1, 1)), -PITCH_MAX, PITCH_MAX)
 		dir = (dir * math.cos(pitch) + Vector3.yAxis * math.sin(pitch)).Unit
 	end
+	if shotPass() then -- v1.14: strong aim assist
+		local cosA, snapDir, snapAng = math.cos(math.rad(SHOT_ASSIST_DEG)), nil, nil
+		local ex = {char}
+		for _, m in ipairs(targets(char)) do table.insert(ex, m) end
+		rayParams.FilterDescendantsInstances = ex
+		for _, m in ipairs(targets(char)) do
+			local r = m:FindFirstChild("HumanoidRootPart")
+			if r and alive(m) and mayAffect(char, m) then
+				local v = r.Position - root.Position
+				local d = v.Magnitude
+				if d > 1e-3 and d <= range then
+					local dot = math.clamp(dir:Dot(v / d), -1, 1)
+					if dot >= cosA and (not snapAng or dot > snapAng) and not workspace:Raycast(root.Position, v, rayParams) then
+						snapDir, snapAng = v / d, dot
+					end
+				end
+			end
+		end
+		if snapDir then dir = snapDir end
+		char:SetAttribute("ScreechAssistDeg", snapAng and math.floor(math.deg(math.acos(snapAng)) + 0.5) or -1)
+	end
 	char:SetAttribute("ScreechAimPitch", math.floor(math.deg(pitch) + 0.5))
 	char:SetAttribute("ScreechAimUsed", aimed)
 	local pos = root.Position + dir * BOLT_AHEAD
@@ -779,11 +811,11 @@ remote.OnServerEvent:Connect(function(player, stamp, held, aimDir) -- v1.7: + ai
 		muzzleFlash(pos)
 		local core, arcs = makeBall(pos, dir)
 		table.insert(bolts, {shooter = char, part = core, arcs = arcs, pos = pos, dir = dir, left = range, flinch = flinch,
-			jam = jam, shock = true, speed = SHOCK_SPEED, dmg = math.max(0, tonumber(char:GetAttribute("ScreechDamage")) or 0)}) -- v1.3: + dmg
+			jam = jam, shock = true, speed = shotPass() and SHOCK_SPEED * SHOT_SPEED_MUL or SHOCK_SPEED, dmg = math.max(0, tonumber(char:GetAttribute("ScreechDamage")) or 0)}) -- v1.3: + dmg
 	else
 		local body, tip = makeBolt(pos, dir) -- v1.1: dart
 		table.insert(bolts, {shooter = char, part = body, tip = tip, pos = pos, dir = dir, left = range,
-			flinch = flinch, jam = jam})
+			flinch = flinch, jam = jam, speed = shotPass() and BOLT_SPEED * SHOT_SPEED_MUL or BOLT_SPEED}) -- v1.14: + speed
 	end
 	char:SetAttribute("ScreechReadyAt", t + (tonumber(char:GetAttribute("ScreechCooldown")) or 0))
 	char:SetAttribute("ScreechCount", (char:GetAttribute("ScreechCount") or 0) + 1)

@@ -1,4 +1,4 @@
--- TetherServer v1.4 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
+-- TetherServer v1.5 (Mecha Dino Arena) — the pachy's Tether Spike, an Engineering slot part (path "tether").
 -- MDA-129, mockup docs/mockups/pachy_tether_options.html B "Tail-base launcher". Kepu 2026-10-30: "a tether spike where if
 --   it lands it latches the person to a chain to the ground. Makes them not mobile past the chain for a couple seconds"
 --   -> "this will not shoot straight like a gun tho. It will launch like a splash. So it will shoot vertical and do a
@@ -65,6 +65,15 @@ local VERSION = "1.3"
 --   PachyMovesPose 1.0 cocks the tail on other clients from these. Switch: script attribute TetherAimStampsEnabled
 --   (default true, read at each message; false = 1.3, the remote ignores everything). Diagnostic: TetherAimStamps.
 VERSION = "1.4" -- v1.4 aim stamps
+VERSION = "1.5" -- v1.5 shot pass: faster shots, strong aim assist
+-- v1.5 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer range"
+--   -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): the spike's lob takes FLIGHT / 1.5 (0.8 -> 0.53 s; TetherLandAt). The range comes
+--   from SkillTree 1.74 (TetherRange). No snap: the spike lands on the aimed circle. Switch: script attribute
+--   ShotPassEnabled (default true; false = 1.4).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.5
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.5
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.5
 if script:GetAttribute("TetherAimStampsEnabled") == nil then script:SetAttribute("TetherAimStampsEnabled", true) end -- v1.4
 script:SetAttribute("TetherAimStamps", 0)
 local FLIGHT, ARC_HEIGHT, RANGE_SLACK, YANK_SPEED = 0.8, 22, 4, 60
@@ -502,7 +511,8 @@ remote.OnServerEvent:Connect(function(player, stamp, landPos)
 	local from = muzzleOf(char) or hrp.Position
 	char:SetAttribute("TetherReadyAt", t + math.max(0.5, tonumber(char:GetAttribute("TetherCooldown")) or 14))
 	char:SetAttribute("TetherAimPos", target)
-	char:SetAttribute("TetherLandAt", t + FLIGHT)
+	local tFlight = shotPass() and FLIGHT / SHOT_SPEED_MUL or FLIGHT -- v1.5
+	char:SetAttribute("TetherLandAt", t + tFlight)
 	char:SetAttribute("TetherCount", (char:GetAttribute("TetherCount") or 0) + 1)
 	char:SetAttribute("TetherStartedAt", t) -- last
 	script:SetAttribute("TetherShots", (script:GetAttribute("TetherShots") or 0) + 1)
@@ -512,7 +522,7 @@ remote.OnServerEvent:Connect(function(player, stamp, landPos)
 	local t0 = os.clock()
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
-		local u = math.clamp((os.clock() - t0) / FLIGHT, 0, 1)
+		local u = math.clamp((os.clock() - t0) / tFlight, 0, 1) -- v1.5 (was FLIGHT)
 		if not spike.Parent then conn:Disconnect() return end
 		local function at(k)
 			local p = from:Lerp(target, k)

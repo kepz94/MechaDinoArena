@@ -1,4 +1,4 @@
--- TheriMovesServer v1.8 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.9 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -155,6 +155,17 @@ VERSION = "1.8" -- v1.8 Sap Wall stops feathers / fields / snares / vortex / bol
 -- v1.8 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute TheriMovesServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   TheriMovesServerSapWallBlocks (count), TheriMovesServerSapWallBlockedAt (server time).
+VERSION = "1.9" -- v1.9 shot pass: faster shots, strong aim assist
+-- v1.9 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer range"
+--   -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): Snare Wires bola locks on within 45 degrees (was BOLA_CONE 25) and flies
+--   BOLA_SPEED x 1.5 (flight clamp 0.25..0.6 -> / 1.5); the Reaper Reel claw flies REEL_CLAW_SPEED x 1.5 (fly clamp
+--   0.12..0.35 -> / 1.5) and locks on within at least 45 degrees (TheriHookCone); the Feather Barrage blades fly
+--   VOLLEY_FLIGHT / 1.5 (0.6 -> 0.4 s; TheriVolleyFlight). Ranges / cones come from SkillTree 1.74. Switch: script
+--   attribute ShotPassEnabled (default true; false = 1.8).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.9
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.9
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.9
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -1026,12 +1037,14 @@ snareRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local root = rootOf(char)
 	local dir = heading(char, aimDir)
 	local range = math.max(0, num(char, "TheriSnareRange", 35))
-	local best, d = nearestInCone(char, dir, range, BOLA_CONE)
+	local sp = shotPass() -- v1.9
+	local bolaSpeed, fMin, fMax = sp and BOLA_SPEED * SHOT_SPEED_MUL or BOLA_SPEED, sp and 0.25 / SHOT_SPEED_MUL or 0.25, sp and 0.6 / SHOT_SPEED_MUL or 0.6
+	local best, d = nearestInCone(char, dir, range, sp and math.max(BOLA_CONE, SHOT_ASSIST_DEG) or BOLA_CONE) -- v1.9
 	if not best then
 		local e = root.Position + dir * range
 		char:SetAttribute("TheriBolaTarget", "")
 		char:SetAttribute("TheriBolaEnd", Vector3.new(e.X, groundY(e, root.Position.Y - 6), e.Z))
-		char:SetAttribute("TheriBolaFlight", math.clamp(range / BOLA_SPEED, 0.25, 0.6))
+		char:SetAttribute("TheriBolaFlight", math.clamp(range / bolaSpeed, fMin, fMax)) -- v1.9
 		char:SetAttribute("TheriBolaResult", "noTarget")
 		char:SetAttribute("TheriSnareServerResult", "noTarget")
 		char:SetAttribute("TheriSnareServerResultAt", t)
@@ -1042,7 +1055,7 @@ snareRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	bolaPublish(char, t)
 	char:SetAttribute("TheriSnareServerResult", "ok")
 	char:SetAttribute("TheriSnareServerResultAt", t)
-	local flight = math.clamp(d / BOLA_SPEED, 0.25, 0.6)
+	local flight = math.clamp(d / bolaSpeed, fMin, fMax) -- v1.9
 	char:SetAttribute("TheriBolaTarget", best.Name)
 	char:SetAttribute("TheriBolaEnd", rootOf(best).Position)
 	char:SetAttribute("TheriBolaFlight", flight)
@@ -1152,7 +1165,9 @@ hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	local s = char:GetScale()
 	local dir = heading(char, aimDir)
 	local range = math.max(0, num(char, "TheriHookRange", 50))
-	local best, d = nearestInCone(char, dir, range, num(char, "TheriHookCone", 35))
+	local hookCone = num(char, "TheriHookCone", 35)
+	if shotPass() then hookCone = math.max(hookCone, SHOT_ASSIST_DEG) end -- v1.9
+	local best, d = nearestInCone(char, dir, range, hookCone)
 	local from = muzzleOf(char)
 	local result, aimEnd = "noTarget", from + dir * range
 	if best then
@@ -1169,6 +1184,7 @@ hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	end
 	local gapS = REEL_GAP * s
 	local fly = math.clamp((aimEnd - from).Magnitude / REEL_CLAW_SPEED, 0.12, 0.35)
+	if shotPass() then fly = math.clamp((aimEnd - from).Magnitude / (REEL_CLAW_SPEED * SHOT_SPEED_MUL), 0.12 / SHOT_SPEED_MUL, 0.35 / SHOT_SPEED_MUL) end -- v1.9
 	local reel = (result == "hit") and math.clamp(math.max(0, d - gapS) / REEL_SPEED, 0.3, 0.8) or 0
 	char:SetAttribute("TheriReelTarget", (result == "hit" or result == "shielded") and best.Name or "")
 	char:SetAttribute("TheriReelEnd", aimEnd)
@@ -1281,7 +1297,8 @@ featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	char:SetAttribute("TheriFeatherDir", dir)
 	char:SetAttribute("TheriFeatherOrigin", origin)
 	char:SetAttribute("TheriVolleyRelease", VOLLEY_RELEASE)
-	char:SetAttribute("TheriVolleyFlight", VOLLEY_FLIGHT)
+	local vFlight = shotPass() and VOLLEY_FLIGHT / SHOT_SPEED_MUL or VOLLEY_FLIGHT -- v1.9
+	char:SetAttribute("TheriVolleyFlight", vFlight)
 	char:SetAttribute("TheriVolleyResult", "windup")
 	char:SetAttribute("TheriVolleyDarts", "")
 	char:SetAttribute("TheriFeatherHits", "")
@@ -1326,7 +1343,7 @@ featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	char:SetAttribute("TheriVolleyDarts", table.concat(darts, "|"))
 	char:SetAttribute("TheriVolleyResult", "fired")
 	char:SetAttribute("TheriVolleyFiredAt", t1) -- last: the darts leave
-	task.wait(VOLLEY_FLIGHT)
+	task.wait(vFlight) -- v1.9 (was VOLLEY_FLIGHT)
 	local t2 = now()
 	local landed = {}
 	for _, j in ipairs(judged) do

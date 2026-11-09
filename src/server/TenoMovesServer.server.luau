@@ -1,4 +1,4 @@
--- TenoMovesServer v1.14 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.15 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -238,6 +238,17 @@ VERSION = "1.14" -- v1.14 a boulder whose arc goes through a Sap Wall stops ther
 --   point; character TenoMortarWallAt), an arc over the wall lands as before (the landing centre -> target check stays).
 --   Switch: script attribute TenoMovesServerSapArcEnabled (default true, read at each shot; false = the previous behaviour: no check of the
 --   flight itself). Diagnostics: script TenoMovesServerSapArcBlocks (count), TenoMovesServerSapArcBlockedAt (server time).
+VERSION = "1.15" -- v1.15 shot pass: faster shots, strong aim assist
+-- v1.15 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer
+--   range" -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): the boulder flies 1.5x faster (the whole flight time / 1.5, the arc peak
+--   unchanged); with the crosshair aim, when no dino is within TenoMortarSnap of the aimed spot the boulder lands on
+--   the nearest enemy within 45 degrees of the aim (at least TenoMortarCone) and within TenoMortarRange
+--   (TenoMortarAimMode "assist"). Range / auto distance / cone come from SkillTree 1.74. Switch: script attribute
+--   ShotPassEnabled (default true; false = 1.14).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.15
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.15
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.15
 local sapArcBlocked do
 	local mod
 	sapArcBlocked = function(from, to, peak)
@@ -944,6 +955,19 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 		if best then
 			spot = onGround(rootOf(best).Position)
 			char:SetAttribute("TenoMortarAimMode", "snap")
+		elseif shotPass() then -- v1.15: strong aim assist
+			local aimV = flat(spot - root.Position)
+			aimV = aimV.Magnitude > 1e-3 and aimV.Unit or aim
+			local cone2 = math.max(cone, math.rad(SHOT_ASSIST_DEG))
+			for _, m in ipairs(candidates(char)) do
+				local v = flat(rootOf(m).Position - root.Position)
+				local d = v.Magnitude
+				if d > 1e-3 and d <= range and math.acos(math.clamp(aimV:Dot(v.Unit), -1, 1)) <= cone2 and (not bestD or d < bestD) then best, bestD = m, d end
+			end
+			if best then
+				spot = onGround(rootOf(best).Position)
+				char:SetAttribute("TenoMortarAimMode", "assist")
+			end
 		end
 		centre = spot
 	end
@@ -953,6 +977,7 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 		local k = math.clamp((flat(centre - root.Position).Magnitude - 60) / 30, 0, 1)
 		flightT, peakT = flightT + 0.3 * k, peakT + 8 * k
 	end
+	if shotPass() then flightT = flightT / SHOT_SPEED_MUL end -- v1.15: 1.5x faster
 	local right = aim:Cross(Vector3.yAxis).Unit
 	local pts = num(char, "TenoMortarCount", 1) >= 2 and {onGround(centre + right * MORTAR_PAIR), onGround(centre - right * MORTAR_PAIR)} or {centre}
 	local splash, dmg = num(char, "TenoMortarSplash", 10), num(char, "TenoMortarDamage", 12)

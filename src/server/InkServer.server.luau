@@ -1,4 +1,4 @@
--- InkServer v1.7 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
+-- InkServer v1.8 (Mecha Dino Arena) — the pachy's Ink Shooter, an Engineering slot part (path "ink").
 -- MDA-128, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Neck ink tank +
 --   barrel". Kepu 2026-10-30: "How about an ink shooter that blinds your enemy for 2 seconds. Turns their screen black";
 --   answers: fully black (HUD stays), an aimed shot like the Grappling Hook (first dino hit), bots lose you, steps II 80
@@ -87,6 +87,15 @@ local VERSION = "1.6"
 --   dazed by then: no shot, InkCancelAt = now, InkReadyAt put back, result "cancelled". Switch: script attribute
 --   InkAimDelayEnabled (default true, read at each press; false = 1.6: the shot at the press).
 VERSION = "1.7" -- v1.7 the 0.1 s aim
+VERSION = "1.8" -- v1.8 shot pass: faster shots, strong aim assist
+-- v1.8 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer range"
+--   -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): the glob flies INK_SPEED x 1.5 (160 -> 240) and the aim assist snaps within 45
+--   degrees (was InkAimAssistDeg 12; the attribute still applies when larger). The range comes from SkillTree 1.74
+--   (InkRange). Switch: script attribute ShotPassEnabled (default true; false = 1.7).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.8
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.8
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.8
 local AIM_DELAY = 0.1 -- v1.7
 if script:GetAttribute("InkAimDelayEnabled") == nil then script:SetAttribute("InkAimDelayEnabled", true) end -- v1.7
 local PITCH_MIN, PITCH_MAX = math.rad(-2), math.rad(25)
@@ -629,6 +638,7 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 		local snapDir, snapAng
 		if script:GetAttribute("InkAimAssistEnabled") ~= false then
 			local maxAng = math.rad(math.clamp(tonumber(script:GetAttribute("InkAimAssistDeg")) or 12, 0, 45))
+			if shotPass() then maxAng = math.max(maxAng, math.rad(SHOT_ASSIST_DEG)) end -- v1.8
 			for _, c in ipairs(candidates(char)) do
 				for _, p in ipairs(c.hb:GetChildren()) do
 					if p:IsA("BasePart") then
@@ -678,7 +688,7 @@ remote.OnServerEvent:Connect(function(player, stamp, aimDir)
 			end
 		end
 	end
-	local fly = (aimEnd - origin).Magnitude / INK_SPEED
+	local fly = (aimEnd - origin).Magnitude / (shotPass() and INK_SPEED * SHOT_SPEED_MUL or INK_SPEED) -- v1.8
 	local arrive = t + fly
 	char:SetAttribute("InkReadyAt", (pressT or t) + math.max(0.5, tonumber(char:GetAttribute("InkCooldown")) or 15)) -- v1.7: from the press
 	char:SetAttribute("InkAimDir", dir)

@@ -1,4 +1,4 @@
--- HerreraMovesFX v1.6 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
+-- HerreraMovesFX v1.7 (Mecha Dino Arena) — the effects of the Herrera's pass-2 part moves on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/HERRERA_PARTS_v1.0.md Parts 3, 4, 7, 8 and "Pass 2 — build map"; the moves are
 -- HerreraMovesServer 1.0, the looks HerreraPartsServer 1.2. Runs for every player character (yours and others') and for
 -- Workspace.DinoIsland.Bots. Everything is local (Workspace "HerreraMovesFX"), nothing is replicated.
@@ -86,6 +86,12 @@ local HttpService = game:GetService("HttpService")
 local VERSION = "1.4"
 VERSION = "1.5" -- v1.5 goo mortar kick
 VERSION = "1.6" -- v1.6 wind-up FX
+VERSION = "1.7" -- v1.7 shot pass: faster shots, strong aim assist
+-- v1.7 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer range"
+--   -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): the quills fly at the server's speed (character attribute QuillSpeed,
+--   HerreraMovesServer 1.9) instead of the fixed QUILL_SPEED 90. Switch: script attribute ShotPassEnabled (default
+--   true; false = 1.6).
 local QUILL_GAP, QUILL_SPEED = 0.045, 90
 local SMOKE_PUFFS = 70
 local HOT = Color3.fromRGB(255, 98, 18)
@@ -220,7 +226,8 @@ local function quillVolley(char)
 				return typeof(aimEnd) == "Vector3" and aimEnd or from
 			end
 			local g0 = goal()
-			local dur = math.max(0.05, (g0 - from).Magnitude / QUILL_SPEED)
+			local qs = (script:GetAttribute("ShotPassEnabled") ~= false and tonumber(char:GetAttribute("QuillSpeed"))) or QUILL_SPEED -- v1.7
+			local dur = math.max(0.05, (g0 - from).Magnitude / qs)
 			local len = 1.3 * s
 			local shaft = fxPart(Vector3.new(0.12 * s, 0.12 * s, len), STEEL, CFrame.new(from), Enum.Material.Metal)
 			local tipP = fxPart(Vector3.new(0.18 * s, 0.18 * s, 0.3 * s), HOT, CFrame.new(from))

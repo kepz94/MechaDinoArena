@@ -1,4 +1,4 @@
--- MineServer v1.9 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.10 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -103,6 +103,15 @@ VERSION = "1.9" -- v1.9 Sap Wall between the mine and the dino stops the zap
 -- v1.9 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute MineServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   MineServerSapWallBlocks (count), MineServerSapWallBlockedAt (server time).
+VERSION = "1.10" -- v1.10 shot pass: faster shots, strong aim assist
+-- v1.10 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer
+--   range" -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): the mine is thrown THROW_DIST x 2 (30 -> 60 studs) and flies ARC_TIME / 1.5 (0.6
+--   -> 0.4 s; per mine, m.arcTime). No snap (a trap is laid ahead). Switch: script attribute ShotPassEnabled
+--   (default true, read at each throw; false = 1.9).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.10
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.10
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.10
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -577,7 +586,7 @@ RunService.Heartbeat:Connect(function()
 				if t >= m.dieAt then
 					removeMine(m, "expired")
 				elseif t < m.landAt then -- flying: an arc from the throw point to the ground point
-					local k = math.clamp((t - m.t0) / ARC_TIME, 0, 1)
+					local k = math.clamp((t - m.t0) / (m.arcTime or ARC_TIME), 0, 1) -- v1.10: per mine
 					local p = m.from:Lerp(m.to, k) + Vector3.new(0, ARC_HEIGHT * 4 * k * (1 - k), 0)
 					placeMine(m, p)
 				else
@@ -687,8 +696,10 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	for _, d in ipairs(targets(char)) do table.insert(ex, d) end
 	for _, s in pairs(chars) do for _, m in ipairs(s.mines) do table.insert(ex, m.model) end end
 	rayParams.FilterDescendantsInstances = ex
-	local reach = THROW_DIST
-	local wall = workspace:Raycast(root.Position, dir * THROW_DIST, rayParams)
+	local throwDist = shotPass() and THROW_DIST * 2 or THROW_DIST -- v1.10: 2x range
+	local arcTime = shotPass() and ARC_TIME / SHOT_SPEED_MUL or ARC_TIME -- v1.10: 1.5x faster
+	local reach = throwDist
+	local wall = workspace:Raycast(root.Position, dir * throwDist, rayParams)
 	if wall then reach = math.max(2, (wall.Position - root.Position).Magnitude - 2) end
 	local ahead = root.Position + dir * reach
 	local ground = workspace:Raycast(ahead + Vector3.new(0, 40, 0), Vector3.new(0, -140, 0), rayParams)
@@ -697,7 +708,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	local from = root.Position + Vector3.new(0, 2, 0)
 	local m = makeMine(char, from)
 	m.owner, m.from, m.to, m.t0 = char, from, to, t
-	m.landAt = t + ARC_TIME
+	m.arcTime = arcTime -- v1.10
+	m.landAt = t + arcTime
 	m.armAt = m.landAt + ARM_TIME
 	m.dieAt = m.landAt + LIFETIME
 	m.dmg = math.max(0, tonumber(char:GetAttribute("MineDamage")) or 15)

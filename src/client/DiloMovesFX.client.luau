@@ -1,4 +1,4 @@
--- DiloMovesFX v1.1 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
+-- DiloMovesFX v1.4 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/DILO_PARTS_v1.0.md Task 6 (MDA-319); mockup docs/mockups/dilo_parts_options.html
 -- v0.1 (tools/mockup/dilo_parts_looks.js: the picked looks' motion and FX). Every player character with Species "Dilo" that
 -- wears DPart_* models (DiloPartsServer 1.0) is watched; the stamps come from DiloMovesServer 1.0. No landing FX.
@@ -65,6 +65,12 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 hiss / pump / jets
 VERSION = "1.2" -- v1.2 Spring Jets with the Thrusters' FX
 VERSION = "1.3" -- v1.3 jets flame as dense as a Thrusters trail
+VERSION = "1.4" -- v1.4 shot pass: faster shots, strong aim assist
+-- v1.4 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer range"
+--   -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): the Spine Burst spines fly the server's reach DiloSpineRange (was a fixed 22)
+--   over DiloSpineFlight (was 0.2 s) and the ground ring grows with the reach (40 x reach / 22). Switch: script
+--   attribute ShotPassEnabled (default true; false = 1.3).
 if script:GetAttribute("DiloJetsFlameV2Enabled") == nil then script:SetAttribute("DiloJetsFlameV2Enabled", true) end -- v1.3
 if script:GetAttribute("DiloJetsThrusterFXEnabled") == nil then script:SetAttribute("DiloJetsThrusterFXEnabled", true) end -- v1.2
 for _, k in ipairs({"PartsFXHissEnabled", "PartsFXPumpEnabled", "PartsFXJetsEnabled"}) do -- v1.1
@@ -251,15 +257,21 @@ local function watch(char)
 		fwd = Vector3.new(fwd.X, 0, fwd.Z).Unit
 		local k = scaleK(char)
 		local origin = r.Position + Vector3.new(0, 2.5 * k, 0)
+		local sReach, sFly, sRing = 22, 0.2, 40 -- v1.4: the server's reach / flight (shot pass)
+		if script:GetAttribute("ShotPassEnabled") ~= false then
+			sReach = num(char, "DiloSpineRange") or 22
+			sFly = num(char, "DiloSpineFlight") or 0.2
+			sRing = 40 * sReach / 22
+		end
 		for i = 0, n - 1 do
 			local d = CFrame.Angles(0, i * 2 * math.pi / n, 0) * fwd
 			local from = origin + d * 2 * k
 			local sp = part(Vector3.new(0.25, 0.25, 1.6) * k, GREEN, Enum.Material.Neon, CFrame.lookAt(from, from + d), 0)
-			fly(sp, from, origin + d * 22 + Vector3.new(0, -1.5 * k, 0), 0.2, 0)
+			fly(sp, from, origin + d * sReach + Vector3.new(0, -1.5 * k, 0), sFly, 0) -- v1.4 (was 22 studs, 0.2 s)
 		end
 		flash(origin, 7 * k, Color3.fromRGB(216, 255, 176), 0.18)
 		local feet = r.Position.Y - r.Size.Y / 2 - ((char:FindFirstChildOfClass("Humanoid") or {HipHeight = 0}).HipHeight or 0)
-		ring(Vector3.new(r.Position.X, feet + 0.2, r.Position.Z), 40, Color3.fromRGB(184, 255, 112), 0.45)
+		ring(Vector3.new(r.Position.X, feet + 0.2, r.Position.Z), sRing, Color3.fromRGB(184, 255, 112), 0.45) -- v1.4 (was 40)
 		st.barbsHiddenUntil = os.clock() + 1.2
 		ev()
 	end)

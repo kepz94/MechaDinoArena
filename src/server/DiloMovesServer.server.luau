@@ -1,4 +1,4 @@
--- DiloMovesServer v1.5 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
+-- DiloMovesServer v1.6 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
 -- Toxin Mortar, Spine Burst, Venom Overdrive. Plan docs/plans/DILO_PARTS_v1.0.md Task 5 (deterministic map), MDA-318; mockup
 -- docs/mockups/dilo_parts_options.html v0.1 (timings from tools/mockup/dilo_parts_looks.js); Kepu 2026-11-06 picks + red-team
 -- "Same venom system", "Use the proposals". Build 2 (Sonic Hiss, Antivenom Pump, Spring Jets) comes in 1.1.
@@ -123,6 +123,18 @@ VERSION = "1.5" -- v1.5 a mortar canister whose arc goes through a Sap Wall is s
 --   rule the 1.4 hooks missed; switch DiloMovesSapCloudEnabled, default true).
 --   Switch: script attribute DiloMovesServerSapArcEnabled (default true, read at each shot; false = the previous behaviour: no check of the
 --   flight itself). Diagnostics: script DiloMovesServerSapArcBlocks (count), DiloMovesServerSapArcBlockedAt (server time).
+VERSION = "1.6" -- v1.6 shot pass: faster shots, strong aim assist
+-- v1.6 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer range"
+--   -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
+--   docs/plans/SHOT_PASS_v1.0.md): Toxin Mortar flight MORTAR_FLIGHT / 1.5 (DiloMortarFlight); if no enemy is within
+--   the cloud radius of the aimed spot, the canister lands on the nearest enemy within 45 degrees of the aim and
+--   within DiloPartMortarRange (diag DiloMortarAssist = its name or ""); Spine Burst flight SPINE_FLIGHT / 1.5,
+--   published as DiloSpineFlight with the reach DiloSpineRange (DiloMovesFX 1.4 flies the spines that far). Ranges
+--   (mortar, spines) and the Gatling cone come from SkillTree 1.74; the Gatling darts use the dart speed / range
+--   from DiloModelData 1.6. Switch: script attribute ShotPassEnabled (default true; false = 1.5).
+local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.6
+local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.6
+if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.6
 if script:GetAttribute("DiloMovesMortarArc") == nil then script:SetAttribute("DiloMovesMortarArc", 6.5) end
 if script:GetAttribute("DiloMovesSapCloudEnabled") == nil then script:SetAttribute("DiloMovesSapCloudEnabled", true) end
 local sapArcBlocked do
@@ -456,8 +468,29 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 	if off.Magnitude < 1e-3 then off = dir * range end
 	local land = root.Position + off
 	land = Vector3.new(land.X, groundY(land, root.Position.Y - 4 * char:GetScale()), land.Z)
+	if shotPass() then -- v1.6: strong aim assist
+		local near, snap = false, nil
+		for _, m in ipairs(candidates(char)) do
+			if flat(rootOf(m).Position - land).Magnitude <= radius then near = true break end
+		end
+		if not near then
+			local aimV = off.Magnitude > 1e-3 and off.Unit or dir
+			local cosA, bestD = math.cos(math.rad(SHOT_ASSIST_DEG)), nil
+			for _, m in ipairs(candidates(char)) do
+				local v = flat(rootOf(m).Position - root.Position)
+				local d = v.Magnitude
+				if d > 1e-3 and d <= range and v.Unit:Dot(aimV) >= cosA and (not bestD or d < bestD) then snap, bestD = m, d end
+			end
+		end
+		if snap then
+			local sp = rootOf(snap).Position
+			land = Vector3.new(sp.X, groundY(sp, sp.Y - 4 * char:GetScale()), sp.Z)
+		end
+		char:SetAttribute("DiloMortarAssist", snap and snap.Name or "")
+	end
 	char:SetAttribute("DiloMortarTo", land)
-	char:SetAttribute("DiloMortarFlight", MORTAR_FLIGHT)
+	local mFlight = shotPass() and MORTAR_FLIGHT / SHOT_SPEED_MUL or MORTAR_FLIGHT -- v1.6
+	char:SetAttribute("DiloMortarFlight", mFlight)
 	char:SetAttribute("DiloMortarWindup", MORTAR_WINDUP)
 	char:SetAttribute("DiloMortarRadius", radius)
 	char:SetAttribute("DiloMortarTime", life)
@@ -472,7 +505,7 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 	if mz and mz:IsA("Attachment") then from = mz.WorldPosition end
 	char:SetAttribute("DiloMortarFrom", from)
 	char:SetAttribute("DiloMortarFireAt", now()) -- the canister leaves
-	task.wait(MORTAR_FLIGHT)
+	task.wait(mFlight) -- v1.6 (was MORTAR_FLIGHT)
 	if char:GetAttribute("DiloMortarAt") ~= t or not char.Parent then return end
 	if sapArcBlocked(from, land, math.abs(from.Y - land.Y) + (tonumber(script:GetAttribute("DiloMovesMortarArc")) or 6.5) * char:GetScale() / 2) then -- v1.5
 		char:SetAttribute("DiloMortarWallAt", now())
@@ -532,8 +565,11 @@ spineRemote.OnServerEvent:Connect(function(player, stamp)
 	end
 	char:SetAttribute("DiloSpineDir", fwd)
 	char:SetAttribute("DiloSpineHits", table.concat(hits, "|"))
+	local sFlight = shotPass() and SPINE_FLIGHT / SHOT_SPEED_MUL or SPINE_FLIGHT -- v1.6
+	char:SetAttribute("DiloSpineFlight", sFlight) -- v1.6
+	char:SetAttribute("DiloSpineRange", range) -- v1.6: DiloMovesFX flies the spines this far
 	char:SetAttribute("DiloSpineBurstAt", now()) -- the spines leave
-	task.wait(SPINE_FLIGHT)
+	task.wait(sFlight) -- v1.6 (was SPINE_FLIGHT)
 	local t2 = now()
 	for _, j in ipairs(judged) do
 		if char.Parent and stillTarget(char, j.m) then

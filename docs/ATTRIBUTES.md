@@ -3147,3 +3147,16 @@ Model numbers are generator output (old version = the flag in the last column, b
 | BotLatchTicks | raptor bot model | count | BotServer 1.28 diagnostic: tick hits in the current / last latch |
 | JumpCharges | dilo model (DiloModelData 1.5, --v14 = 1.4) | 0 (1.4: 2) | MDA-360, Kepu 2026-11-09 "Plain 0.25 s": a plain leap, JumpCooldown 0.25. SkillEffectsDiloLeapKeepEnabled (SkillEffects 1.50) withdrawn: SkillEffects stays 1.49 |
 | MoveWalkSpeed | teno (TenoModelData 1.6) / therizino (1.7) / T-Rex (TRexModelData 2.2 + StarterPlayer.StarterCharacter) | 38 / 42.5 / 39.5 (were 30 / 36 / 32) | MDA-361 / 362 / 363: walk x the run ratio, rounded to 0.5 |
+
+## Shot pass (2026-11-09, plan docs/plans/SHOT_PASS_v1.0.md)
+| Attribute | Where | Value | Meaning |
+|---|---|---|---|
+| ShotPassEnabled | script (DiloMovesServer, HerreraMovesServer, HookServer, InkServer, MineServer, ScreechServer, TenoMovesServer, TetherServer, TheriMovesServer, TrooMovesServer, DiloMovesFX, HerreraMovesFX) | true | false = the version before the shot pass |
+| DiloMortarFlight / DiloMortarAssist | dilo character | 0.77 s / bot or player name ("" = no snap) | Toxin Mortar flight; the enemy it snapped to |
+| DiloSpineFlight / DiloSpineRange | dilo character | flight / reach | Spine Burst (DiloMovesFX flies the spines this far) |
+| QuillSpeed | herrera character | 135 | quill speed (HerreraMovesFX) |
+| HookAssistDeg | pachy character | degrees, -1 | Grappling Hook snap angle (-1 = no snap) |
+| ScreechAssistDeg | raptor character | degrees, -1 | Shock Cannon snap angle (-1 = no snap) |
+| TenoMortarAimMode | teno character | "assist" | new mode: no dino near the crosshair, snapped to the nearest enemy within 45 degrees |
+| TrooLanternFlight / TrooSapFlight / TrooLanternAssist | troodon character | 0.37 s / flight / name | Arc Lantern and sap pod flight; the enemy the lantern snapped to |
+| TheriVolleyFlight | therizino character | 0.4 s | Feather Barrage blade flight |

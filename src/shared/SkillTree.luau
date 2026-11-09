@@ -1,4 +1,4 @@
--- SkillTree v1.73 (1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.74 (1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2766,6 +2766,70 @@ do
 		if dino == "Dilo" then
 			e.drawHold = SkillTree.BAL1_DRAW(e.drawHold, false)
 			e.drawCooldown = SkillTree.BAL1_DRAW(e.drawCooldown, true)
+		end
+		return e
+	end
+end
+
+-- v1.74 shot pass (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer
+--   range" -> "2x range", "Strong" assist; plan docs/plans/SHOT_PASS_v1.0.md). With SkillTree.SHOT_PASS (default true)
+--   effects() doubles every projectile part's reach (SHOT_RANGE_KEYS x SHOT_RANGE_MUL 2: Ink Shooter, Tether Spike, Shock
+--   Cannon, Grappling Hook / Reaper's Hook, Quill Launcher, Goo Blob toss + its assist reach, Boulder Mortar range + auto
+--   distance, Feather Barrage fan, Snare Wires, Toxin Mortar, Spine Burst, Arc Lantern, Sap Wall throw) and raises the
+--   lock-on cones to at least SHOT_ASSIST_DEG 45 (SHOT_CONE_KEYS: goo assist, Venom Gatling, Reaper's Hook, Boulder Mortar).
+--   The step texts that name those reaches are rewritten (SHOT_TEXTS, exact old -> new; a text that no longer matches is
+--   left as it was and counted in SkillTree.SHOT_TEXT_MISSES). Speeds and the snap code live in the servers (shot pass
+--   versions); the Dilo dart and the Troodon pod come from DiloModelData 1.6 / TroodonModelData 1.7. SHOT_PASS = false
+--   restores 1.73.
+SkillTree.SHOT_PASS = true
+SkillTree.SHOT_RANGE_MUL = 2
+SkillTree.SHOT_ASSIST_DEG = 45
+SkillTree.SHOT_RANGE_KEYS = {"inkRange", "tetherRange", "screechRange", "hookRange", "quillRange", "gooToss", "gooAssistMax",
+	"mortarRange", "mortarMiss", "featherRange", "snareRange", "dMortarRange", "dSpineRange", "oLanternRange", "oSapRange"}
+SkillTree.SHOT_CONE_KEYS = {"gooAssistAngle", "dGatlingCone", "hookCone", "mortarCone"}
+SkillTree.SHOT_TEXTS = {
+	{"ink", 1, "(60 studs)", "(120 studs)"}, {"ink", 2, "Reaches 80 studs", "Reaches 160 studs"},
+	{"tether", 1, "(90 studs)", "(180 studs)"},
+	{"screech", 1, "(100 studs)", "(200 studs)"}, {"screech", 2, "Reaches 135 studs", "Reaches 270 studs"},
+	{"hookarm", 1, "(60 studs)", "(120 studs)"}, {"hookarm", 2, "Reaches 80 studs", "Reaches 160 studs"},
+	{"quills", 1, "(40 studs)", "(80 studs)"},
+	{"goo", 1, "30 studs ahead", "60 studs ahead"},
+	{"tmortar", 1, "(15-90 studs)", "(15-180 studs)"},
+	{"zfeather", 1, "35-stud fan", "70-stud fan"}, {"zfeather", 2, "fan reaches 40 studs", "fan reaches 80 studs"},
+	{"zfeather", 4, "fan reaches 50 studs", "fan reaches 100 studs"},
+	{"zhook", 1, "(50 studs)", "(100 studs)"}, {"zhook", 2, "reaches 65 studs", "reaches 130 studs"},
+	{"zhook", 3, "reaches 80 studs", "reaches 160 studs"},
+	{"zsnare", 1, "(60 studs)", "(120 studs)"}, {"zsnare", 3, "reaches 80 studs", "reaches 160 studs"},
+	{"dmortar", 1, "up to 40 studs", "up to 80 studs"}, {"dmortar", 2, "Reaches 50 studs", "Reaches 100 studs"},
+	{"dmortar", 4, "Reaches 60 studs", "Reaches 120 studs"},
+	{"olantern", 1, "up to 40 studs", "up to 80 studs"},
+	{"osapwall", 1, "up to 40 studs", "up to 80 studs"},
+	{"traps", 1, "30 studs ahead", "60 studs ahead"},
+}
+SkillTree.SHOT_TEXT_MISSES = 0
+if SkillTree.SHOT_PASS then
+	for _, row in ipairs(SkillTree.SHOT_TEXTS) do
+		local path = SkillTree.PATHS[row[1]]
+		local text = path and path.steps and path.steps[row[2]]
+		local a, b
+		if type(text) == "string" then a, b = text:find(row[3], 1, true) end
+		if a then
+			path.steps[row[2]] = text:sub(1, a - 1) .. row[4] .. text:sub(b + 1)
+		else
+			SkillTree.SHOT_TEXT_MISSES += 1
+		end
+	end
+end
+do
+	local effectsPre174 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre174(steps, dino)
+		if type(e) ~= "table" or not SkillTree.SHOT_PASS then return e end
+		for _, k in ipairs(SkillTree.SHOT_RANGE_KEYS) do
+			if type(e[k]) == "number" and e[k] > 0 then e[k] = e[k] * SkillTree.SHOT_RANGE_MUL end
+		end
+		for _, k in ipairs(SkillTree.SHOT_CONE_KEYS) do
+			if type(e[k]) == "number" and e[k] > 0 then e[k] = math.max(e[k], SkillTree.SHOT_ASSIST_DEG) end
 		end
 		return e
 	end
