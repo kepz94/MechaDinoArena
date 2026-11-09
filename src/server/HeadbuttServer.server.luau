@@ -1,4 +1,4 @@
--- HeadbuttServer v1.17 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.18 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -145,6 +145,28 @@ VERSION = "1.14" -- v1.14 Back Plating on headbutt hits
 VERSION = "1.15" -- v1.15 Last Stand III refill while low
 VERSION = "1.16" -- v1.16 victim stagger stamps
 VERSION = "1.17" -- v1.17 Sap Wall stops headbutts through it
+VERSION = "1.18" -- v1.18 snare block + tight hit gap
+-- v1.18 (MDA-355 + MDA-356; Kepu 2026-11-08 "Hits from too far" -> "Front, short reach", server tight gap; "No movement
+--   moves" while caught by the Therizino's Snare Wires / Reaper Hook):
+--   * snare block: a press is refused "snared" while the attacker's TheriSnaredUntil or HookHeldUntil is after now; a hit
+--     claim from a snared attacker is refused "snared" and ends the charge (result "snared"); a client end with reason
+--     "snared" ends it as "snared". Switch: script attribute HeadbuttSnareBlockEnabled (default true, read at each request
+--     / hit). Diagnostic: script HeadbuttSnareRefusals (count).
+--   * tight gap: a claim is "far" when the gap from the head's centre to the target's nearest hitbox is more than half the
+--     head box's diagonal + HeadbuttReach x scale + the charge speed x HeadbuttHitLag (script attribute, default 0.3 s);
+--     charge speed = the larger of MoveRunSpeed x HeadbuttSpeedMul and the root's flat velocity (the server sees a
+--     charging pachy ~0.25 s behind its client, ~20 studs, with a near-zero velocity) (1.17: (HIT_TOLERANCE 16 + reach) x scale = 36 studs at 2x). Switch: script attribute HeadbuttTightGapEnabled
+--     (default true, read at each hit; false = 1.17). Diagnostic: character HeadbuttHitAllow (the limit used, 0.1 steps).
+for k, v in pairs({HeadbuttSnareBlockEnabled = true, HeadbuttTightGapEnabled = true, HeadbuttHitLag = 0.3}) do -- v1.18
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local function snaredNow(char, t) -- v1.18
+	if script:GetAttribute("HeadbuttSnareBlockEnabled") == false then return false end
+	return (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+end
+local function snareRefused() -- v1.18
+	script:SetAttribute("HeadbuttSnareRefusals", (script:GetAttribute("HeadbuttSnareRefusals") or 0) + 1)
+end
 -- v1.17 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute HeadbuttServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   HeadbuttServerSapWallBlocks (count), HeadbuttServerSapWallBlockedAt (server time).
@@ -324,6 +346,9 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		result = "dazed"
 	elseif char:GetAttribute("PinHeld") == true then
 		result = "pinned"
+	elseif snaredNow(char, t) then -- v1.18
+		result = "snared"
+		snareRefused()
 	elseif st.active or (HOOK_BUSY and (tonumber(char:GetAttribute("HookBusyUntil")) or 0) > t) then -- v1.2: + hook
 		result = "busy"
 	elseif st.charges < 1 then
@@ -379,6 +404,10 @@ endRemote.OnServerEvent:Connect(function(player, stamp, reason)
 	local char = player.Character
 	local st = char and chars[char]
 	if not st or not st.active or st.active.stamp ~= stamp then return end
+	if reason == "snared" and script:GetAttribute("HeadbuttSnareBlockEnabled") ~= false then -- v1.18
+		finish(char, st, "snared")
+		return
+	end
 	finish(char, st, reason == "timeout" and "timeout" or "ended")
 end)
 
@@ -526,12 +555,29 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		result = "ko"
 	elseif sapBlocked(char, model) then -- v1.17: Sap Wall
 		result = "wall"
+	elseif snaredNow(char, t) then -- v1.18: caught mid-charge
+		result = "snared"
+		snareRefused()
 	else
 		local hp = headPos(char)
 		local scale = char:GetScale()
 		local gap = hp and gapTo(hp, hb) or math.huge
 		char:SetAttribute("HeadbuttHitGap", math.floor(gap * 10 + 0.5) / 10)
-		if gap > (HIT_TOLERANCE + get(char, "HeadbuttReach")) * scale then result = "far" end
+		local allow = (HIT_TOLERANCE + get(char, "HeadbuttReach")) * scale
+		if script:GetAttribute("HeadbuttTightGapEnabled") ~= false then -- v1.18
+			local half = 0
+			local hbs = char:FindFirstChild("Hitboxes")
+			for _, p in ipairs(hbs and hbs:GetChildren() or {}) do
+				if p:IsA("BasePart") and p:GetAttribute("HitboxSegment") == "Head" then half = p.Size.Magnitude / 2 break end
+			end
+			local r0 = char:FindFirstChild("HumanoidRootPart")
+			local v = r0 and r0.AssemblyLinearVelocity or Vector3.zero
+			local spd = math.max(Vector3.new(v.X, 0, v.Z).Magnitude,
+				(tonumber(char:GetAttribute("MoveRunSpeed")) or 30) * (tonumber(char:GetAttribute("HeadbuttSpeedMul")) or 1.4))
+			allow = half + get(char, "HeadbuttReach") * scale + spd * math.max(0, tonumber(script:GetAttribute("HeadbuttHitLag")) or 0.3)
+			char:SetAttribute("HeadbuttHitAllow", math.floor(allow * 10 + 0.5) / 10)
+		end
+		if gap > allow then result = "far" end
 	end
 	if not result and script:GetAttribute("HeadbuttVisorEnabled") ~= false then -- v1.9: Dome Visor
 		local VM = visorMod()
@@ -545,6 +591,7 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 		end
 	end
 	char:SetAttribute("HeadbuttHitResult", result or "hit")
+	if result == "snared" then finish(char, st, "snared") return end -- v1.18
 	if result then return end
 	st.active.hit = true
 	-- damage

@@ -1,4 +1,4 @@
--- SprintTest v1.22 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.23 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -83,6 +83,10 @@
 --   0.2 s to now + 0.3) with the other part multipliers; MoveSpeedParts can include "trooSlow". Re-applied when the stamps
 --   change and when the slow ends. Switch: script attribute SprintTestTrooSlowEnabled (default true, read each apply;
 --   false = 1.21).
+-- v1.23 (MDA-356; HeadbuttTest 1.3): the speed is re-applied when the character attribute SprintApplyRequest changes
+--   (HeadbuttTest sets it after a charge gives WalkSpeed back, so a slow that landed mid-charge is applied). Switch:
+--   script attribute SprintApplyRequestEnabled (default true, read at each request; false = 1.22). Diagnostic: character
+--   SprintTestVersion "1.23".
 -- Diagnostics: character attributes Sprinting (true/false), MoveSpeedSource ("roar"/"exhausted"/"run"/"creep"/"walk"),
 --   MoveSpeedMul (1 = no debuff; v1.3).
 local ContextActionService = game:GetService("ContextActionService")
@@ -407,6 +411,11 @@ end
 char:GetAttributeChangedSignal("DiloImmuneUntil"):Connect(apply) -- v1.21
 char:GetAttributeChangedSignal("TrooSlowUntil"):Connect(apply) -- v1.22
 char:GetAttributeChangedSignal("TrooSlowMul"):Connect(apply) -- v1.22
+if script:GetAttribute("SprintApplyRequestEnabled") == nil then script:SetAttribute("SprintApplyRequestEnabled", true) end -- v1.23
+char:GetAttributeChangedSignal("SprintApplyRequest"):Connect(function() -- v1.23
+	if script:GetAttribute("SprintApplyRequestEnabled") ~= false then apply() end
+end)
+char:SetAttribute("SprintTestVersion", "1.23") -- v1.23
 apply()
 
 local function cleanup()

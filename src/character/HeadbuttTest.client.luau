@@ -1,4 +1,4 @@
--- HeadbuttTest v1.2 (Mecha Dino Arena) — the pachy's headbutt charge on the owner's client. MDA-119, plan
+-- HeadbuttTest v1.3 (Mecha Dino Arena) — the pachy's headbutt charge on the owner's client. MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 6 (server: HeadbuttServer 1.0).
 -- Active while the character has HeadbuttEnabled = true (PachyModelData 1.1). Kepu 2026-10-30: the headbutt is the
 --   pachy's ATTACK ("Headbutt = ATTACK"), "when its in charge mode it should be pretty manueverable", "it should be able to
@@ -31,6 +31,22 @@
 --   passes through a squadmate instead of ending on contact.
 --   Squadmates = ReplicatedStorage.SquadShared.SquadRules (SquadServer 1.0's copy) sameChar. Switch: script attribute
 --   HeadbuttTestSquadEnabled (default true, read at each check; false = 1.1).
+-- v1.3 (MDA-355 + MDA-356; Kepu 2026-11-08 "Hits from too far" -> reach "Front, short reach", tail "Yes, tail counts";
+--   "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"):
+--   * precise contact: the grown head box (1.2) is only the broad check. A target hitbox part counts when the gap from the
+--     un-grown head box to it (closest points, 4 passes) is at most HeadbuttReach x scale ahead (along the flat facing),
+--     HeadbuttReachSide (character attribute, default 0.5) x scale to either side and HeadbuttReach x scale up / down;
+--     a part behind the head's front counts its distance back as side. Any target segment counts (tail too). Switch:
+--     script attribute HeadbuttTestPreciseEnabled (default true, read every frame; false = 1.2's grown-box overlap).
+--     Diagnostics: HeadbuttContactGap ("fwd/side/up" studs, 0.1 steps, at contact), HeadbuttNearMisses (broad-box parts
+--     refused, count).
+--   * snare block: while TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is
+--     after now, a press is refused ("snared") and a windup / charge in progress ends at once (DinoHeadbuttEnd reason
+--     "snared", diag HeadbuttSnareCancels). Switch: script attribute HeadbuttTestSnareBlockEnabled (default true, read at
+--     each press / frame; false = 1.2).
+--   * slow back: after the charge puts WalkSpeed back, the character attribute SprintApplyRequest (os.clock) is set so
+--     SprintTest 1.23 recomputes the speed with any slow that landed during the charge (the charge overwrote it every
+--     frame). Switch: script attribute HeadbuttTestReapplyEnabled (default true; false = 1.2).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -38,12 +54,13 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
 local VERSION = "1.2"
+VERSION = "1.3" -- v1.3 precise front contact, snare block, slow back
 local ACTION = "DinoHeadbutt"
 local ACTION_CLICK = "DinoHeadbuttClick"
 local BIND = "DinoHeadbuttDrive"
 local RECOVER = 0.3
 local DEFAULTS = {HeadbuttEnabled = false, HeadbuttWindup = 0.15, HeadbuttSpeedMul = 1.4, HeadbuttMaxTime = 1.8,
-	HeadbuttTurnMul = 2, HeadbuttReach = 2, MoveRunSpeed = 30, TurnLimitRate = 180, HeadbuttLeftClickEnabled = true}
+	HeadbuttTurnMul = 2, HeadbuttReach = 2, HeadbuttReachSide = 0.5, MoveRunSpeed = 30, TurnLimitRate = 180, HeadbuttLeftClickEnabled = true}
 
 local char = script.Parent
 local hum = char:WaitForChild("Humanoid", 10)
@@ -52,6 +69,9 @@ local player = Players.LocalPlayer
 if not (hum and hrp) or Players:GetPlayerFromCharacter(char) ~= player then return end
 char:SetAttribute("HeadbuttTestVersion", VERSION)
 
+for _, k in ipairs({"HeadbuttTestPreciseEnabled", "HeadbuttTestSnareBlockEnabled", "HeadbuttTestReapplyEnabled"}) do -- v1.3
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
 local requestRemote = ReplicatedStorage:WaitForChild("DinoHeadbuttRequest", 10)
 local hitRemote = ReplicatedStorage:WaitForChild("DinoHeadbuttHit", 10)
 local endRemote = ReplicatedStorage:WaitForChild("DinoHeadbuttEnd", 10)
@@ -155,9 +175,45 @@ end
 
 local turnSaved = false
 local function restore()
+	local had = savedSpeed ~= nil -- v1.3
 	if savedSpeed then hum.WalkSpeed = savedSpeed end
 	if turnSaved then char:SetAttribute("TurnLimitRate", savedTurn) end
 	savedSpeed, savedTurn, turnSaved = nil, nil, false
+	if had and script:GetAttribute("HeadbuttTestReapplyEnabled") ~= false then -- v1.3: SprintTest re-applies any slow
+		char:SetAttribute("SprintApplyRequest", os.clock())
+	end
+end
+local function snared() -- v1.3: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("HeadbuttTestSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	return (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+end
+-- v1.3: precise contact (closest points between the un-grown head box and a target part)
+local function closestOn(part, pos)
+	local lp = part.CFrame:PointToObjectSpace(pos)
+	local h = part.Size / 2
+	return part.CFrame:PointToWorldSpace(Vector3.new(math.clamp(lp.X, -h.X, h.X), math.clamp(lp.Y, -h.Y, h.Y),
+		math.clamp(lp.Z, -h.Z, h.Z)))
+end
+local function frontReach(head, p) -- true when p is within the forward-weighted reach of the head box; + the gap text
+	local a, b = head.Position, nil
+	for _ = 1, 4 do
+		b = closestOn(p, a)
+		a = closestOn(head, b)
+	end
+	local d = b - a
+	local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+	look = look.Magnitude > 1e-3 and look.Unit or Vector3.zAxis
+	local flatD = Vector3.new(d.X, 0, d.Z)
+	local fwd = flatD:Dot(look)
+	local side = (flatD - look * fwd).Magnitude
+	if fwd < 0 then side, fwd = math.sqrt(side * side + fwd * fwd), 0 end
+	local up = math.abs(d.Y)
+	local sc = char:GetScale()
+	local reach = get("HeadbuttReach") * sc
+	local ok = fwd <= reach and side <= get("HeadbuttReachSide") * sc and up <= reach
+	local function r1(x) return math.floor(x * 10 + 0.5) / 10 end
+	return ok, r1(fwd) .. "/" .. r1(side) .. "/" .. r1(up)
 end
 
 local function finishLocal(nextState, reason)
@@ -176,6 +232,8 @@ local function tryPress(source)
 		result = "dead"
 	elseif (char:GetAttribute("StunnedUntil") or 0) > workspace:GetServerTimeNow() then
 		result = "stunned"
+	elseif snared() then -- v1.3
+		result = "snared"
 	elseif state ~= "ready" then
 		result = "busy"
 	elseif (tonumber(char:GetAttribute("HeadbuttChargesNow")) or 0) < 1 then
@@ -216,6 +274,12 @@ local function drive(dt)
 		finishLocal("ready", nil)
 		return
 	end
+	if (state == "windup" or state == "charge") and snared() then -- v1.3: a snare ends the charge
+		show("HeadbuttSnareCancels", (char:GetAttribute("HeadbuttSnareCancels") or 0) + 1)
+		show("HeadbuttInputResult", "snared")
+		finishLocal("ready", "snared")
+		return
+	end
 	if state == "windup" then
 		if t >= get("HeadbuttWindup") then
 			findTargets()
@@ -251,9 +315,20 @@ local function drive(dt)
 	if head then
 		local grow = get("HeadbuttReach") * char:GetScale()
 		local hits = workspace:GetPartBoundsInBox(head.CFrame, head.Size + Vector3.new(grow, grow, grow) * 2, overlap)
+		local precise = script:GetAttribute("HeadbuttTestPreciseEnabled") ~= false -- v1.3
 		for _, p in ipairs(hits) do
 			local m = targets[p.Parent]
-			if m and m.Parent and m:GetAttribute("DummyState") ~= "ko" then
+			local reachOk = true
+			if precise and m then
+				local okR, gapText = frontReach(head, p)
+				reachOk = okR
+				if okR then
+					show("HeadbuttContactGap", gapText)
+				else
+					char:SetAttribute("HeadbuttNearMisses", (char:GetAttribute("HeadbuttNearMisses") or 0) + 1)
+				end
+			end
+			if m and reachOk and m.Parent and m:GetAttribute("DummyState") ~= "ko" then
 				show("HeadbuttContact", m.Name)
 				if hitRemote then hitRemote:FireServer(stamp, m) end
 				finishLocal("recover", nil)
