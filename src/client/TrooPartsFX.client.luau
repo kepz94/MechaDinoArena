@@ -1,4 +1,4 @@
--- TrooPartsFX v1.1 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
+-- TrooPartsFX v1.2 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
 -- MDA-351, plan docs/plans/TROODON_PARTS_v1.0.md ticket 7; spec tools/mockup/troodon_parts_looks.js ("VFX, in Roblox
 -- pieces" per part; Kepu 2026-11-06 20:11 "real vfx ... consistent w the rest of the rosters"). Reads TrooMovesServer 1.x's
 -- stamps (server time) on every troodon character and draws locally in Workspace.TrooPartsFX (never replicated). Every move:
@@ -59,6 +59,22 @@
 --     studs over 0.35 s), a flash, 3 small crackle arcs round it (0.45 s) and C8F8FF sparks; on landing a VOLT ground ring
 --     (16 x k), an orb (8 x k) and 3 short arcs from the lantern; in the wind-up 4 tiny arcs round the hip lantern.
 --   Numbers: TrooPartsFX_<name> as CFG; zapLife may be raised in a Play-only session to hold the arcs for a capture.
+-- v1.2 (MDA-351, review of parts_1.1_mender_close.jpg 2026-11-09: the Mender Drone read as a dark puck with a thin beam, smaller
+--   and dimmer than the picked mockup v0.2 look A "Shoulder Dock") - the flying drone, its glow and its heal beam brought up to
+--   tools/mockup/troodon_parts_looks.js (H1 A pieces + menderTrack; the flying drone is the dock drone at worldM scale 2, so its
+--   model units x 2 x k = x scale studs; k = scale / 2) (switch TrooPartsFX_menderLookEnabled, default true; false = 1.1's drone):
+--   * drone (x menderDroneK 1): a gunmetal puck (cylinder 0.58 x 0.2 model units), a green Neon heal dome on top (0.42 x 0.25 x
+--     0.42, +0.1), a brass ring round it (torus R 0.43, tube 0.055, 16 blocks), 4 dark struts, a steel rotor bar under it
+--     spinning 40 rad/s, a green nose light and a brass tail fin (0.04 x 0.26 x 0.36, -30 deg); it yaws along its flight
+--     (tilt 0.15 rad);
+--   * glow: a heal-green (46E08A, the mockup's HEAL_GREEN) Neon halo ball menderHalo 3 x k (Transparency menderHaloT 0.88) and
+--     an inner one 0.66 of it (0.9) round the drone (the mockup's glowAt 3 / 0.55; faint enough to show the drone inside), a PointLight (range 14 x k, brightness 3), a Trail menderTrailW 1.1 x k wide
+--     (0.35 s, the mockup's trailOn 1.1) and green motes dripping from it (18 / s, falling 3 studs / s, 0.4 s); in the
+--     wind-up a 3.5 x k halo on the dock; lift-off a 5 x k flash + a 2.5 x k orb; docking a 4 x k flash + sparks;
+--   * orbit: radius menderOrbitR 4.5 x k, menderOrbitUp 5.5 x k above the target's root, 2.6 rad/s, bob 0.4 x k (the mockup's
+--     orbitP); heal beam = a steady tether Beam (menderTether 0.36 x k wide, pulsing 0.35-0.65 opaque, the mockup's tether 0.18
+--     radius) from the drone to the target plus, every menderPulse 0.75 s (the mockup's heal tick), a cone Beam 0.44 -> 1.2 x k
+--     wide fading over 0.3 s and a green burst on the target; the MedWave ground ring every 1 s as 1.1. A hop moves the tether.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -66,18 +82,21 @@ local Debris = game:GetService("Debris")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 sap wall / portal rings / lantern zap looks to mockup v0.2
+VERSION = "1.2" -- v1.2 mender drone size / glow / heal beam to mockup v0.2
 script:SetAttribute("TrooPartsFXVersion", VERSION)
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderBack = 0.75, menderOrbit = 3.5, menderTick = 0.25, lanternWindup = 0.42,
 	lanternLinger = 0.9, lanternArc = 6, sapWindup = 0.34, sapArc = 7, sapReturn = 1.15, shedWindup = 0.15, shedFling = 0.7,
 	shedRadius = 6, portalWindup1 = 0.4, portalWindup2 = 0.52, portalFly1 = 0.35, portalFly2 = 0.8, portalRing = 3, portalUp = 3.5,
 	sapRise = 0.3, sapHardenFrom = 0.2, sapHarden = 0.45, sapWetT = 0.45, sapHardT = 0.08, portalRingR = 4.2, portalTube = 0.32,
-	portalVaneR = 5, portalCentre = 4.8, zapLife = 0.32} -- v1.1
+	portalVaneR = 5, portalCentre = 4.8, zapLife = 0.32, -- v1.1
+	menderDroneK = 1, menderHalo = 3, menderHaloT = 0.88, menderTrailW = 1.1, menderOrbitR = 4.5, menderOrbitUp = 5.5, menderTether = 0.36,
+	menderPulse = 0.75} -- v1.2
 for k, v in pairs(CFG) do
 	if script:GetAttribute("TrooPartsFX_" .. k) == nil then script:SetAttribute("TrooPartsFX_" .. k, v) end
 end
 for _, k in ipairs({"TrooPartsFXEnabled", "TrooPartsFX_omenderEnabled", "TrooPartsFX_olanternEnabled", "TrooPartsFX_osapwallEnabled",
 	"TrooPartsFX_oshedEnabled", "TrooPartsFX_oportalEnabled", "TrooPartsFX_sapLookEnabled", "TrooPartsFX_portalLookEnabled",
-	"TrooPartsFX_zapLookEnabled"}) do -- v1.1: + the three look switches
+	"TrooPartsFX_zapLookEnabled", "TrooPartsFX_menderLookEnabled"}) do -- v1.1: + the three look switches; v1.2: + menderLook
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function cfg(k) return tonumber(script:GetAttribute("TrooPartsFX_" .. k)) or CFG[k] end
@@ -372,35 +391,116 @@ local function makeDrone(s)
 	end
 	return m, place
 end
+-- v1.2: the mockup's look A drone (see the header); place(cf, t) with cf = position + heading
+local DGUN, DSTEEL, HEAL = Color3.fromHex("3A3F47"), Color3.fromHex("9AA1AC"), Color3.fromHex("46E08A")
+local function makeDrone2(s)
+	local u = s * cfg("menderDroneK") -- studs per mockup model unit (flying drone = the dock drone x 2 x k)
+	local k = s / 2
+	local m = Instance.new("Model")
+	m.Name = "MenderDrone"
+	local list = {}
+	local function add(p, off) p.Parent = m table.insert(list, {p = p, off = off}) return p end
+	local puck = add(part({Name = "Shell", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 0.58, 0.58) * u, Color = DGUN,
+		Material = Enum.Material.Metal}), CFrame.Angles(0, 0, math.rad(90)))
+	local dome = part({Size = Vector3.new(0.42, 0.25, 0.42) * u, Color = GREEN})
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = dome
+	add(dome, CFrame.new(0, 0.1 * u, 0))
+	local R, n = 0.43 * u, 16
+	for i = 0, n - 1 do
+		local a = (i + 0.5) / n * math.pi * 2
+		add(part({Size = Vector3.new(0.11 * u, 0.11 * u, 2 * math.pi * R / n * 1.08), Color = BRASS, Material = Enum.Material.Metal}),
+			CFrame.new(math.cos(a) * R, 0, math.sin(a) * R) * CFrame.Angles(0, -a, 0))
+	end
+	for i = 0, 3 do
+		local a = i * math.pi / 2 + math.pi / 4
+		add(part({Size = Vector3.new(0.12, 0.03, 0.05) * u, Color = DARK, Material = Enum.Material.Metal}),
+			CFrame.new(math.cos(a) * 0.35 * u, 0, math.sin(a) * 0.35 * u) * CFrame.Angles(0, -a, 0))
+	end
+	local rotor = part({Size = Vector3.new(0.62, 0.016, 0.08) * u, Color = DSTEEL, Material = Enum.Material.Metal, Parent = m})
+	add(part({Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.06, 0.16, 0.16) * u, Color = GREEN}),
+		CFrame.new(0, -0.01 * u, -0.3 * u) * CFrame.Angles(0, math.rad(90), 0))
+	add(part({Size = Vector3.new(0.04, 0.26, 0.36) * u, Color = BRASS, Material = Enum.Material.Metal}),
+		CFrame.new(0, 0.19 * u, 0.34 * u) * CFrame.Angles(math.rad(-30), 0, 0))
+	local halo = ball(cfg("menderHalo") * k, HEAL, Enum.Material.Neon, cfg("menderHaloT"))
+	halo.Name, halo.Parent = "Halo", m
+	local inner = ball(cfg("menderHalo") * k * 0.66, HEAL, Enum.Material.Neon, 0.9)
+	inner.Parent = m
+	light(puck, GREEN, 14 * k, 3)
+	local tr = trail(puck, GREEN, cfg("menderTrailW") * k)
+	tr.Transparency = NumberSequence.new(0.1, 1)
+	local drip = Instance.new("ParticleEmitter")
+	drip.Texture, drip.Color, drip.LightEmission = SPARK_TEX, ColorSequence.new(GREEN), 1
+	drip.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.4 * k), NumberSequenceKeypoint.new(1, 0.1 * k)})
+	drip.Transparency = NumberSequence.new(0, 1)
+	drip.Speed, drip.SpreadAngle, drip.EmissionDirection = NumberRange.new(3 * k), Vector2.new(25, 25), Enum.NormalId.Bottom
+	drip.Lifetime, drip.Rate = NumberRange.new(0.4), 18
+	drip.Parent = halo
+	m.Parent = folder
+	local function place(cf, t)
+		for _, e in ipairs(list) do e.p.CFrame = cf * e.off end
+		rotor.CFrame = cf * CFrame.new(0, -0.05 * u, 0) * CFrame.Angles(0, t * 40, 0)
+		halo.CFrame, inner.CFrame = CFrame.new(cf.Position), CFrame.new(cf.Position)
+	end
+	return m, place
+end
 local function menderStart(char, at)
 	if not on("omender") then return end
 	diag("omender", "windup")
 	local s = char:GetScale()
+	local k = s / 2
+	local look2 = lookOn("mender") -- v1.2
 	local carry = pieces(char, "omender", {carry = true})
 	windupGlow(carry, GREEN, cfg("menderWindup"), char)
+	if look2 then -- v1.2: the dock halo (mockup glowAt 3.5)
+		local hb = ball(3.5 * k, GREEN, Enum.Material.Neon, 0.82)
+		hb.CFrame = CFrame.new(centre(carry, char))
+		fade(hb, cfg("menderWindup") + 0.2)
+	end
 	delayTo(at + cfg("menderWindup"), function()
 		if not char.Parent or char:GetAttribute("TrooMenderAt") ~= at then return end
 		diag("omender", "action")
 		local old = drones[char]
 		if old then old.model:Destroy() end
 		hide(carry, true)
-		local m, place = makeDrone(s)
+		local m, place
+		if look2 then m, place = makeDrone2(s) else m, place = makeDrone(s) end
 		local st = {model = m, place = place, carry = carry, from = centre(carry, char), fromT = os.clock(),
 			dur = math.max(0.1, (num(char:GetAttribute("TrooMenderArriveAt")) or (now() + cfg("menderFly"))) - now()),
-			target = findModel(char:GetAttribute("TrooMenderTarget")) or char, mode = "fly", nextTick = 0, nextRing = 0}
+			target = findModel(char:GetAttribute("TrooMenderTarget")) or char, mode = "fly", nextTick = 0, nextRing = 0, look2 = look2}
 		drones[char] = st
+		if look2 then -- v1.2: lift-off flash + orb
+			flashBall(st.from, GREEN, 1, 5 * k, 0.3)
+			orb(st.from, 2.5 * k, GREEN_L, 0.3)
+		end
+		local lastPos, yaw = st.from, 0
+		local function place2(pos, t)
+			if look2 then
+				local v = pos - lastPos
+				if Vector3.new(v.X, 0, v.Z).Magnitude > 1e-3 then yaw = math.atan2(-v.X, -v.Z) end
+				lastPos = pos
+				place(CFrame.new(pos) * CFrame.fromEulerAnglesYXZ(0.15, yaw, 0), t)
+			end
+		end
 		local conn
 		conn = RunService.Heartbeat:Connect(function()
-			if drones[char] ~= st or not m.Parent then conn:Disconnect() return end
+			if drones[char] ~= st or not m.Parent then conn:Disconnect() if st.tether then st.tether:Destroy() end return end
 			local t = os.clock()
 			local tr = rootOf(st.target)
-			local orbitPos = tr and (tr.Position + Vector3.new(math.cos(t * 2.2) * cfg("menderOrbit") * s / 2, 4 * s / 2,
-				math.sin(t * 2.2) * cfg("menderOrbit") * s / 2)) or st.from
+			local orbitPos
+			if look2 then
+				orbitPos = tr and (tr.Position + Vector3.new(math.cos(t * 2.6) * cfg("menderOrbitR") * k,
+					(cfg("menderOrbitUp") + math.sin(t * 5) * 0.4) * k, math.sin(t * 2.6) * cfg("menderOrbitR") * k)) or st.from
+			else
+				orbitPos = tr and (tr.Position + Vector3.new(math.cos(t * 2.2) * cfg("menderOrbit") * s / 2, 4 * s / 2,
+					math.sin(t * 2.2) * cfg("menderOrbit") * s / 2)) or st.from
+			end
 			if st.mode == "fly" or st.mode == "back" then
 				local goal = st.mode == "back" and centre(carry, char) or orbitPos
 				local u = math.min(1, (t - st.fromT) / st.dur)
 				local pos = st.from:Lerp(goal, u) + Vector3.new(0, 3 * u * (1 - u) * s / 2, 0)
-				place(CFrame.lookAt(pos, goal + Vector3.new(0, 0.01, 0)), t)
+				if look2 then place2(pos, t) else place(CFrame.lookAt(pos, goal + Vector3.new(0, 0.01, 0)), t) end
 				if u >= 1 then
 					if st.mode == "back" then
 						conn:Disconnect()
@@ -408,11 +508,54 @@ local function menderStart(char, at)
 						m:Destroy()
 						hide(carry, false)
 						burst(goal, GREEN_L, 12, 4, 0.4, 0.5)
+						if look2 then flashBall(goal, GREEN, 1, 4 * k, 0.3) end -- v1.2
 						diag("omender", "recovery")
 						return
 					end
 					st.mode = "orbit"
 					diag("omender", "result")
+				end
+			elseif look2 then -- v1.2: orbit with the tether + heal pulses
+				place2(orbitPos, t)
+				if tr then
+					if not st.tether or st.tetherTo ~= tr then
+						if st.tether then st.tether:Destroy() end
+						local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+						a0.Parent, a1.Parent = m.Shell, tr
+						local bm = Instance.new("Beam")
+						bm.Attachment0, bm.Attachment1 = a0, a1
+						bm.Color, bm.LightEmission, bm.FaceCamera = ColorSequence.new(GREEN_L, GREEN), 1, true
+						bm.Width0, bm.Width1 = cfg("menderTether") * k, cfg("menderTether") * k
+						bm.Parent = m.Shell
+						a1:SetAttribute("TrooMenderTether", true)
+						bm.Destroying:Connect(function() a1:Destroy() end)
+						st.tether, st.tetherTo = bm, tr
+					end
+					st.tether.Transparency = NumberSequence.new(1 - (0.5 + 0.15 * math.sin(t * 30)))
+					if t >= st.nextTick then
+						st.nextTick = t + cfg("menderPulse")
+						local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+						a0.Parent, a1.Parent = m.Shell, tr
+						local bm = Instance.new("Beam")
+						bm.Attachment0, bm.Attachment1 = a0, a1
+						bm.Color, bm.LightEmission, bm.FaceCamera = ColorSequence.new(GREEN_L, GREEN), 1, true
+						bm.Width0, bm.Width1 = 0.44 * k, 1.2 * k
+						bm.Transparency = NumberSequence.new(0.4)
+						bm.Parent = m.Shell
+						burst(tr.Position, GREEN_L, 8, 5, 0.5 * k, 0.5)
+						task.spawn(function()
+							local t0 = os.clock()
+							while os.clock() - t0 < 0.3 and bm.Parent do
+								bm.Transparency = NumberSequence.new(0.4 + 0.6 * (os.clock() - t0) / 0.3)
+								RunService.Heartbeat:Wait()
+							end
+							bm:Destroy() a0:Destroy() a1:Destroy()
+						end)
+					end
+					if t >= st.nextRing then
+						st.nextRing = t + 1
+						groundRing(tr.Position - Vector3.new(0, 3 * s / 2, 0), GREEN, 1.5 * s / 2, 5 * s / 2, 0.6)
+					end
 				end
 			else
 				place(CFrame.lookAt(orbitPos, tr and tr.Position or orbitPos + Vector3.zAxis), t)
@@ -443,6 +586,7 @@ local function menderHop(char)
 	if not nt then return end
 	st.from = st.model.Shell.Position
 	st.fromT, st.dur, st.target, st.mode = os.clock(), 0.5, nt, "fly"
+	if st.tether then st.tether:Destroy() st.tether, st.tetherTo = nil, nil end -- v1.2
 	diag("omender", "hop")
 end
 local function menderEnd(char)
@@ -450,6 +594,7 @@ local function menderEnd(char)
 	if not st then return end
 	st.from = st.model.Shell.Position
 	st.fromT, st.dur, st.mode = os.clock(), cfg("menderBack"), "back"
+	if st.tether then st.tether:Destroy() st.tether, st.tetherTo = nil, nil end -- v1.2
 end
 
 -- Arc Lantern ------------------------------------------------------------------------------------------------------------

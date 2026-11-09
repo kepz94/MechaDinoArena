@@ -1,4 +1,4 @@
--- TrooPose v1.5 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
+-- TrooPose v1.6 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
 -- the Evade Hop (jump J2) and the eyes flaring during the throw. MDA-337, plan docs/plans/TROODON_KIT_v1.0.md Task 8; mockup
 -- docs/mockups/troodon_kit_options_v0.1.html (Kepu 2026-11-06 15:38 "Let's go with your recommendations"; source
 -- tools/troodon_kit_mockup/app_tail.js TA_WIND / TA_HOLD / TA_THROW / TA_FOLLOW, TH_SET / TH_AIR / TJ_LAND, and the
@@ -70,13 +70,20 @@
 --   by TrooLanternGrabWideDeg (default 7 deg, roll -deg; the same "wider" direction as 1.3's TA_WIND_W) = keys LANT_GRAB_W /
 --   LANT_COCK_W; the throw / follow keys are unchanged. Switch: model attribute TrooLanternGrabWideEnabled (default true,
 --   read each frame; false = 1.4's keys). Test keys LANT_GRAB_W / LANT_COCK_W (at the default 7 deg).
+-- v1.6 (MDA-351, Kepu 2026-11-09 "Widen the throw 7° too": the +X arm fan hit the hip lantern in the throw wind-up, 5.4 % /
+--   44.8 % at 0.27-0.30 s of the sap throw, 0.3 % in a Glow Pod Toss): while the Arc Lantern is slotted (character attribute
+--   TrooPartLanternEnabled true, SkillEffects 1.48), the wide throw track (the Glow Pod Toss with TrooThrowWideEnabled and the
+--   Sap Wall throw) uses TA_HOLD_WL = TA_HOLD_W + ArmL roll -TrooThrowLanternWideDeg (default 7; the same "wider" direction
+--   as LANT_GRAB_W / LANT_COCK_W); every other key unchanged; without the lantern slotted the throw is 1.5's. Switch: model
+--   attribute TrooThrowLanternWideEnabled (default true, read each frame; false = 1.5). Test key TA_HOLD_WL (at 7 deg).
 local TrooPose = {}
 TrooPose.Version = "1.3"
 TrooPose.Version = "1.4" -- v1.4 part move poses
 TrooPose.Version = "1.5" -- v1.5 wider lantern grab
+TrooPose.Version = "1.6" -- v1.6 wider throw wind-up while the lantern is slotted
 TrooPose.Defaults = {TrooPoseEnabled = true, TrooHopPoseEnabled = true, TrooEyeFlareEnabled = true, TrooGroundLockEnabled = true,
 	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true, TrooPoseFallEnabled = true, TrooThrowWideEnabled = true, TrooPartPoseEnabled = true,
-	TrooLanternGrabWideEnabled = true, TrooLanternGrabWideDeg = 7}
+	TrooLanternGrabWideEnabled = true, TrooLanternGrabWideDeg = 7, TrooThrowLanternWideEnabled = true, TrooThrowLanternWideDeg = 7}
 local Players = game:GetService("Players")
 
 local JOINTS = {"RootJoint", "Neck", "Head", "Jaw", "ArmL", "ArmR", "Tail1", "Tail2", "Tail3", "Tail4", "Tail5", "LegL",
@@ -206,6 +213,22 @@ end
 lanternWide(7)
 KEYS.LANT_GRAB_W, FWD.LANT_GRAB_W = KEYS.LANT_GRAB_W7, FWD.LANT_GRAB
 KEYS.LANT_COCK_W, FWD.LANT_COCK_W = KEYS.LANT_COCK_W7, FWD.LANT_COCK
+-- v1.6: the wider throw wind-up while the Arc Lantern is slotted (TA_HOLD_W + ArmL roll -deg), cached per deg
+local throwLanternCache = {}
+local function throwLanternWide(deg)
+	local c = throwLanternCache[deg]
+	if c then return c end
+	KEYS["TA_HOLD_WL" .. deg] = plus(KEYS.TA_HOLD_W, {ArmL = {0, 0, -deg}})
+	FWD["TA_HOLD_WL" .. deg] = FWD.TA_HOLD_W
+	c = {}
+	for i, k in ipairs(TRACKS.throwWide) do
+		c[i] = k[2] == "TA_HOLD_W" and {k[1], "TA_HOLD_WL" .. deg, k[3]} or k
+	end
+	throwLanternCache[deg] = c
+	return c
+end
+throwLanternWide(7)
+KEYS.TA_HOLD_WL, FWD.TA_HOLD_WL = KEYS.TA_HOLD_WL7, FWD.TA_HOLD_W
 local PART_STAMPS = {{"TrooMenderAt", "mender"}, {"TrooMenderEndAt", "menderBack"}, {"TrooLanternAt", "lantern"}, {"TrooSapAt", "sap"},
 	{"TrooShedAt", "shed"}, {"TrooPortalAt", "portal"}}
 local REL, EYES_FROM, EYES_TO = 0.34, 0.05, 1.0
@@ -629,6 +652,9 @@ function TrooPose.top(model, pose, motors, hrp, ctx)
 		if atk.kind == "throw" and s.TrooThrowWideEnabled then keys = TRACKS.throwWide end -- v1.3
 		if atk.kind == "lantern" and s.TrooLanternGrabWideEnabled then -- v1.5
 			keys = lanternWide(math.floor(clamp(s.TrooLanternGrabWideDeg, -30, 30) * 10 + 0.5) / 10)
+		end
+		if keys == TRACKS.throwWide and s.TrooThrowLanternWideEnabled and model:GetAttribute("TrooPartLanternEnabled") == true then -- v1.6
+			keys = throwLanternWide(math.floor(clamp(s.TrooThrowLanternWideDeg, -30, 30) * 10 + 0.5) / 10)
 		end
 		if t > keys[#keys][1] then
 			atk.kind, atk.at = nil, nil
