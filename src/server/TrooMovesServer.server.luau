@@ -1,4 +1,4 @@
--- TrooMovesServer v1.2 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.3 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -111,9 +111,17 @@ local sapArcBlocked do
 	end
 	if script:GetAttribute("TrooMovesServerSapArcEnabled") == nil then script:SetAttribute("TrooMovesServerSapArcEnabled", true) end
 end
+VERSION = "1.3" -- v1.3 the Sap Wall's mockup look (opaque amber slabs, stepped tops)
+-- v1.3 (MDA-351, the B1 captures: the wall read as a thin yellow line from the game camera; mockup v0.2 sapTrack): the wall parts
+--   are SmoothPlastic D9821C (the mockup's set sap colour) at TrooMoves_sapTransparency (0.08) instead of Glass FFB43A at 0.25,
+--   and the segment heights follow the mockup's stepped tops, TrooMoves_sapProfile "0.82,0.94,1,0.9,0.78" (x TrooMoves_sapHeight,
+--   repeated if there are more segments; the tallest stays sapHeight). TrooPartsFX 1.1 draws the rise / wet -> set / rim on
+--   every client. Switch: script attribute TrooMovesSapLookEnabled (default true, read at each wall; false = 1.2's parts).
+if script:GetAttribute("TrooMovesSapLookEnabled") == nil then script:SetAttribute("TrooMovesSapLookEnabled", true) end
+if script:GetAttribute("TrooMoves_sapProfile") == nil then script:SetAttribute("TrooMoves_sapProfile", "0.82,0.94,1,0.9,0.78") end
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderTick = 0.25, menderHopFly = 0.5,
 	lanternWindup = 0.42, lanternFly = 0.55, lanternZapDelay = 0.32, lanternZapRadius = 16, lanternChainStep = 0.12, lanternArc = 6,
-	sapWindup = 0.34, sapFly = 0.5, sapHeight = 18, sapThick = 2, sapSegments = 5, sapClear = 3,
+	sapWindup = 0.34, sapFly = 0.5, sapHeight = 18, sapThick = 2, sapSegments = 5, sapClear = 3, sapTransparency = 0.08,
 	shedWindup = 0.15, shedShoveTime = 0.3,
 	portalWindup1 = 0.4, portalWindup2 = 0.52, portalOpen1 = 0.35, portalOpen2 = 0.8, portalNear = 10, portalRadius = 6,
 	portalTick = 0.1, portalLock = 1, portalClearW = 6, portalClearH = 8, portalStep = 4}
@@ -538,8 +546,15 @@ remote("DinoTrooSapRequest").OnServerEvent:Connect(function(player, stamp, aimDi
 		m:SetAttribute("SapWallUntil", ts + life)
 		local n = math.max(1, math.floor(cfg("sapSegments")))
 		local segW = width / n
+		local look = script:GetAttribute("TrooMovesSapLookEnabled") ~= false -- v1.3
+		local prof = {}
+		for v in string.gmatch(tostring(script:GetAttribute("TrooMoves_sapProfile") or ""), "[^,]+") do
+			local x = tonumber(v)
+			if x then table.insert(prof, math.clamp(x, 0.1, 1)) end
+		end
 		for i = 1, n do
 			local h = H * (i % 2 == 1 and 1 or 0.9)
+			if look and #prof > 0 then h = H * prof[(i - 1) % #prof + 1] end
 			local p = Instance.new("Part")
 			p.Name = "Sap_" .. i
 			p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, true, true, false
@@ -548,6 +563,11 @@ remote("DinoTrooSapRequest").OnServerEvent:Connect(function(player, stamp, aimDi
 			p.Material = Enum.Material.Glass
 			p.Color = Color3.fromRGB(255, 180, 58)
 			p.Transparency = 0.25
+			if look then -- v1.3
+				p.Material = Enum.Material.SmoothPlastic
+				p.Color = Color3.fromHex("D9821C")
+				p.Transparency = math.clamp(cfg("sapTransparency"), 0, 0.9)
+			end
 			p.CastShadow = false
 			p:SetAttribute("SapWallOwner", char.Name)
 			p:SetAttribute("SapWallUntil", ts + life)

@@ -1,4 +1,4 @@
--- TrooPartsFX v1.0 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
+-- TrooPartsFX v1.1 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
 -- MDA-351, plan docs/plans/TROODON_PARTS_v1.0.md ticket 7; spec tools/mockup/troodon_parts_looks.js ("VFX, in Roblox
 -- pieces" per part; Kepu 2026-11-06 20:11 "real vfx ... consistent w the rest of the rosters"). Reads TrooMovesServer 1.x's
 -- stamps (server time) on every troodon character and draws locally in Workspace.TrooPartsFX (never replicated). Every move:
@@ -34,21 +34,50 @@
 -- Switches (script attributes, read at each event): TrooPartsFXEnabled, TrooPartsFX_omenderEnabled, _olanternEnabled,
 --   _osapwallEnabled, _oshedEnabled, _oportalEnabled (default true each). Numbers: script attributes TrooPartsFX_<name> (see
 --   CFG). Diagnostics: script TrooPartsFXVersion, TrooPartsFXLast ("<id>:<phase>"), TrooPartsFXEvents (count).
+-- v1.1 (MDA-351, review of the B1 captures 2026-11-07: the Sap Wall almost invisible from the game camera, the portal rings read
+--   as teal bursts, the lantern chain zap not visible) - the three looks brought up to the picked mockup v0.2
+--   (tools/mockup/troodon_parts_looks.js sapTrack / portalTrack openPortal / zap + lanternTrack; sizes are the mockup's studs at
+--   the 2x body x k = scale / 2; the wall follows the server wall's real size, Kepu's 50 studs):
+--   * Sap Wall (switch TrooPartsFX_sapLookEnabled): each server wall part is hidden locally (LocalTransparencyModifier) and drawn
+--     as a local slab (SmoothPlastic, wet FFB43A at Transparency 0.45) that rises from the ground over sapRise 0.3 s (back-out
+--     ease), with a Neon amber core inside (the wet glow); sapHardenFrom 0.2 .. sapHarden 0.45 s after the splat it sets
+--     (Transparency -> sapHardT 0.08, colour -> D9821C, the core fades); a full-width Neon rim FFE2A0 (0.5 x k high) along the
+--     base with a PointLight; at the set a white sweep (1.2 x k wide, 0.55 x the wall high) runs across the front in 0.45 s; the
+--     last 0.5 s the slabs shake (0.08 x k); the splat: a FFD27A ground ring out to 0.58 x the width, FFE2A0 flash, FFE7A8
+--     motes rising along the width; the end: the slabs fly off (thrown up, falling, turning, shrinking, fading 0.6 s), 8
+--     E8C08A dust puffs along the wall and 14 FFE7A8 sparks. Blocked-hit flashes as 1.0.
+--   * Portal Feathers (switch TrooPartsFX_portalLookEnabled): the standing ring = a continuous teal Neon torus (8FF7E6,
+--     portalRingR 4.2 x k, tube portalTube 0.32 x k, 28 blocks), 8 brass vanes (0.3 x 1.5 x 0.5 x k) at portalVaneR 5 x k, a
+--     swirl film (a 2FE6C8 Neon disc at 0.55, a pale DCFFFA centre at 0.4 and 4 white arcs at 14 / 26 / 38 / 50 of 64 of the
+--     radius, 2.2 rad long, turning 2 rad/s), centre portalCentre 4.8 x k above the ground, facing the throw; opening: scale
+--     0.05 -> 1 over 0.3 s (back-out), a B8FFF0 flash (10), an A8FFF0 orb (5) and a 2FE6C8 ground ring (7); open: a teal
+--     PointLight (range 11 x k) and A8FFF0 motes rising from its foot (10 / s); the flung ring spins and grows 1 -> 5 on its
+--     arc (2.5 / 9 x k high); closing: shrinks over 0.35 s with an orb and sparks.
+--   * Arc Lantern (switch TrooPartsFX_zapLookEnabled): each zap = the mockup's jagged arc, 9 segments whose points jitter by
+--     sin(pi k) x length x 0.08 sideways and up, re-rolled every frame for zapLife 0.32 s: a CORE core Beam (0.35 x k) and a VOLT
+--     glow Beam (2.2 x k, the mockup's glow sprites) on the same points; on each target a MineBurst-style VOLT orb (2 -> 12 x k
+--     studs over 0.35 s), a flash, 3 small crackle arcs round it (0.45 s) and C8F8FF sparks; on landing a VOLT ground ring
+--     (16 x k), an orb (8 x k) and 3 short arcs from the lantern; in the wind-up 4 tiny arcs round the hip lantern.
+--   Numbers: TrooPartsFX_<name> as CFG; zapLife may be raised in a Play-only session to hold the arcs for a capture.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 sap wall / portal rings / lantern zap looks to mockup v0.2
 script:SetAttribute("TrooPartsFXVersion", VERSION)
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderBack = 0.75, menderOrbit = 3.5, menderTick = 0.25, lanternWindup = 0.42,
 	lanternLinger = 0.9, lanternArc = 6, sapWindup = 0.34, sapArc = 7, sapReturn = 1.15, shedWindup = 0.15, shedFling = 0.7,
-	shedRadius = 6, portalWindup1 = 0.4, portalWindup2 = 0.52, portalFly1 = 0.35, portalFly2 = 0.8, portalRing = 3, portalUp = 3.5}
+	shedRadius = 6, portalWindup1 = 0.4, portalWindup2 = 0.52, portalFly1 = 0.35, portalFly2 = 0.8, portalRing = 3, portalUp = 3.5,
+	sapRise = 0.3, sapHardenFrom = 0.2, sapHarden = 0.45, sapWetT = 0.45, sapHardT = 0.08, portalRingR = 4.2, portalTube = 0.32,
+	portalVaneR = 5, portalCentre = 4.8, zapLife = 0.32} -- v1.1
 for k, v in pairs(CFG) do
 	if script:GetAttribute("TrooPartsFX_" .. k) == nil then script:SetAttribute("TrooPartsFX_" .. k, v) end
 end
 for _, k in ipairs({"TrooPartsFXEnabled", "TrooPartsFX_omenderEnabled", "TrooPartsFX_olanternEnabled", "TrooPartsFX_osapwallEnabled",
-	"TrooPartsFX_oshedEnabled", "TrooPartsFX_oportalEnabled"}) do
+	"TrooPartsFX_oshedEnabled", "TrooPartsFX_oportalEnabled", "TrooPartsFX_sapLookEnabled", "TrooPartsFX_portalLookEnabled",
+	"TrooPartsFX_zapLookEnabled"}) do -- v1.1: + the three look switches
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function cfg(k) return tonumber(script:GetAttribute("TrooPartsFX_" .. k)) or CFG[k] end
@@ -231,6 +260,93 @@ local function delayTo(at, fn)
 	task.delay(math.max(0, at - now()), fn)
 end
 local function num(v) return typeof(v) == "number" and v or nil end
+-- v1.1 helpers --------------------------------------------------------------------------------------------------------------
+local function lookOn(k) return script:GetAttribute("TrooPartsFX_" .. k .. "LookEnabled") ~= false end
+local WARM, SET, DUST, MOTE = Color3.fromHex("FFB43A"), Color3.fromHex("D9821C"), Color3.fromHex("E8C08A"), Color3.fromHex("FFE7A8")
+local function orb(pos, d1, color, dur) -- the mockup's orb / MineServer's MineBurst: a Neon ball that grows and fades
+	local b = ball(d1 * 0.15, color)
+	b.CFrame = CFrame.new(pos)
+	b.Transparency = 0.3
+	TweenService:Create(b, TweenInfo.new(dur, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {Size = Vector3.one * d1, Transparency = 1}):Play()
+	Debris:AddItem(b, dur + 0.05)
+end
+local function rising(fnPos, color, dur, rate, size)
+	task.spawn(function()
+		local t0, acc, last = os.clock(), 0, os.clock()
+		while os.clock() - t0 < dur do
+			local t = os.clock()
+			acc += (t - last) * rate
+			last = t
+			while acc >= 1 do
+				acc -= 1
+				local q = fnPos()
+				if q then
+					local m = ball(size * (0.7 + math.random() * 0.6), color)
+					m.CFrame = CFrame.new(q)
+					TweenService:Create(m, TweenInfo.new(0.8, Enum.EasingStyle.Linear), {CFrame = CFrame.new(q + Vector3.new(0, 3 + math.random() * 4, 0)), Transparency = 1}):Play()
+					Debris:AddItem(m, 0.85)
+				end
+			end
+			RunService.Heartbeat:Wait()
+		end
+	end)
+end
+local function zap2(a, b, life, k, small) -- the mockup's zap(): 9 jittered points re-rolled every frame, core + glow beams
+	local holder = part({Size = Vector3.one * 0.1, Transparency = 1, CFrame = CFrame.new()})
+	local N = 9
+	local atts = {}
+	for i = 0, N do
+		local at = Instance.new("Attachment")
+		at.Parent = holder
+		atts[i] = at
+	end
+	local beams = {}
+	for i = 1, N do
+		for layer = 1, 2 do
+			local bm = Instance.new("Beam")
+			bm.Attachment0, bm.Attachment1 = atts[i - 1], atts[i]
+			bm.FaceCamera, bm.LightEmission, bm.Segments = true, 1, 1
+			if layer == 1 then
+				bm.Color = ColorSequence.new(CORE)
+				bm.Width0, bm.Width1 = (small and 0.2 or 0.35) * k, (small and 0.2 or 0.35) * k
+			else
+				bm.Color = ColorSequence.new(VOLT)
+				bm.Width0, bm.Width1 = (small and 1.1 or 2.2) * k, (small and 1.1 or 2.2) * k
+				bm.Transparency = NumberSequence.new(0.45)
+			end
+			bm.Parent = holder
+			table.insert(beams, {bm = bm, layer = layer})
+		end
+	end
+	local t0 = os.clock()
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		local u = (os.clock() - t0) / math.max(0.01, life)
+		local pa, pb = typeof(a) == "function" and a() or a, typeof(b) == "function" and b() or b
+		if u >= 1 or not holder.Parent or not (pa and pb) then conn:Disconnect() holder:Destroy() return end
+		local d = pb - pa
+		local L0 = d.Magnitude
+		local side = Vector3.new(-d.Z, 0, d.X)
+		side = side.Magnitude > 1e-3 and side.Unit or Vector3.xAxis
+		for i = 0, N do
+			local kk = i / N
+			local w = math.sin(math.pi * kk) * L0 * 0.08
+			atts[i].WorldPosition = pa:Lerp(pb, kk) + side * (math.random() - 0.5) * w * 2 + Vector3.new(0, (math.random() - 0.5) * w * 2, 0)
+		end
+		local op = (u < 0.7 and 1 or (1 - u) / 0.3) * (0.6 + 0.4 * math.random())
+		for _, e in ipairs(beams) do
+			e.bm.Transparency = NumberSequence.new(e.layer == 1 and (1 - op) or (1 - op * 0.55))
+		end
+	end)
+end
+local function crackle(fnPos, life, k)
+	for i = 0, 2 do
+		task.delay(i * 0.06, function()
+			local q = function() local c = fnPos() return c and c + Vector3.new((math.random() - 0.5) * 5, (math.random() - 0.5) * 4, (math.random() - 0.5) * 5) * k end
+			zap2(q, q, math.max(0.1, life - i * 0.06), k, true)
+		end)
+	end
+end
 
 -- Mender Drone -----------------------------------------------------------------------------------------------------------
 local drones = {} -- [char] = {model, target, mode, ...}
@@ -344,6 +460,15 @@ local function lanternStart(char, at)
 	local s = char:GetScale()
 	local carry = pieces(char, "olantern", {carry = true})
 	windupGlow(carry, VOLT, cfg("lanternWindup"), char)
+	if lookOn("zap") then -- v1.1: 4 tiny arcs round the hip lantern
+		local k0 = char:GetScale() / 2
+		for i = 0, 3 do
+			task.delay(i * 0.09, function()
+				local q = function() return centre(carry, char) + Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 1.6 * k0 end
+				zap2(q, q, 0.08, k0, true)
+			end)
+		end
+	end
 	delayTo(at + cfg("lanternWindup"), function()
 		if not char.Parent or char:GetAttribute("TrooLanternAt") ~= at then return end
 		diag("olantern", "action")
@@ -381,6 +506,17 @@ local function lanternStart(char, at)
 			TweenService:Create(shell, TweenInfo.new(0.25), {Transparency = 0.8}):Play()
 			TweenService:Create(l, TweenInfo.new(0.25), {Range = 18, Brightness = 4}):Play()
 			burst(to, VOLT, 14, 6, 0.4, 0.4)
+			if lookOn("zap") then -- v1.1: the mockup's landing: orb 4, ground ring 16, 3 short arcs from the lantern
+				local k0 = s / 2
+				orb(to, 8 * k0, VOLT, 0.3)
+				groundRing(to - Vector3.new(0, 0.8 * k0, 0), VOLT, 2 * k0, 16 * k0, 0.5)
+				for i = 0, 2 do
+					task.delay(0.12 + i * 0.06, function()
+						local q = function() return to + Vector3.new((math.random() - 0.5) * 4, 1 + math.random() * 2, (math.random() - 0.5) * 4) * k0 end
+						zap2(function() return core.Parent and core.Position + Vector3.new(0, 1.5 * k0, 0) or to end, q, 0.1, k0, true)
+					end)
+				end
+			end
 			st.lastZap = os.clock()
 			task.spawn(function()
 				while core.Parent and os.clock() - st.lastZap < cfg("lanternLinger") + (st.names[1] and 0 or 0.6) do
@@ -406,9 +542,18 @@ local function lanternZap(char)
 		if st and st.core.Parent then return st.core.Position end
 		return nil
 	end
-	zapArc(fromFn, function() return tr.Parent and tr.Position or nil end, 0.3)
-	flashBall(tr.Position, VOLT, 1.5, 5, 0.3)
-	burst(tr.Position, CORE, 16, 10, 0.35, 0.4)
+	if lookOn("zap") then -- v1.1: the mockup's chain zap + MineBurst-style orb, flash, crackle, sparks
+		local k0 = char:GetScale() / 2
+		zap2(fromFn, function() return tr.Parent and tr.Position or nil end, cfg("zapLife"), k0, false)
+		orb(tr.Position, 12 * k0, VOLT, 0.35)
+		flashBall(tr.Position, CORE, 2 * k0, 6 * k0, 0.16)
+		crackle(function() return tr.Parent and tr.Position or nil end, math.max(0.45, cfg("zapLife") + 0.13), k0)
+		burst(tr.Position, Color3.fromHex("C8F8FF"), 10, 10, 0.35, 0.6)
+	else
+		zapArc(fromFn, function() return tr.Parent and tr.Position or nil end, 0.3)
+		flashBall(tr.Position, VOLT, 1.5, 5, 0.3)
+		burst(tr.Position, CORE, 16, 10, 0.35, 0.4)
+	end
 	if st then
 		st.lastZap = os.clock()
 		table.insert(st.names, name)
@@ -443,8 +588,117 @@ local function sapStart(char, at)
 		delayTo(at + cfg("sapReturn"), function() hide(carry, false) end)
 	end)
 end
+local function watchWall2(m) -- v1.1: the mockup's sap wall (rise, wet -> set, rim, sweep, shake, crumble)
+	local parts = {}
+	for _, p in ipairs(m:GetChildren()) do if p:IsA("BasePart") then table.insert(parts, p) end end
+	if #parts == 0 then return end
+	local owner = workspace:FindFirstChild(tostring(m:GetAttribute("SapWallOwner") or ""))
+	local k = (owner and owner:IsA("Model")) and owner:GetScale() / 2 or 1
+	local t0 = os.clock()
+	local untilT = num(m:GetAttribute("SapWallUntil"))
+	-- the wall's frame: the parts share one frame (X along, Z across)
+	local cf0 = parts[1].CFrame
+	local lo, hi, bottom, top = math.huge, -math.huge, math.huge, -math.huge
+	for _, p in ipairs(parts) do
+		local q = cf0:PointToObjectSpace(p.Position)
+		lo, hi = math.min(lo, q.X - p.Size.X / 2), math.max(hi, q.X + p.Size.X / 2)
+		local b = (p.CFrame * CFrame.new(0, -p.Size.Y / 2, 0)).Position
+		bottom = math.min(bottom, cf0:PointToObjectSpace(b).Y)
+		top = math.max(top, cf0:PointToObjectSpace(p.Position).Y + p.Size.Y / 2)
+	end
+	local width, H = hi - lo, top - bottom
+	local base = cf0 * CFrame.new((lo + hi) / 2, bottom, 0) -- ground centre, wall frame
+	local slabs = {}
+	for _, p in ipairs(parts) do
+		p.LocalTransparencyModifier = 1
+		local foot = p.CFrame * CFrame.new(0, -p.Size.Y / 2, 0)
+		local sl = part({Size = Vector3.new(p.Size.X, 0.05, p.Size.Z), CFrame = foot * CFrame.new(0, 0.025, 0), Color = WARM,
+			Material = Enum.Material.SmoothPlastic, Transparency = cfg("sapWetT")})
+		local core = part({Size = Vector3.new(p.Size.X * 0.86, 0.05, p.Size.Z * 0.5), CFrame = sl.CFrame, Color = AMBER, Transparency = 0.55})
+		table.insert(slabs, {p = p, sl = sl, core = core, foot = foot, size = p.Size})
+		p:GetAttributeChangedSignal("WallBlockedAt"):Connect(function()
+			local pos = p:GetAttribute("WallBlockedPos")
+			if typeof(pos) == "Vector3" and on("osapwall") then
+				flashBall(pos, FLASH, 1, 6 * k, 0.25)
+				burst(pos, EMBER, 12, 8, 0.35, 0.4)
+				diag("osapwall", "blocked")
+			end
+		end)
+	end
+	local rim = part({Size = Vector3.new(width * 1.02, 0.5 * k, (parts[1].Size.Z) * 1.17), CFrame = base * CFrame.new(0, 0.25 * k, 0), Color = FLASH})
+	light(rim, AMBER, math.max(12, width * 0.4), 1.5)
+	-- the splat on the wall's line
+	local g = base.Position
+	groundRing(g, Color3.fromHex("FFD27A"), 1 * k, width * 0.58, 0.45)
+	flashBall(g + Vector3.new(0, 1 * k, 0), FLASH, 2 * k, 12 * k, 0.16)
+	rising(function() return (base * CFrame.new((math.random() - 0.5) * width * 0.95, math.random() * H * 0.7, 0)).Position end, MOTE, 0.8, 30, 0.5 * k)
+	local swept = false
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		if not m.Parent then conn:Disconnect() return end
+		local t = os.clock() - t0
+		local u = math.clamp(t / math.max(0.01, cfg("sapRise")), 0, 1)
+		local c1, c3 = 1.70158, 2.70158
+		local grow = math.max(0.01, 1 + c3 * (u - 1) ^ 3 + c1 * (u - 1) ^ 2) -- back-out (the mockup's E.back)
+		local hd = math.clamp((t - cfg("sapHardenFrom")) / math.max(0.01, cfg("sapHarden") - cfg("sapHardenFrom")), 0, 1)
+		local shake = 0
+		if untilT and untilT - now() < 0.5 then shake = math.sin(t * 70) * 0.08 * k end
+		for _, e in ipairs(slabs) do
+			local h = math.max(0.05, e.size.Y * grow)
+			e.sl.Size = Vector3.new(e.size.X, h, e.size.Z)
+			e.sl.CFrame = e.foot * CFrame.new(shake, h / 2, 0)
+			e.core.Size = Vector3.new(e.size.X * 0.86, math.max(0.05, h * 0.9), e.size.Z * 0.5)
+			e.core.CFrame = e.sl.CFrame
+			e.sl.Transparency = cfg("sapWetT") + (cfg("sapHardT") - cfg("sapWetT")) * hd
+			e.sl.Color = hd > 0.5 and SET or WARM
+			e.core.Transparency = 0.55 + 0.45 * hd
+		end
+		if not swept and t >= cfg("sapHarden") then
+			swept = true
+			diag("osapwall", "set")
+			local sw = part({Size = Vector3.new(1.2 * k, H * 0.55, 0.1), Color = Color3.new(1, 1, 1), Transparency = 0.3})
+			local face = base * CFrame.new(0, H * 0.5, -(parts[1].Size.Z / 2 + 0.15))
+			local s0 = os.clock()
+			local sc
+			sc = RunService.Heartbeat:Connect(function()
+				local v = math.clamp((os.clock() - s0) / 0.45, 0, 1)
+				sw.CFrame = face * CFrame.new(-width / 2 + width * v, 0, 0)
+				sw.Transparency = 1 - 0.7 * math.sin(math.pi * v)
+				if v >= 1 then sc:Disconnect() sw:Destroy() end
+			end)
+		end
+	end)
+	m.AncestryChanged:Connect(function(_, parent)
+		if parent then return end
+		conn:Disconnect()
+		fade(rim, 0.3)
+		for _, e in ipairs(slabs) do
+			e.core:Destroy()
+			local c = e.sl
+			local v = Vector3.new((math.random() - 0.5) * 6, 4 + math.random() * 6, (math.random() - 0.5) * 6) * k
+			local c0, cf, s1 = os.clock(), c.CFrame, c.Size
+			local cc
+			cc = RunService.Heartbeat:Connect(function(dt)
+				local uu = (os.clock() - c0) / 0.6
+				if uu >= 1 or not c.Parent then cc:Disconnect() c:Destroy() return end
+				v += Vector3.new(0, -30 * k * dt, 0)
+				cf = (cf + v * dt) * CFrame.Angles(dt * 2, 0, 0)
+				c.CFrame, c.Size, c.Transparency = cf, s1 * (1 - uu * 0.8), 1 - (1 - cfg("sapHardT")) * 0.8 * (1 - uu)
+			end)
+		end
+		for i = 0, 7 do
+			local q = (base * CFrame.new(-width * 0.42 + i * width * 0.12, (1 + math.random() * 3) * k, 0)).Position
+			local d = part({Shape = Enum.PartType.Ball, Size = Vector3.one * 3 * k, CFrame = CFrame.new(q), Color = DUST, Material = Enum.Material.SmoothPlastic, Transparency = 0.5})
+			TweenService:Create(d, TweenInfo.new(0.9), {CFrame = CFrame.new(q + Vector3.new(0, 2 * k, 0)), Size = Vector3.one * 5 * k, Transparency = 1}):Play()
+			Debris:AddItem(d, 0.95)
+		end
+		burst((base * CFrame.new(0, 4 * k, 0)).Position, MOTE, 14, 10, 0.4, 0.6)
+		diag("osapwall", "recovery")
+	end)
+end
 local function watchWall(m)
 	if not (m:IsA("Model") and m.Name == "SapWall") or not on("osapwall") then return end
+	if lookOn("sap") then watchWall2(m) return end -- v1.1
 	local segs = {}
 	local rims = {}
 	for _, p in ipairs(m:GetChildren()) do
@@ -565,6 +819,63 @@ local function makeRing(s)
 	end
 	return m, place, film
 end
+local function makeRing2(s) -- v1.1: the mockup's openPortal(): torus + 8 vanes + swirl film
+	local k = s / 2
+	local m = Instance.new("Model")
+	m.Name = "FeatherRing"
+	local R, tube, VR = cfg("portalRingR") * k, cfg("portalTube") * k, cfg("portalVaneR") * k
+	local TEALG = Color3.fromHex("8FF7E6")
+	local items = {}
+	local NT = 28
+	for i = 1, NT do
+		local a = (i - 0.5) / NT * math.pi * 2
+		local seg = part({Size = Vector3.new(2 * math.pi * R / NT * 1.12, tube * 2, tube * 2), Color = TEALG, Parent = m})
+		table.insert(items, {p = seg, a = a, r = R, kind = "rim"})
+	end
+	for i = 1, 8 do
+		local a = (i - 1) * math.pi / 4
+		local v = part({Size = Vector3.new(0.3 * k, 1.5 * k, 0.5 * k), Color = BRASS, Material = Enum.Material.Metal, Parent = m})
+		table.insert(items, {p = v, a = a, r = VR, kind = "vane"})
+	end
+	local film = part({Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.08, R * 1.9, R * 1.9), Color = TEAL, Transparency = 0.55, Parent = m})
+	local mid = part({Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.1, R * 0.8, R * 0.8), Color = Color3.fromHex("DCFFFA"), Transparency = 0.4, Parent = m})
+	local arcs = {}
+	for j = 0, 3 do
+		local rr = R * 0.95 * (14 + j * 12) / 64
+		for n = 0, 5 do
+			local a = j + 2.2 * n / 5
+			local b = part({Size = Vector3.new(math.max(0.12, 2.2 / 5 * rr * 1.1), 0.18 * k, 0.12), Color = Color3.new(1, 1, 1), Transparency = 0.45, Parent = m})
+			table.insert(arcs, {p = b, a = a, r = rr})
+		end
+	end
+	local l = light(film, TEAL, 11 * k, 1.2)
+	trail(film, TEAL, 0.6 * k)
+	m.Parent = folder
+	local scaleK = 0.05
+	local function place(cf, spin, kk)
+		scaleK = kk or scaleK
+		local q = math.max(0.01, scaleK)
+		for _, it in ipairs(items) do
+			if it.kind == "rim" then
+				it.p.CFrame = cf * CFrame.Angles(0, 0, it.a) * CFrame.new(0, it.r * q, 0)
+				it.p.Size = Vector3.new(2 * math.pi * R / NT * 1.12 * q, tube * 2 * q, tube * 2 * q)
+			else
+				it.p.CFrame = cf * CFrame.Angles(0, 0, it.a) * CFrame.new(0, it.r * q, 0)
+				it.p.Size = Vector3.new(0.3 * k, 1.5 * k, 0.5 * k) * q
+			end
+		end
+		film.Size = Vector3.new(0.08, R * 1.9 * q, R * 1.9 * q)
+		film.CFrame = cf * CFrame.Angles(0, math.rad(90), 0)
+		mid.Size = Vector3.new(0.1, R * 0.8 * q, R * 0.8 * q)
+		mid.CFrame = cf * CFrame.new(0, 0, -0.05) * CFrame.Angles(0, math.rad(90), 0)
+		for _, e in ipairs(arcs) do
+			e.p.CFrame = cf * CFrame.new(0, 0, -0.1) * CFrame.Angles(0, 0, e.a + spin) * CFrame.new(0, e.r * q, 0)
+			e.p.Size = Vector3.new(math.max(0.12, 2.2 / 5 * e.r * 1.1) * q, 0.18 * k * q, 0.12)
+		end
+		l.Range = 11 * k * q
+	end
+	return m, place, film
+end
 local function portalStart(char, at)
 	if not on("oportal") then return end
 	diag("oportal", "windup")
@@ -585,29 +896,53 @@ local function portalStart(char, at)
 			hide(carry, true)
 			local spot = char:GetAttribute(key)
 			if typeof(spot) ~= "Vector3" then return end
-			local m, place = makeRing(s)
-			local rg = {m = m, place = place, k = 0.25, open = false}
+			local look2 = lookOn("portal") -- v1.1
+			local m, place
+			if look2 then m, place = makeRing2(s) else m, place = makeRing(s) end
+			local rg = {m = m, place = place, k = look2 and 0.05 or 0.25, open = false, look2 = look2}
 			table.insert(st.rings, rg)
 			local from = centre(carry, char)
-			local up = Vector3.new(0, cfg("portalUp") * s / 2, 0)
+			local up = Vector3.new(0, (rg.look2 and cfg("portalCentre") or cfg("portalUp")) * s / 2, 0)
 			local r0 = rootOf(char)
 			local look = r0 and Vector3.new(r0.CFrame.LookVector.X, 0, r0.CFrame.LookVector.Z) or Vector3.zAxis
 			look = look.Magnitude > 1e-3 and look.Unit or Vector3.zAxis
 			local t0 = os.clock()
 			local conn
+			local arcH = rg.look2 and ((key == "TrooPortalA" and 2.5 or 9) * s / 2) or 3 -- v1.1: the mockup's 2.5 / 9 flight arcs
 			conn = RunService.Heartbeat:Connect(function()
 				if not m.Parent then conn:Disconnect() return end
 				local u = math.min(1, (os.clock() - t0) / fly)
-				local pos = u < 1 and (from:Lerp(spot + up, u) + Vector3.new(0, 4 * 3 * u * (1 - u), 0)) or (spot + up)
+				local pos = u < 1 and (from:Lerp(spot + up, u) + Vector3.new(0, 4 * arcH * u * (1 - u), 0)) or (spot + up)
 				local openAt = num(char:GetAttribute(openKey))
 				if not rg.open and openAt and openAt >= at and now() >= openAt then
 					rg.open = true
-					flashBall(spot + up, TEAL_L, 2 * s / 2, 8 * s / 2, 0.3)
-					groundRing(spot, TEAL, 1 * s / 2, 7 * s / 2, 0.5)
+					rg.openT = os.clock()
+					if rg.look2 then -- v1.1: flash 10, orb 5, ground ring 7, motes from its foot
+						flashBall(spot + up, Color3.fromHex("B8FFF0"), 2 * s / 2, 10 * s / 2, 0.16)
+						orb(spot + up, 10 * s / 2, TEAL_L, 0.3)
+						groundRing(spot, TEAL, 1 * s / 2, 7 * s / 2, 0.5)
+						local untilT = num(char:GetAttribute("TrooPortalUntil")) or (now() + 6)
+						rising(function() return m.Parent and (spot + Vector3.new((math.random() - 0.5) * 7, 0.2, (math.random() - 0.5) * 7) * s / 2) or nil end,
+							TEAL_L, math.max(0.1, untilT - now()), 10, 0.5 * s / 2)
+					else
+						flashBall(spot + up, TEAL_L, 2 * s / 2, 8 * s / 2, 0.3)
+						groundRing(spot, TEAL, 1 * s / 2, 7 * s / 2, 0.5)
+					end
 					diag("oportal", "result")
 				end
-				rg.k = rg.open and math.min(1, rg.k + 0.12) or 0.25
-				place(CFrame.lookAt(pos, pos + look), os.clock() * 2.5, rg.k)
+				if rg.look2 then
+					if rg.open then
+						local v = math.clamp((os.clock() - rg.openT) / 0.3, 0, 1)
+						rg.k = math.max(0.05, 1 + 2.70158 * (v - 1) ^ 3 + 1.70158 * (v - 1) ^ 2)
+					else
+						rg.k = 0.05 * (1 + 4 * u) -- the flung ring grows 1 -> 5 x on its arc
+					end
+					local face = u < 1 and CFrame.lookAt(pos, pos + look) * CFrame.Angles(0, (os.clock() - t0) * 12, 0) or CFrame.lookAt(pos, pos + look)
+					place(face, os.clock() * 2, rg.k)
+				else
+					rg.k = rg.open and math.min(1, rg.k + 0.12) or 0.25
+					place(CFrame.lookAt(pos, pos + look), os.clock() * 2.5, rg.k)
+				end
 			end)
 		end)
 	end
@@ -619,6 +954,11 @@ local function portalEnd(char)
 	if not st then return end
 	portals[char] = nil
 	for _, rg in ipairs(st.rings) do
+		if rg.look2 then -- v1.1: closing orb + sparks
+			local c = rg.m:GetBoundingBox().Position
+			orb(c, 8, TEAL_L, 0.3)
+			burst(c, TEAL_L, 10, 8, 0.4, 0.6)
+		end
 		for _, p in ipairs(rg.m:GetDescendants()) do
 			if p:IsA("BasePart") then fade(p, 0.4, p.Size * 0.3) end
 		end
