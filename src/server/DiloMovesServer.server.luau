@@ -1,4 +1,4 @@
--- DiloMovesServer v1.8 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
+-- DiloMovesServer v1.9 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
 -- Toxin Mortar, Spine Burst, Venom Overdrive. Plan docs/plans/DILO_PARTS_v1.0.md Task 5 (deterministic map), MDA-318; mockup
 -- docs/mockups/dilo_parts_options.html v0.1 (timings from tools/mockup/dilo_parts_looks.js); Kepu 2026-11-06 picks + red-team
 -- "Same venom system", "Use the proposals". Build 2 (Sonic Hiss, Antivenom Pump, Spring Jets) comes in 1.1.
@@ -156,6 +156,11 @@ VERSION = "1.8" -- v1.8 faster Spring Jets, the gatling keeps its dart speed
 local JETS_SPEED_V18 = 200 -- v1.8
 if script:GetAttribute("DiloMovesV18Enabled") == nil then script:SetAttribute("DiloMovesV18Enabled", true) end -- v1.8
 local function v18() return script:GetAttribute("DiloMovesV18Enabled") ~= false end -- v1.8
+VERSION = "1.9" -- v1.9 faster Toxin Mortar
+-- v1.9 (Kepu 2026-11-09 "the mortar it should be faster" -> both mortars, "2x flight + half wind-up"): the Toxin Mortar's
+--   wind-up MORTAR_WINDUP / 2 (0.55 -> 0.275 s, DiloMortarWindup) and flight / 2 (0.77 -> 0.38 s, DiloMortarFlight). Switch:
+--   script attribute DiloMortarFastEnabled (default true, read at each shot; false = 1.8).
+if script:GetAttribute("DiloMortarFastEnabled") == nil then script:SetAttribute("DiloMortarFastEnabled", true) end -- v1.9
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.6
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.6
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.6
@@ -517,12 +522,14 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 	end
 	char:SetAttribute("DiloMortarTo", land)
 	local mFlight = shotPass() and MORTAR_FLIGHT / SHOT_SPEED_MUL or MORTAR_FLIGHT -- v1.6
+	local mWindup = MORTAR_WINDUP -- v1.9
+	if script:GetAttribute("DiloMortarFastEnabled") ~= false then mFlight, mWindup = mFlight / 2, MORTAR_WINDUP / 2 end -- v1.9
 	char:SetAttribute("DiloMortarFlight", mFlight)
-	char:SetAttribute("DiloMortarWindup", MORTAR_WINDUP)
+	char:SetAttribute("DiloMortarWindup", mWindup) -- v1.9 (was MORTAR_WINDUP)
 	char:SetAttribute("DiloMortarRadius", radius)
 	char:SetAttribute("DiloMortarTime", life)
 	char:SetAttribute("DiloMortarAt", t) -- last: pose / FX (the tube rises)
-	task.wait(MORTAR_WINDUP)
+	task.wait(mWindup) -- v1.9 (was MORTAR_WINDUP)
 	if char:GetAttribute("DiloMortarAt") ~= t then return end
 	if not canStill(char) then cancel(char, "DiloPartMortar") return end
 	local from = root.Position + Vector3.new(0, 4 * char:GetScale(), 0)

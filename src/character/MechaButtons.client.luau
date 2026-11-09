@@ -1,4 +1,4 @@
--- MechaButtons v1.41 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.42 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -297,6 +297,17 @@ VERSION = "1.41" -- v1.41 a Thrusters boost stops when snared
 --   (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now; MechaServer 1.6 refuses new dashes.
 --   Switch: script attribute MechaButtonsSnareBlockEnabled (default true, read each frame; false = 1.40).
 if script:GetAttribute("MechaButtonsSnareBlockEnabled") == nil then script:SetAttribute("MechaButtonsSnareBlockEnabled", true) end -- v1.41
+VERSION = "1.42" -- v1.42 shots fire where the dino faces
+-- v1.42 (Kepu 2026-11-09 "I don't like the fact that it shoots to the camera direction and not the Dino direction. Let's fix that mechanic for all Dino's"
+--   -> "Every shot + lobbed part", "Yes, keep 45 degree snap"): the part shots send the dino's flat facing (HumanoidRootPart
+--   LookVector, no pitch) instead of the camera look: Ink Shooter, Quill Launcher, Grappling Hook, Reaper's Hook, Feather
+--   Barrage, Venom Gatling, Toxin Mortar, Boulder Mortar, Arc Lantern, Sap Wall, Portal Feathers; the lobbed parts (both mortars,
+--   lantern, Sap Wall, portal) send the point along that facing out to the part's default reach (the first world / dino hit on
+--   the way, as 1.40's Classic rule). The servers' 45-degree assist snaps around it. Unchanged: Grapple Zip (lock-on),
+--   Therizino Dash and Spring Jets (move direction), Shock Cannon (facing or the thumb's aim), Tether Spike (its own aim).
+--   Switch: script attribute MechaBodyAimEnabled (default true, read at each press; false = 1.41). Diagnostics: character
+--   MechaBodyAimCount, MechaClassicAimPoint (the point sent).
+if script:GetAttribute("MechaBodyAimEnabled") == nil then script:SetAttribute("MechaBodyAimEnabled", true) end -- v1.42
 -- v1.38 (MDA-329, plan docs/plans/DILO_PARTS_FIT_v1.0.md Task 2; Kepu 2026-11-06 "Instant burst + Thrusters FX"): a Spring Jets
 --   press also sets the character's local attributes DiloJetsPressDir (the flat direction sent) and DiloJetsPressAt (server
 --   time, last) on this client, so DiloJetsLaunch 1.1 / DiloPose 1.4 / DiloMovesFX 1.2 start the burst on the press like the
@@ -405,6 +416,33 @@ local function classicPoint(id) -- v1.40: Classic camera: the point along the ca
 	local p = hit and hit.Position or (from + f * reach)
 	char:SetAttribute("MechaClassicAimPoint", p)
 	char:SetAttribute("MechaClassicAimCount", (char:GetAttribute("MechaClassicAimCount") or 0) + 1)
+	return p
+end
+local function bodyAimOn() return script:GetAttribute("MechaBodyAimEnabled") ~= false end -- v1.42
+local function bodyFacing() -- v1.42: the dino's flat facing (nil = off / no root)
+	if not (bodyAimOn() and hrp) then return nil end
+	local f = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+	if f.Magnitude < 1e-3 then return nil end
+	char:SetAttribute("MechaBodyAimCount", (char:GetAttribute("MechaBodyAimCount") or 0) + 1)
+	return f.Unit
+end
+local function aimLook(cam) return bodyFacing() or (cam and cam.CFrame.LookVector) end -- v1.42
+local function bodyPoint(id) -- v1.42: the lobbed part's point along the dino's facing (1.40's Classic rule with the body)
+	local reachKey = CLASSIC_REACH[id]
+	local f = reachKey and bodyFacing()
+	if not f then return nil end
+	local reach = math.max(1, tonumber(char:GetAttribute(reachKey[1])) or reachKey[2])
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Exclude
+	local ex = {char}
+	for _, n in ipairs({"DinoFX_Local", "DinoFX", "TrooFX", "TrooPartsFX", "TrooWalls"}) do
+		local fo = workspace:FindFirstChild(n)
+		if fo then table.insert(ex, fo) end
+	end
+	rp.FilterDescendantsInstances = ex
+	local hit = workspace:Raycast(hrp.Position, f * reach, rp)
+	local p = hit and hit.Position or (hrp.Position + f * reach)
+	char:SetAttribute("MechaClassicAimPoint", p)
 	return p
 end
 char:SetAttribute("MechaDashLocal", "idle")
@@ -1022,13 +1060,13 @@ local function press(n, input)
 	if B3_BTN and id == "ink" then -- v1.19: the ink fires along the camera look (InkServer 1.0)
 		local r = ReplicatedStorage:FindFirstChild("DinoInkRequest")
 		local cam = workspace.CurrentCamera
-		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), aimLook(cam)) end -- v1.42 (was the camera look)
 		return
 	end
 	if HM_BTN and id == "quills" then -- v1.24: the quills fly along the camera look (HerreraMovesServer 1.0)
 		local r = ReplicatedStorage:FindFirstChild("DinoQuillRequest")
 		local cam = workspace.CurrentCamera
-		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), aimLook(cam)) end -- v1.42
 		return
 	end
 	if TENO_BTN and id == "tmortar" then -- v1.26: the mortar aims along the camera look (TenoMovesServer 1.0 auto-targets)
@@ -1047,8 +1085,9 @@ local function press(n, input)
 			local hit = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 400, rp)
 			point = hit and hit.Position or nil
 			point = classicPoint("tmortar") or point -- v1.40
+			point = bodyPoint("tmortar") or point -- v1.42
 		end
-		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector, point) end
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), aimLook(cam), point) end -- v1.42
 		return
 	end
 	if DILO_BTN and id == "djets" then -- v1.36: the move direction (flat), else the camera's flat look
@@ -1076,6 +1115,7 @@ local function press(n, input)
 			local lv = cam.CFrame.LookVector
 			local flatLook = Vector3.new(lv.X, 0, lv.Z)
 			flatLook = flatLook.Magnitude > 1e-3 and flatLook.Unit or Vector3.zAxis
+			flatLook = bodyFacing() or flatLook -- v1.42
 			local rp = RaycastParams.new()
 			rp.FilterType = Enum.RaycastFilterType.Exclude
 			local ex = {char}
@@ -1085,7 +1125,7 @@ local function press(n, input)
 			end
 			rp.FilterDescendantsInstances = ex
 			local hit = workspace:Raycast(cam.CFrame.Position, lv * 400, rp)
-			r:FireServer(workspace:GetServerTimeNow(), flatLook, classicPoint(id) or (hit and hit.Position or nil)) -- v1.40: + Classic
+			r:FireServer(workspace:GetServerTimeNow(), flatLook, bodyPoint(id) or classicPoint(id) or (hit and hit.Position or nil)) -- v1.40: + Classic; v1.42: + body
 		end
 		return
 	end
@@ -1105,8 +1145,9 @@ local function press(n, input)
 			local hit = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 400, rp)
 			point = hit and hit.Position or nil
 			point = classicPoint("dmortar") or point -- v1.40
+			if id == "dmortar" then point = bodyPoint("dmortar") or point end -- v1.42
 		end
-		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector, point) end
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), aimLook(cam), point) end -- v1.42
 		return
 	end
 	if THERI_BTN and id == "zgrapple" and script:GetAttribute("MechaButtonsDashEnabled") ~= false and char:GetAttribute("TheriDashMode") == true then -- v1.33: the Dash
@@ -1122,13 +1163,15 @@ local function press(n, input)
 	if THERI_BTN and (id == "zhook" or id == "zfeather" or id == "zgrapple") then -- v1.29: along the camera look (TheriMovesServer 1.0); v1.30: + grapple
 		local r = ReplicatedStorage:FindFirstChild(TIMED_PARTS[id][2])
 		local cam = workspace.CurrentCamera
-		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
+		local dir = cam and cam.CFrame.LookVector
+		if id ~= "zgrapple" then dir = aimLook(cam) end -- v1.42: the hook / feathers along the dino's facing
+		if r and dir then r:FireServer(workspace:GetServerTimeNow(), dir) end
 		return
 	end
 	if id == "hookarm" then -- v1.15: the hook fires along the camera look (HookServer 1.0)
 		local r = ReplicatedStorage:FindFirstChild("DinoHookRequest")
 		local cam = workspace.CurrentCamera
-		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector) end
+		if r and cam then r:FireServer(workspace:GetServerTimeNow(), aimLook(cam)) end -- v1.42
 		return
 	end
 	if id == "thrusters" and remote then remote:FireServer(workspace:GetServerTimeNow()) end

@@ -1,4 +1,4 @@
--- TenoMovesServer v1.16 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.17 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -261,6 +261,12 @@ local function snareBlocked(char) -- v1.16: Snare Wires bola / Reaper Hook hold
 	return on
 end
 local SNARE_MOVES = {tleap = true} -- v1.16: the movement parts
+VERSION = "1.17" -- v1.17 faster Boulder Mortar
+-- v1.17 (Kepu 2026-11-09 "the mortar it should be faster" -> both mortars, "2x flight + half wind-up"): the Boulder Mortar's
+--   fire delay / 2 (MORTAR_FIRE_A 0.70 -> 0.35 s; TenoPose 1.12 follows TenoMortarFiredAt) and flight / 2 (after the shot
+--   pass; ~0.47 -> ~0.23 s at mid range). Switch: script attribute TenoMortarFastEnabled (default true, read at each shot;
+--   false = 1.16).
+if script:GetAttribute("TenoMortarFastEnabled") == nil then script:SetAttribute("TenoMortarFastEnabled", true) end -- v1.17
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.15
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.15
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.15
@@ -995,6 +1001,7 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 		flightT, peakT = flightT + 0.3 * k, peakT + 8 * k
 	end
 	if shotPass() then flightT = flightT / SHOT_SPEED_MUL end -- v1.15: 1.5x faster
+	if script:GetAttribute("TenoMortarFastEnabled") ~= false then fireT, flightT = fireT / 2, flightT / 2 end -- v1.17
 	local right = aim:Cross(Vector3.yAxis).Unit
 	local pts = num(char, "TenoMortarCount", 1) >= 2 and {onGround(centre + right * MORTAR_PAIR), onGround(centre - right * MORTAR_PAIR)} or {centre}
 	local splash, dmg = num(char, "TenoMortarSplash", 10), num(char, "TenoMortarDamage", 12)
