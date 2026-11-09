@@ -1,4 +1,4 @@
--- SkillTree v1.72 (1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.73 (1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2687,6 +2687,86 @@ do
 		e.oPortalTime = p >= 3 and 8.1 or (p >= 1 and 6 or 0)
 		e.oPortalSquad = p >= 4
 		e.oPortalCooldown = p >= 1 and 20 or 0
+		return e
+	end
+end
+
+-- v1.73 (balance pass 1, plan docs/plans/BALANCE_PASS_v1.0.md, MDA-358 / MDA-360 / MDA-361 / MDA-362 / MDA-363; Kepu
+-- 2026-11-09 10:48 "very strong for everything"; plan rule "Stat-tree rows and parts keep their current additions on top of
+-- the new base numbers"). Switch SkillTree.BALANCE_PASS1 (default true; false = 1.72 texts and numbers). The new bases come
+-- from HerreraModelData 1.5, DiloModelData 1.4, TenoModelData 1.5, TherizinoModelData 1.6, TRexModelData 2.1 (SkillTree.BAL1
+-- holds old / new). Rows that ADD or MULTIPLY (Attack points, Razor Claws refill x0.65 / +1 charge, Front Claws / Heavy Tail
+-- +3, Buck Off, Cold Blood, Long Spit, Overclock +1 jump charge) already work on the new base: only their texts change. Rows
+-- that REPLACE a base number keep their old step over the old base:
+--   * Herrera Razor Claws III slashBleedDps (an absolute 3 with HERRERA_TRIM, 5 without) + (4 - 2): 5 (7 without the trim).
+--     Texts: I "slash 15 -> 18" (+3 points), II "(2.5 s -> 1.6 s)", III "5 per second (was 4)", star "A 4th slash charge".
+--   * Therizino Building Fury furyHit2 12 + (11 - 9) = 14, furyFinisher 26 + (24 - 20) = 30; texts "(11 -> 14)", "(24 -> 30)".
+--   * Dilo Quick Draw (absolute hold / recharge): the same ratio to the new base (hold x 0.25 / 0.4, recharge x 0.75 / 1.5),
+--     rounded to 0.01: drawHold 0.35 / 0.3 / 0.3 / 0.25 -> 0.22 / 0.19 / 0.19 / 0.16, drawCooldown 1.25 / 1.0 -> 0.63 / 0.5
+--     (the plan's "additions" read literally would give 0.2 / 0.15 / 0.15 / 0.1 s holds and a 0.25 s recharge; open question
+--     in the build report). Texts follow.
+--   * Teno texts: Front Claws I "(12 -> 15)", Heavy Tail I "(25 -> 28)". T-Rex Jaws I text "T-Rex bite 30 -> 40".
+SkillTree.BALANCE_PASS1 = true
+SkillTree.BAL1 = {herreraSlash = {7, 15}, herreraRefill = {4, 2.5}, herreraCharges = {2, 3}, herreraBleed = {2, 4},
+	theriHit2 = {9, 11}, theriHit3 = {20, 24}, diloHold = {0.4, 0.25}, diloDartCd = {1.5, 0.75}, tenoScratch = {8, 12},
+	tenoSlam = {15, 25}, trexBite = {25, 30}}
+if SkillTree.BALANCE_PASS1 then
+	local P, B = SkillTree.PATHS, SkillTree.BAL1
+	local function r2(x) return math.floor(x * 100 + 0.5) / 100 end
+	local function fmtS(x) return (("%.2f"):format(x):gsub("0+$", ""):gsub("%.$", "")) end
+	SkillTree.BAL1_DRAW = function(v, isCd) -- Quick Draw: the same ratio to the new base
+		if (tonumber(v) or 0) <= 0 then return v end
+		local b = isCd and B.diloDartCd or B.diloHold
+		return r2(v * b[2] / b[1])
+	end
+	-- Herrera Razor Claws (jaws stepsFor.Herrera)
+	if P.jaws and P.jaws.stepsFor and P.jaws.stepsFor.Herrera then
+		local pts =SkillTree.HERRERA_TRIM and SkillTree.HERRERA_TRIM_ATTACK or 5
+		local bleed = (SkillTree.HERRERA_TRIM and SkillTree.HERRERA_TRIM_BLEED_DPS or 5) + B.herreraBleed[2] - B.herreraBleed[1]
+		SkillTree.BAL1_HERRERA_BLEED = bleed
+		P.jaws.stepsFor.Herrera = {
+			("Slash hits harder (+%d Attack points: slash %d -> %d)"):format(pts, B.herreraSlash[2], B.herreraSlash[2] + pts),
+			("Slash charges refill 35%% faster (%s s -> %s s)"):format(fmtS(B.herreraRefill[2]), fmtS(math.floor(B.herreraRefill[2] * 0.65 * 10 + 0.5) / 10)),
+			("Bleed burns hotter: %d per second (was %d)"):format(bleed, B.herreraBleed[2]),
+			("A %dth slash charge"):format(B.herreraCharges[2] + 1)}
+	end
+	-- Therizino Building Fury
+	if P.fury then
+		P.fury.steps[1] = ("Cut 2 hits harder (%d -> %d)"):format(B.theriHit2[2], 12 + B.theriHit2[2] - B.theriHit2[1])
+		P.fury.steps[2] = ("The finisher hits harder (%d -> %d)"):format(B.theriHit3[2], 26 + B.theriHit3[2] - B.theriHit3[1])
+	end
+	-- Dilo Quick Draw
+	if P.quickdraw then
+		local d = SkillTree.BAL1_DRAW
+		P.quickdraw.steps = {
+			("Spit ready after a %s s hold (was %s)"):format(fmtS(d(0.35)), fmtS(B.diloHold[2])),
+			("Spit ready after a %s s hold"):format(fmtS(d(0.3))),
+			("Dart recharges in %s s (was %s)"):format(fmtS(d(1.25, true)), fmtS(B.diloDartCd[2])),
+			("%s s hold, and the dart recharges in %s s"):format(fmtS(d(0.25)), fmtS(d(1.0, true)))}
+	end
+	-- Teno Front Claws / Heavy Tail (the +3 bonuses are unchanged)
+	if P.frontclaws then P.frontclaws.steps[1] = ("Scratch hits harder (%d -> %d)"):format(B.tenoScratch[2], B.tenoScratch[2] + 3) end
+	if P.heavytail then P.heavytail.steps[1] = ("Tail slam +3 damage (%d -> %d)"):format(B.tenoSlam[2], B.tenoSlam[2] + 3) end
+	-- T-Rex Jaws I (+5 Attack points = bite +10)
+	if P.jaws and P.jaws.steps[1] == "Main attack hits harder (+5 Attack points: T-Rex bite 25 -> 35)" then
+		P.jaws.steps[1] = ("Main attack hits harder (+5 Attack points: T-Rex bite %d -> %d)"):format(B.trexBite[2], B.trexBite[2] + 10)
+	end
+end
+do
+	local effectsPre173 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre173(steps, dino)
+		if type(e) ~= "table" or not SkillTree.BALANCE_PASS1 then return e end
+		local B = SkillTree.BAL1
+		if dino == "Herrera" and (e.slashBleedDps or 0) > 0 then e.slashBleedDps = e.slashBleedDps + B.herreraBleed[2] - B.herreraBleed[1] end
+		if dino == "Therizino" then
+			if (e.furyHit2 or 0) > 0 then e.furyHit2 = e.furyHit2 + B.theriHit2[2] - B.theriHit2[1] end
+			if (e.furyFinisher or 0) > 0 then e.furyFinisher = e.furyFinisher + B.theriHit3[2] - B.theriHit3[1] end
+		end
+		if dino == "Dilo" then
+			e.drawHold = SkillTree.BAL1_DRAW(e.drawHold, false)
+			e.drawCooldown = SkillTree.BAL1_DRAW(e.drawCooldown, true)
+		end
 		return e
 	end
 end

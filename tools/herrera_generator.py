@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Herrerasaurus generator v1.4 (Mecha Dino Arena) — writes src/shared/Models/HerreraModelData.luau.
+"""Herrerasaurus generator v1.5 (Mecha Dino Arena) — writes src/shared/Models/HerreraModelData.luau.
 
 Kepu 2026-10-30: "the next Dino I want to work on it's the Herrerasaurus. This will be a utility Dino someone that's a
 Pain in the ass to deal with but easy to kill" · "It's going to have the most mecha utility and the fastest in the game" ·
@@ -26,7 +26,11 @@ SlashDamage 8 -> 7, SlashBleedDps 3 -> 2 (bleed time 4 s unchanged: 15 per slash
 v1.4 (MDA-323, plan docs/plans/FIXES_2026-11-06_v1.0.md Fix 1; Kepu 2026-11-06 "C: calm + uniform"): attributes ScurryStride
 6 (was the ScurryPose default 3.2) and ScurryMaxHz 3.5 (default 5): 12 studs per leg cycle at scale 2, walk 48 / run 90 both
 ~3.5 cycles/s instead of the 5 Hz cap. ScurryPose.settings reads them; removing them = v1.3. Geometry unchanged.
-Run: python3 tools/herrera_generator.py [--palette rust|charcoal|olive] [--mock OUT]
+v1.5 (MDA-358, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 10:48 "very strong for everything"): BAL_V15 on top:
+SlashDamage 7 -> 15, SlashCharges 2 -> 3, SlashRefill 4 -> 2.5, SlashBleedDps 2 -> 4 (bleed time 4 s unchanged: 31 per slash,
+was 15). BiteDamage is pinned at 25 (the move is off; TRexModelData 2.1 raised the T-Rex's to 30 and every file that copies the
+T-Rex attributes would follow). --v14 rebuilds HerreraModelData 1.4 byte-identical.
+Run: python3 tools/herrera_generator.py [--palette rust|charcoal|olive] [--mock OUT] [--v14]
   (default palette olive = Classic; --mock writes segments + joints only, for Studio renders)
 """
 import math, os, re, sys
@@ -36,7 +40,8 @@ OUT = os.path.join(ROOT, "src", "shared", "Models", "HerreraModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 ROLES = ["main", "stripes", "belly", "markings", "limbs", "claws", "eyes", "tailbands", "mask", "frill"]
 
-VERSION = "1.4"
+VERSION = "1.4" if "--v14" in sys.argv else "1.5"  # v1.5 balance pass 1 (MDA-358); --v14 = 1.4
+BAL_V15 = {"SlashDamage": "15", "SlashCharges": "3", "SlashRefill": "2.5", "SlashBleedDps": "4"}  # v1.5 (MDA-358)
 TARGET_LEN = 11.2    # studs at scale 1 (raptor 12.85; doubled in game: ~22.4 vs the raptor's 25.4)
 HIP0 = 3.3           # authored hip height before the length scale
 HRP_SIZE_D0 = (3.2, 2.1, 1.2)
@@ -342,7 +347,10 @@ else:
         "SlashDiveRange": "20", "SlashDiveCone": "35", "SlashReach": "2",
         "ClimbEnabled": "true", "ClimbSpeed": "10", "ClimbGrabDist": "1.5", "ClimbTopGap": "2", "ClimbHopSpeed": "12",
         "ScurryStride": "6", "ScurryMaxHz": "3.5",  # v1.4 (MDA-323)
+        "BiteDamage": "25",  # v1.5: pinned (the T-Rex 2.0 value; TRexModelData 2.1 = 30); the herrera has no bite
     })
+    if VERSION == "1.5":
+        attrs.update(BAL_V15)
     attrs.pop("StarterCharacterVersion", None)
     attrs.pop("TRexModelVersion", None)  # v1.4: the T-Rex's own label (TRexModelData 2.0), not the herrera's
     lines = [
@@ -352,6 +360,7 @@ else:
         "-- Colour groups (Classic = Swamp olive): " + ", ".join(f"{r} {C[r]}" for r in ROLES) + "; never painted: teeth E8E2D2, pupil 111111, mouth 6E342E.",
         "-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB.",
         "-- Rebuild with DinoModelBuilder.build(require(HerreraModelData)).",
+    ] + (["-- v1.5 balance pass 1 (MDA-358, plan docs/plans/BALANCE_PASS_v1.0.md): SlashDamage 15, SlashCharges 3, SlashRefill 2.5 s, SlashBleedDps 4 (were 7 / 2 / 4 / 2)."] if VERSION == "1.5" else []) + [
         "return {",
         f'\tversion = "{VERSION}", species = "Herrera", style = "1.0", rig = "1.3",',
     ] + body_lines() + ["\tattributes = {"] + [f"\t\t{k} = {attrs[k]}," for k in sorted(attrs)] + ["\t},", "}"]

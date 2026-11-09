@@ -2,6 +2,8 @@
 -- (MDA-235, plan docs/plans/DILO_STATS_v1.0.md Task 1; Kepu 2026-11-04 picks 2 Venom Bite, 3 Quick Draw, 5 Long Spit, 9 Toxic
 -- Blood, 14 Venom Feast, 20 Cold Blood; shared lines "Only its own"). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeDilo_spec, clone + require); returns "PASS n" or "FAIL ...".
+-- v1.1 (SkillTree 1.73 balance pass 1, MDA-360): while ST.BALANCE_PASS1 Quick Draw keeps its ratio over DiloModelData 1.4
+--   (hold 0.25, dart 0.75 s): drawHold 0.22 / 0.19 / 0.19 / 0.16, drawCooldown 0.63 / 0.5, texts to match.
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -45,7 +47,9 @@ local TEXT = {
 	longspit = {"Dart range 60 -> 70 studs", "Dart range 80 studs", "Darts fly 40% faster", "Dart range 90 studs"},
 	toxicblood = {"A dino that hits you up close is poisoned 1/s for 2 s", "Its poison lasts 3 s", "Its poison 2/s for 2 s",
 		"Its poison 2/s for 3 s"},
-	quickdraw = {"Spit ready after a 0.35 s hold (was 0.4)", "Spit ready after a 0.3 s hold", "Dart recharges in 1.25 s (was 1.5)",
+	quickdraw = ST.BALANCE_PASS1 and {"Spit ready after a 0.22 s hold (was 0.25)", "Spit ready after a 0.19 s hold", -- v1.1
+		"Dart recharges in 0.63 s (was 0.75)", "0.16 s hold, and the dart recharges in 0.5 s"}
+		or {"Spit ready after a 0.35 s hold (was 0.4)", "Spit ready after a 0.3 s hold", "Dart recharges in 1.25 s (was 1.5)",
 		"0.25 s hold, and the dart recharges in 1.0 s"},
 	coldblood = {"Below 30% health: darts deal 25% more damage", "Below 30% health: darts and poison deal 50% more",
 		"Below 30% health: darts and poison deal 75% more",
@@ -86,7 +90,11 @@ chk("venombite", "venomBiteDps", {1, 1, 2, 2}); chk("venombite", "venomBiteTime"
 chk("longspit", "spitRangeMul", {7 / 6, 4 / 3, 4 / 3, 1.5}); chk("longspit", "spitSpeedMul", {1, 1, 1.4, 1.4})
 chk("toxicblood", "toxicDps", {1, 1, 2, 2}); chk("toxicblood", "toxicTime", {2, 3, 2, 3})
 chk("venomfeast", "feastFrac", {0.2, 0.3, 0.4, 0.5})
-chk("quickdraw", "drawHold", {0.35, 0.3, 0.3, 0.25}); chk("quickdraw", "drawCooldown", {0, 0, 1.25, 1.0})
+if ST.BALANCE_PASS1 then -- v1.1
+	chk("quickdraw", "drawHold", {0.22, 0.19, 0.19, 0.16}); chk("quickdraw", "drawCooldown", {0, 0, 0.63, 0.5})
+else
+	chk("quickdraw", "drawHold", {0.35, 0.3, 0.3, 0.25}); chk("quickdraw", "drawCooldown", {0, 0, 1.25, 1.0})
+end
 chk("coldblood", "coldMul", {1.25, 1.5, 1.75, 2}); chk("coldblood", "coldBelow", {0.3, 0.3, 0.3, 0.3})
 chk("coldblood", "coldVenom", {false, true, true, true}); chk("coldblood", "coldReset", {false, false, false, true})
 -- the shared lines give a dilo nothing now (saved steps dropped)

@@ -1,4 +1,4 @@
--- PounceServer v1.15 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.16 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -118,6 +118,15 @@
 --   with reason "grabbed" (PounceTest lets go without the leap-off) and TenoMovesServer stuns / tosses it as before. Switch:
 --   script attribute PounceGrabHoldEnabled (default true, read each Heartbeat; false = 1.13: released at the press).
 --   Diagnostic: script PounceGrabHolds (frames held).
+-- v1.16 (MDA-357, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-08 22:36 "Make it 2.5 seconds", 22:47 "5 per hit = 33
+--   total"): latch / pin time cap. While script attribute PounceLatchMaxTimeEnabled ~= false (default true, read each
+--   Heartbeat) and the raptor's PounceLatchMaxTime is a number > 0 (RaptorModelData 1.14: 2.5), a latch or pin is released
+--   with reason "time" once now - PounceLatchedAt >= PounceLatchMaxTime, AFTER a tick that is due in the same Heartbeat (so
+--   the 2.5 s tick of a 0.5 s interval lands: 5 ticks, 8 + 5 x 5 = 33; Blade Claws 0.37 s: 6 ticks, the 2.59 s one never).
+--   The stamina release ("stamina", PounceLatchDrain 32 in RaptorModelData 1.14 = empty at 2.66 s from 85) still runs first,
+--   so a raptor with less stamina lets go sooner; the cap only stops the extra ticks a late claim (refill before the latch)
+--   or a stamina refund would add. Missing / 0 PounceLatchMaxTime or the switch off = 1.15 (stamina only). Diagnostics:
+--   script PounceLatchCapReleases (count); raptor PounceLatchTicks (ticks in the current / last latch).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -160,6 +169,17 @@ local MAX_LATCH = 30        -- safety: seconds a latch may last
 script:SetAttribute("PounceServerVersion", "1.13") -- v1.13 (1.12 left this at "1.11")
 script:SetAttribute("PounceServerVersion", "1.14") -- v1.14 grabbed latch rides to the pluck
 script:SetAttribute("PounceServerVersion", "1.15") -- v1.15 Sap Wall stops pounces through it
+script:SetAttribute("PounceServerVersion", "1.16") -- v1.16 latch time cap (PounceLatchMaxTime)
+if script:GetAttribute("PounceLatchMaxTimeEnabled") == nil then script:SetAttribute("PounceLatchMaxTimeEnabled", true) end -- v1.16
+local function latchCap(char) -- v1.16: seconds a latch / pin may last (nil = no cap, the 1.15 rule)
+	if script:GetAttribute("PounceLatchMaxTimeEnabled") == false then return nil end
+	local t = tonumber(char:GetAttribute("PounceLatchMaxTime"))
+	if t and t > 0 then return t end
+	return nil
+end
+local function capRelease(char) -- v1.16
+	script:SetAttribute("PounceLatchCapReleases", (script:GetAttribute("PounceLatchCapReleases") or 0) + 1)
+end
 -- v1.15 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute PounceServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   PounceServerSapWallBlocks (count), PounceServerSapWallBlockedAt (server time).
@@ -459,6 +479,7 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 	char:SetAttribute("PounceLatchTarget", model.Name)
 	char:SetAttribute("PounceLatchSegment", part:GetAttribute("HitboxSegment"))
 	char:SetAttribute("PounceDamageTotal", 0)
+	char:SetAttribute("PounceLatchTicks", 0) -- v1.16
 	if slashTiming() then -- v1.7
 		char:SetAttribute("PounceHitCount", 0)
 		char:SetAttribute("PounceNextHitAt", latches[char].nextTick)
@@ -512,6 +533,15 @@ RunService.Heartbeat:Connect(function()
 			l.nextTick += tickInterval(char) -- v1.6 (was PounceTickInterval)
 			if slashTiming() then char:SetAttribute("PounceNextHitAt", l.nextTick) end -- v1.7: before the hit
 			hit(char, l.model, get(char, "PounceTickDamage"), now)
+			char:SetAttribute("PounceLatchTicks", (char:GetAttribute("PounceLatchTicks") or 0) + 1) -- v1.16
+			local cap = latchCap(char) -- v1.16: the tick due at the cap lands first, then the latch ends
+			if cap and now - l.at >= cap and latches[char] == l then
+				capRelease(char)
+				release(char, "time")
+			end
+		elseif latchCap(char) and now - l.at >= latchCap(char) then -- v1.16: cap reached between ticks
+			capRelease(char)
+			release(char, "time")
 		end
 	end
 	for char, p in pairs(pending) do

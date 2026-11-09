@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Raptor generator v1.13 (Dino Arcade) -> src/shared/Models/RaptorModelData.luau
+"""Raptor generator v1.14 (Dino Arcade) -> src/shared/Models/RaptorModelData.luau
 
 Movie-style raptor (Deinonychus size) in the T-Rex block style (docs/STYLE_TRex.md), scaled to the
 T-Rex: T-Rex 40.1 studs long ~ 12.3 m (3.26 studs/m); raptor ~3.9 m -> 12.85 studs long, hip 3.3.
@@ -55,14 +55,21 @@ v1.13: raptor speed + always-run look (Kepu 2026-10-29: "theres no run button in
       walking animations"). MoveWalkSpeed 30 -> 41.6 and MoveRunSpeed 52 -> 78 = 1.3 x the place's T-Rex
       (StarterCharacter 32 / 60; in play x ArenaSpeedScale 0.65: raptor 27.0 / 50.7, T-Rex 20.8 / 39). GaitAlwaysRun true
       (IdleAnimation 1.26: run gait at every moving speed). Stride / gait tuning attributes unchanged.
+v1.14 (balance pass 1, plan docs/plans/BALANCE_PASS_v1.0.md; MDA-357 latch, MDA-364 jump): BAL_V114 on top of OVERRIDES:
+      PounceTickDamage 4 -> 5, PounceLatchDrain 15 -> 32 (85 stamina empties at 2.66 s) and the new PounceLatchMaxTime 2.5
+      (PounceServer 1.16 ends the latch at 2.5 s after the tick due then: 5 ticks, 8 + 5 x 5 = 33; Blade Claws max 6 ticks,
+      11 + 30 = 41 + bleed; tools/tests/pounce_latch_sim.py), JumpCooldown 0.5 -> 0.25. The T-Rex 2.0-only key
+      TRexModelVersion is no longer copied in (it leaked into a fresh run since TRexModelData 2.0; the 1.13 data file never
+      had it), so --v113 rebuilds RaptorModelData 1.13 byte-identical.
+Run: python3 tools/raptor_generator.py [--v113]
 """
-import math, re, os
+import math, re, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "RaptorModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 
-VERSION = "1.13"
+VERSION = "1.13" if "--v113" in sys.argv else "1.14"  # v1.14 balance pass 1 (MDA-357 / MDA-364); --v113 = 1.13
 HIP = 3.3            # hip (HRP centre) height above the ground
 HRP_SIZE_D = (3.6, 2.4, 1.4)   # D x (length), y, z (width)
 
@@ -290,7 +297,11 @@ OVERRIDES = {
     "BiteEnabled": "true", "BiteDamage": "8", "BiteCooldown": "1", "BiteRange": "3", "BiteReachBack": "0",
 }
 attrs.update(OVERRIDES)
-for k in ("StarterCharacterVersion",):
+# v1.14 balance pass 1 (MDA-357: latch 2.5 s, 5 per hit; MDA-364: jump cooldown 0.25)
+BAL_V114 = {"PounceTickDamage": "5", "PounceLatchDrain": "32", "PounceLatchMaxTime": "2.5", "JumpCooldown": "0.25"}
+if VERSION == "1.14":
+    attrs.update(BAL_V114)
+for k in ("StarterCharacterVersion", "TRexModelVersion"):  # v1.14: + the T-Rex 2.0-only key (not in the 1.13 file)
     attrs.pop(k, None)
 
 

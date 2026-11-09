@@ -1,5 +1,7 @@
--- SkillTreeHerreraTrim.spec v1.0 (Mecha Dino Arena) — SkillTree 1.47 Herrera trim (Kepu 2026-11-01 "Trim overlap"). Run in
+-- SkillTreeHerreraTrim.spec v1.1 (Mecha Dino Arena) — SkillTree 1.47 Herrera trim (Kepu 2026-11-01 "Trim overlap"). Run in
 -- Studio Edit (loadstring(Source)()); returns "PASS n" or "FAIL ...".
+-- v1.1 (SkillTree 1.73 balance pass 1, MDA-358): while ST.BALANCE_PASS1 the base is HerreraModelData 1.5 (slash 15, refill 2.5 s,
+--   3 charges, bleed 4): Razor Claws III bleed 5, texts "slash 15 -> 18", "(2.5 s -> 1.6 s)", "5 per second (was 4)", "A 4th slash charge".
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -35,15 +37,19 @@ eq("no regen rate", z.regenRate, 0); eq("no siphon", z.siphonRate, 0); eq("no si
 eq("no iron claw mul", z.ironClawDamageMul, 1); eq("no iron claw slow", z.ironClawSpeedMul, 1)
 -- numbers
 eq("razor I attack 3", H({jaws = 1}).attackPts, 3)
-eq("razor III bleed 3", H({jaws = 3}).slashBleedDps, 3)
+eq("razor III bleed", H({jaws = 3}).slashBleedDps, ST.BALANCE_PASS1 and 5 or 3) -- v1.1
 eq("razor II refill kept", H({jaws = 2}).slashRefillMul, 0.65); eq("razor star charge kept", H({jaws = 4}).slashExtraCharges, 1)
 eq("frenzy II 5 s", H({frenzy = 2}).slashBleedTime, 5); eq("frenzy III +2", H({frenzy = 3}).bleedBonus, 2)
 eq("frenzy I speed kept", H({frenzy = 1}).frenzySpeedMul, 1.1); eq("frenzy star kept", H({frenzy = 4}).killRefill, true)
 eq("unbought razor 0", H({}).attackPts, 0); eq("unbought frenzy 0", H({}).slashBleedTime, 0)
 -- texts
 local js = P.jaws.stepsFor.Herrera
-eq("razor I text", js[1], "Slash hits harder (+3 Attack points: slash 7 -> 10)")
-eq("razor III text", js[3], "Bleed burns hotter: 3 per second (was 2)")
+eq("razor I text", js[1], ST.BALANCE_PASS1 and "Slash hits harder (+3 Attack points: slash 15 -> 18)" or "Slash hits harder (+3 Attack points: slash 7 -> 10)")
+eq("razor III text", js[3], ST.BALANCE_PASS1 and "Bleed burns hotter: 5 per second (was 4)" or "Bleed burns hotter: 3 per second (was 2)")
+if ST.BALANCE_PASS1 then -- v1.1
+	eq("razor II text", js[2], "Slash charges refill 35% faster (2.5 s -> 1.6 s)")
+	eq("razor star text", js[4], "A 4th slash charge")
+end
 eq("frenzy II text", P.frenzy.steps[2], "Bleed lasts 5 s (was 4)")
 eq("frenzy III text", P.frenzy.steps[3], "Slash a bleeding dino: +2 damage")
 -- other dinos unchanged

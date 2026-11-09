@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pachy generator v1.2 (Mecha Dino Arena) -> src/shared/Models/PachyModelData.luau
+"""Pachy generator v1.6 (Mecha Dino Arena) -> src/shared/Models/PachyModelData.luau
 
 Pachycephalosaurus in the T-Rex / raptor block style. Plan docs/plans/PACHY_MODEL_v1.0.md, mockup
 docs/mockups/pachy_model_options.html, inspo docs/reference/pachy/ (Kepu 2026-10-30: knob ring head by default, "the
@@ -48,6 +48,9 @@ v1.5 (Kepu 2026-11-03: "turn the pachy up in damage" -> "flat 25" -> "Actually n
       (was 20), in between as before (HeadbuttServer's run-up rules unchanged), before the multipliers (Battering Dome,
       Blood Rush, Servo Dash charge, roar debuff, Weak tag) and Attack points. Shove / slow unchanged. The T-Rex 2.0-only key TRexModelVersion is no longer copied in
       (it leaked into a fresh run since TRexModelData 2.0; the 1.4 data file never had it). Everything else unchanged.
+v1.6 (MDA-364, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "the cooldowns for things like jumping ... need to be
+      lowered" -> "Yes, every dino"): JumpCooldown 0.5 -> 0.25 (Mecha Legs, when slotted, still writes its own). BiteDamage
+      (off on the pachy) pinned at 25 (TRexModelData 2.1 = 30). Everything else unchanged. --v15 = 1.5 byte-identical.
 """
 import math, re, os
 
@@ -55,7 +58,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "shared", "Models", "PachyModelData.luau")
 TREX = os.path.join(ROOT, "src", "shared", "Models", "TRexModelData.luau")
 
-VERSION = "1.5"
+VERSION = "1.5" if "--v15" in __import__("sys").argv else "1.6"  # v1.6 balance pass 1 (MDA-364); --v15 = 1.5
 HIP = 4.0            # hip (HRP centre) height above the ground
 HRP_SIZE_D = (4.0, 3.0, 1.8)   # D x (length), y, z (width)
 
@@ -457,6 +460,9 @@ OVERRIDES = {
     "HeadbuttSelfSlowMul": "0.65", "HeadbuttSelfSlowTime": "2.5", "HeadbuttReach": "2",
 }
 attrs.update(OVERRIDES)
+attrs["BiteDamage"] = "25"  # v1.6: pinned (TRexModelData 2.1 = 30); the pachy has no bite
+if VERSION == "1.6":
+    attrs.update({"JumpCooldown": "0.25"})  # v1.6 (MDA-364)
 for k in ("StarterCharacterVersion", "TRexModelVersion"):  # v1.5: + the T-Rex 2.0-only key
     attrs.pop(k, None)
 
@@ -478,6 +484,8 @@ lines.append("-- Colour groups: " + ", ".join(f"{r} {C[r]}" for r in ROLES) + ";
 lines.append("-- Head_spike* parts are hidden (Transparency 1): the fully upgraded attack look, shown by the abilities plan." if not SPIKES_SHOWN else
              "-- v1.4: refined Crowned Skull head, the 10 Head_spike* horns shown (Transparency 0, PachyLook 1.1 keeps them on), mid section +25%.")
 lines.append("-- v1.5: HeadbuttDamage 25 (was 20), HeadbuttCloseMul 0.72: a short run-up hits 18 (was 10), a full one 25 (Kepu 2026-11-03).")
+if VERSION == "1.6":
+    lines.append("-- v1.6 balance pass 1 (MDA-364, plan docs/plans/BALANCE_PASS_v1.0.md): JumpCooldown 0.25 (was 0.5).")
 lines.append("-- All CFrames are relative to the HumanoidRootPart; sizes in studs; colors hex RGB.")
 lines.append("-- Rebuild with DinoModelBuilder.build(require(PachyModelData)).")
 lines.append("return {")
