@@ -1,4 +1,4 @@
--- SkillTree v1.76 (1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.77 (1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2921,6 +2921,45 @@ do
 		if type(e) ~= "table" or not SkillTree.DILO_FX_PASS then return e end
 		if type(e.dJetsDist) == "number" and SkillTree.DILO_JETS_DIST[e.dJetsDist] then e.dJetsDist = SkillTree.DILO_JETS_DIST[e.dJetsDist] end
 		if type(e.dMortarRadius) == "number" and e.dMortarRadius > 0 then e.dMortarRadius = e.dMortarRadius * SkillTree.DILO_MORTAR_RADIUS_MUL end
+		return e
+	end
+end
+
+-- v1.77 (Kepu 2026-11-09 after v588 "lower the poison time" -> base "1.5 s", Venom Spit's extra time "Shrink it the same"):
+--   DiloModelData 1.12 sets DiloVenomTime 1.5 (was 3). With SkillTree.DILO_VENOM_TIME_PASS (default true) effects() gives
+--   spitVenomAddTime from SkillTree.DILO_SPIT_ADD_TIME (0 / 0.75 / 0 / 0.75, was 0 / 1.5 / 0 / 1.5: the same half), so the
+--   spit poison lasts 1.5 / 1.5 / 2.25 / 1.5 / 2.25 s (base, I, II, III, star; were 3 / 3 / 4.5 / 3 / 4.5). The Venom Spit
+--   texts that name a time are rewritten (DILO_VENOM_TIME_TEXTS, exact old -> new; a miss counts in
+--   SkillTree.DILO_VENOM_TIME_TEXT_MISSES, expected 0). SkillTree.SPIT is not changed. DILO_VENOM_TIME_PASS = false restores
+--   1.76 (with DiloModelData 1.11's 3 s base).
+SkillTree.DILO_VENOM_TIME_PASS = true
+SkillTree.DILO_SPIT_ADD_TIME = {0, 0.75, 0, 0.75}
+SkillTree.DILO_VENOM_TIME_TEXTS = {
+	{"venombite", 2, "Spit poison lasts 4.5 s (was 3)", "Spit poison lasts 2.25 s (was 1.5)"},
+	{"venombite", 3, "Spit poison 9/s for 3 s", "Spit poison 9/s for 1.5 s"},
+	{"venombite", 4, "Spit poison 9/s for 4.5 s", "Spit poison 9/s for 2.25 s"},
+}
+SkillTree.DILO_VENOM_TIME_TEXT_MISSES = 0
+if SkillTree.DILO_VENOM_TIME_PASS and SkillTree.DILO_SPIT_ONLY then
+	for _, row in ipairs(SkillTree.DILO_VENOM_TIME_TEXTS) do
+		local path = SkillTree.PATHS[row[1]]
+		local text = path and path.steps and path.steps[row[2]]
+		if text == row[3] then
+			path.steps[row[2]] = row[4]
+		else
+			SkillTree.DILO_VENOM_TIME_TEXT_MISSES += 1
+		end
+	end
+end
+do
+	local effectsPre177 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre177(steps, dino)
+		if type(e) ~= "table" or not SkillTree.DILO_VENOM_TIME_PASS then return e end
+		if not SkillTree.DILO_SPIT_ONLY or dino ~= "Dilo" or not SkillTree.PATHS.venombite then return e end
+		local s = SkillTree.sanitize(steps, dino)
+		local vb = math.clamp(s.venombite or 0, 0, 4)
+		if vb >= 1 then e.spitVenomAddTime = SkillTree.DILO_SPIT_ADD_TIME[vb] end
 		return e
 	end
 end
