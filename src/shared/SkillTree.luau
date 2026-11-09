@@ -1,4 +1,4 @@
--- SkillTree v1.74 (1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.75 (1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2831,6 +2831,58 @@ do
 		for _, k in ipairs(SkillTree.SHOT_CONE_KEYS) do
 			if type(e[k]) == "number" and e[k] > 0 then e[k] = math.max(e[k], SkillTree.SHOT_ASSIST_DEG) end
 		end
+		return e
+	end
+end
+
+
+-- v1.75 (MDA-360, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "for dilo make the spit the only attack method. remove
+-- the bite and make it extra fast", confirmed tap to spit, a spit every 0.35 s at base, Quick Draw "extra fast" each rank >= 35%
+-- faster 0.26 / 0.19 / 0.14 / 0.14; Venom Bite "Becomes spit poison"). Switch SkillTree.DILO_SPIT_ONLY (default true; false =
+-- 1.74). DiloModelData 1.7 carries DiloSpitOnly / DiloSpitGap 0.35 (SkillTree.SPIT holds the base numbers for the texts).
+--   * Quick Draw: new effect field spitGap (s between spits; 0 = the model's DiloSpitGap): I 0.26, II 0.19, III 0.14, star 0.14
+--     (Kepu's numbers; 0.35 / 0.26 = 1.35, 0.26 / 0.19 = 1.37, 0.19 / 0.14 = 1.36). drawHold / drawCooldown are kept (they only
+--     act while the spit-only switches are off). Texts "Spit every 0.26 s (was 0.35)" ...
+--   * Venom Bite (row id venombite kept, so spent points stay; shown as "Venom Spit"): new effect fields spitVenomAddDps /
+--     spitVenomAddTime = extra poison on the spit dart's own venom (DiloVenomDps 4 for DiloVenomTime 3 s), the bite ladder's
+--     shape kept (I dps, II longer, III stronger, star both) with every changed number >= 1.35x: +2 / +2 / +5 / +5 per s and
+--     +0 / +1.5 / +0 / +1.5 s -> the dart poisons 6/s 3 s, 6/s 4.5 s, 9/s 3 s, 9/s 4.5 s (bite ladder before: its own bite
+--     poison 1/s 2 s, 1/s 3 s, 2/s 2 s, 2/s 3 s). venomBiteDps / venomBiteTime stay (they act on the bite, only with the
+--     spit-only switches off). The never-stack rule (stronger wins) is the server's and unchanged.
+SkillTree.DILO_SPIT_ONLY = true
+SkillTree.SPIT = {gap = 0.35, venomDps = 4, venomTime = 3, gaps = {0.26, 0.19, 0.14, 0.14}, addDps = {2, 2, 5, 5},
+	addTime = {0, 1.5, 0, 1.5}}
+if SkillTree.DILO_SPIT_ONLY then
+	local P, S = SkillTree.PATHS, SkillTree.SPIT
+	local function fmtS(x) return (("%.2f"):format(x):gsub("0+$", ""):gsub("%.$", "")) end
+	if P.quickdraw then
+		P.quickdraw.steps = {
+			("Spit every %s s (was %s)"):format(fmtS(S.gaps[1]), fmtS(S.gap)),
+			("Spit every %s s"):format(fmtS(S.gaps[2])),
+			("Spit every %s s"):format(fmtS(S.gaps[3])),
+			("Spit every %s s, the fastest spit"):format(fmtS(S.gaps[4]))}
+	end
+	if P.venombite then
+		P.venombite.name = "Venom Spit"
+		P.venombite.steps = {
+			("Spit poison %s/s (was %s)"):format(fmtS(S.venomDps + S.addDps[1]), fmtS(S.venomDps)),
+			("Spit poison lasts %s s (was %s)"):format(fmtS(S.venomTime + S.addTime[2]), fmtS(S.venomTime)),
+			("Spit poison %s/s for %s s"):format(fmtS(S.venomDps + S.addDps[3]), fmtS(S.venomTime + S.addTime[3])),
+			("Spit poison %s/s for %s s"):format(fmtS(S.venomDps + S.addDps[4]), fmtS(S.venomTime + S.addTime[4]))}
+	end
+end
+do
+	local effectsPre175 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre175(steps, dino)
+		if type(e) ~= "table" then return e end
+		e.spitGap, e.spitVenomAddDps, e.spitVenomAddTime = 0, 0, 0
+		if not SkillTree.DILO_SPIT_ONLY or dino ~= "Dilo" or not SkillTree.PATHS.venombite then return e end
+		local s = SkillTree.sanitize(steps, dino)
+		local S = SkillTree.SPIT
+		local qd, vb = math.clamp(s.quickdraw or 0, 0, 4), math.clamp(s.venombite or 0, 0, 4)
+		if qd >= 1 then e.spitGap = S.gaps[qd] end
+		if vb >= 1 then e.spitVenomAddDps, e.spitVenomAddTime = S.addDps[vb], S.addTime[vb] end
 		return e
 	end
 end

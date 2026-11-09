@@ -1,4 +1,4 @@
--- DiloAttackTest v1.2 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
+-- DiloAttackTest v1.3 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
 -- StarterCharacterScripts). MDA-225, plan docs/plans/DILO_KIT_v1.0.md Task 5 (Kepu 2026-11-03: "C and J1", "Bite on press",
 -- "Soft aim, near-sure hit"); server DiloAttackServer 1.0.
 -- Only while the character's DiloAttackEnabled is true (the dilo). Inputs: CAS action "DinoDiloAttack" (the phone's big
@@ -30,6 +30,15 @@
 --   to "idle" without a spit (release not armed, stun / daze / pin / menu) -> FireServer("uncoil", server time). A spit
 --   ends it on the server by itself. Switch: character attribute DiloCoilStampEnabled (default true, read at each change;
 --   false = 1.1). Diagnostic: DiloCoilSent (count).
+-- v1.3 (MDA-360; Kepu 2026-11-09 dilo spit only, confirmed tap to spit, a spit every 0.35 s; PC and phone together, the same
+--   CAS actions): spit only = script attribute DiloAttackTestSpitOnlyEnabled ~= false (default true, read at each press) and the
+--   character's DiloSpitOnly == true (DiloModelData 1.7). Press (tap, click, ButtonR2): the local checks (alive, not stunned /
+--   dazed / pinned / in the menu), then the spit dart at once when at least DiloSpitGap (0.35; Quick Draw 0.26 / 0.19 / 0.14 /
+--   0.14) s since the last local spit -> DinoDiloAttack:FireServer("dart", server time), DiloLocalDartAt = that time,
+--   DiloInputResult "dart", DiloLocalState "spit" (back to "idle" after SPIT_SHOW 0.45 s, or at the next spit); else
+--   DiloInputResult "dartCooldown". No bite, no hold, no coil / armed state (so no coil stamps); a release does nothing. The
+--   Cold Blood star reset and the server refusals work as before. Off = 1.2 (bite on press, hold then release = dart).
+--   Diagnostics: DiloAttackTestMode ("spit" / "bite+hold", at each press), DiloSpitTaps (count of spits sent).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -38,6 +47,7 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.1" -- v1.1 Cold Blood dart reset
 VERSION = "1.2" -- v1.2 coil stamps
+VERSION = "1.3" -- v1.3 spit only: tap = spit dart
 local ACTION = "DinoDiloAttack"
 local ACTION_CLICK = "DinoDiloAttackClick"
 local DEFAULTS = {DiloAttackEnabled = false, DiloMinGap = 0.35, DiloHoldTime = 0.4, DiloDartCooldown = 1.5,
@@ -106,8 +116,37 @@ local function blocked()
 end
 local function dartReady(t) return t - lastDart >= (tonumber(get("DiloDartCooldown")) or 1.5) end
 
+local function spitOnly() -- v1.3
+	return script:GetAttribute("DiloAttackTestSpitOnlyEnabled") ~= false and char:GetAttribute("DiloSpitOnly") == true
+end
 local function onPress(src)
 	if get("DiloAttackEnabled") ~= true then return end
+	if script:GetAttribute("DiloAttackTestSpitOnlyEnabled") == nil then script:SetAttribute("DiloAttackTestSpitOnlyEnabled", true) end
+	show("DiloAttackTestMode", spitOnly() and "spit" or "bite+hold")
+	if spitOnly() then -- v1.3: tap = the spit dart at once
+		show("DiloLastInput", src)
+		local r = blocked()
+		if r then
+			show("DiloInputResult", r)
+			return
+		end
+		local t = now()
+		if t - lastDart < math.max(0, tonumber(get("DiloSpitGap")) or 0.35) then
+			show("DiloInputResult", "dartCooldown")
+			return
+		end
+		lastDart, lastSent = t, t
+		fire("dart", t)
+		char:SetAttribute("DiloLocalDartAt", t)
+		char:SetAttribute("DiloSpitTaps", (char:GetAttribute("DiloSpitTaps") or 0) + 1)
+		show("DiloInputResult", "dart")
+		state = nil
+		setState("spit")
+		task.delay(SPIT_SHOW, function()
+			if state == "spit" and char:GetAttribute("DiloLocalDartAt") == t then setState("idle") end
+		end)
+		return
+	end
 	show("DiloLastInput", src)
 	local r = blocked()
 	if r then

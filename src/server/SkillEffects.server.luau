@@ -1,4 +1,4 @@
--- SkillEffects v1.49 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.51 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -340,6 +340,13 @@ VERSION = "1.46" -- v1.46 troodon keeps its own hop values
 VERSION = "1.47" -- v1.47 troodon keeps its flap / glide values
 VERSION = "1.48" -- v1.48 troodon button parts (OPARTS)
 VERSION = "1.49" -- v1.49 Sap Wall: no hit bleed / crush through it
+VERSION = "1.51" -- v1.51 dilo spit only: DiloSpitGap + spit poison (1.50 was withdrawn before install, never shipped)
+-- v1.51 (MDA-360, SkillTree 1.75 DILO_SPIT_ONLY, DiloModelData 1.7; Kepu 2026-11-09 dilo spit only, Venom Bite "Becomes spit
+--   poison"): on a dilo the spit numbers also cover DiloSpitGap (captured as SkillDiloBase_DiloSpitGap like the others; written
+--   = Quick Draw's spitGap when > 0, else the base), and DILO_ATTRS also writes DiloSpitVenomAddDps / DiloSpitVenomAddTime
+--   (Venom Bite's spitVenomAddDps / spitVenomAddTime, off values 0; DiloAttackServer 1.7 adds them to the spit dart's venom).
+--   Switch: script attribute SkillEffectsDiloSpitOnlyEnabled (default true, read at each write; false = DiloSpitGap = the base
+--   and the two venom adds 0 = 1.49).
 -- v1.49 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute SkillEffectsSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   SkillEffectsSapWallBlocks (count), SkillEffectsSapWallBlockedAt (server time).
@@ -931,6 +938,12 @@ local DILO_ATTRS = { -- {attribute, effect field, off value}
 	{"DiloColdBelow", "coldBelow", 0}, {"DiloColdVenom", "coldVenom", false}, {"DiloColdReset", "coldReset", false},
 }
 local DILO_SPIT = {"DiloHoldTime", "DiloDartCooldown", "DiloDartRange", "DiloAssistMax", "DiloDartSpeed"}
+-- v1.51: dilo spit only (see the header)
+if script:GetAttribute("SkillEffectsDiloSpitOnlyEnabled") == nil then script:SetAttribute("SkillEffectsDiloSpitOnlyEnabled", true) end
+local function diloSpitOn() return script:GetAttribute("SkillEffectsDiloSpitOnlyEnabled") ~= false and ST.DILO_SPIT_ONLY == true end
+table.insert(DILO_ATTRS, {"DiloSpitVenomAddDps", "spitVenomAddDps", 0})
+table.insert(DILO_ATTRS, {"DiloSpitVenomAddTime", "spitVenomAddTime", 0})
+table.insert(DILO_SPIT, "DiloSpitGap")
 local function diloStatsOn() return script:GetAttribute("SkillEffectsDiloStatsEnabled") ~= false and ST.DILO_STATS == true end
 do
 	local effectsOfV140 = effectsOf
@@ -972,7 +985,8 @@ do
 					if k == "DiloHoldTime" and (tonumber(x.drawHold) or 0) > 0 then v = x.drawHold
 					elseif k == "DiloDartCooldown" and (tonumber(x.drawCooldown) or 0) > 0 then v = x.drawCooldown
 					elseif k == "DiloDartRange" or k == "DiloAssistMax" then v = base * (tonumber(x.spitRangeMul) or 1)
-					elseif k == "DiloDartSpeed" then v = base * (tonumber(x.spitSpeedMul) or 1) end
+					elseif k == "DiloDartSpeed" then v = base * (tonumber(x.spitSpeedMul) or 1)
+					elseif k == "DiloSpitGap" and diloSpitOn() and (tonumber(x.spitGap) or 0) > 0 then v = x.spitGap end -- v1.51
 				end
 				v = round(v, 0.001)
 				if char:GetAttribute(k) ~= v then char:SetAttribute(k, v) end
@@ -983,6 +997,7 @@ do
 		for _, f in ipairs(DILO_ATTRS) do
 			local v = x[f[2]]
 			if v == nil then v = f[3] end
+			if (f[1] == "DiloSpitVenomAddDps" or f[1] == "DiloSpitVenomAddTime") and not diloSpitOn() then v = f[3] end -- v1.51
 			if char:GetAttribute(f[1]) ~= v then char:SetAttribute(f[1], v) end
 		end
 		local rows = ""

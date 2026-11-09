@@ -1,4 +1,4 @@
--- ArenaTouch v1.18 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
+-- ArenaTouch v1.19 (Mecha Dino Arena) — this game's own touch buttons (LocalScript, touch devices only).
 -- MDA-7, plan docs/plans/ARENAHUD_v1.0.md Task 2, mockup docs/mockups/mobile_hud_options.html option A ("Stack + thumb
 --   arc"; Kepu: no shoulder button on mobile, no T-Rex jump).
 -- Off when UserInputService.TouchEnabled is false (ArenaTouchState "off"): PC / gamepad input is unchanged.
@@ -133,6 +133,11 @@ VERSION = "1.15" -- v1.15 dilo ATTACK (hold disc + dart pip)
 VERSION = "1.16" -- v1.16 dilo dart pip full after a Cold Blood reset
 VERSION = "1.17" -- v1.17 BITE / POUNCE / RAM / JUMP cooldown sweep + seconds
 VERSION = "1.18" -- v1.18 troodon ATTACK pod pips + JUMP hop pips
+VERSION = "1.19" -- v1.19 dilo spit only: the dart pip fills over DiloSpitGap
+-- v1.19 (MDA-360; Kepu 2026-11-09 dilo spit only, tap to spit; PC and touch together with AbilityBar 1.36 / DiloAttackTest 1.3):
+--   on a character with DiloSpitOnly true the dilo ATTACK's dart pip fills over DiloSpitGap (0.35; Quick Draw 0.26 / 0.19 /
+--   0.14) after DiloLocalDartAt instead of DiloDartCooldown; there is no hold, so the hold disc stays empty. Switch: script
+--   attribute ArenaTouchDiloSpitEnabled (default true, read each frame; false = 1.18).
 -- v1.17 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 3; Kepu 2026-11-06 "Sweep + seconds"): BITE, POUNCE (the
 --   raptor's ATTACK), RAM and JUMP get the slot buttons' cooldown look (MechaButtons: a black fill at 0.45 rising from the
 --   bottom, here cut to the circle by a UIGradient step) and the seconds left in the PC format ("%.1fs", AbilityBar paint)
@@ -534,6 +539,7 @@ end
 
 -- v1.15: dilo ATTACK main button + hold disc + dart pip
 if script:GetAttribute("ArenaTouchDiloEnabled") == nil then script:SetAttribute("ArenaTouchDiloEnabled", true) end
+if script:GetAttribute("ArenaTouchDiloSpitEnabled") == nil then script:SetAttribute("ArenaTouchDiloSpitEnabled", true) end -- v1.19
 local DILO_ON = script:GetAttribute("ArenaTouchDiloEnabled") ~= false
 if script:GetAttribute("ArenaTouchDiloResetEnabled") == nil then script:SetAttribute("ArenaTouchDiloResetEnabled", true) end -- v1.16
 local diloMain, diloMainLabel, diloMainScale = button("DiloMain", "ATTACK", nil, 0.05, 0.10, 0.135, true)
@@ -751,6 +757,9 @@ RunService.RenderStepped:Connect(function()
 	dlHold.Size = UDim2.fromScale(k, k)
 	if dlGlow then dlGlow.Transparency = st == "armed" and 0.1 or 1 end
 	local cd = math.max(0.01, tonumber(char:GetAttribute("DiloDartCooldown")) or 1.5)
+	if script:GetAttribute("ArenaTouchDiloSpitEnabled") ~= false and char:GetAttribute("DiloSpitOnly") == true then -- v1.19
+		cd = math.max(0.01, tonumber(char:GetAttribute("DiloSpitGap")) or 0.35)
+	end
 	local part = math.clamp((now - (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge)) / cd, 0, 1)
 	if script:GetAttribute("ArenaTouchDiloResetEnabled") ~= false
 		and (tonumber(char:GetAttribute("DiloDartReadyAt")) or -math.huge) > (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge) then

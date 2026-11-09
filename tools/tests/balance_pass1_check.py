@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""balance_pass1_check v1.1 (Mecha Dino Arena) — offline spec for balance pass 1 (plan docs/plans/BALANCE_PASS_v1.0.md,
+"""balance_pass1_check v1.2 (Mecha Dino Arena) — offline spec for balance pass 1 (plan docs/plans/BALANCE_PASS_v1.0.md,
 MDA-357 .. MDA-364). Needs only python3; touches nothing in the repo (generators run in a temporary copy).
 Checks:
   1. every new model number against the plan table (PLAN below), read from src/shared/Models/*ModelData.luau;
@@ -14,6 +14,10 @@ v1.1 (Kepu 2026-11-09 answers on MDA-357 / 360 / 361 / 362 / 363): Dilo Cobra Le
   0; SkillEffects stays 1.49, the 1.50 dilo leap keep is withdrawn), walk x the run ratio (TenoModelData 1.6 walk 38,
   TherizinoModelData 1.7 42.5, TRexModelData 2.2 39.5), raptor BOTS latch like players (BotServer 1.28). GENS_MID: the
   code-phase versions (52621b2) rebuild byte-identical with the new flags (--v14 dilo, --v15 teno, --v16 therizino, --v21 trex).
+v1.2 (MDA-360 dilo spit only, Kepu 2026-11-09): DiloModelData 1.7 (DiloSpitOnly true, DiloSpitGap 0.35; --v16 rebuilds the
+  shot pass 1.6 byte-identical, 38822 / 667525137, --v15 the balance 1.5 38649 / 442713128; the shot pass also made
+  TroodonModelData 1.7, --v16 = 1.6), SkillEffects 1.51 (spit gap + spit poison, no dilo leap keep), SkillTree 1.75
+  DILO_SPIT_ONLY (SPIT table = Kepu's numbers), DiloAttackServer 1.7 / DiloAttackTest 1.3 switches.
 Run: python3 tools/tests/balance_pass1_check.py      -> "PASS n" (exit 0) or the failures and "FAIL n/m" (exit 1)
 """
 import os, re, shutil, subprocess, sys, tempfile
@@ -50,10 +54,12 @@ PLAN = [
 ]
 VERSIONS = {"RaptorModelData": ("RaptorModelVersion", "1.14"), "PachyModelData": ("PachyModelVersion", "1.6"),
             "HerreraModelData": ("HerreraModelVersion", "1.5"), "TenoModelData": ("TenoModelVersion", "1.6"),
-            "TherizinoModelData": ("TherizinoModelVersion", "1.7"), "DiloModelData": ("DiloModelVersion", "1.5"),
-            "TroodonModelData": ("TroodonModelVersion", "1.6"), "TRexModelData": ("TRexModelVersion", "2.2")}
+            "TherizinoModelData": ("TherizinoModelVersion", "1.7"), "DiloModelData": ("DiloModelVersion", "1.7"),
+            "TroodonModelData": ("TroodonModelVersion", "1.7"), "TRexModelData": ("TRexModelVersion", "2.2")}
 SAME = [  # unchanged on purpose
     ("DiloModelData", "JumpCooldown", 0.25),  # v1.1: plain leap
+    ("DiloModelData", "DiloSpitOnly", True), ("DiloModelData", "DiloSpitGap", 0.35),  # v1.2: spit only
+    ("DiloModelData", "DiloDartCooldown", 0.75), ("DiloModelData", "DiloHoldTime", 0.25),  # v1.2: kept for the switch-off path
     ("TroodonModelData", "TrooZoneHeal", 5), ("TroodonModelData", "TrooSelfHeal", 2), ("TroodonModelData", "JumpCharges", 0),
     ("HerreraModelData", "JumpEnabled", False), ("HerreraModelData", "SlashBleedTime", 4),
     ("RaptorModelData", "PounceLandDamage", 8), ("RaptorModelData", "PounceTickInterval", 0.5),
@@ -64,6 +70,9 @@ SAME = [  # unchanged on purpose
 # v1.1: generator, output, flag, code-phase (52621b2) size / hash
 GENS_MID = [
     ("dilo_generator.py", "DiloModelData", "--v14", 38535, 346861290),
+    ("dilo_generator.py", "DiloModelData", "--v15", 38649, 442713128),  # v1.2: balance pass 1.5
+    ("dilo_generator.py", "DiloModelData", "--v16", 38822, 667525137),  # v1.2: shot pass 1.6 (installed before spit only)
+    ("troodon_generator.py", "TroodonModelData", "--v16", 42814, 606763099),  # v1.2: balance pass 1.6 under shot pass 1.7
     ("teno_generator.py", "TenoModelData", "--v15", 28924, 398504457),
     ("therizino_generator.py", "TherizinoModelData", "--v16", 42159, 144559858),
     ("trex_generator.py", "TRexModelData", "--v21", 27945, 729223109),
@@ -172,7 +181,12 @@ def main():
     eq("PounceServer 1.16", 'SetAttribute("PounceServerVersion", "1.16")' in ps, True)
     eq("PounceServer cap switch", 'SetAttribute("PounceLatchMaxTimeEnabled", true)' in ps, True)
     se = src("src/server/SkillEffects.server.luau")
-    eq("SkillEffects 1.49 (1.50 dilo leap keep withdrawn: JumpCharges 0)", ("VERSION = \"1.49\"" in se, "SkillEffectsDiloLeapKeepEnabled" in se), (True, False))
+    eq("SkillEffects 1.51 (1.50 dilo leap keep withdrawn: JumpCharges 0)", ("VERSION = \"1.51\"" in se, "SkillEffectsDiloLeapKeepEnabled" in se), (True, False))
+    eq("SkillEffects 1.51 spit switch", 'SetAttribute("SkillEffectsDiloSpitOnlyEnabled", true)' in se, True)  # v1.2
+    da = src("src/server/DiloAttackServer.server.luau")  # v1.2
+    eq("DiloAttackServer 1.7 spit switch", ('VERSION = "1.7"' in da, 'SetAttribute("DiloAttackSpitOnlyEnabled", true)' in da), (True, True))
+    dt = src("src/character/DiloAttackTest.client.luau")
+    eq("DiloAttackTest 1.3 spit switch", ('VERSION = "1.3"' in dt, "DiloAttackTestSpitOnlyEnabled" in dt), (True, True))
     bs = src("src/server/BotServer.server.luau")  # v1.1: raptor bots latch like players
     eq("BotServer 1.28", 'VERSION = "1.28"' in bs, True)
     for k, v in (("BotLatchBalanceEnabled", "true"), ("BotLatchMaxTime", "2.5"), ("BotLatchLandDamage", "8"),
@@ -180,6 +194,8 @@ def main():
         eq(f"BotServer DEFAULTS.{k} = {v}", f"DEFAULTS.{k} = {v} " in bs, True)
     st = src("src/shared/SkillTree.luau")
     eq("SkillTree 1.73 switch", "SkillTree.BALANCE_PASS1 = true" in st, True)
+    eq("SkillTree 1.75 spit switch", "SkillTree.DILO_SPIT_ONLY = true" in st, True)  # v1.2
+    eq("SkillTree.SPIT = Kepu's numbers", "SkillTree.SPIT = {gap = 0.35, venomDps = 4, venomTime = 3, gaps = {0.26, 0.19, 0.14, 0.14}" in st, True)
     for k, v in (("herreraBleed", "{2, 4}"), ("theriHit2", "{9, 11}"), ("theriHit3", "{20, 24}"), ("diloHold", "{0.4, 0.25}"),
                  ("diloDartCd", "{1.5, 0.75}"), ("tenoScratch", "{8, 12}"), ("tenoSlam", "{15, 25}"), ("trexBite", "{25, 30}"),
                  ("herreraSlash", "{7, 15}"), ("herreraRefill", "{4, 2.5}"), ("herreraCharges", "{2, 3}")):

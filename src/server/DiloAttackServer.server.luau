@@ -1,4 +1,4 @@
--- DiloAttackServer v1.6 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (server authority). MDA-224, plan
+-- DiloAttackServer v1.7 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (1.7: spit only) (server authority). MDA-224, plan
 -- docs/plans/DILO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/dilo_kit_options_v0.1.html attack C
 -- (Kepu 2026-11-03: picks "C and J1"; dart "Weaker dart"; red-team "Bite on press", "Soft aim, near-sure hit").
 -- Remote ReplicatedStorage.DinoDiloAttack (RemoteEvent), client -> server: (kind, stamp). kind "bite" = the ATTACK press
@@ -88,6 +88,20 @@
 --     its own recharge on it, so the dart is ready at once); with DiloPartOverVenomMul > 1 (III) every venom the dilo applies
 --     while it runs (dart, bite, Toxic Blood, part venom) has its dps x that mul. Switch: script attribute
 --     DiloAttackOverdriveEnabled (default true, read at each use; false = 1.4). Diagnostic: script DiloOverdriveDarts (count).
+-- v1.7 (MDA-360, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "for dilo make the spit the only attack method. remove the
+--   bite and make it extra fast", confirmed: tap to spit, a spit every 0.35 s; Venom Bite "Becomes spit poison"). Spit only =
+--   script attribute DiloAttackSpitOnlyEnabled ~= false (default true, read at each request / hit) and the dilo character's
+--   DiloSpitOnly == true (DiloModelData 1.7):
+--   * a "bite" request -> result "spitOnly" (no bite, no DiloBiteAt, no bite pose / FX anywhere);
+--   * a "dart" request -> "dartCooldown" when less than DiloSpitGap (0.35; Quick Draw 0.26 / 0.19 / 0.14 / 0.14 through
+--     SkillEffects 1.51) minus the script's DiloSpitGapGrace (default 0.05: the client checks the same gap on its own clock, so a
+--     tap exactly on the gap may arrive a few ms early) since the last accepted dart; DiloDartCooldown / DiloHoldTime are not
+--     used. Venom Overdrive still skips the check.
+--   * the dart's venom = (DiloVenomDps + DiloSpitVenomAddDps) x Cold Blood's venom mul for DiloVenomTime + DiloSpitVenomAddTime
+--     s (Venom Bite's spit poison, SkillTree 1.75), through the same applyVenom (stronger wins, never stacked). The parts'
+--     venom API, Toxic Blood, Venom Feast, Cold Blood, Long Spit and the Deflector / Sap Wall rules are unchanged.
+--   Off (switch false or no DiloSpitOnly) = 1.6. Diagnostics: script DiloSpitOnlyDarts, DiloSpitOnlyBiteRefusals (counts);
+--   character DiloSpitVenomDps / DiloSpitVenomTime (the last spit dart's venom, before the venom rule).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -98,6 +112,7 @@ VERSION = "1.3" -- v1.3 Deflector Claws
 VERSION = "1.4" -- v1.4 animation stamps
 VERSION = "1.5" -- v1.5 dilo parts: venom API + Venom Overdrive
 VERSION = "1.6" -- v1.6 Sap Wall stops bites / darts through it
+VERSION = "1.7" -- v1.7 spit only (no bite; DiloSpitGap; Venom Bite = spit poison)
 -- v1.6 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute DiloAttackServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   DiloAttackServerSapWallBlocks (count), DiloAttackServerSapWallBlockedAt (server time).
@@ -138,6 +153,13 @@ if script:GetAttribute("DiloAttackBodyHitEnabled") == nil then script:SetAttribu
 script:SetAttribute("DiloDartBodyHits", 0)
 local DART_BODY_REACH = 1.5
 local function statsOn() return script:GetAttribute("DiloAttackStatsEnabled") ~= false end
+-- v1.7: spit only (see the header)
+if script:GetAttribute("DiloAttackSpitOnlyEnabled") == nil then script:SetAttribute("DiloAttackSpitOnlyEnabled", true) end
+if script:GetAttribute("DiloSpitGapGrace") == nil then script:SetAttribute("DiloSpitGapGrace", 0.05) end
+for _, k in ipairs({"DiloSpitOnlyDarts", "DiloSpitOnlyBiteRefusals"}) do script:SetAttribute(k, 0) end
+local function spitOnly(char)
+	return script:GetAttribute("DiloAttackSpitOnlyEnabled") ~= false and char:GetAttribute("DiloSpitOnly") == true
+end
 
 local function now() return workspace:GetServerTimeNow() end
 local function count(k, n) script:SetAttribute(k, (script:GetAttribute(k) or 0) + (n or 1)) end
@@ -493,7 +515,14 @@ local function fireDart(player, char, t)
 					takeHealth(target, dmg * takenMul(target, ti) * plating(target, from), char.Name, player.UserId, "dilodart", ti)
 					if statsOn() then -- v1.1: the venom rule, Cold Blood venom
 						if isTarget(target, char) then
-							applyVenom(target, math.max(0, get(char, "DiloVenomDps")) * coldVenomMul(char), math.max(0, get(char, "DiloVenomTime")), char, player, ti)
+							local vDps, vTime = math.max(0, get(char, "DiloVenomDps")), math.max(0, get(char, "DiloVenomTime"))
+							if spitOnly(char) then -- v1.7: Venom Bite = spit poison
+								vDps += math.max(0, num(char, "DiloSpitVenomAddDps", 0))
+								vTime += math.max(0, num(char, "DiloSpitVenomAddTime", 0))
+								char:SetAttribute("DiloSpitVenomDps", vDps)
+								char:SetAttribute("DiloSpitVenomTime", vTime)
+							end
+							applyVenom(target, vDps * coldVenomMul(char), vTime, char, player, ti)
 						end
 					else
 						target:SetAttribute("VenomDps", math.max(0, get(char, "DiloVenomDps")))
@@ -544,8 +573,15 @@ remote.OnServerEvent:Connect(function(player, kind, stamp)
 	else
 		r = blocked(player, char, t)
 	end
-	if not r and kind == "bite" and t - st.lastBite < math.max(0, get(char, "DiloMinGap")) then r = "cooldown" end
-	if not r and kind == "dart" and t - st.lastDart < math.max(0, get(char, "DiloDartCooldown")) and not overdriveOn(char, t) then r = "dartCooldown" end -- v1.5: + Overdrive
+	local so = not r and spitOnly(char) -- v1.7
+	if so and kind == "bite" then
+		r = "spitOnly"
+		count("DiloSpitOnlyBiteRefusals")
+	end
+	if so and kind == "dart" and t - st.lastDart < math.max(0, num(char, "DiloSpitGap", 0.35) - math.max(0, num(script, "DiloSpitGapGrace", 0.05)))
+		and not overdriveOn(char, t) then r = "dartCooldown" end
+	if not r and not so and kind == "bite" and t - st.lastBite < math.max(0, get(char, "DiloMinGap")) then r = "cooldown" end
+	if not r and not so and kind == "dart" and t - st.lastDart < math.max(0, get(char, "DiloDartCooldown")) and not overdriveOn(char, t) then r = "dartCooldown" end -- v1.5: + Overdrive
 	if r then
 		setResult(char, r, t)
 		return
@@ -559,6 +595,7 @@ remote.OnServerEvent:Connect(function(player, kind, stamp)
 		task.delay(delay, resolveBite, player, char, t)
 	else
 		st.lastDart = t
+		if so then count("DiloSpitOnlyDarts") end -- v1.7
 		if animStamps() then char:SetAttribute("DiloCoilEndAt", t) end -- v1.4
 		fireDart(player, char, t)
 		if overdriveOn(char, t) then -- v1.5: the client's recharge clears too

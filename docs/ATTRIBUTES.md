@@ -3177,3 +3177,12 @@ Model numbers are generator output (old version = the flag in the last column, b
 | MechaClassicAimEnabled / MechaTetherCamFixEnabled | MechaButtons script | true | false = 1.39 |
 | CameraSettingsEnabled / CameraSettingsClassicMovement | CameraSettings script | true | off switches |
 | CameraModesEnabled / CameraModesButtonEnabled / CameraModesMenuCardEnabled / CameraModesSettingsEnabled | CameraModes script | true | off switches |
+| DiloSpitOnly / DiloSpitGap | Dilo character (DiloModelData 1.7) | true / 0.35 s | MDA-360: the ATTACK is the spit dart only, fired on the tap; seconds between spits (Quick Draw writes 0.26 / 0.19 / 0.14 / 0.14) |
+| DiloSpitVenomAddDps / DiloSpitVenomAddTime | Dilo character (SkillEffects 1.51) | 0 / 0 | Venom Bite = spit poison: + per s / + s on the dart's venom (2 / 2 / 5 / 5, 0 / 1.5 / 0 / 1.5) |
+| DiloSpitVenomDps / DiloSpitVenomTime | Dilo character (DiloAttackServer 1.7) | diag | the last spit dart's venom before the venom rule |
+| DiloAttackSpitOnlyEnabled / DiloSpitGapGrace | DiloAttackServer script | true / 0.05 s | false = 1.6 (bite + hold dart); grace = how early a spit may arrive; diag DiloSpitOnlyDarts, DiloSpitOnlyBiteRefusals |
+| DiloAttackTestSpitOnlyEnabled | DiloAttackTest script | true | false = 1.2 (bite on press, hold then release = dart); diag DiloAttackTestMode, DiloSpitTaps |
+| DiloSpitTapPoseEnabled | Dilo model | true | false = DiloPose 1.4's spit track on a tap |
+| ArenaTouchDiloSpitEnabled / AbilityBarDiloSpitEnabled | ArenaTouch / AbilityBar scripts | true | false = the dart pip fills over DiloDartCooldown (1.18 / 1.35) |
+| SkillEffectsDiloSpitOnlyEnabled | SkillEffects script | true | false = DiloSpitGap = the base, spit venom adds 0 (1.49) |
+| SkillTree.DILO_SPIT_ONLY / SkillTree.SPIT | SkillTree constant | true | 1.75: Quick Draw spitGap, Venom Bite = "Venom Spit" (false = 1.74) |

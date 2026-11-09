@@ -1,4 +1,4 @@
--- DiloPose v1.3 (Mecha Dino Arena) — the Dilophosaurus' animation layers for IdleAnimation 1.43: Bite + Spit Dart (attack C)
+-- DiloPose v1.5 (Mecha Dino Arena) — the Dilophosaurus' animation layers for IdleAnimation 1.43: Bite + Spit Dart (attack C)
 -- and the Cobra Leap (J1), plus the frill (folded at rest, snapping open on the attack and the leap) and the throat sac.
 -- MDA-226, plan docs/plans/DILO_KIT_v1.0.md Task 6; mockup docs/mockups/dilo_kit_options_v0.1.html (Kepu 2026-11-03 "C and
 -- J1"; source tools/dilo_kit_mockup/app.js). Key poses, timings, springs, frill pop and sac = the mockup's.
@@ -93,12 +93,19 @@
 --   owner's client it starts on the press (DiloJetsPredictedAt, set by DiloJetsLaunch 1.1 when its burst starts); the server
 --   stamp for that press (DiloJetsAt within 1 s after it) does not restart it. Switch: model attribute DiloJetsInstantPoseEnabled (default true, read at
 --   each start; false = 1.3's p_jets). Diagnostic: DiloPoseSet "1.4".
+-- v1.5 (MDA-360; Kepu 2026-11-09 dilo spit only, tap to spit): on a model with DiloSpitOnly true (DiloModelData 1.7) the spit
+--   track is spit_tap = {0 $from, 0.05 FLARE_COIL (io) wind-up: the neck draws back and the hood flares, 0.1 THRUST (in2) the
+--   spit, 0.22 RECOIL (out) the snap back, 0.6 READY (io) recovery} (the tap has no coil before it; a new spit restarts it
+--   from wherever the pose is). No bite track plays because spit-only sends no bite. Frill / sac rules unchanged (open while
+--   a spit is under 0.75 s). Switch: model attribute DiloSpitTapPoseEnabled (default true, read at each frame; false = 1.4's
+--   spit_hf). Diagnostic: DiloPoseSet "1.5".
 local DiloPose = {}
 DiloPose.Version = "1.0"
 DiloPose.Version = "1.1" -- v1.1 Cobra Strike, Hood Flare, Spring Coil
 DiloPose.Version = "1.2" -- v1.2 mecha part move poses
 DiloPose.Version = "1.3" -- v1.3 build-2 part move poses
 DiloPose.Version = "1.4" -- v1.4 Spring Jets without the wind-up
+DiloPose.Version = "1.5" -- v1.5 spit-only tap spit track
 DiloPose.Defaults = {
 	DiloPoseEnabled = true, DiloLeapPoseEnabled = true, DiloGroundLockEnabled = true, DiloFrillEnabled = true,
 	DiloFrillPopEnabled = true, DiloSacEnabled = true, DiloLeapLandTime = 1.0, DiloSacSwell = 1.55,
@@ -242,7 +249,11 @@ local partSeen = nil -- v1.2: [stamp attribute] = last seen value
 local function cobraOn(model) return model:GetAttribute("DiloCobraStrikeEnabled") ~= false end
 local function flareOn(model) return model:GetAttribute("DiloHoodFlareEnabled") ~= false end
 local function springOn(model) return model:GetAttribute("DiloSpringCoilEnabled") ~= false end
+TRACKS.spit_tap = {{0, "$from"}, {0.05, "FLARE_COIL", "io"}, {0.1, "THRUST", "in2"}, {0.22, "RECOIL", "out"}, {0.6, "READY", "io"}} -- v1.5
 local function trackKey(model, kind)
+	if kind == "spit" and model:GetAttribute("DiloSpitOnly") == true and model:GetAttribute("DiloSpitTapPoseEnabled") ~= false then
+		return "spit_tap" -- v1.5
+	end
 	if kind == "bite" and cobraOn(model) then return "bite_cs" end
 	if kind == "coil" and flareOn(model) then return "coil_hf" end
 	if kind == "spit" and flareOn(model) then return "spit_hf" end
@@ -685,7 +696,7 @@ function DiloPose.top(model, pose, motors, hrp, ctx)
 		local nm = atk.kind == "coil" and (st == "armed" and "armed" or "coil") or atk.kind or "none"
 		if atk.kind == "coil" and not ctx.isOwner then nm ..= ":server" end -- v1.1
 		show("DiloPoseState", nm)
-		show("DiloPoseSet", DiloPose.Version) -- v1.4 (was "1.3")
+		show("DiloPoseSet", DiloPose.Version) -- v1.5 (was "1.4")
 	end
 	show("DiloPoseSource", src)
 	show("DiloLeapPhase", leapS.phase)

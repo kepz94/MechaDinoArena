@@ -1,4 +1,4 @@
--- BalancePass1.spec v1.1 (Mecha Dino Arena) — balance pass 1 (plan docs/plans/BALANCE_PASS_v1.0.md, MDA-357 .. MDA-364) in
+-- BalancePass1.spec v1.2 (Mecha Dino Arena) — balance pass 1 (plan docs/plans/BALANCE_PASS_v1.0.md, MDA-357 .. MDA-364) in
 -- Studio: the installed model data against the plan table, and SkillTree 1.73's BALANCE_PASS1 block against a clone with the
 -- switch off (only the listed fields / texts may differ). Run in Studio Edit (paste into execute_luau, or a copy in
 -- ServerStorage.DinoArcadeTools.BalancePass1_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
@@ -7,6 +7,10 @@
 -- v1.1 (Kepu 2026-11-09 answers): DiloModelData 1.5 (Cobra Leap plain: JumpCharges 0), walk x the run ratio (TenoModelData 1.6
 --   38, TherizinoModelData 1.7 42.5, TRexModelData 2.2 + the StarterCharacter 39.5), BotServer 1.28 latch defaults (script
 --   attributes unset or equal), SkillEffects 1.49 (no dilo leap keep).
+-- v1.2 (MDA-360 dilo spit only): DiloModelData 1.7 (DiloSpitOnly true, DiloSpitGap 0.35, the rest = 1.6 shot pass), SkillEffects 1.51
+--   (DiloSpitGap + spit poison, still no dilo leap keep), DiloAttackServer 1.7 in ServerScriptService; while
+--   ST.DILO_SPIT_ONLY the Quick Draw texts are SkillTree 1.75's spit-gap texts (SkillTreeDilo.spec 1.2 checks them in full).
+--   TroodonModelData 1.7 (the shot pass: pod reach and speed only; the balance numbers unchanged).
 local DA = game.ServerStorage.DinoArcade
 local function load(off)
 	local src = DA.SkillTree
@@ -36,9 +40,9 @@ end
 -- 1. model data (plan table; the T-Rex row is TRexModelData, the live T-Rex is the StarterCharacter: checked too)
 local PLAN = {
 	HerreraModelData = {HerreraModelVersion = "1.5", SlashDamage = 15, SlashCharges = 3, SlashRefill = 2.5, SlashBleedDps = 4},
-	TroodonModelData = {TroodonModelVersion = "1.6", TrooPodDamage = 12, TrooZoneDps = 6, TrooPodCharges = 3, TrooPodRefill = 2,
+	TroodonModelData = {TroodonModelVersion = "1.7", TrooPodDamage = 12, TrooZoneDps = 6, TrooPodCharges = 3, TrooPodRefill = 2,
 		JumpCooldown = 0.25},
-	DiloModelData = {DiloModelVersion = "1.5", DiloBiteDamage = 15, DiloDartDamage = 10, DiloVenomDps = 4, MoveRunSpeed = 78,
+	DiloModelData = {DiloModelVersion = "1.7", DiloSpitOnly = true, DiloSpitGap = 0.35, DiloBiteDamage = 15, DiloDartDamage = 10, DiloVenomDps = 4, MoveRunSpeed = 78,
 		MoveWalkSpeed = 42.5, JumpCharges = 0, JumpCooldown = 0.25, DiloHoldTime = 0.25, DiloDartCooldown = 0.75},
 	TenoModelData = {TenoModelVersion = "1.6", MoveWalkSpeed = 38, TenoScratchDamage = 12, TenoSlamDamage = 25, MoveRunSpeed = 66, JumpLaunchPower = 64,
 		JumpCooldown = 0.25},
@@ -71,8 +75,10 @@ for k, v in pairs({BotLatchBalanceEnabled = true, BotLatchMaxTime = 2.5, BotLatc
 	eq("BotServer DEFAULTS." .. k, bs and bs.Source:find(("DEFAULTS.%s = %s "):format(k, tostring(v)), 1, true) ~= nil, true)
 end
 local se = SSS:FindFirstChild("SkillEffects")
-eq("SkillEffects 1.49, no dilo leap keep", se and (se.Source:find('VERSION = "1.49"', 1, true) ~= nil
+eq("SkillEffects 1.51, no dilo leap keep", se and (se.Source:find('VERSION = "1.51"', 1, true) ~= nil -- v1.2
 	and se.Source:find("SkillEffectsDiloLeapKeepEnabled", 1, true) == nil), true)
+local das = SSS:FindFirstChild("DiloAttackServer")
+eq("DiloAttackServer 1.7", das and das.Source:find('VERSION = "1.7"', 1, true) ~= nil, true) -- v1.2
 local ps = SSS:FindFirstChild("PounceServer")
 eq("PounceServer 1.16", ps and ps.Source:find('"PounceServerVersion", "1.16"', 1, true) ~= nil, true)
 local tj = SSS:FindFirstChild("TRexJump")
@@ -127,10 +133,15 @@ eq("razor III text", js[3], "Bleed burns hotter: 5 per second (was 4)")
 eq("razor star text", js[4], "A 4th slash charge")
 eq("fury I text", P.fury.steps[1], "Cut 2 hits harder (11 -> 14)")
 eq("fury II text", P.fury.steps[2], "The finisher hits harder (24 -> 30)")
-eq("quickdraw I text", P.quickdraw.steps[1], "Spit ready after a 0.22 s hold (was 0.25)")
-eq("quickdraw II text", P.quickdraw.steps[2], "Spit ready after a 0.19 s hold")
-eq("quickdraw III text", P.quickdraw.steps[3], "Dart recharges in 0.63 s (was 0.75)")
-eq("quickdraw star text", P.quickdraw.steps[4], "0.16 s hold, and the dart recharges in 0.5 s")
+if ST.DILO_SPIT_ONLY then -- v1.2: SkillTree 1.75 spit gap texts
+	eq("quickdraw I text", P.quickdraw.steps[1], "Spit every 0.26 s (was 0.35)")
+	eq("quickdraw star text", P.quickdraw.steps[4], "Spit every 0.14 s, the fastest spit")
+else
+	eq("quickdraw I text", P.quickdraw.steps[1], "Spit ready after a 0.22 s hold (was 0.25)")
+	eq("quickdraw II text", P.quickdraw.steps[2], "Spit ready after a 0.19 s hold")
+	eq("quickdraw III text", P.quickdraw.steps[3], "Dart recharges in 0.63 s (was 0.75)")
+	eq("quickdraw star text", P.quickdraw.steps[4], "0.16 s hold, and the dart recharges in 0.5 s")
+end
 eq("claws I text", P.frontclaws.steps[1], "Scratch hits harder (12 -> 15)")
 eq("heavy I text", P.heavytail.steps[1], "Tail slam +3 damage (25 -> 28)")
 eq("trex jaws I text", P.jaws.steps[1], "Main attack hits harder (+5 Attack points: T-Rex bite 30 -> 40)")

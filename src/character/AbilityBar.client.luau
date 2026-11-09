@@ -1,4 +1,4 @@
--- AbilityBar v1.35 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.36 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -191,6 +191,11 @@ VERSION = "1.32" -- v1.32 teno + dilo part countdowns
 VERSION = "1.33" -- v1.33 troodon ATTACK + JUMP tiles
 VERSION = "1.34" -- v1.34 troodon plain JUMP tile without charges
 VERSION = "1.35" -- v1.35 troodon button part timers
+VERSION = "1.36" -- v1.36 dilo spit only: the dart pip fills over DiloSpitGap
+-- v1.36 (MDA-360; Kepu 2026-11-09 dilo spit only, tap to spit; PC and touch together with ArenaTouch 1.19 / DiloAttackTest 1.3):
+--   on a character with DiloSpitOnly true the DiloAttack tile's dart pip fills over DiloSpitGap (0.35; Quick Draw 0.26 / 0.19 /
+--   0.14) after DiloLocalDartAt instead of DiloDartCooldown; no hold (no fill / "SPIT" text), "active" while a spit shows.
+--   Switch: script attribute AbilityBarDiloSpitEnabled (default true, read each frame; false = 1.35).
 -- v1.32 (MDA-322, plan docs/plans/COOLDOWN_DISPLAY_v1.0.md Task 1; Kepu 2026-11-06 "I need all cool downs to be [shown] on
 --   screen"): the 6 teno slot parts (tgrab / tmortar / tstomp / tbellow / tchallenge / tmud), the teno Hydraulic Leap slot
 --   tile (tleap) and the 7 dilo parts (dgatling / dmortar / dhiss / dspine / dpump / djets / dover) join TIMED_PARTS, so their
@@ -225,6 +230,7 @@ VERSION = "1.35" -- v1.35 troodon button part timers
 if script:GetAttribute("AbilityBarTheriClockPassiveEnabled") == nil then script:SetAttribute("AbilityBarTheriClockPassiveEnabled", true) end -- v1.30
 local SPEED_YELLOW = Color3.fromRGB(255, 194, 26) -- v1.30
 if script:GetAttribute("AbilityBarDiloResetEnabled") == nil then script:SetAttribute("AbilityBarDiloResetEnabled", true) end -- v1.27
+if script:GetAttribute("AbilityBarDiloSpitEnabled") == nil then script:SetAttribute("AbilityBarDiloSpitEnabled", true) end -- v1.36
 if script:GetAttribute("AbilityBarTenoJumpPipsEnabled") == nil then script:SetAttribute("AbilityBarTenoJumpPipsEnabled", true) end -- v1.25
 if script:GetAttribute("AbilityBarTheriHitsLeftEnabled") == nil then script:SetAttribute("AbilityBarTheriHitsLeftEnabled", true) end -- v1.24
 if script:GetAttribute("AbilityBarBloodEnabled") == nil then script:SetAttribute("AbilityBarBloodEnabled", true) end -- v1.10
@@ -985,6 +991,9 @@ local function update()
 			show("AbilityBarTrooPips", nowC .. "/" .. maxC)
 		elseif e.move.diloPips then -- v1.26: dilo ATTACK (hold + dart pip)
 			local cd = math.max(0.01, tonumber(char:GetAttribute("DiloDartCooldown")) or 1.5)
+			if script:GetAttribute("AbilityBarDiloSpitEnabled") ~= false and char:GetAttribute("DiloSpitOnly") == true then -- v1.36
+				cd = math.max(0.01, tonumber(char:GetAttribute("DiloSpitGap")) or 0.35)
+			end
 			local part = math.clamp((now - (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge)) / cd, 0, 1)
 			if script:GetAttribute("AbilityBarDiloResetEnabled") ~= false
 				and (tonumber(char:GetAttribute("DiloDartReadyAt")) or -math.huge) > (tonumber(char:GetAttribute("DiloLocalDartAt")) or -math.huge) then
