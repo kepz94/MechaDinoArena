@@ -3118,3 +3118,5 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooAttackPodArc, TrooMoves_lanternArc, DiloMovesMortarArc | TrooAttackServer / TrooMovesServer / DiloMovesServer script | 9 / 6 / 6.5 (studs at the 2x body, x scale / 2; = the FX arc) | MDA-353 |
 | DiloMovesSapCloudEnabled | DiloMovesServer script | true (the cloud's venom ticks check cloud centre -> target) | DiloMovesServer 1.5 (MDA-353) |
 | TrooPodWallAt / TrooPodWallPos, TrooLanternWallAt, TenoMortarWallAt, DiloMortarWallAt, GooWallAt | attacker character | server time (and hit point) of a lob stopped by a Sap Wall | MDA-353 |
+| TrooMovesSapLookEnabled; TrooMoves_sapTransparency 0.08, TrooMoves_sapProfile "0.82,0.94,1,0.9,0.78" | TrooMovesServer script | true; numbers read at each wall | TrooMovesServer 1.3 (MDA-351) |
+| TrooPartsFX_sapLookEnabled / _portalLookEnabled / _zapLookEnabled; TrooPartsFX_sapRise 0.3, _sapHardenFrom 0.2, _sapHarden 0.45, _sapWetT 0.45, _sapHardT 0.08, _portalRingR 4.2, _portalTube 0.32, _portalVaneR 5, _portalCentre 4.8, _zapLife 0.32 | TrooPartsFX script | true each; numbers read at each use | TrooPartsFX 1.1 (MDA-351) |

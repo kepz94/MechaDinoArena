@@ -49,7 +49,7 @@
 --   * Portal Feathers (switch TrooPartsFX_portalLookEnabled): the standing ring = a continuous teal Neon torus (8FF7E6,
 --     portalRingR 4.2 x k, tube portalTube 0.32 x k, 28 blocks), 8 brass vanes (0.3 x 1.5 x 0.5 x k) at portalVaneR 5 x k, a
 --     swirl film (a 2FE6C8 Neon disc at 0.55, a pale DCFFFA centre at 0.4 and 4 white arcs at 14 / 26 / 38 / 50 of 64 of the
---     radius, 2.2 rad long, turning 2 rad/s), centre portalCentre 4.8 x k above the ground, facing the throw; opening: scale
+--     radius, 2.2 rad long, turning 2 rad/s), centre portalCentre 4.8 x k above the ground, facing along A -> B; opening: scale
 --     0.05 -> 1 over 0.3 s (back-out), a B8FFF0 flash (10), an A8FFF0 orb (5) and a 2FE6C8 ground ring (7); open: a teal
 --     PointLight (range 11 x k) and A8FFF0 motes rising from its foot (10 / s); the flung ring spins and grows 1 -> 5 on its
 --     arc (2.5 / 9 x k high); closing: shrinks over 0.35 s with an orb and sparks.
@@ -906,6 +906,11 @@ local function portalStart(char, at)
 			local r0 = rootOf(char)
 			local look = r0 and Vector3.new(r0.CFrame.LookVector.X, 0, r0.CFrame.LookVector.Z) or Vector3.zAxis
 			look = look.Magnitude > 1e-3 and look.Unit or Vector3.zAxis
+			local pA, pB = char:GetAttribute("TrooPortalA"), char:GetAttribute("TrooPortalB")
+			if rg.look2 and typeof(pA) == "Vector3" and typeof(pB) == "Vector3" then -- v1.1: face along the A -> B line (walk through it)
+				local dAB = Vector3.new(pB.X - pA.X, 0, pB.Z - pA.Z)
+				if dAB.Magnitude > 1e-3 then look = dAB.Unit end
+			end
 			local t0 = os.clock()
 			local conn
 			local arcH = rg.look2 and ((key == "TrooPortalA" and 2.5 or 9) * s / 2) or 3 -- v1.1: the mockup's 2.5 / 9 flight arcs
