@@ -1,0 +1,70 @@
+
+  <section>
+    <h2>The three cameras, defined for this game</h2>
+    <div class="modes">
+      <div class="box"><span class="tagl">the regular Roblox camera</span><h3>Classic</h3>
+        <ul>
+          <li>Roblox's own camera (Custom, touch mode Classic): it follows the dino and never turns by itself.</li>
+          <li>The dino <b>faces where it walks</b> (TurnLimit "move": turns at TurnLimitRate, swings wide).</li>
+          <li>Drag the right side to <b>orbit freely</b>, pinch to zoom. No crosshair.</li>
+          <li>Built from: <code>ShoulderCamEnabled = false</code> (already in ShoulderCam 1.8).</li>
+        </ul></div>
+      <div class="box"><span class="tagl">what players call shift lock</span><h3>Shift Lock</h3>
+        <ul>
+          <li>Camera <b>centred behind</b> the dino, raised so the dino sits under the crosshair.</li>
+          <li>The dino <b>always turns to face the camera direction</b> (TurnLimit "aim"); the stick strafes and backs up.</li>
+          <li>Drag turns camera and dino together. Crosshair dot on.</li>
+          <li>Built from: the shoulder cam with <code>ShoulderCamSide = 0</code> and a higher <code>ShoulderCamHeight</code>. Every aim path stays as it is today.</li>
+        </ul></div>
+      <div class="box"><span class="tagl">today's camera</span><h3>Shoulder</h3>
+        <ul>
+          <li>ShoulderCam 1.8 as shipped: camera over the right shoulder, dino on the left of the screen.</li>
+          <li>Same aim model as Shift Lock (body turns to the camera, strafe, crosshair).</li>
+          <li>PC keeps Q to swap shoulders; phones have no swap button (ArenaTouch 1.18 header, Kepu's earlier call).</li>
+        </ul></div>
+    </div>
+    <p class="muted" style="margin:8px 2px 0"><b>Default for new players:</b> Shift Lock on phones and tablets (it keeps every camera-aimed part working and takes away the off-centre view Kepu disliked); Shoulder stays the default on PC. The pick is saved per player in the <code>MDA_Settings_v1</code> DataStore that already remembers MUSIC (MusicServer 1.0), and comes back on every join and respawn.</p>
+  </section>
+
+  <section class="box">
+    <h2>What changes for aiming in each camera (from the code)</h2>
+    <p class="muted" style="margin:0 0 8px">Shift Lock and Shoulder share one aim model, so only <b>Classic</b> needs work. "Body" = the server or client uses the HumanoidRootPart's flat LookVector; "camera" = the client sends <code>workspace.CurrentCamera.CFrame.LookVector</code> or casts a ray from the screen centre.</p>
+    <div class="tblwrap"><table>
+      <thead><tr><th>Move / part</th><th>Aims with</th><th>Shift Lock · Shoulder</th><th>Classic</th></tr></thead>
+      <tbody>
+        <tr><td>ATTACK bite / dart (dilo), pod toss (troodon), bite (T-Rex), pounce, headbutt start, ram</td><td>body (+ soft aim 30° on dart / pod)</td><td class="ok">as today</td><td class="ok">works: the dino faces where you steer; aim = steer</td></tr>
+        <tr><td>Shock Cannon (raptor), no thumb aim</td><td>body</td><td class="ok">as today</td><td class="ok">works</td></tr>
+        <tr><td>Shock Cannon thumb-aim cone</td><td>body ±30° / ±15°</td><td class="ok">as today</td><td class="ok">works</td></tr>
+        <tr><td>Ink, Quills, Venom Gatling, Grappling Hook, Reaper Hook, Feathers, Grapple</td><td>camera look</td><td class="ok">as today</td><td class="bad">fires where the camera looks, not where the dino faces (often sideways or behind it)</td></tr>
+        <tr><td>Toxin Mortar, Teno Mortar, Arc Lantern, Sap Wall, Portal</td><td>camera look + crosshair ray point</td><td class="ok">as today</td><td class="bad">screen centre is the dino's head, so the ray lands on the ground just past the dino; no crosshair to see it</td></tr>
+        <tr><td>Grapple lock-on pick, Slash dive target</td><td>cone around the camera look</td><td class="ok">as today</td><td class="bad">picks targets in front of the camera, not the dino</td></tr>
+        <tr><td>Spring Jets standing still</td><td>camera flat look</td><td class="ok">as today</td><td class="bad">jets the camera's way</td></tr>
+        <tr><td>Tether Spike tactical aim</td><td>own top-down camera</td><td class="ok">as today</td><td class="bad">camera stays stuck Scriptable after the aim (see below)</td></tr>
+        <tr><td>Ram's camera turn, eating side view</td><td>ShoulderCam hooks</td><td class="ok">as today</td><td>silently skipped (Roblox camera ignores them)</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted" style="margin:8px 0 0"><b>Proposed Classic rule:</b> one helper picks the aim: Classic → the body's flat facing (pitch 0; the server soft-aim where it exists), and the crosshair point → body facing × the part's range. Toggle it in the readout above to feel the difference with the gatling and mortar.</p>
+  </section>
+
+  <section class="box">
+    <h2>Research</h2>
+    <ul class="src">
+      <li>Roblox touch camera modes: <b>Classic</b> "tracks the player but will not automatically rotate", <b>Follow</b> "automatically rotates if the player walks left or right", <b>Orbital</b> fixed height. <a href="https://create.roblox.com/docs/reference/engine/enums/DevTouchCameraMovementMode.md">DevTouchCameraMovementMode</a>, <a href="https://create.roblox.com/docs/reference/engine/enums/TouchCameraMovementMode.md">TouchCameraMovementMode</a></li>
+      <li>Roblox's player Settings offer Classic / Follow; Shift Lock Switch is a Shift-key toggle. <a href="https://en.help.roblox.com/hc/en-us/articles/203314230">Roblox Help: camera controls</a></li>
+      <li>Mobile has no built-in shift lock; games ship their own button UI or fork the camera module; the thumbstick feeding the mouse position is the classic pitfall (this game hit it: ShoulderCam 1.2). <a href="https://devforum.roblox.com/t/shift-lock-for-mobile-players/547816">DevForum: Shift lock for mobile players</a>, <a href="https://devforum.roblox.com/t/mouse-lock-on-mobile-devices/1075094">DevForum: Mouse lock on mobile devices</a>, <a href="https://devforum.roblox.com/t/ezshiftlock-quickly-and-easily-toggle-shift-lock-even-for-mobile/1593991">EzShiftlock (CameraModule makes no mouse-lock controller on touch)</a></li>
+      <li>How games show it: Blox Fruits, a padlock "in the lower right" that cycles three modes; Project Slayers, a lock icon under the dash button. <a href="https://fruityblox.com/blog/how-to-shift-lock-in-blox-fruits-on-pc-consoles-mobile">fruityblox.com</a>, <a href="https://ofzenandcomputing.com/enable-shift-lock-on-roblox-mobile/">ofzenandcomputing.com</a></li>
+    </ul>
+  </section>
+
+  <section class="box">
+    <h2>For Kepu to decide</h2>
+    <ol class="q">
+      <li>Direction: A, B or C (pick shown: C).</li>
+      <li>"Regular player camera": Classic (no auto-turn, shown here) or Roblox Follow (turns behind you as you walk)?</li>
+      <li>Phone default: Shift Lock (pick) or Classic? PC default: keep Shoulder?</li>
+      <li>One saved choice for all devices, or one for phone and one for PC?</li>
+      <li>Shift Lock exactly centred (dino under the crosshair, as here) or Roblox's small right offset?</li>
+      <li>In Classic, should camera-aimed parts follow the dino's facing (proposed) or the camera?</li>
+    </ol>
+  </section>
+</main>
