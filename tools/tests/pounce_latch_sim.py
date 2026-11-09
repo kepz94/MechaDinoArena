@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""pounce_latch_sim v1.0 (Mecha Dino Arena) — MDA-357 latch check, a faithful Python port of the PounceServer 1.16 latch loop
+"""pounce_latch_sim v1.1 (Mecha Dino Arena) — MDA-357 latch check, a faithful Python port of the PounceServer 1.16 latch loop
 and the StaminaServer 1.6 curve it reads (plan docs/plans/BALANCE_PASS_v1.0.md; no Lua / Luau runner in the repo).
 
 What is ported (file:line as of balance/pass1):
@@ -14,6 +14,10 @@ What is ported (file:line as of balance/pass1):
     release "time"; else (v1.16) cap reached between ticks -> "time".
 Scenarios: base / Blade Claws max (BladeLandBonus 0.35, BladeTickMul 0.74), early / late claim, 30 Hz server, a 50 ms
 hitch right at the 2.5 s tick, the cap switch off, and the live 1.13 numbers (drain 15, tick 4, no cap) for the before row.
+v1.1 (MDA-357, Kepu 2026-11-09 raptor bots "Yes, same as players"): BOT_SCENARIOS port the BotServer 1.28 latch step (no
+stamina; the Heartbeat order: end check unless a tick is due at the end (1.28) -> tick -> 1.28 end after that tick) and the
+1.27 order (end checked before the tick, BotLatchTime 6.7, tick 4) for the before row; Teno Stomp cut (endAt -= amount /
+PounceLatchDrain) included.
 Run: python3 tools/tests/pounce_latch_sim.py      (prints one line per scenario; exit 1 and "FAIL" if an expectation misses)
 """
 import sys
@@ -83,6 +87,45 @@ def simulate(drain, tick_dmg, cap, land=8, interval=0.5, blade_land=0.0, blade_m
             "stamina_left": round(stamina(end), 1)}
 
 
+def simulate_bot(end_time, tick_dmg, balance=True, land=8, interval=0.5, latch_at=0.0, fps=60.0, hitch_at=None, hitch_len=0.0,
+                 stomp_at=None, stomp_amount=0.0, drain=32.0):
+    """BotServer 1.28 / 1.27 latch step (Heartbeat), from latchOn at latch_at."""
+    dt = 1.0 / fps
+    frames, t = [], latch_at
+    while t < latch_at + 12:
+        t += dt
+        if hitch_at is not None and t > hitch_at and t - dt <= hitch_at:
+            t += hitch_len
+        frames.append(t)
+    next_tick, end_at, ticks, dmg = latch_at + interval, latch_at + end_time, 0, land
+    stomp_seen = False
+    for now in frames:
+        if stomp_at is not None and not stomp_seen and now >= stomp_at:  # v1.23 drain branch (one frame, no tick)
+            stomp_seen = True
+            end_at -= max(0.0, stomp_amount) / max(1.0, drain)
+            continue
+        if now >= end_at and not (balance and next_tick <= end_at + 1e-3):
+            return {"ticks": ticks, "damage": dmg, "length": round(now - latch_at, 3)}
+        if now >= next_tick:
+            next_tick += interval
+            ticks += 1
+            dmg += tick_dmg
+        if balance and now >= end_at and next_tick > end_at + 1e-3:
+            return {"ticks": ticks, "damage": dmg, "length": round(now - latch_at, 3)}
+    return {"ticks": ticks, "damage": dmg, "length": None}
+
+
+BOT_NEW = dict(end_time=2.5, tick_dmg=5)
+BOT_SCENARIOS = [
+    ("bot 1.28: 2.5 s, 5 per tick, 60 Hz", dict(BOT_NEW), 5, 33),
+    ("bot 1.28: 30 Hz", dict(BOT_NEW, fps=30), 5, 33),
+    ("bot 1.28: latch mid-frame (0.007 s)", dict(BOT_NEW, latch_at=0.007), 5, 33),
+    ("bot 1.28: 50 ms hitch at the 2.5 s tick", dict(BOT_NEW, hitch_at=2.49, hitch_len=0.05), 5, 33),
+    ("bot 1.28: Teno Stomp star (50 / 32 = 1.56 s cut) at 0.2 s", dict(BOT_NEW, stomp_at=0.2, stomp_amount=50), 1, 13),
+    ("bot 1.27 (before / switch off): 6.7 s, 4 per tick, end first", dict(end_time=6.7, tick_dmg=4, balance=False), 13, 60),
+]
+
+
 # RaptorModelData 1.14 (MDA-357) and 1.13 (live)
 NEW = dict(drain=32, tick_dmg=5, cap=2.5)
 OLD = dict(drain=15, tick_dmg=4, cap=None)
@@ -117,7 +160,14 @@ def main():
         fails += 0 if ok else 1
         print(("PASS" if ok else "FAIL") + f"  {name}: ticks {r['ticks']} (want {want_ticks}), damage {r['damage']} (want {want_dmg}),"
               f" length {r['length']} s, release {r['reason']} (want {want_reason}), stamina left {r['stamina_left']}")
-    print(f"{'FAIL' if fails else 'PASS'} {len(SCENARIOS) - fails}/{len(SCENARIOS)}")
+    for name, kw, want_ticks, want_dmg in BOT_SCENARIOS:  # v1.1
+        r = simulate_bot(**kw)
+        ok = r["ticks"] == want_ticks and r["damage"] == want_dmg
+        fails += 0 if ok else 1
+        print(("PASS" if ok else "FAIL") + f"  {name}: ticks {r['ticks']} (want {want_ticks}), damage {r['damage']} (want {want_dmg}),"
+              f" length {r['length']} s")
+    n = len(SCENARIOS) + len(BOT_SCENARIOS)
+    print(f"{'FAIL' if fails else 'PASS'} {n - fails}/{n}")
     return 1 if fails else 0
 
 

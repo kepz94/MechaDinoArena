@@ -1,4 +1,4 @@
--- BotServer v1.27 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
+-- BotServer v1.28 (Dino Arcade) — TEST bot dinosaurs on the island (Workspace.DinoIsland, tools/island_install.luau).
 -- Bots: one per marker in DinoIsland.BotSpawns (attribute Species: 3 x "Raptor", 1 x "TRex"), parented to
 --   DinoIsland.Bots as "Bot_<Species>_<n>".
 --   Raptor = DinoModelBuilder build of ServerStorage.DinoArcade.Models.RaptorModelData (as SpeciesServer 1.0 does);
@@ -388,6 +388,14 @@
 --   catch time) is in the future; then the latch ends with reason "grabbed" and the bot stays anchored where it clung (no
 --   leap-off velocity; BotState "grabbed") for the teno's clamp. Script attribute BotLatchGrabHoldEnabled (default true,
 --   read at each step / release; false = 1.25: leap off at once). Diagnostic: script BotGrabPlucks.
+-- v1.28 (MDA-357, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 raptor bots "Yes, same as players"): the bot latch
+--   matches the player latch (PounceServer 1.16 + RaptorModelData 1.14): it lasts BotLatchMaxTime (2.5) s and bites
+--   BotLatchTickDamage (5) every BotLatchTickInterval (0.5) s after the BotLatchLandDamage (8) landing bite = 8 + 5 x 5 = 33 on a
+--   target without Defense. The tick due at the end time lands first, then the latch ends ("tired"), so the 2.5 s tick counts
+--   (as PounceServer 1.16's cap; 1.27 checked the end before the tick). The Teno Stomp cut (v1.23) still divides by the bot
+--   model's PounceLatchDrain (32 in RaptorModelData 1.14). Switch: script attribute BotLatchBalanceEnabled (default true, read
+--   at each latch; false = 1.27: BotLatchTime 6.7 s, land 8, 4 every 0.5 s, end checked first). Numbers are script attributes
+--   (defaults above, read at each latch). Diagnostic: bot BotLatchTicks (tick hits in the current / last latch).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
@@ -397,6 +405,7 @@ local VERSION = "1.24"
 VERSION = "1.25" -- v1.25 grab hold, get-up refresh, ownership guard
 VERSION = "1.26" -- v1.26 grabbed latch: ride to the pluck, no leap-off
 VERSION = "1.27" -- v1.27 Sap Wall stops bot bites / headbutts through it
+VERSION = "1.28" -- v1.28 bot latch 2.5 s, 5 per tick (MDA-357)
 -- v1.27 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute BotServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   BotServerSapWallBlocks (count), BotServerSapWallBlockedAt (server time).
@@ -434,6 +443,11 @@ local LATCH_STANDOFF = 2.4    -- v1.2
 local DIP_MAX, DIP_STEP = 60, 5 -- v1.2
 DEFAULTS.BotPounceCooldown = 6 -- v1.2
 DEFAULTS.BotLatchTime = 6.7    -- v1.2
+DEFAULTS.BotLatchBalanceEnabled = true -- v1.28 (MDA-357)
+DEFAULTS.BotLatchMaxTime = 2.5         -- v1.28
+DEFAULTS.BotLatchLandDamage = 8        -- v1.28 (= 1.27's hard-coded 8)
+DEFAULTS.BotLatchTickDamage = 5        -- v1.28 (1.27: 4)
+DEFAULTS.BotLatchTickInterval = 0.5    -- v1.28 (= 1.27's hard-coded 0.5)
 local BOT_RAM = {windup = 0.4, range = 60, cooldown = 6, speedMul = 1.15, maxCharge = 3.5, reach = 1.5,
 	recoil = 0.45, push = 12} -- v1.3 (= RamPose 1.0 / RamTest 1.0)
 local TOSS_TIME, TOSS_HEIGHT, TOSS_LIMIT, TOSS_FRESH = 0.6, 6, 230, 1 -- v1.3 (= StunClient 1.1)
@@ -2475,6 +2489,13 @@ local function latchOn(b, part, front, dir)
 	b.pounce = nil
 	b.latch = {part = part, offset = part.CFrame:ToObjectSpace(cf), char = char, at = now, nextTick = now + 0.5,
 		endAt = now + get("BotLatchTime")}
+	if get("BotLatchBalanceEnabled") ~= false then -- v1.28: the player latch's numbers (MDA-357)
+		local iv = math.max(0.05, tonumber(get("BotLatchTickInterval")) or 0.5)
+		b.latch.bal = {interval = iv, tick = math.max(0, tonumber(get("BotLatchTickDamage")) or 5)}
+		b.latch.nextTick = now + iv
+		b.latch.endAt = now + math.max(0, tonumber(get("BotLatchMaxTime")) or 2.5)
+	end
+	b.model:SetAttribute("BotLatchTicks", 0) -- v1.28
 	local model = b.model
 	model.PounceLatchPart.Value = part
 	model:SetAttribute("PounceMode", "latch")
@@ -2491,7 +2512,8 @@ local function latchOn(b, part, front, dir)
 	end
 	show(b, "BotLatchNoCollide", #b.noCollide)
 	local hum = char:FindFirstChildOfClass("Humanoid")
-	local dmg = hum and hitDamage(b, char, hum, 8, "pounce") or 8 -- v1.6: growth cap; v1.17: kind
+	local land = b.latch.bal and math.max(0, tonumber(get("BotLatchLandDamage")) or 8) or 8 -- v1.28
+	local dmg = hum and hitDamage(b, char, hum, land, "pounce") or land -- v1.6: growth cap; v1.17: kind
 	if hum then hum:TakeDamage(dmg) end
 	model:SetAttribute("PounceHitDamage", dmg)
 	model:SetAttribute("PounceBiteAt", now)
@@ -2728,20 +2750,22 @@ RunService.Heartbeat:Connect(function(dt)
 					l.drainSeen = model:GetAttribute("StaminaDrainAt")
 					l.endAt -= math.max(0, tonumber(model:GetAttribute("StaminaDrainAmount")) or 0) / math.max(1, tonumber(model:GetAttribute("PounceLatchDrain")) or 15)
 					show(b, "BotLatchDrains", (model:GetAttribute("BotLatchDrains") or 0) + 1)
-				elseif now >= l.endAt then
+				elseif now >= l.endAt and not (l.bal and l.nextTick <= l.endAt + 1e-3) then -- v1.28: a tick due at the end lands first
 					endLatch(b, "tired")
 				else
 					hrp.CFrame = l.part.CFrame * l.offset
 					if now >= l.nextTick then
-						l.nextTick += 0.5
-						local dmg = hitDamage(b, char, thum, 4, "pounce") -- v1.6: growth cap; v1.17: kind
+						l.nextTick += l.bal and l.bal.interval or 0.5 -- v1.28
+						local dmg = hitDamage(b, char, thum, l.bal and l.bal.tick or 4, "pounce") -- v1.6: growth cap; v1.17: kind; v1.28
 						thum:TakeDamage(dmg)
 						model:SetAttribute("PounceHitDamage", dmg)
 						model:SetAttribute("PounceBiteAt", now)
+						model:SetAttribute("BotLatchTicks", (model:GetAttribute("BotLatchTicks") or 0) + 1) -- v1.28
 						char:SetAttribute("LastHitBy", model.Name)
 						char:SetAttribute("LastHitDamage", dmg)
 						char:SetAttribute("LastHitAt", now)
 					end
+					if l.bal and now >= l.endAt and l.nextTick > l.endAt + 1e-3 and b.latch == l then endLatch(b, "tired") end -- v1.28
 				end
 			end
 		end)

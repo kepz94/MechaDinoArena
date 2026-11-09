@@ -1,9 +1,12 @@
--- BalancePass1.spec v1.0 (Mecha Dino Arena) — balance pass 1 (plan docs/plans/BALANCE_PASS_v1.0.md, MDA-357 .. MDA-364) in
+-- BalancePass1.spec v1.1 (Mecha Dino Arena) — balance pass 1 (plan docs/plans/BALANCE_PASS_v1.0.md, MDA-357 .. MDA-364) in
 -- Studio: the installed model data against the plan table, and SkillTree 1.73's BALANCE_PASS1 block against a clone with the
 -- switch off (only the listed fields / texts may differ). Run in Studio Edit (paste into execute_luau, or a copy in
 -- ServerStorage.DinoArcadeTools.BalancePass1_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
 -- The offline twin is tools/tests/balance_pass1_check.py (repo files, generators, latch simulation); this one reads what is
 -- installed in ServerStorage.DinoArcade, so it is red until the pass is installed.
+-- v1.1 (Kepu 2026-11-09 answers): DiloModelData 1.5 (Cobra Leap plain: JumpCharges 0), walk x the run ratio (TenoModelData 1.6
+--   38, TherizinoModelData 1.7 42.5, TRexModelData 2.2 + the StarterCharacter 39.5), BotServer 1.28 latch defaults (script
+--   attributes unset or equal), SkillEffects 1.49 (no dilo leap keep).
 local DA = game.ServerStorage.DinoArcade
 local function load(off)
 	local src = DA.SkillTree
@@ -35,13 +38,13 @@ local PLAN = {
 	HerreraModelData = {HerreraModelVersion = "1.5", SlashDamage = 15, SlashCharges = 3, SlashRefill = 2.5, SlashBleedDps = 4},
 	TroodonModelData = {TroodonModelVersion = "1.6", TrooPodDamage = 12, TrooZoneDps = 6, TrooPodCharges = 3, TrooPodRefill = 2,
 		JumpCooldown = 0.25},
-	DiloModelData = {DiloModelVersion = "1.4", DiloBiteDamage = 15, DiloDartDamage = 10, DiloVenomDps = 4, MoveRunSpeed = 78,
-		MoveWalkSpeed = 42.5, JumpCharges = 2, JumpCooldown = 0.25, DiloHoldTime = 0.25, DiloDartCooldown = 0.75},
-	TenoModelData = {TenoModelVersion = "1.5", TenoScratchDamage = 12, TenoSlamDamage = 25, MoveRunSpeed = 66, JumpLaunchPower = 64,
+	DiloModelData = {DiloModelVersion = "1.5", DiloBiteDamage = 15, DiloDartDamage = 10, DiloVenomDps = 4, MoveRunSpeed = 78,
+		MoveWalkSpeed = 42.5, JumpCharges = 0, JumpCooldown = 0.25, DiloHoldTime = 0.25, DiloDartCooldown = 0.75},
+	TenoModelData = {TenoModelVersion = "1.6", MoveWalkSpeed = 38, TenoScratchDamage = 12, TenoSlamDamage = 25, MoveRunSpeed = 66, JumpLaunchPower = 64,
 		JumpCooldown = 0.25},
-	TherizinoModelData = {TherizinoModelVersion = "1.6", TheriHitDamage1 = 11, TheriHitDamage2 = 11, TheriHitDamage3 = 24,
+	TherizinoModelData = {TherizinoModelVersion = "1.7", MoveWalkSpeed = 42.5, TheriHitDamage1 = 11, TheriHitDamage2 = 11, TheriHitDamage3 = 24,
 		JumpCharges = 3, JumpCooldown = 3, MoveRunSpeed = 78},
-	TRexModelData = {TRexModelVersion = "2.1", BiteDamage = 30, MoveRunSpeed = 74},
+	TRexModelData = {TRexModelVersion = "2.2", BiteDamage = 30, MoveRunSpeed = 74, MoveWalkSpeed = 39.5},
 	RaptorModelData = {RaptorModelVersion = "1.14", PounceTickDamage = 5, PounceLatchDrain = 32, PounceLatchMaxTime = 2.5,
 		PounceLandDamage = 8, PounceTickInterval = 0.5, JumpCooldown = 0.25},
 	PachyModelData = {PachyModelVersion = "1.6", JumpCooldown = 0.25},
@@ -56,6 +59,24 @@ end
 local sc = game:GetService("StarterPlayer"):FindFirstChild("StarterCharacter")
 eq("StarterCharacter BiteDamage (live T-Rex)", sc and sc:GetAttribute("BiteDamage"), 30)
 eq("StarterCharacter MoveRunSpeed (live T-Rex)", sc and sc:GetAttribute("MoveRunSpeed"), 74)
+eq("StarterCharacter MoveWalkSpeed (live T-Rex)", sc and sc:GetAttribute("MoveWalkSpeed"), 39.5) -- v1.1
+-- v1.1: scripts
+local SSS = game:GetService("ServerScriptService")
+local bs = SSS:FindFirstChild("BotServer")
+eq("BotServer 1.28", bs and bs.Source:find('VERSION = "1.28"', 1, true) ~= nil, true)
+for k, v in pairs({BotLatchBalanceEnabled = true, BotLatchMaxTime = 2.5, BotLatchLandDamage = 8, BotLatchTickDamage = 5,
+	BotLatchTickInterval = 0.5}) do
+	local a = bs and bs:GetAttribute(k)
+	eq("BotServer " .. k .. " (unset or default)", a == nil or a == v, true)
+	eq("BotServer DEFAULTS." .. k, bs and bs.Source:find(("DEFAULTS.%s = %s "):format(k, tostring(v)), 1, true) ~= nil, true)
+end
+local se = SSS:FindFirstChild("SkillEffects")
+eq("SkillEffects 1.49, no dilo leap keep", se and (se.Source:find('VERSION = "1.49"', 1, true) ~= nil
+	and se.Source:find("SkillEffectsDiloLeapKeepEnabled", 1, true) == nil), true)
+local ps = SSS:FindFirstChild("PounceServer")
+eq("PounceServer 1.16", ps and ps.Source:find('"PounceServerVersion", "1.16"', 1, true) ~= nil, true)
+local tj = SSS:FindFirstChild("TRexJump")
+eq("TRexJump 1.1", tj and tj.Source:find('local VERSION = "1.1"', 1, true) ~= nil, true)
 
 -- 2. SkillTree 1.73: effects
 eq("switch on", ST.BALANCE_PASS1, true); eq("switch off clone", OFF.BALANCE_PASS1, false)

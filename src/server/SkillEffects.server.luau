@@ -1,4 +1,4 @@
--- SkillEffects v1.50 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.49 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -340,11 +340,6 @@ VERSION = "1.46" -- v1.46 troodon keeps its own hop values
 VERSION = "1.47" -- v1.47 troodon keeps its flap / glide values
 VERSION = "1.48" -- v1.48 troodon button parts (OPARTS)
 VERSION = "1.49" -- v1.49 Sap Wall: no hit bleed / crush through it
-VERSION = "1.50" -- v1.50 dilo keeps its Cobra Leap charges
--- v1.50 (MDA-360, plan docs/plans/BALANCE_PASS_v1.0.md; DiloModelData 1.4 Cobra Leap JumpCharges 2): the 1.37 leap writer also
---   leaves a character with Species "Dilo" alone, like the therizino (1.38) and the troodon (1.46): DiloModelData carries
---   TenoLeapOnJump false, so without this every refresh wrote JumpCharges 0 (the 1.3 data had 0 anyway). Switch: script
---   attribute SkillEffectsDiloLeapKeepEnabled (default true, read at each write; false = 1.49).
 -- v1.49 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute SkillEffectsSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   SkillEffectsSapWallBlocks (count), SkillEffectsSapWallBlockedAt (server time).
@@ -819,7 +814,6 @@ do
 		if script:GetAttribute("SkillEffectsTenoLeapJumpEnabled") == false then return end
 		if char:GetAttribute("Species") == "Therizino" and script:GetAttribute("SkillEffectsTheriLeapKeepEnabled") ~= false then return end -- v1.38
 		if char:GetAttribute("Species") == "Troodon" and script:GetAttribute("SkillEffectsTrooLeapKeepEnabled") ~= false then return end -- v1.46
-		if char:GetAttribute("Species") == "Dilo" and script:GetAttribute("SkillEffectsDiloLeapKeepEnabled") ~= false then return end -- v1.50
 		local isTeno = char:GetAttribute("Species") == "Teno"
 		if not isTeno and char:GetAttribute("TenoLeapOnJump") == nil then return end
 		local e = st.e

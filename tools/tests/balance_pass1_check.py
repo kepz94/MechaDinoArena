@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""balance_pass1_check v1.0 (Mecha Dino Arena) — offline spec for balance pass 1 (plan docs/plans/BALANCE_PASS_v1.0.md,
+"""balance_pass1_check v1.1 (Mecha Dino Arena) — offline spec for balance pass 1 (plan docs/plans/BALANCE_PASS_v1.0.md,
 MDA-357 .. MDA-364). Needs only python3; touches nothing in the repo (generators run in a temporary copy).
 Checks:
   1. every new model number against the plan table (PLAN below), read from src/shared/Models/*ModelData.luau;
@@ -10,6 +10,10 @@ Checks:
      main 34bee59, recorded in OLD);
   4. the latch simulation (tools/tests/pounce_latch_sim.py) passes;
   5. script numbers: TRexJump 1.1 default 0.25, PounceServer 1.16 cap switch, SkillEffects 1.50 dilo keep, SkillTree 1.73 block.
+v1.1 (Kepu 2026-11-09 answers on MDA-357 / 360 / 361 / 362 / 363): Dilo Cobra Leap "Plain 0.25 s" (DiloModelData 1.5: JumpCharges
+  0; SkillEffects stays 1.49, the 1.50 dilo leap keep is withdrawn), walk x the run ratio (TenoModelData 1.6 walk 38,
+  TherizinoModelData 1.7 42.5, TRexModelData 2.2 39.5), raptor BOTS latch like players (BotServer 1.28). GENS_MID: the
+  code-phase versions (52621b2) rebuild byte-identical with the new flags (--v14 dilo, --v15 teno, --v16 therizino, --v21 trex).
 Run: python3 tools/tests/balance_pass1_check.py      -> "PASS n" (exit 0) or the failures and "FAIL n/m" (exit 1)
 """
 import os, re, shutil, subprocess, sys, tempfile
@@ -25,7 +29,7 @@ PLAN = [
     ("TroodonModelData", "TrooPodCharges", 2, 3), ("TroodonModelData", "TrooPodRefill", 3, 2),
     ("DiloModelData", "DiloBiteDamage", 10, 15), ("DiloModelData", "DiloDartDamage", 6, 10),
     ("DiloModelData", "DiloVenomDps", 2, 4), ("DiloModelData", "MoveRunSpeed", 66, 78),
-    ("DiloModelData", "JumpCharges", 0, 2), ("DiloModelData", "DiloHoldTime", 0.4, 0.25),
+    ("DiloModelData", "JumpCharges", 0, 0),  # v1.1: "Plain 0.25 s" (1.4 had 2) ("DiloModelData", "DiloHoldTime", 0.4, 0.25),
     ("DiloModelData", "DiloDartCooldown", 1.5, 0.75),
     ("TenoModelData", "TenoScratchDamage", 8, 12), ("TenoModelData", "TenoSlamDamage", 15, 25),
     ("TenoModelData", "MoveRunSpeed", 52, 66), ("TenoModelData", "JumpLaunchPower", 54, 64),
@@ -40,20 +44,29 @@ PLAN = [
     ("RaptorModelData", "JumpCooldown", 0.5, 0.25), ("PachyModelData", "JumpCooldown", 0.5, 0.25),
     ("DiloModelData", "JumpCooldown", 0.5, 0.25), ("TroodonModelData", "JumpCooldown", 0.5, 0.25),
     ("TenoModelData", "JumpCooldown", 1, 0.25),
+    # v1.1: walk x the run ratio, rounded to 0.5 (Kepu 2026-11-09 "Yes, same proportion")
+    ("TenoModelData", "MoveWalkSpeed", 30, 38), ("TherizinoModelData", "MoveWalkSpeed", 36, 42.5),
+    ("TRexModelData", "MoveWalkSpeed", 32, 39.5), ("DiloModelData", "MoveWalkSpeed", 36, 42.5),
 ]
 VERSIONS = {"RaptorModelData": ("RaptorModelVersion", "1.14"), "PachyModelData": ("PachyModelVersion", "1.6"),
-            "HerreraModelData": ("HerreraModelVersion", "1.5"), "TenoModelData": ("TenoModelVersion", "1.5"),
-            "TherizinoModelData": ("TherizinoModelVersion", "1.6"), "DiloModelData": ("DiloModelVersion", "1.4"),
-            "TroodonModelData": ("TroodonModelVersion", "1.6"), "TRexModelData": ("TRexModelVersion", "2.1")}
+            "HerreraModelData": ("HerreraModelVersion", "1.5"), "TenoModelData": ("TenoModelVersion", "1.6"),
+            "TherizinoModelData": ("TherizinoModelVersion", "1.7"), "DiloModelData": ("DiloModelVersion", "1.5"),
+            "TroodonModelData": ("TroodonModelVersion", "1.6"), "TRexModelData": ("TRexModelVersion", "2.2")}
 SAME = [  # unchanged on purpose
-    ("DiloModelData", "MoveWalkSpeed", 42.5),  # the ticket: walk x the run ratio (36 x 78 / 66 = 42.5)
-    ("TenoModelData", "MoveWalkSpeed", 30), ("TherizinoModelData", "MoveWalkSpeed", 36), ("TRexModelData", "MoveWalkSpeed", 32),
+    ("DiloModelData", "JumpCooldown", 0.25),  # v1.1: plain leap
     ("TroodonModelData", "TrooZoneHeal", 5), ("TroodonModelData", "TrooSelfHeal", 2), ("TroodonModelData", "JumpCharges", 0),
     ("HerreraModelData", "JumpEnabled", False), ("HerreraModelData", "SlashBleedTime", 4),
     ("RaptorModelData", "PounceLandDamage", 8), ("RaptorModelData", "PounceTickInterval", 0.5),
     ("RaptorModelData", "PounceStaminaCost", 15), ("RaptorModelData", "BiteDamage", 8),
     ("PachyModelData", "BiteDamage", 25), ("HerreraModelData", "BiteDamage", 25), ("TenoModelData", "BiteDamage", 25),
     ("DiloModelData", "BiteDamage", 25), ("TroodonModelData", "BiteDamage", 25), ("TherizinoModelData", "BiteDamage", 25),
+]
+# v1.1: generator, output, flag, code-phase (52621b2) size / hash
+GENS_MID = [
+    ("dilo_generator.py", "DiloModelData", "--v14", 38535, 346861290),
+    ("teno_generator.py", "TenoModelData", "--v15", 28924, 398504457),
+    ("therizino_generator.py", "TherizinoModelData", "--v16", 42159, 144559858),
+    ("trex_generator.py", "TRexModelData", "--v21", 27945, 729223109),
 ]
 # generator, default output, old flag, old size / hash (main 34bee59)
 GENS = [
@@ -136,6 +149,14 @@ def main():
             eq(f"{gen} {old_flag} = main {model} ({old_size}/{old_hash})", (len(old), h(old)), (old_size, old_hash))
             # put the new file back for the generators that read it (therizino) or the T-Rex (read by the others)
             open(out, "wb").write(repo)
+        for gen, model, flag, size, hsh in GENS_MID:  # v1.1
+            out = os.path.join(tmp, "src", "shared", "Models", model + ".luau")
+            repo = open(os.path.join(MODELS, model + ".luau"), "rb").read()
+            r = subprocess.run([sys.executable, os.path.join(tmp, "tools", gen), flag], capture_output=True, text=True)
+            eq(f"{gen} {flag} run ok", r.returncode, 0)
+            mid = open(out, "rb").read()
+            eq(f"{gen} {flag} = code phase {model} ({size}/{hsh})", (len(mid), h(mid)), (size, hsh))
+            open(out, "wb").write(repo)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     # 4. latch simulation
@@ -151,7 +172,12 @@ def main():
     eq("PounceServer 1.16", 'SetAttribute("PounceServerVersion", "1.16")' in ps, True)
     eq("PounceServer cap switch", 'SetAttribute("PounceLatchMaxTimeEnabled", true)' in ps, True)
     se = src("src/server/SkillEffects.server.luau")
-    eq("SkillEffects 1.50 dilo leap keep", 'Species") == "Dilo" and script:GetAttribute("SkillEffectsDiloLeapKeepEnabled") ~= false then return end' in se, True)
+    eq("SkillEffects 1.49 (1.50 dilo leap keep withdrawn: JumpCharges 0)", ("VERSION = \"1.49\"" in se, "SkillEffectsDiloLeapKeepEnabled" in se), (True, False))
+    bs = src("src/server/BotServer.server.luau")  # v1.1: raptor bots latch like players
+    eq("BotServer 1.28", 'VERSION = "1.28"' in bs, True)
+    for k, v in (("BotLatchBalanceEnabled", "true"), ("BotLatchMaxTime", "2.5"), ("BotLatchLandDamage", "8"),
+                 ("BotLatchTickDamage", "5"), ("BotLatchTickInterval", "0.5")):
+        eq(f"BotServer DEFAULTS.{k} = {v}", f"DEFAULTS.{k} = {v} " in bs, True)
     st = src("src/shared/SkillTree.luau")
     eq("SkillTree 1.73 switch", "SkillTree.BALANCE_PASS1 = true" in st, True)
     for k, v in (("herreraBleed", "{2, 4}"), ("theriHit2", "{9, 11}"), ("theriHit3", "{20, 24}"), ("diloHold", "{0.4, 0.25}"),
