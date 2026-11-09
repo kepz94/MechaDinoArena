@@ -35,3 +35,8 @@
 3. Classic aim rules in MechaButtons (crosshair-point flat-look rule) behind a switch. Wired.
 4. HUD camera button (ArenaTouch / ArenaStatus) + MENU card CAMERA row + main-menu SETTINGS card (MainMenu), mockup layout; PC + phone together. Wired.
 5. Docs + Studio check (every dino's parts in all three modes, PC + forced touch).
+
+## Built (2026-11-09)
+- CameraSettings 1.0 (server), CameraModes 1.0 (client: mode state + all UI), ShoulderCam 1.9, MechaButtons 1.40.
+- Delta from the plan: Roblox's camera movement mode Classic is set on the server (a client may not set DevTouchCameraMode); ShoulderCam claims the camera (subject + Custom) every Classic frame because the menu swaps the dino model without moving the camera subject.
+- The MENU card section and the SETTINGS pill are added by CameraModes into ArenaStatus's LeaveConfirm card and MainMenu's GUI (no edits to those scripts).

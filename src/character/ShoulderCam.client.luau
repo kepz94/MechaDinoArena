@@ -1,4 +1,4 @@
--- ShoulderCam v1.8 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
+-- ShoulderCam v1.9 (Dino Arcade) — over-the-shoulder aiming camera for the player's own dino (owner's client only).
 -- The camera is Scriptable and placed every frame (RenderStep, Camera priority, after TurnLimit / PounceTest):
 --   focus  = HumanoidRootPart position + ShoulderCamFocusHeight up (only the HRP position is used, so the view stays
 --            steady while the body tilts, e.g. latched on a pounce target)
@@ -71,6 +71,23 @@
 --   to false (the view stays behind the teno while the tail is lifted and on the slam; TurnLimitAimLook is never set, so
 --   TenoAttackTest's aim nudge is off and the slam aims as before 1.7). The 1.7 code is kept: set the script attribute to
 --   true to bring the flip back.
+-- v1.9 (MDA-369, plan docs/plans/CAMERA_MODES_v1.0.md ticket 2; Kepu 2026-11-08 "My players want options to have the regular
+--   player camera & a shift lock option"; 2026-11-09 picked C "Both", phone start Classic): camera modes. The character
+--   attribute CameraMode (set on this client by CameraModes 1.0 from the saved choice) picks the framing, read every frame:
+--   * "classic": as ShoulderCamEnabled = false (Roblox's Custom camera, mouse free, no dot, TurnLimitMode "move"); the
+--     ShoulderCamEnabled attribute itself is not touched (MechaButtons' tether aim still saves / restores it).
+--   * "shift": Shift Lock, centred behind: the side slides to 0 (Q / R3 swap ignored) and the height to
+--     ShoulderCamShiftHeight (character attribute, default 0.6 x the model top; Shoulder uses 0.35) so the dino sits under
+--     the dot; TurnLimitMode "aim" and every aim path as Shoulder.
+--   * "shoulder" or nil / anything else: 1.8 unchanged.
+--   Switching at runtime: classic -> shift / shoulder takes the camera back from Roblox facing the dino's facing; shift <->
+--   shoulder slides over ShoulderCamSwapTime. Switch: script attribute ShoulderCamModesEnabled (default true, read every
+--   frame; false = 1.8, CameraMode ignored). Diagnostics: character ShoulderCamMode ("classic" / "shift" / "shoulder"),
+--   ShoulderCamVersion "1.9"; ShoulderCamState "off" in Classic.
+--   Classic claim: every Classic frame (not while TetherAiming, not dead) the camera's CameraSubject is set to this dino's
+--   Humanoid and CameraType to Custom, and TurnLimitMode "aim" goes back to "move" (the dino model is swapped by the
+--   menu / species flow without the engine moving the subject, so Roblox's camera stayed on the old model). Switch: script
+--   attribute ShoulderCamClassicClaim (default true, read every frame; false = no claim).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -115,7 +132,7 @@ local boxCf, boxSize = char:GetBoundingBox()
 local top = math.max(1, boxCf.Position.Y + boxSize.Y / 2 - hrp.Position.Y)
 local width = char:GetExtentsSize().X
 local spawnScale, spawnTop, spawnWidth, framedScale = char:GetScale(), top, width, char:GetScale() -- v1.1
-char:SetAttribute("ShoulderCamVersion", "1.8")
+char:SetAttribute("ShoulderCamVersion", "1.9") -- v1.9 (was 1.8)
 local function framing()
 	local sc = char:GetScale() -- v1.1: growth re-fit
 	if math.abs(sc - framedScale) > 1e-4 then
@@ -226,8 +243,16 @@ UserInputService.TouchPinch:Connect(function(_, scale, _, state, processed)
 	if state == Enum.UserInputState.End then pinchStartZoom = nil end
 end)
 
+if script:GetAttribute("ShoulderCamModesEnabled") == nil then script:SetAttribute("ShoulderCamModesEnabled", true) end -- v1.9
+local function camMode() -- v1.9: "classic" / "shift" / "shoulder"
+	if script:GetAttribute("ShoulderCamModesEnabled") == false then return "shoulder" end
+	local m = char:GetAttribute("CameraMode")
+	if m == "classic" or m == "shift" then return m end
+	return "shoulder"
+end
+local shiftNow = 0 -- v1.9: 0 = shoulder framing, 1 = shift lock framing (slides)
 local function onSwap(_, inputState)
-	if inputState == Enum.UserInputState.Begin then
+	if inputState == Enum.UserInputState.Begin and camMode() ~= "shift" then -- v1.9: no swap in Shift Lock
 		sideTarget = -sideTarget
 		show("ShoulderSide", sideTarget > 0 and "right" or "left")
 	end
@@ -281,9 +306,18 @@ local function release()
 end
 
 local function step(dt)
-	if not get("ShoulderCamEnabled") or hum.Health <= 0 then
+	local mode = camMode() -- v1.9
+	show("ShoulderCamMode", mode)
+	if not get("ShoulderCamEnabled") or hum.Health <= 0 or mode == "classic" then -- v1.9: + Classic
 		if flipLook then flipLook, flipU = nil, 0; char:SetAttribute("TurnLimitAimLook", nil) end -- v1.7
 		release()
+		if mode == "classic" and hum.Health > 0 and char:GetAttribute("TetherAiming") ~= true
+			and script:GetAttribute("ShoulderCamClassicClaim") ~= false then -- v1.9: Roblox's camera on this dino
+			if cam ~= workspace.CurrentCamera then cam = workspace.CurrentCamera end
+			if cam.CameraSubject ~= hum then cam.CameraSubject = hum end
+			if cam.CameraType ~= Enum.CameraType.Custom then cam.CameraType = Enum.CameraType.Custom end
+			if char:GetAttribute("TurnLimitMode") == "aim" then char:SetAttribute("TurnLimitMode", "move") end
+		end
 		show("ShoulderCamState", "off")
 		return
 	end
@@ -291,6 +325,7 @@ local function step(dt)
 		active = true
 		yaw = lookYaw(hrp.CFrame.LookVector)
 		char:SetAttribute("TurnLimitMode", "aim")
+		if mode == "shift" then shiftNow, sideNow = 1, 0 end -- v1.9: start framed (no slide in)
 	end
 	if cam ~= workspace.CurrentCamera then cam = workspace.CurrentCamera end
 	if cam.CameraType ~= Enum.CameraType.Scriptable then cam.CameraType = Enum.CameraType.Scriptable end
@@ -370,7 +405,10 @@ local function step(dt)
 
 	-- shoulder side slides to the target
 	local swap = math.max(0.02, get("ShoulderCamSwapTime"))
-	sideNow += (sideTarget - sideNow) * math.min(1, dt * 4 / swap)
+	local sideWant = sideTarget -- v1.9: Shift Lock = centred
+	if mode == "shift" then sideWant = 0 end
+	sideNow += (sideWant - sideNow) * math.min(1, dt * 4 / swap)
+	shiftNow += ((mode == "shift" and 1 or 0) - shiftNow) * math.min(1, dt * 4 / swap) -- v1.9
 
 	-- v1.7: teno slam flip
 	local flipS = 0
@@ -402,6 +440,10 @@ local function step(dt)
 
 	-- place the camera
 	local dist, focusH, side, height = framing()
+	if shiftNow > 1e-3 then -- v1.9: Shift Lock height
+		local shiftH = char:GetAttribute("ShoulderCamShiftHeight") or top * 0.6
+		height += (shiftH - height) * shiftNow
+	end
 	local rot = CFrame.Angles(0, yaw + math.pi * flipS, 0) * CFrame.Angles(pitch, 0, 0) -- v1.7: + the flip
 	local focus = hrp.Position + Vector3.new(0, focusH, 0)
 	local shoulder = focus + rot.RightVector * (side * sideNow) + Vector3.new(0, height, 0)

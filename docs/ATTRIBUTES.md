@@ -3160,3 +3160,20 @@ Model numbers are generator output (old version = the flag in the last column, b
 | TenoMortarAimMode | teno character | "assist" | new mode: no dino near the crosshair, snapped to the nearest enemy within 45 degrees |
 | TrooLanternFlight / TrooSapFlight / TrooLanternAssist | troodon character | 0.37 s / flight / name | Arc Lantern and sap pod flight; the enemy the lantern snapped to |
 | TheriVolleyFlight | therizino character | 0.4 s | Feather Barrage blade flight |
+
+## Camera modes (2026-11-09, plan docs/plans/CAMERA_MODES_v1.0.md)
+| Attribute | Where | Value | Meaning |
+|---|---|---|---|
+| CameraMode | character (this client, CameraModes) | "classic" / "shift" / "shoulder" | the framing ShoulderCam 1.9 uses |
+| CameraModeTouch / CameraModeMouse | player (CameraSettings) | "" / mode | saved choice per device type ("" = default: touch classic, mouse shoulder) |
+| CameraButtonOff | player (CameraSettings) | false | true = the camera button under MENU is hidden |
+| CameraTouchTest | player (test hook, this client) | nil | true = treat this device as touch (Studio phone emulator keeps MouseEnabled) |
+| CameraModeNow / CameraModeKind / CameraModeSource | player (this client) | diag | mode in use, "touch" / "mouse", "pick" / "saved" / "default" |
+| CameraModesLastPress / CameraButtonShown / CameraSettingsCard / CameraMenuCardHooks / CameraSettingsPill | player (this client) | diag | UI state |
+| ShoulderCamShiftHeight | character | 0.6 x model top | Shift Lock camera height (Shoulder 0.35) |
+| ShoulderCamMode | character | diag | mode ShoulderCam is framing |
+| MechaClassicAimPoint / MechaClassicAimCount | character | diag | the Classic crosshair-point part target |
+| ShoulderCamModesEnabled / ShoulderCamClassicClaim | ShoulderCam script | true | false = 1.8 / no Classic claim |
+| MechaClassicAimEnabled / MechaTetherCamFixEnabled | MechaButtons script | true | false = 1.39 |
+| CameraSettingsEnabled / CameraSettingsClassicMovement | CameraSettings script | true | off switches |
+| CameraModesEnabled / CameraModesButtonEnabled / CameraModesMenuCardEnabled / CameraModesSettingsEnabled | CameraModes script | true | off switches |

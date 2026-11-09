@@ -1,4 +1,4 @@
--- MechaButtons v1.39 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.40 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -276,6 +276,22 @@ VERSION = "1.36" -- v1.36 dilo parts build 2 + SILENCED
 VERSION = "1.37" -- v1.37 seconds left on cooling slot buttons
 VERSION = "1.38" -- v1.38 Spring Jets press marked locally
 VERSION = "1.39" -- v1.39 troodon button parts
+VERSION = "1.40" -- v1.40 camera modes: Classic aim point + tether camera fix
+-- v1.40 (MDA-370, plan docs/plans/CAMERA_MODES_v1.0.md ticket 3; Kepu 2026-11-09 Classic aim "Where the camera looks"):
+--   * Classic aim point: while the character attribute CameraMode is "classic" (CameraModes 1.0; ShoulderCam 1.9 gives the
+--     camera to Roblox) the screen centre is the dino, so the crosshair ray would land at its feet. The crosshair-point
+--     parts (Teno Mortar, Toxin Mortar, Arc Lantern, Sap Wall, Portal Feathers) then send the point = the first hit (world
+--     or a dino) along the camera's flat look from the HumanoidRootPart, out to the part's default reach (TenoMortarMiss,
+--     DiloPartMortarRange, TrooPartLanternRange, TrooPartSapRange, TrooPartPortalRange), else the end of that line; the
+--     servers ground it and their aim assist snaps. Direction parts keep sending the camera look (unchanged). Switch:
+--     script attribute MechaClassicAimEnabled (default true, read at each press; false = 1.39). Diagnostics: character
+--     MechaClassicAimPoint (Vector3), MechaClassicAimCount.
+--   * Tether camera fix: the tactical tether aim's end sets CameraType = Custom itself when the shoulder camera was off
+--     before it or the mode is Classic (ShoulderCam only gives the camera back when it had it, so it stayed Scriptable),
+--     and the "camera as it was" look-at is not left set in Classic. Switch: script attribute MechaTetherCamFixEnabled
+--     (default true, read at each end; false = 1.39).
+if script:GetAttribute("MechaClassicAimEnabled") == nil then script:SetAttribute("MechaClassicAimEnabled", true) end -- v1.40
+if script:GetAttribute("MechaTetherCamFixEnabled") == nil then script:SetAttribute("MechaTetherCamFixEnabled", true) end -- v1.40
 -- v1.38 (MDA-329, plan docs/plans/DILO_PARTS_FIT_v1.0.md Task 2; Kepu 2026-11-06 "Instant burst + Thrusters FX"): a Spring Jets
 --   press also sets the character's local attributes DiloJetsPressDir (the flat direction sent) and DiloJetsPressAt (server
 --   time, last) on this client, so DiloJetsLaunch 1.1 / DiloPose 1.4 / DiloMovesFX 1.2 start the burst on the press like the
@@ -359,6 +375,33 @@ local player = Players.LocalPlayer
 local hum = char:WaitForChild("Humanoid", 10)
 local hrp = char:WaitForChild("HumanoidRootPart", 10)
 char:SetAttribute("MechaButtonsVersion", VERSION)
+local CLASSIC_REACH = {tmortar = {"TenoMortarMiss", 45}, dmortar = {"DiloPartMortarRange", 40}, -- v1.40
+	olantern = {"TrooPartLanternRange", 40}, osapwall = {"TrooPartSapRange", 40}, oportal = {"TrooPartPortalRange", 40}}
+local function classicPoint(id) -- v1.40: Classic camera: the point along the camera's flat look (nil = not Classic)
+	if script:GetAttribute("MechaClassicAimEnabled") == false or char:GetAttribute("CameraMode") ~= "classic" then return nil end
+	local reachKey = CLASSIC_REACH[id]
+	local cam = workspace.CurrentCamera
+	if not (reachKey and cam and hrp) then return nil end
+	local lv = cam.CFrame.LookVector
+	local f = Vector3.new(lv.X, 0, lv.Z)
+	if f.Magnitude < 1e-3 then return nil end
+	f = f.Unit
+	local reach = math.max(1, tonumber(char:GetAttribute(reachKey[1])) or reachKey[2])
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Exclude
+	local ex = {char}
+	for _, n in ipairs({"DinoFX_Local", "DinoFX", "TrooFX", "TrooPartsFX", "TrooWalls"}) do
+		local fo = workspace:FindFirstChild(n)
+		if fo then table.insert(ex, fo) end
+	end
+	rp.FilterDescendantsInstances = ex
+	local from = hrp.Position
+	local hit = workspace:Raycast(from, f * reach, rp)
+	local p = hit and hit.Position or (from + f * reach)
+	char:SetAttribute("MechaClassicAimPoint", p)
+	char:SetAttribute("MechaClassicAimCount", (char:GetAttribute("MechaClassicAimCount") or 0) + 1)
+	return p
+end
 char:SetAttribute("MechaDashLocal", "idle")
 local remote = ReplicatedStorage:WaitForChild("DinoDashRequest", 20)
 local cloakRemote -- v1.4: DinoCloakRequest (CloakServer 1.0), looked up on first use
@@ -763,7 +806,12 @@ local function tacEnd(fire, why)
 	char:SetAttribute("TetherAiming", false)
 	char:SetAttribute("TurnLimitEnabled", s.prevTurn)
 	char:SetAttribute("ShoulderCamEnabled", s.prevCam)
-	if s.prevLook and hrp and script:GetAttribute("MechaTetherAimKeepCam") ~= false then -- v1.23: the camera as it was
+	local classicNow = char:GetAttribute("CameraMode") == "classic" -- v1.40
+	if script:GetAttribute("MechaTetherCamFixEnabled") ~= false and cam and (s.prevCam == false or classicNow) then
+		cam.CameraType = Enum.CameraType.Custom -- v1.40: ShoulderCam does not take it back in Classic / off
+	end
+	if script:GetAttribute("MechaTetherCamFixEnabled") == false then classicNow = false end -- v1.40: off = 1.39
+	if s.prevLook and hrp and not classicNow and script:GetAttribute("MechaTetherAimKeepCam") ~= false then -- v1.23: the camera as it was (v1.40: not in Classic)
 		char:SetAttribute("ShoulderCamLookAt", hrp.Position + s.prevLook * 500)
 	end
 	if hum and s.prevTurn == false then hum.AutoRotate = true end
@@ -993,6 +1041,7 @@ local function press(n, input)
 			rp.FilterDescendantsInstances = ex
 			local hit = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 400, rp)
 			point = hit and hit.Position or nil
+			point = classicPoint("tmortar") or point -- v1.40
 		end
 		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector, point) end
 		return
@@ -1031,7 +1080,7 @@ local function press(n, input)
 			end
 			rp.FilterDescendantsInstances = ex
 			local hit = workspace:Raycast(cam.CFrame.Position, lv * 400, rp)
-			r:FireServer(workspace:GetServerTimeNow(), flatLook, hit and hit.Position or nil)
+			r:FireServer(workspace:GetServerTimeNow(), flatLook, classicPoint(id) or (hit and hit.Position or nil)) -- v1.40: + Classic
 		end
 		return
 	end
@@ -1050,6 +1099,7 @@ local function press(n, input)
 			rp.FilterDescendantsInstances = ex
 			local hit = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 400, rp)
 			point = hit and hit.Position or nil
+			point = classicPoint("dmortar") or point -- v1.40
 		end
 		if r and cam then r:FireServer(workspace:GetServerTimeNow(), cam.CFrame.LookVector, point) end
 		return
