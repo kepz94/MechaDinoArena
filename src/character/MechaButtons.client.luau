@@ -1,4 +1,4 @@
--- MechaButtons v1.40 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.41 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -292,6 +292,11 @@ VERSION = "1.40" -- v1.40 camera modes: Classic aim point + tether camera fix
 --     (default true, read at each end; false = 1.39).
 if script:GetAttribute("MechaClassicAimEnabled") == nil then script:SetAttribute("MechaClassicAimEnabled", true) end -- v1.40
 if script:GetAttribute("MechaTetherCamFixEnabled") == nil then script:SetAttribute("MechaTetherCamFixEnabled", true) end -- v1.40
+VERSION = "1.41" -- v1.41 a Thrusters boost stops when snared
+-- v1.41 (MDA-356; Kepu 2026-11-08 "No movement moves"): a running Thrusters boost stops (like a stun) while TheriSnaredUntil
+--   (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now; MechaServer 1.6 refuses new dashes.
+--   Switch: script attribute MechaButtonsSnareBlockEnabled (default true, read each frame; false = 1.40).
+if script:GetAttribute("MechaButtonsSnareBlockEnabled") == nil then script:SetAttribute("MechaButtonsSnareBlockEnabled", true) end -- v1.41
 -- v1.38 (MDA-329, plan docs/plans/DILO_PARTS_FIT_v1.0.md Task 2; Kepu 2026-11-06 "Instant burst + Thrusters FX"): a Spring Jets
 --   press also sets the character's local attributes DiloJetsPressDir (the flat direction sent) and DiloJetsPressAt (server
 --   time, last) on this client, so DiloJetsLaunch 1.1 / DiloPose 1.4 / DiloMovesFX 1.2 start the burst on the press like the
@@ -1384,7 +1389,9 @@ local function boost() -- v1.1: steerable boost for DashTime s at DashSpeedMul x
 			return
 		end
 		if os.clock() - t0 >= t or not char.Parent or hum.Health <= 0 or char:GetAttribute("PounceLatched") == true
-			or (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
+			or (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now
+			or (script:GetAttribute("MechaButtonsSnareBlockEnabled") ~= false and ((tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > now
+				or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > now)) then -- v1.41: + snare
 			stop()
 			return
 		end

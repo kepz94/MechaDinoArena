@@ -1,4 +1,4 @@
--- TheriGrappleZip v1.3 (Mecha Dino Arena) — flies the owner's own therizino to its Grapple Zip anchor (owner's client).
+-- TheriGrappleZip v1.4 (Mecha Dino Arena) — flies the owner's own therizino to its Grapple Zip anchor (owner's client).
 -- MDA-247, plan docs/plans/THERIZINO_PARTS_v1.0.md Task 7; server TheriMovesServer 1.2 (pattern: HookPull 1.0).
 -- TheriMovesServer stamps the character: TheriGrappleTo (where to stop), TheriGrappleTime (s), TheriGrappleResult "zip",
 --   TheriGrappleAt (server time, set last). A fresh stamp (younger than FRESH (1) s) drives the root for TheriGrappleTime s
@@ -51,6 +51,7 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 keeps 60% speed, latch marker
 VERSION = "1.2" -- v1.2 hold-to-lock on the furthest anchor (outline)
 VERSION = "1.3" -- v1.3 dash + reaper reel movers
+VERSION = "1.4" -- v1.4 the zip / dash stops when snared
 local FRESH, MAX_SPEED, ARRIVE, KEEP = 1, 220, 2, 0.25
 local ACCEL = 20000
 local KEEP_V2, MIN_D = 0.6, 6 -- v1.1
@@ -79,6 +80,15 @@ local function ensure()
 end
 
 local token = 0
+-- v1.4 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): a Grapple Zip or Therizino Dash in flight stops (like a stun) while the character's TheriSnaredUntil (Snare Wires bola)
+--   or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now. TheriMovesServer 1.10 refuses new ones. Switch: script attribute TheriGrappleZipSnareBlockEnabled
+--   (default true, read each time; false = 1.3).
+if script:GetAttribute("TheriGrappleZipSnareBlockEnabled") == nil then script:SetAttribute("TheriGrappleZipSnareBlockEnabled", true) end -- v1.4
+local function snaredNow() -- v1.4: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("TheriGrappleZipSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	return (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+end
 local function onZip()
 	if char:GetAttribute("TheriGrappleZipEnabled") == false then return end
 	if char:GetAttribute("TheriGrappleResult") ~= "zip" then return end
@@ -99,6 +109,7 @@ local function onZip()
 		local left = time - (os.clock() - t0)
 		local d = to - hrp.Position
 		local stunned = (tonumber(char:GetAttribute("StunnedUntil")) or 0) > workspace:GetServerTimeNow()
+		stunned = stunned or snaredNow() -- v1.4
 		if my ~= token or left <= 0 or d.Magnitude <= ARRIVE or hum.Health <= 0 or stunned or not hrp.Parent then
 			conn:Disconnect()
 			if my == token then
@@ -373,7 +384,7 @@ local function drive(my, c, dur, velFn, onEnd)
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
 		local e = os.clock() - t0
-		local v = (my == token and e < dur and hum.Health > 0 and not stunnedNow() and hrp.Parent ~= nil) and velFn(e, dur - e) or nil
+		local v = (my == token and e < dur and hum.Health > 0 and not stunnedNow() and not snaredNow() and hrp.Parent ~= nil) and velFn(e, dur - e) or nil -- v1.4: + snare
 		if v == nil then
 			conn:Disconnect()
 			if my == token then

@@ -1,4 +1,4 @@
--- PounceServer v1.16 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.17 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -170,6 +170,20 @@ script:SetAttribute("PounceServerVersion", "1.13") -- v1.13 (1.12 left this at "
 script:SetAttribute("PounceServerVersion", "1.14") -- v1.14 grabbed latch rides to the pluck
 script:SetAttribute("PounceServerVersion", "1.15") -- v1.15 Sap Wall stops pounces through it
 script:SetAttribute("PounceServerVersion", "1.16") -- v1.16 latch time cap (PounceLatchMaxTime)
+script:SetAttribute("PounceServerVersion", "1.17") -- v1.17 no pounces while snared
+-- v1.17 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): a pounce is refused "snared" while the character's
+--   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
+--   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). A latch claim from a snared raptor is refused "snared" too (the pounce ends). PounceTest 1.8 refuses the press locally. Switch: script
+--   attribute PounceSnareBlockEnabled (default true, read at each request; false = 1.16). Diagnostic: script
+--   PounceSnareRefusals (count).
+if script:GetAttribute("PounceSnareBlockEnabled") == nil then script:SetAttribute("PounceSnareBlockEnabled", true) end -- v1.17
+local function snareBlocked(char) -- v1.17: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("PounceSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	local on = (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+	if on then script:SetAttribute("PounceSnareRefusals", (script:GetAttribute("PounceSnareRefusals") or 0) + 1) end
+	return on
+end
 if script:GetAttribute("PounceLatchMaxTimeEnabled") == nil then script:SetAttribute("PounceLatchMaxTimeEnabled", true) end -- v1.16
 local function latchCap(char) -- v1.16: seconds a latch / pin may last (nil = no cap, the 1.15 rule)
 	if script:GetAttribute("PounceLatchMaxTimeEnabled") == false then return nil end
@@ -385,6 +399,8 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		result = "dazed"
 	elseif char:GetAttribute("PinHeld") == true then -- v1.8: pinned by another player
 		result = "pinned"
+	elseif snareBlocked(char) then -- v1.17
+		result = "snared"
 	elseif char:GetAttribute("Exhausted") == true then
 		result = "exhausted"
 	elseif get(char, "StaminaEnabled") ~= false and stamina(char, now) < get(char, "PounceStaminaCost") then
@@ -424,6 +440,9 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 		result = "headbutted" -- v1.11: knocked out of the pounce
 		pending[char] = nil
 		char:SetAttribute("PounceHeadbuttCancels", (char:GetAttribute("PounceHeadbuttCancels") or 0) + 1)
+	elseif snareBlocked(char) then -- v1.17: caught mid-pounce
+		result = "snared"
+		pending[char] = nil
 	else
 		model = targetOf(part)
 		if not model or model == char or model:GetAttribute("DummyState") == "ko" then

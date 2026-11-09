@@ -1,4 +1,4 @@
--- DiloJetsLaunch v1.0 (Mecha Dino Arena) — moves the owner's own dilo on a Spring Jets dash (owner's client, LocalScript in
+-- DiloJetsLaunch v1.2 (Mecha Dino Arena) — moves the owner's own dilo on a Spring Jets dash (owner's client, LocalScript in
 -- StarterCharacterScripts). MDA-321, plan docs/plans/DILO_PARTS_v1.0.md Task 8; server DiloMovesServer 1.1 (pattern:
 -- TheriGrappleZip 1.3's Dash / ServoDashLaunch).
 -- DiloMovesServer stamps the character: DiloJetsFrom, DiloJetsTo, DiloJetsDelay (the 0.34 s wind-up), DiloJetsTime (s),
@@ -25,6 +25,7 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 the burst starts on the press
+VERSION = "1.2" -- v1.2 no Spring Jets while snared
 local JETS_SPEED, JETS_MIN = 150, 4 -- v1.1: DiloMovesServer 1.3's numbers
 local FRESH, ARRIVE, ACCEL, DASH_MAX, DASH_KEEP = 1, 2, 20000, 450, 0.2
 
@@ -51,6 +52,15 @@ local function ensure()
 	return lv
 end
 
+-- v1.2 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): the predicted Spring Jets burst does not start, and a burst in flight stops while the character's TheriSnaredUntil (Snare Wires bola)
+--   or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now. DiloMovesServer 1.7 refuses the press too. Switch: script attribute DiloJetsLaunchSnareBlockEnabled
+--   (default true, read each time; false = 1.1).
+if script:GetAttribute("DiloJetsLaunchSnareBlockEnabled") == nil then script:SetAttribute("DiloJetsLaunchSnareBlockEnabled", true) end -- v1.2
+local function snaredNow() -- v1.2: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("DiloJetsLaunchSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	return (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+end
 local token = 0
 local function stunnedNow() return (tonumber(char:GetAttribute("StunnedUntil")) or 0) > workspace:GetServerTimeNow() end
 local function drive(my, c, dur, velFn, onEnd)
@@ -59,7 +69,7 @@ local function drive(my, c, dur, velFn, onEnd)
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
 		local e = os.clock() - t0
-		local v = (my == token and e < dur and hum.Health > 0 and not stunnedNow() and hrp.Parent ~= nil) and velFn(e, dur - e) or nil
+		local v = (my == token and e < dur and hum.Health > 0 and not stunnedNow() and not snaredNow() and hrp.Parent ~= nil) and velFn(e, dur - e) or nil -- v1.2: + snare
 		if v == nil then
 			conn:Disconnect()
 			if my == token then
@@ -105,7 +115,7 @@ local function onPress()
 	if lastDelay and lastDelay >= 0.05 then return end -- the wind-up mode (server switch off): 1.0 path
 	-- DiloPartJetsLeft is published after the first use only: none yet = all charges (DiloPartJetsCharges)
 	if char:GetAttribute("DiloPartJetsEnabled") ~= true or (num("DiloPartJetsLeft") or num("DiloPartJetsCharges") or 1) <= 0 then return end
-	if hum.Health <= 0 or stunnedNow() or char:GetAttribute("PinHeld") == true or (num("DazedUntil") or 0) > T
+	if hum.Health <= 0 or stunnedNow() or snaredNow() or char:GetAttribute("PinHeld") == true or (num("DazedUntil") or 0) > T -- v1.2: + snare
 		or (num("SilencedUntil") or 0) > T then return end
 	local d = char:GetAttribute("DiloJetsPressDir")
 	d = typeof(d) == "Vector3" and Vector3.new(d.X, 0, d.Z) or Vector3.zero

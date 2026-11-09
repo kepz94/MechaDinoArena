@@ -1,4 +1,4 @@
--- TheriMovesServer v1.9 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.10 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -163,6 +163,21 @@ VERSION = "1.9" -- v1.9 shot pass: faster shots, strong aim assist
 --   0.12..0.35 -> / 1.5) and locks on within at least 45 degrees (TheriHookCone); the Feather Barrage blades fly
 --   VOLLEY_FLIGHT / 1.5 (0.6 -> 0.4 s; TheriVolleyFlight). Ranges / cones come from SkillTree 1.74. Switch: script
 --   attribute ShotPassEnabled (default true; false = 1.8).
+VERSION = "1.10" -- v1.10 no movement moves while snared
+-- v1.10 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): Grapple Zip and the Therizino Dash (zgrapple) are refused "snared" while the character's
+--   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
+--   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). Switch: script
+--   attribute TheriMovesSnareBlockEnabled (default true, read at each request; false = 1.9). Diagnostic: script
+--   TheriMovesSnareRefusals (count).
+if script:GetAttribute("TheriMovesSnareBlockEnabled") == nil then script:SetAttribute("TheriMovesSnareBlockEnabled", true) end -- v1.10
+local function snareBlocked(char) -- v1.10: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("TheriMovesSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	local on = (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+	if on then script:SetAttribute("TheriMovesSnareRefusals", (script:GetAttribute("TheriMovesSnareRefusals") or 0) + 1) end
+	return on
+end
+local SNARE_MOVES = {zgrapple = true} -- v1.10: the movement parts
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.9
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.9
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.9
@@ -425,6 +440,8 @@ local function check(player, stamp, id, prefix, aimDir, needAim)
 		r = "stunned"
 	elseif char:GetAttribute("PinHeld") == true then
 		r = "pinned"
+	elseif SNARE_MOVES[id] and snareBlocked(char) then -- v1.10
+		r = "snared"
 	elseif num(char, "DazedUntil", 0) > t then
 		r = "dazed"
 	end

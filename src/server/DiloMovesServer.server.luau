@@ -1,4 +1,4 @@
--- DiloMovesServer v1.6 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
+-- DiloMovesServer v1.7 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
 -- Toxin Mortar, Spine Burst, Venom Overdrive. Plan docs/plans/DILO_PARTS_v1.0.md Task 5 (deterministic map), MDA-318; mockup
 -- docs/mockups/dilo_parts_options.html v0.1 (timings from tools/mockup/dilo_parts_looks.js); Kepu 2026-11-06 picks + red-team
 -- "Same venom system", "Use the proposals". Build 2 (Sonic Hiss, Antivenom Pump, Spring Jets) comes in 1.1.
@@ -132,6 +132,21 @@ VERSION = "1.6" -- v1.6 shot pass: faster shots, strong aim assist
 --   published as DiloSpineFlight with the reach DiloSpineRange (DiloMovesFX 1.4 flies the spines that far). Ranges
 --   (mortar, spines) and the Gatling cone come from SkillTree 1.74; the Gatling darts use the dart speed / range
 --   from DiloModelData 1.6. Switch: script attribute ShotPassEnabled (default true; false = 1.5).
+VERSION = "1.7" -- v1.7 no movement moves while snared
+-- v1.7 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): Spring Jets (djets) are refused "snared" while the character's
+--   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
+--   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). Switch: script
+--   attribute DiloMovesSnareBlockEnabled (default true, read at each request; false = 1.6). Diagnostic: script
+--   DiloMovesSnareRefusals (count).
+if script:GetAttribute("DiloMovesSnareBlockEnabled") == nil then script:SetAttribute("DiloMovesSnareBlockEnabled", true) end -- v1.7
+local function snareBlocked(char) -- v1.7: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("DiloMovesSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	local on = (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+	if on then script:SetAttribute("DiloMovesSnareRefusals", (script:GetAttribute("DiloMovesSnareRefusals") or 0) + 1) end
+	return on
+end
+local SNARE_MOVES = {djets = true} -- v1.7: the movement parts
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.6
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.6
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.6
@@ -350,6 +365,8 @@ local function check(player, stamp, id, prefix, aimDir, aimPoint)
 		r = "stunned"
 	elseif char:GetAttribute("PinHeld") == true then
 		r = "pinned"
+	elseif SNARE_MOVES[id] and snareBlocked(char) then -- v1.7
+		r = "snared"
 	elseif num(char, "DazedUntil", 0) > t and not breakFree(id) then -- v1.2: not for the pump
 		r = "dazed"
 	elseif num(char, "SilencedUntil", 0) > t then

@@ -1,4 +1,4 @@
--- TenoMovesServer v1.15 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.16 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -246,6 +246,21 @@ VERSION = "1.15" -- v1.15 shot pass: faster shots, strong aim assist
 --   the nearest enemy within 45 degrees of the aim (at least TenoMortarCone) and within TenoMortarRange
 --   (TenoMortarAimMode "assist"). Range / auto distance / cone come from SkillTree 1.74. Switch: script attribute
 --   ShotPassEnabled (default true; false = 1.14).
+VERSION = "1.16" -- v1.16 no movement moves while snared
+-- v1.16 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): the Hydraulic Leap (tleap) is refused "snared" while the character's
+--   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
+--   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). Switch: script
+--   attribute TenoMovesSnareBlockEnabled (default true, read at each request; false = 1.15). Diagnostic: script
+--   TenoMovesSnareRefusals (count).
+if script:GetAttribute("TenoMovesSnareBlockEnabled") == nil then script:SetAttribute("TenoMovesSnareBlockEnabled", true) end -- v1.16
+local function snareBlocked(char) -- v1.16: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("TenoMovesSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	local on = (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+	if on then script:SetAttribute("TenoMovesSnareRefusals", (script:GetAttribute("TenoMovesSnareRefusals") or 0) + 1) end
+	return on
+end
+local SNARE_MOVES = {tleap = true} -- v1.16: the movement parts
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.15
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.15
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.15
@@ -548,6 +563,8 @@ local function check(player, stamp, id, prefix, opts)
 		r = "stunned"
 	elseif char:GetAttribute("PinHeld") == true then
 		r = "pinned"
+	elseif SNARE_MOVES[id] and snareBlocked(char) then -- v1.16
+		r = "snared"
 	elseif num(char, "DazedUntil", 0) > t then
 		r = "dazed"
 	elseif opts.leap and num(char, "TenoLeapUntil", 0) > t then

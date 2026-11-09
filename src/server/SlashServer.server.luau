@@ -1,4 +1,4 @@
--- SlashServer v1.9 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.10 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -107,6 +107,20 @@ VERSION = "1.9" -- v1.9 Sap Wall stops slashes through it
 -- v1.9 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute SlashServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   SlashServerSapWallBlocks (count), SlashServerSapWallBlockedAt (server time).
+VERSION = "1.10" -- v1.10 no movement moves while snared
+-- v1.10 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): the slash dash / dive is refused "snared" while the character's
+--   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
+--   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). Switch: script
+--   attribute SlashSnareBlockEnabled (default true, read at each request; false = 1.9). Diagnostic: script
+--   SlashSnareRefusals (count).
+if script:GetAttribute("SlashSnareBlockEnabled") == nil then script:SetAttribute("SlashSnareBlockEnabled", true) end -- v1.10
+local function snareBlocked(char) -- v1.10: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("SlashSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	local on = (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+	if on then script:SetAttribute("SlashSnareRefusals", (script:GetAttribute("SlashSnareRefusals") or 0) + 1) end
+	return on
+end
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -336,6 +350,8 @@ requestRemote.OnServerEvent:Connect(function(player, stamp, kind, target)
 		result = "dazed"
 	elseif char:GetAttribute("PinHeld") == true then
 		result = "pinned"
+	elseif snareBlocked(char) then -- v1.10
+		result = "snared"
 	elseif st.active then
 		result = "busy"
 	elseif st.charges < 1 then

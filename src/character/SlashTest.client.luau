@@ -1,4 +1,4 @@
--- SlashTest v1.6 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
+-- SlashTest v1.7 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 9 (server: SlashServer 1.1), mockup docs/mockups/herrera_kit_options.html.
 -- Kepu 2026-10-30: "Dash-through slash"; the drop attack "should be able to happen if I press the dash aimed at a nearby
 --   target but not be its own dedicated button".
@@ -65,6 +65,7 @@ local ContextActionService = game:GetService("ContextActionService")
 
 local VERSION = "1.5"
 VERSION = "1.6" -- v1.6 Cross Rake coil
+VERSION = "1.7" -- v1.7 no slash dash / dive while snared
 local ACTION = "DinoSlash"
 local ACTION_CLICK = "DinoSlashClick"
 local BIND = "DinoSlashDrive"
@@ -254,6 +255,15 @@ local function finishLocal(nextState)
 end
 
 local coilToken -- v1.6
+-- v1.7 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): a slash dash / dive press is refused ("snared") while the character's TheriSnaredUntil (Snare Wires bola)
+--   or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now. SlashServer 1.10 refuses it too. Switch: script attribute SlashTestSnareBlockEnabled
+--   (default true, read each time; false = 1.6).
+if script:GetAttribute("SlashTestSnareBlockEnabled") == nil then script:SetAttribute("SlashTestSnareBlockEnabled", true) end -- v1.7
+local function snaredNow() -- v1.7: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("SlashTestSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	return (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+end
 local function tryPress(source, fromCoil)
 	local result
 	local t = workspace:GetServerTimeNow()
@@ -265,6 +275,8 @@ local function tryPress(source, fromCoil)
 		result = "stunned"
 	elseif char:GetAttribute("PinHeld") == true then
 		result = "pinned"
+	elseif snaredNow() then -- v1.7
+		result = "snared"
 	elseif state ~= "ready" then
 		result = "busy"
 	elseif (tonumber(char:GetAttribute("SlashChargesNow")) or 0) < 1 then

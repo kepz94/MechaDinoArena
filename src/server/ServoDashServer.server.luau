@@ -1,4 +1,4 @@
--- ServoDashServer v1.2 (Mecha Dino Arena) — the pachy's Overclocked Servo Dash, a Speed slot part (path "servodash").
+-- ServoDashServer v1.3 (Mecha Dino Arena) — the pachy's Overclocked Servo Dash, a Speed slot part (path "servodash").
 -- MDA-126, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Hip thrusters".
 -- Kepu 2026-10-30: "An active thruster burn that gives an instantaneous burst of top-speed forward velocity. It instantly
 --   overrides the headbutt empty-charge speed debuff for 1.5 seconds, letting you quickly escape after missing a charge."
@@ -46,6 +46,20 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 the 0.06 s squat
+VERSION = "1.3" -- v1.3 no movement moves while snared
+-- v1.3 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): the Servo Dash is refused "snared" while the character's
+--   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
+--   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). A running dash ends ("snared") when a snare lands. Switch: script
+--   attribute ServoDashSnareBlockEnabled (default true, read at each request; false = 1.2). Diagnostic: script
+--   ServoDashSnareRefusals (count).
+if script:GetAttribute("ServoDashSnareBlockEnabled") == nil then script:SetAttribute("ServoDashSnareBlockEnabled", true) end -- v1.3
+local function snareBlocked(char) -- v1.3: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("ServoDashSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	local on = (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+	if on then script:SetAttribute("ServoDashSnareRefusals", (script:GetAttribute("ServoDashSnareRefusals") or 0) + 1) end
+	return on
+end
 local SQUAT = 0.06 -- v1.2
 if script:GetAttribute("ServoDashSquatEnabled") == nil then script:SetAttribute("ServoDashSquatEnabled", true) end -- v1.2
 local STEEL, DARK = Color3.fromRGB(154, 166, 184), Color3.fromRGB(58, 64, 76)
@@ -336,6 +350,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		r = "stunned"
 	elseif char:GetAttribute("PinHeld") == true then
 		r = "pinned"
+	elseif snareBlocked(char) then -- v1.3
+		r = "snared"
 	elseif (tonumber(char:GetAttribute("ServoDashUntil")) or 0) > t then
 		r = "active"
 	elseif t < (tonumber(char:GetAttribute("ServoDashReadyAt")) or 0) then
@@ -373,6 +389,8 @@ RunService.Heartbeat:Connect(function()
 			finish(char, "dead")
 		elseif char:GetAttribute("ServoDashEnabled") ~= true then
 			finish(char, "disabled")
+		elseif snareBlocked(char) then -- v1.3: a snare ends a running dash
+			finish(char, "snared")
 		elseif t >= untilT then
 			finish(char, "time")
 		end

@@ -1,4 +1,4 @@
--- JumpServer v1.5 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
+-- JumpServer v1.6 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
 -- Client -> server: ReplicatedStorage.DinoJumpRequest:FireServer(clientServerTime) (sent by JumpTest 1.0 at the
 --   key press, i.e. the start of the crouch).
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now], written to the character attribute
@@ -54,6 +54,20 @@ local DEFAULTS = {JumpEnabled = false, JumpStaminaCost = 15, JumpCooldown = 0.5,
 script:SetAttribute("JumpServerVersion", "1.3") -- v1.1; v1.2; v1.3
 script:SetAttribute("JumpServerVersion", "1.4") -- v1.4 JumpAddCharge hook
 script:SetAttribute("JumpServerVersion", "1.5") -- v1.5 JumpAirJumps
+script:SetAttribute("JumpServerVersion", "1.6") -- v1.6 no leaps while snared
+-- v1.6 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): a leap (DinoJumpRequest) and an air jump / flap (DinoJumpDoubleRequest) are refused "snared" while the character's
+--   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
+--   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). JumpTest 1.7 refuses them locally too. Switch: script
+--   attribute JumpSnareBlockEnabled (default true, read at each request; false = 1.5). Diagnostic: script
+--   JumpSnareRefusals (count).
+if script:GetAttribute("JumpSnareBlockEnabled") == nil then script:SetAttribute("JumpSnareBlockEnabled", true) end -- v1.6
+local function snareBlocked(char) -- v1.6: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("JumpSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	local on = (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+	if on then script:SetAttribute("JumpSnareRefusals", (script:GetAttribute("JumpSnareRefusals") or 0) + 1) end
+	return on
+end
 if script:GetAttribute("JumpServerAirJumpsEnabled") == nil then script:SetAttribute("JumpServerAirJumpsEnabled", true) end -- v1.5
 if script:GetAttribute("JumpPinnedBlockEnabled") == nil then script:SetAttribute("JumpPinnedBlockEnabled", true) end
 local MAX_LAG = 0.3 -- seconds a client stamp may lag behind the server clock (same as BiteServer)
@@ -132,6 +146,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "disabled"
 	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("JumpPinnedBlockEnabled") ~= false then -- v1.1
 		result = "pinned"
+	elseif snareBlocked(char) then -- v1.6
+		result = "snared"
 	elseif char:GetAttribute("Exhausted") == true then
 		result = "exhausted"
 	elseif get(char, "StaminaEnabled") ~= false and stamina(char, now) < get(char, "JumpStaminaCost") then
@@ -193,6 +209,8 @@ doubleRemote.OnServerEvent:Connect(function(player, stamp)
 		result = "disabled"
 	elseif char:GetAttribute("PinHeld") == true then
 		result = "pinned"
+	elseif snareBlocked(char) then -- v1.6
+		result = "snared"
 	elseif not leap or now - leap > DOUBLE_WINDOW then
 		result = "noLeap"
 	elseif doubleFor[char] == leap and (airCount[char] or 1) >= airLimit(char) then -- v1.5: up to JumpAirJumps

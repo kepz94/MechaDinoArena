@@ -1,4 +1,4 @@
--- TrooMovesServer v1.4 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.5 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -125,6 +125,21 @@ VERSION = "1.4" -- v1.4 shot pass: faster shots, strong aim assist
 --   lands on the nearest enemy within 45 degrees of the aim and within TrooPartLanternRange (diag TrooLanternAssist
 --   = its name or ""). The Sap Wall does not snap (it is placed). Ranges come from SkillTree 1.74. Switch: script
 --   attribute ShotPassEnabled (default true; false = 1.3).
+VERSION = "1.5" -- v1.5 no movement moves while snared
+-- v1.5 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): Portal Feathers (oportal) are refused "snared" while the character's
+--   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
+--   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). Switch: script
+--   attribute TrooMovesSnareBlockEnabled (default true, read at each request; false = 1.4). Diagnostic: script
+--   TrooMovesSnareRefusals (count).
+if script:GetAttribute("TrooMovesSnareBlockEnabled") == nil then script:SetAttribute("TrooMovesSnareBlockEnabled", true) end -- v1.5
+local function snareBlocked(char) -- v1.5: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("TrooMovesSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	local on = (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+	if on then script:SetAttribute("TrooMovesSnareRefusals", (script:GetAttribute("TrooMovesSnareRefusals") or 0) + 1) end
+	return on
+end
+local SNARE_MOVES = {oportal = true} -- v1.5: the movement parts
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.4
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.4
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.4
@@ -345,6 +360,8 @@ local function check(player, stamp, id, prefix, aimDir, aimPoint, breakFree)
 		r = "stunned"
 	elseif char:GetAttribute("PinHeld") == true and not breakFree then
 		r = "pinned"
+	elseif SNARE_MOVES[id] and snareBlocked(char) then -- v1.5
+		r = "snared"
 	elseif num(char, "DazedUntil", 0) > t and not breakFree then
 		r = "dazed"
 	elseif num(char, "SilencedUntil", 0) > t then

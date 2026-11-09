@@ -1,4 +1,4 @@
--- PounceTest v1.7 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
+-- PounceTest v1.8 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
 -- or the on-screen Pounce button (touch). Bound only while the character attribute PounceEnabled is true (the T-Rex
 -- has no pounce and gets no button).
 -- Flow:
@@ -241,6 +241,15 @@ local function setLocalState(s)
 	show("PounceLocalState", s)
 end
 
+-- v1.8 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): a pounce press is refused ("snared") while the character's TheriSnaredUntil (Snare Wires bola)
+--   or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now. PounceServer 1.17 refuses it too. Switch: script attribute PounceTestSnareBlockEnabled
+--   (default true, read each time; false = 1.7).
+if script:GetAttribute("PounceTestSnareBlockEnabled") == nil then script:SetAttribute("PounceTestSnareBlockEnabled", true) end -- v1.8
+local function snaredNow() -- v1.8: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("PounceTestSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	return (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+end
 local function tryPress()
 	local result
 	if hum.Health <= 0 then
@@ -249,6 +258,8 @@ local function tryPress()
 		result = "latched"
 	elseif (char:GetAttribute("StunnedUntil") or 0) > workspace:GetServerTimeNow() then -- v1.3
 		result = "stunned"
+	elseif snaredNow() then -- v1.8
+		result = "snared"
 	elseif state ~= "ready" then
 		result = "air"
 	elseif not grounded() and get("PounceAirEnabled") ~= true then -- v1.4: 1.3 rule when air pounce is off
@@ -451,6 +462,7 @@ end
 
 -- v1.6: a pachy headbutt knocks the raptor out of its pounce
 char:SetAttribute("PounceTestVersion", "1.7")
+char:SetAttribute("PounceTestVersion", "1.8") -- v1.8 no pounces while snared
 char:GetAttributeChangedSignal("HeadbuttShoveAt"):Connect(function()
 	if char:GetAttribute("PounceHeadbuttCancelEnabled") == false then return end
 	local at = char:GetAttribute("HeadbuttShoveAt")

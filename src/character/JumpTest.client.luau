@@ -1,4 +1,4 @@
--- JumpTest v1.6 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
+-- JumpTest v1.7 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
 -- button. Only active while the character attribute JumpEnabled is true (default false: the T-Rex keeps the
 -- default Roblox jump untouched).
 -- v1.1 (pachy Mecha Legs star, MDA-123): while JumpDoubleEnabled (SkillEffects 1.15) is true, a NEW jump press (the
@@ -98,6 +98,7 @@ local function suppressed() return SUPPRESS_ON and char:GetAttribute("JumpSuppre
 char:SetAttribute("JumpTestVersion", "1.3") -- v1.3 (the model data carries "1.0")
 char:SetAttribute("JumpTestVersion", "1.5") -- v1.5 (1.4 did not bump this line)
 char:SetAttribute("JumpTestVersion", "1.6") -- v1.6
+char:SetAttribute("JumpTestVersion", "1.7") -- v1.7 no leaps while snared
 if script:GetAttribute("JumpAirJumpsEnabled") == nil then script:SetAttribute("JumpAirJumpsEnabled", true) end -- v1.6
 if script:GetAttribute("JumpHopBackEnabled") == nil then script:SetAttribute("JumpHopBackEnabled", true) end -- v1.5
 local function hopMode() return script:GetAttribute("JumpHopBackEnabled") ~= false and char:GetAttribute("JumpHopBack") == true end
@@ -230,12 +231,23 @@ local function applyEnabled()
 	end
 end
 
+-- v1.7 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): a leap press is refused (JumpInputResult "snared") and no air jump / flap starts while the character's TheriSnaredUntil (Snare Wires bola)
+--   or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now. JumpServer 1.6 refuses them too. Switch: script attribute JumpTestSnareBlockEnabled
+--   (default true, read each time; false = 1.6).
+if script:GetAttribute("JumpTestSnareBlockEnabled") == nil then script:SetAttribute("JumpTestSnareBlockEnabled", true) end -- v1.7
+local function snaredNow() -- v1.7: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("JumpTestSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	return (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+end
 local function tryPress()
 	local result
 	if hum.Health <= 0 then
 		result = "dead"
 	elseif suppressed() then -- v1.3
 		result = "suppressed"
+	elseif snaredNow() then -- v1.7
+		result = "snared"
 	elseif not grounded() then
 		result = "air"
 	elseif char:GetAttribute("Exhausted") == true then
@@ -423,7 +435,7 @@ local conn = RunService.PreSimulation:Connect(function()
 	local held = jumpHeld() -- v1.1: press edge for the double jump
 	local pressed = held and not wasHeld
 	wasHeld = held
-	if state == "air" and leftGround and pressed and not doubleUsed and char:GetAttribute("JumpDoubleEnabled") == true then
+	if state == "air" and leftGround and pressed and not doubleUsed and char:GetAttribute("JumpDoubleEnabled") == true and not snaredNow() then -- v1.7: + snare
 		doubleJump()
 	end
 	if state ~= "ready" and suppressed() then -- v1.3: on a tree: the climb owns the body

@@ -1,4 +1,4 @@
--- MechaServer v1.5 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
+-- MechaServer v1.6 (Mecha Dino Arena) — mecha parts on the server: the Thrusters dash (requests, charges) and the visible
 -- Thrusters part on the dino. MDA-27, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 5, mockup
 -- docs/mockups/mecha_thrusters_options.html (Kepu 2026-10-28: framework + Thrusters first; numbers as proposed; the dash is
 -- free; the part is on the dino only while it is in a loadout slot; bots only).
@@ -61,6 +61,20 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.5"
+VERSION = "1.6" -- v1.6 no movement moves while snared
+-- v1.6 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): the Thrusters dash is refused "snared" while the character's
+--   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
+--   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). MechaButtons 1.41 ends a running boost. Switch: script
+--   attribute MechaSnareBlockEnabled (default true, read at each request; false = 1.5). Diagnostic: script
+--   MechaSnareRefusals (count).
+if script:GetAttribute("MechaSnareBlockEnabled") == nil then script:SetAttribute("MechaSnareBlockEnabled", true) end -- v1.6
+local function snareBlocked(char) -- v1.6: Snare Wires bola / Reaper Hook hold
+	if script:GetAttribute("MechaSnareBlockEnabled") == false then return false end
+	local t = workspace:GetServerTimeNow()
+	local on = (tonumber(char:GetAttribute("TheriSnaredUntil")) or 0) > t or (tonumber(char:GetAttribute("HookHeldUntil")) or 0) > t
+	if on then script:SetAttribute("MechaSnareRefusals", (script:GetAttribute("MechaSnareRefusals") or 0) + 1) end
+	return on
+end
 local MAX_LAG = 0.3
 local DEFAULT_RECHARGE, DEFAULT_TIME = 8, 0.35
 local METAL, DARK, ORANGE = Color3.fromRGB(123, 133, 144), Color3.fromRGB(43, 47, 53), Color3.fromRGB(255, 155, 46)
@@ -337,6 +351,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		result = "stunned"
 	elseif char:GetAttribute("PinHeld") == true and script:GetAttribute("MechaPinnedBlockEnabled") ~= false then -- v1.5
 		result = "pinned"
+	elseif snareBlocked(char) then -- v1.6
+		result = "snared"
 	elseif char:GetAttribute("PounceLatched") == true then
 		result = "latched"
 	elseif (char:GetAttribute("DashChargesLeft") or 0) < 1 then
