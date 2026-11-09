@@ -1,4 +1,4 @@
-# Dino roster v1.28
+# Dino roster v1.30
 
 The list of dinos that are in the game, and the ones planned for roll-out. Add new dinos at the bottom of "Planned" as
 Kepu sends them; each one goes model mockup → Kepu's pick → model data → kit plan → playable.
@@ -9,14 +9,14 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 ## In the game (playable)
 | # | Dino | Model data | HP | Run speed | Length in game | Role / Kepu's words |
 |---|---|---|---|---|---|---|
-| 1 | T-Rex | TRexModelData 2.0 (installed, StarterCharacter 1.3; RaptorScale 1.5 x1.63) | 200 | 60 | ~62 | The heavy (bite, roar). Redesign X = Apex true to life at roster scale (published v321) |
-| 2 | Raptor | RaptorModelData 1.13 | 60 | 78 | ~25.7 | Pounce / latch hunter |
-| 3 | Pachy | PachyModelData 1.4 (installed, published v319) | 90 | 56.9 | — | Headbutt / ram. Redesign saved: refined Crowned Skull, horns always on, mid section +25%, cream dome; Battering Dome star = stat boosts only |
-| 4 | Herrera | HerreraModelData 1.3 | 40 | 90 | ~22.4 | "a Pain in the ass to deal with but easy to kill", most mecha utility, fastest |
-| 5 | Teno (Tenontosaurus) | TenoModelData 1.4 (installed, published v323) | 150 | 52 | ~47 | Tank: scratch + rear tail slam |
-| 6 | Troodon | TroodonModelData 1.3 (B Night Watcher + kit attributes; kit plan docs/plans/TROODON_KIT_v1.0.md, MDA-330..339; Flap & Glide plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md, MDA-340..343) | 55 | 86 | ~24 | Area control + support (Kepu 2026-11-06, replaces the 1.1 "skirmisher"): Glow Pod Toss (a lobbed pod, 80 studs range, that splashes a glow zone 20 studs across for 3 s: 6 + 3 x 3 to enemies, slow 25%, +5 x 4 heal to squadmates, +2 self-heal per enemy hit; 2 charges) and Flap & Glide on JUMP (Kepu 17:38 / 17:50: a leap ~11 studs up + 2 wing flaps in the air, then it glides by itself, falling 8 studs/s at run speed; replaces the Evade Hop). Not published yet |
-| 7 | Therizino (Therizinosaurus) | TherizinoModelData 1.5 (A Reaper, stance C3 Low flare, open hand; kit plan docs/plans/THERIZINO_KIT_v1.0.md) | 80 | 66 | ~32 | Slasher build ("Therizino. Slasher build") |
-| 9 | Dilo (Dilophosaurus) | DiloModelData 1.3 (E Bruiser Face, split hood frill; kit plan docs/plans/DILO_KIT_v1.0.md) | 70 | 66 | ~26 | Ranged spitter (venom dart + Cobra Leap) |
+| 1 | T-Rex | TRexModelData 2.0 (installed, StarterCharacter 1.3; RaptorScale 1.5 x1.63); repo 2.1 (balance pass 1, not installed) | 200 | 60 (2.1: 74) | ~62 | The heavy (bite, roar). Redesign X = Apex true to life at roster scale (published v321) |
+| 2 | Raptor | RaptorModelData 1.13; repo 1.14 (balance pass 1, not installed) | 60 | 78 | ~25.7 | Pounce / latch hunter |
+| 3 | Pachy | PachyModelData 1.4 (installed, published v319); repo 1.6 (balance pass 1, not installed) | 90 | 56.9 | — | Headbutt / ram. Redesign saved: refined Crowned Skull, horns always on, mid section +25%, cream dome; Battering Dome star = stat boosts only |
+| 4 | Herrera | HerreraModelData 1.4; repo 1.5 (balance pass 1, not installed) | 40 | 90 | ~22.4 | "a Pain in the ass to deal with but easy to kill", most mecha utility, fastest |
+| 5 | Teno (Tenontosaurus) | TenoModelData 1.4 (installed, published v323); repo 1.5 (balance pass 1, not installed) | 150 | 52 (1.5: 66) | ~47 | Tank: scratch + rear tail slam |
+| 6 | Troodon | TroodonModelData 1.3 (repo 1.6: balance pass 1, not installed; B Night Watcher + kit attributes; kit plan docs/plans/TROODON_KIT_v1.0.md, MDA-330..339; Flap & Glide plan docs/plans/TROODON_FLAP_GLIDE_v1.0.md, MDA-340..343) | 55 | 86 | ~24 | Area control + support (Kepu 2026-11-06, replaces the 1.1 "skirmisher"): Glow Pod Toss (a lobbed pod, 80 studs range, that splashes a glow zone 20 studs across for 3 s: 6 + 3 x 3 to enemies, slow 25%, +5 x 4 heal to squadmates, +2 self-heal per enemy hit; 2 charges) and Flap & Glide on JUMP (Kepu 17:38 / 17:50: a leap ~11 studs up + 2 wing flaps in the air, then it glides by itself, falling 8 studs/s at run speed; replaces the Evade Hop). Not published yet |
+| 7 | Therizino (Therizinosaurus) | TherizinoModelData 1.5 (A Reaper, stance C3 Low flare, open hand; kit plan docs/plans/THERIZINO_KIT_v1.0.md); repo 1.6 (balance pass 1, not installed) | 80 | 66 (1.6: 78) | ~32 | Slasher build ("Therizino. Slasher build") |
+| 9 | Dilo (Dilophosaurus) | DiloModelData 1.3 (E Bruiser Face, split hood frill; kit plan docs/plans/DILO_KIT_v1.0.md); repo 1.4 (balance pass 1, not installed) | 70 | 66 (1.4: 78) | ~26 | Ranged spitter (venom dart + Cobra Leap) |
 
 ## Planned
 | # | Dino | Status | Model | Roster | Role / Kepu's words | Notes |
@@ -56,3 +56,4 @@ Raptor 60), `src/server/SpeciesServer.server.luau` (playable species).
 | 1.27 | Troodon kit (plan TROODON_KIT_v1.0, MDA-330..339, 2026-11-06): troodon role "Area control + support" (replaces 1.1's "skirmisher"), playable (SpeciesServer 1.8), model data 1.1. Therizino (kit plan THERIZINO_KIT_v1.0, model data 1.5) and Dilo (kit plan DILO_KIT_v1.0, model data 1.3) were already playable: moved to "In the game". Zuul stays planned. |
 | 1.28 | Troodon: run 86 / walk 46 and pod range 80 studs (TroodonModelData 1.2, Kepu 2026-11-06 17:38); JUMP is Flap & Glide (TroodonModelData 1.3, plan TROODON_FLAP_GLIDE_v1.0, MDA-340..343: leap + 2 flaps, then an automatic glide; the Evade Hop is off). |
 | 1.29 | Troodon mecha parts build 1 (plan docs/plans/TROODON_PARTS_v1.0.md, MDA-345..353, 2026-11-07, not published): main glow zone 40 studs (TroodonModelData 1.5); 9 troodon parts in the SkillTree (SkillTree 1.72), the 5 buttons live (Mender Drone, Arc Lantern, Sap Wall, Feather Shed, Portal Feathers; TrooMovesServer 1.1, looks TrooPartsServer 1.0, buttons MechaButtons 1.39 / AbilityBar 1.35, VFX TrooPartsFX 1.0, poses TrooPose 1.4); the Sap Wall stops every attack whose path crosses it (SapWallBlock 1.1 + a switch in each of the 20 damage servers). The 4 always-on parts are build 2 (MDA-349). |
+| 1.30 | Balance pass 1 in the repo (plan docs/plans/BALANCE_PASS_v1.0.md, MDA-357..364, 2026-11-09, not installed / not tested in Studio): RaptorModelData 1.14 (latch 2.5 s, 5 per hit), PachyModelData 1.6 (jump 0.25 s), HerreraModelData 1.5 (slash 15 / 3 charges / 2.5 s / bleed 4), TenoModelData 1.5 (run 66, scratch 12, slam 25, leap 64), TherizinoModelData 1.6 (run 78, cuts 11 / 11 / 24, 3 Spin Dives / 3 s), DiloModelData 1.4 (run 78, bite 15, dart 10, venom 4, hold 0.25, dart 0.75 s, 2 Cobra Leaps), TroodonModelData 1.6 (pod 12, zone 6, 3 charges / 2 s), TRexModelData 2.1 (run 74, bite 30); every jump 0.25 s except the Herrera (0) and the therizino (Spin Dive 3 s). 1.29 left the header at 1.28. |

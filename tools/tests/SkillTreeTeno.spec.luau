@@ -4,6 +4,7 @@
 -- v1.1: SkillTree 1.48 Buck Off star text + buckCharge.
 -- v1.2: SkillTree 1.50 teno stats part 2 (plan docs/plans/TENO_STATS_v1.1.md): Survivor, Heavy Tail, Front Claws rows,
 --   the shared Thick Hide re-opened for the teno as Armored Hide, and their effects fields.
+-- v1.3 (SkillTree 1.73 balance pass 1, MDA-361): while ST.BALANCE_PASS1 the texts quote TenoModelData 1.5 (scratch 12, slam 25).
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -96,8 +97,8 @@ for id, want in pairs({survivor = {"Survivor", "health"}, heavytail = {"Heavy Ta
 	end
 end
 if P.survivor then eq("survivor I text", P.survivor.steps[1], "A kill heals 15% of your max health over 4 s") end
-if P.heavytail then eq("heavy I text", P.heavytail.steps[1], "Tail slam +3 damage (15 -> 18)") end
-if P.frontclaws then eq("claws I text", P.frontclaws.steps[1], "Scratch hits harder (8 -> 11)") end
+if P.heavytail then eq("heavy I text", P.heavytail.steps[1], ST.BALANCE_PASS1 and "Tail slam +3 damage (25 -> 28)" or "Tail slam +3 damage (15 -> 18)") end -- v1.3
+if P.frontclaws then eq("claws I text", P.frontclaws.steps[1], ST.BALANCE_PASS1 and "Scratch hits harder (12 -> 15)" or "Scratch hits harder (8 -> 11)") end -- v1.3
 eq("hide seen by teno", ST.seesPath(P.hide, "Teno"), true)
 eq("hide teno name", P.hide.nameFor and P.hide.nameFor.Teno, "Armored Hide")
 eq("hide teno I text", P.hide.stepsFor and P.hide.stepsFor.Teno and P.hide.stepsFor.Teno[1], "Take 10% less damage, always")

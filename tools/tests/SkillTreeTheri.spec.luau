@@ -4,6 +4,8 @@
 -- ServerStorage.DinoArcadeTools.SkillTreeTheri_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
 -- v1.1 (SkillTree 1.58, MDA-213: Kepu picked the Fourth Cut "C" Ground Scythe): THERI_FOURTH is true, the Fourth Cut row is the
 -- therizino's (rows harvest, fury, guard, flow, fourth) and its effects are live (I 10, II 14, III reach x1.3, star fast).
+-- v1.2 (SkillTree 1.73 balance pass 1, MDA-362): while ST.BALANCE_PASS1 Building Fury keeps its step over TherizinoModelData 1.6
+--   (cuts 11 / 11 / 24): furyHit2 14, furyFinisher 30, texts "(11 -> 14)" / "(24 -> 30)".
 local ok, ST = pcall(function()
 	local src = game.ServerStorage.DinoArcade.SkillTree
 	local c = src:Clone()
@@ -79,8 +81,10 @@ eq("flow I window", E({flow = 1}).flowWindow, 1.0); eq("flow I gap off", E({flow
 eq("flow II gap", E({flow = 2}).flowGap, 0.26); eq("flow II recover off", E({flow = 2}).flowRecover, 0)
 eq("flow III recover", E({flow = 3}).flowRecover, 0.55); eq("flow III no refill", E({flow = 3}).flowRefill, false)
 eq("flow star refill", E({flow = 4}).flowRefill, true)
-eq("fury I hit2", E({fury = 1}).furyHit2, 12); eq("fury I finisher off", E({fury = 1}).furyFinisher, 0)
-eq("fury II finisher", E({fury = 2}).furyFinisher, 26); eq("fury II stack off", E({fury = 2}).furyStack, 0)
+eq("fury I hit2", E({fury = 1}).furyHit2, ST.BALANCE_PASS1 and 14 or 12); -- v1.2
+eq("fury I finisher off", E({fury = 1}).furyFinisher, 0)
+eq("fury II finisher", E({fury = 2}).furyFinisher, ST.BALANCE_PASS1 and 30 or 26); -- v1.2
+eq("fury II stack off", E({fury = 2}).furyStack, 0)
 eq("fury III stack", E({fury = 3}).furyStack, 2); eq("fury III full off", E({fury = 3}).furyFullMul, 1)
 eq("fury star full", E({fury = 4}).furyFullMul, 1.5)
 eq("guard I taken", E({guard = 1}).guardTakenMul, 0.85); eq("guard I no stun off", E({guard = 1}).guardFinisherNoStun, false)

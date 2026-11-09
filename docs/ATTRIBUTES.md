@@ -37,7 +37,7 @@ Diagnostics: server `StaminaState` (full/running/delay/refilling/exhausted/disab
 
 Pounce-only stamina (StaminaServer 1.4 / StaminaBar 1.1; TRexModelData 1.22 / RaptorModelData 1.12): `StaminaPounceOnly` = true →
 no run drain, never `Exhausted`; costs `StaminaBiteCost` 0, `JumpStaminaCost` 0, `RamStaminaCost` 0; `PounceStaminaCost` 15 and
-`PounceLatchDrain` 15/s unchanged (a latch / pin starts at 85 and releases at 0 after about 5.7 s); refill hidden at the normal rate.
+`PounceLatchDrain` 15/s unchanged (a latch / pin starts at 85 and releases at 0 after about 5.7 s; balance pass 1, RaptorModelData 1.14: drain 32 + PounceLatchMaxTime 2.5 s); refill hidden at the normal rate.
 The bar shows only while `PounceLatched` (latch or pin); client `StaminaBarState` adds "ground" (hidden on the ground) and
 "disabled" (StaminaEnabled false). Verified in Play: pin → bar 85 → 0 in 5.69 s, release "stamina", bar hidden after; three T-Rex
 bites left stamina at 100.
@@ -338,9 +338,10 @@ pounce, −15/s while latched. Lets go on jump (leaps off), stamina 0, target KO
 | PounceReach | 1.6 | Radius of the contact sweep at the snout |
 | PounceCooldown | 3 | Seconds between pounces (client + server) |
 | PounceStaminaCost | 15 | Stamina per pounce; also the minimum needed |
-| PounceLatchDrain | 15 | Stamina per second while latched |
+| PounceLatchDrain | 15 (32 in RaptorModelData 1.14, MDA-357) | Stamina per second while latched |
+| PounceLatchMaxTime | none (2.5 in RaptorModelData 1.14) | PounceServer 1.16: seconds a latch / pin lasts at most (after the tick due then) |
 | PounceLandDamage | 8 | Damage when it latches |
-| PounceTickDamage / PounceTickInterval | 4 / 0.5 | Damage per bite / seconds between bites while latched |
+| PounceTickDamage / PounceTickInterval | 4 / 0.5 (5 / 0.5 in RaptorModelData 1.14) | Damage per bite / seconds between bites while latched |
 | PounceSizeRatio | 1.5 | Target must be at least this many times the raptor's size |
 | PounceClaimWindow | 0.9 | Seconds after the start a latch claim is accepted |
 | PounceLatchStandoff | 2.4 | Studs the body sits off the gripped surface |
@@ -3122,3 +3123,23 @@ No new attributes. The pachy skins use the SkinServer 1.1 ones: SkinEquipped_Pac
 | TrooPartsFX_sapLookEnabled / _portalLookEnabled / _zapLookEnabled; TrooPartsFX_sapRise 0.3, _sapHardenFrom 0.2, _sapHarden 0.45, _sapWetT 0.45, _sapHardT 0.08, _portalRingR 4.2, _portalTube 0.32, _portalVaneR 5, _portalCentre 4.8, _zapLife 0.32 | TrooPartsFX script | true each; numbers read at each use | TrooPartsFX 1.1 (MDA-351) |
 | TrooThrowLanternWideEnabled, TrooThrowLanternWideDeg | troodon model | true; 7 (deg, clamped -30..30, read each frame; applies only while TrooPartLanternEnabled is true; false = TrooPose 1.5's throw wind-up) | TrooPose 1.6 (MDA-351) |
 | TrooPartsFX_menderLookEnabled; TrooPartsFX_menderDroneK 1, _menderHalo 3, _menderHaloT 0.88, _menderTrailW 1.1, _menderOrbitR 4.5, _menderOrbitUp 5.5, _menderTether 0.36, _menderPulse 0.75 | TrooPartsFX script | true (read at each press; false = 1.1's drone); numbers read at each use | TrooPartsFX 1.2 (MDA-351) |
+
+## Balance pass 1 (MDA-357..364; plan docs/plans/BALANCE_PASS_v1.0.md) — repo only, not installed / not tested in Studio
+Model numbers are generator output (old version = the flag in the last column, byte-identical). Stat rows and parts keep their additions on top (SkillTree 1.73).
+| Attribute | Where | Value | Notes |
+|---|---|---|---|
+| PounceTickDamage / PounceLatchDrain / PounceLatchMaxTime (new) | raptor model (RaptorModelData 1.14, raptor_generator --v113 = 1.13) | 5 / 32 / 2.5 s (were 4 / 15 / none) | MDA-357: from full stamina (85 after the pounce cost) the latch lasts 2.5 s with ticks at 0.5 / 1.0 / 1.5 / 2.0 / 2.5 s: 8 + 5 x 5 = 33 (was 5.67 s, 52). Blade Claws max (land x1.35, interval 0.37 s): 11 + 6 x 5 = 41 + bleed. Drain 32 empties 85 at 2.66 s, so the 2.5 s tick survives a 50 ms hitch; the cap ends it. tools/tests/pounce_latch_sim.py |
+| PounceLatchMaxTimeEnabled; PounceLatchCapReleases | PounceServer script | true (read each Heartbeat; false = 1.15, stamina only); count | PounceServer 1.16: release reason "time" once now - PounceLatchedAt >= PounceLatchMaxTime, after a tick due in the same Heartbeat |
+| PounceLatchTicks | raptor character | count | PounceServer 1.16 diagnostic: tick hits in the current / last latch (0 at the latch) |
+| PounceReleaseReason "time" | raptor character | — | PounceServer 1.16 (PounceTest drops off as for "stamina") |
+| JumpCooldown | raptor / pachy / dilo / troodon / teno model | 0.25 (were 0.5 / 0.5 / 0.5 / 0.5 / 1) | MDA-364: RaptorModelData 1.14, PachyModelData 1.6, DiloModelData 1.4, TroodonModelData 1.6, TenoModelData 1.5. Herrera stays 0 (HerreraJump). Sprint Legs III x0.74 still applies; Mecha Legs / Hydraulic Leap write their own when slotted |
+| TRexJumpBalanceEnabled; TRexJumpCooldown | TRexJump script | true (read at each apply; false = 1.0: JumpCooldown 1 where unset); 0.25 | TRexJump 1.1 (MDA-364): writes SkillBase_JumpCooldown = TRexJumpCooldown and JumpCooldown = it x SkillEffects' current multiplier, even where set |
+| SlashDamage / SlashCharges / SlashRefill / SlashBleedDps | herrera model (HerreraModelData 1.5, --v14 = 1.4) | 15 / 3 / 2.5 s / 4 (were 7 / 2 / 4 / 2) | MDA-358. SlashServer DEFAULTS (8 / 2 / 4 / 3) and SkillEffects HERRERA_BASES (4 / 2 / 3) are fallbacks for a missing attribute only (unchanged). Razor Claws: x0.65 refill (1.63 s), +1 charge (4), III bleed 5 (SkillTree 1.73) |
+| TrooPodDamage / TrooZoneDps / TrooPodCharges / TrooPodRefill | troodon model (TroodonModelData 1.6, --v15 = 1.5) | 12 / 6 / 3 / 2 s (were 6 / 3 / 2 / 3 s) | MDA-359. TrooAttackServer DEFAULTS (6 / 3 / 2 / 3) are fallbacks only. AbilityBar / ArenaTouch pips clamp to 3: 3 shown |
+| MoveRunSpeed / MoveWalkSpeed; DiloBiteDamage / DiloDartDamage / DiloVenomDps; DiloHoldTime / DiloDartCooldown; JumpCharges | dilo model (DiloModelData 1.4, --v13 = 1.3) | 78 / 42.5; 15 / 10 / 4; 0.25 / 0.75 s; 2 (were 66 / 36; 10 / 6 / 2; 0.4 / 1.5; 0) | MDA-360 (walk x the run ratio 78 / 66). DiloAttackServer DEFAULTS are fallbacks only. Cobra Leap charges: JumpServer / JumpTest refill each after max(0.5, JumpCooldown) = 0.5 s and need 0.5 s between leaps |
+| SkillEffectsDiloLeapKeepEnabled | SkillEffects script | nil = true (read at each write; false = 1.49) | SkillEffects 1.50: the 1.37 leap writer leaves a dilo's JumpCharges alone (it wrote 0) |
+| MoveRunSpeed; TenoScratchDamage / TenoSlamDamage; JumpLaunchPower | teno model (TenoModelData 1.5, --v14 = 1.4) | 66; 12 / 25; 64 (were 52; 8 / 15; 54) | MDA-361 (walk 30 unchanged). TenoAttackServer DEFAULTS (8 / 40) are fallbacks only |
+| MoveRunSpeed; TheriHitDamage1 / 2 / 3; JumpCharges / JumpCooldown | therizino model (TherizinoModelData 1.6, --v15 = 1.5) | 78; 11 / 11 / 24; 3 / 3 s (were 66; 9 / 9 / 20; 2 / 6 s) | MDA-362 (walk 36 unchanged). Overclock III +1 = 4 Spin Dives (pips clamp to 3) |
+| MoveRunSpeed / BiteDamage | T-Rex model (TRexModelData 2.1, trex_generator --v20 = 2.0) | 74 / 30 (were 60 / 25) | MDA-363 (walk 32 unchanged). The live T-Rex is StarterPlayer.StarterCharacter: set the two attributes there at install. BotServer's T-Rex bot keeps its own biteDamage 25 |
+| BiteDamage (pinned) | pachy / herrera / teno / dilo / troodon models | 25 | the generators copy the T-Rex attributes; the bite is off on these dinos, so the T-Rex's new 30 is not copied |
+| SkillTree.BALANCE_PASS1; SkillTree.BAL1 | SkillTree module | true; old / new bases | SkillTree 1.73: Razor Claws III bleed +2 (5), Building Fury 14 / 30, Quick Draw hold 0.22 / 0.19 / 0.19 / 0.16 and recharge 0.63 / 0.5 (same ratio to the new base), step texts (Herrera, Therizino, Dilo, Teno, T-Rex Jaws I) |
