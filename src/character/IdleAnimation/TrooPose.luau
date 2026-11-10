@@ -1,4 +1,4 @@
--- TrooPose v1.6 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
+-- TrooPose v1.7 (Mecha Dino Arena) — the Troodon's animation layers for IdleAnimation 1.47: the Glow Pod Toss (attack A),
 -- the Evade Hop (jump J2) and the eyes flaring during the throw. MDA-337, plan docs/plans/TROODON_KIT_v1.0.md Task 8; mockup
 -- docs/mockups/troodon_kit_options_v0.1.html (Kepu 2026-11-06 15:38 "Let's go with your recommendations"; source
 -- tools/troodon_kit_mockup/app_tail.js TA_WIND / TA_HOLD / TA_THROW / TA_FOLLOW, TH_SET / TH_AIR / TJ_LAND, and the
@@ -81,6 +81,12 @@ TrooPose.Version = "1.3"
 TrooPose.Version = "1.4" -- v1.4 part move poses
 TrooPose.Version = "1.5" -- v1.5 wider lantern grab
 TrooPose.Version = "1.6" -- v1.6 wider throw wind-up while the lantern is slotted
+TrooPose.Version = "1.7" -- v1.7 troodon slot parts' press poses
+-- v1.7 (troodon slot parts, plan docs/plans/TROODON_SLOTPARTS_v1.0.md T4, MDA-381; TrooSlotServer 1.0 press stamps; mockup
+--   docs/mockups/troodon_slotparts_v0.1.html tracks): PART_STAMPS += TrooBurstAt / TrooDomeAt / TrooSentryAt -> sap (the wide
+--   throw, release 0.34 = TrooSlot_throwWindup) and TrooSleepAt -> sleep {0 $from, 0.22 SLEEP_COIL io (the neck coils back),
+--   0.3 SLEEP_SNAP in2 (the head snaps forward: the dart leaves at TrooSlot_sleepWindup 0.3), 0.8 READY io}. Switch:
+--   TrooPose.SLOT_POSES (default true, read at load; false = 1.6). Test keys SLEEP_COIL / SLEEP_SNAP.
 TrooPose.Defaults = {TrooPoseEnabled = true, TrooHopPoseEnabled = true, TrooEyeFlareEnabled = true, TrooGroundLockEnabled = true,
 	TrooHopLandTime = 0.8, TrooPoseFlapEnabled = true, TrooPoseFallEnabled = true, TrooThrowWideEnabled = true, TrooPartPoseEnabled = true,
 	TrooLanternGrabWideEnabled = true, TrooLanternGrabWideDeg = 7, TrooThrowLanternWideEnabled = true, TrooThrowLanternWideDeg = 7}
@@ -231,6 +237,15 @@ throwLanternWide(7)
 KEYS.TA_HOLD_WL, FWD.TA_HOLD_WL = KEYS.TA_HOLD_WL7, FWD.TA_HOLD_W
 local PART_STAMPS = {{"TrooMenderAt", "mender"}, {"TrooMenderEndAt", "menderBack"}, {"TrooLanternAt", "lantern"}, {"TrooSapAt", "sap"},
 	{"TrooShedAt", "shed"}, {"TrooPortalAt", "portal"}}
+TrooPose.SLOT_POSES = true -- v1.7
+KEYS.SLEEP_COIL = {RootJoint = {6, 0, 0}, Neck = {22, 0, 0}, Head = {-18, 0, 0}, Jaw = {-4, 0, 0}, Tail1 = {6, 0, 0}}
+KEYS.SLEEP_SNAP = {RootJoint = {-6, 0, 0}, Neck = {-16, 0, 0}, Head = {10, 0, 0}, Jaw = {-10, 0, 0}, Tail1 = {-6, 0, 0}}
+TRACKS.sleep = {{0, "$from"}, {0.22, "SLEEP_COIL", "io"}, {0.3, "SLEEP_SNAP", "in2"}, {0.8, "READY", "io"}}
+if TrooPose.SLOT_POSES then
+	for _, pk in ipairs({{"TrooBurstAt", "sap"}, {"TrooDomeAt", "sap"}, {"TrooSentryAt", "sap"}, {"TrooSleepAt", "sleep"}}) do
+		table.insert(PART_STAMPS, pk)
+	end
+end
 local REL, EYES_FROM, EYES_TO = 0.34, 0.05, 1.0
 local FLARE_TO = Color3.fromHex("FFD27A")
 

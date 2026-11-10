@@ -1,4 +1,4 @@
--- MechaButtons v1.44 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.45 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -388,6 +388,15 @@ end
 
 VERSION = "1.43" -- v1.43 TAIL GRAB lights up while a dino is in reach
 VERSION = "1.44" -- v1.44 Portal Rift: PLACING + the rift recharge (MDA-375)
+VERSION = "1.45" -- v1.45 troodon slot parts: Bloom Burst, Shield Dome, Sleep Dart, Sentry Pod (MDA-382)
+-- v1.45 (troodon slot parts, plan docs/plans/TROODON_SLOTPARTS_v1.0.md T5, MDA-382; TrooSlotServer 1.0): TIMED_PARTS += oburst
+--   ("TrooPartBurst", DinoTrooBurstRequest, "BLOOM BURST"), odome ("TrooPartDome", DinoTrooDomeRequest, "SHIELD DOME"), osleep
+--   ("TrooPartSleep", DinoTrooSleepRequest, "SLEEP DART"), osentry ("TrooPartSentry", DinoTrooSentryRequest, "SENTRY POD"): PC
+--   keys, gamepad and the touch slots together, recharge fill + seconds like every timed part. The 3 throws send (stamp, the flat
+--   look, the point: the Arc Lantern's rule, body aim 1.42 + Classic 1.40 with CLASSIC_REACH Range keys TrooPartBurstRange 40 /
+--   TrooPartDomeRange 30 / TrooPartSentryRange 30, else the crosshair hit); the dart sends (stamp, the flat look: the body facing,
+--   else the camera's flat look). Bloom Tank is a passive (no slot, no button). Switch: script attribute
+--   MechaButtonsTrooSlotEnabled (default true, read at start; false = 1.44).
 -- v1.44 (MDA-375, TrooMovesServer 1.10): while the troodon places a Portal Rift (character TrooRiftPlacing true) the oportal
 --   slot (and its pull label) reads "PLACING" and stays pressable (press 2 drops end B); the recharge fill of a timed part uses
 --   <Prefix>RechargeUsed when the server set one (the rift's 45 s), else <Prefix>Cooldown. Switch: script attribute
@@ -541,6 +550,15 @@ if TROO_BTN then -- v1.39: the troodon's mecha button parts (build 1)
 	TIMED_PARTS.osapwall = {"TrooPartSap", "DinoTrooSapRequest", "SAP WALL"}
 	TIMED_PARTS.oshed = {"TrooPartShed", "DinoTrooShedRequest", "FEATHER SHED"}
 	TIMED_PARTS.oportal = {"TrooPartPortal", "DinoTrooPortalRequest", "PORTAL FEATHERS"}
+end
+if script:GetAttribute("MechaButtonsTrooSlotEnabled") == nil then script:SetAttribute("MechaButtonsTrooSlotEnabled", true) end -- v1.45
+local TROO_SLOT_BTN = script:GetAttribute("MechaButtonsTrooSlotEnabled") ~= false
+if TROO_SLOT_BTN then -- v1.45: the troodon slot parts
+	TIMED_PARTS.oburst = {"TrooPartBurst", "DinoTrooBurstRequest", "BLOOM BURST"}
+	TIMED_PARTS.odome = {"TrooPartDome", "DinoTrooDomeRequest", "SHIELD DOME"}
+	TIMED_PARTS.osleep = {"TrooPartSleep", "DinoTrooSleepRequest", "SLEEP DART"}
+	TIMED_PARTS.osentry = {"TrooPartSentry", "DinoTrooSentryRequest", "SENTRY POD"}
+	CLASSIC_REACH.oburst, CLASSIC_REACH.odome, CLASSIC_REACH.osentry = {"TrooPartBurstRange", 40}, {"TrooPartDomeRange", 30}, {"TrooPartSentryRange", 30}
 end
 if script:GetAttribute("MechaButtonsSilenceEnabled") == nil then script:SetAttribute("MechaButtonsSilenceEnabled", true) end -- v1.36
 local function silencedNow() -- v1.36
@@ -1119,6 +1137,39 @@ local function press(n, input)
 			char:SetAttribute("DiloJetsPressAt", workspace:GetServerTimeNow())
 		end
 		if r then r:FireServer(workspace:GetServerTimeNow(), dir) end
+		return
+	end
+	if TROO_SLOT_BTN and (id == "oburst" or id == "odome" or id == "osentry") then -- v1.45: the throws (the Arc Lantern's rule)
+		local r = ReplicatedStorage:FindFirstChild(TIMED_PARTS[id][2])
+		local cam = workspace.CurrentCamera
+		if r and cam then
+			local lv = cam.CFrame.LookVector
+			local flatLook = Vector3.new(lv.X, 0, lv.Z)
+			flatLook = flatLook.Magnitude > 1e-3 and flatLook.Unit or Vector3.zAxis
+			flatLook = bodyFacing() or flatLook
+			local rp = RaycastParams.new()
+			rp.FilterType = Enum.RaycastFilterType.Exclude
+			local ex = {char}
+			for _, n in ipairs({"DinoFX_Local", "DinoFX", "TrooFX", "TrooPartsFX", "TrooWalls", "TrooSlotFX", "TrooDomes", "TrooSentries"}) do
+				local f = workspace:FindFirstChild(n)
+				if f then table.insert(ex, f) end
+			end
+			rp.FilterDescendantsInstances = ex
+			local hit = workspace:Raycast(cam.CFrame.Position, lv * 400, rp)
+			r:FireServer(workspace:GetServerTimeNow(), flatLook, bodyPoint(id) or classicPoint(id) or (hit and hit.Position or nil))
+		end
+		return
+	end
+	if TROO_SLOT_BTN and id == "osleep" then -- v1.45: the dart: the flat look
+		local r = ReplicatedStorage:FindFirstChild(TIMED_PARTS[id][2])
+		local cam = workspace.CurrentCamera
+		if r then
+			local lv = cam and cam.CFrame.LookVector or Vector3.zAxis
+			local flatLook = Vector3.new(lv.X, 0, lv.Z)
+			flatLook = flatLook.Magnitude > 1e-3 and flatLook.Unit or Vector3.zAxis
+			flatLook = bodyFacing() or flatLook
+			r:FireServer(workspace:GetServerTimeNow(), flatLook)
+		end
 		return
 	end
 	if TROO_BTN and (id == "olantern" or id == "osapwall" or id == "oportal") then -- v1.39: the camera's flat look + the crosshair point

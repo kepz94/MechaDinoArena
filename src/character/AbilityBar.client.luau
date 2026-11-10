@@ -1,4 +1,4 @@
--- AbilityBar v1.38 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.39 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -194,6 +194,11 @@ VERSION = "1.35" -- v1.35 troodon button part timers
 VERSION = "1.36" -- v1.36 dilo spit only: the dart pip fills over DiloSpitGap
 VERSION = "1.37" -- v1.37 TAIL GRAB tile lights up while a dino is in reach
 VERSION = "1.38" -- v1.38 Portal Rift: PLACING + the rift recharge (MDA-375)
+VERSION = "1.39" -- v1.39 troodon slot parts (MDA-382)
+-- v1.39 (troodon slot parts, plan docs/plans/TROODON_SLOTPARTS_v1.0.md T5, MDA-382; PC and touch together with MechaButtons 1.45):
+--   TIMED_PARTS += oburst "TrooPartBurst", odome "TrooPartDome", osleep "TrooPartSleep", osentry "TrooPartSentry" (recharge fill
+--   + seconds from <prefix>ReadyAt / <prefix>Cooldown); "active" while TrooDomeUntil (odome) / TrooSentryUntil (osentry) are
+--   ahead. Switch: script attribute AbilityBarTrooSlotEnabled (default true, read at start; false = 1.38).
 -- v1.38 (MDA-375, TrooMovesServer 1.10): the oportal tile reads "PLACING" (active look) while the troodon places a Portal Rift
 --   (character TrooRiftPlacing true); a timed part's cooling fill uses <Prefix>RechargeUsed when the server set one (the rift's
 --   45 s), else <Prefix>Cooldown. Switch: script attribute AbilityBarRiftEnabled (default true, read every frame; false = 1.37).
@@ -309,6 +314,11 @@ if script:GetAttribute("AbilityBarTrooPartsEnabled") ~= false then -- v1.35: the
 	TIMED_PARTS.omender, TIMED_PARTS.olantern, TIMED_PARTS.osapwall = "TrooPartMender", "TrooPartLantern", "TrooPartSap"
 	TIMED_PARTS.oshed, TIMED_PARTS.oportal = "TrooPartShed", "TrooPartPortal"
 	UNTIL_ATTR.omender, UNTIL_ATTR.oshed, UNTIL_ATTR.oportal = "TrooMenderUntil", "TrooShedImmuneUntil", "TrooPortalUntil"
+end
+if script:GetAttribute("AbilityBarTrooSlotEnabled") == nil then script:SetAttribute("AbilityBarTrooSlotEnabled", true) end -- v1.39
+if script:GetAttribute("AbilityBarTrooSlotEnabled") ~= false then -- v1.39: the troodon slot parts
+	TIMED_PARTS.oburst, TIMED_PARTS.odome, TIMED_PARTS.osleep, TIMED_PARTS.osentry = "TrooPartBurst", "TrooPartDome", "TrooPartSleep", "TrooPartSentry"
+	UNTIL_ATTR.odome, UNTIL_ATTR.osentry = "TrooDomeUntil", "TrooSentryUntil"
 end
 local player = Players:GetPlayerFromCharacter(char) or Players.LocalPlayer
 
