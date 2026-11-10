@@ -1,4 +1,4 @@
--- SkillTreeTheriParts.spec v1.7 (1.7: Bola reach 60 / 80, SkillTree 1.71 THERI_BOLA_RANGE_V2, MDA-324; 1.6: feather range 35 / 40 / 50, SkillTree 1.67; 1.5: Overclock III extra jump, SkillTree 1.66; 1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
+-- SkillTreeTheriParts.spec v1.8 (1.8: MDA-365 Dash 4.2 / 3 s; 1.7: Bola reach 60 / 80, SkillTree 1.71 THERI_BOLA_RANGE_V2, MDA-324; 1.6: feather range 35 / 40 / 50, SkillTree 1.67; 1.5: Overclock III extra jump, SkillTree 1.66; 1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.61 (plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheriParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-04 "Two builds"): zhook / zfeather / zharvest / zsnare live; zgrapple / zdeflect / zclock "soon".
@@ -102,7 +102,7 @@ chk("zsnare", "snareRadius", {4, 4, 4, 4}); chk("zsnare", "snareCooldown", BO an
 chk("zsnare", "snareRange", BR and {60, 60, 80, 80} or (BO and {35, 35, 45, 45} or {0, 0, 0, 0})) -- v1.4; v1.7 60 / 80
 -- v1.1: build-2 effects per step
 chk("zgrapple", "grappleRange", DA and {30, 40, 50, 50} or {90, 110, 130, 130}); chk("zgrapple", "grappleCharges", DA and {2, 2, 2, 3} or {1, 1, 1, 2}) -- v1.2: range (SkillTree 1.63)
-chk("zgrapple", "grappleCooldown", DA and {6, 6, 5, 5} or {12, 12, 10, 10})
+chk("zgrapple", "grappleCooldown", DA and (ST.MOVE_CD_PASS and {4.2, 4.2, 3, 3} or {6, 6, 5, 5}) or {12, 12, 10, 10}) -- v1.8: MDA-365
 chk("zdeflect", "deflectTime", {1, 1.5, 2, 2}); chk("zdeflect", "deflectAngle", {70, 70, 70, 70})
 chk("zdeflect", "deflectLevel", {1, 2, 2, 2}); chk("zdeflect", "deflectReflect", {false, false, false, true})
 chk("zdeflect", "deflectCooldown", {16, 16, 13, 13})
@@ -112,8 +112,8 @@ chk("zclock", "clockCooldown", {22, 22, 18, 18})
 eq("THERI_CLOCK_JUMP", ST.THERI_CLOCK_JUMP, true) -- v1.5
 chk("zclock", "clockJump", ST.THERI_CLOCK_JUMP and {0, 0, 1, 1} or {0, 0, 0, 0}) -- v1.5
 local TEXT2 = {
-	zgrapple = DA and {"Button: jolt 30 studs the way you're moving (standing still: forward). 2 charges, each back in 6 s",
-		"Dashes 40 studs", "Dashes 50 studs; charges back in 5 s", "3 charges"} or {"Button: hold to lock onto the furthest tree or rock ahead (up to 90 studs), let go to zip there. Nothing ahead: it latches in the air. Recharges in 12 s",
+	zgrapple = DA and {"Button: jolt 30 studs the way you're moving (standing still: forward). 2 charges, each back in " .. (ST.MOVE_CD_PASS and "4.2" or "6") .. " s",
+		"Dashes 40 studs", ST.MOVE_CD_PASS and "Dashes 50 studs; charges back in 3 s" or "Dashes 50 studs; charges back in 5 s", "3 charges"} or {"Button: hold to lock onto the furthest tree or rock ahead (up to 90 studs), let go to zip there. Nothing ahead: it latches in the air. Recharges in 12 s",
 		"Reaches 110 studs", "Reaches 130 studs; recharges in 10 s", "2 charges"}, -- v1.2; v1.3 step 1
 	zdeflect = {"Button: claws spin in front for 1 s and block darts. Recharges in 16 s", "Spin 1.5 s; blocks boulders and cannon shots too",
 		"Spin 2 s; recharges in 13 s", "Blocked shots bounce back at the shooter"},

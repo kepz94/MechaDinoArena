@@ -1,4 +1,4 @@
--- SkillTree v1.78 (1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.79 (1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -3001,6 +3001,70 @@ do
 		e.oRicochetReach = ri >= 2 and 40 or (ri >= 1 and 30 or 0)
 		e.oRicochetTime = ri >= 3 and 3 or (ri >= 1 and 2.2 or 0)
 		e.oRicochetSize = ri >= 4 and 1 or (ri >= 1 and 0.5 or 0)
+		return e
+	end
+end
+
+-- v1.79 (MDA-365, plan docs/plans/BALANCE_PASS_v1.0.md "Movement parts, x0.7"; Kepu 2026-11-09 "Yes, about 30% shorter"):
+--   SkillTree.MOVE_CD_PASS (default true; false = 1.78): the movement parts' cooldowns x0.7, the 35% rule kept. effects()
+--   swaps each value the 1.78 maths gives for its new one (SkillTree.MOVE_CD_MAP: field -> {old = new}; a value not in the
+--   map is left alone, so other parts that share a field name keep theirs):
+--   adrenCooldown 20 / 14.8 -> 14 / 10.3 (Raptor Adrenaline Injector and Herrera Adrenaline Injector), legsCooldown 6 -> 4.2
+--   (Pachy Mecha Legs; legsCdMul 0.65 kept, so III / star = 2.73), servoCd 12 / 8 -> 8.4 / 5.6 (Pachy Servo Dash),
+--   leapCooldown 6 -> 4.2 (Teno Hydraulic Leap; the 14 of the pre-1.57 leap is not touched), grappleCooldown 6 / 5 -> 4.2 / 3
+--   (Therizino Dash; III 3, not 3.5, so the step keeps the 35% rule: 4.2 / 3 = 1.4x; Grapple Zip's 12 / 10 not touched),
+--   dJetsCooldown 6 -> 4.2 (Dilo Spring Jets; the Dilo pass 1.76 changed only the distances), oPortalCooldown 20 -> 14
+--   (Troodon Portal Feathers). The Thrusters recharge (8 -> 5.6) is SkillEffects 1.54 (SkillDashRechargeFast).
+--   Texts that name a time are rewritten (MOVE_CD_TEXTS, exact old -> new; a miss counts in SkillTree.MOVE_CD_TEXT_MISSES,
+--   expected 0). "Recharges 26% faster" (Adrenaline III) stays true (14 -> 10.3).
+SkillTree.MOVE_CD_PASS = true
+SkillTree.MOVE_CD_MAP = {
+	adrenCooldown = {[20] = 14, [14.8] = 10.3},
+	legsCooldown = {[6] = 4.2},
+	servoCd = {[12] = 8.4, [8] = 5.6},
+	leapCooldown = {[6] = 4.2},
+	grappleCooldown = {[6] = 4.2, [5] = 3},
+	dJetsCooldown = {[6] = 4.2},
+	oPortalCooldown = {[20] = 14},
+}
+SkillTree.MOVE_CD_TEXTS = {
+	{"hadren", 1, "Button: heal 25% of max health over 3 s and run 1.4x faster while it lasts. Recharges in 20 s",
+		"Button: heal 25% of max health over 3 s and run 1.4x faster while it lasts. Recharges in 14 s"},
+	{"mechalegs", 1, "Piston-boosted leap: 50% farther forward and 20% more launch power. The leap now has a 6 s cooldown",
+		"Piston-boosted leap: 50% farther forward and 20% more launch power. The leap now has a 4.2 s cooldown"},
+	{"mechalegs", 3, "The leap cooldown recharges 35% faster (3.9 s)", "The leap cooldown recharges 35% faster (2.73 s)"},
+	{"servodash", 3, "Recharges in 8 s (was 12 s)", "Recharges in 5.6 s (was 8.4 s)"},
+	{"tleap", 1, "Fires through JUMP: every jump is a hydraulic leap, 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 6 s",
+		"Fires through JUMP: every jump is a hydraulic leap, 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 4.2 s"},
+	{"zgrapple", 1, "Button: jolt 30 studs the way you're moving (standing still: forward). 2 charges, each back in 6 s",
+		"Button: jolt 30 studs the way you're moving (standing still: forward). 2 charges, each back in 4.2 s"},
+	{"zgrapple", 3, "Dashes 50 studs; charges back in 5 s", "Dashes 50 studs; charges back in 3 s"},
+	{"djets", 1, "Button: the tail booster dashes you 40 studs the way you move. Recharges in 6 s",
+		"Button: the tail booster dashes you 40 studs the way you move. Recharges in 4.2 s"},
+	{"oportal", 1, "Button: fling two linked feather rings, one just ahead and one up to 40 studs away; walk into one, come out of the other. They last 6 s, you only. Recharges in 20 s",
+		"Button: fling two linked feather rings, one just ahead and one up to 40 studs away; walk into one, come out of the other. They last 6 s, you only. Recharges in 14 s"},
+}
+SkillTree.MOVE_CD_TEXT_MISSES = 0
+if SkillTree.MOVE_CD_PASS then
+	for _, row in ipairs(SkillTree.MOVE_CD_TEXTS) do
+		local path = SkillTree.PATHS[row[1]]
+		local text = path and path.steps and path.steps[row[2]]
+		if text == row[3] then
+			path.steps[row[2]] = row[4]
+		else
+			SkillTree.MOVE_CD_TEXT_MISSES += 1
+		end
+	end
+end
+do
+	local effectsPre179 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre179(steps, dino)
+		if type(e) ~= "table" or not SkillTree.MOVE_CD_PASS then return e end
+		for field, map in pairs(SkillTree.MOVE_CD_MAP) do
+			local v = e[field]
+			if type(v) == "number" and map[v] then e[field] = map[v] end
+		end
 		return e
 	end
 end

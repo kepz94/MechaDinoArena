@@ -1,4 +1,4 @@
--- SkillTreeTenoParts.spec v1.5 (Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
+-- SkillTreeTenoParts.spec v1.6 (1.6: MDA-365 Hydraulic Leap 4.2 s; Mecha Dino Arena) — the Tenontosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.49 (plan docs/plans/TENO_ABILITIES_v1.0.md Task 1, MDA-173). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTenoParts_spec, loadstring(Source)()); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-01 "two builds"): tgrab / tmortar / tstomp / tleap live; tbellow / tchallenge / tmud "soon".
@@ -88,7 +88,7 @@ if P.tstomp then
 	eq("stomp star", P.tstomp.steps[4], "A raptor latched on you loses 50 stamina from its pounce")
 end
 if P.tleap then
-	eq("leap I", P.tleap.steps[1], "Fires through JUMP: every jump is a hydraulic leap, 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in 6 s") -- v1.4
+	eq("leap I", P.tleap.steps[1], "Fires through JUMP: every jump is a hydraulic leap, 40 studs forward. Landing slams the tail: 10 damage in 12 studs (no slam charge used). Recharges in " .. (ST.MOVE_CD_PASS and "4.2" or "6") .. " s") -- v1.4; v1.6
 	eq("leap II", P.tleap.steps[2], "Leap 55 studs")
 	eq("leap III", P.tleap.steps[3], "Landing stuns 0.5 s")
 	eq("leap star", P.tleap.steps[4], "2 leaps (2 charges)")
@@ -179,7 +179,7 @@ eq("stomp III no drain", E({tstomp = 3}).stompLatchDrain, 0); eq("stomp star dra
 -- leap
 eq("leap I dist", E({tleap = 1}).leapDist, 40); eq("leap I damage", E({tleap = 1}).leapDamage, 10)
 eq("leap I radius", E({tleap = 1}).leapRadius, 12); eq("leap I no stun", E({tleap = 1}).leapStun, 0)
-eq("leap I charges", E({tleap = 1}).leapCharges, 1); eq("leap I cooldown", E({tleap = 1}).leapCooldown, 6) -- v1.4: 6 (was 14)
+eq("leap I charges", E({tleap = 1}).leapCharges, 1); eq("leap I cooldown", E({tleap = 1}).leapCooldown, ST.MOVE_CD_PASS and 4.2 or 6) -- v1.4: 6 (was 14); v1.6: 4.2 (MDA-365)
 eq("leap none boost", E({}).leapBoostMul, 1); eq("leap none power", E({}).leapPowerMul, 1); eq("leap none onJump", E({}).leapOnJump, false) -- v1.4
 eq("leap I boost", E({tleap = 1}).leapBoostMul, 1.65); eq("leap I power", E({tleap = 1}).leapPowerMul, 1.2); eq("leap I onJump", E({tleap = 1}).leapOnJump, true)
 eq("leap II boost", E({tleap = 2}).leapBoostMul, 2.1); eq("leap II power", E({tleap = 2}).leapPowerMul, 1.45)

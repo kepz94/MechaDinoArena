@@ -1,5 +1,6 @@
--- SkillTree.spec v1.22 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
+-- SkillTree.spec v1.23 (Mecha Dino Arena) — tests for ServerStorage.DinoArcade.SkillTree (MDA-11, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 1). Run in Studio Edit through execute_luau; returns "PASS n" or "FAIL ...".
+-- v1.23: MDA-365 (SkillTree 1.79 MOVE_CD_PASS): Adrenaline 14 / 10.3, Mecha Legs 4.2, every movement part ladder + 35% rule + texts.
 -- v1.9: requires a fresh clone so a re-run in the same Studio session sees the installed source (require caches)
 -- v1.10: Shock Dart (screech shown as "Shock Dart", range 100 / 135; the 35% range check reads the data)
 -- v1.11: Shock Cannon (name; stun 1.1 s, 1.5 s at star, 35% check)
@@ -316,9 +317,9 @@ eq("blade III bleed", R("blade", 3).bladeBleedDps, 3); eq("blade III time", R("b
 eq("blade III refund", R("blade", 3).bladePinRefund, 0); eq("blade star refund", R("blade", 4).bladePinRefund, 0.5)
 eq("adren 0", R("adrenaline", 0).adrenHeal, 0); eq("adren 0 cd", R("adrenaline", 0).adrenCooldown, 0)
 eq("adren I heal", R("adrenaline", 1).adrenHeal, 0.25); eq("adren I time", R("adrenaline", 1).adrenTime, 3)
-eq("adren I speed", R("adrenaline", 1).adrenSpeedMul, 1.4); eq("adren I cd", R("adrenaline", 1).adrenCooldown, 20)
+eq("adren I speed", R("adrenaline", 1).adrenSpeedMul, 1.4); eq("adren I cd", R("adrenaline", 1).adrenCooldown, ST.MOVE_CD_PASS and 14 or 20) -- v1.23
 eq("adren II heal", R("adrenaline", 2).adrenHeal, 0.34); eq("adren star heal", R("adrenaline", 4).adrenHeal, 0.34)
-eq("adren III cd", R("adrenaline", 3).adrenCooldown, 14.8) -- v1.7: heal / speed / star-heal cases updated
+eq("adren III cd", R("adrenaline", 3).adrenCooldown, ST.MOVE_CD_PASS and 10.3 or 14.8) -- v1.23; v1.7: heal / speed / star-heal cases updated
 eq("adren III clear", R("adrenaline", 3).adrenStunClear, false); eq("adren star clear", R("adrenaline", 4).adrenStunClear, true)
 eq("adren 0 speed", R("adrenaline", 0).adrenSpeedMul, 1)
 eq("shield 0", R("shield", 0).eshieldTime, 0); eq("shield 0 slow", R("shield", 0).eshieldSpeedMul, 1)
@@ -329,7 +330,7 @@ eq("shield star", R("shield", 4).eshieldTime, 2.77); eq("shield star slow", R("s
 eq("shield III slow", R("shield", 3).eshieldSpeedMul, 0.5)
 -- 35% rule
 eq("35 adren heal", R("adrenaline", 2).adrenHeal / R("adrenaline", 1).adrenHeal >= 1.35 - 1e-9, true) -- v1.7: from the data
-eq("35 adren cd", 20 / 14.8 >= 1.35, true)
+eq("35 adren cd", R("adrenaline", 1).adrenCooldown / R("adrenaline", 3).adrenCooldown >= 1.35, true) -- v1.23: from the data
 eq("35 shield II", 2.05 / 1.5 >= 1.35, true); eq("35 shield star", 2.77 / 2.05 >= 1.35, true)
 eq("35 shield cd", 16 / 11.8 >= 1.35, true); eq("35 shield slow", 0.68 / 0.5 >= 1.35, true)
 -- T-Rex gets none of it
@@ -426,7 +427,7 @@ eq("legs exists", ST.PATHS.mechalegs ~= nil, true)
 eq("legs passive", ST.BUTTONS.mechalegs == nil, true)
 eq("legs pachy only", ST.seesPath(ST.PATHS.mechalegs, "Pachy") and not ST.seesPath(ST.PATHS.mechalegs, "Raptor") and not ST.seesPath(ST.PATHS.mechalegs, "TRex"), true)
 eq("legs 0 cd", ST.effects({mechalegs = 0}, "Pachy").legsCooldown, 0)
-eq("legs I boost", ST.effects({mechalegs = 1}, "Pachy").legsBoostMul, 1.25); eq("legs I cd", ST.effects({mechalegs = 1}, "Pachy").legsCooldown, 6)
+eq("legs I boost", ST.effects({mechalegs = 1}, "Pachy").legsBoostMul, 1.25); eq("legs I cd", ST.effects({mechalegs = 1}, "Pachy").legsCooldown, ST.MOVE_CD_PASS and 4.2 or 6) -- v1.23
 eq("legs II power", ST.effects({mechalegs = 2}, "Pachy").legsPowerMul, 1.2); eq("legs III cd mul", ST.effects({mechalegs = 3}, "Pachy").legsCdMul, 0.65)
 eq("legs star double", ST.effects({mechalegs = 4}, "Pachy").doubleJump, true); eq("legs III no double", ST.effects({mechalegs = 3}, "Pachy").doubleJump, false)
 
@@ -462,6 +463,55 @@ eq("stalker star stun", H({stalker = 4}).diveStun, 0.5)
 eq("frenzy I speed", H({frenzy = 1}).frenzySpeedMul, 1.1); eq("frenzy II time", H({frenzy = 2}).slashBleedTime, 5) -- v1.21
 eq("frenzy III bonus", H({frenzy = 3}).bleedBonus, 2) -- v1.21; eq("frenzy star refill", H({frenzy = 4}).killRefill, true)
 eq("frenzy III no refill", H({frenzy = 3}).killRefill, false)
+
+-- v1.23: MDA-365 movement parts x0.7 (SkillTree 1.79 MOVE_CD_PASS); every changed ladder keeps the 35% rule
+eq("MOVE_CD_PASS", ST.MOVE_CD_PASS, true); eq("MOVE_CD_TEXT_MISSES", ST.MOVE_CD_TEXT_MISSES, 0)
+do
+	local function ladder(id, dino, field)
+		local r = {}
+		for n = 1, 4 do local s = {}; s[id] = n; r[n] = ST.effects(s, dino)[field] end
+		return r
+	end
+	local function same(name, got, want)
+		for n = 1, 4 do eq(name .. " @" .. n, math.abs((got[n] or -1) - want[n]) < 1e-9, true) end
+	end
+	local function rule(name, got)
+		for n = 2, 4 do
+			if got[n] ~= got[n - 1] then eq(name .. " 35% @" .. n, got[n - 1] / got[n] >= 1.35 - 1e-9, true) end
+		end
+	end
+	local L = {
+		{"raptor adren", "adrenaline", nil, "adrenCooldown", {14, 14, 10.3, 10.3}},
+		{"herrera adren", "hadren", "Herrera", "adrenCooldown", {14, 14, 10.3, 10.3}},
+		{"pachy legs", "mechalegs", "Pachy", "legsCooldown", {4.2, 4.2, 4.2, 4.2}},
+		{"pachy servo", "servodash", "Pachy", "servoCd", {8.4, 8.4, 5.6, 5.6}},
+		{"teno leap", "tleap", "Teno", "leapCooldown", {4.2, 4.2, 4.2, 4.2}},
+		{"theri dash", "zgrapple", "Therizino", "grappleCooldown", {4.2, 4.2, 3, 3}},
+		{"dilo jets", "djets", "Dilo", "dJetsCooldown", {4.2, 4.2, 4.2, 4.2}},
+		{"troo portal", "oportal", "Troodon", "oPortalCooldown", {14, 14, 14, 14}},
+	}
+	for _, row in ipairs(L) do
+		local got = ladder(row[2], row[3], row[4])
+		same(row[1], got, row[5]); rule(row[1], got)
+	end
+	-- Mecha Legs III / star: 4.2 x legsCdMul 0.65 = 2.73 (35% rule on the effective cooldown)
+	local l3 = ST.effects({mechalegs = 3}, "Pachy")
+	eq("pachy legs III eff", math.abs(l3.legsCooldown * l3.legsCdMul - 2.73) < 1e-9, true)
+	eq("pachy legs III 35%", 4.2 / (l3.legsCooldown * l3.legsCdMul) >= 1.35 - 1e-9, true)
+	-- texts
+	eq("text hadren I", ST.PATHS.hadren.steps[1]:find("Recharges in 14 s", 1, true) ~= nil, true)
+	eq("text mechalegs I", ST.PATHS.mechalegs.steps[1]:find("4.2 s cooldown", 1, true) ~= nil, true)
+	eq("text mechalegs III", ST.PATHS.mechalegs.steps[3], "The leap cooldown recharges 35% faster (2.73 s)")
+	eq("text servodash III", ST.PATHS.servodash.steps[3], "Recharges in 5.6 s (was 8.4 s)")
+	eq("text tleap I", ST.PATHS.tleap.steps[1]:find("Recharges in 4.2 s", 1, true) ~= nil, true)
+	eq("text zgrapple I", ST.PATHS.zgrapple.steps[1]:find("each back in 4.2 s", 1, true) ~= nil, true)
+	eq("text zgrapple III", ST.PATHS.zgrapple.steps[3], "Dashes 50 studs; charges back in 3 s")
+	eq("text djets I", ST.PATHS.djets.steps[1]:find("Recharges in 4.2 s", 1, true) ~= nil, true)
+	eq("text oportal I", ST.PATHS.oportal.steps[1]:find("Recharges in 14 s", 1, true) ~= nil, true)
+	-- other parts that share the fields keep theirs
+	eq("theri dash off", ST.effects({}, "Therizino").grappleCooldown, 0)
+	eq("teno leap off", ST.effects({}, "Teno").leapCooldown, 0)
+end
 
 if #fails > 0 then return "FAIL " .. #fails .. "/" .. (#fails + passes) .. "\n" .. table.concat(fails, "\n") end
 return "PASS " .. passes

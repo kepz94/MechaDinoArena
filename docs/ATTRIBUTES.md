@@ -3220,3 +3220,11 @@ Model numbers are generator output (old version = the flag in the last column, b
 | TrooAttackServerArmorAllEnabled; TrooAttackServerArmorCuts | TrooAttackServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
 | TrooMovesServerArmorAllEnabled; TrooMovesServerArmorCuts | TrooMovesServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
 | SkillEffectsArmorAllEnabled; SkillEffectsArmorCuts | SkillEffects script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+
+## Movement parts ~30% shorter cooldowns (MDA-365; SkillTree 1.79, SkillEffects 1.54; 2026-11-09)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| SkillTree.MOVE_CD_PASS / MOVE_CD_MAP / MOVE_CD_TEXTS / MOVE_CD_TEXT_MISSES | SkillTree constant | true / table / table / 0 | 1.79: effects() swaps adrenCooldown 20 / 14.8 -> 14 / 10.3, legsCooldown 6 -> 4.2, servoCd 12 / 8 -> 8.4 / 5.6, leapCooldown 6 -> 4.2 (Teno), grappleCooldown 6 / 5 -> 4.2 / 3 (Therizino Dash), dJetsCooldown 6 -> 4.2, oPortalCooldown 20 -> 14; step texts rewritten; false = 1.78 |
+| AdrenalineCooldown / ServoDashCooldown / JumpCooldown (Mecha Legs, Hydraulic Leap) / TheriGrappleCooldown / DiloJetsCooldown / TrooPortalCooldown | character (SkillEffects) | from effects() | now the x0.7 values above (Mecha Legs III: 4.2 x 0.65 = 2.73) |
+| SkillEffectsMoveCdEnabled / SkillDashRechargeFast | SkillEffects script | true / 5.6 | 1.54: the Thrusters recharge written to DashRecharge = SkillDashRechargeFast while on (and SkillTree.MOVE_CD_PASS); false = SkillDashRecharge 8 |

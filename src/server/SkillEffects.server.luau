@@ -1,4 +1,4 @@
--- SkillEffects v1.53 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.54 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -363,6 +363,11 @@ VERSION = "1.53" -- v1.53 armor on every hit (MDA-366)
 --   Wiry Frame = the victim's StatDamageTakenMul) now cuts skill bleed ticks (bites / pounces with Serrated / bleed rows):
 --   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
 --   SkillEffectsArmorAllEnabled (default true, read at each hit; false = 1.52). Diagnostic: script SkillEffectsArmorCuts (count of hits cut).
+VERSION = "1.54" -- v1.54 Thrusters recharge 5.6 s (MDA-365)
+-- v1.54 (MDA-365, plan docs/plans/BALANCE_PASS_v1.0.md "Movement parts, x0.7"; Kepu 2026-11-09 "Yes, about 30% shorter"): the
+--   Thrusters recharge written to the character's DashRecharge is script attribute SkillDashRechargeFast (default 5.6) while
+--   SkillEffectsMoveCdEnabled (default true, read at each refresh) and SkillTree.MOVE_CD_PASS (SkillTree 1.79) are on; else
+--   SkillDashRecharge (8) as 1.53. The other movement parts' cooldowns come from SkillTree 1.79 effects() unchanged here.
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -497,6 +502,15 @@ local ST = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillT
 script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsEnabled") == nil then script:SetAttribute("SkillEffectsEnabled", true) end
 local function on() return script:GetAttribute("SkillEffectsEnabled") ~= false end
+-- v1.54 (MDA-365): the Thrusters recharge x0.7 (SkillDashRecharge 8 -> SkillDashRechargeFast 5.6)
+if script:GetAttribute("SkillEffectsMoveCdEnabled") == nil then script:SetAttribute("SkillEffectsMoveCdEnabled", true) end
+if script:GetAttribute("SkillDashRechargeFast") == nil then script:SetAttribute("SkillDashRechargeFast", 5.6) end
+local function dashRecharge()
+	if script:GetAttribute("SkillEffectsMoveCdEnabled") ~= false and ST.MOVE_CD_PASS then
+		return script:GetAttribute("SkillDashRechargeFast")
+	end
+	return script:GetAttribute("SkillDashRecharge")
+end
 for k, v in pairs({SkillDashTime = 0.35, SkillDashRecharge = 8, SkillDashSpeedMul = 2}) do -- v1.1; v1.2: + SkillDashSpeedMul; v1.3: 2 -> 3; v1.4: 3 -> 1.75; v1.7: 1.75 -> 2
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -583,7 +597,7 @@ local function applyChar(char, st)
 	char:SetAttribute("DashHop", dashOn and e.dashHop or 0)
 	char:SetAttribute("DashTime", (dashOn and (e.dashTime or 0) > 0) and e.dashTime or script:GetAttribute("SkillDashTime")) -- v1.2
 	char:SetAttribute("DashSpeedMul", script:GetAttribute("SkillDashSpeedMul")) -- v1.2
-	char:SetAttribute("DashRecharge", script:GetAttribute("SkillDashRecharge"))
+	char:SetAttribute("DashRecharge", dashRecharge()) -- v1.54: Thrusters 5.6 s (MDA-365)
 	-- v1.5: Cloak Field (only while slotted)
 	local cloakSlotted = false
 	for n = 1, ST.SLOTS or 2 do

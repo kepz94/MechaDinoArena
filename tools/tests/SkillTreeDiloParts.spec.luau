@@ -1,4 +1,4 @@
--- SkillTreeDiloParts.spec v1.1 (Mecha Dino Arena) — the Dilophosaurus' 7 mecha button parts in ServerStorage.DinoArcade.SkillTree
+-- SkillTreeDiloParts.spec v1.2 (1.2: MDA-365 Spring Jets 4.2 s; Mecha Dino Arena) — the Dilophosaurus' 7 mecha button parts in ServerStorage.DinoArcade.SkillTree
 -- 1.69 (plan docs/plans/DILO_PARTS_v1.0.md Task 1, MDA-314). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeDiloParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-06 two builds): dgatling / dmortar / dspine / dover live; dhiss / dpump / djets "soon".
@@ -69,7 +69,7 @@ local TEXT = {
 		"Cone reaches 25 studs", "Silence lasts 2 s; recharges in 12 s", "Cone reaches 30 studs, silence lasts 3 s"},
 	dpump = {"Button: the back pump clears your debuffs and heals 15. Recharges in 20 s", "Heals 20", "Heals 30",
 		"Then 4 s immune to slows, stuns and blinds"},
-	djets = {"Button: the tail booster dashes you 25 studs the way you move. Recharges in 6 s", "30 studs, 2 charges",
+	djets = {"Button: the tail booster dashes you 25 studs the way you move. Recharges in " .. (ST.MOVE_CD_PASS and "4.2" or "6") .. " s", "30 studs, 2 charges",
 		"40 studs; leaves a poison trail", "3 charges"},
 }
 for id, t in pairs(TEXT) do
@@ -96,7 +96,7 @@ chk("dhiss", "dHissRange", {20, 25, 25, 30}); chk("dhiss", "dHissAngle", {35, 35
 chk("dhiss", "dHissSilence", {1.5, 1.5, 2, 3}); chk("dhiss", "dHissCooldown", {15, 15, 12, 12})
 chk("dpump", "dPumpHeal", {15, 20, 30, 30}); chk("dpump", "dPumpImmune", {0, 0, 0, 4}); chk("dpump", "dPumpCooldown", {20, 20, 20, 20})
 chk("djets", "dJetsDist", {25, 30, 40, 40}); chk("djets", "dJetsCharges", {1, 2, 2, 3}); chk("djets", "dJetsTrail", {0, 0, 6, 6})
-chk("djets", "dJetsCooldown", {6, 6, 6, 6})
+chk("djets", "dJetsCooldown", ST.MOVE_CD_PASS and {4.2, 4.2, 4.2, 4.2} or {6, 6, 6, 6}) -- v1.2: MDA-365
 -- other dinos read the off values, and their own fields are untouched by DILO_PARTS
 eq("raptor dgatling off", ST.effects({dgatling = 4}, "Raptor").dGatlingCount, 0)
 eq("pachy dmortar off", ST.effects({dmortar = 4}, "Pachy").dMortarRange, 0)

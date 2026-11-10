@@ -1,4 +1,4 @@
--- SkillTreeTrooParts.spec v1.0 (Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
+-- SkillTreeTrooParts.spec v1.1 (1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
 -- (plan docs/plans/TROODON_PARTS_v1.0.md ticket 2, MDA-346). Run in Studio Edit (paste into execute_luau, or a copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTrooParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-06 "two builds"): omender / olantern / osapwall / oshed / oportal live; olastfeather / oplume /
@@ -86,7 +86,7 @@ local TEXT = {
 		"Wall 67.5 studs wide", "Lasts 2.9 s", "Lasts 4 s"},
 	oshed = {"Button: shed your feathers to break out of a stun, pin or grab; immune to them for 1 s. Recharges in 24 s",
 		"Immune 1.4 s", "Recharges in 17.7 s", "The burst knocks dinos within 20 studs back and slows them 25% for 2 s"},
-	oportal = {"Button: fling two linked feather rings, one just ahead and one up to 40 studs away; walk into one, come out of the other. They last 6 s, you only. Recharges in 20 s",
+	oportal = {"Button: fling two linked feather rings, one just ahead and one up to 40 studs away; walk into one, come out of the other. They last 6 s, you only. Recharges in " .. (ST.MOVE_CD_PASS and "14" or "20") .. " s",
 		"The far ring reaches 54 studs", "They last 8.1 s", "Squadmates can use them too"},
 	olastfeather = {"Always on (takes a slot): once per life a killing hit leaves you at 1 HP, untouchable for 0.7 s",
 		"You also burst up into a glide (a free flap)", "Untouchable 1 s", "You drop a glow zone (40 studs) where you were"},
@@ -120,7 +120,7 @@ chk("oshed", "oShedImmune", {1, 1.4, 1.4, 1.4}); chk("oshed", "oShedCooldown", {
 chk("oshed", "oShedKnockRadius", {0, 0, 0, 20}); chk("oshed", "oShedSlowMul", {1, 1, 1, 0.75})
 chk("oshed", "oShedSlowTime", {0, 0, 0, 2})
 chk("oportal", "oPortalRange", {40, 54, 54, 54}); chk("oportal", "oPortalTime", {6, 6, 8.1, 8.1})
-chk("oportal", "oPortalSquad", {false, false, false, true}); chk("oportal", "oPortalCooldown", {20, 20, 20, 20})
+chk("oportal", "oPortalSquad", {false, false, false, true}); chk("oportal", "oPortalCooldown", ST.MOVE_CD_PASS and {14, 14, 14, 14} or {20, 20, 20, 20}) -- v1.1: MDA-365
 -- the 35% rule on every upgrading step (time / reach / count up, recharge down)
 local function up(name, a, b) eq(name .. " >= 1.35x", b >= a * 1.35 - 1e-9, true) end
 up("mender time II", 4, E({omender = 2}).oMenderTime); up("mender cooldown III", E({omender = 3}).oMenderCooldown, 20)
