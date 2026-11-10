@@ -1,4 +1,4 @@
--- TrooPartsFX v1.2 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
+-- TrooPartsFX v1.3 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
 -- MDA-351, plan docs/plans/TROODON_PARTS_v1.0.md ticket 7; spec tools/mockup/troodon_parts_looks.js ("VFX, in Roblox
 -- pieces" per part; Kepu 2026-11-06 20:11 "real vfx ... consistent w the rest of the rosters"). Reads TrooMovesServer 1.x's
 -- stamps (server time) on every troodon character and draws locally in Workspace.TrooPartsFX (never replicated). Every move:
@@ -75,6 +75,10 @@
 --     orbitP); heal beam = a steady tether Beam (menderTether 0.36 x k wide, pulsing 0.35-0.65 opaque, the mockup's tether 0.18
 --     radius) from the drone to the target plus, every menderPulse 0.75 s (the mockup's heal tick), a cone Beam 0.44 -> 1.2 x k
 --     wide fading over 0.3 s and a green burst on the target; the MedWave ground ring every 1 s as 1.1. A hop moves the tether.
+-- v1.3 (MDA-376, TrooMovesServer 1.8 tracks the lantern's target): when the troodon's TrooLanternTrack names a live model the
+--   flying lantern homes on it: the flight's end is that model's root (flat) at TrooLanternTo's height, re-read every frame, so
+--   it lands on the target where the server zaps it. Switch: script attribute TrooPartsFX_lanternTrackEnabled (default true,
+--   read at each throw; false = 1.2's fixed flight to TrooLanternTo).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -83,6 +87,7 @@ local Debris = game:GetService("Debris")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 sap wall / portal rings / lantern zap looks to mockup v0.2
 VERSION = "1.2" -- v1.2 mender drone size / glow / heal beam to mockup v0.2
+VERSION = "1.3" -- v1.3 the lantern homes on its tracked target (MDA-376)
 script:SetAttribute("TrooPartsFXVersion", VERSION)
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderBack = 0.75, menderOrbit = 3.5, menderTick = 0.25, lanternWindup = 0.42,
 	lanternLinger = 0.9, lanternArc = 6, sapWindup = 0.34, sapArc = 7, sapReturn = 1.15, shedWindup = 0.15, shedFling = 0.7,
@@ -96,7 +101,7 @@ for k, v in pairs(CFG) do
 end
 for _, k in ipairs({"TrooPartsFXEnabled", "TrooPartsFX_omenderEnabled", "TrooPartsFX_olanternEnabled", "TrooPartsFX_osapwallEnabled",
 	"TrooPartsFX_oshedEnabled", "TrooPartsFX_oportalEnabled", "TrooPartsFX_sapLookEnabled", "TrooPartsFX_portalLookEnabled",
-	"TrooPartsFX_zapLookEnabled", "TrooPartsFX_menderLookEnabled"}) do -- v1.1: + the three look switches; v1.2: + menderLook
+	"TrooPartsFX_zapLookEnabled", "TrooPartsFX_menderLookEnabled", "TrooPartsFX_lanternTrackEnabled"}) do -- v1.1: + the three look switches; v1.2: + menderLook; v1.3: + lanternTrack
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function cfg(k) return tonumber(script:GetAttribute("TrooPartsFX_" .. k)) or CFG[k] end
@@ -193,7 +198,8 @@ local function arcFly(p, from, to, dur, height, done)
 	conn = RunService.Heartbeat:Connect(function()
 		if not p.Parent then conn:Disconnect() return end
 		local u = math.min(1, (os.clock() - t0) / math.max(0.01, dur))
-		local pos = from:Lerp(to, u) + Vector3.new(0, 4 * height * u * (1 - u), 0)
+		local tt = typeof(to) == "function" and to() or to -- v1.3: a moving end (the tracked lantern)
+		local pos = from:Lerp(tt, u) + Vector3.new(0, 4 * height * u * (1 - u), 0)
 		p.CFrame = CFrame.new(pos) * CFrame.Angles(0, u * 6, 0)
 		if u >= 1 then
 			conn:Disconnect()
@@ -645,7 +651,16 @@ local function lanternStart(char, at)
 			diag("olantern", "recovery")
 		end
 		local flight = num(char:GetAttribute("TrooLanternFlight")) or 0.55
-		arcFly(core, from, to, flight, cfg("lanternArc") * s / 2, function()
+		local endFn = to -- v1.3: home on the tracked target
+		local trk = script:GetAttribute("TrooPartsFX_lanternTrackEnabled") ~= false and rootOf(findModel(char:GetAttribute("TrooLanternTrack"))) or nil
+		if trk then
+			local y = to.Y
+			endFn = function()
+				if trk.Parent then to = Vector3.new(trk.Position.X, y, trk.Position.Z) end
+				return to
+			end
+		end
+		arcFly(core, from, endFn, flight, cfg("lanternArc") * s / 2, function()
 			diag("olantern", "result")
 			core.CFrame = CFrame.new(to)
 			TweenService:Create(shell, TweenInfo.new(0.25), {Transparency = 0.8}):Play()

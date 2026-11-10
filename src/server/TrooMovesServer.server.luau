@@ -1,4 +1,4 @@
--- TrooMovesServer v1.7 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.8 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -169,6 +169,21 @@ VERSION = "1.7" -- v1.7 armor on every hit (MDA-366)
 --   Wiry Frame = the victim's StatDamageTakenMul) now cuts Lantern and the other part hits (damage):
 --   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
 --   TrooMovesServerArmorAllEnabled (default true, read at each hit; false = 1.6). Diagnostic: script TrooMovesServerArmorCuts (count of hits cut).
+VERSION = "1.8" -- v1.8 Arc Lantern tracks its target (MDA-376)
+-- v1.8 (MDA-376; Kepu 2026-11-09 20:33 live test "The arc lantern didn't do shit"): 1.7 fixed the landing at the press and zapped only
+--   within lanternZapRadius of that spot ~1.1 s later, so anything moving faster than ~12-15 studs/s escaped. Now the first target is
+--   locked at the press: the assist-snapped enemy, else among the enemies in the 45 degree aim cone (roots, flat) within
+--   TrooPartLanternRange + lanternZapRadius the one whose root is nearest the aimed spot when one is within lanternZapRadius of it,
+--   else the nearest one within TrooPartLanternRange (diag character TrooLanternTrack = its name or ""). When the lantern leaves the
+--   hand (end of the wind-up) the planned spot = the locked target's ground spot then (if it is still alive, an enemy and within
+--   TrooPartLanternRange + lanternZapRadius of the troodon; else the lock is dropped and 1.7 runs); at the landing the lantern comes
+--   down at the target's current ground spot when it is alive and within TrooMoves_lanternTrackLeash (1.5) x lanternZapRadius of
+--   the planned spot (else on the planned spot, 1.7's zap search), and zaps it TrooMoves_lanternTrackZapDelay (0) s after the
+--   landing (the Sap Wall arc check runs on the real flight to that spot, the zap line check from it), then chains as 1.7.
+--   TrooLanternTo is re-stamped at the landing (the real spot); TrooPartsFX 1.3 homes the flying lantern on TrooLanternTrack.
+--   Switch: script attribute TrooMovesLanternTrackEnabled (default true, read at each press; false = 1.7). Diagnostics: script
+--   TrooMovesLanternTracked (count of tracked zaps), TrooMovesLanternTrackLost (count of locks dropped).
+if script:GetAttribute("TrooMovesLanternTrackEnabled") == nil then script:SetAttribute("TrooMovesLanternTrackEnabled", true) end -- v1.8
 for _, k in ipairs({"TrooMovesLastFeatherEnabled", "TrooMovesRefundEnabled", "TrooMovesPlumeEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end -- v1.6
 end
@@ -180,6 +195,7 @@ if script:GetAttribute("TrooMoves_sapProfile") == nil then script:SetAttribute("
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderTick = 0.25, menderHopFly = 0.5,
 	lanternWindup = 0.42, lanternFly = 0.55, lanternZapDelay = 0.32, lanternZapRadius = 16, lanternChainStep = 0.12, lanternArc = 6,
 	sapWindup = 0.34, sapFly = 0.5, sapHeight = 18, sapThick = 2, sapSegments = 5, sapClear = 3, sapTransparency = 0.08,
+	lanternTrackLeash = 1.5, lanternTrackZapDelay = 0, -- v1.8
 	shedWindup = 0.15, shedShoveTime = 0.3,
 	portalWindup1 = 0.4, portalWindup2 = 0.52, portalOpen1 = 0.35, portalOpen2 = 0.8, portalNear = 10, portalRadius = 6,
 	portalTick = 0.1, portalLock = 1, portalClearW = 6, portalClearH = 8, portalStep = 4}
@@ -557,13 +573,63 @@ remote("DinoTrooLanternRequest").OnServerEvent:Connect(function(player, stamp, a
 		end
 		char:SetAttribute("TrooLanternAssist", snap and snap.Name or "")
 	end
+	local lock = nil -- v1.8: the locked first target
+	if script:GetAttribute("TrooMovesLanternTrackEnabled") ~= false then
+		local root = rootOf(char)
+		local aimV = flat(to - root.Position)
+		aimV = aimV.Magnitude > 1e-3 and aimV.Unit or heading(char, aimDir)
+		local cosA, zr = math.cos(math.rad(SHOT_ASSIST_DEG)), cfg("lanternZapRadius")
+		local aimedD, nearD, nearM = nil, nil, nil
+		for _, m in ipairs(enemies(char)) do
+			local rp = rootOf(m).Position
+			local v = flat(rp - root.Position)
+			local d = v.Magnitude
+			if d > 1e-3 and v.Unit:Dot(aimV) >= cosA and d <= lRange + zr then
+				local da = flat(rp - to).Magnitude
+				if da <= zr and (not aimedD or da < aimedD) then lock, aimedD = m, da end
+				if d <= lRange and (not nearD or d < nearD) then nearM, nearD = m, d end
+			end
+		end
+		lock = lock or nearM
+		if shotPass() and char:GetAttribute("TrooLanternAssist") ~= "" then -- the assist snap wins
+			for _, m in ipairs(enemies(char)) do if m.Name == char:GetAttribute("TrooLanternAssist") then lock = m break end end
+		end
+	end
+	char:SetAttribute("TrooLanternTrack", lock and lock.Name or "")
 	char:SetAttribute("TrooLanternFrom", handPos(char))
 	char:SetAttribute("TrooLanternTo", to)
 	char:SetAttribute("TrooLanternFlight", lFly)
 	char:SetAttribute("TrooLanternAt", t) -- last: TrooPartsFX
 	task.delay(cfg("lanternWindup"), function()
 		if not canStill(char) then result(char, "TrooPartLantern", "cancelled", now()) return end
+		local zr = math.max(0, cfg("lanternZapRadius"))
+		local function groundAt(m) -- v1.8
+			local rp = rootOf(m).Position
+			return Vector3.new(rp.X, groundY(rp, rp.Y - 3 * char:GetScale()), rp.Z)
+		end
+		local function lockOk(m)
+			return m ~= nil and m.Parent ~= nil and isTarget(m, char) and mayHarm(char, m)
+		end
+		if lock then -- v1.8: plan on the target where it is as the lantern leaves the hand
+			local root = rootOf(char)
+			if lockOk(lock) and root and flat(rootOf(lock).Position - root.Position).Magnitude <= lRange + zr then
+				to = groundAt(lock)
+			else
+				lock = nil
+				count("TrooMovesLanternTrackLost")
+			end
+		end
 		task.wait(lFly) -- v1.4 (was cfg("lanternFly"))
+		local tracked = false
+		if lock then -- v1.8: carry the landing to the target's current spot within the leash
+			if lockOk(lock) and flat(rootOf(lock).Position - to).Magnitude <= math.max(0, cfg("lanternTrackLeash")) * zr then
+				to = groundAt(lock)
+				tracked = true
+			else
+				count("TrooMovesLanternTrackLost")
+			end
+			char:SetAttribute("TrooLanternTo", to)
+		end
 		local lf, sc = char:GetAttribute("TrooLanternFrom"), char:GetScale() -- v1.2: the lantern's real arc
 		if typeof(lf) == "Vector3" and sapArcBlocked(lf, to + Vector3.new(0, 0.8 * sc / 2, 0), cfg("lanternArc") * sc / 2) then
 			char:SetAttribute("TrooLanternChainList", "")
@@ -571,14 +637,17 @@ remote("DinoTrooLanternRequest").OnServerEvent:Connect(function(player, stamp, a
 			return
 		end
 		char:SetAttribute("TrooLanternLandAt", now())
-		task.wait(cfg("lanternZapDelay"))
+		task.wait(tracked and math.max(0, cfg("lanternTrackZapDelay")) or cfg("lanternZapDelay"))
 		local hits, names = {}, {}
 		local from = to
 		local maxN = math.max(0, math.floor(num(char, "TrooPartLanternTargets", 2)))
-		local reach = math.max(0, cfg("lanternZapRadius"))
+		local reach = zr
+		local first = nil -- v1.8: the tracked target is the first zap (if it is still a target and no wall is in the way)
+		if tracked and lockOk(lock) and not sapBlocked(to + Vector3.yAxis * 2, lock) then first = lock end
 		for i = 1, maxN do
 			local best, bestD = nil, math.huge
-			for _, m in ipairs(enemies(char)) do
+			if i == 1 and first then best, bestD = first, 0 count("TrooMovesLanternTracked") end -- v1.8
+			for _, m in ipairs(best and {} or enemies(char)) do
 				if not hits[m] then
 					local d = (rootOf(m).Position - from).Magnitude
 					if d <= reach and d < bestD and not sapBlocked(i == 1 and to + Vector3.yAxis * 2 or from, m) then best, bestD = m, d end -- v1.1: Sap Wall
