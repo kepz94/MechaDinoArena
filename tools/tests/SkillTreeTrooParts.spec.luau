@@ -1,4 +1,4 @@
--- SkillTreeTrooParts.spec v1.5 (1.5: the 5 slot parts of SkillTree 1.85 join the troodon rows; 1.4: MDA-377 Arc Lantern 12 per zap + stun text; 1.3: MDA-375 Portal Rift 185 / 250 studs, 22 / 30 s, 61 / 45 s; 1.2: MDA-373 Sap Wall 74 / 100 wide, 4.2 / 5.8 / 8 s, 30 tall; 1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
+-- SkillTreeTrooParts.spec v1.6 (1.6: SkillTree 1.87 TROO_SOON_REMOVED takes the 4 soon parts out of the troodon's rows; 1.5: the 5 slot parts of SkillTree 1.85 join the troodon rows; 1.4: MDA-377 Arc Lantern 12 per zap + stun text; 1.3: MDA-375 Portal Rift 185 / 250 studs, 22 / 30 s, 61 / 45 s; 1.2: MDA-373 Sap Wall 74 / 100 wide, 4.2 / 5.8 / 8 s, 30 tall; 1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
 -- (plan docs/plans/TROODON_PARTS_v1.0.md ticket 2, MDA-346). Run in Studio Edit (paste into execute_luau, or a copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTrooParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-06 "two builds"): omender / olantern / osapwall / oshed / oportal live; olastfeather / oplume /
@@ -68,7 +68,22 @@ for _, a in ipairs(ST.AREAS) do
 	for _, p in ipairs(ST.pathsFor(a.id, "Troodon")) do if p.mech and p.dino == "Troodon" then table.insert(trooMech, p.id) end end
 end
 table.sort(trooMech)
-eq("troodon mech rows", table.concat(trooMech, ","), ST.TROO_SLOT_PARTS and "obloom,oburst,odome,ofortify,olantern,olastfeather,omender,oplume,oportal,oricochet,osapwall,osentry,oshed,osleep" or "ofortify,olantern,olastfeather,omender,oplume,oportal,oricochet,osapwall,oshed") -- v1.5
+local soonOut = ST.TROO_SOON_REMOVED and not ST.TROO_PARTS_B2_LIVE -- v1.6
+local wantRows = ST.TROO_SLOT_PARTS and "obloom,oburst,odome,ofortify,olantern,olastfeather,omender,oplume,oportal,oricochet,osapwall,osentry,oshed,osleep" or "ofortify,olantern,olastfeather,omender,oplume,oportal,oricochet,osapwall,oshed"
+if soonOut then
+	local keep = {}
+	for id in wantRows:gmatch("[^,]+") do if not table.find(ST.TROO_SOON_IDS, id) then table.insert(keep, id) end end
+	wantRows = table.concat(keep, ",")
+end
+eq("troodon mech rows", table.concat(trooMech, ","), wantRows) -- v1.5 / v1.6
+if soonOut then -- v1.6: the 4 are in no area, still in PATHS / PATH_ORDER as soon
+	for _, id in ipairs(ST.TROO_SOON_IDS) do
+		local inArea = false
+		for _, a in ipairs(ST.AREAS) do for _, p in ipairs(a.paths) do if p.id == id then inArea = true end end end
+		eq(id .. " out of every area", inArea, false)
+	end
+	eq("T-Rex soon part stays", (function() for _, a in ipairs(ST.AREAS) do for _, p in ipairs(a.paths) do if p.id == "repairdrone" then return true end end end return false end)(), true)
+end
 -- no other dino lists any o part
 for _, d in ipairs({"TRex", "Raptor", "Herrera", "Teno", "Pachy", "Therizino", "Dilo"}) do
 	local n = 0
