@@ -1,4 +1,4 @@
--- TrooPartsServer v1.1 (Mecha Dino Arena) — puts the Troodon's mecha parts on (server-built, every client sees them) and builds
+-- TrooPartsServer v1.2 (Mecha Dino Arena) — puts the Troodon's mecha parts on (server-built, every client sees them) and builds
 -- their Lab card models. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 3 (MDA-347); the looks are Kepu's picks from
 -- docs/mockups/troodon_parts_options.html v0.2 (Kepu 2026-11-06 21:24 "I like all the recommended"), exported piece by piece by
 -- tools/mockup/export_troodon_parts.js into ServerStorage.DinoArcade.TrooPartsLooks 1.0 (src/shared/TrooPartsLooks.luau):
@@ -41,6 +41,13 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Studio fit tryout attribute
+VERSION = "1.2" -- v1.2 the troodon slot parts' looks (TrooSlotLooks 1.0)
+-- v1.2 (troodon slot parts, plan docs/plans/TROODON_SLOTPARTS_v1.0.md T3, MDA-380): ServerStorage.DinoArcade.TrooSlotLooks 1.0
+--   (generated from docs/mockups/troodon_slotparts_v0.1.html) joins LOOKS, and PARTS gains obloom (TrooPartBloomEnabled: the
+--   passive, on when bought), oburst (TrooPartBurstEnabled), odome (TrooPartDomeEnabled), osleep (TrooPartSleepEnabled),
+--   osentry (TrooPartSentryEnabled) (SkillEffects 1.58 flags), each with TrooParts_<id>Enabled and its Lab card
+--   (BuildPreview_<id>, the same loop). MAT gains blue (6CC4FF neon), violet (B88CFF neon) and glassT (the Bloom Tank's glass,
+--   9FF6E8, transparency 0.45). Switch: script attribute TrooPartsSlotLooksEnabled (default true, read at start; false = 1.1).
 -- v1.1 (MDA-349, build 2 fit of Ricochet's Spring Cups): in Studio only (RunService:IsStudio()), a script attribute
 --   TrooPartsFitTry_<id> (Vector3, rest model space, scale 1) replaces FIT[id] at the next build of that part (toggle its
 --   TrooPart<Name>Enabled), so fit shifts can be measured in one Play session; ignored on a live server. Must be unset at
@@ -60,6 +67,8 @@ local MAT = {
 	white = {hex(0xffffff), Enum.Material.Neon}, gold = {hex(0xffd772), Enum.Material.Metal},
 	glassA = {hex(0xffc35a), Enum.Material.Glass, 0.18},
 }
+MAT.blue, MAT.violet = {hex(0x6cc4ff), Enum.Material.Neon}, {hex(0xb88cff), Enum.Material.Neon} -- v1.2
+MAT.glassT = {hex(0x9ff6e8), Enum.Material.Glass, 0.45} -- v1.2
 local PARTS = {
 	{id = "omender", flag = "TrooPartMenderEnabled"}, {id = "olantern", flag = "TrooPartLanternEnabled"},
 	{id = "osapwall", flag = "TrooPartSapEnabled"}, {id = "oshed", flag = "TrooPartShedEnabled"},
@@ -91,6 +100,27 @@ do
 	else
 		script:SetAttribute("TrooPartsLooksVersion", "missing")
 		warn("TrooPartsServer: TrooPartsLooks not loaded: " .. tostring(data))
+	end
+end
+-- v1.2: the troodon slot parts' looks
+if script:GetAttribute("TrooPartsSlotLooksEnabled") == nil then script:SetAttribute("TrooPartsSlotLooksEnabled", true) end
+if script:GetAttribute("TrooPartsSlotLooksEnabled") ~= false then
+	local ok, data = pcall(function()
+		local m = ServerStorage:WaitForChild("DinoArcade", 10):WaitForChild("TrooSlotLooks", 10)
+		return m and require(m)
+	end)
+	if ok and type(data) == "table" and type(data.LOOKS) == "table" then
+		for id, lk in pairs(data.LOOKS) do LOOKS[id] = lk end
+		for _, p in ipairs({{id = "obloom", flag = "TrooPartBloomEnabled"}, {id = "oburst", flag = "TrooPartBurstEnabled"},
+			{id = "odome", flag = "TrooPartDomeEnabled"}, {id = "osleep", flag = "TrooPartSleepEnabled"},
+			{id = "osentry", flag = "TrooPartSentryEnabled"}}) do
+			table.insert(PARTS, p)
+			if script:GetAttribute("TrooParts_" .. p.id .. "Enabled") == nil then script:SetAttribute("TrooParts_" .. p.id .. "Enabled", true) end
+		end
+		script:SetAttribute("TrooSlotLooksVersion", tostring(data.Version))
+	else
+		script:SetAttribute("TrooSlotLooksVersion", "missing")
+		warn("TrooPartsServer: TrooSlotLooks not loaded: " .. tostring(data))
 	end
 end
 -- the segment roots' rest CFrames (TroodonModelData, scale 1): the fit layer's model-space shift is turned into them

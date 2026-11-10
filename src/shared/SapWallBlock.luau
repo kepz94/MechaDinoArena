@@ -1,4 +1,4 @@
--- SapWallBlock v1.2 (Mecha Dino Arena) — does a live Sap Wall stand between two points? Plan docs/plans/TROODON_PARTS_v1.0.md
+-- SapWallBlock v1.3 (Mecha Dino Arena) — does a live Sap Wall stand between two points? Plan docs/plans/TROODON_PARTS_v1.0.md
 -- (Kepu 2026-11-06 21:28: "If a attack hits the wall or has to go through the wall to get to another opponent then it should be
 -- stopped by the wall"), MDA-353. ServerStorage.DinoArcade.SapWallBlock (ModuleScript), required by every server that applies
 -- damage at the moment it picks / resolves a target, each behind its own switch.
@@ -20,16 +20,26 @@
 --   stamped WallBlockedAt / WallBlockedPos like blocks()). An arc that clears the wall's top does not block. Switch: script
 --   attribute SapWallArcEnabled (default true, read at each call; false = the straight-line blocks(fromPos, toPos)).
 --   Diagnostics: SapWallArcChecks, SapWallArcHits (script attributes).
+-- v1.3 (troodon Shield Dome, plan docs/plans/TROODON_SLOTPARTS_v1.0.md, MDA-379; Kepu 2026-11-10 picks): the live Shield Domes
+--   (TrooSlotServer 1.0: Ball parts tagged CollectionService "TrooDome", attribute TrooDomeUntil > now; centre = the part's
+--   Position, radius = half its Size.X, so a growing dome blocks at its current size) block like walls, by sphere maths (no
+--   raycast, so the dome part stays CanQuery false and never catches a ground / aim ray): a straight line (blocks) or an arc
+--   segment (arcBlocks) that ENTERS a dome blocks; one that starts inside a dome does not (shots from inside go out, the pick).
+--   The hit point is stamped on the dome like a wall (WallBlockedPos / WallBlockedAt, for TrooSlotFX). Checked before the walls
+--   (a dome hit returns true, domePart). Switch: script attribute SapWallDomeEnabled (default true, read at each call; false =
+--   1.2). Diagnostics: SapWallDomeChecks, SapWallDomeHits (script attributes).
 local CollectionService = game:GetService("CollectionService")
 
 local SapWallBlock = {}
 SapWallBlock.Version = "1.0"
 SapWallBlock.Version = "1.1" -- v1.1 posOf / between + WallBlockedAt stamps
 SapWallBlock.Version = "1.2" -- v1.2 arcBlocks (lobbed shots)
+SapWallBlock.Version = "1.3" -- v1.3 Shield Domes (sphere check)
 SapWallBlock.ENABLED = true
 script:SetAttribute("SapWallBlockVersion", SapWallBlock.Version)
 if script:GetAttribute("SapWallArcEnabled") == nil then script:SetAttribute("SapWallArcEnabled", true) end -- v1.2
 if script:GetAttribute("SapWallArcSegments") == nil then script:SetAttribute("SapWallArcSegments", 16) end -- v1.2
+if script:GetAttribute("SapWallDomeEnabled") == nil then script:SetAttribute("SapWallDomeEnabled", true) end -- v1.3
 
 local params = RaycastParams.new()
 params.FilterType = Enum.RaycastFilterType.Include
@@ -121,6 +131,86 @@ function SapWallBlock.arcBlocks(fromPos, toPos, peakHeight) -- v1.2: a lobbed sh
 		a = b
 	end
 	return false
+end
+
+-- v1.3: the Shield Domes (see the header) -------------------------------------------------------------------------------------
+local function liveDomes(t)
+	local out = {}
+	if script:GetAttribute("SapWallDomeEnabled") == false then return out end
+	for _, p in ipairs(CollectionService:GetTagged("TrooDome")) do
+		if p:IsA("BasePart") and p:IsDescendantOf(workspace) then
+			local u = p:GetAttribute("TrooDomeUntil")
+			if typeof(u) == "number" and u > t then table.insert(out, p) end
+		end
+	end
+	return out
+end
+local function entry(a, b, c, R) -- the fraction of a -> b where it enters the sphere (c, R); nil when it starts inside / misses
+	local d, f = b - a, a - c
+	if f.Magnitude <= R then return nil end
+	local A, B, C = d:Dot(d), 2 * f:Dot(d), f:Dot(f) - R * R
+	if A < 1e-9 then return nil end
+	local disc = B * B - 4 * A * C
+	if disc < 0 then return nil end
+	local u = (-B - math.sqrt(disc)) / (2 * A)
+	if u >= 0 and u <= 1 then return u end
+	return nil
+end
+local function domeHit(a, b, domes)
+	local best, bestU
+	for _, p in ipairs(domes) do
+		local u = entry(a, b, p.Position, p.Size.X / 2)
+		if u and (not bestU or u < bestU) then best, bestU = p, u end
+	end
+	return best, bestU
+end
+local function stampDome(p, pos)
+	script:SetAttribute("SapWallDomeHits", (script:GetAttribute("SapWallDomeHits") or 0) + 1)
+	if script:GetAttribute("SapWallStampEnabled") ~= false then
+		p:SetAttribute("WallBlockedPos", pos)
+		p:SetAttribute("WallBlockedAt", workspace:GetServerTimeNow())
+	end
+end
+do
+	local blocksV12 = SapWallBlock.blocks
+	function SapWallBlock.blocks(fromPos, toPos)
+		if SapWallBlock.ENABLED and typeof(fromPos) == "Vector3" and typeof(toPos) == "Vector3" then
+			local domes = liveDomes(workspace:GetServerTimeNow())
+			if #domes > 0 then
+				script:SetAttribute("SapWallDomeChecks", (script:GetAttribute("SapWallDomeChecks") or 0) + 1)
+				local p, u = domeHit(fromPos, toPos, domes)
+				if p then
+					stampDome(p, fromPos:Lerp(toPos, u))
+					return true, p
+				end
+			end
+		end
+		return blocksV12(fromPos, toPos)
+	end
+	local arcV12 = SapWallBlock.arcBlocks
+	function SapWallBlock.arcBlocks(fromPos, toPos, peakHeight)
+		if SapWallBlock.ENABLED and typeof(fromPos) == "Vector3" and typeof(toPos) == "Vector3" then
+			local domes = liveDomes(workspace:GetServerTimeNow())
+			if #domes > 0 then
+				script:SetAttribute("SapWallDomeChecks", (script:GetAttribute("SapWallDomeChecks") or 0) + 1)
+				local H = tonumber(peakHeight) or 0
+				local n = math.clamp(math.floor(tonumber(script:GetAttribute("SapWallArcSegments")) or 16), 1, 64)
+				local function at(u) return fromPos:Lerp(toPos, u) + Vector3.new(0, 4 * H * u * (1 - u), 0) end
+				local a = at(0)
+				for i = 1, n do
+					local b = at(i / n)
+					local p, u = domeHit(a, b, domes)
+					if p then
+						local hitPos = a:Lerp(b, u)
+						stampDome(p, hitPos)
+						return true, p, (i - 1) / n + u / n, hitPos
+					end
+					a = b
+				end
+			end
+		end
+		return arcV12(fromPos, toPos, peakHeight)
+	end
 end
 
 return SapWallBlock
