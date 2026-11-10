@@ -3246,3 +3246,18 @@ Model numbers are generator output (old version = the flag in the last column, b
 | SkillEffectsTrooSapHeightEnabled | SkillEffects script | true (read at start) | false = no TrooPartSapHeight (1.54) |
 | TrooMovesSapHeightEnabled | TrooMovesServer script | true (read at each throw) | false = the wall is TrooMoves_sapHeight (18) tall as 1.8 |
 | TrooSapHeight | troodon character | stamp | the thrown wall's height (before TrooSapAt) |
+
+## Portal Rift (MDA-375; TrooMovesServer 1.10, TrooPartsFX 1.4, SkillTree 1.82, SkillEffects 1.56, SprintTest 1.24, TrooAttackServer 1.6, TrooAttackTest 1.1, MechaButtons 1.44, AbilityBar 1.38; 2026-11-09)
+| Attribute | Where | Default | Meaning |
+|---|---|---|---|
+| TrooPortalRiftEnabled | TrooMovesServer script | true (read at each press) | false = 1.9's two-ring portal |
+| TrooMoves_riftBoostMin / riftBoostMax / riftMinWalk / riftSample / riftPlaceMax / riftRadius / riftLock / riftSpeedMul / riftLen / riftTime / riftCooldown | TrooMovesServer script | 1.25 / 1.55 / 10 / 3 / 15 / 6 / 1 / 5 / 250 / 30 / 45 | placing speed x, cancel under (studs), path sample (studs), placing cap (s), end radius (studs), re-use lock (s), ride speed x run, fallbacks when the skill gives none |
+| TrooMoves_riftBotsEnabled / TrooMovesRiftSafeEnabled | TrooMovesServer script | false / true | bots may ride / riders' health drops given back |
+| TrooMovesRifts / TrooMovesRiftTrips / TrooMovesRiftCancels / TrooRiftSaves | TrooMovesServer script | diag | counts |
+| TrooRiftPlacing, TrooRiftA, TrooRiftMax, TrooRiftSpeedMul, TrooRiftWalked, TrooRiftAt | troodon character | stamps | placing mode (TrooRiftAt last) |
+| TrooRiftB, TrooRiftLen, TrooRiftPath, TrooRiftUntil, TrooRiftOpenAt; TrooRiftEndAt; TrooRiftCancelWhy / TrooRiftCancelAt | troodon character | stamps | open rift ("x,y,z;..." ground path) / close / cancel ("short" / "dead") |
+| TrooPartPortalRechargeUsed | troodon character | 45 | the recharge the rift used (HUD fill) |
+| TrooRiftTravelFrom / To / Speed / By / Until, TrooRiftTravelAt; TrooRiftTravelEndAt, TrooRiftTravelTime; TrooPortalLockUntil | rider | stamps | the ride |
+| TrooPartPortalRiftLength / RiftTime / RiftCooldown | troodon character (SkillEffects 1.56) | 185-250 / 22-30 / 61-45 | from SkillTree oRiftLength / oRiftTime / oRiftCooldown |
+| SkillTree.TROO_RIFT_PASS / RIFT_TEXTS / RIFT_TEXT_MISSES | SkillTree constant | true / 4 texts / 0 | false = 1.81 |
+| SkillEffectsTrooRiftEnabled, SprintTestRiftEnabled, TrooAttackRiftBlockEnabled, TrooAttackTestRiftBlockEnabled, MechaButtonsRiftEnabled, AbilityBarRiftEnabled, TrooPartsFX_riftLookEnabled | each script | true | false = the version before |
