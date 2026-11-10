@@ -1,4 +1,4 @@
--- SkillTreeTrooParts.spec v1.4 (1.4: MDA-377 Arc Lantern 12 per zap + stun text; 1.3: MDA-375 Portal Rift 185 / 250 studs, 22 / 30 s, 61 / 45 s; 1.2: MDA-373 Sap Wall 74 / 100 wide, 4.2 / 5.8 / 8 s, 30 tall; 1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
+-- SkillTreeTrooParts.spec v1.5 (1.5: the 5 slot parts of SkillTree 1.85 join the troodon rows; 1.4: MDA-377 Arc Lantern 12 per zap + stun text; 1.3: MDA-375 Portal Rift 185 / 250 studs, 22 / 30 s, 61 / 45 s; 1.2: MDA-373 Sap Wall 74 / 100 wide, 4.2 / 5.8 / 8 s, 30 tall; 1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
 -- (plan docs/plans/TROODON_PARTS_v1.0.md ticket 2, MDA-346). Run in Studio Edit (paste into execute_luau, or a copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTrooParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-06 "two builds"): omender / olantern / osapwall / oshed / oportal live; olastfeather / oplume /
@@ -68,7 +68,7 @@ for _, a in ipairs(ST.AREAS) do
 	for _, p in ipairs(ST.pathsFor(a.id, "Troodon")) do if p.mech and p.dino == "Troodon" then table.insert(trooMech, p.id) end end
 end
 table.sort(trooMech)
-eq("troodon mech rows", table.concat(trooMech, ","), "ofortify,olantern,olastfeather,omender,oplume,oportal,oricochet,osapwall,oshed")
+eq("troodon mech rows", table.concat(trooMech, ","), ST.TROO_SLOT_PARTS and "obloom,oburst,odome,ofortify,olantern,olastfeather,omender,oplume,oportal,oricochet,osapwall,osentry,oshed,osleep" or "ofortify,olantern,olastfeather,omender,oplume,oportal,oricochet,osapwall,oshed") -- v1.5
 -- no other dino lists any o part
 for _, d in ipairs({"TRex", "Raptor", "Herrera", "Teno", "Pachy", "Therizino", "Dilo"}) do
 	local n = 0
@@ -177,7 +177,7 @@ for id, p in pairs(OFF.PATHS) do
 	end
 end
 eq("other paths unchanged", #textDiff == 0 and "same" or table.concat(textDiff, ","), "same")
-eq("path count +9", #ST.PATH_ORDER, #OFF.PATH_ORDER + 9)
+eq("path count +9", #ST.PATH_ORDER, #OFF.PATH_ORDER + (ST.TROO_SLOT_PARTS and 14 or 9)) -- v1.5: + the 5 slot parts
 -- buying / slotting
 eq("canBuy mender troodon", (ST.canBuy({}, "omender", 5, "Troodon")), true)
 eq("canBuy mender raptor", select(2, ST.canBuy({}, "omender", 5, "Raptor")), "otherDino")

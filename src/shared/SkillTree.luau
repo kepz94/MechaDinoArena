@@ -1,4 +1,4 @@
--- SkillTree v1.84 (1.84 Therizino Overclock Joints = no-slot passive (THERI_CLOCK_NOSLOT) + the troodon's 4 passives removed (TROO_PARTS_B2_LIVE = false); 1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.85 (1.85 troodon slot parts: Bloom Tank passive + Bloom Burst / Shield Dome / Sleep Dart / Sentry Pod (TROO_SLOT_PARTS), MDA-378; 1.84 Therizino Overclock Joints = no-slot passive (THERI_CLOCK_NOSLOT) + the troodon's 4 passives removed (TROO_PARTS_B2_LIVE = false); 1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -3192,6 +3192,93 @@ SkillTree.THERI_CLOCK_NOSLOT = true
 if SkillTree.THERI_PARTS and SkillTree.PATHS.zclock and SkillTree.THERI_CLOCK_NOSLOT then
 	SkillTree.BUTTONS.zclock = nil
 	SkillTree.PATHS.zclock.steps[1] = "Passive (no slot, no button): always on once bought: run 40% faster"
+end
+
+-- v1.85 (troodon slot parts, plan docs/plans/TROODON_SLOTPARTS_v1.0.md T1, MDA-378; mockup docs/mockups/troodon_slotparts_v0.1.html;
+--   Kepu 2026-11-10 01:33 "Bloom Tank for sure", 01:40 "Let's do 1,37, and 14" (#1 Bloom Burst, #3 Shield Dome, #7 Sleep Dart,
+--   #14 Sentry Pod), 09:46 "Then build"). Switch SkillTree.TROO_SLOT_PARTS (default true; false = 1.84). 5 troodon-only parts
+--   (dino / OWNER "Troodon", mech, LIVE_MECH): obloom "Bloom Tank" (health; a PASSIVE: not in BUTTONS, takes no slot, on when
+--   bought), buttons (each takes a slot) oburst "Bloom Burst" (health), odome "Shield Dome" (defense), osleep "Sleep Dart"
+--   (attack), osentry "Sentry Pod" (attack). effects() writes ONLY new o* fields (troodon only; off values elsewhere /
+--   unbought). Studs are game studs:
+--   oBloomRadius 27 (I) / 36.5 (III) (zone radius; 0 = off), oBloomTime 3 / 4.05 (II) (0 = off), oBloomEnd (star), oBloomEndHeal 5,
+--   oBloomEndSlow 1.5; oBurstRange 40, oBurstHeal 20, oBurstRadius 20 / 27 (star), oBurstBoost 0.5, oBurstTime 4 / 5.4 (II),
+--   oBurstCut 0.5, oBurstCooldown 18 / 13.3 (III); oDomeRange 30, oDomeRadius 15 / 20.25 (star), oDomeTime 5 / 6.75 (II),
+--   oDomeCooldown 25 / 18.5 (III); oSleepRange 120, oSleepTime 2.5 / 3.4 (II), oSleepCooldown 12 / 8.9 (III), oSleepSplit 0 / 15
+--   (star: the split's reach); oSentryRange 30, oSentryReach 60, oSentryTime 8 / 10.8 (II), oSentryDamage 6, oSentryRate 0.5,
+--   oSentryShots 1 / 2 (star), oSentryCooldown 22 / 16.3 (III).
+SkillTree.TROO_SLOT_PARTS = true
+if SkillTree.TROO_SLOT_PARTS and SkillTree.TROO_PARTS and SkillTree.PATHS.omender and not SkillTree.PATHS.obloom then
+	local function part(id, name, areaId, steps, button)
+		local p = path(id, name, true, false, steps)
+		p.area = areaId
+		p.dino = "Troodon"
+		SkillTree.OWNER[id] = "Troodon"
+		SkillTree.LIVE_MECH[id] = true
+		if button then SkillTree.BUTTONS[id] = true end
+		local found = false
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p); found = true end
+		end
+		if not found then table.insert(SkillTree.AREAS, {id = areaId, name = "Signature", color = {201, 162, 255}, paths = {p}}) end
+		SkillTree.PATHS[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	part("obloom", "Bloom Tank", "health", {
+		"Passive (no slot, no button): always on once bought: your glow zones are 54 studs wide (was 40)",
+		"Zones last 4.05 s (was 3 s)", "Zones are 73 studs wide",
+		"When a zone ends it blooms: squadmates inside heal 5, enemies inside stay slowed 1.5 s more"}, false)
+	part("oburst", "Bloom Burst", "health", {
+		"Button: throw a bud up to 40 studs: squadmates within 20 studs heal 20 and get 50% more healing for 4 s; enemies inside heal 50% less for 4 s. Recharges in 18 s",
+		"The boost lasts 5.4 s", "Recharges in 13.3 s", "Bursts 54 studs wide"}, true)
+	part("odome", "Shield Dome", "defense", {
+		"Button: throw a canister up to 30 studs: a dome 30 studs wide stands for 5 s. Enemy attacks from outside stop on it; yours go out. Recharges in 25 s",
+		"The dome lasts 6.75 s", "Recharges in 18.5 s", "The dome is 40.5 studs wide"}, true)
+	part("osleep", "Sleep Dart", "attack", {
+		"Button: fire a dart up to 120 studs: the first enemy hit falls asleep for 2.5 s (can't move, attack or use parts); any damage wakes it. Recharges in 12 s",
+		"Sleeps 3.4 s", "Recharges in 8.9 s", "The dart splits: one more enemy within 15 studs falls asleep too"}, true)
+	part("osentry", "Sentry Pod", "attack", {
+		"Button: throw a turret up to 30 studs: for 8 s it shoots the nearest enemy within 60 studs, 6 damage every 0.5 s. Recharges in 22 s",
+		"Lasts 10.8 s", "Recharges in 16.3 s", "Twin pods: 2 per shot"}, true)
+end
+do
+	local effectsPre185 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre185(steps, dino)
+		if type(e) ~= "table" then return e end
+		if not SkillTree.PATHS.obloom then return e end
+		local on = SkillTree.TROO_SLOT_PARTS and dino == "Troodon"
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local bl, bu, dm, sl, se = s.obloom or 0, s.oburst or 0, s.odome or 0, s.osleep or 0, s.osentry or 0
+		e.oBloomRadius = bl >= 3 and 36.5 or (bl >= 1 and 27 or 0)
+		e.oBloomTime = bl >= 2 and 4.05 or (bl >= 1 and 3 or 0)
+		e.oBloomEnd = bl >= 4
+		e.oBloomEndHeal = bl >= 4 and 5 or 0
+		e.oBloomEndSlow = bl >= 4 and 1.5 or 0
+		e.oBurstRange = bu >= 1 and 40 or 0
+		e.oBurstHeal = bu >= 1 and 20 or 0
+		e.oBurstRadius = bu >= 4 and 27 or (bu >= 1 and 20 or 0)
+		e.oBurstBoost = bu >= 1 and 0.5 or 0
+		e.oBurstTime = bu >= 2 and 5.4 or (bu >= 1 and 4 or 0)
+		e.oBurstCut = bu >= 1 and 0.5 or 0
+		e.oBurstCooldown = bu >= 3 and 13.3 or (bu >= 1 and 18 or 0)
+		e.oDomeRange = dm >= 1 and 30 or 0
+		e.oDomeRadius = dm >= 4 and 20.25 or (dm >= 1 and 15 or 0)
+		e.oDomeTime = dm >= 2 and 6.75 or (dm >= 1 and 5 or 0)
+		e.oDomeCooldown = dm >= 3 and 18.5 or (dm >= 1 and 25 or 0)
+		e.oSleepRange = sl >= 1 and 120 or 0
+		e.oSleepTime = sl >= 2 and 3.4 or (sl >= 1 and 2.5 or 0)
+		e.oSleepCooldown = sl >= 3 and 8.9 or (sl >= 1 and 12 or 0)
+		e.oSleepSplit = sl >= 4 and 15 or 0
+		e.oSentryRange = se >= 1 and 30 or 0
+		e.oSentryReach = se >= 1 and 60 or 0
+		e.oSentryTime = se >= 2 and 10.8 or (se >= 1 and 8 or 0)
+		e.oSentryDamage = se >= 1 and 6 or 0
+		e.oSentryRate = se >= 1 and 0.5 or 0
+		e.oSentryShots = se >= 4 and 2 or (se >= 1 and 1 or 0)
+		e.oSentryCooldown = se >= 3 and 16.3 or (se >= 1 and 22 or 0)
+		return e
+	end
 end
 
 return SkillTree

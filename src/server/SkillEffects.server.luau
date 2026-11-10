@@ -1,4 +1,4 @@
--- SkillEffects v1.57 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.58 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -289,6 +289,15 @@ local ServerStorage = game:GetService("ServerStorage")
 --   therizino part that is not a button part (ST.BUTTONS[id] ~= true, i.e. Overclock Joints) is on whenever it is bought,
 --   slotted or not, like the Herrera's passives (v1.28). Switch: script attribute SkillEffectsTheriNoSlotEnabled (default
 --   true; false = 1.56, slotted only).
+-- v1.58 (troodon slot parts, plan docs/plans/TROODON_SLOTPARTS_v1.0.md T1, MDA-378; SkillTree 1.85 TROO_SLOT_PARTS): on a
+--   character with Species "Troodon" (or one that already has TrooPartBloomEnabled, so a switch away writes the off values):
+--   the PASSIVE Bloom Tank (obloom, not a button) writes TrooPartBloom Radius / Time / End / EndHeal / EndSlow + Enabled when
+--   BOUGHT (no slot); the 4 buttons write theirs when bought AND slotted (the 1.48 rule): TrooPartBurst (Range, Heal, Radius,
+--   Boost, Time, Cut, Cooldown), TrooPartDome (Range, Radius, Time, Cooldown), TrooPartSleep (Range, Time, Cooldown, Split),
+--   TrooPartSentry (Range, Reach, Time, Damage, Rate, Shots, Cooldown), each + Enabled; off values otherwise (0 / false).
+--   Read by TrooSlotServer 1.0, TrooPartsServer 1.2 (looks), MechaButtons 1.45, AbilityBar 1.38, TrooSlotFX 1.0. Switch: script
+--   attribute SkillEffectsTrooSlotEnabled (default true, read at each write; false = 1.57 plus the off values written).
+--   Diagnostic: character TrooSlotPartsOn (the ids written on, comma list).
 -- v1.44 (Kepu 2026-11-04 17:54 "Make it overclock tier 3 to give you an extra jump", SkillTree 1.66 clockJump): the TheriClock
 --   row gains Jump (effect clockJump, off 0): TheriClockJump, the extra jump charges TheriMovesServer 1.5 adds. Switch: script
 --   attribute SkillEffectsTheriClockJumpEnabled (default true, read at start; false = 1.43, no TheriClockJump).
@@ -1177,6 +1186,7 @@ end
 --   SkillEffectsTrooRiftEnabled (default true, read at start; false = 1.55).
 VERSION = "1.56" -- v1.56 Portal Rift numbers (MDA-375)
 VERSION = "1.57" -- v1.57 Therizino Overclock Joints on when bought (no-slot passive)
+VERSION = "1.58" -- v1.58 troodon slot parts (Bloom Tank passive + 4 buttons)
 script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsTrooRiftEnabled") == nil then script:SetAttribute("SkillEffectsTrooRiftEnabled", true) end
 if script:GetAttribute("SkillEffectsTrooRiftEnabled") ~= false then
@@ -1264,6 +1274,57 @@ do
 		end
 		local diag = table.concat(list, ",")
 		if char:GetAttribute("TrooPassivesSlotted") ~= diag then char:SetAttribute("TrooPassivesSlotted", diag) end
+	end
+end
+
+-- v1.58: the troodon slot parts (see the v1.58 notes)
+if script:GetAttribute("SkillEffectsTrooSlotEnabled") == nil then script:SetAttribute("SkillEffectsTrooSlotEnabled", true) end
+local OSLOT = { -- {path id, prefix, needs a slot, {attribute, effect field, off value}...}
+	{"obloom", "TrooPartBloom", false, {{"Radius", "oBloomRadius", 0}, {"Time", "oBloomTime", 0}, {"End", "oBloomEnd", false},
+		{"EndHeal", "oBloomEndHeal", 0}, {"EndSlow", "oBloomEndSlow", 0}}},
+	{"oburst", "TrooPartBurst", true, {{"Range", "oBurstRange", 0}, {"Heal", "oBurstHeal", 0}, {"Radius", "oBurstRadius", 0},
+		{"Boost", "oBurstBoost", 0}, {"Time", "oBurstTime", 0}, {"Cut", "oBurstCut", 0}, {"Cooldown", "oBurstCooldown", 0}}},
+	{"odome", "TrooPartDome", true, {{"Range", "oDomeRange", 0}, {"Radius", "oDomeRadius", 0}, {"Time", "oDomeTime", 0},
+		{"Cooldown", "oDomeCooldown", 0}}},
+	{"osleep", "TrooPartSleep", true, {{"Range", "oSleepRange", 0}, {"Time", "oSleepTime", 0}, {"Cooldown", "oSleepCooldown", 0},
+		{"Split", "oSleepSplit", 0}}},
+	{"osentry", "TrooPartSentry", true, {{"Range", "oSentryRange", 0}, {"Reach", "oSentryReach", 0}, {"Time", "oSentryTime", 0},
+		{"Damage", "oSentryDamage", 0}, {"Rate", "oSentryRate", 0}, {"Shots", "oSentryShots", 0}, {"Cooldown", "oSentryCooldown", 0}}},
+}
+do
+	local applyCharV157 = applyChar
+	applyChar = function(char, st)
+		applyCharV157(char, st)
+		local isTroo = char:GetAttribute("Species") == "Troodon"
+		if not isTroo and char:GetAttribute("TrooPartBloomEnabled") == nil then return end
+		local partsOn = script:GetAttribute("SkillEffectsTrooSlotEnabled") ~= false and ST.TROO_SLOT_PARTS == true and ST.PATHS.obloom ~= nil
+		local e = {}
+		if partsOn and isTroo then
+			local steps = {}
+			for _, id in ipairs(ST.PATH_ORDER) do steps[id] = st.player:GetAttribute("SkillPath_" .. id) end
+			e = ST.effects(steps, "Troodon") or {}
+		end
+		local function inSlot(id)
+			for n = 1, ST.SLOTS or 2 do
+				if st.player:GetAttribute("SkillSlot" .. n) == id then return true end
+			end
+			return false
+		end
+		local list = {}
+		for _, def in ipairs(OSLOT) do
+			local id, prefix, needSlot = def[1], def[2], def[3]
+			local pOn = partsOn and on() and isTroo and ST.PATHS[id] ~= nil and not ST.PATHS[id].soon
+				and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and (not needSlot or inSlot(id))
+			for _, f in ipairs(def[4]) do
+				local v = f[3]
+				if pOn and e[f[2]] ~= nil then v = e[f[2]] end
+				if char:GetAttribute(prefix .. f[1]) ~= v then char:SetAttribute(prefix .. f[1], v) end
+			end
+			if char:GetAttribute(prefix .. "Enabled") ~= (pOn == true) then char:SetAttribute(prefix .. "Enabled", pOn == true) end
+			if pOn then table.insert(list, id) end
+		end
+		local diag = table.concat(list, ",")
+		if char:GetAttribute("TrooSlotPartsOn") ~= diag then char:SetAttribute("TrooSlotPartsOn", diag) end
 	end
 end
 
