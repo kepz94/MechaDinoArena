@@ -1,4 +1,4 @@
--- TrooMovesServer v1.9 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.10 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -190,6 +190,37 @@ VERSION = "1.9" -- v1.9 Sap Wall height from the skill (MDA-373)
 --   dino, at the press and at the splat) uses the same height; SapWallBlock (blocks / arcBlocks) and TrooPartsFX read the real
 --   wall parts, so they follow. Stamp: character TrooSapHeight (before TrooSapAt). Switch: script attribute
 --   TrooMovesSapHeightEnabled (default true, read at each throw; false = 1.8: always TrooMoves_sapHeight).
+VERSION = "1.10" -- v1.10 Portal Feathers -> Apex-style rift (MDA-375)
+-- v1.10 (MDA-375; Kepu 2026-11-09 20:33 "The portal is fucking stupid. It should work like the one on apex legends works" ->
+--   "Everyone, like Apex", "250 studs, 30 s", 45 s recharge; SkillTree 1.82 / SkillEffects 1.56 give TrooPartPortalRiftLength /
+--   RiftTime / RiftCooldown, star 250 / 30 / 45). While script attribute TrooPortalRiftEnabled (default true, read at each press;
+--   false = 1.9's two rings) is on, DinoTrooPortalRequest is the rift:
+--   * press 1 (the usual checks; the spot under the troodon must pass the 6 x 8 x 6 terrain box, else "blocked", nothing used):
+--     end A on the ground under the troodon; placing mode (result "placing"; character TrooRiftPlacing true, TrooRiftA,
+--     TrooRiftMax, TrooRiftSpeedMul, TrooRiftAt last): SprintTest 1.24 runs it TrooRiftSpeedMul faster, rising from
+--     TrooMoves_riftBoostMin 1.25 to riftBoostMax 1.55 with the distance walked / the max (TrooRiftWalked); the other troodon
+--     parts are refused "placing" and TrooAttackServer 1.6 refuses the pod; the path is recorded every TrooMoves_riftSample (3)
+--     studs (root positions);
+--   * press 2, the max distance walked (TrooPartPortalRiftLength, else riftLen 250) or riftPlaceMax (15) s -> end B at the last
+--     point (walked back along the path to the first spot that passes the terrain box); under riftMinWalk (10) studs walked (or
+--     no free end B, or the troodon dies) -> cancelled, nothing used (TrooPartPortalReadyAt = now, TrooRiftCancelWhy,
+--     TrooRiftCancelAt);
+--   * open for TrooPartPortalRiftTime (else riftTime 30) s from end B; the recharge TrooPartPortalRiftCooldown (else riftCooldown
+--     45) s starts at end B (TrooPartPortalReadyAt; TrooPartPortalRechargeUsed = that recharge, for the HUD fill). Owner stamps:
+--     TrooRiftB, TrooRiftLen, TrooRiftPath ("x,y,z;..." ground points, 0.1 stud), TrooRiftUntil, TrooRiftOpenAt (last);
+--     TrooRiftEndAt at the close;
+--   * travel: every Heartbeat any player's dino (owner, squadmates and enemies; bots only with TrooMoves_riftBotsEnabled, default
+--     false; never an anchored / pinned one) whose root is within TrooMoves_riftRadius (6) studs (flat, 10 x scale up / down) of
+--     an end, whose TrooPortalLockUntil has passed and who has left both ends since its last trip on this rift (the troodon
+--     counts as just arrived at end B), is carried along the recorded path to the other end at TrooMoves_riftSpeedMul (5) x its
+--     MoveRunSpeed (players; bots their WalkSpeed): server-owned anchored carry (root Anchored, the model pivoted along the path
+--     every Heartbeat, facing along it, its height above the ground kept) - chosen over AlignPosition because the client owns a
+--     player's physics: a constraint would be solved on the (phone) client with its lag and could be fought by its input, while
+--     an anchored root cannot move on any client; un-anchored at the end, TrooPortalLockUntil = end + riftLock (1 s).
+--     Untouchable while travelling: an invisible ForceField "TrooRiftField", the Dead state off, and every Humanoid health drop
+--     given back while TrooRiftTravelUntil > now (switch TrooMovesRiftSafeEnabled); bots: StunBreakImmuneUntil. Traveller
+--     stamps: TrooRiftTravelFrom / To / Speed / By / Until, TrooRiftTravelAt (last); TrooRiftTravelEndAt, TrooRiftTravelTime.
+--   Diagnostics: script TrooMovesRifts, TrooMovesRiftTrips, TrooMovesRiftCancels, TrooRiftSaves. Numbers: TrooMoves_<name>.
 if script:GetAttribute("TrooMovesSapHeightEnabled") == nil then script:SetAttribute("TrooMovesSapHeightEnabled", true) end -- v1.9
 if script:GetAttribute("TrooMovesLanternTrackEnabled") == nil then script:SetAttribute("TrooMovesLanternTrackEnabled", true) end -- v1.8
 for _, k in ipairs({"TrooMovesLastFeatherEnabled", "TrooMovesRefundEnabled", "TrooMovesPlumeEnabled"}) do
@@ -444,6 +475,8 @@ local function check(player, stamp, id, prefix, aimDir, aimPoint, breakFree)
 		r = "stunned"
 	elseif char:GetAttribute("PinHeld") == true and not breakFree then
 		r = "pinned"
+	elseif id ~= "oportal" and char:GetAttribute("TrooRiftPlacing") == true then -- v1.10: placing a rift
+		r = "placing"
 	elseif SNARE_MOVES[id] and snareBlocked(char) then -- v1.5
 		r = "snared"
 	elseif num(char, "DazedUntil", 0) > t and not breakFree then
@@ -917,7 +950,9 @@ local function spotFree(p)
 	end
 	return true
 end
+local riftPress -- v1.10 (set by the rift block below)
 remote("DinoTrooPortalRequest").OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
+	if script:GetAttribute("TrooPortalRiftEnabled") ~= false and riftPress then riftPress(player, stamp) return end -- v1.10
 	local char, t = check(player, stamp, "oportal", "TrooPartPortal", aimDir, aimPoint)
 	if not char then return end
 	local root = rootOf(char)
@@ -1003,6 +1038,224 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
+-- Portal Rift (v1.10, MDA-375; see the v1.10 notes) ---------------------------------------------------------------------------
+do
+	local RIFT_CFG = {riftBoostMin = 1.25, riftBoostMax = 1.55, riftMinWalk = 10, riftSample = 3, riftPlaceMax = 15, riftRadius = 6,
+		riftLock = 1, riftSpeedMul = 5, riftLen = 250, riftTime = 30, riftCooldown = 45}
+	for k, v in pairs(RIFT_CFG) do
+		CFG[k] = v
+		if script:GetAttribute("TrooMoves_" .. k) == nil then script:SetAttribute("TrooMoves_" .. k, v) end
+	end
+	for k, v in pairs({TrooPortalRiftEnabled = true, TrooMoves_riftBotsEnabled = false, TrooMovesRiftSafeEnabled = true}) do
+		if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+	end
+	local rifts = {} -- [owner char] = {phase "placing" / "open", pts, cum, len, maxLen, a, b, t0, untilT, lift, users}
+	local travelling = setmetatable({}, {__mode = "k"})
+	local function groundOf(p) return Vector3.new(p.X, groundY(p, p.Y - 3), p.Z) end
+	local function placingOff(char)
+		char:SetAttribute("TrooRiftPlacing", false)
+		char:SetAttribute("TrooRiftSpeedMul", nil)
+	end
+	local function cancel(char, rf, t, why)
+		rifts[char] = nil
+		if not char.Parent then return end
+		placingOff(char)
+		char:SetAttribute("TrooPartPortalReadyAt", t) -- nothing used
+		result(char, "TrooPartPortal", "cancelled", t)
+		char:SetAttribute("TrooRiftCancelWhy", why)
+		char:SetAttribute("TrooRiftCancelAt", t) -- last: TrooPartsFX
+		count("TrooMovesRiftCancels")
+	end
+	local function closeRift(char, t)
+		local rf = rifts[char]
+		if not rf then return end
+		rifts[char] = nil
+		if char.Parent then
+			if rf.phase == "placing" then placingOff(char) end
+			char:SetAttribute("TrooRiftEndAt", t) -- last: TrooPartsFX
+		end
+	end
+	local function finish(char, rf, t)
+		if rifts[char] ~= rf or rf.phase ~= "placing" then return end
+		local root = rootOf(char)
+		if root and alive(char) then
+			local last = rf.pts[#rf.pts]
+			local d = (root.Position - last).Magnitude
+			if d > 0.5 then table.insert(rf.pts, root.Position); rf.len += d end
+		end
+		-- end B: walk back along the path to the first spot clear of terrain
+		while #rf.pts > 1 and rf.len >= cfg("riftMinWalk") and not spotFree(groundOf(rf.pts[#rf.pts] - Vector3.new(0, rf.lift, 0))) do
+			rf.len -= (rf.pts[#rf.pts] - rf.pts[#rf.pts - 1]).Magnitude
+			table.remove(rf.pts)
+		end
+		if rf.len < cfg("riftMinWalk") or #rf.pts < 2 then cancel(char, rf, t, "short") return end
+		rf.cum = {0}
+		for i = 2, #rf.pts do rf.cum[i] = rf.cum[i - 1] + (rf.pts[i] - rf.pts[i - 1]).Magnitude end
+		rf.len = rf.cum[#rf.cum]
+		rf.b = groundOf(rf.pts[#rf.pts] - Vector3.new(0, rf.lift, 0))
+		rf.phase = "open"
+		rf.users[char] = "arrived" -- the troodon stands on end B: it must step out first
+		local life = num(char, "TrooPartPortalRiftTime", 0)
+		if life <= 0 then life = cfg("riftTime") end
+		local cd = num(char, "TrooPartPortalRiftCooldown", 0)
+		if cd <= 0 then cd = cfg("riftCooldown") end
+		rf.untilT = t + life
+		local enc = {}
+		for _, p in ipairs(rf.pts) do
+			local g = p - Vector3.new(0, rf.lift, 0)
+			table.insert(enc, ("%.1f,%.1f,%.1f"):format(g.X, g.Y, g.Z))
+		end
+		placingOff(char)
+		result(char, "TrooPartPortal", "ok", t)
+		char:SetAttribute("TrooPartPortalRechargeUsed", cd)
+		char:SetAttribute("TrooPartPortalReadyAt", t + cd)
+		char:SetAttribute("TrooRiftB", rf.b)
+		char:SetAttribute("TrooRiftLen", math.floor(rf.len * 10 + 0.5) / 10)
+		char:SetAttribute("TrooRiftPath", table.concat(enc, ";"))
+		char:SetAttribute("TrooRiftUntil", rf.untilT)
+		char:SetAttribute("TrooRiftOpenAt", t) -- last: TrooPartsFX
+		count("TrooMovesRifts")
+	end
+	riftPress = function(player, stamp)
+		local c0 = player.Character
+		local r0 = c0 and rifts[c0]
+		if r0 and r0.phase == "placing" then -- press 2: end B now
+			if typeof(stamp) == "number" then finish(c0, r0, now()) end
+			return
+		end
+		local char, t = check(player, stamp, "oportal", "TrooPartPortal")
+		if not char then return end
+		local root = rootOf(char)
+		local a = groundOf(root.Position)
+		if not spotFree(a) then result(char, "TrooPartPortal", "blocked", t) return end
+		closeRift(char, t) -- an older rift of this troodon closes
+		local maxLen = num(char, "TrooPartPortalRiftLength", 0)
+		if maxLen <= 0 then maxLen = cfg("riftLen") end
+		rifts[char] = {phase = "placing", pts = {root.Position}, len = 0, maxLen = maxLen, a = a, t0 = t, lift = root.Position.Y - a.Y, users = {}}
+		char:SetAttribute("TrooPartPortalRechargeUsed", nil)
+		result(char, "TrooPartPortal", "placing", t)
+		char:SetAttribute("TrooRiftA", a)
+		char:SetAttribute("TrooRiftMax", maxLen)
+		char:SetAttribute("TrooRiftSpeedMul", cfg("riftBoostMin"))
+		char:SetAttribute("TrooRiftPlacing", true)
+		char:SetAttribute("TrooRiftAt", t) -- last: TrooPartsFX
+	end
+	local function pointAt(rf, d)
+		local pts, cum = rf.pts, rf.cum
+		for i = 2, #pts do
+			if d <= cum[i] or i == #pts then
+				local segL = math.max(1e-3, cum[i] - cum[i - 1])
+				local u = math.clamp((d - cum[i - 1]) / segL, 0, 1)
+				return pts[i - 1]:Lerp(pts[i], u), (pts[i] - pts[i - 1])
+			end
+		end
+		return pts[#pts], Vector3.zAxis
+	end
+	local function startTravel(m, owner, rf, dir, t)
+		local r = rootOf(m)
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		local isPl = Players:GetPlayerFromCharacter(m) ~= nil
+		local run = isPl and num(m, "MoveRunSpeed", 0) or 0
+		if run <= 0 then run = hum and hum.WalkSpeed or 30 end
+		local speed = math.max(10, run * math.max(0.1, cfg("riftSpeedMul")))
+		local L = rf.len
+		local dur = L / speed
+		local dLift = (r.Position.Y - groundY(r.Position, r.Position.Y - 3)) - rf.lift
+		travelling[m] = true
+		rf.users[m] = "arrived"
+		local ff = Instance.new("ForceField")
+		ff.Name, ff.Visible = "TrooRiftField", false
+		ff.Parent = m
+		if isPl and hum then pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false) end) end
+		if not isPl then m:SetAttribute("StunBreakImmuneUntil", t + dur + 0.2) end
+		m:SetAttribute("TrooRiftTravelFrom", dir == 1 and rf.a or rf.b)
+		m:SetAttribute("TrooRiftTravelTo", dir == 1 and rf.b or rf.a)
+		m:SetAttribute("TrooRiftTravelSpeed", math.floor(speed * 10 + 0.5) / 10)
+		m:SetAttribute("TrooRiftTravelBy", owner.Name)
+		m:SetAttribute("TrooRiftTravelUntil", t + dur + 0.1)
+		m:SetAttribute("TrooRiftTravelAt", t) -- last: TrooPartsFX streak
+		task.spawn(function()
+			local t0 = os.clock()
+			local rot0 = r.CFrame - r.Position
+			local lastF = nil
+			while r.Parent and m.Parent do
+				local sd = (os.clock() - t0) * speed
+				if sd >= L then break end
+				local p, fwd = pointAt(rf, dir == 1 and sd or (L - sd))
+				local f = flat(fwd) * dir
+				if f.Magnitude > 1e-3 then lastF = f.Unit end
+				local pos = p + Vector3.new(0, dLift, 0)
+				r.Anchored = true
+				m:PivotTo(lastF and CFrame.lookAt(pos, pos + lastF) or (CFrame.new(pos) * rot0))
+				RunService.Heartbeat:Wait()
+			end
+			if r.Parent then
+				local e = (dir == 1 and rf.pts[#rf.pts] or rf.pts[1]) + Vector3.new(0, dLift, 0)
+				m:PivotTo(lastF and CFrame.lookAt(e, e + lastF) or (CFrame.new(e) * rot0))
+				r.Anchored = false
+				r.AssemblyLinearVelocity = Vector3.zero
+			end
+			if ff.Parent then ff:Destroy() end
+			if isPl and hum and hum.Parent and not (m:GetAttribute("TrooLastFeatherReady") == true or num(m, "TrooLastFeatherUntil", 0) > now()) then
+				pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true) end)
+			end
+			travelling[m] = nil
+			local te = now()
+			m:SetAttribute("TrooPortalLockUntil", te + math.max(0, cfg("riftLock")))
+			m:SetAttribute("TrooRiftTravelEndAt", te)
+			m:SetAttribute("TrooRiftTravelTime", math.floor((os.clock() - t0) * 1000 + 0.5) / 1000)
+			count("TrooMovesRiftTrips")
+		end)
+	end
+	local function near(p, e, m)
+		local v = p - e
+		return flat(v).Magnitude <= math.max(1, cfg("riftRadius")) and math.abs(v.Y) <= 10 * math.max(1, m:GetScale())
+	end
+	RunService.Heartbeat:Connect(function()
+		local t = now()
+		for owner, rf in pairs(rifts) do
+			if rf.phase == "placing" then
+				local root = rootOf(owner)
+				if not owner.Parent or not root or not alive(owner) then
+					cancel(owner, rf, t, "dead")
+				else
+					local last = rf.pts[#rf.pts]
+					local d = (root.Position - last).Magnitude
+					if d >= math.max(0.5, cfg("riftSample")) then
+						table.insert(rf.pts, root.Position)
+						rf.len += d
+						local u = math.clamp(rf.len / math.max(1, rf.maxLen), 0, 1)
+						local mul = math.floor((cfg("riftBoostMin") + (cfg("riftBoostMax") - cfg("riftBoostMin")) * u) * 100 + 0.5) / 100
+						if owner:GetAttribute("TrooRiftSpeedMul") ~= mul then owner:SetAttribute("TrooRiftSpeedMul", mul) end
+						owner:SetAttribute("TrooRiftWalked", math.floor(rf.len))
+					end
+					if rf.len >= rf.maxLen or t - rf.t0 >= cfg("riftPlaceMax") then finish(owner, rf, t) end
+				end
+			elseif t >= rf.untilT or not owner.Parent or script:GetAttribute("TrooPortalRiftEnabled") == false then
+				closeRift(owner, t)
+			else
+				local cands = {}
+				for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(cands, pl.Character) end end
+				if script:GetAttribute("TrooMoves_riftBotsEnabled") == true then
+					for _, b in ipairs(bots()) do table.insert(cands, b) end
+				end
+				for _, m in ipairs(cands) do
+					local r = rootOf(m)
+					local hum = m:FindFirstChildOfClass("Humanoid")
+					if r and hum and hum.Health > 0 and not travelling[m] then
+						local nA, nB = near(r.Position, rf.a, m), near(r.Position, rf.b, m)
+						if rf.users[m] == "arrived" then
+							if not nA and not nB then rf.users[m] = nil end
+						elseif (nA or nB) and num(m, "TrooPortalLockUntil", 0) <= t and m:GetAttribute("PinHeld") ~= true
+							and not r.Anchored and m:GetAttribute("DummyState") ~= "ko" and not (m == owner and owner:GetAttribute("TrooRiftPlacing") == true) then
+							startTravel(m, owner, rf, nA and 1 or -1, t)
+						end
+					end
+				end
+			end
+		end
+	end)
+end
 local function onCharacter(char) watchShed(char) end
 local function onPlayer(pl)
 	pl.CharacterAdded:Connect(onCharacter)
@@ -1092,6 +1345,13 @@ do
 			st.last = h
 			if drop <= 0 then syncDead(char, st) return end
 			local t = now()
+			if num(char, "TrooRiftTravelUntil", 0) > t and script:GetAttribute("TrooMovesRiftSafeEnabled") ~= false then -- v1.10: untouchable on the rift
+				local v = math.min(hum.MaxHealth, math.max(h, 0) + drop)
+				st.own, st.last = v, v
+				hum.Health = v
+				count("TrooRiftSaves")
+				return
+			end
 			if st.untilT and t < st.untilT and script:GetAttribute("TrooMovesLastFeatherEnabled") ~= false then
 				local v = math.min(hum.MaxHealth, math.max(h, 0) + drop)
 				st.own, st.last = v, v

@@ -1,4 +1,4 @@
--- SkillTreeTrooParts.spec v1.2 (1.2: MDA-373 Sap Wall 74 / 100 wide, 4.2 / 5.8 / 8 s, 30 tall; 1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
+-- SkillTreeTrooParts.spec v1.3 (1.3: MDA-375 Portal Rift 185 / 250 studs, 22 / 30 s, 61 / 45 s; 1.2: MDA-373 Sap Wall 74 / 100 wide, 4.2 / 5.8 / 8 s, 30 tall; 1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
 -- (plan docs/plans/TROODON_PARTS_v1.0.md ticket 2, MDA-346). Run in Studio Edit (paste into execute_luau, or a copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTrooParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-06 "two builds"): omender / olantern / osapwall / oshed / oportal live; olastfeather / oplume /
@@ -87,8 +87,8 @@ local TEXT = {
 		"Wall 67.5 studs wide", "Lasts 2.9 s", "Lasts 4 s"}, -- v1.2: MDA-373
 	oshed = {"Button: shed your feathers to break out of a stun, pin or grab; immune to them for 1 s. Recharges in 24 s",
 		"Immune 1.4 s", "Recharges in 17.7 s", "The burst knocks dinos within 20 studs back and slows them 25% for 2 s"},
-	oportal = {"Button: fling two linked feather rings, one just ahead and one up to 40 studs away; walk into one, come out of the other. They last 6 s, you only. Recharges in " .. (ST.MOVE_CD_PASS and "14" or "20") .. " s",
-		"The far ring reaches 54 studs", "They last 8.1 s", "Squadmates can use them too"},
+	oportal = ST.TROO_RIFT_PASS and ST.RIFT_TEXTS or {"Button: fling two linked feather rings, one just ahead and one up to 40 studs away; walk into one, come out of the other. They last 6 s, you only. Recharges in " .. (ST.MOVE_CD_PASS and "14" or "20") .. " s",
+		"The far ring reaches 54 studs", "They last 8.1 s", "Squadmates can use them too"}, -- v1.3: the rift texts when TROO_RIFT_PASS
 	olastfeather = {"Always on (takes a slot): once per life a killing hit leaves you at 1 HP, untouchable for 0.7 s",
 		"You also burst up into a glide (a free flap)", "Untouchable 1 s", "You drop a glow zone (40 studs) where you were"},
 	oplume = {"Always on (takes a slot): healing above your max becomes a plume that soaks up to 10 damage; it fades after 5 s",
@@ -122,6 +122,10 @@ chk("oshed", "oShedImmune", {1, 1.4, 1.4, 1.4}); chk("oshed", "oShedCooldown", {
 chk("oshed", "oShedKnockRadius", {0, 0, 0, 20}); chk("oshed", "oShedSlowMul", {1, 1, 1, 0.75})
 chk("oshed", "oShedSlowTime", {0, 0, 0, 2})
 chk("oportal", "oPortalRange", {40, 54, 54, 54}); chk("oportal", "oPortalTime", {6, 6, 8.1, 8.1})
+if ST.TROO_RIFT_PASS then -- v1.3: MDA-375
+	chk("oportal", "oRiftLength", {185, 250, 250, 250}); chk("oportal", "oRiftTime", {22, 22, 30, 30}); chk("oportal", "oRiftCooldown", {61, 61, 61, 45})
+	eq("rift steps >= 1.35x", 250 >= 185 * 1.35 and 30 >= 22 * 1.35 and 61 >= 45 * 1.35, true); eq("rift text misses", ST.RIFT_TEXT_MISSES, 0)
+end
 chk("oportal", "oPortalSquad", {false, false, false, true}); chk("oportal", "oPortalCooldown", ST.MOVE_CD_PASS and {14, 14, 14, 14} or {20, 20, 20, 20}) -- v1.1: MDA-365
 -- the 35% rule on every upgrading step (time / reach / count up, recharge down)
 local function up(name, a, b) eq(name .. " >= 1.35x", b >= a * 1.35 - 1e-9, true) end

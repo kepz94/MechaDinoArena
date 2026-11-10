@@ -1,4 +1,4 @@
--- SkillEffects v1.55 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.56 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -1165,6 +1165,17 @@ script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsTrooSapHeightEnabled") == nil then script:SetAttribute("SkillEffectsTrooSapHeightEnabled", true) end
 if script:GetAttribute("SkillEffectsTrooSapHeightEnabled") ~= false then
 	table.insert(OPARTS[3][3], {"Height", "oSapHeight", 0})
+end
+-- v1.56 (MDA-375, SkillTree 1.82): Portal Feathers' rift numbers join its attributes: TrooPartPortal RiftLength / RiftTime /
+--   RiftCooldown (effects oRiftLength / oRiftTime / oRiftCooldown, off 0; TrooMovesServer 1.10). Switch: script attribute
+--   SkillEffectsTrooRiftEnabled (default true, read at start; false = 1.55).
+VERSION = "1.56" -- v1.56 Portal Rift numbers (MDA-375)
+script:SetAttribute("SkillEffectsVersion", VERSION)
+if script:GetAttribute("SkillEffectsTrooRiftEnabled") == nil then script:SetAttribute("SkillEffectsTrooRiftEnabled", true) end
+if script:GetAttribute("SkillEffectsTrooRiftEnabled") ~= false then
+	for _, f in ipairs({{"RiftLength", "oRiftLength", 0}, {"RiftTime", "oRiftTime", 0}, {"RiftCooldown", "oRiftCooldown", 0}}) do
+		table.insert(OPARTS[5][3], f)
+	end
 end
 do
 	local applyCharV147 = applyChar

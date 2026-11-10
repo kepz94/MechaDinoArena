@@ -1,4 +1,4 @@
--- TrooAttackTest v1.0 (Mecha Dino Arena) — the Troodon's ATTACK input on the owner's client (LocalScript,
+-- TrooAttackTest v1.1 (Mecha Dino Arena) — the Troodon's ATTACK input on the owner's client (LocalScript,
 -- StarterCharacterScripts). MDA-334, plan docs/plans/TROODON_KIT_v1.0.md Task 5 (Kepu 2026-11-06 15:38: attack A Glow Pod
 -- Toss); server TrooAttackServer 1.0. Pattern copied from DiloAttackTest 1.2 (not edited).
 -- Only while the character's TrooAttackEnabled is true (the troodon). Inputs: CAS action "DinoTrooAttack" (the phone's big
@@ -22,6 +22,8 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 (MDA-375) no local throw while placing a Portal Rift (TrooRiftPlacing; TrooAttackServer 1.6 refuses it too).
+--   Switch: script attribute TrooAttackTestRiftBlockEnabled (default true, read at each press; false = 1.0).
 local ACTION = "DinoTrooAttack"
 local ACTION_CLICK = "DinoTrooAttackClick"
 local DEFAULTS = {TrooAttackEnabled = false, TrooMinGap = 0.35, TrooPodCharges = 2, TrooLeftClickEnabled = true}
@@ -76,6 +78,7 @@ local function blocked()
 	if (tonumber(char:GetAttribute("DazedUntil")) or 0) > t then return "dazed" end
 	if char:GetAttribute("PinHeld") == true then return "pinned" end
 	if player:GetAttribute("InMenu") == true then return "menu" end
+	if char:GetAttribute("TrooRiftPlacing") == true and script:GetAttribute("TrooAttackTestRiftBlockEnabled") ~= false then return "placing" end -- v1.1 (MDA-375)
 	return nil
 end
 

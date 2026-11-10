@@ -1,4 +1,4 @@
--- TrooAttackServer v1.5 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
+-- TrooAttackServer v1.6 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
 -- docs/plans/TROODON_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/troodon_kit_options_v0.1.html attack A
 -- (Kepu 2026-11-06 15:38: "Let's go with your recommendations": attack A, the proposed numbers; red-team "Lead the target").
 -- Patterns copied, not edited: DiloAttackServer 1.5 (request -> checks -> timed resolve, soft aim, targets, mode / squad
@@ -342,8 +342,12 @@ local function blocked(player, char, t)
 	if num(char, "StunnedUntil", 0) > t then return "stunned" end
 	if num(char, "DazedUntil", 0) > t then return "dazed" end
 	if char:GetAttribute("PinHeld") == true then return "pinned" end
+	if char:GetAttribute("TrooRiftPlacing") == true and script:GetAttribute("TrooAttackRiftBlockEnabled") ~= false then return "placing" end -- v1.6 (MDA-375)
 	return nil
 end
+-- v1.6 (MDA-375, TrooMovesServer 1.10): no pod while the troodon places a Portal Rift (character TrooRiftPlacing) -> "placing".
+--   Switch: script attribute TrooAttackRiftBlockEnabled (default true, read at each throw; false = 1.5).
+if script:GetAttribute("TrooAttackRiftBlockEnabled") == nil then script:SetAttribute("TrooAttackRiftBlockEnabled", true) end
 
 -- zones -------------------------------------------------------------------------------------------------------------------------
 local zones = {} -- {id, owner, player, ownerName, ownerId, center, radius, dyMax, startT, untilT, ticks, maxTicks, dps, heal, slowMul}
@@ -603,6 +607,7 @@ end
 --   Every switch defaults true and is read at each use; false = 1.3 for that part.
 VERSION = "1.4" -- v1.4 troodon always-on parts: Ricochet Pod, Fortify Field, Overheal Plume, TrooZoneDrop
 VERSION = "1.5" -- v1.5 armor on every hit (MDA-366)
+VERSION = "1.6" -- v1.6 no pod while placing a rift (MDA-375)
 -- v1.5 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
 --   Wiry Frame = the victim's StatDamageTakenMul) now cuts Glow Pod splats and glow-zone ticks (takeHealth):
 --   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute

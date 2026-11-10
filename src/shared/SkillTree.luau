@@ -1,4 +1,4 @@
--- SkillTree v1.81 (1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.82 (1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -3109,6 +3109,38 @@ do
 			if type(v) == "number" and map[v] then e[field] = map[v] end
 		end
 		e.oSapHeight = (type(e.oSapWidth) == "number" and e.oSapWidth > 0) and SkillTree.SAP_HEIGHT or 0
+		return e
+	end
+end
+
+-- v1.82 (MDA-375; Kepu 2026-11-09 20:33 "It should work like the one on apex legends works" -> "Everyone, like Apex", "250
+--   studs, 30 s", 45 s recharge). Switch SkillTree.TROO_RIFT_PASS (default true; numbers at each effects() call, texts at load;
+--   false = 1.81): Portal Feathers becomes the rift (TrooMovesServer 1.10, its own switch TrooPortalRiftEnabled). New fields
+--   (SkillEffects 1.56 writes TrooPartPortalRiftLength / RiftTime / RiftCooldown): oRiftLength 185 / 250 (II; 1.35x), oRiftTime
+--   22 / 30 (III; 1.36x), oRiftCooldown 61 / 45 (star; 1.36x) - the star is exactly Kepu's 250 studs / 30 s / 45 s. The old
+--   fields (oPortalRange / Time / Squad / Cooldown) are unchanged for the two-ring portal. Texts: RIFT_TEXTS replace the 4 steps
+--   (SkillTree.RIFT_TEXT_MISSES counts a missing path / step, expected 0).
+SkillTree.TROO_RIFT_PASS = true
+SkillTree.RIFT_TEXTS = {
+	"Button: drop a feather portal where you stand, then run up to 185 studs (25% faster, rising to 55%; no attacks or other parts) and press again to drop the far end. Any dino can step into either end and zip along your path at 5x run speed, untouchable. Open 22 s. Recharges in 61 s",
+	"The rift reaches 250 studs", "Open 30 s", "Recharges in 45 s"}
+SkillTree.RIFT_TEXT_MISSES = 0
+if SkillTree.TROO_RIFT_PASS then
+	local path = SkillTree.PATHS.oportal
+	for i, txt in ipairs(SkillTree.RIFT_TEXTS) do
+		if path and path.steps and path.steps[i] then path.steps[i] = txt else SkillTree.RIFT_TEXT_MISSES += 1 end
+	end
+end
+do
+	local effectsPre182 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre182(steps, dino)
+		if type(e) ~= "table" or not SkillTree.TROO_RIFT_PASS or not SkillTree.PATHS.oportal then return e end
+		local s = dino == "Troodon" and SkillTree.sanitize(steps, dino) or {}
+		local p = s.oportal or 0
+		e.oRiftLength = p >= 2 and 250 or (p >= 1 and 185 or 0)
+		e.oRiftTime = p >= 3 and 30 or (p >= 1 and 22 or 0)
+		e.oRiftCooldown = p >= 4 and 45 or (p >= 1 and 61 or 0)
 		return e
 	end
 end

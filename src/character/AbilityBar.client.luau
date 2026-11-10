@@ -1,4 +1,4 @@
--- AbilityBar v1.37 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.38 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -193,6 +193,11 @@ VERSION = "1.34" -- v1.34 troodon plain JUMP tile without charges
 VERSION = "1.35" -- v1.35 troodon button part timers
 VERSION = "1.36" -- v1.36 dilo spit only: the dart pip fills over DiloSpitGap
 VERSION = "1.37" -- v1.37 TAIL GRAB tile lights up while a dino is in reach
+VERSION = "1.38" -- v1.38 Portal Rift: PLACING + the rift recharge (MDA-375)
+-- v1.38 (MDA-375, TrooMovesServer 1.10): the oportal tile reads "PLACING" (active look) while the troodon places a Portal Rift
+--   (character TrooRiftPlacing true); a timed part's cooling fill uses <Prefix>RechargeUsed when the server set one (the rift's
+--   45 s), else <Prefix>Cooldown. Switch: script attribute AbilityBarRiftEnabled (default true, read every frame; false = 1.37).
+if script:GetAttribute("AbilityBarRiftEnabled") == nil then script:SetAttribute("AbilityBarRiftEnabled", true) end
 -- v1.37 (Kepu 2026-11-09 after v589 "There's no indicator when a Dino is out of range" (Tail Grab) -> "Button lights up in range"; PC and touch together with MechaButtons
 --   1.43): after each frame's update, the slot tile holding "tgrab" while its state is "ready": the character's
 --   TenoGrabInRange (TenoMovesServer 1.18) true -> lit: stroke GRAB_GREEN rgb(110, 235, 130), Thickness 3.5; false ->
@@ -954,6 +959,9 @@ local function update()
 				local readyAt = tonumber(char:GetAttribute(px .. "ReadyAt")) or 0
 				local untilT = tonumber(char:GetAttribute(UNTIL_ATTR[e.part] or (px .. "Until"))) or 0 -- v1.32: + UNTIL_ATTR
 				local cd = math.max(0.01, tonumber(char:GetAttribute(px .. "Cooldown")) or 1)
+				local riftOn = script:GetAttribute("AbilityBarRiftEnabled") ~= false -- v1.38
+				local cdU = riftOn and tonumber(char:GetAttribute(px .. "RechargeUsed"))
+				if cdU and cdU > 0 then cd = cdU end
 				local chg, chgText = CHARGE_ATTR[e.part], nil -- v1.32: charge parts
 				if chg then
 					local mx = math.floor(tonumber(char:GetAttribute(chg[2])) or 0)
@@ -962,6 +970,8 @@ local function update()
 				end
 				if char:GetAttribute(px .. "Enabled") ~= true then
 					paint(e, "off", 0.5, 0, nil)
+				elseif riftOn and e.part == "oportal" and char:GetAttribute("TrooRiftPlacing") == true then -- v1.38
+					paint(e, "active", 0, 0, nil, "PLACING")
 				elseif untilT > now then
 					paint(e, "active", 0, 0, untilT - now, chgText)
 				elseif now < readyAt then

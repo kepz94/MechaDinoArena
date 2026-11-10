@@ -1,4 +1,4 @@
--- TrooPartsFX v1.3 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
+-- TrooPartsFX v1.4 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
 -- MDA-351, plan docs/plans/TROODON_PARTS_v1.0.md ticket 7; spec tools/mockup/troodon_parts_looks.js ("VFX, in Roblox
 -- pieces" per part; Kepu 2026-11-06 20:11 "real vfx ... consistent w the rest of the rosters"). Reads TrooMovesServer 1.x's
 -- stamps (server time) on every troodon character and draws locally in Workspace.TrooPartsFX (never replicated). Every move:
@@ -79,6 +79,15 @@
 --   flying lantern homes on it: the flight's end is that model's root (flat) at TrooLanternTo's height, re-read every frame, so
 --   it lands on the target where the server zaps it. Switch: script attribute TrooPartsFX_lanternTrackEnabled (default true,
 --   read at each throw; false = 1.2's fixed flight to TrooLanternTo).
+-- v1.4 (MDA-375, TrooMovesServer 1.10 Portal Rift) - the rift looks (switch TrooPartsFX_riftLookEnabled, default true, read at each
+--   event; with TrooPortalRiftEnabled off on the server the old ring stamps and looks run as 1.3): wind-up (TrooRiftAt) the tail
+--   rings glow 0.25 s; action: the carried rings hide and the picked Tail Rings ring (makeRing2, 1.1's open look) stands at
+--   TrooRiftA facing the run, and a teal feather Trail (1.2 s) + falling feather sparks follow the troodon while TrooRiftPlacing;
+--   result (TrooRiftOpenAt): the second ring opens at TrooRiftB facing along the path's end, and the rift line lies along
+--   TrooRiftPath (teal Neon strips 0.5 x 0.25 x k at 0.35, 0.6 x k above the ground) with A8FFF0 motes rising along it until
+--   TrooRiftUntil; a traveller (TrooRiftTravelAt on any dino) gets an entry flash at TrooRiftTravelFrom and a white-teal streak
+--   (Trail 0.45 s + a glowing A8FFF0 ball with a PointLight) until TrooRiftTravelUntil, no landing FX; recovery (TrooRiftEndAt /
+--   TrooRiftCancelAt): the rings shrink and fade with an orb + sparks, the line fades, the tail rings come back.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -88,6 +97,7 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 sap wall / portal rings / lantern zap looks to mockup v0.2
 VERSION = "1.2" -- v1.2 mender drone size / glow / heal beam to mockup v0.2
 VERSION = "1.3" -- v1.3 the lantern homes on its tracked target (MDA-376)
+VERSION = "1.4" -- v1.4 Portal Rift looks (MDA-375)
 script:SetAttribute("TrooPartsFXVersion", VERSION)
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderBack = 0.75, menderOrbit = 3.5, menderTick = 0.25, lanternWindup = 0.42,
 	lanternLinger = 0.9, lanternArc = 6, sapWindup = 0.34, sapArc = 7, sapReturn = 1.15, shedWindup = 0.15, shedFling = 0.7,
@@ -101,7 +111,7 @@ for k, v in pairs(CFG) do
 end
 for _, k in ipairs({"TrooPartsFXEnabled", "TrooPartsFX_omenderEnabled", "TrooPartsFX_olanternEnabled", "TrooPartsFX_osapwallEnabled",
 	"TrooPartsFX_oshedEnabled", "TrooPartsFX_oportalEnabled", "TrooPartsFX_sapLookEnabled", "TrooPartsFX_portalLookEnabled",
-	"TrooPartsFX_zapLookEnabled", "TrooPartsFX_menderLookEnabled", "TrooPartsFX_lanternTrackEnabled"}) do -- v1.1: + the three look switches; v1.2: + menderLook; v1.3: + lanternTrack
+	"TrooPartsFX_zapLookEnabled", "TrooPartsFX_menderLookEnabled", "TrooPartsFX_lanternTrackEnabled", "TrooPartsFX_riftLookEnabled"}) do -- v1.1: + the three look switches; v1.2: + menderLook; v1.3: + lanternTrack
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function cfg(k) return tonumber(script:GetAttribute("TrooPartsFX_" .. k)) or CFG[k] end
@@ -1144,13 +1154,163 @@ local function portalUsed(user)
 	diag("oportal", "travel")
 end
 
+-- Portal Rift (v1.4, MDA-375; see the v1.4 notes) ------------------------------------------------------------------------
+local rifts = {} -- [char] = {rings = {}, segs = {}, trail, emit, conns = {}, carry}
+local function riftLook() return on("oportal") and script:GetAttribute("TrooPartsFX_riftLookEnabled") ~= false end
+local function standRing(spot, look, s) -- the picked Tail Rings ring (makeRing2) standing at an end, opening with a flash
+	local m, place = makeRing2(s)
+	local pos = spot + Vector3.new(0, cfg("portalCentre") * s / 2, 0)
+	look = (look and look.Magnitude > 1e-3) and look.Unit or Vector3.zAxis
+	local t0 = os.clock()
+	flashBall(pos, Color3.fromHex("B8FFF0"), 2 * s / 2, 10 * s / 2, 0.16)
+	orb(pos, 10 * s / 2, TEAL_L, 0.3)
+	groundRing(spot, TEAL, 1 * s / 2, 7 * s / 2, 0.5)
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		if not m.Parent then conn:Disconnect() return end
+		local v = math.clamp((os.clock() - t0) / 0.3, 0, 1)
+		place(CFrame.lookAt(pos, pos + look), os.clock() * 2, math.max(0.05, 1 + 2.70158 * (v - 1) ^ 3 + 1.70158 * (v - 1) ^ 2))
+	end)
+	rising(function() return m.Parent and (spot + Vector3.new((math.random() - 0.5) * 7, 0.2, (math.random() - 0.5) * 7) * s / 2) or nil end,
+		TEAL_L, 40, 8, 0.5 * s / 2)
+	return {m = m, close = function()
+		conn:Disconnect()
+		if not m.Parent then return end
+		orb(pos, 8, TEAL_L, 0.3)
+		burst(pos, TEAL_L, 10, 8, 0.4, 0.6)
+		for _, p in ipairs(m:GetDescendants()) do
+			if p:IsA("BasePart") then fade(p, 0.4, p.Size * 0.3) end
+		end
+		Debris:AddItem(m, 0.5)
+	end}
+end
+local function riftClear(char, closing)
+	local st = rifts[char]
+	if not st then return end
+	rifts[char] = nil
+	for _, c in ipairs(st.conns) do c:Disconnect() end
+	for _, rg in ipairs(st.rings) do rg.close() end
+	for _, p in ipairs(st.segs) do fade(p, closing and 0.6 or 0.3) end
+	if st.trail and st.trail.Parent then st.trail.Enabled = false; Debris:AddItem(st.trail, 0.6) end
+	if st.emit and st.emit.Parent then st.emit.Enabled = false; Debris:AddItem(st.emit, 1) end
+	hide(st.carry, false)
+	diag("oportal", "recovery")
+end
+local function riftStart(char, at) -- wind-up: the tail rings glow; action: ring A stands at the troodon, a feather trail follows it
+	if not riftLook() then return end
+	riftClear(char, false)
+	diag("oportal", "windup")
+	local s = char:GetScale()
+	local both = {}
+	for _, p in ipairs(pieces(char, "oportal", {carry1 = true, carry2 = true})) do table.insert(both, p) end
+	windupGlow(both, TEAL, 0.25, char)
+	local st = {rings = {}, segs = {}, conns = {}, carry = both, at = at}
+	rifts[char] = st
+	local a = char:GetAttribute("TrooRiftA")
+	local r0 = rootOf(char)
+	if typeof(a) ~= "Vector3" or not r0 then return end
+	hide(both, true)
+	diag("oportal", "action")
+	local lv = Vector3.new(r0.CFrame.LookVector.X, 0, r0.CFrame.LookVector.Z)
+	table.insert(st.rings, standRing(a, lv, s))
+	-- the feather trail while placing: a teal Trail on the root + feathers shed behind it
+	local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+	a0.Position, a1.Position = Vector3.new(0, 1.2 * s / 2, 0), Vector3.new(0, -1.6 * s / 2, 0)
+	a0.Parent, a1.Parent = r0, r0
+	local tr = Instance.new("Trail")
+	tr.Attachment0, tr.Attachment1 = a0, a1
+	tr.Color = ColorSequence.new(TEAL_L, TEAL)
+	tr.Transparency = NumberSequence.new(0.15, 1)
+	tr.Lifetime, tr.LightEmission, tr.FaceCamera = 1.2, 1, true
+	tr.Parent = r0
+	st.trail = tr
+	local em = Instance.new("ParticleEmitter")
+	em.Texture, em.Color, em.LightEmission = SPARK_TEX, ColorSequence.new(TEAL_L), 0.8
+	em.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.5 * s / 2), NumberSequenceKeypoint.new(1, 0)})
+	em.Transparency = NumberSequence.new(0.1, 1)
+	em.Speed, em.SpreadAngle, em.Lifetime, em.Rate = NumberRange.new(1, 3), Vector2.new(60, 60), NumberRange.new(0.8, 1.4), 30
+	em.Acceleration = Vector3.new(0, -2, 0)
+	em.Parent = a1
+	st.emit = em
+	table.insert(st.conns, char:GetAttributeChangedSignal("TrooRiftPlacing"):Connect(function()
+		if char:GetAttribute("TrooRiftPlacing") ~= true then
+			tr.Enabled = false
+			em.Enabled = false
+		end
+	end))
+end
+local function riftOpen(char) -- result: ring B opens at the far end and the rift line lies along the walked path
+	local st = rifts[char]
+	if not st or not riftLook() then return end
+	local s = char:GetScale()
+	local pts = {}
+	for x, y, z in string.gmatch(tostring(char:GetAttribute("TrooRiftPath") or ""), "([%-%d%.]+),([%-%d%.]+),([%-%d%.]+)") do
+		table.insert(pts, Vector3.new(tonumber(x), tonumber(y), tonumber(z)))
+	end
+	local b = char:GetAttribute("TrooRiftB")
+	if typeof(b) ~= "Vector3" or #pts < 2 then return end
+	local endDir = pts[#pts] - pts[#pts - 1]
+	table.insert(st.rings, standRing(b, Vector3.new(endDir.X, 0, endDir.Z), s))
+	local lift = 0.6 * s / 2
+	for i = 2, #pts do
+		local p0, p1 = pts[i - 1] + Vector3.new(0, lift, 0), pts[i] + Vector3.new(0, lift, 0)
+		local L = (p1 - p0).Magnitude
+		if L > 0.05 then
+			local seg = part({Size = Vector3.new(0.5 * s / 2, 0.25 * s / 2, L + 0.3), CFrame = CFrame.lookAt((p0 + p1) / 2, p1),
+				Color = TEAL, Transparency = 0.35})
+			table.insert(st.segs, seg)
+		end
+	end
+	local untilT = num(char:GetAttribute("TrooRiftUntil")) or (now() + 30)
+	rising(function()
+		if rifts[char] ~= st then return nil end
+		return pts[math.random(1, #pts)] + Vector3.new(0, lift, 0)
+	end, TEAL_L, math.max(0.1, untilT - now()), 12, 0.4 * s / 2)
+	diag("oportal", "result")
+end
+local function riftTravel(m) -- any dino on the rift: a teal streak on it until TrooRiftTravelUntil; an entry flash, no landing FX
+	if not riftLook() then return end
+	local r = rootOf(m)
+	local from = m:GetAttribute("TrooRiftTravelFrom")
+	if not r then return end
+	local s = m:GetScale()
+	if typeof(from) == "Vector3" then flashBall(from + Vector3.new(0, 3 * s / 2, 0), TEAL_L, 2, 8 * s / 2, 0.25) end
+	local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+	a0.Position, a1.Position = Vector3.new(0, 1.5 * s / 2, 0), Vector3.new(0, -1.5 * s / 2, 0)
+	a0.Parent, a1.Parent = r, r
+	local tr = Instance.new("Trail")
+	tr.Attachment0, tr.Attachment1 = a0, a1
+	tr.Color = ColorSequence.new(Color3.new(1, 1, 1), TEAL)
+	tr.Transparency = NumberSequence.new(0, 1)
+	tr.Lifetime, tr.LightEmission, tr.FaceCamera = 0.45, 1, true
+	tr.Parent = r
+	local glow = ball(3 * s / 2, TEAL_L)
+	glow.Transparency = 0.55
+	light(glow, TEAL, 12, 3)
+	local untilT = num(m:GetAttribute("TrooRiftTravelUntil")) or (now() + 1)
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		if not r.Parent or now() >= untilT then
+			conn:Disconnect()
+			glow:Destroy()
+			tr.Enabled = false
+			Debris:AddItem(tr, 0.5)
+			Debris:AddItem(a0, 0.5)
+			Debris:AddItem(a1, 0.5)
+			return
+		end
+		glow.CFrame = r.CFrame
+	end)
+	diag("oportal", "travel")
+end
+
 -- wiring -----------------------------------------------------------------------------------------------------------------
 local function watch(char)
 	local function hook(attr, fn)
 		char:GetAttributeChangedSignal(attr):Connect(function()
 			if script:GetAttribute("TrooPartsFXEnabled") == false then return end
 			local v = char:GetAttribute(attr)
-			if char:GetAttribute("Species") ~= "Troodon" and attr ~= "TrooPortalUsedAt" then return end
+			if char:GetAttribute("Species") ~= "Troodon" and attr ~= "TrooPortalUsedAt" and attr ~= "TrooRiftTravelAt" then return end -- v1.4: + rift travel
 			if typeof(v) == "number" and now() - v > 2 then return end
 			fn(char, v)
 		end)
@@ -1165,6 +1325,11 @@ local function watch(char)
 	hook("TrooPortalAt", portalStart)
 	hook("TrooPortalEndAt", function(c) portalEnd(c) end)
 	hook("TrooPortalUsedAt", function(c) portalUsed(c) end)
+	hook("TrooRiftAt", riftStart) -- v1.4
+	hook("TrooRiftOpenAt", function(c) riftOpen(c) end)
+	hook("TrooRiftEndAt", function(c) riftClear(c, true) end)
+	hook("TrooRiftCancelAt", function(c) riftClear(c, false) end)
+	hook("TrooRiftTravelAt", function(c) riftTravel(c) end)
 	char.AncestryChanged:Connect(function(_, parent)
 		if parent then return end
 		local d = drones[char]
@@ -1173,6 +1338,7 @@ local function watch(char)
 		if l and l.core.Parent then l.core:Destroy() end
 		lanterns[char] = nil
 		portalEnd(char)
+		riftClear(char, false) -- v1.4
 	end)
 end
 local function onPlayer(pl)

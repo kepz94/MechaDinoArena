@@ -1,4 +1,4 @@
--- SprintTest v1.23 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.24 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -307,6 +307,23 @@ do
 		return mul, names, ends
 	end
 end
+-- v1.24 (MDA-375, TrooMovesServer 1.10): while the troodon places a Portal Rift (character TrooRiftPlacing true) the speed is x
+--   TrooRiftSpeedMul (1.25 rising to 1.55 with the distance walked). Switch: script attribute SprintTestRiftEnabled (default true).
+if script:GetAttribute("SprintTestRiftEnabled") == nil then script:SetAttribute("SprintTestRiftEnabled", true) end
+do
+	local partSpeedV123 = partSpeed
+	partSpeed = function()
+		local mul, names, ends = partSpeedV123()
+		if script:GetAttribute("SprintTestRiftEnabled") ~= false and char:GetAttribute("TrooRiftPlacing") == true then
+			local m = tonumber(char:GetAttribute("TrooRiftSpeedMul")) or 1
+			if m ~= 1 then
+				mul *= math.clamp(m, 1, 3)
+				names = (names == "none" and "" or names .. "+") .. "rift"
+			end
+		end
+		return mul, names, ends
+	end
+end
 local scheduledPartEnds = {} -- v1.6: [end time] = true once a re-apply is scheduled
 
 local sprinting = false
@@ -415,7 +432,9 @@ if script:GetAttribute("SprintApplyRequestEnabled") == nil then script:SetAttrib
 char:GetAttributeChangedSignal("SprintApplyRequest"):Connect(function() -- v1.23
 	if script:GetAttribute("SprintApplyRequestEnabled") ~= false then apply() end
 end)
-char:SetAttribute("SprintTestVersion", "1.23") -- v1.23
+char:GetAttributeChangedSignal("TrooRiftPlacing"):Connect(apply) -- v1.24
+char:GetAttributeChangedSignal("TrooRiftSpeedMul"):Connect(apply) -- v1.24
+char:SetAttribute("SprintTestVersion", "1.24") -- v1.24
 apply()
 
 local function cleanup()

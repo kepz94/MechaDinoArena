@@ -1,4 +1,4 @@
--- MechaButtons v1.43 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.44 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -387,6 +387,12 @@ for k, v in pairs({MechaAirUpEnabled = true, MechaAirUpHeight = 30, MechaAirUpTi
 end
 
 VERSION = "1.43" -- v1.43 TAIL GRAB lights up while a dino is in reach
+VERSION = "1.44" -- v1.44 Portal Rift: PLACING + the rift recharge (MDA-375)
+-- v1.44 (MDA-375, TrooMovesServer 1.10): while the troodon places a Portal Rift (character TrooRiftPlacing true) the oportal
+--   slot (and its pull label) reads "PLACING" and stays pressable (press 2 drops end B); the recharge fill of a timed part uses
+--   <Prefix>RechargeUsed when the server set one (the rift's 45 s), else <Prefix>Cooldown. Switch: script attribute
+--   MechaButtonsRiftEnabled (default true, read at each draw; false = 1.43).
+if script:GetAttribute("MechaButtonsRiftEnabled") == nil then script:SetAttribute("MechaButtonsRiftEnabled", true) end
 -- v1.43 (Kepu 2026-11-09 after v589 "There's no indicator when a Dino is out of range" (Tail Grab) -> "Button lights up in range"; PC and touch together with AbilityBar
 --   1.37): on the TAIL GRAB button (main slot or the pull label) while the part is ready: the character's TenoGrabInRange
 --   (TenoMovesServer 1.18, the same pick as a press) true -> lit: stroke GRAB_GREEN rgb(110, 235, 130) at 0, Thickness 3.5,
@@ -1233,6 +1239,8 @@ local function partState(id)
 		local ready = char:GetAttribute(px .. "Enabled") == true and (tonumber(char:GetAttribute(px .. "Until")) or 0) <= now
 			and now >= readyAt
 		local cd = tonumber(char:GetAttribute(px .. "Cooldown")) or 0
+		local cdU = script:GetAttribute("MechaButtonsRiftEnabled") ~= false and tonumber(char:GetAttribute(px .. "RechargeUsed")) -- v1.44
+		if cdU and cdU > 0 then cd = cdU end
 		local left = readyAt - now
 		return ready, (cd > 0 and left > 0) and math.clamp(left / cd, 0, 1) or 0
 	end
@@ -1264,6 +1272,7 @@ local function partName(id)
 	if LEGS_BTN and id == "mechalegs" then return "MECHA LEGS" end -- v1.16
 	if BLOOD_BTN and id == "bloodrush" then return "BLOOD RUSH" end -- v1.17
 	if id == "zgrapple" and TIMED_PARTS[id] and script:GetAttribute("MechaButtonsDashEnabled") ~= false and char:GetAttribute("TheriDashMode") == true then return "DASH" end -- v1.33
+	if id == "oportal" and char:GetAttribute("TrooRiftPlacing") == true and script:GetAttribute("MechaButtonsRiftEnabled") ~= false then return "PLACING" end -- v1.44
 	if TIMED_PARTS[id] then return TIMED_PARTS[id][3] end -- v1.5
 	return string.upper(id)
 end
@@ -1944,6 +1953,7 @@ for _, tp in pairs(TIMED_PARTS) do -- v1.5
 	for _, k in ipairs({"Enabled", "Until", "ReadyAt"}) do WATCH[tp[1] .. k] = true end
 end
 WATCH.TenoGrabInRange = true -- v1.43
+WATCH.TrooRiftPlacing, WATCH.TrooPartPortalRechargeUsed = true, true -- v1.44
 char.AttributeChanged:Connect(function(name)
 	if name == "AutoRun" then layout() end
 	if WATCH[name] then draw() end
