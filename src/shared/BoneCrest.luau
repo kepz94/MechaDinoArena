@@ -1,4 +1,4 @@
--- BoneCrest v1.7 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
+-- BoneCrest v1.8 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
 -- (ModuleScript, ServerStorage.DinoArcade.BoneCrest, server only). SkillTree 1.30 / SkillEffects 1.23.
 -- Kepu 2026-10-30: "We'll do the bone crest to replace the thick hide. Whoever bites your dome does 40% less damage";
 --   answers: builds up to 40% (I 20%, II 30%, III 40%, star: the biter takes 5 damage back), "Bites from the front",
@@ -89,6 +89,11 @@ M.VERSION = "1.4"
 M.VERSION = "1.5" -- v1.5 plating()
 M.VERSION = "1.6" -- v1.6 VisorBlockAt
 M.VERSION = "1.7" -- v1.7 armor() for every attack (MDA-366)
+M.VERSION = "1.8" -- v1.8 Hunter's Eyes mark in armor()
+-- v1.8 (SkillTree 1.88 Hunter's Eyes III, plan docs/plans/TROODON_STATS_v1.0.md, MDA-388): armor(victim) is also x the victim's
+--   TrooMarkedMul (TrooAttackServer 1.7; 1.1 at III) while its TrooMarkedUntil is ahead, so a marked dino takes 10% more from
+--   every attack that calls armor() (the hook knows the victim only, not the attacker). Switch: module attribute
+--   BoneCrestMarkEnabled (default true, read at each call; false = 1.7).
 if script:GetAttribute("BoneCrestArmorEnabled") == nil then script:SetAttribute("BoneCrestArmorEnabled", true) end -- v1.7
 if script:GetAttribute("BoneCrestVisorStampEnabled") == nil then script:SetAttribute("BoneCrestVisorStampEnabled", true) end -- v1.6
 M.CONE = 60
@@ -412,6 +417,19 @@ function M.after(victim, attacker, rawDamage, damage, kind)
 		end
 	end
 	if amount > 0 and typeof(attacker) == "Instance" and attacker.Parent then pcall(reflect, victim, attacker, amount) end
+end
+
+-- v1.8: Hunter's Eyes mark
+if script:GetAttribute("BoneCrestMarkEnabled") == nil then script:SetAttribute("BoneCrestMarkEnabled", true) end
+do
+	local armorV17 = M.armor
+	function M.armor(victim)
+		local a = armorV17(victim)
+		if script:GetAttribute("BoneCrestMarkEnabled") == false or typeof(victim) ~= "Instance" then return a end
+		local u, mul = victim:GetAttribute("TrooMarkedUntil"), victim:GetAttribute("TrooMarkedMul")
+		if typeof(u) == "number" and typeof(mul) == "number" and mul > 1 and u > workspace:GetServerTimeNow() then a *= math.min(mul, 2) end
+		return a
+	end
 end
 
 return M

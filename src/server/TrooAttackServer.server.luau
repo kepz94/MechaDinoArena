@@ -776,6 +776,188 @@ do
 	end)
 end
 
+-- v1.7 (the troodon's own stat rows, SkillTree 1.88 / SkillEffects 1.60, plan docs/plans/TROODON_STATS_v1.0.md, MDA-388).
+--   The zone owner's TrooStat* attributes (off values = nothing changes):
+--   * Glow Feeder: each tick, the owner inside its own newest zone heals TrooStatFeederSelf (2 / 2.7); a zone made by an owner
+--     with TrooStatFeederSquadMul > 1 heals squadmates (splat + ticks) x that (III); TrooStatFeederLinger (star, 1 s): allies /
+--     the owner seen inside within that long still get the tick's heal after stepping out (seen every 0.2 s).
+--   * Spore Leech: after a tick, each enemy that tick hurt (TrooHitAt == the tick, TrooHitKind "tick", TrooHitBy = owner) heals
+--     the owner TrooStatLeechHeal (1 / 1.35); with TrooStatLeechSquad (III) the squadmates inside that zone get the same; with
+--     TrooStatLeechKill > 0 (star, 10) an enemy seen inside one of the owner's zones within 0.5 s that is now dead heals the
+--     owner that much (once per enemy per zone; enemies inside at the splat count, so a splat kill heals too).
+--   * Hunter's Eyes: get(char, "TrooAssistMax" / "TrooPodRange") x TrooStatEyesReach (1.35); TrooStatEyesMark > 0 (II, 3 s):
+--     after a splat each enemy it hit gets TrooMarkedUntil = t + mark, TrooMarkedBy (owner name), TrooMarkedMul =
+--     TrooStatEyesMarkMul (1.1 at III, read by BoneCrest 1.8 armor()), TrooMarkedSquad (the owner's SquadId with
+--     TrooStatEyesSee, star, else ""), TrooMarkedSee (star), then TrooMarkedAt (last; TrooStatsFX).
+--   * Zone Ward: every 0.2 s, each live zone of an owner with TrooStatWardMul < 1: the owner inside and, with TrooStatWardSquad
+--     (III), its allies inside get TrooFortifyMul = that, TrooFortifyBy, TrooFortifyUntil = now + 0.3 + TrooStatWardLinger
+--     (star 1 s) (TrooMovesServer 1.6's live refund gives back drop x (1 - mul)); a lower mul already there is kept.
+--   * Night Watcher star (TrooStatWatchDouble): an enemy hit by a splat that had no TrooHitAt in the 5 s before it and whose
+--     LastDealtAt (TrooStatsServer 1.0) is older than 5 s takes the splat's damage a second time (TrooWatchDoubleAt stamp).
+--   Switch: script attribute TrooAttackStatsEnabled (default true, read at each use; false = 1.6). Diagnostics (script):
+--   TrooStatFeederHeals, TrooStatLeechHeals, TrooStatLeechKills, TrooStatMarks, TrooStatWardStamps, TrooStatWatchDoubles.
+VERSION = "1.7" -- v1.7 the troodon's own stat rows
+script:SetAttribute("TrooAttackServerVersion", VERSION)
+if script:GetAttribute("TrooAttackStatsEnabled") == nil then script:SetAttribute("TrooAttackStatsEnabled", true) end
+local function statsOn() return script:GetAttribute("TrooAttackStatsEnabled") ~= false end
+local function alive(m)
+	local hum = m:FindFirstChildOfClass("Humanoid")
+	if Players:GetPlayerFromCharacter(m) then return hum ~= nil and hum.Health > 0 end
+	if m:GetAttribute("DummyState") == "ko" then return false end
+	local hp = m:GetAttribute("DummyHealth")
+	return typeof(hp) ~= "number" or hp > 0
+end
+do -- Hunter's Eyes I: lock-on and throw reach
+	local getV16 = get
+	get = function(char, k)
+		local v = getV16(char, k)
+		if (k == "TrooAssistMax" or k == "TrooPodRange") and statsOn() then v *= math.max(0, num(char, "TrooStatEyesReach", 1)) end
+		return v
+	end
+end
+do -- Glow Feeder III: squad heal x mul on the zones this owner makes
+	local makeZoneV16 = makeZone
+	makeZone = function(c, to, t)
+		local o = c.owner
+		local mul = (statsOn() and o and o.Parent) and num(o, "TrooStatFeederSquadMul", 1) or 1
+		if mul ~= 1 then c = table.clone(c); c.heal = (c.heal or 0) * mul end
+		return makeZoneV16(c, to, t)
+	end
+end
+do -- ticks: Glow Feeder self heal + linger, Spore Leech
+	local tickV16 = tick
+	tick = function(z, t)
+		tickV16(z, t)
+		if not statsOn() then return end
+		local o = srcChar(z)
+		if not (o and o.Parent) then return end
+		local selfH = num(o, "TrooStatFeederSelf", 0)
+		if selfH > 0 and alive(o) and inside(z, o) and newestZoneOf(o) == z then
+			local added = heal(o, selfH)
+			if added > 0 then stampHeal(o, added, t); count("TrooStatFeederHeals") end
+		end
+		if num(o, "TrooStatFeederLinger", 0) > 0 and z.seen then -- star: just stepped out
+			for m, ts in pairs(z.seen) do
+				if m.Parent and alive(m) and t - ts <= num(o, "TrooStatFeederLinger", 0) and not inside(z, m) then
+					local amount = (m == o) and selfH or ((isAlly(z, m)) and z.heal or 0)
+					local added = amount > 0 and heal(m, amount) or 0
+					if added > 0 then stampHeal(m, added, t); count("TrooStatFeederHeals") end
+				end
+			end
+		end
+		local leech = num(o, "TrooStatLeechHeal", 0)
+		if leech > 0 then
+			local n = 0
+			for _, m in ipairs(everyone(o)) do
+				if m:GetAttribute("TrooHitAt") == t and m:GetAttribute("TrooHitKind") == "tick" and m:GetAttribute("TrooHitBy") == z.ownerName then n += 1 end
+			end
+			if n > 0 then
+				local list = {o}
+				if o:GetAttribute("TrooStatLeechSquad") == true then
+					for _, m in ipairs(everyone(o)) do if isAlly(z, m) and inside(z, m) then table.insert(list, m) end end
+				end
+				for _, m in ipairs(list) do
+					local added = heal(m, n * leech)
+					if added > 0 then stampHeal(m, added, t); count("TrooStatLeechHeals") end
+				end
+			end
+		end
+	end
+end
+do -- splats: Hunter's Eyes mark, Night Watcher star double
+	local splatV16 = splat
+	splat = function(z, t)
+		local o = srcChar(z)
+		local before = {}
+		local watch = statsOn() and o and o.Parent and o:GetAttribute("TrooStatWatchDouble") == true
+		if watch then for _, m in ipairs(everyone(o)) do before[m] = num(m, "TrooHitAt", -math.huge) end end
+		if statsOn() and o and o.Parent and num(o, "TrooStatLeechKill", 0) > 0 then -- Spore Leech star: a splat kill counts too
+			z.lastIn = z.lastIn or {}
+			for _, m in ipairs(everyone(o)) do if not isAlly(z, m) and mayHarm(z, m) and inside(z, m) then z.lastIn[m] = t end end
+		end
+		local hits = splatV16(z, t)
+		if not (statsOn() and o and o.Parent) or hits <= 0 then return hits end
+		local mark = num(o, "TrooStatEyesMark", 0)
+		local sid = ""
+		if o:GetAttribute("TrooStatEyesSee") == true then
+			local pl = Players:GetPlayerFromCharacter(o)
+			sid = pl and tostring(pl:GetAttribute("SquadId") or "") or ""
+		end
+		for _, m in ipairs(everyone(o)) do
+			if m:GetAttribute("TrooHitAt") == t and m:GetAttribute("TrooHitKind") == "splat" and m:GetAttribute("TrooHitBy") == z.ownerName then
+				if watch and (t - (before[m] or -math.huge)) > 5 and (t - num(m, "LastDealtAt", -math.huge)) > 5 then
+					local d = z.podDamage * takenMul(m, t) * plating(m, z.center)
+					if takeHealth(m, d, z.ownerName, z.ownerId, "troopod", t) then
+						m:SetAttribute("TrooWatchDoubleAt", t)
+						count("TrooStatWatchDoubles")
+					end
+				end
+				if mark > 0 then
+					m:SetAttribute("TrooMarkedUntil", t + mark)
+					m:SetAttribute("TrooMarkedBy", o.Name)
+					m:SetAttribute("TrooMarkedMul", math.max(1, num(o, "TrooStatEyesMarkMul", 1)))
+					m:SetAttribute("TrooMarkedSquad", sid)
+					m:SetAttribute("TrooMarkedSee", o:GetAttribute("TrooStatEyesSee") == true)
+					m:SetAttribute("TrooMarkedAt", t) -- last: TrooStatsFX
+					count("TrooStatMarks")
+				end
+			end
+		end
+		return hits
+	end
+end
+do -- every 0.2 s: Zone Ward stamps, Glow Feeder star "seen", Spore Leech star kills
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		acc += dt
+		if acc < 0.2 then return end
+		acc = 0
+		if not statsOn() or #zones == 0 then return end
+		local t = now()
+		for _, z in ipairs(zones) do
+			local o = srcChar(z)
+			if t < z.untilT and o and o.Parent then
+				local wardMul = math.clamp(num(o, "TrooStatWardMul", 1), 0, 1)
+				local linger = num(o, "TrooStatFeederLinger", 0) > 0
+				local kill = num(o, "TrooStatLeechKill", 0)
+				if wardMul < 1 then
+					local list = {}
+					if alive(o) and inside(z, o) then table.insert(list, o) end
+					if o:GetAttribute("TrooStatWardSquad") == true then
+						for _, m in ipairs(everyone(o)) do if isAlly(z, m) and inside(z, m) then table.insert(list, m) end end
+					end
+					local untilT = t + 0.3 + math.max(0, num(o, "TrooStatWardLinger", 0))
+					for _, m in ipairs(list) do
+						local was, wasMul = num(m, "TrooFortifyUntil", 0), num(m, "TrooFortifyMul", 1)
+						if not (was > t and wasMul < wardMul) then m:SetAttribute("TrooFortifyMul", wardMul) end
+						m:SetAttribute("TrooFortifyBy", o.Name)
+						if untilT > was then m:SetAttribute("TrooFortifyUntil", untilT) end
+						if was <= t then m:SetAttribute("TrooFortifyAt", t); count("TrooStatWardStamps") end
+					end
+				end
+				if linger then
+					z.seen = z.seen or {}
+					if inside(z, o) then z.seen[o] = t end
+					for _, m in ipairs(everyone(o)) do if isAlly(z, m) and inside(z, m) then z.seen[m] = t end end
+				end
+				if kill > 0 then
+					z.lastIn = z.lastIn or {}
+					z.credited = z.credited or {}
+					for m, ts in pairs(z.lastIn) do
+						if not z.credited[m] and t - ts <= 0.5 and (not m.Parent or not alive(m)) then
+							z.credited[m] = true
+							local added = heal(o, kill)
+							if added > 0 then stampHeal(o, added, t) end
+							count("TrooStatLeechKills")
+						end
+					end
+					for _, m in ipairs(everyone(o)) do if not isAlly(z, m) and mayHarm(z, m) and inside(z, m) then z.lastIn[m] = t end end
+				end
+			end
+		end
+	end)
+end
+
 -- remote ------------------------------------------------------------------------------------------------------------------------
 local remote = ReplicatedStorage:FindFirstChild("DinoTrooAttack")
 if not remote then

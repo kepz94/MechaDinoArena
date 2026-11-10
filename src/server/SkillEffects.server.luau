@@ -1,4 +1,4 @@
--- SkillEffects v1.59 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.60 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -301,6 +301,15 @@ local ServerStorage = game:GetService("ServerStorage")
 -- v1.59 (SkillTree 1.86 TROO_SLOT_TUNE_186, Kepu 2026-11-10 10:38 "The sentry only deals 20 total damage"): the TrooPartSentry
 --   row gains Total (effect oSentryTotal, off 0): the most one Sentry Pod throw deals (TrooSlotServer 1.1). Switch: script
 --   attribute SkillEffectsTrooSentryTotalEnabled (default true, read at start; false = 1.58, no TrooPartSentryTotal).
+-- v1.60 (SkillTree 1.88 TROO_STATS, plan docs/plans/TROODON_STATS_v1.0.md, MDA-388): on a character with Species "Troodon" (or
+--   one that already has TrooStatsOn, so a switch away writes the off values) the troodon's own stat rows write, when bought
+--   (stat rows: no slot), from ST.effects(steps, "Troodon"): TrooStatFeederSelf / SquadMul / Linger, TrooStatLeechHeal / Squad /
+--   Kill, TrooStatEyesReach / Mark / MarkMul / See, TrooStatWardMul / Squad / Linger, TrooStatFeetRun / TrailOn / TrailMul /
+--   TrailTime, TrooStatWatchRadius / Squad / Double; off values when not bought. Quick Feet II / III also write JumpDoubleForward
+--   (feetForward, else 0) and JumpAirJumps (TrooFeetBaseAirJumps, saved once from the model's value, + feetAirJumps). Read by
+--   TrooAttackServer 1.7, TrooStatsServer 1.0, SprintTest 1.25, BoneCrest 1.8 (via the victim's TrooMarkedMul). Switch: script
+--   attribute SkillEffectsTrooStatsEnabled (default true, read at each write; false = the off values + the base jump numbers).
+--   Diagnostic: character TrooStatsOn (the row ids written on, comma list).
 -- v1.44 (Kepu 2026-11-04 17:54 "Make it overclock tier 3 to give you an extra jump", SkillTree 1.66 clockJump): the TheriClock
 --   row gains Jump (effect clockJump, off 0): TheriClockJump, the extra jump charges TheriMovesServer 1.5 adds. Switch: script
 --   attribute SkillEffectsTheriClockJumpEnabled (default true, read at start; false = 1.43, no TheriClockJump).
@@ -1335,6 +1344,56 @@ do
 		end
 		local diag = table.concat(list, ",")
 		if char:GetAttribute("TrooSlotPartsOn") ~= diag then char:SetAttribute("TrooSlotPartsOn", diag) end
+	end
+end
+
+-- v1.60: the troodon's own stat rows (see the v1.60 notes)
+if script:GetAttribute("SkillEffectsTrooStatsEnabled") == nil then script:SetAttribute("SkillEffectsTrooStatsEnabled", true) end
+local TSTAT = { -- {path id, {attribute, effect field, off value}...}
+	{"tfeeder", {{"FeederSelf", "feederSelf", 0}, {"FeederSquadMul", "feederSquadMul", 1}, {"FeederLinger", "feederLinger", 0}}},
+	{"tleech", {{"LeechHeal", "leechHeal", 0}, {"LeechSquad", "leechSquad", false}, {"LeechKill", "leechKill", 0}}},
+	{"teyes", {{"EyesReach", "eyesReach", 1}, {"EyesMark", "eyesMark", 0}, {"EyesMarkMul", "eyesMarkMul", 1}, {"EyesSee", "eyesSee", false}}},
+	{"tward", {{"WardMul", "wardMul", 1}, {"WardSquad", "wardSquad", false}, {"WardLinger", "wardLinger", 0}}},
+	{"tfeet", {{"FeetRun", "feetRun", 1}, {"FeetTrailOn", "feetTrail", false}, {"FeetTrailMul", "feetTrailMul", 1}, {"FeetTrailTime", "feetTrailTime", 0}}},
+	{"twatch", {{"WatchRadius", "watchRadius", 0}, {"WatchSquad", "watchSquad", false}, {"WatchDouble", "watchDouble", false}}},
+}
+do
+	local applyCharV159 = applyChar
+	applyChar = function(char, st)
+		applyCharV159(char, st)
+		local isTroo = char:GetAttribute("Species") == "Troodon"
+		if not isTroo and char:GetAttribute("TrooStatsOn") == nil then return end
+		local rowsOn = script:GetAttribute("SkillEffectsTrooStatsEnabled") ~= false and ST.TROO_STATS == true and ST.PATHS.tfeeder ~= nil
+		local e = {}
+		if rowsOn and isTroo then
+			local steps = {}
+			for _, id in ipairs(ST.PATH_ORDER) do steps[id] = st.player:GetAttribute("SkillPath_" .. id) end
+			e = ST.effects(steps, "Troodon") or {}
+		end
+		local list = {}
+		for _, def in ipairs(TSTAT) do
+			local id = def[1]
+			local pOn = rowsOn and on() and isTroo and ST.PATHS[id] ~= nil and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1
+			for _, f in ipairs(def[2]) do
+				local v = f[3]
+				if pOn and e[f[2]] ~= nil then v = e[f[2]] end
+				if char:GetAttribute("TrooStat" .. f[1]) ~= v then char:SetAttribute("TrooStat" .. f[1], v) end
+			end
+			if pOn then table.insert(list, id) end
+		end
+		if isTroo then -- Quick Feet II / III on the troodon's own flap numbers
+			local feetOn = table.find(list, "tfeet") ~= nil
+			if char:GetAttribute("TrooFeetBaseAirJumps") == nil then
+				char:SetAttribute("TrooFeetBaseAirJumps", tonumber(char:GetAttribute("JumpAirJumps")) or 2)
+			end
+			local baseAir = tonumber(char:GetAttribute("TrooFeetBaseAirJumps")) or 2
+			local air = baseAir + (feetOn and (e.feetAirJumps or 0) or 0)
+			if char:GetAttribute("JumpAirJumps") ~= air then char:SetAttribute("JumpAirJumps", air) end
+			local fwd = feetOn and (e.feetForward or 0) or 0
+			if char:GetAttribute("JumpDoubleForward") ~= fwd then char:SetAttribute("JumpDoubleForward", fwd) end
+		end
+		local diag = table.concat(list, ",")
+		if char:GetAttribute("TrooStatsOn") ~= diag then char:SetAttribute("TrooStatsOn", diag) end
 	end
 end
 

@@ -1,4 +1,4 @@
--- SkillTree v1.87 (1.87 the troodon's 4 "soon" cards out of the tree (TROO_SOON_REMOVED); 1.86 troodon slot tune: dome 90 / 121.5 wide, Bloom Tank 44 / 54 wide, sentry 1.25 a pod + 20 at most a throw (TROO_SLOT_TUNE_186); 1.85 troodon slot parts: Bloom Tank passive + Bloom Burst / Shield Dome / Sleep Dart / Sentry Pod (TROO_SLOT_PARTS), MDA-378; 1.84 Therizino Overclock Joints = no-slot passive (THERI_CLOCK_NOSLOT) + the troodon's 4 passives removed (TROO_PARTS_B2_LIVE = false); 1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.88 (1.88 the troodon's own stat rows: Glow Feeder, Spore Leech, Hunter's Eyes, Zone Ward, Quick Feet, Night Watcher (TROO_STATS); 1.87 the troodon's 4 "soon" cards out of the tree (TROO_SOON_REMOVED); 1.86 troodon slot tune: dome 90 / 121.5 wide, Bloom Tank 44 / 54 wide, sentry 1.25 a pod + 20 at most a throw (TROO_SLOT_TUNE_186); 1.85 troodon slot parts: Bloom Tank passive + Bloom Burst / Shield Dome / Sleep Dart / Sentry Pod (TROO_SLOT_PARTS), MDA-378; 1.84 Therizino Overclock Joints = no-slot passive (THERI_CLOCK_NOSLOT) + the troodon's 4 passives removed (TROO_PARTS_B2_LIVE = false); 1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -3336,6 +3336,105 @@ if SkillTree.TROO_SOON_REMOVED and not SkillTree.TROO_PARTS_B2_LIVE then
 		for i = #a.paths, 1, -1 do
 			if gone[a.paths[i].id] then table.remove(a.paths, i) end
 		end
+	end
+end
+
+-- v1.88 (Kepu 2026-11-10 11:54 "Why do you have the troodon stats on the default names?" -> 12:00 picks, mockup
+--   docs/mockups/troodon_stats_v0.1.html, 12:03 "Build"; plan docs/plans/TROODON_STATS_v1.0.md, MDA-387). Switch
+--   SkillTree.TROO_STATS (default true; false = 1.87, the troodon on the default rows). The 1.37 rule: regen / lifesteal / jaws /
+--   hide / legs get notFor.Troodon (points spent on them as a troodon sanitize to 0 and come back), and 6 troodon-only stat rows
+--   (not mech, no slot): tfeeder "Glow Feeder" (health), tleech "Spore Leech" (health), teyes "Hunter's Eyes" (attack), tward
+--   "Zone Ward" (defense), tfeet "Quick Feet" (speed), twatch "Night Watcher" (sig). effects() (troodon only; off values
+--   otherwise): feederSelf 0 / 2 (I) / 2.7 (II), feederSquadMul 1 / 1.35 (III), feederLinger 0 / 1 (star); leechHeal 0 / 1 /
+--   1.35 (II), leechSquad (III), leechKill 0 / 10 (star); eyesReach 1 / 1.35 (I), eyesMark 0 / 3 (II), eyesMarkMul 1 / 1.1
+--   (III), eyesSee (star); wardMul 1 / 0.9 (I) / 0.865 (II), wardSquad (III), wardLinger 0 / 1 (star); feetRun 1 / 1.05 (I),
+--   feetForward 0 / 30 (II, studs/s on each flap), feetAirJumps 0 / 1 (III, extra flaps), feetTrail (star), feetTrailMul 1.1,
+--   feetTrailTime 3; watchRadius 0 / 40 (I) / 54 (II), watchSquad (III), watchDouble (star).
+SkillTree.TROO_STATS = true
+if SkillTree.TROO_STATS and not SkillTree.PATHS.tfeeder then
+	local P = SkillTree.PATHS
+	for _, id in ipairs({"regen", "lifesteal", "jaws", "hide", "legs"}) do
+		if P[id] then
+			P[id].notFor = P[id].notFor or {}
+			P[id].notFor.Troodon = true
+		end
+	end
+	local hasSig = false
+	for _, a in ipairs(SkillTree.AREAS) do if a.id == "sig" then hasSig = true end end
+	if not hasSig then table.insert(SkillTree.AREAS, {id = "sig", name = "Signature", color = {201, 162, 255}, paths = {}}) end
+	local function add(id, name, areaId, steps)
+		local p = path(id, name, false, false, steps)
+		p.area = areaId
+		p.dino = "Troodon"
+		SkillTree.OWNER[id] = "Troodon"
+		for _, a in ipairs(SkillTree.AREAS) do
+			if a.id == areaId then table.insert(a.paths, p) end
+		end
+		P[id] = p
+		table.insert(SkillTree.PATH_ORDER, id)
+	end
+	add("tfeeder", "Glow Feeder", "health", {
+		"Heal 2 per second while you stand in your own glow zone",
+		"Heal 2.7 per second",
+		"Squadmates in your zones heal 35% more (5 -> 6.75 per second)",
+		"Zone healing keeps going for 1 s after you (or a squadmate) step out"})
+	add("tleech", "Spore Leech", "health", {
+		"Each zone tick on an enemy heals you 1",
+		"Heals you 1.35 per tick",
+		"Squadmates inside that zone get the heal too",
+		"An enemy that dies inside your zone heals you 10"})
+	add("teyes", "Hunter's Eyes", "attack", {
+		"Pods lock on and reach 35% farther (80 -> 108 studs)",
+		"A pod splat marks the enemy for 3 s",
+		"Marked enemies take 10% more damage",
+		"Marked enemies show through walls for your squad"})
+	add("tward", "Zone Ward", "defense", {
+		"Take 10% less damage inside your own zones",
+		"13.5% less",
+		"Squadmates inside your zones get it too",
+		"It lasts 1 s after leaving the zone"})
+	add("tfeet", "Quick Feet", "speed", {
+		"Run 5% faster (86 -> 90.3)",
+		"Flaps carry you 35% farther forward",
+		"A 3rd flap before the glide",
+		"Landing from a glide leaves a trail: squadmates on it run 10% faster for 3 s"})
+	add("twatch", "Night Watcher", "sig", {
+		"See enemy outlines within 40 studs, through walls",
+		"Within 54 studs",
+		"Squadmates see the outlines you see",
+		"Your first pod on an enemy that hasn't hit anyone in 5 s splats double"})
+end
+do
+	local effectsPre188 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre188(steps, dino)
+		if type(e) ~= "table" then return e end
+		local on = SkillTree.TROO_STATS and dino == "Troodon" and SkillTree.PATHS.tfeeder ~= nil
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local fe, le, ey, wa, ft, wt = s.tfeeder or 0, s.tleech or 0, s.teyes or 0, s.tward or 0, s.tfeet or 0, s.twatch or 0
+		e.feederSelf = fe >= 2 and 2.7 or (fe >= 1 and 2 or 0)
+		e.feederSquadMul = fe >= 3 and 1.35 or 1
+		e.feederLinger = fe >= 4 and 1 or 0
+		e.leechHeal = le >= 2 and 1.35 or (le >= 1 and 1 or 0)
+		e.leechSquad = le >= 3
+		e.leechKill = le >= 4 and 10 or 0
+		e.eyesReach = ey >= 1 and 1.35 or 1
+		e.eyesMark = ey >= 2 and 3 or 0
+		e.eyesMarkMul = ey >= 3 and 1.1 or 1
+		e.eyesSee = ey >= 4
+		e.wardMul = wa >= 2 and 0.865 or (wa >= 1 and 0.9 or 1)
+		e.wardSquad = wa >= 3
+		e.wardLinger = wa >= 4 and 1 or 0
+		e.feetRun = ft >= 1 and 1.05 or 1
+		e.feetForward = ft >= 2 and 30 or 0
+		e.feetAirJumps = ft >= 3 and 1 or 0
+		e.feetTrail = ft >= 4
+		e.feetTrailMul = 1.1
+		e.feetTrailTime = 3
+		e.watchRadius = wt >= 2 and 54 or (wt >= 1 and 40 or 0)
+		e.watchSquad = wt >= 3
+		e.watchDouble = wt >= 4
+		return e
 	end
 end
 

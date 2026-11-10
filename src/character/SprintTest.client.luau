@@ -1,4 +1,4 @@
--- SprintTest v1.24 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
+-- SprintTest v1.25 (Dino Arcade) — TEST ONLY. Hold Shift (keyboard), L3 (gamepad) or the on-screen
 -- Run button (touch) to run. No stamina yet; to be replaced by the real sprint/stamina system.
 -- Speeds come from the character's attributes: MoveWalkSpeed (default 16), MoveRunSpeed (default 28).
 -- Shift is taken at high priority, so Roblox's Shift-Lock camera toggle does not fire while this runs.
@@ -334,6 +334,32 @@ local function running() -- v1.5; v1.11: never while aiming the Tether Spike
 	if char:GetAttribute("TetherAiming") == true and script:GetAttribute("SprintTetherAimEnabled") ~= false then return false end
 	return sprinting or char:GetAttribute("AutoRun") == true
 end
+-- v1.25 (SkillTree 1.88 Quick Feet, plan docs/plans/TROODON_STATS_v1.0.md, MDA-389): while running, x the character's
+--   TrooStatFeetRun (SkillEffects 1.60; 1.05 with Quick Feet I); any speed x TrooTrailMul while TrooTrailUntil is ahead
+--   (TrooStatsServer 1.0: a squadmate on a Quick Feet star trail, 1.1). Switch: script attribute SprintTestTrooFeetEnabled
+--   (default true, read at each apply; false = 1.24).
+if script:GetAttribute("SprintTestTrooFeetEnabled") == nil then script:SetAttribute("SprintTestTrooFeetEnabled", true) end
+do
+	local partSpeedV124 = partSpeed
+	partSpeed = function()
+		local mul, names, ends = partSpeedV124()
+		if script:GetAttribute("SprintTestTrooFeetEnabled") ~= false then
+			local fr = tonumber(char:GetAttribute("TrooStatFeetRun")) or 1
+			if fr ~= 1 and running() then
+				mul *= math.clamp(fr, 1, 2)
+				names = (names == "none" and "" or names .. "+") .. "quickFeet"
+			end
+			local t = workspace:GetServerTimeNow()
+			local untilT, m = char:GetAttribute("TrooTrailUntil"), char:GetAttribute("TrooTrailMul")
+			if typeof(untilT) == "number" and typeof(m) == "number" and t < untilT and m ~= 1 then
+				mul *= math.clamp(m, 1, 2)
+				names = (names == "none" and "" or names .. "+") .. "trail"
+				table.insert(ends, untilT)
+			end
+		end
+		return mul, names, ends
+	end
+end
 local apply
 function apply()
 	local source
@@ -435,6 +461,10 @@ end)
 char:GetAttributeChangedSignal("TrooRiftPlacing"):Connect(apply) -- v1.24
 char:GetAttributeChangedSignal("TrooRiftSpeedMul"):Connect(apply) -- v1.24
 char:SetAttribute("SprintTestVersion", "1.24") -- v1.24
+for _, a in ipairs({"TrooStatFeetRun", "TrooTrailUntil", "TrooTrailMul"}) do -- v1.25
+	char:GetAttributeChangedSignal(a):Connect(apply)
+end
+char:SetAttribute("SprintTestVersion", "1.25") -- v1.25
 apply()
 
 local function cleanup()
