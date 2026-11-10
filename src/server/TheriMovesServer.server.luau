@@ -1,4 +1,4 @@
--- TheriMovesServer v1.10 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
+-- TheriMovesServer v1.11 (Mecha Dino Arena) — the moves of the Therizinosaurus' mecha button parts, build 1: Reaper's Hook,
 -- Feather Barrage, Harvest Field, Snare Wires. Plan docs/plans/THERIZINO_PARTS_v1.0.md Task 4 (MDA-244, deterministic map),
 -- mockup docs/mockups/therizino_parts_options.html v0.1 (Kepu 2026-11-04 picks; red-team "Across", "Reuse the Tether chain").
 -- Settings come from the character (SkillEffects 1.42, a therizino with the part bought AND slotted): TheriHook* (Enabled,
@@ -169,6 +169,11 @@ VERSION = "1.10" -- v1.10 no movement moves while snared
 --   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). Switch: script
 --   attribute TheriMovesSnareBlockEnabled (default true, read at each request; false = 1.9). Diagnostic: script
 --   TheriMovesSnareRefusals (count).
+VERSION = "1.11" -- v1.11 armor on every hit (MDA-366)
+-- v1.11 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts feathers, field bleed ticks, snares and the reel slash (damage):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   TheriMovesServerArmorAllEnabled (default true, read at each hit; false = 1.10). Diagnostic: script TheriMovesServerArmorCuts (count of hits cut).
 if script:GetAttribute("TheriMovesSnareBlockEnabled") == nil then script:SetAttribute("TheriMovesSnareBlockEnabled", true) end -- v1.10
 local function snareBlocked(char) -- v1.10: Snare Wires bola / Reaper Hook hold
 	if script:GetAttribute("TheriMovesSnareBlockEnabled") == false then return false end
@@ -312,9 +317,20 @@ local function takenMul(m, t)
 	if num(m, "StunBreakImmuneUntil", 0) > t then mul = 0 end
 	return mul
 end
+local armorMul do -- v1.11 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("TheriMovesServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("TheriMovesServerArmorCuts", (script:GetAttribute("TheriMovesServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("TheriMovesServerArmorAllEnabled") == nil then script:SetAttribute("TheriMovesServerArmorAllEnabled", true) end
+end
 local function damage(char, player, m, base, with, t)
 	if shielded(m, t) then return 0 end
-	local d = math.max(0, base) * takenMul(m, t)
+	local d = math.max(0, base) * takenMul(m, t) * armorMul(m) -- v1.11 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return 0 end
 	local after = math.max(0, hp - d)

@@ -1,4 +1,4 @@
--- SlashServer v1.10 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.11 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -113,6 +113,11 @@ VERSION = "1.10" -- v1.10 no movement moves while snared
 --   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). Switch: script
 --   attribute SlashSnareBlockEnabled (default true, read at each request; false = 1.9). Diagnostic: script
 --   SlashSnareRefusals (count).
+VERSION = "1.11" -- v1.11 armor on every hit (MDA-366)
+-- v1.11 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts every slash hit and every slash bleed tick (takeHealth):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   SlashServerArmorAllEnabled (default true, read at each hit; false = 1.10). Diagnostic: script SlashServerArmorCuts (count of hits cut).
 if script:GetAttribute("SlashSnareBlockEnabled") == nil then script:SetAttribute("SlashSnareBlockEnabled", true) end -- v1.10
 local function snareBlocked(char) -- v1.10: Snare Wires bola / Reaper Hook hold
 	if script:GetAttribute("SlashSnareBlockEnabled") == false then return false end
@@ -447,7 +452,19 @@ local function gapToPath(hb, a, b)
 	return best
 end
 
+local armorMul do -- v1.11 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("SlashServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("SlashServerArmorCuts", (script:GetAttribute("SlashServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("SlashServerArmorAllEnabled") == nil then script:SetAttribute("SlashServerArmorAllEnabled", true) end
+end
 local function takeHealth(model, d, killer, killerId, with, t)
+	d *= armorMul(model) -- v1.11 (MDA-366): armor
 	local hp = model:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" then return end
 	local after = math.max(0, hp - d)

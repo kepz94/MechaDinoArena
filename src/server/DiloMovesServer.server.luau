@@ -1,4 +1,4 @@
--- DiloMovesServer v1.9 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
+-- DiloMovesServer v1.10 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
 -- Toxin Mortar, Spine Burst, Venom Overdrive. Plan docs/plans/DILO_PARTS_v1.0.md Task 5 (deterministic map), MDA-318; mockup
 -- docs/mockups/dilo_parts_options.html v0.1 (timings from tools/mockup/dilo_parts_looks.js); Kepu 2026-11-06 picks + red-team
 -- "Same venom system", "Use the proposals". Build 2 (Sonic Hiss, Antivenom Pump, Spring Jets) comes in 1.1.
@@ -160,6 +160,11 @@ VERSION = "1.9" -- v1.9 faster Toxin Mortar
 -- v1.9 (Kepu 2026-11-09 "the mortar it should be faster" -> both mortars, "2x flight + half wind-up"): the Toxin Mortar's
 --   wind-up MORTAR_WINDUP / 2 (0.55 -> 0.275 s, DiloMortarWindup) and flight / 2 (0.77 -> 0.38 s, DiloMortarFlight). Switch:
 --   script attribute DiloMortarFastEnabled (default true, read at each shot; false = 1.8).
+VERSION = "1.10" -- v1.10 armor on every hit (MDA-366)
+-- v1.10 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts Venom Gatling darts and spine bursts (damage):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   DiloMovesServerArmorAllEnabled (default true, read at each hit; false = 1.9). Diagnostic: script DiloMovesServerArmorCuts (count of hits cut).
 if script:GetAttribute("DiloMortarFastEnabled") == nil then script:SetAttribute("DiloMortarFastEnabled", true) end -- v1.9
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.6
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.6
@@ -304,9 +309,20 @@ local function takenMul(m, t)
 	if num(m, "StunBreakImmuneUntil", 0) > t then mul = 0 end
 	return mul
 end
+local armorMul do -- v1.10 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("DiloMovesServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("DiloMovesServerArmorCuts", (script:GetAttribute("DiloMovesServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("DiloMovesServerArmorAllEnabled") == nil then script:SetAttribute("DiloMovesServerArmorAllEnabled", true) end
+end
 local function damage(char, player, m, base, with, t)
 	if shielded(m, t) then return 0 end
-	local d = math.max(0, base) * takenMul(m, t)
+	local d = math.max(0, base) * takenMul(m, t) * armorMul(m) -- v1.10 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return 0 end
 	local after = math.max(0, hp - d)

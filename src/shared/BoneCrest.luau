@@ -1,4 +1,4 @@
--- BoneCrest v1.6 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
+-- BoneCrest v1.7 (Mecha Dino Arena) — the pachy's Bone Crest maths and look, shared by every script that bites or pounces
 -- (ModuleScript, ServerStorage.DinoArcade.BoneCrest, server only). SkillTree 1.30 / SkillEffects 1.23.
 -- Kepu 2026-10-30: "We'll do the bone crest to replace the thick hide. Whoever bites your dome does 40% less damage";
 --   answers: builds up to 40% (I 20%, II 30%, III 40%, star: the biter takes 5 damage back), "Bites from the front",
@@ -70,6 +70,17 @@
 -- v1.6 (MDA-309, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 7; Kepu 2026-11-05 "A · Turtle Brace"): the Dome Visor
 --   block look also stamps VisorBlockAt (server time) on the blocking pachy, so PachyMovesPose 1.0 plays the brace hit.
 --   Switch: this module's attribute BoneCrestVisorStampEnabled (default true; false = 1.5).
+-- v1.7 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor(victim) -> the armor
+--   multiplier every attack server applies to every hit and damage-over-time tick it deals (slash, headbutt, hook, mine,
+--   shock cannon / screech bolts, dilo spit + venom + gatling / spines, herrera quills / caltrops, teno scratch / tail slam /
+--   moves / Buck Off, therizino cuts / spin / feathers / fields / snares, troodon pods / zone ticks / lantern, skill bleeds):
+--   the victim's StatDamageTakenMul (Thick Hide / Armored Hide / Wiry Frame, StatServer; missing / bad -> 1). A player's
+--   character returns defense(victim) (the same number, the same BoneCrestDefenseEnabled switch); any other model returns
+--   its own StatDamageTakenMul too (in the game only player characters carry it, so bots / prey stay 1; a Studio test can
+--   set it on a held bot). Bites / pounces keep their own defense() call (BiteServer / PounceServer / BotServer), so no
+--   hit is cut twice. Not used for self-costs (Blood Rush), heals, falls or resets.
+--   Switch: this module's attribute BoneCrestArmorEnabled (default true, read at each call; false -> armor returns 1).
+--   Each caller also has its own <Server>ArmorAllEnabled switch.
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
@@ -77,6 +88,8 @@ local M = {}
 M.VERSION = "1.4"
 M.VERSION = "1.5" -- v1.5 plating()
 M.VERSION = "1.6" -- v1.6 VisorBlockAt
+M.VERSION = "1.7" -- v1.7 armor() for every attack (MDA-366)
+if script:GetAttribute("BoneCrestArmorEnabled") == nil then script:SetAttribute("BoneCrestArmorEnabled", true) end -- v1.7
 if script:GetAttribute("BoneCrestVisorStampEnabled") == nil then script:SetAttribute("BoneCrestVisorStampEnabled", true) end -- v1.6
 M.CONE = 60
 local REFLECT_GAP = 0.4
@@ -96,6 +109,16 @@ local lastReflect = setmetatable({}, {__mode = "k"})
 function M.defense(victim)
 	if script:GetAttribute("BoneCrestDefenseEnabled") == false then return 1 end
 	if typeof(victim) ~= "Instance" or not Players:GetPlayerFromCharacter(victim) then return 1 end
+	local m = victim:GetAttribute("StatDamageTakenMul")
+	if type(m) == "number" and m == m and m >= 0 then return m end
+	return 1
+end
+
+-- v1.7: armor on every attack (MDA-366)
+function M.armor(victim)
+	if script:GetAttribute("BoneCrestArmorEnabled") == false or typeof(victim) ~= "Instance" then return 1 end
+	if Players:GetPlayerFromCharacter(victim) then return M.defense(victim) end
+	if script:GetAttribute("BoneCrestDefenseEnabled") == false then return 1 end
 	local m = victim:GetAttribute("StatDamageTakenMul")
 	if type(m) == "number" and m == m and m >= 0 then return m end
 	return 1

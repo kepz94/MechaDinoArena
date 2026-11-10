@@ -1,4 +1,4 @@
--- ScreechServer v1.14 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
+-- ScreechServer v1.15 (Mecha Dino Arena) — Raptor Screech, a raptor button part (raptor parts batch 2): an aimed sonic
 -- bolt that makes the first dino it hits flinch. MDA-73, plan docs/plans/RAPTOR_PARTS_B2_v1.0.md Task 5, mockup
 -- docs/mockups/raptor_parts_b2_scent_screech.html option C "Hold to aim" (Kepu 2026-10-29: "Raptor screech is too
 -- powerful it needs to be aimed"; Thick Hide counts; star jams all three parts).
@@ -126,6 +126,11 @@ VERSION = "1.14" -- v1.14 shot pass: faster shots, strong aim assist
 --   degrees of it, within the shot's range and in line of sight. Diag ScreechAssistDeg (degrees snapped, -1 = no
 --   snap). The range comes from SkillTree 1.74 (ScreechRange). Switch: script attribute ShotPassEnabled (default
 --   true; false = 1.13).
+VERSION = "1.15" -- v1.15 armor on every hit (MDA-366)
+-- v1.15 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts Shock Cannon / screech bolt damage (heavyDamage), on players and DummyHealth targets:
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   ScreechServerArmorAllEnabled (default true, read at each hit; false = 1.14). Diagnostic: script ScreechServerArmorCuts (count of hits cut).
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.14
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.14
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.14
@@ -289,9 +294,21 @@ local function damagePop(target, text)
 		{TextTransparency = 1, TextStrokeTransparency = 1}):Play()
 	Debris:AddItem(bb, 1)
 end
+local armorMul do -- v1.15 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("ScreechServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("ScreechServerArmorCuts", (script:GetAttribute("ScreechServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("ScreechServerArmorAllEnabled") == nil then script:SetAttribute("ScreechServerArmorAllEnabled", true) end
+end
 local function heavyDamage(b, target, t)
 	local dmg = b.dmg or 0
 	if dmg <= 0 then return end
+	dmg *= armorMul(target) -- v1.15 (MDA-366): armor
 	local text = "-" .. math.floor(dmg + 0.5)
 	if Players:GetPlayerFromCharacter(target) then
 		local hum = target:FindFirstChildOfClass("Humanoid")

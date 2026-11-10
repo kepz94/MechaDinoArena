@@ -1,4 +1,4 @@
--- TheriSpinServer v1.3 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive (Corkscrew): its JUMP leap cuts every dino it
+-- TheriSpinServer v1.4 (Mecha Dino Arena) — the Therizinosaurus' Spin Dive (Corkscrew): its JUMP leap cuts every dino it
 -- passes. MDA-208, plan docs/plans/THERIZINO_SPIN_STATS_v1.0.md Task 2, mockup docs/mockups/therizino_spin_dive_v0.1.html
 -- (Kepu 2026-11-02 "show more slicing ... a different jump" -> "Spin Dive"; 2026-11-03 "Corkscrew", damage "Yes, tune it in
 -- Studio").
@@ -42,6 +42,11 @@ VERSION = "1.3" -- v1.3 Sap Wall stops spin cuts through it
 -- v1.3 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute TheriSpinServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   TheriSpinServerSapWallBlocks (count), TheriSpinServerSapWallBlockedAt (server time).
+VERSION = "1.4" -- v1.4 armor on every hit (MDA-366)
+-- v1.4 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts Spin Dive cuts (takeHealth):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   TheriSpinServerArmorAllEnabled (default true, read at each hit; false = 1.3). Diagnostic: script TheriSpinServerArmorCuts (count of hits cut).
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -157,7 +162,19 @@ local function takenMul(m, t)
 	if num(m, "StunBreakImmuneUntil", 0) > t then mul = 0 end
 	return mul
 end
+local armorMul do -- v1.4 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("TheriSpinServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("TheriSpinServerArmorCuts", (script:GetAttribute("TheriSpinServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("TheriSpinServerArmorAllEnabled") == nil then script:SetAttribute("TheriSpinServerArmorAllEnabled", true) end
+end
 local function takeHealth(m, d, char, player, t)
+	d *= armorMul(m) -- v1.4 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return end
 	local after = math.max(0, hp - d)

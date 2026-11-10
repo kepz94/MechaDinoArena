@@ -1,4 +1,4 @@
--- TheriAttackServer v1.6 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
+-- TheriAttackServer v1.7 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
 -- docs/plans/THERIZINO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/therizino_kit_options_v0.3.html
 -- (Kepu 2026-11-02: attack "3-hit combo", payoff "Damage only", picks "A Reaper Sweeps"; animation "I like this one").
 -- Pattern: TenoAttackServer 1.4's scratch path (request -> server checks -> hit resolved at a fixed delay in a front zone),
@@ -91,6 +91,11 @@ VERSION = "1.6" -- v1.6 Sap Wall stops claw hits through it
 -- v1.6 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute TheriAttackServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   TheriAttackServerSapWallBlocks (count), TheriAttackServerSapWallBlockedAt (server time).
+VERSION = "1.7" -- v1.7 armor on every hit (MDA-366)
+-- v1.7 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts the 3-hit claw combo cuts (takeHealth):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   TheriAttackServerArmorAllEnabled (default true, read at each hit; false = 1.6). Diagnostic: script TheriAttackServerArmorCuts (count of hits cut).
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -209,7 +214,19 @@ local function takenMul(m, t)
 	if num(m, "StunBreakImmuneUntil", 0) > t then mul = 0 end
 	return mul
 end
+local armorMul do -- v1.7 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("TheriAttackServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("TheriAttackServerArmorCuts", (script:GetAttribute("TheriAttackServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("TheriAttackServerArmorAllEnabled") == nil then script:SetAttribute("TheriAttackServerArmorAllEnabled", true) end
+end
 local function takeHealth(m, d, char, player, t)
+	d *= armorMul(m) -- v1.7 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return end
 	local after = math.max(0, hp - d)

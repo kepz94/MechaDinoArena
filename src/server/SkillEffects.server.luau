@@ -1,4 +1,4 @@
--- SkillEffects v1.52 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.53 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -358,6 +358,11 @@ VERSION = "1.52" -- v1.52 troodon always-on parts (build 2)
 -- v1.49 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute SkillEffectsSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   SkillEffectsSapWallBlocks (count), SkillEffectsSapWallBlockedAt (server time).
+VERSION = "1.53" -- v1.53 armor on every hit (MDA-366)
+-- v1.53 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts skill bleed ticks (bites / pounces with Serrated / bleed rows):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   SkillEffectsArmorAllEnabled (default true, read at each hit; false = 1.52). Diagnostic: script SkillEffectsArmorCuts (count of hits cut).
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -1322,6 +1327,17 @@ local function onHit(char, st, damage, targetName, isPounce) -- v1.6: + isPounce
 	end
 end
 
+local armorMul do -- v1.53 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("SkillEffectsArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("SkillEffectsArmorCuts", (script:GetAttribute("SkillEffectsArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("SkillEffectsArmorAllEnabled") == nil then script:SetAttribute("SkillEffectsArmorAllEnabled", true) end
+end
 -- bleed ticks
 task.spawn(function()
 	while true do
@@ -1334,7 +1350,7 @@ task.spawn(function()
 				if bot.Parent then bot:SetAttribute("SkillBleedUntil", nil) end
 				continue
 			end
-			local d = b.dps * BLEED_TICK
+			local d = b.dps * BLEED_TICK * armorMul(bot) -- v1.53 (MDA-366): armor
 			bot:SetAttribute("DummyHealth", math.max(0, hp - d))
 			if b.isPlayer and hp - d <= 0 then -- v1.18: credit for ArenaPvP on a player's dino
 				bot:SetAttribute("LastHitBy", b.char.Name)

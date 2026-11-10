@@ -3196,3 +3196,27 @@ Model numbers are generator output (old version = the flag in the last column, b
 | StunLateTossEnabled | StunClient script | true | false = 1.3 (a toss that arrives during a stun is ignored); diag character StunLateTosses |
 | MechaButtonsGrabHintEnabled | MechaButtons script | true | false = 1.42 look; diag character MechaButtonsGrabHint ("lit" / "dim" / "off") |
 | AbilityBarGrabHintEnabled | AbilityBar script | true | false = 1.36 look; diag character AbilityBarGrabHint ("lit" / "dim" / "off") |
+
+## Armor on every attack (MDA-366; BoneCrest 1.7 + SlashServer 1.11, HeadbuttServer 1.19, HookServer 1.12, MineServer 1.11, ScreechServer 1.15, DiloAttackServer 1.8, DiloMovesServer 1.10, HerreraMovesServer 1.10, TenoAttackServer 1.8, TenoMovesServer 1.19, TenoStatsServer 1.3, TheriAttackServer 1.7, TheriMovesServer 1.11, TheriSpinServer 1.4, TrooAttackServer 1.5, TrooMovesServer 1.7, SkillEffects 1.53; 2026-11-09)
+
+| Attribute | On | Default | Meaning |
+|---|---|---|---|
+| StatDamageTakenMul | player character (StatServer); a Studio test may set it on a held bot | 1 | Thick Hide / Armored Hide / Wiry Frame: now multiplies every attack's damage and every attack DoT tick (BoneCrest.armor), not only bites / pounces. Self-costs, heals, falls, resets are not cut |
+| BoneCrestArmorEnabled | BoneCrest module | true | false = armor() returns 1 for everyone (BoneCrestDefenseEnabled false does the same) |
+| SlashServerArmorAllEnabled; SlashServerArmorCuts | SlashServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| HeadbuttServerArmorAllEnabled; HeadbuttServerArmorCuts | HeadbuttServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| HookServerArmorAllEnabled; HookServerArmorCuts | HookServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| MineServerArmorAllEnabled; MineServerArmorCuts | MineServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| ScreechServerArmorAllEnabled; ScreechServerArmorCuts | ScreechServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| DiloAttackServerArmorAllEnabled; DiloAttackServerArmorCuts | DiloAttackServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| DiloMovesServerArmorAllEnabled; DiloMovesServerArmorCuts | DiloMovesServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| HerreraMovesServerArmorAllEnabled; HerreraMovesServerArmorCuts | HerreraMovesServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| TenoAttackServerArmorAllEnabled; TenoAttackServerArmorCuts | TenoAttackServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| TenoMovesServerArmorAllEnabled; TenoMovesServerArmorCuts | TenoMovesServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| TenoStatsServerArmorAllEnabled; TenoStatsServerArmorCuts | TenoStatsServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| TheriAttackServerArmorAllEnabled; TheriAttackServerArmorCuts | TheriAttackServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| TheriMovesServerArmorAllEnabled; TheriMovesServerArmorCuts | TheriMovesServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| TheriSpinServerArmorAllEnabled; TheriSpinServerArmorCuts | TheriSpinServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| TrooAttackServerArmorAllEnabled; TrooAttackServerArmorCuts | TrooAttackServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| TrooMovesServerArmorAllEnabled; TrooMovesServerArmorCuts | TrooMovesServer script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |
+| SkillEffectsArmorAllEnabled; SkillEffectsArmorCuts | SkillEffects script | true; diag | false = the previous version (no armor on this script's hits); count of hits cut by armor |

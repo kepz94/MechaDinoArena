@@ -1,4 +1,4 @@
--- HeadbuttServer v1.18 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.19 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -157,6 +157,11 @@ VERSION = "1.18" -- v1.18 snare block + tight hit gap
 --     charge speed = the larger of MoveRunSpeed x HeadbuttSpeedMul and the root's flat velocity (the server sees a
 --     charging pachy ~0.25 s behind its client, ~20 studs, with a near-zero velocity) (1.17: (HIT_TOLERANCE 16 + reach) x scale = 36 studs at 2x). Switch: script attribute HeadbuttTightGapEnabled
 --     (default true, read at each hit; false = 1.17). Diagnostic: character HeadbuttHitAllow (the limit used, 0.1 steps).
+VERSION = "1.19" -- v1.19 armor on every hit (MDA-366)
+-- v1.19 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts the headbutt hit (Blood Rush's own HP cost is not armor):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   HeadbuttServerArmorAllEnabled (default true, read at each hit; false = 1.18). Diagnostic: script HeadbuttServerArmorCuts (count of hits cut).
 for k, v in pairs({HeadbuttSnareBlockEnabled = true, HeadbuttTightGapEnabled = true, HeadbuttHitLag = 0.3}) do -- v1.18
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -210,6 +215,17 @@ local DEFAULTS = {HeadbuttEnabled = false, HeadbuttCharges = 2, HeadbuttExtraCha
 	HeadbuttReach = 2, HeadbuttCloseRun = 6, HeadbuttFullRun = 15, HeadbuttCloseMul = 0.5, -- v1.3: + run-up
 	HeadbuttCloseTime = 0.15, HeadbuttFullTime = 0.45} -- v1.4: + run-up by charge time
 
+local armorMul do -- v1.19 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("HeadbuttServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("HeadbuttServerArmorCuts", (script:GetAttribute("HeadbuttServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("HeadbuttServerArmorAllEnabled") == nil then script:SetAttribute("HeadbuttServerArmorAllEnabled", true) end
+end
 script:SetAttribute("HeadbuttServerVersion", VERSION)
 script:SetAttribute("HeadbuttRequests", 0)
 script:SetAttribute("HeadbuttHits", 0)
@@ -641,6 +657,7 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	if st.active.sacrifice then sacMul = math.max(0, tonumber(char:GetAttribute("BloodRushDamageMul")) or 1) end
 	char:SetAttribute("HeadbuttHitSacrifice", st.active.sacrifice == true)
 	local d = math.floor(get(char, "HeadbuttDamage") * runMul * sacMul * domeMul(char, "HeadbuttDamageMul") * mul * dashMul + 0.5) -- v1.1: x dome; v1.3: x run-up; v1.5: x Blood Rush; v1.12: x dash charge
+	d *= armorMul(model) -- v1.19 (MDA-366): armor
 	local hp = model:GetAttribute("DummyHealth")
 	if typeof(hp) == "number" then model:SetAttribute("DummyHealth", math.max(0, hp - d)) end
 	if typeof(hp) == "number" and hp > 0 and hp - d <= 0 then

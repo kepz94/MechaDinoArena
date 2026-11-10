@@ -1,4 +1,4 @@
--- TenoMovesServer v1.18 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
+-- TenoMovesServer v1.19 (Mecha Dino Arena) — the moves of the Tenontosaurus' mecha button parts, build 1 (attacks): Tail
 -- Grab & Fling, Boulder Mortar, Stomp Shockwave, Hydraulic Leap. Plan docs/plans/TENO_ABILITIES_v1.0.md Task 5 (MDA-177,
 -- deterministic map), mockup docs/mockups/teno_abilities_options.html v0.3 (Kepu 2026-11-01; Mortar "Auto-target").
 -- Settings come from the character (SkillEffects 1.33, a teno with the part bought AND slotted): TenoGrab* (Enabled, Range,
@@ -282,6 +282,11 @@ VERSION = "1.18" -- v1.18 Tail Grab: landing skips trees, in-range hint
 --     TenoGrabRangeHintEnabled (default true, read each step; false = attributes cleared to nil).
 --   The player throw (a grabbed player was never thrown: the stun starts at the catch, the toss stamps come at the throw)
 --   is fixed in StunClient 1.4 (late toss); this script's stamps are unchanged.
+VERSION = "1.19" -- v1.19 armor on every hit (MDA-366)
+-- v1.19 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts tail grab / crash, mortar, stomp, leap and deflected hits (damage):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   TenoMovesServerArmorAllEnabled (default true, read at each hit; false = 1.18). Diagnostic: script TenoMovesServerArmorCuts (count of hits cut).
 if script:GetAttribute("TenoGrabSkipTreesEnabled") == nil then script:SetAttribute("TenoGrabSkipTreesEnabled", true) end -- v1.18
 if script:GetAttribute("TenoGrabRangeHintEnabled") == nil then script:SetAttribute("TenoGrabRangeHintEnabled", true) end -- v1.18
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.15
@@ -444,9 +449,20 @@ local function takenMul(m, t)
 	if num(m, "StunBreakImmuneUntil", 0) > t then mul = 0 end
 	return mul
 end
+local armorMul do -- v1.19 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("TenoMovesServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("TenoMovesServerArmorCuts", (script:GetAttribute("TenoMovesServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("TenoMovesServerArmorAllEnabled") == nil then script:SetAttribute("TenoMovesServerArmorAllEnabled", true) end
+end
 local function damage(char, player, m, base, with, t)
 	if shielded(m, t) then return 0 end
-	local d = math.max(0, base) * takenMul(m, t)
+	local d = math.max(0, base) * takenMul(m, t) * armorMul(m) -- v1.19 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return 0 end
 	local after = math.max(0, hp - d)

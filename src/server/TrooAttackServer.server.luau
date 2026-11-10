@@ -1,4 +1,4 @@
--- TrooAttackServer v1.4 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
+-- TrooAttackServer v1.5 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
 -- docs/plans/TROODON_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/troodon_kit_options_v0.1.html attack A
 -- (Kepu 2026-11-06 15:38: "Let's go with your recommendations": attack A, the proposed numbers; red-team "Lead the target").
 -- Patterns copied, not edited: DiloAttackServer 1.5 (request -> checks -> timed resolve, soft aim, targets, mode / squad
@@ -210,7 +210,19 @@ local function plating(m, fromPos)
 	if crestCache and crestCache.plating then return crestCache.plating(m, fromPos) end
 	return 1
 end
+local armorMul do -- v1.5 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("TrooAttackServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("TrooAttackServerArmorCuts", (script:GetAttribute("TrooAttackServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("TrooAttackServerArmorAllEnabled") == nil then script:SetAttribute("TrooAttackServerArmorAllEnabled", true) end
+end
 local function takeHealth(m, d, killerName, killerId, with, t)
+	d *= armorMul(m) -- v1.5 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return false end
 	local after = math.max(0, hp - d)
@@ -590,6 +602,11 @@ end
 --     script attribute TrooAttackZoneDropEnabled. Diagnostic: script TrooZoneDrops.
 --   Every switch defaults true and is read at each use; false = 1.3 for that part.
 VERSION = "1.4" -- v1.4 troodon always-on parts: Ricochet Pod, Fortify Field, Overheal Plume, TrooZoneDrop
+VERSION = "1.5" -- v1.5 armor on every hit (MDA-366)
+-- v1.5 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts Glow Pod splats and glow-zone ticks (takeHealth):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   TrooAttackServerArmorAllEnabled (default true, read at each hit; false = 1.4). Diagnostic: script TrooAttackServerArmorCuts (count of hits cut).
 for _, k in ipairs({"TrooAttackRicochetEnabled", "TrooAttackFortifyEnabled", "TrooAttackPlumeEnabled", "TrooAttackZoneDropEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end

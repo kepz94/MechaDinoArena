@@ -1,4 +1,4 @@
--- MineServer v1.10 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
+-- MineServer v1.11 (Mecha Dino Arena) — Shock Mine, the raptor's trap part (path "traps"). MDA-80, plan
 -- docs/plans/RAPTOR_TRAPS_v1.0.md Task 3, mockup docs/mockups/raptor_traps_options.html option B "Shock mine"
 -- (Kepu 2026-10-29: "scrap it and introduce traps"; the damage hurts players too; bots trigger mines and are slowed).
 -- Settings come from the character (SkillEffects 1.9): MineEnabled (bought AND slotted), MineDamage (15), MineSlow
@@ -109,6 +109,11 @@ VERSION = "1.10" -- v1.10 shot pass: faster shots, strong aim assist
 --   docs/plans/SHOT_PASS_v1.0.md): the mine is thrown THROW_DIST x 2 (30 -> 60 studs) and flies ARC_TIME / 1.5 (0.6
 --   -> 0.4 s; per mine, m.arcTime). No snap (a trap is laid ahead). Switch: script attribute ShotPassEnabled
 --   (default true, read at each throw; false = 1.9).
+VERSION = "1.11" -- v1.11 armor on every hit (MDA-366)
+-- v1.11 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts the Shock Mine zap, on players (Humanoid) and on DummyHealth targets:
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   MineServerArmorAllEnabled (default true, read at each hit; false = 1.10). Diagnostic: script MineServerArmorCuts (count of hits cut).
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.10
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.10
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.10
@@ -469,27 +474,39 @@ local function zapSound(pos)
 	Debris:AddItem(p, 4)
 end
 
+local armorMul do -- v1.11 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("MineServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("MineServerArmorCuts", (script:GetAttribute("MineServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("MineServerArmorAllEnabled") == nil then script:SetAttribute("MineServerArmorAllEnabled", true) end
+end
 local function hit(m, target)
 	if sapBlocked(m.to + Vector3.new(0, 1, 0), target) then return end -- v1.9: Sap Wall
 	local t = now()
 	local owner = m.owner
 	local pl = Players:GetPlayerFromCharacter(target)
 	local launch = launchOn() and (m.launch or 0) > 0 -- v1.1
-	local popText = "-" .. math.floor(m.dmg + 0.5) -- v1.1
+	local dmg = m.dmg * armorMul(target) -- v1.11 (MDA-366): armor
+	local popText = "-" .. math.floor(dmg + 0.5) -- v1.1
 	if pl then
 		local hum = target:FindFirstChildOfClass("Humanoid")
 		target:SetAttribute("LastHitBy", owner.Name)
 		target:SetAttribute("LastHitAt", t)
 		if hum then
 			local before = hum.Health
-			hum:TakeDamage(m.dmg)
+			hum:TakeDamage(dmg)
 			if hum.Health >= before then popText = "BLOCKED" end
 		end
 	else
 		local hp = target:GetAttribute("DummyHealth")
 		if typeof(hp) == "number" then
-			target:SetAttribute("DummyHealth", math.max(0, hp - m.dmg))
-			if hp > 0 and hp - m.dmg <= 0 then -- killing blow
+			target:SetAttribute("DummyHealth", math.max(0, hp - dmg))
+			if hp > 0 and hp - dmg <= 0 then -- killing blow
 				local killer = Players:GetPlayerFromCharacter(owner)
 				target:SetAttribute("KilledBy", owner.Name)
 				target:SetAttribute("KilledByUserId", killer and killer.UserId or 0)

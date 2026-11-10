@@ -1,4 +1,4 @@
--- TenoStatsServer v1.2 (Mecha Dino Arena) — the Tenontosaurus' stat rows in play: Charge Up, Brace and Buck Off. Plan
+-- TenoStatsServer v1.3 (Mecha Dino Arena) — the Tenontosaurus' stat rows in play: Charge Up, Brace and Buck Off. Plan
 -- docs/plans/TENO_STATS_v1.0.md (deterministic map), mockup docs/mockups/teno_stats_options.html (Kepu 2026-10-31: speed C,
 -- defense C, signature "Buck Off": "This only works when latched. If you're stunned and then latched it doesn't work",
 -- stun rule "Off only while stunned"). Reads the character attributes SkillEffects 1.31 writes (SkillTree 1.45 effects).
@@ -53,6 +53,11 @@ VERSION = "1.2" -- v1.2 Sap Wall check on Buck Off ticks
 -- v1.2 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute TenoStatsServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   TenoStatsServerSapWallBlocks (count), TenoStatsServerSapWallBlockedAt (server time).
+VERSION = "1.3" -- v1.3 armor on every hit (MDA-366)
+-- v1.3 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts Buck Off ticks (takeHealth):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   TenoStatsServerArmorAllEnabled (default true, read at each hit; false = 1.2). Diagnostic: script TenoStatsServerArmorCuts (count of hits cut).
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -197,7 +202,19 @@ local function bump(m, dir, dist, t)
 	return true
 end
 
+local armorMul do -- v1.3 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("TenoStatsServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("TenoStatsServerArmorCuts", (script:GetAttribute("TenoStatsServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("TenoStatsServerArmorAllEnabled") == nil then script:SetAttribute("TenoStatsServerArmorAllEnabled", true) end
+end
 local function takeHealth(m, d, char, player, with, t)
+	d *= armorMul(m) -- v1.3 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return false end
 	local after = math.max(0, hp - d)

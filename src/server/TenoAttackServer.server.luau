@@ -1,4 +1,4 @@
--- TenoAttackServer v1.7 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.8 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -115,6 +115,11 @@ VERSION = "1.7" -- v1.7 Sap Wall stops scratches / tail slams through it
 -- v1.7 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute TenoAttackServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   TenoAttackServerSapWallBlocks (count), TenoAttackServerSapWallBlockedAt (server time).
+VERSION = "1.8" -- v1.8 armor on every hit (MDA-366)
+-- v1.8 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts scratches and tail slams (damage):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   TenoAttackServerArmorAllEnabled (default true, read at each hit; false = 1.7). Diagnostic: script TenoAttackServerArmorCuts (count of hits cut).
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -247,6 +252,17 @@ local function takenMul(m, t)
 	if num(m, "StunBreakImmuneUntil", 0) > t then mul = 0 end
 	return mul
 end
+local armorMul do -- v1.8 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("TenoAttackServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("TenoAttackServerArmorCuts", (script:GetAttribute("TenoAttackServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("TenoAttackServerArmorAllEnabled") == nil then script:SetAttribute("TenoAttackServerArmorAllEnabled", true) end
+end
 local function takeHealth(m, d, char, player, with, t)
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return false end
@@ -263,7 +279,7 @@ local function takeHealth(m, d, char, player, with, t)
 end
 local function damage(char, player, m, base, with, t)
 	if shielded(m, t) then return 0 end
-	local d = math.max(0, base) * takenMul(m, t)
+	local d = math.max(0, base) * takenMul(m, t) * armorMul(m) -- v1.8 (MDA-366): armor
 	if d > 0 then takeHealth(m, d, char, player, with, t) end
 	return d
 end

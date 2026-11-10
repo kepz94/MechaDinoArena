@@ -1,4 +1,4 @@
--- TrooMovesServer v1.6 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.7 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -164,6 +164,11 @@ VERSION = "1.6" -- v1.6 always-on parts: Last Feather, Fortify / Plume refunds, 
 --   * Plume fade: a plume past its TrooPlumeUntil is cleared (TrooPlume 0) every 0.25 s.
 --   * Overheal Plume on the Mender Drone's heals: the part that did not fit goes to TrooPassives.plumeAdd(the troodon, target,
 --     overflow, now, test ally). Switch: script attribute TrooMovesPlumeEnabled (default true, read at each heal).
+VERSION = "1.7" -- v1.7 armor on every hit (MDA-366)
+-- v1.7 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts Lantern and the other part hits (damage):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   TrooMovesServerArmorAllEnabled (default true, read at each hit; false = 1.6). Diagnostic: script TrooMovesServerArmorCuts (count of hits cut).
 for _, k in ipairs({"TrooMovesLastFeatherEnabled", "TrooMovesRefundEnabled", "TrooMovesPlumeEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end -- v1.6
 end
@@ -281,9 +286,20 @@ local function takenMul(m, t)
 	if num(m, "StunBreakImmuneUntil", 0) > t then mul = 0 end
 	return mul
 end
+local armorMul do -- v1.7 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("TrooMovesServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("TrooMovesServerArmorCuts", (script:GetAttribute("TrooMovesServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("TrooMovesServerArmorAllEnabled") == nil then script:SetAttribute("TrooMovesServerArmorAllEnabled", true) end
+end
 local function damage(char, player, m, base, with, t)
 	if shielded(m, t) then return 0 end
-	local d = math.max(0, base) * takenMul(m, t)
+	local d = math.max(0, base) * takenMul(m, t) * armorMul(m) -- v1.7 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return 0 end
 	local after = math.max(0, hp - d)

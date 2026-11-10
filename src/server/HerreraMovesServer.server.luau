@@ -1,4 +1,4 @@
--- HerreraMovesServer v1.9 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
+-- HerreraMovesServer v1.10 (Mecha Dino Arena) — the moves of the Herrera's keyed mecha parts (pass 2): Quill Launcher
 -- (MDA-151), Smoke Pods (MDA-152), Strobe Frill (MDA-155), Stun Breaker (MDA-156), and the Glider Wings' glide state
 -- (MDA-150). Plan docs/plans/HERRERA_PARTS_v1.0.md (Parts 2, 3, 4, 7, 8 and "Pass 2 — build map"); Kepu 2026-10-31.
 -- Settings come from the character (SkillEffects 1.27, a Herrera with the part bought AND slotted):
@@ -148,6 +148,11 @@ VERSION = "1.9" -- v1.9 shot pass: faster shots, strong aim assist
 --   HerreraMovesFX 1.7) and lock on within 45 degrees (was QUILL_CONE 35); the goo blob flies 1.5x faster (0.85 /
 --   0.45 s -> / 1.5). Quill range, goo toss and goo assist come from SkillTree 1.74. Switch: script attribute
 --   ShotPassEnabled (default true; false = 1.8).
+VERSION = "1.10" -- v1.10 armor on every hit (MDA-366)
+-- v1.10 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts quills and caltrop ticks (takeHealth):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   HerreraMovesServerArmorAllEnabled (default true, read at each hit; false = 1.9). Diagnostic: script HerreraMovesServerArmorCuts (count of hits cut).
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.9
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.9
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.9
@@ -320,7 +325,19 @@ local function takenMul(m, t)
 	if num(m, "StunBreakImmuneUntil", 0) > t then mul = 0 end
 	return mul
 end
+local armorMul do -- v1.10 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("HerreraMovesServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("HerreraMovesServerArmorCuts", (script:GetAttribute("HerreraMovesServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("HerreraMovesServerArmorAllEnabled") == nil then script:SetAttribute("HerreraMovesServerArmorAllEnabled", true) end
+end
 local function takeHealth(m, d, char, player, with, t)
+	d *= armorMul(m) -- v1.10 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return false end
 	local after = math.max(0, hp - d)

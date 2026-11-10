@@ -1,4 +1,4 @@
--- HookServer v1.11 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
+-- HookServer v1.12 (Mecha Dino Arena) — the pachy's Grappling Hook (right-arm wrist claw). MDA-121, plan
 -- docs/plans/PACHY_PARTS_v1.0.md Drop A, mockup docs/mockups/pachy_parts_options.html ("A · Wrist claw", crosshair + aim help).
 -- Kepu 2026-10-30: "a grappling hook that can hook to players and bring them in for a headsmash at 10 damage ... pull
 --   them in then the pachy would dip its head for a smash which knocks them back without the slowed effect" · "connected
@@ -95,6 +95,11 @@ VERSION = "1.11" -- v1.11 shot pass: faster shots, strong aim assist
 --   snaps onto the nearest-angle hitbox of an enemy within 45 degrees of the aim, within HookRange and in line of
 --   sight (as the Ink Shooter). Diag HookAssistDeg (degrees snapped, -1 = no snap). The range comes from SkillTree
 --   1.74 (HookRange). Switch: script attribute ShotPassEnabled (default true; false = 1.10).
+VERSION = "1.12" -- v1.12 armor on every hit (MDA-366)
+-- v1.12 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts the hook smash:
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   HookServerArmorAllEnabled (default true, read at each hit; false = 1.11). Diagnostic: script HookServerArmorCuts (count of hits cut).
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.11
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.11
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.11
@@ -124,6 +129,17 @@ local BRASS, LEATHER = Color3.fromRGB(201, 163, 74), Color3.fromRGB(110, 72, 40)
 local ROPE, RING_RED = Color3.fromRGB(196, 160, 110), Color3.fromRGB(180, 40, 40)
 local ARM_HIDE = {"ArmR_fore", "ArmR_hand", "ArmR_claw1", "ArmR_claw2", "ArmR_claw3"}
 
+local armorMul do -- v1.12 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("HookServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("HookServerArmorCuts", (script:GetAttribute("HookServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("HookServerArmorAllEnabled") == nil then script:SetAttribute("HookServerArmorAllEnabled", true) end
+end
 script:SetAttribute("HookServerVersion", VERSION)
 script:SetAttribute("HookShots", 0)
 script:SetAttribute("HookHits", 0)
@@ -452,6 +468,7 @@ local function smash(char, player, target, hb)
 		if (tonumber(target:GetAttribute("StunBreakImmuneUntil")) or 0) > t then mul = 0 end
 	end
 	local d = math.floor((tonumber(char:GetAttribute("HookDamage")) or 10) * mul + 0.5)
+	d *= armorMul(target) -- v1.12 (MDA-366): armor
 	local hpv = target:GetAttribute("DummyHealth")
 	if typeof(hpv) == "number" then target:SetAttribute("DummyHealth", math.max(0, hpv - d)) end
 	if typeof(hpv) == "number" and hpv > 0 and hpv - d <= 0 then

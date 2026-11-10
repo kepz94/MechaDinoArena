@@ -1,4 +1,4 @@
--- DiloAttackServer v1.7 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (1.7: spit only) (server authority). MDA-224, plan
+-- DiloAttackServer v1.8 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (1.7: spit only) (server authority). MDA-224, plan
 -- docs/plans/DILO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/dilo_kit_options_v0.1.html attack C
 -- (Kepu 2026-11-03: picks "C and J1"; dart "Weaker dart"; red-team "Bite on press", "Soft aim, near-sure hit").
 -- Remote ReplicatedStorage.DinoDiloAttack (RemoteEvent), client -> server: (kind, stamp). kind "bite" = the ATTACK press
@@ -116,6 +116,11 @@ VERSION = "1.7" -- v1.7 spit only (no bite; DiloSpitGap; Venom Bite = spit poiso
 -- v1.6 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute DiloAttackServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   DiloAttackServerSapWallBlocks (count), DiloAttackServerSapWallBlockedAt (server time).
+VERSION = "1.8" -- v1.8 armor on every hit (MDA-366)
+-- v1.8 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
+--   Wiry Frame = the victim's StatDamageTakenMul) now cuts spit darts, bites, deflected darts and every spit poison tick (takeHealth; takeHealth now returns what it dealt, Venom Feast heals from that):
+--   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
+--   DiloAttackServerArmorAllEnabled (default true, read at each hit; false = 1.7). Diagnostic: script DiloAttackServerArmorCuts (count of hits cut).
 local sapBlocked do
 	local mod
 	sapBlocked = function(from, to)
@@ -264,7 +269,19 @@ local function plating(m, fromPos)
 	if crestCache and crestCache.plating then return crestCache.plating(m, fromPos) end
 	return 1
 end
+local armorMul do -- v1.8 (MDA-366): armor on every attack, ServerStorage.DinoArcade.BoneCrest 1.7 armor()
+	local mod
+	armorMul = function(victim)
+		if script:GetAttribute("DiloAttackServerArmorAllEnabled") == false then return 1 end
+		if mod == nil then mod = false; pcall(function() mod = require(game:GetService("ServerStorage"):WaitForChild("DinoArcade", 5):WaitForChild("BoneCrest", 5)) end) end
+		local a = mod and mod.armor and mod.armor(victim) or 1
+		if a ~= 1 then script:SetAttribute("DiloAttackServerArmorCuts", (script:GetAttribute("DiloAttackServerArmorCuts") or 0) + 1) end
+		return a
+	end
+	if script:GetAttribute("DiloAttackServerArmorAllEnabled") == nil then script:SetAttribute("DiloAttackServerArmorAllEnabled", true) end
+end
 local function takeHealth(m, d, killerName, killerId, with, t)
+	d *= armorMul(m) -- v1.8 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return end
 	local after = math.max(0, hp - d)
@@ -275,6 +292,7 @@ local function takeHealth(m, d, killerName, killerId, with, t)
 		m:SetAttribute("KilledWith", with)
 		m:SetAttribute("KilledAt", t) -- last: KillRegenServer reacts to this one
 	end
+	return d -- v1.8: what was dealt (after armor)
 end
 
 -- per-character state -----------------------------------------------------------------------------------------------------
@@ -359,8 +377,8 @@ local function venomLoop(m, killerName, killerId)
 				local d = math.max(0, num(m, "VenomDps", 0)) * VENOM_TICK * takenMul(m, t)
 				if d > 0 then
 					local hpBefore = m:GetAttribute("DummyHealth") -- v1.1: Venom Feast
-					takeHealth(m, d, m:GetAttribute("VenomBy") or killerName, killerId, "dilovenom", t)
-					if statsOn() and typeof(hpBefore) == "number" then feast(m:GetAttribute("VenomBy"), math.min(d, math.max(0, hpBefore)), m) end
+					local dealt = takeHealth(m, d, m:GetAttribute("VenomBy") or killerName, killerId, "dilovenom", t) -- v1.8: after armor
+					if statsOn() and typeof(hpBefore) == "number" then feast(m:GetAttribute("VenomBy"), math.min(dealt or d, math.max(0, hpBefore)), m) end
 					m:SetAttribute("VenomTicks", (m:GetAttribute("VenomTicks") or 0) + 1)
 					count("DiloVenomTicks")
 				end
