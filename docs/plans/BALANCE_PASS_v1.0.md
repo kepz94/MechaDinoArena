@@ -64,3 +64,15 @@ Stat-tree rows and parts keep their current additions on top of the new base num
 
 ## Tickets
 MDA-355 (headbutt reach), MDA-356 (trapped = no movement moves), MDA-357 (Raptor latch) + this pass's tickets (one per dino, armor, cooldowns, regression).
+
+## Changes after this plan (live, from the other session 013tDtc, audited 2026-11-09 18:0x by session claude-09)
+- v582: MDA-355 / 356 headbutt fixes + Dilo spit only (f649fc6) published.
+- v583 Dilo pass (c43ea7e): spit dart speed 45, Spring Jets 40/50/65 at 200, mortar cloud x1.5, bigger FX. v584: spit speed 30 (c7b6315).
+- v585: part shots fire along the dino's facing in every camera mode (MechaButtons 1.42), mortars 2x faster (DiloMovesServer 1.9, TenoMovesServer 1.17).
+- v586 / v587: turn rates Dilo 360, Troodon + Therizino 540 (were the T-Rex 180 inherited by the generators).
+- v588: Dilo spit hit 10 -> 5. v589: spit poison 1.5 s at base (was 3), Venom Spit extra time halved.
+- v592: Teno Tail Grab fix (StunClient 1.4, TenoMovesServer 1.18, MechaButtons 1.43, AbilityBar 1.37).
+- v593: Troodon glow zone 6 -> 1 per second (TroodonModelData 1.9).
+- Not live: Troodon parts build 2 (3e48b11, 2c2634c) parked with SkillTree.TROO_PARTS_B2_LIVE = false.
+So the plan table's Dilo dart 10 / 3 s venom and Troodon zone 6/s are superseded by these.
+Still not built: MDA-365 (movement parts x0.7), MDA-366 (armor on every attack).
