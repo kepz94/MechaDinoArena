@@ -1,4 +1,4 @@
--- DiloFX v1.2 (Mecha Dino Arena) — the Dilophosaurus' effects on this client (LocalScript, StarterPlayerScripts). MDA-227,
+-- DiloFX v1.3 (Mecha Dino Arena) — the Dilophosaurus' effects on this client (LocalScript, StarterPlayerScripts). MDA-227,
 -- plan docs/plans/DILO_KIT_v1.0.md Task 7; mockup docs/mockups/dilo_kit_options_v0.1.html attack C (Kepu 2026-11-03 "C and
 -- J1"; source tools/dilo_kit_mockup/app.js: spawnShot / splash / droplet / numberPop). Server: DiloAttackServer 1.0.
 -- Runs for every player character with Species "Dilo" (yours and others'). Everything is local (Workspace "DiloFX"),
@@ -51,6 +51,13 @@
 --                         no outline) and a breath puff from the snout every 0.45 s; darts spat while true are icy (glob,
 --                         light, trail) and a hit shows "x<DiloColdMul>" (only when > 1).
 --   Diagnostics: script DiloFX12Events (count).
+-- v1.3 (plan docs/plans/DILO_VFX_v1.0.md Task 3, MDA-392; Kepu 2026-11-10 15:05 "Overdrive-A", "Cobra spring", 16:02 "build"):
+--   DiloFXOverDartHandoff  while the spitting dilo's DiloOverdriveUntil is in the future and the sibling LocalScript DiloPartsVFX 1.0
+--                          is running with its DiloPartsVFX_doverEnabled not false, no glob is drawn here: DiloPartsVFX draws the
+--                          goo dart; the arrival (fizzle / hit splash) keeps its timing here.
+--   DiloFXTakeoffEnabled   Cobra Spring take-off: at each leap launch of a dilo (yours: your JumpLaunchCount goes up; others:
+--                          JumpStartedAt + JumpWindup) 6 sand dust puffs at its feet (take-off only, no landing FX).
+--   Switches: script attributes, default true, read at each event. Diagnostic: script DiloFXTakeoffs (count).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -58,6 +65,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 bigger dart
 VERSION = "1.2" -- v1.2 the animation pass effects
+VERSION = "1.3" -- v1.3 Overdrive goo-dart hand-off, Cobra Spring take-off dust
 local HIT_WAIT, VENOM_SCAN, DRIP_RATE, SPLASH_DROPS, MAX_PARTS = 0.6, 0.2, 14, 26, 320
 local ARENA_PLACE_ID = 75433819286625 -- ModeRules 1.0
 local GREEN, GREEN_D, PALE, GLOW = Color3.fromHex("9CF05A"), Color3.fromHex("5CC22A"), Color3.fromHex("D8FF8A"),
@@ -228,6 +236,13 @@ local function findModel(name)
 end
 local function scaleK(m) return (m:IsA("Model") and m:GetScale() or 2) / 2 end
 local function shielded(m) return (num(m, "EnergyShieldUntil") or 0) > now() end
+local function overHandoff(char) -- v1.3: DiloPartsVFX 1.0 draws Overdrive darts as goo
+	if script:GetAttribute("DiloFXOverDartHandoff") == false then return false end
+	if (num(char, "DiloOverdriveUntil") or 0) <= now() then return false end
+	local v = script.Parent and script.Parent:FindFirstChild("DiloPartsVFX")
+	return v ~= nil and v:GetAttribute("DiloPartsVFXVersion") ~= nil and v:GetAttribute("DiloPartsVFXEnabled") ~= false
+		and v:GetAttribute("DiloPartsVFX_doverEnabled") ~= false
+end
 
 -- dart + hits -------------------------------------------------------------------------------------------------------------
 local pending = setmetatable({}, {__mode = "k"}) -- [char] = {at, to, k, arrived (clock), hit = bool}
@@ -256,6 +271,10 @@ local function spawnDart(char)
 				end
 			end)
 		end
+	end
+	if overHandoff(char) and now() - at < flight then -- v1.3: no glob; arrive on time
+		task.delay(flight - (now() - at), arrive)
+		return
 	end
 	if not on("DiloFXDartEnabled") or now() - at >= flight then
 		arrive()
@@ -816,4 +835,58 @@ do
 		for c, g in pairs(glows) do if not alive[c] then g:Destroy(); glows[c] = nil end end
 		for c, hl in pairs(tints) do if not alive[c] then hl:Destroy(); tints[c] = nil end end
 	end)
+end
+
+-- v1.3: Cobra Spring take-off dust --------------------------------------------------------------------------------------------
+do
+	for _, k in ipairs({"DiloFXOverDartHandoff", "DiloFXTakeoffEnabled"}) do
+		if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+	end
+	script:SetAttribute("DiloFXTakeoffs", 0)
+	local SAND = Color3.fromHex("C2AD7A")
+	local function dust(char)
+		if script:GetAttribute("DiloFXEnabled") == false or script:GetAttribute("DiloFXTakeoffEnabled") == false then return end
+		if char:GetAttribute("Species") ~= "Dilo" then return end
+		local r = char:FindFirstChild("HumanoidRootPart")
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not (r and hum) then return end
+		local k = scaleK(char)
+		local feet = Vector3.new(r.Position.X, r.Position.Y - r.Size.Y / 2 - hum.HipHeight + 0.6, r.Position.Z)
+		for _ = 1, 6 do
+			if full() then break end
+			local p = part(Enum.PartType.Ball, Vector3.one * 2.6 * k, SAND, 0.4, Enum.Material.SmoothPlastic)
+			p.Position = feet + Vector3.new((math.random() - 0.5) * 4 * k, 0, (math.random() - 0.5) * 4 * k)
+			local v = Vector3.new((math.random() - 0.5) * 16, 2 + math.random() * 3, (math.random() - 0.5) * 16) * k
+			local s0 = p.Size.X
+			add({kind = "custom", p = p, life = 0.7, update = function(f, dt, u)
+				v *= math.pow(0.12, dt)
+				f.p.Position += v * dt
+				local sz = s0 * (1 + 1.6 * u)
+				f.p.Size = Vector3.new(sz, sz, sz)
+				f.p.Transparency = 0.4 + 0.6 * u
+			end})
+		end
+		script:SetAttribute("DiloFXTakeoffs", (script:GetAttribute("DiloFXTakeoffs") or 0) + 1)
+	end
+	local seen = setmetatable({}, {__mode = "k"})
+	local function hook(char)
+		if seen[char] then return end
+		seen[char] = true
+		char:GetAttributeChangedSignal("JumpLaunchCount"):Connect(function()
+			if char == Players.LocalPlayer.Character then dust(char) end
+		end)
+		char:GetAttributeChangedSignal("JumpStartedAt"):Connect(function()
+			if char == Players.LocalPlayer.Character then return end
+			local at = num(char, "JumpStartedAt")
+			if not at then return end
+			local w = num(char, "JumpWindup") or 0.12
+			task.delay(math.max(0, at + w - now()), function() if char.Parent then dust(char) end end)
+		end)
+	end
+	local function onPl(pl)
+		pl.CharacterAdded:Connect(hook)
+		if pl.Character then hook(pl.Character) end
+	end
+	Players.PlayerAdded:Connect(onPl)
+	for _, pl in ipairs(Players:GetPlayers()) do onPl(pl) end
 end

@@ -3300,3 +3300,9 @@ Model numbers are generator output (old version = the flag in the last column, b
 - TrooStatsServer 1.0 (new script): `TrooStatsServerEnabled`, `TrooStats_dealtEnabled`, `TrooStats_watchEnabled`, `TrooStats_trailEnabled` (true); numbers `TrooStats_watchTick` 0.25, `_watchHold` 0.45, `_trailGap` 1.5, `_trailReach` 12, `_trailRadius` 10. Remote `DinoTrooTrailRequest`. Stamps: `LastDealtAt`, `TrooSeenUntil / By / Squad`, `TrooTrailUntil / Mul`, owner `TrooTrailPadCenter / Radius / Until / At`, `TrooTrailResult`. Diagnostics `TrooStatsSeenStamps`, `TrooStatsTrails`, `TrooStatsBoosts`.
 - TrooStatsFX 1.0 (new client script): `TrooStatsFXEnabled`, `TrooStatsFX_watchEnabled`, `TrooStatsFX_markEnabled`, `TrooStatsFX_trailEnabled` (true); number `TrooStatsFX_maxOutlines` 10; diagnostics `TrooStatsFXOutlines`, `TrooStatsFXLast`.
 - SprintTest 1.25 `SprintTestTrooFeetEnabled` (script, true): run x `TrooStatFeetRun` (MoveSpeedParts "quickFeet"), any speed x `TrooTrailMul` while `TrooTrailUntil` is ahead.
+
+## Dilo part effects rework + Cobra Spring (2026-11-10, plan docs/plans/DILO_VFX_v1.0.md, MDA-390..395)
+- DiloModelData 1.13 (Cobra Spring): `JumpWindup` 0.12, `TurnLimitRate` 540, `JumpBoost` 45.
+- DiloPartsVFX 1.0 (client script): `DiloPartsVFXEnabled`, `DiloPartsVFX_dgatlingEnabled`, `_dmortarEnabled`, `_dhissEnabled`, `_dspineEnabled`, `_dpumpEnabled`, `_djetsEnabled`, `_doverEnabled` (true); numbers `DiloPartsVFX_maxParts` 350, `DiloPartsVFX_rateMul` 1; diagnostics `DiloPartsVFXVersion`, `DiloPartsVFXParts`, `DiloPartsVFXEffects`, `DiloPartsVFXEvents`, `DiloPartsVFXLast`, `DiloPartsVFXTrims`, `DiloPartsVFXError`. Local folder Workspace.DiloPartsVFX_Local.
+- DiloMovesFX 1.6: `DiloMovesFXHandoffEnabled` (true; false = 1.5 even with DiloPartsVFX running).
+- DiloFX 1.3: `DiloFXOverDartHandoff` (true), `DiloFXTakeoffEnabled` (true); diagnostic `DiloFXTakeoffs`.

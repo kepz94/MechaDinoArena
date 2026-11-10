@@ -1,4 +1,4 @@
--- DiloMovesFX v1.5 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
+-- DiloMovesFX v1.6 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/DILO_PARTS_v1.0.md Task 6 (MDA-319); mockup docs/mockups/dilo_parts_options.html
 -- v0.1 (tools/mockup/dilo_parts_looks.js: the picked looks' motion and FX). Every player character with Species "Dilo" that
 -- wears DPart_* models (DiloPartsServer 1.0) is watched; the stamps come from DiloMovesServer 1.0. No landing FX.
@@ -79,6 +79,21 @@ VERSION = "1.5" -- v1.5 big and bright gatling / mortar / spines
 --   0.8 s, the cloud mist sized and dense in step with the radius (radius / 8), tube recoil 2.5x; Spine Burst spines 3x with
 --   trails, flash 2x, a green burst at the chest, ring 0.8 s, barbs extend 3x. Switch: script attribute DiloFXBigEnabled
 --   (default true, read at each event / frame; false = 1.4's sizes).
+VERSION = "1.6" -- v1.6 hand-off to DiloPartsVFX 1.0
+-- v1.6 (plan docs/plans/DILO_VFX_v1.0.md Task 2, MDA-391; Kepu 2026-11-10 15:05 picks, 16:02 "build"): while the sibling LocalScript
+--   DiloPartsVFX 1.0 owns a part (it is running: DiloPartsVFXVersion set; its DiloPartsVFXEnabled and DiloPartsVFX_<id>Enabled
+--   are not false), this script skips that part's EFFECTS: gatling darts / hit bursts; mortar ring / muzzle / canister / landing
+--   + cloud; spine darts / flash / ring; overdrive start flash / ring; hiss cone flashes / sound arcs / hit flashes; pump jolt
+--   flash / ring, the immune shell ball (drawn invisible) and the block flash; jets trail mist and the orange flame (particles,
+--   light, neon jet). Kept: the part motion (recoil, tube, barbs + their hiding, piston, fins, cones, pips, nozzle, core glow),
+--   the SILENCED / IMMUNE / +N tags, the jets roar and the owner's boost feel (FOV, shake, speed lines). Switch: script attribute
+--   DiloMovesFXHandoffEnabled (default true, read at each event / frame; false = 1.5 even with DiloPartsVFX running).
+local function owned(id) -- v1.6
+	if script:GetAttribute("DiloMovesFXHandoffEnabled") == false then return false end
+	local v = script.Parent and script.Parent:FindFirstChild("DiloPartsVFX")
+	return v ~= nil and v:GetAttribute("DiloPartsVFXVersion") ~= nil and v:GetAttribute("DiloPartsVFXEnabled") ~= false
+		and v:GetAttribute("DiloPartsVFX_" .. id .. "Enabled") ~= false
+end
 if script:GetAttribute("DiloJetsFlameV2Enabled") == nil then script:SetAttribute("DiloJetsFlameV2Enabled", true) end -- v1.3
 if script:GetAttribute("DiloJetsThrusterFXEnabled") == nil then script:SetAttribute("DiloJetsThrusterFXEnabled", true) end -- v1.2
 for _, k in ipairs({"PartsFXHissEnabled", "PartsFXPumpEnabled", "PartsFXJetsEnabled"}) do -- v1.1
@@ -214,6 +229,7 @@ local function watch(char)
 		if not (from and to) then return end
 		st.recoil = 1
 		st.drumFlash = os.clock()
+		if owned("dgatling") then ev() return end -- v1.6
 		local k = scaleK(char)
 		flash(from, 2.6 * k * bigF(2.3), Color3.fromRGB(216, 255, 138), 0.1 * bigF(1.5)) -- v1.5: x bigF
 		local d = part(Vector3.new(0.35, 0.35, 1.2) * k * bigF(3), GREEN, Enum.Material.Neon, CFrame.lookAt(from, to), 0) -- v1.5: x3
@@ -223,7 +239,7 @@ local function watch(char)
 	end)
 	char:GetAttributeChangedSignal("DiloGatlingHit"):Connect(function()
 		local s = char:GetAttribute("DiloGatlingHit")
-		if typeof(s) ~= "string" or not on("PartsFXGatlingEnabled") then return end
+		if typeof(s) ~= "string" or not on("PartsFXGatlingEnabled") or owned("dgatling") then return end -- v1.6
 		local name = s:match("^([^;]+);")
 		local target = name and (workspace:FindFirstChild(name) or (workspace:FindFirstChild("DinoIsland") and workspace.DinoIsland:FindFirstChild("Bots") and workspace.DinoIsland.Bots:FindFirstChild(name)))
 		local r = target and target:FindFirstChild("HumanoidRootPart")
@@ -233,7 +249,7 @@ local function watch(char)
 	char:GetAttributeChangedSignal("DiloMortarAt"):Connect(function()
 		local at = num(char, "DiloMortarAt")
 		local to = char:GetAttribute("DiloMortarTo")
-		if not at or typeof(to) ~= "Vector3" or not on("PartsFXMortarEnabled") or now() - at > 1 then return end
+		if not at or typeof(to) ~= "Vector3" or not on("PartsFXMortarEnabled") or now() - at > 1 or owned("dmortar") then return end -- v1.6
 		local r = (num(char, "DiloMortarRadius") or 8)
 		local rg = part(Vector3.new(0.15, r * 2, r * 2), YELLOW, Enum.Material.Neon, CFrame.new(to + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, 0, math.pi / 2), 0.55, Enum.PartType.Cylinder)
 		st.ringAt, st.ring = at, rg
@@ -244,6 +260,7 @@ local function watch(char)
 		local from, to = char:GetAttribute("DiloMortarFrom"), char:GetAttribute("DiloMortarTo")
 		if typeof(from) ~= "Vector3" or typeof(to) ~= "Vector3" or not on("PartsFXMortarEnabled") then return end
 		st.mRecoil = 1
+		if owned("dmortar") then ev() return end -- v1.6
 		local k = scaleK(char)
 		flash(from, 5 * k * bigF(2.4), Color3.fromRGB(216, 255, 176), 0.16 * bigF(1.5)) -- v1.5: x bigF
 		burst(from, Color3.fromRGB(232, 232, 232), Color3.fromRGB(190, 190, 190), math.floor(10 * bigF(2)), 8 * k, 1.6 * k * bigF(1.8), 0.8, 50, Vector3.yAxis) -- v1.5
@@ -254,7 +271,7 @@ local function watch(char)
 	end)
 	char:GetAttributeChangedSignal("DiloMortarLandAt"):Connect(function()
 		local to = char:GetAttribute("DiloMortarTo")
-		if typeof(to) ~= "Vector3" or not on("PartsFXMortarEnabled") then return end
+		if typeof(to) ~= "Vector3" or not on("PartsFXMortarEnabled") or owned("dmortar") then return end -- v1.6
 		if st.ring then st.ring:Destroy() st.ring = nil end
 		local r, life = num(char, "DiloMortarRadius") or 8, num(char, "DiloMortarTime") or 3
 		local k = scaleK(char)
@@ -283,6 +300,7 @@ local function watch(char)
 	-- spines
 	char:GetAttributeChangedSignal("DiloSpineBurstAt"):Connect(function()
 		if not on("PartsFXSpineEnabled") then return end
+		if owned("dspine") then st.barbsHiddenUntil = os.clock() + 1.2 ev() return end -- v1.6: the barbs still reload
 		local r = char:FindFirstChild("HumanoidRootPart")
 		if not r then return end
 		local n = math.clamp(math.floor(num(char, "DiloSpineCount") or 6), 1, 24)
@@ -314,7 +332,7 @@ local function watch(char)
 	-- overdrive
 	char:GetAttributeChangedSignal("DiloOverdriveAt"):Connect(function()
 		local at, start = num(char, "DiloOverdriveAt"), num(char, "DiloOverdriveStartAt")
-		if not at or not start or not on("PartsFXOverEnabled") or now() - at > 1 then return end
+		if not at or not start or not on("PartsFXOverEnabled") or now() - at > 1 or owned("dover") then return end -- v1.6
 		task.delay(math.max(0, start - now()), function()
 			local core
 			for _, p in ipairs(pieces(char)) do if p:GetAttribute("DPartRole") == "core" then core = p end end
@@ -473,7 +491,9 @@ local function watchB2(char)
 		if not at or not on("PartsFXHissEnabled") or now() - at > 1 then return end
 		local r = char:FindFirstChild("HumanoidRootPart")
 		local k = scaleK(char)
-		for _, p in ipairs(pieces(char)) do
+		local own = owned("dhiss") -- v1.6: the SILENCED tags stay
+		if own then r = nil end
+		for _, p in ipairs(own and {} or pieces(char)) do
 			if p:GetAttribute("DPartRole") == "cone" then flash(p.Position, 3 * k, PURPLE, 0.18) end
 		end
 		if r then
@@ -500,7 +520,7 @@ local function watchB2(char)
 					local left = math.max(0, u - now())
 					tag(m, ("SILENCED · %d s"):format(math.floor(left + 0.5)), PURPLE, u)
 					local mr = m:FindFirstChild("HumanoidRootPart")
-					if mr then flash(mr.Position, 6 * k, PURPLE, 0.18) end
+					if mr and not own then flash(mr.Position, 6 * k, PURPLE, 0.18) end -- v1.6
 				end)
 			end
 		end
@@ -511,18 +531,19 @@ local function watchB2(char)
 		if not at or not on("PartsFXPumpEnabled") or now() - at > 1 then return end
 		local k = scaleK(char)
 		local tank = rolePart(char, "fluid") or rolePart(char, "tank")
-		if tank then flash(tank.Position, 12 * k, BLUE, 0.22) end
+		local own = owned("dpump") -- v1.6: the +N tag stays
+		if tank and not own then flash(tank.Position, 12 * k, BLUE, 0.22) end
 		local r = char:FindFirstChild("HumanoidRootPart")
 		if r then
 			local feet = r.Position.Y - r.Size.Y / 2 - ((char:FindFirstChildOfClass("Humanoid") or {HipHeight = 0}).HipHeight or 0)
-			ring(Vector3.new(r.Position.X, feet + 0.2, r.Position.Z), 24 * k, BLUE, 0.5)
+			if not own then ring(Vector3.new(r.Position.X, feet + 0.2, r.Position.Z), 24 * k, BLUE, 0.5) end -- v1.6
 			local healed = num(char, "DiloPumpHealed") or 0
 			if healed > 0 then tag(char, ("+%d"):format(math.floor(healed + 0.5)), Color3.fromRGB(184, 255, 112), now() + 1.2, 12 * k) end
 		end
 		ev()
 	end)
 	char:GetAttributeChangedSignal("DiloImmuneBlockAt"):Connect(function()
-		if not on("PartsFXPumpEnabled") then return end
+		if not on("PartsFXPumpEnabled") or owned("dpump") then return end -- v1.6
 		local r = char:FindFirstChild("HumanoidRootPart")
 		if r then flash(r.Position + Vector3.new(0, 2 * scaleK(char), 0), 14 * scaleK(char), Color3.fromRGB(220, 245, 255), 0.2) end
 		ev()
@@ -556,7 +577,7 @@ RunService.RenderStepped:Connect(function(dt)
 			local r = char:FindFirstChild("HumanoidRootPart")
 			if on("PartsFXPumpEnabled") and iu and iu > T and r then
 				if not (st.shell and st.shell.Parent) then
-					st.shell = part(Vector3.one * 26 * k, BLUE, Enum.Material.ForceField, r.CFrame, 0.35, Enum.PartType.Ball)
+					st.shell = part(Vector3.one * 26 * k, BLUE, Enum.Material.ForceField, r.CFrame, owned("dpump") and 1 or 0.35, Enum.PartType.Ball) -- v1.6: invisible when owned
 					st.shell.Name = "DiloImmuneShell"
 					st.shellTag = tag(char, "IMMUNE", BLUE, iu, 16 * k)
 				end
@@ -590,7 +611,7 @@ RunService.RenderStepped:Connect(function(dt)
 			-- trail mist
 			local tu = num(char, "DiloJetsTrailUntil")
 			local tf, tt = char:GetAttribute("DiloJetsFrom"), char:GetAttribute("DiloJetsTo")
-			if on("PartsFXJetsEnabled") and tu and tu > T and typeof(tf) == "Vector3" and typeof(tt) == "Vector3" and math.random() < dt * 14 then
+			if on("PartsFXJetsEnabled") and not owned("djets") and tu and tu > T and typeof(tf) == "Vector3" and typeof(tt) == "Vector3" and math.random() < dt * 14 then -- v1.6
 				local p = tf:Lerp(tt, math.random()) + Vector3.new((math.random() - 0.5) * 3 * k, -2 * k, (math.random() - 0.5) * 3 * k)
 				burst(p, GREEN, GREEN_D, 2, 2 * k, 2.2 * k, 1.2, 60, Vector3.yAxis)
 			end
@@ -760,8 +781,9 @@ RunService.RenderStepped:Connect(function()
 				local want = os.clock() < kit.offAt
 				if want ~= kit.on then
 					kit.on = want
-					kit.f.Enabled, kit.glow.Enabled = want, want
-					kit.jet.Transparency = want and 0.15 or 1
+					local vis = want and not owned("djets") -- v1.6: the roar and the boost feel stay
+					kit.f.Enabled, kit.glow.Enabled = vis, vis
+					kit.jet.Transparency = vis and 0.15 or 1
 					if want then
 						kit.snd.TimePosition = 0
 						kit.snd:Play()
