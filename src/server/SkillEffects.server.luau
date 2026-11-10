@@ -1,4 +1,4 @@
--- SkillEffects v1.58 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.59 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -298,6 +298,9 @@ local ServerStorage = game:GetService("ServerStorage")
 --   Read by TrooSlotServer 1.0, TrooPartsServer 1.2 (looks), MechaButtons 1.45, AbilityBar 1.38, TrooSlotFX 1.0. Switch: script
 --   attribute SkillEffectsTrooSlotEnabled (default true, read at each write; false = 1.57 plus the off values written).
 --   Diagnostic: character TrooSlotPartsOn (the ids written on, comma list).
+-- v1.59 (SkillTree 1.86 TROO_SLOT_TUNE_186, Kepu 2026-11-10 10:38 "The sentry only deals 20 total damage"): the TrooPartSentry
+--   row gains Total (effect oSentryTotal, off 0): the most one Sentry Pod throw deals (TrooSlotServer 1.1). Switch: script
+--   attribute SkillEffectsTrooSentryTotalEnabled (default true, read at start; false = 1.58, no TrooPartSentryTotal).
 -- v1.44 (Kepu 2026-11-04 17:54 "Make it overclock tier 3 to give you an extra jump", SkillTree 1.66 clockJump): the TheriClock
 --   row gains Jump (effect clockJump, off 0): TheriClockJump, the extra jump charges TheriMovesServer 1.5 adds. Switch: script
 --   attribute SkillEffectsTheriClockJumpEnabled (default true, read at start; false = 1.43, no TheriClockJump).
@@ -1291,6 +1294,13 @@ local OSLOT = { -- {path id, prefix, needs a slot, {attribute, effect field, off
 	{"osentry", "TrooPartSentry", true, {{"Range", "oSentryRange", 0}, {"Reach", "oSentryReach", 0}, {"Time", "oSentryTime", 0},
 		{"Damage", "oSentryDamage", 0}, {"Rate", "oSentryRate", 0}, {"Shots", "oSentryShots", 0}, {"Cooldown", "oSentryCooldown", 0}}},
 }
+-- v1.59: the sentry's damage cap per throw (see the v1.59 notes)
+if script:GetAttribute("SkillEffectsTrooSentryTotalEnabled") == nil then script:SetAttribute("SkillEffectsTrooSentryTotalEnabled", true) end
+if script:GetAttribute("SkillEffectsTrooSentryTotalEnabled") ~= false then
+	for _, def in ipairs(OSLOT) do
+		if def[1] == "osentry" then table.insert(def[4], {"Total", "oSentryTotal", 0}) end
+	end
+end
 do
 	local applyCharV157 = applyChar
 	applyChar = function(char, st)

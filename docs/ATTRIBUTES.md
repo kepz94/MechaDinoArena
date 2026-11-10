@@ -3288,3 +3288,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - TrooSlotFX 1.0 (client script): `TrooSlotFXEnabled`, `TrooSlotFX_<id>Enabled`.
 - TrooPose 1.7 module switch `TrooPose.SLOT_POSES` (true).
 - MechaButtons 1.45 `MechaButtonsTrooSlotEnabled` (true), `MechaButtons_oburstAimReach` 12, `_odomeAimReach` 12, `_osentryAimReach` 18 (body-aim landing distance). AbilityBar 1.39 `AbilityBarTrooSlotEnabled` (true).
+- 1.86 tune (2026-11-10): SkillTree 1.86 module switch `SkillTree.TROO_SLOT_TUNE_186` (true): oBloomRadius 22 / 27 (44 / 54 wide), oDomeRadius 45 / 60.75 (90 / 121.5 wide), oSentryDamage 1.25, new oSentryTotal 20. SkillEffects 1.59 `SkillEffectsTrooSentryTotalEnabled` (script, true) adds character `TrooPartSentryTotal`. TrooSlotServer 1.1 `TrooSlotSentryCapEnabled` (script, true); turret `TrooSentryCap`, `TrooSentryDealt`; script diagnostic `TrooSlotSentryCapped`.

@@ -1,4 +1,4 @@
--- SkillTree v1.85 (1.85 troodon slot parts: Bloom Tank passive + Bloom Burst / Shield Dome / Sleep Dart / Sentry Pod (TROO_SLOT_PARTS), MDA-378; 1.84 Therizino Overclock Joints = no-slot passive (THERI_CLOCK_NOSLOT) + the troodon's 4 passives removed (TROO_PARTS_B2_LIVE = false); 1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.86 (1.86 troodon slot tune: dome 90 / 121.5 wide, Bloom Tank 44 / 54 wide, sentry 1.25 a pod + 20 at most a throw (TROO_SLOT_TUNE_186); 1.85 troodon slot parts: Bloom Tank passive + Bloom Burst / Shield Dome / Sleep Dart / Sentry Pod (TROO_SLOT_PARTS), MDA-378; 1.84 Therizino Overclock Joints = no-slot passive (THERI_CLOCK_NOSLOT) + the troodon's 4 passives removed (TROO_PARTS_B2_LIVE = false); 1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -3277,6 +3277,44 @@ do
 		e.oSentryRate = se >= 1 and 0.5 or 0
 		e.oSentryShots = se >= 4 and 2 or (se >= 1 and 1 or 0)
 		e.oSentryCooldown = se >= 3 and 16.3 or (se >= 1 and 22 or 0)
+		return e
+	end
+end
+
+-- v1.86 (Kepu 2026-11-10 10:38 "make the radius for the shield some 3x the size", "The bloom tank radius is way too large"
+--   -> picked "44 at I, 54 at III", "Lower the damage for the sentry to be 20 total" -> "The sentry only deals 20 total damage").
+--   Switch SkillTree.TROO_SLOT_TUNE_186 (default true; false = 1.85 numbers and texts). Troodon only:
+--   oBloomRadius 22 (I) / 27 (III) (was 27 / 36.5: zones 44 / 54 studs wide, was 54 / 73);
+--   oDomeRadius 45 / 60.75 (star) (was 15 / 20.25: 90 / 121.5 studs wide, was 30 / 40.5);
+--   oSentryDamage 1.25 per pod (was 6) + new oSentryTotal 20 = the most one throw deals, every rank (TrooSlotServer 1.1 stops
+--   the turret's damage at it; 0 = no cap). Rank I: 16 shots x 1.25 = 20 over the 8 s.
+SkillTree.TROO_SLOT_TUNE_186 = true
+if SkillTree.TROO_SLOT_TUNE_186 and SkillTree.PATHS.obloom then
+	local P = SkillTree.PATHS
+	P.obloom.steps[1] = "Passive (no slot, no button): always on once bought: your glow zones are 44 studs wide (was 40)"
+	P.obloom.steps[3] = "Zones are 54 studs wide"
+	P.odome.steps[1] = "Button: throw a canister up to 30 studs: a dome 90 studs wide stands for 5 s. Enemy attacks from outside stop on it; yours go out. Recharges in 25 s"
+	P.odome.steps[4] = "The dome is 121.5 studs wide"
+	P.osentry.steps[1] = "Button: throw a turret up to 30 studs: for 8 s it shoots the nearest enemy within 60 studs, 1.25 damage every 0.5 s, 20 damage at most per turret. Recharges in 22 s"
+	P.osentry.steps[4] = "Twin pods: 2 per shot (still 20 damage at most)"
+end
+do
+	local effectsPre186 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre186(steps, dino)
+		if type(e) ~= "table" then return e end
+		if not SkillTree.PATHS.obloom then return e end
+		local on = SkillTree.TROO_SLOT_TUNE_186 and SkillTree.TROO_SLOT_PARTS and dino == "Troodon"
+		local s = on and SkillTree.sanitize(steps, dino) or {}
+		local bl, dm, se = s.obloom or 0, s.odome or 0, s.osentry or 0
+		e.oSentryTotal = 0
+		if not on then return e end
+		if bl >= 1 then e.oBloomRadius = bl >= 3 and 27 or 22 end
+		if dm >= 1 then e.oDomeRadius = dm >= 4 and 60.75 or 45 end
+		if se >= 1 then
+			e.oSentryDamage = 1.25
+			e.oSentryTotal = 20
+		end
 		return e
 	end
 end

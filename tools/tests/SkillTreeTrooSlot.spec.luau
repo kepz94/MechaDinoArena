@@ -1,4 +1,5 @@
--- SkillTreeTrooSlot.spec v1.0 (Mecha Dino Arena) — the troodon slot parts in ServerStorage.DinoArcade.SkillTree 1.85 (plan
+-- SkillTreeTrooSlot.spec v1.1 (Mecha Dino Arena) — the troodon slot parts in ServerStorage.DinoArcade.SkillTree 1.86 (1.1: the
+-- 1.86 tune: Bloom Tank 44 / 54 wide, dome 90 / 121.5 wide, sentry 1.25 a pod + 20 at most a throw; switch off = 1.85 numbers) (plan
 -- docs/plans/TROODON_SLOTPARTS_v1.0.md T1, MDA-378): Bloom Tank (passive, no slot), Bloom Burst, Shield Dome, Sleep Dart,
 -- Sentry Pod (buttons). Run in Studio Edit (copy in ServerStorage.DinoArcadeTools.SkillTreeTrooSlot_spec, clone + require);
 -- returns "PASS n" or "FAIL ...".
@@ -40,6 +41,10 @@ for id, w in pairs(ROWS) do
 	end
 end
 eq("bloom text 1 passive", P.obloom.steps[1]:find("Passive (no slot", 1, true) ~= nil, true)
+eq("bloom text 44", P.obloom.steps[1]:find("44 studs", 1, true) ~= nil, true); eq("bloom text 54", P.obloom.steps[3], "Zones are 54 studs wide")
+eq("dome text 90", P.odome.steps[1]:find("90 studs wide", 1, true) ~= nil, true); eq("dome text 121.5", P.odome.steps[4], "The dome is 121.5 studs wide")
+eq("sentry text 20", P.osentry.steps[1]:find("20 damage at most", 1, true) ~= nil, true)
+eq("TROO_SLOT_TUNE_186", ST.TROO_SLOT_TUNE_186, true)
 -- slots: the passive never sits in a slot; the buttons do
 local lo = ST.sanitizeLoadout({"obloom", "oburst", "odome", "osleep"}, {obloom = 1, oburst = 1, odome = 1, osleep = 1}, "Troodon")
 eq("slot bloom empty", lo[1], false); eq("slot burst", lo[2], "oburst"); eq("slot dome", lo[3], "odome"); eq("slot sleep", lo[4], "osleep")
@@ -52,27 +57,29 @@ local function chk(id, field, want)
 	if type(want[1]) == "boolean" then zero = false end
 	eq(id .. " 0 " .. field, E({})[field], zero)
 end
-chk("obloom", "oBloomRadius", {27, 27, 36.5, 36.5}); chk("obloom", "oBloomTime", {3, 4.05, 4.05, 4.05})
+chk("obloom", "oBloomRadius", {22, 22, 27, 27}); chk("obloom", "oBloomTime", {3, 4.05, 4.05, 4.05})
 chk("obloom", "oBloomEnd", {false, false, false, true}); chk("obloom", "oBloomEndHeal", {0, 0, 0, 5}); chk("obloom", "oBloomEndSlow", {0, 0, 0, 1.5})
 chk("oburst", "oBurstRange", {40, 40, 40, 40}); chk("oburst", "oBurstHeal", {20, 20, 20, 20}); chk("oburst", "oBurstRadius", {20, 20, 20, 27})
 chk("oburst", "oBurstBoost", {0.5, 0.5, 0.5, 0.5}); chk("oburst", "oBurstTime", {4, 5.4, 5.4, 5.4}); chk("oburst", "oBurstCut", {0.5, 0.5, 0.5, 0.5})
 chk("oburst", "oBurstCooldown", {18, 18, 13.3, 13.3})
-chk("odome", "oDomeRange", {30, 30, 30, 30}); chk("odome", "oDomeRadius", {15, 15, 15, 20.25}); chk("odome", "oDomeTime", {5, 6.75, 6.75, 6.75})
+chk("odome", "oDomeRange", {30, 30, 30, 30}); chk("odome", "oDomeRadius", {45, 45, 45, 60.75}); chk("odome", "oDomeTime", {5, 6.75, 6.75, 6.75})
 chk("odome", "oDomeCooldown", {25, 25, 18.5, 18.5})
 chk("osleep", "oSleepRange", {120, 120, 120, 120}); chk("osleep", "oSleepTime", {2.5, 3.4, 3.4, 3.4}); chk("osleep", "oSleepCooldown", {12, 12, 8.9, 8.9})
 chk("osleep", "oSleepSplit", {0, 0, 0, 15})
 chk("osentry", "oSentryRange", {30, 30, 30, 30}); chk("osentry", "oSentryReach", {60, 60, 60, 60}); chk("osentry", "oSentryTime", {8, 10.8, 10.8, 10.8})
-chk("osentry", "oSentryDamage", {6, 6, 6, 6}); chk("osentry", "oSentryRate", {0.5, 0.5, 0.5, 0.5}); chk("osentry", "oSentryShots", {1, 1, 1, 2})
+chk("osentry", "oSentryDamage", {1.25, 1.25, 1.25, 1.25}); chk("osentry", "oSentryTotal", {20, 20, 20, 20}); chk("osentry", "oSentryRate", {0.5, 0.5, 0.5, 0.5}); chk("osentry", "oSentryShots", {1, 1, 1, 2})
 chk("osentry", "oSentryCooldown", {22, 22, 16.3, 16.3})
 -- the 35% rule on every changed step
-eq("bloom 54/40", 54 / 40 >= 1.35, true); eq("bloom 4.05/3", 4.05 / 3 >= 1.3499, true); eq("bloom 73/54", 73 / 54 >= 1.35, true)
+-- Bloom Tank size: Kepu picked 44 / 54 (breaks the 35% rule at I and III, by choice 2026-11-10)
+eq("bloom 4.05/3", 4.05 / 3 >= 1.3499, true); eq("bloom 54/44", 54 / 44 > 1, true)
 eq("burst 5.4/4", 5.4 / 4 >= 1.35, true); eq("burst 18/13.3", 18 / 13.3 >= 1.35, true); eq("burst 27/20", 27 / 20 >= 1.35, true)
-eq("dome 6.75/5", 6.75 / 5 >= 1.35, true); eq("dome 25/18.5", 25 / 18.5 >= 1.35, true); eq("dome 20.25/15", 20.25 / 15 >= 1.35, true)
+eq("dome 6.75/5", 6.75 / 5 >= 1.35, true); eq("dome 25/18.5", 25 / 18.5 >= 1.35, true); eq("dome 60.75/45", 60.75 / 45 >= 1.35, true)
 eq("sleep 3.4/2.5", 3.4 / 2.5 >= 1.35, true); eq("sleep 12/8.9", 12 / 8.9 >= 1.348, true)
 eq("sentry 10.8/8", 10.8 / 8 >= 1.35, true); eq("sentry 22/16.3", 22 / 16.3 >= 1.349, true)
 -- other dinos get nothing
 local r = E({obloom = 4, oburst = 4, odome = 4, osleep = 4, osentry = 4}, "Raptor")
 eq("raptor bloom", r.oBloomRadius, 0); eq("raptor burst", r.oBurstHeal, 0); eq("raptor sentry", r.oSentryDamage, 0)
+eq("raptor sentry total", r.oSentryTotal, 0); eq("raptor dome", r.oDomeRadius, 0)
 -- the live troodon button parts are untouched
 eq("omender still a button", ST.BUTTONS.omender, true); eq("oportal still live", ST.LIVE_MECH.oportal, true)
 eq("olastfeather still soon", P.olastfeather and P.olastfeather.soon, true)

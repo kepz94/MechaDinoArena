@@ -1,4 +1,4 @@
--- TrooSlotServer v1.0 (Mecha Dino Arena) — the Troodon's slot parts (server authority): Bloom Tank (passive), Bloom Burst,
+-- TrooSlotServer v1.1 (Mecha Dino Arena) — the Troodon's slot parts (server authority): Bloom Tank (passive), Bloom Burst,
 -- Shield Dome, Sleep Dart, Sentry Pod. Plan docs/plans/TROODON_SLOTPARTS_v1.0.md T2 (MDA-379); mockup
 -- docs/mockups/troodon_slotparts_v0.1.html (Kepu 2026-11-10 01:40 picks, 09:46 "Then build"); timings = the mockup's tracks.
 -- Settings (character attributes, SkillEffects 1.58): TrooPartBloom* (Enabled, Radius, Time, End, EndHeal, EndSlow; bought, no
@@ -50,6 +50,11 @@
 --   (all default true). Studio-only: TrooSlotTestAllyName (a bot treated as a squadmate). Diagnostics (script): TrooSlotHits,
 --   TrooSlotHeals, TrooSlotBoosts, TrooSlotCuts, TrooSlotSleeps, TrooSlotWakes, TrooSlotDomes, TrooSlotSentries,
 --   TrooSlotSentryShots, TrooSlotBloomPulses, TrooSlotSquadSkips.
+-- v1.1 (SkillTree 1.86 / SkillEffects 1.59, Kepu 2026-11-10 10:38 "The sentry only deals 20 total damage"): a Sentry Pod throw
+--   deals at most TrooPartSentryTotal (20; 0 = no cap) in all, counted before armor on hits that land (a pod in flight holds
+--   its share; a miss / block gives it back). The last pod is cut to what is left; once the 20 is dealt the turret folds away
+--   (TrooSentryEndAt). Turret diagnostics: TrooSentryDealt, TrooSentryCap. Switch: script TrooSlotSentryCapEnabled (default
+--   true; false = 1.0, no cap). Script diagnostic TrooSlotSentryCapped (turrets that hit the cap).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -58,7 +63,7 @@ local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local SHOT_ASSIST_DEG = 45
 local CFG = {throwWindup = 0.34, burstFly = 0.45, domeFly = 0.45, domeOpen = 0.2, domeGrow = 0.35, domeShrink = 0.3,
 	sleepWindup = 0.3, sleepSpeed = 150, sleepHitRadius = 3, sleepSplitDelay = 0.2,
@@ -68,9 +73,9 @@ local IDS = {"obloom", "oburst", "odome", "osleep", "osentry"}
 
 script:SetAttribute("TrooSlotServerVersion", VERSION)
 for _, k in ipairs({"TrooSlotHits", "TrooSlotHeals", "TrooSlotBoosts", "TrooSlotCuts", "TrooSlotSleeps", "TrooSlotWakes",
-	"TrooSlotDomes", "TrooSlotSentries", "TrooSlotSentryShots", "TrooSlotBloomPulses", "TrooSlotSquadSkips"}) do script:SetAttribute(k, 0) end
+	"TrooSlotDomes", "TrooSlotSentries", "TrooSlotSentryShots", "TrooSlotBloomPulses", "TrooSlotSquadSkips", "TrooSlotSentryCapped"}) do script:SetAttribute(k, 0) end
 for _, k in ipairs({"TrooSlotServerEnabled", "TrooSlotModeRulesEnabled", "TrooSlotSquadEnabled", "TrooSlotHealWatchEnabled",
-	"TrooSlotSleepWakeEnabled", "TrooSlotArmorAllEnabled"}) do
+	"TrooSlotSleepWakeEnabled", "TrooSlotArmorAllEnabled", "TrooSlotSentryCapEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 for _, id in ipairs(IDS) do
@@ -783,8 +788,15 @@ remote("DinoTrooSentryRequest").OnServerEvent:Connect(function(player, stamp, ai
 		local reach = math.max(1, num(char, "TrooPartSentryReach", 60))
 		local rate = math.max(0.1, num(char, "TrooPartSentryRate", 0.5))
 		local tNext = topen + cfg("sentryFirstShot")
-		while char.Parent and m.Parent and now() < topen + life do
-			if now() >= tNext then
+		-- v1.1: the damage cap per throw (0 = none)
+		local cap = script:GetAttribute("TrooSlotSentryCapEnabled") ~= false and math.max(0, num(char, "TrooPartSentryTotal", 0)) or 0
+		local spent, held = 0, 0
+		m:SetAttribute("TrooSentryCap", cap)
+		m:SetAttribute("TrooSentryDealt", 0)
+		local function capped() return cap > 0 and spent >= cap - 1e-6 end
+		local function full() return cap > 0 and spent + held >= cap - 1e-6 end
+		while char.Parent and m.Parent and now() < topen + life and not capped() do
+			if now() >= tNext and not full() then
 				tNext += rate
 				local muzzle0 = (base * CFrame.Angles(0, headYaw, 0) * CFrame.new(muzzleRel)).Position
 				local best, bd
@@ -803,6 +815,21 @@ remote("DinoTrooSentryRequest").OnServerEvent:Connect(function(player, stamp, ai
 					for i = 1, shots do
 						task.delay((i - 1) * cfg("sentryPair"), function()
 							if not (m.Parent and best.Parent) then return end
+							local per = num(char, "TrooPartSentryDamage", 6)
+							if cap > 0 then
+								per = math.min(per, cap - spent - held)
+								if per <= 1e-6 then return end
+								held += per
+							end
+							local function settle(hit)
+								if cap <= 0 then return end
+								held = math.max(0, held - per)
+								if hit then
+									spent += per
+									m:SetAttribute("TrooSentryDealt", spent)
+									if capped() then count("TrooSlotSentryCapped") end
+								end
+							end
 							local ts = now()
 							local muzzle = (base * CFrame.Angles(0, headYaw, 0) * CFrame.new(muzzleRel)).Position
 							local aim = chestOf(best) or c
@@ -815,9 +842,10 @@ remote("DinoTrooSentryRequest").OnServerEvent:Connect(function(player, stamp, ai
 							count("TrooSlotSentryShots")
 							task.delay(flight, function()
 								local th = now()
-								if not (char.Parent and best.Parent and isTarget(best, char) and mayHarm(char, best)) then return end
-								if SapWall.blocks(muzzle, chestOf(best) or aim) then return end
-								local dmg = damage(char, player, best, num(char, "TrooPartSentryDamage", 6), "troosentry", th)
+								if not (char.Parent and best.Parent and isTarget(best, char) and mayHarm(char, best)) then settle(false) return end
+								if SapWall.blocks(muzzle, chestOf(best) or aim) then settle(false) return end
+								local dmg = damage(char, player, best, per, "troosentry", th)
+								settle(dmg > 0)
 								if dmg > 0 then stampHit(best, "sentry", char.Name, th) end
 							end)
 						end)
