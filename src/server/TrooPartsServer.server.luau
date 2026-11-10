@@ -1,4 +1,4 @@
--- TrooPartsServer v1.0 (Mecha Dino Arena) — puts the Troodon's mecha parts on (server-built, every client sees them) and builds
+-- TrooPartsServer v1.1 (Mecha Dino Arena) — puts the Troodon's mecha parts on (server-built, every client sees them) and builds
 -- their Lab card models. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 3 (MDA-347); the looks are Kepu's picks from
 -- docs/mockups/troodon_parts_options.html v0.2 (Kepu 2026-11-06 21:24 "I like all the recommended"), exported piece by piece by
 -- tools/mockup/export_troodon_parts.js into ServerStorage.DinoArcade.TrooPartsLooks 1.0 (src/shared/TrooPartsLooks.luau):
@@ -40,6 +40,14 @@ local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 Studio fit tryout attribute
+-- v1.1 (MDA-349, build 2 fit of Ricochet's Spring Cups): in Studio only (RunService:IsStudio()), a script attribute
+--   TrooPartsFitTry_<id> (Vector3, rest model space, scale 1) replaces FIT[id] at the next build of that part (toggle its
+--   TrooPart<Name>Enabled), so fit shifts can be measured in one Play session; ignored on a live server. Must be unset at
+--   publish (the found value goes into FIT). Also per segment: TrooPartsFitTry_<id>_<seg> (Vector3) for that segment's pieces
+--   only, and the baked table FITSEG[id][seg] (added to FIT[id]): a mirrored left / right shift (Ricochet's two hand cups).
+local RunService = game:GetService("RunService")
+local FITSEG = {} -- v1.1: {[id] = {[segment] = Vector3}}, rest model space, scale 1
 local CYL_SLICES = 3
 local TORUS_SEGMENTS = 14
 local function hex(h) return Color3.fromRGB(math.floor(h / 65536) % 256, math.floor(h / 256) % 256, h % 256) end
@@ -159,6 +167,14 @@ local function shapes(pc, sc)
 end
 local function fitShift(id, seg)
 	if script:GetAttribute("TrooPartsFitEnabled") == false then return Vector3.zero end
+	if RunService:IsStudio() then -- v1.1: the Studio tryout
+		local trySeg = script:GetAttribute("TrooPartsFitTry_" .. id .. "_" .. tostring(seg))
+		if typeof(trySeg) == "Vector3" then return SEG[seg] and SEG[seg]:VectorToObjectSpace(trySeg) or Vector3.zero end
+		local try = script:GetAttribute("TrooPartsFitTry_" .. id)
+		if typeof(try) == "Vector3" then return SEG[seg] and SEG[seg]:VectorToObjectSpace(try) or Vector3.zero end
+	end
+	local fs = FITSEG[id] and FITSEG[id][seg]
+	if fs and SEG[seg] then return SEG[seg]:VectorToObjectSpace(fs + (FIT[id] or Vector3.zero)) end
 	local f, rest = FIT[id], SEG[seg]
 	if not f or not rest then return Vector3.zero end
 	return rest:VectorToObjectSpace(f)

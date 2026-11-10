@@ -2971,7 +2971,7 @@ end
 --   oLastUntouch 0.7 / 1 (III), oLastGlide (II+), oLastZone (star); oPlumeMax 10 / 14 (II), oPlumeFade 5 / 7 (III), oPlumeSquad
 --   (star); oFortifyMul 0.75 (I+; 1 = off), oFortifyLinger 0 / 1 (II) / 1.4 (III), oFortifySelf (star); oRicochetReach 30 / 40
 --   (II), oRicochetTime 2.2 / 3 (III), oRicochetSize 0.5 / 1 (star: x the main zone radius).
-SkillTree.TROO_PARTS_B2_LIVE = true
+SkillTree.TROO_PARTS_B2_LIVE = false -- parked 2026-11-09 (Kepu: not with the troodon for now); true = the 4 parts live
 if SkillTree.TROO_PARTS and SkillTree.TROO_PARTS_B2_LIVE and SkillTree.PATHS.omender then
 	for _, id in ipairs({"olastfeather", "oplume", "ofortify", "oricochet"}) do
 		if SkillTree.PATHS[id] then
