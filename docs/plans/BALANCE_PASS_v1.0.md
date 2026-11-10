@@ -75,4 +75,4 @@ MDA-355 (headbutt reach), MDA-356 (trapped = no movement moves), MDA-357 (Raptor
 - v593: Troodon glow zone 6 -> 1 per second (TroodonModelData 1.9).
 - Not live: Troodon parts build 2 (3e48b11, 2c2634c) parked with SkillTree.TROO_PARTS_B2_LIVE = false.
 So the plan table's Dilo dart 10 / 3 s venom and Troodon zone 6/s are superseded by these.
-Still not built: MDA-365 (movement parts x0.7), MDA-366 (armor on every attack).
+Built 2026-11-09 (not published): MDA-366 armor on every attack (BoneCrest 1.7 + 17 attack servers), MDA-365 movement parts x0.7 (SkillTree 1.79, SkillEffects 1.54). See VERSIONS.md.
