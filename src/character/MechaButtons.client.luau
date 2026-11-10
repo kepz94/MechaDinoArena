@@ -394,7 +394,9 @@ VERSION = "1.45" -- v1.45 troodon slot parts: Bloom Burst, Shield Dome, Sleep Da
 --   ("TrooPartSleep", DinoTrooSleepRequest, "SLEEP DART"), osentry ("TrooPartSentry", DinoTrooSentryRequest, "SENTRY POD"): PC
 --   keys, gamepad and the touch slots together, recharge fill + seconds like every timed part. The 3 throws send (stamp, the flat
 --   look, the point: the Arc Lantern's rule, body aim 1.42 + Classic 1.40 with CLASSIC_REACH Range keys TrooPartBurstRange 40 /
---   TrooPartDomeRange 30 / TrooPartSentryRange 30, else the crosshair hit); the dart sends (stamp, the flat look: the body facing,
+--   TrooPartDomeRange 30 / TrooPartSentryRange 30, else the crosshair hit; with body aim the point is the body facing x the
+--   part's own landing distance, script attributes MechaButtons_<id>AimReach: oburst 12, odome 12, osentry 18 studs (the mockup's
+--   throws: a full-range landing would leave your own burst / dome out of reach)); the dart sends (stamp, the flat look: the body facing,
 --   else the camera's flat look). Bloom Tank is a passive (no slot, no button). Switch: script attribute
 --   MechaButtonsTrooSlotEnabled (default true, read at start; false = 1.44).
 -- v1.44 (MDA-375, TrooMovesServer 1.10): while the troodon places a Portal Rift (character TrooRiftPlacing true) the oportal
@@ -559,6 +561,10 @@ if TROO_SLOT_BTN then -- v1.45: the troodon slot parts
 	TIMED_PARTS.osleep = {"TrooPartSleep", "DinoTrooSleepRequest", "SLEEP DART"}
 	TIMED_PARTS.osentry = {"TrooPartSentry", "DinoTrooSentryRequest", "SENTRY POD"}
 	CLASSIC_REACH.oburst, CLASSIC_REACH.odome, CLASSIC_REACH.osentry = {"TrooPartBurstRange", 40}, {"TrooPartDomeRange", 30}, {"TrooPartSentryRange", 30}
+end
+local SLOT_AIM_REACH = {oburst = 12, odome = 12, osentry = 18} -- v1.45: the body-aim landing distance (studs)
+for id, v in pairs(SLOT_AIM_REACH) do
+	if script:GetAttribute("MechaButtons_" .. id .. "AimReach") == nil then script:SetAttribute("MechaButtons_" .. id .. "AimReach", v) end
 end
 if script:GetAttribute("MechaButtonsSilenceEnabled") == nil then script:SetAttribute("MechaButtonsSilenceEnabled", true) end -- v1.36
 local function silencedNow() -- v1.36
@@ -1156,7 +1162,9 @@ local function press(n, input)
 			end
 			rp.FilterDescendantsInstances = ex
 			local hit = workspace:Raycast(cam.CFrame.Position, lv * 400, rp)
-			r:FireServer(workspace:GetServerTimeNow(), flatLook, bodyPoint(id) or classicPoint(id) or (hit and hit.Position or nil))
+			local bf = bodyFacing()
+			local near = bf and hrp and (hrp.Position + bf * (tonumber(script:GetAttribute("MechaButtons_" .. id .. "AimReach")) or SLOT_AIM_REACH[id]))
+			r:FireServer(workspace:GetServerTimeNow(), flatLook, near or classicPoint(id) or (hit and hit.Position or nil))
 		end
 		return
 	end
