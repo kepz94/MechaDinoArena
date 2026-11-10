@@ -3237,3 +3237,12 @@ Model numbers are generator output (old version = the flag in the last column, b
 | TrooMovesLanternTracked / TrooMovesLanternTrackLost | TrooMovesServer script | diag | tracked first zaps / locks dropped (dead, out of range or past the leash) |
 | TrooLanternTrack | troodon character | "" | the locked first target's name (set at the press, before TrooLanternAt); TrooLanternTo is re-stamped at the landing |
 | TrooPartsFX_lanternTrackEnabled | TrooPartsFX script | true | the flying lantern homes on TrooLanternTrack; false = 1.2's fixed flight |
+
+## Sap Wall 100 x 30, 8 s (MDA-373; SkillTree 1.81, SkillEffects 1.55, TrooMovesServer 1.9; 2026-11-09)
+| Attribute | Where | Default | Meaning |
+|---|---|---|---|
+| SkillTree.TROO_SAP_PASS / SAP_MAP / SAP_HEIGHT / SAP_TEXTS / SAP_TEXT_MISSES | SkillTree constant | true / table / 30 / table / 0 | oSapWidth 50 / 67.5 -> 74 / 100, oSapTime 2.1 / 2.9 / 4 -> 4.2 / 5.8 / 8, oSapHeight 30; false = 1.80 |
+| TrooPartSapHeight | troodon character (SkillEffects 1.55) | 30 while slotted, 0 off | the wall's height (studs) |
+| SkillEffectsTrooSapHeightEnabled | SkillEffects script | true (read at start) | false = no TrooPartSapHeight (1.54) |
+| TrooMovesSapHeightEnabled | TrooMovesServer script | true (read at each throw) | false = the wall is TrooMoves_sapHeight (18) tall as 1.8 |
+| TrooSapHeight | troodon character | stamp | the thrown wall's height (before TrooSapAt) |

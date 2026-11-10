@@ -1,4 +1,4 @@
--- SkillEffects v1.54 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.55 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -1157,6 +1157,15 @@ local OPARTS = { -- {path id, prefix, {attribute, effect field, off value}...}
 	{"oportal", "TrooPartPortal", {{"Range", "oPortalRange", 0}, {"Time", "oPortalTime", 0}, {"Squad", "oPortalSquad", false},
 		{"Cooldown", "oPortalCooldown", 0}}},
 }
+-- v1.55 (MDA-373, SkillTree 1.81): the Sap Wall's height joins its attributes: TrooPartSap Height (effect oSapHeight, off 0;
+--   TrooMovesServer 1.9 builds the wall that tall, 0 = its own TrooMoves_sapHeight). Switch: script attribute
+--   SkillEffectsTrooSapHeightEnabled (default true, read at start; false = 1.54: no TrooPartSapHeight).
+VERSION = "1.55" -- v1.55 Sap Wall height (MDA-373)
+script:SetAttribute("SkillEffectsVersion", VERSION)
+if script:GetAttribute("SkillEffectsTrooSapHeightEnabled") == nil then script:SetAttribute("SkillEffectsTrooSapHeightEnabled", true) end
+if script:GetAttribute("SkillEffectsTrooSapHeightEnabled") ~= false then
+	table.insert(OPARTS[3][3], {"Height", "oSapHeight", 0})
+end
 do
 	local applyCharV147 = applyChar
 	applyChar = function(char, st)

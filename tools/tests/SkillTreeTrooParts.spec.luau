@@ -1,4 +1,4 @@
--- SkillTreeTrooParts.spec v1.1 (1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
+-- SkillTreeTrooParts.spec v1.2 (1.2: MDA-373 Sap Wall 74 / 100 wide, 4.2 / 5.8 / 8 s, 30 tall; 1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
 -- (plan docs/plans/TROODON_PARTS_v1.0.md ticket 2, MDA-346). Run in Studio Edit (paste into execute_luau, or a copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTrooParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-06 "two builds"): omender / olantern / osapwall / oshed / oportal live; olastfeather / oplume /
@@ -82,8 +82,9 @@ local TEXT = {
 		"Heals for 5.4 s", "Recharges in 14.8 s", "When its target is full it moves on to the next most hurt squadmate"},
 	olantern = {"Button: throw a lantern up to 40 studs; it zaps the nearest enemy near it, then chains to 1 more within 24 studs: 8 damage each. Recharges in 14 s",
 		"Chains reach 32.4 studs", "Recharges in 10.3 s", "Chains to 3 enemies"},
-	osapwall = {"Button: throw a sap pod up to 40 studs: it hardens into a 50-stud wall that blocks dinos and shots for 2.1 s. Recharges in 18 s",
-		"Wall 67.5 studs wide", "Lasts 2.9 s", "Lasts 4 s"},
+	osapwall = ST.TROO_SAP_PASS and {"Button: throw a sap pod up to " .. (ST.SHOT_PASS and "80" or "40") .. " studs: it hardens into a wall 74 studs wide and 30 tall that blocks dinos and shots for 4.2 s. Recharges in 18 s",
+		"Wall 100 studs wide", "Lasts 5.8 s", "Lasts 8 s"} or {"Button: throw a sap pod up to 40 studs: it hardens into a 50-stud wall that blocks dinos and shots for 2.1 s. Recharges in 18 s",
+		"Wall 67.5 studs wide", "Lasts 2.9 s", "Lasts 4 s"}, -- v1.2: MDA-373
 	oshed = {"Button: shed your feathers to break out of a stun, pin or grab; immune to them for 1 s. Recharges in 24 s",
 		"Immune 1.4 s", "Recharges in 17.7 s", "The burst knocks dinos within 20 studs back and slows them 25% for 2 s"},
 	oportal = {"Button: fling two linked feather rings, one just ahead and one up to 40 studs away; walk into one, come out of the other. They last 6 s, you only. Recharges in " .. (ST.MOVE_CD_PASS and "14" or "20") .. " s",
@@ -114,8 +115,9 @@ chk("omender", "oMenderCooldown", {20, 20, 14.8, 14.8})
 chk("olantern", "oLanternRange", {40, 40, 40, 40}); chk("olantern", "oLanternChain", {24, 32.4, 32.4, 32.4})
 chk("olantern", "oLanternTargets", {2, 2, 2, 3}); chk("olantern", "oLanternDamage", {8, 8, 8, 8})
 chk("olantern", "oLanternCooldown", {14, 14, 10.3, 10.3})
-chk("osapwall", "oSapRange", {40, 40, 40, 40}); chk("osapwall", "oSapWidth", {50, 67.5, 67.5, 67.5})
-chk("osapwall", "oSapTime", {2.1, 2.1, 2.9, 4}); chk("osapwall", "oSapCooldown", {18, 18, 18, 18})
+chk("osapwall", "oSapRange", {40, 40, 40, 40}); chk("osapwall", "oSapWidth", ST.TROO_SAP_PASS and {74, 100, 100, 100} or {50, 67.5, 67.5, 67.5}) -- v1.2: MDA-373
+chk("osapwall", "oSapTime", ST.TROO_SAP_PASS and {4.2, 4.2, 5.8, 8} or {2.1, 2.1, 2.9, 4}); chk("osapwall", "oSapCooldown", {18, 18, 18, 18})
+if ST.TROO_SAP_PASS then chk("osapwall", "oSapHeight", {30, 30, 30, 30}); eq("sap text misses", ST.SAP_TEXT_MISSES, 0) end -- v1.2
 chk("oshed", "oShedImmune", {1, 1.4, 1.4, 1.4}); chk("oshed", "oShedCooldown", {24, 24, 17.7, 17.7})
 chk("oshed", "oShedKnockRadius", {0, 0, 0, 20}); chk("oshed", "oShedSlowMul", {1, 1, 1, 0.75})
 chk("oshed", "oShedSlowTime", {0, 0, 0, 2})
@@ -126,7 +128,7 @@ local function up(name, a, b) eq(name .. " >= 1.35x", b >= a * 1.35 - 1e-9, true
 up("mender time II", 4, E({omender = 2}).oMenderTime); up("mender cooldown III", E({omender = 3}).oMenderCooldown, 20)
 up("lantern chain II", 24, E({olantern = 2}).oLanternChain); up("lantern cooldown III", E({olantern = 3}).oLanternCooldown, 14)
 up("lantern targets star", 2, E({olantern = 4}).oLanternTargets)
-up("sap width II", 50, E({osapwall = 2}).oSapWidth); up("sap time III", 2.1, E({osapwall = 3}).oSapTime)
+up("sap width II", E({osapwall = 1}).oSapWidth, E({osapwall = 2}).oSapWidth); up("sap time III", E({osapwall = 2}).oSapTime, E({osapwall = 3}).oSapTime) -- v1.2: from the rank below
 up("sap time star", E({osapwall = 3}).oSapTime, E({osapwall = 4}).oSapTime)
 up("shed immune II", 1, E({oshed = 2}).oShedImmune); up("shed cooldown III", E({oshed = 3}).oShedCooldown, 24)
 up("portal range II", 40, E({oportal = 2}).oPortalRange); up("portal time III", 6, E({oportal = 3}).oPortalTime)

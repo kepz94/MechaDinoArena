@@ -1,4 +1,4 @@
--- TrooMovesServer v1.8 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.9 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -183,6 +183,14 @@ VERSION = "1.8" -- v1.8 Arc Lantern tracks its target (MDA-376)
 --   TrooLanternTo is re-stamped at the landing (the real spot); TrooPartsFX 1.3 homes the flying lantern on TrooLanternTrack.
 --   Switch: script attribute TrooMovesLanternTrackEnabled (default true, read at each press; false = 1.7). Diagnostics: script
 --   TrooMovesLanternTracked (count of tracked zaps), TrooMovesLanternTrackLost (count of locks dropped).
+VERSION = "1.9" -- v1.9 Sap Wall height from the skill (MDA-373)
+-- v1.9 (MDA-373; Kepu 2026-11-09 20:33 "100 wide, 30 tall, 8 s"; SkillTree 1.81 / SkillEffects 1.55): the wall is
+--   TrooPartSapHeight studs tall when that is > 0 (30 at every rank), else TrooMoves_sapHeight (18) as 1.8; width / time come
+--   from TrooPartSapWidth / TrooPartSapTime as before (now 74 / 100 wide, 4.2 / 5.8 / 8 s). The placement check (no wall on a
+--   dino, at the press and at the splat) uses the same height; SapWallBlock (blocks / arcBlocks) and TrooPartsFX read the real
+--   wall parts, so they follow. Stamp: character TrooSapHeight (before TrooSapAt). Switch: script attribute
+--   TrooMovesSapHeightEnabled (default true, read at each throw; false = 1.8: always TrooMoves_sapHeight).
+if script:GetAttribute("TrooMovesSapHeightEnabled") == nil then script:SetAttribute("TrooMovesSapHeightEnabled", true) end -- v1.9
 if script:GetAttribute("TrooMovesLanternTrackEnabled") == nil then script:SetAttribute("TrooMovesLanternTrackEnabled", true) end -- v1.8
 for _, k in ipairs({"TrooMovesLastFeatherEnabled", "TrooMovesRefundEnabled", "TrooMovesPlumeEnabled"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end -- v1.6
@@ -680,8 +688,8 @@ local function wallFrame(center, along)
 	-- X = along the wall (square to the throw), Z = the throw line
 	return CFrame.fromMatrix(center, along, Vector3.yAxis)
 end
-local function occupied(cf, width, char)
-	local half = Vector3.new(width / 2 + cfg("sapClear"), cfg("sapHeight") / 2 + 4, cfg("sapThick") / 2 + cfg("sapClear"))
+local function occupied(cf, width, char, height)
+	local half = Vector3.new(width / 2 + cfg("sapClear"), (height or cfg("sapHeight")) / 2 + 4, cfg("sapThick") / 2 + cfg("sapClear")) -- v1.9: + height
 	local list = everyone(nil)
 	if char and char.Parent then table.insert(list, char) end
 	for _, m in ipairs(list) do
@@ -700,8 +708,9 @@ remote("DinoTrooSapRequest").OnServerEvent:Connect(function(player, stamp, aimDi
 	local to, dir = landing(char, aimDir, aimPoint, math.max(1, num(char, "TrooPartSapRange", 40)))
 	local along = Vector3.yAxis:Cross(dir).Unit
 	local H = math.max(2, cfg("sapHeight"))
+	if script:GetAttribute("TrooMovesSapHeightEnabled") ~= false and num(char, "TrooPartSapHeight", 0) > 0 then H = math.max(2, num(char, "TrooPartSapHeight", 0)) end -- v1.9
 	local cf = wallFrame(to + Vector3.new(0, H / 2, 0), along)
-	if occupied(cf, width, char) then result(char, "TrooPartSap", "occupied", t) return end
+	if occupied(cf, width, char, H) then result(char, "TrooPartSap", "occupied", t) return end
 	ok(char, "TrooPartSap", t)
 	local life = math.max(0.1, num(char, "TrooPartSapTime", 2.1))
 	char:SetAttribute("TrooSapFrom", handPos(char))
@@ -710,13 +719,14 @@ remote("DinoTrooSapRequest").OnServerEvent:Connect(function(player, stamp, aimDi
 	char:SetAttribute("TrooSapFlight", sFly)
 	char:SetAttribute("TrooSapWidth", width)
 	char:SetAttribute("TrooSapTime", life)
+	char:SetAttribute("TrooSapHeight", H) -- v1.9
 	char:SetAttribute("TrooSapAt", t) -- last: TrooPartsFX
 	task.delay(cfg("sapWindup"), function()
 		if not canStill(char) then result(char, "TrooPartSap", "cancelled", now()) return end
 		task.wait(sFly) -- v1.4 (was cfg("sapFly"))
 		local ts = now()
 		char:SetAttribute("TrooSapSplatAt", ts)
-		if occupied(cf, width, char) then
+		if occupied(cf, width, char, H) then -- v1.9: + height
 			char:SetAttribute("TrooSapResult", "occupied")
 			char:SetAttribute("TrooPartSapReadyAt", ts) -- the recharge is given back
 			return
