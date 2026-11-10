@@ -1,0 +1,207 @@
+{
+ "version": "0.1",
+ "when": "2026-11-10T08:05",
+ "looks": {
+  "drum.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 44,
+   "bracketMove": 44,
+   "pieces": 22,
+   "brackets": 2,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "bloom.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 40,
+   "bracketMove": 40,
+   "pieces": 17,
+   "brackets": 4,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "jets.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 40,
+   "bracketMove": 40,
+   "pieces": 15,
+   "brackets": 2,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "horn.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 40,
+   "bracketMove": 40,
+   "pieces": 14,
+   "brackets": 2,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "fan.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 16,
+   "bracketMove": 16,
+   "pieces": 8,
+   "brackets": 1,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "lens.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 40,
+   "bracketMove": 40,
+   "pieces": 7,
+   "brackets": 1,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "burst.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 24,
+   "bracketMove": 24,
+   "pieces": 11,
+   "brackets": 1,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "vent.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 19.2,
+   "bracketMove": 19.2,
+   "pieces": 7,
+   "brackets": 1,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  }
+ },
+ "rec": {},
+ "alt": {
+  "fan": {},
+  "lens": {},
+  "burst": {},
+  "vent": {}
+ },
+ "gaps": {
+  "drum": {
+   "studs": 0.29,
+   "to": "sapwall.B"
+  },
+  "bloom": {
+   "studs": 0.72,
+   "to": "jets.A"
+  },
+  "jets": {
+   "studs": 0.42,
+   "to": "mender.A"
+  },
+  "horn": {
+   "studs": 0.92,
+   "to": "portal.A"
+  },
+  "fan": {
+   "studs": 0.91,
+   "to": "horn.A"
+  },
+  "lens": {
+   "studs": 6.77,
+   "to": "drum.A"
+  },
+  "burst": {
+   "studs": 2.79,
+   "to": "sapwall.B"
+  },
+  "vent": {
+   "studs": 0.23,
+   "to": "bloom.A"
+  }
+ }
+}
