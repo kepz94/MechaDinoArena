@@ -3274,3 +3274,7 @@ Model numbers are generator output (old version = the flag in the last column, b
 | TrooPartsFX_lanternShockEnabled | TrooPartsFX script | true (read at each zap) | the Shock Cannon hit look + body arcs on each zapped dino; false = 1.4 |
 | TrooPartsFX_shockWait / shockArcRate / shockArcLife | TrooPartsFX script | 0.25 / 24 / 0.16 | s to wait for the stun to replicate; body arcs per s; s each arc lives |
 | TrooPartsFXShocks | TrooPartsFX script | diag | count of shock looks started |
+
+## SkillEffects 1.57 (2026-11-10)
+- `SkillEffectsTheriNoSlotEnabled` (script, default true): a therizino part that is not a button part (Overclock Joints, SkillTree 1.84 THERI_CLOCK_NOSLOT) is on whenever it is bought, slotted or not. false = 1.56 (slotted only).
+- SkillTree module switches: `SkillTree.THERI_CLOCK_NOSLOT` (true = Overclock takes no slot), `SkillTree.TROO_PARTS_B2_LIVE` (now false = the troodon's 4 passives removed / soon).

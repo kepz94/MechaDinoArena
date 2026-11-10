@@ -1,4 +1,4 @@
--- SkillEffects v1.56 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.57 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -285,6 +285,10 @@ local ServerStorage = game:GetService("ServerStorage")
 -- v1.43 (therizino moves rework, SkillTree 1.65 snareRange, plan docs/plans/THERIZINO_MOVES_REWORK_v1.0.md, MDA-262): the
 --   TheriSnare row gains Range (effect snareRange, off 0): the bola's reach (TheriMovesServer 1.4). Switch: script attribute
 --   SkillEffectsTheriBolaRangeEnabled (default true, read at start; false = 1.42, no TheriSnareRange).
+-- v1.57 (Kepu 2026-11-10 00:21 "Make zinos one a passive"; SkillTree 1.84 THERI_CLOCK_NOSLOT takes zclock out of BUTTONS): a
+--   therizino part that is not a button part (ST.BUTTONS[id] ~= true, i.e. Overclock Joints) is on whenever it is bought,
+--   slotted or not, like the Herrera's passives (v1.28). Switch: script attribute SkillEffectsTheriNoSlotEnabled (default
+--   true; false = 1.56, slotted only).
 -- v1.44 (Kepu 2026-11-04 17:54 "Make it overclock tier 3 to give you an extra jump", SkillTree 1.66 clockJump): the TheriClock
 --   row gains Jump (effect clockJump, off 0): TheriClockJump, the extra jump charges TheriMovesServer 1.5 adds. Switch: script
 --   attribute SkillEffectsTheriClockJumpEnabled (default true, read at start; false = 1.43, no TheriClockJump).
@@ -1041,6 +1045,7 @@ end
 
 -- v1.42: the therizino's mecha button parts (see the header)
 if script:GetAttribute("SkillEffectsTheriPartsEnabled") == nil then script:SetAttribute("SkillEffectsTheriPartsEnabled", true) end
+if script:GetAttribute("SkillEffectsTheriNoSlotEnabled") == nil then script:SetAttribute("SkillEffectsTheriNoSlotEnabled", true) end -- v1.57
 local ZPARTS = { -- {path id, prefix, {attribute, effect field, off value}...}
 	{"zhook", "TheriHook", {{"Range", "hookRange", 0}, {"Cone", "hookCone", 0}, {"Stun", "hookStun", 0}, {"Cut", "hookCut", false},
 		{"Cooldown", "hookCooldown", 0}}},
@@ -1072,7 +1077,8 @@ do
 		end
 		for _, def in ipairs(ZPARTS) do
 			local id, prefix = def[1], def[2]
-			local pOn = partsOn and on() and isTheri and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and inSlot(id)
+			local noSlot = script:GetAttribute("SkillEffectsTheriNoSlotEnabled") ~= false and ST.BUTTONS[id] ~= true -- v1.57: a no-slot passive (zclock) is on when bought
+			local pOn = partsOn and on() and isTheri and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and (inSlot(id) or noSlot)
 			for _, f in ipairs(def[3]) do
 				local v = f[3]
 				if pOn and e[f[2]] ~= nil then v = e[f[2]] end
@@ -1170,6 +1176,7 @@ end
 --   RiftCooldown (effects oRiftLength / oRiftTime / oRiftCooldown, off 0; TrooMovesServer 1.10). Switch: script attribute
 --   SkillEffectsTrooRiftEnabled (default true, read at start; false = 1.55).
 VERSION = "1.56" -- v1.56 Portal Rift numbers (MDA-375)
+VERSION = "1.57" -- v1.57 Therizino Overclock Joints on when bought (no-slot passive)
 script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsTrooRiftEnabled") == nil then script:SetAttribute("SkillEffectsTrooRiftEnabled", true) end
 if script:GetAttribute("SkillEffectsTrooRiftEnabled") ~= false then

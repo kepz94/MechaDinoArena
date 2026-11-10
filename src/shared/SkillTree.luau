@@ -1,4 +1,4 @@
--- SkillTree v1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.84 (1.84 Therizino Overclock Joints = no-slot passive (THERI_CLOCK_NOSLOT) + the troodon's 4 passives removed (TROO_PARTS_B2_LIVE = false); 1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2971,7 +2971,7 @@ end
 --   oLastUntouch 0.7 / 1 (III), oLastGlide (II+), oLastZone (star); oPlumeMax 10 / 14 (II), oPlumeFade 5 / 7 (III), oPlumeSquad
 --   (star); oFortifyMul 0.75 (I+; 1 = off), oFortifyLinger 0 / 1 (II) / 1.4 (III), oFortifySelf (star); oRicochetReach 30 / 40
 --   (II), oRicochetTime 2.2 / 3 (III), oRicochetSize 0.5 / 1 (star: x the main zone radius).
-SkillTree.TROO_PARTS_B2_LIVE = true -- v1.80: back on 2026-11-09 19:37 (Kepu: "Turn the other ones on too I want to test"); was parked 17:5x; false = parked
+SkillTree.TROO_PARTS_B2_LIVE = false -- v1.84: removed 2026-11-10 00:21 (Kepu: "remove the 4 for the troodon"; new ones to be designed). Soon paths sanitize to 0 steps, so points spent on them come back and slots holding them empty (sanitize / sanitizeLoadout). true = v1.80 test state
 if SkillTree.TROO_PARTS and SkillTree.TROO_PARTS_B2_LIVE and SkillTree.PATHS.omender then
 	for _, id in ipairs({"olastfeather", "oplume", "ofortify", "oricochet"}) do
 		if SkillTree.PATHS[id] then
@@ -3181,6 +3181,17 @@ do
 		end
 		return e
 	end
+end
+
+
+-- v1.84 (Kepu 2026-11-10 00:21 "Make zinos one a passive"; rule: a passive has no button and takes no mecha slot, like the
+--   raptor's Blade Claws): SkillTree.THERI_CLOCK_NOSLOT (default true; false = 1.83, Overclock sits in a slot): zclock leaves
+--   BUTTONS, so sanitizeLoadout / setSlot never keep it in a slot (a saved slot holding it comes back empty), and SkillEffects
+--   1.57 turns it on whenever it is BOUGHT (SkillEffectsTheriNoSlotEnabled). Step 1 text says so; numbers unchanged.
+SkillTree.THERI_CLOCK_NOSLOT = true
+if SkillTree.THERI_PARTS and SkillTree.PATHS.zclock and SkillTree.THERI_CLOCK_NOSLOT then
+	SkillTree.BUTTONS.zclock = nil
+	SkillTree.PATHS.zclock.steps[1] = "Passive (no slot, no button): always on once bought: run 40% faster"
 end
 
 return SkillTree

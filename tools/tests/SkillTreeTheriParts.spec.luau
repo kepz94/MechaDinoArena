@@ -1,4 +1,4 @@
--- SkillTreeTheriParts.spec v1.8 (1.8: MDA-365 Dash 4.2 / 3 s; 1.7: Bola reach 60 / 80, SkillTree 1.71 THERI_BOLA_RANGE_V2, MDA-324; 1.6: feather range 35 / 40 / 50, SkillTree 1.67; 1.5: Overclock III extra jump, SkillTree 1.66; 1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
+-- SkillTreeTheriParts.spec v1.9 (1.9: Overclock Joints = no-slot passive, SkillTree 1.84 THERI_CLOCK_NOSLOT; 1.8: MDA-365 Dash 4.2 / 3 s; 1.7: Bola reach 60 / 80, SkillTree 1.71 THERI_BOLA_RANGE_V2, MDA-324; 1.6: feather range 35 / 40 / 50, SkillTree 1.67; 1.5: Overclock III extra jump, SkillTree 1.66; 1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.61 (plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheriParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-04 "Two builds"): zhook / zfeather / zharvest / zsnare live; zgrapple / zdeflect / zclock "soon".
@@ -44,7 +44,16 @@ for id, want in pairs(ROWS) do
 		eq(id .. " is a part", P[id].mech, true)
 		eq(id .. " soon", P[id].soon == true, want[3])
 		eq(id .. " live", ST.LIVE_MECH[id] == true, not want[3])
-		eq(id .. " button", ST.BUTTONS[id], true)
+		if id == "zclock" and ST.THERI_CLOCK_NOSLOT then -- v1.9: Overclock is a no-slot passive (SkillTree 1.84)
+			eq(id .. " no slot (passive)", ST.BUTTONS[id], nil)
+			eq(id .. " passive text", P[id].steps[1]:find("Passive", 1, true) ~= nil, true)
+			local lo = ST.setSlot({false, false, false, false}, {zclock = 1}, 1, "zclock", "Therizino")
+			eq(id .. " can't be slotted", lo, nil)
+			local cl = ST.sanitizeLoadout({"zclock", false, false, false}, {zclock = 1}, "Therizino")
+			eq(id .. " old slot comes back empty", cl[1], false)
+		else
+			eq(id .. " button", ST.BUTTONS[id], true)
+		end
 		eq(id .. " steps", #P[id].steps, 4)
 		eq(id .. " owner", ST.OWNER[id], "Therizino")
 		eq(id .. " in order", table.find(ST.PATH_ORDER, id) ~= nil, true)
