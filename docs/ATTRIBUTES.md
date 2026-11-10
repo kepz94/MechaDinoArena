@@ -3278,3 +3278,13 @@ Model numbers are generator output (old version = the flag in the last column, b
 ## SkillEffects 1.57 (2026-11-10)
 - `SkillEffectsTheriNoSlotEnabled` (script, default true): a therizino part that is not a button part (Overclock Joints, SkillTree 1.84 THERI_CLOCK_NOSLOT) is on whenever it is bought, slotted or not. false = 1.56 (slotted only).
 - SkillTree module switches: `SkillTree.THERI_CLOCK_NOSLOT` (true = Overclock takes no slot), `SkillTree.TROO_PARTS_B2_LIVE` (now false = the troodon's 4 passives removed / soon).
+
+## Troodon slot parts (2026-11-10, plan docs/plans/TROODON_SLOTPARTS_v1.0.md, MDA-378..383)
+- SkillTree 1.85 module switch `SkillTree.TROO_SLOT_PARTS` (true): paths obloom (Bloom Tank, passive, no slot), oburst, odome, osleep, osentry (buttons).
+- SkillEffects 1.58 `SkillEffectsTrooSlotEnabled` (script, true). Character attributes written: `TrooPartBloom` Radius / Time / End / EndHeal / EndSlow (when bought), `TrooPartBurst` Range / Heal / Radius / Boost / Time / Cut / Cooldown, `TrooPartDome` Range / Radius / Time / Cooldown, `TrooPartSleep` Range / Time / Cooldown / Split, `TrooPartSentry` Range / Reach / Time / Damage / Rate / Shots / Cooldown (when bought AND slotted), each + `Enabled`; diagnostic `TrooSlotPartsOn`.
+- TrooSlotServer 1.0 (script): `TrooSlotServerEnabled`, `TrooSlot_<id>Enabled`, `TrooSlotModeRulesEnabled`, `TrooSlotSquadEnabled`, `TrooSlotHealWatchEnabled`, `TrooSlotSleepWakeEnabled`, `TrooSlotArmorAllEnabled` (all true); numbers `TrooSlot_throwWindup` 0.34, `burstFly` 0.45, `domeFly` 0.45, `domeOpen` 0.2, `domeGrow` 0.35, `domeShrink` 0.3, `sleepWindup` 0.3, `sleepSpeed` 150, `sleepSplitDelay` 0.2, `sentryFly` 0.5, `sentryOpen` 0.15, `sentryFirstShot` 0.5, `sentryScale` 7, `sentryShotSpeed` 220, `sentryPair` 0.07, `healWatchMaxFrac` 0.6; Studio-only `TrooSlotTestAllyName`. Stamps: `TrooBurst*`, `TrooDome*`, `TrooSleep*`, `TrooSentry*`, `TrooBloomPulse*`, `TrooBloomBaseRadius / BaseTime`; on targets `TrooBoostUntil / Mul`, `TrooHealCutUntil / Mul`, `TrooSleepUntil / By / At / WokeAt`.
+- SapWallBlock 1.3 `SapWallDomeEnabled` (script, true): live Shield Domes (tag `TrooDome`, `TrooDomeUntil`) block lines / arcs that enter them.
+- TrooPartsServer 1.2 `TrooPartsSlotLooksEnabled` (script, true), `TrooParts_<id>Enabled` for the 5 looks.
+- TrooSlotFX 1.0 (client script): `TrooSlotFXEnabled`, `TrooSlotFX_<id>Enabled`.
+- TrooPose 1.7 module switch `TrooPose.SLOT_POSES` (true).
+- MechaButtons 1.45 `MechaButtonsTrooSlotEnabled` (true), `MechaButtons_oburstAimReach` 12, `_odomeAimReach` 12, `_osentryAimReach` 18 (body-aim landing distance). AbilityBar 1.39 `AbilityBarTrooSlotEnabled` (true).
