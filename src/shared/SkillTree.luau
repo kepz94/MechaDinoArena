@@ -1,4 +1,4 @@
--- SkillTree v1.77 (1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.78 (1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -2960,6 +2960,47 @@ do
 		local s = SkillTree.sanitize(steps, dino)
 		local vb = math.clamp(s.venombite or 0, 0, 4)
 		if vb >= 1 then e.spitVenomAddTime = SkillTree.DILO_SPIT_ADD_TIME[vb] end
+		return e
+	end
+end
+
+-- v1.78 (troodon parts build 2, MDA-349, plan docs/plans/TROODON_PARTS_v1.0.md ticket 5; Kepu 2026-11-09 17:17 "Build all of them" (the 4 always-on troodon parts) + "Use the references we chose from the previous mockups"):
+--   SkillTree.TROO_PARTS_B2_LIVE (default true; false = 1.77): olastfeather / oplume / ofortify / oricochet lose `soon` and become
+--   LIVE_MECH (buyable, slottable; they stay in BUTTONS, so each takes a slot). Texts unchanged (the plan's table). effects()
+--   writes ONLY new o* fields (troodon only; off values elsewhere / unbought):
+--   oLastUntouch 0.7 / 1 (III), oLastGlide (II+), oLastZone (star); oPlumeMax 10 / 14 (II), oPlumeFade 5 / 7 (III), oPlumeSquad
+--   (star); oFortifyMul 0.75 (I+; 1 = off), oFortifyLinger 0 / 1 (II) / 1.4 (III), oFortifySelf (star); oRicochetReach 30 / 40
+--   (II), oRicochetTime 2.2 / 3 (III), oRicochetSize 0.5 / 1 (star: x the main zone radius).
+SkillTree.TROO_PARTS_B2_LIVE = true
+if SkillTree.TROO_PARTS and SkillTree.TROO_PARTS_B2_LIVE and SkillTree.PATHS.omender then
+	for _, id in ipairs({"olastfeather", "oplume", "ofortify", "oricochet"}) do
+		if SkillTree.PATHS[id] then
+			SkillTree.PATHS[id].soon = nil
+			SkillTree.LIVE_MECH[id] = true
+		end
+	end
+end
+do
+	local effectsPre178 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre178(steps, dino)
+		if type(e) ~= "table" then return e end
+		if not SkillTree.TROO_PARTS or not SkillTree.PATHS.olastfeather then return e end
+		local live = SkillTree.TROO_PARTS_B2_LIVE and dino == "Troodon"
+		local s = live and SkillTree.sanitize(steps, dino) or {}
+		local lf, pl, fo, ri = s.olastfeather or 0, s.oplume or 0, s.ofortify or 0, s.oricochet or 0
+		e.oLastUntouch = lf >= 3 and 1 or (lf >= 1 and 0.7 or 0)
+		e.oLastGlide = lf >= 2
+		e.oLastZone = lf >= 4
+		e.oPlumeMax = pl >= 2 and 14 or (pl >= 1 and 10 or 0)
+		e.oPlumeFade = pl >= 3 and 7 or (pl >= 1 and 5 or 0)
+		e.oPlumeSquad = pl >= 4
+		e.oFortifyMul = fo >= 1 and 0.75 or 1
+		e.oFortifyLinger = fo >= 3 and 1.4 or (fo >= 2 and 1 or 0)
+		e.oFortifySelf = fo >= 4
+		e.oRicochetReach = ri >= 2 and 40 or (ri >= 1 and 30 or 0)
+		e.oRicochetTime = ri >= 3 and 3 or (ri >= 1 and 2.2 or 0)
+		e.oRicochetSize = ri >= 4 and 1 or (ri >= 1 and 0.5 or 0)
 		return e
 	end
 end

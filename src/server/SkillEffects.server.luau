@@ -1,4 +1,4 @@
--- SkillEffects v1.51 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
+-- SkillEffects v1.52 (Mecha Dino Arena) — turns the bought skill-tree steps into game effects. MDA-13, plan
 -- docs/plans/SKILLTREES_v1.0.md Task 3, ADR "Skill trees own XP and replace class stat points".
 -- Reads each player's SkillPath_<pathId> attributes (SkillServer 1.0) through ServerStorage.DinoArcade.SkillTree
 -- .effects and writes only attributes existing scripts already read, plus its own shield / bleed bookkeeping:
@@ -341,6 +341,14 @@ VERSION = "1.47" -- v1.47 troodon keeps its flap / glide values
 VERSION = "1.48" -- v1.48 troodon button parts (OPARTS)
 VERSION = "1.49" -- v1.49 Sap Wall: no hit bleed / crush through it
 VERSION = "1.51" -- v1.51 dilo spit only: DiloSpitGap + spit poison (1.50 was withdrawn before install, never shipped)
+VERSION = "1.52" -- v1.52 troodon always-on parts (build 2)
+-- v1.52 (MDA-349, SkillTree 1.78; Kepu 2026-11-09 17:17 "Build all of them" (the 4 always-on troodon parts) + "Use the references we chose from the previous mockups"): the 4 troodon always-on parts write their
+--   TrooPart<Name><Field> attributes on the same rule as 1.48's buttons (bought AND slotted AND Species "Troodon", not soon):
+--   TrooPartLastFeather (Untouch, Glide, Zone), TrooPartPlume (Max, Fade, Squad), TrooPartFortify (Mul, Linger, Self),
+--   TrooPartRicochet (Reach, Time, Size), each + Enabled; off values otherwise (0 / false; Mul 1). Read by TrooPartsServer 1.0
+--   (looks, already keyed on the Enabled flags), TrooMovesServer 1.6 / TrooAttackServer 1.4 (rules), TrooPartsFX 1.3.
+--   Switch: script attribute SkillEffectsTrooPassivesEnabled (default true, read at each write; false = 1.51 plus the off
+--   values written). Diagnostic: character TrooPassivesSlotted (the ids written on, comma list).
 -- v1.51 (MDA-360, SkillTree 1.75 DILO_SPIT_ONLY, DiloModelData 1.7; Kepu 2026-11-09 dilo spit only, Venom Bite "Becomes spit
 --   poison"): on a dilo the spit numbers also cover DiloSpitGap (captured as SkillDiloBase_DiloSpitGap like the others; written
 --   = Quick Draw's spitGap when > 0, else the base), and DILO_ATTRS also writes DiloSpitVenomAddDps / DiloSpitVenomAddTime
@@ -1167,6 +1175,52 @@ do
 	end
 end
 
+-- v1.52: the troodon's always-on parts (see the v1.52 notes)
+if script:GetAttribute("SkillEffectsTrooPassivesEnabled") == nil then script:SetAttribute("SkillEffectsTrooPassivesEnabled", true) end
+local OPASSIVES = {
+	{"olastfeather", "TrooPartLastFeather", {{"Untouch", "oLastUntouch", 0}, {"Glide", "oLastGlide", false}, {"Zone", "oLastZone", false}}},
+	{"oplume", "TrooPartPlume", {{"Max", "oPlumeMax", 0}, {"Fade", "oPlumeFade", 0}, {"Squad", "oPlumeSquad", false}}},
+	{"ofortify", "TrooPartFortify", {{"Mul", "oFortifyMul", 1}, {"Linger", "oFortifyLinger", 0}, {"Self", "oFortifySelf", false}}},
+	{"oricochet", "TrooPartRicochet", {{"Reach", "oRicochetReach", 0}, {"Time", "oRicochetTime", 0}, {"Size", "oRicochetSize", 0}}},
+}
+do
+	local applyCharV151 = applyChar
+	applyChar = function(char, st)
+		applyCharV151(char, st)
+		local isTroo = char:GetAttribute("Species") == "Troodon"
+		if not isTroo and char:GetAttribute("TrooPartLastFeatherEnabled") == nil then return end
+		local partsOn = script:GetAttribute("SkillEffectsTrooPassivesEnabled") ~= false and ST.TROO_PARTS == true
+			and ST.TROO_PARTS_B2_LIVE == true
+		local e = {}
+		if partsOn and isTroo then
+			local steps = {}
+			for _, id in ipairs(ST.PATH_ORDER) do steps[id] = st.player:GetAttribute("SkillPath_" .. id) end
+			e = ST.effects(steps, "Troodon") or {}
+		end
+		local function inSlot(id)
+			for n = 1, ST.SLOTS or 2 do
+				if st.player:GetAttribute("SkillSlot" .. n) == id then return true end
+			end
+			return false
+		end
+		local list = {}
+		for _, def in ipairs(OPASSIVES) do
+			local id, prefix = def[1], def[2]
+			local pOn = partsOn and on() and isTroo and ST.PATHS[id] ~= nil and not ST.PATHS[id].soon
+				and (tonumber(st.player:GetAttribute("SkillPath_" .. id)) or 0) >= 1 and inSlot(id)
+			for _, f in ipairs(def[3]) do
+				local v = f[3]
+				if pOn and e[f[2]] ~= nil then v = e[f[2]] end
+				if char:GetAttribute(prefix .. f[1]) ~= v then char:SetAttribute(prefix .. f[1], v) end
+			end
+			if char:GetAttribute(prefix .. "Enabled") ~= (pOn == true) then char:SetAttribute(prefix .. "Enabled", pOn == true) end
+			if pOn then table.insert(list, id) end
+		end
+		local diag = table.concat(list, ",")
+		if char:GetAttribute("TrooPassivesSlotted") ~= diag then char:SetAttribute("TrooPassivesSlotted", diag) end
+	end
+end
+
 -- healing (regen / lifesteal), overflow into the shield
 local function heal(char, st, amount, source)
 	local hum = st.hum
@@ -1515,5 +1569,8 @@ script:GetAttributeChangedSignal("SkillEffectsDiloPartsEnabled"):Connect(functio
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)
 script:GetAttributeChangedSignal("SkillEffectsTrooPartsEnabled"):Connect(function() -- v1.48
+	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
+end)
+script:GetAttributeChangedSignal("SkillEffectsTrooPassivesEnabled"):Connect(function() -- v1.52
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)

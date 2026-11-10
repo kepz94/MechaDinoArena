@@ -1,4 +1,4 @@
--- TrooAttackServer v1.3 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
+-- TrooAttackServer v1.4 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
 -- docs/plans/TROODON_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/troodon_kit_options_v0.1.html attack A
 -- (Kepu 2026-11-06 15:38: "Let's go with your recommendations": attack A, the proposed numbers; red-team "Lead the target").
 -- Patterns copied, not edited: DiloAttackServer 1.5 (request -> checks -> timed resolve, soft aim, targets, mode / squad
@@ -561,6 +561,196 @@ local function release(player, char, st)
 			return
 		end
 		makeZone(c, to, now())
+	end)
+end
+
+-- v1.4 (troodon parts build 2, MDA-349, plan docs/plans/TROODON_PARTS_v1.0.md ticket 5; Kepu 2026-11-09 17:17 "Build all of them" + "Use the references we chose from the previous mockups"):
+--   the always-on parts that live in the throw / zones (SkillEffects 1.52 writes TrooPart<Name>* on the troodon):
+--   * Ricochet Pod (TrooPartRicochetEnabled): after a pod's zone is made (not a bounce's own zone, not a dropped zone), the
+--     nearest enemy (harmable, not an ally) whose root is outside that zone and within TrooPartRicochetReach (30 / 40 studs,
+--     flat from the splat) gets a bounce: from the splat + 1.5 x scale up to the ground under its root led by its flat velocity
+--     x TrooAttackRicochetFlight (0.47 s, the mockup's B2 - SPLAT); stamps on the troodon TrooRicochetFrom, TrooRicochetTo,
+--     TrooRicochetFlight, TrooRicochetTarget, then TrooRicochetAt (last). After the flight (a Sap Wall on the arc, peak
+--     TrooAttackRicochetArc 6 x scale / 2, stops it: TrooRicochetWallAt) a second zone with every rule of the first (splat,
+--     ticks, heals, self-heal, slow), radius = TrooZoneRadius x TrooPartRicochetSize (0.5; 1 at star) x scale, life
+--     TrooPartRicochetTime (2.2 s; 3 at III; ticks = whole seconds); it does not stamp TrooZone* (TrooFX keeps the first zone);
+--     stamps TrooRicochetZoneCenter, TrooRicochetZoneRadius (studs), TrooRicochetZoneUntil, then TrooRicochetZoneAt (last).
+--     Switch: script attribute TrooAttackRicochetEnabled. Diagnostic: script TrooRicochetBounces, TrooRicochetZones.
+--   * Fortify Field (TrooPartFortifyEnabled): every FORTIFY_TICK (0.2) s, each live zone of a troodon with the part: its
+--     allies inside (squadmates; the Studio test ally) and, with TrooPartFortifySelf (star), the troodon itself inside its own
+--     zone get TrooFortifyMul (TrooPartFortifyMul 0.75), TrooFortifyBy, TrooFortifyUntil = now + FORTIFY_HOLD (0.3) +
+--     TrooPartFortifyLinger (0 / 1 / 1.4 s), and TrooFortifyAt = now when it was not fortified a moment ago (last; FX).
+--     TrooMovesServer 1.6 gives back drop x (1 - mul) of each hit while TrooFortifyUntil > now. Switch: script attribute
+--     TrooAttackFortifyEnabled. Diagnostic: script TrooFortifyStarts.
+--   * Overheal Plume: the zone heals and the self-heal hand the part that did not fit (heal - added) to
+--     TrooPassives.plumeAdd(zone owner, target, overflow, now, Studio test ally). Switch: script attribute
+--     TrooAttackPlumeEnabled.
+--   * BindableFunction TrooZoneDrop(char, centre) under this script (Last Feather star, TrooMovesServer 1.6): a main-size
+--     zone from the character's own numbers at the ground under centre (no bounce), stamped like a pod's (TrooZone*). Switch:
+--     script attribute TrooAttackZoneDropEnabled. Diagnostic: script TrooZoneDrops.
+--   Every switch defaults true and is read at each use; false = 1.3 for that part.
+VERSION = "1.4" -- v1.4 troodon always-on parts: Ricochet Pod, Fortify Field, Overheal Plume, TrooZoneDrop
+for _, k in ipairs({"TrooAttackRicochetEnabled", "TrooAttackFortifyEnabled", "TrooAttackPlumeEnabled", "TrooAttackZoneDropEnabled"}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
+end
+if script:GetAttribute("TrooAttackRicochetFlight") == nil then script:SetAttribute("TrooAttackRicochetFlight", 0.47) end
+if script:GetAttribute("TrooAttackRicochetArc") == nil then script:SetAttribute("TrooAttackRicochetArc", 6) end
+script:SetAttribute("TrooAttackServerVersion", VERSION)
+local passivesMod
+local function passives()
+	if passivesMod == nil then
+		passivesMod = false
+		pcall(function() passivesMod = require(ServerStorage:WaitForChild("DinoArcade", 5):WaitForChild("TrooPassives", 5)) end)
+	end
+	return passivesMod or nil
+end
+-- Overheal Plume on the zone heals (the zone owner is the healer)
+do
+	local curOwner
+	local healV13 = heal
+	heal = function(m, amount)
+		local added = healV13(m, amount)
+		if curOwner and amount > added and script:GetAttribute("TrooAttackPlumeEnabled") ~= false then
+			local P = passives()
+			if P then pcall(P.plumeAdd, curOwner, m, amount - added, now(), testAlly(m)) end
+		end
+		return added
+	end
+	local splatV13, tickV13 = splat, tick
+	splat = function(z, t)
+		local prev = curOwner
+		curOwner = srcChar(z)
+		local ok, r = pcall(splatV13, z, t)
+		curOwner = prev
+		if not ok then warn("TrooAttackServer splat: " .. tostring(r)) return 0 end
+		return r
+	end
+	tick = function(z, t)
+		local prev = curOwner
+		curOwner = srcChar(z)
+		local ok, r = pcall(tickV13, z, t)
+		curOwner = prev
+		if not ok then warn("TrooAttackServer tick: " .. tostring(r)) end
+	end
+end
+-- the 1.0 makeZone without the owner's TrooZone* stamps (the bounce's own zone)
+local function makeZoneQuiet(c, to, t)
+	nextId += 1
+	local owner = c.owner
+	local s = c.scale
+	local life = math.max(0.5, c.zoneTime)
+	local z = {id = nextId, owner = owner, player = c.player, ownerName = owner.Name, ownerId = c.player and c.player.UserId or 0,
+		center = to, radius = math.max(0.25, c.radius) * s, dyMax = 10 * s, startT = t, untilT = t + life, ticks = 0,
+		maxTicks = math.floor(life + 1e-6), dps = math.max(0, c.dps), heal = math.max(0, c.heal), podDamage = math.max(0, c.podDamage),
+		selfHeal = math.max(0, c.selfHeal), slowMul = math.clamp(c.slowMul, 0.05, 1), kind = "ricochet"}
+	table.insert(zones, z)
+	splat(z, t)
+	return z
+end
+-- Ricochet Pod: the bounce after a pod's zone
+do
+	local makeZoneV13 = makeZone
+	makeZone = function(c, to, t)
+		local z = makeZoneV13(c, to, t)
+		local o = c.owner
+		if c.noBounce or script:GetAttribute("TrooAttackRicochetEnabled") == false or not (o and o.Parent)
+			or o:GetAttribute("TrooPartRicochetEnabled") ~= true then return z end
+		local reach = math.max(0, num(o, "TrooPartRicochetReach", 0))
+		local best, bd
+		for _, m in ipairs(everyone(o)) do
+			if not isAlly(z, m) and mayHarm(z, m) and not inside(z, m) then
+				local r = rootOf(m)
+				local d = r and flat(r.Position - to).Magnitude
+				if d and d <= reach and (not bd or d < bd) then best, bd = m, d end
+			end
+		end
+		if not best then return z end
+		local flight = math.clamp(tonumber(script:GetAttribute("TrooAttackRicochetFlight")) or 0.47, 0.05, 2)
+		local tr = rootOf(best)
+		local aim = tr.Position + flat(tr.AssemblyLinearVelocity) * flight
+		local from = to + Vector3.yAxis * 1.5 * c.scale
+		local to2 = groundBelow(aim)
+		o:SetAttribute("TrooRicochetFrom", from)
+		o:SetAttribute("TrooRicochetTo", to2)
+		o:SetAttribute("TrooRicochetFlight", flight)
+		o:SetAttribute("TrooRicochetTarget", best.Name)
+		o:SetAttribute("TrooRicochetAt", t) -- last: TrooPartsFX
+		count("TrooRicochetBounces")
+		task.delay(flight, function()
+			local peak = (tonumber(script:GetAttribute("TrooAttackRicochetArc")) or 6) * c.scale / 2
+			if sapArcBlocked(from, to2, peak) then
+				if o.Parent then o:SetAttribute("TrooRicochetWallAt", now()) end
+				return
+			end
+			local c2 = table.clone(c)
+			c2.radius = c.radius * math.clamp(num(o, "TrooPartRicochetSize", 0.5), 0.05, 1)
+			c2.zoneTime = math.max(0.5, num(o, "TrooPartRicochetTime", 2.2))
+			c2.noBounce = true
+			local t2 = now()
+			local z2 = makeZoneQuiet(c2, to2, t2)
+			count("TrooRicochetZones")
+			if o.Parent then
+				o:SetAttribute("TrooRicochetZoneCenter", to2)
+				o:SetAttribute("TrooRicochetZoneRadius", z2.radius)
+				o:SetAttribute("TrooRicochetZoneUntil", z2.untilT)
+				o:SetAttribute("TrooRicochetZoneAt", t2) -- last: TrooPartsFX
+			end
+		end)
+		return z
+	end
+end
+-- Last Feather star: TrooZoneDrop
+do
+	local fn = Instance.new("BindableFunction")
+	fn.Name = "TrooZoneDrop"
+	fn.OnInvoke = function(char, centre)
+		if script:GetAttribute("TrooAttackZoneDropEnabled") == false then return false end
+		if typeof(char) ~= "Instance" or not char:IsA("Model") or typeof(centre) ~= "Vector3" then return false end
+		local player = Players:GetPlayerFromCharacter(char)
+		local c = {owner = char, player = player, scale = scaleOf(char), radius = get(char, "TrooZoneRadius"),
+			zoneTime = get(char, "TrooZoneTime"), dps = get(char, "TrooZoneDps"), heal = get(char, "TrooZoneHeal"),
+			podDamage = get(char, "TrooPodDamage"), selfHeal = get(char, "TrooSelfHeal"), slowMul = get(char, "TrooZoneSlowMul"),
+			noBounce = true}
+		makeZone(c, groundBelow(centre), now())
+		count("TrooZoneDrops")
+		return true
+	end
+	fn.Parent = script
+end
+-- Fortify Field: stamps on the allies inside the zones
+do
+	local FORTIFY_TICK, FORTIFY_HOLD = 0.2, 0.3
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		acc += dt
+		if acc < FORTIFY_TICK then return end
+		acc = 0
+		if script:GetAttribute("TrooAttackFortifyEnabled") == false or #zones == 0 then return end
+		local t = now()
+		for _, z in ipairs(zones) do
+			local o = srcChar(z)
+			if t < z.untilT and o and o.Parent and o:GetAttribute("TrooPartFortifyEnabled") == true then
+				local mul = math.clamp(num(o, "TrooPartFortifyMul", 1), 0, 1)
+				if mul < 1 then
+					local untilT = t + FORTIFY_HOLD + math.max(0, num(o, "TrooPartFortifyLinger", 0))
+					local list = {}
+					for _, m in ipairs(everyone(o)) do
+						if isAlly(z, m) and inside(z, m) then table.insert(list, m) end
+					end
+					if o:GetAttribute("TrooPartFortifySelf") == true and inside(z, o) then table.insert(list, o) end
+					for _, m in ipairs(list) do
+						local was = num(m, "TrooFortifyUntil", 0)
+						m:SetAttribute("TrooFortifyMul", mul)
+						m:SetAttribute("TrooFortifyBy", o.Name)
+						if untilT > was then m:SetAttribute("TrooFortifyUntil", untilT) end
+						if was <= t then
+							m:SetAttribute("TrooFortifyAt", t) -- last: TrooPartsFX
+							count("TrooFortifyStarts")
+						end
+					end
+				end
+			end
+		end
 	end)
 end
 

@@ -1,4 +1,4 @@
--- TrooMovesServer v1.5 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.6 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -140,6 +140,33 @@ local function snareBlocked(char) -- v1.5: Snare Wires bola / Reaper Hook hold
 	return on
 end
 local SNARE_MOVES = {oportal = true} -- v1.5: the movement parts
+VERSION = "1.6" -- v1.6 always-on parts: Last Feather, Fortify / Plume refunds, plume on Mender heals
+-- v1.6 (troodon parts build 2, MDA-349, plan docs/plans/TROODON_PARTS_v1.0.md ticket 5; Kepu 2026-11-09 17:17 "Build all of them" + "Use the references we chose from the previous mockups"):
+--   * Health watcher (every player character, any species; in Studio also every bot, for the test ally): on each Humanoid
+--     health drop (not this script's own write; bots: DummyHealth):
+--     - Last Feather untouchable window (TrooLastFeatherUntil > now): the whole drop is given back;
+--     - a drop to 0 while the troodon's Last Feather is ready (TrooLastFeatherReady): health = 1 (the hit does not kill: the
+--       Humanoid's Dead state is switched off here and on the owner's client (TrooLastFeather 1.0) while the part is ready or
+--       the window is open; Studio check 2026-11-09: a hit for 105 on 55 HP left 1 HP, no Died, the client alive);
+--       TrooLastFeatherUsed = true (once per life; a respawn is a new character), the window TrooPartLastFeatherUntouch (0.7 /
+--       1 s) with an invisible ForceField "TrooLastFeatherField" (blocks Humanoid:TakeDamage) and full refunds, then
+--       TrooLastFeatherUntil, TrooLastFeatherGlide (TrooPartLastFeatherGlide, II: the owner's client launches into the glide),
+--       TrooLastFeatherAt = now (last; client + TrooPartsFX); star (TrooPartLastFeatherZone): TrooAttackServer 1.4's
+--       TrooZoneDrop(char, root) drops a glow zone where it stood. Note: an Arena attacker whose hit took the DummyHealth copy
+--       to 0 still stamps its kill record (as Energy Shield / Pachy Last Stand);
+--     - otherwise (health after > 0): Fortify (TrooFortifyUntil > now): refund f = drop x (1 - TrooFortifyMul); Plume
+--       (TrooPlumeUntil > now, TrooPlume > 0): soak s = min(TrooPlume, drop - f), TrooPlume -= s; health = min(max, health + f +
+--       s). Stamps: TrooFortifySaved (0.1 steps) + TrooFortifySavedAt; TrooPlumeSoak + TrooPlumeSoakAt (last; FX). A killing
+--       blow is never refunded (a Humanoid at 0 is dead).
+--     Switches: script attributes TrooMovesLastFeatherEnabled, TrooMovesRefundEnabled (default true, read at each drop;
+--     false = 1.5: Dead state left on, no refunds). Diagnostics: script TrooLastFeatherSaves, TrooFortifyRefunds,
+--     TrooPlumeSoaks; character TrooLastFeatherReady (true while it would save).
+--   * Plume fade: a plume past its TrooPlumeUntil is cleared (TrooPlume 0) every 0.25 s.
+--   * Overheal Plume on the Mender Drone's heals: the part that did not fit goes to TrooPassives.plumeAdd(the troodon, target,
+--     overflow, now, test ally). Switch: script attribute TrooMovesPlumeEnabled (default true, read at each heal).
+for _, k in ipairs({"TrooMovesLastFeatherEnabled", "TrooMovesRefundEnabled", "TrooMovesPlumeEnabled"}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end -- v1.6
+end
 local SHOT_SPEED_MUL, SHOT_ASSIST_DEG = 1.5, 45 -- v1.4
 local function shotPass() return script:GetAttribute("ShotPassEnabled") ~= false end -- v1.4
 if script:GetAttribute("ShotPassEnabled") == nil then script:SetAttribute("ShotPassEnabled", true) end -- v1.4
@@ -298,6 +325,23 @@ local function stampHeal(m, added, t)
 	m:SetAttribute("TrooHealAmount", math.floor(added * 10 + 0.5) / 10)
 	m:SetAttribute("TrooHealAt", t) -- last: TrooFX "+N"
 	count("TrooMovesHeals")
+end
+-- v1.6: Overheal Plume on the Mender Drone's heals
+local passivesMod
+local function passives()
+	if passivesMod == nil then
+		passivesMod = false
+		pcall(function() passivesMod = require(ServerStorage:WaitForChild("DinoArcade", 5):WaitForChild("TrooPassives", 5)) end)
+	end
+	return passivesMod or nil
+end
+local function healBy(healer, target, amount)
+	local added = heal(target, amount)
+	if amount > added and script:GetAttribute("TrooMovesPlumeEnabled") ~= false then
+		local P = passives()
+		if P then pcall(P.plumeAdd, healer, target, amount - added, now(), testAlly(target)) end
+	end
+	return added
 end
 local function stampHit(m, kind, by, t)
 	m:SetAttribute("TrooHitKind", kind)
@@ -461,7 +505,7 @@ remote("DinoTrooMenderRequest").OnServerEvent:Connect(function(player, stamp)
 					task.wait(cfg("menderHopFly"))
 				end
 			end
-			stampHeal(target, heal(target, rate * tick), now())
+			stampHeal(target, healBy(char, target, rate * tick), now()) -- v1.6: healBy (Overheal Plume)
 			task.wait(tick)
 		end
 		char:SetAttribute("TrooMenderEndAt", now())
@@ -871,3 +915,160 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+
+-- v1.6: the health watcher (Last Feather, Fortify / Plume refunds) and the plume fade (see the v1.6 notes)
+do
+	local FIELD = "TrooLastFeatherField"
+	local watched = setmetatable({}, {__mode = "k"})
+	local function lfReady(char)
+		return script:GetAttribute("TrooMovesLastFeatherEnabled") ~= false and char:GetAttribute("Species") == "Troodon"
+			and char:GetAttribute("TrooPartLastFeatherEnabled") == true and char:GetAttribute("TrooLastFeatherUsed") ~= true
+	end
+	local function syncDead(char, st)
+		if not st.hum then return end
+		local ready = st.hum.Health > 0 and lfReady(char)
+		local off = ready or (st.untilT ~= nil and now() < st.untilT)
+		if st.deadOff ~= off then
+			st.deadOff = off
+			pcall(function() st.hum:SetStateEnabled(Enum.HumanoidStateType.Dead, not off) end)
+		end
+		local cur = char:GetAttribute("TrooLastFeatherReady")
+		if cur ~= ready and (ready or cur ~= nil) then char:SetAttribute("TrooLastFeatherReady", ready) end
+	end
+	local function zoneDrop(char, pos)
+		local tas = game:GetService("ServerScriptService"):FindFirstChild("TrooAttackServer")
+		local fn = tas and tas:FindFirstChild("TrooZoneDrop")
+		if fn then pcall(function() fn:Invoke(char, pos) end) end
+	end
+	local function save(char, st, t)
+		local untouch = math.max(0, num(char, "TrooPartLastFeatherUntouch", 0.7))
+		char:SetAttribute("TrooLastFeatherUsed", true)
+		st.untilT = t + untouch
+		st.own, st.last = 1, 1
+		st.hum.Health = 1
+		local ff = Instance.new("ForceField")
+		ff.Name = FIELD
+		ff.Visible = false
+		ff.Parent = char
+		char:SetAttribute("TrooLastFeatherUntil", st.untilT)
+		char:SetAttribute("TrooLastFeatherGlide", char:GetAttribute("TrooPartLastFeatherGlide") == true)
+		char:SetAttribute("TrooLastFeatherAt", t) -- last: TrooLastFeather client + TrooPartsFX
+		count("TrooLastFeatherSaves")
+		local root = rootOf(char)
+		if char:GetAttribute("TrooPartLastFeatherZone") == true and root then task.spawn(zoneDrop, char, root.Position) end
+		task.delay(untouch, function()
+			if ff.Parent then ff:Destroy() end
+			syncDead(char, st)
+		end)
+	end
+	local function refunds(m, drop, t)
+		local refund = 0
+		if num(m, "TrooFortifyUntil", 0) > t then
+			local f = drop * (1 - math.clamp(num(m, "TrooFortifyMul", 1), 0, 1))
+			if f > 0 then
+				refund += f
+				m:SetAttribute("TrooFortifySaved", math.floor(f * 10 + 0.5) / 10)
+				m:SetAttribute("TrooFortifySavedAt", t) -- last: FX
+				count("TrooFortifyRefunds")
+			end
+		end
+		local plume = num(m, "TrooPlumeUntil", 0) > t and num(m, "TrooPlume", 0) or 0
+		if plume > 0 then
+			local sk = math.min(plume, drop - refund)
+			if sk > 0 then
+				refund += sk
+				m:SetAttribute("TrooPlume", math.floor((plume - sk) * 10 + 0.5) / 10)
+				m:SetAttribute("TrooPlumeSoak", math.floor(sk * 10 + 0.5) / 10)
+				m:SetAttribute("TrooPlumeSoakAt", t) -- last: FX
+				count("TrooPlumeSoaks")
+			end
+		end
+		return refund
+	end
+	local function watchChar(char)
+		if watched[char] then return end
+		local hum = char:WaitForChild("Humanoid", 10)
+		if not hum or watched[char] then return end
+		local st = {hum = hum, last = hum.Health}
+		watched[char] = st
+		hum.HealthChanged:Connect(function(h)
+			if st.own and math.abs(h - st.own) < 1e-3 then st.own = nil st.last = h return end
+			local drop = st.last - h
+			st.last = h
+			if drop <= 0 then syncDead(char, st) return end
+			local t = now()
+			if st.untilT and t < st.untilT and script:GetAttribute("TrooMovesLastFeatherEnabled") ~= false then
+				local v = math.min(hum.MaxHealth, math.max(h, 0) + drop)
+				st.own, st.last = v, v
+				hum.Health = v
+				return
+			end
+			if h <= 0 then
+				if st.deadOff and lfReady(char) then save(char, st, t) end
+				return
+			end
+			if script:GetAttribute("TrooMovesRefundEnabled") == false then return end
+			local refund = refunds(char, drop, t)
+			if refund > 0 then
+				local v = math.min(hum.MaxHealth, hum.Health + refund)
+				st.own, st.last = v, v
+				hum.Health = v
+			end
+		end)
+		for _, k in ipairs({"TrooPartLastFeatherEnabled", "TrooLastFeatherUsed", "Species"}) do
+			char:GetAttributeChangedSignal(k):Connect(function() syncDead(char, st) end)
+		end
+		syncDead(char, st)
+	end
+	local function onPl(pl)
+		pl.CharacterAdded:Connect(function(c) task.spawn(watchChar, c) end)
+		if pl.Character then task.spawn(watchChar, pl.Character) end
+	end
+	Players.PlayerAdded:Connect(onPl)
+	for _, pl in ipairs(Players:GetPlayers()) do onPl(pl) end
+	-- Studio: bots (the test ally) on DummyHealth
+	if RunService:IsStudio() then
+		local botLast = setmetatable({}, {__mode = "k"})
+		local function watchBot(b)
+			if not b:IsA("Model") then return end
+			botLast[b] = {last = b:GetAttribute("DummyHealth")}
+			b:GetAttributeChangedSignal("DummyHealth"):Connect(function()
+				local e = botLast[b]
+				local h = b:GetAttribute("DummyHealth")
+				if typeof(h) ~= "number" then return end
+				if e.own and math.abs(h - e.own) < 1e-3 then e.own = nil e.last = h return end
+				local drop = (typeof(e.last) == "number" and e.last or h) - h
+				e.last = h
+				if drop <= 0 or h <= 0 or script:GetAttribute("TrooMovesRefundEnabled") == false then return end
+				local refund = refunds(b, drop, now())
+				if refund > 0 then
+					local v = math.min(num(b, "DummyMaxHealth", h + refund), h + refund)
+					e.own, e.last = v, v
+					b:SetAttribute("DummyHealth", v)
+				end
+			end)
+		end
+		task.spawn(function()
+			local isl = workspace:WaitForChild("DinoIsland", 30)
+			local f = isl and isl:WaitForChild("Bots", 30)
+			if not f then return end
+			f.ChildAdded:Connect(watchBot)
+			for _, b in ipairs(f:GetChildren()) do watchBot(b) end
+		end)
+	end
+	-- the plume fade
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		acc += dt
+		if acc < 0.25 then return end
+		acc = 0
+		local t = now()
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local c = pl.Character
+			if c and num(c, "TrooPlume", 0) > 0 and num(c, "TrooPlumeUntil", 0) <= t then c:SetAttribute("TrooPlume", 0) end
+		end
+		for _, b in ipairs(bots()) do
+			if num(b, "TrooPlume", 0) > 0 and num(b, "TrooPlumeUntil", 0) <= t then b:SetAttribute("TrooPlume", 0) end
+		end
+	end)
+end
