@@ -10,7 +10,7 @@ const NP_VERSION = "0.1";
 
 // ---------- new-part state ----------
 const NS = {};
-function nsReset() { Object.assign(NS, {fill: 1, jetTilt: 0, fan: 0, bud: 1, petal: 0, domeGlow: 0, sentLeg: 0, sentYaw: 0, sentFire: 0, sleepKick: 0, walk: 0, walkPh: 0, run: 0, runPh: 0, hud: null}); }
+function nsReset() { Object.assign(NS, {fill: 1, jetTilt: 0, fan: 0, bud: 1, petal: 0, domeGlow: 0, sentLeg: 0, sentYaw: 0, sentPitch: 1, sentFire: 0, sleepKick: 0, walk: 0, walkPh: 0, run: 0, runPh: 0, hud: null}); }
 nsReset();
 const rotAbout = (at, c, Rm) => at.clone().invert().multiply(T3(c.x, c.y, c.z)).multiply(Rm).multiply(T3(-c.x, -c.y, -c.z)).multiply(at);
 const fmt = n => (Math.abs(n - Math.round(n)) < 1e-6 ? String(Math.round(n)) : String(Number(n.toFixed(2))));
@@ -81,26 +81,28 @@ const DOME_BLUE = 0x6cc4ff, SLEEP_V = 0xb88cff;
 function sleepMuzzle() { return V(0, 0, 0).applyMatrix4(new THREE.Matrix4().makeTranslation(hero.pos.x, hero.y, hero.pos.z).multiply(scl(hero.scale)).multiply(hero.W.Head).multiply(segInv.Head).multiply(T3(NK.sleepMuzzle.x, NK.sleepMuzzle.y, NK.sleepMuzzle.z))); }
 function sleepDir() { const M = new THREE.Matrix4().makeTranslation(hero.pos.x, hero.y, hero.pos.z).multiply(scl(hero.scale)).multiply(hero.W.Head).multiply(segInv.Head); return V(0, 0, -1).transformDirection(M); }
 
-// ===== Sentry Pod (button · slot; pick #14): a folded pod turret on a saddle over the lower back (the clean spot behind the Mender
-// arch); press: it hops into the hands, is thrown, unfolds 3 legs, turns to the nearest enemy and fires amber pods. =====
+// ===== Sentry Pod (button · slot; pick #14): a folded pod turret on a saddle over the lower back (between the Mender Drone arch
+// and the Bloom Tank), its barrel folded straight up so it clears both; press: it hops into the hands, is thrown, unfolds 3 legs,
+// the barrel swings down level, the head turns to the nearest enemy and fires amber pods. =====
 (() => {
   const lk = "sentry.A", z = 0.42;
   for (const s of [1, -1]) { const h = topHit(0.2 * s, z, onSeg("Torso")); const F = bracket(lk, "Torso", h, 0.15, 0.34, 0.05);
     const y0 = V(0, 0, 0).applyMatrix4(F).y; piece(lk, "Torso", G.box(0.09, 0.82 - y0, 0.2), MAT.gun, T3(0.2 * s, (y0 + 0.82) / 2, z)); }
   piece(lk, "Torso", G.box(0.62, 0.07, 0.34), MAT.gun, T3(0, 0.855, z));
-  const C = V(0, 0.93, z); NK.sentC = C; const tur = [];
-  const head = {anim: p => rotAbout(p.at, C, rotY(NS.sentYaw))};
+  const C = V(0, 0.93, z), Ch = V(0, C.y + 0.13, z); NK.sentC = C; NK.sentCh = Ch; const tur = [];
+  // head turn: yaw about the base centre, then the barrel pitch about the head centre (sentPitch 1 = folded up, 0 = level)
+  const head = {anim: p => p.at.clone().invert().multiply(T3(C.x, C.y, C.z)).multiply(rotY(NS.sentYaw)).multiply(T3(-C.x, -C.y, -C.z)).multiply(T3(Ch.x, Ch.y, Ch.z)).multiply(rotX(rad(90) * NS.sentPitch)).multiply(T3(-Ch.x, -Ch.y, -Ch.z)).multiply(p.at)};
   tur.push(piece(lk, "Torso", G.cylY(0.2, 0.22, 0.08), MAT.dark, T3(C.x, C.y, C.z)));
   for (let i = 0; i < 3; i++) { const a = i * Math.PI * 2 / 3 + Math.PI / 3; const hp = V(Math.sin(a) * 0.17, C.y - 0.01, C.z + Math.cos(a) * 0.17);
     const leg = G.box(0.05, 0.035, 0.3); gx(leg, T3(0, 0, 0.15));
     tur.push(piece(lk, "Torso", leg, MAT.steel, T3(hp.x, hp.y, hp.z).multiply(rotY(a)), {anim: p => rotAbout(p.at, hp, rotY(a).multiply(rotX(rad(38) * NS.sentLeg)).multiply(rotY(-a)))})); }
-  tur.push(piece(lk, "Torso", G.box(0.3, 0.17, 0.32), MAT.gun, T3(C.x, C.y + 0.13, C.z), head));
+  tur.push(piece(lk, "Torso", G.box(0.3, 0.17, 0.32), MAT.gun, T3(Ch.x, Ch.y, Ch.z), head));
   tur.push(piece(lk, "Torso", G.box(0.32, 0.03, 0.26), MAT.plate, T3(C.x, C.y + 0.23, C.z + 0.02), head));
-  tur.push(piece(lk, "Torso", G.cylZ(0.06, 0.06, 0.36), MAT.steel, T3(C.x, C.y + 0.13, C.z - 0.3), head));
-  tur.push(piece(lk, "Torso", G.cylZ(0.075, 0.075, 0.05), MAT.brass, T3(C.x, C.y + 0.13, C.z - 0.46), Object.assign({}, head)));
+  tur.push(piece(lk, "Torso", G.cylZ(0.06, 0.06, 0.36), MAT.steel, T3(Ch.x, Ch.y, C.z - 0.3), head));
+  tur.push(piece(lk, "Torso", G.cylZ(0.075, 0.075, 0.05), MAT.brass, T3(Ch.x, Ch.y, C.z - 0.46), head));
   tur.push(piece(lk, "Torso", G.sph(0.09), gm("sentry", "amber"), T3(C.x, C.y + 0.28, C.z + 0.08), head));
   tur.push(piece(lk, "Torso", G.cylX(0.04, 0.04, 0.36), MAT.brass, T3(C.x, C.y + 0.05, C.z + 0.13), head));
-  NK.sentMuzzle = V(C.x, C.y + 0.13, C.z - 0.5);
+  NK.sentMuzzle = V(Ch.x, Ch.y, C.z - 0.5);
   NK.sentCarry = makeCarry(tur, "Torso", C);
 })();
 // the turret's muzzle in the world while it stands on the ground (carry group matrix · Fi · the head turn)
@@ -505,7 +507,7 @@ function sentryTrack() {
   return {frame: [V(0, 0, 6), V(0, 0, -64)], keys, ev, eyes: [[T0, REL + 0.3]],
     update(t, dt) { NS.sentFire = Math.max(0, NS.sentFire - dt * 6); PGLOW.sentry = on ? 0.2 + NS.sentFire * 1.4 + (t > T0 && t < REL ? 0.8 : 0) : 0;
       const grounded = on && t > LAND && t < FOLD + 0.3; NS.sentLeg = grounded ? (t < FOLD ? E.back(win(t, LAND, OPEN + 0.25)) : 1 - win(t, FOLD, FOLD + 0.3)) : 0;
-      const want = grounded && t > OPEN ? yawTo(Pp, tgt.rig.pos) : 0; let d = want - NS.sentYaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; NS.sentYaw = grounded ? NS.sentYaw + d * Math.min(1, dt * 12) : 0;
+      const want = grounded && t > OPEN ? yawTo(Pp, tgt.rig.pos) : 0; NS.sentPitch = grounded ? 1 - E.out(win(t, LAND + 0.1, OPEN + 0.3)) : 1; let d = want - NS.sentYaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; NS.sentYaw = grounded ? NS.sentYaw + d * Math.min(1, dt * 12) : 0;
       regrow(cc, on, t, LAND, FOLD + 0.6); },
     post(t) { if (!on) { carryOff(cc); return; }
       throwCarry(cc, t, T0, REL, LAND, Pp.clone().setY(0.6), 7, 3.4, tt => { if (tt > FOLD + 0.3) { carryOff(cc); return; } const k = GS * (tt < OPEN ? 0.55 + 0.45 * E.back(win(tt, LAND, OPEN)) : tt > FOLD ? Math.max(0.01, 1 - win(tt, FOLD, FOLD + 0.3)) : 1);
@@ -768,7 +770,7 @@ const MEAS = typeof NP_MEAS !== "undefined" ? NP_MEAS : null;
 // ---------- UI ----------
 const NAME = id => CANDS.find(c => c.id === id).name;
 const LOOKNAME = {"mender.A": "Mender Drone", "lantern.A": "Arc Lantern", "sapwall.B": "Sap Wall", "shed.A": "Feather Shed", "portal.A": "Portal Rift"};
-const lookLabel = l => LOOKNAME[l] || NAME(l.split(".")[0]);
+const lookLabel = l => !l ? "none nearby" : LOOKNAME[l] || NAME(l.split(".")[0]); // v0.1: a part with no other part near it (the Sleep Dart on the head) has to: ""
 const srcLinks = keys => keys.map(k => `<a href="${SRC[k][1]}" target="_blank" rel="noopener">${SRC[k][0]}</a>`).join(" · ");
 function fitTable(id) {
   if (!MEAS || !MEAS.looks[id + ".A"]) return '<p class="note">Fit not measured in this build.</p>';
@@ -782,7 +784,7 @@ function fitTable(id) {
     <tr><th>Pieces / brackets</th><td>${r.pieces} / ${r.brackets} (brackets ${r.bracketIdle}% · ${r.bracketMove}%: set into the surface on purpose)</td></tr>
     <tr><th>Floating pieces</th><td>${r.floating.length ? '<span class="badn">' + r.floating.join(", ") + "</span>" : '<span class="ok">none</span>'}</td></tr>
     <tr><th>Clips another part</th><td>${clashes.length ? '<span class="badn">' + clashes.map(([k, v]) => k.split(" × ").map(lookLabel).join(" × ") + " " + v + "%").join(", ") + "</span>" : '<span class="ok">none</span> (with the ' + (RECSET.includes(id) ? "other 4 picked" : "5 picked") + " + the 5 button parts, in its move and the kit poses)"}</td></tr>
-    ${g ? `<tr><th>Closest other part at rest</th><td class="n">${g.studs} studs (${lookLabel(g.to)})</td></tr>` : ""}</table></div>
+    ${g ? `<tr><th>Closest other part at rest</th><td class="n">${g.to ? g.studs + " studs (" + lookLabel(g.to) + ")" : "none nearby"}</td></tr>` : ""}</table></div>
     <p class="note">${r.worst <= 5 ? "Passes the ≤ 5% rule" : "Over the 5% rule"} (worst ${r.worst}%). Measured ${MEAS.when} UTC, page v${MEAS.version}.</p>`;
 }
 function renderRec() {
@@ -806,7 +808,7 @@ function renderAll() {
     if (MEAS) { const recP = Object.entries(MEAS.rec || {}).filter(([, v]) => v > 0);
       m += `<p><b>The 5 picked parts + the 5 live button parts</b>, every picked part's move + the kit poses: ${recP.length ? '<span class="badn">' + recP.map(([k, v]) => k.split(" × ").map(lookLabel).join(" × ") + " " + v + "%").join(", ") + "</span>" : '<span class="ok">no piece of one part inside a piece of another (0%)</span>'}.</p>`;
       m += `${CID.some(i => !RECSET.includes(i)) ? "<p><b>Each alternative added to that set:</b></p>" : ""}<ul>${CID.filter(i => !RECSET.includes(i)).map(i => { const a = Object.entries((MEAS.alt || {})[i] || {}); return `<li>${NAME(i)}: ${a.length ? '<span class="badn">' + a.map(([k, v]) => k.split(" × ").map(lookLabel).join(" × ") + " " + v + "%").join(", ") + "</span>" : '<span class="ok">0%</span>'}</li>`; }).join("")}</ul>`;
-      m += `<div class="tw"><table class="cmp"><tr><th>Part</th><th>Worst in body (idle / move / throw / flaps / glide / run)</th><th>Closest part at rest</th></tr>${CID.map(i => { const r = MEAS.looks[i + ".A"], g = MEAS.gaps[i]; return `<tr><th>${NAME(i)}</th><td class="n">${r.idle} / ${r.move} / ${r.kit.throw} / ${r.kit.flaps} / ${r.kit.glide} / ${r.kit.run} %</td><td class="n">${g.studs} studs · ${lookLabel(g.to)}</td></tr>`; }).join("")}</table></div>`; }
+      m += `<div class="tw"><table class="cmp"><tr><th>Part</th><th>Worst in body (idle / move / throw / flaps / glide / run)</th><th>Closest part at rest</th></tr>${CID.map(i => { const r = MEAS.looks[i + ".A"], g = MEAS.gaps[i]; return `<tr><th>${NAME(i)}</th><td class="n">${r.idle} / ${r.move} / ${r.kit.throw} / ${r.kit.flaps} / ${r.kit.glide} / ${r.kit.run} %</td><td class="n">${g.to ? g.studs + " studs · " + lookLabel(g.to) : "none nearby"}</td></tr>`; }).join("")}</table></div>`; }
     else m += '<p class="note">Not measured in this build.</p>';
     $("part").innerHTML = m; return;
   }

@@ -1,0 +1,130 @@
+{
+ "version": "0.1",
+ "when": "2026-11-10T09:14",
+ "looks": {
+  "bloom.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 40,
+   "bracketMove": 40,
+   "pieces": 17,
+   "brackets": 4,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "burst.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 24,
+   "bracketMove": 24,
+   "pieces": 11,
+   "brackets": 1,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "dome.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 17.6,
+   "bracketMove": 17.6,
+   "pieces": 7,
+   "brackets": 1,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "sleep.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 40,
+   "bracketMove": 40,
+   "pieces": 10,
+   "brackets": 1,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  },
+  "sentry.A": {
+   "idle": 0,
+   "move": 0,
+   "idleWorst": "",
+   "moveWorst": "",
+   "bracketIdle": 40,
+   "bracketMove": 40,
+   "pieces": 13,
+   "brackets": 2,
+   "floating": [],
+   "kit": {
+    "idle": 0,
+    "throw": 0,
+    "flaps": 0,
+    "glide": 0,
+    "run": 0
+   },
+   "kitWorst": {},
+   "worst": 0
+  }
+ },
+ "rec": {},
+ "alt": {},
+ "gaps": {
+  "bloom": {
+   "studs": 0.2,
+   "to": "dome.A"
+  },
+  "burst": {
+   "studs": 2.79,
+   "to": "sapwall.B"
+  },
+  "dome": {
+   "studs": 0.2,
+   "to": "bloom.A"
+  },
+  "sleep": {
+   "studs": null,
+   "to": ""
+  },
+  "sentry": {
+   "studs": 0.29,
+   "to": "mender.A"
+  }
+ }
+}
