@@ -1,4 +1,4 @@
--- TrooPartsFX v1.4 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
+-- TrooPartsFX v1.5 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1: the layered VFX on every client.
 -- MDA-351, plan docs/plans/TROODON_PARTS_v1.0.md ticket 7; spec tools/mockup/troodon_parts_looks.js ("VFX, in Roblox
 -- pieces" per part; Kepu 2026-11-06 20:11 "real vfx ... consistent w the rest of the rosters"). Reads TrooMovesServer 1.x's
 -- stamps (server time) on every troodon character and draws locally in Workspace.TrooPartsFX (never replicated). Every move:
@@ -88,6 +88,17 @@
 --   TrooRiftUntil; a traveller (TrooRiftTravelAt on any dino) gets an entry flash at TrooRiftTravelFrom and a white-teal streak
 --   (Trail 0.45 s + a glowing A8FFF0 ball with a PointLight) until TrooRiftTravelUntil, no landing FX; recovery (TrooRiftEndAt /
 --   TrooRiftCancelAt): the rings shrink and fade with an orb + sparks, the line fades, the tail rings come back.
+-- v1.5 (MDA-377, TrooMovesServer 1.11 stuns every zapped dino; Kepu 2026-11-09 21:25 "Raptor shock look") - the lantern's hit look
+--   on each zapped dino (switch TrooPartsFX_lanternShockEnabled, default true, read at each zap; false = 1.4): result: the Shock
+--   Cannon's hit look (ScreechServer 1.x): its impact burst (a VOLT Neon ball 2 -> 10 studs, 0.2 -> 1 transparent over 0.3 s) at
+--   the target's root, and while the target's StunnedUntil lasts (capped at its TrooLanternStunUntil; it waits up to
+--   TrooPartsFX_shockWait 0.25 s for the stun to replicate, none = immune: flash only) the cannon's stun crackle on the root (its
+--   ShockStunSparks emitter: CORE -> VOLT, rate 70, life 0.15-0.35, speed 8-16, size 0.7 -> 0, all round; its ShockStunLight:
+--   VOLT, range 14, brightness 3) plus electric arcs crawling over the body: TrooPartsFX_shockArcRate (24) arcs a second, each a
+--   zap2 small arc (CORE core + VOLT glow Beams, x the target's size k) between two random points on its visible body parts
+--   (nearby parts, the points ride the parts as they move), living TrooPartsFX_shockArcLife (0.16 s); recovery: when the stun
+--   ends or is broken (Feather Shed / Antivenom / stun breakers set StunnedUntil back) the arcs stop, the sparks stop emitting
+--   (the last ones die out) and the light fades over 0.15 s. No landing FX. Diagnostic: script TrooPartsFXShocks (count).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -98,6 +109,7 @@ VERSION = "1.1" -- v1.1 sap wall / portal rings / lantern zap looks to mockup v0
 VERSION = "1.2" -- v1.2 mender drone size / glow / heal beam to mockup v0.2
 VERSION = "1.3" -- v1.3 the lantern homes on its tracked target (MDA-376)
 VERSION = "1.4" -- v1.4 Portal Rift looks (MDA-375)
+VERSION = "1.5" -- v1.5 lantern hit look: Shock Cannon stun look + body arcs (MDA-377)
 script:SetAttribute("TrooPartsFXVersion", VERSION)
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderBack = 0.75, menderOrbit = 3.5, menderTick = 0.25, lanternWindup = 0.42,
 	lanternLinger = 0.9, lanternArc = 6, sapWindup = 0.34, sapArc = 7, sapReturn = 1.15, shedWindup = 0.15, shedFling = 0.7,
@@ -105,13 +117,14 @@ local CFG = {menderWindup = 0.45, menderFly = 0.75, menderBack = 0.75, menderOrb
 	sapRise = 0.3, sapHardenFrom = 0.2, sapHarden = 0.45, sapWetT = 0.45, sapHardT = 0.08, portalRingR = 4.2, portalTube = 0.32,
 	portalVaneR = 5, portalCentre = 4.8, zapLife = 0.32, -- v1.1
 	menderDroneK = 1, menderHalo = 3, menderHaloT = 0.88, menderTrailW = 1.1, menderOrbitR = 4.5, menderOrbitUp = 5.5, menderTether = 0.36,
-	menderPulse = 0.75} -- v1.2
+	menderPulse = 0.75, -- v1.2
+	shockWait = 0.25, shockArcRate = 24, shockArcLife = 0.16} -- v1.5
 for k, v in pairs(CFG) do
 	if script:GetAttribute("TrooPartsFX_" .. k) == nil then script:SetAttribute("TrooPartsFX_" .. k, v) end
 end
 for _, k in ipairs({"TrooPartsFXEnabled", "TrooPartsFX_omenderEnabled", "TrooPartsFX_olanternEnabled", "TrooPartsFX_osapwallEnabled",
 	"TrooPartsFX_oshedEnabled", "TrooPartsFX_oportalEnabled", "TrooPartsFX_sapLookEnabled", "TrooPartsFX_portalLookEnabled",
-	"TrooPartsFX_zapLookEnabled", "TrooPartsFX_menderLookEnabled", "TrooPartsFX_lanternTrackEnabled", "TrooPartsFX_riftLookEnabled"}) do -- v1.1: + the three look switches; v1.2: + menderLook; v1.3: + lanternTrack
+	"TrooPartsFX_zapLookEnabled", "TrooPartsFX_menderLookEnabled", "TrooPartsFX_lanternTrackEnabled", "TrooPartsFX_riftLookEnabled", "TrooPartsFX_lanternShockEnabled"}) do -- v1.5: + lanternShock -- v1.1: + the three look switches; v1.2: + menderLook; v1.3: + lanternTrack
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 local function cfg(k) return tonumber(script:GetAttribute("TrooPartsFX_" .. k)) or CFG[k] end
@@ -698,6 +711,81 @@ local function lanternStart(char, at)
 		end)
 	end)
 end
+local function bodyParts(model) -- v1.5: the visible body (no root, hitboxes or see-through parts)
+	local hb = model:FindFirstChild("Hitboxes")
+	local out = {}
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and d.Transparency < 0.9 and d.Size.Magnitude > 0.3
+			and not (hb and d:IsDescendantOf(hb)) then table.insert(out, d) end
+	end
+	return out
+end
+local function shockLook(model, root) -- v1.5 (MDA-377): the Shock Cannon hit look + body arcs while the stun lasts
+	script:SetAttribute("TrooPartsFXShocks", (script:GetAttribute("TrooPartsFXShocks") or 0) + 1)
+	local b = ball(2, VOLT) -- ScreechServer burst(pos, 10, VOLT)
+	b.CFrame = CFrame.new(root.Position)
+	b.Transparency = 0.2
+	TweenService:Create(b, TweenInfo.new(0.3), {Size = Vector3.one * 10, Transparency = 1}):Play()
+	Debris:AddItem(b, 0.35)
+	task.spawn(function()
+		local function stunEnd()
+			local su, lu = num(model:GetAttribute("StunnedUntil")) or 0, num(model:GetAttribute("TrooLanternStunUntil"))
+			return lu and math.min(su, lu) or su
+		end
+		local t0 = os.clock()
+		while stunEnd() <= now() do -- the stun may replicate a frame after the zap stamp
+			if os.clock() - t0 > cfg("shockWait") or not root.Parent then return end
+			RunService.Heartbeat:Wait()
+		end
+		local parts = bodyParts(model)
+		local size = model:GetExtentsSize()
+		local k = math.clamp(size.Magnitude / 25, 0.35, 1.6)
+		local pe = Instance.new("ParticleEmitter") -- ScreechServer ShockStunSparks
+		pe.Name = "TrooLanternShockSparks"
+		pe.Color = ColorSequence.new(CORE, VOLT)
+		pe.LightEmission = 1
+		pe.Rate = 70
+		pe.Lifetime = NumberRange.new(0.15, 0.35)
+		pe.Speed = NumberRange.new(8, 16)
+		pe.SpreadAngle = Vector2.new(180, 180)
+		pe.Size = NumberSequence.new(0.7, 0)
+		pe.Parent = root
+		local li = Instance.new("PointLight") -- ScreechServer ShockStunLight
+		li.Name = "TrooLanternShockLight"
+		li.Color, li.Range, li.Brightness = VOLT, 14, 3
+		li.Parent = root
+		local function pointOn(p) -- a random point on the part's surface, riding the part
+			local h = p.Size / 2
+			local o = Vector3.new((math.random() * 2 - 1) * h.X, (math.random() * 2 - 1) * h.Y, (math.random() * 2 - 1) * h.Z)
+			local ax = math.random(3)
+			local sgn = math.random() < 0.5 and -1 or 1
+			if ax == 1 then o = Vector3.new(sgn * h.X, o.Y, o.Z) elseif ax == 2 then o = Vector3.new(o.X, sgn * h.Y, o.Z) else o = Vector3.new(o.X, o.Y, sgn * h.Z) end
+			return function() return p.Parent and (p.CFrame * o) or nil end
+		end
+		local acc, last = 0, os.clock()
+		while root.Parent and now() < stunEnd() and #parts > 0 and script:GetAttribute("TrooPartsFX_lanternShockEnabled") ~= false do
+			local t = os.clock()
+			acc += (t - last) * cfg("shockArcRate")
+			last = t
+			while acc >= 1 do
+				acc -= 1
+				local pa = parts[math.random(#parts)]
+				local near = {}
+				for _, q in ipairs(parts) do
+					if q ~= pa and (q.Position - pa.Position).Magnitude <= 5 * k + pa.Size.Magnitude / 2 then table.insert(near, q) end
+				end
+				local pb = near[1] and near[math.random(#near)] or pa
+				zap2(pointOn(pa), pointOn(pb), cfg("shockArcLife") * (0.7 + math.random() * 0.6), k, true)
+			end
+			RunService.Heartbeat:Wait()
+		end
+		pe.Enabled = false
+		Debris:AddItem(pe, 0.4)
+		TweenService:Create(li, TweenInfo.new(0.15), {Brightness = 0}):Play()
+		Debris:AddItem(li, 0.2)
+		diag("olantern", "shockEnd")
+	end)
+end
 local function lanternZap(char)
 	local st = lanterns[char]
 	if not on("olantern") then return end
@@ -724,6 +812,7 @@ local function lanternZap(char)
 		flashBall(tr.Position, VOLT, 1.5, 5, 0.3)
 		burst(tr.Position, CORE, 16, 10, 0.35, 0.4)
 	end
+	if script:GetAttribute("TrooPartsFX_lanternShockEnabled") ~= false then shockLook(tgt, tr) end -- v1.5 (MDA-377)
 	if st then
 		st.lastZap = os.clock()
 		table.insert(st.names, name)

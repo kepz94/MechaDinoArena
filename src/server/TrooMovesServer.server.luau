@@ -1,4 +1,4 @@
--- TrooMovesServer v1.10 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
+-- TrooMovesServer v1.11 (Mecha Dino Arena) — the Troodon's mecha button parts, build 1 (server authority): Mender Drone, Arc
 -- Lantern, Sap Wall, Feather Shed, Portal Feathers. Plan docs/plans/TROODON_PARTS_v1.0.md ticket 4 (MDA-348); numbers = the
 -- plan's table (areas doubled, Kepu 2026-11-06 21:24 / 21:3x); timings = tools/mockup/troodon_parts_looks.js v0.2 tracks.
 -- Settings (character attributes, SkillEffects 1.48, written while bought AND slotted): TrooPartMender* (Enabled, Heal, Time,
@@ -221,6 +221,20 @@ VERSION = "1.10" -- v1.10 Portal Feathers -> Apex-style rift (MDA-375)
 --     given back while TrooRiftTravelUntil > now (switch TrooMovesRiftSafeEnabled); bots: StunBreakImmuneUntil. Traveller
 --     stamps: TrooRiftTravelFrom / To / Speed / By / Until, TrooRiftTravelAt (last); TrooRiftTravelEndAt, TrooRiftTravelTime.
 --   Diagnostics: script TrooMovesRifts, TrooMovesRiftTrips, TrooMovesRiftCancels, TrooRiftSaves. Numbers: TrooMoves_<name>.
+VERSION = "1.11" -- v1.11 Arc Lantern stuns every zapped dino 1 s (MDA-377)
+-- v1.11 (MDA-377; Kepu 2026-11-09 21:25 "It needs to shock them still and do more damage" -> "12 per zap" (SkillTree 1.83 gives
+--   TrooPartLanternDamage 12), "1 s, every dino zapped", "Raptor shock look"): every dino the lantern zaps (the first target and
+--   each chained one, picked by the zap's own rules: enemies only (squad + ModeRules), Sap Wall line check) is stunned through the
+--   Shock Cannon's path (ScreechServer hit(), b.shock): StunnedUntil = max(current, zap + TrooLanternStunTime (1 s)). It is the
+--   game's one stun, so everything that watches StunnedUntil applies exactly as for the cannon: Thick Hide III / star trims,
+--   Brace / Head Down (SkillEffects), the Feather Shed and Antivenom Pump immunity watchers (TrooShedImmuneUntil /
+--   DiloImmuneUntil undo it), Feather Shed / Adrenaline / Stun Breaker break it, StunClient + StunFX on players (no moves, dizzy
+--   stars), BotServer lays a bot down and it does nothing until it ends. Armor (BoneCrest) cuts the damage only, never the stun.
+--   Stamps (target, before the troodon's TrooLanternZapAt): TrooLanternStunUntil (the StunnedUntil written); 0.1 s later
+--   TrooLanternStunned = the stun's length from the zap after those rules (s, 0 = immune / broken; like ScreechStunTime).
+--   TrooPartsFX 1.5 draws the Shock Cannon stun look + body arcs while it lasts. Switch: script attribute
+--   TrooMovesLanternStunEnabled (default true, read at each zap; false = 1.10: no stun). Number: script TrooLanternStunTime (1).
+--   Diagnostic: script TrooMovesLanternStuns (count).
 if script:GetAttribute("TrooMovesSapHeightEnabled") == nil then script:SetAttribute("TrooMovesSapHeightEnabled", true) end -- v1.9
 if script:GetAttribute("TrooMovesLanternTrackEnabled") == nil then script:SetAttribute("TrooMovesLanternTrackEnabled", true) end -- v1.8
 for _, k in ipairs({"TrooMovesLastFeatherEnabled", "TrooMovesRefundEnabled", "TrooMovesPlumeEnabled"}) do
@@ -586,6 +600,22 @@ remote("DinoTrooMenderRequest").OnServerEvent:Connect(function(player, stamp)
 end)
 
 -- Arc Lantern --------------------------------------------------------------------------------------------------------------
+if script:GetAttribute("TrooMovesLanternStunEnabled") == nil then script:SetAttribute("TrooMovesLanternStunEnabled", true) end -- v1.11
+if script:GetAttribute("TrooLanternStunTime") == nil then script:SetAttribute("TrooLanternStunTime", 1) end -- v1.11
+local function lanternStun(m, t) -- v1.11 (MDA-377): the Shock Cannon's stun (ScreechServer hit(), b.shock)
+	if script:GetAttribute("TrooMovesLanternStunEnabled") == false or not m.Parent then return end
+	local dur = tonumber(script:GetAttribute("TrooLanternStunTime")) or 1
+	if dur <= 0 then return end
+	local u = math.max(num(m, "StunnedUntil", 0), t + dur)
+	m:SetAttribute("TrooLanternStunUntil", u)
+	m:SetAttribute("StunnedUntil", u)
+	count("TrooMovesLanternStuns")
+	task.delay(0.1, function() -- after Thick Hide (SkillEffects) and the immunity watchers have had their say
+		if not m.Parent then return end
+		local left = num(m, "StunnedUntil", 0) - t
+		m:SetAttribute("TrooLanternStunned", math.max(0, math.floor(left * 100 + 0.5) / 100))
+	end)
+end
 remote("DinoTrooLanternRequest").OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 	local char, t = check(player, stamp, "olantern", "TrooPartLantern", aimDir, aimPoint)
 	if not char then return end
@@ -698,6 +728,7 @@ remote("DinoTrooLanternRequest").OnServerEvent:Connect(function(player, stamp, a
 			hits[best] = true
 			local tz = now()
 			damage(char, player, best, num(char, "TrooPartLanternDamage", 8), "troolantern", tz)
+			lanternStun(best, tz) -- v1.11 (MDA-377)
 			stampHit(best, "zap", char.Name, tz)
 			table.insert(names, best.Name)
 			char:SetAttribute("TrooLanternChainList", table.concat(names, "|"))

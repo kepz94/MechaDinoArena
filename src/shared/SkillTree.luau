@@ -1,4 +1,4 @@
--- SkillTree v1.82 (1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -3141,6 +3141,44 @@ do
 		e.oRiftLength = p >= 2 and 250 or (p >= 1 and 185 or 0)
 		e.oRiftTime = p >= 3 and 30 or (p >= 1 and 22 or 0)
 		e.oRiftCooldown = p >= 4 and 45 or (p >= 1 and 61 or 0)
+		return e
+	end
+end
+
+-- v1.83 (MDA-377; Kepu 2026-11-09 21:25 "The arc lantern ... needs to shock them still and do more damage" -> "12 per zap").
+--   Switch SkillTree.TROO_LANTERN_PASS (default true; numbers read at each effects() call, texts swapped at load; false = 1.82):
+--   oLanternDamage 8 -> 12. The ladder was flat (8 at every rank: no rank step changes the damage), so it keeps its shape flat:
+--   12 / 12 / 12 / 12 (x1.5); range / chain / targets / cooldown unchanged. The 1 s stun on every zapped dino is TrooMovesServer
+--   1.11 (its own switch TrooMovesLanternStunEnabled); the step-1 text names both. SkillTree.LANTERN_MAP: field -> {old = new};
+--   LANTERN_TEXTS: exact substring swaps (a miss counts in SkillTree.LANTERN_TEXT_MISSES, expected 0).
+SkillTree.TROO_LANTERN_PASS = true
+SkillTree.LANTERN_MAP = {oLanternDamage = {[8] = 12}}
+SkillTree.LANTERN_TEXTS = {
+	{"olantern", 1, "8 damage each", "12 damage each and stunned 1 s"},
+}
+SkillTree.LANTERN_TEXT_MISSES = 0
+if SkillTree.TROO_LANTERN_PASS and SkillTree.PATHS.olantern then
+	for _, row in ipairs(SkillTree.LANTERN_TEXTS) do
+		local path = SkillTree.PATHS[row[1]]
+		local text = path and path.steps and path.steps[row[2]]
+		local a, b
+		if type(text) == "string" then a, b = text:find(row[3], 1, true) end
+		if a then
+			path.steps[row[2]] = text:sub(1, a - 1) .. row[4] .. text:sub(b + 1)
+		else
+			SkillTree.LANTERN_TEXT_MISSES += 1
+		end
+	end
+end
+do
+	local effectsPre183 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre183(steps, dino)
+		if type(e) ~= "table" or not SkillTree.TROO_LANTERN_PASS then return e end
+		for field, map in pairs(SkillTree.LANTERN_MAP) do
+			local v = e[field]
+			if type(v) == "number" and map[v] then e[field] = map[v] end
+		end
 		return e
 	end
 end

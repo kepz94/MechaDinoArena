@@ -3261,3 +3261,16 @@ Model numbers are generator output (old version = the flag in the last column, b
 | TrooPartPortalRiftLength / RiftTime / RiftCooldown | troodon character (SkillEffects 1.56) | 185-250 / 22-30 / 61-45 | from SkillTree oRiftLength / oRiftTime / oRiftCooldown |
 | SkillTree.TROO_RIFT_PASS / RIFT_TEXTS / RIFT_TEXT_MISSES | SkillTree constant | true / 4 texts / 0 | false = 1.81 |
 | SkillEffectsTrooRiftEnabled, SprintTestRiftEnabled, TrooAttackRiftBlockEnabled, TrooAttackTestRiftBlockEnabled, MechaButtonsRiftEnabled, AbilityBarRiftEnabled, TrooPartsFX_riftLookEnabled | each script | true | false = the version before |
+
+## Arc Lantern stun + shock look (MDA-377; TrooMovesServer 1.11, TrooPartsFX 1.5, SkillTree 1.83; 2026-11-09)
+| Attribute | Where | Default | Meaning |
+|---|---|---|---|
+| TrooMovesLanternStunEnabled | TrooMovesServer script | true (read at each zap) | false = 1.10: zaps do not stun |
+| TrooLanternStunTime | TrooMovesServer script | 1 | s of stun on every zapped dino (StunnedUntil = max(current, zap + this)) |
+| TrooMovesLanternStuns | TrooMovesServer script | diag | count of stuns written |
+| TrooLanternStunUntil | zapped dino | stamp | the StunnedUntil the zap wrote (before the troodon's TrooLanternZapAt) |
+| TrooLanternStunned | zapped dino | stamp | 0.1 s after the zap: the stun's length from the zap after Thick Hide / immunity rules (0 = immune / broken) |
+| SkillTree.TROO_LANTERN_PASS / LANTERN_MAP / LANTERN_TEXTS / LANTERN_TEXT_MISSES | SkillTree constant | true / {oLanternDamage 8 -> 12} / 1 text / 0 | false = 1.82 (8 per zap, old text) |
+| TrooPartsFX_lanternShockEnabled | TrooPartsFX script | true (read at each zap) | the Shock Cannon hit look + body arcs on each zapped dino; false = 1.4 |
+| TrooPartsFX_shockWait / shockArcRate / shockArcLife | TrooPartsFX script | 0.25 / 24 / 0.16 | s to wait for the stun to replicate; body arcs per s; s each arc lives |
+| TrooPartsFXShocks | TrooPartsFX script | diag | count of shock looks started |

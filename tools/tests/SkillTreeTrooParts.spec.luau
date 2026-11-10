@@ -1,4 +1,4 @@
--- SkillTreeTrooParts.spec v1.3 (1.3: MDA-375 Portal Rift 185 / 250 studs, 22 / 30 s, 61 / 45 s; 1.2: MDA-373 Sap Wall 74 / 100 wide, 4.2 / 5.8 / 8 s, 30 tall; 1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
+-- SkillTreeTrooParts.spec v1.4 (1.4: MDA-377 Arc Lantern 12 per zap + stun text; 1.3: MDA-375 Portal Rift 185 / 250 studs, 22 / 30 s, 61 / 45 s; 1.2: MDA-373 Sap Wall 74 / 100 wide, 4.2 / 5.8 / 8 s, 30 tall; 1.1: MDA-365 Portal 14 s; Mecha Dino Arena) — the Troodon's 9 mecha parts in ServerStorage.DinoArcade.SkillTree 1.72
 -- (plan docs/plans/TROODON_PARTS_v1.0.md ticket 2, MDA-346). Run in Studio Edit (paste into execute_luau, or a copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTrooParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-06 "two builds"): omender / olantern / osapwall / oshed / oportal live; olastfeather / oplume /
@@ -80,7 +80,7 @@ end
 local TEXT = {
 	omender = {"Button: the drone heals the most hurt squadmate within 40 studs (you, with no squad) 4 per second for 4 s. Recharges in 20 s",
 		"Heals for 5.4 s", "Recharges in 14.8 s", "When its target is full it moves on to the next most hurt squadmate"},
-	olantern = {"Button: throw a lantern up to 40 studs; it zaps the nearest enemy near it, then chains to 1 more within 24 studs: 8 damage each. Recharges in 14 s",
+	olantern = {"Button: throw a lantern up to " .. (ST.SHOT_PASS and "80" or "40") .. " studs; it zaps the nearest enemy near it, then chains to 1 more within 24 studs: " .. (ST.TROO_LANTERN_PASS and "12 damage each and stunned 1 s" or "8 damage each") .. ". Recharges in 14 s", -- v1.4: MDA-377 (+ the 1.74 shot-pass range)
 		"Chains reach 32.4 studs", "Recharges in 10.3 s", "Chains to 3 enemies"},
 	osapwall = ST.TROO_SAP_PASS and {"Button: throw a sap pod up to " .. (ST.SHOT_PASS and "80" or "40") .. " studs: it hardens into a wall 74 studs wide and 30 tall that blocks dinos and shots for 4.2 s. Recharges in 18 s",
 		"Wall 100 studs wide", "Lasts 5.8 s", "Lasts 8 s"} or {"Button: throw a sap pod up to 40 studs: it hardens into a 50-stud wall that blocks dinos and shots for 2.1 s. Recharges in 18 s",
@@ -113,7 +113,8 @@ chk("omender", "oMenderHeal", {4, 4, 4, 4}); chk("omender", "oMenderTime", {4, 5
 chk("omender", "oMenderRange", {40, 40, 40, 40}); chk("omender", "oMenderHop", {false, false, false, true})
 chk("omender", "oMenderCooldown", {20, 20, 14.8, 14.8})
 chk("olantern", "oLanternRange", {40, 40, 40, 40}); chk("olantern", "oLanternChain", {24, 32.4, 32.4, 32.4})
-chk("olantern", "oLanternTargets", {2, 2, 2, 3}); chk("olantern", "oLanternDamage", {8, 8, 8, 8})
+chk("olantern", "oLanternTargets", {2, 2, 2, 3}); chk("olantern", "oLanternDamage", ST.TROO_LANTERN_PASS and {12, 12, 12, 12} or {8, 8, 8, 8}) -- v1.4: MDA-377
+if ST.TROO_LANTERN_PASS then eq("lantern text misses", ST.LANTERN_TEXT_MISSES, 0); eq("lantern damage x1.5", E({olantern = 1}).oLanternDamage, 8 * 1.5) end
 chk("olantern", "oLanternCooldown", {14, 14, 10.3, 10.3})
 chk("osapwall", "oSapRange", {40, 40, 40, 40}); chk("osapwall", "oSapWidth", ST.TROO_SAP_PASS and {74, 100, 100, 100} or {50, 67.5, 67.5, 67.5}) -- v1.2: MDA-373
 chk("osapwall", "oSapTime", ST.TROO_SAP_PASS and {4.2, 4.2, 5.8, 8} or {2.1, 2.1, 2.9, 4}); chk("osapwall", "oSapCooldown", {18, 18, 18, 18})
