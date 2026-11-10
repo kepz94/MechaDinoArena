@@ -1,4 +1,4 @@
--- SkillTreeTheriParts.spec v1.9 (1.9: Overclock Joints = no-slot passive, SkillTree 1.84 THERI_CLOCK_NOSLOT; 1.8: MDA-365 Dash 4.2 / 3 s; 1.7: Bola reach 60 / 80, SkillTree 1.71 THERI_BOLA_RANGE_V2, MDA-324; 1.6: feather range 35 / 40 / 50, SkillTree 1.67; 1.5: Overclock III extra jump, SkillTree 1.66; 1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
+-- SkillTreeTheriParts.spec v1.10 (1.10: Overclock text + slot checks follow THERI_CLOCK_NOSLOT; 1.9: Overclock Joints = no-slot passive, SkillTree 1.84 THERI_CLOCK_NOSLOT; 1.8: MDA-365 Dash 4.2 / 3 s; 1.7: Bola reach 60 / 80, SkillTree 1.71 THERI_BOLA_RANGE_V2, MDA-324; 1.6: feather range 35 / 40 / 50, SkillTree 1.67; 1.5: Overclock III extra jump, SkillTree 1.66; 1.4: moves rework, SkillTree 1.65, MDA-262; 1.1: build 2 live, SkillTree 1.62; 1.2: grapple v2 + passive overclock, SkillTree 1.63; 1.3: grapple lock-on text, SkillTree 1.64) (Mecha Dino Arena) — the Therizinosaurus' 7 mecha button parts in
 -- ServerStorage.DinoArcade.SkillTree 1.61 (plan docs/plans/THERIZINO_PARTS_v1.0.md Task 1, MDA-241). Run in Studio Edit (copy in
 -- ServerStorage.DinoArcadeTools.SkillTreeTheriParts_spec, clone + require); returns "PASS n" or "FAIL ...".
 -- Build 1 (Kepu 2026-11-04 "Two builds"): zhook / zfeather / zharvest / zsnare live; zgrapple / zdeflect / zclock "soon".
@@ -126,7 +126,7 @@ local TEXT2 = {
 		"Reaches 110 studs", "Reaches 130 studs; recharges in 10 s", "2 charges"}, -- v1.2; v1.3 step 1
 	zdeflect = {"Button: claws spin in front for 1 s and block darts. Recharges in 16 s", "Spin 1.5 s; blocks boulders and cannon shots too",
 		"Spin 2 s; recharges in 13 s", "Blocked shots bounce back at the shooter"},
-	zclock = {"Always on while slotted (no button): run 40% faster", "Cut taps come 30% faster too",
+	zclock = {ST.THERI_CLOCK_NOSLOT and "Passive (no slot, no button): always on once bought: run 40% faster" or "Always on while slotted (no button): run 40% faster", "Cut taps come 30% faster too", -- v1.10 step 1
 		ST.THERI_CLOCK_JUMP and "One extra jump charge" or "Nothing extra yet (it's always on now)", "Slows don't work on you"}, -- v1.2; v1.5 step 3
 }
 for id, t in pairs(TEXT2) do
@@ -138,7 +138,7 @@ eq("canBuy hook raptor", select(2, ST.canBuy({}, "zhook", 5, "Raptor")), "otherD
 eq("canBuy grapple live", (ST.canBuy({}, "zgrapple", 5, "Therizino")), true) -- v1.1
 eq("canBuy clock live", (ST.canBuy({}, "zclock", 5, "Therizino")), true)
 local lo2 = ST.sanitizeLoadout({"zgrapple", "zdeflect", "zclock", "zhook"}, {zgrapple = 1, zdeflect = 1, zclock = 1, zhook = 1}, "Therizino")
-eq("slot grapple", lo2[1], "zgrapple"); eq("slot deflect", lo2[2], "zdeflect"); eq("slot clock", lo2[3], "zclock")
+eq("slot grapple", lo2[1], "zgrapple"); eq("slot deflect", lo2[2], "zdeflect"); eq("slot clock", lo2[3], not ST.THERI_CLOCK_NOSLOT and "zclock") -- v1.10: a no-slot passive comes back empty
 local lo = ST.sanitizeLoadout({"zhook", "zfeather", "zharvest", "zsnare"}, {zhook = 1, zfeather = 1, zharvest = 1, zsnare = 1}, "Therizino")
 eq("slot 1", lo[1], "zhook"); eq("slot 2", lo[2], "zfeather"); eq("slot 3", lo[3], "zharvest"); eq("slot 4", lo[4], "zsnare")
 eq("raptor cannot slot", ST.sanitizeLoadout({"zhook"}, {zhook = 1}, "Raptor")[1], false)
