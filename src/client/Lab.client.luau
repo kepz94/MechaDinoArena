@@ -136,6 +136,25 @@ local VERSION = "1.11"
 VERSION = "1.12" -- v1.12 therizino parts (ZPart_*)
 VERSION = "1.13" -- v1.13 dilo parts (DPart_*)
 VERSION = "1.14" -- v1.14 troodon parts (OPart_*)
+VERSION = "1.15" -- v1.15 part clips (live clip + what line + chips + step preview)
+-- v1.15 (MDA-444, plan docs/plans/LAB_CLIPS_v1.0.md Task 4, mockup docs/mockups/lab_part_preview_v0.1.html option A; Kepu
+--   2026-11-11 "each mecha part to have a preview of what it does in the lab menu with a short explanation" -> "A · Live
+--   clip", "Built in the game", "Dilo first"): for a selected part (MECHA ABILITIES or STATS part cards; not skins, not stat
+--   rows) that has a LabClipRecipes 1.0 entry, the detail panel shows under the Title:
+--   * Clip (LayoutOrder 3): width 100%, height min(width x 10 / 16, 38% of the panel height); background 0B0E14, corner
+--     1.2ch, 1 px white stroke 0.92; LabClipPlayer 1.0's ViewportFrame inside; tags "LIVE CLIP" (volt on 06242F, top-left) and
+--     "STEP I / II / III / ★" (yellow, top-right), GothamBlack max(1.15ch, 7).
+--   * What (4): the recipe's sentence, GothamBlack max(1.75ch, 10), white, wraps.
+--   * Chips (5): wrapping row, gap 0.6ch; chip "LABEL value" GothamBlack max(1.35ch, 8), PANEL2, corner 0.8ch; a value that
+--     goes up from the owned step reads "old → new" in yellow on 3A2F0A with a yellow 0.6 stroke (LabClipRecipes.chips).
+--   * The 1.14 Steps / Actions / Hint move to 13 / 14 / 15.
+--   Step preview: each step row is a tap target; tapping it shows that step in the clip and chips and outlines the row
+--   (yellow 0.4 stroke); tapping it again, or picking another part, goes back to the owned step (step I when not owned).
+--   The scene is kept across redraws while the part, the step and the character are the same (parked during the
+--   redraw); it is destroyed when the part / dino changes, on the SKINS tab, on stat rows and when the Lab closes.
+--   Switch: script attribute LabClipEnabled (default true, read at each redraw; false = the 1.14 panel). Diagnostics
+--   (LocalPlayer): LabClipVersion, LabClipState ("off" / "none" / "playing" / "error"), LabClipPart, LabClipStep (1-4),
+--   LabClipParts (BaseParts in the scene; 0 when none).
 -- v1.14 (MDA-347, plan docs/plans/TROODON_PARTS_v1.0.md ticket 3): isMechaPart also knows "OPart_*" (TrooPartsServer 1.0, the
 --   troodon's parts): stage key, watchers and plain view as for DPart_*. Switch: script attribute LabOPartsEnabled (default
 --   true, read at each check; false = 1.13).
@@ -1058,7 +1077,153 @@ local function detailButton(parent, text, color, txtColor, enabled, order)
 	return b
 end
 
+-- v1.15: part clips (see the header)
+if script:GetAttribute("LabClipEnabled") == nil then script:SetAttribute("LabClipEnabled", true) end
+local ClipRecipes, ClipPlayer = nil, nil
+pcall(function()
+	local rm, pm = script.Parent:WaitForChild("LabClipRecipes", 5), script.Parent:WaitForChild("LabClipPlayer", 5)
+	if rm and pm then ClipRecipes, ClipPlayer = require(rm), require(pm) end
+end)
+player:SetAttribute("LabClipVersion", "1.0")
+player:SetAttribute("LabClipState", "off")
+player:SetAttribute("LabClipParts", 0)
+local clip = nil -- {c = LabClipPlayer clip, id, step, char, parked}
+local clipStep, clipStepFor = nil, nil
+local redrawDetail = nil
+local function clipDrop()
+	if clip then clip.c:destroy() clip = nil end
+	player:SetAttribute("LabClipParts", 0)
+end
+local function clipPark()
+	if not clip then return end
+	clip.parked = true
+	if clip.c.view then clip.c.view.Parent = nil end
+	task.defer(function()
+		if clip and clip.parked then
+			clipDrop()
+			if player:GetAttribute("LabClipState") == "playing" then player:SetAttribute("LabClipState", "off") end
+		end
+	end)
+end
+local function clipVisible()
+	local v = clip and clip.c.view
+	if not v or not v.Parent then return false end
+	local top, bot = detail.AbsolutePosition.Y, detail.AbsolutePosition.Y + detail.AbsoluteSize.Y
+	return v.AbsolutePosition.Y + v.AbsoluteSize.Y > top and v.AbsolutePosition.Y < bot
+end
+local function clipMount(id, n, col)
+	local rec = ClipRecipes and ClipRecipes[id]
+	if not rec or not ClipPlayer then
+		player:SetAttribute("LabClipState", "none")
+		return
+	end
+	if clipStepFor ~= id then clipStep, clipStepFor = nil, id end
+	local shown = math.clamp(clipStep or math.max(1, n), 1, #rec.steps)
+	for _, ch in ipairs(detail:GetChildren()) do
+		if ch:IsA("GuiObject") and ch.LayoutOrder >= 3 then ch.LayoutOrder += 10 end
+	end
+	local w = math.max(detail.AbsoluteSize.X - 3.2 * S.ch - 4, 40)
+	local h = math.max(math.min(w * 10 / 16, 0.38 * detail.AbsoluteSize.Y), 40)
+	local box = frame(detail, "Clip", Color3.fromRGB(11, 14, 20), 0)
+	box.Size = UDim2.new(1, 0, 0, math.floor(h))
+	box.LayoutOrder = 3
+	box.ClipsDescendants = true
+	corner(box, UDim.new(0, 1.2 * S.ch))
+	stroke(box, WHITE, 0.92, 1)
+	local char = player.Character
+	if clip and (clip.id ~= id or clip.char ~= char) then clipDrop() end
+	if not clip then
+		local ok, c = pcall(ClipPlayer.new, rec, {id = id, step = shown, character = char, color = col, visible = clipVisible})
+		if not ok or not c then
+			warn("Lab: clip " .. id .. ": " .. tostring(c))
+			player:SetAttribute("LabClipState", "error")
+			return
+		end
+		clip = {c = c, id = id, step = shown, char = char}
+	elseif clip.step ~= shown then
+		clip.c:setStep(shown)
+		clip.step = shown
+	end
+	clip.parked = false
+	clip.c.view.Parent = box
+	local tagS = math.max(1.15 * S.ch, 7)
+	local function tag(name, text, fg, bg, right)
+		local t = label(box, name, Enum.Font.GothamBlack, tagS, fg, text)
+		t.BackgroundColor3, t.BackgroundTransparency = bg, right and 0 or 0.2
+		t.AutomaticSize = Enum.AutomaticSize.XY
+		t.Size = UDim2.fromOffset(0, 0)
+		t.AnchorPoint = Vector2.new(right and 1 or 0, 0)
+		t.Position = right and UDim2.new(1, -0.8 * S.ch, 0, 0.8 * S.ch) or UDim2.fromOffset(0.8 * S.ch, 0.8 * S.ch)
+		t.ZIndex = 6
+		corner(t, UDim.new(0, 0.5 * S.ch))
+		pad(t, 0.5 * S.ch, 0.5 * S.ch, 0.25 * S.ch, 0.25 * S.ch)
+		return t
+	end
+	tag("Live", "LIVE CLIP", VOLT, Color3.fromRGB(6, 36, 47), false)
+	tag("StepTag", "STEP " .. ROMAN[shown], DARK_TEXT, YELLOW, true)
+	local what = label(detail, "What", Enum.Font.GothamBlack, math.max(1.75 * S.ch, 10), WHITE, rec.what)
+	what.TextXAlignment = Enum.TextXAlignment.Left
+	what.TextWrapped = true
+	what.AutomaticSize = Enum.AutomaticSize.Y
+	what.Size = UDim2.new(1, 0, 0, 0)
+	what.LayoutOrder = 4
+	local chips = frame(detail, "Chips")
+	chips.AutomaticSize = Enum.AutomaticSize.Y
+	chips.Size = UDim2.new(1, 0, 0, 0)
+	chips.LayoutOrder = 5
+	local cl = list(chips, Enum.FillDirection.Horizontal, 0.6 * S.ch)
+	cl.Wraps = true
+	local chipS = math.max(1.35 * S.ch, 8)
+	local chipH = math.floor(chipS * 1.9)
+	for i, c in ipairs(ClipRecipes.chips(rec, shown, n)) do
+		local holder = frame(chips, "Chip" .. i)
+		holder.AutomaticSize = Enum.AutomaticSize.X
+		holder.Size = UDim2.fromOffset(0, chipH + math.floor(0.6 * S.ch))
+		holder.LayoutOrder = i
+		local up = c[3] == true
+		local t = label(holder, "Text", Enum.Font.GothamBlack, chipS, up and YELLOW or GREY,
+			("%s <font color=\"#%s\">%s</font>"):format(c[1], up and "FFC832" or "FFFFFF", c[2]))
+		t.RichText = true
+		t.BackgroundColor3 = up and Color3.fromRGB(58, 47, 10) or PANEL2
+		t.BackgroundTransparency = 0
+		t.AutomaticSize = Enum.AutomaticSize.X
+		t.Size = UDim2.fromOffset(0, chipH)
+		corner(t, UDim.new(0, 0.8 * S.ch))
+		pad(t, 0.8 * S.ch, 0.8 * S.ch, 0, 0)
+		if up then stroke(t, YELLOW, 0.6, 1) end
+	end
+	local sb = detail:FindFirstChild("Steps")
+	for i = 1, 4 do
+		local row = sb and sb:FindFirstChild("Step" .. i)
+		if row then
+			if clipStep == i then
+				corner(row, UDim.new(0, 0.7 * S.ch))
+				stroke(row, YELLOW, 0.4, 2)
+			end
+			local b = Instance.new("TextButton")
+			b.Name = "Preview"
+			b.Text = ""
+			b.AutoButtonColor = false
+			b.BackgroundTransparency = 1
+			b.Size = UDim2.fromScale(1, 1)
+			b.ZIndex = 3
+			b.Parent = row
+			b.Activated:Connect(function()
+				press("clipstep:" .. i)
+				clipStep = (clipStep == i) and nil or i
+				clipStepFor = id
+				if redrawDetail then redrawDetail() end
+			end)
+		end
+	end
+	player:SetAttribute("LabClipState", "playing")
+	player:SetAttribute("LabClipPart", id)
+	player:SetAttribute("LabClipStep", shown)
+	player:SetAttribute("LabClipParts", clip.c:count())
+end
+
 local function drawDetail()
+	clipPark() -- v1.15
 	for _, ch in ipairs(detail:GetChildren()) do
 		if ch:IsA("GuiObject") then ch:Destroy() end
 	end
@@ -1308,7 +1473,9 @@ local function drawDetail()
 		h.Size = UDim2.new(1, 0, 0, 0)
 		h.LayoutOrder = 5
 	end
+	if script:GetAttribute("LabClipEnabled") ~= false then clipMount(id, n, col) end -- v1.15
 end
+redrawDetail = drawDetail -- v1.15
 
 local function drawBar()
 	local dino = species()
@@ -1597,6 +1764,8 @@ local function setOpen(kind)
 	else
 		RunService:UnbindFromRenderStep(BIND)
 		toast.Visible = false
+		clipDrop() -- v1.15
+		player:SetAttribute("LabClipState", "off")
 	end
 end
 closeB.Activated:Connect(function() press("close") setOpen(nil) end)
