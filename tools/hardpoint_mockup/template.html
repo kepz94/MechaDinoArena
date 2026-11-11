@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena Hardpoint</title>
+<style>
+/* Same dark panel look as the other MDA mockups. In-game pieces use the HUD colours from the code: PANEL (20,20,26) at 0.18,
+   white stroke, YELLOW (255,200,50), red (224,40,74), blue (90,160,255), green (120,200,80). Fonts: system fallbacks. */
+:root { --ink:#0f1319; --panel:#171d26; --line:#2a3340; --text:#e8edf4; --muted:#9aa6b6; --accent:#ff8a2a; --yellow:#ffc832;
+  --red:#e0284a; --blue:#5aa0ff; --green:#78c850;
+  --display:"Fredoka","FredokaOne","Trebuchet MS",system-ui,sans-serif; --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--ink); color:var(--text); font-family:var(--body); font-size:15px; line-height:1.5; padding:20px 16px 48px; }
+.wrap { max-width:1180px; margin:0 auto; display:grid; gap:14px; }
+h1 { font-family:var(--display); font-size:28px; margin:0; } h1 span { color:var(--accent); }
+.lede { margin:2px 0 0; color:var(--muted); max-width:92ch; }
+.lbl { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:6px 0 -6px; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.tab { font-family:var(--display); font-weight:600; font-size:16px; color:var(--text); background:var(--panel); border:2px solid var(--line); border-radius:12px; padding:8px 14px; cursor:pointer; text-align:left; }
+.tab small { display:block; font-family:var(--body); font-weight:400; font-size:12px; color:var(--muted); }
+.tab[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,138,42,.22); }
+.tab.rec::after { content:"recommended"; display:inline-block; margin-left:8px; font-size:11px; font-family:var(--body); background:var(--yellow); color:#1b1406; border-radius:6px; padding:0 6px; vertical-align:2px; }
+.btn { font-family:var(--display); font-weight:700; font-size:15px; border:0; border-radius:12px; padding:8px 14px; cursor:pointer; background:var(--yellow); color:#1b1406; }
+.btn.ghost { background:var(--panel); color:var(--text); border:2px solid var(--line); }
+.card { background:var(--panel); border:2px solid var(--line); border-radius:14px; padding:14px 16px; }
+.card h2 { font-family:var(--display); font-size:19px; margin:0 0 6px; } .card h3 { font-family:var(--display); font-size:16px; margin:10px 0 4px; }
+.card p, .card li { color:var(--muted); margin:4px 0; } .card b { color:var(--text); }
+.grid2 { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:14px; } @media (max-width:860px) { .grid2 { grid-template-columns:1fr; } }
+table { width:100%; border-collapse:collapse; font-size:14px; } th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.06em; } td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.mapbox { position:relative; } canvas.map { width:100%; height:auto; display:block; border-radius:14px; border:2px solid var(--line); background:#1d4f73; }
+.legend { display:flex; flex-wrap:wrap; gap:10px; font-size:12px; color:var(--muted); margin-top:6px; } .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:4px; vertical-align:-2px; }
+.tag { display:inline-block; font-size:12px; border-radius:6px; padding:0 6px; border:1px solid var(--line); color:var(--muted); }
+.warn { color:#ffd27a; }
+/* ---------- the game screen ---------- */
+.stage { position:relative; width:100%; aspect-ratio:1200/482; border-radius:16px; overflow:hidden; border:2px solid var(--line); background:#335 center/cover no-repeat; container-type:inline-size; }
+.stage.pc { background-image:url(data:image/jpeg;base64,__PC__); }
+.stage.phone { background-image:url(data:image/jpeg;base64,__PHONE__); }
+.hud { position:absolute; font-family:var(--display); color:#fff; }
+.panel { background:rgba(20,20,26,.82); border:1.5px solid rgba(255,255,255,.5); border-radius:10px; }
+.score { display:flex; align-items:center; gap:1.1cqw; padding:.6cqw 1cqw; }
+.score .team { display:flex; align-items:center; gap:.6cqw; font-weight:700; font-size:1.7cqw; }
+.score .bar { width:11cqw; height:1.1cqw; background:rgba(255,255,255,.14); border-radius:1cqw; overflow:hidden; }
+.score .bar i { display:block; height:100%; width:0; }
+.score .red .bar i { background:var(--red); } .score .blue .bar i { background:var(--blue); margin-left:auto; }
+.score .blue .bar { display:flex; }
+.score .mid { display:flex; flex-direction:column; align-items:center; min-width:7cqw; }
+.score .clock { font-size:1.25cqw; color:#cfd3dc; letter-spacing:.05em; }
+.score .hill { font-size:1.15cqw; color:var(--yellow); }
+.pill { padding:.35cqw 1cqw; font-size:1.35cqw; font-weight:700; text-align:center; white-space:nowrap; }
+.pill.R { border-color:var(--red); color:#ffd9df; } .pill.B { border-color:var(--blue); color:#dbe9ff; } .pill.C { border-color:var(--yellow); color:var(--yellow); } .pill.N { color:#fff; }
+.marker { display:flex; flex-direction:column; align-items:center; gap:.2cqw; transform:translate(-50%,-50%); }
+.marker .dia { width:2.6cqw; height:2.6cqw; transform:rotate(45deg); border:.35cqw solid #fff; border-radius:.4cqw; background:rgba(20,20,26,.6); display:grid; place-items:center; }
+.marker .dia b { transform:rotate(-45deg); font-size:1.4cqw; }
+.marker .dist { font-size:1.1cqw; text-shadow:0 1px 2px #000; }
+.marker.R .dia { border-color:var(--red); } .marker.B .dia { border-color:var(--blue); } .marker.C .dia { border-color:var(--yellow); animation:blink .6s steps(2) infinite; }
+@keyframes blink { 50% { opacity:.45; } }
+.toast { padding:.4cqw 1.2cqw; font-size:1.3cqw; border-color:var(--yellow); color:var(--yellow); }
+.banner { left:50%; top:40%; transform:translate(-50%,-50%); padding:1.2cqw 2.4cqw; font-size:3cqw; font-weight:700; text-align:center; }
+.banner small { display:block; font-size:1.5cqw; color:#cfd3dc; font-weight:600; }
+.hidden { display:none !important; }
+.ctl { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+input[type=range] { accent-color:var(--accent); }
+.log { font-size:13px; color:var(--muted); max-height:160px; overflow:auto; margin:6px 0 0; padding-left:18px; }
+.flow { display:flex; flex-wrap:wrap; gap:8px; align-items:stretch; }
+.flow .step { flex:1 1 150px; background:#11161e; border:2px solid var(--line); border-radius:12px; padding:10px 12px; }
+.flow .step b { font-family:var(--display); display:block; color:var(--text); } .flow .step span { color:var(--muted); font-size:13px; }
+.flow .arrow { align-self:center; color:var(--accent); font-size:20px; }
+canvas.size { width:100%; max-width:520px; height:auto; display:block; margin:6px auto 0; border-radius:12px; background:#2f5d2a; border:2px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>Arena <span>Hardpoint</span> · options v0.1</h1>
+    <p class="lede">Two teams fight over one hill at a time on the real island. Standing in it scores for your team; the hill moves every 60 s. Picked so far: Red vs Blue auto-balanced, Hardpoint takes turns with free-for-all. Pick a <b>hill layout</b>, a <b>HUD placement</b> and a <b>hill size</b>; then check the rules table. The map is the real island, sampled from Studio (72 × 72, 30-stud cells).</p>
+  </div>
+
+  <div class="lbl">Pick 1 · Hill layout</div>
+  <div class="row" id="layoutTabs"></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="mapbox"><canvas class="map" id="map" width="720" height="720" aria-label="Top-down map of the island with the hills"></canvas></div>
+      <div class="legend">
+        <span><i style="background:#4f9a3d"></i>grass</span><span><i style="background:#86b44f"></i>meadow</span><span><i style="background:#8a8f98"></i>rock / mountain</span><span><i style="background:#c9a86a"></i>ramp</span><span><i style="background:#d9c58f"></i>sand</span><span><i style="background:#2e7aa6"></i>shallow / lake</span>
+        <span><i style="background:var(--yellow)"></i>hill (order)</span><span><i style="background:var(--red)"></i>Red spawn</span><span><i style="background:var(--blue)"></i>Blue spawn</span>
+      </div>
+      <div class="lbl" style="margin-top:10px">Where teams spawn</div>
+      <div class="row" id="spawnTabs" style="margin-top:8px"></div>
+    </div>
+    <div class="card" id="layoutInfo"></div>
+  </div>
+
+  <div class="lbl">Pick 2 · HUD placement (step through a match below)</div>
+  <div class="row" id="hudTabs"></div>
+  <div class="row" id="devTabs"></div>
+  <div class="stage pc" id="stage">
+    <div class="hud panel score" id="hScore">
+      <div class="team red"><span>RED</span><span id="sR">0</span><div class="bar"><i id="bR"></i></div></div>
+      <div class="mid"><span class="hill" id="hHill">HILL 1</span><span class="clock" id="hClock">10:00</span></div>
+      <div class="team blue"><div class="bar"><i id="bB"></i></div><span id="sB">0</span><span>BLUE</span></div>
+    </div>
+    <div class="hud panel pill N" id="hPill">HILL OPEN · GO</div>
+    <div class="hud panel toast hidden" id="hToast">NEXT HILL IN 0:10</div>
+    <div class="hud marker N" id="hMarker"><div class="dia"><b id="hMarkN">1</b></div><span class="dist" id="hDist">300 studs</span></div>
+    <div class="hud panel banner hidden" id="hBanner">RED WINS<small>250 – 231 · free-for-all next</small></div>
+  </div>
+  <p class="lede" id="hudNote"></p>
+
+  <div class="card">
+    <h2>Step through a match</h2>
+    <p>A scripted match on the layout you picked, seen by a <b>Red</b> player. Scores, the hill, the map and the HUD above all follow the timeline.</p>
+    <div class="ctl">
+      <button class="btn" id="play">Play</button>
+      <button class="btn ghost" data-spd="1">1×</button><button class="btn ghost" data-spd="5">5×</button><button class="btn ghost" data-spd="20">20×</button>
+      <button class="btn ghost" id="jMove">Next hill move</button><button class="btn ghost" id="jCont">Next contest</button><button class="btn ghost" id="jEnd">Match end</button>
+    </div>
+    <input type="range" id="scrub" min="0" max="1000" value="0" style="width:100%;margin-top:10px" aria-label="Match time">
+    <div class="row" style="justify-content:space-between;font-size:13px;color:var(--muted)"><span id="tNow">0:00 into the match</span><span id="tState"></span></div>
+    <ol class="log" id="log"></ol>
+  </div>
+
+  <div class="lbl">Pick 3 · Hill size</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="row" id="sizeTabs"></div>
+      <canvas class="size" id="size" width="520" height="520" aria-label="The hill drawn to scale with the roster's dinos"></canvas>
+    </div>
+    <div class="card" id="sizeInfo"></div>
+  </div>
+
+  <div class="card">
+    <h2>Rules: Call of Duty vs. ours</h2>
+    <table id="rules"><tr><th style="width:24%">Rule</th><th style="width:30%">Call of Duty (Black Ops 6 guide)</th><th>Ours (proposed)</th></tr></table>
+  </div>
+
+  <div class="card">
+    <h2>Arena rotation</h2>
+    <div class="flow">
+      <div class="step"><b>Hardpoint</b><span>First to 250, or the higher score at 10:00 on the match clock</span></div><div class="arrow">→</div>
+      <div class="step"><b>Results · 15 s</b><span>Winner banner, both scores; dinos frozen in place</span></div><div class="arrow">→</div>
+      <div class="step"><b>Free-for-all · 5:00</b><span>Today’s Arena: everyone vs everyone, no score; teams paused</span></div><div class="arrow">→</div>
+      <div class="step"><b>Next Hardpoint</b><span>Teams rebalanced; the layout starts again at hill 1</span></div>
+    </div>
+    <p class="warn" style="margin-top:8px">Free-for-all has no end today, so the rotation needs a length for it: 5:00 is my proposal, change it if you like.</p>
+  </div>
+
+  <div class="card">
+    <h2>Still to settle (my recommendation first)</h2>
+    <ul>
+      <li><b>Cloaked dinos on the hill:</b> they count for their team, and the hill shows CONTESTED, so the other team knows someone is there. Or: a cloaked dino doesn’t count.</li>
+      <li><b>Squads:</b> balancing keeps a squad on the same team and moves solo players first; squads of 4 can make teams uneven by 1–2 for a match.</li>
+      <li><b>Friendly fire:</b> off for your whole team, using the same check the squads already use in every damage path.</li>
+      <li><b>Joining mid-match:</b> you go to the smaller team (ties: the losing team).</li>
+      <li><b>Hill look in the world</b> (ground ring, light column you can see from far): its own 3D mockup once these rules are picked.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const GRID = `__GRID__`;
+const A = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const N = 72, R = 1080, CELL = 30;
+const rows = GRID.trim().split("\n");
+const G = rows.map(r => { const a = []; for (let i = 0; i < N; i++) a.push([r[2*i], A.indexOf(r[2*i+1]) * 5 - 50]); return a; });
+
+// Spots (studs, x = east, z = south). Heights and flatness checked on the grid.
+const S = {
+  Centre:{name:"Centre Meadow", x:-100, z:-40}, West:{name:"West Meadow", x:-450, z:270}, Lakeside:{name:"Lakeside", x:-90, z:300},
+  SBeach:{name:"South Rocks", x:100, z:720}, ELake:{name:"East Shore", x:450, z:150}, SEField:{name:"Southeast Field", x:650, z:650},
+  WCoast:{name:"West Coast", x:-620, z:-60}, NW:{name:"NW Foothills", x:-280, z:-270}, Summit:{name:"Summit", x:285, z:-240, high:true},
+};
+// Proposed Hardpoint spawn pads: 300 studs from each hill, on opposite sides, on flat dry ground (grid check).
+const PADS = { Centre:[[93,190],[-293,-270]], West:[[-257,500],[-600,10]], Lakeside:[[-193,582],[13,18]], SBeach:[[400,720],[-200,720]],
+  ELake:[[710,300],[155,98]], SEField:[[355,702],[880,457]], WCoast:[[-568,235],[-517,-342]], NW:[[-473,-40],[-87,-500]], Summit:[[388,42],[337,-535]] };
+// Today's 8 Arena spawns (Workspace.ArenaSpawns in the place).
+const ARENA = [[88,904],[-661,803],[-617,60],[-494,-407],[-50,-518],[610,-741],[836,-81],[788,648]];
+const LAYOUTS = {
+  A:{title:"A · Around the lake", sub:"5 hills, both sides of the island", hills:["Centre","ELake","SEField","SBeach","West"],
+     why:"Uses the whole island except the mountain top. Every team crosses the island once per loop."},
+  B:{title:"B · Summit", sub:"5 hills, hill 3 on the mountain top", hills:["Centre","ELake","Summit","NW","West"], rec:true,
+     why:"Hill 3 is the mountain top: one minute of every loop is a fight on the summit the whole lobby can see. It gives your king-of-the-hill idea a home inside the mode."},
+  C:{title:"C · West side", sub:"4 hills close together, small lobbies", hills:["Centre","Lakeside","West","WCoast"],
+     why:"Short runs (340–520 studs) on the west half. Best when only 4–6 players are on; the east half is left empty."},
+};
+// In-game run speeds: model MoveRunSpeed x ArenaSpeedScale 0.65 (StatServer 1.1).
+const SPEEDS = [["Pachy",37],["T-Rex",48.1],["Raptor",50.7],["Herrera",58.5]];
+
+let layout = "B", spawnMode = "pads", hud = "H1", dev = "pc", radius = 45;
+
+// ---------- map ----------
+const map = document.getElementById("map"), mx = map.getContext("2d");
+const PX = map.width / (2 * R);
+const toPx = (x, z) => [(x + R) * PX, (z + R) * PX];
+const base = document.createElement("canvas"); base.width = base.height = 720;
+(function drawBase() {
+  const c = base.getContext("2d"), cs = 720 / N;
+  const col = {w:[29,79,115], v:[46,122,166], s:[217,197,143], g:[79,154,61], m:[134,180,79], r:[138,143,152], k:[154,160,170], t:[201,168,106], o:[125,130,139]};
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const [t, h] = G[j][i]; let [r, g, b] = col[t] || [255, 0, 255];
+    if (t === "v" && h < -5) { const k = Math.max(0.45, 1 + h / 90); r *= k; g *= k; b *= k; }
+    if ("gmrkot".includes(t)) { const lift = Math.min(1.35, 1 + h / 400); r *= lift; g *= lift; b *= lift;
+      const west = i > 0 ? G[j][i-1][1] : h, north = j > 0 ? G[j-1][i][1] : h; const sh = Math.max(-0.25, Math.min(0.25, (h - west + h - north) / 60)); r *= 1 + sh; g *= 1 + sh; b *= 1 + sh; }
+    c.fillStyle = `rgb(${r|0},${g|0},${b|0})`; c.fillRect(i * cs, j * cs, cs + 0.5, cs + 0.5);
+  }
+})();
+function dist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
+function drawMap(state) {
+  mx.clearRect(0, 0, 720, 720); mx.drawImage(base, 0, 0);
+  const L = LAYOUTS[layout], hs = L.hills.map(k => S[k]);
+  // rotation path
+  mx.lineWidth = 3; mx.setLineDash([10, 8]); mx.strokeStyle = "rgba(255,200,50,.75)";
+  mx.beginPath(); hs.forEach((h, i) => { const [x, y] = toPx(h.x, h.z); i ? mx.lineTo(x, y) : mx.moveTo(x, y); }); mx.closePath(); mx.stroke(); mx.setLineDash([]);
+  // spawns
+  const cur = state ? state.hill : 0, curKey = L.hills[cur];
+  if (spawnMode === "pads") {
+    const [p, q] = PADS[curKey];
+    [[p, "#e0284a"], [q, "#5aa0ff"]].forEach(([pt, c]) => { const [x, y] = toPx(pt[0], pt[1]); mx.fillStyle = c; mx.strokeStyle = "#fff"; mx.lineWidth = 2; mx.beginPath(); mx.rect(x - 8, y - 8, 16, 16); mx.fill(); mx.stroke();
+      const [hx, hy] = toPx(S[curKey].x, S[curKey].z); mx.strokeStyle = c; mx.globalAlpha = .55; mx.lineWidth = 2; mx.beginPath(); mx.moveTo(x, y); mx.lineTo(hx, hy); mx.stroke(); mx.globalAlpha = 1; });
+  } else {
+    ARENA.forEach((pt, n) => { const [x, y] = toPx(pt[0], pt[1]); mx.fillStyle = "#f2f2f2"; mx.strokeStyle = "#222"; mx.lineWidth = 2; mx.beginPath(); mx.arc(x, y, 7, 0, 7); mx.fill(); mx.stroke(); mx.fillStyle = "#111"; mx.font = "bold 10px system-ui"; mx.textAlign = "center"; mx.fillText(n + 1, x, y + 3.5); });
+  }
+  // hills
+  hs.forEach((h, i) => {
+    const [x, y] = toPx(h.x, h.z), rr = Math.max(radius * PX, 7);
+    const active = state && i === state.hill, next = state && state.showNext && i === state.next;
+    let fill = "rgba(255,200,50,.28)", stroke = "#ffc832";
+    if (active) { const st = state.st; fill = st === "R" ? "rgba(224,40,74,.55)" : st === "B" ? "rgba(90,160,255,.55)" : st === "C" ? "rgba(255,200,50,.6)" : "rgba(255,255,255,.45)"; stroke = "#fff"; }
+    mx.fillStyle = fill; mx.strokeStyle = stroke; mx.lineWidth = active ? 4 : 2; if (next) mx.setLineDash([5, 4]);
+    mx.beginPath(); mx.arc(x, y, active ? rr + 3 : rr, 0, 7); mx.fill(); mx.stroke(); mx.setLineDash([]);
+    mx.fillStyle = "#14141a"; mx.beginPath(); mx.arc(x + rr + 8, y - rr - 6, 11, 0, 7); mx.fill();
+    mx.fillStyle = active ? "#fff" : "#ffc832"; mx.font = "bold 13px system-ui"; mx.textAlign = "center"; mx.fillText(i + 1, x + rr + 8, y - rr - 1.5);
+    mx.font = "600 12px system-ui"; mx.fillStyle = "#fff"; mx.strokeStyle = "rgba(0,0,0,.7)"; mx.lineWidth = 3; mx.strokeText(h.name, x, y + rr + 16); mx.fillText(h.name, x, y + rr + 16);
+  });
+  // compass + scale
+  mx.fillStyle = "rgba(20,20,26,.8)"; mx.fillRect(14, 14, 118, 46); mx.fillStyle = "#fff"; mx.font = "600 12px system-ui"; mx.textAlign = "left";
+  mx.fillText("N ↑  (−Z)", 22, 32); mx.fillRect(22, 44, 300 * PX, 4); mx.fillText("300 studs", 22 + 300 * PX + 6, 50);
+}
+
+function layoutInfo() {
+  const L = LAYOUTS[layout], hs = L.hills;
+  let rowsH = "";
+  for (let i = 0; i < hs.length; i++) {
+    const a = S[hs[i]], b = S[hs[(i + 1) % hs.length]], d = dist(a, b);
+    const climb = a.high || b.high ? ' <span class="tag warn">+ spiral climb</span>' : "";
+    rowsH += `<tr><td>${i + 1} → ${(i + 1) % hs.length + 1}</td><td>${a.name} → ${b.name}${climb}</td><td class="num">${Math.round(d)}</td><td class="num">${(d / 58.5).toFixed(0)}–${(d / 37).toFixed(0)} s</td></tr>`;
+  }
+  let spawnRows = "";
+  hs.forEach((k, i) => { const h = S[k]; let dR, dB;
+    if (spawnMode === "pads") { dR = dB = 300; } else { const ds = ARENA.map(p => Math.hypot(p[0] - h.x, p[1] - h.z)).sort((x, y) => x - y); dR = ds[0]; dB = ds[1]; }
+    spawnRows += `<tr><td>Hill ${i + 1}</td><td class="num">${spawnMode === "pads" ? "300 each" : "Red " + Math.round(dR) + " · Blue " + Math.round(dB)}</td><td class="num">${(Math.min(dR,dB) / 58.5).toFixed(0)}–${(Math.max(dR,dB) / 37).toFixed(0)} s</td></tr>`; });
+  document.getElementById("layoutInfo").innerHTML = `<h2>${L.title}</h2><p>${L.why}</p>
+    <h3>Runs between hills</h3><table><tr><th>Move</th><th>From → to</th><th class="num">Studs</th><th class="num">Run</th></tr>${rowsH}</table>
+    <p style="font-size:13px">Run = straight line at in-game speed, Herrera 58.5 to Pachy 37 studs/s (model run × 0.65). The next hill shows 10 s before it opens, so the fastest dinos arrive about as it opens.${hs.includes("Summit") ? ' <span class="warn">The summit is reached by the spiral ramp, so its real run is longer than the straight line; I’ll measure it in Studio before the plan.</span>' : ""}</p>
+    <h3>Spawn → current hill</h3><table><tr><th>Hill</th><th class="num">Studs</th><th class="num">Run</th></tr>${spawnRows}</table>
+    <p style="font-size:13px">${spawnMode === "pads" ? "Each hill gets a Red pad and a Blue pad 300 studs away on opposite sides; you respawn on your team’s pad for the current hill (3 s respawn, as today)." : "Today’s 8 Arena spawns are on the coast; the nearest one is used. Runs back to the hill are long, and the two teams can share a spawn."}</p>`;
+}
+
+// ---------- the scripted match ----------
+// Each hill: 60 s of states. N = nobody, R = Red holds, B = Blue holds, C = contested. Repeats if the match runs long.
+const PATTERNS = [
+  [[9,"N"],[14,"R"],[6,"C"],[20,"B"],[11,"R"]], [[8,"N"],[18,"B"],[10,"C"],[24,"R"]], [[10,"N"],[12,"R"],[8,"C"],[30,"B"]],
+  [[7,"N"],[25,"R"],[12,"C"],[16,"B"]], [[9,"N"],[20,"B"],[5,"C"],[26,"R"]], [[8,"N"],[22,"R"],[9,"C"],[21,"B"]],
+];
+const FIRST = 5, HILL = 60, NEXT = 10, LIMIT = 250, CLOCK = 600;
+function simulate() {
+  const nH = LAYOUTS[layout].hills.length, tl = [];
+  let r = 0, b = 0, clock = CLOCK, t = 0, end = null;
+  while (end === null && t < 3600) {
+    let st = "N", hill = 0, into = 0, next = 0, showNext = false;
+    if (t >= FIRST) { const k = Math.floor((t - FIRST) / HILL); hill = k % nH; into = (t - FIRST) % HILL; next = (k + 1) % nH; showNext = into >= HILL - NEXT;
+      let acc = 0; for (const [d, s] of PATTERNS[k % PATTERNS.length]) { if (into < acc + d) { st = s; break; } acc += d; }
+      if (st === "R") r++; if (st === "B") b++; }
+    if (st === "N") clock--; // CoD: the match clock pauses while the hill is occupied
+    tl.push({t, st, hill, into, next, showNext, r, b, clock, k: t >= FIRST ? Math.floor((t - FIRST) / HILL) : -1});
+    if (r >= LIMIT || b >= LIMIT || clock <= 0) end = t;
+    t++;
+  }
+  return tl;
+}
+let TL = simulate(), T = 0, playing = false, speed = 5, last = 0;
+const scrub = document.getElementById("scrub");
+const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+function frame(i) {
+  const f = TL[Math.max(0, Math.min(TL.length - 1, i))], L = LAYOUTS[layout], ended = i >= TL.length - 1;
+  const $ = id => document.getElementById(id);
+  $("sR").textContent = Math.min(f.r, LIMIT); $("sB").textContent = Math.min(f.b, LIMIT);
+  $("bR").style.width = (f.r / LIMIT * 100) + "%"; $("bB").style.width = (f.b / LIMIT * 100) + "%";
+  $("hClock").textContent = fmt(Math.max(0, f.clock)) + (f.st !== "N" && f.t >= FIRST ? " ❚❚" : "");
+  const hillName = S[L.hills[f.hill]].name;
+  $("hHill").textContent = f.t < FIRST ? "HILL OPENS IN 0:0" + (FIRST - f.t) : `HILL ${f.hill + 1} · ${fmt(HILL - f.into)}`;
+  const pill = $("hPill"); pill.className = "hud panel pill " + f.st;
+  pill.textContent = f.t < FIRST ? "GET READY" : f.st === "R" ? "YOUR TEAM HOLDS · +1/s" : f.st === "B" ? "ENEMY HOLDS THE HILL" : f.st === "C" ? "CONTESTED · CLEAR IT" : "HILL OPEN · GO";
+  const toast = $("hToast"); toast.classList.toggle("hidden", !f.showNext || ended);
+  toast.textContent = `NEXT: HILL ${f.next + 1} ${S[L.hills[f.next]].name.toUpperCase()} · ${fmt(HILL - f.into)}`;
+  const mk = $("hMarker"); mk.className = "hud marker " + (f.t < FIRST ? "N" : f.st);
+  $("hMarkN").textContent = f.hill + 1;
+  const travel = f.st === "N" && f.t >= FIRST ? Math.max(0, Math.round(320 - f.into * 34)) : 0;
+  $("hDist").textContent = f.t < FIRST ? "opens soon" : travel > 0 ? travel + " studs" : "ON HILL";
+  const ban = $("hBanner"); ban.classList.toggle("hidden", !ended);
+  pill.classList.toggle("hidden", ended); mk.classList.toggle("hidden", ended);
+  if (ended) { const red = f.r >= f.b; ban.innerHTML = `${red ? "RED" : "BLUE"} WINS<small>${Math.min(f.r, LIMIT)} – ${Math.min(f.b, LIMIT)} · free-for-all next</small>`; ban.style.borderColor = red ? "#e0284a" : "#5aa0ff"; }
+  $("tNow").textContent = `${fmt(f.t)} into the match · match clock ${fmt(Math.max(0, f.clock))}`;
+  $("tState").textContent = ended ? "match over" : f.t < FIRST ? "first hill opens at 0:05" : `hill ${f.hill + 1} (${hillName}) · ${{N:"empty",R:"Red holds",B:"Blue holds",C:"contested"}[f.st]}`;
+  drawMap(f.t >= FIRST ? f : {hill: 0, st: "N", showNext: false, next: 0});
+  scrub.value = Math.round(i / (TL.length - 1) * 1000);
+}
+function buildLog() {
+  const L = LAYOUTS[layout], out = []; let prev = null;
+  TL.forEach(f => {
+    if (f.t === FIRST) out.push(`0:05 · Hill 1 (${S[L.hills[0]].name}) opens`);
+    if (prev && f.k !== prev.k && f.k > 0) out.push(`${fmt(f.t)} · Hill moves to ${f.hill + 1} (${S[L.hills[f.hill]].name}) · ${f.r}–${f.b}`);
+    if (prev && f.st === "C" && prev.st !== "C") out.push(`${fmt(f.t)} · Contested`);
+    prev = f;
+  });
+  const e = TL[TL.length - 1]; out.push(`${fmt(e.t)} · ${e.r >= e.b ? "Red" : "Blue"} reaches ${LIMIT}: ${Math.min(e.r, LIMIT)}–${Math.min(e.b, LIMIT)}`);
+  document.getElementById("log").innerHTML = out.map(s => `<li>${s}</li>`).join("");
+}
+function reset() { TL = simulate(); T = 0; buildLog(); frame(0); }
+function tick(ts) { if (playing) { const dt = Math.min(0.25, (ts - last) / 1000); T += dt * speed; if (T >= TL.length - 1) { T = TL.length - 1; playing = false; document.getElementById("play").textContent = "Play"; } frame(Math.floor(T)); } last = ts; requestAnimationFrame(tick); }
+requestAnimationFrame(tick);
+document.getElementById("play").onclick = e => { if (T >= TL.length - 1) T = 0; playing = !playing; e.target.textContent = playing ? "Pause" : "Play"; };
+document.querySelectorAll("[data-spd]").forEach(b => b.onclick = () => { speed = +b.dataset.spd; document.querySelectorAll("[data-spd]").forEach(x => x.style.borderColor = x === b ? "var(--accent)" : ""); });
+document.querySelector('[data-spd="5"]').style.borderColor = "var(--accent)";
+scrub.oninput = () => { T = scrub.value / 1000 * (TL.length - 1); frame(Math.floor(T)); };
+function jump(pred) { for (let i = Math.floor(T) + 1; i < TL.length; i++) if (pred(TL[i], TL[i - 1])) { T = i; frame(i); return; } }
+document.getElementById("jMove").onclick = () => jump((f, p) => f.showNext && !p.showNext);
+document.getElementById("jCont").onclick = () => jump((f, p) => f.st === "C" && p.st !== "C");
+document.getElementById("jEnd").onclick = () => { T = TL.length - 1; frame(T); };
+
+// ---------- HUD placement ----------
+const HUDS = {
+  H1:{title:"H1 · Top centre", sub:"score bar over the middle", rec:true,
+      note:"The score bar sits at the top centre, where your eyes already go. The enemy health bar you get when you hit someone (TargetHUD, top centre today) moves down under it while Hardpoint is on."},
+  H2:{title:"H2 · Top left", sub:"compact card, nothing moves",
+      note:"A smaller score card at the top left, under Roblox’s own buttons; nothing on today’s HUD moves. Harder to read at a glance on a phone."},
+};
+function placeHud() {
+  const h = id => document.getElementById(id).style;
+  const isPhone = dev === "phone";
+  document.getElementById("stage").className = "stage " + dev;
+  ["hScore","hPill","hToast","hMarker"].forEach(id => { const s = h(id); s.left = s.top = s.right = s.transform = ""; });
+  if (hud === "H1") {
+    Object.assign(h("hScore"), {left:"50%", top:"2.2%", transform:"translateX(-50%)"});
+    Object.assign(h("hPill"), {left:"50%", top:"13.5%", transform:"translateX(-50%)"});
+    Object.assign(h("hToast"), {left:"50%", top:"21.5%", transform:"translateX(-50%)"});
+  } else {
+    Object.assign(h("hScore"), {left:"1.2%", top:"11%"});
+    Object.assign(h("hPill"), {left:"1.2%", top:"22.5%"});
+    Object.assign(h("hToast"), {left:"1.2%", top:"30.5%"});
+  }
+  Object.assign(h("hMarker"), {left: isPhone ? "57%" : "60%", top:"52%"});
+  document.getElementById("hudNote").innerHTML = HUDS[hud].note + (isPhone ? " On the phone the bar keeps clear of the SKILLS / MENU pills (top right) and the ATTACK / JUMP buttons (bottom right)." : " On PC the ability bar and health stay where they are.") + " The diamond is the hill marker over the world, with its distance; it blinks yellow when contested.";
+}
+
+// ---------- hill size ----------
+const DINOS = [["T-Rex",62],["Teno",47],["Therizino",32],["Dilo",26],["Raptor",25.7],["Troodon",24],["Herrera",22.4]];
+const SIZES = {35:{sub:"70 across"}, 45:{sub:"90 across", rec:true}, 60:{sub:"120 across"}};
+function drawSize() {
+  const c = document.getElementById("size"), x = c.getContext("2d"), W = c.width, sc = (W / 2 - 30) / 60;
+  x.clearRect(0, 0, W, W); x.fillStyle = "#3f7a33"; x.fillRect(0, 0, W, W);
+  x.fillStyle = "rgba(255,200,50,.22)"; x.strokeStyle = "#ffc832"; x.lineWidth = 4; x.beginPath(); x.arc(W/2, W/2, radius * sc, 0, 7); x.fill(); x.stroke();
+  // fixed spots in studs from the centre (same for every size, so a smaller ring shows the crowding)
+  const lay = {"T-Rex":[0,-27], "Teno":[-14,-6], "Herrera":[24,-6], "Therizino":[-21,13], "Dilo":[15,13], "Raptor":[-14,31], "Troodon":[14,31]};
+  DINOS.forEach(([n, len], i) => { const [sx, sz] = lay[n]; const cx = W/2 + sx * sc, cy = W/2 + sz * sc;
+    const L = len * sc, Wd = Math.max(8, len * 0.24 * sc);
+    x.fillStyle = i === 0 ? "#6b4a2a" : "#2a3340"; x.strokeStyle = "#fff"; x.lineWidth = 1.5;
+    x.beginPath(); x.ellipse(cx, cy, L / 2, Wd / 2, 0, 0, 7); x.fill(); x.stroke();
+    x.fillStyle = "#fff"; x.font = "600 12px system-ui"; x.textAlign = "center"; x.fillText(`${n} ${len}`, cx, cy + 4); });
+  x.fillStyle = "rgba(20,20,26,.85)"; x.fillRect(10, W - 40, 150, 30); x.fillStyle = "#fff"; x.fillRect(20, W - 22, 20 * sc, 4); x.font = "600 12px system-ui"; x.textAlign = "left"; x.fillText("20 studs", 26 + 20 * sc, W - 17);
+  document.getElementById("sizeInfo").innerHTML = `<h2>Radius ${radius} · ${radius * 2} studs across</h2>
+    <p>The ring and the dinos (length in studs, in game) are drawn to scale from above; the dinos stay in the same spots for every size. The Pachy’s length isn’t in the roster doc, so it’s left out.</p>
+    <ul><li>The T-Rex (62 studs) fills <b>${Math.round(62 / (radius * 2) * 100)}%</b> of the width.</li>
+    <li>${radius === 35 ? "Tight: two big dinos block the ring, and a slash or tail slam reaches across it. Fights are close and short." : radius === 45 ? "Room for a 3v3 brawl inside; a dino has to commit to stand in it, and ranged dinos (Dilo, Troodon) can still hit it from just outside." : "Easy to stand in and hard to clear; ranged dinos can hold it from inside. Contests last longer."}</li>
+    <li>Counting rule: your dino counts when its root (centre) is inside the ring.</li></ul>`;
+}
+
+// ---------- rules table ----------
+const RULES = [
+  ["Teams","1–6 per team","Red vs Blue, auto-balanced on join (your pick). Arena keeps its 8-spawn island."],
+  ["Hill","One at a time, fixed order of spots per map","Same. Order = the layout you pick (Pick 1)."],
+  ["First hill","Opens 5 s into the match","Same: 5 s."],
+  ["Hill time","60 s, then it moves","Same: 60 s."],
+  ["Next hill shown","10 s before it moves; can’t score on it yet","Same: 10 s, on the map and as a NEXT notice."],
+  ["Scoring","Stand inside; the guide doesn’t state the rate","1 point per second while only your team is inside."],
+  ["Contested","Both teams inside → nobody scores","Same. The pill says CONTESTED and the marker blinks."],
+  ["Win","First to 250 (public matches)","Same: 250."],
+  ["Match clock","Higher score wins at the end; the clock pauses while the hill is held","Same: 10:00, paused while anyone is on the hill (shown as ❚❚)."],
+  ["Respawn","Not in the guide","3 s as today, on your team’s pad for the current hill (Pick 1)."],
+  ["After the match","—","Results 15 s, then free-for-all (your rotation pick)."],
+];
+document.getElementById("rules").innerHTML += RULES.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("");
+
+// ---------- tabs ----------
+function tabs(id, items, cur, onPick) {
+  const el = document.getElementById(id); el.innerHTML = "";
+  Object.entries(items).forEach(([k, v]) => { const b = document.createElement("button"); b.className = "tab" + (v.rec ? " rec" : ""); b.setAttribute("aria-pressed", k === cur);
+    b.innerHTML = `${v.title || k}<small>${v.sub || ""}</small>`; b.onclick = () => { el.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-pressed", x === b)); onPick(k); }; el.appendChild(b); });
+}
+tabs("layoutTabs", LAYOUTS, layout, k => { layout = k; layoutInfo(); reset(); });
+tabs("spawnTabs", {pads:{title:"Hardpoint pads", sub:"2 per hill, 300 studs away", rec:true}, arena:{title:"Today’s Arena spawns", sub:"8 on the coast"}}, spawnMode, k => { spawnMode = k; layoutInfo(); frame(Math.floor(T)); });
+tabs("hudTabs", HUDS, hud, k => { hud = k; placeHud(); });
+tabs("devTabs", {pc:{title:"PC", sub:"1200 × 482 capture"}, phone:{title:"Phone", sub:"touch layout"}}, dev, k => { dev = k; placeHud(); });
+tabs("sizeTabs", Object.fromEntries(Object.entries(SIZES).map(([k, v]) => [k, {title:"Radius " + k, sub:v.sub, rec:v.rec}])), String(radius), k => { radius = +k; drawSize(); frame(Math.floor(T)); });
+layoutInfo(); placeHud(); drawSize(); reset();
+</script>
+</body>
+</html>
