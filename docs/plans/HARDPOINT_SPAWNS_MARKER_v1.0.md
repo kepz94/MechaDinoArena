@@ -87,5 +87,5 @@ nearest enemy, seen), bot sizes = player sizes, compass turn test PC + forced to
    the strip goes between them at 34% width. Check it doesn't overlap on a narrow phone (QA screenshot).
 
 ## Status (2026-11-10 23:39)
-Kepu: "you're not connected to the pc. Just make note of these changes." Nothing built yet; tickets filed. Open decision
-for Kepu before Build: red-team 2 (band 420–600 or 360–520).
+Kepu: "you're not connected to the pc. Just make note of these changes." Nothing built yet; tickets filed. Red-team 2
+answered 23:41 ("Yes I do want that"): keep the 420–600 band. Ready for "Build" once Studio is linked.
