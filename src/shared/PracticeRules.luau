@@ -14,8 +14,32 @@
 --   assignRoles(n, rng) -> {role}                        scoreTarget(dist, onPoint, hpFrac) -> number (lower = better)
 --   shouldRetreat(hpFrac, mates, foes, diff) -> bool     goalFor(role, centre, nextCentre, home, into, pointTime) -> Vector3
 --   wantsAttack(seenFor, dist, reach, cdLeft, diff) -> bool   aimError(rng, diff) -> degrees   diffOf(name) -> DIFF row
+-- v1.1 (bot jobs, MDA-429, plan docs/plans/BOT_JOBS_v1.0.md Task 1, research docs/research/BOT_PLAYSTYLE_v0.1.md; Kepu
+--   2026-11-11 "the pachy play objective while other Dino's look for 1v1 matchups", picks "C" (preferred job by dino, the team
+--   brain changes it when the team needs it) and "1" (bots never pick the T-Rex)). Added, 1.0 untouched:
+--   BOT_SPECIES = SPECIES without TRex (PracticeServer passes one to rollBot).
+--   Jobs: JOB_OF Pachy / Teno = "hold", Raptor / Herrera / Therizino / TRex = "duel", Dilo / Troodon = "guard"; "run" is given
+--     by the team brain only. jobOf(species) -> job (unknown -> "duel").
+--   dealJobs(bots, ctx) -> {[id] = {job, why, filledAt}}; bots = {{id, species, alive, dPoint, dNext, job?, why?, filledAt?}} in
+--     a fixed order (ties go to the first); ctx = {held, humansOnPoint, into, pointTime, now}. Rules in order:
+--     1. a dead bot or one with no job -> its dino job (why "dino").
+--     2. runner: while into >= pointTime - RUN_WINDOW (10) and no living "run", the living bot on a dino "duel" job (else on
+--        a dino "guard" job) nearest the next point (dNext) -> "run" (why "run: next"); outside that window every "run" -> its
+--        dino job.
+--     3. holders: wanted = held and HOLD_WANT_HELD (1) or HOLD_WANT_OPEN (2); have = living "hold" + humansOnPoint. have <
+--        wanted -> living non-hold, non-run bots, guards before duelists, nearest the point (dPoint) first -> "hold" (why
+--        "fill: point", filledAt = now) until have = wanted. have > wanted -> filled holders whose filledAt is FILL_MIN (5) s
+--        or more ago, furthest from the point first -> their dino job, until have = wanted. Dino holders are never released.
+--   canTarget(job, info) -> bool; info = {dist (from the bot), dPoint (target from the point centre), onPoint, takenBy (other
+--     teammates targeting it), duelTaken (other duelists on it)}: dist <= SELF_DEFENSE (20) -> true always; takenBy >=
+--     MAX_ON_ONE (2) -> false unless job "hold" and onPoint; then hold: dPoint <= HOLD_FIGHT (60); duel: duelTaken < 1 and
+--     dPoint <= DUEL_LEASH (250); guard: dPoint <= GUARD_ZONE (110); run: false (only self-defence); other: true.
+--   jobGoal(job, centre, nextCentre, home) -> Vector3: hold = the 1.0 "cap" goal, duel = the 1.0 "hunt" goal, guard = centre +
+--     GUARD_RING (45) toward home, run = nextCentre (else centre). GUARD_LEASH (90): a guard's walk is kept within this of the
+--     point (guardClamp(pos, centre) -> Vector3).
 local M = {}
 M.VERSION = "1.0"
+M.VERSION = "1.1" -- v1.1 bot jobs
 
 M.SIZE = 5
 M.AUTO_START = 20
@@ -155,6 +179,123 @@ end
 
 function M.shouldRetreat(hpFrac, mates, foes, diff)
 	return diff ~= nil and diff.retreat == true and (tonumber(hpFrac) or 1) < 0.3 and (tonumber(foes) or 0) > (tonumber(mates) or 0) + 1
+end
+
+-- v1.1: bot jobs (see the header)
+M.BOT_SPECIES = {"Raptor", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"}
+M.JOB_OF = {Pachy = "hold", Teno = "hold", Raptor = "duel", Herrera = "duel", Therizino = "duel", TRex = "duel",
+	Dilo = "guard", Troodon = "guard"}
+M.HOLD_FIGHT = 60
+M.SELF_DEFENSE = 20
+M.DUEL_LEASH = 250
+M.GUARD_RING = 45
+M.GUARD_ZONE = 110
+M.GUARD_LEASH = 90
+M.TEAM_EVERY = 1
+M.FILL_MIN = 5
+M.MAX_ON_ONE = 2
+M.HOLD_WANT_OPEN = 2
+M.HOLD_WANT_HELD = 1
+M.RUN_WINDOW = 10
+
+function M.jobOf(species)
+	return M.JOB_OF[species] or "duel"
+end
+
+function M.dealJobs(bots, ctx)
+	ctx = ctx or {}
+	local now = tonumber(ctx.now) or 0
+	local out, order = {}, {}
+	for _, b in ipairs(bots or {}) do
+		local dino = M.jobOf(b.species)
+		local e = {job = b.job, why = b.why, filledAt = b.filledAt}
+		if not b.alive or not e.job then e = {job = dino, why = "dino"} end
+		out[b.id] = e
+		table.insert(order, {b = b, e = e, dino = dino})
+	end
+	-- 2. runner
+	local window = (tonumber(ctx.into) or 0) >= (tonumber(ctx.pointTime) or 60) - M.RUN_WINDOW
+	if window then
+		local hasRun = false
+		for _, o in ipairs(order) do if o.b.alive and o.e.job == "run" then hasRun = true end end
+		if not hasRun then
+			local pick
+			for _, kind in ipairs({"duel", "guard"}) do
+				for _, o in ipairs(order) do
+					if o.b.alive and o.e.job == kind and o.e.why == "dino"
+						and (not pick or (tonumber(o.b.dNext) or math.huge) < (tonumber(pick.b.dNext) or math.huge)) then pick = o end
+				end
+				if pick then break end
+			end
+			if pick then out[pick.b.id] = {job = "run", why = "run: next"} pick.e = out[pick.b.id] end
+		end
+	else
+		for _, o in ipairs(order) do
+			if o.e.job == "run" then out[o.b.id] = {job = o.dino, why = "dino"} o.e = out[o.b.id] end
+		end
+	end
+	-- 3. holders
+	local wanted = ctx.held and M.HOLD_WANT_HELD or M.HOLD_WANT_OPEN
+	local have = tonumber(ctx.humansOnPoint) or 0
+	for _, o in ipairs(order) do if o.b.alive and o.e.job == "hold" then have += 1 end end
+	if have < wanted then
+		for _, kind in ipairs({"guard", "duel"}) do
+			while have < wanted do
+				local pick
+				for _, o in ipairs(order) do
+					if o.b.alive and o.e.job == kind
+						and (not pick or (tonumber(o.b.dPoint) or math.huge) < (tonumber(pick.b.dPoint) or math.huge)) then pick = o end
+				end
+				if not pick then break end
+				out[pick.b.id] = {job = "hold", why = "fill: point", filledAt = now}
+				pick.e = out[pick.b.id]
+				have += 1
+			end
+		end
+	elseif have > wanted then
+		while have > wanted do
+			local pick
+			for _, o in ipairs(order) do
+				if o.b.alive and o.e.job == "hold" and o.e.why == "fill: point" and now - (tonumber(o.e.filledAt) or now) >= M.FILL_MIN
+					and (not pick or (tonumber(o.b.dPoint) or 0) > (tonumber(pick.b.dPoint) or 0)) then pick = o end
+			end
+			if not pick then break end
+			out[pick.b.id] = {job = pick.dino, why = "dino"}
+			pick.e = out[pick.b.id]
+			have -= 1
+		end
+	end
+	return out
+end
+
+function M.canTarget(job, info)
+	info = info or {}
+	local dist = tonumber(info.dist) or math.huge
+	if dist <= M.SELF_DEFENSE then return true end
+	local dPoint = tonumber(info.dPoint) or math.huge
+	if (tonumber(info.takenBy) or 0) >= M.MAX_ON_ONE and not (job == "hold" and info.onPoint == true) then return false end
+	if job == "hold" then return dPoint <= M.HOLD_FIGHT end
+	if job == "duel" then return (tonumber(info.duelTaken) or 0) < 1 and dPoint <= M.DUEL_LEASH end
+	if job == "guard" then return dPoint <= M.GUARD_ZONE end
+	if job == "run" then return false end
+	return true
+end
+
+function M.jobGoal(job, centre, nextCentre, home)
+	if job == "run" then return nextCentre or centre end
+	if job == "guard" then
+		local d = Vector3.new((home or centre).X - centre.X, 0, (home or centre).Z - centre.Z)
+		if d.Magnitude < 1e-3 then d = Vector3.new(-1, 0, 0) else d = d.Unit end
+		return centre + d * M.GUARD_RING
+	end
+	return M.goalFor(job == "duel" and "hunt" or "cap", centre, nil, home, 0, 60)
+end
+
+function M.guardClamp(pos, centre)
+	local d = Vector3.new(pos.X - centre.X, 0, pos.Z - centre.Z)
+	if d.Magnitude <= M.GUARD_LEASH then return pos end
+	local q = centre + d.Unit * M.GUARD_LEASH
+	return Vector3.new(q.X, pos.Y, q.Z)
 end
 
 -- home = where the bot's team is (its own spot or the team's average); the goal is placed relative to it
