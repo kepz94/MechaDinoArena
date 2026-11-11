@@ -165,6 +165,23 @@ VERSION = "1.18" -- v1.18 therizino parts (ZPart_*)
 VERSION = "1.19" -- v1.19 dilo parts (DPart_*)
 VERSION = "1.20" -- v1.20 Troodon
 VERSION = "1.21" -- v1.21 troodon parts (OPart_*)
+VERSION = "1.22" -- v1.22 mode chip + PLAY
+-- v1.22 (practice match, MDA-413, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 9, mockup docs/mockups/practice_match_v0.1.html
+--   "Main menu" M1; Kepu 2026-11-10 "M1 · Mode chip + PLAY", after "how other mobile game menus function for game modes"):
+--   the right column's SANDBOX / ARENA buttons are hidden and the bottom of the right column (the thumb corner) gets a mode
+--   chip (panel, mode name + one line, "▾") over a big yellow PLAY. Tapping the chip opens the mode list above it:
+--     PRACTICE  "Hardpoint vs bots · 5v5" (BOTS): Sandbox with the practice match (ReplicatedStorage.Practice exists) ->
+--               PLAY sends PracticeRequest("lobby") (the team screen, PracticeLobby 1.0); in the Arena -> travels to the
+--               Sandbox (DinoModeRequest "sandbox").
+--     HARDPOINT "Players only · the Arena" (PVP): in the Arena -> DinoModeRequest("arena") (play here); in the Sandbox ->
+--               travels to the Arena.
+--     FREE ROAM "Today's sandbox island" (BOTS): only in a Sandbox without the practice match -> DinoModeRequest("sandbox");
+--               otherwise greyed with the tag SOON.
+--   Default: PRACTICE in the Sandbox (FREE ROAM when the practice match is off), HARDPOINT in the Arena. The dino stage,
+--   species row and slots stay where 1.21 put them (left column; the slots at the bottom-left).
+--   The menu also stays closed while PrInLobby is true (the team screen is up).
+--   Switch: script attribute MainMenuModeChipEnabled (default true, read at start; false = 1.21). Diagnostics: player
+--   MainMenuMode (the chip's mode), MainMenuLastPress "chip" / "mode:<id>" / "play:<id>".
 -- v1.21 (MDA-347, plan docs/plans/TROODON_PARTS_v1.0.md ticket 3): isMechaPart also knows "OPart_*" (TrooPartsServer 1.0).
 --   Switch: script attribute MainMenuOPartsEnabled (default true, read at each check; false = 1.20).
 -- v1.19 (MDA-316, plan docs/plans/DILO_PARTS_v1.0.md Task 3): isMechaPart also knows "DPart_*" (DiloPartsServer 1.0).
@@ -496,6 +513,92 @@ local function modeButton(name, color, title, sub, tag)
 end
 local sandboxB = modeButton("Sandbox", YELLOW, "SANDBOX", "Island with bots · no player damage", "BOTS")
 local arenaB = modeButton("Arena", ORANGE, "ARENA", "Same island · no bots · player damage on", "PVP")
+
+-- v1.22: mode chip + PLAY (see the header)
+if script:GetAttribute("MainMenuModeChipEnabled") == nil then script:SetAttribute("MainMenuModeChipEnabled", true) end
+local chipOn = script:GetAttribute("MainMenuModeChipEnabled") ~= false
+local MODES = {
+	{id = "practice", name = "PRACTICE", sub = "Hardpoint vs bots · 5v5", tag = "BOTS"},
+	{id = "hardpoint", name = "HARDPOINT", sub = "Players only · the Arena", tag = "PVP"},
+	{id = "free", name = "FREE ROAM", sub = "Today's sandbox island", tag = "BOTS"},
+}
+local function practiceHere() return ReplicatedStorage:FindFirstChild("Practice") ~= nil end
+local function modeOk(id)
+	local here = player:GetAttribute("DinoMode")
+	if id == "free" then return here ~= "arena" and not practiceHere() end
+	if id == "practice" then return here == "arena" or practiceHere() end
+	return true
+end
+local chosenMode
+local playB = blockButton(root, "Play", YELLOW)
+local playText = label(playB.b, "T", Enum.Font.FredokaOne, DARK_TEXT)
+playText.Text = "PLAY"
+playText.Size = UDim2.fromScale(1, 1)
+local chip = Instance.new("TextButton")
+chip.Name = "ModeChip"
+chip.AutoButtonColor = false
+chip.Text = ""
+chip.BackgroundColor3 = PANEL
+chip.BackgroundTransparency = 0.06
+chip.Parent = root
+local chipCorner = corner(chip)
+stroke(chip, WHITE, 0.5, 2)
+local chipName = label(chip, "N", Enum.Font.FredokaOne, WHITE)
+chipName.TextXAlignment = Enum.TextXAlignment.Left
+local chipSub = label(chip, "S", Enum.Font.GothamBlack, MUTED)
+chipSub.TextXAlignment = Enum.TextXAlignment.Left
+chipSub.TextTruncate = Enum.TextTruncate.AtEnd
+local modeList = Instance.new("Frame")
+modeList.Name = "ModeList"
+modeList.BackgroundColor3 = Color3.fromRGB(14, 18, 24)
+modeList.BackgroundTransparency = 0.03
+modeList.Visible = false
+modeList.ZIndex = 6
+modeList.Parent = root
+local listCorner = corner(modeList)
+stroke(modeList, WHITE, 0.6, 2)
+local rows = {}
+for i, md in ipairs(MODES) do
+	local b = Instance.new("TextButton")
+	b.Name = "Mode_" .. md.id
+	b.AutoButtonColor = false
+	b.Text = ""
+	b.BackgroundColor3 = Color3.fromRGB(29, 37, 49)
+	b.ZIndex = 7
+	b.LayoutOrder = i
+	b.Parent = modeList
+	local bc = corner(b)
+	local bs = stroke(b, YELLOW, 1, 2)
+	local n = label(b, "N", Enum.Font.FredokaOne, WHITE)
+	n.TextXAlignment = Enum.TextXAlignment.Left
+	n.Text = md.name
+	n.ZIndex = 8
+	local s = label(b, "S", Enum.Font.GothamBlack, MUTED)
+	s.TextXAlignment = Enum.TextXAlignment.Left
+	s.Text = md.sub
+	s.ZIndex = 8
+	local g = label(b, "G", Enum.Font.GothamBlack, GREY)
+	g.TextXAlignment = Enum.TextXAlignment.Right
+	g.ZIndex = 8
+	rows[i] = {b = b, bc = bc, bs = bs, n = n, s = s, g = g, md = md}
+end
+local function drawChip()
+	if not chipOn then return end
+	if not chosenMode or not modeOk(chosenMode) then
+		chosenMode = player:GetAttribute("DinoMode") == "arena" and "hardpoint" or (practiceHere() and "practice" or "free")
+	end
+	player:SetAttribute("MainMenuMode", chosenMode)
+	for _, r in ipairs(rows) do
+		local ok = modeOk(r.md.id)
+		r.bs.Transparency = (r.md.id == chosenMode) and 0 or 1
+		r.n.TextTransparency, r.s.TextTransparency = ok and 0 or 0.55, ok and 0 or 0.55
+		r.g.Text = ok and r.md.tag or "SOON"
+		if r.md.id == chosenMode then
+			chipName.Text = r.md.name .. "  ▾"
+			chipSub.Text = r.md.sub
+		end
+	end
+end
 
 local toast = label(root, "Toast", Enum.Font.FredokaOne, YELLOW)
 toast.BackgroundColor3 = PANEL
@@ -1013,6 +1116,38 @@ local function layout()
 		mb.gc.CornerRadius = UDim.new(0, 0.9 * ch)
 		y += btnH + btnGap
 	end
+	-- v1.22: mode chip + PLAY in the thumb corner (bottom of the right column)
+	for _, mb in ipairs({sandboxB, arenaB}) do
+		mb.bb.b.Visible, mb.bb.shadow.Visible = not chipOn, not chipOn
+	end
+	playB.b.Visible, playB.shadow.Visible, chip.Visible = chipOn, chipOn, chipOn
+	if chipOn then
+		local bottom = S.H - S.bottom
+		local playH = math.max(11 * ch, 48)
+		local chipH = math.max(8 * ch, 44)
+		placeButton(playB, rx2, bottom - playH, rw, playH, 1.6 * ch, 0.9 * ch, drop)
+		playText.TextSize = math.max(5.6 * ch, 22)
+		chip.Position, chip.Size = UDim2.fromOffset(rx2, bottom - playH - 1.6 * ch - chipH), UDim2.fromOffset(rw, chipH)
+		chipCorner.CornerRadius = UDim.new(0, 1.2 * ch)
+		local nS, sS = math.max(3 * ch, 15), math.max(1.8 * ch, 11)
+		chipName.TextSize, chipSub.TextSize = nS, sS
+		chipName.Position, chipName.Size = UDim2.fromOffset(2 * ch, (chipH - nS - sS - 0.4 * ch) / 2), UDim2.fromOffset(rw - 4 * ch, nS)
+		chipSub.Position, chipSub.Size = UDim2.fromOffset(2 * ch, (chipH - nS - sS - 0.4 * ch) / 2 + nS + 0.4 * ch), UDim2.fromOffset(rw - 4 * ch, sS)
+		local rowH = math.max(8 * ch, 44)
+		local pad = 1.2 * ch
+		local listH = #rows * rowH + (#rows + 1) * pad
+		modeList.Position, modeList.Size = UDim2.fromOffset(rx2, bottom - listH), UDim2.fromOffset(rw, listH)
+		listCorner.CornerRadius = UDim.new(0, 1.6 * ch)
+		for i, r in ipairs(rows) do
+			r.b.Position, r.b.Size = UDim2.fromOffset(pad, pad + (i - 1) * (rowH + pad)), UDim2.fromOffset(rw - 2 * pad, rowH)
+			r.bc.CornerRadius = UDim.new(0, ch)
+			r.n.TextSize, r.s.TextSize, r.g.TextSize = nS, sS, math.max(1.6 * ch, 10)
+			r.n.Position, r.n.Size = UDim2.fromOffset(1.6 * ch, (rowH - nS - sS - 0.4 * ch) / 2), UDim2.fromOffset(rw - 12 * ch, nS)
+			r.s.Position, r.s.Size = UDim2.fromOffset(1.6 * ch, (rowH - nS - sS - 0.4 * ch) / 2 + nS + 0.4 * ch), UDim2.fromOffset(rw - 12 * ch, sS)
+			r.g.Position, r.g.Size = UDim2.fromOffset(rw - 2 * pad - 9 * ch, 0), UDim2.fromOffset(7.6 * ch, rowH)
+		end
+		drawChip()
+	end
 	-- toast
 	local toastS = math.max(3 * ch, 14)
 	toast.TextSize = toastS
@@ -1183,6 +1318,44 @@ arenaB.bb.b.Activated:Connect(function()
 	playLoader("arena") -- v1.3
 	if modeRemote then modeRemote:FireServer("arena") end
 end)
+-- v1.22: mode chip + PLAY
+chip.Activated:Connect(function()
+	press("chip")
+	drawChip()
+	modeList.Visible = not modeList.Visible
+end)
+for _, r in ipairs(rows) do
+	r.b.Activated:Connect(function()
+		if not modeOk(r.md.id) then return end
+		chosenMode = r.md.id
+		press("mode:" .. chosenMode)
+		modeList.Visible = false
+		drawChip()
+	end)
+end
+playB.b.Activated:Connect(function()
+	drawChip()
+	modeList.Visible = false
+	press("play:" .. tostring(chosenMode))
+	local here = player:GetAttribute("DinoMode")
+	if chosenMode == "practice" then
+		if here == "arena" then
+			lastPressedMode = "sandbox"
+			if modeRemote then modeRemote:FireServer("sandbox") end
+		else
+			local pr = ReplicatedStorage:FindFirstChild("PracticeRequest")
+			if pr then pr:FireServer("lobby") end
+		end
+	elseif chosenMode == "hardpoint" then
+		lastPressedMode = "arena"
+		playLoader("arena")
+		if modeRemote then modeRemote:FireServer("arena") end
+	elseif chosenMode == "free" then
+		lastPressedMode = "sandbox"
+		playLoader("sandbox")
+		if modeRemote then modeRemote:FireServer("sandbox") end
+	end
+end)
 
 -- ---------- open / close ----------
 local open = false
@@ -1260,7 +1433,9 @@ if player.Character then onChar(player.Character) end
 
 player.AttributeChanged:Connect(function(name)
 	if name == "InMenu" then
-		setOpen(player:GetAttribute("InMenu") == true)
+		setOpen(player:GetAttribute("InMenu") == true and player:GetAttribute("PrInLobby") ~= true) -- v1.22: + not on the team screen
+	elseif name == "PrInLobby" then -- v1.22
+		setOpen(player:GetAttribute("InMenu") == true and player:GetAttribute("PrInLobby") ~= true)
 	elseif open and (name:sub(1, 9) == "SkillSlot" or name:sub(1, 10) == "SkillPath_") then
 		drawSlots()
 		relayout()
@@ -1536,4 +1711,4 @@ if script:GetAttribute("MainMenuCreditsButtonEnabled") ~= false then
 	layoutCredits()
 end
 
-setOpen(player:GetAttribute("InMenu") == true)
+setOpen(player:GetAttribute("InMenu") == true and player:GetAttribute("PrInLobby") ~= true) -- v1.22
