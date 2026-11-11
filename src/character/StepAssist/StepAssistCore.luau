@@ -39,7 +39,11 @@
 --   * mountain ledges are looked for up to the dino's own reach (half its longest flat size + 2, 4..MOUNTAIN_REACH_MAX 34
 --     studs): a scaled raptor stood 5.5 studs short of the face (its hitboxes touch first), past PROBE_REACH 4; the lift then
 --     moves it forward that far. Any other ledge is still only looked for up to PROBE_REACH;
---   * the lift takes LIFT_TIME x (height / DEFAULT_MAX), between LIFT_TIME and LIFT_TIME_MAX (0.3 s), so a 7-stud step is a
+--   * a thin trail step (Workspace.DinoIsland.MountainSteps.TrailSteps, tools/mountain_steps_trail_v1_1, 2.5 deep: a body
+--     doesn't fit on it, measured: a raptor lifted onto one fell back off) is a hand-hold: the ledge search looks up to
+--     TRAIL_LOOK (12) studs past it for the rock top and, when that is at most StepAssistMountainMax above the step (and at most
+--     2 x that above the dino), lifts straight onto the rock (a mantle);
+--   * the lift takes LIFT_TIME x (height / DEFAULT_MAX), between LIFT_TIME and LIFT_TIME_MAX (0.5 s), so a 7-stud step is a
 --     short climb, not a snap.
 --   Diagnostic: StepAssistLastMountain (true when the last lift used the mountain rule). Off -> exactly 1.0.
 local StepAssistCore = {}
@@ -48,7 +52,8 @@ StepAssistCore.Version = "1.1"
 StepAssistCore.DEFAULT_MAX = 2.6
 StepAssistCore.MOUNTAIN_MAX = 17.5 -- v1.1
 local MOUNTAIN_REACH_MAX = 34 -- v1.1
-local LIFT_TIME_MAX = 0.3 -- v1.1
+local LIFT_TIME_MAX = 0.5 -- v1.1
+local TRAIL_LOOK = 12 -- v1.1
 local MOVE_MIN = 0.5
 local BLOCK_SPEED_FRAC = 0.25
 local BLOCK_TIME = 0.1
@@ -132,7 +137,7 @@ local function findLedge(hrp, dir, max, params, steps, mmax, reach)
 	if not down then return nil, "noGround" end
 	local y0 = down.Position.Y
 	local onSteps = steps ~= nil and down.Instance:IsDescendantOf(steps)
-	local probe = steps and mmax or max
+	local probe = steps and 2 * mmax or max -- v1.1: high enough to see a rock top behind a thin trail step
 	for s = PROBE_STEP, steps and math.max(PROBE_REACH, reach or PROBE_REACH) or PROBE_REACH, PROBE_STEP do
 		local origin = Vector3.new(pos.X, y0 + probe + 1, pos.Z) + dir * s
 		local hit = workspace:Raycast(origin, Vector3.new(0, -(probe + 1 + STEP_MIN + 0.5), 0), params)
@@ -143,7 +148,24 @@ local function findLedge(hrp, dir, max, params, steps, mmax, reach)
 				local mountain = steps ~= nil and (onSteps or hit.Instance:IsDescendantOf(steps))
 				if s > PROBE_REACH and not mountain then return nil, "none" end -- v1.1: the long reach is for the mountain only
 				local allowed = mountain and mmax or max
-				if h <= allowed and hit.Normal.Y > FLAT_MIN then return h, s, mountain and h > max end
+				if h <= allowed and hit.Normal.Y > FLAT_MIN then
+					-- v1.1: a thin trail step: mantle onto the rock behind it when that is in reach
+					local trail = steps ~= nil and hit.Instance.Parent ~= nil and hit.Instance.Parent.Name == "TrailSteps"
+					if trail then
+						for s2 = s + PROBE_STEP, s + TRAIL_LOOK, PROBE_STEP do
+							local o2 = Vector3.new(pos.X, y0 + probe + 1, pos.Z) + dir * s2
+							local hit2 = workspace:Raycast(o2, Vector3.new(0, -(probe + 1 + STEP_MIN + 0.5), 0), params)
+							if hit2 and not (hit2.Instance.Parent and hit2.Instance.Parent.Name == "TrailSteps") then
+								local h2 = hit2.Position.Y - y0
+								if h2 > h + STEP_MIN and h2 - h <= mmax and h2 < probe + 0.999 and hit2.Normal.Y > FLAT_MIN then
+									return h2, s2, true
+								end
+								break
+							end
+						end
+					end
+					return h, s, mountain and h > max
+				end
 				return nil, "wall"
 			end
 		elseif s > PROBE_REACH then
@@ -234,7 +256,7 @@ function StepAssistCore.step(st, dt, now)
 		return
 	end
 	st.lastFrom, st.lastClock = from, os.clock()
-	st.lift = {t = 0, from = from, dir = dir, dy = h + LIFT_CLEAR, nudge = math.min(why + LIFT_PAST, why > PROBE_REACH and reachOf(st) or PROBE_REACH),
+	st.lift = {t = 0, from = from, dir = dir, dy = h + LIFT_CLEAR, nudge = math.min(why + LIFT_PAST, why > PROBE_REACH and (reachOf(st) + TRAIL_LOOK) or PROBE_REACH),
 		lastX = from.X, lastZ = from.Z,
 		time = steps and math.clamp(LIFT_TIME * h / StepAssistCore.DEFAULT_MAX, LIFT_TIME, LIFT_TIME_MAX) or LIFT_TIME} -- v1.1
 	st.blockedFor = 0
