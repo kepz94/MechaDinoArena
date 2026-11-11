@@ -1,0 +1,155 @@
+<title>Silkscreen Font Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Fredoka:wght@600&family=Montserrat:wght@700;800;900&display=swap">
+<style>
+/* Mockup v0.1 — Silkscreen across the game (Roblox asset 12187371840, Regular + Bold). Single dark look on purpose (game UI). */
+:root{color-scheme:dark;--page:#0d1017;--page2:#151a24;--ink:#e9edf5;--dim:#9aa4b6;--line:#273041;--panel:#14141a;--panel2:#1c2230;
+--volt:#7fe9ff;--yellow:#ffc832;--orange:#ff9b2e;--grey:#cfd3dc;--muted:#8f99aa;--dark:#1b1406;--attack:#f05a4f;--blue:#5aa0ff;--green:#5fd16a;
+--silk:"Silkscreen",ui-monospace,monospace;--fred:"Fredoka",system-ui,sans-serif;--goth:"Montserrat",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:var(--goth);margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:600 28px var(--fred);margin:0 0 6px;text-wrap:balance}
+.lead{color:var(--dim);font-weight:700;font-size:14px;line-height:1.5;max-width:70ch;margin:0 0 14px}
+.seg{display:inline-flex;flex-wrap:wrap;gap:6px;background:var(--page2);border:1px solid var(--line);border-radius:12px;padding:5px;margin:0 8px 10px 0}
+.seg button{font:800 13px var(--goth);color:var(--dim);background:none;border:0;border-radius:8px;padding:9px 12px;cursor:pointer}
+.seg button.on{background:var(--volt);color:#06242f}
+.seg.fit button.on{background:var(--yellow);color:var(--dark)}
+.tag{font:700 11px ui-monospace,monospace;color:var(--muted);letter-spacing:.08em;margin-right:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.card{background:#10141d;border:1px solid var(--line);border-radius:16px;padding:14px;min-width:0}
+.card h3{margin:0 0 10px;font:700 11px ui-monospace,monospace;letter-spacing:.1em;color:var(--muted)}
+/* font roles: h = headings / buttons / numbers, b = body / descriptions */
+[data-f="h"]{font-family:var(--h);font-weight:var(--hw)}
+[data-f="b"]{font-family:var(--b);font-weight:var(--bw)}
+[data-f="t"]{font-family:var(--t);font-weight:var(--tw)}
+.menu{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.btn{border-radius:12px;padding:12px 18px;font-size:18px;letter-spacing:.02em}
+.dn{font-size:30px;letter-spacing:.02em}
+.sub{font-size:12px;color:var(--grey)}
+.pill{display:inline-flex;gap:8px;align-items:center;background:#0b0e14cc;border:1px solid #ffffff22;border-radius:999px;padding:6px 12px;font-size:13px}
+.score{display:flex;gap:10px;align-items:center;font-size:22px}
+.score b{color:var(--blue)} .score i{font-style:normal;color:var(--attack)}
+.detail{display:flex;flex-direction:column;gap:7px}
+.detail .s{font-size:11px;color:var(--attack);letter-spacing:.03em}
+.detail .t{font-size:22px}
+.detail .w{font-size:13px;line-height:1.35}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{background:var(--panel2);border-radius:7px;padding:4px 7px;font-size:11px;color:var(--grey)}
+.chip b{color:#fff}
+.step{display:grid;grid-template-columns:28px 1fr;gap:7px;font-size:12px;line-height:1.35;color:var(--grey)}
+.step .n{background:var(--attack);color:var(--dark);border-radius:6px;display:grid;place-items:center;height:22px;font-size:12px}
+.buy{background:var(--yellow);color:var(--dark);border-radius:10px;padding:10px;text-align:center;font-size:14px}
+.feed{display:flex;flex-direction:column;gap:5px;font-size:13px}
+.feed div{background:#0b0e14cc;border-radius:8px;padding:5px 9px;width:max-content;max-width:100%}
+.world{position:relative;height:150px;border-radius:12px;background:linear-gradient(#4f8fd8,#9fd0ff 60%,#5a9a48 60%)}
+.nametag{position:absolute;left:24px;top:22px;text-align:center;font-size:13px;color:#fff;text-shadow:0 1px 2px #000}
+.nametag .bar{height:5px;width:90px;background:#000a;border-radius:3px;margin-top:3px;overflow:hidden}.nametag .bar i{display:block;height:100%;width:70%;background:var(--green)}
+.dmg{position:absolute;right:40px;top:30px;font-size:26px;color:var(--attack);text-shadow:0 2px 0 #000}
+.popl{position:absolute;right:28px;top:72px;font-size:14px;color:var(--volt);text-shadow:0 1px 0 #000}
+.ab{display:flex;gap:8px}
+.ab div{background:#0b0e14cc;border:2px solid var(--orange);border-radius:10px;width:66px;height:66px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:4px;font-size:10px;text-align:center}
+.ab span{color:var(--orange);font-size:13px}
+.fitnote{font:700 12px var(--goth);color:var(--dim);margin-top:6px}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:16px}
+.note{background:var(--page2);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.note h4{margin:0 0 6px;font:600 17px var(--fred)} .note p,.note li{color:var(--dim);font:700 13px/1.5 var(--goth)} .note ul{margin:6px 0 0;padding-left:18px}
+.note.rec{border-color:var(--volt)} .k{font:700 11px ui-monospace,monospace;color:var(--volt);letter-spacing:.08em}
+</style>
+
+<div class="wrap">
+  <h1>Silkscreen in Mecha Dino Arena</h1>
+  <p class="lead">Silkscreen is in Roblox's own font library (asset 12187371840, by Roblox, Regular + Bold), so it's free to use. Pick how much of the game switches to it. The text below is our real menu, Lab, HUD and in-world text.</p>
+  <div><span class="tag">WHERE</span><div class="seg" id="optSeg">
+    <button data-o="now">Now (Fredoka + Gotham)</button>
+    <button data-o="A">A · Everywhere</button>
+    <button data-o="B" class="on">B · Titles, buttons, numbers</button>
+    <button data-o="C">C · Menus only</button>
+  </div></div>
+  <div><span class="tag">SIZE</span><div class="seg fit" id="fitSeg">
+    <button data-f="fit" class="on">Shrink to fit (keeps layout)</button>
+    <button data-f="same">Same size (may cut off)</button>
+  </div></div>
+
+  <div class="grid" id="stage">
+    <div class="card" data-zone="menu">
+      <h3>MAIN MENU</h3>
+      <div class="menu">
+        <div class="dn" data-f="h">DILO</div>
+        <div class="sub" data-f="b">70 HP · spitter, venom dart</div>
+        <div class="btn" data-f="h" style="background:var(--yellow);color:var(--dark)">PLAY</div>
+        <div class="btn" data-f="h" style="background:var(--volt);color:#06242f">GO TO THE LAB</div>
+        <div class="pill" data-f="h">PRACTICE <span data-f="b" style="color:var(--dim)">Hardpoint vs bots</span></div>
+      </div>
+    </div>
+    <div class="card" data-zone="menu">
+      <h3>LAB · DETAIL PANEL</h3>
+      <div class="detail">
+        <div class="s" data-f="h">ATTACK · MECHA ABILITY · BUTTON</div>
+        <div class="t" data-f="h">Sonic Hiss</div>
+        <div class="w" data-f="b">Blasts a wide cone in front of you: dinos in it are knocked back and their mecha parts shut off.</div>
+        <div class="chips"><span class="chip" data-f="h">RANGE <b>40 studs</b></span><span class="chip" data-f="h">CONE <b>140°</b></span><span class="chip" data-f="h">SILENCE <b>1.5 s</b></span></div>
+        <div class="step"><span class="n" data-f="h">I</span><span data-f="b">Button: the hood speakers blast a 40-stud, 140° cone. Recharges in 15 s</span></div>
+        <div class="step"><span class="n" data-f="h" style="background:none;box-shadow:inset 0 0 0 2px #fff;color:#fff">II</span><span data-f="b" style="color:#fff">Cone reaches 50 studs</span></div>
+        <div class="buy" data-f="h">UPGRADE · 2 PTS</div>
+      </div>
+    </div>
+    <div class="card" data-zone="hud">
+      <h3>MATCH HUD</h3>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill" data-f="h">SKILLS <b style="background:var(--yellow);color:var(--dark);border-radius:99px;padding:0 6px">3</b></span><span class="pill score" data-f="h"><b>84</b> : <i>61</i></span></div>
+        <div class="ab"><div data-f="h"><span>R</span>VENOM GATLING</div><div data-f="h"><span>C</span>SONIC HISS</div><div data-f="h"><span>T</span>SPRING JETS</div></div>
+        <div class="feed"><div data-f="t"><b style="color:var(--blue)">Kepu</b> spat <b style="color:var(--attack)">Raptor Bot</b></div><div data-f="t"><b style="color:var(--attack)">Pachy Bot</b> took the point</div></div>
+      </div>
+    </div>
+    <div class="card" data-zone="world">
+      <h3>IN THE WORLD (OVER-HEAD TAGS, DAMAGE)</h3>
+      <div class="world">
+        <div class="nametag" data-f="t">◆ Kepu<div class="bar"><i></i></div></div>
+        <div class="dmg" data-f="t">-12</div>
+        <div class="popl" data-f="t">SILENCED 1.5 s</div>
+      </div>
+      <div class="fitnote" id="fitNote"></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><span class="k">A</span><h4>Everywhere</h4><p>Every word in the game is Silkscreen: menus, the Lab, HUD, kill feed, name tags, damage numbers.</p><ul><li>Strongest retro look, one style everywhere.</li><li>Long descriptions (Lab step texts, the "what it does" line) get harder to read on a phone.</li></ul></div>
+    <div class="note rec"><span class="k">B · RECOMMENDED</span><h4>Titles, buttons, numbers</h4><p>Silkscreen for anything short and loud: titles, buttons, tabs, chips, score, ability names, kill feed, damage numbers and name tags. Sentences stay in the clean font.</p><ul><li>Keeps the arcade look where you see it most.</li><li>Descriptions stay easy to read on small screens.</li></ul></div>
+    <div class="note"><span class="k">C</span><h4>Menus only</h4><p>Main menu, Lab and species picker in Silkscreen; the match HUD and in-world text stay as they are now.</p><ul><li>Smallest change.</li><li>The game looks like two styles mixed.</li></ul></div>
+    <div class="note"><span class="k">SIZE</span><h4>Shrink to fit</h4><p>Silkscreen Bold is about 13% wider than our current fonts. "Shrink to fit" scales each text down just enough to keep it in the same space, so nothing gets cut off or pushes buttons around. "Same size" keeps the size but long labels can cut off.</p></div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const root=document.documentElement.style;
+let opt="B",fit="fit";
+const SILK='"Silkscreen",ui-monospace,monospace',FRED='"Fredoka",system-ui,sans-serif',GOTH='"Montserrat",system-ui,sans-serif';
+function apply(){
+  // h = short loud text, b = sentences, t = in-world + feed
+  let h=[FRED,600],b=[GOTH,800],t=[GOTH,900];
+  if(opt==="A"){h=[SILK,700];b=[SILK,400];t=[SILK,700];}
+  if(opt==="B"){h=[SILK,700];t=[SILK,700];}
+  root.setProperty("--h",h[0]);root.setProperty("--hw",h[1]);
+  root.setProperty("--b",b[0]);root.setProperty("--bw",b[1]);
+  root.setProperty("--t",t[0]);root.setProperty("--tw",t[1]);
+  // C: only menu cards switch
+  document.querySelectorAll("#stage .card").forEach(c=>{
+    const z=c.dataset.zone, off=(opt==="C"&&z!=="menu");
+    c.querySelectorAll("[data-f]").forEach(el=>{
+      el.style.fontFamily=off?(el.dataset.f==="b"||el.dataset.f==="t"?GOTH:FRED):"";
+      el.style.fontWeight=off?(el.dataset.f==="h"?600:800):"";
+      // shrink to fit: Silkscreen ~13% wider
+      const silk=getComputedStyle(el).fontFamily.includes("Silkscreen");
+      el.style.fontSize="";
+      if(silk&&fit==="fit"){const fs=parseFloat(getComputedStyle(el).fontSize);el.style.fontSize=(fs*0.88)+"px";}
+    });
+  });
+  document.getElementById("fitNote").textContent=fit==="fit"?"Silkscreen text is drawn about 12% smaller so it fits where the old text did.":"Same size: Silkscreen is wider, so long labels can run out of their boxes.";
+}
+document.getElementById("optSeg").onclick=e=>{const b=e.target.closest("button");if(!b)return;opt=b.dataset.o;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));apply()};
+document.getElementById("fitSeg").onclick=e=>{const b=e.target.closest("button");if(!b)return;fit=b.dataset.f;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));apply()};
+document.fonts&&document.fonts.ready.then(apply);apply();
+})();
+</script>
