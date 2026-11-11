@@ -47,7 +47,7 @@ th { color:var(--muted); font-weight:600; font-size:12px; text-transform:upperca
 .score .blue .bar { display:flex; }
 .score .mid { display:flex; flex-direction:column; align-items:center; min-width:7cqw; }
 .score .clock { font-size:1.25cqw; color:#cfd3dc; letter-spacing:.05em; }
-.score .hill { font-size:1.15cqw; color:var(--yellow); }
+.score .point { font-size:1.15cqw; color:var(--yellow); }
 .pill { padding:.35cqw 1cqw; font-size:1.35cqw; font-weight:700; text-align:center; white-space:nowrap; }
 .pill.R { border-color:var(--red); color:#ffd9df; } .pill.B { border-color:var(--blue); color:#dbe9ff; } .pill.C { border-color:var(--yellow); color:var(--yellow); } .pill.N { color:#fff; }
 .marker { display:flex; flex-direction:column; align-items:center; gap:.2cqw; transform:translate(-50%,-50%); }
@@ -74,19 +74,19 @@ canvas.size { width:100%; max-width:520px; height:auto; display:block; margin:6p
 <div class="wrap">
   <div>
     <h1>Arena <span>Hardpoint</span> · options v0.1</h1>
-    <p class="lede">Two teams fight over one hill at a time on the real island. Standing in it scores for your team; the hill moves every 60 s. Picked so far: Red vs Blue auto-balanced, Hardpoint takes turns with free-for-all. Pick a <b>hill layout</b>, a <b>HUD placement</b> and a <b>hill size</b>; then check the rules table. The map is the real island, sampled from Studio (72 × 72, 30-stud cells).</p>
+    <p class="lede">Two teams fight over one point at a time on the real island. Standing in it scores for your team; the point moves every 60 s. Picked so far: Red vs Blue auto-balanced, Hardpoint takes turns with free-for-all. Pick a <b>point layout</b>, a <b>HUD placement</b> and a <b>point size</b>; then check the rules table. The map is the real island, sampled from Studio (72 × 72, 30-stud cells).</p>
   </div>
 
-  <div class="lbl">Pick 1 · Hill layout</div>
+  <div class="lbl">Pick 1 · Point layout</div>
   <div class="row" id="layoutTabs"></div>
   <div class="grid2">
     <div class="card">
-      <div class="mapbox"><canvas class="map" id="map" width="720" height="720" aria-label="Top-down map of the island with the hills"></canvas></div>
+      <div class="mapbox"><canvas class="map" id="map" width="720" height="720" aria-label="Top-down map of the island with the points"></canvas></div>
       <div class="legend">
         <span><i style="background:#4f9a3d"></i>grass</span><span><i style="background:#86b44f"></i>meadow</span><span><i style="background:#8a8f98"></i>rock / mountain</span><span><i style="background:#c9a86a"></i>ramp</span><span><i style="background:#d9c58f"></i>sand</span><span><i style="background:#2e7aa6"></i>shallow / lake</span>
-        <span><i style="background:var(--yellow)"></i>hill (order)</span><span><i style="background:var(--red)"></i>Red player / next Red spawn</span><span><i style="background:var(--blue)"></i>Blue player / next Blue spawn</span><span><i style="background:transparent;border:2px solid #fff"></i>spawn spot</span>
+        <span><i style="background:var(--yellow)"></i>point (order)</span><span><i style="background:var(--red)"></i>Red player / next Red spawn</span><span><i style="background:var(--blue)"></i>Blue player / next Blue spawn</span><span><i style="background:transparent;border:2px solid #fff"></i>spawn spot</span>
       </div>
-      <div class="lbl" style="margin-top:10px">Spawns follow the hill, like Call of Duty · try a situation</div>
+      <div class="lbl" style="margin-top:10px">Spawns follow the point, like Call of Duty · try a situation</div>
       <div class="row" id="scenTabs" style="margin-top:8px"></div>
       <p id="scenNote" style="font-size:13px;color:var(--muted);margin:8px 0 0"></p>
     </div>
@@ -99,11 +99,11 @@ canvas.size { width:100%; max-width:520px; height:auto; display:block; margin:6p
   <div class="stage pc" id="stage">
     <div class="hud panel score" id="hScore">
       <div class="team red"><span>RED</span><span id="sR">0</span><div class="bar"><i id="bR"></i></div></div>
-      <div class="mid"><span class="hill" id="hHill">HILL 1</span><span class="clock" id="hClock">10:00</span></div>
+      <div class="mid"><span class="point" id="hPoint">POINT 1</span><span class="clock" id="hClock">10:00</span></div>
       <div class="team blue"><div class="bar"><i id="bB"></i></div><span id="sB">0</span><span>BLUE</span></div>
     </div>
-    <div class="hud panel pill N" id="hPill">HILL OPEN · GO</div>
-    <div class="hud panel toast hidden" id="hToast">NEXT HILL IN 0:10</div>
+    <div class="hud panel pill N" id="hPill">POINT OPEN · GO</div>
+    <div class="hud panel toast hidden" id="hToast">NEXT POINT IN 0:10</div>
     <div class="hud marker N" id="hMarker"><div class="dia"><b id="hMarkN">1</b></div><span class="dist" id="hDist">300 studs</span></div>
     <div class="hud panel banner hidden" id="hBanner">RED WINS<small>250 – 231 · free-for-all next</small></div>
   </div>
@@ -111,22 +111,22 @@ canvas.size { width:100%; max-width:520px; height:auto; display:block; margin:6p
 
   <div class="card">
     <h2>Step through a match</h2>
-    <p>A scripted match on the layout you picked, seen by a <b>Red</b> player. Scores, the hill, the map and the HUD above all follow the timeline.</p>
+    <p>A scripted match on the layout you picked, seen by a <b>Red</b> player. Scores, the point, the map and the HUD above all follow the timeline.</p>
     <div class="ctl">
       <button class="btn" id="play">Play</button>
       <button class="btn ghost" data-spd="1">1×</button><button class="btn ghost" data-spd="5">5×</button><button class="btn ghost" data-spd="20">20×</button>
-      <button class="btn ghost" id="jMove">Next hill move</button><button class="btn ghost" id="jCont">Next contest</button><button class="btn ghost" id="jEnd">Match end</button>
+      <button class="btn ghost" id="jMove">Next point move</button><button class="btn ghost" id="jCont">Next contest</button><button class="btn ghost" id="jEnd">Match end</button>
     </div>
     <input type="range" id="scrub" min="0" max="1000" value="0" style="width:100%;margin-top:10px" aria-label="Match time">
     <div class="row" style="justify-content:space-between;font-size:13px;color:var(--muted)"><span id="tNow">0:00 into the match</span><span id="tState"></span></div>
     <ol class="log" id="log"></ol>
   </div>
 
-  <div class="lbl">Pick 3 · Hill size</div>
+  <div class="lbl">Pick 3 · Point size</div>
   <div class="grid2">
     <div class="card">
       <div class="row" id="sizeTabs"></div>
-      <canvas class="size" id="size" width="520" height="520" aria-label="The hill drawn to scale with the roster's dinos"></canvas>
+      <canvas class="size" id="size" width="520" height="520" aria-label="The point drawn to scale with the roster's dinos"></canvas>
     </div>
     <div class="card" id="sizeInfo"></div>
   </div>
@@ -142,7 +142,7 @@ canvas.size { width:100%; max-width:520px; height:auto; display:block; margin:6p
       <div class="step"><b>Hardpoint</b><span>First to 250, or the higher score at 10:00 on the match clock</span></div><div class="arrow">→</div>
       <div class="step"><b>Results · 15 s</b><span>Winner banner, both scores; dinos frozen in place</span></div><div class="arrow">→</div>
       <div class="step"><b>Free-for-all · 5:00</b><span>Today’s Arena: everyone vs everyone, no score; teams paused</span></div><div class="arrow">→</div>
-      <div class="step"><b>Next Hardpoint</b><span>Teams rebalanced; the layout starts again at hill 1</span></div>
+      <div class="step"><b>Next Hardpoint</b><span>Teams rebalanced; the layout starts again at point 1</span></div>
     </div>
     <p class="warn" style="margin-top:8px">Free-for-all has no end today, so the rotation needs a length for it: 5:00 is my proposal, change it if you like.</p>
   </div>
@@ -150,11 +150,11 @@ canvas.size { width:100%; max-width:520px; height:auto; display:block; margin:6p
   <div class="card">
     <h2>Still to settle (my recommendation first)</h2>
     <ul>
-      <li><b>Cloaked dinos on the hill:</b> they count for their team, and the hill shows CONTESTED, so the other team knows someone is there. Or: a cloaked dino doesn’t count.</li>
+      <li><b>Cloaked dinos on the point:</b> they count for their team, and the point shows CONTESTED, so the other team knows someone is there. Or: a cloaked dino doesn’t count.</li>
       <li><b>Squads:</b> balancing keeps a squad on the same team and moves solo players first; squads of 4 can make teams uneven by 1–2 for a match.</li>
       <li><b>Friendly fire:</b> off for your whole team, using the same check the squads already use in every damage path.</li>
       <li><b>Joining mid-match:</b> you go to the smaller team (ties: the losing team).</li>
-      <li><b>Hill look in the world</b> (ground ring, light column you can see from far): its own 3D mockup once these rules are picked.</li>
+      <li><b>Point look in the world</b> (ground ring, light column you can see from far): its own 3D mockup once these rules are picked.</li>
     </ul>
   </div>
 </div>
@@ -243,7 +243,7 @@ const S = {
   SBeach:{name:"South Rocks", x:100, z:720}, ELake:{name:"East Shore", x:450, z:150}, SEField:{name:"Southeast Field", x:650, z:650},
   WCoast:{name:"West Coast", x:-620, z:-60}, NW:{name:"NW Foothills", x:-280, z:-270}, Summit:{name:"Summit", x:285, z:-240, high:true},
 };
-// Spawns, like Call of Duty: no fixed team spawns. Each hill has a ring of spawn spots (12 around it, 220-380 studs out, on flat
+// Spawns, like Call of Duty: no fixed team spawns. Each point has a ring of spawn spots (12 around it, 220-380 studs out, on flat
 // dry ground: grid check). When you respawn, every spot is scored right then: far from living enemies, near a teammate.
 const cellAt = (x, z) => { const i = Math.floor((x + R) / CELL), j = Math.floor((z + R) / CELL); return (i < 0 || j < 0 || i >= N || j >= N) ? ["w", -8] : G[j][i]; };
 function spotOk(x, z) { const hs = []; for (const dx of [-30, 0, 30]) for (const dz of [-30, 0, 30]) { const [t, h] = cellAt(x + dx, z + dz); if ("wvkt".includes(t)) return false; hs.push(h); } return Math.max(...hs) - Math.min(...hs) <= 20; }
@@ -255,7 +255,7 @@ function ringFor(key) {
     for (const rad of [300, 260, 340, 220, 380]) { const x = h.x + rad * Math.cos(ang), z = h.z + rad * Math.sin(ang); if (spotOk(x, z)) { out.push({x, z}); break; } } }
   return (RING[key] = out);
 }
-const NEAR_ENEMY = 150, ENEMY_CAP = 350, MATE_RANGE = 300; // tuned so all 3 situations behave on all 14 hills
+const NEAR_ENEMY = 150, ENEMY_CAP = 350, MATE_RANGE = 300; // tuned so all 3 situations behave on all 14 points
 function pickSpawn(key, enemies, mates) {
   let best = null;
   for (const c of ringFor(key)) {
@@ -267,22 +267,22 @@ function pickSpawn(key, enemies, mates) {
   }
   return best;
 }
-// Living players around the current hill for each situation (studs from the hill; Red starts on the west side).
+// Living players around the current point for each situation (studs from the point; Red starts on the west side).
 const SCEN = {
   even:{title:"Even fight", sub:"each team on its own side", note:"Red holds the west half, Blue the east. A Red player who dies comes back on the west side near a teammate, a Blue player on the east side.",
         red:[[-140,-40],[-90,60],[-30,10]], blue:[[150,30],[100,-70],[40,20]]},
-  push:{title:"Red pushes through", sub:"Red gets behind the hill", note:"Red pushes past the middle of the hill into Blue’s half. The spawns flip: Blue now comes back behind Red, on the west side Red just left, and Red comes back on the east side behind its own push. That’s Call of Duty’s spawn flip.",
+  push:{title:"Red pushes through", sub:"Red gets behind the point", note:"Red pushes past the middle of the point into Blue’s half. The spawns flip: Blue now comes back behind Red, on the west side Red just left, and Red comes back on the east side behind its own push. That’s Call of Duty’s spawn flip.",
         red:[[60,-30],[140,70],[180,-90]], blue:[[260,40]]},
   camp:{title:"Blue camps Red’s side", sub:"Blue sits where Red was spawning", note:"Blue players wait on the west side. Red spawns can’t be within 150 studs of an enemy, so Red comes back on the east side instead, away from them.",
         red:[[40,10]], blue:[[-230,-60],[-200,90],[-120,0]]},
 };
 let scen = "even";
 const LAYOUTS = {
-  A:{title:"A · Around the lake", sub:"5 hills, both sides of the island", hills:["Centre","ELake","SEField","SBeach","West"],
+  A:{title:"A · Around the lake", sub:"5 points, both sides of the island", points:["Centre","ELake","SEField","SBeach","West"],
      why:"Uses the whole island except the mountain top. Every team crosses the island once per loop."},
-  B:{title:"B · Summit", sub:"5 hills, hill 3 on the mountain top", hills:["Centre","ELake","Summit","NW","West"], rec:true,
-     why:"Hill 3 is the mountain top: one minute of every loop is a fight on the summit the whole lobby can see. It gives your king-of-the-hill idea a home inside the mode."},
-  C:{title:"C · West side", sub:"4 hills close together, small lobbies", hills:["Centre","Lakeside","West","WCoast"],
+  B:{title:"B · Summit", sub:"5 points, point 3 on the mountain top", points:["Centre","ELake","Summit","NW","West"], rec:true,
+     why:"Point 3 is the mountain top: one minute of every loop is a fight on the summit the whole lobby can see. It gives your king-of-the-hill idea a home inside the mode."},
+  C:{title:"C · West side", sub:"4 points close together, small lobbies", points:["Centre","Lakeside","West","WCoast"],
      why:"Short runs (340–520 studs) on the west half. Best when only 4–6 players are on; the east half is left empty."},
 };
 // In-game run speeds: model MoveRunSpeed x ArenaSpeedScale 0.65 (StatServer 1.1).
@@ -309,12 +309,12 @@ const base = document.createElement("canvas"); base.width = base.height = 720;
 function dist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 function drawMap(state) {
   mx.clearRect(0, 0, 720, 720); mx.drawImage(base, 0, 0);
-  const L = LAYOUTS[layout], hs = L.hills.map(k => S[k]);
+  const L = LAYOUTS[layout], hs = L.points.map(k => S[k]);
   // rotation path
   mx.lineWidth = 3; mx.setLineDash([10, 8]); mx.strokeStyle = "rgba(255,200,50,.75)";
   mx.beginPath(); hs.forEach((h, i) => { const [x, y] = toPx(h.x, h.z); i ? mx.lineTo(x, y) : mx.moveTo(x, y); }); mx.closePath(); mx.stroke(); mx.setLineDash([]);
   // spawns
-  const cur = state ? state.hill : 0, curKey = L.hills[cur];
+  const cur = state ? state.point : 0, curKey = L.points[cur];
   {
     const H = S[curKey], sc = SCEN[scen];
     const red = sc.red.map(([dx, dz]) => ({x: H.x + dx, z: H.z + dz})), blue = sc.blue.map(([dx, dz]) => ({x: H.x + dx, z: H.z + dz}));
@@ -325,10 +325,10 @@ function drawMap(state) {
       mx.fillStyle = col; mx.strokeStyle = "#fff"; mx.lineWidth = 2; mx.beginPath(); mx.rect(x - 8, y - 8, 16, 16); mx.fill(); mx.stroke(); });
     [[red, "#e0284a"], [blue, "#5aa0ff"]].forEach(([ps, col]) => ps.forEach(pl => { const [x, y] = toPx(pl.x, pl.z); mx.fillStyle = col; mx.strokeStyle = "#fff"; mx.lineWidth = 1.5; mx.beginPath(); mx.arc(x, y, 6.5, 0, 7); mx.fill(); mx.stroke(); }));
   }
-  // hills
+  // points
   hs.forEach((h, i) => {
     const [x, y] = toPx(h.x, h.z), rr = Math.max(radius * PX, 7);
-    const active = state && i === state.hill, next = state && state.showNext && i === state.next;
+    const active = state && i === state.point, next = state && state.showNext && i === state.next;
     let fill = "rgba(255,200,50,.28)", stroke = "#ffc832";
     if (active) { const st = state.st; fill = st === "R" ? "rgba(224,40,74,.55)" : st === "B" ? "rgba(90,160,255,.55)" : st === "C" ? "rgba(255,200,50,.6)" : "rgba(255,255,255,.45)"; stroke = "#fff"; }
     mx.fillStyle = fill; mx.strokeStyle = stroke; mx.lineWidth = active ? 4 : 2; if (next) mx.setLineDash([5, 4]);
@@ -343,7 +343,7 @@ function drawMap(state) {
 }
 
 function layoutInfo() {
-  const L = LAYOUTS[layout], hs = L.hills;
+  const L = LAYOUTS[layout], hs = L.points;
   let rowsH = "";
   for (let i = 0; i < hs.length; i++) {
     const a = S[hs[i]], b = S[hs[(i + 1) % hs.length]], d = dist(a, b);
@@ -352,33 +352,33 @@ function layoutInfo() {
   }
   let spawnRows = "";
   hs.forEach((k, i) => { const n = ringFor(k).length; const ds = ringFor(k).map(c => Math.hypot(c.x - S[k].x, c.z - S[k].z));
-    spawnRows += `<tr><td>Hill ${i + 1}</td><td class="num">${n}</td><td class="num">${Math.round(Math.min(...ds))}–${Math.round(Math.max(...ds))}</td><td class="num">${(Math.min(...ds) / 58.5).toFixed(0)}–${(Math.max(...ds) / 37).toFixed(0)} s</td></tr>`; });
+    spawnRows += `<tr><td>Point ${i + 1}</td><td class="num">${n}</td><td class="num">${Math.round(Math.min(...ds))}–${Math.round(Math.max(...ds))}</td><td class="num">${(Math.min(...ds) / 58.5).toFixed(0)}–${(Math.max(...ds) / 37).toFixed(0)} s</td></tr>`; });
   document.getElementById("layoutInfo").innerHTML = `<h2>${L.title}</h2><p>${L.why}</p>
-    <h3>Runs between hills</h3><table><tr><th>Move</th><th>From → to</th><th class="num">Studs</th><th class="num">Run</th></tr>${rowsH}</table>
-    <p style="font-size:13px">Run = straight line at in-game speed, Herrera 58.5 to Pachy 37 studs/s (model run × 0.65). The next hill shows 10 s before it opens, so the fastest dinos arrive about as it opens.${hs.includes("Summit") ? ' <span class="warn">The summit is reached by the spiral ramp, so its real run is longer than the straight line; I’ll measure it in Studio before the plan.</span>' : ""}</p>
-    <h3>Spawn spots around each hill</h3><table><tr><th>Hill</th><th class="num">Spots</th><th class="num">Studs out</th><th class="num">Run in</th></tr>${spawnRows}</table>
-    <p style="font-size:13px">No fixed team spawns. When you respawn (3 s, as today) the game picks one of the current hill’s spots right then:</p>
+    <h3>Runs between points</h3><table><tr><th>Move</th><th>From → to</th><th class="num">Studs</th><th class="num">Run</th></tr>${rowsH}</table>
+    <p style="font-size:13px">Run = straight line at in-game speed, Herrera 58.5 to Pachy 37 studs/s (model run × 0.65). The next point shows 10 s before it opens, so the fastest dinos arrive about as it opens.${hs.includes("Summit") ? ' <span class="warn">The summit is reached by the spiral ramp, so its real run is longer than the straight line; I’ll measure it in Studio before the plan.</span>' : ""}</p>
+    <h3>Spawn spots around each point</h3><table><tr><th>Point</th><th class="num">Spots</th><th class="num">Studs out</th><th class="num">Run in</th></tr>${spawnRows}</table>
+    <p style="font-size:13px">No fixed team spawns. When you respawn (3 s, as today) the game picks one of the current point’s spots right then:</p>
     <ul style="font-size:13px"><li><b>Never</b> within 150 studs of a living enemy.</li><li>Otherwise the spot <b>farthest from enemies</b> (counted up to 350 studs) wins,</li><li>with a bonus for being <b>near a teammate</b> (within 300 studs).</li></ul>
-    <p style="font-size:13px">So each team spawns on its own side of the hill, and the sides flip when one team pushes through. When the hill moves, the spots move with it. Call of Duty also checks what enemies can see; ours could add that with a raycast. Its exact weights aren’t public, so these numbers are mine.</p>`;
+    <p style="font-size:13px">So each team spawns on its own side of the point, and the sides flip when one team pushes through. When the point moves, the spots move with it. Call of Duty also checks what enemies can see; ours could add that with a raycast. Its exact weights aren’t public, so these numbers are mine.</p>`;
 }
 
 // ---------- the scripted match ----------
-// Each hill: 60 s of states. N = nobody, R = Red holds, B = Blue holds, C = contested. Repeats if the match runs long.
+// Each point: 60 s of states. N = nobody, R = Red holds, B = Blue holds, C = contested. Repeats if the match runs long.
 const PATTERNS = [
   [[9,"N"],[14,"R"],[6,"C"],[20,"B"],[11,"R"]], [[8,"N"],[18,"B"],[10,"C"],[24,"R"]], [[10,"N"],[12,"R"],[8,"C"],[30,"B"]],
   [[7,"N"],[25,"R"],[12,"C"],[16,"B"]], [[9,"N"],[20,"B"],[5,"C"],[26,"R"]], [[8,"N"],[22,"R"],[9,"C"],[21,"B"]],
 ];
-const FIRST = 5, HILL = 60, NEXT = 10, LIMIT = 250, CLOCK = 600;
+const FIRST = 5, POINT = 60, NEXT = 10, LIMIT = 250, CLOCK = 600;
 function simulate() {
-  const nH = LAYOUTS[layout].hills.length, tl = [];
+  const nH = LAYOUTS[layout].points.length, tl = [];
   let r = 0, b = 0, clock = CLOCK, t = 0, end = null;
   while (end === null && t < 3600) {
-    let st = "N", hill = 0, into = 0, next = 0, showNext = false;
-    if (t >= FIRST) { const k = Math.floor((t - FIRST) / HILL); hill = k % nH; into = (t - FIRST) % HILL; next = (k + 1) % nH; showNext = into >= HILL - NEXT;
+    let st = "N", point = 0, into = 0, next = 0, showNext = false;
+    if (t >= FIRST) { const k = Math.floor((t - FIRST) / POINT); point = k % nH; into = (t - FIRST) % POINT; next = (k + 1) % nH; showNext = into >= POINT - NEXT;
       let acc = 0; for (const [d, s] of PATTERNS[k % PATTERNS.length]) { if (into < acc + d) { st = s; break; } acc += d; }
       if (st === "R") r++; if (st === "B") b++; }
-    if (st === "N") clock--; // CoD: the match clock pauses while the hill is occupied
-    tl.push({t, st, hill, into, next, showNext, r, b, clock, k: t >= FIRST ? Math.floor((t - FIRST) / HILL) : -1});
+    if (st === "N") clock--; // CoD: the match clock pauses while the point is occupied
+    tl.push({t, st, point, into, next, showNext, r, b, clock, k: t >= FIRST ? Math.floor((t - FIRST) / POINT) : -1});
     if (r >= LIMIT || b >= LIMIT || clock <= 0) end = t;
     t++;
   }
@@ -393,29 +393,29 @@ function frame(i) {
   $("sR").textContent = Math.min(f.r, LIMIT); $("sB").textContent = Math.min(f.b, LIMIT);
   $("bR").style.width = (f.r / LIMIT * 100) + "%"; $("bB").style.width = (f.b / LIMIT * 100) + "%";
   $("hClock").textContent = fmt(Math.max(0, f.clock)) + (f.st !== "N" && f.t >= FIRST ? " ❚❚" : "");
-  const hillName = S[L.hills[f.hill]].name;
-  $("hHill").textContent = f.t < FIRST ? "HILL OPENS IN 0:0" + (FIRST - f.t) : `HILL ${f.hill + 1} · ${fmt(HILL - f.into)}`;
+  const pointName = S[L.points[f.point]].name;
+  $("hPoint").textContent = f.t < FIRST ? "POINT OPENS IN 0:0" + (FIRST - f.t) : `POINT ${f.point + 1} · ${fmt(POINT - f.into)}`;
   const pill = $("hPill"); pill.className = "hud panel pill " + f.st;
-  pill.textContent = f.t < FIRST ? "GET READY" : f.st === "R" ? "YOUR TEAM HOLDS · +1/s" : f.st === "B" ? "ENEMY HOLDS THE HILL" : f.st === "C" ? "CONTESTED · CLEAR IT" : "HILL OPEN · GO";
+  pill.textContent = f.t < FIRST ? "GET READY" : f.st === "R" ? "YOUR TEAM HOLDS · +1/s" : f.st === "B" ? "ENEMY HOLDS THE POINT" : f.st === "C" ? "CONTESTED · CLEAR IT" : "POINT OPEN · GO";
   const toast = $("hToast"); toast.classList.toggle("hidden", !f.showNext || ended);
-  toast.textContent = `NEXT: HILL ${f.next + 1} ${S[L.hills[f.next]].name.toUpperCase()} · ${fmt(HILL - f.into)}`;
+  toast.textContent = `NEXT: POINT ${f.next + 1} ${S[L.points[f.next]].name.toUpperCase()} · ${fmt(POINT - f.into)}`;
   const mk = $("hMarker"); mk.className = "hud marker " + (f.t < FIRST ? "N" : f.st);
-  $("hMarkN").textContent = f.hill + 1;
+  $("hMarkN").textContent = f.point + 1;
   const travel = f.st === "N" && f.t >= FIRST ? Math.max(0, Math.round(320 - f.into * 34)) : 0;
-  $("hDist").textContent = f.t < FIRST ? "opens soon" : travel > 0 ? travel + " studs" : "ON HILL";
+  $("hDist").textContent = f.t < FIRST ? "opens soon" : travel > 0 ? travel + " studs" : "ON POINT";
   const ban = $("hBanner"); ban.classList.toggle("hidden", !ended);
   pill.classList.toggle("hidden", ended); mk.classList.toggle("hidden", ended);
   if (ended) { const red = f.r >= f.b; ban.innerHTML = `${red ? "RED" : "BLUE"} WINS<small>${Math.min(f.r, LIMIT)} – ${Math.min(f.b, LIMIT)} · free-for-all next</small>`; ban.style.borderColor = red ? "#e0284a" : "#5aa0ff"; }
   $("tNow").textContent = `${fmt(f.t)} into the match · match clock ${fmt(Math.max(0, f.clock))}`;
-  $("tState").textContent = ended ? "match over" : f.t < FIRST ? "first hill opens at 0:05" : `hill ${f.hill + 1} (${hillName}) · ${{N:"empty",R:"Red holds",B:"Blue holds",C:"contested"}[f.st]}`;
-  drawMap(f.t >= FIRST ? f : {hill: 0, st: "N", showNext: false, next: 0});
+  $("tState").textContent = ended ? "match over" : f.t < FIRST ? "first point opens at 0:05" : `point ${f.point + 1} (${pointName}) · ${{N:"empty",R:"Red holds",B:"Blue holds",C:"contested"}[f.st]}`;
+  drawMap(f.t >= FIRST ? f : {point: 0, st: "N", showNext: false, next: 0});
   scrub.value = Math.round(i / (TL.length - 1) * 1000);
 }
 function buildLog() {
   const L = LAYOUTS[layout], out = []; let prev = null;
   TL.forEach(f => {
-    if (f.t === FIRST) out.push(`0:05 · Hill 1 (${S[L.hills[0]].name}) opens`);
-    if (prev && f.k !== prev.k && f.k > 0) out.push(`${fmt(f.t)} · Hill moves to ${f.hill + 1} (${S[L.hills[f.hill]].name}) · ${f.r}–${f.b}`);
+    if (f.t === FIRST) out.push(`0:05 · Point 1 (${S[L.points[0]].name}) opens`);
+    if (prev && f.k !== prev.k && f.k > 0) out.push(`${fmt(f.t)} · Point moves to ${f.point + 1} (${S[L.points[f.point]].name}) · ${f.r}–${f.b}`);
     if (prev && f.st === "C" && prev.st !== "C") out.push(`${fmt(f.t)} · Contested`);
     prev = f;
   });
@@ -456,10 +456,10 @@ function placeHud() {
     Object.assign(h("hToast"), {left:"1.2%", top:"30.5%"});
   }
   Object.assign(h("hMarker"), {left: isPhone ? "57%" : "60%", top:"52%"});
-  document.getElementById("hudNote").innerHTML = HUDS[hud].note + (isPhone ? " On the phone the bar keeps clear of the SKILLS / MENU pills (top right) and the ATTACK / JUMP buttons (bottom right)." : " On PC the ability bar and health stay where they are.") + " The diamond is the hill marker over the world, with its distance; it blinks yellow when contested.";
+  document.getElementById("hudNote").innerHTML = HUDS[hud].note + (isPhone ? " On the phone the bar keeps clear of the SKILLS / MENU pills (top right) and the ATTACK / JUMP buttons (bottom right)." : " On PC the ability bar and health stay where they are.") + " The diamond is the point marker over the world, with its distance; it blinks yellow when contested.";
 }
 
-// ---------- hill size ----------
+// ---------- point size ----------
 const DINOS = [["T-Rex",62],["Teno",47],["Therizino",32],["Dilo",26],["Raptor",25.7],["Troodon",24],["Herrera",22.4]];
 const SIZES = {35:{sub:"70 across"}, 45:{sub:"90 across", rec:true}, 60:{sub:"120 across"}};
 function drawSize() {
@@ -484,15 +484,15 @@ function drawSize() {
 // ---------- rules table ----------
 const RULES = [
   ["Teams","1–6 per team","Red vs Blue, auto-balanced on join (your pick). Arena keeps its 8-spawn island."],
-  ["Hill","One at a time, fixed order of spots per map","Same. Order = the layout you pick (Pick 1)."],
-  ["First hill","Opens 5 s into the match","Same: 5 s."],
-  ["Hill time","60 s, then it moves","Same: 60 s."],
-  ["Next hill shown","10 s before it moves; can’t score on it yet","Same: 10 s, on the map and as a NEXT notice."],
+  ["Point","One at a time, fixed order of spots per map","Same. Order = the layout you pick (Pick 1)."],
+  ["First point","Opens 5 s into the match","Same: 5 s."],
+  ["Point time","60 s, then it moves","Same: 60 s."],
+  ["Next point shown","10 s before it moves; can’t score on it yet","Same: 10 s, on the map and as a NEXT notice."],
   ["Scoring","Stand inside; the guide doesn’t state the rate","1 point per second while only your team is inside."],
   ["Contested","Both teams inside → nobody scores","Same. The pill says CONTESTED and the marker blinks."],
   ["Win","First to 250 (public matches)","Same: 250."],
-  ["Match clock","Higher score wins at the end; the clock pauses while the hill is held","Same: 10:00, paused while anyone is on the hill (shown as ❚❚)."],
-  ["Respawn","3 s, no wave spawns; spawns react to where enemies are and what they see, and flip when a team pushes past the hill","3 s as today. Spots around the current hill, picked away from enemies and near teammates; the sides flip the same way (Pick 1)."],
+  ["Match clock","Higher score wins at the end; the clock pauses while the point is held","Same: 10:00, paused while anyone is on the point (shown as ❚❚)."],
+  ["Respawn","3 s, no wave spawns; spawns react to where enemies are and what they see, and flip when a team pushes past the point","3 s as today. Spots around the current point, picked away from enemies and near teammates; the sides flip the same way (Pick 1)."],
   ["After the match","—","Results 15 s, then free-for-all (your rotation pick)."],
 ];
 document.getElementById("rules").innerHTML += RULES.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("");
