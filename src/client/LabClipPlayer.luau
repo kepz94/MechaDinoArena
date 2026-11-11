@@ -746,8 +746,8 @@ function T.throw(self, n)
 			end
 			if self:_fired(1.1 + 1.0) then
 				self:_pop("-" .. tostring(n.dmg or 25), RED, d.part.Position + Vector3.new(0, 4, 0), 1)
-				self:_pop("DAZED 1 s", YELLOW, d.part.Position + Vector3.new(0, 7, 0), 1.2)
-				if on(n.jam) then self:_pop("PARTS JAMMED", VOLT, d.part.Position + Vector3.new(0, 10, 0), 1.2) end
+				self:_pop("DAZED 1 s", YELLOW, d.part.Position + Vector3.new(0, 9, 0), 1.2)
+				if on(n.jam) then self:_pop("PARTS JAMMED", VOLT, d.part.Position + Vector3.new(0, 14, 0), 1.2) end
 			end
 		end
 		self.loop = 3.8
@@ -787,7 +787,7 @@ function T.throw(self, n)
 				if c > 0 and c < stay + 0.5 then
 					local g = ease(c / 0.25)
 					pd.Size = Vector3.new(0.3, math.max(r * 2 * g, 0.1), math.max(r * 2 * g, 0.1))
-					pd.Transparency = c > stay and 0.45 + 0.55 * (c - stay) / 0.5 or 0.45
+					pd.Transparency = c > stay and 0.62 + 0.38 * (c - stay) / 0.5 or 0.62
 				else
 					pd.Transparency = 1
 				end
@@ -806,7 +806,7 @@ function T.throw(self, n)
 		local isDome = kind == "dome"
 		local W = isDome and n.dome or n.wall
 		local shield = isDome and part(self.fx, Vector3.new(W, W, W), CFrame.new(land), VOLT, 1, Enum.PartType.Ball)
-			or part(self.fx, Vector3.new(W, n.height or 30, 2), CFrame.new(land + Vector3.new(0, (n.height or 30) / 2, 0)), Color3.fromRGB(230, 170, 70), 1)
+			or part(self.fx, Vector3.new(W, n.height or 30, 2), CFrame.new(land + Vector3.new(0, (n.height or 30) / 2, 0)), Color3.fromRGB(230, 170, 70), 1, nil, Enum.Material.SmoothPlastic)
 		local edge = isDome and (land + F(0, W / 2)) or land
 		local foe = self:_dummy(edge + F(0, 12))
 		local dart = self:_bolt(RED, 0.9)
@@ -820,7 +820,7 @@ function T.throw(self, n)
 					local h = (n.height or 30) * g
 					shield.Size = Vector3.new(W, math.max(h, 0.1), 2)
 					shield.CFrame = CFrame.new(land + Vector3.new(0, h / 2, 0))
-					shield.Transparency = 0.25
+					shield.Transparency = 0.3
 				end
 			else
 				shield.Transparency = 1
@@ -886,7 +886,7 @@ function T.throw(self, n)
 			if c > 0 and c < 1.0 then
 				local g = ease(c / 0.4)
 				burst.Size = Vector3.new(0.3, math.max(W * g, 0.1), math.max(W * g, 0.1))
-				burst.Transparency = 0.5 + 0.5 * math.max(0, (c - 0.6) / 0.4)
+				burst.Transparency = 0.7 + 0.3 * math.max(0, (c - 0.6) / 0.4)
 			else
 				burst.Transparency = 1
 			end
@@ -1134,7 +1134,7 @@ function T.buff(self, n)
 				fly(d, foe.part.Position + Vector3.new(0, 1, 0), stopAt, (t - t0) / 0.25)
 				if self:_fired(t0 + 0.25) and t0 + 0.25 < 0.3 + hold then
 					local text = fx.counter and (tostring(i) .. "/" .. tostring(n.blocks)) or "BLOCKED"
-					self:_pop(text, fx.color or VOLT, stopAt + Vector3.new(0, 3, 0), 0.8)
+					self:_pop(text, fx.color or VOLT, stopAt + Vector3.new((i - 2) * 3, 3 + i * 2, 0), 0.8)
 				end
 			end
 			if self:_fired(0.5) and fx.text then self:_pop(fx.text, WHITE, pos(Vector3.new(0, 6, 0)), 1.4) end
@@ -1320,9 +1320,9 @@ function T.move(self, n)
 	end
 	local C = math.max(1, math.floor(tonumber(n.charges) or 1))
 	local D = tonumber(n.go or n.leap or n.dist) or 40
-	if mode == "boost" then D = math.min(D, 140) end
+	if mode == "boost" then D = math.min(D, 60) end -- (a long boost is shown shorter; the chips have the time)
 	local start = F(0, -D * C * 0.4)
-	local V = math.max(D * C * 0.7 + 20, 36)
+	local V = math.max(D * C * 0.7 + 20 + (mode == "leap" and math.max(8, D * 0.25) * 1.5 or 0), 36)
 	self:_stage(V, start + F(0, D * C * 0.5 + 4))
 	local flames, ringP = {}, disc(self.fx, 1, Vector3.zero, YELLOW, 1)
 	for i = 1, C do flames[i] = part(self.fx, Vector3.new(1.4, 0.1, 1), CFrame.new(), ORANGE, 1) end
@@ -1421,7 +1421,7 @@ function T.place(self, n)
 				self:_pop("BLEED 3/s", RED, foe.part.Position + Vector3.new(0, 4, 0), 1.2)
 				self:_pop("SLOWED 30%", VOLT, foe.part.Position + Vector3.new(0, 7, 0), 1.2)
 			end
-			if on(n.hidden) and self:_fired(0.6) then self:_pop("HIDDEN FROM ENEMIES", WHITE, back + Vector3.new(0, 5, 0), 1.4) end
+			if on(n.hidden) and self:_fired(0.45) then self:_pop("HIDDEN FROM ENEMIES", WHITE, back + Vector3.new(0, 9, 0), 0.9) end
 			return W
 		end
 	end
