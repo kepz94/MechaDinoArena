@@ -21,19 +21,26 @@
 -- Markers: BillboardGui per dino in ScreenGui "TeamTags" (PlayerGui; ResetOnSpawn false), Adornee = Head.Root, else Head (a
 --   BasePart), else HumanoidRootPart; StudsOffsetWorldSpace (0, 5, 0) on the head (HumanoidRootPart: half the model height +
 --   3); AlwaysOnTop true, LightInfluence 0; sizes in pixels (they don't grow up close).
--- Old plates (BiteTargetHealth's BillboardGui "TargetBar" in the dino) while on: MaxDistance 0 (its own value kept in the
+-- Old plates (BiteTargetHealth's BillboardGui "TargetBar" in the dino) while on: MaxDistance HIDE_DIST 0.001 (0 means no
+--   limit in Roblox: found in the Play check) (its own value kept in the
 --   billboard attribute TeamTagsOldMax) on every dino with a team; on enemies the bar fill turns red rgb(224,40,74) (own
 --   colour kept in TeamTagsOldFill). Enabled is never touched (TargetHUD / CloakFX switch it). Both given back when off or
 --   when the dino stops being a dino we mark (team gone). A dino without a team keeps its plate.
 -- Diagnostics: TeamTagsVersion, TeamTagsState ("off" / "on"), TeamTagsFriends, TeamTagsChevrons, TeamTagsBars,
 --   TeamTagsTargets (counts at the last SLOW tick), TeamTagsMode ("pc" / "phone"), TeamTagsError (last error, if any).
+-- v1.1 (MDA-417, found in the Play check 2026-11-10): BillboardGuis with AlwaysOnTop did not draw at all (the same as
+--   TheriMovesFX2's note), so the markers are now Frames in the ScreenGui "TeamTags" (IgnoreGuiInset, DisplayOrder 4, under
+--   the HUD's 6): each frame (RenderStepped) a marker is placed at the camera's WorldToViewportPoint of its spot (anchor +
+--   offset), AnchorPoint (0.5, 1); hidden while the spot is behind the camera or off the screen. Same look, same rules;
+--   teammates still show through walls (a screen overlay is never hidden by the world).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local SLOW = 0.2
+local HIDE_DIST = 0.001
 local BLUE, BLUE_T = Color3.fromRGB(90, 160, 255), Color3.fromRGB(140, 192, 255)
 local RED, RED_T = Color3.fromRGB(224, 40, 74), Color3.fromRGB(255, 143, 163)
 local FONT = Enum.Font.FredokaOne
@@ -56,6 +63,8 @@ local pg = player:WaitForChild("PlayerGui")
 local gui = Instance.new("ScreenGui")
 gui.Name = "TeamTags"
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true -- v1.1: viewport pixels
+gui.DisplayOrder = 4 -- v1.1
 gui.Parent = pg
 
 local function get(k) local v = script:GetAttribute(k) if v == nil then return DEFAULTS[k] end return v end
@@ -74,7 +83,7 @@ local function hidePlate(model, enemy)
 	local b = plateOf(model)
 	if not b then return end
 	if b:GetAttribute("TeamTagsOldMax") == nil then b:SetAttribute("TeamTagsOldMax", b.MaxDistance) end
-	b.MaxDistance = 0
+	b.MaxDistance = HIDE_DIST
 	local fill = b:FindFirstChild("Fill", true)
 	if fill and fill:IsA("GuiObject") then
 		if enemy then
@@ -100,12 +109,12 @@ end
 -- ---------- markers ----------
 local recs = {} -- [model] = {bb, name, chev, bar, fill, nm, lastHp, hurtAt, mark}
 local function newMarker(model)
-	local bb = Instance.new("BillboardGui")
+	local bb = Instance.new("Frame") -- v1.1: a screen frame (1.0: BillboardGui)
 	bb.Name = "Tag_" .. model.Name
-	bb.AlwaysOnTop = true
-	bb.LightInfluence = 0
+	bb.BackgroundTransparency = 1
+	bb.AnchorPoint = Vector2.new(0.5, 1)
 	bb.Size = UDim2.fromOffset(160, 44)
-	bb.Enabled = false
+	bb.Visible = false
 	local col = Instance.new("Frame")
 	col.BackgroundTransparency = 1
 	col.Size = UDim2.fromScale(1, 1)
@@ -278,10 +287,9 @@ local function slowTick()
 			isTarget = target ~= nil and target == m.Name, hurtAgo = r.hurtAt and (t - r.hurtAt) or nil}, cfg)
 		r.mark = mark
 		if counts[mark] then counts[mark] += 1 end
-		-- draw
-		r.bb.Adornee = anchor
-		r.bb.StudsOffsetWorldSpace = off or Vector3.zero
-		r.bb.Enabled = anchor ~= nil and (mark == "friend" or mark == "chevron" or mark == "bar")
+		-- draw (v1.1: placed every frame below)
+		r.anchor, r.off = anchor, off or Vector3.zero
+		r.show = anchor ~= nil and (mark == "friend" or mark == "chevron" or mark == "bar")
 		if mark == "friend" then
 			r.nm.Visible, r.bar.Visible, r.chev.Visible = true, false, false
 			r.nm.Text = "◆ " .. info.name
@@ -313,3 +321,21 @@ RunService.Heartbeat:Connect(function(dt)
 	if not ok then script:SetAttribute("TeamTagsError", tostring(err)) end
 end)
 script.Destroying:Connect(clearAll)
+
+-- v1.1: place the markers on the screen
+RunService.RenderStepped:Connect(function()
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+	local vp = cam.ViewportSize
+	for _, r in pairs(recs) do
+		local vis = false
+		if r.show and r.anchor and r.anchor.Parent then
+			local sp = cam:WorldToViewportPoint(r.anchor.Position + r.off)
+			if sp.Z > 0 and sp.X >= 0 and sp.X <= vp.X and sp.Y >= 0 and sp.Y <= vp.Y + 44 then
+				r.bb.Position = UDim2.fromOffset(sp.X, sp.Y)
+				vis = true
+			end
+		end
+		r.bb.Visible = vis
+	end
+end)

@@ -100,3 +100,8 @@ ArenaPvPTest target dummy. VERSIONS / ATTRIBUTES rows, Dev Hub notes.
 - Hit rule: "Hurt nearby counts" — kept as written (hurt in the last 4 s within 60 studs, or within 25 studs).
 - Scope: "Both, Arena too" — Task 3 stays.
 - Phone: "Teammate names on phone" — teammates show ◆ + name (12 px) on phones too; enemies stay bar only on phones.
+
+## Build notes (2026-11-10)
+- TargetBar hiding uses MaxDistance 0.001: in the Play check, MaxDistance 0 still showed the plates (0 = no limit).
+- TeamTags 1.1: BillboardGuis with AlwaysOnTop did not draw at all, so markers are screen Frames placed every frame from
+  WorldToViewportPoint (same look and rules; teammates still show through walls).

@@ -3330,3 +3330,8 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PracticeLobby 1.2 (client script): `PracticeLobbyEnabled` (true); diagnostics `PracticeLobbyVersion`, `PracticeLobbyState`, `PracticeLobbyLastPress`, `PracticeLobbyModeFired`, `PracticeLobbyToast`.
 - MainMenu 1.22 (client script): `MainMenuModeChipEnabled` (true); player diagnostics `MainMenuMode`, `MainMenuLastPress` "chip" / "mode:<id>" / "play:<id>".
 - HardpointHUD 1.2 (client script): `HardpointHUDBoardEnabled` (true), `HardpointHUDMarkerFeedGap` (true); diagnostics `HardpointHUDBoard`, `HardpointHUDBoardPress`.
+
+## Team Tags (2026-11-10, plan docs/plans/TEAM_TAGS_v1.0.md, MDA-416..419)
+- TeamTagRules 1.0 (module constants): FRIEND_MAX 400, CHEVRON_MAX 130, ENGAGE_NEAR 25, HURT_WINDOW 4, HURT_MAX 60. TeamTagShare 1.0 (script): diagnostics `TeamTagShareVersion`, `TeamTagShareState`.
+- TeamTags 1.1 (client script): `TeamTagsEnabled` (true), `TeamTagsFriendMax` 400, `TeamTagsChevronMax` 130, `TeamTagsEngageNear` 25, `TeamTagsHurtWindow` 4, `TeamTagsHurtMax` 60; diagnostics `TeamTagsVersion`, `TeamTagsState`, `TeamTagsMode`, `TeamTagsFriends`, `TeamTagsChevrons`, `TeamTagsBars`, `TeamTagsTargets`, `TeamTagsError`. On TargetBar billboards (this client only): `TeamTagsOldMax`, `TeamTagsOldFill`.
+- HardpointHUD 1.3 (client script): `HardpointHUDTagsYieldEnabled` (true); diagnostic `HardpointHUDTagsYielding`.
