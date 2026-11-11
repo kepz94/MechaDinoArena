@@ -3306,3 +3306,13 @@ Model numbers are generator output (old version = the flag in the last column, b
 - DiloPartsVFX 1.0 (client script): `DiloPartsVFXEnabled`, `DiloPartsVFX_dgatlingEnabled`, `_dmortarEnabled`, `_dhissEnabled`, `_dspineEnabled`, `_dpumpEnabled`, `_djetsEnabled`, `_doverEnabled` (true); numbers `DiloPartsVFX_maxParts` 350, `DiloPartsVFX_rateMul` 1; diagnostics `DiloPartsVFXVersion`, `DiloPartsVFXParts`, `DiloPartsVFXEffects`, `DiloPartsVFXEvents`, `DiloPartsVFXLast`, `DiloPartsVFXTrims`, `DiloPartsVFXError`. Local folder Workspace.DiloPartsVFX_Local.
 - DiloMovesFX 1.6: `DiloMovesFXHandoffEnabled` (true; false = 1.5 even with DiloPartsVFX running).
 - DiloFX 1.3: `DiloFXOverDartHandoff` (true), `DiloFXTakeoffEnabled` (true); diagnostic `DiloFXTakeoffs`.
+
+## Arena Hardpoint (2026-11-10, plan docs/plans/HARDPOINT_v1.0.md, MDA-396..403)
+- HardpointRules 1.0 numbers (module constants): RADIUS 45, DY 40, FIRST 5, POINT_TIME 60, NEXT_SHOWN 10, LIMIT 250, CLOCK 600, RESULTS 15, TICK 0.25, RING_DIRS 12, RING_RADII 300 / 260 / 340 / 220 / 380, NEAR_ENEMY 150, ENEMY_CAP 350, MATE_RANGE 300, MATE_W 0.4, MAX_GAP 2.
+- HardpointServer 1.0 (script): `HardpointEnabled` (true), `HpMinPlayers` (1); diagnostics `HardpointServerVersion`, `HardpointState`, `HpTicks`, `HpRingSpots`.
+- ReplicatedStorage.Hardpoint (state, read-only for clients): `HpLive`, `HpPhase`, `HpMatchStartAt`, `HpIndex`, `HpNextIndex`, `HpShowNext`, `HpPointEndsAt`, `HpOcc`, `HpScoreA`, `HpScoreB`, `HpClock`, `HpClockPaused`, `HpWinner`, `HpResultsEndAt`, `HpPoints`, `HpCountA`, `HpCountB`. ReplicatedStorage `HardpointLive`. Player `HardpointTeam` ("A" / "B"); test dummy `HardpointTestTeam`.
+- SquadRules 1.1: ReplicatedStorage `HardpointTeamRules` (nil / true = the team branch while HardpointLive; false = 1.0).
+- ArenaSpawnServer 1.3 (script): `ArenaSpawnHardpointEnabled` (true); player `ArenaSpawnKind` "hardpoint".
+- StepAssistCore 1.1 (DinoIsland): `StepAssistMountainEnabled` (true), `StepAssistMountainMax` 17.5; diagnostic `StepAssistLastMountain`. Island `IslandVersion` 3.4, `IslandTrailStepsVersion` 1.1; MountainSteps.TrailSteps `TrailStepsVersion`, `TrailStepsFaces`, `TrailStepsParts`, `TrailStepsSkippedHigh`; parts `StepFace`.
+- HardpointPointFX 1.0 (client script): `HardpointPointFXEnabled` (true), `HardpointPointFX_detail` 2 (1 = 36 border blocks, no low beam); diagnostics `HardpointPointFXVersion`, `HardpointPointFXParts`.
+- HardpointHUD 1.1 (client script): `HardpointHUDEnabled` (true), `HardpointHUDMarkerFix` (true; false = 1.0 marker placement); diagnostics `HardpointHUDVersion`, `HardpointHUDState`.
