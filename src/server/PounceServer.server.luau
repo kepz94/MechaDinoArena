@@ -1,4 +1,4 @@
--- PounceServer v1.17 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.18 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -380,7 +380,7 @@ local function chargingFront(model, pos, now)
 	return d.Magnitude < 1e-3 or look.Unit:Dot(d.Unit) >= math.cos(math.rad(cone))
 end
 
-requestRemote.OnServerEvent:Connect(function(player, stamp)
+local function onRequest(player, stamp) -- v1.18: named so BotUse can call it (body unchanged)
 	local char = player.Character
 	if not char then return end
 	local now = workspace:GetServerTimeNow()
@@ -421,9 +421,11 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 		char:SetAttribute("PounceDenyReason", result)
 		char:SetAttribute("PounceDeniedAt", stamp)
 	end
-end)
+end
+requestRemote.OnServerEvent:Connect(onRequest) -- v1.18
 
-claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
+
+local function onClaim(player, stamp, part, offset) -- v1.18: named so BotUse can call it (body unchanged)
 	local char = player.Character
 	if not char then return end
 	local now = workspace:GetServerTimeNow()
@@ -519,12 +521,44 @@ claimRemote.OnServerEvent:Connect(function(player, stamp, part, offset)
 	local blade = bladeOn() and math.max(0, tonumber(char:GetAttribute("BladeLandBonus")) or 0) or 0 -- v1.6
 	char:SetAttribute("PounceBladeBonus", blade)
 	hit(char, model, get(char, "PounceLandDamage"), now, extra + blade)
-end)
+end
+claimRemote.OnServerEvent:Connect(onClaim) -- v1.18
 
-releaseRemote.OnServerEvent:Connect(function(player)
+
+local function onRelease(player) -- v1.18: named so BotUse can call it (body unchanged)
 	local char = player.Character
 	if char then release(char, "jump") end
-end)
+end
+releaseRemote.OnServerEvent:Connect(onRelease) -- v1.18
+
+-- v1.18 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
+--   server-only BindableFunction "BotUse" (child): Invoke(model, action, ...the remote's arguments...), action "request" / "claim" / "release", runs
+--   that remote's handler (named above, bodies unchanged) with ServerStorage.DinoArcade.BotProxy.of(model) for the player. The
+--   bot's motion (the client's part for a player) is PracticeServer's. Only models with PracticeBot = true. Returns "ok" (the
+--   handler ran; its result is on the model as usual), "off", "badArg" or "botUnsupported" (it errored; script attribute
+--   PounceBotUseError keeps the message). Switch: script attribute PounceBotUseEnabled (default true).
+do
+	if script:GetAttribute("PounceBotUseEnabled") == nil then script:SetAttribute("PounceBotUseEnabled", true) end
+	script:SetAttribute("PounceServerVersion", "1.18")
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local ACTIONS = {request = onRequest, claim = onClaim, release = onRelease}
+	local fn = script:FindFirstChild("BotUse") or Instance.new("BindableFunction")
+	fn.Name = "BotUse"
+	fn.OnInvoke = function(model, action, ...)
+		if script:GetAttribute("PounceBotUseEnabled") == false then return "off" end
+		local f = ACTIONS[action]
+		if not f or not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local ok, err = pcall(f, BotProxy.of(model), ...)
+		if not ok then
+			script:SetAttribute("PounceBotUseError", tostring(err))
+			return "botUnsupported"
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+
 
 RunService.Heartbeat:Connect(function()
 	local now = workspace:GetServerTimeNow()

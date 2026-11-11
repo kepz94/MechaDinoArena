@@ -1,4 +1,4 @@
--- HeadbuttServer v1.19 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.20 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -338,7 +338,7 @@ local function setResult(char, r)
 	char:SetAttribute("HeadbuttServerResultAt", now())
 end
 
-requestRemote.OnServerEvent:Connect(function(player, stamp)
+local function onRequest(player, stamp) -- v1.20: named so BotUse can call it (body unchanged)
 	script:SetAttribute("HeadbuttRequests", (script:GetAttribute("HeadbuttRequests") or 0) + 1)
 	local char = player.Character
 	if not char then return end
@@ -414,9 +414,11 @@ requestRemote.OnServerEvent:Connect(function(player, stamp)
 	char:SetAttribute("HeadbuttCount", (char:GetAttribute("HeadbuttCount") or 0) + 1)
 	setResult(char, "ok")
 	char:SetAttribute("HeadbuttStartedAt", t) -- last: clients react to this one
-end)
+end
+requestRemote.OnServerEvent:Connect(onRequest) -- v1.20
 
-endRemote.OnServerEvent:Connect(function(player, stamp, reason)
+
+local function onEnd(player, stamp, reason) -- v1.20: named so BotUse can call it (body unchanged)
 	local char = player.Character
 	local st = char and chars[char]
 	if not st or not st.active or st.active.stamp ~= stamp then return end
@@ -425,7 +427,9 @@ endRemote.OnServerEvent:Connect(function(player, stamp, reason)
 		return
 	end
 	finish(char, st, reason == "timeout" and "timeout" or "ended")
-end)
+end
+endRemote.OnServerEvent:Connect(onEnd) -- v1.20
+
 
 -- v1.13: squadmates are never targets (SquadRules 1.0, loaded on first use)
 local squadMod
@@ -551,7 +555,7 @@ local function shoveBot(model, from, dist, time)
 	return "shoved"
 end
 
-hitRemote.OnServerEvent:Connect(function(player, stamp, model)
+local function onHit(player, stamp, model) -- v1.20: named so BotUse can call it (body unchanged)
 	local char = player.Character
 	local st = char and chars[char]
 	local t = now()
@@ -708,7 +712,37 @@ hitRemote.OnServerEvent:Connect(function(player, stamp, model)
 	char:SetAttribute("HeadbuttHitAt", t) -- last: ArenaPvP / SkillEffects / clients react to this one
 	script:SetAttribute("HeadbuttHits", (script:GetAttribute("HeadbuttHits") or 0) + 1)
 	finish(char, st, "hit")
-end)
+end
+hitRemote.OnServerEvent:Connect(onHit) -- v1.20
+
+-- v1.20 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
+--   server-only BindableFunction "BotUse" (child): Invoke(model, action, ...the remote's arguments...), action "request" / "end" / "hit", runs
+--   that remote's handler (named above, bodies unchanged) with ServerStorage.DinoArcade.BotProxy.of(model) for the player. The
+--   bot's motion (the client's part for a player) is PracticeServer's. Only models with PracticeBot = true. Returns "ok" (the
+--   handler ran; its result is on the model as usual), "off", "badArg" or "botUnsupported" (it errored; script attribute
+--   HeadbuttBotUseError keeps the message). Switch: script attribute HeadbuttBotUseEnabled (default true).
+do
+	if script:GetAttribute("HeadbuttBotUseEnabled") == nil then script:SetAttribute("HeadbuttBotUseEnabled", true) end
+	script:SetAttribute("HeadbuttServerVersion", "1.20")
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local ACTIONS = {request = onRequest, ["end"] = onEnd, hit = onHit}
+	local fn = script:FindFirstChild("BotUse") or Instance.new("BindableFunction")
+	fn.Name = "BotUse"
+	fn.OnInvoke = function(model, action, ...)
+		if script:GetAttribute("HeadbuttBotUseEnabled") == false then return "off" end
+		local f = ACTIONS[action]
+		if not f or not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local ok, err = pcall(f, BotProxy.of(model), ...)
+		if not ok then
+			script:SetAttribute("HeadbuttBotUseError", tostring(err))
+			return "botUnsupported"
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+
 
 -- refills and deadlines
 RunService.Heartbeat:Connect(function()
