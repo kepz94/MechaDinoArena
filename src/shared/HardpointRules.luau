@@ -24,8 +24,24 @@
 --   assignGroups(groups: {{id, n}}) -> {[id] = {A = a, B = b}}
 --   ringSpots(centre: Vector3, okFn(Vector3) -> Vector3?) -> {Vector3}
 --   pickSpawn(spots, enemies: {Vector3}, mates: {Vector3}) -> Vector3?
+-- v1.1 (spawns v2, MDA-421, plan docs/plans/HARDPOINT_SPAWNS_MARKER_v1.0.md Task 1; Kepu 2026-11-10 23:30 "it starts off way
+--   to close to the point and then when I die I'm still pretty close ... Usually you both start an equal distance away to
+--   where you can't see each other"; picks "B · Scored ring", 23:41 keep 420–600). Added, 1.0 untouched:
+--   Band: BAND_DIRS 24 directions x every BAND_RADII {420, 480, 540, 600} that is good ground; a point with fewer than
+--     BAND_MIN_SPOTS 8 also takes BAND_EXTRA_RADII {360, 300}.
+--   Respawn score: a spot within MIN_ENEMY 250 (flat) of a living enemy is skipped; score = min(nearest enemy, ENEMY_CAP2
+--     600; no enemies = 600) + MATE_W 0.4 x max(0, MATE_RANGE 300 - nearest teammate; none = 300) - SEEN_PEN 400 when an
+--     enemy can see it; the best wins (first on a tie). SIGHT_MAX 700: enemies further away are not asked "can you see it"
+--     (the server's ray check; constant here so server and spec agree).
+--   Opening pair: two band spots at least OPEN_MIN_APART 600 apart (flat), whose flat distances to the point differ by at most
+--     OPEN_MAX_DIFF 60, and that can't see each other; the pair furthest apart wins (first found on a tie).
+--   Warm-up spot: the spot nearest an anchor that is not taken (takenFn(spot) false); all taken -> the nearest.
+--   API: bandSpots(centre, okFn) -> {Vector3}; scoreSpawn(spot, enemies, mates, seen) -> number? (nil = skipped);
+--     pickScored(spots, enemies, mates, seenFn(spot) -> bool) -> Vector3?, score?; pickOpening(spots, centre,
+--     seesFn(a, b) -> bool) -> Vector3?, Vector3?; pickNear(spots, anchor, takenFn(spot) -> bool) -> Vector3?
 local M = {}
 M.VERSION = "1.0"
+M.VERSION = "1.1" -- v1.1 spawns v2
 
 M.RADIUS = 45
 M.DY = 40
@@ -195,6 +211,99 @@ end
 local function flat(a, b)
 	local dx, dz = a.X - b.X, a.Z - b.Z
 	return math.sqrt(dx * dx + dz * dz)
+end
+
+-- v1.1: spawns v2 (see the header)
+M.BAND_DIRS = 24
+M.BAND_RADII = {420, 480, 540, 600}
+M.BAND_EXTRA_RADII = {360, 300}
+M.BAND_MIN_SPOTS = 8
+M.MIN_ENEMY = 250
+M.ENEMY_CAP2 = 600
+M.SEEN_PEN = 400
+M.SIGHT_MAX = 700
+M.OPEN_MIN_APART = 600
+M.OPEN_MAX_DIFF = 60
+
+function M.bandSpots(centre, okFn)
+	local out = {}
+	if typeof(centre) ~= "Vector3" or type(okFn) ~= "function" then return out end
+	local function ring(radii)
+		for d = 0, M.BAND_DIRS - 1 do
+			local a = d / M.BAND_DIRS * 2 * math.pi
+			for _, r in ipairs(radii) do
+				local spot = okFn(Vector3.new(centre.X + math.cos(a) * r, centre.Y, centre.Z + math.sin(a) * r))
+				if typeof(spot) == "Vector3" then table.insert(out, spot) end
+			end
+		end
+	end
+	ring(M.BAND_RADII)
+	if #out < M.BAND_MIN_SPOTS then ring(M.BAND_EXTRA_RADII) end
+	return out
+end
+
+local function flatDist(a, b)
+	local dx, dz = a.X - b.X, a.Z - b.Z
+	return math.sqrt(dx * dx + dz * dz)
+end
+
+function M.scoreSpawn(spot, enemies, mates, seen)
+	if typeof(spot) ~= "Vector3" then return nil end
+	local de = M.ENEMY_CAP2
+	if enemies and #enemies > 0 then
+		de = math.huge
+		for _, e in ipairs(enemies) do de = math.min(de, flatDist(spot, e)) end
+		if de < M.MIN_ENEMY then return nil end
+	end
+	local dm = M.MATE_RANGE
+	if mates and #mates > 0 then
+		dm = math.huge
+		for _, m in ipairs(mates) do dm = math.min(dm, flatDist(spot, m)) end
+	end
+	return math.min(de, M.ENEMY_CAP2) + M.MATE_W * math.max(0, M.MATE_RANGE - dm) - (seen and M.SEEN_PEN or 0)
+end
+
+function M.pickScored(spots, enemies, mates, seenFn)
+	local best, bestScore
+	for _, c in ipairs(spots or {}) do
+		if M.scoreSpawn(c, enemies, mates, false) ~= nil then
+			local seen = type(seenFn) == "function" and seenFn(c) == true
+			local score = M.scoreSpawn(c, enemies, mates, seen)
+			if score and (not bestScore or score > bestScore) then best, bestScore = c, score end
+		end
+	end
+	return best, bestScore
+end
+
+function M.pickOpening(spots, centre, seesFn)
+	if typeof(centre) ~= "Vector3" then return nil, nil end
+	local list = spots or {}
+	local cands = {}
+	for i = 1, #list do
+		for j = i + 1, #list do
+			local a, b = list[i], list[j]
+			local apart = flatDist(a, b)
+			if apart >= M.OPEN_MIN_APART and math.abs(flatDist(a, centre) - flatDist(b, centre)) <= M.OPEN_MAX_DIFF then
+				table.insert(cands, {a = a, b = b, apart = apart, order = #cands + 1})
+			end
+		end
+	end
+	table.sort(cands, function(x, y) if x.apart ~= y.apart then return x.apart > y.apart end return x.order < y.order end)
+	for _, c in ipairs(cands) do
+		if not (type(seesFn) == "function" and seesFn(c.a, c.b) == true) then return c.a, c.b end
+	end
+	return nil, nil
+end
+
+function M.pickNear(spots, anchor, takenFn)
+	if typeof(anchor) ~= "Vector3" then return nil end
+	local best, bestD, any, anyD
+	for _, s in ipairs(spots or {}) do
+		local d = flatDist(s, anchor)
+		if not anyD or d < anyD then any, anyD = s, d end
+		if not (type(takenFn) == "function" and takenFn(s) == true) and (not bestD or d < bestD) then best, bestD = s, d end
+	end
+	return best or any
 end
 
 function M.pickSpawn(spots, enemies, mates)
