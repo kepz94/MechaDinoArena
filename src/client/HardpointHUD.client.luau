@@ -1,4 +1,4 @@
--- HardpointHUD v1.0 (Mecha Dino Arena) — the Arena Hardpoint HUD, PC and phone (LocalScript, StarterPlayerScripts). MDA-402,
+-- HardpointHUD v1.1 (Mecha Dino Arena) — the Arena Hardpoint HUD, PC and phone (LocalScript, StarterPlayerScripts). MDA-402,
 -- plan docs/plans/HARDPOINT_v1.0.md Task 7, mockups docs/mockups/arena_hardpoint_v0.1.html (Kepu 2026-11-10: the HUD "Look at how
 -- Call of Duty Mobile does it") + hardpoint_point_look_v0.1.html (the marker and name tags).
 -- Reads ReplicatedStorage.Hardpoint (HardpointServer 1.0) and the player attribute HardpointTeam; draws only while HpLive, the
@@ -17,12 +17,21 @@
 --   * Name tags: a BillboardGui over every other counted player (team set, out of the menu, alive), own team blue, enemy red.
 --   * Results: a centre panel VICTORY / DEFEAT / DRAW, "you – them" and "NEXT MATCH IN m:ss".
 -- Switch: script attribute HardpointHUDEnabled (default true). Diagnostics: HardpointHUDVersion, HardpointHUDState.
+-- v1.1 (MDA-402, found in Play 2026-11-10), three marker fixes under one switch, script attribute HardpointHUDMarkerFix
+--   (default true; false = 1.0):
+--   * position: 1.0 placed the marker GuiInset (58 px) too low (WorldToViewportPoint is screen pixels; this ScreenGui's
+--     AbsolutePosition is (0, -58)); now the inset is taken off;
+--   * a point behind the camera: 1.0 put the marker at 85% of the screen height, on the ability bar; now it goes to the
+--     side edge (left or right, the side the point is on) at half height;
+--   * the top limit stays where 1.0 showed it (150 px under the top bar), and a marker in the left column (on screen or
+--     clamped to the edge) is pushed below the status / next pills (6 px gap) instead of covering them or the score card.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService") -- v1.1
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -317,6 +326,22 @@ RunService.RenderStepped:Connect(function()
 		if not onScreen or sp.Z < 0 then edge = true end
 		x = math.clamp(x, 70, vp.X - 70)
 		y = math.clamp(y, 150, vp.Y - 40)
+		-- v1.1 (see the header): x / y are viewport (screen) pixels; AbsolutePosition is GuiInset pixels higher
+		local fix = script:GetAttribute("HardpointHUDMarkerFix") ~= false
+		if fix then
+			local gi = GuiService:GetGuiInset()
+			inset = inset + gi
+			if sp.Z < 0 then
+				x = (x < vp.X / 2) and 70 or (vp.X - 70)
+				y = vp.Y * 0.5
+			end
+			y = math.max(y, 150 + gi.Y) -- the 1.0 top limit as it showed (150 under the top bar)
+			local left = card.AbsolutePosition.X + card.AbsoluteSize.X
+			if x - 60 < left then
+				local low = nextL.Visible and nextL or status
+				y = math.max(y, low.AbsolutePosition.Y + gi.Y + low.AbsoluteSize.Y + 6 + 74)
+			end
+		end
 		marker.Position = UDim2.fromOffset(x - inset.X, y - inset.Y)
 		marker.Size = edge and UDim2.fromOffset(100, 62) or UDim2.fromOffset(120, 74)
 	end
