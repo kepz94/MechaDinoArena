@@ -26,12 +26,14 @@
 -- Switch: script attribute PracticeLobbyEnabled (default true, read per frame; false = the screen is not drawn).
 -- Diagnostics: PracticeLobbyVersion, PracticeLobbyState ("hidden" / "shown"), PracticeLobbyLastPress (button id),
 --   PracticeLobbyModeFired ("play" / "menu"), PracticeLobbyToast (last toast text).
+-- v1.1 (QA 2026-11-10): the dino box text was scaled to fit each name, so "DILO" came out three times the size of "TROODON";
+--   now it is capped at 70% of the slot name size (UITextSizeConstraint), 9 px at least.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW = Color3.fromRGB(255, 200, 50)
 local MUTED = Color3.fromRGB(143, 153, 170)
@@ -167,6 +169,8 @@ local function column(name, hdColor, hdText, text)
 		box.TextScaled = true
 		box.Parent = f
 		local bc = corner(box, 6)
+		local cap = Instance.new("UITextSizeConstraint") -- v1.1
+		cap.Parent = box
 		local pad = Instance.new("UIPadding")
 		pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 3), UDim.new(0, 3)
 		pad.Parent = box
@@ -383,6 +387,7 @@ local function layout()
 			s.f.Position, s.f.Size = UDim2.fromOffset(x, sy), UDim2.fromOffset(colW, slotH)
 			local box = slotH - 10
 			s.box.Position, s.box.Size = UDim2.fromOffset(6, 5), UDim2.fromOffset(math.max(box * 1.5, 46), box)
+			s.box.UITextSizeConstraint.MaxTextSize = math.max(9, math.floor(nameS * 0.7)) -- v1.1
 			local tx = 6 + math.max(box * 1.5, 46) + 8
 			local tw = colW - tx - 8
 			local both = nameS + ldS + 2

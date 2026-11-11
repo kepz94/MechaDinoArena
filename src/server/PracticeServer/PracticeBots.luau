@@ -13,12 +13,19 @@
 --   speedMul (opts, default 0.95): bots run like players do.
 -- API: template(species) -> Model? (cached); spawn(spec, team, groundCFrame, folder, opts) -> model? , reason;
 --   runSpeed(model) -> number.
+-- v1.1 (MDA-406, found in QA 2026-11-10: bots were flung up to 100k studs or out of the map when two big dinos bumped,
+--   e.g. a running T-Rex into a teammate Therizino; their colliding Torso / Neck / Head / Tail boxes, DinoHitboxes 1.2, pushed
+--   each other apart): with opts.noCollide, practice bots do not collide with each other. Two collision groups, made once:
+--   "PracticeBotBox" (= DinoHitbox's rules with every other group) and "PracticeBotBody" (= Default's rules); neither collides
+--   with itself or the other. A bot's parts in "DinoHitbox" move to PracticeBotBox, its parts in "Default" to PracticeBotBody
+--   (at spawn, 0.5 s and 2 s after, and 0.1 s after any part is added). Players' dinos, the ground and the world still
+--   collide with bots; bites / attack queries still find the boxes (Default can still touch them).
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local HttpService = game:GetService("HttpService")
 
 local M = {}
-M.Version = "1.0"
+M.Version = "1.1"
 
 local MODEL_DATA = {Raptor = "RaptorModelData", Pachy = "PachyModelData", Herrera = "HerreraModelData", Teno = "TenoModelData",
 	Therizino = "TherizinoModelData", Dilo = "DiloModelData", Troodon = "TroodonModelData"}
@@ -26,6 +33,44 @@ local MAX_BY_SPECIES = {TRex = 200, Raptor = 60}
 local CLIENT_SCRIPTS = {"IdleAnimation", "StatusBadges", "PounceFX", "StunFX", "BiteFX", "RoarFX"}
 
 local templates = {}
+
+-- v1.1: bots don't collide with bots
+local PhysicsService = game:GetService("PhysicsService")
+local BOX, BODY = "PracticeBotBox", "PracticeBotBody"
+local groupsReady = false
+local function readyGroups()
+	if groupsReady then return true end
+	local ok = pcall(function()
+		for _, g in ipairs({BOX, BODY}) do
+			if not PhysicsService:IsCollisionGroupRegistered(g) then PhysicsService:RegisterCollisionGroup(g) end
+		end
+		local hasBox = PhysicsService:IsCollisionGroupRegistered("DinoHitbox")
+		for _, info in ipairs(PhysicsService:GetRegisteredCollisionGroups()) do
+			local name = info.name
+			if name ~= BOX and name ~= BODY then
+				PhysicsService:CollisionGroupSetCollidable(BOX, name,
+					PhysicsService:CollisionGroupsAreCollidable(hasBox and "DinoHitbox" or "Default", name))
+				PhysicsService:CollisionGroupSetCollidable(BODY, name, PhysicsService:CollisionGroupsAreCollidable("Default", name))
+			end
+		end
+		PhysicsService:CollisionGroupSetCollidable(BOX, BOX, false)
+		PhysicsService:CollisionGroupSetCollidable(BODY, BODY, false)
+		PhysicsService:CollisionGroupSetCollidable(BOX, BODY, false)
+	end)
+	groupsReady = ok
+	return ok
+end
+local function regroup(p)
+	if p:IsA("BasePart") then
+		if p.CollisionGroup == "DinoHitbox" then p.CollisionGroup = BOX
+		elseif p.CollisionGroup == "Default" then p.CollisionGroup = BODY end
+	end
+end
+function M.noCollide(model)
+	if not readyGroups() then return false end
+	for _, d in ipairs(model:GetDescendants()) do regroup(d) end
+	return true
+end
 
 function M.template(species)
 	if templates[species] ~= nil then return templates[species] or nil end
@@ -108,6 +153,12 @@ function M.spawn(spec, team, groundCFrame, folder, opts)
 	hrp.Anchored = false
 	model.Parent = folder
 	pcall(function() hrp:SetNetworkOwner(nil) end)
+	if opts.noCollide then -- v1.1
+		M.noCollide(model)
+		model.DescendantAdded:Connect(function(d) task.delay(0.1, regroup, d) end)
+		task.delay(0.5, function() if model.Parent then M.noCollide(model) end end)
+		task.delay(2, function() if model.Parent then M.noCollide(model) end end)
+	end
 	return model
 end
 

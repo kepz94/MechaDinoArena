@@ -36,6 +36,9 @@
 --   themselves when the results end) and MAIN MENU (DinoModeRequest "menu").
 --   Switch: script attribute HardpointHUDBoardEnabled (default true, read at start; false = 1.1's small results panel).
 --   Diagnostics: HardpointHUDBoard ("shown" / "dismissed" / "hidden"), HardpointHUDBoardPress ("again" / "menu").
+--   Also in 1.2 (QA 2026-11-10: the CONTESTED marker sat on the kill feed): a marker in the left column is pushed below the
+--   kill feed's lines too (PlayerGui.KillFeed.Lines, KillFeed 1.0) while they show. Switch: script attribute
+--   HardpointHUDMarkerFeedGap (default true, read per frame; false = only below the pills, as 1.1).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -491,6 +494,11 @@ RunService.RenderStepped:Connect(function()
 			if x - 60 < left then
 				local low = nextL.Visible and nextL or status
 				y = math.max(y, low.AbsolutePosition.Y + gi.Y + low.AbsoluteSize.Y + 6 + 74)
+				local kfg = script:GetAttribute("HardpointHUDMarkerFeedGap") ~= false and gui.Parent:FindFirstChild("KillFeed") -- v1.2
+				local lines = kfg and kfg.Enabled and kfg:FindFirstChild("Lines")
+				if lines and lines.AbsoluteSize.Y > 1 then
+					y = math.max(y, lines.AbsolutePosition.Y + gi.Y + lines.AbsoluteSize.Y + 6 + 74)
+				end
 			end
 		end
 		marker.Position = UDim2.fromOffset(x - inset.X, y - inset.Y)

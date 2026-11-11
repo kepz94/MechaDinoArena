@@ -30,6 +30,14 @@
 --   (think time per tick, ms).
 -- v1.1 (MDA-408, found in the Build 2026-11-10): the roster is built once at start (rebuild() before the first publish()), so
 --   PrRoster lists the bots before anyone opens the lobby. 1.0 published an empty roster until the first "lobby" request.
+-- v1.2 (MDA-408 / MDA-406, found in QA 2026-11-10: bots flung far up or out of the map; one 133 000 studs away pulled its
+--   team's "home" (the average position the brain uses) off the island, so that team stopped playing the point):
+--   * bots are spawned with PracticeBots 1.1 noCollide (bots don't collide with bots). Switch: script attribute
+--     PrBotNoCollide (default true, read at each spawn; false = 1.1).
+--   * a lost bot (no root part in Workspace, or the root more than PrLostDistance (2000) studs from the current point
+--     centre, or below PrLostY (-150)) is removed and comes back after PrBotRespawn s like a dead one; no kill, no death.
+--     It is left out of the team home. Switch: script attribute PrLostEnabled (default true, read per tick; false = 1.1).
+--     Diagnostics: PrBotsLost (total), PrLastLost ("<name> <why>").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -37,11 +45,11 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
-	PrBotXpMul = 0.1, PrDifficultyDefault = "Normal"}
+	PrBotXpMul = 0.1, PrDifficultyDefault = "Normal", PrBotNoCollide = true, PrLostEnabled = true, PrLostDistance = 2000, PrLostY = -150} -- v1.2: + the last four
 script:SetAttribute("PracticeServerVersion", VERSION)
 for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -202,7 +210,8 @@ local function spawnBot(rec)
 	probe:SetAttribute("HardpointBotTeam", rec.team)
 	local spot, centre = pick(probe)
 	probe:Destroy()
-	local model = Bots.spawn(rec.spec, rec.team, groundCF(spot, centre), botFolder, {xpMul = get("PrBotXpMul")})
+	local model = Bots.spawn(rec.spec, rec.team, groundCF(spot, centre), botFolder, {xpMul = get("PrBotXpMul"),
+		noCollide = get("PrBotNoCollide") ~= false}) -- v1.2: + noCollide
 	if not model then return end
 	rec.model, rec.hrp, rec.hum, rec.species = model, model:FindFirstChild("HumanoidRootPart"), model:FindFirstChildOfClass("Humanoid"), rec.spec.species
 	rec.deadAt, rec.respawnAt, rec.busy, rec.target, rec.path, rec.wp = nil, nil, false, nil, nil, nil
@@ -472,6 +481,28 @@ RunService.Heartbeat:Connect(function(dt)
 		nextCentre = pts[hpState:GetAttribute("HpNextIndex") or 1], into = H.POINT_TIME - (endsAt - now()), pointTime = H.POINT_TIME,
 		index = idx}
 	local alive = 0
+	-- v1.2: lost bots (see the header)
+	if get("PrLostEnabled") ~= false then
+		local c = ctx.centre
+		for _, rec in ipairs(botRecs) do
+			if rec.model and rec.model.Parent and not rec.deadAt then
+				local why
+				if not (rec.hrp and rec.hrp:IsDescendantOf(workspace)) then
+					why = "noRoot"
+				elseif rec.hrp.Position.Y < get("PrLostY") then
+					why = "low"
+				elseif c and (rec.hrp.Position - c).Magnitude > get("PrLostDistance") then
+					why = "far"
+				end
+				if why then
+					despawnBot(rec)
+					rec.respawnAt = os.clock() + get("PrBotRespawn")
+					script:SetAttribute("PrBotsLost", (script:GetAttribute("PrBotsLost") or 0) + 1)
+					script:SetAttribute("PrLastLost", rec.spec.name .. " " .. why)
+				end
+			end
+		end
+	end
 	-- team homes (average position)
 	local sum = {A = Vector3.zero, B = Vector3.zero}
 	local cnt = {A = 0, B = 0}

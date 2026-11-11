@@ -178,7 +178,8 @@ VERSION = "1.22" -- v1.22 mode chip + PLAY
 --     FREE ROAM "Today's sandbox island" (BOTS): only in a Sandbox without the practice match -> DinoModeRequest("sandbox");
 --               otherwise greyed with the tag SOON.
 --   Default: PRACTICE in the Sandbox (FREE ROAM when the practice match is off), HARDPOINT in the Arena. The dino stage,
---   species row and slots stay where 1.21 put them (left column; the slots at the bottom-left).
+--   species row and slots stay where 1.21 put them (left column; the slots at the bottom-left). PLAY's bottom sits 1.2ch over
+--   the CREDITS pill (v1.13, same corner) while that button is on.
 --   The menu also stays closed while PrInLobby is true (the team screen is up).
 --   Switch: script attribute MainMenuModeChipEnabled (default true, read at start; false = 1.21). Diagnostics: player
 --   MainMenuMode (the chip's mode), MainMenuLastPress "chip" / "mode:<id>" / "play:<id>".
@@ -1123,6 +1124,9 @@ local function layout()
 	playB.b.Visible, playB.shadow.Visible, chip.Visible = chipOn, chipOn, chipOn
 	if chipOn then
 		local bottom = S.H - S.bottom
+		if script:GetAttribute("MainMenuCreditsButtonEnabled") ~= false then -- above the CREDITS pill (bottom-right corner, v1.13)
+			bottom = math.min(bottom, S.H - 2 * ch - math.max(4.6 * ch, 28) - 1.2 * ch)
+		end
 		local playH = math.max(11 * ch, 48)
 		local chipH = math.max(8 * ch, 44)
 		placeButton(playB, rx2, bottom - playH, rw, playH, 1.6 * ch, 0.9 * ch, drop)
