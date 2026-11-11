@@ -39,9 +39,19 @@
 --   API: bandSpots(centre, okFn) -> {Vector3}; scoreSpawn(spot, enemies, mates, seen) -> number? (nil = skipped);
 --     pickScored(spots, enemies, mates, seenFn(spot) -> bool) -> Vector3?, score?; pickOpening(spots, centre,
 --     seesFn(a, b) -> bool) -> Vector3?, Vector3?; pickNear(spots, anchor, takenFn(spot) -> bool) -> Vector3?
+-- v1.2 (far spawns + fair start sides, MDA-425, plan docs/plans/HUD_SLIM_SPAWNS_FAR_v1.0.md Task 1; Kepu 2026-11-11 "make the
+--   distance even further for spawns", picks "700–900" and "Equal running distance"). Added, 1.0 / 1.1 untouched:
+--   Band 2: BAND2_RADII {700, 750, 800, 850, 900}, BAND2_EXTRA_RADII {650, 600} (under BAND_MIN_SPOTS 8); SIGHT_MAX2 1000
+--     (enemies this close are ray-checked; 700 would miss an enemy on the point looking out at the band); OPEN_MIN_APART2 900.
+--   Start sides by run: two spots at least minApart (default OPEN_MIN_APART2) apart (flat) whose run lengths (runFn(spot) ->
+--     studs, nil = no path, the spot is left out) differ by at most maxDiff (default OPEN_RUN_DIFF 60) and that can't see
+--     each other; the pair furthest apart wins (first found on a tie).
+--   API: bandSpots(centre, okFn, radii?, extraRadii?) (new optional args; nil = BAND_RADII / BAND_EXTRA_RADII as 1.1);
+--     pickOpeningByRun(spots, seesFn(a, b) -> bool, runFn(spot) -> number?, minApart?, maxDiff?) -> Vector3?, Vector3?
 local M = {}
 M.VERSION = "1.0"
 M.VERSION = "1.1" -- v1.1 spawns v2
+M.VERSION = "1.2" -- v1.2 far spawns + start sides by run
 
 M.RADIUS = 45
 M.DY = 40
@@ -225,7 +235,7 @@ M.SIGHT_MAX = 700
 M.OPEN_MIN_APART = 600
 M.OPEN_MAX_DIFF = 60
 
-function M.bandSpots(centre, okFn)
+function M.bandSpots(centre, okFn, radii, extraRadii) -- v1.2: optional radii / extraRadii (nil = 1.1)
 	local out = {}
 	if typeof(centre) ~= "Vector3" or type(okFn) ~= "function" then return out end
 	local function ring(radii)
@@ -237,8 +247,8 @@ function M.bandSpots(centre, okFn)
 			end
 		end
 	end
-	ring(M.BAND_RADII)
-	if #out < M.BAND_MIN_SPOTS then ring(M.BAND_EXTRA_RADII) end
+	ring(type(radii) == "table" and radii or M.BAND_RADII)
+	if #out < M.BAND_MIN_SPOTS then ring(type(extraRadii) == "table" and extraRadii or M.BAND_EXTRA_RADII) end
 	return out
 end
 
@@ -285,6 +295,41 @@ function M.pickOpening(spots, centre, seesFn)
 			local apart = flatDist(a, b)
 			if apart >= M.OPEN_MIN_APART and math.abs(flatDist(a, centre) - flatDist(b, centre)) <= M.OPEN_MAX_DIFF then
 				table.insert(cands, {a = a, b = b, apart = apart, order = #cands + 1})
+			end
+		end
+	end
+	table.sort(cands, function(x, y) if x.apart ~= y.apart then return x.apart > y.apart end return x.order < y.order end)
+	for _, c in ipairs(cands) do
+		if not (type(seesFn) == "function" and seesFn(c.a, c.b) == true) then return c.a, c.b end
+	end
+	return nil, nil
+end
+
+-- v1.2: band 2 + start sides by run (see the header)
+M.BAND2_RADII = {700, 750, 800, 850, 900}
+M.BAND2_EXTRA_RADII = {650, 600}
+M.SIGHT_MAX2 = 1000
+M.OPEN_MIN_APART2 = 900
+M.OPEN_RUN_DIFF = 60
+
+function M.pickOpeningByRun(spots, seesFn, runFn, minApart, maxDiff)
+	if type(runFn) ~= "function" then return nil, nil end
+	local minA = type(minApart) == "number" and minApart or M.OPEN_MIN_APART2
+	local maxD = type(maxDiff) == "number" and maxDiff or M.OPEN_RUN_DIFF
+	local list, runs = {}, {}
+	for _, s in ipairs(spots or {}) do
+		local r = runFn(s)
+		if typeof(s) == "Vector3" and type(r) == "number" then
+			table.insert(list, s)
+			table.insert(runs, r)
+		end
+	end
+	local cands = {}
+	for i = 1, #list do
+		for j = i + 1, #list do
+			local apart = flatDist(list[i], list[j])
+			if apart >= minA and math.abs(runs[i] - runs[j]) <= maxD then
+				table.insert(cands, {a = list[i], b = list[j], apart = apart, order = #cands + 1})
 			end
 		end
 	end

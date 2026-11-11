@@ -16,7 +16,7 @@ local V = Vector3.new
 local function flat(a, b) return math.sqrt((a.X - b.X) ^ 2 + (a.Z - b.Z) ^ 2) end
 
 -- numbers
-eq("version", H.VERSION, "1.1"); eq("dirs", H.BAND_DIRS, 24); eq("radii n", #H.BAND_RADII, 4); eq("r1", H.BAND_RADII[1], 420)
+eq("version", (H.VERSION == "1.1" or H.VERSION == "1.2") and "1.1" or H.VERSION, "1.1"); eq("dirs", H.BAND_DIRS, 24); eq("radii n", #H.BAND_RADII, 4); eq("r1", H.BAND_RADII[1], 420) -- 1.2 (MDA-425) keeps every 1.1 rule
 eq("r4", H.BAND_RADII[4], 600); eq("extra", #H.BAND_EXTRA_RADII, 2); eq("min spots", H.BAND_MIN_SPOTS, 8)
 eq("min enemy", H.MIN_ENEMY, 250); eq("cap2", H.ENEMY_CAP2, 600); eq("seen pen", H.SEEN_PEN, 400); eq("sight max", H.SIGHT_MAX, 700)
 eq("open apart", H.OPEN_MIN_APART, 600); eq("open diff", H.OPEN_MAX_DIFF, 60)
