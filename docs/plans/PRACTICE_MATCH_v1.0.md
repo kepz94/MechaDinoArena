@@ -19,6 +19,8 @@ crowd the mobile side". 20:33: "Also how other mobile game menus function for ga
 - Phone kill feed **yes**: 3 smaller lines, gone after 4 s, no BOT tags; one banner low in the middle for your own kill or
   death. PC: 5 lines, 5 s (yours 8 s).
 
+**Tickets:** MDA-404 (T0) .. MDA-415 (T11); ADR-010 (real abilities through BotUse entrances).
+
 **Architecture:** a new PracticeServer runs the lobby and the bots in the Sandbox; HardpointServer 1.1 also runs there
 while the practice match is on and counts bot models as team members. Bots are server-owned dino models built from the
 species ModelData (the SpeciesServer / BotServer pattern) and steered by a server brain whose decisions are pure functions
@@ -106,6 +108,8 @@ src/server/PlaceGate.server.luau.
   ArenaPvPPracticeEnabled, default true; read at start with ServerScriptService.PracticeServer:GetAttribute
   ("PracticeEnabled")).
 - PlaceGate 1.1: Sandbox + PracticeEnabled -> BotServer stays off, PlaceGateState "sandboxPractice".
+- SkillServer 1.9 (red-team 3): a killed bot's model attribute SkillXpMul (default 1) multiplies its kill XP (practice bots
+  0.1, Kepu "10% (like CoD Mobile)"); switch SkillBotXpMulEnabled.
 **Acceptance:** squad_rules_test PASS (new rows), ModeRules rows tested; Sandbox Play with practice off = today's bots.
 
 ### Task 2 — PracticeBots: build a bot of any dino · Mode: Wired
@@ -202,5 +206,24 @@ Per dino (Raptor first: Shock Cannon, Cloak Field, Energy Shield, Adrenaline Inj
 SkillEffects for bot models, mecha part visuals on bots, a BotUse entrance per part server, and the ability tags
 (ranged / gap / burst / save / hold / sneak) in PracticeRules.
 
-## Red-team
-(filled after Kepu's answers)
+## Red-team (2026-11-10, Kepu's answers 20:4x)
+1. **Bots stuck on the mountain** (the Summit is P3; climb test: Pachy / Herrera 1 of 5 sides). Kepu: "Paths + hold
+   below". -> Task 5: PathfindingService routes for every trip over 80 studs; a bot whose goal is a point it hasn't
+   reached within PrClimbGiveUp (25) s takes the nearest reachable spot within DY 40 / 45 studs flat of the centre, else the
+   nearest reachable spot on its path, and holds there (BotState "holdBelow"). Acceptance: every dino's bot reaches or
+   holds below each of the 5 points; a 3-minute bots-only run shows no bot stuck in one place for 25 s without "holdBelow".
+2. **Phones slowing down** (10 full dinos). Kepu: "Yes, 4v4 if needed". -> Task 11 measures server Heartbeat and phone
+   FPS; PracticeTeamSize (5) drops to 4 when the phone check is under 30 FPS; the lobby and the roster read it.
+3. **XP farming** (every bot kill gives DummyMaxHealth x 0.5 XP). Kepu: "10% (like CoD Mobile)". -> Task 1 adds SkillServer
+   1.9: a bot model attribute SkillXpMul (default 1) multiplies its kill XP; practice bots get 0.1. Diagnostic SkillLastXp
+   shows the reduced value.
+4. **Loadouts that don't work yet.** Kepu: "Show only working parts". -> PracticeRules `BOT_LIVE` (set of part ids whose
+   BotUse entrance exists; empty in Phase 1). Bots still roll a full random loadout (kept in PracticeLoadout), but the
+   lobby lists only BOT_LIVE parts; a bot with none shows its dino and "basic attack".
+5. (internal, no question) **The bot stand-in for `player`** can break ability code that expects a real Player. -> Task 6
+   lists every `player.` use per server before touching it; anything the proxy can't answer returns "botUnsupported"
+   inside a pcall, never an error; each server keeps its player tests passing.
+6. (internal) **Kill feed gaps** (a death without KilledBy). -> Task 7 falls back to LastHitBy within 5 s; otherwise no line.
+
+Scope check: Phase 1 is 12 tasks; the smaller version (no lobby, no menu change) was direction B, which Kepu passed over.
+Nothing cut.
