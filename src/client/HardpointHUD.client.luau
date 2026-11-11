@@ -25,13 +25,24 @@
 --     side edge (left or right, the side the point is on) at half height;
 --   * the top limit stays where 1.0 showed it (150 px under the top bar), and a marker in the left column (on screen or
 --     clamped to the edge) is pushed below the status / next pills (6 px gap) instead of covering them or the score card.
+-- v1.2 (practice match, MDA-414, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 10, mockup docs/mockups/practice_match_v0.1.html
+--   end screen; Kepu 2026-11-10 "Build"): the results panel becomes a scoreboard (Arena and practice). Panel "Board" in the
+--   middle, designed 720 x 316 and scaled by a UIScale = min(1.2, 94% of the width / 720, 86% of the height / 316):
+--   VICTORY / DEFEAT / DRAW (40), a line "PRACTICE · <DIFFICULTY> BOTS" (ReplicatedStorage.Practice exists) or "HARDPOINT",
+--   two tables side by side from HpBoard (HardpointServer 1.1): your team on the left "BLUE · <score>", the other "RED ·
+--   <score>" (no team of yours: A left); columns name (★ you, BOT tag), dino, K, D, on point (m:ss); most kills first, at most
+--   6 rows each; your row yellow. Under them "TEAM SCREEN IN m:ss" (practice) / "NEXT MATCH IN m:ss" (HpResultsEndAt), PLAY
+--   AGAIN (yellow; closes the board until the next results: the Arena's next match / practice's team screen come by
+--   themselves when the results end) and MAIN MENU (DinoModeRequest "menu").
+--   Switch: script attribute HardpointHUDBoardEnabled (default true, read at start; false = 1.1's small results panel).
+--   Diagnostics: HardpointHUDBoard ("shown" / "dismissed" / "hidden"), HardpointHUDBoardPress ("again" / "menu").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService") -- v1.1
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -181,6 +192,130 @@ local resScore = label(results, {Position = UDim2.fromOffset(0, 60), Size = UDim
 	TextColor3 = Color3.fromRGB(207, 211, 220), Text = ""})
 local resNext = label(results, {Position = UDim2.fromOffset(0, 88), Size = UDim2.new(1, 0, 0, 20), TextSize = 14, TextColor3 = YELLOW, Text = ""})
 
+-- v1.2: the scoreboard (see the header)
+if script:GetAttribute("HardpointHUDBoardEnabled") == nil then script:SetAttribute("HardpointHUDBoardEnabled", true) end
+local boardOn = script:GetAttribute("HardpointHUDBoardEnabled") ~= false
+local BOARD_W, BOARD_H, BOARD_ROWS, ROW_H = 720, 316, 6, 22
+local SHORT = {TRex = "T-Rex", Raptor = "Raptor", Pachy = "Pachy", Herrera = "Herrera", Teno = "Teno", Therizino = "Therizino",
+	Dilo = "Dilo", Troodon = "Troodon"}
+local MUTED_C = Color3.fromRGB(143, 153, 170)
+local boardDismissed = false
+local bp = Instance.new("Frame")
+bp.Name = "Board"
+bp.AnchorPoint = Vector2.new(0.5, 0.5)
+bp.Position = UDim2.fromScale(0.5, 0.5)
+bp.Size = UDim2.fromOffset(BOARD_W, BOARD_H)
+bp.BackgroundColor3 = PANEL
+bp.BackgroundTransparency = 0.08
+bp.Visible = false
+bp.Parent = gui
+corner(bp, 12)
+local bpStroke = stroke(bp, BLUE, 0.1, 2)
+local bpScale = Instance.new("UIScale")
+bpScale.Parent = bp
+local bTitle = label(bp, {Position = UDim2.fromOffset(0, 12), Size = UDim2.new(1, 0, 0, 42), TextSize = 40, Text = "VICTORY"})
+local bSub = label(bp, {Position = UDim2.fromOffset(0, 56), Size = UDim2.new(1, 0, 0, 18), TextSize = 14, TextColor3 = MUTED_C, Text = ""})
+local COLS = {{x = 0, w = 0.44, a = Enum.TextXAlignment.Left}, {x = 0.44, w = 0.24, a = Enum.TextXAlignment.Left},
+	{x = 0.68, w = 0.09, a = Enum.TextXAlignment.Right}, {x = 0.77, w = 0.09, a = Enum.TextXAlignment.Right},
+	{x = 0.86, w = 0.14, a = Enum.TextXAlignment.Right}}
+local bTables = {}
+for t = 1, 2 do
+	local f = Instance.new("Frame")
+	f.Name = t == 1 and "Mine" or "Theirs"
+	f.BackgroundTransparency = 1
+	f.Position = UDim2.fromOffset(t == 1 and 18 or 366, 84)
+	f.Size = UDim2.fromOffset(336, ROW_H * (BOARD_ROWS + 1))
+	f.Parent = bp
+	local rowsT = {}
+	for r = 0, BOARD_ROWS do
+		local cells = {}
+		for c, col in ipairs(COLS) do
+			local l = label(f, {Position = UDim2.new(col.x, 0, 0, r * ROW_H), Size = UDim2.new(col.w, -4, 0, ROW_H), TextSize = r == 0 and 13 or 15,
+				TextXAlignment = col.a, TextColor3 = r == 0 and MUTED_C or Color3.new(1, 1, 1), Text = "", RichText = true,
+				TextTruncate = Enum.TextTruncate.AtEnd})
+			cells[c] = l
+		end
+		if r > 0 then
+			local line = Instance.new("Frame")
+			line.BorderSizePixel = 0
+			line.BackgroundColor3 = Color3.new(1, 1, 1)
+			line.BackgroundTransparency = 0.92
+			line.Position = UDim2.fromOffset(0, r * ROW_H)
+			line.Size = UDim2.new(1, 0, 0, 1)
+			line.Parent = f
+		end
+		rowsT[r] = cells
+	end
+	bTables[t] = rowsT
+end
+local bNext = label(bp, {Position = UDim2.fromOffset(18, 248), Size = UDim2.fromOffset(250, 52), TextSize = 15, TextColor3 = YELLOW,
+	TextXAlignment = Enum.TextXAlignment.Left, Text = ""})
+local function boardButton(name, text, x, w, color, tc)
+	local b = Instance.new("TextButton")
+	b.Name = name
+	b.Position, b.Size = UDim2.fromOffset(x, 248), UDim2.fromOffset(w, 52)
+	b.BackgroundColor3 = color
+	b.Font = FONT
+	b.TextSize = 18
+	b.TextColor3 = tc
+	b.Text = text
+	b.Parent = bp
+	corner(b, 8)
+	stroke(b, Color3.fromRGB(26, 19, 0), 0, 2)
+	return b
+end
+local againB = boardButton("PlayAgain", "PLAY AGAIN", 362, 172, YELLOW, Color3.fromRGB(27, 20, 6))
+local menuB = boardButton("MainMenu", "MAIN MENU", 546, 156, Color3.fromRGB(43, 53, 66), Color3.new(1, 1, 1))
+againB.Activated:Connect(function()
+	boardDismissed = true
+	bp.Visible = false
+	script:SetAttribute("HardpointHUDBoardPress", "again")
+end)
+menuB.Activated:Connect(function()
+	script:SetAttribute("HardpointHUDBoardPress", "menu")
+	local mr = ReplicatedStorage:FindFirstChild("DinoModeRequest")
+	if mr then mr:FireServer("menu") end
+end)
+local function mss(s) s = math.max(0, math.floor((tonumber(s) or 0) + 0.5)) return ("%d:%02d"):format(s // 60, s % 60) end
+local function drawBoard(mine, you, foe, title)
+	local vp = workspace.CurrentCamera.ViewportSize
+	bpScale.Scale = math.min(1.2, vp.X * 0.94 / BOARD_W, vp.Y * 0.86 / BOARD_H)
+	bTitle.Text = title
+	bTitle.TextColor3 = title == "VICTORY" and BLUE_T or (title == "DEFEAT" and RED_T or YELLOW)
+	bpStroke.Color = title == "VICTORY" and BLUE or (title == "DEFEAT" and RED or YELLOW)
+	local pr = ReplicatedStorage:FindFirstChild("Practice")
+	bSub.Text = pr and ("PRACTICE · " .. string.upper(tostring(pr:GetAttribute("PrDifficulty") or "")) .. " BOTS") or "HARDPOINT"
+	bNext.Text = (pr and "TEAM SCREEN IN " or "NEXT MATCH IN ") .. fmt((state:GetAttribute("HpResultsEndAt") or now()) - now())
+	local ok, list = pcall(function() return HttpService:JSONDecode(state:GetAttribute("HpBoard") or "[]") end)
+	if not ok or type(list) ~= "table" then list = {} end
+	local left = (mine == "A" or mine == "B") and mine or "A"
+	local right = left == "A" and "B" or "A"
+	local scores = {A = state:GetAttribute("HpScoreA") or 0, B = state:GetAttribute("HpScoreB") or 0}
+	for t, side in ipairs({left, right}) do
+		local rows = {}
+		for _, r in ipairs(list) do if r.team == side then table.insert(rows, r) end end
+		table.sort(rows, function(x, y) if x.k ~= y.k then return x.k > y.k end return tostring(x.name) < tostring(y.name) end)
+		local T = bTables[t]
+		local hdCol = t == 1 and "#5aa0ff" or "#e0284a"
+		T[0][1].Text = ('<font color="%s">%s · %d</font>'):format(hdCol, t == 1 and "BLUE" or "RED", scores[side])
+		T[0][2].Text, T[0][3].Text, T[0][4].Text, T[0][5].Text = "Dino", "K", "D", "On point"
+		for i = 1, BOARD_ROWS do
+			local r = rows[i]
+			local cells = T[i]
+			if r then
+				local me = r.id == "u" .. player.UserId
+				local nm = (me and "★ " or "") .. tostring(r.name)
+				if r.bot then nm = nm .. ' <font size="10" color="#8f99aa">BOT</font>' end
+				cells[1].Text, cells[2].Text = nm, SHORT[r.species] or tostring(r.species or "")
+				cells[3].Text, cells[4].Text, cells[5].Text = tostring(r.k or 0), tostring(r.d or 0), mss(r.pt)
+				for _, c in ipairs(cells) do c.TextColor3 = me and YELLOW or Color3.new(1, 1, 1) end
+			else
+				for _, c in ipairs(cells) do c.Text = "" end
+			end
+		end
+	end
+end
+
 -- ---------- data ----------
 local points = {}
 local function readPoints()
@@ -267,6 +402,22 @@ RunService.RenderStepped:Connect(function()
 	local occ = state:GetAttribute("HpOcc") or "N"
 	local rel = occ == "C" and "C" or ((occ == "A" or occ == "B") and (occ == mine and "you" or "foe") or "N")
 
+	if phase == "results" and boardOn then -- v1.2: the scoreboard
+		results.Visible = false
+		marker.Visible, status.Visible, nextL.Visible = false, false, false
+		pointL.Text = ""
+		local w = state:GetAttribute("HpWinner")
+		local title = (w == "draw") and "DRAW" or (w == mine and "VICTORY" or "DEFEAT")
+		bp.Visible = not boardDismissed
+		if not boardDismissed then drawBoard(mine, you, foe, title) end
+		script:SetAttribute("HardpointHUDBoard", boardDismissed and "dismissed" or "shown")
+		script:SetAttribute("HardpointHUDState", "results")
+		return
+	end
+	if bp.Visible or boardDismissed then -- v1.2: out of the results
+		bp.Visible, boardDismissed = false, false
+		script:SetAttribute("HardpointHUDBoard", "hidden")
+	end
 	if phase == "results" then
 		results.Visible = true
 		marker.Visible, status.Visible, nextL.Visible = false, false, false
