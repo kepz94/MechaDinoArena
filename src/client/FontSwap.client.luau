@@ -9,6 +9,8 @@
 -- the font change (a script setting a new font or size makes that the label's own). "keep" puts the original font and size back.
 -- Fit factor per original font = width of "MECHA ABILITIES 0123456789" at size 40 in that font / in Silkscreen Bold
 -- (TextService:GetTextBoundsAsync, measured once at start; FontSwapRules.FIT_DEFAULT until then).
+-- A swapped text carries its original font and size as attributes (FontSwapFrom "family|weight|style|EnumName",
+--   FontSwapSize), so a copy a script clones from it still knows its own font (and is not shrunk twice).
 -- Switch: script attribute FontSwapEnabled (default true, read live: false puts every original font and size back).
 -- Diagnostics (LocalPlayer): FontSwapVersion, FontSwapCount (texts in Silkscreen now), FontSwapKept (texts checked and kept),
 --   FontSwapFit ("FredokaOne 0.86, ...").
@@ -52,6 +54,8 @@ local function evaluate(o)
 	if want == "silk" then
 		if not s.silk then
 			s.silk = true
+			o:SetAttribute("FontSwapFrom", ("%s|%s|%s|%s"):format(s.face.Family, s.face.Weight.Name, s.face.Style.Name, s.name))
+			o:SetAttribute("FontSwapSize", s.size)
 			setFace(o, s, SILK)
 		end
 		if not o.TextScaled then
@@ -72,6 +76,15 @@ end
 local function track(o)
 	if st[o] or not (o:IsA("TextLabel") or o:IsA("TextButton")) then return end
 	local s = {face = o.FontFace, name = o.Font.Name, size = o.TextSize, silk = false, busy = false}
+	local from = o:GetAttribute("FontSwapFrom")
+	if o.FontFace.Family == SILK_ID and type(from) == "string" then -- a clone of a swapped text: take its original back
+		local fam, w, sty, name = string.match(from, "^(.-)|(.-)|(.-)|(.-)$")
+		local ok, face = pcall(function() return Font.new(fam, Enum.FontWeight[w], Enum.FontStyle[sty]) end)
+		if ok and face then
+			s.face, s.name, s.silk, s.mine = face, name, true, o.TextSize
+			s.size = tonumber(o:GetAttribute("FontSwapSize")) or o.TextSize
+		end
+	end
 	st[o] = s
 	o:GetPropertyChangedSignal("Text"):Connect(function() evaluate(o) end)
 	o:GetPropertyChangedSignal("TextWrapped"):Connect(function() evaluate(o) end)
@@ -88,7 +101,10 @@ local function track(o)
 	o:GetPropertyChangedSignal("TextSize"):Connect(function()
 		if s.busy or o.TextSize == s.mine or (not s.silk and o.TextSize == s.size) then return end
 		s.size = o.TextSize -- a script set a new size: its own size now
-		if s.silk then evaluate(o) end
+		if s.silk then
+			o:SetAttribute("FontSwapSize", s.size)
+			evaluate(o)
+		end
 	end)
 	o:GetAttributeChangedSignal("FontSwap"):Connect(function() evaluate(o) end)
 	evaluate(o)
