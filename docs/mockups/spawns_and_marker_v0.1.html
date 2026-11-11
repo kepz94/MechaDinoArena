@@ -1,0 +1,272 @@
+<title>Spawns and Point Marker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: the practice-match briefing look. Part 1 = a top-down island map with spawn options; part 2 = a game screen with a
+   camera-turn slider driving the point marker for each option. Single dark look on purpose (the game's own screens). */
+:root {
+  --ink:#0e1218; --panel:#161c25; --panel2:#1d2531; --line:#2b3542; --text:#e8edf4; --muted:#9aa6b6;
+  --accent:#ff8a2a; --yellow:#ffc832; --red:#e0284a; --redT:#ff8fa3; --blue:#5aa0ff; --blueT:#8cc0ff; --green:#78c850;
+  --display:"Fredoka","Trebuchet MS",system-ui,sans-serif; --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  color-scheme:dark;
+}
+* { box-sizing:border-box; }
+body { background:var(--ink); color:var(--text); font-family:var(--body); font-size:15px; line-height:1.5; margin:0;
+  padding-block:20px 56px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width:1180px; margin:0 auto; display:grid; gap:18px; }
+h1 { font-family:var(--display); font-size:clamp(26px,4vw,38px); margin:0; line-height:1.1; text-wrap:balance; }
+h1 span { color:var(--yellow); }
+h2 { font-family:var(--display); font-size:24px; margin:0 0 6px; }
+h3 { font-family:var(--display); font-size:18px; margin:0 0 4px; }
+p { margin:0; max-width:76ch; }
+.muted { color:var(--muted); }
+.eyebrow { font-family:var(--display); letter-spacing:.08em; text-transform:uppercase; font-size:12px; color:var(--accent); }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0; }
+.seg { display:flex; flex-wrap:wrap; gap:6px; }
+.seg button { font-family:var(--display); font-size:14px; color:var(--text); background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 12px; cursor:pointer; }
+.seg button[aria-pressed="true"] { background:var(--yellow); color:#1a1300; border-color:var(--yellow); }
+.seg button:focus-visible, input:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.tag { display:inline-block; font-family:var(--display); font-size:11px; letter-spacing:.06em; padding:1px 7px; border-radius:5px; vertical-align:middle; color:#1a1300; background:var(--yellow); }
+.split { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:16px; align-items:start; }
+@media (max-width: 820px) { .split { grid-template-columns:1fr; } }
+svg.map { width:100%; height:auto; display:block; background:#123247; border-radius:10px; border:1px solid var(--line); }
+ul { margin:6px 0 0; padding-left:18px; } li { margin:3px 0; }
+.screen { position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; border:1px solid var(--line); background:linear-gradient(#8fc6f0 0 42%, #6fae4f 42% 100%); font-family:var(--display); color:#fff; }
+.screen .card2 { position:absolute; left:1.6%; top:4%; width:24%; height:12%; background:rgba(20,20,26,.82); border:1px solid rgba(255,255,255,.4); border-radius:8px; }
+.screen .pill { position:absolute; left:1.6%; padding:2px 10px; border-radius:6px; background:rgba(20,20,26,.82); font-size:clamp(8px,1.2vw,13px); }
+.mk { position:absolute; transform:translate(-50%,-100%); display:grid; justify-items:center; gap:2px; font-size:clamp(8px,1.1vw,13px); transition:none; pointer-events:none; }
+.mk .dia { width:2.2em; height:2.2em; transform:rotate(45deg); border:3px solid #fff; background:rgba(20,20,26,.8); display:grid; place-items:center; }
+.mk .dia b { transform:rotate(-45deg); font-size:1.1em; }
+.mk.next { opacity:.75; }
+.mk.next .dia { border-style:dashed; }
+.arrow { position:absolute; width:0; height:0; border-left:.6em solid transparent; border-right:.6em solid transparent; border-bottom:1em solid #fff; transform-origin:50% 60%; }
+.compass { position:absolute; left:30%; right:30%; top:3%; height:7%; background:rgba(20,20,26,.7); border-radius:6px; overflow:hidden; }
+.compass i { position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.35); }
+.compass .ic { position:absolute; top:12%; transform:translateX(-50%); font-size:clamp(8px,1.1vw,12px); white-space:nowrap; }
+.cross { position:absolute; left:50%; top:50%; width:10px; height:10px; margin:-5px; border:2px solid rgba(255,255,255,.8); border-radius:50%; }
+.ctrl { display:grid; gap:8px; margin-top:10px; }
+.row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+input[type=range] { width:min(420px,100%); accent-color:var(--yellow); }
+.src { font-size:13.5px; }
+.grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; }
+a { color:var(--blueT); }
+</style>
+
+<div class="wrap">
+  <div>
+    <div class="eyebrow">Mecha Dino Arena · Hardpoint · v0.1</div>
+    <h1>Spawns and the <span>point marker</span></h1>
+    <p class="muted" style="margin-top:6px">Kepu 2026-11-10 23:30: spawns start too close to the point and you respawn close again (CoD starts teams far apart, out of sight, with different paths); the point marker is glitchy when the point moves. The bots' size is a plain bug (fix at the bottom), no choice needed.</p>
+  </div>
+
+  <!-- PART 1: SPAWNS -->
+  <div class="card">
+    <h2>1 · Spawns</h2>
+    <div class="row" style="justify-content:space-between">
+      <div class="seg" role="group" aria-label="Spawn option">
+        <button id="sNow" data-s="now">NOW (live)</button>
+        <button id="sA" data-s="A">A · Team sides</button>
+        <button id="sB" data-s="B">B · Scored ring</button>
+        <button id="sC" data-s="C">C · Fixed bases</button>
+      </div>
+      <div class="seg" role="group" aria-label="Moment">
+        <button id="mStart" data-m="start">Match start</button>
+        <button id="mResp" data-m="resp">You respawn</button>
+      </div>
+    </div>
+    <div class="split" style="margin-top:12px">
+      <svg class="map" id="map" viewBox="-620 -460 1240 920" role="img" aria-label="Top-down island with spawn spots"></svg>
+      <div id="sNote"></div>
+    </div>
+  </div>
+
+  <!-- PART 2: MARKER -->
+  <div class="card">
+    <h2>2 · Point marker</h2>
+    <div class="row" style="justify-content:space-between">
+      <div class="seg" role="group" aria-label="Marker option">
+        <button id="kNow" data-k="now">NOW (live)</button>
+        <button id="kA" data-k="A">A · Edge arrow + NEXT</button>
+        <button id="kB" data-k="B">B · Compass bar</button>
+        <button id="kC" data-k="C">C · A + B</button>
+      </div>
+    </div>
+    <div class="split" style="margin-top:12px">
+      <div>
+        <div class="screen" id="screen"></div>
+        <div class="ctrl">
+          <div class="row"><label for="turn">Turn the camera</label><input id="turn" type="range" min="-180" max="180" value="-60"></div>
+          <div class="row"><label for="phase">Point timer</label>
+            <div class="seg" role="group" aria-label="Point timer">
+              <button id="p1" data-p="mid">P1 · 0:35 left</button>
+              <button id="p2" data-p="next">P1 · 0:07 left (NEXT shown)</button>
+              <button id="p3" data-p="moved">P2 just opened</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="kNote"></div>
+    </div>
+  </div>
+
+  <div class="card" style="border-color:var(--green)">
+    <h3>The mini dinos (bug, not a choice)</h3>
+    <p>Every player dino is scaled up by RaptorScale (Raptor, Pachy, Herrera, Teno, Therizino, Dilo, Troodon x2, T-Rex x1.63), but for bots it only has Raptor, Pachy and T-Rex. So practice Herrera, Teno, Therizino, Dilo and Troodon bots spawn at half a player's size. Fix: RaptorScale 1.9 scales those five bot species the same way as the player ones (same distance keys and ground lift), behind a switch. It goes in with whichever spawn and marker picks you make.</p>
+  </div>
+
+  <div class="grid3">
+    <div class="card"><h3>CoD spawns</h3><p class="src">Infinity Ward: each spawn is scored on "enemy locations, friendly locations and visibility" and the best one wins (<a href="https://mp1st.com/news/how-modern-warfare-3s-spawn-logic-works-face-off-weekends-july-content-and-much-more" target="_blank" rel="noopener">MP1st</a>). In Hardpoint, which side you spawn on depends on who holds the useful side of the current or next point; a team that anchors a side keeps its spawns there until it is pushed (spawn flips) (<a href="https://mitchcactus.co/blog/call-of-duty/bo7-how-spawns-work/" target="_blank" rel="noopener">Mitch Cactus</a>).</p></div>
+    <div class="card"><h3>CoD next point</h3><p class="src">"10 seconds before the next Hardpoint activates, the next hardpoint will appear, however it will be locked" (<a href="https://callofduty.com/guides/blackops6/modes/call-of-duty-guides-black-ops-6-multiplayer-mode-guide-hardpoint" target="_blank" rel="noopener">Call of Duty BO6 guide</a>). Our HUD only writes the next name in text; there is no marker on it.</p></div>
+    <div class="card"><h3>Edge markers</h3><p class="src">The usual method: take the direction from the screen centre to the target and push the marker along that line to the screen edge, with an arrow turned the same way (<a href="https://code.tutsplus.com/positioning-on-screen-indicators-to-point-to-off-screen-targets--gamedev-6644t" target="_blank" rel="noopener">Envato Tuts+</a>). Behind the camera, flip the direction so it never jumps to the wrong side.</p></div>
+  </div>
+
+  <div class="card" style="border-color:var(--yellow)">
+    <h3>Your picks</h3>
+    <p>One spawn option (A, B or C) and one marker option (A, B or C). Then plan, red-team, tickets, "Build". Studio isn't linked to this chat right now, so the build waits until the desktop app is open on your PC.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const S = { s:"A", m:"start", k:"A", p:"next", turn:-60 };
+  try { const v = JSON.parse(localStorage.getItem("spm_state") || "null"); if (v) Object.assign(S, v); } catch (e) {}
+  const save = () => { try { localStorage.setItem("spm_state", JSON.stringify(S)); } catch (e) {} };
+
+  // ---------- spawns ----------
+  const POINTS = [
+    { n:"P1 Centre Meadow", x:-100, z:-40 }, { n:"P2 East Shore", x:450, z:150 }, { n:"P3 Summit", x:285, z:-240 },
+    { n:"P4 NW Foothills", x:-280, z:-270 }, { n:"P5 West Meadow", x:-450, z:270 } ];
+  const cur = POINTS[0];
+  const ENEMY = [{ x:-60, z:40 }, { x:-150, z:-110 }]; // where the enemy is when you die (respawn view)
+  const NOTES = {
+    now: { h:"NOW · one ring for everyone", d:"12 spots on a ring 220–380 studs round the current point; any spot more than 150 studs from an enemy is fine. Both teams use the same ring, so at the start the teams can land 150 studs apart in sight of each other, and a T-Rex (74 studs/s) is at the point in about 4 s. After a death you come back on the same ring.", li:["Same ring for both teams", "Only 150 studs from enemies required, no sight check", "300 studs ≈ 4–10 s run, depending on the dino"] },
+    A: { h:"A · Team sides", rec:true, d:"Like CoD's opening spawns: each point gets a blue side and a red side, opposite each other, 500 studs out (about 7–17 s run). Both teams start the same distance away, out of each other's sight, with several paths in. You respawn on your own side, never in an enemy's sight or within 250 studs of one; if your whole side is covered by enemies, the team flips to the far side (a CoD spawn flip). When the point moves, the sides move with it, each team keeping the side nearer to where it was.", li:["Start: own side, 500 studs, same distance for both", "Respawn: own side, not seen by enemies, 250+ studs from them", "Flip to the far side only when your side is overrun", "Predictable: holding the middle doesn't spawn enemies behind you"] },
+    B: { h:"B · Scored ring", d:"CoD's scoring without fixed sides: every spot on a 420–600 stud band round the point gets a score — far from enemies, not seen by them, close to teammates — and the best wins. Start: the two teams take the two best spots that are far apart.", li:["More spots, picked by score each time", "Not seen by enemies, far from them, near teammates", "Less predictable: spawns can swap sides often (lots of flips)"] },
+    C: { h:"C · Fixed bases", d:"Two hand-placed spawn areas per point (one blue, one red), like a classic base. You'd drag parts in Studio to place 10 areas. Respawn is always at your base for the current point.", li:["Most control over paths", "Needs 10 areas placed and tested by hand", "Easy to camp: everyone knows where enemies come from"] },
+  };
+  const dot = (x, z, c, r = 12, extra = "") => `<circle cx="${x}" cy="${z}" r="${r}" fill="${c}" ${extra}/>`;
+  function drawMap() {
+    const g = [];
+    g.push(`<path d="M-560 -300 Q -620 0 -540 330 Q -300 440 0 400 Q 330 430 560 300 Q 610 0 540 -320 Q 300 -440 0 -400 Q -330 -430 -560 -300 Z" fill="#4f8f3d" stroke="#d9c38c" stroke-width="10"/>`);
+    g.push(`<path d="M190 -330 Q 285 -400 380 -330 Q 400 -230 330 -170 Q 240 -150 200 -220 Z" fill="#6c7f5a"/>`);
+    POINTS.forEach((p, i) => {
+      g.push(`<circle cx="${p.x}" cy="${p.z}" r="45" fill="${i === 0 ? "rgba(255,200,50,.35)" : "rgba(255,255,255,.12)"}" stroke="${i === 0 ? "#ffc832" : "#fff"}" stroke-width="${i === 0 ? 5 : 2}" stroke-dasharray="${i === 0 ? "" : "8 6"}"/>`);
+      g.push(`<text x="${p.x}" y="${p.z - 55}" fill="#fff" font-family="Fredoka" font-size="26" text-anchor="middle">${p.n}</text>`);
+    });
+    const R = (r) => `<circle cx="${cur.x}" cy="${cur.z}" r="${r}" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-dasharray="6 8"/>`;
+    if (S.s === "now") {
+      g.push(R(300));
+      for (let d = 0; d < 12; d++) { const a = d / 12 * Math.PI * 2; g.push(dot(cur.x + Math.cos(a) * 300, cur.z + Math.sin(a) * 300, "rgba(255,255,255,.6)", 9)); }
+      if (S.m === "start") { g.push(dot(cur.x + 300, cur.z, "#5aa0ff", 18)); g.push(dot(cur.x + Math.cos(Math.PI / 6 * 2) * 300, cur.z + Math.sin(Math.PI / 6 * 2) * 300, "#e0284a", 18)); g.push(`<text x="${cur.x + 180}" y="${cur.z + 200}" fill="#ffc832" font-size="24" font-family="Fredoka">teams ~300 apart, in sight</text>`); }
+      else { ENEMY.forEach(e => g.push(dot(e.x, e.z, "#e0284a", 14))); g.push(dot(cur.x + Math.cos(-Math.PI / 6) * 300, cur.z + Math.sin(-Math.PI / 6) * 300, "#5aa0ff", 18)); g.push(`<text x="${cur.x + 60}" y="${cur.z - 200}" fill="#ffc832" font-size="24" font-family="Fredoka">back 300 from the point</text>`); }
+    } else if (S.s === "A") {
+      g.push(R(500));
+      const arc = (from, to, col) => { for (let a = from; a <= to; a += 12) { const r = a * Math.PI / 180; g.push(dot(cur.x + Math.cos(r) * 500, cur.z + Math.sin(r) * 500, col, 8, 'opacity=".55"')); } };
+      arc(-50, 50, "#5aa0ff"); arc(130, 230, "#e0284a");
+      g.push(`<line x1="${cur.x + 500}" y1="${cur.z}" x2="${cur.x - 500}" y2="${cur.z}" stroke="rgba(255,255,255,.25)" stroke-width="3"/>`);
+      if (S.m === "start") { g.push(dot(cur.x + 500, cur.z, "#5aa0ff", 20)); g.push(dot(cur.x - 500, cur.z, "#e0284a", 20)); g.push(`<text x="${cur.x}" y="${cur.z + 120}" fill="#ffc832" font-size="24" font-family="Fredoka" text-anchor="middle">both 500 out, out of sight</text>`); }
+      else { ENEMY.forEach(e => { g.push(dot(e.x, e.z, "#e0284a", 14)); g.push(`<circle cx="${e.x}" cy="${e.z}" r="250" fill="rgba(224,40,74,.08)" stroke="rgba(224,40,74,.4)" stroke-width="2"/>`); });
+        const r = 30 * Math.PI / 180; g.push(dot(cur.x + Math.cos(r) * 500, cur.z + Math.sin(r) * 500, "#5aa0ff", 20)); g.push(`<text x="${cur.x + 200}" y="${cur.z + 330}" fill="#ffc832" font-size="24" font-family="Fredoka">own side, 250+ from enemies</text>`); }
+    } else if (S.s === "B") {
+      g.push(R(420)); g.push(R(600));
+      for (let d = 0; d < 24; d++) { const a = d / 24 * Math.PI * 2; const r = 420 + (d % 3) * 90; const near = ENEMY.some(e => Math.hypot(cur.x + Math.cos(a) * r - e.x, cur.z + Math.sin(a) * r - e.z) < 300);
+        g.push(dot(cur.x + Math.cos(a) * r, cur.z + Math.sin(a) * r, near ? "rgba(224,40,74,.6)" : "rgba(120,200,80,.75)", 9)); }
+      if (S.m === "start") { g.push(dot(cur.x + 520, cur.z - 60, "#5aa0ff", 20)); g.push(dot(cur.x - 480, cur.z + 220, "#e0284a", 20)); }
+      else { ENEMY.forEach(e => g.push(dot(e.x, e.z, "#e0284a", 14))); g.push(dot(cur.x - 120, cur.z + 590, "#5aa0ff", 20)); g.push(`<text x="${cur.x - 120}" y="${cur.z + 540}" fill="#ffc832" font-size="24" font-family="Fredoka" text-anchor="middle">best score (may be any side)</text>`); }
+    } else {
+      const bases = [{ x:cur.x + 470, z:cur.z - 80, c:"#5aa0ff" }, { x:cur.x - 470, z:cur.z + 90, c:"#e0284a" }];
+      bases.forEach(b => g.push(`<rect x="${b.x - 50}" y="${b.z - 35}" width="100" height="70" rx="10" fill="${b.c}" opacity=".7"/>`));
+      g.push(`<text x="${cur.x}" y="${cur.z + 160}" fill="#ffc832" font-size="24" font-family="Fredoka" text-anchor="middle">2 hand-placed bases per point</text>`);
+      if (S.m === "resp") ENEMY.forEach(e => g.push(dot(e.x, e.z, "#e0284a", 14)));
+    }
+    g.push(`<text x="-600" y="440" fill="#9aa6b6" font-size="22" font-family="Atkinson Hyperlegible">studs · 100 studs ≈ 1.4 s for a T-Rex (74/s), 3 s for a 33/s dino</text>`);
+    document.getElementById("map").innerHTML = g.join("");
+    const n = NOTES[S.s];
+    document.getElementById("sNote").innerHTML = `<h3>${n.h} ${n.rec ? '<span class="tag">RECOMMENDED</span>' : ""}</h3><p>${n.d}</p><ul>${n.li.map(x => `<li>${x}</li>`).join("")}</ul>`;
+  }
+
+  // ---------- marker ----------
+  const KNOTES = {
+    now: { h:"NOW · what's live", d:"One marker on the current point only. Turn the camera: in front it sits over the point; off to the side it is clamped; behind you it snaps to the far left or right edge at half height and jumps across when you turn past; in the left column it hops down under the pills and kill feed. The next point is only text (NEXT: P2 …), and when the point moves the marker jumps to the new one in one frame.", li:["Snaps between edges behind you", "Hops down in the left column", "No marker on the next point"] },
+    A: { h:"A · Edge arrow + NEXT", rec:true, d:"The marker rides the screen edge along the true direction to the point, with an arrow turned toward it; behind you it stays on the side the point is really on. It glides (eases) instead of jumping, and keeps out of a fixed HUD zone. In the last 10 s a second, dashed NEXT marker with its countdown sits on the next point (CoD shows the next point locked for 10 s); when the point moves, NEXT simply becomes the current one, so nothing jumps.", li:["Edge arrow points the real way", "Smooth, no hopping", "NEXT marker 10 s early, then it takes over"] },
+    B: { h:"B · Compass bar", d:"A compass strip at the top shows where each point is as you turn (current solid, next faded, with distance). The 3D marker shows only while the point is on screen.", li:["Clean screen, always readable", "Adds a top strip (phones: crowds the top)", "Less direct than an arrow"] },
+    C: { h:"C · A + B", d:"Edge arrow and NEXT marker, plus the compass strip.", li:["Most information", "Most clutter, especially on phones"] },
+  };
+  function markerPos(bearing, W, H) {
+    // bearing: degrees from straight ahead (+ right). FOV 70 wide.
+    const half = 35;
+    const sx = W / 2 + Math.tan(bearing * Math.PI / 180) / Math.tan(half * Math.PI / 180) * (W / 2);
+    return { sx, front: Math.abs(bearing) < 90, on: Math.abs(bearing) <= half };
+  }
+  function drawScreen() {
+    const scr = document.getElementById("screen");
+    const W = scr.clientWidth || 800, H = scr.clientHeight || 450;
+    const turn = S.turn;
+    const curB = ((-turn + 540) % 360) - 180; // the current point starts straight ahead
+    const nextB = ((-turn + 70 + 540) % 360) - 180; // next point 70° to the right
+    const showNext = S.p === "next";
+    const moved = S.p === "moved";
+    let html = `<div class="card2"></div><div class="pill" style="top:18%">${moved ? "POINT OPEN" : "CONTESTED"}</div>${showNext ? '<div class="pill" style="top:24%;color:#ffc832">NEXT: P2 EAST SHORE IN 0:07</div>' : ""}<div class="cross"></div>`;
+    const yMid = H * 0.38;
+    const mk = (b, num, label, cls) => {
+      const k = S.k;
+      const pos = markerPos(b, W, H);
+      let x, y, arrow = "";
+      if (k === "now") {
+        if (!pos.front) { x = (pos.sx < W / 2) ? 70 : W - 70; y = H * 0.5; }
+        else { x = Math.min(Math.max(pos.sx, 70), W - 70); y = Math.max(yMid, 150 * H / 819); }
+        if (x - 60 < W * 0.27) y = Math.max(y, H * 0.42);
+      } else {
+        const r = b * Math.PI / 180;
+        if (pos.on) { x = pos.sx; y = yMid; }
+        else {
+          const dx = Math.sin(r), dy = -Math.cos(r) * 0.55;
+          const cx = W / 2, cy = H * 0.5, mx = W / 2 - 60, my = H / 2 - 70;
+          const t = Math.min(Math.abs(mx / (dx || 1e-6)), Math.abs(my / (dy || 1e-6)));
+          x = cx + dx * t; y = cy + dy * t + 30;
+          const ang = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+          arrow = `<div class="arrow" style="left:${x - 8}px;top:${y + 6}px;transform:rotate(${ang}deg)"></div>`;
+        }
+      }
+      return `<div class="mk ${cls}" style="left:${x}px;top:${y}px"><span>${label}</span><div class="dia" style="border-color:${cls === "next" ? "#c9ced8" : "#ffc832"}"><b>${num}</b></div><span>${cls === "next" ? "0:07" : "212 studs"}</span></div>${arrow}`;
+    };
+    if (S.k !== "B") {
+      if (moved) html += mk(nextB, 2, "CAPTURE", "");
+      else html += mk(curB, 1, "CONTESTED", "");
+      if (showNext && S.k !== "now") html += mk(nextB, 2, "NEXT", "next");
+    } else {
+      const pos = markerPos(moved ? nextB : curB, W, H);
+      if (pos.on) html += `<div class="mk" style="left:${pos.sx}px;top:${yMid}px"><span>${moved ? "CAPTURE" : "CONTESTED"}</span><div class="dia" style="border-color:#ffc832"><b>${moved ? 2 : 1}</b></div><span>212 studs</span></div>`;
+    }
+    if (S.k === "B" || S.k === "C") {
+      let c = '<div class="compass">';
+      for (let a = -90; a <= 90; a += 15) c += `<i style="left:${50 + a / 180 * 100}%"></i>`;
+      const ic = (b, t, op) => Math.abs(b) <= 90 ? `<span class="ic" style="left:${50 + b / 180 * 100}%;opacity:${op}">${t}</span>` : `<span class="ic" style="left:${b < 0 ? 4 : 96}%;opacity:${op}">${b < 0 ? "◀ " + t : t + " ▶"}</span>`;
+      if (!moved) c += ic(curB, "◆1", 1);
+      if (showNext || moved) c += ic(nextB, moved ? "◆2" : "◇2", moved ? 1 : .6);
+      c += "</div>";
+      html += c;
+    }
+    scr.innerHTML = html;
+    const n = KNOTES[S.k];
+    document.getElementById("kNote").innerHTML = `<h3>${n.h} ${n.rec ? '<span class="tag">RECOMMENDED</span>' : ""}</h3><p>${n.d}</p><ul>${n.li.map(x => `<li>${x}</li>`).join("")}</ul>`;
+  }
+
+  function render() {
+    document.querySelectorAll("[data-s]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.s === S.s)));
+    document.querySelectorAll("[data-m]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === S.m)));
+    document.querySelectorAll("[data-k]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.k === S.k)));
+    document.querySelectorAll("[data-p]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.p === S.p)));
+    document.getElementById("turn").value = S.turn;
+    drawMap(); drawScreen(); save();
+  }
+  document.querySelectorAll("[data-s]").forEach(b => b.addEventListener("click", () => { S.s = b.dataset.s; render(); }));
+  document.querySelectorAll("[data-m]").forEach(b => b.addEventListener("click", () => { S.m = b.dataset.m; render(); }));
+  document.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => { S.k = b.dataset.k; render(); }));
+  document.querySelectorAll("[data-p]").forEach(b => b.addEventListener("click", () => { S.p = b.dataset.p; render(); }));
+  document.getElementById("turn").addEventListener("input", e => { S.turn = +e.target.value; drawScreen(); save(); });
+  window.addEventListener("resize", drawScreen);
+  render();
+})();
+</script>
