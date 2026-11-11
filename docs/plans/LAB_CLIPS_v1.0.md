@@ -121,4 +121,16 @@ never runs out and never has to wait."
    (place-an-object, pull, passive hit), one dino per follow-on plan.
 
 ## Status (2026-11-11)
-Plan + tickets filed; waiting for Kepu's "Build".
+Plan + tickets filed; Kepu "Build" 14:59.
+
+## Build (2026-11-11)
+Commits b3093d3 (texts), a091d99 (recipes), 3c78c7a (player + Lab), 966d663 + 17f7e20 (QA fixes); all installed in Studio,
+hashes match.
+- Changes from the plan: the two modules live in StarterPlayerScripts next to Lab (src/client/LabClipRecipes.luau,
+  src/client/LabClipPlayer.luau), as DiloPartsVFXLib does, because src/shared maps to ServerStorage (server only). The live
+  numbers are the SkillTree texts after the 1.76 pass (Toxin Mortar reach 80 / 100 / 120, cloud 24 / 30 / 36; Spring Jets
+  40 / 50 / 65 studs, recharge 4.2 s), not the raw part() numbers the plan listed.
+- Attach points measured in Play from DiloPartsServer's BuildPreview_<id> on a DiloModelData mannequin (rest space, scale 1).
+- Camera: behind-right 3/4 view (M.CAM); the scene grows to at least 1.8 dino lengths (the Studio test dino is scale 2,
+  26 studs long), and the close-range templates (burst / ring / over) place targets past the dino's head.
+- QA: see the VERSIONS row. Not checked on a real phone; Studio's Play view is a 325 px column.
