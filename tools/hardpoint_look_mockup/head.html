@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hardpoint Point Look</title>
+<style>
+/* Same dark panel look as the other MDA mockups; in-game pieces use the HUD colours from the code. */
+:root { --ink:#0f1319; --panel:#171d26; --line:#2a3340; --text:#e8edf4; --muted:#9aa6b6; --accent:#ff8a2a; --yellow:#ffc832;
+  --red:#e0284a; --blue:#5aa0ff; --display:"Fredoka","FredokaOne","Trebuchet MS",system-ui,sans-serif; --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--ink); color:var(--text); font-family:var(--body); font-size:15px; line-height:1.5; padding:20px 16px 48px; }
+.wrap { max-width:1180px; margin:0 auto; display:grid; gap:14px; }
+h1 { font-family:var(--display); font-size:28px; margin:0; } h1 span { color:var(--accent); }
+.lede { margin:2px 0 0; color:var(--muted); max-width:92ch; }
+.lbl { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:6px 0 -6px; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.tab { font-family:var(--display); font-weight:600; font-size:16px; color:var(--text); background:var(--panel); border:2px solid var(--line); border-radius:12px; padding:8px 14px; cursor:pointer; text-align:left; }
+.tab small { display:block; font-family:var(--body); font-weight:400; font-size:12px; color:var(--muted); }
+.tab[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,138,42,.22); }
+.tab.rec::after { content:"recommended"; display:inline-block; margin-left:8px; font-size:11px; font-family:var(--body); background:var(--yellow); color:#1b1406; border-radius:6px; padding:0 6px; vertical-align:2px; }
+.card { background:var(--panel); border:2px solid var(--line); border-radius:14px; padding:14px 16px; }
+.card h2 { font-family:var(--display); font-size:19px; margin:0 0 6px; } .card p, .card li { color:var(--muted); margin:4px 0; } .card b { color:var(--text); }
+.grid3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; } @media (max-width:860px) { .grid3 { grid-template-columns:1fr; } }
+/* ---------- the game screen ---------- */
+.screen { position:relative; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden; border:2px solid var(--line); background:#8cc3e6; container-type:inline-size; touch-action:none; user-select:none; }
+.screen.phone { aspect-ratio:19.5/9; }
+.screen canvas { position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab; }
+.hud { position:absolute; font-family:var(--display); color:#fff; pointer-events:none; }
+.panel { background:rgba(20,20,26,.82); border:1.5px solid rgba(255,255,255,.5); border-radius:10px; }
+.cm { left:1.2%; top:3.5%; display:flex; align-items:center; gap:.7cqw; padding:.5cqw .8cqw; }
+.cmEmblem { width:2.8cqw; height:2.8cqw; border-radius:.6cqw; background:linear-gradient(135deg,#5aa0ff,#2a5fae); border:.2cqw solid rgba(255,255,255,.7); }
+.cmRows { display:flex; flex-direction:column; gap:.35cqw; }
+.cmRow { display:flex; align-items:center; gap:.5cqw; font-size:1.35cqw; } .cmRow b { min-width:3cqw; text-align:right; }
+.cmBar { width:11cqw; height:.85cqw; background:rgba(255,255,255,.14); border-radius:1cqw; overflow:hidden; display:block; } .cmBar i { display:block; height:100%; }
+.cmRow.you b { color:#bcd8ff; } .cmRow.you i { background:var(--blue); width:44%; } .cmRow.foe b { color:#ffc2cc; } .cmRow.foe i { background:var(--red); width:38%; }
+.cmSide { display:flex; flex-direction:column; align-items:center; gap:.1cqw; padding-left:.6cqw; border-left:1px solid rgba(255,255,255,.25); }
+.cmSide .clock { font-size:1.3cqw; } .cmPt { font-size:1.1cqw; color:var(--yellow); }
+.status { left:1.2%; top:15%; font-size:1.25cqw; font-weight:700; padding:.15cqw .6cqw; border-radius:.5cqw; background:rgba(20,20,26,.55); text-shadow:0 1px 2px #000; }
+.status.you { color:#bcd8ff; } .status.foe { color:#ffc2cc; } .status.C { color:var(--yellow); } .status.N, .status.L { color:#fff; }
+.skills { right:1.2%; top:3.5%; display:flex; gap:.6cqw; }
+.skills span { font-size:1.2cqw; padding:.4cqw .9cqw; border-radius:.7cqw; background:rgba(20,20,26,.82); border:1.5px solid rgba(255,255,255,.5); }
+.skills span.menu { background:var(--yellow); color:#1b1406; }
+/* waypoint over the point (projected from the world; clamped to the screen edge when off screen) */
+.wp { display:flex; flex-direction:column; align-items:center; gap:.15cqw; transform:translate(-50%,-100%); }
+.wp .lab { font-size:1.15cqw; font-weight:700; letter-spacing:.06em; text-shadow:0 1px 2px #000; }
+.wp .dia { width:2.4cqw; height:2.4cqw; transform:rotate(45deg); border:.32cqw solid #fff; border-radius:.35cqw; background:rgba(20,20,26,.6); display:grid; place-items:center; }
+.wp .dia b { transform:rotate(-45deg); font-size:1.3cqw; }
+.wp .dist { font-size:1.05cqw; text-shadow:0 1px 2px #000; }
+.wp.you .dia { border-color:var(--blue); } .wp.you .lab { color:#bcd8ff; } .wp.foe .dia { border-color:var(--red); } .wp.foe .lab { color:#ffc2cc; }
+.wp.C .dia { border-color:var(--yellow); } .wp.C .lab { color:var(--yellow); } .wp.C .dia, .wp.C .lab { animation:blink .5s steps(2) infinite; }
+.wp.L .dia { border-color:#c9ced8; border-style:dashed; } .wp.L .lab { color:#c9ced8; }
+.wp.edge .dia { width:1.9cqw; height:1.9cqw; }
+@keyframes blink { 50% { opacity:.4; } }
+.tag { font-size:1.05cqw; font-weight:700; text-shadow:0 1px 2px #000, 0 0 3px #000; transform:translate(-50%,-100%); white-space:nowrap; }
+.tag.you { color:#9cc6ff; } .tag.foe { color:#ff9aab; }
+.viewbtns { position:absolute; right:1%; bottom:2%; display:flex; gap:6px; }
+.viewbtns button { font-family:var(--display); font-weight:700; font-size:14px; width:34px; height:34px; border-radius:10px; border:1.5px solid rgba(255,255,255,.5); background:rgba(20,20,26,.82); color:#fff; cursor:pointer; }
+.hint { position:absolute; left:50%; bottom:2%; transform:translateX(-50%); font-size:12px; color:#fff; background:rgba(20,20,26,.6); padding:2px 10px; border-radius:8px; pointer-events:none; }
+ul { margin:6px 0 0; padding-left:20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>Hardpoint · <span>what the point looks like</span> v0.1</h1>
+    <p class="lede">The point from a player’s view, on the real camera behind your Raptor. Inspired by Call of Duty: an <b>animated border</b> marks the zone, a <b>marker over it</b> shows CAPTURE / DEFEND / CONTESTED and the distance, the next point shows a <b>lock</b> before it opens. Pick a look, then try every state. Drag to look around, wheel / pinch or + / − to zoom.</p>
+  </div>
+  <div class="lbl">Pick · the point’s look</div>
+  <div class="row" id="lookTabs"></div>
+  <div class="lbl">State</div>
+  <div class="row" id="stateTabs"></div>
+  <div class="lbl">View</div>
+  <div class="row" id="viewTabs"></div>
+  <div class="row" id="devTabs"></div>
+  <div class="screen" id="screen">
+    <canvas id="gl"></canvas>
+    <div class="hud panel cm"><div class="cmEmblem"></div><div class="cmRows"><div class="cmRow you"><span class="cmBar"><i></i></span><b>112</b></div><div class="cmRow foe"><span class="cmBar"><i></i></span><b>96</b></div></div><div class="cmSide"><span class="clock">6:12</span><span class="cmPt" id="hPt">P1 · 0:41</span></div></div>
+    <div class="hud status N" id="hStatus">POINT OPEN</div>
+    <div class="hud skills"><span>SKILLS</span><span class="menu">MENU</span></div>
+    <div class="hud wp N" id="wp"><span class="lab" id="wpLab">CAPTURE</span><div class="dia"><b id="wpN">1</b></div><span class="dist" id="wpDist">80 studs</span></div>
+    <div id="tags"></div>
+    <div class="viewbtns"><button id="zIn" aria-label="Zoom in">+</button><button id="zOut" aria-label="Zoom out">−</button></div>
+    <div class="hint">drag to look around · wheel / pinch to zoom</div>
+  </div>
+  <div class="grid3" id="looksInfo"></div>
+  <div class="card">
+    <h2>What comes from Call of Duty</h2>
+    <ul>
+      <li><b>Animated border around the zone</b> (Modern Warfare III guide: “animated border around the objective”; Black Ops 6: the zone is marked by borders that also show on the mini-map).</li>
+      <li><b>Marker over the point with your distance</b> (Modern Warfare 2019 Hardpoint: a target marker over the hardpoint shows your distance; it reads “contested” when an enemy is on it).</li>
+      <li><b>Lock icon on the next point</b> about 10 s before it opens (Modern Warfare III guide).</li>
+      <li><b>Your team blue, the enemy red</b> on your own screen; name tags in the same colours.</li>
+    </ul>
+    <p>Ours on top: the border is built from the game’s studded blocks and neon, sized for dinos (radius 45, 90 studs across), and the colours change with the state.</p>
+  </div>
+</div>
+<script>/*THREE*/</script>
+<script>
