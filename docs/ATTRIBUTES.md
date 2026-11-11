@@ -3335,3 +3335,9 @@ Model numbers are generator output (old version = the flag in the last column, b
 - TeamTagRules 1.0 (module constants): FRIEND_MAX 400, CHEVRON_MAX 130, ENGAGE_NEAR 25, HURT_WINDOW 4, HURT_MAX 60. TeamTagShare 1.0 (script): diagnostics `TeamTagShareVersion`, `TeamTagShareState`.
 - TeamTags 1.1 (client script): `TeamTagsEnabled` (true), `TeamTagsFriendMax` 400, `TeamTagsChevronMax` 130, `TeamTagsEngageNear` 25, `TeamTagsHurtWindow` 4, `TeamTagsHurtMax` 60; diagnostics `TeamTagsVersion`, `TeamTagsState`, `TeamTagsMode`, `TeamTagsFriends`, `TeamTagsChevrons`, `TeamTagsBars`, `TeamTagsTargets`, `TeamTagsError`. On TargetBar billboards (this client only): `TeamTagsOldMax`, `TeamTagsOldFill`.
 - HardpointHUD 1.3 (client script): `HardpointHUDTagsYieldEnabled` (true); diagnostic `HardpointHUDTagsYielding`.
+
+## Spawns v2 + compass + bot size (2026-11-11, plan docs/plans/HARDPOINT_SPAWNS_MARKER_v1.0.md, MDA-420..424)
+- RaptorScale 1.9: `RaptorScaleOtherBotsEnabled` (true), `RaptorScalePracticeKeepSpeed` (true); uses HerreraScale / TenoScale / TherizinoScale / DiloScale / TroodonScale (2) for bots too.
+- HardpointRules 1.1 constants: BAND_DIRS 24, BAND_RADII {420, 480, 540, 600}, BAND_EXTRA_RADII {360, 300}, BAND_MIN_SPOTS 8, MIN_ENEMY 250, ENEMY_CAP2 600, SEEN_PEN 400, SIGHT_MAX 700, OPEN_MIN_APART 600, OPEN_MAX_DIFF 60.
+- HardpointServer 1.2: `HardpointScoredSpawnsEnabled` (true); diagnostics `HpBandSpots`, `HpOpening`, `HpSpawnLast`, `HpSpawnCount`.
+- HardpointHUD 1.5: `HardpointHUDCompassEnabled` (true); diagnostics `HardpointHUDCompass`, `HardpointHUDCompassPlace` ("row" / "column").

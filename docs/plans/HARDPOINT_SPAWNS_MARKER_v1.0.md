@@ -89,3 +89,9 @@ nearest enemy, seen), bot sizes = player sizes, compass turn test PC + forced to
 ## Status (2026-11-10 23:39)
 Kepu: "you're not connected to the pc. Just make note of these changes." Nothing built yet; tickets filed. Red-team 2
 answered 23:41 ("Yes I do want that"): keep the 420–600 band. Ready for "Build" once Studio is linked.
+
+## Build (2026-11-11)
+All five tasks built and checked in Studio (commits 9cc9c47..061677b). Found in QA and fixed: ScaleTo doubled practice bots'
+WalkSpeed (RaptorScale 1.9 keeps it); the compass covered SKILLS / MENU on a narrow window (HUD 1.5 placement).
+Open observation: in two practice runs team A led (56–0, 46–2). The opening pair is always the same one (the furthest-apart
+pair), and B's side (324, −464) is behind the Summit, so equal flat distance may not be an equal run. Not changed; raised to Kepu.
