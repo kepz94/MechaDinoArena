@@ -63,4 +63,19 @@ checked and kept), FontSwapFit ("Fredoka 0.86, GothamBlack 0.89, ...").
    the swap preloads the font at start.
 
 ## Status (2026-11-11)
-Plan + tickets filed; waiting for Kepu's "Build".
+Plan + tickets filed; Kepu "Build" 16:46.
+
+## Build (2026-11-11)
+Commits 97ae3fb, afd9f60, 4780fc4; installed in Studio, hashes match (FontSwapRules 22325600, FontSwap 958541817).
+- Fit factors measured in Play: FredokaOne 0.75, GothamBlack 0.83, GothamBold 0.80, SourceSansBold 0.70 (clamped).
+- Changes from the plan, found in QA:
+  - Fredoka titles that are set to wrap (the Lab part name) switch too when short (FontSwapRules.TITLE); wrapped Gotham text
+    (sentences) is still kept.
+  - Text with a character Silkscreen draws as a box (✕ U+2715, ▾ U+25BE) keeps its font (checked every non-ASCII character
+    the game's texts use: · ° ▼ ★ ◆ × → … ▲ ▶ ◀ — ♥ – ◎ ⚙ ✓ draw fine).
+  - A swapped text carries its original font and size as attributes, so a copy another script clones from it (pips, cards)
+    still restores with the switch off.
+- QA in Play: main menu, practice lobby, Lab (Dilo) and the match HUD (score card, SKILLS, MENU, ability tiles, ATTACK,
+  health) in Silkscreen; sentences kept; in-world BillboardGui text (name tags, ▲ SPD / ▼ DEF badges) swapped (41 of 41).
+  About 300 texts swapped, about 45 kept. FontSwapEnabled false -> 0 Silkscreen texts left; true -> back to 300.
+- Not checked: a real phone (Studio's Play view is a 325 px column).
