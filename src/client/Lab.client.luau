@@ -1211,7 +1211,7 @@ local function clipMount(id, n, col)
 			b.Parent = row
 			b.Activated:Connect(function()
 				press("clipstep:" .. i)
-				clipStep = (clipStep == i) and nil or i
+				if clipStep == i then clipStep = nil else clipStep = i end -- (a second tap goes back)
 				clipStepFor = id
 				local keep = detail.CanvasPosition -- the panel stays scrolled where it was
 				if redrawDetail then redrawDetail() end
