@@ -38,12 +38,19 @@
 --   the script attribute DiloScale (default 2) while RaptorScaleDiloEnabled (default true) is on.
 -- v1.8 (MDA-332, plan docs/plans/TROODON_KIT_v1.0.md Task 3): player characters whose Species is "Troodon" are scaled the same
 --   way by the script attribute TroodonScale (default 2) while RaptorScaleTroodonEnabled (default true) is on.
+-- v1.9 (MDA-420; Kepu 2026-11-10 23:30 on live v662: "Why did you create a bunch of mini Dino's? ... not even scaled at the
+--   correct size"): bots (models with BotSpecies, e.g. the practice bots of PracticeBots 1.1) of Herrera, Teno, Therizino,
+--   Dilo and Troodon are scaled like the player of that species, by HerreraScale / TenoScale / TherizinoScale / DiloScale /
+--   TroodonScale (default 2 each), the same distance keys and ground lift. Before 1.9 only Raptor, Pachy and T-Rex bots were
+--   scaled, so those five came out at half a player's size. Switch: script attribute RaptorScaleOtherBotsEnabled (default
+--   true, read per new bot; false = 1.8).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.6"
 VERSION = "1.7" -- v1.7 Dilo
 VERSION = "1.8" -- v1.8 Troodon
+VERSION = "1.9" -- v1.9 the other five bot species
 local DEFAULTS = {RaptorScaleEnabled = true, RaptorScale = 2}
 local FALLBACK = {BiteReachBack = 8, BiteLungeDist = 3, EatRange = 8, EatHeight = 20, CameraStartZoom = 35} -- = GrowthServer 1.2
 local GC = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("GrowthCurve"))
@@ -78,6 +85,9 @@ if script:GetAttribute("HerreraScale") == nil then script:SetAttribute("HerreraS
 if script:GetAttribute("RaptorScaleTRexEnabled") == nil then script:SetAttribute("RaptorScaleTRexEnabled", true) end -- v1.5
 if script:GetAttribute("RaptorScaleTRexBotsEnabled") == nil then script:SetAttribute("RaptorScaleTRexBotsEnabled", true) end -- v1.5
 if script:GetAttribute("TRexScale") == nil then script:SetAttribute("TRexScale", 1.63) end -- v1.5
+if script:GetAttribute("RaptorScaleOtherBotsEnabled") == nil then script:SetAttribute("RaptorScaleOtherBotsEnabled", true) end -- v1.9
+local OTHER_BOT_SCALE = {Herrera = "HerreraScale", Teno = "TenoScale", Therizino = "TherizinoScale", Dilo = "DiloScale",
+	Troodon = "TroodonScale"} -- v1.9: bot species -> the player scale attribute (default 2)
 
 local function apply(model, factor) -- v1.1: factor = the pachy's scale (nil = RaptorScale)
 	if model:GetAttribute("RaptorScaleApplied") ~= nil or script:GetAttribute("RaptorScaleEnabled") == false then return end
@@ -144,6 +154,10 @@ local function onModel(m)
 	end
 	if m:IsA("Model") and m:GetAttribute("BotSpecies") == "TRex" and script:GetAttribute("RaptorScaleTRexBotsEnabled") ~= false then -- v1.5
 		task.defer(apply, m, tonumber(script:GetAttribute("TRexScale")) or 1.63)
+	end
+	local key = m:IsA("Model") and OTHER_BOT_SCALE[m:GetAttribute("BotSpecies")] -- v1.9
+	if key and script:GetAttribute("RaptorScaleOtherBotsEnabled") ~= false then
+		task.defer(apply, m, tonumber(script:GetAttribute(key)) or 2)
 	end
 end
 workspace.DescendantAdded:Connect(onModel)
