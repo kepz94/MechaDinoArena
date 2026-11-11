@@ -70,4 +70,16 @@ the compass side; on point -> hidden; Summit point (high) sits on the point. Doc
 4. **Phone buttons.** The bottom 110 px is kept clear so the icon never sits on the joystick or attack buttons.
 
 ## Status (2026-11-11)
-Plan + tickets filed; waiting for "Build".
+Plan + tickets filed; Kepu "Build" 13:57.
+
+## Build (2026-11-11)
+Commit 64bcee7, then the two QA fixes below; installed in Studio, hash 974173247.
+- QA fix 1: behind the camera, a left / right side switch glided straight across the middle of the screen. Now the behind
+  direction is (sideways offset, distance behind), so the icon rides the bottom edge round (no side hysteresis needed).
+- QA fix 2: an easing glide lagged 60–100 px behind the point while turning. Now a change between in view and off view blends
+  over HardpointHUDMarkerBlend 0.15 s and then the icon is exactly on the point.
+- Scripted sweeps (practice match, Studio window 325 x 487): settled error on the point 0.8–1.4 px (max); settled per-frame
+  move ≤ 43 px at 90° / s (smooth along the edges); 0 frames over the middle while behind at 90° / s; a 360° / s flick
+  crosses near the middle only during the 0.15 s blend. Phone mode: behind -> bottom edge at 110 px from the bottom, 0.84
+  size, no label. On the point: hidden ("on point").
+- Not seen at a real phone size yet (Kepu's look).

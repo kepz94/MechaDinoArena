@@ -87,9 +87,11 @@
 --   * safe frame (screen px): this gui's safe area minus HardpointHUDMarkerEdge (28) left / right; top = the Roblox top bar's
 --     bottom (TopbarInset.Max.Y) + 8; bottom = safe bottom − HardpointHUDMarkerBottomPhone (110) on a phone / BottomPC (60).
 --   * in view (in front and inside the frame): placed exactly on the anchor (glued, no easing once there), full marker.
---   * off view: the screen direction to the anchor pushed onto the frame's edge; behind the camera it goes to the left or
---     right edge (middle height) by the side the point is on, keeping its last side beyond ±170° (as the compass). Diamond +
---     distance only (no label), UIScale 0.84. Changes between in view / off view / along the edge glide at 14 / s.
+--   * off view: the screen direction to the anchor pushed onto the frame's edge; behind the camera the direction is (its
+--     sideways offset, its distance behind) so it slides along the bottom edge and goes round smoothly (QA 2026-11-11: a left
+--     / right switch crossed the middle of the screen). Diamond + distance only (no label), UIScale 0.84.
+--   * moving between in view and off view blends over HardpointHUDMarkerBlend (0.15) s from where it was to the live spot,
+--     then it is exactly on the spot (QA 2026-11-11: an easing glide lagged 60–100 px behind while turning).
 --   * opacity: within HardpointHUDMarkerFade (70) px of the screen centre it goes down to 35%; while you're on the point (not
 --     in the warm-up) it fades out (10 / s).
 --   * ZIndex 0, so the score card, pills and kill feed draw over it. No height limit, no left-column push.
@@ -679,13 +681,14 @@ end
 local lastTags = 0
 -- v1.7: point marker v3 (see the header)
 for k, v in pairs({HardpointHUDMarkerV3Enabled = true, HardpointHUDMarkerLift = 6, HardpointHUDMarkerEdge = 28,
-	HardpointHUDMarkerBottomPhone = 110, HardpointHUDMarkerBottomPC = 60, HardpointHUDMarkerFade = 70}) do
+	HardpointHUDMarkerBottomPhone = 110, HardpointHUDMarkerBottomPC = 60, HardpointHUDMarkerFade = 70, HardpointHUDMarkerBlend = 0.15}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local mv3Scale = Instance.new("UIScale")
 mv3Scale.Name = "MarkerV3Scale"
 mv3Scale.Parent = marker
-local mv3 = {x = nil, y = nil, a = 1, glued = false, side = 0, state = "off", t = os.clock(), applied = false}
+local mv3 = {x = nil, y = nil, a = 1, glued = false, side = 0, state = "off", t = os.clock(), applied = false,
+	kind = nil, fromX = 0, fromY = 0, blendAt = 0}
 local function mv3Num(k, d) return tonumber(script:GetAttribute(k)) or d end
 local function mv3Alpha(a, strokeBase)
 	local t = 1 - a
@@ -740,28 +743,26 @@ local function markerV3(cam, vp, p, warm)
 			local k = math.min(hw / math.max(math.abs(dx), 1e-3), hh / math.max(math.abs(dy), 1e-3))
 			tx, ty = mx + dx * k, my + dy * k
 			mv3.side = dx >= 0 and 1 or -1
-		else -- behind: left / right edge by side, with hysteresis
-			local camPos = cam.CFrame.Position
-			local brg = wrap(flatYaw(anchor - camPos) - flatYaw(cam.CFrame.LookVector))
-			local s = brg > 0 and 1 or -1
-			if math.abs(brg) > 170 and mv3.side ~= 0 then s = mv3.side end
-			mv3.side = s
-			tx, ty = (s > 0) and R or L, my
+		else -- behind: sideways offset + distance behind, so it rides the bottom edge round
+			local dx, dy = v.X, math.max(v.Z, 1e-3)
+			local k = math.min(hw / math.max(math.abs(dx), 1e-3), hh / dy)
+			tx, ty = mx + dx * k, my + dy * k
+			mv3.side = dx >= 0 and 1 or -1
 		end
 		if math.abs(tx - L) < 1 then state = "edge L" elseif math.abs(tx - R) < 1 then state = "edge R"
 		elseif math.abs(ty - T) < 1 then state = "edge T" else state = "edge B" end
 	end
-	-- place: glued while in view, glide otherwise
-	if mv3.x == nil then mv3.x, mv3.y = tx, ty end
-	if state ~= "view" then mv3.glued = false end
-	if state == "view" and mv3.glued then
-		mv3.x, mv3.y = tx, ty
-	else
-		local r = 1 - math.exp(-14 * dt)
-		mv3.x += (tx - mv3.x) * r
-		mv3.y += (ty - mv3.y) * r
-		if state == "view" and math.abs(tx - mv3.x) < 2 and math.abs(ty - mv3.y) < 2 then mv3.glued, mv3.x, mv3.y = true, tx, ty end
+	-- place: on the live spot; a change between in view and off view blends over HardpointHUDMarkerBlend s
+	local kind = (state == "view") and "view" or "edge"
+	if mv3.x == nil then mv3.x, mv3.y, mv3.kind = tx, ty, kind end
+	if kind ~= mv3.kind then
+		mv3.kind, mv3.fromX, mv3.fromY, mv3.blendAt = kind, mv3.x, mv3.y, now
 	end
+	local bl = mv3Num("HardpointHUDMarkerBlend", 0.15)
+	local f = bl > 0 and math.clamp((now - mv3.blendAt) / bl, 0, 1) or 1
+	f = f * f * (3 - 2 * f)
+	mv3.x, mv3.y = mv3.fromX + (tx - mv3.fromX) * f, mv3.fromY + (ty - mv3.fromY) * f
+	mv3.glued = f >= 1
 	-- opacity
 	local a = 1
 	if state == "view" then

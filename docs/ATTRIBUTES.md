@@ -3350,3 +3350,6 @@ Model numbers are generator output (old version = the flag in the last column, b
 ## Practice bot jobs (2026-11-11, plan docs/plans/BOT_JOBS_v1.0.md, MDA-429..432)
 - PracticeRules 1.1 constants: BOT_SPECIES (7, no TRex), JOB_OF, HOLD_FIGHT 60, SELF_DEFENSE 20, DUEL_LEASH 250, GUARD_RING 45, GUARD_ZONE 110, GUARD_LEASH 90, TEAM_EVERY 1, FILL_MIN 5, MAX_ON_ONE 2, HOLD_WANT_OPEN 2, HOLD_WANT_HELD 1, RUN_WINDOW 10.
 - PracticeServer 1.3: `PrBotNoTRex` (true), `PrJobsEnabled` (true); diagnostics `PrJobsA`, `PrJobsB`, `PrMaxOnOne`. Bot models: `BotJob`, `BotJobWhy`.
+
+## Point marker v3 (2026-11-11, plan docs/plans/POINT_MARKER_v3.md, MDA-433..434)
+- HardpointHUD 1.7: `HardpointHUDMarkerV3Enabled` (true), `HardpointHUDMarkerLift` 6, `HardpointHUDMarkerEdge` 28, `HardpointHUDMarkerBottomPhone` 110, `HardpointHUDMarkerBottomPC` 60, `HardpointHUDMarkerFade` 70, `HardpointHUDMarkerBlend` 0.15; diagnostic `HardpointHUDMarker` ("view" / "edge L|R|T|B" / "on point").
