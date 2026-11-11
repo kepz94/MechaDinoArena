@@ -3341,3 +3341,8 @@ Model numbers are generator output (old version = the flag in the last column, b
 - HardpointRules 1.1 constants: BAND_DIRS 24, BAND_RADII {420, 480, 540, 600}, BAND_EXTRA_RADII {360, 300}, BAND_MIN_SPOTS 8, MIN_ENEMY 250, ENEMY_CAP2 600, SEEN_PEN 400, SIGHT_MAX 700, OPEN_MIN_APART 600, OPEN_MAX_DIFF 60.
 - HardpointServer 1.2: `HardpointScoredSpawnsEnabled` (true); diagnostics `HpBandSpots`, `HpOpening`, `HpSpawnLast`, `HpSpawnCount`.
 - HardpointHUD 1.5: `HardpointHUDCompassEnabled` (true); diagnostics `HardpointHUDCompass`, `HardpointHUDCompassPlace` ("row" / "column").
+
+## Far spawns + fair start + top compass + slim HUD (2026-11-11, plan docs/plans/HUD_SLIM_SPAWNS_FAR_v1.0.md, MDA-425..428)
+- HardpointRules 1.2 constants: BAND2_RADII {700, 750, 800, 850, 900}, BAND2_EXTRA_RADII {650, 600}, SIGHT_MAX2 1000, OPEN_MIN_APART2 900, OPEN_RUN_DIFF 60.
+- HardpointServer 1.3: `HardpointFarSpawnsEnabled` (true), `HardpointRunOpeningEnabled` (true), `HpRunAgentRadius` 4, `HpRunAgentHeight` 10; diagnostics `HpBandSpots2`, `HpRunPaths`; `HpOpening` gains "run" / "flat"; `HpSpawnLast` gains " far".
+- HardpointHUD 1.6: `HardpointHUDCompassTopEnabled` (true), `HardpointHUDCompassBgT` 0.65, `HardpointHUDCompassStrokeT` 0.85, `HardpointHUDScale` 0.8 (1 = 1.5 size); `HardpointHUDCompassPlace` gains "top".

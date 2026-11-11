@@ -45,7 +45,7 @@ distance". Mockup: docs/mockups/hud_slim_compass_v0.1.html (artifact "Slim HUD a
   respawn rule.
 
 **Compass in the top gap (A · See-through)**
-- Left bound = TopbarInset.Max.X (to this ScreenGui's frame) + 12, at least 16. Right bound = left edge of the SKILLS button − 12;
+- Left bound = TopbarInset.Min.X (the right edge of the Roblox top-left buttons, as Lab uses it; to this ScreenGui's frame) + 12, at least 16. Right bound = left edge of the SKILLS button − 12;
   no SKILLS -> left edge of the MENU pill − 12; neither -> screen width − 16. Room = right − left.
 - Width = min(clamp(34% phone / 30% PC of the screen, 180, 420), room); centred on the screen, then moved inside the bounds.
   Top = the SKILLS button's top (fallback 8); height 22 phone / 26 PC as 1.4; the distance / countdown readouts stay under it.
@@ -96,4 +96,18 @@ and pills at 80%; kill feed under the pills. Docs + Dev Hub.
    read every frame and under 140 px the compass drops back to the 1.5 place, so it never covers a button.
 
 ## Status (2026-11-11)
-Plan + tickets filed; waiting for "Build".
+Plan + tickets filed 11:3x; Kepu "build" 11:41.
+
+## Build (2026-11-11)
+Commits 04faa1d (rules + spec), 7dd4396 (server), 908e638 (HUD); installed in Studio, hashes match.
+- Rules: HardpointSpawns2 PASS 39 (one spec fix: 90° has x = 4e-14, guard x > 1e-3 as the 1.1 spec does); 1.1 PASS 55; 1.0 PASS 106.
+- Server (practice 5v5): band 2 spots 40 / 37 / 35 / 32 / 29; paths 40 / 40 and 56 / 56 in a few seconds after start.
+  Opening A (−550, 739) run 985, B (325, −776) run 1021. My character walked each path with MoveTo (WalkSpeed 32, no bots):
+  A 33.4 s, B 35.1 s (5% apart, inside 15%). 20 respawn picks in a live match: 750–800 from the point, ≥ 756 from the nearest
+  enemy, none seen; 0.8–2.4 ms per pick (first one 2.4, then ≤ 2.0).
+- Bots: a 40 s watch from the start saw no bot reach the point (they fight on the way), so bot run times weren't usable; the
+  scripted walk above is the timing check.
+- HUD: 1.6 live; card 176 x 46, pills 19 px, compass panel 0.65. The Studio game window is 439 px wide: top gap 220..248 =
+  28 px, so the compass used the column fallback (as designed). Not checked on a phone-size screen: Kepu's Roblox player was
+  open and taking the screen would hide it. Expected on an 844-wide phone: gap ~173..559, strip 287 wide at x ~232.
+- Not changed: respawn picks are deterministic, so back-to-back deaths can land on the same spot (as 1.2).
