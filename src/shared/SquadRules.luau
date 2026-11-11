@@ -22,11 +22,13 @@
 --   model's HardpointTestTeam (HardpointServer's server-only test hook on a dummy). SquadId is ignored then, so squadmates
 --   split across teams can hurt each other. teamLive() false -> exactly 1.0.
 --   teamLive() -> bool; teamOfPlayer(player) -> string; teamOf(model) -> string
+-- v1.2 (practice match, MDA-405, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 1): a model with no player also answers its
+--   HardpointBotTeam (PracticeServer's bots), read after HardpointTestTeam. Nothing else changes.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local M = {}
-M.Version = "1.1"
+M.Version = "1.2"
 M.MAX = 4
 
 function M.sameIds(liveFlag, idA, idB, isSelf)
@@ -69,6 +71,7 @@ function M.teamOf(model)
 	local pl = Players:GetPlayerFromCharacter(model)
 	if pl then return M.teamOfPlayer(pl) end
 	local t = model:GetAttribute("HardpointTestTeam")
+	if type(t) ~= "string" or t == "" then t = model:GetAttribute("HardpointBotTeam") end -- v1.2
 	return type(t) == "string" and t or ""
 end
 

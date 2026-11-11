@@ -29,6 +29,10 @@
 --   name -> LastHitBy / LastHitAt as for a bite. Switch: script attribute ArenaPvPHeadbuttEnabled (default true, read at
 --   start; false = 1.0, no headbutt credit). The headbutt damage itself already goes through DummyHealth (the bridge).
 -- v1.2 (Grappling Hook, MDA-122): the same credit on HookHitAt + HookHitTarget (HookServer 1.0), under the same switch.
+-- v1.3 (practice match, MDA-405, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 1): the bridge also runs in the Sandbox while the
+--   practice match is set up there (ServerScriptService.PracticeServer exists, Enabled, PracticeEnabled not false), so the
+--   practice bots' real attacks reach players through DummyHealth exactly as in the Arena. ArenaPvPState "practice". Switch:
+--   script attribute ArenaPvPPracticeEnabled (default true; false = 1.2: Sandbox not bridged). Read once at start.
 -- Switch: script attribute ArenaPvPEnabled (default true), read at start. false -> nothing is bridged (ArenaPvPState "off").
 -- Diagnostics: script ArenaPvPVersion, ArenaPvPState ("arena" / "sandbox" / "off"), ArenaPvPHits (damaging drops),
 --   ArenaPvPBlocked (drops the shield took); character ArenaPvPLastDelta, ArenaPvPBridged (true while bridged).
@@ -36,7 +40,7 @@ local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local TEST_DIST = 25
 
 script:SetAttribute("ArenaPvPVersion", VERSION)
@@ -47,6 +51,13 @@ script:SetAttribute("ArenaPvPBlocked", 0)
 
 local ModeRules = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
 local MODE = ModeRules.currentMode()
+if script:GetAttribute("ArenaPvPPracticeEnabled") == nil then script:SetAttribute("ArenaPvPPracticeEnabled", true) end -- v1.3
+local PRACTICE = false -- v1.3
+do
+	local ps = game:GetService("ServerScriptService"):FindFirstChild("PracticeServer")
+	PRACTICE = MODE == "sandbox" and script:GetAttribute("ArenaPvPPracticeEnabled") ~= false and ps ~= nil and ps:IsA("BaseScript")
+		and ps.Enabled and ps:GetAttribute("PracticeEnabled") ~= false
+end
 
 local bridged = {} -- [model] = {hum, last, writing}
 local testTarget
@@ -146,7 +157,7 @@ local test = Instance.new("BindableFunction")
 test.Name = "ArenaPvPTest"
 test.Parent = script
 
-local active = script:GetAttribute("ArenaPvPEnabled") ~= false and MODE == "arena"
+local active = script:GetAttribute("ArenaPvPEnabled") ~= false and (MODE == "arena" or PRACTICE) -- v1.3: + PRACTICE
 
 test.OnInvoke = function(what, a, b)
 	if what == "hit" then
@@ -199,11 +210,11 @@ end
 if script:GetAttribute("ArenaPvPEnabled") == false then
 	script:SetAttribute("ArenaPvPState", "off")
 	return
-elseif MODE ~= "arena" then
+elseif MODE ~= "arena" and not PRACTICE then -- v1.3: + not PRACTICE
 	script:SetAttribute("ArenaPvPState", "sandbox")
 	return
 end
-script:SetAttribute("ArenaPvPState", "arena")
+script:SetAttribute("ArenaPvPState", PRACTICE and "practice" or "arena") -- v1.3
 
 local function onPlayer(player)
 	local function onChar(char)

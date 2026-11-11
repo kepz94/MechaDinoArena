@@ -14,9 +14,13 @@
 --   otherwise                -> false (player vs player in Sandbox or an unknown mode)
 -- currentMode() -> placeMode(game.PlaceId, RunService:IsStudio(), workspace:GetAttribute("ModeTestArena")).
 -- Used by PlaceGate 1.0, ModeServer 1.0, MineServer 1.4, ScreechServer 1.4, ArenaPvP 1.0 (server).
+-- v1.1 (practice match, MDA-405, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 1; Kepu 2026-11-10: the Sandbox is a Hardpoint
+--   practice match "for now"): canAffect gets one row before the last: mode == "sandbox" and practiceLive() -> true (players
+--   hurt players there while the practice match runs; who is a teammate stays SquadRules' answer). practiceLive() ->
+--   ReplicatedStorage attribute PracticeLive == true (PracticeServer 1.0 writes it). Not live -> exactly 1.0.
 local M = {}
 
-M.Version = "1.0"
+M.Version = "1.1"
 M.SANDBOX_PLACE_ID = 84022023159448
 M.ARENA_PLACE_ID = 75433819286625
 
@@ -39,9 +43,16 @@ function M.canAffect(srcIsPlayer, tgtIsPlayer, tgtInMenu, mode)
 		return true
 	elseif mode == "arena" then
 		return true
+	elseif mode == "sandbox" and M.practiceLive() then -- v1.1
+		return true
 	else
 		return false
 	end
+end
+
+-- v1.1
+function M.practiceLive()
+	return game:GetService("ReplicatedStorage"):GetAttribute("PracticeLive") == true
 end
 
 function M.currentMode()

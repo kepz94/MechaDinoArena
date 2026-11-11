@@ -1,4 +1,4 @@
--- squad_rules_test v1.1 — Studio check for SquadRules 1.0 (MDA-158) + 1.1 team branch (MDA-397). Run in the Edit or Server datamodel with execute_luau.
+-- squad_rules_test v1.2 — Studio check for SquadRules 1.0 (MDA-158) + 1.1 team branch (MDA-397) + 1.2 bot team (MDA-405). Run in the Edit or Server datamodel with execute_luau.
 -- Pure rows (sameIds) + the instance rows (same / sameChar / idOf) with temporary attributes, put back after.
 local R = require(game:GetService("ServerStorage").DinoArcade.SquadRules)
 local RS = game:GetService("ReplicatedStorage")
@@ -41,6 +41,14 @@ check("split squad a b (same squad, other team)", R.sameChar(a, b), false)
 check("same team a c (other squads)", R.sameChar(a, c), true)
 check("team self", R.sameChar(a, a), false)
 local d = Instance.new("Model"); check("no team", R.sameChar(a, d), false); d:Destroy()
+-- v1.2: practice bots carry HardpointBotTeam
+local e, f = Instance.new("Model"), Instance.new("Model")
+e:SetAttribute("HardpointBotTeam", "A"); f:SetAttribute("HardpointBotTeam", "B")
+check("bot team teamOf", R.teamOf(e), "A")
+check("bot A + dummy A same team", R.sameChar(e, a), true)
+check("bot A vs bot B", R.sameChar(e, f), false)
+e:SetAttribute("HardpointTestTeam", "B"); check("test team wins over bot team", R.teamOf(e), "B")
+e:Destroy(); f:Destroy()
 RS:SetAttribute("HardpointTeamRules", false)
 check("switch off -> squads again", R.sameChar(a, b), true)
 RS:SetAttribute("HardpointTeamRules", nil); RS:SetAttribute("HardpointLive", false)

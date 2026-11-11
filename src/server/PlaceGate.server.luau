@@ -12,13 +12,18 @@
 -- Switch: script attribute PlaceGateEnabled (default true). false -> BotServer turned on in both places (pre-1.0
 --   behaviour), PlaceGateState "off". Read once at start.
 -- Diagnostics (script attributes): PlaceGateVersion, PlaceMode, PlaceGateState, PlaceGateRemoved.
+-- v1.1 (practice match, MDA-405, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 1; Kepu 2026-11-10 "default for sandbox for
+--   now"): in the Sandbox, while ServerScriptService.PracticeServer exists, is Enabled and its PracticeEnabled attribute is not
+--   false (nil = its default true), BotServer stays off (the practice bots replace the roaming ones): PlaceGateState
+--   "sandboxPractice". Switch: script attribute PlaceGatePracticeEnabled (default true; false = 1.0). Read once at start.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 script:SetAttribute("PlaceGateVersion", VERSION)
 if script:GetAttribute("PlaceGateEnabled") == nil then script:SetAttribute("PlaceGateEnabled", true) end
+if script:GetAttribute("PlaceGatePracticeEnabled") == nil then script:SetAttribute("PlaceGatePracticeEnabled", true) end -- v1.1
 
 local ModeRules = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
 local mode = ModeRules.currentMode()
@@ -67,6 +72,14 @@ elseif mode == "arena" then
 		end
 	end)
 else
-	bot.Enabled = true
-	script:SetAttribute("PlaceGateState", "sandboxBotsOn")
+	-- v1.1: the practice match replaces the roaming bots
+	local practice = ServerScriptService:FindFirstChild("PracticeServer")
+	if script:GetAttribute("PlaceGatePracticeEnabled") ~= false and practice and practice:IsA("BaseScript") and practice.Enabled
+		and practice:GetAttribute("PracticeEnabled") ~= false then
+		bot.Enabled = false
+		script:SetAttribute("PlaceGateState", "sandboxPractice")
+	else
+		bot.Enabled = true
+		script:SetAttribute("PlaceGateState", "sandboxBotsOn")
+	end
 end

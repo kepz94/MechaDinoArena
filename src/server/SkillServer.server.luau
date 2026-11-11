@@ -105,12 +105,15 @@
 --   / glider / smoke). Now d.dirty is cleared when the snapshot is taken and set again if the write fails, so a change
 --   made during the write is saved by the next periodic save (or on leave). Switch: script attribute
 --   SkillSaveRaceFixEnabled (default true, read at each save; false = 1.7).
+-- v1.9 (practice match, MDA-405, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 1, red-team 3; Kepu 2026-11-10 "10% (like CoD
+--   Mobile)"): a killed bot's model attribute SkillXpMul (number, default 1) multiplies its kill XP (PracticeServer's bots carry
+--   0.1). Switch: script attribute SkillBotXpMulEnabled (default true; false = 1.8, every bot gives full XP).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.8"
+local VERSION = "1.9"
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -120,6 +123,7 @@ local DEFAULTS = {SkillEnabled = true, SkillKillXpFraction = 0.5, SkillSaveEnabl
 DEFAULTS.SkillLoadoutEnabled = true -- v1.1
 DEFAULTS.SkillPerDinoEnabled = true -- v1.2
 DEFAULTS.SkillTestCloakEnabled = false -- v1.4: test layer (raptor Cloak at star in slot 1, not saved)
+DEFAULTS.SkillBotXpMulEnabled = true -- v1.9: a bot's SkillXpMul scales its kill XP
 
 local treeModule = ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkillTree")
 local ST = require(treeModule)
@@ -461,7 +465,10 @@ local function credit(bot)
 		return
 	end
 	local maxHp = tonumber(bot:GetAttribute("DummyMaxHealth")) or 0
-	local gain = math.floor(maxHp * (script:GetAttribute("SkillKillXpFraction") or 0.5) + 0.5)
+	local frac = script:GetAttribute("SkillKillXpFraction") or 0.5
+	local mul = bot:GetAttribute("SkillXpMul") -- v1.9
+	if script:GetAttribute("SkillBotXpMulEnabled") ~= false and type(mul) == "number" and mul >= 0 then frac *= mul end
+	local gain = math.floor(maxHp * frac + 0.5)
 	d.xp += gain
 	d.dirty = true
 	publish(player, d, true)
