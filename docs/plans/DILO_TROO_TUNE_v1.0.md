@@ -79,4 +79,18 @@ Overdrive "Free shots while it runs"; Cold Blood star "Refills all 5". Mockup: d
 4. **Overdrive / Cold Blood refills** could chain into a lot of spits; Kepu picked both. Accepted.
 
 ## Status (2026-11-11)
-Plan + tickets filed; waiting for "Build".
+Plan + tickets filed; Kepu "Build" 14:14.
+
+## Build (2026-11-11)
+Commits 9251df2 (data), 6a5fafe (ammo server), c7e79d1 (ammo on screen), f762089 (Hiss), f08b146 (Troodon); all installed in
+Studio, hashes match.
+- Spit: 5 accepted, the 6th "reloading", 5 again 3 s after the 5th; then a spit works (4 left). Flight 1.50 s for a 60-stud spit.
+- Real input (gamepad press through the CAS binding): the local count drains on the press, a press at 0 is refused locally,
+  the refill shows ~3 s later. PC tile: 5 pips. Forced touch: 5 pips, mid-reload all at 0.46, button dimmed 0.5.
+- Sonic Hiss: DiloHissRange 40 / DiloHissAngle 70; a bot at 38 studs / 60° was hit; 80° / 38 and 0° / 45 were not.
+- Troodon (practice match, teammate bot 15 studs at 20°, enemy 12 studs at −10°): single tap -> the enemy; real double press ->
+  the teammate (TrooPodAlly true, input "ally"); double tap with no teammate in reach -> the enemy (TrooAllyFallbacks 1).
+  The teammate was at full health, so no heal number showed; the heal rules are unchanged.
+- Test-tool note: a 150 ms gap in the input tool arrived later than 0.3 s (a "cooldown" press), so a human double tap must be
+  quicker than 0.3 s; the window is an attribute (TrooDoubleTap) if it needs to be longer.
+- Not checked: Overdrive refill and Cold Blood refill in play (both hook attribute changes the server already makes).

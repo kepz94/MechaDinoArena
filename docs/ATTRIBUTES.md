@@ -3353,3 +3353,10 @@ Model numbers are generator output (old version = the flag in the last column, b
 
 ## Point marker v3 (2026-11-11, plan docs/plans/POINT_MARKER_v3.md, MDA-433..434)
 - HardpointHUD 1.7: `HardpointHUDMarkerV3Enabled` (true), `HardpointHUDMarkerLift` 6, `HardpointHUDMarkerEdge` 28, `HardpointHUDMarkerBottomPhone` 110, `HardpointHUDMarkerBottomPC` 60, `HardpointHUDMarkerFade` 70, `HardpointHUDMarkerBlend` 0.15; diagnostic `HardpointHUDMarker` ("view" / "edge L|R|T|B" / "on point").
+
+## Dilo spit ammo + Sonic Hiss, Troodon double tap (2026-11-11, plan docs/plans/DILO_TROO_TUNE_v1.0.md, MDA-435..440)
+- DiloModelData 1.14: `DiloDartSpeed` 40, `DiloSpitMag` 5, `DiloSpitReload` 3.
+- DiloAttackServer 1.10: `DiloSpitAmmoEnabled` (true); character `DiloSpitLeft`, `DiloSpitReloadAt`, `DiloSpitRefillWhy`; diagnostics `DiloSpitAmmoUsed`, `DiloSpitReloads`, `DiloSpitRefills`, `DiloSpitReloadRefusals`.
+- DiloAttackTest 1.4: `DiloAttackTestAmmoEnabled` (true); character `DiloLocalSpitLeft`, `DiloLocalSpitReloadAt`, `DiloLocalSpitMag`. ArenaTouch 1.20: `ArenaTouchDiloAmmoEnabled` (true). AbilityBar 1.40: `AbilityBarDiloAmmoEnabled` (true).
+- DiloMovesServer 1.11: `DiloHissBigEnabled` (true), `DiloPartHissRangeMul` 2, `DiloPartHissAngleMul` 2.
+- TrooAttackServer 1.8: `TrooDoubleTapEnabled` (true), `TrooDoubleTap` 0.3, `TrooAllyAngle` 45; character `TrooPodAlly`; diagnostics `TrooAllyMarks`, `TrooAllyThrows`, `TrooAllyFallbacks`. TrooAttackTest 1.2: `TrooDoubleTapEnabled` (true), `TrooDoubleTap` 0.3; character `TrooLocalAllyAt`. TrooFX 1.2: `TrooFXAllyRingEnabled` (true), `TrooAllyAngle` 45; diagnostic `TrooFXRingAlly`.
