@@ -31,16 +31,33 @@
 --   "score", a, b               set the scores                       "clock", s  set the clock
 --   "state"                     -> a one-line summary
 -- Diagnostics: script HardpointServerVersion, HardpointState ("off" / "sandbox" / "running"), HpTicks.
+-- v1.1 (practice match, MDA-407, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 3; Kepu 2026-11-10: the Sandbox is a Hardpoint
+--   practice match vs bots "for now"):
+--   * Also runs in the Sandbox while the practice match is set up there (PRACTICE: ServerScriptService.PracticeServer exists,
+--     Enabled, PracticeEnabled not false, and this script's HardpointPracticeEnabled not false; read once at start). In
+--     practice PracticeServer owns the teams (player HardpointTeam, bot HardpointBotTeam) and the start: no auto team pick,
+--     no rebalance, no auto match; HpPhase "lobby" between matches; after the results the match ends (no new match) and the
+--     BindableEvent HardpointPracticeEnded (child) fires with the winner.
+--   * Bot models: server-only BindableFunction HardpointPractice (child): Invoke("start") a new match; ("bot", model, "A" / "B")
+--     registers a bot (counted like a player of that team, needs HardpointBotTeam on the model too); ("unbot", model);
+--     ("stop") ends the match now (lobby); ("stat", id, name, team, species, isBot, field "k" / "d") adds 1 to that stat.
+--   * HardpointPickSpawn also takes a model (a bot): its team = HardpointBotTeam; itself is left out of mates.
+--   * Scoreboard (Arena and practice): per participant {id, name, team, species, bot, k, d, pt (seconds on the point)} for
+--     the current match, reset at its start; ReplicatedStorage.Hardpoint HpBoard (JSON array) at most every 0.5 s.
+--     Participant id: "u<UserId>" for a player, "b<model name>" for a bot.
+--   Switch: script attribute HardpointPracticeEnabled (default true; false = 1.0 in the Sandbox: off). Diagnostic
+--   HardpointState "practice" while running there.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
 if script:GetAttribute("HpMinPlayers") == nil then script:SetAttribute("HpMinPlayers", 1) end
+if script:GetAttribute("HardpointPracticeEnabled") == nil then script:SetAttribute("HardpointPracticeEnabled", true) end -- v1.1
 script:SetAttribute("HpTicks", 0)
 
 local arcade = ServerStorage:WaitForChild("DinoArcade")
@@ -77,7 +94,15 @@ setLive(false)
 
 local function now() return workspace:GetServerTimeNow() end
 
-if MODE ~= "arena" then
+-- v1.1: the practice match in the Sandbox
+local PRACTICE = false
+do
+	local ps = game:GetService("ServerScriptService"):FindFirstChild("PracticeServer")
+	PRACTICE = MODE == "sandbox" and script:GetAttribute("HardpointPracticeEnabled") ~= false and ps ~= nil and ps:IsA("BaseScript")
+		and ps.Enabled and ps:GetAttribute("PracticeEnabled") ~= false
+end
+
+if MODE ~= "arena" and not PRACTICE then -- v1.1: + not PRACTICE
 	script:SetAttribute("HardpointState", "sandbox")
 	return
 end
@@ -128,6 +153,7 @@ script:SetAttribute("HpRingSpots", (function() local s = {} for i, r in ipairs(R
 
 -- ---------- teams ----------
 local testModels = {} -- [model] = true (hook-tagged dummies)
+local botModels = {} -- v1.1: [model] = true (practice bots)
 
 local function teamCounts()
 	local a, b = 0, 0
@@ -153,6 +179,7 @@ local function squadTeamOf(player)
 end
 
 local function giveTeam(player)
+	if PRACTICE then return end -- v1.1: PracticeServer owns the teams
 	if player:GetAttribute("HardpointTeam") == "A" or player:GetAttribute("HardpointTeam") == "B" then return end
 	local a, b = teamCounts()
 	local s = match and match.state or H.newState()
@@ -160,6 +187,7 @@ local function giveTeam(player)
 end
 
 local function rebalance()
+	if PRACTICE then return end -- v1.1
 	local groups, members = {}, {}
 	for _, pl in ipairs(Players:GetPlayers()) do
 		if pl:GetAttribute("InMenu") ~= true then
@@ -219,6 +247,11 @@ local function counted()
 		local r = m.Parent and rootOf(m)
 		if (t == "A" or t == "B") and r and alive(m) then table.insert(list, {team = t, pos = r.Position}) end
 	end
+	for m in pairs(botModels) do -- v1.1
+		local t = m:GetAttribute("HardpointBotTeam")
+		local r = m.Parent and rootOf(m)
+		if (t == "A" or t == "B") and r and alive(m) then table.insert(list, {team = t, pos = r.Position, model = m}) end
+	end
 	return list
 end
 
@@ -238,11 +271,12 @@ end
 pickFn.OnInvoke = function(player)
 	if stateFolder:GetAttribute("HpLive") ~= true or typeof(player) ~= "Instance" then return nil end
 	local team = player:GetAttribute("HardpointTeam")
+	if not player:IsA("Player") then team = player:GetAttribute("HardpointBotTeam") end -- v1.1: a bot model
 	local idx = currentIndex()
 	if (team ~= "A" and team ~= "B") or not idx then return nil end
 	local enemies, mates = {}, {}
 	for _, d in ipairs(counted()) do
-		if d.player ~= player then
+		if d.player ~= player and d.model ~= player then -- v1.1: + a bot leaves itself out
 			if d.team == team then table.insert(mates, d.pos) else table.insert(enemies, d.pos) end
 		end
 	end
@@ -251,9 +285,43 @@ pickFn.OnInvoke = function(player)
 	return spot, POINTS[idx].centre
 end
 
+-- ---------- v1.1: scoreboard ----------
+local board = {} -- [id] = {id, name, team, species, bot, k, d, pt}
+local boardDirty, boardAt = false, 0
+local function boardRow(id, name, team, species, isBot)
+	local r = board[id]
+	if not r then
+		r = {id = id, name = name, team = team, species = species, bot = isBot == true, k = 0, d = 0, pt = 0}
+		board[id] = r
+	end
+	r.name, r.team = name or r.name, team or r.team
+	if species then r.species = species end
+	boardDirty = true
+	return r
+end
+local function publishBoard(force)
+	if not boardDirty and not force then return end
+	if not force and os.clock() - boardAt < 0.5 then return end
+	boardAt, boardDirty = os.clock(), false
+	local list = {}
+	for _, r in pairs(board) do
+		table.insert(list, {id = r.id, name = r.name, team = r.team, species = r.species, bot = r.bot, k = r.k, d = r.d,
+			pt = math.floor(r.pt + 0.5)})
+	end
+	table.sort(list, function(x, y) if x.k ~= y.k then return x.k > y.k end return x.name < y.name end)
+	set("HpBoard", HttpService:JSONEncode(list))
+end
+local function idOf(d)
+	if d.player then return "u" .. d.player.UserId, d.player.DisplayName, d.player.Character and d.player.Character:GetAttribute("Species"), false end
+	if d.model then return "b" .. d.model.Name, d.model:GetAttribute("DisplayName") or d.model.Name, d.model:GetAttribute("Species"), true end
+	return nil
+end
+
 -- ---------- the match ----------
 local function newMatch()
 	match = {startAt = now(), state = H.newState(), phase = "warmup", winner = nil, resultsEndAt = nil, acc = 0}
+	board = {} -- v1.1
+	publishBoard(true)
 	rebalance()
 	set("HpMatchStartAt", match.startAt)
 	set("HpWinner", "")
@@ -272,8 +340,9 @@ local function publish()
 	local a, b = teamCounts()
 	set("HpCountA", a)
 	set("HpCountB", b)
+	publishBoard(false) -- v1.1
 	if not match then
-		set("HpPhase", "waiting")
+		set("HpPhase", PRACTICE and "lobby" or "waiting") -- v1.1: "lobby" in practice
 		return
 	end
 	local s = match.state
@@ -293,15 +362,31 @@ local function publish()
 	set("HpPointEndsAt", now() + ph.remaining)
 end
 
+local practiceEnded = script:FindFirstChild("HardpointPracticeEnded") -- v1.1
+if not practiceEnded then
+	practiceEnded = Instance.new("BindableEvent")
+	practiceEnded.Name = "HardpointPracticeEnded"
+	practiceEnded.Parent = script
+end
+
 local ticks = 0
 local function tick()
 	if not match then
-		if playingCount() >= (tonumber(script:GetAttribute("HpMinPlayers")) or 1) then newMatch() end
+		if not PRACTICE and playingCount() >= (tonumber(script:GetAttribute("HpMinPlayers")) or 1) then newMatch() end -- v1.1: + not PRACTICE
 		publish()
 		return
 	end
 	if match.phase == "results" then
-		if now() >= match.resultsEndAt then newMatch() end
+		if now() >= match.resultsEndAt then
+			if PRACTICE then -- v1.1: back to the lobby
+				local w = match.winner
+				match = nil
+				publish()
+				practiceEnded:Fire(w)
+				return
+			end
+			newMatch()
+		end
 		publish()
 		return
 	end
@@ -319,6 +404,11 @@ local function tick()
 	for _, d in ipairs(counted()) do
 		if H.inPoint(d.pos, centre) then
 			if d.team == "A" then nA += 1 else nB += 1 end
+			local id, name, species, isBot = idOf(d) -- v1.1: seconds on the point
+			if id then
+				local r = boardRow(id, name, d.team, species, isBot)
+				r.pt += H.TICK
+			end
 		end
 	end
 	local occ = H.occupancy(nA, nB)
@@ -390,6 +480,41 @@ test.OnInvoke = function(action, a, b)
 	return "badArg"
 end
 
+-- ---------- v1.1: practice hook ----------
+local practiceFn = script:FindFirstChild("HardpointPractice")
+if not practiceFn then
+	practiceFn = Instance.new("BindableFunction")
+	practiceFn.Name = "HardpointPractice"
+	practiceFn.Parent = script
+end
+practiceFn.OnInvoke = function(action, a, b, c, d, e2, f)
+	if action == "bot" then
+		if typeof(a) ~= "Instance" or (b ~= "A" and b ~= "B") then return "badArg" end
+		botModels[a] = true
+		a:SetAttribute("HardpointBotTeam", b)
+		a.AncestryChanged:Connect(function() if not a.Parent then botModels[a] = nil end end)
+		return "ok"
+	elseif action == "unbot" then
+		if typeof(a) == "Instance" then botModels[a] = nil end
+		return "ok"
+	elseif action == "start" then
+		if not PRACTICE then return "notPractice" end
+		newMatch()
+		return "ok"
+	elseif action == "stop" then
+		match = nil
+		publish()
+		return "ok"
+	elseif action == "stat" then
+		-- ("stat", id, name, team, species, isBot, field)
+		if type(a) ~= "string" or (f ~= "k" and f ~= "d") or not match then return "badArg" end
+		local r = boardRow(a, b, c, d, e2)
+		r[f] += 1
+		return "ok"
+	end
+	return "badArg"
+end
+
 -- ---------- run ----------
 local running = false
 local acc = 0
@@ -398,7 +523,7 @@ local function start()
 	if running then return end
 	running = true
 	setLive(true)
-	script:SetAttribute("HardpointState", "running")
+	script:SetAttribute("HardpointState", PRACTICE and "practice" or "running") -- v1.1
 	for _, pl in ipairs(Players:GetPlayers()) do
 		if pl:GetAttribute("InMenu") == false then giveTeam(pl) end
 	end

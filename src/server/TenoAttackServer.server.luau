@@ -1,4 +1,4 @@
--- TenoAttackServer v1.8 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.9 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -783,7 +783,7 @@ local function doSlam(player, char, st, t, hold)
 	end)
 end
 
-remote.OnServerEvent:Connect(function(player, kind, stamp, hold, pref)
+local function onRemote(player, kind, stamp, hold, pref) -- v1.9: named so BotUse can call it (body unchanged)
 	count("TenoAttackRequests")
 	local char = player.Character
 	if not char then return end
@@ -843,7 +843,35 @@ remote.OnServerEvent:Connect(function(player, kind, stamp, hold, pref)
 	else
 		doSlam(player, char, st, t, hold)
 	end
-end)
+end
+remote.OnServerEvent:Connect(onRemote) -- v1.9
+
+-- v1.9 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
+--   server-only BindableFunction "BotUse" (child): Invoke(model, ...same arguments as the remote...) runs the remote handler above
+--   (onRemote, its body unchanged) with ServerStorage.DinoArcade.BotProxy.of(model) for the player. Only models with
+--   PracticeBot = true. Returns "ok" (the handler ran; its own result is on the model as usual), "off", "badArg" or
+--   "botUnsupported" (the handler errored; script attribute TenoAttackBotUseError keeps the message). Switch: script attribute
+--   TenoAttackBotUseEnabled (default true).
+do
+	if script:GetAttribute("TenoAttackBotUseEnabled") == nil then script:SetAttribute("TenoAttackBotUseEnabled", true) end
+	script:SetAttribute("TenoAttackServerVersion", "1.9")
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotUse") or Instance.new("BindableFunction")
+	fn.Name = "BotUse"
+	fn.OnInvoke = function(model, ...)
+		if script:GetAttribute("TenoAttackBotUseEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local ok, err = pcall(onRemote, BotProxy.of(model), ...)
+		if not ok then
+			script:SetAttribute("TenoAttackBotUseError", tostring(err))
+			return "botUnsupported"
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+
 
 local function onCharacter(char)
 	task.defer(function()

@@ -1,4 +1,4 @@
--- TheriAttackServer v1.7 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
+-- TheriAttackServer v1.8 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
 -- docs/plans/THERIZINO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/therizino_kit_options_v0.3.html
 -- (Kepu 2026-11-02: attack "3-hit combo", payoff "Damage only", picks "A Reaper Sweeps"; animation "I like this one").
 -- Pattern: TenoAttackServer 1.4's scratch path (request -> server checks -> hit resolved at a fixed delay in a front zone),
@@ -570,7 +570,7 @@ if not remote then
 	remote.Parent = ReplicatedStorage
 end
 
-remote.OnServerEvent:Connect(function(player, stamp)
+local function onRemote(player, stamp) -- v1.8: named so BotUse can call it (body unchanged)
 	count("TheriAttackRequests")
 	if fourthTap and fourthTap(player, stamp) then return end -- v1.2: the Fourth Cut first
 	local char = player.Character
@@ -608,7 +608,35 @@ remote.OnServerEvent:Connect(function(player, stamp)
 	local d = math.clamp(get(char, "TheriHitDelay" .. step), 0, MAX_DELAY)
 	local delay = math.clamp(math.min(stamp, t) + d - t, 0, d)
 	task.delay(delay, resolve, player, char, st, step)
-end)
+end
+remote.OnServerEvent:Connect(onRemote) -- v1.8
+
+-- v1.8 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
+--   server-only BindableFunction "BotUse" (child): Invoke(model, ...same arguments as the remote...) runs the remote handler above
+--   (onRemote, its body unchanged) with ServerStorage.DinoArcade.BotProxy.of(model) for the player. Only models with
+--   PracticeBot = true. Returns "ok" (the handler ran; its own result is on the model as usual), "off", "badArg" or
+--   "botUnsupported" (the handler errored; script attribute TheriAttackBotUseError keeps the message). Switch: script attribute
+--   TheriAttackBotUseEnabled (default true).
+do
+	if script:GetAttribute("TheriAttackBotUseEnabled") == nil then script:SetAttribute("TheriAttackBotUseEnabled", true) end
+	script:SetAttribute("TheriAttackServerVersion", "1.8")
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotUse") or Instance.new("BindableFunction")
+	fn.Name = "BotUse"
+	fn.OnInvoke = function(model, ...)
+		if script:GetAttribute("TheriAttackBotUseEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local ok, err = pcall(onRemote, BotProxy.of(model), ...)
+		if not ok then
+			script:SetAttribute("TheriAttackBotUseError", tostring(err))
+			return "botUnsupported"
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+
 
 -- v1.4: TheriStartCut (see the header) ----------------------------------------------------------------------------------------
 if script:GetAttribute("TheriAttackHookCutEnabled") == nil then script:SetAttribute("TheriAttackHookCutEnabled", true) end
