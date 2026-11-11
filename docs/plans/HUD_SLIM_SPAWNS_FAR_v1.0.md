@@ -60,24 +60,24 @@ distance". Mockup: docs/mockups/hud_slim_compass_v0.1.html (artifact "Slim HUD a
 - The kill feed and the 3D marker already place themselves from real on-screen sizes, so they follow.
 
 ## Tasks
-### Task 1 — HardpointRules 1.2 + spec · Logic (MDA-424)
+### Task 1 — HardpointRules 1.2 + spec · Logic (MDA-425)
 Add (keep 1.0 / 1.1 API): BAND2_RADII {700,750,800,850,900}, BAND2_EXTRA_RADII {650,600}, SIGHT_MAX2 1000, OPEN_MIN_APART2 900,
 OPEN_RUN_DIFF 60; `bandSpots(centre, okFn, radii?, extra?)` (new optional args; nil = 1.1 radii); `pickOpeningByRun(spots,
 seesFn, runFn, minApart?, maxDiff?) -> a, b` (runFn(spot) -> number | nil). Spec tools/tests/HardpointSpawns2.spec.luau: band 2
 counts and radii, extra radii under 8, run pair picked over a straight-line pair, no-path spot skipped, diff 61 rejected,
 seen rejected, too close rejected, ties = first. 1.0 and 1.1 specs still pass.
 
-### Task 2 — HardpointServer 1.3 · Wired (MDA-425)
+### Task 2 — HardpointServer 1.3 · Wired (MDA-426)
 Switches HardpointFarSpawnsEnabled (default true; false = 1.1 band, sight 700, apart 600) and HardpointRunOpeningEnabled
 (default true; false = 1.2 straight-line pair). Background path pass for point 1 at start. Diagnostics HpRunPaths ("n ok / m"),
 HpOpening ("A x,z run r | B x,z run r" or "flat ..."), HpBandSpots per point for band 2. Practice uses it through pickFn.
 
-### Task 3 — HardpointHUD 1.6 · Wired (MDA-426)
+### Task 3 — HardpointHUD 1.6 · Wired (MDA-427)
 Top-gap compass (switch HardpointHUDCompassTopEnabled, default true; false = 1.5 placement; place diag "top"), look A
 (attributes HardpointHUDCompassBgT 0.65, HardpointHUDCompassStrokeT 0.85), slim HUD (attribute HardpointHUDScale 0.8; 1 = 1.5
 size), column fallback from real pill bottoms.
 
-### Task 4 — QA + docs · Wired (MDA-427)
+### Task 4 — QA + docs · Wired (MDA-428)
 Practice 5v5: 20 respawns logged (700–900 from the point, >= 250 from enemies, seen=false); HpRunPaths and HpOpening (run
 lengths within 60); one bot run from each start side timed (within 15% of each other); server ms per spawn (< 2 ms);
 screenshots PC 1280 wide and forced touch 844 x 390: compass between the Roblox buttons and SKILLS, not touching either; card
