@@ -161,6 +161,16 @@ VERSION = "1.9" -- v1.9 faster Toxin Mortar
 --   wind-up MORTAR_WINDUP / 2 (0.55 -> 0.275 s, DiloMortarWindup) and flight / 2 (0.77 -> 0.38 s, DiloMortarFlight). Switch:
 --   script attribute DiloMortarFastEnabled (default true, read at each shot; false = 1.8).
 VERSION = "1.10" -- v1.10 armor on every hit (MDA-366)
+VERSION = "1.11" -- v1.11 bigger Sonic Hiss
+-- v1.11 (MDA-438, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 4; Kepu 2026-11-11 "Dilo sonic his range doubled in both width and
+--   length", pick "B · 2x long + 2x wider cone"): at each Sonic Hiss press the range x script attribute DiloPartHissRangeMul (2:
+--   20 / 25 / 30 -> 40 / 50 / 60) and the half angle x DiloPartHissAngleMul (2: 35 -> 70, a 140° cone; at most 90). The
+--   DiloHissRange / DiloHissAngle stamps carry the new numbers, so DiloMovesFX / DiloPartsVFX draw the new size. Knock, silence,
+--   the near ring and the height rule unchanged. Switch: script attribute DiloHissBigEnabled (default true, read at each press;
+--   false = 1.10).
+for k, v in pairs({DiloHissBigEnabled = true, DiloPartHissRangeMul = 2, DiloPartHissAngleMul = 2}) do -- v1.11
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 -- v1.10 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
 --   Wiry Frame = the victim's StatDamageTakenMul) now cuts Venom Gatling darts and spine bursts (damage):
 --   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
@@ -694,6 +704,10 @@ hissRemote.OnServerEvent:Connect(function(player, stamp)
 	ok(char, "DiloPartHiss", t)
 	local range = math.max(1, num(char, "DiloPartHissRange", 20))
 	local angle = math.clamp(num(char, "DiloPartHissAngle", 35), 1, 180)
+	if script:GetAttribute("DiloHissBigEnabled") ~= false then -- v1.11: 2x reach, 2x cone
+		range *= math.max(0, num(script, "DiloPartHissRangeMul", 2))
+		angle = math.clamp(angle * math.max(0, num(script, "DiloPartHissAngleMul", 2)), 1, 90)
+	end
 	char:SetAttribute("DiloHissWindup", HISS_WINDUP)
 	char:SetAttribute("DiloHissRange", range)
 	char:SetAttribute("DiloHissAngle", angle)
