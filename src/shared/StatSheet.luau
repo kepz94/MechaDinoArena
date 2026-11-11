@@ -37,6 +37,10 @@ local StatSheet = {}
 StatSheet.Version = "1.5"
 StatSheet.Version = "1.6" -- v1.6 Dilo
 StatSheet.Version = "1.7" -- v1.7 Troodon
+StatSheet.Version = "1.8" -- v1.8 dilo abilities text
+-- v1.8 (MDA-441, plan docs/plans/LAB_CLIPS_v1.0.md Task 1): the dilo is spit only (DiloAttackServer 1.7) with 5 shots
+--   (DiloAttackServer 1.10), so SPECIES.Dilo.abilities reads {"Spit Dart (5 shots)", "Cobra Leap"} (was "Bite + Spit Dart").
+--   Switch StatSheet.DILO_ABILITY_V2 (default true; false = 1.7). Text only (StatServer StatAbilities -> ClassCard).
 StatSheet.STATS = {"Health", "Attack", "Defense", "Speed", "Support"}
 StatSheet.MAX_ADDED = 10
 StatSheet.MAX_ADDED_BY = {Speed = 16} -- v1.1
@@ -133,6 +137,11 @@ function StatSheet.values(base, added)
 	end
 	out.StatDamageTakenMul = d == 0 and 1 or roundTo(1 - StatSheet.DEFENSE_RATE * d, 0.01)
 	return out
+end
+
+StatSheet.DILO_ABILITY_V2 = true -- v1.8
+if StatSheet.DILO_ABILITY_V2 and StatSheet.SPECIES.Dilo then
+	StatSheet.SPECIES.Dilo.abilities = {"Spit Dart (5 shots)", "Cobra Leap"}
 end
 
 return StatSheet
