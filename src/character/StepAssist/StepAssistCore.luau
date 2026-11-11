@@ -1,4 +1,4 @@
--- StepAssistCore v1.0 (Dino Arcade) — step-up assist shared by the owner client (StepAssist 1.0, player dinos) and the
+-- StepAssistCore v1.1 (Dino Arcade) — step-up assist shared by the owner client (StepAssist 1.0, player dinos) and the
 -- server (StepAssistServer 1.0, bots in DinoIsland.Bots and prey in DinoIsland.Prey).
 -- Why (DINO-7 terrain gate, measured in Play): the island is a 16-stud tile grid whose most common step between land
 --   tiles is 2 studs (8038 edges; Sand -> Grass 2.4). A Humanoid only got up a step when its HipHeight was about the step
@@ -27,10 +27,28 @@
 --     that one started is skipped (StepAssistState "stuck"; something else, e.g. a tree trunk, is in the way).
 -- Diagnostics (model attributes, written by whoever runs it): StepAssistState ("idle" / "blocked" / "lift" / "wall" /
 --   "off" / "stuck"), StepAssistCount, StepAssistLastHeight (studs lifted), StepAssistLastAt (server time), StepAssistWalls.
+-- v1.1 (walkable mountain steps, MDA-398, plan docs/plans/HARDPOINT_v1.0.md Task 3; Kepu 2026-11-10: "Fix the seven stud steps
+--   to be walkable", everywhere: players and bots, Sandbox and Arena). Measured before: a raptor walking at the summit stopped at
+--   the first 7-stud Workspace.DinoIsland.MountainSteps shelf (the rays only hit DinoIsland.Ground). While the DinoIsland
+--   attribute StepAssistMountainEnabled ~= false (default on):
+--   * the rays also hit DinoIsland.MountainSteps;
+--   * a ledge may be up to StepAssistMountainMax (DinoIsland attribute, default MOUNTAIN_MAX 17.5: measured in Play, the first
+--     shelf on the summit's east side is 13 studs over the rock at its foot, the cliff bands are 14, and the T-Rex stopped at
+--     a 16-stud face under the top at 14.5) when the ledge is a
+--     MountainSteps part or the dino stands on one (shelf -> rock top); every other ledge keeps StepAssistMax;
+--   * mountain ledges are looked for up to the dino's own reach (half its longest flat size + 2, 4..MOUNTAIN_REACH_MAX 34
+--     studs): a scaled raptor stood 5.5 studs short of the face (its hitboxes touch first), past PROBE_REACH 4; the lift then
+--     moves it forward that far. Any other ledge is still only looked for up to PROBE_REACH;
+--   * the lift takes LIFT_TIME x (height / DEFAULT_MAX), between LIFT_TIME and LIFT_TIME_MAX (0.3 s), so a 7-stud step is a
+--     short climb, not a snap.
+--   Diagnostic: StepAssistLastMountain (true when the last lift used the mountain rule). Off -> exactly 1.0.
 local StepAssistCore = {}
 
-StepAssistCore.Version = "1.0"
+StepAssistCore.Version = "1.1"
 StepAssistCore.DEFAULT_MAX = 2.6
+StepAssistCore.MOUNTAIN_MAX = 17.5 -- v1.1
+local MOUNTAIN_REACH_MAX = 34 -- v1.1
+local LIFT_TIME_MAX = 0.3 -- v1.1
 local MOVE_MIN = 0.5
 local BLOCK_SPEED_FRAC = 0.25
 local BLOCK_TIME = 0.1
@@ -61,6 +79,16 @@ function StepAssistCore.new(model, hum, hrp, opts)
 		walkTo = opts ~= nil and opts.walkTo == true}
 end
 
+-- v1.1: how far ahead of the root a mountain ledge may be (the dino's own size), measured once per dino
+local function reachOf(st)
+	if st.reach then return st.reach end
+	local ok, size = pcall(function() return st.model:GetExtentsSize() end)
+	local r = PROBE_REACH
+	if ok and typeof(size) == "Vector3" then r = math.clamp(math.max(size.X, size.Z) / 2 + 2, PROBE_REACH, MOUNTAIN_REACH_MAX) end
+	st.reach = r
+	return r
+end
+
 local function show(st, k, v)
 	if st.shown[k] ~= v then
 		st.shown[k] = v
@@ -74,38 +102,53 @@ local function settings()
 	local enabled = not island or island:GetAttribute("StepAssistEnabled") ~= false
 	local max = island and island:GetAttribute("StepAssistMax")
 	if type(max) ~= "number" then max = StepAssistCore.DEFAULT_MAX end
-	return enabled, max, ground
+	-- v1.1: the mountain steps
+	local steps = island and island:GetAttribute("StepAssistMountainEnabled") ~= false and island:FindFirstChild("MountainSteps") or nil
+	local mmax = island and island:GetAttribute("StepAssistMountainMax")
+	if type(mmax) ~= "number" then mmax = StepAssistCore.MOUNTAIN_MAX end
+	return enabled, max, ground, steps, math.max(max, mmax)
 end
 
 local paramsCache = {}
-local function paramsFor(ground)
-	local p = paramsCache[ground]
+local function paramsFor(ground, steps) -- v1.1: + the MountainSteps folder when the mountain rule is on
+	local key = steps and (tostring(ground) .. "|" .. tostring(steps)) or ground
+	local p = paramsCache[key]
 	if not p then
 		p = RaycastParams.new()
 		p.FilterType = Enum.RaycastFilterType.Include
-		p.FilterDescendantsInstances = {ground}
+		p.FilterDescendantsInstances = steps and {ground, steps} or {ground}
 		p.RespectCanCollide = true
-		paramsCache[ground] = p
+		paramsCache[key] = p
 	end
 	return p
 end
 
 -- returns ledge height above y0, or nil + reason ("noGround" / "wall" / "none")
-local function findLedge(hrp, dir, max, params)
+-- v1.1: steps / mmax (the MountainSteps folder and the mountain max) when the mountain rule is on; third result = true when
+-- the ledge used the mountain rule
+local function findLedge(hrp, dir, max, params, steps, mmax, reach)
 	local pos = hrp.Position
 	local down = workspace:Raycast(pos, Vector3.new(0, -60, 0), params)
 	if not down then return nil, "noGround" end
 	local y0 = down.Position.Y
-	for s = PROBE_STEP, PROBE_REACH, PROBE_STEP do
-		local origin = Vector3.new(pos.X, y0 + max + 1, pos.Z) + dir * s
-		local hit = workspace:Raycast(origin, Vector3.new(0, -(max + 1 + STEP_MIN + 0.5), 0), params)
+	local onSteps = steps ~= nil and down.Instance:IsDescendantOf(steps)
+	local probe = steps and mmax or max
+	for s = PROBE_STEP, steps and math.max(PROBE_REACH, reach or PROBE_REACH) or PROBE_REACH, PROBE_STEP do
+		local origin = Vector3.new(pos.X, y0 + probe + 1, pos.Z) + dir * s
+		local hit = workspace:Raycast(origin, Vector3.new(0, -(probe + 1 + STEP_MIN + 0.5), 0), params)
 		if hit then
 			local h = hit.Position.Y - y0
-			if h >= max + 0.999 then return nil, "wall" end -- the ray started inside / at the top of something tall
+			if h >= probe + 0.999 then return nil, "wall" end -- the ray started inside / at the top of something tall
 			if h > STEP_MIN then
-				if h <= max and hit.Normal.Y > FLAT_MIN then return h, s end
+				local mountain = steps ~= nil and (onSteps or hit.Instance:IsDescendantOf(steps))
+				if s > PROBE_REACH and not mountain then return nil, "none" end -- v1.1: the long reach is for the mountain only
+				local allowed = mountain and mmax or max
+				if h <= allowed and hit.Normal.Y > FLAT_MIN then return h, s, mountain and h > max end
 				return nil, "wall"
 			end
+		elseif s > PROBE_REACH then
+			-- v1.1: beyond the 1.0 reach a miss just means no ledge there
+			return nil, "none"
 		else
 			-- the ray started inside a part taller than max + 1 (no hit from inside): a wall
 			local inside = workspace:Raycast(Vector3.new(pos.X, y0 + 0.05, pos.Z) + dir * (s - PROBE_STEP), dir * PROBE_STEP, params)
@@ -118,7 +161,7 @@ end
 -- call every frame; dt in seconds; now = server time (for the diagnostic)
 function StepAssistCore.step(st, dt, now)
 	local hum, hrp = st.hum, st.hrp
-	local enabled, max, ground = settings()
+	local enabled, max, ground, steps, mmax = settings()
 	if not enabled or not ground then
 		st.lift, st.blockedFor = nil, 0
 		show(st, "StepAssistState", "off")
@@ -132,7 +175,7 @@ function StepAssistCore.step(st, dt, now)
 			return
 		end
 		l.t += dt
-		local a = math.min(1, l.t / LIFT_TIME)
+		local a = math.min(1, l.t / (l.time or LIFT_TIME)) -- v1.1: per-lift time
 		local p = l.from + l.dir * (l.nudge * a) + Vector3.new(0, l.dy * a, 0)
 		local cur = hrp.Position
 		-- keep any sideways / forward motion the Humanoid made this frame, replace the climb part
@@ -171,7 +214,7 @@ function StepAssistCore.step(st, dt, now)
 		return
 	end
 	local dir = want.Unit
-	local h, why = findLedge(hrp, dir, max, paramsFor(ground)) -- why = probe distance when h is found
+	local h, why, viaMountain = findLedge(hrp, dir, max, paramsFor(ground, steps), steps, mmax, steps and reachOf(st) or nil) -- why = probe distance when h is found
 	if not h then
 		if why == "wall" then
 			if st.shown.StepAssistState ~= "wall" then
@@ -191,12 +234,14 @@ function StepAssistCore.step(st, dt, now)
 		return
 	end
 	st.lastFrom, st.lastClock = from, os.clock()
-	st.lift = {t = 0, from = from, dir = dir, dy = h + LIFT_CLEAR, nudge = math.min(why + LIFT_PAST, PROBE_REACH),
-		lastX = from.X, lastZ = from.Z}
+	st.lift = {t = 0, from = from, dir = dir, dy = h + LIFT_CLEAR, nudge = math.min(why + LIFT_PAST, why > PROBE_REACH and reachOf(st) or PROBE_REACH),
+		lastX = from.X, lastZ = from.Z,
+		time = steps and math.clamp(LIFT_TIME * h / StepAssistCore.DEFAULT_MAX, LIFT_TIME, LIFT_TIME_MAX) or LIFT_TIME} -- v1.1
 	st.blockedFor = 0
 	st.model:SetAttribute("StepAssistCount", (st.model:GetAttribute("StepAssistCount") or 0) + 1)
 	st.model:SetAttribute("StepAssistLastHeight", math.floor(h * 100 + 0.5) / 100)
 	st.model:SetAttribute("StepAssistLastAt", now)
+	if steps then st.model:SetAttribute("StepAssistLastMountain", viaMountain == true) end -- v1.1
 	show(st, "StepAssistState", "lift")
 end
 
