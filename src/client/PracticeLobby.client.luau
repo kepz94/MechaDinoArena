@@ -28,12 +28,15 @@
 --   PracticeLobbyModeFired ("play" / "menu"), PracticeLobbyToast (last toast text).
 -- v1.1 (QA 2026-11-10): the dino box text was scaled to fit each name, so "DILO" came out three times the size of "TROODON";
 --   now it is capped at 70% of the slot name size (UITextSizeConstraint), 9 px at least.
+-- v1.2 (QA 2026-11-10: with the LAST MATCH panel on a short screen the 5th slot went under the button bar, slots were held
+--   at 30 px at least): slots may shrink to 22 px; below 32 px a slot shows one line (the name, centred; the loadout line is
+--   hidden). Name text stays 12 px at least.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW = Color3.fromRGB(255, 200, 50)
 local MUTED = Color3.fromRGB(143, 153, 170)
@@ -375,7 +378,8 @@ local function layout()
 	local size = math.clamp(tonumber(state:GetAttribute("PrSize")) or 5, 1, MAX_SLOTS)
 	local gap = math.max(4, 6 * u)
 	local avail = (Hh - bottomPad - barH - 10 * u) - y
-	local slotH = math.clamp((avail - (size - 1) * gap) / size, 30, 64 * u + 8)
+	local slotH = math.clamp((avail - (size - 1) * gap) / size, 22, 64 * u + 8) -- v1.2: 22 (1.1: 30)
+	local oneLine = slotH < 32 -- v1.2
 	vs.TextSize = math.max(14, 22 * u)
 	vs.Position, vs.Size = UDim2.fromOffset(colW, y), UDim2.fromOffset(vsW, size * slotH + (size - 1) * gap)
 	local nameS = math.max(12, math.min(18 * u, slotH * 0.42))
@@ -390,8 +394,9 @@ local function layout()
 			s.box.UITextSizeConstraint.MaxTextSize = math.max(9, math.floor(nameS * 0.7)) -- v1.1
 			local tx = 6 + math.max(box * 1.5, 46) + 8
 			local tw = colW - tx - 8
-			local both = nameS + ldS + 2
+			local both = oneLine and nameS or (nameS + ldS + 2) -- v1.2
 			local ty = (slotH - both) / 2
+			s.ld.Visible = not oneLine -- v1.2
 			s.nm.TextSize, s.ld.TextSize = nameS, ldS
 			s.nm.Position, s.nm.Size = UDim2.fromOffset(tx, ty), UDim2.fromOffset(tw, nameS)
 			s.ld.Position, s.ld.Size = UDim2.fromOffset(tx, ty + nameS + 2), UDim2.fromOffset(tw, ldS)

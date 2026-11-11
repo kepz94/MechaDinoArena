@@ -218,9 +218,9 @@ local bpScale = Instance.new("UIScale")
 bpScale.Parent = bp
 local bTitle = label(bp, {Position = UDim2.fromOffset(0, 12), Size = UDim2.new(1, 0, 0, 42), TextSize = 40, Text = "VICTORY"})
 local bSub = label(bp, {Position = UDim2.fromOffset(0, 56), Size = UDim2.new(1, 0, 0, 18), TextSize = 14, TextColor3 = MUTED_C, Text = ""})
-local COLS = {{x = 0, w = 0.44, a = Enum.TextXAlignment.Left}, {x = 0.44, w = 0.24, a = Enum.TextXAlignment.Left},
-	{x = 0.68, w = 0.09, a = Enum.TextXAlignment.Right}, {x = 0.77, w = 0.09, a = Enum.TextXAlignment.Right},
-	{x = 0.86, w = 0.14, a = Enum.TextXAlignment.Right}}
+local COLS = {{x = 0, w = 0.40, a = Enum.TextXAlignment.Left}, {x = 0.40, w = 0.22, a = Enum.TextXAlignment.Left},
+	{x = 0.62, w = 0.08, a = Enum.TextXAlignment.Right}, {x = 0.70, w = 0.08, a = Enum.TextXAlignment.Right},
+	{x = 0.78, w = 0.22, a = Enum.TextXAlignment.Right}}
 local bTables = {}
 for t = 1, 2 do
 	local f = Instance.new("Frame")
