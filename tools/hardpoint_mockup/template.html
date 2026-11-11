@@ -84,10 +84,11 @@ canvas.size { width:100%; max-width:520px; height:auto; display:block; margin:6p
       <div class="mapbox"><canvas class="map" id="map" width="720" height="720" aria-label="Top-down map of the island with the hills"></canvas></div>
       <div class="legend">
         <span><i style="background:#4f9a3d"></i>grass</span><span><i style="background:#86b44f"></i>meadow</span><span><i style="background:#8a8f98"></i>rock / mountain</span><span><i style="background:#c9a86a"></i>ramp</span><span><i style="background:#d9c58f"></i>sand</span><span><i style="background:#2e7aa6"></i>shallow / lake</span>
-        <span><i style="background:var(--yellow)"></i>hill (order)</span><span><i style="background:var(--red)"></i>Red spawn</span><span><i style="background:var(--blue)"></i>Blue spawn</span>
+        <span><i style="background:var(--yellow)"></i>hill (order)</span><span><i style="background:var(--red)"></i>Red player / next Red spawn</span><span><i style="background:var(--blue)"></i>Blue player / next Blue spawn</span><span><i style="background:transparent;border:2px solid #fff"></i>spawn spot</span>
       </div>
-      <div class="lbl" style="margin-top:10px">Where teams spawn</div>
-      <div class="row" id="spawnTabs" style="margin-top:8px"></div>
+      <div class="lbl" style="margin-top:10px">Spawns follow the hill, like Call of Duty · try a situation</div>
+      <div class="row" id="scenTabs" style="margin-top:8px"></div>
+      <p id="scenNote" style="font-size:13px;color:var(--muted);margin:8px 0 0"></p>
     </div>
     <div class="card" id="layoutInfo"></div>
   </div>
@@ -171,11 +172,40 @@ const S = {
   SBeach:{name:"South Rocks", x:100, z:720}, ELake:{name:"East Shore", x:450, z:150}, SEField:{name:"Southeast Field", x:650, z:650},
   WCoast:{name:"West Coast", x:-620, z:-60}, NW:{name:"NW Foothills", x:-280, z:-270}, Summit:{name:"Summit", x:285, z:-240, high:true},
 };
-// Proposed Hardpoint spawn pads: 300 studs from each hill, on opposite sides, on flat dry ground (grid check).
-const PADS = { Centre:[[93,190],[-293,-270]], West:[[-257,500],[-600,10]], Lakeside:[[-193,582],[13,18]], SBeach:[[400,720],[-200,720]],
-  ELake:[[710,300],[155,98]], SEField:[[355,702],[880,457]], WCoast:[[-568,235],[-517,-342]], NW:[[-473,-40],[-87,-500]], Summit:[[388,42],[337,-535]] };
-// Today's 8 Arena spawns (Workspace.ArenaSpawns in the place).
-const ARENA = [[88,904],[-661,803],[-617,60],[-494,-407],[-50,-518],[610,-741],[836,-81],[788,648]];
+// Spawns, like Call of Duty: no fixed team spawns. Each hill has a ring of spawn spots (12 around it, 220-380 studs out, on flat
+// dry ground: grid check). When you respawn, every spot is scored right then: far from living enemies, near a teammate.
+const cellAt = (x, z) => { const i = Math.floor((x + R) / CELL), j = Math.floor((z + R) / CELL); return (i < 0 || j < 0 || i >= N || j >= N) ? ["w", -8] : G[j][i]; };
+function spotOk(x, z) { const hs = []; for (const dx of [-30, 0, 30]) for (const dz of [-30, 0, 30]) { const [t, h] = cellAt(x + dx, z + dz); if ("wvkt".includes(t)) return false; hs.push(h); } return Math.max(...hs) - Math.min(...hs) <= 20; }
+const RING = {};
+function ringFor(key) {
+  if (RING[key]) return RING[key];
+  const h = S[key], out = [];
+  for (let a = 0; a < 12; a++) { const ang = a / 12 * 2 * Math.PI;
+    for (const rad of [300, 260, 340, 220, 380]) { const x = h.x + rad * Math.cos(ang), z = h.z + rad * Math.sin(ang); if (spotOk(x, z)) { out.push({x, z}); break; } } }
+  return (RING[key] = out);
+}
+const NEAR_ENEMY = 150, ENEMY_CAP = 350, MATE_RANGE = 300; // tuned so all 3 situations behave on all 14 hills
+function pickSpawn(key, enemies, mates) {
+  let best = null;
+  for (const c of ringFor(key)) {
+    const de = enemies.length ? Math.min(...enemies.map(e => Math.hypot(e.x - c.x, e.z - c.z))) : ENEMY_CAP;
+    if (de < NEAR_ENEMY) continue; // never next to an enemy
+    const dm = mates.length ? Math.min(...mates.map(m => Math.hypot(m.x - c.x, m.z - c.z))) : MATE_RANGE;
+    const score = Math.min(de, ENEMY_CAP) + 0.4 * Math.max(0, MATE_RANGE - dm);
+    if (!best || score > best.score) best = {...c, score};
+  }
+  return best;
+}
+// Living players around the current hill for each situation (studs from the hill; Red starts on the west side).
+const SCEN = {
+  even:{title:"Even fight", sub:"each team on its own side", note:"Red holds the west half, Blue the east. A Red player who dies comes back on the west side near a teammate, a Blue player on the east side.",
+        red:[[-140,-40],[-90,60],[-30,10]], blue:[[150,30],[100,-70],[40,20]]},
+  push:{title:"Red pushes through", sub:"Red gets behind the hill", note:"Red pushes past the middle of the hill into Blue’s half. The spawns flip: Blue now comes back behind Red, on the west side Red just left, and Red comes back on the east side behind its own push. That’s Call of Duty’s spawn flip.",
+        red:[[60,-30],[140,70],[180,-90]], blue:[[260,40]]},
+  camp:{title:"Blue camps Red’s side", sub:"Blue sits where Red was spawning", note:"Blue players wait on the west side. Red spawns can’t be within 150 studs of an enemy, so Red comes back on the east side instead, away from them.",
+        red:[[40,10]], blue:[[-230,-60],[-200,90],[-120,0]]},
+};
+let scen = "even";
 const LAYOUTS = {
   A:{title:"A · Around the lake", sub:"5 hills, both sides of the island", hills:["Centre","ELake","SEField","SBeach","West"],
      why:"Uses the whole island except the mountain top. Every team crosses the island once per loop."},
@@ -187,7 +217,7 @@ const LAYOUTS = {
 // In-game run speeds: model MoveRunSpeed x ArenaSpeedScale 0.65 (StatServer 1.1).
 const SPEEDS = [["Pachy",37],["T-Rex",48.1],["Raptor",50.7],["Herrera",58.5]];
 
-let layout = "B", spawnMode = "pads", hud = "H1", dev = "pc", radius = 45;
+let layout = "B", hud = "H1", dev = "pc", radius = 45;
 
 // ---------- map ----------
 const map = document.getElementById("map"), mx = map.getContext("2d");
@@ -214,12 +244,15 @@ function drawMap(state) {
   mx.beginPath(); hs.forEach((h, i) => { const [x, y] = toPx(h.x, h.z); i ? mx.lineTo(x, y) : mx.moveTo(x, y); }); mx.closePath(); mx.stroke(); mx.setLineDash([]);
   // spawns
   const cur = state ? state.hill : 0, curKey = L.hills[cur];
-  if (spawnMode === "pads") {
-    const [p, q] = PADS[curKey];
-    [[p, "#e0284a"], [q, "#5aa0ff"]].forEach(([pt, c]) => { const [x, y] = toPx(pt[0], pt[1]); mx.fillStyle = c; mx.strokeStyle = "#fff"; mx.lineWidth = 2; mx.beginPath(); mx.rect(x - 8, y - 8, 16, 16); mx.fill(); mx.stroke();
-      const [hx, hy] = toPx(S[curKey].x, S[curKey].z); mx.strokeStyle = c; mx.globalAlpha = .55; mx.lineWidth = 2; mx.beginPath(); mx.moveTo(x, y); mx.lineTo(hx, hy); mx.stroke(); mx.globalAlpha = 1; });
-  } else {
-    ARENA.forEach((pt, n) => { const [x, y] = toPx(pt[0], pt[1]); mx.fillStyle = "#f2f2f2"; mx.strokeStyle = "#222"; mx.lineWidth = 2; mx.beginPath(); mx.arc(x, y, 7, 0, 7); mx.fill(); mx.stroke(); mx.fillStyle = "#111"; mx.font = "bold 10px system-ui"; mx.textAlign = "center"; mx.fillText(n + 1, x, y + 3.5); });
+  {
+    const H = S[curKey], sc = SCEN[scen];
+    const red = sc.red.map(([dx, dz]) => ({x: H.x + dx, z: H.z + dz})), blue = sc.blue.map(([dx, dz]) => ({x: H.x + dx, z: H.z + dz}));
+    ringFor(curKey).forEach(c => { const [x, y] = toPx(c.x, c.z); mx.strokeStyle = "rgba(255,255,255,.85)"; mx.lineWidth = 1.5; mx.strokeRect(x - 5, y - 5, 10, 10); });
+    const [hx, hy] = toPx(H.x, H.z);
+    [[pickSpawn(curKey, blue, red), "#e0284a"], [pickSpawn(curKey, red, blue), "#5aa0ff"]].forEach(([c, col]) => { if (!c) return; const [x, y] = toPx(c.x, c.z);
+      mx.strokeStyle = col; mx.globalAlpha = .6; mx.lineWidth = 2; mx.setLineDash([4, 4]); mx.beginPath(); mx.moveTo(x, y); mx.lineTo(hx, hy); mx.stroke(); mx.setLineDash([]); mx.globalAlpha = 1;
+      mx.fillStyle = col; mx.strokeStyle = "#fff"; mx.lineWidth = 2; mx.beginPath(); mx.rect(x - 8, y - 8, 16, 16); mx.fill(); mx.stroke(); });
+    [[red, "#e0284a"], [blue, "#5aa0ff"]].forEach(([ps, col]) => ps.forEach(pl => { const [x, y] = toPx(pl.x, pl.z); mx.fillStyle = col; mx.strokeStyle = "#fff"; mx.lineWidth = 1.5; mx.beginPath(); mx.arc(x, y, 6.5, 0, 7); mx.fill(); mx.stroke(); }));
   }
   // hills
   hs.forEach((h, i) => {
@@ -247,14 +280,15 @@ function layoutInfo() {
     rowsH += `<tr><td>${i + 1} → ${(i + 1) % hs.length + 1}</td><td>${a.name} → ${b.name}${climb}</td><td class="num">${Math.round(d)}</td><td class="num">${(d / 58.5).toFixed(0)}–${(d / 37).toFixed(0)} s</td></tr>`;
   }
   let spawnRows = "";
-  hs.forEach((k, i) => { const h = S[k]; let dR, dB;
-    if (spawnMode === "pads") { dR = dB = 300; } else { const ds = ARENA.map(p => Math.hypot(p[0] - h.x, p[1] - h.z)).sort((x, y) => x - y); dR = ds[0]; dB = ds[1]; }
-    spawnRows += `<tr><td>Hill ${i + 1}</td><td class="num">${spawnMode === "pads" ? "300 each" : "Red " + Math.round(dR) + " · Blue " + Math.round(dB)}</td><td class="num">${(Math.min(dR,dB) / 58.5).toFixed(0)}–${(Math.max(dR,dB) / 37).toFixed(0)} s</td></tr>`; });
+  hs.forEach((k, i) => { const n = ringFor(k).length; const ds = ringFor(k).map(c => Math.hypot(c.x - S[k].x, c.z - S[k].z));
+    spawnRows += `<tr><td>Hill ${i + 1}</td><td class="num">${n}</td><td class="num">${Math.round(Math.min(...ds))}–${Math.round(Math.max(...ds))}</td><td class="num">${(Math.min(...ds) / 58.5).toFixed(0)}–${(Math.max(...ds) / 37).toFixed(0)} s</td></tr>`; });
   document.getElementById("layoutInfo").innerHTML = `<h2>${L.title}</h2><p>${L.why}</p>
     <h3>Runs between hills</h3><table><tr><th>Move</th><th>From → to</th><th class="num">Studs</th><th class="num">Run</th></tr>${rowsH}</table>
     <p style="font-size:13px">Run = straight line at in-game speed, Herrera 58.5 to Pachy 37 studs/s (model run × 0.65). The next hill shows 10 s before it opens, so the fastest dinos arrive about as it opens.${hs.includes("Summit") ? ' <span class="warn">The summit is reached by the spiral ramp, so its real run is longer than the straight line; I’ll measure it in Studio before the plan.</span>' : ""}</p>
-    <h3>Spawn → current hill</h3><table><tr><th>Hill</th><th class="num">Studs</th><th class="num">Run</th></tr>${spawnRows}</table>
-    <p style="font-size:13px">${spawnMode === "pads" ? "Each hill gets a Red pad and a Blue pad 300 studs away on opposite sides; you respawn on your team’s pad for the current hill (3 s respawn, as today)." : "Today’s 8 Arena spawns are on the coast; the nearest one is used. Runs back to the hill are long, and the two teams can share a spawn."}</p>`;
+    <h3>Spawn spots around each hill</h3><table><tr><th>Hill</th><th class="num">Spots</th><th class="num">Studs out</th><th class="num">Run in</th></tr>${spawnRows}</table>
+    <p style="font-size:13px">No fixed team spawns. When you respawn (3 s, as today) the game picks one of the current hill’s spots right then:</p>
+    <ul style="font-size:13px"><li><b>Never</b> within 150 studs of a living enemy.</li><li>Otherwise the spot <b>farthest from enemies</b> (counted up to 350 studs) wins,</li><li>with a bonus for being <b>near a teammate</b> (within 300 studs).</li></ul>
+    <p style="font-size:13px">So each team spawns on its own side of the hill, and the sides flip when one team pushes through. When the hill moves, the spots move with it. Call of Duty also checks what enemies can see; ours could add that with a raycast. Its exact weights aren’t public, so these numbers are mine.</p>`;
 }
 
 // ---------- the scripted match ----------
@@ -387,7 +421,7 @@ const RULES = [
   ["Contested","Both teams inside → nobody scores","Same. The pill says CONTESTED and the marker blinks."],
   ["Win","First to 250 (public matches)","Same: 250."],
   ["Match clock","Higher score wins at the end; the clock pauses while the hill is held","Same: 10:00, paused while anyone is on the hill (shown as ❚❚)."],
-  ["Respawn","Not in the guide","3 s as today, on your team’s pad for the current hill (Pick 1)."],
+  ["Respawn","3 s, no wave spawns; spawns react to where enemies are and what they see, and flip when a team pushes past the hill","3 s as today. Spots around the current hill, picked away from enemies and near teammates; the sides flip the same way (Pick 1)."],
   ["After the match","—","Results 15 s, then free-for-all (your rotation pick)."],
 ];
 document.getElementById("rules").innerHTML += RULES.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("");
@@ -399,7 +433,8 @@ function tabs(id, items, cur, onPick) {
     b.innerHTML = `${v.title || k}<small>${v.sub || ""}</small>`; b.onclick = () => { el.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-pressed", x === b)); onPick(k); }; el.appendChild(b); });
 }
 tabs("layoutTabs", LAYOUTS, layout, k => { layout = k; layoutInfo(); reset(); });
-tabs("spawnTabs", {pads:{title:"Hardpoint pads", sub:"2 per hill, 300 studs away", rec:true}, arena:{title:"Today’s Arena spawns", sub:"8 on the coast"}}, spawnMode, k => { spawnMode = k; layoutInfo(); frame(Math.floor(T)); });
+function scenNote() { document.getElementById("scenNote").textContent = SCEN[scen].note + " Dots are living players, filled squares the spot the next Red / Blue player who dies would get."; }
+tabs("scenTabs", SCEN, scen, k => { scen = k; scenNote(); frame(Math.floor(T)); }); scenNote();
 tabs("hudTabs", HUDS, hud, k => { hud = k; placeHud(); });
 tabs("devTabs", {pc:{title:"PC", sub:"1200 × 482 capture"}, phone:{title:"Phone", sub:"touch layout"}}, dev, k => { dev = k; placeHud(); });
 tabs("sizeTabs", Object.fromEntries(Object.entries(SIZES).map(([k, v]) => [k, {title:"Radius " + k, sub:v.sub, rec:v.rec}])), String(radius), k => { radius = +k; drawSize(); frame(Math.floor(T)); });
