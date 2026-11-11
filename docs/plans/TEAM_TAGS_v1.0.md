@@ -29,7 +29,7 @@ TargetHUD's existing on-screen bar for the dino you are hitting turns red with n
 ## Rules (direction B)
 | Dino | Shown | PC | Phone |
 |---|---|---|---|
-| Teammate (same team, alive, not you) | always, through walls and trees, out to TeamTagsFriendMax 400 studs | blue ◆ + name (FredokaOne 14) | blue ◆ only |
+| Teammate (same team, alive, not you) | always, through walls and trees, out to TeamTagsFriendMax 400 studs | blue ◆ + name (FredokaOne 14) | blue ◆ + name (FredokaOne 12) |
 | Enemy, "engaged" | you hit it (TargetHUD's target), or it lost health in the last 4 s while within 60 studs, or it is within 25 studs; and in sight, not cloaked | red bar + red name | red bar only |
 | Enemy, otherwise | within TeamTagsChevronMax 130 studs, in sight, not cloaked | small red ▼ | small red ▼ |
 | Enemy out of sight / cloaked / further | nothing | — | — |
@@ -43,7 +43,7 @@ TargetHUD's existing on-screen bar for the dino you are hitting turns red with n
 | State | Trigger | End state |
 |---|---|---|
 | off | TeamTagsEnabled false, or HpLive not true, or your HardpointTeam not A / B, or you are in the menu | no markers; every hidden TargetBar back to MaxDistance 200 and its own fill colour |
-| friend | other dino's team == yours, alive | ◆ (+ name on PC) |
+| friend | other dino's team == yours, alive | ◆ + name |
 | friend dead / removed | Humanoid health 0 / DummyHealth <= 0 / model gone | marker removed |
 | enemy chevron | enemy, alive, dist <= 130, in sight, not cloaked, not engaged | ▼ |
 | enemy engaged | as above and (TargetHUD target or hurt within 4 s at <= 60 studs or dist <= 25) | bar (+ name on PC); skipped when it is TargetHUD's shown target |
@@ -63,7 +63,7 @@ constants FRIEND_MAX 400, CHEVRON_MAX 130, ENGAGE_NEAR 25, HURT_WINDOW 4, HURT_M
 **Files:** create src/client/TeamTags.client.luau.
 **Layout:** ScreenGui "TeamTags" (ResetOnSpawn false) holding one BillboardGui per dino (Adornee = Head.Root, else Head, else
 HumanoidRootPart; StudsOffsetWorldSpace above the head like TargetBar; AlwaysOnTop true; LightInfluence 0). Sizes in px
-(they don't grow up close): ◆ 10 px, name 14 px (PC); ▼ 12 x 9 px; bar 70 x 7 px (phone 56 x 6).
+(they don't grow up close): ◆ 10 px, name 14 px (PC) / 12 px (phone); ▼ 12 x 9 px; bar 70 x 7 px (phone 56 x 6).
 Who: other players' characters with HardpointTeam, and models in DinoIsland.Bots with HardpointBotTeam.
 Old plates: while on, each such dino's TargetBar gets MaxDistance 0 (stored old value in attribute TeamTagsOldMax) and, on
 enemies, Fill colour red (old colour in TeamTagsOldFill); both put back when off. Players' HardpointHUD name tags are left to
@@ -95,3 +95,8 @@ ArenaPvPTest target dummy. VERSIONS / ATTRIBUTES rows, Dev Hub notes.
 4. **Scope.** Arena players get it too (Task 3 removes the old tags so there are not two). Free-roam Sandbox / BotServer bots
    unchanged. Decision for Kepu: Arena now, or practice only first.
 5. **Phone.** Teammates show the ◆ only (no names), enemies bar only. Decision for Kepu if names are wanted on phones.
+
+## Kepu's answers (2026-11-10)
+- Hit rule: "Hurt nearby counts" — kept as written (hurt in the last 4 s within 60 studs, or within 25 studs).
+- Scope: "Both, Arena too" — Task 3 stays.
+- Phone: "Teammate names on phone" — teammates show ◆ + name (12 px) on phones too; enemies stay bar only on phones.
