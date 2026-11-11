@@ -57,6 +57,18 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 TrooSlowApply for the Feather Shed star
 VERSION = "1.2" -- v1.2 Sap Wall stops the zone's harm through it (heals unchanged)
+-- v1.8: the version is stamped at the end of the file (after the 1.7 BotUse block's stamp)
+-- v1.8 (MDA-439, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 5; Kepu 2026-11-11 "double tap to shoot towards a teammate (for
+--   heals). Single tap for enemy", "No teammate just defaults to hitting an enemy"): the remote also takes ("ally", stamp) from
+--   TrooAttackTest 1.2's second tap. With script attribute TrooDoubleTapEnabled ~= false (default true, read at each message)
+--   it marks the throw still in the hands (accepted within TrooDoubleTap (0.3) + 0.15 s and not yet released) as an ally throw;
+--   no charge, no result stamp. At the release an ally throw aims at the closest living ally (isAlly: squadmates / Hardpoint
+--   teammates, not itself) whose root is within TrooAllyAngle (45) degrees of the flat facing and TrooPodRange x scale studs
+--   (flat); none -> the normal enemy pick. Stamps: character TrooPodAlly (true / false) before TrooPodAt. Diagnostics: script
+--   TrooAllyMarks, TrooAllyThrows, TrooAllyFallbacks (counts).
+for k, v in pairs({TrooDoubleTapEnabled = true, TrooDoubleTap = 0.3, TrooAllyAngle = 45}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 -- v1.2 (MDA-353) Sap Wall: a live Sap Wall on the attacker (or splash centre) -> target line stops the hit (ServerStorage.DinoArcade
 --   SapWallBlock.between). Switch: script attribute TrooAttackServerSapWallEnabled (default true, read at each hit). Diagnostics: script
 --   TrooAttackServerSapWallBlocks (count), TrooAttackServerSapWallBlockedAt (server time).
@@ -535,6 +547,28 @@ local function pickTarget(char, root, fwd)
 	end
 	return best
 end
+-- v1.8: the closest ally in front for a double-tapped throw (see the header)
+local function pickAlly(char, root, fwd)
+	local s = scaleOf(char)
+	local half = math.rad(math.clamp(tonumber(script:GetAttribute("TrooAllyAngle")) or 45, 0, 180))
+	local hi = math.max(0, get(char, "TrooPodRange")) * s
+	local z = {owner = char, player = Players:GetPlayerFromCharacter(char)}
+	local best, bestD = nil, math.huge
+	for _, m in ipairs(everyone(char)) do
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		local live
+		if Players:GetPlayerFromCharacter(m) then live = hum ~= nil and hum.Health > 0
+		else local hp = m:GetAttribute("DummyHealth") live = m:GetAttribute("DummyState") ~= "ko" and (typeof(hp) ~= "number" or hp > 0) end
+		if live and m ~= char and isAlly(z, m) then
+			local v = flat(rootOf(m).Position - root.Position)
+			local d = v.Magnitude
+			if d <= hi and d > 1e-3 and math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1)) <= half and d < bestD then
+				best, bestD = m, d
+			end
+		end
+	end
+	return best
+end
 local function release(player, char, st)
 	local t = now()
 	if not char.Parent or blocked(player, char, t) then
@@ -549,6 +583,14 @@ local function release(player, char, st)
 	local flight = math.clamp(get(char, "TrooPodFlight"), 0.05, 3)
 	local range = math.max(0, get(char, "TrooPodRange")) * s
 	local target = pickTarget(char, root, fwd)
+	local wantAlly = st.allyFor ~= nil and st.allyFor == st.pendingAt -- v1.8
+	st.allyFor, st.releasedAt = nil, now()
+	local allyHit = false
+	if wantAlly then
+		local a = pickAlly(char, root, fwd)
+		if a then target, allyHit = a, true count("TrooAllyThrows") else count("TrooAllyFallbacks") end
+	end
+	char:SetAttribute("TrooPodAlly", allyHit)
 	local aim
 	if target then
 		local tr = rootOf(target)
@@ -965,7 +1007,19 @@ if not remote then
 	remote.Name = "DinoTrooAttack"
 	remote.Parent = ReplicatedStorage
 end
-local function onRemote(player, stamp) -- v1.7: named so BotUse can call it (body unchanged)
+local function onRemote(player, stamp, stamp2) -- v1.7: named so BotUse can call it (body unchanged); v1.8: + stamp2
+	if stamp == "ally" then -- v1.8: the double tap marks the throw in the hands (see the header)
+		if script:GetAttribute("TrooDoubleTapEnabled") == false then return end
+		local c = player.Character
+		local s2 = c and states[c]
+		local t2 = now()
+		if s2 and s2.pendingAt and (s2.releasedAt or -math.huge) < s2.pendingAt
+			and t2 - s2.pendingAt <= (tonumber(script:GetAttribute("TrooDoubleTap")) or 0.3) + 0.15 then
+			s2.allyFor = s2.pendingAt
+			count("TrooAllyMarks")
+		end
+		return
+	end
 	count("TrooAttackRequests")
 	local char = player.Character
 	if not char then return end
@@ -990,6 +1044,7 @@ local function onRemote(player, stamp) -- v1.7: named so BotUse can call it (bod
 	end
 	setResult(char, "ok", t)
 	st.last = t
+	st.pendingAt, st.allyFor = t, nil -- v1.8
 	st.left -= 1
 	local lastRefill = st.refills[#st.refills]
 	table.insert(st.refills, math.max(t, lastRefill or t) + math.max(0.1, get(char, "TrooPodRefill")))
@@ -1040,3 +1095,4 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+script:SetAttribute("TrooAttackServerVersion", "1.8") -- v1.8 double tap = pod to a teammate

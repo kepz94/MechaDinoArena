@@ -24,6 +24,13 @@ local ContextActionService = game:GetService("ContextActionService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 (MDA-375) no local throw while placing a Portal Rift (TrooRiftPlacing; TrooAttackServer 1.6 refuses it too).
 --   Switch: script attribute TrooAttackTestRiftBlockEnabled (default true, read at each press; false = 1.0).
+VERSION = "1.2" -- v1.2 double tap = pod to a teammate
+-- v1.2 (MDA-439, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 5; Kepu 2026-11-11 "double tap to shoot towards a teammate (for
+--   heals). Single tap for enemy"): a press within TrooDoubleTap (0.3) s of the last local throw (once per throw) sends
+--   DinoTrooAttack:FireServer("ally", server time) instead of a throw (TrooAttackServer 1.8 turns the pod still in the hands
+--   toward the closest teammate in front, else the enemy as before); no charge; character TrooLocalAllyAt = that time (TrooFX's
+--   green ring), TrooInputResult "ally". Switch: script attribute TrooDoubleTapEnabled (default true, read at each press;
+--   false = 1.1).
 local ACTION = "DinoTrooAttack"
 local ACTION_CLICK = "DinoTrooAttackClick"
 local DEFAULTS = {TrooAttackEnabled = false, TrooMinGap = 0.35, TrooPodCharges = 2, TrooLeftClickEnabled = true}
@@ -82,6 +89,9 @@ local function blocked()
 	return nil
 end
 
+if script:GetAttribute("TrooDoubleTapEnabled") == nil then script:SetAttribute("TrooDoubleTapEnabled", true) end -- v1.2
+if script:GetAttribute("TrooDoubleTap") == nil then script:SetAttribute("TrooDoubleTap", 0.3) end
+local allyFor = nil -- v1.2: the throw a double tap already marked
 local function onPress(src)
 	if get("TrooAttackEnabled") ~= true then return end
 	show("TrooLastInput", src)
@@ -91,6 +101,14 @@ local function onPress(src)
 		return
 	end
 	local t = now()
+	if script:GetAttribute("TrooDoubleTapEnabled") ~= false and allyFor ~= lastThrow
+		and t - lastThrow <= (tonumber(script:GetAttribute("TrooDoubleTap")) or 0.3) then -- v1.2: the second tap
+		allyFor = lastThrow
+		fire("ally", t)
+		char:SetAttribute("TrooLocalAllyAt", t)
+		show("TrooInputResult", "ally")
+		return
+	end
 	if t - lastThrow < (tonumber(get("TrooMinGap")) or 0.35) then
 		show("TrooInputResult", "cooldown")
 		return

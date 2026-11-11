@@ -37,6 +37,12 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 green lock ring on a double-tapped teammate
+-- v1.2 (MDA-439, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 5): while your own throw is in the hands and its double tap came
+--   (TrooLocalAllyAt >= TrooLocalAt, TrooAttackTest 1.2), the lock ring goes to the closest living squadmate / Hardpoint teammate
+--   (SquadRules.sameChar) within TrooAllyAngle (45, this script's attribute) degrees and TrooPodRange x scale studs, in green
+--   (7BE37B); none -> the 1.1 enemy ring. Switch: script attribute TrooFXAllyRingEnabled (default true). Diagnostic:
+--   TrooFXRingAlly (true / false).
 local SCAN, MAX_PARTS, EMBER_RATE, SPORE_RATE = 0.1, 360, 40, 26
 local ARENA_PLACE_ID = 75433819286625 -- ModeRules 1.0
 local POD, POD_GLOW, AMBER, AMBER_L = Color3.fromHex("FFC35A"), Color3.fromHex("FFD27A"), Color3.fromHex("FFB43A"), Color3.fromHex("FFE7A8")
@@ -481,6 +487,37 @@ local function pickTarget(char)
 	end
 	return best
 end
+-- v1.2: the closest teammate in front (see the header)
+if script:GetAttribute("TrooFXAllyRingEnabled") == nil then script:SetAttribute("TrooFXAllyRingEnabled", true) end
+if script:GetAttribute("TrooAllyAngle") == nil then script:SetAttribute("TrooAllyAngle", 45) end
+local ALLY_RING = Color3.fromHex("7BE37B")
+local function pickAlly(char)
+	local hrp = rootOf(char)
+	if not hrp then return nil end
+	local fwd = flat(hrp.CFrame.LookVector)
+	fwd = fwd.Magnitude > 1e-3 and fwd.Unit or -Vector3.zAxis
+	local s = char:GetScale()
+	local half = math.rad(math.clamp(tonumber(script:GetAttribute("TrooAllyAngle")) or 45, 0, 180))
+	local hi = math.max(0, num(char, "TrooPodRange") or 22.5) * s
+	local list = {}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(list, pl.Character) end end
+	for _, b in ipairs(bots()) do table.insert(list, b) end
+	local best, bestD = nil, math.huge
+	for _, m in ipairs(list) do
+		local r = m ~= char and rootOf(m)
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		local hp = m:GetAttribute("DummyHealth")
+		local live = (not hum or hum.Health > 0) and m:GetAttribute("DummyState") ~= "ko" and (typeof(hp) ~= "number" or hp > 0)
+		if r and live and squadmate(char, m) then
+			local v = flat(r.Position - hrp.Position)
+			local d = v.Magnitude
+			if d <= hi and d > 1e-3 and math.acos(math.clamp(fwd:Dot(v.Unit), -1, 1)) <= half and d < bestD then
+				best, bestD = m, d
+			end
+		end
+	end
+	return best
+end
 local ring, ringStroke, ringGui
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -491,6 +528,16 @@ RunService.RenderStepped:Connect(function()
 		and (num(char, "TrooPodAt") or 0) < (num(char, "TrooLocalAt") or 0) then
 		want = pickTarget(char)
 	end
+	local allyShown = false -- v1.2
+	if want ~= nil or (char and char:GetAttribute("TrooLocalState") == "throw") then
+		if char and script:GetAttribute("TrooFXAllyRingEnabled") ~= false and on("TrooFXRingEnabled")
+			and char:GetAttribute("TrooLocalState") == "throw" and (num(char, "TrooPodAt") or 0) < (num(char, "TrooLocalAt") or 0)
+			and (num(char, "TrooLocalAllyAt") or -math.huge) >= (num(char, "TrooLocalAt") or 0) then
+			local a = pickAlly(char)
+			if a then want, allyShown = a, true end
+		end
+	end
+	if script:GetAttribute("TrooFXRingAlly") ~= allyShown then script:SetAttribute("TrooFXRingAlly", allyShown) end
 	script:SetAttribute("TrooFXRingTarget", want and want.Name or "")
 	if not want then
 		if ring then ring.Parent = nil end
@@ -510,4 +557,5 @@ RunService.RenderStepped:Connect(function()
 	ring.Size = Vector3.new(d, 0.1, d)
 	ring.CFrame = CFrame.new(r.Position.X, y + 0.15, r.Position.Z)
 	ringStroke.Thickness = math.max(4, 0.8 * k * ringGui.PixelsPerStud)
+	ringStroke.Color = allyShown and ALLY_RING or RING -- v1.2
 end)
