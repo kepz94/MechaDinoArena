@@ -46,9 +46,20 @@
 --   * the lift takes LIFT_TIME x (height / DEFAULT_MAX), between LIFT_TIME and LIFT_TIME_MAX (0.5 s), so a 7-stud step is a
 --     short climb, not a snap.
 --   Diagnostic: StepAssistLastMountain (true when the last lift used the mountain rule). Off -> exactly 1.0.
+-- v1.2 (MDA-398, Kepu 2026-11-10 after the climb test "Make the bigger Dino's take bigger steps"): the mountain max scales
+--   with the dino's height: StepAssistMountainMax x (height / StepAssistMountainRefHeight), never below StepAssistMountainMax
+--   and at most StepAssistMountainScaleCap (DinoIsland attributes, defaults REF_HEIGHT 11.3 = the raptor, measured in Play,
+--   and SCALE_CAP 45 = the tallest face the trail tool shelves). Height = the model's extents Y, measured once per dino.
+--   Measured heights (Play 2026-11-10) -> max: Raptor 11.3 -> 17.5, Troodon 10.8 -> 17.5, Herrera 11.2 -> 17.5, Dilo 16.1 ->
+--   24.9, Pachy 17.5 -> 27.1, Teno 17.8 -> 27.6, T-Rex 24.8 -> 38.4, Therizino 26.9 -> 41.7. The trail mantle's look-ahead
+--   uses the same per-dino max, so a big dino steps straight past the thin trail blocks onto the rock behind them. Switch:
+--   DinoIsland attribute StepAssistMountainScaleEnabled (default true; false = 1.1). Diagnostic: model attribute
+--   StepAssistMountainMaxUsed.
 local StepAssistCore = {}
 
-StepAssistCore.Version = "1.1"
+StepAssistCore.Version = "1.2"
+StepAssistCore.REF_HEIGHT = 11.3 -- v1.2
+StepAssistCore.SCALE_CAP = 45 -- v1.2
 StepAssistCore.DEFAULT_MAX = 2.6
 StepAssistCore.MOUNTAIN_MAX = 17.5 -- v1.1
 local MOUNTAIN_REACH_MAX = 34 -- v1.1
@@ -92,6 +103,21 @@ local function reachOf(st)
 	if ok and typeof(size) == "Vector3" then r = math.clamp(math.max(size.X, size.Z) / 2 + 2, PROBE_REACH, MOUNTAIN_REACH_MAX) end
 	st.reach = r
 	return r
+end
+
+-- v1.2: this dino's mountain max (its height against the raptor's), measured once per dino
+local function mountainMaxOf(st, mmax)
+	local island = workspace:FindFirstChild("DinoIsland")
+	if not island or island:GetAttribute("StepAssistMountainScaleEnabled") == false then return mmax end
+	if not st.height then
+		local ok, size = pcall(function() return st.model:GetExtentsSize() end)
+		st.height = (ok and typeof(size) == "Vector3") and size.Y or 0
+	end
+	local ref = island:GetAttribute("StepAssistMountainRefHeight")
+	if type(ref) ~= "number" or ref <= 0 then ref = StepAssistCore.REF_HEIGHT end
+	local cap = island:GetAttribute("StepAssistMountainScaleCap")
+	if type(cap) ~= "number" then cap = StepAssistCore.SCALE_CAP end
+	return math.max(mmax, math.min(cap, mmax * st.height / ref))
 end
 
 local function show(st, k, v)
@@ -236,6 +262,10 @@ function StepAssistCore.step(st, dt, now)
 		return
 	end
 	local dir = want.Unit
+	if steps then -- v1.2: this dino's own mountain max
+		mmax = mountainMaxOf(st, mmax)
+		show(st, "StepAssistMountainMaxUsed", math.floor(mmax * 10 + 0.5) / 10)
+	end
 	local h, why, viaMountain = findLedge(hrp, dir, max, paramsFor(ground, steps), steps, mmax, steps and reachOf(st) or nil) -- why = probe distance when h is found
 	if not h then
 		if why == "wall" then
