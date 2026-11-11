@@ -102,6 +102,19 @@
 --     venom API, Toxic Blood, Venom Feast, Cold Blood, Long Spit and the Deflector / Sap Wall rules are unchanged.
 --   Off (switch false or no DiloSpitOnly) = 1.6. Diagnostics: script DiloSpitOnlyDarts, DiloSpitOnlyBiteRefusals (counts);
 --   character DiloSpitVenomDps / DiloSpitVenomTime (the last spit dart's venom, before the venom rule).
+-- v1.10 (spit ammo, MDA-436, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 2; Kepu 2026-11-11 "he's given 5 slots then reloads all 5
+--   but it takes 3 seconds to reload", picks "Only when empty", Overdrive "Free shots while it runs", Cold Blood "Refills all 5"):
+--   while script attribute DiloSpitAmmoEnabled ~= false (default true, read per request) and the character is spit-only with
+--   DiloSpitMag > 0 (DiloModelData 1.14: 5; DiloSpitReload 3):
+--   * ammo is per character (a new character starts full), published as character DiloSpitLeft (0..mag) and DiloSpitReloadAt
+--     (server time the reload ends; 0 when not reloading).
+--   * a "dart" request with 0 left -> "reloading" (after the 1.7 gap check); Venom Overdrive running -> no check.
+--   * an accepted spit uses one (none while Overdrive runs); reaching 0 starts the reload: DiloSpitReloadAt = now + DiloSpitReload.
+--     At that time: mag again, DiloSpitReloadAt 0 (checked every 0.1 s). The reload starts only at 0.
+--   * refill to mag (and the reload ends): when the character's DiloDartResetAt changes (the Cold Blood star; Overdrive darts
+--     stamp it too) and when DiloOverdriveUntil moves into the future (Overdrive starts).
+--   Diagnostics: script DiloSpitAmmoUsed, DiloSpitReloads, DiloSpitRefills, DiloSpitReloadRefusals (counts); character
+--   DiloSpitRefillWhy ("reset" / "overdrive").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -557,6 +570,60 @@ local function fireDart(player, char, t)
 	end)
 end
 
+-- v1.10: spit ammo (see the header)
+if script:GetAttribute("DiloSpitAmmoEnabled") == nil then script:SetAttribute("DiloSpitAmmoEnabled", true) end
+local AMMO = setmetatable({}, {__mode = "k"}) -- [char] = {left, reloadAt}
+local function ammoOn(char)
+	return script:GetAttribute("DiloSpitAmmoEnabled") ~= false and spitOnly(char) and num(char, "DiloSpitMag", 0) >= 1
+end
+local function ammoMag(char) return math.max(1, math.floor(num(char, "DiloSpitMag", 5))) end
+local function ammoPublish(char, a)
+	if char:GetAttribute("DiloSpitLeft") ~= a.left then char:SetAttribute("DiloSpitLeft", a.left) end
+	if char:GetAttribute("DiloSpitReloadAt") ~= a.reloadAt then char:SetAttribute("DiloSpitReloadAt", a.reloadAt) end
+end
+local function ammoOf(char)
+	local a = AMMO[char]
+	if a then return a end
+	a = {left = ammoMag(char), reloadAt = 0}
+	AMMO[char] = a
+	local function refill(why)
+		if not ammoOn(char) then return end
+		a.left, a.reloadAt = ammoMag(char), 0
+		ammoPublish(char, a)
+		char:SetAttribute("DiloSpitRefillWhy", why)
+		count("DiloSpitRefills")
+	end
+	char:GetAttributeChangedSignal("DiloDartResetAt"):Connect(function() refill("reset") end)
+	char:GetAttributeChangedSignal("DiloOverdriveUntil"):Connect(function()
+		if num(char, "DiloOverdriveUntil", 0) > now() then refill("overdrive") end
+	end)
+	ammoPublish(char, a)
+	return a
+end
+task.spawn(function()
+	while true do
+		task.wait(0.1)
+		local t = now()
+		for char, a in pairs(AMMO) do
+			if a.reloadAt > 0 and t >= a.reloadAt and char.Parent then
+				a.left, a.reloadAt = ammoMag(char), 0
+				ammoPublish(char, a)
+			end
+		end
+	end
+end)
+-- spit-only dilos start full on screen too (a new character)
+local function ammoWatch(char)
+	task.defer(function()
+		if char.Parent and ammoOn(char) then ammoOf(char) end
+	end)
+end
+Players.PlayerAdded:Connect(function(pl) pl.CharacterAdded:Connect(ammoWatch) end)
+for _, pl in ipairs(Players:GetPlayers()) do
+	pl.CharacterAdded:Connect(ammoWatch)
+	if pl.Character then ammoWatch(pl.Character) end
+end
+
 -- remote --------------------------------------------------------------------------------------------------------------------
 local remote = ReplicatedStorage:FindFirstChild("DinoDiloAttack")
 if not remote then
@@ -598,6 +665,10 @@ local function onRemote(player, kind, stamp) -- v1.9: named so BotUse can call i
 	end
 	if so and kind == "dart" and t - st.lastDart < math.max(0, num(char, "DiloSpitGap", 0.35) - math.max(0, num(script, "DiloSpitGapGrace", 0.05)))
 		and not overdriveOn(char, t) then r = "dartCooldown" end
+	if not r and so and kind == "dart" and ammoOn(char) and not overdriveOn(char, t) and ammoOf(char).left <= 0 then -- v1.10
+		r = "reloading"
+		count("DiloSpitReloadRefusals")
+	end
 	if not r and not so and kind == "bite" and t - st.lastBite < math.max(0, get(char, "DiloMinGap")) then r = "cooldown" end
 	if not r and not so and kind == "dart" and t - st.lastDart < math.max(0, get(char, "DiloDartCooldown")) and not overdriveOn(char, t) then r = "dartCooldown" end -- v1.5: + Overdrive
 	if r then
@@ -616,6 +687,16 @@ local function onRemote(player, kind, stamp) -- v1.9: named so BotUse can call i
 		if so then count("DiloSpitOnlyDarts") end -- v1.7
 		if animStamps() then char:SetAttribute("DiloCoilEndAt", t) end -- v1.4
 		fireDart(player, char, t)
+		if so and ammoOn(char) and not overdriveOn(char, t) then -- v1.10: one shot used; 0 starts the reload
+			local a = ammoOf(char)
+			a.left = math.max(0, a.left - 1)
+			count("DiloSpitAmmoUsed")
+			if a.left <= 0 and a.reloadAt <= 0 then
+				a.reloadAt = t + math.max(0, num(char, "DiloSpitReload", 3))
+				count("DiloSpitReloads")
+			end
+			ammoPublish(char, a)
+		end
 		if overdriveOn(char, t) then -- v1.5: the client's recharge clears too
 			char:SetAttribute("DiloDartResetAt", t)
 			count("DiloOverdriveDarts")
@@ -729,3 +810,4 @@ do
 	end
 	fn.Parent = script
 end
+script:SetAttribute("DiloAttackServerVersion", "1.10") -- v1.10 spit ammo (after the 1.9 BotUse block's stamp)
