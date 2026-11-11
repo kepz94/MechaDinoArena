@@ -1,0 +1,595 @@
+<title>Practice Match Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a briefing page in the game's own HUD look — one live game-screen mock per direction, then the bot brain as a
+   running top-down sim. Single dark look on purpose (it is the game's screen). Colours are the HUD's from the code. */
+:root {
+  --ink:#0e1218; --panel:#161c25; --panel2:#1d2531; --line:#2b3542; --text:#e8edf4; --muted:#9aa6b6;
+  --accent:#ff8a2a; --yellow:#ffc832; --red:#e0284a; --blue:#5aa0ff; --green:#78c850; --hud:rgba(20,20,26,.82);
+  --display:"Fredoka","FredokaOne","Trebuchet MS",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+* { box-sizing:border-box; }
+body { background:var(--ink); color:var(--text); font-family:var(--body); font-size:15px; line-height:1.5;
+  padding-block:20px 56px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width:1180px; margin:0 auto; display:grid; gap:18px; }
+h1 { font-family:var(--display); font-size:clamp(26px,4vw,38px); margin:0; line-height:1.1; text-wrap:balance; }
+h1 span { color:var(--yellow); }
+h2 { font-family:var(--display); font-size:22px; margin:0 0 8px; text-wrap:balance; }
+h3 { font-family:var(--display); font-size:17px; margin:0 0 6px; }
+p { margin:0; max-width:72ch; }
+.muted { color:var(--muted); }
+.eyebrow { font-family:var(--display); letter-spacing:.08em; text-transform:uppercase; font-size:12px; color:var(--accent); }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0; }
+.grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
+.grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+ul { margin:6px 0 0; padding-left:18px; } li { margin:3px 0; }
+a { color:var(--blue); }
+code, .mono { font-family:var(--mono); font-size:12.5px; }
+.ask { border:1px solid var(--yellow); background:rgba(255,200,50,.06); }
+.tag { display:inline-block; font-family:var(--display); font-size:11px; letter-spacing:.06em; padding:1px 7px; border-radius:5px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); }
+.tag.rec { color:#1a1300; background:var(--yellow); border-color:var(--yellow); }
+
+/* switchers */
+.bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.seg { display:flex; flex-wrap:wrap; gap:6px; }
+.seg button, .btn { font-family:var(--display); font-size:14px; color:var(--text); background:var(--panel2); border:1px solid var(--line);
+  border-radius:8px; padding:7px 12px; cursor:pointer; }
+.seg button[aria-pressed="true"] { background:var(--yellow); color:#1a1300; border-color:var(--yellow); }
+.seg button:focus-visible, .btn:focus-visible, .slot:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.variant-note { display:grid; gap:6px; }
+
+/* game screen mock */
+.screen-wrap { overflow-x:auto; }
+.screen { position:relative; width:100%; max-width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; border:1px solid var(--line);
+  background:linear-gradient(#7fc4ff 0%, #b9e2ff 38%, #8fd06a 38.2%, #5fae45 100%); font-family:var(--display); color:#fff; }
+.screen.phone { aspect-ratio:19.5/9; max-width:880px; margin:0 auto; }
+.screen .hills { position:absolute; left:0; right:0; top:22%; height:18%; background:
+  radial-gradient(60% 100% at 25% 100%, #8b98a8 0 60%, transparent 61%), radial-gradient(45% 90% at 70% 100%, #9aa6b4 0 58%, transparent 59%); }
+.screen .ring { position:absolute; left:50%; top:62%; width:46%; height:22%; transform:translate(-50%,-50%); border-radius:50%;
+  border:3px solid rgba(255,255,255,.85); box-shadow:0 0 18px rgba(255,255,255,.6); }
+.screen .pyl { position:absolute; width:1.4%; height:9%; background:#3a4250; border-top:6px solid #fff; border-radius:2px; }
+.hud { position:absolute; inset:0; font-size:clamp(8px,1.25vw,13px); }
+.hud .card2 { position:absolute; left:1.6%; top:9%; width:26%; height:10.5%; background:var(--hud); border:1.5px solid rgba(255,255,255,.5);
+  border-radius:8px; display:flex; align-items:center; gap:4%; padding:0 3%; }
+.hud .emb { width:13%; aspect-ratio:1; border-radius:5px; background:linear-gradient(45deg,#6eafff,#2a5fae); border:1px solid rgba(255,255,255,.7); }
+.hud .rows { flex:1; display:grid; gap:12%; }
+.hud .row { display:flex; align-items:center; gap:6%; }
+.hud .bar2 { flex:1; height:.55em; border-radius:4px; background:rgba(255,255,255,.14); overflow:hidden; }
+.hud .bar2 i { display:block; height:100%; }
+.hud .num { width:2.4em; text-align:right; font-variant-numeric:tabular-nums; }
+.hud .clock { border-left:1px solid rgba(255,255,255,.25); padding-left:6%; text-align:center; line-height:1.3; }
+.hud .clock b { display:block; } .hud .clock span { color:var(--yellow); font-size:.85em; }
+.hud .pill { position:absolute; left:1.6%; background:rgba(20,20,26,.6); border-radius:5px; padding:.25em .7em; white-space:nowrap; }
+.hud .tr { position:absolute; right:1.4%; top:2.5%; display:flex; gap:.5em; }
+.hud .tr .b { background:rgba(20,20,26,.85); border:1.5px solid rgba(255,255,255,.5); border-radius:8px; padding:.35em .9em; }
+.hud .tr .b.menu { background:var(--yellow); color:#1a1300; border-color:#1a1300; }
+.hud .squad { position:absolute; right:9.5%; top:11%; background:rgba(20,20,26,.85); border-radius:7px; padding:.25em .8em; color:#cfd6e0; }
+.hud .mini { position:absolute; right:1.6%; top:10.5%; width:5.5%; aspect-ratio:1; border-radius:50%; background:rgba(20,20,26,.85); border:2px solid #fff; }
+.hud .marker { position:absolute; left:50%; top:30%; transform:translateX(-50%); text-align:center; text-shadow:0 1px 2px #000; }
+.hud .marker .dia { width:1.9em; height:1.9em; margin:.2em auto; transform:rotate(45deg); border:3px solid #fff; background:rgba(20,20,26,.5); border-radius:3px; display:grid; place-items:center; }
+.hud .marker .dia b { transform:rotate(-45deg); }
+.hud .abil { position:absolute; left:0; bottom:2%; display:flex; gap:.5%; width:66%; padding-left:1%; }
+.hud .abil div { flex:1; height:3.6em; background:rgba(20,20,26,.85); border:2px solid var(--accent); border-radius:8px; font-size:.75em; padding:.3em; line-height:1.2; }
+.hud .atk { position:absolute; right:1.5%; bottom:2%; display:flex; gap:.6em; }
+.hud .atk div { width:4.4em; height:3.6em; background:rgba(20,20,26,.85); border:2px solid #ccc; border-radius:9px; display:grid; place-items:center; font-size:.85em; }
+.hud .touch { position:absolute; right:3%; bottom:6%; width:22%; aspect-ratio:1; }
+.hud .touch div { position:absolute; border-radius:50%; background:rgba(20,20,26,.7); border:2px solid rgba(255,255,255,.8); display:grid; place-items:center; font-size:.8em; }
+.hud .stick { position:absolute; left:4%; bottom:8%; width:15%; aspect-ratio:1; border-radius:50%; border:2px solid rgba(255,255,255,.5); background:rgba(255,255,255,.08); }
+.hud .health { position:absolute; left:1%; bottom:.6%; width:40%; height:1.1%; background:rgba(255,255,255,.2); border-radius:3px; }
+.hud .health i { display:block; height:100%; width:80%; background:var(--green); border-radius:3px; }
+.dino { position:absolute; width:9%; height:11%; }
+.dino i { position:absolute; inset:0; border-radius:40% 60% 30% 30%; }
+.dino span { position:absolute; left:50%; top:-1.5em; transform:translateX(-50%); white-space:nowrap; font-size:.8em; text-shadow:0 1px 2px #000; }
+
+/* kill feed */
+.feed { position:absolute; display:grid; gap:.3em; width:max-content; max-width:46%; }
+.kf { display:flex; align-items:center; gap:.45em; background:rgba(20,20,26,.72); border-radius:5px; padding:.2em .6em; white-space:nowrap; animation:kfin .35s ease-out; }
+.kf.me { outline:1.5px solid var(--yellow); background:rgba(40,34,10,.85); }
+.kf .ab { font-size:.78em; color:#1a1300; background:#e9eef5; border-radius:4px; padding:0 .4em; }
+.kf .ab.hs { background:var(--yellow); }
+.kf .bt { font-size:.7em; color:#c9d0db; border:1px solid #6b7686; border-radius:3px; padding:0 .25em; }
+.blue { color:#8cc0ff; } .red { color:#ff8fa3; }
+@keyframes kfin { from { opacity:.2; transform:translateX(-8px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .kf { animation:none; } }
+
+/* overlays (team pick, end) */
+.ov { position:absolute; inset:0; background:rgba(10,12,18,.84); display:grid; padding:4% 4% 3%; gap:3%; grid-template-rows:auto 1fr auto; }
+.ov h4 { margin:0; font-size:1.7em; text-align:center; }
+.ov h4 small { display:block; font-size:.5em; color:var(--muted); letter-spacing:.08em; }
+.teams { display:grid; grid-template-columns:1fr auto 1fr; gap:2%; min-height:0; }
+.col { display:grid; gap:.4em; align-content:start; }
+.col .hd { text-align:center; font-size:1.2em; padding:.2em; border-radius:6px; }
+.col.b .hd { background:rgba(90,160,255,.25); color:#bcd8ff; } .col.r .hd { background:rgba(224,40,74,.25); color:#ffc2cc; }
+.slot { display:grid; grid-template-columns:auto 1fr; gap:.1em .6em; align-items:center; text-align:left; font-family:var(--display); color:#fff;
+  background:rgba(20,20,26,.9); border:1.5px solid rgba(255,255,255,.18); border-radius:7px; padding:.3em .6em; font-size:.92em; cursor:default; }
+.slot .sp { grid-row:span 2; width:2.2em; height:2.2em; border-radius:6px; display:grid; place-items:center; font-size:.7em; background:#2b3542; }
+.slot .ld { font-size:.72em; color:#aab4c2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.slot.you { border-color:var(--yellow); }
+.slot.open { color:#7f8a99; border-style:dashed; }
+.slot.click { cursor:pointer; }
+.vs { align-self:center; font-size:1.4em; color:var(--muted); }
+.ovbar { display:flex; flex-wrap:wrap; gap:.6em; justify-content:center; align-items:center; }
+.ovbar .b { font-family:var(--display); font-size:1em; border-radius:8px; padding:.4em 1em; border:2px solid #1a1300; cursor:pointer; color:#fff; background:#2b3542; }
+.ovbar .b.y { background:var(--yellow); color:#1a1300; } .ovbar .b.bl { background:#2f6fd0; } .ovbar .b.rd { background:#b81d3c; }
+.ovbar .b.on { outline:2px solid #fff; }
+.ovbar .lbl { color:var(--muted); font-size:.9em; }
+.board { width:100%; border-collapse:collapse; font-size:.9em; font-variant-numeric:tabular-nums; }
+.board th { color:var(--muted); font-weight:500; text-align:left; padding:.15em .4em; }
+.board td { padding:.2em .4em; border-top:1px solid rgba(255,255,255,.08); }
+.board tr.me td { color:var(--yellow); }
+.board td.n { text-align:right; }
+.menu-mock { position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,12,18,.95), rgba(10,12,18,.8)); display:grid; grid-template-columns:1.15fr 1fr; gap:4%; padding:6% 4%; }
+.menu-mock .stage { background:rgba(20,20,26,.9); border:1px solid rgba(255,255,255,.12); border-radius:12px; display:grid; place-items:center; color:var(--muted); }
+.menu-mock .right { display:grid; align-content:center; gap:4%; }
+.menu-mock .t { text-align:center; line-height:1; } .menu-mock .t small { color:var(--yellow); font-size:.9em; display:block; } .menu-mock .t b { font-size:2.6em; }
+.bigbtn { border-radius:12px; padding:5% 6%; border:3px solid #1a1300; color:#1a1300; }
+.bigbtn b { font-size:1.6em; display:block; } .bigbtn.y { background:var(--yellow); } .bigbtn.o { background:var(--accent); }
+.chips { display:flex; gap:.4em; margin-top:.4em; flex-wrap:wrap; }
+.chips span { background:rgba(20,20,26,.85); color:#fff; border-radius:6px; padding:.1em .6em; font-size:.8em; cursor:pointer; border:1.5px solid transparent; }
+.chips span.on { border-color:#fff; }
+
+/* sim */
+.simgrid { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:14px; }
+@media (max-width:760px) { .simgrid { grid-template-columns:1fr; } .teams { grid-template-columns:1fr; } .vs { display:none; } }
+canvas { width:100%; height:auto; max-width:100%; aspect-ratio:1.55; border-radius:10px; background:#0b2a3a; display:block; }
+.legend { display:flex; flex-wrap:wrap; gap:10px; font-size:13px; color:var(--muted); }
+.legend i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:middle; }
+.simfeed { display:grid; gap:4px; font-family:var(--display); font-size:13px; align-content:start; min-height:160px; }
+.simfeed .kf { font-size:13px; }
+.score { font-family:var(--display); font-size:20px; font-variant-numeric:tabular-nums; }
+table.t { width:100%; border-collapse:collapse; font-size:14px; }
+table.t th, table.t td { text-align:left; padding:6px 8px; border-top:1px solid var(--line); vertical-align:top; }
+table.t th { color:var(--muted); font-weight:500; }
+.scroll { overflow-x:auto; }
+</style>
+
+<div class="wrap">
+  <header class="card" style="display:grid; gap:10px">
+    <div class="eyebrow">Mecha Dino Arena · plan v0.1 · options for Kepu</div>
+    <h1>Sandbox <span>practice match</span>: Hardpoint vs bots</h1>
+    <p>What you asked for, in one line: the Sandbox opens a Hardpoint match by default (for now). Bots fill both teams with
+      random dinos and random loadouts, use their abilities, play the point and fight each other. A kill feed shows every
+      kill, and you pick your team. Below: what other games do, three directions to pick from, and how the bots think.</p>
+    <p class="muted">Nothing here is built yet. Pick a direction (A, B or C) and answer the two questions at the bottom.</p>
+  </header>
+
+  <section class="card">
+    <h2>What other games do</h2>
+    <div class="grid2">
+      <div>
+        <h3>Practice vs AI</h3>
+        <ul>
+          <li><b>Call of Duty: Mobile:</b> you pick a mode, and bots fill a 5v5 match. XP is cut 90%, so it's for practice. Players complain that the bots move in a scripted, repetitive way and stand in the open.</li>
+          <li><b>Overwatch:</b> 5v5. The bot team always has a sensible mix (1 tank, 2 damage, 2 support). Three difficulties change damage, accuracy, how often bots use abilities and how they move. Bots group up behind the tank on the way to the objective, retreat when outnumbered, go after healers first and swap heroes after dying a lot.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Making bots feel like players</h3>
+        <ul>
+          <li><b>Only do what a player could do:</b> no instant reactions, no perfect aim, and no knowing where someone is behind a wall (Unvanquished's bot rules).</li>
+          <li><b>Skill levels stack:</b> an easy bot knows a few tricks, and a hard bot knows all of them.</li>
+          <li><b>Random personalities</b> (pushy, careful, sneaky) make them less predictable.</li>
+          <li><b>Kill feed:</b> killer, then how they killed, then the victim. Lines with you in them are highlighted and stay longer (Team Fortress 2). Call of Duty lets you turn it off or set how long it stays.</li>
+          <li><b>Teams:</b> games auto-balance by moving someone from the bigger team, but not in the last minute (Team Fortress 2).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" style="display:grid; gap:12px">
+    <h2>Pick a direction</h2>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Direction">
+        <button id="vA" aria-pressed="true">A · Practice lobby</button>
+        <button id="vB" aria-pressed="false">B · Drop straight in</button>
+        <button id="vC" aria-pressed="false">C · Match builder</button>
+      </div>
+      <div class="seg" role="group" aria-label="Screen">
+        <button id="sPick" aria-pressed="true">Team pick</button>
+        <button id="sPlay" aria-pressed="false">In the match</button>
+        <button id="sEnd" aria-pressed="false">Match end</button>
+      </div>
+      <div class="seg" role="group" aria-label="Device">
+        <button id="dPC" aria-pressed="true">PC</button>
+        <button id="dPh" aria-pressed="false">Phone</button>
+      </div>
+    </div>
+    <div class="variant-note" id="note"></div>
+    <div class="screen-wrap"><div class="screen" id="screen"></div></div>
+    <p class="muted" id="hint" style="font-size:13px"></p>
+  </section>
+
+  <section class="card" style="display:grid; gap:12px">
+    <h2>How the bots play (same in A, B and C)</h2>
+    <p>A live top-down sketch of the 5 Summit-layout points, with bots that have roles. The point moves every 12 s here (60 s in the
+      game). Watch the bots: they go to the point, defend it, flank, retreat when hurt, rotate early to the next point and fight
+      each other. The kill feed on the right is the one from the match.</p>
+    <div class="simgrid">
+      <div style="display:grid; gap:8px">
+        <canvas id="sim" width="780" height="504" aria-label="Top-down sketch of bots playing Hardpoint"></canvas>
+        <div class="legend">
+          <span><i style="background:var(--blue)"></i>your team (you have the white ring)</span>
+          <span><i style="background:var(--red)"></i>enemy team</span>
+          <span>▲ capture · ■ defend · ◆ hunt · ↻ rotate early</span>
+        </div>
+      </div>
+      <div class="card" style="background:var(--panel2); display:grid; gap:10px; align-content:start">
+        <div class="score"><span class="blue" id="sa">0</span> – <span class="red" id="sb">0</span> <span class="muted" style="font-size:14px" id="sp">P1</span></div>
+        <div class="seg" role="group" aria-label="Difficulty">
+          <button id="dE" aria-pressed="false">Easy</button>
+          <button id="dN" aria-pressed="true">Normal</button>
+          <button id="dH" aria-pressed="false">Hard</button>
+        </div>
+        <div class="simfeed" id="simfeed"></div>
+      </div>
+    </div>
+    <div class="scroll">
+      <table class="t">
+        <tr><th>The bot does</th><th>When</th><th>Why (from the research)</th></tr>
+        <tr><td><b>Role per point:</b> in each team of 5, 2 capture, 1 defends next to the point, 1 hunts (flanks the enemy's side) and 1 escorts the strongest bot</td><td>New roles every time the point moves</td><td>Overwatch bots walk to the objective together. A role mix keeps them from all running in a straight line.</td></tr>
+        <tr><td><b>Rotate early:</b> 1 bot leaves for the next point when it shows (last 10 s)</td><td>The next point is shown</td><td>What good Hardpoint players do</td></tr>
+        <tr><td><b>Sees like a player:</b> view cone 120°, range 70 / 90 / 110 studs; nothing through rock; hidden or cloaked dinos only up close</td><td>Always</td><td>No wall knowledge (Unvanquished)</td></tr>
+        <tr><td><b>Reaction delay:</b> 0.8 / 0.5 / 0.3 s before the first attack on a new target</td><td>A new enemy comes into view</td><td>No instant reactions</td></tr>
+        <tr><td><b>Picks a target:</b> the enemy on the point first, then the weakest in range, then the closest</td><td>In a fight</td><td>Overwatch bots focus the easiest kill</td></tr>
+        <tr><td><b>Retreat:</b> backs off toward teammates</td><td>Below 30% health and outnumbered</td><td>Overwatch bots retreat when outnumbered</td></tr>
+        <tr><td><b>Personality</b> (random per bot): pushy (hunts more, retreats later), careful (defends, heals early), sneaky (flanks, uses cloak and stealth parts)</td><td>Rolled when the bot spawns</td><td>Random personalities feel less scripted</td></tr>
+        <tr><td><b>Fights bots too:</b> blue bots and red bots fight each other with the same no-team-damage rule as players</td><td>Always</td><td>Your ask: "interacting with each other"</td></tr>
+      </table>
+    </div>
+    <h3 style="margin-top:6px">Abilities: every part gets a "when to use it" tag</h3>
+    <div class="scroll">
+      <table class="t">
+        <tr><th>Tag</th><th>The bot uses it when</th><th>Examples (Raptor / Dilo / Troodon / Teno)</th></tr>
+        <tr><td>Ranged hit</td><td>An enemy is 20–90 studs away in view, preferring one on the point</td><td>Shock Cannon · Venom Gatling, Toxin Mortar · Sleep Dart · Boulder Mortar</td></tr>
+        <tr><td>Gap closer</td><td>The target is 12–40 studs away, or the bot is late to the point</td><td>Thrusters, the pounce · Spring Jets · Portal Feathers · Hydraulic Leap</td></tr>
+        <tr><td>Close burst</td><td>An enemy is in bite range, or 2+ enemies are within 15 studs</td><td>the basic attack · Sonic Hiss, Spine Burst · Arc Lantern · Stomp Shockwave, Tail Grab</td></tr>
+        <tr><td>Save yourself</td><td>Health is below 45%, or the bot lost 25% in 2 s</td><td>Energy Shield, Adrenaline · Antivenom Pump · Shield Dome, Mender Drone · Shield Armor</td></tr>
+        <tr><td>Hold the point</td><td>A defender on the point, 1+ enemies coming</td><td>Shock Mine · Venom Overdrive · Sap Wall, Sentry Pod · Challenge Call</td></tr>
+        <tr><td>Sneak</td><td>A hunter on its way to flank</td><td>Cloak Field, Scent Sense · Glider Wings, Smoke Pods (Herrera) · Feather Shed</td></tr>
+      </table>
+    </div>
+    <div class="grid3">
+      <div class="card" style="background:var(--panel2)"><h3>Easy</h3><p class="muted">Reacts in 0.8 s, sees 70 studs, uses a ready ability about 1 time in 4, never retreats. For new players.</p></div>
+      <div class="card" style="background:var(--panel2)"><h3>Normal</h3><p class="muted">Reacts in 0.5 s, sees 90 studs, uses abilities about half the time, retreats when hurt.</p></div>
+      <div class="card" style="background:var(--panel2)"><h3>Hard</h3><p class="muted">Reacts in 0.3 s, sees 110 studs, uses abilities when the tag fits, rotates early and focuses the weakest enemy.</p></div>
+    </div>
+    <p class="muted" style="font-size:13px">Random dino and loadout: each bot gets any of the 8 dinos (T-Rex included), then fills its 4 slots with random parts its dino owns (51 parts in all today; the T-Rex has none yet) and puts random points into its upgrade paths. The team list shows each bot's dino and parts.</p>
+  </section>
+
+  <section class="card ask" style="display:grid; gap:12px">
+    <h2>Two questions before the plan</h2>
+    <div class="grid2">
+      <div class="card">
+        <span class="tag rec">RECOMMENDED</span>
+        <h3 style="margin-top:6px">1 · Bots use the real abilities</h3>
+        <p class="muted">Every ability server gets a second way in, so a bot fires exactly the same code as a player. Damage, cooldowns, effects and every later balance change are the same for bots automatically. It's done one dino at a time (Raptor first) because there are about 51 parts plus 8 base kits.</p>
+      </div>
+      <div class="card">
+        <h3>2 · Bots get their own copies</h3>
+        <p class="muted">The bot script gets a simple version of each ability. It's faster to start, but every later change has to be made twice, and the copies drift away from the real ones.</p>
+      </div>
+    </div>
+    <ul>
+      <li><b>Pick A, B or C</b> for the team pick and the kill feed spot.</li>
+      <li><b>Abilities: 1 or 2?</b> With 1, the first build is the match, the teams, the kill feed and bots that play the point with their basic attacks. Then the abilities go in one dino at a time.</li>
+      <li>The Sandbox's roaming bot packs, prey and territories switch off while the practice match is on (one switch turns them back on). The Arena stays players only.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(() => {
+  const SPECIES = {
+    Raptor: ["Shock Cannon","Cloak Field","Energy Shield","Adrenaline Injector","Shock Mine","Thrusters","Scent Sense"],
+    Dilo: ["Venom Gatling","Toxin Mortar","Sonic Hiss","Spine Burst","Spring Jets","Antivenom Pump","Venom Overdrive"],
+    Troodon: ["Sleep Dart","Arc Lantern","Sap Wall","Sentry Pod","Shield Dome","Mender Drone","Portal Feathers","Feather Shed","Bloom Burst"],
+    Teno: ["Boulder Mortar","Challenge Call","Herd Bellow","Hydraulic Leap","Shield Armor","Stomp Shockwave","Tail Grab & Fling"],
+    Pachy: ["Ink Shooter","Grappling Hook","Tether Spike","Dome Visor","Mecha Legs","Med-Station","Overclocked Servo Dash","Blood Rush"],
+    Herrera: ["Quill Launcher","Goo Blob Shooter","Smoke Pods","Strobe Frill","Razor Caltrops","Glider Wings","Adrenaline Injector","Stun Breaker"],
+    Therizino: ["Reaper's Hook","Feather Barrage","Harvest Field","Snare Wires","Deflector Claws","Dash"],
+    TRex: []
+  };
+  const BASIC = {Raptor:"Pounce",Dilo:"Venom Spit",Troodon:"Feather Throw",Teno:"Tail Whip",Pachy:"Headbutt",Herrera:"Slash",Therizino:"Claw Spin",TRex:"Bite"};
+  const COLORS = {Raptor:"#5fae45",Dilo:"#d9b23a",Troodon:"#7fd0c0",Teno:"#8a6ad0",Pachy:"#c87a3a",Herrera:"#d05a5a",Therizino:"#4fa0d0",TRex:"#9a9a9a"};
+  const NAMES = ["Fang","Mako","Rook","Ember","Vex","Grit","Talon","Nova","Bolt","Sable","Rex","Dash","Quill","Moss","Jinx","Onyx","Pike","Rusty","Zed","Kiwi"];
+  const rnd = a => a[Math.floor(Math.random()*a.length)];
+  const shuffle = a => { const b=a.slice(); for (let i=b.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } return b; };
+  function makeBot(used) {
+    const sp = rnd(Object.keys(SPECIES));
+    let name; do { name = rnd(NAMES); } while (used.has(name)); used.add(name);
+    return {name, sp, parts: shuffle(SPECIES[sp]).slice(0, Math.min(4, SPECIES[sp].length)), bot:true};
+  }
+  const state = { v:"A", s:"pick", d:"pc", team:"B", size:5, diff:"Normal", blue:[], red:[], autoOn:false };
+  function roll() {
+    const used = new Set();
+    state.blue = []; state.red = [];
+    for (let i=0;i<state.size;i++) state.red.push(makeBot(used));
+    for (let i=0;i<state.size-1;i++) state.blue.push(makeBot(used));
+  }
+  roll();
+  const you = () => ({name:"BloxSolidYT", sp:"Raptor", parts:["Shock Cannon","Cloak Field","Energy Shield","Thrusters"], bot:false, you:true});
+
+  const NOTES = {
+    A: {t:"A · Practice lobby", rec:true, d:"Call of Duty Mobile / Overwatch style. Pressing SANDBOX opens a team screen: two columns of 5 with every bot's dino and parts. Tap JOIN BLUE, JOIN RED or AUTO, pick a difficulty and press START (it starts by itself after 20 s). 5v5. The kill feed sits on the left under the status line, where you already look for the score. Bots that die come back as new random bots between matches only, so the lobby you saw is the match you play.",
+         feed:"left"},
+    B: {t:"B · Drop straight in", d:"No lobby. The SANDBOX button gets a TEAM chip (AUTO / BLUE / RED) in the main menu and you spawn straight into the match. Bots fill both teams to 4v4. To switch team mid-match: MENU → SWITCH TEAM (you respawn, no kill counted). The kill feed sits top right under SKILLS / MENU, the classic PC-shooter spot.",
+         feed:"right"},
+    C: {t:"C · Match builder", d:"Like A, plus you build the match: team size 2v2 to 5v5, difficulty, and tap any bot to swap its dino (or roll again). Good for practising one matchup, like 3 Pachys against you. The kill feed sits on the right side at mid height. On PC that's clear of everything, but on a phone it runs into the R / C touch buttons (see the Phone view), so it would need to shrink there. The most to build.",
+         feed:"mid"}
+  };
+
+  const $ = id => document.getElementById(id);
+  const screen = $("screen");
+  function press(group, id) { group.forEach(g => $(g).setAttribute("aria-pressed", String(g === id))); }
+
+  function slotHTML(p, side) {
+    if (!p) return `<div class="slot open"><span class="sp">+</span><span>open</span><span class="ld">a bot fills it</span></div>`;
+    const cls = "slot" + (p.you ? " you" : "") + (state.v === "C" && p.bot ? " click" : "");
+    const ld = p.parts.length ? p.parts.join(" · ") : "no parts yet (event dino)";
+    return `<button class="${cls}" data-side="${side}" data-name="${p.name}" ${state.v === "C" && p.bot ? "" : "tabindex='-1'"}>
+      <span class="sp" style="background:${COLORS[p.sp]}">${p.sp.slice(0,4)}</span>
+      <span>${p.you ? "★ " : ""}${p.name}${p.bot ? " <span class='bt'>BOT</span>" : ""}</span>
+      <span class="ld">${p.sp === "TRex" ? "T-Rex" : p.sp} · ${ld}</span></button>`;
+  }
+  function teamsHTML() {
+    const blue = state.team === "B" ? [you(), ...state.blue] : state.blue.concat();
+    const red = state.team === "R" ? [you(), ...state.red.slice(0, state.size-1)] : state.red.concat();
+    if (state.team === "R") { /* the bot you replaced moves to blue */ blue.push(state.red[state.size-1]); }
+    const b = blue.slice(0, state.size), r = red.slice(0, state.size);
+    return `<div class="teams">
+      <div class="col b"><div class="hd">BLUE</div>${b.map(p => slotHTML(p,"b")).join("")}</div>
+      <div class="vs">VS</div>
+      <div class="col r"><div class="hd">RED</div>${r.map(p => slotHTML(p,"r")).join("")}</div></div>`;
+  }
+  function hudHTML(feedOn) {
+    const phone = state.d === "ph";
+    const pyl = [0,1,2,3,4,5,6,7].map(i => { const a = i/8*Math.PI*2; const x = 50 + Math.cos(a)*23, y = 62 + Math.sin(a)*11;
+      return `<div class="pyl" style="left:${x}%;top:${y-6}%"></div>`; }).join("");
+    const dinos = `<div class="dino" style="left:42%;top:56%"><i style="background:#3f8f3a"></i><span class="red">Mako <span class="bt">BOT</span></span></div>
+      <div class="dino" style="left:58%;top:60%"><i style="background:#c87a3a"></i><span class="blue">Rook <span class="bt">BOT</span></span></div>
+      <div class="dino" style="left:44%;top:74%;width:12%;height:15%"><i style="background:#2f8a3a"></i></div>`;
+    const bottom = phone
+      ? `<div class="stick"></div><div class="touch"><div style="right:0;bottom:0;width:46%;height:46%">ATTACK</div><div style="left:4%;bottom:6%;width:30%;height:30%">JUMP</div><div style="right:4%;top:0;width:28%;height:28%">R</div><div style="left:18%;top:20%;width:28%;height:28%">C</div></div>`
+      : `<div class="abil"><div>R<br>SHOCK CANNON</div><div>C<br>CLOAK FIELD</div><div>T<br>ENERGY SHIELD</div><div>V<br>THRUSTERS</div></div><div class="atk"><div>LMB<br>ATTACK</div><div>SPACE<br>JUMP</div></div>`;
+    return `<div class="hills"></div><div class="ring"></div>${pyl}${dinos}
+      <div class="hud">
+        <div class="card2"><div class="emb"></div><div class="rows">
+          <div class="row"><div class="bar2"><i style="width:46%;background:var(--blue)"></i></div><span class="num blue">${state.scoreA}</span></div>
+          <div class="row"><div class="bar2"><i style="width:38%;background:var(--red)"></i></div><span class="num red">${state.scoreB}</span></div></div>
+          <div class="clock"><b>7:12</b><span>P2 · 0:41</span></div></div>
+        <div class="pill" style="top:21.5%">CONTESTED</div>
+        <div class="tr"><div class="b">SKILLS</div><div class="b menu">MENU</div></div>
+        <div class="squad">SQUAD</div><div class="mini"></div>
+        <div class="marker"><div style="color:var(--yellow)">CONTESTED</div><div class="dia"><b>2</b></div><div>ON POINT</div></div>
+        ${bottom}<div class="health"><i></i></div>
+        ${feedOn ? feedHTML() : ""}
+      </div>`;
+  }
+  const FEED = [];
+  function feedHTML() {
+    const pos = NOTES[state.v].feed;
+    const phone = state.d === "ph";
+    let style = "";
+    if (pos === "left") style = `left:1.6%;top:${phone ? 27 : 27}%`;
+    if (pos === "right") style = `right:1.6%;top:${phone ? 22 : 22}%;justify-items:end`;
+    if (pos === "mid") style = `right:1.6%;top:${phone ? 34 : 38}%;justify-items:end`;
+    return `<div class="feed" style="${style}">${FEED.slice(-5).map(e => e.html).join("")}</div>`;
+  }
+  function entry(k, kTeam, how, v, vTeam, me, hs) {
+    const tag = n => n === "You" ? "" : " <span class='bt'>BOT</span>";
+    return {html:`<div class="kf${me ? " me" : ""}"><span class="${kTeam}">${k}${tag(k)}</span><span class="ab${hs ? " hs" : ""}">${how}</span><span class="${vTeam}">${v}${tag(v)}</span></div>`};
+  }
+  state.scoreA = 118; state.scoreB = 97;
+  const FEED_POOL = [
+    () => entry("You","blue","Shock Cannon","Mako","red",true,false),
+    () => entry("Vex","red","Toxin Mortar","Rook","blue",false,false),
+    () => entry("Talon","blue","Pounce","Ember","red",false,false),
+    () => entry("Grit","red","Stomp Shockwave","Talon","blue",false,true),
+    () => entry("Nova","blue","Sleep Dart","Grit","red",false,false),
+    () => entry("Mako","red","Venom Gatling","You","blue",true,false),
+    () => entry("Rook","blue","Headbutt","Sable","red",false,false),
+  ];
+  let fi = 0;
+  for (let i=0;i<4;i++) FEED.push(FEED_POOL[fi++ % FEED_POOL.length]());
+
+  function endHTML() {
+    let blue = [you(), ...state.blue].slice(0, state.size), red = state.red.slice(0, state.size);
+    if (state.team === "R") { blue = state.blue.concat(state.red.slice(state.size-1)).slice(0, state.size); red = [you(), ...state.red.slice(0, state.size-1)]; }
+    const row = (p,i,me) => `<tr class="${me ? "me" : ""}"><td>${p.you ? "★ " : ""}${p.name}${p.bot ? " <span class='bt'>BOT</span>" : ""}</td><td>${p.sp === "TRex" ? "T-Rex" : p.sp}</td><td class="n">${[7,5,4,3,2][i]}</td><td class="n">${[3,4,5,4,6][i]}</td><td class="n">${["1:42","1:10","0:55","0:38","0:21"][i]}</td></tr>`;
+    const table = (list, c) => `<table class="board"><tr><th class="${c}">${c === "blue" ? "BLUE · 250" : "RED · 211"}</th><th>Dino</th><th class="n">K</th><th class="n">D</th><th class="n">On point</th></tr>${list.map((p,i) => row(p,i,!!p.you)).join("")}</table>`;
+    return `<div class="ov"><h4>VICTORY<small>PRACTICE · ${state.diff.toUpperCase()} BOTS · XP x0.5</small></h4>
+      <div class="teams" style="grid-template-columns:1fr 1fr">${table(blue,"blue")}${table(red,"red")}</div>
+      <div class="ovbar"><span class="lbl">NEXT MATCH IN 0:14</span><button class="b y" id="again">PLAY AGAIN</button><button class="b">MAIN MENU</button></div></div>`;
+  }
+  function pickHTML() {
+    if (state.v === "B") {
+      return `<div class="menu-mock"><div class="stage">your dino turning (today's menu)</div>
+        <div class="right"><div class="t"><small>MECHA DINO</small><b>ARENA</b></div>
+          <div class="bigbtn y"><b>SANDBOX</b>PRACTICE · HARDPOINT VS BOTS<div class="chips" id="chips">
+            ${["AUTO","BLUE","RED"].map(c => `<span class="${(state.bteam||"AUTO") === c ? "on" : ""}" data-c="${c}">${c}</span>`).join("")}</div></div>
+          <div class="bigbtn o"><b>ARENA</b>PVP · HARDPOINT</div></div></div>`;
+    }
+    const diffs = ["Easy","Normal","Hard"].map(d => `<button class="b${state.diff === d ? " on" : ""}" data-diff="${d}">${d.toUpperCase()}</button>`).join("");
+    const size = state.v === "C" ? `<span class="lbl">TEAMS</span><button class="b" id="minus">−</button><span>${state.size}v${state.size}</span><button class="b" id="plus">+</button>` : "";
+    return `<div class="ov"><h4>PRACTICE MATCH<small>HARDPOINT · SUMMIT · ${state.v === "A" ? "STARTS IN 0:17" : "YOU START IT"}</small></h4>
+      ${teamsHTML()}
+      <div class="ovbar"><button class="b bl" id="jb">JOIN BLUE</button><button class="b rd" id="jr">JOIN RED</button><button class="b" id="auto">AUTO</button>
+        <span class="lbl">BOTS</span>${diffs}${size}<button class="b" id="reroll">NEW BOTS</button><button class="b y" id="start">START</button></div></div>`;
+  }
+
+  function render() {
+    screen.className = "screen" + (state.d === "ph" ? " phone" : "");
+    if (state.s === "play") screen.innerHTML = hudHTML(true);
+    else if (state.s === "end") screen.innerHTML = hudHTML(false) + endHTML();
+    else screen.innerHTML = (state.v === "B" ? "" : hudHTML(false)) + pickHTML();
+    const n = NOTES[state.v];
+    $("note").innerHTML = `<h3>${n.t} ${n.rec ? "<span class='tag rec'>RECOMMENDED</span>" : ""}</h3><p>${n.d}</p>`;
+    $("hint").textContent = state.s === "pick"
+      ? (state.v === "B" ? "Try it: tap the TEAM chips on the SANDBOX button." : state.v === "C" ? "Try it: JOIN BLUE / JOIN RED, NEW BOTS, the team size, and tap any bot to roll a new dino for it." : "Try it: JOIN BLUE / JOIN RED / AUTO, the difficulty and NEW BOTS (every bot gets a new random dino and parts).")
+      : state.s === "play" ? "The kill feed adds a line every 2.5 s. Lines with you in them have the yellow outline. 5 lines at most; others fade after 5 s, yours after 8 s." : "Kills, deaths and time on the point for every dino, bots included.";
+    wire();
+  }
+  function wire() {
+    const on = (id, f) => { const e = $(id); if (e) e.onclick = f; };
+    on("jb", () => { state.team = "B"; render(); });
+    on("jr", () => { state.team = "R"; render(); });
+    on("auto", () => { state.team = Math.random() < .5 ? "B" : "R"; render(); });
+    on("reroll", () => { roll(); render(); });
+    on("start", () => { state.s = "play"; press(["sPick","sPlay","sEnd"], "sPlay"); render(); });
+    on("again", () => { state.s = "pick"; press(["sPick","sPlay","sEnd"], "sPick"); render(); });
+    on("minus", () => { state.size = Math.max(2, state.size-1); roll(); render(); });
+    on("plus", () => { state.size = Math.min(5, state.size+1); roll(); render(); });
+    screen.querySelectorAll("[data-diff]").forEach(b => b.onclick = () => { state.diff = b.dataset.diff; render(); });
+    screen.querySelectorAll("#chips span").forEach(c => c.onclick = () => { state.bteam = c.dataset.c; render(); });
+    if (state.v === "C") screen.querySelectorAll(".slot.click").forEach(s => s.onclick = () => {
+      const list = s.dataset.side === "b" ? state.blue : state.red;
+      const p = list.find(x => x.name === s.dataset.name); if (!p) return;
+      const sp = rnd(Object.keys(SPECIES).filter(k => k !== p.sp)); p.sp = sp; p.parts = shuffle(SPECIES[sp]).slice(0,4); render(); });
+  }
+  [["vA","A"],["vB","B"],["vC","C"]].forEach(([id,v]) => $(id).onclick = () => { state.v = v; state.size = v === "B" ? 4 : 5; roll(); press(["vA","vB","vC"], id); render(); });
+  [["sPick","pick"],["sPlay","play"],["sEnd","end"]].forEach(([id,s]) => $(id).onclick = () => { state.s = s; press(["sPick","sPlay","sEnd"], id); render(); });
+  [["dPC","pc"],["dPh","ph"]].forEach(([id,d]) => $(id).onclick = () => { state.d = d; press(["dPC","dPh"], id); render(); });
+  render();
+  setInterval(() => {
+    if (state.s !== "play") return;
+    FEED.push(FEED_POOL[fi++ % FEED_POOL.length]()); if (FEED.length > 5) FEED.shift();
+    state.scoreA += 2; state.scoreB += 1;
+    render();
+  }, 2500);
+
+  /* ---------- the bot sim ---------- */
+  const cv = $("sim"), cx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const PTS = [{n:"Centre Meadow",x:-100,z:-40},{n:"East Shore",x:450,z:150},{n:"Summit",x:285,z:-240},{n:"NW Foothills",x:-280,z:-270},{n:"West Meadow",x:-450,z:270}];
+  const S = 0.62, OX = W/2, OZ = H/2;
+  const px = p => OX + p.x*S, pz = p => OZ + p.z*S;
+  const DIFF = {Easy:{react:.8, sight:70, abil:.25, retreat:false}, Normal:{react:.5, sight:90, abil:.5, retreat:true}, Hard:{react:.3, sight:110, abil:.85, retreat:true}};
+  let diff = "Normal";
+  const ROLES = ["cap","cap","def","hunt","esc"];
+  const used = new Set();
+  const bots = [];
+  ["A","B"].forEach(team => { for (let i=0;i<5;i++) { const b = makeBot(used);
+    bots.push({...b, team, x:(team==="A"?-1:1)*480 + Math.random()*60, z:-120 + i*60, hp:100, role:ROLES[i], tgt:null, seen:0, cd:0, you: team==="A" && i===0 }); } });
+  bots[0].name = "You"; bots[0].sp = "Raptor"; bots[0].parts = ["Shock Cannon","Cloak Field","Energy Shield","Thrusters"];
+  let t = 0, idx = 0, scoreA = 0, scoreB = 0, acc = 0;
+  const POINT_T = 12;
+  const simfeed = $("simfeed");
+  function addFeed(k, v, how) {
+    const me = k.name === "You" || v.name === "You";
+    const kc = k.team === "A" ? "blue" : "red", vc = v.team === "A" ? "blue" : "red";
+    const d = document.createElement("div"); d.className = "kf" + (me ? " me" : "");
+    d.innerHTML = `<span class="${kc}">${k.name}${k.name==="You"?"":" <span class='bt'>BOT</span>"}</span><span class="ab">${how}</span><span class="${vc}">${v.name}${v.name==="You"?"":" <span class='bt'>BOT</span>"}</span>`;
+    simfeed.prepend(d); while (simfeed.children.length > 7) simfeed.lastChild.remove();
+  }
+  function respawn(b) {
+    const c = PTS[idx];
+    const enemies = bots.filter(o => o.team !== b.team && o.hp > 0);
+    let best = null, bs = -1;
+    for (let d=0; d<12; d++) { const a = d/12*Math.PI*2; const x = c.x + Math.cos(a)*300, z = c.z + Math.sin(a)*300;
+      if (Math.abs(x) > 560 || Math.abs(z) > 360) continue;
+      let de = 350; enemies.forEach(e => de = Math.min(de, Math.hypot(e.x-x, e.z-z)));
+      if (de > bs) { bs = de; best = {x,z}; } }
+    b.x = best ? best.x : c.x; b.z = best ? best.z : c.z; b.hp = 100; b.tgt = null; b.seen = 0;
+  }
+  function goal(b) {
+    const c = PTS[idx], nx = PTS[(idx+1)%PTS.length];
+    const into = t % POINT_T;
+    if (b.role === "esc" && into > POINT_T - 2.5) return nx; // rotate early
+    if (b.retreating) { const m = bots.filter(o => o.team === b.team && o !== b && o.hp > 0); if (m.length) return m[0]; }
+    if (b.role === "cap") return {x:c.x + (b.team==="A"?-8:8), z:c.z};
+    if (b.role === "def") return {x:c.x + (b.team==="A"?-55:55), z:c.z + 20};
+    if (b.role === "hunt") return {x:c.x + (b.team==="A"?140:-140), z:c.z - 90};
+    return {x:c.x + (b.team==="A"?-30:30), z:c.z + 40};
+  }
+  function step(dt) {
+    t += dt;
+    const nidx = Math.floor(t / POINT_T) % PTS.length;
+    if (nidx !== idx) { idx = nidx; const roles = shuffle(ROLES); ["A","B"].forEach(tm => bots.filter(b => b.team === tm).forEach((b,i) => b.role = roles[i])); }
+    const D = DIFF[diff];
+    bots.forEach(b => {
+      if (b.hp <= 0) { b.dead -= dt; if (b.dead <= 0) respawn(b); return; }
+      b.cd -= dt;
+      const enemies = bots.filter(o => o.team !== b.team && o.hp > 0);
+      const c = PTS[idx];
+      let tgt = null, ts = 1e9;
+      enemies.forEach(e => { const d = Math.hypot(e.x-b.x, e.z-b.z); if (d > D.sight) return;
+        const onPt = Math.hypot(e.x-c.x, e.z-c.z) < 45; const s = d - (onPt ? 60 : 0) + e.hp*.3; if (s < ts) { ts = s; tgt = e; } });
+      if (tgt !== b.tgt) { b.tgt = tgt; b.seen = 0; }
+      const mates = bots.filter(o => o.team === b.team && o !== b && o.hp > 0 && Math.hypot(o.x-b.x,o.z-b.z) < 80).length;
+      const foes = enemies.filter(e => Math.hypot(e.x-b.x,e.z-b.z) < 80).length;
+      b.retreating = D.retreat && b.hp < 30 && foes > mates + 1;
+      let g = goal(b);
+      if (tgt && !b.retreating) { b.seen += dt; g = tgt;
+        const d = Math.hypot(tgt.x-b.x, tgt.z-b.z);
+        if (b.seen > D.react && d < 28 && b.cd <= 0) {
+          const useAbil = b.parts.length && Math.random() < D.abil;
+          const how = useAbil ? rnd(b.parts) : BASIC[b.sp];
+          tgt.hp -= useAbil ? 34 : 22; b.cd = 0.9;
+          if (tgt.hp <= 0) { tgt.dead = 2.5; addFeed(b, tgt, how); }
+        }
+      }
+      const dx = g.x - b.x, dz = g.z - b.z, d = Math.hypot(dx, dz);
+      const sp = (b.retreating ? 70 : 55) * dt;
+      if (d > 4) { b.x += dx/d*Math.min(sp,d); b.z += dz/d*Math.min(sp,d); }
+      b.x += (Math.random()-.5)*2; b.z += (Math.random()-.5)*2;
+      if (b.hp < 100 && !tgt) b.hp = Math.min(100, b.hp + 6*dt);
+    });
+    const c = PTS[idx]; let nA = 0, nB = 0;
+    bots.forEach(b => { if (b.hp > 0 && Math.hypot(b.x-c.x,b.z-c.z) < 45) { if (b.team === "A") nA++; else nB++; } });
+    acc += dt; if (acc >= 1) { acc -= 1; if (nA && !nB) scoreA++; if (nB && !nA) scoreB++; }
+    $("sa").textContent = scoreA; $("sb").textContent = scoreB;
+    $("sp").textContent = `P${idx+1} ${PTS[idx].n} · ${nA && nB ? "CONTESTED" : nA ? "BLUE HOLDS" : nB ? "RED HOLDS" : "OPEN"}`;
+    return {nA, nB};
+  }
+  function draw(occ) {
+    cx.clearRect(0,0,W,H);
+    cx.fillStyle = "#0b2a3a"; cx.fillRect(0,0,W,H);
+    cx.fillStyle = "#3f7d3a"; cx.beginPath();
+    const R = [[-600,-330],[-380,-400],[380,-400],[620,-300],[620,300],[380,380],[-380,380],[-620,300]];
+    R.forEach(([x,z],i) => { const X = OX + x*S, Z = OZ + z*S; if (i) cx.lineTo(X,Z); else cx.moveTo(X,Z); }); cx.closePath(); cx.fill();
+    cx.fillStyle = "#7d8794"; cx.beginPath(); cx.arc(OX+285*S, OZ-240*S, 105*S, 0, Math.PI*2); cx.fill();
+    cx.fillStyle = "#98a2ae"; cx.beginPath(); cx.arc(OX+285*S, OZ-240*S, 60*S, 0, Math.PI*2); cx.fill();
+    const into = t % POINT_T;
+    PTS.forEach((p,i) => {
+      const cur = i === idx, nxt = i === (idx+1)%PTS.length && into > POINT_T - 2.5;
+      cx.lineWidth = cur ? 3 : 1.5;
+      cx.strokeStyle = cur ? (occ.nA && occ.nB ? "#ffc832" : occ.nA ? "#5aa0ff" : occ.nB ? "#e0284a" : "#ffffff") : nxt ? "#b8bec8" : "rgba(255,255,255,.18)";
+      cx.setLineDash(nxt ? [4,4] : []); cx.beginPath(); cx.arc(px(p), pz(p), 45*S, 0, Math.PI*2); cx.stroke(); cx.setLineDash([]);
+      cx.fillStyle = cur ? "#fff" : "rgba(255,255,255,.55)"; cx.font = "600 12px Fredoka, sans-serif"; cx.textAlign = "center";
+      cx.fillText(`P${i+1}${nxt ? " NEXT" : ""}`, px(p), pz(p) - 45*S - 5);
+    });
+    bots.forEach(b => {
+      if (b.hp <= 0) return;
+      const X = OX + b.x*S, Z = OZ + b.z*S;
+      cx.fillStyle = b.team === "A" ? "#5aa0ff" : "#e0284a";
+      cx.beginPath();
+      if (b.role === "cap") { cx.moveTo(X, Z-7); cx.lineTo(X+6, Z+5); cx.lineTo(X-6, Z+5); }
+      else if (b.role === "def") { cx.rect(X-5, Z-5, 10, 10); }
+      else if (b.role === "hunt") { cx.moveTo(X, Z-7); cx.lineTo(X+6, Z); cx.lineTo(X, Z+7); cx.lineTo(X-6, Z); }
+      else cx.arc(X, Z, 5.5, 0, Math.PI*2);
+      cx.fill();
+      if (b.you) { cx.strokeStyle = "#fff"; cx.lineWidth = 2; cx.beginPath(); cx.arc(X, Z, 10, 0, Math.PI*2); cx.stroke(); }
+      if (b.tgt && b.tgt.hp > 0 && b.seen > DIFF[diff].react) { cx.strokeStyle = "rgba(255,255,255,.35)"; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(X,Z); cx.lineTo(OX+b.tgt.x*S, OZ+b.tgt.z*S); cx.stroke(); }
+      cx.fillStyle = "rgba(0,0,0,.5)"; cx.fillRect(X-8, Z+9, 16, 3); cx.fillStyle = b.hp > 30 ? "#78c850" : "#ffc832"; cx.fillRect(X-8, Z+9, 16*b.hp/100, 3);
+      if (b.retreating) { cx.fillStyle = "#fff"; cx.font = "10px sans-serif"; cx.fillText("↩", X+9, Z-6); }
+      if (b.role === "esc" && into > POINT_T - 2.5) { cx.fillStyle = "#fff"; cx.font = "11px sans-serif"; cx.fillText("↻", X-10, Z-6); }
+    });
+  }
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(.05, (now - last)/1000); last = now;
+    const occ = step(dt); draw(occ);
+    requestAnimationFrame(frame);
+  }
+  for (let i=0;i<120;i++) step(1/30);
+  draw({nA:0,nB:0});
+  if (!reduce) requestAnimationFrame(frame); else setInterval(() => draw(step(.5)), 500);
+  [["dE","Easy"],["dN","Normal"],["dH","Hard"]].forEach(([id,d]) => $(id).onclick = () => { diff = d; press(["dE","dN","dH"], id); });
+})();
+</script>
