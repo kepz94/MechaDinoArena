@@ -1,9 +1,10 @@
 # Mecha Dino Arena — Hardpoint spawns v2 + point marker v2 + bot size fix (v1.0)
 
 **Goal:** Hardpoint plays like CoD: teams start an equal distance from the point and out of each other's sight with several
-paths in, a death puts you back a fair distance away, the point marker always shows the real way to the current point (and to
-the next one before it opens), and practice bots are the same size as players.
-**Picks (Kepu 2026-11-10 23:30):** spawns "B · Scored ring"; marker "A · Edge arrow + NEXT". Bot size = bug MDA-420.
+paths in, a death puts you back a fair distance away, a compass strip always shows which way the current point (and the next
+one, before it opens) is, and practice bots are the same size as players.
+**Picks (Kepu 2026-11-10):** spawns "B · Scored ring"; marker "B · Compass bar" (23:39: "Nah let's just go with the compass bar
+forget the arrow"; replaces his first pick A). Bot size = bug MDA-420.
 Mockup: docs/mockups/spawns_and_marker_v0.1.html (artifact "Spawns and Point Marker").
 
 ## What's live (v662) and why it plays badly
@@ -38,17 +39,17 @@ Mockup: docs/mockups/spawns_and_marker_v0.1.html (artifact "Spawns and Point Mar
   No pair found -> respawn rule.
 - Switch HardpointScoredSpawnsEnabled (HardpointServer, default true; false = 1.1 ring pick).
 
-**Marker (A · Edge arrow + NEXT)**
-- On screen (in front, inside the safe area): over the point (centre + 34 studs), as 1.3.
-- Off screen or behind: direction d = the point in camera space (x, −y) (behind keeps the true side); the marker sits where
-  the line from the screen centre along d meets the safe rectangle, with an arrow turned along d. Safe rectangle: 70 px from
-  the sides, top = the lowest bottom of the score card / status / next pills / kill feed lines + 80, bottom = height − 150
-  (ability bar).
-- Glide: shown position eases to the target at MARKER_RATE 14 per second (snaps when first shown).
-- NEXT: while HpShowNext (last 10 s), a second dashed grey marker on the next point: "NEXT", its number, "0:07" countdown;
-  same placement and glide. When HpIndex changes, the current marker starts from where the NEXT marker was (no jump).
-- Phone: both markers at 85% size.
-- Switch HardpointHUDEdgeMarkerEnabled (default true; false = 1.3 placement, no NEXT marker).
+**Marker (B · Compass bar)** — replaces the 1.3 edge / column placement; no edge arrow.
+- Compass strip at the top centre (between the score card and the SKILLS / MENU buttons): COMPASS_FOV 180° wide (±90° from
+  where the camera faces), ticks every 15°, a centre notch. PC 30% of the screen wide, 26 px tall; phone 34% wide, 22 px.
+- Icons by bearing (camera yaw to the point, flat): current point = solid diamond with its number in the team-state colour
+  (blue you hold / red they hold / yellow contested / white open / grey locked) and the distance under it ("212"); next point
+  (while HpShowNext, last 10 s) = hollow grey diamond with its number and the countdown ("0:07"). A point outside ±90° sits
+  at the strip's end with an arrowhead (◀ / ▶) on the side it is really on (no flip near 180°: a 10° hysteresis band).
+- Icons ease along the strip (rate 14/s) so they never jump; at rotation the current icon starts from where the NEXT icon was.
+- 3D marker over the point (1.3 look: label, diamond, studs) only while the point is on screen; off screen it is hidden (the
+  compass carries direction). The left-column push and the edge snap of 1.1–1.3 are not used.
+- Switch HardpointHUDCompassEnabled (default true; false = 1.3 marker).
 
 ## Tasks
 ### Task 1 — HardpointRules 1.1 + spec · Logic
@@ -61,15 +62,16 @@ a, b`. Spec: every rule above incl. no-spot, all-seen, equal-distance pair, ties
 BANDS per point at start; pickFn: warm-up -> opening anchors; else pickScored with a ray-based seenFn; switch off -> 1.1.
 Diagnostics HpBandSpots, HpSpawnLast ("open A" / "scored 512 seen=false" / "ring"), HpOpening ("A x,z | B x,z").
 
-### Task 3 — HardpointHUD 1.4 · Wired
-Edge marker, arrow, glide, safe rectangle, NEXT marker, take-over at rotation, phone 85%. Switch HardpointHUDEdgeMarkerEnabled.
+### Task 3 — HardpointHUD 1.4: compass bar · Wired
+Compass strip (PC / phone sizes), current + NEXT icons by bearing with distance / countdown, end-of-strip arrowheads with
+hysteresis, easing, take-over at rotation, 3D marker only on screen. Switch HardpointHUDCompassEnabled.
 
 ### Task 4 — RaptorScale 1.9 (MDA-420) · Wired
 Bot branches for Herrera, Teno, Therizino, Dilo, Troodon with the player factors; switch RaptorScaleOtherBotsEnabled.
 
 ### Task 5 — QA + docs · Wired
 Practice 5v5: opening anchors opposite and unseen (HpOpening), respawn distances (log 20 respawns: distance to point, to the
-nearest enemy, seen), bot sizes = player sizes, marker turn test PC + forced touch, rotation without a jump. Docs + Dev Hub.
+nearest enemy, seen), bot sizes = player sizes, compass turn test PC + forced touch (icons follow, no side flips), rotation without a jump. Docs + Dev Hub.
 
 ## Red-team (2026-11-10)
 1. **Edge points lose half their band.** East Shore (x 450) and West Meadow (x −450) sit near the island edge (~±560); a
@@ -81,4 +83,9 @@ nearest enemy, seen), bot sizes = player sizes, marker turn test PC + forced tou
    pick; the mate weight (0.4) keeps teams together. Accepted unless Kepu wants a "prefer last side" weight.
 4. **Ray cost.** Up to 96 spots x 10 enemies per spawn; enemies further than 700 studs are skipped, and spawns are a few per
    second at most. Measure server ms in QA.
-5. **Marker top edge moves with the kill feed.** When feed lines appear, the safe top moves down; the glide keeps it smooth.
+5. **Compass on phones.** The top centre on phones already has the score card at the left and SKILLS / MENU at the right;
+   the strip goes between them at 34% width. Check it doesn't overlap on a narrow phone (QA screenshot).
+
+## Status (2026-11-10 23:39)
+Kepu: "you're not connected to the pc. Just make note of these changes." Nothing built yet; tickets filed. Open decision
+for Kepu before Build: red-team 2 (band 420–600 or 360–520).
