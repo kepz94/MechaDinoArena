@@ -64,6 +64,22 @@
 --   (the CLASSIC camera button sits there) and needs 140 px (1.4: 16 px, 180); when there is no room it goes under the pills in
 --   the left column (x 16, the score card's width, 6 px under the lowest visible of Status / Next; place "column") instead
 --   of the top centre, where it covered SKILLS / MENU. KillFeed 1.1 keeps its lines under it.
+-- v1.6 (MDA-427, plan docs/plans/HUD_SLIM_SPAWNS_FAR_v1.0.md Task 3, mockup docs/mockups/hud_slim_compass_v0.1.html; Kepu
+--   2026-11-11 "fix the compass on mobile. theres so much space in the top middle of the screen between the roblox settings and
+--   the skills button. make it more transparent and fit in that space. also make the point and score board smaller"; picks
+--   "A · See-through panel", "Smaller, 80%"):
+--   * Compass in the top gap: left = the right edge of the Roblox top-left buttons (GuiService.TopbarInset.Min.X, in this
+--     gui's frame) + 12, at least 16; right = the SKILLS button's left (PlayerGui.LabButton.Skills) − 12, else the MENU pill's
+--     (PlayerGui.ArenaStatus Pill) − 12, else the screen's right − 16; also never past TopbarInset.Max.X − 12. Width =
+--     min(the 1.4 width, the gap), centred on the screen, then kept inside the gap; top = the SKILLS (or MENU) top, else 8.
+--     Read every frame. A gap under 140 px -> the 1.5 placement. Place diag "top".
+--     Switch: script attribute HardpointHUDCompassTopEnabled (default true, read per frame; false = 1.5 placement).
+--   * Look A: panel BackgroundTransparency = attribute HardpointHUDCompassBgT (default 0.65; 1.4: 0.25), outline
+--     transparency = HardpointHUDCompassStrokeT (default 0.85; 1.4: 0.75). Read per frame.
+--   * Slim HUD: a UIScale "HardpointHUDSlim" on ScoreCard, Status and Next = attribute HardpointHUDScale (default 0.8, kept in
+--     0.5 .. 1.2; 1 = the 1.5 size); the card keeps its top-left at (16, 58); Status top = 58 + 58 s + 6 s, Next top = Status
+--     top + 30 s; the 1.5 column fallback puts the compass 6 s under the lowest visible pill. Read per frame. The kill feed and
+--     the 3D marker place themselves from real on-screen sizes, so they follow.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -71,6 +87,7 @@ local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService") -- v1.1
 
 local VERSION = "1.5"
+VERSION = "1.6" -- v1.6 top-gap compass + slim HUD
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -179,6 +196,26 @@ local function pill(name)
 end
 local status = pill("Status")
 local nextL = pill("Next")
+-- v1.6: slim HUD (see the header)
+if script:GetAttribute("HardpointHUDScale") == nil then script:SetAttribute("HardpointHUDScale", 0.8) end
+local slimScales = {}
+for _, o in ipairs({card, status, nextL}) do
+	local u = Instance.new("UIScale")
+	u.Name = "HardpointHUDSlim"
+	u.Parent = o
+	table.insert(slimScales, u)
+end
+local slimS, slimStatusY, slimNextY = 1, 58 + 58 + 6, 58 + 58 + 6 + 30
+local function slimUpdate()
+	local s = tonumber(script:GetAttribute("HardpointHUDScale")) or 1
+	s = math.clamp(s, 0.5, 1.2)
+	slimS = s
+	for _, u in ipairs(slimScales) do u.Scale = s end
+	slimStatusY = 58 + 58 * s + 6 * s
+	slimNextY = slimStatusY + 30 * s
+	status.Position = UDim2.new(0, 16, 0, slimStatusY)
+	nextL.Position = UDim2.new(0, 16, 0, slimNextY)
+end
 nextL.TextColor3 = YELLOW
 
 -- marker
@@ -449,6 +486,35 @@ local function cmpPlace(ic, target, camPos, camYaw, W, Hh, dt, look)
 	ic.sub.Size = UDim2.fromOffset(60, 10)
 	return rel
 end
+-- v1.6: the top gap between the Roblox buttons and SKILLS (see the header); returns left, right, top in this gui's frame
+if script:GetAttribute("HardpointHUDCompassTopEnabled") == nil then script:SetAttribute("HardpointHUDCompassTopEnabled", true) end
+if script:GetAttribute("HardpointHUDCompassBgT") == nil then script:SetAttribute("HardpointHUDCompassBgT", 0.65) end
+if script:GetAttribute("HardpointHUDCompassStrokeT") == nil then script:SetAttribute("HardpointHUDCompassStrokeT", 0.85) end
+local cmpStroke = cmp:FindFirstChildOfClass("UIStroke")
+local function topGap(vp)
+	local go = gui.AbsolutePosition
+	local giv = GuiService:GetGuiInset()
+	local L = 16
+	local okT, tb = pcall(function() return GuiService.TopbarInset end)
+	if okT and tb and tb.Width > 0 then L = math.max(16, tb.Min.X - giv.X - go.X + 12) end
+	local pg = gui.Parent
+	local R, T
+	local lb = pg and pg:FindFirstChild("LabButton")
+	local sk = lb and lb:IsA("ScreenGui") and lb.Enabled and lb:FindFirstChild("Skills")
+	if sk and sk:IsA("GuiObject") and sk.Visible and sk.AbsoluteSize.X > 0 then
+		R, T = sk.AbsolutePosition.X - go.X - 12, sk.AbsolutePosition.Y - go.Y
+	end
+	if not R then
+		local st = pg and pg:FindFirstChild("ArenaStatus")
+		local pl = st and st:IsA("ScreenGui") and st.Enabled and st:FindFirstChild("Pill", true)
+		if pl and pl:IsA("GuiObject") and pl.Visible and pl.AbsoluteSize.X > 0 then
+			R, T = pl.AbsolutePosition.X - go.X - 12, pl.AbsolutePosition.Y - go.Y
+		end
+	end
+	if not R then R = vp.X - go.X - 16 end
+	if okT and tb and tb.Width > 0 and tb.Max.X < vp.X - 1 then R = math.min(R, tb.Max.X - giv.X - go.X - 12) end
+	return L, R, math.max(0, T or 8)
+end
 local function drawCompass(dt, cam, vp, idx, warm, rel, remaining, showNext)
 	local phone = cmpPhone()
 	local Hh = phone and 22 or 26
@@ -456,13 +522,29 @@ local function drawCompass(dt, cam, vp, idx, warm, rel, remaining, showNext)
 	local left = card.AbsolutePosition.X - gui.AbsolutePosition.X + card.AbsoluteSize.X + 12
 	local room = (vp.X - 96) - left -- v1.5: 96 (1.4: 16)
 	local x, y
-	if room >= 140 then -- v1.5: 140 (1.4: 180)
+	local topDone = false -- v1.6: the top gap first
+	cmp.BackgroundTransparency = tonumber(script:GetAttribute("HardpointHUDCompassBgT")) or 0.25
+	if cmpStroke then cmpStroke.Transparency = tonumber(script:GetAttribute("HardpointHUDCompassStrokeT")) or 0.75 end
+	if script:GetAttribute("HardpointHUDCompassTopEnabled") ~= false then
+		local gL, gR, gT = topGap(vp)
+		if gR - gL >= 140 then
+			W = math.min(W, gR - gL)
+			local mid = vp.X / 2 - gui.AbsolutePosition.X
+			x, y = math.clamp(mid - W / 2, gL, gR - W), gT
+			topDone = true
+			script:SetAttribute("HardpointHUDCompassPlace", "top")
+		end
+	end
+	if topDone then
+		-- v1.6: placed in the top gap
+	elseif room >= 140 then -- v1.5: 140 (1.4: 180)
 		W = math.min(W, room)
 		x, y = left + (room - W) / 2, 58 + (58 - Hh) / 2
 		script:SetAttribute("HardpointHUDCompassPlace", "row")
 	else -- v1.5: under the pills (1.4: the top centre)
 		W = card.AbsoluteSize.X
 		x, y = 16, (nextL.Visible and 152 or 122) + 24 + 6
+		if slimS ~= 1 then y = (nextL.Visible and slimNextY or slimStatusY) + 24 * slimS + 6 * slimS end -- v1.6
 		script:SetAttribute("HardpointHUDCompassPlace", "column")
 	end
 	cmp.Position, cmp.Size = UDim2.fromOffset(x, y), UDim2.fromOffset(W, Hh)
@@ -597,6 +679,7 @@ RunService.RenderStepped:Connect(function()
 	card.Size = UDim2.fromOffset(math.clamp(vp.X * 0.26, 220, 330), 58)
 	status.Position = UDim2.new(0, 16, 0, 58 + 58 + 6)
 	nextL.Position = UDim2.new(0, 16, 0, 58 + 58 + 6 + 30)
+	slimUpdate() -- v1.6
 
 	local mine = player:GetAttribute("HardpointTeam")
 	local sa, sb = state:GetAttribute("HpScoreA") or 0, state:GetAttribute("HpScoreB") or 0
