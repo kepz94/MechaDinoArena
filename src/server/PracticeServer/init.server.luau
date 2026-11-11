@@ -28,6 +28,8 @@
 --   PrBotRespawn (5), PrRefill (5), PrBotLevel (30), PrBotXpMul (0.1), PrDifficultyDefault ("Normal").
 -- Diagnostics: PracticeServerVersion, PracticeState ("off" / "notSandbox" / "lobby" / "match"), PrBots (alive), PrServerMs
 --   (think time per tick, ms).
+-- v1.1 (MDA-408, found in the Build 2026-11-10): the roster is built once at start (rebuild() before the first publish()), so
+--   PrRoster lists the bots before anyone opens the lobby. 1.0 published an empty roster until the first "lobby" request.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -35,7 +37,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
@@ -442,6 +444,7 @@ Players.PlayerRemoving:Connect(function(pl) removeHuman(pl, "quit") lastReq[pl] 
 
 -- ---------- the loop ----------
 local acc, lastIndex = 0, nil
+rebuild() -- v1.1
 publish()
 RunService.Heartbeat:Connect(function(dt)
 	acc += dt
