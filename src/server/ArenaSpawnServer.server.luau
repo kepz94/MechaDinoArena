@@ -1,4 +1,4 @@
--- ArenaSpawnServer v1.2 (Mecha Dino Arena) — spread spawn points for the Arena place (Kepu 2026-10-31: "allow different
+-- ArenaSpawnServer v1.3 (Mecha Dino Arena) — spread spawn points for the Arena place (Kepu 2026-10-31: "allow different
 -- spawn points on the arena map because im going to have an actual group test"; picked "8 spots around the island",
 -- "Farthest from other players", "Arena: Play + respawn"). Map: docs/reference/arena/arena_spawns_map.jpg.
 -- Spawn points: the BaseParts in Workspace.ArenaSpawns (ArenaSpawn1..8, invisible, anchored, no collide / query / touch;
@@ -39,6 +39,11 @@
 --   No spot / no live squadmate -> the 1.1 rules (near, then ring). Diagnostics: player ArenaSpawnKind "squad",
 --   ArenaSpawnNearTo (the squadmate's name), ArenaSpawnIndex 0. Switch: script attribute ArenaSpawnSquadEnabled (default
 --   true, read at each placement; false = 1.1).
+-- v1.3 (Arena Hardpoint, MDA-400, plan docs/plans/HARDPOINT_v1.0.md Task 5; Kepu 2026-11-10: spawns "in relation to the hard
+--   point like how call of duty does it"): before the 1.2 squad rule, while ReplicatedStorage HardpointLive == true and the
+--   player has a HardpointTeam, ServerScriptService.HardpointServer.HardpointPickSpawn:Invoke(player) -> ground point + the
+--   point centre: the player stands there facing the point (camera too). nil -> the 1.2 rules. Switch: script attribute
+--   ArenaSpawnHardpointEnabled (default true, read at each placement). Diagnostic: player ArenaSpawnKind "hardpoint".
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -205,6 +210,21 @@ local function squadSpot(player)
 	return nil
 end
 
+-- v1.3: a spot round the current Hardpoint point; returns ground point, point centre
+if script:GetAttribute("ArenaSpawnHardpointEnabled") == nil then script:SetAttribute("ArenaSpawnHardpointEnabled", true) end
+local function hardpointSpot(player)
+	if script:GetAttribute("ArenaSpawnHardpointEnabled") == false then return nil end
+	if game:GetService("ReplicatedStorage"):GetAttribute("HardpointLive") ~= true then return nil end
+	local t = player:GetAttribute("HardpointTeam")
+	if t ~= "A" and t ~= "B" then return nil end
+	local hs = game:GetService("ServerScriptService"):FindFirstChild("HardpointServer")
+	local fn = hs and hs:FindFirstChild("HardpointPickSpawn")
+	if not fn then return nil end
+	local ok, spot, centre = pcall(function() return fn:Invoke(player) end)
+	if ok and typeof(spot) == "Vector3" and typeof(centre) == "Vector3" then return spot, centre end
+	return nil
+end
+
 local moves = 0
 local function place(player, char, reason)
 	if not on() or player.Character ~= char or not char.Parent then return end
@@ -212,8 +232,14 @@ local function place(player, char, reason)
 	if not hrp then return end
 	local pos, i, dir, nearTo
 	local kind -- v1.2
-	local g, who, whoPos = squadSpot(player) -- v1.2
-	if g then kind = "squad" else g, who, whoPos = nearSpot(player) end -- v1.1
+	local g, who, whoPos
+	local hg, hc = hardpointSpot(player) -- v1.3
+	if hg then
+		g, who, whoPos, kind = hg, nil, hc, "hardpoint"
+	else
+		g, who, whoPos = squadSpot(player) -- v1.2
+		if g then kind = "squad" else g, who, whoPos = nearSpot(player) end -- v1.1
+	end
 	if g then
 		pos, i, nearTo = g + Vector3.new(0, standOffset(char), 0), 0, who
 		local d = Vector3.new(whoPos.X - pos.X, 0, whoPos.Z - pos.Z)
