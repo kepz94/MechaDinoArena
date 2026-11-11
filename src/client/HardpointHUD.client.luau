@@ -39,13 +39,17 @@
 --   Also in 1.2 (QA 2026-11-10: the CONTESTED marker sat on the kill feed): a marker in the left column is pushed below the
 --   kill feed's lines too (PlayerGui.KillFeed.Lines, KillFeed 1.0) while they show. Switch: script attribute
 --   HardpointHUDMarkerFeedGap (default true, read per frame; false = only below the pills, as 1.1).
+-- v1.3 (Team Tags, MDA-418, plan docs/plans/TEAM_TAGS_v1.0.md Task 3; Kepu 2026-11-10 "Both, Arena too"): the 1.0 name tags
+--   over players step aside while TeamTags 1.0 is on (the sibling LocalScript "TeamTags" has TeamTagsState "on"), so a
+--   player never has both. Switch: script attribute HardpointHUDTagsYieldEnabled (default true, read every 0.5 s; false =
+--   1.2: tags always). Diagnostic: HardpointHUDTagsYielding (true / false).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService") -- v1.1
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -353,6 +357,10 @@ end
 Players.PlayerRemoving:Connect(dropTag)
 
 local function updateTags(mine, live)
+	local tt = script.Parent:FindFirstChild("TeamTags") -- v1.3
+	local yielding = script:GetAttribute("HardpointHUDTagsYieldEnabled") ~= false and tt ~= nil and tt:GetAttribute("TeamTagsState") == "on"
+	script:SetAttribute("HardpointHUDTagsYielding", yielding)
+	if yielding then live = false end
 	for _, pl in ipairs(Players:GetPlayers()) do
 		local t = pl:GetAttribute("HardpointTeam")
 		local c = pl.Character
