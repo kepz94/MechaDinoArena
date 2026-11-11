@@ -1,0 +1,209 @@
+<title>Slim HUD and Top Compass</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column of controls, then the phone screen and the PC screen drawn at real pixel sizes and scaled to fit; spawn rings below. Single dark game look by choice. */
+:root {
+  color-scheme: dark;
+  --bg: #12151c; --panel: #1b2030; --line: #2c3347; --fg: #e9edf5; --dim: #9aa3b8;
+  --blue: rgb(90,160,255); --red: rgb(224,40,74); --yellow: rgb(255,200,50); --hud: 20,20,26;
+  --display: "Fredoka", "FredokaOne", system-ui, sans-serif; --body: "Inter", system-ui, sans-serif;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 26px; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 18px; margin: 0; }
+p { margin: 0; color: var(--dim); line-height: 1.5; max-width: 68ch; }
+.controls { display: grid; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.row .lab { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); min-width: 120px; }
+.seg button { font: 600 14px var(--body); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.seg button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.note { font-size: 13px; color: var(--dim); }
+.screen-box { display: grid; gap: 8px; }
+.screen-cap { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.fit { width: 100%; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); }
+.screen { position: relative; transform-origin: 0 0; overflow: hidden; font-family: var(--display);
+  background: radial-gradient(120% 80% at 50% 110%, #3f6b3a 0%, #2d5130 45%, transparent 46%), linear-gradient(#7fb2d9 0%, #a9cbe0 40%, #5d8a55 41%, #3c6a3c 100%); }
+.hill { position: absolute; border-radius: 50% 50% 0 0; background: #4a7a48; }
+.dino { position: absolute; width: 60px; height: 34px; border-radius: 40% 60% 30% 30%; background: #6a5a48; opacity: .9; }
+.abs { position: absolute; }
+.rbx { width: 44px; height: 44px; border-radius: 12px; background: rgba(0,0,0,.45); display: grid; place-items: center; color: #fff; font: 600 20px var(--body); }
+.pill { height: 36px; border-radius: 10px; background: rgba(var(--hud),.82); border: 1.5px solid rgba(255,255,255,.5); color: #fff; display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 18px; }
+.badge { width: 22px; height: 22px; border-radius: 50%; background: var(--yellow); color: #222; font-size: 14px; display: grid; place-items: center; }
+.zone { position: absolute; border: 1.5px dashed rgba(255,200,50,.9); border-radius: 6px; pointer-events: none; }
+.zone span { position: absolute; top: -18px; left: 0; font: 600 11px var(--body); color: var(--yellow); white-space: nowrap; text-shadow: 0 1px 2px #000; }
+/* score card */
+.card { position: absolute; transform-origin: 0 0; width: 220px; height: 58px; border-radius: 10px; background: rgba(var(--hud),.82); border: 1.5px solid rgba(255,255,255,.5); color: #fff; display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 8px; padding: 0 10px; box-sizing: border-box; }
+.emb { width: 26px; height: 26px; border-radius: 6px; background: var(--blue); }
+.bars { display: grid; gap: 5px; }
+.bar { display: grid; grid-template-columns: 1fr 26px; gap: 6px; align-items: center; font-size: 15px; }
+.bar i { height: 7px; border-radius: 4px; display: block; background: rgba(255,255,255,.15); position: relative; overflow: hidden; }
+.bar i b { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
+.clock { text-align: right; font-size: 16px; line-height: 1.15; }
+.clock small { display: block; color: var(--yellow); font-size: 12px; }
+.spill { position: absolute; transform-origin: 0 0; height: 24px; border-radius: 8px; background: rgba(var(--hud),.82); border: 1.5px solid rgba(255,255,255,.5); color: #fff; font-size: 15px; display: flex; align-items: center; padding: 0 10px; white-space: nowrap; }
+.spill.sec { color: #bcd8ff; } .spill.nx { color: #ddd; }
+/* compass */
+.comp { position: absolute; height: 26px; border-radius: 6px; overflow: visible; }
+.comp .ticks { position: absolute; inset: 0; overflow: hidden; border-radius: 6px; }
+.comp .t { position: absolute; bottom: 0; width: 1.5px; background: #fff; }
+.comp .L { position: absolute; top: 2px; transform: translateX(-50%); font-size: 13px; color: #fff; }
+.comp .notch { position: absolute; left: 50%; top: -4px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--yellow); transform: translateX(-50%); }
+.icon { position: absolute; top: 3px; transform: translateX(-50%); display: grid; justify-items: center; gap: 1px; }
+.dia { width: 16px; height: 16px; transform: rotate(45deg); border-radius: 3px; display: grid; place-items: center; }
+.dia span { transform: rotate(-45deg); font-size: 11px; color: #fff; }
+.icon em { font-style: normal; font-size: 11px; color: #fff; text-shadow: 0 1px 2px #000; margin-top: 2px; }
+/* spawn rings */
+.spawns { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.sp { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; cursor: pointer; text-align: left; color: var(--fg); font: inherit; }
+.sp[aria-pressed="true"] { border-color: var(--yellow); box-shadow: 0 0 0 1px var(--yellow) inset; }
+.sp h3 { margin: 0; font: 600 16px var(--display); }
+.sp svg { width: 100%; height: auto; max-width: 100%; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.facts b { color: var(--fg); font-weight: 600; }
+.tag { font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--yellow); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <div style="display:grid;gap:6px">
+    <h1>Slim HUD and Top Compass</h1>
+    <p>Mockup for HardpointHUD 1.6 and spawn band 2. The compass moves up into the empty gap between the Roblox buttons and SKILLS, and gets more see-through. The score card and point pills shrink. Positions are drawn at real pixel sizes for a 844 × 390 phone and a 1280 × 720 PC window; the Roblox buttons are approximate.</p>
+  </div>
+
+  <div class="controls">
+    <div class="row seg" data-k="look"><span class="lab">Compass look</span>
+      <button data-v="now">Now (solid)</button><button data-v="A" aria-pressed="true">A · See-through panel</button><button data-v="B">B · No panel, outlined</button></div>
+    <div class="row seg" data-k="size"><span class="lab">Card + pills</span>
+      <button data-v="1">Now (100%)</button><button data-v="0.8" aria-pressed="true">Smaller (80%)</button><button data-v="0.65">Smallest (65%)</button></div>
+    <div class="row seg" data-k="zone"><span class="lab">Show free space</span>
+      <button data-v="on" aria-pressed="true">On</button><button data-v="off">Off</button></div>
+    <p class="note" id="sizeNote"></p>
+  </div>
+
+  <div class="screen-box"><div class="screen-cap">Phone · 844 × 390 landscape</div><div class="fit" data-w="844" data-h="390"><div class="screen" id="phone"></div></div></div>
+  <div class="screen-box"><div class="screen-cap">PC · 1280 × 720</div><div class="fit" data-w="1280" data-h="720"><div class="screen" id="pc"></div></div></div>
+
+  <div style="display:grid;gap:6px">
+    <h2>Spawn distance from the point</h2>
+    <p>Top-down view of one point. The ring is where you respawn. Run times are to the point in a straight line: T-Rex 74 studs/s, slowest dino about 33 studs/s. Spot counts are dry, flat spots found in Studio at those distances (24 directions), lowest point first.</p>
+  </div>
+  <div class="spawns" id="spawns"></div>
+</div>
+
+<script>
+const S = { look: "A", size: "0.8", zone: "on", band: "b" };
+const BANDS = {
+  a: { name: "Now · 420–600", r: [420, 600], trex: "6–8 s", slow: "13–18 s", spots: "West Meadow 7 at 600", tag: "live" },
+  b: { name: "600–800", r: [600, 800], trex: "8–11 s", slow: "18–24 s", spots: "West Meadow 20 across 600/700/800", tag: "recommended" },
+  c: { name: "700–900", r: [700, 900], trex: "9–12 s", slow: "21–27 s", spots: "West Meadow 19, NW Foothills 3 at 900", tag: "" }
+};
+
+function el(tag, cls, css, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (css) e.style.cssText = css; if (html != null) e.innerHTML = html; return e; }
+
+function compass(x, y, w, h) {
+  const c = el("div", "comp", `left:${x}px;top:${y}px;width:${w}px;height:${h}px`);
+  const look = S.look;
+  const bgA = look === "now" ? .75 : look === "A" ? .35 : 0;
+  c.style.background = `rgba(20,20,26,${bgA})`;
+  c.style.border = look === "B" ? "none" : `1px solid rgba(255,255,255,${look === "now" ? .5 : .25})`;
+  const ticks = el("div", "ticks"); c.appendChild(ticks);
+  const tickOp = look === "now" ? .9 : look === "A" ? .55 : .8;
+  const shadow = look === "B" ? "0 0 2px #000, 0 1px 2px #000" : "none";
+  // ±90°, ticks every 15°, camera faces 30° (so E at +60)
+  for (let a = -90; a <= 90; a += 15) {
+    const px = (a + 90) / 180 * w;
+    const t = el("div", "t", `left:${px}px;height:${a % 45 === 0 ? 8 : 5}px;opacity:${tickOp};box-shadow:${look === "B" ? "0 0 2px #000" : "none"}`);
+    ticks.appendChild(t);
+  }
+  [["N", -30], ["E", 60]].forEach(([L, a]) => {
+    const px = (a + 90) / 180 * w;
+    c.appendChild(el("div", "L", `left:${px}px;opacity:${look === "A" ? .8 : 1};text-shadow:${shadow};font-size:${h < 24 ? 12 : 13}px`, L));
+  });
+  c.appendChild(el("div", "notch"));
+  const cur = el("div", "icon", `left:${(22 + 90) / 180 * w}px`, `<div class="dia" style="background:var(--blue);box-shadow:0 0 0 1.5px rgba(255,255,255,.8)"><span>2</span></div><em>212</em>`);
+  const nx = el("div", "icon", `left:${(-58 + 90) / 180 * w}px`, `<div class="dia" style="background:transparent;box-shadow:0 0 0 1.5px #ccc inset"><span style="color:#ddd">3</span></div><em>0:07</em>`);
+  c.append(cur, nx);
+  return c;
+}
+
+function draw(id, W, H, phone) {
+  const s = document.getElementById(id); s.innerHTML = ""; s.style.width = W + "px"; s.style.height = H + "px";
+  s.append(el("div", "hill", `left:${W*.55}px;top:${H*.30}px;width:${W*.5}px;height:${H*.25}px`), el("div", "hill", `left:${-W*.1}px;top:${H*.34}px;width:${W*.45}px;height:${H*.2}px`));
+  s.append(el("div", "dino", `left:${W*.62}px;top:${H*.52}px`), el("div", "dino", `left:${W*.30}px;top:${H*.58}px;transform:scale(.7)`));
+  // Roblox top-left buttons (approximate)
+  const rb = phone ? [[12, 8], [62, 8]] : [[12, 6], [62, 6]];
+  rb.forEach(([x, y], i) => s.appendChild(el("div", "abs rbx", `left:${x}px;top:${y}px`, i ? "…" : "≡")));
+  const inset = 116; // right edge of the Roblox buttons + 10
+  // top-right: MENU pill at right 16, SKILLS 8 px left of it
+  const menuW = 84, skillsW = 112;
+  s.appendChild(el("div", "abs pill", `right:16px;top:8px;width:${menuW}px;box-sizing:border-box;justify-content:center`, "MENU"));
+  s.appendChild(el("div", "abs pill", `right:${16 + menuW + 8}px;top:8px;width:${skillsW}px;box-sizing:border-box`, `SKILLS <span class="badge">3</span>`));
+  const skillsLeft = W - 16 - menuW - 8 - skillsW;
+  const gapL = inset, gapR = skillsLeft - 12, gapW = gapR - gapL;
+  if (S.zone === "on") { const z = el("div", "zone", `left:${gapL}px;top:6px;width:${gapW}px;height:40px`, `<span>free space ${gapW} px</span>`); s.appendChild(z); }
+  // compass: in the gap, centred on the screen when it fits, width 34% phone / 30% PC, 180–420
+  const cw = Math.max(180, Math.min(420, Math.round(W * (phone ? .34 : .30)), gapW));
+  const ch = phone ? 22 : 26;
+  let cx = Math.round(W / 2 - cw / 2); cx = Math.max(gapL, Math.min(cx, gapR - cw));
+  s.appendChild(compass(cx, 26 - ch / 2 + 2, cw, ch));
+  // score card + pills, scaled from the top-left corner (16, 58)
+  const k = parseFloat(S.size);
+  const card = el("div", "card", `left:16px;top:58px;transform:scale(${k})`,
+    `<div class="emb"></div><div class="bars"><div class="bar"><i><b style="width:45%;background:var(--blue)"></b></i><span>45</span></div><div class="bar"><i><b style="width:30%;background:var(--red)"></b></i><span>30</span></div></div><div class="clock">4:12<small>P2 · 0:41</small></div>`);
+  s.appendChild(card);
+  const cardBottom = 58 + 58 * k, gap = 6 * k;
+  s.appendChild(el("div", "spill sec", `left:16px;top:${cardBottom + gap}px;transform:scale(${k})`, "SECURED · +1 / s"));
+  s.appendChild(el("div", "spill nx", `left:16px;top:${cardBottom + gap + (24 + 6) * k}px;transform:scale(${k})`, "NEXT: P3 WEST MEADOW IN 0:07"));
+}
+
+function fitAll() {
+  document.querySelectorAll(".fit").forEach(f => {
+    const W = +f.dataset.w, H = +f.dataset.h, sc = f.clientWidth / W, s = f.firstElementChild;
+    s.style.transform = `scale(${sc})`; f.style.height = (H * sc) + "px";
+  });
+}
+
+function ring(b) {
+  const max = 950, R = 110, cx = 125, cy = 125, k = R / max;
+  const [r1, r2] = b.r;
+  return `<svg viewBox="0 0 250 250" role="img" aria-label="Spawn ring ${r1} to ${r2} studs">
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="#1f3a2a" stroke="#2c3347"/>
+    <circle cx="${cx}" cy="${cy}" r="${r2*k}" fill="rgba(90,160,255,.28)" stroke="rgb(90,160,255)"/>
+    <circle cx="${cx}" cy="${cy}" r="${r1*k}" fill="#1f3a2a" stroke="rgb(90,160,255)" stroke-dasharray="3 3"/>
+    <circle cx="${cx}" cy="${cy}" r="${250*k}" fill="none" stroke="rgba(224,40,74,.7)" stroke-dasharray="2 4"/>
+    <rect x="${cx-6}" y="${cy-6}" width="12" height="12" transform="rotate(45 ${cx} ${cy})" fill="rgb(255,200,50)"/>
+    <text x="${cx}" y="${cy - r2*k - 4}" fill="#e9edf5" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">${r2}</text>
+    <text x="${cx}" y="${cy - r1*k + 13}" fill="#e9edf5" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">${r1}</text>
+    <text x="${cx}" y="244" fill="#9aa3b8" font-size="10" text-anchor="middle" font-family="Inter, sans-serif">red dashes: 250 · no spawn this close to an enemy</text>
+  </svg>`;
+}
+function drawSpawns() {
+  const box = document.getElementById("spawns"); box.innerHTML = "";
+  Object.entries(BANDS).forEach(([key, b]) => {
+    const card = el("button", "sp"); card.type = "button"; card.setAttribute("aria-pressed", S.band === key);
+    card.innerHTML = `<div class="tag">${b.tag || "&nbsp;"}</div><h3>${b.name} studs</h3>${ring(b)}
+      <div class="facts"><span>T-Rex run</span><b>${b.trex}</b><span>Slowest run</span><b>${b.slow}</b><span>Fewest spots</span><b>${b.spots}</b></div>`;
+    card.onclick = () => { S.band = key; drawSpawns(); };
+    box.appendChild(card);
+  });
+}
+
+function render() {
+  draw("phone", 844, 390, true); draw("pc", 1280, 720, false); fitAll();
+  const k = parseFloat(S.size);
+  document.getElementById("sizeNote").textContent =
+    k === 1 ? "Score card 220 × 58, pills 24 px tall, text 15 (live 1.5)." :
+    `Score card ${Math.round(220*k)} × ${Math.round(58*k)}, pills ${Math.round(24*k)} px tall, text about ${Math.round(15*k)}. Same layout, just scaled down.` +
+    (k < .7 ? " Text this small is hard to read on a phone." : "");
+}
+document.querySelectorAll(".seg").forEach(g => g.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  S[g.dataset.k] = b.dataset.v; render();
+}));
+window.addEventListener("resize", fitAll);
+render(); drawSpawns();
+</script>
