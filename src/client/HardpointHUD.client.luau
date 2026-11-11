@@ -60,13 +60,17 @@
 --   Phone = UserInputService.TouchEnabled or the character's ArenaTouchState == "on" (the ArenaTouchForceTouch hook).
 --   Switch: script attribute HardpointHUDCompassEnabled (default true, read at start; false = 1.3 marker, no compass).
 --   Diagnostics: HardpointHUDCompass ("" / "cur:<rel>° next:<rel>°"), HardpointHUDCompassPlace ("row" / "top").
+-- v1.5 (MDA-423, found in the QA run 2026-11-11 on a 439 px wide window): the strip's row space now ends 96 px from the right
+--   (the CLASSIC camera button sits there) and needs 140 px (1.4: 16 px, 180); when there is no room it goes under the pills in
+--   the left column (x 16, the score card's width, 6 px under the lowest visible of Status / Next; place "column") instead
+--   of the top centre, where it covered SKILLS / MENU. KillFeed 1.1 keeps its lines under it.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService") -- v1.1
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -450,15 +454,16 @@ local function drawCompass(dt, cam, vp, idx, warm, rel, remaining, showNext)
 	local Hh = phone and 22 or 26
 	local W = math.clamp(vp.X * (phone and 0.34 or 0.30), 180, 420)
 	local left = card.AbsolutePosition.X - gui.AbsolutePosition.X + card.AbsoluteSize.X + 12
-	local room = (vp.X - 16) - left
+	local room = (vp.X - 96) - left -- v1.5: 96 (1.4: 16)
 	local x, y
-	if room >= 180 then
+	if room >= 140 then -- v1.5: 140 (1.4: 180)
 		W = math.min(W, room)
 		x, y = left + (room - W) / 2, 58 + (58 - Hh) / 2
 		script:SetAttribute("HardpointHUDCompassPlace", "row")
-	else
-		x, y = (vp.X - W) / 2, 10
-		script:SetAttribute("HardpointHUDCompassPlace", "top")
+	else -- v1.5: under the pills (1.4: the top centre)
+		W = card.AbsoluteSize.X
+		x, y = 16, (nextL.Visible and 152 or 122) + 24 + 6
+		script:SetAttribute("HardpointHUDCompassPlace", "column")
 	end
 	cmp.Position, cmp.Size = UDim2.fromOffset(x, y), UDim2.fromOffset(W, Hh)
 	cmp.Visible = true

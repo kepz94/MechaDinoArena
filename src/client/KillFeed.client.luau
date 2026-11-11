@@ -19,13 +19,16 @@
 -- Switches: script attributes KillFeedEnabled (default true, read per entry and per frame), KillFeedPhoneBanner (default true,
 --   read per entry). Diagnostics: KillFeedVersion, KillFeedMode ("pc" / "phone"), KillFeedLines (lines on screen),
 --   KillFeedLastLine ("<k> > <how> > <v>"), KillFeedBanner (last banner text).
+-- v1.1 (MDA-423, HardpointHUD 1.5): the lines also stay under HardpointHUD's "Compass" and "CompassUnder" when those are
+--   visible (on narrow screens the compass sits under the pills in the left column; in its usual top row they are higher
+--   than the pills and change nothing).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local PC = {max = 5, life = 5, lifeMe = 8, scale = 1, tags = true}
 local PHONE = {max = 3, life = 4, lifeMe = 4, scale = 0.82, tags = false}
 local BANNER_LIFE = 2.5
@@ -227,7 +230,7 @@ RunService.RenderStepped:Connect(function()
 	local hud = pg:FindFirstChild("HardpointHUD")
 	if hud and hud:IsA("ScreenGui") and hud.Enabled then
 		local bottom
-		for _, n in ipairs({"ScoreCard", "Status", "Next"}) do
+		for _, n in ipairs({"ScoreCard", "Status", "Next", "Compass", "CompassUnder"}) do -- v1.1: + the compass
 			local o = hud:FindFirstChild(n)
 			if o and o:IsA("GuiObject") and o.Visible then
 				local b = o.AbsolutePosition.Y + o.AbsoluteSize.Y - hud.AbsolutePosition.Y
