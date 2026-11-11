@@ -28,6 +28,8 @@
 --   * walk goal (no target / retreat as 1.0): R.jobGoal(job, centre, nextCentre, home); the 1.0 hold-below still applies to a
 --     goal on the point (hold).
 --   * a guard's fight move is kept within R.GUARD_LEASH (90) of the point (R.guardClamp).
+--   * a target change updates ctx.taken / ctx.duelTaken at once (QA 2026-11-11: two bots could both take an enemy's last free
+--     place in the same tick).
 --   * fix (the known 1.0 error at line 267, logged 2026-11-11): startAttack's task checks that b.model / b.hrp still exist
 --     (the bot can be removed while it attacks).
 local Players = game:GetService("Players")
@@ -393,6 +395,15 @@ function M.step(b, ctx)
 		if orr and (orr.Position - p).Magnitude < 80 then mates += 1 end
 	end
 	if best ~= b.target then
+		if job and ctx.taken and ctx.taken[b.team] then -- v1.1: count the change now, so two bots can't both take the last free place this tick
+			local tt, dt = ctx.taken[b.team], ctx.duelTaken and ctx.duelTaken[b.team]
+			if b.target and tt[b.target] then tt[b.target] -= 1 end
+			if best then tt[best] = (tt[best] or 0) + 1 end
+			if dt and job == "duel" then
+				if b.target and dt[b.target] then dt[b.target] -= 1 end
+				if best then dt[best] = (dt[best] or 0) + 1 end
+			end
+		end
 		b.target = best
 		b.seenSince = os.clock()
 	end

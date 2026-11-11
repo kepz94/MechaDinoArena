@@ -3346,3 +3346,7 @@ Model numbers are generator output (old version = the flag in the last column, b
 - HardpointRules 1.2 constants: BAND2_RADII {700, 750, 800, 850, 900}, BAND2_EXTRA_RADII {650, 600}, SIGHT_MAX2 1000, OPEN_MIN_APART2 900, OPEN_RUN_DIFF 60.
 - HardpointServer 1.3: `HardpointFarSpawnsEnabled` (true), `HardpointRunOpeningEnabled` (true), `HpRunAgentRadius` 4, `HpRunAgentHeight` 10; diagnostics `HpBandSpots2`, `HpRunPaths`; `HpOpening` gains "run" / "flat"; `HpSpawnLast` gains " far".
 - HardpointHUD 1.6: `HardpointHUDCompassTopEnabled` (true), `HardpointHUDCompassBgT` 0.65, `HardpointHUDCompassStrokeT` 0.85, `HardpointHUDScale` 0.8 (1 = 1.5 size); `HardpointHUDCompassPlace` gains "top".
+
+## Practice bot jobs (2026-11-11, plan docs/plans/BOT_JOBS_v1.0.md, MDA-429..432)
+- PracticeRules 1.1 constants: BOT_SPECIES (7, no TRex), JOB_OF, HOLD_FIGHT 60, SELF_DEFENSE 20, DUEL_LEASH 250, GUARD_RING 45, GUARD_ZONE 110, GUARD_LEASH 90, TEAM_EVERY 1, FILL_MIN 5, MAX_ON_ONE 2, HOLD_WANT_OPEN 2, HOLD_WANT_HELD 1, RUN_WINDOW 10.
+- PracticeServer 1.3: `PrBotNoTRex` (true), `PrJobsEnabled` (true); diagnostics `PrJobsA`, `PrJobsB`, `PrMaxOnOne`. Bot models: `BotJob`, `BotJobWhy`.

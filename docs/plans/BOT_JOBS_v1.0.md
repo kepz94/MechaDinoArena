@@ -101,4 +101,17 @@ s; score and server ms per tick logged. Docs + Dev Hub.
    samey, the next lever is per-job difficulty (later, not in this plan).
 
 ## Status (2026-11-11)
-Plan + tickets filed; waiting for "Build".
+Plan + tickets filed 13:27; Kepu "Build" 13:28.
+
+## Build (2026-11-11)
+Commits ac8679d (rules + spec), f50476e (server + brain), then the same-tick count fix; installed in Studio, hashes match.
+- Rules: PracticeJobs PASS 93; PracticeRules 1.0 PASS 114.
+- Two rule details settled while building: self-defence (an enemy within 20 studs) is always allowed, even over the 2-on-1
+  cap, so a bot never stands still while it's bitten; a target change updates the counts at once (QA found two bots could
+  take an enemy's last free place in the same tick).
+- QA (practice 5v5 Normal, 2 matches): 4 bot rolls, 40 dinos, no T-Rex. Red rolled no Pachy / Teno and filled 2 holders
+  ("fill: point"). Holders reached the point 17–32 s after the start (spawns are 700–900 out). Duelists never shared a
+  target (0 / 547 samples). 3+ bots on one enemy happened only in the allowed cases (2 holders defending the point plus a
+  bot within 20), 0 / 498 samples beyond the rules. Runner ("run: next") seen. Match 2 score 30–8, both teams scoring.
+  Think 0.2–0.5 ms median, rare 10 ms spikes (paths, as 1.0). No PrBrainError.
+- PrMaxOnOne counts the allowed cases too, so it can read 3; the check above is the real one.
