@@ -329,10 +329,8 @@ function T.lob(self, n)
 			for _, p in ipairs(puffs) do p.Transparency = 1 end
 		end
 		if self:_fired(1.5) then
-			for i = 1, 2 do
-				dum[i].part.Color = VENOM
-				self:_pop("POISON", VENOM_L, dum[i].part.Position + Vector3.new(0, 3.5, 0), 1.2)
-			end
+			for i = 1, 2 do dum[i].part.Color = VENOM end
+			self:_pop("POISON", VENOM_L, land + Vector3.new(0, 7, 0), 1.4)
 		end
 		return W
 	end

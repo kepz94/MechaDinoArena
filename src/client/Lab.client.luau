@@ -149,7 +149,8 @@ VERSION = "1.15" -- v1.15 part clips (live clip + what line + chips + step previ
 --     goes up from the owned step reads "old → new" in yellow on 3A2F0A with a yellow 0.6 stroke (LabClipRecipes.chips).
 --   * The 1.14 Steps / Actions / Hint move to 13 / 14 / 15.
 --   Step preview: each step row is a tap target; tapping it shows that step in the clip and chips and outlines the row
---   (yellow 0.4 stroke); tapping it again, or picking another part, goes back to the owned step (step I when not owned).
+--   (yellow 0.4 stroke; the panel keeps its scroll); tapping it again, picking another part or closing the Lab goes back to
+--   the owned step (step I when not owned).
 --   The scene is kept across redraws while the part, the step and the character are the same (parked during the
 --   redraw); it is destroyed when the part / dino changes, on the SKINS tab, on stat rows and when the Lab closes.
 --   Switch: script attribute LabClipEnabled (default true, read at each redraw; false = the 1.14 panel). Diagnostics
@@ -1212,7 +1213,9 @@ local function clipMount(id, n, col)
 				press("clipstep:" .. i)
 				clipStep = (clipStep == i) and nil or i
 				clipStepFor = id
+				local keep = detail.CanvasPosition -- the panel stays scrolled where it was
 				if redrawDetail then redrawDetail() end
+				task.defer(function() detail.CanvasPosition = keep end)
 			end)
 		end
 	end
@@ -1765,6 +1768,7 @@ local function setOpen(kind)
 		RunService:UnbindFromRenderStep(BIND)
 		toast.Visible = false
 		clipDrop() -- v1.15
+		clipStep, clipStepFor = nil, nil
 		player:SetAttribute("LabClipState", "off")
 	end
 end
