@@ -3,8 +3,11 @@
 -- buttons, numbers", "Shrink to fit"; mockup docs/mockups/font_silkscreen_v0.1.html). Pure: no instances, no services.
 --   plainLength(text)  visible characters (rich-text tags removed, the 5 escapes counted as one character)
 --   classify(info)     "silk" / "keep". info = {font (Enum.Font name), text, wrapped, scaled, isBox, override}
---                      keep: a TextBox; override "keep"; a font not in LOUD; wrapped; more than MAX_CHARS characters.
+--                      keep: a TextBox; override "keep"; a font not in LOUD; wrapped (except a TITLE font: Fredoka
+--                      titles may wrap, e.g. the Lab part name); more than MAX_CHARS characters.
 --                      silk: override "silk"; a LOUD font that is TextScaled; a LOUD font, one line, <= MAX_CHARS.
+--                      keep also: text with a character Silkscreen has no glyph for (NO_GLYPH; checked in Studio
+--                      2026-11-11: ✕ U+2715 and ▾ U+25BE draw as a box), so it never shows a box.
 --   fitSize(size, factor)  round(size x factor), factor clamped FIT_MIN..1 (nil -> FIT_DEFAULT); never below MIN_SIZE unless
 --                      the size already was.
 local R = {}
@@ -14,6 +17,18 @@ R.MIN_SIZE = 8
 R.FIT_MIN = 0.7
 R.FIT_DEFAULT = 0.88
 R.LOUD = {FredokaOne = true, GothamBlack = true, GothamBold = true, SourceSansBold = true}
+R.TITLE = {FredokaOne = true} -- the title font: a wrapped title still switches when short
+R.NO_GLYPH = {[0x2715] = true, [0x25BE] = true} -- ✕ ▾
+
+function R.hasNoGlyph(text)
+	local ok, found = pcall(function()
+		for _, c in utf8.codes(tostring(text or "")) do
+			if R.NO_GLYPH[c] then return true end
+		end
+		return false
+	end)
+	return ok and found or false
+end
 
 function R.plainLength(text)
 	local s = tostring(text or "")
@@ -28,8 +43,9 @@ function R.classify(info)
 	if info.override == "keep" then return "keep" end
 	if info.override == "silk" then return "silk" end
 	if not R.LOUD[tostring(info.font or "")] then return "keep" end
+	if R.hasNoGlyph(info.text) then return "keep" end
 	if info.scaled then return "silk" end
-	if info.wrapped then return "keep" end
+	if info.wrapped and not R.TITLE[tostring(info.font)] then return "keep" end
 	if R.plainLength(info.text) > R.MAX_CHARS then return "keep" end
 	return "silk"
 end

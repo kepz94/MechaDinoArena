@@ -38,6 +38,13 @@ eq("box beats override", cl({font = "FredokaOne", text = "hi", isBox = true, ove
 eq("rich chip", cl({font = "GothamBlack", text = 'RANGE <font color="#FFC832">40 → 50 studs</font>'}), "silk")
 eq("empty", cl({font = "FredokaOne", text = ""}), "silk")
 eq("bad info", R.classify(nil), "keep")
+eq("wrapped title silk", cl({font = "FredokaOne", text = "Venom Gatling", wrapped = true}), "silk")
+eq("wrapped long title keep", cl({font = "FredokaOne", text = string.rep("A", 30), wrapped = true}), "keep")
+eq("wrapped gbold keep", cl({font = "GothamBold", text = "6 darts", wrapped = true}), "keep")
+eq("no glyph x", cl({font = "GothamBlack", text = "✕"}), "keep")
+eq("no glyph tri", cl({font = "FredokaOne", text = "PRACTICE  ▾"}), "keep")
+eq("glyph ok", cl({font = "FredokaOne", text = "◀"}), "silk")
+eq("scaled no glyph", cl({font = "FredokaOne", text = "✕", scaled = true}), "keep")
 -- fitSize
 eq("fit 20", R.fitSize(20, 0.88), 18)
 eq("fit default", R.fitSize(20), 18)
