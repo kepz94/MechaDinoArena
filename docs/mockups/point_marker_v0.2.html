@@ -1,0 +1,213 @@
+<title>Point Marker Fix</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: controls, a live phone screen (844 x 390, scaled) where you turn the camera, then what each option does. Single dark game look by choice. */
+:root {
+  color-scheme: dark;
+  --bg: #12151c; --panel: #1b2030; --line: #2c3347; --fg: #e9edf5; --dim: #9aa3b8;
+  --blue: rgb(90,160,255); --red: rgb(224,40,74); --yellow: rgb(255,200,50);
+  --display: "Fredoka", "FredokaOne", system-ui, sans-serif; --body: "Inter", system-ui, sans-serif;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); }
+.wrap { max-width: 1000px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { font: 700 26px var(--display); margin: 0; text-wrap: balance; }
+p { margin: 0; color: var(--dim); line-height: 1.5; max-width: 70ch; }
+.controls { display: grid; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lab { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); min-width: 110px; }
+.seg button { font: 600 14px var(--body); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+input[type=range] { flex: 1 1 200px; min-width: 0; accent-color: var(--yellow); }
+.val { font: 600 13px var(--body); font-variant-numeric: tabular-nums; min-width: 64px; color: var(--fg); }
+.fit { width: 100%; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); }
+canvas { display: block; width: 100%; height: auto; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 8px; align-content: start; }
+.card h2 { margin: 0; font: 600 17px var(--display); }
+.card ul { margin: 0; padding-left: 18px; color: var(--dim); line-height: 1.5; display: grid; gap: 4px; }
+.tag { font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase; }
+.tag.bad { color: #ff8fa3; } .tag.good { color: var(--yellow); }
+.note { font-size: 13px; color: var(--dim); }
+</style>
+
+<div class="wrap">
+  <div style="display:grid;gap:6px">
+    <h1>Point Marker Fix</h1>
+    <p>Mockup for HardpointHUD 1.7. Drag "Turn" and "Look up / down" to move the camera on a phone screen. "Now" copies the live marker's rules exactly; A and B are the fixes. The compass at the top stays as it is in every option.</p>
+  </div>
+
+  <div class="controls">
+    <div class="row seg" data-k="mode"><span class="lab">Marker</span>
+      <button data-v="now">Now (live 1.6)</button><button data-v="A" aria-pressed="true">A · CoD: rides the screen edge</button><button data-v="B">B · Fades out off screen</button></div>
+    <div class="row"><span class="lab">Turn</span><input id="yaw" type="range" min="-180" max="180" value="-20"><span class="val" id="yawV"></span></div>
+    <div class="row"><span class="lab">Look up / down</span><input id="pitch" type="range" min="-35" max="25" value="-6"><span class="val" id="pitchV"></span></div>
+    <div class="row"><span class="lab">Distance</span><input id="dist" type="range" min="10" max="900" value="260"><span class="val" id="distV"></span></div>
+    <div class="row seg" data-k="height"><span class="lab">Point</span>
+      <button data-v="0" aria-pressed="true">Flat (Centre Meadow)</button><button data-v="60">High (Summit)</button></div>
+    <div class="row seg" data-k="auto"><span class="lab">Auto turn</span>
+      <button data-v="off" aria-pressed="true">Off</button><button data-v="on">On</button></div>
+  </div>
+
+  <div class="fit"><canvas id="cv" width="1688" height="780" aria-label="Phone screen with the point marker"></canvas></div>
+  <p class="note" id="why"></p>
+
+  <div class="cards">
+    <div class="card"><span class="tag bad">Now · why it looks buggy</span><h2>Live 1.6 rules</h2><ul>
+      <li>It can never go above 208 px from the top. A phone screen is 390 px tall, so the top half is off limits and the marker slides along that line instead of sitting on the point.</li>
+      <li>Near the score card it jumps down under the pills and kill feed, about 100 px in one frame.</li>
+      <li>It hangs 34 studs over the point and is drawn above that, so up close it floats high in the sky.</li>
+      <li>It pops out the instant that spot leaves the screen, and stays full size on your crosshair and while you stand on the point.</li></ul></div>
+    <div class="card"><span class="tag good">A · CoD (recommended)</span><h2>Rides the screen edge</h2><ul>
+      <li>Pinned just above the point and centred on it, so it sits exactly where the point is. No height limit, no jumps.</li>
+      <li>When the point leaves the screen, the marker slides to the screen edge on that side and stays there, gliding (CoD does this).</li>
+      <li>Goes see-through near the middle of the screen so it never blocks your aim.</li>
+      <li>Hides while you're on the point (the pill says SECURED).</li>
+      <li>Same size at any distance; distance under it.</li></ul></div>
+    <div class="card"><span class="tag good">B · Calmer</span><h2>Fades out off screen</h2><ul>
+      <li>Everything in A, but when the point leaves the screen the marker fades away instead of riding the edge.</li>
+      <li>The compass is your only arrow when the point is behind you.</li>
+      <li>Less on screen, but you lose the edge hint CoD gives.</li></ul></div>
+  </div>
+</div>
+
+<script>
+const W = 844, H = 390, K = 2; // phone px, canvas scale
+const S = { mode: "A", height: 0, auto: "off" };
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+const yaw = document.getElementById("yaw"), pitch = document.getElementById("pitch"), dist = document.getElementById("dist");
+const FOV = 70 * Math.PI / 180, F = (H / 2) / Math.tan(FOV / 2);
+const HUD = { card: { x: 16, y: 58, w: 176, h: 46 }, status: { x: 16, y: 109, w: 120, h: 19 }, next: { x: 16, y: 133, w: 230, h: 19 },
+  feed: { x: 16, y: 158, w: 200, h: 44 }, skills: { x: W - 16 - 84 - 8 - 112, y: 8, w: 112, h: 36 }, menu: { x: W - 16 - 84, y: 8, w: 84, h: 36 } };
+const ease = { x: null, y: null, a: 1 };
+
+function project(wx, wy, wz, yawD, pitchD) {
+  // camera at (0, 6, 0); yaw turns right; pitch looks up
+  const yr = yawD * Math.PI / 180, pr = pitchD * Math.PI / 180;
+  let x = wx, y = wy - 6, z = wz;
+  const cx = Math.cos(yr) * x - Math.sin(yr) * z, cz = Math.sin(yr) * x + Math.cos(yr) * z;
+  const cy = Math.cos(pr) * y - Math.sin(pr) * cz, cz2 = Math.sin(pr) * y + Math.cos(pr) * cz;
+  return { sx: W / 2 + (cx / cz2) * F, sy: H / 2 - (cy / cz2) * F, z: cz2, cx, cy };
+}
+function rect(r, fill, stroke) { ctx.fillStyle = fill; ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 8); ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); } }
+function text(t, x, y, size, color, align) { ctx.font = `600 ${size}px Fredoka, sans-serif`; ctx.fillStyle = color; ctx.textAlign = align || "left"; ctx.textBaseline = "middle"; ctx.fillText(t, x, y); }
+
+function drawWorld(yawD, pitchD, D, h) {
+  // sky / ground split at the horizon
+  const hz = H / 2 + Math.tan(pitchD * Math.PI / 180) * F;
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#7fb2d9"); g.addColorStop(1, "#a9cbe0");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, Math.max(0, Math.min(H, hz)));
+  ctx.fillStyle = "#4c7d47"; ctx.fillRect(0, Math.max(0, hz), W, H);
+  // the point: a ring of radius 45 on the ground (or on the Summit)
+  ctx.strokeStyle = "rgba(255,200,50,.9)"; ctx.lineWidth = 3; ctx.beginPath();
+  let started = false;
+  for (let i = 0; i <= 48; i++) {
+    const a = i / 48 * Math.PI * 2;
+    const p = project(Math.cos(a) * 45, h, D + Math.sin(a) * 45, yawD, pitchD);
+    if (p.z <= 1) { started = false; continue; }
+    if (!started) { ctx.moveTo(p.sx, p.sy); started = true; } else ctx.lineTo(p.sx, p.sy);
+  }
+  ctx.stroke();
+  if (h > 0) { // a hill under the Summit point
+    const b = project(0, 0, D, yawD, pitchD), t = project(0, h, D, yawD, pitchD);
+    if (b.z > 1) { ctx.fillStyle = "rgba(90,110,80,.9)"; ctx.beginPath(); const half = 90 * F / b.z; ctx.moveTo(b.sx - half * 1.6, b.sy); ctx.lineTo(t.sx, t.sy); ctx.lineTo(b.sx + half * 1.6, b.sy); ctx.fill(); }
+  }
+}
+
+function drawHud() {
+  rect(HUD.card, "rgba(20,20,26,.82)", "rgba(255,255,255,.5)");
+  ctx.fillStyle = "rgb(90,160,255)"; ctx.fillRect(HUD.card.x + 8, HUD.card.y + 10, 24, 24);
+  text("45", HUD.card.x + 120, HUD.card.y + 15, 13, "#bcd8ff"); text("30", HUD.card.x + 120, HUD.card.y + 32, 13, "#ffc2cc");
+  text("4:12", HUD.card.x + 150, HUD.card.y + 15, 12, "#fff"); text("P2", HUD.card.x + 152, HUD.card.y + 32, 10, "rgb(255,200,50)");
+  rect(HUD.status, "rgba(20,20,26,.6)"); text("CAPTURE", HUD.status.x + 8, HUD.status.y + 10, 12, "#fff");
+  rect(HUD.feed, "rgba(20,20,26,.35)"); text("Rook  ▸  Moss", HUD.feed.x + 8, HUD.feed.y + 12, 11, "#bcd8ff"); text("Vex  ▸  Kepu", HUD.feed.x + 8, HUD.feed.y + 31, 11, "#ffc2cc");
+  rect(HUD.skills, "rgba(20,20,26,.82)", "rgba(255,255,255,.5)"); text("SKILLS", HUD.skills.x + 14, HUD.skills.y + 18, 15, "#fff");
+  rect(HUD.menu, "rgba(20,20,26,.82)", "rgba(255,255,255,.5)"); text("MENU", HUD.menu.x + 42, HUD.menu.y + 18, 15, "#fff", "center");
+  // Roblox buttons + compass strip (unchanged in every option)
+  [[12, 8], [62, 8]].forEach(([x, y]) => { ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.beginPath(); ctx.roundRect(x, y, 44, 44, 12); ctx.fill(); });
+  ctx.fillStyle = "rgba(20,20,26,.35)"; ctx.beginPath(); ctx.roundRect(W / 2 - 143, 8, 287, 22, 6); ctx.fill();
+  text("compass (unchanged)", W / 2, 19, 11, "rgba(255,255,255,.7)", "center");
+  // phone controls
+  ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(110, H - 80, 52, 0, Math.PI * 2); ctx.stroke();
+  [[W - 80, H - 70, 34], [W - 160, H - 50, 24], [W - 70, H - 150, 24]].forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); });
+  // crosshair
+  ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.moveTo(W / 2 - 8, H / 2); ctx.lineTo(W / 2 + 8, H / 2); ctx.moveTo(W / 2, H / 2 - 8); ctx.lineTo(W / 2, H / 2 + 8); ctx.stroke();
+}
+
+function drawMarker(cx, cy, D, alpha, small, labelOn) {
+  ctx.save(); ctx.globalAlpha = alpha;
+  const s = small ? 0.84 : 1;
+  if (labelOn) text("CAPTURE", cx, cy - 26 * s, 13 * s, "#fff", "center");
+  ctx.translate(cx, cy); ctx.rotate(Math.PI / 4);
+  ctx.fillStyle = "rgba(20,20,26,.6)"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(-11 * s, -11 * s, 22 * s, 22 * s, 4); ctx.fill(); ctx.stroke();
+  ctx.restore(); ctx.save(); ctx.globalAlpha = alpha;
+  text("2", cx, cy + 1, 14 * s, "#fff", "center");
+  text(Math.round(D) + " studs", cx, cy + 26 * s, 12 * s, "#fff", "center");
+  ctx.restore();
+}
+
+function frame(dt) {
+  if (S.auto === "on") { let v = +yaw.value + dt * 40; if (v > 180) v -= 360; yaw.value = v; }
+  const yawD = +yaw.value, pitchD = +pitch.value, D = +dist.value, h = S.height;
+  document.getElementById("yawV").textContent = yawD + "°"; document.getElementById("pitchV").textContent = pitchD + "°"; document.getElementById("distV").textContent = D + " studs";
+  ctx.setTransform(K, 0, 0, K, 0, 0); ctx.clearRect(0, 0, W, H);
+  drawWorld(yawD, pitchD, D, h);
+  drawHud();
+  const onPoint = D < 45;
+  let why = "";
+  if (S.mode === "now") {
+    // live 1.6: anchor = centre + 34 studs, marker drawn above it (anchor bottom, 74 tall)
+    const p = project(0, h + 34, D, yawD, pitchD);
+    const onScreen = p.z > 0 && p.sx >= 0 && p.sx <= W && p.sy >= 0 && p.sy <= H;
+    let x = p.sx, y = p.sy;
+    if (p.z < 0) { x = W - x; y = H * 0.85; }
+    x = Math.min(Math.max(x, 70), W - 70); y = Math.min(Math.max(y, 150), H - 40);
+    if (p.z < 0) { x = x < W / 2 ? 70 : W - 70; y = H * 0.5; }
+    y = Math.max(y, 208);
+    let pushed = false;
+    if (x - 60 < HUD.card.x + HUD.card.w) { const low = HUD.feed.y + HUD.feed.h + 6 + 74; if (low > y) { y = low; pushed = true; } }
+    if (onScreen) drawMarker(x, y - 37, D, 1, false, true);
+    why = !onScreen ? "Now: the spot 34 studs above the point is off screen, so the marker is gone." :
+      (pushed ? "Now: near the score card the marker is pushed down under the kill feed (the jump)." :
+      (p.sy < 208 ? "Now: the point is higher on screen than 208 px, so the marker is stuck on that line below it." : "Now: the marker hangs over the point, drawn above a spot 34 studs up."));
+  } else {
+    const p = project(0, h + 6, D, yawD, pitchD);
+    const safe = { l: 28, r: W - 28, t: 66, b: H - 110 };
+    let tx, ty, inView = p.z > 1 && p.sx >= safe.l && p.sx <= safe.r && p.sy >= safe.t && p.sy <= safe.b;
+    if (inView) { tx = p.sx; ty = p.sy; }
+    else {
+      // direction from the screen centre toward the point (flipped when behind), pushed onto the safe frame's edge
+      let dx = p.cx, dy = -p.cy; if (p.z <= 1) { dx = p.cx; dy = 0.001; }
+      if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) dx = 1;
+      const hw = (safe.r - safe.l) / 2, hh = (safe.b - safe.t) / 2, mx = (safe.l + safe.r) / 2, my = (safe.t + safe.b) / 2;
+      const k = Math.min(hw / Math.abs(dx || 1e-6), hh / Math.abs(dy || 1e-6));
+      tx = mx + dx * k; ty = my + dy * k;
+    }
+    if (ease.x == null) { ease.x = tx; ease.y = ty; }
+    const r = 1 - Math.exp(-14 * dt); ease.x += (tx - ease.x) * r; ease.y += (ty - ease.y) * r;
+    let a = 1;
+    const dc = Math.hypot(ease.x - W / 2, ease.y - H / 2);
+    if (dc < 70) a = 0.35 + 0.65 * (dc / 70);
+    if (!inView && S.mode === "B") a = 0;
+    if (onPoint) a = 0;
+    ease.a += (a - ease.a) * (1 - Math.exp(-10 * dt));
+    if (ease.a > 0.02) drawMarker(ease.x, ease.y, D, ease.a, !inView, inView);
+    why = onPoint ? "On the point: the marker hides; the pill says SECURED." :
+      (inView ? (dc < 70 ? "Near your crosshair it goes see-through so it doesn't block your aim." : "Pinned just above the point, centred on it.") :
+      (S.mode === "A" ? "Point off screen: the marker rides the screen edge on the side the point is (CoD)." : "Point off screen: the marker fades out; the compass shows the way."));
+  }
+  document.getElementById("why").textContent = why;
+}
+
+let last = performance.now();
+function loop(t) { const dt = Math.min(0.1, (t - last) / 1000); last = t; frame(dt); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+document.querySelectorAll(".seg").forEach(g => g.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  S[g.dataset.k] = g.dataset.k === "height" ? +b.dataset.v : b.dataset.v; ease.x = null;
+}));
+</script>
