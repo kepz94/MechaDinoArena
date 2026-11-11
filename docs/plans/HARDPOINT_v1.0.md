@@ -194,5 +194,16 @@ SKILLS / MENU / SQUAD, TargetHUD, AbilityBar, health or the touch buttons.
 ## Task 8 — Docs + Studio check · Mode: Wired
 VERSIONS / ATTRIBUTES rows; Studio = repo by hash; no ZZ_ leftovers; test switches unset; not published until "Publish".
 
-## Accepted risks / open (red-team below)
-See the red-team section added after Kepu's review.
+## Red-team (2026-11-10) and Kepu's answers
+1. **Friendly fire can leak** through a damage path that never asks SquadRules (found without it: PachyStatsServer,
+   EnergyShieldServer). → Task 2 audit + per-dino Play test against team dummies. Kept.
+2. **No second player to test with** (contest, spawn flip, balance). → server test hook with team dummies + Task 1 spec.
+   Accepted risk: the first real check is Kepu's next group session.
+3. **Summit may still be slow.** → Task 3 times all 8 dinos; over 20 s for the slowest → numbers to Kepu before the summit
+   timing is final. Kept.
+4. **Phone FPS** (~150 Neon parts a point, 300 while the next point shows). → `HardpointPointFX_detail` 1 fallback; Kepu checks on
+   his phone. Kept.
+5. **Arena loses free-for-all** while Hardpoint is on. Kepu: "Yes, Hardpoint only" (HardpointEnabled false brings it back).
+6. **Walkable steps scope.** Kepu: **everywhere** — Sandbox and Arena, players and bots (bots may climb the mountain).
+7. **Squad split.** Kepu: **team wins** — split squadmates are enemies for that match; same team = no friendly fire. Balancing
+   still keeps a squad together while the gap stays ≤ 2.
