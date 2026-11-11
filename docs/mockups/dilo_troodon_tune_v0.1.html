@@ -1,0 +1,161 @@
+<title>Dilo and Troodon Tune</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: three sections stacked (Dilo ammo, Sonic Hiss cone, Troodon tap), each a live drawing plus plain notes. Single dark game look by choice. */
+:root {
+  color-scheme: dark;
+  --bg: #12151c; --panel: #1b2030; --line: #2c3347; --fg: #e9edf5; --dim: #9aa3b8;
+  --yellow: rgb(255,200,50); --blue: rgb(90,160,255); --red: rgb(224,40,74); --green: #7be37b;
+  --display: "Fredoka", "FredokaOne", system-ui, sans-serif; --body: "Inter", system-ui, sans-serif;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+h1 { font: 700 26px var(--display); margin: 0; }
+h2 { font: 600 19px var(--display); margin: 0; }
+p { margin: 0; color: var(--dim); line-height: 1.5; max-width: 70ch; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg button { font: 600 14px var(--body); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.btn { font: 700 15px var(--display); color: #1a1300; background: var(--yellow); border: 0; border-radius: 10px; padding: 9px 16px; cursor: pointer; }
+.stage { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-items: start; }
+.box { background: #10131a; border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; justify-items: center; min-width: 0; }
+.cap { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+/* phone ATTACK button + PC tile, the live look */
+.big { width: 96px; height: 96px; border-radius: 50%; background: rgba(20,20,26,.82); border: 3px solid var(--yellow); display: grid; place-items: center; font: 700 16px var(--display); color: #fff; position: relative; transition: opacity .15s; }
+.big.dim { opacity: .5; }
+.tile { width: 92px; height: 92px; border-radius: 12px; background: rgba(20,20,26,.82); border: 2px solid var(--yellow); display: grid; align-content: center; justify-items: center; gap: 2px; color: #fff; position: relative; overflow: hidden; }
+.tile .k { font: 600 11px var(--body); color: var(--dim); position: absolute; top: 6px; left: 8px; }
+.tile .n { font: 700 14px var(--display); }
+.tile.dim { opacity: .6; }
+.pips { display: flex; gap: 4px; }
+.pip { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--yellow); position: relative; overflow: hidden; box-sizing: border-box; }
+.pip i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--yellow); }
+.state { font: 600 13px var(--body); color: var(--fg); font-variant-numeric: tabular-nums; min-height: 1.2em; }
+canvas { width: 100%; max-width: 420px; height: auto; display: block; }
+.note { font-size: 13px; color: var(--dim); }
+</style>
+
+<div class="wrap">
+  <div style="display:grid;gap:6px">
+    <h1>Dilo and Troodon Tune</h1>
+    <p>Mockup for the Dilo spit ammo (5 shots, then a 3 s reload), the bigger Sonic Hiss, and the Troodon's single tap / double tap. Press SPIT to try the ammo.</p>
+  </div>
+
+  <section>
+    <h2>Dilo spit: 5 shots, then reload</h2>
+    <div class="row seg" data-k="gap"><span class="cap" style="min-width:110px">Spit speed</span>
+      <button data-v="0.35">Now 0.35 s</button><button data-v="0.28" aria-pressed="true">0.28 s (20% faster)</button><button data-v="0.25">0.25 s (30% faster)</button></div>
+    <div class="row seg" data-k="reload"><span class="cap" style="min-width:110px">Reload</span>
+      <button data-v="empty" aria-pressed="true">Only when empty</button><button data-v="idle">Also tops up after 1.5 s of no spitting</button></div>
+    <div class="stage">
+      <div class="box"><span class="cap">Phone ATTACK button</span><div class="big" id="big">ATTACK</div><div class="pips" id="pipsA"></div></div>
+      <div class="box"><span class="cap">PC ability tile</span><div class="tile" id="tile"><span class="k">LMB</span><span class="n">SPIT</span><div class="pips" id="pipsB"></div></div></div>
+      <div class="box"><span class="cap">Try it</span><button class="btn" id="spit" type="button">SPIT</button><div class="state" id="ammoState"></div>
+        <p class="note">The 5 pips are the same pip row the Troodon and Herrera buttons use. While reloading, all 5 fill together over 3 s and the button dims; a tap does nothing until it's full.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Dilo Sonic Hiss: twice the reach</h2>
+    <div class="row seg" data-k="hiss"><span class="cap" style="min-width:110px">Shape</span>
+      <button data-v="now">Now (20 studs, 70° cone)</button><button data-v="A" aria-pressed="true">A · 2x long, same cone (2x wide at the end)</button><button data-v="B">B · 2x long and 2x wider cone</button></div>
+    <div class="stage"><div class="box"><canvas id="cone" width="840" height="520" aria-label="Sonic Hiss cone seen from above"></canvas></div>
+      <div class="box" style="justify-items:start"><span class="cap">Numbers (base / II / star)</span><div class="state" id="hissNums"></div>
+        <p class="note">Seen from above, the dilo at the bottom facing up; the grid is 10 studs. Knockback and silence stay as they are.</p></div></div>
+  </section>
+
+  <section>
+    <h2>Troodon: tap for enemies, double tap for teammates</h2>
+    <div class="stage">
+      <div class="box" style="justify-items:start">
+        <span class="cap">How it works</span>
+        <p class="note"><b style="color:var(--fg)">Single tap:</b> throws at the closest enemy in front, as now, with no extra delay.</p>
+        <p class="note"><b style="color:var(--fg)">Double tap</b> (second tap within 0.3 s): the same pod, still in your hands (it leaves after 0.34 s), switches to the closest teammate in front instead. One pod, one charge. No teammate in reach: it lands straight ahead.</p>
+        <p class="note">The aim ring under the target turns <b style="color:var(--green)">green</b> on a teammate.</p>
+      </div>
+      <div class="box"><canvas id="taps" width="840" height="300" aria-label="Timeline of a single tap and a double tap"></canvas></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const S = { gap: 0.28, reload: "empty", hiss: "A" };
+document.querySelectorAll(".seg").forEach(g => g.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  S[g.dataset.k] = g.dataset.k === "gap" ? +b.dataset.v : b.dataset.v; drawCone();
+}));
+// ---- ammo
+const A = { left: 5, lastShot: -9, reloadAt: null };
+const RELOAD = 3, IDLE = 1.5;
+function mkPips(id) { const r = document.getElementById(id); for (let i = 0; i < 5; i++) { const p = document.createElement("div"); p.className = "pip"; p.appendChild(document.createElement("i")); r.appendChild(p); } return r; }
+const rows = [mkPips("pipsA"), mkPips("pipsB")];
+document.getElementById("spit").addEventListener("click", () => {
+  const t = performance.now() / 1000;
+  if (A.reloadAt !== null || A.left <= 0 || t - A.lastShot < S.gap) return;
+  A.left -= 1; A.lastShot = t;
+  if (A.left === 0) A.reloadAt = t;
+});
+function tickAmmo() {
+  const t = performance.now() / 1000;
+  if (A.reloadAt === null && S.reload === "idle" && A.left < 5 && t - A.lastShot >= IDLE) A.reloadAt = t;
+  let fill = 0;
+  if (A.reloadAt !== null) { fill = Math.min(1, (t - A.reloadAt) / RELOAD); if (fill >= 1) { A.left = 5; A.reloadAt = null; } }
+  rows.forEach(r => [...r.children].forEach((p, i) => {
+    const full = A.reloadAt === null && i < A.left;
+    p.firstChild.style.height = (A.reloadAt !== null ? fill * 100 : (full ? 100 : 0)) + "%";
+  }));
+  const reloading = A.reloadAt !== null;
+  document.getElementById("big").classList.toggle("dim", reloading);
+  document.getElementById("tile").classList.toggle("dim", reloading);
+  document.getElementById("ammoState").textContent = reloading ? `Reloading ${(RELOAD - (t - A.reloadAt)).toFixed(1)} s` : `${A.left} / 5 shots · one every ${S.gap} s`;
+  requestAnimationFrame(tickAmmo);
+}
+requestAnimationFrame(tickAmmo);
+// ---- cone
+const cv = document.getElementById("cone"), cx = cv.getContext("2d");
+function drawCone() {
+  const W = 420, H = 260, k = 2; cx.setTransform(k, 0, 0, k, 0, 0); cx.clearRect(0, 0, W, H);
+  cx.fillStyle = "#0f141c"; cx.fillRect(0, 0, W, H);
+  const px = 3.3, ox = W / 2, oy = H - 16; // 3.3 px per stud
+  cx.strokeStyle = "rgba(255,255,255,.06)"; cx.lineWidth = 1;
+  for (let s = 0; s <= 70; s += 10) { cx.beginPath(); cx.arc(ox, oy, s * px, Math.PI, 2 * Math.PI); cx.stroke(); }
+  const shapes = { now: { r: 20, a: 35 }, A: { r: 40, a: 35 }, B: { r: 40, a: 70 } };
+  const draw = (sh, fill, stroke) => { const a = sh.a * Math.PI / 180; cx.beginPath(); cx.moveTo(ox, oy); cx.arc(ox, oy, sh.r * px, -Math.PI / 2 - a, -Math.PI / 2 + a); cx.closePath(); cx.fillStyle = fill; cx.fill(); cx.strokeStyle = stroke; cx.lineWidth = 2; cx.stroke(); };
+  if (S.hiss !== "now") draw(shapes[S.hiss], "rgba(255,200,50,.22)", "rgb(255,200,50)");
+  draw(shapes.now, "rgba(255,255,255,.12)", "rgba(255,255,255,.7)");
+  cx.fillStyle = "#7be37b"; cx.beginPath(); cx.arc(ox, oy, 6, 0, Math.PI * 2); cx.fill();
+  cx.font = "600 11px Inter, sans-serif"; cx.fillStyle = "#9aa3b8"; cx.textAlign = "left";
+  cx.fillText("20", ox + 4, oy - 20 * px - 2); cx.fillText("40", ox + 4, oy - 40 * px - 2); cx.fillText("white = now", 8, 14);
+  if (S.hiss !== "now") { cx.fillStyle = "rgb(255,200,50)"; cx.fillText("yellow = " + (S.hiss === "A" ? "option A" : "option B"), 8, 30); }
+  const sh = shapes[S.hiss];
+  const w = (r, a) => Math.round(2 * r * Math.tan(Math.min(a, 89) * Math.PI / 180));
+  document.getElementById("hissNums").innerHTML = S.hiss === "now" ? "Reach 20 / 25 / 30 · cone 70° · about 28 studs wide at 20" :
+    S.hiss === "A" ? "Reach 40 / 50 / 60 · cone 70° (same) · about 56 studs wide at 40" :
+    "Reach 40 / 50 / 60 · cone 140° · about 220 studs wide at 40 (very wide)";
+}
+drawCone();
+// ---- taps timeline
+const tv = document.getElementById("taps"), tx = tv.getContext("2d");
+(function drawTaps() {
+  const W = 420, H = 150; tx.setTransform(2, 0, 0, 2, 0, 0); tx.fillStyle = "#0f141c"; tx.fillRect(0, 0, W, H);
+  const x0 = 70, sc = 300; // px per second
+  const rowY = [46, 112];
+  tx.font = "600 12px Inter, sans-serif"; tx.fillStyle = "#9aa3b8"; tx.textAlign = "left";
+  tx.fillText("Single tap", 8, rowY[0] + 4); tx.fillText("Double tap", 8, rowY[1] + 4);
+  rowY.forEach((y, i) => {
+    tx.strokeStyle = "rgba(255,255,255,.15)"; tx.beginPath(); tx.moveTo(x0, y); tx.lineTo(W - 10, y); tx.stroke();
+    tx.fillStyle = "rgba(255,255,255,.12)"; tx.fillRect(x0, y - 9, 0.34 * sc, 18); // wind-up
+    tx.fillStyle = "#e9edf5"; tx.beginPath(); tx.arc(x0, y, 5, 0, Math.PI * 2); tx.fill();
+    if (i === 1) { tx.beginPath(); tx.arc(x0 + 0.2 * sc, y, 5, 0, Math.PI * 2); tx.fill(); }
+    const rel = x0 + 0.34 * sc; tx.fillStyle = i ? "#7be37b" : "rgb(224,40,74)";
+    tx.beginPath(); tx.moveTo(rel, y - 8); tx.lineTo(rel + 12, y); tx.lineTo(rel, y + 8); tx.fill();
+    tx.fillStyle = "#e9edf5"; tx.fillText(i ? "pod to teammate" : "pod to enemy", rel + 18, y + 4);
+  });
+  tx.fillStyle = "#9aa3b8"; tx.font = "500 11px Inter, sans-serif";
+  tx.fillText("tap", x0 - 9, 22); tx.fillText("2nd tap", x0 + 0.2 * sc - 18, 88); tx.fillText("pod leaves at 0.34 s", x0 + 0.34 * sc - 40, 140);
+})();
+</script>
