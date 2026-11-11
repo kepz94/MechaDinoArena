@@ -43,13 +43,30 @@
 --   over players step aside while TeamTags 1.0 is on (the sibling LocalScript "TeamTags" has TeamTagsState "on"), so a
 --   player never has both. Switch: script attribute HardpointHUDTagsYieldEnabled (default true, read every 0.5 s; false =
 --   1.2: tags always). Diagnostic: HardpointHUDTagsYielding (true / false).
+-- v1.4 (marker v2, MDA-423, plan docs/plans/HARDPOINT_SPAWNS_MARKER_v1.0.md Task 3; Kepu 2026-11-10 "the point indicator when
+--   it transitions doesn't really accurately show me where the next one is, it's pretty glitchy"; 23:39 "just go with the
+--   compass bar forget the arrow"): a compass strip, Frame "Compass" in this ScreenGui.
+--   * Place: in the score card's row (y 58, 26 px tall; phone 22) centred in the space right of the card (from the card's
+--     right + 12 to the screen's right − 16), 30% of the screen wide (phone 34%), 180 to 420 px; if that space is narrower
+--     than 180 px, at the top centre (y 10). Shows ±90° round where the camera faces (flat).
+--   * World ticks every 15° that slide as you turn; N / E / S / W letters (north = −Z); a notch at the centre.
+--   * Current point (warm-up: point 1): solid diamond with its number, in the point colour (blue you hold, red they hold,
+--     yellow contested (blinks), white open, grey locked) and the distance in studs under it. Next point (HpShowNext, last
+--     10 s): hollow grey diamond with its number and the countdown ("0:07").
+--   * A point outside ±90° sits at the strip's end with ◀ / ▶ on the side it really is; beyond ±170° it keeps the side it
+--     had (hysteresis), so it never flips across behind you. Icons glide to their spot (rate 14 / s); when HpIndex changes,
+--     the current icon starts from where the NEXT icon was.
+--   * The 3D marker over the point shows only while the point is on screen (no edge placement).
+--   Phone = UserInputService.TouchEnabled or the character's ArenaTouchState == "on" (the ArenaTouchForceTouch hook).
+--   Switch: script attribute HardpointHUDCompassEnabled (default true, read at start; false = 1.3 marker, no compass).
+--   Diagnostics: HardpointHUDCompass ("" / "cur:<rel>° next:<rel>°"), HardpointHUDCompassPlace ("row" / "top").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService") -- v1.1
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -335,6 +352,184 @@ end
 readPoints()
 state:GetAttributeChangedSignal("HpPoints"):Connect(readPoints)
 
+-- v1.4: the compass (see the header)
+if script:GetAttribute("HardpointHUDCompassEnabled") == nil then script:SetAttribute("HardpointHUDCompassEnabled", true) end
+local compassOn = script:GetAttribute("HardpointHUDCompassEnabled") ~= false
+local UIS = game:GetService("UserInputService")
+local GREY = Color3.fromRGB(201, 206, 216)
+local cmp = Instance.new("Frame")
+cmp.Name = "Compass"
+cmp.BackgroundColor3 = PANEL
+cmp.BackgroundTransparency = 0.25
+cmp.ClipsDescendants = true
+cmp.Visible = false
+cmp.Parent = gui
+corner(cmp, 6)
+stroke(cmp, Color3.new(1, 1, 1), 0.75, 1)
+local cmpTicks = {}
+for i = 0, 23 do
+	local deg = i * 15
+	local t
+	local letter = ({[0] = "N", [90] = "E", [180] = "S", [270] = "W"})[deg]
+	if letter then
+		t = label(cmp, {Size = UDim2.fromOffset(16, 14), AnchorPoint = Vector2.new(0.5, 0), TextSize = 12, Text = letter,
+			TextColor3 = Color3.fromRGB(230, 236, 245)})
+	else
+		t = Instance.new("Frame")
+		t.BorderSizePixel = 0
+		t.BackgroundColor3 = Color3.new(1, 1, 1)
+		t.BackgroundTransparency = deg % 45 == 0 and 0.35 or 0.6
+		t.AnchorPoint = Vector2.new(0.5, 0)
+		t.Parent = cmp
+	end
+	cmpTicks[i] = {g = t, deg = deg, letter = letter ~= nil}
+end
+local notch = label(cmp, {Size = UDim2.fromOffset(12, 10), AnchorPoint = Vector2.new(0.5, 1), TextSize = 10, Text = "▲",
+	TextColor3 = YELLOW})
+local function cmpIcon(name)
+	local f = Instance.new("Frame")
+	f.Name = name
+	f.BackgroundTransparency = 1
+	f.AnchorPoint = Vector2.new(0.5, 0)
+	f.Size = UDim2.fromOffset(60, 26)
+	f.ZIndex = 3
+	f.Parent = cmp
+	local d = Instance.new("Frame")
+	d.AnchorPoint = Vector2.new(0.5, 0.5)
+	d.Rotation = 45
+	d.BorderSizePixel = 0
+	d.ZIndex = 3
+	d.Parent = f
+	local ds = stroke(d, Color3.new(1, 1, 1), 0, 2)
+	local n = label(f, {AnchorPoint = Vector2.new(0.5, 0.5), TextSize = 11, Text = "1", ZIndex = 4})
+	local side = label(f, {AnchorPoint = Vector2.new(0.5, 0.5), TextSize = 12, Text = "", ZIndex = 4})
+	local sub = label(cmp, {AnchorPoint = Vector2.new(0.5, 0), TextSize = 10, Text = "", ZIndex = 3,
+		TextStrokeTransparency = 0.4})
+	return {f = f, d = d, ds = ds, n = n, side = side, sub = sub, x = nil, edgeSide = 0}
+end
+local curIcon, nextIcon = cmpIcon("Current"), cmpIcon("Next")
+local cmpLastIdx, cmpLastT = nil, os.clock()
+local function flatYaw(v) return math.deg(math.atan2(v.X, -v.Z)) end -- 0 = north (−Z), 90 = east (+X)
+local function wrap(a) return (a + 180) % 360 - 180 end
+local function cmpPhone()
+	local c = player.Character
+	return UIS.TouchEnabled or (c ~= nil and c:GetAttribute("ArenaTouchState") == "on")
+end
+-- place one icon; returns the relative bearing used
+local function cmpPlace(ic, target, camPos, camYaw, W, Hh, dt, look)
+	local rel = wrap(flatYaw(target - camPos) - camYaw)
+	local x
+	if math.abs(rel) <= 90 then
+		ic.edgeSide = 0
+		x = (0.5 + rel / 180) * W
+		ic.side.Text = ""
+	else
+		local s = rel > 0 and 1 or -1
+		if math.abs(rel) > 170 and ic.edgeSide ~= 0 then s = ic.edgeSide end -- hysteresis behind you
+		ic.edgeSide = s
+		x = s > 0 and (W - 10) or 10
+		ic.side.Text = s > 0 and "▶" or "◀"
+	end
+	if not ic.x then ic.x = x end
+	ic.x += (x - ic.x) * (1 - math.exp(-14 * dt))
+	local dsz = math.floor(Hh * 0.55)
+	ic.f.Size = UDim2.fromOffset(dsz + 24, Hh)
+	ic.f.Position = UDim2.fromOffset(ic.x, 0)
+	ic.d.Size = UDim2.fromOffset(dsz, dsz)
+	ic.d.Position = UDim2.new(0.5, 0, 0, Hh * 0.45)
+	ic.n.Position = UDim2.new(0.5, 0, 0, Hh * 0.45)
+	ic.n.Size = UDim2.fromOffset(dsz, dsz)
+	ic.side.Position = UDim2.new(0.5, ic.edgeSide * (dsz * 0.5 + 7), 0, Hh * 0.45)
+	ic.side.Size = UDim2.fromOffset(10, dsz)
+	ic.sub.Position = UDim2.fromOffset(ic.x, Hh * 0.45 + dsz * 0.5 + 1)
+	ic.sub.Size = UDim2.fromOffset(60, 10)
+	return rel
+end
+local function drawCompass(dt, cam, vp, idx, warm, rel, remaining, showNext)
+	local phone = cmpPhone()
+	local Hh = phone and 22 or 26
+	local W = math.clamp(vp.X * (phone and 0.34 or 0.30), 180, 420)
+	local left = card.AbsolutePosition.X - gui.AbsolutePosition.X + card.AbsoluteSize.X + 12
+	local room = (vp.X - 16) - left
+	local x, y
+	if room >= 180 then
+		W = math.min(W, room)
+		x, y = left + (room - W) / 2, 58 + (58 - Hh) / 2
+		script:SetAttribute("HardpointHUDCompassPlace", "row")
+	else
+		x, y = (vp.X - W) / 2, 10
+		script:SetAttribute("HardpointHUDCompassPlace", "top")
+	end
+	cmp.Position, cmp.Size = UDim2.fromOffset(x, y), UDim2.fromOffset(W, Hh)
+	cmp.Visible = true
+	local camPos = cam.CFrame.Position
+	local camYaw = flatYaw(cam.CFrame.LookVector)
+	for _, t in pairs(cmpTicks) do
+		local r = wrap(t.deg - camYaw)
+		t.g.Visible = math.abs(r) <= 90
+		if t.g.Visible then
+			if t.letter then
+				t.g.Position = UDim2.fromOffset((0.5 + r / 180) * W, 1)
+			else
+				local tall = t.deg % 45 == 0
+				t.g.Size = UDim2.fromOffset(1, tall and Hh * 0.35 or Hh * 0.2)
+				t.g.Position = UDim2.fromOffset((0.5 + r / 180) * W, 1)
+			end
+		end
+	end
+	notch.Position = UDim2.fromOffset(W / 2, Hh + 1)
+	-- current point
+	local ci = warm and 1 or idx
+	local p = points[ci]
+	if cmpLastIdx and cmpLastIdx ~= ci and nextIcon.x then curIcon.x = nextIcon.x end -- take over from NEXT
+	cmpLastIdx = ci
+	local diag = ""
+	if p then
+		local blink = rel == "C" and (math.floor(os.clock() * 4) % 2 == 1)
+		local col = warm and GREY or (rel == "you" and BLUE or (rel == "foe" and RED or (rel == "C" and YELLOW or Color3.new(1, 1, 1))))
+		curIcon.d.BackgroundColor3 = col
+		curIcon.d.BackgroundTransparency = blink and 0.5 or 0
+		curIcon.ds.Color = Color3.new(1, 1, 1)
+		curIcon.n.Text = tostring(ci)
+		curIcon.n.TextColor3 = (col == Color3.new(1, 1, 1) or col == GREY or col == YELLOW) and Color3.fromRGB(26, 19, 0) or Color3.new(1, 1, 1)
+		local r = cmpPlace(curIcon, p.centre, camPos, camYaw, W, Hh, dt)
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		curIcon.sub.Text = hrp and tostring(math.floor((hrp.Position - p.centre).Magnitude + 0.5)) or ""
+		curIcon.f.Visible, curIcon.sub.Visible = true, false -- the distance shows under the strip below
+		diag = ("cur:%d"):format(math.floor(r + 0.5))
+	else
+		curIcon.f.Visible, curIcon.sub.Visible = false, false
+	end
+	-- next point
+	local ni = tonumber(state:GetAttribute("HpNextIndex")) or 1
+	local np = showNext and points[ni] or nil
+	if np then
+		nextIcon.d.BackgroundColor3 = PANEL
+		nextIcon.d.BackgroundTransparency = 0.2
+		nextIcon.ds.Color = GREY
+		nextIcon.n.Text = tostring(ni)
+		nextIcon.n.TextColor3 = GREY
+		local r = cmpPlace(nextIcon, np.centre, camPos, camYaw, W, Hh, dt)
+		nextIcon.f.Visible = true
+		diag ..= (" next:%d"):format(math.floor(r + 0.5))
+	else
+		nextIcon.f.Visible = false
+		nextIcon.x = nil
+	end
+	script:SetAttribute("HardpointHUDCompass", diag)
+	return curIcon, nextIcon
+end
+-- the readouts under the strip (distance / countdown), outside the clipped strip
+local cmpUnder = Instance.new("Frame")
+cmpUnder.Name = "CompassUnder"
+cmpUnder.BackgroundTransparency = 1
+cmpUnder.Visible = false
+cmpUnder.Parent = gui
+local curDist = label(cmpUnder, {AnchorPoint = Vector2.new(0.5, 0), TextSize = 12, Text = "", TextStrokeTransparency = 0.35})
+local nextCount = label(cmpUnder, {AnchorPoint = Vector2.new(0.5, 0), TextSize = 12, Text = "", TextColor3 = GREY,
+	TextStrokeTransparency = 0.35})
+
 local tags = {} -- [player] = BillboardGui
 local function tagFor(pl)
 	local g = tags[pl]
@@ -414,6 +609,7 @@ RunService.RenderStepped:Connect(function()
 	local rel = occ == "C" and "C" or ((occ == "A" or occ == "B") and (occ == mine and "you" or "foe") or "N")
 
 	if phase == "results" and boardOn then -- v1.2: the scoreboard
+		cmp.Visible, cmpUnder.Visible = false, false -- v1.4
 		results.Visible = false
 		marker.Visible, status.Visible, nextL.Visible = false, false, false
 		pointL.Text = ""
@@ -430,6 +626,7 @@ RunService.RenderStepped:Connect(function()
 		script:SetAttribute("HardpointHUDBoard", "hidden")
 	end
 	if phase == "results" then
+		cmp.Visible, cmpUnder.Visible = false, false -- v1.4
 		results.Visible = true
 		marker.Visible, status.Visible, nextL.Visible = false, false, false
 		local w = state:GetAttribute("HpWinner")
@@ -511,6 +708,25 @@ RunService.RenderStepped:Connect(function()
 		end
 		marker.Position = UDim2.fromOffset(x - inset.X, y - inset.Y)
 		marker.Size = edge and UDim2.fromOffset(100, 62) or UDim2.fromOffset(120, 74)
+		if compassOn and edge then marker.Visible = false end -- v1.4: the compass shows the way; 3D marker only on screen
+	end
+	-- v1.4: the compass
+	if compassOn then
+		local t = os.clock()
+		local dt = math.clamp(t - cmpLastT, 0, 0.1)
+		cmpLastT = t
+		local c1, c2 = drawCompass(dt, cam, vp, idx, warm, rel, remaining, showNext)
+		local cp, cs = cmp.Position, cmp.Size
+		cmpUnder.Visible = true
+		cmpUnder.Position, cmpUnder.Size = UDim2.fromOffset(cp.X.Offset, cp.Y.Offset + cs.Y.Offset + 1), UDim2.fromOffset(cs.X.Offset, 14)
+		curDist.Visible = c1.f.Visible
+		curDist.Text = c1.sub.Text
+		curDist.Position, curDist.Size = UDim2.fromOffset(c1.x or 0, 0), UDim2.fromOffset(60, 14)
+		nextCount.Visible = c2.f.Visible
+		nextCount.Text = "NEXT " .. fmt(remaining)
+		nextCount.Position, nextCount.Size = UDim2.fromOffset(c2.x or 0, 0), UDim2.fromOffset(70, 14)
+	else
+		cmp.Visible, cmpUnder.Visible = false, false
 	end
 	script:SetAttribute("HardpointHUDState", rel)
 end)
