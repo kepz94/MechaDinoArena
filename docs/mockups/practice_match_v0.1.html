@@ -94,6 +94,38 @@ code, .mono { font-family:var(--mono); font-size:12.5px; }
 .kf .ab.hs { background:var(--yellow); }
 .kf .bt { font-size:.7em; color:#c9d0db; border:1px solid #6b7686; border-radius:3px; padding:0 .25em; }
 .blue { color:#8cc0ff; } .red { color:#ff8fa3; }
+.feed.small { font-size:.82em; max-width:38%; }
+.feed.small .bt { display:none; }
+.banner { position:absolute; left:50%; bottom:30%; transform:translateX(-50%); background:rgba(20,20,26,.82); border:1.5px solid var(--yellow);
+  border-radius:8px; padding:.3em 1em; font-size:1.05em; white-space:nowrap; animation:kfin .35s ease-out; }
+.banner.death { border-color:var(--red); }
+.mm { display:grid; gap:10px; }
+.mmscreen { position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; border:1px solid var(--line);
+  background:linear-gradient(90deg,#0c0f15,#151b25); font-family:var(--display); color:#fff; font-size:clamp(8px,1.25vw,13px); }
+.mmscreen.phone { aspect-ratio:19.5/9; max-width:880px; margin:0 auto; }
+.mmscreen .dinoStage { position:absolute; left:30%; top:16%; width:40%; height:62%; border-radius:14px; background:radial-gradient(60% 55% at 50% 60%, rgba(95,174,69,.35), transparent 70%); display:grid; place-items:center; color:var(--muted); }
+.mmscreen .dinoStage i { width:46%; height:38%; border-radius:40% 60% 30% 30%; background:#3f8f3a; display:block; }
+.mmscreen .nm { position:absolute; left:50%; top:80%; transform:translateX(-50%); text-align:center; }
+.mmscreen .nm b { font-size:1.8em; display:block; line-height:1; } .mmscreen .nm span { color:var(--muted); font-size:.85em; }
+.mmscreen .arrow { position:absolute; top:42%; width:3.6em; height:3.6em; border-radius:10px; background:rgba(20,20,26,.9); border:1.5px solid rgba(255,255,255,.3); display:grid; place-items:center; font-size:1.2em; }
+.mmscreen .lo { position:absolute; left:2.5%; bottom:5%; display:grid; gap:.4em; width:23%; }
+.mmscreen .lo div { background:rgba(20,20,26,.9); border:2px solid var(--accent); border-radius:8px; padding:.35em .6em; font-size:.85em; }
+.mmscreen .play { position:absolute; right:2.5%; bottom:5%; width:26%; display:grid; gap:.4em; }
+.mmscreen .modechip { background:rgba(20,20,26,.92); border:1.5px solid rgba(255,255,255,.5); border-radius:8px; padding:.35em .7em; cursor:pointer; text-align:left; color:#fff; font-family:var(--display); font-size:1em; }
+.mmscreen .modechip small { display:block; color:var(--muted); font-size:.75em; }
+.mmscreen .go { background:var(--yellow); color:#1a1300; border:3px solid #1a1300; border-radius:12px; padding:.5em; font-size:1.9em; text-align:center; cursor:pointer; font-family:var(--display); }
+.mmscreen .top { position:absolute; left:2.5%; top:4%; line-height:1; } .mmscreen .top small { color:var(--yellow); display:block; } .mmscreen .top b { font-size:1.6em; }
+.mmscreen .list { position:absolute; right:2.5%; bottom:5%; width:44%; background:rgba(14,18,24,.97); border:1.5px solid rgba(255,255,255,.3); border-radius:12px; padding:3%; display:grid; gap:.5em; }
+.mmscreen .list button { display:grid; grid-template-columns:1fr auto; text-align:left; background:#1d2531; border:2px solid transparent; border-radius:8px; padding:.5em .7em; color:#fff; font-family:var(--display); font-size:1em; cursor:pointer; }
+.mmscreen .list button.on { border-color:var(--yellow); }
+.mmscreen .list button small { grid-column:1; color:var(--muted); font-size:.75em; }
+.mmscreen .list button .tg { grid-row:span 2; align-self:center; font-size:.7em; background:#2b3542; border-radius:4px; padding:.1em .4em; color:#cfd6e0; }
+.mmscreen .list button.off { opacity:.45; cursor:not-allowed; }
+.mmscreen .old { position:absolute; right:4%; top:22%; width:30%; display:grid; gap:6%; }
+.mmscreen .old .t { text-align:center; line-height:1; } .mmscreen .old .t small { color:var(--yellow); display:block; } .mmscreen .old .t b { font-size:2.4em; }
+.mmscreen .oldStage { position:absolute; left:4%; top:12%; width:56%; height:62%; border-radius:12px; background:rgba(20,20,26,.9); border:1px solid rgba(255,255,255,.12); display:grid; place-items:center; color:var(--muted); }
+.mmscreen .oldslots { position:absolute; left:4%; top:78%; width:56%; display:flex; gap:2%; }
+.mmscreen .oldslots div { flex:1; background:rgba(20,20,26,.9); border:2px solid var(--accent); border-radius:8px; padding:.3em .5em; font-size:.8em; }
 @keyframes kfin { from { opacity:.2; transform:translateX(-8px); } to { opacity:1; transform:none; } }
 @media (prefers-reduced-motion: reduce) { .kf { animation:none; } }
 
@@ -155,7 +187,7 @@ table.t th { color:var(--muted); font-weight:500; }
     <p>What you asked for, in one line: the Sandbox opens a Hardpoint match by default (for now). Bots fill both teams with
       random dinos and random loadouts, use their abilities, play the point and fight each other. A kill feed shows every
       kill, and you pick your team. Below: what other games do, three directions to pick from, and how the bots think.</p>
-    <p class="muted">Nothing here is built yet. Pick a direction (A, B or C) and answer the two questions at the bottom.</p>
+    <p class="muted">Nothing here is built yet. v0.2: you picked <b>A · Practice lobby</b> and <b>real abilities</b>. Added since: how phone shooters keep the kill feed small (A's phone view now follows it) and how mobile menus pick a mode (new section, M1 or M2).</p>
   </header>
 
   <section class="card">
@@ -176,6 +208,24 @@ table.t th { color:var(--muted); font-weight:500; }
           <li><b>Random personalities</b> (pushy, careful, sneaky) make them less predictable.</li>
           <li><b>Kill feed:</b> killer, then how they killed, then the victim. Lines with you in them are highlighted and stay longer (Team Fortress 2). Call of Duty lets you turn it off or set how long it stays.</li>
           <li><b>Teams:</b> games auto-balance by moving someone from the bigger team, but not in the last minute (Team Fortress 2).</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Kill feeds on a phone</h3>
+        <ul>
+          <li><b>Less on screen:</b> Epic's mobile guide says show only what matters right now, no more than 5–6 controls at once, and nothing smaller than 18 pt. Scores and timers go at the top, actions in the bottom corners.</li>
+          <li><b>A short corner list:</b> most shooters keep the feed to a few lines in a corner and let lines fade. Players often shrink it, fade it or shorten it, and competitive modes sometimes show only their own team.</li>
+          <li><b>Don't stack it on the map:</b> PUBG Mobile moved the kill list to the other side of the screen to make room for the minimap and team info in the top corners.</li>
+          <li><b>So on phones:</b> 3 lines instead of 5, smaller, gone after 4 s. Your own kill or death also gets one short banner low in the middle, so you never need to read the feed mid-fight.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>How mobile menus pick a mode</h3>
+        <ul>
+          <li><b>Call of Duty: Mobile:</b> Multiplayer → a mode box in the bottom right opens the mode list (Practice vs AI is one of them) → START in the bottom right. Loadout buttons sit bottom left.</li>
+          <li><b>Brawl Stars:</b> one big PLAY at the bottom centre. The mode button next to it opens the mode picker. Your character stands in the middle, and bots and friends are reached through Create Room.</li>
+          <li><b>Roblox Rivals:</b> one green PLAY opens a menu of modes (Duels 1v1 to 5v5, Arcade, events).</li>
+          <li><b>The pattern:</b> one big play button, a small mode chip on it that opens the list, the character in the middle, loadout on the left. Both sit in the thumb corners.</li>
         </ul>
       </div>
     </div>
@@ -202,6 +252,23 @@ table.t th { color:var(--muted); font-weight:500; }
     <div class="variant-note" id="note"></div>
     <div class="screen-wrap"><div class="screen" id="screen"></div></div>
     <p class="muted" id="hint" style="font-size:13px"></p>
+  </section>
+
+  <section class="card mm">
+    <h2>Main menu: picking the mode</h2>
+    <p>Today the menu has two big buttons, SANDBOX and ARENA. Mobile shooters use one big PLAY in the bottom-right thumb corner with a mode chip on it that opens the mode list. Two ways to fit the practice match in:</p>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Menu option">
+        <button id="m1" aria-pressed="true">M1 · Mode chip + PLAY</button>
+        <button id="m2" aria-pressed="false">M2 · Keep today's two buttons</button>
+      </div>
+      <div class="seg" role="group" aria-label="Menu device">
+        <button id="mPC" aria-pressed="true">PC</button>
+        <button id="mPh" aria-pressed="false">Phone</button>
+      </div>
+    </div>
+    <div id="mmnote"></div>
+    <div class="mmscreen" id="mmscreen"></div>
   </section>
 
   <section class="card" style="display:grid; gap:12px">
@@ -262,7 +329,7 @@ table.t th { color:var(--muted); font-weight:500; }
   </section>
 
   <section class="card ask" style="display:grid; gap:12px">
-    <h2>Two questions before the plan</h2>
+    <h2>Questions before the plan (A and real abilities are picked)</h2>
     <div class="grid2">
       <div class="card">
         <span class="tag rec">RECOMMENDED</span>
@@ -275,8 +342,8 @@ table.t th { color:var(--muted); font-weight:500; }
       </div>
     </div>
     <ul>
-      <li><b>Pick A, B or C</b> for the team pick and the kill feed spot.</li>
-      <li><b>Abilities: 1 or 2?</b> With 1, the first build is the match, the teams, the kill feed and bots that play the point with their basic attacks. Then the abilities go in one dino at a time.</li>
+      <li><b>Picked: A</b> for the team pick and the kill feed, and <b>1 · real abilities</b>. The first build is the match, the teams, the kill feed and bots that play the point with their basic attacks. Then the abilities go in one dino at a time.</li>
+      <li><b>Open: M1 or M2</b> for the main menu, and whether the phone kill feed (3 lines plus your own banner) is right.</li>
       <li>The Sandbox's roaming bot packs, prey and territories switch off while the practice match is on (one switch turns them back on). The Arena stays players only.</li>
     </ul>
   </section>
@@ -315,7 +382,7 @@ table.t th { color:var(--muted); font-weight:500; }
   const you = () => ({name:"BloxSolidYT", sp:"Raptor", parts:["Shock Cannon","Cloak Field","Energy Shield","Thrusters"], bot:false, you:true});
 
   const NOTES = {
-    A: {t:"A · Practice lobby", rec:true, d:"Call of Duty Mobile / Overwatch style. Pressing SANDBOX opens a team screen: two columns of 5 with every bot's dino and parts. Tap JOIN BLUE, JOIN RED or AUTO, pick a difficulty and press START (it starts by itself after 20 s). 5v5. The kill feed sits on the left under the status line, where you already look for the score. Bots that die come back as new random bots between matches only, so the lobby you saw is the match you play.",
+    A: {t:"A · Practice lobby", rec:true, d:"Call of Duty Mobile / Overwatch style. Pressing SANDBOX opens a team screen: two columns of 5 with every bot's dino and parts. Tap JOIN BLUE, JOIN RED or AUTO, pick a difficulty and press START (it starts by itself after 20 s). 5v5. The kill feed sits on the left under the status line, where you already look for the score: 5 lines on PC; on a phone 3 smaller lines that go after 4 s, plus one banner low in the middle when you get a kill or die. Bots that die come back as new random bots between matches only, so the lobby you saw is the match you play.",
          feed:"left"},
     B: {t:"B · Drop straight in", d:"No lobby. The SANDBOX button gets a TEAM chip (AUTO / BLUE / RED) in the main menu and you spawn straight into the match. Bots fill both teams to 4v4. To switch team mid-match: MENU → SWITCH TEAM (you respawn, no kill counted). The kill feed sits top right under SKILLS / MENU, the classic PC-shooter spot.",
          feed:"right"},
@@ -378,11 +445,14 @@ table.t th { color:var(--muted); font-weight:500; }
     if (pos === "left") style = `left:1.6%;top:${phone ? 27 : 27}%`;
     if (pos === "right") style = `right:1.6%;top:${phone ? 22 : 22}%;justify-items:end`;
     if (pos === "mid") style = `right:1.6%;top:${phone ? 34 : 38}%;justify-items:end`;
-    return `<div class="feed" style="${style}">${FEED.slice(-5).map(e => e.html).join("")}</div>`;
+    const lines = phone ? FEED.slice(-3) : FEED.slice(-5);
+    const last = FEED[FEED.length-1];
+    const banner = phone && last && last.me ? `<div class="banner ${last.k === "You" ? "kill" : "death"}">${last.k === "You" ? `ELIMINATED <b class="red">${last.v.toUpperCase()}</b>` : `KILLED BY <b class="red">${last.k.toUpperCase()}</b> · ${last.how}`}</div>` : "";
+    return `<div class="feed${phone ? " small" : ""}" style="${style}">${lines.map(e => e.html).join("")}</div>${banner}`;
   }
   function entry(k, kTeam, how, v, vTeam, me, hs) {
     const tag = n => n === "You" ? "" : " <span class='bt'>BOT</span>";
-    return {html:`<div class="kf${me ? " me" : ""}"><span class="${kTeam}">${k}${tag(k)}</span><span class="ab${hs ? " hs" : ""}">${how}</span><span class="${vTeam}">${v}${tag(v)}</span></div>`};
+    return {k, v, how, me, html:`<div class="kf${me ? " me" : ""}"><span class="${kTeam}">${k}${tag(k)}</span><span class="ab${hs ? " hs" : ""}">${how}</span><span class="${vTeam}">${v}${tag(v)}</span></div>`};
   }
   state.scoreA = 118; state.scoreB = 97;
   const FEED_POOL = [
@@ -431,7 +501,7 @@ table.t th { color:var(--muted); font-weight:500; }
     $("note").innerHTML = `<h3>${n.t} ${n.rec ? "<span class='tag rec'>RECOMMENDED</span>" : ""}</h3><p>${n.d}</p>`;
     $("hint").textContent = state.s === "pick"
       ? (state.v === "B" ? "Try it: tap the TEAM chips on the SANDBOX button." : state.v === "C" ? "Try it: JOIN BLUE / JOIN RED, NEW BOTS, the team size, and tap any bot to roll a new dino for it." : "Try it: JOIN BLUE / JOIN RED / AUTO, the difficulty and NEW BOTS (every bot gets a new random dino and parts).")
-      : state.s === "play" ? "The kill feed adds a line every 2.5 s. Lines with you in them have the yellow outline. 5 lines at most; others fade after 5 s, yours after 8 s." : "Kills, deaths and time on the point for every dino, bots included.";
+      : state.s === "play" ? (state.d === "ph" ? "Phone: 3 lines at most, smaller, no BOT tags, gone after 4 s. When the newest line is yours, a banner shows low in the middle (ELIMINATED / KILLED BY)." : "The kill feed adds a line every 2.5 s. Lines with you in them have the yellow outline. 5 lines at most; others fade after 5 s, yours after 8 s.") : "Kills, deaths and time on the point for every dino, bots included.";
     wire();
   }
   function wire() {
@@ -461,6 +531,40 @@ table.t th { color:var(--muted); font-weight:500; }
     state.scoreA += 2; state.scoreB += 1;
     render();
   }, 2500);
+
+  /* ---------- main menu options ---------- */
+  const MODES = [
+    {id:"practice", n:"PRACTICE", s:"Hardpoint vs bots · 5v5", tg:"BOTS", place:"here"},
+    {id:"hardpoint", n:"HARDPOINT", s:"Players only · the Arena", tg:"PVP", place:"travels"},
+    {id:"free", n:"FREE ROAM", s:"Today's sandbox island · off for now", tg:"SOON", off:true},
+  ];
+  const mm = {opt:"m1", d:"pc", mode:"practice", open:false};
+  function mmRender() {
+    const el = $("mmscreen");
+    el.className = "mmscreen" + (mm.d === "ph" ? " phone" : "");
+    const md = MODES.find(m => m.id === mm.mode);
+    if (mm.opt === "m1") {
+      el.innerHTML = `<div class="top"><small>MECHA DINO</small><b>ARENA</b></div>
+        <div class="arrow" style="left:24%">◀</div><div class="arrow" style="right:24%">▶</div>
+        <div class="dinoStage"><i></i></div><div class="nm"><b>RAPTOR</b><span>TAP TO SEE MECH</span></div>
+        <div class="lo"><div>R · SHOCK CANNON</div><div>C · CLOAK FIELD</div><div>T · ENERGY SHIELD</div><div>V · THRUSTERS</div></div>
+        ${mm.open ? `<div class="list">${MODES.map(m => `<button class="${m.id === mm.mode ? "on" : ""}${m.off ? " off" : ""}" data-m="${m.id}" ${m.off ? "disabled" : ""}><span>${m.n}</span><span class="tg">${m.tg}</span><small>${m.s}</small></button>`).join("")}</div>`
+          : `<div class="play"><button class="modechip" id="chip">${md.n} ▾<small>${md.s}</small></button><button class="go" id="go">PLAY</button></div>`}`;
+      $("mmnote").innerHTML = `<h3>M1 · Mode chip + PLAY <span class="tag rec">RECOMMENDED</span></h3><p class="muted">The Call of Duty Mobile / Brawl Stars pattern. Your dino stays in the middle, the loadout bottom left, and PLAY bottom right under thumb reach. Tap the mode chip to open the list: PRACTICE (the bot match, starts here), HARDPOINT (players only, travels to the Arena) and FREE ROAM (today's sandbox, greyed out while the practice match is the default). PLAY on PRACTICE opens the team screen from A. Adding a mode later is one more line in the list.</p>`;
+      const chip = $("chip"); if (chip) chip.onclick = () => { mm.open = true; mmRender(); };
+      el.querySelectorAll(".list button[data-m]").forEach(b => b.onclick = () => { mm.mode = b.dataset.m; mm.open = false; mmRender(); });
+      const go = $("go"); if (go) go.onclick = () => { go.textContent = mm.mode === "practice" ? "→ TEAM SCREEN" : "TRAVELING…"; };
+    } else {
+      el.innerHTML = `<div class="oldStage">your dino turning (today's menu)</div>
+        <div class="oldslots"><div>R · SHOCK CANNON</div><div>C · CLOAK FIELD</div><div>T · SHIELD</div><div>V · THRUSTERS</div></div>
+        <div class="old"><div class="t"><small>MECHA DINO</small><b>ARENA</b></div>
+          <div class="bigbtn y"><b>PRACTICE</b>HARDPOINT VS BOTS</div><div class="bigbtn o"><b>ARENA</b>PVP · HARDPOINT</div></div>`;
+      $("mmnote").innerHTML = `<h3>M2 · Keep today's two buttons</h3><p class="muted">The smallest change: SANDBOX is renamed PRACTICE and opens the team screen. Nothing moves. But there's no room for a third mode later (FREE ROAM, events) without a new button, and on a phone the buttons sit mid-right instead of in the thumb corner.</p>`;
+    }
+  }
+  [["m1","m1"],["m2","m2"]].forEach(([id,o]) => $(id).onclick = () => { mm.opt = o; mm.open = false; press(["m1","m2"], id); mmRender(); });
+  [["mPC","pc"],["mPh","ph"]].forEach(([id,d]) => $(id).onclick = () => { mm.d = d; press(["mPC","mPh"], id); mmRender(); });
+  mmRender();
 
   /* ---------- the bot sim ---------- */
   const cv = $("sim"), cx = cv.getContext("2d");
