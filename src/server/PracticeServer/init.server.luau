@@ -38,6 +38,17 @@
 --     centre, or below PrLostY (-150)) is removed and comes back after PrBotRespawn s like a dead one; no kill, no death.
 --     It is left out of the team home. Switch: script attribute PrLostEnabled (default true, read per tick; false = 1.1).
 --     Diagnostics: PrBotsLost (total), PrLastLost ("<name> <why>").
+-- v1.3 (bot jobs, MDA-430, plan docs/plans/BOT_JOBS_v1.0.md Task 2; Kepu 2026-11-11 picks "C" and "1"):
+--   * no T-Rex bots: each rolled bot's dino is picked here from PracticeRules.BOT_SPECIES (7, no TRex) and passed to rollBot
+--     (rollPool and a refill bot). Switch: script attribute PrBotNoTRex (default true, read per roll; false = 1.2: any of 8).
+--   * team brain: each team every PracticeRules.TEAM_EVERY (1) s, and on the next tick after a bot spawns,
+--     R.dealJobs(that team's bots in roster order, {held = HpOcc is the team, humansOnPoint = the team's living humans on the
+--     point, into (0 in the warm-up), pointTime, now = os.clock()}) -> rec.job / rec.jobWhy / rec.filledAt and the model's
+--     BotJob / BotJobWhy. A spawn clears the bot's job (it gets its dino job, then the rules).
+--   * ctx.jobs = true, ctx.taken[team][enemy model] = how many of that team's bots target it, ctx.duelTaken[team][enemy] = how
+--     many of them are on the "duel" job (from the bots' targets at the start of the tick); PracticeBrain 1.1 uses them.
+--   Switch: script attribute PrJobsEnabled (default true, read per tick; false = 1.2 roles, ctx.jobs nil).
+--   Diagnostics: PrJobsA / PrJobsB ("hold n duel n guard n run n"), PrMaxOnOne (most bots of one team on one enemy this tick).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -46,6 +57,7 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.2"
+VERSION = "1.3" -- v1.3 bot jobs + no T-Rex bots
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
@@ -55,6 +67,10 @@ for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function get(k) local v = script:GetAttribute(k) if v == nil then return DEFAULTS[k] end return v end
+for k, v in pairs({PrBotNoTRex = true, PrJobsEnabled = true}) do -- v1.3
+	DEFAULTS[k] = v
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 
 local DA = ServerStorage:WaitForChild("DinoArcade")
 local ModeRules = require(DA:WaitForChild("ModeRules"))
@@ -127,10 +143,17 @@ local slots = {A = {}, B = {}} -- {kind, player | spec, bot record}
 local botRecs = {} -- live bot records {spec, team, model, hrp, hum, species, role, deadAt, respawnAt, ...}
 local lastNewBots = 0
 
+-- v1.3: the dino for a new bot (nil = rollBot picks any, as 1.2)
+local function botSpecies()
+	if get("PrBotNoTRex") == false or not R.BOT_SPECIES then return nil end
+	return R.BOT_SPECIES[rng:NextInteger(1, #R.BOT_SPECIES)]
+end
+local jobsDirty, lastJobs = true, 0 -- v1.3
+
 local function rollPool()
 	local used = {}
 	pool = {}
-	for i = 1, size * 2 do pool[i] = R.rollBot(rng, used, SkillTree, get("PrBotLevel")) end
+	for i = 1, size * 2 do pool[i] = R.rollBot(rng, used, SkillTree, get("PrBotLevel"), botSpecies()) end -- v1.3: + species
 end
 rollPool()
 
@@ -217,6 +240,8 @@ local function spawnBot(rec)
 	rec.deadAt, rec.respawnAt, rec.busy, rec.target, rec.path, rec.wp = nil, nil, false, nil, nil, nil
 	rec.goalPoint, rec.holdUntil = nil, nil
 	model:SetAttribute("BotRole", rec.role or "cap")
+	rec.job, rec.jobWhy, rec.filledAt = nil, nil, nil -- v1.3: the team brain gives it its dino job on the next tick
+	jobsDirty = true
 	pcall(function() hpFn:Invoke("bot", model, rec.team) end)
 end
 
@@ -307,7 +332,7 @@ end)
 -- a slot's bot for a leaving human (match) / a human taking a bot's slot
 local function botForSlot(side, idx)
 	local s = slots[side][idx]
-	local spec = R.rollBot(rng, (function() local u = {} for _, r in ipairs(botRecs) do u[r.spec.name] = true end return u end)(), SkillTree, get("PrBotLevel"))
+	local spec = R.rollBot(rng, (function() local u = {} for _, r in ipairs(botRecs) do u[r.spec.name] = true end return u end)(), SkillTree, get("PrBotLevel"), botSpecies()) -- v1.3: + species
 	local rec = {spec = spec, team = side}
 	slots[side][idx] = {kind = "bot", spec = spec, rec = rec}
 	table.insert(botRecs, rec)
@@ -480,6 +505,61 @@ RunService.Heartbeat:Connect(function(dt)
 	local ctx = {bots = botRecs, R = R, H = H, diff = R.diffOf(difficulty), rng = rng, centre = pts[warm and 1 or idx],
 		nextCentre = pts[hpState:GetAttribute("HpNextIndex") or 1], into = H.POINT_TIME - (endsAt - now()), pointTime = H.POINT_TIME,
 		index = idx}
+	-- v1.3: team brain + who targets whom (see the header)
+	if get("PrJobsEnabled") ~= false and R.dealJobs then
+		ctx.jobs = true
+		local function fd(a, b) return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude end
+		if jobsDirty or os.clock() - lastJobs >= (R.TEAM_EVERY or 1) then
+			jobsDirty, lastJobs = false, os.clock()
+			local occ = hpState:GetAttribute("HpOcc")
+			for _, side in ipairs({"A", "B"}) do
+				local list = {}
+				for _, rec in ipairs(botRecs) do
+					if rec.team == side then
+						local live = rec.model ~= nil and rec.model.Parent ~= nil and rec.hrp ~= nil and rec.hrp.Parent ~= nil
+							and not rec.deadAt and (tonumber(rec.model:GetAttribute("DummyHealth")) or 0) > 0
+						local pos = live and rec.hrp.Position or nil
+						table.insert(list, {id = rec, species = rec.spec and rec.spec.species, alive = live,
+							dPoint = (pos and ctx.centre) and fd(pos, ctx.centre) or math.huge,
+							dNext = (pos and ctx.nextCentre) and fd(pos, ctx.nextCentre) or math.huge,
+							job = rec.job, why = rec.jobWhy, filledAt = rec.filledAt})
+					end
+				end
+				local humansOn = 0
+				for _, h in ipairs(humans) do
+					local pl = h.player
+					local c = pl and pl.Character
+					local r = c and c:FindFirstChild("HumanoidRootPart")
+					local hum = c and c:FindFirstChildOfClass("Humanoid")
+					if r and hum and hum.Health > 0 and pl:GetAttribute("HardpointTeam") == side and pl:GetAttribute("PrInMatch") == true
+						and ctx.centre and H.inPoint(r.Position, ctx.centre) then humansOn += 1 end
+				end
+				local res = R.dealJobs(list, {held = occ == side, humansOnPoint = humansOn, into = warm and 0 or ctx.into,
+					pointTime = H.POINT_TIME, now = os.clock()})
+				local n = {hold = 0, duel = 0, guard = 0, run = 0}
+				for rec, e in pairs(res) do
+					rec.job, rec.jobWhy, rec.filledAt = e.job, e.why, e.filledAt
+					if rec.model then
+						if rec.model:GetAttribute("BotJob") ~= e.job then rec.model:SetAttribute("BotJob", e.job) end
+						if rec.model:GetAttribute("BotJobWhy") ~= e.why then rec.model:SetAttribute("BotJobWhy", e.why) end
+						if n[e.job] and rec.model.Parent and not rec.deadAt then n[e.job] += 1 end
+					end
+				end
+				script:SetAttribute("PrJobs" .. side, ("hold %d duel %d guard %d run %d"):format(n.hold, n.duel, n.guard, n.run))
+			end
+		end
+		ctx.taken, ctx.duelTaken = {A = {}, B = {}}, {A = {}, B = {}}
+		local most = 0
+		for _, rec in ipairs(botRecs) do
+			local t = rec.model and rec.model.Parent and not rec.deadAt and rec.target
+			if t and ctx.taken[rec.team] then
+				ctx.taken[rec.team][t] = (ctx.taken[rec.team][t] or 0) + 1
+				most = math.max(most, ctx.taken[rec.team][t])
+				if rec.job == "duel" then ctx.duelTaken[rec.team][t] = (ctx.duelTaken[rec.team][t] or 0) + 1 end
+			end
+		end
+		if script:GetAttribute("PrMaxOnOne") ~= most then script:SetAttribute("PrMaxOnOne", most) end
+	end
 	local alive = 0
 	-- v1.2: lost bots (see the header)
 	if get("PrLostEnabled") ~= false then

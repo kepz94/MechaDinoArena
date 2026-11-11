@@ -20,6 +20,16 @@
 --   The bot turns to face the target plus aimError degrees first. One attack at a time per bot (busy flag).
 -- Per-bot attributes: BotRole, BotState (move / fight / retreat / holdBelow / attack / dead), BotTarget (name or ""),
 --   BotStuckCount, BotLastAttack (result), BotAttacks.
+-- v1.1 (bot jobs, MDA-431, plan docs/plans/BOT_JOBS_v1.0.md Task 3; Kepu 2026-11-11 pick "C"): while ctx.jobs (PracticeServer
+--   1.3, PrJobsEnabled) every bot acts on its job (b.job, else PracticeRules.jobOf(its dino)):
+--   * targets: a seen enemy counts only if R.canTarget(job, {dist, dPoint = the enemy from the point centre, onPoint, takenBy =
+--     ctx.taken[team][enemy] minus this bot, duelTaken = ctx.duelTaken[team][enemy] minus this bot}) (leash per job, at most
+--     MAX_ON_ONE 2 on one enemy, one duelist per enemy, self-defence within 20 always). The 1.0 score picks among those.
+--   * walk goal (no target / retreat as 1.0): R.jobGoal(job, centre, nextCentre, home); the 1.0 hold-below still applies to a
+--     goal on the point (hold).
+--   * a guard's fight move is kept within R.GUARD_LEASH (90) of the point (R.guardClamp).
+--   * fix (the known 1.0 error at line 267, logged 2026-11-11): startAttack's task checks that b.model / b.hrp still exist
+--     (the bot can be removed while it attacks).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
@@ -27,6 +37,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local M = {}
 M.Version = "1.0"
+M.Version = "1.1" -- v1.1 bot jobs
 
 local NEAR, NEAR_CLOAK = 20, 15
 local PATH_MIN, PATH_EVERY = 80, 2
@@ -264,11 +275,11 @@ local function startAttack(b, target, R, rng, diff)
 		local ok, res = pcall(a.fire, b, target)
 		b.nextAttack = os.clock() + a.cd
 		b.busy = false
-		if b.model.Parent then
+		if b.model and b.model.Parent then -- v1.1: b.model can be nil after a despawn
 			b.model:SetAttribute("BotLastAttack", ok and tostring(res) or ("error " .. tostring(res)))
 			b.model:SetAttribute("BotAttacks", (b.model:GetAttribute("BotAttacks") or 0) + 1)
 		end
-		if b.hrp.Parent and b.hrp.Anchored then b.hrp.Anchored = false end
+		if b.hrp and b.hrp.Parent and b.hrp.Anchored then b.hrp.Anchored = false end -- v1.1: b.hrp can be nil
 	end)
 end
 
@@ -348,6 +359,7 @@ function M.step(b, ctx)
 	local best, bestScore
 	local foes, mates = 0, 0
 	local p = b.hrp.Position
+	local job = ctx.jobs and (b.job or (R.jobOf and R.jobOf(b.species))) or nil -- v1.1
 	for _, e in ipairs(M.enemiesOf(b.team, ctx.bots)) do
 		local r1 = rootOf(e)
 		if r1 then
@@ -364,7 +376,15 @@ function M.step(b, ctx)
 				end
 				local s = R.scoreTarget(dist, onPoint, hp)
 				if e == b.target then s -= 15 end -- keep the current target unless another is clearly better
-				if not bestScore or s < bestScore then best, bestScore = e, s end
+				local allowed = true -- v1.1: the job's rules
+				if job and R.canTarget then
+					local mine = (e == b.target) and 1 or 0
+					local tk = ctx.taken and ctx.taken[b.team] and ctx.taken[b.team][e] or 0
+					local dk = ctx.duelTaken and ctx.duelTaken[b.team] and ctx.duelTaken[b.team][e] or 0
+					allowed = R.canTarget(job, {dist = dist, dPoint = ctx.centre and flat(r1.Position - ctx.centre).Magnitude or math.huge,
+						onPoint = onPoint, takenBy = tk - mine, duelTaken = dk - ((job == "duel") and mine or 0)})
+				end
+				if allowed and (not bestScore or s < bestScore) then best, bestScore = e, s end
 			end
 		end
 	end
@@ -396,6 +416,7 @@ function M.step(b, ctx)
 		local r1 = rootOf(best)
 		local dv = flat(r1.Position - p)
 		local want = dv.Magnitude > 1e-3 and (r1.Position - dv.Unit * math.max(0, (a and a.reach or 4) * 0.6)) or r1.Position
+		if job == "guard" and ctx.centre and R.guardClamp then want = R.guardClamp(want, ctx.centre) end -- v1.1
 		unstuck(b, true)
 		moveTo(b, want)
 		return
@@ -415,6 +436,7 @@ function M.step(b, ctx)
 		m:SetAttribute("BotState", "retreat")
 	elseif ctx.centre then
 		goal = R.goalFor(b.role, ctx.centre, ctx.nextCentre, ctx.home or p, ctx.into, ctx.pointTime)
+		if job and R.jobGoal then goal = R.jobGoal(job, ctx.centre, ctx.nextCentre, ctx.home or p) end -- v1.1
 		-- hold below
 		local wantsPoint = (goal - ctx.centre).Magnitude < 45
 		if wantsPoint and b.goalPoint ~= ctx.index then
