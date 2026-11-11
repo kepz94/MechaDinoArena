@@ -47,6 +47,19 @@
 --     Participant id: "u<UserId>" for a player, "b<model name>" for a bot.
 --   Switch: script attribute HardpointPracticeEnabled (default true; false = 1.0 in the Sandbox: off). Diagnostic
 --   HardpointState "practice" while running there.
+-- v1.2 (spawns v2, MDA-422, plan docs/plans/HARDPOINT_SPAWNS_MARKER_v1.0.md Task 2; Kepu 2026-11-10 "B · Scored ring",
+--   420–600): HardpointPickSpawn uses HardpointRules 1.1:
+--   * bands: H.bandSpots(point centre, the 1.0 ground check) per point at start (24 directions x 420 / 480 / 540 / 600;
+--     fewer than 8 -> + 360 / 300). Diagnostic HpBandSpots ("n1,n2,..").
+--   * warm-up (the match's first 5 s): opening anchors, once per match: H.pickOpening(point 1's band, its centre, seesFn) with
+--     seesFn = a ray between the two spots (+6 studs) that hits nothing in the world; team A the first, B the second. A spawn
+--     during the warm-up = H.pickNear(point 1's band, its team's anchor, taken within the last 3 s). No pair -> the rule below.
+--     Diagnostic HpOpening ("A x,z | B x,z" or "none").
+--   * after the warm-up: H.pickScored(the current point's band, living enemies, mates, seenFn) with seenFn(spot) = any living
+--     enemy within H.SIGHT_MAX (700, flat) has a clear ray from its root + 6 to the spot + 6 (dinos left out: player
+--     characters and DinoIsland.Bots; trees, rocks, ground block). Nothing -> the 1.1 ring pick.
+--   Diagnostics HpSpawnLast ("open A" / "scored 512 seen=false" / "ring" / "none"), HpSpawnCount.
+--   Switch: script attribute HardpointScoredSpawnsEnabled (default true, read per pick; false = 1.1 ring pick).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -54,6 +67,7 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 spawns v2
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
 if script:GetAttribute("HpMinPlayers") == nil then script:SetAttribute("HpMinPlayers", 1) end
@@ -150,6 +164,14 @@ for i, p in ipairs(POINTS) do
 	RINGS[i] = H.ringSpots(p.centre, groundOk)
 end
 script:SetAttribute("HpRingSpots", (function() local s = {} for i, r in ipairs(RINGS) do s[i] = tostring(#r) end return table.concat(s, ",") end)())
+-- v1.2: the 420–600 bands (see the header)
+if script:GetAttribute("HardpointScoredSpawnsEnabled") == nil then script:SetAttribute("HardpointScoredSpawnsEnabled", true) end
+local BANDS = {}
+for i, p in ipairs(POINTS) do
+	BANDS[i] = H.bandSpots and H.bandSpots(p.centre, groundOk) or {}
+end
+script:SetAttribute("HpBandSpots", (function() local s = {} for i, r in ipairs(BANDS) do s[i] = tostring(#r) end return table.concat(s, ",") end)())
+script:SetAttribute("HpSpawnCount", 0)
 
 -- ---------- teams ----------
 local testModels = {} -- [model] = true (hook-tagged dummies)
@@ -280,8 +302,65 @@ pickFn.OnInvoke = function(player)
 			if d.team == team then table.insert(mates, d.pos) else table.insert(enemies, d.pos) end
 		end
 	end
+	-- v1.2: spawns v2 (see the header)
+	if script:GetAttribute("HardpointScoredSpawnsEnabled") ~= false and H.pickScored and #(BANDS[idx] or {}) > 0 then
+		local function spawned(spot, how)
+			script:SetAttribute("HpSpawnLast", how)
+			script:SetAttribute("HpSpawnCount", (script:GetAttribute("HpSpawnCount") or 0) + 1)
+			local keep = {}
+			for _, k in ipairs(match.taken or {}) do if os.clock() - k.at < 3 then table.insert(keep, k) end end
+			table.insert(keep, {spot = spot, at = os.clock()})
+			match.taken = keep
+			return spot, POINTS[idx].centre
+		end
+		-- sight rays leave every dino out
+		local sp = RaycastParams.new()
+		sp.FilterType = Enum.RaycastFilterType.Exclude
+		local ex = {}
+		for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+		local botsF = island and island:FindFirstChild("Bots")
+		if botsF then table.insert(ex, botsF) end
+		for m in pairs(testModels) do table.insert(ex, m) end
+		sp.FilterDescendantsInstances = ex
+		sp.IgnoreWater = true
+		local UP = Vector3.new(0, 6, 0)
+		local function clear(a, b) return workspace:Raycast(a + UP, (b + UP) - (a + UP), sp) == nil end
+		local ph = H.phaseAt(now() - match.startAt, #POINTS)
+		if ph.warmup then
+			if match.opening == nil then
+				local a, b = H.pickOpening(BANDS[1], POINTS[1].centre, function(x, y) return clear(x, y) end)
+				match.opening = a and {A = a, B = b} or false
+				script:SetAttribute("HpOpening", a and ("A %d,%d | B %d,%d"):format(a.X, a.Z, b.X, b.Z) or "none")
+			end
+			if match.opening then
+				local t = os.clock()
+				local spot = H.pickNear(BANDS[1], match.opening[team], function(s)
+					for _, k in ipairs(match.taken or {}) do
+						if k.spot == s and t - k.at < 3 then return true end
+					end
+					return false
+				end)
+				if spot then return spawned(spot, "open " .. team) end
+			end
+		end
+		local seenMap = {}
+		local spot, score = H.pickScored(BANDS[idx], enemies, mates, function(s)
+			for _, e in ipairs(enemies) do
+				local dx, dz = e.X - s.X, e.Z - s.Z
+				if dx * dx + dz * dz <= H.SIGHT_MAX * H.SIGHT_MAX and clear(e, s) then seenMap[s] = true return true end
+			end
+			return false
+		end)
+		if spot then
+			return spawned(spot, ("scored %d seen=%s"):format(math.floor(score + 0.5), tostring(seenMap[spot] == true)))
+		end
+	end
 	local spot = H.pickSpawn(RINGS[idx], enemies, mates)
-	if not spot then return nil end
+	if not spot then
+		script:SetAttribute("HpSpawnLast", "none") -- v1.2
+		return nil
+	end
+	script:SetAttribute("HpSpawnLast", "ring") -- v1.2
 	return spot, POINTS[idx].centre
 end
 
