@@ -60,6 +60,21 @@
 --     characters and DinoIsland.Bots; trees, rocks, ground block). Nothing -> the 1.1 ring pick.
 --   Diagnostics HpSpawnLast ("open A" / "scored 512 seen=false" / "ring" / "none"), HpSpawnCount.
 --   Switch: script attribute HardpointScoredSpawnsEnabled (default true, read per pick; false = 1.1 ring pick).
+-- v1.3 (far spawns + fair start sides, MDA-426, plan docs/plans/HUD_SLIM_SPAWNS_FAR_v1.0.md Task 2; Kepu 2026-11-11 "make the
+--   distance even further for spawns", picks "700–900" and "Equal running distance"), HardpointRules 1.2:
+--   * band 2 per point at start: H.bandSpots(centre, the ground check, H.BAND2_RADII, H.BAND2_EXTRA_RADII) (24 directions x
+--     700 / 750 / 800 / 850 / 900; fewer than 8 -> + 650 / 600). Diagnostic HpBandSpots2 ("n1,n2,..").
+--   * while far spawns are on: picks use band 2, and sight rays come from enemies within H.SIGHT_MAX2 (1000).
+--   * run lengths: in the background at start, a server path (PathfindingService, agent radius HpRunAgentRadius 4, height
+--     HpRunAgentHeight 10, can jump, waypoint spacing 8) from every band-2 spot of point 1 (then every 1.2 band spot of
+--     point 1) to the point centre, summed waypoint to waypoint; no path (status not Success) = no run. Diagnostic HpRunPaths
+--     ("<ok> ok / <tried> of <total>" for band 2, then " | 1.2 ..." once that band is done).
+--   * opening (once per match, first warm-up pick): with run openings on and that band's runs all worked out,
+--     H.pickOpeningByRun(point 1's band, the ray seesFn, run, band 2 ? H.OPEN_MIN_APART2 : H.OPEN_MIN_APART); no pair (or runs
+--     not ready) -> the 1.2 straight-line H.pickOpening on the same band. HpOpening: "A x,z run r | B x,z run r" or
+--     "flat A x,z | B x,z" or "none".
+--   Switches (script attributes, read per pick): HardpointFarSpawnsEnabled (default true; false = 1.2 band, sight 700) and
+--   HardpointRunOpeningEnabled (default true; false = 1.2 straight-line pair). Diagnostic HpSpawnLast gets " far" on band-2 picks.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -68,6 +83,7 @@ local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 spawns v2
+VERSION = "1.3" -- v1.3 far spawns + start sides by run
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
 if script:GetAttribute("HpMinPlayers") == nil then script:SetAttribute("HpMinPlayers", 1) end
@@ -172,6 +188,53 @@ for i, p in ipairs(POINTS) do
 end
 script:SetAttribute("HpBandSpots", (function() local s = {} for i, r in ipairs(BANDS) do s[i] = tostring(#r) end return table.concat(s, ",") end)())
 script:SetAttribute("HpSpawnCount", 0)
+-- v1.3: band 2 + run lengths (see the header)
+if script:GetAttribute("HardpointFarSpawnsEnabled") == nil then script:SetAttribute("HardpointFarSpawnsEnabled", true) end
+if script:GetAttribute("HardpointRunOpeningEnabled") == nil then script:SetAttribute("HardpointRunOpeningEnabled", true) end
+if script:GetAttribute("HpRunAgentRadius") == nil then script:SetAttribute("HpRunAgentRadius", 4) end
+if script:GetAttribute("HpRunAgentHeight") == nil then script:SetAttribute("HpRunAgentHeight", 10) end
+local BANDS2 = {}
+for i, p in ipairs(POINTS) do
+	BANDS2[i] = (H.BAND2_RADII and H.bandSpots(p.centre, groundOk, H.BAND2_RADII, H.BAND2_EXTRA_RADII)) or {}
+end
+script:SetAttribute("HpBandSpots2", (function() local s = {} for i, r in ipairs(BANDS2) do s[i] = tostring(#r) end return table.concat(s, ",") end)())
+local RUNS = {} -- [band table] = {done = bool, [spot] = studs}
+task.spawn(function()
+	local PathfindingService = game:GetService("PathfindingService")
+	local path = PathfindingService:CreatePath({
+		AgentRadius = tonumber(script:GetAttribute("HpRunAgentRadius")) or 4,
+		AgentHeight = tonumber(script:GetAttribute("HpRunAgentHeight")) or 10,
+		AgentCanJump = true,
+		WaypointSpacing = 8,
+	})
+	local diag = ""
+	for _, band in ipairs({BANDS2[1] or {}, BANDS[1] or {}}) do
+		local r = {done = false}
+		RUNS[band] = r
+		local okN, tried = 0, 0
+		local goal = POINTS[1] and POINTS[1].centre
+		for _, spot in ipairs(band) do
+			tried += 1
+			if goal then
+				local ok = pcall(function() path:ComputeAsync(spot + Vector3.new(0, 3, 0), goal) end)
+				if ok and path.Status == Enum.PathStatus.Success then
+					local wps = path:GetWaypoints()
+					local len = 0
+					for k = 2, #wps do len += (wps[k].Position - wps[k - 1].Position).Magnitude end
+					if #wps >= 2 then r[spot] = len okN += 1 end
+				end
+			end
+			if tried % 8 == 0 then
+				script:SetAttribute("HpRunPaths", diag .. ("%d ok / %d of %d"):format(okN, tried, #band))
+				task.wait()
+			end
+		end
+		r.done = true
+		diag ..= ("%d ok / %d of %d"):format(okN, tried, #band)
+		script:SetAttribute("HpRunPaths", diag)
+		diag ..= " | 1.2 "
+	end
+end)
 
 -- ---------- teams ----------
 local testModels = {} -- [model] = true (hook-tagged dummies)
@@ -303,9 +366,12 @@ pickFn.OnInvoke = function(player)
 		end
 	end
 	-- v1.2: spawns v2 (see the header)
-	if script:GetAttribute("HardpointScoredSpawnsEnabled") ~= false and H.pickScored and #(BANDS[idx] or {}) > 0 then
+	local far = script:GetAttribute("HardpointFarSpawnsEnabled") ~= false and H.SIGHT_MAX2 ~= nil and #(BANDS2[idx] or {}) > 0 -- v1.3
+	local useBands = far and BANDS2 or BANDS
+	local sightMax = far and H.SIGHT_MAX2 or H.SIGHT_MAX
+	if script:GetAttribute("HardpointScoredSpawnsEnabled") ~= false and H.pickScored and #(useBands[idx] or {}) > 0 then
 		local function spawned(spot, how)
-			script:SetAttribute("HpSpawnLast", how)
+			script:SetAttribute("HpSpawnLast", far and (how .. " far") or how) -- v1.3: " far"
 			script:SetAttribute("HpSpawnCount", (script:GetAttribute("HpSpawnCount") or 0) + 1)
 			local keep = {}
 			for _, k in ipairs(match.taken or {}) do if os.clock() - k.at < 3 then table.insert(keep, k) end end
@@ -328,13 +394,26 @@ pickFn.OnInvoke = function(player)
 		local ph = H.phaseAt(now() - match.startAt, #POINTS)
 		if ph.warmup then
 			if match.opening == nil then
-				local a, b = H.pickOpening(BANDS[1], POINTS[1].centre, function(x, y) return clear(x, y) end)
-				match.opening = a and {A = a, B = b} or false
-				script:SetAttribute("HpOpening", a and ("A %d,%d | B %d,%d"):format(a.X, a.Z, b.X, b.Z) or "none")
+				-- v1.3: start sides by run length first (see the header)
+				local band1 = useBands[1]
+				local runs = RUNS[band1]
+				local a, b
+				if script:GetAttribute("HardpointRunOpeningEnabled") ~= false and H.pickOpeningByRun and runs and runs.done then
+					a, b = H.pickOpeningByRun(band1, function(x, y) return clear(x, y) end, function(s) return runs[s] end,
+						far and H.OPEN_MIN_APART2 or H.OPEN_MIN_APART)
+					if a then
+						script:SetAttribute("HpOpening", ("A %d,%d run %d | B %d,%d run %d"):format(a.X, a.Z, runs[a], b.X, b.Z, runs[b]))
+					end
+				end
+				if not a then
+					a, b = H.pickOpening(band1, POINTS[1].centre, function(x, y) return clear(x, y) end)
+					script:SetAttribute("HpOpening", a and ("flat A %d,%d | B %d,%d"):format(a.X, a.Z, b.X, b.Z) or "none")
+				end
+				match.opening = a and {A = a, B = b, band = band1} or false
 			end
 			if match.opening then
 				local t = os.clock()
-				local spot = H.pickNear(BANDS[1], match.opening[team], function(s)
+				local spot = H.pickNear(match.opening.band or BANDS[1], match.opening[team], function(s)
 					for _, k in ipairs(match.taken or {}) do
 						if k.spot == s and t - k.at < 3 then return true end
 					end
@@ -344,10 +423,10 @@ pickFn.OnInvoke = function(player)
 			end
 		end
 		local seenMap = {}
-		local spot, score = H.pickScored(BANDS[idx], enemies, mates, function(s)
+		local spot, score = H.pickScored(useBands[idx], enemies, mates, function(s) -- v1.3: useBands / sightMax
 			for _, e in ipairs(enemies) do
 				local dx, dz = e.X - s.X, e.Z - s.Z
-				if dx * dx + dz * dz <= H.SIGHT_MAX * H.SIGHT_MAX and clear(e, s) then seenMap[s] = true return true end
+				if dx * dx + dz * dz <= sightMax * sightMax and clear(e, s) then seenMap[s] = true return true end
 			end
 			return false
 		end)
