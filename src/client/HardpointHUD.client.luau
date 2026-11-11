@@ -80,6 +80,21 @@
 --     0.5 .. 1.2; 1 = the 1.5 size); the card keeps its top-left at (16, 58); Status top = 58 + 58 s + 6 s, Next top = Status
 --     top + 30 s; the 1.5 column fallback puts the compass 6 s under the lowest visible pill. Read per frame. The kill feed and
 --     the 3D marker place themselves from real on-screen sizes, so they follow.
+-- v1.7 (point marker v3, MDA-433, plan docs/plans/POINT_MARKER_v3.md, mockup docs/mockups/point_marker_v0.2.html; Kepu
+--   2026-11-11 "fix the actual hard point icon how it interacts with the screen ... Look at how cod does it", pick "A · Rides
+--   the edge"). The marker ("Marker": label, diamond with the number, distance) is placed by these rules instead of 1.1–1.6's:
+--   * anchor = point centre + HardpointHUDMarkerLift (6) studs; the diamond's centre sits on it (AnchorPoint 0.5, 0.5).
+--   * safe frame (screen px): this gui's safe area minus HardpointHUDMarkerEdge (28) left / right; top = the Roblox top bar's
+--     bottom (TopbarInset.Max.Y) + 8; bottom = safe bottom − HardpointHUDMarkerBottomPhone (110) on a phone / BottomPC (60).
+--   * in view (in front and inside the frame): placed exactly on the anchor (glued, no easing once there), full marker.
+--   * off view: the screen direction to the anchor pushed onto the frame's edge; behind the camera it goes to the left or
+--     right edge (middle height) by the side the point is on, keeping its last side beyond ±170° (as the compass). Diamond +
+--     distance only (no label), UIScale 0.84. Changes between in view / off view / along the edge glide at 14 / s.
+--   * opacity: within HardpointHUDMarkerFade (70) px of the screen centre it goes down to 35%; while you're on the point (not
+--     in the warm-up) it fades out (10 / s).
+--   * ZIndex 0, so the score card, pills and kill feed draw over it. No height limit, no left-column push.
+--   Switch: script attribute HardpointHUDMarkerV3Enabled (default true, read per frame; false = 1.6 marker).
+--   Diagnostic: HardpointHUDMarker ("view" / "edge L" / "edge R" / "edge T" / "edge B" / "on point" / "off").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -88,6 +103,7 @@ local GuiService = game:GetService("GuiService") -- v1.1
 
 local VERSION = "1.5"
 VERSION = "1.6" -- v1.6 top-gap compass + slim HUD
+VERSION = "1.7" -- v1.7 point marker v3
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -661,6 +677,111 @@ local function updateTags(mine, live)
 end
 
 local lastTags = 0
+-- v1.7: point marker v3 (see the header)
+for k, v in pairs({HardpointHUDMarkerV3Enabled = true, HardpointHUDMarkerLift = 6, HardpointHUDMarkerEdge = 28,
+	HardpointHUDMarkerBottomPhone = 110, HardpointHUDMarkerBottomPC = 60, HardpointHUDMarkerFade = 70}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local mv3Scale = Instance.new("UIScale")
+mv3Scale.Name = "MarkerV3Scale"
+mv3Scale.Parent = marker
+local mv3 = {x = nil, y = nil, a = 1, glued = false, side = 0, state = "off", t = os.clock(), applied = false}
+local function mv3Num(k, d) return tonumber(script:GetAttribute(k)) or d end
+local function mv3Alpha(a, strokeBase)
+	local t = 1 - a
+	for _, l in ipairs({mLabel, diaNum, mDist}) do
+		l.TextTransparency = t
+		l.TextStrokeTransparency = 0.5 + 0.5 * t
+	end
+	dia.BackgroundTransparency = 0.4 + 0.6 * t
+	diaStroke.Transparency = strokeBase + (1 - strokeBase) * t
+end
+local function mv3Off()
+	if not mv3.applied then return end
+	mv3.applied = false
+	marker.AnchorPoint = Vector2.new(0.5, 1)
+	marker.ZIndex = 1
+	mv3Scale.Scale = 1
+	mLabel.Visible = true
+	for _, l in ipairs({mLabel, diaNum, mDist}) do l.TextTransparency = 0 l.TextStrokeTransparency = 0.5 end
+	dia.BackgroundTransparency = 0.4
+	mv3.x, mv3.y, mv3.glued = nil, nil, false
+end
+local function markerV3(cam, vp, p, warm)
+	local now = os.clock()
+	local dt = math.clamp(now - mv3.t, 0, 0.1)
+	mv3.t = now
+	mv3.applied = true
+	marker.AnchorPoint = Vector2.new(0.5, 0.5)
+	marker.ZIndex = 0
+	marker.Size = UDim2.fromOffset(120, 74)
+	local gi = GuiService:GetGuiInset()
+	local gTop = gui.AbsolutePosition + gi -- this gui's top-left in screen px
+	local gSize = gui.AbsoluteSize
+	local okT, tb = pcall(function() return GuiService.TopbarInset end)
+	local edge = mv3Num("HardpointHUDMarkerEdge", 28)
+	local L, R = gTop.X + edge, gTop.X + gSize.X - edge
+	local T = ((okT and tb and tb.Height > 0) and tb.Max.Y or gi.Y) + 8
+	local B = gTop.Y + gSize.Y - (cmpPhone() and mv3Num("HardpointHUDMarkerBottomPhone", 110) or mv3Num("HardpointHUDMarkerBottomPC", 60))
+	if B < T + 40 then B = T + 40 end
+	local anchor = p.centre + Vector3.new(0, mv3Num("HardpointHUDMarkerLift", 6), 0)
+	local sp = cam:WorldToViewportPoint(anchor)
+	local inView = sp.Z > 0 and sp.X >= L and sp.X <= R and sp.Y >= T and sp.Y <= B
+	local tx, ty, state
+	if inView then
+		tx, ty, state = sp.X, sp.Y, "view"
+		mv3.side = 0
+	else
+		local v = cam.CFrame:PointToObjectSpace(anchor)
+		local mx, my, hw, hh = (L + R) / 2, (T + B) / 2, (R - L) / 2, (B - T) / 2
+		if v.Z < 0 then -- in front, outside the frame: the screen direction onto the edge
+			local dx, dy = sp.X - mx, sp.Y - my
+			if math.abs(dx) < 1e-3 and math.abs(dy) < 1e-3 then dx = 1 end
+			local k = math.min(hw / math.max(math.abs(dx), 1e-3), hh / math.max(math.abs(dy), 1e-3))
+			tx, ty = mx + dx * k, my + dy * k
+			mv3.side = dx >= 0 and 1 or -1
+		else -- behind: left / right edge by side, with hysteresis
+			local camPos = cam.CFrame.Position
+			local brg = wrap(flatYaw(anchor - camPos) - flatYaw(cam.CFrame.LookVector))
+			local s = brg > 0 and 1 or -1
+			if math.abs(brg) > 170 and mv3.side ~= 0 then s = mv3.side end
+			mv3.side = s
+			tx, ty = (s > 0) and R or L, my
+		end
+		if math.abs(tx - L) < 1 then state = "edge L" elseif math.abs(tx - R) < 1 then state = "edge R"
+		elseif math.abs(ty - T) < 1 then state = "edge T" else state = "edge B" end
+	end
+	-- place: glued while in view, glide otherwise
+	if mv3.x == nil then mv3.x, mv3.y = tx, ty end
+	if state ~= "view" then mv3.glued = false end
+	if state == "view" and mv3.glued then
+		mv3.x, mv3.y = tx, ty
+	else
+		local r = 1 - math.exp(-14 * dt)
+		mv3.x += (tx - mv3.x) * r
+		mv3.y += (ty - mv3.y) * r
+		if state == "view" and math.abs(tx - mv3.x) < 2 and math.abs(ty - mv3.y) < 2 then mv3.glued, mv3.x, mv3.y = true, tx, ty end
+	end
+	-- opacity
+	local a = 1
+	if state == "view" then
+		local fade = mv3Num("HardpointHUDMarkerFade", 70)
+		local dc = math.sqrt((mv3.x - vp.X / 2) ^ 2 + (mv3.y - vp.Y / 2) ^ 2)
+		if fade > 0 and dc < fade then a = 0.35 + 0.65 * (dc / fade) end
+	end
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not warm and hrp and H and H.inPoint(hrp.Position, p.centre) then a, state = 0, "on point" end
+	mv3.a += (a - mv3.a) * (1 - math.exp(-10 * dt))
+	mv3.state = state
+	mLabel.Visible = state == "view"
+	mv3Scale.Scale = (state == "view") and 1 or 0.84
+	mv3Alpha(math.clamp(mv3.a, 0, 1), diaStroke.Transparency)
+	marker.Position = UDim2.fromOffset(mv3.x - gTop.X, mv3.y - gTop.Y)
+	marker.Visible = mv3.a > 0.02
+	if script:GetAttribute("HardpointHUDMarker") ~= state then script:SetAttribute("HardpointHUDMarker", state) end
+end
+
 RunService.RenderStepped:Connect(function()
 	local phase = state:GetAttribute("HpPhase")
 	local show = script:GetAttribute("HardpointHUDEnabled") ~= false and state:GetAttribute("HpLive") == true
@@ -797,6 +918,7 @@ RunService.RenderStepped:Connect(function()
 		marker.Position = UDim2.fromOffset(x - inset.X, y - inset.Y)
 		marker.Size = edge and UDim2.fromOffset(100, 62) or UDim2.fromOffset(120, 74)
 		if compassOn and edge then marker.Visible = false end -- v1.4: the compass shows the way; 3D marker only on screen
+		if script:GetAttribute("HardpointHUDMarkerV3Enabled") ~= false then markerV3(cam, vp, p, warm) else mv3Off() end -- v1.7
 	end
 	-- v1.4: the compass
 	if compassOn then
