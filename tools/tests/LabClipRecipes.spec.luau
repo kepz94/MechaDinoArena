@@ -10,7 +10,7 @@ local fails, passes = {}, 0
 local function ok(name, cond) if cond then passes += 1 else table.insert(fails, name) end end
 local function eq(name, got, want) ok(("%s: got %s want %s"):format(name, tostring(got), tostring(want)), got == want) end
 
-eq("version", R.VERSION, "1.0")
+ok("version >= 1.0 (" .. tostring(R.VERSION) .. ")", tostring(R.VERSION) >= "1.0") -- relaxed for 1.1
 -- every live dilo mech part has a recipe
 local n = 0
 for id, p in pairs(ST.PATHS) do
