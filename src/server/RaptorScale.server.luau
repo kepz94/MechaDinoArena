@@ -44,6 +44,11 @@
 --   TroodonScale (default 2 each), the same distance keys and ground lift. Before 1.9 only Raptor, Pachy and T-Rex bots were
 --   scaled, so those five came out at half a player's size. Switch: script attribute RaptorScaleOtherBotsEnabled (default
 --   true, read per new bot; false = 1.8).
+--   Also in 1.9 (found in the QA run 2026-11-11): Model:ScaleTo also scales the Humanoid's WalkSpeed (x the factor) and
+--   JumpPower (x its square root). Players' movement scripts set those every frame, so only bots kept the scaled values:
+--   practice bots ran at 70–111 studs/s, twice a player. Practice bots (PracticeBot = true) now keep the WalkSpeed and
+--   JumpPower they had before the scale. Switch: script attribute RaptorScalePracticeKeepSpeed (default true, read per
+--   bot; false = the scaled values). BotServer's own bots are not changed.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -86,6 +91,7 @@ if script:GetAttribute("RaptorScaleTRexEnabled") == nil then script:SetAttribute
 if script:GetAttribute("RaptorScaleTRexBotsEnabled") == nil then script:SetAttribute("RaptorScaleTRexBotsEnabled", true) end -- v1.5
 if script:GetAttribute("TRexScale") == nil then script:SetAttribute("TRexScale", 1.63) end -- v1.5
 if script:GetAttribute("RaptorScaleOtherBotsEnabled") == nil then script:SetAttribute("RaptorScaleOtherBotsEnabled", true) end -- v1.9
+if script:GetAttribute("RaptorScalePracticeKeepSpeed") == nil then script:SetAttribute("RaptorScalePracticeKeepSpeed", true) end -- v1.9
 local OTHER_BOT_SCALE = {Herrera = "HerreraScale", Teno = "TenoScale", Therizino = "TherizinoScale", Dilo = "DiloScale",
 	Troodon = "TroodonScale"} -- v1.9: bot species -> the player scale attribute (default 2)
 
@@ -94,7 +100,11 @@ local function apply(model, factor) -- v1.1: factor = the pachy's scale (nil = R
 	local f = factor or tonumber(script:GetAttribute("RaptorScale")) or DEFAULTS.RaptorScale
 	if f <= 0 or math.abs(f - 1) < 1e-3 then return end
 	model:SetAttribute("RaptorScaleApplied", f)
+	local keepHum = model:GetAttribute("PracticeBot") == true and script:GetAttribute("RaptorScalePracticeKeepSpeed") ~= false
+		and model:FindFirstChildOfClass("Humanoid") or nil -- v1.9
+	local ws, jp = keepHum and keepHum.WalkSpeed, keepHum and keepHum.JumpPower
 	model:ScaleTo(model:GetScale() * f)
+	if keepHum then keepHum.WalkSpeed, keepHum.JumpPower = ws, jp end -- v1.9
 	for _, k in ipairs(GC.DISTANCE_KEYS) do
 		local v = model:GetAttribute(k)
 		if type(v) ~= "number" then v = FALLBACK[k] end
