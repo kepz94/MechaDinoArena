@@ -39,6 +39,13 @@
 --   DiloInputResult "dartCooldown". No bite, no hold, no coil / armed state (so no coil stamps); a release does nothing. The
 --   Cold Blood star reset and the server refusals work as before. Off = 1.2 (bite on press, hold then release = dart).
 --   Diagnostics: DiloAttackTestMode ("spit" / "bite+hold", at each press), DiloSpitTaps (count of spits sent).
+-- v1.4 (spit ammo, MDA-437, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 3; DiloAttackServer 1.10): a local copy of the ammo so
+--   the pips move on the tap. While script attribute DiloAttackTestAmmoEnabled ~= false (default true, read at each press) and
+--   the character is spit-only with DiloSpitMag >= 1: DiloLocalSpitLeft (starts at the mag), DiloLocalSpitReloadAt (0 when not
+--   reloading), DiloLocalSpitMag. A spit tap with 0 left or a reload running -> DiloInputResult "reloading" (no spit); a sent
+--   spit takes one (none while Venom Overdrive runs: DiloPartOverEnabled and DiloOverdriveUntil in the future); reaching 0
+--   starts the local reload (now + DiloSpitReload). The server's DiloSpitLeft / DiloSpitReloadAt are copied whenever they
+--   change (refills, the server's own count); a local reload that ends refills to the mag.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -48,6 +55,7 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.1" -- v1.1 Cold Blood dart reset
 VERSION = "1.2" -- v1.2 coil stamps
 VERSION = "1.3" -- v1.3 spit only: tap = spit dart
+VERSION = "1.4" -- v1.4 local spit ammo
 local ACTION = "DinoDiloAttack"
 local ACTION_CLICK = "DinoDiloAttackClick"
 local DEFAULTS = {DiloAttackEnabled = false, DiloMinGap = 0.35, DiloHoldTime = 0.4, DiloDartCooldown = 1.5,
@@ -119,6 +127,40 @@ local function dartReady(t) return t - lastDart >= (tonumber(get("DiloDartCooldo
 local function spitOnly() -- v1.3
 	return script:GetAttribute("DiloAttackTestSpitOnlyEnabled") ~= false and char:GetAttribute("DiloSpitOnly") == true
 end
+-- v1.4: local spit ammo (see the header)
+if script:GetAttribute("DiloAttackTestAmmoEnabled") == nil then script:SetAttribute("DiloAttackTestAmmoEnabled", true) end
+local function ammoMag() return math.floor(tonumber(char:GetAttribute("DiloSpitMag")) or 0) end
+local function ammoOn()
+	return script:GetAttribute("DiloAttackTestAmmoEnabled") ~= false and spitOnly() and ammoMag() >= 1
+end
+local function overOn(t)
+	return char:GetAttribute("DiloPartOverEnabled") == true and (tonumber(char:GetAttribute("DiloOverdriveUntil")) or 0) > t
+end
+local localLeft, localReloadAt = nil, 0
+local function ammoPublish()
+	if char:GetAttribute("DiloLocalSpitLeft") ~= localLeft then char:SetAttribute("DiloLocalSpitLeft", localLeft) end
+	if char:GetAttribute("DiloLocalSpitReloadAt") ~= localReloadAt then char:SetAttribute("DiloLocalSpitReloadAt", localReloadAt) end
+	if char:GetAttribute("DiloLocalSpitMag") ~= ammoMag() then char:SetAttribute("DiloLocalSpitMag", ammoMag()) end
+end
+local function ammoFromServer()
+	local mag = ammoMag()
+	if mag < 1 then return end
+	local sl = tonumber(char:GetAttribute("DiloSpitLeft"))
+	localLeft = sl and math.clamp(math.floor(sl), 0, mag) or (localLeft or mag)
+	localReloadAt = tonumber(char:GetAttribute("DiloSpitReloadAt")) or 0
+	ammoPublish()
+end
+for _, k in ipairs({"DiloSpitLeft", "DiloSpitReloadAt", "DiloSpitMag"}) do
+	char:GetAttributeChangedSignal(k):Connect(ammoFromServer)
+end
+ammoFromServer()
+RunService.Heartbeat:Connect(function()
+	if localReloadAt > 0 and workspace:GetServerTimeNow() >= localReloadAt then
+		localLeft, localReloadAt = ammoMag(), 0
+		ammoPublish()
+	end
+end)
+
 local function onPress(src)
 	if get("DiloAttackEnabled") ~= true then return end
 	if script:GetAttribute("DiloAttackTestSpitOnlyEnabled") == nil then script:SetAttribute("DiloAttackTestSpitOnlyEnabled", true) end
@@ -135,8 +177,21 @@ local function onPress(src)
 			show("DiloInputResult", "dartCooldown")
 			return
 		end
+		local useAmmo = ammoOn() and not overOn(t) -- v1.4
+		if useAmmo then
+			if localLeft == nil then localLeft = ammoMag() end
+			if localReloadAt > t or localLeft <= 0 then
+				show("DiloInputResult", "reloading")
+				return
+			end
+		end
 		lastDart, lastSent = t, t
 		fire("dart", t)
+		if useAmmo then -- v1.4: one shot used; 0 starts the local reload
+			localLeft = math.max(0, localLeft - 1)
+			if localLeft <= 0 then localReloadAt = t + math.max(0, tonumber(char:GetAttribute("DiloSpitReload")) or 3) end
+			ammoPublish()
+		end
 		char:SetAttribute("DiloLocalDartAt", t)
 		char:SetAttribute("DiloSpitTaps", (char:GetAttribute("DiloSpitTaps") or 0) + 1)
 		show("DiloInputResult", "dart")

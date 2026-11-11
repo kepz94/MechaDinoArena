@@ -195,6 +195,12 @@ VERSION = "1.36" -- v1.36 dilo spit only: the dart pip fills over DiloSpitGap
 VERSION = "1.37" -- v1.37 TAIL GRAB tile lights up while a dino is in reach
 VERSION = "1.38" -- v1.38 Portal Rift: PLACING + the rift recharge (MDA-375)
 VERSION = "1.39" -- v1.39 troodon slot parts (MDA-382)
+VERSION = "1.40" -- v1.40 dilo spit ammo pips
+-- v1.40 (MDA-437, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 3, mockup docs/mockups/dilo_troodon_tune_v0.1.html; PC and touch
+--   together with ArenaTouch 1.20): while script attribute AbilityBarDiloAmmoEnabled ~= false (default true, read each frame) and
+--   DiloLocalSpitMag >= 1 (DiloAttackTest 1.4), the DiloAttack tile shows one pip per shot (the row grows to 5 the therizino
+--   way): full up to DiloLocalSpitLeft; while DiloLocalSpitReloadAt is in the future all pips fill together over DiloSpitReload,
+--   the tile paints "empty" (0.45, the troodon's 0-charge look) with "RELOAD" under the name. AbilityBarDiloDart adds "reloading".
 -- v1.39 (troodon slot parts, plan docs/plans/TROODON_SLOTPARTS_v1.0.md T5, MDA-382; PC and touch together with MechaButtons 1.45):
 --   TIMED_PARTS += oburst "TrooPartBurst", odome "TrooPartDome", osleep "TrooPartSleep", osentry "TrooPartSentry" (recharge fill
 --   + seconds from <prefix>ReadyAt / <prefix>Cooldown); "active" while TrooDomeUntil (odome) / TrooSentryUntil (osentry) are
@@ -1030,6 +1036,28 @@ local function update()
 				pip.f.Visible = i == 1
 				pip.fill.Size = UDim2.fromScale(1, i == 1 and part or 0)
 			end
+			local reloading = false -- v1.40: spit ammo
+			local mag = math.floor(tonumber(char:GetAttribute("DiloLocalSpitMag")) or 0)
+			if script:GetAttribute("AbilityBarDiloAmmoEnabled") ~= false and mag >= 1 then
+				mag = math.min(mag, 5)
+				while #e.t.chargePips < mag and #e.t.chargePips >= 1 do
+					local last = e.t.chargePips[#e.t.chargePips]
+					local f = last.f:Clone()
+					f.Name = "Charge_" .. (#e.t.chargePips + 1)
+					f.LayoutOrder = #e.t.chargePips + 1
+					f.Parent = last.f.Parent
+					table.insert(e.t.chargePips, {f = f, fill = f:FindFirstChild("Fill")})
+				end
+				mag = math.min(mag, #e.t.chargePips)
+				local left = math.clamp(math.floor(tonumber(char:GetAttribute("DiloLocalSpitLeft")) or mag), 0, mag)
+				local rEnd = tonumber(char:GetAttribute("DiloLocalSpitReloadAt")) or 0
+				reloading = rEnd > now
+				local rk = reloading and math.clamp(1 - (rEnd - now) / math.max(0.01, tonumber(char:GetAttribute("DiloSpitReload")) or 3), 0, 1) or 0
+				for i, pip in ipairs(e.t.chargePips) do
+					pip.f.Visible = i <= mag
+					pip.fill.Size = UDim2.fromScale(1, reloading and rk or (i <= left and 1 or 0))
+				end
+			end
 			local st = char:GetAttribute("DiloLocalState")
 			local holdT = math.max(0.05, tonumber(char:GetAttribute("DiloHoldTime")) or 0.4)
 			local k = (st == "coil" or st == "armed")
@@ -1037,6 +1065,8 @@ local function update()
 			e.t.fill.BackgroundColor3, e.t.fill.BackgroundTransparency = WHITE, 0.6
 			if (tonumber(char:GetAttribute("StunnedUntil")) or 0) > now then
 				paint(e, "stunned", 0.25, 0, nil, "STUN")
+			elseif reloading then -- v1.40
+				paint(e, "empty", 0.45, 0, nil, "RELOAD")
 			elseif st == "coil" or st == "armed" then
 				paint(e, "active", 0, k, nil, st == "armed" and "SPIT" or nil)
 			elseif st == "bite" or st == "spit" then
@@ -1045,7 +1075,7 @@ local function update()
 				paint(e, "ready", 0, 0, nil)
 			end
 			show("AbilityBarDiloHold", math.floor(k * 10 + 0.5) / 10)
-			show("AbilityBarDiloDart", part >= 1 and "ready" or "cooling")
+			show("AbilityBarDiloDart", reloading and "reloading" or (part >= 1 and "ready" or "cooling")) -- v1.40: + reloading
 		elseif e.move.theriPips and script:GetAttribute("AbilityBarTheriHitsLeftEnabled") ~= false then -- v1.24: hits left
 			local function eff(k, over, d)
 				local v = tonumber(char:GetAttribute(over)) or 0

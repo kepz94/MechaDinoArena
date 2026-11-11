@@ -134,6 +134,13 @@ VERSION = "1.16" -- v1.16 dilo dart pip full after a Cold Blood reset
 VERSION = "1.17" -- v1.17 BITE / POUNCE / RAM / JUMP cooldown sweep + seconds
 VERSION = "1.18" -- v1.18 troodon ATTACK pod pips + JUMP hop pips
 VERSION = "1.19" -- v1.19 dilo spit only: the dart pip fills over DiloSpitGap
+VERSION = "1.20" -- v1.20 dilo spit ammo: 5 pips, reload fill, dim
+-- v1.20 (MDA-437, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 3, mockup docs/mockups/dilo_troodon_tune_v0.1.html; PC and touch
+--   together with AbilityBar 1.40): while script attribute ArenaTouchDiloAmmoEnabled ~= false (default true, read each frame) and
+--   the character has DiloLocalSpitMag >= 1 (DiloAttackTest 1.4), the dilo ATTACK's pip row shows one pip per shot (the row grows
+--   to 5 by copying its 3rd pip): full up to DiloLocalSpitLeft; while DiloLocalSpitReloadAt is in the future all pips fill
+--   together from the bottom over DiloSpitReload and the button dims (0.5, the troodon's rule). ArenaTouchDiloDart adds
+--   "reloading".
 -- v1.19 (MDA-360; Kepu 2026-11-09 dilo spit only, tap to spit; PC and touch together with AbilityBar 1.36 / DiloAttackTest 1.3):
 --   on a character with DiloSpitOnly true the dilo ATTACK's dart pip fills over DiloSpitGap (0.35; Quick Draw 0.26 / 0.19 /
 --   0.14) after DiloLocalDartAt instead of DiloDartCooldown; there is no hold, so the hold disc stays empty. Switch: script
@@ -569,6 +576,19 @@ for i = 1, 3 do
 	local f = dlPipRow:FindFirstChild("Charge_" .. i)
 	if f then dlPips[i] = {f = f, fill = f:FindFirstChild("Fill")} end
 end
+if script:GetAttribute("ArenaTouchDiloAmmoEnabled") == nil then script:SetAttribute("ArenaTouchDiloAmmoEnabled", true) end -- v1.20
+for i = 4, 5 do -- v1.20: room for 5 shots
+	local src = dlPipRow:FindFirstChild("Charge_3")
+	if src and not dlPipRow:FindFirstChild("Charge_" .. i) then
+		local c = src:Clone()
+		c.Name = "Charge_" .. i
+		c.LayoutOrder = i
+		c.Visible = false
+		c.Parent = dlPipRow
+		dlPips[i] = {f = c, fill = c:FindFirstChild("Fill")}
+	end
+end
+local dlAmmoDim = false -- v1.20
 
 -- v1.18: troodon ATTACK main button + pod charge pips
 if script:GetAttribute("ArenaTouchTrooPipsEnabled") == nil then script:SetAttribute("ArenaTouchTrooPipsEnabled", true) end
@@ -769,9 +789,29 @@ RunService.RenderStepped:Connect(function()
 		pip.f.Visible = i == 1
 		if pip.fill then pip.fill.Size = UDim2.fromScale(1, i == 1 and part or 0) end
 	end
+	local reloading = false -- v1.20: spit ammo
+	local mag = math.floor(tonumber(char:GetAttribute("DiloLocalSpitMag")) or 0)
+	if script:GetAttribute("ArenaTouchDiloAmmoEnabled") ~= false and mag >= 1 then
+		mag = math.clamp(mag, 1, #dlPips)
+		local left = math.clamp(math.floor(tonumber(char:GetAttribute("DiloLocalSpitLeft")) or mag), 0, mag)
+		local rEnd = tonumber(char:GetAttribute("DiloLocalSpitReloadAt")) or 0
+		reloading = rEnd > now
+		local rk = reloading and math.clamp(1 - (rEnd - now) / math.max(0.01, tonumber(char:GetAttribute("DiloSpitReload")) or 3), 0, 1) or 0
+		for i, pip in ipairs(dlPips) do
+			pip.f.Visible = i <= mag
+			if pip.fill then pip.fill.Size = UDim2.fromScale(1, reloading and rk or (i <= left and 1 or 0)) end
+		end
+		diloMain.BackgroundTransparency = reloading and 0.5 or 0.08
+		if diloMainLabel then diloMainLabel.TextTransparency = reloading and 0.5 or 0 end
+		dlAmmoDim = true
+	elseif dlAmmoDim then
+		dlAmmoDim = false
+		diloMain.BackgroundTransparency = 0.08
+		if diloMainLabel then diloMainLabel.TextTransparency = 0 end
+	end
 	local hk = math.floor(k * 10 + 0.5) / 10
 	if char:GetAttribute("ArenaTouchDiloHold") ~= hk then char:SetAttribute("ArenaTouchDiloHold", hk) end
-	local ds = part >= 1 and "ready" or "cooling"
+	local ds = reloading and "reloading" or (part >= 1 and "ready" or "cooling") -- v1.20: + reloading
 	if char:GetAttribute("ArenaTouchDiloDart") ~= ds then char:SetAttribute("ArenaTouchDiloDart", ds) end
 end)
 -- v1.18: the troodon's ATTACK becomes the main button when nothing else is; its pod pips every frame
