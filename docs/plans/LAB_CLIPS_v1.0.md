@@ -134,3 +134,22 @@ hashes match.
 - Camera: behind-right 3/4 view (M.CAM); the scene grows to at least 1.8 dino lengths (the Studio test dino is scale 2,
   26 studs long), and the close-range templates (burst / ring / over) place targets past the dino's head.
 - QA: see the VERSIONS row. Not checked on a real phone; Studio's Play view is a 325 px column.
+
+## Other dinos (v1.1, 2026-11-11)
+Kepu 15:37 after the v686 check: "Looks great keep going with other Dino's" (the rollout pick's go-ahead; same look as the
+Dilo, so no new mockup). MDA-446 (LabClipPlayer 1.1), MDA-447 (LabClipRecipes 1.1), MDA-448 (QA).
+- Recipes for every live mecha part of Raptor 7, Pachy 8, Herrera 8, Teno 7, Therizino 7, Troodon 10 (47). Numbers = the live
+  SkillTree 1.89 step texts read in Studio; where a text gives no number (for example "Recharges 26% faster"), the chip is a
+  YES / NO flag instead of an invented number. Attach points measured from each part's BuildPreview on its dino's mannequin.
+- New templates (LabClipPlayer 1.1): shot (stun / pull / reel / hold / split), throw (mine / spike / boulder / goo / dome /
+  wall / turret / lantern / heal), wave (buff / mark / stomp / drag), buff (heal / speed / cloak / smoke / scan / shield /
+  front / free / drone / zone / lunge / fling), move (boost / leap / glide), place (pad / caltrops / portal). cone and burst
+  take optional fx with the 1.0 values as defaults, so the Dilo clips are unchanged. Allies are blue dummies.
+- Lab 1.15 needed no change (it shows a clip for any part with a recipe; passive cards on STATS too).
+- QA: LabClipRecipesAll.spec PASS 1461 (54 live parts all have recipes; 47 parts' numbers found in their texts); every one of
+  the 47 clips run frame by frame at step I and ★ on its own dino with no error; screenshots of 20 of them at the PC panel
+  size; Lab check as the Troodon (MECHA ABILITIES cards and the passive Bloom Tank on STATS mount clips; one ClipView at a
+  time). Fixed in QA: see-through puddles / heal burst, solid sap wall, a long boost shown shorter (the chips keep the time),
+  leap framing, stacked labels spaced out.
+- Long-reach parts (Shock Cannon 200-270, tether 180, Boulder Mortar 180, portal 185-250) show the target closer than the real
+  reach; the chips show the real number.
