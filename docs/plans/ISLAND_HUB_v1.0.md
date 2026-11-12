@@ -225,4 +225,21 @@ the member countdown (test hook), the arena / practice menu with BACK TO ISLAND,
 Scope: Kepu "Keep everything".
 
 ## Status (2026-11-11)
-Plan + red-team + tickets filed (MDA-452..460, ADR-011). Waiting for Kepu's "Build".
+Plan + red-team + tickets filed (MDA-452..460, ADR-011). Kepu "Build" 17:59.
+
+## Build (2026-11-11)
+Commits e589e8c..(this); installed in Studio, 15 hashes match the repo (VERSIONS row).
+- Islet: built by tools/build/PortalIslet.build.luau into ServerStorage.PortalIslet (185 parts): centre (930, 930), radius 95,
+  120-stud bridge north-west to the beach at (782, 782); ARENA (orange) left, HARDPOINT VS BOTS (yellow) right, facing the
+  island; neon parts use deeper tones (orange 255,100,18 / yellow 255,196,40) because neon blooms lighter. Screenshots
+  docs/reference/hub/islet_*_v1.0.jpg (sent to Kepu). DinoIsland not touched.
+- Found in QA / changed from the plan:
+  - RunService:IsServer() is false in Studio Edit, so the safe row in SquadRules is checked in a Play server (spec PASS 22).
+  - The safe banner sat over the SKILLS / SQUAD pills in the narrow Studio view: it now sits at max(7% height, 100 px).
+  - PortalHUD sets text sizes only when the screen size changes (FontSwap re-fits sizes a script sets; per-frame sets would
+    fight it).
+  - MainMenu: in practice / arena every trip result counts as the island (the practice lobby's BACK TO ISLAND fires the
+    remote itself), so the toast / travel loader read the island.
+  - The shallow sea around the islet is walkable (water parts don't collide), so the bridge is not the only way in; the safe
+    area is the islet disc + the bridge either way.
+- Studio checks per kind: see the VERSIONS row. Not checked: teleports (live only), a real phone, a second player.
