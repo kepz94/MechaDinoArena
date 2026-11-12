@@ -56,3 +56,8 @@ unchanged. The caller passes the right target; squad names ride over the telepor
 3. *Too much text on small phones.* Narrow layout drops the map; checked at 390 × 844.
 4. *Back-to-island showed the wrong caption.* Fixed in T2 by TripTarget.
 5. *The egg's hatch was the payoff.* Kept as the small rocking egg; the end beat is "READY" (Kepu can ask for the hatch back).
+
+## Build notes (2026-11-12)
+- T2 came out smaller than planned: EggLoader 1.3 maps the old "Sandbox" target to the VS BOTS screen, so PortalHUD needs no
+  change; MainMenu 1.23 already marks every trip from a mode (board button, automatic trip, menu) as "island", so only
+  MainMenu 1.25 changes (island -> "Island"). HardpointHUD unchanged. No TripTarget attribute.

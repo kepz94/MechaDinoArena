@@ -3412,3 +3412,12 @@ Model numbers are generator output (old version = the flag in the last column, b
 
 ## Loading bar carries over a trip (EggLoader 1.2, 2026-11-12)
 - `EggLoaderCarryEnabled` (true, read at start); ScreenGui attribute `EggLoaderCarry`; player diagnostic `EggLoaderArriveFrom`; ARRIVE_FLOOR 0.5 in code.
+
+## Rift Gates (PortalRift.build 1.0 / PortalFX 1.0 / HubServer 1.3, 2026-11-12)
+- PortalFX: `PortalFXEnabled` (true, per frame), `PortalFXSpin` 70, `PortalFXChase` 6, `PortalFXFar` 400, `PortalFXPhoneMul` 0.5; player diagnostics `PortalFXVersion`, `PortalFXState`, `PortalFXFlares`.
+- HubServer: `HubPortalFlareEnabled` (true, per trip); portal model `PortalFlareAt`.
+- Islet parts: `Legacy`, `LegacyTransparency`, `LegacyCollide`, `LegacyLight`, `LegacyCFrame`; Sparks `BaseRate`; VortexHub `BaseCFrame`; models `RiftVersion`, islet `PortalRiftVersion`.
+
+## Mode loading (EggLoader 1.3 / MainMenu 1.25, 2026-11-12)
+- EggLoader `EggLoaderBriefingEnabled` (true, read at start); gui `EggLoaderSquad`; player `EggLoaderBrief`.
+- MainMenu `MainMenuIslandLoaderEnabled` (true, per trip).

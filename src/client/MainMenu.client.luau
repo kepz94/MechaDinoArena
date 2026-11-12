@@ -153,6 +153,11 @@
 --   the therizino. Switch: script attribute MainMenuDiloEnabled (default true, read at start; false = 1.16).
 -- v1.20 (MDA-332, plan docs/plans/TROODON_KIT_v1.0.md Task 3): {id = "Troodon", name = "TROODON", sub = "55 HP · area control +
 --   support"} after the dilo. Switch: script attribute MainMenuTroodonEnabled (default true, read at start; false = 1.19).
+-- v1.25 (Mode Loading, MDA-479, plan docs/plans/MODE_LOADING_v1.0.md T2): a trip back to the island (lastPressedMode
+--   "island": the menu's BACK TO ISLAND, the board's BACK TO ISLAND and HardpointHUD 1.10's automatic trip, all marked by
+--   1.23's ModeLastAt rule) puts up EggLoader.Show("Island") (the ISLAND briefing) instead of "Sandbox". Found while
+--   planning: before 1.23's island rule a board trip showed "TRAVELING TO ARENA". Switch: script attribute
+--   MainMenuIslandLoaderEnabled (default true, read per trip; false = 1.24).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -168,6 +173,7 @@ VERSION = "1.21" -- v1.21 troodon parts (OPart_*)
 VERSION = "1.22" -- v1.22 mode chip + PLAY
 VERSION = "1.23" -- v1.23 island hub
 VERSION = "1.24" -- v1.24 match preview edit
+VERSION = "1.25" -- v1.25 island loading screen
 -- v1.24 (match preview, Kepu 2026-11-11 19:02: "the option to change dinos and loadouts as it counts down"): the menu also opens
 --   on the practice team screen while the player attribute PrEditing is true (PracticeLobby 1.4's DINO & LOADOUT): open =
 --   InMenu and (not PrInLobby or PrEditing). While PrEditing: the line under PLAY reads "BACK TO THE LOBBY" and PLAY just clears
@@ -1285,6 +1291,9 @@ local function travelLoader(r)
 		if showFn then
 			travelShown = true
 			local target = (lastPressedMode == "sandbox" or lastPressedMode == "island") and "Sandbox" or "Arena" -- v1.23: + island
+			if lastPressedMode == "island" and script:GetAttribute("MainMenuIslandLoaderEnabled") ~= false then
+				target = "Island" -- v1.25: EggLoader 1.3's ISLAND screen (1.23 showed the Sandbox / bots one)
+			end
 			local ok, g = pcall(function() return showFn:Invoke(target) end)
 			if ok and g then pcall(function() game:GetService("TeleportService"):SetTeleportGui(g) end) end
 			player:SetAttribute("MainMenuTravelLoader", "shown")
