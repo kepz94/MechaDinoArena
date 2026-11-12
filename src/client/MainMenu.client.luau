@@ -166,6 +166,17 @@ VERSION = "1.19" -- v1.19 dilo parts (DPart_*)
 VERSION = "1.20" -- v1.20 Troodon
 VERSION = "1.21" -- v1.21 troodon parts (OPart_*)
 VERSION = "1.22" -- v1.22 mode chip + PLAY
+VERSION = "1.23" -- v1.23 island hub
+-- v1.23 (island hub, MDA-459, plan docs/plans/ISLAND_HUB_v1.0.md Task 8, ADR-011, mockup docs/mockups/island_portals_v0.1.html;
+--   Kepu 2026-11-11 "We'll still have the main menu but it'll just be lab and then the spawn onto island", pick "dino pick +
+--   Lab + PLAY"): while ReplicatedStorage HubOn == true (HubServer 1.0) the mode chip and its list are hidden and PLAY follows
+--   the server kind (ReplicatedStorage ServerKind): "hub" -> the island (the FREE ROAM press: DinoModeRequest "sandbox" =
+--   this server's mode -> "play"; HubServer stands the dino on the portal islet), "practice" -> the PRACTICE press (the lobby),
+--   "arena" -> the HARDPOINT press. A line under PLAY: "ONTO THE ISLAND" / "BACK INTO THE MATCH". In "practice" / "arena" a
+--   BACK TO ISLAND button (dark, cyan outline rgb(95, 224, 200)) sits where the chip was -> DinoModeRequest "island"
+--   (ModeServer 1.3); its studio toast reads "THE ISLAND OPENS IN THE LIVE GAME" and the travel loader shows "Sandbox".
+--   Switch: script attribute MainMenuHubEnabled (default true, read at each layout / press; false = 1.22). Diagnostic: player
+--   MainMenuLastPress "island".
 -- v1.22 (practice match, MDA-413, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 9, mockup docs/mockups/practice_match_v0.1.html
 --   "Main menu" M1; Kepu 2026-11-10 "M1 · Mode chip + PLAY", after "how other mobile game menus function for game modes"):
 --   the right column's SANDBOX / ARENA buttons are hidden and the bottom of the right column (the thumb corner) gets a mode
@@ -535,6 +546,21 @@ local playB = blockButton(root, "Play", YELLOW)
 local playText = label(playB.b, "T", Enum.Font.FredokaOne, DARK_TEXT)
 playText.Text = "PLAY"
 playText.Size = UDim2.fromScale(1, 1)
+-- v1.23: island hub
+if script:GetAttribute("MainMenuHubEnabled") == nil then script:SetAttribute("MainMenuHubEnabled", true) end
+local CYAN = Color3.fromRGB(95, 224, 200)
+local function hubNow()
+	return script:GetAttribute("MainMenuHubEnabled") ~= false and ReplicatedStorage:GetAttribute("HubOn") == true
+end
+local function kindNow() return ReplicatedStorage:GetAttribute("ServerKind") or "hub" end
+local playSub = label(playB.b, "Sub", Enum.Font.GothamBlack, DARK_TEXT)
+playSub.Visible = false
+local islandB = blockButton(root, "BackToIsland", PANEL)
+islandB.b.Visible, islandB.shadow.Visible = false, false
+local islandStroke = stroke(islandB.b, CYAN, 0, 2)
+local islandText = label(islandB.b, "T", Enum.Font.FredokaOne, CYAN)
+islandText.Text = "BACK TO ISLAND"
+islandText.Size = UDim2.fromScale(1, 1)
 local chip = Instance.new("TextButton")
 chip.Name = "ModeChip"
 chip.AutoButtonColor = false
@@ -585,6 +611,10 @@ for i, md in ipairs(MODES) do
 end
 local function drawChip()
 	if not chipOn then return end
+	if hubNow() then -- v1.23: the server kind decides
+		local k = kindNow()
+		chosenMode = k == "practice" and "practice" or k == "arena" and "hardpoint" or "free"
+	end
 	if not chosenMode or not modeOk(chosenMode) then
 		chosenMode = player:GetAttribute("DinoMode") == "arena" and "hardpoint" or (practiceHere() and "practice" or "free")
 	end
@@ -1171,6 +1201,31 @@ local function layout()
 	musicB.Position = UDim2.fromOffset(S.rightX + S.rightW, S.top)
 	musicCorner.CornerRadius = UDim.new(0, 1.2 * ch)
 	musicPad.PaddingLeft, musicPad.PaddingRight = UDim.new(0, 1.6 * ch), UDim.new(0, 1.6 * ch)
+	-- v1.23: island hub (chip hidden; BACK TO ISLAND where the chip was; a line under PLAY)
+	local hub = chipOn and hubNow()
+	local inMode = hub and kindNow() ~= "hub"
+	islandB.b.Visible, islandB.shadow.Visible = inMode, inMode
+	playSub.Visible = hub
+	if hub then
+		chip.Visible = false
+		modeList.Visible = false
+		local bottom = S.H - S.bottom
+		if script:GetAttribute("MainMenuCreditsButtonEnabled") ~= false then
+			bottom = math.min(bottom, S.H - 2 * ch - math.max(4.6 * ch, 28) - 1.2 * ch)
+		end
+		local playH = math.max(11 * ch, 48)
+		local chipH = math.max(8 * ch, 44)
+		local subS = math.max(1.5 * ch, 9)
+		playSub.TextSize = subS
+		playSub.Text = inMode and "BACK INTO THE MATCH" or "ONTO THE ISLAND"
+		playSub.Size = UDim2.new(1, 0, 0, subS)
+		playSub.Position = UDim2.new(0, 0, 1, -subS - 1.4 * ch)
+		playText.Size = UDim2.new(1, 0, 1, -subS)
+		placeButton(islandB, rx2, bottom - playH - 1.6 * ch - chipH, rw, chipH, 1.2 * ch, 0.6 * ch, 0.5 * ch)
+		islandText.TextSize = math.max(2.8 * ch, 14)
+	else
+		playText.Size = UDim2.fromScale(1, 1)
+	end
 end
 
 function relayout()
@@ -1220,7 +1275,7 @@ local function travelLoader(r)
 	if (r == "saving" or r == "teleporting") and not travelShown then
 		if showFn then
 			travelShown = true
-			local target = lastPressedMode == "sandbox" and "Sandbox" or "Arena"
+			local target = (lastPressedMode == "sandbox" or lastPressedMode == "island") and "Sandbox" or "Arena" -- v1.23: + island
 			local ok, g = pcall(function() return showFn:Invoke(target) end)
 			if ok and g then pcall(function() game:GetService("TeleportService"):SetTeleportGui(g) end) end
 			player:SetAttribute("MainMenuTravelLoader", "shown")
@@ -1236,7 +1291,9 @@ end
 player:GetAttributeChangedSignal("ModeLastAt"):Connect(function()
 	local r = player:GetAttribute("ModeLastResult")
 	travelLoader(r) -- v1.1
-	if r == "studio" then
+	if r == "studio" and lastPressedMode == "island" then -- v1.23
+		showToast("THE ISLAND OPENS IN THE LIVE GAME", false)
+	elseif r == "studio" then
 		showToast((lastPressedMode == "sandbox" and "SANDBOX" or "ARENA") .. " OPENS IN THE LIVE GAME", false)
 	elseif r == "saving" or r == "teleporting" then
 		showToast(MESSAGES[r], true)
@@ -1360,6 +1417,16 @@ playB.b.Activated:Connect(function()
 		if modeRemote then modeRemote:FireServer("sandbox") end
 	end
 end)
+
+-- v1.23: BACK TO ISLAND
+islandB.b.Activated:Connect(function()
+	if not hubNow() or kindNow() == "hub" then return end
+	press("island")
+	lastPressedMode = "island"
+	if modeRemote then modeRemote:FireServer("island") end
+end)
+ReplicatedStorage:GetAttributeChangedSignal("HubOn"):Connect(function() relayout() end)
+ReplicatedStorage:GetAttributeChangedSignal("ServerKind"):Connect(function() relayout() end)
 
 -- ---------- open / close ----------
 local open = false

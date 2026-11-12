@@ -33,16 +33,26 @@
 -- Switch: script attribute SquadHUDEnabled (default true, read at start; false = nothing is built).
 -- Diagnostics: player SquadHUDVersion, SquadHUDPanel ("open" / "closed"), SquadHUDRows (health rows shown), SquadHUDInvite
 --   ("shown" / "hidden"), SquadHUDLastPress.
+-- v1.1 (island hub, MDA-459, plan docs/plans/ISLAND_HUB_v1.0.md Task 8, ADR-011; Kepu 2026-11-11: the squad leader walks into a
+--   portal and the whole squad goes): the squad leader (player attribute SquadLeader == true, SquadServer 1.1) gets " ★" after
+--   the name in the panel rows, the health rows and the over-head tags; when you lead, the panel title reads "SQUAD · YOU
+--   LEAD ★". Squads now show in every kind where SquadsLive (hub, bots match, Arena). Switch: script attribute
+--   SquadHUDLeaderStarEnabled (default true, read per draw; false = 1.0 names).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local player = Players.LocalPlayer
 player:SetAttribute("SquadHUDVersion", VERSION)
 if script:GetAttribute("SquadHUDEnabled") == nil then script:SetAttribute("SquadHUDEnabled", true) end
 if script:GetAttribute("SquadHUDEnabled") == false then return end
+if script:GetAttribute("SquadHUDLeaderStarEnabled") == nil then script:SetAttribute("SquadHUDLeaderStarEnabled", true) end -- v1.1
+local function star(p) -- v1.1
+	if script:GetAttribute("SquadHUDLeaderStarEnabled") == false then return "" end
+	return (typeof(p) == "Instance" and p:GetAttribute("SquadLeader") == true) and " ★" or ""
+end
 
 local PANEL = Color3.fromRGB(20, 20, 26)
 local DARK = Color3.fromRGB(42, 51, 64)
@@ -313,7 +323,7 @@ local function rebuildPanel(force)
 	head.Size = UDim2.new(1, 0, 0, 24)
 	head.LayoutOrder = 1
 	head.Parent = panel
-	local ht = label(head, "Title", "SQUAD", 20)
+	local ht = label(head, "Title", (myId ~= "" and star(player) ~= "") and "SQUAD · YOU LEAD ★" or "SQUAD", 20) -- v1.1
 	ht.Size = UDim2.fromScale(0.6, 1)
 	local hc = label(head, "Count", ("%d / %d"):format(size, R.MAX), 16, YELLOW, Enum.TextXAlignment.Right)
 	hc.Size = UDim2.fromScale(0.4, 1)
@@ -325,7 +335,7 @@ local function rebuildPanel(force)
 			if p ~= player then
 				local h, m = hpOf(p)
 				local sub = speciesOf(p) .. " · " .. (h and ("%d / %d HP"):format(math.floor(h + 0.5), math.floor(m + 0.5)) or "down")
-				local inner = row(panel, order, "◆ " .. p.Name, sub, MATE)
+				local inner = row(panel, order, "◆ " .. p.Name .. star(p), sub, MATE) -- v1.1: ★
 				order += 1
 				local tag = smallBtn(inner, "SQUADMATE", Color3.fromRGB(61, 138, 58), Color3.new(1, 1, 1))
 				tag.AutoButtonColor = false
@@ -593,7 +603,7 @@ local function updateRows(mates)
 			end
 			f.LayoutOrder = -#mates - 1 + i
 			local h, m = hpOf(p)
-			f.L.Text = "◆ " .. p.Name
+			f.L.Text = "◆ " .. p.Name .. star(p) -- v1.1: ★
 			f.R.Text = h and ("%d / %d"):format(math.floor(h + 0.5), math.floor(m + 0.5)) or "DOWN · respawning"
 			f.Back.Fill.Size = UDim2.fromScale(h and h / m or 0, 1)
 			local low = h and h / m < 0.3
@@ -630,7 +640,7 @@ local function updateTags(mates)
 			g.Adornee = adorn
 			local ok, s = pcall(function() return c:GetScale() end)
 			g.StudsOffset = Vector3.new(0, 4 * (ok and s or 1), 0)
-			g.L.Text = "◆ " .. p.Name
+			g.L.Text = "◆ " .. p.Name .. star(p) -- v1.1: ★
 		end
 	end
 	for _, g in ipairs(tagFolder:GetChildren()) do

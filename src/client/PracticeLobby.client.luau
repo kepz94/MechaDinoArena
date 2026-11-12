@@ -31,12 +31,17 @@
 -- v1.2 (QA 2026-11-10: with the LAST MATCH panel on a short screen the 5th slot went under the button bar, slots were held
 --   at 30 px at least): slots may shrink to 22 px; below 32 px a slot shows one line (the name, centred; the loadout line is
 --   hidden). Name text stays 12 px at least.
+-- v1.3 (island hub, MDA-459, plan docs/plans/ISLAND_HUB_v1.0.md Task 8, ADR-011): while ReplicatedStorage HubOn == true the bar
+--   gets BACK TO ISLAND (last, dark, cyan text rgb(95, 224, 200)) -> ReplicatedStorage.DinoModeRequest "island" (ModeServer
+--   1.3). While ReplicatedStorage.Practice PrPrivate == true (PracticeServer 1.4: your squad's private match) JOIN RED and
+--   AUTO are hidden (everyone plays blue); toast squadSide -> "Your squad plays blue". Switch: script attribute
+--   PracticeLobbyHubEnabled (default true, read per frame; false = 1.2).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW = Color3.fromRGB(255, 200, 50)
 local MUTED = Color3.fromRGB(143, 153, 170)
@@ -251,6 +256,24 @@ end
 button("newBots", "NEW BOTS", DARK_BTN, WHITE, 8).Activated:Connect(function() press("newBots", "newbots") end)
 button("start", "START", YELLOW, DARK_TEXT, 9).Activated:Connect(function() press("start", "start") end)
 button("leave", "MAIN MENU", DARK_BTN, WHITE, 10).Activated:Connect(function() press("leave", "leave") end)
+-- v1.3: island hub
+if script:GetAttribute("PracticeLobbyHubEnabled") == nil then script:SetAttribute("PracticeLobbyHubEnabled", true) end
+TOAST.squadSide = "Your squad plays blue"
+button("island", "BACK TO ISLAND", DARK_BTN, Color3.fromRGB(95, 224, 200), 11).Activated:Connect(function()
+	script:SetAttribute("PracticeLobbyLastPress", "island")
+	local mr = ReplicatedStorage:FindFirstChild("DinoModeRequest")
+	if mr then mr:FireServer("island") end
+end)
+buttons.island.b.Visible = false
+local function hubVis() -- -> changed
+	local on = script:GetAttribute("PracticeLobbyHubEnabled") ~= false
+	local isl = on and ReplicatedStorage:GetAttribute("HubOn") == true
+	local priv = on and state:GetAttribute("PrPrivate") == true
+	local changed = buttons.island.b.Visible ~= isl or buttons.joinRed.b.Visible == priv or buttons.auto.b.Visible == priv
+	buttons.island.b.Visible = isl
+	buttons.joinRed.b.Visible, buttons.auto.b.Visible = not priv, not priv
+	return changed
+end
 
 -- ---------- data ----------
 local roster = {A = {}, B = {}}
@@ -438,6 +461,7 @@ RunService.RenderStepped:Connect(function()
 		if show then layout() end
 	end
 	if not show then return end
+	if hubVis() then layout() end -- v1.3
 	local at = tonumber(state:GetAttribute("PrStartAt")) or 0
 	sub.Text = "HARDPOINT · SUMMIT · " .. (at > 0 and ("STARTS IN " .. fmt(at - now())) or "WAITING")
 	local diff = state:GetAttribute("PrDifficulty")
