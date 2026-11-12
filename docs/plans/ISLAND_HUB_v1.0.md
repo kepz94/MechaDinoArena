@@ -210,5 +210,14 @@ the member countdown (test hook), the arena / practice menu with BACK TO ISLAND,
 - Live (after Publish, Kepu): solo to ARENA, solo to BOTS, back to island from each; a squad of 2+ to ARENA and BOTS (same
   server, same squad, same team); islet safe area with another player.
 
-## Red-team (2026-11-11) — see below for Kepu's answers
-(filled after Kepu replies)
+## Red-team (2026-11-11, Kepu's answers 18:0x)
+| # | Risk | Result |
+|---|---|---|
+| R1 | Teleports don't run in Studio: squad travel is first seen live | Accepted. HubTravel is isolated, HubTest hook covers everything up to the teleport; HubEnabled false = today's game. Live check list in Task 9. |
+| R2 | A party can split (one member's teleport fails) | Mitigated: squad rebuilt on arrival by key for 60 s; a failed member gets "failed" and stays on the islet. |
+| R3 | "Ends early if you attack" needs every ability server | Kepu: "Yes, both ways". The guard protects both ways for 3 s (no ability server edits). |
+| R4 | Public 5v5 practice with strangers goes away | Kepu: "Yes, private". Bots match = one reserved server per party. |
+| R5 | The islet is tight (sea corner ~300 x 300 inside the walls) | Mitigated: Task 5 builds it first; screenshots to Kepu before Task 6 wires it. Moving the walls stays do-not-touch. |
+| R6 | The safe rule lives in SquadRules.sameChar (server): ally-only effects (heals, buffs) may reach strangers on the islet | Accepted: only while one of the two is HubSafe and only in the hub; clients unchanged. |
+| R7 | Studio default becomes the hub | Accepted: QA sets ModeTestPractice / ModeTestArena per kind and back to nil. |
+Scope: Kepu "Keep everything".
