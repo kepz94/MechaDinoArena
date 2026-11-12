@@ -59,6 +59,18 @@
 --     "auto" answers "squadSide". A player arriving with join data TeleportData.mdaTrip.mode == "bots" (HubServer 1.0 portal)
 --     enters the lobby by itself (as "lobby"). Switch: script attribute PrPrivateSideEnabled (default true; read at start;
 --     false = 1.3: public rules, arrivals see the menu). Diagnostic: PrArrivals.
+-- v1.5 (match preview, Kepu 2026-11-11 19:02: "It should go straight into match preview where it shows everyone loaded in and who's
+--   still loading and the teams and the option to change dinos and loadouts as it counts down to match beginning. Then it loads
+--   you into a spawn like before"):
+--   * still loading: every arrival's mdaTrip.members (UserIds) that are not on this server yet are expected; they stay
+--     "loading" until they arrive or PrLoadWaitMax (30) s after they were first expected. ReplicatedStorage.Practice PrLoading =
+--     JSON [{userId, name}] (names from Players:GetNameFromUserIdAsync, "" until known); PracticeLobby 1.4 draws them in blue
+--     slots.
+--   * while anyone is loading the lobby countdown holds at PrLoadHold (5) s left (it can't start before they're in or given
+--     up on).
+--   * a human's dino changing in the lobby (DinoSpecies, a new character) republishes the roster, so the preview shows it.
+--   Switch: script attribute PrPreviewEnabled (default true, read per tick; false = 1.4: no loading list, no hold).
+--   Diagnostic: PrLoadingCount.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -69,6 +81,7 @@ local HttpService = game:GetService("HttpService")
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 bot jobs + no T-Rex bots
 VERSION = "1.4" -- v1.4 island hub
+VERSION = "1.5" -- v1.5 match preview
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
@@ -501,10 +514,59 @@ Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, pl) end
 Players.PlayerRemoving:Connect(function(pl) removeHuman(pl, "quit") lastReq[pl] = nil end)
 
+-- v1.5: match preview — who is still loading
+for k, v in pairs({PrPreviewEnabled = true, PrLoadWaitMax = 30, PrLoadHold = 5}) do
+	DEFAULTS[k] = v
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local expect = {} -- [userId] = {at, name}
+local function previewOn() return get("PrPreviewEnabled") ~= false end
+local function publishLoading()
+	local list, t = {}, now()
+	for id, e in pairs(expect) do
+		if Players:GetPlayerByUserId(id) or t - e.at > (tonumber(get("PrLoadWaitMax")) or 30) then
+			expect[id] = nil
+		else
+			table.insert(list, {userId = id, name = e.name or ""})
+		end
+	end
+	table.sort(list, function(a, b) return a.userId < b.userId end)
+	set("PrLoading", HttpService:JSONEncode(list))
+	script:SetAttribute("PrLoadingCount", #list)
+	return #list
+end
+local function expectFrom(trip)
+	if not previewOn() or type(trip) ~= "table" or type(trip.members) ~= "table" then return end
+	for _, id in ipairs(trip.members) do
+		if type(id) == "number" and not Players:GetPlayerByUserId(id) and not expect[id] then
+			local e = {at = now(), name = nil}
+			expect[id] = e
+			task.spawn(function()
+				local ok, n = pcall(function() return Players:GetNameFromUserIdAsync(id) end)
+				if ok and type(n) == "string" then e.name = n publishLoading() end
+			end)
+		end
+	end
+	publishLoading()
+end
+local function watchDino(pl)
+	pl:GetAttributeChangedSignal("DinoSpecies"):Connect(function()
+		if humanIndex(pl) and phase == "lobby" then publish() end
+	end)
+	pl.CharacterAdded:Connect(function()
+		task.delay(0.5, function() if humanIndex(pl) and phase == "lobby" then publish() end end)
+	end)
+end
+Players.PlayerAdded:Connect(watchDino)
+for _, pl in ipairs(Players:GetPlayers()) do task.spawn(watchDino, pl) end
+Players.PlayerAdded:Connect(function() task.defer(publishLoading) end)
+set("PrLoading", "[]")
+
 -- v1.4: a portal trip into the private bots match opens the lobby by itself
 local function arrive(pl)
 	local okJd, jd = pcall(function() return pl:GetJoinData() end)
 	local td = okJd and type(jd) == "table" and jd.TeleportData or nil
+	if PRIVATE and type(td) == "table" and type(td.mdaTrip) == "table" and td.mdaTrip.mode == "bots" then expectFrom(td.mdaTrip) end -- v1.5
 	if not (PRIVATE and type(td) == "table" and type(td.mdaTrip) == "table" and td.mdaTrip.mode == "bots") then return end
 	if humanIndex(pl) then return end
 	script:SetAttribute("PrArrivals", (script:GetAttribute("PrArrivals") or 0) + 1)
@@ -536,6 +598,13 @@ RunService.Heartbeat:Connect(function(dt)
 	acc = 0
 	if phase == "lobby" then
 		local at = state:GetAttribute("PrStartAt") or 0
+		if previewOn() and at > 0 and next(expect) ~= nil and publishLoading() > 0 then -- v1.5: hold while someone is loading
+			local hold = tonumber(get("PrLoadHold")) or 5
+			if at - now() < hold then
+				at = now() + hold
+				set("PrStartAt", at)
+			end
+		end
 		if at > 0 and now() >= at and #humans > 0 then startMatch() end
 		return
 	end

@@ -36,12 +36,20 @@
 --   1.3). While ReplicatedStorage.Practice PrPrivate == true (PracticeServer 1.4: your squad's private match) JOIN RED and
 --   AUTO are hidden (everyone plays blue); toast squadSide -> "Your squad plays blue". Switch: script attribute
 --   PracticeLobbyHubEnabled (default true, read per frame; false = 1.2).
+-- v1.4 (match preview, Kepu 2026-11-11 19:02: "shows everyone loaded in and who's still loading and the teams and the option to
+--   change dinos and loadouts as it counts down"):
+--   * players still loading (ReplicatedStorage.Practice PrLoading, PracticeServer 1.5) take the first bot slots on blue: dino box
+--     "...", their name, the line "LOADING..." in grey.
+--   * a DINO & LOADOUT button (first in the bar, yellow text) opens the main menu over the preview (player attribute
+--     PrEditing = true on this client; the screen hides while it is set; MainMenu 1.24 reads it, its PLAY reads "BACK TO THE
+--     LOBBY" and clears it). PrEditing is cleared when the preview closes (match start, leaving).
+--   Switch: script attribute PracticeLobbyPreviewEnabled (default true, read per frame; false = 1.3).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW = Color3.fromRGB(255, 200, 50)
 local MUTED = Color3.fromRGB(143, 153, 170)
@@ -265,6 +273,15 @@ button("island", "BACK TO ISLAND", DARK_BTN, Color3.fromRGB(95, 224, 200), 11).A
 	if mr then mr:FireServer("island") end
 end)
 buttons.island.b.Visible = false
+-- v1.4: DINO & LOADOUT (the main menu over the preview)
+if script:GetAttribute("PracticeLobbyPreviewEnabled") == nil then script:SetAttribute("PracticeLobbyPreviewEnabled", true) end
+button("edit", "DINO & LOADOUT", DARK_BTN, YELLOW, 0).Activated:Connect(function()
+	script:SetAttribute("PracticeLobbyLastPress", "edit")
+	player:SetAttribute("PrEditing", true)
+end)
+player:GetAttributeChangedSignal("PrInLobby"):Connect(function()
+	if player:GetAttribute("PrInLobby") ~= true then player:SetAttribute("PrEditing", nil) end
+end)
 local function hubVis() -- -> changed
 	local on = script:GetAttribute("PracticeLobbyHubEnabled") ~= false
 	local isl = on and ReplicatedStorage:GetAttribute("HubOn") == true
@@ -281,6 +298,20 @@ local function readRoster()
 	local ok, r = pcall(function() return HttpService:JSONDecode(state:GetAttribute("PrRoster") or "{}") end)
 	roster = (ok and type(r) == "table") and r or {}
 	roster.A, roster.B = roster.A or {}, roster.B or {}
+	if script:GetAttribute("PracticeLobbyPreviewEnabled") ~= false then -- v1.4: players still loading take blue bot slots
+		local okL, list = pcall(function() return HttpService:JSONDecode(state:GetAttribute("PrLoading") or "[]") end)
+		if okL and type(list) == "table" then
+			local k = 1
+			for i, d in ipairs(roster.A) do
+				local e = list[k]
+				if not e then break end
+				if d.kind == "bot" then
+					roster.A[i] = {kind = "loading", name = (e.name ~= "" and e.name) or "Squadmate", userId = e.userId, species = "..."}
+					k += 1
+				end
+			end
+		end
+	end
 end
 
 local function drawSlot(s, d, mine)
@@ -300,6 +331,9 @@ local function drawSlot(s, d, mine)
 	if d.kind == "bot" then
 		local parts = type(d.parts) == "table" and d.parts or {}
 		s.ld.Text = #parts > 0 and table.concat(parts, ", ") or "Basic attack"
+	elseif d.kind == "loading" then -- v1.4
+		s.ld.Text = "LOADING..."
+		s.nm.TextColor3 = MUTED
 	else
 		s.ld.Text = "Player"
 	end
@@ -433,6 +467,7 @@ end
 -- ---------- updates ----------
 readRoster()
 state:GetAttributeChangedSignal("PrRoster"):Connect(function() readRoster() if gui.Enabled then layout() end end)
+state:GetAttributeChangedSignal("PrLoading"):Connect(function() readRoster() if gui.Enabled then layout() end end) -- v1.4
 for _, k in ipairs({"PrSize", "PrResult"}) do
 	state:GetAttributeChangedSignal(k):Connect(function() if gui.Enabled then layout() end end)
 end
@@ -454,6 +489,7 @@ end)
 local wasShown = false
 RunService.RenderStepped:Connect(function()
 	local show = script:GetAttribute("PracticeLobbyEnabled") ~= false and player:GetAttribute("PrInLobby") == true
+		and not (player:GetAttribute("PrEditing") == true and script:GetAttribute("PracticeLobbyPreviewEnabled") ~= false) -- v1.4
 	gui.Enabled = show
 	if show ~= wasShown then
 		wasShown = show

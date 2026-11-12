@@ -167,6 +167,12 @@ VERSION = "1.20" -- v1.20 Troodon
 VERSION = "1.21" -- v1.21 troodon parts (OPart_*)
 VERSION = "1.22" -- v1.22 mode chip + PLAY
 VERSION = "1.23" -- v1.23 island hub
+VERSION = "1.24" -- v1.24 match preview edit
+-- v1.24 (match preview, Kepu 2026-11-11 19:02: "the option to change dinos and loadouts as it counts down"): the menu also opens
+--   on the practice team screen while the player attribute PrEditing is true (PracticeLobby 1.4's DINO & LOADOUT): open =
+--   InMenu and (not PrInLobby or PrEditing). While PrEditing: the line under PLAY reads "BACK TO THE LOBBY" and PLAY just clears
+--   PrEditing (the preview comes back); the dino picker, slots and GO TO THE LAB work as always. Switch: script attribute
+--   MainMenuPreviewEditEnabled (default true, read per change; false = 1.23). Diagnostic: MainMenuLastPress "lobby".
 -- v1.23 (island hub, MDA-459, plan docs/plans/ISLAND_HUB_v1.0.md Task 8, ADR-011, mockup docs/mockups/island_portals_v0.1.html;
 --   Kepu 2026-11-11 "We'll still have the main menu but it'll just be lab and then the spawn onto island", pick "dino pick +
 --   Lab + PLAY"): while ReplicatedStorage HubOn == true (HubServer 1.0) the mode chip and its list are hidden and PLAY follows
@@ -549,6 +555,7 @@ playText.Text = "PLAY"
 playText.Size = UDim2.fromScale(1, 1)
 -- v1.23: island hub
 if script:GetAttribute("MainMenuHubEnabled") == nil then script:SetAttribute("MainMenuHubEnabled", true) end
+if script:GetAttribute("MainMenuPreviewEditEnabled") == nil then script:SetAttribute("MainMenuPreviewEditEnabled", true) end -- v1.24
 local CYAN = Color3.fromRGB(95, 224, 200)
 local function hubNow()
 	return script:GetAttribute("MainMenuHubEnabled") ~= false and ReplicatedStorage:GetAttribute("HubOn") == true
@@ -1218,7 +1225,8 @@ local function layout()
 		local chipH = math.max(8 * ch, 44)
 		local subS = math.max(1.5 * ch, 9)
 		playSub.TextSize = subS
-		playSub.Text = inMode and "BACK INTO THE MATCH" or "ONTO THE ISLAND"
+		playSub.Text = (player:GetAttribute("PrEditing") == true and script:GetAttribute("MainMenuPreviewEditEnabled") ~= false)
+			and "BACK TO THE LOBBY" or inMode and "BACK INTO THE MATCH" or "ONTO THE ISLAND" -- v1.24: + lobby
 		playSub.Size = UDim2.new(1, 0, 0, subS)
 		playSub.Position = UDim2.new(0, 0, 1, -subS - 1.4 * ch)
 		playText.Size = UDim2.new(1, 0, 1, -subS)
@@ -1397,6 +1405,11 @@ for _, r in ipairs(rows) do
 	end)
 end
 playB.b.Activated:Connect(function()
+	if player:GetAttribute("PrEditing") == true and script:GetAttribute("MainMenuPreviewEditEnabled") ~= false then -- v1.24
+		press("lobby")
+		player:SetAttribute("PrEditing", nil)
+		return
+	end
 	drawChip()
 	modeList.Visible = false
 	press("play:" .. tostring(chosenMode))
@@ -1504,11 +1517,20 @@ end
 player.CharacterAdded:Connect(onChar)
 if player.Character then onChar(player.Character) end
 
+local function editing() -- v1.24
+	return player:GetAttribute("PrEditing") == true and script:GetAttribute("MainMenuPreviewEditEnabled") ~= false
+end
+local function wantOpen() -- v1.24
+	return player:GetAttribute("InMenu") == true and (player:GetAttribute("PrInLobby") ~= true or editing())
+end
 player.AttributeChanged:Connect(function(name)
 	if name == "InMenu" then
-		setOpen(player:GetAttribute("InMenu") == true and player:GetAttribute("PrInLobby") ~= true) -- v1.22: + not on the team screen
+		setOpen(wantOpen()) -- v1.22: + not on the team screen; v1.24: unless editing from it
 	elseif name == "PrInLobby" then -- v1.22
-		setOpen(player:GetAttribute("InMenu") == true and player:GetAttribute("PrInLobby") ~= true)
+		setOpen(wantOpen())
+	elseif name == "PrEditing" then -- v1.24
+		setOpen(wantOpen())
+		relayout()
 	elseif open and (name:sub(1, 9) == "SkillSlot" or name:sub(1, 10) == "SkillPath_") then
 		drawSlots()
 		relayout()
@@ -1784,4 +1806,4 @@ if script:GetAttribute("MainMenuCreditsButtonEnabled") ~= false then
 	layoutCredits()
 end
 
-setOpen(player:GetAttribute("InMenu") == true and player:GetAttribute("PrInLobby") ~= true) -- v1.22
+setOpen(wantOpen()) -- v1.22, v1.24

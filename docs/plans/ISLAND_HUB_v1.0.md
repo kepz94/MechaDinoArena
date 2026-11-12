@@ -252,3 +252,13 @@ the loading ... Make them more spaced out and bigger and fucking work like an ac
 - No countdown: HubRules 1.1 TRIP_TIME 0; HubServer 1.1 holds the travellers in place while the loader is up; PortalHUD 1.1
   shows the loader from "saving". The squad rule is unchanged (the leader walks in, everyone goes; a member gets the
   "only the leader" toast).
+
+## v1.2 fixes (2026-11-11 19:02, live v701)
+Kepu: "I just portaled to bot island but then it placed me on the portal area when I arrived. It should go straight into match
+preview ... shows everyone loaded in and who's still loading and the teams and the option to change dinos and loadouts as it
+counts down to match beginning. Then it loads you into a spawn like before."
+- Cause (most likely): the private bots server decided its kind before its reserved-server id was set, so it ran as a hub.
+  ModeRules 1.3 now also checks the first player's trip (mode "bots" -> practice) on live servers; ServerKindWhy tells which.
+- Preview = the practice team screen (direction A from the practice plan) with: still-loading squadmates in blue slots,
+  the countdown held at 5 s while anyone is loading (30 s max each), DINO & LOADOUT (the menu over it; PLAY goes back).
+  Screenshots docs/reference/hub/preview_*_v1.0.jpg.
