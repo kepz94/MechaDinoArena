@@ -67,6 +67,25 @@
 --   the arrive egg starts at that progress (cracks shown at once), or at ARRIVE_FLOOR (0.5) when the copy has none; from
 --   there it only goes up, as before. Switch: script attribute EggLoaderCarryEnabled (default true, read at start; false =
 --   1.1). Diagnostic: player EggLoaderArriveFrom (the progress the arrive egg started at).
+-- v1.3 (Mode Loading, MDA-478, plan docs/plans/MODE_LOADING_v1.0.md T1; Kepu 2026-11-12 16:20 "we need separate loading
+--   screens for the game modes", 16:28 pick "B" · Mode briefing, mockup docs/mockups/mode_loading_v0.1.html): the "travel",
+--   "arrive" and "play" screens for the targets "Arena", "Bots" (also "Sandbox") and "Island" show a briefing over the pod:
+--   * title (mode colour: Arena rgb(255,155,46), Bots rgb(255,214,64), Island rgb(95,224,200)) and a sub line top-left, a
+--     "where" line top-right (grey);
+--   * left: a map (sea, island, summit rock, the 5 points of HardpointRules.LAYOUT_B (copied here as POINTS; spec
+--     tools/tests/EggLoaderMap.spec.luau checks the copy), SUMMIT label, blue / red spawn sides; Island: points dim and the
+--     PORTALS spot);
+--   * right: "HOW TO WIN" (3 lines per mode) and "YOUR SQUAD" / "BLUE TEAM" (the squad names carried over the trip, else
+--     "YOU");
+--   * bottom: "TIP: ..." (per mode, every 4 s), the % on the right with a small egg rocking left of it, a full-width bar in the
+--     mode colour (fills with the same progress as 1.2; carried over the trip).
+--   * Narrow screens (width < 700 px or width / height < 1.5): no map, the two cards side by side across the width.
+--   * End: bar to 100%, the title line reads "READY", 0.6 s, then the same fade (no egg hatch).
+--   The travel screen writes EggLoaderSquad ("NAME · DINO|..." of the players in your squad on this server, you first) on its
+--   gui; the arrive screen reads it. Show(target) / Play(target) / arrival accept the new targets; anything else -> "Arena".
+--   Font: Silkscreen (rbxassetid://12187371840, the FontSwap face). Switch: script attribute EggLoaderBriefingEnabled (default
+--   true, read at start; false = 1.2's pod for every target). Diagnostic: player EggLoaderBrief ("arena" / "bots" /
+--   "island" / "").
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local RunService = game:GetService("RunService")
@@ -77,6 +96,7 @@ local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 the bar carries over a trip
+VERSION = "1.3" -- v1.3 mode briefing screens
 local ARRIVE_FLOOR = 0.5 -- v1.2
 local MIN_CRACK = 3
 local TIMEOUT = 45
@@ -101,6 +121,8 @@ if script:GetAttribute("EggLoaderSplashEnabled") == nil then script:SetAttribute
 local splashOn = script:GetAttribute("EggLoaderSplashEnabled") ~= false -- v1.1
 if script:GetAttribute("EggLoaderCarryEnabled") == nil then script:SetAttribute("EggLoaderCarryEnabled", true) end -- v1.2
 local carryOn = script:GetAttribute("EggLoaderCarryEnabled") ~= false -- v1.2
+if script:GetAttribute("EggLoaderBriefingEnabled") == nil then script:SetAttribute("EggLoaderBriefingEnabled", true) end -- v1.3
+local briefOn = script:GetAttribute("EggLoaderBriefingEnabled") ~= false -- v1.3
 local player = Players.LocalPlayer
 player:SetAttribute("EggLoaderVersion", VERSION)
 if script:GetAttribute("EggLoaderEnabled") == false then
@@ -198,6 +220,289 @@ local function group(parent, name, z)
 	local g = frame(parent, name, nil, z)
 	g.Size = UDim2.fromScale(1, 1)
 	return g
+end
+
+-- ---------- v1.3: mode briefing (see the header) ----------
+local SILK = Font.new("rbxassetid://12187371840", Enum.FontWeight.Bold)
+local SILK_R = Font.new("rbxassetid://12187371840", Enum.FontWeight.Regular)
+local POINTS = {{-100, -40}, {450, 150}, {285, -240}, {-280, -270}, {-450, 270}} -- HardpointRules.LAYOUT_B (x, z)
+local briefSquad = nil -- the squad names read from the arriving teleport gui
+local BRIEF_KEY = {Arena = "arena", Bots = "bots", Sandbox = "bots", Island = "island"}
+local BRIEF = {
+	arena = {col = Color3.fromRGB(255, 155, 46), title = "ARENA", sub = "HARDPOINT · PLAYERS VS PLAYERS", where = "ARENA SERVER",
+		rules = {"STAND ON THE POINT: 1 A SECOND FOR EACH TEAMMATE ON IT", "THE POINT MOVES EVERY 60 S · 5 POINTS, ONE ON THE SUMMIT",
+			"FIRST TO 250 WINS, OR THE LEADER WHEN THE CLOCK RUNS OUT"}, team = "YOUR SQUAD",
+		tips = {"THE SUMMIT IS FAR: HEAD UP THE TRAIL BEFORE IT OPENS.", "YOUR SQUAD ALWAYS ENDS UP ON THE SAME TEAM.",
+			"MVP GOES TO THE MOST KILLS AND TIME ON THE POINT."}},
+	bots = {col = Color3.fromRGB(255, 214, 64), title = "HARDPOINT VS BOTS", sub = "5V5 · YOUR SQUAD + BOTS", where = "PRIVATE MATCH · MIXED BOTS",
+		rules = {"SAME RULES AS THE ARENA, AGAINST BOTS", "EACH TEAM: 1 ELITE · 1 HARD · 2 NORMAL · 1 EASY",
+			"ELITE BOTS DASH, PORTAL AND LEAP: WATCH THEM"}, team = "BLUE TEAM",
+		tips = {"BOTS CLIMB THE MOUNTAIN TRAIL WHEN THE SUMMIT IS NEXT.", "PRACTICE XP IS 10% OF A REAL MATCH.",
+			"PLAY AGAIN KEEPS YOUR SQUAD HERE."}},
+	island = {col = Color3.fromRGB(95, 224, 200), title = "BACK TO ISLAND", sub = "THE HUB · NO FIGHTING NEAR THE PORTALS",
+		where = "MECHA DINO ARENA · ISLAND",
+		rules = {"WALK INTO A PORTAL TO START A MODE", "THE SQUAD LEADER TAKES THE WHOLE SQUAD",
+			"FIGHTING IS ON ONCE YOU LEAVE THE SAFE RING"}, team = "YOUR SQUAD",
+		tips = {"YOU LAND ON THE PORTAL ISLET, FACING THE PORTALS.", "OPEN THE LAB FROM THE MENU TO BUY PARTS.",
+			"SWIM ACROSS THE LAKES: EVERY DINO CAN."}},
+}
+local function silk(parent, name, color, bold)
+	local l = Instance.new("TextLabel")
+	l.Name = name
+	l.BackgroundTransparency = 1
+	l.FontFace = bold and SILK or SILK_R
+	l.TextColor3 = color
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.TextYAlignment = Enum.TextYAlignment.Center
+	l.TextWrapped = true
+	l.Text = ""
+	l.ZIndex = 32
+	l.Parent = parent
+	return l
+end
+local function round(f, r)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = r or UDim.new(1, 0)
+	c.Parent = f
+	return c
+end
+local function squadNames() -- "NAME · DINO" of the players in your squad on this server, you first
+	local mine = player:GetAttribute("SquadId")
+	local out = {}
+	local function one(p)
+		local c = p.Character
+		local sp = (c and c:GetAttribute("Species")) or p:GetAttribute("Species") or p:GetAttribute("DinoSpecies")
+		local n = string.upper(p.DisplayName ~= "" and p.DisplayName or p.Name)
+		return (p == player and "★ " or "") .. n .. (sp and (" · " .. string.upper(tostring(sp))) or "")
+	end
+	table.insert(out, one(player))
+	if type(mine) == "string" and mine ~= "" then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= player and p:GetAttribute("SquadId") == mine then table.insert(out, one(p)) end
+		end
+	end
+	return table.concat(out, "|")
+end
+
+local function buildBriefing(s, key)
+	local d = BRIEF[key]
+	local b = {key = key, d = d}
+	s.brief = b
+	local f = frame(s.root, "Briefing", Color3.fromRGB(16, 20, 29), 30)
+	f.Size = UDim2.fromScale(1, 1)
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(29, 38, 56)), ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 20, 29))})
+	g.Parent = f
+	b.frame = f
+	b.title = silk(f, "Title", d.col, true)
+	b.title.Text = d.title
+	b.sub = silk(f, "Sub", Color3.new(1, 1, 1))
+	b.sub.Text = d.sub
+	b.where = silk(f, "Where", Color3.fromRGB(147, 162, 182))
+	b.where.Text = d.where
+	b.where.TextXAlignment = Enum.TextXAlignment.Right
+	-- map
+	local map = frame(f, "Map", Color3.fromRGB(12, 34, 50), 31)
+	map.ClipsDescendants = true
+	round(map, UDim.new(0, 10))
+	local ms = Instance.new("UIStroke") ms.Color = Color3.fromRGB(38, 50, 67) ms.Thickness = 2 ms.Parent = map
+	local function blob(name, cx, cy, w, h, color, z)
+		local e = frame(map, name, color, z or 32)
+		e.AnchorPoint = Vector2.new(0.5, 0.5)
+		e.Position, e.Size = UDim2.fromScale(cx, cy), UDim2.fromScale(w, h)
+		round(e)
+		return e
+	end
+	blob("Island", 0.5, 0.5, 0.86, 0.85, Color3.fromRGB(47, 93, 58))
+	blob("Meadow", 0.52, 0.48, 0.68, 0.65, Color3.fromRGB(60, 110, 71))
+	local function mp(x, z) return 0.5 + x * 0.55 / 880, 0.5 + z * 0.55 / 520 end
+	local sx, sz = mp(285, -240)
+	blob("Rock", sx, sz, 0.16, 0.18, Color3.fromRGB(108, 114, 128))
+	local lx, lz = mp(-8, 520)
+	blob("Lake", lx, math.min(lz, 0.93), 0.05, 0.2, Color3.fromRGB(79, 156, 204))
+	for i, pt in ipairs(POINTS) do
+		local px, pz = mp(pt[1], pt[2])
+		local c = blob("P" .. i, px, pz, 0.055, 0.093, Color3.fromRGB(12, 34, 50), 33)
+		c.BackgroundTransparency = 0.4
+		local st = Instance.new("UIStroke") st.Color = d.col st.Thickness = 2 st.Transparency = key == "island" and 0.6 or 0 st.Parent = c
+		local n = silk(c, "N", key == "island" and Color3.fromRGB(150, 160, 170) or d.col, true)
+		n.Size = UDim2.fromScale(1, 1)
+		n.TextXAlignment = Enum.TextXAlignment.Center
+		n.TextScaled = true
+		n.ZIndex = 34
+		n.Text = tostring(i)
+		if i == 3 then
+			local lab = silk(map, "SummitLabel", Color3.new(1, 1, 1))
+			lab.AnchorPoint = Vector2.new(0.5, 1)
+			lab.Position, lab.Size = UDim2.fromScale(px, pz - 0.06), UDim2.fromScale(0.2, 0.08)
+			lab.TextXAlignment = Enum.TextXAlignment.Center
+			lab.TextScaled = true
+			lab.Text = "SUMMIT"
+			lab.ZIndex = 34
+		end
+	end
+	if key == "island" then
+		local pc = blob("Portals", 0.93, 0.88, 0.035, 0.06, d.col, 34)
+		local lab = silk(map, "PortalsLabel", Color3.new(1, 1, 1))
+		lab.AnchorPoint = Vector2.new(1, 0.5)
+		lab.Position, lab.Size = UDim2.fromScale(0.9, 0.88), UDim2.fromScale(0.2, 0.07)
+		lab.TextXAlignment = Enum.TextXAlignment.Right
+		lab.TextScaled = true
+		lab.Text = "PORTALS"
+		lab.ZIndex = 34
+		pc.Name = "Portals"
+	else
+		local bl = frame(map, "Blue", Color3.fromRGB(90, 160, 255), 34)
+		bl.Position, bl.Size = UDim2.fromScale(0.03, 0.4), UDim2.fromScale(0.018, 0.2)
+		local rd = frame(map, "Red", Color3.fromRGB(224, 40, 74), 34)
+		rd.Position, rd.Size = UDim2.fromScale(0.952, 0.4), UDim2.fromScale(0.018, 0.2)
+	end
+	b.map = map
+	-- cards
+	local function card(name, head)
+		local c = frame(f, name, Color3.fromRGB(255, 255, 255), 31)
+		c.BackgroundTransparency = 0.96
+		round(c, UDim.new(0, 10))
+		local st = Instance.new("UIStroke") st.Color = Color3.fromRGB(38, 50, 67) st.Thickness = 2 st.Parent = c
+		local h = silk(c, "Head", Color3.fromRGB(147, 162, 182))
+		h.Text = head
+		local list = frame(c, "List", nil, 32)
+		local ul = Instance.new("UIListLayout") ul.Padding = UDim.new(0, 4) ul.SortOrder = Enum.SortOrder.LayoutOrder ul.Parent = list
+		return c, h, list
+	end
+	b.rules, b.rulesHead, b.rulesList = card("Rules", "HOW TO WIN")
+	b.team, b.teamHead, b.teamList = card("Team", d.team)
+	b.ruleLabels, b.teamLabels = {}, {}
+	for i, r in ipairs(d.rules) do
+		local l = silk(b.rulesList, "R" .. i, Color3.fromRGB(231, 237, 245))
+		l.LayoutOrder = i
+		l.Text = r
+		b.ruleLabels[i] = l
+	end
+	local names = {}
+	for n in string.gmatch(s.squad or "", "[^|]+") do table.insert(names, n) end
+	if #names == 0 then names = {"★ YOU"} end
+	if key == "bots" then table.insert(names, "+ BOTS FILL THE REST") end
+	for i, n in ipairs(names) do
+		if i > 5 then break end
+		local l = silk(b.teamList, "T" .. i, i == 1 and d.col or Color3.fromRGB(231, 237, 245))
+		l.LayoutOrder = i
+		l.Text = n
+		b.teamLabels[i] = l
+	end
+	-- bottom
+	b.tip = silk(f, "Tip", Color3.fromRGB(169, 182, 200))
+	b.tip.Text = "TIP: " .. d.tips[1]
+	b.pct = silk(f, "Pct", d.col, true)
+	b.pct.TextXAlignment = Enum.TextXAlignment.Right
+	b.pct.Text = "0%"
+	b.track = frame(f, "Track", Color3.new(1, 1, 1), 31)
+	b.track.BackgroundTransparency = 0.92
+	round(b.track)
+	b.fill = frame(b.track, "Fill", d.col, 32)
+	b.fill.Size = UDim2.fromScale(0, 1)
+	round(b.fill)
+	b.egg = frame(f, "Egg", Color3.fromRGB(239, 228, 200), 33)
+	b.egg.AnchorPoint = Vector2.new(0.5, 1)
+	round(b.egg, UDim.new(0.5, 0))
+	player:SetAttribute("EggLoaderBrief", key)
+end
+
+local function layoutBrief(s)
+	local b = s.brief
+	local W, H = s.root.AbsoluteSize.X, s.root.AbsoluteSize.Y
+	if W <= 0 or H <= 0 then return end
+	local ok, inset = pcall(function() return GuiService.TopbarInset.Height end)
+	if not ok or type(inset) ~= "number" then inset = 58 end
+	local narrow = W < 700 or W / H < 1.5
+	-- a 16:9 content box fitted in the screen below the top bar (narrow: the whole width, 12 px sides)
+	local bw = narrow and (W - 24) or math.min(W - 24, (H - inset) * 16 / 9)
+	local bh = narrow and (H - inset - 8) or bw * 9 / 16
+	local cw = bw / 100
+	local x0 = (W - bw) / 2
+	local y0 = narrow and (inset + 4) or math.max(inset + 8, (H - bh) / 2)
+	local function chars(t) return utf8.len(t) or #t end
+	local tS = math.max(5 * cw, 18)
+	tS = math.min(tS, bw * 0.92 / (chars(b.title.Text) * 0.8)) -- the longest title still fits on one line
+	local sS = math.max(1.5 * cw, 10)
+	local bodyS = math.max(1.3 * cw, 9)
+	local subLines = (chars(b.sub.Text) * sS * 0.62 > bw * (narrow and 0.95 or 0.55)) and 2 or 1
+	b.title.Position, b.title.Size, b.title.TextSize = UDim2.fromOffset(x0, y0 + 2 * cw), UDim2.fromOffset(bw, tS * 1.1), tS
+	if not narrow then b.title.Position = UDim2.fromOffset(x0 + 6 * cw, y0 + 4 * cw) end
+	local subY = (narrow and (y0 + 2 * cw) or (y0 + 4 * cw)) + tS * 1.15
+	local subX, subW = narrow and x0 or (x0 + 6 * cw), narrow and bw or (55 * cw)
+	b.sub.Position, b.sub.Size, b.sub.TextSize = UDim2.fromOffset(subX, subY), UDim2.fromOffset(subW, sS * 1.35 * subLines), sS
+	b.where.Position, b.where.Size, b.where.TextSize = UDim2.fromOffset(x0 + 60 * cw, subY), UDim2.fromOffset(34 * cw, sS * 1.4), math.max(1.2 * cw, 9)
+	b.where.Visible = not narrow
+	local top = subY + sS * 1.35 * subLines + (narrow and 8 or 2 * cw)
+	local tipS = math.max(1.35 * cw, 9)
+	local pctS = math.max(2 * cw, 12)
+	local barH = math.max(1.2 * cw, 6)
+	local bottomBar = y0 + bh - (narrow and (barH + 6) or 5 * cw)
+	local areaBottom = bottomBar - math.max(pctS * 1.25, tipS * 1.3 * 2) - 4 - (narrow and 8 or 2 * cw)
+	local areaH = math.max(areaBottom - top, 60)
+	b.map.Visible = not narrow
+	local pad = math.max(1.4 * cw, 7)
+	local gap = narrow and 8 or 1.2 * cw
+	-- fit a card's lines: the text size steps down (to 7) until the wrapped lines fit the height
+	local function fit(labels, w, availH, size)
+		local function total(sz)
+			local t = 0
+			for _, l in ipairs(labels) do
+				local lines = math.max(1, math.ceil(chars(l.Text) * sz * 0.62 / math.max(w, 1)))
+				t += lines * sz * 1.25 + 4
+			end
+			return t
+		end
+		local sz = size
+		while sz > 7 and total(sz) > availH do sz -= 1 end
+		for _, l in ipairs(labels) do
+			local lines = math.max(1, math.ceil(chars(l.Text) * sz * 0.62 / math.max(w, 1)))
+			l.TextSize = sz
+			l.Size = UDim2.new(1, 0, 0, lines * sz * 1.25)
+		end
+		return total(sz)
+	end
+	local function place(c, h, list, x, y, w, hgt, labels)
+		c.Position, c.Size = UDim2.fromOffset(x, y), UDim2.fromOffset(w, hgt)
+		h.Position, h.Size, h.TextSize = UDim2.fromOffset(pad, pad * 0.6), UDim2.new(1, -2 * pad, 0, bodyS * 1.4), bodyS
+		local listTop = pad * 0.6 + bodyS * 1.7
+		list.Position, list.Size = UDim2.fromOffset(pad, listTop), UDim2.new(1, -2 * pad, 1, -(listTop + pad * 0.6))
+		fit(labels, w - 2 * pad, hgt - listTop - pad * 0.6, bodyS)
+	end
+	if narrow then
+		local h1 = (areaH - gap) * 0.55
+		place(b.rules, b.rulesHead, b.rulesList, x0, top, bw, h1, b.ruleLabels)
+		place(b.team, b.teamHead, b.teamList, x0, top + h1 + gap, bw, areaH - h1 - gap, b.teamLabels)
+	else
+		b.map.Position, b.map.Size = UDim2.fromOffset(x0 + 6 * cw, top), UDim2.fromOffset(44 * cw, areaH)
+		local cardsX, cardsW = x0 + 53 * cw, 41 * cw
+		local h1 = (areaH - gap) * 0.55
+		place(b.rules, b.rulesHead, b.rulesList, cardsX, top, cardsW, h1, b.ruleLabels)
+		place(b.team, b.teamHead, b.teamList, cardsX, top + h1 + gap, cardsW, areaH - h1 - gap, b.teamLabels)
+	end
+	local sideX, sideW = narrow and x0 or (x0 + 6 * cw), narrow and bw or (88 * cw)
+	local tipLines = 1
+	for _, t in ipairs(b.d.tips) do
+		if chars("TIP: " .. t) * tipS * 0.62 > sideW * 0.74 then tipLines = 2 end
+	end
+	local lineY = bottomBar - math.max(pctS * 1.25, tipS * 1.3 * tipLines) - 4
+	b.tip.Position, b.tip.Size, b.tip.TextSize = UDim2.fromOffset(sideX, lineY), UDim2.fromOffset(sideW * 0.74, tipS * 1.3 * tipLines), tipS
+	b.pct.Position, b.pct.Size, b.pct.TextSize = UDim2.fromOffset(sideX + sideW * 0.8, lineY), UDim2.fromOffset(sideW * 0.2, pctS * 1.3), pctS
+	b.track.Position, b.track.Size = UDim2.fromOffset(sideX, bottomBar), UDim2.fromOffset(sideW, barH)
+	local eggW, eggH = math.max(2.6 * cw, 12), math.max(3.3 * cw, 16)
+	b.egg.Position, b.egg.Size = UDim2.fromOffset(sideX + sideW * 0.8, bottomBar - 3), UDim2.fromOffset(eggW, eggH)
+	b.cw = cw
+end
+
+local function briefFrame(s, t)
+	local b = s.brief
+	b.fill.Size = UDim2.fromScale(s.p, 1)
+	b.pct.Text = math.floor(s.p * 100) .. "%"
+	b.egg.Rotation = 4 * math.sin(t * 2 * math.pi / 0.9)
+	local k = math.floor(t / 4) % #b.d.tips + 1
+	if b.tipK ~= k then b.tipK = k b.tip.Text = "TIP: " .. b.d.tips[k] end
 end
 
 local current -- the screen on show: {gui, root, parts..., mode = "join" / "travel", target}
@@ -383,9 +688,22 @@ local function build(mode, target)
 		sc.CornerRadius = UDim.new(1, 0)
 		sc.Parent = s.sweep
 	end
-	s.cover = frame(gui, "Cover", Color3.fromRGB(10, 12, 18), 20)
+	s.cover = frame(gui, "Cover", Color3.fromRGB(10, 12, 18), 40) -- v1.3: over the briefing (1.2: ZIndex 20)
 	s.cover.Size = UDim2.fromScale(1, 1)
 	s.cover.BackgroundTransparency = 1
+	-- v1.3: the mode briefing over the pod
+	local bk = briefOn and target and BRIEF_KEY[target]
+	if bk and (mode == "travel" or mode == "arrive" or mode == "play") then
+		if mode == "travel" then
+			s.squad = squadNames()
+			gui:SetAttribute("EggLoaderSquad", s.squad)
+		else
+			s.squad = briefSquad
+		end
+		buildBriefing(s, bk)
+	else
+		player:SetAttribute("EggLoaderBrief", "")
+	end
 	gui.Parent = pg
 	return s
 end
@@ -500,6 +818,7 @@ local function layout(s)
 		s.sweep.Size = UDim2.fromOffset(6 * ch, trackH)
 		s.trackW = trackW
 	end
+	if s.brief then layoutBrief(s) end -- v1.3
 end
 
 -- ---------- running ----------
@@ -560,6 +879,21 @@ local function finish(s)
 	s.gui:Destroy()
 	if current == s then current = nil end
 	setState("done")
+end
+
+-- v1.3: the briefing's end (see the header)
+local function briefDone(s)
+	s.hatching = true
+	setState("hatching")
+	player:SetAttribute("EggLoaderShownFor", math.floor((os.clock() - s.t0) * 10 + 0.5) / 10)
+	local b = s.brief
+	b.fill.Size = UDim2.fromScale(1, 1)
+	b.pct.Text = "100%"
+	b.sub.Text = "READY"
+	b.sub.TextColor3 = b.d.col
+	task.wait(0.6)
+	setState("hatched")
+	finish(s)
 end
 
 local function hatch(s)
@@ -650,6 +984,7 @@ local function start(s)
 		s.p = math.max(s.p, target)
 		s.fill.Size = UDim2.fromScale(1, s.p)
 		s.pct.Text = math.floor(s.p * 100) .. "%"
+		if s.brief then briefFrame(s, t) end -- v1.3
 		player:SetAttribute("EggLoaderProgress", math.floor(s.p * 100) / 100)
 		if carryOn and s.mode == "travel" and s.gui:GetAttribute("EggLoaderCarry") ~= math.floor(s.p * 100) / 100 then -- v1.2
 			s.gui:SetAttribute("EggLoaderCarry", math.floor(s.p * 100) / 100)
@@ -670,7 +1005,7 @@ local function start(s)
 		end
 		if ready and s.p >= 1 then
 			s.hatching = true
-			task.spawn(hatch, s)
+			task.spawn(s.brief and briefDone or hatch, s) -- v1.3: the briefing ends with READY
 		end
 	end)
 end
@@ -689,6 +1024,7 @@ api.Name = "Show"
 api.Parent = script
 api.OnInvoke = function(target)
 	local t = (target == "Sandbox") and "Sandbox" or "Arena"
+	if briefOn and BRIEF_KEY[target] then t = target end -- v1.3: + Bots / Island
 	return show("travel", t).gui
 end
 local hideApi = script:FindFirstChild("Hide") or Instance.new("BindableFunction")
@@ -707,6 +1043,7 @@ playApi.Name = "Play"
 playApi.Parent = script
 playApi.OnInvoke = function(target)
 	local t = (target == "Arena") and "Arena" or "Sandbox"
+	if briefOn and BRIEF_KEY[target] then t = target end -- v1.3
 	show("play", t)
 	return true
 end
@@ -723,8 +1060,9 @@ local arriving
 pcall(function() arriving = TeleportService:GetArrivingTeleportGui() end)
 local arrivedFrom = arriving and arriving:GetAttribute("EggLoaderTarget")
 local carried = arriving and tonumber(arriving:GetAttribute("EggLoaderCarry")) -- v1.2
+briefSquad = arriving and arriving:GetAttribute("EggLoaderSquad") -- v1.3
 if arriving then arriving:Destroy() end
-if arrivedFrom == "Arena" or arrivedFrom == "Sandbox" then -- v1.1: after a trip -> "arrive"; else the splash
+if arrivedFrom == "Arena" or arrivedFrom == "Sandbox" or arrivedFrom == "Bots" or arrivedFrom == "Island" then -- v1.1 / v1.3: after a trip -> "arrive"; else the splash
 	local s = show("arrive", arrivedFrom)
 	if carryOn and s then -- v1.2: start where the trip's egg was
 		s.p = math.clamp(carried or ARRIVE_FLOOR, 0, 0.95)
