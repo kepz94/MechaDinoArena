@@ -87,7 +87,9 @@
 --     2 Normal, 1 Easy; 4 bots: Elite, Hard, Normal, Easy) and the tier changes from life to life. Difficulty is "Mixed"
 --     (PrDifficulty); a "difficulty" request answers "mixed". Diagnostics PrTiersA / PrTiersB ("Elite Hard Normal ...").
 --     Switch: PrTiersEnabled (default true; read at start for the difficulty, per spawn for tiers).
---   * PracticeKit.onSpawn(rec, model) (when present and PrKitEnabled): the kit readies the bot's parts.
+--   * PracticeKit.onSpawn(rec, model) (when present and PrKitEnabled): the kit readies the bot's parts. Bot specs go through
+--     PracticeKit.prepareSpec (rolled pool and any spec not ready at spawn): slots hold parts bots can use, mobility first; the
+--     lobby roster lists those parts.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -217,6 +219,12 @@ local function rollPool()
 	local used = {}
 	pool = {}
 	for i = 1, size * 2 do pool[i] = R.rollBot(rng, used, SkillTree, get("PrBotLevel"), botSpecies()) end -- v1.3: + species
+	if Kit and Kit.prepareSpec and get("PrKitEnabled") ~= false then -- v1.7: kit loadouts
+		for i, spec in ipairs(pool) do
+			local ok, s2 = pcall(Kit.prepareSpec, spec, rng)
+			if ok and s2 then pool[i] = s2 end
+		end
+	end
 end
 rollPool()
 
@@ -228,7 +236,7 @@ end
 local function partNames(spec)
 	local out = {}
 	for _, id in ipairs(spec.loadout or {}) do
-		if id and R.BOT_LIVE[id] then
+		if id and (R.BOT_LIVE[id] or (Kit and Kit.PARTS and Kit.PARTS[id])) then -- v1.7: + kit parts
 			local p = SkillTree.PATHS[id]
 			table.insert(out, p and p.name or id)
 		end
@@ -291,6 +299,10 @@ local function pick(who)
 end
 
 local function spawnBot(rec)
+	if Kit and Kit.prepareSpec and get("PrKitEnabled") ~= false and rec.spec and not rec.spec.kitReady then -- v1.7: kit loadout
+		local ok, s2 = pcall(Kit.prepareSpec, rec.spec, rng)
+		if ok and s2 then rec.spec = s2 end
+	end
 	-- a stand-in model with the team so the spawn pick can read it
 	local probe = Instance.new("Model")
 	probe:SetAttribute("HardpointBotTeam", rec.team)
