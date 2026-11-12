@@ -3396,3 +3396,6 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkillEffects 1.61: `SkillEffectsBotPassEnabled` (true); diagnostics `SkillEffectsBots`, `SkillEffectsBotError`.
 - Bot entrance (MechaServer 1.7, CloakServer 1.8, ScreechServer 1.16, EnergyShieldServer 1.6, AdrenalineServer 1.7, ScentServer 1.3, MineServer 1.13, TrooMovesServer 1.12, TrooSlotServer 1.2, DiloMovesServer 1.12, TenoMovesServer 1.21, TheriMovesServer 1.13, HerreraMovesServer 1.12, ServoDashServer 1.4, HookServer 1.13, InkServer 1.9, TetherServer 1.6, VisorServer 1.3, MedStationServer 1.4): `<ScriptName>BotMechaEnabled` (true, per call); diagnostic `<ScriptName>BotMechaError`; child BindableFunction `BotMechaUse`.
 - PracticeLobby 1.6: `PracticeLobbyMixedEnabled` (true, per frame).
+
+## Grappling Hook fix (2026-11-12, #36)
+- SkillTree 1.90 (module constant): `SkillTree.HOOK_KEEP_OTHERS` (true; false = 1.89, pachy hook range 0). PracticeKit 1.1 reads it for bot loadouts.

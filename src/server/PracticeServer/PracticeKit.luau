@@ -1,4 +1,4 @@
--- PracticeKit v1.0 (Mecha Dino Arena) — practice bots use their mecha parts (ModuleScript, child of PracticeServer). MDA-472,
+-- PracticeKit v1.1 (Mecha Dino Arena) — practice bots use their mecha parts (ModuleScript, child of PracticeServer). MDA-472,
 -- plan docs/plans/BOTS_V2_v1.0.md T8; Kepu 2026-11-11 20:39 "the damn bots don't even use their attack buttons or their mecha.
 -- You need to have them use that shit like raptors using their mobility to fly over dashing and Troodon too".
 -- How a part fires: the part's server has a bot entrance (BotMechaUse, MDA-471): Invoke(model, remoteName, ...the remote's own
@@ -37,6 +37,8 @@
 --   bot until the result is in (k.pending); the result sets the cooldown as before (used -> p.cd, else RETRY). A move part sets
 --   b.busy when it starts, so the brain stops steering then. A Lua error in a fire -> PracticeServer attribute PrKitError.
 --   Switch: PracticeServer attribute PrKitAsyncEnabled (default true, read per fire; false = the waiting fire above).
+-- v1.1 (2026-11-12, Kepu "Fix it" on #36): SkillTree 1.90 gives the pachy its hook back, so hookarm is in bot loadouts again
+--   while SkillTree.HOOK_KEEP_OTHERS is on (off -> left out, as 1.0).
 -- Model attributes: BotLastPart ("<id> <result>"), BotPartsUsed (count), BotPartsTried.
 -- Switch: PracticeServer's PrKitEnabled (read per tick there); script attribute KIT_OFF list in PracticeServer attribute
 --   PrKitDeny (comma list of part ids bots must not use, default "").
@@ -135,7 +137,7 @@ function M.liveFor(species, SkillTree)
 	for id in pairs(M.PARTS) do
 		local p = SkillTree and SkillTree.PATHS[id]
 		if p and not p.soon and SkillTree.LIVE_MECH[id] and SkillTree.BUTTONS[id] and SkillTree.seesPath(p, species) and not denied(id)
-			and not BROKEN[id] then
+			and not (BROKEN[id] and not (id == "hookarm" and SkillTree.HOOK_KEEP_OTHERS)) then -- v1.1
 			table.insert(out, id)
 		end
 	end
