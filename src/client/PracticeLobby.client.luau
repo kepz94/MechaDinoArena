@@ -44,12 +44,18 @@
 --     PrEditing = true on this client; the screen hides while it is set; MainMenu 1.24 reads it, its PLAY reads "BACK TO THE
 --     LOBBY" and clears it). PrEditing is cleared when the preview closes (match start, leaving).
 --   Switch: script attribute PracticeLobbyPreviewEnabled (default true, read per frame; false = 1.3).
+-- v1.5 (Kepu 2026-11-11 19:19, live v703: DINO & LOADOUT "just dropped me straight into the game ... at the default island
+--   spawn"): a portal arrival skips the menu, so the dino stood on the beach behind the preview and the menu (which needs
+--   InMenu) could not open. Now, while PrInLobby is true and InMenu is false, this client sends DinoModeRequest "menu" (the
+--   dino is parked like any menu player), at most every 1.5 s and only once the loading egg is finished (EggLoaderState not
+--   "loading" / "splash" / "hatching" / "travel"), so the arrival egg still hatches. DINO & LOADOUT then opens the menu.
+--   Switch: script attribute PracticeLobbyParkEnabled (default true, read per frame; false = 1.4).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.4"
+local VERSION = "1.5"
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW = Color3.fromRGB(255, 200, 50)
 local MUTED = Color3.fromRGB(143, 153, 170)
@@ -85,6 +91,18 @@ player:GetAttributeChangedSignal("PrInMatch"):Connect(function()
 end)
 player:GetAttributeChangedSignal("PrInLobby"):Connect(function()
 	if player:GetAttribute("PrInLobby") == true and player:GetAttribute("InMenu") == false then fireMode("menu") end
+end)
+-- v1.5: keep preview players parked in the menu (a portal arrival starts out of it)
+if script:GetAttribute("PracticeLobbyParkEnabled") == nil then script:SetAttribute("PracticeLobbyParkEnabled", true) end
+local lastPark = 0
+local EGG_BUSY = {loading = true, splash = true, hatching = true, travel = true}
+RunService.Heartbeat:Connect(function()
+	if script:GetAttribute("PracticeLobbyParkEnabled") == false then return end
+	if player:GetAttribute("PrInLobby") == true and player:GetAttribute("InMenu") == false
+		and not EGG_BUSY[player:GetAttribute("EggLoaderState") or ""] and os.clock() - lastPark > 1.5 then
+		lastPark = os.clock()
+		fireMode("menu")
+	end
 end)
 
 -- ---------- helpers ----------

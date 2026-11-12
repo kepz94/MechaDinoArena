@@ -71,6 +71,11 @@
 --   * a human's dino changing in the lobby (DinoSpecies, a new character) republishes the roster, so the preview shows it.
 --   Switch: script attribute PrPreviewEnabled (default true, read per tick; false = 1.4: no loading list, no hold).
 --   Diagnostic: PrLoadingCount.
+-- v1.6 (Kepu 2026-11-11 19:19, live v703: "I pressed Dino and loadout ... it just dropped me straight into the game and spawned me at
+--   the default island spawn"): a portal arrival skips the menu (ModeServer mdaPlay), so the body stood on the SpawnLocation
+--   behind the preview and was never "placed" (placing happens when InMenu turns false). At match start every human who is
+--   not in the menu is now placed on a spawn spot after 0.3 s (as on leaving the menu). PracticeLobby 1.5 parks preview
+--   players in the menu. Switch: script attribute PrPlaceOnStartEnabled (default true, read per match start).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -82,6 +87,7 @@ local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 bot jobs + no T-Rex bots
 VERSION = "1.4" -- v1.4 island hub
 VERSION = "1.5" -- v1.5 match preview
+VERSION = "1.6" -- v1.6 place at match start
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
@@ -340,6 +346,9 @@ local function startMatch()
 				table.insert(botRecs, rec)
 			else
 				setHuman(s.player, false, true, side)
+				if script:GetAttribute("PrPlaceOnStartEnabled") ~= false and s.player:GetAttribute("InMenu") ~= true then -- v1.6
+					task.delay(0.3, placeHuman, s.player)
+				end
 			end
 		end
 	end
