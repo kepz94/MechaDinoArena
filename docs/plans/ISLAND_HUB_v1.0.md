@@ -13,6 +13,8 @@ regular island with players on it."
 **HARDPOINT VS BOTS**; menu **dino pick + Lab + PLAY**. Mockup docs/mockups/island_portals_v0.1.html (artifact
 9nwdochrmdNnVazZwU85mA): layout **C · Portal Islet**; **3 s edge guard** after leaving; **no bots** on the hub island.
 
+**Tickets:** MDA-452 (T1) .. MDA-460 (T9); ADR-011.
+
 **Architecture:** no new place. The Sandbox place (where everyone joins) becomes the hub on its public servers. A private
 (reserved) copy of the Sandbox place runs today's practice match for one party (your squad vs bots). The Arena place is
 unchanged (Hardpoint PvP). One rule decides what a server is (ModeRules.serverKind); every script that today switches on
@@ -221,3 +223,6 @@ the member countdown (test hook), the arena / practice menu with BACK TO ISLAND,
 | R6 | The safe rule lives in SquadRules.sameChar (server): ally-only effects (heals, buffs) may reach strangers on the islet | Accepted: only while one of the two is HubSafe and only in the hub; clients unchanged. |
 | R7 | Studio default becomes the hub | Accepted: QA sets ModeTestPractice / ModeTestArena per kind and back to nil. |
 Scope: Kepu "Keep everything".
+
+## Status (2026-11-11)
+Plan + red-team + tickets filed (MDA-452..460, ADR-011). Waiting for Kepu's "Build".
