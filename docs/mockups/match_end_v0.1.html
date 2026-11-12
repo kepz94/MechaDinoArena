@@ -1,0 +1,500 @@
+<title>Match End Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Match end v0.1 (Mecha Dino Arena) — options for the end of a Hardpoint match: results screen, MVP, XP, after the match.
+   One dark game-screen look on purpose (it mocks the game), same tokens as island_portals_v0.1.html.
+   HUD colours from HardpointHUD 1.2: PANEL rgb(20,20,26), BLUE 90,160,255 (your team), RED 224,40,74, YELLOW 255,200,50. */
+:root {
+  --ink:#0e1218; --panel:#161c25; --panel2:#1d2531; --line:#2b3542; --text:#e8edf4; --muted:#9aa6b6;
+  --orange:#ff9b2e; --yellow:#ffc832; --red:#e0284a; --blue:#5aa0ff; --green:#78c850; --gold:#ffd25a; --silver:#c9d3e0;
+  --hud:rgba(20,20,26,.86);
+  --pix:"Silkscreen","Courier New",monospace;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+* { box-sizing:border-box; }
+body { background:var(--ink); color:var(--text); font-family:var(--body); font-size:15px; line-height:1.5; margin:0;
+  padding-block:20px 56px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width:1180px; margin:0 auto; display:grid; gap:18px; }
+h1 { font-family:var(--pix); font-weight:700; font-size:clamp(22px,3.6vw,34px); margin:0; line-height:1.15; text-wrap:balance; }
+h1 span { color:var(--yellow); }
+h2 { font-family:var(--pix); font-weight:700; font-size:19px; margin:0 0 8px; text-wrap:balance; }
+h3 { font-family:var(--pix); font-weight:700; font-size:14px; margin:0 0 6px; letter-spacing:.02em; }
+p { margin:0; max-width:74ch; }
+.muted { color:var(--muted); }
+.eyebrow { font-family:var(--pix); letter-spacing:.06em; text-transform:uppercase; font-size:12px; color:var(--orange); }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0; display:grid; gap:10px; }
+.ask { border-color:var(--yellow); background:linear-gradient(rgba(255,200,50,.05),rgba(255,200,50,.02)), var(--panel); }
+.grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+.grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; }
+ul { margin:0; padding-left:18px; } li { margin:3px 0; }
+code, .mono { font-family:var(--mono); font-size:12.5px; }
+.tag { display:inline-block; font-family:var(--pix); font-size:10px; letter-spacing:.05em; padding:1px 7px; border-radius:5px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); vertical-align:2px; }
+.tag.rec { color:#1a1300; background:var(--yellow); border-color:var(--yellow); }
+.seg { display:flex; flex-wrap:wrap; gap:6px; }
+.seg button, .btn { font-family:var(--pix); font-size:12.5px; color:var(--text); background:var(--panel2); border:1px solid var(--line);
+  border-radius:8px; padding:7px 12px; cursor:pointer; }
+.seg button[aria-pressed="true"] { background:var(--yellow); color:#1a1300; border-color:var(--yellow); }
+.btn.go { background:var(--orange); color:#1a1000; border-color:var(--orange); }
+button:focus-visible, input:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.pros { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+.pros div { background:var(--panel2); border-radius:8px; padding:10px 12px; font-size:14px; }
+.pros b { font-family:var(--pix); font-size:11px; letter-spacing:.05em; display:block; margin-bottom:2px; }
+.pros .good b { color:var(--green); } .pros .bad b { color:var(--red); } .pros .seen b { color:var(--blue); }
+.row { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+
+/* option cards */
+.opt { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px; cursor:pointer; text-align:left;
+  color:var(--text); font:inherit; display:grid; gap:4px; align-content:start; }
+.opt[aria-pressed="true"] { border-color:var(--yellow); box-shadow:0 0 0 1px var(--yellow) inset; }
+.opt .k { font-family:var(--pix); font-size:13px; color:var(--yellow); }
+.opt .d { font-size:14px; color:var(--muted); }
+
+/* research table */
+.tbl-wrap { overflow-x:auto; }
+table.ref { border-collapse:collapse; width:100%; min-width:760px; font-size:14px; }
+table.ref th, table.ref td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+table.ref th { font-family:var(--pix); font-size:11px; letter-spacing:.05em; color:var(--muted); font-weight:400; }
+table.ref td:first-child { font-family:var(--pix); font-size:12px; white-space:nowrap; }
+table.ref a { color:var(--blue); }
+
+/* game screen */
+.screen-wrap { overflow-x:auto; }
+.screen { position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; border:1px solid var(--line);
+  font-family:var(--pix); color:#fff; container-type:inline-size; user-select:none; }
+.screen.phone { aspect-ratio:19.5/9; max-width:900px; margin:0 auto; border-radius:28px; border:6px solid #05070a; }
+.world { position:absolute; inset:0; background:
+  radial-gradient(60% 40% at 50% 62%, rgba(255,210,120,.25), transparent 70%),
+  linear-gradient(#5aa8ff 0%, #a9d8ff 46%, #e8d699 46.4%, #d2b977 55%, #6fb64e 55.4%, #3f7f30 100%); filter:saturate(.9); }
+.world::after { content:""; position:absolute; inset:0; background:rgba(8,10,16,.42); }
+.layer { position:absolute; inset:0; display:grid; place-items:center; }
+.fade { animation:fade .35s ease both; }
+@keyframes fade { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:none; } }
+
+.banner { text-align:center; }
+.banner .t { font-size:9cqi; line-height:1; letter-spacing:.04em; text-shadow:0 .5cqi 0 rgba(0,0,0,.35); }
+.banner .t.win { color:var(--yellow); } .banner .t.lose { color:#ff6b84; } .banner .t.draw { color:#fff; }
+.banner .s { font-size:2.2cqi; margin-top:1.2cqi; }
+.banner .s .b { color:var(--blue); } .banner .s .r { color:var(--red); }
+.banner .m { font-family:var(--body); font-size:1.5cqi; opacity:.85; margin-top:.8cqi; }
+
+.spot { display:flex; gap:3cqi; align-items:flex-end; justify-content:center; }
+.mvpc { width:22cqi; background:var(--hud); border:.25cqi solid var(--c); border-radius:1.4cqi; padding:1.4cqi 1.2cqi; text-align:center; }
+.mvpc .lbl { display:inline-block; background:var(--c); color:#16110a; border-radius:.6cqi; padding:.2cqi .9cqi; font-size:1.5cqi; }
+.mvpc .dino { height:11cqi; margin:1cqi auto .6cqi; width:16cqi; border-radius:1cqi; background:
+  radial-gradient(50% 30% at 50% 100%, rgba(0,0,0,.35), transparent 70%), linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  display:grid; place-items:center; font-size:5.5cqi; }
+.mvpc .n { font-size:2cqi; } .mvpc .sp { font-family:var(--body); font-size:1.35cqi; opacity:.8; }
+.mvpc .st { display:flex; justify-content:center; gap:1.2cqi; font-size:1.35cqi; margin-top:.8cqi; }
+.mvpc .st b { color:var(--c); }
+.mvpc.big { width:25cqi; } .mvpc.big .dino { height:13cqi; }
+
+.board { width:86cqi; background:var(--hud); border:.15cqi solid rgba(255,255,255,.35); border-radius:1.3cqi; padding:1.6cqi 2cqi 1.4cqi; }
+.board .hd { display:flex; align-items:baseline; justify-content:space-between; }
+.board .hd .t { font-size:3.6cqi; } .board .hd .t.win { color:var(--yellow); } .board .hd .t.lose { color:#ff6b84; }
+.board .hd .s { font-family:var(--body); font-size:1.35cqi; opacity:.8; }
+.teams { display:grid; grid-template-columns:1fr 1fr; gap:1.4cqi; margin-top:1cqi; }
+.team h4 { margin:0 0 .4cqi; font-size:1.55cqi; font-weight:400; }
+.team.b h4 { color:var(--blue); } .team.r h4 { color:var(--red); }
+.trow { display:grid; grid-template-columns:1.9fr 1.8fr .5fr .5fr .9fr; gap:.4cqi; font-size:1.25cqi; padding:.25cqi .5cqi; border-radius:.4cqi; align-items:center; }
+.trow.xpc { grid-template-columns:1.7fr 1.75fr .4fr .4fr .8fr .8fr; }
+.trow.h { opacity:.6; font-size:1.05cqi; }
+.trow.me { background:rgba(255,200,50,.2); color:var(--yellow); }
+.trow .x { color:var(--green); }
+.chip { display:inline-block; font-size:.95cqi; padding:0 .5cqi; border-radius:.35cqi; margin-left:.4cqi; vertical-align:.1cqi; }
+.chip.mvp { background:var(--gold); color:#2a1d00; } .chip.svp { background:var(--silver); color:#1b222c; } .chip.bot { background:#3a4250; color:#cfd6e0; }
+.chip.top { background:#e8a33a; color:#2a1d00; }
+.xpstrip { margin-top:1.1cqi; display:grid; grid-template-columns:auto 1fr; gap:.6cqi 1.4cqi; align-items:center; background:rgba(255,255,255,.06); border-radius:.8cqi; padding:.9cqi 1.2cqi; }
+.xpstrip .parts { display:flex; flex-wrap:wrap; gap:.4cqi 1.2cqi; font-size:1.3cqi; }
+.xpstrip .parts span b { color:var(--green); }
+.xpstrip .tot { font-size:2.2cqi; color:var(--green); }
+.lvl { grid-column:1/-1; display:flex; align-items:center; gap:1cqi; font-size:1.3cqi; }
+.bar { flex:1; height:1.1cqi; background:rgba(255,255,255,.15); border-radius:1cqi; overflow:hidden; }
+.bar i { display:block; height:100%; width:0; background:linear-gradient(90deg,#78c850,#b6f07a); border-radius:inherit; transition:width .25s linear; }
+.lvlup { color:var(--yellow); }
+.foot { display:flex; align-items:center; justify-content:space-between; gap:1cqi; margin-top:1cqi; flex-wrap:wrap; }
+.foot .cd { font-size:1.4cqi; color:var(--yellow); }
+.foot .bt { display:flex; gap:.8cqi; }
+.foot .bt span { font-size:1.4cqi; padding:.6cqi 1.6cqi; border-radius:.7cqi; background:#2b3542; }
+.foot .bt span.y { background:var(--yellow); color:#1b1406; }
+.foot .bt span.o { background:#1fae8f; color:#03211a; }
+.skip { position:absolute; right:2cqi; bottom:2cqi; font-size:1.3cqi; background:rgba(0,0,0,.45); border-radius:.6cqi; padding:.4cqi 1cqi; }
+.timeline { position:absolute; left:0; right:0; bottom:0; height:.6cqi; background:rgba(255,255,255,.1); }
+.timeline i { display:block; height:100%; width:0; background:var(--yellow); }
+.clock { position:absolute; left:2cqi; top:2cqi; font-size:1.3cqi; background:rgba(0,0,0,.4); border-radius:.6cqi; padding:.3cqi .9cqi; }
+
+.me-card { width:52cqi; background:var(--hud); border:.2cqi solid var(--yellow); border-radius:1.4cqi; padding:2cqi; }
+.me-card .t { font-size:4.5cqi; text-align:center; }
+.me-card .t.win { color:var(--yellow); } .me-card .t.lose { color:#ff6b84; }
+.me-card .ln { display:flex; justify-content:space-between; font-size:1.7cqi; padding:.45cqi 0; border-bottom:.1cqi dashed rgba(255,255,255,.18); }
+.me-card .ln b { color:var(--green); }
+.me-card .ln.tot { border:0; font-size:2.3cqi; } .me-card .ln.tot b { color:var(--green); }
+.mvptop { position:absolute; top:3cqi; left:50%; transform:translateX(-50%); display:flex; gap:1cqi; font-size:1.5cqi; }
+.mvptop span { background:var(--hud); border-radius:.7cqi; padding:.4cqi 1.1cqi; border:.15cqi solid var(--c); }
+.mvptop b { color:var(--c); }
+
+.ctrl { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+input[type=range] { width:100%; accent-color:var(--yellow); }
+.sl { display:grid; gap:2px; background:var(--panel2); border-radius:8px; padding:10px 12px; }
+.sl label { display:flex; justify-content:space-between; gap:8px; font-size:14px; }
+.sl label b { font-family:var(--mono); color:var(--yellow); font-weight:500; }
+.sl small { color:var(--muted); font-size:12.5px; }
+.calc { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+.calc .box { background:var(--panel2); border-radius:8px; padding:12px; display:grid; gap:4px; }
+.calc .big { font-family:var(--pix); font-size:26px; color:var(--green); }
+.num { font-family:var(--mono); }
+.flow { display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-family:var(--pix); font-size:12px; }
+.flow span { background:var(--panel2); border:1px solid var(--line); border-radius:7px; padding:5px 9px; }
+.flow i { font-style:normal; color:var(--muted); }
+.flow span.y { border-color:var(--yellow); color:var(--yellow); }
+.picks { display:grid; gap:6px; font-size:14px; }
+.picks div { display:flex; gap:8px; } .picks b { font-family:var(--pix); font-size:12px; color:var(--yellow); min-width:9.5em; }
+@media (max-width:560px) { .picks div { flex-direction:column; gap:0; } }
+</style>
+
+<div class="wrap">
+  <header style="display:grid; gap:8px">
+    <div class="eyebrow">Mecha Dino Arena · mockup v0.1 · not filed yet</div>
+    <h1>End of the match: <span>results, MVP &amp; XP</span></h1>
+    <p class="muted">Today (HardpointHUD 1.2, HardpointServer 1.4): a 15 s board with VICTORY / DEFEAT / DRAW, K, D and time on the point, then the next match (Arena) or the team screen (bots match). Skill XP comes only from bot kills (half the bot's health, ×10% in the bots match). Player kills, time on the point, winning and MVP give nothing. Four picks below; the game screen plays whatever you pick.</p>
+  </header>
+
+  <section class="card">
+    <h2>How other squad games do it</h2>
+    <p class="muted">What the big ones do between matches, and what that means for us.</p>
+    <div class="tbl-wrap">
+      <table class="ref">
+        <thead><tr><th>Game</th><th>End of match</th><th>Who is MVP</th><th>After the match</th></tr></thead>
+        <tbody>
+          <tr><td>Call of Duty (BO3, BO6, Mobile)</td><td>"Winner's Circle": top 3 of the <b>winning</b> team on a podium. In BO6 it is 15 s, can't be skipped — the main complaint (<a href="https://charlieintel.com/call-of-duty/black-ops-6s-winners-circle-has-players-split-despite-having-same-complaint-337099" target="_blank" rel="noopener">CharlieIntel</a>, <a href="https://callofduty.fandom.com/wiki/Winner%27s_Circle" target="_blank" rel="noopener">CoD wiki</a>).</td><td>Top score, winners only.</td><td>BO7 / MW3: the lobby stays together for the next match, with a "find a new lobby" button (<a href="https://www.pcgamer.com/games/fps/black-ops-7-has-problems-but-call-of-duty-recognizes-where-the-wind-is-blowing-the-triumphant-return-of-loose-sbmm-and-persistent-lobbies-in-the-fps" target="_blank" rel="noopener">PC Gamer</a>). MW2: the party leader gets "Play Again" (<a href="https://charlieintel.com/call-of-duty-modern-warfare-2/modern-warfare-2-play-again-feature-explained-269068" target="_blank" rel="noopener">CharlieIntel</a>).</td></tr>
+          <tr><td>CoD Mobile</td><td>Same Winner's Circle idea.</td><td>—</td><td>Practice vs AI: "you still earn XP, but at a 90% reduced rate" (<a href="https://support.activision.com/au/en/cod-mobile/articles/call-of-duty-mobile-multiplayer" target="_blank" rel="noopener">Activision</a>) — the same 10% you picked for bot kills.</td></tr>
+          <tr><td>CoD Hardpoint</td><td colspan="3">1 team point per second on the point, first to 250 (<a href="https://cod-esports.fandom.com/wiki/New_To_Call_of_Duty/Modes/Hardpoint" target="_blank" rel="noopener">CoD Esports wiki</a>) — what our Hardpoint already does.</td></tr>
+          <tr><td>THE FINALS</td><td>MVP screen: 1st, 2nd, 3rd MVP from <b>any</b> team; skippable after a few seconds; then scoreboard or main menu (<a href="https://id.embark.games/the-finals/support/faq/216-mvp-screen" target="_blank" rel="noopener">Embark</a>).</td><td>Kills + objective + support. MVP gives <b>no</b> XP or rewards.</td><td>Scoreboard or main menu.</td></tr>
+          <tr><td>Valorant</td><td>MVP screen, then the post-match page.</td><td>Match MVP (winners) and Team MVP (losers), from a performance score that counts objective plays (<a href="https://support.riotgames.com/en-us/valorant/gameplay/performance-score" target="_blank" rel="noopener">Riot</a>).</td><td>Back to the lobby, party together.</td></tr>
+          <tr><td>Apex Legends</td><td>Summary screen; next match opens on last match's best squad.</td><td>"Champion squad" by overall score incl. revives and objective (<a href="https://www.ggrecon.com/guides/apex-legends-how-is-the-champion-squad-chosen/" target="_blank" rel="noopener">GGRecon</a>).</td><td>Back to the lobby, party together.</td></tr>
+          <tr><td>Fortnite</td><td>Creative islands pick the end screen: win / lose callout, scoreboard on or off (<a href="https://dev.epicgames.com/documentation/fortnite/using-end-game-devices-in-fortnite-creative" target="_blank" rel="noopener">Epic</a>).</td><td>—</td><td>Back to the lobby; "Stay with Squad" keeps the squad for the next match (<a href="https://www.wepc.com/news/fortnite-stay-with-squad" target="_blank" rel="noopener">WePC</a>).</td></tr>
+          <tr><td>Overwatch 2</td><td>"Matches just end" — no end scoreboard, widely criticised (<a href="https://www.thegamer.com/over-watch-2-medals-end-screen-scoreboard/" target="_blank" rel="noopener">TheGamer</a>).</td><td>—</td><td>Back to the lobby.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pros">
+      <div class="seen"><b>TAKEAWAY 1</b>Everyone shows a short win / lose moment, then the standouts, then the numbers. Showing nothing (Overwatch 2) gets hated.</div>
+      <div class="seen"><b>TAKEAWAY 2</b>Long unskippable spotlights get hated (BO6). Keep it inside our 15 s and let a tap skip ahead.</div>
+      <div class="seen"><b>TAKEAWAY 3</b>The squad never splits: it stays for the next match or goes back to the lobby together. The leader decides.</div>
+      <div class="seen"><b>TAKEAWAY 4</b>MVP counts the objective, not just kills. Losers can get one too (Valorant Team MVP).</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Try it</h2>
+      <div class="ctrl">
+        <div class="seg" role="group" aria-label="Screen">
+          <button data-g="dev" data-v="pc" aria-pressed="true">PC</button>
+          <button data-g="dev" data-v="phone">PHONE</button>
+        </div>
+        <div class="seg" role="group" aria-label="Match">
+          <button data-g="match" data-v="arena" aria-pressed="true">ARENA (PvP)</button>
+          <button data-g="match" data-v="bots">BOTS MATCH</button>
+        </div>
+        <div class="seg" role="group" aria-label="Result">
+          <button data-g="res" data-v="win" aria-pressed="true">WIN</button>
+          <button data-g="res" data-v="lose">LOSE</button>
+        </div>
+        <button class="btn go" id="play">▶ PLAY THE 15 S</button>
+      </div>
+    </div>
+    <div class="screen-wrap"><div class="screen" id="screen"><div class="world"></div><div id="stage"></div>
+      <div class="clock" id="clock">0:00</div><div class="skip" id="skip">TAP TO SKIP ▸</div><div class="timeline"><i id="tl"></i></div></div></div>
+    <p class="muted" style="font-size:13.5px">Tap the screen to skip to the next beat (as the game would). The XP numbers come from Pick 3's sliders.</p>
+  </section>
+
+  <section class="card ask">
+    <h2>Pick 1 · The results screen</h2>
+    <div class="grid3" data-pick="screen">
+      <button class="opt" data-v="A" aria-pressed="false"><span class="k">A · BOARD + XP</span><span class="d">Today's board, plus an XP column, MVP tags on the rows and your XP strip with the level bar. One screen, 15 s.</span></button>
+      <button class="opt" data-v="B" aria-pressed="true"><span class="k">B · THREE BEATS <span class="tag rec">REC</span></span><span class="d">VICTORY (2 s) → MVP spotlight with the dinos (4 s) → the board + your XP (9 s). Tap skips a beat. CoD / Valorant flow, kept to 15 s.</span></button>
+      <button class="opt" data-v="C" aria-pressed="false"><span class="k">C · YOU FIRST</span><span class="d">Your XP card in the middle (each line ticks up, level bar), MVP names on top; SCOREBOARD button flips to the full board.</span></button>
+    </div>
+    <div class="pros" id="pros1"></div>
+  </section>
+
+  <section class="card ask">
+    <h2>Pick 2 · Who is MVP</h2>
+    <p class="muted">Match score = kills × 100 + seconds on the point × 10 (deaths don't count). Ties: more time on the point, then fewer deaths. Bots are never MVP.</p>
+    <div class="grid3" data-pick="mvp">
+      <button class="opt" data-v="team" aria-pressed="true"><span class="k">ONE PER TEAM <span class="tag rec">REC</span></span><span class="d">MVP = best on the winning team (gold). SVP = best on the losing team (silver). Like Valorant's Match MVP / Team MVP.</span></button>
+      <button class="opt" data-v="top3" aria-pressed="false"><span class="k">TOP 3 WINNERS</span><span class="d">CoD Winner's Circle: the 3 best of the winning team. The losing side gets nothing.</span></button>
+      <button class="opt" data-v="one" aria-pressed="false"><span class="k">ONE FOR THE MATCH</span><span class="d">The single best score in the match, either team.</span></button>
+    </div>
+  </section>
+
+  <section class="card ask">
+    <h2>Pick 3 · XP numbers</h2>
+    <p class="muted">Skill XP goes to the dino you played (SkillServer today). A level costs 30 + 10 × (level − 1): level 10 → 120 XP, level 30 → 320 XP, all 40 levels = 9,000 XP. A Raptor bot kill is 30 XP today, a T-Rex bot 100.</p>
+    <div class="grid3">
+      <div class="sl"><label>Kill a player <b id="vKill"></b></label><input type="range" id="kill" min="0" max="150" step="5" value="50"><small>Between a Raptor bot (30) and a T-Rex bot (100).</small></div>
+      <div class="sl"><label>Each second on the point <b id="vSec"></b></label><input type="range" id="sec" min="0" max="3" step="0.5" value="1"><small>2 min on the point = <span id="vSec2"></span> XP.</small></div>
+      <div class="sl"><label>Winning side bonus <b id="vWin"></b></label><input type="range" id="win" min="0" max="300" step="25" value="100"><small>Draw gets half. Losing gets 0.</small></div>
+      <div class="sl"><label>MVP bonus <b id="vMvp"></b></label><input type="range" id="mvpx" min="0" max="200" step="25" value="50"><small>0 = MVP is just the spotlight (THE FINALS way).</small></div>
+      <div class="sl"><label>SVP bonus <b id="vSvp"></b></label><input type="range" id="svpx" min="0" max="200" step="25" value="25"><small>Only with "One per team".</small></div>
+      <div class="sl"><label>Bots match gets <b id="vBot"></b></label><div class="seg" role="group" aria-label="Bots match share"><button data-g="botmul" data-v="0.1" aria-pressed="true">10% <span class="tag rec" style="vertical-align:0">REC</span></button><button data-g="botmul" data-v="0.5">50%</button><button data-g="botmul" data-v="1">100%</button></div><small>Point time, win and MVP in the bots match. 10% = CoD Mobile's practice rate and your bot-kill pick.</small></div>
+    </div>
+    <div class="calc">
+      <div class="box"><span class="eyebrow">Good Arena match (you)</span><span class="muted" style="font-size:14px">8 kills · 2:20 on the point · win · MVP</span><span class="big" id="cGood"></span><span class="muted" id="cGoodL" style="font-size:13.5px"></span></div>
+      <div class="box"><span class="eyebrow">Average Arena loss</span><span class="muted" style="font-size:14px">3 kills · 0:50 on the point · lose</span><span class="big" id="cAvg"></span><span class="muted" id="cAvgL" style="font-size:13.5px"></span></div>
+      <div class="box"><span class="eyebrow">Bots match win</span><span class="muted" style="font-size:14px">12 bot kills · 3:00 on the point · win · MVP</span><span class="big" id="cBot"></span><span class="muted" id="cBotL" style="font-size:13.5px"></span></div>
+    </div>
+  </section>
+
+  <section class="card ask">
+    <h2>Pick 4 · After the board</h2>
+    <div class="grid3" data-pick="after">
+      <button class="opt" data-v="stay" aria-pressed="false"><span class="k">STAY · ISLAND BUTTON</span><span class="d">Today: Arena starts the next match, bots match goes to the team screen. The board gets a BACK TO ISLAND button (leader takes the squad). CoD BO7 "lobby stays".</span></button>
+      <button class="opt" data-v="leader" aria-pressed="true"><span class="k">LEADER DECIDES <span class="tag rec">REC</span></span><span class="d">Board shows PLAY AGAIN and BACK TO ISLAND. The squad leader's press takes the whole squad; no press = stay (today). Solo players choose for themselves. MW2 "Play Again" / Fortnite "Stay with Squad".</span></button>
+      <button class="opt" data-v="island" aria-pressed="false"><span class="k">ALWAYS THE ISLAND</span><span class="d">When the board ends everyone goes back to the island, squads together (Valorant / Apex "back to the lobby"). Arena empties after every match.</span></button>
+    </div>
+    <div class="flow" id="flow"></div>
+  </section>
+
+  <section class="card">
+    <h2>Your picks so far</h2>
+    <div class="picks" id="picks"></div>
+    <p class="muted" style="font-size:13.5px">Also not in the picks, kept as is unless you say: kills on the open island (outside the safe area) give no XP — matches only, so two friends can't farm each other. Draws show DRAW with no MVP spotlight change.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const st = { dev: "pc", match: "arena", res: "win", botmul: 0.1, screen: "B", mvp: "team", after: "leader" };
+  const DINO = { "T-Rex": "🦖", "Raptor": "🦎", "Therizino": "🦕", "Troodon": "🦎", "Dilophosaurus": "🐊", "Herrerasaurus": "🦖", "Tenontosaurus": "🦕", "Pachy": "🦕", "Zuul": "🦕" };
+  const BLUE = [
+    { n: "Kepu", me: true, dino: "T-Rex", k: 8, d: 4, pt: 140 },
+    { n: "RexRider22", dino: "Raptor", k: 11, d: 6, pt: 35 },
+    { n: "ZinoQueen", dino: "Therizino", k: 4, d: 3, pt: 165 },
+    { n: "DiloDan", dino: "Dilophosaurus", k: 3, d: 7, pt: 60 },
+    { n: "TrooBoss", dino: "Troodon", k: 6, d: 5, pt: 50 },
+  ];
+  const RED = [
+    { n: "Pachyfist", dino: "Pachy", k: 9, d: 7, pt: 120 },
+    { n: "HerreraHex", dino: "Herrerasaurus", k: 7, d: 8, pt: 70 },
+    { n: "TenoTank", dino: "Tenontosaurus", k: 2, d: 6, pt: 95 },
+    { n: "ZuulBreaker", dino: "Zuul", k: 5, d: 9, pt: 40 },
+    { n: "raptorjesus", dino: "Raptor", k: 3, d: 8, pt: 30 },
+  ];
+  const BOTNAMES = ["Bot Rex", "Bot Claw", "Bot Spike", "Bot Fang", "Bot Horn"];
+  const cfg = () => ({ kill: +$("#kill").value, sec: +$("#sec").value, win: +$("#win").value, mvp: +$("#mvpx").value, svp: +$("#svpx").value });
+  const mss = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+  const score = p => p.k * 100 + p.pt * 10;
+  const best = list => [...list].filter(p => !p.bot).sort((a, b) => score(b) - score(a) || b.pt - a.pt || a.d - b.d);
+  const xpToNext = L => 30 + 10 * (L - 1);
+
+  function teams() {
+    const won = st.res === "win";
+    const blue = BLUE.map(p => ({ ...p, team: "b" }));
+    let red = RED.map(p => ({ ...p, team: "r" }));
+    if (st.match === "bots") red = red.map((p, i) => ({ ...p, n: BOTNAMES[i], bot: true }));
+    const winners = won ? blue : red, losers = won ? red : blue;
+    const tags = new Map();
+    if (st.mvp === "team") {
+      const m = best(winners)[0]; if (m) tags.set(m.n, "mvp");
+      const s = best(losers)[0]; if (s) tags.set(s.n, "svp");
+    } else if (st.mvp === "top3") {
+      best(winners).slice(0, 3).forEach((p, i) => tags.set(p.n, i === 0 ? "mvp" : "top"));
+    } else {
+      const m = best([...blue, ...red])[0]; if (m) tags.set(m.n, "mvp");
+    }
+    return { blue, red, won, winners, losers, tags };
+  }
+  function xpOf(p, T, c = cfg()) {
+    if (p.bot) return null;
+    const mul = st.match === "bots" ? st.botmul : 1;
+    const won = (p.team === "b") === T.won;
+    const tag = T.tags.get(p.n);
+    const parts = [];
+    if (st.match === "bots") parts.push(["Bot kills", p.k * 6]);
+    else parts.push(["Kills", p.k * c.kill]);
+    parts.push(["Point", Math.round(p.pt * c.sec * mul)]);
+    if (won) parts.push(["Win", Math.round(c.win * mul)]);
+    if (tag === "mvp") parts.push(["MVP", Math.round(c.mvp * mul)]);
+    if (tag === "svp") parts.push(["SVP", Math.round(c.svp * mul)]);
+    return { parts, total: parts.reduce((a, b) => a + b[1], 0) };
+  }
+  function levels(startL, into, gain) {
+    let L = startL, x = into + gain, ups = 0;
+    while (L < 41 && x >= xpToNext(L)) { x -= xpToNext(L); L++; ups++; }
+    return { L, x, ups };
+  }
+
+  // ---------- screens ----------
+  const stage = $("#stage");
+  const scoreLine = T => {
+    const a = T.won ? 250 : 187, b = T.won ? 187 : 250;
+    return `<span class="b">BLUE ${a}</span> – <span class="r">${b} RED</span>`;
+  };
+  function banner(T) {
+    const t = T.won ? "VICTORY" : "DEFEAT";
+    return `<div class="layer fade"><div class="banner"><div class="t ${T.won ? "win" : "lose"}">${t}</div><div class="s">${scoreLine(T)}</div>
+      <div class="m">${st.match === "bots" ? "PRACTICE · NORMAL BOTS" : "HARDPOINT · SUMMIT"}</div></div></div>`;
+  }
+  function mvpCard(p, kind, big) {
+    const c = kind === "svp" ? "var(--silver)" : kind === "top" ? "#e8a33a" : "var(--gold)";
+    const lbl = kind === "svp" ? "SVP" : kind === "top" ? "TOP 3" : "MVP";
+    return `<div class="mvpc ${big ? "big" : ""}" style="--c:${c}"><span class="lbl">${lbl}</span><div class="dino">${DINO[p.dino] || "🦖"}</div>
+      <div class="n">${p.n}</div><div class="sp">${p.dino} · ${p.team === "b" ? "BLUE" : "RED"}</div>
+      <div class="st"><span><b>${p.k}</b> K</span><span><b>${mss(p.pt)}</b> ON PT</span></div></div>`;
+  }
+  function spotlight(T) {
+    const all = [...T.blue, ...T.red];
+    const get = k => all.filter(p => T.tags.get(p.n) === k);
+    let cards;
+    if (st.mvp === "team") cards = [get("mvp")[0] && mvpCard(get("mvp")[0], "mvp", true), get("svp")[0] && mvpCard(get("svp")[0], "svp")].filter(Boolean);
+    else if (st.mvp === "top3") { const t = get("top"); const m = get("mvp")[0]; cards = [t[0] && mvpCard(t[0], "top"), m && mvpCard(m, "mvp", true), t[1] && mvpCard(t[1], "top")].filter(Boolean); }
+    else cards = [mvpCard(get("mvp")[0], "mvp", true)];
+    return `<div class="layer fade"><div class="spot">${cards.join("")}</div></div>`;
+  }
+  function row(p, T, xpCol) {
+    const tag = T.tags.get(p.n);
+    const chip = tag === "mvp" ? '<span class="chip mvp">MVP</span>' : tag === "svp" ? '<span class="chip svp">SVP</span>' : tag === "top" ? '<span class="chip top">TOP3</span>' : "";
+    const xp = xpOf(p, T);
+    return `<div class="trow ${xpCol ? "xpc" : ""} ${p.me ? "me" : ""}"><span>${p.me ? "★ " : ""}${p.n}${p.bot ? '<span class="chip bot">BOT</span>' : ""}${chip}</span><span>${p.dino}</span><span>${p.k}</span><span>${p.d}</span><span>${mss(p.pt)}</span>${xpCol ? `<span class="x">${xp ? "+" + xp.total : "—"}</span>` : ""}</div>`;
+  }
+  function table(list, T, cls, title, xpCol) {
+    const s = [...list].sort((a, b) => b.k - a.k);
+    return `<div class="team ${cls}"><h4>${title}</h4><div class="trow h ${xpCol ? "xpc" : ""}"><span>NAME</span><span>DINO</span><span>K</span><span>D</span><span>ON PT</span>${xpCol ? "<span>XP</span>" : ""}</div>${s.map(p => row(p, T, xpCol)).join("")}</div>`;
+  }
+  function strip(T, prog) {
+    const me = T.blue[0], xp = xpOf(me, T);
+    const shown = Math.round(xp.total * prog);
+    const lv = levels(12, 60, shown);
+    const pct = Math.min(100, (lv.x / xpToNext(lv.L)) * 100);
+    return `<div class="xpstrip"><span class="tot">+${shown} XP</span><div class="parts">${xp.parts.map(([k, v]) => `<span>${k} <b>+${v}</b></span>`).join("")}</div>
+      <div class="lvl"><span>T-REX LV ${lv.L}</span><div class="bar"><i style="width:${pct}%"></i></div><span>${lv.x} / ${xpToNext(lv.L)}</span>${lv.ups ? `<span class="lvlup">▲ +${lv.ups} LEVEL${lv.ups > 1 ? "S" : ""} · +${lv.ups} SKILL PT</span>` : ""}</div></div>`;
+  }
+  function foot(left) {
+    const btns = st.after === "stay" ? '<span class="o">BACK TO ISLAND</span><span>MAIN MENU</span>'
+      : st.after === "leader" ? '<span class="y">PLAY AGAIN</span><span class="o">BACK TO ISLAND</span>'
+      : '<span>MAIN MENU</span>';
+    const what = st.after === "island" ? "ISLAND IN" : st.match === "bots" ? "TEAM SCREEN IN" : "NEXT MATCH IN";
+    const lead = st.after === "leader" ? '<span style="font-family:var(--body);font-size:1.2cqi;opacity:.75">★ squad leader chooses for the squad</span>' : "";
+    return `<div class="foot"><span class="cd">${what} ${mss(left)}</span>${lead}<div class="bt">${btns}</div></div>`;
+  }
+  function board(T, prog, left, xpCol = true) {
+    return `<div class="layer fade"><div class="board"><div class="hd"><span class="t ${T.won ? "win" : "lose"}">${T.won ? "VICTORY" : "DEFEAT"}</span><span class="s">${st.match === "bots" ? "PRACTICE · NORMAL BOTS" : "HARDPOINT"}</span></div>
+      <div class="teams">${table(T.blue, T, "b", `BLUE · ${T.won ? 250 : 187}`, xpCol)}${table(T.red, T, "r", `RED · ${T.won ? 187 : 250}`, xpCol)}</div>
+      ${strip(T, prog)}${foot(left)}</div></div>`;
+  }
+  function meCard(T, prog, left) {
+    const me = T.blue[0], xp = xpOf(me, T);
+    let acc = 0; const n = xp.parts.length;
+    const lines = xp.parts.map(([k, v], i) => { const p = Math.max(0, Math.min(1, prog * n - i)); acc += Math.round(v * p); return `<div class="ln"><span>${k}</span><b>+${Math.round(v * p)}</b></div>`; }).join("");
+    const lv = levels(12, 60, acc);
+    const all = [...T.blue, ...T.red];
+    const tops = all.filter(p => T.tags.get(p.n)).map(p => { const k = T.tags.get(p.n); const c = k === "svp" ? "var(--silver)" : k === "top" ? "#e8a33a" : "var(--gold)"; return `<span style="--c:${c}"><b>${k === "top" ? "TOP3" : k.toUpperCase()}</b> ${p.n}</span>`; }).join("");
+    return `<div class="mvptop">${tops}</div><div class="layer fade" style="padding-top:5cqi"><div class="me-card"><div class="t ${T.won ? "win" : "lose"}">${T.won ? "VICTORY" : "DEFEAT"}</div>
+      <div style="text-align:center;font-size:1.6cqi;margin:.4cqi 0 1.2cqi">${scoreLine(T)}</div>${lines}<div class="ln tot"><span>TOTAL</span><b>+${acc} XP</b></div>
+      <div class="lvl" style="margin-top:.6cqi"><span>T-REX LV ${lv.L}</span><div class="bar"><i style="width:${Math.min(100, lv.x / xpToNext(lv.L) * 100)}%"></i></div>${lv.ups ? `<span class="lvlup">▲ +${lv.ups}</span>` : ""}</div>
+      <div class="foot"><span class="cd">${st.after === "island" ? "ISLAND IN" : st.match === "bots" ? "TEAM SCREEN IN" : "NEXT MATCH IN"} ${mss(left)}</span><div class="bt"><span>SCOREBOARD</span>${st.after === "leader" ? '<span class="y">PLAY AGAIN</span><span class="o">ISLAND</span>' : st.after === "stay" ? '<span class="o">ISLAND</span>' : ""}</div></div></div></div>`;
+  }
+
+  // ---------- timeline ----------
+  const TOTAL = 15;
+  let t = 0, playing = false, last = 0, beatKey = "", frame;
+  function beats() {
+    if (st.screen === "A") return [["board", 0, 15]];
+    if (st.screen === "B") return [["banner", 0, 2], ["spot", 2, 6], ["board", 6, 15]];
+    return [["me", 0, 15]];
+  }
+  function render(force) {
+    const T = teams();
+    const b = beats().find(x => t >= x[1] && t < x[2]) || beats().at(-1);
+    const left = Math.max(0, TOTAL - t);
+    const prog = Math.min(1, (t - b[1]) / 2.5);
+    const key = b[0];
+    let html;
+    if (key === "banner") html = banner(T);
+    else if (key === "spot") html = spotlight(T);
+    else if (key === "board") html = board(T, prog, left, true);
+    else html = meCard(T, Math.min(1, t / 3), left);
+    if (force || key !== beatKey || key === "board" || key === "me") {
+      stage.innerHTML = html;
+      if (key === beatKey && !force) $$(".fade", stage).forEach(e => e.classList.remove("fade"));
+      beatKey = key;
+    }
+    $("#tl").style.width = (t / TOTAL * 100) + "%";
+    $("#clock").textContent = mss(t) + " / 0:15";
+    $("#skip").hidden = st.screen !== "B";
+  }
+  function tick(ts) {
+    if (!playing) return;
+    if (last) t = Math.min(TOTAL, t + (ts - last) / 1000);
+    last = ts;
+    render();
+    if (t >= TOTAL) { playing = false; $("#play").textContent = "▶ PLAY AGAIN"; return; }
+    frame = requestAnimationFrame(tick);
+  }
+  $("#play").addEventListener("click", () => { cancelAnimationFrame(frame); t = 0; last = 0; playing = true; beatKey = ""; $("#play").textContent = "■ PLAYING"; frame = requestAnimationFrame(tick); });
+  $("#screen").addEventListener("click", () => {
+    const bs = beats(); const i = bs.findIndex(x => t >= x[1] && t < x[2]);
+    if (i >= 0 && i < bs.length - 1) { t = bs[i + 1][1]; last = 0; render(true); }
+  });
+
+  // ---------- controls ----------
+  const PROS = {
+    A: [["good", "GOOD", "Smallest build: one panel we already have. Nothing to wait through."], ["bad", "COST", "MVPs are just tags in a row; no moment for the best player. Busy on a phone (6 columns)."]],
+    B: [["good", "GOOD", "The CoD / Valorant feel: a moment to win, the dinos on show, then the numbers. Still 15 s, tap skips."], ["bad", "COST", "Biggest build: the spotlight shows each MVP's dino (a posed copy of their character)."]],
+    C: [["good", "GOOD", "Your own XP is front and centre — clearest on a phone."], ["bad", "COST", "Others' stats are one tap away; less of a shared moment for the squad."]],
+  };
+  function syncPros() { $("#pros1").innerHTML = PROS[st.screen].map(([c, h, txt]) => `<div class="${c}"><b>${h}</b>${txt}</div>`).join(""); }
+  function syncFlow() {
+    const arena = st.match !== "bots";
+    const steps = st.after === "stay" ? [["MATCH ENDS"], ["RESULTS 15 S", 1], [arena ? "NEXT MATCH (SAME SERVER)" : "TEAM SCREEN"], ["or BACK TO ISLAND button"]]
+      : st.after === "leader" ? [["MATCH ENDS"], ["RESULTS 15 S", 1], ["LEADER: PLAY AGAIN → " + (arena ? "next match" : "team screen")], ["LEADER: ISLAND → squad to one island server"], ["no press → " + (arena ? "next match" : "team screen")]]
+      : [["MATCH ENDS"], ["RESULTS 15 S", 1], ["EVERYONE → ISLAND (squads together)"]];
+    $("#flow").innerHTML = steps.map(([s, y], i) => `${i ? "<i>→</i>" : ""}<span class="${y ? "y" : ""}">${s}</span>`).join("");
+  }
+  function syncCalc() {
+    const c = cfg();
+    $("#vKill").textContent = c.kill; $("#vSec").textContent = c.sec; $("#vSec2").textContent = Math.round(120 * c.sec);
+    $("#vWin").textContent = c.win; $("#vMvp").textContent = c.mvp; $("#vSvp").textContent = c.svp; $("#vBot").textContent = Math.round(st.botmul * 100) + "%";
+    const good = 8 * c.kill + 140 * c.sec + c.win + c.mvp;
+    const avg = 3 * c.kill + 50 * c.sec;
+    const bot = 12 * 6 + Math.round((180 * c.sec + c.win + c.mvp) * st.botmul);
+    const lv = n => `= ${(n / 120).toFixed(1)} levels at level 10, ${(n / 320).toFixed(1)} at level 30`;
+    $("#cGood").textContent = "+" + good + " XP"; $("#cGoodL").textContent = lv(good);
+    $("#cAvg").textContent = "+" + avg + " XP"; $("#cAvgL").textContent = lv(avg);
+    $("#cBot").textContent = "+" + bot + " XP"; $("#cBotL").textContent = lv(bot) + " (bot kills ~6 each today)";
+  }
+  function syncPicks() {
+    const names = { A: "A · Board + XP", B: "B · Three beats", C: "C · You first", team: "One per team (MVP + SVP)", top3: "Top 3 winners", one: "One for the match", stay: "Stay · island button", leader: "Leader decides", island: "Always the island" };
+    const c = cfg();
+    $("#picks").innerHTML = [
+      ["1 · RESULTS", names[st.screen]], ["2 · MVP", names[st.mvp]],
+      ["3 · XP", `kill ${c.kill} · ${c.sec}/s on point · win ${c.win} (draw ${c.win / 2}) · MVP ${c.mvp}${st.mvp === "team" ? " · SVP " + c.svp : ""} · bots match ${Math.round(st.botmul * 100)}%`],
+      ["4 · AFTER", names[st.after]],
+    ].map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join("");
+  }
+  function syncAll() { syncPros(); syncFlow(); syncCalc(); syncPicks(); render(true); }
+
+  $$("[data-g]").forEach(b => b.addEventListener("click", () => {
+    const g = b.dataset.g;
+    $$(`[data-g="${g}"]`).forEach(x => x.setAttribute("aria-pressed", x === b));
+    st[g] = g === "botmul" ? +b.dataset.v : b.dataset.v;
+    if (g === "dev") $("#screen").classList.toggle("phone", st.dev === "phone");
+    syncAll();
+  }));
+  $$("[data-pick]").forEach(grp => $$(".opt", grp).forEach(b => b.addEventListener("click", () => {
+    $$(".opt", grp).forEach(x => x.setAttribute("aria-pressed", x === b));
+    st[grp.dataset.pick] = b.dataset.v;
+    if (grp.dataset.pick === "screen") t = 0;
+    syncAll();
+  })));
+  $$("input[type=range]").forEach(r => r.addEventListener("input", syncAll));
+  t = 7; syncAll();
+})();
+</script>
