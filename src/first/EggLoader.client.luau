@@ -59,6 +59,14 @@
 --     MainMenuOpen == true (as 1.0); InMenu not set -> MENU_WAIT as before.
 --   * "join" (splash switch off) and "travel": as 1.0.
 --   Diagnostics: EggLoaderState adds "splash"; EggLoaderMode ("splash" / "join" / "play" / "arrive" / "travel").
+-- v1.2 (Kepu 2026-11-12 16:20 "when I load onto a game mode sometimes the loading screen refreshes after being close to
+--   complete"). Found: the trip shows two loaders. The "travel" egg on the server you leave cracks on the time curve (about
+--   80 – 90% after 10 – 15 s) and Roblox keeps a still copy of it up during the teleport; on arrival this script builds a new
+--   "arrive" egg that starts again at 0% with no cracks, so the bar jumps back. Now the bar carries over the trip: the
+--   travel egg writes its progress on its ScreenGui (attribute EggLoaderCarry, every 0.01) so the teleport copy holds it, and
+--   the arrive egg starts at that progress (cracks shown at once), or at ARRIVE_FLOOR (0.5) when the copy has none; from
+--   there it only goes up, as before. Switch: script attribute EggLoaderCarryEnabled (default true, read at start; false =
+--   1.1). Diagnostic: player EggLoaderArriveFrom (the progress the arrive egg started at).
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local RunService = game:GetService("RunService")
@@ -68,6 +76,8 @@ local TeleportService = game:GetService("TeleportService")
 local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 the bar carries over a trip
+local ARRIVE_FLOOR = 0.5 -- v1.2
 local MIN_CRACK = 3
 local TIMEOUT = 45
 local HOLD = 2
@@ -89,6 +99,8 @@ local TIPS = {
 if script:GetAttribute("EggLoaderEnabled") == nil then script:SetAttribute("EggLoaderEnabled", true) end
 if script:GetAttribute("EggLoaderSplashEnabled") == nil then script:SetAttribute("EggLoaderSplashEnabled", true) end -- v1.1
 local splashOn = script:GetAttribute("EggLoaderSplashEnabled") ~= false -- v1.1
+if script:GetAttribute("EggLoaderCarryEnabled") == nil then script:SetAttribute("EggLoaderCarryEnabled", true) end -- v1.2
+local carryOn = script:GetAttribute("EggLoaderCarryEnabled") ~= false -- v1.2
 local player = Players.LocalPlayer
 player:SetAttribute("EggLoaderVersion", VERSION)
 if script:GetAttribute("EggLoaderEnabled") == false then
@@ -639,6 +651,9 @@ local function start(s)
 		s.fill.Size = UDim2.fromScale(1, s.p)
 		s.pct.Text = math.floor(s.p * 100) .. "%"
 		player:SetAttribute("EggLoaderProgress", math.floor(s.p * 100) / 100)
+		if carryOn and s.mode == "travel" and s.gui:GetAttribute("EggLoaderCarry") ~= math.floor(s.p * 100) / 100 then -- v1.2
+			s.gui:SetAttribute("EggLoaderCarry", math.floor(s.p * 100) / 100)
+		end
 		local n = 0
 		for i, at in ipairs(CRACK_AT) do if s.p >= at then n = i end end
 		if n > s.cracks then showCracks(s, n) end
@@ -707,9 +722,14 @@ end
 local arriving
 pcall(function() arriving = TeleportService:GetArrivingTeleportGui() end)
 local arrivedFrom = arriving and arriving:GetAttribute("EggLoaderTarget")
+local carried = arriving and tonumber(arriving:GetAttribute("EggLoaderCarry")) -- v1.2
 if arriving then arriving:Destroy() end
 if arrivedFrom == "Arena" or arrivedFrom == "Sandbox" then -- v1.1: after a trip -> "arrive"; else the splash
-	show("arrive", arrivedFrom)
+	local s = show("arrive", arrivedFrom)
+	if carryOn and s then -- v1.2: start where the trip's egg was
+		s.p = math.clamp(carried or ARRIVE_FLOOR, 0, 0.95)
+		player:SetAttribute("EggLoaderArriveFrom", s.p)
+	end
 elseif splashOn then
 	show("splash", nil)
 else

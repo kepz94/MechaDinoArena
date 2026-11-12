@@ -3409,3 +3409,6 @@ Model numbers are generator output (old version = the flag in the last column, b
 
 ## Climb routes (PracticeClimb 1.0 / PracticeBrain2 2.2, 2026-11-12)
 - PracticeServer `PrClimbRoutesEnabled` (true, per tick), `PrClimbEarlySec` 20. PracticeClimb: MIN_Y 40, LINK_FLAT 34, LINK_DOWN 9, MIN_TILES 10, MIN_DROP 60, JOIN_FLAT 24, JOIN_DY 8, REACH 10, OFF_ROUTE 60, STEP_RISE 2.5, JUMP_NEAR 14; diagnostics `PracticeClimbVersion`, `PracticeClimbRoutes`, `PracticeClimbTiles`; bot model `BotClimbIdx`, BotState "climb".
+
+## Loading bar carries over a trip (EggLoader 1.2, 2026-11-12)
+- `EggLoaderCarryEnabled` (true, read at start); ScreenGui attribute `EggLoaderCarry`; player diagnostic `EggLoaderArriveFrom`; ARRIVE_FLOOR 0.5 in code.
