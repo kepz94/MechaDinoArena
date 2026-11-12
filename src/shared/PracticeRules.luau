@@ -37,9 +37,39 @@
 --   jobGoal(job, centre, nextCentre, home) -> Vector3: hold = the 1.0 "cap" goal, duel = the 1.0 "hunt" goal, guard = centre +
 --     GUARD_RING (45) toward home, run = nextCentre (else centre). GUARD_LEASH (90): a guard's walk is kept within this of the
 --     point (guardClamp(pos, centre) -> Vector3).
+-- v1.2 (Bots v2, MDA-466, plan docs/plans/BOTS_V2_v1.0.md T1; Kepu 2026-11-11 20:39 "mixed at all times. Some really hard bots and
+--   some easy ones", picks "1 Elite · 1 Hard · 2 Normal · 1 Easy" re-rolled each respawn). Added, 1.0 / 1.1 untouched:
+--   TIERS (rows like DIFF plus: strafe (orbit / side-step in a fight), dodge (side-jump when an enemy attack starts near),
+--     kite (ranged dinos keep their distance), focusLow (prefer low-HP targets), lead (aim at where the target will be),
+--     combo, loseTrack (s the target is forgotten after it leaves sight), speedMul, abilDelay (s before a wanted ability)):
+--     Easy / Normal / Hard / Elite. tierOf(name) -> row (unknown -> Normal).
+--   TEAM_MIX = {Elite 1, Hard 1, Normal 2, Easy 1}; MIX_ORDER = Elite, Hard, Normal, Easy, Normal (sizes over 5 repeat it).
+--     mixFor(size) -> {tier name} (the first size of MIX_ORDER, repeated). dealTiers(size, rng) -> mixFor(size) shuffled.
+--     respawnTier(living, size, rng) -> a tier the team is missing (mixFor(size) minus the living bots' tiers, random among the
+--     missing), else a random one of mixFor(size). living = {tier name}.
+--   slowMul(attrs, now) -> the product of every attrs["SlowMul_<x>"] whose attrs["SlowUntil_<x>"] > now, clamped to
+--     [SLOW_FLOOR (0.25), 1] (no slow -> 1). Non-number values are skipped.
+--   abilityWant(kind, ctx) -> 0..1 (0 = no). ctx: {hasTarget, gap (to the target, studs between bodies), dist, minR, maxR (the
+--     part's range), radius (area parts), hpFrac, foesNear (within 30), matesNear, mateLow (a mate under 50% within 60),
+--     recentlyHit (hurt in the last 2 s), swimming, stuckFor (s), onPoint, goalDist}. Kinds and rules (first match wins):
+--     mobility: swimming 0.9; stuckFor >= 1.5 -> 0.9; hpFrac < 0.3 and foesNear > matesNear -> 0.85 (escape); hasTarget and
+--       35 < gap <= maxR (else 140) -> 0.8; no target and goalDist > 120 -> 0.5; else 0.
+--     ranged: hasTarget and minR <= dist <= maxR -> 0.8; else 0.
+--     melee / control: hasTarget and gap <= maxR -> 0.8 (control 0.75); else 0.
+--     aoe: foesNear >= 1 and (not hasTarget or gap <= radius) -> min(1, 0.6 + 0.15 x foesNear); else 0.
+--     defend: hpFrac < 0.6 and recentlyHit -> 0.8; foesNear >= 2 -> 0.6; else 0.
+--     heal: hpFrac < 0.5 -> 0.8; mateLow -> 0.7; else 0.
+--     buff: hasTarget and gap <= 20 -> 0.7; else 0.
+--     stealth: hpFrac < 0.4 and foesNear >= 1 -> 0.8; hasTarget and 40 <= gap <= 90 -> 0.5; else 0.
+--     zone / trap: onPoint and foesNear >= 1 -> 0.7; hasTarget and gap <= 30 -> 0.55; else 0.
+--     sense: no target and goalDist <= 200 -> 0.4; else 0.
+--     unknown kind -> 0.
+--   pickLoadout(liveIds, mobilityIds, slots, rng) -> {id}: one mobility id first (random among those in liveIds), then the
+--     rest of liveIds shuffled, at most slots.
 local M = {}
 M.VERSION = "1.0"
 M.VERSION = "1.1" -- v1.1 bot jobs
+M.VERSION = "1.2" -- v1.2 Bots v2: tiers, mix, slowMul, abilityWant
 
 M.SIZE = 5
 M.AUTO_START = 20
@@ -322,6 +352,136 @@ end
 function M.aimError(rng, diff)
 	local e = diff and diff.aimErr or 8
 	return (rng:NextNumber() * 2 - 1) * e
+end
+
+-- ---------- v1.2: Bots v2 (see the header) ----------
+M.TIERS = {
+	Easy = {name = "Easy", react = 0.9, sight = 75, abil = 0.15, retreat = false, aimErr = 16, strafe = false, dodge = false,
+		kite = false, focusLow = false, lead = false, combo = false, loseTrack = 2, speedMul = 0.92, abilDelay = 0.8},
+	Normal = {name = "Normal", react = 0.5, sight = 95, abil = 0.45, retreat = true, aimErr = 8, strafe = false, dodge = false,
+		kite = true, focusLow = false, lead = false, combo = false, loseTrack = 3, speedMul = 0.95, abilDelay = 0.5},
+	Hard = {name = "Hard", react = 0.3, sight = 115, abil = 0.75, retreat = true, aimErr = 4, strafe = true, dodge = true,
+		kite = true, focusLow = true, lead = false, combo = false, loseTrack = 4, speedMul = 0.97, abilDelay = 0.35},
+	Elite = {name = "Elite", react = 0.18, sight = 130, abil = 0.95, retreat = true, aimErr = 2, strafe = true, dodge = true,
+		kite = true, focusLow = true, lead = true, combo = true, loseTrack = 5, speedMul = 1.0, abilDelay = 0.2},
+}
+M.TEAM_MIX = {Elite = 1, Hard = 1, Normal = 2, Easy = 1}
+M.MIX_ORDER = {"Elite", "Hard", "Normal", "Easy", "Normal"}
+M.SLOW_FLOOR = 0.25
+
+function M.tierOf(name)
+	return M.TIERS[name] or M.TIERS.Normal
+end
+
+function M.mixFor(size)
+	local out = {}
+	for i = 1, math.max(0, tonumber(size) or 0) do out[i] = M.MIX_ORDER[(i - 1) % #M.MIX_ORDER + 1] end
+	return out
+end
+
+function M.dealTiers(size, rng)
+	return shuffle(rng, M.mixFor(size))
+end
+
+function M.respawnTier(living, size, rng)
+	local want = {}
+	for _, t in ipairs(M.mixFor(size)) do want[t] = (want[t] or 0) + 1 end
+	for _, t in ipairs(type(living) == "table" and living or {}) do
+		if want[t] then want[t] -= 1 end
+	end
+	local missing = {}
+	for _, t in ipairs(M.MIX_ORDER) do
+		if (want[t] or 0) > 0 then
+			table.insert(missing, t)
+			want[t] -= 1
+		end
+	end
+	if #missing > 0 then return missing[rng:NextInteger(1, #missing)] end
+	local all = M.mixFor(size)
+	if #all == 0 then return "Normal" end
+	return all[rng:NextInteger(1, #all)]
+end
+
+function M.slowMul(attrs, now)
+	local mul = 1
+	if type(attrs) ~= "table" then return 1 end
+	for k, v in pairs(attrs) do
+		if type(k) == "string" and string.sub(k, 1, 8) == "SlowMul_" and type(v) == "number" and v == v then
+			local untilT = attrs["SlowUntil_" .. string.sub(k, 9)]
+			if type(untilT) == "number" and untilT > (tonumber(now) or 0) then mul *= math.clamp(v, 0, 1) end
+		end
+	end
+	return math.clamp(mul, M.SLOW_FLOOR, 1)
+end
+
+function M.abilityWant(kind, ctx)
+	ctx = type(ctx) == "table" and ctx or {}
+	local gap, dist = tonumber(ctx.gap) or math.huge, tonumber(ctx.dist) or math.huge
+	local hp = tonumber(ctx.hpFrac) or 1
+	local foes, mates = tonumber(ctx.foesNear) or 0, tonumber(ctx.matesNear) or 0
+	local has = ctx.hasTarget == true
+	if kind == "mobility" then
+		if ctx.swimming == true then return 0.9 end
+		if (tonumber(ctx.stuckFor) or 0) >= 1.5 then return 0.9 end
+		if hp < 0.3 and foes > mates then return 0.85 end
+		if has and gap > 35 and gap <= (tonumber(ctx.maxR) or 140) then return 0.8 end
+		if not has and (tonumber(ctx.goalDist) or 0) > 120 then return 0.5 end
+		return 0
+	elseif kind == "ranged" then
+		if has and dist >= (tonumber(ctx.minR) or 0) and dist <= (tonumber(ctx.maxR) or 0) then return 0.8 end
+		return 0
+	elseif kind == "melee" or kind == "control" then
+		if has and gap <= (tonumber(ctx.maxR) or 0) then return kind == "control" and 0.75 or 0.8 end
+		return 0
+	elseif kind == "aoe" then
+		if foes >= 1 and (not has or gap <= (tonumber(ctx.radius) or 0)) then return math.min(1, 0.6 + 0.15 * foes) end
+		return 0
+	elseif kind == "defend" then
+		if hp < 0.6 and ctx.recentlyHit == true then return 0.8 end
+		if foes >= 2 then return 0.6 end
+		return 0
+	elseif kind == "heal" then
+		if hp < 0.5 then return 0.8 end
+		if ctx.mateLow == true then return 0.7 end
+		return 0
+	elseif kind == "buff" then
+		if has and gap <= 20 then return 0.7 end
+		return 0
+	elseif kind == "stealth" then
+		if hp < 0.4 and foes >= 1 then return 0.8 end
+		if has and gap >= 40 and gap <= 90 then return 0.5 end
+		return 0
+	elseif kind == "zone" or kind == "trap" then
+		if ctx.onPoint == true and foes >= 1 then return 0.7 end
+		if has and gap <= 30 then return 0.55 end
+		return 0
+	elseif kind == "sense" then
+		if not has and (tonumber(ctx.goalDist) or math.huge) <= 200 then return 0.4 end
+		return 0
+	end
+	return 0
+end
+
+function M.pickLoadout(liveIds, mobilityIds, slots, rng)
+	local live = {}
+	for _, id in ipairs(type(liveIds) == "table" and liveIds or {}) do live[id] = true end
+	local mob = {}
+	for _, id in ipairs(type(mobilityIds) == "table" and mobilityIds or {}) do if live[id] then table.insert(mob, id) end end
+	local out, used = {}, {}
+	slots = math.max(0, tonumber(slots) or 0)
+	if #mob > 0 and slots > 0 then
+		local id = mob[rng:NextInteger(1, #mob)]
+		table.insert(out, id)
+		used[id] = true
+	end
+	local rest = {}
+	for _, id in ipairs(liveIds or {}) do if not used[id] then table.insert(rest, id) end end
+	table.sort(rest)
+	for _, id in ipairs(shuffle(rng, rest)) do
+		if #out >= slots then break end
+		table.insert(out, id)
+	end
+	return out
 end
 
 return M
