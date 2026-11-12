@@ -75,6 +75,9 @@
 --     "flat A x,z | B x,z" or "none".
 --   Switches (script attributes, read per pick): HardpointFarSpawnsEnabled (default true; false = 1.2 band, sight 700) and
 --   HardpointRunOpeningEnabled (default true; false = 1.2 straight-line pair). Diagnostic HpSpawnLast gets " far" on band-2 picks.
+-- v1.4 (island hub, MDA-454, plan docs/plans/ISLAND_HUB_v1.0.md Task 3, ADR-011; Kepu 2026-11-11: the hub island is free roam):
+--   when ModeRules 1.2 serverKind() == "hub" nothing starts (HardpointState "hub"; no HpLive, no teams). Kinds "practice" /
+--   "arena": exactly 1.3. Switch: script attribute HardpointHubEnabled (default true; false = 1.3). Read once at start.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -84,6 +87,7 @@ local HttpService = game:GetService("HttpService")
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 spawns v2
 VERSION = "1.3" -- v1.3 far spawns + start sides by run
+VERSION = "1.4" -- v1.4 off on the hub
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
 if script:GetAttribute("HpMinPlayers") == nil then script:SetAttribute("HpMinPlayers", 1) end
@@ -132,6 +136,12 @@ do
 		and ps.Enabled and ps:GetAttribute("PracticeEnabled") ~= false
 end
 
+if script:GetAttribute("HardpointHubEnabled") == nil then script:SetAttribute("HardpointHubEnabled", true) end -- v1.4
+if MODE == "sandbox" and script:GetAttribute("HardpointHubEnabled") ~= false and ModeRules.serverKind
+	and ModeRules.serverKind() == "hub" then -- v1.4
+	script:SetAttribute("HardpointState", "hub")
+	return
+end
 if MODE ~= "arena" and not PRACTICE then -- v1.1: + not PRACTICE
 	script:SetAttribute("HardpointState", "sandbox")
 	return

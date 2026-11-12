@@ -33,6 +33,11 @@
 --   practice match is set up there (ServerScriptService.PracticeServer exists, Enabled, PracticeEnabled not false), so the
 --   practice bots' real attacks reach players through DummyHealth exactly as in the Arena. ArenaPvPState "practice". Switch:
 --   script attribute ArenaPvPPracticeEnabled (default true; false = 1.2: Sandbox not bridged). Read once at start.
+-- v1.4 (island hub, MDA-454, plan docs/plans/ISLAND_HUB_v1.0.md Task 3, ADR-011; Kepu 2026-11-11 "PvP on" off the safe islet):
+--   when ModeRules 1.2 serverKind() == "hub" the bridge runs as in the Arena (ArenaPvPState "hub"; the practice flag is off
+--   there), and the test target can be built. While a bridged character's attribute HubSafe is true (HubServer 1.0: on the
+--   islet or in the 3 s guard) its Bitable is false, like a player in the menu; re-checked when HubSafe changes. Switch:
+--   script attribute ArenaPvPHubEnabled (default true; false = 1.3, the hub is not bridged). Read once at start.
 -- Switch: script attribute ArenaPvPEnabled (default true), read at start. false -> nothing is bridged (ArenaPvPState "off").
 -- Diagnostics: script ArenaPvPVersion, ArenaPvPState ("arena" / "sandbox" / "off"), ArenaPvPHits (damaging drops),
 --   ArenaPvPBlocked (drops the shield took); character ArenaPvPLastDelta, ArenaPvPBridged (true while bridged).
@@ -40,7 +45,7 @@ local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local TEST_DIST = 25
 
 script:SetAttribute("ArenaPvPVersion", VERSION)
@@ -58,6 +63,10 @@ do
 	PRACTICE = MODE == "sandbox" and script:GetAttribute("ArenaPvPPracticeEnabled") ~= false and ps ~= nil and ps:IsA("BaseScript")
 		and ps.Enabled and ps:GetAttribute("PracticeEnabled") ~= false
 end
+if script:GetAttribute("ArenaPvPHubEnabled") == nil then script:SetAttribute("ArenaPvPHubEnabled", true) end -- v1.4
+local HUB = MODE == "sandbox" and script:GetAttribute("ArenaPvPHubEnabled") ~= false and ModeRules.serverKind ~= nil
+	and ModeRules.serverKind() == "hub" -- v1.4
+if HUB then PRACTICE = false end
 
 local bridged = {} -- [model] = {hum, last, writing}
 local testTarget
@@ -76,7 +85,7 @@ end
 
 local function setBitable(model, player)
 	local inMenu = player ~= nil and player:GetAttribute("InMenu") == true
-	if inMenu then
+	if inMenu or (HUB and model:GetAttribute("HubSafe") == true) then -- v1.4: + safe on the hub islet
 		model:SetAttribute("Bitable", false)
 	else
 		model:SetAttribute("Bitable", true)
@@ -91,6 +100,11 @@ local function bridge(model, player)
 	model:SetAttribute("ArenaPvPBridged", true)
 	writeHealth(model)
 	setBitable(model, player)
+	if HUB then -- v1.4
+		model:GetAttributeChangedSignal("HubSafe"):Connect(function()
+			if bridged[model] == b then setBitable(model, player) end
+		end)
+	end
 	model:GetAttributeChangedSignal("DummyHealth"):Connect(function()
 		if b.writing or bridged[model] ~= b then return end
 		local v = tonumber(model:GetAttribute("DummyHealth")) or b.last
@@ -157,7 +171,7 @@ local test = Instance.new("BindableFunction")
 test.Name = "ArenaPvPTest"
 test.Parent = script
 
-local active = script:GetAttribute("ArenaPvPEnabled") ~= false and (MODE == "arena" or PRACTICE) -- v1.3: + PRACTICE
+local active = script:GetAttribute("ArenaPvPEnabled") ~= false and (MODE == "arena" or PRACTICE or HUB) -- v1.3: + PRACTICE, v1.4: + HUB
 
 test.OnInvoke = function(what, a, b)
 	if what == "hit" then
@@ -210,11 +224,11 @@ end
 if script:GetAttribute("ArenaPvPEnabled") == false then
 	script:SetAttribute("ArenaPvPState", "off")
 	return
-elseif MODE ~= "arena" and not PRACTICE then -- v1.3: + not PRACTICE
+elseif MODE ~= "arena" and not PRACTICE and not HUB then -- v1.3: + not PRACTICE, v1.4: + not HUB
 	script:SetAttribute("ArenaPvPState", "sandbox")
 	return
 end
-script:SetAttribute("ArenaPvPState", PRACTICE and "practice" or "arena") -- v1.3
+script:SetAttribute("ArenaPvPState", HUB and "hub" or PRACTICE and "practice" or "arena") -- v1.3, v1.4: "hub"
 
 local function onPlayer(player)
 	local function onChar(char)

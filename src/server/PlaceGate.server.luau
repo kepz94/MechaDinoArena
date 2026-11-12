@@ -16,18 +16,29 @@
 --   now"): in the Sandbox, while ServerScriptService.PracticeServer exists, is Enabled and its PracticeEnabled attribute is not
 --   false (nil = its default true), BotServer stays off (the practice bots replace the roaming ones): PlaceGateState
 --   "sandboxPractice". Switch: script attribute PlaceGatePracticeEnabled (default true; false = 1.0). Read once at start.
+-- v1.2 (island hub, MDA-454, plan docs/plans/ISLAND_HUB_v1.0.md Task 3, ADR-011; Kepu 2026-11-11 "No bots" on the hub island):
+--   when ModeRules 1.2 serverKind() == "hub" the Sandbox does what the Arena does: BotServer stays off and bot models are
+--   removed at start and when added. PlaceGateState "hubNoBots". Kinds "practice" / "arena": exactly 1.1. Switch: script
+--   attribute PlaceGateHubEnabled (default true; false = 1.1). Read once at start. Diagnostic: PlaceKind.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 script:SetAttribute("PlaceGateVersion", VERSION)
 if script:GetAttribute("PlaceGateEnabled") == nil then script:SetAttribute("PlaceGateEnabled", true) end
 if script:GetAttribute("PlaceGatePracticeEnabled") == nil then script:SetAttribute("PlaceGatePracticeEnabled", true) end -- v1.1
+if script:GetAttribute("PlaceGateHubEnabled") == nil then script:SetAttribute("PlaceGateHubEnabled", true) end -- v1.2
 
 local ModeRules = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
 local mode = ModeRules.currentMode()
 script:SetAttribute("PlaceMode", mode)
+local hubKind = false -- v1.2
+if script:GetAttribute("PlaceGateHubEnabled") ~= false and ModeRules.serverKind then
+	local kind = ModeRules.serverKind()
+	script:SetAttribute("PlaceKind", kind)
+	hubKind = kind == "hub"
+end
 script:SetAttribute("PlaceGateRemoved", 0)
 
 local bot = ServerScriptService:FindFirstChild("BotServer")
@@ -58,9 +69,9 @@ if script:GetAttribute("PlaceGateEnabled") == false then
 	script:SetAttribute("PlaceGateState", "off")
 elseif not bot then
 	script:SetAttribute("PlaceGateState", "noBotServer")
-elseif mode == "arena" then
+elseif mode == "arena" or hubKind then -- v1.2: the hub too
 	bot.Enabled = false
-	script:SetAttribute("PlaceGateState", "arenaNoBots")
+	script:SetAttribute("PlaceGateState", hubKind and "hubNoBots" or "arenaNoBots")
 	for _, d in ipairs(workspace:GetDescendants()) do
 		if d:IsA("Model") then removeIfBot(d) end
 	end

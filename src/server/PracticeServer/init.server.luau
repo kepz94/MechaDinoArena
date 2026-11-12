@@ -49,6 +49,10 @@
 --     many of them are on the "duel" job (from the bots' targets at the start of the tick); PracticeBrain 1.1 uses them.
 --   Switch: script attribute PrJobsEnabled (default true, read per tick; false = 1.2 roles, ctx.jobs nil).
 --   Diagnostics: PrJobsA / PrJobsB ("hold n duel n guard n run n"), PrMaxOnOne (most bots of one team on one enemy this tick).
+-- v1.4 (island hub, MDA-454 / MDA-458, plan docs/plans/ISLAND_HUB_v1.0.md Tasks 3 + 7, ADR-011; Kepu 2026-11-11: HARDPOINT VS
+--   BOTS is a portal into a private match for your squad):
+--   * runs only when ModeRules 1.2 serverKind() ~= "hub" (the hub island has no practice match): kind "hub" -> PracticeState
+--     "hub", nothing else. Switch: script attribute PrHubGateEnabled (default true; false = 1.3). Read once at start.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -58,6 +62,7 @@ local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 bot jobs + no T-Rex bots
+VERSION = "1.4" -- v1.4 island hub
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
@@ -87,6 +92,11 @@ if script:GetAttribute("PracticeEnabled") == false then
 end
 if ModeRules.currentMode() ~= "sandbox" then
 	script:SetAttribute("PracticeState", "notSandbox")
+	return
+end
+if script:GetAttribute("PrHubGateEnabled") == nil then script:SetAttribute("PrHubGateEnabled", true) end -- v1.4
+if script:GetAttribute("PrHubGateEnabled") ~= false and ModeRules.serverKind and ModeRules.serverKind() == "hub" then -- v1.4
+	script:SetAttribute("PracticeState", "hub")
 	return
 end
 
