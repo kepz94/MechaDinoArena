@@ -214,6 +214,9 @@
 --   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
 --   "botUnsupported" (a handler errored; script attribute TenoMovesServerBotMechaError keeps "<remote>: <error>").
 --   Switch: script attribute TenoMovesServerBotMechaEnabled (default true, read per call).
+--   The first call for a bot also runs this script's player-join handlers (Players.PlayerAdded, filed through botJoin) with
+--   the proxy and waits 0.2 s, so the bot's character is set up here like a player's (BotProxy 1.1 gives the proxy stub
+--   CharacterAdded / CharacterRemoving signals).
 local __botHandlers = {} -- v1.21: remote name -> handlers (see the header)
 local function botHook(remote)
 	return {Connect = function(_, fn)
@@ -221,6 +224,13 @@ local function botHook(remote)
 		__botHandlers[remote.Name] = list
 		table.insert(list, fn)
 		return remote.OnServerEvent:Connect(fn)
+	end}
+end
+local __botJoiners = {} -- v1.21: player-join handlers (see the header)
+local function botJoin(signal)
+	return {Connect = function(_, fn)
+		table.insert(__botJoiners, fn)
+		return signal:Connect(fn)
 	end}
 end
 local Players = game:GetService("Players")
@@ -1530,7 +1540,7 @@ local function onPlayer(p)
 	p.CharacterAdded:Connect(watch)
 	if p.Character then watch(p.Character) end
 end
-Players.PlayerAdded:Connect(onPlayer)
+botJoin(Players.PlayerAdded):Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
 
 -- v1.4: Hydraulic Leap through JUMP (see the header) ------------------------------------------------------------------------
@@ -1768,7 +1778,7 @@ local function onPlayerJ(p)
 	p.CharacterAdded:Connect(watchJump)
 	if p.Character then watchJump(p.Character) end
 end
-Players.PlayerAdded:Connect(onPlayerJ)
+botJoin(Players.PlayerAdded):Connect(onPlayerJ)
 for _, p in ipairs(Players:GetPlayers()) do onPlayerJ(p) end
 
 -- v1.18: Tail Grab in-range hint (see the v1.18 notes)
@@ -1808,12 +1818,18 @@ do
 	local BotProxy = proxyModule and require(proxyModule)
 	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
 	fn.Name = "BotMechaUse"
+	local joined = setmetatable({}, {__mode = "k"})
 	fn.OnInvoke = function(model, remoteName, ...)
 		if script:GetAttribute("TenoMovesServerBotMechaEnabled") == false then return "off" end
 		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
 		local list = __botHandlers[remoteName]
 		if not list then return "noHandler" end
 		local proxy = BotProxy.of(model)
+		if not joined[model] then
+			joined[model] = true
+			for _, j in ipairs(__botJoiners) do pcall(j, proxy) end
+			task.wait(0.2)
+		end
 		for _, h in ipairs(list) do
 			local ok, err = pcall(h, proxy, ...)
 			if not ok then

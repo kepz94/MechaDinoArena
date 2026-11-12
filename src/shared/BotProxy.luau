@@ -10,8 +10,13 @@
 --   :IsA(name)    true only for "BotProxy"                                     :FindFirstChild  nil
 -- typeof(proxy) is "table", so checks like typeof(player) == "Instance" are false for a bot.
 -- API: of(model) -> proxy (one per model, weak); is(x) -> bool; modelOf(x) -> the model or nil.
+-- v1.1 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7): the part servers' bot entrance runs their player-join handlers
+--   with a proxy, which do player.CharacterAdded:Connect(...) and player.CharacterRemoving:Connect(...). A proxy now answers
+--   .CharacterAdded / .CharacterRemoving with a stub signal (Connect -> a dead connection; Wait -> returns the model at once) and
+--   .AttributeChanged with the model's own AttributeChanged signal. Everything else as 1.0.
 local BotProxy = {}
 BotProxy.Version = "1.0"
+BotProxy.Version = "1.1" -- v1.1 stub CharacterAdded / CharacterRemoving, AttributeChanged
 
 local Proxy = {}
 local methods = {}
@@ -32,6 +37,11 @@ Proxy.__index = function(self, k)
 	if k == "UserId" then return 0 end
 	if k == "Parent" then return m and m.Parent or nil end
 	if k == "IsBotProxy" then return true end
+	if k == "CharacterAdded" or k == "CharacterRemoving" then -- v1.1
+		return {Connect = function() return {Connected = false, Disconnect = function() end} end, Wait = function() return m end,
+			Once = function() return {Connected = false, Disconnect = function() end} end}
+	end
+	if k == "AttributeChanged" then return m and m.AttributeChanged or nil end -- v1.1
 	return methods[k]
 end
 Proxy.__tostring = function(self) return "BotProxy(" .. tostring(rawget(self, "_model")) .. ")" end
