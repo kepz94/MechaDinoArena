@@ -31,11 +31,26 @@
 --   Works only while SquadsLive; otherwise returns "notArena".
 -- Diagnostics: script SquadServerVersion, SquadServerMode, SquadRequests, SquadSquads (live squads with 2+ members, or with a
 --   test member); player SquadId, SquadResult / SquadResultAt, SquadLeftReason, SquadInvite*.
+-- v1.1 (island hub, MDA-455, plan docs/plans/ISLAND_HUB_v1.0.md Task 4, ADR-011; Kepu 2026-11-11: "if you're squaded up and
+--   enter into a game mode your squad queues with you, even bot island"; the leader walks in, the whole squad goes):
+--   * live in every kind (hub, practice, arena): SquadsLive = SquadServerEnabled ~= false and (Arena or script attribute
+--     SquadAllKindsEnabled ~= false, default true; false = 1.0: Arena only). Read once at start.
+--   * leader: the player who founds a squad gets player attribute SquadLeader = true, everyone joining gets false; each member
+--     gets SquadJoinedAt (server time). When the leader leaves (any reason), HubRules 1.0 nextLeader(the rest by
+--     SquadJoinedAt) becomes the leader. Leaving clears SquadLeader / SquadJoinedAt.
+--   * the menu keeps the squad: InMenu turning true only clears a pending invite (script attribute SquadMenuKeepEnabled,
+--     default true, read at each change; false = 1.0: leave with reason "menu").
+--   * arrival: a player whose join data TeleportData.mdaTrip is a table with a string key (HubServer 1.0 / ModeServer 1.3
+--     trips) joins the squad made for that key on this server (kept HubRules.KEY_KEEP (60) s after the last arrival; full or
+--     expired -> a new squad for the key); the first arrival founds it. mdaTrip.leader == this player's UserId -> this player
+--     becomes the leader. Diagnostics: player SquadTripKey; script SquadTripArrivals.
+--   * test hook: Invoke("arrive", player, tripTable) runs the arrival path (returns the SquadId); Invoke("leader", player) makes
+--     the player its squad's leader (returns "ok" / "noSquad"). Both work whenever squads are live.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local INVITE_TIME, INVITE_GUARD, BUSY = 15, 5, 0.15
 
 script:SetAttribute("SquadServerVersion", VERSION)
@@ -49,7 +64,13 @@ local rulesModule = arcade:WaitForChild("SquadRules")
 local SquadRules = require(rulesModule)
 local MODE = ModeRules.currentMode()
 script:SetAttribute("SquadServerMode", MODE)
-local LIVE = MODE == "arena" and script:GetAttribute("SquadServerEnabled") ~= false
+if script:GetAttribute("SquadAllKindsEnabled") == nil then script:SetAttribute("SquadAllKindsEnabled", true) end -- v1.1
+if script:GetAttribute("SquadMenuKeepEnabled") == nil then script:SetAttribute("SquadMenuKeepEnabled", true) end -- v1.1
+script:SetAttribute("SquadTripArrivals", 0) -- v1.1
+local LIVE = (MODE == "arena" or script:GetAttribute("SquadAllKindsEnabled") ~= false) -- v1.1: + every kind
+	and script:GetAttribute("SquadServerEnabled") ~= false
+local okHub, HubRules = pcall(function() return require(arcade:WaitForChild("HubRules", 5)) end) -- v1.1
+if not okHub or type(HubRules) ~= "table" then HubRules = nil end
 ReplicatedStorage:SetAttribute("SquadsLive", LIVE)
 
 -- client copy
@@ -103,15 +124,34 @@ local function testMembers(id)
 	end
 	return n
 end
+local function pickLeader(id) -- v1.1: the earliest member left becomes the leader
+	local rest = SquadRules.members(id)
+	if #rest == 0 then return end
+	for _, m in ipairs(rest) do
+		if m:GetAttribute("SquadLeader") == true then return end
+	end
+	local list = {}
+	for _, m in ipairs(rest) do table.insert(list, {id = m.UserId, joinedAt = tonumber(m:GetAttribute("SquadJoinedAt"))}) end
+	local pick = HubRules and HubRules.nextLeader(list) or list[1].id
+	for _, m in ipairs(rest) do m:SetAttribute("SquadLeader", m.UserId == pick) end
+end
+local function clearMember(p) -- v1.1
+	p:SetAttribute("SquadLeader", nil)
+	p:SetAttribute("SquadJoinedAt", nil)
+end
 local function leave(p, reason)
 	local old = idOf(p)
 	if old == "" then return false end
 	p:SetAttribute("SquadId", "")
 	p:SetAttribute("SquadLeftReason", reason)
+	clearMember(p) -- v1.1
 	local rest = SquadRules.members(old)
 	if #rest == 1 and testMembers(old) == 0 then
 		rest[1]:SetAttribute("SquadId", "")
 		rest[1]:SetAttribute("SquadLeftReason", "dissolved")
+		clearMember(rest[1]) -- v1.1
+	else
+		pickLeader(old) -- v1.1
 	end
 	recount()
 	return true
@@ -121,6 +161,8 @@ local function newId(founder)
 	local id = tostring(founder.UserId) .. "_" .. counter
 	founder:SetAttribute("SquadId", id)
 	founder:SetAttribute("SquadLeftReason", nil)
+	founder:SetAttribute("SquadLeader", true) -- v1.1
+	founder:SetAttribute("SquadJoinedAt", now())
 	return id
 end
 
@@ -171,6 +213,8 @@ local function accept(p)
 	if theirs == "" then theirs = newId(inv) end
 	p:SetAttribute("SquadId", theirs)
 	p:SetAttribute("SquadLeftReason", nil)
+	p:SetAttribute("SquadLeader", false) -- v1.1
+	p:SetAttribute("SquadJoinedAt", now())
 	clearInvite(p)
 	recount()
 	return "ok"
@@ -191,14 +235,53 @@ remote.OnServerEvent:Connect(function(p, action, uid)
 	result(p, r)
 end)
 
+-- v1.1: a trip's squad rebuilt on arrival
+local tripKeys = {} -- [key] = {id, at}
+local function makeLeader(p)
+	local id = idOf(p)
+	if id == "" then return false end
+	for _, m in ipairs(SquadRules.members(id)) do m:SetAttribute("SquadLeader", m == p) end
+	return true
+end
+local function arrive(p, trip)
+	if not LIVE or type(trip) ~= "table" or type(trip.key) ~= "string" or trip.key == "" then return "" end
+	local keep = HubRules and HubRules.KEY_KEEP or 60
+	local k = tripKeys[trip.key]
+	local id = ""
+	if k and now() - k.at <= keep and #SquadRules.members(k.id) > 0 and size(k.id) < SquadRules.MAX and idOf(p) ~= k.id then
+		leave(p, "switch")
+		id = k.id
+		p:SetAttribute("SquadId", id)
+		p:SetAttribute("SquadLeftReason", nil)
+		p:SetAttribute("SquadLeader", false)
+		p:SetAttribute("SquadJoinedAt", now())
+	elseif k and idOf(p) == k.id then
+		id = k.id
+	else
+		leave(p, "switch")
+		id = newId(p)
+	end
+	tripKeys[trip.key] = {id = id, at = now()}
+	p:SetAttribute("SquadTripKey", trip.key)
+	if trip.leader == p.UserId then makeLeader(p) end
+	script:SetAttribute("SquadTripArrivals", (script:GetAttribute("SquadTripArrivals") or 0) + 1)
+	recount()
+	return id
+end
+
 local function onPlayer(p)
 	if p:GetAttribute("SquadId") == nil then p:SetAttribute("SquadId", "") end
 	p:GetAttributeChangedSignal("InMenu"):Connect(function()
 		if p:GetAttribute("InMenu") == true then
 			clearInvite(p)
-			leave(p, "menu")
+			if script:GetAttribute("SquadMenuKeepEnabled") == false then leave(p, "menu") end -- v1.1: the menu keeps the squad
 		end
 	end)
+	if LIVE then -- v1.1
+		local okJd, jd = pcall(function() return p:GetJoinData() end)
+		local td = okJd and type(jd) == "table" and jd.TeleportData or nil
+		if type(td) == "table" and type(td.mdaTrip) == "table" then arrive(p, td.mdaTrip) end
+	end
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, p) end
@@ -216,6 +299,13 @@ if not hook then
 end
 hook.OnInvoke = function(action, player, model)
 	if not LIVE then return "notArena" end
+	if action == "arrive" then -- v1.1
+		if typeof(player) ~= "Instance" or not player:IsA("Player") then return "badArg" end
+		return arrive(player, model)
+	elseif action == "leader" then -- v1.1
+		if typeof(player) ~= "Instance" or not player:IsA("Player") then return "badArg" end
+		return makeLeader(player) and "ok" or "noSquad"
+	end
 	if typeof(player) ~= "Instance" or not player:IsA("Player") or typeof(model) ~= "Instance" then return "badArg" end
 	if action == "join" then
 		local id = idOf(player)
