@@ -50,12 +50,17 @@
 --   dino is parked like any menu player), at most every 1.5 s and only once the loading egg is finished (EggLoaderState not
 --   "loading" / "splash" / "hatching" / "travel"), so the arrival egg still hatches. DINO & LOADOUT then opens the menu.
 --   Switch: script attribute PracticeLobbyParkEnabled (default true, read per frame; false = 1.4).
+-- v1.6 (Bots v2, MDA-473, plan docs/plans/BOTS_V2_v1.0.md T10; Kepu 2026-11-11 pick "Remove them": bots are always mixed): while
+--   ReplicatedStorage.Practice PrDifficulty is "Mixed" (PracticeServer 1.7) the BOTS label and EASY / NORMAL / HARD buttons are hidden
+--   (the bar is laid out again) and the line under the title starts with "MIXED BOTS · ". Switch: script attribute
+--   PracticeLobbyMixedEnabled (default true, read per frame; false = 1.5).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.5"
+VERSION = "1.6" -- v1.6 mixed bots
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW = Color3.fromRGB(255, 200, 50)
 local MUTED = Color3.fromRGB(143, 153, 170)
@@ -389,6 +394,26 @@ local function boardLines()
 end
 
 -- ---------- layout ----------
+-- v1.6: mixed bots (see the header)
+if script:GetAttribute("PracticeLobbyMixedEnabled") == nil then script:SetAttribute("PracticeLobbyMixedEnabled", true) end
+local function mixedOn()
+	return script:GetAttribute("PracticeLobbyMixedEnabled") ~= false and state:GetAttribute("PrDifficulty") == "Mixed"
+end
+local function mixedVis() -- -> changed
+	local want = not mixedOn()
+	local changed = false
+	for _, d in ipairs({"Easy", "Normal", "Hard"}) do
+		local bt = buttons["diff" .. d]
+		if bt and bt.b.Visible ~= want then
+			bt.b.Visible = want
+			if bt.shadow then bt.shadow.Visible = want end
+			changed = true
+		end
+	end
+	if botsLbl.Visible ~= want then botsLbl.Visible = want changed = true end -- the "BOTS" label goes with them
+	return changed
+end
+
 local function layout()
 	local vp = gui.AbsoluteSize
 	local W, Hh = vp.X, vp.Y
@@ -516,8 +541,10 @@ RunService.RenderStepped:Connect(function()
 	end
 	if not show then return end
 	if hubVis() then layout() end -- v1.3
+	if mixedVis() then layout() end -- v1.6
 	local at = tonumber(state:GetAttribute("PrStartAt")) or 0
 	sub.Text = "HARDPOINT · SUMMIT · " .. (at > 0 and ("STARTS IN " .. fmt(at - now())) or "WAITING")
+	if mixedOn() then sub.Text = "MIXED BOTS · " .. sub.Text end -- v1.6
 	local diff = state:GetAttribute("PrDifficulty")
 	for _, d in ipairs({"Easy", "Normal", "Hard"}) do
 		local bt = buttons["diff" .. d]

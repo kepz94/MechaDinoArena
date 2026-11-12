@@ -20,7 +20,18 @@
 --   WalkSpeed x WaterSwimBotSpeedMul (0.7); a bank (pushing at under 30% of that speed for 0.25 s) -> an up-kick of
 --   WaterSwimBotClimbBoost (30), at most every 0.6 s. Model attribute BotSwimming (true while swimming) for PracticeBrain.
 --   Switch: WaterSwimBotAssistEnabled (default true, read per frame). Diagnostic: WaterSwimBotKicks.
+-- v1.1 (found in the Studio match test 2026-11-11: bots idle under the island at y -13 .. -23; the island sits on big "Seabed"
+--   plates (top -8, up to 1700 x 676) that are the ocean floor, so 1.0 filled water under the land too: on a 40-stud grid 1599
+--   of 2535 water samples were under land): the water is filled by columns instead. For each water surface part (no collide,
+--   named "Water" / "LakeWater") a ray goes down every WaterSwimColumnStep (4) studs (WaterSwimColumnStepBig (8) on surfaces
+--   larger than WaterSwimBigArea (100 000) square studs) and stops on the first collidable Ground part (RespectCanCollide):
+--   a hit below the surface (WaterSwimSurface - 0.05) is open water from that floor up to the surface; a higher hit is land (no
+--   water). Neighbouring columns of one row whose floors differ by under 4 studs are filled as one block (bottom = the lowest).
+--   Water never sits under land or under a higher floor. Switch: script attribute WaterSwimColumnsEnabled (default true, read
+--   when the water is filled; false = 1.0's fill over every low floor part). Diagnostics WaterSwimMode ("columns" / "parts"),
+--   WaterSwimRays.
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 column fill
 script:SetAttribute("WaterSwimVersion", VERSION)
 if script:GetAttribute("WaterSwimEnabled") == nil then script:SetAttribute("WaterSwimEnabled", true) end
 if script:GetAttribute("WaterSwimSurface") == nil then script:SetAttribute("WaterSwimSurface", -0.85) end
@@ -53,6 +64,59 @@ local function blocks()
 	return out
 end
 
+-- v1.1: open-water columns (see the header)
+for k, v in pairs({WaterSwimColumnsEnabled = true, WaterSwimColumnStep = 4, WaterSwimColumnStepBig = 8, WaterSwimBigArea = 100000}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local function columns()
+	local island = workspace:WaitForChild("DinoIsland", 30)
+	local ground = island and island:FindFirstChild("Ground")
+	local out = {}
+	if not ground then return out end
+	local surface = tonumber(script:GetAttribute("WaterSwimSurface")) or -0.85
+	local step = tonumber(script:GetAttribute("WaterSwimColumnStep")) or 4
+	local bigStep = tonumber(script:GetAttribute("WaterSwimColumnStepBig")) or 8
+	local bigArea = tonumber(script:GetAttribute("WaterSwimBigArea")) or 100000
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = {ground}
+	params.RespectCanCollide = true
+	local rays = 0
+	for _, s in ipairs(ground:GetDescendants()) do
+		if s:IsA("BasePart") and not s.CanCollide and (s.Name == "Water" or s.Name == "LakeWater") then
+			local st = (s.Size.X * s.Size.Z > bigArea) and bigStep or step
+			local x0, x1 = s.Position.X - s.Size.X / 2, s.Position.X + s.Size.X / 2
+			local z0, z1 = s.Position.Z - s.Size.Z / 2, s.Position.Z + s.Size.Z / 2
+			for z = z0 + st / 2, z1, st do
+				local runA, runB, runLow, runRef
+				local function flush()
+					if runA and surface - runLow > 0.3 then
+						local h = surface - runLow
+						table.insert(out, {cf = CFrame.new((runA + runB) / 2, runLow + h / 2, z),
+							size = Vector3.new(runB - runA + st, h, st), axis = true})
+					end
+					runA = nil
+				end
+				for x = x0 + st / 2, x1, st do
+					local hit = workspace:Raycast(Vector3.new(x, surface + 300, z), Vector3.new(0, -600, 0), params)
+					rays += 1
+					if rays % 3000 == 0 then task.wait() end
+					local floor = hit and hit.Position.Y < surface - 0.05 and hit.Position.Y or nil
+					if floor and runA and math.abs(floor - runRef) < 4 then
+						runB, runLow = x, math.min(runLow, floor)
+					else
+						flush()
+						if floor then runA, runB, runLow, runRef = x, x, floor, floor end
+					end
+				end
+				flush()
+			end
+		end
+	end
+	script:SetAttribute("WaterSwimRays", rays)
+	return out
+end
+
 local function on()
 	if busy or #filled > 0 then return end
 	busy = true
@@ -60,7 +124,9 @@ local function on()
 		if script:GetAttribute("WaterSwimOld_" .. k) == nil then script:SetAttribute("WaterSwimOld_" .. k, terrain[k]) end
 		terrain[k] = v
 	end
-	local list = blocks()
+	local useColumns = script:GetAttribute("WaterSwimColumnsEnabled") ~= false -- v1.1
+	script:SetAttribute("WaterSwimMode", useColumns and "columns" or "parts")
+	local list = useColumns and columns() or blocks()
 	for i, b in ipairs(list) do
 		terrain:FillBlock(b.cf, b.size, Enum.Material.Water)
 		table.insert(filled, b)
@@ -79,6 +145,9 @@ local function off()
 		local r = math.max(half.X, half.Z) * 1.42
 		local c = b.cf.Position
 		local region = Region3.new(c - Vector3.new(r, half.Y + 4, r), c + Vector3.new(r, half.Y + 4, r)):ExpandToGrid(4)
+		if b.axis then -- v1.1: column blocks are axis-aligned
+			region = Region3.new(c - Vector3.new(half.X, half.Y + 4, half.Z), c + Vector3.new(half.X, half.Y + 4, half.Z)):ExpandToGrid(4)
+		end
 		pcall(function() terrain:ReplaceMaterial(region, 4, Enum.Material.Water, Enum.Material.Air) end)
 		if i % 25 == 0 then task.wait() end
 	end

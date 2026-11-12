@@ -8,8 +8,13 @@
 --   "land"), minR, maxR, radius, move (a bot move after an accepted use: "dash" / "leap" / "lerp" / "portal" / "boost"), cd (s
 --   to wait after a use when no part cooldown can be read)}. Parts left out (not bot buttons): bloodrush, mechalegs (fired by
 --   the attack / jump), glider (a held glide), breaker (pressed while stunned).
--- Accepted = the model's attributes changed during the Invoke (the handler wrote its stamps / results); refused -> that part
---   waits RETRY (2) s.
+-- Accepted = a "...Result" attribute the handler wrote this call reads one of OK_RESULTS (ok, placing, hit, dash, zip, miss,
+--   missed, fired, placed, open, landed, used, latched, on, onJump); when the handler wrote no "...Result", any attribute change
+--   counts. Refused -> that part waits RETRY (2) s.
+-- Studio check 2026-11-11 (all 51 parts on a bot vs a target bot): every part answers "ok" through its bot entrance except
+--   hookarm (HookEnabled stays false: SkillTree's Therizino overlay sets e.hookRange = 0 for every other dino, players too ->
+--   BROKEN, left out of bot loadouts; reported to Kepu), tgrab "noTarget" at 25 studs (needs 8), tleap "onJump" (armed until
+--   the next jump: the bot jumps, then leaps).
 -- think(b, ctx, info) -> true when a part was used this tick (the brain then skips its move). At most one part per
 --   tier.abilDelay s; parts in a random order; want = PracticeRules.abilityWant(kind, info + the part's ranges); used when
 --   rng < want x tier.abil. A mobility part also counts as wanted while info.wantMobility (the brain's stuck ladder step 3).
@@ -26,6 +31,12 @@
 -- prepareSpec(spec, rng) -> spec with steps + loadout re-rolled so its slots hold parts from PARTS for its dino (a mobility
 --   part first when the dino has one, PracticeRules 1.2 pickLoadout), its level's other points at random as before; marked
 --   spec.kitReady. onSpawn(rec, model) resets the kit's per-life state.
+-- Async fire (found in the Studio match test 2026-11-11: a part's Invoke yields (the bot entrance's first-use 0.2 s wait, some
+--   handlers wait too), and a fire inside think held the whole bot tick: PrServerMs 230-350 ms about every 4 s, every bot
+--   stalled): the chosen part fires on its own thread (task.spawn); think returns false at once and fires nothing more for that
+--   bot until the result is in (k.pending); the result sets the cooldown as before (used -> p.cd, else RETRY). A move part sets
+--   b.busy when it starts, so the brain stops steering then. A Lua error in a fire -> PracticeServer attribute PrKitError.
+--   Switch: PracticeServer attribute PrKitAsyncEnabled (default true, read per fire; false = the waiting fire above).
 -- Model attributes: BotLastPart ("<id> <result>"), BotPartsUsed (count), BotPartsTried.
 -- Switch: PracticeServer's PrKitEnabled (read per tick there); script attribute KIT_OFF list in PracticeServer attribute
 --   PrKitDeny (comma list of part ids bots must not use, default "").
@@ -36,6 +47,9 @@ local M = {}
 M.Version = "1.0"
 
 local RETRY = 2
+local OK_RESULTS = {ok = true, placing = true, hit = true, dash = true, zip = true, miss = true, missed = true, fired = true,
+	placed = true, open = true, landed = true, used = true, latched = true, on = true, onJump = true}
+local BROKEN = {hookarm = true} -- see the header (Studio check 2026-11-11)
 local deps = {}
 
 M.PARTS = {
@@ -110,12 +124,18 @@ local function denied(id)
 	return false
 end
 
+local function asyncOn()
+	local ps = ServerScriptService:FindFirstChild("PracticeServer")
+	return not (ps and ps:GetAttribute("PrKitAsyncEnabled") == false)
+end
+
 -- ---------- loadouts ----------
 function M.liveFor(species, SkillTree)
 	local out = {}
 	for id in pairs(M.PARTS) do
 		local p = SkillTree and SkillTree.PATHS[id]
-		if p and not p.soon and SkillTree.LIVE_MECH[id] and SkillTree.BUTTONS[id] and SkillTree.seesPath(p, species) and not denied(id) then
+		if p and not p.soon and SkillTree.LIVE_MECH[id] and SkillTree.BUTTONS[id] and SkillTree.seesPath(p, species) and not denied(id)
+			and not BROKEN[id] then
 			table.insert(out, id)
 		end
 	end
@@ -174,10 +194,18 @@ local function snapshot(model)
 end
 
 local function changed(before, model)
+	local any, sawResult, good = false, false, false
 	for k, v in pairs(model:GetAttributes()) do
-		if string.sub(k, 1, 3) ~= "Bot" and before[k] ~= v then return true end
+		if string.sub(k, 1, 3) ~= "Bot" and before[k] ~= v then
+			any = true
+			if string.sub(k, -6) == "Result" then
+				sawResult = true
+				if OK_RESULTS[tostring(v)] then good = true end
+			end
+		end
 	end
-	return false
+	if sawResult then return good end
+	return any
 end
 
 local function moveDir(b, info)
@@ -244,7 +272,7 @@ local function doMove(b, p, info, dir, point)
 			time = math.clamp(tonumber(m:GetAttribute("DashTime")) or 0.6, 0.2, 1.2)
 			hop = tonumber(m:GetAttribute("DashHop")) or 8
 		else
-			dist = tonumber(m:GetAttribute("TheriGrappleRange")) or 45
+			dist = math.min(tonumber(m:GetAttribute("TheriGrappleRange")) or 45, 60)
 			time = math.clamp(tonumber(m:GetAttribute("TheriGrappleTime")) or 0.35, 0.15, 0.8)
 			hop = 4
 		end
@@ -255,6 +283,7 @@ local function doMove(b, p, info, dir, point)
 		holdVelocity(b, dir * b.hum.WalkSpeed * mul, time)
 	elseif p.move == "leap" then
 		local dist = tonumber(m:GetAttribute("TenoLeapDistNow")) or tonumber(m:GetAttribute("TenoLeapDist")) or 40
+		b.hum.Jump = true
 		holdVelocity(b, dir * (dist / 0.8), 0.8, math.sqrt(2 * workspace.Gravity * 14))
 	elseif p.move == "lerp" then
 		local from, to = m:GetAttribute("DiloJetsFrom"), m:GetAttribute("DiloJetsTo")
@@ -353,7 +382,7 @@ function M.think(b, ctx, info)
 		end
 		b.kit = k
 	end
-	if #k.slots == 0 or os.clock() < k.nextThink then return false end
+	if #k.slots == 0 or os.clock() < k.nextThink or k.pending then return false end
 	k.nextThink = os.clock() + 0.25
 	local rng = ctx.rng
 	local order = table.clone(k.slots)
@@ -368,7 +397,28 @@ function M.think(b, ctx, info)
 			w.minR, w.maxR, w.radius = p.minR, p.maxR, p.radius
 			if p.kind == "mobility" and info.wantMobility then w.stuckFor = 99 end
 			local want = R.abilityWant(p.kind, w)
-			if want > 0 and rng:NextNumber() < want * (tier.abil or 0.5) then
+			local go = want > 0 and rng:NextNumber() < want * (tier.abil or 0.5)
+			if go and asyncOn() then
+				-- async (see the header): the fire runs on its own thread; the brain goes on this tick
+				k.pending = true
+				k.cd[id] = os.clock() + RETRY
+				local infoCopy = table.clone(info)
+				task.spawn(function()
+					local ok, r = pcall(fire, b, id, p, infoCopy, R, rng, tier)
+					if ok and r == "used" then
+						k.cd[id] = os.clock() + (p.cd or 8)
+						k.nextThink = os.clock() + (tier.abilDelay or 0.5)
+					else
+						k.cd[id] = os.clock() + RETRY
+						if not ok then
+							local ps = ServerScriptService:FindFirstChild("PracticeServer")
+							if ps then ps:SetAttribute("PrKitError", id .. ": " .. string.sub(tostring(r), 1, 160)) end
+						end
+					end
+					k.pending = false
+				end)
+				return false
+			elseif go then
 				local r = fire(b, id, p, info, R, rng, tier)
 				if r == "used" then
 					k.cd[id] = os.clock() + (p.cd or 8)

@@ -40,12 +40,29 @@
 --   * retreat as 1.0 (R.shouldRetreat with the tier) toward the nearest mate, else the team home.
 -- Model attributes: BotState (move / fight / retreat / holdBelow / attack / swim / dead), BotTarget, BotTier, BotStuckStep,
 --   BotStuckCount, BotRescues, BotLastRescue, BotDodges, BotLastAttack, BotAttacks, BotSpeedSet.
+-- v2.1 (found in the Studio match test 2026-11-11: 38 of 139 stuck-ladder events in 4 min were "hold" bots standing on point 4's
+--   hold spot): the objective goal is a ground point (y = the ground) and the root stands about 7 studs above it, so the caller's
+--   3D check (goal - root) > 4 kept wantMove on after the bot had arrived; the stuck ladder then made it side-step and hop on the
+--   spot. Now nav treats a goal within ARRIVE_FLAT (4) flat studs as arrived (not moving: no stuck ladder, stands). Switch:
+--   PracticeServer attribute PrArriveFlatEnabled (default true, read per call; false = 2.0).
+-- v2.1 roam (same test, after the fix above: with no target, "hold" bots stood still on their spot up to 18 s and "duel" bots
+--   up to 11 s on their hunt spot 145 studs off the point — read as bots sitting): on the objective (not retreat / holdBelow /
+--   fight), with no target:
+--   * once within ROAM_NEAR (6) flat studs of its job spot for 0.5 s, the bot walks to a random spot ROAM_R x 0.4..1 (4..10)
+--     studs around it, a new one every 2.5..4 s (a spot is used only when the ground there is within 4 studs of the ground at
+--     the job spot and not water: no walking off the summit); it stops roaming when the job spot moves away (new point / job).
+--   * a "duel" bot that has waited DUEL_WAIT (3) s on its hunt spot sweeps to the point centre (counted in model attribute
+--     BotSweeps) and roams there until it sees a target or the point moves.
+--   Switch: PracticeServer attribute PrRoamEnabled (default true, read per tick; false = the standing above).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
 
 local M = {}
 M.Version = "2.0"
+M.Version = "2.1" -- v2.1 arrive by flat distance
+local ARRIVE_FLAT = 4 -- v2.1
+local ROAM_NEAR, ROAM_R, DUEL_WAIT = 6, 10, 3 -- v2.1 roam
 
 local NEAR, NEAR_CLOAK = 20, 15
 local DIRECT, REPATH, WATER_COST = 40, 1.5, 3
@@ -235,11 +252,56 @@ local function rescue(b, goal, ctx)
 	return true
 end
 
+-- v2.1 roam (see the header): goal -> the goal to walk to this tick
+local function roam(b, goal, job, ctx)
+	local ps = game:GetService("ServerScriptService"):FindFirstChild("PracticeServer")
+	if ps and ps:GetAttribute("PrRoamEnabled") == false then return goal end
+	local v = b.v2
+	local p = b.hrp.Position
+	local t = os.clock()
+	if v.sweep and v.sweep ~= ctx.index then v.sweep = nil end
+	local sweeping = job == "duel" and v.sweep == ctx.index
+	local base = sweeping and ctx.centre or goal
+	if flat(base - p).Magnitude < ROAM_NEAR then
+		v.atSpotSince = v.atSpotSince or t
+		if job == "duel" and not sweeping and t - v.atSpotSince > DUEL_WAIT then
+			v.sweep, v.atSpotSince, v.roamOff = ctx.index, nil, nil
+			b.model:SetAttribute("BotSweeps", (b.model:GetAttribute("BotSweeps") or 0) + 1)
+			return ctx.centre
+		end
+	elseif not v.roamOff or flat(base + v.roamOff - p).Magnitude > ROAM_NEAR + ROAM_R then
+		v.atSpotSince, v.roamOff, v.roamNext = nil, nil, nil
+	end
+	if v.atSpotSince and t - v.atSpotSince > 0.5 then
+		if not v.roamNext or t >= v.roamNext then
+			v.roamNext = t + 2.5 + math.random() * 1.5
+			v.roamOff = nil
+			local gb = groundAt(base) or groundAt(p)
+			for _ = 1, 4 do
+				local a = math.random() * math.pi * 2
+				local off = Vector3.new(math.cos(a), 0, math.sin(a)) * (ROAM_R * (0.4 + 0.6 * math.random()))
+				local g = gb and groundAt(base + off)
+				if g and math.abs(g.Y - gb.Y) < 4 and not (IslandWater and IslandWater.isWater(g)) then
+					v.roamOff = Vector3.new(off.X, g.Y - base.Y, off.Z)
+					break
+				end
+			end
+		end
+		if v.roamOff then return base + v.roamOff end
+	end
+	return base
+end
+
 -- wantMove: the bot is trying to get somewhere; returns nothing
 local function nav(b, goal, ctx, wantMove)
 	local v = b.v2
 	local p = b.hrp.Position
 	local t = os.clock()
+	-- v2.1: arrived by flat distance (see the header)
+	if wantMove and flat(goal - p).Magnitude < ARRIVE_FLAT then
+		local ps = game:GetService("ServerScriptService"):FindFirstChild("PracticeServer")
+		if not (ps and ps:GetAttribute("PrArriveFlatEnabled") == false) then wantMove = false end
+	end
 	-- progress / stuck ladder
 	if not wantMove or not v.progP or (p - v.progP).Magnitude > 3 then
 		v.progP, v.progAt, v.ladder = p, t, 0
@@ -479,6 +541,7 @@ function M.step(b, ctx)
 	local seen = best ~= nil
 	if best then
 		v.lastSeenPos, v.lastSeenAt = rootOf(best).Position, os.clock()
+		v.sweep, v.atSpotSince = nil, nil -- v2.1 roam: a target ends the sweep
 	elseif b.target and aliveModel(b.target) and v.lastSeenAt and os.clock() - v.lastSeenAt < (tier.loseTrack or 3) then
 		best = b.target
 	end
@@ -564,6 +627,7 @@ function M.step(b, ctx)
 			end
 		end
 		setState(m, swimming and "swim" or "move")
+		goal = roam(b, goal, job, ctx) -- v2.1
 	else
 		goal = p
 	end
