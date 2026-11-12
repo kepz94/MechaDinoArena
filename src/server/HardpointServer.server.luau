@@ -78,6 +78,21 @@
 -- v1.4 (island hub, MDA-454, plan docs/plans/ISLAND_HUB_v1.0.md Task 3, ADR-011; Kepu 2026-11-11: the hub island is free roam):
 --   when ModeRules 1.2 serverKind() == "hub" nothing starts (HardpointState "hub"; no HpLive, no teams). Kinds "practice" /
 --   "arena": exactly 1.3. Switch: script attribute HardpointHubEnabled (default true; false = 1.3). Read once at start.
+-- v1.5 (match end, MDA-464, plan docs/plans/MATCH_END_v1.0.md Task 4, mockup docs/mockups/match_end_v0.1.html; Kepu 2026-11-11
+--   19:43 "Build with all the recs"):
+--   * Scoreboard rows get pk (player kills): the practice hook's "stat" also takes field "pk" (KillFeedServer 1.1 sends it when a
+--     player kills a player); HpBoard rows carry pk.
+--   * Awards, once per match, the moment the winner is decided (match.awarded): the board rows go through
+--     ServerStorage.DinoArcade.MatchAwards 1.0 compute(rows, winner, PRACTICE, cfg) (MVP / SVP one per team; XP lines). For each
+--     human row "u<UserId>" whose Player is in the server and whose total > 0: ServerScriptService.SkillServer.SkillGrantXp
+--     (SkillServer 1.10) Invoke(player, total, "match") (skill XP to the dino being played). Then ReplicatedStorage.Hardpoint
+--     HpAwards = JSON {mvp, svp, practice, winner, rows = {[id] = {kill, point, win, mvp, svp, total, granted (the grant's
+--     result), lvB, inB, nxB, lvA, inA, nxA}}} (levels from the grant; 0 when not granted). newMatch / the practice lobby / stop
+--     set HpAwards "".
+--   * cfg from script attributes (read at each award): HpXpKill 50, HpXpPerSec 1, HpXpWin 100, HpXpDraw 50, HpXpMvp 50, HpXpSvp
+--     25, HpXpPracticeMul 0.1, HpMvpKillPts 100, HpMvpSecPts 10.
+--   Switch: script attribute HardpointAwardsEnabled (default true, read at each award; false = 1.4: no awards, HpAwards "").
+--   Diagnostics: HpAwardsLast ("mvp <id> svp <id> rows n granted n" / "off" / "noModule"), HpAwardsCount.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -88,11 +103,19 @@ local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 spawns v2
 VERSION = "1.3" -- v1.3 far spawns + start sides by run
 VERSION = "1.4" -- v1.4 off on the hub
+VERSION = "1.5" -- v1.5 match awards
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
 if script:GetAttribute("HpMinPlayers") == nil then script:SetAttribute("HpMinPlayers", 1) end
 if script:GetAttribute("HardpointPracticeEnabled") == nil then script:SetAttribute("HardpointPracticeEnabled", true) end -- v1.1
 script:SetAttribute("HpTicks", 0)
+-- v1.5: awards switch + numbers (see the header)
+if script:GetAttribute("HardpointAwardsEnabled") == nil then script:SetAttribute("HardpointAwardsEnabled", true) end
+for k, v in pairs({HpXpKill = 50, HpXpPerSec = 1, HpXpWin = 100, HpXpDraw = 50, HpXpMvp = 50, HpXpSvp = 25, HpXpPracticeMul = 0.1,
+	HpMvpKillPts = 100, HpMvpSecPts = 10}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+script:SetAttribute("HpAwardsCount", script:GetAttribute("HpAwardsCount") or 0)
 
 local arcade = ServerStorage:WaitForChild("DinoArcade")
 local ModeRules = require(arcade:WaitForChild("ModeRules"))
@@ -474,7 +497,7 @@ local function publishBoard(force)
 	local list = {}
 	for _, r in pairs(board) do
 		table.insert(list, {id = r.id, name = r.name, team = r.team, species = r.species, bot = r.bot, k = r.k, d = r.d,
-			pt = math.floor(r.pt + 0.5)})
+			pt = math.floor(r.pt + 0.5), pk = r.pk or 0}) -- v1.5: + pk
 	end
 	table.sort(list, function(x, y) if x.k ~= y.k then return x.k > y.k end return x.name < y.name end)
 	set("HpBoard", HttpService:JSONEncode(list))
@@ -494,6 +517,71 @@ local function newMatch()
 	set("HpMatchStartAt", match.startAt)
 	set("HpWinner", "")
 	set("HpResultsEndAt", 0)
+	set("HpAwards", "") -- v1.5
+end
+
+-- ---------- v1.5: awards (see the header) ----------
+local MatchAwards
+do
+	local m = arcade:FindFirstChild("MatchAwards")
+	if m then
+		local ok, mod = pcall(require, m)
+		if ok then MatchAwards = mod end
+	end
+end
+local function awardsCfg()
+	local function n(k, dflt) local v = script:GetAttribute(k) return type(v) == "number" and v or dflt end
+	return {kill = n("HpXpKill", 50), sec = n("HpXpPerSec", 1), win = n("HpXpWin", 100), draw = n("HpXpDraw", 50),
+		mvp = n("HpXpMvp", 50), svp = n("HpXpSvp", 25), practiceMul = n("HpXpPracticeMul", 0.1), mvpKill = n("HpMvpKillPts", 100),
+		mvpSec = n("HpMvpSecPts", 10)}
+end
+local function award(m)
+	if not m or m.awarded then return end
+	m.awarded = true
+	if script:GetAttribute("HardpointAwardsEnabled") == false then
+		script:SetAttribute("HpAwardsLast", "off")
+		return
+	end
+	if not MatchAwards then
+		script:SetAttribute("HpAwardsLast", "noModule")
+		return
+	end
+	local rows = {}
+	for _, r in pairs(board) do
+		table.insert(rows, {id = r.id, team = r.team, bot = r.bot, k = r.k, d = r.d, pt = r.pt, pk = r.pk or 0})
+	end
+	local res = MatchAwards.compute(rows, m.winner, PRACTICE, awardsCfg())
+	task.spawn(function()
+		local grantFn = game:GetService("ServerScriptService"):FindFirstChild("SkillServer")
+		grantFn = grantFn and grantFn:FindFirstChild("SkillGrantXp")
+		local out, nRows, nGranted = {}, 0, 0
+		for id, l in pairs(res.rows) do
+			nRows += 1
+			local row = {kill = l.kill, point = l.point, win = l.win, mvp = l.mvp, svp = l.svp, total = l.total, granted = "none",
+				lvB = 0, inB = 0, nxB = 0, lvA = 0, inA = 0, nxA = 0}
+			local uid = tonumber(string.match(id, "^u(%d+)$") or "")
+			local pl = uid and Players:GetPlayerByUserId(uid)
+			if not pl then
+				row.granted = "left"
+			elseif l.total > 0 and grantFn then
+				local ok, why, b, a = pcall(function() return grantFn:Invoke(pl, l.total, "match") end)
+				row.granted = ok and tostring(why) or "error"
+				if ok and why == "ok" and type(b) == "table" and type(a) == "table" then
+					nGranted += 1
+					row.lvB, row.inB, row.nxB = b.level or 0, b.into or 0, b.next or 0
+					row.lvA, row.inA, row.nxA = a.level or 0, a.into or 0, a.next or 0
+				end
+			elseif not grantFn then
+				row.granted = "noGrant"
+			end
+			out[id] = row
+		end
+		if match ~= m then return end -- a new match started meanwhile
+		set("HpAwards", HttpService:JSONEncode({mvp = res.mvp, svp = res.svp, practice = PRACTICE == true, winner = m.winner,
+			rows = out}))
+		script:SetAttribute("HpAwardsLast", ("mvp %s svp %s rows %d granted %d"):format(res.mvp, res.svp, nRows, nGranted))
+		script:SetAttribute("HpAwardsCount", (script:GetAttribute("HpAwardsCount") or 0) + 1)
+	end)
 end
 
 local function playingCount()
@@ -549,6 +637,7 @@ local function tick()
 			if PRACTICE then -- v1.1: back to the lobby
 				local w = match.winner
 				match = nil
+				set("HpAwards", "") -- v1.5
 				publish()
 				practiceEnded:Fire(w)
 				return
@@ -590,6 +679,7 @@ local function tick()
 		match.resultsEndAt = now() + H.RESULTS
 		set("HpWinner", w)
 		set("HpResultsEndAt", match.resultsEndAt)
+		award(match) -- v1.5
 	end
 	ticks += 1
 	if ticks % 20 == 0 then script:SetAttribute("HpTicks", ticks) end
@@ -671,13 +761,14 @@ practiceFn.OnInvoke = function(action, a, b, c, d, e2, f)
 		return "ok"
 	elseif action == "stop" then
 		match = nil
+		set("HpAwards", "") -- v1.5
 		publish()
 		return "ok"
 	elseif action == "stat" then
 		-- ("stat", id, name, team, species, isBot, field)
-		if type(a) ~= "string" or (f ~= "k" and f ~= "d") or not match then return "badArg" end
+		if type(a) ~= "string" or (f ~= "k" and f ~= "d" and f ~= "pk") or not match then return "badArg" end -- v1.5: + "pk"
 		local r = boardRow(a, b, c, d, e2)
-		r[f] += 1
+		r[f] = (r[f] or 0) + 1
 		return "ok"
 	end
 	return "badArg"
@@ -709,6 +800,7 @@ local function stop()
 	if conn then conn:Disconnect() conn = nil end
 	match = nil
 	setLive(false)
+	set("HpAwards", "") -- v1.5
 	set("HpPhase", "off")
 	clearTeams()
 	script:SetAttribute("HardpointState", "off")

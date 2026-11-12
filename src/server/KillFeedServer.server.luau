@@ -21,11 +21,16 @@
 -- Switch: script attribute KillFeedEnabled (default true, read at every death; false = nothing sent, nothing counted).
 -- Settings: KillFeedLastHitWindow (5). Diagnostics: KillFeedServerVersion, KillFeedSent, KillFeedNoKiller, KillFeedLast
 --   ("<k> > <how> > <v>").
+-- v1.1 (match end, MDA-463, plan docs/plans/MATCH_END_v1.0.md Task 3; Kepu 2026-11-11 19:43 "Build with all the recs", XP for
+--   player kills): after the killer's "k" stat, when killer and victim are both players (stat ids "u<UserId>"; bots and unknown names are not) the killer also gets the
+--   stat field "pk" (player kills; HardpointServer 1.5 pays kill XP from it at the end of the match). Switch: script attribute
+--   KillFeedPlayerKillStatEnabled (default true, read per kill; false = 1.0, no "pk").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 player-kill stat
 local FALLBACK_WAIT = 0.4
 local HOW = {bite = "Bite", pounce = "Pounce", headbutt = "Headbutt", slash = "Slash", bleed = "Bleed", dilobite = "Bite",
 	dilodart = "Venom Dart", dilovenom = "Venom", troopod = "Pod", troozone = "Zone", scratch = "Scratch", thericlaw = "Claws",
@@ -33,6 +38,7 @@ local HOW = {bite = "Bite", pounce = "Pounce", headbutt = "Headbutt", slash = "S
 
 script:SetAttribute("KillFeedServerVersion", VERSION)
 if script:GetAttribute("KillFeedEnabled") == nil then script:SetAttribute("KillFeedEnabled", true) end
+if script:GetAttribute("KillFeedPlayerKillStatEnabled") == nil then script:SetAttribute("KillFeedPlayerKillStatEnabled", true) end -- v1.1
 if script:GetAttribute("KillFeedLastHitWindow") == nil then script:SetAttribute("KillFeedLastHitWindow", 5) end
 script:SetAttribute("KillFeedSent", 0)
 script:SetAttribute("KillFeedNoKiller", 0)
@@ -100,6 +106,9 @@ local function report(victim, vWho, killerName, how)
 		return
 	end
 	stat(kWho.key, kWho.name, kWho.team, kWho.sp, kWho.bot, "k")
+	if script:GetAttribute("KillFeedPlayerKillStatEnabled") ~= false and tostring(kWho.key):sub(1, 1) == "u" and tostring(vWho.key):sub(1, 1) == "u" then -- v1.1
+		stat(kWho.key, kWho.name, kWho.team, kWho.sp, kWho.bot, "pk")
+	end
 	local e = {k = kWho.name, kTeam = kWho.team, kBot = kWho.bot, kId = kWho.id, kSp = kWho.sp, how = how, v = vWho.name,
 		vTeam = vWho.team, vBot = vWho.bot, vId = vWho.id, vSp = vWho.sp, at = now()}
 	remote:FireAllClients(e)

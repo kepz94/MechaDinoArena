@@ -108,12 +108,20 @@
 -- v1.9 (practice match, MDA-405, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 1, red-team 3; Kepu 2026-11-10 "10% (like CoD
 --   Mobile)"): a killed bot's model attribute SkillXpMul (number, default 1) multiplies its kill XP (PracticeServer's bots carry
 --   0.1). Switch: script attribute SkillBotXpMulEnabled (default true; false = 1.8, every bot gives full XP).
+-- v1.10 (match end, MDA-462, plan docs/plans/MATCH_END_v1.0.md Task 2; Kepu 2026-11-11 19:43 "Build with all the recs"): server-only
+--   BindableFunction SkillGrantXp (child of this script): Invoke(player, amount, reason) -> "ok", before, after (before / after =
+--   {level, into, next} from SkillTree.levelOf on the active dino's XP) | "disabled" (SkillEnabled or SkillGrantEnabled false) |
+--   "notLoaded" (no loaded data for the player) | "badArg" (not a Player, amount not a whole number > 0). Adds amount to the
+--   active dino's XP (as a bot kill does), marks it for saving, publishes (level-up stamp as a kill), SkillLastXp =
+--   (reason or "xp") .. " +" .. amount. Switch: script attribute SkillGrantEnabled (default true, read per call). Diagnostic:
+--   script SkillGrants (count of "ok").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
 local VERSION = "1.9"
+VERSION = "1.10" -- v1.10 match XP grant
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -498,3 +506,30 @@ workspace.DescendantAdded:Connect(function(d)
 	end
 end)
 for _, d in ipairs(workspace:GetDescendants()) do watch(d) end
+
+-- ---------- v1.10: match XP grant (see the header) ----------
+if script:GetAttribute("SkillGrantEnabled") == nil then script:SetAttribute("SkillGrantEnabled", true) end
+script:SetAttribute("SkillGrants", script:GetAttribute("SkillGrants") or 0)
+local grantFn = script:FindFirstChild("SkillGrantXp")
+if not grantFn then
+	grantFn = Instance.new("BindableFunction")
+	grantFn.Name = "SkillGrantXp"
+	grantFn.Parent = script
+end
+grantFn.OnInvoke = function(player, amount, reason)
+	if script:GetAttribute("SkillEnabled") == false or script:GetAttribute("SkillGrantEnabled") == false then return "disabled" end
+	if typeof(player) ~= "Instance" or not player:IsA("Player") or type(amount) ~= "number" or amount ~= amount
+		or amount <= 0 or amount ~= math.floor(amount) then
+		return "badArg"
+	end
+	local d = data[player]
+	if not d or not d.loaded then return "notLoaded" end
+	local l1, i1, n1 = ST.levelOf(d.xp)
+	d.xp += amount
+	d.dirty = true
+	publish(player, d, true)
+	local l2, i2, n2 = ST.levelOf(d.xp)
+	player:SetAttribute("SkillLastXp", tostring(reason or "xp") .. " +" .. amount)
+	script:SetAttribute("SkillGrants", (script:GetAttribute("SkillGrants") or 0) + 1)
+	return "ok", {level = l1, into = i1, next = n1}, {level = l2, into = i2, next = n2}
+end
