@@ -1,0 +1,280 @@
+<title>Mode Loading Screens v0.1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: a 16:9 game screen showing the picked look for the picked mode; look tabs above, mode chips under, notes below. Single dark look: it is a game screen. */
+:root {
+  --ink: #0d1218; --panel: #151d27; --line: #263243; --text: #e7edf5; --muted: #93a2b6;
+  --arena: #ff9b2e; --bots: #ffd640; --island: #5fe0c8; --volt: #7fe9ff;
+  --f-display: "Silkscreen", "Courier New", monospace;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mode: var(--arena);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--ink); color: var(--text); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px; }
+.eyebrow { font-family: var(--f-display); font-size: 12px; letter-spacing: .12em; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(26px, 4.4vw, 40px); line-height: 1.1; margin: 6px 0 8px; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 68ch; margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tab, .chip { font-family: var(--f-display); font-size: 13px; letter-spacing: .06em; color: var(--text); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.tab[aria-selected="true"] { border-color: var(--bots); box-shadow: inset 0 -3px 0 var(--bots); }
+.chip[aria-pressed="true"] { border-color: currentColor; }
+.chip[data-m="arena"] { color: var(--arena); } .chip[data-m="bots"] { color: var(--bots); } .chip[data-m="island"] { color: var(--island); }
+.tab:focus-visible, .chip:focus-visible { outline: 2px solid var(--volt); outline-offset: 2px; }
+.rec { font-size: 10px; color: #1b1405; background: var(--bots); padding: 2px 6px; border-radius: 3px; }
+.label { font-family: var(--f-display); font-size: 11px; color: var(--muted); letter-spacing: .1em; }
+
+/* the game screen */
+.screen { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 10%, #1d2638 0%, #10141d 70%); container-type: inline-size; }
+.screen * { font-family: var(--f-display); }
+.grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(127,233,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(127,233,255,.05) 1px, transparent 1px); background-size: 4cqw 4cqw; }
+.bar { position: absolute; left: 6cqw; right: 6cqw; bottom: 5cqw; height: 1.2cqw; background: rgba(255,255,255,.08); border-radius: 1cqw; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--mode); border-radius: 1cqw; }
+.pct { position: absolute; right: 6cqw; bottom: 6.8cqw; font-size: 2cqw; color: var(--mode); }
+.tip { position: absolute; left: 6cqw; bottom: 6.8cqw; font-size: 1.35cqw; color: #a9b6c8; max-width: 70cqw; }
+.title { font-weight: 700; color: var(--mode); line-height: 1; }
+.sub { color: #ffffff; letter-spacing: .08em; }
+.v { display: none; position: absolute; inset: 0; }
+.v.on { display: block; }
+
+/* A · Themed incubator */
+.a-left { position: absolute; left: 6cqw; top: 9cqw; width: 34cqw; display: grid; gap: 1.2cqw; }
+.a-left .title { font-size: 5.4cqw; }
+.a-left .sub { font-size: 1.5cqw; }
+.a-pod { position: absolute; left: 50%; top: 8cqw; width: 22cqw; height: 32cqw; transform: translateX(-50%); }
+.a-pod .glass { position: absolute; inset: 3cqw 2cqw 4cqw; border: .5cqw solid #3a4350; border-radius: 1cqw; box-shadow: 0 0 3cqw var(--mode) inset; background: rgba(0,0,0,.25); }
+.a-pod .lid, .a-pod .base { position: absolute; left: 0; right: 0; background: #3a4350; border-radius: .6cqw; }
+.a-pod .lid { top: 0; height: 3.4cqw; } .a-pod .base { bottom: 0; height: 4.4cqw; }
+.a-pod .lid::after { content: ""; position: absolute; left: 2cqw; top: 1.1cqw; width: 1.2cqw; height: 1.2cqw; background: var(--mode); border-radius: 50%; box-shadow: 15cqw 0 0 var(--mode); }
+.egg { position: absolute; left: 50%; bottom: 6cqw; width: 11cqw; height: 14cqw; transform: translateX(-50%); background: #efe4c8;
+  border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%; box-shadow: inset -1.2cqw -1cqw 0 rgba(0,0,0,.12); animation: rock 1.2s ease-in-out infinite; }
+.egg::before, .egg::after { content: ""; position: absolute; border-radius: 50%; background: var(--mode); opacity: .55; }
+.egg::before { width: 2cqw; height: 2cqw; left: 2.5cqw; top: 4cqw; } .egg::after { width: 1.4cqw; height: 1.4cqw; left: 6.5cqw; top: 8cqw; }
+@keyframes rock { 0%, 100% { transform: translateX(-50%) rotate(-2deg); } 50% { transform: translateX(-50%) rotate(2deg); } }
+.a-art { position: absolute; right: 4cqw; top: 9cqw; width: 26cqw; height: 26cqw; opacity: .9; }
+
+/* B · Mode briefing */
+.b-head { position: absolute; left: 6cqw; top: 6cqw; right: 6cqw; display: flex; justify-content: space-between; align-items: end; gap: 2cqw; }
+.b-head .title { font-size: 5cqw; }
+.b-head .sub { font-size: 1.4cqw; }
+.b-map { position: absolute; left: 6cqw; top: 14cqw; width: 44cqw; height: 25cqw; border: .3cqw solid var(--line); border-radius: 1cqw; background: #0c2232; overflow: hidden; }
+.b-side { position: absolute; left: 53cqw; right: 6cqw; top: 14cqw; height: 25cqw; display: grid; grid-template-rows: auto 1fr; gap: 1.2cqw; overflow: hidden; }
+.b-card { border: .25cqw solid var(--line); border-radius: 1cqw; padding: 1.4cqw 1.6cqw; background: rgba(255,255,255,.03); }
+.b-card h4 { margin: 0 0 .8cqw; font-size: 1.3cqw; color: #93a2b6; font-weight: 400; letter-spacing: .1em; }
+.b-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .5cqw; font-size: 1.25cqw; color: #e7edf5; }
+.b-card ul.two { grid-template-columns: 1fr 1fr; column-gap: 1.4cqw; }
+.b-card li b { color: var(--mode); font-weight: 400; }
+.b-egg { position: absolute; right: 11.5cqw; bottom: 6.6cqw; width: 2.6cqw; height: 3.3cqw; background: #efe4c8; border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%; animation: rock2 .9s ease-in-out infinite; }
+@keyframes rock2 { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+
+/* C · Full art */
+.c-art { position: absolute; inset: 0; }
+.c-title { position: absolute; left: 6cqw; top: 6cqw; display: grid; gap: 1cqw; text-shadow: 0 .3cqw 0 rgba(0,0,0,.5); }
+.c-title .title { font-size: 6.4cqw; }
+.c-title .sub { font-size: 1.6cqw; }
+.c-shade { position: absolute; inset: auto 0 0 0; height: 18cqw; background: linear-gradient(transparent, rgba(8,10,14,.9)); }
+
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 820px) { .cols { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.card h3 { font-family: var(--f-display); font-size: 13px; letter-spacing: .08em; margin: 0 0 8px; color: var(--muted); font-weight: 400; }
+.card ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.card p { margin: 0; }
+.fixed { border-left: 3px solid var(--volt); }
+@media (prefers-reduced-motion: reduce) { .egg, .b-egg { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">MECHA DINO ARENA · LOADING · MOCKUP v0.1</div>
+    <h1>Mode loading screens</h1>
+    <p class="lede">One loading screen for each place you travel to: ARENA, HARDPOINT VS BOTS and back to the ISLAND. Three looks below. Each look is shown for every mode with the chips under the screen.</p>
+  </header>
+
+  <div class="row" role="tablist" aria-label="Loading screen look">
+    <button class="tab" role="tab" id="t-b" aria-selected="true" data-v="b">B · MODE BRIEFING <span class="rec">RECOMMENDED</span></button>
+    <button class="tab" role="tab" id="t-a" aria-selected="false" data-v="a">A · THEMED INCUBATOR</button>
+    <button class="tab" role="tab" id="t-c" aria-selected="false" data-v="c">C · FULL ART</button>
+  </div>
+
+  <div class="screen" id="screen" aria-label="Loading screen preview">
+    <div class="grid"></div>
+
+    <div class="v" data-v="a">
+      <div class="a-left"><div class="title" data-f="title"></div><div class="sub" data-f="sub"></div></div>
+      <div class="a-pod"><div class="lid"></div><div class="glass"></div><div class="egg"></div><div class="base"></div></div>
+      <canvas class="a-art" width="260" height="260" data-art="small"></canvas>
+    </div>
+
+    <div class="v on" data-v="b">
+      <div class="b-head"><div><div class="title" data-f="title"></div><div class="sub" data-f="sub" style="margin-top:.8cqw"></div></div><div class="sub" data-f="where" style="color:#93a2b6;font-size:1.3cqw"></div></div>
+      <canvas class="b-map" width="880" height="520" data-art="map"></canvas>
+      <div class="b-side">
+        <div class="b-card"><h4>HOW TO WIN</h4><ul data-f="rules"></ul></div>
+        <div class="b-card"><h4 data-f="teamHead">YOUR SQUAD</h4><ul class="two" data-f="team"></ul></div>
+      </div>
+      <div class="b-egg" aria-hidden="true"></div>
+    </div>
+
+    <div class="v" data-v="c">
+      <canvas class="c-art" width="1280" height="720" data-art="full"></canvas>
+      <div class="c-shade"></div>
+      <div class="c-title"><div class="title" data-f="title"></div><div class="sub" data-f="sub"></div></div>
+    </div>
+
+    <div class="tip" data-f="tip"></div>
+    <div class="pct" id="pct">0%</div>
+    <div class="bar"><i id="fill"></i></div>
+  </div>
+
+  <div class="row">
+    <span class="label">MODE</span>
+    <button class="chip" data-m="arena" aria-pressed="true">ARENA</button>
+    <button class="chip" data-m="bots" aria-pressed="false">HARDPOINT VS BOTS</button>
+    <button class="chip" data-m="island" aria-pressed="false">ISLAND</button>
+  </div>
+
+  <div class="cols">
+    <section class="card"><h3>WHAT YOU SEE</h3><ul id="see"></ul></section>
+    <section class="card"><h3>HOW IT'S BUILT</h3><ul id="build"></ul></section>
+    <section class="card"><h3>TRADE-OFF</h3><p id="trade"></p></section>
+  </div>
+
+  <section class="card fixed">
+    <h3>SAME IN ALL THREE</h3>
+    <ul>
+      <li>The bar never goes back: it carries over the teleport (EggLoader 1.2, already fixed) and only fills to 100% once you are in.</li>
+      <li>The colour and name follow where you are going: ARENA orange, VS BOTS yellow, ISLAND cyan.</li>
+      <li>A tip line that changes every 4 s, picked for that mode.</li>
+      <li>The first join of the game keeps the plain splash it has now.</li>
+      <li>Phone and PC from the same layout (it scales with the screen); a switch brings back today's egg.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(() => {
+  const MODES = {
+    arena: { col: '#ff9b2e', title: 'ARENA', sub: 'HARDPOINT · PLAYERS VS PLAYERS', where: 'MECHA DINO ARENA · ARENA SERVER',
+      rules: ['Stand on the point to score: <b>1 a second for each teammate</b> on it', 'The point moves every <b>60 s</b>, 5 points, one on the summit', 'First team to <b>250</b> wins, or the leader when the clock runs out'],
+      teamHead: 'YOUR SQUAD', team: ['★ KEPZ · RAPTOR', 'PLAYER 2 · PACHY', 'Free spot: a player joins you'],
+      tips: ['The summit is far: head up the trail before it opens.', 'Your squad always ends up on the same team.', 'MVP goes to the most kills and time on the point.'] },
+    bots: { col: '#ffd640', title: 'HARDPOINT VS BOTS', sub: '5V5 · YOUR SQUAD + BOTS', where: 'PRIVATE MATCH · MIXED BOTS',
+      rules: ['Same rules as the Arena, against bots', 'Each team: <b>1 Elite · 1 Hard · 2 Normal · 1 Easy</b>', 'Elite bots dash, portal and combo: watch them'],
+      teamHead: 'BLUE TEAM', team: ['★ KEPZ · RAPTOR', 'BOT JINX · TROODON', 'BOT KIWI · DILO', 'BOT HEX · PACHY', 'BOT VOLT · TENO'],
+      tips: ['Bots climb the mountain trail when the summit is next.', 'Practice XP is 10% of a real match.', 'PLAY AGAIN keeps your squad here.'] },
+    island: { col: '#5fe0c8', title: 'BACK TO ISLAND', sub: 'THE HUB · NO FIGHTING NEAR THE PORTALS', where: 'MECHA DINO ARENA · ISLAND',
+      rules: ['Walk into a portal to start a mode', 'The squad leader takes the whole squad', 'Fighting is on once you leave the safe ring'],
+      teamHead: 'YOUR SQUAD', team: ['★ KEPZ · RAPTOR', 'PLAYER 2 · PACHY'],
+      tips: ['You land on the portal islet, facing the portals.', 'Open the Lab from the menu to buy parts.', 'Swim across the lakes: every dino can.'] }
+  };
+  const INFO = {
+    b: { see: ['The mode name big in its colour, with a top-down map of the island: the 5 points, the summit marked, spawn sides.', 'A "How to win" card with the 3 rules that matter for that mode.', 'Your squad (or your bot team) as it will play, with dinos.', 'A small egg still rocks next to the bar, so the incubator stays.'],
+      build: ['Frames and TextLabels only (shows on the first frame like today); the map is drawn from the 5 HpPoints plus the island outline, built once.', 'Team list from the trip data (who travels with you) or the bot roster.', 'Same script as today (EggLoader), new look per mode behind a switch.'],
+      trade: 'The most useful: players learn the rules and the map while they wait. It is the most text, so it needs care on small phones (the cards scale down and the map can drop away under 600 px wide).' },
+    a: { see: ['Today\'s incubator and egg, tinted in the mode colour.', 'The mode name and a line under it on the left.', 'A small picture for the mode on the right: crowd lights for ARENA, a bot head for VS BOTS, a palm for ISLAND.'],
+      build: ['Today\'s EggLoader with a colour and text table per mode.', 'The small picture is a few Frames per mode.'],
+      trade: 'Least work and the egg stays the hero. But the three screens look much alike, so it is the weakest at telling the modes apart.' },
+    c: { see: ['A full-screen scene for each mode: the arena point at night with spotlights, the bots match on the summit, the island at sunset.', 'Big mode name top left, bar along the bottom, like the big shooters do.', 'No egg.'],
+      build: ['One picture per mode: uploaded images (needs 3 image assets, made from in-game screenshots) or built from Frames.', 'Images take a moment to load on the first frame, so the plain splash shows under them for a beat.'],
+      trade: 'Looks the most "big game", but it needs the 3 pictures made and uploaded, loses the egg, and tells you nothing about the mode.' }
+  };
+  let mode = 'arena', look = 'b', p = 0, tipI = 0;
+  const screen = document.getElementById('screen');
+
+  function setTexts() {
+    const m = MODES[mode];
+    screen.style.setProperty('--mode', m.col);
+    screen.querySelectorAll('[data-f]').forEach(el => {
+      const f = el.dataset.f;
+      if (f === 'rules') el.innerHTML = m.rules.map(r => `<li>${r}</li>`).join('');
+      else if (f === 'team') el.innerHTML = m.team.map(r => `<li>${r}</li>`).join('');
+      else if (f === 'tip') el.textContent = 'TIP: ' + m.tips[tipI % m.tips.length];
+      else if (m[f] !== undefined) el.textContent = m[f];
+    });
+    drawArt();
+  }
+  function setInfo() {
+    const i = INFO[look];
+    document.getElementById('see').innerHTML = i.see.map(s => `<li>${s}</li>`).join('');
+    document.getElementById('build').innerHTML = i.build.map(s => `<li>${s}</li>`).join('');
+    document.getElementById('trade').textContent = i.trade;
+  }
+
+  const PTS = [[-100, -40], [450, 150], [285, -240], [-280, -270], [-450, 270]]; // HpPoints (x, z)
+  function drawArt() {
+    const col = MODES[mode].col;
+    screen.querySelectorAll('canvas').forEach(cv => {
+      const c = cv.getContext('2d'), w = cv.width, h = cv.height, kind = cv.dataset.art;
+      c.clearRect(0, 0, w, h);
+      if (kind === 'map') {
+        c.fillStyle = '#0c2232'; c.fillRect(0, 0, w, h);
+        const map = (x, z) => [w / 2 + x * 0.55, h / 2 + z * 0.55];
+        c.fillStyle = '#2f5d3a'; c.beginPath(); c.ellipse(w / 2, h / 2, 380, 220, 0, 0, 6.283); c.fill();
+        c.fillStyle = '#3c6e47'; c.beginPath(); c.ellipse(w / 2 + 20, h / 2 - 10, 300, 170, 0.2, 0, 6.283); c.fill();
+        c.fillStyle = '#6c7280'; c.beginPath(); c.ellipse(...map(285, -240), 70, 46, 0, 0, 6.283); c.fill();
+        c.fillStyle = '#4f9ccc'; c.beginPath(); c.ellipse(...map(-8, 520), 22, 60, 0, 0, 6.283); c.fill();
+        PTS.forEach(([x, z], i) => {
+          const [px, py] = map(x, z);
+          c.strokeStyle = col; c.lineWidth = 4; c.beginPath(); c.arc(px, py, 24, 0, 6.283); c.stroke();
+          c.fillStyle = mode === 'island' ? 'rgba(255,255,255,.4)' : col; c.font = '700 22px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.fillText(String(i + 1), px, py + 1);
+          if (i === 2) { c.font = '400 16px Silkscreen, monospace'; c.fillStyle = '#fff'; c.fillText('SUMMIT', px, py - 40); }
+        });
+        if (mode === 'island') { const [ix, iy] = map(930, 930); c.fillStyle = '#5fe0c8'; c.beginPath(); c.arc(Math.min(ix, w - 40), Math.min(iy, h - 40), 16, 0, 6.283); c.fill(); c.fillStyle = '#fff'; c.font = '400 16px Silkscreen, monospace'; c.fillText('PORTALS', Math.min(ix, w - 40) - 60, Math.min(iy, h - 40) - 26); }
+        else { c.fillStyle = 'rgba(90,160,255,.9)'; c.fillRect(30, h / 2 - 50, 16, 100); c.fillStyle = 'rgba(224,40,74,.9)'; c.fillRect(w - 46, h / 2 - 50, 16, 100); }
+      } else if (kind === 'small') {
+        c.fillStyle = col; c.globalAlpha = 0.9;
+        if (mode === 'arena') { for (let i = 0; i < 5; i++) { c.globalAlpha = 0.25; c.beginPath(); c.moveTo(40 + i * 45, 0); c.lineTo(10 + i * 45, 260); c.lineTo(70 + i * 45, 260); c.fill(); } c.globalAlpha = 1; for (let i = 0; i < 12; i++) c.fillRect(i * 22, 210 + (i % 3) * 8, 18, 50); }
+        else if (mode === 'bots') { c.globalAlpha = 1; c.fillRect(60, 70, 140, 100); c.fillStyle = '#10141d'; c.fillRect(85, 100, 30, 24); c.fillRect(145, 100, 30, 24); c.fillStyle = col; c.fillRect(200, 110, 40, 30); c.fillRect(120, 30, 20, 40); }
+        else { c.globalAlpha = 1; c.fillRect(120, 70, 18, 170); for (let i = 0; i < 5; i++) { c.save(); c.translate(129, 70); c.rotate(-1.2 + i * 0.6); c.fillRect(0, -6, 90, 12); c.restore(); } }
+        c.globalAlpha = 1;
+      } else {
+        const g = c.createLinearGradient(0, 0, 0, h);
+        if (mode === 'arena') { g.addColorStop(0, '#120c1c'); g.addColorStop(1, '#3a1d10'); }
+        else if (mode === 'bots') { g.addColorStop(0, '#3d6fa8'); g.addColorStop(1, '#d9a64a'); }
+        else { g.addColorStop(0, '#f08a4b'); g.addColorStop(0.6, '#f4c37a'); g.addColorStop(1, '#3d8fb8'); }
+        c.fillStyle = g; c.fillRect(0, 0, w, h);
+        c.globalCompositeOperation = 'lighter';
+        if (mode === 'arena') for (let i = 0; i < 4; i++) { c.fillStyle = 'rgba(255,155,46,.18)'; c.beginPath(); c.moveTo(200 + i * 300, 0); c.lineTo(500 + i * 120, h); c.lineTo(620 + i * 120, h); c.fill(); }
+        c.globalCompositeOperation = 'source-over';
+        c.fillStyle = mode === 'island' ? '#2a5e3a' : '#2a2f3a';
+        c.beginPath(); c.moveTo(0, h); c.lineTo(0, 520); c.lineTo(380, 300); c.lineTo(520, 380); c.lineTo(760, 180); c.lineTo(1000, 420); c.lineTo(1280, 360); c.lineTo(1280, h); c.fill();
+        c.strokeStyle = col; c.lineWidth = 6; c.beginPath(); c.ellipse(760, 200, 70, 18, 0, 0, 6.283); c.stroke();
+        c.fillStyle = '#10141d';
+        for (let i = 0; i < 3; i++) { const x = 300 + i * 260, y = 560 + (i % 2) * 20; c.fillRect(x, y - 50, 70, 30); c.fillRect(x + 50, y - 80, 14, 34); c.fillRect(x + 54, y - 92, 26, 14); c.fillRect(x + 8, y - 20, 12, 20); c.fillRect(x + 46, y - 20, 12, 20); }
+      }
+    });
+  }
+
+  function tick() {
+    p = p >= 1 ? 0 : Math.min(1, p + 0.004 + (1 - p) * 0.006);
+    document.getElementById('fill').style.width = (p * 100).toFixed(1) + '%';
+    document.getElementById('pct').textContent = Math.floor(p * 100) + '%';
+  }
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { p = 0.62; tick(); } else setInterval(tick, 50);
+  setInterval(() => { tipI++; const el = screen.querySelector('[data-f="tip"]'); el.textContent = 'TIP: ' + MODES[mode].tips[tipI % MODES[mode].tips.length]; }, 4000);
+
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+    look = b.dataset.v;
+    document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    screen.querySelectorAll('.v').forEach(v => v.classList.toggle('on', v.dataset.v === look));
+    setInfo(); drawArt();
+  }));
+  document.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.m; tipI = 0;
+    document.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    setTexts();
+  }));
+  setTexts(); setInfo();
+})();
+</script>
