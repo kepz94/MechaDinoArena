@@ -44,6 +44,9 @@
 -- v1.2 (Kepu 2026-11-11 19:02: the bots trip landed on a hub): ModeRules 1.3 decides the kind on live servers after the first
 --   player's trip (so this script may start once the first player is in); ReplicatedStorage ServerKindWhy =
 --   ModeRules.serverKindWhy() ("reservedId" / "tripBots" / "public" / ...), for checking a server in the live console.
+-- v1.3 (Rift Gates, MDA-476, plan docs/plans/RIFT_GATES_v1.0.md T3): when a trip starts from a portal (not noPortal), the
+--   portal model Workspace.PortalIslet.Portal_<mode> gets attribute PortalFlareAt = server time; PortalFX 1.0 plays the flare on
+--   every client. Switch: script attribute HubPortalFlareEnabled (default true, read per trip; false = 1.2).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -51,6 +54,7 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.2"
+VERSION = "1.3" -- v1.3 portal flare
 local PLACE_DELAY, RESPAWN_DELAY = 0.15, 0.3
 
 script:SetAttribute("HubServerVersion", VERSION)
@@ -260,6 +264,12 @@ local function startTrip(p, mode, noPortal)
 		m:SetAttribute("HubTripLeader", sid ~= "" and p.Name or "")
 		m:SetAttribute("HubTripMembers", table.concat(names, ","))
 		m:SetAttribute("HubTripState", "count")
+	end
+	-- v1.3: the portal flares for everyone (PortalFX 1.0)
+	if not trip.noPortal and script:GetAttribute("HubPortalFlareEnabled") ~= false then
+		local isl = workspace:FindFirstChild("PortalIslet")
+		local pm = isl and isl:FindFirstChild("Portal_" .. mode)
+		if pm then pm:SetAttribute("PortalFlareAt", now()) end
 	end
 	task.spawn(runTrip, trip)
 	return "ok"
