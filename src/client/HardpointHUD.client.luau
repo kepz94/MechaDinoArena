@@ -97,6 +97,29 @@
 --   * ZIndex 0, so the score card, pills and kill feed draw over it. No height limit, no left-column push.
 --   Switch: script attribute HardpointHUDMarkerV3Enabled (default true, read per frame; false = 1.6 marker).
 --   Diagnostic: HardpointHUDMarker ("view" / "edge L" / "edge R" / "edge T" / "edge B" / "on point" / "off").
+-- v1.8 (match end, MDA-465, plan docs/plans/MATCH_END_v1.0.md Task 5, mockup docs/mockups/match_end_v0.1.html; Kepu 2026-11-11
+--   19:43 "Build with all the recs": B · Three beats, MVP one per team, XP lines, Leader decides). The 15 s results play three
+--   beats, timed from the results start (HpResultsEndAt − HardpointRules.RESULTS) plus any skips:
+--   * 0–2 s banner: a dim over the screen, VICTORY (yellow) / DEFEAT (pink rgb(255,107,132)) / DRAW (white) at 84, "BLUE you –
+--     foe RED" under it, then "HARDPOINT" / "PRACTICE · <DIFFICULTY> BOTS".
+--   * 2–6 s spotlight (only when HpAwards (HardpointServer 1.5) names an MVP or SVP; else the board comes at 2 s): one card per
+--     award, MVP (gold rgb(255,210,90) pill and outline) then SVP (silver rgb(201,211,224)), 250 × 330 each: the pill, a
+--     ViewportFrame with a copy of that player's character (scripts, sounds, billboards removed, parts anchored, camera at 40°
+--     fitted to the copy's largest side × 0.62 from the front-right), name, "<dino> · BLUE / RED", "<k> K   <m:ss> ON PT". No living character
+--     (or HardpointHUDSpotModelEnabled false) -> the dino's name in the box instead.
+--   * 6 s (or 2 s) to the end: the board, grown to 760 × 400: tables 350 wide with an XP column ("+N" green, "—" for bots and
+--     players without awards), MVP / SVP tags before the name and the header "ON PT"; an XP strip (your "+N XP" counting up over 2.5 s, the lines
+--     Kills / Point / Win (Draw) / MVP / SVP, "<DINO> LV n" with a bar from your level before to after, "n / next", "▲ +n
+--     LEVEL(S) · +n SKILL PT"; "NO XP THIS MATCH" without a row); footer: the countdown and a note ("★ LEADER CHOOSES" for a
+--     squad member who is not the leader, "★ YOU CHOOSE FOR THE SQUAD" for the leader), PLAY AGAIN (1.2) and BACK TO ISLAND
+--     (cyan; DinoModeRequest "island", ModeServer 1.3 takes the squad when the leader presses; its text then follows
+--     ModeLastResult: SAVING… / TELEPORTING… / LIVE GAME ONLY / TRY AGAIN). A squad member's buttons are greyed and do
+--     nothing. HubOn ~= true -> MAIN MENU instead of BACK TO ISLAND.
+--   * Tap: during the banner / spotlight a full-screen button skips to the next beat ("TAP TO SKIP >" bottom right).
+--   Phone and PC: everything scales with the 1.2 rule (min(1.2, 94% width / 760, 86% height / 400)).
+--   Switches: script attributes HardpointHUDMatchEndEnabled (default true, read at start; false = 1.7 / 1.2 board) and
+--   HardpointHUDSpotModelEnabled (default true, read per spotlight). Diagnostics: HardpointHUDEnd ("banner" / "spot" /
+--   "board" / "off"), HardpointHUDEndModel ("model" / "noChar" / "noClone" / "off"), HardpointHUDEndSkips.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -106,6 +129,7 @@ local GuiService = game:GetService("GuiService") -- v1.1
 local VERSION = "1.5"
 VERSION = "1.6" -- v1.6 top-gap compass + slim HUD
 VERSION = "1.7" -- v1.7 point marker v3
+VERSION = "1.8" -- v1.8 match end
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -398,6 +422,426 @@ local function drawBoard(mine, you, foe, title)
 		end
 	end
 end
+
+-- ---------- v1.8: match end (see the header) ----------
+if script:GetAttribute("HardpointHUDMatchEndEnabled") == nil then script:SetAttribute("HardpointHUDMatchEndEnabled", true) end
+if script:GetAttribute("HardpointHUDSpotModelEnabled") == nil then script:SetAttribute("HardpointHUDSpotModelEnabled", true) end
+local meOn = boardOn and script:GetAttribute("HardpointHUDMatchEndEnabled") ~= false
+local GREEN = Color3.fromRGB(120, 200, 80)
+local GOLD, SILVER = Color3.fromRGB(255, 210, 90), Color3.fromRGB(201, 211, 224)
+local PINK = Color3.fromRGB(255, 107, 132)
+local CYAN_B = Color3.fromRGB(95, 224, 200)
+local DARK_T = Color3.fromRGB(27, 20, 6)
+local END_W, END_H = 760, 400
+local BEAT_BANNER, BEAT_SPOT = 2, 6
+local RES = (H and H.RESULTS) or 15
+local endKey, endSkip, spotKey = nil, 0, nil
+local endCanChoose = true
+local islandPressAt = 0
+local SkillTreeC
+do
+	local f = ReplicatedStorage:FindFirstChild("SkillShared")
+	local m = f and f:FindFirstChild("SkillTree")
+	if m then local ok, mod = pcall(require, m) if ok then SkillTreeC = mod end end
+end
+local function xpNext(level)
+	if SkillTreeC and SkillTreeC.xpToNext then return SkillTreeC.xpToNext(level) end
+	return 30 + 10 * (level - 1)
+end
+
+local endDim = Instance.new("Frame")
+endDim.Name = "EndDim"
+endDim.Size = UDim2.fromScale(1, 1)
+endDim.BackgroundColor3 = Color3.new(0, 0, 0)
+endDim.BackgroundTransparency = 0.5
+endDim.BorderSizePixel = 0
+endDim.Visible = false
+endDim.Parent = gui
+
+local endBanner = Instance.new("Frame")
+endBanner.Name = "EndBanner"
+endBanner.AnchorPoint = Vector2.new(0.5, 0.5)
+endBanner.Position = UDim2.fromScale(0.5, 0.45)
+endBanner.Size = UDim2.fromOffset(END_W, 170)
+endBanner.BackgroundTransparency = 1
+endBanner.Visible = false
+endBanner.Parent = gui
+local endBannerScale = Instance.new("UIScale")
+endBannerScale.Parent = endBanner
+local ebTitle = label(endBanner, {Size = UDim2.new(1, 0, 0, 96), TextSize = 84, Text = "VICTORY", TextStrokeTransparency = 0.6})
+local ebScore = label(endBanner, {Position = UDim2.fromOffset(0, 104), Size = UDim2.new(1, 0, 0, 30), TextSize = 26, Text = "",
+	RichText = true, TextStrokeTransparency = 0.7})
+local ebSub = label(endBanner, {Position = UDim2.fromOffset(0, 140), Size = UDim2.new(1, 0, 0, 22), TextSize = 16,
+	TextColor3 = Color3.fromRGB(207, 211, 220), Text = ""})
+
+local endSpot = Instance.new("Frame")
+endSpot.Name = "EndSpot"
+endSpot.AnchorPoint = Vector2.new(0.5, 0.5)
+endSpot.Position = UDim2.fromScale(0.5, 0.5)
+endSpot.Size = UDim2.fromOffset(560, 340)
+endSpot.BackgroundTransparency = 1
+endSpot.Visible = false
+endSpot.Parent = gui
+local endSpotScale = Instance.new("UIScale")
+endSpotScale.Parent = endSpot
+local spotList = Instance.new("UIListLayout")
+spotList.FillDirection = Enum.FillDirection.Horizontal
+spotList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+spotList.VerticalAlignment = Enum.VerticalAlignment.Center
+spotList.Padding = UDim.new(0, 28)
+spotList.SortOrder = Enum.SortOrder.LayoutOrder
+spotList.Parent = endSpot
+local function spotCard(order)
+	local c = Instance.new("Frame")
+	c.Name = "Card" .. order
+	c.LayoutOrder = order
+	c.Size = UDim2.fromOffset(250, 330)
+	c.BackgroundColor3 = PANEL
+	c.BackgroundTransparency = 0.08
+	c.Parent = endSpot
+	corner(c, 14)
+	local st = stroke(c, GOLD, 0, 3)
+	local pill = label(c, {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), Size = UDim2.fromOffset(84, 26),
+		TextSize = 18, Text = "MVP", BackgroundTransparency = 0, BackgroundColor3 = GOLD, TextColor3 = DARK_T})
+	corner(pill, 6)
+	local vpf = Instance.new("ViewportFrame")
+	vpf.AnchorPoint = Vector2.new(0.5, 0)
+	vpf.Position = UDim2.new(0.5, 0, 0, 48)
+	vpf.Size = UDim2.fromOffset(214, 170)
+	vpf.BackgroundColor3 = Color3.fromRGB(38, 46, 58)
+	vpf.BackgroundTransparency = 0.2
+	vpf.Ambient = Color3.fromRGB(170, 170, 170)
+	vpf.LightColor = Color3.new(1, 1, 1)
+	vpf.LightDirection = Vector3.new(-1, -1, -0.6)
+	vpf.Parent = c
+	corner(vpf, 10)
+	local fb = label(vpf, {Size = UDim2.fromScale(1, 1), TextSize = 22, Text = "", TextColor3 = Color3.fromRGB(207, 211, 220)})
+	local nm = label(c, {Position = UDim2.fromOffset(8, 226), Size = UDim2.new(1, -16, 0, 28), TextSize = 22, Text = "",
+		TextTruncate = Enum.TextTruncate.AtEnd})
+	local sub = label(c, {Position = UDim2.fromOffset(8, 254), Size = UDim2.new(1, -16, 0, 20), TextSize = 14, Text = "",
+		TextColor3 = MUTED_C})
+	local stats = label(c, {Position = UDim2.fromOffset(8, 284), Size = UDim2.new(1, -16, 0, 24), TextSize = 16, Text = "",
+		RichText = true})
+	return {card = c, stroke = st, pill = pill, vpf = vpf, fb = fb, name = nm, sub = sub, stats = stats}
+end
+local spotCards = {spotCard(1), spotCard(2)}
+
+local endSkipB = Instance.new("TextButton")
+endSkipB.Name = "EndSkip"
+endSkipB.Size = UDim2.fromScale(1, 1)
+endSkipB.BackgroundTransparency = 1
+endSkipB.Text = ""
+endSkipB.ZIndex = 5
+endSkipB.Visible = false
+endSkipB.Parent = gui
+label(endSkipB, {AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -16), Size = UDim2.fromOffset(150, 28),
+	TextSize = 14, Text = "TAP TO SKIP >", BackgroundTransparency = 0.45, BackgroundColor3 = Color3.new(0, 0, 0), ZIndex = 5})
+
+-- the board, grown (only with the switch on)
+local COLS2 = {{0, 0.34, Enum.TextXAlignment.Left}, {0.34, 0.18, Enum.TextXAlignment.Left}, {0.52, 0.07, Enum.TextXAlignment.Right},
+	{0.59, 0.07, Enum.TextXAlignment.Right}, {0.66, 0.16, Enum.TextXAlignment.Right}, {0.82, 0.18, Enum.TextXAlignment.Right}}
+local xpCells = {}
+local strip, sTot, sParts, sDino, sBar, sNum, sUp, sNote, islandB
+if meOn then
+	bp.Size = UDim2.fromOffset(END_W, END_H)
+	for t = 1, 2 do
+		local T = bTables[t]
+		local f = T[0][1].Parent
+		f.Position = UDim2.fromOffset(t == 1 and 18 or 392, 84)
+		f.Size = UDim2.fromOffset(350, ROW_H * (BOARD_ROWS + 1))
+		xpCells[t] = {}
+		for r = 0, BOARD_ROWS do
+			for c = 1, 5 do
+				local col = COLS2[c]
+				T[r][c].Position = UDim2.new(col[1], 0, 0, r * ROW_H)
+				T[r][c].Size = UDim2.new(col[2], -4, 0, ROW_H)
+				T[r][c].TextXAlignment = col[3]
+			end
+			local col = COLS2[6]
+			xpCells[t][r] = label(f, {Position = UDim2.new(col[1], 0, 0, r * ROW_H), Size = UDim2.new(col[2], -4, 0, ROW_H),
+				TextSize = r == 0 and 13 or 15, TextXAlignment = col[3], TextColor3 = r == 0 and MUTED_C or GREEN,
+				Text = r == 0 and "XP" or "", TextTruncate = Enum.TextTruncate.AtEnd})
+		end
+	end
+	strip = Instance.new("Frame")
+	strip.Name = "XpStrip"
+	strip.Position = UDim2.fromOffset(18, 246)
+	strip.Size = UDim2.fromOffset(END_W - 36, 72)
+	strip.BackgroundColor3 = Color3.new(1, 1, 1)
+	strip.BackgroundTransparency = 0.94
+	strip.Parent = bp
+	corner(strip, 8)
+	sTot = label(strip, {Position = UDim2.fromOffset(12, 6), Size = UDim2.fromOffset(150, 30), TextSize = 26, TextColor3 = GREEN,
+		TextXAlignment = Enum.TextXAlignment.Left, Text = ""})
+	sParts = label(strip, {Position = UDim2.fromOffset(170, 8), Size = UDim2.new(1, -182, 0, 26), TextSize = 15,
+		TextXAlignment = Enum.TextXAlignment.Left, RichText = true, Text = "", TextTruncate = Enum.TextTruncate.AtEnd})
+	sDino = label(strip, {Position = UDim2.fromOffset(12, 42), Size = UDim2.fromOffset(150, 22), TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Left, Text = ""})
+	local barBg = Instance.new("Frame")
+	barBg.Position = UDim2.fromOffset(170, 47)
+	barBg.Size = UDim2.new(1, -470, 0, 12)
+	barBg.BackgroundColor3 = Color3.new(1, 1, 1)
+	barBg.BackgroundTransparency = 0.85
+	barBg.BorderSizePixel = 0
+	barBg.Parent = strip
+	corner(barBg, 6)
+	sBar = Instance.new("Frame")
+	sBar.Size = UDim2.fromScale(0, 1)
+	sBar.BackgroundColor3 = GREEN
+	sBar.BorderSizePixel = 0
+	sBar.Parent = barBg
+	corner(sBar, 6)
+	sNum = label(strip, {AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -200, 0, 42), Size = UDim2.fromOffset(90, 22),
+		TextSize = 14, TextXAlignment = Enum.TextXAlignment.Right, Text = ""})
+	sUp = label(strip, {AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 42), Size = UDim2.fromOffset(186, 22),
+		TextSize = 13, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Right, Text = ""})
+	bNext.Position, bNext.Size = UDim2.fromOffset(18, 330), UDim2.fromOffset(330, 26)
+	sNote = label(bp, {Position = UDim2.fromOffset(18, 358), Size = UDim2.fromOffset(330, 22), TextSize = 14, TextColor3 = MUTED_C,
+		TextXAlignment = Enum.TextXAlignment.Left, Text = ""})
+	islandB = boardButton("BackToIsland", "BACK TO ISLAND", END_W - 18 - 210, 210, CYAN_B, Color3.fromRGB(3, 33, 26))
+	islandB.Position = UDim2.fromOffset(END_W - 18 - 210, 330)
+	againB.Position = UDim2.fromOffset(END_W - 18 - 210 - 12 - 172, 330)
+	menuB.Position = UDim2.fromOffset(END_W - 18 - 156, 330)
+	islandB.Activated:Connect(function()
+		if not endCanChoose then return end
+		islandPressAt = now()
+		script:SetAttribute("HardpointHUDBoardPress", "island")
+		local mr = ReplicatedStorage:FindFirstChild("DinoModeRequest")
+		if mr then mr:FireServer("island") end
+	end)
+	-- a squad member's PLAY AGAIN does nothing (1.2's handler hides the board; put it back)
+	againB.Activated:Connect(function()
+		if not endCanChoose then boardDismissed = false end
+	end)
+end
+
+local awCache, awRaw = nil, nil
+local function readAwards()
+	local raw = state:GetAttribute("HpAwards")
+	if raw ~= awRaw then
+		awRaw = raw
+		local ok, t = pcall(function() return HttpService:JSONDecode(raw) end)
+		awCache = (type(raw) == "string" and raw ~= "" and ok and type(t) == "table") and t or nil
+	end
+	return awCache
+end
+local function readBoardList()
+	local ok, list = pcall(function() return HttpService:JSONDecode(state:GetAttribute("HpBoard") or "[]") end)
+	return (ok and type(list) == "table") and list or {}
+end
+
+local function modelInto(c, uid)
+	for _, ch in ipairs(c.vpf:GetChildren()) do
+		if ch:IsA("Model") or ch:IsA("Camera") then ch:Destroy() end
+	end
+	c.fb.Visible = true
+	if script:GetAttribute("HardpointHUDSpotModelEnabled") == false then return "off" end
+	local pl = uid and Players:GetPlayerByUserId(uid)
+	local chr = pl and pl.Character
+	local hum = chr and chr:FindFirstChildOfClass("Humanoid")
+	local root = chr and chr:FindFirstChild("HumanoidRootPart")
+	if not (chr and hum and root and hum.Health > 0) then return "noChar" end
+	local was = chr.Archivable
+	chr.Archivable = true
+	local ok, copy = pcall(function() return chr:Clone() end)
+	chr.Archivable = was
+	if not ok or not copy then return "noClone" end
+	for _, d in ipairs(copy:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") or d:IsA("Sound") or d:IsA("BillboardGui") or d:IsA("ProximityPrompt") then
+			d:Destroy()
+		elseif d:IsA("BasePart") then
+			d.Anchored = true
+		end
+	end
+	local h2 = copy:FindFirstChildOfClass("Humanoid")
+	if h2 then h2.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+	copy.Parent = c.vpf
+	local cf, size = copy:GetBoundingBox()
+	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	look = look.Magnitude > 0.01 and look.Unit or Vector3.new(0, 0, -1)
+	local right = Vector3.new(root.CFrame.RightVector.X, 0, root.CFrame.RightVector.Z)
+	right = right.Magnitude > 0.01 and right.Unit or Vector3.new(1, 0, 0)
+	local dist = (math.max(size.X, size.Y, size.Z) * 0.62) / math.tan(math.rad(20))
+	local cam = Instance.new("Camera")
+	cam.FieldOfView = 40
+	cam.CFrame = CFrame.lookAt(cf.Position + (look + right * 0.55).Unit * dist + Vector3.new(0, size.Y * 0.12, 0), cf.Position)
+	cam.Parent = c.vpf
+	c.vpf.CurrentCamera = cam
+	c.fb.Visible = false
+	return "model"
+end
+
+local function fillSpot(aw, mine)
+	local list = readBoardList()
+	local byId = {}
+	for _, r in ipairs(list) do byId[r.id] = r end
+	local picks = {}
+	if aw.mvp ~= "" then table.insert(picks, {id = aw.mvp, kind = "MVP", col = GOLD}) end
+	if aw.svp ~= "" then table.insert(picks, {id = aw.svp, kind = "SVP", col = SILVER}) end
+	local how = {}
+	for i, c in ipairs(spotCards) do
+		local pk = picks[i]
+		c.card.Visible = pk ~= nil
+		if pk then
+			local r = byId[pk.id] or {}
+			c.pill.Text, c.pill.BackgroundColor3, c.stroke.Color = pk.kind, pk.col, pk.col
+			local sp = SHORT[r.species] or tostring(r.species or "")
+			c.name.Text = tostring(r.name or "")
+			c.sub.Text = ("%s · %s"):format(sp, r.team == mine and "BLUE" or "RED")
+			c.stats.Text = ('<font color="#%s">%d</font> K   <font color="#%s">%s</font> ON PT'):format(pk.col:ToHex(), r.k or 0,
+				pk.col:ToHex(), mss(r.pt))
+			c.fb.Text = string.upper(sp)
+			table.insert(how, modelInto(c, tonumber(string.match(pk.id, "^u(%d+)$") or "")))
+		end
+	end
+	script:SetAttribute("HardpointHUDEndModel", table.concat(how, ","))
+end
+
+local function fillStrip(aw, prog)
+	local row = aw and aw.rows and aw.rows["u" .. player.UserId]
+	strip.Visible = aw ~= nil
+	if not aw then return end
+	if not row then
+		sTot.Text, sParts.Text, sDino.Text, sNum.Text, sUp.Text = "+0 XP", "NO XP THIS MATCH", "", "", ""
+		sBar.Size = UDim2.fromScale(0, 1)
+		return
+	end
+	local total = tonumber(row.total) or 0
+	local shown = math.floor(total * prog + 0.5)
+	sTot.Text = ("+%d XP"):format(shown)
+	local parts = {}
+	for _, it in ipairs({{"Kills", row.kill}, {aw.winner == "draw" and "Draw" or "Win", row.win}, {"Point", row.point},
+		{"MVP", row.mvp}, {"SVP", row.svp}}) do
+		if (tonumber(it[2]) or 0) > 0 then table.insert(parts, ('%s <font color="#78c850">+%d</font>'):format(it[1], it[2])) end
+	end
+	sParts.Text = #parts > 0 and table.concat(parts, "    ") or "NO XP THIS MATCH"
+	local lvB, lvA = tonumber(row.lvB) or 0, tonumber(row.lvA) or 0
+	if lvA <= 0 then
+		sDino.Text, sNum.Text, sUp.Text = "", "", ""
+		sBar.Size = UDim2.fromScale(0, 1)
+		return
+	end
+	local L, into, nxt = lvB, tonumber(row.inB) or 0, tonumber(row.nxB) or xpNext(lvB)
+	local add = shown
+	while add > 0 and L < lvA and nxt > 0 do
+		if into + add >= nxt then add -= (nxt - into) L += 1 into = 0 nxt = xpNext(L) else into += add add = 0 end
+	end
+	if L >= lvA then into, nxt = math.min(into + add, tonumber(row.inA) or 0), tonumber(row.nxA) or 0 end
+	if prog >= 1 then L, into, nxt = lvA, tonumber(row.inA) or 0, tonumber(row.nxA) or 0 end
+	local ch = player.Character
+	local sp = (ch and ch:GetAttribute("Species")) or player:GetAttribute("DinoSpecies") or ""
+	sDino.Text = ("%s LV %d"):format(string.upper(SHORT[sp] or tostring(sp)), L)
+	sBar.Size = UDim2.fromScale(nxt > 0 and math.clamp(into / nxt, 0, 1) or 1, 1)
+	sNum.Text = nxt > 0 and ("%d / %d"):format(into, nxt) or "MAX"
+	local ups = L - lvB
+	sUp.Text = ups > 0 and ("▲ +%d LEVEL%s · +%d SKILL PT"):format(ups, ups > 1 and "S" or "", ups) or ""
+end
+
+local RESULT_TEXT = {saving = "SAVING…", teleporting = "TELEPORTING…", studio = "LIVE GAME ONLY", teleportFailed = "TRY AGAIN",
+	badArg = "TRY AGAIN", busy = "TRY AGAIN"}
+local function fillButtons()
+	local hubOn = ReplicatedStorage:GetAttribute("HubOn") == true
+	islandB.Visible, menuB.Visible = hubOn, not hubOn
+	local sq = player:GetAttribute("SquadId")
+	local inSq = type(sq) == "string" and sq ~= ""
+	local leader = inSq and player:GetAttribute("SquadLeader") == true
+	local member = inSq and not leader
+	endCanChoose = not member
+	for _, b in ipairs({againB, islandB, menuB}) do
+		b.AutoButtonColor = not member
+		b.BackgroundTransparency = member and 0.6 or 0
+		b.TextTransparency = member and 0.45 or 0
+	end
+	sNote.Text = member and "★ LEADER CHOOSES" or (leader and "★ YOU CHOOSE FOR THE SQUAD" or "")
+	local txt = "BACK TO ISLAND"
+	if islandPressAt > 0 and (player:GetAttribute("ModeLastAt") or 0) >= islandPressAt - 0.5 then
+		txt = RESULT_TEXT[player:GetAttribute("ModeLastResult")] or txt
+	end
+	islandB.Text = txt
+end
+
+local function drawEndBoard(mine, aw)
+	local list = readBoardList()
+	local left = (mine == "A" or mine == "B") and mine or "A"
+	local right = left == "A" and "B" or "A"
+	for t, side in ipairs({left, right}) do
+		bTables[t][0][5].Text = "ON PT"
+		local rows = {}
+		for _, r in ipairs(list) do if r.team == side then table.insert(rows, r) end end
+		table.sort(rows, function(x, y) if x.k ~= y.k then return x.k > y.k end return tostring(x.name) < tostring(y.name) end)
+		for i = 1, BOARD_ROWS do
+			local r = rows[i]
+			local cell = xpCells[t][i]
+			if r then
+				local a = aw and aw.rows and aw.rows[r.id]
+				cell.Text = (a and not r.bot) and ("+" .. tostring(a.total or 0)) or "—"
+				local tag = aw and ((r.id == aw.mvp and '<font size="11" color="#ffd25a">MVP</font> ')
+					or (r.id == aw.svp and '<font size="11" color="#c9d3e0">SVP</font> ')) or nil
+				if tag then bTables[t][i][1].Text = tag .. bTables[t][i][1].Text end
+				cell.TextColor3 = r.id == "u" .. player.UserId and YELLOW or GREEN
+			else
+				cell.Text = ""
+			end
+		end
+	end
+end
+
+local function endHide()
+	if endDim.Visible or endBanner.Visible or endSpot.Visible or endSkipB.Visible then
+		endDim.Visible, endBanner.Visible, endSpot.Visible, endSkipB.Visible = false, false, false, false
+	end
+	if script:GetAttribute("HardpointHUDEnd") ~= "off" then script:SetAttribute("HardpointHUDEnd", "off") end
+end
+
+local function endFrame(mine, you, foe, title)
+	local endsAt = state:GetAttribute("HpResultsEndAt") or now()
+	if endKey ~= endsAt then endKey, endSkip, spotKey, islandPressAt = endsAt, 0, nil, 0 end
+	local t = now() - (endsAt - RES) + endSkip
+	local aw = readAwards()
+	local hasSpot = aw ~= nil and ((aw.mvp or "") ~= "" or (aw.svp or "") ~= "")
+	local beat = (t < BEAT_BANNER and "banner") or ((hasSpot and t < BEAT_SPOT) and "spot") or "board"
+	local vp = workspace.CurrentCamera.ViewportSize
+	local sc = math.min(1.2, vp.X * 0.94 / END_W, vp.Y * 0.86 / END_H)
+	endBannerScale.Scale, endSpotScale.Scale, bpScale.Scale = sc, sc, sc
+	local hid = boardDismissed
+	endDim.Visible = beat ~= "board" and not hid
+	endBanner.Visible = beat == "banner" and not hid
+	endSpot.Visible = beat == "spot" and not hid
+	endSkipB.Visible = beat ~= "board" and not hid
+	bp.Visible = beat == "board" and not hid
+	if script:GetAttribute("HardpointHUDEnd") ~= beat then script:SetAttribute("HardpointHUDEnd", beat) end
+	if hid then return end
+	if beat == "banner" then
+		ebTitle.Text = title
+		ebTitle.TextColor3 = title == "VICTORY" and YELLOW or (title == "DEFEAT" and PINK or Color3.new(1, 1, 1))
+		ebScore.Text = ('<font color="#5aa0ff">BLUE %d</font>   –   <font color="#e0284a">%d RED</font>'):format(you, foe)
+		local pr = ReplicatedStorage:FindFirstChild("Practice")
+		ebSub.Text = pr and ("PRACTICE · " .. string.upper(tostring(pr:GetAttribute("PrDifficulty") or "")) .. " BOTS") or "HARDPOINT"
+	elseif beat == "spot" then
+		if spotKey ~= endsAt then
+			spotKey = endsAt
+			fillSpot(aw, mine)
+		end
+	else
+		drawEndBoard(mine, aw)
+		local start = hasSpot and BEAT_SPOT or BEAT_BANNER
+		fillStrip(aw, math.clamp((t - start - 0.3) / 2.5, 0, 1))
+		fillButtons()
+	end
+end
+
+endSkipB.Activated:Connect(function()
+	local endsAt = state:GetAttribute("HpResultsEndAt") or now()
+	local t = now() - (endsAt - RES) + endSkip
+	local aw = readAwards()
+	local hasSpot = aw ~= nil and ((aw.mvp or "") ~= "" or (aw.svp or "") ~= "")
+	if t < BEAT_BANNER then
+		endSkip += BEAT_BANNER - t
+	elseif hasSpot and t < BEAT_SPOT then
+		endSkip += BEAT_SPOT - t
+	end
+	script:SetAttribute("HardpointHUDEndSkips", (script:GetAttribute("HardpointHUDEndSkips") or 0) + 1)
+end)
 
 -- ---------- data ----------
 local points = {}
@@ -827,10 +1271,12 @@ RunService.RenderStepped:Connect(function()
 		local title = (w == "draw") and "DRAW" or (w == mine and "VICTORY" or "DEFEAT")
 		bp.Visible = not boardDismissed
 		if not boardDismissed then drawBoard(mine, you, foe, title) end
+		if meOn then endFrame(mine, you, foe, title) end -- v1.8
 		script:SetAttribute("HardpointHUDBoard", boardDismissed and "dismissed" or "shown")
 		script:SetAttribute("HardpointHUDState", "results")
 		return
 	end
+	if meOn then endHide() end -- v1.8
 	if bp.Visible or boardDismissed then -- v1.2: out of the results
 		bp.Visible, boardDismissed = false, false
 		script:SetAttribute("HardpointHUDBoard", "hidden")

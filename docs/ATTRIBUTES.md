@@ -3379,3 +3379,8 @@ Model numbers are generator output (old version = the flag in the last column, b
 - Island hub 1.1 (Kepu 18:48 "bigger", "straight to the loading"): HubRules 1.1 TRIP_TIME 0 (TRIP_TIME_V10 5); HubServer 1.1 `HubAnchorTripEnabled` (true); PortalHUD 1.1 `PortalHUDLoadOnSaveEnabled` (true); PortalIslet 1.1 `IsletRadius` 130, portals 50 x ~62, 120 apart.
 - Match preview + kind fix (Kepu 19:02): ModeRules 1.3 `M.KIND_WAIT_FIRST_PLAYER` (true), `serverKindWhy()`; ReplicatedStorage `ServerKindWhy` (HubServer 1.2). PracticeServer 1.5 `PrPreviewEnabled` (true), `PrLoadWaitMax` 30, `PrLoadHold` 5; Practice `PrLoading` (JSON); diagnostic `PrLoadingCount`. PracticeLobby 1.4 `PracticeLobbyPreviewEnabled` (true). MainMenu 1.24 `MainMenuPreviewEditEnabled` (true). Client-only player attribute `PrEditing`.
 - ForceLandscape 1.0: `ForceLandscapeEnabled` (true, read live); LocalPlayer `ForceLandscapeVersion`, `ForceLandscapeOrientation`.
+- MatchAwards 1.0 (ServerStorage.DinoArcade): pure; CFG mvpKill 100, mvpSec 10, kill 50, sec 1, win 100, draw 50, mvp 50, svp 25, practiceMul 0.1.
+- SkillServer 1.10: `SkillGrantEnabled` (true); diagnostic `SkillGrants`; BindableFunction SkillGrantXp.
+- KillFeedServer 1.1: `KillFeedPlayerKillStatEnabled` (true).
+- HardpointServer 1.5: `HardpointAwardsEnabled` (true), `HpXpKill` 50, `HpXpPerSec` 1, `HpXpWin` 100, `HpXpDraw` 50, `HpXpMvp` 50, `HpXpSvp` 25, `HpXpPracticeMul` 0.1, `HpMvpKillPts` 100, `HpMvpSecPts` 10; diagnostics `HpAwardsLast`, `HpAwardsCount`; ReplicatedStorage.Hardpoint `HpAwards` (JSON).
+- HardpointHUD 1.8: `HardpointHUDMatchEndEnabled` (true, read at start), `HardpointHUDSpotModelEnabled` (true); diagnostics `HardpointHUDEnd`, `HardpointHUDEndModel`, `HardpointHUDEndSkips`.
