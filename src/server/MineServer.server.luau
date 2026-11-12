@@ -92,6 +92,12 @@
 --   picked "Everything harmful"): mayAffect(source, target) is also false for a squadmate (wraps the ModeRules check), so no squadmate is ever picked, hit or slowed. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
 --   SquadTestId counts). Switch: script attribute MineServerSquadEnabled (default true, read at each check; false = 1.7).
 --   Diagnostic: script MineServerSquadSkips (count of squadmate skips / refusals).
+-- v1.12 (Bots v2, MDA-468, plan docs/plans/BOTS_V2_v1.0.md T3; found in Studio 2026-11-11: practice bots frozen at WalkSpeed
+--   0.0055 / 0 because several scripts' bot-slow loops each took the other's slowed speed as their base every frame):
+--   a practice bot (PracticeBot = true) in the bot-slow loop gets model attributes SlowMul_Mine / SlowUntil_Mine (this slow's
+--   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
+--   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
+--   Switch: script attribute MineServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -110,6 +116,7 @@ VERSION = "1.10" -- v1.10 shot pass: faster shots, strong aim assist
 --   -> 0.4 s; per mine, m.arcTime). No snap (a trap is laid ahead). Switch: script attribute ShotPassEnabled
 --   (default true, read at each throw; false = 1.9).
 VERSION = "1.11" -- v1.11 armor on every hit (MDA-366)
+VERSION = "1.12" -- v1.12 practice bot slows as attributes
 -- v1.11 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
 --   Wiry Frame = the victim's StatDamageTakenMul) now cuts the Shock Mine zap, on players (Humanoid) and on DummyHealth targets:
 --   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
@@ -655,6 +662,11 @@ RunService.Stepped:Connect(function()
 	for model, s in pairs(botSlow) do
 		local hum = s.hum
 		if not model.Parent or not hum.Parent then
+			botSlow[model] = nil
+		elseif model:GetAttribute("PracticeBot") == true and script:GetAttribute("MineServerBotSlowAttrEnabled") ~= false then -- v1.12: practice bots
+			model:SetAttribute("SlowMul_Mine", (tonumber(model:GetAttribute("MineSlowMul")) or 1))
+			model:SetAttribute("SlowUntil_Mine", (tonumber(model:GetAttribute("MineSlowUntil")) or 0))
+			if s.set ~= nil and s.base and math.abs(hum.WalkSpeed - s.set) <= 1e-3 then hum.WalkSpeed = s.base end
 			botSlow[model] = nil
 		else
 			local cur = hum.WalkSpeed

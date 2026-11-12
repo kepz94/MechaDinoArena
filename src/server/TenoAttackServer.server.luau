@@ -103,6 +103,12 @@
 --   draws the rake marks); the hit's claw point is that arm's joint. Reach, cone, damage, shove unchanged. Switch: script
 --   attribute TenoScratchAlternateEnabled (default true, read at each scratch; false = 1.5: ArmR, TenoScratchArm "R",
 --   TenoScratchAlternate false).
+-- v1.10 (Bots v2, MDA-468, plan docs/plans/BOTS_V2_v1.0.md T3; found in Studio 2026-11-11: practice bots frozen at WalkSpeed
+--   0.0055 / 0 because several scripts' bot-slow loops each took the other's slowed speed as their base every frame):
+--   a practice bot (PracticeBot = true) in the bot-slow loop gets model attributes SlowMul_TenoAttack / SlowUntil_TenoAttack (this slow's
+--   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
+--   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
+--   Switch: script attribute TenoAttackServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -541,6 +547,11 @@ RunService.Stepped:Connect(function()
 		local hum = e.hum
 		if not m.Parent or not hum.Parent then
 			botSlow[m] = nil
+		elseif m:GetAttribute("PracticeBot") == true and script:GetAttribute("TenoAttackServerBotSlowAttrEnabled") ~= false then -- v1.10: practice bots
+			m:SetAttribute("SlowMul_TenoAttack", e.mul)
+			m:SetAttribute("SlowUntil_TenoAttack", e.untilT)
+			if e.set ~= nil and e.base and math.abs(hum.WalkSpeed - e.set) <= 1e-3 then hum.WalkSpeed = e.base end
+			botSlow[m] = nil
 		else
 			local cur = hum.WalkSpeed
 			if e.set == nil or math.abs(cur - e.set) > 1e-3 then e.base = cur end
@@ -885,3 +896,4 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+script:SetAttribute("TenoAttackServerVersion", "1.10") -- v1.10 practice bot slows as attributes

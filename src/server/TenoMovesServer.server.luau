@@ -200,6 +200,12 @@
 --   Scorpion strike (TenoPose 1.11 aims at the target's live box) clamps it where it clings. Unlatched targets unchanged.
 --   Switch: script attribute TenoGrabPluckEnabled (default true, read at each grab; false = 1.11). Diagnostic: script
 --   TenoMovesGrabsPluck.
+-- v1.20 (Bots v2, MDA-468, plan docs/plans/BOTS_V2_v1.0.md T3; found in Studio 2026-11-11: practice bots frozen at WalkSpeed
+--   0.0055 / 0 because several scripts' bot-slow loops each took the other's slowed speed as their base every frame):
+--   a practice bot (PracticeBot = true) in the bot-slow loop gets model attributes SlowMul_TenoMoves / SlowUntil_TenoMoves (this slow's
+--   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
+--   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
+--   Switch: script attribute TenoMovesServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -283,6 +289,7 @@ VERSION = "1.18" -- v1.18 Tail Grab: landing skips trees, in-range hint
 --   The player throw (a grabbed player was never thrown: the stun starts at the catch, the toss stamps come at the throw)
 --   is fixed in StunClient 1.4 (late toss); this script's stamps are unchanged.
 VERSION = "1.19" -- v1.19 armor on every hit (MDA-366)
+VERSION = "1.20" -- v1.20 practice bot slows as attributes
 -- v1.19 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
 --   Wiry Frame = the victim's StatDamageTakenMul) now cuts tail grab / crash, mortar, stomp, leap and deflected hits (damage):
 --   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
@@ -575,6 +582,11 @@ RunService.Stepped:Connect(function()
 	for m, e in pairs(botSlow) do
 		local hum = e.hum
 		if not m.Parent or not hum.Parent then
+			botSlow[m] = nil
+		elseif m:GetAttribute("PracticeBot") == true and script:GetAttribute("TenoMovesServerBotSlowAttrEnabled") ~= false then -- v1.20: practice bots
+			m:SetAttribute("SlowMul_TenoMoves", e.mul)
+			m:SetAttribute("SlowUntil_TenoMoves", e.untilT)
+			if e.set ~= nil and e.base and math.abs(hum.WalkSpeed - e.set) <= 1e-3 then hum.WalkSpeed = e.base end
 			botSlow[m] = nil
 		elseif m:GetAttribute("TenoSlowed") == true then -- TenoAttackServer is slowing it: give the speed back and wait
 			if e.set ~= nil and e.base and math.abs(hum.WalkSpeed - e.set) <= 1e-3 then hum.WalkSpeed = e.base end

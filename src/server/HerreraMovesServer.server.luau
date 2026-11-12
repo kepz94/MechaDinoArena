@@ -109,6 +109,12 @@
 --   after it steps out; a bot also gets GooSlowUntil / GooSlowMul stamped (StatusBadges 1.3 shows its SLOW badge; its speed
 --   is still the botSlow walk-speed scale). Switch: script attribute HerreraMoves_gooLingerEnabled (default true, read at
 --   each tick; false = 1.5). Diagnostic: script GooSlowTicks.
+-- v1.11 (Bots v2, MDA-468, plan docs/plans/BOTS_V2_v1.0.md T3; found in Studio 2026-11-11: practice bots frozen at WalkSpeed
+--   0.0055 / 0 because several scripts' bot-slow loops each took the other's slowed speed as their base every frame):
+--   a practice bot (PracticeBot = true) in the bot-slow loop gets model attributes SlowMul_HerreraMoves / SlowUntil_HerreraMoves (this slow's
+--   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
+--   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
+--   Switch: script attribute HerreraMovesServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -149,6 +155,7 @@ VERSION = "1.9" -- v1.9 shot pass: faster shots, strong aim assist
 --   0.45 s -> / 1.5). Quill range, goo toss and goo assist come from SkillTree 1.74. Switch: script attribute
 --   ShotPassEnabled (default true; false = 1.8).
 VERSION = "1.10" -- v1.10 armor on every hit (MDA-366)
+VERSION = "1.11" -- v1.11 practice bot slows as attributes
 -- v1.10 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
 --   Wiry Frame = the victim's StatDamageTakenMul) now cuts quills and caltrop ticks (takeHealth):
 --   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
@@ -539,6 +546,11 @@ RunService.Stepped:Connect(function()
 	for m, e in pairs(botSlow) do
 		local hum = e.hum
 		if not m.Parent or not hum.Parent then
+			botSlow[m] = nil
+		elseif m:GetAttribute("PracticeBot") == true and script:GetAttribute("HerreraMovesServerBotSlowAttrEnabled") ~= false then -- v1.11: practice bots
+			m:SetAttribute("SlowMul_HerreraMoves", e.mul)
+			m:SetAttribute("SlowUntil_HerreraMoves", e.untilT)
+			if e.set ~= nil and e.base and math.abs(hum.WalkSpeed - e.set) <= 1e-3 then hum.WalkSpeed = e.base end
 			botSlow[m] = nil
 		else
 			local cur = hum.WalkSpeed

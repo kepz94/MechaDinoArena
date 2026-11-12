@@ -136,6 +136,12 @@
 --   do not change a running refill. On top of HeadbuttRefillMul and the tiers. Switch: script attribute
 --   HeadbuttLastStandEnabled (default true, read at each refill; false = 1.14).
 --   Diagnostic: character HeadbuttRefillLowMul (the factor the last refill used, 1 = none).
+-- v1.21 (Bots v2, MDA-468, plan docs/plans/BOTS_V2_v1.0.md T3; found in Studio 2026-11-11: practice bots frozen at WalkSpeed
+--   0.0055 / 0 because several scripts' bot-slow loops each took the other's slowed speed as their base every frame):
+--   a practice bot (PracticeBot = true) in the bot-slow loop gets model attributes SlowMul_Headbutt / SlowUntil_Headbutt (this slow's
+--   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
+--   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
+--   Switch: script attribute HeadbuttServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -498,6 +504,11 @@ RunService.Stepped:Connect(function()
 		local hum = s.hum
 		if not model.Parent or not hum.Parent then
 			botSlow[model] = nil
+		elseif model:GetAttribute("PracticeBot") == true and script:GetAttribute("HeadbuttServerBotSlowAttrEnabled") ~= false then -- v1.21: practice bots
+			model:SetAttribute("SlowMul_Headbutt", (tonumber(model:GetAttribute("HeadbuttSlowMul")) or 1))
+			model:SetAttribute("SlowUntil_Headbutt", (tonumber(model:GetAttribute("HeadbuttSlowUntil")) or 0))
+			if s.set ~= nil and s.base and math.abs(hum.WalkSpeed - s.set) <= 1e-3 then hum.WalkSpeed = s.base end
+			botSlow[model] = nil
 		else
 			local cur = hum.WalkSpeed
 			if s.set == nil or math.abs(cur - s.set) > 1e-3 then s.base = cur end
@@ -792,3 +803,4 @@ local function onPlayer(player)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+script:SetAttribute("HeadbuttServerVersion", "1.21") -- v1.21 practice bot slows as attributes

@@ -49,6 +49,12 @@
 -- v1.1 (MDA-348, plan docs/plans/TROODON_PARTS_v1.0.md ticket 4): BindableFunction TrooSlowApply(model, mul, untilT) under this
 --   script runs slowTarget, so TrooMovesServer 1.0's Feather Shed star slows a bot through the same WalkSpeed loop (one owner of
 --   a bot's slowed speed). Switch: script attribute TrooAttackSlowApplyEnabled (default true, read at each call; false = no-op).
+-- v1.9 (Bots v2, MDA-468, plan docs/plans/BOTS_V2_v1.0.md T3; found in Studio 2026-11-11: practice bots frozen at WalkSpeed
+--   0.0055 / 0 because several scripts' bot-slow loops each took the other's slowed speed as their base every frame):
+--   a practice bot (PracticeBot = true) in the bot-slow loop gets model attributes SlowMul_Troo / SlowUntil_Troo (this slow's
+--   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
+--   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
+--   Switch: script attribute TrooAttackServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -452,6 +458,11 @@ RunService.Stepped:Connect(function()
 	for m, e in pairs(botSlow) do
 		local hum = e.hum
 		if not m.Parent or not hum.Parent then
+			botSlow[m] = nil
+		elseif m:GetAttribute("PracticeBot") == true and script:GetAttribute("TrooAttackServerBotSlowAttrEnabled") ~= false then -- v1.9: practice bots
+			m:SetAttribute("SlowMul_Troo", e.mul)
+			m:SetAttribute("SlowUntil_Troo", e.untilT)
+			if e.set ~= nil and e.base and math.abs(hum.WalkSpeed - e.set) <= 1e-3 then hum.WalkSpeed = e.base end
 			botSlow[m] = nil
 		else
 			local cur = hum.WalkSpeed
@@ -1096,3 +1107,4 @@ end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
 script:SetAttribute("TrooAttackServerVersion", "1.8") -- v1.8 double tap = pod to a teammate
+script:SetAttribute("TrooAttackServerVersion", "1.9") -- v1.9 practice bot slows as attributes

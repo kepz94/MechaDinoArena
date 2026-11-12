@@ -138,6 +138,12 @@
 --   MDA-269): each Deflector press stamps the character's TheriDeflectWall (= script switch TheriMovesDeflectWallEnabled,
 --   default true) before TheriDeflectAt, so every client draws the same look (TheriPose 1.11, TheriPartsAnim 1.4, TheriMovesFX2
 --   1.2). Nothing else of the move changes (DeflectRules 1.0 still judges every block).
+-- v1.12 (Bots v2, MDA-468, plan docs/plans/BOTS_V2_v1.0.md T3; found in Studio 2026-11-11: practice bots frozen at WalkSpeed
+--   0.0055 / 0 because several scripts' bot-slow loops each took the other's slowed speed as their base every frame):
+--   a practice bot (PracticeBot = true) in the bot-slow loop gets model attributes SlowMul_TheriMoves / SlowUntil_TheriMoves (this slow's
+--   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
+--   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
+--   Switch: script attribute TheriMovesServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -170,6 +176,7 @@ VERSION = "1.10" -- v1.10 no movement moves while snared
 --   attribute TheriMovesSnareBlockEnabled (default true, read at each request; false = 1.9). Diagnostic: script
 --   TheriMovesSnareRefusals (count).
 VERSION = "1.11" -- v1.11 armor on every hit (MDA-366)
+VERSION = "1.12" -- v1.12 practice bot slows as attributes
 -- v1.11 (MDA-366, plan docs/plans/BALANCE_PASS_v1.0.md; Kepu 2026-11-09 "Every attack"): armor (Thick Hide / Armored Hide /
 --   Wiry Frame = the victim's StatDamageTakenMul) now cuts feathers, field bleed ticks, snares and the reel slash (damage):
 --   damage x BoneCrest.armor(victim) (ServerStorage.DinoArcade.BoneCrest 1.7, one shared call). Switch: script attribute
@@ -412,6 +419,11 @@ RunService.Stepped:Connect(function()
 	for m, e in pairs(botSlow) do
 		local hum = e.hum
 		if not m.Parent or not hum.Parent then
+			botSlow[m] = nil
+		elseif m:GetAttribute("PracticeBot") == true and script:GetAttribute("TheriMovesServerBotSlowAttrEnabled") ~= false then -- v1.12: practice bots
+			m:SetAttribute("SlowMul_TheriMoves", e.mul)
+			m:SetAttribute("SlowUntil_TheriMoves", e.untilT)
+			if e.set ~= nil and e.base and math.abs(hum.WalkSpeed - e.set) <= 1e-3 then hum.WalkSpeed = e.base end
 			botSlow[m] = nil
 		elseif m:GetAttribute("TenoSlowed") == true or m:GetAttribute("TenoMoveSlowed") == true then -- another slower: give it back, wait
 			if e.set ~= nil and e.base and math.abs(hum.WalkSpeed - e.set) <= 1e-3 then hum.WalkSpeed = e.base end
