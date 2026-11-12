@@ -205,6 +205,14 @@
 --   teno or SkillEffectsEnabled false). TenoStatsServer 1.0 and TenoAttackServer 1.1 read them. Brace II: when StunnedUntil
 --   is set into the future while TenoBraceNoStun is true and TenoHoldSince > 0 (holding a slam), StunnedUntil = now
 --   (SkillStunTrimmed "braced"), before the Thick Hide rules.
+-- v1.61 (Bots v2, MDA-470, plan docs/plans/BOTS_V2_v1.0.md T6; Kepu 2026-11-11 20:39 "the damn bots don't even use their attack
+--   buttons or their mecha"): practice bots get the same part attributes as a player's character. Each model with
+--   PracticeBot = true that enters Workspace.DinoIsland.Bots: its PracticeLoadout (JSON list of part ids, PracticeBots 1.0)
+--   becomes model attributes SkillSlot1..SkillSlot4 ("" for an empty slot), then the character path above runs with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player and the model as the character (its SkillPath_* steps are on the
+--   model), so DashEnabled, CloakTime, TrooPart* and every other part attribute land on the bot like on a player.
+--   Switch: script attribute SkillEffectsBotPassEnabled (default true, read per bot). Diagnostics: SkillEffectsBots (bots done),
+--   SkillEffectsBotError (last error).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -1761,3 +1769,35 @@ end)
 script:GetAttributeChangedSignal("SkillEffectsTrooPassivesEnabled"):Connect(function() -- v1.52
 	for _, p in ipairs(Players:GetPlayers()) do refresh(p) end
 end)
+
+-- ---------- v1.61: practice bots get the same part attributes (see the header) ----------
+VERSION = "1.61" -- v1.61 practice bot pass
+script:SetAttribute("SkillEffectsVersion", VERSION)
+if script:GetAttribute("SkillEffectsBotPassEnabled") == nil then script:SetAttribute("SkillEffectsBotPassEnabled", true) end
+do
+	local HttpService = game:GetService("HttpService")
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local done = setmetatable({}, {__mode = "k"})
+	local function onBot(model)
+		if done[model] or not BotProxy or script:GetAttribute("SkillEffectsBotPassEnabled") == false then return end
+		if not model:IsA("Model") or model:GetAttribute("PracticeBot") ~= true then return end
+		done[model] = true
+		local ok, ids = pcall(function() return HttpService:JSONDecode(model:GetAttribute("PracticeLoadout") or "[]") end)
+		if not ok or type(ids) ~= "table" then ids = {} end
+		for n = 1, 4 do
+			local id = ids[n]
+			model:SetAttribute("SkillSlot" .. n, type(id) == "string" and id or "")
+		end
+		local okC, err = pcall(onCharacter, BotProxy.of(model), model)
+		if not okC then script:SetAttribute("SkillEffectsBotError", tostring(err)) end
+		script:SetAttribute("SkillEffectsBots", (script:GetAttribute("SkillEffectsBots") or 0) + 1)
+	end
+	task.spawn(function()
+		local island = workspace:WaitForChild("DinoIsland", 60)
+		local bots = island and island:WaitForChild("Bots", 60)
+		if not bots then return end
+		bots.ChildAdded:Connect(function(m) task.spawn(onBot, m) end)
+		for _, m in ipairs(bots:GetChildren()) do task.spawn(onBot, m) end
+	end)
+end

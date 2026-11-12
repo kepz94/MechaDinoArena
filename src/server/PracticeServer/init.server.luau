@@ -76,6 +76,18 @@
 --   behind the preview and was never "placed" (placing happens when InMenu turns false). At match start every human who is
 --   not in the menu is now placed on a spawn spot after 0.3 s (as on leaving the menu). PracticeLobby 1.5 parks preview
 --   players in the menu. Switch: script attribute PrPlaceOnStartEnabled (default true, read per match start).
+-- v1.7 (Bots v2, MDA-469 / MDA-473, plan docs/plans/BOTS_V2_v1.0.md T4 / T9; Kepu 2026-11-11 20:39 "The bots are still dumb …
+--   mixed at all times. Some really hard bots and some easy ones", picks 1 Elite · 1 Hard · 2 Normal · 1 Easy re-rolled each
+--   respawn, lobby buttons removed):
+--   * brain: bots think through the child PracticeBrain2 2.0 (PracticeBrain 1.1 stays for the switch) with ctx.pathBudget = {n =
+--     PrPathBudget (3)} path computes a tick for all bots, and ctx.kit = the child PracticeKit (when present and PrKitEnabled).
+--     Switch: PrBrainV2Enabled (default true, read per tick; false = 1.6's PracticeBrain).
+--   * tiers: every bot spawn (match start and each respawn) takes PracticeRules 1.2 respawnTier(the tiers of its team's other
+--     living bots, that team's bot count) -> rec.tier and model BotTier, so each team keeps the spread (5 bots: 1 Elite, 1 Hard,
+--     2 Normal, 1 Easy; 4 bots: Elite, Hard, Normal, Easy) and the tier changes from life to life. Difficulty is "Mixed"
+--     (PrDifficulty); a "difficulty" request answers "mixed". Diagnostics PrTiersA / PrTiersB ("Elite Hard Normal ...").
+--     Switch: PrTiersEnabled (default true; read at start for the difficulty, per spawn for tiers).
+--   * PracticeKit.onSpawn(rec, model) (when present and PrKitEnabled): the kit readies the bot's parts.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -88,6 +100,7 @@ VERSION = "1.3" -- v1.3 bot jobs + no T-Rex bots
 VERSION = "1.4" -- v1.4 island hub
 VERSION = "1.5" -- v1.5 match preview
 VERSION = "1.6" -- v1.6 place at match start
+VERSION = "1.7" -- v1.7 Bots v2: brain 2.0, tiers, kit
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
@@ -110,6 +123,12 @@ local H = require(DA:WaitForChild("HardpointRules"))
 local SkillTree = require(DA:WaitForChild("SkillTree"))
 local Bots = require(script:WaitForChild("PracticeBots"))
 local Brain = require(script:WaitForChild("PracticeBrain"))
+local Brain2 = script:FindFirstChild("PracticeBrain2") and require(script.PracticeBrain2) -- v1.7
+local Kit = script:FindFirstChild("PracticeKit") and require(script.PracticeKit) -- v1.7
+for k, v in pairs({PrBrainV2Enabled = true, PrTiersEnabled = true, PrKitEnabled = true, PrPathBudget = 3}) do -- v1.7
+	DEFAULTS[k] = v
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 
 if script:GetAttribute("PracticeEnabled") == false then
 	script:SetAttribute("PracticeState", "off")
@@ -173,10 +192,13 @@ if island and not botFolder then
 	botFolder.Parent = island
 end
 Brain.init()
+if Brain2 then Brain2.init(Brain, Bots) end -- v1.7
+if Kit and Kit.init then pcall(Kit.init, {Brain = Brain, Bots = Bots, R = R, SkillTree = SkillTree}) end -- v1.7
 
 -- ---------- roster ----------
 local phase = "lobby"
 local difficulty = get("PrDifficultyDefault")
+if get("PrTiersEnabled") ~= false and R.TIERS then difficulty = "Mixed" end -- v1.7
 local size = math.clamp(math.floor(tonumber(get("PracticeTeamSize")) or 5), 1, 5)
 local pool = {} -- rolled bot specs (2 x size)
 local humans = {} -- ordered {player, want}
@@ -282,6 +304,18 @@ local function spawnBot(rec)
 	rec.goalPoint, rec.holdUntil = nil, nil
 	model:SetAttribute("BotRole", rec.role or "cap")
 	rec.job, rec.jobWhy, rec.filledAt = nil, nil, nil -- v1.3: the team brain gives it its dino job on the next tick
+	if get("PrTiersEnabled") ~= false and R.respawnTier then -- v1.7: tiers
+		local living, n = {}, 0
+		for _, o in ipairs(botRecs) do
+			if o.team == rec.team then
+				n += 1
+				if o ~= rec and o.model and o.model.Parent and not o.deadAt and o.tier then table.insert(living, o.tier) end
+			end
+		end
+		rec.tier = R.respawnTier(living, math.max(n, 1), rng)
+		model:SetAttribute("BotTier", rec.tier)
+	end
+	if Kit and Kit.onSpawn and get("PrKitEnabled") ~= false then pcall(Kit.onSpawn, rec, model) end -- v1.7
 	jobsDirty = true
 	pcall(function() hpFn:Invoke("bot", model, rec.team) end)
 end
@@ -479,7 +513,8 @@ remote.OnServerEvent:Connect(function(pl, action, arg)
 			end
 		end
 	elseif action == "difficulty" then
-		if R.DIFF[arg] then difficulty = arg; publish(); r = "ok" end
+		if get("PrTiersEnabled") ~= false and R.TIERS then r = "mixed" -- v1.7
+		elseif R.DIFF[arg] then difficulty = arg; publish(); r = "ok" end
 	elseif action == "newbots" then
 		if phase ~= "lobby" then
 			r = "notInLobby"
@@ -632,6 +667,8 @@ RunService.Heartbeat:Connect(function(dt)
 	local ctx = {bots = botRecs, R = R, H = H, diff = R.diffOf(difficulty), rng = rng, centre = pts[warm and 1 or idx],
 		nextCentre = pts[hpState:GetAttribute("HpNextIndex") or 1], into = H.POINT_TIME - (endsAt - now()), pointTime = H.POINT_TIME,
 		index = idx}
+	ctx.pathBudget = {n = tonumber(get("PrPathBudget")) or 3} -- v1.7
+	ctx.kit = (Kit and get("PrKitEnabled") ~= false) and Kit or nil -- v1.7
 	-- v1.3: team brain + who targets whom (see the header)
 	if get("PrJobsEnabled") ~= false and R.dealJobs then
 		ctx.jobs = true
@@ -733,7 +770,8 @@ RunService.Heartbeat:Connect(function(dt)
 			else
 				alive += 1
 				ctx.home = cnt[rec.team] > 0 and sum[rec.team] / cnt[rec.team] or nil
-				local ok, err = pcall(Brain.step, rec, ctx)
+				local stepFn = (Brain2 and get("PrBrainV2Enabled") ~= false) and Brain2.step or Brain.step -- v1.7
+				local ok, err = pcall(stepFn, rec, ctx)
 				if not ok then script:SetAttribute("PrBrainError", tostring(err)) end
 			end
 		elseif rec.respawnAt and os.clock() >= rec.respawnAt then
@@ -742,5 +780,13 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 	end
 	script:SetAttribute("PrBots", alive)
+	if get("PrTiersEnabled") ~= false then -- v1.7
+		local tl = {A = {}, B = {}}
+		for _, rec in ipairs(botRecs) do
+			if rec.tier and rec.model and tl[rec.team] then table.insert(tl[rec.team], rec.tier) end
+		end
+		script:SetAttribute("PrTiersA", table.concat(tl.A, " "))
+		script:SetAttribute("PrTiersB", table.concat(tl.B, " "))
+	end
 	script:SetAttribute("PrServerMs", math.floor((os.clock() - t0) * 10000 + 0.5) / 10)
 end)
