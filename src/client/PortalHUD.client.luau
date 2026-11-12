@@ -6,7 +6,7 @@
 --   HubTripEndsAt, HubTripLeader, HubTripMembers, HubTripState, HubLastResult / HubLastAt, HubLastLeader; InMenu.
 -- ScreenGui "PortalHUD" (DisplayOrder 20, IgnoreGuiInset, ResetOnSpawn false). Sizes scale with u = clamp(screen height / 720,
 --   0.55, 1.3). Fonts: GothamBlack / FredokaOne (FontSwap 1.0 turns the short ones Silkscreen).
---   * Banner (top centre, 7% down; only while HubLive and not InMenu):
+--   * Banner (top centre, max(7% of the height, 100 px) down, under the SKILLS / SQUAD pills; only while HubLive and not InMenu):
 --       on the islet / bridge -> "SAFE AREA" (cyan rgb(95, 224, 200)) / "NO FIGHTING HERE";
 --       guard running -> "FIGHTING ON" (red rgb(255, 106, 128)) / "PROTECTED n" (n = whole seconds left, rounded up);
 --       guard just ended -> "FIGHTING ON" / "PLAYERS CAN HIT YOU" for 2 s; then hidden.
@@ -246,7 +246,7 @@ RunService.RenderStepped:Connect(function()
 		chipKey = ""
 		local ts, ls = math.floor(22 * u + 0.5), math.floor(13 * u + 0.5)
 		banner.Size = UDim2.fromOffset(math.floor(260 * u), ts + ls + math.floor(22 * u))
-		banner.Position = UDim2.new(0.5, 0, 0.07, 0)
+		banner.Position = UDim2.new(0.5, 0, 0, math.floor(math.max(vp.Y * 0.07, 100))) -- under the SKILLS / SQUAD pills
 		bannerCorner.CornerRadius = UDim.new(0, math.floor(8 * u))
 		bTitle.TextSize, bLine.TextSize = ts, ls
 		bTitle.Size, bTitle.Position = UDim2.new(1, 0, 0, ts), UDim2.fromOffset(0, math.floor(8 * u))

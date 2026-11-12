@@ -174,7 +174,8 @@ VERSION = "1.23" -- v1.23 island hub
 --   this server's mode -> "play"; HubServer stands the dino on the portal islet), "practice" -> the PRACTICE press (the lobby),
 --   "arena" -> the HARDPOINT press. A line under PLAY: "ONTO THE ISLAND" / "BACK INTO THE MATCH". In "practice" / "arena" a
 --   BACK TO ISLAND button (dark, cyan outline rgb(95, 224, 200)) sits where the chip was -> DinoModeRequest "island"
---   (ModeServer 1.3); its studio toast reads "THE ISLAND OPENS IN THE LIVE GAME" and the travel loader shows "Sandbox".
+--   (ModeServer 1.3); its studio toast reads "THE ISLAND OPENS IN THE LIVE GAME" and the travel loader shows "Sandbox" (also
+--   for the practice lobby's BACK TO ISLAND: in "practice" / "arena" every trip result counts as the island).
 --   Switch: script attribute MainMenuHubEnabled (default true, read at each layout / press; false = 1.22). Diagnostic: player
 --   MainMenuLastPress "island".
 -- v1.22 (practice match, MDA-413, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 9, mockup docs/mockups/practice_match_v0.1.html
@@ -1290,6 +1291,7 @@ local function travelLoader(r)
 end
 player:GetAttributeChangedSignal("ModeLastAt"):Connect(function()
 	local r = player:GetAttribute("ModeLastResult")
+	if hubNow() and kindNow() ~= "hub" then lastPressedMode = "island" end -- v1.23: the only trip from a mode is the island
 	travelLoader(r) -- v1.1
 	if r == "studio" and lastPressedMode == "island" then -- v1.23
 		showToast("THE ISLAND OPENS IN THE LIVE GAME", false)
