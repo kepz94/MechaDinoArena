@@ -40,13 +40,21 @@
 --   height (cleared again on the server 1 s later, so the next "play" sets it anew). Script attribute
 --   ModeFaceIslandEnabled (default true; false = 1.1: CFrame.new(pos), no camera turn). Diagnostic: player attribute
 --   ModeFaceDir (the direction used, Vector3).
+-- v1.3 (island hub, MDA-458, plan docs/plans/ISLAND_HUB_v1.0.md Task 7, ADR-011; Kepu 2026-11-11: the menu inside a mode gets
+--   BACK TO ISLAND): action "island" in the "practice" and "arena" kinds (ModeRules 1.2 serverKind()) sends the player to a
+--   public Sandbox server (the hub) through ServerScriptService.HubServer.HubTravel 1.0: a squad leader (SquadRules 1.3
+--   isLeader) takes every squad member on this server, anyone else goes alone (their squad here loses them as a quit). Save
+--   wait as HubTravel.saveWait ("saving"), then "teleporting" (every traveller); Studio -> "studio"; error -> "teleportFailed";
+--   the hub kind or no HubTravel -> "badArg". Teleport data: HubRules.tripData("island", key, the leader's UserId when a
+--   squad goes, the UserIds, this kind), so SquadServer 1.1 rebuilds the squad on the island. Switch: script attribute
+--   ModeIslandEnabled (default true, read per request; false -> "badArg"). Diagnostic: script ModeServerKind.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 local TeleportService = game:GetService("TeleportService")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local PAD_HEIGHT = 600
 local PAD_SIZE = Vector3.new(400, 2, 400)
 local SLOT_GAP = 40
@@ -61,6 +69,9 @@ if script:GetAttribute("ModeFaceIslandEnabled") == nil then script:SetAttribute(
 local ModeRules = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
 local MODE = ModeRules.currentMode()
 script:SetAttribute("ModeServerMode", MODE)
+if script:GetAttribute("ModeIslandEnabled") == nil then script:SetAttribute("ModeIslandEnabled", true) end -- v1.3
+local KIND = ModeRules.serverKind and ModeRules.serverKind() or MODE -- v1.3
+script:SetAttribute("ModeServerKind", KIND)
 
 local remote = ReplicatedStorage:FindFirstChild("DinoModeRequest")
 if not remote then
@@ -215,7 +226,56 @@ local function hop(player, target)
 	busy[player] = nil
 end
 
+-- v1.3: BACK TO ISLAND
+local function island(player)
+	local okT, Travel = pcall(function()
+		return require(game:GetService("ServerScriptService"):WaitForChild("HubServer", 5):WaitForChild("HubTravel", 5))
+	end)
+	local arcade = ServerStorage:WaitForChild("DinoArcade")
+	local okS, SquadRules = pcall(require, arcade:WaitForChild("SquadRules"))
+	local okH, HubRules = pcall(require, arcade:WaitForChild("HubRules"))
+	if not (okT and Travel and okS and okH) then
+		result(player, "badArg")
+		return
+	end
+	local party = {player}
+	local leaderId = nil
+	if SquadRules.isLeader and SquadRules.isLeader(player) then
+		leaderId = player.UserId
+		for _, m in ipairs(SquadRules.members(SquadRules.idOfPlayer(player))) do
+			if m ~= player then table.insert(party, m) end
+		end
+	end
+	for _, m in ipairs(party) do busy[m] = true end
+	local here = Travel.saveWait(party, function()
+		for _, m in ipairs(party) do if m.Parent then result(m, "saving") end end
+	end)
+	local ids = {}
+	for _, m in ipairs(here) do
+		table.insert(ids, m.UserId)
+		result(m, "teleporting")
+	end
+	local key = game:GetService("HttpService"):GenerateGUID(false)
+	local ok, why = Travel.go(here, "island", HubRules.tripData("island", key, leaderId, ids, KIND))
+	if not ok then
+		for _, m in ipairs(here) do
+			if m.Parent then result(m, why == "studio" and "studio" or "teleportFailed") end
+		end
+	end
+	for _, m in ipairs(party) do busy[m] = nil end
+end
+
 remote.OnServerEvent:Connect(function(player, action)
+	if action == "island" then -- v1.3
+		if busy[player] then
+			result(player, "busy")
+		elseif KIND == "hub" or script:GetAttribute("ModeIslandEnabled") == false then
+			result(player, "badArg")
+		else
+			task.spawn(island, player)
+		end
+		return
+	end
 	if busy[player] then
 		result(player, "busy")
 		return

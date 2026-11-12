@@ -53,6 +53,12 @@
 --   BOTS is a portal into a private match for your squad):
 --   * runs only when ModeRules 1.2 serverKind() ~= "hub" (the hub island has no practice match): kind "hub" -> PracticeState
 --     "hub", nothing else. Switch: script attribute PrHubGateEnabled (default true; false = 1.3). Read once at start.
+--   * private bots match (a reserved server: game.PrivateServerId ~= "" and PrivateServerOwnerId == 0, or the Studio test
+--     attribute PrPrivateTest == true on this script): ReplicatedStorage.Practice PrPrivate = true; every human plays side A
+--     (blue): "lobby" puts the player in with want "A", joining a running match takes a side-A slot only, and "join" with "B" /
+--     "auto" answers "squadSide". A player arriving with join data TeleportData.mdaTrip.mode == "bots" (HubServer 1.0 portal)
+--     enters the lobby by itself (as "lobby"). Switch: script attribute PrPrivateSideEnabled (default true; read at start;
+--     false = 1.3: public rules, arrivals see the menu). Diagnostic: PrArrivals.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -126,6 +132,12 @@ if not remote then
 end
 
 local function now() return workspace:GetServerTimeNow() end
+-- v1.4: private bots match
+if script:GetAttribute("PrPrivateSideEnabled") == nil then script:SetAttribute("PrPrivateSideEnabled", true) end
+local PRIVATE = script:GetAttribute("PrPrivateSideEnabled") ~= false
+	and ((game.PrivateServerId ~= "" and game.PrivateServerOwnerId == 0) or script:GetAttribute("PrPrivateTest") == true)
+set("PrPrivate", PRIVATE)
+script:SetAttribute("PrArrivals", 0)
 local rng = Random.new()
 
 local hs = ServerScriptService:WaitForChild("HardpointServer")
@@ -384,6 +396,7 @@ local function joinMatch(pl)
 	for _, s in ipairs(slots.B) do if s.kind == "human" then nB += 1 end end
 	local side = R.pickSide(nA, nB, hpState:GetAttribute("HpScoreA"), hpState:GetAttribute("HpScoreB"))
 	local other = side == "A" and "B" or "A"
+	if PRIVATE then side, other = "A", "A" end -- v1.4: the squad plays blue
 	for _, sd in ipairs({side, other}) do
 		for k, s in ipairs(slots[sd]) do
 			if s.kind == "bot" then
@@ -416,7 +429,7 @@ remote.OnServerEvent:Connect(function(pl, action, arg)
 		elseif phase == "match" then
 			r = joinMatch(pl)
 		else
-			table.insert(humans, {player = pl, want = "auto"})
+			table.insert(humans, {player = pl, want = PRIVATE and "A" or "auto"}) -- v1.4: private -> side A
 			setHuman(pl, true, false, nil)
 			if (state:GetAttribute("PrStartAt") or 0) == 0 then set("PrStartAt", now() + get("PrAutoStart")) end
 			rebuild()
@@ -429,6 +442,8 @@ remote.OnServerEvent:Connect(function(pl, action, arg)
 			r = "notInLobby"
 		elseif arg ~= "A" and arg ~= "B" and arg ~= "auto" then
 			r = "badArg"
+		elseif PRIVATE and arg ~= "A" then -- v1.4
+			r = "squadSide"
 		else
 			local n = 0
 			if arg ~= "auto" then for _, h in ipairs(humans) do if h.player ~= pl and h.want == arg then n += 1 end end end
@@ -485,6 +500,30 @@ end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, pl) end
 Players.PlayerRemoving:Connect(function(pl) removeHuman(pl, "quit") lastReq[pl] = nil end)
+
+-- v1.4: a portal trip into the private bots match opens the lobby by itself
+local function arrive(pl)
+	local okJd, jd = pcall(function() return pl:GetJoinData() end)
+	local td = okJd and type(jd) == "table" and jd.TeleportData or nil
+	if not (PRIVATE and type(td) == "table" and type(td.mdaTrip) == "table" and td.mdaTrip.mode == "bots") then return end
+	if humanIndex(pl) then return end
+	script:SetAttribute("PrArrivals", (script:GetAttribute("PrArrivals") or 0) + 1)
+	local r
+	if phase == "match" then
+		r = joinMatch(pl)
+	else
+		table.insert(humans, {player = pl, want = "A"})
+		setHuman(pl, true, false, nil)
+		if (state:GetAttribute("PrStartAt") or 0) == 0 then set("PrStartAt", now() + get("PrAutoStart")) end
+		rebuild()
+		publish()
+		r = "ok"
+	end
+	pl:SetAttribute("PrLastResult", r)
+	pl:SetAttribute("PrLastAt", now())
+end
+Players.PlayerAdded:Connect(arrive)
+for _, pl in ipairs(Players:GetPlayers()) do task.spawn(arrive, pl) end
 
 -- ---------- the loop ----------
 local acc, lastIndex = 0, nil
