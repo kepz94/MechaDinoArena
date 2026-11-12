@@ -24,11 +24,21 @@
 --   teamLive() -> bool; teamOfPlayer(player) -> string; teamOf(model) -> string
 -- v1.2 (practice match, MDA-405, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 1): a model with no player also answers its
 --   HardpointBotTeam (PracticeServer's bots), read after HardpointTestTeam. Nothing else changes.
+-- v1.3 (island hub, MDA-453, plan docs/plans/ISLAND_HUB_v1.0.md Task 2, ADR-011; Kepu 2026-11-11: no fighting on the portal
+--   islet, 3 s guard after leaving it "both ways"):
+--   * sameChar(a, b) first row, on the server only (RunService:IsServer()): ReplicatedStorage HubLive == true (HubServer 1.0,
+--     hub servers only), a ~= b and either model has the attribute HubSafe == true (on the islet / bridge or in the 3 s
+--     guard) -> true, so every damage path that skips squadmates also skips that pair (both ways). Clients: unchanged (team
+--     tags and effects don't treat strangers on the islet as friends). Switch: ReplicatedStorage attribute HubSafeRules ~=
+--     false (false = 1.2).
+--   * leaderOf(id) -> the member Player with player attribute SquadLeader == true (SquadServer 1.1), else nil.
+--     isLeader(player) -> SquadLeader == true and a squad.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService") -- v1.3
 
 local M = {}
-M.Version = "1.2"
+M.Version = "1.3"
 M.MAX = 4
 
 function M.sameIds(liveFlag, idA, idB, isSelf)
@@ -83,8 +93,27 @@ end
 
 function M.sameChar(a, b)
 	if typeof(a) ~= "Instance" or typeof(b) ~= "Instance" then return false end
+	if a ~= b and RunService:IsServer() and ReplicatedStorage:GetAttribute("HubLive") == true -- v1.3
+		and ReplicatedStorage:GetAttribute("HubSafeRules") ~= false
+		and (a:GetAttribute("HubSafe") == true or b:GetAttribute("HubSafe") == true) then
+		return true
+	end
 	if M.teamLive() then return M.sameIds(true, M.teamOf(a), M.teamOf(b), a == b) end -- v1.1
 	return M.sameIds(M.live(), M.idOf(a), M.idOf(b), a == b)
+end
+
+-- v1.3
+function M.isLeader(player)
+	return typeof(player) == "Instance" and player:IsA("Player") and M.idOfPlayer(player) ~= ""
+		and player:GetAttribute("SquadLeader") == true
+end
+
+-- v1.3
+function M.leaderOf(id)
+	for _, p in ipairs(M.members(id)) do
+		if p:GetAttribute("SquadLeader") == true then return p end
+	end
+	return nil
 end
 
 function M.members(id)
