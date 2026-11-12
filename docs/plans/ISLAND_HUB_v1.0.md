@@ -243,3 +243,12 @@ Commits e589e8c..(this); installed in Studio, 15 hashes match the repo (VERSIONS
   - The shallow sea around the islet is walkable (water parts don't collide), so the bridge is not the only way in; the safe
     area is the islet disc + the bridge either way.
 - Studio checks per kind: see the VERSIONS row. Not checked: teleports (live only), a real phone, a second player.
+
+## v1.1 (2026-11-11 18:48, after the v699 publish)
+Kepu: "Those portals are so damn small. This can barely fit a zino ... When you step in a portal in Fortnite it goes straight to
+the loading ... Make them more spaced out and bigger and fucking work like an actual portal."
+- Portals 50 wide x ~62 tall (the Therizino is about 33 x 27), 120 studs apart; islet radius 130, plaza 220 across
+  (PortalIslet build 1.1). Screenshots docs/reference/hub/islet_*_v1.1.jpg.
+- No countdown: HubRules 1.1 TRIP_TIME 0; HubServer 1.1 holds the travellers in place while the loader is up; PortalHUD 1.1
+  shows the loader from "saving". The squad rule is unchanged (the leader walks in, everyone goes; a member gets the
+  "only the leader" toast).

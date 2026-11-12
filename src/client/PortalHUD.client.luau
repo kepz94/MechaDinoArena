@@ -24,14 +24,22 @@
 -- Switch: script attribute PortalHUDEnabled (default true, read per frame; false = nothing shown).
 -- Diagnostics: player PortalHUDVersion, PortalHUDBanner ("safe" / "guard" / "fight" / "hidden"), PortalHUDPanel ("count" /
 --   "saving" / "hidden"), PortalHUDToast (last toast text), PortalHUDTravel ("egg" / "screen" / "").
+-- v1.1 (Kepu 2026-11-11 18:48: a portal "goes straight to the loading", HubServer 1.1 / HubRules 1.1 TRIP_TIME 0): the travel
+--   loader (EggLoader, or the full-screen fallback "TRAVELING TO <MODE>") comes up at "saving" as well as "teleporting", so
+--   walking into a portal goes straight to the loading screen; the countdown panel only shows while a "count" phase exists.
+--   Switch: script attribute PortalHUDLoadOnSaveEnabled (default true, read per change; false = 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local player = Players.LocalPlayer
 player:SetAttribute("PortalHUDVersion", VERSION)
 if script:GetAttribute("PortalHUDEnabled") == nil then script:SetAttribute("PortalHUDEnabled", true) end
+if script:GetAttribute("PortalHUDLoadOnSaveEnabled") == nil then script:SetAttribute("PortalHUDLoadOnSaveEnabled", true) end -- v1.1
+local function loading(st) -- v1.1
+	return st == "teleporting" or (st == "saving" and script:GetAttribute("PortalHUDLoadOnSaveEnabled") ~= false)
+end
 
 local PANEL = Color3.fromRGB(20, 20, 26)
 local CYAN = Color3.fromRGB(95, 224, 200)
@@ -170,7 +178,7 @@ end)
 local eggShown = false
 local function travelState(st, mode)
 	local loader = game:GetService("ReplicatedFirst"):FindFirstChild("EggLoader")
-	if st == "teleporting" and not eggShown then
+	if loading(st) and not eggShown then -- v1.1: + saving
 		local showFn = loader and loader:FindFirstChild("Show")
 		if showFn then
 			eggShown = true
@@ -180,7 +188,7 @@ local function travelState(st, mode)
 		else
 			player:SetAttribute("PortalHUDTravel", "screen")
 		end
-	elseif st ~= "teleporting" and eggShown then
+	elseif not loading(st) and eggShown then -- v1.1
 		eggShown = false
 		local hideFn = loader and loader:FindFirstChild("Hide")
 		if hideFn then pcall(function() hideFn:Invoke() end) end
@@ -290,7 +298,7 @@ RunService.RenderStepped:Connect(function()
 	-- countdown / saving
 	local st = player:GetAttribute("HubTripState")
 	local md = MODES[player:GetAttribute("HubTripMode")]
-	local pmode = (on and md and (st == "count" or st == "saving")) and st or "hidden"
+	local pmode = (on and md and (st == "count" or (st == "saving" and not loading(st)))) and st or "hidden" -- v1.1
 	panel.Visible = pmode ~= "hidden"
 	if player:GetAttribute("PortalHUDPanel") ~= pmode then player:SetAttribute("PortalHUDPanel", pmode) end
 	if panel.Visible then
@@ -316,7 +324,7 @@ RunService.RenderStepped:Connect(function()
 		pHint.Visible = st == "count"
 	end
 	-- travel screen (no EggLoader)
-	travel.Visible = on and st == "teleporting" and player:GetAttribute("PortalHUDTravel") == "screen" and md ~= nil
+	travel.Visible = on and loading(st) and player:GetAttribute("PortalHUDTravel") == "screen" and md ~= nil -- v1.1
 	if travel.Visible then
 		tText.Text = "TRAVELING TO\n" .. md.name
 	end

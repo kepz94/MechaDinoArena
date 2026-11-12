@@ -3376,3 +3376,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - ModeServer 1.3: `ModeIslandEnabled` (true); diagnostic `ModeServerKind`; action "island".
 - PortalHUD 1.0: `PortalHUDEnabled` (true); player diagnostics `PortalHUDVersion`, `PortalHUDBanner`, `PortalHUDPanel`, `PortalHUDToast`, `PortalHUDTravel`.
 - MainMenu 1.23: `MainMenuHubEnabled` (true). PracticeLobby 1.3: `PracticeLobbyHubEnabled` (true). SquadHUD 1.1: `SquadHUDLeaderStarEnabled` (true).
+- Island hub 1.1 (Kepu 18:48 "bigger", "straight to the loading"): HubRules 1.1 TRIP_TIME 0 (TRIP_TIME_V10 5); HubServer 1.1 `HubAnchorTripEnabled` (true); PortalHUD 1.1 `PortalHUDLoadOnSaveEnabled` (true); PortalIslet 1.1 `IsletRadius` 130, portals 50 x ~62, 120 apart.

@@ -1,4 +1,4 @@
--- HubRules.spec v1.0 (Mecha Dino Arena) — HubRules 1.0 (plan docs/plans/ISLAND_HUB_v1.0.md Task 1, MDA-452).
+-- HubRules.spec v1.1 (Mecha Dino Arena) — HubRules 1.1 (TRIP_TIME 0) (plan docs/plans/ISLAND_HUB_v1.0.md Task 1, MDA-452).
 -- Run in Studio Edit (clones ServerStorage.DinoArcade.HubRules); returns "PASS n" or "FAIL ...".
 local src = game:GetService("ServerStorage").DinoArcade:FindFirstChild("HubRules")
 if not src then return "FAIL require: HubRules missing" end
@@ -9,7 +9,7 @@ if not okR then return "FAIL require: " .. tostring(R) end
 local fails, passes = {}, 0
 local function eq(name, got, want) if got == want then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end end
 
-eq("version", R.VERSION, "1.0"); eq("trip", R.TRIP_TIME, 5); eq("guard", R.GUARD, 3); eq("save", R.SAVE_WAIT, 12)
+eq("version", R.VERSION, "1.1"); eq("trip", R.TRIP_TIME, 0); eq("trip v10", R.TRIP_TIME_V10, 5); eq("guard", R.GUARD, 3); eq("save", R.SAVE_WAIT, 12)
 eq("poll", R.POLL, 0.2); eq("keep", R.KEY_KEEP, 60)
 -- kind
 local function k(t) return R.kind(t) end

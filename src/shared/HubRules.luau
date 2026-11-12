@@ -19,9 +19,13 @@
 --   nextLeader(members) -> UserId | nil; members = {{id, joinedAt}}: earliest joinedAt, ties -> the smallest id.
 --   tripData(mode, key, leader, members, from) -> the teleport data {mdaPlay = true, mdaFrom = from, mdaTrip = {mode, key,
 --     leader, members}}.
+-- v1.1 (Kepu 2026-11-11 18:48: "When you step in a portal in Fortnite it goes straight to the loading. That's how this shit needs
+--   to fucking work"): TRIP_TIME 0 — walking into a portal starts the trip at once (no countdown). The 1.0 value stays as
+--   TRIP_TIME_V10 = 5.
 local M = {}
-M.VERSION = "1.0"
-M.TRIP_TIME = 5
+M.VERSION = "1.1"
+M.TRIP_TIME = 0 -- v1.1: straight to the loading (1.0: 5)
+M.TRIP_TIME_V10 = 5
 M.GUARD = 3
 M.SAVE_WAIT = 12
 M.POLL = 0.2

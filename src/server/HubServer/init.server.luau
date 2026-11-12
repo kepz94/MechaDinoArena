@@ -35,17 +35,24 @@
 --   HubTrips, HubTripsFailed, HubPlaced.
 -- Test hook (server-only BindableFunction HubTest): Invoke("trip", player, mode) starts a trip as if the player walked into
 --   that portal (no "left the portal" cancel); Invoke("cancel", player); Invoke("state") -> a one-line summary.
+-- v1.1 (Kepu 2026-11-11 18:48: "When you step in a portal in Fortnite it goes straight to the loading"): with HubRules 1.1
+--   TRIP_TIME 0 a portal goes straight to "saving" / "teleporting" (no countdown). Once the countdown part is over the trip is
+--   in its "go" phase: the cancel / drop rules above apply only during the countdown, and every traveller who is not in the
+--   menu has its HumanoidRootPart anchored where it stands (so walking through the portal doesn't carry it away while the
+--   loading screen is up). "studio" / "failed" / "cancelled", and a teleport that hasn't happened 20 s after it was sent,
+--   un-anchor them again. Switch: script attribute HubAnchorTripEnabled (default true, read per trip; false = no anchoring).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local PLACE_DELAY, RESPAWN_DELAY = 0.15, 0.3
 
 script:SetAttribute("HubServerVersion", VERSION)
 if script:GetAttribute("HubEnabled") == nil then script:SetAttribute("HubEnabled", true) end
+if script:GetAttribute("HubAnchorTripEnabled") == nil then script:SetAttribute("HubAnchorTripEnabled", true) end -- v1.1
 script:SetAttribute("HubTrips", 0)
 script:SetAttribute("HubTripsFailed", 0)
 script:SetAttribute("HubPlaced", 0)
@@ -152,8 +159,15 @@ local function clearTrip(p, state)
 	tripOf[p] = nil
 	p:SetAttribute("HubTripState", state)
 end
+local function unanchor(trip) -- v1.1
+	for p, hrp in pairs(trip.anchored or {}) do
+		if hrp.Parent and p.Parent and p:GetAttribute("InMenu") ~= true then hrp.Anchored = false end
+	end
+	trip.anchored = {}
+end
 local function finish(trip, state)
 	trip.dead = true
+	unanchor(trip) -- v1.1
 	for _, p in ipairs(trip.players) do
 		if tripOf[p] == trip then clearTrip(p, state) end
 		if p.Parent then
@@ -173,6 +187,17 @@ end
 local function runTrip(trip)
 	while not trip.dead and now() < trip.endsAt do task.wait(0.1) end
 	if trip.dead then return end
+	trip.phase = "go" -- v1.1: no more cancels; hold the travellers where they stand
+	trip.anchored = {}
+	if script:GetAttribute("HubAnchorTripEnabled") ~= false then
+		for _, p in ipairs(trip.players) do
+			local hrp = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+			if hrp and p:GetAttribute("InMenu") ~= true and not hrp.Anchored then
+				hrp.Anchored = true
+				trip.anchored[p] = hrp
+			end
+		end
+	end
 	for _, p in ipairs(trip.players) do p:SetAttribute("HubTripState", "saving") end
 	local here = Travel.saveWait(trip.players)
 	if trip.dead then return end
@@ -190,6 +215,7 @@ local function runTrip(trip)
 			p:SetAttribute("HubLastAt", now())
 		end
 		task.delay(20, function() -- still here after 20 s: free them for a new trip
+			unanchor(trip) -- v1.1
 			for _, p in ipairs(here) do
 				if p.Parent and tripOf[p] == trip then clearTrip(p, "failed") end
 			end
@@ -222,7 +248,7 @@ local function startTrip(p, mode, noPortal)
 	local names = {}
 	for _, m in ipairs(members) do table.insert(names, m.Name) end
 	local trip = {mode = mode, starter = p, players = members, endsAt = now() + HubRules.TRIP_TIME, squadId = sid,
-		key = HttpService:GenerateGUID(false), noPortal = noPortal == true}
+		key = HttpService:GenerateGUID(false), noPortal = noPortal == true, phase = "count"} -- v1.1: phase
 	for _, m in ipairs(members) do
 		tripOf[m] = trip
 		m:SetAttribute("HubTripMode", mode)
@@ -237,6 +263,10 @@ end
 
 TeleportService.TeleportInitFailed:Connect(function(p)
 	if p and p.Parent and p:GetAttribute("HubTripState") == "teleporting" then
+		local t = tripOf[p] -- v1.1: free this one
+		local hrp = t and t.anchored and t.anchored[p]
+		if hrp and hrp.Parent and p:GetAttribute("InMenu") ~= true then hrp.Anchored = false end
+		if t and t.anchored then t.anchored[p] = nil end
 		clearTrip(p, "failed")
 		p:SetAttribute("HubLastResult", "failed")
 		p:SetAttribute("HubLastAt", now())
@@ -295,7 +325,7 @@ task.spawn(function()
 			inPortal[p] = here
 			-- cancels / drops
 			local trip = tripOf[p]
-			if trip and not trip.dead then
+			if trip and not trip.dead and trip.phase == "count" then -- v1.1: only during the countdown
 				if p == trip.starter then
 					if (not trip.noPortal and here ~= trip.mode) or not root or menu
 						or SquadRules.idOfPlayer(p) ~= trip.squadId then
