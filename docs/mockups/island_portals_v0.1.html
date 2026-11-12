@@ -1,0 +1,352 @@
+<title>Island Portal Hub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Island portal hub v0.1 — one dark game-screen look on purpose (it mocks the game). HUD colours from the code
+   (PANEL 20,20,26 · YELLOW 255,200,50 · ORANGE 255,155,46); loud text in Silkscreen like the live game (FontSwap 1.0). */
+:root {
+  --ink:#0e1218; --panel:#161c25; --panel2:#1d2531; --line:#2b3542; --text:#e8edf4; --muted:#9aa6b6;
+  --orange:#ff9b2e; --yellow:#ffc832; --red:#e0284a; --blue:#5aa0ff; --green:#78c850; --safe:#5fe0c8; --hud:rgba(20,20,26,.84);
+  --pix:"Silkscreen","Courier New",monospace;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+* { box-sizing:border-box; }
+body { background:var(--ink); color:var(--text); font-family:var(--body); font-size:15px; line-height:1.5; margin:0;
+  padding-block:20px 56px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width:1180px; margin:0 auto; display:grid; gap:18px; }
+h1 { font-family:var(--pix); font-weight:700; font-size:clamp(22px,3.6vw,34px); margin:0; line-height:1.15; text-wrap:balance; }
+h1 span { color:var(--yellow); }
+h2 { font-family:var(--pix); font-weight:700; font-size:19px; margin:0 0 8px; text-wrap:balance; }
+h3 { font-family:var(--pix); font-weight:700; font-size:15px; margin:0 0 6px; }
+p { margin:0; max-width:72ch; }
+.muted { color:var(--muted); }
+.eyebrow { font-family:var(--pix); letter-spacing:.06em; text-transform:uppercase; font-size:12px; color:var(--orange); }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0; }
+.grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+.grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+ul { margin:6px 0 0; padding-left:18px; } li { margin:3px 0; }
+code, .mono { font-family:var(--mono); font-size:12.5px; }
+.ask { border:1px solid var(--yellow); background:rgba(255,200,50,.06); }
+.tag { display:inline-block; font-family:var(--pix); font-size:10px; letter-spacing:.05em; padding:1px 7px; border-radius:5px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); }
+.tag.rec { color:#1a1300; background:var(--yellow); border-color:var(--yellow); }
+.seg { display:flex; flex-wrap:wrap; gap:6px; }
+.seg button, .btn { font-family:var(--pix); font-size:13px; color:var(--text); background:var(--panel2); border:1px solid var(--line);
+  border-radius:8px; padding:7px 12px; cursor:pointer; }
+.seg button[aria-pressed="true"] { background:var(--yellow); color:#1a1300; border-color:var(--yellow); }
+.btn.go { background:var(--orange); color:#1a1000; border-color:var(--orange); }
+.btn:disabled { opacity:.4; cursor:default; }
+button:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.pros { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-top:8px; }
+.pros div { background:var(--panel2); border-radius:8px; padding:10px 12px; font-size:14px; }
+.pros b { font-family:var(--pix); font-size:11px; letter-spacing:.05em; display:block; margin-bottom:2px; }
+.pros .good b { color:var(--green); } .pros .bad b { color:var(--red); }
+
+/* map */
+.mapbox { background:#20384f; border-radius:12px; border:1px solid var(--line); overflow:hidden; }
+.mapbox svg { display:block; width:100%; height:auto; }
+.legend { display:flex; flex-wrap:wrap; gap:12px; font-size:13px; color:var(--muted); padding:8px 12px; }
+.legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+
+/* game screen */
+.screen-wrap { overflow-x:auto; }
+.screen { position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; border:1px solid var(--line);
+  font-family:var(--pix); color:#fff; container-type:inline-size; }
+.sky { position:absolute; inset:0; background:linear-gradient(#78c0ff 0%, #b7e0ff 44%, #e9d79a 44.3%, #dcc584 58%, #6fb64e 58.3%, #4f9a3a 100%); }
+.sky.high { background:linear-gradient(#5aa8ff 0%, #a9d8ff 60%, #d6eeff 100%); }
+.sea { position:absolute; left:0; right:0; top:44%; height:6%; background:linear-gradient(#3d8fd0,#69b5e8); }
+.floor { position:absolute; left:6%; right:6%; top:60%; bottom:4%; border-radius:50% 50% 8% 8% / 30% 30% 8% 8%;
+  background:repeating-linear-gradient(90deg, #c9c2b4 0 6%, #bdb5a6 6% 12%); box-shadow:inset 0 0 0 3px rgba(95,224,200,.75), 0 0 30px rgba(95,224,200,.35); }
+.floor.sky2 { left:4%; right:4%; top:56%; bottom:10%; border-radius:12px; background:repeating-linear-gradient(90deg,#8d97a6 0 6%,#7f8999 6% 12%);
+  box-shadow:inset 0 0 0 3px rgba(95,224,200,.75), 0 18px 0 #5a6371, 0 30px 40px rgba(0,0,0,.25); }
+.islet { position:absolute; left:10%; right:10%; top:58%; bottom:6%; border-radius:50%; background:#e1cf8f; box-shadow:0 0 0 8px #69b5e8; }
+.islet::after { content:""; position:absolute; inset:14% 10%; border-radius:50%; background:repeating-linear-gradient(90deg,#c9c2b4 0 6%,#bdb5a6 6% 12%); box-shadow:inset 0 0 0 3px rgba(95,224,200,.75); }
+.bridge { position:absolute; left:46%; width:8%; top:44%; height:16%; background:repeating-linear-gradient(#8a6a44 0 10%, #6e5233 10% 14%); }
+.portal { position:absolute; bottom:22%; width:19%; aspect-ratio:3/4; transform:translateX(-50%); }
+.portal .arch { position:absolute; inset:0; border-radius:50% 50% 6% 6% / 34% 34% 6% 6%; border:.9cqi solid var(--c); background:radial-gradient(60% 55% at 50% 55%, rgba(255,255,255,.75), var(--c) 55%, rgba(0,0,0,.25) 100%);
+  box-shadow:0 0 2.2cqi var(--c); animation:swirl 2.4s linear infinite; }
+@keyframes swirl { 50% { filter:brightness(1.25) hue-rotate(-8deg); } }
+@media (prefers-reduced-motion: reduce) { .portal .arch { animation:none; } }
+.portal .sign { position:absolute; left:50%; bottom:104%; transform:translateX(-50%); white-space:nowrap; background:var(--hud); border:2px solid var(--c);
+  border-radius:6px; padding:.4cqi 1cqi; text-align:center; font-size:1.6cqi; line-height:1.2; }
+.portal .sign b { display:block; color:var(--c); font-size:2cqi; }
+.portal .pad { position:absolute; left:-12%; right:-12%; bottom:-7%; height:12%; border-radius:50%; background:var(--c); opacity:.45; }
+.zone-label { position:absolute; z-index:2; left:50%; transform:translateX(-50%); bottom:7%; font-size:1.6cqi; color:#063a33; background:var(--safe); border-radius:5px; padding:.2cqi .9cqi; white-space:nowrap; }
+.dropring { position:absolute; right:7%; bottom:16%; width:15%; aspect-ratio:1; border-radius:50%; border:.8cqi dashed var(--safe); display:grid; place-items:center; font-size:1.5cqi; text-align:center; color:#063a33; background:rgba(95,224,200,.55); }
+.island-far { position:absolute; left:0; right:0; bottom:0; height:30%; background:radial-gradient(70% 90% at 50% 120%, #4f9a3a 0 60%, transparent 61%); }
+
+/* HUD overlays */
+.hud { position:absolute; inset:0; font-size:1.6cqi; }
+.banner { position:absolute; left:50%; top:6%; transform:translateX(-50%); padding:.8cqi 2.2cqi; border-radius:8px; background:var(--hud); border:2px solid var(--safe);
+  text-align:center; white-space:nowrap; }
+.banner b { display:block; color:var(--safe); font-size:2.4cqi; }
+.banner.fight { border-color:var(--red); } .banner.fight b { color:#ff6a80; }
+.panel { position:absolute; left:50%; top:50%; transform:translate(-50%,-55%); width:44%; background:var(--hud); border:2px solid var(--c, var(--orange)); border-radius:10px; padding:1.6cqi; text-align:center; }
+.panel .t { color:var(--c, var(--orange)); font-size:3cqi; font-weight:700; line-height:1.1; }
+.panel .s { font-family:var(--body); font-size:1.5cqi; opacity:.85; margin-top:.4cqi; }
+.panel .count { font-size:7cqi; line-height:1; margin:1cqi 0 .6cqi; }
+.panel .mates { display:flex; justify-content:center; gap:1cqi; flex-wrap:wrap; margin-top:.8cqi; }
+.panel .mate { background:rgba(255,255,255,.08); border-radius:6px; padding:.4cqi .9cqi; font-size:1.4cqi; }
+.panel .mate.ok { box-shadow:inset 0 0 0 1.5px var(--green); }
+.panel .hint { font-size:1.35cqi; margin-top:1cqi; opacity:.8; }
+.pill { display:inline-block; margin-top:1cqi; background:var(--panel2); border:1.5px solid rgba(255,255,255,.5); border-radius:6px; padding:.5cqi 1.4cqi; font-size:1.5cqi; }
+.toast { position:absolute; left:50%; bottom:20%; transform:translateX(-50%); background:var(--hud); border:2px solid var(--yellow); border-radius:8px; padding:.7cqi 1.8cqi; font-size:1.6cqi; white-space:nowrap; }
+.squadbox { position:absolute; left:1.6%; top:22%; width:17%; display:grid; gap:.6cqi; }
+.squadbox div { background:var(--hud); border-radius:6px; padding:.5cqi .9cqi; font-size:1.35cqi; display:flex; justify-content:space-between; gap:.6cqi; border-left:.5cqi solid var(--blue); }
+.squadbox div.lead span:first-child::after { content:" ★"; color:var(--yellow); }
+.travel { position:absolute; inset:0; display:grid; place-items:center; background:radial-gradient(circle, rgba(255,255,255,.85), var(--c,#ff9b2e) 60%, #1a0f00); color:#1a1000; font-size:4cqi; text-align:center; }
+.travel small { display:block; font-size:1.8cqi; }
+.me { position:absolute; width:3.4%; aspect-ratio:1; border-radius:50%; background:#fff; border:.4cqi solid var(--blue); transform:translate(-50%,-50%); transition:left .5s, top .5s; box-shadow:0 0 0 .5cqi rgba(90,160,255,.35); }
+
+/* menu mock */
+.menu { background:linear-gradient(135deg,#232a36,#12161d); }
+.menu .stage { position:absolute; left:6%; top:16%; width:40%; height:62%; border-radius:12px; background:radial-gradient(50% 40% at 50% 70%, rgba(255,200,50,.18), transparent); display:grid; place-items:center; font-size:7cqi; }
+.menu .title { position:absolute; right:7%; top:12%; text-align:right; }
+.menu .title small { display:block; color:var(--yellow); font-size:2cqi; }
+.menu .title b { font-size:5.4cqi; }
+.menu .lab { position:absolute; right:7%; top:44%; width:30%; padding:1.2cqi; border-radius:8px; background:var(--panel2); border:2px solid rgba(255,255,255,.4); text-align:center; font-size:2.2cqi; }
+.menu .play { position:absolute; right:7%; bottom:9%; width:30%; padding:1.6cqi; border-radius:8px; background:var(--yellow); color:#1a1300; text-align:center; font-size:3.4cqi; font-weight:700; }
+.menu .play small { display:block; font-size:1.4cqi; font-weight:400; }
+.menu .row { position:absolute; left:6%; bottom:9%; display:flex; gap:1cqi; }
+.menu .row i { width:5cqi; aspect-ratio:1; border-radius:6px; background:var(--panel2); border:1.5px solid rgba(255,255,255,.35); }
+.menu .row i.on { border-color:var(--yellow); }
+.menu .back { position:absolute; right:7%; bottom:27%; width:30%; padding:1cqi; border-radius:8px; background:var(--panel2); border:2px solid var(--safe); text-align:center; font-size:2cqi; color:var(--safe); }
+.flowgrid { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:14px; align-items:start; }
+@media (max-width:820px) { .flowgrid { grid-template-columns:minmax(0,1fr); } }
+.ctrl { display:grid; gap:10px; }
+.ctrl .lbl { font-family:var(--pix); font-size:11px; color:var(--muted); letter-spacing:.05em; }
+.log { font-family:var(--mono); font-size:12px; color:var(--muted); background:var(--panel2); border-radius:8px; padding:8px 10px; min-height:84px; }
+table { border-collapse:collapse; width:100%; font-size:14px; }
+th, td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { font-family:var(--pix); font-size:11px; letter-spacing:.05em; color:var(--muted); font-weight:400; }
+.tablewrap { overflow-x:auto; }
+</style>
+
+<div class="wrap">
+  <header class="card">
+    <div class="eyebrow">Mecha Dino Arena · plan mockup v0.1 · 2026-11-11</div>
+    <h1>The <span>island</span> becomes the lobby</h1>
+    <p style="margin-top:8px">You leave the menu onto the island. A safe area with portals sits by the spawn: walk into a portal to go to that mode.
+      If you're in a squad, the squad goes with you. Outside the safe area it's the normal island, with player damage on.</p>
+    <p class="muted" style="margin-top:6px">Your picks: <b>PvP on</b> outside the safe area · <b>the leader walks in, the whole squad goes</b> ·
+      portals <b>ARENA (PvP)</b> and <b>HARDPOINT VS BOTS</b> · menu keeps <b>dino pick + Lab + PLAY</b>.</p>
+  </header>
+
+  <section class="card ask">
+    <h2>Pick one: where the safe portal area goes</h2>
+    <div class="seg" role="group" aria-label="Layout option">
+      <button data-v="A" aria-pressed="true">A · Spawn Beach Plaza</button>
+      <button data-v="B" aria-pressed="false">B · Sky Plaza</button>
+      <button data-v="C" aria-pressed="false">C · Portal Islet</button>
+    </div>
+    <div id="vnote" style="margin-top:10px"></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h3>Top-down map</h3>
+      <div class="mapbox"><svg id="map" viewBox="0 0 600 780" role="img" aria-label="Island map with the safe portal area"></svg>
+        <div class="legend"><span><i style="background:var(--safe)"></i>Safe area (no fighting)</span><span><i style="background:var(--orange)"></i>Arena portal</span><span><i style="background:var(--yellow)"></i>Bots portal</span><span><i style="background:#fff"></i>Spawn</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>What you see when you spawn</h3>
+      <div class="screen-wrap"><div class="screen" id="view"></div></div>
+      <p class="muted" style="margin-top:8px;font-size:13px">Look only. Real portals will be built from parts in Studio with the neon glow the point uses.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Try the portal flow</h2>
+    <p class="muted">Pick who you are, then walk around. Same flow in all three layouts.</p>
+    <div class="flowgrid" style="margin-top:12px">
+      <div class="screen-wrap"><div class="screen" id="flow"></div></div>
+      <div class="ctrl">
+        <div class="lbl">YOU ARE</div>
+        <div class="seg" role="group" aria-label="Role" id="roles">
+          <button data-r="solo" aria-pressed="true">Solo</button>
+          <button data-r="lead" aria-pressed="false">Squad leader</button>
+          <button data-r="mate" aria-pressed="false">Squad member</button>
+        </div>
+        <div class="lbl">WALK</div>
+        <div class="seg">
+          <button class="btn" id="goArena">Into ARENA portal</button>
+          <button class="btn" id="goBots">Into BOTS portal</button>
+          <button class="btn" id="stepOut">Step out</button>
+        </div>
+        <div class="seg">
+          <button class="btn" id="leaveZone">Walk out of safe area</button>
+          <button class="btn" id="enterZone">Walk back in</button>
+        </div>
+        <div class="seg" id="mateOnly">
+          <button class="btn" id="leaderGoes">Leader walks in (you're a member)</button>
+          <button class="btn" id="leaveSquad">LEAVE SQUAD</button>
+        </div>
+        <div class="log" id="log" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h3>Main menu on the island</h3>
+      <div class="screen-wrap"><div class="screen menu">
+        <div class="stage">🦖</div>
+        <div class="title"><small>MECHA DINO</small><b>ARENA</b></div>
+        <div class="lab">GO TO THE LAB</div>
+        <div class="play">PLAY<small>ONTO THE ISLAND</small></div>
+        <div class="row"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      </div></div>
+      <p class="muted" style="margin-top:8px;font-size:13px">The mode chip goes away here: PLAY always drops you in the safe area. Dino pick and the Lab stay as they are.</p>
+    </div>
+    <div class="card">
+      <h3>Menu inside a mode (Arena or Bots)</h3>
+      <div class="screen-wrap"><div class="screen menu">
+        <div class="stage">🦖</div>
+        <div class="title"><small>IN A MATCH</small><b>ARENA</b></div>
+        <div class="lab">GO TO THE LAB</div>
+        <div class="back">BACK TO ISLAND</div>
+        <div class="play">PLAY<small>BACK INTO THE MATCH</small></div>
+        <div class="row"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      </div></div>
+      <p class="muted" style="margin-top:8px;font-size:13px">BACK TO ISLAND sends you to the safe area. A squad leader takes the squad back; a member goes alone and leaves the squad. After a bots match ends, the results screen gets the same button.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>How it runs behind the scenes</h2>
+    <div class="tablewrap"><table>
+      <tr><th>Place</th><th>Today</th><th>After</th></tr>
+      <tr><td>Sandbox place (where everyone joins)</td><td>Hardpoint practice vs bots on the whole island</td><td><b>The island hub</b>: safe portal area, free roam, player damage on outside it, squads on, no bots</td></tr>
+      <tr><td>Sandbox place, private copy</td><td>—</td><td><b>Hardpoint vs bots</b>: one private server per squad (or per solo player), so it's just your squad vs bots. Today's practice match, unchanged</td></tr>
+      <tr><td>Arena place</td><td>Hardpoint PvP</td><td>Same. You arrive straight into play, with your squad, on the same team</td></tr>
+    </table></div>
+    <ul class="muted" style="margin-top:10px">
+      <li>A squad trip sends every member in one teleport, so Roblox puts them in the same server. The squad is rebuilt on arrival.</li>
+      <li>Teleports only run in the live game, so the trip itself can only be checked after Publish. Everything else is checked in Studio.</li>
+      <li>Every new piece has its own switch; turning them off gives back today's game.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+const VARIANTS = {
+  A: { name:"Spawn Beach Plaza", rec:true,
+    what:"A round plaza on the south beach around today's spawn. Two portal arches face the island. A glowing line on the ground marks the safe edge; walk north off it and you're on the island.",
+    good:"Cheapest to build. Feels like Fortnite's hub: you just walk out. Players can come back to the portals on foot any time.",
+    bad:"Someone can wait just outside the edge and hit players as they walk out. (We can add 3 s of no-damage after you leave the area to stop that.)" },
+  B: { name:"Sky Plaza", rec:false,
+    what:"A floating platform high over the south beach (where the menu pad already sits). You spawn there. Portals around the edge; a DROP ring in the middle launches you down onto the island, landing safely anywhere you aim.",
+    good:"Nobody can camp the exit: you drop wherever you want. The safe area is clearly separate from the fighting.",
+    bad:"To get back to the portals you use the menu (BACK TO PORTALS) or a launch pad on the beach. A drop / glide needs building and testing on every dino." },
+  C: { name:"Portal Islet", rec:false,
+    what:"A small separate islet just off the south coast with the portals on it, joined to the island by a wooden bridge. The safe area is the whole islet; the bridge's far end is the edge.",
+    good:"Very easy to read: island = fighting, islet = safe.",
+    bad:"The bridge is a choke point: easy to camp the far end. Building the islet (sand, rocks, bridge) is the most work." },
+};
+// map: x studs -> px 300 + x*0.42 ; z studs -> px 360 + z*0.36
+const X = x => 300 + x*0.42, Z = z => 360 + z*0.36;
+const ISLAND = "M210,60 C260,35 330,40 400,30 C470,25 500,60 520,110 C540,170 545,260 540,330 C540,420 555,520 540,600 C520,660 470,690 400,690 C330,700 260,705 200,690 C140,675 95,640 90,580 C82,500 70,430 80,360 C90,280 60,240 90,190 C115,140 160,85 210,60 Z";
+function mapSVG(v){
+  const sx = X(88), sz = Z(904);
+  let s = `<path d="${ISLAND}" fill="#4f9a3a" stroke="#e1cf8f" stroke-width="8"/>
+  <circle cx="${X(285)}" cy="${Z(-240)}" r="62" fill="#7c8592"/><circle cx="${X(285)}" cy="${Z(-240)}" r="40" fill="none" stroke="#c9a46a" stroke-width="5" stroke-dasharray="40 10"/>
+  <text x="${X(285)}" y="${Z(-240)+80}" fill="#dfe6ee" font-size="13" text-anchor="middle" font-family="Silkscreen,monospace">SUMMIT</text>
+  <rect x="${X(-160)}" y="${Z(150)}" width="60" height="150" rx="28" fill="#3d6b3a" transform="rotate(25 ${X(-130)} ${Z(350)})"/>
+  <text x="300" y="${Z(-60)}" fill="#dfe6ee" font-size="14" text-anchor="middle" font-family="Silkscreen,monospace">FREE ROAM · PVP ON</text>`;
+  const portals = (cx, cy, r) => `<g><rect x="${cx-r-10}" y="${cy-8}" width="20" height="16" rx="4" fill="var(--orange)"/><rect x="${cx+r-10}" y="${cy-8}" width="20" height="16" rx="4" fill="var(--yellow)"/></g>`;
+  if (v==="A"){
+    s += `<path d="M ${sx-70} ${sz+18} A 70 70 0 0 1 ${sx+70} ${sz+18} Z" fill="rgba(95,224,200,.35)" stroke="var(--safe)" stroke-width="3"/>`;
+    s += portals(sx, sz-20, 38) + `<circle cx="${sx}" cy="${sz+4}" r="6" fill="#fff"/>`;
+    s += `<path d="M ${sx} ${sz-60} L ${sx} ${sz-110}" stroke="#fff" stroke-width="3" marker-end="url(#ar)"/><text x="${sx+86}" y="${sz-8}" fill="var(--safe)" font-size="12" font-family="Silkscreen,monospace">SAFE PLAZA</text>`;
+  } else if (v==="B"){
+    s += `<rect x="${sx-75}" y="${sz-90}" width="150" height="70" rx="10" fill="rgba(95,224,200,.35)" stroke="var(--safe)" stroke-width="3" stroke-dasharray="8 5"/>`;
+    s += portals(sx, sz-70, 55) + `<circle cx="${sx}" cy="${sz-55}" r="15" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="5 4"/><circle cx="${sx-40}" cy="${sz-40}" r="6" fill="#fff"/>`;
+    s += `<text x="${sx}" y="${sz-100}" fill="var(--safe)" font-size="12" text-anchor="middle" font-family="Silkscreen,monospace">SKY PLAZA · 600 UP</text>`;
+    s += [[-160,-180],[40,-260],[160,-150]].map(([dx,dy])=>`<path d="M ${sx} ${sz-55} Q ${sx+dx/2} ${sz-55+dy/2-40} ${sx+dx} ${sz-55+dy}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="4 5" marker-end="url(#ar)"/>`).join("");
+  } else {
+    const iy = sz+70;
+    s += `<rect x="${sx-8}" y="${sz-4}" width="16" height="44" fill="#8a6a44"/>`;
+    s += `<ellipse cx="${sx}" cy="${iy}" rx="70" ry="34" fill="#e1cf8f"/><ellipse cx="${sx}" cy="${iy}" rx="58" ry="25" fill="rgba(95,224,200,.35)" stroke="var(--safe)" stroke-width="3"/>`;
+    s += portals(sx, iy, 34) + `<circle cx="${sx}" cy="${iy+10}" r="6" fill="#fff"/><text x="${sx+80}" y="${iy+4}" fill="var(--safe)" font-size="12" font-family="Silkscreen,monospace">ISLET</text>`;
+  }
+  return `<defs><marker id="ar" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#fff"/></marker></defs>` + s;
+}
+function portalHTML(left, c, name, sub, tag){
+  return `<div class="portal" style="left:${left}%;--c:${c}"><div class="pad"></div><div class="arch"></div><div class="sign"><b>${name}</b>${sub}<br><span style="opacity:.75">${tag}</span></div></div>`;
+}
+function viewHTML(v){
+  const P = portalHTML(30,"var(--orange)","ARENA","HARDPOINT · PLAYERS","PVP") + portalHTML(70,"var(--yellow)","HARDPOINT VS BOTS","5V5 · YOUR SQUAD","BOTS");
+  if (v==="A") return `<div class="sky"></div><div class="sea"></div><div class="floor"></div><div class="zone-label">SAFE PLAZA · NO FIGHTING</div>${P}`;
+  if (v==="B") return `<div class="sky high"></div><div class="island-far"></div><div class="floor sky2"></div><div class="zone-label" style="bottom:13%">SKY PLAZA · NO FIGHTING</div>${P.replace(/left:30%/,"left:24%").replace(/left:70%/,"left:56%")}<div class="dropring">DROP<br>ONTO<br>ISLAND</div>`;
+  return `<div class="sky"></div><div class="sea" style="top:44%;height:56%"></div><div class="islet"></div><div class="bridge"></div><div class="zone-label" style="bottom:10%">PORTAL ISLET · NO FIGHTING</div>${P}`;
+}
+function setVariant(v){
+  document.querySelectorAll('[data-v]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.v===v)));
+  const d = VARIANTS[v];
+  document.getElementById('vnote').innerHTML = `<h3>${v} · ${d.name} ${d.rec?'<span class="tag rec">RECOMMENDED</span>':''}</h3><p>${d.what}</p>
+   <div class="pros"><div class="good"><b>GOOD</b>${d.good}</div><div class="bad"><b>WATCH OUT</b>${d.bad}</div></div>`;
+  document.getElementById('map').innerHTML = mapSVG(v);
+  document.getElementById('view').innerHTML = viewHTML(v);
+  flowBase = v; renderFlow();
+}
+document.querySelectorAll('[data-v]').forEach(b=>b.addEventListener('click',()=>setVariant(b.dataset.v)));
+
+// portal flow sim
+const flow = document.getElementById('flow'), logEl = document.getElementById('log');
+let flowBase = "A", role = "solo", inZone = true, at = null, count = 0, timer = null, overlay = "", toastMsg = "", toastT = null, gone = false, inSquad = true;
+const MODES = { arena:{name:"ARENA", sub:"Hardpoint · players only", c:"var(--orange)"}, bots:{name:"HARDPOINT VS BOTS", sub:"5v5 · your squad vs bots", c:"var(--yellow)"} };
+const SQUAD = [["KEPU",true],["RAPTOR22",false],["NINJAREX",false]];
+function log(m){ logEl.textContent = m; }
+function toast(m){ toastMsg = m; clearTimeout(toastT); toastT = setTimeout(()=>{ toastMsg=""; renderFlow(); }, 2600); }
+function stop(){ clearInterval(timer); timer = null; }
+function startCount(mode, who){
+  stop(); count = 5; at = mode; gone = false;
+  timer = setInterval(()=>{ count--; if (count<=0){ stop(); gone = true; log(`Teleport: ${who==="solo"?"you":"the whole squad"} → ${MODES[mode].name}. Arrive straight into play.`); } renderFlow(); }, 1000);
+  renderFlow();
+}
+function squadBox(){
+  if (role==="solo" || !inSquad) return "";
+  return `<div class="squadbox">${SQUAD.map(([n,l],i)=>`<div class="${l?'lead':''}"><span>${role==="mate"&&i===1?'YOU':n}</span><span>♥</span></div>`).join("")}</div>`;
+}
+function renderFlow(){
+  let h = `<div class="sky"></div><div class="sea"></div><div class="floor"></div>` + portalHTML(30,"var(--orange)","ARENA","HARDPOINT","PVP") + portalHTML(70,"var(--yellow)","VS BOTS","5V5","BOTS");
+  const mx = at==="arena"?30:at==="bots"?70:inZone?50:50, my = at?64:inZone?82:30;
+  h += `<div class="me" style="left:${mx}%;top:${my}%"></div><div class="hud">`;
+  h += inZone ? `<div class="banner"><b>SAFE AREA</b>NO FIGHTING HERE</div>` : `<div class="banner fight"><b>FIGHTING ON</b>PLAYERS CAN HIT YOU</div>`;
+  h += squadBox();
+  if (gone && at){ const m = MODES[at]; h += `<div class="travel" style="--c:${m.c}"><div>TRAVELING TO<br>${m.name}<small>${role==="solo"||!inSquad?"":"WITH YOUR SQUAD"}</small></div></div>`; }
+  else if (at && timer){
+    const m = MODES[at];
+    const mates = role!=="solo" && inSquad ? `<div class="mates">${SQUAD.map(([n,l],i)=>`<span class="mate ok">${role==="mate"&&i===1?'YOU':n}${l?' ★':''}</span>`).join("")}</div>` : "";
+    const hint = role==="mate" ? `<div class="pill">LEAVE SQUAD</div><div class="hint">KEPU PICKED THIS · YOUR SQUAD GOES TOGETHER</div>` : `<div class="hint">STEP OUT TO CANCEL</div>`;
+    h += `<div class="panel" style="--c:${m.c}"><div class="t">${m.name}</div><div class="s">${m.sub}</div><div class="count">${count}</div>${mates}${hint}</div>`;
+  }
+  if (toastMsg) h += `<div class="toast">${toastMsg}</div>`;
+  h += `</div>`;
+  flow.innerHTML = h;
+  document.getElementById('mateOnly').hidden = role!=="mate";
+}
+function walkInto(mode){
+  if (!inZone){ log("You're outside the safe area: walk back in first."); return; }
+  if (role==="mate" && inSquad){ toast("ONLY KEPU ★ (LEADER) CAN START A MODE"); log("A squad member walking into a portal: nothing happens; a hint says only the leader picks. (Leave the squad to go alone.)"); renderFlow(); return; }
+  startCount(mode, role==="lead"?"squad":"solo");
+  log(role==="lead" ? `Leader in the ${MODES[mode].name} portal: everyone in the squad sees the same 5 s countdown, wherever they are on the island.` : `Solo in the ${MODES[mode].name} portal: 5 s countdown, step out to cancel.`);
+}
+document.getElementById('goArena').onclick = ()=>walkInto("arena");
+document.getElementById('goBots').onclick = ()=>walkInto("bots");
+document.getElementById('stepOut').onclick = ()=>{ if (timer && role!=="mate"){ stop(); at=null; log("Stepped out: countdown cancelled (for the whole squad)."); } else { at=null; gone=false; } renderFlow(); };
+document.getElementById('leaveZone').onclick = ()=>{ stop(); at=null; gone=false; inZone=false; log("Out of the safe area: damage on both ways. Inside it nobody can hit or be hit, even from outside."); renderFlow(); };
+document.getElementById('enterZone').onclick = ()=>{ inZone=true; gone=false; log("Back in the safe area: no fighting."); renderFlow(); };
+document.getElementById('leaderGoes').onclick = ()=>{ if (!inSquad){ log("You left the squad, so the leader's pick doesn't take you."); return; } inZone=true; startCount("arena","squad"); log("Your leader walked into ARENA. You get the countdown even if you're across the island; tap LEAVE SQUAD to stay."); };
+document.getElementById('leaveSquad').onclick = ()=>{ inSquad=false; stop(); at=null; gone=false; log("You left the squad: you stay on the island and can use the portals alone."); role="mate"; renderFlow(); };
+document.querySelectorAll('[data-r]').forEach(b=>b.addEventListener('click',()=>{
+  role = b.dataset.r; inSquad = true; stop(); at=null; gone=false; inZone=true;
+  document.querySelectorAll('[data-r]').forEach(x=>x.setAttribute('aria-pressed', String(x===b)));
+  log(role==="solo"?"Solo: walk into a portal.":role==="lead"?"Squad leader (★ = the player who sent the first invite).":"Squad member: only the leader starts a mode.");
+  renderFlow();
+}));
+setVariant("A"); log("Solo: walk into a portal.");
+</script>
