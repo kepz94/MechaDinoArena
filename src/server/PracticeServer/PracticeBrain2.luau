@@ -54,6 +54,16 @@
 --   * a "duel" bot that has waited DUEL_WAIT (3) s on its hunt spot sweeps to the point centre (counted in model attribute
 --     BotSweeps) and roams there until it sees a target or the point moves.
 --   Switch: PracticeServer attribute PrRoamEnabled (default true, read per tick; false = the standing above).
+-- v2.2 (Kepu 2026-11-12 15:54 "Create specific paths for them to climb when it's time"): when the bot's objective goal is
+--   within 60 flat studs of a point higher than PracticeClimb.MIN_Y (40) (the current point, or the next one for a runner) and
+--   the bot is not on that point yet, it follows the climb route (PracticeClimb 1.0: the island's trail up the mountain,
+--   bottom first): walks to the trail base (or joins the trail where it already is), then tile by tile up (nav with the stuck
+--   ladder, no PathfindingService jumps over the step blocks, no hold-below on the way, no parts fired). Fights still come
+--   first. BotState "climb", model attribute BotClimbIdx (route tile). Switch: PracticeServer attribute PrClimbRoutesEnabled
+--   (default true, read per tick; false = 2.1). Needs the module PracticeServer.PracticeClimb (missing -> 2.1).
+--   Leaving early (same test: 2 bots on the Summit by 29 / 37 s, the rest set off when it opened and were still on the trail
+--   when it moved): when the next point is high and the current one has PracticeServer attribute PrClimbEarlySec (20) s or
+--   less left, a bot whose job is not "hold" climbs to the next point already (holders stay on the current point).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
@@ -61,6 +71,12 @@ local PathfindingService = game:GetService("PathfindingService")
 local M = {}
 M.Version = "2.0"
 M.Version = "2.1" -- v2.1 arrive by flat distance
+M.Version = "2.2" -- v2.2 climb routes
+local Climb = nil -- v2.2
+do
+	local mod = script.Parent and script.Parent:FindFirstChild("PracticeClimb")
+	if mod then local ok, c = pcall(require, mod) if ok then Climb = c end end
+end
 local ARRIVE_FLAT = 4 -- v2.1
 local ROAM_NEAR, ROAM_R, DUEL_WAIT = 6, 10, 3 -- v2.1 roam
 
@@ -603,6 +619,32 @@ function M.step(b, ctx)
 	elseif ctx.centre then
 		goal = R.goalFor(b.role, ctx.centre, ctx.nextCentre, ctx.home or p, ctx.into, ctx.pointTime)
 		if job and R.jobGoal then goal = R.jobGoal(job, ctx.centre, ctx.nextCentre, ctx.home or p) end
+		-- v2.2: climb routes (see the header)
+		local ps = game:GetService("ServerScriptService"):FindFirstChild("PracticeServer")
+		if Climb and not (ps and ps:GetAttribute("PrClimbRoutesEnabled") == false) then
+			local high = nil
+			for _, c in ipairs({ctx.centre, ctx.nextCentre}) do
+				if not high and typeof(c) == "Vector3" and c.Y > Climb.MIN_Y and flat(goal - c).Magnitude < 60 then high = c end
+			end
+			local nc = ctx.nextCentre
+			local left = (ctx.pointTime or 60) - (ctx.into or 0)
+			if not high and job ~= "hold" and typeof(nc) == "Vector3" and nc.Y > Climb.MIN_Y and nc ~= ctx.centre
+				and left <= (tonumber(ps and ps:GetAttribute("PrClimbEarlySec")) or 20) then
+				high = nc -- leaving early (see the header)
+			end
+			if high and not ctx.H.inPoint(p, high) then
+				local route = Climb.route(high)
+				if route then
+					local tgt, idx, jump = Climb.follow(v, p, route)
+					if jump then b.hum.Jump = true end
+					setState(m, "climb")
+					if m:GetAttribute("BotClimbIdx") ~= idx then m:SetAttribute("BotClimbIdx", idx) end
+					nav(b, tgt, ctx, true)
+					return
+				end
+			end
+		end
+		v.climbIdx = nil
 		local wantsPoint = (goal - ctx.centre).Magnitude < 45
 		if wantsPoint and v.goalPoint ~= ctx.index then
 			v.goalPoint, v.climbSince, v.bestPos, v.bestScore, v.holdUntil = ctx.index, nil, nil, nil, nil
