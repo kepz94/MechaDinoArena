@@ -120,6 +120,19 @@
 --   Switches: script attributes HardpointHUDMatchEndEnabled (default true, read at start; false = 1.7 / 1.2 board) and
 --   HardpointHUDSpotModelEnabled (default true, read per spotlight). Diagnostics: HardpointHUDEnd ("banner" / "spot" /
 --   "board" / "off"), HardpointHUDEndModel ("model" / "noChar" / "noClone" / "off"), HardpointHUDEndSkips.
+-- v1.9 (Kepu 2026-11-12 15:38 "I barely saw the mvp screen", pick A): the spotlight shows HardpointHUDSpotSec (6, was 4) s, so
+--   the board comes at 8 s (7 s of board); a tap in the first HardpointHUDSkipGuard (1.5) s of the banner or the spotlight does
+--   not skip (a click / tap on ATTACK as the match ends no longer jumps past both). Same look. Switch: script attribute
+--   HardpointHUDEndTimingV2Enabled (default true; the spotlight length is read at start, the guard per tap; false = 1.8).
+--   Diagnostic: HardpointHUDEndSkipsIgnored.
+-- v1.10 (Kepu 2026-11-12 15:39 "it should default back to the island after the match stats and everything"): when nobody
+--   chose (no PLAY AGAIN / MAIN MENU / BACK TO ISLAND press this results), HardpointHUDAutoIslandLead (1) s before the results
+--   end the client sends DinoModeRequest "island" by itself, as the BACK TO ISLAND button does (ModeServer 1.3: a squad leader
+--   takes the squad; a squad member never sends it: the leader decides; PLAY AGAIN by the leader keeps the squad here). Only
+--   on a server with ReplicatedStorage HubOn = true (else the old next match / team screen). The board countdown then reads
+--   "BACK TO ISLAND IN m:ss" (after PLAY AGAIN: the old "TEAM SCREEN IN" / "NEXT MATCH IN"). Switch: script attribute
+--   HardpointHUDAutoIslandEnabled (default true, read per frame; false = 1.9). Diagnostic: HardpointHUDAutoIsland ("sent" /
+--   "chose:<press>" / "member" / "off").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -130,6 +143,8 @@ local VERSION = "1.5"
 VERSION = "1.6" -- v1.6 top-gap compass + slim HUD
 VERSION = "1.7" -- v1.7 point marker v3
 VERSION = "1.8" -- v1.8 match end
+VERSION = "1.9" -- v1.9 end timing
+VERSION = "1.10" -- v1.10 auto back to island
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -434,6 +449,13 @@ local CYAN_B = Color3.fromRGB(95, 224, 200)
 local DARK_T = Color3.fromRGB(27, 20, 6)
 local END_W, END_H = 760, 400
 local BEAT_BANNER, BEAT_SPOT = 2, 6
+-- v1.9: end timing (see the header)
+for k, v in pairs({HardpointHUDEndTimingV2Enabled = true, HardpointHUDSpotSec = 6, HardpointHUDSkipGuard = 1.5}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+if script:GetAttribute("HardpointHUDEndTimingV2Enabled") ~= false then
+	BEAT_SPOT = BEAT_BANNER + (tonumber(script:GetAttribute("HardpointHUDSpotSec")) or 6)
+end
 local RES = (H and H.RESULTS) or 15
 local endKey, endSkip, spotKey = nil, 0, nil
 local endCanChoose = true
@@ -793,6 +815,39 @@ local function endHide()
 	if script:GetAttribute("HardpointHUDEnd") ~= "off" then script:SetAttribute("HardpointHUDEnd", "off") end
 end
 
+-- v1.10: auto back to island (see the header)
+for k, v in pairs({HardpointHUDAutoIslandEnabled = true, HardpointHUDAutoIslandLead = 1}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local autoKey, autoChoice, autoSent = nil, nil, false
+local function autoPress(what)
+	return function()
+		if endCanChoose and not autoSent then autoChoice = autoChoice or what end
+	end
+end
+againB.Activated:Connect(autoPress("again"))
+menuB.Activated:Connect(autoPress("menu"))
+if islandB then islandB.Activated:Connect(autoPress("island")) end
+local function autoIsland(endsAt)
+	if autoKey ~= endsAt then autoKey, autoChoice, autoSent = endsAt, nil, false end
+	local on = script:GetAttribute("HardpointHUDAutoIslandEnabled") ~= false and ReplicatedStorage:GetAttribute("HubOn") == true
+	local left = endsAt - now()
+	if on and autoChoice == nil then
+		bNext.Text = "BACK TO ISLAND IN " .. fmt(left)
+	end
+	local diag = (not on and "off") or (not endCanChoose and "member") or (autoChoice and ("chose:" .. autoChoice)) or
+		(autoSent and "sent") or "waiting"
+	if not autoSent and on and endCanChoose and autoChoice == nil
+		and left <= (tonumber(script:GetAttribute("HardpointHUDAutoIslandLead")) or 1) then
+		autoSent = true
+		diag = "sent"
+		islandPressAt = now()
+		local mr = ReplicatedStorage:FindFirstChild("DinoModeRequest")
+		if mr then mr:FireServer("island") end
+	end
+	if script:GetAttribute("HardpointHUDAutoIsland") ~= diag then script:SetAttribute("HardpointHUDAutoIsland", diag) end
+end
+
 local function endFrame(mine, you, foe, title)
 	local endsAt = state:GetAttribute("HpResultsEndAt") or now()
 	if endKey ~= endsAt then endKey, endSkip, spotKey, islandPressAt = endsAt, 0, nil, 0 end
@@ -827,6 +882,7 @@ local function endFrame(mine, you, foe, title)
 		local start = hasSpot and BEAT_SPOT or BEAT_BANNER
 		fillStrip(aw, math.clamp((t - start - 0.3) / 2.5, 0, 1))
 		fillButtons()
+		autoIsland(endsAt) -- v1.10
 	end
 end
 
@@ -835,6 +891,13 @@ endSkipB.Activated:Connect(function()
 	local t = now() - (endsAt - RES) + endSkip
 	local aw = readAwards()
 	local hasSpot = aw ~= nil and ((aw.mvp or "") ~= "" or (aw.svp or "") ~= "")
+	if script:GetAttribute("HardpointHUDEndTimingV2Enabled") ~= false then -- v1.9: skip guard
+		local into = (t < BEAT_BANNER) and t or (t - BEAT_BANNER)
+		if into < (tonumber(script:GetAttribute("HardpointHUDSkipGuard")) or 1.5) then
+			script:SetAttribute("HardpointHUDEndSkipsIgnored", (script:GetAttribute("HardpointHUDEndSkipsIgnored") or 0) + 1)
+			return
+		end
+	end
 	if t < BEAT_BANNER then
 		endSkip += BEAT_BANNER - t
 	elseif hasSpot and t < BEAT_SPOT then

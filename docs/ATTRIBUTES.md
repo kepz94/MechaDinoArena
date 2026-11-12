@@ -3399,3 +3399,7 @@ Model numbers are generator output (old version = the flag in the last column, b
 
 ## Grappling Hook fix (2026-11-12, #36)
 - SkillTree 1.90 (module constant): `SkillTree.HOOK_KEEP_OTHERS` (true; false = 1.89, pachy hook range 0). PracticeKit 1.1 reads it for bot loadouts.
+
+## Match end timing + auto island (HardpointHUD 1.9 / 1.10, 2026-11-12)
+- `HardpointHUDEndTimingV2Enabled` (true; spotlight length read at start, guard per tap), `HardpointHUDSpotSec` 6, `HardpointHUDSkipGuard` 1.5; diagnostic `HardpointHUDEndSkipsIgnored`.
+- `HardpointHUDAutoIslandEnabled` (true, per frame), `HardpointHUDAutoIslandLead` 1; diagnostic `HardpointHUDAutoIsland` ("waiting" / "sent" / "chose:<press>" / "member" / "off").
