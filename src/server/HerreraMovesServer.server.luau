@@ -115,6 +115,23 @@
 --   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
 --   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
 --   Switch: script attribute HerreraMovesServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
+-- v1.12 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7; Kepu 2026-11-11 20:39 "the damn bots don't even use their
+--   attack buttons or their mecha"): a bot entrance. Every remote handler of this script is connected through botHook(remote)
+--   (handler bodies unchanged), which also files it by the remote's name. Server-only BindableFunction "BotMechaUse" (child):
+--   Invoke(model, remoteName, ...the remote's own arguments...) runs every handler filed for that remote, in order, with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player (the model is its Character; PracticeBot models only).
+--   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
+--   "botUnsupported" (a handler errored; script attribute HerreraMovesServerBotMechaError keeps "<remote>: <error>").
+--   Switch: script attribute HerreraMovesServerBotMechaEnabled (default true, read per call).
+local __botHandlers = {} -- v1.12: remote name -> handlers (see the header)
+local function botHook(remote)
+	return {Connect = function(_, fn)
+		local list = __botHandlers[remote.Name] or {}
+		__botHandlers[remote.Name] = list
+		table.insert(list, fn)
+		return remote.OnServerEvent:Connect(fn)
+	end}
+end
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -393,7 +410,7 @@ local function check(player, stamp, id, prefix, opts)
 end
 
 -- Quill Launcher ------------------------------------------------------------------------------------------------------
-quillRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(quillRemote):Connect(function(player, stamp, aimDir)
 	local char, t = check(player, stamp, "quills", "Quill", {attack = true, aim = true, aimDir = aimDir})
 	if not char then return end
 	t = windup(char, "Quill", "quill", t) -- v1.5
@@ -462,7 +479,7 @@ end)
 -- Smoke Pods ----------------------------------------------------------------------------------------------------------
 local clouds = {} -- [char] = {center, radius, untilT, player, runMul, slowMul, hidden, slowed = {[model] = true}}
 local botSlow = {} -- [bot] = {hum, base, set, untilT, mul}
-smokeRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(smokeRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "smoke", "Smoke", {})
 	if not char then return end
 	t = windup(char, "Smoke", "smoke", t) -- v1.5
@@ -569,7 +586,7 @@ RunService.Stepped:Connect(function()
 end)
 
 -- Strobe Frill --------------------------------------------------------------------------------------------------------
-strobeRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(strobeRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "strobe", "Strobe", {attack = true})
 	if not char then return end
 	local strobeWait = STROBE_WINDUP -- v1.5
@@ -662,7 +679,7 @@ local function push(src, m, dist, t) -- BoneCrest 1.2 visorKnock's pattern
 	end)
 	return true
 end
-breakerRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(breakerRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "breaker", "Breaker", {breaker = true})
 	if not char then return end
 	char:SetAttribute("StunnedUntil", t)
@@ -707,7 +724,7 @@ local function setGliding(char, v)
 	char:SetAttribute("Gliding", v)
 	char:SetAttribute(v and "GlideStartedAt" or "GlideEndedAt", now())
 end
-glideRemote.OnServerEvent:Connect(function(player, v)
+botHook(glideRemote):Connect(function(player, v)
 	local char = player.Character
 	if not char or typeof(v) ~= "boolean" then return end
 	local hum = char:FindFirstChildOfClass("Humanoid")
@@ -752,7 +769,7 @@ local function facing(root)
 	local f = flat(root.CFrame.LookVector)
 	return f.Magnitude > 1e-3 and f.Unit or Vector3.new(0, 0, -1)
 end
-caltropRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(caltropRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "caltrops", "Caltrop", {})
 	if not char then return end
 	local root = rootOf(char)
@@ -858,7 +875,7 @@ local function flyBlob(char, from, to, glide, radius, life)
 	if stopU then char:SetAttribute("GooWallAt", now()) return end -- v1.8
 	makePuddle(char, to, radius, life)
 end
-gooRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(gooRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "goo", "Goo", {})
 	if not char then return end
 	t = windup(char, "Goo", "goo", t) -- v1.5
@@ -1022,3 +1039,29 @@ end)
 
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+
+-- v1.12: the bot entrance (see the header)
+if script:GetAttribute("HerreraMovesServerBotMechaEnabled") == nil then script:SetAttribute("HerreraMovesServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, ...)
+		if script:GetAttribute("HerreraMovesServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local list = __botHandlers[remoteName]
+		if not list then return "noHandler" end
+		local proxy = BotProxy.of(model)
+		for _, h in ipairs(list) do
+			local ok, err = pcall(h, proxy, ...)
+			if not ok then
+				script:SetAttribute("HerreraMovesServerBotMechaError", tostring(remoteName) .. ": " .. tostring(err))
+				return "botUnsupported"
+			end
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+script:SetAttribute("HerreraMovesServerVersion", "1.12") -- v1.12 bot entrance

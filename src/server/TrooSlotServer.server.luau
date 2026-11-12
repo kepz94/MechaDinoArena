@@ -55,6 +55,23 @@
 --   its share; a miss / block gives it back). The last pod is cut to what is left; once the 20 is dealt the turret folds away
 --   (TrooSentryEndAt). Turret diagnostics: TrooSentryDealt, TrooSentryCap. Switch: script TrooSlotSentryCapEnabled (default
 --   true; false = 1.0, no cap). Script diagnostic TrooSlotSentryCapped (turrets that hit the cap).
+-- v1.2 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7; Kepu 2026-11-11 20:39 "the damn bots don't even use their
+--   attack buttons or their mecha"): a bot entrance. Every remote handler of this script is connected through botHook(remote)
+--   (handler bodies unchanged), which also files it by the remote's name. Server-only BindableFunction "BotMechaUse" (child):
+--   Invoke(model, remoteName, ...the remote's own arguments...) runs every handler filed for that remote, in order, with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player (the model is its Character; PracticeBot models only).
+--   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
+--   "botUnsupported" (a handler errored; script attribute TrooSlotServerBotMechaError keeps "<remote>: <error>").
+--   Switch: script attribute TrooSlotServerBotMechaEnabled (default true, read per call).
+local __botHandlers = {} -- v1.2: remote name -> handlers (see the header)
+local function botHook(remote)
+	return {Connect = function(_, fn)
+		local list = __botHandlers[remote.Name] or {}
+		__botHandlers[remote.Name] = list
+		table.insert(list, fn)
+		return remote.OnServerEvent:Connect(fn)
+	end}
+end
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -465,7 +482,7 @@ local function watchZones(char)
 end
 
 -- Bloom Burst ------------------------------------------------------------------------------------------------------------------
-remote("DinoTrooBurstRequest").OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
+botHook(remote("DinoTrooBurstRequest")):Connect(function(player, stamp, aimDir, aimPoint)
 	local char, t = check(player, stamp, "oburst", "TrooPartBurst", aimDir, aimPoint)
 	if not char then return end
 	ok(char, "TrooPartBurst", t)
@@ -508,7 +525,7 @@ end)
 
 -- Shield Dome ------------------------------------------------------------------------------------------------------------------
 local DOME_BLUE = Color3.fromRGB(108, 196, 255)
-remote("DinoTrooDomeRequest").OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
+botHook(remote("DinoTrooDomeRequest")):Connect(function(player, stamp, aimDir, aimPoint)
 	local char, t = check(player, stamp, "odome", "TrooPartDome", aimDir, aimPoint)
 	if not char then return end
 	ok(char, "TrooPartDome", t)
@@ -605,7 +622,7 @@ local function sleepPick(char, from, dir, range)
 	end
 	return best
 end
-remote("DinoTrooSleepRequest").OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(remote("DinoTrooSleepRequest")):Connect(function(player, stamp, aimDir)
 	local char, t = check(player, stamp, "osleep", "TrooPartSleep", aimDir, nil)
 	if not char then return end
 	ok(char, "TrooPartSleep", t)
@@ -756,7 +773,7 @@ local function buildSentry(at, k, yaw)
 	m:SetAttribute("TrooSentryParts", #m:GetChildren())
 	return m, place, base
 end
-remote("DinoTrooSentryRequest").OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
+botHook(remote("DinoTrooSentryRequest")):Connect(function(player, stamp, aimDir, aimPoint)
 	local char, t = check(player, stamp, "osentry", "TrooPartSentry", aimDir, aimPoint)
 	if not char then return end
 	ok(char, "TrooPartSentry", t)
@@ -874,3 +891,29 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+
+-- v1.2: the bot entrance (see the header)
+if script:GetAttribute("TrooSlotServerBotMechaEnabled") == nil then script:SetAttribute("TrooSlotServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, ...)
+		if script:GetAttribute("TrooSlotServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local list = __botHandlers[remoteName]
+		if not list then return "noHandler" end
+		local proxy = BotProxy.of(model)
+		for _, h in ipairs(list) do
+			local ok, err = pcall(h, proxy, ...)
+			if not ok then
+				script:SetAttribute("TrooSlotServerBotMechaError", tostring(remoteName) .. ": " .. tostring(err))
+				return "botUnsupported"
+			end
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+script:SetAttribute("TrooSlotServerVersion", "1.2") -- v1.2 bot entrance

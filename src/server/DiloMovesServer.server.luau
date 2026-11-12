@@ -90,6 +90,23 @@
 --   JETS_DELAY 0.34) and the trail starts after the burst alone; distance, charges, recharge and trail unchanged. The owner's
 --   client already starts the burst on the press (DiloJetsLaunch 1.1). Switch: script DiloJetsInstantEnabled (default true,
 --   read at each press; false = the 0.34 s wind-up of 1.1).
+-- v1.12 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7; Kepu 2026-11-11 20:39 "the damn bots don't even use their
+--   attack buttons or their mecha"): a bot entrance. Every remote handler of this script is connected through botHook(remote)
+--   (handler bodies unchanged), which also files it by the remote's name. Server-only BindableFunction "BotMechaUse" (child):
+--   Invoke(model, remoteName, ...the remote's own arguments...) runs every handler filed for that remote, in order, with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player (the model is its Character; PracticeBot models only).
+--   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
+--   "botUnsupported" (a handler errored; script attribute DiloMovesServerBotMechaError keeps "<remote>: <error>").
+--   Switch: script attribute DiloMovesServerBotMechaEnabled (default true, read per call).
+local __botHandlers = {} -- v1.12: remote name -> handlers (see the header)
+local function botHook(remote)
+	return {Connect = function(_, fn)
+		local list = __botHandlers[remote.Name] or {}
+		__botHandlers[remote.Name] = list
+		table.insert(list, fn)
+		return remote.OnServerEvent:Connect(fn)
+	end}
+end
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -456,7 +473,7 @@ local function muzzles(char)
 end
 
 -- Venom Gatling ------------------------------------------------------------------------------------------------------------------------
-gatlingRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(gatlingRemote):Connect(function(player, stamp, aimDir)
 	local char, t = check(player, stamp, "dgatling", "DiloPartGatling", aimDir)
 	if not char then return end
 	ok(char, "DiloPartGatling", t)
@@ -511,7 +528,7 @@ end)
 
 -- Toxin Mortar -------------------------------------------------------------------------------------------------------------------------
 local clouds = {} -- [char] = true while its cloud runs (one per dilo; a new one replaces it)
-mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
+botHook(mortarRemote):Connect(function(player, stamp, aimDir, aimPoint)
 	local char, t = check(player, stamp, "dmortar", "DiloPartMortar", aimDir, aimPoint)
 	if not char then return end
 	ok(char, "DiloPartMortar", t)
@@ -587,7 +604,7 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 end)
 
 -- Spine Burst ---------------------------------------------------------------------------------------------------------------------------
-spineRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(spineRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "dspine", "DiloPartSpine")
 	if not char then return end
 	ok(char, "DiloPartSpine", t)
@@ -640,7 +657,7 @@ spineRemote.OnServerEvent:Connect(function(player, stamp)
 end)
 
 -- Venom Overdrive -----------------------------------------------------------------------------------------------------------------------
-overRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(overRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "dover", "DiloPartOver")
 	if not char then return end
 	ok(char, "DiloPartOver", t)
@@ -698,7 +715,7 @@ local function shove(src, m, dist, t) -- TenoAttackServer 1.4 shove's pattern
 	end)
 	return true
 end
-hissRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(hissRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "dhiss", "DiloPartHiss")
 	if not char then return end
 	ok(char, "DiloPartHiss", t)
@@ -770,7 +787,7 @@ local function watchImmune(char)
 		end)
 	end
 end
-pumpRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(pumpRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "dpump", "DiloPartPump")
 	if not char then return end
 	ok(char, "DiloPartPump", t)
@@ -845,7 +862,7 @@ local function segGap(p, a, b) -- flat distance from p to the segment a-b
 	local u = L2 > 1e-6 and math.clamp(ap:Dot(ab) / L2, 0, 1) or 0
 	return (ap - ab * u).Magnitude
 end
-jetsRemote.OnServerEvent:Connect(function(player, stamp, moveDir)
+botHook(jetsRemote):Connect(function(player, stamp, moveDir)
 	local c0 = player.Character
 	if c0 then jetsPublish(c0, now()) end
 	if moveDir ~= nil and (typeof(moveDir) ~= "Vector3" or moveDir ~= moveDir) then
@@ -911,3 +928,29 @@ jetsRemote.OnServerEvent:Connect(function(player, stamp, moveDir)
 		task.wait(TRAIL_TICK)
 	end
 end)
+
+-- v1.12: the bot entrance (see the header)
+if script:GetAttribute("DiloMovesServerBotMechaEnabled") == nil then script:SetAttribute("DiloMovesServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, ...)
+		if script:GetAttribute("DiloMovesServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local list = __botHandlers[remoteName]
+		if not list then return "noHandler" end
+		local proxy = BotProxy.of(model)
+		for _, h in ipairs(list) do
+			local ok, err = pcall(h, proxy, ...)
+			if not ok then
+				script:SetAttribute("DiloMovesServerBotMechaError", tostring(remoteName) .. ": " .. tostring(err))
+				return "botUnsupported"
+			end
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+script:SetAttribute("DiloMovesServerVersion", "1.12") -- v1.12 bot entrance

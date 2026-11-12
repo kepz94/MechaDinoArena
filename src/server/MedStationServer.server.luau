@@ -44,6 +44,23 @@
 --   MedSquadHealed (HP added by squadmates' pads, total, 0.1 steps). The owner's rules are unchanged; only Med Stations
 --   heal squadmates (no other heal changes). Switch: script attribute MedStationSquadHealEnabled (default true, read every
 --   tick; false = 1.1, owner only).
+-- v1.4 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7; Kepu 2026-11-11 20:39 "the damn bots don't even use their
+--   attack buttons or their mecha"): a bot entrance. Every remote handler of this script is connected through botHook(remote)
+--   (handler bodies unchanged), which also files it by the remote's name. Server-only BindableFunction "BotMechaUse" (child):
+--   Invoke(model, remoteName, ...the remote's own arguments...) runs every handler filed for that remote, in order, with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player (the model is its Character; PracticeBot models only).
+--   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
+--   "botUnsupported" (a handler errored; script attribute MedStationServerBotMechaError keeps "<remote>: <error>").
+--   Switch: script attribute MedStationServerBotMechaEnabled (default true, read per call).
+local __botHandlers = {} -- v1.4: remote name -> handlers (see the header)
+local function botHook(remote)
+	return {Connect = function(_, fn)
+		local list = __botHandlers[remote.Name] or {}
+		__botHandlers[remote.Name] = list
+		table.insert(list, fn)
+		return remote.OnServerEvent:Connect(fn)
+	end}
+end
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -274,7 +291,7 @@ local function setResult(char, r)
 	char:SetAttribute("MedServerResultAt", now())
 end
 
-remote.OnServerEvent:Connect(function(player, stamp)
+botHook(remote):Connect(function(player, stamp)
 	script:SetAttribute("MedRequests", (script:GetAttribute("MedRequests") or 0) + 1)
 	local char = player.Character
 	if not char then return end
@@ -457,3 +474,29 @@ do
 	end
 	fn.Parent = script
 end
+
+-- v1.4: the bot entrance (see the header)
+if script:GetAttribute("MedStationServerBotMechaEnabled") == nil then script:SetAttribute("MedStationServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, ...)
+		if script:GetAttribute("MedStationServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local list = __botHandlers[remoteName]
+		if not list then return "noHandler" end
+		local proxy = BotProxy.of(model)
+		for _, h in ipairs(list) do
+			local ok, err = pcall(h, proxy, ...)
+			if not ok then
+				script:SetAttribute("MedStationServerBotMechaError", tostring(remoteName) .. ": " .. tostring(err))
+				return "botUnsupported"
+			end
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+script:SetAttribute("MedStationServerVersion", "1.4") -- v1.4 bot entrance

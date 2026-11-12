@@ -56,6 +56,23 @@
 -- v1.5 (PvP pin, Kepu 2026-10-30: "When I pounce it makes you hang on the other raptor" -> "Pinned down, no escape"; "The counters for Pounce is to shield and use adrenaline mid pounce" -> only Shield + Adrenaline while pinned):
 --   the Thrusters dash is refused while you are pinned by another player ("pinned": character PinHeld == true, set by PounceServer
 --   1.8), checked right after "stunned". Script attribute MechaPinnedBlockEnabled (default true; false = v1.4).
+-- v1.7 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7; Kepu 2026-11-11 20:39 "the damn bots don't even use their
+--   attack buttons or their mecha"): a bot entrance. Every remote handler of this script is connected through botHook(remote)
+--   (handler bodies unchanged), which also files it by the remote's name. Server-only BindableFunction "BotMechaUse" (child):
+--   Invoke(model, remoteName, ...the remote's own arguments...) runs every handler filed for that remote, in order, with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player (the model is its Character; PracticeBot models only).
+--   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
+--   "botUnsupported" (a handler errored; script attribute MechaServerBotMechaError keeps "<remote>: <error>").
+--   Switch: script attribute MechaServerBotMechaEnabled (default true, read per call).
+local __botHandlers = {} -- v1.7: remote name -> handlers (see the header)
+local function botHook(remote)
+	return {Connect = function(_, fn)
+		local list = __botHandlers[remote.Name] or {}
+		__botHandlers[remote.Name] = list
+		table.insert(list, fn)
+		return remote.OnServerEvent:Connect(fn)
+	end}
+end
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -334,7 +351,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- requests
-remote.OnServerEvent:Connect(function(player, stamp)
+botHook(remote):Connect(function(player, stamp)
 	local char = player.Character
 	local st = char and chars[char]
 	if not st then return end
@@ -385,3 +402,29 @@ previewFn.OnInvoke = function(model)
 	build(model, "I")
 	return model:FindFirstChild("Mecha_Thrusters")
 end
+
+-- v1.7: the bot entrance (see the header)
+if script:GetAttribute("MechaServerBotMechaEnabled") == nil then script:SetAttribute("MechaServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, ...)
+		if script:GetAttribute("MechaServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local list = __botHandlers[remoteName]
+		if not list then return "noHandler" end
+		local proxy = BotProxy.of(model)
+		for _, h in ipairs(list) do
+			local ok, err = pcall(h, proxy, ...)
+			if not ok then
+				script:SetAttribute("MechaServerBotMechaError", tostring(remoteName) .. ": " .. tostring(err))
+				return "botUnsupported"
+			end
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+script:SetAttribute("MechaServerVersion", "1.7") -- v1.7 bot entrance

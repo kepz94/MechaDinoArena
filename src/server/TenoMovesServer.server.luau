@@ -206,6 +206,23 @@
 --   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
 --   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
 --   Switch: script attribute TenoMovesServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
+-- v1.21 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7; Kepu 2026-11-11 20:39 "the damn bots don't even use their
+--   attack buttons or their mecha"): a bot entrance. Every remote handler of this script is connected through botHook(remote)
+--   (handler bodies unchanged), which also files it by the remote's name. Server-only BindableFunction "BotMechaUse" (child):
+--   Invoke(model, remoteName, ...the remote's own arguments...) runs every handler filed for that remote, in order, with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player (the model is its Character; PracticeBot models only).
+--   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
+--   "botUnsupported" (a handler errored; script attribute TenoMovesServerBotMechaError keeps "<remote>: <error>").
+--   Switch: script attribute TenoMovesServerBotMechaEnabled (default true, read per call).
+local __botHandlers = {} -- v1.21: remote name -> handlers (see the header)
+local function botHook(remote)
+	return {Connect = function(_, fn)
+		local list = __botHandlers[remote.Name] or {}
+		__botHandlers[remote.Name] = list
+		table.insert(list, fn)
+		return remote.OnServerEvent:Connect(fn)
+	end}
+end
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -837,7 +854,7 @@ local function grabOverTop(char, player, target, t, fling, dmg, stunT, crash, cr
 	end)
 end
 
-grabRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(grabRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "tgrab", "TenoGrab", {})
 	if not char then return end
 	local target = pickGrab(char, t)
@@ -998,7 +1015,7 @@ local function rubblePatch(char, player, pt, r, untilT, mul)
 		p:Destroy()
 	end)
 end
-mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
+botHook(mortarRemote):Connect(function(player, stamp, aimDir, aimPoint)
 	local char, t = check(player, stamp, "tmortar", "TenoMortar", {aim = true, aimDir = aimDir})
 	if not char then return end
 	ok(char, "TenoMortar", t)
@@ -1124,7 +1141,7 @@ mortarRemote.OnServerEvent:Connect(function(player, stamp, aimDir, aimPoint)
 end)
 
 -- Stomp Shockwave ---------------------------------------------------------------------------------------------------------------------
-stompRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(stompRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "tstomp", "TenoStomp", {})
 	if not char then return end
 	ok(char, "TenoStomp", t)
@@ -1202,7 +1219,7 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 end)
-leapRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(leapRemote):Connect(function(player, stamp)
 	local c0 = player.Character
 	if c0 and script:GetAttribute("TenoMovesLeapOnJumpEnabled") ~= false and c0:GetAttribute("TenoLeapOnJump") == true then -- v1.4
 		c0:SetAttribute("TenoLeapServerResult", "onJump")
@@ -1316,7 +1333,7 @@ local function trackBellow(m)
 		if not m:IsDescendantOf(workspace) then bellowTrack[m] = nil end
 	end)
 end
-bellowRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(bellowRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "tbellow", "TenoBellow", {})
 	if not char then return end
 	ok(char, "TenoBellow", t)
@@ -1355,7 +1372,7 @@ bellowRemote.OnServerEvent:Connect(function(player, stamp)
 end)
 
 -- Challenge Call
-challengeRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(challengeRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "tchallenge", "TenoChallenge", {})
 	if not char then return end
 	ok(char, "TenoChallenge", t)
@@ -1447,7 +1464,7 @@ local function mudBlock(char, st)
 	char:SetAttribute("TenoMudBlockAt", t)
 	if st.hitsLeft <= 0 then mudEnd(char, st, "hits") end
 end
-mudRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(mudRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "tmud", "TenoMud", {})
 	if not char then return end
 	ok(char, "TenoMud", t)
@@ -1783,3 +1800,29 @@ do
 		end
 	end)
 end
+
+-- v1.21: the bot entrance (see the header)
+if script:GetAttribute("TenoMovesServerBotMechaEnabled") == nil then script:SetAttribute("TenoMovesServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, ...)
+		if script:GetAttribute("TenoMovesServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local list = __botHandlers[remoteName]
+		if not list then return "noHandler" end
+		local proxy = BotProxy.of(model)
+		for _, h in ipairs(list) do
+			local ok, err = pcall(h, proxy, ...)
+			if not ok then
+				script:SetAttribute("TenoMovesServerBotMechaError", tostring(remoteName) .. ": " .. tostring(err))
+				return "botUnsupported"
+			end
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+script:SetAttribute("TenoMovesServerVersion", "1.21") -- v1.21 bot entrance

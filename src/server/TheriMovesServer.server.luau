@@ -144,6 +144,23 @@
 --   multiplier and end, server time) instead of a WalkSpeed write, any speed this loop had set is given back, and it leaves the
 --   loop; PracticeBrain 2.0 owns the bot's WalkSpeed (base x the active SlowMul_*). Other bots and players: as before.
 --   Switch: script attribute TheriMovesServerBotSlowAttrEnabled (default true, read per frame; false = the previous version).
+-- v1.13 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7; Kepu 2026-11-11 20:39 "the damn bots don't even use their
+--   attack buttons or their mecha"): a bot entrance. Every remote handler of this script is connected through botHook(remote)
+--   (handler bodies unchanged), which also files it by the remote's name. Server-only BindableFunction "BotMechaUse" (child):
+--   Invoke(model, remoteName, ...the remote's own arguments...) runs every handler filed for that remote, in order, with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player (the model is its Character; PracticeBot models only).
+--   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
+--   "botUnsupported" (a handler errored; script attribute TheriMovesServerBotMechaError keeps "<remote>: <error>").
+--   Switch: script attribute TheriMovesServerBotMechaEnabled (default true, read per call).
+local __botHandlers = {} -- v1.13: remote name -> handlers (see the header)
+local function botHook(remote)
+	return {Connect = function(_, fn)
+		local list = __botHandlers[remote.Name] or {}
+		__botHandlers[remote.Name] = list
+		table.insert(list, fn)
+		return remote.OnServerEvent:Connect(fn)
+	end}
+end
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -528,7 +545,7 @@ local function cutFn()
 	startCut = s and s:FindFirstChild("TheriStartCut")
 	return startCut
 end
-hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(hookRemote):Connect(function(player, stamp, aimDir)
 	if rework("Reel") then return end -- v1.4: the Reaper Reel below
 	local char, t = check(player, stamp, "zhook", "TheriHook", aimDir, true)
 	if not char then return end
@@ -603,7 +620,7 @@ hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 end)
 
 -- Feather Barrage -----------------------------------------------------------------------------------------------------------------
-featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(featherRemote):Connect(function(player, stamp, aimDir)
 	if script:GetAttribute("TheriMovesFeatherVolleyEnabled") ~= false then return end -- v1.6: the Wing Volley below
 	local char, t = check(player, stamp, "zfeather", "TheriFeather", aimDir, true)
 	if not char then return end
@@ -645,7 +662,7 @@ end)
 
 -- Harvest Field ---------------------------------------------------------------------------------------------------------------------
 local fields = {} -- [char] = {center, radius, untilT, nextTick, player, bleed, slowMul}
-fieldRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(fieldRemote):Connect(function(player, stamp)
 	if rework("Vortex") then return end -- v1.4: the Reaper Vortex below
 	local char, t = check(player, stamp, "zharvest", "TheriField", nil, false)
 	if not char then return end
@@ -724,7 +741,7 @@ local function hold(char, m, pos, rootT, t)
 		if a1.Parent then a1:Destroy() end
 	end)
 end
-snareRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(snareRemote):Connect(function(player, stamp)
 	if rework("Bola") then return end -- v1.4: the Bola below
 	local char, t = check(player, stamp, "zsnare", "TheriSnare", nil, false)
 	if not char then return end
@@ -832,7 +849,7 @@ local function grapplePublish(char, t)
 		task.delay(nextAt - t + 0.02, function() if char.Parent then grapplePublish(char, now()) end end)
 	end
 end
-grappleRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(grappleRemote):Connect(function(player, stamp, aimDir)
 	if rework("Dash") then return end -- v1.4: the Dash below
 	local c0 = player.Character
 	if c0 then grappleLeft(c0, now()) grapplePublish(c0, now()) end -- refills first, so ReadyAt is current for check()
@@ -888,7 +905,7 @@ grappleRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	char:SetAttribute("TheriGrappleResult", "zip")
 	char:SetAttribute("TheriGrappleAt", t) -- last: TheriGrappleZip + FX
 end)
-deflectRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(deflectRemote):Connect(function(player, stamp)
 	local char, t = check(player, stamp, "zdeflect", "TheriDeflect", nil, false)
 	if not char then return end
 	ok(char, "TheriDeflect", t)
@@ -897,7 +914,7 @@ deflectRemote.OnServerEvent:Connect(function(player, stamp)
 	char:SetAttribute("TheriDeflectWall", script:GetAttribute("TheriMovesDeflectWallEnabled") ~= false) -- v1.7
 	char:SetAttribute("TheriDeflectAt", t) -- last: FX + poses
 end)
-clockRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(clockRemote):Connect(function(player, stamp)
 	local c0 = player.Character -- v1.3: passive -> the button does nothing
 	if c0 and c0:GetAttribute("TheriClockPassive") == true and script:GetAttribute("TheriMovesClockPassiveEnabled") ~= false then
 		c0:SetAttribute("TheriClockServerResult", "passive")
@@ -978,7 +995,7 @@ local function vortexRelease(v, m, t)
 	v.victims[m] = nil
 	if m.Parent and Players:GetPlayerFromCharacter(m) then m:SetAttribute("TheriVortexUntil", t) end
 end
-fieldRemote.OnServerEvent:Connect(function(player, stamp)
+botHook(fieldRemote):Connect(function(player, stamp)
 	if not rework("Vortex") then return end
 	local char, t = check(player, stamp, "zharvest", "TheriField", nil, false)
 	if not char then return end
@@ -1067,7 +1084,7 @@ local function bolaPublish(char, t)
 		task.delay(nextAt - t + 0.02, function() if char.Parent then bolaPublish(char, now()) end end)
 	end
 end
-snareRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(snareRemote):Connect(function(player, stamp, aimDir)
 	if not rework("Bola") then return end
 	local c0 = player.Character
 	if c0 then bolaPublish(c0, now()) end -- refills first, so ReadyAt is current for check()
@@ -1131,7 +1148,7 @@ snareRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 end)
 
 -- Dash -----------------------------------------------------------------------------------------------------------------------------
-grappleRemote.OnServerEvent:Connect(function(player, stamp, moveDir)
+botHook(grappleRemote):Connect(function(player, stamp, moveDir)
 	if not rework("Dash") then return end
 	local c0 = player.Character
 	if c0 then grappleLeft(c0, now()) grapplePublish(c0, now()) end
@@ -1202,7 +1219,7 @@ local function muzzleOf(char)
 	end
 	return rootOf(char).Position
 end
-hookRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(hookRemote):Connect(function(player, stamp, aimDir)
 	if not rework("Reel") then return end
 	local char, t = check(player, stamp, "zhook", "TheriHook", aimDir, true)
 	if not char then return end
@@ -1324,7 +1341,7 @@ if script:GetAttribute("TheriMovesFeatherVolleyEnabled") == nil then script:SetA
 local VOLLEY_RELEASE, VOLLEY_FLIGHT = 0.42, 0.6
 script:SetAttribute("TheriMovesVolleys", 0)
 script:SetAttribute("TheriMovesVolleyHits", 0)
-featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(featherRemote):Connect(function(player, stamp, aimDir)
 	if script:GetAttribute("TheriMovesFeatherVolleyEnabled") == false then return end
 	local char, t = check(player, stamp, "zfeather", "TheriFeather", aimDir, true)
 	if not char then return end
@@ -1402,3 +1419,29 @@ featherRemote.OnServerEvent:Connect(function(player, stamp, aimDir)
 	char:SetAttribute("TheriVolleyLanded", table.concat(landed, "|"))
 	char:SetAttribute("TheriVolleyLandedAt", t2) -- last: the darts land
 end)
+
+-- v1.13: the bot entrance (see the header)
+if script:GetAttribute("TheriMovesServerBotMechaEnabled") == nil then script:SetAttribute("TheriMovesServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, ...)
+		if script:GetAttribute("TheriMovesServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local list = __botHandlers[remoteName]
+		if not list then return "noHandler" end
+		local proxy = BotProxy.of(model)
+		for _, h in ipairs(list) do
+			local ok, err = pcall(h, proxy, ...)
+			if not ok then
+				script:SetAttribute("TheriMovesServerBotMechaError", tostring(remoteName) .. ": " .. tostring(err))
+				return "botUnsupported"
+			end
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+script:SetAttribute("TheriMovesServerVersion", "1.13") -- v1.13 bot entrance

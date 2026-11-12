@@ -51,6 +51,23 @@
 --   picked "Everything harmful"): mayAffect(source, target) is also false for a squadmate (wraps the ModeRules check), so no squadmate is ever picked, hit or slowed. Squadmates = SquadRules 1.0 sameChar (same Arena squad; a test target's
 --   SquadTestId counts). Switch: script attribute TetherServerSquadEnabled (default true, read at each check; false = 1.2).
 --   Diagnostic: script TetherServerSquadSkips (count of squadmate skips / refusals).
+-- v1.6 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7; Kepu 2026-11-11 20:39 "the damn bots don't even use their
+--   attack buttons or their mecha"): a bot entrance. Every remote handler of this script is connected through botHook(remote)
+--   (handler bodies unchanged), which also files it by the remote's name. Server-only BindableFunction "BotMechaUse" (child):
+--   Invoke(model, remoteName, ...the remote's own arguments...) runs every handler filed for that remote, in order, with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player (the model is its Character; PracticeBot models only).
+--   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
+--   "botUnsupported" (a handler errored; script attribute TetherServerBotMechaError keeps "<remote>: <error>").
+--   Switch: script attribute TetherServerBotMechaEnabled (default true, read per call).
+local __botHandlers = {} -- v1.6: remote name -> handlers (see the header)
+local function botHook(remote)
+	return {Connect = function(_, fn)
+		local list = __botHandlers[remote.Name] or {}
+		__botHandlers[remote.Name] = list
+		table.insert(list, fn)
+		return remote.OnServerEvent:Connect(fn)
+	end}
+end
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -475,7 +492,7 @@ local function finite(v)
 		and math.abs(v.X) < 1e6 and math.abs(v.Y) < 1e6 and math.abs(v.Z) < 1e6
 end
 
-remote.OnServerEvent:Connect(function(player, stamp, landPos)
+botHook(remote):Connect(function(player, stamp, landPos)
 	local char = player.Character
 	if not char then return end
 	local hum = char:FindFirstChildOfClass("Humanoid")
@@ -585,7 +602,7 @@ if not aimRemote then
 	aimRemote.Parent = ReplicatedStorage
 end
 local aimLast = setmetatable({}, {__mode = "k"})
-aimRemote.OnServerEvent:Connect(function(player, kind, stamp)
+botHook(aimRemote):Connect(function(player, kind, stamp)
 	if script:GetAttribute("TetherAimStampsEnabled") == false then return end
 	if (kind ~= "aim" and kind ~= "end") or typeof(stamp) ~= "number" or stamp ~= stamp then return end
 	local char = player.Character
@@ -599,3 +616,29 @@ aimRemote.OnServerEvent:Connect(function(player, kind, stamp)
 	char:SetAttribute(kind == "aim" and "TetherAimAt" or "TetherAimEndAt", t)
 	script:SetAttribute("TetherAimStamps", (script:GetAttribute("TetherAimStamps") or 0) + 1)
 end)
+
+-- v1.6: the bot entrance (see the header)
+if script:GetAttribute("TetherServerBotMechaEnabled") == nil then script:SetAttribute("TetherServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, ...)
+		if script:GetAttribute("TetherServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local list = __botHandlers[remoteName]
+		if not list then return "noHandler" end
+		local proxy = BotProxy.of(model)
+		for _, h in ipairs(list) do
+			local ok, err = pcall(h, proxy, ...)
+			if not ok then
+				script:SetAttribute("TetherServerBotMechaError", tostring(remoteName) .. ": " .. tostring(err))
+				return "botUnsupported"
+			end
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+script:SetAttribute("TetherServerVersion", "1.6") -- v1.6 bot entrance

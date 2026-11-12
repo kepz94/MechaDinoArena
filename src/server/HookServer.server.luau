@@ -78,6 +78,23 @@
 -- v1.9 (MDA-303, plan docs/plans/PACHY_MOVES_ANIM_v1.0.md Task 1; Kepu 2026-11-05 victim stagger, "Look only"): a smash
 --   that lands stamps on the target StaggerFrom (pachy name), StaggerPower ("mid"), StaggerAt (server time, last) for
 --   StaggerPose 1.0. Switch: script attribute HookStaggerStampEnabled (default true, read at each smash; false = 1.8).
+-- v1.13 (Bots v2, MDA-471, plan docs/plans/BOTS_V2_v1.0.md T7; Kepu 2026-11-11 20:39 "the damn bots don't even use their
+--   attack buttons or their mecha"): a bot entrance. Every remote handler of this script is connected through botHook(remote)
+--   (handler bodies unchanged), which also files it by the remote's name. Server-only BindableFunction "BotMechaUse" (child):
+--   Invoke(model, remoteName, ...the remote's own arguments...) runs every handler filed for that remote, in order, with
+--   ServerStorage.DinoArcade.BotProxy.of(model) as the player (the model is its Character; PracticeBot models only).
+--   Returns "ok" (the handlers ran; their results land on the model as for a player), "off", "badArg", "noHandler" or
+--   "botUnsupported" (a handler errored; script attribute HookServerBotMechaError keeps "<remote>: <error>").
+--   Switch: script attribute HookServerBotMechaEnabled (default true, read per call).
+local __botHandlers = {} -- v1.13: remote name -> handlers (see the header)
+local function botHook(remote)
+	return {Connect = function(_, fn)
+		local list = __botHandlers[remote.Name] or {}
+		__botHandlers[remote.Name] = list
+		table.insert(list, fn)
+		return remote.OnServerEvent:Connect(fn)
+	end}
+end
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -515,7 +532,7 @@ local function setResult(char, r)
 	char:SetAttribute("HookServerResultAt", now())
 end
 
-remote.OnServerEvent:Connect(function(player, stamp, aimDir)
+botHook(remote):Connect(function(player, stamp, aimDir)
 	local char = player.Character
 	if not char then return end
 	local hum = char:FindFirstChildOfClass("Humanoid")
@@ -686,3 +703,29 @@ do
 	end
 	fn.Parent = script
 end
+
+-- v1.13: the bot entrance (see the header)
+if script:GetAttribute("HookServerBotMechaEnabled") == nil then script:SetAttribute("HookServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, ...)
+		if script:GetAttribute("HookServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		local list = __botHandlers[remoteName]
+		if not list then return "noHandler" end
+		local proxy = BotProxy.of(model)
+		for _, h in ipairs(list) do
+			local ok, err = pcall(h, proxy, ...)
+			if not ok then
+				script:SetAttribute("HookServerBotMechaError", tostring(remoteName) .. ": " .. tostring(err))
+				return "botUnsupported"
+			end
+		end
+		return "ok"
+	end
+	fn.Parent = script
+end
+script:SetAttribute("HookServerVersion", "1.13") -- v1.13 bot entrance
