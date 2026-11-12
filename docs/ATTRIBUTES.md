@@ -3403,3 +3403,6 @@ Model numbers are generator output (old version = the flag in the last column, b
 ## Match end timing + auto island (HardpointHUD 1.9 / 1.10, 2026-11-12)
 - `HardpointHUDEndTimingV2Enabled` (true; spotlight length read at start, guard per tap), `HardpointHUDSpotSec` 6, `HardpointHUDSkipGuard` 1.5; diagnostic `HardpointHUDEndSkipsIgnored`.
 - `HardpointHUDAutoIslandEnabled` (true, per frame), `HardpointHUDAutoIslandLead` 1; diagnostic `HardpointHUDAutoIsland` ("waiting" / "sent" / "chose:<press>" / "member" / "off").
+
+## Score per teammate (HardpointRules 1.3 / HardpointServer 1.6, 2026-11-12)
+- HardpointRules `M.SCORE_PER_MATE` (true). HardpointServer `HpScorePerMateEnabled` (true, per tick; false = 1 a second).

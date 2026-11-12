@@ -48,10 +48,17 @@
 --     each other; the pair furthest apart wins (first found on a tie).
 --   API: bandSpots(centre, okFn, radii?, extraRadii?) (new optional args; nil = BAND_RADII / BAND_EXTRA_RADII as 1.1);
 --     pickOpeningByRun(spots, seesFn(a, b) -> bool, runFn(spot) -> number?, minApart?, maxDiff?) -> Vector3?, Vector3?
+-- v1.3 (Kepu 2026-11-12 15:48 "have the time multiplied by the amount of teammates in the point. So 1 point per second per
+--   teammate only when uncontested ... if there's 4 blue team players in the zone then it's 4 points a second"):
+--   stepCount(s, occ, nA, nB, dt) = step with the holding team's time x its count on the point (a bot counts like a player):
+--   occ "A" -> step(s, "A", dt x nA), "B" -> dt x nB; contested ("C") and empty ("N") are exactly step. LIMIT stays 250.
+--   Switch: M.SCORE_PER_MATE (default true; false = step).
 local M = {}
 M.VERSION = "1.0"
 M.VERSION = "1.1" -- v1.1 spawns v2
 M.VERSION = "1.2" -- v1.2 far spawns + start sides by run
+M.VERSION = "1.3" -- v1.3 score per teammate on the point
+M.SCORE_PER_MATE = true
 
 M.RADIUS = 45
 M.DY = 40
@@ -144,6 +151,16 @@ function M.step(s, occ, dt)
 		r.clock = math.max(0, r.clock - dt)
 	end
 	return r
+end
+
+-- v1.3: score per teammate on the point (see the header)
+function M.stepCount(s, occ, nA, nB, dt)
+	dt = math.max(0, tonumber(dt) or 0)
+	if M.SCORE_PER_MATE then
+		if occ == "A" then return M.step(s, occ, dt * math.max(1, math.floor(tonumber(nA) or 1))) end
+		if occ == "B" then return M.step(s, occ, dt * math.max(1, math.floor(tonumber(nB) or 1))) end
+	end
+	return M.step(s, occ, dt)
 end
 
 function M.winner(s)

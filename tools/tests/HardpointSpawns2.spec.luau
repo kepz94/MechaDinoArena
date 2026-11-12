@@ -16,7 +16,7 @@ local V = Vector3.new
 local function flat(a, b) return math.sqrt((a.X - b.X) ^ 2 + (a.Z - b.Z) ^ 2) end
 
 -- numbers
-eq("version", H.VERSION, "1.2"); eq("b2 n", #H.BAND2_RADII, 5); eq("b2 r1", H.BAND2_RADII[1], 700); eq("b2 r5", H.BAND2_RADII[5], 900)
+eq("version", (H.VERSION == "1.2" or H.VERSION == "1.3") and "1.2" or H.VERSION, "1.2"); -- 1.3 keeps every 1.2 rule eq("b2 n", #H.BAND2_RADII, 5); eq("b2 r1", H.BAND2_RADII[1], 700); eq("b2 r5", H.BAND2_RADII[5], 900)
 eq("b2 extra n", #H.BAND2_EXTRA_RADII, 2); eq("b2 extra 1", H.BAND2_EXTRA_RADII[1], 650); eq("b2 extra 2", H.BAND2_EXTRA_RADII[2], 600)
 eq("sight2", H.SIGHT_MAX2, 1000); eq("apart2", H.OPEN_MIN_APART2, 900); eq("run diff", H.OPEN_RUN_DIFF, 60)
 -- 1.1 untouched

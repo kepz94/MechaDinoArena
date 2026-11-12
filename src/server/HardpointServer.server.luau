@@ -104,6 +104,7 @@ VERSION = "1.2" -- v1.2 spawns v2
 VERSION = "1.3" -- v1.3 far spawns + start sides by run
 VERSION = "1.4" -- v1.4 off on the hub
 VERSION = "1.5" -- v1.5 match awards
+VERSION = "1.6" -- v1.6 score per teammate on the point
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
 if script:GetAttribute("HpMinPlayers") == nil then script:SetAttribute("HpMinPlayers", 1) end
@@ -151,6 +152,9 @@ setLive(false)
 
 local function now() return workspace:GetServerTimeNow() end
 
+-- v1.6 (Kepu 2026-11-12 15:48): the holding team scores 1 a second per teammate on the point when uncontested
+--   (HardpointRules 1.3 stepCount with nA / nB). Switch: script attribute HpScorePerMateEnabled (default true, read per tick;
+--   false = 1.5, 1 a second).
 -- v1.1: the practice match in the Sandbox
 local PRACTICE = false
 do
@@ -669,7 +673,11 @@ local function tick()
 		end
 	end
 	local occ = H.occupancy(nA, nB)
-	match.state = H.step(match.state, occ, H.TICK)
+	if H.stepCount and script:GetAttribute("HpScorePerMateEnabled") ~= false then -- v1.6
+		match.state = H.stepCount(match.state, occ, nA, nB, H.TICK)
+	else
+		match.state = H.step(match.state, occ, H.TICK)
+	end
 	set("HpOcc", occ)
 	set("HpClockPaused", occ ~= "N")
 	local w = H.winner(match.state)
