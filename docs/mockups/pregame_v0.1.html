@@ -1,0 +1,493 @@
+<title>Pre-Game Dino Select</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Mecha Dino Arena pre-game mockup v0.1. Single dark look on purpose: it is a game screen. Colours are the game's
+   (PracticeLobby BLUE_HD / RED_HD / YELLOW, mode colours from the loading screens). */
+:root {
+  --ink: #0d1218; --panel: #151d27; --panel2: #1b2532; --line: #263243; --text: #e7edf5; --muted: #93a2b6;
+  --blue: #5aa0ff; --blueD: #2f6fd0; --red: #e0284a; --redD: #b81d3c; --yellow: #ffc832; --green: #46e08a;
+  --arena: #ff9b2e; --bots: #ffd640; --volt: #7fe9ff;
+  --mode: var(--arena);
+  --f-display: "Silkscreen", "Courier New", monospace;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--ink); color: var(--text); margin: 0; }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px; }
+.eyebrow { font-family: var(--f-display); font-size: 12px; letter-spacing: .12em; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(24px, 4vw, 38px); line-height: 1.1; margin: 6px 0 8px; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 70ch; margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { font-family: var(--f-display); font-size: 12px; letter-spacing: .06em; color: var(--text); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 9px 13px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.btn[aria-pressed="true"] { border-color: var(--yellow); box-shadow: inset 0 -3px 0 var(--yellow); }
+.btn:focus-visible { outline: 2px solid var(--volt); outline-offset: 2px; }
+.rec { font-size: 9px; color: #1b1405; background: var(--yellow); padding: 2px 5px; border-radius: 3px; }
+.label { font-family: var(--f-display); font-size: 11px; color: var(--muted); letter-spacing: .1em; margin-right: 4px; }
+
+/* ---------- the game screen ---------- */
+.screen { position: relative; width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, #1d2638 0%, #0e1219 72%); container-type: inline-size; user-select: none; }
+.screen.phone { aspect-ratio: 2.16 / 1; }
+.screen * { font-family: var(--f-display); }
+.gridbg { position: absolute; inset: 0; background-image: linear-gradient(rgba(127,233,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(127,233,255,.045) 1px, transparent 1px); background-size: 4cqw 4cqw; pointer-events: none; }
+.phase { position: absolute; inset: 0; }
+.hide { display: none !important; }
+
+.topbar { position: absolute; left: 3cqw; right: 3cqw; top: 2.2cqw; display: flex; justify-content: space-between; align-items: flex-start; gap: 2cqw; }
+.ttl { font-size: 2.6cqw; font-weight: 700; color: var(--mode); line-height: 1; }
+.sub { font-size: 1.15cqw; color: #c9d4e2; margin-top: .7cqw; }
+.timer { text-align: right; }
+.timer b { display: block; font-size: 3.6cqw; line-height: 1; color: var(--text); }
+.timer b.low { color: var(--red); }
+.timer span { font-size: 1cqw; color: var(--muted); }
+.tbar { position: absolute; left: 3cqw; right: 3cqw; top: 7.4cqw; height: .5cqw; background: rgba(255,255,255,.08); border-radius: 1cqw; overflow: hidden; }
+.tbar i { position: absolute; inset: 0 auto 0 0; background: var(--mode); width: 100%; transition: width .25s linear; }
+
+/* dino grid */
+.dgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .9cqw; }
+.dino { position: relative; background: var(--panel2); border: .18cqw solid var(--line); border-radius: .8cqw; padding: .7cqw .6cqw .6cqw; cursor: pointer; text-align: center; }
+.dino:hover { border-color: #4b5d76; }
+.dino.sel { border-color: var(--yellow); box-shadow: 0 0 0 .2cqw rgba(255,200,50,.25); }
+.dino.taken { opacity: .38; cursor: not-allowed; }
+.dino .glyph { margin: 0 auto .4cqw; }
+.dino .nm { font-size: 1.05cqw; }
+.dino .role { font-size: .75cqw; color: var(--muted); margin-top: .2cqw; }
+.dino .tk { position: absolute; top: .35cqw; right: .4cqw; font-size: .7cqw; color: var(--blue); }
+.glyph { width: 4.2cqw; height: 4.2cqw; border-radius: .6cqw; position: relative; box-shadow: inset 0 -.5cqw 0 rgba(0,0,0,.25); }
+.glyph::after { content: attr(data-l); position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.7cqw; font-weight: 700; color: rgba(10,12,18,.8); }
+.glyph.sm { width: 2.6cqw; height: 2.6cqw; border-radius: .45cqw; }
+.glyph.sm::after { font-size: 1.05cqw; }
+.glyph.xl { width: 9cqw; height: 9cqw; border-radius: 1.2cqw; }
+.glyph.xl::after { font-size: 3.6cqw; }
+.glyph.q { background: #2b3542 !important; }
+.glyph.q::after { content: "?"; color: #8090a6; }
+
+/* loadout */
+.lo { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5cqw; }
+.slot { background: #111821; border: .15cqw solid var(--line); border-radius: .5cqw; padding: .45cqw .4cqw; font-size: .78cqw; line-height: 1.25; min-height: 3cqw; color: #d6e0ec; cursor: pointer; }
+.slot:hover { border-color: #4b5d76; }
+.slot small { display: block; color: var(--muted); font-size: .62cqw; margin-bottom: .15cqw; }
+
+/* player cards (team strip) */
+.card { position: relative; background: linear-gradient(180deg, #182231, #121923); border: .18cqw solid var(--line); border-radius: .8cqw; padding: .7cqw; display: grid; gap: .45cqw; overflow: hidden; }
+.card.blue { border-top: .45cqw solid var(--blue); }
+.card.red { border-top: .45cqw solid var(--red); }
+.card.me { border-color: var(--yellow); }
+.card .who { display: flex; gap: .6cqw; align-items: center; min-width: 0; }
+.card .pn { font-size: 1.05cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .wl { font-size: .85cqw; color: var(--muted); }
+.card .wl b { color: var(--text); font-weight: 700; }
+.card .st { font-size: .75cqw; }
+.st.lock { color: var(--green); }
+.st.pick { color: var(--yellow); }
+.card .mini { font-size: .68cqw; color: #aab6c6; line-height: 1.3; }
+.comp { font-size: .95cqw; color: #c9d4e2; display: flex; gap: 1.2cqw; flex-wrap: wrap; }
+.comp b { color: var(--mode); }
+.lockbtn { font-size: 1.3cqw; font-weight: 700; color: #1b1405; background: var(--yellow); border: 0; border-radius: .7cqw; padding: .9cqw 2.2cqw; cursor: pointer; }
+.lockbtn[disabled] { background: #3a4656; color: #8a97a8; cursor: default; }
+.panelbox { background: rgba(21,29,39,.85); border: .15cqw solid var(--line); border-radius: 1cqw; padding: 1cqw; }
+.h { font-size: .9cqw; color: var(--muted); letter-spacing: .1em; margin-bottom: .6cqw; }
+
+/* A: draft board */
+.A-main { position: absolute; left: 3cqw; right: 3cqw; top: 9cqw; bottom: 17.5cqw; display: grid; grid-template-columns: 1.1fr 1fr; gap: 1.6cqw; }
+.A-team { position: absolute; left: 3cqw; right: 3cqw; bottom: 2.2cqw; height: 14cqw; display: grid; grid-template-columns: repeat(5, 1fr); gap: .9cqw; }
+.preview { display: grid; grid-template-columns: auto 1fr; gap: 1.2cqw; align-items: center; }
+.preview .bign { font-size: 2.2cqw; color: var(--text); }
+.preview .desc { font-size: .9cqw; color: #b7c3d2; line-height: 1.4; margin-top: .4cqw; }
+.preview .role { font-size: .9cqw; color: var(--mode); }
+
+/* B: lineup stage */
+.B-stage { position: absolute; left: 3cqw; right: 33cqw; top: 9cqw; bottom: 3cqw; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1cqw; align-items: end; }
+.ped { display: grid; justify-items: center; gap: .6cqw; }
+.ped .glyph { transition: transform .25s; }
+.ped .glyph.locked { transform: translateY(-.6cqw); }
+.ped .base { width: 100%; height: 3.2cqw; border-radius: 50% 50% .6cqw .6cqw / 60% 60% .6cqw .6cqw; background: linear-gradient(180deg, #2a3a52, #141c27); border-top: .25cqw solid var(--blue); }
+.ped.me .base { border-top-color: var(--yellow); }
+.plaque { width: 100%; background: #111821; border: .15cqw solid var(--line); border-radius: .6cqw; padding: .55cqw; text-align: center; }
+.plaque .pn { font-size: 1cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plaque .wl { font-size: 1.3cqw; color: var(--text); margin-top: .2cqw; }
+.plaque .wl span { font-size: .75cqw; color: var(--muted); }
+.plaque .mini { font-size: .66cqw; color: #aab6c6; margin-top: .3cqw; line-height: 1.3; min-height: 2.6cqw; }
+.B-side { position: absolute; right: 3cqw; width: 28.5cqw; top: 9cqw; bottom: 3cqw; display: grid; grid-template-rows: auto auto 1fr auto; gap: .9cqw; }
+.B-side .dgrid { grid-template-columns: repeat(4, 1fr); }
+
+/* C: face-off */
+.C-cols { position: absolute; left: 3cqw; right: 3cqw; top: 9cqw; bottom: 3cqw; display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 1.4cqw; }
+.C-team { display: grid; gap: .7cqw; align-content: start; }
+.C-row { display: grid; grid-template-columns: auto 1fr auto; gap: .7cqw; align-items: center; background: #121923; border: .15cqw solid var(--line); border-radius: .7cqw; padding: .55cqw .7cqw; }
+.C-row.blue { border-left: .45cqw solid var(--blue); }
+.C-row.red { border-right: .45cqw solid var(--red); grid-template-columns: auto 1fr auto; }
+.C-row.me { border-color: var(--yellow); }
+.C-row .pn { font-size: .95cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.C-row .wl { font-size: 1.15cqw; text-align: right; }
+.C-row .wl span { display: block; font-size: .65cqw; color: var(--muted); }
+.C-row .mini { font-size: .66cqw; color: #aab6c6; }
+.C-mid { display: grid; gap: .9cqw; align-content: start; }
+.teamrec { font-size: 1cqw; color: var(--muted); text-align: center; }
+.teamrec b { font-size: 1.6cqw; color: var(--text); }
+
+/* intro */
+.intro { position: absolute; inset: 0; background: #07090d; overflow: hidden; }
+.intro::before, .intro::after { content: ""; position: absolute; left: 0; right: 0; height: 6cqw; background: #000; z-index: 3; }
+.intro::before { top: 0; } .intro::after { bottom: 0; }
+.spot { position: absolute; inset: 0; background: radial-gradient(55% 70% at 50% 55%, rgba(90,160,255,.22), transparent 70%); transition: background .3s; }
+.spot.red { background: radial-gradient(55% 70% at 50% 55%, rgba(224,40,74,.22), transparent 70%); }
+.hero { position: absolute; left: 50%; top: 53%; transform: translate(-50%, -50%); display: grid; grid-template-columns: auto auto; gap: 3cqw; align-items: center; z-index: 2; }
+.hero .glyph { animation: rise .5s ease-out both; }
+.hero .txt { animation: slide .45s .1s ease-out both; }
+.hero .team { font-size: 1.1cqw; letter-spacing: .14em; }
+.hero .pn { font-size: 4cqw; line-height: 1.05; margin: .3cqw 0 .6cqw; }
+.hero .dn { font-size: 1.4cqw; color: #c9d4e2; }
+.hero .recs { display: flex; gap: 2.2cqw; margin-top: 1.2cqw; }
+.hero .recs div { font-size: .9cqw; color: var(--muted); }
+.hero .recs b { display: block; font-size: 3cqw; color: var(--text); line-height: 1.05; }
+.hero .recs b.w { color: var(--green); } .hero .recs b.l { color: var(--red); }
+.counter { position: absolute; right: 3cqw; bottom: 7.4cqw; font-size: 1cqw; color: var(--muted); z-index: 4; }
+.skip { position: absolute; left: 3cqw; bottom: 7.4cqw; font-size: 1cqw; color: var(--muted); z-index: 4; }
+@keyframes rise { from { transform: translateY(3cqw) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes slide { from { transform: translateX(4cqw); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.vs { position: absolute; inset: 6cqw 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 2cqw; padding: 0 3cqw; z-index: 2; }
+.vs .side { display: grid; gap: .7cqw; justify-items: start; }
+.vs .side.r { justify-items: end; }
+.vs .mini-card { display: flex; gap: .7cqw; align-items: center; background: rgba(18,25,35,.9); border: .15cqw solid var(--line); border-radius: .6cqw; padding: .45cqw .7cqw; animation: pop .35s ease-out both; min-width: 0; }
+.vs .mini-card .pn { font-size: .95cqw; } .vs .mini-card .wl { font-size: .8cqw; color: var(--muted); }
+.vs .big { font-size: 7cqw; color: var(--mode); animation: pop .4s ease-out both; }
+.vs .tr { font-size: 1cqw; color: var(--muted); text-align: center; margin-top: .6cqw; }
+.go { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(7,9,13,.92); z-index: 5; }
+.go div { text-align: center; }
+.go b { font-size: 5cqw; color: var(--mode); display: block; animation: pop .4s ease-out both; }
+.go span { font-size: 1.3cqw; color: #c9d4e2; }
+
+/* phone (landscape ~2.16:1): less height, so smaller glyphs and a shorter team strip */
+.screen.phone .topbar { top: 1.6cqw; } .screen.phone .tbar { top: 6.4cqw; }
+.screen.phone .dino { padding: .35cqw .3cqw; } .screen.phone .dgrid { gap: .6cqw; }
+.screen.phone .dino .glyph { width: 2.4cqw; height: 2.4cqw; margin-bottom: .2cqw; } .screen.phone .dino .glyph::after { font-size: 1cqw; }
+.screen.phone .dino .role { display: none; }
+.screen.phone .glyph.xl { width: 6cqw; height: 6cqw; } .screen.phone .glyph.xl::after { font-size: 2.4cqw; }
+.screen.phone .A-main { top: 7.6cqw; bottom: 12cqw; } .screen.phone .A-team { height: 10.2cqw; bottom: 1.2cqw; }
+.screen.phone .card { padding: .5cqw; gap: .25cqw; } .screen.phone .card .mini { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screen.phone .panelbox { padding: .7cqw; } .screen.phone .lockbtn { padding: .6cqw 1.8cqw; }
+.screen.phone .C-cols, .screen.phone .B-stage, .screen.phone .B-side { top: 7.6cqw; bottom: 1.6cqw; }
+.screen.phone .C-mid { gap: .6cqw; } .screen.phone .C-row { padding: .35cqw .6cqw; } .screen.phone .C-team { gap: .45cqw; }
+.screen.phone .preview .desc { display: none; }
+
+/* notes */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.note { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.note h3 { font-family: var(--f-display); font-size: 13px; letter-spacing: .06em; margin: 0 0 8px; color: var(--yellow); }
+.note p, .note li { color: #c9d4e2; margin: 0 0 6px; }
+.note ul { margin: 0; padding-left: 18px; }
+.note .tag { font-family: var(--f-display); font-size: 10px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <div>
+    <div class="eyebrow">MECHA DINO ARENA · MOCKUP v0.1 · PRE-GAME</div>
+    <h1>Dino Select + Player Intros</h1>
+    <p class="lede">30 seconds to pick with your team: you see who your teammates take and their loadout, then every player gets an intro with their win-loss record before the match. Three ways to lay it out — pick one. Teammates pick on their own; click a dino and LOCK IN to try it.</p>
+  </div>
+
+  <div class="row" role="tablist" aria-label="Direction">
+    <span class="label">DIRECTION</span>
+    <button class="btn" data-v="A" aria-pressed="true">A · Draft Board <span class="rec">REC</span></button>
+    <button class="btn" data-v="B" aria-pressed="false">B · Lineup Stage</button>
+    <button class="btn" data-v="C" aria-pressed="false">C · Face-Off</button>
+  </div>
+  <div class="row">
+    <span class="label">MODE</span>
+    <button class="btn" data-m="arena" aria-pressed="true">ARENA</button>
+    <button class="btn" data-m="bots" aria-pressed="false">HARDPOINT VS BOTS</button>
+    <span class="label" style="margin-left:10px">SCREEN</span>
+    <button class="btn" data-s="pc" aria-pressed="true">PC</button>
+    <button class="btn" data-s="phone" aria-pressed="false">PHONE</button>
+    <span class="label" style="margin-left:10px">CLOCK</span>
+    <button class="btn" id="fast" aria-pressed="false">FAST ×4</button>
+    <button class="btn" id="restart">RESTART</button>
+    <button class="btn" id="toIntro">SKIP TO INTRO</button>
+  </div>
+
+  <div class="screen" id="screen">
+    <div class="gridbg"></div>
+    <!-- select phase (built by script) -->
+    <div class="phase" id="select"></div>
+    <!-- intro phase -->
+    <div class="phase intro hide" id="intro"></div>
+  </div>
+
+  <div class="notes" id="notes"></div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>DECISIONS FOR YOU (after the pick)</h3>
+      <ul>
+        <li><b>Which matches count for W-L?</b> Arena only, or bots matches too (maybe a separate record)?</li>
+        <li><b>Same dino twice on a team?</b> Siege style says no (greyed out once a teammate locks it). Toggle it here: <button class="btn" id="uniq" aria-pressed="true" style="padding:4px 8px">ONE PER TEAM: ON</button></li>
+        <li><b>Arena timing:</b> the Arena has no pre-game today (you drop in). The select would run at every match start; someone joining mid-match skips it.</li>
+        <li><b>Didn't lock in at 0:00?</b> Mockup: you keep the dino you hovered (or your last one).</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h3>WHAT'S REAL VS MOCK</h3>
+      <p>Dino names, roles (from the bots' jobs: Pachy / Teno hold, Dilo / Troodon ranged, the rest fighters) and part names are the game's. Player names and records are made up. Dino pictures are placeholders (the real screen would use each dino's model / icon).</p>
+      <p class="tag">docs/mockups/pregame_v0.1.html</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const DINOS = {
+    Raptor:   {c: "#ff9b2e", l: "R", role: "FIGHTER", d: "Fast hunter. Pounce, dash, cloak.", parts: ["Thrusters", "Cloak Field", "Shock Mine", "Energy Shield", "Raptor Screech", "Scent Sense", "Adrenaline Injector"]},
+    TRex:     {c: "#d9534f", l: "T", role: "FIGHTER", d: "Big bite, big health. Slow.", parts: ["Basic kit"]},
+    Pachy:    {c: "#9b7cff", l: "P", role: "HOLDER", d: "Headbutt tank. Holds the point.", parts: ["Overclocked Servo Dash", "Med-Station", "Dome Visor", "Grappling Hook", "Ink Shooter", "Tether Spike", "Blood Rush", "Mecha Legs"]},
+    Herrera:  {c: "#e0c040", l: "H", role: "FIGHTER", d: "Slasher with gadgets.", parts: ["Quill Launcher", "Smoke Pods", "Strobe Frill", "Razor Caltrops", "Goo Blob Shooter", "Glider Wings", "Stun Breaker"]},
+    Teno:     {c: "#5fbf6a", l: "N", role: "HOLDER", d: "Heavy brawler. Stomp and leap.", parts: ["Hydraulic Leap", "Stomp Shockwave", "Tail Grab & Fling", "Challenge Call", "Boulder Mortar", "Mud Armor", "Herd Bellow"]},
+    Therizino:{c: "#c8a27a", l: "Z", role: "FIGHTER", d: "Claw reaper. Hooks and snares.", parts: ["Grapple Zip", "Reaper's Hook", "Feather Barrage", "Snare Wires", "Harvest Field", "Deflector Claws"]},
+    Dilo:     {c: "#9cf05a", l: "D", role: "RANGED", d: "Venom spitter. Poisons from range.", parts: ["Spring Jets", "Venom Gatling", "Toxin Mortar", "Sonic Hiss", "Venom Overdrive", "Antivenom Pump", "Spine Burst"]},
+    Troodon:  {c: "#ffc35a", l: "O", role: "RANGED", d: "Smart support. Pods, heals, portals.", parts: ["Portal Feathers", "Mender Drone", "Arc Lantern", "Shield Dome", "Sap Wall", "Bloom Burst", "Sleep Dart"]},
+  };
+  const ORDER = ["Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"];
+  const BLUE = [
+    {n: "YOU", me: true, w: 31, l: 12, lv: 24},
+    {n: "Mako_88", w: 58, l: 40, lv: 33, want: "Pachy", at: 6},
+    {n: "FernRex", w: 12, l: 19, lv: 11, want: "Dilo", at: 11},
+    {n: "TurboTeno", w: 44, l: 21, lv: 29, want: "Teno", at: 17},
+    {n: "Zinny", w: 7, l: 3, lv: 8, want: "Raptor", at: 22},
+  ];
+  const RED_ARENA = [
+    {n: "Volt_Claw", w: 66, l: 31, lv: 38, d: "Raptor"}, {n: "BoneDaddy", w: 23, l: 25, lv: 19, d: "Pachy"},
+    {n: "spitz", w: 40, l: 18, lv: 27, d: "Dilo"}, {n: "Hookline", w: 15, l: 22, lv: 14, d: "Therizino"},
+    {n: "Q_Troo", w: 52, l: 47, lv: 30, d: "Troodon"},
+  ];
+  const RED_BOTS = [
+    {n: "Fang", bot: "ELITE", d: "Herrera"}, {n: "Jolt", bot: "HARD", d: "Pachy"}, {n: "Ember", bot: "NORMAL", d: "Dilo"},
+    {n: "Hex", bot: "NORMAL", d: "Therizino"}, {n: "Mako", bot: "EASY", d: "Troodon"},
+  ];
+  const TIME = 30;
+  let v = "A", mode = "arena", phone = false, fast = false, uniq = true;
+  let t0, timerId, introId, phase = "select";
+  let st; // per-round state
+
+  const $ = s => document.querySelector(s);
+  const screen = $("#screen"), sel = $("#select"), intro = $("#intro");
+  const glyph = (d, cls = "") => d ? `<div class="glyph ${cls}" style="background:${DINOS[d].c}" data-l="${DINOS[d].l}"></div>` : `<div class="glyph q ${cls}"></div>`;
+  const pct = p => Math.round(100 * p.w / Math.max(1, p.w + p.l)) + "%";
+  const loOf = d => DINOS[d].parts.slice(0, 4);
+  const red = () => mode === "arena" ? RED_ARENA : RED_BOTS;
+
+  function fresh() {
+    st = {hover: null, mine: null, locked: false, lo: null,
+      mates: BLUE.map(p => ({...p, hover: null, pick: null}))};
+  }
+  function elapsed() { return (performance.now() - t0) / 1000 * (fast ? 4 : 1); }
+  function taken(d) { return uniq && st.mates.some(p => !p.me && p.pick === d); }
+
+  // ---------- select views ----------
+  function teamCompHtml() {
+    const c = {HOLDER: 0, FIGHTER: 0, RANGED: 0};
+    st.mates.forEach(p => { const d = p.me ? (st.mine || st.hover) : (p.pick || p.hover); if (d) c[DINOS[d].role]++; });
+    return `<div class="comp">TEAM <span>HOLDER <b>${c.HOLDER}</b></span><span>FIGHTER <b>${c.FIGHTER}</b></span><span>RANGED <b>${c.RANGED}</b></span></div>`;
+  }
+  function dgridHtml() {
+    return `<div class="dgrid">` + ORDER.map(d => {
+      const tk = taken(d);
+      const cls = (st.hover === d || st.mine === d ? " sel" : "") + (tk ? " taken" : "");
+      const who = st.mates.find(p => !p.me && p.pick === d);
+      return `<div class="dino${cls}" data-d="${d}" role="button" tabindex="0">${who ? `<span class="tk">${who.n}</span>` : ""}${glyph(d)}<div class="nm">${d === "TRex" ? "T-REX" : d.toUpperCase()}</div><div class="role">${DINOS[d].role}</div></div>`;
+    }).join("") + `</div>`;
+  }
+  function loHtml(d, editable) {
+    if (!d) return `<div class="lo">${[1, 2, 3, 4].map(i => `<div class="slot"><small>SLOT ${i}</small>—</div>`).join("")}</div>`;
+    const lo = editable && st.lo ? st.lo : loOf(d);
+    return `<div class="lo">${[0, 1, 2, 3].map(i => `<div class="slot" data-slot="${i}"><small>SLOT ${i + 1}</small>${lo[i] || "—"}</div>`).join("")}</div>`;
+  }
+  function statusOf(p) {
+    if (p.me) return st.locked ? `<span class="st lock">LOCKED</span>` : `<span class="st pick">PICKING…</span>`;
+    return p.pick ? `<span class="st lock">LOCKED</span>` : `<span class="st pick">PICKING…</span>`;
+  }
+  function dOf(p) { return p.me ? (st.mine || st.hover) : (p.pick || p.hover); }
+  function cardHtml(p) {
+    const d = dOf(p);
+    const lo = d ? (p.me && st.lo ? st.lo : loOf(d)) : [];
+    return `<div class="card blue${p.me ? " me" : ""}"><div class="who">${glyph(d, "sm")}<div style="min-width:0"><div class="pn">${p.n}</div><div class="wl"><b>${p.w}-${p.l}</b> · LV ${p.lv}</div></div></div>
+      ${statusOf(p)}<div class="mini">${d ? (d === "TRex" ? "T-REX" : d.toUpperCase()) + "<br>" + lo.join(" · ") : "—"}</div></div>`;
+  }
+  function topHtml() {
+    const s = Math.max(0, Math.ceil(TIME - elapsed()));
+    return `<div class="topbar"><div><div class="ttl">DINO SELECT</div><div class="sub">${mode === "arena" ? "ARENA · HARDPOINT" : "HARDPOINT VS BOTS"} · PICK WITH YOUR TEAM</div></div>
+      <div class="timer"><b class="${s <= 5 ? "low" : ""}">0:${String(s).padStart(2, "0")}</b><span>LOCKS AT 0:00</span></div></div>
+      <div class="tbar"><i style="width:${100 * Math.max(0, TIME - elapsed()) / TIME}%"></i></div>`;
+  }
+  function lockHtml() {
+    return `<button class="lockbtn" id="lock" ${(!st.hover && !st.mine) || st.locked ? "disabled" : ""}>${st.locked ? "LOCKED IN" : "LOCK IN"}</button>`;
+  }
+  function previewHtml() {
+    const d = st.mine || st.hover;
+    if (!d) return `<div class="panelbox"><div class="h">YOUR PICK</div><div class="sub">Pick a dino. Your teammates' picks show below.</div></div>`;
+    return `<div class="panelbox" style="display:grid;gap:1cqw"><div class="preview">${glyph(d, "xl")}<div><div class="role">${DINOS[d].role}</div><div class="bign">${d === "TRex" ? "T-REX" : d.toUpperCase()}</div><div class="desc">${DINOS[d].d}</div></div></div>
+      <div><div class="h">LOADOUT ${st.locked ? "" : "· TAP A SLOT TO SWAP"}</div>${loHtml(d, true)}</div></div>`;
+  }
+
+  function renderSelect() {
+    if (v === "A") {
+      sel.innerHTML = topHtml() + `<div class="A-main">
+          <div class="panelbox" style="display:grid;gap:1cqw;align-content:start"><div class="h">DINOS</div>${dgridHtml()}${teamCompHtml()}<div>${lockHtml()}</div></div>
+          ${previewHtml()}
+        </div>
+        <div class="A-team">${st.mates.map(cardHtml).join("")}</div>`;
+    } else if (v === "B") {
+      sel.innerHTML = topHtml() + `<div class="B-stage">${st.mates.map(p => {
+          const d = dOf(p); const locked = p.me ? st.locked : !!p.pick;
+          return `<div class="ped${p.me ? " me" : ""}">${glyph(d, "xl" + (locked ? " locked" : ""))}<div class="base"></div>
+            <div class="plaque"><div class="pn">${p.n}</div><div class="wl">${p.w}-${p.l} <span>${pct(p)}</span></div>${statusOf(p)}
+            <div class="mini">${d ? (p.me && st.lo ? st.lo : loOf(d)).join(" · ") : "—"}</div></div></div>`;
+        }).join("")}</div>
+        <div class="B-side"><div class="h" style="margin:0">DINOS</div>${dgridHtml()}<div>${st.hover || st.mine ? `<div class="h">LOADOUT</div>${loHtml(st.mine || st.hover, true)}` : ""}</div><div style="display:grid;gap:.8cqw">${teamCompHtml()}${lockHtml()}</div></div>`;
+    } else {
+      const r = red();
+      const tb = st.mates.reduce((a, p) => [a[0] + p.w, a[1] + p.l], [0, 0]);
+      const tr = mode === "arena" ? r.reduce((a, p) => [a[0] + p.w, a[1] + p.l], [0, 0]) : null;
+      sel.innerHTML = topHtml() + `<div class="C-cols">
+        <div class="C-team"><div class="teamrec">BLUE · <b>${tb[0]}-${tb[1]}</b></div>${st.mates.map(p => {
+          const d = dOf(p);
+          return `<div class="C-row blue${p.me ? " me" : ""}">${glyph(d, "sm")}<div style="min-width:0"><div class="pn">${p.n}</div>${statusOf(p)}<div class="mini">${d ? (p.me && st.lo ? st.lo : loOf(d)).slice(0, 2).join(" · ") + "…" : "—"}</div></div><div class="wl">${p.w}-${p.l}<span>LV ${p.lv}</span></div></div>`;
+        }).join("")}</div>
+        <div class="C-mid">${previewHtml()}<div class="panelbox" style="display:grid;gap:.8cqw">${dgridHtml()}${teamCompHtml()}${lockHtml()}</div></div>
+        <div class="C-team"><div class="teamrec">RED · <b>${tr ? tr[0] + "-" + tr[1] : "BOTS"}</b></div>${r.map(p => `<div class="C-row red">${glyph(null, "sm")}<div style="min-width:0"><div class="pn">${p.bot ? p.n + " · BOT" : p.n}</div><div class="mini">DINO HIDDEN</div></div><div class="wl">${p.bot ? p.bot : p.w + "-" + p.l}<span>${p.bot ? "BOT" : "LV " + p.lv}</span></div></div>`).join("")}</div>
+      </div>`;
+    }
+  }
+
+  // ---------- intro ----------
+  function introQueue() {
+    const blues = st.mates.map(p => ({...p, d: p.me ? st.mine : p.pick, side: "BLUE"}));
+    const reds = red().map(p => ({...p, side: "RED"}));
+    if (v === "A") return {cards: blues.concat(reds), per: 1.1};
+    if (v === "B") return {cards: blues, per: 1.2};
+    return {cards: [], per: 0};
+  }
+  function heroHtml(p) {
+    const name = p.me ? "YOU" : p.n;
+    const recs = p.bot ? `<div><b>${p.bot}</b>BOT</div>` : `<div><b class="w">${p.w}</b>WINS</div><div><b class="l">${p.l}</b>LOSSES</div><div><b>${pct(p)}</b>WIN %</div>`;
+    return `<div class="spot ${p.side === "RED" ? "red" : ""}"></div><div class="hero">${glyph(p.d, "xl")}<div class="txt">
+      <div class="team" style="color:${p.side === "RED" ? "var(--red)" : "var(--blue)"}">${p.side} TEAM${p.bot ? "" : " · LV " + p.lv}</div>
+      <div class="pn">${name}</div><div class="dn">${p.d === "TRex" ? "T-REX" : p.d.toUpperCase()}</div><div class="recs">${recs}</div></div></div>`;
+  }
+  function vsHtml() {
+    const blues = st.mates.map(p => ({...p, d: p.me ? st.mine : p.pick}));
+    const reds = red();
+    const tb = blues.reduce((a, p) => [a[0] + p.w, a[1] + p.l], [0, 0]);
+    const tr = mode === "arena" ? reds.reduce((a, p) => [a[0] + p.w, a[1] + p.l], [0, 0]) : null;
+    const mc = (p, i) => `<div class="mini-card" style="animation-delay:${i * .08}s">${glyph(p.d, "sm")}<div style="min-width:0"><div class="pn">${p.me ? "YOU" : p.n}</div><div class="wl">${p.bot ? p.bot + " BOT" : p.w + "-" + p.l}</div></div></div>`;
+    return `<div class="vs"><div class="side">${blues.map(mc).join("")}<div class="tr" style="color:var(--blue)">BLUE · ${tb[0]}-${tb[1]}</div></div>
+      <div class="big">VS</div><div class="side r">${reds.map(mc).join("")}<div class="tr" style="color:var(--red)">RED · ${tr ? tr[0] + "-" + tr[1] : "BOTS"}</div></div></div>`;
+  }
+  function startIntro() {
+    if (phase === "intro") return;
+    phase = "intro";
+    clearInterval(timerId);
+    // auto-lock
+    if (!st.mine) st.mine = st.hover || ORDER.find(d => !taken(d));
+    st.locked = true;
+    st.mates.forEach(p => { if (!p.me && !p.pick) p.pick = p.want; });
+    sel.classList.add("hide"); intro.classList.remove("hide");
+    const q = introQueue();
+    let i = 0;
+    const step = () => {
+      if (v === "C" || i >= q.cards.length) {
+        intro.innerHTML = vsHtml() + `<div class="counter">MATCH STARTS IN 3</div>`;
+        let n = 3;
+        introId = setInterval(() => {
+          n--;
+          if (n > 0) { intro.querySelector(".counter").textContent = "MATCH STARTS IN " + n; return; }
+          clearInterval(introId);
+          intro.innerHTML += `<div class="go"><div><b>CAPTURE AND HOLD THE HARDPOINT</b><span>First team to 250 wins · (the match loading screen / spawn would follow)</span></div></div>`;
+        }, 1000 / (fast ? 2 : 1));
+        return;
+      }
+      intro.innerHTML = heroHtml(q.cards[i]) + `<div class="skip">${v === "A" ? "BLUE TEAM, THEN RED TEAM" : "YOUR TEAM"} · ${i + 1} / ${q.cards.length}</div><div class="counter">PLAYER INTROS</div>`;
+      i++;
+      introId = setTimeout(step, q.per * 1000 / (fast ? 2 : 1));
+    };
+    step();
+  }
+
+  // ---------- loop ----------
+  function tick() {
+    const e = elapsed();
+    st.mates.forEach(p => {
+      if (p.me || p.pick) return;
+      if (e > p.at - 3 && !p.hover) p.hover = p.want;
+      if (e > p.at) {
+        let d = p.want;
+        if (uniq && (st.mine === d)) d = ORDER.find(x => x !== st.mine && !st.mates.some(q => q.pick === x) && x !== "TRex");
+        p.pick = d; p.hover = d;
+      }
+    });
+    if (uniq && st.hover && taken(st.hover) && !st.locked) st.hover = null;
+    if (e >= TIME) { startIntro(); return; }
+    renderSelect();
+  }
+  function restart() {
+    clearInterval(timerId); clearTimeout(introId); clearInterval(introId);
+    fresh(); phase = "select"; t0 = performance.now();
+    intro.classList.add("hide"); intro.innerHTML = ""; sel.classList.remove("hide");
+    renderSelect();
+    timerId = setInterval(tick, 250);
+  }
+
+  sel.addEventListener("click", e => {
+    const dn = e.target.closest(".dino");
+    if (dn && !st.locked) {
+      const d = dn.dataset.d;
+      if (taken(d)) return;
+      st.hover = d; st.lo = null; renderSelect(); return;
+    }
+    const sl = e.target.closest(".slot[data-slot]");
+    if (sl && !st.locked && (st.hover || st.mine)) {
+      const d = st.mine || st.hover;
+      const all = DINOS[d].parts;
+      st.lo = st.lo || loOf(d).slice();
+      const i = +sl.dataset.slot;
+      const used = new Set(st.lo);
+      let k = all.indexOf(st.lo[i]);
+      for (let n = 0; n < all.length; n++) { k = (k + 1) % all.length; if (!used.has(all[k])) { st.lo[i] = all[k]; break; } }
+      renderSelect(); return;
+    }
+    if (e.target.id === "lock" && st.hover && !st.locked) {
+      st.mine = st.hover; st.locked = true; renderSelect();
+    }
+  });
+  sel.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest(".dino")) { e.preventDefault(); e.target.click(); } });
+
+  const notes = {
+    A: [["A · DRAFT BOARD (RECOMMENDED)", "Siege's layout: dino grid + your pick's loadout up top, your 5 teammates as cards along the bottom with their live pick, loadout and W-L. Then a 2K-style intro: one big card per player (name, dino, wins, losses, win %), blue team then red, ending on a VS line-up.", "Clear for team comp; every player gets their moment.", "Intro is ~11 s for 10 players (can be shortened or made skippable)."],
+      ["", "", "", ""]],
+    B: [["B · LINEUP STAGE", "Your team stands on 5 pedestals that fill in as people pick (dino rises on lock), each with a W-L plaque under it. Picking happens in a side panel. The intro spotlights your team only, then VS.", "Feels most like a 2K lineup; W-L is visible the whole time.", "Enemy team only appears at the VS screen; phone screens get tight."]],
+    C: [["C · FACE-OFF", "Both teams from the start: blue left, red right, every player's W-L shown, enemy dinos hidden until the end. Picking in the middle. No per-player intro: a quick VS reveal of all 10 dinos instead.", "Fastest; you size up the enemy's records while you pick.", "Least 'intro' feel; less room for loadouts."]],
+  };
+  function renderNotes() {
+    const n = notes[v][0];
+    $("#notes").innerHTML = `<div class="note"><h3>${n[0]}</h3><p>${n[1]}</p></div><div class="note"><h3>GOOD</h3><p>${n[2]}</p><h3 style="margin-top:12px">TRADE-OFF</h3><p>${n[3]}</p></div>`;
+  }
+
+  document.querySelectorAll("[data-v]").forEach(b => b.onclick = () => { v = b.dataset.v; document.querySelectorAll("[data-v]").forEach(x => x.setAttribute("aria-pressed", x === b)); renderNotes(); restart(); });
+  document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { mode = b.dataset.m; document.documentElement.style.setProperty("--mode", mode === "arena" ? "var(--arena)" : "var(--bots)"); document.querySelectorAll("[data-m]").forEach(x => x.setAttribute("aria-pressed", x === b)); restart(); });
+  document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { phone = b.dataset.s === "phone"; screen.classList.toggle("phone", phone); document.querySelectorAll("[data-s]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  $("#fast").onclick = () => { fast = !fast; $("#fast").setAttribute("aria-pressed", fast); restart(); };
+  $("#restart").onclick = restart;
+  $("#toIntro").onclick = startIntro;
+  $("#uniq").onclick = () => { uniq = !uniq; $("#uniq").textContent = "ONE PER TEAM: " + (uniq ? "ON" : "OFF"); $("#uniq").setAttribute("aria-pressed", uniq); restart(); };
+
+  renderNotes();
+  restart();
+})();
+</script>
