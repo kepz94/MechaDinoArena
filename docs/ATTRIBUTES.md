@@ -3476,3 +3476,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - DiloSnipeCam 1.0 (new) `DiloSnipeCamEnabled` (true), `DiloSnipeFov` (50), `DiloSnipeEyeUp` (1.0), `DiloSnipeEyeBack` (0.5), `DiloSnipePitchStart` (0), `DiloSnipePitchMin` (-40), `DiloSnipePitchMax` (40), `DiloSnipeMouseSens` (0.2), `DiloSnipeTouchSens` (0.25), `DiloSnipePadSpeed` (160), `DiloSnipeRingAfter` (0.25 s). Character `DiloSnipeCamState`, `DiloSnipeYaw`, `DiloSnipePitch`.
 - ShoulderCam 1.10 `ShoulderCamExternalEnabled` (true); character `ShoulderCamExternal`.
 - DiloFX 1.5 `DiloFXSnipeEnabled` (true), `DiloFXSnipeScale` (2).
+- DiloSnipeCam 1.1 `DiloSnipeScopeEnabled` (true, per frame), `DiloSnipeScopeRadius` (26 px), `DiloSnipeReturnEnabled` (true, at release). DiloAttackServer 1.12 `DiloSnipeSpeedMul` default 6 (was 2).

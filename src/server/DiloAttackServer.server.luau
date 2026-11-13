@@ -724,7 +724,7 @@ remote.OnServerEvent:Connect(onRemote) -- v1.9
 --   badArg). Numbers: script attributes DiloSnipeDamage, DiloSnipeRangeMul, DiloSnipeSpeedMul, DiloSnipeRadius,
 --   DiloSnipeMaxOff. Diagnostics: script DiloSnipes, DiloSnipeHits.
 do
-	local SNIPE = {DiloSnipeEnabled = true, DiloSnipeDamage = 25, DiloSnipeRangeMul = 2, DiloSnipeSpeedMul = 2, DiloSnipeRadius = 1.5,
+	local SNIPE = {DiloSnipeEnabled = true, DiloSnipeDamage = 25, DiloSnipeRangeMul = 2, DiloSnipeSpeedMul = 6, DiloSnipeRadius = 1.5, -- v1.12: speed mul 6 (was 2)
 		DiloSnipeMaxOff = 100}
 	for k, v in pairs(SNIPE) do
 		if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -966,3 +966,6 @@ do
 end
 script:SetAttribute("DiloAttackServerVersion", "1.10") -- v1.10 spit ammo (after the 1.9 BotUse block's stamp)
 script:SetAttribute("DiloAttackServerVersion", "1.11") -- v1.11 sniper spit (MDA-509)
+-- v1.12 (Kepu 2026-11-13 16:10 "I don't like ... the travel speed of the shot", pick "Much faster: 240/s"): DiloSnipeSpeedMul
+--   default 6 (was 2): the ball flies DiloDartSpeed 40 x 6 = 240 studs/s x scale (full range 120 studs in 0.5 s).
+script:SetAttribute("DiloAttackServerVersion", "1.12") -- v1.12 sniper ball 240 studs/s

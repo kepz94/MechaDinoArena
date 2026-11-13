@@ -21,11 +21,21 @@
 --   over DiloSnipeHold (DiloAttackTest's script attribute, 1.5 s) (a tap shows nothing).
 -- Switch: script attribute DiloSnipeCamEnabled (default true, read every frame; false = the camera is left alone, no HUD).
 -- Diagnostics (character): DiloSnipeCamVersion, DiloSnipeCamState ("off" / "charge" / "aim"), DiloSnipeYaw / DiloSnipePitch.
+-- v1.1 (Kepu 2026-11-13 16:10 "I don't like the cross hair ... when it shoots it changes my camera from before I shot it";
+--   picks "B · Scope ring" (mockup docs/mockups/dilo_snipe_crosshair_v0.1.html), "Back to before you aimed"):
+--   * crosshair (switch script attribute DiloSnipeScopeEnabled, default true, read every frame; false = 1.0's green plus): a
+--     thin white ring (DiloSnipeScopeRadius 26 px, 1.5 px line), 4 short ticks just outside it, a red centre dot (4 px) and
+--     dark screen edges (4 gradient bands, 0.45 at the edge);
+--   * after the shot / cancel the camera goes back to the view from before the hold: the camera's CFrame saved when the aim
+--     started is put back before the camera type is restored, and no ShoulderCamLookAt is set (the Shoulder / Shift framing
+--     still has its own yaw / pitch from before). Switch: script attribute DiloSnipeReturnEnabled (default true, read at the
+--     release; false = 1.0: turn to the last aim).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 scope ring crosshair, camera back to before the aim
 local char = script.Parent
 local hum = char:WaitForChild("Humanoid", 10)
 local hrp = char:WaitForChild("HumanoidRootPart", 10)
@@ -106,12 +116,71 @@ local bc = Instance.new("UICorner")
 bc.CornerRadius = UDim.new(0, 6)
 bc.Parent = banner
 banner.Parent = gui
+-- v1.1: the scope ring crosshair + dark edges (see the header)
+if script:GetAttribute("DiloSnipeScopeEnabled") == nil then script:SetAttribute("DiloSnipeScopeEnabled", true) end
+if script:GetAttribute("DiloSnipeScopeRadius") == nil then script:SetAttribute("DiloSnipeScopeRadius", 26) end
+if script:GetAttribute("DiloSnipeReturnEnabled") == nil then script:SetAttribute("DiloSnipeReturnEnabled", true) end
+local scope = {}
+do
+	local R = tonumber(script:GetAttribute("DiloSnipeScopeRadius")) or 26
+	local ring = Instance.new("Frame")
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.Size = UDim2.fromOffset(R * 2, R * 2)
+	ring.BackgroundTransparency = 1
+	local rc = Instance.new("UICorner")
+	rc.CornerRadius = UDim.new(1, 0)
+	rc.Parent = ring
+	local rs = Instance.new("UIStroke")
+	rs.Color, rs.Thickness, rs.Transparency = Color3.fromRGB(232, 245, 255), 1.5, 0.1
+	rs.Parent = ring
+	ring.Parent = centre
+	table.insert(scope, ring)
+	for _, t in ipairs({{0, -(R + 8), 1.5, 8}, {0, R + 8, 1.5, 8}, {-(R + 8), 0, 8, 1.5}, {R + 8, 0, 8, 1.5}}) do
+		local f = Instance.new("Frame")
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Position = UDim2.new(0.5, t[1] + (t[1] < 0 and 4 or (t[1] > 0 and -4 or 0)), 0.5, t[2] + (t[2] < 0 and 4 or (t[2] > 0 and -4 or 0)))
+		f.Size = UDim2.fromOffset(t[3], t[4])
+		f.BorderSizePixel = 0
+		f.BackgroundColor3 = Color3.fromRGB(232, 245, 255)
+		f.Parent = centre
+		table.insert(scope, f)
+	end
+	local dot = Instance.new("Frame")
+	dot.AnchorPoint = Vector2.new(0.5, 0.5)
+	dot.Position = UDim2.fromScale(0.5, 0.5)
+	dot.Size = UDim2.fromOffset(4, 4)
+	dot.BorderSizePixel = 0
+	dot.BackgroundColor3 = Color3.fromRGB(255, 90, 79)
+	local dc = Instance.new("UICorner")
+	dc.CornerRadius = UDim.new(1, 0)
+	dc.Parent = dot
+	dot.Parent = centre
+	table.insert(scope, dot)
+	for _, side in ipairs({{UDim2.fromScale(0, 0), UDim2.fromScale(0.22, 1), 0}, {UDim2.fromScale(0.78, 0), UDim2.fromScale(0.22, 1), 180},
+		{UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.25), 90}, {UDim2.fromScale(0, 0.75), UDim2.fromScale(1, 0.25), 270}}) do
+		local band = Instance.new("Frame")
+		band.Position, band.Size = side[1], side[2]
+		band.BorderSizePixel = 0
+		band.BackgroundColor3 = Color3.new(0, 0, 0)
+		band.BackgroundTransparency = 0
+		local g = Instance.new("UIGradient")
+		g.Rotation = side[3]
+		g.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(1, 1)})
+		g.Parent = band
+		band.ZIndex = 0
+		band.Parent = gui
+		table.insert(scope, band)
+	end
+end
+local function scopeOn() return script:GetAttribute("DiloSnipeScopeEnabled") ~= false end
 local function hud(mode, u)
 	for i, d in ipairs(dots) do
 		d.Visible = mode == "charge"
 		d.BackgroundTransparency = (mode == "charge" and (i - 1) / 24 < u) and 0 or 0.75
 	end
-	for _, f in ipairs(cross) do f.Visible = mode == "aim" end
+	for _, f in ipairs(cross) do f.Visible = mode == "aim" and not scopeOn() end
+	for _, f in ipairs(scope) do f.Visible = mode == "aim" and scopeOn() end -- v1.1
 	banner.Visible = mode == "aim"
 end
 hud("off", 0)
@@ -156,7 +225,7 @@ local lastEye, lastLook = nil, nil
 local function own()
 	local cam = workspace.CurrentCamera
 	saved = {type = cam.CameraType, fov = cam.FieldOfView, mouse = UserInputService.MouseBehavior,
-		icon = UserInputService.MouseIconEnabled, turnMode = char:GetAttribute("TurnLimitMode")}
+		icon = UserInputService.MouseIconEnabled, turnMode = char:GetAttribute("TurnLimitMode"), cf = cam.CFrame} -- v1.1: + cf
 	local lv = cam.CFrame.LookVector
 	yaw = math.deg(math.atan2(-lv.X, -lv.Z))
 	pitch = math.clamp(tonumber(cfg("DiloSnipePitchStart")) or 0, cfg("DiloSnipePitchMin"), cfg("DiloSnipePitchMax"))
@@ -168,7 +237,9 @@ local function release()
 	if not owning then return end
 	owning = false
 	local cam = workspace.CurrentCamera
+	local back = script:GetAttribute("DiloSnipeReturnEnabled") ~= false -- v1.1
 	if saved then
+		if back and saved.cf then cam.CFrame = saved.cf end -- v1.1: the view from before the hold
 		cam.CameraType = saved.type
 		cam.FieldOfView = saved.fov
 		UserInputService.MouseBehavior = saved.mouse
@@ -177,7 +248,7 @@ local function release()
 	end
 	char:SetAttribute("TurnLimitAimLook", nil)
 	char:SetAttribute("ShoulderCamExternal", false)
-	if lastEye and lastLook then char:SetAttribute("ShoulderCamLookAt", lastEye + lastLook * 100) end
+	if not back and lastEye and lastLook then char:SetAttribute("ShoulderCamLookAt", lastEye + lastLook * 100) end -- v1.1: only with the switch off
 	saved = nil
 end
 
