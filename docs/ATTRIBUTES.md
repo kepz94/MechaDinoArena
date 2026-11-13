@@ -3439,3 +3439,10 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PregameModels 1.0 `PregameModelsEnabled` (true). Diagnostics PregameModelsState / Bodies / Parts / Missing.
 - PregameScreen 1.0 `PregameScreenEnabled` (true, per frame), `PregameFlatIcons` (false). Diagnostics PregameScreenState / Step / LastPress / Draft.
 - PracticeLobby 1.7 `PracticeLobbyPregameHide` (true, per frame).
+
+## Pre-game Part 2: Arena queue + Arena 4v4 (HubServer 1.4 / PortalHUD 1.3 / PracticeServer 1.10 / ArenaRecordServer 1.1, 2026-11-13)
+- HubRules 1.2: `QUEUE_SIZE` 8, `TEAM_SIZE` 4, `QUEUE_WAIT` 30, `FOUND_SHOW` 1.5. ModeRules 1.4 `TRIP_ARENA_PRACTICE` (true).
+- HubServer 1.4 `HubArenaQueueEnabled` (true). Player `HubQueueState` ("queued" / "found" / ""), `HubQueueSince`, `HubQueueCount`, `HubQueueNeed`. RemoteEvent `HubQueueRequest` ("leave"). Diagnostics HubQueued, HubQueueMatches. Test hook HubTest "queue" / "leaveQueue".
+- PortalHUD 1.3 `PortalHUDQueueEnabled` (true). Diagnostic player PortalHUDQueue.
+- PracticeServer 1.10 `PrArenaMatchEnabled` (true); Studio tests `PrArenaMatchTest`, `PrArenaTestEligible`. Practice `PrArena`. Diagnostics PrArenaState / PrArenaEligible / PrArenaLeft / PrArenaResult. Sets HardpointServer `HpXpPracticeMul` = 1 on Arena match servers.
+- ArenaRecordServer 1.1 `ArenaRecordWriteEnabled` default true.

@@ -106,3 +106,8 @@
 | Phone speed of 3D viewports | Survived → T10/T11 acceptance: thumbnails render once (static camera), one live showcase; switch PregameFlatIcons falls back to icons |
 | ~1.5 min from portal to play | Accepted risk: lineup 30 s is Kepu's number. The intro is kept at ~8 s |
 | Draw / lineup leave / late loaders unmapped | Survived → D11, D12, D13 |
+
+## Part 2 as built (2026-11-13)
+- Kepu pick (queue bar): A · Top pill (mockup docs/mockups/arena_queue_v0.1.html). You can walk around while queued; LEAVE drops you and your squad.
+- Deviation from the impact map: the Arena 4v4 runs on a reserved copy of the **Sandbox** place (HubTravel "arenaMatch"), not the Arena place. Both are the same file (ADR-005), and this way PlaceGate / ArenaPvP / HardpointServer need no change: the server is kind "practice" (ModeRules 1.4) and PracticeServer 1.10 runs it. T7's PlaceGate / ArenaPvP / HardpointServer edits were not needed; HardpointServer's HpXpPracticeMul is set to 1 on those servers by PracticeServer.
+- So MDA-492 becomes: the **Sandbox** place's max players must be at least 8 (the public Arena place is no longer used by the portal).
