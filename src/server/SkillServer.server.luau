@@ -115,6 +115,13 @@
 --   active dino's XP (as a bot kill does), marks it for saving, publishes (level-up stamp as a kill), SkillLastXp =
 --   (reason or "xp") .. " +" .. amount. Switch: script attribute SkillGrantEnabled (default true, read per call). Diagnostic:
 --   script SkillGrants (count of "ok").
+-- v1.11 (Kepu 2026-11-13 12:58 "have all Dino's stats maxed out for testing"; picks "Live, behind a switch", "Stats + all
+--   parts maxed"): script attribute SkillTestMaxAllEnabled (default true, read at each publish; changes republish everyone).
+--   While on, the test layer (v1.4-v1.7) is on for every dino even with SkillTestCloakEnabled false: every live mecha part at
+--   star (testParts, placed once into empty slots as before) AND every stat row the dino sees (not soon, not a mecha part) at
+--   its top step (4). Like the parts, the stat rows are never stored: d.steps, points, buys and the save stay the real record;
+--   given rows are left out of points / mastery (buyBase) and a buy of one is refused "maxed". false = 1.10 exactly.
+--   Diagnostic: player attribute SkillTestStats (count of stat rows given; 0 when off).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -122,6 +129,7 @@ local DataStoreService = game:GetService("DataStoreService")
 
 local VERSION = "1.9"
 VERSION = "1.10" -- v1.10 match XP grant
+VERSION = "1.11" -- v1.11 max-all test switch
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -169,9 +177,10 @@ end
 local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest; v1.2: dinos, active}
 
 -- v1.6: the live mecha parts the active dino owns (PATH_ORDER order)
+local function maxAll() return script:GetAttribute("SkillTestMaxAllEnabled") ~= false end -- v1.11
 local function testParts(d)
 	local out = {}
-	if script:GetAttribute("SkillTestCloakEnabled") ~= true or not d.active then return out end
+	if (script:GetAttribute("SkillTestCloakEnabled") ~= true and not maxAll()) or not d.active then return out end -- v1.11: or max-all
 	for _, id in ipairs(ST.PATH_ORDER) do
 		local p = ST.PATHS[id]
 		if ST.LIVE_MECH[id] and p and not p.soon and ST.seesPath(p, d.active) then table.insert(out, id) end
@@ -181,7 +190,24 @@ end
 local function testCloak(d) -- v1.4; v1.6: true when the layer gives any part to this dino
 	return #testParts(d) > 0
 end
+-- v1.11: every stat row the active dino sees (not soon, not a live mecha part) while max-all is on
+local function testStats(d)
+	local out = {}
+	if not maxAll() or not d.active then return out end
+	for _, id in ipairs(ST.PATH_ORDER) do
+		local p = ST.PATHS[id]
+		if p and not p.soon and not ST.LIVE_MECH[id] and ST.seesPath(p, d.active) then table.insert(out, id) end
+	end
+	return out
+end
 local function stepsFor(d) -- v1.5: real steps, plus the test parts at star while the layer is on (v1.6: all live parts)
+	local stats = testStats(d) -- v1.11
+	if #stats > 0 then
+		local s = table.clone(d.steps)
+		for _, id in ipairs(testParts(d)) do s[id] = 4 end
+		for _, id in ipairs(stats) do s[id] = 4 end
+		return s
+	end
 	local parts = testParts(d)
 	if #parts == 0 then return d.steps end
 	local s = table.clone(d.steps)
@@ -192,6 +218,14 @@ end
 -- v1.7: the steps buys and points are judged on (the given test parts left out)
 if script:GetAttribute("SkillTestFreeGivenEnabled") == nil then script:SetAttribute("SkillTestFreeGivenEnabled", true) end
 local function buyBase(d)
+	local stats = testStats(d) -- v1.11: given stat rows count as given too
+	if #stats > 0 and script:GetAttribute("SkillTestFreeGivenEnabled") ~= false then
+		local s = table.clone(d.steps)
+		local given = {}
+		for _, id in ipairs(testParts(d)) do s[id] = 0; given[id] = true end
+		for _, id in ipairs(stats) do s[id] = 0; given[id] = true end
+		return s, given
+	end
 	local parts = testParts(d)
 	if #parts == 0 or script:GetAttribute("SkillTestFreeGivenEnabled") == false then return d.steps, {} end
 	local s = table.clone(d.steps)
@@ -205,6 +239,7 @@ local function publish(player, d, levelUp)
 	player:SetAttribute("SkillTestCloak", test and "on" or "off")
 	local given = testParts(d) -- v1.6
 	player:SetAttribute("SkillTestParts", table.concat(given, ","))
+	player:SetAttribute("SkillTestStats", #testStats(d)) -- v1.11
 	local level, into, nxt = ST.levelOf(d.xp)
 	local earned = ST.pointsOf(level)
 	local spent = ST.spent((buyBase(d)), d.active) -- v1.3: + dino; v1.7: given test parts left out
@@ -364,6 +399,11 @@ end
 Players.PlayerAdded:Connect(hookPlayer)
 for _, p in ipairs(Players:GetPlayers()) do hookPlayer(p) end
 script:GetAttributeChangedSignal("SkillTestCloakEnabled"):Connect(function() -- v1.4
+	for player, d in pairs(data) do
+		if d.loaded then publish(player, d, false) end
+	end
+end)
+script:GetAttributeChangedSignal("SkillTestMaxAllEnabled"):Connect(function() -- v1.11
 	for player, d in pairs(data) do
 		if d.loaded then publish(player, d, false) end
 	end

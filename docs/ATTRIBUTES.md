@@ -3459,3 +3459,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - HardpointHUD 1.11 `HardpointHUDRecordLineEnabled` (true, per frame). Diagnostic `HardpointHUDRecordLine` ("w" / "l" / "n" / "none").
 - IslandTags 1.0 (new): `IslandTagsEnabled` (true), `IslandTagsMax` (80 studs), `IslandTagsMaxCount` (12), per frame. Diagnostics `IslandTagsVersion`, `IslandTagsState`, `IslandTagsShown`.
 - HardpointHUD 1.12 `HardpointHUDArenaLabelEnabled` (true, per frame): Arena 4v4 results read "ARENA". false = 1.11.
+- SkillServer 1.11 `SkillTestMaxAllEnabled` (true, per publish; change republishes): every live part + every stat row at step 4 for every dino, never saved. Player diagnostic `SkillTestStats` (stat rows given).
