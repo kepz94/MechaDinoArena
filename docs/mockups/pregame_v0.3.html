@@ -1,0 +1,511 @@
+<title>Pre-Game Lineup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Mecha Dino Arena pre-game v0.2 = Kepu's pick B (lineup), reworked to his flow: LINEUP -> tap -> SELECT (dino + loadout) ->
+   CONFIRM -> back to LINEUP; 30 s for everything; then the intro. Single dark look on purpose (a game screen). */
+:root {
+  --ink: #0d1218; --panel: #151d27; --panel2: #1b2532; --line: #263243; --text: #e7edf5; --muted: #93a2b6;
+  --blue: #5aa0ff; --red: #e0284a; --yellow: #ffc832; --green: #46e08a;
+  --arena: #ff9b2e; --bots: #ffd640; --volt: #7fe9ff; --mode: var(--arena);
+  --f-display: "Silkscreen", "Courier New", monospace;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--ink); color: var(--text); margin: 0; }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px; }
+.eyebrow { font-family: var(--f-display); font-size: 12px; letter-spacing: .12em; color: var(--muted); }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(24px, 4vw, 38px); line-height: 1.1; margin: 6px 0 8px; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 72ch; margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { font-family: var(--f-display); font-size: 12px; letter-spacing: .06em; color: var(--text); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 9px 13px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--yellow); box-shadow: inset 0 -3px 0 var(--yellow); }
+.btn:focus-visible { outline: 2px solid var(--volt); outline-offset: 2px; }
+.label { font-family: var(--f-display); font-size: 11px; color: var(--muted); letter-spacing: .1em; margin-right: 4px; }
+
+/* ---------- game screen ---------- */
+.screen { position: relative; width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, #1d2638 0%, #0e1219 72%); container-type: inline-size; user-select: none; }
+.screen.phone { aspect-ratio: 2.16 / 1; }
+.screen * { font-family: var(--f-display); }
+.gridbg { position: absolute; inset: 0; background-image: linear-gradient(rgba(127,233,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(127,233,255,.045) 1px, transparent 1px); background-size: 4cqw 4cqw; pointer-events: none; }
+.view { position: absolute; inset: 0; }
+.hide { display: none !important; }
+
+.top { position: absolute; left: 3cqw; right: 3cqw; top: 2.2cqw; display: flex; justify-content: space-between; align-items: flex-start; }
+.ttl { font-size: 2.4cqw; font-weight: 700; color: var(--mode); line-height: 1; }
+.sub { font-size: 1.1cqw; color: #c9d4e2; margin-top: .6cqw; }
+.timer { text-align: right; }
+.timer b { display: block; font-size: 3.4cqw; line-height: 1; }
+.timer b.low { color: var(--red); }
+.timer span { font-size: .95cqw; color: var(--muted); }
+.tbar { position: absolute; left: 3cqw; right: 3cqw; top: 7.2cqw; height: .45cqw; background: rgba(255,255,255,.08); border-radius: 1cqw; overflow: hidden; }
+.tbar i { position: absolute; inset: 0 auto 0 0; background: var(--mode); transition: width .25s linear; }
+
+.glyph { width: 4cqw; height: 4cqw; border-radius: .6cqw; position: relative; box-shadow: inset 0 -.5cqw 0 rgba(0,0,0,.25); }
+.glyph::after { content: attr(data-l); position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.6cqw; font-weight: 700; color: rgba(10,12,18,.8); }
+.glyph.sm { width: 2.4cqw; height: 2.4cqw; border-radius: .4cqw; } .glyph.sm::after { font-size: 1cqw; }
+.glyph.xl { width: 9.5cqw; height: 9.5cqw; border-radius: 1.2cqw; } .glyph.xl::after { font-size: 3.8cqw; }
+.glyph.q { background: #232c38 !important; border: .2cqw dashed #44536a; box-shadow: none; } .glyph.q::after { content: "?"; color: #6f7f96; }
+
+/* LINEUP */
+.stage { position: absolute; left: 9cqw; right: 9cqw; top: 9.5cqw; bottom: 9cqw; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.4cqw; align-items: end; }
+.ped { display: grid; justify-items: center; gap: .55cqw; position: relative; }
+.ped .glyph { transition: transform .3s; }
+.ped.ready .glyph { transform: translateY(-.8cqw); }
+.ped .floor { width: 100%; height: 3.2cqw; border-radius: 50% 50% .6cqw .6cqw / 60% 60% .6cqw .6cqw; background: linear-gradient(180deg, #2a3a52, #141c27); border-top: .25cqw solid var(--blue); }
+.ped.me .floor { border-top-color: var(--yellow); }
+.ped.me { cursor: pointer; }
+.plaque { width: 100%; background: #111821; border: .15cqw solid var(--line); border-radius: .6cqw; padding: .6cqw .5cqw; text-align: center; }
+.ped.me .plaque { border-color: var(--yellow); }
+.plaque .pn { font-size: 1cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plaque .wl { font-size: 1.7cqw; margin-top: .25cqw; line-height: 1.1; }
+.plaque .wl small { display: block; font-size: .65cqw; color: var(--muted); }
+.plaque .dn { font-size: .8cqw; color: #c9d4e2; margin-top: .35cqw; }
+.plaque .role { font-size: .65cqw; color: var(--mode); }
+.plaque .st { font-size: .75cqw; margin-top: .35cqw; }
+.st.ok { color: var(--green); } .st.wait { color: var(--muted); }
+.slots4 { display: flex; gap: .3cqw; justify-content: center; margin-top: .4cqw; }
+.slots4 i { width: 1.2cqw; height: 1.2cqw; border-radius: .25cqw; background: #2b3747; display: block; }
+.slots4 i.on { background: var(--volt); opacity: .8; }
+.tapme { position: absolute; z-index: 2; top: -3cqw; left: 50%; transform: translateX(-50%); font-size: .8cqw; color: #1b1405; background: var(--yellow); padding: .3cqw .7cqw; border-radius: .4cqw; white-space: nowrap; animation: bob 1.2s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translate(-50%, -.4cqw); } }
+.cta { position: absolute; left: 50%; bottom: 2.4cqw; transform: translateX(-50%); display: flex; gap: 1cqw; align-items: center; }
+.big { font-size: 1.5cqw; font-weight: 700; color: #1b1405; background: var(--yellow); border: 0; border-radius: .8cqw; padding: 1cqw 3cqw; cursor: pointer; }
+.big.ghost { background: transparent; color: var(--text); border: .18cqw solid #44536a; }
+.big[disabled] { background: #3a4656; color: #8a97a8; cursor: default; }
+.allready { font-size: 1cqw; color: var(--green); }
+
+/* SELECT v0.3: roster (left) · showcase (centre) · kit (right) · team strip (top) · actions (bottom) */
+.teamstrip { position: absolute; left: 3cqw; right: 3cqw; top: 8.4cqw; display: flex; gap: .8cqw; align-items: center; }
+.teamstrip .lbl { font-size: .8cqw; color: var(--muted); margin-right: .2cqw; }
+.mate { display: flex; gap: .5cqw; align-items: center; background: #121923; border: .15cqw solid var(--line); border-top: .3cqw solid var(--blue); border-radius: .5cqw; padding: .3cqw .6cqw; }
+.mate .pn { font-size: .8cqw; white-space: nowrap; } .mate .dn { font-size: .62cqw; color: var(--muted); }
+.needs { margin-left: auto; font-size: .85cqw; color: var(--yellow); }
+.needs.ok { color: var(--green); }
+.sel3 { position: absolute; left: 3cqw; right: 3cqw; top: 12.6cqw; bottom: 7.6cqw; display: grid; grid-template-columns: 19cqw 1fr 31cqw; gap: 1.4cqw; }
+.roster { display: grid; gap: .9cqw; align-content: start; overflow: hidden; }
+.rgrp .rh { display: flex; justify-content: space-between; align-items: baseline; font-size: .78cqw; color: var(--muted); letter-spacing: .1em; margin-bottom: .45cqw; border-bottom: .12cqw solid var(--line); padding-bottom: .25cqw; }
+.rgrp .rh b { font-weight: 400; color: var(--muted); } .rgrp .rh b.need { color: var(--yellow); }
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: .5cqw; }
+.tile { position: relative; background: var(--panel2); border: .18cqw solid var(--line); border-radius: .6cqw; padding: .45cqw; display: flex; gap: .5cqw; align-items: center; cursor: pointer; min-width: 0; }
+.tile:hover { border-color: #4b5d76; }
+.tile.sel { border-color: var(--yellow); background: #2a2a1c; }
+.tile.taken { opacity: .38; cursor: not-allowed; }
+.tile .tn { font-size: .78cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .tt { font-size: .58cqw; color: var(--blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .last { font-size: .58cqw; color: var(--muted); }
+.show { position: relative; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; text-align: center; min-width: 0; }
+.show .cls { font-size: .95cqw; color: var(--mode); letter-spacing: .12em; }
+.show .dname { font-size: 3.4cqw; line-height: 1.05; margin: .2cqw 0 .3cqw; }
+.show .pitch { font-size: .9cqw; color: #b7c3d2; }
+.turn { position: relative; width: 100%; display: grid; place-items: center; perspective: 60cqw; }
+.turn .spot { position: absolute; inset: 0; background: radial-gradient(40% 55% at 50% 60%, rgba(255,255,255,.08), transparent 70%); }
+.turn .model { width: 13cqw; height: 13cqw; border-radius: 1.4cqw; position: relative; transform-style: preserve-3d; animation: spin 7s linear infinite; box-shadow: inset 0 -1cqw 0 rgba(0,0,0,.25); }
+.turn .model::after { content: attr(data-l); position: absolute; inset: 0; display: grid; place-items: center; font-size: 5.6cqw; font-weight: 700; color: rgba(10,12,18,.78); }
+.turn .disc { position: absolute; bottom: 5%; width: 22cqw; height: 4cqw; border-radius: 50%; background: radial-gradient(closest-side, rgba(127,233,255,.35), rgba(127,233,255,.05) 70%, transparent); border: .15cqw solid rgba(127,233,255,.35); }
+@keyframes spin { 0% { transform: rotateY(-28deg); } 50% { transform: rotateY(28deg); } 100% { transform: rotateY(-28deg); } }
+.stats { width: 100%; max-width: 30cqw; display: grid; gap: .35cqw; }
+.stat { display: grid; grid-template-columns: 6.5cqw 1fr 1.6cqw; gap: .6cqw; align-items: center; font-size: .72cqw; color: var(--muted); text-align: left; }
+.stat .bar { height: .7cqw; background: #1c2633; border-radius: .4cqw; overflow: hidden; }
+.stat .bar i { display: block; height: 100%; background: var(--volt); border-radius: .4cqw; transition: width .3s; }
+.stat .v { color: var(--text); text-align: right; }
+.kit { display: grid; gap: .6cqw; align-content: start; min-width: 0; position: relative; }
+.kh { font-size: .78cqw; color: var(--muted); letter-spacing: .1em; }
+.abil { display: grid; grid-template-columns: 3cqw 1fr auto; gap: .7cqw; align-items: center; background: #111821; border: .15cqw solid var(--line); border-radius: .6cqw; padding: .55cqw .65cqw; min-width: 0; }
+.abil.slot { cursor: pointer; } .abil.slot:hover, .abil.slot.open { border-color: var(--volt); }
+.abil .ic { width: 3cqw; height: 3cqw; border-radius: .5cqw; display: grid; place-items: center; font-size: 1.1cqw; font-weight: 700; color: #0d1218; }
+.abil .an { font-size: .9cqw; } .abil .ad { font-size: .66cqw; color: #aab6c6; line-height: 1.35; margin-top: .15cqw; }
+.abil .key { font-size: .7cqw; color: var(--muted); border: .12cqw solid #3a4656; border-radius: .3cqw; padding: .15cqw .4cqw; white-space: nowrap; }
+.abil .swap { font-size: .62cqw; color: var(--volt); }
+.drawer { position: absolute; inset: 0; z-index: 6; background: #0f151d; border: .18cqw solid var(--volt); border-radius: .9cqw; padding: .9cqw; display: grid; grid-template-rows: auto 1fr; gap: .6cqw; }
+.drawer .dh { display: flex; justify-content: space-between; align-items: center; font-size: .9cqw; }
+.drawer .x { font-size: .8cqw; color: var(--muted); cursor: pointer; border: .12cqw solid #3a4656; border-radius: .4cqw; padding: .2cqw .6cqw; }
+.plist { display: grid; gap: .45cqw; align-content: start; overflow: auto; }
+.pi { display: grid; grid-template-columns: 2.4cqw 1fr auto; gap: .6cqw; align-items: center; background: #151d27; border: .15cqw solid var(--line); border-radius: .5cqw; padding: .45cqw .55cqw; cursor: pointer; }
+.pi:hover { border-color: #4b5d76; } .pi.cur { border-color: var(--yellow); }
+.pi.lock { opacity: .45; cursor: not-allowed; }
+.pi .ic { width: 2.4cqw; height: 2.4cqw; border-radius: .4cqw; display: grid; place-items: center; font-size: .9cqw; font-weight: 700; color: #0d1218; }
+.pi .an { font-size: .8cqw; } .pi .ad { font-size: .6cqw; color: #aab6c6; line-height: 1.3; }
+.pi .tag { font-size: .58cqw; color: var(--muted); white-space: nowrap; }
+.pi .tag.in { color: var(--volt); } .pi .tag.lk { color: var(--red); }
+.acts { position: absolute; left: 3cqw; right: 3cqw; bottom: 2cqw; display: flex; justify-content: center; gap: 1cqw; }
+
+/* INTRO */
+.intro { background: #07090d; }
+.intro::before, .intro::after { content: ""; position: absolute; left: 0; right: 0; height: 5.5cqw; background: #000; z-index: 4; }
+.intro::before { top: 0; } .intro::after { bottom: 0; }
+.istage { position: absolute; left: 9cqw; right: 9cqw; top: 8cqw; bottom: 8cqw; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.4cqw; align-items: end; }
+.istage .ped { opacity: .28; transition: opacity .25s, transform .25s; }
+.istage .ped.lit { opacity: 1; transform: scale(1.06); }
+.istage.red .floor { border-top-color: var(--red) !important; }
+.beam { position: absolute; top: 0; bottom: 30%; width: 24%; background: linear-gradient(180deg, rgba(255,255,255,.14), transparent); clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%); transition: left .25s; z-index: 1; pointer-events: none; }
+.callout { position: absolute; left: 50%; top: 7cqw; transform: translateX(-50%); text-align: center; z-index: 5; animation: drop .35s ease-out both; }
+.callout .t { font-size: 1cqw; letter-spacing: .16em; }
+.callout .n { font-size: 3.2cqw; line-height: 1.1; }
+.callout .r { font-size: 1.2cqw; color: #c9d4e2; }
+.callout .r b.w { color: var(--green); } .callout .r b.l { color: var(--red); }
+@keyframes drop { from { transform: translate(-50%, -1.5cqw); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+.vs { position: absolute; inset: 5.5cqw 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 2cqw; padding: 0 3cqw; z-index: 3; }
+.vs .side { display: grid; gap: .6cqw; justify-items: start; } .vs .side.r { justify-items: end; }
+.vs .mc { display: flex; gap: .7cqw; align-items: center; background: rgba(18,25,35,.92); border: .15cqw solid var(--line); border-radius: .6cqw; padding: .4cqw .7cqw; animation: pop .3s ease-out both; }
+.vs .mc .pn { font-size: .95cqw; } .vs .mc .wl { font-size: .8cqw; color: var(--muted); }
+.vs .v { font-size: 7cqw; color: var(--mode); animation: pop .4s ease-out both; }
+.vs .tr { font-size: 1cqw; margin-top: .4cqw; }
+@keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.counter { position: absolute; right: 3cqw; bottom: 6.6cqw; font-size: 1cqw; color: var(--muted); z-index: 6; }
+.go { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(7,9,13,.94); z-index: 7; text-align: center; }
+.go b { font-size: 3.6cqw; color: var(--mode); display: block; animation: pop .35s ease-out both; }
+.go span { font-size: 1.2cqw; color: #c9d4e2; }
+
+/* phone */
+.screen.phone .top { top: 1.5cqw; } .screen.phone .tbar { top: 6.3cqw; }
+.screen.phone .stage { top: 7.8cqw; bottom: 7.4cqw; } .screen.phone .glyph.xl { width: 6.6cqw; height: 6.6cqw; } .screen.phone .glyph.xl::after { font-size: 2.6cqw; }
+.screen.phone .cta { bottom: 1.4cqw; } .screen.phone .big { padding: .7cqw 2.6cqw; }
+.screen.phone .teamstrip { top: 7.4cqw; } .screen.phone .selbody { top: 11.2cqw; bottom: 6.4cqw; }
+.screen.phone .dino { padding: .4cqw .3cqw; } .screen.phone .dino .glyph { width: 2.6cqw; height: 2.6cqw; margin-bottom: .2cqw; } .screen.phone .dino .glyph::after { font-size: 1cqw; }
+.screen.phone .dino .rl { display: none; } .screen.phone .prev .desc { display: none; } .screen.phone .prev { margin-bottom: .6cqw; }
+.screen.phone .box { padding: .8cqw; } .screen.phone .istage { top: 6.4cqw; bottom: 6cqw; } .screen.phone .callout { top: 5.8cqw; }
+
+/* phone: select v0.3 */
+.screen.phone .teamstrip { top: 7.2cqw; } .screen.phone .sel3 { top: 10.8cqw; bottom: 6cqw; grid-template-columns: 17cqw 1fr 30cqw; gap: 1cqw; }
+.screen.phone .rgrp .rh { margin-bottom: .25cqw; } .screen.phone .roster { gap: .45cqw; } .screen.phone .tile { padding: .3cqw; }
+.screen.phone .tile .glyph.sm { width: 1.8cqw; height: 1.8cqw; } .screen.phone .tile .glyph.sm::after { font-size: .8cqw; }
+.screen.phone .turn .model { width: 8.5cqw; height: 8.5cqw; } .screen.phone .turn .model::after { font-size: 3.6cqw; } .screen.phone .turn .disc { width: 15cqw; height: 2.8cqw; }
+.screen.phone .show .pitch { display: none; } .screen.phone .show .dname { font-size: 2.6cqw; } .screen.phone .stats { gap: .2cqw; }
+.screen.phone .abil { padding: .35cqw .5cqw; } .screen.phone .abil .ad { display: none; } .screen.phone .kit { gap: .4cqw; }
+.screen.phone .acts { bottom: 1.2cqw; } .screen.phone .acts .big { padding: .6cqw 2.6cqw; }
+
+/* notes */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+.note { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.note h3 { font-family: var(--f-display); font-size: 13px; letter-spacing: .06em; margin: 0 0 8px; color: var(--yellow); }
+.note p, .note li { color: #c9d4e2; margin: 0 0 6px; }
+.note ul { margin: 0; padding-left: 18px; }
+.note a { color: var(--volt); }
+.tag { font-family: var(--f-display); font-size: 10px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <div>
+    <div class="eyebrow">MECHA DINO ARENA · MOCKUP v0.3 · PRE-GAME (B · LINEUP) · NEW SELECT SCREEN</div>
+    <h1>Lineup → Select → Intro</h1>
+    <p class="lede"><b>v0.3: the SELECT screen is new</b> (lineup and intros as v0.2). You load into the lineup. Tap your pedestal (or SELECT DINO) to open the select screen, pick a dino and its loadout, CONFIRM, and you're back on the lineup with your pick standing on your pedestal. Teams are 4 v 4 (Arena and bots). 30 seconds for everyone; when it runs out (or everyone is ready) the player intros play. Teammates pick on their own in this mockup.</p>
+  </div>
+  <div class="row">
+    <span class="label">MODE</span>
+    <button class="btn" data-m="arena" aria-pressed="true">ARENA</button>
+    <button class="btn" data-m="bots" aria-pressed="false">HARDPOINT VS BOTS</button>
+    <span class="label" style="margin-left:10px">SCREEN</span>
+    <button class="btn" data-s="pc" aria-pressed="true">PC</button>
+    <button class="btn" data-s="phone" aria-pressed="false">PHONE</button>
+    <span class="label" style="margin-left:10px">CLOCK</span>
+    <button class="btn" id="fast" aria-pressed="false">FAST ×4</button>
+    <button class="btn" id="restart">RESTART</button>
+    <button class="btn" id="toIntro">SKIP TO INTRO</button>
+  </div>
+
+  <div class="screen" id="screen">
+    <div class="gridbg"></div>
+    <div class="view" id="lineup"></div>
+    <div class="view hide" id="select"></div>
+    <div class="view intro hide" id="intro"></div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>HOW OTHER GAMES DO IT (WHAT WE TOOK)</h3>
+      <ul>
+        <li><b>Rainbow Six Siege:</b> pick from the roster, then adjust that operator's loadout; an operator is one per team per round. → separate SELECT screen with the dino and its 4 slots; picked dinos show who took them.</li>
+        <li><b>VALORANT:</b> the faceoff screen lets player banners fill the screen (card, title, rank) and they cut decoration for one clear call to action. → the lineup has one button (SELECT DINO) and the plaques carry the W-L.</li>
+        <li><b>Apex Legends:</b> the match-start squad banner shows each player's stat trackers. → W-L plaques under each pedestal.</li>
+        <li><b>NBA 2K:</b> starting-lineup intros, one player at a time with their numbers. → spotlight intros.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h3>STILL YOURS TO DECIDE</h3>
+      <ul>
+        <li><b>W-L counts in:</b> Arena only, or bots matches too (separate record)?</li>
+        <li><b>Same dino twice on a team?</b> Siege says no. This mockup greys a dino out once a teammate confirms it: <button class="btn" id="uniq" aria-pressed="true" style="padding:4px 8px">ONE PER TEAM: ON</button></li>
+        <li><b>Arena:</b> the lineup runs at each match start; someone joining mid-match skips it and spawns.</li>
+        <li><b>Out of time without confirming:</b> you keep your last dino and loadout.</li>
+        <li><b>4 v 4 bots mix:</b> today it is 1 Elite · 1 Hard · 2 Normal · 1 Easy for 5; with 4 this shows 1 Elite · 1 Hard · 1 Normal · 1 Easy.</li>
+      </ul>
+      <p class="tag">docs/mockups/pregame_v0.2.html · names and records are made up; dino squares stand in for the 3D dinos on the pedestals.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const D = {
+    Raptor:   {c: "#ff9b2e", l: "R", role: "FIGHTER", d: "Fast hunter. Pounce, dash, cloak.", parts: ["Thrusters", "Cloak Field", "Shock Mine", "Energy Shield", "Raptor Screech", "Scent Sense", "Adrenaline Injector"]},
+    TRex:     {c: "#d9534f", l: "T", role: "FIGHTER", d: "Big bite, big health. Slow.", parts: ["Basic kit"]},
+    Pachy:    {c: "#9b7cff", l: "P", role: "HOLDER", d: "Headbutt tank. Holds the point.", parts: ["Overclocked Servo Dash", "Med-Station", "Dome Visor", "Grappling Hook", "Ink Shooter", "Tether Spike", "Blood Rush", "Mecha Legs"]},
+    Herrera:  {c: "#e0c040", l: "H", role: "FIGHTER", d: "Slasher with gadgets.", parts: ["Quill Launcher", "Smoke Pods", "Strobe Frill", "Razor Caltrops", "Goo Blob Shooter", "Glider Wings", "Stun Breaker"]},
+    Teno:     {c: "#5fbf6a", l: "N", role: "HOLDER", d: "Heavy brawler. Stomp and leap.", parts: ["Hydraulic Leap", "Stomp Shockwave", "Tail Grab & Fling", "Challenge Call", "Boulder Mortar", "Mud Armor", "Herd Bellow"]},
+    Therizino:{c: "#c8a27a", l: "Z", role: "FIGHTER", d: "Claw reaper. Hooks and snares.", parts: ["Grapple Zip", "Reaper's Hook", "Feather Barrage", "Snare Wires", "Harvest Field", "Deflector Claws"]},
+    Dilo:     {c: "#9cf05a", l: "D", role: "RANGED", d: "Venom spitter. Poisons from range.", parts: ["Spring Jets", "Venom Gatling", "Toxin Mortar", "Sonic Hiss", "Venom Overdrive", "Antivenom Pump", "Spine Burst"]},
+    Troodon:  {c: "#ffc35a", l: "O", role: "RANGED", d: "Smart support. Pods, heals, portals.", parts: ["Portal Feathers", "Mender Drone", "Arc Lantern", "Shield Dome", "Sap Wall", "Bloom Burst", "Sleep Dart"]},
+  };
+  const ORDER = ["Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"];
+  // the game's StatSheet 1.7: class + starting points (0-10); abilities = main attack, jump move
+  const SHEET = {
+    TRex: {cls: "BULKY", st: [9, 7, 7, 4, 1], ab: ["Roar", "Ram"]},
+    Raptor: {cls: "ROAMER", st: [3, 4, 3, 9, 1], ab: ["Pounce + latch", "Jump"]},
+    Pachy: {cls: "BRUISER", st: [5, 6, 5, 7, 1], ab: ["Headbutt charge", "Leap"]},
+    Herrera: {cls: "UTILITY", st: [2, 3, 2, 10, 1], ab: ["Dash-through slash", "Auto-climb"]},
+    Teno: {cls: "TANK", st: [9, 5, 8, 3, 1], ab: ["Scratch + tail slam", "Rearing leap"]},
+    Therizino: {cls: "SLASHER", st: [4, 9, 3, 7, 1], ab: ["3-hit claw combo", "Diving Rake"]},
+    Dilo: {cls: "SPITTER", st: [3, 6, 2, 7, 1], ab: ["Bite + Spit Dart", "Cobra Leap"]},
+    Troodon: {cls: "SUPPORT", st: [3, 4, 3, 8, 9], ab: ["Glow Pod Toss", "Evade Hop"]},
+  };
+  const STATN = ["HEALTH", "ATTACK", "DEFENSE", "SPEED", "SUPPORT"];
+  // each part's step I text from SkillTree (shortened)
+  const PT = {
+    "Thrusters": "Rocket boost for 1.5 s at 2x run speed.", "Cloak Field": "Nearly invisible for 3 s; bots lose you.",
+    "Shock Mine": "Drop mines.", "Energy Shield": "A bubble that blocks damage for a few seconds.",
+    "Raptor Screech": "Hold, release: the first dino hit flinches 0.5 s and loses its cloak.", "Scent Sense": "Trails of every dino near you glow for 6 s.",
+    "Adrenaline Injector": "Heal 20% over 3 s and run 1.3x faster.", "Overclocked Servo Dash": "Launch forward, then run 1.6x for 1.5 s.",
+    "Med-Station": "Drop a machine that heals everyone nearby.", "Dome Visor": "A faceplate blocks every frontal hit for 1.5 s.",
+    "Grappling Hook": "Claw a dino from 60 studs and pull it in for a head smash.", "Ink Shooter": "The first dino hit is blinded for 2 s.",
+    "Tether Spike": "Lob a spike that chains the closest dino to the ground.", "Blood Rush": "Out of headbutts? Pay 25% health for one more.",
+    "Mecha Legs": "Leap 50% farther with 20% more launch power.", "Quill Launcher": "Fire 5 quills at your target, 4 damage each.",
+    "Smoke Pods": "A 28-stud smoke cloud for 4 s hides you.", "Strobe Frill": "Enemies in a 60° cone can't attack for 1 s.",
+    "Razor Caltrops": "Spikes behind you: bleed and slow.", "Goo Blob Shooter": "A 16-stud puddle slows enemies 40%.",
+    "Glider Wings": "Hold JUMP in the air to glide.", "Stun Breaker": "While stunned or pinned: break free.",
+    "Hydraulic Leap": "Every jump leaps 40 studs and slams on landing.", "Stomp Shockwave": "14-stud shockwave: 6 damage, 0.5 s stun.",
+    "Tail Grab & Fling": "Grab a raptor-size dino and fling it 30 studs.", "Challenge Call": "Marked enemies deal 40% less damage.",
+    "Boulder Mortar": "Lob a boulder: 12 damage splash, slows 30%.", "Mud Armor": "Blocks your next 3 hits.",
+    "Herd Bellow": "You and squadmates take 50% less damage, run 50% faster.", "Grapple Zip": "Zip to a marker up to 90 studs away.",
+    "Reaper's Hook": "Claw chain 50 studs, yank the dino in.", "Feather Barrage": "8 feather blades in a fan, slow 25%.",
+    "Snare Wires": "Wire trap: root 1 s and 12 damage.", "Harvest Field": "Circle: enemies bleed 4/s and slow 30%.",
+    "Deflector Claws": "Spin the claws 1 s and block darts.", "Spring Jets": "Dash 25 studs the way you move.",
+    "Venom Gatling": "4 auto-aimed darts with venom.", "Toxin Mortar": "16-stud poison cloud for 3 s.",
+    "Sonic Hiss": "Knock back and silence parts 1.5 s.", "Venom Overdrive": "Darts recharge at once for 4 s.",
+    "Antivenom Pump": "Clear debuffs and heal 15.", "Spine Burst": "6 spines all around, 4 damage each.",
+    "Portal Feathers": "Two linked rings: walk in one, out the other.", "Mender Drone": "Heals the most hurt squadmate 4/s for 4 s.",
+    "Arc Lantern": "Zaps an enemy and chains to one more.", "Shield Dome": "A 30-stud dome stops enemy attacks from outside.",
+    "Sap Wall": "A 50-stud wall that blocks dinos and shots.", "Bloom Burst": "Squadmates heal 20 and get 50% more healing.",
+    "Sleep Dart": "The first enemy hit sleeps 2.5 s.", "Basic kit": "The T-Rex fights with its bite, roar and ram.",
+  };
+  D.Raptor.parts = ["Thrusters", "Cloak Field", "Shock Mine", "Energy Shield", "Raptor Screech", "Scent Sense", "Adrenaline Injector"];
+  // mock ownership: the last part of each dino is not bought yet (the real screen reads the player's Lab steps)
+  const owned = (d, pt) => D[d].parts.indexOf(pt) < D[d].parts.length - 1 || D[d].parts.length <= 4;
+  const KEYS = ["1", "2", "3", "4"];
+  const ROLES = [["HOLDER", ["Pachy", "Teno"]], ["FIGHTER", ["Raptor", "TRex", "Herrera", "Therizino"]], ["RANGED", ["Dilo", "Troodon"]]];
+  const nameOf = d => d === "TRex" ? "T-REX" : d.toUpperCase();
+  // you in the middle, like a 2K starting five
+  // 4 a team (Kepu 2026-11-12 18:44: PvP and bots)
+  const BLUE = [
+    {n: "Mako_88", w: 58, l: 40, lv: 33, want: "Pachy", at: 7},
+    {n: "YOU", me: true, w: 31, l: 12, lv: 24, last: "Raptor"},
+    {n: "FernRex", w: 12, l: 19, lv: 11, want: "Dilo", at: 13},
+    {n: "TurboTeno", w: 44, l: 21, lv: 29, want: "Teno", at: 20},
+  ];
+  const RED_A = [{n: "Volt_Claw", w: 66, l: 31, d: "Raptor"}, {n: "BoneDaddy", w: 23, l: 25, d: "Pachy"}, {n: "spitz", w: 40, l: 18, d: "Dilo"}, {n: "Q_Troo", w: 52, l: 47, d: "Troodon"}];
+  const RED_B = [{n: "Fang", bot: "ELITE", d: "Herrera"}, {n: "Jolt", bot: "HARD", d: "Pachy"}, {n: "Ember", bot: "NORMAL", d: "Dilo"}, {n: "Hex", bot: "EASY", d: "Therizino"}];
+  const TIME = 30, ALLREADY = 5;
+  let mode = "arena", fast = false, uniq = true, view = "lineup";
+  let t0, endAt, timer, introT, st;
+  const $ = s => document.querySelector(s);
+  const L = $("#lineup"), S = $("#select"), I = $("#intro"), screen = $("#screen");
+  const G = (d, cls = "") => d ? `<div class="glyph ${cls}" style="background:${D[d].c}" data-l="${D[d].l}"></div>` : `<div class="glyph q ${cls}"></div>`;
+  const red = () => mode === "arena" ? RED_A : RED_B;
+  const pct = p => Math.round(100 * p.w / Math.max(1, p.w + p.l)) + "%";
+  const now = () => (performance.now() - t0) / 1000 * (fast ? 4 : 1);
+  const left = () => Math.max(0, endAt - now());
+  const takenBy = d => uniq ? st.team.find(p => !p.me && p.pick === d) : null;
+
+  function fresh() {
+    st = {team: BLUE.map(p => ({...p, pick: null})), mine: null, lo: null, draft: null, draftLo: null, openSlot: null};
+  }
+  function topHtml(title, sub) {
+    const s = Math.ceil(left());
+    return `<div class="top"><div><div class="ttl">${title}</div><div class="sub">${sub}</div></div>
+      <div class="timer"><b class="${s <= 5 ? "low" : ""}">0:${String(s).padStart(2, "0")}</b><span>${allReady() ? "EVERYONE READY" : "MATCH STARTS AT 0:00"}</span></div></div>
+      <div class="tbar"><i style="width:${100 * left() / TIME}%"></i></div>`;
+  }
+  const allReady = () => st.mine && st.team.every(p => p.me || p.pick);
+  const modeLine = () => mode === "arena" ? "ARENA · HARDPOINT" : "HARDPOINT VS BOTS";
+
+  // ---------- LINEUP ----------
+  function pedHtml(p, inIntro) {
+    const d = p.me ? st.mine : p.pick;
+    const lo = p.me ? st.lo : (d ? D[d].parts.slice(0, 4) : null);
+    const ready = !!d;
+    const recLine = p.bot ? `${p.bot}<small>BOT</small>` : `${p.w}-${p.l}<small>${pct(p)} WINS · LV ${p.lv ?? "?"}</small>`;
+    return `<div class="ped${p.me ? " me" : ""}${ready ? " ready" : ""}" ${p.me && !inIntro ? 'data-act="open"' : ""}>
+      ${p.me && !inIntro ? `<div class="tapme">${ready ? "TAP TO CHANGE" : "TAP TO SELECT"}</div>` : ""}
+      ${G(d, "xl")}<div class="floor"></div>
+      <div class="plaque"><div class="pn">${p.me ? "YOU" : p.n}</div><div class="wl">${recLine}</div>
+        <div class="dn">${d ? nameOf(d) : "&nbsp;"}</div><div class="role">${d ? D[d].role : "&nbsp;"}</div>
+        ${inIntro ? "" : `<div class="st ${ready ? "ok" : "wait"}">${ready ? "READY" : "SELECTING…"}</div>`}
+        ${inIntro ? "" : `<div class="slots4">${[0, 1, 2, 3].map(i => `<i class="${lo && lo[i] ? "on" : ""}"></i>`).join("")}</div>`}</div></div>`;
+  }
+  function renderLineup() {
+    L.innerHTML = topHtml("LINEUP", `${modeLine()} · BLUE TEAM`) +
+      `<div class="stage">${st.team.map(p => pedHtml(p, false)).join("")}</div>
+       <div class="cta"><button class="big" data-act="open">${st.mine ? "CHANGE DINO" : "SELECT DINO"}</button>${allReady() ? `<span class="allready">ALL READY · STARTING</span>` : ""}</div>`;
+  }
+
+  // ---------- SELECT (v0.3) ----------
+  function teamRoles() {
+    const c = {HOLDER: 0, FIGHTER: 0, RANGED: 0};
+    st.team.forEach(p => { if (!p.me && p.pick) c[D[p.pick].role]++; });
+    if (st.draft) c[D[st.draft].role]++; // your pick counts
+    return c;
+  }
+  function renderSelect() {
+    const d = st.draft;
+    const lo = st.draftLo || [];
+    const c = teamRoles();
+    const need = Object.keys(c).filter(r => c[r] === 0);
+    const roster = ROLES.map(([r, list]) => `<div class="rgrp"><div class="rh">${r}<b class="${c[r] === 0 ? "need" : ""}">${c[r] === 0 ? "TEAM NEEDS" : c[r] + " ON TEAM"}</b></div><div class="tiles">${list.map(x => {
+        const tb = takenBy(x);
+        return `<div class="tile${d === x ? " sel" : ""}${tb ? " taken" : ""}" data-d="${x}">${G(x, "sm")}<div style="min-width:0"><div class="tn">${nameOf(x)}</div>${tb ? `<div class="tt">${tb.n}</div>` : (x === "Raptor" ? `<div class="last">LAST PLAYED</div>` : "")}</div></div>`;
+      }).join("")}</div></div>`).join("");
+    const sh = d ? SHEET[d] : null;
+    const show = d ? `<div><div class="cls">${sh.cls} · ${D[d].role}</div><div class="dname">${nameOf(d)}</div><div class="pitch">${D[d].d}</div></div>
+        <div class="turn"><div class="spot"></div><div class="disc"></div><div class="model" style="background:${D[d].c}" data-l="${D[d].l}"></div></div>
+        <div class="stats">${sh.st.map((v, i) => `<div class="stat"><span>${STATN[i]}</span><div class="bar"><i style="width:${v * 10}%"></i></div><span class="v">${v}</span></div>`).join("")}</div>`
+      : `<div></div><div class="turn"><div class="disc"></div><div class="glyph q xl"></div></div><div class="pitch" style="color:var(--muted)">Pick a dino on the left.</div>`;
+    const kit = d ? `<div class="kh">MAIN ATTACK</div>
+        <div class="abil"><div class="ic" style="background:${D[d].c}">⚔</div><div><div class="an">${sh.ab[0]}</div></div><span class="key">CLICK / TAP</span></div>
+        <div class="abil"><div class="ic" style="background:#3a4656;color:var(--text)">⤒</div><div><div class="an">${sh.ab[1]}</div></div><span class="key">JUMP</span></div>
+        <div class="kh" style="margin-top:.4cqw">LOADOUT · TAP A SLOT TO SWAP</div>
+        ${[0, 1, 2, 3].map(i => lo[i] ? `<div class="abil slot${st.openSlot === i ? " open" : ""}" data-slot="${i}"><div class="ic" style="background:var(--volt)">${i + 1}</div><div style="min-width:0"><div class="an">${lo[i]}</div><div class="ad">${PT[lo[i]] || ""}</div></div><span class="key">${KEYS[i]}</span></div>`
+          : `<div class="abil slot" data-slot="${i}"><div class="ic" style="background:#232c38;color:var(--muted)">+</div><div><div class="an" style="color:var(--muted)">EMPTY SLOT</div></div><span class="swap">ADD</span></div>`).join("")}
+        ${st.openSlot !== null ? `<div class="drawer"><div class="dh"><span>SLOT ${st.openSlot + 1} · ${nameOf(d)} PARTS</span><span class="x" data-act="closeDrawer">CLOSE</span></div><div class="plist">${D[d].parts.map(pt => {
+            const inAt = lo.indexOf(pt), own = owned(d, pt);
+            return `<div class="pi${inAt === st.openSlot ? " cur" : ""}${own ? "" : " lock"}" ${own ? `data-part="${pt}"` : ""}><div class="ic" style="background:${own ? "var(--volt)" : "#3a4656"}">${own ? (inAt >= 0 ? inAt + 1 : "·") : "🔒"}</div><div style="min-width:0"><div class="an">${pt}</div><div class="ad">${PT[pt] || ""}</div></div><span class="tag ${own ? (inAt >= 0 ? "in" : "") : "lk"}">${own ? (inAt >= 0 ? "SLOT " + (inAt + 1) : "") : "BUY IN THE LAB"}</span></div>`;
+          }).join("")}</div></div>` : ""}`
+      : `<div class="kh">KIT</div><div class="abil"><div class="ic" style="background:#232c38"></div><div class="an" style="color:var(--muted)">Pick a dino to see its kit.</div><span></span></div>`;
+    S.innerHTML = topHtml("SELECT DINO", `${modeLine()} · YOUR DINO AND ITS 4 PARTS`) +
+      `<div class="teamstrip"><span class="lbl">YOUR TEAM</span>${st.team.filter(p => !p.me).map(p => `<div class="mate">${G(p.pick, "sm")}<div><div class="pn">${p.n}</div><div class="dn">${p.pick ? nameOf(p.pick) + " · " + D[p.pick].role : "SELECTING…"}</div></div></div>`).join("")}
+        <span class="needs${need.length ? "" : " ok"}">${need.length ? "TEAM NEEDS A " + need.join(" OR ") : "TEAM COVERED"}</span></div>
+      <div class="sel3"><div class="roster">${roster}</div><div class="show">${show}</div><div class="kit">${kit}</div></div>
+      <div class="acts"><button class="big ghost" data-act="back">BACK</button><button class="big" data-act="confirm" ${d ? "" : "disabled"}>CONFIRM ${d ? nameOf(d) : ""}</button></div>`;
+  }
+
+  function show(v) {
+    view = v;
+    L.classList.toggle("hide", v !== "lineup"); S.classList.toggle("hide", v !== "select"); I.classList.toggle("hide", v !== "intro");
+    v === "lineup" ? renderLineup() : v === "select" ? renderSelect() : null;
+  }
+
+  // ---------- INTRO ----------
+  function startIntro() {
+    if (view === "intro") return;
+    clearInterval(timer);
+    if (!st.mine) { st.mine = st.draft && !takenBy(st.draft) ? st.draft : ORDER.find(x => !takenBy(x) && x === "Raptor") || ORDER.find(x => !takenBy(x)); st.lo = D[st.mine].parts.slice(0, 4); }
+    st.team.forEach(p => { if (!p.me && !p.pick) p.pick = p.want; });
+    show("intro");
+    const spd = fast ? 2 : 1;
+    let i = 0;
+    const blue = () => {
+      if (i >= st.team.length) { i = 0; return redShow(); }
+      const p = st.team[i];
+      I.innerHTML = `<div class="beam" style="left:${8 + i * 21.5}%"></div><div class="istage">${st.team.map((q, k) => pedHtml(q, true).replace('class="ped', `class="ped${k === i ? " lit" : ""}`)).join("")}</div>
+        <div class="callout"><div class="t" style="color:var(--blue)">BLUE TEAM · ${i + 1} OF 4</div><div class="n">${p.me ? "YOU" : p.n}</div><div class="r">${nameOf(p.me ? st.mine : p.pick)} · <b class="w">${p.w}W</b> <b class="l">${p.l}L</b> · ${pct(p)}</div></div>
+        <div class="counter">PLAYER INTROS</div>`;
+      i++;
+      introT = setTimeout(blue, 1100 / spd);
+    };
+    const redShow = () => {
+      const r = red().map(p => ({...p, pick: p.d}));
+      I.innerHTML = `<div class="istage red">${r.map(q => pedHtml(q, true).replace('class="ped', 'class="ped lit')).join("")}</div>
+        <div class="callout"><div class="t" style="color:var(--red)">RED TEAM</div><div class="n">${mode === "arena" ? "THE OPPONENTS" : "BOTS"}</div><div class="r">${mode === "arena" ? (() => { const s = r.reduce((a, p) => [a[0] + p.w, a[1] + p.l], [0, 0]); return `TEAM <b class="w">${s[0]}W</b> <b class="l">${s[1]}L</b>`; })() : "1 ELITE · 1 HARD · 1 NORMAL · 1 EASY"}</div></div><div class="counter">PLAYER INTROS</div>`;
+      introT = setTimeout(vs, 2200 / spd);
+    };
+    const vs = () => {
+      const tb = st.team.reduce((a, p) => [a[0] + p.w, a[1] + p.l], [0, 0]);
+      const r = red();
+      const tr = mode === "arena" ? r.reduce((a, p) => [a[0] + p.w, a[1] + p.l], [0, 0]) : null;
+      const mc = (p, d, k) => `<div class="mc" style="animation-delay:${k * .07}s">${G(d, "sm")}<div><div class="pn">${p.me ? "YOU" : p.n}</div><div class="wl">${p.bot ? p.bot + " BOT" : p.w + "-" + p.l}</div></div></div>`;
+      I.innerHTML = `<div class="vs"><div class="side">${st.team.map((p, k) => mc(p, p.me ? st.mine : p.pick, k)).join("")}<div class="tr" style="color:var(--blue)">BLUE · ${tb[0]}-${tb[1]}</div></div>
+        <div class="v">VS</div><div class="side r">${r.map((p, k) => mc(p, p.d, k)).join("")}<div class="tr" style="color:var(--red)">RED · ${tr ? tr[0] + "-" + tr[1] : "BOTS"}</div></div></div><div class="counter">MATCH STARTS IN 3</div>`;
+      let n = 3;
+      introT = setInterval(() => {
+        n--;
+        if (n > 0) { I.querySelector(".counter").textContent = "MATCH STARTS IN " + n; return; }
+        clearInterval(introT);
+        I.insertAdjacentHTML("beforeend", `<div class="go"><div><b>CAPTURE AND HOLD THE HARDPOINT</b><span>(the match loading screen and spawn follow)</span></div></div>`);
+      }, 1000 / spd);
+    };
+    blue();
+  }
+
+  // ---------- clock ----------
+  function tick() {
+    const e = now();
+    st.team.forEach(p => {
+      if (p.me || p.pick || e < p.at) return;
+      let d = p.want;
+      if (uniq && (d === st.mine || st.team.some(q => !q.me && q.pick === d))) d = ORDER.find(x => x !== st.mine && x !== "TRex" && !st.team.some(q => q.pick === x));
+      p.pick = d;
+    });
+    if (allReady() && endAt - e > ALLREADY) endAt = e + ALLREADY;
+    if (left() <= 0) return startIntro();
+    // v0.3: redraw only when a pick changes (keeps the turntable animation running); otherwise just the clock
+    const sig = st.team.map(p => p.pick).join(",") + "|" + allReady();
+    if (sig !== st.sig) { st.sig = sig; return view === "lineup" ? renderLineup() : view === "select" ? renderSelect() : null; }
+    const el = view === "lineup" ? L : view === "select" ? S : null;
+    if (!el) return;
+    const sec = Math.ceil(left());
+    const b = el.querySelector(".timer b"), i = el.querySelector(".tbar i");
+    if (b) { b.textContent = "0:" + String(sec).padStart(2, "0"); b.classList.toggle("low", sec <= 5); }
+    if (i) i.style.width = (100 * left() / TIME) + "%";
+  }
+  function restart() {
+    clearInterval(timer); clearTimeout(introT); clearInterval(introT);
+    fresh(); t0 = performance.now(); endAt = TIME;
+    show("lineup");
+    timer = setInterval(tick, 250);
+  }
+
+  // ---------- input ----------
+  screen.addEventListener("click", e => {
+    const act = e.target.closest("[data-act]")?.dataset.act;
+    if (act === "open" && view === "lineup") {
+      st.draft = st.mine; st.draftLo = st.lo ? st.lo.slice() : null; st.openSlot = null; return show("select");
+    }
+    if (view !== "select") return;
+    const part = e.target.closest("[data-part]");
+    if (part && st.openSlot !== null) {
+      const pt = part.dataset.part, lo = st.draftLo;
+      const at = lo.indexOf(pt);
+      if (at >= 0) lo[at] = lo[st.openSlot] || null;
+      lo[st.openSlot] = pt;
+      st.openSlot = null; return renderSelect();
+    }
+    if (act === "closeDrawer") { st.openSlot = null; return renderSelect(); }
+    if (e.target.closest(".drawer")) return;
+    const slot = e.target.closest("[data-slot]");
+    if (slot) { const i = +slot.dataset.slot; st.openSlot = st.openSlot === i ? null : i; return renderSelect(); }
+    const dn = e.target.closest(".tile");
+    if (dn) {
+      const d = dn.dataset.d;
+      if (takenBy(d)) return;
+      if (st.draft !== d) { st.draft = d; st.draftLo = D[d].parts.filter(pt => owned(d, pt)).slice(0, 4); }
+      st.openSlot = null; return renderSelect();
+    }
+    if (act === "back") { st.openSlot = null; return show("lineup"); }
+    if (act === "confirm" && st.draft && !takenBy(st.draft)) { st.mine = st.draft; st.lo = st.draftLo; st.openSlot = null; return show("lineup"); }
+  });
+
+  document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { mode = b.dataset.m; document.documentElement.style.setProperty("--mode", mode === "arena" ? "var(--arena)" : "var(--bots)"); document.querySelectorAll("[data-m]").forEach(x => x.setAttribute("aria-pressed", x === b)); restart(); });
+  document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { screen.classList.toggle("phone", b.dataset.s === "phone"); document.querySelectorAll("[data-s]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  $("#fast").onclick = () => { fast = !fast; $("#fast").setAttribute("aria-pressed", fast); restart(); };
+  $("#restart").onclick = restart;
+  $("#toIntro").onclick = startIntro;
+  $("#uniq").onclick = () => { uniq = !uniq; $("#uniq").textContent = "ONE PER TEAM: " + (uniq ? "ON" : "OFF"); $("#uniq").setAttribute("aria-pressed", uniq); restart(); };
+  restart();
+})();
+</script>
