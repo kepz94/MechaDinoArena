@@ -56,6 +56,19 @@ local VERSION = "1.1" -- v1.1 Cold Blood dart reset
 VERSION = "1.2" -- v1.2 coil stamps
 VERSION = "1.3" -- v1.3 spit only: tap = spit dart
 VERSION = "1.4" -- v1.4 local spit ammo
+VERSION = "1.5" -- v1.5 spit on release + hold to snipe (MDA-510)
+-- v1.5 (MDA-510, plan docs/plans/DILO_SNIPER_SPIT_v1.0.md Task 2, mockup docs/mockups/dilo_sniper_spit_v0.1.html; Kepu
+--   2026-11-13 picks "A · Head cam", "Whole clip: 25", "Let go of attack", "Spit on release"). While script attribute
+--   DiloAttackTestSnipeEnabled ~= false (default true, read at each press) on a spit-only dilo:
+--   * the press starts a hold (no spit yet; DiloSnipeHolding true, DiloSnipeHoldStart = server time); from COIL_AFTER (0.15 s)
+--     the coil pose shows (state "coil", the 1.2 coil stamps tell the others);
+--   * held DiloSnipeHold (script attribute, 1.5 s) with a full clip (DiloLocalSpitLeft == DiloSpitMag, no reload) and not
+--     blocked -> aim mode: character attribute DiloSnipeAim true (DiloSnipeCam 1.0 takes the camera: head cam), state "snipe";
+--   * release in aim mode -> DinoDiloAttack:FireServer("snipe", server time, the camera's look) (DiloAttackServer 1.11), the
+--     local clip goes to 0 and the local reload starts, state "spit"; release before aim mode (or without a full clip) -> the
+--     normal spit at that moment (the 1.4 tap path, unchanged); an input Cancel or a stun / daze / pin / menu while holding ->
+--     no shot ("idle", DiloInputResult the reason / "cancel").
+--   Diagnostics: DiloSnipeHolding, DiloSnipeHoldStart, DiloSnipeAim, DiloSnipesSent (count). Off = 1.4 (spit on press).
 local ACTION = "DinoDiloAttack"
 local ACTION_CLICK = "DinoDiloAttackClick"
 local DEFAULTS = {DiloAttackEnabled = false, DiloMinGap = 0.35, DiloHoldTime = 0.4, DiloDartCooldown = 1.5,
@@ -161,10 +174,35 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
+-- v1.5: hold to snipe (see the header)
+if script:GetAttribute("DiloAttackTestSnipeEnabled") == nil then script:SetAttribute("DiloAttackTestSnipeEnabled", true) end
+if script:GetAttribute("DiloSnipeHold") == nil then script:SetAttribute("DiloSnipeHold", 1.5) end
+local snipeHold, snipePressAt, snipeSrc, snipeAim, spitNow = false, 0, "key", false, false
+local function snipeOn() return script:GetAttribute("DiloAttackTestSnipeEnabled") ~= false and spitOnly() end
+local function clipFull(t)
+	if not ammoOn() then return true end
+	if localLeft == nil then localLeft = ammoMag() end
+	return localLeft >= ammoMag() and localReloadAt <= t
+end
+local function setAim(v)
+	snipeAim = v
+	show("DiloSnipeAim", v)
+end
 local function onPress(src)
 	if get("DiloAttackEnabled") ~= true then return end
 	if script:GetAttribute("DiloAttackTestSpitOnlyEnabled") == nil then script:SetAttribute("DiloAttackTestSpitOnlyEnabled", true) end
 	show("DiloAttackTestMode", spitOnly() and "spit" or "bite+hold")
+	if spitOnly() and snipeOn() and not spitNow then -- v1.5: the press starts a hold; the spit waits for the release
+		local r = blocked()
+		if r then
+			show("DiloInputResult", r)
+			return
+		end
+		snipeHold, snipePressAt, snipeSrc = true, now(), src
+		show("DiloSnipeHolding", true)
+		char:SetAttribute("DiloSnipeHoldStart", snipePressAt)
+		return
+	end
 	if spitOnly() then -- v1.3: tap = the spit dart at once
 		show("DiloLastInput", src)
 		local r = blocked()
@@ -222,7 +260,70 @@ local function onPress(src)
 		show("DiloInputResult", "cooldown")
 	end
 end
-local function onRelease()
+local function snipeEnd(cancel) -- v1.5: the release / cancel of a snipe hold
+	snipeHold = false
+	show("DiloSnipeHolding", false)
+	local aimed = snipeAim
+	if aimed then setAim(false) end
+	if cancel then
+		show("DiloInputResult", "cancel")
+		setState("idle")
+		return
+	end
+	if not aimed then -- a tap (or no full clip): the normal spit now
+		setState("idle")
+		spitNow = true
+		onPress(snipeSrc)
+		spitNow = false
+		return
+	end
+	local r = blocked()
+	if r then
+		show("DiloInputResult", r)
+		setState("idle")
+		return
+	end
+	local t = now()
+	local cam = workspace.CurrentCamera
+	local dir = cam and cam.CFrame.LookVector or char:GetPivot().LookVector
+	lastDart, lastSent = t, t
+	fire("snipe", t, dir)
+	if ammoOn() then
+		localLeft = 0
+		localReloadAt = t + math.max(0, tonumber(char:GetAttribute("DiloSpitReload")) or 3)
+		ammoPublish()
+	end
+	char:SetAttribute("DiloLocalDartAt", t)
+	char:SetAttribute("DiloSnipesSent", (char:GetAttribute("DiloSnipesSent") or 0) + 1)
+	show("DiloInputResult", "snipe")
+	state = nil
+	setState("spit")
+	task.delay(SPIT_SHOW, function()
+		if state == "spit" and char:GetAttribute("DiloLocalDartAt") == t then setState("idle") end
+	end)
+end
+RunService.Heartbeat:Connect(function() -- v1.5: the snipe hold
+	if not snipeHold then return end
+	local r = blocked()
+	if r then
+		snipeHold = false
+		show("DiloSnipeHolding", false)
+		if snipeAim then setAim(false) end
+		show("DiloInputResult", r)
+		setState("idle")
+		return
+	end
+	local t = now()
+	local held = t - snipePressAt
+	if not snipeAim and held >= math.max(0, tonumber(script:GetAttribute("DiloSnipeHold")) or 1.5) and clipFull(t) then
+		setAim(true)
+		setState("snipe")
+	elseif not snipeAim and held >= COIL_AFTER and state ~= "coil" then
+		setState("coil")
+	end
+end)
+local function onRelease(cancel)
+	if snipeHold then snipeEnd(cancel == true) return end -- v1.5
 	if not holding then return end
 	holding = false
 	local t = now()
@@ -289,7 +390,7 @@ local function onAction(_, inputState, input)
 		onPress(src)
 		return Enum.ContextActionResult.Sink
 	elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
-		onRelease()
+		onRelease(inputState == Enum.UserInputState.Cancel) -- v1.5: Cancel = no snipe
 		return Enum.ContextActionResult.Sink
 	end
 	return Enum.ContextActionResult.Pass
@@ -304,7 +405,7 @@ local function onClick(_, inputState, input)
 		end
 		onPress("click")
 	elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
-		onRelease()
+		onRelease(inputState == Enum.UserInputState.Cancel) -- v1.5
 	end
 	return Enum.ContextActionResult.Pass
 end

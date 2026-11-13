@@ -633,6 +633,7 @@ if not remote then
 end
 
 local function onRemote(player, kind, stamp) -- v1.9: named so BotUse can call it (body unchanged)
+	if kind == "snipe" and script:GetAttribute("DiloSnipeEnabled") ~= false then return end -- v1.11: the snipe handler below
 	count("DiloAttackRequests")
 	local char = player.Character
 	if not char then return end
@@ -704,6 +705,159 @@ local function onRemote(player, kind, stamp) -- v1.9: named so BotUse can call i
 	end
 end
 remote.OnServerEvent:Connect(onRemote) -- v1.9
+
+-- v1.11 Sniper spit (MDA-509, plan docs/plans/DILO_SNIPER_SPIT_v1.0.md Task 1, mockup docs/mockups/dilo_sniper_spit_v0.1.html;
+--   Kepu 2026-11-13 15:38 "hold the attack button for 1.5s ... no aim assist ... all the damage into one ball with twice the
+--   range like a sniper shot", picks "Whole clip: 25, then reload", "Let go of attack"). Remote DinoDiloAttack("snipe", stamp,
+--   dir) from DiloAttackTest 1.5 (dir = the head cam's look, a unit Vector3). Checks as the dart (dead / disabled / menu /
+--   stunned / dazed / pinned, spit-only), the DiloSpitGap, then a FULL clip ("notFull" when DiloSpitLeft < DiloSpitMag or a
+--   reload runs) and the aim within DiloSnipeMaxOff (100) degrees of the body's flat facing ("badAim"). The ball: from the
+--   snout along dir (no aim assist), range DiloDartRange x DiloSnipeRangeMul (2) x scale, stopped by the world (a raycast that
+--   leaves out every dino); speed DiloDartSpeed x DiloSnipeSpeedMul (2) x scale. At landing every target dino whose hitboxes
+--   come within DiloSnipeRadius (1.5) x scale of the flight line (snout -> end) is a candidate and the nearest along the line
+--   is hit (it flies straight: lead a moving dino). A Sap Wall between stops it; Deflector Claws / shields / plating as the
+--   dart. Damage DiloSnipeDamage (25) x Cold Blood's dart mul; the spit's poison as a dart (Venom Bite + Cold Blood). Uses the
+--   whole clip (DiloSpitLeft 0, the usual DiloSpitReload starts). Stamps: DiloDartFrom / To / Target / Flight, DiloSnipeAt (=
+--   the shot's time, before) then DiloDartAt (DiloFX draws the dart; DiloFX 1.5 makes it the big ball when DiloSnipeAt ==
+--   DiloDartAt); the hit through DiloHitAt as the dart (kind "dart"), DiloSnipeHitRule ("hit" / "miss" / "wall" /
+--   "deflected"), DiloSnipeDmg (damage dealt, before the hit stamp). Switch: script attribute DiloSnipeEnabled (default true, read per request; false = 1.10: "snipe" is a
+--   badArg). Numbers: script attributes DiloSnipeDamage, DiloSnipeRangeMul, DiloSnipeSpeedMul, DiloSnipeRadius,
+--   DiloSnipeMaxOff. Diagnostics: script DiloSnipes, DiloSnipeHits.
+do
+	local SNIPE = {DiloSnipeEnabled = true, DiloSnipeDamage = 25, DiloSnipeRangeMul = 2, DiloSnipeSpeedMul = 2, DiloSnipeRadius = 1.5,
+		DiloSnipeMaxOff = 100}
+	for k, v in pairs(SNIPE) do
+		if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+	end
+	local function sget(k) return tonumber(script:GetAttribute(k)) or SNIPE[k] end
+	local function onLine(m, from, dir, len) -- distance along the line of the body point nearest to it, or nil
+		local r = rootOf(m)
+		if not r then return nil end
+		local u = math.clamp((r.Position - from):Dot(dir), 0, len)
+		local best, bestU = math.huge, nil
+		for _, du in ipairs({-3, -1.5, 0, 1.5, 3}) do -- a few points along the line around the root's projection
+			local uu = math.clamp(u + du, 0, len)
+			local g = gap(m, from + dir * uu)
+			if g < best then best, bestU = g, uu end
+		end
+		return best, bestU
+	end
+	local function snipe(player, char, stamp, dir)
+		local t = now()
+		local r
+		if typeof(stamp) ~= "number" or stamp ~= stamp or typeof(dir) ~= "Vector3" or dir ~= dir or dir.Magnitude < 0.5 or dir.Magnitude > 1.5 then
+			r = "badArg"
+		elseif not char:FindFirstChildOfClass("Humanoid") or char:FindFirstChildOfClass("Humanoid").Health <= 0 then
+			r = "dead"
+		elseif not enabled or char:GetAttribute("DiloAttackEnabled") ~= true or not spitOnly(char) then
+			r = "disabled"
+		else
+			r = blocked(player, char, t)
+		end
+		local st = track(char)
+		if not r and t - st.lastDart < math.max(0, num(char, "DiloSpitGap", 0.35) - math.max(0, num(script, "DiloSpitGapGrace", 0.05))) then
+			r = "dartCooldown"
+		end
+		local a = (not r and ammoOn(char)) and ammoOf(char) or nil
+		if not r and a and (a.left < ammoMag(char) or a.reloadAt > 0) then r = "notFull" end
+		dir = dir.Unit
+		if not r then
+			local off = math.deg(math.acos(math.clamp(flat(dir).Magnitude > 1e-3 and flat(dir).Unit:Dot(facing(char)) or 1, -1, 1)))
+			if off > sget("DiloSnipeMaxOff") then r = "badAim" end
+		end
+		if r then
+			setResult(char, r, t)
+			return
+		end
+		setResult(char, "ok", t)
+		st.lastDart = t
+		count("DiloSnipes")
+		if animStamps() then char:SetAttribute("DiloCoilEndAt", t) end
+		if a then -- the whole clip
+			a.left = 0
+			if a.reloadAt <= 0 then a.reloadAt = t + math.max(0, num(char, "DiloSpitReload", 3)) end
+			ammoPublish(char, a)
+		end
+		local s = char:GetScale()
+		local from = snout(char)
+		local range = math.max(0, get(char, "DiloDartRange")) * sget("DiloSnipeRangeMul") * s
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		local ex = {char}
+		for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+		for _, b in ipairs(bots()) do table.insert(ex, b) end
+		for _, n in ipairs({"DiloFX", "TrooPartsFX", "TrooStatsFX"}) do local f = workspace:FindFirstChild(n) if f then table.insert(ex, f) end end
+		params.FilterDescendantsInstances = ex
+		local hit = workspace:Raycast(from, dir * range, params)
+		local len = hit and (hit.Position - from).Magnitude or range
+		-- the visual end: the dino on the line now (if any), else the world stop / full range
+		local aimT, aimU = nil, len
+		for _, m in ipairs(candidates(char)) do
+			local g, u = onLine(m, from, dir, len)
+			if g and g <= sget("DiloSnipeRadius") * s and u < aimU then aimT, aimU = m, u end
+		end
+		local to = from + dir * (aimT and aimU or len)
+		local speed = math.max(1, get(char, "DiloDartSpeed")) * sget("DiloSnipeSpeedMul") * s
+		local flight = (to - from).Magnitude / speed
+		char:SetAttribute("DiloDartFrom", from)
+		char:SetAttribute("DiloDartTo", to)
+		char:SetAttribute("DiloDartTarget", aimT and aimT.Name or "")
+		char:SetAttribute("DiloDartFlight", flight)
+		char:SetAttribute("DiloSnipeAt", t)
+		char:SetAttribute("DiloDartAt", t) -- last: poses + FX
+		task.delay(flight, function()
+			local ti = now()
+			if not char.Parent then return end
+			local target, tu = nil, len
+			for _, m in ipairs(candidates(char)) do
+				local g, u = onLine(m, from, dir, len)
+				if g and g <= sget("DiloSnipeRadius") * s and u < tu then target, tu = m, u end
+			end
+			local names, point, rule = {}, to, "miss"
+			if target then
+				point = from + dir * tu
+				rule = "hit"
+				if sapBlocked(from, target) then
+					rule = "wall"
+					char:SetAttribute("DiloDartWallAt", ti)
+				else
+					local defl, refl = deflected(target, from, "dart", ti, "DiloAttackDeflectEnabled")
+					if defl then
+						rule = "deflected"
+						if refl then
+							local tp = Players:GetPlayerFromCharacter(target)
+							takeHealth(char, sget("DiloSnipeDamage") * coldDartMul(char), target.Name, tp and tp.UserId or 0, "deflect", ti)
+						end
+					end
+				end
+				if rule == "hit" then
+					if not shielded(target, ti) then
+						local dmg = math.max(0, sget("DiloSnipeDamage")) * coldDartMul(char)
+						local dealt = dmg * takenMul(target, ti) * plating(target, from)
+						takeHealth(target, dealt, char.Name, player.UserId, "dilosnipe", ti)
+						char:SetAttribute("DiloSnipeDmg", dealt) -- DiloFX 1.5's pop (before the hit stamp)
+						if statsOn() and isTarget(target, char) then
+							local vDps, vTime = math.max(0, get(char, "DiloVenomDps")), math.max(0, get(char, "DiloVenomTime"))
+							vDps += math.max(0, num(char, "DiloSpitVenomAddDps", 0))
+							vTime += math.max(0, num(char, "DiloSpitVenomAddTime", 0))
+							applyVenom(target, vDps * coldVenomMul(char), vTime, char, player, ti)
+						end
+					end
+					table.insert(names, target.Name)
+					count("DiloSnipeHits")
+				end
+			end
+			char:SetAttribute("DiloSnipeHitRule", rule)
+			count("DiloAttackHits", #names)
+			stampHit(char, "dart", names, point, ti)
+		end)
+	end
+	remote.OnServerEvent:Connect(function(player, kind, stamp, dir)
+		if kind ~= "snipe" or script:GetAttribute("DiloSnipeEnabled") == false then return end
+		local char = player.Character
+		if char then snipe(player, char, stamp, dir) end
+	end)
+end
 
 -- v1.9 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
 --   server-only BindableFunction "BotUse" (child): Invoke(model, ...same arguments as the remote...) runs the remote handler above
@@ -811,3 +965,4 @@ do
 	fn.Parent = script
 end
 script:SetAttribute("DiloAttackServerVersion", "1.10") -- v1.10 spit ammo (after the 1.9 BotUse block's stamp)
+script:SetAttribute("DiloAttackServerVersion", "1.11") -- v1.11 sniper spit (MDA-509)

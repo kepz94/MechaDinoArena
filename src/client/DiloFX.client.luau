@@ -71,6 +71,11 @@ VERSION = "1.1" -- v1.1 bigger dart
 VERSION = "1.2" -- v1.2 the animation pass effects
 VERSION = "1.3" -- v1.3 Overdrive goo-dart hand-off, Cobra Spring take-off dust
 VERSION = "1.4" -- v1.4 bots' darts drawn
+VERSION = "1.5" -- v1.5 sniper spit ball + hit (MDA-512)
+-- v1.5 (MDA-512, plan docs/plans/DILO_SNIPER_SPIT_v1.0.md Task 5; DiloAttackServer 1.11): when a dilo's DiloDartAt equals its
+--   DiloSnipeAt (a sniper spit), the newest dart glob is drawn DiloFXSnipeScale (2) x bigger (its trail too) with a brighter,
+--   wider light; its hit (the DiloHitAt that follows, a target named) adds a big flash (16 x k) and a "-<DiloSnipeDamage>"
+--   pop over each dino hit (character DiloSnipeDmg). Switch: script attribute DiloFXSnipeEnabled (default true, read at each event; false = 1.4).
 local HIT_WAIT, VENOM_SCAN, DRIP_RATE, SPLASH_DROPS, MAX_PARTS = 0.6, 0.2, 14, 26, 320
 local ARENA_PLACE_ID = 75433819286625 -- ModeRules 1.0
 local GREEN, GREEN_D, PALE, GLOW = Color3.fromHex("9CF05A"), Color3.fromHex("5CC22A"), Color3.fromHex("D8FF8A"),
@@ -908,4 +913,60 @@ do
 	end
 	Players.PlayerAdded:Connect(onPl)
 	for _, pl in ipairs(Players:GetPlayers()) do onPl(pl) end
+end
+
+-- v1.5: sniper spit look (see the header) ---------------------------------------------------------------------------------------
+do
+	if script:GetAttribute("DiloFXSnipeEnabled") == nil then script:SetAttribute("DiloFXSnipeEnabled", true) end
+	if script:GetAttribute("DiloFXSnipeScale") == nil then script:SetAttribute("DiloFXSnipeScale", 2) end
+	local snipeHits = setmetatable({}, {__mode = "k"}) -- [char] = the snipe's DiloDartAt waiting for its hit
+	local function isSnipe(c)
+		local a, b = num(c, "DiloDartAt"), num(c, "DiloSnipeAt")
+		return a ~= nil and b ~= nil and math.abs(a - b) < 1e-3
+	end
+	local function snipeDart(c)
+		if not on("DiloFXSnipeEnabled") or not isSnipe(c) then return end
+		snipeHits[c] = num(c, "DiloDartAt")
+		task.defer(function() -- the newest glob (spawnDart ran on the same change)
+			local mul = tonumber(script:GetAttribute("DiloFXSnipeScale")) or 2
+			for i = #fx, 1, -1 do
+				local f = fx[i]
+				if f.kind == "dart" and f.p and f.p.Parent and f.t < 0.05 then
+					f.p.Size *= mul
+					for _, a in ipairs(f.p:GetChildren()) do
+						if a:IsA("Attachment") then a.Position *= mul end
+					end
+					local li = f.p:FindFirstChildOfClass("PointLight")
+					if li then li.Range *= mul; li.Brightness *= 1.5 end
+					break
+				end
+			end
+		end)
+	end
+	local function snipeHit(c)
+		local at = snipeHits[c]
+		if not on("DiloFXSnipeEnabled") or not at then return end
+		snipeHits[c] = nil
+		local names, point = c:GetAttribute("DiloHitTargets"), c:GetAttribute("DiloHitPoint")
+		if typeof(names) ~= "string" or names == "" then return end
+		if typeof(point) == "Vector3" then flash(point, 16 * scaleK(c), GREEN) end
+		local dmg = math.floor((num(c, "DiloSnipeDmg") or 25) + 0.5) -- DiloAttackServer 1.11 stamps the damage dealt
+		for n in names:gmatch("[^|]+") do
+			local m = findModel(n)
+			if m then pop(m, "-" .. tostring(dmg), "dart") end
+		end
+	end
+	local w15 = setmetatable({}, {__mode = "k"})
+	local function watch15(c)
+		if w15[c] then return end
+		w15[c] = true
+		c:GetAttributeChangedSignal("DiloDartAt"):Connect(function() snipeDart(c) end)
+		c:GetAttributeChangedSignal("DiloHitAt"):Connect(function() snipeHit(c) end)
+	end
+	local function onPl15(pl)
+		pl.CharacterAdded:Connect(watch15)
+		if pl.Character then watch15(pl.Character) end
+	end
+	Players.PlayerAdded:Connect(onPl15)
+	for _, pl in ipairs(Players:GetPlayers()) do onPl15(pl) end
 end

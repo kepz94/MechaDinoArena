@@ -3471,3 +3471,8 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkillTree 1.91 `SkillTree.TROO_SAP_CHARGES_TEXT` (true). Diagnostic `SkillTree.SAP_CHARGES_TEXT_MISSES` (0).
 - AbilityBar 1.41 `AbilityBarSapChargesEnabled` (true, at start). MechaButtons 1.46 `MechaButtonsSapChargesEnabled` (true, per draw).
 - TrooPartsFX 1.6 `TrooPartsFX_lanternLoudEnabled` (true, per zap); numbers `TrooPartsFX_lanternBoltMul` (2), `_lanternBoltLife` (0.6 s), `_lanternBoltTravel` (0.08 s), `_lanternForks` (3), `_lanternFlashTime` (0.12 s), `_shockTagMax` (150 studs), `_shockTagUp` (5.5 studs). Diagnostic `TrooPartsFXShockMarks`.
+- DiloAttackServer 1.11 `DiloSnipeEnabled` (true), `DiloSnipeDamage` (25), `DiloSnipeRangeMul` (2), `DiloSnipeSpeedMul` (2), `DiloSnipeRadius` (1.5), `DiloSnipeMaxOff` (100°). Character `DiloSnipeAt`, `DiloSnipeHitRule`, `DiloSnipeDmg`. Diagnostics `DiloSnipes`, `DiloSnipeHits`.
+- DiloAttackTest 1.5 `DiloAttackTestSnipeEnabled` (true), `DiloSnipeHold` (1.5 s). Character `DiloSnipeHolding`, `DiloSnipeHoldStart`, `DiloSnipeAim`, `DiloSnipesSent`.
+- DiloSnipeCam 1.0 (new) `DiloSnipeCamEnabled` (true), `DiloSnipeFov` (50), `DiloSnipeEyeUp` (1.0), `DiloSnipeEyeBack` (0.5), `DiloSnipePitchStart` (0), `DiloSnipePitchMin` (-40), `DiloSnipePitchMax` (40), `DiloSnipeMouseSens` (0.2), `DiloSnipeTouchSens` (0.25), `DiloSnipePadSpeed` (160), `DiloSnipeRingAfter` (0.25 s). Character `DiloSnipeCamState`, `DiloSnipeYaw`, `DiloSnipePitch`.
+- ShoulderCam 1.10 `ShoulderCamExternalEnabled` (true); character `ShoulderCamExternal`.
+- DiloFX 1.5 `DiloFXSnipeEnabled` (true), `DiloFXSnipeScale` (2).

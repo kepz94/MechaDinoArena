@@ -88,6 +88,11 @@
 --   Humanoid and CameraType to Custom, and TurnLimitMode "aim" goes back to "move" (the dino model is swapped by the
 --   menu / species flow without the engine moving the subject, so Roblox's camera stayed on the old model). Switch: script
 --   attribute ShoulderCamClassicClaim (default true, read every frame; false = no claim).
+-- v1.10 (MDA-512, plan docs/plans/DILO_SNIPER_SPIT_v1.0.md Task 4; DiloSnipeCam 1.0): while the character attribute
+--   ShoulderCamExternal is true another script owns the camera (the Dilo sniper head cam): each frame this script does nothing
+--   (no framing, no release, no Classic claim; ShoulderCamState "external"). When it goes false the usual framing carries on
+--   (a ShoulderCamLookAt set by the owner turns it to the last aim). Switch: script attribute ShoulderCamExternalEnabled
+--   (default true, read every frame; false = 1.9).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -133,6 +138,7 @@ local top = math.max(1, boxCf.Position.Y + boxSize.Y / 2 - hrp.Position.Y)
 local width = char:GetExtentsSize().X
 local spawnScale, spawnTop, spawnWidth, framedScale = char:GetScale(), top, width, char:GetScale() -- v1.1
 char:SetAttribute("ShoulderCamVersion", "1.9") -- v1.9 (was 1.8)
+char:SetAttribute("ShoulderCamVersion", "1.10") -- v1.10 external camera owner
 local function framing()
 	local sc = char:GetScale() -- v1.1: growth re-fit
 	if math.abs(sc - framedScale) > 1e-4 then
@@ -306,6 +312,10 @@ local function release()
 end
 
 local function step(dt)
+	if char:GetAttribute("ShoulderCamExternal") == true and script:GetAttribute("ShoulderCamExternalEnabled") ~= false then -- v1.10
+		show("ShoulderCamState", "external")
+		return
+	end
 	local mode = camMode() -- v1.9
 	show("ShoulderCamMode", mode)
 	if not get("ShoulderCamEnabled") or hum.Health <= 0 or mode == "classic" then -- v1.9: + Classic
