@@ -86,6 +86,13 @@
 --   Font: Silkscreen (rbxassetid://12187371840, the FontSwap face). Switch: script attribute EggLoaderBriefingEnabled (default
 --   true, read at start; false = 1.2's pod for every target). Diagnostic: player EggLoaderBrief ("arena" / "bots" /
 --   "island" / "").
+-- v1.4 (Kepu 2026-11-12 17:01 "all the loading screens show the hardpoint explanation but I didn't want it to be that way
+--   just when you actually load into a match"): the map and HOW TO WIN only show on the match screens (ARENA, HARDPOINT VS
+--   BOTS). The ISLAND screen keeps the title, sub line, YOUR SQUAD (where the map was), the tips and the bar. And a "Sandbox"
+--   target on a hub server (ReplicatedStorage ServerKind "hub") in the "play" mode (the menu's PLAY onto the island) shows the
+--   ISLAND screen, not VS BOTS (1.3 showed the bots briefing when you pressed PLAY on the island; a portal trip to the bots
+--   still passes "Sandbox" in the "travel" mode and keeps VS BOTS). Switch: script attribute
+--   EggLoaderMatchOnlyEnabled (default true, read at start; false = 1.3).
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local RunService = game:GetService("RunService")
@@ -97,6 +104,7 @@ local GuiService = game:GetService("GuiService")
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 the bar carries over a trip
 VERSION = "1.3" -- v1.3 mode briefing screens
+VERSION = "1.4" -- v1.4 match briefing only on match screens
 local ARRIVE_FLOOR = 0.5 -- v1.2
 local MIN_CRACK = 3
 local TIMEOUT = 45
@@ -123,6 +131,8 @@ if script:GetAttribute("EggLoaderCarryEnabled") == nil then script:SetAttribute(
 local carryOn = script:GetAttribute("EggLoaderCarryEnabled") ~= false -- v1.2
 if script:GetAttribute("EggLoaderBriefingEnabled") == nil then script:SetAttribute("EggLoaderBriefingEnabled", true) end -- v1.3
 local briefOn = script:GetAttribute("EggLoaderBriefingEnabled") ~= false -- v1.3
+if script:GetAttribute("EggLoaderMatchOnlyEnabled") == nil then script:SetAttribute("EggLoaderMatchOnlyEnabled", true) end -- v1.4
+local matchOnly = script:GetAttribute("EggLoaderMatchOnlyEnabled") ~= false -- v1.4
 local player = Players.LocalPlayer
 player:SetAttribute("EggLoaderVersion", VERSION)
 if script:GetAttribute("EggLoaderEnabled") == false then
@@ -471,7 +481,13 @@ local function layoutBrief(s)
 		list.Position, list.Size = UDim2.fromOffset(pad, listTop), UDim2.new(1, -2 * pad, 1, -(listTop + pad * 0.6))
 		fit(labels, w - 2 * pad, hgt - listTop - pad * 0.6, bodyS)
 	end
-	if narrow then
+	local islandOnly = matchOnly and b.key == "island" -- v1.4: no map / HOW TO WIN off a match
+	b.rules.Visible = not islandOnly
+	if islandOnly then
+		b.map.Visible = false
+		local w = narrow and bw or 44 * cw
+		place(b.team, b.teamHead, b.teamList, narrow and x0 or (x0 + 6 * cw), top, w, math.min(areaH, narrow and math.max(70, areaH * 0.45) or 18 * cw), b.teamLabels)
+	elseif narrow then
 		local h1 = (areaH - gap) * 0.55
 		place(b.rules, b.rulesHead, b.rulesList, x0, top, bw, h1, b.ruleLabels)
 		place(b.team, b.teamHead, b.teamList, x0, top + h1 + gap, bw, areaH - h1 - gap, b.teamLabels)
@@ -693,6 +709,10 @@ local function build(mode, target)
 	s.cover.BackgroundTransparency = 1
 	-- v1.3: the mode briefing over the pod
 	local bk = briefOn and target and BRIEF_KEY[target]
+	if matchOnly and mode == "play" and bk == "bots" and target == "Sandbox" then -- v1.4: PLAY on the island, not the bots match
+		local ok, kind = pcall(function() return game:GetService("ReplicatedStorage"):GetAttribute("ServerKind") end)
+		if ok and kind == "hub" then bk = "island" end
+	end
 	if bk and (mode == "travel" or mode == "arrive" or mode == "play") then
 		if mode == "travel" then
 			s.squad = squadNames()
