@@ -134,11 +134,6 @@
 --     for the dino you arrive with (the lineup starting, or loading in during it). Player SkillLoadoutFrom = "saved" after it,
 --     "" when the dino has no saved loadout. Changing slots afterwards does not change the saved loadout.
 --   Switch: script attribute SkillSavedLoadoutEnabled (default true, read per request / apply; false = 1.11).
--- v1.13 (Kepu 2026-11-13 14:46 "Let's the Troodon have its glide mechanic from before where it auto glides"): the max-all test
---   layer (1.11) leaves out the stat rows listed in script attribute SkillTestMaxAllSkip (comma list of path ids, default
---   "tfeet"): Quick Feet is no longer given, so the troodon keeps JumpAirJumps 2 (leap + 2 flaps, then the auto glide) and
---   no flap-forward boost, as in v770. A row the player really bought stays (real steps untouched). Changing the attribute
---   republishes everyone. "" = 1.12 (every row given).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -148,7 +143,6 @@ local VERSION = "1.9"
 VERSION = "1.10" -- v1.10 match XP grant
 VERSION = "1.11" -- v1.11 max-all test switch
 VERSION = "1.12" -- v1.12 saved loadout + pre-game apply
-VERSION = "1.13" -- v1.13 max-all skip list (troodon glide)
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -197,13 +191,6 @@ local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest; 
 
 -- v1.6: the live mecha parts the active dino owns (PATH_ORDER order)
 local function maxAll() return script:GetAttribute("SkillTestMaxAllEnabled") ~= false end -- v1.11
-if script:GetAttribute("SkillTestMaxAllSkip") == nil then script:SetAttribute("SkillTestMaxAllSkip", "tfeet") end -- v1.13
-local function maxAllSkips(id) -- v1.13
-	for s in string.gmatch(tostring(script:GetAttribute("SkillTestMaxAllSkip") or ""), "[^,%s]+") do
-		if s == id then return true end
-	end
-	return false
-end
 local function testParts(d)
 	local out = {}
 	if (script:GetAttribute("SkillTestCloakEnabled") ~= true and not maxAll()) or not d.active then return out end -- v1.11: or max-all
@@ -222,7 +209,7 @@ local function testStats(d)
 	if not maxAll() or not d.active then return out end
 	for _, id in ipairs(ST.PATH_ORDER) do
 		local p = ST.PATHS[id]
-		if p and not p.soon and not ST.LIVE_MECH[id] and ST.seesPath(p, d.active) and not maxAllSkips(id) then table.insert(out, id) end -- v1.13: skip list
+		if p and not p.soon and not ST.LIVE_MECH[id] and ST.seesPath(p, d.active) then table.insert(out, id) end
 	end
 	return out
 end
@@ -478,11 +465,6 @@ script:GetAttributeChangedSignal("SkillTestCloakEnabled"):Connect(function() -- 
 	end
 end)
 script:GetAttributeChangedSignal("SkillTestMaxAllEnabled"):Connect(function() -- v1.11
-	for player, d in pairs(data) do
-		if d.loaded then publish(player, d, false) end
-	end
-end)
-script:GetAttributeChangedSignal("SkillTestMaxAllSkip"):Connect(function() -- v1.13
 	for player, d in pairs(data) do
 		if d.loaded then publish(player, d, false) end
 	end

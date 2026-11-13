@@ -3467,4 +3467,3 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkillServer 1.12 `SkillSavedLoadoutEnabled` (true, per lineup / request). Player `SkillSavedLoadout` (4 ids, comma-joined), `SkillLoadoutFrom` ("saved" / ""); SkillLastResult "saved".
 - Lab 1.16 `LabSaveLoadoutEnabled` (true, per layout / draw).
 - PregameScreen 1.2 `PregameSavedTagEnabled` (true, per draw).
-- SkillServer 1.13 `SkillTestMaxAllSkip` ("tfeet", comma list of path ids, per publish; change republishes): stat rows the max-all test layer leaves out. "" = 1.12.
