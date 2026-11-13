@@ -64,6 +64,16 @@
 --   Leaving early (same test: 2 bots on the Summit by 29 / 37 s, the rest set off when it opened and were still on the trail
 --   when it moved): when the next point is high and the current one has PracticeServer attribute PrClimbEarlySec (20) s or
 --   less left, a bot whose job is not "hold" climbs to the next point already (holders stay on the current point).
+-- v2.3 (Kepu 2026-11-12 17:18 "when we would eliminate all the enemy bots my teammate bots would just stand around right outside
+--   the point. Can you make it so the bots when there is no enemies that they prioritize the point"; found: a "guard" bot's
+--   spot is PracticeRules.GUARD_RING (45) from the centre = the point's edge (HardpointRules.RADIUS 45), a "duel" bot waits on
+--   its hunt spot 145 studs off before it sweeps): while no enemy is alive (PracticeBrain.enemiesOf is empty: every enemy bot
+--   dead, no enemy player in play), every bot not retreating goes onto the current point, whatever its job: its goal is a spot
+--   RUSH_R x 0.3..1 (6..20) studs from the centre (picked once per point; only where the ground is within 4 studs of the
+--   centre's and not water, else the centre), the climb route still takes it up a high point, and it does not leave early
+--   for the next point. Then it roams there as 2.1. BotState "rush" ("climb" / "swim" on the way); model attribute
+--   BotRushes (count). Ends the moment an enemy is alive again. Switch: PracticeServer attribute PrRushPointEnabled (default
+--   true, read per tick; false = 2.2).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
@@ -72,6 +82,7 @@ local M = {}
 M.Version = "2.0"
 M.Version = "2.1" -- v2.1 arrive by flat distance
 M.Version = "2.2" -- v2.2 climb routes
+M.Version = "2.3" -- v2.3 onto the point when no enemy is alive
 local Climb = nil -- v2.2
 do
 	local mod = script.Parent and script.Parent:FindFirstChild("PracticeClimb")
@@ -79,6 +90,7 @@ do
 end
 local ARRIVE_FLAT = 4 -- v2.1
 local ROAM_NEAR, ROAM_R, DUEL_WAIT = 6, 10, 3 -- v2.1 roam
+local RUSH_R = 20 -- v2.3
 
 local NEAR, NEAR_CLOAK = 20, 15
 local DIRECT, REPATH, WATER_COST = 40, 1.5, 3
@@ -619,8 +631,32 @@ function M.step(b, ctx)
 	elseif ctx.centre then
 		goal = R.goalFor(b.role, ctx.centre, ctx.nextCentre, ctx.home or p, ctx.into, ctx.pointTime)
 		if job and R.jobGoal then goal = R.jobGoal(job, ctx.centre, ctx.nextCentre, ctx.home or p) end
-		-- v2.2: climb routes (see the header)
 		local ps = game:GetService("ServerScriptService"):FindFirstChild("PracticeServer")
+		-- v2.3: no enemy alive -> onto the point (see the header)
+		local rush = #enemies == 0 and not (ps and ps:GetAttribute("PrRushPointEnabled") == false)
+		if rush then
+			if v.rushIdx ~= ctx.index then
+				v.rushIdx, v.rushOff = ctx.index, Vector3.zero
+				local gc = groundAt(ctx.centre)
+				for _ = 1, 4 do
+					local a = math.random() * math.pi * 2
+					local off = Vector3.new(math.cos(a), 0, math.sin(a)) * (RUSH_R * (0.3 + 0.7 * math.random()))
+					local g = gc and groundAt(ctx.centre + off)
+					if g and math.abs(g.Y - gc.Y) < 4 and not (IslandWater and IslandWater.isWater(g)) then
+						v.rushOff = Vector3.new(off.X, g.Y - ctx.centre.Y, off.Z)
+						break
+					end
+				end
+			end
+			if not v.rushing then
+				v.rushing = true
+				m:SetAttribute("BotRushes", (m:GetAttribute("BotRushes") or 0) + 1)
+			end
+			goal = ctx.centre + v.rushOff
+		else
+			v.rushing = nil
+		end
+		-- v2.2: climb routes (see the header)
 		if Climb and not (ps and ps:GetAttribute("PrClimbRoutesEnabled") == false) then
 			local high = nil
 			for _, c in ipairs({ctx.centre, ctx.nextCentre}) do
@@ -628,7 +664,7 @@ function M.step(b, ctx)
 			end
 			local nc = ctx.nextCentre
 			local left = (ctx.pointTime or 60) - (ctx.into or 0)
-			if not high and job ~= "hold" and typeof(nc) == "Vector3" and nc.Y > Climb.MIN_Y and nc ~= ctx.centre
+			if not high and not rush and job ~= "hold" and typeof(nc) == "Vector3" and nc.Y > Climb.MIN_Y and nc ~= ctx.centre
 				and left <= (tonumber(ps and ps:GetAttribute("PrClimbEarlySec")) or 20) then
 				high = nc -- leaving early (see the header)
 			end
@@ -668,7 +704,7 @@ function M.step(b, ctx)
 				v.holdUntil = os.clock() + HOLD_TIME
 			end
 		end
-		setState(m, swimming and "swim" or "move")
+		setState(m, swimming and "swim" or (rush and "rush") or "move") -- v2.3: + rush
 		goal = roam(b, goal, job, ctx) -- v2.1
 	else
 		goal = p

@@ -3423,3 +3423,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - EggLoader 1.4 `EggLoaderMatchOnlyEnabled` (true, read at start): map + HOW TO WIN only on ARENA / VS BOTS; PLAY on a hub server shows ISLAND; false = 1.3.
 - EggLoader 1.5 `EggLoaderIslandEggEnabled` (true, read at start): non-match loads (ISLAND, PLAY on a hub server) show the egg pod; false = 1.4's slim island screen.
 - MainMenu `MainMenuIslandLoaderEnabled` (true, per trip).
+- PracticeBrain2 2.3: PracticeServer `PrRushPointEnabled` (true, read per tick): no enemy alive -> every bot onto the point; model `BotRushes`, BotState "rush".
