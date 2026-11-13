@@ -28,15 +28,27 @@
 --   loader (EggLoader, or the full-screen fallback "TRAVELING TO <MODE>") comes up at "saving" as well as "teleporting", so
 --   walking into a portal goes straight to the loading screen; the countdown panel only shows while a "count" phase exists.
 --   Switch: script attribute PortalHUDLoadOnSaveEnabled (default true, read per change; false = 1.0).
+-- v1.2 (Kepu 2026-11-12 17:38 "Remove the safe area message when you load in, it's already obvious. Just have it say safe area
+--   for 5 seconds then disappear"): the safe banner reads only "SAFE AREA" (no "NO FIGHTING HERE" line; the banner shrinks
+--   to the title) and hides PortalHUDSafeSec (5) s after it appears; it comes back for 5 s each time you enter the safe area
+--   again (a new character, or walking back onto the islet / bridge). Kepu 17:38 "And then leaving safe area for 5 seconds you
+--   don't need to do that AI crap where you explain something obvious": leaving the safe area shows "LEAVING SAFE AREA" (red,
+--   title only) for PortalHUDSafeSec (5) s, in place of the guard / fighting banners ("FIGHTING ON" / "PROTECTED n" /
+--   "PLAYERS CAN HIT YOU"); the guard itself (HubServer) is unchanged.
+--   Switch: script attribute PortalHUDSafeBriefEnabled (default true, read per frame; false = 1.1). Diagnostic: PortalHUDBanner
+--   "safeDone" / "leaving" / "leftDone".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 safe banner: title only, 5 s
 local player = Players.LocalPlayer
 player:SetAttribute("PortalHUDVersion", VERSION)
 if script:GetAttribute("PortalHUDEnabled") == nil then script:SetAttribute("PortalHUDEnabled", true) end
 if script:GetAttribute("PortalHUDLoadOnSaveEnabled") == nil then script:SetAttribute("PortalHUDLoadOnSaveEnabled", true) end -- v1.1
+if script:GetAttribute("PortalHUDSafeBriefEnabled") == nil then script:SetAttribute("PortalHUDSafeBriefEnabled", true) end -- v1.2
+if script:GetAttribute("PortalHUDSafeSec") == nil then script:SetAttribute("PortalHUDSafeSec", 5) end -- v1.2
 local function loading(st) -- v1.1
 	return st == "teleporting" or (st == "saving" and script:GetAttribute("PortalHUDLoadOnSaveEnabled") ~= false)
 end
@@ -225,6 +237,7 @@ end
 
 local lastGuardEnd = 0
 local lastU = -1
+local safeSince, safeChar, wasSafe, leftAt = 0, nil, false, nil -- v1.2
 RunService.RenderStepped:Connect(function()
 	local on = script:GetAttribute("PortalHUDEnabled") ~= false
 	local cam = workspace.CurrentCamera
@@ -247,7 +260,21 @@ RunService.RenderStepped:Connect(function()
 			mode = "fight"
 		end
 	end
-	banner.Visible = mode ~= "hidden"
+	-- v1.2: the safe banner shows for PortalHUDSafeSec after you enter the safe area, title only
+	local brief = script:GetAttribute("PortalHUDSafeBriefEnabled") ~= false
+	local briefSec = tonumber(script:GetAttribute("PortalHUDSafeSec")) or 5
+	if mode == "safe" then
+		if not wasSafe or safeChar ~= c then safeSince, safeChar = os.clock(), c end
+		wasSafe, leftAt = true, nil
+		if brief and os.clock() - safeSince > briefSec then mode = "safeDone" end
+	else
+		if wasSafe and live and c and c == safeChar then leftAt = os.clock() end
+		wasSafe = false
+		if brief and (mode == "guard" or mode == "fight" or leftAt) then
+			mode = (leftAt and os.clock() - leftAt <= briefSec and live) and "leaving" or "leftDone"
+		end
+	end
+	banner.Visible = mode ~= "hidden" and mode ~= "safeDone" and mode ~= "leftDone"
 	if player:GetAttribute("PortalHUDBanner") ~= mode then player:SetAttribute("PortalHUDBanner", mode) end
 	if u ~= lastU then -- sizes only when the screen changes (FontSwap re-fits a TextSize a script sets)
 		lastU = u
@@ -287,8 +314,16 @@ RunService.RenderStepped:Connect(function()
 	if banner.Visible then
 		local col = mode == "safe" and CYAN or RED
 		bTitle.TextColor3, bannerStroke.Color = col, col
-		if mode == "safe" then
-			bTitle.Text, bLine.Text = "SAFE AREA", "NO FIGHTING HERE"
+		local short = brief and (mode == "safe" or mode == "leaving") -- v1.2: title only
+		bLine.Visible = not short
+		local ts, ls = bTitle.TextSize, bLine.TextSize
+		local h = short and (ts + math.floor(16 * u)) or (ts + ls + math.floor(22 * u))
+		local bw = math.floor((mode == "leaving" and 340 or 260) * u) -- the longer title gets a wider banner
+		if banner.Size.Y.Offset ~= h or banner.Size.X.Offset ~= bw then banner.Size = UDim2.fromOffset(bw, h) end
+		if mode == "leaving" then -- v1.2
+			bTitle.Text, bLine.Text = "LEAVING SAFE AREA", ""
+		elseif mode == "safe" then
+			bTitle.Text, bLine.Text = "SAFE AREA", short and "" or "NO FIGHTING HERE"
 		elseif mode == "guard" then
 			bTitle.Text, bLine.Text = "FIGHTING ON", "PROTECTED " .. math.max(1, math.ceil(lastGuardEnd - t))
 		else
