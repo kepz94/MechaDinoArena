@@ -65,6 +65,17 @@
 --   * Test hook: Invoke("queue", player) joins as the portal would; Invoke("leaveQueue", player); "state" adds "queued n".
 --   Switch: script attribute HubArenaQueueEnabled (default true, read per portal entry / tick; false = 1.3: the ARENA portal
 --   travels to a public Arena server). Diagnostics: HubQueued (humans queued), HubQueueMatches.
+-- v1.5 (bug, Kepu 2026-11-13 12:58 "Some dinos land at the previous spawn instead of the portal area", "Right after joining"):
+--   PLAY moves the dino twice: ModeServer's unpark pivots it to the old SpawnLocation and unanchors it (the client then owns
+--   it), and 0.15 s later the islet spawn pivots it again while it is client-owned. Not reproduced in Studio (all 8 dinos,
+--   PLAY and death, 0.25 s replication lag: always on the islet); the live client can send its SpawnLocation position back
+--   over the server's move. Now, per islet spawn (switch HubPlaceSafeEnabled, default true, read per spawn):
+--   * the root is anchored and its network owner set to the server for the move, then after HubPlaceHold (0.3) s unanchored
+--     (and ownership back to auto) unless the player is in the menu again (the menu parks and anchors it itself);
+--   * checks at HubPlaceCheckA (1) s and HubPlaceCheckB (3) s after the spawn: when this spawn is still the latest (HubSpawnAt
+--     unchanged), the dino is alive, out of the menu and its root is within HubPlaceFixRadius (60) studs (flat) of the
+--     SpawnLocation, it is placed on the islet again, at most HubPlaceFixMax (2) times per spawn.
+--   Diagnostics: script HubPlaceFixes (re-placements); player HubPlaceLast ("placed <i>" / "fixed <i> from spawn").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -74,6 +85,7 @@ local HttpService = game:GetService("HttpService")
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 portal flare
 VERSION = "1.4" -- v1.4 Arena queue
+VERSION = "1.5" -- v1.5 islet spawn hold + check
 local PLACE_DELAY, RESPAWN_DELAY = 0.15, 0.3
 
 script:SetAttribute("HubServerVersion", VERSION)
@@ -149,8 +161,39 @@ local function rootOf(p)
 end
 
 -- ---------- islet spawns ----------
+-- v1.5: hold + check (see the header)
+for k, v in pairs({HubPlaceSafeEnabled = true, HubPlaceHold = 0.3, HubPlaceCheckA = 1, HubPlaceCheckB = 3, HubPlaceFixRadius = 60,
+	HubPlaceFixMax = 2}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local function placeSafe() return script:GetAttribute("HubPlaceSafeEnabled") ~= false end
+local function nearOldSpawn(pos)
+	local sl = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+	if not sl then return false end
+	local d = Vector3.new(pos.X - sl.Position.X, 0, pos.Z - sl.Position.Z).Magnitude
+	return d <= (tonumber(script:GetAttribute("HubPlaceFixRadius")) or 60)
+end
 local lastSpawn = 0
-local function place(p)
+local place
+local function holdAndCheck(p, c, hrp, at, fixes)
+	task.delay(tonumber(script:GetAttribute("HubPlaceHold")) or 0.3, function()
+		if hrp.Parent and hrp.Anchored and p:GetAttribute("InMenu") ~= true then
+			hrp.Anchored = false
+			pcall(function() hrp:SetNetworkOwnershipAuto() end)
+		end
+	end)
+	for _, key in ipairs({"HubPlaceCheckA", "HubPlaceCheckB"}) do
+		task.delay(tonumber(script:GetAttribute(key)) or 1, function()
+			if not placeSafe() or p.Parent ~= Players or p.Character ~= c or p:GetAttribute("HubSpawnAt") ~= at then return end
+			if p:GetAttribute("InMenu") == true or fixes >= (tonumber(script:GetAttribute("HubPlaceFixMax")) or 2) then return end
+			local hum = c:FindFirstChildOfClass("Humanoid")
+			if not (hrp.Parent and hum and hum.Health > 0) or not nearOldSpawn(hrp.Position) then return end
+			script:SetAttribute("HubPlaceFixes", (script:GetAttribute("HubPlaceFixes") or 0) + 1)
+			place(p, fixes + 1)
+		end)
+	end
+end
+function place(p, fixes) -- v1.5: fixes = re-placements of this spawn so far (nil = a new spawn)
 	local c = p.Character
 	local hrp = c and c:FindFirstChild("HumanoidRootPart")
 	local hum = c and c:FindFirstChildOfClass("Humanoid")
@@ -169,6 +212,11 @@ local function place(p)
 	local s = spawns[best]
 	local pos = s.Position + Vector3.new(0, s.Size.Y / 2 + hrp.Size.Y / 2 + hum.HipHeight, 0)
 	local look = Vector3.new(s.CFrame.LookVector.X, 0, s.CFrame.LookVector.Z).Unit
+	local safe = placeSafe() -- v1.5: server-held move
+	if safe then
+		pcall(function() hrp:SetNetworkOwner(nil) end) -- before anchoring (the ownership API refuses anchored parts)
+		hrp.Anchored = true
+	end
 	c:PivotTo(CFrame.lookAt(pos, pos + look))
 	c:SetAttribute("HubGuardUntil", nil)
 	c:SetAttribute("ShoulderCamLookAt", pos + look * 500)
@@ -178,6 +226,10 @@ local function place(p)
 	p:SetAttribute("HubSpawnIndex", best)
 	p:SetAttribute("HubSpawnAt", now())
 	script:SetAttribute("HubPlaced", (script:GetAttribute("HubPlaced") or 0) + 1)
+	if safe then -- v1.5
+		p:SetAttribute("HubPlaceLast", (fixes and fixes > 0) and ("fixed " .. best .. " from spawn") or ("placed " .. best))
+		holdAndCheck(p, c, hrp, p:GetAttribute("HubSpawnAt"), fixes or 0)
+	end
 end
 
 -- ---------- trips ----------

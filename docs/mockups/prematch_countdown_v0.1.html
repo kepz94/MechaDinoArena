@@ -1,0 +1,145 @@
+<title>Pre-Match Countdown</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;600&display=swap">
+<style>
+/* Mecha Dino Arena: 10 s pre-match countdown after the intros (Kepu 2026-11-13 "Look at how cod does this"). Dark game look. */
+:root { --ink:#0d1218; --panel:#151d27; --line:#263243; --text:#e7edf5; --muted:#93a2b6; --yellow:#ffc832; --blue:#5aa0ff; --red:#e0284a; --green:#46e08a;
+  --f-d:"Silkscreen","Courier New",monospace; --f-b:"Inter",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+html,body { background:var(--ink); color:var(--text); margin:0; }
+body { font-family:var(--f-b); font-size:15px; line-height:1.5; }
+.wrap { max-width:1160px; margin:0 auto; padding-block:28px 60px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:18px; }
+.eyebrow { font-family:var(--f-d); font-size:12px; letter-spacing:.12em; color:var(--muted); }
+h1 { font-family:var(--f-d); font-size:clamp(22px,4vw,34px); margin:6px 0; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.btn { font-family:var(--f-d); font-size:12px; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:9px 13px; cursor:pointer; }
+.btn[aria-pressed="true"] { border-color:var(--yellow); box-shadow:inset 0 -3px 0 var(--yellow); }
+.label { font-family:var(--f-d); font-size:11px; color:var(--muted); letter-spacing:.1em; }
+.screens { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr)); gap:14px; }
+.cap { font-family:var(--f-d); font-size:11px; color:var(--muted); margin-bottom:6px; letter-spacing:.1em; }
+.screen { position:relative; width:100%; aspect-ratio:16/9; border:1px solid var(--line); border-radius:10px; overflow:hidden; container-type:inline-size;
+  background:linear-gradient(#86c9ff 0 38%, #8fd07a 38% 100%); }
+.screen.phone { aspect-ratio:19.5/9; }
+.screen * { font-family:var(--f-d); }
+/* world */
+.hill { position:absolute; left:52%; top:22%; width:34cqw; height:18cqw; background:#6aa65a; clip-path:polygon(0 100%,30% 30%,55% 0,80% 40%,100% 100%); }
+.tree { position:absolute; width:3cqw; height:6cqw; background:#2f6b33; border-radius:50% 50% 10% 10%; }
+.dino { position:absolute; left:40%; bottom:8%; width:20cqw; height:16cqw; background:#3f7d34; clip-path:polygon(0 60%,30% 45%,55% 40%,70% 10%,100% 20%,85% 35%,70% 55%,60% 95%,45% 95%,40% 70%,20% 75%); }
+.mate { position:absolute; width:8cqw; height:6cqw; background:#3a6aa0; clip-path:polygon(0 60%,30% 45%,55% 40%,70% 10%,100% 20%,85% 35%,70% 55%,60% 95%,45% 95%,40% 70%,20% 75%); }
+.mtag { position:absolute; font-size:1cqw; color:var(--blue); transform:translateX(-50%); }
+/* HUD */
+.dim { position:absolute; inset:0; background:radial-gradient(70% 70% at 50% 45%, rgba(0,0,0,0) 30%, rgba(5,8,12,.55)); }
+.score { position:absolute; left:2cqw; top:2cqw; background:rgba(13,18,24,.8); border-radius:.6cqw; padding:.6cqw 1cqw; font-size:1.1cqw; display:grid; gap:.3cqw; }
+.score b { color:var(--blue); } .score i { color:var(--red); font-style:normal; }
+.p1 { position:absolute; left:58%; top:20%; transform:translate(-50%,-100%); text-align:center; }
+.p1 .d { width:3.4cqw; height:3.4cqw; margin:0 auto; background:var(--yellow); transform:rotate(45deg); display:grid; place-items:center; box-shadow:0 0 1.5cqw rgba(255,200,50,.7); }
+.p1 .d span { transform:rotate(-45deg); font-size:1.2cqw; color:#1b1405; }
+.p1 .n { font-size:1cqw; color:#fff; text-shadow:0 .2cqw .4cqw #000; margin-top:.8cqw; }
+.p1 .m { font-size:.9cqw; color:var(--yellow); text-shadow:0 .2cqw .4cqw #000; }
+.p1.pulse .d { animation:pulse 1s infinite; }
+@keyframes pulse { 50% { box-shadow:0 0 3cqw rgba(255,200,50,1); transform:rotate(45deg) scale(1.12); } }
+.center { position:absolute; left:0; right:0; top:30%; text-align:center; }
+.mode { font-size:1.4cqw; color:var(--yellow); letter-spacing:.2em; }
+.obj { font-size:2.6cqw; color:#fff; text-shadow:0 .3cqw .6cqw #000; margin-top:.4cqw; }
+.how { font-size:1.15cqw; color:#d5dde8; text-shadow:0 .2cqw .4cqw #000; margin-top:.6cqw; }
+.begins { font-size:1.2cqw; color:#d5dde8; margin-top:2cqw; letter-spacing:.15em; text-shadow:0 .2cqw .4cqw #000; }
+.num { font-size:9cqw; line-height:1; color:#fff; text-shadow:0 .5cqw 1cqw #000; }
+.num.last { color:var(--yellow); }
+.first { display:inline-flex; gap:.8cqw; align-items:center; margin-top:1.4cqw; background:rgba(13,18,24,.82); border:.15cqw solid var(--yellow); border-radius:3cqw; padding:.5cqw 1.4cqw; font-size:1.2cqw; }
+.first .dd { width:1.2cqw; height:1.2cqw; background:var(--yellow); transform:rotate(45deg); }
+.held { position:absolute; left:50%; bottom:3cqw; transform:translateX(-50%); font-size:1cqw; color:var(--muted); background:rgba(13,18,24,.75); padding:.4cqw 1cqw; border-radius:.5cqw; }
+/* B map card */
+.map { position:absolute; left:3cqw; top:22%; width:24cqw; aspect-ratio:1; background:#1d3a2a; border:.2cqw solid #2f5a40; border-radius:1cqw; overflow:hidden; }
+.map .isl { position:absolute; inset:10%; background:#4f8f4a; border-radius:42% 48% 40% 50%; }
+.map .pt { position:absolute; width:2cqw; height:2cqw; transform:translate(-50%,-50%) rotate(45deg); background:#2a3a4d; border:.15cqw solid #93a2b6; display:grid; place-items:center; }
+.map .pt span { transform:rotate(-45deg); font-size:.8cqw; color:#c9d4e2; }
+.map .pt.on { background:var(--yellow); border-color:#fff; box-shadow:0 0 1.2cqw rgba(255,200,50,.9); animation:pulse 1s infinite; }
+.map .pt.on span { color:#1b1405; }
+.map .you { position:absolute; width:0; height:0; border-left:.9cqw solid transparent; border-right:.9cqw solid transparent; border-bottom:1.8cqw solid var(--blue); transform:translate(-50%,-50%) rotate(40deg); }
+.map .route { position:absolute; height:.3cqw; background:repeating-linear-gradient(90deg,var(--yellow) 0 1cqw,transparent 1cqw 1.8cqw); transform-origin:0 50%; }
+.map .ttl { position:absolute; left:0; right:0; bottom:.6cqw; text-align:center; font-size:.9cqw; color:#d5dde8; }
+.topnum { position:absolute; left:0; right:0; top:4%; text-align:center; }
+.topnum .num { font-size:6cqw; }
+/* C flyover */
+.fly { position:absolute; inset:0; background:linear-gradient(#86c9ff 0 25%, #79bd67 25%); }
+.fly .ring { position:absolute; left:50%; top:62%; width:36cqw; height:12cqw; border:.4cqw dashed var(--yellow); border-radius:50%; transform:translate(-50%,-50%); }
+.fly .pylon { position:absolute; width:1.6cqw; height:10cqw; background:linear-gradient(#ffd85c,#b88a15); }
+.fly .big { position:absolute; left:0; right:0; top:14%; text-align:center; }
+.fly .big .a { font-size:1.3cqw; color:var(--yellow); letter-spacing:.2em; text-shadow:0 .2cqw .4cqw #000; }
+.fly .big .b { font-size:4cqw; color:#fff; text-shadow:0 .3cqw .6cqw #000; }
+.bar { position:absolute; left:30%; right:30%; bottom:4cqw; height:.6cqw; background:rgba(0,0,0,.4); border-radius:1cqw; overflow:hidden; }
+.bar i { display:block; height:100%; background:var(--yellow); }
+.hide { display:none !important; }
+.notes { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+.note { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; min-width:0; }
+.note h3 { font-family:var(--f-d); font-size:13px; margin:0 0 6px; color:var(--yellow); } .note p { margin:0 0 6px; color:#c9d4e2; }
+.cod { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.cod h3 { font-family:var(--f-d); font-size:13px; margin:0 0 6px; color:var(--muted); } .cod ul { margin:0; padding-left:18px; color:#c9d4e2; }
+input[type=range] { width:220px; }
+</style>
+<div class="wrap">
+  <div><div class="eyebrow">MECHA DINO ARENA · MOCKUP v0.1 · PRE-MATCH</div><h1>10 second countdown after the intros</h1></div>
+  <div class="cod"><h3>WHAT COD DOES</h3><ul>
+    <li>After the infil, a countdown runs before the match: everyone is held in place (you can look around, not move or fire).</li>
+    <li>Mode name and objective on screen; the first objective's marker is already in the world, and it shows on the minimap.</li>
+    <li>Ticks on the last seconds, then the match starts. Hardpoint's first point goes live a few seconds in.</li></ul></div>
+  <div class="row">
+    <span class="label">OPTION</span>
+    <button class="btn" data-o="a" aria-pressed="true">A · CENTRE COUNTDOWN</button>
+    <button class="btn" data-o="b" aria-pressed="false">B · MAP CARD</button>
+    <button class="btn" data-o="c" aria-pressed="false">C · POINT FLYOVER</button>
+    <span class="label" style="margin-left:10px">SECOND</span>
+    <input type="range" id="t" min="0" max="10" step="1" value="10" aria-label="Seconds left">
+    <span class="label" id="tl">10</span>
+    <button class="btn" id="play" aria-pressed="false">PLAY 10 s</button>
+  </div>
+  <div class="screens">
+    <div><div class="cap">PC</div><div class="screen" id="pc"></div></div>
+    <div><div class="cap">PHONE</div><div class="screen phone" id="ph"></div></div>
+  </div>
+  <div class="notes">
+    <div class="note"><h3>A · CENTRE COUNTDOWN</h3><p>Closest to CoD. Big number in the middle, HARDPOINT, the objective, how you score, and a FIRST POINT pill. The P1 marker pulses in the world with its distance.</p></div>
+    <div class="note"><h3>B · MAP CARD</h3><p>Countdown at the top. A map card shows the island, all 5 points, P1 lit, you, and a dotted line from you to P1. Teaches the rotation too.</p></div>
+    <div class="note"><h3>C · POINT FLYOVER</h3><p>Seconds 10–6 the camera shows P1 itself ("FIRST POINT · CENTRE MEADOW"), then back to your dino for 5–1 with the objective. Most cinematic; you see the real place.</p></div>
+    <div class="note"><h3>IN ALL OF THEM</h3><p>Everyone held in place for the 10 s (look around only). At 0: "GO" and the match starts with P1 live. Bots matches and Arena 4v4.</p></div>
+  </div>
+</div>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  let opt = "a", t = 10, timer = null;
+  const world = `<div class="hill"></div><div class="tree" style="left:12%;top:40%"></div><div class="tree" style="left:20%;top:44%"></div><div class="tree" style="left:84%;top:42%"></div>
+    <div class="mate" style="left:24%;bottom:14%"></div><div class="mtag" style="left:28%;bottom:23%">PIKE</div>
+    <div class="mate" style="left:68%;bottom:12%"></div><div class="mtag" style="left:72%;bottom:21%">MAKO</div>
+    <div class="dino"></div>`;
+  const score = `<div class="score"><div><b>BLUE 0</b> · <i>0 RED</i></div><div style="color:#93a2b6">FIRST TO 250</div></div>`;
+  const p1 = (pulse) => `<div class="p1 ${pulse ? "pulse" : ""}"><div class="d"><span>1</span></div><div class="n">CENTRE MEADOW</div><div class="m">340 m</div></div>`;
+  const num = n => n > 0 ? `<div class="num ${n <= 3 ? "last" : ""}">${n}</div>` : `<div class="num last">GO</div>`;
+  const pts = [{x:45,y:53,n:1},{x:80,y:38,n:2},{x:70,y:72,n:3},{x:27,y:76,n:4},{x:15,y:30,n:5}];
+  function screen(n) {
+    if (opt === "a") return world + `<div class="dim"></div>` + score + p1(true) +
+      `<div class="center"><div class="mode">HARDPOINT</div><div class="obj">CAPTURE AND HOLD THE HARDPOINT</div>
+       <div class="how">+1 PER SECOND PER DINO ON THE POINT · FIRST TO 250</div><div class="begins">${n > 0 ? "MATCH BEGINS IN" : ""}</div>${num(n)}
+       <div class="first"><span class="dd"></span>FIRST POINT · P1 CENTRE MEADOW</div></div>` + (n > 0 ? `<div class="held">HELD UNTIL GO · LOOK AROUND</div>` : "");
+    if (opt === "b") {
+      const ptsHtml = pts.map(p => `<div class="pt ${p.n === 1 ? "on" : ""}" style="left:${p.x}%;top:${p.y}%"><span>${p.n}</span></div>`).join("");
+      return world + `<div class="dim"></div>` + score + p1(false) +
+        `<div class="topnum"><div class="mode">HARDPOINT · CAPTURE AND HOLD</div>${num(n)}</div>
+         <div class="map"><div class="isl"></div>${ptsHtml}<div class="route" style="left:62%;top:82%;width:12cqw;transform:rotate(-140deg)"></div><div class="you" style="left:62%;top:82%"></div><div class="ttl">P1 FIRST · THEN 2 · 3 · 4 · 5</div></div>` +
+        (n > 0 ? `<div class="held">HELD UNTIL GO · LOOK AROUND</div>` : "");
+    }
+    if (n >= 6) return `<div class="fly"><div class="ring"></div><div class="pylon" style="left:30%;top:42%"></div><div class="pylon" style="left:68%;top:42%"></div>
+        <div class="pylon" style="left:49%;top:38%"></div></div>` + score +
+        `<div class="fly"><div class="big"><div class="a">FIRST POINT · P1</div><div class="b">CENTRE MEADOW</div></div></div>` +
+        `<div class="bar"><i style="width:${(10 - n) * 10}%"></i></div>`;
+    return world + `<div class="dim"></div>` + score + p1(true) +
+      `<div class="center"><div class="mode">HARDPOINT</div><div class="obj">CAPTURE AND HOLD THE HARDPOINT</div><div class="begins">${n > 0 ? "MATCH BEGINS IN" : ""}</div>${num(n)}</div>` +
+      (n > 0 ? `<div class="held">HELD UNTIL GO · LOOK AROUND</div>` : "");
+  }
+  function draw() { $("#tl").textContent = t; const h = screen(t); $("#pc").innerHTML = h; $("#ph").innerHTML = h; }
+  document.querySelectorAll("[data-o]").forEach(b => b.onclick = () => { opt = b.dataset.o; document.querySelectorAll("[data-o]").forEach(x => x.setAttribute("aria-pressed", x === b)); draw(); });
+  $("#t").oninput = e => { t = +e.target.value; draw(); };
+  $("#play").onclick = () => { clearInterval(timer); t = 10; $("#t").value = 10; draw(); timer = setInterval(() => { t = Math.max(0, t - 1); $("#t").value = t; draw(); if (t === 0) clearInterval(timer); }, 1000); };
+  draw();
+})();
+</script>
