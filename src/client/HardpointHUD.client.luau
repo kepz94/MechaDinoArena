@@ -133,6 +133,17 @@
 --   "BACK TO ISLAND IN m:ss" (after PLAY AGAIN: the old "TEAM SCREEN IN" / "NEXT MATCH IN"). Switch: script attribute
 --   HardpointHUDAutoIslandEnabled (default true, read per frame; false = 1.9). Diagnostic: HardpointHUDAutoIsland ("sent" /
 --   "chose:<press>" / "member" / "off").
+-- v1.11 (Arena record, MDA-496, plan docs/plans/ARENA_RECORD_v1.1.md T4, mockup docs/mockups/wl_record_v0.1.html "MATCH
+--   RESULTS (FIRST BEAT)"; Kepu 2026-11-13 pick "C · B + name tag"): on the banner beat of an Arena 4v4 (ReplicatedStorage.Practice
+--   PrArena == true), under "ARENA" / the practice line, a record line (y 172, centred) and the last-10 squares (y 216):
+--     "RECORD" (muted) "<from>" (muted) "→" "<to>" (white) + tag "+1 W" (green rgb(70,224,138)) / "+1 L" (pink) when
+--     ArenaMatchOut is "w" / "l"; "RECORD" "<from>" + tag "RECORD UNCHANGED" (grey rgb(58,70,86)) when "n"; from "-" -> "RECORD —"
+--     + the tag only. to = from + 1 win / loss (computed; the menu shows the saved record).
+--     Squares (18 px, 6 apart, centred): ArenaMatchLast + the new outcome, the last 10, oldest left.
+--   Inputs (ArenaRecordServer 1.2 player attributes): ArenaMatchId, ArenaMatchOut, ArenaMatchFrom, ArenaMatchLast. The line shows
+--   only when ArenaMatchId differs from the value this client saw when HpPhase last became "live" (a result for this match).
+--   Bots matches and public Hardpoint: the banner as 1.10. Switch: script attribute HardpointHUDRecordLineEnabled (default true,
+--   read per frame; false = 1.10). Diagnostic: HardpointHUDRecordLine ("w" / "l" / "n" / "none").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -145,6 +156,7 @@ VERSION = "1.7" -- v1.7 point marker v3
 VERSION = "1.8" -- v1.8 match end
 VERSION = "1.9" -- v1.9 end timing
 VERSION = "1.10" -- v1.10 auto back to island
+VERSION = "1.11" -- v1.11 Arena record line on the banner
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -848,6 +860,104 @@ local function autoIsland(endsAt)
 	if script:GetAttribute("HardpointHUDAutoIsland") ~= diag then script:SetAttribute("HardpointHUDAutoIsland", diag) end
 end
 
+-- v1.11: Arena record line on the banner (see the header)
+local recordLine
+do
+	if script:GetAttribute("HardpointHUDRecordLineEnabled") == nil then script:SetAttribute("HardpointHUDRecordLineEnabled", true) end
+	local GREEN, GREYTAG, MUTEDC = Color3.fromRGB(70, 224, 138), Color3.fromRGB(58, 70, 86), Color3.fromRGB(147, 162, 182)
+	local liveId = player:GetAttribute("ArenaMatchId")
+	state:GetAttributeChangedSignal("HpPhase"):Connect(function()
+		if state:GetAttribute("HpPhase") == "live" then liveId = player:GetAttribute("ArenaMatchId") end
+	end)
+	local row = Instance.new("Frame")
+	row.Name = "RecordLine"
+	row.BackgroundTransparency = 1
+	row.Position, row.Size = UDim2.fromOffset(0, 172), UDim2.new(1, 0, 0, 36)
+	row.Visible = false
+	row.Parent = endBanner
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.Padding = UDim.new(0, 12)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = row
+	local function part(order, size, color)
+		local l = label(row, {LayoutOrder = order, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, size + 6),
+			TextSize = size, TextColor3 = color, TextStrokeTransparency = 0.7})
+		return l
+	end
+	local head = part(1, 16, MUTEDC)
+	head.Text = "RECORD"
+	local from = part(2, 24, MUTEDC)
+	local arrow = part(3, 20, MUTEDC)
+	arrow.Text = "→"
+	local to = part(4, 30, Color3.new(1, 1, 1))
+	local tag = label(row, {LayoutOrder = 5, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 26), TextSize = 16,
+		BackgroundTransparency = 0, TextColor3 = Color3.fromRGB(13, 18, 24)})
+	local tc = Instance.new("UICorner")
+	tc.CornerRadius = UDim.new(0, 6)
+	tc.Parent = tag
+	local tp = Instance.new("UIPadding")
+	tp.PaddingLeft, tp.PaddingRight = UDim.new(0, 9), UDim.new(0, 9)
+	tp.Parent = tag
+	local dots = Instance.new("Frame")
+	dots.Name = "RecordLast"
+	dots.BackgroundTransparency = 1
+	dots.Position, dots.Size = UDim2.fromOffset(0, 216), UDim2.new(1, 0, 0, 18)
+	dots.Visible = false
+	dots.Parent = endBanner
+	local dl = Instance.new("UIListLayout")
+	dl.FillDirection = Enum.FillDirection.Horizontal
+	dl.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	dl.Padding = UDim.new(0, 6)
+	dl.SortOrder = Enum.SortOrder.LayoutOrder
+	dl.Parent = dots
+	local drawnKey
+	recordLine = function()
+		local pr = ReplicatedStorage:FindFirstChild("Practice")
+		local id = player:GetAttribute("ArenaMatchId")
+		local out = player:GetAttribute("ArenaMatchOut")
+		local show = script:GetAttribute("HardpointHUDRecordLineEnabled") ~= false and pr ~= nil and pr:GetAttribute("PrArena") == true
+			and type(id) == "string" and id ~= "" and id ~= liveId and (out == "w" or out == "l" or out == "n")
+		row.Visible, dots.Visible = show, show
+		local diag = show and out or "none"
+		if script:GetAttribute("HardpointHUDRecordLine") ~= diag then script:SetAttribute("HardpointHUDRecordLine", diag) end
+		if not show then return end
+		local fromT = tostring(player:GetAttribute("ArenaMatchFrom") or "-")
+		local key = id .. out .. fromT
+		if drawnKey == key then return end
+		drawnKey = key
+		local w, l = string.match(fromT, "^(%d+)%-(%d+)$")
+		local known = w ~= nil
+		w, l = tonumber(w) or 0, tonumber(l) or 0
+		from.Text = known and fromT or "—"
+		local counted = out == "w" or out == "l"
+		arrow.Visible = known and counted
+		to.Visible = known and counted
+		to.Text = out == "w" and ("%d-%d"):format(w + 1, l) or ("%d-%d"):format(w, l + 1)
+		tag.Text = out == "w" and "+1 W" or out == "l" and "+1 L" or "RECORD UNCHANGED"
+		tag.BackgroundColor3 = out == "w" and GREEN or out == "l" and PINK or GREYTAG
+		tag.TextColor3 = counted and Color3.fromRGB(13, 18, 24) or Color3.new(1, 1, 1)
+		local last = tostring(player:GetAttribute("ArenaMatchLast") or ""):gsub("[^wl]", "")
+		if counted then last ..= out end
+		last = last:sub(-10)
+		for _, c in ipairs(dots:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
+		for i = 1, #last do
+			local sq = Instance.new("Frame")
+			sq.Name = "D" .. i
+			sq.LayoutOrder = i
+			sq.BorderSizePixel = 0
+			sq.Size = UDim2.fromOffset(18, 18)
+			sq.BackgroundColor3 = last:sub(i, i) == "w" and GREEN or PINK
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0, 4)
+			c.Parent = sq
+			sq.Parent = dots
+		end
+	end
+end
+
 local function endFrame(mine, you, foe, title)
 	local endsAt = state:GetAttribute("HpResultsEndAt") or now()
 	if endKey ~= endsAt then endKey, endSkip, spotKey, islandPressAt = endsAt, 0, nil, 0 end
@@ -872,6 +982,7 @@ local function endFrame(mine, you, foe, title)
 		ebScore.Text = ('<font color="#5aa0ff">BLUE %d</font>   –   <font color="#e0284a">%d RED</font>'):format(you, foe)
 		local pr = ReplicatedStorage:FindFirstChild("Practice")
 		ebSub.Text = pr and ("PRACTICE · " .. string.upper(tostring(pr:GetAttribute("PrDifficulty") or "")) .. " BOTS") or "HARDPOINT"
+		recordLine() -- v1.11
 	elseif beat == "spot" then
 		if spotKey ~= endsAt then
 			spotKey = endsAt

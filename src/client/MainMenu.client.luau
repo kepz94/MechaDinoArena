@@ -174,6 +174,19 @@ VERSION = "1.22" -- v1.22 mode chip + PLAY
 VERSION = "1.23" -- v1.23 island hub
 VERSION = "1.24" -- v1.24 match preview edit
 VERSION = "1.25" -- v1.25 island loading screen
+VERSION = "1.26" -- v1.26 Arena record block
+-- v1.26 (Arena record, MDA-495, plan docs/plans/ARENA_RECORD_v1.1.md T3, mockup docs/mockups/wl_record_v0.1.html; Kepu
+--   2026-11-13 pick "C · B + name tag", "Win streaks only"): a record block in the right column, 3ch under the ARENA title
+--   (where the hidden SANDBOX / ARENA buttons sat), left-aligned with it:
+--     "ARENA RECORD" (GothamBlack, muted, max(1.6ch, 10)),
+--     "<w>-<l>" (FredokaOne, white, max(4.4ch, 20)) and "<pct>% WINS" (GothamBlack, muted, max(1.9ch, 11)) on one line,
+--     up to 10 squares (max(2.2ch, 12) px, 0.6ch apart, oldest left): win green rgb(70,224,138), loss pink rgb(255,107,132)
+--       from the player attribute ArenaLast (ArenaRecordServer 1.2),
+--     "<n> WIN STREAK" (GothamBlack, green, max(1.7ch, 10)) while ArenaStreak >= 2; otherwise no streak line.
+--   Hidden while ArenaRecordReady ~= true, while the old SANDBOX / ARENA buttons are on (MainMenuModeChipEnabled false) or
+--   the switch is off. Redrawn on ArenaW / ArenaL / ArenaLast / ArenaStreak / ArenaRecordReady changes and whenever the
+--   title moves (layout). Switch: script attribute MainMenuArenaRecordEnabled (default true, read per draw; false = 1.25).
+--   Diagnostic: player MainMenuArenaRecord ("shown <w>-<l>" / "hidden").
 -- v1.24 (match preview, Kepu 2026-11-11 19:02: "the option to change dinos and loadouts as it counts down"): the menu also opens
 --   on the practice team screen while the player attribute PrEditing is true (PracticeLobby 1.4's DINO & LOADOUT): open =
 --   InMenu and (not PrInLobby or PrEditing). While PrEditing: the line under PLAY reads "BACK TO THE LOBBY" and PLAY just clears
@@ -1816,3 +1829,83 @@ if script:GetAttribute("MainMenuCreditsButtonEnabled") ~= false then
 end
 
 setOpen(wantOpen()) -- v1.22, v1.24
+
+-- v1.26: Arena record block (see the header)
+task.spawn(function()
+	if script:GetAttribute("MainMenuArenaRecordEnabled") == nil then script:SetAttribute("MainMenuArenaRecordEnabled", true) end
+	local GREEN, PINK = Color3.fromRGB(70, 224, 138), Color3.fromRGB(255, 107, 132)
+	local box = Instance.new("Frame")
+	box.Name = "ArenaRecord"
+	box.BackgroundTransparency = 1
+	box.Visible = false
+	box.Parent = root
+	local head = label(box, "Head", Enum.Font.GothamBlack, MUTED)
+	head.Text = "ARENA RECORD"
+	head.TextXAlignment = Enum.TextXAlignment.Left
+	local rec = label(box, "Record", Enum.Font.FredokaOne, WHITE)
+	rec.TextXAlignment = Enum.TextXAlignment.Left
+	local pct = label(box, "Pct", Enum.Font.GothamBlack, MUTED)
+	pct.TextXAlignment = Enum.TextXAlignment.Left
+	local dots = Instance.new("Frame")
+	dots.Name = "Last"
+	dots.BackgroundTransparency = 1
+	dots.Parent = box
+	local streak = label(box, "Streak", Enum.Font.GothamBlack, GREEN)
+	streak.TextXAlignment = Enum.TextXAlignment.Left
+	local function draw()
+		local on = script:GetAttribute("MainMenuArenaRecordEnabled") ~= false and chipOn
+			and player:GetAttribute("ArenaRecordReady") == true and (S.ch or 0) > 0
+		box.Visible = on
+		if not on then
+			if player:GetAttribute("MainMenuArenaRecord") ~= "hidden" then player:SetAttribute("MainMenuArenaRecord", "hidden") end
+			return
+		end
+		local ch = S.ch
+		local w, l = tonumber(player:GetAttribute("ArenaW")) or 0, tonumber(player:GetAttribute("ArenaL")) or 0
+		local last = tostring(player:GetAttribute("ArenaLast") or ""):gsub("[^wl]", ""):sub(-10)
+		local st = tonumber(player:GetAttribute("ArenaStreak")) or 0
+		local hS, rS, pS, dS, sS = math.max(1.6 * ch, 10), math.max(4.4 * ch, 20), math.max(1.9 * ch, 11), math.max(2.2 * ch, 12), math.max(1.7 * ch, 10)
+		local gap = 0.6 * ch
+		local x = titleBig.Position.X.Offset
+		local y = titleBig.Position.Y.Offset + titleBig.Size.Y.Offset + 3 * ch
+		local wdt = S.rightW or 200
+		box.Position, box.Size = UDim2.fromOffset(x, y), UDim2.fromOffset(wdt, hS + gap + rS + gap + dS + gap + sS)
+		head.TextSize, head.Position, head.Size = hS, UDim2.fromOffset(0, 0), UDim2.fromOffset(wdt, hS)
+		rec.Text = ("%d-%d"):format(w, l)
+		rec.TextSize = rS
+		rec.Position, rec.Size = UDim2.fromOffset(0, hS + gap), UDim2.fromOffset(wdt, rS)
+		local recW = rec.TextBounds.X > 0 and rec.TextBounds.X or rS * 0.6 * #rec.Text
+		pct.Text = ("%d%% WINS"):format(w + l > 0 and math.floor(100 * w / (w + l) + 0.5) or 0)
+		pct.TextSize = pS
+		pct.Position, pct.Size = UDim2.fromOffset(recW + 1.2 * ch, hS + gap + (rS - pS) * 0.62), UDim2.fromOffset(math.max(wdt - recW - 1.2 * ch, 10), pS)
+		dots.Position, dots.Size = UDim2.fromOffset(0, hS + gap + rS + gap), UDim2.fromOffset(wdt, dS)
+		for _, c in ipairs(dots:GetChildren()) do c:Destroy() end
+		for i = 1, #last do
+			local sq = Instance.new("Frame")
+			sq.Name = "D" .. i
+			sq.BorderSizePixel = 0
+			sq.BackgroundColor3 = last:sub(i, i) == "w" and GREEN or PINK
+			sq.Position, sq.Size = UDim2.fromOffset((i - 1) * (dS + gap), 0), UDim2.fromOffset(dS, dS)
+			corner(sq).CornerRadius = UDim.new(0, math.max(0.3 * ch, 2))
+			sq.Parent = dots
+		end
+		local yS = hS + gap + rS + gap + (#last > 0 and (dS + gap) or 0)
+		streak.Visible = st >= 2
+		streak.Text = st >= 2 and ("%d WIN STREAK"):format(st) or ""
+		streak.TextSize = sS
+		streak.Position, streak.Size = UDim2.fromOffset(0, yS), UDim2.fromOffset(wdt, sS)
+		local d = "shown " .. rec.Text
+		if player:GetAttribute("MainMenuArenaRecord") ~= d then player:SetAttribute("MainMenuArenaRecord", d) end
+	end
+	for _, a in ipairs({"ArenaW", "ArenaL", "ArenaLast", "ArenaStreak", "ArenaRecordReady"}) do
+		player:GetAttributeChangedSignal(a):Connect(draw)
+	end
+	titleBig:GetPropertyChangedSignal("Position"):Connect(draw)
+	titleBig:GetPropertyChangedSignal("Size"):Connect(draw)
+	rec:GetPropertyChangedSignal("TextBounds"):Connect(function()
+		local recW = rec.TextBounds.X
+		if recW > 0 and box.Visible then pct.Position = UDim2.fromOffset(recW + 1.2 * S.ch, pct.Position.Y.Offset) end
+	end)
+	script:GetAttributeChangedSignal("MainMenuArenaRecordEnabled"):Connect(draw)
+	draw()
+end)
