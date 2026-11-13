@@ -42,3 +42,13 @@ Nothing was closed. Kepu approves.
 | Ticket | Why |
 |---|---|
 | MDA-354 | Gamepad buttons for mecha parts: no gamepad mapping in MechaButtons / AbilityBar |
+
+## Outcome (2026-11-13 11:42–12:10)
+- **What Kepu approved:**
+  - "Close the 136 + 492", then "Close all the tickets".
+  - For the last 11: "Close all but MDA-354".
+- **Closed: 148 tickets.** Each one's acceptance items were ticked, then the ticket moved to done:
+  - MDA-334..492 (A and B above, plus MDA-426 and MDA-437, which this list had missed)
+  - MDA-493..498 (Arena record v1.1 and Elite combos, live in v769)
+- MDA-492 has a note: max players stays 50.
+- **Still in the backlog:** MDA-354 (gamepad buttons, not built).
