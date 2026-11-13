@@ -190,12 +190,13 @@ canvas.three { position: absolute; display: block; width: 100%; height: 100%; in
       </ul>
     </div>
     <div class="note">
-      <h3>STILL YOURS TO DECIDE</h3>
+      <h3>DECIDED (KEPU 2026-11-12)</h3>
       <ul>
-        <li><b>W-L counts in:</b> Arena only, or bots matches too (separate record)?</li>
-        <li><b>Same dino twice on a team?</b> This mockup blocks it (Siege rule).</li>
-        <li><b>Bots at 4 a team:</b> 1 Elite · 1 Hard · 1 Normal · 1 Easy?</li>
-        <li><b>Arena:</b> run this at each match start; mid-match joiners skip it?</li>
+        <li><b>W-L counts in:</b> Arena matches only.</li>
+        <li><b>Same dino twice on a team:</b> allowed. The tile shows which teammate has it.</li>
+        <li><b>Bots at 4 a team:</b> 2 Elite · 2 Hard.</li>
+        <li><b>Arena:</b> the lineup runs at every match start; no joining a match already running.</li>
+        <li><b>Someone leaves:</b> their team gets no loss; the other team still gets the win.</li>
       </ul>
       <p class="tag2">docs/mockups/pregame_v0.4.html · player names and records are made up; parts you "don't own" are mock (the last part of each dino).</p>
     </div>
@@ -259,7 +260,7 @@ canvas.three { position: absolute; display: block; width: 100%; height: 100%; in
     {n: "TurboTeno", w: 44, l: 21, lv: 29, want: "Teno", at: 20},
   ];
   const RED_A = [{n: "Volt_Claw", w: 66, l: 31, d: "Raptor"}, {n: "BoneDaddy", w: 23, l: 25, d: "Therizino"}, {n: "spitz", w: 40, l: 18, d: "Dilo"}, {n: "Q_Troo", w: 52, l: 47, d: "Troodon"}];
-  const RED_B = [{n: "Fang", bot: "ELITE", d: "Herrera"}, {n: "Jolt", bot: "HARD", d: "Pachy"}, {n: "Ember", bot: "NORMAL", d: "Dilo"}, {n: "Hex", bot: "EASY", d: "Therizino"}];
+  const RED_B = [{n: "Fang", bot: "ELITE", d: "Herrera"}, {n: "Jolt", bot: "ELITE", d: "Pachy"}, {n: "Ember", bot: "HARD", d: "Dilo"}, {n: "Hex", bot: "HARD", d: "Therizino"}];
   const TIME = 30, ALLREADY = 5;
 
   const $ = s => document.querySelector(s);
@@ -470,7 +471,8 @@ canvas.three { position: absolute; display: block; width: 100%; height: 100%; in
   const pct = p => Math.round(100 * p.w / Math.max(1, p.w + p.l)) + "%";
   const now = () => (pausedAt !== null ? pausedAt : (performance.now() - t0) / 1000);
   const left = () => Math.max(0, endAt - now());
-  const takenBy = d => st.team.find(p => !p.me && p.pick === d) || null;
+  const takenBy = d => null; // Kepu 2026-11-12: the same dino twice on a team is allowed, nothing is blocked
+  const pickedBy = d => st.team.filter(p => !p.me && p.pick === d).map(p => p.n).join(" · ");
   const allReady = () => st.mine && st.team.every(p => p.me || p.pick);
   const modeLine = () => mode === "arena" ? "ARENA · HARDPOINT" : "HARDPOINT VS BOTS";
   function fresh() { st = {team: BLUE.map(p => ({...p, pick: null})), mine: null, lo: null, draft: null, draftLo: null, step: "dino", act: 0, sig: ""}; }
@@ -524,8 +526,8 @@ canvas.three { position: absolute; display: block; width: 100%; height: 100%; in
       `<div class="teamstrip"><span class="lbl">YOUR TEAM</span>${st.team.filter(p => !p.me).map(p => `<div class="mate">${IMG(p.pick)}<div><div class="pn">${p.n}</div><div class="dn">${p.pick ? nameOf(p.pick) + " · " + D[p.pick].role : "SELECTING…"}</div></div></div>`).join("")}
         <span class="needs${need.length ? "" : " ok"}">${need.length ? "TEAM NEEDS A " + need.join(" OR ") : "TEAM COVERED"}</span></div>
       <div class="pane roster">${ROLES.map(([r, list]) => `<div class="rgrp"><div class="rh">${r}<b class="${c[r] === 0 ? "need" : ""}">${c[r] === 0 ? "TEAM NEEDS" : c[r] + " ON TEAM"}</b></div><div class="tiles">${list.map(x => {
-          const tb = takenBy(x);
-          return `<div class="tile${d === x ? " sel" : ""}${tb ? " taken" : ""}" data-d="${x}">${tb ? `<span class="tt">${tb.n}</span>` : (x === "Raptor" ? `<span class="last">LAST</span>` : "")}${IMG(x)}<div class="tn">${nameOf(x)}</div></div>`;
+          const tb = pickedBy(x);
+          return `<div class="tile${d === x ? " sel" : ""}" data-d="${x}">${tb ? `<span class="tt">${tb}</span>` : (x === "Raptor" ? `<span class="last">LAST</span>` : "")}${IMG(x)}<div class="tn">${nameOf(x)}</div></div>`;
         }).join("")}</div></div>`).join("")}</div>
       <div class="pane show" id="showpane">${d ? `<div class="showcap"><div class="cls">${SHEET[d].cls} · ${D[d].role}</div><div class="dname">${nameOf(d)}</div></div><div class="showhint">DRAG TO SPIN${parts ? " · POINT AT A PART TO SEE IT ON YOUR DINO" : ""}</div>` : `<div class="showhint" style="bottom:45%">PICK A DINO ON THE LEFT</div>`}</div>
       <div class="pane info">${parts ? partsHtml(d) : dinoInfoHtml(d)}</div>
@@ -581,7 +583,7 @@ canvas.three { position: absolute; display: block; width: 100%; height: 100%; in
       stage.lit = -1;
       stageSet(red().map(p => ({d: p.d, parts: p.d ? defaultLo(p.d) : []})), 0xe0284a);
       const r = red(), s = r.reduce((a, p) => [a[0] + (p.w || 0), a[1] + (p.l || 0)], [0, 0]);
-      $("#ifx").innerHTML = `<div class="callout"><div class="t" style="color:var(--red)">RED TEAM</div><div class="n">${mode === "arena" ? "THE OPPONENTS" : "BOTS"}</div><div class="r">${mode === "arena" ? `TEAM <b class="w">${s[0]}W</b> <b class="l">${s[1]}L</b>` : "1 ELITE · 1 HARD · 1 NORMAL · 1 EASY"}</div></div><div class="counter">PLAYER INTROS</div>`;
+      $("#ifx").innerHTML = `<div class="callout"><div class="t" style="color:var(--red)">RED TEAM</div><div class="n">${mode === "arena" ? "THE OPPONENTS" : "BOTS"}</div><div class="r">${mode === "arena" ? `TEAM <b class="w">${s[0]}W</b> <b class="l">${s[1]}L</b>` : "2 ELITE · 2 HARD"}</div></div><div class="counter">PLAYER INTROS</div>`;
       introT = setTimeout(vs, 2400);
     };
     const vs = () => {
