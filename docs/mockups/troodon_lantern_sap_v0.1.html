@@ -1,0 +1,162 @@
+<title>Lantern + Sap Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@500;700&display=swap">
+<style>
+/* Layout: option switcher on top, one big looping game scene, the sap wall charges tile below. */
+:root {
+  --bg: #0b1016; --card: #121a24; --line: #26364a; --fg: #e8eef6; --muted: #8fa2b8; --yellow: #ffc832;
+  --volt: #7fe9ff; --core: #e1faff; --amber: #d9821c;
+  --display: "Silkscreen", "Courier New", monospace; --body: "Inter", system-ui, sans-serif;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 24px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+h1 { font-family: var(--display); color: var(--yellow); font-size: 22px; margin: 0; letter-spacing: .04em; }
+h2 { font-family: var(--display); font-size: 14px; margin: 0; letter-spacing: .06em; color: var(--fg); }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font-family: var(--display); font-size: 12px; letter-spacing: .05em; background: var(--card); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+.tab[aria-pressed="true"] { color: #0b1016; background: var(--yellow); border-color: var(--yellow); }
+.tab:focus-visible { outline: 2px solid var(--volt); outline-offset: 2px; }
+.rec { font-size: 10px; margin-left: 6px; opacity: .8; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+canvas { display: block; width: 100%; height: auto; }
+.cap { padding: 10px 14px 12px; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.cap b { color: var(--fg); font-weight: 700; }
+</style>
+
+<div class="wrap">
+  <h1>TROODON · ARC LANTERN + SAP WALL</h1>
+  <div class="tabs" role="group" aria-label="Lantern look">
+    <button class="tab" id="tA" aria-pressed="false">A · HEAVY BOLTS</button>
+    <button class="tab" id="tB" aria-pressed="true">B · BOLTS + SHOCKED MARK<span class="rec">REC</span></button>
+    <button class="tab" id="tC" aria-pressed="false">C · BOLTS + LIVE TETHER</button>
+  </div>
+  <div class="card">
+    <canvas id="scene" width="1100" height="440" aria-label="Arc lantern chain zap scene"></canvas>
+    <div class="cap" id="cap"></div>
+  </div>
+  <h2>SAP WALL · 2 CHARGES</h2>
+  <div class="card">
+    <canvas id="sap" width="1100" height="300" aria-label="Sap wall two charges scene"></canvas>
+    <div class="cap"><span><b>2 walls up at once</b></span><span>Tile shows <b>2 / 2</b> like Spring Jets</span><span>Each charge refills on its own timer</span></div>
+  </div>
+</div>
+
+<script>
+const caps = {
+  A: '<span><b>Thick branching bolts</b> that travel dino to dino</span><span>White hit flash on each dino</span><span>Stun look stays as now</span>',
+  B: '<span>A, plus <b>electric outline</b> on every zapped dino for the whole stun</span><span><b>⚡ SHOCKED</b> tag with a draining timer</span>',
+  C: '<span>A, plus a <b>live bolt linking</b> every zapped dino for the stun</span><span>Scorch ring under each</span>'
+};
+let opt = 'B';
+function setOpt(o){ opt=o; for (const k of ['A','B','C']) document.getElementById('t'+k).setAttribute('aria-pressed', k===o?'true':'false'); document.getElementById('cap').innerHTML = caps[o]; t0 = performance.now(); }
+for (const k of ['A','B','C']) document.getElementById('t'+k).addEventListener('click', ()=>setOpt(k));
+document.getElementById('cap').innerHTML = caps[opt];
+
+const cv = document.getElementById('scene'), g = cv.getContext('2d');
+const W = cv.width, H = cv.height, GY = 350;
+const VOLT = '#7fe9ff', CORE = '#e1faff';
+const troo = {x:110, y:GY, c:'#4aa8ff', s:1, name:'YOU'};
+const foes = [{x:560,y:GY,c:'#c8574b',s:1.15,name:'RAPTOR'},{x:760,y:GY-30,c:'#8a6a4a',s:1.25,name:'PACHY'},{x:950,y:GY,c:'#4f8a5c',s:1.05,name:'DILO'}];
+const LOOP = 3.6, FLY = 0.45, HOP = 0.18, STUN = 1.0;
+let t0 = performance.now();
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function dino(x,y,c,s,flip,white){
+  g.save(); g.translate(x,y); g.scale(flip?-s:s,s);
+  g.fillStyle = white ? '#ffffff' : c;
+  g.fillRect(-40,-48,52,26); g.fillRect(4,-62,30,20); g.fillRect(-70,-42,32,9);
+  g.fillRect(-28,-24,8,24); g.fillRect(-4,-24,8,24);
+  g.restore();
+}
+function bolt(a,b,w,life,seed,branch){
+  const n = 10, pts=[];
+  const dx=b.x-a.x, dy=b.y-a.y, L=Math.hypot(dx,dy), nx=-dy/L, ny=dx/L;
+  for (let i=0;i<=n;i++){ const k=i/n; const j=(i===0||i===n)?0:(Math.random()-.5)*L*0.16*Math.sin(Math.PI*k); pts.push({x:a.x+dx*k+nx*j, y:a.y+dy*k+ny*j}); }
+  const draw=(col,lw,al)=>{ g.globalAlpha=al*life; g.strokeStyle=col; g.lineWidth=lw; g.lineJoin='round'; g.beginPath(); g.moveTo(pts[0].x,pts[0].y); for(const p of pts) g.lineTo(p.x,p.y); g.stroke(); };
+  g.save(); g.shadowColor=VOLT; g.shadowBlur=24; draw(VOLT,w*3.2,.35); draw(VOLT,w*1.6,.8); draw(CORE,w*.7,1); g.restore();
+  if (branch){ for (let i=2;i<n-1;i+=3){ const p=pts[i]; const e={x:p.x+(Math.random()-.5)*70, y:p.y-20-Math.random()*50}; g.save(); g.shadowColor=VOLT; g.shadowBlur=12; g.globalAlpha=.8*life; g.strokeStyle=VOLT; g.lineWidth=w*.6; g.beginPath(); g.moveTo(p.x,p.y); g.lineTo((p.x+e.x)/2+(Math.random()-.5)*14,(p.y+e.y)/2); g.lineTo(e.x,e.y); g.stroke(); g.restore(); } }
+  g.globalAlpha=1;
+}
+function partial(a,b,k){ return {x:a.x+(b.x-a.x)*k, y:a.y+(b.y-a.y)*k}; }
+function chest(f){ return {x:f.x-6*f.s, y:f.y-40*f.s}; }
+function sparks(p,k){ g.save(); g.fillStyle=CORE; g.shadowColor=VOLT; g.shadowBlur=10; for(let i=0;i<14;i++){ const a=i/14*Math.PI*2+k*3; const r=10+k*60; g.globalAlpha=1-k; g.fillRect(p.x+Math.cos(a)*r, p.y+Math.sin(a)*r*.7, 4,4);} g.restore(); g.globalAlpha=1; }
+function outline(f,al){ g.save(); g.translate(f.x,f.y); g.scale(f.s,f.s); g.shadowColor=VOLT; g.shadowBlur=18; g.strokeStyle=VOLT; g.globalAlpha=al; g.lineWidth=3;
+  for (const r of [[-40,-48,52,26],[4,-62,30,20],[-70,-42,32,9],[-28,-24,8,24],[-4,-24,8,24]]) g.strokeRect(r[0]-2,r[1]-2,r[2]+4,r[3]+4); g.restore(); g.globalAlpha=1; }
+function crawl(f){ for(let i=0;i<2;i++){ const a={x:f.x+(-60+Math.random()*90)*f.s, y:f.y+(-60+Math.random()*50)*f.s}; const b={x:a.x+(Math.random()-.5)*40, y:a.y+(Math.random()-.5)*30}; bolt(a,b,1.4,1,0,false);} }
+function tag(f,left){ const x=f.x, y=f.y-95*f.s; g.save(); g.font='700 15px Silkscreen, monospace'; g.textAlign='center';
+  g.fillStyle='rgba(13,18,24,.85)'; g.fillRect(x-62,y-20,124,28); g.strokeStyle=VOLT; g.lineWidth=2; g.strokeRect(x-62,y-20,124,28);
+  g.fillStyle=VOLT; g.fillText('⚡ SHOCKED', x, y); g.fillStyle=VOLT; g.fillRect(x-62,y+9,124*left,4); g.restore(); }
+function scorch(f,al){ g.save(); g.globalAlpha=al*.7; g.strokeStyle=VOLT; g.lineWidth=3; g.shadowColor=VOLT; g.shadowBlur=14; g.beginPath(); g.ellipse(f.x-10,f.y+2,60*f.s,10*f.s,0,0,Math.PI*2); g.stroke(); g.restore(); g.globalAlpha=1; }
+
+function frame(now){
+  const t = reduce ? 1.4 : ((now-t0)/1000)%LOOP;
+  g.clearRect(0,0,W,H);
+  const sky=g.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#0f1a26'); sky.addColorStop(1,'#152232'); g.fillStyle=sky; g.fillRect(0,0,W,H);
+  g.fillStyle='#1d2a38'; g.fillRect(0,GY,W,H-GY); g.fillStyle='#24364a'; g.fillRect(700,GY-30,140,30);
+  // labels
+  g.font='12px Silkscreen, monospace'; g.fillStyle='#8fa2b8'; g.textAlign='center';
+  g.fillText('YOU', troo.x, GY+30); foes.forEach(f=>g.fillText(f.name, f.x-10, f.y+30));
+  // lantern
+  const land = {x:520, y:GY-6};
+  const hand = {x:troo.x+30, y:GY-55};
+  let lanternPos = null;
+  if (t < FLY){ const k=t/FLY; lanternPos={x:hand.x+(land.x-hand.x)*k, y:hand.y+(land.y-hand.y)*k-Math.sin(Math.PI*k)*120}; }
+  else if (t < FLY+HOP*3+STUN+0.5) lanternPos = land;
+  // zap times
+  const zapAt = foes.map((f,i)=>FLY+i*HOP);
+  // draw dinos (hit flash)
+  dino(troo.x,troo.y,troo.c,troo.s,false,false);
+  foes.forEach((f,i)=>{ const dt=t-zapAt[i]; const flash = dt>=0 && dt<0.12; dino(f.x,f.y,f.c,f.s,true,flash); });
+  // option B/C persistent marks
+  foes.forEach((f,i)=>{ const dt=t-zapAt[i]; if (dt<0||dt>STUN) return; const left=1-dt/STUN;
+    if (opt==='B'){ outline(f, .55+.45*Math.random()); crawl(f); tag(f,left); }
+    if (opt==='C'){ scorch(f,left); crawl(f); }
+    if (opt==='A'){ if (Math.random()<.5) crawl(f); }
+  });
+  if (opt==='C'){ const live = foes.filter((f,i)=>t-zapAt[i]>=0 && t-zapAt[i]<STUN); let prev=land; live.forEach(f=>{ const c=chest(f); bolt(prev,c,1.6,.7,0,false); prev=c; }); }
+  // lantern body
+  if (lanternPos){ g.save(); g.shadowColor=VOLT; g.shadowBlur=30; g.fillStyle=CORE; g.beginPath(); g.arc(lanternPos.x,lanternPos.y-10,9,0,Math.PI*2); g.fill(); g.fillStyle='#b08a3a'; g.fillRect(lanternPos.x-7,lanternPos.y-24,14,5); g.restore(); }
+  // hop bolts (travelling head, then lingering)
+  const BOLT_LIFE = 0.6;
+  foes.forEach((f,i)=>{ const from = i===0 ? {x:land.x,y:land.y-10} : chest(foes[i-1]); const to=chest(f); const dt=t-zapAt[i];
+    if (dt<0 || dt>BOLT_LIFE) return; const head=Math.min(1, dt/0.08); const life = 1-Math.max(0,(dt-0.08)/(BOLT_LIFE-0.08));
+    bolt(from, partial(from,to,head), 3.2, life, i, true); if (dt<0.35) sparks(to, dt/0.35);
+    if (dt<0.3){ g.save(); g.globalAlpha=(1-dt/0.3)*.8; g.fillStyle=CORE; g.shadowColor=VOLT; g.shadowBlur=40; g.beginPath(); g.arc(to.x,to.y,14+dt*120,0,Math.PI*2); g.fill(); g.restore(); g.globalAlpha=1; }
+    if (dt<0.45){ g.save(); g.font='700 18px Silkscreen, monospace'; g.textAlign='center'; g.fillStyle=CORE; g.shadowColor=VOLT; g.shadowBlur=10; g.globalAlpha=1-dt/0.45; g.fillText('-12', to.x+70, to.y+10-dt*60); g.restore(); g.globalAlpha=1; }
+  });
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---- Sap wall: 2 charges ----
+const sc = document.getElementById('sap'), s = sc.getContext('2d');
+const SW=sc.width, SH=sc.height, SG=230, SLOOP=7, CD=4.2; // CD shortened in the mockup only
+function sapFrame(now){
+  const t = reduce ? 2.2 : ((now-t0)/1000)%SLOOP;
+  s.clearRect(0,0,SW,SH); s.fillStyle='#132030'; s.fillRect(0,0,SW,SH); s.fillStyle='#1d2a38'; s.fillRect(0,SG,SW,SH-SG);
+  // troodon
+  s.fillStyle='#4aa8ff'; s.fillRect(80,SG-48,52,26); s.fillRect(124,SG-62,30,20); s.fillRect(50,SG-42,32,9); s.fillRect(92,SG-24,8,24); s.fillRect(116,SG-24,8,24);
+  const throws=[0.6,1.6], life=4.2;
+  let used=0; throws.forEach(th=>{ if(t>=th) used++; });
+  throws.forEach((th,i)=>{ const x= i===0?420:600; const dt=t-th; if(dt<0) return;
+    if (dt<0.4){ const k=dt/0.4; s.fillStyle='#ffc35a'; s.beginPath(); s.arc(150+(x-150)*k, SG-60-Math.sin(Math.PI*k)*90+k*50, 8,0,Math.PI*2); s.fill(); return; }
+    if (dt-0.4 < life){ const rise=Math.min(1,(dt-0.4)/0.3); const prof=[.82,.94,1,.9,.78]; prof.forEach((p,j)=>{ const h=110*p*rise; s.fillStyle='#d9821c'; s.fillRect(x+j*22,SG-h,22,h); s.fillStyle='#ffe2a0'; s.fillRect(x+j*22,SG-h,22,4); }); }
+  });
+  // charges: each refills CD after its use
+  let left=2; let nextFill=null;
+  throws.forEach(th=>{ if (t>=th && t<th+CD){ left--; const r=(t-th)/CD; if(nextFill===null||r>nextFill) nextFill=r; } });
+  // tile
+  const tx=900, ty=60, tw=120, th2=120;
+  s.fillStyle='#0d1218'; s.strokeStyle= left>0 ? '#ffc832' : '#3a4a5e'; s.lineWidth=3; s.beginPath(); s.roundRect(tx,ty,tw,th2,12); s.fill(); s.stroke();
+  if (left===0){ const f=1-(nextFill??0); s.fillStyle='rgba(0,0,0,.55)'; s.fillRect(tx+2,ty+2+ (th2-4)*(1-f),tw-4,(th2-4)*f); }
+  s.fillStyle='#d9821c'; for(let j=0;j<3;j++) s.fillRect(tx+34+j*18,ty+30,16,36-j*4);
+  s.font='12px Silkscreen, monospace'; s.textAlign='center'; s.fillStyle='#e8eef6'; s.fillText('SAP WALL', tx+tw/2, ty+88);
+  s.fillStyle= left>0 ? '#ffc832' : '#8fa2b8'; s.font='700 14px Silkscreen, monospace';
+  s.fillText(left>0 ? `${left} / 2` : `${Math.ceil(CD*(1-(nextFill??0)))}s`, tx+tw/2, ty+108);
+  requestAnimationFrame(sapFrame);
+}
+requestAnimationFrame(sapFrame);
+</script>

@@ -110,6 +110,19 @@ VERSION = "1.2" -- v1.2 mender drone size / glow / heal beam to mockup v0.2
 VERSION = "1.3" -- v1.3 the lantern homes on its tracked target (MDA-376)
 VERSION = "1.4" -- v1.4 Portal Rift looks (MDA-375)
 VERSION = "1.5" -- v1.5 lantern hit look: Shock Cannon stun look + body arcs (MDA-377)
+VERSION = "1.6" -- v1.6 loud Arc Lantern: heavy chain bolts + hit flash + SHOCKED mark (MDA-508)
+-- v1.6 (MDA-508, plan docs/plans/TROODON_SAP_LANTERN_v1.0.md Task 4, mockup docs/mockups/troodon_lantern_sap_v0.1.html pick "B ·
+--   Shocked mark"; Kepu 2026-11-13 15:08 "show more electricity especially if it's bouncing on to other dinos, it needs to be
+--   visibly obvious that the Dino took the hit and got a debuff"). While script attribute TrooPartsFX_lanternLoudEnabled ~= false
+--   (default true, read at each zap; false = 1.5):
+--   * each chain zap: the zap2 bolt is lanternBoltMul (2) x wider, lives lanternBoltLife (0.6 s) and its head travels from the
+--     lantern / the last dino to the new one over lanternBoltTravel (0.08 s); lanternForks (3) short forks branch off it;
+--   * each zapped dino flashes white (a Highlight, fill + outline white, lanternFlashTime 0.12 s);
+--   * while its stun from the zap lasts (the 1.5 rules: only a stun that landed; immune = flash only): a flickering VOLT outline
+--     (Highlight, DepthMode Occluded, fill VOLT 0.82) and a "⚡ SHOCKED" tag over its head (BillboardGui, 124 x 30 px, dark
+--     panel + VOLT stroke, Silkscreen, a VOLT bar draining to the stun's end, MaxDistance shockTagMax 150; in PlayerGui, Adornee
+--     the root, half the model's height + shockTagUp 5.5 studs up, over the name / health tag); both go when the
+--     stun ends or is broken. Diagnostic: script TrooPartsFXShockMarks (count).
 script:SetAttribute("TrooPartsFXVersion", VERSION)
 local CFG = {menderWindup = 0.45, menderFly = 0.75, menderBack = 0.75, menderOrbit = 3.5, menderTick = 0.25, lanternWindup = 0.42,
 	lanternLinger = 0.9, lanternArc = 6, sapWindup = 0.34, sapArc = 7, sapReturn = 1.15, shedWindup = 0.15, shedFling = 0.7,
@@ -119,6 +132,9 @@ local CFG = {menderWindup = 0.45, menderFly = 0.75, menderBack = 0.75, menderOrb
 	menderDroneK = 1, menderHalo = 3, menderHaloT = 0.88, menderTrailW = 1.1, menderOrbitR = 4.5, menderOrbitUp = 5.5, menderTether = 0.36,
 	menderPulse = 0.75, -- v1.2
 	shockWait = 0.25, shockArcRate = 24, shockArcLife = 0.16} -- v1.5
+CFG.lanternBoltMul, CFG.lanternBoltLife, CFG.lanternBoltTravel, CFG.lanternForks = 2, 0.6, 0.08, 3 -- v1.6
+CFG.lanternFlashTime, CFG.shockTagMax, CFG.shockTagUp = 0.12, 150, 5.5 -- v1.6
+if script:GetAttribute("TrooPartsFX_lanternLoudEnabled") == nil then script:SetAttribute("TrooPartsFX_lanternLoudEnabled", true) end -- v1.6
 for k, v in pairs(CFG) do
 	if script:GetAttribute("TrooPartsFX_" .. k) == nil then script:SetAttribute("TrooPartsFX_" .. k, v) end
 end
@@ -339,7 +355,8 @@ local function rising(fnPos, color, dur, rate, size)
 		end
 	end)
 end
-local function zap2(a, b, life, k, small) -- the mockup's zap(): 9 jittered points re-rolled every frame, core + glow beams
+local function zap2(a, b, life, k, small, wmul) -- the mockup's zap(): 9 jittered points re-rolled every frame, core + glow beams
+	wmul = wmul or 1 -- v1.6: width multiplier (the loud lantern bolt)
 	local holder = part({Size = Vector3.one * 0.1, Transparency = 1, CFrame = CFrame.new()})
 	local N = 9
 	local atts = {}
@@ -356,10 +373,10 @@ local function zap2(a, b, life, k, small) -- the mockup's zap(): 9 jittered poin
 			bm.FaceCamera, bm.LightEmission, bm.Segments = true, 1, 1
 			if layer == 1 then
 				bm.Color = ColorSequence.new(CORE)
-				bm.Width0, bm.Width1 = (small and 0.2 or 0.35) * k, (small and 0.2 or 0.35) * k
+				bm.Width0, bm.Width1 = (small and 0.2 or 0.35) * k * wmul, (small and 0.2 or 0.35) * k * wmul
 			else
 				bm.Color = ColorSequence.new(VOLT)
-				bm.Width0, bm.Width1 = (small and 1.1 or 2.2) * k, (small and 1.1 or 2.2) * k
+				bm.Width0, bm.Width1 = (small and 1.1 or 2.2) * k * wmul, (small and 1.1 or 2.2) * k * wmul
 				bm.Transparency = NumberSequence.new(0.45)
 			end
 			bm.Parent = holder
@@ -711,6 +728,97 @@ local function lanternStart(char, at)
 		end)
 	end)
 end
+-- v1.6: the loud lantern (see the header)
+local SILK = Font.new("rbxassetid://12187371840", Enum.FontWeight.Bold)
+local function loudOn() return script:GetAttribute("TrooPartsFX_lanternLoudEnabled") ~= false end
+local function loudBolt(fromFn, toFn, k0)
+	local t0 = os.clock()
+	local travel = math.max(0.01, cfg("lanternBoltTravel"))
+	local headFn = function()
+		local a, b = fromFn(), toFn()
+		if not (a and b) then return nil end
+		return a:Lerp(b, math.min(1, (os.clock() - t0) / travel))
+	end
+	zap2(fromFn, headFn, cfg("lanternBoltLife"), k0, false, cfg("lanternBoltMul"))
+	for i = 1, math.floor(cfg("lanternForks")) do
+		task.delay(travel + (i - 1) * 0.05, function()
+			local a, b = fromFn(), toFn()
+			if not (a and b) then return end
+			local p = a:Lerp(b, 0.2 + 0.6 * math.random())
+			local e = p + Vector3.new((math.random() - 0.5) * 8, 2 + math.random() * 5, (math.random() - 0.5) * 8) * k0
+			zap2(p, e, cfg("lanternBoltLife") * 0.5, k0, true, 1.4)
+		end)
+	end
+end
+local function hitFlash(model)
+	if not model then return end
+	local h = Instance.new("Highlight")
+	h.Name = "TrooLanternFlash"
+	h.Adornee = model
+	h.FillColor, h.OutlineColor = Color3.new(1, 1, 1), Color3.new(1, 1, 1)
+	h.FillTransparency, h.OutlineTransparency = 0, 0
+	h.DepthMode = Enum.HighlightDepthMode.Occluded
+	h.Parent = folder
+	TweenService:Create(h, TweenInfo.new(cfg("lanternFlashTime")), {FillTransparency = 1, OutlineTransparency = 1}):Play()
+	Debris:AddItem(h, cfg("lanternFlashTime") + 0.05)
+end
+local function shockMark(model, stunEnd)
+	script:SetAttribute("TrooPartsFXShockMarks", (script:GetAttribute("TrooPartsFXShockMarks") or 0) + 1)
+	local root = rootOf(model)
+	local h = Instance.new("Highlight")
+	h.Name = "TrooLanternShocked"
+	h.Adornee = model
+	h.FillColor, h.OutlineColor = VOLT, VOLT
+	h.FillTransparency, h.OutlineTransparency = 0.82, 0
+	h.DepthMode = Enum.HighlightDepthMode.Occluded
+	h.Parent = folder
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "TrooLanternShockedTag"
+	bb.Adornee = root
+	bb.AlwaysOnTop = true
+	bb.Size = UDim2.fromOffset(124, 30)
+	bb.MaxDistance = cfg("shockTagMax")
+	bb.StudsOffsetWorldSpace = Vector3.new(0, model:GetExtentsSize().Y * 0.5 + cfg("shockTagUp"), 0) -- above the name / health tag
+	bb.ResetOnSpawn = false
+	bb.Parent = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui") or folder -- a BillboardGui draws from PlayerGui (Adornee = the root)
+	local panel = Instance.new("Frame")
+	panel.Size = UDim2.fromScale(1, 1)
+	panel.BackgroundColor3 = Color3.fromRGB(13, 18, 24)
+	panel.BackgroundTransparency = 0.15
+	panel.Parent = bb
+	local st = Instance.new("UIStroke")
+	st.Color, st.Thickness = VOLT, 2
+	st.Parent = panel
+	local lb = Instance.new("TextLabel")
+	lb:SetAttribute("FontSwap", "keep")
+	lb.BackgroundTransparency = 1
+	lb.Size = UDim2.new(1, 0, 1, -5)
+	lb.FontFace = SILK
+	lb.TextSize = 15
+	lb.TextColor3 = VOLT
+	lb.Text = "⚡ SHOCKED"
+	lb.Parent = panel
+	local bar = Instance.new("Frame")
+	bar.BorderSizePixel = 0
+	bar.BackgroundColor3 = VOLT
+	bar.AnchorPoint = Vector2.new(0, 1)
+	bar.Position = UDim2.fromScale(0, 1)
+	bar.Size = UDim2.new(1, 0, 0, 4)
+	bar.Parent = panel
+	local startT, endT = now(), stunEnd()
+	local span = math.max(0.05, endT - startT)
+	return {
+		tick = function()
+			h.OutlineTransparency = math.random() * 0.45
+			h.FillTransparency = 0.72 + math.random() * 0.2
+			bar.Size = UDim2.new(math.clamp((stunEnd() - now()) / span, 0, 1), 0, 0, 4)
+		end,
+		stop = function()
+			h:Destroy()
+			bb:Destroy()
+		end,
+	}
+end
 local function bodyParts(model) -- v1.5: the visible body (no root, hitboxes or see-through parts)
 	local hb = model:FindFirstChild("Hitboxes")
 	local out = {}
@@ -762,8 +870,10 @@ local function shockLook(model, root) -- v1.5 (MDA-377): the Shock Cannon hit lo
 			if ax == 1 then o = Vector3.new(sgn * h.X, o.Y, o.Z) elseif ax == 2 then o = Vector3.new(o.X, sgn * h.Y, o.Z) else o = Vector3.new(o.X, o.Y, sgn * h.Z) end
 			return function() return p.Parent and (p.CFrame * o) or nil end
 		end
+		local mark = loudOn() and shockMark(model, stunEnd) or nil -- v1.6
 		local acc, last = 0, os.clock()
 		while root.Parent and now() < stunEnd() and #parts > 0 and script:GetAttribute("TrooPartsFX_lanternShockEnabled") ~= false do
+			if mark then mark.tick() end -- v1.6
 			local t = os.clock()
 			acc += (t - last) * cfg("shockArcRate")
 			last = t
@@ -779,6 +889,7 @@ local function shockLook(model, root) -- v1.5 (MDA-377): the Shock Cannon hit lo
 			end
 			RunService.Heartbeat:Wait()
 		end
+		if mark then mark.stop() end -- v1.6
 		pe.Enabled = false
 		Debris:AddItem(pe, 0.4)
 		TweenService:Create(li, TweenInfo.new(0.15), {Brightness = 0}):Play()
@@ -802,7 +913,12 @@ local function lanternZap(char)
 	end
 	if lookOn("zap") then -- v1.1: the mockup's chain zap + MineBurst-style orb, flash, crackle, sparks
 		local k0 = char:GetScale() / 2
-		zap2(fromFn, function() return tr.Parent and tr.Position or nil end, cfg("zapLife"), k0, false)
+		if loudOn() then -- v1.6: heavy travelling bolt + forks + white flash
+			loudBolt(fromFn, function() return tr.Parent and tr.Position or nil end, k0)
+			hitFlash(tgt)
+		else
+			zap2(fromFn, function() return tr.Parent and tr.Position or nil end, cfg("zapLife"), k0, false)
+		end
 		orb(tr.Position, 12 * k0, VOLT, 0.35)
 		flashBall(tr.Position, CORE, 2 * k0, 6 * k0, 0.16)
 		crackle(function() return tr.Parent and tr.Position or nil end, math.max(0.45, cfg("zapLife") + 0.13), k0)

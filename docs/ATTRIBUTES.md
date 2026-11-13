@@ -3467,3 +3467,7 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkillServer 1.12 `SkillSavedLoadoutEnabled` (true, per lineup / request). Player `SkillSavedLoadout` (4 ids, comma-joined), `SkillLoadoutFrom` ("saved" / ""); SkillLastResult "saved".
 - Lab 1.16 `LabSaveLoadoutEnabled` (true, per layout / draw).
 - PregameScreen 1.2 `PregameSavedTagEnabled` (true, per draw).
+- TrooMovesServer 1.12 `TrooMovesSapChargesEnabled` (true, per throw), `TrooMoves_sapCharges` (2). Character `TrooPartSapCharges`, `TrooPartSapLeft`.
+- SkillTree 1.91 `SkillTree.TROO_SAP_CHARGES_TEXT` (true). Diagnostic `SkillTree.SAP_CHARGES_TEXT_MISSES` (0).
+- AbilityBar 1.41 `AbilityBarSapChargesEnabled` (true, at start). MechaButtons 1.46 `MechaButtonsSapChargesEnabled` (true, per draw).
+- TrooPartsFX 1.6 `TrooPartsFX_lanternLoudEnabled` (true, per zap); numbers `TrooPartsFX_lanternBoltMul` (2), `_lanternBoltLife` (0.6 s), `_lanternBoltTravel` (0.08 s), `_lanternForks` (3), `_lanternFlashTime` (0.12 s), `_shockTagMax` (150 studs), `_shockTagUp` (5.5 studs). Diagnostic `TrooPartsFXShockMarks`.

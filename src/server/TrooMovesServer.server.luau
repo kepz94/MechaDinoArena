@@ -262,6 +262,16 @@ VERSION = "1.11" -- v1.11 Arc Lantern stuns every zapped dino 1 s (MDA-377)
 --   TrooPartsFX 1.5 draws the Shock Cannon stun look + body arcs while it lasts. Switch: script attribute
 --   TrooMovesLanternStunEnabled (default true, read at each zap; false = 1.10: no stun). Number: script TrooLanternStunTime (1).
 --   Diagnostic: script TrooMovesLanternStuns (count).
+VERSION = "1.12" -- v1.12 Sap Wall 2 charges (MDA-505)
+-- v1.12 (MDA-505, plan docs/plans/TROODON_SAP_LANTERN_v1.0.md Task 1, mockup docs/mockups/troodon_lantern_sap_v0.1.html; Kepu
+--   2026-11-13 15:08 "spit up to 2 sap walls out like that's the charges", pick "Yes, as shown"): the Sap Wall has
+--   TrooMoves_sapCharges (2) charges at every rank (the Spring Jets pattern, DiloMovesServer): character TrooPartSapCharges (max)
+--   and TrooPartSapLeft; each "ok" throw uses one and starts its own refill TrooPartSapCooldown s later; TrooPartSapReadyAt = now
+--   while a charge is left, else the next refill (so the press check and the HUD read it as before). Walls are separate models,
+--   so both can stand at once. A wall not raised at the splat ("occupied") gives its charge back. Switch: script attribute
+--   TrooMovesSapChargesEnabled (default true, read at each throw; false = 1.11: one wall, one recharge).
+if script:GetAttribute("TrooMovesSapChargesEnabled") == nil then script:SetAttribute("TrooMovesSapChargesEnabled", true) end -- v1.12
+if script:GetAttribute("TrooMoves_sapCharges") == nil then script:SetAttribute("TrooMoves_sapCharges", 2) end -- v1.12
 if script:GetAttribute("TrooMovesSapHeightEnabled") == nil then script:SetAttribute("TrooMovesSapHeightEnabled", true) end -- v1.9
 if script:GetAttribute("TrooMovesLanternTrackEnabled") == nil then script:SetAttribute("TrooMovesLanternTrackEnabled", true) end -- v1.8
 for _, k in ipairs({"TrooMovesLastFeatherEnabled", "TrooMovesRefundEnabled", "TrooMovesPlumeEnabled"}) do
@@ -792,7 +802,38 @@ local function occupied(cf, width, char, height)
 	end
 	return nil
 end
+-- v1.12: Sap Wall charges (see the header)
+local sapRefills = setmetatable({}, {__mode = "k"}) -- [char] = {refill times}
+local function sapChargesOn() return script:GetAttribute("TrooMovesSapChargesEnabled") ~= false end
+local function sapPublish(char, t)
+	local list = sapRefills[char]
+	if not list then list = {} sapRefills[char] = list end
+	for i = #list, 1, -1 do if list[i] <= t then table.remove(list, i) end end
+	local max = math.max(1, math.floor(tonumber(script:GetAttribute("TrooMoves_sapCharges")) or 2))
+	local left = math.max(0, max - #list)
+	local nextAt = math.huge
+	for _, r in ipairs(list) do nextAt = math.min(nextAt, r) end
+	char:SetAttribute("TrooPartSapCharges", max)
+	char:SetAttribute("TrooPartSapLeft", left)
+	char:SetAttribute("TrooPartSapReadyAt", left > 0 and t or nextAt)
+	if nextAt < math.huge then
+		task.delay(nextAt - t + 0.02, function() if char.Parent then sapPublish(char, now()) end end)
+	end
+	return list
+end
+local function sapWatch(char) -- v1.12: "2 / 2" on the button before the first throw
+	local function pub() if sapChargesOn() and char.Parent and char:GetAttribute("TrooPartSapEnabled") == true then sapPublish(char, now()) end end
+	char:GetAttributeChangedSignal("TrooPartSapEnabled"):Connect(pub)
+	pub()
+end
+for _, pl in ipairs(Players:GetPlayers()) do
+	if pl.Character then task.spawn(sapWatch, pl.Character) end
+	pl.CharacterAdded:Connect(sapWatch)
+end
+Players.PlayerAdded:Connect(function(pl) pl.CharacterAdded:Connect(sapWatch) end)
 botHook(remote("DinoTrooSapRequest")):Connect(function(player, stamp, aimDir, aimPoint)
+	local c0 = player.Character
+	if c0 and sapChargesOn() then sapPublish(c0, now()) end -- v1.12: ReadyAt = now while a charge is left
 	local char, t = check(player, stamp, "osapwall", "TrooPartSap", aimDir, aimPoint)
 	if not char then return end
 	local width = math.max(4, num(char, "TrooPartSapWidth", 50))
@@ -803,6 +844,12 @@ botHook(remote("DinoTrooSapRequest")):Connect(function(player, stamp, aimDir, ai
 	local cf = wallFrame(to + Vector3.new(0, H / 2, 0), along)
 	if occupied(cf, width, char, H) then result(char, "TrooPartSap", "occupied", t) return end
 	ok(char, "TrooPartSap", t)
+	local myRefill = nil -- v1.12: this throw's charge
+	if sapChargesOn() then
+		myRefill = t + math.max(0.5, num(char, "TrooPartSapCooldown", 15))
+		table.insert(sapPublish(char, t), myRefill)
+		sapPublish(char, t)
+	end
 	local life = math.max(0.1, num(char, "TrooPartSapTime", 2.1))
 	char:SetAttribute("TrooSapFrom", handPos(char))
 	char:SetAttribute("TrooSapTo", to)
@@ -820,6 +867,11 @@ botHook(remote("DinoTrooSapRequest")):Connect(function(player, stamp, aimDir, ai
 		if occupied(cf, width, char, H) then -- v1.9: + height
 			char:SetAttribute("TrooSapResult", "occupied")
 			char:SetAttribute("TrooPartSapReadyAt", ts) -- the recharge is given back
+			if myRefill and sapRefills[char] then -- v1.12: this throw's charge back
+				local i = table.find(sapRefills[char], myRefill)
+				if i then table.remove(sapRefills[char], i) end
+				sapPublish(char, ts)
+			end
 			return
 		end
 		local m = Instance.new("Model")

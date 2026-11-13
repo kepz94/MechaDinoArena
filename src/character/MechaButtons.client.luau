@@ -389,6 +389,12 @@ end
 VERSION = "1.43" -- v1.43 TAIL GRAB lights up while a dino is in reach
 VERSION = "1.44" -- v1.44 Portal Rift: PLACING + the rift recharge (MDA-375)
 VERSION = "1.45" -- v1.45 troodon slot parts: Bloom Burst, Shield Dome, Sleep Dart, Sentry Pod (MDA-382)
+VERSION = "1.46" -- v1.46 Sap Wall charges on the touch slot (MDA-507)
+-- v1.46 (MDA-507, plan docs/plans/TROODON_SAP_LANTERN_v1.0.md Task 3; TrooMovesServer 1.12; PC and touch together with
+--   AbilityBar 1.41): the touch slot of osapwall shows its charges as "left / max" in the sub label (TrooPartSapLeft of
+--   TrooPartSapCharges) while the max is above 1, as Spring Jets (1.36); redrawn when either changes. Switch: script attribute
+--   MechaButtonsSapChargesEnabled (default true, read each draw; false = 1.45).
+if script:GetAttribute("MechaButtonsSapChargesEnabled") == nil then script:SetAttribute("MechaButtonsSapChargesEnabled", true) end -- v1.46
 -- v1.45 (troodon slot parts, plan docs/plans/TROODON_SLOTPARTS_v1.0.md T5, MDA-382; TrooSlotServer 1.0): TIMED_PARTS += oburst
 --   ("TrooPartBurst", DinoTrooBurstRequest, "BLOOM BURST"), odome ("TrooPartDome", DinoTrooDomeRequest, "SHIELD DOME"), osleep
 --   ("TrooPartSleep", DinoTrooSleepRequest, "SLEEP DART"), osentry ("TrooPartSentry", DinoTrooSentryRequest, "SENTRY POD"): PC
@@ -1893,6 +1899,11 @@ draw = function()
 				local jm = tonumber(char:GetAttribute("DiloPartJetsCharges")) or 0
 				if jm > 1 then s.sub.Text = ("%d / %d"):format(tonumber(char:GetAttribute("DiloPartJetsLeft")) or jm, jm) end
 			end
+			if id == "osapwall" and script:GetAttribute("MechaButtonsSapChargesEnabled") ~= false then -- v1.46: Sap Wall charges
+				local sm = tonumber(char:GetAttribute("TrooPartSapCharges")) or 0
+				local sl = tonumber(char:GetAttribute("TrooPartSapLeft")) or sm
+				if sm > 1 and sl > 0 then s.sub.Text = ("%d / %d"):format(sl, sm) end
+			end
 			if silencedNow() then -- v1.36: Sonic Hiss silence
 				s.stroke.Transparency, s.main.TextTransparency = 0.6, 0.6
 				s.sub.Text, s.sub.TextColor3 = "SILENCED", Color3.fromRGB(201, 184, 255)
@@ -2013,6 +2024,7 @@ for _, tp in pairs(TIMED_PARTS) do -- v1.5
 end
 WATCH.TenoGrabInRange = true -- v1.43
 WATCH.TrooRiftPlacing, WATCH.TrooPartPortalRechargeUsed = true, true -- v1.44
+WATCH.TrooPartSapLeft, WATCH.TrooPartSapCharges = true, true -- v1.46
 char.AttributeChanged:Connect(function(name)
 	if name == "AutoRun" then layout() end
 	if WATCH[name] then draw() end

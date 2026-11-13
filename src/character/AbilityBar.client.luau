@@ -196,6 +196,12 @@ VERSION = "1.37" -- v1.37 TAIL GRAB tile lights up while a dino is in reach
 VERSION = "1.38" -- v1.38 Portal Rift: PLACING + the rift recharge (MDA-375)
 VERSION = "1.39" -- v1.39 troodon slot parts (MDA-382)
 VERSION = "1.40" -- v1.40 dilo spit ammo pips
+VERSION = "1.41" -- v1.41 Sap Wall charges (MDA-507)
+-- v1.41 (MDA-507, plan docs/plans/TROODON_SAP_LANTERN_v1.0.md Task 3, mockup docs/mockups/troodon_lantern_sap_v0.1.html; PC and
+--   touch together with MechaButtons 1.46; TrooMovesServer 1.12): the osapwall tile is a charge part like Spring Jets:
+--   CHARGE_ATTR.osapwall = {TrooPartSapLeft, TrooPartSapCharges}: "left / max" in the sub text while a charge is left, the
+--   cooling fill + seconds at 0 left. Switch: script attribute AbilityBarSapChargesEnabled (default true, read at start; false
+--   = 1.40).
 -- v1.40 (MDA-437, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 3, mockup docs/mockups/dilo_troodon_tune_v0.1.html; PC and touch
 --   together with ArenaTouch 1.20): while script attribute AbilityBarDiloAmmoEnabled ~= false (default true, read each frame) and
 --   DiloLocalSpitMag >= 1 (DiloAttackTest 1.4), the DiloAttack tile shows one pip per shot (the row grows to 5 the therizino
@@ -320,6 +326,10 @@ if script:GetAttribute("AbilityBarTrooPartsEnabled") ~= false then -- v1.35: the
 	TIMED_PARTS.omender, TIMED_PARTS.olantern, TIMED_PARTS.osapwall = "TrooPartMender", "TrooPartLantern", "TrooPartSap"
 	TIMED_PARTS.oshed, TIMED_PARTS.oportal = "TrooPartShed", "TrooPartPortal"
 	UNTIL_ATTR.omender, UNTIL_ATTR.oshed, UNTIL_ATTR.oportal = "TrooMenderUntil", "TrooShedImmuneUntil", "TrooPortalUntil"
+end
+if script:GetAttribute("AbilityBarSapChargesEnabled") == nil then script:SetAttribute("AbilityBarSapChargesEnabled", true) end -- v1.41
+if script:GetAttribute("AbilityBarSapChargesEnabled") ~= false and script:GetAttribute("AbilityBarTrooPartsEnabled") ~= false then
+	CHARGE_ATTR.osapwall = {"TrooPartSapLeft", "TrooPartSapCharges"} -- v1.41
 end
 if script:GetAttribute("AbilityBarTrooSlotEnabled") == nil then script:SetAttribute("AbilityBarTrooSlotEnabled", true) end -- v1.39
 if script:GetAttribute("AbilityBarTrooSlotEnabled") ~= false then -- v1.39: the troodon slot parts
