@@ -1,0 +1,113 @@
+<title>Arena Record</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;600&display=swap">
+<style>
+/* Mecha Dino Arena: the Arena W-L record outside the pre-game (Kepu 2026-11-13 "5": main menu + match results). Dark game look. */
+:root { --ink:#0d1218; --panel:#151d27; --line:#263243; --text:#e7edf5; --muted:#93a2b6; --arena:#ff9b2e; --yellow:#ffc832; --green:#46e08a; --red:#ff6b84; --cyan:#7fe9ff;
+  --f-d:"Silkscreen","Courier New",monospace; --f-b:"Inter",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+html,body { background:var(--ink); color:var(--text); margin:0; }
+body { font-family:var(--f-b); font-size:15px; line-height:1.5; }
+.wrap { max-width:1160px; margin:0 auto; padding-block:28px 60px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:18px; }
+.eyebrow { font-family:var(--f-d); font-size:12px; letter-spacing:.12em; color:var(--muted); }
+h1 { font-family:var(--f-d); font-size:clamp(22px,4vw,34px); margin:6px 0; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.btn { font-family:var(--f-d); font-size:12px; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:9px 13px; cursor:pointer; }
+.btn[aria-pressed="true"] { border-color:var(--yellow); box-shadow:inset 0 -3px 0 var(--yellow); }
+.label { font-family:var(--f-d); font-size:11px; color:var(--muted); letter-spacing:.1em; }
+.screens { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr)); gap:14px; }
+.cap { font-family:var(--f-d); font-size:11px; color:var(--muted); margin-bottom:6px; letter-spacing:.1em; }
+.screen { position:relative; width:100%; aspect-ratio:16/9; border:1px solid var(--line); border-radius:10px; overflow:hidden; container-type:inline-size;
+  background:radial-gradient(90% 80% at 30% 60%, #24304a, #0b0f16 75%); }
+.screen * { font-family:var(--f-d); }
+/* menu */
+.stripe { position:absolute; left:0; right:0; top:42%; height:3cqw; background:repeating-linear-gradient(90deg,#f0b43a 0 3cqw,#141414 3cqw 5cqw); opacity:.9; }
+.ped { position:absolute; left:12%; top:56%; width:30cqw; height:7cqw; border-radius:50%; background:#2d3850; border:.4cqw solid #e8f6ff; }
+.dino { position:absolute; left:17%; top:28%; width:20cqw; height:20cqw; background:linear-gradient(135deg,#4c8a3a,#2f5a25); clip-path:polygon(0 60%,30% 45%,55% 40%,70% 10%,100% 20%,85% 35%,70% 55%,60% 95%,45% 95%,40% 70%,20% 75%); }
+.mtitle { position:absolute; left:55%; top:28%; } .mtitle .s { font-size:1.2cqw; color:var(--yellow); } .mtitle .b { font-size:3.6cqw; color:#fff; line-height:1.1; }
+.play { position:absolute; left:55%; right:4%; top:76%; height:8cqw; background:var(--yellow); border-radius:.8cqw; display:grid; place-items:center; color:#1b1405; font-size:2.2cqw; }
+.play small { font-size:.9cqw; display:block; text-align:center; }
+.rec { position:absolute; left:55%; top:48%; display:grid; gap:.5cqw; }
+.rec .h { font-size:1cqw; color:var(--muted); letter-spacing:.1em; }
+.rec .v { font-size:3cqw; line-height:1; } .rec .p { font-size:1.2cqw; color:var(--muted); }
+.dots { display:flex; gap:.4cqw; } .dots i { width:1.5cqw; height:1.5cqw; border-radius:.3cqw; display:block; font-style:normal; font-size:.9cqw; text-align:center; line-height:1.5cqw; color:#0d1218; }
+.dots i.w { background:var(--green); } .dots i.l { background:var(--red); }
+.streak { font-size:1cqw; color:var(--green); }
+.chip { display:inline-flex; gap:.8cqw; align-items:baseline; background:rgba(13,18,24,.85); border:.15cqw solid var(--arena); border-radius:3cqw; padding:.5cqw 1.2cqw; }
+.chip .h { font-size:1cqw; color:var(--arena); } .chip .v { font-size:1.8cqw; } .chip .p { font-size:1cqw; color:var(--muted); }
+/* results */
+.res { background:rgba(6,8,12,.85); }
+.banner { position:absolute; left:0; right:0; top:22%; text-align:center; }
+.banner .t { font-size:6.5cqw; color:var(--yellow); line-height:1; } .banner .t.l { color:var(--red); }
+.banner .s { font-size:1.4cqw; color:#c9d4e2; margin-top:1cqw; }
+.wl { margin:2.2cqw auto 0; display:inline-flex; gap:1.2cqw; align-items:center; background:rgba(21,29,39,.9); border:.15cqw solid var(--line); border-radius:.8cqw; padding:1cqw 1.8cqw; }
+.wl .h { font-size:1cqw; color:var(--muted); } .wl .from { font-size:2cqw; color:var(--muted); } .wl .arrow { font-size:1.6cqw; color:var(--muted); } .wl .to { font-size:2.6cqw; }
+.wl .tag { font-size:1.1cqw; padding:.3cqw .7cqw; border-radius:.4cqw; color:#0d1218; } .wl .tag.w { background:var(--green); } .wl .tag.l { background:var(--red); } .wl .tag.n { background:#3a4656; color:var(--text); }
+/* name tag (C) */
+.tag3 { position:absolute; left:50%; top:30%; transform:translateX(-50%); text-align:center; }
+.tag3 .n { font-size:1.6cqw; color:#fff; text-shadow:0 .2cqw .4cqw #000; } .tag3 .r { font-size:1.2cqw; color:var(--arena); text-shadow:0 .2cqw .4cqw #000; }
+.isle { background:linear-gradient(#7fc6ff 0 45%, #9fd88a 45%); }
+.d2 { position:absolute; left:44%; top:45%; width:12cqw; height:12cqw; background:#3a6aa0; clip-path:polygon(0 60%,30% 45%,55% 40%,70% 10%,100% 20%,85% 35%,70% 55%,60% 95%,45% 95%,40% 70%,20% 75%); }
+.hide { display:none !important; }
+.notes { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+.note { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; min-width:0; }
+.note h3 { font-family:var(--f-d); font-size:13px; margin:0 0 6px; color:var(--yellow); } .note p { margin:0 0 6px; color:#c9d4e2; }
+</style>
+<div class="wrap">
+  <div><div class="eyebrow">MECHA DINO ARENA · MOCKUP v0.1 · ARENA RECORD</div><h1>Your W-L outside the pre-game</h1></div>
+  <div class="row">
+    <span class="label">OPTION</span>
+    <button class="btn" data-o="a" aria-pressed="true">A · RECORD</button>
+    <button class="btn" data-o="b" aria-pressed="false">B · RECORD + LAST 10</button>
+    <button class="btn" data-o="c" aria-pressed="false">C · B + NAME TAG</button>
+    <span class="label" style="margin-left:10px">RESULT</span>
+    <button class="btn" data-r="w" aria-pressed="true">WIN</button>
+    <button class="btn" data-r="l" aria-pressed="false">LOSS</button>
+    <button class="btn" data-r="n" aria-pressed="false">DOESN'T COUNT</button>
+  </div>
+  <div class="screens">
+    <div><div class="cap">MAIN MENU</div>
+      <div class="screen">
+        <div class="stripe"></div><div class="ped"></div><div class="dino"></div>
+        <div class="mtitle"><div class="s">MECHA DINO</div><div class="b">ARENA</div></div>
+        <div class="rec" id="recA"><div class="chip"><span class="h">ARENA</span><span class="v">31-12</span><span class="p">72%</span></div></div>
+        <div class="rec hide" id="recB"><div class="h">ARENA RECORD</div><div class="row" style="gap:1.2cqw;align-items:baseline"><span class="v">31-12</span><span class="p">72% WINS</span></div>
+          <div class="dots"><i class="w"></i><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i><i class="l"></i><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i></div><div class="streak">3 WIN STREAK</div></div>
+        <div class="play">PLAY<small>ONTO THE ISLAND</small></div>
+      </div></div>
+    <div><div class="cap">MATCH RESULTS (FIRST BEAT)</div>
+      <div class="screen res">
+        <div class="banner"><div class="t" id="rt">VICTORY</div><div class="s">BLUE 250 – 190 RED · ARENA</div>
+          <div class="wl"><span class="h">RECORD</span><span class="from">31-12</span><span class="arrow">→</span><span class="to" id="rto">32-12</span><span class="tag w" id="rtag">+1 W</span></div>
+          <div class="dots hide" id="rdots" style="justify-content:center;margin-top:1.2cqw"></div>
+        </div>
+      </div></div>
+    <div class="hide" id="isleWrap"><div class="cap">ON THE ISLAND (OTHER PLAYERS SEE IT)</div>
+      <div class="screen isle"><div class="d2"></div><div class="tag3"><div class="n">KEPZ</div><div class="r">31-12</div></div></div></div>
+  </div>
+  <div class="notes">
+    <div class="note"><h3>A · RECORD</h3><p>Menu: one chip under the title. Results: your record before → after, with +1 W / +1 L, or RECORD UNCHANGED when the match didn't count.</p></div>
+    <div class="note"><h3>B · RECORD + LAST 10</h3><p>Menu: the record, win %, your last 10 Arena matches as squares and your streak. Results: the same line plus the squares with the new one. Needs the last 10 saved with your record (new, small).</p></div>
+    <div class="note"><h3>C · B + NAME TAG</h3><p>B, and your W-L under your name on the island so other players see it.</p></div>
+  </div>
+</div>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  let opt = "a", res = "w";
+  function draw() {
+    $("#recA").classList.toggle("hide", opt !== "a");
+    $("#recB").classList.toggle("hide", opt === "a");
+    $("#isleWrap").classList.toggle("hide", opt !== "c");
+    $("#rdots").classList.toggle("hide", opt === "a");
+    $("#rt").textContent = res === "w" ? "VICTORY" : "DEFEAT"; $("#rt").classList.toggle("l", res !== "w");
+    $("#rto").textContent = res === "w" ? "32-12" : res === "l" ? "31-13" : "31-12";
+    const tag = $("#rtag"); tag.className = "tag " + res; tag.textContent = res === "w" ? "+1 W" : res === "l" ? "+1 L" : "RECORD UNCHANGED";
+    const last = ["w","w","w","l","w","l","w","w","l","w"]; if (res !== "n") { last.shift(); last.push(res); }
+    $("#rdots").innerHTML = last.map(x => `<i class="${x}"></i>`).join("");
+  }
+  document.querySelectorAll("[data-o]").forEach(b => b.onclick = () => { opt = b.dataset.o; document.querySelectorAll("[data-o]").forEach(x => x.setAttribute("aria-pressed", x === b)); draw(); });
+  document.querySelectorAll("[data-r]").forEach(b => b.onclick = () => { res = b.dataset.r; document.querySelectorAll("[data-r]").forEach(x => x.setAttribute("aria-pressed", x === b)); draw(); });
+  draw();
+})();
+</script>
