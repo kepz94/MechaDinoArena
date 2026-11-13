@@ -3451,3 +3451,10 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PracticeServer `PrKitCombosEnabled` (true, per think): Elite bots chain setup parts (control, closing-in mobility) into payoffs. false = 1.3.
 - PracticeServer `PrComboWindow` (2, per setup): seconds the combo window stays open after a setup part is used.
 - Bot model (diagnostics): `BotCombos` (setups that opened a window), `BotComboHits` (payoff parts used in a window), `BotComboLast` ("<setup> >" / "<setup> > <payoff>").
+
+## Arena record v1.1 (MDA-493..497)
+- ArenaRecordRules 1.1: `LAST_N` 10, `S_MAX` 9999 (module constants); record {w, l, lastMatch, last, s}.
+- ArenaRecordServer 1.2 `ArenaRecordMatchAttrsEnabled` (true, per call). Player: `ArenaLast` (string w/l, ≤10), `ArenaStreak` (number), per result `ArenaMatchFrom` ("w-l" / "-"), `ArenaMatchLast`, `ArenaMatchOut` ("w" / "l" / "n"), `ArenaMatchId` (set last).
+- MainMenu 1.26 `MainMenuArenaRecordEnabled` (true, per draw). Player diagnostic `MainMenuArenaRecord` ("shown w-l" / "hidden").
+- HardpointHUD 1.11 `HardpointHUDRecordLineEnabled` (true, per frame). Diagnostic `HardpointHUDRecordLine` ("w" / "l" / "n" / "none").
+- IslandTags 1.0 (new): `IslandTagsEnabled` (true), `IslandTagsMax` (80 studs), `IslandTagsMaxCount` (12), per frame. Diagnostics `IslandTagsVersion`, `IslandTagsState`, `IslandTagsShown`.

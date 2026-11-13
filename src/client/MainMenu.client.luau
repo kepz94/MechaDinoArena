@@ -1871,12 +1871,12 @@ task.spawn(function()
 		local wdt = S.rightW or 200
 		box.Position, box.Size = UDim2.fromOffset(x, y), UDim2.fromOffset(wdt, hS + gap + rS + gap + dS + gap + sS)
 		head.TextSize, head.Position, head.Size = hS, UDim2.fromOffset(0, 0), UDim2.fromOffset(wdt, hS)
+		rec.TextSize = rS -- size before text: FontSwap 1.0 re-fits on a text change from the size it knows
 		rec.Text = ("%d-%d"):format(w, l)
-		rec.TextSize = rS
 		rec.Position, rec.Size = UDim2.fromOffset(0, hS + gap), UDim2.fromOffset(wdt, rS)
 		local recW = rec.TextBounds.X > 0 and rec.TextBounds.X or rS * 0.6 * #rec.Text
-		pct.Text = ("%d%% WINS"):format(w + l > 0 and math.floor(100 * w / (w + l) + 0.5) or 0)
 		pct.TextSize = pS
+		pct.Text = ("%d%% WINS"):format(w + l > 0 and math.floor(100 * w / (w + l) + 0.5) or 0)
 		pct.Position, pct.Size = UDim2.fromOffset(recW + 1.2 * ch, hS + gap + (rS - pS) * 0.62), UDim2.fromOffset(math.max(wdt - recW - 1.2 * ch, 10), pS)
 		dots.Position, dots.Size = UDim2.fromOffset(0, hS + gap + rS + gap), UDim2.fromOffset(wdt, dS)
 		for _, c in ipairs(dots:GetChildren()) do c:Destroy() end
@@ -1891,8 +1891,8 @@ task.spawn(function()
 		end
 		local yS = hS + gap + rS + gap + (#last > 0 and (dS + gap) or 0)
 		streak.Visible = st >= 2
-		streak.Text = st >= 2 and ("%d WIN STREAK"):format(st) or ""
 		streak.TextSize = sS
+		streak.Text = st >= 2 and ("%d WIN STREAK"):format(st) or ""
 		streak.Position, streak.Size = UDim2.fromOffset(0, yS), UDim2.fromOffset(wdt, sS)
 		local d = "shown " .. rec.Text
 		if player:GetAttribute("MainMenuArenaRecord") ~= d then player:SetAttribute("MainMenuArenaRecord", d) end

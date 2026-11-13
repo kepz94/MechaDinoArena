@@ -5,14 +5,16 @@
 --   hidden. Never on practice / Arena match servers (TeamTags 1.1 marks dinos there).
 -- Who: every player (you too) with a character that has a HumanoidRootPart, InMenu ~= true, within IslandTagsMax (80) studs of
 --   your HumanoidRootPart (of the camera when you have none); the nearest IslandTagsMaxCount (12).
--- Tag: the name (player DisplayName, upper case, FredokaOne white, 16 px PC / 13 px phone) and under it "<ArenaW>-<ArenaL>"
---   (FredokaOne orange rgb(255,155,46), 13 px PC / 11 px phone) while that player's ArenaRecordReady == true (ArenaRecordServer);
+-- Tag: the name (player DisplayName, upper case, FredokaOne white, 22 px PC / 18 px phone) and under it "<ArenaW>-<ArenaL>"
+--   (FredokaOne orange rgb(255,155,46), 18 px PC / 15 px phone) while that player's ArenaRecordReady == true (ArenaRecordServer);
 --   name only otherwise. Text stroke for reading against the sky and grass.
 -- Drawn as Frames in the ScreenGui "IslandTags" (PlayerGui, IgnoreGuiInset, DisplayOrder 3, ResetOnSpawn false), placed each
 --   RenderStepped at the camera's WorldToViewportPoint of the spot: the anchor (Head.Root, else Head, else HumanoidRootPart) +
---   (0, 4, 0) on a head, or + (0, half the model height + 2, 0) on the HumanoidRootPart. AnchorPoint (0.5, 1). Hidden behind
+--   (0, 2.5, 0) on a head, or + (0, half the model height + 2, 0) on the HumanoidRootPart. AnchorPoint (0.5, 1). Hidden behind
 --   the camera or off the screen. (TeamTags 1.1 found AlwaysOnTop BillboardGuis did not draw, so frames, as there.)
 -- Phone: touch with no keyboard, or a viewport under 500 px tall.
+-- FontSwap 1.0 turns these into Silkscreen and fits the size down (~0.65 for FredokaOne: 22 -> 14 on screen); sizes are set
+--   before texts and only on a change, so its fit settles.
 -- Numbers: script attributes IslandTagsMax (80), IslandTagsMaxCount (12), read every frame.
 -- Diagnostics: IslandTagsVersion, IslandTagsState ("off" / "on"), IslandTagsShown (tags drawn last frame).
 local Players = game:GetService("Players")
@@ -124,26 +126,31 @@ RunService.RenderStepped:Connect(function()
 	end
 	table.sort(list, function(a, b) return a.d < b.d end)
 	local shown, small = {}, phone()
-	local nS, rS = small and 13 or 16, small and 11 or 13
+	local nS, rS = small and 18 or 22, small and 15 or 18 -- before FontSwap's fit (FredokaOne -> Silkscreen ~0.65)
 	local count = 0
 	for i, e in ipairs(list) do
 		if i > maxN then break end
 		local anchor, onHead = anchorOf(e.c)
 		if anchor then
-			local spot = anchor.Position + Vector3.new(0, onHead and 4 or (halfHeight(e.c) + 2), 0)
+			local spot = anchor.Position + Vector3.new(0, onHead and 2.5 or (halfHeight(e.c) + 2), 0)
 			local v, inView = cam:WorldToViewportPoint(spot)
 			if inView and v.Z > 0 then
 				local t = tagFor(e.p)
 				local ready = e.p:GetAttribute("ArenaRecordReady") == true
-				t.name.Text = string.upper(e.p.DisplayName)
-				t.name.TextSize = nS
-				t.name.Size = UDim2.new(1, 0, 0, nS + 2)
-				t.name.Position = UDim2.fromOffset(0, 0)
+				-- sizes before texts, and only on a change (FontSwap 1.0 re-fits on a text or size change; per frame it would never settle)
+				if t.nS ~= nS then
+					t.nS = nS
+					t.name.TextSize = nS
+					t.name.Size = UDim2.new(1, 0, 0, nS + 2)
+					t.rec.TextSize = rS
+					t.rec.Size = UDim2.new(1, 0, 0, rS + 2)
+					t.rec.Position = UDim2.fromOffset(0, nS + 2)
+				end
+				local nameT = string.upper(e.p.DisplayName)
+				if t.name.Text ~= nameT then t.name.Text = nameT end
+				local recT = ready and ("%d-%d"):format(tonumber(e.p:GetAttribute("ArenaW")) or 0, tonumber(e.p:GetAttribute("ArenaL")) or 0) or ""
+				if t.rec.Text ~= recT then t.rec.Text = recT end
 				t.rec.Visible = ready
-				t.rec.Text = ready and ("%d-%d"):format(tonumber(e.p:GetAttribute("ArenaW")) or 0, tonumber(e.p:GetAttribute("ArenaL")) or 0) or ""
-				t.rec.TextSize = rS
-				t.rec.Size = UDim2.new(1, 0, 0, rS + 2)
-				t.rec.Position = UDim2.fromOffset(0, nS + 2)
 				t.frame.Size = UDim2.fromOffset(200, nS + 2 + (ready and rS + 2 or 0))
 				t.frame.Position = UDim2.fromOffset(v.X, v.Y)
 				t.frame.Visible = true
