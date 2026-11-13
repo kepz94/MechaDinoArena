@@ -23,7 +23,7 @@ Applies to the bots match and the Arena 4v4 (both run on PracticeServer). Public
 | A3 | PrematchCountdown.client 1.0 (new): layout A, PC + phone, shows while Practice PrPrematch and HpPhase "warmup", GO 1 s after "live"; switch PrematchCountdownEnabled | Wired |
 
 ## Part B: Saved loadout
-**Kepu pick:** "A SAVE button only" (one saved loadout per dino). Placement: mockup docs/mockups/save_loadout_v0.1.html (artifact 1AVJfKFaSkSp8BNzNTJsyW), A · SAVE tile in the slot row or B · SAVED chip above the slots (pick pending).
+**Kepu pick:** "A SAVE button only" (one saved loadout per dino). Placement: A · SAVE tile in the slot row (Kepu pick), mockup docs/mockups/save_loadout_v0.1.html (artifact 1AVJfKFaSkSp8BNzNTJsyW). The saved loadout also loads on arrival in the pre-game (Kepu: "Yes, on arrival too").
 **Today (grounded, SkillServer 1.10):** each dino already keeps its own last 4 slots and saves them on every change; switching dino loads that dino's last slots (checked in Studio: Raptor shield / thrusters came back after Pachy).
 **New:** a separate saved loadout per dino, set only by SAVE; the pre-game puts it in your slots when you pick that dino.
 
@@ -42,7 +42,7 @@ Applies to the bots match and the Arena 4v4 (both run on PracticeServer). Public
 | T | Name | Mode |
 |---|---|---|
 | B1 | SkillTree: sanitizeLoadout reused for saved (no change) + SkillServer 1.12: record.saved, "saveLoadout" request, SkillSavedLoadout, apply on pre-game pick / arrival | Wired |
-| B2 | Lab 1.16: SAVE control (picked placement), PC + phone | Wired |
+| B2 | Lab 1.16: SAVE tile after the 4 slots (A), PC + phone | Wired |
 | B3 | PregameScreen 1.2: SAVED LOADOUT tag on the parts step | Wired |
 
 ## Red-team (2026-11-13)
@@ -52,3 +52,5 @@ Applies to the bots match and the Arena 4v4 (both run on PracticeServer). Public
 | A longer warm-up shifts the 600 s clock and P1's 60 s | Mitigated: the lead only moves HpMatchStartAt; phaseAt counts from it, so rotations and the clock start at GO |
 | Saved loadout fights the auto-saved last slots | Mitigated: saved is only read in the pre-game; everywhere else stays as today |
 | Players in the menu during the countdown | Unchanged: the menu still opens; the hold applies when they come out during the warm-up |
+
+Kepu 2026-11-13: "Build, then publish all".
