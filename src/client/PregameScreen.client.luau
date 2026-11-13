@@ -764,7 +764,7 @@ local function introColumns(list, ringColor, lit)
 				ic.flat.Text = nameOf(d)
 				ic.flat.BackgroundTransparency = (lit == nil or lit == i) and 0 or 0.6
 			else
-				if not ic.view then ic.view = dinoView(ic.frame, {name = "View", fov = 30, fit = 2.55, look = 0.36}) end
+				if not ic.view then ic.view = dinoView(ic.frame, {name = "View", fov = 30, fit = 3.2, look = 0.36}) end
 				ic.view.set(d, slotLoadout(e), ringColor)
 				ic.view.vf.ImageColor3 = (lit == nil or lit == i) and Color3.new(1, 1, 1) or Color3.fromRGB(55, 60, 72)
 			end

@@ -3431,3 +3431,11 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PracticeKit 1.2: PracticeServer `PrKitAllEnabled` (true, per think): every slot part used in a fight, no roll. PracticeBrain2 2.5: `PrAttackFirstEnabled` (true, per tick): main attack first.
 - PracticeServer 1.8 `PrBotXpMul` default 0.5; HardpointServer 1.7 `HpXpPracticeMul` default 0.5.
 - JumpServer 1.7 `JumpServerBotMechaEnabled` (true); PracticeKit 1.3 PracticeServer `PrKitLast4Enabled` (true): bots use Blood Rush / Mecha Legs / Glider / Stun Breaker; model `BotGlides`.
+
+## Pre-game Part 1 (PracticeServer 1.9 / PregameScreen 1.0 / ArenaRecordServer 1.0 / PregameModels 1.0, 2026-11-13)
+- PracticeServer 1.9 `PrPregameEnabled` (true, per tick / request): lineup + intro + ready; `PrEliteMixEnabled` (true, read at start): bots 2 Elite + 2 Hard; `PracticeTeamSize` default 4. State: Practice `PgPhase` ("lineup" / "intro" / ""), `PgEndsAt`; player `PgReady`. Requests "ready" / "unready".
+- PracticeRules 1.3: `ELITE_MIX`, `ELITE_ORDER`, `PG_LINEUP` 30, `PG_READY` 5, `PG_INTRO` 8.
+- ArenaRecordServer 1.0 `ArenaRecordEnabled` (true), `ArenaRecordWriteEnabled` (false in Part 1), `ArenaRecordSaveEnabled` (true; false for Studio tests). Player `ArenaW`, `ArenaL`, `ArenaRecordReady`. Diagnostics ArenaRecordState / Loads / Writes / Fails / Last.
+- PregameModels 1.0 `PregameModelsEnabled` (true). Diagnostics PregameModelsState / Bodies / Parts / Missing.
+- PregameScreen 1.0 `PregameScreenEnabled` (true, per frame), `PregameFlatIcons` (false). Diagnostics PregameScreenState / Step / LastPress / Draft.
+- PracticeLobby 1.7 `PracticeLobbyPregameHide` (true, per frame).
