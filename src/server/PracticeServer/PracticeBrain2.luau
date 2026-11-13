@@ -84,6 +84,12 @@
 --   ladder takes over). Not used on the climb route (the trail's step blocks would read as walls). Model attributes
 --   BotFeelSteers (count of steers started), BotFeel ("clear" / "left" / "right" / "blocked"). Switch: PracticeServer
 --   attribute PrFeelersEnabled (default true, read per call; false = 2.3).
+-- v2.5 (Kepu 2026-11-12 18:06 "Dino's should be using all their abilities including their main attack"; Studio match 60 s:
+--   the Dilo Elite, Pachy, Raptor and Teno Hard bots made 0 main attacks while fighting): the main attack needed the target in
+--   the sight cone that very tick (seen) and came after the parts. Now, in a fight, the main attack goes first whenever it is
+--   ready (R.wantsAttack: reaction time on a new target, in reach, its cooldown) on the target being fought, seen this tick or
+--   remembered (tier.loseTrack); the bot turns to face it as before (startAttack). Parts (PracticeKit 1.2) come after.
+--   Switch: PracticeServer attribute PrAttackFirstEnabled (default true, read per tick; false = 2.4).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
@@ -94,6 +100,7 @@ M.Version = "2.1" -- v2.1 arrive by flat distance
 M.Version = "2.2" -- v2.2 climb routes
 M.Version = "2.3" -- v2.3 onto the point when no enemy is alive
 M.Version = "2.4" -- v2.4 feeler rays
+M.Version = "2.5" -- v2.5 main attack first
 local Climb = nil -- v2.2
 do
 	local mod = script.Parent and script.Parent:FindFirstChild("PracticeClimb")
@@ -663,6 +670,13 @@ function M.step(b, ctx)
 		local a = V1.ATTACK[b.species]
 		local gap = gapTo(b, best)
 		local dist = flat(rootOf(best).Position - p).Magnitude
+		-- v2.5: the main attack first, seen or remembered (see the header)
+		local psA = game:GetService("ServerScriptService"):FindFirstChild("PracticeServer")
+		if not (psA and psA:GetAttribute("PrAttackFirstEnabled") == false) and a
+			and R.wantsAttack(os.clock() - (b.seenSince or os.clock()), gap, a.reach, (b.nextAttack or 0) - os.clock(), tier) then
+			startAttack(b, best, R, ctx.rng, tier)
+			return
+		end
 		if kit then
 			if kit.think(b, ctx, {target = best, hasTarget = true, gap = gap, dist = dist, hpFrac = hp, foesNear = foesNear,
 				matesNear = matesNear, mateLow = mateLow, recentlyHit = v.hurtAt ~= nil and os.clock() - v.hurtAt < 2,

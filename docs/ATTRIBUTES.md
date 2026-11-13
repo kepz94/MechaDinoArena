@@ -3427,3 +3427,5 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PracticeBrain2 2.4: PracticeServer `PrFeelersEnabled` (true, read per call): feeler rays; model `BotFeel` (clear / left / right / blocked), `BotFeelSteers`.
 - PortalHUD 1.2: `PortalHUDSafeBriefEnabled` (true, per frame), `PortalHUDSafeSec` (5): SAFE AREA / LEAVING SAFE AREA titles for 5 s; PortalHUDBanner + "safeDone" / "leaving" / "leftDone".
 - EggLoader 1.6 `EggLoaderWinTextEnabled` (true, read at start): match screens say only how to win; false = 1.3 text.
+- DiloFX 1.4 `DiloFXBotsEnabled`, TrooFX 1.3 `TrooFXBotsEnabled` (true, read at start): bot darts / pods drawn.
+- PracticeKit 1.2: PracticeServer `PrKitAllEnabled` (true, per think): every slot part used in a fight, no roll. PracticeBrain2 2.5: `PrAttackFirstEnabled` (true, per tick): main attack first.

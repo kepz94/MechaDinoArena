@@ -42,11 +42,21 @@
 -- Model attributes: BotLastPart ("<id> <result>"), BotPartsUsed (count), BotPartsTried.
 -- Switch: PracticeServer's PrKitEnabled (read per tick there); script attribute KIT_OFF list in PracticeServer attribute
 --   PrKitDeny (comma list of part ids bots must not use, default "").
+-- v1.2 (Kepu 2026-11-12 18:05 "Why are you not having dinos use all their abilities", 18:06 "Dino's should be using all their
+--   abilities including their main attack"; Studio match 60 s: 1-3 part uses a bot a minute, Easy Herrera none): a part was
+--   used only when PracticeRules.abilityWant said so (narrow: defend only hurt + just hit, heal under half HP, buff within 20,
+--   stealth under 40% HP, ...) AND a roll under want x tier.abil (Easy 0.15) passed. Now, in a fight, every slot part is used
+--   the moment it is ready and its target is in its range, with no roll: want = the 1.0 want, or (with a target) ranged /
+--   melee / control within its maxR, aoe within its radius + 6, defend / buff / zone / trap within 35 studs (gap), heal under
+--   85% HP or a mate low, stealth within 90, sense any time, mobility when the gap is over 25 (closing in) as well as 1.0's
+--   cases. Still one part per tier.abilDelay s and the part's own cooldown. Switch: PracticeServer attribute PrKitAllEnabled
+--   (default true, read per think; false = 1.1).
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local M = {}
 M.Version = "1.0"
+M.Version = "1.2" -- v1.2 every part, no roll (1.1 = hookarm back)
 
 local RETRY = 2
 local OK_RESULTS = {ok = true, placing = true, hit = true, dash = true, zip = true, miss = true, missed = true, fired = true,
@@ -129,6 +139,35 @@ end
 local function asyncOn()
 	local ps = ServerScriptService:FindFirstChild("PracticeServer")
 	return not (ps and ps:GetAttribute("PrKitAsyncEnabled") == false)
+end
+
+-- v1.2: every part in a fight (see the header)
+local function allOn()
+	local ps = ServerScriptService:FindFirstChild("PracticeServer")
+	return not (ps and ps:GetAttribute("PrKitAllEnabled") == false)
+end
+local function wantAll(R, kind, w)
+	local base = R.abilityWant(kind, w)
+	local has = w.hasTarget == true
+	local gap = tonumber(w.gap) or math.huge
+	local hp = tonumber(w.hpFrac) or 1
+	local more = 0
+	if kind == "ranged" or kind == "melee" or kind == "control" then
+		if has and gap <= (tonumber(w.maxR) or 0) then more = 1 end
+	elseif kind == "aoe" then
+		if has and gap <= (tonumber(w.radius) or 0) + 6 then more = 1 end
+	elseif kind == "defend" or kind == "buff" or kind == "zone" or kind == "trap" then
+		if has and gap <= 35 then more = 1 end
+	elseif kind == "heal" then
+		if hp < 0.85 or w.mateLow == true then more = 1 end
+	elseif kind == "stealth" then
+		if has and gap <= 90 then more = 1 end
+	elseif kind == "sense" then
+		more = 1
+	elseif kind == "mobility" then
+		if has and gap > 25 and gap <= (tonumber(w.maxR) or 140) then more = 1 end
+	end
+	return math.max(base, more)
 end
 
 -- ---------- loadouts ----------
@@ -398,8 +437,9 @@ function M.think(b, ctx, info)
 			local w = table.clone(info)
 			w.minR, w.maxR, w.radius = p.minR, p.maxR, p.radius
 			if p.kind == "mobility" and info.wantMobility then w.stuckFor = 99 end
-			local want = R.abilityWant(p.kind, w)
-			local go = want > 0 and rng:NextNumber() < want * (tier.abil or 0.5)
+			local all = allOn() -- v1.2
+			local want = all and wantAll(R, p.kind, w) or R.abilityWant(p.kind, w)
+			local go = want > 0 and (all or rng:NextNumber() < want * (tier.abil or 0.5))
 			if go and asyncOn() then
 				-- async (see the header): the fire runs on its own thread; the brain goes on this tick
 				k.pending = true

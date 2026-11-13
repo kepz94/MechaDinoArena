@@ -32,12 +32,17 @@
 --   same beat, older than 1 s are skipped). 10 soft balls (SmoothPlastic, D9CDB6, 1.6 x k growing to 4.6 x k, transparency
 --   0.5 -> 1 over 0.5 s) from the torso, offset (+-3, -2..-4, +-2) x k, drifting (+-4, -6..-12, +-4) x k studs/s. No landing
 --   effect. Switch: script attribute TrooFXPuffEnabled (default true). Diagnostic: TrooFXLast "puff", TrooFXPuffs (count).
+-- v1.3 (Kepu 2026-11-12 18:04 "I haven't seen one enemy spit animation ... I take damage but I didn't see the actual spit"):
+--   the pod / zone / wing-beat events were only watched on players' characters, so a practice bot troodon's pods hit with
+--   nothing drawn. Every model in Workspace.DinoIsland.Bots (now and added later) is watched the same way. Switch: script
+--   attribute TrooFXBotsEnabled (default true, read at start; false = 1.2).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 green lock ring on a double-tapped teammate
+VERSION = "1.3" -- v1.3 bots' pods drawn
 -- v1.2 (MDA-439, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 5): while your own throw is in the hands and its double tap came
 --   (TrooLocalAllyAt >= TrooLocalAt, TrooAttackTest 1.2), the lock ring goes to the closest living squadmate / Hardpoint teammate
 --   (SquadRules.sameChar) within TrooAllyAngle (45, this script's attribute) degrees and TrooPodRange x scale studs, in green
@@ -416,6 +421,18 @@ local function watchBeats(char)
 end
 
 -- troodon characters: pod + zone ------------------------------------------------------------------------------------------------
+-- v1.3: practice bots (Workspace.DinoIsland.Bots) get the same watch as player characters (see the header)
+local function onBots(fn)
+	if script:GetAttribute("TrooFXBotsEnabled") == nil then script:SetAttribute("TrooFXBotsEnabled", true) end
+	if script:GetAttribute("TrooFXBotsEnabled") == false then return end
+	task.spawn(function()
+		local isl = workspace:WaitForChild("DinoIsland", 1e9)
+		local f = isl and isl:WaitForChild("Bots", 1e9)
+		if not f then return end
+		for _, m in ipairs(f:GetChildren()) do if m:IsA("Model") then fn(m) end end
+		f.ChildAdded:Connect(function(m) if m:IsA("Model") then fn(m) end end)
+	end)
+end
 local function watch(char)
 	watchBeats(char) -- v1.1
 	char:GetAttributeChangedSignal("TrooPodAt"):Connect(function()
@@ -431,6 +448,7 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+onBots(watch) -- v1.3
 
 -- lock ring (owner only; DiloFX 1.2's) -------------------------------------------------------------------------------------------
 local me = Players.LocalPlayer

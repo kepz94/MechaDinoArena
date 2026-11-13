@@ -58,6 +58,10 @@
 --   DiloFXTakeoffEnabled   Cobra Spring take-off: at each leap launch of a dilo (yours: your JumpLaunchCount goes up; others:
 --                          JumpStartedAt + JumpWindup) 6 sand dust puffs at its feet (take-off only, no landing FX).
 --   Switches: script attributes, default true, read at each event. Diagnostic: script DiloFXTakeoffs (count).
+-- v1.4 (Kepu 2026-11-12 18:04 "I haven't seen one enemy spit animation ... I take damage but I didn't see the actual spit"):
+--   the dart / hit / Toxic Blood / Feast / Cold Blood events were only watched on players' characters, so a practice bot
+--   dilo's darts did their damage with nothing drawn. Every model in Workspace.DinoIsland.Bots (now and added later) is
+--   watched the same way. Switch: script attribute DiloFXBotsEnabled (default true, read at start; false = 1.3).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -66,6 +70,7 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 bigger dart
 VERSION = "1.2" -- v1.2 the animation pass effects
 VERSION = "1.3" -- v1.3 Overdrive goo-dart hand-off, Cobra Spring take-off dust
+VERSION = "1.4" -- v1.4 bots' darts drawn
 local HIT_WAIT, VENOM_SCAN, DRIP_RATE, SPLASH_DROPS, MAX_PARTS = 0.6, 0.2, 14, 26, 320
 local ARENA_PLACE_ID = 75433819286625 -- ModeRules 1.0
 local GREEN, GREEN_D, PALE, GLOW = Color3.fromHex("9CF05A"), Color3.fromHex("5CC22A"), Color3.fromHex("D8FF8A"),
@@ -363,6 +368,18 @@ local function onHit(char)
 	end
 end
 
+-- v1.4: practice bots (Workspace.DinoIsland.Bots) get the same watch as player characters (see the header)
+local function onBots(fn)
+	if script:GetAttribute("DiloFXBotsEnabled") == nil then script:SetAttribute("DiloFXBotsEnabled", true) end
+	if script:GetAttribute("DiloFXBotsEnabled") == false then return end
+	task.spawn(function()
+		local isl = workspace:WaitForChild("DinoIsland", 1e9)
+		local f = isl and isl:WaitForChild("Bots", 1e9)
+		if not f then return end
+		for _, m in ipairs(f:GetChildren()) do if m:IsA("Model") then fn(m) end end
+		f.ChildAdded:Connect(function(m) if m:IsA("Model") then fn(m) end end)
+	end)
+end
 local watched = setmetatable({}, {__mode = "k"})
 local function watch(char)
 	if watched[char] then return end
@@ -380,6 +397,7 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+onBots(watch) -- v1.4
 
 -- venom --------------------------------------------------------------------------------------------------------------------
 local BUBBLE -- v1.2: set below (bubble(pos, size, k))
@@ -762,6 +780,7 @@ do
 	end
 	Players.PlayerAdded:Connect(on12)
 	for _, pl in ipairs(Players:GetPlayers()) do on12(pl) end
+	onBots(watch12) -- v1.4
 	-- every frame: the armed snout glow, the cold tint + breath
 	local glows, tints, breath = {}, {}, setmetatable({}, {__mode = "k"})
 	RunService.RenderStepped:Connect(function(dt)
