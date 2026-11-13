@@ -54,6 +54,10 @@
 --   ReplicatedStorage.Practice PrDifficulty is "Mixed" (PracticeServer 1.7) the BOTS label and EASY / NORMAL / HARD buttons are hidden
 --   (the bar is laid out again) and the line under the title starts with "MIXED BOTS · ". Switch: script attribute
 --   PracticeLobbyMixedEnabled (default true, read per frame; false = 1.5).
+-- v1.7 (pre-game, MDA-486, plan docs/plans/PREGAME_LINEUP_v1.0.md T10): while ReplicatedStorage.Practice PgPhase is "lineup" or
+--   "intro" (PracticeServer 1.9) and the PregameScreen 1.0 LocalScript next to this one is there with PregameScreenEnabled ~= false,
+--   this screen is not drawn (the pre-game screen shows instead). The mode presses and the menu parking still run. Switch: script
+--   attribute PracticeLobbyPregameHide (default true, read per frame; false = 1.6).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -61,6 +65,7 @@ local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.5"
 VERSION = "1.6" -- v1.6 mixed bots
+VERSION = "1.7" -- v1.7 hidden while the pre-game screen shows
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW = Color3.fromRGB(255, 200, 50)
 local MUTED = Color3.fromRGB(143, 153, 170)
@@ -533,6 +538,11 @@ local wasShown = false
 RunService.RenderStepped:Connect(function()
 	local show = script:GetAttribute("PracticeLobbyEnabled") ~= false and player:GetAttribute("PrInLobby") == true
 		and not (player:GetAttribute("PrEditing") == true and script:GetAttribute("PracticeLobbyPreviewEnabled") ~= false) -- v1.4
+	if show and script:GetAttribute("PracticeLobbyPregameHide") ~= false then -- v1.7
+		local ph = state:GetAttribute("PgPhase")
+		local ps = script.Parent and script.Parent:FindFirstChild("PregameScreen")
+		if (ph == "lineup" or ph == "intro") and ps and ps:GetAttribute("PregameScreenEnabled") ~= false then show = false end
+	end
 	gui.Enabled = show
 	if show ~= wasShown then
 		wasShown = show

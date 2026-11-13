@@ -16,7 +16,8 @@
 -- When: BUILD_DELAY (3) s after start (the part scripts make their BindableFunctions at start), all bodies, then every part,
 --   task.wait() between builds. A builder added later (DescendantAdded) builds its missing parts then.
 -- Switch: script attribute PregameModelsEnabled (default true, read at start; false -> nothing is built; the screens fall back to
---   flat icons). Diagnostics: PregameModelsVersion, PregameModelsState ("off" / "building" / "ready"), PregameModelsBodies,
+--   flat icons). Also a copy of ServerStorage.DinoArcade.StatSheet (pure) as PregameModels.StatSheet, for the select screen's
+--   class, stats and main attack / jump names. Diagnostics: PregameModelsVersion, PregameModelsState ("off" / "building" / "ready"), PregameModelsBodies,
 --   PregameModelsParts (count), PregameModelsMissing (comma list "<dino>:<id>" of wanted parts with no builder or a failed build).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -55,6 +56,10 @@ if not root then
 	root = Instance.new("Folder")
 	root.Name = "PregameModels"
 	root.Parent = ReplicatedStorage
+end
+do -- the stat sheet for the select screen
+	local ss = da and da:FindFirstChild("StatSheet")
+	if ss and not root:FindFirstChild("StatSheet") then ss:Clone().Parent = root end
 end
 
 local function clean(model)
@@ -138,10 +143,12 @@ local function addBuilder(fn)
 	builders[id] = {fn = fn, body = fn:GetAttribute("PreviewBody") ~= "none"}
 	return id
 end
-for _, src in ipairs(SOURCES) do
-	local s = ServerScriptService:FindFirstChild(src.script)
-	local fn = s and s:FindFirstChild("BuildPreview")
-	if fn and fn:IsA("BindableFunction") then builders[src.id] = {fn = fn, body = src.body} end
+local function addSources() -- after BUILD_DELAY: those scripts make "BuildPreview" when they start
+	for _, src in ipairs(SOURCES) do
+		local s = ServerScriptService:FindFirstChild(src.script)
+		local fn = s and s:WaitForChild("BuildPreview", 10)
+		if fn and fn:IsA("BindableFunction") then builders[src.id] = {fn = fn, body = src.body} end
+	end
 end
 
 local missing = {}
@@ -191,6 +198,7 @@ local function build(dino, id)
 end
 
 task.wait(BUILD_DELAY)
+addSources()
 for _, d in ipairs(ServerScriptService:GetDescendants()) do addBuilder(d) end
 for _, dino in ipairs(DINOS) do
 	bodyOf(dino)
