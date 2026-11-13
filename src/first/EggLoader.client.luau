@@ -93,6 +93,10 @@
 --   ISLAND screen, not VS BOTS (1.3 showed the bots briefing when you pressed PLAY on the island; a portal trip to the bots
 --   still passes "Sandbox" in the "travel" mode and keeps VS BOTS). Switch: script attribute
 --   EggLoaderMatchOnlyEnabled (default true, read at start; false = 1.3).
+-- v1.5 (Kepu 2026-11-12 17:07 "The regular load should be the Dino egg, I never told you to remove it"): every load that is
+--   not a match (the ISLAND target: back to island, the automatic trip home, and PLAY on a hub server) shows the egg pod again
+--   (the 1.2 look: "TRAVELING TO ISLAND" / "LOADING SANDBOX", the hatch). The briefing stays only on ARENA and HARDPOINT VS
+--   BOTS. Switch: script attribute EggLoaderIslandEggEnabled (default true, read at start; false = 1.4's slim island screen).
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local RunService = game:GetService("RunService")
@@ -105,6 +109,7 @@ local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 the bar carries over a trip
 VERSION = "1.3" -- v1.3 mode briefing screens
 VERSION = "1.4" -- v1.4 match briefing only on match screens
+VERSION = "1.5" -- v1.5 the egg on every non-match load
 local ARRIVE_FLOOR = 0.5 -- v1.2
 local MIN_CRACK = 3
 local TIMEOUT = 45
@@ -133,6 +138,8 @@ if script:GetAttribute("EggLoaderBriefingEnabled") == nil then script:SetAttribu
 local briefOn = script:GetAttribute("EggLoaderBriefingEnabled") ~= false -- v1.3
 if script:GetAttribute("EggLoaderMatchOnlyEnabled") == nil then script:SetAttribute("EggLoaderMatchOnlyEnabled", true) end -- v1.4
 local matchOnly = script:GetAttribute("EggLoaderMatchOnlyEnabled") ~= false -- v1.4
+if script:GetAttribute("EggLoaderIslandEggEnabled") == nil then script:SetAttribute("EggLoaderIslandEggEnabled", true) end -- v1.5
+local islandEgg = script:GetAttribute("EggLoaderIslandEggEnabled") ~= false -- v1.5
 local player = Players.LocalPlayer
 player:SetAttribute("EggLoaderVersion", VERSION)
 if script:GetAttribute("EggLoaderEnabled") == false then
@@ -713,6 +720,7 @@ local function build(mode, target)
 		local ok, kind = pcall(function() return game:GetService("ReplicatedStorage"):GetAttribute("ServerKind") end)
 		if ok and kind == "hub" then bk = "island" end
 	end
+	if islandEgg and bk == "island" then bk = nil end -- v1.5: not a match -> the egg pod
 	if bk and (mode == "travel" or mode == "arrive" or mode == "play") then
 		if mode == "travel" then
 			s.squad = squadNames()

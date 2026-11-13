@@ -3421,4 +3421,5 @@ Model numbers are generator output (old version = the flag in the last column, b
 ## Mode loading (EggLoader 1.3 / MainMenu 1.25, 2026-11-12)
 - EggLoader `EggLoaderBriefingEnabled` (true, read at start); gui `EggLoaderSquad`; player `EggLoaderBrief`.
 - EggLoader 1.4 `EggLoaderMatchOnlyEnabled` (true, read at start): map + HOW TO WIN only on ARENA / VS BOTS; PLAY on a hub server shows ISLAND; false = 1.3.
+- EggLoader 1.5 `EggLoaderIslandEggEnabled` (true, read at start): non-match loads (ISLAND, PLAY on a hub server) show the egg pod; false = 1.4's slim island screen.
 - MainMenu `MainMenuIslandLoaderEnabled` (true, per trip).
