@@ -1,0 +1,115 @@
+<title>Arena Queue Bar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;600&display=swap">
+<style>
+/* Mecha Dino Arena: the bar you see while queued for an Arena match (MDA-490, plan docs/plans/PREGAME_LINEUP_v1.0.md T6).
+   Kepu 2026-11-12: queue up to 30 s, then a private 4v4 with bots filling (D6). Single dark game look. */
+:root { --ink:#0d1218; --panel:#151d27; --line:#263243; --text:#e7edf5; --muted:#93a2b6; --arena:#ff9b2e; --red:#e0284a; --green:#46e08a; --volt:#7fe9ff;
+  --f-d:"Silkscreen","Courier New",monospace; --f-b:"Inter",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+html,body { background:var(--ink); color:var(--text); margin:0; }
+body { font-family:var(--f-b); font-size:15px; line-height:1.5; }
+.wrap { max-width:1160px; margin:0 auto; padding-block:28px 60px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:18px; }
+.eyebrow { font-family:var(--f-d); font-size:12px; letter-spacing:.12em; color:var(--muted); }
+h1 { font-family:var(--f-d); font-size:clamp(22px,4vw,34px); margin:6px 0; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.btn { font-family:var(--f-d); font-size:12px; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:9px 13px; cursor:pointer; }
+.btn[aria-pressed="true"] { border-color:#ffc832; box-shadow:inset 0 -3px 0 #ffc832; }
+.label { font-family:var(--f-d); font-size:11px; color:var(--muted); letter-spacing:.1em; }
+.screen { position:relative; width:100%; aspect-ratio:16/9; border:1px solid var(--line); border-radius:10px; overflow:hidden; container-type:inline-size;
+  background:linear-gradient(#7fc6ff 0 38%, #9fd88a 38% 100%); }
+.screen.phone { aspect-ratio:2.16/1; }
+.screen * { font-family:var(--f-d); }
+.sea { position:absolute; left:0; right:0; top:38%; height:9%; background:#4fa7e0; }
+.isle { position:absolute; left:30%; top:48%; width:40%; height:30%; border-radius:50%; background:#c9b27a; }
+.ring { position:absolute; left:46%; top:52%; width:8cqw; height:3cqw; border-radius:50%; border:.5cqw solid var(--arena); box-shadow:0 0 2cqw var(--arena); }
+.dino { position:absolute; left:48.5%; top:51%; width:3cqw; height:5cqw; background:#3a7a3a; border-radius:1cqw 1cqw .3cqw .3cqw; }
+.hudtop { position:absolute; top:1.6cqw; right:2cqw; display:flex; gap:.8cqw; }
+.pill { background:rgba(20,20,26,.85); color:#fff; font-size:1.1cqw; padding:.7cqw 1.4cqw; border-radius:2cqw; border:.15cqw solid #ffffff22; }
+.pill.y { background:#ffc832; color:#1b1405; }
+.bottom { position:absolute; left:2cqw; right:2cqw; bottom:1.4cqw; display:flex; gap:.6cqw; justify-content:center; }
+.slot { width:6cqw; height:4.5cqw; background:rgba(20,20,26,.8); border-radius:.6cqw; border:.15cqw solid #ffc83255; }
+
+/* A: top pill */
+.qa { position:absolute; left:50%; top:1.6cqw; transform:translateX(-50%); display:flex; align-items:center; gap:1cqw; background:rgba(13,18,24,.9);
+  border:.18cqw solid var(--arena); border-radius:3cqw; padding:.6cqw .7cqw .6cqw 1.4cqw; }
+.qa .t { font-size:1.15cqw; color:var(--arena); } .qa .c { font-size:1.6cqw; } .qa .n { font-size:.95cqw; color:var(--muted); }
+.leave { font-size:.9cqw; background:var(--red); color:#fff; border:0; border-radius:2cqw; padding:.55cqw 1.1cqw; cursor:pointer; }
+.spin { width:1.3cqw; height:1.3cqw; border-radius:50%; border:.25cqw solid #ff9b2e44; border-top-color:var(--arena); animation:sp 1s linear infinite; }
+@keyframes sp { to { transform:rotate(360deg); } }
+/* B: centre panel */
+.qb { position:absolute; left:50%; top:20%; transform:translateX(-50%); width:40cqw; background:rgba(13,18,24,.92); border:.18cqw solid var(--line); border-top:.4cqw solid var(--arena);
+  border-radius:1cqw; padding:1.4cqw; text-align:center; display:grid; gap:.8cqw; }
+.qb .t { font-size:1.9cqw; color:var(--arena); } .qb .c { font-size:3.4cqw; line-height:1; }
+.dots { display:flex; gap:.6cqw; justify-content:center; } .dots i { width:2.6cqw; height:2.6cqw; border-radius:.5cqw; background:#263243; display:grid; place-items:center; font-size:.8cqw; font-style:normal; color:#0d1218; }
+.dots i.on { background:var(--arena); } .dots i.you { background:#ffc832; }
+.qb .n { font-size:.95cqw; color:var(--muted); }
+/* C: corner card */
+.qc { position:absolute; right:2cqw; top:7cqw; width:19cqw; background:rgba(13,18,24,.9); border:.15cqw solid var(--line); border-left:.4cqw solid var(--arena); border-radius:.8cqw; padding:1cqw 1.1cqw; display:grid; gap:.6cqw; }
+.qc .top { display:flex; justify-content:space-between; align-items:baseline; } .qc .t { font-size:1.1cqw; color:var(--arena); } .qc .c { font-size:1.6cqw; }
+.qc .dots i { width:1.6cqw; height:1.6cqw; } .qc .n { font-size:.85cqw; color:var(--muted); }
+.hide { display:none !important; }
+.screen.phone .qa .t { font-size:1.5cqw; } .screen.phone .qa .c { font-size:2cqw; } .screen.phone .leave { font-size:1.2cqw; padding:.8cqw 1.4cqw; } .screen.phone .qa .n { display:none; }
+.screen.phone .qc { width:24cqw; } .screen.phone .qc .t { font-size:1.4cqw; } .screen.phone .qc .n { font-size:1.1cqw; }
+.screen.phone .qb { width:48cqw; }
+.found { position:absolute; inset:0; display:grid; place-items:center; background:rgba(6,8,12,.8); }
+.found b { font-size:3cqw; color:var(--arena); }
+.notes { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+.note { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; min-width:0; }
+.note h3 { font-family:var(--f-d); font-size:13px; margin:0 0 6px; color:#ffc832; } .note p { margin:0 0 6px; color:#c9d4e2; } .note b { color:#fff; }
+</style>
+<div class="wrap">
+  <div><div class="eyebrow">MECHA DINO ARENA · MOCKUP v0.1 · ARENA QUEUE</div><h1>Finding a match</h1></div>
+  <div class="row">
+    <span class="label">OPTION</span>
+    <button class="btn" data-o="a" aria-pressed="true">A · TOP PILL</button>
+    <button class="btn" data-o="b" aria-pressed="false">B · CENTRE PANEL</button>
+    <button class="btn" data-o="c" aria-pressed="false">C · CORNER CARD</button>
+    <span class="label" style="margin-left:10px">SCREEN</span>
+    <button class="btn" data-s="pc" aria-pressed="true">PC</button>
+    <button class="btn" data-s="phone" aria-pressed="false">PHONE</button>
+    <button class="btn" id="re">RESTART</button>
+  </div>
+  <div class="screen" id="screen">
+    <div class="sea"></div><div class="isle"></div><div class="ring"></div><div class="dino"></div>
+    <div class="hudtop"><span class="pill">SKILLS</span><span class="pill y">MENU</span></div>
+    <div class="bottom"><span class="slot"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span></div>
+    <div class="qa" id="A"><span class="spin"></span><span class="t">FINDING MATCH</span><span class="c" data-c>0:00</span><span class="n" data-n>1 / 8</span><button class="leave">LEAVE</button></div>
+    <div class="qb hide" id="B"><div class="t">FINDING MATCH</div><div class="c" data-c>0:00</div><div class="dots" data-d></div><div class="n" data-n>1 / 8 PLAYERS</div><div><button class="leave">LEAVE QUEUE</button></div></div>
+    <div class="qc hide" id="C"><div class="top"><span class="t">FINDING MATCH</span><span class="c" data-c>0:00</span></div><div class="dots" data-d></div><div class="row" style="justify-content:space-between"><span class="n" data-n>1 / 8</span><button class="leave">LEAVE</button></div></div>
+    <div class="found hide" id="found"><b>MATCH FOUND</b></div>
+  </div>
+  <div class="notes">
+    <div class="note"><h3>A · TOP PILL</h3><p>One line at the top: timer and players found. You can walk around the island while you wait. Like Fortnite / Apex.</p></div>
+    <div class="note"><h3>B · CENTRE PANEL</h3><p>A bigger panel with a box per player slot. You stay on the portal; stepping off leaves the queue.</p></div>
+    <div class="note"><h3>C · CORNER CARD</h3><p>Small card under the top buttons with the slot boxes. You can walk around. Like Overwatch / VALORANT.</p></div>
+    <div class="note"><h3>SAME IN ALL THREE</h3><p>Starts at <b>8 players</b> or after <b>30 s</b>, then bots fill. <b>MATCH FOUND</b> flashes, then the loading screen. LEAVE drops you (and your squad) from the queue.</p></div>
+  </div>
+</div>
+<script>
+(() => {
+  const $ = s => document.querySelector(s), screen = $("#screen");
+  let opt = "a", t0 = performance.now();
+  const ARR = [0, 2, 5, 9, 14, 19]; // seconds when another player is found (demo)
+  function draw() {
+    const e = (performance.now() - t0) / 1000;
+    if (e > 33) { t0 = performance.now(); }
+    const n = Math.min(8, 1 + ARR.filter(x => x > 0 && x <= e).length);
+    const s = Math.max(0, Math.floor(Math.min(e, 30)));
+    $("#found").classList.toggle("hide", e < 30 || e > 33);
+    for (const id of ["A", "B", "C"]) {
+      const el = $("#" + id);
+      el.classList.toggle("hide", id.toLowerCase() !== opt || e >= 30 || e < 0);
+      el.querySelectorAll("[data-c]").forEach(x => x.textContent = "0:" + String(s).padStart(2, "0"));
+      el.querySelectorAll("[data-n]").forEach(x => x.textContent = n + " / 8" + (id === "B" ? " PLAYERS" : ""));
+      el.querySelectorAll("[data-d]").forEach(x => x.innerHTML = Array.from({length: 8}, (_, i) => `<i class="${i === 0 ? "you" : i < n ? "on" : ""}"></i>`).join(""));
+    }
+    requestAnimationFrame(draw);
+  }
+  document.querySelectorAll("[data-o]").forEach(b => b.onclick = () => { opt = b.dataset.o; document.querySelectorAll("[data-o]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { screen.classList.toggle("phone", b.dataset.s === "phone"); document.querySelectorAll("[data-s]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  $("#re").onclick = () => t0 = performance.now();
+  screen.addEventListener("click", e => { if (e.target.closest(".leave")) t0 = performance.now() + 2500; });
+  draw();
+})();
+</script>
