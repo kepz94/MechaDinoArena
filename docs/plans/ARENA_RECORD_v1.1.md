@@ -66,7 +66,7 @@ ArenaMatchId = the matchId, set last (clients key on it). Set before the DataSto
 |---|---|
 | ArenaRecordReady ~= true | block hidden |
 | ready, 0-0 | ARENA RECORD / 0-0 / no squares, no streak |
-| ready | ARENA RECORD / w-l, "nn% WINS" / up to 10 squares (oldest left) / streak line (rule Q2) |
+| ready | ARENA RECORD / w-l, "nn% WINS" / up to 10 squares (oldest left) / "n WIN STREAK" (green) when s ≥ 2, else no streak line (Kepu Q2: win streaks only) |
 
 **Island tag (IslandTags 1.0):**
 
@@ -75,7 +75,7 @@ ArenaMatchId = the matchId, set last (clients key on it). Set before the DataSto
 | ServerKind ~= "hub" or switch off | nothing |
 | a player's dino within IslandTagsMax (80) studs, on screen, in front of the camera | name (DisplayName) + W-L under it in orange |
 | that player's ArenaRecordReady ~= true | name only |
-| your own dino | rule Q3 |
+| your own dino | shown too (Kepu Q3: "Yourself too") |
 | player in the menu (InMenu) / no character | nothing |
 Drawn as screen Frames projected each frame (TeamTags 1.1 found AlwaysOnTop BillboardGuis did not draw).
 
@@ -86,6 +86,21 @@ Drawn as screen Frames projected each frame (TeamTags 1.1 found AlwaysOnTop Bill
 | T2 | ArenaRecordServer 1.2: ArenaLast / ArenaStreak on load and write; ArenaMatchOut / From / Id on "result"; switch ArenaRecordMatchAttrsEnabled | Wired | T1 |
 | T3 | MainMenu 1.26 record block; switch MainMenuArenaRecordEnabled | Wired | T2 |
 | T4 | HardpointHUD 1.11 banner record line; switch HardpointHUDRecordLineEnabled | Wired | T2 |
-| T5 | IslandTags 1.0; switches IslandTagsEnabled, IslandTagsMax (80) | Wired | T2 |
+| T5 | IslandTags 1.0; switches IslandTagsEnabled, IslandTagsMax (80), IslandTagsMaxCount (12) | Wired | T2 |
 
 Studio test: Arena test match (PrArenaMatchTest) with saves off → ArenaMatchOut "n" (not eligible) → banner shows RECORD UNCHANGED; test hook sets ArenaW/L/Last/Streak to fake values to check the menu and the tag on PC and phone sizes.
+
+## Kepu's answers (2026-11-13)
+| # | Answer |
+|---|---|
+| Q2 | Streak: win streaks only (shown at 2+). A losing run shows no streak line. |
+| Q3 | Island tag: you see your own tag too. |
+
+## Red-team (2026-11-13), outcome
+| Challenge | Outcome |
+|---|---|
+| The banner beat is 2 s, so the record line can be missed | Accepted: Kepu picked the mockup with the line on the first beat. The menu shows the saved record after. |
+| The banner shows "→ 32-12" before the DataStore write is done; a failed write would show a +1 W that was not saved | Accepted: the banner is computed from ArenaMatchFrom + ArenaMatchOut; the menu (ArenaW / ArenaL) changes only on a saved write. |
+| Mixed servers right after publish: an old ArenaRecordServer 1.1 write uses ArenaRecordRules 1.0 clean, which drops last / s | Accepted: at worst one player's last-10 / streak restarts; w / l are never lost. |
+| Island clutter: every dino gets a tag | Mitigated: IslandTagsMax 80 studs and IslandTagsMaxCount 12 (nearest first). |
+| Bots (practice) and public Hardpoint must not show a record line | Mitigated: the line needs Practice PrArena == true and a new ArenaMatchId. |
