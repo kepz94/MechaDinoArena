@@ -18,6 +18,8 @@
 -- Switches (script attributes): ArenaRecordEnabled (true; read at start: false -> nothing loads, the hook answers "off"),
 --   ArenaRecordWriteEnabled (false in Part 1; read per write), ArenaRecordSaveEnabled (true; false = no DataStore calls at all,
 --   for Studio testing: records stay unloaded).
+-- v1.1 (Part 2, MDA-491, plan docs/plans/PREGAME_LINEUP_v1.0.md D10): ArenaRecordWriteEnabled defaults to true (Arena 4v4
+--   results from PracticeServer 1.10 are written). Set it false to stop writes (= 1.0).
 -- Diagnostics: ArenaRecordServerVersion, ArenaRecordState ("off" / "noStore" / "on" / "saveOff"), ArenaRecordLoads,
 --   ArenaRecordWrites, ArenaRecordFails, ArenaRecordLast (last write: "<name> w|l <matchId>" or the error).
 local Players = game:GetService("Players")
@@ -25,11 +27,12 @@ local DataStoreService = game:GetService("DataStoreService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 writes on
 local STORE = "MDA_ArenaRecord_v1"
 local TRIES, LOAD_GAP = 3, 2
 
 script:SetAttribute("ArenaRecordServerVersion", VERSION)
-for k, v in pairs({ArenaRecordEnabled = true, ArenaRecordWriteEnabled = false, ArenaRecordSaveEnabled = true}) do
+for k, v in pairs({ArenaRecordEnabled = true, ArenaRecordWriteEnabled = true, ArenaRecordSaveEnabled = true}) do -- v1.1: writes true (1.0 false)
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function bump(name) script:SetAttribute(name, (script:GetAttribute(name) or 0) + 1) end

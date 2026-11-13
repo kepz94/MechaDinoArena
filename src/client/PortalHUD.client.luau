@@ -37,12 +37,19 @@
 --   "PLAYERS CAN HIT YOU"); the guard itself (HubServer) is unchanged.
 --   Switch: script attribute PortalHUDSafeBriefEnabled (default true, read per frame; false = 1.1). Diagnostic: PortalHUDBanner
 --   "safeDone" / "leaving" / "leftDone".
+-- v1.3 (Arena queue, MDA-490, plan docs/plans/PREGAME_LINEUP_v1.0.md T6, mockup docs/mockups/arena_queue_v0.1.html pick "A · Top
+--   pill"): while player HubQueueState is "queued" (HubServer 1.4) a pill sits at the top centre (QUEUE_TOP (12) px down x u):
+--   a turning ring, "FINDING MATCH" (orange), the time since HubQueueSince (m:ss), "<HubQueueCount> / <HubQueueNeed>" and a red
+--   LEAVE button (-> ReplicatedStorage.HubQueueRequest "leave"). HubQueueState "found" -> the pill reads "MATCH FOUND" (no
+--   timer, count or button). Shown in the menu too (you stay queued there). Switch: script attribute PortalHUDQueueEnabled
+--   (default true, read per frame; false = no pill). Diagnostic: player PortalHUDQueue ("queued" / "found" / "hidden").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 safe banner: title only, 5 s
+VERSION = "1.3" -- v1.3 Arena queue pill
 local player = Players.LocalPlayer
 player:SetAttribute("PortalHUDVersion", VERSION)
 if script:GetAttribute("PortalHUDEnabled") == nil then script:SetAttribute("PortalHUDEnabled", true) end
@@ -185,6 +192,87 @@ player:GetAttributeChangedSignal("HubLastAt"):Connect(function()
 		showToast(TOASTS[r])
 	end
 end)
+
+-- v1.3: the Arena queue pill
+if script:GetAttribute("PortalHUDQueueEnabled") == nil then script:SetAttribute("PortalHUDQueueEnabled", true) end
+local ARENA_ORANGE = Color3.fromRGB(255, 155, 46)
+local QUEUE_TOP = 12
+local qPill = Instance.new("Frame")
+qPill.Name = "QueuePill"
+qPill.AnchorPoint = Vector2.new(0.5, 0)
+qPill.BackgroundColor3 = Color3.fromRGB(13, 18, 24)
+qPill.BackgroundTransparency = 0.1
+qPill.AutomaticSize = Enum.AutomaticSize.X
+qPill.Visible = false
+qPill.Parent = gui
+local qCorner = corner(qPill, 20)
+stroke(qPill, ARENA_ORANGE, 2)
+local qList = Instance.new("UIListLayout")
+qList.FillDirection = Enum.FillDirection.Horizontal
+qList.VerticalAlignment = Enum.VerticalAlignment.Center
+qList.SortOrder = Enum.SortOrder.LayoutOrder
+qList.Parent = qPill
+local qPad = Instance.new("UIPadding") qPad.Parent = qPill
+local qSpin = Instance.new("Frame")
+qSpin.Name = "Spin"
+qSpin.BackgroundTransparency = 1
+qSpin.LayoutOrder = 1
+qSpin.Parent = qPill
+local qSpinStroke = stroke(qSpin, ARENA_ORANGE, 2)
+local qSpinCorner = corner(qSpin, 99)
+local qSpinGrad = Instance.new("UIGradient")
+qSpinGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.2), NumberSequenceKeypoint.new(0.75, 1), NumberSequenceKeypoint.new(1, 1)})
+qSpinGrad.Parent = qSpinStroke
+local qTitle = label(qPill, "Title", Enum.Font.GothamBlack, ARENA_ORANGE) qTitle.LayoutOrder = 2
+local qTime = label(qPill, "Time", Enum.Font.GothamBlack, WHITE) qTime.LayoutOrder = 3
+local qCount = label(qPill, "Count", Enum.Font.GothamBlack, MUTED) qCount.LayoutOrder = 4
+for _, l in ipairs({qTitle, qTime, qCount}) do l.AutomaticSize = Enum.AutomaticSize.X end
+local qLeave = Instance.new("TextButton")
+qLeave.Name = "Leave"
+qLeave.Text = "LEAVE"
+qLeave.Font = Enum.Font.GothamBlack
+qLeave.TextColor3 = WHITE
+qLeave.BackgroundColor3 = LEAVE_RED
+qLeave.AutoButtonColor = true
+qLeave.LayoutOrder = 5
+qLeave.Parent = qPill
+local qLeaveCorner = corner(qLeave, 20)
+qLeave.Activated:Connect(function()
+	local r = ReplicatedStorage:FindFirstChild("HubQueueRequest")
+	if r then r:FireServer("leave") end
+end)
+local qU = -1
+local function drawQueue(on, vp, u, t)
+	local qs = player:GetAttribute("HubQueueState")
+	local mode = (on and script:GetAttribute("PortalHUDQueueEnabled") ~= false and (qs == "queued" or qs == "found")) and qs or "hidden"
+	if player:GetAttribute("PortalHUDQueue") ~= mode then player:SetAttribute("PortalHUDQueue", mode) end
+	qPill.Visible = mode ~= "hidden"
+	if not qPill.Visible then return end
+	if u ~= qU then
+		qU = u
+		local h = math.floor(36 * u)
+		qPill.Size = UDim2.fromOffset(0, h)
+		qPill.Position = UDim2.new(0.5, 0, 0, math.floor(QUEUE_TOP * u))
+		qPad.PaddingLeft, qPad.PaddingRight = UDim.new(0, math.floor(14 * u)), UDim.new(0, math.floor(5 * u))
+		qList.Padding = UDim.new(0, math.floor(10 * u))
+		local s = math.floor(14 * u)
+		qSpin.Size = UDim2.fromOffset(s, s)
+		qTitle.TextSize, qTitle.Size = math.floor(15 * u), UDim2.fromOffset(0, h)
+		qTime.TextSize, qTime.Size = math.floor(19 * u), UDim2.fromOffset(0, h)
+		qCount.TextSize, qCount.Size = math.floor(12 * u), UDim2.fromOffset(0, h)
+		qLeave.TextSize = math.floor(12 * u)
+		qLeave.Size = UDim2.fromOffset(math.floor(70 * u), math.max(28, h - math.floor(8 * u)))
+	end
+	qSpin.Rotation = (os.clock() * 360) % 360
+	local found = mode == "found"
+	qTitle.Text = found and "MATCH FOUND" or "FINDING MATCH"
+	qSpin.Visible, qTime.Visible, qCount.Visible, qLeave.Visible = not found, not found, not found, not found
+	if not found then
+		local s = math.max(0, math.floor(t - (tonumber(player:GetAttribute("HubQueueSince")) or t)))
+		qTime.Text = ("%d:%02d"):format(math.floor(s / 60), s % 60)
+		qCount.Text = ("%d / %d"):format(tonumber(player:GetAttribute("HubQueueCount")) or 1, tonumber(player:GetAttribute("HubQueueNeed")) or 8)
+	end
+end
 
 -- travel loader
 local eggShown = false
@@ -365,4 +453,5 @@ RunService.RenderStepped:Connect(function()
 	end
 	-- toast
 	toast.Visible = on and os.clock() < toastUntil
+	drawQueue(on, vp, u, t) -- v1.3
 end)

@@ -110,6 +110,24 @@
 --   * Bot tiers in the lineup: rebuild deals PracticeRules.mixFor(bots on that side) in slot order (spec.pgTier); a bot's first
 --     spawn of the match takes that tier, later spawns use respawnTier as 1.7.
 --   Switch off = 1.8 (lobby PrAutoStart, no PgPhase, no ready).
+-- v1.10 (Arena 4v4, MDA-491, plan docs/plans/PREGAME_LINEUP_v1.0.md T7 + T8 (Part 2), ADR-012; Kepu 2026-11-12: lineup at every
+--   Arena match start, nobody joins a running match (D4), leaver = a loss, their team no loss, the other team the win (D5), bots
+--   fill (D6), back to the island after (D7), counts only with a real player on each team (D9), a draw changes nothing (D11),
+--   leaving in the lineup is a loss (D12), a queued player who loads late keeps their slot (D13)):
+--   * Arena match = a private server whose first arrival has TeleportData mdaTrip.mode == "arena" (HubServer 1.4 queue) — or
+--     the Studio test attribute PrArenaMatchTest == true (every player on side A; PrArenaTestEligible == true makes it count).
+--     ReplicatedStorage.Practice PrArena = true. The trip's teams {A, B} (UserIds) fix each member's side (lobby, joinMatch,
+--     "join" answers "arenaSide"); bots fill the rest to PracticeTeamSize (4) as in a bots match (2 Elite + 2 Hard).
+--     HardpointServer attribute HpXpPracticeMul is set to 1 (the match lines pay full XP; bot kills stay PrBotXpMul).
+--   * Anyone arriving who is not in mdaTrip.members goes straight back to the island (HubTravel "island").
+--   * W-L (ArenaRecordServer 1.1 hook ArenaRecordReport, matchId = mdaTrip.matchId): eligible = both trip teams have a member
+--     until the intro starts, then both sides have a human in the roster at the intro start. A member who leaves the server
+--     after arriving and before the result -> "left" (a loss when eligible) and that side is marked (no loss for it). When
+--     Hardpoint HpPhase turns "results" (or the match ends first): "result" with every human in the roster, HpWinner, eligible,
+--     the marked sides. After the results (HardpointPracticeEnded): every human goes to the island (HubTravel "island"); Studio /
+--     a failed teleport -> the lobby as before.
+--   Switch: script attribute PrArenaMatchEnabled (default true, read at the first arrival; false = an "arena" trip plays like a
+--   bots trip). Diagnostics: PrArenaState ("" / "lineup" / "match" / "done"), PrArenaEligible, PrArenaLeft (count), PrArenaResult.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -125,6 +143,7 @@ VERSION = "1.6" -- v1.6 place at match start
 VERSION = "1.7" -- v1.7 Bots v2: brain 2.0, tiers, kit
 VERSION = "1.8" -- v1.8 bots pay 50% XP
 VERSION = "1.9" -- v1.9 pre-game lineup + intro, 4v4
+VERSION = "1.10" -- v1.10 Arena 4v4 on a private server
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
@@ -207,6 +226,30 @@ local PRIVATE = script:GetAttribute("PrPrivateSideEnabled") ~= false
 	and ((game.PrivateServerId ~= "" and game.PrivateServerOwnerId == 0) or script:GetAttribute("PrPrivateTest") == true)
 set("PrPrivate", PRIVATE)
 script:SetAttribute("PrArrivals", 0)
+-- v1.10: Arena 4v4
+for k, v in pairs({PrArenaMatchEnabled = true}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local ARENA = false
+local arena = {sideOf = {}, members = {}, matchId = "", tripEligible = false, eligible = nil, leavers = {A = false, B = false},
+	present = {}, recorded = false, done = false}
+local function arenaReport(...)
+	local ars = ServerScriptService:FindFirstChild("ArenaRecordServer")
+	local fn = ars and ars:FindFirstChild("ArenaRecordReport")
+	if not fn then return "noHook" end
+	local ok, r = pcall(function(...) return fn:Invoke(...) end, ...)
+	return ok and r or "error"
+end
+local function arenaTravel(list)
+	local hubS = ServerScriptService:FindFirstChild("HubServer")
+	local mod = hubS and hubS:FindFirstChild("HubTravel")
+	local okT, T = pcall(function() return require(mod) end)
+	local okH, HR = pcall(function() return require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("HubRules")) end)
+	if not (okT and T and okH and HR) or #list == 0 then return false, "noTravel" end
+	local ids = {}
+	for _, p in ipairs(list) do table.insert(ids, p.UserId) end
+	return T.go(list, "island", HR.tripData("island", arena.matchId, nil, ids, "arena"))
+end
 local rng = Random.new()
 
 local hs = ServerScriptService:WaitForChild("HardpointServer")
@@ -487,7 +530,40 @@ local function toLobby(result)
 	publish()
 end
 
+-- v1.10: the Arena result (once) and the trip home
+local function arenaResult(w)
+	if not ARENA or arena.recorded then return end
+	arena.recorded = true
+	local list = {}
+	for _, side in ipairs({"A", "B"}) do
+		for _, s in ipairs(slots[side]) do
+			if s.kind == "human" and s.player.Parent then table.insert(list, {player = s.player, team = side}) end
+		end
+	end
+	local elig = arena.eligible
+	if elig == nil then elig = arena.tripEligible end
+	if script:GetAttribute("PrArenaTestEligible") == true then elig = true end
+	local r = arenaReport("result", arena.matchId, list, w, elig, {A = arena.leavers.A, B = arena.leavers.B})
+	script:SetAttribute("PrArenaResult", tostring(w) .. " " .. tostring(r))
+	script:SetAttribute("PrArenaState", "done")
+end
+hpState:GetAttributeChangedSignal("HpPhase"):Connect(function()
+	if ARENA and phase == "match" and hpState:GetAttribute("HpPhase") == "results" then arenaResult(hpState:GetAttribute("HpWinner")) end
+end)
 endedEv.Event:Connect(function(w)
+	if phase == "match" and ARENA then -- v1.10: home to the island
+		arenaResult(w)
+		arena.done = true
+		local list = {}
+		for _, h in ipairs(humans) do if h.player.Parent then table.insert(list, h.player) end end
+		local ok = arenaTravel(list)
+		if ok then
+			for _, rec in ipairs(botRecs) do despawnBot(rec) end
+			botRecs = {}
+			set("PrResult", w or "")
+			return
+		end
+	end
 	if phase == "match" then toLobby(w) end
 end)
 
@@ -537,6 +613,7 @@ local function joinMatch(pl)
 	local side = R.pickSide(nA, nB, hpState:GetAttribute("HpScoreA"), hpState:GetAttribute("HpScoreB"))
 	local other = side == "A" and "B" or "A"
 	if PRIVATE then side, other = "A", "A" end -- v1.4: the squad plays blue
+	if ARENA then side = arena.sideOf[pl.UserId] or "A" other = side end -- v1.10: the queued team
 	for _, sd in ipairs({side, other}) do
 		for k, s in ipairs(slots[sd]) do
 			if s.kind == "bot" then
@@ -569,7 +646,7 @@ remote.OnServerEvent:Connect(function(pl, action, arg)
 		elseif phase == "match" then
 			r = joinMatch(pl)
 		else
-			table.insert(humans, {player = pl, want = PRIVATE and "A" or "auto"}) -- v1.4: private -> side A
+			table.insert(humans, {player = pl, want = ARENA and (arena.sideOf[pl.UserId] or "A") or (PRIVATE and "A" or "auto")}) -- v1.4: private -> side A; v1.10: arena -> the queued team
 			setHuman(pl, true, false, nil)
 			if (state:GetAttribute("PrStartAt") or 0) == 0 then set("PrStartAt", now() + autoStart()) end -- v1.9: autoStart
 			rebuild()
@@ -582,6 +659,8 @@ remote.OnServerEvent:Connect(function(pl, action, arg)
 			r = "notInLobby"
 		elseif arg ~= "A" and arg ~= "B" and arg ~= "auto" then
 			r = "badArg"
+		elseif ARENA then -- v1.10: sides come from the queue
+			r = "arenaSide"
 		elseif PRIVATE and arg ~= "A" then -- v1.4
 			r = "squadSide"
 		else
@@ -713,6 +792,50 @@ set("PrLoading", "[]")
 local function arrive(pl)
 	local okJd, jd = pcall(function() return pl:GetJoinData() end)
 	local td = okJd and type(jd) == "table" and jd.TeleportData or nil
+	-- v1.10: an Arena trip (or the Studio test) makes this the Arena 4v4
+	local arenaTrip = PRIVATE and type(td) == "table" and type(td.mdaTrip) == "table" and td.mdaTrip.mode == "arena"
+	local arenaTest = PRIVATE and script:GetAttribute("PrArenaMatchTest") == true
+	if (arenaTrip or arenaTest) and script:GetAttribute("PrArenaMatchEnabled") ~= false then
+		if not ARENA then
+			ARENA = true
+			set("PrArena", true)
+			script:SetAttribute("PrArenaState", "lineup")
+			pcall(function() hs:SetAttribute("HpXpPracticeMul", 1) end)
+			local trip = arenaTrip and td.mdaTrip or {teams = {A = {pl.UserId}, B = {}}, members = {pl.UserId}, matchId = "studio-" .. tostring(os.time())}
+			arena.matchId = type(trip.matchId) == "string" and trip.matchId or (type(trip.key) == "string" and trip.key or "")
+			local teams = type(trip.teams) == "table" and trip.teams or {}
+			for _, side in ipairs({"A", "B"}) do
+				for _, id in ipairs(type(teams[side]) == "table" and teams[side] or {}) do arena.sideOf[id] = side end
+			end
+			for _, id in ipairs(type(trip.members) == "table" and trip.members or {}) do arena.members[id] = true end
+			for id in pairs(arena.sideOf) do arena.members[id] = true end
+			arena.tripEligible = type(teams.A) == "table" and #teams.A > 0 and type(teams.B) == "table" and #teams.B > 0
+		end
+		if arenaTrip then expectFrom(td.mdaTrip) end
+	end
+	if ARENA then
+		if not arena.members[pl.UserId] and not arenaTest then -- not queued for this match: home
+			arenaTravel({pl})
+			return
+		end
+		if humanIndex(pl) then return end
+		arena.present[pl.UserId] = true
+		script:SetAttribute("PrArrivals", (script:GetAttribute("PrArrivals") or 0) + 1)
+		local r
+		if phase == "match" then
+			r = joinMatch(pl)
+		else
+			table.insert(humans, {player = pl, want = arena.sideOf[pl.UserId] or "A"})
+			setHuman(pl, true, false, nil)
+			if (state:GetAttribute("PrStartAt") or 0) == 0 then set("PrStartAt", now() + autoStart()) end
+			rebuild()
+			publish()
+			r = "ok"
+		end
+		pl:SetAttribute("PrLastResult", r)
+		pl:SetAttribute("PrLastAt", now())
+		return
+	end
 	if PRIVATE and type(td) == "table" and type(td.mdaTrip) == "table" and td.mdaTrip.mode == "bots" then expectFrom(td.mdaTrip) end -- v1.5
 	if not (PRIVATE and type(td) == "table" and type(td.mdaTrip) == "table" and td.mdaTrip.mode == "bots") then return end
 	if humanIndex(pl) then return end
@@ -733,6 +856,18 @@ local function arrive(pl)
 end
 Players.PlayerAdded:Connect(arrive)
 for _, pl in ipairs(Players:GetPlayers()) do task.spawn(arrive, pl) end
+-- v1.10: an Arena member leaving before the result
+Players.PlayerRemoving:Connect(function(pl)
+	if not ARENA or arena.done or arena.recorded or not arena.present[pl.UserId] then return end
+	arena.present[pl.UserId] = nil
+	local side = arena.sideOf[pl.UserId] or "A"
+	arena.leavers[side] = true
+	local elig = arena.eligible
+	if elig == nil then elig = arena.tripEligible end
+	if script:GetAttribute("PrArenaTestEligible") == true then elig = true end
+	arenaReport("left", arena.matchId, pl, elig)
+	script:SetAttribute("PrArenaLeft", (script:GetAttribute("PrArenaLeft") or 0) + 1)
+end)
 
 -- ---------- the loop ----------
 local acc, lastIndex = 0, nil
@@ -778,6 +913,15 @@ RunService.Heartbeat:Connect(function(dt)
 				pgIntroEnds = now() + (R.PG_INTRO or 8)
 				rebuild()
 				publish()
+				if ARENA and arena.eligible == nil then -- v1.10: who counts is fixed at the intro
+					local n = {A = 0, B = 0}
+					for _, side in ipairs({"A", "B"}) do
+						for _, s in ipairs(slots[side]) do if s.kind == "human" then n[side] += 1 end end
+					end
+					arena.eligible = n.A >= 1 and n.B >= 1
+					script:SetAttribute("PrArenaEligible", arena.eligible)
+					script:SetAttribute("PrArenaState", "match")
+				end
 			end
 			return
 		end

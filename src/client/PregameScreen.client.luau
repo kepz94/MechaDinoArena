@@ -33,6 +33,9 @@
 --   instead), PregameFlatIcons (default false, read when columns / tiles are built: true -> name boxes instead of 3D).
 -- Diagnostics: PregameScreenVersion, PregameScreenState ("hidden" / "lineup" / "select" / "intro"), PregameScreenStep ("dino" /
 --   "parts"), PregameScreenLastPress, PregameScreenDraft (the dino picked on SELECT).
+-- v1.1 (Arena 4v4, MDA-491, plan docs/plans/PREGAME_LINEUP_v1.0.md Part 2): ReplicatedStorage.Practice PrArena == true
+--   (PracticeServer 1.10) -> the screens say "ARENA · HARDPOINT" in Arena orange (else as 1.0: a private match "HARDPOINT VS
+--   BOTS" in yellow, a public one "HARDPOINT PRACTICE").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -41,6 +44,7 @@ local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 Arena match look
 script:SetAttribute("PregameScreenVersion", VERSION)
 for k, v in pairs({PregameScreenEnabled = true, PregameFlatIcons = false}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -337,8 +341,14 @@ local function recordOf(e)
 end
 local function slotDino(e) return isMe(e) and myDino() or e.species end
 local function slotLoadout(e) return isMe(e) and myLoadout() or (e.loadout or {}) end
-local function modeColor() return state:GetAttribute("PrPrivate") == true and C.bots or C.arena end
-local function modeLine() return state:GetAttribute("PrPrivate") == true and "HARDPOINT VS BOTS" or "HARDPOINT PRACTICE" end
+local function modeColor()
+	if state:GetAttribute("PrArena") == true then return C.arena end -- v1.1
+	return state:GetAttribute("PrPrivate") == true and C.bots or C.arena
+end
+local function modeLine()
+	if state:GetAttribute("PrArena") == true then return "ARENA · HARDPOINT" end -- v1.1
+	return state:GetAttribute("PrPrivate") == true and "HARDPOINT VS BOTS" or "HARDPOINT PRACTICE"
+end
 
 -- ---------- LINEUP ----------
 local L = views.Lineup
