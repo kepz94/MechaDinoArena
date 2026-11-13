@@ -1,0 +1,99 @@
+<title>Save Loadout</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;600&display=swap">
+<style>
+/* Mecha Dino Arena: SAVE LOADOUT in the Lab + auto-load in the pre-game (Kepu 2026-11-13 pick "A SAVE button only"). */
+:root { --ink:#0d1218; --panel:#151d27; --panel2:#1c2633; --line:#263243; --text:#e7edf5; --muted:#93a2b6; --yellow:#ffc832; --orange:#ff9b2e; --green:#46e08a; --cyan:#7fe9ff;
+  --f-d:"Silkscreen","Courier New",monospace; --f-b:"Inter",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+html,body { background:var(--ink); color:var(--text); margin:0; }
+body { font-family:var(--f-b); font-size:15px; line-height:1.5; }
+.wrap { max-width:1160px; margin:0 auto; padding-block:28px 60px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:18px; }
+.eyebrow { font-family:var(--f-d); font-size:12px; letter-spacing:.12em; color:var(--muted); }
+h1 { font-family:var(--f-d); font-size:clamp(22px,4vw,34px); margin:6px 0; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.btn { font-family:var(--f-d); font-size:12px; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:9px 13px; cursor:pointer; }
+.btn[aria-pressed="true"] { border-color:var(--yellow); box-shadow:inset 0 -3px 0 var(--yellow); }
+.label { font-family:var(--f-d); font-size:11px; color:var(--muted); letter-spacing:.1em; }
+.screens { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr)); gap:14px; }
+.cap { font-family:var(--f-d); font-size:11px; color:var(--muted); margin-bottom:6px; letter-spacing:.1em; }
+.screen { position:relative; width:100%; aspect-ratio:16/9; border:1px solid var(--line); border-radius:10px; overflow:hidden; container-type:inline-size;
+  background:linear-gradient(160deg,#101420,#1a2130 50%,#0e1219); }
+.screen * { font-family:var(--f-d); }
+.lab-title { position:absolute; left:3cqw; top:3cqw; font-size:2.4cqw; color:var(--yellow); }
+.dino { position:absolute; left:4cqw; top:12cqw; width:26cqw; height:22cqw; background:#3f7d34; clip-path:polygon(0 60%,30% 45%,55% 40%,70% 10%,100% 20%,85% 35%,70% 55%,60% 95%,45% 95%,40% 70%,20% 75%); }
+.cards { position:absolute; left:36cqw; right:3cqw; top:8cqw; display:grid; grid-template-columns:repeat(4,1fr); gap:1cqw; }
+.card { background:var(--panel2); border:.15cqw solid var(--line); border-radius:.8cqw; height:9cqw; padding:.8cqw; font-size:.9cqw; color:var(--muted); }
+.card b { display:block; color:var(--text); font-size:1cqw; margin-bottom:.4cqw; }
+.slotrow { position:absolute; left:36cqw; right:3cqw; bottom:7cqw; display:flex; gap:1cqw; align-items:center; }
+.slot { flex:1; height:6cqw; background:var(--panel); border:.2cqw solid var(--orange); border-radius:.8cqw; display:grid; place-items:center; font-size:1cqw; text-align:center; padding:.4cqw; }
+.slot small { display:block; color:var(--orange); font-size:.8cqw; }
+.save { flex:0 0 14cqw; height:6cqw; border-radius:.8cqw; display:grid; place-items:center; text-align:center; font-size:1.2cqw; cursor:pointer; border:none; }
+.save.dirty { background:var(--yellow); color:#1b1405; }
+.save.clean { background:#24402f; color:var(--green); border:.2cqw solid var(--green); }
+.save small { display:block; font-size:.75cqw; opacity:.85; }
+.hint { position:absolute; left:36cqw; bottom:3.5cqw; font-size:.9cqw; color:var(--muted); }
+.chip { position:absolute; left:36cqw; bottom:14cqw; display:flex; gap:.8cqw; align-items:center; font-size:1cqw; }
+.chip .st { padding:.3cqw .9cqw; border-radius:2cqw; }
+.chip .st.clean { background:#24402f; color:var(--green); } .chip .st.dirty { background:#3a3220; color:var(--yellow); }
+.chip .sb { background:var(--yellow); color:#1b1405; padding:.3cqw 1cqw; border-radius:.5cqw; cursor:pointer; }
+.toast { position:absolute; left:50%; top:3cqw; transform:translateX(-50%); background:rgba(13,18,24,.9); border:.15cqw solid var(--green); color:var(--green); padding:.5cqw 1.4cqw; border-radius:2cqw; font-size:1.1cqw; }
+/* pregame parts step */
+.pg { background:linear-gradient(160deg,#151a2a,#22293d); }
+.pg .ttl { position:absolute; left:3cqw; top:3cqw; font-size:1.6cqw; color:#fff; }
+.pg .sub { position:absolute; left:3cqw; top:6cqw; font-size:1cqw; color:var(--muted); }
+.pg .loaded { position:absolute; right:3cqw; top:3cqw; background:#24402f; color:var(--green); border:.15cqw solid var(--green); padding:.4cqw 1.2cqw; border-radius:2cqw; font-size:1cqw; }
+.pg .slotrow { left:3cqw; right:30cqw; bottom:9cqw; }
+.pg .confirm { position:absolute; right:3cqw; bottom:9cqw; width:24cqw; height:6cqw; background:var(--yellow); color:#1b1405; display:grid; place-items:center; border-radius:.8cqw; font-size:1.5cqw; }
+.pg .dino { left:auto; right:6cqw; top:10cqw; width:20cqw; height:16cqw; background:#8a6a3f; }
+.hide { display:none !important; }
+.notes { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+.note { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; min-width:0; }
+.note h3 { font-family:var(--f-d); font-size:13px; margin:0 0 6px; color:var(--yellow); } .note p { margin:0 0 6px; color:#c9d4e2; }
+</style>
+<div class="wrap">
+  <div><div class="eyebrow">MECHA DINO ARENA · MOCKUP v0.1 · SAVE LOADOUT</div><h1>Save a loadout in the Lab, get it in the pre-game</h1></div>
+  <div class="row">
+    <span class="label">OPTION</span>
+    <button class="btn" data-o="a" aria-pressed="true">A · SAVE BUTTON IN THE SLOT ROW</button>
+    <button class="btn" data-o="b" aria-pressed="false">B · SAVED CHIP ABOVE THE SLOTS</button>
+    <span class="label" style="margin-left:10px">STATE</span>
+    <button class="btn" id="dirty">CHANGE A SLOT</button>
+    <button class="btn" id="saveBtn">PRESS SAVE</button>
+  </div>
+  <div class="screens">
+    <div><div class="cap">LAB (RAPTOR)</div><div class="screen" id="lab"></div></div>
+    <div><div class="cap">PRE-GAME · SELECT RAPTOR → PARTS STEP</div><div class="screen pg" id="pg"></div></div>
+  </div>
+  <div class="notes">
+    <div class="note"><h3>A · SAVE IN THE SLOT ROW</h3><p>A fifth tile at the end of the 4 slots: yellow SAVE LOADOUT while the slots differ from the saved ones, green SAVED ✓ when they match.</p></div>
+    <div class="note"><h3>B · SAVED CHIP</h3><p>A small line over the slots: "LOADOUT · SAVED ✓" or "UNSAVED" + a SAVE button. The slot row keeps its full width.</p></div>
+    <div class="note"><h3>PRE-GAME (BOTH)</h3><p>Picking a dino puts its saved loadout in your 4 slots and shows SAVED LOADOUT. You can still change slots there; that doesn't change what's saved. No saved loadout yet → your current slots, as today.</p></div>
+  </div>
+</div>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  let opt = "a", dirty = false, toast = false;
+  const saved = ["SHIELD", "THRUSTERS", "CLOAK", "SCREECH"];
+  let cur = saved.slice();
+  const slots = (arr) => arr.map((p, i) => `<div class="slot">${p}<small>${["R","T","C","V"][i]}</small></div>`).join("");
+  function draw() {
+    const cards = ["CLOAK FIELD","THRUSTERS","ENERGY SHIELD","SCREECH","TRAPS","SCENT","ADRENALINE","BLADE CLAWS"].map(n => `<div class="card"><b>${n}</b>★ MAXED</div>`).join("");
+    let lab = `<div class="lab-title">LAB · RAPTOR</div><div class="dino"></div><div class="cards">${cards}</div>`;
+    if (opt === "a") {
+      lab += `<div class="slotrow">${slots(cur)}<button class="save ${dirty ? "dirty" : "clean"}">${dirty ? "SAVE LOADOUT<small>FOR THE PRE-GAME</small>" : "SAVED ✓<small>LOADS IN THE PRE-GAME</small>"}</button></div>`;
+    } else {
+      lab += `<div class="chip"><span class="label" style="font-size:1cqw">LOADOUT</span><span class="st ${dirty ? "dirty" : "clean"}">${dirty ? "UNSAVED" : "SAVED ✓"}</span>${dirty ? `<span class="sb">SAVE</span>` : ""}</div><div class="slotrow">${slots(cur)}</div>`;
+    }
+    lab += `<div class="hint">Tap a card, then EQUIP · tap a slot to choose where it goes</div>` + (toast ? `<div class="toast">RAPTOR LOADOUT SAVED</div>` : "");
+    $("#lab").innerHTML = lab;
+    $("#pg").innerHTML = `<div class="ttl">RAPTOR · PARTS</div><div class="sub">4 SLOTS · TAP A PART TO SWAP</div><div class="loaded">SAVED LOADOUT</div><div class="dino"></div>
+      <div class="slotrow">${slots(saved)}</div><div class="confirm">CONFIRM</div>`;
+  }
+  document.querySelectorAll("[data-o]").forEach(b => b.onclick = () => { opt = b.dataset.o; document.querySelectorAll("[data-o]").forEach(x => x.setAttribute("aria-pressed", x === b)); draw(); });
+  $("#dirty").onclick = () => { cur = ["SHIELD", "TRAPS", "CLOAK", "SCREECH"]; dirty = true; toast = false; draw(); };
+  $("#saveBtn").onclick = () => { saved.splice(0, 4, ...cur); dirty = false; toast = true; draw(); setTimeout(() => { toast = false; draw(); }, 1500); };
+  draw();
+})();
+</script>
