@@ -3477,3 +3477,12 @@ Model numbers are generator output (old version = the flag in the last column, b
 - ShoulderCam 1.10 `ShoulderCamExternalEnabled` (true); character `ShoulderCamExternal`.
 - DiloFX 1.5 `DiloFXSnipeEnabled` (true), `DiloFXSnipeScale` (2).
 - DiloSnipeCam 1.1 `DiloSnipeScopeEnabled` (true, per frame), `DiloSnipeScopeRadius` (26 px), `DiloSnipeReturnEnabled` (true, at release). DiloAttackServer 1.12 `DiloSnipeSpeedMul` default 6 (was 2).
+- SkillTree 1.92 `SkillTree.DILO_SCOPE` (true): part `dscope` effects `dScopeMin` (15), `dScopeMax` (40), `dScopeCharge` (1 s), `dScopeRange` (150 / 200), `dScopeCooldown` (10 / 8), `dScopeMark` (0 / 3).
+- SkillEffects 1.62 `SkillEffectsDiloScopeEnabled` (true, at start). Character `DiloPartScopeEnabled`, `DiloPartScopeMin`, `DiloPartScopeMax`, `DiloPartScopeCharge`, `DiloPartScopeRange`, `DiloPartScopeCooldown`, `DiloPartScopeMark`.
+- DiloPartsServer 1.3 `DiloPartsScopeEnabled` (true, at start), `DiloPartsScopeUpDeg` (65°), `DiloParts_dscopeEnabled` (true). Model `DPart_dscope`; muzzle Attachment on Head.Root (DPartId "dscope").
+- DiloMovesServer 1.13 `DiloMovesScopeEnabled` (true, per request), `DiloMoves_dscopeEnabled`, `DiloScopeRadius` (1.5 x scale), `DiloScopeMaxHold` (10 s). Remote `DinoDiloScopeRequest(stamp, "start" / "fire" / "cancel", dir)`. Character `DiloScoping`, `DiloScopeStartAt`, `DiloScopeShotFrom`, `DiloScopeShotTo`, `DiloScopeTarget`, `DiloScopeDmg`, `DiloScopeCharge`, `DiloScopeRule`, `DiloScopeMarkFor`, `DiloScopeShotAt`, `DiloPartScopeReadyAt`, `DiloPartScopeServerResult(At)`; target `DiloScopeMarkUntil`, `DiloScopeMarkBy`, `DiloScopeMarkSquad`. Diagnostics `DiloScopeShots`, `DiloScopeHits`.
+- MechaButtons 1.47 `MechaButtonsScopeEnabled` (true, at start). Character `DiloScopeAim`, `DiloScopeAimAt`, `DiloScopeFiredAt`, `MechaScopeLast`, `MechaScopeFired`.
+- AbilityBar 1.42 `AbilityBarScopeEnabled` (true, at start).
+- DiloSnipeCam 1.2 `DiloScopeViewEnabled` (true, per frame), `DiloScopeFov` (30), `DiloScopeRaise` (0.2 s), `DiloScopeHole` (0.44), `DiloScopeSensMul` (0.6), `DiloScopeRecoilHold` (0.3 s), `DiloScopeKick` (4°). Character `DiloScopeHoleNow`; state "scope".
+- DiloMovesFX 1.7 `PartsFXScopeEnabled` (true), `DiloScopeUpDeg` (65°), `DiloScopeSwing` (0.2 s). Diagnostic `DiloMovesFXScopeShots`.
+- DiloAttackTest 1.6 `DiloAttackTestSpitPressEnabled` (true, at start) -> `DiloAttackTestSnipeEnabled` starts false.

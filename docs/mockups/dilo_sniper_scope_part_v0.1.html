@@ -1,0 +1,242 @@
+<title>Dilo Sniper Scope</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@500;700&display=swap">
+<style>
+/* Layout: 1) the part on the dino (3 looks), 2) the scope view looping (PC), 3) phone flow, 4) the Lab card. */
+:root {
+  --bg: #0b1016; --card: #121a24; --line: #26364a; --fg: #e8eef6; --muted: #8fa2b8; --yellow: #ffc832;
+  --venom: #9cf05a; --pale: #d8ff8a; --brass: #c9a24a;
+  --display: "Silkscreen", "Courier New", monospace; --body: "Inter", system-ui, sans-serif;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 24px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+h1 { font-family: var(--display); color: var(--yellow); font-size: 22px; margin: 0; letter-spacing: .04em; }
+h2 { font-family: var(--display); font-size: 14px; margin: 8px 0 0; letter-spacing: .06em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0; }
+.card svg, canvas { display: block; width: 100%; height: auto; }
+.cap { padding: 10px 12px 12px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.who { font-family: var(--display); font-size: 12px; letter-spacing: .06em; }
+.who b { color: var(--yellow); }
+.what { font-size: 12px; color: var(--muted); }
+.lab { display: grid; grid-template-columns: 120px 1fr; gap: 14px; padding: 14px; align-items: start; }
+.lab .icon { background: #0b1016; border: 2px solid #f0a62a; border-radius: 10px; aspect-ratio: 1; display: grid; place-items: center; }
+.lab h3 { font-family: var(--display); margin: 0 0 6px; font-size: 14px; color: var(--fg); }
+.lab .tag { font-family: var(--display); font-size: 10px; color: #ff8a7a; letter-spacing: .06em; }
+.lab ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13px; color: var(--fg); }
+.lab ol li::marker { color: var(--yellow); font-family: var(--display); }
+.note { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.idea ul { margin: 0; padding: 0 14px 0 28px; display: grid; gap: 4px; font-size: 13px; }
+.idea .take { margin: 10px 12px 12px; font-size: 12px; color: var(--pale); }
+@media (max-width: 520px) { .lab { grid-template-columns: 1fr; } .lab .icon { max-width: 120px; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="dilo" viewBox="0 0 300 200">
+    <!-- body / legs / tail -->
+    <rect x="80" y="110" width="110" height="40" rx="6" fill="#4f8a5c"/>
+    <rect x="20" y="118" width="70" height="14" rx="4" fill="#4f8a5c"/>
+    <rect x="100" y="148" width="12" height="40" fill="#3d6e48"/><rect x="160" y="148" width="12" height="40" fill="#3d6e48"/>
+    <!-- neck / head -->
+    <rect x="178" y="70" width="22" height="50" rx="4" fill="#4f8a5c" transform="rotate(18 189 95)"/>
+    <rect x="196" y="52" width="58" height="24" rx="5" fill="#4f8a5c"/>
+    <rect x="240" y="66" width="22" height="8" fill="#3d6e48"/>
+    <circle cx="232" cy="60" r="3.2" fill="#ffd34d"/>
+    <!-- crests -->
+    <rect x="204" y="40" width="34" height="8" rx="3" fill="#c0392b"/>
+    <!-- frill (folded) -->
+    <ellipse cx="196" cy="70" rx="14" ry="22" fill="#e0a03a" opacity=".9"/>
+  </symbol>
+</defs></svg>
+
+<div class="wrap">
+  <h1>DILO · SNIPER SCOPE (MECHA PART)</h1>
+
+  <h2>0 · WHAT OTHER GAMES DO</h2>
+  <div class="grid ideas">
+    <div class="card idea"><div class="cap"><span class="who"><b>OVERWATCH</b> · WIDOWMAKER</span></div>
+      <ul><li>Scope in takes 0.32 s</li><li>Shot charges in the scope: 12 → 120 dmg over 0.9 s</li><li>Moves 65% slower while scoped</li></ul>
+      <p class="take">Take: damage builds while you hold the scope, so tap-spam is weak</p></div>
+    <div class="card idea"><div class="cap"><span class="who"><b>SPLATOON</b> · SPLATTERSCOPE</span></div>
+      <ul><li>Holding charges; the scope version goes first person + zoom</li><li>Full charge = more range + damage</li><li>Scoped version can't hold a charge</li></ul>
+      <p class="take">Take: the same ink / venom shot, but the scope trades view for reach</p></div>
+    <div class="card idea"><div class="cap"><span class="who"><b>FORTNITE · BATTLEFIELD · HALO</b></span></div>
+      <ul><li>Scope glint: a flash on the sniper that everyone can see</li><li>Lets targets spot the sniper and take cover</li></ul>
+      <p class="take">Take: a red glint on the monocle while scoped, so it's fair</p></div>
+    <div class="card idea"><div class="cap"><span class="who"><b>BRAWL STARS</b> · PIPER</span></div>
+      <ul><li>Mobile sniper: drag to aim, let go to shoot</li><li>Hits harder the farther the target is</li></ul>
+      <p class="take">Take: your press · drag · let go fits phones; the range bonus is optional</p></div>
+  </div>
+
+  <h2>OUR VERSION</h2>
+  <div class="card lab">
+    <div class="icon"><svg viewBox="0 0 60 60" width="80" height="80"><path d="M14 44 L36 22" stroke="#3a3f47" stroke-width="5"/><rect x="30" y="14" width="22" height="14" rx="3" fill="#3a3f47"/><circle cx="46" cy="21" r="8" fill="#2a2f36" stroke="#c9a24a" stroke-width="3"/><circle cx="46" cy="21" r="4" fill="#ff5a4f"/></svg></div>
+    <div>
+      <div class="tag">ATTACK · MECHA PART · BUTTON · MONOCLE ARM</div>
+      <h3>SNIPER SCOPE</h3>
+      <ol>
+        <li>Button: press to swing the lens over your eye and scope in (0.2 s). The shot charges while you hold: 15 damage at once, up to 40 at full charge (1 s). Let go: one venom shot hits instantly, plus dart venom. Separate from your 5 spits. Recharges in 10 s</li>
+        <li>Reaches farther (150 → 200 studs)</li>
+        <li>Recharges in 8 s</li>
+        <li>A hit marks the dino for your squad for 3 s</li>
+      </ol>
+      <p class="note">While scoped: you move 50% slower and a red glint shows on your lens to everyone. Each of these three is a switch: pick below.</p>
+    </div>
+  </div>
+
+  <h2>1 · THE PART ON THE DILO</h2>
+  <div class="grid">
+    <div class="card">
+      <svg viewBox="0 0 300 200" role="img" aria-label="Long brass scope over the shoulder"><rect width="300" height="200" fill="#16212d"/><use href="#dilo"/>
+        <g>
+          <rect x="150" y="96" width="14" height="16" fill="#3a3f47"/>
+          <rect x="158" y="44" width="78" height="12" rx="5" fill="#c9a24a" transform="rotate(-4 197 50)"/>
+          <rect x="226" y="42" width="12" height="16" rx="3" fill="#2a2f36"/>
+          <circle cx="238" cy="50" r="5" fill="#7fe9ff" opacity=".9"/>
+          <rect x="160" y="54" width="6" height="44" fill="#3a3f47"/>
+          <rect x="226" y="56" width="4" height="8" fill="#3a3f47"/>
+        </g>
+      </svg>
+      <div class="cap"><span class="who"><b>A</b> · LONG BRASS SCOPE</span><span class="what">Mounted on the shoulder, eyepiece at the eye</span></div>
+    </div>
+    <div class="card">
+      <svg viewBox="0 0 300 200" role="img" aria-label="Compact monocle scope on the head"><rect width="300" height="200" fill="#16212d"/><use href="#dilo"/>
+        <g>
+          <rect x="166" y="96" width="12" height="12" fill="#3a3f47"/>
+          <path d="M172 98 L210 62" stroke="#3a3f47" stroke-width="5"/>
+          <rect x="208" y="48" width="34" height="18" rx="4" fill="#3a3f47"/>
+          <circle cx="236" cy="57" r="9" fill="#2a2f36" stroke="#c9a24a" stroke-width="3"/>
+          <circle cx="236" cy="57" r="5" fill="#ff5a4f" opacity=".9"/>
+        </g>
+      </svg>
+      <div class="cap"><span class="who"><b>B</b> · MONOCLE ARM</span><span class="what">An arm from the shoulder swings a lens over the eye</span></div>
+    </div>
+    <div class="card">
+      <svg viewBox="0 0 300 200" role="img" aria-label="Rifle scope with barrel over the shoulder"><rect width="300" height="200" fill="#16212d"/><use href="#dilo"/>
+        <g>
+          <rect x="140" y="92" width="22" height="14" rx="3" fill="#3a3f47"/>
+          <rect x="150" y="76" width="130" height="7" fill="#2a2f36"/>
+          <rect x="168" y="62" width="64" height="12" rx="5" fill="#3a3f47"/>
+          <circle cx="232" cy="68" r="5" fill="#7fe9ff" opacity=".9"/>
+          <rect x="272" y="73" width="10" height="13" fill="#9cf05a"/>
+          <rect x="158" y="83" width="6" height="12" fill="#3a3f47"/>
+        </g>
+      </svg>
+      <div class="cap"><span class="who"><b>C</b> · VENOM RIFLE</span><span class="what">Scope + a long venom barrel past the snout</span></div>
+    </div>
+  </div>
+
+  <h2>2 · THE SCOPE (TAP = SCOPE IN, LET GO = FIRE)</h2>
+  <div class="card">
+    <canvas id="scope" width="1100" height="560" aria-label="Scope view loop"></canvas>
+    <div class="cap"><span class="what">Press: lens slides up and the view zooms in (0.15 s) · drag/mouse: aim with a little sway · let go: instant hit for 40, recoil kick, scope drops back down</span></div>
+  </div>
+
+  <h2>3 · PHONE</h2>
+  <div class="card">
+    <canvas id="phone" width="1100" height="380" aria-label="Phone flow"></canvas>
+    <div class="cap"><span class="what">Thumb down on SCOPE · slide the same thumb to aim · lift to fire</span></div>
+  </div>
+
+  <h2>4 · FIRST DRAFT CARD (BEFORE THE RESEARCH)</h2>
+  <div class="card lab">
+    <div class="icon"><svg viewBox="0 0 60 60" width="80" height="80"><rect x="8" y="24" width="40" height="12" rx="5" fill="#c9a24a"/><circle cx="48" cy="30" r="7" fill="#2a2f36"/><circle cx="48" cy="30" r="4" fill="#7fe9ff"/><rect x="18" y="36" width="5" height="12" fill="#3a3f47"/></svg></div>
+    <div>
+      <div class="tag">ATTACK · MECHA PART · BUTTON</div>
+      <h3>SNIPER SCOPE</h3>
+      <ol>
+        <li>Button: hold to look down the scope, let go to fire one venom shot that hits instantly: 40 damage plus dart venom. Separate from your 5 spits. Recharges in 10 s</li>
+        <li>Reaches farther (150 → 200 studs)</li>
+        <li>Recharges in 8 s</li>
+        <li>A hit marks the dino for your squad for 3 s</li>
+      </ol>
+      <p class="note">Steps II–★ and the 10 s / 150 studs are my proposal — pick or change them below.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let t0=performance.now();
+function world(g,W,H,zoom,ox,oy,hit){
+  const sky=g.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#7fc7f2'); sky.addColorStop(.55,'#cbeafb'); sky.addColorStop(.56,'#6fbf5a'); sky.addColorStop(1,'#3f8f3a');
+  g.save(); g.translate(W/2+ox,H/2+oy); g.scale(zoom,zoom); g.translate(-W/2,-H/2);
+  g.fillStyle=sky; g.fillRect(-W,-H,W*3,H*3);
+  g.fillStyle='#8fb7c9'; g.beginPath(); g.moveTo(-W,H*.55); for(let x=-W;x<=W*2;x+=60) g.lineTo(x,H*.52-Math.sin(x/90)*18); g.lineTo(W*2,H*.56); g.lineTo(-W,H*.56); g.fill();
+  const tree=(x,y,s)=>{ g.fillStyle='#6a4a30'; g.fillRect(x-4*s,y-30*s,8*s,30*s); g.fillStyle='#2f8a3e'; g.fillRect(x-22*s,y-62*s,44*s,34*s); };
+  tree(W*.2,H*.6,1.2); tree(W*.82,H*.6,1.3); tree(W*.62,H*.57,.7);
+  // enemy at centre
+  const ex=W/2, ey=H/2+10, s=.5; g.save(); g.translate(ex,ey); g.scale(-s,s);
+  g.fillStyle= hit ? '#ffffff' : '#c8574b'; g.fillRect(-40,-48,52,26); g.fillRect(4,-62,30,20); g.fillRect(-70,-42,32,9); g.fillRect(-28,-24,8,24); g.fillRect(-4,-24,8,24); g.restore();
+  g.restore();
+}
+function scopeMask(g,W,H,k){ // k 0..1: lens up
+  const r=Math.min(W,H)*0.44*k + 1;
+  g.save(); g.fillStyle='#000'; g.beginPath(); g.rect(0,0,W,H); g.arc(W/2,H/2,r,0,Math.PI*2,true); g.fill('evenodd');
+  // lens ring
+  g.strokeStyle='#1a1a1a'; g.lineWidth=14; g.beginPath(); g.arc(W/2,H/2,r,0,Math.PI*2); g.stroke();
+  // inner shade
+  const gr=g.createRadialGradient(W/2,H/2,r*.75,W/2,H/2,r); gr.addColorStop(0,'rgba(0,0,0,0)'); gr.addColorStop(1,'rgba(0,0,0,.55)'); g.fillStyle=gr; g.beginPath(); g.arc(W/2,H/2,r,0,Math.PI*2); g.fill();
+  if (k>0.95){ // classic crosshair: thick outer posts, thin centre, mil dots
+    g.fillStyle='#000';
+    g.fillRect(W/2-r, H/2-3, r*0.55, 6); g.fillRect(W/2+r*0.45, H/2-3, r*0.55, 6);
+    g.fillRect(W/2-3, H/2+r*0.45, 6, r*0.55); g.fillRect(W/2-3, H/2-r, 6, r*0.55);
+    g.fillRect(W/2-r*0.45, H/2-0.75, r*0.9, 1.5); g.fillRect(W/2-0.75, H/2-r*0.45, 1.5, r*0.9);
+    for(let i=1;i<=4;i++){ for (const sgn of [-1,1]){ g.beginPath(); g.arc(W/2+sgn*i*r*0.1, H/2, 2.4,0,Math.PI*2); g.fill(); g.beginPath(); g.arc(W/2, H/2+sgn*i*r*0.1, 2.4,0,Math.PI*2); g.fill(); } }
+  }
+  g.restore();
+}
+const cv=document.getElementById('scope'), g=cv.getContext('2d'); const W=cv.width,H=cv.height;
+const LOOP=6;
+function frame(now){
+  const t = reduce ? 2.2 : ((now-t0)/1000)%LOOP;
+  const PRESS=0.8, IN=0.15, FIRE=3.4, OUT=FIRE+0.35;
+  let k = t<PRESS?0 : t<PRESS+IN ? (t-PRESS)/IN : t<OUT ? 1 : Math.max(0,1-(t-OUT)/0.2);
+  const zoom = 1 + k*2.2;
+  let ox=0, oy=0;
+  if (t>PRESS && t<FIRE){ const a=1-Math.min(1,(t-PRESS)/(FIRE-PRESS-0.3)); ox=Math.sin(t*2.7)*70*a+Math.sin(t*9)*3; oy=Math.cos(t*2.1)*40*a+Math.cos(t*7)*2; }
+  if (t>=FIRE && t<FIRE+0.25){ oy += -40*(1-(t-FIRE)/0.25); } // recoil kick
+  const hit = t>=FIRE && t<FIRE+0.12;
+  world(g,W,H,zoom,ox*k,oy*k,hit);
+  if (k>0) scopeMask(g,W,H,k);
+  // muzzle flash + hit marker + number
+  if (t>=FIRE && t<FIRE+0.08){ g.save(); g.globalAlpha=.6; g.fillStyle='#d8ff8a'; g.fillRect(0,0,W,H); g.restore(); }
+  if (t>=FIRE && t<FIRE+0.9){ const u=(t-FIRE)/0.9; g.save(); g.globalAlpha=1-u; g.strokeStyle='#fff'; g.lineWidth=3; const c=W/2,d=H/2;
+    for (const [a,b] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ g.beginPath(); g.moveTo(c+a*10,d+b*10); g.lineTo(c+a*22,d+b*22); g.stroke(); }
+    g.font='700 30px Silkscreen, monospace'; g.textAlign='center'; g.fillStyle='#d8ff8a'; g.fillText('40', c+70, d-30-u*30); g.restore(); }
+  // the charge (v0.2): a thin arc under the crosshair fills over 1 s; damage shown
+  if (t>PRESS+IN && t<FIRE){ const ch=Math.min(1,(t-PRESS-IN)/1.0); g.save(); g.strokeStyle= ch>=1 ? '#9cf05a' : '#e8f5ff'; g.lineWidth=4;
+    g.beginPath(); g.arc(W/2,H/2,48,Math.PI*0.75,Math.PI*0.75+Math.PI*1.5*ch); g.stroke();
+    g.font='700 16px Silkscreen, monospace'; g.textAlign='center'; g.fillStyle= ch>=1 ? '#9cf05a' : '#e8f5ff'; g.fillText(String(Math.round(15+25*ch)), W/2, H/2+78); g.restore(); }
+  // the part's button
+  const bx=W-150, by=H-110; g.save(); g.fillStyle='rgba(13,18,24,.85)'; g.strokeStyle= (t>PRESS && t<FIRE) ? '#9cf05a' : '#f0a62a'; g.lineWidth=3;
+  g.beginPath(); g.roundRect(bx,by,110,80,12); g.fill(); g.stroke(); g.font='12px Silkscreen, monospace'; g.textAlign='center'; g.fillStyle='#e8eef6'; g.fillText('SNIPER', bx+55, by+34); g.fillText('SCOPE', bx+55, by+50);
+  if (t>=FIRE){ const cd=Math.min(1,(t-FIRE)/ (LOOP-FIRE)); g.fillStyle='rgba(0,0,0,.55)'; g.fillRect(bx+2,by+2,106*(1-cd),76); g.fillStyle='#8fa2b8'; g.fillText(Math.ceil(10*(1-cd))+'s', bx+55, by+70); }
+  g.restore();
+  const step = t<PRESS ? 'NORMAL VIEW' : t<FIRE ? 'HOLDING: AIM' : 'LET GO: HIT';
+  g.save(); g.font='12px Silkscreen, monospace'; g.fillStyle='rgba(13,18,24,.8)'; g.fillRect(14,H-40,220,26); g.fillStyle='#ffc832'; g.fillText(step, 24, H-22); g.restore();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+const pc=document.getElementById('phone'), p=pc.getContext('2d');
+function phone(now){
+  const t = reduce ? 2 : ((now-t0)/1000)%5;
+  const x0=150,y0=30,w=800,h=320; p.clearRect(0,0,pc.width,pc.height); p.fillStyle='#0b1016'; p.fillRect(0,0,pc.width,pc.height);
+  p.fillStyle='#1a1f27'; p.beginPath(); p.roundRect(x0-16,y0-16,w+32,h+32,40); p.fill();
+  p.save(); p.beginPath(); p.roundRect(x0,y0,w,h,26); p.clip(); p.translate(x0,y0);
+  const inScope=t>0.6 && t<3.6;
+  const ox = inScope ? Math.sin(t*2)*40*(1-Math.min(1,(t-.6)/2.5)) : 0;
+  world(p,w,h,inScope?2.6:1,ox,0,t>=3.6&&t<3.7);
+  if (inScope) scopeMask(p,w,h,1);
+  // button + thumb
+  const bx=w-110, by=h-100; p.fillStyle='rgba(13,18,24,.85)'; p.beginPath(); p.arc(bx,by,44,0,Math.PI*2); p.fill(); p.strokeStyle=inScope?'#9cf05a':'#f0a62a'; p.lineWidth=3; p.stroke();
+  p.font='10px Silkscreen, monospace'; p.textAlign='center'; p.fillStyle='#e8eef6'; p.fillText('SCOPE', bx, by+4);
+  if (t>0.4 && t<3.6){ const tx=bx+(inScope?Math.sin(t*2)*-30:0), ty=by+(inScope?Math.cos(t*1.7)*12:0); p.fillStyle='rgba(255,220,190,.6)'; p.beginPath(); p.ellipse(tx,ty,26,32,0,0,Math.PI*2); p.fill(); }
+  p.restore();
+  requestAnimationFrame(phone);
+}
+requestAnimationFrame(phone);
+</script>

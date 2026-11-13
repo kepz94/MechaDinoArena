@@ -1150,6 +1150,15 @@ local DPARTS = { -- {path id, prefix, {attribute, effect field, off value}...}
 		{"Cooldown", "dJetsCooldown", 0}}},
 	{"dover", "DiloPartOver", {{"Time", "dOverTime", 0}, {"VenomMul", "dOverVenomMul", 1}, {"Cooldown", "dOverCooldown", 0}}},
 }
+-- v1.62 (MDA-513, plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md Task 2; SkillTree 1.92): the Sniper Scope (dscope) writes
+--   DiloPartScopeEnabled (bought AND slotted, as every dilo part) and DiloPartScopeMin / Max / Charge / Range / Cooldown / Mark
+--   from dScopeMin / dScopeMax / dScopeCharge / dScopeRange / dScopeCooldown / dScopeMark (0 when off). Switch: script attribute
+--   SkillEffectsDiloScopeEnabled (default true, read at start; false = 1.61).
+if script:GetAttribute("SkillEffectsDiloScopeEnabled") == nil then script:SetAttribute("SkillEffectsDiloScopeEnabled", true) end
+if script:GetAttribute("SkillEffectsDiloScopeEnabled") ~= false then
+	table.insert(DPARTS, {"dscope", "DiloPartScope", {{"Min", "dScopeMin", 0}, {"Max", "dScopeMax", 0}, {"Charge", "dScopeCharge", 0},
+		{"Range", "dScopeRange", 0}, {"Cooldown", "dScopeCooldown", 0}, {"Mark", "dScopeMark", 0}}})
+end
 do
 	local applyCharV144 = applyChar
 	applyChar = function(char, st)
@@ -1772,6 +1781,7 @@ end)
 
 -- ---------- v1.61: practice bots get the same part attributes (see the header) ----------
 VERSION = "1.61" -- v1.61 practice bot pass
+VERSION = "1.62" -- v1.62 dilo Sniper Scope attributes (MDA-513)
 script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsBotPassEnabled") == nil then script:SetAttribute("SkillEffectsBotPassEnabled", true) end
 do

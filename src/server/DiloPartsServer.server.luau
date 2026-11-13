@@ -1,4 +1,4 @@
--- DiloPartsServer v1.0 (Mecha Dino Arena) — puts the Dilophosaurus' mecha parts on (server-built, every client sees them) and
+-- DiloPartsServer v1.3 (Mecha Dino Arena) — puts the Dilophosaurus' mecha parts on (server-built, every client sees them) and
 -- builds their Lab card models. Plan docs/plans/DILO_PARTS_v1.0.md Task 3 (MDA-316); the looks are Kepu's picks from
 -- docs/mockups/dilo_parts_options.html v0.1 (tools/mockup/dilo_parts_looks.js, same numbers; Kepu 2026-11-06 01:20 "All
 -- recommended except Venom Gatling - C, Toxin Mortar - C"):
@@ -47,12 +47,25 @@
 --   of each pod (clear of the mortar tube). djets: a low booster (radius 0.22, was 0.3) lying on a saddle plate on Tail1's top
 --   with side straps, nozzle 0.26, the 3 charge pips on its +X side. Roles kept (body / barrel / drum / nozzle / pip1-3,
 --   muzzles). Switch: script attribute DiloPartsFitV3Enabled (default true, read at each build; false = 1.1).
+-- v1.3 (MDA-515, plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md Task 3, mockup docs/mockups/dilo_sniper_scope_part_v0.1.html; Kepu
+--   2026-11-13 16:19 "a sniper scope mecha part that sits over his shoulder and his eye", pick "B · Monocle arm"): part dscope
+--   "Sniper Scope" (flag DiloPartScopeEnabled, Model "DPart_dscope") on the Head segment, on the +X side (the side the shoulder
+--   camera starts on): a mount plate + yellow hinge knuckle on the skull behind the eye (static), and the monocle arm (DPartAnim
+--   "scope", pivot at the hinge (0.70, 3.16, -2.92)): arm + link, scope tube (cylZ r 0.1, centred beside the eye at z -3.40), rubber
+--   eyecup, yellow top rail, yellow rim + lens (role "lens", glassB) at the front. Rest pose = swung up DiloPartsScopeUpDeg (65)
+--   degrees about X (animRest "scope"); DiloMovesFX 1.7 swings it down over the eye while scoping. Muzzle Attachment on the Head
+--   root at the lens front in the scoped pose (0.78, 3.05, -3.62; DPartId "dscope"): the shot's origin (DiloMovesServer 1.13).
+--   Lab card: BuildPreview_dscope (automatic). Switch: script attribute DiloPartsScopeEnabled (default true, read at start; false =
+--   1.2, no dscope look) + the usual DiloParts_dscopeEnabled.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 seat layer (parts on the body surface + mount brackets)
 VERSION = "1.2" -- v1.2 fit layer (gatling pods, low tail booster)
+VERSION = "1.3" -- v1.3 Sniper Scope monocle arm (dscope)
+if script:GetAttribute("DiloPartsScopeEnabled") == nil then script:SetAttribute("DiloPartsScopeEnabled", true) end -- v1.3
+if script:GetAttribute("DiloPartsScopeUpDeg") == nil then script:SetAttribute("DiloPartsScopeUpDeg", 65) end -- v1.3
 if script:GetAttribute("DiloPartsFitV3Enabled") == nil then script:SetAttribute("DiloPartsFitV3Enabled", true) end -- v1.2
 if script:GetAttribute("DiloPartsSeatV2Enabled") == nil then script:SetAttribute("DiloPartsSeatV2Enabled", true) end -- v1.1
 local TORUS_SEGMENTS = 12
@@ -71,6 +84,7 @@ local PARTS = {
 	{id = "dpump", flag = "DiloPartPumpEnabled"}, {id = "djets", flag = "DiloPartJetsEnabled"},
 	{id = "dover", flag = "DiloPartOverEnabled"},
 }
+if script:GetAttribute("DiloPartsScopeEnabled") ~= false then table.insert(PARTS, {id = "dscope", flag = "DiloPartScopeEnabled"}) end -- v1.3
 
 script:SetAttribute("DiloPartsServerVersion", VERSION)
 if script:GetAttribute("DiloPartsServerEnabled") == nil then script:SetAttribute("DiloPartsServerEnabled", true) end
@@ -200,6 +214,22 @@ P.dover = function()
 	add(L, "Torso", "torus", {0.36, 0.05}, "yellow", {0, 0.45, -2.3})
 	for i = 0, 3 do add(L, "Torso", "box", {0.06, 0.06, 0.4}, "steel", {0, 0.45, -2.31}, {0, 0, 45 + i * 90}) end
 	for i = 0, 3 do add(L, "Torso", "box", {0.5, 0.26, 0.06}, "gun", {0, 1.18, -1.55 + i * 0.2}, nil, {anim = "fins", role = "fin"}) end
+	return L
+end
+
+P.dscope = function() -- v1.3: Sniper Scope monocle arm (Head, +X side)
+	local L = {}
+	local H = {0.70, 3.16, -2.92} -- the hinge (the arm's pivot)
+	add(L, "Head", "box", {0.05, 0.3, 0.34}, "gun", {0.61, 3.12, -2.92}, nil, {role = "mount"})
+	add(L, "Head", "cylX", {0.08, 0.14}, "yellow", {0.68, 3.16, -2.92}, nil, {role = "hinge"})
+	add(L, "Head", "box", {0.06, 0.08, 0.34}, "gun", H, nil, {anim = "scope", go = {0.06, -0.06, -0.17}, role = "arm"})
+	add(L, "Head", "box", {0.06, 0.1, 0.06}, "gun", H, nil, {anim = "scope", go = {0.08, -0.09, -0.32}, role = "arm"})
+	add(L, "Head", "cylZ", {0.1, 0.34}, "dark", H, nil, {anim = "scope", go = {0.08, -0.11, -0.48}, role = "tube"})
+	add(L, "Head", "cylZ", {0.085, 0.06}, "rubber", H, nil, {anim = "scope", go = {0.08, -0.11, -0.3}, role = "eyecup"})
+	add(L, "Head", "box", {0.04, 0.03, 0.24}, "yellow", H, nil, {anim = "scope", go = {0.08, -0.005, -0.48}, role = "rail"})
+	add(L, "Head", "torus", {0.1, 0.025}, "yellow", H, nil, {anim = "scope", go = {0.08, -0.11, -0.655}, role = "rim"})
+	add(L, "Head", "cylZ", {0.085, 0.02}, "glassB", H, nil, {anim = "scope", go = {0.08, -0.11, -0.66}, role = "lens"})
+	add(L, "Head", "muzzle", {}, nil, {0.78, 3.05, -3.62})
 	return L
 end
 
@@ -342,6 +372,7 @@ end
 local function animRest(kind)
 	if kind == "mortar" then return CFrame.Angles(math.rad(-20), 0, 0) end
 	if kind == "extend" then return CFrame.new(0, 0, 0) end
+	if kind == "scope" then return CFrame.Angles(math.rad(tonumber(script:GetAttribute("DiloPartsScopeUpDeg")) or 65), 0, 0) end -- v1.3: swung up
 	return CFrame.identity
 end
 

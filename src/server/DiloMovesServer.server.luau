@@ -1,4 +1,4 @@
--- DiloMovesServer v1.10 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
+-- DiloMovesServer v1.13 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
 -- Toxin Mortar, Spine Burst, Venom Overdrive. Plan docs/plans/DILO_PARTS_v1.0.md Task 5 (deterministic map), MDA-318; mockup
 -- docs/mockups/dilo_parts_options.html v0.1 (timings from tools/mockup/dilo_parts_looks.js); Kepu 2026-11-06 picks + red-team
 -- "Same venom system", "Use the proposals". Build 2 (Sonic Hiss, Antivenom Pump, Spring Jets) comes in 1.1.
@@ -970,3 +970,156 @@ do
 	fn.Parent = script
 end
 script:SetAttribute("DiloMovesServerVersion", "1.12") -- v1.12 bot entrance
+-- v1.13 Sniper Scope (MDA-516, plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md Task 4, mockup docs/mockups/dilo_sniper_scope_part_v0.1.html;
+--   Kepu 2026-11-13 16:19 "It'll just be a shot of venom separate from his 5 shots and this will be 40 damage hit scan ... press and
+--   move your thumb around to aim then release for a hitscan shot", picks "Yes: 15 -> 40 over 1 s", "Red glint on the lens").
+--   Remote DinoDiloScopeRequest(stamp, action, dir), part dscope (prefix DiloPartScope; SkillEffects 1.62 writes DiloPartScopeMin /
+--   Max / Charge / Range / Cooldown / Mark). Players only (no bot entrance; plan do-not-touch).
+--   * "start": the usual part checks (check(): dead / disabled / menu / stunned / pinned / dazed / silenced / cooldown) -> character
+--     DiloScoping = true, DiloScopeStartAt = server time (everyone's DiloMovesFX: the arm swings down, the red lens glint).
+--     A start while already scoping restarts the charge. A scope left open DiloScopeMaxHold (10) s closes itself ("timeout", no
+--     recharge used).
+--   * "fire" (dir = the aim, a unit vector from the lens): needs DiloScoping (else result "notScoping"), the character still able
+--     (canStill: else "cancelled", no recharge used) and the part still on (DiloPartScopeEnabled). charge = (now - DiloScopeStartAt) /
+--     DiloPartScopeCharge, 0..1; damage = Min + (Max - Min) x charge (15 -> 40). Origin: the dscope muzzle (DiloPartsServer 1.3,
+--     Attachment on the Head root, DPartId "dscope"), else Head_tip, else the root. Range DiloPartScopeRange studs (150; 200 at II).
+--     Hitscan: a world raycast (every dino and FX folder left out) sets the line's end; the nearest target dino (candidates(): squad /
+--     mode rules) whose hitboxes come within DiloScopeRadius (1.5) x scale of the line before that end is hit (no aim
+--     assist). A live Sap Wall between stops it (rule "wall"). A hit: damage() (shield / debuffs / armor as every part hit), the dart
+--     venom (venom()), and with DiloPartScopeMark > 0 (★) the target gets DiloScopeMarkUntil = now + Mark, DiloScopeMarkBy = the
+--     shooter's name, DiloScopeMarkSquad = the shooter's SquadId (DiloMovesFX 1.7 outlines it for the shooter's squad). The
+--     recharge (ok(): DiloPartScopeReadyAt = now + DiloPartScopeCooldown) starts at the shot.
+--   * "cancel": DiloScoping = false, result "cancelled", no recharge used.
+--   Stamps (character): DiloScopeShotFrom / DiloScopeShotTo (Vector3), DiloScopeTarget (name or ""), DiloScopeDmg (dealt),
+--   DiloScopeCharge (0..1), DiloScopeRule ("hit" / "miss" / "wall"), DiloScopeMarkFor (s, 0 = none), then DiloScopeShotAt (last).
+--   Results: DiloPartScopeServerResult / ...At as every part. Switch: script attribute DiloMovesScopeEnabled (default true, read per
+--   request; false = 1.12, the remote does nothing) + DiloMoves_dscopeEnabled. Numbers: script DiloScopeRadius, DiloScopeMaxHold.
+--   Diagnostics: script DiloScopeShots, DiloScopeHits.
+do
+	for k, v in pairs({DiloMovesScopeEnabled = true, DiloScopeRadius = 1.5, DiloScopeMaxHold = 10}) do
+		if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+	end
+	for _, k in ipairs({"DiloScopeShots", "DiloScopeHits"}) do script:SetAttribute(k, 0) end
+	local PREFIX = "DiloPartScope"
+	local scopeRemote = remote("DinoDiloScopeRequest")
+	local function scopeOrigin(char)
+		local head = char:FindFirstChild("Head")
+		local root = head and head:FindFirstChild("Root")
+		if root then
+			for _, a in ipairs(root:GetChildren()) do
+				if a:IsA("Attachment") and a:GetAttribute("DPartId") == "dscope" then return a.WorldPosition end
+			end
+		end
+		local tip = char:FindFirstChild("Head_tip", true)
+		if tip and tip:IsA("BasePart") then return tip.Position end
+		local r = rootOf(char)
+		return r.Position + Vector3.yAxis * 3 * char:GetScale()
+	end
+	local function onLine(m, from, dir, len) -- the nearest body gap to the line and its distance along it
+		local r = rootOf(m)
+		if not r then return nil end
+		local u = math.clamp((r.Position - from):Dot(dir), 0, len)
+		local best, bestU = math.huge, nil
+		for _, du in ipairs({-3, -1.5, 0, 1.5, 3}) do
+			local uu = math.clamp(u + du, 0, len)
+			local g = gap(m, from + dir * uu)
+			if g < best then best, bestU = g, uu end
+		end
+		return best, bestU
+	end
+	local function close(char, why)
+		char:SetAttribute("DiloScoping", false)
+		if why then
+			char:SetAttribute(PREFIX .. "ServerResult", why)
+			char:SetAttribute(PREFIX .. "ServerResultAt", now())
+		end
+	end
+	local function fire(player, char, dir)
+		local t = now()
+		if char:GetAttribute("DiloScoping") ~= true then
+			char:SetAttribute(PREFIX .. "ServerResult", "notScoping")
+			char:SetAttribute(PREFIX .. "ServerResultAt", t)
+			return
+		end
+		if typeof(dir) ~= "Vector3" or dir ~= dir or dir.Magnitude < 0.5 or dir.Magnitude > 1.5 then close(char, "badArg") return end
+		if not canStill(char) or char:GetAttribute(PREFIX .. "Enabled") ~= true or num(char, "SilencedUntil", 0) > t then close(char, "cancelled") return end
+		dir = dir.Unit
+		close(char, nil)
+		ok(char, PREFIX, t)
+		count("DiloScopeShots")
+		local s = char:GetScale()
+		local charge = math.clamp((t - num(char, "DiloScopeStartAt", t)) / math.max(0.05, num(char, PREFIX .. "Charge", 1)), 0, 1)
+		local lo, hi = math.max(0, num(char, PREFIX .. "Min", 15)), math.max(0, num(char, PREFIX .. "Max", 40))
+		local dmg = lo + (hi - lo) * charge
+		local from = scopeOrigin(char)
+		local range = math.max(1, num(char, PREFIX .. "Range", 150))
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		local ex = {char}
+		for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+		for _, b in ipairs(bots()) do table.insert(ex, b) end
+		for _, n in ipairs({"DinoFX_Local", "DinoFX", "TenoFX", "PachyFX_Local", "DiloFX", "TrooPartsFX", "TrooStatsFX"}) do
+			local f = workspace:FindFirstChild(n)
+			if f then table.insert(ex, f) end
+		end
+		local isl = workspace:FindFirstChild("DinoIsland")
+		local tg = isl and isl:FindFirstChild("TallGrass")
+		if tg then table.insert(ex, tg) end
+		params.FilterDescendantsInstances = ex
+		local hit = workspace:Raycast(from, dir * range, params)
+		local len = hit and (hit.Position - from).Magnitude or range
+		local radius = math.max(0, tonumber(script:GetAttribute("DiloScopeRadius")) or 1.5) * s
+		local target, tu = nil, len
+		for _, m in ipairs(candidates(char)) do
+			local g, u = onLine(m, from, dir, len)
+			if g and u and g <= radius and u < tu then target, tu = m, u end
+		end
+		local to = from + dir * (target and tu or len)
+		local rule, dealt, markFor = "miss", 0, 0
+		if target then
+			if sapBlocked(from, target) then
+				rule = "wall"
+			else
+				rule = "hit"
+				dealt = damage(char, player, target, dmg, "diloscope", t)
+				venom(char, target)
+				markFor = math.max(0, num(char, PREFIX .. "Mark", 0))
+				if markFor > 0 then
+					target:SetAttribute("DiloScopeMarkBy", char.Name)
+					target:SetAttribute("DiloScopeMarkSquad", tostring(player:GetAttribute("SquadId") or ""))
+					target:SetAttribute("DiloScopeMarkUntil", t + markFor) -- last
+				end
+				count("DiloScopeHits")
+			end
+		end
+		char:SetAttribute("DiloScopeShotFrom", from)
+		char:SetAttribute("DiloScopeShotTo", to)
+		char:SetAttribute("DiloScopeTarget", target and rule == "hit" and target.Name or "")
+		char:SetAttribute("DiloScopeDmg", math.floor(dealt * 10 + 0.5) / 10)
+		char:SetAttribute("DiloScopeCharge", math.floor(charge * 100 + 0.5) / 100)
+		char:SetAttribute("DiloScopeRule", rule)
+		char:SetAttribute("DiloScopeMarkFor", markFor)
+		char:SetAttribute("DiloScopeShotAt", t) -- last
+	end
+	scopeRemote.OnServerEvent:Connect(function(player, stamp, action, dir)
+		if script:GetAttribute("DiloMovesScopeEnabled") == false then return end
+		if action == "start" then
+			local char, t = check(player, stamp, "dscope", PREFIX)
+			if not char then return end
+			char:SetAttribute(PREFIX .. "ServerResult", "scoping")
+			char:SetAttribute(PREFIX .. "ServerResultAt", t)
+			char:SetAttribute("DiloScopeStartAt", t)
+			char:SetAttribute("DiloScoping", true) -- last
+			task.delay(math.max(1, tonumber(script:GetAttribute("DiloScopeMaxHold")) or 10), function()
+				if char.Parent and char:GetAttribute("DiloScoping") == true and char:GetAttribute("DiloScopeStartAt") == t then close(char, "timeout") end
+			end)
+		elseif action == "fire" then
+			local char = player.Character
+			if char and typeof(stamp) == "number" then fire(player, char, dir) end
+		elseif action == "cancel" then
+			local char = player.Character
+			if char and char:GetAttribute("DiloScoping") == true then close(char, "cancelled") end
+		end
+	end)
+end
+script:SetAttribute("DiloMovesServerVersion", "1.13") -- v1.13 Sniper Scope (MDA-516)

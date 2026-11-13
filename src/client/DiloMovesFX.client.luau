@@ -1,4 +1,4 @@
--- DiloMovesFX v1.6 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
+-- DiloMovesFX v1.7 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/DILO_PARTS_v1.0.md Task 6 (MDA-319); mockup docs/mockups/dilo_parts_options.html
 -- v0.1 (tools/mockup/dilo_parts_looks.js: the picked looks' motion and FX). Every player character with Species "Dilo" that
 -- wears DPart_* models (DiloPartsServer 1.0) is watched; the stamps come from DiloMovesServer 1.0. No landing FX.
@@ -80,6 +80,21 @@ VERSION = "1.5" -- v1.5 big and bright gatling / mortar / spines
 --   trails, flash 2x, a green burst at the chest, ring 0.8 s, barbs extend 3x. Switch: script attribute DiloFXBigEnabled
 --   (default true, read at each event / frame; false = 1.4's sizes).
 VERSION = "1.6" -- v1.6 hand-off to DiloPartsVFX 1.0
+VERSION = "1.7" -- v1.7 Sniper Scope: arm swing, red lens glint, venom tracer, squad mark (MDA-518)
+-- v1.7 (MDA-518, plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md Task 7, mockup docs/mockups/dilo_sniper_scope_part_v0.1.html; Kepu
+--   2026-11-13 picks "B · Monocle arm", "Red glint on the lens"; DiloPartsServer 1.3, DiloMovesServer 1.13):
+--   * arm swing: DPartAnim "scope" = rotX(DiloScopeUpDeg (65) x (1 - st.scope)) (swung up at rest); st.scope eases 0 -> 1 over
+--     DiloScopeSwing (0.2) s while the character's DiloScoping is true (the server's) or, on the owner's client, DiloScopeAim is true
+--     (no wait for the server), and back the same speed after;
+--   * red glint (other players' dilos only, never your own: it would sit in your scope view): while st.scope > 0.5 a red PointLight
+--     (range 10 x k) and a BillboardGui glint on the lens (role "lens"; a red dot with a pale core, 1.6 x k studs, pulsing);
+--   * the shot (DiloScopeShotAt, within 1 s): a venom tracer (neon line DiloScopeShotFrom -> DiloScopeShotTo, 0.25 x k thick,
+--     fading over 0.3 s), a muzzle flash at the lens; "hit": a flash + green burst at the end and "-<DiloScopeDmg>" over the
+--     target (tag, 0.9 s); "wall" / "miss": a small splash at the end;
+--   * squad mark (★, DiloScopeMarkFor > 0 with a hit): the target gets a Highlight (always on top, orange-red outline, light fill)
+--     for DiloScopeMarkFor s on this client when the shooter is you or in your squad (the shooter player's SquadId = yours, not "").
+--   Switch: script attribute PartsFXScopeEnabled (default true, read at each event / frame; false = 1.6: no scope FX; the arm stays
+--   swung up). Diagnostics: script DiloMovesFXScopeShots.
 -- v1.6 (plan docs/plans/DILO_VFX_v1.0.md Task 2, MDA-391; Kepu 2026-11-10 15:05 picks, 16:02 "build"): while the sibling LocalScript
 --   DiloPartsVFX 1.0 owns a part (it is running: DiloPartsVFXVersion set; its DiloPartsVFXEnabled and DiloPartsVFX_<id>Enabled
 --   are not false), this script skips that part's EFFECTS: gatling darts / hit bursts; mortar ring / muzzle / canister / landing
@@ -356,6 +371,7 @@ local function animCF(kind, st, sc)
 	if kind == "extend" then return CFrame.new(0, 0.08 * st.extend * k * 2 * bigF(3), 0) end -- v1.5: x3
 	if kind == "fins" then return CFrame.Angles(math.rad(-22 * st.glow), 0, 0) end
 	if kind == "pump" then return CFrame.new(0, 0.32 * (st.pump or 0) * k * 2, 0) end -- v1.1
+	if kind == "scope" then return CFrame.Angles(math.rad((tonumber(script:GetAttribute("DiloScopeUpDeg")) or 65) * (1 - (st.scope or 0))), 0, 0) end -- v1.7
 	return CFrame.identity
 end
 local function ease(u) u = math.clamp(u, 0, 1) return u * u * (3 - 2 * u) end
@@ -391,6 +407,12 @@ RunService.RenderStepped:Connect(function(dt)
 				else glow = math.max(0, 1 - (T - ou) / 0.6) end
 			end
 			st.glow = glow
+			-- v1.7: the Sniper Scope arm
+			local scoping = char:GetAttribute("DiloScoping") == true
+				or (char == Players.LocalPlayer.Character and char:GetAttribute("DiloScopeAim") == true)
+			if not on("PartsFXScopeEnabled") then scoping = false end
+			local sw = math.max(0.02, tonumber(script:GetAttribute("DiloScopeSwing")) or 0.2)
+			st.scope = math.clamp((st.scope or 0) + (scoping and dt or -dt) / sw, 0, 1)
 			local motion = on("PartsFXMotionEnabled")
 			local sc = char:IsA("Model") and char:GetScale() or 2
 			local neck = char:FindFirstChild("Neck")
@@ -804,6 +826,121 @@ RunService.RenderStepped:Connect(function()
 			if st.jk.jet then st.jk.jet:Destroy() end
 			st.jk = nil
 		end
+	end
+end)
+
+-- ---------------------------------------------------------------- v1.7: Sniper Scope (see the header)
+for k, v in pairs({PartsFXScopeEnabled = true, DiloScopeUpDeg = 65, DiloScopeSwing = 0.2}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+script:SetAttribute("DiloMovesFXScopeShots", 0)
+local RED = Color3.fromRGB(255, 70, 60)
+local scopeWatched = setmetatable({}, {__mode = "k"})
+local function markShow(target, secs)
+	local old = target:FindFirstChild("DiloScopeMark")
+	if old then old:Destroy() end
+	local h = Instance.new("Highlight")
+	h.Name = "DiloScopeMark"
+	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	h.FillColor, h.FillTransparency = Color3.fromRGB(255, 120, 60), 0.75
+	h.OutlineColor, h.OutlineTransparency = Color3.fromRGB(255, 90, 50), 0
+	h.Adornee = target
+	h.Parent = target
+	Debris:AddItem(h, secs)
+end
+local function watchScope(char)
+	if scopeWatched[char] then return end
+	scopeWatched[char] = true
+	char:GetAttributeChangedSignal("DiloScopeShotAt"):Connect(function()
+		local at = num(char, "DiloScopeShotAt")
+		local from, to = char:GetAttribute("DiloScopeShotFrom"), char:GetAttribute("DiloScopeShotTo")
+		if not at or now() - at > 1 or typeof(from) ~= "Vector3" or typeof(to) ~= "Vector3" or not on("PartsFXScopeEnabled") then return end
+		local k = scaleK(char)
+		local len = (to - from).Magnitude
+		if len > 0.1 then
+			local beam = part(Vector3.new(0.25 * k, 0.25 * k, len), GREEN, Enum.Material.Neon, CFrame.lookAt((from + to) / 2, to), 0)
+			TweenService:Create(beam, TweenInfo.new(0.3), {Transparency = 1, Size = Vector3.new(0.05 * k, 0.05 * k, len)}):Play()
+			Debris:AddItem(beam, 0.35)
+		end
+		flash(from, 2 * k, Color3.fromRGB(216, 255, 138), 0.12)
+		local rule = char:GetAttribute("DiloScopeRule")
+		local target = findModel(char:GetAttribute("DiloScopeTarget"))
+		if rule == "hit" then
+			flash(to, 4 * k, Color3.fromRGB(216, 255, 176), 0.2)
+			burst(to, GREEN, GREEN_D, 18, 18 * k, 0.8 * k, 0.45, 180, nil, Vector3.new(0, -40, 0))
+			if target then
+				local dmg = math.floor((num(char, "DiloScopeDmg") or 0) + 0.5)
+				tag(target, "-" .. dmg, Color3.fromRGB(216, 255, 138), now() + 0.9)
+				local markFor = num(char, "DiloScopeMarkFor") or 0
+				if markFor > 0 then
+					local me = Players.LocalPlayer
+					local shooter = Players:GetPlayerFromCharacter(char)
+					local mine = tostring(me:GetAttribute("SquadId") or "")
+					local theirs = shooter and tostring(shooter:GetAttribute("SquadId") or "") or ""
+					if char == me.Character or (mine ~= "" and mine == theirs) then markShow(target, markFor) end
+				end
+			end
+		else
+			burst(to, GREEN, GREEN_D, 8, 10 * k, 0.5 * k, 0.35, 120, nil, Vector3.new(0, -40, 0))
+		end
+		script:SetAttribute("DiloMovesFXScopeShots", (script:GetAttribute("DiloMovesFXScopeShots") or 0) + 1)
+		ev()
+	end)
+end
+local watchV16 = watch
+watch = function(char)
+	watchV16(char)
+	watchScope(char)
+end
+local glints = setmetatable({}, {__mode = "k"}) -- [char] = {light, gui, lens}
+RunService.RenderStepped:Connect(function()
+	local me = Players.LocalPlayer.Character
+	for char, st in pairs(W) do
+		local g = glints[char]
+		local want = char.Parent ~= nil and char ~= me and (st.scope or 0) > 0.5 and on("PartsFXScopeEnabled")
+		local lens = want and rolePart(char, "lens") or nil
+		if lens and (not g or g.lens ~= lens) then
+			if g then g.light:Destroy() g.gui:Destroy() end
+			local k = scaleK(char)
+			local light = Instance.new("PointLight")
+			light.Color, light.Range, light.Brightness = RED, 10 * k, 4
+			light.Parent = lens
+			local gui = Instance.new("BillboardGui")
+			gui.Name = "DiloScopeGlint"
+			gui.Size = UDim2.new(1.6 * k, 0, 1.6 * k, 0)
+			gui.LightInfluence = 0
+			gui.Adornee = lens
+			local dot = Instance.new("Frame")
+			dot.AnchorPoint = Vector2.new(0.5, 0.5)
+			dot.Position = UDim2.fromScale(0.5, 0.5)
+			dot.Size = UDim2.fromScale(1, 1)
+			dot.BorderSizePixel = 0
+			dot.BackgroundColor3 = RED
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(1, 0)
+			c.Parent = dot
+			local core = dot:Clone()
+			core.Size = UDim2.fromScale(0.35, 0.35)
+			core.BackgroundColor3 = Color3.fromRGB(255, 220, 210)
+			core.Parent = dot
+			dot.Parent = gui
+			gui.Parent = folder
+			g = {light = light, gui = gui, lens = lens, dot = dot}
+			glints[char] = g
+		elseif not lens and g then
+			g.light:Destroy()
+			g.gui:Destroy()
+			glints[char] = nil
+			g = nil
+		end
+		if g then
+			local pulse = 0.5 + 0.5 * math.sin(os.clock() * 9)
+			g.dot.BackgroundTransparency = 0.15 + 0.35 * pulse
+			g.light.Brightness = 3 + 3 * pulse
+		end
+	end
+	for char, g in pairs(glints) do
+		if not W[char] or not char.Parent then g.light:Destroy() g.gui:Destroy() glints[char] = nil end
 	end
 end)
 

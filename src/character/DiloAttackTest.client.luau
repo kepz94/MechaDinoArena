@@ -1,4 +1,4 @@
--- DiloAttackTest v1.3 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
+-- DiloAttackTest v1.6 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
 -- StarterCharacterScripts). MDA-225, plan docs/plans/DILO_KIT_v1.0.md Task 5 (Kepu 2026-11-03: "C and J1", "Bite on press",
 -- "Soft aim, near-sure hit"); server DiloAttackServer 1.0.
 -- Only while the character's DiloAttackEnabled is true (the dilo). Inputs: CAS action "DinoDiloAttack" (the phone's big
@@ -69,6 +69,11 @@ VERSION = "1.5" -- v1.5 spit on release + hold to snipe (MDA-510)
 --     normal spit at that moment (the 1.4 tap path, unchanged); an input Cancel or a stun / daze / pin / menu while holding ->
 --     no shot ("idle", DiloInputResult the reason / "cancel").
 --   Diagnostics: DiloSnipeHolding, DiloSnipeHoldStart, DiloSnipeAim, DiloSnipesSent (count). Off = 1.4 (spit on press).
+VERSION = "1.6" -- v1.6 attack back to spit on press (MDA-513)
+-- v1.6 (plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md "Attack button: back to the spit on press"; Kepu 2026-11-13 pick "Yes, back to
+--   before" (the sniper shot moves to the Sniper Scope part)): while script attribute DiloAttackTestSpitPressEnabled ~= false (default
+--   true, read at start) DiloAttackTestSnipeEnabled starts false = the 1.4 spit on press (hold-to-snipe off; set it true to bring
+--   1.5 back). Switch: DiloAttackTestSpitPressEnabled false = 1.5.
 local ACTION = "DinoDiloAttack"
 local ACTION_CLICK = "DinoDiloAttackClick"
 local DEFAULTS = {DiloAttackEnabled = false, DiloMinGap = 0.35, DiloHoldTime = 0.4, DiloDartCooldown = 1.5,
@@ -175,6 +180,10 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- v1.5: hold to snipe (see the header)
+if script:GetAttribute("DiloAttackTestSpitPressEnabled") == nil then script:SetAttribute("DiloAttackTestSpitPressEnabled", true) end -- v1.6
+if script:GetAttribute("DiloAttackTestSnipeEnabled") == nil and script:GetAttribute("DiloAttackTestSpitPressEnabled") ~= false then
+	script:SetAttribute("DiloAttackTestSnipeEnabled", false) -- v1.6: spit on press
+end
 if script:GetAttribute("DiloAttackTestSnipeEnabled") == nil then script:SetAttribute("DiloAttackTestSnipeEnabled", true) end
 if script:GetAttribute("DiloSnipeHold") == nil then script:SetAttribute("DiloSnipeHold", 1.5) end
 local snipeHold, snipePressAt, snipeSrc, snipeAim, spitNow = false, 0, "key", false, false

@@ -1,4 +1,4 @@
--- DiloSnipeCam v1.0 (Mecha Dino Arena) — the Dilo sniper spit's head camera and aim HUD, PC and phone (LocalScript,
+-- DiloSnipeCam v1.2 (Mecha Dino Arena) — the Dilo sniper spit's head camera and aim HUD, PC and phone (LocalScript,
 -- StarterCharacterScripts, owner's client). MDA-511, plan docs/plans/DILO_SNIPER_SPIT_v1.0.md Task 3, mockup
 -- docs/mockups/dilo_sniper_spit_v0.1.html "A · Head cam"; Kepu 2026-11-13 15:38 "it goes into fps mode where you're aiming the
 -- head of the dilo manually no aim assist".
@@ -30,12 +30,28 @@
 --     started is put back before the camera type is restored, and no ShoulderCamLookAt is set (the Shoulder / Shift framing
 --     still has its own yaw / pitch from before). Switch: script attribute DiloSnipeReturnEnabled (default true, read at the
 --     release; false = 1.0: turn to the last aim).
+-- v1.2 (MDA-518, plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md Task 6, mockup docs/mockups/dilo_sniper_scope_part_v0.1.html section 2;
+--   Kepu 2026-11-13 16:19 "it'll be the classic sniper scope cross hair and animation", picks "Yes: 15 -> 40 over 1 s"): the Sniper
+--   Scope view, while character DiloScopeAim is true (MechaButtons 1.47) and DiloScopeRecoilHold (0.3) s after the shot
+--   (DiloScopeFiredAt): takes the camera as the snipe aim (own / release: ShoulderCamExternal, Scriptable, mouse locked, TurnLimit
+--   "aim"; after: back to the view from before, as 1.1); the eye sits at the lens (the dscope muzzle on the Head root, else Head_tip +
+--   DiloSnipeEyeUp) looking along the aim; look input as the snipe aim (mouse / pad x DiloScopeSensMul 0.6, finer while zoomed). Lens raise: over
+--   DiloScopeRaise (0.2) s the FOV goes from the saved one to DiloScopeFov (30) and the black mask's hole grows to DiloScopeHole
+--   (0.44) x the short screen side. Classic reticle (when raised): black mask outside the circle (ScreenGui "DiloScopeMask",
+--   DisplayOrder -5, under the other HUDs so the buttons and stick stay on top), a dark lens ring, thick black posts from the edge to
+--   45% in, thin black centre lines, 4 mil dots each way. Charge: 28 dots on a 270° arc under the centre fill over DiloPartScopeCharge
+--   (1 s) from DiloScopeAimAt (white, venom green when full) and the damage it would deal now (DiloPartScopeMin -> Max) under it.
+--   Banner "SNIPER SCOPE · LET GO TO FIRE". The shot: a pale flash (0.08 s) and a DiloScopeKick (4) degree recoil kick easing out
+--   over the hold. A hit (DiloScopeShotAt with DiloScopeTarget set): 4 white hit-marker ticks + the damage dealt (DiloScopeDmg) at the
+--   centre, fading over 0.9 s. Switch: script attribute DiloScopeViewEnabled (default true, read every frame; false = 1.1, no scope
+--   view). Diagnostics (character): DiloSnipeCamState "scope", DiloScopeHoleNow (px).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 scope ring crosshair, camera back to before the aim
+VERSION = "1.2" -- v1.2 Sniper Scope classic scope view (MDA-518)
 local char = script.Parent
 local hum = char:WaitForChild("Humanoid", 10)
 local hrp = char:WaitForChild("HumanoidRootPart", 10)
@@ -252,10 +268,285 @@ local function release()
 	saved = nil
 end
 
+-- v1.2: the Sniper Scope view (see the header) -----------------------------------------------------------------------------
+local SCOPE_CFG = {DiloScopeViewEnabled = true, DiloScopeFov = 30, DiloScopeRaise = 0.2, DiloScopeHole = 0.44, DiloScopeSensMul = 0.6,
+	DiloScopeRecoilHold = 0.3, DiloScopeKick = 4}
+for k, v in pairs(SCOPE_CFG) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local function scfg(k) return tonumber(script:GetAttribute(k)) or SCOPE_CFG[k] end
+local BLACK = Color3.new(0, 0, 0)
+local maskGui = Instance.new("ScreenGui")
+maskGui.Name = "DiloScopeMask"
+maskGui.IgnoreGuiInset = true
+maskGui.DisplayOrder = -5
+maskGui.ResetOnSpawn = true
+maskGui.Enabled = false
+maskGui.Parent = player:WaitForChild("PlayerGui")
+local hole = Instance.new("Frame") -- the hole: a huge black stroke outside a circle
+hole.Name = "Hole"
+hole.AnchorPoint = Vector2.new(0.5, 0.5)
+hole.Position = UDim2.fromScale(0.5, 0.5)
+hole.BackgroundTransparency = 1
+do
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(1, 0)
+	c.Parent = hole
+	local st = Instance.new("UIStroke")
+	st.Color, st.Thickness, st.Transparency = BLACK, 3000, 0
+	st.Parent = hole
+end
+hole.Parent = maskGui
+local lensRing = Instance.new("Frame") -- a dark ring just inside the edge
+lensRing.AnchorPoint = Vector2.new(0.5, 0.5)
+lensRing.Position = UDim2.fromScale(0.5, 0.5)
+lensRing.BackgroundTransparency = 1
+do
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(1, 0)
+	c.Parent = lensRing
+	local st = Instance.new("UIStroke")
+	st.Color, st.Thickness, st.Transparency = Color3.fromRGB(26, 26, 26), 12, 0.15
+	st.Parent = lensRing
+end
+lensRing.Parent = maskGui
+local reticle = Instance.new("Frame")
+reticle.Name = "Reticle"
+reticle.AnchorPoint = Vector2.new(0.5, 0.5)
+reticle.Position = UDim2.fromScale(0.5, 0.5)
+reticle.BackgroundTransparency = 1
+reticle.Parent = maskGui
+local function bar(px, py, ax, ay, sx, ox, sy, oy, round)
+	local f = Instance.new("Frame")
+	f.AnchorPoint = Vector2.new(ax, ay)
+	f.Position = UDim2.fromScale(px, py)
+	f.Size = UDim2.new(sx, ox, sy, oy)
+	f.BorderSizePixel = 0
+	f.BackgroundColor3 = BLACK
+	if round then
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(1, 0)
+		c.Parent = f
+	end
+	f.Parent = reticle
+	return f
+end
+bar(0, 0.5, 0, 0.5, 0.275, 0, 0, 6) -- thick posts: edge -> 45% in (0.55 R of 2 R)
+bar(1, 0.5, 1, 0.5, 0.275, 0, 0, 6)
+bar(0.5, 0, 0.5, 0, 0, 6, 0.275, 0)
+bar(0.5, 1, 0.5, 1, 0, 6, 0.275, 0)
+bar(0.5, 0.5, 0.5, 0.5, 0.45, 0, 0, 1.5) -- thin centre lines (0.9 R)
+bar(0.5, 0.5, 0.5, 0.5, 0, 1.5, 0.45, 0)
+for i = 1, 4 do -- mil dots every 0.1 R
+	for _, sg in ipairs({-1, 1}) do
+		bar(0.5 + sg * i * 0.05, 0.5, 0.5, 0.5, 0, 5, 0, 5, true)
+		bar(0.5, 0.5 + sg * i * 0.05, 0.5, 0.5, 0, 5, 0, 5, true)
+	end
+end
+local fireFlash = Instance.new("Frame")
+fireFlash.Size = UDim2.fromScale(1, 1)
+fireFlash.BorderSizePixel = 0
+fireFlash.BackgroundColor3 = PALE
+fireFlash.BackgroundTransparency = 1
+fireFlash.Parent = maskGui
+local chargeBox = Instance.new("Frame")
+chargeBox.AnchorPoint = Vector2.new(0.5, 0.5)
+chargeBox.Position = UDim2.fromScale(0.5, 0.5)
+chargeBox.Size = UDim2.fromOffset(200, 200)
+chargeBox.BackgroundTransparency = 1
+chargeBox.Visible = false
+chargeBox.Parent = gui
+local chargeDots = {}
+for i = 1, 28 do
+	local a = math.rad(135 + (i - 1) / 27 * 270)
+	local d = Instance.new("Frame")
+	d.AnchorPoint = Vector2.new(0.5, 0.5)
+	d.Position = UDim2.new(0.5, math.cos(a) * 48, 0.5, math.sin(a) * 48)
+	d.Size = UDim2.fromOffset(5, 5)
+	d.BorderSizePixel = 0
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(1, 0)
+	c.Parent = d
+	d.Parent = chargeBox
+	chargeDots[i] = d
+end
+local dmgNow = Instance.new("TextLabel")
+dmgNow:SetAttribute("FontSwap", "keep")
+dmgNow.AnchorPoint = Vector2.new(0.5, 0.5)
+dmgNow.Position = UDim2.new(0.5, 0, 0.5, 78)
+dmgNow.Size = UDim2.fromOffset(80, 24)
+dmgNow.BackgroundTransparency = 1
+dmgNow.FontFace = SILK
+dmgNow.TextSize = 18
+dmgNow.TextStrokeTransparency = 0.4
+dmgNow.Parent = chargeBox
+local scopeBanner = banner:Clone()
+scopeBanner.Text = "SNIPER SCOPE · LET GO TO FIRE"
+scopeBanner.Visible = false
+scopeBanner.Parent = gui
+local hitBox = Instance.new("Frame")
+hitBox.AnchorPoint = Vector2.new(0.5, 0.5)
+hitBox.Position = UDim2.fromScale(0.5, 0.5)
+hitBox.Size = UDim2.fromOffset(120, 120)
+hitBox.BackgroundTransparency = 1
+hitBox.Visible = false
+hitBox.Parent = gui
+local hitTicks = {}
+for _, q in ipairs({{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) do
+	local f = Instance.new("Frame")
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.new(0.5, q[1] * 16, 0.5, q[2] * 16)
+	f.Size = UDim2.fromOffset(14, 3)
+	f.Rotation = q[1] * q[2] > 0 and 45 or -45
+	f.BorderSizePixel = 0
+	f.BackgroundColor3 = Color3.new(1, 1, 1)
+	f.Parent = hitBox
+	table.insert(hitTicks, f)
+end
+local hitNum = Instance.new("TextLabel")
+hitNum:SetAttribute("FontSwap", "keep")
+hitNum.AnchorPoint = Vector2.new(0, 1)
+hitNum.Position = UDim2.new(0.5, 30, 0.5, -18)
+hitNum.Size = UDim2.fromOffset(80, 30)
+hitNum.BackgroundTransparency = 1
+hitNum.FontFace = SILK
+hitNum.TextSize = 26
+hitNum.TextColor3 = PALE
+hitNum.TextStrokeTransparency = 0.3
+hitNum.TextXAlignment = Enum.TextXAlignment.Left
+hitNum.Parent = hitBox
+local hitAt = nil
+char:GetAttributeChangedSignal("DiloScopeShotAt"):Connect(function()
+	local tgt = char:GetAttribute("DiloScopeTarget")
+	if script:GetAttribute("DiloScopeViewEnabled") == false or typeof(tgt) ~= "string" or tgt == "" then return end
+	hitNum.Text = tostring(math.floor((tonumber(char:GetAttribute("DiloScopeDmg")) or 0) + 0.5))
+	hitAt = os.clock()
+end)
+RunService.RenderStepped:Connect(function()
+	local u = hitAt and (os.clock() - hitAt) / 0.9 or 2
+	hitBox.Visible = u < 1
+	if u < 1 then
+		for _, f in ipairs(hitTicks) do f.BackgroundTransparency = u end
+		hitNum.TextTransparency = u
+		hitNum.TextStrokeTransparency = 0.3 + 0.7 * u
+		hitNum.Position = UDim2.new(0.5, 30, 0.5, -18 - 30 * u)
+	end
+end)
+local function scopeEye(k)
+	local head = char:FindFirstChild("Head")
+	local root = head and head:FindFirstChild("Root")
+	if root then
+		for _, a in ipairs(root:GetChildren()) do
+			if a:IsA("Attachment") and a:GetAttribute("DPartId") == "dscope" then return a.WorldPosition end
+		end
+	end
+	local tip = char:FindFirstChild("Head_tip", true)
+	local base = (tip and tip:IsA("BasePart") and tip.Position) or (hrp.Position + Vector3.yAxis * 3 * k)
+	return base + Vector3.yAxis * (tonumber(cfg("DiloSnipeEyeUp")) or 1) * k
+end
+local scopeOwned, scopeT0, scopeFiredSeen = false, 0, nil
+local function scopeHide()
+	maskGui.Enabled = false
+	chargeBox.Visible = false
+	scopeBanner.Visible = false
+end
+local function scopeStep(dt, on)
+	if script:GetAttribute("DiloScopeViewEnabled") == false then
+		if scopeOwned then scopeOwned = false release() scopeHide() end
+		return false
+	end
+	local holding = char:GetAttribute("DiloScopeAim") == true
+	local firedAt = tonumber(char:GetAttribute("DiloScopeFiredAt"))
+	local since = firedAt and os.clock() - firedAt or math.huge
+	local hold = scfg("DiloScopeRecoilHold")
+	if not (on and (holding or (scopeOwned and since < hold))) then
+		if scopeOwned then
+			scopeOwned = false
+			release()
+			scopeHide()
+		end
+		return false
+	end
+	if not scopeOwned then
+		if owning then release() end
+		own()
+		scopeOwned, scopeT0 = true, os.clock()
+	end
+	local cam = workspace.CurrentCamera
+	if cam.CameraType ~= Enum.CameraType.Scriptable then cam.CameraType = Enum.CameraType.Scriptable end
+	local sens = scfg("DiloScopeSensMul")
+	if UserInputService.MouseEnabled and not anyTouch() then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+		UserInputService.MouseIconEnabled = false
+		local d = UserInputService:GetMouseDelta()
+		if mouseMoved then
+			local s = (tonumber(cfg("DiloSnipeMouseSens")) or 0.2) * sens
+			yaw -= d.X * s
+			pitch -= d.Y * s
+		end
+	end
+	mouseMoved = false
+	if pad.Magnitude > 0.15 then
+		local sp = (tonumber(cfg("DiloSnipePadSpeed")) or 160) * dt * sens
+		yaw -= pad.X * sp
+		pitch += pad.Y * sp
+	end
+	pitch = math.clamp(pitch, cfg("DiloSnipePitchMin"), cfg("DiloSnipePitchMax"))
+	local kick = 0
+	if not holding and since < hold then
+		local u = since / math.max(0.05, hold)
+		kick = scfg("DiloScopeKick") * (1 - u) * (1 - u)
+	end
+	local look = CFrame.fromOrientation(math.rad(pitch + kick), math.rad(yaw), 0).LookVector
+	local aimLook = CFrame.fromOrientation(math.rad(pitch), math.rad(yaw), 0).LookVector
+	local flatLook = Vector3.new(aimLook.X, 0, aimLook.Z)
+	flatLook = flatLook.Magnitude > 1e-3 and flatLook.Unit or hrp.CFrame.LookVector
+	local k = char:GetScale() / 2
+	local eye = scopeEye(k)
+	cam.CFrame = CFrame.lookAt(eye, eye + look)
+	local raise = math.clamp((os.clock() - scopeT0) / math.max(0.01, scfg("DiloScopeRaise")), 0, 1)
+	raise = raise * raise * (3 - 2 * raise)
+	local baseFov = saved and saved.fov or 70
+	cam.FieldOfView = baseFov + (scfg("DiloScopeFov") - baseFov) * raise
+	lastEye, lastLook = eye, aimLook
+	char:SetAttribute("TurnLimitMode", "aim")
+	char:SetAttribute("TurnLimitAimLook", flatLook)
+	hud("off", 0)
+	-- the mask + reticle
+	local vp = cam.ViewportSize
+	local R = math.max(1, math.min(vp.X, vp.Y) * scfg("DiloScopeHole") * raise)
+	maskGui.Enabled = true
+	hole.Size = UDim2.fromOffset(R * 2, R * 2)
+	lensRing.Size = UDim2.fromOffset(R * 2, R * 2)
+	reticle.Size = UDim2.fromOffset(R * 2, R * 2)
+	reticle.Visible = raise > 0.95
+	fireFlash.BackgroundTransparency = (not holding and since < 0.08) and 0.45 or 1
+	-- the charge (while holding)
+	chargeBox.Visible = holding and raise > 0.95
+	if holding then
+		local ch = math.clamp((now() - (tonumber(char:GetAttribute("DiloScopeAimAt")) or now())) / math.max(0.05, tonumber(char:GetAttribute("DiloPartScopeCharge")) or 1), 0, 1)
+		local full = ch >= 1
+		for i, d in ipairs(chargeDots) do
+			d.BackgroundColor3 = full and VENOM or Color3.fromRGB(232, 245, 255)
+			d.BackgroundTransparency = (i - 1) / 27 <= ch and 0 or 0.8
+		end
+		local lo, hi = tonumber(char:GetAttribute("DiloPartScopeMin")) or 15, tonumber(char:GetAttribute("DiloPartScopeMax")) or 40
+		dmgNow.Text = tostring(math.floor(lo + (hi - lo) * ch + 0.5))
+		dmgNow.TextColor3 = full and VENOM or Color3.fromRGB(232, 245, 255)
+	end
+	scopeBanner.Visible = holding
+	show("DiloSnipeCamState", "scope")
+	show("DiloScopeHoleNow", math.floor(R + 0.5))
+	show("DiloSnipeYaw", math.floor(yaw + 0.5))
+	show("DiloSnipePitch", math.floor(pitch + 0.5))
+	return true
+end
+
 local BIND = "DinoDiloSnipeCam"
 pcall(function() RunService:UnbindFromRenderStep(BIND) end)
 RunService:BindToRenderStep(BIND, Enum.RenderPriority.Camera.Value + 5, function(dt)
 	local on = cfg("DiloSnipeCamEnabled") ~= false and hum.Health > 0
+	if scopeStep(dt, on) then return end -- v1.2: the Sniper Scope view
 	if on and char:GetAttribute("DiloSnipeAim") == true then
 		if not owning then own() end
 		local cam = workspace.CurrentCamera
@@ -315,6 +606,7 @@ end)
 
 local function cleanup()
 	release()
+	if maskGui.Parent then maskGui:Destroy() end -- v1.2
 	pcall(function() RunService:UnbindFromRenderStep(BIND) end)
 	if gui.Parent then gui:Destroy() end
 end

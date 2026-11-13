@@ -1,4 +1,4 @@
--- MechaButtons v1.45 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.47 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -395,6 +395,21 @@ VERSION = "1.46" -- v1.46 Sap Wall charges on the touch slot (MDA-507)
 --   TrooPartSapCharges) while the max is above 1, as Spring Jets (1.36); redrawn when either changes. Switch: script attribute
 --   MechaButtonsSapChargesEnabled (default true, read each draw; false = 1.45).
 if script:GetAttribute("MechaButtonsSapChargesEnabled") == nil then script:SetAttribute("MechaButtonsSapChargesEnabled", true) end -- v1.46
+VERSION = "1.47" -- v1.47 Sniper Scope hold-to-scope (MDA-517)
+-- v1.47 (MDA-517, plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md Task 5, mockup docs/mockups/dilo_sniper_scope_part_v0.1.html; PC and
+--   touch together with AbilityBar 1.42, DiloSnipeCam 1.2, DiloMovesServer 1.13; Kepu 2026-11-13 16:19 "You tap and it goes straight
+--   into the scope then release to fire so you can just press and move your thumb around to aim"): TIMED_PARTS.dscope =
+--   {"DiloPartScope", "DinoDiloScopeRequest", "SNIPER SCOPE"}; dscope is a hold-to-aim part (aimedPart): the press (PC key, touch
+--   slot / pull slot) opens the scope when the part is ready (DiloPartScopeEnabled, DiloPartScopeReadyAt passed, not SILENCED; else
+--   nothing, MechaScopeLast "notReady"): character DiloScopeAim = true, DiloScopeAimAt = server time (DiloSnipeCam 1.2 draws the
+--   scope view and takes the look input), DinoDiloScopeRequest(stamp, "start"). Touch: the thumb-aim lock as the Screech (a drag
+--   aims, no pull). Let go: the aim = the camera's centre ray (a raycast from the camera, the dilo and FX folders left out, to
+--   DiloPartScopeRange + 20; else that far along the look) turned into a direction from the lens (the dscope muzzle on the Head
+--   root, else Head_tip), DinoDiloScopeRequest(stamp, "fire", dir), DiloScopeAim = false, DiloScopeFiredAt = os.clock() (the scope's
+--   recoil). Cancel (death, the slot changes, a pull to another slot): DinoDiloScopeRequest(stamp, "cancel"), DiloScopeAim = false.
+--   Switch: script attribute MechaButtonsScopeEnabled (default true, read at start; false = 1.46: no dscope button). Diagnostics:
+--   character MechaScopeLast ("notReady" / "start" / "fire" / "cancel"), MechaScopeFired (count).
+if script:GetAttribute("MechaButtonsScopeEnabled") == nil then script:SetAttribute("MechaButtonsScopeEnabled", true) end -- v1.47
 -- v1.45 (troodon slot parts, plan docs/plans/TROODON_SLOTPARTS_v1.0.md T5, MDA-382; TrooSlotServer 1.0): TIMED_PARTS += oburst
 --   ("TrooPartBurst", DinoTrooBurstRequest, "BLOOM BURST"), odome ("TrooPartDome", DinoTrooDomeRequest, "SHIELD DOME"), osleep
 --   ("TrooPartSleep", DinoTrooSleepRequest, "SLEEP DART"), osentry ("TrooPartSentry", DinoTrooSentryRequest, "SENTRY POD"): PC
@@ -550,6 +565,8 @@ if DILO_BTN then -- v1.35: the dilo's mecha parts (build 1)
 	TIMED_PARTS.dpump = {"DiloPartPump", "DinoDiloPumpRequest", "ANTIVENOM"}
 	TIMED_PARTS.djets = {"DiloPartJets", "DinoDiloJetsRequest", "SPRING JETS"}
 end
+local SCOPE_BTN = DILO_BTN and script:GetAttribute("MechaButtonsScopeEnabled") ~= false -- v1.47
+if SCOPE_BTN then TIMED_PARTS.dscope = {"DiloPartScope", "DinoDiloScopeRequest", "SNIPER SCOPE"} end -- v1.47
 if script:GetAttribute("MechaButtonsTrooEnabled") == nil then script:SetAttribute("MechaButtonsTrooEnabled", true) end -- v1.39
 local TROO_BTN = script:GetAttribute("MechaButtonsTrooEnabled") ~= false
 if TROO_BTN then -- v1.39: the troodon's mecha button parts (build 1)
@@ -711,6 +728,89 @@ local function aimRelease()
 		char:SetAttribute("MechaScreechFired", (char:GetAttribute("MechaScreechFired") or 0) + 1)
 	end
 end
+-- v1.47: Sniper Scope hold-to-scope (see the header): wraps aimedPart / aimStart / aimRelease / aimCancel for dscope only
+do
+	local function scopeSend(action, dir)
+		local r = ReplicatedStorage:FindFirstChild("DinoDiloScopeRequest")
+		if r then r:FireServer(workspace:GetServerTimeNow(), action, dir) end
+		char:SetAttribute("MechaScopeLast", action)
+	end
+	local function scopeOrigin()
+		local head = char:FindFirstChild("Head")
+		local root = head and head:FindFirstChild("Root")
+		if root then
+			for _, a in ipairs(root:GetChildren()) do
+				if a:IsA("Attachment") and a:GetAttribute("DPartId") == "dscope" then return a.WorldPosition end
+			end
+		end
+		local tip = char:FindFirstChild("Head_tip", true)
+		if tip and tip:IsA("BasePart") then return tip.Position end
+		return hrp and hrp.Position or nil
+	end
+	local function scopeDir()
+		local cam = workspace.CurrentCamera
+		local origin = scopeOrigin()
+		if not (cam and origin) then return nil end
+		local look = cam.CFrame.LookVector
+		local range = (tonumber(char:GetAttribute("DiloPartScopeRange")) or 150) + 20
+		local rp = RaycastParams.new()
+		rp.FilterType = Enum.RaycastFilterType.Exclude
+		local ex = {char}
+		for _, n in ipairs({"DinoFX_Local", "DinoFX", "DiloFX", "DiloMovesFX_Local", "TrooPartsFX", "TrooStatsFX"}) do
+			local f = workspace:FindFirstChild(n)
+			if f then table.insert(ex, f) end
+		end
+		rp.FilterDescendantsInstances = ex
+		local hit = workspace:Raycast(cam.CFrame.Position, look * range, rp)
+		local point = hit and hit.Position or (cam.CFrame.Position + look * range)
+		local d = point - origin
+		return d.Magnitude > 0.5 and d.Unit or look
+	end
+	local function scopeReady()
+		return char:GetAttribute("DiloPartScopeEnabled") == true and not silencedNow()
+			and (tonumber(char:GetAttribute("DiloPartScopeReadyAt")) or 0) <= workspace:GetServerTimeNow()
+	end
+	local aimedPre, startPre, releasePre, cancelPre = aimedPart, aimStart, aimRelease, aimCancel
+	aimedPart = function(id) return (SCOPE_BTN and id == "dscope") or aimedPre(id) end
+	aimCancel = function()
+		if aim and aim.kind == "dscope" then
+			aim = nil
+			char:SetAttribute("DiloScopeAim", false)
+			scopeSend("cancel")
+			return
+		end
+		cancelPre()
+	end
+	aimStart = function(n, input, isGesture)
+		if not (SCOPE_BTN and slotPart(n) == "dscope") then return startPre(n, input, isGesture) end
+		aimCancel()
+		if not hrp or not scopeReady() then
+			char:SetAttribute("MechaScopeLast", "notReady")
+			return
+		end
+		aim = {slot = n, t0 = os.clock(), input = input, gesture = isGesture == true, kind = "dscope"}
+		if aim.gesture and input and script:GetAttribute("MechaThumbAimEnabled") ~= false then -- the thumb-aim lock: a drag aims
+			aim.origin = Vector2.new(input.Position.X, input.Position.Y)
+			aim.lockAt = os.clock() + AIM_LOCK
+		end
+		char:SetAttribute("DiloScopeAimAt", workspace:GetServerTimeNow())
+		char:SetAttribute("DiloScopeAim", true)
+		scopeSend("start")
+	end
+	aimRelease = function()
+		if not (aim and aim.kind == "dscope") then return releasePre() end
+		local dir = scopeDir()
+		aim = nil
+		char:SetAttribute("DiloScopeAim", false)
+		char:SetAttribute("DiloScopeFiredAt", os.clock())
+		if dir then
+			scopeSend("fire", dir)
+			char:SetAttribute("MechaScopeFired", (char:GetAttribute("MechaScopeFired") or 0) + 1)
+		else
+			scopeSend("cancel")
+		end
+	end
+end
 -- v1.13: the thumb aim cone (smooth yaw + pitch in front of the raptor)
 local coneRay = RaycastParams.new()
 coneRay.FilterType = Enum.RaycastFilterType.Exclude
@@ -826,6 +926,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if not char.Parent or not hum or hum.Health <= 0 or slotPart(aim.slot) ~= aim.kind then aimCancel() return end -- v1.20: aim.kind
 	if aim.kind == "tether" then tetherStep(dt) return end -- v1.20
 	if aim.kind == "zgrapple" then return end -- v1.32: TheriGrappleZip draws the lock
+	if aim.kind == "dscope" then return end -- v1.47: DiloSnipeCam 1.2 draws the scope
 	local len = math.max(0.1, aimRange())
 	local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
 	if look.Magnitude < 1e-3 then return end
