@@ -93,6 +93,23 @@
 -- v1.8 (Kepu 2026-11-12 18:04 "The XP gained after a match doesn't feel rewarding, I mvp and most kills and still didn't even
 --   level up"; pick "50% of a real match"): PrBotXpMul default 0.5 (was 0.1): a bot kill pays half a real kill's XP.
 --   HardpointServer 1.7 makes the match lines (point, win, MVP) 50% too. The number is the attribute; set it back to 0.1 for 1.7.
+-- v1.9 (pre-game lineup, MDA-484, plan docs/plans/PREGAME_LINEUP_v1.0.md T8 (Part 1), ADR-012, mockup docs/mockups/pregame_v0.4.html;
+--   Kepu 2026-11-12: a 30 s lineup + intros before every match, 4v4, bots 2 Elite + 2 Hard on both teams):
+--   * PracticeTeamSize default 4 (was 5). PracticeRules 1.3 ELITE_MIX = attribute PrEliteMixEnabled (default true, read at start):
+--     each team's bots are dealt Elite, Hard, Elite, Hard.
+--   * While PrPregameEnabled (default true, read per tick / request): the lobby countdown is PracticeRules.PG_LINEUP (30) s
+--     (not PrAutoStart), shown as ReplicatedStorage.Practice PgPhase "lineup" with PgEndsAt (= PrStartAt). When it runs out:
+--     PgPhase "intro" for PG_INTRO (8) s (PgEndsAt = its end; the roster is final), then the match starts as before. PgPhase ""
+--     in the match and with nobody in the lobby. Request "ready" (lineup only) sets player PgReady = true; when every human in
+--     the lobby is ready the countdown drops to PracticeRules.readyCut (5 s left, never later). "unready" sets it false (the
+--     countdown never goes back up). PgReady is cleared whenever a player enters the lobby. A human arriving during the intro
+--     joins the lobby roster as before (D13).
+--   * Roster slots (PrRoster) also carry: humans w / l (player ArenaW / ArenaL, nil when not loaded), lv (SkillLevel), loadout
+--     (SkillSlot1..4 ids, "" = empty), ready (PgReady); bots tier (the tier dealt for the lineup) and loadout (the spec's ids).
+--     The roster republishes in the lobby when a human's SkillSlot1..4, SkillLevel, PgReady, ArenaW or ArenaL changes.
+--   * Bot tiers in the lineup: rebuild deals PracticeRules.mixFor(bots on that side) in slot order (spec.pgTier); a bot's first
+--     spawn of the match takes that tier, later spawns use respawnTier as 1.7.
+--   Switch off = 1.8 (lobby PrAutoStart, no PgPhase, no ready).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -107,11 +124,13 @@ VERSION = "1.5" -- v1.5 match preview
 VERSION = "1.6" -- v1.6 place at match start
 VERSION = "1.7" -- v1.7 Bots v2: brain 2.0, tiers, kit
 VERSION = "1.8" -- v1.8 bots pay 50% XP
+VERSION = "1.9" -- v1.9 pre-game lineup + intro, 4v4
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
 	PrBotXpMul = 0.1, PrDifficultyDefault = "Normal", PrBotNoCollide = true, PrLostEnabled = true, PrLostDistance = 2000, PrLostY = -150} -- v1.2: + the last four
 DEFAULTS.PrBotXpMul = 0.5 -- v1.8 (was 0.1)
+DEFAULTS.PracticeTeamSize = 4 -- v1.9 (was 5)
 script:SetAttribute("PracticeServerVersion", VERSION)
 for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -136,6 +155,11 @@ for k, v in pairs({PrBrainV2Enabled = true, PrTiersEnabled = true, PrKitEnabled 
 	DEFAULTS[k] = v
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
+for k, v in pairs({PrPregameEnabled = true, PrEliteMixEnabled = true}) do -- v1.9
+	DEFAULTS[k] = v
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+if R.ELITE_MIX ~= nil then R.ELITE_MIX = get("PrEliteMixEnabled") ~= false end -- v1.9
 
 if script:GetAttribute("PracticeEnabled") == false then
 	script:SetAttribute("PracticeState", "off")
@@ -212,6 +236,10 @@ local humans = {} -- ordered {player, want}
 local slots = {A = {}, B = {}} -- {kind, player | spec, bot record}
 local botRecs = {} -- live bot records {spec, team, model, hrp, hum, species, role, deadAt, respawnAt, ...}
 local lastNewBots = 0
+-- v1.9: pre-game lineup / intro (see the header)
+local function pgOn() return get("PrPregameEnabled") ~= false and R.PG_LINEUP ~= nil end
+local pgIntroEnds = nil -- server time the intro ends; nil = not in the intro
+local function autoStart() return pgOn() and R.PG_LINEUP or get("PrAutoStart") end
 
 -- v1.3: the dino for a new bot (nil = rollBot picks any, as 1.2)
 local function botSpecies()
@@ -265,6 +293,14 @@ local function rebuild()
 		end
 	end
 	for pl in pairs(r.refused) do pl:SetAttribute("PrLastResult", "full") end
+	if pgOn() then -- v1.9: the tiers the lineup shows
+		for _, side in ipairs({"A", "B"}) do
+			local list = {}
+			for _, s in ipairs(slots[side]) do if s.kind == "bot" then table.insert(list, s) end end
+			local mix = R.mixFor(#list)
+			for k, s in ipairs(list) do s.spec.pgTier = mix[k] end
+		end
+	end
 end
 
 local function publish()
@@ -279,6 +315,30 @@ local function publish()
 				table.insert(out[side], {kind = "bot", name = s.spec.name, species = s.spec.species, parts = partNames(s.spec)})
 			end
 		end
+	end
+	if pgOn() then -- v1.9: lineup fields
+		for _, side in ipairs({"A", "B"}) do
+			for i, s in ipairs(slots[side]) do
+				local e = out[side][i]
+				if e and s.kind == "human" then
+					local pl = s.player
+					e.w, e.l = pl:GetAttribute("ArenaW"), pl:GetAttribute("ArenaL")
+					e.lv = pl:GetAttribute("SkillLevel")
+					e.ready = pl:GetAttribute("PgReady") == true
+					e.loadout = {}
+					for n = 1, 4 do e.loadout[n] = pl:GetAttribute("SkillSlot" .. n) or "" end
+				elseif e and s.kind == "bot" then
+					e.tier = s.spec.pgTier or (s.rec and s.rec.tier) or nil
+					e.loadout = {}
+					for n, id in ipairs(s.spec.loadout or {}) do e.loadout[n] = id end
+				end
+			end
+		end
+		local lineup = phase == "lobby" and #humans > 0
+		set("PgPhase", lineup and (pgIntroEnds and "intro" or "lineup") or "")
+		set("PgEndsAt", lineup and (pgIntroEnds or state:GetAttribute("PrStartAt") or 0) or 0)
+	else
+		set("PgPhase", "")
 	end
 	set("PrRoster", HttpService:JSONEncode(out))
 	set("PrPhase", phase)
@@ -332,6 +392,11 @@ local function spawnBot(rec)
 		rec.tier = R.respawnTier(living, math.max(n, 1), rng)
 		model:SetAttribute("BotTier", rec.tier)
 	end
+	if pgOn() and rec.spec and rec.spec.pgTier and not rec.pgTierUsed then -- v1.9: the first spawn takes the lineup's tier
+		rec.pgTierUsed = true
+		rec.tier = rec.spec.pgTier
+		model:SetAttribute("BotTier", rec.tier)
+	end
 	if Kit and Kit.onSpawn and get("PrKitEnabled") ~= false then pcall(Kit.onSpawn, rec, model) end -- v1.7
 	jobsDirty = true
 	pcall(function() hpFn:Invoke("bot", model, rec.team) end)
@@ -374,11 +439,13 @@ local function setHuman(pl, inLobby, inMatch, side)
 	pl:SetAttribute("PrInLobby", inLobby)
 	pl:SetAttribute("PrInMatch", inMatch)
 	pl:SetAttribute("HardpointTeam", inMatch and side or nil)
+	if inLobby then pl:SetAttribute("PgReady", false) end -- v1.9
 end
 
 local function startMatch()
 	if phase == "match" then return "busy" end
 	if #humans == 0 then return "nobody" end
+	pgIntroEnds = nil -- v1.9
 	rebuild()
 	phase = "match"
 	set("PrStartAt", 0)
@@ -415,7 +482,7 @@ local function toLobby(result)
 	phase = "lobby"
 	set("PrResult", result or "")
 	for _, h in ipairs(humans) do setHuman(h.player, true, false, nil) end
-	set("PrStartAt", #humans > 0 and (now() + get("PrAutoStart")) or 0)
+	set("PrStartAt", #humans > 0 and (now() + autoStart()) or 0) -- v1.9: autoStart (was PrAutoStart)
 	rebuild()
 	publish()
 end
@@ -504,7 +571,7 @@ remote.OnServerEvent:Connect(function(pl, action, arg)
 		else
 			table.insert(humans, {player = pl, want = PRIVATE and "A" or "auto"}) -- v1.4: private -> side A
 			setHuman(pl, true, false, nil)
-			if (state:GetAttribute("PrStartAt") or 0) == 0 then set("PrStartAt", now() + get("PrAutoStart")) end
+			if (state:GetAttribute("PrStartAt") or 0) == 0 then set("PrStartAt", now() + autoStart()) end -- v1.9: autoStart
 			rebuild()
 			publish()
 			r = "ok"
@@ -549,6 +616,16 @@ remote.OnServerEvent:Connect(function(pl, action, arg)
 	elseif action == "leave" then
 		removeHuman(pl, "leave")
 		r = "ok"
+	elseif action == "ready" or action == "unready" then -- v1.9
+		if not pgOn() then
+			r = "off"
+		elseif phase ~= "lobby" or not humanIndex(pl) or pgIntroEnds then
+			r = "notInLobby"
+		else
+			pl:SetAttribute("PgReady", action == "ready")
+			publish()
+			r = "ok"
+		end
 	end
 	pl:SetAttribute("PrLastResult", r)
 	pl:SetAttribute("PrLastAt", now())
@@ -621,6 +698,15 @@ end
 Players.PlayerAdded:Connect(watchDino)
 for _, pl in ipairs(Players:GetPlayers()) do task.spawn(watchDino, pl) end
 Players.PlayerAdded:Connect(function() task.defer(publishLoading) end)
+local function watchLineup(pl) -- v1.9: lineup plaques follow loadout / level / ready / record changes
+	for _, k in ipairs({"SkillSlot1", "SkillSlot2", "SkillSlot3", "SkillSlot4", "SkillLevel", "PgReady", "ArenaW", "ArenaL"}) do
+		pl:GetAttributeChangedSignal(k):Connect(function()
+			if pgOn() and humanIndex(pl) and phase == "lobby" then publish() end
+		end)
+	end
+end
+Players.PlayerAdded:Connect(watchLineup)
+for _, pl in ipairs(Players:GetPlayers()) do task.spawn(watchLineup, pl) end
 set("PrLoading", "[]")
 
 -- v1.4: a portal trip into the private bots match opens the lobby by itself
@@ -637,7 +723,7 @@ local function arrive(pl)
 	else
 		table.insert(humans, {player = pl, want = "A"})
 		setHuman(pl, true, false, nil)
-		if (state:GetAttribute("PrStartAt") or 0) == 0 then set("PrStartAt", now() + get("PrAutoStart")) end
+		if (state:GetAttribute("PrStartAt") or 0) == 0 then set("PrStartAt", now() + autoStart()) end -- v1.9: autoStart
 		rebuild()
 		publish()
 		r = "ok"
@@ -665,6 +751,35 @@ RunService.Heartbeat:Connect(function(dt)
 				at = now() + hold
 				set("PrStartAt", at)
 			end
+		end
+		if pgOn() then -- v1.9: lineup -> intro -> match
+			set("PgEndsAt", pgIntroEnds or at)
+			if #humans == 0 then
+				if pgIntroEnds then pgIntroEnds = nil publish() end
+				return
+			end
+			if pgIntroEnds then
+				if now() >= pgIntroEnds then startMatch() end
+				return
+			end
+			if at > 0 then
+				local all = true
+				for _, h in ipairs(humans) do if h.player:GetAttribute("PgReady") ~= true then all = false break end end
+				if all then
+					local cut = R.readyCut(at, now())
+					if cut and cut < at - 0.05 then
+						at = cut
+						set("PrStartAt", at)
+						publish()
+					end
+				end
+			end
+			if at > 0 and now() >= at then
+				pgIntroEnds = now() + (R.PG_INTRO or 8)
+				rebuild()
+				publish()
+			end
+			return
 		end
 		if at > 0 and now() >= at and #humans > 0 then startMatch() end
 		return
