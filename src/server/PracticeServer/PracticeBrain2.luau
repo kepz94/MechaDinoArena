@@ -74,6 +74,16 @@
 --   for the next point. Then it roams there as 2.1. BotState "rush" ("climb" / "swim" on the way); model attribute
 --   BotRushes (count). Ends the moment an enemy is alive again. Switch: PracticeServer attribute PrRushPointEnabled (default
 --   true, read per tick; false = 2.2).
+-- v2.4 (Kepu 2026-11-12 17:23 "Add that" = feeler rays: "rays out in front of a bot, so it steers around a rock or wall before
+--   it gets stuck"): whenever nav walks the bot (straight to a goal, to a path waypoint, or the last-resort walk), it first
+--   feels ahead: rays at knee height (feet + FEEL_KNEE 2.5) over Ground / MountainSteps / Rocks / Trees, FEEL_LEN (14) studs
+--   (never past the spot it walks to): one from the middle and one from each shoulder (half the body width x 0.8) straight
+--   ahead. A hit whose surface faces up (normal Y > FEEL_SLOPE 0.7: ground it can walk up) is ignored. When one is blocked,
+--   it tries the directions FEEL_ANGLES (30, 60, 90) degrees to each side (middle ray, same length) and walks the first clear
+--   one, the side it chose last first (kept FEEL_KEEP 0.6 s, so it does not wobble); none clear -> walks as before (the stuck
+--   ladder takes over). Not used on the climb route (the trail's step blocks would read as walls). Model attributes
+--   BotFeelSteers (count of steers started), BotFeel ("clear" / "left" / "right" / "blocked"). Switch: PracticeServer
+--   attribute PrFeelersEnabled (default true, read per call; false = 2.3).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
@@ -83,6 +93,7 @@ M.Version = "2.0"
 M.Version = "2.1" -- v2.1 arrive by flat distance
 M.Version = "2.2" -- v2.2 climb routes
 M.Version = "2.3" -- v2.3 onto the point when no enemy is alive
+M.Version = "2.4" -- v2.4 feeler rays
 local Climb = nil -- v2.2
 do
 	local mod = script.Parent and script.Parent:FindFirstChild("PracticeClimb")
@@ -91,6 +102,8 @@ end
 local ARRIVE_FLAT = 4 -- v2.1
 local ROAM_NEAR, ROAM_R, DUEL_WAIT = 6, 10, 3 -- v2.1 roam
 local RUSH_R = 20 -- v2.3
+local FEEL_LEN, FEEL_KNEE, FEEL_SLOPE, FEEL_KEEP = 14, 2.5, 0.7, 0.6 -- v2.4
+local FEEL_ANGLES = {30, 60, 90} -- v2.4
 
 local NEAR, NEAR_CLOAK = 20, 15
 local DIRECT, REPATH, WATER_COST = 40, 1.5, 3
@@ -320,8 +333,59 @@ local function roam(b, goal, job, ctx)
 	return base
 end
 
+-- v2.4 feeler rays (see the header): target -> the target to walk to this tick
+local function wallHit(o, d)
+	local hit = workspace:Raycast(o, d, losParams)
+	return hit ~= nil and hit.Normal.Y <= FEEL_SLOPE
+end
+local function feel(b, target)
+	local ps = game:GetService("ServerScriptService"):FindFirstChild("PracticeServer")
+	if ps and ps:GetAttribute("PrFeelersEnabled") == false then return target end
+	local v, m = b.v2, b.model
+	local p = b.hrp.Position
+	local to = flat(target - p)
+	local dist = to.Magnitude
+	if dist < 2 then return target end
+	local dir = to.Unit
+	local len = math.min(FEEL_LEN, dist)
+	local feet = p.Y - b.hrp.Size.Y / 2 - b.hum.HipHeight
+	local o = Vector3.new(p.X, feet + FEEL_KNEE, p.Z)
+	local side = Vector3.new(-dir.Z, 0, dir.X)
+	local w = halfOf(m) * 0.8
+	local function clear(d, shoulders)
+		if wallHit(o, d * len) then return false end
+		if shoulders and (wallHit(o + side * w, d * len) or wallHit(o - side * w, d * len)) then return false end
+		return true
+	end
+	local function set(st)
+		if m:GetAttribute("BotFeel") ~= st then m:SetAttribute("BotFeel", st) end
+	end
+	if clear(dir, true) then
+		set("clear")
+		return target
+	end
+	local t = os.clock()
+	local first = (v.feelSide and v.feelUntil and t < v.feelUntil) and v.feelSide or (math.random() < 0.5 and 1 or -1)
+	for _, a in ipairs(FEEL_ANGLES) do
+		for _, sgn in ipairs({first, -first}) do
+			local r = math.rad(a) * sgn
+			local d = Vector3.new(dir.X * math.cos(r) - dir.Z * math.sin(r), 0, dir.X * math.sin(r) + dir.Z * math.cos(r))
+			if clear(d, false) then
+				if v.feelSide ~= sgn or not v.feelUntil or t >= v.feelUntil then
+					m:SetAttribute("BotFeelSteers", (m:GetAttribute("BotFeelSteers") or 0) + 1)
+				end
+				v.feelSide, v.feelUntil = sgn, t + FEEL_KEEP
+				set(sgn > 0 and "left" or "right")
+				return Vector3.new(p.X, target.Y, p.Z) + d * len
+			end
+		end
+	end
+	set("blocked")
+	return target
+end
+
 -- wantMove: the bot is trying to get somewhere; returns nothing
-local function nav(b, goal, ctx, wantMove)
+local function nav(b, goal, ctx, wantMove, noFeel) -- v2.4: + noFeel (the climb route)
 	local v = b.v2
 	local p = b.hrp.Position
 	local t = os.clock()
@@ -384,7 +448,7 @@ local function nav(b, goal, ctx, wantMove)
 	end
 	if d <= DIRECT and clearLine(b, goal) then
 		v.path, v.wp = nil, nil
-		b.hum:MoveTo(goal)
+		b.hum:MoveTo(noFeel and goal or feel(b, goal)) -- v2.4: + feel
 		return
 	end
 	if (not v.path and not v.pathing and (not v.noPathAt or t - v.noPathAt > 1)) or (v.path and t - (v.pathAt or 0) > REPATH)
@@ -399,12 +463,12 @@ local function nav(b, goal, ctx, wantMove)
 		end
 		if w then
 			if w.Action == Enum.PathWaypointAction.Jump then b.hum.Jump = true end
-			b.hum:MoveTo(w.Position)
+			b.hum:MoveTo(noFeel and w.Position or feel(b, w.Position)) -- v2.4: + feel
 			return
 		end
 		v.path, v.wp = nil, nil
 	end
-	b.hum:MoveTo(goal)
+	b.hum:MoveTo(noFeel and goal or feel(b, goal)) -- v2.4: + feel
 end
 
 -- ---------- attacks ----------
@@ -675,7 +739,7 @@ function M.step(b, ctx)
 					if jump then b.hum.Jump = true end
 					setState(m, "climb")
 					if m:GetAttribute("BotClimbIdx") ~= idx then m:SetAttribute("BotClimbIdx", idx) end
-					nav(b, tgt, ctx, true)
+					nav(b, tgt, ctx, true, true) -- v2.4: no feelers on the trail
 					return
 				end
 			end

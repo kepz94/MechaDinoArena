@@ -3424,3 +3424,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - EggLoader 1.5 `EggLoaderIslandEggEnabled` (true, read at start): non-match loads (ISLAND, PLAY on a hub server) show the egg pod; false = 1.4's slim island screen.
 - MainMenu `MainMenuIslandLoaderEnabled` (true, per trip).
 - PracticeBrain2 2.3: PracticeServer `PrRushPointEnabled` (true, read per tick): no enemy alive -> every bot onto the point; model `BotRushes`, BotState "rush".
+- PracticeBrain2 2.4: PracticeServer `PrFeelersEnabled` (true, read per call): feeler rays; model `BotFeel` (clear / left / right / blocked), `BotFeelSteers`.
