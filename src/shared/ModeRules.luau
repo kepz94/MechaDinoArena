@@ -35,9 +35,15 @@
 --   callers that ask at start wait with it (they all handle players already in the server). serverKindWhy() -> "arena" /
 --   "hubOff" / "studio" / "reservedId" / "tripBots" / "public" / "vip" / "noHubRules". Switch: M.KIND_WAIT_FIRST_PLAYER
 --   (true; false = 1.2: decided at once).
+-- v1.4 (Arena queue, MDA-489, plan docs/plans/PREGAME_LINEUP_v1.0.md T4 (Part 2), ADR-012): an Arena match is a reserved copy
+--   of the Sandbox place (HubTravel 1.1 "arenaMatch"), entered with TeleportData mdaTrip.mode == "arena". The v1.3 first-player
+--   check treats that trip like "bots": kind "practice" (PracticeServer 1.10 runs the 4v4). serverKindWhy() "tripArena".
+--   Switch: M.TRIP_ARENA_PRACTICE (true; false = 1.3).
 local M = {}
 
 M.Version = "1.3"
+M.Version = "1.4" -- v1.4 arena trips are practice servers
+M.TRIP_ARENA_PRACTICE = true -- v1.4
 M.KIND_WAIT_FIRST_PLAYER = true -- v1.3
 M.SANDBOX_PLACE_ID = 84022023159448
 M.ARENA_PLACE_ID = 75433819286625
@@ -93,6 +99,7 @@ local function why(k, info, trip)
 	if info.placeMode == "arena" then return "arena" end
 	if info.hubOn ~= true then return "hubOff" end
 	if info.isStudio then return "studio" end
+	if trip == "arena" then return "tripArena" end -- v1.4
 	if trip then return "tripBots" end
 	if k == "practice" then return "reservedId" end
 	if type(info.privateId) == "string" and info.privateId ~= "" then return "vip" end
@@ -137,6 +144,9 @@ function M.serverKind()
 	local okJd, jd = pcall(function() return first:GetJoinData() end)
 	local td = okJd and type(jd) == "table" and jd.TeleportData or nil
 	local trip = type(td) == "table" and type(td.mdaTrip) == "table" and td.mdaTrip.mode == "bots"
+	if not trip and M.TRIP_ARENA_PRACTICE and type(td) == "table" and type(td.mdaTrip) == "table" and td.mdaTrip.mode == "arena" then
+		trip = "arena" -- v1.4
+	end
 	info = infoNow()
 	k = trip and "practice" or H.kind(info)
 	kindCache, kindWhy = k, why(k, info, trip)

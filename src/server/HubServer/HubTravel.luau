@@ -13,6 +13,9 @@
 --   ago is waited for until their SkillSaveState turns "saved" after it, or SAVE_WAIT s have passed since it. onSaving() is
 --   called once if any wait happens. Returns the players still here.
 -- track() starts the change watch (once; HubServer calls it at start; go / saveWait also call it).
+-- v1.1 (Arena queue, MDA-490, plan docs/plans/PREGAME_LINEUP_v1.0.md T5, ADR-012): mode "arenaMatch" (HubRules 1.2) is
+--   reserved like "bots": ReserveServer(ModeRules.SANDBOX_PLACE_ID) + TeleportAsync with the access code (the Arena 4v4 runs
+--   on a private Sandbox copy; ModeRules 1.4 kind "practice").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -21,6 +24,7 @@ local TeleportService = game:GetService("TeleportService")
 
 local M = {}
 M.VERSION = "1.0"
+M.VERSION = "1.1" -- v1.1 arenaMatch
 
 local arcade = ServerStorage:WaitForChild("DinoArcade")
 local ModeRules = require(arcade:WaitForChild("ModeRules"))
@@ -77,7 +81,7 @@ function M.go(players, mode, data)
 	local options = Instance.new("TeleportOptions")
 	if type(data) == "table" then options:SetTeleportData(data) end
 	local target = mode == "arena" and ModeRules.ARENA_PLACE_ID or ModeRules.SANDBOX_PLACE_ID
-	if mode == "bots" then
+	if mode == "bots" or mode == "arenaMatch" then -- v1.1: + arenaMatch
 		local okR, code = pcall(function() return TeleportService:ReserveServer(ModeRules.SANDBOX_PLACE_ID) end)
 		if not okR or type(code) ~= "string" then return false, "reserveFailed" end
 		options.ReservedServerAccessCode = code

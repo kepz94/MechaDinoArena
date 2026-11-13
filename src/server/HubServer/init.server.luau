@@ -47,6 +47,24 @@
 -- v1.3 (Rift Gates, MDA-476, plan docs/plans/RIFT_GATES_v1.0.md T3): when a trip starts from a portal (not noPortal), the
 --   portal model Workspace.PortalIslet.Portal_<mode> gets attribute PortalFlareAt = server time; PortalFX 1.0 plays the flare on
 --   every client. Switch: script attribute HubPortalFlareEnabled (default true, read per trip; false = 1.2).
+-- v1.4 (Arena queue, MDA-490, plan docs/plans/PREGAME_LINEUP_v1.0.md T5, ADR-012, mockup docs/mockups/arena_queue_v0.1.html pick
+--   "A · Top pill"; Kepu: queue up to 30 s then 4v4 with bots filling (D6), nobody joins a running Arena match (D4), you can walk
+--   around while queued):
+--   * Walking into the ARENA portal joins this hub server's Arena queue instead of travelling: the same party rule as a trip
+--     (HubRules.tripParty: the squad leader brings the squad; others -> "notLeader"); party members already queued or in a trip
+--     are left out. The group {ids, at = now} goes in the queue; each member gets HubQueueState "queued", HubQueueSince (the
+--     group's at), HubQueueCount (humans queued on this server, kept current), HubQueueNeed (HubRules.QUEUE_SIZE). The portal
+--     flares as for a trip. Walking away, the menu, dying: you stay queued.
+--   * Leaving: RemoteEvent ReplicatedStorage.HubQueueRequest ("leave") drops the whole group (you and your squad). A member who
+--     quits or whose SquadId changes is dropped alone; an empty group goes. Walking into the BOTS portal while queued leaves
+--     the queue first, then starts that trip.
+--   * Every QUEUE_TICK (0.5) s: HubRules.queueTake(groups, now) -> a match: those groups leave the queue; teams =
+--     HubRules.packTeams; members get HubQueueState "found" for HubRules.FOUND_SHOW (1.5) s, then a trip as v1.0's (mode
+--     "arena", no countdown, no portal cancel) whose teleport is HubTravel "arenaMatch" with TeleportData mdaTrip + teams
+--     {A = {UserId}, B = {UserId}} + matchId (the trip key). HubQueueState "" once the trip starts.
+--   * Test hook: Invoke("queue", player) joins as the portal would; Invoke("leaveQueue", player); "state" adds "queued n".
+--   Switch: script attribute HubArenaQueueEnabled (default true, read per portal entry / tick; false = 1.3: the ARENA portal
+--   travels to a public Arena server). Diagnostics: HubQueued (humans queued), HubQueueMatches.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -55,6 +73,7 @@ local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 portal flare
+VERSION = "1.4" -- v1.4 Arena queue
 local PLACE_DELAY, RESPAWN_DELAY = 0.15, 0.3
 
 script:SetAttribute("HubServerVersion", VERSION)
@@ -214,7 +233,9 @@ local function runTrip(trip)
 	local ids = {}
 	for _, p in ipairs(here) do table.insert(ids, p.UserId) end
 	local leader = trip.squadId ~= "" and trip.starter.UserId or nil
-	local ok, why = Travel.go(here, trip.mode, HubRules.tripData(trip.mode, trip.key, leader, ids, "hub"))
+	local data = HubRules.tripData(trip.mode, trip.key, leader, ids, "hub")
+	for k, v in pairs(trip.extra or {}) do data.mdaTrip[k] = v end -- v1.4: Arena teams / matchId
+	local ok, why = Travel.go(here, trip.travelMode or trip.mode, data) -- v1.4: travelMode
 	script:SetAttribute("HubTrips", (script:GetAttribute("HubTrips") or 0) + 1)
 	if ok then
 		trip.dead = true
@@ -275,6 +296,150 @@ local function startTrip(p, mode, noPortal)
 	return "ok"
 end
 
+-- ---------- v1.4: the Arena queue ----------
+local QUEUE_TICK = 0.5
+if script:GetAttribute("HubArenaQueueEnabled") == nil then script:SetAttribute("HubArenaQueueEnabled", true) end
+local function queueOn() return script:GetAttribute("HubArenaQueueEnabled") ~= false and HubRules.queueTake ~= nil end
+local groups = {} -- {key, ids = {UserId}, at, squadId}
+local queuedOf = {} -- [player] = group
+local function queueCount()
+	local n = 0
+	for _, g in ipairs(groups) do n += #g.ids end
+	script:SetAttribute("HubQueued", n)
+	for p in pairs(queuedOf) do setIf(p, "HubQueueCount", n) end
+	return n
+end
+local function unqueue(p, state)
+	queuedOf[p] = nil
+	if p.Parent then
+		p:SetAttribute("HubQueueState", state or "")
+		p:SetAttribute("HubQueueSince", nil)
+	end
+end
+local function removeGroup(g, state)
+	local i = table.find(groups, g)
+	if i then table.remove(groups, i) end
+	for _, id in ipairs(g.ids) do
+		local m = Players:GetPlayerByUserId(id)
+		if m and queuedOf[m] == g then unqueue(m, state) end
+	end
+	queueCount()
+end
+local function dropQueued(p) -- one member gone (quit / new squad)
+	local g = queuedOf[p]
+	if not g then return end
+	local k = table.find(g.ids, p.UserId)
+	if k then table.remove(g.ids, k) end
+	unqueue(p, "")
+	if #g.ids == 0 then removeGroup(g, "") else queueCount() end
+end
+local function joinQueue(p)
+	if queuedOf[p] or tripOf[p] then return "busy" end
+	local sid = SquadRules.idOfPlayer(p)
+	local ids = {}
+	if sid ~= "" then
+		for _, m in ipairs(SquadRules.members(sid)) do table.insert(ids, m.UserId) end
+	end
+	local leader = sid ~= "" and SquadRules.leaderOf(sid) or nil
+	local party, why = HubRules.tripParty(p.UserId, {squadId = sid, leaderId = leader and leader.UserId, members = ids})
+	if not party then
+		p:SetAttribute("HubLastLeader", leader and leader.Name or "")
+		p:SetAttribute("HubLastResult", why)
+		p:SetAttribute("HubLastAt", now())
+		return why
+	end
+	local g = {key = HttpService:GenerateGUID(false), ids = {}, at = now(), squadId = sid}
+	for _, id in ipairs(party) do
+		local m = Players:GetPlayerByUserId(id)
+		if m and not tripOf[m] and not queuedOf[m] then
+			table.insert(g.ids, id)
+			queuedOf[m] = g
+			m:SetAttribute("HubQueueState", "queued")
+			m:SetAttribute("HubQueueSince", g.at)
+			m:SetAttribute("HubQueueNeed", HubRules.QUEUE_SIZE)
+		end
+	end
+	if #g.ids == 0 then return "busy" end
+	table.insert(groups, g)
+	queueCount()
+	if script:GetAttribute("HubPortalFlareEnabled") ~= false then
+		local isl = workspace:FindFirstChild("PortalIslet")
+		local pm = isl and isl:FindFirstChild("Portal_arena")
+		if pm then pm:SetAttribute("PortalFlareAt", now()) end
+	end
+	return "ok"
+end
+local function leaveQueue(p)
+	local g = queuedOf[p]
+	if not g then return "notQueued" end
+	removeGroup(g, "")
+	return "ok"
+end
+local function startArenaMatch(taken)
+	local teams = HubRules.packTeams(taken)
+	if not teams then return end
+	local players = {}
+	for _, g in ipairs(taken) do
+		local i = table.find(groups, g)
+		if i then table.remove(groups, i) end
+		for _, id in ipairs(g.ids) do
+			local m = Players:GetPlayerByUserId(id)
+			if m then
+				queuedOf[m] = nil
+				m:SetAttribute("HubQueueState", "found")
+				table.insert(players, m)
+			end
+		end
+	end
+	queueCount()
+	script:SetAttribute("HubQueueMatches", (script:GetAttribute("HubQueueMatches") or 0) + 1)
+	task.delay(HubRules.FOUND_SHOW or 1.5, function()
+		local here, names = {}, {}
+		for _, m in ipairs(players) do
+			if m.Parent and not tripOf[m] then table.insert(here, m) table.insert(names, m.Name) end
+		end
+		for _, m in ipairs(players) do
+			if m.Parent then m:SetAttribute("HubQueueState", "") m:SetAttribute("HubQueueSince", nil) end
+		end
+		if #here == 0 then return end
+		local key = HttpService:GenerateGUID(false)
+		local trip = {mode = "arena", travelMode = "arenaMatch", starter = here[1], players = here, endsAt = now(), squadId = "",
+			key = key, noPortal = true, phase = "go", extra = {teams = teams, matchId = key}} -- "go": no cancels
+		for _, m in ipairs(here) do
+			tripOf[m] = trip
+			m:SetAttribute("HubTripMode", "arena")
+			m:SetAttribute("HubTripEndsAt", trip.endsAt)
+			m:SetAttribute("HubTripLeader", "")
+			m:SetAttribute("HubTripMembers", table.concat(names, ","))
+			m:SetAttribute("HubTripState", "count")
+		end
+		task.spawn(runTrip, trip)
+	end)
+end
+do
+	local qr = ReplicatedStorage:FindFirstChild("HubQueueRequest")
+	if not qr then
+		qr = Instance.new("RemoteEvent")
+		qr.Name = "HubQueueRequest"
+		qr.Parent = ReplicatedStorage
+	end
+	local lastQ = {}
+	qr.OnServerEvent:Connect(function(p, action)
+		if os.clock() - (lastQ[p] or 0) < 0.3 then return end
+		lastQ[p] = os.clock()
+		if action == "leave" then leaveQueue(p) end
+	end)
+end
+task.spawn(function()
+	while script.Parent do
+		if queueOn() and #groups > 0 then
+			local taken = HubRules.queueTake(groups, now())
+			if taken then startArenaMatch(taken) end
+		end
+		task.wait(QUEUE_TICK)
+	end
+end)
+
 TeleportService.TeleportInitFailed:Connect(function(p)
 	if p and p.Parent and p:GetAttribute("HubTripState") == "teleporting" then
 		local t = tripOf[p] -- v1.1: free this one
@@ -311,6 +476,7 @@ for _, p in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, p) end
 Players.PlayerRemoving:Connect(function(p)
 	local t = tripOf[p]
 	if t then drop(t, p) end
+	dropQueued(p) -- v1.4
 	inPortal[p], wasIn[p] = nil, nil
 end)
 
@@ -335,7 +501,16 @@ task.spawn(function()
 					if HubRules.inShape(root.Position, po.part.CFrame, po.part.Size, "box") then here = po.mode break end
 				end
 			end
-			if here and inPortal[p] ~= here then startTrip(p, here) end
+			if here and inPortal[p] ~= here then
+				if here == "arena" and queueOn() then -- v1.4: the Arena portal queues
+					joinQueue(p)
+				else
+					if queuedOf[p] then leaveQueue(p) end -- v1.4: another portal leaves the queue first
+					startTrip(p, here)
+				end
+			end
+			local qg = queuedOf[p] -- v1.4: a member whose squad changed is dropped
+			if qg and SquadRules.idOfPlayer(p) ~= qg.squadId then dropQueued(p) end
 			inPortal[p] = here
 			-- cancels / drops
 			local trip = tripOf[p]
@@ -372,8 +547,14 @@ hook.OnInvoke = function(action, p, mode)
 	elseif action == "state" then
 		local n = 0
 		for _ in pairs(tripOf) do n += 1 end
-		return ("state %s kind %s zones %d portals %d spawns %d inTrips %d"):format(script:GetAttribute("HubState"), KIND, #zones,
-			#portals, #spawns, n)
+		return ("state %s kind %s zones %d portals %d spawns %d inTrips %d queued %d"):format(script:GetAttribute("HubState"), KIND, #zones,
+			#portals, #spawns, n, script:GetAttribute("HubQueued") or 0) -- v1.4: + queued
+	elseif action == "queue" then -- v1.4
+		if typeof(p) ~= "Instance" or not p:IsA("Player") then return "badArg" end
+		return joinQueue(p)
+	elseif action == "leaveQueue" then -- v1.4
+		if typeof(p) ~= "Instance" or not p:IsA("Player") then return "badArg" end
+		return leaveQueue(p)
 	end
 	return "badArg"
 end
