@@ -1,4 +1,4 @@
-# Mecha Dino Arena v1.0: Pre-Game Lineup, W-L Record, 4v4 (DRAFT, before red-team)
+# Mecha Dino Arena v1.0: Pre-Game Lineup, W-L Record, 4v4 (red-teamed 2026-11-12)
 
 **Goal:** before every Arena match and every bots match, a 30 s lineup shows each team on pedestals with W-L records. Each player picks a dino and 4 parts on a select screen with 3D previews. Player intros and VS follow. The Arena keeps a win-loss record per player.
 **Chosen direction:** layout B (Kepu 2026-11-12), mockup docs/mockups/pregame_v0.4.html (artifact A2NNX4m7qWKYMCXWkPsRqR, v2).
@@ -15,6 +15,11 @@
 | D6 | Arena fill: queue up to ~30 s, start 4v4 with whoever is found, and bots fill the empty slots. |
 | D7 | After an Arena match (results screen) everyone goes back to the hub island. |
 | D8 | Arena teams are 4. The Arena place's max players must be 8 (Game Settings, Kepu). |
+| D9 | An Arena match counts toward W-L only when each team has at least 1 real player (eligible = both teams have a human in the roster when the lineup starts). Otherwise it plays the same and no record changes. |
+| D10 | Ship in two parts. Part 1: pregame screens on the bots match, 4v4, 2 Elite + 2 Hard, W-L loaded and shown (no writes). Part 2: Arena queue, private 4v4 Arena, W-L written. |
+| D11 | A draw: no change to anyone's W-L. |
+| D12 | Leaving during the lineup is a loss, the same as leaving mid-match. |
+| D13 | A queued player who finishes loading after the match started still gets their slot (from a bot). Anyone not in the trip is sent back to the island. |
 
 ## Global Constraints
 - Additive only. Each change sits behind its own switch (script attribute) and every number is an attribute.
@@ -47,15 +52,16 @@
 | src/client/PracticeLobby.client.luau 1.6 | hidden while PrPhase is "lineup" / "intro" | 1.7 |
 
 ## Deterministic map
-**Record outcome** (ArenaRecordRules.outcome(winner, myTeam, left, teamHadLeaver)):
+**Record outcome** (ArenaRecordRules.outcome(eligible, winner, myTeam, left, teamHadLeaver)):
 
 | Condition | Outcome |
 |---|---|
-| left == true | "l" (written at the moment of leaving) |
+| eligible ~= true | nil (D9) |
+| left == true (lineup, intro or match) | "l" (written at the moment of leaving; D12) |
 | winner == myTeam | "w" |
 | winner is the other team and teamHadLeaver | nil (no loss) |
 | winner is the other team | "l" |
-| winner == "draw" | nil (OPEN Q1) |
+| winner == "draw" | nil (D11) |
 | match stopped with no winner (everyone left, server shutdown) | nil |
 
 **Match phases** (PracticeServer, kind arenaMatch or a private bots match): "lineup" (PG_LINEUP 30 s; drops to PG_READY 5 s once all humans are ready) → "intro" (PG_INTRO ~10 s) → "match" (HardpointPractice "start") → "results" (HpResultsEndAt) → arenaMatch: HubTravel "island" for every human / bots: "lobby" as today.
@@ -65,7 +71,7 @@
 | When | Result |
 |---|---|
 | expected member (tripData.members), lineup | takes their slot (replaces the bot) |
-| expected member, intro or later | takes their slot from a bot (they were queued). OPEN Q2: or sent back? |
+| expected member, intro or later | takes their slot from a bot (D13) |
 | anyone not in members | sent back to the island at once |
 
 **Queue (hub server):** a group is a squad (leader walks in) or a single player. Start when queued humans ≥ 8, or the oldest group has waited QUEUE_WAIT (30) s. Groups are packed into two teams of ≤ 4 (assignGroups, squads kept together). Leaving the portal ring or pressing LEAVE QUEUE drops the group.
@@ -87,7 +93,16 @@
 | T12 | PregameScreen 1.0 INTRO: per-player spotlight with W-L, red team reveal, VS, CAPTURE AND HOLD THE HARDPOINT. PracticeLobby 1.7 hidden in those phases | Wired | T10 |
 | T13 | Kepu: Arena place Game Settings max players 8; publish both places | Manual | — |
 
-## Open questions (for Kepu)
-- Q1 Draw: no change to anyone's W-L?
-- Q2 A queued player who finishes loading after the match started: still let in (takes a bot's slot), or back to the island?
-- Q3 Leaving during the lineup (before the match starts): a loss like a mid-match leave, or nothing?
+## Releases (D10)
+- **Part 1 (v1.0a):** T1, T2 (load + show only: ArenaRecordWriteEnabled default false), T3, T8 bots parts only (4v4, lineup/intro phases, ready), T9, T10, T11, T12. Fully testable in Studio on the bots match.
+- **Part 2 (v1.0b):** T2 writes on, T4, T5, T6, T7, T8 arenaMatch parts, T13. Proven live (Studio can't run reserved servers or teleports).
+
+## Red-team (2026-11-12), outcome
+| Challenge | Outcome |
+|---|---|
+| Queue alone = 1 human + 7 bots, so W-L can be farmed | Survived → D9 (each team needs a real player) |
+| The Arena half can't be tested in Studio | Survived → D10 two parts; Part 2 gets test hooks + a live check with Kepu's group |
+| DataStore double counts (retries, shutdown, leave races) | Survived → T1 dedupes by matchId (lastMatch); UpdateAsync only; BindToClose writes nothing for an unfinished match (leavers are already written) |
+| Phone speed of 3D viewports | Survived → T10/T11 acceptance: thumbnails render once (static camera), one live showcase; switch PregameFlatIcons falls back to icons |
+| ~1.5 min from portal to play | Accepted risk: lineup 30 s is Kepu's number. The intro is kept at ~8 s |
+| Draw / lineup leave / late loaders unmapped | Survived → D11, D12, D13 |
