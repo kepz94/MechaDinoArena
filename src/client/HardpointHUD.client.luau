@@ -144,6 +144,10 @@
 --   only when ArenaMatchId differs from the value this client saw when HpPhase last became "live" (a result for this match).
 --   Bots matches and public Hardpoint: the banner as 1.10. Switch: script attribute HardpointHUDRecordLineEnabled (default true,
 --   read per frame; false = 1.10). Diagnostic: HardpointHUDRecordLine ("w" / "l" / "n" / "none").
+-- v1.12 (Kepu 2026-11-13 12:37 "Yes change it to show arena"): in an Arena 4v4 (ReplicatedStorage.Practice PrArena == true) the
+--   line under the score on the banner beat and under the title on the board reads "ARENA" instead of "PRACTICE · <tier> BOTS".
+--   Bots matches still read "PRACTICE · <tier> BOTS", public Hardpoint "HARDPOINT". Switch: script attribute
+--   HardpointHUDArenaLabelEnabled (default true, read per frame; false = 1.11).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -157,6 +161,8 @@ VERSION = "1.8" -- v1.8 match end
 VERSION = "1.9" -- v1.9 end timing
 VERSION = "1.10" -- v1.10 auto back to island
 VERSION = "1.11" -- v1.11 Arena record line on the banner
+VERSION = "1.12" -- v1.12 ARENA label on the results
+if script:GetAttribute("HardpointHUDArenaLabelEnabled") == nil then script:SetAttribute("HardpointHUDArenaLabelEnabled", true) end
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
 
@@ -411,6 +417,10 @@ menuB.Activated:Connect(function()
 	if mr then mr:FireServer("menu") end
 end)
 local function mss(s) s = math.max(0, math.floor((tonumber(s) or 0) + 0.5)) return ("%d:%02d"):format(s // 60, s % 60) end
+-- v1.12: an Arena 4v4 reads ARENA (see the header)
+local function arenaLabel(pr)
+	return pr ~= nil and pr:GetAttribute("PrArena") == true and script:GetAttribute("HardpointHUDArenaLabelEnabled") ~= false
+end
 local function drawBoard(mine, you, foe, title)
 	local vp = workspace.CurrentCamera.ViewportSize
 	bpScale.Scale = math.min(1.2, vp.X * 0.94 / BOARD_W, vp.Y * 0.86 / BOARD_H)
@@ -419,6 +429,7 @@ local function drawBoard(mine, you, foe, title)
 	bpStroke.Color = title == "VICTORY" and BLUE or (title == "DEFEAT" and RED or YELLOW)
 	local pr = ReplicatedStorage:FindFirstChild("Practice")
 	bSub.Text = pr and ("PRACTICE · " .. string.upper(tostring(pr:GetAttribute("PrDifficulty") or "")) .. " BOTS") or "HARDPOINT"
+	if arenaLabel(pr) then bSub.Text = "ARENA" end -- v1.12
 	bNext.Text = (pr and "TEAM SCREEN IN " or "NEXT MATCH IN ") .. fmt((state:GetAttribute("HpResultsEndAt") or now()) - now())
 	local ok, list = pcall(function() return HttpService:JSONDecode(state:GetAttribute("HpBoard") or "[]") end)
 	if not ok or type(list) ~= "table" then list = {} end
@@ -982,6 +993,7 @@ local function endFrame(mine, you, foe, title)
 		ebScore.Text = ('<font color="#5aa0ff">BLUE %d</font>   –   <font color="#e0284a">%d RED</font>'):format(you, foe)
 		local pr = ReplicatedStorage:FindFirstChild("Practice")
 		ebSub.Text = pr and ("PRACTICE · " .. string.upper(tostring(pr:GetAttribute("PrDifficulty") or "")) .. " BOTS") or "HARDPOINT"
+		if arenaLabel(pr) then ebSub.Text = "ARENA" end -- v1.12
 		recordLine() -- v1.11
 	elseif beat == "spot" then
 		if spotKey ~= endsAt then

@@ -3458,3 +3458,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - MainMenu 1.26 `MainMenuArenaRecordEnabled` (true, per draw). Player diagnostic `MainMenuArenaRecord` ("shown w-l" / "hidden").
 - HardpointHUD 1.11 `HardpointHUDRecordLineEnabled` (true, per frame). Diagnostic `HardpointHUDRecordLine` ("w" / "l" / "n" / "none").
 - IslandTags 1.0 (new): `IslandTagsEnabled` (true), `IslandTagsMax` (80 studs), `IslandTagsMaxCount` (12), per frame. Diagnostics `IslandTagsVersion`, `IslandTagsState`, `IslandTagsShown`.
+- HardpointHUD 1.12 `HardpointHUDArenaLabelEnabled` (true, per frame): Arena 4v4 results read "ARENA". false = 1.11.
