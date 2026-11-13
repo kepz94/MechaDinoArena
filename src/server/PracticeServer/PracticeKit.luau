@@ -67,6 +67,19 @@
 --     skips the tick): DinoBreakerRequest(stamp) through HerreraMovesServer's bot entrance.
 --   think() never picks passive / glide / breaker (their want is 0). Switch: PracticeServer attribute PrKitLast4Enabled (default
 --   true, read per use; false = these 4 are denied like PrKitDeny, = 1.2).
+-- v1.4 (Elite combos, MDA-498; Kepu 2026-11-13 "let's do 1,2&5" -> 2 = Elite bot combos, pick "By ability type"): bots whose
+--   tier has combo = true (PracticeRules: Elite only) chain a setup part into payoffs. Same parts, same cooldowns, same entrances.
+--   * Setup: a part of kind "control" (stun, grab, hook, sleep, tether, challenge) or "mobility" used with a target (closing in).
+--     When a setup part is ready and a payoff is ready (a "ranged" / "aoe" part off cooldown, or the main attack ready within
+--     1 s: b.nextAttack), the ready setup parts go first this think (the other parts keep their random order behind them).
+--   * Window: a used setup opens a combo window of PracticeServer attribute PrComboWindow (2) s and clears the tier's
+--     abilDelay wait. In the window only payoff parts are tried, each the moment it is ready and in range (no abilDelay):
+--     after "control": "ranged" / "aoe"; after "mobility": "ranged" / "aoe" / "control". The main attack needs no change: the
+--     brain (PracticeBrain2 2.5) already fires it first whenever it is ready and in reach.
+--   * Async fire (1.0): the window opens when the fire's result comes back "used".
+--   Model attributes: BotCombos (setups that opened a window), BotComboHits (payoff parts used in a window), BotComboLast
+--   ("<setup> >" / "<setup> > <payoff>"). Switch: PracticeServer attribute PrKitCombosEnabled (default true, read per think;
+--   false = 1.3).
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
@@ -74,6 +87,7 @@ local M = {}
 M.Version = "1.0"
 M.Version = "1.2" -- v1.2 every part, no roll (1.1 = hookarm back)
 M.Version = "1.3" -- v1.3 Blood Rush, Mecha Legs, Glider, Stun Breaker
+M.Version = "1.4" -- v1.4 Elite combos
 
 local RETRY = 2
 local OK_RESULTS = {ok = true, placing = true, hit = true, dash = true, zip = true, miss = true, missed = true, fired = true,
@@ -401,6 +415,41 @@ local function doMove(b, p, info, dir, point)
 	end
 end
 
+-- v1.4: Elite combos (see the header)
+local COMBO_SETUP = {control = true, mobility = true}
+local COMBO_PAYOFF = {control = {ranged = true, aoe = true}, mobility = {ranged = true, aoe = true, control = true}}
+local function combosOn(tier)
+	if not (tier and tier.combo == true) then return false end
+	local ps = ServerScriptService:FindFirstChild("PracticeServer")
+	return not (ps and ps:GetAttribute("PrKitCombosEnabled") == false)
+end
+local function comboWindow()
+	local ps = ServerScriptService:FindFirstChild("PracticeServer")
+	return tonumber(ps and ps:GetAttribute("PrComboWindow")) or 2
+end
+local function bumpModel(m, name)
+	if m and m.Parent then m:SetAttribute(name, (m:GetAttribute(name) or 0) + 1) end
+end
+-- after a used part: a payoff in the window is counted; a setup opens the window
+local function comboUsed(k, b, id, p, tier, info)
+	if not combosOn(tier) then return false end
+	local inWin = k.comboUntil ~= nil and os.clock() < k.comboUntil
+	if inWin and COMBO_PAYOFF[k.comboKind] and COMBO_PAYOFF[k.comboKind][p.kind] then
+		bumpModel(b.model, "BotComboHits")
+		if b.model and b.model.Parent then b.model:SetAttribute("BotComboLast", tostring(k.comboFrom) .. " > " .. id) end
+		k.nextThink = os.clock()
+		return true
+	end
+	if COMBO_SETUP[p.kind] and info and info.hasTarget == true then
+		k.comboUntil, k.comboFrom, k.comboKind = os.clock() + comboWindow(), id, p.kind
+		k.nextThink = os.clock()
+		bumpModel(b.model, "BotCombos")
+		if b.model and b.model.Parent then b.model:SetAttribute("BotComboLast", id .. " >") end
+		return true
+	end
+	return false
+end
+
 local function fire(b, id, p, info, R, rng, tier)
 	local fn = entrance(p.server)
 	if not fn then return "noEntrance" end
@@ -470,13 +519,38 @@ function M.think(b, ctx, info)
 		end
 		b.kit = k
 	end
-	if #k.slots == 0 or os.clock() < k.nextThink or k.pending then return false end
+	local combo = combosOn(tier) -- v1.4
+	local inWin = combo and k.comboUntil ~= nil and os.clock() < k.comboUntil and info.hasTarget == true
+	if #k.slots == 0 or (os.clock() < k.nextThink and not inWin) or k.pending then return false end
 	k.nextThink = os.clock() + 0.25
 	local rng = ctx.rng
 	local order = table.clone(k.slots)
 	for i = #order, 2, -1 do
 		local j = rng:NextInteger(1, i)
 		order[i], order[j] = order[j], order[i]
+	end
+	if inWin then -- v1.4: only payoff parts in the window
+		local pay, keep = COMBO_PAYOFF[k.comboKind] or {}, {}
+		for _, id in ipairs(order) do
+			if pay[M.PARTS[id].kind] then table.insert(keep, id) end
+		end
+		order = keep
+	elseif combo and info.hasTarget == true then -- v1.4: ready setup parts first when a payoff is ready
+		local payReady = (b.nextAttack or 0) <= os.clock() + 1
+		if not payReady then
+			for _, id in ipairs(order) do
+				local kind = M.PARTS[id].kind
+				if (kind == "ranged" or kind == "aoe") and os.clock() >= (k.cd[id] or 0) then payReady = true break end
+			end
+		end
+		if payReady then
+			local first, rest = {}, {}
+			for _, id in ipairs(order) do
+				table.insert((COMBO_SETUP[M.PARTS[id].kind] and os.clock() >= (k.cd[id] or 0)) and first or rest, id)
+			end
+			for _, id in ipairs(rest) do table.insert(first, id) end
+			order = first
+		end
 	end
 	for _, id in ipairs(order) do
 		local p = M.PARTS[id]
@@ -497,6 +571,7 @@ function M.think(b, ctx, info)
 					if ok and r == "used" then
 						k.cd[id] = os.clock() + (p.cd or 8)
 						k.nextThink = os.clock() + (tier.abilDelay or 0.5)
+						comboUsed(k, b, id, p, tier, infoCopy) -- v1.4
 					else
 						k.cd[id] = os.clock() + RETRY
 						if not ok then
@@ -512,6 +587,7 @@ function M.think(b, ctx, info)
 				if r == "used" then
 					k.cd[id] = os.clock() + (p.cd or 8)
 					k.nextThink = os.clock() + (tier.abilDelay or 0.5)
+					comboUsed(k, b, id, p, tier, info) -- v1.4
 					return p.move ~= nil
 				else
 					k.cd[id] = os.clock() + RETRY

@@ -3446,3 +3446,8 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PortalHUD 1.3 `PortalHUDQueueEnabled` (true). Diagnostic player PortalHUDQueue.
 - PracticeServer 1.10 `PrArenaMatchEnabled` (true); Studio tests `PrArenaMatchTest`, `PrArenaTestEligible`. Practice `PrArena`. Diagnostics PrArenaState / PrArenaEligible / PrArenaLeft / PrArenaResult. Sets HardpointServer `HpXpPracticeMul` = 1 on Arena match servers.
 - ArenaRecordServer 1.1 `ArenaRecordWriteEnabled` default true.
+
+## PracticeKit 1.4: Elite combos (MDA-498)
+- PracticeServer `PrKitCombosEnabled` (true, per think): Elite bots chain setup parts (control, closing-in mobility) into payoffs. false = 1.3.
+- PracticeServer `PrComboWindow` (2, per setup): seconds the combo window stays open after a setup part is used.
+- Bot model (diagnostics): `BotCombos` (setups that opened a window), `BotComboHits` (payoff parts used in a window), `BotComboLast` ("<setup> >" / "<setup> > <payoff>").
