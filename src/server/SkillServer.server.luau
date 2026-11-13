@@ -122,6 +122,18 @@
 --   its top step (4). Like the parts, the stat rows are never stored: d.steps, points, buys and the save stay the real record;
 --   given rows are left out of points / mastery (buyBase) and a buy of one is refused "maxed". false = 1.10 exactly.
 --   Diagnostic: player attribute SkillTestStats (count of stat rows given; 0 when off).
+-- v1.12 (saved loadout, MDA-502, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md B1, mockup docs/mockups/save_loadout_v0.1.html
+--   A; Kepu 2026-11-13 "allow players to save their Dino loadouts in the lab so when they select a Dino in the pregame it
+--   automatically loads their saved load out", picks "A SAVE button only", "Yes, on arrival too"): each dino can have a saved
+--   loadout (d.saved[key] = 4 part ids, "" = empty), apart from its last slots (which work as before).
+--   * SkillRequest("saveLoadout"): the active dino's saved loadout = its current 4 slots; marked for saving; SkillLastResult
+--     "saved". Saved with the record (field saved of value.dinos[key]); loaded with it (cleanSaved: 4 strings).
+--   * Player attribute SkillSavedLoadout = the active dino's saved loadout "a,b,c,d" ("" when none), set in every publish.
+--   * Pre-game: while ReplicatedStorage.Practice PgPhase == "lineup", the saved loadout is put in the slots (sanitized with the
+--     effective steps: parts no longer owned are dropped) once per dino per lineup: when the active dino changes (a pick) and
+--     for the dino you arrive with (the lineup starting, or loading in during it). Player SkillLoadoutFrom = "saved" after it,
+--     "" when the dino has no saved loadout. Changing slots afterwards does not change the saved loadout.
+--   Switch: script attribute SkillSavedLoadoutEnabled (default true, read per request / apply; false = 1.11).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -130,6 +142,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local VERSION = "1.9"
 VERSION = "1.10" -- v1.10 match XP grant
 VERSION = "1.11" -- v1.11 max-all test switch
+VERSION = "1.12" -- v1.12 saved loadout + pre-game apply
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -287,6 +300,8 @@ local function publish(player, d, levelUp)
 		d.testPlaced[d.active] = nil
 	end
 	for n = 1, ST.SLOTS do player:SetAttribute("SkillSlot" .. n, d.loadout[n] or "") end
+	local sv = d.saved and d.active and d.saved[d.active] -- v1.12
+	player:SetAttribute("SkillSavedLoadout", sv and table.concat(sv, ",") or "")
 end
 
 -- v1.2: per-dino records -------------------------------------------------------------------------------------------
@@ -342,6 +357,11 @@ local function save(player, d)
 		end
 		value = {v = 2, dinos = dinos}
 	end
+	if type(d.saved) == "table" then -- v1.12: each dino's saved loadout rides in its record
+		for key, sv in pairs(d.saved) do
+			if value.dinos[key] then value.dinos[key].saved = sv end
+		end
+	end
 	local raceFix = script:GetAttribute("SkillSaveRaceFixEnabled") ~= false -- v1.8
 	if raceFix then d.dirty = false end -- v1.8: cleared at the snapshot, so a change during the write stays dirty
 	local ok, err = pcall(function() store:SetAsync("u" .. player.UserId, value) end)
@@ -356,10 +376,12 @@ local function save(player, d)
 	end
 end
 
+local applySaved -- v1.12 (below)
 local function load(player)
 	local d = {xp = 0, steps = ST.sanitize({}), loaded = false, dirty = false, lastSave = os.clock(), lastRequest = 0,
 		loadout = emptyLoadout()} -- v1.1: + loadout; v1.3: SLOTS empties
 	d.dinos, d.active = {}, nil -- v1.2
+	d.saved = {} -- v1.12
 	data[player] = d
 	if script:GetAttribute("SkillSaveEnabled") == false or not store then
 		player:SetAttribute("SkillSaveState", "off")
@@ -372,6 +394,11 @@ local function load(player)
 		elseif type(value) == "table" and value.v == 2 and type(value.dinos) == "table" then -- v1.2: per-dino records
 			for key, raw in pairs(value.dinos) do
 				if type(key) == "string" then d.dinos[key] = cleanRecord(raw, key) end -- v1.3: + key
+				if type(key) == "string" and type(raw) == "table" and type(raw.saved) == "table" then -- v1.12
+					local sv = {}
+					for n = 1, ST.SLOTS do sv[n] = type(raw.saved[n]) == "string" and raw.saved[n] or "" end
+					d.saved[key] = sv
+				end
 			end
 			player:SetAttribute("SkillSaveState", "loaded")
 		else
@@ -381,13 +408,47 @@ local function load(player)
 	switchTo(player, d, dinoKey(player)) -- v1.2: the dino being played (d.loaded is still false: no publish yet)
 	d.loaded = true
 	publish(player, d, false)
+	applySaved(player, d) -- v1.12: loading in during a lineup
 end
+
+-- v1.12: the saved loadout in the pre-game lineup (see the header)
+local function lineupOn()
+	local pr = ReplicatedStorage:FindFirstChild("Practice")
+	return pr ~= nil and pr:GetAttribute("PgPhase") == "lineup"
+end
+applySaved = function(player, d)
+	if script:GetAttribute("SkillSavedLoadoutEnabled") == false or not (d and d.loaded and d.active) or not lineupOn() then return end
+	d.pgApplied = d.pgApplied or {}
+	if d.pgApplied[d.active] then return end
+	d.pgApplied[d.active] = true
+	local sv = d.saved and d.saved[d.active]
+	if not sv then
+		player:SetAttribute("SkillLoadoutFrom", "")
+		return
+	end
+	local raw = {}
+	for n = 1, ST.SLOTS do raw[n] = (sv[n] ~= nil and sv[n] ~= "") and sv[n] or false end
+	d.loadout = ST.sanitizeLoadout(raw, stepsFor(d), d.active)
+	d.dirty = true
+	publish(player, d, false)
+	player:SetAttribute("SkillLoadoutFrom", "saved")
+end
+task.spawn(function()
+	local pr = ReplicatedStorage:WaitForChild("Practice", 60)
+	if not pr then return end
+	pr:GetAttributeChangedSignal("PgPhase"):Connect(function()
+		for player, d in pairs(data) do
+			if lineupOn() then applySaved(player, d) else d.pgApplied = nil end
+		end
+	end)
+end)
 
 -- v1.2: follow the dino being played
 local function hookCharacter(player, char)
 	local function check()
 		local d = data[player]
 		if d and d.active then switchTo(player, d, dinoKey(player)) end
+		if d and d.active then applySaved(player, d) end -- v1.12
 	end
 	check()
 	char:GetAttributeChangedSignal("Species"):Connect(check)
@@ -485,6 +546,18 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 				publish(player, d, false)
 			end
 			player:SetAttribute("SkillLastResult", why)
+		end
+	elseif action == "saveLoadout" then -- v1.12
+		if script:GetAttribute("SkillSavedLoadoutEnabled") == false or not d.active then
+			player:SetAttribute("SkillLastResult", "disabled")
+		else
+			local sv = {}
+			for n = 1, ST.SLOTS do sv[n] = type(d.loadout[n]) == "string" and d.loadout[n] or "" end
+			d.saved = d.saved or {}
+			d.saved[d.active] = sv
+			d.dirty = true
+			publish(player, d, false)
+			player:SetAttribute("SkillLastResult", "saved")
 		end
 	elseif action == "respec" then
 		d.steps = ST.sanitize({}, d.active)

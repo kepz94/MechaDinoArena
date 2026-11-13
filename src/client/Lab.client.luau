@@ -137,6 +137,16 @@ VERSION = "1.12" -- v1.12 therizino parts (ZPart_*)
 VERSION = "1.13" -- v1.13 dilo parts (DPart_*)
 VERSION = "1.14" -- v1.14 troodon parts (OPart_*)
 VERSION = "1.15" -- v1.15 part clips (live clip + what line + chips + step preview)
+VERSION = "1.16" -- v1.16 SAVE LOADOUT tile
+-- v1.16 (saved loadout, MDA-503, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md B2, mockup docs/mockups/save_loadout_v0.1.html
+--   "A · SAVE button in the slot row"; Kepu 2026-11-13 pick "A · Tile in the slot row"): a fifth tile after the 4 slots,
+--   width max(20% of the middle column, 70 px) (the slots share the rest): while SkillSlot1..4 differ from the player
+--   attribute SkillSavedLoadout (SkillServer 1.12): yellow, "SAVE LOADOUT" over "FOR THE PRE-GAME" (dark text); when they
+--   match: dark green rgb(36,64,47) with a green rgb(70,224,138) outline, "SAVED ✓" over "LOADS IN THE PRE-GAME" (green).
+--   Press -> SkillRequest("saveLoadout"); SkillLastResult "saved" -> toast "<DINO> LOADOUT SAVED". Full and compact Lab.
+--   Both lines are TextScaled inside the tile (side padding 0.4 cw), capped at 1.7 ch / 1.2 ch (min 10 / 8) by a
+--   UITextSizeConstraint, so the words fit a narrow tile (Studio test: fixed sizes ran past a 70 px tile).
+--   Switch: script attribute LabSaveLoadoutEnabled (default true, read per layout / draw; false = 1.15: no tile, 4 slots).
 -- v1.15 (MDA-444, plan docs/plans/LAB_CLIPS_v1.0.md Task 4, mockup docs/mockups/lab_part_preview_v0.1.html option A; Kepu
 --   2026-11-11 "each mecha part to have a preview of what it does in the lab menu with a short explanation" -> "A · Live
 --   clip", "Built in the game", "Dilo first"): for a selected part (MECHA ABILITIES or STATS part cards; not skins, not stat
@@ -527,6 +537,40 @@ for n = 1, ST.SLOTS do
 end
 local hint = label(mid, "Hint", Enum.Font.GothamBlack, 10, MUTED, "Tap a card, then EQUIP · tap a slot to choose where it goes")
 hint.TextWrapped = true
+
+-- v1.16: SAVE LOADOUT tile (see the header)
+if script:GetAttribute("LabSaveLoadoutEnabled") == nil then script:SetAttribute("LabSaveLoadoutEnabled", true) end
+local saveTile = button(slotsRow, "SaveLoadout", YELLOW, 0)
+local saveCorner = corner(saveTile)
+local saveStroke = stroke(saveTile, Color3.fromRGB(70, 224, 138), 1, 2)
+local saveTop = label(saveTile, "Top", Enum.Font.GothamBlack, 12, DARK_TEXT, "SAVE LOADOUT")
+local saveSub = label(saveTile, "Sub", Enum.Font.GothamBlack, 9, DARK_TEXT, "FOR THE PRE-GAME")
+for _, l in ipairs({saveTop, saveSub}) do -- fit the tile's width (a UITextSizeConstraint caps the size per layout)
+	l.TextScaled = true
+	Instance.new("UITextSizeConstraint").Parent = l
+end
+local function saveOn() return script:GetAttribute("LabSaveLoadoutEnabled") ~= false end
+local function drawSave()
+	saveTile.Visible = saveOn()
+	if not saveTile.Visible then return end
+	local cur = {}
+	for n = 1, ST.SLOTS do cur[n] = tostring(player:GetAttribute("SkillSlot" .. n) or "") end
+	local saved = tostring(player:GetAttribute("SkillSavedLoadout") or "")
+	local clean = saved ~= "" and table.concat(cur, ",") == saved
+	saveTile.BackgroundColor3 = clean and Color3.fromRGB(36, 64, 47) or YELLOW
+	saveStroke.Transparency = clean and 0 or 1
+	local green = Color3.fromRGB(70, 224, 138)
+	saveTop.TextColor3, saveSub.TextColor3 = clean and green or DARK_TEXT, clean and green or DARK_TEXT
+	local top, sub = clean and "SAVED ✓" or "SAVE LOADOUT", clean and "LOADS IN THE PRE-GAME" or "FOR THE PRE-GAME"
+	if saveTop.Text ~= top then saveTop.Text = top end
+	if saveSub.Text ~= sub then saveSub.Text = sub end
+end
+for _, a in ipairs({"SkillSlot1", "SkillSlot2", "SkillSlot3", "SkillSlot4", "SkillSavedLoadout"}) do
+	player:GetAttributeChangedSignal(a):Connect(drawSave)
+end
+saveTile.Activated:Connect(function()
+	if remote then remote:FireServer("saveLoadout") end
+end)
 
 -- right: detail
 local detail = Instance.new("ScrollingFrame")
@@ -1598,6 +1642,21 @@ local function layout()
 	slotsRow.Position, slotsRow.Size = UDim2.fromOffset(0, stageH + 1.2 * ch), UDim2.fromOffset(mw, S.slotH)
 	local sg = 0.8 * cw
 	local sw = (mw - sg * (ST.SLOTS - 1)) / ST.SLOTS
+	if saveOn() then -- v1.16: the SAVE tile takes the end of the row
+		local saveW = math.max(mw * 0.2, 70)
+		sw = (mw - saveW - sg * ST.SLOTS) / ST.SLOTS
+		saveTile.Position, saveTile.Size = UDim2.fromOffset(ST.SLOTS * (sw + sg), 0), UDim2.fromOffset(saveW, S.slotH)
+		saveCorner.CornerRadius = UDim.new(0, 1.2 * ch)
+		local tS, sS = math.max(1.7 * ch, 10), math.max(1.2 * ch, 8)
+		saveTop.UITextSizeConstraint.MaxTextSize, saveSub.UITextSizeConstraint.MaxTextSize = tS, sS
+		saveTop.Size = UDim2.new(1, -0.8 * cw, 0, tS + 2)
+		saveTop.Position = UDim2.fromOffset(0.4 * cw, (S.slotH - tS - sS - 0.4 * ch) / 2)
+		saveSub.Size = UDim2.new(1, -0.8 * cw, 0, sS + 2)
+		saveSub.Position = UDim2.fromOffset(0.4 * cw, (S.slotH - tS - sS - 0.4 * ch) / 2 + tS + 0.4 * ch)
+		drawSave()
+	else
+		saveTile.Visible = false
+	end
 	for n, s in ipairs(slotBtns) do
 		s.b.Position, s.b.Size = UDim2.fromOffset((n - 1) * (sw + sg), 0), UDim2.fromOffset(sw, S.slotH)
 		s.corner.CornerRadius = UDim.new(0, 1.2 * ch)
@@ -1918,5 +1977,12 @@ task.spawn(function()
 		lbBadge.Text = tostring(left)
 		lbBadge.Visible = left > 0
 		task.wait(0.5)
+	end
+end)
+
+-- v1.16: toast after a save
+player:GetAttributeChangedSignal("SkillLastResult"):Connect(function()
+	if player:GetAttribute("SkillLastResult") == "saved" and saveOn() then
+		showToast(string.upper(tostring(player:GetAttribute("SkillDino") or "")) .. " LOADOUT SAVED")
 	end
 end)

@@ -108,6 +108,12 @@ VERSION = "1.4" -- v1.4 off on the hub
 VERSION = "1.5" -- v1.5 match awards
 VERSION = "1.6" -- v1.6 score per teammate on the point
 VERSION = "1.7" -- v1.7 bots match XP 50%
+VERSION = "1.8" -- v1.8 practice start lead (pre-match countdown)
+-- v1.8 (pre-match countdown, MDA-499, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md A1; Kepu 2026-11-13 "10 second count
+--   down"): HardpointPractice("start", lead) with a number lead (0..HpLeadMax 30) sets HpMatchStartAt = now + lead, so the
+--   warm-up (HardpointRules.FIRST 5 s, phaseAt counts from HpMatchStartAt) lasts lead + 5 s; rotations, the clock and scoring
+--   start when P1 goes live as before; HpPointEndsAt counts the lead too (P1 IN 0:10). No lead / not a number = 1.7.
+--   Switch: script attribute HpStartLeadEnabled (default true, read per start).
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
 if script:GetAttribute("HpMinPlayers") == nil then script:SetAttribute("HpMinPlayers", 1) end
@@ -623,7 +629,7 @@ local function publish()
 	set("HpIndex", ph.index)
 	set("HpNextIndex", ph.nextIndex)
 	set("HpShowNext", ph.showNext)
-	set("HpPointEndsAt", now() + ph.remaining)
+	set("HpPointEndsAt", (ph.warmup and now() < match.startAt) and (match.startAt + H.FIRST) or (now() + ph.remaining)) -- v1.8: the lead counts too
 end
 
 local practiceEnded = script:FindFirstChild("HardpointPracticeEnded") -- v1.1
@@ -770,6 +776,10 @@ practiceFn.OnInvoke = function(action, a, b, c, d, e2, f)
 	elseif action == "start" then
 		if not PRACTICE then return "notPractice" end
 		newMatch()
+		if type(a) == "number" and a > 0 and script:GetAttribute("HpStartLeadEnabled") ~= false then -- v1.8: lead
+			match.startAt = now() + math.min(a, tonumber(script:GetAttribute("HpLeadMax")) or 30)
+			set("HpMatchStartAt", match.startAt)
+		end
 		return "ok"
 	elseif action == "stop" then
 		match = nil

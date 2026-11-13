@@ -3461,3 +3461,9 @@ Model numbers are generator output (old version = the flag in the last column, b
 - HardpointHUD 1.12 `HardpointHUDArenaLabelEnabled` (true, per frame): Arena 4v4 results read "ARENA". false = 1.11.
 - SkillServer 1.11 `SkillTestMaxAllEnabled` (true, per publish; change republishes): every live part + every stat row at step 4 for every dino, never saved. Player diagnostic `SkillTestStats` (stat rows given).
 - HubServer 1.5: `HubPlaceSafeEnabled` (true), `HubPlaceHold` (0.3 s), `HubPlaceCheckA` (1 s), `HubPlaceCheckB` (3 s), `HubPlaceFixRadius` (60 studs from the SpawnLocation), `HubPlaceFixMax` (2). Diagnostics: script `HubPlaceFixes`; player `HubPlaceLast`.
+- HardpointServer 1.8 `HpStartLeadEnabled` (true, per start), `HpLeadMax` (30 s): practice start lead moves HpMatchStartAt forward.
+- PracticeServer 1.11 `PrPrematchEnabled` (true, per match start), `PrPrematchLead` (5 s; warm-up = lead + 5). State: Practice `PrPrematch`. Diagnostic `PrPrematchHeld` (humans held now).
+- PrematchCountdown 1.0 (new) `PrematchCountdownEnabled` (true, per frame). Diagnostics `PrematchCountdownVersion`, `PrematchCountdownState` ("off" / "count <n>" / "go").
+- SkillServer 1.12 `SkillSavedLoadoutEnabled` (true, per lineup / request). Player `SkillSavedLoadout` (4 ids, comma-joined), `SkillLoadoutFrom` ("saved" / ""); SkillLastResult "saved".
+- Lab 1.16 `LabSaveLoadoutEnabled` (true, per layout / draw).
+- PregameScreen 1.2 `PregameSavedTagEnabled` (true, per draw).

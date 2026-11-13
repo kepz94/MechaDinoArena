@@ -45,6 +45,11 @@ local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Arena match look
+VERSION = "1.2" -- v1.2 SAVED LOADOUT tag
+-- v1.2 (saved loadout, MDA-504, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md B3, mockup docs/mockups/save_loadout_v0.1.html
+--   "PRE-GAME"): on the SELECT view's parts step, "SAVED LOADOUT" (green, 10, right-aligned, left of the clock) while
+--   SkillLoadoutFrom == "saved" (SkillServer 1.12 put your saved loadout in) and SkillSlot1..4 equal SkillSavedLoadout.
+--   Hidden otherwise. Switch: script attribute PregameSavedTagEnabled (default true, read per draw; false = 1.1).
 script:SetAttribute("PregameScreenVersion", VERSION)
 for k, v in pairs({PregameScreenEnabled = true, PregameFlatIcons = false}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -652,6 +657,19 @@ local function drawSelect()
 	script:SetAttribute("PregameScreenDraft", d or "")
 	tops.Select.title.Text = parts and "MECHA PARTS" or "SELECT DINO"
 	tops.Select.sub.Text = modeLine() .. " · " .. (parts and (nameOf(d) .. " · PICK 4 PARTS") or "PICK YOUR DINO")
+	do -- v1.2: SAVED LOADOUT tag
+		local tg = tops.Select.savedTag
+		if not tg then
+			tg = text(tops.Select.title.Parent, {text = "SAVED LOADOUT", size = 10, color = C.green, x = Enum.TextXAlignment.Right,
+				pos = UDim2.new(1, -240, 0, 24), anchor = Vector2.new(1, 0), sz = UDim2.fromOffset(220, 14)})
+			tops.Select.savedTag = tg
+		end
+		local cur = {}
+		for n = 1, 4 do cur[n] = tostring(player:GetAttribute("SkillSlot" .. n) or "") end
+		local sv = tostring(player:GetAttribute("SkillSavedLoadout") or "")
+		tg.Visible = parts and script:GetAttribute("PregameSavedTagEnabled") ~= false and player:GetAttribute("SkillLoadoutFrom") == "saved"
+			and sv ~= "" and table.concat(cur, ",") == sv
+	end
 	-- team strip
 	for _, ch in ipairs(strip:GetChildren()) do if not ch:IsA("UIListLayout") then ch:Destroy() end end
 	text(strip, {text = "YOUR TEAM", size = 7.8, color = C.muted, sz = UDim2.fromOffset(70, 30), x = Enum.TextXAlignment.Left})
@@ -952,6 +970,8 @@ end
 state:GetAttributeChangedSignal("PrRoster"):Connect(function() sig = "" end)
 player:GetAttributeChangedSignal("DinoSpecies"):Connect(function() sig = "" end)
 for n = 1, 4 do player:GetAttributeChangedSignal("SkillSlot" .. n):Connect(function() sig = "" end) end
+player:GetAttributeChangedSignal("SkillSavedLoadout"):Connect(function() sig = "" end) -- v1.2
+player:GetAttributeChangedSignal("SkillLoadoutFrom"):Connect(function() sig = "" end) -- v1.2
 player.AttributeChanged:Connect(function(a) if string.sub(a, 1, 10) == "SkillPath_" then sig = "" end end)
 player.CharacterAdded:Connect(function() task.delay(0.5, function() sig = "" end) end)
 

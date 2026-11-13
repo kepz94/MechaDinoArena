@@ -144,6 +144,19 @@ VERSION = "1.7" -- v1.7 Bots v2: brain 2.0, tiers, kit
 VERSION = "1.8" -- v1.8 bots pay 50% XP
 VERSION = "1.9" -- v1.9 pre-game lineup + intro, 4v4
 VERSION = "1.10" -- v1.10 Arena 4v4 on a private server
+VERSION = "1.11" -- v1.11 pre-match countdown hold
+-- v1.11 (pre-match countdown, MDA-500, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md A2, mockup
+--   docs/mockups/prematch_countdown_v0.1.html A; Kepu 2026-11-13 "10 second count down", pick "Held in place"): the match
+--   starts with HardpointPractice("start", PrPrematchLead (5)) (HardpointServer 1.8: warm-up = lead + 5 = 10 s) and Practice
+--   attribute PrPrematch = true (false in the lobby). While HpPhase is "warmup" and PrPrematch is true:
+--   * every human placed by placeHuman (match start, out of the menu, respawn) has the root server-owned and anchored (held);
+--     when HpPhase turns "live" (P1 live), every held root is unanchored and its ownership goes back to auto;
+--   * the hold is armed by the start call itself (not only by HpPhase "warmup"), so the tick before HardpointServer publishes
+--     "warmup" cannot step a bot (Studio test: one step there sent a bot walking through the countdown); a failed start, the
+--     lobby or P1 live disarm it;
+--   * bots are not stepped (they stand where they spawned).
+--   Switch: script attribute PrPrematchEnabled (default true, read per match start; false = 1.10). Diagnostic: PrPrematchHeld
+--   (humans held now).
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
@@ -453,6 +466,30 @@ local function despawnBot(rec)
 	rec.model, rec.hrp, rec.hum = nil, nil, nil
 end
 
+-- v1.11: the pre-match hold (see the header)
+local heldRoots = {} -- [player] = the held HumanoidRootPart
+local holdArmed = false -- set by startMatch (with a lead); cleared when P1 goes live / the lobby / a failed start
+local function prematchHeld() -- armed from the start call on, so the frame before HardpointServer publishes "warmup" holds too
+	return holdArmed and state:GetAttribute("PrPrematch") == true and hpState ~= nil and hpState:GetAttribute("HpPhase") ~= "live"
+end
+local function releaseHeld()
+	for pl, hrp in pairs(heldRoots) do
+		if hrp.Parent and hrp.Anchored then
+			hrp.Anchored = false
+			pcall(function() hrp:SetNetworkOwnershipAuto() end)
+		end
+		heldRoots[pl] = nil
+	end
+	script:SetAttribute("PrPrematchHeld", 0)
+end
+if hpState then
+	hpState:GetAttributeChangedSignal("HpPhase"):Connect(function()
+		if hpState:GetAttribute("HpPhase") == "live" then
+			holdArmed = false
+			releaseHeld()
+		end
+	end)
+end
 local function placeHuman(pl)
 	local c = pl.Character
 	local hrp = c and c:FindFirstChild("HumanoidRootPart")
@@ -463,6 +500,12 @@ local function placeHuman(pl)
 	c:PivotTo(cf * c:GetPivot():ToObjectSpace(hrp.CFrame):Inverse())
 	hrp.AssemblyLinearVelocity = Vector3.zero
 	pl:SetAttribute("PrPlacedAt", now())
+	if prematchHeld() then -- v1.11: held until P1 is live
+		pcall(function() hrp:SetNetworkOwner(nil) end)
+		hrp.Anchored = true
+		heldRoots[pl] = hrp
+		script:SetAttribute("PrPrematchHeld", (script:GetAttribute("PrPrematchHeld") or 0) + 1)
+	end
 end
 
 local function dealRoles()
@@ -492,8 +535,14 @@ local function startMatch()
 	rebuild()
 	phase = "match"
 	set("PrStartAt", 0)
-	local ok, r = pcall(function() return hpFn:Invoke("start") end)
+	local lead = (get("PrPrematchEnabled") ~= false) and (tonumber(get("PrPrematchLead")) or 5) or nil -- v1.11
+	set("PrPrematch", lead ~= nil)
+	holdArmed = lead ~= nil
+	local ok, r = pcall(function() return hpFn:Invoke("start", lead) end)
 	if not ok or r ~= "ok" then
+		holdArmed = false -- v1.11
+		set("PrPrematch", false)
+		releaseHeld()
 		phase = "lobby"
 		publish()
 		return "hardpoint " .. tostring(r)
@@ -520,6 +569,9 @@ local function startMatch()
 end
 
 local function toLobby(result)
+	set("PrPrematch", false) -- v1.11
+	holdArmed = false
+	releaseHeld()
 	for _, rec in ipairs(botRecs) do despawnBot(rec) end
 	botRecs = {}
 	phase = "lobby"
@@ -1047,8 +1099,10 @@ RunService.Heartbeat:Connect(function(dt)
 				alive += 1
 				ctx.home = cnt[rec.team] > 0 and sum[rec.team] / cnt[rec.team] or nil
 				local stepFn = (Brain2 and get("PrBrainV2Enabled") ~= false) and Brain2.step or Brain.step -- v1.7
-				local ok, err = pcall(stepFn, rec, ctx)
-				if not ok then script:SetAttribute("PrBrainError", tostring(err)) end
+				if not prematchHeld() then -- v1.11: bots stand during the pre-match hold
+					local ok, err = pcall(stepFn, rec, ctx)
+					if not ok then script:SetAttribute("PrBrainError", tostring(err)) end
+				end
 			end
 		elseif rec.respawnAt and os.clock() >= rec.respawnAt then
 			rec.respawnAt = nil
