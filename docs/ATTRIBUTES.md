@@ -3429,3 +3429,5 @@ Model numbers are generator output (old version = the flag in the last column, b
 - EggLoader 1.6 `EggLoaderWinTextEnabled` (true, read at start): match screens say only how to win; false = 1.3 text.
 - DiloFX 1.4 `DiloFXBotsEnabled`, TrooFX 1.3 `TrooFXBotsEnabled` (true, read at start): bot darts / pods drawn.
 - PracticeKit 1.2: PracticeServer `PrKitAllEnabled` (true, per think): every slot part used in a fight, no roll. PracticeBrain2 2.5: `PrAttackFirstEnabled` (true, per tick): main attack first.
+- PracticeServer 1.8 `PrBotXpMul` default 0.5; HardpointServer 1.7 `HpXpPracticeMul` default 0.5.
+- JumpServer 1.7 `JumpServerBotMechaEnabled` (true); PracticeKit 1.3 PracticeServer `PrKitLast4Enabled` (true): bots use Blood Rush / Mecha Legs / Glider / Stun Breaker; model `BotGlides`.

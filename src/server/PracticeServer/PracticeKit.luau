@@ -51,12 +51,29 @@
 --   85% HP or a mate low, stealth within 90, sense any time, mobility when the gap is over 25 (closing in) as well as 1.0's
 --   cases. Still one part per tier.abilDelay s and the part's own cooldown. Switch: PracticeServer attribute PrKitAllEnabled
 --   (default true, read per think; false = 1.1).
+-- v1.3 (Kepu 2026-11-12 18:06 "Dino's should be using all their abilities"; pick "Yes, add all 4"): the 4 parts 1.0 left out
+--   join bot loadouts (PARTS, so liveFor can roll them):
+--   * bloodrush (Pachy, kind "passive"): never fired here; it works through the main attack (HeadbuttServer pays the HP for
+--     one more headbutt when out of charges, as for a player).
+--   * mechalegs (Pachy, mobility, in MOBILITY): fires the leap through JumpServer 1.7's bot entrance (DinoJumpRequest), then
+--     the bot move "mleap": up at the model's JumpLaunchPower (Mecha Legs raises it), forward at WalkSpeed + JumpBoost, for the
+--     flight time (2 x up / gravity, 0.5..2 s).
+--   * glider (Herrera, kind "glide"): M.air(b) each brain tick: in the air, falling faster than GLIDE_START (14) studs/s and the
+--     ground more than GLIDE_HEIGHT (12) studs below the feet (Studio: without it a bot glided off every small ledge, 14 times in
+--     a minute) ->
+--     DinoGlideRequest(true) (HerreraMovesServer's bot entrance); while the model's Gliding is true, every frame the fall is held
+--     to GliderFall (8) studs/s and the body keeps its run speed along its move direction; on the ground -> (false).
+--   * breaker (Herrera, kind "breaker"): M.breakFree(b, ctx) when the bot is stunned or pinned (the brain calls it before it
+--     skips the tick): DinoBreakerRequest(stamp) through HerreraMovesServer's bot entrance.
+--   think() never picks passive / glide / breaker (their want is 0). Switch: PracticeServer attribute PrKitLast4Enabled (default
+--   true, read per use; false = these 4 are denied like PrKitDeny, = 1.2).
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local M = {}
 M.Version = "1.0"
 M.Version = "1.2" -- v1.2 every part, no roll (1.1 = hookarm back)
+M.Version = "1.3" -- v1.3 Blood Rush, Mecha Legs, Glider, Stun Breaker
 
 local RETRY = 2
 local OK_RESULTS = {ok = true, placing = true, hit = true, dash = true, zip = true, miss = true, missed = true, fired = true,
@@ -123,6 +140,29 @@ M.PARTS = {
 	medstation = {remote = "DinoMedRequest", server = "MedStationServer", kind = "heal", args = "stamp", cd = 15},
 }
 M.MOBILITY = {"thrusters", "oportal", "djets", "tleap", "zgrapple", "servodash"}
+-- v1.3: the last 4 parts (see the header)
+M.LAST4 = {
+	bloodrush = {server = "HeadbuttServer", kind = "passive", cd = 99},
+	mechalegs = {remote = "DinoJumpRequest", server = "JumpServer", kind = "mobility", args = "stamp", maxR = 70, move = "mleap", cd = 6},
+	glider = {remote = "DinoGlideRequest", server = "HerreraMovesServer", kind = "glide", cd = 1},
+	breaker = {remote = "DinoBreakerRequest", server = "HerreraMovesServer", kind = "breaker", args = "stamp", cd = 14},
+}
+for id, p in pairs(M.LAST4) do M.PARTS[id] = p end
+table.insert(M.MOBILITY, "mechalegs")
+local GLIDE_START = 14
+local GLIDE_HEIGHT = 12
+local glideRay = RaycastParams.new()
+glideRay.FilterType = Enum.RaycastFilterType.Include
+local function dropBelow(b)
+	local island = workspace:FindFirstChild("DinoIsland")
+	if not island then return math.huge end
+	local list = {}
+	for _, n in ipairs({"Ground", "MountainSteps", "Rocks"}) do local f = island:FindFirstChild(n) if f then table.insert(list, f) end end
+	glideRay.FilterDescendantsInstances = list
+	local feet = b.hrp.Position - Vector3.new(0, b.hrp.Size.Y / 2 + b.hum.HipHeight, 0)
+	local hit = workspace:Raycast(feet, Vector3.new(0, -200, 0), glideRay)
+	return hit and (feet.Y - hit.Position.Y) or math.huge
+end
 
 local function now() return workspace:GetServerTimeNow() end
 local function flat(v) return Vector3.new(v.X, 0, v.Z) end
@@ -130,6 +170,7 @@ local function rootOf(m) return m and m:FindFirstChild("HumanoidRootPart") end
 
 local function denied(id)
 	local ps = ServerScriptService:FindFirstChild("PracticeServer")
+	if M.LAST4[id] and ps and ps:GetAttribute("PrKitLast4Enabled") == false then return true end -- v1.3
 	local list = ps and ps:GetAttribute("PrKitDeny")
 	if type(list) ~= "string" or list == "" then return false end
 	for x in string.gmatch(list, "[^,%s]+") do if x == id then return true end end
@@ -322,6 +363,12 @@ local function doMove(b, p, info, dir, point)
 		local mul = tonumber(m:GetAttribute("ServoDashSpeedMul")) or 1.8
 		local time = math.clamp(tonumber(m:GetAttribute("ServoDashTime")) or 0.6, 0.2, 1.5)
 		holdVelocity(b, dir * b.hum.WalkSpeed * mul, time)
+	elseif p.move == "mleap" then -- v1.3: Mecha Legs' leap
+		local up = math.clamp(tonumber(m:GetAttribute("JumpLaunchPower")) or 64, 30, 160)
+		local fwd = b.hum.WalkSpeed + (tonumber(m:GetAttribute("JumpBoost")) or 14)
+		local flight = math.clamp(2 * up / workspace.Gravity, 0.5, 2)
+		b.hum.Jump = true
+		holdVelocity(b, dir * fwd, flight, up)
 	elseif p.move == "leap" then
 		local dist = tonumber(m:GetAttribute("TenoLeapDistNow")) or tonumber(m:GetAttribute("TenoLeapDist")) or 40
 		b.hum.Jump = true
@@ -473,6 +520,78 @@ function M.think(b, ctx, info)
 		end
 	end
 	return false
+end
+
+-- v1.3: the slots of this life (think() builds the same list)
+local function slotsOf(b)
+	local k = b.kit
+	if not k or k.model ~= b.model then
+		k = {model = b.model, cd = {}, nextThink = 0, slots = {}}
+		for n = 1, 4 do
+			local id = b.model:GetAttribute("SkillSlot" .. n)
+			if type(id) == "string" and M.PARTS[id] and not denied(id) then table.insert(k.slots, id) end
+		end
+		b.kit = k
+	end
+	return k
+end
+local function has(k, id)
+	for _, x in ipairs(k.slots) do if x == id then return true end end
+	return false
+end
+
+-- v1.3: Stun Breaker (see the header); the brain calls this while the bot is stunned or pinned
+function M.breakFree(b, ctx)
+	if not b.model or denied("breaker") then return false end
+	local k = slotsOf(b)
+	if not has(k, "breaker") or k.breaking or os.clock() < (k.cd.breaker or 0) then return false end
+	k.breaking = true
+	k.cd.breaker = os.clock() + RETRY
+	task.spawn(function()
+		local ok, r = pcall(fire, b, "breaker", M.PARTS.breaker, {}, ctx.R, ctx.rng or Random.new(), ctx.R.tierOf(b.tier))
+		k.cd.breaker = os.clock() + ((ok and r == "used") and M.PARTS.breaker.cd or RETRY)
+		k.breaking = false
+	end)
+	return true
+end
+
+-- v1.3: Glider Wings (see the header); the brain calls this every tick
+function M.air(b, ctx)
+	if not b.model or not b.hrp or denied("glider") then return end
+	local k = slotsOf(b)
+	if not has(k, "glider") or k.gliding == "asking" then return end
+	local m, hrp, hum = b.model, b.hrp, b.hum
+	local airborne = hum.FloorMaterial == Enum.Material.Air
+	local fn = entrance("HerreraMovesServer")
+	if not fn then return end
+	if m:GetAttribute("Gliding") ~= true then
+		if airborne and hrp.AssemblyLinearVelocity.Y < -GLIDE_START and m:GetAttribute("GliderEnabled") == true and dropBelow(b) > GLIDE_HEIGHT then
+			k.gliding = "asking"
+			task.spawn(function()
+				pcall(function() fn:Invoke(m, "DinoGlideRequest", true) end)
+				k.gliding = nil
+				if m:GetAttribute("Gliding") ~= true then return end
+				m:SetAttribute("BotGlides", (m:GetAttribute("BotGlides") or 0) + 1)
+				m:SetAttribute("BotLastPart", "glider ok used")
+				local conn
+				conn = RunService.Heartbeat:Connect(function()
+					if not hrp.Parent or m:GetAttribute("Gliding") ~= true then conn:Disconnect() return end
+					if hum.FloorMaterial ~= Enum.Material.Air then
+						conn:Disconnect()
+						pcall(function() fn:Invoke(m, "DinoGlideRequest", false) end)
+						return
+					end
+					local fall = math.max(1, tonumber(m:GetAttribute("GliderFall")) or 8)
+					local v = hrp.AssemblyLinearVelocity
+					local md = hum.MoveDirection
+					local h = md.Magnitude > 0.1 and md.Unit * hum.WalkSpeed or Vector3.new(v.X, 0, v.Z)
+					hrp.AssemblyLinearVelocity = Vector3.new(h.X, math.max(v.Y, -fall), h.Z)
+				end)
+			end)
+		end
+	elseif not airborne then
+		task.spawn(function() pcall(function() fn:Invoke(m, "DinoGlideRequest", false) end) end)
+	end
 end
 
 -- test hook: use one part now (Studio checks)

@@ -90,6 +90,10 @@
 --   ready (R.wantsAttack: reaction time on a new target, in reach, its cooldown) on the target being fought, seen this tick or
 --   remembered (tier.loseTrack); the bot turns to face it as before (startAttack). Parts (PracticeKit 1.2) come after.
 --   Switch: PracticeServer attribute PrAttackFirstEnabled (default true, read per tick; false = 2.4).
+-- v2.6 (Kepu 2026-11-12 pick "Yes, add all 4"): each tick, before anything can skip it, the kit's air() runs (Glider Wings,
+--   PracticeKit 1.3); and while the bot is stunned (StunnedUntil after now) or pinned (PinHeld), the kit's breakFree() runs
+--   (Stun Breaker) before the tick is skipped as before. Both do nothing without that part in the slots. No switch of its own:
+--   PracticeKit's PrKitLast4Enabled turns them off.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
@@ -101,6 +105,7 @@ M.Version = "2.2" -- v2.2 climb routes
 M.Version = "2.3" -- v2.3 onto the point when no enemy is alive
 M.Version = "2.4" -- v2.4 feeler rays
 M.Version = "2.5" -- v2.5 main attack first
+M.Version = "2.6" -- v2.6 glide + stun breaker hooks
 local Climb = nil -- v2.2
 do
 	local mod = script.Parent and script.Parent:FindFirstChild("PracticeClimb")
@@ -595,7 +600,11 @@ function M.step(b, ctx)
 	local hp = hpFracOf(m)
 	if v.lastHp and hp < v.lastHp - 1e-3 then v.hurtAt = os.clock() end
 	v.lastHp = hp
+	if ctx.kit and ctx.kit.air then ctx.kit.air(b, ctx) end -- v2.6
 	if b.busy then return end
+	if ctx.kit and ctx.kit.breakFree and ((tonumber(m:GetAttribute("StunnedUntil")) or 0) > now() or m:GetAttribute("PinHeld") == true) then
+		ctx.kit.breakFree(b, ctx) -- v2.6
+	end
 	if m:GetAttribute("PounceLatched") == true or (tonumber(m:GetAttribute("StunnedUntil")) or 0) > now() then return end
 	local p = b.hrp.Position
 	local job = ctx.jobs and (b.job or (R.jobOf and R.jobOf(b.species))) or nil

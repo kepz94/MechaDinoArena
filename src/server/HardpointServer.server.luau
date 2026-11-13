@@ -93,6 +93,8 @@
 --     25, HpXpPracticeMul 0.1, HpMvpKillPts 100, HpMvpSecPts 10.
 --   Switch: script attribute HardpointAwardsEnabled (default true, read at each award; false = 1.4: no awards, HpAwards "").
 --   Diagnostics: HpAwardsLast ("mvp <id> svp <id> rows n granted n" / "off" / "noModule"), HpAwardsCount.
+-- v1.7 (Kepu 2026-11-12 18:04 XP "doesn't feel rewarding"; pick "50% of a real match"): HpXpPracticeMul default 0.5 (was 0.1):
+--   a bots match's point / win / MVP / SVP lines pay half a real match's (PracticeServer 1.8 makes bot kills 50% too).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -105,6 +107,7 @@ VERSION = "1.3" -- v1.3 far spawns + start sides by run
 VERSION = "1.4" -- v1.4 off on the hub
 VERSION = "1.5" -- v1.5 match awards
 VERSION = "1.6" -- v1.6 score per teammate on the point
+VERSION = "1.7" -- v1.7 bots match XP 50%
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
 if script:GetAttribute("HpMinPlayers") == nil then script:SetAttribute("HpMinPlayers", 1) end
@@ -112,6 +115,7 @@ if script:GetAttribute("HardpointPracticeEnabled") == nil then script:SetAttribu
 script:SetAttribute("HpTicks", 0)
 -- v1.5: awards switch + numbers (see the header)
 if script:GetAttribute("HardpointAwardsEnabled") == nil then script:SetAttribute("HardpointAwardsEnabled", true) end
+if script:GetAttribute("HpXpPracticeMul") == nil then script:SetAttribute("HpXpPracticeMul", 0.5) end -- v1.7 (was 0.1)
 for k, v in pairs({HpXpKill = 50, HpXpPerSec = 1, HpXpWin = 100, HpXpDraw = 50, HpXpMvp = 50, HpXpSvp = 25, HpXpPracticeMul = 0.1,
 	HpMvpKillPts = 100, HpMvpSecPts = 10}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end

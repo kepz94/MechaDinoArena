@@ -90,6 +90,9 @@
 --   * PracticeKit.onSpawn(rec, model) (when present and PrKitEnabled): the kit readies the bot's parts. Bot specs go through
 --     PracticeKit.prepareSpec (rolled pool and any spec not ready at spawn): slots hold parts bots can use, mobility first; the
 --     lobby roster lists those parts.
+-- v1.8 (Kepu 2026-11-12 18:04 "The XP gained after a match doesn't feel rewarding, I mvp and most kills and still didn't even
+--   level up"; pick "50% of a real match"): PrBotXpMul default 0.5 (was 0.1): a bot kill pays half a real kill's XP.
+--   HardpointServer 1.7 makes the match lines (point, win, MVP) 50% too. The number is the attribute; set it back to 0.1 for 1.7.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -103,10 +106,12 @@ VERSION = "1.4" -- v1.4 island hub
 VERSION = "1.5" -- v1.5 match preview
 VERSION = "1.6" -- v1.6 place at match start
 VERSION = "1.7" -- v1.7 Bots v2: brain 2.0, tiers, kit
+VERSION = "1.8" -- v1.8 bots pay 50% XP
 local THINK_HZ = 10
 local BOT_BODY = 2
 local DEFAULTS = {PracticeEnabled = true, PracticeTeamSize = 5, PrAutoStart = 20, PrBotRespawn = 5, PrRefill = 5, PrBotLevel = 30,
 	PrBotXpMul = 0.1, PrDifficultyDefault = "Normal", PrBotNoCollide = true, PrLostEnabled = true, PrLostDistance = 2000, PrLostY = -150} -- v1.2: + the last four
+DEFAULTS.PrBotXpMul = 0.5 -- v1.8 (was 0.1)
 script:SetAttribute("PracticeServerVersion", VERSION)
 for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end

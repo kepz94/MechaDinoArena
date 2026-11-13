@@ -47,6 +47,12 @@
 --   one after the last is "used". Each "ok" stamps JumpDoubleAt / JumpDoubleCount as 1.2 and sets JumpAirJumpsUsed (count in
 --   this leap). Only TroodonModelData 1.3 sets JumpAirJumps (2). Switch: script attribute JumpServerAirJumpsEnabled (default
 --   true, read at each request; false = 1.4: one per leap).
+-- v1.7 (Kepu 2026-11-12 18:06 "Dino's should be using all their abilities" + pick "Yes, add all 4": practice bots get Mecha Legs,
+--   which fires through the leap): the leap request handler is named (onLeap, body unchanged) and a server-only BindableFunction
+--   "BotMechaUse" (child) runs it for a practice bot: Invoke(model, "DinoJumpRequest", stamp) -> onLeap(BotProxy.of(model), stamp)
+--   -> "ok" (the result is on the model as JumpServerResult, as for a player), "off", "badArg", "noHandler" or "botUnsupported"
+--   (error kept in JumpServerBotMechaError). The bot's motion is PracticeKit 1.3's. Only models with PracticeBot = true.
+--   Switch: script attribute JumpServerBotMechaEnabled (default true, read per call).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DEFAULTS = {JumpEnabled = false, JumpStaminaCost = 15, JumpCooldown = 0.5, StaminaEnabled = true,
@@ -55,6 +61,7 @@ script:SetAttribute("JumpServerVersion", "1.3") -- v1.1; v1.2; v1.3
 script:SetAttribute("JumpServerVersion", "1.4") -- v1.4 JumpAddCharge hook
 script:SetAttribute("JumpServerVersion", "1.5") -- v1.5 JumpAirJumps
 script:SetAttribute("JumpServerVersion", "1.6") -- v1.6 no leaps while snared
+script:SetAttribute("JumpServerVersion", "1.7") -- v1.7 bot entrance
 -- v1.6 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): a leap (DinoJumpRequest) and an air jump / flap (DinoJumpDoubleRequest) are refused "snared" while the character's
 --   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
 --   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). JumpTest 1.7 refuses them locally too. Switch: script
@@ -132,7 +139,7 @@ game:GetService("RunService").Heartbeat:Connect(function()
 	end
 end)
 
-remote.OnServerEvent:Connect(function(player, stamp)
+local function onLeap(player, stamp) -- v1.7: named so the bot entrance can call it (body unchanged)
 	local char = player.Character
 	if not char then return end
 	local now = workspace:GetServerTimeNow()
@@ -177,7 +184,8 @@ remote.OnServerEvent:Connect(function(player, stamp)
 		char:SetAttribute("JumpDenyReason", result)
 		char:SetAttribute("JumpDeniedAt", stamp)
 	end
-end)
+end
+remote.OnServerEvent:Connect(onLeap) -- v1.7
 
 -- v1.2: Mecha Legs double jump (one per accepted leap)
 local DOUBLE_WINDOW = 4
@@ -261,4 +269,25 @@ do
 		char:SetAttribute("JumpAddChargeResult", result)
 		char:SetAttribute("JumpAddChargeAt", workspace:GetServerTimeNow())
 	end)
+end
+
+-- v1.7: the bot entrance (see the header)
+if script:GetAttribute("JumpServerBotMechaEnabled") == nil then script:SetAttribute("JumpServerBotMechaEnabled", true) end
+do
+	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
+	local BotProxy = proxyModule and require(proxyModule)
+	local fn = script:FindFirstChild("BotMechaUse") or Instance.new("BindableFunction")
+	fn.Name = "BotMechaUse"
+	fn.OnInvoke = function(model, remoteName, stamp)
+		if script:GetAttribute("JumpServerBotMechaEnabled") == false then return "off" end
+		if not BotProxy or typeof(model) ~= "Instance" or model:GetAttribute("PracticeBot") ~= true or not model.Parent then return "badArg" end
+		if remoteName ~= "DinoJumpRequest" then return "noHandler" end
+		local ok, err = pcall(onLeap, BotProxy.of(model), stamp)
+		if not ok then
+			script:SetAttribute("JumpServerBotMechaError", tostring(err))
+			return "botUnsupported"
+		end
+		return "ok"
+	end
+	fn.Parent = script
 end
