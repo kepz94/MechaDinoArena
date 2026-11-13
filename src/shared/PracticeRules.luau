@@ -66,10 +66,19 @@
 --     unknown kind -> 0.
 --   pickLoadout(liveIds, mobilityIds, slots, rng) -> {id}: one mobility id first (random among those in liveIds), then the
 --     rest of liveIds shuffled, at most slots.
+-- v1.3 (pre-game, MDA-483, plan docs/plans/PREGAME_LINEUP_v1.0.md T3, mockup docs/mockups/pregame_v0.4.html; Kepu 2026-11-12:
+--   bots matches 4v4, "2 elite 2 hard", on both teams):
+--   ELITE_MIX (true; PracticeServer 1.9 sets it from its attribute PrEliteMixEnabled): mixFor / respawnTier deal from
+--     ELITE_ORDER = Elite, Hard, Elite, Hard (sizes over 4 repeat it: 4 bots = 2 Elite + 2 Hard, your team's 3 bots = Elite,
+--     Hard, Elite) instead of MIX_ORDER. false = 1.2 exactly.
+--   Pre-game timings: PG_LINEUP 30 (s the lineup runs), PG_READY 5 (s left once every human is ready), PG_INTRO 8 (s of
+--     intros before the match). readyCut(endsAt, now) -> min(endsAt, now + PG_READY) (never later than endsAt; bad input ->
+--     endsAt).
 local M = {}
 M.VERSION = "1.0"
 M.VERSION = "1.1" -- v1.1 bot jobs
 M.VERSION = "1.2" -- v1.2 Bots v2: tiers, mix, slowMul, abilityWant
+M.VERSION = "1.3" -- v1.3 pre-game: 2 Elite + 2 Hard, timings
 
 M.SIZE = 5
 M.AUTO_START = 20
@@ -368,6 +377,21 @@ M.TIERS = {
 M.TEAM_MIX = {Elite = 1, Hard = 1, Normal = 2, Easy = 1}
 M.MIX_ORDER = {"Elite", "Hard", "Normal", "Easy", "Normal"}
 M.SLOW_FLOOR = 0.25
+M.ELITE_MIX = true -- v1.3
+M.ELITE_ORDER = {"Elite", "Hard", "Elite", "Hard"} -- v1.3
+M.PG_LINEUP = 30 -- v1.3
+M.PG_READY = 5 -- v1.3
+M.PG_INTRO = 8 -- v1.3
+local function mixOrder() -- v1.3
+	return (M.ELITE_MIX == true and M.ELITE_ORDER) or M.MIX_ORDER
+end
+
+function M.readyCut(endsAt, now) -- v1.3
+	endsAt, now = tonumber(endsAt), tonumber(now)
+	if not endsAt then return endsAt end
+	if not now then return endsAt end
+	return math.min(endsAt, now + M.PG_READY)
+end
 
 function M.tierOf(name)
 	return M.TIERS[name] or M.TIERS.Normal
@@ -375,7 +399,8 @@ end
 
 function M.mixFor(size)
 	local out = {}
-	for i = 1, math.max(0, tonumber(size) or 0) do out[i] = M.MIX_ORDER[(i - 1) % #M.MIX_ORDER + 1] end
+	local order = mixOrder() -- v1.3
+	for i = 1, math.max(0, tonumber(size) or 0) do out[i] = order[(i - 1) % #order + 1] end
 	return out
 end
 
@@ -390,7 +415,7 @@ function M.respawnTier(living, size, rng)
 		if want[t] then want[t] -= 1 end
 	end
 	local missing = {}
-	for _, t in ipairs(M.MIX_ORDER) do
+	for _, t in ipairs(mixOrder()) do -- v1.3
 		if (want[t] or 0) > 0 then
 			table.insert(missing, t)
 			want[t] -= 1

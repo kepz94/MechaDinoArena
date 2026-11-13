@@ -6,11 +6,12 @@ local c = src:Clone() c.Parent = src.Parent
 local okR, R = pcall(require, c)
 c:Destroy()
 if not okR then return "FAIL require: " .. tostring(R) end
+R.ELITE_MIX = false -- PracticeRules 1.3: this spec checks the 1.2 mix (PracticePregame.spec checks the 1.3 one)
 local fails, passes = {}, 0
 local function eq(name, got, want) if got == want then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end end
 local function near(name, got, want) eq(name, math.abs((got or 0) - want) < 1e-6, true) end
 
-eq("version", R.VERSION, "1.2")
+eq("version", R.VERSION == "1.2" or R.VERSION == "1.3", true) -- 1.3 adds the pre-game mix (switched off above)
 -- tiers
 eq("tiers", R.TIERS.Easy.react > R.TIERS.Normal.react and R.TIERS.Normal.react > R.TIERS.Hard.react and R.TIERS.Hard.react > R.TIERS.Elite.react, true)
 eq("aim", R.TIERS.Easy.aimErr > R.TIERS.Elite.aimErr, true)
