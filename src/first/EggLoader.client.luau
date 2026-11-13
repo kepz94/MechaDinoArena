@@ -97,6 +97,12 @@
 --   not a match (the ISLAND target: back to island, the automatic trip home, and PLAY on a hub server) shows the egg pod again
 --   (the 1.2 look: "TRAVELING TO ISLAND" / "LOADING SANDBOX", the hatch). The briefing stays only on ARENA and HARDPOINT VS
 --   BOTS. Switch: script attribute EggLoaderIslandEggEnabled (default true, read at start; false = 1.4's slim island screen).
+-- v1.6 (Kepu 2026-11-12 17:54 "the loading screen for hard point doesn't even explain how to win the game ... Look at how other
+--   games do their game mode explanations ... Just explain how to win like other games"; CoD's own Hardpoint text: capture and
+--   hold the position to earn points, it rotates, first to the score limit): the ARENA and HARDPOINT VS BOTS screens say only
+--   how to win: sub line "CAPTURE AND HOLD THE HARDPOINT", HOW TO WIN "HOLD THE HARDPOINT TO SCORE" / "IT MOVES EVERY 60
+--   SECONDS" / "FIRST TEAM TO 250 WINS", tips about scoring only; no top-right line. Switch: script attribute
+--   EggLoaderWinTextEnabled (default true, read at start; false = the 1.3 text).
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local RunService = game:GetService("RunService")
@@ -110,6 +116,7 @@ VERSION = "1.2" -- v1.2 the bar carries over a trip
 VERSION = "1.3" -- v1.3 mode briefing screens
 VERSION = "1.4" -- v1.4 match briefing only on match screens
 VERSION = "1.5" -- v1.5 the egg on every non-match load
+VERSION = "1.6" -- v1.6 how to win only
 local ARRIVE_FLOOR = 0.5 -- v1.2
 local MIN_CRACK = 3
 local TIMEOUT = 45
@@ -263,6 +270,18 @@ local BRIEF = {
 		tips = {"YOU LAND ON THE PORTAL ISLET, FACING THE PORTALS.", "OPEN THE LAB FROM THE MENU TO BUY PARTS.",
 			"SWIM ACROSS THE LAKES: EVERY DINO CAN."}},
 }
+-- v1.6: how to win, nothing else (see the header)
+if script:GetAttribute("EggLoaderWinTextEnabled") == nil then script:SetAttribute("EggLoaderWinTextEnabled", true) end
+if script:GetAttribute("EggLoaderWinTextEnabled") ~= false then
+	for _, k in ipairs({"arena", "bots"}) do
+		local d = BRIEF[k]
+		d.sub = "CAPTURE AND HOLD THE HARDPOINT"
+		d.where = ""
+		d.rules = {"HOLD THE HARDPOINT TO SCORE", "IT MOVES EVERY 60 SECONDS", "FIRST TEAM TO 250 WINS"}
+		d.tips = {"EVERY TEAMMATE ON THE POINT ADDS A POINT A SECOND.", "AN ENEMY ON THE POINT STOPS ALL SCORING.",
+			"GET TO THE NEXT POINT BEFORE IT OPENS."}
+	end
+end
 local function silk(parent, name, color, bold)
 	local l = Instance.new("TextLabel")
 	l.Name = name

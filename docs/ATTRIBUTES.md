@@ -3426,3 +3426,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PracticeBrain2 2.3: PracticeServer `PrRushPointEnabled` (true, read per tick): no enemy alive -> every bot onto the point; model `BotRushes`, BotState "rush".
 - PracticeBrain2 2.4: PracticeServer `PrFeelersEnabled` (true, read per call): feeler rays; model `BotFeel` (clear / left / right / blocked), `BotFeelSteers`.
 - PortalHUD 1.2: `PortalHUDSafeBriefEnabled` (true, per frame), `PortalHUDSafeSec` (5): SAFE AREA / LEAVING SAFE AREA titles for 5 s; PortalHUDBanner + "safeDone" / "leaving" / "leftDone".
+- EggLoader 1.6 `EggLoaderWinTextEnabled` (true, read at start): match screens say only how to win; false = 1.3 text.
