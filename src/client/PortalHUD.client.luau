@@ -41,7 +41,8 @@
 --   pill"): while player HubQueueState is "queued" (HubServer 1.4) a pill sits at the top centre (QUEUE_TOP (12) px down x u):
 --   a turning ring, "FINDING MATCH" (orange), the time since HubQueueSince (m:ss), "<HubQueueCount> / <HubQueueNeed>" and a red
 --   LEAVE button (-> ReplicatedStorage.HubQueueRequest "leave"). HubQueueState "found" -> the pill reads "MATCH FOUND" (no
---   timer, count or button). Shown in the menu too (you stay queued there). Switch: script attribute PortalHUDQueueEnabled
+--   timer, count or button). Shown in the menu too (you stay queued there): the pill has its own ScreenGui "ArenaQueue"
+--   (DisplayOrder 46, over the menu). Switch: script attribute PortalHUDQueueEnabled
 --   (default true, read per frame; false = no pill). Diagnostic: player PortalHUDQueue ("queued" / "found" / "hidden").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -204,7 +205,13 @@ qPill.BackgroundColor3 = Color3.fromRGB(13, 18, 24)
 qPill.BackgroundTransparency = 0.1
 qPill.AutomaticSize = Enum.AutomaticSize.X
 qPill.Visible = false
-qPill.Parent = gui
+local qGui = Instance.new("ScreenGui") -- its own layer, over the menu (40) and the pre-game screen (45)
+qGui.Name = "ArenaQueue"
+qGui.DisplayOrder = 46
+qGui.IgnoreGuiInset = true
+qGui.ResetOnSpawn = false
+qGui.Parent = gui.Parent
+qPill.Parent = qGui
 local qCorner = corner(qPill, 20)
 stroke(qPill, ARENA_ORANGE, 2)
 local qList = Instance.new("UIListLayout")
