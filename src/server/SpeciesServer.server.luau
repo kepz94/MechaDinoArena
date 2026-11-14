@@ -66,6 +66,10 @@ script:SetAttribute("SpeciesServerVersion", "1.4") -- v1.4
 script:SetAttribute("SpeciesServerVersion", "1.5") -- v1.5
 script:SetAttribute("SpeciesServerVersion", "1.7") -- v1.7 (1.6 did not bump this line)
 script:SetAttribute("SpeciesServerVersion", "1.8") -- v1.8
+script:SetAttribute("SpeciesServerVersion", "1.9") -- v1.9 remember respawn picks
+-- v1.9 (respawn swap, MDA-539, plan docs/plans/RESPAWN_SWAP_v1.0.md rule 4): a dino picked on the respawn screen (RespawnServer 1.0
+--   sets player attribute RespawnPicked = species, then DinoSpecies) is remembered like a switch (rememberSpecies: the next session
+--   starts as it). Switch: script attribute SpeciesRememberPicksEnabled (default true, read per pick).
 if script:GetAttribute("SpeciesDefault") == nil then script:SetAttribute("SpeciesDefault", "Raptor") end -- v1.1
 
 local remote = ReplicatedStorage:FindFirstChild("DinoSpeciesRequest")
@@ -536,3 +540,15 @@ Players.PlayerRemoving:Connect(function(player)
 	lastSwitch[player] = nil
 	if saveState[player] then saveSpecies(player); saveState[player] = nil end -- v1.3: the last choice
 end)
+
+-- v1.9: remember respawn picks (see the header)
+local function watchRespawnPick(player)
+	player:GetAttributeChangedSignal("RespawnPicked"):Connect(function()
+		local sp = player:GetAttribute("RespawnPicked")
+		if script:GetAttribute("SpeciesRememberPicksEnabled") ~= false and type(sp) == "string" and SPECIES[sp] then
+			rememberSpecies(player, sp)
+		end
+	end)
+end
+Players.PlayerAdded:Connect(watchRespawnPick)
+for _, p in ipairs(Players:GetPlayers()) do task.spawn(watchRespawnPick, p) end

@@ -146,6 +146,14 @@ VERSION = "1.9" -- v1.9 pre-game lineup + intro, 4v4
 VERSION = "1.10" -- v1.10 Arena 4v4 on a private server
 VERSION = "1.11" -- v1.11 pre-match countdown hold
 VERSION = "1.12" -- v1.12 pre-match lock (PrematchLockUntil)
+VERSION = "1.13" -- v1.13 respawn hold: park, place on release
+-- v1.13 (respawn swap, MDA-538, plan docs/plans/RESPAWN_SWAP_v1.0.md rule 1, mockup docs/mockups/respawn_change_v0.1.html; Kepu
+--   2026-11-13 21:18 "a 5 second respawn wait with the option to change Dino in that time"): while a match human's player attribute
+--   RespawnHold is true (RespawnServer 1.0), placeHuman parks the body instead of placing it: root server-owned and anchored, the
+--   body pivoted to (UserId % 50 x 40, RespawnServer.RespawnParkY (3000), 0) (player PrParked = true); a body added while held
+--   is parked at once (not left at the island spawn). When RespawnHold turns false (in the match, out of the menu) the body is
+--   unanchored (ownership auto) and placed as before (PrPlacedAt: RespawnServer starts the CHANGE window). Switch: script
+--   attribute PrRespawnParkEnabled (default true, read per call; false = 1.12, placed at once).
 -- v1.12 (pre-match lock, MDA-527, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 1, mockup docs/mockups/prematch_pan_lock_v0.1.html;
 --   Kepu 2026-11-13 18:23 "all mecha abilities and actions should be unplayable because as of right now it lets me use them during
 --   the count down", pick "A · Locked everywhere"): every human held by v1.11 also gets the character attribute
@@ -532,6 +540,48 @@ local function placeHuman(pl)
 		script:SetAttribute("PrPrematchHeld", (script:GetAttribute("PrPrematchHeld") or 0) + 1)
 	end
 end
+
+-- v1.13: respawn hold (see the header)
+local function respawnHeld(pl) return script:GetAttribute("PrRespawnParkEnabled") ~= false and pl:GetAttribute("RespawnHold") == true end
+local function park(pl)
+	local c = pl.Character
+	local hrp = c and c:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local rs = game:GetService("ServerScriptService"):FindFirstChild("RespawnServer")
+	local y = tonumber(rs and rs:GetAttribute("RespawnParkY")) or 3000
+	pcall(function() hrp:SetNetworkOwner(nil) end)
+	hrp.Anchored = true
+	c:PivotTo(CFrame.new((pl.UserId % 50) * 40, y, 0))
+	pl:SetAttribute("PrParked", true)
+end
+do
+	local rawPlace = placeHuman
+	placeHuman = function(pl)
+		if respawnHeld(pl) then park(pl) return end
+		local c = pl.Character
+		local hrp = c and c:FindFirstChild("HumanoidRootPart")
+		if hrp and pl:GetAttribute("PrParked") == true then
+			pl:SetAttribute("PrParked", false)
+			hrp.Anchored = false
+			pcall(function() hrp:SetNetworkOwnershipAuto() end)
+		end
+		return rawPlace(pl)
+	end
+end
+local function watchRespawn(pl)
+	pl.CharacterAdded:Connect(function(c)
+		if not respawnHeld(pl) or pl:GetAttribute("PrInMatch") ~= true then return end
+		task.defer(function() if pl.Character == c and respawnHeld(pl) then park(pl) end end)
+	end)
+	pl:GetAttributeChangedSignal("RespawnHold"):Connect(function()
+		if pl:GetAttribute("RespawnHold") == false and pl:GetAttribute("PrInMatch") == true and pl:GetAttribute("InMenu") ~= true then
+			local c = pl.Character
+			if c and c:FindFirstChild("HumanoidRootPart") then placeHuman(pl) end
+		end
+	end)
+end
+Players.PlayerAdded:Connect(watchRespawn)
+for _, pl in ipairs(Players:GetPlayers()) do task.spawn(watchRespawn, pl) end
 
 local function dealRoles()
 	for _, side in ipairs({"A", "B"}) do

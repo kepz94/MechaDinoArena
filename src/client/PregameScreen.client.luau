@@ -47,6 +47,15 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Arena match look
 VERSION = "1.2" -- v1.2 SAVED LOADOUT tag
 VERSION = "1.3" -- v1.3 3D models wait until fully arrived
+VERSION = "1.4" -- v1.4 respawn picker mode
+-- v1.4 (respawn swap, MDA-541, plan docs/plans/RESPAWN_SWAP_v1.0.md rule 3, mockup docs/mockups/respawn_change_v0.1.html "C · Death
+--   cam + button"; Kepu 2026-11-13 21:18 "the ability to change Dino and load out mid match"): while player attribute
+--   RespawnPickOpen is true (RespawnServer 1.0: the CHANGE DINO / LOADOUT button while dead, or the CHANGE pill after spawning)
+--   and script attribute PregameRespawnPickEnabled ~= false (default true, read per frame), the SELECT view shows over the game
+--   (opened on the dino step with your dino): SELECT on another dino sends ReplicatedStorage.RespawnRequest("dino", id) instead of
+--   DinoSpeciesRequest; the parts step works as in the lobby (SkillRequest "slot"; the list fills once your body is that dino);
+--   its confirm sends RespawnRequest("ready") and BACK on the dino step sends RespawnRequest("close") (both hide the screen).
+--   The top bar's clock shows the respawn: "0:0n" / "RESPAWN IN" until RespawnAt, then "WAIT" / "WAITING FOR YOU".
 -- v1.3 (intro bodies, MDA-526, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 7; Kepu 2026-11-13 18:23 "some dinos 3d body don't
 --   fully load up on the intro screens"): on a fresh Arena server the 3D bodies are built while players already sit on the
 --   lineup, and a view that copied a body still arriving kept the partial copy (the view key never changed). Now a Body / part
@@ -67,6 +76,13 @@ end
 local player = Players.LocalPlayer
 local state = ReplicatedStorage:WaitForChild("Practice", 60)
 if not state then return end -- no practice match on this server
+local function respawnMode() -- v1.4
+	return script:GetAttribute("PregameRespawnPickEnabled") ~= false and player:GetAttribute("RespawnPickOpen") == true
+end
+local function respawnFire(...) -- v1.4
+	local r = ReplicatedStorage:FindFirstChild("RespawnRequest")
+	if r then r:FireServer(...) end
+end
 local request = ReplicatedStorage:WaitForChild("PracticeRequest", 30)
 local speciesRemote = ReplicatedStorage:WaitForChild("DinoSpeciesRequest", 30)
 local skillRemote = ReplicatedStorage:WaitForChild("SkillRequest", 30)
@@ -966,19 +982,28 @@ backBtn.Activated:Connect(function()
 		drawSelect()
 	else
 		press("back")
-		setView("lineup")
+		if respawnMode() then respawnFire("close") setView("hidden") else setView("lineup") end -- v1.4
 	end
 end)
 goBtn.Activated:Connect(function()
 	if sel.step == "dino" then
 		if not sel.draft then return end
 		press("pick:" .. sel.draft)
-		if sel.draft ~= myDino() and speciesRemote then speciesRemote:FireServer(sel.draft) end
+		if sel.draft ~= myDino() then
+			if respawnMode() then respawnFire("dino", sel.draft) -- v1.4
+			elseif speciesRemote then speciesRemote:FireServer(sel.draft) end
+		end
 		sel.step = "parts"
 		sel.act = 1
 		drawSelect()
 	else
 		press("confirm")
+		if respawnMode() then -- v1.4
+			respawnFire("ready")
+			setGhost(nil)
+			setView("hidden")
+			return
+		end
 		if request then request:FireServer("ready") end
 		setGhost(nil)
 		setView("lineup")
@@ -1042,14 +1067,17 @@ player.CharacterAdded:Connect(function() task.delay(0.5, function() sig = "" end
 local lastAnim = 0
 RunService.RenderStepped:Connect(function(dt)
 	local pgPhase = state:GetAttribute("PgPhase")
-	local on = script:GetAttribute("PregameScreenEnabled") ~= false and player:GetAttribute("PrInLobby") == true
-		and (pgPhase == "lineup" or pgPhase == "intro")
+	local rp = respawnMode() -- v1.4
+	local on = script:GetAttribute("PregameScreenEnabled") ~= false and ((player:GetAttribute("PrInLobby") == true
+		and (pgPhase == "lineup" or pgPhase == "intro")) or rp)
 	gui.Enabled = on
 	if not on then
 		if view ~= "hidden" then setView("hidden") setGhost(nil) end
 		return
 	end
-	if pgPhase == "intro" then
+	if rp then -- v1.4: the respawn picker
+		if view ~= "select" then openSelect() sig = "" end
+	elseif pgPhase == "intro" then
 		if view ~= "intro" then setGhost(nil) setView("intro") sig = "" end
 	elseif view == "hidden" or view == "intro" then
 		setView("lineup")
@@ -1071,6 +1099,15 @@ RunService.RenderStepped:Connect(function(dt)
 		t.clock.TextColor3 = s <= 5 and C.red or C.text
 		t.fill.Size = UDim2.fromScale(math.clamp(left / total, 0, 1), 1)
 		t.note.Text = player:GetAttribute("PgReady") == true and "YOU'RE READY" or "MATCH STARTS AT 0:00"
+	end
+	if rp then -- v1.4: the respawn clock
+		local ra = (tonumber(player:GetAttribute("RespawnAt")) or 0) - now()
+		local held = player:GetAttribute("RespawnHold") == true
+		for _, tb in pairs(tops) do
+			tb.clock.Text = (held and ra > 0) and ("0:%02d"):format(math.ceil(ra)) or (held and "WAIT" or "")
+			tb.clock.TextColor3 = C.yellow
+			tb.note.Text = held and (ra > 0 and "RESPAWN IN" or "WAITING FOR YOU") or "CHANGE NOW"
+		end
 	end
 	toast.Visible = os.clock() < toastUntil
 	-- motion (about 30 fps is plenty for the sway)
