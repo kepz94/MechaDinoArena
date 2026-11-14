@@ -1,4 +1,4 @@
--- DiloAttackServer v1.9 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (1.7: spit only) (server authority). MDA-224, plan
+-- DiloAttackServer v1.13 (Mecha Dino Arena) — the Dilophosaurus' Bite + Spit Dart (1.7: spit only) (server authority). MDA-224, plan
 -- docs/plans/DILO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/dilo_kit_options_v0.1.html attack C
 -- (Kepu 2026-11-03: picks "C and J1"; dart "Weaker dart"; red-team "Bite on press", "Soft aim, near-sure hit").
 -- Remote ReplicatedStorage.DinoDiloAttack (RemoteEvent), client -> server: (kind, stamp). kind "bite" = the ATTACK press
@@ -704,7 +704,11 @@ local function onRemote(player, kind, stamp) -- v1.9: named so BotUse can call i
 		end
 	end
 end
-remote.OnServerEvent:Connect(onRemote) -- v1.9
+local function __prematchLocked(player) -- v1.13: PracticeServer 1.12 pre-match lock (see VERSION 1.13)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+remote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onRemote(player, ...) end) -- v1.9
 
 -- v1.11 Sniper spit (MDA-509, plan docs/plans/DILO_SNIPER_SPIT_v1.0.md Task 1, mockup docs/mockups/dilo_sniper_spit_v0.1.html;
 --   Kepu 2026-11-13 15:38 "hold the attack button for 1.5s ... no aim assist ... all the damage into one ball with twice the
@@ -853,6 +857,7 @@ do
 		end)
 	end
 	remote.OnServerEvent:Connect(function(player, kind, stamp, dir)
+		if __prematchLocked(player) then return end -- v1.13: dropped while pre-match locked
 		if kind ~= "snipe" or script:GetAttribute("DiloSnipeEnabled") == false then return end
 		local char = player.Character
 		if char then snipe(player, char, stamp, dir) end
@@ -969,3 +974,8 @@ script:SetAttribute("DiloAttackServerVersion", "1.11") -- v1.11 sniper spit (MDA
 -- v1.12 (Kepu 2026-11-13 16:10 "I don't like ... the travel speed of the shot", pick "Much faster: 240/s"): DiloSnipeSpeedMul
 --   default 6 (was 2): the ball flies DiloDartSpeed 40 x 6 = 240 studs/s x scale (full range 120 studs in 0.5 s).
 script:SetAttribute("DiloAttackServerVersion", "1.12") -- v1.12 sniper ball 240 studs/s
+script:SetAttribute("DiloAttackServerVersion", "1.13") -- v1.13 pre-match lock
+-- v1.13 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).

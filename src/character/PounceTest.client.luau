@@ -1,4 +1,4 @@
--- PounceTest v1.8 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
+-- PounceTest v1.9 (Dino Arcade) — TEST input for the raptor pounce (owner's client only). F (keyboard), X (gamepad)
 -- or the on-screen Pounce button (touch). Bound only while the character attribute PounceEnabled is true (the T-Rex
 -- has no pounce and gets no button).
 -- Flow:
@@ -285,6 +285,16 @@ local function tryPress()
 	show("PounceInputResult", "sent")
 	setLocalState("windup")
 end
+local function __prematchLocked() -- v1.9: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+do -- v1.9: no press before GO
+	local rawPress = tryPress
+	tryPress = function(...)
+		if __prematchLocked() then return end
+		return rawPress(...)
+	end
+end
 
 local function launch()
 	local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
@@ -463,6 +473,10 @@ end
 -- v1.6: a pachy headbutt knocks the raptor out of its pounce
 char:SetAttribute("PounceTestVersion", "1.7")
 char:SetAttribute("PounceTestVersion", "1.8") -- v1.8 no pounces while snared
+char:SetAttribute("PounceTestVersion", "1.9") -- v1.9 pre-match lock
+-- v1.9 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, tryPress() does nothing (no local start; the server drops it too).
 char:GetAttributeChangedSignal("HeadbuttShoveAt"):Connect(function()
 	if char:GetAttribute("PounceHeadbuttCancelEnabled") == false then return end
 	local at = char:GetAttribute("HeadbuttShoveAt")

@@ -1,4 +1,4 @@
--- TenoAttackServer v1.9 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
+-- TenoAttackServer v1.11 (Mecha Dino Arena) — the Tenontosaurus' scratch and rear tail slam (server authority). MDA-172,
 -- plan docs/plans/TENO_KIT_v1.0.md Task 5 (deterministic map), mockup docs/mockups/teno_attacks_options.html v0.2
 -- (Kepu 2026-10-31: "Tap = scratch, hold = slam"; "Tail slam should have 3 charges and a 8 second cool down"; "a rear slam
 -- it lifts and slams its tail in that back. It'll be good to run away and tail slam enemies chasing it as well as slam off
@@ -855,7 +855,11 @@ local function onRemote(player, kind, stamp, hold, pref) -- v1.9: named so BotUs
 		doSlam(player, char, st, t, hold)
 	end
 end
-remote.OnServerEvent:Connect(onRemote) -- v1.9
+local function __prematchLocked(player) -- v1.11: PracticeServer 1.12 pre-match lock (see VERSION 1.11)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+remote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onRemote(player, ...) end) -- v1.9
 
 -- v1.9 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
 --   server-only BindableFunction "BotUse" (child): Invoke(model, ...same arguments as the remote...) runs the remote handler above
@@ -897,3 +901,8 @@ end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
 script:SetAttribute("TenoAttackServerVersion", "1.10") -- v1.10 practice bot slows as attributes
+script:SetAttribute("TenoAttackServerVersion", "1.11") -- v1.11 pre-match lock
+-- v1.11 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).

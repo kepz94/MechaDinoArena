@@ -21,7 +21,7 @@
    - Bots are never locked (BotUse / BotMechaUse call the handlers directly).
    - Scripts: Adrenaline, Bite, Cloak, DiloAttack, DiloMoves, EnergyShield, Headbutt, HerreraMissile, HerreraMoves, Hook, Ink, Jump, Mecha, MedStation, Mine, Pounce, Ram, Roar, Scent, Screech, ServoDash, Slash, TenoAttack, TenoMoves, Tether, TheriAttack, TheriMoves, TrooAttack, TrooMoves, TrooSlot, Visor.
    - Not gated: Survival (eat / drink), Climb, Creep, Stamina, Turn, menus.
-3. **Client gate (no local prediction).** While locked, presses do nothing in: MechaButtons (press / aimStart / tacStart / beginGesture), SlashTest, BiteTest, DiloAttackTest, TenoAttackTest, TheriAttackTest, TrooAttackTest, HeadbuttTest, RamTest, PounceTest, JumpTest, RoarTest. The press functions are wrapped additively.
+3. **Client gate (no local prediction).** While locked, presses do nothing in: MechaButtons (press / aimStart / tacStart; the guard sits before MechaButtons' PC-only return so keys are covered — found in the Studio test), SlashTest, BiteTest, DiloAttackTest, TenoAttackTest, TheriAttackTest, TrooAttackTest, HeadbuttTest, RamTest, PounceTest, JumpTest, RoarTest. The press functions are wrapped additively.
 4. **Locked look (pick A).** While locked, every tile / button gets a lock overlay that is removed when the lock ends:
    - the overlay is dark (black, 0.45 transparent);
    - a padlock (shackle + body, light grey) sits in the middle;
@@ -32,7 +32,7 @@
    - 7 → 5: circles P1 (HpPoints[HpIndex or 1]) at PanOrbitRadius 60 / PanOrbitHeight 70, looking at the point; it starts from the side facing your dino.
    - 5 → 3: glides back to the saved view.
    - L ≤ 3: hands the camera back.
-   - Late join with L < 5: no pan.
+   - Late join with L ≤ 7 (PanOrbitAt): no pan.
    - Death / menu / phase change: hands back at once.
    - Character attribute `PrematchPanning` is set during the pan.
    - Switch: `PrematchCamEnabled`. All timings and distances are attributes.

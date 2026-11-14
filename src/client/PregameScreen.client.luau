@@ -46,6 +46,15 @@ local HttpService = game:GetService("HttpService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Arena match look
 VERSION = "1.2" -- v1.2 SAVED LOADOUT tag
+VERSION = "1.3" -- v1.3 3D models wait until fully arrived
+-- v1.3 (intro bodies, MDA-526, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 7; Kepu 2026-11-13 18:23 "some dinos 3d body don't
+--   fully load up on the intro screens"): on a fresh Arena server the 3D bodies are built while players already sit on the
+--   lineup, and a view that copied a body still arriving kept the partial copy (the view key never changed). Now a Body / part
+--   model counts only once its descendant count here reaches its PieceCount (PregameModels 1.1; no attribute = complete):
+--   bodyOf / partModel answer nil until then; each view's key carries the readiness of its dino + parts (a change rebuilds it);
+--   the refresh signature carries the number of complete models (checked every 0.5 s), so a model that finishes arriving is
+--   drawn without a roster change. Switch: script attribute PregameWaitCompleteEnabled (default true, read per check; false =
+--   1.2). Diagnostic: PregameModelsComplete (complete models here).
 -- v1.2 (saved loadout, MDA-504, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md B3, mockup docs/mockups/save_loadout_v0.1.html
 --   "PRE-GAME"): on the SELECT view's parts step, "SAVED LOADOUT" (green, 10, right-aligned, left of the clock) while
 --   SkillLoadoutFrom == "saved" (SkillServer 1.12 put your saved loadout in) and SkillSlot1..4 equal SkillSavedLoadout.
@@ -268,6 +277,61 @@ local function dinoView(parent, props)
 		cam.CFrame = CFrame.lookAt(Vector3.new(0, ty + d * (props.tilt or 0.22), d), Vector3.new(0, ty, 0))
 	end
 	return o
+end
+
+-- v1.3: models wait until fully arrived (see the header)
+local function waitOn() return script:GetAttribute("PregameWaitCompleteEnabled") ~= false end
+local function complete(m)
+	if not m or not waitOn() then return m ~= nil end
+	local n = tonumber(m:GetAttribute("PieceCount"))
+	return n == nil or #m:GetDescendants() >= n
+end
+do
+	local rawBody, rawPart = bodyOf, partModel
+	bodyOf = function(d)
+		local b = rawBody(d)
+		if b and not complete(b) then return nil end
+		return b
+	end
+	partModel = function(d, id)
+		local m = rawPart(d, id)
+		if m and not complete(m) then return nil end
+		return m
+	end
+	local function readySig(d, ids)
+		local out = {complete(rawBody(d)) and "1" or "0"}
+		for _, id in ipairs(ids or {}) do
+			local m = id ~= "" and rawPart(d, id)
+			table.insert(out, (not m or complete(m)) and "1" or "0")
+		end
+		return table.concat(out)
+	end
+	local rawView = dinoView
+	dinoView = function(parent, props)
+		local o = rawView(parent, props)
+		local rawSet = o.set
+		o.set = function(d, ids, ringColor)
+			local r = readySig(d, ids)
+			if r ~= o.readyKey then o.readyKey, o.key = r, nil end
+			return rawSet(d, ids, ringColor)
+		end
+		return o
+	end
+end
+local readyN, readyAt = 0, -1
+local function modelsReady() -- v1.3: complete models here, re-counted every 0.5 s
+	if os.clock() - readyAt < 0.5 then return readyN end
+	readyAt = os.clock()
+	local n = 0
+	for _, f in ipairs(models and models:GetChildren() or {}) do
+		local b = f:FindFirstChild("Body")
+		if b and complete(b) then n += 1 end
+		local parts = f:FindFirstChild("Parts")
+		for _, m in ipairs(parts and parts:GetChildren() or {}) do if complete(m) then n += 1 end end
+	end
+	readyN = n
+	if script:GetAttribute("PregameModelsComplete") ~= n then script:SetAttribute("PregameModelsComplete", n) end
+	return n
 end
 
 -- static thumbnails (never move: rendered once)
@@ -992,6 +1056,7 @@ RunService.RenderStepped:Connect(function(dt)
 		sig = ""
 	end
 	local s2 = tostring(state:GetAttribute("PrRoster")) .. "|" .. tostring(pgPhase) .. "|" .. tostring(player:GetAttribute("PgReady"))
+		.. "|" .. modelsReady() -- v1.3
 	if s2 ~= sig then
 		sig = s2
 		refresh()

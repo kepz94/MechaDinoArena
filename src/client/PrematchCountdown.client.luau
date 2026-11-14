@@ -1,4 +1,4 @@
--- PrematchCountdown v1.0 (Mecha Dino Arena) — the 10 s pre-match countdown after the pre-game intro, PC and phone (LocalScript,
+-- PrematchCountdown v1.1 (Mecha Dino Arena) — the 10 s pre-match countdown after the pre-game intro, PC and phone (LocalScript,
 -- StarterPlayerScripts). MDA-501, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md A3, mockup
 -- docs/mockups/prematch_countdown_v0.1.html "A · Centre countdown"; Kepu 2026-11-13 "have a 10 second count down with the
 -- objective of the game showing on the screen and where the first point is. Look at how cod does this", picks "A · Centre
@@ -23,6 +23,11 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 chip follows the camera fly-over
+-- v1.1 (camera fly-over, MDA-531, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 6, mockup docs/mockups/prematch_pan_lock_v0.1.html;
+--   Kepu 2026-11-13 18:23 "the camera should pan to the point then pan back to the dinos", pick "A · Fly over"): while the
+--   character attribute PrematchPanning is true (PrematchCam 1.0 has the camera) the bottom chip reads "HELD UNTIL GO";
+--   otherwise "HELD UNTIL GO · LOOK AROUND" as 1.0. Switch: script attribute PrematchChipPanEnabled (default true, read per frame).
 local CANVAS_W, CANVAS_H = 1000, 562
 local GO_TIME = 1
 local PHONE_ASPECT, PHONE_TF = 1.9, 1.3
@@ -207,4 +212,10 @@ RunService.RenderStepped:Connect(function()
 	local pt = "FIRST POINT · P1 " .. firstPointName()
 	if pillText.Text ~= pt then pillText.Text = pt end
 	setState(showGo and "go" or ("count " .. text))
+end)
+RunService.RenderStepped:Connect(function() -- v1.1: the chip while the camera flies
+	local c = player.Character
+	local panning = script:GetAttribute("PrematchChipPanEnabled") ~= false and c ~= nil and c:GetAttribute("PrematchPanning") == true
+	local t = panning and "HELD UNTIL GO" or "HELD UNTIL GO · LOOK AROUND"
+	if held.Text ~= t then held.Text = t end
 end)

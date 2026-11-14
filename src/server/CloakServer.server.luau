@@ -1,4 +1,4 @@
--- CloakServer v1.7 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
+-- CloakServer v1.9 (Mecha Dino Arena) — Cloak Field, the raptor's first own mecha part: requests, timer, breaks, and the
 -- visible emitter pack. MDA-51, plan docs/plans/CLOAK_v1.0.md Tasks 3 + 4b (Kepu 2026-10-29: faint shimmer, bots lose
 -- you at once, breaks on pounce / damage / another part, 12 s cooldown, star capped at 2x; every mecha part is visible
 -- hardware).
@@ -67,13 +67,20 @@
 --   The first call for a bot also runs this script's player-join handlers (Players.PlayerAdded, filed through botJoin) with
 --   the proxy and waits 0.2 s, so the bot's character is set up here like a player's (BotProxy 1.1 gives the proxy stub
 --   CharacterAdded / CharacterRemoving signals).
+local function __prematchLocked(player) -- v1.9: PracticeServer 1.12 pre-match lock (see VERSION 1.9)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
 local __botHandlers = {} -- v1.8: remote name -> handlers (see the header)
 local function botHook(remote)
 	return {Connect = function(_, fn)
 		local list = __botHandlers[remote.Name] or {}
 		__botHandlers[remote.Name] = list
 		table.insert(list, fn)
-		return remote.OnServerEvent:Connect(fn)
+		return remote.OnServerEvent:Connect(function(player, ...) -- v1.9: dropped while pre-match locked
+			if __prematchLocked(player) then return end
+			return fn(player, ...)
+		end)
 	end}
 end
 local __botJoiners = {} -- v1.8: player-join handlers (see the header)
@@ -437,3 +444,8 @@ do
 	fn.Parent = script
 end
 script:SetAttribute("CloakServerVersion", "1.8") -- v1.8 bot entrance
+script:SetAttribute("CloakServerVersion", "1.9") -- v1.9 pre-match lock
+-- v1.9 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).

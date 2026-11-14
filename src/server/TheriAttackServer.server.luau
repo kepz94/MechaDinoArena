@@ -1,4 +1,4 @@
--- TheriAttackServer v1.8 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
+-- TheriAttackServer v1.9 (Mecha Dino Arena) — the Therizinosaurus' 3-hit claw combo (server authority). MDA-201, plan
 -- docs/plans/THERIZINO_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/therizino_kit_options_v0.3.html
 -- (Kepu 2026-11-02: attack "3-hit combo", payoff "Damage only", picks "A Reaper Sweeps"; animation "I like this one").
 -- Pattern: TenoAttackServer 1.4's scratch path (request -> server checks -> hit resolved at a fixed delay in a front zone),
@@ -609,7 +609,11 @@ local function onRemote(player, stamp) -- v1.8: named so BotUse can call it (bod
 	local delay = math.clamp(math.min(stamp, t) + d - t, 0, d)
 	task.delay(delay, resolve, player, char, st, step)
 end
-remote.OnServerEvent:Connect(onRemote) -- v1.8
+local function __prematchLocked(player) -- v1.9: PracticeServer 1.12 pre-match lock (see VERSION 1.9)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+remote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onRemote(player, ...) end) -- v1.8
 
 -- v1.8 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
 --   server-only BindableFunction "BotUse" (child): Invoke(model, ...same arguments as the remote...) runs the remote handler above
@@ -620,6 +624,11 @@ remote.OnServerEvent:Connect(onRemote) -- v1.8
 do
 	if script:GetAttribute("TheriAttackBotUseEnabled") == nil then script:SetAttribute("TheriAttackBotUseEnabled", true) end
 	script:SetAttribute("TheriAttackServerVersion", "1.8")
+	script:SetAttribute("TheriAttackServerVersion", "1.9") -- v1.9 pre-match lock
+	-- v1.9 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+	--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+	--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+	--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
 	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
 	local BotProxy = proxyModule and require(proxyModule)
 	local fn = script:FindFirstChild("BotUse") or Instance.new("BindableFunction")

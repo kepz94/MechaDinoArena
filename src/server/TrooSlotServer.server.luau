@@ -1,4 +1,4 @@
--- TrooSlotServer v1.1 (Mecha Dino Arena) — the Troodon's slot parts (server authority): Bloom Tank (passive), Bloom Burst,
+-- TrooSlotServer v1.3 (Mecha Dino Arena) — the Troodon's slot parts (server authority): Bloom Tank (passive), Bloom Burst,
 -- Shield Dome, Sleep Dart, Sentry Pod. Plan docs/plans/TROODON_SLOTPARTS_v1.0.md T2 (MDA-379); mockup
 -- docs/mockups/troodon_slotparts_v0.1.html (Kepu 2026-11-10 01:40 picks, 09:46 "Then build"); timings = the mockup's tracks.
 -- Settings (character attributes, SkillEffects 1.58): TrooPartBloom* (Enabled, Radius, Time, End, EndHeal, EndSlow; bought, no
@@ -66,13 +66,20 @@
 --   The first call for a bot also runs this script's player-join handlers (Players.PlayerAdded, filed through botJoin) with
 --   the proxy and waits 0.2 s, so the bot's character is set up here like a player's (BotProxy 1.1 gives the proxy stub
 --   CharacterAdded / CharacterRemoving signals).
+local function __prematchLocked(player) -- v1.3: PracticeServer 1.12 pre-match lock (see VERSION 1.3)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
 local __botHandlers = {} -- v1.2: remote name -> handlers (see the header)
 local function botHook(remote)
 	return {Connect = function(_, fn)
 		local list = __botHandlers[remote.Name] or {}
 		__botHandlers[remote.Name] = list
 		table.insert(list, fn)
-		return remote.OnServerEvent:Connect(fn)
+		return remote.OnServerEvent:Connect(function(player, ...) -- v1.3: dropped while pre-match locked
+			if __prematchLocked(player) then return end
+			return fn(player, ...)
+		end)
 	end}
 end
 local __botJoiners = {} -- v1.2: player-join handlers (see the header)
@@ -933,3 +940,8 @@ do
 	fn.Parent = script
 end
 script:SetAttribute("TrooSlotServerVersion", "1.2") -- v1.2 bot entrance
+script:SetAttribute("TrooSlotServerVersion", "1.3") -- v1.3 pre-match lock
+-- v1.3 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).

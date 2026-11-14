@@ -1,4 +1,4 @@
--- DiloMovesServer v1.13 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
+-- DiloMovesServer v1.14 (Mecha Dino Arena) — the Dilophosaurus' mecha button parts, build 1 (server authority): Venom Gatling,
 -- Toxin Mortar, Spine Burst, Venom Overdrive. Plan docs/plans/DILO_PARTS_v1.0.md Task 5 (deterministic map), MDA-318; mockup
 -- docs/mockups/dilo_parts_options.html v0.1 (timings from tools/mockup/dilo_parts_looks.js); Kepu 2026-11-06 picks + red-team
 -- "Same venom system", "Use the proposals". Build 2 (Sonic Hiss, Antivenom Pump, Spring Jets) comes in 1.1.
@@ -101,13 +101,20 @@
 --   The first call for a bot also runs this script's player-join handlers (Players.PlayerAdded, filed through botJoin) with
 --   the proxy and waits 0.2 s, so the bot's character is set up here like a player's (BotProxy 1.1 gives the proxy stub
 --   CharacterAdded / CharacterRemoving signals).
+local function __prematchLocked(player) -- v1.14: PracticeServer 1.12 pre-match lock (see VERSION 1.14)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
 local __botHandlers = {} -- v1.12: remote name -> handlers (see the header)
 local function botHook(remote)
 	return {Connect = function(_, fn)
 		local list = __botHandlers[remote.Name] or {}
 		__botHandlers[remote.Name] = list
 		table.insert(list, fn)
-		return remote.OnServerEvent:Connect(fn)
+		return remote.OnServerEvent:Connect(function(player, ...) -- v1.14: dropped while pre-match locked
+			if __prematchLocked(player) then return end
+			return fn(player, ...)
+		end)
 	end}
 end
 local __botJoiners = {} -- v1.12: player-join handlers (see the header)
@@ -1102,6 +1109,7 @@ do
 		char:SetAttribute("DiloScopeShotAt", t) -- last
 	end
 	scopeRemote.OnServerEvent:Connect(function(player, stamp, action, dir)
+		if __prematchLocked(player) then return end -- v1.14: dropped while pre-match locked
 		if script:GetAttribute("DiloMovesScopeEnabled") == false then return end
 		if action == "start" then
 			local char, t = check(player, stamp, "dscope", PREFIX)
@@ -1123,3 +1131,8 @@ do
 	end)
 end
 script:SetAttribute("DiloMovesServerVersion", "1.13") -- v1.13 Sniper Scope (MDA-516)
+script:SetAttribute("DiloMovesServerVersion", "1.14") -- v1.14 pre-match lock
+-- v1.14 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).

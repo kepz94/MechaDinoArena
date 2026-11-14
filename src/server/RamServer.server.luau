@@ -1,4 +1,4 @@
--- RamServer v1.2 (Dino Arcade) — TEST. Validates the T-Rex tree charge ("a dedicated button that makes a dino run into
+-- RamServer v1.3 (Dino Arcade) — TEST. Validates the T-Rex tree charge ("a dedicated button that makes a dino run into
 -- the nearest tree") and stamps it so every client shows it (IdleAnimation 1.19 / RamPose 1.0) and ShakeOffServer 1.1
 -- can knock latched raptors off on the impact.
 -- Client -> server (sent by RamTest 1.0):
@@ -41,6 +41,11 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.2"
+VERSION = "1.3" -- v1.3 pre-match lock
+-- v1.3 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
 local DEFAULTS = {RamEnabled = false, RamWindup = 0.4, RamRange = 60, RamStaminaCost = 20, RamCooldown = 6,
 	RamMaxCharge = 3.5, StaminaEnabled = true, StaminaMax = 100}
 DEFAULTS.RamRequiresLatchOn = true -- v1.1
@@ -191,7 +196,12 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
+local function __prematchLocked(player) -- v1.3: PracticeServer 1.12 pre-match lock (see VERSION 1.3)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
 requestRemote.OnServerEvent:Connect(function(player, stamp, trunk)
+	if __prematchLocked(player) then return end -- v1.3: dropped while pre-match locked
 	local char = player.Character
 	if not char then return end
 	local now = workspace:GetServerTimeNow()
@@ -244,6 +254,7 @@ requestRemote.OnServerEvent:Connect(function(player, stamp, trunk)
 end)
 
 impactRemote.OnServerEvent:Connect(function(player, stamp, hit)
+	if __prematchLocked(player) then return end -- v1.3: dropped while pre-match locked
 	local char = player.Character
 	if not char then return end
 	local now = workspace:GetServerTimeNow()

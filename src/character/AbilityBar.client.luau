@@ -199,6 +199,13 @@ VERSION = "1.40" -- v1.40 dilo spit ammo pips
 VERSION = "1.41" -- v1.41 Sap Wall charges (MDA-507)
 VERSION = "1.42" -- v1.42 Sniper Scope tile (MDA-517)
 VERSION = "1.43" -- v1.43 Cruise Missile tile (MDA-524)
+VERSION = "1.44" -- v1.44 pre-match padlocks
+-- v1.44 (pre-match lock, MDA-530 + MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rules 3-4, mockup
+--   docs/mockups/prematch_pan_lock_v0.1.html "A · Locked"; Kepu 2026-11-13 18:23 "all mecha abilities and actions should be
+--   unplayable ... during the count down"): while the character's PrematchLockUntil (PracticeServer 1.12) is after the server
+--   time every tile (slots and moves) gets a "PrematchLock" overlay: black at 0.45 over the whole button + a padlock (light grey rgb(201, 211, 223)
+--   shackle ring + body with a dark keyhole) in the middle, 36% of the button; hidden again the frame the lock ends.
+--   Switch: script attribute PrematchLockLookEnabled (default true, read per frame; false = no overlay).
 -- v1.43 (MDA-524, plan docs/plans/HERRERA_CRUISE_MISSILE_v1.0.md Task 6; PC and touch together with MechaButtons 1.49):
 --   TIMED_PARTS.cmissile = "Cruise" (recharge fill + seconds from CruiseReadyAt / CruiseCooldown). Switch: script attribute
 --   AbilityBarCruiseEnabled (default true, read at start; false = 1.42).
@@ -1378,6 +1385,91 @@ end
 
 local conns = {}
 table.insert(conns, RunService.RenderStepped:Connect(update))
+-- v1.44: the pre-match lock (PracticeServer 1.12 PrematchLockUntil): padlock overlays until GO
+local function __prematchLocked()
+	return script:GetAttribute("PrematchLockLookEnabled") ~= false
+		and (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+local LOCK_LIGHT = Color3.fromRGB(201, 211, 223)
+local function lockOverlay(parent, radius) -- dark cover + a padlock (shackle + body + keyhole) in the middle
+	local o = parent:FindFirstChild("PrematchLock")
+	if o then return o end
+	o = Instance.new("Frame")
+	o.Name = "PrematchLock"
+	o.Size = UDim2.fromScale(1, 1)
+	o.BackgroundColor3 = Color3.new(0, 0, 0)
+	o.BackgroundTransparency = 0.45
+	o.BorderSizePixel = 0
+	o.Active = false
+	o.ZIndex = 8
+	local oc = Instance.new("UICorner")
+	oc.CornerRadius = radius
+	oc.Parent = o
+	local icon = Instance.new("Frame")
+	icon.Name = "Padlock"
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.Size = UDim2.fromScale(0.36, 0.36)
+	icon.BackgroundTransparency = 1
+	icon.ZIndex = 9
+	icon.Parent = o
+	local ar = Instance.new("UIAspectRatioConstraint")
+	ar.AspectRatio = 1
+	ar.Parent = icon
+	local shackle = Instance.new("Frame")
+	shackle.Name = "Shackle"
+	shackle.AnchorPoint = Vector2.new(0.5, 0)
+	shackle.Position = UDim2.fromScale(0.5, 0)
+	shackle.Size = UDim2.fromScale(0.6, 0.7)
+	shackle.BackgroundTransparency = 1
+	shackle.ZIndex = 9
+	shackle.Parent = icon
+	local sc = Instance.new("UICorner")
+	sc.CornerRadius = UDim.new(0.5, 0)
+	sc.Parent = shackle
+	local ss = Instance.new("UIStroke")
+	ss.Color = LOCK_LIGHT
+	ss.Thickness = 3
+	ss.Parent = shackle
+	local body = Instance.new("Frame")
+	body.Name = "Body"
+	body.AnchorPoint = Vector2.new(0.5, 1)
+	body.Position = UDim2.fromScale(0.5, 1)
+	body.Size = UDim2.fromScale(1, 0.58)
+	body.BackgroundColor3 = LOCK_LIGHT
+	body.BorderSizePixel = 0
+	body.ZIndex = 10
+	body.Parent = icon
+	local bc = Instance.new("UICorner")
+	bc.CornerRadius = UDim.new(0.18, 0)
+	bc.Parent = body
+	local hole = Instance.new("Frame")
+	hole.Name = "Keyhole"
+	hole.AnchorPoint = Vector2.new(0.5, 0.5)
+	hole.Position = UDim2.fromScale(0.5, 0.48)
+	hole.Size = UDim2.fromScale(0.16, 0.36)
+	hole.BackgroundColor3 = Color3.fromRGB(13, 18, 24)
+	hole.BorderSizePixel = 0
+	hole.ZIndex = 11
+	hole.Parent = body
+	local hc = Instance.new("UICorner")
+	hc.CornerRadius = UDim.new(0.5, 0)
+	hc.Parent = hole
+	o.Visible = false
+	o.Parent = parent
+	return o
+end
+local function setLock(parent, on, radius) -- the overlay follows the lock; made on first use
+	if not parent then return end
+	local o = parent:FindFirstChild("PrematchLock")
+	if on and not o then o = lockOverlay(parent, radius) end
+	if o and o.Visible ~= on then o.Visible = on end
+end
+table.insert(conns, RunService.RenderStepped:Connect(function() -- v1.44
+	local on = __prematchLocked()
+	for _, e in ipairs(tiles) do setLock(e.t and e.t.f, on, UDim.new(0.22, 0)) end
+	show("AbilityBarLocked", on)
+end))
 local cam = workspace.CurrentCamera
 if cam then table.insert(conns, cam:GetPropertyChangedSignal("ViewportSize"):Connect(layout)) end
 local function cleanup()

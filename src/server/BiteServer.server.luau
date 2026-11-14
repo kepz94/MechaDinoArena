@@ -1,4 +1,4 @@
--- BiteServer v1.12 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
+-- BiteServer v1.13 (Dino Arcade) — TEST. Validates bite requests, stamps the start time, and checks for a
 -- hit at the moment the jaws shut.
 -- Client -> server: ReplicatedStorage.DinoBiteRequest:FireServer(clientServerTime) (sent by BiteTest)
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now] (so every client's pose lines up with
@@ -378,7 +378,12 @@ local function checkHit(char, startedAt)
 	end)
 end
 
+local function __prematchLocked(player) -- v1.13: PracticeServer 1.12 pre-match lock (see VERSION 1.13)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
 claimRemote.OnServerEvent:Connect(function(player, stamp, model, point)
+	if __prematchLocked(player) then return end -- v1.13: dropped while pre-match locked
 	local char = player.Character
 	if not char then return end
 	local function reject(why) char:SetAttribute("BiteClaimResult", why) end
@@ -461,7 +466,7 @@ local function onRemote(player, stamp, dip, yaw, aimTarget) -- v1.12: named so B
 	end
 	char:SetAttribute("BiteLastResult", result)
 end
-remote.OnServerEvent:Connect(onRemote) -- v1.12
+remote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onRemote(player, ...) end) -- v1.12
 
 -- v1.12 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
 --   server-only BindableFunction "BotUse" (child): Invoke(model, ...same arguments as the remote...) runs the remote handler above
@@ -472,6 +477,11 @@ remote.OnServerEvent:Connect(onRemote) -- v1.12
 do
 	if script:GetAttribute("BiteBotUseEnabled") == nil then script:SetAttribute("BiteBotUseEnabled", true) end
 	script:SetAttribute("BiteServerVersion", "1.12")
+	script:SetAttribute("BiteServerVersion", "1.13") -- v1.13 pre-match lock
+	-- v1.13 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+	--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+	--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+	--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
 	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
 	local BotProxy = proxyModule and require(proxyModule)
 	local fn = script:FindFirstChild("BotUse") or Instance.new("BindableFunction")

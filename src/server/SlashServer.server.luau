@@ -1,4 +1,4 @@
--- SlashServer v1.12 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
+-- SlashServer v1.13 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash (server side). MDA-140, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 8, mockup docs/mockups/herrera_kit_options.html (look A).
 -- Kepu 2026-10-30: slash "Dash-through slash", payoff "Bleed"; drop attack "should be able to happen if I press the dash
 --   aimed at a nearby target but not be its own dedicated button".
@@ -430,7 +430,11 @@ local function onRequest(player, stamp, kind, target) -- v1.12: named so BotUse 
 	setResult(char, "ok")
 	char:SetAttribute("SlashStartedAt", t) -- last: clients react to this one
 end
-requestRemote.OnServerEvent:Connect(onRequest) -- v1.12
+local function __prematchLocked(player) -- v1.13: PracticeServer 1.12 pre-match lock (see VERSION 1.13)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+requestRemote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onRequest(player, ...) end) -- v1.12
 
 
 -- distance from the target's hitboxes to the dash path (sampled along the segment)
@@ -607,7 +611,7 @@ local function onHit(player, stamp, model) -- v1.12: named so BotUse can call it
 	char:SetAttribute("SlashHitAt", t) -- last: clients react to this one
 	script:SetAttribute("SlashHits", (script:GetAttribute("SlashHits") or 0) + 1)
 end
-hitRemote.OnServerEvent:Connect(onHit) -- v1.12
+hitRemote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onHit(player, ...) end) -- v1.12
 
 -- v1.12 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
 --   server-only BindableFunction "BotUse" (child): Invoke(model, action, ...the remote's arguments...), action "request" / "hit", runs
@@ -618,6 +622,11 @@ hitRemote.OnServerEvent:Connect(onHit) -- v1.12
 do
 	if script:GetAttribute("SlashBotUseEnabled") == nil then script:SetAttribute("SlashBotUseEnabled", true) end
 	script:SetAttribute("SlashServerVersion", "1.12")
+	script:SetAttribute("SlashServerVersion", "1.13") -- v1.13 pre-match lock
+	-- v1.13 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+	--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+	--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+	--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
 	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
 	local BotProxy = proxyModule and require(proxyModule)
 	local ACTIONS = {request = onRequest, hit = onHit}

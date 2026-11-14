@@ -1,4 +1,4 @@
--- HeadbuttServer v1.20 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
+-- HeadbuttServer v1.22 (Mecha Dino Arena) — the pachy's headbutt charge (server side). MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 5, mockup docs/mockups/pachy_charge_options.html (option A pips).
 -- Kepu 2026-10-30: "a headbutt charge that speeds it up a bit and knocks opponents back with a debuff to their speed. it
 --   should come with two charges and max out at 3 charges fully statted up. the downside is if you use all your headbutt
@@ -421,7 +421,11 @@ local function onRequest(player, stamp) -- v1.20: named so BotUse can call it (b
 	setResult(char, "ok")
 	char:SetAttribute("HeadbuttStartedAt", t) -- last: clients react to this one
 end
-requestRemote.OnServerEvent:Connect(onRequest) -- v1.20
+local function __prematchLocked(player) -- v1.22: PracticeServer 1.12 pre-match lock (see VERSION 1.22)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+requestRemote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onRequest(player, ...) end) -- v1.20
 
 
 local function onEnd(player, stamp, reason) -- v1.20: named so BotUse can call it (body unchanged)
@@ -434,7 +438,7 @@ local function onEnd(player, stamp, reason) -- v1.20: named so BotUse can call i
 	end
 	finish(char, st, reason == "timeout" and "timeout" or "ended")
 end
-endRemote.OnServerEvent:Connect(onEnd) -- v1.20
+endRemote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onEnd(player, ...) end) -- v1.20
 
 
 -- v1.13: squadmates are never targets (SquadRules 1.0, loaded on first use)
@@ -724,7 +728,7 @@ local function onHit(player, stamp, model) -- v1.20: named so BotUse can call it
 	script:SetAttribute("HeadbuttHits", (script:GetAttribute("HeadbuttHits") or 0) + 1)
 	finish(char, st, "hit")
 end
-hitRemote.OnServerEvent:Connect(onHit) -- v1.20
+hitRemote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onHit(player, ...) end) -- v1.20
 
 -- v1.20 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
 --   server-only BindableFunction "BotUse" (child): Invoke(model, action, ...the remote's arguments...), action "request" / "end" / "hit", runs
@@ -804,3 +808,8 @@ end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
 script:SetAttribute("HeadbuttServerVersion", "1.21") -- v1.21 practice bot slows as attributes
+script:SetAttribute("HeadbuttServerVersion", "1.22") -- v1.22 pre-match lock
+-- v1.22 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).

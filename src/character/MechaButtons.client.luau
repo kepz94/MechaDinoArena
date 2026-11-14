@@ -405,6 +405,14 @@ VERSION = "1.48" -- v1.48 Sniper Scope: one charge per press
 --   (default true, read at each press; false = 1.47). Diagnostic: character MechaScopeRepress (count of kept re-presses).
 if script:GetAttribute("MechaButtonsScopeOnePressEnabled") == nil then script:SetAttribute("MechaButtonsScopeOnePressEnabled", true) end -- v1.48
 VERSION = "1.49" -- v1.49 Herrera Cruise Missile button (MDA-524)
+VERSION = "1.50" -- v1.50 pre-match lock: no presses + padlocks
+-- v1.50 (pre-match lock, MDA-530 + MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rules 3-4, mockup
+--   docs/mockups/prematch_pan_lock_v0.1.html "A · Locked"; Kepu 2026-11-13 18:23 "all mecha abilities and actions should be
+--   unplayable ... during the count down"): while the character's PrematchLockUntil (PracticeServer 1.12) is after the server
+--   time a press / aim / tether start does nothing (keys and touch; placed before the PC-only return)
+--   (MechaButtonsLockedPresses += 1) and every touch slot button gets a "PrematchLock" overlay: black at 0.45 over the whole button + a padlock (light grey rgb(201, 211, 223)
+--   shackle ring + body with a dark keyhole) in the middle, 36% of the button; hidden again the frame the lock ends.
+--   Switch: script attribute PrematchLockLookEnabled (default true, read per frame; false = no overlay).
 -- v1.49 (MDA-524, plan docs/plans/HERRERA_CRUISE_MISSILE_v1.0.md Task 6; PC and touch together with AbilityBar 1.43,
 --   HerreraMissileServer 1.0): TIMED_PARTS.cmissile = {"Cruise", "DinoCruiseMissileRequest", "CRUISE MISSILE"}, a normal press (the
 --   launch; HerreraMissileCam flies it). Switch: script attribute MechaButtonsCruiseEnabled (default true, read at start; false = 1.48).
@@ -1727,6 +1735,22 @@ UserInputService.InputEnded:Connect(function(input) -- v1.8: let go of the key /
 	end
 end)
 
+do -- v1.50: nothing starts before GO (here, before the PC return below, so keys are covered too)
+	local function locked()
+		return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+	end
+	local function guard(fn)
+		return function(...)
+			if locked() then
+				char:SetAttribute("MechaButtonsLockedPresses", (char:GetAttribute("MechaButtonsLockedPresses") or 0) + 1)
+				return
+			end
+			return fn(...)
+		end
+	end
+	press, aimStart, tacStart = guard(press), guard(aimStart), guard(tacStart) -- a touch gesture ends in press / aimStart
+end
+
 -- v1.1: "new ability" popup ----------------------------------------------------------------------------------------
 local pgNews = player:WaitForChild("PlayerGui")
 local shared = ReplicatedStorage:FindFirstChild("SkillShared")
@@ -1902,6 +1926,87 @@ UserInputService.InputEnded:Connect(function(input)
 	if gesture and input == gesture.input then endGesture() end
 end)
 
+-- v1.50: the pre-match lock (PracticeServer 1.12 PrematchLockUntil): padlock overlays until GO
+local function __prematchLocked()
+	return script:GetAttribute("PrematchLockLookEnabled") ~= false
+		and (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+local LOCK_LIGHT = Color3.fromRGB(201, 211, 223)
+local function lockOverlay(parent, radius) -- dark cover + a padlock (shackle + body + keyhole) in the middle
+	local o = parent:FindFirstChild("PrematchLock")
+	if o then return o end
+	o = Instance.new("Frame")
+	o.Name = "PrematchLock"
+	o.Size = UDim2.fromScale(1, 1)
+	o.BackgroundColor3 = Color3.new(0, 0, 0)
+	o.BackgroundTransparency = 0.45
+	o.BorderSizePixel = 0
+	o.Active = false
+	o.ZIndex = 8
+	local oc = Instance.new("UICorner")
+	oc.CornerRadius = radius
+	oc.Parent = o
+	local icon = Instance.new("Frame")
+	icon.Name = "Padlock"
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.Size = UDim2.fromScale(0.36, 0.36)
+	icon.BackgroundTransparency = 1
+	icon.ZIndex = 9
+	icon.Parent = o
+	local ar = Instance.new("UIAspectRatioConstraint")
+	ar.AspectRatio = 1
+	ar.Parent = icon
+	local shackle = Instance.new("Frame")
+	shackle.Name = "Shackle"
+	shackle.AnchorPoint = Vector2.new(0.5, 0)
+	shackle.Position = UDim2.fromScale(0.5, 0)
+	shackle.Size = UDim2.fromScale(0.6, 0.7)
+	shackle.BackgroundTransparency = 1
+	shackle.ZIndex = 9
+	shackle.Parent = icon
+	local sc = Instance.new("UICorner")
+	sc.CornerRadius = UDim.new(0.5, 0)
+	sc.Parent = shackle
+	local ss = Instance.new("UIStroke")
+	ss.Color = LOCK_LIGHT
+	ss.Thickness = 3
+	ss.Parent = shackle
+	local body = Instance.new("Frame")
+	body.Name = "Body"
+	body.AnchorPoint = Vector2.new(0.5, 1)
+	body.Position = UDim2.fromScale(0.5, 1)
+	body.Size = UDim2.fromScale(1, 0.58)
+	body.BackgroundColor3 = LOCK_LIGHT
+	body.BorderSizePixel = 0
+	body.ZIndex = 10
+	body.Parent = icon
+	local bc = Instance.new("UICorner")
+	bc.CornerRadius = UDim.new(0.18, 0)
+	bc.Parent = body
+	local hole = Instance.new("Frame")
+	hole.Name = "Keyhole"
+	hole.AnchorPoint = Vector2.new(0.5, 0.5)
+	hole.Position = UDim2.fromScale(0.5, 0.48)
+	hole.Size = UDim2.fromScale(0.16, 0.36)
+	hole.BackgroundColor3 = Color3.fromRGB(13, 18, 24)
+	hole.BorderSizePixel = 0
+	hole.ZIndex = 11
+	hole.Parent = body
+	local hc = Instance.new("UICorner")
+	hc.CornerRadius = UDim.new(0.5, 0)
+	hc.Parent = hole
+	o.Visible = false
+	o.Parent = parent
+	return o
+end
+local function setLock(parent, on, radius) -- the overlay follows the lock; made on first use
+	if not parent then return end
+	local o = parent:FindFirstChild("PrematchLock")
+	if on and not o then o = lockOverlay(parent, radius) end
+	if o and o.Visible ~= on then o.Visible = on end
+end
+
 for n = 1, 2 do
 	local b = Instance.new("TextButton")
 	b.Name = "Slot_" .. n
@@ -1983,6 +2088,10 @@ for n = 1, 2 do
 	b.InputEnded:Connect(function() scale.Scale = 1 end)
 	slots[n] = {b = b, stroke = stroke, cd = cd, main = main, sub = sub, pull = pull, pips = pipFrames, scale = scale}
 end
+RunService.RenderStepped:Connect(function() -- v1.50: padlocks
+	local on = __prematchLocked()
+	for _, sl in ipairs(slots) do setLock(sl.b, on, UDim.new(0.22, 0)) end
+end)
 
 local function layout()
 	local spots = SPOTS[char:GetAttribute("AutoRun") == true]

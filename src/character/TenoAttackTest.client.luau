@@ -1,4 +1,4 @@
--- TenoAttackTest v1.4 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
+-- TenoAttackTest v1.5 (Mecha Dino Arena) — the Tenontosaurus' ATTACK input on the owner's client: tap = scratch, hold and
 -- release = rear tail slam. MDA-172, plan docs/plans/TENO_KIT_v1.0.md Task 6 (server: TenoAttackServer 1.0), mockup
 -- docs/mockups/teno_attacks_options.html v0.2 (Kepu 2026-10-31: "Tap = scratch, hold = slam").
 -- Active while the character has TenoAttackEnabled = true (TenoModelData 1.1); does nothing on other dinos.
@@ -47,6 +47,10 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 
 local VERSION = "1.4"
+VERSION = "1.5" -- v1.5 pre-match lock
+-- v1.5 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, blocked() answers "locked" (no local start; the server drops it too).
 local ACTION = "DinoTenoAttack"
 local ACTION_CLICK = "DinoTenoAttackClick"
 local DEFAULTS = {TenoAttackEnabled = false, TenoSlamHoldMin = 0.22, TenoScratchGap = 0.5, TenoLeftClickEnabled = true}
@@ -85,6 +89,16 @@ local function blocked()
 	if char:GetAttribute("PinHeld") == true then return "pinned" end
 	if player:GetAttribute("InMenu") == true then return "menu" end
 	return nil
+end
+local function __prematchLocked() -- v1.5: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+do -- v1.5: locked before GO
+	local rawBlocked = blocked
+	blocked = function(...)
+		if __prematchLocked() then return "locked" end
+		return rawBlocked(...)
+	end
 end
 
 local function setState(st, at)

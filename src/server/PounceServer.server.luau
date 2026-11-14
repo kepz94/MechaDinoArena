@@ -1,4 +1,4 @@
--- PounceServer v1.18 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
+-- PounceServer v1.19 (Dino Arcade) — TEST. Validates raptor pounces, latches the raptor onto a larger dino and
 -- deals the latch damage.
 -- Client -> server (sent by PounceTest 1.0):
 --   DinoPounceRequest:FireServer(clientServerTime)              at the key press
@@ -422,7 +422,11 @@ local function onRequest(player, stamp) -- v1.18: named so BotUse can call it (b
 		char:SetAttribute("PounceDeniedAt", stamp)
 	end
 end
-requestRemote.OnServerEvent:Connect(onRequest) -- v1.18
+local function __prematchLocked(player) -- v1.19: PracticeServer 1.12 pre-match lock (see VERSION 1.19)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+requestRemote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onRequest(player, ...) end) -- v1.18
 
 
 local function onClaim(player, stamp, part, offset) -- v1.18: named so BotUse can call it (body unchanged)
@@ -522,7 +526,7 @@ local function onClaim(player, stamp, part, offset) -- v1.18: named so BotUse ca
 	char:SetAttribute("PounceBladeBonus", blade)
 	hit(char, model, get(char, "PounceLandDamage"), now, extra + blade)
 end
-claimRemote.OnServerEvent:Connect(onClaim) -- v1.18
+claimRemote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onClaim(player, ...) end) -- v1.18
 
 
 local function onRelease(player) -- v1.18: named so BotUse can call it (body unchanged)
@@ -540,6 +544,11 @@ releaseRemote.OnServerEvent:Connect(onRelease) -- v1.18
 do
 	if script:GetAttribute("PounceBotUseEnabled") == nil then script:SetAttribute("PounceBotUseEnabled", true) end
 	script:SetAttribute("PounceServerVersion", "1.18")
+	script:SetAttribute("PounceServerVersion", "1.19") -- v1.19 pre-match lock
+	-- v1.19 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+	--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+	--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+	--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
 	local proxyModule = game:GetService("ServerStorage"):WaitForChild("DinoArcade"):FindFirstChild("BotProxy")
 	local BotProxy = proxyModule and require(proxyModule)
 	local ACTIONS = {request = onRequest, claim = onClaim, release = onRelease}

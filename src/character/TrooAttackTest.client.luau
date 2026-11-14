@@ -1,4 +1,4 @@
--- TrooAttackTest v1.1 (Mecha Dino Arena) — the Troodon's ATTACK input on the owner's client (LocalScript,
+-- TrooAttackTest v1.3 (Mecha Dino Arena) — the Troodon's ATTACK input on the owner's client (LocalScript,
 -- StarterCharacterScripts). MDA-334, plan docs/plans/TROODON_KIT_v1.0.md Task 5 (Kepu 2026-11-06 15:38: attack A Glow Pod
 -- Toss); server TrooAttackServer 1.0. Pattern copied from DiloAttackTest 1.2 (not edited).
 -- Only while the character's TrooAttackEnabled is true (the troodon). Inputs: CAS action "DinoTrooAttack" (the phone's big
@@ -25,6 +25,10 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 (MDA-375) no local throw while placing a Portal Rift (TrooRiftPlacing; TrooAttackServer 1.6 refuses it too).
 --   Switch: script attribute TrooAttackTestRiftBlockEnabled (default true, read at each press; false = 1.0).
 VERSION = "1.2" -- v1.2 double tap = pod to a teammate
+VERSION = "1.3" -- v1.3 pre-match lock
+-- v1.3 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, blocked() answers "locked" (no local start; the server drops it too).
 -- v1.2 (MDA-439, plan docs/plans/DILO_TROO_TUNE_v1.0.md Task 5; Kepu 2026-11-11 "double tap to shoot towards a teammate (for
 --   heals). Single tap for enemy"): a press within TrooDoubleTap (0.3) s of the last local throw (once per throw) sends
 --   DinoTrooAttack:FireServer("ally", server time) instead of a throw (TrooAttackServer 1.8 turns the pod still in the hands
@@ -87,6 +91,16 @@ local function blocked()
 	if player:GetAttribute("InMenu") == true then return "menu" end
 	if char:GetAttribute("TrooRiftPlacing") == true and script:GetAttribute("TrooAttackTestRiftBlockEnabled") ~= false then return "placing" end -- v1.1 (MDA-375)
 	return nil
+end
+local function __prematchLocked() -- v1.3: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+do -- v1.3: locked before GO
+	local rawBlocked = blocked
+	blocked = function(...)
+		if __prematchLocked() then return "locked" end
+		return rawBlocked(...)
+	end
 end
 
 if script:GetAttribute("TrooDoubleTapEnabled") == nil then script:SetAttribute("TrooDoubleTapEnabled", true) end -- v1.2

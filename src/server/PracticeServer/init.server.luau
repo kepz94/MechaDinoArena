@@ -145,6 +145,15 @@ VERSION = "1.8" -- v1.8 bots pay 50% XP
 VERSION = "1.9" -- v1.9 pre-game lineup + intro, 4v4
 VERSION = "1.10" -- v1.10 Arena 4v4 on a private server
 VERSION = "1.11" -- v1.11 pre-match countdown hold
+VERSION = "1.12" -- v1.12 pre-match lock (PrematchLockUntil)
+-- v1.12 (pre-match lock, MDA-527, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 1, mockup docs/mockups/prematch_pan_lock_v0.1.html;
+--   Kepu 2026-11-13 18:23 "all mecha abilities and actions should be unplayable because as of right now it lets me use them during
+--   the count down", pick "A · Locked everywhere"): every human held by v1.11 also gets the character attribute
+--   PrematchLockUntil (server time): HpPointEndsAt + 0.25 while HpPhase is "warmup" (else now + PrPrematchLockMax (15) s, the
+--   tick before "warmup" is published), refreshed for every held human when HpPointEndsAt / HpPhase change, set to 0 when the
+--   hold is released (P1 live / lobby / a failed start). Locked = PrematchLockUntil > server time, so it also ends by itself.
+--   The move servers drop a locked player's requests and the move scripts / buttons show it (padlocks); bots are never locked.
+--   Switch: script attribute PrPrematchLockEnabled (default true, read per place / refresh; false = 1.11, no attribute).
 -- v1.11 (pre-match countdown, MDA-500, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md A2, mockup
 --   docs/mockups/prematch_countdown_v0.1.html A; Kepu 2026-11-13 "10 second count down", pick "Held in place"): the match
 --   starts with HardpointPractice("start", PrPrematchLead (5)) (HardpointServer 1.8: warm-up = lead + 5 = 10 s) and Practice
@@ -472,8 +481,15 @@ local holdArmed = false -- set by startMatch (with a lead); cleared when P1 goes
 local function prematchHeld() -- armed from the start call on, so the frame before HardpointServer publishes "warmup" holds too
 	return holdArmed and state:GetAttribute("PrPrematch") == true and hpState ~= nil and hpState:GetAttribute("HpPhase") ~= "live"
 end
+local function lockOn() return script:GetAttribute("PrPrematchLockEnabled") ~= false end -- v1.12
+local function lockUntil() -- v1.12
+	local e = hpState and tonumber(hpState:GetAttribute("HpPointEndsAt")) or 0
+	if hpState and hpState:GetAttribute("HpPhase") == "warmup" and e > now() then return e + 0.25 end
+	return now() + (tonumber(script:GetAttribute("PrPrematchLockMax")) or 15)
+end
 local function releaseHeld()
 	for pl, hrp in pairs(heldRoots) do
+		if hrp.Parent then hrp.Parent:SetAttribute("PrematchLockUntil", 0) end -- v1.12
 		if hrp.Parent and hrp.Anchored then
 			hrp.Anchored = false
 			pcall(function() hrp:SetNetworkOwnershipAuto() end)
@@ -489,6 +505,14 @@ if hpState then
 			releaseHeld()
 		end
 	end)
+	local function relock() -- v1.12: the lock follows the warm-up's end
+		if not lockOn() or hpState:GetAttribute("HpPhase") ~= "warmup" then return end
+		for _, hrp in pairs(heldRoots) do
+			if hrp.Parent then hrp.Parent:SetAttribute("PrematchLockUntil", lockUntil()) end
+		end
+	end
+	hpState:GetAttributeChangedSignal("HpPointEndsAt"):Connect(relock)
+	hpState:GetAttributeChangedSignal("HpPhase"):Connect(relock)
 end
 local function placeHuman(pl)
 	local c = pl.Character
@@ -504,6 +528,7 @@ local function placeHuman(pl)
 		pcall(function() hrp:SetNetworkOwner(nil) end)
 		hrp.Anchored = true
 		heldRoots[pl] = hrp
+		if lockOn() then c:SetAttribute("PrematchLockUntil", lockUntil()) end -- v1.12
 		script:SetAttribute("PrPrematchHeld", (script:GetAttribute("PrPrematchHeld") or 0) + 1)
 	end
 end

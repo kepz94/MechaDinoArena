@@ -1,4 +1,4 @@
--- BiteTest v1.7 (Dino Arcade) — TEST input for the quick bite. Left click (mouse), R2 (gamepad) or the
+-- BiteTest v1.8 (Dino Arcade) — TEST input for the quick bite. Left click (mouse), R2 (gamepad) or the
 -- on-screen Bite button (touch).
 -- On press (when allowed): stamps BitePredictedAt = server time (this client only, so the attacker sees the
 -- wind-up at once), sends DinoBiteRequest:FireServer(that time), and pushes the body forward
@@ -67,6 +67,10 @@ local DEFAULTS = {BiteEnabled = true, BiteCooldown = 0.8, BiteWindup = 0.15, Bit
 local DIP_STEP = 5 -- v1.3: degrees between tried dips
 local AIM_SCAN, AIM_YAW_WEIGHT, AIM_DIST_WEIGHT = 45, 0.05, 0.02 -- v1.5
 char:SetAttribute("BiteTestVersion", "1.7")
+char:SetAttribute("BiteTestVersion", "1.8") -- v1.8 pre-match lock
+-- v1.8 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, tryBite() does nothing (no local start; the server drops it too).
 
 local function get(k)
 	local v = char:GetAttribute(k)
@@ -353,6 +357,16 @@ local function tryBite()
 		task.delay(get("BiteWindup") + get("BiteStrike"), claimHit, stamp, dip, yaw)
 	end
 	char:SetAttribute("BiteInputResult", result)
+end
+local function __prematchLocked() -- v1.8: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+do -- v1.8: no press before GO
+	local rawPress = tryBite
+	tryBite = function(...)
+		if __prematchLocked() then return end
+		return rawPress(...)
+	end
 end
 
 local function onBite(_, inputState)

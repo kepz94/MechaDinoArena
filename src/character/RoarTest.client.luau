@@ -1,4 +1,4 @@
--- RoarTest v1.0 (Dino Arcade) — TEST ONLY. Press R (keyboard), Y (gamepad) or the on-screen Roar button
+-- RoarTest v1.1 (Dino Arcade) — TEST ONLY. Press R (keyboard), Y (gamepad) or the on-screen Roar button
 -- (touch) to roar. Sends the request to RoarServer; while this character is roaring it sets the
 -- character attribute Roaring = true, which SprintTest uses to slow movement to MoveRoarSpeed.
 -- Diagnostic: character attribute Roaring (true/false).
@@ -16,6 +16,20 @@ local function onRoar(_, inputState)
 		remote:FireServer()
 	end
 	return Enum.ContextActionResult.Sink
+end
+local function __prematchLocked() -- v1.1: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+char:SetAttribute("RoarTestVersion", "1.1") -- v1.1 pre-match lock
+-- v1.1 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, onRoar() does nothing (no local start; the server drops it too).
+do -- v1.1: no press before GO
+	local rawPress = onRoar
+	onRoar = function(...)
+		if __prematchLocked() then return Enum.ContextActionResult.Sink end
+		return rawPress(...)
+	end
 end
 
 ContextActionService:BindActionAtPriority(ACTION, onRoar, true, Enum.ContextActionPriority.High.Value,

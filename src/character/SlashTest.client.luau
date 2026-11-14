@@ -1,4 +1,4 @@
--- SlashTest v1.7 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
+-- SlashTest v1.8 (Mecha Dino Arena) — the Herrerasaurus' dash-through slash on the owner's client. MDA-141, plan
 -- docs/plans/HERRERA_KIT_v1.0.md Task 9 (server: SlashServer 1.1), mockup docs/mockups/herrera_kit_options.html.
 -- Kepu 2026-10-30: "Dash-through slash"; the drop attack "should be able to happen if I press the dash aimed at a nearby
 --   target but not be its own dedicated button".
@@ -66,6 +66,10 @@ local ContextActionService = game:GetService("ContextActionService")
 local VERSION = "1.5"
 VERSION = "1.6" -- v1.6 Cross Rake coil
 VERSION = "1.7" -- v1.7 no slash dash / dive while snared
+VERSION = "1.8" -- v1.8 pre-match lock
+-- v1.8 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, tryPress() does nothing (no local start; the server drops it too).
 local ACTION = "DinoSlash"
 local ACTION_CLICK = "DinoSlashClick"
 local BIND = "DinoSlashDrive"
@@ -338,6 +342,16 @@ local function tryPress(source, fromCoil)
 	passThrough(true) -- v1.1
 	setState("dash")
 	phaseAt = os.clock()
+end
+local function __prematchLocked() -- v1.8: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+do -- v1.8: no press before GO
+	local rawPress = tryPress
+	tryPress = function(...)
+		if __prematchLocked() then return end
+		return rawPress(...)
+	end
 end
 
 -- a denied request stops the local dash

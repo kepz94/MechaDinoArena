@@ -1,4 +1,4 @@
--- VisorServer v1.2 (Mecha Dino Arena) — the pachy's Dome Visor, a Defense slot part (path "visor").
+-- VisorServer v1.4 (Mecha Dino Arena) — the pachy's Dome Visor, a Defense slot part (path "visor").
 -- MDA-127, plan docs/plans/PACHY_PARTS_B3_v1.0.md, mockup docs/mockups/pachy_parts_b3_options.html look A "Armored
 --   faceplate". Kepu 2026-10-30: "Okay let's do the dome visor for sure"; "All the recommended ones"; it blocks
 --   "Melee + Shock Cannon" from the front.
@@ -49,13 +49,20 @@
 --   The first call for a bot also runs this script's player-join handlers (Players.PlayerAdded, filed through botJoin) with
 --   the proxy and waits 0.2 s, so the bot's character is set up here like a player's (BotProxy 1.1 gives the proxy stub
 --   CharacterAdded / CharacterRemoving signals).
+local function __prematchLocked(player) -- v1.4: PracticeServer 1.12 pre-match lock (see VERSION 1.4)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
 local __botHandlers = {} -- v1.3: remote name -> handlers (see the header)
 local function botHook(remote)
 	return {Connect = function(_, fn)
 		local list = __botHandlers[remote.Name] or {}
 		__botHandlers[remote.Name] = list
 		table.insert(list, fn)
-		return remote.OnServerEvent:Connect(fn)
+		return remote.OnServerEvent:Connect(function(player, ...) -- v1.4: dropped while pre-match locked
+			if __prematchLocked(player) then return end
+			return fn(player, ...)
+		end)
 	end}
 end
 local __botJoiners = {} -- v1.3: player-join handlers (see the header)
@@ -433,3 +440,8 @@ do
 	fn.Parent = script
 end
 script:SetAttribute("VisorServerVersion", "1.3") -- v1.3 bot entrance
+script:SetAttribute("VisorServerVersion", "1.4") -- v1.4 pre-match lock
+-- v1.4 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).

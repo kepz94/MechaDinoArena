@@ -1,4 +1,4 @@
--- JumpTest v1.7 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
+-- JumpTest v1.8 (Dino Arcade) — TEST input for the leap (owner's client only). Jump key / gamepad A / touch jump
 -- button. Only active while the character attribute JumpEnabled is true (default false: the T-Rex keeps the
 -- default Roblox jump untouched).
 -- v1.1 (pachy Mecha Legs star, MDA-123): while JumpDoubleEnabled (SkillEffects 1.15) is true, a NEW jump press (the
@@ -99,6 +99,10 @@ char:SetAttribute("JumpTestVersion", "1.3") -- v1.3 (the model data carries "1.0
 char:SetAttribute("JumpTestVersion", "1.5") -- v1.5 (1.4 did not bump this line)
 char:SetAttribute("JumpTestVersion", "1.6") -- v1.6
 char:SetAttribute("JumpTestVersion", "1.7") -- v1.7 no leaps while snared
+char:SetAttribute("JumpTestVersion", "1.8") -- v1.8 pre-match lock
+-- v1.8 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, tryPress() does nothing (no local start; the server drops it too).
 if script:GetAttribute("JumpAirJumpsEnabled") == nil then script:SetAttribute("JumpAirJumpsEnabled", true) end -- v1.6
 if script:GetAttribute("JumpHopBackEnabled") == nil then script:SetAttribute("JumpHopBackEnabled", true) end -- v1.5
 local function hopMode() return script:GetAttribute("JumpHopBackEnabled") ~= false and char:GetAttribute("JumpHopBack") == true end
@@ -271,6 +275,16 @@ local function tryPress()
 	char:SetAttribute("JumpPredictedAt", stamp)
 	if remote then remote:FireServer(stamp) end
 	show("JumpInputResult", "sent")
+end
+local function __prematchLocked() -- v1.8: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+do -- v1.8: no press before GO
+	local rawPress = tryPress
+	tryPress = function(...)
+		if __prematchLocked() then return end
+		return rawPress(...)
+	end
 end
 
 local doubleUsed, wasHeld = false, false -- v1.2: declared before launch() (see header)

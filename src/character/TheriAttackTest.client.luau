@@ -1,4 +1,4 @@
--- TheriAttackTest v1.3 (Mecha Dino Arena) — the Therizinosaurus' ATTACK input on the owner's client: each tap is the next
+-- TheriAttackTest v1.4 (Mecha Dino Arena) — the Therizinosaurus' ATTACK input on the owner's client: each tap is the next
 -- hit of the 3-hit claw combo. MDA-202, plan docs/plans/THERIZINO_KIT_v1.0.md Task 5 (server: TheriAttackServer 1.0), mockup
 -- docs/mockups/therizino_kit_options_v0.3.html (Kepu 2026-11-02: "3-hit combo", "A Reaper Sweeps").
 -- Pattern: TenoAttackTest 1.4 (same bindings, blocks and refusal handling; no hold: the press is the tap).
@@ -38,6 +38,10 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Flowing Cuts windows
 VERSION = "1.2" -- v1.2 the Fourth Cut
 VERSION = "1.3" -- v1.3 Overclock tap gap
+VERSION = "1.4" -- v1.4 pre-match lock
+-- v1.4 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, blocked() answers "locked" (no local start; the server drops it too).
 local ACTION = "DinoTheriAttack"
 local ACTION_CLICK = "DinoTheriAttackClick"
 local DEFAULTS = {TheriAttackEnabled = false, TheriMinGap = 0.33, TheriChainWindow = 0.8, TheriFinisherRecover = 0.9,
@@ -103,6 +107,16 @@ local function blocked()
 	if char:GetAttribute("PinHeld") == true then return "pinned" end
 	if player:GetAttribute("InMenu") == true then return "menu" end
 	return nil
+end
+local function __prematchLocked() -- v1.4: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+do -- v1.4: locked before GO
+	local rawBlocked = blocked
+	blocked = function(...)
+		if __prematchLocked() then return "locked" end
+		return rawBlocked(...)
+	end
 end
 
 local function onTap(src)

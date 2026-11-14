@@ -1,4 +1,4 @@
--- JumpServer v1.6 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
+-- JumpServer v1.8 (Dino Arcade) — TEST. Validates leap requests and stamps the start time for every client.
 -- Client -> server: ReplicatedStorage.DinoJumpRequest:FireServer(clientServerTime) (sent by JumpTest 1.0 at the
 --   key press, i.e. the start of the crouch).
 -- Start time = the client's stamp clamped to [now - MAX_LAG, now], written to the character attribute
@@ -62,6 +62,11 @@ script:SetAttribute("JumpServerVersion", "1.4") -- v1.4 JumpAddCharge hook
 script:SetAttribute("JumpServerVersion", "1.5") -- v1.5 JumpAirJumps
 script:SetAttribute("JumpServerVersion", "1.6") -- v1.6 no leaps while snared
 script:SetAttribute("JumpServerVersion", "1.7") -- v1.7 bot entrance
+script:SetAttribute("JumpServerVersion", "1.8") -- v1.8 pre-match lock
+-- v1.8 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
 -- v1.6 (MDA-356; Kepu 2026-11-08 "pachy headbutt when trapped by zino still works which defeats the purpose of throwing a trap" -> "No movement moves"): a leap (DinoJumpRequest) and an air jump / flap (DinoJumpDoubleRequest) are refused "snared" while the character's
 --   TheriSnaredUntil (Snare Wires bola) or HookHeldUntil (Reaper Hook / Grappling Hook hold) is after now (the PinHeld pattern;
 --   bites and attacks that stay in place still work; the Troodon's Feather Shed still breaks out). JumpTest 1.7 refuses them locally too. Switch: script
@@ -185,7 +190,11 @@ local function onLeap(player, stamp) -- v1.7: named so the bot entrance can call
 		char:SetAttribute("JumpDeniedAt", stamp)
 	end
 end
-remote.OnServerEvent:Connect(onLeap) -- v1.7
+local function __prematchLocked(player) -- v1.8: PracticeServer 1.12 pre-match lock (see VERSION 1.8)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+remote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onLeap(player, ...) end) -- v1.7
 
 -- v1.2: Mecha Legs double jump (one per accepted leap)
 local DOUBLE_WINDOW = 4
@@ -203,6 +212,7 @@ local function airLimit(char) -- v1.5
 	return math.max(1, math.floor(tonumber(char:GetAttribute("JumpAirJumps")) or 1))
 end
 doubleRemote.OnServerEvent:Connect(function(player, stamp)
+	if __prematchLocked(player) then return end -- v1.8: dropped while pre-match locked
 	local char = player.Character
 	if not char then return end
 	local now = workspace:GetServerTimeNow()

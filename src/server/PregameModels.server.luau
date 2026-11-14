@@ -1,4 +1,4 @@
--- PregameModels v1.0 (Mecha Dino Arena) — the 3D dinos and mecha parts the pre-game screens show (Script, ServerScriptService).
+-- PregameModels v1.1 (Mecha Dino Arena) — the 3D dinos and mecha parts the pre-game screens show (Script, ServerScriptService).
 -- MDA-485, plan docs/plans/PREGAME_LINEUP_v1.0.md T9, mockup docs/mockups/pregame_v0.4.html (Kepu 2026-11-12 18:54: "show the 3D
 -- Dino model instead of that badge ... transitions to the mecha parts with the previews on that same screen").
 -- Output: ReplicatedStorage.PregameModels (Folder) > <Dino> (Folder, one per DINOS) > Body (Model) + Parts (Folder) > <pathId>
@@ -24,6 +24,10 @@ local ServerStorage = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 PieceCount on every model
+-- v1.1 (intro bodies, MDA-526, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 7; Kepu 2026-11-13 18:23 "some dinos 3d body don't
+--   fully load up on the intro screens"): every Body and part model gets attribute PieceCount (its descendant count, set before
+--   it is parented) so PregameScreen 1.3 can tell a copy that is still arriving on the client from a complete one.
 local BUILD_DELAY = 3
 local DINOS = {"Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"}
 local SOURCES = { -- LabPreviewServer 1.0's list: these scripts expose a plain "BuildPreview"
@@ -109,6 +113,7 @@ local function bodyOf(dino)
 	local cf, size = show:GetBoundingBox()
 	show:SetAttribute("BodySize", size)
 	show:SetAttribute("BodyMinY", cf.Position.Y - size.Y / 2)
+	show:SetAttribute("PieceCount", #show:GetDescendants()) -- v1.1
 	show.Parent = f
 	local parts = Instance.new("Folder")
 	parts.Name = "Parts"
@@ -189,6 +194,7 @@ local function build(dino, id)
 			local cf, size = res:GetBoundingBox()
 			res:PivotTo(res:GetPivot() - Vector3.new(cf.Position.X, cf.Position.Y - size.Y / 2, cf.Position.Z))
 		end
+		res:SetAttribute("PieceCount", #res:GetDescendants()) -- v1.1
 		res.Parent = f.Parts
 		missing[dino .. ":" .. id] = nil
 	else

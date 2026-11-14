@@ -1,4 +1,4 @@
--- HeadbuttTest v1.3 (Mecha Dino Arena) — the pachy's headbutt charge on the owner's client. MDA-119, plan
+-- HeadbuttTest v1.4 (Mecha Dino Arena) — the pachy's headbutt charge on the owner's client. MDA-119, plan
 -- docs/plans/PACHY_PLAYABLE_v1.0.md Task 6 (server: HeadbuttServer 1.0).
 -- Active while the character has HeadbuttEnabled = true (PachyModelData 1.1). Kepu 2026-10-30: the headbutt is the
 --   pachy's ATTACK ("Headbutt = ATTACK"), "when its in charge mode it should be pretty manueverable", "it should be able to
@@ -55,6 +55,10 @@ local ContextActionService = game:GetService("ContextActionService")
 
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 precise front contact, snare block, slow back
+VERSION = "1.4" -- v1.4 pre-match lock
+-- v1.4 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, tryPress() does nothing (no local start; the server drops it too).
 local ACTION = "DinoHeadbutt"
 local ACTION_CLICK = "DinoHeadbuttClick"
 local BIND = "DinoHeadbuttDrive"
@@ -256,6 +260,16 @@ local function tryPress(source)
 	show("HeadbuttInputResult", "sent")
 	setState("windup")
 	phaseAt = os.clock()
+end
+local function __prematchLocked() -- v1.4: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+do -- v1.4: no press before GO
+	local rawPress = tryPress
+	tryPress = function(...)
+		if __prematchLocked() then return end
+		return rawPress(...)
+	end
 end
 
 -- a denied request cancels the local charge

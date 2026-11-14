@@ -1,4 +1,4 @@
--- TrooAttackServer v1.7 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
+-- TrooAttackServer v1.10 (Mecha Dino Arena) — the Troodon's Glow Pod Toss (server authority). MDA-333, plan
 -- docs/plans/TROODON_KIT_v1.0.md Task 4 (deterministic map), mockup docs/mockups/troodon_kit_options_v0.1.html attack A
 -- (Kepu 2026-11-06 15:38: "Let's go with your recommendations": attack A, the proposed numbers; red-team "Lead the target").
 -- Patterns copied, not edited: DiloAttackServer 1.5 (request -> checks -> timed resolve, soft aim, targets, mode / squad
@@ -1065,7 +1065,11 @@ local function onRemote(player, stamp, stamp2) -- v1.7: named so BotUse can call
 	local delay = math.clamp(math.min(stamp, t) + w - t, 0, w)
 	task.delay(delay, release, player, char, st)
 end
-remote.OnServerEvent:Connect(onRemote) -- v1.7
+local function __prematchLocked(player) -- v1.10: PracticeServer 1.12 pre-match lock (see VERSION 1.10)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+remote.OnServerEvent:Connect(function(player, ...) if __prematchLocked(player) then return end return onRemote(player, ...) end) -- v1.7
 
 -- v1.7 BotUse (practice bots, MDA-410, plan docs/plans/PRACTICE_MATCH_v1.0.md Task 6, ADR-010; Kepu 2026-11-10 "Real abilities"):
 --   server-only BindableFunction "BotUse" (child): Invoke(model, ...same arguments as the remote...) runs the remote handler above
@@ -1108,3 +1112,8 @@ Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
 script:SetAttribute("TrooAttackServerVersion", "1.8") -- v1.8 double tap = pod to a teammate
 script:SetAttribute("TrooAttackServerVersion", "1.9") -- v1.9 practice bot slows as attributes
+script:SetAttribute("TrooAttackServerVersion", "1.10") -- v1.10 pre-match lock
+-- v1.10 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).

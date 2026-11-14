@@ -3498,3 +3498,9 @@ Model numbers are generator output (old version = the flag in the last column, b
 - HerreraMissileServer 1.1 `CruiseSteerV2Enabled` (true, per update), `CruiseSteerV2` (90 /s; x 0.5 boosted).
 - HerreraMissileFX 1.0 `HerreraMissileFXEnabled` (true). Diagnostic `HerreraMissileFXEvents`.
 - MechaButtons 1.49 `MechaButtonsCruiseEnabled` (true, at start). AbilityBar 1.43 `AbilityBarCruiseEnabled` (true, at start).
+- PracticeServer 1.12 `PrPrematchLockEnabled` (true, per place / refresh), `PrPrematchLockMax` (15 s). Character `PrematchLockUntil` (server time; locked while > now).
+- Move servers (31, MDA-528): no new attributes; they read character `PrematchLockUntil`.
+- Move scripts (MDA-529): no new attributes. MechaButtons 1.50 `PrematchLockLookEnabled` (true, per frame), diagnostic character `MechaButtonsLockedPresses`. AbilityBar 1.44 `PrematchLockLookEnabled` (true), diagnostic character `AbilityBarLocked`. ArenaTouch 1.21 `PrematchLockLookEnabled` (true), diagnostic character `ArenaTouchLocked`.
+- PrematchCam 1.0 `PrematchCamEnabled` (true, per frame), `PanStart` (9), `PanOrbitAt` (7), `PanBackAt` (5), `PanEndAt` (3), `PanOrbitRadius` (60), `PanOrbitHeight` (70), `PanOrbitSpeed` (0.35 rad/s), `PanHighUp` (80), `PanFov` (60). Diagnostics `PrematchCamVersion`, `PrematchCamState`, `PrematchCamPans`. Character `PrematchPanning`, `ShoulderCamExternal` (while panning).
+- PrematchCountdown 1.1 `PrematchChipPanEnabled` (true, per frame).
+- PregameModels 1.1: Body / part model attribute `PieceCount`. PregameScreen 1.3 `PregameWaitCompleteEnabled` (true, per check), diagnostic `PregameModelsComplete`.

@@ -1,4 +1,4 @@
--- RamTest v1.2 (Dino Arcade) — TEST input for the T-Rex tree charge (owner's client only). E (keyboard), DPadUp (gamepad)
+-- RamTest v1.3 (Dino Arcade) — TEST input for the T-Rex tree charge (owner's client only). E (keyboard), DPadUp (gamepad)
 -- or the on-screen Ram button (touch) (key list: RAM_KEYS below). Bound only while the character attribute RamEnabled
 -- is true (TRexModelData 1.20; the raptor has none and gets no button).
 -- User: "a dedicated button that makes a dino run into the nearest tree so that its clear when its happening for
@@ -339,6 +339,20 @@ local function tryPress()
 	end
 	show("RamBackUp", "none")
 	beginWindup()
+end
+local function __prematchLocked() -- v1.3: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+char:SetAttribute("RamTestVersion", "1.3") -- v1.3 pre-match lock
+-- v1.3 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, tryPress() does nothing (no local start; the server drops it too).
+do -- v1.3: no press before GO
+	local rawPress = tryPress
+	tryPress = function(...)
+		if __prematchLocked() then return end
+		return rawPress(...)
+	end
 end
 
 local function touching()

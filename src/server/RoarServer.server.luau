@@ -1,4 +1,4 @@
--- RoarServer v1.2 (Dino Arcade) — TEST. Validates roar requests from players and stamps the start time.
+-- RoarServer v1.3 (Dino Arcade) — TEST. Validates roar requests from players and stamps the start time.
 -- Client -> server: ReplicatedStorage.DinoRoarRequest:FireServer()
 -- Server -> everyone: character attribute RoarStartedAt = workspace:GetServerTimeNow() (replicates), which
 --   every client's IdleAnimation (pose) and RoarFX (sound + rings) read, so all players see the same roar.
@@ -88,6 +88,11 @@ local function squadmate(a, b)
 	return false
 end
 script:SetAttribute("RoarServerVersion", "1.2") -- v1.2
+script:SetAttribute("RoarServerVersion", "1.3") -- v1.3 pre-match lock
+-- v1.3 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
 local function dinoOf(part)
 	local model = part:FindFirstAncestorWhichIsA("Model")
 	while model do
@@ -180,7 +185,12 @@ local function sweep(char, started)
 	char:SetAttribute("RoarEffectState", "done")
 end
 
+local function __prematchLocked(player) -- v1.3: PracticeServer 1.12 pre-match lock (see VERSION 1.3)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
 remote.OnServerEvent:Connect(function(player)
+	if __prematchLocked(player) then return end -- v1.3: dropped while pre-match locked
 	local char = player.Character
 	if not char then return end
 	local hum = char:FindFirstChildOfClass("Humanoid")

@@ -1,4 +1,4 @@
--- DiloAttackTest v1.6 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
+-- DiloAttackTest v1.7 (Mecha Dino Arena) — the Dilophosaurus' ATTACK input on the owner's client (LocalScript,
 -- StarterCharacterScripts). MDA-225, plan docs/plans/DILO_KIT_v1.0.md Task 5 (Kepu 2026-11-03: "C and J1", "Bite on press",
 -- "Soft aim, near-sure hit"); server DiloAttackServer 1.0.
 -- Only while the character's DiloAttackEnabled is true (the dilo). Inputs: CAS action "DinoDiloAttack" (the phone's big
@@ -70,6 +70,10 @@ VERSION = "1.5" -- v1.5 spit on release + hold to snipe (MDA-510)
 --     no shot ("idle", DiloInputResult the reason / "cancel").
 --   Diagnostics: DiloSnipeHolding, DiloSnipeHoldStart, DiloSnipeAim, DiloSnipesSent (count). Off = 1.4 (spit on press).
 VERSION = "1.6" -- v1.6 attack back to spit on press (MDA-513)
+VERSION = "1.7" -- v1.7 pre-match lock
+-- v1.7 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
+--   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
+--   PrematchLockUntil (PracticeServer 1.12) is after the server time, blocked() answers "locked" (no local start; the server drops it too).
 -- v1.6 (plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md "Attack button: back to the spit on press"; Kepu 2026-11-13 pick "Yes, back to
 --   before" (the sniper shot moves to the Sniper Scope part)): while script attribute DiloAttackTestSpitPressEnabled ~= false (default
 --   true, read at start) DiloAttackTestSnipeEnabled starts false = the 1.4 spit on press (hold-to-snipe off; set it true to bring
@@ -139,6 +143,16 @@ local function blocked()
 	if char:GetAttribute("PinHeld") == true then return "pinned" end
 	if player:GetAttribute("InMenu") == true then return "menu" end
 	return nil
+end
+local function __prematchLocked() -- v1.7: PracticeServer 1.12 pre-match lock
+	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
+do -- v1.7: locked before GO
+	local rawBlocked = blocked
+	blocked = function(...)
+		if __prematchLocked() then return "locked" end
+		return rawBlocked(...)
+	end
 end
 local function dartReady(t) return t - lastDart >= (tonumber(get("DiloDartCooldown")) or 1.5) end
 

@@ -1,4 +1,4 @@
--- HerreraMissileServer v1.1 (Mecha Dino Arena) — the Herrera's Cruise Missile (mecha part cmissile): launch, the flown missile,
+-- HerreraMissileServer v1.2 (Mecha Dino Arena) — the Herrera's Cruise Missile (mecha part cmissile): launch, the flown missile,
 -- the blast and the star crater. MDA-521, plan docs/plans/HERRERA_CRUISE_MISSILE_v1.0.md Task 3, mockup
 -- docs/mockups/herrera_cruise_missile_v0.1.html; Kepu 2026-11-13 17:23 "a cruise missile that works just like the call of duty one
 -- ... where you're directing the missile as it's flying down on the map. Zero damage to teammates but does 40 damage to enemies with
@@ -34,6 +34,11 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 3x steering (MDA-525)
+VERSION = "1.2" -- v1.2 pre-match lock
+-- v1.2 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
+--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
+--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
+--   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
 -- v1.1 (MDA-525; Kepu 2026-11-13 17:59 "make the rocket more maneuverable like on Cod", pick "3x: 90 studs/s"): the flat steering
 --   limit is CruiseSteerV2 (90) studs/s (x 0.5 after the boost) while script attribute CruiseSteerV2Enabled ~= false (default
 --   true, read at each update; false = 1.0's CruiseSteer 30). HerreraMissileCam 1.1 steers at the same speed.
@@ -295,7 +300,12 @@ local function launch(player, stamp)
 	char:SetAttribute("CruiseLaunchAt", t)
 	char:SetAttribute("CruiseFlying", true) -- last
 end
+local function __prematchLocked(player) -- v1.2: PracticeServer 1.12 pre-match lock (see VERSION 1.2)
+	local c = player and player.Character
+	return c ~= nil and (tonumber(c:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+end
 remote.OnServerEvent:Connect(function(player, stamp, action, pos)
+	if __prematchLocked(player) then return end -- v1.2: dropped while pre-match locked
 	if script:GetAttribute("HerreraMissileServerEnabled") == false then return end
 	if action == nil or action == "launch" then launch(player, stamp) return end
 	local char = player.Character
