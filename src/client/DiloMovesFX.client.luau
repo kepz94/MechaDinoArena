@@ -1,4 +1,4 @@
--- DiloMovesFX v1.7 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
+-- DiloMovesFX v1.8 (Mecha Dino Arena) — the dilo's mecha part effects and part motion on this client (LocalScript,
 -- StarterPlayerScripts). Plan docs/plans/DILO_PARTS_v1.0.md Task 6 (MDA-319); mockup docs/mockups/dilo_parts_options.html
 -- v0.1 (tools/mockup/dilo_parts_looks.js: the picked looks' motion and FX). Every player character with Species "Dilo" that
 -- wears DPart_* models (DiloPartsServer 1.0) is watched; the stamps come from DiloMovesServer 1.0. No landing FX.
@@ -95,6 +95,18 @@ VERSION = "1.7" -- v1.7 Sniper Scope: arm swing, red lens glint, venom tracer, s
 --     for DiloScopeMarkFor s on this client when the shooter is you or in your squad (the shooter player's SquadId = yours, not "").
 --   Switch: script attribute PartsFXScopeEnabled (default true, read at each event / frame; false = 1.6: no scope FX; the arm stays
 --   swung up). Diagnostics: script DiloMovesFXScopeShots.
+VERSION = "1.8" -- v1.8 Sniper Scope shot: bolt + lingering beam (MDA-519)
+-- v1.8 (MDA-519; Kepu 2026-11-13 16:59 "where's the VFX for the bullet? I don't see shit", mockup
+--   docs/mockups/dilo_scope_shot_vfx_v0.1.html, pick "C · Bolt + beam"): the 1.7 thin tracer is replaced by: a glowing venom bolt
+--   (neon ball 1.1 x k + a green PointLight) that flies from the lens to the shot's end in DiloScopeBoltTime (0.12 s), drawing a
+--   beam behind it (pale core 0.3 x k + green glow 1.0 x k, from the start to the bolt), the beam then hangs and fades over
+--   DiloScopeBeamLinger (0.6 s); at the end: a big splat on a hit (flash 6 x k, 30 bits, a ring 10 x k wide) or a small one on a
+--   miss / wall (flash 3 x k, 12 bits). On your own client the bolt and beam start 0.6 x k right and 0.7 x k below the camera (the
+--   scope eye sits at the lens, so a line from the lens would be seen end-on), so you see it fly into your crosshair. Switch: script
+--   attribute PartsFXScopeBoltEnabled (default true, read at each shot; false = 1.7's thin tracer).
+for k, v in pairs({PartsFXScopeBoltEnabled = true, DiloScopeBoltTime = 0.12, DiloScopeBeamLinger = 0.6}) do -- v1.8
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 -- v1.6 (plan docs/plans/DILO_VFX_v1.0.md Task 2, MDA-391; Kepu 2026-11-10 15:05 picks, 16:02 "build"): while the sibling LocalScript
 --   DiloPartsVFX 1.0 owns a part (it is running: DiloPartsVFXVersion set; its DiloPartsVFXEnabled and DiloPartsVFX_<id>Enabled
 --   are not false), this script skips that part's EFFECTS: gatling darts / hit bursts; mortar ring / muzzle / canister / landing
@@ -848,6 +860,58 @@ local function markShow(target, secs)
 	h.Parent = target
 	Debris:AddItem(h, secs)
 end
+local PALE_G = Color3.fromRGB(216, 255, 138) -- v1.8
+local function boltOn() return on("PartsFXScopeBoltEnabled") end -- v1.8
+local function boltShot(char, from, to, k, hit) -- v1.8: the venom bolt + its lingering beam + the splat (see the header)
+	if char == Players.LocalPlayer.Character then
+		local cam = workspace.CurrentCamera
+		if cam and (cam.CFrame.Position - from).Magnitude < 3 * k then
+			from = from + cam.CFrame.RightVector * 0.6 * k - cam.CFrame.UpVector * 0.7 * k
+		end
+	end
+	local len = (to - from).Magnitude
+	if len < 0.1 then return end
+	local travel = math.max(0.02, tonumber(script:GetAttribute("DiloScopeBoltTime")) or 0.12)
+	local linger = math.max(0.05, tonumber(script:GetAttribute("DiloScopeBeamLinger")) or 0.6)
+	local ball = part(Vector3.one * 1.1 * k, PALE_G, Enum.Material.Neon, CFrame.new(from), 0, Enum.PartType.Ball)
+	local light = Instance.new("PointLight")
+	light.Color, light.Range, light.Brightness = GREEN, 12 * k, 4
+	light.Parent = ball
+	local core = part(Vector3.new(0.3 * k, 0.3 * k, 0.1), PALE_G, Enum.Material.Neon, CFrame.new(from), 0)
+	local glow = part(Vector3.new(1.0 * k, 1.0 * k, 0.1), GREEN, Enum.Material.Neon, CFrame.new(from), 0.55)
+	flash(from, 2.5 * k, PALE_G, 0.12)
+	local t0, landed = os.clock(), false
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		local u = (os.clock() - t0) / travel
+		local e = math.clamp(u, 0, 1)
+		local tip = from + (to - from) * e
+		local l = math.max(0.1, (tip - from).Magnitude)
+		local cf = CFrame.lookAt((from + tip) / 2, tip + (to - from).Unit * 0.01)
+		local fade = u <= 1 and 0 or math.clamp((os.clock() - t0 - travel) / linger, 0, 1)
+		core.Size, core.CFrame, core.Transparency = Vector3.new(0.3 * k * (1 - fade * 0.6), 0.3 * k * (1 - fade * 0.6), l), cf, fade
+		glow.Size, glow.CFrame, glow.Transparency = Vector3.new(1.0 * k, 1.0 * k, l), cf, 0.55 + 0.45 * fade
+		if u < 1 then
+			ball.CFrame = CFrame.new(tip)
+		elseif not landed then
+			landed = true
+			ball:Destroy()
+			if hit then
+				flash(to, 6 * k, PALE_G, 0.25)
+				burst(to, GREEN, GREEN_D, 30, 26 * k, 1.1 * k, 0.55, 180, nil, Vector3.new(0, -50, 0))
+				ring(to, 10 * k, PALE_G, 0.5)
+			else
+				flash(to, 3 * k, PALE_G, 0.18)
+				burst(to, GREEN, GREEN_D, 12, 14 * k, 0.6 * k, 0.4, 140, nil, Vector3.new(0, -40, 0))
+			end
+		end
+		if fade >= 1 then
+			conn:Disconnect()
+			core:Destroy()
+			glow:Destroy()
+		end
+	end)
+end
 local function watchScope(char)
 	if scopeWatched[char] then return end
 	scopeWatched[char] = true
@@ -857,7 +921,7 @@ local function watchScope(char)
 		if not at or now() - at > 1 or typeof(from) ~= "Vector3" or typeof(to) ~= "Vector3" or not on("PartsFXScopeEnabled") then return end
 		local k = scaleK(char)
 		local len = (to - from).Magnitude
-		if len > 0.1 then
+		if len > 0.1 and not boltOn() then -- v1.8: not with the bolt
 			local beam = part(Vector3.new(0.25 * k, 0.25 * k, len), GREEN, Enum.Material.Neon, CFrame.lookAt((from + to) / 2, to), 0)
 			TweenService:Create(beam, TweenInfo.new(0.3), {Transparency = 1, Size = Vector3.new(0.05 * k, 0.05 * k, len)}):Play()
 			Debris:AddItem(beam, 0.35)
@@ -865,6 +929,7 @@ local function watchScope(char)
 		flash(from, 2 * k, Color3.fromRGB(216, 255, 138), 0.12)
 		local rule = char:GetAttribute("DiloScopeRule")
 		local target = findModel(char:GetAttribute("DiloScopeTarget"))
+		if boltOn() then boltShot(char, from, to, k, rule == "hit") end -- v1.8
 		if rule == "hit" then
 			flash(to, 4 * k, Color3.fromRGB(216, 255, 176), 0.2)
 			burst(to, GREEN, GREEN_D, 18, 18 * k, 0.8 * k, 0.45, 180, nil, Vector3.new(0, -40, 0))

@@ -1,4 +1,4 @@
--- DiloSnipeCam v1.2 (Mecha Dino Arena) — the Dilo sniper spit's head camera and aim HUD, PC and phone (LocalScript,
+-- DiloSnipeCam v1.3 (Mecha Dino Arena) — the Dilo sniper spit's head camera and aim HUD, PC and phone (LocalScript,
 -- StarterCharacterScripts, owner's client). MDA-511, plan docs/plans/DILO_SNIPER_SPIT_v1.0.md Task 3, mockup
 -- docs/mockups/dilo_sniper_spit_v0.1.html "A · Head cam"; Kepu 2026-11-13 15:38 "it goes into fps mode where you're aiming the
 -- head of the dilo manually no aim assist".
@@ -52,6 +52,12 @@ local UserInputService = game:GetService("UserInputService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 scope ring crosshair, camera back to before the aim
 VERSION = "1.2" -- v1.2 Sniper Scope classic scope view (MDA-518)
+VERSION = "1.3" -- v1.3 the scope stays up 0.5 s after the shot (MDA-519)
+-- v1.3 (MDA-519, mockup docs/mockups/dilo_scope_shot_vfx_v0.1.html, Kepu 2026-11-13 pick "C · Bolt + beam ... scope stays up 0.5 s"):
+--   after the shot the scope view holds DiloScopeShotHold (0.5) s instead of DiloScopeRecoilHold (0.3), so the bolt is seen landing
+--   (DiloMovesFX 1.8). Switch: script attribute DiloScopeShotHoldEnabled (default true, read every frame; false = 1.2's 0.3 s).
+if script:GetAttribute("DiloScopeShotHoldEnabled") == nil then script:SetAttribute("DiloScopeShotHoldEnabled", true) end -- v1.3
+if script:GetAttribute("DiloScopeShotHold") == nil then script:SetAttribute("DiloScopeShotHold", 0.5) end -- v1.3
 local char = script.Parent
 local hum = char:WaitForChild("Humanoid", 10)
 local hrp = char:WaitForChild("HumanoidRootPart", 10)
@@ -459,6 +465,7 @@ local function scopeStep(dt, on)
 	local firedAt = tonumber(char:GetAttribute("DiloScopeFiredAt"))
 	local since = firedAt and os.clock() - firedAt or math.huge
 	local hold = scfg("DiloScopeRecoilHold")
+	if script:GetAttribute("DiloScopeShotHoldEnabled") ~= false then hold = tonumber(script:GetAttribute("DiloScopeShotHold")) or 0.5 end -- v1.3
 	if not (on and (holding or (scopeOwned and since < hold))) then
 		if scopeOwned then
 			scopeOwned = false
