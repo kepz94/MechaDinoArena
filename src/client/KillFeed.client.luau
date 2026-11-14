@@ -29,6 +29,11 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 phone HUD v2: lines top-right
+-- v1.2 (phone HUD v2, MDA-535, plan docs/plans/PHONE_HUD_V2_v1.0.md rule 5, mockup docs/mockups/phone_hud_v0.1.html "A · your
+--   version"): while player attribute PhoneHudV2 is true (PhoneMenu 1.0) and script attribute KillFeedPhoneV2Enabled ~= false
+--   (default true, read per frame), the lines sit top-right, right-aligned: AnchorPoint (1, 0) at (1, -16, 0, y), y = PhoneMenu's
+--   ☰ bottom + 6 (50 without it); a late render step (Last + 40) places them. Phone rules (3 lines, 4 s, banner) unchanged.
 local PC = {max = 5, life = 5, lifeMe = 8, scale = 1, tags = true}
 local PHONE = {max = 3, life = 4, lifeMe = 4, scale = 0.82, tags = false}
 local BANNER_LIFE = 2.5
@@ -75,6 +80,27 @@ list.Padding = UDim.new(0, 4)
 list.Parent = feed
 local scale = Instance.new("UIScale")
 scale.Parent = feed
+
+-- v1.2: phone HUD v2 placement (see the header)
+do
+	local BIND = "KillFeedPhoneV2"
+	pcall(function() RunService:UnbindFromRenderStep(BIND) end)
+	RunService:BindToRenderStep(BIND, Enum.RenderPriority.Last.Value + 40, function()
+		local on = player:GetAttribute("PhoneHudV2") == true and script:GetAttribute("KillFeedPhoneV2Enabled") ~= false
+		if on then
+			local y = 50
+			local pm = pg:FindFirstChild("PhoneMenu")
+			local b = pm and pm:IsA("ScreenGui") and pm.Enabled and pm:FindFirstChild("Burger")
+			if b and b.AbsoluteSize.Y > 0 then y = b.AbsolutePosition.Y + b.AbsoluteSize.Y - gui.AbsolutePosition.Y + 6 end
+			feed.AnchorPoint = Vector2.new(1, 0)
+			feed.Position = UDim2.new(1, -16, 0, y)
+			list.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		elseif feed.AnchorPoint.X ~= 0 then
+			feed.AnchorPoint = Vector2.new(0, 0)
+			list.HorizontalAlignment = Enum.HorizontalAlignment.Left
+		end
+	end)
+end
 
 local banner = Instance.new("TextLabel")
 banner.Name = "Banner"

@@ -3505,3 +3505,6 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PrematchCountdown 1.1 `PrematchChipPanEnabled` (true, per frame).
 - PregameModels 1.1: Body / part model attribute `PieceCount`. PregameScreen 1.3 `PregameWaitCompleteEnabled` (true, per check), diagnostic `PregameModelsComplete`.
 - HerreraMovesPose 1.3 model attribute `GlideBankFlip` (true by default when nil; read per frame; false = 1.2 lean direction).
+- PhoneMenu 1.0 `PhoneHudV2Enabled` (true, per frame), `PhoneMenuY_Skills` (50), `PhoneMenuY_Menu` (50), `PhoneMenuCloseDelay` (0.15 s). Player `PhoneHudV2`, `PhoneMenuOpen`, `PhoneMenuY_Skills`, `PhoneMenuY_Menu`. Diagnostic `PhoneMenuToggles`.
+- PhoneLayoutServer 1.0 `PhoneDynamicStickEnabled` (true; change applies to every player). Diagnostic `PhoneDynamicStickPlayers`.
+- HardpointHUD 1.13 `HardpointHUDPhoneV2Enabled` (true, per frame), `HardpointHUDPhoneBoxW` (40). KillFeed 1.2 `KillFeedPhoneV2Enabled` (true). Lab 1.17 `LabPhoneDrawerEnabled` (true). ArenaStatus 1.9 `ArenaPhoneV2Enabled` (true), `ArenaPhoneBarsWidth` (160).

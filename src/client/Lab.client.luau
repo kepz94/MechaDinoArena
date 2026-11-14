@@ -138,6 +138,12 @@ VERSION = "1.13" -- v1.13 dilo parts (DPart_*)
 VERSION = "1.14" -- v1.14 troodon parts (OPart_*)
 VERSION = "1.15" -- v1.15 part clips (live clip + what line + chips + step preview)
 VERSION = "1.16" -- v1.16 SAVE LOADOUT tile
+VERSION = "1.17" -- v1.17 phone HUD v2: SKILLS in the ☰ drawer
+-- v1.17 (phone HUD v2, MDA-533, plan docs/plans/PHONE_HUD_V2_v1.0.md rule 2, mockup docs/mockups/phone_hud_v0.1.html "A · your
+--   version"): while player attribute PhoneHudV2 is true (PhoneMenu 1.0) and script attribute LabPhoneDrawerEnabled ~= false
+--   (default true, read per frame), a late render step (Last + 40) places the SKILLS pill at (1, -16, 0, PhoneMenuY_Skills (50))
+--   while PhoneMenuOpen is true, else 400 px above the screen (not drawn, not tappable). SQUAD (SquadHUD) follows under it.
+--   The 0.5 s corner loop does not move the pill while this is on (else SQUAD caught the old spot between frames).
 -- v1.16 (saved loadout, MDA-503, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md B2, mockup docs/mockups/save_loadout_v0.1.html
 --   "A · SAVE button in the slot row"; Kepu 2026-11-13 pick "A · Tile in the slot row"): a fifth tile after the 4 slots,
 --   width max(20% of the middle column, 70 px) (the slots share the rest): while SkillSlot1..4 differ from the player
@@ -1968,7 +1974,9 @@ task.spawn(function()
 	while bgui.Parent do
 		local ast = pg:FindFirstChild("ArenaStatus")
 		local pill = ast and ast:FindFirstChild("Pill")
-		if pill and pill.AbsoluteSize.X > 0 then
+		if player:GetAttribute("PhoneHudV2") == true and script:GetAttribute("LabPhoneDrawerEnabled") ~= false then
+			-- v1.17: the phone drawer places it (the render step below); not reset here, so SQUAD never sees the old spot
+		elseif pill and pill.AbsoluteSize.X > 0 then
 			labButton.Position = UDim2.new(1, -16 - pill.AbsoluteSize.X - 8, 0, labY)
 		else
 			labButton.Position = UDim2.new(1, -150, 0, labY)
@@ -1979,6 +1987,17 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
+
+-- v1.17: phone HUD v2 drawer (see the header)
+do
+	local BIND = "LabPhoneDrawer"
+	pcall(function() RunService:UnbindFromRenderStep(BIND) end)
+	RunService:BindToRenderStep(BIND, Enum.RenderPriority.Last.Value + 40, function()
+		if player:GetAttribute("PhoneHudV2") ~= true or script:GetAttribute("LabPhoneDrawerEnabled") == false then return end
+		local open = player:GetAttribute("PhoneMenuOpen") == true
+		labButton.Position = UDim2.new(1, -16, 0, open and (tonumber(player:GetAttribute("PhoneMenuY_Skills")) or 50) or -400)
+	end)
+end
 
 -- v1.16: toast after a save
 player:GetAttributeChangedSignal("SkillLastResult"):Connect(function()

@@ -162,6 +162,17 @@ VERSION = "1.9" -- v1.9 end timing
 VERSION = "1.10" -- v1.10 auto back to island
 VERSION = "1.11" -- v1.11 Arena record line on the banner
 VERSION = "1.12" -- v1.12 ARENA label on the results
+VERSION = "1.13" -- v1.13 phone HUD v2 score strip
+-- v1.13 (phone HUD v2, MDA-534, plan docs/plans/PHONE_HUD_V2_v1.0.md rule 4, mockup docs/mockups/phone_hud_v0.1.html "A · your
+--   version"; Kepu 2026-11-13: "really consider all the space being taken up on the phone screen", pick "I like option A but keep
+--   the current button style"): while player attribute PhoneHudV2 is true (PhoneMenu 1.0) and script attribute
+--   HardpointHUDPhoneV2Enabled ~= false (default true, read per frame), the compass stays in the top gap (top 8, the right limit 12 px
+--   left of PhoneMenu's ☰, 44 px kept free each side) and becomes the middle of a score strip: the score card, Status and Next
+--   pills are hidden; "PhoneYou" (blue rgb(90,160,255), your score) sits 4 px left of the compass and "PhoneFoe" (red
+--   rgb(224,40,74), their score) 4 px right of it, each HardpointHUDPhoneBoxW (40) wide and as tall as the compass + its under
+--   line (corner 6, FredokaOne 18 white); "PhoneStatus" under that row, the strip's width: "<P1 · 1:23> · <status>" (warm-up
+--   "P1 IN 0:08 · GET READY"; status text / colour as the Status pill; "· NEXT P2 IN 0:20" added while NEXT shows), TextSize 12.
+--   All three show only with the compass. Off / PC: as 1.12.
 if script:GetAttribute("HardpointHUDArenaLabelEnabled") == nil then script:SetAttribute("HardpointHUDArenaLabelEnabled", true) end
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
@@ -1264,6 +1275,61 @@ cmpUnder.Parent = gui
 local curDist = label(cmpUnder, {AnchorPoint = Vector2.new(0.5, 0), TextSize = 12, Text = "", TextStrokeTransparency = 0.35})
 local nextCount = label(cmpUnder, {AnchorPoint = Vector2.new(0.5, 0), TextSize = 12, Text = "", TextColor3 = GREY,
 	TextStrokeTransparency = 0.35})
+
+-- v1.13: phone HUD v2 score strip (see the header)
+if script:GetAttribute("HardpointHUDPhoneV2Enabled") == nil then script:SetAttribute("HardpointHUDPhoneV2Enabled", true) end
+if script:GetAttribute("HardpointHUDPhoneBoxW") == nil then script:SetAttribute("HardpointHUDPhoneBoxW", 40) end
+local function phoneV2() return player:GetAttribute("PhoneHudV2") == true and script:GetAttribute("HardpointHUDPhoneV2Enabled") ~= false end
+local function v2box(name, color)
+	local f = label(gui, {Name = name, BackgroundTransparency = 0.08, BackgroundColor3 = color, TextSize = 18, Text = "0", Visible = false})
+	corner(f, 6)
+	return f
+end
+local pYou, pFoe = v2box("PhoneYou", BLUE), v2box("PhoneFoe", RED)
+local pStatus = label(gui, {Name = "PhoneStatus", TextSize = 12, Text = "", Visible = false, TextStrokeTransparency = 0.35})
+local v2hid = false
+do
+	local rawTopGap = topGap
+	topGap = function(vp)
+		local L, R, T = rawTopGap(vp)
+		if not phoneV2() then return L, R, T end
+		local go = gui.AbsolutePosition
+		local pm = gui.Parent and gui.Parent:FindFirstChild("PhoneMenu")
+		local b = pm and pm:IsA("ScreenGui") and pm.Enabled and pm:FindFirstChild("Burger")
+		if b and b.AbsoluteSize.X > 0 then R = b.AbsolutePosition.X - go.X - 12 end
+		local box = (tonumber(script:GetAttribute("HardpointHUDPhoneBoxW")) or 40) + 4
+		return L + box, R - box, 8
+	end
+	local rawDraw = drawCompass
+	drawCompass = function(...)
+		local c1, c2 = rawDraw(...)
+		local on = phoneV2() and cmp.Visible
+		if on then
+			card.Visible, status.Visible = false, false
+			local showNext = nextL.Visible
+			nextL.Visible = false
+			v2hid = true
+			local bw = tonumber(script:GetAttribute("HardpointHUDPhoneBoxW")) or 40
+			local cp, cs = cmp.Position, cmp.Size
+			local x, y, w, h = cp.X.Offset, cp.Y.Offset, cs.X.Offset, cs.Y.Offset + 15
+			pYou.Position, pYou.Size = UDim2.fromOffset(x - 4 - bw, y), UDim2.fromOffset(bw, h)
+			pFoe.Position, pFoe.Size = UDim2.fromOffset(x + w + 4, y), UDim2.fromOffset(bw, h)
+			pYou.Text, pFoe.Text = youNum.Text, foeNum.Text
+			pStatus.Position, pStatus.Size = UDim2.fromOffset(x - 4 - bw, y + h + 2), UDim2.fromOffset(w + 8 + 2 * bw, 14)
+			local t = pointL.Text .. " · " .. status.Text
+			if showNext then t ..= " · " .. nextL.Text end
+			pStatus.Text, pStatus.TextColor3 = t, status.TextColor3
+		elseif v2hid then
+			card.Visible = true
+			v2hid = false
+		end
+		pYou.Visible, pFoe.Visible, pStatus.Visible = on, on, on
+		return c1, c2
+	end
+	cmp:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not cmp.Visible then pYou.Visible, pFoe.Visible, pStatus.Visible = false, false, false end
+	end)
+end
 
 local tags = {} -- [player] = BillboardGui
 local function tagFor(pl)

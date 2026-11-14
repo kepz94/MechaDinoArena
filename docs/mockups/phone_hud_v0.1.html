@@ -88,7 +88,8 @@ label { display:flex; gap:6px; align-items:center; cursor:pointer; }
   <h2>3 · PICK A LAYOUT</h2>
   <div class="card" style="display:grid;gap:12px">
     <div class="tabs" role="group" aria-label="Layouts">
-      <button class="tab" data-opt="A" aria-pressed="true">A · CLEAN CORNERS</button>
+      <button class="tab" data-opt="A2" aria-pressed="true">A · YOUR VERSION (PICKED)</button>
+      <button class="tab" data-opt="A" aria-pressed="false">A · CLEAN CORNERS</button>
       <button class="tab" data-opt="B" aria-pressed="false">B · ONLY WHAT'S USABLE</button>
       <button class="tab" data-opt="C" aria-pressed="false">C · EDIT YOUR OWN</button>
     </div>
@@ -176,12 +177,26 @@ function layoutA(opts={}) {
   }
   return els;
 }
+function layoutA2() { // v0.2: A's top / left, today's right-hand buttons (Kepu: "keep the current button style ... tap/swipe buttons")
+  return [...CORE,
+    {k:'strip', x:255, y:8, w:240, h:44},
+    {k:'burger', x:690, y:8, w:44, h:36, t:'☰'},
+    {k:'text', x:560, y:52, w:174, h:40, t:'YOU ⚔ ECHO', right:true},
+    {k:'hp', x:16, y:52, w:150, h:14},
+    {k:'joyghost', x:0, y:170, w:330, h:211},
+    {k:'world', x:258, y:239, w:100, h:62, t:'◆1'},
+    {k:'round', x:626, y:170, w:71, h:71, t:'JUMP'},
+    {k:'big', x:611, y:247, w:101, h:101, t:'ATTACK'}, {k:'text', x:619, y:352, w:85, h:16, t:'● ● ●', c:'#ffc832'},
+    {k:'sq', x:435, y:251, w:71, h:71, t:'GLIDER<small>▼ STROBE FRILL</small>'},
+    {k:'sq', x:521, y:283, w:71, h:71, t:'QUILL<br>LAUNCHER<small>▼ SMOKE PODS</small>'},
+  ];
+}
 function layoutC() {
   const els = layoutA();
   els.push({k:'edit', x:0, y:0, w:W, h:H});
   return els;
 }
-const LAYOUTS = {A: () => layoutA(), B: (f) => layoutA({B:true, fight:f}), C: () => layoutC()};
+const LAYOUTS = {A2: () => layoutA2(), A: () => layoutA(), B: (f) => layoutA({B:true, fight:f}), C: () => layoutC()};
 
 const pct = (v, d) => (v / d * 100) + '%';
 function box(e) { return `left:${pct(e.x,W)};top:${pct(e.y,H)};width:${pct(e.w,W)};height:${pct(e.h,H)};`; }
@@ -254,11 +269,12 @@ function stats(target, els, base) {
     (base ? `<div class="stat"><b class="good">${base.c - c > 0 ? '−' + (base.c - c) : '+' + (c - base.c)} pts</b><span>vs today (${base.c}%)</span></div>` : '');
 }
 const TEXT = {
+  A2: `<p style="margin:0"><b>A · your version</b> — A's clean-up of the top and left (one score strip, one ☰ for SKILLS / SQUAD / CAMERA / MENU, kill feed top-right, health up out from under your thumb, move stick where you touch), with your right-hand buttons kept exactly as they are today: ATTACK, JUMP and the two square part buttons (tap = slot 1 / 2, swipe down = slot 3 / 4), same size, same spot.</p><p class="src" style="margin:6px 0 0">Tap ☰ to open the 4 menu buttons in a column under it; tap again (or anywhere) to close.</p>`,
   A: `<p style="margin:0"><b>A · Clean corners</b> (recommended) — everything you have today, packed into the corners CoD-style. Score, timer, point and compass become one strip top-centre. SKILLS / MENU / SQUAD / CLASSIC fold into one ☰. Health moves up out from under your thumb. The move stick appears where you touch. All 4 parts show in an arc around ATTACK, so slots 3–4 are one tap instead of a pull-down.</p><p class="src" style="margin:6px 0 0">Trade-off: buttons are a bit smaller (parts 71 → 56, still above the 44-point minimum); menus are one extra tap away.</p>`,
   B: `<p style="margin:0"><b>B · Only what's usable</b> — A's layout, plus the HUD gets out of the way when nothing's happening. A recharging part shrinks to a small ring with its seconds. Health hides at full. The kill feed shows only your kills. Buttons sit at 55% see-through until you're hurt, an enemy is close, or you touch one. Flip "in a fight" to compare.</p><p class="src" style="margin:6px 0 0">Trade-off: buttons move and resize, which some players find jumpy; more rules to build and test.</p>`,
   C: `<p style="margin:0"><b>C · Edit your own</b> — A as the default, plus an EDIT HUD screen in the ☰ menu: drag any button, pinch to resize, a fade slider per button, RESET and SAVE (kept on your profile). This is CoD Mobile's Custom Layout.</p><p class="src" style="margin:6px 0 0">Trade-off: the biggest build (an editor + saving), and it can come after A.</p>`,
 };
-let opt = 'A';
+let opt = 'A2';
 const today = document.getElementById('today');
 let todayMode = 'shot';
 function drawToday() { render(today, TODAY, {shot: todayMode === 'shot', tags: true}); }

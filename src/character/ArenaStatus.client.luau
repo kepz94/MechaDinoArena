@@ -75,6 +75,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.8"
+VERSION = "1.9" -- v1.9 phone HUD v2: MENU in the ☰ drawer, health top-left
+-- v1.9 (phone HUD v2, MDA-533, plan docs/plans/PHONE_HUD_V2_v1.0.md rules 2-3, mockup docs/mockups/phone_hud_v0.1.html "A · your
+--   version"; Kepu picked A, which moves health up from under the thumb): while player attribute PhoneHudV2 is true (PhoneMenu 1.0)
+--   and script attribute ArenaPhoneV2Enabled ~= false (default true, read per frame), a late render step (Last + 40):
+--   * MENU pill at (1, -16 - <SKILLS pill width, else 78> - 8, 0, PhoneMenuY_Menu (50)) — left of SKILLS — while PhoneMenuOpen
+--     is true, else 400 px above the screen (not drawn, not tappable); the camera button (CameraModes) follows under it, so the
+--     open drawer is a 2 x 2 block above JUMP;
+--   * BarsBL at the top-left: AnchorPoint (0, 0) at (0, 16, 0, y), y = the Roblox top bar's bottom (GuiService.TopbarInset) + 6
+--     in this gui's frame, width ArenaPhoneBarsWidth (160) px (its size constraint lowered to it); contents unchanged.
+--   Off: the pill and the bars go back to the 1.8 places.
 local CORNER_Y = 8 -- v1.4
 local SHIELD = Color3.fromRGB(90, 160, 255) -- v1.1
 local LOW_FRACTION = 0.3
@@ -614,3 +624,48 @@ char:GetAttributeChangedSignal("ArenaStatusShieldEnabled"):Connect(refreshHealth
 refreshSpecies()
 refreshHealth()
 gui.Parent = player.PlayerGui
+
+-- v1.9: phone HUD v2 (see the header)
+if script:GetAttribute("ArenaPhoneV2Enabled") == nil then script:SetAttribute("ArenaPhoneV2Enabled", true) end
+if script:GetAttribute("ArenaPhoneBarsWidth") == nil then script:SetAttribute("ArenaPhoneBarsWidth", 160) end
+do
+	local BIND = "ArenaStatusPhoneV2"
+	local pill0, was = pill.Position, false
+	local GuiService = game:GetService("GuiService")
+	pcall(function() RunService:UnbindFromRenderStep(BIND) end)
+	RunService:BindToRenderStep(BIND, Enum.RenderPriority.Last.Value + 40, function()
+		local on = player:GetAttribute("PhoneHudV2") == true and script:GetAttribute("ArenaPhoneV2Enabled") ~= false
+		local bars = gui:FindFirstChild("BarsBL")
+		local bc = bars and bars:FindFirstChildOfClass("UISizeConstraint")
+		if on then
+			if not was then pill0 = pill.Position end
+			was = true
+			local open = player:GetAttribute("PhoneMenuOpen") == true
+			local lb = player.PlayerGui:FindFirstChild("LabButton")
+			local sk = lb and lb:FindFirstChild("Skills")
+			local sw = (sk and sk:IsA("GuiObject") and sk.AbsoluteSize.X > 0) and sk.AbsoluteSize.X or 78
+			pill.Position = UDim2.new(1, -16 - sw - 8, 0, open and (tonumber(player:GetAttribute("PhoneMenuY_Menu")) or 50) or -400)
+			if bars then
+				local w = tonumber(script:GetAttribute("ArenaPhoneBarsWidth")) or 160
+				local ok, tb = pcall(function() return GuiService.TopbarInset end)
+				local top = (ok and tb and tb.Max.Y > 0) and tb.Max.Y or 58
+				local y = top - GuiService:GetGuiInset().Y - gui.AbsolutePosition.Y + 6
+				bars.AnchorPoint = Vector2.new(0, 0)
+				bars.Position = UDim2.new(0, 16, 0, y)
+				bars.Size = UDim2.new(0, w, 0, 0)
+				if bc then bc.MinSize = Vector2.new(math.min(w, 200), 0) end
+			end
+		elseif was then
+			was = false
+			pill.Position = pill0
+			if bars then
+				bars.AnchorPoint = Vector2.new(0, 1)
+				bars.Position = UDim2.new(0, 16, 1, -8)
+				bars.Size = UDim2.new(0.36, 0, 0, 0)
+				if bc then bc.MinSize = Vector2.new(200, 0) end
+			end
+		end
+	end)
+	script.Destroying:Connect(function() pcall(function() RunService:UnbindFromRenderStep(BIND) end) end)
+	char.AncestryChanged:Connect(function(_, parent) if not parent then pcall(function() RunService:UnbindFromRenderStep(BIND) end) end end)
+end
