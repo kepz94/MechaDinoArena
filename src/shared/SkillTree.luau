@@ -1,4 +1,4 @@
--- SkillTree v1.92 (1.92 dilo Sniper Scope part dscope (DILO_SCOPE), MDA-513; 1.91 troodon Sap Wall text names its 2 charges (TROO_SAP_CHARGES_TEXT), MDA-506; 1.90 the pachy Grappling Hook works again: the therizino overlay keeps other dinos' hookRange / hookCooldown (HOOK_KEEP_OTHERS), #36; 1.89 dilo texts after v680: Sonic Hiss 40 / 50 / 60 + 140° cone, Venom Overdrive no ammo, Cold Blood refills 5 (DILO_TEXTS_V2), MDA-441; 1.88 the troodon's own stat rows: Glow Feeder, Spore Leech, Hunter's Eyes, Zone Ward, Quick Feet, Night Watcher (TROO_STATS); 1.87 the troodon's 4 "soon" cards out of the tree (TROO_SOON_REMOVED); 1.86 troodon slot tune: dome 90 / 121.5 wide, Bloom Tank 44 / 54 wide, sentry 1.25 a pod + 20 at most a throw (TROO_SLOT_TUNE_186); 1.85 troodon slot parts: Bloom Tank passive + Bloom Burst / Shield Dome / Sleep Dart / Sentry Pod (TROO_SLOT_PARTS), MDA-378; 1.84 Therizino Overclock Joints = no-slot passive (THERI_CLOCK_NOSLOT) + the troodon's 4 passives removed (TROO_PARTS_B2_LIVE = false); 1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
+-- SkillTree v1.93 (1.93 Herrera Cruise Missile part cmissile (HERRERA_CRUISE), MDA-519; 1.92 dilo Sniper Scope part dscope (DILO_SCOPE), MDA-513; 1.91 troodon Sap Wall text names its 2 charges (TROO_SAP_CHARGES_TEXT), MDA-506; 1.90 the pachy Grappling Hook works again: the therizino overlay keeps other dinos' hookRange / hookCooldown (HOOK_KEEP_OTHERS), #36; 1.89 dilo texts after v680: Sonic Hiss 40 / 50 / 60 + 140° cone, Venom Overdrive no ammo, Cold Blood refills 5 (DILO_TEXTS_V2), MDA-441; 1.88 the troodon's own stat rows: Glow Feeder, Spore Leech, Hunter's Eyes, Zone Ward, Quick Feet, Night Watcher (TROO_STATS); 1.87 the troodon's 4 "soon" cards out of the tree (TROO_SOON_REMOVED); 1.86 troodon slot tune: dome 90 / 121.5 wide, Bloom Tank 44 / 54 wide, sentry 1.25 a pod + 20 at most a throw (TROO_SLOT_TUNE_186); 1.85 troodon slot parts: Bloom Tank passive + Bloom Burst / Shield Dome / Sleep Dart / Sentry Pod (TROO_SLOT_PARTS), MDA-378; 1.84 Therizino Overclock Joints = no-slot passive (THERI_CLOCK_NOSLOT) + the troodon's 4 passives removed (TROO_PARTS_B2_LIVE = false); 1.83 (1.83 troodon Arc Lantern 12 per zap (was 8) + stun text, MDA-377; 1.82 troodon Portal Feathers -> Apex-style rift 185 / 250 studs, 22 / 30 s, 61 / 45 s, MDA-375; 1.81 troodon Sap Wall 100 wide x 30 tall, 8 s at star, MDA-373; 1.80 troodon parts build 2 back on for Kepu's test (TROO_PARTS_B2_LIVE = true); 1.79 movement parts ~30% shorter cooldowns, MDA-365; 1.78 troodon parts build 2 live: Last Feather / Overheal Plume / Fortify Field / Ricochet Pod; 1.77 dilo spit poison time halved: Venom Spit +0.75 s; 1.76 dilo Spring Jets 40 / 50 / 65 studs + Toxin Mortar cloud x1.5; 1.75 dilo spit only: Quick Draw = spit gap, Venom Bite = spit poison; 1.74 shot pass: projectile ranges x2 + 45-degree assist cones + texts; 1.73 balance pass 1: Razor Claws / Building Fury / Quick Draw kept over the new bases, texts; 1.72 troodon mecha parts; 1.71 Bola reach 60 / 80; 1.69 / 1.70 dilo mecha parts; 1.68 Goo Blob: 1.3x puddle, 50% slow, 3 s after leaving; 1.67 Feather Barrage range 35 / 40 / 50; 1.66 Overclock III: an extra jump; 1.65 therizino moves rework: vortex, bola, dash, reel; 1.64 grapple lock-on text; 1.63 grapple v2 + passive overclock; 1.49 teno abilities; 1.50 teno stats part 2; 1.55 teno leap on JUMP + Shield Armor; 1.56 mortar 90; 1.57 therizino stats; 1.58 Fourth Cut live; 1.59 pachy Last Stand + Head Down; 1.60 dilo stats; 1.61 therizino parts; 1.62 therizino parts build 2) (Mecha Dino Arena) — skill tree data and maths: areas, paths, step costs, the level curve, buy / respec
 -- checks and what a build does. MDA-11, plan docs/plans/SKILLTREES_v1.0.md Task 1, ADR "Skill trees own XP and replace
 -- class stat points". Pure: no Instance access. Used by SkillServer 1.0 / SkillEffects 1.0 (server) and, through the copy
 -- SkillServer puts in ReplicatedStorage.SkillShared, by SkillScreen 1.0 (client).
@@ -3528,6 +3528,44 @@ do
 		e.dScopeRange = c >= 2 and 200 or (c >= 1 and 150 or 0)
 		e.dScopeCooldown = c >= 3 and 8 or (c >= 1 and 10 or 0)
 		e.dScopeMark = c >= 4 and 3 or 0
+		return e
+	end
+end
+
+-- v1.93 (MDA-519, plan docs/plans/HERRERA_CRUISE_MISSILE_v1.0.md Task 1, mockup docs/mockups/herrera_cruise_missile_v0.1.html;
+--   Kepu 2026-11-13 17:23 "a cruise missile that works just like the call of duty one ... 40 damage to enemies with a big splash
+--   radius", picks "B · Backpack silo", "A · Thermal (CoD)", "Flat 40 everywhere", 17:26 "Shorten the reload time to 25 seconds",
+--   "Recharges in 20 s"). Switch SkillTree.HERRERA_CRUISE (default true; false = 1.92, no part): a Herrera attack button part
+--   "cmissile" Cruise Missile (LIVE_MECH, BUTTONS). Effects: cmDamage 40, cmRadius 45 / 55 (II), cmCooldown 25 / 20 (III),
+--   cmCrater 0 / 4 (star: s of a burning crater), cmCraterDps 8.
+SkillTree.HERRERA_CRUISE = true
+if SkillTree.HERRERA_CRUISE and not SkillTree.PATHS.cmissile then
+	local p = path("cmissile", "Cruise Missile", true, false, {
+		"Button: launch a missile from your back and fly it down onto the map yourself. 40 damage to every enemy in a 45-stud blast (the size of the point), 0 to your team. You stand still while you fly it. Recharges in 25 s",
+		"Bigger blast (45 -> 55 studs)", "Recharges in 20 s", "Leaves a burning crater for 4 s (8 damage a second to enemies in it)"})
+	p.area = "attack"
+	p.dino = "Herrera"
+	SkillTree.OWNER.cmissile = "Herrera"
+	SkillTree.LIVE_MECH.cmissile = true
+	SkillTree.BUTTONS.cmissile = true
+	for _, a in ipairs(SkillTree.AREAS) do
+		if a.id == "attack" then table.insert(a.paths, p) end
+	end
+	SkillTree.PATHS.cmissile = p
+	table.insert(SkillTree.PATH_ORDER, "cmissile")
+end
+do
+	local effectsPre193 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre193(steps, dino)
+		if type(e) ~= "table" or not SkillTree.HERRERA_CRUISE or not SkillTree.PATHS.cmissile then return e end
+		local s = dino == "Herrera" and SkillTree.sanitize(steps, dino) or {}
+		local c = s.cmissile or 0
+		e.cmDamage = c >= 1 and 40 or 0
+		e.cmRadius = c >= 2 and 55 or (c >= 1 and 45 or 0)
+		e.cmCooldown = c >= 3 and 20 or (c >= 1 and 25 or 0)
+		e.cmCrater = c >= 4 and 4 or 0
+		e.cmCraterDps = c >= 4 and 8 or 0
 		return e
 	end
 end

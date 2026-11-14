@@ -1,4 +1,4 @@
--- MechaButtons v1.48 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.49 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -404,6 +404,11 @@ VERSION = "1.48" -- v1.48 Sniper Scope: one charge per press
 --   keeps the aim as it is (no cancel, no new start); only letting go fires. Switch: script attribute MechaButtonsScopeOnePressEnabled
 --   (default true, read at each press; false = 1.47). Diagnostic: character MechaScopeRepress (count of kept re-presses).
 if script:GetAttribute("MechaButtonsScopeOnePressEnabled") == nil then script:SetAttribute("MechaButtonsScopeOnePressEnabled", true) end -- v1.48
+VERSION = "1.49" -- v1.49 Herrera Cruise Missile button (MDA-524)
+-- v1.49 (MDA-524, plan docs/plans/HERRERA_CRUISE_MISSILE_v1.0.md Task 6; PC and touch together with AbilityBar 1.43,
+--   HerreraMissileServer 1.0): TIMED_PARTS.cmissile = {"Cruise", "DinoCruiseMissileRequest", "CRUISE MISSILE"}, a normal press (the
+--   launch; HerreraMissileCam flies it). Switch: script attribute MechaButtonsCruiseEnabled (default true, read at start; false = 1.48).
+if script:GetAttribute("MechaButtonsCruiseEnabled") == nil then script:SetAttribute("MechaButtonsCruiseEnabled", true) end -- v1.49
 -- v1.47 (MDA-517, plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md Task 5, mockup docs/mockups/dilo_sniper_scope_part_v0.1.html; PC and
 --   touch together with AbilityBar 1.42, DiloSnipeCam 1.2, DiloMovesServer 1.13; Kepu 2026-11-13 16:19 "You tap and it goes straight
 --   into the scope then release to fire so you can just press and move your thumb around to aim"): TIMED_PARTS.dscope =
@@ -574,6 +579,7 @@ if DILO_BTN then -- v1.35: the dilo's mecha parts (build 1)
 	TIMED_PARTS.djets = {"DiloPartJets", "DinoDiloJetsRequest", "SPRING JETS"}
 end
 local SCOPE_BTN = DILO_BTN and script:GetAttribute("MechaButtonsScopeEnabled") ~= false -- v1.47
+if script:GetAttribute("MechaButtonsCruiseEnabled") ~= false then TIMED_PARTS.cmissile = {"Cruise", "DinoCruiseMissileRequest", "CRUISE MISSILE"} end -- v1.49
 if SCOPE_BTN then TIMED_PARTS.dscope = {"DiloPartScope", "DinoDiloScopeRequest", "SNIPER SCOPE"} end -- v1.47
 if script:GetAttribute("MechaButtonsTrooEnabled") == nil then script:SetAttribute("MechaButtonsTrooEnabled", true) end -- v1.39
 local TROO_BTN = script:GetAttribute("MechaButtonsTrooEnabled") ~= false

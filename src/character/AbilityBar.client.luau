@@ -1,4 +1,4 @@
--- AbilityBar v1.42 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
+-- AbilityBar v1.43 (Mecha Dino Arena) — PC ability bar: the 2 mecha loadout slots and this dino's own moves, each with
 -- its cooldown. MDA-42, plan docs/plans/ABILITY_BAR_v1.0.md Task 1, mockup docs/mockups/ability_hud_options.html
 -- option B "Ability bar" (Kepu 2026-10-29: "i like the ability bar on pc"; "the abilities bar should be different for
 -- every dino"; Ram "Only when usable").
@@ -198,6 +198,10 @@ VERSION = "1.39" -- v1.39 troodon slot parts (MDA-382)
 VERSION = "1.40" -- v1.40 dilo spit ammo pips
 VERSION = "1.41" -- v1.41 Sap Wall charges (MDA-507)
 VERSION = "1.42" -- v1.42 Sniper Scope tile (MDA-517)
+VERSION = "1.43" -- v1.43 Cruise Missile tile (MDA-524)
+-- v1.43 (MDA-524, plan docs/plans/HERRERA_CRUISE_MISSILE_v1.0.md Task 6; PC and touch together with MechaButtons 1.49):
+--   TIMED_PARTS.cmissile = "Cruise" (recharge fill + seconds from CruiseReadyAt / CruiseCooldown). Switch: script attribute
+--   AbilityBarCruiseEnabled (default true, read at start; false = 1.42).
 -- v1.42 (MDA-517, plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md Task 5; PC and touch together with MechaButtons 1.47): TIMED_PARTS.dscope
 --   = "DiloPartScope" (recharge fill + seconds from DiloPartScopeReadyAt / DiloPartScopeCooldown, as the other dilo parts).
 --   Switch: script attribute AbilityBarScopeEnabled (default true, read at start; false = 1.41).
@@ -334,6 +338,8 @@ end
 if script:GetAttribute("AbilityBarSapChargesEnabled") == nil then script:SetAttribute("AbilityBarSapChargesEnabled", true) end -- v1.41
 if script:GetAttribute("AbilityBarScopeEnabled") == nil then script:SetAttribute("AbilityBarScopeEnabled", true) end -- v1.42
 if script:GetAttribute("AbilityBarScopeEnabled") ~= false then TIMED_PARTS.dscope = "DiloPartScope" end -- v1.42
+if script:GetAttribute("AbilityBarCruiseEnabled") == nil then script:SetAttribute("AbilityBarCruiseEnabled", true) end -- v1.43
+if script:GetAttribute("AbilityBarCruiseEnabled") ~= false then TIMED_PARTS.cmissile = "Cruise" end -- v1.43
 if script:GetAttribute("AbilityBarSapChargesEnabled") ~= false and script:GetAttribute("AbilityBarTrooPartsEnabled") ~= false then
 	CHARGE_ATTR.osapwall = {"TrooPartSapLeft", "TrooPartSapCharges"} -- v1.41
 end

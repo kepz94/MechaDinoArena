@@ -1,4 +1,4 @@
--- HerreraPartsServer v1.4 (Mecha Dino Arena) — puts the Herrera's mecha parts on (server-built, every client sees them)
+-- HerreraPartsServer v1.5 (Mecha Dino Arena) — puts the Herrera's mecha parts on (server-built, every client sees them)
 -- and builds their Lab card models. Plan docs/plans/HERRERA_PARTS_v1.0.md (MDA-149..156), Kepu 2026-10-31 "Build"; the
 -- looks are the picked mockups, same numbers: Iron Claw B "Hook Blades" (docs/mockups/herrera_ironclaw_options.html),
 -- Glider Wings A "Bat Membranes", Quill Launcher B "Spine Quills", Smoke Pods B "Tail Vents", Back Plating A "Spine
@@ -66,12 +66,21 @@
 --   Task 4 (MDA-290): on the v2 Iron Claw the IronClawTip / IronClawMid attachments (and the trail between them) sit on the
 --   tip of each arm's longest blade (blade_L1 / blade_R1: tip and 0.4 back along it), so the trail follows the swing. Switch:
 --   script attribute HerreraPartsBladeTrailEnabled (default true; false = on the hand at the 1.3 points).
+-- v1.5 (MDA-520, plan docs/plans/HERRERA_CRUISE_MISSILE_v1.0.md Task 2, mockup docs/mockups/herrera_cruise_missile_v0.1.html, Kepu
+--   2026-11-13 pick "B · Backpack silo"): part cmissile (flag CruiseEnabled) -> Model "HPart_cmissile" on Torso_hump (its +X = forward,
+--   +Y = up): a dark base plate + silo box, a yellow band, the yellow lid hinged at the back and flipped open 70°, the missile standing
+--   in the silo (bright metal body, yellow stripe, red nose; role "missile"), a red light on the front (role "light") and a yellow
+--   hazard strip. Pieces may give a 7th field shape "cyl" / "ball" (Part Shape Cylinder / Ball; only these new pieces use it). Built
+--   with the 1.3 builder (no v2 look data for it). Lab card BuildPreview_cmissile from the same PARTS loop. Switch: script attribute
+--   HerreraPartsCruiseEnabled (default true, read at start; false = 1.4, no cmissile look) + the usual HerreraParts_cmissileEnabled.
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local ServerStorage = game:GetService("ServerStorage") -- v1.4
 
 local VERSION = "1.3"
 VERSION = "1.4" -- v1.4 the redesigned looks (HerreraPartsLooksV2)
+VERSION = "1.5" -- v1.5 Cruise Missile backpack silo (cmissile)
+if script:GetAttribute("HerreraPartsCruiseEnabled") == nil then script:SetAttribute("HerreraPartsCruiseEnabled", true) end -- v1.5
 local C = {
 	steel = {Color3.fromRGB(154, 166, 184), Enum.Material.Metal}, dark = {Color3.fromRGB(93, 104, 120), Enum.Material.Metal},
 	bright = {Color3.fromRGB(211, 219, 230), Enum.Material.Metal}, hot = {Color3.fromRGB(255, 98, 18), Enum.Material.Neon}, -- v1.1 (was 255, 138, 42: rendered yellow)
@@ -82,12 +91,15 @@ local C = {
 	lime = {Color3.fromRGB(166, 226, 46), Enum.Material.Neon}, limeGlass = {Color3.fromRGB(224, 255, 208), Enum.Material.Glass, 0.65}, -- v1.3
 	adr = {Color3.fromRGB(70, 224, 138), Enum.Material.Neon}, adrGlass = {Color3.fromRGB(216, 255, 240), Enum.Material.Glass, 0.65}, -- v1.3
 }
+C.yellow = {Color3.fromRGB(255, 194, 26), Enum.Material.SmoothPlastic} -- v1.5
+C.redSolid = {Color3.fromRGB(255, 90, 79), Enum.Material.SmoothPlastic} -- v1.5
 local PARTS = {
 	{id = "ironclaw", flag = "IronClawEnabled"}, {id = "glider", flag = "GliderEnabled"}, {id = "quills", flag = "QuillEnabled"},
 	{id = "smoke", flag = "SmokeEnabled"}, {id = "plating", flag = "PlatingEnabled"}, {id = "siphon", flag = "SiphonEnabled"},
 	{id = "strobe", flag = "StrobeEnabled"}, {id = "breaker", flag = "BreakerEnabled"},
 	{id = "caltrops", flag = "CaltropEnabled"}, {id = "goo", flag = "GooEnabled"}, {id = "hadren", flag = "HerreraAdrenEnabled"}, -- v1.3
 }
+if script:GetAttribute("HerreraPartsCruiseEnabled") ~= false then table.insert(PARTS, {id = "cmissile", flag = "CruiseEnabled"}) end -- v1.5
 local HIDES = {quills = true, plating = true} -- hide the 7 back quills
 
 script:SetAttribute("HerreraPartsServerVersion", VERSION)
@@ -243,8 +255,22 @@ local function hadren()
 	end
 	return out
 end
+local function cmissile() -- v1.5: Backpack Silo (Torso_hump: +X forward, +Y up)
+	return {
+		{"Torso_hump", {1.0, 0.12, 0.85}, {0, 0.32, 0}, {0, 0, 0}, "dark", "base"},
+		{"Torso_hump", {0.8, 0.7, 0.7}, {0, 0.72, 0}, {0, 0, 0}, "dark", "silo"},
+		{"Torso_hump", {0.82, 0.08, 0.72}, {0, 0.9, 0}, {0, 0, 0}, "yellow", "band"},
+		{"Torso_hump", {0.84, 0.06, 0.74}, {-0.256, 1.465, 0}, {0, 0, 70}, "yellow", "lid"},
+		{"Torso_hump", {0.75, 0.34, 0.34}, {0.05, 1.2, 0}, {0, 0, 90}, "bright", "missile", "cyl"},
+		{"Torso_hump", {0.06, 0.36, 0.36}, {0.05, 1.42, 0}, {0, 0, 90}, "yellow", "missile", "cyl"},
+		{"Torso_hump", {0.34, 0.34, 0.34}, {0.05, 1.58, 0}, {0, 0, 0}, "redSolid", "missile", "ball"},
+		{"Torso_hump", {0.14, 0.14, 0.14}, {0.41, 0.72, 0.18}, {0, 0, 0}, "blood", "light", "ball"},
+		{"Torso_hump", {0.02, 0.1, 0.6}, {0.405, 0.52, 0}, {0, 0, 0}, "yellow", "hazard"},
+	}
+end
 local BUILD = {ironclaw = ironclaw, glider = glider, quills = quills, smoke = smoke, plating = plating, siphon = siphon,
 	strobe = strobe, breaker = breaker, caltrops = caltrops, goo = goo, hadren = hadren} -- v1.3: + pass 3
+BUILD.cmissile = cmissile -- v1.5
 
 -- ---------- build / remove ----------
 local function find(char, name)
@@ -294,6 +320,7 @@ local function buildPart(char, id, preview)
 			p.CFrame = anchor.CFrame * CFrame.new(pc[3][1] * sc, pc[3][2] * sc, pc[3][3] * sc)
 				* CFrame.Angles(math.rad(pc[4][1]), math.rad(pc[4][2]), math.rad(pc[4][3]))
 			if pc[6] then p:SetAttribute("HPartRole", pc[6]) end
+			if pc[7] == "cyl" then p.Shape = Enum.PartType.Cylinder elseif pc[7] == "ball" then p.Shape = Enum.PartType.Ball end -- v1.5
 			p:SetAttribute("HPartBaseColor", col[1])
 			p.Parent = m
 			local w = Instance.new("WeldConstraint")

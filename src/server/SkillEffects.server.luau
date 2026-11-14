@@ -497,6 +497,15 @@ if HPASS3_ON then -- v1.30
 		{"AssistMin", "gooAssistMin", 0}, {"AssistMax", "gooAssistMax", 0}}})
 	table.insert(HPARTS, {"hadren", "HerreraAdren", {{"SlashRefill", "adrenSlashRefill", false}}})
 end
+-- v1.63 (MDA-519, plan docs/plans/HERRERA_CRUISE_MISSILE_v1.0.md Task 1; SkillTree 1.93): the Cruise Missile (cmissile) writes
+--   CruiseEnabled (bought AND slotted, as every Herrera part) and CruiseDamage / Radius / Cooldown / Crater / CraterDps from cmDamage /
+--   cmRadius / cmCooldown / cmCrater / cmCraterDps (0 when off). Switch: script attribute SkillEffectsHerreraCruiseEnabled (default
+--   true, read at start; false = 1.62).
+if script:GetAttribute("SkillEffectsHerreraCruiseEnabled") == nil then script:SetAttribute("SkillEffectsHerreraCruiseEnabled", true) end
+if script:GetAttribute("SkillEffectsHerreraCruiseEnabled") ~= false then
+	table.insert(HPARTS, {"cmissile", "Cruise", {{"Damage", "cmDamage", 0}, {"Radius", "cmRadius", 0}, {"Cooldown", "cmCooldown", 0},
+		{"Crater", "cmCrater", 0}, {"CraterDps", "cmCraterDps", 0}}})
+end
 local HERRERA_BASES = {SlashRefill = 4, SlashCharges = 2, SlashBleedDps = 3, SlashBleedTime = 4, SlashDiveRange = 20,
 	ClimbSpeed = 10} -- v1.26
 if script:GetAttribute("SkillBleedPlayersEnabled") == nil then script:SetAttribute("SkillBleedPlayersEnabled", true) end -- v1.18
@@ -1782,6 +1791,7 @@ end)
 -- ---------- v1.61: practice bots get the same part attributes (see the header) ----------
 VERSION = "1.61" -- v1.61 practice bot pass
 VERSION = "1.62" -- v1.62 dilo Sniper Scope attributes (MDA-513)
+VERSION = "1.63" -- v1.63 Herrera Cruise Missile attributes (MDA-519)
 script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsBotPassEnabled") == nil then script:SetAttribute("SkillEffectsBotPassEnabled", true) end
 do
