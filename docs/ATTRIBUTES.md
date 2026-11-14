@@ -3504,3 +3504,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PrematchCam 1.0 `PrematchCamEnabled` (true, per frame), `PanStart` (9), `PanOrbitAt` (7), `PanBackAt` (5), `PanEndAt` (3), `PanOrbitRadius` (60), `PanOrbitHeight` (70), `PanOrbitSpeed` (0.35 rad/s), `PanHighUp` (80), `PanFov` (60). Diagnostics `PrematchCamVersion`, `PrematchCamState`, `PrematchCamPans`. Character `PrematchPanning`, `ShoulderCamExternal` (while panning).
 - PrematchCountdown 1.1 `PrematchChipPanEnabled` (true, per frame).
 - PregameModels 1.1: Body / part model attribute `PieceCount`. PregameScreen 1.3 `PregameWaitCompleteEnabled` (true, per check), diagnostic `PregameModelsComplete`.
+- HerreraMovesPose 1.3 model attribute `GlideBankFlip` (true by default when nil; read per frame; false = 1.2 lean direction).

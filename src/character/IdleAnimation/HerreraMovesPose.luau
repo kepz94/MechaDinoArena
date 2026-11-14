@@ -1,4 +1,4 @@
--- HerreraMovesPose v1.2 (Mecha Dino Arena) — the Herrera's Glider Wings glide pose and the Strobe Frill rear-up, used by
+-- HerreraMovesPose v1.3 (Mecha Dino Arena) — the Herrera's Glider Wings glide pose and the Strobe Frill rear-up, used by
 -- IdleAnimation 1.36. Plan docs/plans/HERRERA_PARTS_v1.0.md Part 2 (glide pose) and Part 7 (rear-up), "Pass 2 — build map".
 -- Joint frames as ScurryPose 1.0: pitch about Z (+ lifts the front / swings a limb forward; Tail + = lower), yaw about Y,
 --   roll about X; RootJoint carries the whole-body pitch.
@@ -50,6 +50,11 @@ local M = {}
 M.Version = "1.0"
 M.Version = "1.1" -- v1.1 gooKick
 M.Version = "1.2" -- v1.2 move poses, bank, corkscrew
+M.Version = "1.3" -- v1.3 glide bank leans into the turn
+-- v1.3 (Kepu 2026-11-13 20:00 "the Herrera leans the wrong way when gliding for its turns. When it turns left it should lean left
+--   but it does the opposite rn"): bank() uses the opposite roll sign (-BANK_SIGN) while the model attribute GlideBankFlip is not
+--   false (default: flipped), so a left turn leans left and a right turn leans right. GlideBankRoll reports the flipped value.
+--   Switch: model attribute GlideBankFlip (read per frame; false = 1.2's lean).
 M.Defaults = {GlideArmRoll = 55, GlideArmPitch = 20, GlideLegTrail = 45, GlideTailKeep = 0.2, GlidePitch = 14}
 local GLIDE_IN, GLIDE_OUT = 0.2, 0.25
 local STROBE_UP, STROBE_HOLD, STROBE_DOWN = 0.15, 0.2, 0.2
@@ -322,6 +327,18 @@ function M.bank(model, hrp, dt, gw, isOwner)
 	return rot3(0, 0, roll)
 end
 M.BANK_SIGN = 1
+do -- v1.3: lean into the turn (see the header)
+	local rawBank = M.bank
+	function M.bank(model, hrp, dt, gw, isOwner)
+		if model:GetAttribute("GlideBankFlip") == false then return rawBank(model, hrp, dt, gw, isOwner) end
+		local keep = M.BANK_SIGN
+		M.BANK_SIGN = -keep
+		local ok, r = pcall(rawBank, model, hrp, dt, gw, isOwner)
+		M.BANK_SIGN = keep
+		if not ok then error(r, 0) end
+		return r
+	end
+end
 
 -- v1.2: corkscrew drop
 local screws = setmetatable({}, {__mode = "k"})
