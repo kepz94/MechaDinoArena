@@ -1,0 +1,232 @@
+<title>Respawn Dino Swap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;700&display=swap">
+<style>
+:root { --bg:#0b1016; --card:#121a24; --line:#26364a; --fg:#e8eef6; --muted:#8fa2b8; --yellow:#ffc832; --blue:#5aa0ff; --red:#e0284a; --green:#46e08a;
+  --display:"Silkscreen","Courier New",monospace; --body:"Inter",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--fg); font-family:var(--body); font-size:15px; line-height:1.5; }
+.wrap { max-width:1180px; margin:0 auto; padding-block:24px 64px; padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:20px; }
+h1 { font-family:var(--display); color:var(--yellow); font-size:22px; margin:0; letter-spacing:.04em; }
+h2 { font-family:var(--display); font-size:14px; margin:18px 0 0; letter-spacing:.06em; }
+.lede { color:var(--muted); max-width:76ch; margin:0; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; min-width:0; }
+.tabs { display:flex; flex-wrap:wrap; gap:8px; }
+.tab { font-family:var(--display); font-size:12px; color:var(--fg); background:var(--card); border:1px solid var(--line); border-radius:6px; padding:9px 12px; cursor:pointer; }
+.tab[aria-pressed="true"] { border-color:var(--yellow); box-shadow:inset 0 -3px 0 var(--yellow); }
+.two { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr)); gap:16px; align-items:start; }
+.phone { position:relative; width:100%; aspect-ratio:750/381; border-radius:22px; overflow:hidden; border:6px solid #05080c; container-type:inline-size;
+  background:linear-gradient(#8fd0ff 0 36%, #73c262 36% 100%); font-family:var(--display); color:#fff; }
+.phone * { font-family:var(--display); }
+.layer { position:absolute; inset:0; }
+.abs { position:absolute; }
+.grey { filter:grayscale(1) brightness(.55); }
+.scrub { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted); }
+.scrub input { flex:1; accent-color:var(--yellow); }
+.phase { font-family:var(--display); font-size:11px; color:var(--yellow); min-width:150px; }
+.btn { background:rgba(13,18,24,.85); border:.2cqw solid rgba(232,238,246,.45); border-radius:.9cqw; display:grid; place-items:center; text-align:center; }
+.tile { background:rgba(13,18,24,.82); border:.25cqw solid rgba(232,238,246,.25); border-radius:1cqw; overflow:hidden; display:grid; grid-template-rows:1fr auto; }
+.tile img { width:100%; height:100%; object-fit:cover; display:block; }
+.tile span { font-size:.95cqw; text-align:center; padding:.2cqw 0 .4cqw; }
+.tile.on { border-color:var(--yellow); box-shadow:0 0 1.4cqw rgba(255,200,50,.55); }
+.chip { background:rgba(20,20,26,.85); border:.25cqw solid #e8a23a; border-radius:1cqw; display:grid; place-items:center; text-align:center; font-size:1cqw; color:#ffd38a; line-height:1.15; }
+.chip small { display:block; color:#cfd6e0; font-size:.75cqw; }
+.ring { border-radius:50%; display:grid; place-items:center; }
+.opts { display:grid; gap:10px; }
+.opt { background:#0d141c; border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+.opt b { font-family:var(--display); font-size:12px; letter-spacing:.04em; }
+.opt b em { font-style:normal; color:var(--yellow); }
+.opt p { margin:4px 0 0; color:var(--muted); font-size:13.5px; }
+.rec { font-family:var(--display); font-size:10px; background:var(--yellow); color:#1b1405; border-radius:4px; padding:1px 6px; margin-left:6px; }
+ul.tight { margin:6px 0 0; padding-left:18px; display:grid; gap:4px; color:var(--muted); font-size:14px; }
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>SWAP DINO + LOADOUT WHEN YOU RESPAWN</h1>
+    <p class="lede">Today you're back in 3 s as the same dino; changing means MENU and leaving the match. Here: a 5 s respawn wait where you can pick another dino and its 4 mecha parts, and a CHANGE button that stays a few seconds after you're back in. The dinos are the game's own models. The loop plays: dead (5 s) → you spawn → the CHANGE button for 5 s.</p>
+  </div>
+
+  <h2>1 · PICK THE RESPAWN SCREEN</h2>
+  <div class="card" style="display:grid;gap:12px">
+    <div class="tabs" role="group" aria-label="Respawn screen">
+      <button class="tab" data-v="A" aria-pressed="true">A · QUICK SWAP BAR</button>
+      <button class="tab" data-v="B" aria-pressed="false">B · FULL SELECT SCREEN</button>
+      <button class="tab" data-v="C" aria-pressed="false">C · DEATH CAM + BUTTON</button>
+    </div>
+    <div class="scrub"><button class="tab" id="play" style="padding:6px 10px">❚❚</button><input type="range" id="t" min="0" max="120" value="0" aria-label="Time"><span class="phase" id="phase"></span></div>
+    <div class="two">
+      <div class="phone" id="phone"><div class="layer" id="world"></div><div class="layer" id="ui"></div></div>
+      <div id="text"></div>
+    </div>
+  </div>
+
+  <h2>2 · IF YOU'RE STILL PICKING WHEN THE TIMER HITS 0</h2>
+  <div class="card opts">
+    <div class="opt"><b><em>1</em> · WAIT FOR ME</b><span class="rec">RECOMMENDED</span><p>The respawn holds while the picker is open, up to 10 s more, then you spawn with what you've picked. Like CoD's class select.</p></div>
+    <div class="opt"><b><em>2</em> · SPAWN ANYWAY</b><p>You spawn at 0 with your current pick; the picker stays open over the game during the after-spawn seconds.</p></div>
+  </div>
+
+  <h2>3 · AFTER YOU SPAWN, THE CHANGE BUTTON STAYS…</h2>
+  <div class="card opts">
+    <div class="opt"><b><em>1</em> · 5 S, OR UNTIL YOU ATTACK / GET HIT</b><span class="rec">RECOMMENDED</span><p>A swap puts you back on your spawn spot as the new dino at full health. Ending it on your first attack or hit stops "swap mid-fight to heal".</p></div>
+    <div class="opt"><b><em>2</em> · 5 S NO MATTER WHAT</b><p>Exactly 5 s, even in a fight.</p></div>
+    <div class="opt"><b><em>3</em> · 3 S</b><p>Shorter window, same rules as 1.</p></div>
+  </div>
+
+  <div class="card">
+    <b style="font-family:var(--display);font-size:12px">ALL OPTIONS</b>
+    <ul class="tight">
+      <li>Phone and PC: tap the tiles / button, or on PC the same plus the key C for CHANGE.</li>
+      <li>The picked dino and parts are what you spawn as from then on (and saved like today's last dino).</li>
+      <li>Only in a match (Arena and practice). The island keeps today's 3 s respawn.</li>
+      <li>Bots are unchanged.</li>
+    </ul>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="pregame_v0.4_dinos.js"></script>
+<script>
+(() => {
+const ORDER = ["Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"];
+const nameOf = d => d === "TRex" ? "T-REX" : d === "Therizino" ? "THERIZINO" : d.toUpperCase();
+const PARTS = {Herrera: ["QUILL LAUNCHER", "SMOKE PODS", "GLIDER WINGS", "STROBE FRILL"], Dilo: ["VENOM GATLING", "SPRING JETS", "TOXIN MORTAR", "SONIC HISS"]};
+const CLASS = {Herrera: "UTILITY · FIGHTER", Dilo: "SPITTER · RANGED"};
+const W = 750, H = 381;
+const pct = (v, d) => (v / d * 100) + '%';
+const box = (x, y, w, h) => `left:${pct(x,W)};top:${pct(y,H)};width:${pct(w,W)};height:${pct(h,H)};`;
+
+// ---- 3D thumbnails + a big rotating view (the game's own block models) ----
+const THUMB = {}; let big = null;
+if (window.THREE && window.DINO3D) {
+  const T = THREE, rad = Math.PI / 180;
+  const G = [new T.BoxGeometry(1,1,1), new T.SphereGeometry(.5,18,12), (() => { const g = new T.CylinderGeometry(.5,.5,1,18); g.rotateZ(Math.PI/2); return g; })()];
+  const mats = {};
+  const mat = (hex, t, neon) => { const k = hex+t+neon; if (mats[k]) return mats[k]; const c = new T.Color('#'+hex);
+    const m = new T.MeshStandardMaterial({color:c, roughness:.82, metalness:.05, flatShading:true}); if (neon) { m.emissive = c.clone(); m.emissiveIntensity = .9; }
+    if (t > 0) { m.transparent = true; m.opacity = 1 - t; } return (mats[k] = m); };
+  const blocks = data => { const g = new T.Group(); for (const r of data.p) { const m = new T.Mesh(G[r.length > 12 ? r[12] : 0] || G[0], mat(data.pal[r[9]], r[10] || 0, r[11] || 0));
+    m.position.set(r[0], r[1], r[2]); m.scale.set(r[3], r[4], r[5]); m.rotation.set(r[6]*rad, r[7]*rad, r[8]*rad, 'XYZ'); g.add(m); } return g; };
+  const rig = d => { const o = new T.Group(), i = blocks(DINO3D[d]); const b = new T.Box3().setFromObject(i), c = b.getCenter(new T.Vector3()), s = b.getSize(new T.Vector3());
+    const k = 2.4 / Math.max(s.x, s.y * 1.35, s.z); i.scale.setScalar(k); i.position.set(-c.x*k, -b.min.y*k, -c.z*k); o.add(i); return o; };
+  const lights = sc => { sc.add(new T.HemisphereLight(0xd7e8ff, 0x1b2230, 1)); const k = new T.DirectionalLight(0xffffff, 1.2); k.position.set(-3,5,4); sc.add(k);
+    const r = new T.DirectionalLight(0x7fe9ff, .5); r.position.set(3,3,-5); sc.add(r); };
+  try {
+    const rr = new T.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer:true}); rr.setSize(240, 180, false); rr.outputEncoding = T.sRGBEncoding;
+    const sc = new T.Scene(); lights(sc); const cam = new T.PerspectiveCamera(26, 240/180, .1, 100); cam.position.set(0, 1.25, 6.2); cam.lookAt(0, .55, 0);
+    for (const d of ORDER) { const r = rig(d); r.rotation.y = Math.PI + .75; sc.add(r); rr.render(sc, cam); THUMB[d] = rr.domElement.toDataURL('image/png'); sc.remove(r); }
+    rr.dispose();
+    const br = new T.WebGLRenderer({antialias:true, alpha:true}); br.outputEncoding = T.sRGBEncoding; br.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    const bs = new T.Scene(); lights(bs); const bc = new T.PerspectiveCamera(28, 1, .1, 100); bc.position.set(0, 1.6, 7.2); bc.lookAt(0, .9, 0);
+    const ped = new T.Mesh(new T.CylinderGeometry(1.25, 1.4, .22, 40), new T.MeshStandardMaterial({color:0x1c2636, roughness:.6, metalness:.3})); ped.position.y = -.11; bs.add(ped);
+    const ring = new T.Mesh(new T.TorusGeometry(1.3, .03, 8, 64), new T.MeshBasicMaterial({color:0x7fe9ff})); ring.rotation.x = Math.PI/2; bs.add(ring);
+    big = {el: br.domElement, d: null, m: null, set(d) { if (this.d === d) return; if (this.m) bs.remove(this.m); this.m = rig(d); bs.add(this.m); this.d = d; },
+      draw(w, h, t) { if (!w || !h) return; br.setSize(w, h, false); bc.aspect = w / h; bc.updateProjectionMatrix(); if (this.m) this.m.rotation.y = Math.PI + .75 + t * .6; br.render(bs, bc); }};
+    big.el.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+  } catch (e) { /* no WebGL: tiles show names only */ }
+}
+const IMG = d => THUMB[d] ? `<img src="${THUMB[d]}" alt="">` : `<div></div>`;
+
+// ---- the world (CSS) ----
+function worldHTML() {
+  let s = '';
+  for (const [x, y] of [[60,70],[170,95],[300,50],[430,80],[540,55],[650,85],[710,40]])
+    s += `<div class="abs" style="${box(x,y,46,62)}"><div class="abs" style="left:44%;top:45%;width:12%;height:55%;background:#7a5532"></div><div class="abs" style="inset:0 0 40% 0;background:#2f7a35;border-radius:40%"></div></div>`;
+  s += `<div class="abs" style="${box(470,170,70,48)};background:#c84a4a;clip-path:polygon(0 60%,30% 45%,55% 40%,70% 10%,100% 20%,85% 35%,70% 55%,60% 95%,45% 95%,40% 70%,20% 75%)"></div>`;
+  s += `<div class="abs" style="${box(455,150,100,14)};font-size:1cqw;text-align:center;color:#ff9aa8">ECHO · RAPTOR</div>`;
+  return s;
+}
+function hudHTML(grace, picked) {
+  let s = `<div class="abs btn" style="${box(14,10,32,32)};border-radius:1cqw">⧉</div><div class="abs btn" style="${box(54,10,150,32)};font-size:1.2cqw">☰ 💬 🎙</div>`;
+  s += `<div class="abs" style="${box(255,8,240,44)};display:grid;grid-template-columns:18% 1fr 18%;border-radius:1cqw;overflow:hidden;background:rgba(13,18,24,.8)">
+    <div style="background:rgba(90,160,255,.9);display:grid;place-items:center;font-size:1.8cqw">31</div><div style="display:grid;place-items:center;font-size:.9cqw"><span>N · ◆1 · E</span><small style="font-size:.75cqw;color:#ffc832">P1 · 1:42 · CONTESTED</small></div>
+    <div style="background:rgba(224,40,74,.9);display:grid;place-items:center;font-size:1.8cqw">28</div></div>`;
+  s += `<div class="abs btn" style="${box(690,8,44,36)};border-color:#ffc832;color:#ffc832;font-size:2cqw">☰</div>`;
+  s += `<div class="abs" style="${box(16,52,160,12)};border-radius:99px;background:#46e08a"></div>`;
+  s += `<div class="abs ring" style="${box(626,170,71,71)};background:rgba(13,18,24,.82);border:.3cqw solid rgba(232,238,246,.6);font-size:1.3cqw">JUMP</div>`;
+  s += `<div class="abs ring" style="${box(611,247,101,101)};background:#ffc832;color:#1b1405;font-size:1.7cqw">ATTACK</div>`;
+  const p = PARTS[picked];
+  s += `<div class="abs chip" style="${box(435,251,71,71)}">${p[2]}<small>▼ ${p[3]}</small></div><div class="abs chip" style="${box(521,283,71,71)}">${p[0]}<small>▼ ${p[1]}</small></div>`;
+  if (grace != null) {
+    const f = Math.max(0, grace) / 5;
+    s += `<div class="abs" style="${box(318,60,114,34)};display:grid;grid-template-columns:auto 1fr;align-items:center;gap:.6cqw;padding:0 .8cqw;background:rgba(13,18,24,.9);border:.25cqw solid #ffc832;border-radius:99px;color:#ffc832;font-size:1.15cqw">
+      <div class="ring" style="width:2.8cqw;height:2.8cqw;background:conic-gradient(#ffc832 ${f*100}%, rgba(255,255,255,.15) 0)"><div class="ring" style="width:78%;height:78%;background:#0d1218;font-size:.9cqw">${Math.ceil(grace)}</div></div>CHANGE</div>`;
+    s += `<div class="abs" style="${box(318,96,114,14)};font-size:.75cqw;text-align:center;color:#cfd6e0;text-shadow:0 .15cqw .3cqw #000">ENDS IF YOU ATTACK</div>`;
+  }
+  return s;
+}
+function countdown(left, x, y, w) {
+  const f = left / 5;
+  return `<div class="abs" style="${box(x,y,w,66)};display:grid;justify-items:center;gap:.4cqw">
+    <div style="font-size:1.1cqw;color:#ff9aa8">ELIMINATED BY ECHO</div>
+    <div style="display:flex;align-items:center;gap:1cqw;font-size:1.5cqw">RESPAWN IN <div class="ring" style="width:4.4cqw;height:4.4cqw;background:conic-gradient(#ffc832 ${f*100}%, rgba(255,255,255,.15) 0)"><div class="ring" style="width:80%;height:80%;background:#0d1218;font-size:1.9cqw;color:#ffc832">${Math.ceil(left)}</div></div></div></div>`;
+}
+function stripA(picked) {
+  let s = `<div class="abs" style="${box(0,226,W,155)};background:linear-gradient(rgba(5,8,12,0),rgba(5,8,12,.88) 30%)"></div>`;
+  s += `<div class="abs" style="${box(47,236,300,14)};font-size:1cqw;color:#cfd6e0">TAP A DINO · TAP A PART TO SWAP IT</div>`;
+  PARTS[picked].forEach((p, i) => { s += `<div class="abs chip" style="${box(47 + i*86,252,80,34)}">${p}<small>▼ SWAP</small></div>`; });
+  ORDER.forEach((d, i) => { s += `<div class="abs tile ${d === picked ? 'on' : ''}" style="${box(47 + i*83,294,76,78)}">${IMG(d)}<span>${nameOf(d)}</span></div>`; });
+  return s;
+}
+function selectB(picked, left, showCount) {
+  let s = `<div class="abs" style="inset:0;background:radial-gradient(120% 90% at 30% 45%,#1a2738,#0b1016)"></div>`;
+  s += `<div class="abs" id="bigslot" style="${box(20,40,380,300)}"></div>`;
+  s += `<div class="abs btn" style="${box(30,170,34,40)};font-size:1.8cqw">◀</div><div class="abs btn" style="${box(356,170,34,40)};font-size:1.8cqw">▶</div>`;
+  s += `<div class="abs" style="${box(20,322,380,40)};text-align:center"><div style="font-size:2cqw">${nameOf(picked)}</div><div style="font-size:.95cqw;color:#7fe9ff">${CLASS[picked]}</div></div>`;
+  s += `<div class="abs" style="${box(420,40,310,20)};font-size:1.1cqw;color:#cfd6e0">MECHA PARTS</div>`;
+  const keys = ['R', 'C', 'R▼', 'C▼'];
+  PARTS[picked].forEach((p, i) => { s += `<div class="abs" style="${box(420,64 + i*52,310,46)};display:grid;grid-template-columns:3cqw 1fr auto;align-items:center;gap:1cqw;padding:0 1cqw;background:rgba(20,20,26,.85);border:.2cqw solid #e8a23a;border-radius:1cqw">
+    <span style="font-size:.9cqw;color:#9aa0ad">${keys[i]}</span><span style="font-size:1.15cqw;color:#ffd38a">${p}</span><span style="font-size:.9cqw;color:#cfd6e0">SWAP ▸</span></div>`; });
+  s += `<div class="abs ring" style="${box(560,284,170,56)};border-radius:1.2cqw;background:#ffc832;color:#1b1405;font-size:1.6cqw">READY</div>`;
+  if (showCount) s += `<div class="abs" style="${box(420,286,130,52)};display:grid;place-items:center;font-size:1.2cqw;text-align:center">RESPAWN<br><span style="font-size:2.2cqw;color:#ffc832">${Math.ceil(left)}</span></div>`;
+  return s;
+}
+function deathC(left, tapped) {
+  let s = `<div class="abs" style="${box(455,120,100,26)};border:.2cqw solid #ff9aa8;border-radius:.6cqw;font-size:.9cqw;display:grid;place-items:center;color:#ff9aa8;background:rgba(0,0,0,.35)">KILLER · 45 HP LEFT</div>`;
+  s += countdown(left, 250, 14, 250);
+  s += `<div class="abs ring" style="${box(255,300,240,56)};border-radius:1.2cqw;background:${tapped ? '#fff3c4' : '#ffc832'};color:#1b1405;font-size:1.5cqw">CHANGE DINO / LOADOUT</div>`;
+  return s;
+}
+
+// ---- timeline: 0–5 dead, 5 spawn, 5–10 CHANGE button, 10–12 normal ----
+let V = 'A', playing = !matchMedia('(prefers-reduced-motion: reduce)').matches, t = 0, last = performance.now();
+const tEl = document.getElementById('t'), phase = document.getElementById('phase'), world = document.getElementById('world'), ui = document.getElementById('ui');
+const TEXT = {
+  A: `<p style="margin:0"><b>A · Quick swap bar</b> — the game stays on screen (grey) with a respawn ring at the top; a bar along the bottom has your 4 mecha parts (tap one to swap it) and all 8 dinos (tap one to switch). Fastest: pick in 2 taps without leaving the match view.</p><p style="color:var(--muted);font-size:13px;margin:6px 0 0">Trade-off: small tiles; part swaps open a short list over the bar.</p>`,
+  B: `<p style="margin:0"><b>B · Full select screen</b> — the pre-game SELECT screen you already know (big 3D dino on the pedestal, ◀ ▶, the 4 mecha parts on the right) with the respawn timer and READY. Same look as the start of the match.</p><p style="color:var(--muted);font-size:13px;margin:6px 0 0">Trade-off: covers the whole screen, so you don't watch your killer.</p>`,
+  C: `<p style="margin:0"><b>C · Death cam + button</b> — CoD style: you watch your killer (the camera on them, their health shown) with the respawn ring and one big CHANGE DINO / LOADOUT button. Tapping it opens B's screen; not tapping it respawns you as you were.</p><p style="color:var(--muted);font-size:13px;margin:6px 0 0">Trade-off: one more tap to change; the death cam is new work.</p>`,
+};
+function frame() {
+  const left = Math.max(0, 5 - t);
+  const picked = t > 2.2 ? 'Dilo' : 'Herrera';
+  world.className = 'layer' + (t < 5 ? ' grey' : '');
+  world.innerHTML = worldHTML();
+  let s = '';
+  if (t < 5) {
+    if (V === 'A') s = countdown(left, 250, 14, 250) + stripA(picked);
+    else if (V === 'B') s = selectB(picked, left, true);
+    else s = t > 1.6 ? selectB(picked, left, true) : deathC(left, t > 1.2);
+    phase.textContent = 'DEAD · RESPAWN IN ' + Math.ceil(left);
+  } else if (t < 10) {
+    s = hudHTML(10 - t, 'Dilo');
+    phase.textContent = 'SPAWNED AS DILO · CHANGE ' + Math.ceil(10 - t);
+  } else { s = hudHTML(null, 'Dilo'); phase.textContent = 'PLAYING'; }
+  ui.innerHTML = s;
+  const slot = document.getElementById('bigslot');
+  if (slot && big) { slot.appendChild(big.el); big.set(picked); big.draw(slot.clientWidth, slot.clientHeight, t); }
+  else if (slot && !big) slot.innerHTML = `<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:2cqw">${nameOf(picked)}</div>`;
+  document.getElementById('text').innerHTML = TEXT[V];
+}
+function loop(now) {
+  const dt = (now - last) / 1000; last = now;
+  if (playing) { t = (t + dt) % 12; tEl.value = Math.round(t * 10); }
+  frame(); requestAnimationFrame(loop);
+}
+tEl.oninput = () => { t = tEl.value / 10; playing = false; document.getElementById('play').textContent = '▶'; };
+document.getElementById('play').onclick = e => { playing = !playing; e.target.textContent = playing ? '❚❚' : '▶'; };
+document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { V = b.dataset.v; document.querySelectorAll('[data-v]').forEach(x => x.setAttribute('aria-pressed', x === b)); t = 0; });
+requestAnimationFrame(loop);
+})();
+</script>
