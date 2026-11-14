@@ -1,4 +1,4 @@
--- HerreraMissileServer v1.0 (Mecha Dino Arena) — the Herrera's Cruise Missile (mecha part cmissile): launch, the flown missile,
+-- HerreraMissileServer v1.1 (Mecha Dino Arena) — the Herrera's Cruise Missile (mecha part cmissile): launch, the flown missile,
 -- the blast and the star crater. MDA-521, plan docs/plans/HERRERA_CRUISE_MISSILE_v1.0.md Task 3, mockup
 -- docs/mockups/herrera_cruise_missile_v0.1.html; Kepu 2026-11-13 17:23 "a cruise missile that works just like the call of duty one
 -- ... where you're directing the missile as it's flying down on the map. Zero damage to teammates but does 40 damage to enemies with
@@ -33,7 +33,13 @@ local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 3x steering (MDA-525)
+-- v1.1 (MDA-525; Kepu 2026-11-13 17:59 "make the rocket more maneuverable like on Cod", pick "3x: 90 studs/s"): the flat steering
+--   limit is CruiseSteerV2 (90) studs/s (x 0.5 after the boost) while script attribute CruiseSteerV2Enabled ~= false (default
+--   true, read at each update; false = 1.0's CruiseSteer 30). HerreraMissileCam 1.1 steers at the same speed.
 script:SetAttribute("HerreraMissileServerVersion", VERSION)
+if script:GetAttribute("CruiseSteerV2Enabled") == nil then script:SetAttribute("CruiseSteerV2Enabled", true) end -- v1.1
+if script:GetAttribute("CruiseSteerV2") == nil then script:SetAttribute("CruiseSteerV2", 90) end -- v1.1
 local CFG = {HerreraMissileServerEnabled = true, CruiseHeight = 250, CruiseAhead = 40, CruiseFall = 30, CruiseSteer = 30,
 	CruiseBoostMul = 3, CruiseMaxFlight = 10, CruiseSlack = 2, CruiseHoldBodyEnabled = true}
 for k, v in pairs(CFG) do
@@ -178,7 +184,8 @@ end
 local function clampTo(st, want, t)
 	local dt = math.max(0, t - st.t)
 	local slack = cfg("CruiseSlack")
-	local steer = cfg("CruiseSteer") * (st.boosted and 0.5 or 1)
+	local steer = (script:GetAttribute("CruiseSteerV2Enabled") ~= false and (tonumber(script:GetAttribute("CruiseSteerV2")) or 90)
+		or cfg("CruiseSteer")) * (st.boosted and 0.5 or 1) -- v1.1
 	local fall = cfg("CruiseFall") * (st.boosted and cfg("CruiseBoostMul") or 1)
 	local d = flat(want - st.pos)
 	local maxFlat = steer * dt + slack
