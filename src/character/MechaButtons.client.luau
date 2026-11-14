@@ -1,4 +1,4 @@
--- MechaButtons v1.47 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
+-- MechaButtons v1.48 (Mecha Dino Arena) — the 2 mecha loadout buttons (touch), PC keys 1 / 2, and the Thrusters dash on the
 -- owner's client. MDA-28, plan docs/plans/MECHA_THRUSTERS_v1.0.md Task 6, mockup docs/mockups/mecha_thrusters_options.html
 -- option A "Thumb arc" (Kepu 2026-10-28).
 -- Slots: player attributes SkillSlot1 / SkillSlot2 (SkillServer 1.1; path id or ""). A press on a slot holding "thrusters"
@@ -396,6 +396,14 @@ VERSION = "1.46" -- v1.46 Sap Wall charges on the touch slot (MDA-507)
 --   MechaButtonsSapChargesEnabled (default true, read each draw; false = 1.45).
 if script:GetAttribute("MechaButtonsSapChargesEnabled") == nil then script:SetAttribute("MechaButtonsSapChargesEnabled", true) end -- v1.46
 VERSION = "1.47" -- v1.47 Sniper Scope hold-to-scope (MDA-517)
+VERSION = "1.48" -- v1.48 Sniper Scope: one charge per press
+-- v1.48 (Kepu 2026-11-13 16:59 "when I drag while holding if my finger leaves the sniper scope button then drags back onto it it
+--   resets the charge for the shot. Just have it do one charge per press of the button"): the slot button fires its InputBegan
+--   again for the same touch when the finger slides back onto it, which ran aimStart again (cancel + a new "start" = the charge
+--   from 0). Now while a dscope aim is up, another aimStart for the same slot with the same input (the same finger / key press)
+--   keeps the aim as it is (no cancel, no new start); only letting go fires. Switch: script attribute MechaButtonsScopeOnePressEnabled
+--   (default true, read at each press; false = 1.47). Diagnostic: character MechaScopeRepress (count of kept re-presses).
+if script:GetAttribute("MechaButtonsScopeOnePressEnabled") == nil then script:SetAttribute("MechaButtonsScopeOnePressEnabled", true) end -- v1.48
 -- v1.47 (MDA-517, plan docs/plans/DILO_SNIPER_SCOPE_v1.0.md Task 5, mockup docs/mockups/dilo_sniper_scope_part_v0.1.html; PC and
 --   touch together with AbilityBar 1.42, DiloSnipeCam 1.2, DiloMovesServer 1.13; Kepu 2026-11-13 16:19 "You tap and it goes straight
 --   into the scope then release to fire so you can just press and move your thumb around to aim"): TIMED_PARTS.dscope =
@@ -783,6 +791,11 @@ do
 	end
 	aimStart = function(n, input, isGesture)
 		if not (SCOPE_BTN and slotPart(n) == "dscope") then return startPre(n, input, isGesture) end
+		if script:GetAttribute("MechaButtonsScopeOnePressEnabled") ~= false and aim and aim.kind == "dscope" and aim.slot == n
+			and (input == nil or aim.input == nil or aim.input == input) then -- v1.48: the same press: keep the charge
+			char:SetAttribute("MechaScopeRepress", (char:GetAttribute("MechaScopeRepress") or 0) + 1)
+			return
+		end
 		aimCancel()
 		if not hrp or not scopeReady() then
 			char:SetAttribute("MechaScopeLast", "notReady")

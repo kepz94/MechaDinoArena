@@ -1,0 +1,172 @@
+<title>Sniper Scope Shot VFX</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@500;700&display=swap">
+<style>
+:root {
+  --bg: #0b1016; --card: #121a24; --line: #26364a; --fg: #e8eef6; --muted: #8fa2b8; --yellow: #ffc832;
+  --display: "Silkscreen", "Courier New", monospace; --body: "Inter", system-ui, sans-serif;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { font-family: var(--display); color: var(--yellow); font-size: 22px; margin: 0; letter-spacing: .04em; }
+.opt { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: var(--line); }
+@media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
+canvas { display: block; width: 100%; height: auto; background: #000; }
+.cap { padding: 10px 12px 12px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.who { font-family: var(--display); font-size: 13px; letter-spacing: .06em; }
+.who b { color: var(--yellow); }
+.what { font-size: 13px; color: var(--muted); }
+.lbl { font-family: var(--display); font-size: 10px; color: var(--muted); padding: 6px 10px; background: var(--card); }
+</style>
+
+<div class="wrap">
+  <h1>SNIPER SCOPE · THE SHOT</h1>
+  <div class="opt" data-k="A">
+    <div class="row">
+      <div><div class="lbl">YOUR SCOPE</div><canvas width="560" height="315"></canvas></div>
+      <div><div class="lbl">EVERYONE ELSE</div><canvas width="560" height="315"></canvas></div>
+    </div>
+    <div class="cap"><span class="who"><b>A</b> · VENOM BOLT</span><span class="what">Glowing bolt + trail flies into the crosshair, big splat, scope stays up 0.5 s</span></div>
+  </div>
+  <div class="opt" data-k="B">
+    <div class="row">
+      <div><div class="lbl">YOUR SCOPE</div><canvas width="560" height="315"></canvas></div>
+      <div><div class="lbl">EVERYONE ELSE</div><canvas width="560" height="315"></canvas></div>
+    </div>
+    <div class="cap"><span class="who"><b>B</b> · VENOM BEAM</span><span class="what">Thick bright beam that hangs 0.6 s, big splat + ring, scope stays up 0.5 s</span></div>
+  </div>
+  <div class="opt" data-k="C">
+    <div class="row">
+      <div><div class="lbl">YOUR SCOPE</div><canvas width="560" height="315"></canvas></div>
+      <div><div class="lbl">EVERYONE ELSE</div><canvas width="560" height="315"></canvas></div>
+    </div>
+    <div class="cap"><span class="who"><b>C</b> · BOLT + BEAM</span><span class="what">The bolt leaves a lingering beam behind it, big splat + ring, scope stays up 0.5 s</span></div>
+  </div>
+</div>
+
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const G = '#9cf05a', PALE = '#d8ff8a', DARK = '#3f8f2a';
+const LOOP = 3.2, FIRE = 1.3;
+function sky(g, W, H, zoom) {
+  const s = g.createLinearGradient(0, 0, 0, H); s.addColorStop(0, '#7fc7f2'); s.addColorStop(.55, '#cbeafb'); s.addColorStop(.56, '#6fbf5a'); s.addColorStop(1, '#3f8f3a');
+  g.fillStyle = s; g.fillRect(0, 0, W, H);
+  g.save(); g.translate(W / 2, H / 2); g.scale(zoom, zoom); g.translate(-W / 2, -H / 2);
+  const tree = (x, y, k) => { g.fillStyle = '#6a4a30'; g.fillRect(x - 3 * k, y - 26 * k, 6 * k, 26 * k); g.fillStyle = '#2f8a3e'; g.fillRect(x - 18 * k, y - 52 * k, 36 * k, 28 * k); };
+  tree(W * .18, H * .58, 1); tree(W * .84, H * .58, 1.1); tree(W * .64, H * .56, .6);
+}
+function dino(g, x, y, k, hit) {
+  g.save(); g.translate(x, y); g.scale(-k, k);
+  g.fillStyle = hit ? '#ffffff' : '#c8574b';
+  g.fillRect(-40, -48, 52, 26); g.fillRect(4, -62, 30, 20); g.fillRect(-70, -42, 32, 9); g.fillRect(-28, -24, 8, 24); g.fillRect(-4, -24, 8, 24);
+  g.restore();
+}
+function splat(g, x, y, u, big) {
+  if (u < 0 || u > 1) return;
+  const r = (big ? 46 : 30) * (0.3 + u);
+  g.save(); g.globalAlpha = 1 - u;
+  g.fillStyle = PALE; g.beginPath(); g.arc(x, y, r * 0.55, 0, 7); g.fill();
+  g.fillStyle = G;
+  for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28 + 0.3; const d = r * (0.7 + (i % 3) * 0.25); g.beginPath(); g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.7 + u * 20, 5 * (1 - u * 0.5), 0, 7); g.fill(); }
+  g.strokeStyle = PALE; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y + 8, r * 1.4, r * 0.45, 0, 0, 7); g.stroke();
+  g.restore();
+}
+function pop(g, x, y, u, txt) {
+  if (u < 0 || u > 1) return;
+  g.save(); g.globalAlpha = 1 - u; g.font = '700 22px Silkscreen, monospace'; g.textAlign = 'center';
+  g.lineWidth = 4; g.strokeStyle = '#0f2a06'; g.strokeText(txt, x, y - u * 26); g.fillStyle = PALE; g.fillText(txt, x, y - u * 26); g.restore();
+}
+function glowLine(g, x0, y0, x1, y1, w, a) {
+  g.save(); g.globalAlpha = a; g.lineCap = 'round';
+  g.strokeStyle = G; g.lineWidth = w * 2.6; g.globalAlpha = a * 0.35; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+  g.globalAlpha = a; g.strokeStyle = PALE; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+  g.restore();
+}
+function bolt(g, x0, y0, x1, y1, u, size) {
+  const x = x0 + (x1 - x0) * u, y = y0 + (y1 - y0) * u;
+  const tu = Math.max(0, u - 0.35), tx = x0 + (x1 - x0) * tu, ty = y0 + (y1 - y0) * tu;
+  glowLine(g, tx, ty, x, y, size * 0.6, 0.9);
+  g.save(); g.fillStyle = G; g.globalAlpha = .45; g.beginPath(); g.arc(x, y, size * 1.6, 0, 7); g.fill();
+  g.globalAlpha = 1; g.fillStyle = PALE; g.beginPath(); g.arc(x, y, size * 0.8, 0, 7); g.fill(); g.restore();
+}
+function scopeMask(g, W, H) {
+  const r = Math.min(W, H) * 0.44;
+  g.save(); g.fillStyle = '#000'; g.beginPath(); g.rect(0, 0, W, H); g.moveTo(W / 2 + r, H / 2); g.arc(W / 2, H / 2, r, 0, Math.PI * 2, true); g.fill('evenodd');
+  g.strokeStyle = '#1a1a1a'; g.lineWidth = 10; g.beginPath(); g.arc(W / 2, H / 2, r, 0, 7); g.stroke();
+  g.fillStyle = '#000';
+  g.fillRect(W / 2 - r, H / 2 - 2, r * 0.55, 4); g.fillRect(W / 2 + r * 0.45, H / 2 - 2, r * 0.55, 4);
+  g.fillRect(W / 2 - 2, H / 2 + r * 0.45, 4, r * 0.55); g.fillRect(W / 2 - 2, H / 2 - r, 4, r * 0.55);
+  g.fillRect(W / 2 - r * 0.45, H / 2 - 0.6, r * 0.9, 1.2); g.fillRect(W / 2 - 0.6, H / 2 - r * 0.45, 1.2, r * 0.9);
+  for (let i = 1; i <= 4; i++) for (const s of [-1, 1]) { g.beginPath(); g.arc(W / 2 + s * i * r * 0.1, H / 2, 2, 0, 7); g.fill(); g.beginPath(); g.arc(W / 2, H / 2 + s * i * r * 0.1, 2, 0, 7); g.fill(); }
+  g.restore();
+}
+function hitmark(g, W, H, u) {
+  if (u < 0 || u > 1) return;
+  g.save(); g.globalAlpha = 1 - u; g.strokeStyle = '#fff'; g.lineWidth = 3;
+  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { g.beginPath(); g.moveTo(W / 2 + a * 9, H / 2 + b * 9); g.lineTo(W / 2 + a * 19, H / 2 + b * 19); g.stroke(); }
+  g.restore();
+}
+const opts = [...document.querySelectorAll('.opt')].map(el => ({k: el.dataset.k, cs: el.querySelectorAll('canvas')}));
+function drawPOV(g, W, H, k, t) {
+  const inScope = t > 0.2 && t < FIRE + 0.5;
+  const kick = (t > FIRE && t < FIRE + 0.25) ? -14 * (1 - (t - FIRE) / 0.25) : 0;
+  g.save(); g.translate(0, kick);
+  sky(g, W, H, inScope ? 2.4 : 1);
+  const tx = W / 2, ty = H / 2;
+  const travel = k === 'B' ? 0 : 0.12;
+  const landT = FIRE + travel;
+  dino(g, tx, ty + 30, 0.45, t >= landT && t < landT + 0.1);
+  g.restore();
+  g.restore();
+  if (inScope) {
+    const sx = W / 2 + 40, sy = H + 10; // from your lens, low right, into the crosshair
+    if (t >= FIRE) {
+      if (k === 'A' || k === 'C') { const u = Math.min(1, (t - FIRE) / travel); if (u < 1) bolt(g, sx, sy, tx, ty, u, 9); }
+      if (k === 'B') { const u = (t - FIRE) / 0.6; if (u < 1) glowLine(g, sx, sy, tx, ty, 10, 1 - u); }
+      if (k === 'C' && t > FIRE) { const u = (t - FIRE) / 0.6; if (u < 1) glowLine(g, sx, sy, tx + (sx - tx) * Math.max(0, 1 - (t - FIRE) / travel), ty + (sy - ty) * Math.max(0, 1 - (t - FIRE) / travel), 6, 1 - u); }
+      splat(g, tx, ty + 6, (t - landT) / 0.5, true);
+      if (t < FIRE + 0.08) { g.save(); g.globalAlpha = .45; g.fillStyle = PALE; g.fillRect(0, 0, W, H); g.restore(); }
+    }
+    scopeMask(g, W, H);
+    hitmark(g, W, H, (t - landT) / 0.9);
+    pop(g, W / 2 + 48, H / 2 - 22, (t - landT) / 0.9, '40');
+  } else {
+    pop(g, W / 2, H / 2 - 30, (t - landT) / 0.9, '-40');
+  }
+}
+function drawSide(g, W, H, k, t) {
+  sky(g, W, H, 1);
+  g.restore();
+  const sx = 110, sy = 196, tx = 450, ty = 190;
+  // the dilo with the scope down
+  g.save(); g.fillStyle = '#4f8a3c'; g.fillRect(40, 182, 64, 26); g.fillRect(92, 166, 30, 22); g.fillRect(52, 206, 7, 22); g.fillRect(80, 206, 7, 22); g.fillRect(14, 188, 30, 8);
+  g.fillStyle = '#22252c'; g.fillRect(104, 166, 18, 8); g.fillStyle = '#ffc21a'; g.fillRect(121, 165, 3, 10);
+  if (t > 0.2 && t < FIRE) { const p = 0.5 + 0.5 * Math.sin(t * 18); g.globalAlpha = 0.5 + 0.5 * p; g.fillStyle = '#ff463c'; g.beginPath(); g.arc(124, 170, 5 + 3 * p, 0, 7); g.fill(); }
+  g.restore();
+  const travel = k === 'B' ? 0 : 0.12, landT = FIRE + travel;
+  dino(g, tx, ty + 30, 0.6, t >= landT && t < landT + 0.1);
+  const lx = 124, ly = 170;
+  if (t >= FIRE) {
+    if (k === 'A' || k === 'C') { const u = Math.min(1, (t - FIRE) / travel); if (u < 1) bolt(g, lx, ly, tx, ty, u, 6); }
+    if (k === 'B') { const u = (t - FIRE) / 0.6; if (u < 1) glowLine(g, lx, ly, tx, ty, 6, 1 - u); }
+    if (k === 'C') { const u = (t - FIRE) / 0.6; const e = Math.min(1, (t - FIRE) / travel); if (u < 1) glowLine(g, lx, ly, lx + (tx - lx) * e, ly + (ty - ly) * e, 4, 1 - u); }
+    splat(g, tx, ty, (t - landT) / 0.5, k !== 'A' ? true : false);
+    if (t < FIRE + 0.1) { g.save(); g.fillStyle = PALE; g.globalAlpha = .9; g.beginPath(); g.arc(lx, ly, 12, 0, 7); g.fill(); g.restore(); }
+  }
+  pop(g, tx, ty - 50, (t - landT) / 0.9, '-40');
+}
+const t0 = performance.now();
+function frame(now) {
+  const t = reduce ? FIRE + 0.08 : ((now - t0) / 1000) % LOOP;
+  for (const o of opts) {
+    const a = o.cs[0].getContext('2d'), b = o.cs[1].getContext('2d');
+    a.save(); drawPOV(a, o.cs[0].width, o.cs[0].height, o.k, t); a.restore();
+    b.save(); drawSide(b, o.cs[1].width, o.cs[1].height, o.k, t); b.restore();
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>

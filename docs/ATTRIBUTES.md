@@ -3486,3 +3486,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - DiloSnipeCam 1.2 `DiloScopeViewEnabled` (true, per frame), `DiloScopeFov` (30), `DiloScopeRaise` (0.2 s), `DiloScopeHole` (0.44), `DiloScopeSensMul` (0.6), `DiloScopeRecoilHold` (0.3 s), `DiloScopeKick` (4°). Character `DiloScopeHoleNow`; state "scope".
 - DiloMovesFX 1.7 `PartsFXScopeEnabled` (true), `DiloScopeUpDeg` (65°), `DiloScopeSwing` (0.2 s). Diagnostic `DiloMovesFXScopeShots`.
 - DiloAttackTest 1.6 `DiloAttackTestSpitPressEnabled` (true, at start) -> `DiloAttackTestSnipeEnabled` starts false.
+- MechaButtons 1.48 `MechaButtonsScopeOnePressEnabled` (true, per press). Character `MechaScopeRepress`.
