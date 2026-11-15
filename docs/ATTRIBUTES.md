@@ -3514,3 +3514,6 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SpeciesServer 1.9 `SpeciesRememberPicksEnabled` (true, per pick).
 - PregameScreen 1.4 `PregameRespawnPickEnabled` (true, per frame).
 - PracticeServer 1.14 `PrRespawnPlaceOnceEnabled` (true, per call), `PrRespawnPlaceGuard` (1 s), counter `PrRespawnRePlaceSkips`. Character `PrRespawnPlacedAt` (server time of the respawn release placement).
+- HubServer 1.6 `HubSwapKeepEnabled` (true, per body), `HubSwapMinAge` (1 s), `HubSwapKeepDist` (6 studs), `HubSwapWindow` (3 s), counter `HubSwapsKept`; player `HubPlaceLast` "kept swap" / "moved swap".
+- PregameScreen 1.5 `PregameIslandPickEnabled` (true), `PregameFreeMouseEnabled` (true, per frame); diagnostic `PregameIslandHub`. Player (local) `IslandPickOpen`.
+- IslandDino 1.0 `IslandDinoEnabled` (true, per frame), `IslandDinoGap` (8 px); diagnostics `IslandDinoVersion`, `IslandDinoShown`, `IslandDinoPresses`.

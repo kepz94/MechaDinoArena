@@ -76,6 +76,16 @@
 --     unchanged), the dino is alive, out of the menu and its root is within HubPlaceFixRadius (60) studs (flat) of the
 --     SpawnLocation, it is placed on the islet again, at most HubPlaceFixMax (2) times per spawn.
 --   Diagnostics: script HubPlaceFixes (re-placements); player HubPlaceLast ("placed <i>" / "fixed <i> from spawn").
+-- v1.6 (island dino swap, MDA-543, plan docs/plans/ISLAND_DINO_SWAP_v1.0.md rule 3, mockup docs/mockups/island_dino_swap_v0.1.html
+--   "A · Dino button"; Kepu 2026-11-15 10:53 "when i load on to the main island there is no option at all to change dino"): on the
+--   hub, a new body that replaces a live body (Humanoid alive) that had been the player's body for at least HubSwapMinAge (1) s,
+--   while out of the menu, is a dino swap (DinoSpeciesRequest; the T-Rex step of a death respawn is younger and does not count).
+--   For a swap the islet placement is skipped; when the new body is more than HubSwapKeepDist (6) studs (flat) from the old
+--   root (the T-Rex, built by LoadCharacter at the SpawnLocation), it is moved there: same ground height (old root - its half
+--   height - HipHeight), same flat facing, root anchored and server-owned for HubPlaceHold (0.3) s. A swap is used once, and only
+--   within HubSwapWindow (3) s of the new body. The old body's last live state (alive, root CFrame, ground height) is kept
+--   every Heartbeat, since it is already destroyed when the deferred CharacterAdded runs (Studio: Humanoid gone). Switch: script attribute HubSwapKeepEnabled (default true, read per body; false
+--   = 1.5, every new body goes to the islet). Diagnostics: script HubSwapsKept; player HubPlaceLast "kept swap" / "moved swap".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -86,6 +96,7 @@ local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 portal flare
 VERSION = "1.4" -- v1.4 Arena queue
 VERSION = "1.5" -- v1.5 islet spawn hold + check
+VERSION = "1.6" -- v1.6 island dino swap stays put
 local PLACE_DELAY, RESPAWN_DELAY = 0.15, 0.3
 
 script:SetAttribute("HubServerVersion", VERSION)
@@ -229,6 +240,83 @@ function place(p, fixes) -- v1.5: fixes = re-placements of this spawn so far (ni
 	if safe then -- v1.5
 		p:SetAttribute("HubPlaceLast", (fixes and fixes > 0) and ("fixed " .. best .. " from spawn") or ("placed " .. best))
 		holdAndCheck(p, c, hrp, p:GetAttribute("HubSpawnAt"), fixes or 0)
+	end
+end
+
+-- v1.6: island dino swap stays put (see the header)
+for k, v in pairs({HubSwapKeepEnabled = true, HubSwapMinAge = 1, HubSwapKeepDist = 6, HubSwapWindow = 3, HubSwapsKept = 0}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local bodyOf = {} -- [player] = {c = character, at = os.clock() it became the body}
+local swapOf = {} -- [player] = {c = the new body, at, cf = old root CFrame, ground = old ground height}
+-- the old body is already destroyed when CharacterAdded runs (deferred events), so each body's last live state is kept per frame
+local lastSeen = setmetatable({}, {__mode = "k"}) -- [character] = {alive, cf, ground}
+game:GetService("RunService").Heartbeat:Connect(function()
+	if KIND ~= "hub" then return end
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local ch = pl.Character
+		local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+		local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+		if hum and hrp then
+			lastSeen[ch] = {alive = hum.Health > 0, cf = hrp.CFrame, ground = hrp.Position.Y - (hrp.Size.Y / 2 + hum.HipHeight)}
+		end
+	end
+end)
+local function trackSwap(p, c)
+	local prev = bodyOf[p]
+	bodyOf[p] = {c = c, at = os.clock()}
+	swapOf[p] = nil
+	if KIND ~= "hub" or script:GetAttribute("HubSwapKeepEnabled") == false or not prev or prev.c == c then return end
+	if p:GetAttribute("InMenu") == true then return end
+	if os.clock() - prev.at < (tonumber(script:GetAttribute("HubSwapMinAge")) or 1) then return end
+	local seen = lastSeen[prev.c]
+	if not (seen and seen.alive) then return end
+	swapOf[p] = {c = c, at = os.clock(), cf = seen.cf, ground = seen.ground}
+end
+Players.PlayerAdded:Connect(function(p)
+	p.CharacterAdded:Connect(function(c) trackSwap(p, c) end)
+end)
+for _, p in ipairs(Players:GetPlayers()) do
+	if p.Character then bodyOf[p] = {c = p.Character, at = os.clock()} end
+	p.CharacterAdded:Connect(function(c) trackSwap(p, c) end)
+end
+Players.PlayerRemoving:Connect(function(p) bodyOf[p], swapOf[p] = nil, nil end)
+do
+	local rawPlaceHub = place
+	place = function(p, fixes)
+		local sw = swapOf[p]
+		local c = p.Character
+		if sw and not fixes and sw.c == c and os.clock() - sw.at <= (tonumber(script:GetAttribute("HubSwapWindow")) or 3)
+			and script:GetAttribute("HubSwapKeepEnabled") ~= false and p:GetAttribute("InMenu") ~= true then
+			swapOf[p] = nil
+			local hrp = c:FindFirstChild("HumanoidRootPart")
+			local hum = c:FindFirstChildOfClass("Humanoid")
+			if hrp and hum then
+				local old = sw.cf.Position
+				local flat = Vector3.new(hrp.Position.X - old.X, 0, hrp.Position.Z - old.Z).Magnitude
+				if flat > (tonumber(script:GetAttribute("HubSwapKeepDist")) or 6) then
+					local pos = Vector3.new(old.X, sw.ground + hrp.Size.Y / 2 + hum.HipHeight, old.Z)
+					local look = Vector3.new(sw.cf.LookVector.X, 0, sw.cf.LookVector.Z)
+					if look.Magnitude < 1e-3 then look = Vector3.new(0, 0, -1) end
+					pcall(function() hrp:SetNetworkOwner(nil) end)
+					hrp.Anchored = true
+					c:PivotTo(CFrame.lookAt(pos, pos + look.Unit))
+					hrp.AssemblyLinearVelocity = Vector3.zero
+					task.delay(tonumber(script:GetAttribute("HubPlaceHold")) or 0.3, function()
+						if hrp.Parent and hrp.Anchored and p:GetAttribute("InMenu") ~= true then
+							hrp.Anchored = false
+							pcall(function() hrp:SetNetworkOwnershipAuto() end)
+						end
+					end)
+					p:SetAttribute("HubPlaceLast", "moved swap")
+				else
+					p:SetAttribute("HubPlaceLast", "kept swap")
+				end
+				script:SetAttribute("HubSwapsKept", (script:GetAttribute("HubSwapsKept") or 0) + 1)
+			end
+			return
+		end
+		return rawPlaceHub(p, fixes)
 	end
 end
 

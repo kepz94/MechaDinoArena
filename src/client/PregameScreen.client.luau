@@ -48,6 +48,24 @@ VERSION = "1.1" -- v1.1 Arena match look
 VERSION = "1.2" -- v1.2 SAVED LOADOUT tag
 VERSION = "1.3" -- v1.3 3D models wait until fully arrived
 VERSION = "1.4" -- v1.4 respawn picker mode
+VERSION = "1.5" -- v1.5 island picker mode
+-- v1.5 (island dino swap, MDA-544, plan docs/plans/ISLAND_DINO_SWAP_v1.0.md rule 2, mockup docs/mockups/island_dino_swap_v0.1.html
+--   "A · Dino button"; Kepu 2026-11-15 10:53 "when i load on to the main island there is no option at all to change dino" / 10:58
+--   "this is for the main island not any game modes"):
+--   * Start on the island: when ReplicatedStorage has no Practice folder yet, the script waits (0.25 s steps, up to 60 s as
+--     before) for either Practice or ReplicatedStorage ServerKind == "hub". On the hub it uses a stand-in Folder (not parented)
+--     as the match state and does not wait for PracticeRequest / PracticeShared (1.4 waited 60 s + 30 s + 30 s, then quit).
+--   * Island mode (islandMode(): hub, script attribute PregameIslandPickEnabled ~= false, player attribute IslandPickOpen ==
+--     true (set by IslandDino 1.0, local), not InMenu): the SELECT screen shows over the island (dino step with your dino, then
+--     the parts step). SELECT on another dino sends DinoSpeciesRequest (today's swap; HubServer 1.6 keeps you in place);
+--     parts work as in the lobby. CONFIRM and BACK on the dino step close it (IslandPickOpen = false). Texts: sub line
+--     "ISLAND · PICK YOUR DINO" / "ISLAND · <DINO> · PICK 4 PARTS", title / bar yellow; the team strip, TEAM NEEDS label,
+--     role group counts and teammate names on tiles are hidden; clock "", note "SWAP WHERE YOU STAND". Opening the menu
+--     closes it.
+--   * Free mouse: while the screen is up in island or respawn mode, render step "PregameMouse" (Camera + 1, after ShoulderCam)
+--     sets MouseBehavior Default and shows the cursor (ShoulderCam locks it every frame). Switch PregameFreeMouseEnabled.
+--   Switch: PregameIslandPickEnabled (default true; false = 1.4: no island start, no island mode). Diagnostic:
+--   PregameIslandHub (true on the hub stand-in).
 -- v1.4 (respawn swap, MDA-541, plan docs/plans/RESPAWN_SWAP_v1.0.md rule 3, mockup docs/mockups/respawn_change_v0.1.html "C · Death
 --   cam + button"; Kepu 2026-11-13 21:18 "the ability to change Dino and load out mid match"): while player attribute
 --   RespawnPickOpen is true (RespawnServer 1.0: the CHANGE DINO / LOADOUT button while dead, or the CHANGE pill after spawning)
@@ -74,8 +92,32 @@ for k, v in pairs({PregameScreenEnabled = true, PregameFlatIcons = false}) do
 end
 
 local player = Players.LocalPlayer
-local state = ReplicatedStorage:WaitForChild("Practice", 60)
+local state = ReplicatedStorage:FindFirstChild("Practice") -- v1.5: the island start (see the header)
+local islandHub = false
+if script:GetAttribute("PregameIslandPickEnabled") == nil then script:SetAttribute("PregameIslandPickEnabled", true) end
+if script:GetAttribute("PregameFreeMouseEnabled") == nil then script:SetAttribute("PregameFreeMouseEnabled", true) end
+if not state then
+	if script:GetAttribute("PregameIslandPickEnabled") ~= false then
+		local t0 = os.clock()
+		repeat
+			task.wait(0.25)
+			state = ReplicatedStorage:FindFirstChild("Practice")
+		until state or ReplicatedStorage:GetAttribute("ServerKind") == "hub" or os.clock() - t0 > 60
+		if not state and ReplicatedStorage:GetAttribute("ServerKind") == "hub" then
+			state = Instance.new("Folder")
+			state.Name = "PracticeIslandStandIn"
+			islandHub = true
+			script:SetAttribute("PregameIslandHub", true)
+		end
+	else
+		state = ReplicatedStorage:WaitForChild("Practice", 60)
+	end
+end
 if not state then return end -- no practice match on this server
+local function islandMode() -- v1.5
+	return islandHub and script:GetAttribute("PregameIslandPickEnabled") ~= false and player:GetAttribute("IslandPickOpen") == true
+		and player:GetAttribute("InMenu") ~= true
+end
 local function respawnMode() -- v1.4
 	return script:GetAttribute("PregameRespawnPickEnabled") ~= false and player:GetAttribute("RespawnPickOpen") == true
 end
@@ -83,12 +125,14 @@ local function respawnFire(...) -- v1.4
 	local r = ReplicatedStorage:FindFirstChild("RespawnRequest")
 	if r then r:FireServer(...) end
 end
-local request = ReplicatedStorage:WaitForChild("PracticeRequest", 30)
+local request -- v1.5: no wait on the island
+if islandHub then request = ReplicatedStorage:FindFirstChild("PracticeRequest") else request = ReplicatedStorage:WaitForChild("PracticeRequest", 30) end
 local speciesRemote = ReplicatedStorage:WaitForChild("DinoSpeciesRequest", 30)
 local skillRemote = ReplicatedStorage:WaitForChild("SkillRequest", 30)
 local skillShared = ReplicatedStorage:WaitForChild("SkillShared", 30)
 local ST = skillShared and require(skillShared:WaitForChild("SkillTree"))
-local prShared = ReplicatedStorage:WaitForChild("PracticeShared", 30)
+local prShared -- v1.5: no wait on the island
+if islandHub then prShared = ReplicatedStorage:FindFirstChild("PracticeShared") else prShared = ReplicatedStorage:WaitForChild("PracticeShared", 30) end
 local PR = prShared and prShared:FindFirstChild("PracticeRules") and require(prShared.PracticeRules) or {}
 local models = ReplicatedStorage:WaitForChild("PregameModels", 30)
 local Sheet = nil
@@ -950,6 +994,24 @@ local function drawIntro(t)
 	end
 end
 
+-- v1.5: island look on the SELECT screen (see the header)
+do
+	local rawDrawSelect = drawSelect
+	drawSelect = function()
+		rawDrawSelect()
+		local im = islandMode()
+		strip.Visible = not im
+		needsLbl.Visible = not im
+		if not im then return end
+		local d, parts = sel.draft, sel.step == "parts"
+		tops.Select.sub.Text = "ISLAND · " .. (parts and (nameOf(d) .. " · PICK 4 PARTS") or "PICK YOUR DINO")
+		tops.Select.title.TextColor3 = C.yellow
+		tops.Select.fill.BackgroundColor3 = C.yellow
+		for _, g in pairs(groupHead) do g.Text = "" end
+		for _, t in pairs(tiles) do t.tag.Text = "" end
+	end
+end
+
 -- ---------- wiring ----------
 local view = "hidden"
 local function setView(v)
@@ -982,7 +1044,9 @@ backBtn.Activated:Connect(function()
 		drawSelect()
 	else
 		press("back")
-		if respawnMode() then respawnFire("close") setView("hidden") else setView("lineup") end -- v1.4
+		if respawnMode() then respawnFire("close") setView("hidden") -- v1.4
+		elseif islandMode() then player:SetAttribute("IslandPickOpen", false) setGhost(nil) setView("hidden") -- v1.5
+		else setView("lineup") end
 	end
 end)
 goBtn.Activated:Connect(function()
@@ -1000,6 +1064,12 @@ goBtn.Activated:Connect(function()
 		press("confirm")
 		if respawnMode() then -- v1.4
 			respawnFire("ready")
+			setGhost(nil)
+			setView("hidden")
+			return
+		end
+		if islandMode() then -- v1.5
+			player:SetAttribute("IslandPickOpen", false)
 			setGhost(nil)
 			setView("hidden")
 			return
@@ -1068,14 +1138,18 @@ local lastAnim = 0
 RunService.RenderStepped:Connect(function(dt)
 	local pgPhase = state:GetAttribute("PgPhase")
 	local rp = respawnMode() -- v1.4
+	if islandHub and player:GetAttribute("IslandPickOpen") == true and player:GetAttribute("InMenu") == true then
+		player:SetAttribute("IslandPickOpen", false) -- v1.5: the menu closes it
+	end
+	local im = islandMode() -- v1.5
 	local on = script:GetAttribute("PregameScreenEnabled") ~= false and ((player:GetAttribute("PrInLobby") == true
-		and (pgPhase == "lineup" or pgPhase == "intro")) or rp)
+		and (pgPhase == "lineup" or pgPhase == "intro")) or rp or im)
 	gui.Enabled = on
 	if not on then
 		if view ~= "hidden" then setView("hidden") setGhost(nil) end
 		return
 	end
-	if rp then -- v1.4: the respawn picker
+	if rp or im then -- v1.4: the respawn picker; v1.5: the island picker
 		if view ~= "select" then openSelect() sig = "" end
 	elseif pgPhase == "intro" then
 		if view ~= "intro" then setGhost(nil) setView("intro") sig = "" end
@@ -1109,6 +1183,13 @@ RunService.RenderStepped:Connect(function(dt)
 			tb.note.Text = held and (ra > 0 and "RESPAWN IN" or "WAITING FOR YOU") or "CHANGE NOW"
 		end
 	end
+	if im then -- v1.5: no clock on the island
+		for _, tb in pairs(tops) do
+			tb.clock.Text = ""
+			tb.note.Text = "SWAP WHERE YOU STAND"
+			tb.fill.Size = UDim2.fromScale(1, 1)
+		end
+	end
 	toast.Visible = os.clock() < toastUntil
 	-- motion (about 30 fps is plenty for the sway)
 	lastAnim += dt
@@ -1140,4 +1221,13 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		end
 	end
+end)
+
+-- v1.5: free mouse while the island / respawn picker is up (see the header)
+pcall(function() RunService:UnbindFromRenderStep("PregameMouse") end)
+RunService:BindToRenderStep("PregameMouse", Enum.RenderPriority.Camera.Value + 1, function()
+	if script:GetAttribute("PregameFreeMouseEnabled") == false or not gui.Enabled then return end
+	if not (islandMode() or respawnMode()) then return end
+	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	UserInputService.MouseIconEnabled = true
 end)
