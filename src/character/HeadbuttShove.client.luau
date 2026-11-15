@@ -9,10 +9,20 @@
 -- Diagnostics (character, this client): HeadbuttShoveVersion, HeadbuttShoveState ("idle" / "pushed"), HeadbuttShoveMoved
 --   (studs moved by the last push, 0.1 steps).
 -- Switch: character attribute HeadbuttShoveEnabled (default true; false = no push, the slow still applies).
+-- v1.1 (MDA-546, plan docs/plans/UNSTUCK_v1.0.md rule 1; Kepu 2026-11-15 11:22 "i was pushed into the ground from an attack and i
+--   was in the map"): every knockback on a player (Pachy headbutt, Teno shove, Herrera Stun Breaker, Dilo hiss, Troodon shove)
+--   comes through this push, which had no look-ahead and could drive the body through block edges into the map. Now each
+--   Heartbeat of a push a Blockcast of the HumanoidRootPart (size x ShoveCastScaleXZ (0.9) / ShoveCastScaleY (0.6) / XZ, its own
+--   rotation) runs along the push for this frame's travel + ShoveCastAhead (1.5) studs, against collidable parts of
+--   Workspace.DinoIsland Ground / MountainSteps / Rocks / EdgeWalls / Trees (RespectCanCollide). A hit that is not floor-like
+--   (normal.Y < ShoveFloorNormal (0.6)) ends the push at once (constraint off, HeadbuttShoveState "blocked", HeadbuttShoveMoved
+--   as usual). Every number is a character attribute of that name. Switch: character attribute ShoveBlockEnabled (default
+--   true, read per push; false = 1.0).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 the push stops before entering the map
 local FRESH = 1
 local ACCEL = 20000 -- studs/s^2 the push may use (force limit = mass x this); Studio test: 2500 moved 10.7 of 40 studs,
 -- 8000 35.9, 20000 39.2 (the humanoid's ground grip fights the push). Override: character attribute HeadbuttShoveAccel.
@@ -43,6 +53,31 @@ local function ensure()
 	return lv
 end
 
+-- v1.1: look-ahead (see the header)
+local castParams = RaycastParams.new()
+castParams.FilterType = Enum.RaycastFilterType.Include
+castParams.RespectCanCollide = true
+local function solidList()
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local list = {}
+	for _, n in ipairs({"Ground", "MountainSteps", "Rocks", "EdgeWalls", "Trees"}) do
+		local f = isl and isl:FindFirstChild(n)
+		if f then table.insert(list, f) end
+	end
+	return list
+end
+local function cfgN(k, d) return tonumber(char:GetAttribute(k)) or d end
+local function blockedAhead(dir, step)
+	if char:GetAttribute("ShoveBlockEnabled") == false then return false end
+	local list = solidList()
+	if #list == 0 then return false end
+	castParams.FilterDescendantsInstances = list
+	local xz, y = cfgN("ShoveCastScaleXZ", 0.9), cfgN("ShoveCastScaleY", 0.6)
+	local size = Vector3.new(hrp.Size.X * xz, hrp.Size.Y * y, hrp.Size.Z * xz)
+	local r = workspace:Blockcast(hrp.CFrame, size, dir * (step + cfgN("ShoveCastAhead", 1.5)), castParams)
+	return r ~= nil and r.Normal.Y < cfgN("ShoveFloorNormal", 0.6)
+end
+
 local token = 0
 local function onShove()
 	if char:GetAttribute("HeadbuttShoveEnabled") == false then return end
@@ -64,13 +99,15 @@ local function onShove()
 	local peak = 2 * dist / time -- linear ease to 0 covers dist over time
 	local t0 = os.clock()
 	local conn
-	conn = RunService.Heartbeat:Connect(function()
+	local blocked = false -- v1.1
+	conn = RunService.Heartbeat:Connect(function(dt)
 		local u = (os.clock() - t0) / time
-		if my ~= token or u >= 1 or hum.Health <= 0 or not hrp.Parent then
+		if not blocked and my == token and u < 1 and hrp.Parent and blockedAhead(away, peak * (1 - u) * dt) then blocked = true end -- v1.1
+		if my ~= token or u >= 1 or hum.Health <= 0 or not hrp.Parent or blocked then
 			conn:Disconnect()
 			if my == token then
 				c.Enabled = false
-				char:SetAttribute("HeadbuttShoveState", "idle")
+				char:SetAttribute("HeadbuttShoveState", blocked and "blocked" or "idle")
 				local moved = Vector3.new(hrp.Position.X - start.X, 0, hrp.Position.Z - start.Z).Magnitude
 				char:SetAttribute("HeadbuttShoveMoved", math.floor(moved * 10 + 0.5) / 10)
 			end
