@@ -3607,4 +3607,43 @@ do
 	end
 end
 
+-- v1.95 (MDA-551, Kepu 2026-11-15 12:46 "I wasn't talking about the distance for the dilo mortar but the actual size of the blast
+--   damage", picks "Add an impact blast", "10 / 15 / 20 by rank"): with SkillTree.DILO_MORTAR_BLAST (default true) effects() gives
+--   dMortarBlast from SkillTree.DILO_MORTAR_BLAST_DMG by the dmortar steps: 10 (I, step 1) / 15 (II, steps 2-3) / 20 (star, step 4),
+--   0 when unbought. SkillEffects 1.64 writes it as DiloPartMortarBlast; DiloMovesServer 1.15 deals it once at the landing to every
+--   target inside the cloud's radius. The Lab texts name it (DILO_MORTAR_BLAST_TEXTS, exact old -> new; misses in
+--   SkillTree.DILO_MORTAR_BLAST_MISSES, expected 0). DILO_MORTAR_BLAST = false restores 1.94.
+SkillTree.DILO_MORTAR_BLAST = true
+SkillTree.DILO_MORTAR_BLAST_DMG = {10, 15, 15, 20}
+SkillTree.DILO_MORTAR_BLAST_TEXTS = {
+	{"dmortar", 1, "a 36-stud poison cloud", "a 10-damage blast and a 36-stud poison cloud"},
+	{"dmortar", 2, "cloud 45 studs wide", "blast 15, cloud 45 studs wide"},
+	{"dmortar", 4, "cloud 54 studs wide", "blast 20, cloud 54 studs wide"},
+}
+SkillTree.DILO_MORTAR_BLAST_MISSES = 0
+if SkillTree.DILO_MORTAR_BLAST then
+	for _, row in ipairs(SkillTree.DILO_MORTAR_BLAST_TEXTS) do
+		local path = SkillTree.PATHS[row[1]]
+		local text = path and path.steps and path.steps[row[2]]
+		local a, b
+		if type(text) == "string" then a, b = text:find(row[3], 1, true) end
+		if a then
+			path.steps[row[2]] = text:sub(1, a - 1) .. row[4] .. text:sub(b + 1)
+		else
+			SkillTree.DILO_MORTAR_BLAST_MISSES += 1
+		end
+	end
+end
+do
+	local effectsPre195 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre195(steps, dino)
+		if type(e) ~= "table" or not SkillTree.DILO_MORTAR_BLAST or not SkillTree.PATHS.dmortar then return e end
+		local s = dino == "Dilo" and SkillTree.sanitize(steps, dino) or {}
+		local d = math.clamp(math.floor(tonumber(s.dmortar) or 0), 0, #SkillTree.DILO_MORTAR_BLAST_DMG)
+		e.dMortarBlast = d >= 1 and SkillTree.DILO_MORTAR_BLAST_DMG[d] or 0
+		return e
+	end
+end
+
 return SkillTree

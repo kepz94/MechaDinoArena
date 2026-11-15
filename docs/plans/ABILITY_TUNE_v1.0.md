@@ -68,3 +68,24 @@ SkillTree is over 200 000 characters, so `Source =` is refused. It was installed
   - With a pull part (gesture path), drag across ARC LANTERN: the aim was kept (SlideOver 2) and released "wall" at 80. No lantern.
   - Quick tap: full range straight ahead.
 - **Not seen in Studio captures:** the tool's screen capture does not draw BillboardGuis at all (a test billboard was also missing), so the tag text is checked by its properties only.
+
+## v1.1 follow-up (after the 1.51 publish)
+- **Kepu 12:46:** "I wasn't talking about the distance for the dilo mortar but the actual size of the blast damage".
+  - Code fact: the +50% in 1.94 already enlarged the damage area (the poison cloud radius), and reach was unchanged. The mortar had no impact damage.
+  - Picks: "Add an impact blast", "10 / 15 / 20 by rank".
+- **Kepu 12:48:** "The fucking sap wall shit is ass. Just have it show the trajectory don't hold to drag". Pick: "Arc only, when SAP WALL is pressed".
+
+### Rules
+3. **Mortar impact blast (MDA-551: SkillTree 1.95, SkillEffects 1.64, DiloMovesServer 1.15).**
+   - Damage: 10 / 15 / 20 (tier I, steps 2–3, step 4).
+   - Dealt once when the canister lands (DiloMortarLandAt) to every enemy within the cloud radius (flat) and 12 up or down, unless behind a Sap Wall. It goes through damage() (shields, armor), KilledWith "dilomortar".
+   - The existing landing flash (DiloPartsVFX, R × 2.2) already shows the blast.
+   - The Lab texts name the blast.
+4. **Sap Wall without hold (MDA-550: MechaButtons 1.52).**
+   - MechaButtonsSapHoldEnabled (default false) turns 1.51's hold-to-aim off, so a press throws at once as in 1.50.
+   - When the server accepts the throw (TrooSapAt), only the owner sees 20 amber dots on the pod's real curve (TrooSapFrom → TrooSapTo) for 0.9 s, fading over the last 0.3 s.
+
+### Studio test (2026-11-15)
+- **Mortar:** DiloPartMortarBlast 20 at star. An enemy bot 24.0 studs from the landing went 70 → 46 (blast 20 plus venom ticks), DiloMortarBlastHits "PBot_Volt". An enemy at 32.0 stayed at 90.
+- **Sap Wall on PC:** R throws on key-down, with no SapAim model and MechaSapFlashes 1. The arc showed in the capture.
+- **Sap Wall on phone (iPhone 17 Pro emulation):** the press threw at once (left 2 → 1) and the flash showed, with no aim model.

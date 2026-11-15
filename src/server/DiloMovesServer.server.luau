@@ -1136,3 +1136,50 @@ script:SetAttribute("DiloMovesServerVersion", "1.14") -- v1.14 pre-match lock
 --   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
 --   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
 --   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
+script:SetAttribute("DiloMovesServerVersion", "1.15") -- v1.15 Toxin Mortar impact blast (MDA-551)
+-- v1.15 (MDA-551; Kepu 2026-11-15 12:46 "the actual size of the blast damage", picks "Add an impact blast", "10 / 15 / 20 by rank";
+--   SkillTree 1.95, SkillEffects 1.64): when a Toxin Mortar lands (the handler stamps DiloMortarLandAt: the cloud starts; not when
+--   a Sap Wall stopped the arc) every target inside the cloud's radius (DiloMortarRadius, flat) and CLOUD_HEIGHT (12) up / down,
+--   not behind a Sap Wall from the landing (the cloud's own rule), takes DiloPartMortarBlast damage once (the damage() path:
+--   shields, taken mul, armor; KilledWith "dilomortar"). A separate listener on the same request (players and bots): it waits up
+--   to DiloMovesMortarBlastWait (4) s for that character's DiloMortarLandAt to change; the handler itself is unchanged.
+--   Switch: script attribute DiloMovesMortarBlastEnabled (default true, read at each landing). Diagnostics: script
+--   DiloMovesMortarBlasts (count of landings that hit), DiloMovesMortarBlastHits (count of targets hit); character DiloMortarBlastHits
+--   ("name|name", "" when none).
+do
+	if script:GetAttribute("DiloMovesMortarBlastEnabled") == nil then script:SetAttribute("DiloMovesMortarBlastEnabled", true) end
+	if script:GetAttribute("DiloMovesMortarBlastWait") == nil then script:SetAttribute("DiloMovesMortarBlastWait", 4) end
+	local waiting = setmetatable({}, {__mode = "k"}) -- [char] = connection
+	botHook(mortarRemote):Connect(function(player)
+		local char = player and player.Character
+		if not char or script:GetAttribute("DiloMovesMortarBlastEnabled") == false then return end
+		if waiting[char] then waiting[char]:Disconnect() end
+		local conn
+		conn = char:GetAttributeChangedSignal("DiloMortarLandAt"):Connect(function()
+			conn:Disconnect()
+			if waiting[char] == conn then waiting[char] = nil end
+			if script:GetAttribute("DiloMovesMortarBlastEnabled") == false or not char.Parent then return end
+			local dmg = math.max(0, num(char, "DiloPartMortarBlast", 0))
+			local land, radius = char:GetAttribute("DiloMortarTo"), num(char, "DiloMortarRadius", 0)
+			if dmg <= 0 or typeof(land) ~= "Vector3" or radius <= 0 then return end
+			local t = now()
+			local hits = {}
+			for _, m in ipairs(candidates(char)) do
+				local p = rootOf(m).Position
+				if flat(p - land).Magnitude <= radius and math.abs(p.Y - land.Y) <= CLOUD_HEIGHT
+					and not (script:GetAttribute("DiloMovesSapCloudEnabled") ~= false and sapBlocked(land + Vector3.yAxis * 2, m)) then
+					if damage(char, player, m, dmg, "dilomortar", t) > 0 then table.insert(hits, m.Name) end
+				end
+			end
+			char:SetAttribute("DiloMortarBlastHits", table.concat(hits, "|"))
+			if #hits > 0 then
+				script:SetAttribute("DiloMovesMortarBlasts", (script:GetAttribute("DiloMovesMortarBlasts") or 0) + 1)
+				script:SetAttribute("DiloMovesMortarBlastHits", (script:GetAttribute("DiloMovesMortarBlastHits") or 0) + #hits)
+			end
+		end)
+		waiting[char] = conn
+		task.delay(math.max(1, num(script, "DiloMovesMortarBlastWait", 4)), function()
+			if waiting[char] == conn then conn:Disconnect() waiting[char] = nil end
+		end)
+	end)
+end

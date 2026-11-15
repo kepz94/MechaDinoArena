@@ -3522,3 +3522,7 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkillTree 1.94 (module fields) `DILO_MORTAR_BIG` (true), `DILO_MORTAR_RADIUS_MUL2` (1.5), `DILO_MORTAR_BIG_TEXTS`; diagnostic `DILO_MORTAR_BIG_MISSES` (0).
 - DiloPartsVFX 1.1 `DiloPartsVFX_mortarAreaRate` (1 on / 0 off), `DiloPartsVFX_mortarRateMax` (3).
 - MechaButtons 1.51 `MechaButtonsSapAimEnabled` (true, per press), `MechaButtonsSapAimDots` (20), `MechaButtonsSapAimArc` (7), `MechaButtonsSapAimGhostAlpha` (0.6), `MechaButtonsSapAimMin` (5 studs), `MechaButtonsSapAimYaw` (60 deg), `MechaButtonsSapTapTime` (0.2 s); character diagnostics `MechaSapAim` ("aiming" / "fired" / "tap" / "cancel"), `MechaSapAimDist`, `MechaSapAimBlocked`, `MechaSapAimFired`, `MechaSapAimMode` ("thumb" / "camera"), `MechaSapAimSlideOver`.
+- SkillTree 1.95 (module fields) `DILO_MORTAR_BLAST` (true), `DILO_MORTAR_BLAST_DMG` ({10, 15, 15, 20}), `DILO_MORTAR_BLAST_TEXTS`; diagnostic `DILO_MORTAR_BLAST_MISSES` (0).
+- SkillEffects 1.64 `SkillEffectsDiloMortarBlastEnabled` (true, at start); character `DiloPartMortarBlast`.
+- DiloMovesServer 1.15 `DiloMovesMortarBlastEnabled` (true, per landing), `DiloMovesMortarBlastWait` (4 s); counters `DiloMovesMortarBlasts`, `DiloMovesMortarBlastHits`; character `DiloMortarBlastHits`.
+- MechaButtons 1.52 `MechaButtonsSapHoldEnabled` (false = 1.51 hold-to-aim off), `MechaButtonsSapFlashEnabled` (true, per throw), `MechaButtonsSapFlashDots` (20), `MechaButtonsSapFlashTime` (0.9 s), `MechaButtonsSapFlashFade` (0.3 s); character `MechaSapFlashes`.

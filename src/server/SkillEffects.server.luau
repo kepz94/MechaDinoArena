@@ -1168,6 +1168,12 @@ if script:GetAttribute("SkillEffectsDiloScopeEnabled") ~= false then
 	table.insert(DPARTS, {"dscope", "DiloPartScope", {{"Min", "dScopeMin", 0}, {"Max", "dScopeMax", 0}, {"Charge", "dScopeCharge", 0},
 		{"Range", "dScopeRange", 0}, {"Cooldown", "dScopeCooldown", 0}, {"Mark", "dScopeMark", 0}}})
 end
+if script:GetAttribute("SkillEffectsDiloMortarBlastEnabled") == nil then script:SetAttribute("SkillEffectsDiloMortarBlastEnabled", true) end -- v1.64
+if script:GetAttribute("SkillEffectsDiloMortarBlastEnabled") ~= false then
+	for _, def in ipairs(DPARTS) do
+		if def[1] == "dmortar" then table.insert(def[3], {"Blast", "dMortarBlast", 0}) end
+	end
+end
 do
 	local applyCharV144 = applyChar
 	applyChar = function(char, st)
@@ -1792,6 +1798,9 @@ end)
 VERSION = "1.61" -- v1.61 practice bot pass
 VERSION = "1.62" -- v1.62 dilo Sniper Scope attributes (MDA-513)
 VERSION = "1.63" -- v1.63 Herrera Cruise Missile attributes (MDA-519)
+VERSION = "1.64" -- v1.64 dilo Toxin Mortar impact blast attribute (MDA-551)
+-- v1.64 (MDA-551; SkillTree 1.95): the Toxin Mortar (dmortar) also writes DiloPartMortarBlast from dMortarBlast (10 / 15 / 20 by
+--   rank, 0 when off). Switch: script attribute SkillEffectsDiloMortarBlastEnabled (default true, read at start; false = 1.63).
 script:SetAttribute("SkillEffectsVersion", VERSION)
 if script:GetAttribute("SkillEffectsBotPassEnabled") == nil then script:SetAttribute("SkillEffectsBotPassEnabled", true) end
 do

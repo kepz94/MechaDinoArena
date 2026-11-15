@@ -407,6 +407,19 @@ if script:GetAttribute("MechaButtonsScopeOnePressEnabled") == nil then script:Se
 VERSION = "1.49" -- v1.49 Herrera Cruise Missile button (MDA-524)
 VERSION = "1.50" -- v1.50 pre-match lock: no presses + padlocks
 VERSION = "1.51" -- v1.51 Sap Wall hold-to-aim: arc + wall ghost (MDA-549)
+VERSION = "1.52" -- v1.52 Sap Wall: no hold, the arc flashes on the throw (MDA-550)
+-- v1.52 (MDA-550; Kepu 2026-11-15 12:48 after v1.51 went live "The fucking sap wall shit is ass. Just have it show the trajectory
+--   don't hold to drag", pick "Arc only, when SAP WALL is pressed"): the 1.51 hold-to-aim is off by default (script attribute
+--   MechaButtonsSapHoldEnabled, default false, read at each press: aimedPart is false for osapwall, so a press throws at once by the
+--   1.50 tap path). When the throw is accepted (the server stamps TrooSapFrom / TrooSapTo / TrooSapFlight, then TrooSapAt) only the
+--   owner sees the pod's trajectory flash: MechaButtonsSapFlashDots (20) amber dots rgb(255, 180, 58) on TrooPartsFX's curve
+--   (TrooSapFrom -> TrooSapTo + 0.5 up, peak MechaButtonsSapAimArc (7) x scale / 2), Highlight AlwaysOnTop, for
+--   MechaButtonsSapFlashTime (0.9) s, fading out over the last MechaButtonsSapFlashFade (0.3) s. No ghost, no tag, no aiming.
+--   Switch: script attribute MechaButtonsSapFlashEnabled (default true, read at each throw). Diagnostic: character MechaSapFlashes (count).
+for k, v in pairs({MechaButtonsSapHoldEnabled = false, MechaButtonsSapFlashEnabled = true, MechaButtonsSapFlashDots = 20,
+	MechaButtonsSapFlashTime = 0.9, MechaButtonsSapFlashFade = 0.3}) do -- v1.52
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 -- v1.51 (MDA-549, plan docs/plans/ABILITY_TUNE_v1.0.md rule 2, mockup docs/mockups/sapwall_aim_v0.1.html; Kepu 2026-11-15 12:09
 --   "the sap wall for the troodon should have an arch show where its gonna land for better precision", picks "A · Hold to aim",
 --   "Move the landing"; PC and touch together): osapwall is a hold-to-aim part (aimedPart) while the part is ready
@@ -1285,6 +1298,70 @@ do
 		end
 		char:SetAttribute("MechaSapAimFired", (char:GetAttribute("MechaSapAimFired") or 0) + 1)
 	end
+end
+
+-- v1.52: Sap Wall: no hold, the trajectory flashes on the throw (see the header)
+do
+	local AMBER = Color3.fromRGB(255, 180, 58)
+	local aimedPre = aimedPart
+	aimedPart = function(id)
+		if id == "osapwall" and script:GetAttribute("MechaButtonsSapHoldEnabled") ~= true then return false end
+		return aimedPre(id)
+	end
+	local flashModel
+	local function flashArc()
+		if script:GetAttribute("MechaButtonsSapFlashEnabled") == false then return end
+		local from, to = char:GetAttribute("TrooSapFrom"), char:GetAttribute("TrooSapTo")
+		if typeof(from) ~= "Vector3" or typeof(to) ~= "Vector3" then return end
+		if flashModel then flashModel:Destroy() end
+		local okS, sc = pcall(function() return char:GetScale() end)
+		sc = okS and sc or 1
+		local m = Instance.new("Model")
+		m.Name = "SapFlash"
+		local to2 = to + Vector3.new(0, 0.5, 0)
+		local peak = (tonumber(script:GetAttribute("MechaButtonsSapAimArc")) or 7) * sc / 2
+		local n = math.clamp(math.floor(tonumber(script:GetAttribute("MechaButtonsSapFlashDots")) or 20), 4, 60)
+		local dots = {}
+		for i = 1, n do
+			local u = i / (n + 1)
+			local d = Instance.new("Part")
+			d.Name = "Dot"
+			d.Shape = Enum.PartType.Ball
+			d.Size = Vector3.one * 0.7 * sc
+			d.Material = Enum.Material.Neon
+			d.Color = AMBER
+			d.Transparency = 0.1
+			d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch, d.CastShadow = true, false, false, false, false
+			d.CFrame = CFrame.new(from:Lerp(to2, u) + Vector3.new(0, 4 * peak * u * (1 - u), 0))
+			d.Parent = m
+			dots[i] = d
+		end
+		local hl = Instance.new("Highlight")
+		hl.FillColor, hl.OutlineColor = AMBER, Color3.new(1, 1, 1)
+		hl.FillTransparency, hl.OutlineTransparency = 0.6, 0.5
+		hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		hl.Parent = m
+		m.Parent = workspace
+		flashModel = m
+		char:SetAttribute("MechaSapFlashes", (char:GetAttribute("MechaSapFlashes") or 0) + 1)
+		local life = math.max(0.1, tonumber(script:GetAttribute("MechaButtonsSapFlashTime")) or 0.9)
+		local fade = math.clamp(tonumber(script:GetAttribute("MechaButtonsSapFlashFade")) or 0.3, 0, life)
+		local t0 = os.clock()
+		local conn
+		conn = RunService.RenderStepped:Connect(function()
+			local e = os.clock() - t0
+			if not m.Parent or e >= life then
+				conn:Disconnect()
+				m:Destroy()
+				if flashModel == m then flashModel = nil end
+				return
+			end
+			local k = (fade > 0 and e > life - fade) and (e - (life - fade)) / fade or 0
+			for _, d in ipairs(dots) do d.Transparency = 0.1 + 0.9 * k end
+			hl.FillTransparency, hl.OutlineTransparency = 0.6 + 0.4 * k, 0.5 + 0.5 * k
+		end)
+	end
+	char:GetAttributeChangedSignal("TrooSapAt"):Connect(flashArc)
 end
 
 -- v1.22: Tether Spike tactical aim mode (see the header)
