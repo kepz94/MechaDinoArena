@@ -3513,3 +3513,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - PracticeServer 1.13 `PrRespawnParkEnabled` (true, per call). Player `PrParked`.
 - SpeciesServer 1.9 `SpeciesRememberPicksEnabled` (true, per pick).
 - PregameScreen 1.4 `PregameRespawnPickEnabled` (true, per frame).
+- PracticeServer 1.14 `PrRespawnPlaceOnceEnabled` (true, per call), `PrRespawnPlaceGuard` (1 s), counter `PrRespawnRePlaceSkips`. Character `PrRespawnPlacedAt` (server time of the respawn release placement).

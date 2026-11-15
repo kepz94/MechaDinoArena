@@ -147,6 +147,14 @@ VERSION = "1.10" -- v1.10 Arena 4v4 on a private server
 VERSION = "1.11" -- v1.11 pre-match countdown hold
 VERSION = "1.12" -- v1.12 pre-match lock (PrematchLockUntil)
 VERSION = "1.13" -- v1.13 respawn hold: park, place on release
+VERSION = "1.14" -- v1.14 respawn: place once
+-- v1.14 (MDA-542; Kepu 2026-11-13 22:12 "When I change the Dino after a death it does a weird animation when I spawn like I'm
+--   fast forwarding to a spot", 2026-11-15 "Dino slid/ran to a spot"): a new body is placed 0.6 s after CharacterAdded (onPlayer).
+--   After a dino change the respawn release can come inside those 0.6 s, so the body was placed twice (Studio: placed 5.84,
+--   again 6.17) and anything it moved in between snapped back, read by the walk animation as a fast slide / run. Now the
+--   release placement (PrParked true, RespawnHold not true) marks the body (character attribute PrRespawnPlacedAt = server
+--   time), and a placeHuman call for that same body within PrRespawnPlaceGuard (1) s is skipped (counter PrRespawnRePlaceSkips).
+--   Switch: script attribute PrRespawnPlaceOnceEnabled (default true, read per call; false = 1.13, placed twice).
 -- v1.13 (respawn swap, MDA-538, plan docs/plans/RESPAWN_SWAP_v1.0.md rule 1, mockup docs/mockups/respawn_change_v0.1.html; Kepu
 --   2026-11-13 21:18 "a 5 second respawn wait with the option to change Dino in that time"): while a match human's player attribute
 --   RespawnHold is true (RespawnServer 1.0), placeHuman parks the body instead of placing it: root server-owned and anchored, the
@@ -566,6 +574,28 @@ do
 			pcall(function() hrp:SetNetworkOwnershipAuto() end)
 		end
 		return rawPlace(pl)
+	end
+end
+-- v1.14: respawn place once (see the header)
+for k, v in pairs({PrRespawnPlaceOnceEnabled = true, PrRespawnPlaceGuard = 1, PrRespawnRePlaceSkips = 0}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+do
+	local inner = placeHuman
+	placeHuman = function(pl)
+		local c = pl.Character
+		local on = script:GetAttribute("PrRespawnPlaceOnceEnabled") ~= false
+		if on and c and pl:GetAttribute("RespawnHold") ~= true then
+			local at = tonumber(c:GetAttribute("PrRespawnPlacedAt"))
+			if at and now() - at < (tonumber(script:GetAttribute("PrRespawnPlaceGuard")) or 1) then
+				script:SetAttribute("PrRespawnRePlaceSkips", (script:GetAttribute("PrRespawnRePlaceSkips") or 0) + 1)
+				return
+			end
+		end
+		local release = on and c ~= nil and pl:GetAttribute("PrParked") == true and pl:GetAttribute("RespawnHold") ~= true
+		local r = inner(pl)
+		if release and c.Parent then c:SetAttribute("PrRespawnPlacedAt", now()) end
+		return r
 	end
 end
 local function watchRespawn(pl)
