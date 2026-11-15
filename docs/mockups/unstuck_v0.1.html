@@ -1,0 +1,145 @@
+<title>Unstuck Button</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;700&display=swap">
+<style>
+:root { --bg:#0b1016; --card:#121a24; --line:#26364a; --fg:#e8eef6; --muted:#8fa2b8; --yellow:#ffc832; --volt:#7fe9ff;
+  --display:"Silkscreen","Courier New",monospace; --body:"Inter",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--fg); font-family:var(--body); font-size:15px; line-height:1.5; }
+.wrap { max-width:1180px; margin:0 auto; padding-block:24px 64px; padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:20px; }
+h1 { font-family:var(--display); color:var(--yellow); font-size:22px; margin:0; letter-spacing:.04em; }
+h2 { font-family:var(--display); font-size:14px; margin:18px 0 0; letter-spacing:.06em; }
+.lede { color:var(--muted); max-width:78ch; margin:0; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; min-width:0; }
+.tabs { display:flex; flex-wrap:wrap; gap:8px; }
+.tab { font-family:var(--display); font-size:12px; color:var(--fg); background:var(--card); border:1px solid var(--line); border-radius:6px; padding:9px 12px; cursor:pointer; }
+.tab[aria-pressed="true"] { border-color:var(--yellow); box-shadow:inset 0 -3px 0 var(--yellow); }
+.two { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,470px),1fr)); gap:16px; align-items:start; }
+.lbl { font-family:var(--display); font-size:11px; color:var(--muted); margin:0 0 6px; letter-spacing:.06em; }
+.scr { position:relative; width:100%; overflow:hidden; border:6px solid #05080c; container-type:inline-size; user-select:none; font-family:var(--display); color:#fff;
+  background:linear-gradient(135deg,#1d3a14,#2c4d1c 45%,#1a3010); }
+.scr * { font-family:var(--display); }
+.scr.pc { aspect-ratio:16/9; border-radius:10px; }
+.scr.ph { aspect-ratio:750/381; border-radius:22px; }
+.rock { position:absolute; left:34%; top:58%; width:30%; height:42%; background:#4a4d52; clip-path:polygon(0 25%,55% 0,100% 100%,8% 100%); }
+.dino { position:absolute; left:44%; top:36%; width:12%; aspect-ratio:3/5; transition:left .6s ease, top .6s ease; }
+.dino i { position:absolute; inset:0; background:linear-gradient(#2b3540,#1a2128); clip-path:polygon(40% 0,60% 0,62% 40%,80% 70%,100% 100%,70% 92%,50% 70%,35% 100%,30% 60%,38% 30%); }
+.dino b { position:absolute; left:28%; top:12%; width:30%; height:30%; border-radius:50%; background:#8c2a2a; }
+.free .dino { left:20%; top:52%; }
+.free { background:linear-gradient(#8fd0ff 0 38%, #6fbf5a 38% 100%); }
+.free .rock { left:46%; }
+.pill { position:absolute; background:rgba(13,18,24,.88); border:.25cqw solid rgba(232,238,246,.35); border-radius:1.2cqw; display:grid; place-items:center; font-size:1.5cqw; letter-spacing:.08em; }
+.ph .pill { font-size:2.1cqw; }
+.pill.y { background:var(--yellow); color:#1b1405; border-color:#1b1405; }
+.pill.new { cursor:pointer; outline:.35cqw solid var(--volt); outline-offset:.2cqw; animation:pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { outline-color:rgba(127,233,255,.25); } }
+.prompt { position:absolute; left:50%; top:30%; transform:translateX(-50%); background:rgba(13,18,24,.92); border:.35cqw solid var(--yellow); border-radius:1.4cqw;
+  padding:1cqw 2cqw; font-size:1.7cqw; color:var(--yellow); white-space:nowrap; cursor:pointer; text-align:center; }
+.prompt small { display:block; font-size:1.1cqw; color:#cfd6e0; margin-top:.3cqw; }
+.toast { position:absolute; left:50%; top:30%; transform:translateX(-50%); background:rgba(13,18,24,.9); border:.3cqw solid var(--volt); border-radius:1cqw;
+  padding:.7cqw 1.6cqw; font-size:1.5cqw; color:var(--volt); white-space:nowrap; opacity:0; transition:opacity .3s; pointer-events:none; }
+.toast.on { opacity:1; }
+.strip { position:absolute; left:32%; top:2%; width:36%; height:6%; background:rgba(13,18,24,.75); border-radius:.8cqw; }
+.atk { position:absolute; right:4%; bottom:4%; width:15%; aspect-ratio:1; border-radius:50%; background:var(--yellow); color:#1b1405; display:grid; place-items:center; font-size:2.2cqw; }
+.jmp { position:absolute; right:20%; bottom:22%; width:10%; aspect-ratio:1; border-radius:50%; background:rgba(13,18,24,.85); border:.3cqw solid #fff; display:grid; place-items:center; font-size:1.6cqw; }
+.hp { position:absolute; left:2%; top:4%; width:24%; height:2.4%; border-radius:1cqw; background:#4ade6a; border:.2cqw solid #000; }
+.pc .hp { top:auto; bottom:4%; }
+.opts { display:grid; gap:10px; }
+.opt { background:#0d141c; border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+.opt b { font-family:var(--display); font-size:12px; letter-spacing:.04em; }
+.opt b em { font-style:normal; color:var(--yellow); }
+.opt p { margin:4px 0 0; color:var(--muted); font-size:13.5px; }
+.rec { font-family:var(--display); font-size:10px; background:var(--yellow); color:#1b1405; border-radius:4px; padding:1px 6px; margin-left:6px; }
+.hint { font-size:13px; color:var(--muted); margin:6px 0 0; }
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>GET UNSTUCK</h1>
+    <p class="lede">Today a player stuck inside rocks, trees or the mountain has no way out except MENU (and leaving the match). Only the bots unstick themselves. Each option below frees you on the spot. Click the glowing button or prompt to try it; "RESET" puts you back inside the rock.</p>
+  </div>
+
+  <h2>1 · HOW YOU GET TO IT</h2>
+  <div class="card" style="display:grid;gap:12px">
+    <div class="tabs" role="group" aria-label="Option">
+      <button class="tab" data-v="A" aria-pressed="true">A · UNSTUCK BUTTON</button>
+      <button class="tab" data-v="B" aria-pressed="false">B · AUTO PROMPT</button>
+      <button class="tab" data-v="C" aria-pressed="false">C · PROMPT + BUTTON</button>
+      <button class="tab" id="reset">RESET</button>
+    </div>
+    <div class="two">
+      <div><p class="lbl">PC</p><div class="scr pc" id="pc"></div></div>
+      <div><p class="lbl">PHONE · ☰ OPEN</p><div class="scr ph" id="ph"></div></div>
+    </div>
+    <div id="text"></div>
+  </div>
+
+  <h2>2 · WHAT UNSTUCK DOES</h2>
+  <div class="card opts">
+    <div class="opt"><b><em>1</em> · NEAREST OPEN GROUND</b><span class="rec">RECOMMENDED</span><p>You're moved a short way to the closest flat, dry, open spot (searched in rings around you, clear of trees, rocks and walls). Same dino, same health, no death. If nothing is found close by, you go to your spawn.</p></div>
+    <div class="opt"><b><em>2</em> · BACK TO SPAWN</b><p>Always back to your team's spawn (in a match) or the portal islet (on the island). Simple, but you lose your position.</p></div>
+  </div>
+
+  <h2>3 · LIMITS</h2>
+  <div class="card opts">
+    <div class="opt"><b><em>1</em> · 15 S COOLDOWN, NOT RIGHT AFTER A HIT</b><span class="rec">RECOMMENDED</span><p>Greys out for 3 s after you take damage, so it can't be used to teleport out of a fight, and works once every 15 s.</p></div>
+    <div class="opt"><b><em>2</em> · 15 S COOLDOWN ONLY</b><p>Works any time, once every 15 s.</p></div>
+  </div>
+
+  <div class="card">
+    <b style="font-family:var(--display);font-size:12px">ALL OPTIONS</b>
+    <ul class="hint" style="padding-left:18px;margin:6px 0 0;display:grid;gap:4px">
+      <li>Works on the island and in matches (practice and Arena), PC and phone.</li>
+      <li>Not in the menu, the pre-match countdown, the respawn wait or while dead.</li>
+      <li>I'll also look for the spot you got stuck in and close that gap in the map.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(() => {
+const TEXT = {
+  A: `<b style="font-family:var(--display);font-size:12px">A · UNSTUCK BUTTON</b><p class="hint">An <b>UNSTUCK</b> pill under MENU on PC; on the phone it's in the ☰ drawer under SQUAD. Always there, nothing automatic.</p>`,
+  B: `<b style="font-family:var(--display);font-size:12px">B · AUTO PROMPT</b><p class="hint">No new button. When the game sees you stuck (you're pushing to move but haven't moved 2 studs in 3 s, or your body is inside the map), a <b>STUCK? TAP TO GET FREE</b> prompt pops up for 6 s. Clean HUD, but it only shows when detection catches it.</p>`,
+  C: `<b style="font-family:var(--display);font-size:12px">C · PROMPT + BUTTON</b><p class="hint">Both: the prompt pops up on its own when you're stuck, and the UNSTUCK button stays under MENU (PC) / in the ☰ drawer (phone) for the cases detection misses. <b>Recommended.</b></p>`,
+};
+let V = "A";
+function screen(id) {
+  const ph = id === "ph";
+  let s = `<div class="rock"></div><div class="dino"><i></i><b></b></div><div class="strip"></div><div class="hp"></div>`;
+  if (ph) {
+    s += `<div class="atk">ATTACK</div><div class="jmp">JUMP</div><div class="pill y" style="right:2%;top:3%;width:6%;height:9%">☰</div>`;
+    s += `<div class="pill" style="right:20%;top:14%;width:11%;height:10%">MENU</div><div class="pill" style="right:2%;top:14%;width:17%;height:10%">SKILLS</div>`;
+    s += `<div class="pill" style="right:20%;top:26%;width:11%;height:10%">CAM</div><div class="pill" style="right:2%;top:26%;width:17%;height:10%">SQUAD</div>`;
+    if (V !== "B") s += `<div class="pill new" data-free style="right:2%;top:38%;width:17%;height:10%">UNSTUCK</div>`;
+  } else {
+    s += `<div class="pill" style="right:15%;top:3%;width:13%;height:8%">SKILLS</div><div class="pill y" style="right:3%;top:3%;width:11%;height:8%">MENU</div>`;
+    s += `<div class="pill" style="right:15%;top:13%;width:11%;height:8%">SQUAD</div>`;
+    if (V !== "B") s += `<div class="pill new" data-free style="right:3%;top:13%;width:11%;height:8%">UNSTUCK</div>`;
+  }
+  if (V !== "A") s += `<div class="prompt" data-free>STUCK? ${ph ? "TAP" : "CLICK"} TO GET FREE<small>OR KEEP MOVING · 6</small></div>`;
+  s += `<div class="toast">FREED · MOVED 9 STUDS</div>`;
+  return s;
+}
+function paint(id) {
+  const el = document.getElementById(id);
+  el.classList.remove("free");
+  el.innerHTML = screen(id);
+  el.onclick = e => {
+    if (!e.target.closest("[data-free]")) return;
+    el.classList.add("free");
+    el.querySelectorAll(".prompt").forEach(p => p.remove());
+    const t = el.querySelector(".toast"); t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 1600);
+  };
+}
+function render() {
+  document.querySelectorAll(".tab[data-v]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === V ? "true" : "false"));
+  paint("pc"); paint("ph");
+  document.getElementById("text").innerHTML = TEXT[V];
+}
+document.querySelectorAll(".tab[data-v]").forEach(b => b.addEventListener("click", () => { V = b.dataset.v; render(); }));
+document.getElementById("reset").addEventListener("click", render);
+render();
+})();
+</script>
