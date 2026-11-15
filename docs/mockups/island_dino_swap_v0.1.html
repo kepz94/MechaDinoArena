@@ -1,0 +1,240 @@
+<title>Island Dino Swap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;700&display=swap">
+<style>
+:root { --bg:#0b1016; --card:#121a24; --line:#26364a; --fg:#e8eef6; --muted:#8fa2b8; --yellow:#ffc832; --volt:#7fe9ff; --red:#e0284a;
+  --display:"Silkscreen","Courier New",monospace; --body:"Inter",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--fg); font-family:var(--body); font-size:15px; line-height:1.5; }
+.wrap { max-width:1180px; margin:0 auto; padding-block:24px 64px; padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:20px; }
+h1 { font-family:var(--display); color:var(--yellow); font-size:22px; margin:0; letter-spacing:.04em; text-wrap:balance; }
+h2 { font-family:var(--display); font-size:14px; margin:18px 0 0; letter-spacing:.06em; }
+.lede { color:var(--muted); max-width:78ch; margin:0; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; min-width:0; }
+.tabs { display:flex; flex-wrap:wrap; gap:8px; }
+.tab { font-family:var(--display); font-size:12px; color:var(--fg); background:var(--card); border:1px solid var(--line); border-radius:6px; padding:9px 12px; cursor:pointer; }
+.tab[aria-pressed="true"] { border-color:var(--yellow); box-shadow:inset 0 -3px 0 var(--yellow); }
+.two { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,470px),1fr)); gap:16px; align-items:start; }
+.lbl { font-family:var(--display); font-size:11px; color:var(--muted); margin:0 0 6px; letter-spacing:.06em; }
+.scr { position:relative; width:100%; overflow:hidden; border:6px solid #05080c; container-type:inline-size; user-select:none;
+  background:linear-gradient(#8fd0ff 0 40%, #d9dde2 40% 100%); font-family:var(--display); color:#fff; }
+.scr.pc { aspect-ratio:16/9; border-radius:10px; }
+.scr.ph { aspect-ratio:750/381; border-radius:22px; }
+.scr * { font-family:var(--display); }
+.abs { position:absolute; }
+.pill { position:absolute; background:rgba(13,18,24,.88); border:.25cqw solid rgba(232,238,246,.35); border-radius:1.2cqw; display:grid; place-items:center;
+  font-size:1.5cqw; letter-spacing:.08em; cursor:default; }
+.pill.y { background:var(--yellow); color:#1b1405; border-color:#1b1405; }
+.pill.new { cursor:pointer; outline:.35cqw solid var(--volt); outline-offset:.2cqw; animation:pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { outline-color:rgba(127,233,255,.25); } }
+.ph .pill { font-size:2.1cqw; }
+.dino { position:absolute; left:41%; top:40%; width:18%; aspect-ratio:4/3; transition:left .9s ease, top .9s ease; }
+.dino img { width:100%; height:100%; object-fit:contain; display:block; }
+.tagname { position:absolute; left:0; right:0; top:-14%; text-align:center; font-size:1.3cqw; text-shadow:0 .15cqw 0 #000; }
+.puff { position:absolute; inset:-30%; border-radius:50%; background:radial-gradient(rgba(255,255,255,.95), rgba(127,233,255,.6) 40%, transparent 70%);
+  opacity:0; pointer-events:none; }
+.puff.go { animation:puff .6s ease-out; }
+@keyframes puff { 0% { opacity:0; transform:scale(.3); } 25% { opacity:1; } 100% { opacity:0; transform:scale(1.4); } }
+.portal { position:absolute; border-radius:50%/45%; border:1.2cqw solid #3a4a62; background:radial-gradient(#fff7a0, #ffd23a 55%, #e0a020); }
+.portal.o { background:radial-gradient(#ffe0d0, #ff8a5a 55%, #e05a30); }
+.bars { position:absolute; left:2%; bottom:3%; width:28%; }
+.bar { height:1.3cqw; border-radius:.6cqw; background:#1a2a1a; border:.15cqw solid #000; overflow:hidden; }
+.bar i { display:block; height:100%; width:100%; background:#4ade6a; }
+.slots { position:absolute; left:30%; bottom:3%; display:flex; gap:1%; width:44%; }
+.slot { flex:1; aspect-ratio:1; background:rgba(13,18,24,.88); border:.3cqw solid #e8a23a; border-radius:1.2cqw; font-size:.9cqw; display:grid; place-items:center; text-align:center; padding:.3cqw; }
+.atk { position:absolute; right:4%; bottom:4%; width:15%; aspect-ratio:1; border-radius:50%; background:var(--yellow); color:#1b1405; display:grid; place-items:center; font-size:2.2cqw; }
+.jmp { position:absolute; right:20%; bottom:20%; width:10%; aspect-ratio:1; border-radius:50%; background:rgba(13,18,24,.85); border:.3cqw solid #fff; display:grid; place-items:center; font-size:1.6cqw; }
+.pad { position:absolute; left:14%; top:66%; width:20%; height:11%; border-radius:50%; background:radial-gradient(rgba(127,233,255,.85), rgba(127,233,255,.15) 70%);
+  box-shadow:0 0 3cqw rgba(127,233,255,.7); cursor:pointer; }
+.pad b { position:absolute; left:0; right:0; top:-60%; text-align:center; font-size:1.3cqw; color:var(--volt); text-shadow:0 .15cqw 0 #000; font-weight:400; }
+.prompt { position:absolute; left:50%; top:62%; transform:translateX(-50%); background:rgba(13,18,24,.9); border:.3cqw solid var(--volt); border-radius:1cqw;
+  padding:.8cqw 1.6cqw; font-size:1.6cqw; color:var(--volt); cursor:pointer; display:none; white-space:nowrap; }
+.toast { position:absolute; left:50%; top:24%; transform:translateX(-50%); background:rgba(13,18,24,.9); border:.3cqw solid var(--yellow); border-radius:1cqw;
+  padding:.7cqw 1.6cqw; font-size:1.6cqw; color:var(--yellow); opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; }
+.toast.on { opacity:1; }
+/* picker (the pre-game SELECT screen, compact) */
+.pick { position:absolute; inset:0; background:rgba(5,8,12,.94); display:none; grid-template-rows:auto 1fr auto; padding:3% 4%; gap:2%; }
+.pick.on { display:grid; }
+.pick h3 { margin:0; font-size:2.6cqw; color:var(--yellow); font-weight:700; letter-spacing:.06em; }
+.pick h3 small { display:block; font-size:1.2cqw; color:#cfd6e0; font-weight:400; letter-spacing:.02em; }
+.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1.4cqw; align-content:center; }
+.tile { background:rgba(20,26,36,.95); border:.3cqw solid rgba(232,238,246,.2); border-radius:1cqw; overflow:hidden; display:grid; grid-template-rows:1fr auto; aspect-ratio:4/3; cursor:pointer; }
+.tile img { width:100%; height:100%; object-fit:contain; display:block; min-height:0; }
+.tile span { font-size:1.2cqw; text-align:center; padding:.2cqw 0 .4cqw; }
+.tile.on { border-color:var(--yellow); box-shadow:0 0 1.6cqw rgba(255,200,50,.55); }
+.tile.cur span::after { content:" · NOW"; color:var(--yellow); }
+.acts { display:flex; gap:2%; justify-content:center; }
+.act { font-size:1.6cqw; padding:1.2cqw 3cqw; border-radius:1cqw; border:.3cqw solid rgba(232,238,246,.5); background:#0d121a; color:#fff; cursor:pointer; }
+.act.y { background:var(--yellow); color:#1b1405; border-color:var(--yellow); }
+.lab { position:absolute; inset:0; background:rgba(8,12,18,.96); display:none; grid-template-rows:auto auto 1fr auto; padding:3% 4%; gap:2.4%; }
+.lab.on { display:grid; }
+.strip { display:flex; gap:1cqw; overflow:hidden; }
+.strip .tile { flex:1; aspect-ratio:1; }
+.parts { display:grid; grid-template-columns:1fr 1fr; gap:1.2cqw; align-content:start; }
+.part { background:#141c26; border:.25cqw solid #e8a23a; border-radius:.8cqw; padding:.8cqw; font-size:1.2cqw; color:#ffd38a; }
+.opts { display:grid; gap:10px; }
+.opt { background:#0d141c; border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+.opt b { font-family:var(--display); font-size:12px; letter-spacing:.04em; }
+.opt b em { font-style:normal; color:var(--yellow); }
+.opt p { margin:4px 0 0; color:var(--muted); font-size:13.5px; }
+.rec { font-family:var(--display); font-size:10px; background:var(--yellow); color:#1b1405; border-radius:4px; padding:1px 6px; margin-left:6px; }
+ul.tight { margin:6px 0 0; padding-left:18px; display:grid; gap:4px; color:var(--muted); font-size:14px; }
+.hint { font-size:13px; color:var(--muted); margin:6px 0 0; }
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>CHANGE DINO ON THE ISLAND</h1>
+    <p class="lede">Today the island HUD has SKILLS, MENU, SQUAD and the camera button. Changing dino means MENU → the home screen → ◀ ▶ → PLAY, which also drops you back at the portal spawn. Each option below swaps you <b>where you stand</b>, without the home screen. The dinos are the game's own block models. Click the glowing entry in each screen to try it.</p>
+  </div>
+
+  <h2>1 · PICK WHERE THE SWAP LIVES</h2>
+  <div class="card" style="display:grid;gap:12px">
+    <div class="tabs" role="group" aria-label="Option">
+      <button class="tab" data-v="A" aria-pressed="true">A · DINO BUTTON</button>
+      <button class="tab" data-v="B" aria-pressed="false">B · DINO ROW IN THE LAB</button>
+      <button class="tab" data-v="C" aria-pressed="false">C · DINO PAD ON THE ISLET</button>
+    </div>
+    <div class="two">
+      <div><p class="lbl">PC</p><div class="scr pc" id="pc"></div></div>
+      <div><p class="lbl">PHONE · ☰ OPEN</p><div class="scr ph" id="ph"></div></div>
+    </div>
+    <div id="text"></div>
+  </div>
+
+  <h2>2 · WHEN CAN YOU SWAP ON THE ISLAND?</h2>
+  <div class="card opts">
+    <div class="opt"><b><em>1</em> · ANYWHERE, NOT RIGHT AFTER A HIT</b><span class="rec">RECOMMENDED</span><p>Works anywhere on the island, but greys out for 5 s after you take damage. A swap gives a fresh body at full health, so this stops "swap mid-fight to heal".</p></div>
+    <div class="opt"><b><em>2</em> · SAFE AREA ONLY</b><p>Only inside the portal islet's safe area. Elsewhere the button shows "GO TO THE SAFE AREA".</p></div>
+    <div class="opt"><b><em>3</em> · ANYWHERE, ANY TIME</b><p>No limits.</p></div>
+  </div>
+
+  <div class="card">
+    <b style="font-family:var(--display);font-size:12px">ALL OPTIONS</b>
+    <ul class="tight">
+      <li>You stay where you are; the new dino appears in your spot with a puff (same swap the home screen's ◀ ▶ does today).</li>
+      <li>The new dino is remembered for next time, like today.</li>
+      <li>Island only. Matches keep the respawn swap. MENU and the home screen are unchanged.</li>
+      <li>PC and phone ship together.</li>
+    </ul>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="pregame_v0.4_dinos.js"></script>
+<script>
+(() => {
+const ORDER = ["Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"];
+const nameOf = d => d === "TRex" ? "T-REX" : d === "Therizino" ? "THERIZINO" : d.toUpperCase();
+const PARTS = {Raptor:["ADRENALINE INJECTOR","SHOCK CANNON","ENERGY SHIELD","CLOAK FIELD"], TRex:["SERVO DASH","ROAR AMP","BITE CLAMP","PLATING"],
+  Pachy:["GRAPPLING HOOK","MED STATION","MECHA LEGS","RAM PLATE"], Herrera:["QUILL LAUNCHER","SMOKE PODS","GLIDER WINGS","STROBE FRILL"],
+  Teno:["LEAP JETS","TAIL CANNON","SHIELD DOME","STOMP"], Therizino:["GRAPPLE ZIP","VORTEX PULL","CLAW BLADES","ARMOR"],
+  Dilo:["VENOM GATLING","SPRING JETS","TOXIN MORTAR","SONIC HISS"], Troodon:["PORTAL","SAP WALL","ARC LANTERN","LAST FEATHER"]};
+// ---- 3D thumbnails (the game's own block models) ----
+const THUMB = {};
+if (window.THREE && window.DINO3D) {
+  const T = THREE, rad = Math.PI / 180;
+  const G = [new T.BoxGeometry(1,1,1), new T.SphereGeometry(.5,18,12), (() => { const g = new T.CylinderGeometry(.5,.5,1,18); g.rotateZ(Math.PI/2); return g; })()];
+  const mats = {};
+  const mat = (hex, t, neon) => { const k = hex+t+neon; if (mats[k]) return mats[k]; const c = new T.Color('#'+hex);
+    const m = new T.MeshStandardMaterial({color:c, roughness:.82, metalness:.05, flatShading:true}); if (neon) { m.emissive = c.clone(); m.emissiveIntensity = .9; }
+    if (t > 0) { m.transparent = true; m.opacity = 1 - t; } return (mats[k] = m); };
+  const blocks = data => { const g = new T.Group(); for (const r of data.p) { const m = new T.Mesh(G[r.length > 12 ? r[12] : 0] || G[0], mat(data.pal[r[9]], r[10] || 0, r[11] || 0));
+    m.position.set(r[0], r[1], r[2]); m.scale.set(r[3], r[4], r[5]); m.rotation.set(r[6]*rad, r[7]*rad, r[8]*rad, 'XYZ'); g.add(m); } return g; };
+  const rig = d => { const o = new T.Group(), i = blocks(DINO3D[d]); const b = new T.Box3().setFromObject(i), c = b.getCenter(new T.Vector3()), s = b.getSize(new T.Vector3());
+    const k = 2.4 / Math.max(s.x, s.y * 1.35, s.z); i.scale.setScalar(k); i.position.set(-c.x*k, -b.min.y*k, -c.z*k); o.add(i); return o; };
+  try {
+    const rr = new T.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer:true}); rr.setSize(240, 180, false); rr.outputEncoding = T.sRGBEncoding;
+    const sc = new T.Scene(); sc.add(new T.HemisphereLight(0xd7e8ff, 0x1b2230, 1)); const k = new T.DirectionalLight(0xffffff, 1.2); k.position.set(-3,5,4); sc.add(k);
+    const cam = new T.PerspectiveCamera(26, 240/180, .1, 100); cam.position.set(0, 1.25, 6.2); cam.lookAt(0, .55, 0);
+    for (const d of ORDER) { if (!DINO3D[d]) continue; const r = rig(d); r.rotation.y = Math.PI + .75; sc.add(r); rr.render(sc, cam); THUMB[d] = rr.domElement.toDataURL('image/png'); sc.remove(r); }
+    rr.dispose();
+  } catch (e) { /* no WebGL: names only */ }
+}
+const IMG = d => THUMB[d] ? `<img src="${THUMB[d]}" alt="${nameOf(d)}">` : `<div></div>`;
+
+const TEXT = {
+  A: `<b style="font-family:var(--display);font-size:12px">A · DINO BUTTON</b><p class="hint">A new <b>DINO</b> pill left of SKILLS on PC; on the phone it joins the ☰ drawer (DINO · MENU · SKILLS / CAMERA · SQUAD). It opens the same SELECT screen you know from the match lobby and the respawn swap: pick a dino, then its 4 parts. Fastest from anywhere on the island. <b>Recommended.</b></p>`,
+  B: `<b style="font-family:var(--display);font-size:12px">B · DINO ROW IN THE LAB</b><p class="hint">No new button. SKILLS opens the Lab, which gets a row of the 8 dinos on top. Tap one: you swap, and the Lab shows that dino's parts and upgrades. One place for dino + parts + skills, but it's one more tap and the Lab is busier.</p>`,
+  C: `<b style="font-family:var(--display);font-size:12px">C · DINO PAD ON THE ISLET</b><p class="hint">No HUD change. A glowing <b>DINO PAD</b> stands next to the portals. Step on it and a "CHANGE DINO" prompt opens the SELECT screen. Feels like part of the world, but you have to walk back to the islet to change.</p>`,
+};
+
+let V = "A";
+const state = {pc: {cur: "Herrera", sel: "Herrera"}, ph: {cur: "Herrera", sel: "Herrera"}};
+
+function hud(id) {
+  const ph = id === "ph";
+  let s = `<div class="portal" style="left:4%;top:12%;width:16%;height:44%"></div><div class="portal o" style="left:76%;top:16%;width:14%;height:40%"></div>`;
+  s += `<div class="dino" id="${id}-dino">${IMG(state[id].cur)}<div class="tagname">KEPZ</div><div class="puff" id="${id}-puff"></div></div>`;
+  s += `<div class="bars"><div style="font-size:1cqw">HEALTH</div><div class="bar"><i></i></div></div>`;
+  if (!ph) {
+    s += `<div class="slots">${PARTS[state[id].cur].map((p,i)=>`<div class="slot">${"RCTV"[i]}<br>${p}</div>`).join("")}</div>`;
+    // top-right cluster as in Studio: SKILLS · MENU, SQUAD under, camera
+    s += `<div class="pill" style="right:15%;top:3%;width:15%;height:8%">SKILLS ●</div><div class="pill y" style="right:3%;top:3%;width:11%;height:8%">MENU</div>`;
+    s += `<div class="pill" style="right:15%;top:13%;width:11%;height:8%">SQUAD</div>`;
+    if (V === "A") s += `<div class="pill new" data-open="pick" style="right:31%;top:3%;width:11%;height:8%">DINO</div>`;
+    if (V === "B") s += `<div class="pill new" data-open="lab" style="right:15%;top:3%;width:15%;height:8%">SKILLS ●</div>`;
+  } else {
+    s += `<div class="atk">ATTACK</div><div class="jmp">JUMP</div>`;
+    // ☰ open: the drawer block under ☰
+    s += `<div class="pill y" style="right:2%;top:3%;width:6%;height:9%">☰</div>`;
+    if (V === "A") {
+      s += `<div class="pill new" data-open="pick" style="right:32%;top:14%;width:11%;height:10%">DINO</div>`;
+      s += `<div class="pill" style="right:20%;top:14%;width:11%;height:10%">MENU</div><div class="pill" style="right:2%;top:14%;width:17%;height:10%">SKILLS</div>`;
+    } else {
+      s += `<div class="pill" style="right:20%;top:14%;width:11%;height:10%">MENU</div>`;
+      s += `<div class="pill ${V === "B" ? "new" : ""}" ${V === "B" ? 'data-open="lab"' : ""} style="right:2%;top:14%;width:17%;height:10%">SKILLS</div>`;
+    }
+    s += `<div class="pill" style="right:20%;top:26%;width:11%;height:10%">CAM</div><div class="pill" style="right:2%;top:26%;width:17%;height:10%">SQUAD</div>`;
+  }
+  if (V === "C") s += `<div class="pad" data-open="walk"><b>DINO PAD</b></div><div class="prompt" id="${id}-prompt" data-open="pick">${ph ? "TAP" : "E"} · CHANGE DINO</div>`;
+  s += `<div class="toast" id="${id}-toast"></div>`;
+  // the SELECT screen
+  s += `<div class="pick" id="${id}-pick"><h3>SELECT DINO<small>ISLAND · YOU SWAP WHERE YOU STAND</small></h3>
+    <div class="grid">${ORDER.map(d=>`<div class="tile" data-d="${d}">${IMG(d)}<span>${nameOf(d)}</span></div>`).join("")}</div>
+    <div class="acts"><div class="act" data-act="back">BACK</div><div class="act y" data-act="go">SELECT</div></div></div>`;
+  // the Lab with a dino row (B)
+  s += `<div class="lab" id="${id}-lab"><h3 style="margin:0;font-size:2.4cqw;color:var(--volt)">THE LAB</h3>
+    <div class="strip">${ORDER.map(d=>`<div class="tile" data-d="${d}">${IMG(d)}<span>${nameOf(d)}</span></div>`).join("")}</div>
+    <div class="parts" id="${id}-parts"></div>
+    <div class="acts"><div class="act" data-act="back">CLOSE</div></div></div>`;
+  return s;
+}
+
+function paint(id) {
+  const el = document.getElementById(id);
+  el.innerHTML = hud(id);
+  const st = state[id];
+  const pick = el.querySelector(`#${id}-pick`), lab = el.querySelector(`#${id}-lab`);
+  const mark = root => root.querySelectorAll(".tile").forEach(t => { t.classList.toggle("on", t.dataset.d === st.sel); t.classList.toggle("cur", t.dataset.d === st.cur); });
+  const parts = () => { el.querySelector(`#${id}-parts`).innerHTML = PARTS[st.cur].map((p,i)=>`<div class="part">${"RCTV"[i]} · ${p}</div>`).join(""); };
+  const swap = d => {
+    if (d === st.cur) return;
+    st.cur = d;
+    const dino = el.querySelector(`#${id}-dino`); dino.querySelector("img") && (dino.querySelector("img").src = THUMB[d] || "");
+    const puff = el.querySelector(`#${id}-puff`); puff.classList.remove("go"); void puff.offsetWidth; puff.classList.add("go");
+    const toast = el.querySelector(`#${id}-toast`); toast.textContent = `NOW PLAYING · ${nameOf(d)}`; toast.classList.add("on"); setTimeout(()=>toast.classList.remove("on"), 1600);
+    const slots = el.querySelector(".slots"); if (slots) slots.innerHTML = PARTS[d].map((p,i)=>`<div class="slot">${"RCTV"[i]}<br>${p}</div>`).join("");
+  };
+  el.onclick = e => {
+    const o = e.target.closest("[data-open]"), t = e.target.closest(".tile"), a = e.target.closest("[data-act]");
+    if (o && o.dataset.open === "pick") { st.sel = st.cur; mark(pick); pick.classList.add("on"); const pr = el.querySelector(`#${id}-prompt`); if (pr) pr.style.display = "none"; return; }
+    if (o && o.dataset.open === "lab") { st.sel = st.cur; mark(lab); parts(); lab.classList.add("on"); return; }
+    if (o && o.dataset.open === "walk") { const dino = el.querySelector(`#${id}-dino`); dino.style.left = "15%"; dino.style.top = "44%";
+      setTimeout(()=>{ const pr = el.querySelector(`#${id}-prompt`); pr.style.display = "block"; }, 900); return; }
+    if (t && lab.classList.contains("on")) { st.sel = t.dataset.d; swap(t.dataset.d); mark(lab); parts(); return; }
+    if (t) { st.sel = t.dataset.d; mark(pick); return; }
+    if (a && a.dataset.act === "back") { pick.classList.remove("on"); lab.classList.remove("on"); return; }
+    if (a && a.dataset.act === "go") { pick.classList.remove("on"); swap(st.sel); return; }
+  };
+}
+function render() {
+  document.querySelectorAll(".tab[data-v]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === V ? "true" : "false"));
+  paint("pc"); paint("ph");
+  document.getElementById("text").innerHTML = TEXT[V];
+}
+document.querySelectorAll(".tab[data-v]").forEach(b => b.addEventListener("click", () => { V = b.dataset.v; render(); }));
+render();
+})();
+</script>
