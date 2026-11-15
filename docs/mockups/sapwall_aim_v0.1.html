@@ -1,0 +1,142 @@
+<title>Sap Wall Aim</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;700&display=swap">
+<style>
+:root { --bg:#0b1016; --card:#121a24; --line:#26364a; --fg:#e8eef6; --muted:#8fa2b8; --yellow:#ffc832; --amber:#f2a531; --sap:#ffb43a;
+  --display:"Silkscreen","Courier New",monospace; --body:"Inter",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--fg); font-family:var(--body); font-size:15px; line-height:1.5; }
+.wrap { max-width:1180px; margin:0 auto; padding-block:24px 64px; padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:20px; }
+h1 { font-family:var(--display); color:var(--yellow); font-size:22px; margin:0; letter-spacing:.04em; }
+h2 { font-family:var(--display); font-size:14px; margin:18px 0 0; letter-spacing:.06em; }
+.lede { color:var(--muted); max-width:78ch; margin:0; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; min-width:0; }
+.tabs { display:flex; flex-wrap:wrap; gap:8px; }
+.tab { font-family:var(--display); font-size:12px; color:var(--fg); background:var(--card); border:1px solid var(--line); border-radius:6px; padding:9px 12px; cursor:pointer; }
+.tab[aria-pressed="true"] { border-color:var(--yellow); box-shadow:inset 0 -3px 0 var(--yellow); }
+.scr { position:relative; width:100%; max-width:900px; aspect-ratio:750/381; border-radius:22px; overflow:hidden; border:6px solid #05080c; user-select:none; touch-action:none;
+  background:linear-gradient(#8fd0ff 0 30%, #6fbf5a 30% 100%); }
+.scr svg { position:absolute; inset:0; width:100%; height:100%; }
+.btn { position:absolute; right:3%; bottom:6%; width:13%; aspect-ratio:1; border-radius:18%; background:rgba(13,18,24,.9); border:3px solid var(--amber);
+  display:grid; place-items:center; text-align:center; font-family:var(--display); color:#ffd38a; font-size:clamp(9px,1.3vw,13px); cursor:pointer; }
+.btn.on { background:var(--amber); color:#1b1405; }
+.tag { position:absolute; left:3%; top:4%; font-family:var(--display); font-size:clamp(9px,1.4vw,14px); color:#fff; background:rgba(13,18,24,.8);
+  border:2px solid var(--sap); border-radius:8px; padding:4px 10px; white-space:nowrap; }
+.hint { font-size:13px; color:var(--muted); margin:6px 0 0; }
+.opts { display:grid; gap:10px; }
+.opt { background:#0d141c; border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+.opt b { font-family:var(--display); font-size:12px; letter-spacing:.04em; }
+.opt b em { font-style:normal; color:var(--yellow); }
+.opt p { margin:4px 0 0; color:var(--muted); font-size:13.5px; }
+.rec { font-family:var(--display); font-size:10px; background:var(--yellow); color:#1b1405; border-radius:4px; padding:1px 6px; margin-left:6px; }
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>SAP WALL · AIMING ARC</h1>
+    <p class="lede">Today a tap throws the pod straight ahead to its full 40 studs (or the first thing in the way), with no preview. Each option shows the throw's arc and a ghost of the 50-stud wall where it will rise, before you let go. Try it: press and hold the SAP WALL button, drag on the screen to aim, let go to throw.</p>
+  </div>
+
+  <h2>1 · HOW THE ARC SHOWS</h2>
+  <div class="card" style="display:grid;gap:12px">
+    <div class="tabs" role="group" aria-label="Option">
+      <button class="tab" data-v="A" aria-pressed="true">A · HOLD TO AIM</button>
+      <button class="tab" data-v="B" aria-pressed="false">B · ALWAYS SHOWN WHEN READY</button>
+      <button class="tab" data-v="C" aria-pressed="false">C · HOLD · DISTANCE GROWS</button>
+    </div>
+    <div class="scr" id="scr"><svg viewBox="0 0 750 381" id="svg"></svg><div class="tag" id="tag"></div><div class="btn" id="btn">SAP<br>WALL</div></div>
+    <div id="text"></div>
+  </div>
+
+  <h2>2 · ON THE PHONE, DRAGGING YOUR THUMB WHILE HOLDING…</h2>
+  <div class="card opts">
+    <div class="opt"><b><em>1</em> · MOVES THE LANDING SPOT</b><span class="rec">RECOMMENDED</span><p>Up / down = farther / nearer (5 to 40 studs), left / right = turn. Same thumb, no camera move needed.</p></div>
+    <div class="opt"><b><em>2</em> · TURNS ONLY</b><p>Left / right turns; distance stays at full range (or the hold time in C).</p></div>
+  </div>
+
+  <div class="card">
+    <b style="font-family:var(--display);font-size:12px">ALL OPTIONS</b>
+    <ul class="hint" style="padding-left:18px;margin:6px 0 0;display:grid;gap:4px">
+      <li>The arc is the pod's real flight (the same curve the game already uses), dotted amber; the ghost is the real wall size, turned square to your throw.</li>
+      <li>Ghost turns red with "BLOCKED" when a dino stands in the spot (today the throw fails there and gives the charge back).</li>
+      <li>PC: hold the key, aim with the camera (the landing follows where you look on the ground), release to throw. Only you see the arc.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(() => {
+const TEXT = {
+  A: `<b style="font-family:var(--display);font-size:12px">A · HOLD TO AIM</b><p class="hint">Press and hold SAP WALL: the arc and the wall ghost appear; drag to move the landing; let go to throw. A quick tap still throws at once. <b>Recommended.</b></p>`,
+  B: `<b style="font-family:var(--display);font-size:12px">B · ALWAYS SHOWN WHEN READY</b><p class="hint">While Sap Wall is charged, a faint arc and ghost always sit in front of your dino (where a tap would throw). No hold needed, but it's always on screen.</p>`,
+  C: `<b style="font-family:var(--display);font-size:12px">C · HOLD · DISTANCE GROWS</b><p class="hint">Press and hold: the landing starts close and slides out to 40 studs over 1 s (like the Shock Cannon's line); let go to throw at that distance. Drag turns it.</p>`,
+};
+let V = "A", holding = false, dist = 0.75, turn = 0, t0 = 0, thrown = null;
+const svg = document.getElementById("svg"), btn = document.getElementById("btn"), tag = document.getElementById("tag");
+const DINO = {x: 375, y: 330};
+function landing() {
+  // perspective-ish: far = higher on screen and smaller
+  const d = Math.max(0.12, Math.min(1, dist));
+  const y = 330 - d * 170, x = 375 + turn * (120 + d * 160);
+  return {x, y, s: 1 - d * 0.55};
+}
+function draw(now) {
+  let s = `<rect x="0" y="0" width="750" height="381" fill="none"/>`;
+  // trees / rocks for depth
+  for (const [x, y, r] of [[120,140,22],[640,150,26],[90,250,30],[690,260,34]]) s += `<circle cx="${x}" cy="${y}" r="${r}" fill="#2f7a35"/><rect x="${x-4}" y="${y}" width="8" height="${r}" fill="#7a5532"/>`;
+  // troodon
+  s += `<g transform="translate(${DINO.x},${DINO.y})"><ellipse cx="0" cy="18" rx="34" ry="8" fill="rgba(0,0,0,.25)"/><path d="M-26,10 L-6,-34 L6,-34 L18,-10 L30,6 L10,6 L4,16 L-6,16 L-10,6Z" fill="#5a6b3a"/><circle cx="0" cy="-30" r="8" fill="#7d8f4a"/></g>`;
+  const show = V === "B" ? !thrown : (holding && !thrown);
+  if (V === "C" && holding) dist = Math.min(1, 0.12 + (now - t0) / 1000 * 0.88);
+  const L = landing();
+  if (show) {
+    const hx = DINO.x + 10, hy = DINO.y - 40, peak = Math.min(hy, L.y) - 45 * (0.5 + dist);
+    const cx = (hx + L.x) / 2, cy = 2 * peak - (hy + L.y) / 2;
+    const fade = V === "B" ? 0.45 : 1;
+    s += `<path d="M${hx},${hy} Q${cx},${cy} ${L.x},${L.y}" fill="none" stroke="#ffb43a" stroke-width="4" stroke-dasharray="2 9" stroke-linecap="round" opacity="${fade}"/>`;
+    const w = 210 * L.s, h = 60 * L.s;
+    s += `<g opacity="${fade}" transform="translate(${L.x},${L.y}) rotate(${turn * 12})"><rect x="${-w/2}" y="${-h}" width="${w}" height="${h}" fill="rgba(255,180,58,.28)" stroke="#ffb43a" stroke-width="2"/>`;
+    s += `<ellipse cx="0" cy="0" rx="${w/2}" ry="${9*L.s}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="6 5"/></g>`;
+    s += `<circle cx="${L.x}" cy="${L.y}" r="${5*L.s+2}" fill="#fff"/>`;
+    tag.style.display = "block"; tag.textContent = `${Math.round(5 + dist * 35)} STUDS · LET GO TO THROW`;
+    if (V === "B") tag.textContent = `TAP TO THROW · ${Math.round(5 + dist * 35)} STUDS`;
+  } else tag.style.display = "none";
+  if (thrown) {
+    const u = Math.min(1, (now - thrown.t) / 500), L2 = thrown.L, hx = DINO.x + 10, hy = DINO.y - 40, peak = Math.min(hy, L2.y) - 45 * (0.5 + thrown.d);
+    const cx = (hx + L2.x) / 2, cy = 2 * peak - (hy + L2.y) / 2;
+    if (u < 1) {
+      const px = (1-u)*(1-u)*hx + 2*(1-u)*u*cx + u*u*L2.x, py = (1-u)*(1-u)*hy + 2*(1-u)*u*cy + u*u*L2.y;
+      s += `<circle cx="${px}" cy="${py}" r="7" fill="#ffb43a" stroke="#7a4a10" stroke-width="2"/>`;
+    } else {
+      const g = Math.min(1, (now - thrown.t - 500) / 300), w = 210 * L2.s, h = 60 * L2.s * g;
+      s += `<g transform="translate(${L2.x},${L2.y}) rotate(${thrown.turn * 12})">`;
+      for (let i = 0; i < 5; i++) s += `<rect x="${-w/2 + i*w/5}" y="${-h * (i % 2 ? 0.9 : 1)}" width="${w/5 - 2}" height="${h * (i % 2 ? 0.9 : 1)}" fill="#e89a2c" stroke="#7a4a10" stroke-width="2"/>`;
+      s += `</g>`;
+      if (now - thrown.t > 2600) thrown = null;
+    }
+  }
+  svg.innerHTML = s;
+  requestAnimationFrame(draw);
+}
+function throwNow() { thrown = {t: performance.now(), L: landing(), d: dist, turn}; holding = false; btn.classList.remove("on"); }
+btn.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  if (V === "B") { throwNow(); return; }
+  holding = true; t0 = performance.now(); if (V === "C") dist = 0.12; btn.classList.add("on");
+  const start = {x: e.clientX, y: e.clientY, d: dist, t: turn};
+  const move = ev => { if (!holding) return; const r = svg.getBoundingClientRect();
+    turn = Math.max(-1, Math.min(1, start.t + (ev.clientX - start.x) / (r.width * 0.35)));
+    if (V === "A") dist = Math.max(0.05, Math.min(1, start.d - (ev.clientY - start.y) / (r.height * 0.6))); };
+  const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); if (holding) throwNow(); };
+  window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+});
+document.querySelectorAll(".tab[data-v]").forEach(b => b.addEventListener("click", () => {
+  V = b.dataset.v; dist = 0.75; turn = 0; holding = false; thrown = null;
+  document.querySelectorAll(".tab[data-v]").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === V ? "true" : "false"));
+  document.getElementById("text").innerHTML = TEXT[V];
+}));
+document.getElementById("text").innerHTML = TEXT.A;
+requestAnimationFrame(draw);
+})();
+</script>
