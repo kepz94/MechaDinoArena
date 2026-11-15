@@ -3570,4 +3570,41 @@ do
 	end
 end
 
+-- v1.94 (MDA-548, plan docs/plans/ABILITY_TUNE_v1.0.md rule 1; Kepu 2026-11-15 12:09 "the Dilo needs a bigger radius for the
+--   mortar", pick "+50% (18 / 22 / 27)"): with SkillTree.DILO_MORTAR_BIG (default true) effects() multiplies dMortarRadius by
+--   SkillTree.DILO_MORTAR_RADIUS_MUL2 (1.5) after v1.76's x1.5: the Toxin Mortar cloud and its damage area go 12 / 15 / 18 ->
+--   18 / 22.5 / 27 studs (tier I / II / star; cloud 36 / 45 / 54 studs wide). DiloMovesServer reads it as DiloPartMortarRadius,
+--   and the target ring, landing blast and cloud VFX size from DiloMortarRadius. The Lab texts that name the cloud size are
+--   rewritten (DILO_MORTAR_BIG_TEXTS, exact old -> new; a miss counts in SkillTree.DILO_MORTAR_BIG_MISSES, expected 0).
+--   DILO_MORTAR_BIG = false restores 1.93.
+SkillTree.DILO_MORTAR_BIG = true
+SkillTree.DILO_MORTAR_RADIUS_MUL2 = 1.5
+SkillTree.DILO_MORTAR_BIG_TEXTS = {
+	{"dmortar", 1, "a 24-stud poison cloud", "a 36-stud poison cloud"}, {"dmortar", 2, "cloud 30 studs wide", "cloud 45 studs wide"},
+	{"dmortar", 4, "cloud 36 studs wide", "cloud 54 studs wide"},
+}
+SkillTree.DILO_MORTAR_BIG_MISSES = 0
+if SkillTree.DILO_MORTAR_BIG then
+	for _, row in ipairs(SkillTree.DILO_MORTAR_BIG_TEXTS) do
+		local path = SkillTree.PATHS[row[1]]
+		local text = path and path.steps and path.steps[row[2]]
+		local a, b
+		if type(text) == "string" then a, b = text:find(row[3], 1, true) end
+		if a then
+			path.steps[row[2]] = text:sub(1, a - 1) .. row[4] .. text:sub(b + 1)
+		else
+			SkillTree.DILO_MORTAR_BIG_MISSES += 1
+		end
+	end
+end
+do
+	local effectsPre194 = SkillTree.effects
+	function SkillTree.effects(steps, dino)
+		local e = effectsPre194(steps, dino)
+		if type(e) ~= "table" or not SkillTree.DILO_MORTAR_BIG then return e end
+		if type(e.dMortarRadius) == "number" and e.dMortarRadius > 0 then e.dMortarRadius = e.dMortarRadius * SkillTree.DILO_MORTAR_RADIUS_MUL2 end
+		return e
+	end
+end
+
 return SkillTree

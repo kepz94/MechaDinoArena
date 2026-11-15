@@ -406,6 +406,43 @@ VERSION = "1.48" -- v1.48 Sniper Scope: one charge per press
 if script:GetAttribute("MechaButtonsScopeOnePressEnabled") == nil then script:SetAttribute("MechaButtonsScopeOnePressEnabled", true) end -- v1.48
 VERSION = "1.49" -- v1.49 Herrera Cruise Missile button (MDA-524)
 VERSION = "1.50" -- v1.50 pre-match lock: no presses + padlocks
+VERSION = "1.51" -- v1.51 Sap Wall hold-to-aim: arc + wall ghost (MDA-549)
+-- v1.51 (MDA-549, plan docs/plans/ABILITY_TUNE_v1.0.md rule 2, mockup docs/mockups/sapwall_aim_v0.1.html; Kepu 2026-11-15 12:09
+--   "the sap wall for the troodon should have an arch show where its gonna land for better precision", picks "A · Hold to aim",
+--   "Move the landing"; PC and touch together): osapwall is a hold-to-aim part (aimedPart) while the part is ready
+--   (TrooPartSapEnabled, TrooPartSapReadyAt passed = a charge left, not SILENCED; else 1.50's tap path is unchanged).
+--   The press shows a local Model "SapAim" in workspace (only you see it; CanQuery / CanCollide / CanTouch off):
+--   * the pod's real flight as MechaButtonsSapAimDots (20) amber dots rgb(255, 180, 58): from the hand (root + 1.5 x scale up +
+--     the root's look x 2 x scale, TrooMovesServer handPos) to the landing + 0.5 up, MechaButtonsSapAimArc (7, TrooPartsFX sapArc)
+--     x scale / 2 high: from:Lerp(to, u) + 4 x peak x u x (1 - u) up (TrooPartsFX arcFly);
+--   * a ghost of the wall: TrooPartSapWidth (50) x the wall height (TrooPartSapHeight when > 0, else 18) x 2, square to the throw
+--     (X = up x the throw line, TrooMovesServer wallFrame), amber at MechaButtonsSapAimGhostAlpha (0.6), a landing disc, a
+--     Highlight AlwaysOnTop on the model, and a tag above the ghost "NN STUDS · LET GO TO THROW";
+--   * BLOCKED: when a live dino's root (players, bots, you) is inside the footprint (width / 2 + 3, height / 2 + 4, 1 + 3:
+--     TrooMovesServer occupied with TrooMoves_sapClear 3) the ghost and disc turn red rgb(240, 90, 79), the tag reads "BLOCKED".
+--   The landing: ground Y = a ray from the root's height + 60 down 200 that leaves out players, Bots, TallGrass and the FX folders
+--   (TrooMovesServer groundY), else root Y - 3 x scale. Flat distance MechaButtonsSapAimMin (5) .. TrooPartSapRange (40).
+--   * Touch (thumb aim on; the press from a touch slot, gesture or plain button press when the slot has no pull part): at the
+--     press the landing is the tap's point (bodyPoint / Classic / crosshair, as 1.50) = distance d0
+--     along the dino's facing; once the thumb-aim lock is on (AIM_LOCK / AIM_DEAD, as the Screech), the thumb's offset from the
+--     press: left / right = turn by coneAxis(x) x MechaButtonsSapAimYaw (60) deg, up / down = d0 + coneAxis(-y) x range (farther /
+--     nearer), clamped. No camera move.
+--   * PC (keys) and touch with thumb aim off: the landing follows the ground under the screen's centre (a camera ray, the dino,
+--     FX and SapAim left out), clamped; nothing hit -> full range along the camera's flat look.
+--   * Smooth: the landing's offset from the root eases toward the target (1 - e^(-AIM_SMOOTH x dt)), no jumps.
+--   Let go: DinoTrooSapRequest(stamp, the flat throw line, the landing). A quick tap (let go within MechaButtonsSapTapTime
+--   (0.2) s, or on touch with no thumb drag) sends 1.50's tap point (the throw as before). Cancel (death, the slot changes, a pull
+--   to another slot) removes the model.
+--   The aiming finger can slide over the slot buttons (a left drag crosses the next button): while it aims, a button it slides
+--   onto (another one, or back onto SAP WALL) does not start (no gesture, no press, no new aim; character MechaSapAimSlideOver
+--   counts them).
+--   Switch: script attribute MechaButtonsSapAimEnabled (default true, read at each press; false = 1.50: tap throws).
+--   Diagnostics: character MechaSapAim ("aiming" / "fired" / "tap" / "cancel"), MechaSapAimDist (studs), MechaSapAimBlocked,
+--   MechaSapAimFired (count), MechaSapAimMode ("thumb" / "camera"), MechaSapAimSlideOver (count).
+for k, v in pairs({MechaButtonsSapAimEnabled = true, MechaButtonsSapAimDots = 20, MechaButtonsSapAimArc = 7, MechaButtonsSapAimGhostAlpha = 0.6,
+	MechaButtonsSapAimMin = 5, MechaButtonsSapAimYaw = 60, MechaButtonsSapTapTime = 0.2}) do -- v1.51
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 -- v1.50 (pre-match lock, MDA-530 + MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rules 3-4, mockup
 --   docs/mockups/prematch_pan_lock_v0.1.html "A · Locked"; Kepu 2026-11-13 18:23 "all mecha abilities and actions should be
 --   unplayable ... during the count down"): while the character's PrematchLockUntil (PracticeServer 1.12) is after the server
@@ -954,6 +991,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if aim.kind == "tether" then tetherStep(dt) return end -- v1.20
 	if aim.kind == "zgrapple" then return end -- v1.32: TheriGrappleZip draws the lock
 	if aim.kind == "dscope" then return end -- v1.47: DiloSnipeCam 1.2 draws the scope
+	if aim.kind == "osapwall" then return end -- v1.51: the Sap Wall aim draws itself
 	local len = math.max(0.1, aimRange())
 	local look = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
 	if look.Magnitude < 1e-3 then return end
@@ -979,6 +1017,275 @@ RunService.RenderStepped:Connect(function(dt)
 	aim.part.Size = Vector3.new(0.5, 0.5, len)
 	aim.part.CFrame = CFrame.lookAt(base + look * (4 + len / 2), base + look * (5 + len / 2))
 end)
+
+-- v1.51: Sap Wall hold-to-aim (see the header): wraps aimedPart / aimStart / aimRelease / aimCancel for osapwall only
+do
+	local AMBER, RED = Color3.fromRGB(255, 180, 58), Color3.fromRGB(240, 90, 79)
+	local function num(k, d) return tonumber(script:GetAttribute(k)) or d end
+	local function sapOn() return TROO_BTN and script:GetAttribute("MechaButtonsSapAimEnabled") ~= false end
+	local function sapReady()
+		return char:GetAttribute("TrooPartSapEnabled") == true and not silencedNow()
+			and (tonumber(char:GetAttribute("TrooPartSapReadyAt")) or 0) <= workspace:GetServerTimeNow()
+	end
+	local function scale() local ok, s = pcall(function() return char:GetScale() end) return ok and s or 1 end
+	local function range() return math.max(1, tonumber(char:GetAttribute("TrooPartSapRange")) or 40) end
+	local function wallSize()
+		local w = math.max(4, tonumber(char:GetAttribute("TrooPartSapWidth")) or 50)
+		local hAttr = tonumber(char:GetAttribute("TrooPartSapHeight")) or 0
+		return w, (hAttr > 0 and math.max(2, hAttr) or 18)
+	end
+	local function flatLookNow()
+		local cam = workspace.CurrentCamera
+		local lv = cam and cam.CFrame.LookVector or Vector3.zAxis
+		local f = Vector3.new(lv.X, 0, lv.Z)
+		f = f.Magnitude > 1e-3 and f.Unit or Vector3.zAxis
+		return bodyFacing() or f
+	end
+	local function flatFacing() -- the dino's flat facing (body aim on) else the camera's flat look, without the body-aim counter
+		local f = hrp and Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
+		if bodyAimOn() and f and f.Magnitude > 1e-3 then return f.Unit end
+		local cam = workspace.CurrentCamera
+		local lv = cam and cam.CFrame.LookVector or Vector3.zAxis
+		local c = Vector3.new(lv.X, 0, lv.Z)
+		return c.Magnitude > 1e-3 and c.Unit or Vector3.zAxis
+	end
+	local function tapPoint() -- 1.50's tap rule (the osapwall branch of press)
+		local cam = workspace.CurrentCamera
+		local hit
+		if cam then
+			local rp = RaycastParams.new()
+			rp.FilterType = Enum.RaycastFilterType.Exclude
+			local ex = {char}
+			for _, n in ipairs({"DinoFX_Local", "DinoFX", "TrooFX", "TrooPartsFX", "TrooWalls"}) do
+				local f = workspace:FindFirstChild(n)
+				if f then table.insert(ex, f) end
+			end
+			rp.FilterDescendantsInstances = ex
+			hit = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 400, rp)
+		end
+		return bodyPoint("osapwall") or classicPoint("osapwall") or (hit and hit.Position or nil)
+	end
+	local worldRay = RaycastParams.new() -- TrooMovesServer worldExclude
+	worldRay.FilterType = Enum.RaycastFilterType.Exclude
+	local function worldEx(model)
+		local ex = {model}
+		for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+		local isl = workspace:FindFirstChild("DinoIsland")
+		for _, n in ipairs({"Bots", "TallGrass"}) do
+			local f = isl and isl:FindFirstChild(n)
+			if f then table.insert(ex, f) end
+		end
+		for _, n in ipairs({"DinoFX_Local", "DinoFX", "TenoFX", "PachyFX_Local", "DiloFX", "TrooFX", "TrooPartsFX", "TrooWalls"}) do
+			local f = workspace:FindFirstChild(n)
+			if f then table.insert(ex, f) end
+		end
+		worldRay.FilterDescendantsInstances = ex
+		return worldRay
+	end
+	local camRay = RaycastParams.new()
+	camRay.FilterType = Enum.RaycastFilterType.Exclude
+	local function dinos()
+		local list = {}
+		for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(list, pl.Character) end end
+		local isl = workspace:FindFirstChild("DinoIsland")
+		local b = isl and isl:FindFirstChild("Bots")
+		if b then for _, m in ipairs(b:GetChildren()) do table.insert(list, m) end end
+		return list
+	end
+	local function blockedAt(cf, w, h)
+		local half = Vector3.new(w / 2 + 3, h / 2 + 4, 1 + 3)
+		for _, m in ipairs(dinos()) do
+			local r = m:FindFirstChild("HumanoidRootPart")
+			local hm = m:FindFirstChildOfClass("Humanoid")
+			if r and (not hm or hm.Health > 0) then
+				local q = cf:PointToObjectSpace(r.Position)
+				if math.abs(q.X) <= half.X and math.abs(q.Y) <= half.Y and math.abs(q.Z) <= half.Z then return true end
+			end
+		end
+		return false
+	end
+	local function piece(props, parent)
+		local p = Instance.new("Part")
+		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+		p.Material = Enum.Material.Neon
+		p.Color = AMBER
+		for k, v in pairs(props) do p[k] = v end
+		p.Parent = parent
+		return p
+	end
+	local function build()
+		local m = Instance.new("Model")
+		m.Name = "SapAim"
+		local dots = {}
+		for i = 1, math.clamp(math.floor(num("MechaButtonsSapAimDots", 20)), 4, 60) do
+			dots[i] = piece({Name = "Dot", Shape = Enum.PartType.Ball, Size = Vector3.one * 0.7 * scale(), Transparency = 0.1}, m)
+		end
+		local ghost = piece({Name = "Ghost", Material = Enum.Material.SmoothPlastic, Size = Vector3.new(50, 18, 2),
+			Transparency = math.clamp(num("MechaButtonsSapAimGhostAlpha", 0.6), 0, 0.95)}, m)
+		local disc = piece({Name = "Landing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 4 * scale(), 4 * scale()), Transparency = 0.3}, m)
+		local hl = Instance.new("Highlight")
+		hl.FillColor, hl.OutlineColor = AMBER, Color3.new(1, 1, 1)
+		hl.FillTransparency, hl.OutlineTransparency = 0.75, 0.35
+		hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		hl.Parent = m
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "Tag"
+		bb.AlwaysOnTop = true
+		bb.Size = UDim2.fromOffset(240, 30)
+		bb.LightInfluence = 0
+		bb.Parent = ghost
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.Size = UDim2.fromScale(1, 1)
+		l.Font = Enum.Font.FredokaOne
+		l.TextSize = 18
+		l.TextColor3 = Color3.new(1, 1, 1)
+		l.TextStrokeColor3 = Color3.fromRGB(27, 20, 5)
+		l.TextStrokeTransparency = 0.2
+		l.Parent = bb
+		m.Parent = workspace
+		return {model = m, dots = dots, ghost = ghost, disc = disc, hl = hl, bb = bb, label = l}
+	end
+	local function sapStep(dt)
+		if not (aim and aim.kind == "osapwall" and aim.sap and hrp) then return end
+		local sap = aim.sap
+		local R, minD = range(), math.max(0, num("MechaButtonsSapAimMin", 5))
+		minD = math.min(minD, R)
+		local root = hrp.Position
+		local goalOff
+		if aim.origin then -- touch: the thumb moves the landing
+			local f0 = flatFacing()
+			local yaw, dist = 0, sap.d0
+			if aim.locked and aim.stick then
+				yaw = coneAxis(aim.stick.X) * math.rad(num("MechaButtonsSapAimYaw", 60))
+				dist = sap.d0 + coneAxis(-aim.stick.Y) * R
+			end
+			local right = f0:Cross(Vector3.yAxis)
+			local d = f0 * math.cos(yaw) + right * math.sin(yaw)
+			goalOff = d.Unit * math.clamp(dist, minD, R)
+			char:SetAttribute("MechaSapAimMode", "thumb")
+		else -- PC: the ground under the screen's centre
+			local cam = workspace.CurrentCamera
+			if not cam then return end
+			local ex = {char, sap.model}
+			for _, n in ipairs({"DinoFX_Local", "DinoFX", "TrooFX", "TrooPartsFX", "TrooWalls"}) do
+				local f = workspace:FindFirstChild(n)
+				if f then table.insert(ex, f) end
+			end
+			camRay.FilterDescendantsInstances = ex
+			local vp = cam.ViewportSize
+			local ray = cam:ViewportPointToRay(vp.X / 2, vp.Y / 2)
+			local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, camRay)
+			local v = hit and Vector3.new(hit.Position.X - root.X, 0, hit.Position.Z - root.Z) or nil
+			if not v or v.Magnitude < 1e-3 then
+				local lv = cam.CFrame.LookVector
+				v = Vector3.new(lv.X, 0, lv.Z)
+				if v.Magnitude < 1e-3 then v = flatLookNow() end
+				v = v.Unit * R
+			end
+			goalOff = v.Unit * math.clamp(v.Magnitude, minD, R)
+			char:SetAttribute("MechaSapAimMode", "camera")
+		end
+		local k = 1 - math.exp(-AIM_SMOOTH * math.clamp(dt or 0, 0, 0.1))
+		sap.off = sap.off and sap.off:Lerp(goalOff, k) or goalOff
+		if sap.off.Magnitude < 1e-3 then sap.off = goalOff end
+		local s = scale()
+		local p = root + sap.off
+		local g = workspace:Raycast(Vector3.new(p.X, root.Y + 60, p.Z), Vector3.new(0, -200, 0), worldEx(sap.model))
+		local to = Vector3.new(p.X, g and g.Position.Y or (root.Y - 3 * s), p.Z)
+		local dir = Vector3.new(sap.off.X, 0, sap.off.Z).Unit
+		sap.landPos, sap.dir = to, dir
+		-- the arc (TrooPartsFX arcFly)
+		local from = root + Vector3.new(0, 1.5 * s, 0) + hrp.CFrame.LookVector * 2 * s
+		local to2 = to + Vector3.new(0, 0.5, 0)
+		local peak = num("MechaButtonsSapAimArc", 7) * s / 2
+		local n = #sap.dots
+		for i, d in ipairs(sap.dots) do
+			local u = i / (n + 1)
+			d.CFrame = CFrame.new(from:Lerp(to2, u) + Vector3.new(0, 4 * peak * u * (1 - u), 0))
+		end
+		-- the ghost (TrooMovesServer wallFrame) + BLOCKED (occupied)
+		local w, h = wallSize()
+		local along = Vector3.yAxis:Cross(dir).Unit
+		local cf = CFrame.fromMatrix(to + Vector3.new(0, h / 2, 0), along, Vector3.yAxis)
+		sap.ghost.Size = Vector3.new(w, h, 2)
+		sap.ghost.CFrame = cf
+		sap.disc.CFrame = CFrame.new(to + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		local blocked = blockedAt(cf, w, h)
+		local col = blocked and RED or AMBER
+		sap.ghost.Color, sap.disc.Color, sap.hl.FillColor = col, col, col
+		sap.bb.StudsOffset = Vector3.new(0, h / 2 + 3, 0)
+		local flatD = math.floor(sap.off.Magnitude + 0.5)
+		sap.label.Text = blocked and "BLOCKED" or ("%d STUDS · LET GO TO THROW"):format(flatD)
+		sap.label.TextColor3 = blocked and RED or Color3.new(1, 1, 1)
+		char:SetAttribute("MechaSapAimDist", flatD)
+		char:SetAttribute("MechaSapAimBlocked", blocked)
+	end
+	RunService.RenderStepped:Connect(function(dt)
+		if aim and aim.kind == "osapwall" then sapStep(dt) end
+	end)
+	UserInputService.InputChanged:Connect(function(input) -- a slot with no pull part: the button press is not a gesture, the drag still aims
+		if not (aim and aim.kind == "osapwall" and aim.origin and not aim.gesture and aim.input) then return end
+		if input == aim.input or (aim.input.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement) then
+			local d = Vector2.new(input.Position.X, input.Position.Y) - aim.origin
+			if not aim.locked and (os.clock() >= aim.lockAt or math.abs(d.X) > AIM_DEAD or math.abs(d.Y) > AIM_DEAD) then aim.locked = true end
+			if aim.locked then aim.stick = d end
+		end
+	end)
+	local function sapSend(dir, point)
+		local r = ReplicatedStorage:FindFirstChild("DinoTrooSapRequest")
+		if r then r:FireServer(workspace:GetServerTimeNow(), dir, point) end
+	end
+	local aimedPre, startPre, releasePre, cancelPre = aimedPart, aimStart, aimRelease, aimCancel
+	aimedPart = function(id) return (id == "osapwall" and sapOn() and sapReady()) or aimedPre(id) end
+	aimCancel = function()
+		if aim and aim.kind == "osapwall" then
+			if aim.sap and aim.sap.model then aim.sap.model:Destroy() end
+			aim = nil
+			char:SetAttribute("MechaSapAim", "cancel")
+			return
+		end
+		cancelPre()
+	end
+	aimStart = function(n, input, isGesture)
+		if not (slotPart(n) == "osapwall" and sapOn()) then return startPre(n, input, isGesture) end
+		aimCancel()
+		if not hrp or not sapReady() then return end
+		local tp = tapPoint()
+		local R, minD = range(), math.max(0, num("MechaButtonsSapAimMin", 5))
+		local d0 = R
+		if typeof(tp) == "Vector3" then
+			local v = Vector3.new(tp.X - hrp.Position.X, 0, tp.Z - hrp.Position.Z)
+			d0 = math.clamp(v.Magnitude, math.min(minD, R), R)
+		end
+		aim = {slot = n, t0 = os.clock(), input = input, gesture = isGesture == true, kind = "osapwall"}
+		aim.sap = build()
+		aim.sap.d0 = d0
+		local onButton = input and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1)
+		if (aim.gesture or onButton) and input and script:GetAttribute("MechaThumbAimEnabled") ~= false then -- the thumb-aim lock: a drag aims
+			aim.origin = Vector2.new(input.Position.X, input.Position.Y)
+			aim.lockAt = os.clock() + AIM_LOCK
+		end
+		char:SetAttribute("MechaSapAim", "aiming")
+		sapStep(0)
+	end
+	aimRelease = function()
+		if not (aim and aim.kind == "osapwall") then return releasePre() end
+		local a = aim
+		local quick = (os.clock() - a.t0) < num("MechaButtonsSapTapTime", 0.2) or (a.origin ~= nil and not a.locked)
+		local landPos, dir = a.sap and a.sap.landPos, a.sap and a.sap.dir
+		if a.sap and a.sap.model then a.sap.model:Destroy() end
+		aim = nil
+		if quick or typeof(landPos) ~= "Vector3" then
+			sapSend(flatLookNow(), tapPoint())
+			char:SetAttribute("MechaSapAim", "tap")
+		else
+			sapSend(dir, landPos)
+			char:SetAttribute("MechaSapAim", "fired")
+		end
+		char:SetAttribute("MechaSapAimFired", (char:GetAttribute("MechaSapAimFired") or 0) + 1)
+	end
+end
 
 -- v1.22: Tether Spike tactical aim mode (see the header)
 if script:GetAttribute("MechaTetherAimMode") == nil then script:SetAttribute("MechaTetherAimMode", true) end
@@ -1898,6 +2205,27 @@ local function endGesture()
 	end
 	aimCancel()
 	press(chosen)
+end
+do -- v1.51: the finger that aims Sap Wall slides over another slot button: that button does not start (the aim stays)
+	local function sapFinger(input)
+		return script:GetAttribute("MechaButtonsSapAimEnabled") ~= false and aim ~= nil and aim.kind == "osapwall"
+			and input ~= nil and aim.input == input
+	end
+	local beginPre, pressPre = beginGesture, press
+	beginGesture = function(n, input)
+		if sapFinger(input) then
+			char:SetAttribute("MechaSapAimSlideOver", (char:GetAttribute("MechaSapAimSlideOver") or 0) + 1)
+			return
+		end
+		return beginPre(n, input)
+	end
+	press = function(n, input, ...)
+		if sapFinger(input) then
+			char:SetAttribute("MechaSapAimSlideOver", (char:GetAttribute("MechaSapAimSlideOver") or 0) + 1)
+			return
+		end
+		return pressPre(n, input, ...)
+	end
 end
 UserInputService.InputChanged:Connect(function(input)
 	if not gesture then return end

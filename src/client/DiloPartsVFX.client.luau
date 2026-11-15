@@ -29,13 +29,18 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 the mortar cloud keeps its thickness when it grows
+-- v1.1 (MDA-548, plan docs/plans/ABILITY_TUNE_v1.0.md rule 1; SkillTree 1.94 makes the Toxin Mortar cloud 1.5x bigger, radius up to 27):
+--   the cloud's smoke rate went with the radius (30 x R / 18) while its area goes with R squared, so a bigger cloud got thinner.
+--   Now the smoke and spark rates go with the area: x (R / 18)^2 (smoke 30, sparks 12 at R 18), at most DiloPartsVFX_mortarRateMax
+--   (3) x those. Switch: script attribute DiloPartsVFX_mortarAreaRate (1 on, 0 = 1.0's rates).
 local Lib = require(script.Parent:WaitForChild("DiloPartsVFXLib"))
 local IDS = {"dgatling", "dmortar", "dhiss", "dspine", "dpump", "djets", "dover"}
 if script:GetAttribute("DiloPartsVFXEnabled") == nil then script:SetAttribute("DiloPartsVFXEnabled", true) end
 for _, id in ipairs(IDS) do
 	if script:GetAttribute("DiloPartsVFX_" .. id .. "Enabled") == nil then script:SetAttribute("DiloPartsVFX_" .. id .. "Enabled", true) end
 end
-for k, v in pairs({maxParts = 350, rateMul = 1}) do
+for k, v in pairs({maxParts = 350, rateMul = 1, mortarAreaRate = 1, mortarRateMax = 3}) do -- v1.1: + mortar area rate
 	if script:GetAttribute("DiloPartsVFX_" .. k) == nil then script:SetAttribute("DiloPartsVFX_" .. k, v) end
 end
 for _, k in ipairs({"DiloPartsVFXEvents", "DiloPartsVFXTrims"}) do script:SetAttribute(k, 0) end
@@ -625,8 +630,9 @@ local function watchMortar(char, st)
 		local f
 		f = effect(life + 3.2, function(_, _, u)
 			local alive = f.t < life
-			f.pe.Rate = alive and 30 * (R / 18) * cfg("rateMul", 1) or 0
-			f.pe2.Rate = alive and 12 * cfg("rateMul", 1) or 0
+			local areaK = cfg("mortarAreaRate", 1) ~= 0 and math.min((R / 18) ^ 2, cfg("mortarRateMax", 3)) or nil -- v1.1
+			f.pe.Rate = alive and 30 * (areaK or (R / 18)) * cfg("rateMul", 1) or 0
+			f.pe2.Rate = alive and 12 * (areaK or 1) * cfg("rateMul", 1) or 0
 		end)
 		f.h = holder(f, CFrame.new(to + Vector3.new(0, 4 * k, 0)), Vector3.new(R * 1.8, 6 * k, R * 1.8))
 		f.pe = emitterOn(f.h, {tex = "smoke", c0 = C.cMain, c1 = C.cSmoke, s0 = 9 * k, s1 = 17 * k, life = {2.2, 3.0}, speed = {0.3, 1.2}, spread = 180, drag = 0.5, t0 = 0.35, rot = 15,
