@@ -26,9 +26,15 @@
 --               Humanoid:TakeDamage) to a value above 0 and below MaxHealth; not within GameSoundsHurtSpawnIgnore (1) s of the
 --               character spawning (a MaxHealth set on spawn also lowers Health); at most once per GameSoundsHurtGap (0.15) s.
 --   * died      (v1.2) your character's Humanoid.Died; once per character.
+--   * cloak / shield / adren / cannon
+--               (v1.3, the Raptor's buttons) any dino's (players' characters, DinoIsland.Bots) CloakStartedAt /
+--               EnergyShieldStartedAt / AdrenalineStartedAt / ScreechStartedAt (Shock Cannon) changes to a number: a 3D copy of
+--               the sound at that dino's HumanoidRootPart (else PrimaryPart), heard by everyone near it (each client plays its
+--               own copy; RollOffMaxDistance GameSoundsAbilityRange (200), RollOffMinDistance GameSoundsAbilityNear (10)).
+--   * scent     (v1.3) your character's ScentStartedAt changes to a number: 2D, only you (only you see the trails).
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
--- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>.
+-- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -39,22 +45,32 @@ VERSION = "1.1" -- v1.1 the uploaded sound ids are the defaults
 -- v1.1 (MDA-552; Kepu 2026-11-16 15:04 "You upload it. I'm away from the PC"): the 11 sounds were imported through Studio's Asset
 --   Manager to BloxSolidYT's inventory; their ids are now the GameSoundsId_<event> defaults (IDS below).
 VERSION = "1.2" -- v1.2 getting hit and death sounds
+VERSION = "1.3" -- v1.3 the Raptor's ability sounds
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
+-- v1.3 (MDA-552; Kepu 2026-11-16 15:45 "Next" -> the Raptor first (the default dino); 15:50 picks from the Sound Pick Board round 3:
+--   "cloak C, shield B, adren A, cannon A, scent A"; who hears: "Nearby, Scent only you"): five original sounds (files
+--   docs/sfx/MDA_SFX_<event>.wav), imported through Studio's Asset Manager. New events cloak, shield, adren, cannon (3D at the dino)
+--   and scent (2D, yours only) (header). Bite, pounce, roar, the Thrusters boost and the Shock Mine keep their own sounds.
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
 local EVENTS = {"hit", "kill", "captured", "lost", "contested", "moving", "tick", "go", "click", "win", "lose",
-	"hurt", "died"} -- v1.2 hurt, died
+	"hurt", "died", -- v1.2 hurt, died
+	"cloak", "shield", "adren", "cannon", "scent"} -- v1.3 Raptor buttons
 local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "113513728853752", lost = "124135883749071",
 	contested = "101864400003768", moving = "136030860049130", tick = "86647331351122", go = "122207388352651",
 	click = "100987841683034", win = "71840308309828", lose = "81529780885336",
-	hurt = "75565630737484", died = "97374555569398"} -- v1.1; v1.2 hurt, died
+	hurt = "75565630737484", died = "97374555569398", -- v1.1; v1.2 hurt, died
+	cloak = "71499307467716", shield = "127396962777997", adren = "127472396863191", cannon = "103381972237825",
+	scent = "73289725571120"} -- v1.3
 local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5, moving = 0.6, tick = 0.6, go = 0.7,
-	click = 0.4, win = 0.7, lose = 0.7, hurt = 0.6, died = 0.8}
+	click = 0.4, win = 0.7, lose = 0.7, hurt = 0.6, died = 0.8,
+	cloak = 0.7, shield = 0.7, adren = 0.7, cannon = 0.8, scent = 0.6} -- v1.3
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
+	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -137,6 +153,57 @@ local function hookHealth(char)
 end
 player.CharacterAdded:Connect(hookHealth)
 if player.Character then task.spawn(hookHealth, player.Character) end
+
+-- v1.3 the Raptor's ability sounds: 3D at the dino for cloak / shield / adren / cannon, 2D yours only for scent ---------------
+local Debris = game:GetService("Debris")
+local ABILITY = {cloak = "CloakStartedAt", shield = "EnergyShieldStartedAt", adren = "AdrenalineStartedAt",
+	cannon = "ScreechStartedAt"}
+local function play3D(e, m)
+	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
+	if player:GetAttribute("InMenu") == true then return end
+	local root = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
+	if not (root and root:IsA("BasePart")) then return end
+	group.Volume = num("GameSoundsVolume", 1)
+	local tpl = template(e)
+	script:SetAttribute("GameSoundsLast", e)
+	script:SetAttribute("GameSoundsLast3D", e .. ":" .. m.Name)
+	script:SetAttribute("GameSoundsCount_" .. e, (script:GetAttribute("GameSoundsCount_" .. e) or 0) + 1)
+	if not tpl then return end
+	local s = tpl:Clone()
+	s.RollOffMaxDistance = num("GameSoundsAbilityRange", 200)
+	s.RollOffMinDistance = num("GameSoundsAbilityNear", 10)
+	s.Parent = root
+	s:Play()
+	Debris:AddItem(s, math.max(tpl.TimeLength, 1) + 0.5)
+end
+local hookedAbility = setmetatable({}, {__mode = "k"})
+local function hookAbility(m)
+	if hookedAbility[m] or not m:IsA("Model") then return end
+	hookedAbility[m] = true
+	for e, attr in pairs(ABILITY) do
+		m:GetAttributeChangedSignal(attr):Connect(function()
+			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end
+		end)
+	end
+	if m == player.Character then
+		m:GetAttributeChangedSignal("ScentStartedAt"):Connect(function()
+			if typeof(m:GetAttribute("ScentStartedAt")) == "number" then play("scent") end
+		end)
+	end
+end
+local function watchAbility(pl)
+	pl.CharacterAdded:Connect(hookAbility)
+	if pl.Character then hookAbility(pl.Character) end
+end
+Players.PlayerAdded:Connect(watchAbility)
+for _, pl in ipairs(Players:GetPlayers()) do watchAbility(pl) end
+task.spawn(function()
+	local isl = workspace:WaitForChild("DinoIsland", 60)
+	local bots = isl and isl:WaitForChild("Bots", 60)
+	if not bots then return end
+	bots.ChildAdded:Connect(hookAbility)
+	for _, b in ipairs(bots:GetChildren()) do hookAbility(b) end
+end)
 
 -- kill (any dino's KilledAt with you as the killer) ------------------------------------------------------------------------
 local killSeen = setmetatable({}, {__mode = "k"})

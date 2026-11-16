@@ -72,3 +72,18 @@ Every server script, the existing sound scripts, Music, HardpointHUD, PrematchCo
   - died: your Humanoid.Died, once per character. A killing blow plays died only.
 - **Upload:** Asset Manager Import (fee 0): hurt 75565630737484, died 97374555569398.
 - **Studio test (bots match, Raptor 60/60):** 4 hits through the bridge, two of them 0.05 s apart → hurt 3. Killing blow → died 1, no hurt. Respawn back to 60/60 → no hurt.
+
+## Round 3: the Raptor's ability sounds (GameSounds 1.3)
+- **Which dino:** Kepu said "Next" to "tell me which dino you want first", so the Raptor went first (the default dino for every new player).
+- **Picks:** from the Sound Pick Board round 3 (docs/mockups/sound_pick_board_v0.3.html), 15:50: "cloak C, shield B, adren A, cannon A, scent A".
+  - Cloak Field C: quick stealth whoosh. Energy Shield B: wobbling energy bubble. Adrenaline A: injector hiss and fast heartbeat.
+  - Shock Cannon A: charge zap and boom. Scent Sense A: two sniffs and a soft chime.
+  - Generator docs/sfx/gen_raptor_sfx.py.
+- **Who hears:** "Nearby, Scent only you".
+- **Code facts:** each part's server stamps a start on the character, last: CloakStartedAt, EnergyShieldStartedAt, AdrenalineStartedAt, ScreechStartedAt (Shock Cannon), ScentStartedAt. Nothing played a sound for them.
+- **Rules:**
+  - cloak / shield / adren / cannon: when any dino's start stamp changes, each client plays a 3D copy at that dino's root (heard within 200 studs, full volume within 10).
+  - scent: your own ScentStartedAt, 2D, only you.
+  - Unchanged: bite, pounce, roar, the Thrusters boost and the Shock Mine keep their own sounds. No server script changed.
+- **Upload:** Asset Manager Import (fee 0).
+- **Studio test (bots match, Raptor, max-all test mode):** the 4 buttons through their real remotes → 1 sound each, a 3D copy in the root. Scent → 1, 2D. A bot's shield stamp → the shield sound at that bot.
