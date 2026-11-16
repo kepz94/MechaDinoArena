@@ -32,6 +32,11 @@
 --               the sound at that dino's HumanoidRootPart (else PrimaryPart), heard by everyone near it (each client plays its
 --               own copy; RollOffMaxDistance GameSoundsAbilityRange (200), RollOffMinDistance GameSoundsAbilityNear (10)).
 --   * scent     (v1.3) your character's ScentStartedAt changes to a number: 2D, only you (only you see the trails).
+--   * dgatling / dmortar / dspine / dover / dhiss / dpump / dscope
+--               (v1.4, the Dilophosaurus' buttons) like cloak: 3D at the dino, heard by everyone near it, on DiloGatlingAt (the
+--               press; the sound covers the spin-up and the burst) / DiloMortarFireAt (the canister leaves) / DiloSpineBurstAt
+--               (the spines leave) / DiloOverdriveAt (the press; the sound covers the 0.7 s charge) / DiloHissBlastAt (the blast)
+--               / DiloPumpJoltAt (the jolt) / DiloScopeShotAt (the shot).
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -46,6 +51,7 @@ VERSION = "1.1" -- v1.1 the uploaded sound ids are the defaults
 --   Manager to BloxSolidYT's inventory; their ids are now the GameSoundsId_<event> defaults (IDS below).
 VERSION = "1.2" -- v1.2 getting hit and death sounds
 VERSION = "1.3" -- v1.3 the Raptor's ability sounds
+VERSION = "1.4" -- v1.4 the Dilophosaurus' ability sounds
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -53,21 +59,29 @@ VERSION = "1.3" -- v1.3 the Raptor's ability sounds
 --   "cloak C, shield B, adren A, cannon A, scent A"; who hears: "Nearby, Scent only you"): five original sounds (files
 --   docs/sfx/MDA_SFX_<event>.wav), imported through Studio's Asset Manager. New events cloak, shield, adren, cannon (3D at the dino)
 --   and scent (2D, yours only) (header). Bite, pounce, roar, the Thrusters boost and the Shock Mine keep their own sounds.
+-- v1.4 (MDA-552; Kepu 2026-11-16 15:57 "next" -> the Dilophosaurus (the most silent buttons); 16:02 picks from the Sound Pick Board
+--   round 4: "gatling B, mortar B, spine B, over A, hiss B, pump A, scope C"): seven original sounds (files
+--   docs/sfx/MDA_SFX_dilo_<part>.wav), imported through Studio's Asset Manager, heard like the Raptor's (3D at the dino). Spring Jets
+--   keeps its thruster sound (DiloMovesFX); the dilo's bite and spit stay silent.
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
 local EVENTS = {"hit", "kill", "captured", "lost", "contested", "moving", "tick", "go", "click", "win", "lose",
 	"hurt", "died", -- v1.2 hurt, died
-	"cloak", "shield", "adren", "cannon", "scent"} -- v1.3 Raptor buttons
+	"cloak", "shield", "adren", "cannon", "scent", -- v1.3 Raptor buttons
+	"dgatling", "dmortar", "dspine", "dover", "dhiss", "dpump", "dscope"} -- v1.4 Dilophosaurus buttons
 local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "113513728853752", lost = "124135883749071",
 	contested = "101864400003768", moving = "136030860049130", tick = "86647331351122", go = "122207388352651",
 	click = "100987841683034", win = "71840308309828", lose = "81529780885336",
 	hurt = "75565630737484", died = "97374555569398", -- v1.1; v1.2 hurt, died
 	cloak = "71499307467716", shield = "127396962777997", adren = "127472396863191", cannon = "103381972237825",
-	scent = "73289725571120"} -- v1.3
+	scent = "73289725571120", -- v1.3
+	dgatling = "78744560071574", dmortar = "88561547660478", dspine = "70381297668849", dover = "139341624407479",
+	dhiss = "91279059395796", dpump = "75209586059891", dscope = "123275908451380"} -- v1.4
 local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5, moving = 0.6, tick = 0.6, go = 0.7,
 	click = 0.4, win = 0.7, lose = 0.7, hurt = 0.6, died = 0.8,
-	cloak = 0.7, shield = 0.7, adren = 0.7, cannon = 0.8, scent = 0.6} -- v1.3
+	cloak = 0.7, shield = 0.7, adren = 0.7, cannon = 0.8, scent = 0.6, -- v1.3
+	dgatling = 0.6, dmortar = 0.8, dspine = 0.7, dover = 0.7, dhiss = 0.8, dpump = 0.7, dscope = 0.7} -- v1.4
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
@@ -158,6 +172,10 @@ if player.Character then task.spawn(hookHealth, player.Character) end
 local Debris = game:GetService("Debris")
 local ABILITY = {cloak = "CloakStartedAt", shield = "EnergyShieldStartedAt", adren = "AdrenalineStartedAt",
 	cannon = "ScreechStartedAt"}
+for e, attr in pairs({dgatling = "DiloGatlingAt", dmortar = "DiloMortarFireAt", dspine = "DiloSpineBurstAt", -- v1.4 Dilophosaurus
+	dover = "DiloOverdriveAt", dhiss = "DiloHissBlastAt", dpump = "DiloPumpJoltAt", dscope = "DiloScopeShotAt"}) do
+	ABILITY[e] = attr
+end
 local function play3D(e, m)
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end

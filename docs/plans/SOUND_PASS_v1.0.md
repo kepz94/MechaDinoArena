@@ -87,3 +87,16 @@ Every server script, the existing sound scripts, Music, HardpointHUD, PrematchCo
   - Unchanged: bite, pounce, roar, the Thrusters boost and the Shock Mine keep their own sounds. No server script changed.
 - **Upload:** Asset Manager Import (fee 0).
 - **Studio test (bots match, Raptor, max-all test mode):** the 4 buttons through their real remotes → 1 sound each, a 3D copy in the root. Scent → 1, 2D. A bot's shield stamp → the shield sound at that bot.
+
+## Round 4: the Dilophosaurus' ability sounds (GameSounds 1.4)
+- **Which dino:** Kepu said "next"; the Dilophosaurus went next (the most silent buttons: 7 of 8). The T-Rex has no live buttons.
+- **Picks:** from the Sound Pick Board round 4 (docs/mockups/sound_pick_board_v0.4.html), 16:02: "gatling B, mortar B, spine B, over A, hiss B, pump A, scope C". Generator docs/sfx/gen_dilo_sfx.py.
+- **Who hears:** like the Raptor's ("Nearby"): 3D at the dilo.
+- **Triggers (DiloMovesServer stamps, set at the moment of the action):**
+  - Venom Gatling: DiloGatlingAt (the press; the 1.5 s sound covers the 0.4 s spin-up and the 1 s burst).
+  - Toxin Mortar: DiloMortarFireAt (the canister leaves).
+  - Spine Burst: DiloSpineBurstAt (the spines leave).
+  - Venom Overdrive: DiloOverdriveAt (the press; the sound covers the 0.7 s charge).
+  - Sonic Hiss: DiloHissBlastAt. Antivenom Pump: DiloPumpJoltAt. Sniper Scope: DiloScopeShotAt.
+- **Unchanged:** Spring Jets keeps its thruster sound (DiloMovesFX). The dilo's bite and spit stay silent (a later round). No server script changed.
+- **Studio test (bots match, Dilo, max-all):** all 7 parts through their real remotes, result "ok" → 1 sound each, a 3D copy in the root.
