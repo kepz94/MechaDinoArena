@@ -60,3 +60,15 @@ Every server script, the existing sound scripts, Music, HardpointHUD, PrematchCo
 - **Ids:** they are now the defaults in GameSounds 1.1.
 - **Test:** in Studio all 11 loaded with the right lengths, and tick and GO played in a bots match.
 - **Also found:** the 4 Kevin MacLeod songs (MDA_LevelUp, MDA_AirshipSerenity, MDA_BitQuest, MDA_8bitDungeonLevel) are already uploaded to the same account (since 2026-11-02).
+
+## Round 2: getting hit and death (GameSounds 1.2)
+- **Picks:** from the Sound Pick Board round 2 (docs/mockups/sound_pick_board_v0.2.html), 15:27: "hurt C, died C".
+  - hurt C: crunchy punch with a metal tick, 0.30 s.
+  - died C: low dying growl and thud, 1.50 s.
+  - Original sounds in the punchy real style (generator docs/sfx/gen_real_sfx.py).
+- **Code facts:** every damage path to a player ends at the Humanoid (ArenaPvP bridges DummyHealth to Humanoid:TakeDamage; RespawnServer already treats a Humanoid health drop as "hit"). Death is Humanoid.Died.
+- **Rules:**
+  - hurt: your Humanoid health drops to above 0 and below MaxHealth. Not within 1 s of spawning (a MaxHealth set on spawn also lowers Health). At most once per 0.15 s.
+  - died: your Humanoid.Died, once per character. A killing blow plays died only.
+- **Upload:** Asset Manager Import (fee 0): hurt 75565630737484, died 97374555569398.
+- **Studio test (bots match, Raptor 60/60):** 4 hits through the bridge, two of them 0.05 s apart → hurt 3. Killing blow → died 1, no hurt. Respawn back to 60/60 → no hurt.

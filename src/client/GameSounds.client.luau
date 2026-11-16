@@ -22,6 +22,10 @@
 --   * win / lose HpPhase changes to "results": HpWinner == your team -> win, the other team -> lose; "draw" -> nothing.
 --   * click     a GuiButton's Activated inside one of the ScreenGuis named in GameSoundsClickGuis (menus, Lab, pre-game, island and
 --               respawn screens; not the ability / attack buttons).
+--   * hurt      (v1.2) your character's Humanoid health drops (every damage path ends there: ArenaPvP bridges DummyHealth to
+--               Humanoid:TakeDamage) to a value above 0 and below MaxHealth; not within GameSoundsHurtSpawnIgnore (1) s of the
+--               character spawning (a MaxHealth set on spawn also lowers Health); at most once per GameSoundsHurtGap (0.15) s.
+--   * died      (v1.2) your character's Humanoid.Died; once per character.
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>.
@@ -34,17 +38,23 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 the uploaded sound ids are the defaults
 -- v1.1 (MDA-552; Kepu 2026-11-16 15:04 "You upload it. I'm away from the PC"): the 11 sounds were imported through Studio's Asset
 --   Manager to BloxSolidYT's inventory; their ids are now the GameSoundsId_<event> defaults (IDS below).
+VERSION = "1.2" -- v1.2 getting hit and death sounds
+-- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
+--   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
+--   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
-local EVENTS = {"hit", "kill", "captured", "lost", "contested", "moving", "tick", "go", "click", "win", "lose"}
+local EVENTS = {"hit", "kill", "captured", "lost", "contested", "moving", "tick", "go", "click", "win", "lose",
+	"hurt", "died"} -- v1.2 hurt, died
 local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "113513728853752", lost = "124135883749071",
 	contested = "101864400003768", moving = "136030860049130", tick = "86647331351122", go = "122207388352651",
-	click = "100987841683034", win = "71840308309828", lose = "81529780885336"} -- v1.1
+	click = "100987841683034", win = "71840308309828", lose = "81529780885336",
+	hurt = "75565630737484", died = "97374555569398"} -- v1.1; v1.2 hurt, died
 local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5, moving = 0.6, tick = 0.6, go = 0.7,
-	click = 0.4, win = 0.7, lose = 0.7}
+	click = 0.4, win = 0.7, lose = 0.7, hurt = 0.6, died = 0.8}
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
-	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3,
+	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -101,6 +111,32 @@ local function hookChar(char)
 end
 player.CharacterAdded:Connect(hookChar)
 if player.Character then hookChar(player.Character) end
+
+-- v1.2 hurt / died (your character's Humanoid) ------------------------------------------------------------------------------
+local lastHurt = 0
+local function hookHealth(char)
+	local spawnedAt = os.clock()
+	local hum = char:WaitForChild("Humanoid", 10)
+	if not (hum and hum:IsA("Humanoid")) then return end
+	local last = hum.Health
+	local diedPlayed = false
+	hum.HealthChanged:Connect(function(h)
+		local prev = last
+		last = h
+		if h >= prev - 0.01 or h <= 0 or h >= hum.MaxHealth then return end
+		if os.clock() - spawnedAt < num("GameSoundsHurtSpawnIgnore", 1) then return end
+		if os.clock() - lastHurt < num("GameSoundsHurtGap", 0.15) then return end
+		lastHurt = os.clock()
+		play("hurt")
+	end)
+	hum.Died:Connect(function()
+		if diedPlayed then return end
+		diedPlayed = true
+		play("died")
+	end)
+end
+player.CharacterAdded:Connect(hookHealth)
+if player.Character then task.spawn(hookHealth, player.Character) end
 
 -- kill (any dino's KilledAt with you as the killer) ------------------------------------------------------------------------
 local killSeen = setmetatable({}, {__mode = "k"})
