@@ -37,6 +37,12 @@
 --               press; the sound covers the spin-up and the burst) / DiloMortarFireAt (the canister leaves) / DiloSpineBurstAt
 --               (the spines leave) / DiloOverdriveAt (the press; the sound covers the 0.7 s charge) / DiloHissBlastAt (the blast)
 --               / DiloPumpJoltAt (the jolt) / DiloScopeShotAt (the shot).
+--   * hquills / hsmoke / hstrobe / hbreaker / hcaltrops / hgoo / hglider / hcmlaunch
+--               (v1.5, the Herrera's buttons) like cloak: 3D at the dino, on QuillStartedAt (the volley) / SmokeStartedAt (the
+--               cloud) / StrobeAt (the flash) / BreakerAt (breaking free) / CaltropDroppedAt / GooFiredAt / GlideStartedAt (the
+--               wings open) / CruiseLaunchAt (the missile leaves).
+--   * hcmboom   (v1.5) any dino's CruiseBoomAt changes to a number: 3D at its CruiseBoomPos (the blast point, not the dino),
+--               heard within GameSoundsBlastRange (400) studs, full volume within GameSoundsBlastNear (20).
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -52,6 +58,7 @@ VERSION = "1.1" -- v1.1 the uploaded sound ids are the defaults
 VERSION = "1.2" -- v1.2 getting hit and death sounds
 VERSION = "1.3" -- v1.3 the Raptor's ability sounds
 VERSION = "1.4" -- v1.4 the Dilophosaurus' ability sounds
+VERSION = "1.5" -- v1.5 the Herrera's ability sounds
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -63,13 +70,18 @@ VERSION = "1.4" -- v1.4 the Dilophosaurus' ability sounds
 --   round 4: "gatling B, mortar B, spine B, over A, hiss B, pump A, scope C"): seven original sounds (files
 --   docs/sfx/MDA_SFX_dilo_<part>.wav), imported through Studio's Asset Manager, heard like the Raptor's (3D at the dino). Spring Jets
 --   keeps its thruster sound (DiloMovesFX); the dilo's bite and spit stay silent.
+-- v1.5 (MDA-552; Kepu 2026-11-16 16:17 "next" -> the Herrera; 16:27 picks from the Sound Pick Board round 5: "quills A, smoke A,
+--   strobe A, breaker A, caltrops A, goo B, glider B, cmlaunch A, cmboom A"): nine original sounds (files
+--   docs/sfx/MDA_SFX_herr_<part>.wav), imported through Studio's Asset Manager, heard like the Raptor's; the Cruise Missile blast
+--   plays at the blast point. The Herrera's Adrenaline Injector already plays "adren" (it runs on AdrenalineServer).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
 local EVENTS = {"hit", "kill", "captured", "lost", "contested", "moving", "tick", "go", "click", "win", "lose",
 	"hurt", "died", -- v1.2 hurt, died
 	"cloak", "shield", "adren", "cannon", "scent", -- v1.3 Raptor buttons
-	"dgatling", "dmortar", "dspine", "dover", "dhiss", "dpump", "dscope"} -- v1.4 Dilophosaurus buttons
+	"dgatling", "dmortar", "dspine", "dover", "dhiss", "dpump", "dscope", -- v1.4 Dilophosaurus buttons
+	"hquills", "hsmoke", "hstrobe", "hbreaker", "hcaltrops", "hgoo", "hglider", "hcmlaunch", "hcmboom"} -- v1.5 Herrera buttons
 local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "113513728853752", lost = "124135883749071",
 	contested = "101864400003768", moving = "136030860049130", tick = "86647331351122", go = "122207388352651",
 	click = "100987841683034", win = "71840308309828", lose = "81529780885336",
@@ -77,14 +89,20 @@ local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "11351
 	cloak = "71499307467716", shield = "127396962777997", adren = "127472396863191", cannon = "103381972237825",
 	scent = "73289725571120", -- v1.3
 	dgatling = "78744560071574", dmortar = "88561547660478", dspine = "70381297668849", dover = "139341624407479",
-	dhiss = "91279059395796", dpump = "75209586059891", dscope = "123275908451380"} -- v1.4
+	dhiss = "91279059395796", dpump = "75209586059891", dscope = "123275908451380", -- v1.4
+	hquills = "99387893346374", hsmoke = "95015917968676", hstrobe = "89385419107010", hbreaker = "132408189699355",
+	hcaltrops = "122877492518576", hgoo = "76868818068463", hglider = "99551154658790", hcmlaunch = "78951828583998",
+	hcmboom = "111468500071162"} -- v1.5
 local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5, moving = 0.6, tick = 0.6, go = 0.7,
 	click = 0.4, win = 0.7, lose = 0.7, hurt = 0.6, died = 0.8,
 	cloak = 0.7, shield = 0.7, adren = 0.7, cannon = 0.8, scent = 0.6, -- v1.3
-	dgatling = 0.6, dmortar = 0.8, dspine = 0.7, dover = 0.7, dhiss = 0.8, dpump = 0.7, dscope = 0.7} -- v1.4
+	dgatling = 0.6, dmortar = 0.8, dspine = 0.7, dover = 0.7, dhiss = 0.8, dpump = 0.7, dscope = 0.7, -- v1.4
+	hquills = 0.7, hsmoke = 0.7, hstrobe = 0.6, hbreaker = 0.8, hcaltrops = 0.6, hgoo = 0.7, hglider = 0.6, hcmlaunch = 0.8,
+	hcmboom = 1} -- v1.5
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
+	GameSoundsBlastRange = 400, GameSoundsBlastNear = 20, -- v1.5
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -176,6 +194,10 @@ for e, attr in pairs({dgatling = "DiloGatlingAt", dmortar = "DiloMortarFireAt", 
 	dover = "DiloOverdriveAt", dhiss = "DiloHissBlastAt", dpump = "DiloPumpJoltAt", dscope = "DiloScopeShotAt"}) do
 	ABILITY[e] = attr
 end
+for e, attr in pairs({hquills = "QuillStartedAt", hsmoke = "SmokeStartedAt", hstrobe = "StrobeAt", hbreaker = "BreakerAt", -- v1.5
+	hcaltrops = "CaltropDroppedAt", hgoo = "GooFiredAt", hglider = "GlideStartedAt", hcmlaunch = "CruiseLaunchAt"}) do
+	ABILITY[e] = attr
+end
 local function play3D(e, m)
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
@@ -221,6 +243,50 @@ task.spawn(function()
 	if not bots then return end
 	bots.ChildAdded:Connect(hookAbility)
 	for _, b in ipairs(bots:GetChildren()) do hookAbility(b) end
+end)
+
+-- v1.5 the Cruise Missile blast: 3D at CruiseBoomPos --------------------------------------------------------------------------
+local function playAt(e, pos)
+	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
+	if player:GetAttribute("InMenu") == true then return end
+	if typeof(pos) ~= "Vector3" then return end
+	group.Volume = num("GameSoundsVolume", 1)
+	local tpl = template(e)
+	script:SetAttribute("GameSoundsLast", e)
+	script:SetAttribute("GameSoundsLast3D", e .. ":" .. string.format("%.0f,%.0f,%.0f", pos.X, pos.Y, pos.Z))
+	script:SetAttribute("GameSoundsCount_" .. e, (script:GetAttribute("GameSoundsCount_" .. e) or 0) + 1)
+	if not tpl then return end
+	local a = Instance.new("Attachment")
+	a.Name = "GameSounds_" .. e .. "_At"
+	a.WorldPosition = pos
+	a.Parent = workspace.Terrain
+	local s = tpl:Clone()
+	s.RollOffMaxDistance = num("GameSoundsBlastRange", 400)
+	s.RollOffMinDistance = num("GameSoundsBlastNear", 20)
+	s.Parent = a
+	s:Play()
+	Debris:AddItem(a, math.max(tpl.TimeLength, 1) + 0.5)
+end
+local hookedBlast = setmetatable({}, {__mode = "k"})
+local function hookBlast(m)
+	if hookedBlast[m] or not m:IsA("Model") then return end
+	hookedBlast[m] = true
+	m:GetAttributeChangedSignal("CruiseBoomAt"):Connect(function()
+		if typeof(m:GetAttribute("CruiseBoomAt")) == "number" then playAt("hcmboom", m:GetAttribute("CruiseBoomPos")) end
+	end)
+end
+local function watchBlast(pl)
+	pl.CharacterAdded:Connect(hookBlast)
+	if pl.Character then hookBlast(pl.Character) end
+end
+Players.PlayerAdded:Connect(watchBlast)
+for _, pl in ipairs(Players:GetPlayers()) do watchBlast(pl) end
+task.spawn(function()
+	local isl = workspace:WaitForChild("DinoIsland", 60)
+	local bots = isl and isl:WaitForChild("Bots", 60)
+	if not bots then return end
+	bots.ChildAdded:Connect(hookBlast)
+	for _, b in ipairs(bots:GetChildren()) do hookBlast(b) end
 end)
 
 -- kill (any dino's KilledAt with you as the killer) ------------------------------------------------------------------------

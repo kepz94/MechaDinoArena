@@ -100,3 +100,13 @@ Every server script, the existing sound scripts, Music, HardpointHUD, PrematchCo
   - Sonic Hiss: DiloHissBlastAt. Antivenom Pump: DiloPumpJoltAt. Sniper Scope: DiloScopeShotAt.
 - **Unchanged:** Spring Jets keeps its thruster sound (DiloMovesFX). The dilo's bite and spit stay silent (a later round). No server script changed.
 - **Studio test (bots match, Dilo, max-all):** all 7 parts through their real remotes, result "ok" → 1 sound each, a 3D copy in the root.
+
+## Round 5: the Herrera's ability sounds (GameSounds 1.5)
+- **Which dino:** Kepu said "next"; the Herrera went next (9 silent rows).
+- **Picks:** from the Sound Pick Board round 5 (docs/mockups/sound_pick_board_v0.5.html), 16:27: "quills A, smoke A, strobe A, breaker A, caltrops A, goo B, glider B, cmlaunch A, cmboom A". Generator docs/sfx/gen_herrera_sfx.py.
+- **Who hears:** "Nearby", 3D at the Herrera.
+- **Triggers (HerreraMovesServer / HerreraMissileServer stamps):**
+  - Quill Launcher QuillStartedAt; Smoke Pods SmokeStartedAt; Strobe Frill StrobeAt (the flash); Stun Breaker BreakerAt; Razor Caltrops CaltropDroppedAt; Goo Blob Shooter GooFiredAt; Glider Wings GlideStartedAt (the wings open); Cruise Missile CruiseLaunchAt.
+  - Cruise Missile blast: CruiseBoomAt, played at CruiseBoomPos (the blast point, far from the Herrera), heard within 400 studs.
+- **Unchanged:** the Herrera's Adrenaline Injector already plays the Raptor's Adrenaline sound (it runs on AdrenalineServer). No server script changed.
+- **Studio test (bots match, Herrera, max-all):** quills, smoke, strobe, caltrops, goo, glide, missile launch and impact through their real remotes → 1 sound each. Stun Breaker: a stun set for the test was cleared at once ("notStunned"), so BreakerAt was stamped from the server → 1 sound. Bots' glides and shields also played their sounds.
