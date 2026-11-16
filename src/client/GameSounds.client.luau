@@ -31,10 +31,16 @@ local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 the uploaded sound ids are the defaults
+-- v1.1 (MDA-552; Kepu 2026-11-16 15:04 "You upload it. I'm away from the PC"): the 11 sounds were imported through Studio's Asset
+--   Manager to BloxSolidYT's inventory; their ids are now the GameSoundsId_<event> defaults (IDS below).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
 local EVENTS = {"hit", "kill", "captured", "lost", "contested", "moving", "tick", "go", "click", "win", "lose"}
+local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "113513728853752", lost = "124135883749071",
+	contested = "101864400003768", moving = "136030860049130", tick = "86647331351122", go = "122207388352651",
+	click = "100987841683034", win = "71840308309828", lose = "81529780885336"} -- v1.1
 local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5, moving = 0.6, tick = 0.6, go = 0.7,
 	click = 0.4, win = 0.7, lose = 0.7}
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
@@ -44,7 +50,7 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 end
 for _, e in ipairs(EVENTS) do
 	if script:GetAttribute("GameSounds_" .. e .. "Enabled") == nil then script:SetAttribute("GameSounds_" .. e .. "Enabled", true) end
-	if script:GetAttribute("GameSoundsId_" .. e) == nil then script:SetAttribute("GameSoundsId_" .. e, "") end
+	if script:GetAttribute("GameSoundsId_" .. e) == nil then script:SetAttribute("GameSoundsId_" .. e, IDS[e] or "") end
 	if script:GetAttribute("GameSoundsVol_" .. e) == nil then script:SetAttribute("GameSoundsVol_" .. e, VOL[e]) end
 end
 local function num(k, d) return tonumber(script:GetAttribute(k)) or d end

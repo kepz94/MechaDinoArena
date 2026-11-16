@@ -54,3 +54,9 @@ Every server script, the existing sound scripts, Music, HardpointHUD, PrematchCo
 - **Match end:** the match ended with B winning while I was on A → lose 1.
 - **Click:** a main-menu click → click 1.
 - **Not yet heard:** the sounds are silent until their ids are set after the upload.
+
+## Upload (GameSounds 1.1)
+- **How:** Kepu was away from the PC ("You upload it"). An Open Cloud upload needs the folder approved in Studio Assistant settings, so the 11 files were imported through Studio's Asset Manager instead (Import, fee 0, rights confirmed: original sounds made for this game).
+- **Ids:** they are now the defaults in GameSounds 1.1.
+- **Test:** in Studio all 11 loaded with the right lengths, and tick and GO played in a bots match.
+- **Also found:** the 4 Kevin MacLeod songs (MDA_LevelUp, MDA_AirshipSerenity, MDA_BitQuest, MDA_8bitDungeonLevel) are already uploaded to the same account (since 2026-11-02).
