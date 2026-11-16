@@ -110,3 +110,11 @@ Every server script, the existing sound scripts, Music, HardpointHUD, PrematchCo
   - Cruise Missile blast: CruiseBoomAt, played at CruiseBoomPos (the blast point, far from the Herrera), heard within 400 studs.
 - **Unchanged:** the Herrera's Adrenaline Injector already plays the Raptor's Adrenaline sound (it runs on AdrenalineServer). No server script changed.
 - **Studio test (bots match, Herrera, max-all):** quills, smoke, strobe, caltrops, goo, glide, missile launch and impact through their real remotes → 1 sound each. Stun Breaker: a stun set for the test was cleared at once ("notStunned"), so BreakerAt was stamped from the server → 1 sound. Bots' glides and shields also played their sounds.
+
+## Round 6: the Troodon's ability sounds (GameSounds 1.6)
+- **Which dino:** Kepu said "next"; the Troodon went next (9 silent buttons).
+- **Picks:** from the Sound Pick Board round 6 (docs/mockups/sound_pick_board_v0.6.html), 16:43: "oburst B, odome B, olantern C, omender B, oportal C, osapwall A, osentry B, oshed B, osleep B". A lighter tech-meets-nature style for the support dino. Generator docs/sfx/gen_troodon_sfx.py.
+- **Who hears:** "Nearby", 3D at the Troodon, at the press (for thrown parts, the throw).
+- **Triggers:** TrooBurstAt, TrooDomeAt, TrooLanternAt, TrooMenderAt, TrooSapAt, TrooSentryAt, TrooShedAt, TrooSleepFireAt (not TrooSleepAt: the sleeping target gets that one too).
+  - Portal Feathers: code fact found while wiring it: since TrooMovesServer 1.10 the part is the Apex-style rift (press, walk, press), so the sound plays on TrooRiftOpenAt (the rift opens at end B, where the Troodon stands). The old two-ring mode (TrooPortalAt, switch off by default) stays silent. The Lab text still describes the rings.
+- **Studio test (bots match, Troodon, max-all):** burst, dome, lantern, mender, sap wall, sentry, sleep dart and the rift (press, walk 14 studs, press) through their real remotes → each played. Feather Shed by a server TrooShedAt stamp → 1. Troodon bots' rifts, sentries and domes also played at the bots.
