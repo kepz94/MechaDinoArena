@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Podium & Leaderboards</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@600;800&family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Same palette as the roster / Herrera mockups; in-game colours from MainMenu 1.x + HardpointHUD (PANEL 20,20,26 · YELLOW 255,200,50 · ORANGE 255,155,46 · GOLD 255,210,90 · SILVER 201,211,224 · BLUE 90,160,255 · RED 224,40,74). */
+:root {
+  --page: #0d0f14; --panel: #14141a; --card: #1d2230; --line: #2b3242; --fg: #ffffff; --grey: #cfd3dc; --muted: #8f99aa;
+  --accent: #ff9b2e; --volt: #7fe9ff; --yellow: #ffc832; --gold: #ffd25a; --silver: #c9d3e0; --bronze: #d08a4a; --blue: #5aa0ff; --red: #e0284a; --green: #46e08a;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif; --silk: "Silkscreen", "Courier New", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--fg); }
+body { font: 15px/1.5 var(--body); padding-block: 24px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
+section { display: grid; gap: 10px; }
+h1 { margin: 0; font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); }
+h1 span { color: var(--accent); }
+h2 { margin: 18px 0 0; font: 700 22px/1.2 var(--display); text-wrap: balance; }
+h2 small { font: 700 14px var(--body); color: var(--muted); margin-left: 8px; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 84ch; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 700 16px/1.2 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 8px 14px; cursor: pointer; text-align: left; }
+.tab small { display: block; font: 700 12px var(--body); color: var(--muted); }
+.tab .rec { color: var(--green); }
+.tab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,155,46,.2); }
+.btn { font: 700 13px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+.btn[aria-pressed="true"] { border-color: var(--volt); }
+.stage { position: relative; border: 2px solid var(--line); border-radius: 16px; overflow: hidden; background: #000; margin: 0 auto; width: 100%; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage.pc { aspect-ratio: 16 / 9; }
+.stage.phone { aspect-ratio: 19.5 / 9; max-width: 860px; border-radius: 28px; border-width: 8px; border-color: #252a36; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+.card p { margin: 6px 0; }
+.card b.k { color: var(--accent); }
+ul.notes { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+.picks { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.pick { font: 700 15px/1.25 var(--display); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; text-align: left; }
+.pick small { display: block; font: 600 13px/1.4 var(--body); color: var(--muted); margin-top: 3px; }
+.pick[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,155,46,.2); }
+.copy { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.copy .go { font: 700 16px var(--display); background: var(--accent); color: #1b1406; border: 0; border-radius: 12px; padding: 10px 18px; cursor: pointer; }
+.copy textarea { flex: 1 1 280px; min-width: 0; font: 600 13px var(--body); color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px; resize: vertical; }
+
+/* ---- overlays drawn over the 3D canvas, sized from the canvas height (--u = 1% of it), like the game's ch units ---- */
+.ov { position: absolute; inset: 0; pointer-events: none; font-family: var(--silk); }
+.ov > * { pointer-events: auto; }
+.lbl { position: absolute; transform: translate(-50%, -100%); text-align: center; white-space: nowrap; pointer-events: none; }
+.lbl b { display: block; font: 700 calc(var(--u) * 3.1) var(--silk); color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px #000; }
+.lbl span { display: block; font: 700 calc(var(--u) * 2.3) var(--silk); color: var(--grey); text-shadow: 0 2px 0 #000; }
+.lbl .p1 { color: var(--gold); } .lbl .p2 { color: var(--silver); } .lbl .p3 { color: var(--bronze); } .lbl .mvp { color: var(--gold); }
+.timer { position: absolute; left: 50%; bottom: calc(var(--u) * 3); transform: translateX(-50%); font: 700 calc(var(--u) * 2.4) var(--silk); color: var(--grey); background: rgba(20,20,26,.8); border: 2px solid rgba(255,255,255,.2); border-radius: 8px; padding: calc(var(--u) * .6) calc(var(--u) * 1.6); pointer-events: none; }
+
+/* option C: today's MVP / SVP cards (HardpointHUD 1.10 look) with a step under each dino */
+.cards { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; gap: calc(var(--u) * 5); pointer-events: none; }
+.cards .vic { position: absolute; top: calc(var(--u) * 5); left: 0; right: 0; text-align: center; font: 700 calc(var(--u) * 9) var(--silk); color: var(--yellow); text-shadow: 0 calc(var(--u) * .6) 0 #1a1300; }
+.hc { width: calc(var(--u) * 46); background: transparent; border: 3px solid var(--gold); border-radius: calc(var(--u) * 2); padding: calc(var(--u) * 1.6); display: grid; gap: calc(var(--u) * 1); margin-top: calc(var(--u) * 8); }
+.hc.svp { border-color: var(--silver); }
+.hc h3 { margin: 0; font: 700 calc(var(--u) * 4) var(--silk); color: var(--gold); text-align: center; }
+.hc.svp h3 { color: var(--silver); }
+.hc .vp { height: calc(var(--u) * 34); border-radius: calc(var(--u) * 1.2); background: transparent; }
+.hc .nm { font: 700 calc(var(--u) * 3.2) var(--silk); text-align: center; }
+.hc .st { font: 700 calc(var(--u) * 2.3) var(--silk); color: var(--grey); text-align: center; }
+
+/* leaderboard: main menu mock (MainMenu 1.x layout, simplified) + the new LEADERBOARD button and panel */
+.menu { position: absolute; inset: 0; pointer-events: none; }
+.menu .t1 { position: absolute; left: 4%; top: 7%; font: 700 calc(var(--u) * 4) var(--silk); color: var(--grey); }
+.menu .t2 { position: absolute; left: 4%; top: 12%; font: 700 calc(var(--u) * 11) var(--silk); color: var(--yellow); text-shadow: 0 calc(var(--u) * .8) 0 #6b4a00; }
+.menu .rec { position: absolute; left: 4%; top: 30%; font: 700 calc(var(--u) * 2) var(--silk); color: var(--muted); }
+.menu .rec b { display: block; font: 700 calc(var(--u) * 5) var(--display); color: #fff; }
+.menu .rec i { font-style: normal; color: var(--green); }
+.menu .col { position: absolute; right: 3%; top: 8%; width: 30%; display: grid; gap: calc(var(--u) * 2); }
+.gbtn { border-radius: calc(var(--u) * 1.6); border: 0; font: 700 calc(var(--u) * 4) var(--silk); padding: calc(var(--u) * 1.6); text-align: left; box-shadow: inset 0 calc(var(--u) * -.9) 0 rgba(0,0,0,.25), 0 calc(var(--u) * .6) 0 rgba(0,0,0,.45); color: #1b1406; }
+.gbtn small { display: block; font: 700 calc(var(--u) * 1.9) var(--body); opacity: .8; }
+.gbtn.y { background: var(--yellow); } .gbtn.o { background: var(--accent); } .gbtn.d { background: #14141a; color: #fff; }
+.gbtn.play { text-align: center; font-size: calc(var(--u) * 6); margin-top: calc(var(--u) * 6); }
+.menu .bot { position: absolute; right: 3%; bottom: 3%; display: flex; gap: calc(var(--u) * 1.4); pointer-events: auto; }
+.chipb { font: 700 calc(var(--u) * 2.4) var(--silk); color: var(--grey); background: rgba(20,20,26,.9); border: 2px solid rgba(255,255,255,.2); border-radius: calc(var(--u) * 1.2); padding: calc(var(--u) * 1) calc(var(--u) * 2); cursor: default; }
+.chipb.lb { color: #1b1406; background: var(--yellow); border-color: #1a1300; cursor: pointer; position: relative; }
+.chipb.lb::after { content: "NEW"; position: absolute; top: calc(var(--u) * -1.8); right: calc(var(--u) * -1); font: 700 calc(var(--u) * 1.5) var(--body); background: var(--green); color: #032; border-radius: 99px; padding: 0 calc(var(--u) * .8); }
+.veil { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+.lbp { width: 52%; height: 88%; background: rgba(20,20,26,.97); border: 3px solid rgba(255,255,255,.15); border-radius: calc(var(--u) * 2.4); padding: calc(var(--u) * 2); display: grid; grid-template-rows: auto auto auto 1fr auto; gap: calc(var(--u) * 1.2); font-family: var(--silk); }
+.phone .lbp { width: 70%; height: 92%; }
+.lbp .hd { display: flex; justify-content: space-between; align-items: center; }
+.lbp .hd b { font: 700 calc(var(--u) * 4.4) var(--silk); color: var(--yellow); }
+.lbp .x { font: 700 calc(var(--u) * 3) var(--silk); background: #2b3542; color: #fff; border: 0; border-radius: calc(var(--u) * 1); width: calc(var(--u) * 6); height: calc(var(--u) * 6); cursor: pointer; }
+.lbp .tabs, .lbp .tf { display: flex; gap: calc(var(--u) * 1); flex-wrap: wrap; }
+.lbp .tabs button, .lbp .tf button { font: 700 calc(var(--u) * 2.4) var(--silk); background: #2b3542; color: var(--grey); border: 0; border-radius: calc(var(--u) * 1); padding: calc(var(--u) * .8) calc(var(--u) * 1.6); cursor: pointer; }
+.lbp .tabs button[aria-pressed="true"] { background: var(--yellow); color: #1b1406; }
+.lbp .tf button[aria-pressed="true"] { background: var(--volt); color: #032; }
+.lbp .list { overflow-y: auto; display: grid; align-content: start; gap: calc(var(--u) * .6); padding-right: calc(var(--u) * .6); }
+.lbr { display: grid; grid-template-columns: calc(var(--u) * 6) 1fr auto calc(var(--u) * 10); align-items: center; gap: calc(var(--u) * 1); background: #1d2230; border-radius: calc(var(--u) * .9); padding: calc(var(--u) * .7) calc(var(--u) * 1.2); font: 700 calc(var(--u) * 2.4) var(--silk); }
+.lbr .r { color: var(--muted); } .lbr .d { color: var(--muted); font-size: calc(var(--u) * 1.9); } .lbr .v { text-align: right; color: #fff; }
+.lbr.g1 .r { color: var(--gold); } .lbr.g2 .r { color: var(--silver); } .lbr.g3 .r { color: var(--bronze); }
+.lbr.me { background: #2a2410; border: 2px solid var(--yellow); }
+.vtoggle { position: absolute; left: calc(var(--u) * 2); bottom: calc(var(--u) * 2); display: flex; gap: calc(var(--u) * 1); }
+.vtoggle button { font: 700 calc(var(--u) * 2.2) var(--silk); background: rgba(20,20,26,.9); color: var(--grey); border: 2px solid rgba(255,255,255,.2); border-radius: calc(var(--u) * 1); padding: calc(var(--u) * .8) calc(var(--u) * 1.4); cursor: pointer; }
+.vtoggle button[aria-pressed="true"] { border-color: var(--volt); color: #fff; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>Podium & Leaderboards</span> · v0.2</h1>
+    <p class="lede">Built from the real dino models in the repo (src/shared/Models), at their in-game sizes, the same way as the roster and parts mockups. Drag any view to turn it. Switch PC / Phone to see both. Pick one of each, tick the stats, then "Copy picks" at the bottom.</p>
+  </header>
+  <div class="row" role="group" aria-label="Screen">
+    <button class="btn" id="fPC" aria-pressed="true">PC</button>
+    <button class="btn" id="fPhone" aria-pressed="false">Phone</button>
+  </div>
+
+  <section>
+    <h2>1 · Victory podium <small>plays after the VICTORY banner, in the 6 s the MVP / SVP cards use today</small></h2>
+    <div class="row" role="group" aria-label="Podium option" id="podTabs">
+      <button class="tab" data-pod="A" aria-pressed="true">A · Top 3 podium<small class="rec">Recommended</small></button>
+      <button class="tab" data-pod="B" aria-pressed="false">B · Winning team on stage<small>MVP on the high step, confetti</small></button>
+      <button class="tab" data-pod="C" aria-pressed="false">C · Keep the cards, add steps<small>smallest change</small></button>
+    </div>
+    <div class="row" role="group" aria-label="Podium view">
+      <button class="btn" id="sample">Next sample match ▶</button>
+      <button class="btn" id="szReal" aria-pressed="true">Real sizes</button>
+      <button class="btn" id="szSame" aria-pressed="false">Same height</button>
+      <button class="btn" id="podPlay" aria-pressed="true">Camera move on</button>
+    </div>
+    <div class="stage pc" id="podStage"><canvas id="podCv" aria-label="3D victory podium"></canvas><div class="ov" id="podOv"></div></div>
+    <div class="card" id="podInfo"></div>
+  </section>
+
+  <section>
+    <h2>2 · Where the leaderboards live</h2>
+    <div class="row" role="group" aria-label="Board option" id="lbTabs">
+      <button class="tab" data-lb="A" aria-pressed="false">A · Big board on the island<small>by the spawn, top 10</small></button>
+      <button class="tab" data-lb="B" aria-pressed="false">B · LEADERBOARD in the menu<small>full list + your rank</small></button>
+      <button class="tab" data-lb="C" aria-pressed="true">C · Both<small class="rec">Recommended</small></button>
+    </div>
+    <div class="stage pc" id="lbStage"><canvas id="lbCv" aria-label="3D island leaderboard"></canvas><div class="ov" id="lbOv"></div></div>
+    <div class="card" id="lbInfo"></div>
+  </section>
+
+  <section>
+    <h2>3 · What gets ranked <small>tick any; the board and the panel above follow your ticks</small></h2>
+    <div class="picks" id="stats">
+      <button class="pick" data-st="WINS" aria-pressed="true">Arena wins<small>Already saved for every player (ArenaRecordServer), so the board starts with real history.</small></button>
+      <button class="pick" data-st="KILLS" aria-pressed="true">Kills<small>New: counted from the day this goes live. Today kills are only kept for the session (DinoKills).</small></button>
+      <button class="pick" data-st="STREAK" aria-pressed="true">Best win streak<small>The highest streak a player reached. The current streak is already tracked (ArenaStreak).</small></button>
+      <button class="pick" data-st="LEVEL" aria-pressed="false">Highest dino level<small>From the dino XP levels.</small></button>
+    </div>
+    <h2>4 · Time frame</h2>
+    <div class="picks" id="tframe">
+      <button class="pick" data-tf="all" aria-pressed="false">All-time only</button>
+      <button class="pick" data-tf="week" aria-pressed="true">All-time + this week<small>A weekly board that resets every Monday keeps new players in the race. Recommended.</small></button>
+    </div>
+    <h2>5 · The "everything maxed" test setting</h2>
+    <p class="lede" style="margin:0">Right now every player gets every part maxed out (SkillServer SkillTestMaxAllEnabled = true). With that on, rankings are mostly about who plays most, not who unlocked what.</p>
+    <div class="picks" id="maxall">
+      <button class="pick" data-mx="off" aria-pressed="true">Turn it off when the leaderboards go live<small>Players unlock parts normally. Recommended.</small></button>
+      <button class="pick" data-mx="on" aria-pressed="false">Keep it on and rank anyway</button>
+      <button class="pick" data-mx="later" aria-pressed="false">Decide later<small>Built with it on.</small></button>
+    </div>
+    <div class="copy">
+      <button class="go" id="copy">Copy picks</button>
+      <textarea id="out" rows="2" readonly aria-label="Your picks"></textarea>
+    </div>
+  </section>
+  <ul class="notes">
+    <li>Dinos are the bare models from the repo. In the game the podium copies each player's own dino with their mech parts on.</li>
+    <li>The victory pose here is a simple hop as a stand-in; each dino's own victory move would be part of the build plan.</li>
+    <li>Player names and numbers are samples.</li>
+  </ul>
+</main>
+<script>/*THREE*/</script>
+<script>
