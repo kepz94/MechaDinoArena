@@ -3546,3 +3546,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - VictoryTitlesAnim 1.1 (module field) `SOFT_FLASH` (true; set per title from VictorySoftFlashEnabled).
 - Studio test only: Workspace `ModeTestPractice` (true = practice server in Studio; cleared after the test).
 - VictoryTitles 1.1 (module field) `CFG.zeroKillCarried` (true; false = 1.0 closest title for zero-kill leftovers).
+- GameSounds 1.8 events `tbellow` (0.8), `tchallenge` (0.8), `tgrab` (0.7), `tgrabland` (0.8), `tleap` (0.7), `tleapland` (0.8), `tmortar` (0.7), `tmortarboom` (1), `tmud` (0.7), `tstomp` (0.9) with the per-event attributes (`GameSounds_<event>Enabled`, `GameSoundsId_<event>`, `GameSoundsVol_<event>`, `GameSoundsCount_<event>`); `tgrabland` uses `GameSoundsAbilityRange` / `GameSoundsAbilityNear`, `tmortarboom` `GameSoundsBlastRange` / `GameSoundsBlastNear`.
