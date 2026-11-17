@@ -3533,3 +3533,15 @@ Model numbers are generator output (old version = the flag in the last column, b
 - GameSounds 1.5 `GameSoundsBlastRange` (400 studs), `GameSoundsBlastNear` (20 studs); events `hquills` (0.7), `hsmoke` (0.7), `hstrobe` (0.6), `hbreaker` (0.8), `hcaltrops` (0.6), `hgoo` (0.7), `hglider` (0.6), `hcmlaunch` (0.8), `hcmboom` (1) with the per-event attributes.
 - GameSounds 1.6 events `oburst` (0.6), `odome` (0.7), `olantern` (0.7), `omender` (0.6), `oportal` (0.7), `osapwall` (0.7), `osentry` (0.6), `oshed` (0.7), `osleep` (0.6) with the per-event attributes.
 - GameSounds 1.7 events `phook`, `pink`, `pdash`, `ptether`, `pvisor`, `pblood` (0.7), `pmed` (0.6) with the per-event attributes; ids are Pro Sound Effects library ids.
+
+## Victory titles (VictoryTitles 1.0 / VictoryTitlesServer 1.0 / HardpointServer 1.9–1.10 / HardpointHUD 1.14 / VictoryTitles client 1.1 / VictoryTitlesAnim 1.1, 2026-11-16, plan docs/plans/VICTORY_TITLES_v1.0.md, MDA-553..557)
+- VictoryTitles 1.0 (module fields) `CFG` {max 4, apexK 3, kingPt 30 s, unkillPt 30 s, medicHeal 100 HP, masherAb 20, extinctD 4, carriedFrac 0.5, scoreKill 100, scoreSec 10}, `LEN` {apex 5.4, king 5.4, unkill 5.4, medic 5.4, masher 5.4, carried 6.4, pacifist 5.6, extinct 5.8}.
+- HardpointServer 1.9 `HardpointTitlesEnabled` (true, per results), `HpTitleMax` (4), `HpTitleGap` (0.3 s), `HpTitleBannerSec` (2 s), `HpTitleBoardSec` (7 s); diagnostics `HpTitlesLast`, `HpTitlesCount`. ReplicatedStorage.Hardpoint `HpTitles` (JSON), `HpTitlesLen` (s), `HpResultsLen` (s). Folder ReplicatedStorage `VictoryTitleModels` (models named by row id; `Species`, `Title`).
+- HardpointServer 1.10 `HpTitlesAllWinnersEnabled` (true, per results).
+- VictoryTitlesServer 1.0 `VictoryTitlesServerEnabled` (true, per report), `VictoryAbilityGap` (0.5 s); diagnostics `VictoryTitlesServerVersion`, `VictoryHeals`, `VictoryAbilities`, `VictoryRemotes`, `VictoryLast`. ServerStorage BindableEvent `VictoryHealReport`.
+- TrooMovesServer 1.14 `TrooMovesHealReportEnabled` (true, per heal). MedStationServer 1.6 `MedStationHealReportEnabled` (true, per heal tick).
+- HardpointHUD 1.14 `HardpointHUDTitlesBeatEnabled` (true, per frame).
+- VictoryTitles (LocalScript) 1.0 `VictoryTitlesEnabled` (true, per show), `VictoryBannerSec` (2 s), `VictoryStageY` (3000 studs), `VictoryTapGuard` (1 s); diagnostics `VictoryTitlesVersion`, `VictoryTitlesState`, `VictoryTitlesLast`. Player (test) `VictoryTitlesTest` ("apex,king,..."; reset to "" once read).
+- VictoryTitles (LocalScript) 1.1 `VictoryHideHudEnabled` (true, per frame), `VictorySoftFlashEnabled` (true, per title), `VictoryHoldSlotEnabled` (true, per frame).
+- VictoryTitlesAnim 1.1 (module field) `SOFT_FLASH` (true; set per title from VictorySoftFlashEnabled).
+- Studio test only: Workspace `ModeTestPractice` (true = practice server in Studio; cleared after the test).

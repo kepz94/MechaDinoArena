@@ -17,6 +17,20 @@
 -- Test hook: player attribute VictoryTitlesTest = "<title>[,<title>...]" plays those titles now with clones of your own
 --   character (reset to "" once read). Switch: script attribute VictoryTitlesEnabled (default true, read per show).
 -- Diagnostics: VictoryTitlesVersion, VictoryTitlesState ("idle" / "show <i>/<n> <title>" / "test <title>"), VictoryTitlesLast.
+-- v1.1 (Studio Play test 2026-11-16, MDA-556):
+--   (a) the rest of the HUD stays off while a show plays: every other enabled ScreenGui in PlayerGui is turned off each frame
+--       of the show (their own scripts turn some back on) and the ones this show turned off are turned back on when it ends.
+--       A held gui's Enabled is also watched (a script that turns it on from RenderStepped, after this one, e.g. AbilityBar,
+--       is turned off again before the frame draws).
+--       Switch: VictoryHideHudEnabled (default true, read per frame; false = 1.0, the HUD stays on top of the lower third).
+--   (b) the test hook connects at once (1.0 waited up to 60 s for ReplicatedStorage.VictoryTitleModels, which exists only
+--       after a results screen; the real show already looks it up each check).
+--   (c) a step error stays in VictoryTitlesLast when the show ends (1.0 wrote "done" over it).
+--   (d) VictoryTitlesAnim 1.1's soft flash: VictorySoftFlashEnabled (default true, read per title) -> Anim.SOFT_FLASH.
+--   (e) a real show keeps time with the server: each entry's slot ends at results start + VictoryBannerSec + the sum of the
+--       lens so far (HpTitles len includes HardpointServer's HpTitleGap); a title whose animation ends first holds its last
+--       frame until then (1.0 started the next one at once, so the show ended ~2 s before HardpointHUD's board). Test shows
+--       have no slots. Switch: VictoryHoldSlotEnabled (default true, read per frame; false = 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -24,8 +38,12 @@ local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 HUD hold, test hook, step errors, soft flash
 script:SetAttribute("VictoryTitlesVersion", VERSION)
 for k, v in pairs({VictoryTitlesEnabled = true, VictoryBannerSec = 2, VictoryStageY = 3000, VictoryTapGuard = 1}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+for k, v in pairs({VictoryHideHudEnabled = true, VictorySoftFlashEnabled = true, VictoryHoldSlotEnabled = true}) do -- v1.1
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 script:SetAttribute("VictoryTitlesState", "idle")
@@ -285,11 +303,33 @@ local function setDots(entries, i)
 		Instance.new("UICorner").Parent = l
 	end
 end
+local hudHeld, hudConns = {}, {} -- v1.1: ScreenGuis this show turned off, their Enabled watchers
+local function holdHud()
+	if script:GetAttribute("VictoryHideHudEnabled") == false then return end
+	for _, g in ipairs(player.PlayerGui:GetChildren()) do
+		if g ~= gui and g:IsA("ScreenGui") and g.Enabled then
+			g.Enabled = false
+			hudHeld[g] = true
+			if not hudConns[g] then
+				hudConns[g] = g:GetPropertyChangedSignal("Enabled"):Connect(function()
+					if hudHeld[g] and g.Enabled and script:GetAttribute("VictoryHideHudEnabled") ~= false then g.Enabled = false end
+				end)
+			end
+		end
+	end
+end
+local function releaseHud()
+	for _, c in pairs(hudConns) do c:Disconnect() end
+	table.clear(hudConns)
+	for g in pairs(hudHeld) do if g.Parent then g.Enabled = true end end
+	table.clear(hudHeld)
+end
 local function stopShow(why)
 	if show then
 		if show.runner then pcall(show.runner.destroy) end
 		show = nil
 	end
+	releaseHud() -- v1.1
 	gui.Enabled = false
 	ui.counter(nil) ui.plaster(0, 1) ui.flash(0)
 	camGive()
@@ -300,6 +340,7 @@ local function startEntry(i)
 	if show.runner then pcall(show.runner.destroy) show.runner = nil end
 	local e = show.entries[i]
 	show.i, show.t0 = i, os.clock()
+	show.holding = false -- v1.1
 	if not e then return false end
 	local st = stage()
 	local runner
@@ -311,6 +352,7 @@ local function startEntry(i)
 			local n = tonumber(string.match(e.stat or "", "^(%d+)")) or 6
 			extra.deaths, extra.signLine = n, ("DIED %d TIMES"):format(n)
 		end
+		Anim.SOFT_FLASH = script:GetAttribute("VictorySoftFlashEnabled") ~= false -- v1.1
 		runner = Anim.new(st, ui):play(e.title, model, mate, extra)
 	end)
 	if not ok or not runner then
@@ -334,6 +376,7 @@ local function beginShow(entries, mode, key, startIndex, into)
 	stopShow()
 	if #entries == 0 then return end
 	show = {entries = entries, mode = mode, key = key}
+	holdHud() -- v1.1: from the first frame
 	gui.Enabled = true
 	layout()
 	camTake()
@@ -362,7 +405,15 @@ RunService:BindToRenderStep("VictoryTitles", Enum.RenderPriority.Camera.Value + 
 	local cam = workspace.CurrentCamera
 	if cam.CameraType ~= Enum.CameraType.Scriptable then cam.CameraType = Enum.CameraType.Scriptable end
 	layout()
-	local okStep, alive = pcall(show.runner.step, show.runner, dt)
+	holdHud() -- v1.1
+	local okStep, alive = true, true
+	if not show.holding then okStep, alive = pcall(show.runner.step, show.runner, dt) end -- v1.1: no step while holding
+	local slotEnd = show.entries[show.i] and show.entries[show.i].endAt -- v1.1 (e)
+	if slotEnd and okStep and not alive and not show.holding and script:GetAttribute("VictoryHoldSlotEnabled") ~= false
+		and workspace:GetServerTimeNow() < slotEnd then
+		show.holding = true
+	end
+	if show.holding then alive = workspace:GetServerTimeNow() < (slotEnd or 0) end
 	local t = os.clock() - show.t0
 	-- the lower third slams in at 0.3 s
 	local u = math.clamp((t - 0.3) / 0.25, 0, 1)
@@ -374,18 +425,20 @@ RunService:BindToRenderStep("VictoryTitles", Enum.RenderPriority.Camera.Value + 
 	skipL.Visible = t > (tonumber(script:GetAttribute("VictoryTapGuard")) or 1) and show.i < #show.entries
 	if not okStep then
 		script:SetAttribute("VictoryTitlesLast", "step error: " .. string.sub(tostring(alive), 1, 160))
+		show.err = "step error: " .. string.sub(tostring(alive), 1, 160) -- v1.1
 		alive = false
 	end
 	if not alive then
+		local err = show.err -- v1.1
 		local i = show.i + 1
 		while i <= #show.entries and not startEntry(i) do i += 1 end
-		if i > #show.entries then stopShow("done") end
+		if i > #show.entries then stopShow(err or "done") end
 	end
 end)
 
 -- ---------- real shows: from the Hardpoint results ----------
 local state = ReplicatedStorage:WaitForChild("Hardpoint", 60)
-local modelsFolder = ReplicatedStorage:WaitForChild("VictoryTitleModels", 60)
+local modelsFolder = ReplicatedStorage:FindFirstChild("VictoryTitleModels") -- v1.1: no 60 s wait (was WaitForChild)
 local playedKey = nil
 local function now() return workspace:GetServerTimeNow() end
 local function check()
@@ -415,6 +468,7 @@ local function check()
 		e.mate = (entries[1] ~= e and entries[1].model) or (entries[2] and entries[2].model) or nil
 		if not idx and t < acc + e.len then idx, into = i, t - acc end
 		acc += e.len
+		e.endAt = (endsAt - resLen) + (tonumber(script:GetAttribute("VictoryBannerSec")) or 2) + acc -- v1.1 (e)
 	end
 	playedKey = endsAt
 	if not idx then return end -- the show is already over

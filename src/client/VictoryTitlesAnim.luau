@@ -13,10 +13,17 @@
 -- API: M.new(stage, ui) -> show; show:play(titleId, model, mateModel?) builds the props and returns a runner with
 --   runner:step(dt) -> false when done; runner:destroy(). ui = {counter(text, scale, color) / counter(nil), plaster(alpha, k),
 --   flash(alpha)}. M.LEN[title] = seconds (VictoryTitles 1.0 LEN).
+-- v1.1 (Studio Play test 2026-11-16, MDA-556): (a) EXTINCT's fossil colour is built per channel (1.0 multiplied a Color3 by a
+--   number, which Luau refuses: the title stopped at the impact, 2.3 s). (b) Ctx:flash draws a soft glow (2 additive smoke
+--   particles + a fading PointLight on an attachment) instead of the growing Neon ball, which read as a hard glass sphere.
+--   Switch: M.SOFT_FLASH (default true; VictoryTitles 1.1 sets it per title from its attribute VictorySoftFlashEnabled;
+--   false = the 1.0 ball).
 local Workspace = game:GetService("Workspace")
 
 local M = {}
 M.VERSION = "1.0"
+M.VERSION = "1.1" -- v1.1 extinct colour fix, soft flash
+M.SOFT_FLASH = true -- v1.1
 M.LEN = {apex = 5.4, king = 5.4, unkill = 5.4, medic = 5.4, masher = 5.4, carried = 6.4, pacifist = 5.6, extinct = 5.8}
 
 -- ---------- maths ----------
@@ -532,6 +539,18 @@ function Ctx:dust(p, n, size, spd, color)
 		size0 = size, size1 = size * 2.6, color = color or Color3.fromRGB(217, 201, 160), alpha0 = 0.25, drag = 4})
 end
 function Ctx:flash(p, size, color, life)
+	if M.SOFT_FLASH ~= false then -- v1.1: soft glow
+		local col = color or Color3.new(1, 1, 1)
+		local a = self:emitter(p, V(0, 1, 0), {tex = "smoke", n = 2, speed0 = 0, spread = 0, life0 = (life or 0.18) * 1.6,
+			size0 = size * 1.2, size1 = size * 2.8, color = col, alpha0 = 0.1, glow = 1})
+		local l = Instance.new("PointLight")
+		l.Range = size * 4
+		l.Brightness = 3
+		l.Color = col
+		l.Parent = a
+		self:fx(l, life or 0.18, function(o, u) o.Brightness = 3 * (1 - u) end)
+		return
+	end
 	local b = newPart(self, V(1, 1, 1) * size, color or Color3.new(1, 1, 1), {shape = Enum.PartType.Ball, material = Enum.Material.Neon, shadow = false})
 	b.CFrame = CFrame.new(p)
 	local l = Instance.new("PointLight")
@@ -1598,7 +1617,8 @@ TITLES.extinct = {
 			for _, p in ipairs(r.parts) do
 				local col = p.part.Color
 				local _, _, v = col:ToHSV()
-				p.part.Color = col:Lerp(Color3.fromRGB(203, 191, 159):Lerp(Color3.new(1, 1, 1), 0.2) * (0.55 + v * 0.8), 1)
+				local stone, k = Color3.fromRGB(203, 191, 159):Lerp(Color3.new(1, 1, 1), 0.2), 0.55 + v * 0.8 -- v1.1: per channel
+				p.part.Color = Color3.new(math.min(1, stone.R * k), math.min(1, stone.G * k), math.min(1, stone.B * k))
 				p.part.Material = Enum.Material.Slate
 			end
 			for i = 1, 24 do local a = math.random() * math.pi * 2 c:puff(c:W(math.cos(a) * 0.3 * U, 0.2 * U, math.sin(a) * 0.3 * U), V(math.cos(a) * (1.5 + math.random() * 2) * U, (0.3 + math.random() * 0.9) * U, math.sin(a) * (1.5 + math.random() * 2) * U), (0.25 + math.random() * 0.2) * U, i % 3 ~= 0 and Color3.fromRGB(184, 168, 136) or Color3.fromRGB(138, 122, 104), 1.6, 0.9) end

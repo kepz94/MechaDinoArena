@@ -110,6 +110,12 @@ VERSION = "1.6" -- v1.6 score per teammate on the point
 VERSION = "1.7" -- v1.7 bots match XP 50%
 VERSION = "1.8" -- v1.8 practice start lead (pre-match countdown)
 VERSION = "1.9" -- v1.9 victory titles
+VERSION = "1.10" -- v1.10 every winner gets a title
+-- v1.10 (victory titles, MDA-554; Studio bots-match test 2026-11-16): a board row only exists after a stat (kill, death, point
+--   second, heal, ability), so a winner with none (e.g. stood off the point all match) got no title. At results every counted
+--   member of the winning team without a row is added to the title pick with zeros (k, d, pt, heal, ab = 0; name / species from
+--   the player / bot), so CARRIED can go to them. Only the title pick sees these rows: the scoreboard (HpBoard) is unchanged.
+--   Switch: script attribute HpTitlesAllWinnersEnabled (default true, read per results; false = 1.9).
 -- v1.9 (victory titles, MDA-554, plan docs/plans/VICTORY_TITLES_v1.0.md Task 2, mockup docs/mockups/victory_titles_v0.1.html;
 --   Kepu 2026-11-16 19:00 "Let's implement them"):
 --   * the practice hook's "stat" also takes fields "heal" (HP healed on teammates) and "ab" (abilities used) with an amount
@@ -616,11 +622,21 @@ local function titlesAtResults(m)
 	for _, r in pairs(board) do
 		table.insert(rows, {id = r.id, team = r.team, bot = r.bot, k = r.k, d = r.d, pt = r.pt, heal = r.heal or 0, ab = r.ab or 0})
 	end
+	local zeroRows = {} -- v1.10: winners with no board row yet
+	if script:GetAttribute("HpTitlesAllWinnersEnabled") ~= false then
+		for _, d in ipairs(counted()) do
+			local id, name, species, isBot = idOf(d)
+			if id and d.team == m.winner and not board[id] and not zeroRows[id] then
+				zeroRows[id] = {id = id, name = name, team = d.team, species = species, bot = isBot == true, k = 0, d = 0, pt = 0, heal = 0, ab = 0}
+				table.insert(rows, {id = id, team = d.team, bot = isBot == true, k = 0, d = 0, pt = 0, heal = 0, ab = 0})
+			end
+		end
+	end
 	local picks = VictoryTitles.assign(rows, m.winner, {max = script:GetAttribute("HpTitleMax")})
 	local folder, list, total, diag = titleModelsFolder(), {}, 0, {}
 	local gap = tonumber(script:GetAttribute("HpTitleGap")) or 0.3
 	for _, p in ipairs(picks) do
-		local r = board[p.id]
+		local r = board[p.id] or zeroRows[p.id] -- v1.10: + zeroRows
 		local model = r and titleModel(p.id, r.species)
 		if model then
 			model.Name = p.id
