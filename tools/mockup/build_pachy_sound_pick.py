@@ -1,11 +1,13 @@
-# build_pachy_sound_pick.py v0.1 (Mecha Dino Arena) — builds the Pachy sound pick page (MDA-552, sound pass round 11): the Pachy
+# build_pachy_sound_pick.py v0.2 (Mecha Dino Arena) — builds the Pachy sound pick page (MDA-552, sound pass round 11): the Pachy
 # move storyboard (pachy_moves_anim.js, every move on its A version, the one in the game: Kepu 2026-11-05 "A for everything")
 # with an A / B / C sound panel per move, a pick row and the copy-picks bar (as build_teno_sound_pick.py 0.2). Picking an
 # option restarts the move and plays each part on its beat; while a sound plays, the storyboard is stepped to the audio clock
 # (output latency subtracted; hit-stops are skipped so the picture can't fall behind the sound).
 # Beats: docs/sfx/PACHY_BEATS_v1.0.md. Moves with no sound in this pass (Headbutt, Leap, Last Stand, Head Down) say so.
 # Usage: python3 tools/mockup/build_pachy_sound_pick.py <sound dir with meta.json + MDA_SFX_pachy2_*.wav> <out.html>
-#   [three.min.js r128 path; omitted = cdnjs]. Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_pachy_v2_sfx.py.
+#   [three.min.js r128 path; omitted = cdnjs].
+# v0.2 (Kepu 2026-11-17 10:58 "i dont hear it on the mockup you sent"): the Headbutt plays the hit Kepu sent (GameSounds 1.11
+#   phbhit) at the storyboard's hit (0.60 s); a move offers the options its sound set has (the headbutt has one). Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_pachy_v2_sfx.py.
 import base64, json, os, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -106,6 +108,8 @@ const SND = __SND__;
 // game seconds after the press = storyboard seconds (every move plays its A version, the one in the game)
 // [part, at, stopAt?]; a part listed twice plays twice
 const PLAN = {
+  headbutt: {mv: "headbutt", parts: () => [["hit", 0.60]],
+    game: "In the game: on the hit (HeadbuttHitAt), heard by everyone nearby. The old built-in thud still plays under it. Wind-up and charge have no sound yet."},
   hook: {mv: "hook", parts: () => [["fire", 0], ["reel", 0.286, 0.786]],
     game: "In the game: the fire 0.15 s before the claw flies (the brace), the reel from when the claw grabs until the head smash (the smash keeps its own sound). Here the target is 30 studs away."},
   servodash: {mv: "dash", parts: () => [["blast", 0], ["burn", 0.31, 1.31], ["skid", 1.31]],
@@ -121,7 +125,7 @@ const PLAN = {
   medstation: {mv: "med", parts: () => [["drop", 0], ["hum", 0.60, 3.30], ["fold", 3.30]],
     game: "In the game: the drop on the press (it lands at 0.30 s), the hum while it heals, the fold when it ends. Here it runs 2.7 s; in the game it runs its full time."},
 };
-const NOSOUND = {headbutt: "The headbutt keeps its current sounds; it is not part of this pass.", leap: "The leap keeps its current sounds; it is not part of this pass.",
+const NOSOUND = {leap: "The leap and the double jump have no sound yet: they are next.",
   laststand: "Last Stand is a passive: no sound in this pass.", headdown: "Head Down is a passive: no sound in this pass."};
 let actx = null, sndOpt = {}, sndLive = null, sndRepeat = true;
 const bufs = {};
@@ -184,7 +188,7 @@ function renderSnd() {
   $("sndTitle").innerHTML = `${m.name} <span>· sound</span>`;
   $("sndStop").hidden = !sndLive; $("sndLoop").hidden = !pl; $("pickRow").hidden = !pl;
   if (!pl) { $("opts").innerHTML = `<p class="note">${NOSOUND[m.id] || "No sound in this pass."}</p>`; $("sndGame").textContent = ""; $("lanes").innerHTML = ""; return; }
-  $("opts").innerHTML = ["A", "B", "C"].map(o => { const d = SND[pl.mv][o].desc, i = d.indexOf(":"); return `<button class="opt" data-opt="${o}" aria-pressed="${!!sndLive && sndOpt[m.id] === o}"><b>${o} · ${d.slice(0, i)}<i>Playing</i></b>${d.slice(i + 1).trim()}</button>`; }).join("");
+  $("opts").innerHTML = Object.keys(SND[pl.mv]).sort().map(o => { const d = SND[pl.mv][o].desc, i = d.indexOf(":"); return `<button class="opt" data-opt="${o}" aria-pressed="${!!sndLive && sndOpt[m.id] === o}"><b>${o} · ${d.slice(0, i)}<i>Playing</i></b>${d.slice(i + 1).trim()}</button>`; }).join("");
   $("sndGame").textContent = pl.game;
   const set = SND[pl.mv][sndOpt[m.id] || "A"], len = VV().len;
   $("lanes").innerHTML = pl.parts().map(([p, at, stop]) => {
@@ -193,7 +197,7 @@ function renderSnd() {
   }).join("");
 }
 // v0.2 picks + copy
-const PICK_NAME = {hook: "Hook", servodash: "Dash", visor: "Visor", ink: "Ink", tether: "Tether", bloodrush: "Blood Rush", medstation: "Med"};
+const PICK_NAME = {headbutt: "Headbutt", hook: "Hook", servodash: "Dash", visor: "Visor", ink: "Ink", tether: "Tether", bloodrush: "Blood Rush", medstation: "Med"};
 const PICK_MOVES = () => MOVES.filter(mm => PLAN[mm.id]);
 const PICK_KEY = "mda_pachy_sound_picks_r11";
 let myPicks = {};
@@ -202,7 +206,7 @@ function pickText() { return PICK_MOVES().map(mm => `${PICK_NAME[mm.id]} ${myPic
 function renderPicks() {
   const id = M().id, n = PICK_MOVES().filter(mm => myPicks[mm.id]).length;
   if (!PLAN[id]) { $("pickRow").innerHTML = ""; }
-  if (PLAN[id]) $("pickRow").innerHTML = `<span class="lbl">Your pick for ${PICK_NAME[id]}</span>` + ["A", "B", "C"].map(o => `<button class="pk" data-pick="${o}" aria-pressed="${myPicks[id] === o}">${o}</button>`).join("");
+  if (PLAN[id]) $("pickRow").innerHTML = `<span class="lbl">Your pick for ${PICK_NAME[id]}</span>` + Object.keys(SND[PLAN[id].mv]).sort().map(o => `<button class="pk" data-pick="${o}" aria-pressed="${myPicks[id] === o}">${o}</button>`).join("");
   $("pickText").innerHTML = `<span id="pickStr">${pickText()}</span> <small>· ${n} of ${PICK_MOVES().length} picked</small>`;
 }
 $("pickRow").addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (!b || !PLAN[M().id]) return; myPicks[M().id] = b.dataset.pick; try { localStorage.setItem(PICK_KEY, JSON.stringify(myPicks)); } catch (err) {} renderPicks(); });
