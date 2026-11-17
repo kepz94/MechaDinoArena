@@ -214,4 +214,4 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
   pan out at 9 s left, orbit 7-5, back 5-3; GameSounds ticks 3-2-1, go at 0). Five lines in voice A (4.3-4.8 s), each starting
   with the pan at 9 s left and ending before the first tick; pick one or several (several: a different one each match).
 - Recipe docs/sfx/gen_point_vo.sh v1.1; page tools/mockup/build_intro_voice_pick.py v1.0. Sound Pick Board version 24.
-
+- 13:02 picks lines 1 and 2 -> GameSounds 1.17 (VERSIONS.md). Not published yet.

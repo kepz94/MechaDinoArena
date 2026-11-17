@@ -23,6 +23,14 @@
 --               change cancels it), at least GameSoundsVoiceGap (4) s after the last callout (a settled change waits out the gap
 --               and is said only if it still holds), and never the same line twice in a row (the point moving to a new spot,
 --               HpIndex, clears that). false = 1.15 (the three sounds on every change).
+--   * vointro1 / vointro2
+--               (v1.17, the match intro line, round 13 lines 1 + 2 in voice A: "Hardpoint's up. Get there first, and use your
+--               mecha upgrades to your advantage." / "All units, move to the hardpoint. Your mecha upgrades are your edge. Use
+--               them.") 2D, only you, once per warm-up (per HpPointEndsAt) when the seconds left (HpPointEndsAt - server time)
+--               drop to GameSoundsIntroAt (9: the PrematchCam fly-over starts there; the 4.7 / 4.8 s line ends before the first
+--               tick at 3). Joined later than GameSoundsIntroLate (0.5) s past that: no line this warm-up. The line is one of
+--               GameSoundsIntroLines ("vointro1,vointro2"), at random but not the one before. Switch GameSoundsIntroEnabled
+--               (default true).
 --   * moving    while HpPhase "live": once per point (HpIndex) when HpPointEndsAt - server time drops to GameSoundsMoveWarn (5) s.
 --   * tick      while HpPhase "warmup": when the whole seconds left (ceil(HpPointEndsAt - server time)) become 3, 2 or 1
 --               (from GameSoundsTickFrom, 3).
@@ -173,6 +181,7 @@ VERSION = "1.13" -- v1.13 the Pachy's jump sound on the double jump too
 VERSION = "1.14" -- v1.14 the Pachy's Grappling Hook on its beats, ending in the headbutt hit
 VERSION = "1.15" -- v1.15 the rest of the Pachy's parts on their beats (round 11 picks), the hook on option A
 VERSION = "1.16" -- v1.16 Hardpoint voice callouts replace the captured / lost / contested sounds
+VERSION = "1.17" -- v1.17 the match intro voice line over the pre-match countdown
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -232,6 +241,9 @@ VERSION = "1.16" -- v1.16 Hardpoint voice callouts replace the captured / lost /
 --   duty even do that?"; picked "Voice callouts" and "Keep them" (moving / tick / go stay); 12:53 "Point voice A"): three
 --   announcer lines (Kokoro-82M text to speech, Apache-2.0, radio-styled; recipe docs/sfx/gen_point_vo.sh), imported through
 --   Asset Manager, said once the point has settled (header).
+-- v1.17 (Kepu 2026-11-17 12:58 "how about a voice playing in the background for the brief intro to like get to the Hardpoint.
+--   Use your mecha upgrades to your advantage"; 13:02 picks lines 1 and 2): two lines in voice A (recipe gen_point_vo.sh v1.1),
+--   imported through Asset Manager, over the countdown fly-over (header).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -297,7 +309,8 @@ end
 local TENO_OLD = {tbellow = true, tchallenge = true, tgrab = true, tgrabland = true, tleap = true, tleapland = true, tmortar = true,
 	tmortarboom = true, tmud = true, tstomp = true} -- v1.10: the 1.8 Teno events, superseded while GameSoundsTenoBeatsEnabled
 local function tenoOn() return script:GetAttribute("GameSoundsTenoBeatsEnabled") ~= false end
-for e, v in pairs({vosecured = {"136123722053492", 0.8}, volost = {"125590664814127", 0.8}, vocontested = {"112060909723099", 0.8}}) do -- v1.16
+for e, v in pairs({vosecured = {"136123722053492", 0.8}, volost = {"125590664814127", 0.8}, vocontested = {"112060909723099", 0.8}, -- v1.16
+	vointro1 = {"86878168682330", 0.8}, vointro2 = {"110246063668098", 0.8}}) do -- v1.17
 	table.insert(EVENTS, e)
 	IDS[e], VOL[e] = v[1], v[2]
 end
@@ -331,6 +344,7 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 	GameSoundsPachyDashBlastLead = 0.06, GameSoundsPachyDashBurnAt = 0.25, GameSoundsPachyVisorFieldAt = 0.10, -- v1.15
 	GameSoundsPachyInkLead = 0.10, GameSoundsPachyCockDedupe = 0.5, GameSoundsPachyMedHumAt = 0.60, -- v1.15
 	GameSoundsPointVoiceEnabled = true, GameSoundsVoiceSettle = 1, GameSoundsVoiceGap = 4, -- v1.16
+	GameSoundsIntroEnabled = true, GameSoundsIntroAt = 9, GameSoundsIntroLate = 0.5, GameSoundsIntroLines = "vointro1,vointro2", -- v1.17
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -968,11 +982,27 @@ task.spawn(function()
 		prevPhase = ph
 	end)
 	local warnedIndex, lastTick = nil, nil
+	local introFor, introLast = nil, nil -- v1.17
 	RunService.Heartbeat:Connect(function()
 		local ph = hp:GetAttribute("HpPhase")
 		local ends = tonumber(hp:GetAttribute("HpPointEndsAt"))
 		if not ends then return end
 		local left = ends - workspace:GetServerTimeNow()
+		if ph == "warmup" and introFor ~= ends and script:GetAttribute("GameSoundsIntroEnabled") ~= false -- v1.17 the intro line
+			and left <= num("GameSoundsIntroAt", 9) then
+			introFor = ends
+			if left >= num("GameSoundsIntroAt", 9) - num("GameSoundsIntroLate", 0.5) then
+				local pool = {}
+				for e in string.gmatch(tostring(script:GetAttribute("GameSoundsIntroLines") or ""), "[^,%s]+") do table.insert(pool, e) end
+				local ok = {}
+				for _, e in ipairs(pool) do if e ~= introLast then table.insert(ok, e) end end
+				if #ok == 0 then ok = pool end
+				if #ok > 0 then
+					introLast = ok[math.random(1, #ok)]
+					play(introLast)
+				end
+			end
+		end
 		if ph == "warmup" then
 			local s = math.ceil(left)
 			if s >= 1 and s <= num("GameSoundsTickFrom", 3) and s ~= lastTick then play("tick") end
