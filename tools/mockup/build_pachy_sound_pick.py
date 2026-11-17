@@ -1,4 +1,4 @@
-# build_pachy_sound_pick.py v0.6 (Mecha Dino Arena) — builds the Pachy sound pick page (MDA-552, sound pass round 11): the Pachy
+# build_pachy_sound_pick.py v0.7 (Mecha Dino Arena) — builds the Pachy sound pick page (MDA-552, sound pass round 11): the Pachy
 # move storyboard (pachy_moves_anim.js, every move on its A version, the one in the game: Kepu 2026-11-05 "A for everything")
 # with an A / B / C sound panel per move, a pick row and the copy-picks bar (as build_teno_sound_pick.py 0.2). Picking an
 # option restarts the move and plays each part on its beat; while a sound plays, the storyboard is stepped to the audio clock
@@ -15,7 +15,9 @@
 # v0.5 (Kepu 2026-11-17 11:17 hook C + "add the headbutt sound at the end when the dino is reeled in"): every hook option
 #   ends with the headbutt hit at the smash (0.786 s), GameSounds 1.14.
 # v0.6 (Kepu 2026-11-17 11:31 "It has dust and steam but not a fucking skid to a stop like the animation"): the dash's end part
-#   is a steam hiss (+ dust), not a skid; the storyboard's skid-to-a-stop is not what the game shows. Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_pachy_v2_sfx.py.
+#   is a steam hiss (+ dust), not a skid; the storyboard's skid-to-a-stop is not what the game shows.
+# v0.7 (Kepu 11:33 "the mockup you sent still shows a skid to a stop"): on this page only, Servo Dash A is patched to the game:
+#   no slide after the run (the storyboard slid 4 more studs), the end labelled as the game shows it (dust + steam). Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_pachy_v2_sfx.py.
 import base64, json, os, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -45,6 +47,12 @@ anim = open(os.path.join(HERE, "pachy_moves_anim.js")).read()
 HOOK_OLD = "if (playing && !window.__manual) { step(dt); if (play.t >= VV().len) start(); }"
 assert HOOK_OLD in anim, "storyboard loop changed"
 anim = anim.replace(HOOK_OLD, "if (window.__soundClock) { const want = window.__soundClock(); if (want < play.t - 1e-3) start(); hitStop = 0; let g = want - play.t, n = 0; while (g > 1 / 30 && n++ < 150) { step(1 / 30, true); hitStop = 0; g = want - play.t; } step(Math.max(0, g)); hitStop = 0; } else " + HOOK_OLD)
+for a_, b_ in [("[d + SD.RUN + 0.3, 22 + 34 + 4, \"out\"]", "[d + SD.RUN + 0.3, 22 + 34, \"out\"]"),  # v0.7: no slide
+               ("\"Skids to a stop, steam from the bells\"", "\"Dash ends: dust and steam from the bells\""),
+               ("sub: \"squat, blast out low, skid to a stop\"", "sub: \"squat, blast out low, dust + steam at the end\""),
+               ("\"The skid is the recovery: you see the dash end.\"", "\"The dash ends with dust and steam off the bells.\"")]:
+    assert anim.count(a_) == 1, a_
+    anim = anim.replace(a_, b_)
 anim = "const PARTS_DATA = " + json.dumps(PARTS) + ";\n" + anim
 meta = json.load(open(os.path.join(snd_dir, "meta.json")))
 snd = {}

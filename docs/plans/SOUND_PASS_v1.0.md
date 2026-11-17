@@ -176,3 +176,22 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
   Med-Station; Headbutt / Leap keep their sounds, Last Stand / Head Down are passives).
 - Recipe docs/sfx/gen_pachy_v2_sfx.py; page tools/mockup/build_pachy_sound_pick.py v0.1 (the Pachy storyboard is
   event-driven, so it is stepped to the audio clock with hit-stops skipped). Sound Pick Board version 16.
+
+## Round 11 — the Pachy page plays the game's own animation (2026-11-17)
+- Kepu 11:33 "the mockup you sent still shows a skid to a stop", 11:36 "How about you actually use the fucking animation from
+  the game": the storyboard is replaced on this page by recordings of the live game. Every Pachy move with a sound (Headbutt,
+  Leap + double jump, Grappling Hook, Servo Dash, Dome Visor, Ink Shooter, Tether Spike, Blood Rush, Med-Station) was played
+  in Studio (Play, practice match, real key presses or the remotes MechaButtons sends) and recorded with
+  tools/studio/move_recorder.luau v1.0: the Pachy, the target bot and the effects, 30 times a second, plus every attribute
+  stamp. Packed by tools/mockup/rec_pack.py v1.0 into tools/mockup/pachy_rec/<move>.json; played by
+  tools/mockup/pachy_rec_player.js v1.0; page tools/mockup/build_pachy_rec_pick.py v1.0. Sound Pick Board version 22.
+- The sound parts sit on the beats stamped in the same recording (clip time, press at 0.30 s): Headbutt hit 0.51; Leap jump
+  0.434 (JumpStartedAt + 0.12) and 0.714 (JumpDoubleAt); Hook fire 0.315 (launch - 0.15), reel 0.523-1.023, smash 1.023;
+  Servo Dash blast 0.31, burn 0.62-1.87, steam 1.87 (the game: dust + steam, no skid); Visor up 0.329, field 0.429-2.329,
+  down 2.329 (no block: nothing hit it); Ink fire 0.33, splat 0.542; Tether cock 0.30, throw 0.848, land 1.382 (the bot is
+  chained); Blood Rush pact 0.325; Med drop 0.329, hum 0.929-10.632, fold 10.632 (its full time).
+- Test setup only (nothing saved): skill saving off for the session, loadout slots swapped to record Ink / Tether / Visor /
+  Med and put back (hookarm, servodash, mechalegs, bloodrush), PracticeServer disabled so the target bot stayed passive,
+  the bot held at its standing height until the press. Visor and Blood Rush have no bot (it was a bystander).
+- The storyboard page (build_pachy_sound_pick.py, last v0.7: the skid removed from Servo Dash A) is kept, not used.
+
