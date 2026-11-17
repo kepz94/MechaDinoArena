@@ -156,3 +156,17 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
 - After picks: GameSounds v1.9 schedules sub-parts from the stamps (TheriReelBrace/Fly/Time, TheriVortexStart/
   TheriFieldUntil, TheriBolaEnd, TheriVolleyLanded, TheriDeflectUntil/BlockAt), then a Studio timing test.
 - Then the same process per dino: Teno (re-time live v857), Pachy, Raptor, Dilo, Herrera, Troodon.
+
+## Round 10 — Teno rebuilt against the animation (2026-11-16)
+- Beat sheet docs/sfx/TENO_BEATS_v1.0.md. Parts per move (schedule point): grab wind (press) / snap (catch − 0.15) /
+  throw (throw − 0.15) / land (landing, at TenoGrabLand); mortar brace (press) / fire (TenoMortarFiredAt) / boom (landing);
+  stomp rear (press) / smash (TenoStompAt); bellow inhale (press) / shriek (press + 0.40); challenge call (press, alarm 0.65);
+  leap launch (lift-off) / land (TenoLeapLandedAt, tail slam +0.12); shield up (press) / loop (TenoMudCoatAt..TenoMudEndedAt) /
+  block (TenoMudBlockAt) / down (TenoMudEndedAt). Option A of each is built on the round 8 pick where one fits; the
+  Shield gets energy-shield sounds (round 8's tmud were mud sounds from before the move became Shield Armor).
+- Recipe docs/sfx/gen_teno_v2_sfx.py; page tools/mockup/build_teno_sound_pick.py v0.1 (the storyboard is time-warped to
+  the game: Mortar fire 0.35 + ~0.25 s flight, Leap lift-off 0.12, Grab flight 0.6, Shield disc 0.20). Sound Pick Board
+  version 14.
+- Found while reading for the beat sheet: GameSounds 1.8's tleap listens to TenoLeapStartedAt, which TenoMovesServer only
+  stamps on the old button path; the JUMP leap (TenoLeapOnJump) never stamps it, so the live launch sound likely never
+  plays. The round 10 wiring anchors the launch to the JUMP leap's own start (to verify in Studio before the build).
