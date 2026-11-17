@@ -1,4 +1,4 @@
-# build_theri_sound_pick.py v0.1 (Mecha Dino Arena) — builds the Therizino sound pick page (MDA-552, sound pass round 9 v2):
+# build_theri_sound_pick.py v0.2 (Mecha Dino Arena) — builds the Therizino sound pick page (MDA-552, sound pass round 9 v2):
 # the Therizino move storyboard (therizino_moves_anim.js v0.5, game looks: Dash B Storm Core, Feather A Wing Volley,
 # Deflector A Shield Wall, ring 16 studs) with an A / B / C sound panel per move. Picking an option restarts the move and
 # plays each sound part at its beat; while a sound plays, the animation clock IS the audio clock (output latency
@@ -13,7 +13,8 @@
 #   Deflector Claws: up 0, loop 0.15..1.65 (..TheriDeflectUntil), block 0.55 and 1.10 (TheriDeflectBlockAt), down 1.65.
 #   Overclock Joints: passive, no sound.
 # Usage: python3 tools/mockup/build_theri_sound_pick.py <sound dir with meta.json + MDA_SFX_theri_*.wav> <out.html>
-#   [three.min.js r128 path; omitted = cdnjs]. The sound files are not in the repo (Sonniss licence); the recipe is
+#   [three.min.js r128 path; omitted = cdnjs].
+# v0.2: sounds decoded from base64 in the page (the artifact CSP blocks fetch() of data: URLs, so nothing played in v0.1). The sound files are not in the repo (Sonniss licence); the recipe is
 #   docs/sfx/gen_theri_v2_sfx.py.
 import base64, json, os, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -110,7 +111,11 @@ let actx = null, sndOpt = {}, sndLive = null, sndRepeat = true;
 const bufs = {};
 function ctxGet() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); return actx; }
 async function buf(src) {
-  if (!bufs[src]) bufs[src] = fetch(src).then(r => r.arrayBuffer()).then(a => new Promise((ok, no) => actx.decodeAudioData(a, ok, no)));
+  if (!bufs[src]) { // v0.2: decoded from the base64 here (the artifact's CSP blocks fetch() of data: URLs)
+    const bin = atob(src.slice(src.indexOf(",") + 1)), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    bufs[src] = new Promise((ok, no) => actx.decodeAudioData(u.buffer, ok, no));
+  }
   return bufs[src];
 }
 function schedule(pl, set, t0, b) { // queue every part of one pass; returns the nodes so Stop can cut them
@@ -170,7 +175,7 @@ function renderSnd() {
     return `<div class="trk"><span class="${info.loop ? "lp" : ""}" style="left:${at / m.len * 100}%;width:${Math.max(0.6, (Math.min(end, m.len) - at) / m.len * 100)}%">${p} ${at.toFixed(2)} s</span><em></em></div>`;
   }).join("");
 }
-$("opts").addEventListener("click", e => { const b = e.target.closest("[data-opt]"); if (b) playOpt(b.dataset.opt); });
+$("opts").addEventListener("click", e => { const b = e.target.closest("[data-opt]"); if (b) playOpt(b.dataset.opt).catch(err => { $("sndGame").textContent = "Sound failed to start: " + err; }); });
 $("sndStop").onclick = stopSound;
 $("sndLoop").onclick = () => { sndRepeat = !sndRepeat; $("sndLoop").setAttribute("aria-pressed", sndRepeat); };
 ["moves", "phases", "scrub", "play"].forEach(id => $(id).addEventListener(id === "scrub" ? "input" : "click", () => { if (sndLive) stopSound(); }, true));
