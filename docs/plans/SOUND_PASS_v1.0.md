@@ -143,3 +143,16 @@ Every server script, the existing sound scripts, Music, HardpointHUD, PrematchCo
 - **Code facts (TheriMovesServer 1.14, every rework switch on by default):** Reaper Reel TheriReelAt (the press) + TheriReelHitAt (the slash on the pulled dino); Wing Volley TheriFeatherAt (the press; darts leave at +0.42 s, TheriVolleyFiredAt); Reaper Vortex TheriVortexAt; Bola TheriBolaAt (the press; thrown at +0.6 s) + TheriBolaHitAt (the catch; TheriBolaEnd = the target's spot); Dash TheriDashAt; Deflector Claws TheriDeflectAt. Overclock Joints is a passive (no button; its TheriClockAt fires when the passive turns on), so no sound. No Therizino ability sound plays today.
 - **Rows (3 options each):** zreel, zreelhit, zvolley, zvortex, zbola, zbolahit (at TheriBolaEnd), zdash, zdeflect. 36 more sources extracted (Music\MechaDinoArena_SFX\_work_theri_sonniss) plus the round 8 ones; recipe docs/sfx/gen_theri_sonniss_sfx.py (same engine and levelling as round 8). Spectrogram check fixed two: Reel Slash B started 0.5 s before its cut (now starts at the cut); Bola C's "spin" source was a synthetic vibrato tone (rebuilt from rope / carabiner whirls).
 - **Pick page:** the Sound Pick Board artifact, version 11. Waiting for Kepu's picks.
+
+## Round 9 v2 — Therizino rebuilt against the animation (2026-11-16)
+Kepu: "These sound options don't even line up with the damn animation timing" / "You did the same shit for all the other
+dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server stamps only, never against the poses.
+- Beat sheet first (TheriPose 1.11, TheriMovesFX2 1.2, storyboard v0.5). Sounds are split into parts at those beats:
+  Hook fire 0.30 / winch 0.52–1.00 / slash 1.00; Vortex start 0 / loop 0.95–Until / end; Bola throw 0 / hit 1.05;
+  Dash one clip (jolt 0.16, land 0.29, skid 0.42); Volley 0 / hit per target 0.97; Deflect up 0 / loop 0.15–Until /
+  block per BlockAt / down.
+- Recipe docs/sfx/gen_theri_v2_sfx.py; pick page tools/mockup/build_theri_sound_pick.py v0.1 (storyboard + sound panel,
+  the animation clock follows the audio clock). Published to the Sound Pick Board (version 12).
+- After picks: GameSounds v1.9 schedules sub-parts from the stamps (TheriReelBrace/Fly/Time, TheriVortexStart/
+  TheriFieldUntil, TheriBolaEnd, TheriVolleyLanded, TheriDeflectUntil/BlockAt), then a Studio timing test.
+- Then the same process per dino: Teno (re-time live v857), Pachy, Raptor, Dilo, Herrera, Troodon.
