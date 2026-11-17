@@ -1,27 +1,31 @@
-# build_title_voice_pick.py v1.0 (Mecha Dino Arena) — the post-game title voice line pick page (MDA-552, round 14; Kepu
+# build_title_voice_pick.py v1.1 (Mecha Dino Arena) — the post-game title voice line pick page (MDA-552, round 14; Kepu
 # 2026-11-17 13:05 "How about some voice lines during the post game titles for the winning team. Couple for each title to make
 # them really pop out"). The eight VictoryTitles 1.1 titles (names, captions, roasts as the game shows them), three lines each in
 # the announcer voice (Kokoro-82M am_michael, Apache-2.0), in two treatments: R = the radio voice of the point callouts (voice A),
 # S = the same voice clean with a big stadium echo. Pick the lines to keep per title (a show picks one of them at random) and one
 # treatment. Recipe docs/sfx/gen_point_vo.sh v1.2; audio not in the repo.
-# Usage: python3 tools/mockup/build_title_voice_pick.py <dir with MDA_SFX_vt_<title><n>_<R|S>.wav> <out.html>
+# v1.1: Kepu 13:11 "Not like that, look at how call of duty speaks during these types of screens. It's like a commander talking
+# to you. This is just a narrator." New lines: a commander on the radio talking to the squad about the player; two voices,
+# A = am_michael 0.97 (the point-callout voice), B = bm_george 0.95, both through the radio filter. Files
+# MDA_SFX_vt_<title><n>_<A|B>.wav (recipe docs/sfx/gen_point_vo.sh v1.3).
+# Usage: python3 tools/mockup/build_title_voice_pick.py <dir with MDA_SFX_vt_<title><n>_<A|B>.wav> <out.html>
 import base64, json, os, subprocess, sys, tempfile
 src, out_path = sys.argv[1], sys.argv[2]
 TITLES = [  # id, name, caption (VictoryTitles 1.1), roast, lines
-    ("apex", "APEX PREDATOR", "Top of the food chain", False, ["Apex Predator! Top of the food chain!", "Apex Predator! Nothing on this island eats you.", "Apex Predator! The whole lobby is on the menu."]),
-    ("king", "KING OF THE HILL", "Wouldn't get off the point", False, ["King of the Hill! Wouldn't get off the point!", "King of the Hill! That point has a new owner.", "King of the Hill! Planted, and refused to move."]),
-    ("unkill", "UNKILLABLE", "The asteroid missed. Again.", False, ["Unkillable! The asteroid missed. Again.", "Unkillable! They threw everything, and it didn't matter.", "Unkillable! Somebody check that health bar. It's broken."]),
-    ("medic", "MEDIC", "Patched up the whole team", False, ["Medic! Patched up the whole team!", "Medic! Kept the whole squad in the fight.", "Medic! Nobody stays down on this watch."]),
-    ("masher", "BUTTON MASHER", "Never met a cooldown it liked", False, ["Button Masher! Never met a cooldown it liked!", "Button Masher! Every upgrade, every second.", "Button Masher! Those buttons are smoking."]),
-    ("extinct", "EXTINCT", "Died the most. Again.", True, ["Extinct. Died the most. Again.", "Extinct. The respawn screen is your best friend.", "Extinct. Somebody put this one in a museum."]),
-    ("carried", "CARRIED", "Packed up and carried to the win", True, ["Carried! Packed up, and carried to the win.", "Carried! Thank your team for the free ride.", "Carried! Feet up, trophy in hand."]),
-    ("pacifist", "PACIFIST", "Won without hurting a fly", True, ["Pacifist! Won without hurting a fly.", "Pacifist! Zero damage. Full victory.", "Pacifist! Peace was the only option."]),
+    ("apex", "APEX PREDATOR", "Top of the food chain", False, ["Command here. Our apex predator owned that field. Outstanding.", "Apex predator. They hunted down everything that moved. Good work.", "Top of the food chain. That's how we win wars, people."]),
+    ("king", "KING OF THE HILL", "Wouldn't get off the point", False, ["King of the hill. They held that point like their life depended on it.", "Command here. Our anchor never gave up the hardpoint. Well done.", "That point was ours all match. King of the hill. Outstanding."]),
+    ("unkill", "UNKILLABLE", "The asteroid missed. Again.", False, ["Unkillable. They took everything the enemy had, and kept coming.", "Command here. Nothing they threw mattered. Tough as they come.", "Unkillable. Somebody get that dino a medal."]),
+    ("medic", "MEDIC", "Patched up the whole team", False, ["Our medic kept this squad standing. Nobody wins without them.", "Command here. Every wound patched, every unit back in the fight.", "Medic. Best support on the field. Outstanding work."]),
+    ("masher", "BUTTON MASHER", "Never met a cooldown it liked", False, ["Button masher. Every upgrade, off cooldown, all match. I like it.", "Command here. They burned through every system we gave them.", "Those upgrades never got a rest. Aggressive. Effective."]),
+    ("extinct", "EXTINCT", "Died the most. Again.", True, ["Extinct. Most deaths on the team. We won anyway. Somehow.", "Command here. Somebody explain how they died that much.", "Extinct. Respawns aren't free, soldier. Lucky we won."]),
+    ("carried", "CARRIED", "Packed up and carried to the win", True, ["Carried. The squad did the heavy lifting. Say thank you.", "Command here. That one rode the team all the way to the win.", "Carried. A win's a win. Don't make it a habit."]),
+    ("pacifist", "PACIFIST", "Won without hurting a fly", True, ["Pacifist. Zero damage, full victory. I don't know how.", "Command here. Didn't land a hit, still brought it home.", "Pacifist. Next time, try hitting something."]),
 ]
 tmp = tempfile.mkdtemp()
 snd = {}
 for tid, _, _, _, lines in TITLES:
     for i in range(len(lines)):
-        for st in ("R", "S"):
+        for st in ("A", "B"):
             f = os.path.join(src, f"MDA_SFX_vt_{tid}{i + 1}_{st}.wav")
             w = os.path.join(tmp, os.path.basename(f))
             subprocess.check_call(["ffmpeg", "-v", "error", "-y", "-i", f, "-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le", w])
@@ -68,12 +72,12 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 </style>
 <main>
   <header>
-    <h1><span>Post-game titles</span> · the announcer calls them out</h1>
-    <p class="lede">When each title slams in on the winners' show, the announcer says it. Three lines for each title; keep the ones you like (keep two or more and each show picks one at random). Then pick how the voice sounds. Turn your sound on.</p>
+    <h1><span>Post-game titles</span> · command talks to your squad</h1>
+    <p class="lede">When each title slams in on the winners' show, your commander comes on the radio and talks to the squad about that player: praise for the good titles, a dressing-down for the roasts. Three lines for each title; keep the ones you like (keep two or more and each show picks one at random). Then pick the commander's voice. Turn your sound on.</p>
   </header>
   <div class="styles" role="group" aria-label="Voice treatment"><span class="lbl">Voice</span>
-    <button class="st" data-st="R" aria-pressed="true">R · Radio<small>your point-callout voice (A)</small></button>
-    <button class="st" data-st="S" aria-pressed="false">S · Stadium<small>same voice, clean, big arena echo</small></button>
+    <button class="st" data-st="A" aria-pressed="true">A · US commander<small>your point-callout voice, on the radio</small></button>
+    <button class="st" data-st="B" aria-pressed="false">B · British commander<small>older, drier, on the radio</small></button>
   </div>
   <div class="grid" id="grid"></div>
   <div class="picks"><code id="pickText"></code><button class="go" id="copy">Copy picks</button></div>
@@ -81,9 +85,9 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 <script>
 const SND = __SND__, TITLES = __TITLES__;
 const SHORT = {apex: "Apex", king: "King", unkill: "Unkillable", medic: "Medic", masher: "Masher", extinct: "Extinct", carried: "Carried", pacifist: "Pacifist"};
-const KEY = "mda_title_voice_picks_r14";
-let st = "R", keep = {}, actx = null, cur = null;
-try { const s = JSON.parse(localStorage.getItem(KEY) || "{}"); st = s.st || "R"; keep = s.keep || {}; } catch (e) {}
+const KEY = "mda_title_voice_picks_r14b";
+let st = "A", keep = {}, actx = null, cur = null;
+try { const s = JSON.parse(localStorage.getItem(KEY) || "{}"); st = (s.st === "A" || s.st === "B") ? s.st : "A"; keep = s.keep || {}; } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify({st, keep})); } catch (e) {} };
 const bufs = {};
 function ctx() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); return actx; }
@@ -99,7 +103,7 @@ function render() {
     ${lines.map((l, i) => { const k = id + (i + 1), on = (keep[id] || []).includes(i + 1); return `<div class="ln" data-on="${on}"><button class="pl" data-play="${k}" aria-pressed="false" aria-label="Play line ${i + 1}">▶</button><span>“${l}”<small>line ${i + 1}</small></span><button class="keep" data-keep="${id}" data-n="${i + 1}" aria-pressed="${on}">${on ? "Kept ✓" : "Keep"}</button></div>`; }).join("")}
   </section>`).join("");
   const parts = TITLES.map(([id]) => `${SHORT[id]} ${(keep[id] || []).length ? keep[id].slice().sort().join("+") : "?"}`);
-  document.getElementById("pickText").textContent = `Title voice ${st}; ` + parts.join(", ");
+  document.getElementById("pickText").textContent = `Commander ${st}; ` + parts.join(", ");
 }
 document.querySelector(".styles").addEventListener("click", e => { const b = e.target.closest("[data-st]"); if (!b) return; st = b.dataset.st; save(); render(); });
 document.getElementById("grid").addEventListener("click", e => {

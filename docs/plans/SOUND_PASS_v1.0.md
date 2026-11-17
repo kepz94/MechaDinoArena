@@ -223,5 +223,16 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
 - Three lines per title (24) in voice A, two treatments: R radio (the point-callout voice) and S stadium (clean, big echo);
   1.7-4.1 s, so each fits inside its title. Keep two or more per title and a show picks one at random.
 - Recipe docs/sfx/gen_point_vo.sh v1.2; page tools/mockup/build_title_voice_pick.py v1.0. Sound Pick Board version 25.
+- 13:11 "Not like that, look at how call of duty speaks during these types of screens. It's like a commander talking to
+  you. This is just a narrator." -> round 14b.
+
+## Round 14b — the title lines as a commander (2026-11-17)
+- Rewritten: a commander on the radio talking to the squad about the player who earned the title (praise for the five good
+  titles, a dressing-down for the three roasts), e.g. "Command here. Our apex predator owned that field. Outstanding." /
+  "Extinct. Respawns aren't free, soldier. Lucky we won." Three per title. Third person ("they", "our medic") because every
+  player on the winning team hears each title, not only the one who earned it.
+- Two voices through the radio filter: A am_michael 0.97 (the point-callout voice), B bm_george 0.95 (British). 2.7-4.6 s,
+  so each ends inside its title (slam-in at 0.3 s, about 5.5 s shown).
+- Recipe docs/sfx/gen_point_vo.sh v1.3; page tools/mockup/build_title_voice_pick.py v1.1. Sound Pick Board version 26.
 - Waiting on Kepu's picks.
 
