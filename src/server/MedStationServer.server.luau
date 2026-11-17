@@ -271,6 +271,10 @@ local function squadHeal(char, st)
 					hum.Health = math.min(hum.MaxHealth, before + st.rate * hum.MaxHealth * TICK)
 					local added = hum.Health - before
 					e.sec += added
+					if added > 0 and script:GetAttribute("MedStationHealReportEnabled") ~= false then -- v1.6: victory titles (Medic)
+						local ev = game:GetService("ServerStorage"):FindFirstChild("VictoryHealReport")
+						if ev then ev:Fire(char, added) end
+					end
 					m:SetAttribute("MedSquadHealed", math.floor(((m:GetAttribute("MedSquadHealed") or 0) + added) * 10 + 0.5) / 10)
 				end
 			end
@@ -524,6 +528,10 @@ do
 end
 script:SetAttribute("MedStationServerVersion", "1.4") -- v1.4 bot entrance
 script:SetAttribute("MedStationServerVersion", "1.5") -- v1.5 pre-match lock
+script:SetAttribute("MedStationServerVersion", "1.6") -- v1.6 heal report
+-- v1.6 (victory titles, MDA-555, plan docs/plans/VICTORY_TITLES_v1.0.md Task 4): HP a pad adds to a squadmate (1.2 squad heal)
+--   fires ServerStorage BindableEvent VictoryHealReport (VictoryTitlesServer 1.0) with (the pad owner's character, HP added),
+--   for the MEDIC title. Switch: script attribute MedStationHealReportEnabled (default true, read per heal tick).
 -- v1.5 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
 --   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
 --   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler

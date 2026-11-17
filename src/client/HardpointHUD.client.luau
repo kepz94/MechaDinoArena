@@ -173,6 +173,15 @@ VERSION = "1.13" -- v1.13 phone HUD v2 score strip
 --   line (corner 6, FredokaOne 18 white); "PhoneStatus" under that row, the strip's width: "<P1 · 1:23> · <status>" (warm-up
 --   "P1 IN 0:08 · GET READY"; status text / colour as the Status pill; "· NEXT P2 IN 0:20" added while NEXT shows), TextSize 12.
 --   All three show only with the compass. Off / PC: as 1.12.
+VERSION = "1.14" -- v1.14 victory titles beat
+-- v1.14 (victory titles, MDA-557, plan docs/plans/VICTORY_TITLES_v1.0.md Task 6; Kepu 2026-11-16 19:00 "Let's implement them"):
+--   the results length is ReplicatedStorage.Hardpoint HpResultsLen (HardpointServer 1.9; missing / 0 -> HardpointRules.RESULTS),
+--   and while HpTitles is set and HpTitlesLen > 0 the beat after the banner is "titles" for HpTitlesLen s: this HUD draws
+--   nothing (no dim, no MVP / SVP cards, no skip button; the VictoryTitles LocalScript plays the show and has its own skip),
+--   then the board (its XP strip counts from the board's start). No titles (draw, off): 1.13's banner / spot / board.
+--   Switch: script attribute HardpointHUDTitlesBeatEnabled (default true, read per frame; false = 1.13 beats, results length
+--   still from HpResultsLen).
+if script:GetAttribute("HardpointHUDTitlesBeatEnabled") == nil then script:SetAttribute("HardpointHUDTitlesBeatEnabled", true) end
 if script:GetAttribute("HardpointHUDArenaLabelEnabled") == nil then script:SetAttribute("HardpointHUDArenaLabelEnabled", true) end
 script:SetAttribute("HardpointHUDVersion", VERSION)
 if script:GetAttribute("HardpointHUDEnabled") == nil then script:SetAttribute("HardpointHUDEnabled", true) end
@@ -491,6 +500,16 @@ if script:GetAttribute("HardpointHUDEndTimingV2Enabled") ~= false then
 	BEAT_SPOT = BEAT_BANNER + (tonumber(script:GetAttribute("HardpointHUDSpotSec")) or 6)
 end
 local RES = (H and H.RESULTS) or 15
+local function resLen() -- v1.14: the results length this match (the titles show makes it longer)
+	local v = state and tonumber(state:GetAttribute("HpResultsLen"))
+	return (v and v > 0) and v or RES
+end
+local function titlesLen() -- v1.14
+	if script:GetAttribute("HardpointHUDTitlesBeatEnabled") == false or not state then return 0 end
+	local raw = state:GetAttribute("HpTitles")
+	if type(raw) ~= "string" or raw == "" then return 0 end
+	return tonumber(state:GetAttribute("HpTitlesLen")) or 0
+end
 local endKey, endSkip, spotKey = nil, 0, nil
 local endCanChoose = true
 local islandPressAt = 0
@@ -983,18 +1002,19 @@ end
 local function endFrame(mine, you, foe, title)
 	local endsAt = state:GetAttribute("HpResultsEndAt") or now()
 	if endKey ~= endsAt then endKey, endSkip, spotKey, islandPressAt = endsAt, 0, nil, 0 end
-	local t = now() - (endsAt - RES) + endSkip
+	local t = now() - (endsAt - resLen()) + endSkip
 	local aw = readAwards()
 	local hasSpot = aw ~= nil and ((aw.mvp or "") ~= "" or (aw.svp or "") ~= "")
-	local beat = (t < BEAT_BANNER and "banner") or ((hasSpot and t < BEAT_SPOT) and "spot") or "board"
+	local tl = titlesLen() -- v1.14
+	local beat = (t < BEAT_BANNER and "banner") or ((tl > 0 and t < BEAT_BANNER + tl) and "titles") or ((tl <= 0 and hasSpot and t < BEAT_SPOT) and "spot") or "board"
 	local vp = workspace.CurrentCamera.ViewportSize
 	local sc = math.min(1.2, vp.X * 0.94 / END_W, vp.Y * 0.86 / END_H)
 	endBannerScale.Scale, endSpotScale.Scale, bpScale.Scale = sc, sc, sc
 	local hid = boardDismissed
-	endDim.Visible = beat ~= "board" and not hid
+	endDim.Visible = beat ~= "board" and beat ~= "titles" and not hid -- v1.14: nothing over the titles show
 	endBanner.Visible = beat == "banner" and not hid
 	endSpot.Visible = beat == "spot" and not hid
-	endSkipB.Visible = beat ~= "board" and not hid
+	endSkipB.Visible = beat ~= "board" and beat ~= "titles" and not hid
 	bp.Visible = beat == "board" and not hid
 	if script:GetAttribute("HardpointHUDEnd") ~= beat then script:SetAttribute("HardpointHUDEnd", beat) end
 	if hid then return end
@@ -1006,6 +1026,8 @@ local function endFrame(mine, you, foe, title)
 		ebSub.Text = pr and ("PRACTICE · " .. string.upper(tostring(pr:GetAttribute("PrDifficulty") or "")) .. " BOTS") or "HARDPOINT"
 		if arenaLabel(pr) then ebSub.Text = "ARENA" end -- v1.12
 		recordLine() -- v1.11
+	elseif beat == "titles" then -- v1.14: VictoryTitles draws the show
+		autoIsland(endsAt)
 	elseif beat == "spot" then
 		if spotKey ~= endsAt then
 			spotKey = endsAt
@@ -1013,7 +1035,7 @@ local function endFrame(mine, you, foe, title)
 		end
 	else
 		drawEndBoard(mine, aw)
-		local start = hasSpot and BEAT_SPOT or BEAT_BANNER
+		local start = (tl > 0 and BEAT_BANNER + tl) or (hasSpot and BEAT_SPOT) or BEAT_BANNER -- v1.14
 		fillStrip(aw, math.clamp((t - start - 0.3) / 2.5, 0, 1))
 		fillButtons()
 		autoIsland(endsAt) -- v1.10
@@ -1022,9 +1044,10 @@ end
 
 endSkipB.Activated:Connect(function()
 	local endsAt = state:GetAttribute("HpResultsEndAt") or now()
-	local t = now() - (endsAt - RES) + endSkip
+	local t = now() - (endsAt - resLen()) + endSkip
 	local aw = readAwards()
 	local hasSpot = aw ~= nil and ((aw.mvp or "") ~= "" or (aw.svp or "") ~= "")
+	if titlesLen() > 0 and t >= BEAT_BANNER then return end -- v1.14: the titles show skips itself
 	if script:GetAttribute("HardpointHUDEndTimingV2Enabled") ~= false then -- v1.9: skip guard
 		local into = (t < BEAT_BANNER) and t or (t - BEAT_BANNER)
 		if into < (tonumber(script:GetAttribute("HardpointHUDSkipGuard")) or 1.5) then

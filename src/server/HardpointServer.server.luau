@@ -109,6 +109,22 @@ VERSION = "1.5" -- v1.5 match awards
 VERSION = "1.6" -- v1.6 score per teammate on the point
 VERSION = "1.7" -- v1.7 bots match XP 50%
 VERSION = "1.8" -- v1.8 practice start lead (pre-match countdown)
+VERSION = "1.9" -- v1.9 victory titles
+-- v1.9 (victory titles, MDA-554, plan docs/plans/VICTORY_TITLES_v1.0.md Task 2, mockup docs/mockups/victory_titles_v0.1.html;
+--   Kepu 2026-11-16 19:00 "Let's implement them"):
+--   * the practice hook's "stat" also takes fields "heal" (HP healed on teammates) and "ab" (abilities used) with an amount
+--     (8th argument, a number > 0; default 1); board rows carry heal and ab (HpBoard too). VictoryTitlesServer 1.0 sends them.
+--   * results start (a winner "A" / "B"): the board rows go through ServerStorage.DinoArcade.VictoryTitles 1.0
+--     assign(rows, winner, cfg) (cfg max HpTitleMax 4). Each title holder's display model goes to ReplicatedStorage
+--     VictoryTitleModels (Folder, child named by the row id; attributes Species, Title): a clone of the player's living
+--     character / the bot model (scripts, sounds, billboards, prompts removed), else the bare dino from Models.<Species>ModelData
+--     (DinoModelBuilder, x2 for every dino but the T-Rex). No model -> the title is left out. ReplicatedStorage.Hardpoint
+--     HpTitles = JSON {key = HpResultsEndAt, list = {{id, name, species, title, stat, len}}}; HpTitlesLen = the show's length
+--     (sum of VictoryTitles.LEN + HpTitleGap 0.3 each). The results then last H.RESULTS + max(0, HpTitleBannerSec 2 +
+--     HpTitlesLen + HpTitleBoardSec 7 − H.RESULTS) s; HpResultsLen = that length. A draw / no titles: HpTitles "",
+--     HpTitlesLen 0, HpResultsLen = H.RESULTS (1.8). newMatch / lobby / stop clear HpTitles and the models.
+--   Switch: script attribute HardpointTitlesEnabled (default true, read per results; false = 1.8). Diagnostics:
+--     HpTitlesLast ("n <count> <id>:<title> ..." / "off" / "draw" / "noModule"), HpTitlesCount.
 -- v1.8 (pre-match countdown, MDA-499, plan docs/plans/PREMATCH_AND_SAVED_LOADOUT_v1.0.md A1; Kepu 2026-11-13 "10 second count
 --   down"): HardpointPractice("start", lead) with a number lead (0..HpLeadMax 30) sets HpMatchStartAt = now + lead, so the
 --   warm-up (HardpointRules.FIRST 5 s, phaseAt counts from HpMatchStartAt) lasts lead + 5 s; rotations, the clock and scoring
@@ -127,6 +143,11 @@ for k, v in pairs({HpXpKill = 50, HpXpPerSec = 1, HpXpWin = 100, HpXpDraw = 50, 
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 script:SetAttribute("HpAwardsCount", script:GetAttribute("HpAwardsCount") or 0)
+-- v1.9: victory titles (see the header)
+for k, v in pairs({HardpointTitlesEnabled = true, HpTitleMax = 4, HpTitleGap = 0.3, HpTitleBannerSec = 2, HpTitleBoardSec = 7}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+script:SetAttribute("HpTitlesCount", script:GetAttribute("HpTitlesCount") or 0)
 
 local arcade = ServerStorage:WaitForChild("DinoArcade")
 local ModeRules = require(arcade:WaitForChild("ModeRules"))
@@ -496,7 +517,7 @@ local boardDirty, boardAt = false, 0
 local function boardRow(id, name, team, species, isBot)
 	local r = board[id]
 	if not r then
-		r = {id = id, name = name, team = team, species = species, bot = isBot == true, k = 0, d = 0, pt = 0}
+		r = {id = id, name = name, team = team, species = species, bot = isBot == true, k = 0, d = 0, pt = 0, heal = 0, ab = 0} -- v1.9: + heal, ab
 		board[id] = r
 	end
 	r.name, r.team = name or r.name, team or r.team
@@ -511,7 +532,7 @@ local function publishBoard(force)
 	local list = {}
 	for _, r in pairs(board) do
 		table.insert(list, {id = r.id, name = r.name, team = r.team, species = r.species, bot = r.bot, k = r.k, d = r.d,
-			pt = math.floor(r.pt + 0.5), pk = r.pk or 0}) -- v1.5: + pk
+			pt = math.floor(r.pt + 0.5), pk = r.pk or 0, heal = math.floor((r.heal or 0) + 0.5), ab = r.ab or 0}) -- v1.5: + pk; v1.9: + heal, ab
 	end
 	table.sort(list, function(x, y) if x.k ~= y.k then return x.k > y.k end return x.name < y.name end)
 	set("HpBoard", HttpService:JSONEncode(list))
@@ -520,6 +541,107 @@ local function idOf(d)
 	if d.player then return "u" .. d.player.UserId, d.player.DisplayName, d.player.Character and d.player.Character:GetAttribute("Species"), false end
 	if d.model then return "b" .. d.model.Name, d.model:GetAttribute("DisplayName") or d.model.Name, d.model:GetAttribute("Species"), true end
 	return nil
+end
+
+-- ---------- v1.9: victory titles (see the header) ----------
+local VictoryTitles
+do
+	local m = arcade:FindFirstChild("VictoryTitles")
+	if m then
+		local ok, mod = pcall(require, m)
+		if ok then VictoryTitles = mod end
+	end
+end
+local function titleModelsFolder()
+	local f = ReplicatedStorage:FindFirstChild("VictoryTitleModels")
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "VictoryTitleModels"
+		f.Parent = ReplicatedStorage
+	end
+	return f
+end
+local function clearTitles()
+	set("HpTitles", "")
+	set("HpTitlesLen", 0)
+	set("HpResultsLen", H.RESULTS)
+	titleModelsFolder():ClearAllChildren()
+end
+local function cleanCopy(copy)
+	for _, d in ipairs(copy:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") or d:IsA("Sound") or d:IsA("BillboardGui") or d:IsA("ProximityPrompt") or d:IsA("ForceField") then
+			d:Destroy()
+		end
+	end
+	return copy
+end
+local function titleModel(id, species)
+	local uid = tonumber(string.match(id, "^u(%d+)$") or "")
+	local src
+	if uid then
+		local pl = Players:GetPlayerByUserId(uid)
+		local chr = pl and pl.Character
+		local hum = chr and chr:FindFirstChildOfClass("Humanoid")
+		if chr and hum and hum.Health > 0 and chr:FindFirstChild("HumanoidRootPart") then src = chr end
+	else
+		local name = string.match(id, "^b(.+)$")
+		for m in pairs(botModels) do
+			if name and m.Name == name and m.Parent and m:FindFirstChild("HumanoidRootPart") then src = m end
+		end
+	end
+	if src then
+		local was = src.Archivable
+		src.Archivable = true
+		local ok, copy = pcall(function() return src:Clone() end)
+		src.Archivable = was
+		if ok and copy then return cleanCopy(copy) end
+	end
+	-- fallback: the bare dino from its model data
+	local ok, copy = pcall(function()
+		local Builder = require(arcade:WaitForChild("DinoModelBuilder"))
+		local data = require(arcade:WaitForChild("Models"):WaitForChild(tostring(species) .. "ModelData"))
+		local m = Builder.build(data, {name = id})
+		if species ~= "TRex" then m:ScaleTo(2) end
+		return m
+	end)
+	return ok and copy and cleanCopy(copy) or nil
+end
+-- returns the extra results seconds the show needs
+local function titlesAtResults(m)
+	clearTitles()
+	if script:GetAttribute("HardpointTitlesEnabled") == false then script:SetAttribute("HpTitlesLast", "off") return 0 end
+	if not VictoryTitles then script:SetAttribute("HpTitlesLast", "noModule") return 0 end
+	if m.winner ~= "A" and m.winner ~= "B" then script:SetAttribute("HpTitlesLast", "draw") return 0 end
+	local rows = {}
+	for _, r in pairs(board) do
+		table.insert(rows, {id = r.id, team = r.team, bot = r.bot, k = r.k, d = r.d, pt = r.pt, heal = r.heal or 0, ab = r.ab or 0})
+	end
+	local picks = VictoryTitles.assign(rows, m.winner, {max = script:GetAttribute("HpTitleMax")})
+	local folder, list, total, diag = titleModelsFolder(), {}, 0, {}
+	local gap = tonumber(script:GetAttribute("HpTitleGap")) or 0.3
+	for _, p in ipairs(picks) do
+		local r = board[p.id]
+		local model = r and titleModel(p.id, r.species)
+		if model then
+			model.Name = p.id
+			model:SetAttribute("Species", r.species)
+			model:SetAttribute("Title", p.title)
+			model.Parent = folder
+			local len = (VictoryTitles.LEN[p.title] or 5.5) + gap
+			total += len
+			table.insert(list, {id = p.id, name = r.name, species = r.species, title = p.title, stat = p.stat, len = len})
+			table.insert(diag, p.id .. ":" .. p.title)
+		end
+	end
+	script:SetAttribute("HpTitlesLast", ("n %d %s"):format(#list, table.concat(diag, " ")))
+	script:SetAttribute("HpTitlesCount", (script:GetAttribute("HpTitlesCount") or 0) + 1)
+	if #list == 0 then return 0 end
+	local need = (tonumber(script:GetAttribute("HpTitleBannerSec")) or 2) + total + (tonumber(script:GetAttribute("HpTitleBoardSec")) or 7)
+	local extra = math.max(0, need - H.RESULTS)
+	set("HpTitlesLen", total)
+	set("HpResultsLen", H.RESULTS + extra)
+	m.titleList = list
+	return extra
 end
 
 -- ---------- the match ----------
@@ -532,6 +654,7 @@ local function newMatch()
 	set("HpWinner", "")
 	set("HpResultsEndAt", 0)
 	set("HpAwards", "") -- v1.5
+	clearTitles() -- v1.9
 end
 
 -- ---------- v1.5: awards (see the header) ----------
@@ -652,6 +775,7 @@ local function tick()
 				local w = match.winner
 				match = nil
 				set("HpAwards", "") -- v1.5
+				clearTitles() -- v1.9
 				publish()
 				practiceEnded:Fire(w)
 				return
@@ -694,9 +818,11 @@ local function tick()
 	if w then
 		match.phase = "results"
 		match.winner = w
-		match.resultsEndAt = now() + H.RESULTS
+		local extra = titlesAtResults(match) -- v1.9
+		match.resultsEndAt = now() + H.RESULTS + extra
 		set("HpWinner", w)
 		set("HpResultsEndAt", match.resultsEndAt)
+		if match.titleList then set("HpTitles", HttpService:JSONEncode({key = match.resultsEndAt, list = match.titleList})) end -- v1.9
 		award(match) -- v1.5
 	end
 	ticks += 1
@@ -763,7 +889,7 @@ if not practiceFn then
 	practiceFn.Name = "HardpointPractice"
 	practiceFn.Parent = script
 end
-practiceFn.OnInvoke = function(action, a, b, c, d, e2, f)
+practiceFn.OnInvoke = function(action, a, b, c, d, e2, f, g)
 	if action == "bot" then
 		if typeof(a) ~= "Instance" or (b ~= "A" and b ~= "B") then return "badArg" end
 		botModels[a] = true
@@ -784,13 +910,16 @@ practiceFn.OnInvoke = function(action, a, b, c, d, e2, f)
 	elseif action == "stop" then
 		match = nil
 		set("HpAwards", "") -- v1.5
+		clearTitles() -- v1.9
 		publish()
 		return "ok"
 	elseif action == "stat" then
 		-- ("stat", id, name, team, species, isBot, field)
-		if type(a) ~= "string" or (f ~= "k" and f ~= "d" and f ~= "pk") or not match then return "badArg" end -- v1.5: + "pk"
+		if type(a) ~= "string" or (f ~= "k" and f ~= "d" and f ~= "pk" and f ~= "heal" and f ~= "ab") or not match then return "badArg" end -- v1.5: + "pk"; v1.9: + "heal", "ab"
 		local r = boardRow(a, b, c, d, e2)
-		r[f] = (r[f] or 0) + 1
+		local amt = 1
+		if (f == "heal" or f == "ab") and type(g) == "number" and g == g and g > 0 then amt = g end -- v1.9
+		r[f] = (r[f] or 0) + amt
 		return "ok"
 	end
 	return "badArg"
@@ -823,6 +952,7 @@ local function stop()
 	match = nil
 	setLive(false)
 	set("HpAwards", "") -- v1.5
+	clearTitles() -- v1.9
 	set("HpPhase", "off")
 	clearTeams()
 	script:SetAttribute("HardpointState", "off")

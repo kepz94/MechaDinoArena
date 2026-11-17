@@ -466,6 +466,10 @@ local function passives()
 end
 local function healBy(healer, target, amount)
 	local added = heal(target, amount)
+	if added > 0 and healer ~= target and script:GetAttribute("TrooMovesHealReportEnabled") ~= false then -- v1.14: victory titles (Medic)
+		local ev = ServerStorage:FindFirstChild("VictoryHealReport")
+		if ev then ev:Fire(healer, added) end
+	end
 	if amount > added and script:GetAttribute("TrooMovesPlumeEnabled") ~= false then
 		local P = passives()
 		if P then pcall(P.plumeAdd, healer, target, amount - added, now(), testAlly(target)) end
@@ -1577,6 +1581,11 @@ do
 end
 script:SetAttribute("TrooMovesServerVersion", "1.12") -- v1.12 bot entrance
 script:SetAttribute("TrooMovesServerVersion", "1.13") -- v1.13 pre-match lock
+script:SetAttribute("TrooMovesServerVersion", "1.14") -- v1.14 heal report
+-- v1.14 (victory titles, MDA-555, plan docs/plans/VICTORY_TITLES_v1.0.md Task 4): every Mender Drone heal that adds HP to a
+--   dino other than the healer fires ServerStorage BindableEvent VictoryHealReport (VictoryTitlesServer 1.0) with (healer
+--   model, HP added), for the MEDIC title. Nothing else changes. Switch: script attribute TrooMovesHealReportEnabled (default
+--   true, read per heal).
 -- v1.13 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
 --   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
 --   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
