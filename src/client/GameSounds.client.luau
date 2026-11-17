@@ -52,6 +52,14 @@
 --               (v1.7, the Pachy's buttons) like cloak: 3D at the dino, on HookStartedAt (the claw fires; the head smash keeps
 --               HookFX's sound) / InkStartedAt (the press) / MedDroppedAt / ServoDashStartedAt / TetherStartedAt / VisorStartedAt /
 --               HeadbuttSacrificeAt (Blood Rush pays health for a headbutt).
+--   * tbellow / tchallenge / tgrab / tleap / tleapland / tmortar / tmud / tstomp
+--               (v1.8, the Tenontosaurus' buttons) like cloak: 3D at the dino, on TenoBellowAt / TenoChallengeAt /
+--               TenoGrabStartedAt (the press; the sound covers the swing, the catch and the fling) / TenoLeapStartedAt (the launch) /
+--               TenoLeapLandedAt (the landing) / TenoMortarFiredAt (the boulder leaves) / TenoMudStartedAt / TenoStompAt (the hit).
+--   * tgrabland (v1.8) any dino's TenoGrabLandAt changes to a number: 3D at its TenoGrabLand (where the flung dino lands),
+--               heard within GameSoundsAbilityRange (200) studs, full volume within GameSoundsAbilityNear (10).
+--   * tmortarboom (v1.8) any dino's TenoMortarLandedAt changes to a number: 3D at its TenoMortarLand (the impact), heard like
+--               hcmboom (GameSoundsBlastRange 400 / GameSoundsBlastNear 20).
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -70,6 +78,7 @@ VERSION = "1.4" -- v1.4 the Dilophosaurus' ability sounds
 VERSION = "1.5" -- v1.5 the Herrera's ability sounds
 VERSION = "1.6" -- v1.6 the Troodon's ability sounds
 VERSION = "1.7" -- v1.7 the Pachy's ability sounds (real recordings)
+VERSION = "1.8" -- v1.8 the Tenontosaurus' ability sounds (Sonniss real recordings)
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -93,6 +102,12 @@ VERSION = "1.7" -- v1.7 the Pachy's ability sounds (real recordings)
 --   tether B, visor C, bloodrush A"): real recordings from Roblox's Pro Sound Effects library (free to use in Roblox games), used by
 --   their library ids (no upload): Chain Movement 1, Wet Newspaper Squish 14, Phasey Synth Power Up 2, Servo Pig Motor Burst 3,
 --   Sci-Fi Weapon 12, Robot Servo Synth, Blood Spurt 2. Heard like the Raptor's (3D at the dino).
+-- v1.8 (MDA-552; Kepu 2026-11-16 17:32 the blind library picks for the Teno were "straight ass"; 20:13 "Okay let's move forward then
+--   with the sounds" once the Sonniss GDC 2026 bundle had downloaded; 20:23 picks from the Sound Pick Board round 8 (Sonniss):
+--   "tbellow C, tchallenge B, tgrab C, tgrabland A, tleap B, tleapland C, tmortar B, tmortarboom C, tmud A, tstomp B"): ten sounds
+--   built from real recordings in the Sonniss GDC 2026 bundle (royalty-free for games; recipe docs/sfx/gen_teno_sonniss_sfx.py),
+--   imported through Studio's Asset Manager. Eight play at the Teno like the Raptor's; tgrabland at TenoGrabLand and tmortarboom
+--   at TenoMortarLand (header). playAt takes an optional range (maxDist, minDist); without it the blast range as in 1.5.
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -102,7 +117,8 @@ local EVENTS = {"hit", "kill", "captured", "lost", "contested", "moving", "tick"
 	"dgatling", "dmortar", "dspine", "dover", "dhiss", "dpump", "dscope", -- v1.4 Dilophosaurus buttons
 	"hquills", "hsmoke", "hstrobe", "hbreaker", "hcaltrops", "hgoo", "hglider", "hcmlaunch", "hcmboom", -- v1.5 Herrera buttons
 	"oburst", "odome", "olantern", "omender", "oportal", "osapwall", "osentry", "oshed", "osleep", -- v1.6 Troodon buttons
-	"phook", "pink", "pmed", "pdash", "ptether", "pvisor", "pblood"} -- v1.7 Pachy buttons
+	"phook", "pink", "pmed", "pdash", "ptether", "pvisor", "pblood", -- v1.7 Pachy buttons
+	"tbellow", "tchallenge", "tgrab", "tgrabland", "tleap", "tleapland", "tmortar", "tmortarboom", "tmud", "tstomp"} -- v1.8 Teno
 local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "113513728853752", lost = "124135883749071",
 	contested = "101864400003768", moving = "136030860049130", tick = "86647331351122", go = "122207388352651",
 	click = "100987841683034", win = "71840308309828", lose = "81529780885336",
@@ -118,7 +134,10 @@ local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "11351
 	oportal = "128803735549174", osapwall = "91446054650325", osentry = "134001878124782", oshed = "102472464366448",
 	osleep = "90715155100654", -- v1.6
 	phook = "9113760085", pink = "9126209045", pmed = "9117297453", pdash = "9118999657", ptether = "9118792593",
-	pvisor = "9118462554", pblood = "9113464577"} -- v1.7 (Pro Sound Effects library ids)
+	pvisor = "9118462554", pblood = "9113464577", -- v1.7 (Pro Sound Effects library ids)
+	tbellow = "123619163891690", tchallenge = "114717093655552", tgrab = "88873267601305", tgrabland = "76525307110011",
+	tleap = "112730494776189", tleapland = "88753782496487", tmortar = "99493915731747", tmortarboom = "85790097999139",
+	tmud = "86971682244323", tstomp = "133614043199990"} -- v1.8 (Sonniss, uploaded)
 local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5, moving = 0.6, tick = 0.6, go = 0.7,
 	click = 0.4, win = 0.7, lose = 0.7, hurt = 0.6, died = 0.8,
 	cloak = 0.7, shield = 0.7, adren = 0.7, cannon = 0.8, scent = 0.6, -- v1.3
@@ -127,7 +146,9 @@ local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5,
 	hcmboom = 1, -- v1.5
 	oburst = 0.6, odome = 0.7, olantern = 0.7, omender = 0.6, oportal = 0.7, osapwall = 0.7, osentry = 0.6, oshed = 0.7,
 	osleep = 0.6, -- v1.6
-	phook = 0.7, pink = 0.7, pmed = 0.6, pdash = 0.7, ptether = 0.7, pvisor = 0.7, pblood = 0.7} -- v1.7
+	phook = 0.7, pink = 0.7, pmed = 0.6, pdash = 0.7, ptether = 0.7, pvisor = 0.7, pblood = 0.7, -- v1.7
+	tbellow = 0.8, tchallenge = 0.8, tgrab = 0.7, tgrabland = 0.8, tleap = 0.7, tleapland = 0.8, tmortar = 0.7, tmortarboom = 1,
+	tmud = 0.7, tstomp = 0.9} -- v1.8
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
@@ -235,6 +256,11 @@ for e, attr in pairs({phook = "HookStartedAt", pink = "InkStartedAt", pmed = "Me
 	ptether = "TetherStartedAt", pvisor = "VisorStartedAt", pblood = "HeadbuttSacrificeAt"}) do
 	ABILITY[e] = attr
 end
+for e, attr in pairs({tbellow = "TenoBellowAt", tchallenge = "TenoChallengeAt", tgrab = "TenoGrabStartedAt", -- v1.8 Teno
+	tleap = "TenoLeapStartedAt", tleapland = "TenoLeapLandedAt", tmortar = "TenoMortarFiredAt", tmud = "TenoMudStartedAt",
+	tstomp = "TenoStompAt"}) do
+	ABILITY[e] = attr
+end
 local function play3D(e, m)
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
@@ -283,7 +309,7 @@ task.spawn(function()
 end)
 
 -- v1.5 the Cruise Missile blast: 3D at CruiseBoomPos --------------------------------------------------------------------------
-local function playAt(e, pos)
+local function playAt(e, pos, maxDist, minDist) -- v1.8: optional range (default the blast range)
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	if typeof(pos) ~= "Vector3" then return end
@@ -298,8 +324,8 @@ local function playAt(e, pos)
 	a.WorldPosition = pos
 	a.Parent = workspace.Terrain
 	local s = tpl:Clone()
-	s.RollOffMaxDistance = num("GameSoundsBlastRange", 400)
-	s.RollOffMinDistance = num("GameSoundsBlastNear", 20)
+	s.RollOffMaxDistance = maxDist or num("GameSoundsBlastRange", 400)
+	s.RollOffMinDistance = minDist or num("GameSoundsBlastNear", 20)
 	s.Parent = a
 	s:Play()
 	Debris:AddItem(a, math.max(tpl.TimeLength, 1) + 0.5)
@@ -310,6 +336,14 @@ local function hookBlast(m)
 	hookedBlast[m] = true
 	m:GetAttributeChangedSignal("CruiseBoomAt"):Connect(function()
 		if typeof(m:GetAttribute("CruiseBoomAt")) == "number" then playAt("hcmboom", m:GetAttribute("CruiseBoomPos")) end
+	end)
+	m:GetAttributeChangedSignal("TenoGrabLandAt"):Connect(function() -- v1.8: where the flung dino lands
+		if typeof(m:GetAttribute("TenoGrabLandAt")) == "number" then
+			playAt("tgrabland", m:GetAttribute("TenoGrabLand"), num("GameSoundsAbilityRange", 200), num("GameSoundsAbilityNear", 10))
+		end
+	end)
+	m:GetAttributeChangedSignal("TenoMortarLandedAt"):Connect(function() -- v1.8: the boulder impact
+		if typeof(m:GetAttribute("TenoMortarLandedAt")) == "number" then playAt("tmortarboom", m:GetAttribute("TenoMortarLand")) end
 	end)
 end
 local function watchBlast(pl)
