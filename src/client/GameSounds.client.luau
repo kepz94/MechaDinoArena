@@ -105,6 +105,8 @@
 --                 TenoMudBlockAt.
 --               While GameSoundsTenoBeatsEnabled (default true) the 1.8 Teno events (tbellow, tchallenge, tgrab, tgrabland,
 --                 tleap, tleapland, tmortar, tmortarboom, tmud, tstomp) do not play; false = 1.9 (the 1.8 Teno sounds).
+--   * phbhit    (v1.11, the Pachy's headbutt) like cloak: 3D at the dino, on HeadbuttHitAt (the hit; HeadbuttServer stamps it on
+--               the pachy that hit). HeadbuttFX's own thud (the built-in collide sound) still plays under it.
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -126,6 +128,7 @@ VERSION = "1.7" -- v1.7 the Pachy's ability sounds (real recordings)
 VERSION = "1.8" -- v1.8 the Tenontosaurus' ability sounds (Sonniss real recordings)
 VERSION = "1.9" -- v1.9 the Therizino's ability sounds, timed to the animation beats
 VERSION = "1.10" -- v1.10 the Tenontosaurus' ability sounds re-timed to the animation beats
+VERSION = "1.11" -- v1.11 the Pachy's headbutt hit sound
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -165,6 +168,9 @@ VERSION = "1.10" -- v1.10 the Tenontosaurus' ability sounds re-timed to the anim
 --   Bellow C, Challenge C, Leap A, Shield B"): eighteen parts built from the Sonniss bundle to the move beats (recipe
 --   docs/sfx/gen_teno_v2_sfx.py), imported through Studio's Asset Manager, scheduled from TenoMovesServer 1.18's stamps
 --   (header); the 1.8 Teno sounds step aside while GameSoundsTenoBeatsEnabled. startPart / partAt take an optional range.
+-- v1.11 (MDA-552; Kepu 2026-11-17 10:40 "there is no sound for the headbutt", 10:51 "use this for the headbutt" with
+--   180663__mixedupmoviestuff__headbutt.wav (Freesound)): phbhit, that file trimmed to 0.37 s and levelled for phone speakers
+--   (mono 48 kHz, the same levelling as the round 9-10 parts), imported through Studio's Asset Manager, on HeadbuttHitAt.
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -230,6 +236,8 @@ end
 local TENO_OLD = {tbellow = true, tchallenge = true, tgrab = true, tgrabland = true, tleap = true, tleapland = true, tmortar = true,
 	tmortarboom = true, tmud = true, tstomp = true} -- v1.10: the 1.8 Teno events, superseded while GameSoundsTenoBeatsEnabled
 local function tenoOn() return script:GetAttribute("GameSoundsTenoBeatsEnabled") ~= false end
+table.insert(EVENTS, "phbhit") -- v1.11 the Pachy's headbutt hit
+IDS.phbhit, VOL.phbhit = "108009591584705", 0.9
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
@@ -345,6 +353,7 @@ for e, attr in pairs({tbellow = "TenoBellowAt", tchallenge = "TenoChallengeAt", 
 	tstomp = "TenoStompAt"}) do
 	ABILITY[e] = attr
 end
+ABILITY.phbhit = "HeadbuttHitAt" -- v1.11
 local function play3D(e, m)
 	if TENO_OLD[e] and tenoOn() then return end -- v1.10
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
