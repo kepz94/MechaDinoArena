@@ -82,6 +82,29 @@
 --               A new cast of the same move ends the old loop (no end sound for it). Overclock Joints is a passive: no sound.
 --               Switch: GameSoundsTheriBeatsEnabled (default true; false = 1.8, the Therizino silent). Diagnostics:
 --               GameSoundsTheriLog (the last 24 parts: "<event>@<ms late>", ms = how late the part started vs its beat).
+--   * tngrabwind / tngrabsnap / tngrabthrow / tngrabland / tnmortarbrace / tnmortarfire / tnmortarboom / tnstomprear /
+--     tnstompsmash / tnbellowinhale / tnbellowshriek / tnchallenge / tnleaplaunch / tnleapland / tnshieldup / tnshieldloop /
+--     tnshieldblock / tnshielddown
+--               (v1.10, the Tenontosaurus' buttons; sound pass round 10, each move split into parts on its animation beats)
+--               like the Therizino's 1.9 parts (3D at the dino, scheduled at server times from the stamps):
+--               Tail Grab (TenoGrabStartedAt t): tngrabwind at t; tngrabsnap at TenoGrabCatchAt - GameSoundsTenoStrikeLead
+--                 (0.15; the clamp is 0.15 s into the clip) and tngrabthrow at TenoGrabThrowAtPlan - the same lead (when those
+--                 stamps belong to this grab, >= t); tngrabland on TenoGrabLandAt at TenoGrabLand (ability range).
+--               Boulder Mortar: tnmortarbrace on TenoMortarStartedAt, tnmortarfire on TenoMortarFiredAt, tnmortarboom on
+--                 TenoMortarLandedAt at TenoMortarLand (blast range).
+--               Stomp: tnstomprear on TenoStompStartedAt, tnstompsmash on TenoStompAt.
+--               Herd Bellow: tnbellowinhale on TenoBellowStartedAt t, tnbellowshriek at t + GameSoundsTenoShriekAt (0.40).
+--               Challenge Call: tnchallenge on TenoChallengeStartedAt (the alarm is 0.65 s into the clip).
+--               Hydraulic Leap: tnleaplaunch at the lift-off = JumpStartedAt + the character's JumpWindup (0.12) when it has
+--                 TenoLeapOnJump and TenoLeapEnabled (the JUMP leap; 1.8's tleap listened to TenoLeapStartedAt, which only the
+--                 old button path stamps), or on TenoLeapStartedAt (the button path); tnleapland on TenoLeapLandedAt, and on
+--                 your own Teno on the local touchdown TenoLocalLandAt (TenoPoseFix), one per landing (stamps closer than
+--                 GameSoundsTenoLandDedupe 1 s are the same landing); the tail slam is 0.12 s into the clip.
+--               Shield Armor: tnshieldup on TenoMudStartedAt; tnshieldloop (looped) from TenoMudCoatAt until TenoMudUntil (live:
+--                 the server moves it to the end on an early end), faded; tnshielddown at that end; tnshieldblock on each
+--                 TenoMudBlockAt.
+--               While GameSoundsTenoBeatsEnabled (default true) the 1.8 Teno events (tbellow, tchallenge, tgrab, tgrabland,
+--                 tleap, tleapland, tmortar, tmortarboom, tmud, tstomp) do not play; false = 1.9 (the 1.8 Teno sounds).
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -102,6 +125,7 @@ VERSION = "1.6" -- v1.6 the Troodon's ability sounds
 VERSION = "1.7" -- v1.7 the Pachy's ability sounds (real recordings)
 VERSION = "1.8" -- v1.8 the Tenontosaurus' ability sounds (Sonniss real recordings)
 VERSION = "1.9" -- v1.9 the Therizino's ability sounds, timed to the animation beats
+VERSION = "1.10" -- v1.10 the Tenontosaurus' ability sounds re-timed to the animation beats
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -136,6 +160,11 @@ VERSION = "1.9" -- v1.9 the Therizino's ability sounds, timed to the animation b
 --   Deflector A): fifteen sound parts built from the Sonniss GDC 2026 bundle to the move beats (TheriPose 1.11, TheriMovesFX2
 --   1.2; recipe docs/sfx/gen_theri_v2_sfx.py), imported through Studio's Asset Manager, scheduled from TheriMovesServer 1.14's
 --   stamps (header). The Teno's 1.8 sounds are unchanged (their re-time is the next round).
+-- v1.10 (MDA-552; Kepu 2026-11-16 21:21 "You did the same shit for all the other dinos too"; 22:08 picks from the Sound Pick Board
+--   round 10, the sounds played on the Teno move animation (docs/sfx/TENO_BEATS_v1.0.md): "Grab A, Mortar B, Stomp A,
+--   Bellow C, Challenge C, Leap A, Shield B"): eighteen parts built from the Sonniss bundle to the move beats (recipe
+--   docs/sfx/gen_teno_v2_sfx.py), imported through Studio's Asset Manager, scheduled from TenoMovesServer 1.18's stamps
+--   (header); the 1.8 Teno sounds step aside while GameSoundsTenoBeatsEnabled. startPart / partAt take an optional range.
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -186,12 +215,28 @@ for e, v in pairs({ -- v1.9 the Therizino's parts: {id, volume}
 	table.insert(EVENTS, e)
 	IDS[e], VOL[e] = v[1], v[2]
 end
+local TENO_PART = {} -- v1.10 the Teno's parts: {id, volume}
+for e, v in pairs({
+	tngrabwind = {"77520438511156", 0.6}, tngrabsnap = {"131540155210065", 0.8}, tngrabthrow = {"132641824036451", 0.7},
+	tngrabland = {"75053608742552", 0.8}, tnmortarbrace = {"113038213084372", 0.6}, tnmortarfire = {"125080238294976", 0.8},
+	tnmortarboom = {"114145194421823", 1}, tnstomprear = {"105601397792894", 0.6}, tnstompsmash = {"131108377319807", 0.9},
+	tnbellowinhale = {"119435326057632", 0.5}, tnbellowshriek = {"107982074709205", 0.8}, tnchallenge = {"139212929992682", 0.8},
+	tnleaplaunch = {"110603309882911", 0.7}, tnleapland = {"129593000710169", 0.8}, tnshieldup = {"77299946481525", 0.7},
+	tnshieldloop = {"127604914238828", 0.4}, tnshieldblock = {"104230393846785", 0.8}, tnshielddown = {"110028649285192", 0.6}}) do
+	table.insert(EVENTS, e)
+	IDS[e], VOL[e] = v[1], v[2]
+	TENO_PART[e] = true
+end
+local TENO_OLD = {tbellow = true, tchallenge = true, tgrab = true, tgrabland = true, tleap = true, tleapland = true, tmortar = true,
+	tmortarboom = true, tmud = true, tstomp = true} -- v1.10: the 1.8 Teno events, superseded while GameSoundsTenoBeatsEnabled
+local function tenoOn() return script:GetAttribute("GameSoundsTenoBeatsEnabled") ~= false end
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
 	GameSoundsBlastRange = 400, GameSoundsBlastNear = 20, -- v1.5
 	GameSoundsTheriBeatsEnabled = true, GameSoundsTheriLoopFade = 0.08, GameSoundsTheriCutFade = 0.04, -- v1.9
 	GameSoundsTheriWallLoopAt = 0.15, GameSoundsTheriHitMax = 6, -- v1.9
+	GameSoundsTenoBeatsEnabled = true, GameSoundsTenoStrikeLead = 0.15, GameSoundsTenoShriekAt = 0.40, GameSoundsTenoLandDedupe = 1, -- v1.10
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -301,6 +346,7 @@ for e, attr in pairs({tbellow = "TenoBellowAt", tchallenge = "TenoChallengeAt", 
 	ABILITY[e] = attr
 end
 local function play3D(e, m)
+	if TENO_OLD[e] and tenoOn() then return end -- v1.10
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	local root = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
@@ -345,8 +391,8 @@ local function fadeOut(s, fade)
 	task.delay(fade + 0.05, function() local p = s.Parent; s:Destroy(); if p and p:IsA("Attachment") then p:Destroy() end end)
 end
 -- start part e at server time startAt at `where` (a dino model or a Vector3); looped = a loop; returns the Sound (or nil)
-local function startPart(e, where, startAt, looped)
-	if not theriOn() then return nil end
+local function startPart(e, where, startAt, looped, maxD, minD) -- v1.10: optional range (default the ability range)
+	if TENO_PART[e] then if not tenoOn() then return nil end elseif not theriOn() then return nil end -- v1.10: the Teno's switch
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return nil end
 	if player:GetAttribute("InMenu") == true then return nil end
 	group.Volume = num("GameSoundsVolume", 1)
@@ -369,8 +415,8 @@ local function startPart(e, where, startAt, looped)
 	end
 	local s = tpl:Clone()
 	s.Looped = looped == true
-	s.RollOffMaxDistance = num("GameSoundsAbilityRange", 200)
-	s.RollOffMinDistance = num("GameSoundsAbilityNear", 10)
+	s.RollOffMaxDistance = maxD or num("GameSoundsAbilityRange", 200)
+	s.RollOffMinDistance = minD or num("GameSoundsAbilityNear", 10)
 	s.Parent = parent
 	if late > 0.02 then s.TimePosition = looped and (late % math.max(tpl.TimeLength, 0.05)) or late end
 	s:Play()
@@ -383,9 +429,9 @@ local function startPart(e, where, startAt, looped)
 	return s
 end
 -- a one-shot at server time `at` (cut at `cutAt` when given)
-local function partAt(e, where, at, cutAt)
+local function partAt(e, where, at, cutAt, maxD, minD)
 	local function go()
-		local s = startPart(e, where, at, false)
+		local s = startPart(e, where, at, false, maxD, minD)
 		if s and cutAt then
 			local fade = num("GameSoundsTheriCutFade", 0.04)
 			task.delay(math.max(0, cutAt - fade - serverNow()), fadeOut, s, fade)
@@ -466,11 +512,66 @@ local function hookTheri(m)
 	end)
 	on("TheriDeflectBlockAt", function(t) partAt("zwallblock", m, t) end)
 end
+-- v1.10 the Tenontosaurus' ability sounds, each part on its animation beat (header) ------------------------------------------
+local hookedTeno = setmetatable({}, {__mode = "k"})
+local function hookTeno(m)
+	if hookedTeno[m] or not m:IsA("Model") then return end
+	hookedTeno[m] = true
+	local function n(k, d) return tonumber(m:GetAttribute(k)) or d end
+	local function on(attr, fn)
+		m:GetAttributeChangedSignal(attr):Connect(function()
+			local t = m:GetAttribute(attr)
+			if typeof(t) == "number" and tenoOn() then fn(t) end
+		end)
+	end
+	on("TenoGrabStartedAt", function(t) -- Tail Grab
+		partAt("tngrabwind", m, t)
+		local lead = num("GameSoundsTenoStrikeLead", 0.15)
+		local c, w = n("TenoGrabCatchAt", 0), n("TenoGrabThrowAtPlan", 0)
+		if c >= t then partAt("tngrabsnap", m, c - lead) end
+		if w >= t then partAt("tngrabthrow", m, w - lead) end
+	end)
+	on("TenoGrabLandAt", function(t) partAt("tngrabland", m:GetAttribute("TenoGrabLand"), t) end)
+	on("TenoMortarStartedAt", function(t) partAt("tnmortarbrace", m, t) end) -- Boulder Mortar
+	on("TenoMortarFiredAt", function(t) partAt("tnmortarfire", m, t) end)
+	on("TenoMortarLandedAt", function(t)
+		partAt("tnmortarboom", m:GetAttribute("TenoMortarLand"), t, nil, num("GameSoundsBlastRange", 400), num("GameSoundsBlastNear", 20))
+	end)
+	on("TenoStompStartedAt", function(t) partAt("tnstomprear", m, t) end) -- Stomp Shockwave
+	on("TenoStompAt", function(t) partAt("tnstompsmash", m, t) end)
+	on("TenoBellowStartedAt", function(t) -- Herd Bellow
+		partAt("tnbellowinhale", m, t)
+		partAt("tnbellowshriek", m, t + num("GameSoundsTenoShriekAt", 0.40))
+	end)
+	on("TenoChallengeStartedAt", function(t) partAt("tnchallenge", m, t) end) -- Challenge Call
+	on("JumpStartedAt", function(t) -- Hydraulic Leap on JUMP: the lift-off after the crouch
+		if m:GetAttribute("TenoLeapOnJump") == true and m:GetAttribute("TenoLeapEnabled") == true then
+			partAt("tnleaplaunch", m, t + n("JumpWindup", 0.12))
+		end
+	end)
+	on("TenoLeapStartedAt", function(t) partAt("tnleaplaunch", m, t) end) -- the button path
+	local lastLand = -math.huge
+	local function land(t)
+		if math.abs(t - lastLand) < num("GameSoundsTenoLandDedupe", 1) then return end
+		lastLand = t
+		partAt("tnleapland", m, t)
+	end
+	on("TenoLeapLandedAt", land)
+	if m == player.Character then on("TenoLocalLandAt", land) end
+	on("TenoMudStartedAt", function(t) partAt("tnshieldup", m, t) end) -- Shield Armor
+	on("TenoMudCoatAt", function(t)
+		loopPart(m, "tnshieldloop", "tnshielddown", t,
+			function() return m:GetAttribute("TenoMudUntil") end,
+			function() return m.Parent ~= nil and m:GetAttribute("TenoMudCoatAt") == t end)
+	end)
+	on("TenoMudBlockAt", function(t) partAt("tnshieldblock", m, t) end)
+end
 local hookedAbility = setmetatable({}, {__mode = "k"})
 local function hookAbility(m)
 	if hookedAbility[m] or not m:IsA("Model") then return end
 	hookedAbility[m] = true
 	hookTheri(m) -- v1.9
+	hookTeno(m) -- v1.10
 	for e, attr in pairs(ABILITY) do
 		m:GetAttributeChangedSignal(attr):Connect(function()
 			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end
@@ -498,6 +599,7 @@ end)
 
 -- v1.5 the Cruise Missile blast: 3D at CruiseBoomPos --------------------------------------------------------------------------
 local function playAt(e, pos, maxDist, minDist) -- v1.8: optional range (default the blast range)
+	if TENO_OLD[e] and tenoOn() then return end -- v1.10
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	if typeof(pos) ~= "Vector3" then return end
