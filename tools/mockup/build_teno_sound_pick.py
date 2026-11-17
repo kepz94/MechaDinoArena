@@ -1,4 +1,4 @@
-# build_teno_sound_pick.py v0.1 (Mecha Dino Arena) — builds the Teno sound pick page (MDA-552, sound pass round 10): the Teno
+# build_teno_sound_pick.py v0.2 (Mecha Dino Arena) — builds the Teno sound pick page (MDA-552, sound pass round 10): the Teno
 # move storyboard (teno_moves_anim.js v0.2, each move on the version in the game: Grab A Scorpion, Mortar A Anchored Shot, Stomp A
 # Quake Smash, Bellow A Concussion Shriek, Challenge A Watcher Alarm, Leap A Piston Launch, Shield C Shield Pulse) with an
 # A / B / C sound panel per move. Same page as build_theri_sound_pick.py 0.2: picking an option restarts the move and plays
@@ -7,7 +7,10 @@
 # warp where it no longer matches the game (Mortar: the 1.17 fast shot, fire 0.35 and a ~0.25 s flight; Leap: lift-off 0.12,
 # landing ~1.02; Grab: flight 0.6 s; Shield: the disc at 0.20), so the picture plays at the game's speed.
 # Usage: python3 tools/mockup/build_teno_sound_pick.py <sound dir with meta.json + MDA_SFX_teno2_*.wav> <out.html>
-#   [three.min.js r128 path; omitted = cdnjs]. Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_teno_v2_sfx.py.
+#   [three.min.js r128 path; omitted = cdnjs].
+# v0.2 (Kepu 2026-11-16 22:05 "Provide a way for me to just copy my selections through the mockup like before"): a Pick A / B / C
+#   row per move and a bar at the bottom with every move's pick and a Copy button ("Grab A, Mortar B, ..."); picks are kept
+#   in this browser (localStorage, best effort). Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_teno_v2_sfx.py.
 import base64, json, os, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -61,6 +64,12 @@ CSS = """
 .trk span.lp { background: repeating-linear-gradient(90deg, rgba(125,255,154,.28) 0 6px, rgba(125,255,154,.14) 6px 12px); border-left-color: var(--good); }
 .trk em { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--yellow); left: 0; }
 .game { color: var(--muted); font-size: 13px; }
+.pickrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pk { font: 800 14px var(--body); color: var(--fg); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 14px; cursor: pointer; }
+.pk[aria-pressed="true"] { background: var(--good); border-color: var(--good); color: #062010; }
+.picks { position: sticky; bottom: env(safe-area-inset-bottom, 0px); z-index: 5; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; background: var(--panel); border: 2px solid var(--good); border-radius: 14px; padding: 10px 14px; box-shadow: 0 -6px 24px rgba(0,0,0,.45); }
+.picks code { font: 800 14px/1.4 var(--body); color: var(--fg); white-space: normal; overflow-wrap: anywhere; min-width: 0; flex: 1 1 260px; }
+.picks small { color: var(--muted); font-weight: 700; }
 """
 head = head.replace("</style>", CSS + "</style>")
 head = head.replace('<h1><span>Teno</span> · move animations <span id="ver" style="color:var(--muted);font-size:.6em"></span></h1>',
@@ -74,10 +83,12 @@ head = head[:lede_start] + ('<p class="lede">Pick a move, then press an option. 
 PANEL = """  <section class="snd" id="snd" aria-label="Sound options">
     <div class="row" style="justify-content:space-between"><h2 id="sndTitle"></h2><span class="row"><button class="btn" id="sndLoop" aria-pressed="true">Repeat</button><button class="btn" id="sndStop">Stop sound</button></span></div>
     <div class="opts" id="opts"></div>
+    <div class="pickrow" id="pickRow"></div>
     <p class="game" id="sndGame"></p>
   </section>
 """
 head = head.replace('  <input class="scrub" id="scrub"', PANEL + '  <input class="scrub" id="scrub"')
+head = head.replace('</main>', '  <div class="picks" id="picks" aria-live="polite"><code id="pickText"></code><button class="btn go" id="copyPicks">Copy picks</button></div>\n</main>', 1)
 head = head.replace('  <div class="phases" id="phases"></div>', '  <div class="lanes" id="lanes"></div>\n  <div class="phases" id="phases"></div>')
 three = ('<script>\n' + open(three_path).read() + '\n</script>') if three_path else '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>'
 head = head.replace('<script>/*THREE*/</script>', three)
@@ -180,7 +191,25 @@ function renderSnd() {
     return `<div class="trk"><span class="${info.loop ? "lp" : ""}" style="left:${a / len * 100}%;width:${Math.max(0.6, (e - a) / len * 100)}%">${p} ${at.toFixed(2)} s</span><em></em></div>`;
   }).join("");
 }
-function usePick() { variant = PICK[M().id] || "A"; tt = 0; reset(); renderAll(); renderSnd(); }
+// v0.2 picks + copy
+const PICK_NAME = {tgrab: "Grab", tmortar: "Mortar", tstomp: "Stomp", tbellow: "Bellow", tchallenge: "Challenge", tleap: "Leap", tmud: "Shield"};
+const PICK_KEY = "mda_teno_sound_picks_r10";
+let myPicks = {};
+try { myPicks = JSON.parse(localStorage.getItem(PICK_KEY) || "{}") || {}; } catch (e) { myPicks = {}; }
+function pickText() { return MOVES.map(mm => `${PICK_NAME[mm.id]} ${myPicks[mm.id] || "?"}`).join(", "); }
+function renderPicks() {
+  const id = M().id, n = MOVES.filter(mm => myPicks[mm.id]).length;
+  $("pickRow").innerHTML = `<span class="lbl">Your pick for ${PICK_NAME[id]}</span>` + ["A", "B", "C"].map(o => `<button class="pk" data-pick="${o}" aria-pressed="${myPicks[id] === o}">${o}</button>`).join("");
+  $("pickText").innerHTML = `<span id="pickStr">${pickText()}</span> <small>· ${n} of ${MOVES.length} picked</small>`;
+}
+$("pickRow").addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (!b) return; myPicks[M().id] = b.dataset.pick; try { localStorage.setItem(PICK_KEY, JSON.stringify(myPicks)); } catch (err) {} renderPicks(); });
+$("copyPicks").addEventListener("click", () => {
+  const txt = pickText(), btn = $("copyPicks");
+  const done = ok => { btn.textContent = ok ? "Copied ✓" : "Select + copy the text"; setTimeout(() => { btn.textContent = "Copy picks"; }, 1800); };
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents($("pickStr")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); let ok = false; try { ok = document.execCommand("copy"); } catch (err) {} done(ok); };
+  try { navigator.clipboard.writeText(txt).then(() => done(true), fallback); } catch (err) { fallback(); }
+});
+function usePick() { variant = PICK[M().id] || "A"; tt = 0; reset(); renderAll(); renderSnd(); renderPicks(); }
 $("opts").addEventListener("click", e => { const b = e.target.closest("[data-opt]"); if (b) playOpt(b.dataset.opt).catch(err => { $("sndGame").textContent = "Sound failed to start: " + err; }); });
 $("sndStop").onclick = stopSound;
 $("sndLoop").onclick = () => { sndRepeat = !sndRepeat; $("sndLoop").setAttribute("aria-pressed", sndRepeat); };
