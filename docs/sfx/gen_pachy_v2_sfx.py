@@ -10,6 +10,10 @@ beats are offsets inside it. Beat sheet: docs/sfx/PACHY_BEATS_v1.0.md (the game 
   tether cock @ the aim start | throw @ TetherStartedAt: the whip ON 0 | land @ TetherLandAt at TetherAnchor
   blood  pact @ HeadbuttSacrificeAt: the jolt ON 0, roar + vial spray inside the 0.15 s wind-up
   med    drop @ MedDroppedAt: pop 0, the thud ON 0.30, unfolding to 0.6 | hum (loop) +0.6 .. MedActiveUntil | fold @ MedActiveUntil
+  headbutt windup @ HeadbuttStartedAt: snort / scrape 0..0.15, the rush off the line from 0.15 | charge (loop) +0.15 ..
+         HeadbuttHitAt or HeadbuttEndedAt | hit @ HeadbuttHitAt: the CRUNCH ON 0, the head-shake ~0.6
+  leap   launch @ JumpStartedAt + JumpWindup (the pistons fire ON 0) | double @ JumpDoubleAt (own: JumpDoublePredictedAt) |
+         land @ the touchdown (absorb ON 0, steam after)
 Run: python3 gen_pachy_v2_sfx.py <src_dir> <out_dir>."""
 import sys, os, json
 import numpy as np, soundfile as sf
@@ -293,7 +297,68 @@ SETS["med"] = {
         "fold": [dict(name="Suitcase_Being_Locked", t0=2.0, t1=2.6, at=0.0, gain_db=-1, start=True)],
     }),
 }
-LOOPS = {("dash", "burn"): 1.0, ("visor", "field"): 1.0, ("med", "hum"): 1.0}
+
+SETS["headbutt"] = {
+    "A": ("Bull charge: a wet snort and a foot scrape, a rush off the line, pounding hoof-thuds with wind while it charges; the hit is a ringing dome clang with a bone crunch, then a rattling head-shake", {
+        "windup": [dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.2, at=0.0, gain_db=-2, semis=-9, start=True),
+                   dict(name="Large_Metal_Box_Drag", t0=10.0, t1=10.12, at=0.04, gain_db=-6, semis=-2, start=True),
+                   dict(name="Wind_Rush_Whoosh_Long", t0=0.04, t1=0.5, at=0.22, gain_db=-5, semis=-3)],
+        "charge": [dict(name="Punch_Body_02", t0=0.16, t1=0.40, at=0.0, gain_db=0, semis=-8),
+                   dict(name="Punch_Body_02", t0=0.16, t1=0.40, at=0.15, gain_db=-2, semis=-7),
+                   dict(name="Punch_Body_02", t0=0.16, t1=0.40, at=0.30, gain_db=0, semis=-8),
+                   dict(name="Punch_Body_02", t0=0.16, t1=0.40, at=0.45, gain_db=-2, semis=-7),
+                   dict(name="Wind_Whipping_Constricted_Flow", t0=3.0, t1=3.8, at=0.0, gain_db=-9)],
+        "hit": [dict(name="Metal_Hit_Thud_Thump_Low_Ring", t0=0.0, t1=0.9, at=0.0, gain_db=0),
+                dict(name="block_of_ice_crushed_heavy", t0=0.22, t1=0.8, at=0.0, gain_db=-3, semis=-5),
+                dict(name="Metal_Slow_Whoosh_Rattle", t0=0.05, t1=0.6, at=0.62, gain_db=-8, semis=-3)],
+    }),
+    "B": ("Ram: a low growl and a latch click, a grinding rumble under heavy steps while it charges; the hit is a dark wooden slam with a gore crunch, then a chain-rattle shake", {
+        "windup": [dict(name="Werewolf_Growl", t0=0.18, t1=0.45, at=0.0, gain_db=-2, semis=-4, start=True, fout=0.05),
+                   dict(name="Click_Deep_Mechanism_Latch", t0=0.0, t1=0.30, at=0.12, gain_db=-4, semis=-4)],
+        "charge": [dict(name="Large_Metal_Box_Drag", t0=11.0, t1=11.8, at=0.0, gain_db=-5, semis=-4),
+                   dict(name="Punch_Body_02", t0=1.13, t1=1.40, at=0.0, gain_db=0, semis=-9),
+                   dict(name="Punch_Body_02", t0=1.13, t1=1.40, at=0.30, gain_db=0, semis=-9)],
+        "hit": [dict(name="Wooden_Hit_Dark_Heavy_Hit", t0=2.25, t1=3.17, at=0.0, gain_db=0),
+                dict(name="Gore_Designed_Transient_Heavy_Impact", t0=0.0, t1=0.6, at=0.0, gain_db=-3),
+                dict(name="Flicking_Carabiner_On_Rope", t0=2.66, t1=3.1, at=0.62, gain_db=-8, semis=-3)],
+    }),
+    "C": ("Steel dome: a servo whine and a snort, a scraping metal rumble while it charges; the hit is a big bell-like steel clang with a punch, then a metal shake", {
+        "windup": [dict(name="Tower_Deploy_Hitech_Robot_Motor", t0=0.10, t1=0.28, at=0.0, gain_db=-4, semis=-3, fout=0.04),
+                   dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.15, at=0.03, gain_db=-5, semis=-9, start=True)],
+        "charge": [dict(name="Metal_Scrape_Low_Tonal", t0=1.0, t1=1.8, at=0.0, gain_db=-3),
+                   dict(name="Punch_Body_02", t0=0.16, t1=0.40, at=0.10, gain_db=-1, semis=-8),
+                   dict(name="Punch_Body_02", t0=0.16, t1=0.40, at=0.50, gain_db=-1, semis=-8)],
+        "hit": [dict(name="METAL_SWING_HIT", t0=0.80, t1=1.6, at=0.0, gain_db=0, semis=-4, fout=0.2),
+                dict(name="Punch_Body_02", t0=1.13, t1=1.54, at=0.0, gain_db=-2, semis=-4),
+                dict(name="Metal_Shield_Spin_On_Floor", t0=1.2, t1=1.6, at=0.62, gain_db=-9, semis=-2, start=True)],
+    }),
+}
+SETS["leap"] = {
+    "A": ("Coiled spring: a pump hiss and a bass jump as the pistons fire, a sharp blast-kick on the double jump, a soft thud with a click and a steam vent on the landing", {
+        "launch": [dict(name="Barber_Chair_Foot_Pump", t0=0.20, t1=0.40, at=0.0, gain_db=-4, semis=-2, start=True),
+                   dict(name="Jump_Start_Drop_3", t0=0.03, t1=0.9, at=0.0, gain_db=0, fout=0.25, start=True),
+                   dict(name="Click_Deep_Mechanism_Latch", t0=0.0, t1=0.30, at=0.0, gain_db=-5, semis=-3)],
+        "double": [dict(name="Explosion_Small_Blast_Enemy_Death", t0=0.0, t1=0.6, at=0.0, gain_db=0, semis=4),
+                   dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.47, at=0.02, gain_db=-5, semis=-5, start=True)],
+        "land": [dict(name="Punch_Body_02", t0=0.16, t1=0.46, at=0.0, gain_db=0, semis=-6),
+                 dict(name="Click_Deep_Mechanism_Latch", t0=0.0, t1=0.30, at=0.04, gain_db=-5, semis=-4),
+                 dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.47, at=0.08, gain_db=-4, semis=-7, start=True)],
+    }),
+    "B": ("Rocket boots: a clean jet blast off the ground, a higher second blast on the double jump, a heavy ringing thud on the landing", {
+        "launch": [dict(name="Blast_Off_Clean", t0=3.0, t1=3.8, at=0.0, gain_db=0, fin=0.01, fout=0.25, start=True)],
+        "double": [dict(name="Blast_Off_Clean", t0=3.0, t1=3.6, at=0.0, gain_db=0, semis=3, fin=0.01, fout=0.2, start=True),
+                   dict(name="Explosion_Small_Blast_Enemy_Death", t0=0.0, t1=0.4, at=0.0, gain_db=-6, semis=5)],
+        "land": [dict(name="Metal_Hit_Thud_Thump_Low_Ring", t0=0.0, t1=0.7, at=0.0, gain_db=0, lp=1400),
+                 dict(name="Woosh_Debris", t0=0.55, t1=1.0, at=0.04, gain_db=-8)],
+    }),
+    "C": ("Spring steel: a springy boing on the jump, a higher boing on the double jump, a wooden thump with dirt on the landing", {
+        "launch": [dict(name="Vibrato_Impact_Snap_Spin", t0=0.0, t1=0.8, at=0.0, gain_db=0, semis=-4)],
+        "double": [dict(name="Vibrato_Impact_Snap_Spin", t0=0.0, t1=0.7, at=0.0, gain_db=0, semis=-1)],
+        "land": [dict(name="Wooden_Hit_Dark_Heavy_Hit", t0=27.26, t1=27.9, at=0.0, gain_db=0, semis=-1),
+                 dict(name="Woosh_Debris", t0=0.55, t1=1.03, at=0.04, gain_db=-6)],
+    }),
+}
+LOOPS = {("headbutt", "charge"): 0.6, ("dash", "burn"): 1.0, ("visor", "field"): 1.0, ("med", "hum"): 1.0}
 MAXLEN = {("hook", "reel"): 1.2, ("dash", "blast"): 0.9, ("blood", "pact"): 1.1}
 meta = {}
 for mv, opts in SETS.items():
