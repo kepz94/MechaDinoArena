@@ -1,4 +1,4 @@
-# build_pachy_sound_pick.py v0.5 (Mecha Dino Arena) — builds the Pachy sound pick page (MDA-552, sound pass round 11): the Pachy
+# build_pachy_sound_pick.py v0.6 (Mecha Dino Arena) — builds the Pachy sound pick page (MDA-552, sound pass round 11): the Pachy
 # move storyboard (pachy_moves_anim.js, every move on its A version, the one in the game: Kepu 2026-11-05 "A for everything")
 # with an A / B / C sound panel per move, a pick row and the copy-picks bar (as build_teno_sound_pick.py 0.2). Picking an
 # option restarts the move and plays each part on its beat; while a sound plays, the storyboard is stepped to the audio clock
@@ -13,7 +13,9 @@
 # v0.4 (Kepu 2026-11-17 11:13 "the double jump should have the jump sound just play again"): the jump plays again at the
 #   double jump (0.42 s), GameSounds 1.13.
 # v0.5 (Kepu 2026-11-17 11:17 hook C + "add the headbutt sound at the end when the dino is reeled in"): every hook option
-#   ends with the headbutt hit at the smash (0.786 s), GameSounds 1.14. Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_pachy_v2_sfx.py.
+#   ends with the headbutt hit at the smash (0.786 s), GameSounds 1.14.
+# v0.6 (Kepu 2026-11-17 11:31 "It has dust and steam but not a fucking skid to a stop like the animation"): the dash's end part
+#   is a steam hiss (+ dust), not a skid; the storyboard's skid-to-a-stop is not what the game shows. Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_pachy_v2_sfx.py.
 import base64, json, os, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -120,8 +122,8 @@ const PLAN = {
     game: "In the game: at the lift-off (the press + the 0.12 s crouch), and again the moment the double jump fires, heard by everyone nearby."},
   hook: {mv: "hook", parts: () => [["fire", 0], ["reel", 0.286, 0.786], ["smash", 0.786]],
     game: "In the game: the fire 0.15 s before the claw flies (the brace), the reel from when the claw grabs until the head smash, and your headbutt hit on the smash. Here the target is 30 studs away."},
-  servodash: {mv: "dash", parts: () => [["blast", 0], ["burn", 0.31, 1.31], ["skid", 1.31]],
-    game: "In the game: the blast on the squat (it kicks off 0.06 s in), the burn while it sprints, the skid when the dash ends."},
+  servodash: {mv: "dash", parts: () => [["blast", 0], ["burn", 0.31, 1.31], ["steam", 1.31]],
+    game: "In the game: the blast on the squat (it kicks off 0.06 s in), the burn while it sprints, a steam hiss when the dash ends (the game shows dust and steam there; this storyboard's skid-to-a-stop is not in the game)."},
   visor: {mv: "visor", parts: () => [["up", 0], ["field", 0.10, 1.60], ["block", 0.80], ["down", 1.60]],
     game: "In the game: up on the press (the panels slam in at 0.10 s), the hum while the field is up, a block sound on every blocked hit, down when it ends."},
   ink: {mv: "ink", parts: () => [["fire", 0], ["splat", 0.325]],

@@ -4,7 +4,7 @@ beats are offsets inside it. Beat sheet: docs/sfx/PACHY_BEATS_v1.0.md (the game 
   hook   fire @ HookLaunchAt - 0.15: brace 0..0.15, the shot ON 0.15, chain paying out after | reel @ HookContactAt: the
          clamp ON 0, the winch, cut at HookSmashAt (the head smash keeps HookFX's sound)
   dash   blast @ ServoDashBlastAt - 0.06: squat 0..0.06, BLAST ON 0.06 | burn (loop) BlastAt + 0.25 .. ServoDashUntil |
-         skid @ ServoDashUntil
+         steam @ ServoDashUntil (the game shows dust + steam there, no skid)
   visor  up @ VisorStartedAt: panels slam ON 0.10 | field (loop) +0.10 .. VisorUntil | block @ VisorBlockAt | down @ VisorUntil
   ink    fire @ InkFireAt - 0.10: pump 0..0.10, the shot ON 0.10 | splat @ InkArriveAt at InkAimEnd
   tether cock @ the aim start | throw @ TetherStartedAt: the whip ON 0 | land @ TetherLandAt at TetherAnchor
@@ -150,29 +150,30 @@ SETS["hook"] = {
     }),
 }
 SETS["dash"] = {
-    "A": ("Hip rockets: a short charge whine, a rocket BLAST with a crack, a roaring reactor burn while it sprints, a gravel skid with a steam hiss", {
+    "A": ("Hip rockets: a short charge whine, a rocket BLAST with a crack, a roaring reactor burn while it sprints, a steam hiss with a dust puff as it stops", {
         "blast": [dict(name="ArcPowerUpDesign04", t0=4.48, t1=4.56, at=0.0, gain_db=-8, fin=0.05, fout=0.01),
                   dict(name="Blast_Off_Clean", t0=3.0, t1=3.9, at=0.06, gain_db=0, fin=0.01, fout=0.2, start=True),
                   dict(name="Explosion_Small_Blast_Enemy_Death", t0=0.0, t1=0.6, at=0.06, gain_db=-5, semis=2)],
         "burn": [dict(name="Scifi_Loop_Ship_Reactor", t0=20.0, t1=21.4, at=0.0, gain_db=-1),
                  dict(name="Wind_Whipping_Constricted_Flow", t0=1.0, t1=2.4, at=0.0, gain_db=-6)],
-        "skid": [dict(name="Tire_Skids_on_Gravel", t0=1.75, t1=2.3, at=0.0, gain_db=0, semis=-3, start=True, fout=0.12),
-                 dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.47, at=0.05, gain_db=-5, semis=-6)],
+        "steam": [dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.47, at=0.0, gain_db=0, semis=-6, start=True, fout=0.15),
+                  dict(name="Woosh_Debris", t0=0.55, t1=0.9, at=0.0, gain_db=-8, start=True)],
     }),
-    "B": ("Jet hop: a latch click, a bass-jump blast with steam, a buzzy jet whine while it sprints, a metal scrape stop", {
+    "B": ("Jet hop: a latch click, a bass-jump blast with steam, a buzzy jet whine while it sprints, a deep steam vent and a click as it stops", {
         "blast": [dict(name="Click_Deep_Mechanism_Latch", t0=0.0, t1=0.30, at=0.0, gain_db=-4, semis=-2),
                   dict(name="Jump_Start_Drop_3", t0=0.03, t1=1.0, at=0.06, gain_db=0, fout=0.25, start=True),
                   dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.47, at=0.06, gain_db=-4, semis=-4)],
         "burn": [dict(name="Quadcopter_Toy_Flying_Sustained", t0=2.0, t1=3.4, at=0.0, gain_db=-2, semis=-7)],
-        "skid": [dict(name="Large_Metal_Box_Drag", t0=10.0, t1=10.5, at=0.0, gain_db=0, semis=-2, start=True, fout=0.12),
-                 dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.47, at=0.0, gain_db=-6, semis=-7)],
+        "steam": [dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.47, at=0.0, gain_db=0, semis=-9, start=True, fout=0.2),
+                  dict(name="Click_Deep_Mechanism_Latch", t0=0.0, t1=0.30, at=0.0, gain_db=-8, semis=-4)],
     }),
-    "C": ("Motor sprint: a fiery whoosh-roar off the line, a racing engine pass while it sprints, a tire screech stop", {
+    "C": ("Motor sprint: a fiery whoosh-roar off the line, a racing engine pass while it sprints, a sharp steam hiss as it stops", {
         "blast": [dict(name="Barber_Chair_Foot_Pump", t0=0.20, t1=0.27, at=0.0, gain_db=-6, semis=-3, fout=0.01),
                   dict(name="Explosion_Small_Blast_Enemy_Death", t0=0.0, t1=0.6, at=0.06, gain_db=-2, semis=-2),
                   dict(name="Whoosh_Fire_Deep_Growl", t0=0.0, t1=1.0, at=0.08, gain_db=-3)],
         "burn": [dict(name="Kawasaki_Ninja_ZX_10R_Pass_By_Fast", t0=4.4, t1=5.8, at=0.0, gain_db=-1, semis=-5)],
-        "skid": [dict(name="Engine_Start_Tires_Skidding", t0=12.7, t1=13.3, at=0.0, gain_db=0, semis=-3, start=True, fout=0.15)],
+        "steam": [dict(name="Spray_Bottle_Spray", t0=0.0, t1=0.47, at=0.0, gain_db=-1, semis=-4, start=True, fout=0.15),
+                  dict(name="Wind_Whipping_Constricted_Flow", t0=1.0, t1=1.4, at=0.0, gain_db=-8, start=True, fout=0.2)],
     }),
 }
 SETS["visor"] = {
