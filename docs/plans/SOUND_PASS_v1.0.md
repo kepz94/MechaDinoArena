@@ -195,3 +195,14 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
   the bot held at its standing height until the press. Visor and Blood Rush have no bot (it was a bystander).
 - The storyboard page (build_pachy_sound_pick.py, last v0.7: the skid removed from Servo Dash A) is kept, not used.
 
+
+## Round 12 — Hardpoint voice callouts (2026-11-17)
+- Kepu 12:42 "I don't like the point sounds switching over and all that, it sounds stupid and does call of duty even do that?".
+  GameSounds 1.0 plays captured / lost / contested on every HpOcc change (only a 1 s gap per same sound), so a fight on the
+  point fires them over and over. Kepu picked "Voice callouts" (an announcer, not too often) and "Keep them" (the moving
+  warning, the 3-2-1 ticks and the go stay).
+- Lines match the HUD's status words: "Hardpoint secured." / "Enemy has the hardpoint." / "Hardpoint contested.". Three voices
+  (A Field radio, B Commander, C Mech AI), synthesized with Kokoro-82M (Apache-2.0), recipe docs/sfx/gen_point_vo.sh; page
+  tools/mockup/build_point_voice_pick.py v1.0. Sound Pick Board version 23.
+- Planned rules (shown on the page): speak only once the new state has held about 1 s, a few seconds between callouts, never
+  the same line twice in a row; 2D, only you. Built after Kepu picks a voice.
