@@ -1,6 +1,7 @@
 #!/bin/bash
-# gen_point_vo.sh v1.1 (Mecha Dino Arena) — the Hardpoint voice callouts (MDA-552, sound pass round 12); v1.1: the match intro
-# lines in voice A (round 13, MDA_SFX_vo_intro<n>.wav). Lines synthesized with
+# gen_point_vo.sh v1.2 (Mecha Dino Arena) — the Hardpoint voice callouts (MDA-552, sound pass round 12); v1.1: the match intro
+# lines in voice A (round 13, MDA_SFX_vo_intro<n>.wav); v1.2: the post-game title lines, voice A, radio R and stadium S
+# (round 14, MDA_SFX_vt_<title><n>_<R|S>.wav). Lines synthesized with
 # Kokoro-82M (Apache-2.0; kokoro-onnx, model-files-v1.0 from github.com/thewh1teagle/kokoro-onnx releases), then trimmed,
 # styled and levelled with ffmpeg (-14 LUFS, -1 dBTP, mono 48 kHz). Usage: gen_point_vo.sh <kokoro.onnx> <voices.bin> <out dir>
 # Needs tools/mockup's sibling script say.py (below, written to a temp dir) and: pip install kokoro-onnx soundfile.
@@ -40,3 +41,29 @@ F="highpass=f=320,lowpass=f=3300,acompressor=threshold=-18dB:ratio=4:attack=5:re
 for i in 1 2 3 4 5; do
   ffmpeg -v error -y -i "$T/raw_intro/intro$i.wav" -af "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.02,areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05,areverse,$F,loudnorm=I=-14:TP=-1:LRA=7,aresample=48000" -ac 1 -c:a pcm_s16le "$OUT/MDA_SFX_vo_intro$i.wav"
 done
+# v1.2 the post-game title lines (round 14), voice A (am_michael 1.05), three per VictoryTitles 1.1 title, two treatments:
+# R = the radio style above, S = clean with a big stadium echo
+python3 -I "$T/say.py" "$M" "$V" "$T/raw_titles" am_michael 1.05 \
+  "apex1=Apex Predator! Top of the food chain!" "apex2=Apex Predator! Nothing on this island eats you." \
+  "apex3=Apex Predator! The whole lobby is on the menu." \
+  "king1=King of the Hill! Wouldn't get off the point!" "king2=King of the Hill! That point has a new owner." \
+  "king3=King of the Hill! Planted, and refused to move." \
+  "unkill1=Unkillable! The asteroid missed. Again." "unkill2=Unkillable! They threw everything, and it didn't matter." \
+  "unkill3=Unkillable! Somebody check that health bar. It's broken." \
+  "medic1=Medic! Patched up the whole team!" "medic2=Medic! Kept the whole squad in the fight." \
+  "medic3=Medic! Nobody stays down on this watch." \
+  "masher1=Button Masher! Never met a cooldown it liked!" "masher2=Button Masher! Every upgrade, every second." \
+  "masher3=Button Masher! Those buttons are smoking." \
+  "extinct1=Extinct. Died the most. Again." "extinct2=Extinct. The respawn screen is your best friend." \
+  "extinct3=Extinct. Somebody put this one in a museum." \
+  "carried1=Carried! Packed up, and carried to the win." "carried2=Carried! Thank your team for the free ride." \
+  "carried3=Carried! Feet up, trophy in hand." \
+  "pacifist1=Pacifist! Won without hurting a fly." "pacifist2=Pacifist! Zero damage. Full victory." \
+  "pacifist3=Pacifist! Peace was the only option."
+FR="highpass=f=320,lowpass=f=3300,acompressor=threshold=-18dB:ratio=4:attack=5:release=60,asoftclip=type=tanh:param=1.6,volume=1.2"
+FS="highpass=f=80,equalizer=f=3000:t=q:w=1:g=3,acompressor=threshold=-20dB:ratio=4:attack=3:release=80,apad=pad_dur=0.6,aecho=0.8:0.7:60|120|190:0.32|0.22|0.14"
+TRIM="silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.02,areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05,areverse"
+for t in apex king unkill medic masher extinct carried pacifist; do for i in 1 2 3; do
+  ffmpeg -v error -y -i "$T/raw_titles/$t$i.wav" -af "$TRIM,$FR,loudnorm=I=-14:TP=-1:LRA=7,aresample=48000" -ac 1 -c:a pcm_s16le "$OUT/MDA_SFX_vt_$t${i}_R.wav"
+  ffmpeg -v error -y -i "$T/raw_titles/$t$i.wav" -af "$FS,$TRIM,loudnorm=I=-14:TP=-1:LRA=7,aresample=48000" -ac 1 -c:a pcm_s16le "$OUT/MDA_SFX_vt_$t${i}_S.wav"
+done; done

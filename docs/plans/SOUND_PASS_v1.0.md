@@ -215,3 +215,13 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
   with the pan at 9 s left and ending before the first tick; pick one or several (several: a different one each match).
 - Recipe docs/sfx/gen_point_vo.sh v1.1; page tools/mockup/build_intro_voice_pick.py v1.0. Sound Pick Board version 24.
 - 13:02 picks lines 1 and 2 -> GameSounds 1.17 (VERSIONS.md). Not published yet.
+
+## Round 14 — post-game title voice lines (2026-11-17)
+- Kepu 13:05 "How about some voice lines during the post game titles for the winning team. Couple for each title to make them
+  really pop out". The titles are VictoryTitles 1.1 (HpTitles from the server; each title shows for its len, about 5.5 s, the
+  lower third slams in at 0.3 s). Planned: the announcer says the title as it slams in, 2D.
+- Three lines per title (24) in voice A, two treatments: R radio (the point-callout voice) and S stadium (clean, big echo);
+  1.7-4.1 s, so each fits inside its title. Keep two or more per title and a show picks one at random.
+- Recipe docs/sfx/gen_point_vo.sh v1.2; page tools/mockup/build_title_voice_pick.py v1.0. Sound Pick Board version 25.
+- Waiting on Kepu's picks.
+
