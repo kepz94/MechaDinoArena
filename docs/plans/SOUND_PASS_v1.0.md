@@ -170,3 +170,9 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
 - Found while reading for the beat sheet: GameSounds 1.8's tleap listens to TenoLeapStartedAt, which TenoMovesServer only
   stamps on the old button path; the JUMP leap (TenoLeapOnJump) never stamps it, so the live launch sound likely never
   plays. The round 10 wiring anchors the launch to the JUMP leap's own start (to verify in Studio before the build).
+
+## Round 11 — Pachy rebuilt against the animation (2026-11-17)
+- Beat sheet docs/sfx/PACHY_BEATS_v1.0.md (7 moves: Hook, Servo Dash, Dome Visor, Ink Shooter, Tether Spike, Blood Rush,
+  Med-Station; Headbutt / Leap keep their sounds, Last Stand / Head Down are passives).
+- Recipe docs/sfx/gen_pachy_v2_sfx.py; page tools/mockup/build_pachy_sound_pick.py v0.1 (the Pachy storyboard is
+  event-driven, so it is stepped to the audio clock with hit-stops skipped). Sound Pick Board version 16.
