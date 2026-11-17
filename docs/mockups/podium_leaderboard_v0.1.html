@@ -1,0 +1,123 @@
+<title>Podium &amp; Leaderboards</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap">
+<style>
+:root{--bg:#0d1220;--panel:#151c2e;--panel2:#1c2540;--line:#2a3556;--fg:#e9eefb;--mut:#9aa6c4;--gold:#ffd25a;--silver:#c9d3e0;--bronze:#d99a62;--blue:#4aa8ff;--red:#ff6b84;--yellow:#ffd84a;--green:#5be08a;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 Inter,system-ui,sans-serif;margin:0}
+.wrap{max-width:980px;margin:0 auto;padding-block:24px 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:"Space Grotesk",Inter,sans-serif;text-wrap:balance;margin:0}
+h1{font-size:30px}h2{font-size:21px;margin-top:36px}h3{font-size:16px}
+.lede{color:var(--mut);max-width:64ch}
+.facts{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-top:14px;color:var(--mut);font-size:14px}
+.facts b{color:var(--fg)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px}
+.opt{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;cursor:pointer;min-width:0}
+.opt:has(input:checked){border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,216,74,.15)}
+.opt input{accent-color:var(--yellow);width:18px;height:18px}
+.opt .top{display:flex;align-items:center;gap:8px}
+.opt p{margin:0;color:var(--mut);font-size:14px}
+.rec{font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--yellow);color:#1a1400;border-radius:999px;padding:2px 8px;font-weight:700}
+.screen{background:linear-gradient(180deg,#2b3f6e,#121a30);border-radius:10px;aspect-ratio:16/9;position:relative;overflow:hidden;max-width:100%}
+.lbl{position:absolute;top:8px;left:0;right:0;text-align:center;font:700 14px "Space Grotesk";letter-spacing:.08em}
+.pod{position:absolute;bottom:10%;left:50%;transform:translateX(-50%);display:flex;align-items:flex-end;gap:6px}
+.step{width:62px;border-radius:6px 6px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;color:#141414;font:700 13px "Space Grotesk";padding-bottom:4px;position:relative}
+.dino{position:absolute;bottom:100%;margin-bottom:3px;width:30px;height:34px;border-radius:12px 12px 6px 6px;background:#7fc06a;box-shadow:inset 0 -6px 0 rgba(0,0,0,.25)}
+.tag{position:absolute;bottom:calc(100% + 40px);white-space:nowrap;font:600 10px Inter;color:var(--fg);background:rgba(0,0,0,.45);padding:1px 5px;border-radius:4px}
+.s1{height:56px;background:var(--gold)}.s2{height:40px;background:var(--silver)}.s3{height:28px;background:var(--bronze)}
+.conf{position:absolute;inset:0;background-image:radial-gradient(var(--yellow) 1.5px,transparent 2px),radial-gradient(var(--red) 1.5px,transparent 2px),radial-gradient(var(--blue) 1.5px,transparent 2px);background-size:40px 34px,52px 44px,46px 38px;background-position:0 0,14px 9px,26px 20px;opacity:.55}
+.cards{position:absolute;inset:26px 10% 12px;display:flex;gap:8px;justify-content:center}
+.card{flex:0 1 34%;border:2px solid var(--gold);border-radius:8px;background:rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:4px;font:600 10px Inter;position:relative}
+.card.sv{border-color:var(--silver)}
+.board{background:var(--panel2);border-radius:10px;padding:10px;font-size:12px;min-width:0}
+.board table{width:100%;border-collapse:collapse}
+.board td{padding:3px 4px;border-bottom:1px solid var(--line)}
+.board td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.board tr.me td{color:var(--yellow);font-weight:600}
+.tabs{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap}
+.tabs span{font:700 11px "Space Grotesk";padding:2px 8px;border-radius:999px;background:var(--line);color:var(--mut)}
+.tabs span.on{background:var(--yellow);color:#1a1400}
+.world{background:linear-gradient(180deg,#7ec7ff 0 55%,#4f9a4a 55%);border-radius:10px;aspect-ratio:16/9;position:relative;overflow:hidden}
+.bb{position:absolute;left:18%;right:18%;top:10%;bottom:22%;background:#101827;border:4px solid #3a4560;border-radius:6px;padding:6px;font-size:10px;color:var(--fg)}
+.bb b{font-family:"Space Grotesk"}
+.post{position:absolute;bottom:8%;width:8px;height:16%;background:#3a4560}
+.chk{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.chk label{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.chk label:has(input:checked){border-color:var(--yellow)}
+.chk input{accent-color:var(--yellow);width:18px;height:18px;flex:none;margin-top:2px}
+.chk small{display:block;color:var(--mut)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(13,18,32,.96);border-top:1px solid var(--line);padding-block:12px calc(12px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+#out{flex:1 1 260px;min-width:0;font:13px ui-monospace,Menlo,monospace;color:var(--yellow);word-break:break-word}
+button.copy{background:var(--yellow);color:#1a1400;border:0;border-radius:8px;font:700 14px "Space Grotesk";padding:10px 16px;cursor:pointer}
+</style>
+<div class="wrap">
+<h1>Podium &amp; Leaderboards</h1>
+<p class="lede">Pick one look for the victory podium and one for the leaderboards, then the stats and the test-mode question. Tap "Copy picks" and paste them back to Claude.</p>
+<div class="facts"><b>What the game has today:</b> the end screen plays a VICTORY / DEFEAT banner (2 s), then MVP + SVP cards with each player's dino in a little window (6 s), then the scoreboard with K, D and time on point. Arena wins and losses are already saved for every player. Kills are only counted for the current session (not saved yet). Every player currently gets every part maxed out (a test setting).</div>
+
+<h2>1 · Victory podium</h2>
+<div class="opts">
+<label class="opt"><div class="top"><input type="radio" name="podium" value="A"><h3>A · Top 3 on a podium</h3><span class="rec">Recommended</span></div>
+<div class="screen"><div class="lbl" style="color:var(--yellow)">VICTORY</div><div class="conf"></div>
+<div class="pod"><div class="step s2"><div class="dino" style="background:#6fa8e0"></div><div class="tag">Kiwi · 7 K</div>2</div><div class="step s1"><div class="dino"></div><div class="tag">★ BloxSolid · 11 K</div>1</div><div class="step s3"><div class="dino" style="background:#d59ad8"></div><div class="tag">Vex · 5 K</div>3</div></div></div>
+<p>Replaces the MVP/SVP cards: the camera cuts to a real 3D podium with the match's top 3 players' actual dinos on gold, silver and bronze steps, doing a victory pose. Name, dino and kills over each. About 6 s, then the scoreboard.</p></label>
+<label class="opt"><div class="top"><input type="radio" name="podium" value="B"><h3>B · Winning team on stage</h3></div>
+<div class="screen"><div class="lbl" style="color:var(--blue)">BLUE WINS</div><div class="conf"></div>
+<div class="pod"><div class="step s3" style="background:var(--blue);width:46px"><div class="dino" style="background:#6fa8e0"></div></div><div class="step s2" style="background:var(--blue);width:46px"><div class="dino" style="background:#e0b46f"></div></div><div class="step s1" style="width:52px"><div class="dino"></div><div class="tag">★ MVP</div></div><div class="step s2" style="background:var(--blue);width:46px"><div class="dino" style="background:#d59ad8"></div></div></div></div>
+<p>The whole winning team (up to 4) lined up on a stage, MVP on the high middle step, confetti. Losers aren't shown. Same 6 s slot.</p></label>
+<label class="opt"><div class="top"><input type="radio" name="podium" value="C"><h3>C · Keep the cards, add steps</h3></div>
+<div class="screen"><div class="lbl" style="color:var(--yellow)">VICTORY</div>
+<div class="cards"><div class="card"><div class="dino" style="position:static;margin-bottom:6px"></div>MVP · BloxSolid</div><div class="card sv"><div class="dino" style="position:static;margin-bottom:6px;background:#6fa8e0"></div>SVP · Kiwi</div></div></div>
+<p>Smallest change: today's MVP/SVP cards get a gold and silver step under each dino and a victory pose. No new 3D scene.</p></label>
+</div>
+
+<h2>2 · Where the leaderboards live</h2>
+<div class="opts">
+<label class="opt"><div class="top"><input type="radio" name="where" value="A"><h3>A · Big board on the island</h3></div>
+<div class="world"><div class="post" style="left:24%"></div><div class="post" style="right:24%"></div>
+<div class="bb"><b>TOP PLAYERS · ARENA WINS</b><table style="width:100%;font-size:9px"><tr><td>1 Raptorlord</td><td style="text-align:right">212</td></tr><tr><td>2 Kiwi</td><td style="text-align:right">188</td></tr><tr><td>3 Vex</td><td style="text-align:right">150</td></tr><tr><td style="color:var(--yellow)">#41 You</td><td style="text-align:right;color:var(--yellow)">32</td></tr></table></div></div>
+<p>A large screen near the island spawn, like most top Roblox games. Top 10, flips between the stats every 8 s; your own rank at the bottom.</p></label>
+<label class="opt"><div class="top"><input type="radio" name="where" value="B"><h3>B · LEADERBOARD in the menu</h3></div>
+<div class="board"><div class="tabs"><span class="on">WINS</span><span>KILLS</span><span>STREAK</span><span>WEEK</span></div>
+<table><tr><td>1</td><td>Raptorlord</td><td>212</td></tr><tr><td>2</td><td>Kiwi</td><td>188</td></tr><tr><td>3</td><td>Vex</td><td>150</td></tr><tr><td>4</td><td>Flint</td><td>131</td></tr><tr class="me"><td>41</td><td>You</td><td>32</td></tr></table></div>
+<p>A LEADERBOARD button on the main menu opens a full panel with tabs, top 50 and your rank. Easiest to read on a phone.</p></label>
+<label class="opt"><div class="top"><input type="radio" name="where" value="C"><h3>C · Both</h3><span class="rec">Recommended</span></div>
+<div class="world" style="aspect-ratio:auto;padding:10px"><div class="board" style="opacity:.95"><div class="tabs"><span class="on">WINS</span><span>KILLS</span></div><table><tr><td>1</td><td>Raptorlord</td><td>212</td></tr><tr class="me"><td>41</td><td>You</td><td>32</td></tr></table></div></div>
+<p>The island board for show (top 10, everyone sees it while walking around) plus the menu panel for the full list and your rank.</p></label>
+</div>
+
+<h2>3 · What gets ranked</h2>
+<div class="chk" data-name="stats">
+<label><input type="checkbox" value="wins" checked><span>Arena wins<small>Already saved for everyone, so the board starts with real history.</small></span></label>
+<label><input type="checkbox" value="kills" checked><span>Kills<small>New: saved from the day this goes live (kills before then aren't stored).</small></span></label>
+<label><input type="checkbox" value="streak"><span>Best win streak<small>Highest streak a player has reached (the current streak is already tracked).</small></span></label>
+<label><input type="checkbox" value="level"><span>Highest dino level<small>From the dino XP levels.</small></span></label>
+</div>
+
+<h2>4 · Time frame</h2>
+<div class="chk" data-name="period">
+<label><input type="radio" name="period" value="alltime"><span>All-time only</span></label>
+<label><input type="radio" name="period" value="weekly+alltime" checked><span>All-time + a weekly board that resets every Monday<small>Keeps new players in the race. Recommended.</small></span></label>
+</div>
+
+<h2>5 · The "everything maxed" test setting</h2>
+<p class="lede">Right now every player gets every part maxed out. With that on, rankings are mostly about who plays most, not who unlocked what.</p>
+<div class="chk" data-name="maxall">
+<label><input type="radio" name="maxall" value="off-at-launch" checked><span>Turn it off when the leaderboards go live<small>Players then unlock parts normally. Recommended.</small></span></label>
+<label><input type="radio" name="maxall" value="keep"><span>Keep it on and rank anyway</span></label>
+<label><input type="radio" name="maxall" value="later"><span>Decide later (I'll build with it on)</span></label>
+</div>
+</div>
+<div class="bar"><div id="out"></div><button class="copy" id="copy">Copy picks</button></div>
+<script>
+const out=document.getElementById('out');
+function picks(){
+ const v=n=>{const e=document.querySelector('input[name="'+n+'"]:checked');return e?e.value:'?'};
+ const st=[...document.querySelectorAll('[data-name="stats"] input:checked')].map(e=>e.value).join('+')||'none';
+ return 'podium '+v('podium')+', board '+v('where')+', stats '+st+', time '+v('period')+', maxed '+v('maxall');
+}
+function upd(){out.textContent=picks()}
+document.addEventListener('change',upd);upd();
+document.getElementById('copy').addEventListener('click',async()=>{
+ const t=picks();try{await navigator.clipboard.writeText(t);out.textContent='Copied: '+t}catch(e){const r=document.createRange();r.selectNodeContents(out);const s=getSelection();s.removeAllRanges();s.addRange(r)}
+});
+</script>
