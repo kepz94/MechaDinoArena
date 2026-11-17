@@ -1,4 +1,4 @@
-# build_results_show_mock.py v1.0 (Mecha Dino Arena) — the end-of-match presentation mockup: the game's own show, recorded
+# build_results_show_mock.py v1.1 (Mecha Dino Arena) — the end-of-match presentation mockup: the game's own show, recorded
 # in Studio, with the proposed audio laid over it (MDA-552; Kepu 2026-11-17 13:18 "Send me a mock up of the actual
 # presentation that we have plus all the new stuff we're proposing to add on to it so I can see it for myself").
 # Inputs (none of them in the repo):
@@ -12,6 +12,13 @@
 # window, so its frames came at about 15 a second and VictoryTitles caps each step at 0.05 s); each title's recorded
 # animation is stretched back to its real length (VictoryTitles.LEN) and holds its last frame to the end of its slot, as
 # the game does. The lower third's slam keeps real time (it runs on the clock, not the step).
+# v1.1 (round 15; Kepu 15:05 "Nah these are ass, I think it would be better to have better music and sound effects during these",
+#   15:10 "Clown music for the crappy title cards and hero music for the good ones" / "With the appropriate sound effects"):
+#   the commander lines, the placeholder music and the losing-side preview are gone. Proposed = the win sting + crowd and
+#   fireworks + a sound effect on every beat of every title (docs/sfx/gen_titles_sfx.py, Sonniss GDC 2026; <audio dir> holds
+#   MDA_SFX_win.wav and the MDA_SFX_vt_<cue>.wav renders) + a music lane: hero music under the good titles, clown music under
+#   the roasts, from Roblox's licensed APM library (it plays only inside Roblox, so the page lists each candidate with its
+#   Creator Store link to listen to, and the lane shows where it would play).
 # Usage: python3 -I tools/mockup/build_results_show_mock.py <rec dir> <audio dir> <out.html>
 import base64, json, math, os, subprocess, sys, tempfile
 rec_dir, aud_dir, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -71,21 +78,35 @@ def mp3(path, kbps=96):
     subprocess.check_call(["ffmpeg", "-v", "error", "-y", "-i", path, "-ac", "1", "-ar", "44100", "-c:a", "libmp3lame", "-b:a", f"{kbps}k", o])
     return "data:audio/mpeg;base64," + base64.b64encode(open(o, "rb").read()).decode()
 A = lambda n: os.path.join(aud_dir, n)
-snd = {"win": mp3(A("MDA_SFX_win.wav")), "lose": mp3(A("MDA_SFX_lose.wav")),
-       "mus_vi": mp3(A("MDA_MUS_victory_intro.wav"), 128), "mus_vl": mp3(A("MDA_MUS_victory_loop.wav"), 128),
-       "mus_dl": mp3(A("MDA_MUS_defeat_loop.wav"), 128)}
-for v in "AB":
-    for k in ("win", "lose"):
-        for n in (1, 2, 3): snd[f"{k}{n}_{v}"] = mp3(A(f"MDA_SFX_vr_{k}{n}_{v}.wav"))
-    for t in ("apex", "masher", "extinct", "carried"):
-        for n in (1, 2, 3): snd[f"{t}{n}_{v}"] = mp3(A(f"MDA_SFX_vt_{t}{n}_{v}.wav"))
-LINES = {"win": ["Mission accomplished.", "Good work. Match is ours.", "Victory. Well fought."],
-         "lose": ["Mission failed.", "We lost this one. Regroup.", "Fall back. Regroup."]}
-cl = {}
-for l in open(os.path.join(aud_dir, "cmd_lines.txt")):
-    if "=" in l: k, v = l.strip().split("=", 1); cl[k] = v
-for t in ("apex", "masher", "extinct", "carried"): LINES[t] = [cl[f"{t}{n}"] for n in (1, 2, 3)]
-
+snd = {"win": mp3(A("MDA_SFX_win.wav"))}
+import glob, numpy as np, soundfile as sf
+RMS = {}
+for f in sorted(glob.glob(A("MDA_SFX_vt_*.wav"))):
+    cue = os.path.basename(f)[len("MDA_SFX_vt_"):-4]
+    if any(cue.startswith(t) for t in ("apex", "mash", "ext", "car", "res", "board", "slam")) and not cue[-1].isdigit() and not cue.endswith(("_A", "_B")):
+        snd[cue] = mp3(f, 112)
+        x, _ = sf.read(f); h = 2400
+        r = np.array([np.sqrt(np.mean(x[i * h:(i + 1) * h] ** 2)) for i in range(max(1, len(x) // h))]); act = r[r > r.max() * 0.1]
+        RMS[cue] = round(float(20 * np.log10(np.sqrt(np.mean(act ** 2)) + 1e-9)), 1)
+# music candidates (Roblox Creator Store, APMOfficial; length = Sound.TimeLength in Studio 2026-11-17)
+MUSIC = {
+    "hero": [[1839895012, "All Action Hero (f)", 6.6, "Driving, relentless orchestral punctuation"],
+             [9042409054, "Day Of The Election Sting 2", 6.0, "Brass fanfare sting"],
+             [1848016523, "Global Success StingA", 8.0, ""],
+             [95493370982599, "Herald of Freedom (Sting 1)", 10.9, ""],
+             [1835295052, "Forging The Army StingA", 11.0, ""],
+             [94745027512855, "Wings of Destiny (Sting 2)", 12.5, ""],
+             [1848014986, "The Ultimate Challenge StingA", 12.0, ""],
+             [1839432165, "Triumph", 11.1, ""]],
+    "clown": [[9046171154, "Clown Parade Sting 1", 7.2, "Circus band sting (Happy Antics 2)"],
+              [9046171148, "Clown Parade Sting 2", 7.0, "Circus band, unresolved sting"],
+              [9046172786, "Circus And Clowns Link", 12.5, "Circus link / bumper"],
+              [9046171151, "Clown Parade Link", 11.7, "Circus band, unresolved link"],
+              [9046173035, "Circus And Clowns Sting 2", 4.9, "Short circus sting"],
+              [9046174316, "Round Up Round Up Link 2", 10.4, "Kitsch circus link"],
+              [9042030749, "Cheerful Tuba", 14.5, "Lively tuba, strings, mallets; cartoon comedy"],
+              [1846070982, "Funny Cut D3", 12.6, ""]],
+}
 HTML = r"""<meta charset="utf-8">
 <title>Results Show Mockup</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -154,10 +175,19 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 ul { margin: 0; padding-left: 18px; color: var(--grey); }
 li + li { margin-top: 4px; }
 .k { color: var(--muted); font-size: 13px; }
+.mrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+.mrow[data-on="true"] { border-color: var(--good); }
+.mrow a { color: var(--fg); font-weight: 800; text-decoration: none; }
+.mrow a:hover { text-decoration: underline; }
+.mrow small { display: block; color: var(--muted); font-size: 12px; }
+.mrow .tag { font: 800 11px var(--body); border-radius: 999px; padding: 2px 8px; color: #10131a; }
+.keep { font: 800 12px var(--body); color: var(--fg); background: var(--panel); border: 2px solid var(--line); border-radius: 9px; padding: 4px 10px; cursor: pointer; }
+.keep[aria-pressed="true"] { background: var(--good); border-color: var(--good); color: #062010; }
+#pickText { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
 </style>
 <main>
   <header>
-    <h1><span>End of match</span> · today's show + the proposed audio</h1>
+    <h1><span>End of match</span> · today's show + hero / clown music and sound effects</h1>
     <p class="lede">The picture is the game itself: recorded in Studio from a real practice match (you won 999 to 120), every part and every bit of on-screen text where the game drew it. Switch between what the game does today and the proposed version to hear the difference. Turn your sound on.</p>
   </header>
   <div class="mode" role="group" aria-label="Version">
@@ -182,20 +212,19 @@ li + li { margin-top: 4px; }
   <section class="tl" aria-label="Timeline">
     <div class="lane"><span>Screen</span><div class="track" id="tScreen"></div></div>
     <div class="lane"><span>Win sting</span><div class="track" id="tSting"></div></div>
-    <div class="lane"><span class="n">Result line</span><div class="track" id="tRes"></div></div>
-    <div class="lane"><span class="n">Victory music</span><div class="track" id="tMus"></div></div>
-    <div class="lane"><span class="n">Title lines</span><div class="track" id="tTit"></div></div>
+    <div class="lane"><span class="n">Crowd + fireworks</span><div class="track" id="tRes"></div></div>
+    <div class="lane"><span class="n">Title sound FX</span><div class="track" id="tTit"></div></div>
+    <div class="lane"><span class="n">Music (in game)</span><div class="track" id="tMus"></div></div>
   </section>
   <div class="cols">
     <section class="card newc" aria-label="The new layers">
       <h2>The new layers <span class="k">(each one its own switch in the game)</span></h2>
-      <label class="sw"><input type="checkbox" id="swRes" checked><span><b>Commander result line</b><small>Right after the win sting, while the VICTORY banner is up. Ends before the first title.</small></span></label>
-      <label class="sw"><input type="checkbox" id="swMus" checked><span><b>Victory music</b><small>Takes over from the island music for the whole results; fades out when the lobby comes back. Placeholder track (made for this page); the real one gets picked later.</small></span></label>
-      <label class="sw"><input type="checkbox" id="swTit" checked><span><b>Commander title lines</b><small>One line as each title slams in. Only the winning team hears them. Never two voices at once.</small></span></label>
-      <label class="sw"><input type="checkbox" id="swDuck" checked><span><b>Music dips under the voice</b><small>To about a third while the commander talks, back up after.</small></span></label>
-      <div class="bar"><span class="k">Commander</span>
-        <button class="btn" data-voice="A" aria-pressed="true">A · US</button><button class="btn" data-voice="B" aria-pressed="false">B · British</button></div>
-      <div class="picks" id="picks"></div>
+      <label class="sw"><input type="checkbox" id="swRes" checked><span><b>Crowd + fireworks</b><small>A cheer and a few fireworks under the VICTORY banner, and again under the scoreboard.</small></span></label>
+      <label class="sw"><input type="checkbox" id="swTit" checked><span><b>Title sound effects</b><small>A hit as each title card slams in (a big cinematic hit for the good titles, a cartoon snap for the roasts), then a sound on every beat of the animation: the pounce, the landing, the roar, every button press, the meteor, the bag zip...</small></span></label>
+      <h2>The music <span class="k">(plays in the game only)</span></h2>
+      <p class="k">Hero music under the good titles, clown music under the roasts; each piece starts when its title does and fades when the next one comes in. These are from Roblox's own licensed music library (free in any Roblox game), so they only play inside Roblox: press a name to hear it on the Creator Store, and keep the ones you like (keep a few and each show picks one at random). The yellow / pink lane above shows where they'd play.</p>
+      <div class="picks" id="musicPicks"></div>
+      <div class="bar"><code class="k" id="pickText"></code><button class="btn go" id="copy">Copy picks</button></div>
     </section>
     <section class="card" aria-label="What you're seeing">
       <h2>What you're seeing</h2>
@@ -203,18 +232,16 @@ li + li { margin-top: 4px; }
         <li><b>0–2 s</b> the HUD's VICTORY banner over the arena (the arena itself wasn't recorded, so it's a plain backdrop here).</li>
         <li><b>2–26 s</b> the four titles on the stage in the sky, exactly as recorded: APEX PREDATOR, BUTTON MASHER, EXTINCT, CARRIED.</li>
         <li><b>26–33 s</b> the scoreboard, then the lobby. The scoreboard is from a second run of the same test (in the first run Studio played the titles too slowly and they ran over it), so its numbers don't match the titles.</li>
-        <li>Today the island music (Bit Quest) keeps playing under all of this; it isn't in this page. In the proposed version it fades out at the end of the match.</li>
+        <li>Today the island music (Bit Quest) keeps playing under all of this; it isn't in this page. In the proposed version it fades out at the end of the match and the title music takes over.</li>
+        <li>The sound effects are real recordings (the Sonniss game audio bundle), timed to the animation's own beats in the game code.</li>
         <li>Recorded in Studio: Studio wasn't the focused window, so the titles ran slow there. This page plays each one at the game's real speed.</li>
       </ul>
-      <h2>The losing team</h2>
-      <p class="k">Same screens. They hear the lose sting, a defeat line and calmer music, and no title lines.</p>
-      <div class="bar"><button class="btn" id="loseB">▶ Hear the losing side</button><span class="k" id="loseL"></span></div>
     </section>
   </div>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-const META = __META__, BIN = "__BIN__", SND = __SND__, LINES = __LINES__;
+const META = __META__, BIN = "__BIN__", SND = __SND__, RMS = __RMS__, MUSIC = __MUSIC__;
 const $ = id => document.getElementById(id);
 // ---------- the show's timeline (game seconds from the end of the match) ----------
 const PRE = -1.0, BANNER = 2.0, S = [2.0, 7.7, 13.4, 19.5], SLOT = [5.7, 5.7, 6.1, 6.7], LEN = [5.4, 5.4, 5.8, 6.4];
@@ -370,56 +397,50 @@ let actx = null, master = null, musGain = null, live = [];
 const bufs = {};
 function ctx() { if (!actx) { actx = new (window.AudioContext || window.webkitAudioContext)(); master = actx.createGain(); master.connect(actx.destination); } if (actx.state === "suspended") actx.resume(); return actx; }
 function decode(k) { if (!bufs[k]) { const s = SND[k], b = atob(s.slice(s.indexOf(",") + 1)), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); bufs[k] = new Promise((ok, no) => actx.decodeAudioData(u.buffer, ok, no)); } return bufs[k]; }
-const VOL = {sting: 0.7, voice: 0.8, music: 0.4};
-let mode = "new", voice = "A", pick = {win: 0, apex: 0, masher: 0, extinct: 0, carried: 0};
-const sw = () => ({res: $("swRes").checked, mus: $("swMus").checked, tit: $("swTit").checked, duck: $("swDuck").checked});
+const VOL = {sting: 0.7};
+let mode = "new";
+const sw = () => ({res: $("swRes").checked, tit: $("swTit").checked});
 let DUR = {};
 async function loadAll() { ctx(); const ks = Object.keys(SND); const bs = await Promise.all(ks.map(decode)); ks.forEach((k, i) => DUR[k] = bs[i].duration); }
+// loudness targets (dB, active-part RMS) per cue; beds sit lower, the big moments higher
+const TARGET = {res_cheer: -21, res_fireworks: -21, board_cheer: -23, board_fireworks: -22, mash_sizzle: -27, apex_cheer: -20, mash_click: -21,
+  car_swish: -19, car_mmph: -19, apex_roar: -14, ext_impact: -13, slam_hero: -15, slam_roast: -16};
+const vol = k => Math.min(1, Math.pow(10, ((TARGET[k] ?? -17) - (RMS[k] ?? -17)) / 20));
+// the cue sheet: [cue, seconds into the title, playback rate] (beats from VictoryTitlesAnim 1.1)
+const BEATS = {
+  apex: [["apex_pounce", 1.05], ["apex_land", 1.48], ["apex_roar", 2.22], ["apex_cheer", 3.45]],
+  masher: [["mash_click", 0.78]].concat(Array.from({length: 15}, (_, k) => ["mash_click", 0.85 + (k + 0.45) / 7.2, 1 + 0.03 * k]))
+    .concat([["mash_sizzle", 2.1], ["mash_pop", 2.72], ["mash_fly", 3.1], ["mash_sad", 4.36], ["mash_wahwah", 4.6]]),
+  extinct: [["ext_happy", 0.05], ["ext_happy", 0.5, 1.12], ["ext_gulp", 1.0], ["ext_fall", 1.5], ["ext_impact", 2.22], ["ext_sign", 3.22], ["ext_ghost", 3.45]],
+  carried: [["car_bite", 0.7], ["car_swish", 1.0, 0.9], ["car_swish", 1.32, 1.0], ["car_swish", 1.6, 1.1], ["car_swish", 1.84, 1.2], ["car_swish", 2.05, 1.3],
+    ["car_fling", 1.58], ["car_dizzy", 2.4], ["car_poof", 2.6], ["car_bag", 2.95], ["car_zip", 3.85], ["car_mmph", 4.25], ["car_thump", 4.85], ["car_mmph", 5.3, 0.92]],
+};
 function plan() { // the events, in game seconds
   const s = sw(), ev = [];
   ev.push({lane: "sting", key: "win", at: 0, vol: VOL.sting, label: "win sting"});
   if (mode === "today") return ev;
-  let busy = -1;
-  if (s.res) { const k = `win${pick.win + 1}_${voice}`; ev.push({lane: "res", key: k, at: 0.3, vol: VOL.voice, voice: true, label: LINES.win[pick.win]}); busy = 0.3 + (DUR[k] || 1.5); }
-  if (s.tit) TITLES.forEach(([id, name], i) => {
-    const k = `${id}${pick[id] + 1}_${voice}`; let at = S[i] + 0.3; const d = DUR[k] || 3;
-    if (at < busy + 0.15) at = busy + 0.15; // one voice at a time
-    if (at > S[i] + 1.3) return; // too late: skipped
-    ev.push({lane: "tit", key: k, at, vol: VOL.voice, voice: true, label: `${name}: ${LINES[id][pick[id]]}`}); busy = at + d;
+  if (s.res) ev.push({lane: "res", key: "res_cheer", at: 0.0, label: "cheer"}, {lane: "res", key: "res_fireworks", at: 0.25, label: "fireworks"},
+    {lane: "res", key: "board_cheer", at: SHOW_END, label: "cheer"}, {lane: "res", key: "board_fireworks", at: SHOW_END + 0.2, label: "fireworks"});
+  if (s.tit) TITLES.forEach(([id, name, roast], i) => {
+    ev.push({lane: "tit", key: roast ? "slam_roast" : "slam_hero", at: S[i] + 0.3 - (roast ? 0.47 : 0.74), label: "slam"});
+    (BEATS[id] || []).forEach(([k, a, rate]) => ev.push({lane: "tit", key: k, at: S[i] + a, rate: rate || 1, label: k.split("_")[1]}));
   });
-  if (s.mus) ev.push({lane: "mus", key: "music", at: 1.0, end: END, label: "victory music"});
+  ev.forEach(e => { if (e.vol === undefined) e.vol = vol(e.key); });
+  TITLES.forEach(([id, name, roast], i) => ev.push({lane: "mus", key: "music", at: S[i], end: S[i] + SLOT[i], roast, label: roast ? "CLOWN" : "HERO"}));
   return ev;
 }
 let play = {on: false, g0: PRE, t0: 0, g: PRE, started: false};
-function stopAll() { live.forEach(n => { try { n.stop(); } catch (e) {} }); live = []; if (musGain) { try { musGain.disconnect(); } catch (e) {} musGain = null; } }
-function src(key, when, offset, gain, dest) { const b = bufs[key]; if (!b) return; b.then(buf => { if (!play.on && !loseOn) return; const s = actx.createBufferSource(); s.buffer = buf; const g = actx.createGain(); g.gain.value = gain; s.connect(g).connect(dest || master); s.start(when, offset); live.push(s); }); }
+function stopAll() { live.forEach(n => { try { n.stop(); } catch (e) {} }); live = []; }
+function src(key, when, offset, gain, rate) { const b = bufs[key]; if (!b) return; b.then(buf => { if (!play.on) return; const s = actx.createBufferSource(); s.buffer = buf; s.playbackRate.value = rate || 1; const g = actx.createGain(); g.gain.value = gain; s.connect(g).connect(master); s.start(when, offset); live.push(s); }); }
 function schedule() {
   stopAll(); if (!play.on) return;
   const ev = plan(), now = actx.currentTime, g = play.g;
   const at = x => now + Math.max(0, x - g);
   ev.forEach(e => {
-    if (e.key === "music") {
-      musGain = actx.createGain(); musGain.connect(master);
-      const G = musGain.gain, base = VOL.music;
-      G.setValueAtTime(0, now);
-      const fadeIn = e.at, fadeEnd = END - 1.5;
-      const lvl = x => (x < fadeIn ? 0 : x < fadeIn + 0.6 ? base * (x - fadeIn) / 0.6 : x < fadeEnd ? base : x < END ? base * (END - x) / 1.5 : 0);
-      G.setValueAtTime(lvl(g), now);
-      if (g < fadeIn + 0.6) G.linearRampToValueAtTime(base, at(fadeIn + 0.6));
-      const duck = sw().duck ? ev.filter(v => v.voice) : [];
-      duck.forEach(v => { const d = DUR[v.key] || 2; if (v.at + d < g) return; const a0 = Math.max(g, v.at - 0.12);
-        G.setValueAtTime(lvl(a0), at(a0)); G.linearRampToValueAtTime(base * 0.35, at(Math.max(a0, v.at))); G.setValueAtTime(base * 0.35, at(v.at + d)); G.linearRampToValueAtTime(lvl(v.at + d + 0.4), at(v.at + d + 0.4)); });
-      G.setValueAtTime(base, at(Math.max(g, fadeEnd))); G.linearRampToValueAtTime(0, at(END));
-      const iL = DUR.mus_vi || 3.64, lL = DUR.mus_vl || 7.27;
-      // intro then the loop
-      if (g < e.at + iL) src("mus_vi", at(e.at), Math.max(0, g - e.at), 1, musGain);
-      bufs.mus_vl.then(buf => { if (!play.on || !musGain) return; const s = actx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(musGain);
-        const st = e.at + iL; if (g < st) s.start(at(st)); else s.start(now, (g - st) % lL); live.push(s); });
-      return;
-    }
-    const d = DUR[e.key] || 2;
+    if (e.key === "music") return; // plays in the game only
+    const d = (DUR[e.key] || 2) / (e.rate || 1);
     if (e.at + d < g) return;
-    src(e.key, at(e.at), Math.max(0, g - e.at), e.vol);
+    src(e.key, at(e.at), Math.max(0, g - e.at) * (e.rate || 1), e.vol, e.rate);
   });
   drawLanes(ev);
 }
@@ -438,9 +459,9 @@ function render() {
   const seg = g < 0 ? "Match ends" : g < BANNER ? "VICTORY banner" : g < SHOW_END ? TITLES[m.i][1] : "Scoreboard";
   $("badge").textContent = `${mode === "today" ? "Today" : "Proposed"} · ${seg}`;
   document.querySelectorAll(".head").forEach(h => h.style.left = `${(g - PRE) / (END - PRE) * 100}%`);
-  // what the commander is saying right now
-  const ev = mode === "today" ? [] : plan().filter(e => e.voice && g >= e.at && g < e.at + (DUR[e.key] || 2));
-  $("sub").hidden = !ev.length; if (ev.length) $("sub").innerHTML = `<b>Commander:</b> ${ev[0].label.replace(/^[A-Z ]+: /, "")}`;
+  // which music would be playing in the game
+  const mu = mode === "today" ? null : plan().find(e => e.key === "music" && g >= e.at && g < e.end);
+  $("sub").hidden = !mu; if (mu) $("sub").innerHTML = `<b>${mu.roast ? "Clown" : "Hero"} music</b> plays here in the game`;
 }
 function frame() {
   if (play.on) { play.g = gNow(); if (play.g >= END) { play.g = END; pause(); } }
@@ -456,38 +477,37 @@ const pct = x => `${(Math.max(PRE, x) - PRE) / (END - PRE) * 100}%`, wid = (a, b
 function lane(el, segs) { el.innerHTML = segs.map(([a, b, c, l]) => `<div class="seg" style="left:${pct(a)};width:${wid(a, b)};background:${c}" title="${l}">${l}</div>`).join("") + `<div class="head"></div>`; }
 lane($("tScreen"), [[PRE, 0, "#3a4252", "match"], [0, BANNER, "#9fb6d6", "VICTORY"]].concat(TITLES.map(([, n, r], i) => [S[i], S[i] + SLOT[i], r ? "#ff9fc8" : "#ffd45a", n])).concat([[SHOW_END, END, "#9fb6d6", "Scoreboard"]]));
 function drawLanes(ev) {
-  const by = l => ev.filter(e => e.lane === l).map(e => [e.at, e.key === "music" ? e.end : e.at + (DUR[e.key] || 1.5), e.lane === "sting" ? "#ffc21a" : e.lane === "mus" ? "#7dff9a" : "#c9a8ff", e.lane === "tit" ? e.label.split(":")[0] : e.label]);
+  const col = e => e.lane === "sting" ? "#ffc21a" : e.lane === "res" ? "#7dff9a" : e.lane === "mus" ? (e.roast ? "#ff9fc8" : "#ffd45a") : "#c9a8ff";
+  const by = l => ev.filter(e => e.lane === l).map(e => [e.at, e.key === "music" ? e.end : e.at + Math.min(1.2, (DUR[e.key] || 1.0) / (e.rate || 1)), col(e), e.label]);
   lane($("tSting"), by("sting")); lane($("tRes"), by("res")); lane($("tMus"), by("mus")); lane($("tTit"), by("tit"));
 }
 document.querySelectorAll(".track").forEach(t => t.addEventListener("click", e => { const r = t.getBoundingClientRect(); const g = PRE + (e.clientX - r.left) / r.width * (END - PRE); if (!play.on && !play.started) { play.started = true; start(g); } else setG(g); }));
 // ---------- controls ----------
+let keep = {hero: [], clown: []};
+try { keep = JSON.parse(localStorage.getItem("mda_title_music_r15")) || keep; } catch (e) {}
 function picksUI() {
-  const rows = [["win", "Result line", false]].concat(TITLES.map(([id, n, r]) => [id, n, r]));
-  $("picks").innerHTML = rows.map(([id, n, r]) => `<div class="pk${r ? " roast" : ""}"><span>${n}</span><div class="opts">${LINES[id].map((l, i) => `<button data-pk="${id}" data-i="${i}" aria-pressed="${pick[id] === i}">${l}</button>`).join("")}</div></div>`).join("");
+  $("musicPicks").innerHTML = ["hero", "clown"].map(kind => `<h2 style="font-size:16px;color:${kind === "hero" ? "var(--yellow)" : "var(--pink)"}">${kind === "hero" ? "Hero music · good titles" : "Clown music · roasts"}</h2>` +
+    MUSIC[kind].map(([id, name, len, desc]) => { const on = keep[kind].includes(id); return `<div class="mrow" data-on="${on}"><span class="tag" style="background:${kind === "hero" ? "#ffd45a" : "#ff9fc8"}">${len.toFixed(1)} s</span>
+      <span><a href="https://create.roblox.com/store/asset/${id}" target="_blank" rel="noopener">${name} ↗</a><small>${desc || "APM Music"} · ${id}</small></span>
+      <button class="keep" data-kind="${kind}" data-id="${id}" aria-pressed="${on}">${on ? "Kept ✓" : "Keep"}</button></div>`; }).join("")).join("");
+  const nm = (kind) => keep[kind].map(id => MUSIC[kind].find(m => m[0] === id)[1]).join(" + ") || "?";
+  $("pickText").textContent = `Hero: ${nm("hero")} | Clown: ${nm("clown")}`;
 }
-$("picks").addEventListener("click", e => { const b = e.target.closest("[data-pk]"); if (!b) return; pick[b.dataset.pk] = +b.dataset.i; picksUI(); if (play.on) setG(gNow()); else drawLanes(plan()); });
-document.querySelectorAll("[data-voice]").forEach(b => b.onclick = () => { voice = b.dataset.voice; document.querySelectorAll("[data-voice]").forEach(x => x.setAttribute("aria-pressed", x === b)); if (play.on) setG(gNow()); });
-["swRes", "swMus", "swTit", "swDuck"].forEach(id => $(id).addEventListener("change", () => { if (play.on) setG(gNow()); else drawLanes(plan()); }));
+$("musicPicks").addEventListener("click", e => { const b = e.target.closest("[data-kind]"); if (!b) return; const k = b.dataset.kind, id = +b.dataset.id;
+  keep[k] = keep[k].includes(id) ? keep[k].filter(x => x !== id) : keep[k].concat(id); try { localStorage.setItem("mda_title_music_r15", JSON.stringify(keep)); } catch (err) {} picksUI(); });
+$("copy").addEventListener("click", () => {
+  const txt = $("pickText").textContent, btn = $("copy");
+  const done = ok => { btn.textContent = ok ? "Copied ✓" : "Select + copy the text"; setTimeout(() => btn.textContent = "Copy picks", 1800); };
+  const fb = () => { const r = document.createRange(); r.selectNodeContents($("pickText")); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r); let ok = false; try { ok = document.execCommand("copy"); } catch (err) {} done(ok); };
+  try { navigator.clipboard.writeText(txt).then(() => done(true), fb); } catch (err) { fb(); }
+});
+["swRes", "swTit"].forEach(id => $(id).addEventListener("change", () => { if (play.on) setG(gNow()); else drawLanes(plan()); }));
 function setMode(m) { mode = m; $("mToday").setAttribute("aria-pressed", m === "today"); $("mNew").setAttribute("aria-pressed", m === "new"); if (play.on) setG(gNow()); else drawLanes(plan()); }
 $("mToday").onclick = () => setMode("today"); $("mNew").onclick = () => setMode("new");
 $("startB").onclick = () => { play.started = true; start(PRE); };
 $("play").onclick = () => { if (play.on) pause(); else { play.started = true; start(play.g >= END ? PRE : play.g); } };
 $("restart").onclick = () => { play.started = true; if (play.on) setG(PRE); else start(PRE); };
 $("skip").onclick = () => { const g = play.on ? gNow() : play.g; const nx = S.find(s => s > g + 0.05); const to = nx !== undefined ? nx : SHOW_END; if (play.on) setG(to); else { play.g = to; render(); } };
-// the losing side, on its own
-let loseOn = false;
-$("loseB").onclick = async () => {
-  ctx(); if (!Object.keys(DUR).length) await loadAll();
-  pause(); loseOn = true;
-  const n = actx.currentTime, k = `lose${pick.win + 1}_${voice}`;
-  src("lose", n, 0, VOL.sting); src(k, n + 0.3, 0, VOL.voice);
-  musGain = actx.createGain(); musGain.connect(master); const G = musGain.gain; const d = DUR[k] || 1.5;
-  G.setValueAtTime(0, n); G.linearRampToValueAtTime(VOL.music, n + 1.6); if (sw().duck) { G.setValueAtTime(VOL.music, n + 1.0); }
-  G.setValueAtTime(VOL.music, n + 9); G.linearRampToValueAtTime(0, n + 10.5);
-  src("mus_dl", n + 1.0, 0, 1, musGain);
-  $("loseL").textContent = `lose sting · "${LINES.lose[pick.win]}" · defeat music`;
-  setTimeout(() => { if (loseOn) { loseOn = false; stopAll(); $("loseL").textContent = ""; } }, 10800);
-};
 picksUI(); drawLanes(plan());
 window.addEventListener("resize", render);
 play.g = 4.6; // first look: a title on screen behind the start button
@@ -498,6 +518,6 @@ window.__show = {seek(g) { play.g = g; render(); }, state: () => ({g: play.g, pa
 html = (HTML.replace("__META__", json.dumps(meta, separators=(",", ":")))
         .replace("__BIN__", base64.b64encode(bytes(rows)).decode())
         .replace("__SND__", json.dumps(snd))
-        .replace("__LINES__", json.dumps(LINES)))
+        .replace("__RMS__", json.dumps(RMS)).replace("__MUSIC__", json.dumps(MUSIC)))
 open(out_path, "w").write(html)
 print("ok", out_path, round(os.path.getsize(out_path) / 1e6, 2), "MB", "frames", F1, "rows", len(rows) // 18)

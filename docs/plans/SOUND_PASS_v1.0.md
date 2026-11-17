@@ -251,5 +251,19 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
 - Page tools/mockup/build_results_show_mock.py 1.0 (Results Show Mockup artifact): Today vs Proposed; switches for the
   result line, the victory music (placeholder, tools/mockup/gen_results_music.py 1.0), the title lines and the ducking;
   commander A / B; line picks; the losing side's audio on its own. Result lines in gen_point_vo.sh v1.4.
-- Waiting on Kepu.
+- 15:05 "Nah these are ass, I think it would be better to have better music and sound effects during these" -> round 15.
+
+## Round 15 — hero / clown music and sound effects on the title show (2026-11-17)
+- Kepu 15:05 "Nah these are ass, I think it would be better to have better music and sound effects during these"; 15:10
+  "Clown music for the crappy title cards and hero music for the good ones" / "With the appropriate sound effects". The
+  commander lines (rounds 14-14c) and the placeholder music are dropped from the proposal.
+- Sound effects: 31 cues from the Sonniss GDC 2026 bundle, one on every beat of APEX PREDATOR, BUTTON MASHER, EXTINCT and
+  CARRIED (the titles in the recording), a slam hit per title card (cinematic for the good ones, cartoon for the roasts),
+  crowd + fireworks under the banner and the scoreboard. Cue sheet docs/sfx/TITLES_SFX_v1.0.md, renders
+  docs/sfx/gen_titles_sfx.py v1.0 (trims from loudness every 0.1 s, checked by spectrogram).
+- Music: Roblox's licensed APM library (free in Roblox games; plays only inside Roblox). 8 hero and 8 clown candidates
+  (all load in Studio; lengths 4.9-14.5 s) listed with Creator Store links on the Results Show Mockup v1.1 for Kepu to
+  listen to and keep.
+- Waiting on Kepu's music picks and his word on the sound effects; then the other four titles get cued and it all goes in
+  the game behind switches.
 
