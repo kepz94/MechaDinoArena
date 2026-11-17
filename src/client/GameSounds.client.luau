@@ -109,6 +109,9 @@
 --               the pachy that hit). HeadbuttFX's own thud (the built-in collide sound) still plays under it.
 --   * pjump     (v1.12, the Pachy's jump) like cloak: 3D at the dino, at the lift-off: JumpStartedAt (JumpServer, the press) +
 --               the character's JumpWindup (0.12), on models with Species "Pachy". Not on the double jump.
+--               v1.13: and again on the double jump: JumpDoubleAt (JumpServer), on your own Pachy JumpDoublePredictedAt (JumpTest,
+--               this client, the moment you press), one per double jump (stamps closer than GameSoundsPachyDoubleDedupe 0.5 s
+--               are the same double jump); a stamp more than 0.3 s old is skipped.
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -132,6 +135,7 @@ VERSION = "1.9" -- v1.9 the Therizino's ability sounds, timed to the animation b
 VERSION = "1.10" -- v1.10 the Tenontosaurus' ability sounds re-timed to the animation beats
 VERSION = "1.11" -- v1.11 the Pachy's headbutt hit sound
 VERSION = "1.12" -- v1.12 the Pachy's jump sound
+VERSION = "1.13" -- v1.13 the Pachy's jump sound on the double jump too
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -177,6 +181,8 @@ VERSION = "1.12" -- v1.12 the Pachy's jump sound
 -- v1.12 (MDA-552; Kepu 2026-11-17 10:40 "or for the double jump" (no sound), 11:06 "use that for jump" with
 --   399095__plasterbrain__8bit-jump.flac (Freesound)): pjump, that file (0.11 s) levelled like phbhit, imported through Asset
 --   Manager, at the Pachy's lift-off (header).
+-- v1.13 (Kepu 2026-11-17 11:13 "the double jump should have the jump sound just play again on the second jump"): pjump
+--   also on the double jump (header).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -253,6 +259,7 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 	GameSoundsTheriBeatsEnabled = true, GameSoundsTheriLoopFade = 0.08, GameSoundsTheriCutFade = 0.04, -- v1.9
 	GameSoundsTheriWallLoopAt = 0.15, GameSoundsTheriHitMax = 6, -- v1.9
 	GameSoundsTenoBeatsEnabled = true, GameSoundsTenoStrikeLead = 0.15, GameSoundsTenoShriekAt = 0.40, GameSoundsTenoLandDedupe = 1, -- v1.10
+	GameSoundsPachyDoubleDedupe = 0.5, -- v1.13
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -594,6 +601,19 @@ local function hookPachyJump(m)
 		local d = t + (tonumber(m:GetAttribute("JumpWindup")) or 0.12) - workspace:GetServerTimeNow()
 		if d > 0.005 then task.delay(d, play3D, "pjump", m) elseif d > -0.3 then play3D("pjump", m) end -- later than 0.3 s: skipped
 	end)
+	local lastDouble = -math.huge -- v1.13 the double jump
+	local function double(attr)
+		local t = m:GetAttribute(attr)
+		if typeof(t) ~= "number" or m:GetAttribute("Species") ~= "Pachy" then return end
+		if math.abs(t - lastDouble) < num("GameSoundsPachyDoubleDedupe", 0.5) then return end
+		if workspace:GetServerTimeNow() - t > 0.3 then return end
+		lastDouble = t
+		play3D("pjump", m)
+	end
+	m:GetAttributeChangedSignal("JumpDoubleAt"):Connect(function() double("JumpDoubleAt") end)
+	if m == player.Character then
+		m:GetAttributeChangedSignal("JumpDoublePredictedAt"):Connect(function() double("JumpDoublePredictedAt") end)
+	end
 end
 local hookedAbility = setmetatable({}, {__mode = "k"})
 local function hookAbility(m)
