@@ -31,6 +31,12 @@
 --       lens so far (HpTitles len includes HardpointServer's HpTitleGap); a title whose animation ends first holds its last
 --       frame until then (1.0 started the next one at once, so the show ended ~2 s before HardpointHUD's board). Test shows
 --       have no slots. Switch: VictoryHoldSlotEnabled (default true, read per frame; false = 1.0).
+-- v1.2 (MDA-552; Kepu 2026-11-17 16:35 "we need to fix the therizino tho, it needs to get scaled down when thrown into the
+--   backpack so the backpack animation can always be the same ... This should be the case for all dinos and the carried
+--   title"): passes VictoryTitlesAnim 1.2's CARRIED bag fit per title. Switch: VictoryCarriedFitEnabled (default true;
+--   false = Anim 1.1's bag). Numbers: VictoryCarriedBagH 0.42 (bag height × the mate's height), VictoryCarriedBagW 0.8 and
+--   VictoryCarriedBagD 0.62 (× the bag height), VictoryCarriedFit 0.85 (how much of the bag the shrunk dino may fill).
+--   Diagnostics: VictoryCarriedLastK (the shrink the last CARRIED used), VictoryCarriedLastInfo (mate height, bag size).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -39,11 +45,15 @@ local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 HUD hold, test hook, step errors, soft flash
+VERSION = "1.2" -- v1.2 CARRIED bag fit
 script:SetAttribute("VictoryTitlesVersion", VERSION)
 for k, v in pairs({VictoryTitlesEnabled = true, VictoryBannerSec = 2, VictoryStageY = 3000, VictoryTapGuard = 1}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 for k, v in pairs({VictoryHideHudEnabled = true, VictorySoftFlashEnabled = true, VictoryHoldSlotEnabled = true}) do -- v1.1
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+for k, v in pairs({VictoryCarriedFitEnabled = true, VictoryCarriedBagH = 0.42, VictoryCarriedBagW = 0.8, VictoryCarriedBagD = 0.62, VictoryCarriedFit = 0.85}) do -- v1.2
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 script:SetAttribute("VictoryTitlesState", "idle")
@@ -353,7 +363,11 @@ local function startEntry(i)
 			extra.deaths, extra.signLine = n, ("DIED %d TIMES"):format(n)
 		end
 		Anim.SOFT_FLASH = script:GetAttribute("VictorySoftFlashEnabled") ~= false -- v1.1
+		Anim.CARRIED_FIT = script:GetAttribute("VictoryCarriedFitEnabled") ~= false -- v1.2
+		local function num(a, d) return tonumber(script:GetAttribute(a)) or d end
+		Anim.CARRIED_BAG = {h = num("VictoryCarriedBagH", 0.42), w = num("VictoryCarriedBagW", 0.8), d = num("VictoryCarriedBagD", 0.62), fit = num("VictoryCarriedFit", 0.85)}
 		runner = Anim.new(st, ui):play(e.title, model, mate, extra)
+		if e.title == "carried" and Anim.lastCarriedK then script:SetAttribute("VictoryCarriedLastK", math.floor(Anim.lastCarriedK * 1000 + 0.5) / 1000) script:SetAttribute("VictoryCarriedLastInfo", Anim.lastCarriedInfo) end -- v1.2
 	end)
 	if not ok or not runner then
 		script:SetAttribute("VictoryTitlesLast", "play failed " .. tostring(e.title) .. ": " .. string.sub(tostring(err), 1, 160))

@@ -18,12 +18,29 @@
 --   particles + a fading PointLight on an attachment) instead of the growing Neon ball, which read as a hard glass sphere.
 --   Switch: M.SOFT_FLASH (default true; VictoryTitles 1.1 sets it per title from its attribute VictorySoftFlashEnabled;
 --   false = the 1.0 ball).
+-- v1.2 (MDA-552; Kepu 2026-11-17 16:35 "we need to fix the therizino tho, it needs to get scaled down when thrown into the
+--   backpack so the backpack animation can always be the same when thrown onto the back of a Dino. This should be the case
+--   for all dinos and the carried title"): CARRIED's bag is one size for every dino, set by the mate: height CARRIED_BAG.h
+--   × the mate's height (0.42, the size 1.1 shrank the bag to on the back), width .w × that, depth .d × that. It stays that
+--   size from the ground to the mate's back, so the throw onto the back is the same on every dino (1.1 sized the bag from
+--   the carried dino at 70 % and shrank it on the way to the back, so a big dino like the Therizino got a huge bag and stuck
+--   out of it). The poof shrinks the carried dino to whatever fits that bag in its nose-down pose (hips at the opening;
+--   every part inside CARRIED_BAG.fit × the bag's width / depth / height), worked out in setup from the pose's own part
+--   corners. (Sizing from the mate's torso box was tried in Studio and dropped: the Therizino's torso box is 18.5 studs
+--   wide, wider than it is long, so the bag towered over it.) Switch: M.CARRIED_FIT (default true; false = 1.1). Numbers:
+--   M.CARRIED_BAG = {h = 0.42, w = 0.8, d = 0.62, fit = 0.85}; VictoryTitles 1.2 sets both per title from its attributes.
+--   Diagnostics: M.lastCarriedK (the shrink used by the last CARRIED), M.lastCarriedInfo (mate height and bag size, studs).
 local Workspace = game:GetService("Workspace")
 
 local M = {}
 M.VERSION = "1.0"
 M.VERSION = "1.1" -- v1.1 extinct colour fix, soft flash
 M.SOFT_FLASH = true -- v1.1
+M.VERSION = "1.2" -- v1.2 carried: one bag size, the dino shrinks to fit
+M.CARRIED_FIT = true -- v1.2
+M.CARRIED_BAG = {h = 0.42, w = 0.8, d = 0.62, fit = 0.85} -- v1.2
+M.lastCarriedK = nil -- v1.2
+M.lastCarriedInfo = "" -- v1.2
 M.LEN = {apex = 5.4, king = 5.4, unkill = 5.4, medic = 5.4, masher = 5.4, carried = 6.4, pacifist = 5.6, extinct = 5.8}
 
 -- ---------- maths ----------
@@ -1196,7 +1213,7 @@ TITLES.carried = {
 		poseRig(m, c.bite)
 		local mm = mouthPt(m) - m.O
 		c.M0 = V(tt.X - mm.X, 0, tt.Z - mm.Z)
-		-- the bag: sized from the carried dino at 70 % going in nose first
+		-- the bag: sized from the carried dino at 70 % going in nose first (1.1; v1.2 below when M.CARRIED_FIT)
 		local Ls = 0.7 * r.L
 		local bh = 0.46 * Ls
 		c.B = V(-2.25 * U, 0, -0.55 * U)
@@ -1213,6 +1230,31 @@ TITLES.carried = {
 		local bw = math.max(0.62 * bh, 2 * ex * 0.9)
 		local bdp = math.max(0.5 * bh, 2 * ez * 0.9)
 		c.bw, c.bd = bw, bdp
+		c.shrinkK = 0.7
+		if M.CARRIED_FIT then -- v1.2: one bag size from the mate; the carried dino shrinks to fit it
+			local cb = M.CARRIED_BAG
+			bh = cb.h * m.H
+			bw, bdp = cb.w * bh, cb.d * bh
+			c.bh, c.bw, c.bd = bh, bw, bdp
+			-- the nose-down pose at full size, every part corner, measured from the hips
+			r.plant, r.yaw, r.rx, r.rz, r.pos = "none", 0, rad(-92), 0, V(0, 0, 0)
+			poseRig(r, P.STARTLED)
+			local hipW = segPt(r, "Tail1", V(0, 0, 0))
+			local ex, ez, below = 1e-3, 1e-3, 1e-3
+			for _, p in ipairs(r.parts) do
+				local f = r.segW[p.seg]
+				if f then
+					for _, cn in ipairs(p.cs) do
+						local w = f * cn - hipW
+						ex, ez, below = math.max(ex, math.abs(w.X)), math.max(ez, math.abs(w.Z)), math.max(below, -w.Y)
+					end
+				end
+			end
+			c.shrinkK = math.clamp(cb.fit * math.min(bw / (2 * ex), bdp / (2 * ez), bh / below), 0.05, 1)
+			c.inBagHip = (hipW - r.O) * c.shrinkK
+			M.lastCarriedK = c.shrinkK
+			M.lastCarriedInfo = ("mate H %.2f bag %.2fx%.2fx%.2f k %.3f"):format(m.H, bw, bh, bdp, c.shrinkK)
+		end
 		r.plant, r.rx, r.pos = "feet", 0, V(0, 0, 0)
 		poseRig(r, {})
 		-- bag parts (rel to the bag base)
@@ -1323,10 +1365,10 @@ TITLES.carried = {
 			poseRig(r, r.A)
 			c.rel = {pos = r.pos, yaw = r.yaw, rx = r.rx, rz = r.rz}
 		elseif t < 3.05 then
-			if not c.shrunk then -- poof: shrink to 70 % for the bag (Model:ScaleTo), once
+			if not c.shrunk then -- poof: shrink to 70 % for the bag (Model:ScaleTo), once (v1.2: c.shrinkK, the fit to the bag)
 				c.shrunk = true
 				c:puff(r.hrp.Position, V(0, 0.2 * U, 0), 0.4 * U, Color3.new(1, 1, 1), 0.5, 0.6)
-				r.model:ScaleTo(r.model:GetScale() * 0.7)
+				r.model:ScaleTo(r.model:GetScale() * c.shrinkK)
 				local sp = r.springs
 				measure(r)
 				r.springs = sp
@@ -1368,6 +1410,7 @@ TITLES.carried = {
 		local tb = m.torsoBox
 		local backL = V((tb.mn.X + tb.mx.X) / 2, tb.mx.Y * 0.95, lerp((tb.mn.Z + tb.mx.Z) / 2, tb.mx.Z, 0.35))
 		local kb = math.clamp(0.42 * m.H / c.bh, 0.25, 1)
+		if M.CARRIED_FIT then kb = 1 end -- v1.2: the bag is already the mate's size; it stays that size on the back
 		local bagCF, bagK
 		if t < 4.52 then bagCF, bagK = CFrame.new(c.O + c.B), 1
 		else
