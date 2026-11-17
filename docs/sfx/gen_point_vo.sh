@@ -1,5 +1,6 @@
 #!/bin/bash
-# gen_point_vo.sh v1.0 (Mecha Dino Arena) — the Hardpoint voice callouts (MDA-552, sound pass round 12). Lines synthesized with
+# gen_point_vo.sh v1.1 (Mecha Dino Arena) — the Hardpoint voice callouts (MDA-552, sound pass round 12); v1.1: the match intro
+# lines in voice A (round 13, MDA_SFX_vo_intro<n>.wav). Lines synthesized with
 # Kokoro-82M (Apache-2.0; kokoro-onnx, model-files-v1.0 from github.com/thewh1teagle/kokoro-onnx releases), then trimmed,
 # styled and levelled with ffmpeg (-14 LUFS, -1 dBTP, mono 48 kHz). Usage: gen_point_vo.sh <kokoro.onnx> <voices.bin> <out dir>
 # Needs tools/mockup's sibling script say.py (below, written to a temp dir) and: pip install kokoro-onnx soundfile.
@@ -27,4 +28,15 @@ for spec in "A am_michael 1.05" "B bm_george 1.0" "C af_heart 1.05"; do
   for l in secured lost contested; do
     ffmpeg -v error -y -i "$T/raw_$1/$l.wav" -af "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.02,areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05,areverse,$F,loudnorm=I=-14:TP=-1:LRA=7,aresample=48000" -ac 1 -c:a pcm_s16le "$OUT/MDA_SFX_vo_${l}_$1.wav"
   done
+done
+# v1.1 the match intro lines (round 13), voice A (am_michael 1.05, the radio style)
+python3 -I "$T/say.py" "$M" "$V" "$T/raw_intro" am_michael 1.05 \
+  "intro1=Hardpoint's up. Get there first, and use your mecha upgrades to your advantage." \
+  "intro2=All units, move to the hardpoint. Your mecha upgrades are your edge. Use them." \
+  "intro3=Mechs online. Take the hardpoint and hold it. Make every upgrade count." \
+  "intro4=Listen up. The hardpoint is marked. Gear up, move out, and hold that ground." \
+  "intro5=Systems hot. Get to the hardpoint, and let your upgrades do the talking."
+F="highpass=f=320,lowpass=f=3300,acompressor=threshold=-18dB:ratio=4:attack=5:release=60,asoftclip=type=tanh:param=1.6,volume=1.2"
+for i in 1 2 3 4 5; do
+  ffmpeg -v error -y -i "$T/raw_intro/intro$i.wav" -af "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.02,areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05,areverse,$F,loudnorm=I=-14:TP=-1:LRA=7,aresample=48000" -ac 1 -c:a pcm_s16le "$OUT/MDA_SFX_vo_intro$i.wav"
 done

@@ -207,3 +207,11 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
 - Planned rules (shown on the page): speak only once the new state has held about 1 s, a few seconds between callouts, never
   the same line twice in a row; 2D, only you. Built after Kepu picks a voice.
 - 12:53 "Point voice A" -> GameSounds 1.16 (VERSIONS.md). Not published yet.
+
+## Round 13 — the match intro voice line (2026-11-17)
+- Kepu 12:58 "how about a voice playing in the background for the brief intro to like get to the Hardpoint. Use your mecha
+  upgrades to your advantage. Some type of dialogue like that". The intro is the 10 s pre-match countdown (PrematchCam 1.0:
+  pan out at 9 s left, orbit 7-5, back 5-3; GameSounds ticks 3-2-1, go at 0). Five lines in voice A (4.3-4.8 s), each starting
+  with the pan at 9 s left and ending before the first tick; pick one or several (several: a different one each match).
+- Recipe docs/sfx/gen_point_vo.sh v1.1; page tools/mockup/build_intro_voice_pick.py v1.0. Sound Pick Board version 24.
+
