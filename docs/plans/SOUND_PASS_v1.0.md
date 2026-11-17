@@ -234,5 +234,22 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
 - Two voices through the radio filter: A am_michael 0.97 (the point-callout voice), B bm_george 0.95 (British). 2.7-4.6 s,
   so each ends inside its title (slam-in at 0.3 s, about 5.5 s shown).
 - Recipe docs/sfx/gen_point_vo.sh v1.3; page tools/mockup/build_title_voice_pick.py v1.1. Sound Pick Board version 26.
-- Waiting on Kepu's picks.
+- 13:16 Kepu asked how the screen should sound ("Make a decision based on how other games handle those screens"):
+  four layers, each behind a switch: the win / lose sting + a commander result line, results music (victory / defeat) in
+  place of the island music, the title lines (winning team only) with the music ducked under them, nothing that makes the
+  show longer (a skip cuts the line). 13:18 "Send me a mock up of the actual presentation" -> round 14c.
+
+## Round 14c — the presentation mockup (2026-11-17)
+- The real show, recorded in Studio (tools/studio/show_recorder.luau 1.0): a practice match won 999-120 with test stats
+  (titles APEX PREDATOR Kepz, BUTTON MASHER Wrench, EXTINCT Yuki, CARRIED Fang); every part above 2000 studs (the stage,
+  the clones, their effects), the camera and every visible on-screen element, 30 times a second. A second run with
+  VictoryTitles off recorded the scoreboard.
+- Found while recording: in Studio (window not focused, about 15 frames a second) the titles run at about 75% speed,
+  because VictoryTitles caps each step at 0.05 s; the four titles took 7.0 / 7.5 / 8.1 / 8.5 s instead of 5.4-6.4 and ran
+  over the scoreboard's 7 s. Players at a normal frame rate are not affected; under 20 frames a second they would be. The
+  page stretches each recorded title back to its real length.
+- Page tools/mockup/build_results_show_mock.py 1.0 (Results Show Mockup artifact): Today vs Proposed; switches for the
+  result line, the victory music (placeholder, tools/mockup/gen_results_music.py 1.0), the title lines and the ducking;
+  commander A / B; line picks; the losing side's audio on its own. Result lines in gen_point_vo.sh v1.4.
+- Waiting on Kepu.
 

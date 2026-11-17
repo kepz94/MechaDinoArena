@@ -1,9 +1,10 @@
 #!/bin/bash
-# gen_point_vo.sh v1.3 (Mecha Dino Arena) — the Hardpoint voice callouts (MDA-552, sound pass round 12); v1.1: the match intro
+# gen_point_vo.sh v1.4 (Mecha Dino Arena) — the Hardpoint voice callouts (MDA-552, sound pass round 12); v1.1: the match intro
 # lines in voice A (round 13, MDA_SFX_vo_intro<n>.wav); v1.2: the post-game title lines, voice A, radio R and stadium S
 # (round 14, MDA_SFX_vt_<title><n>_<R|S>.wav); v1.3: those lines rewritten as a commander on the radio (round 14b, Kepu "It's
 # like a commander talking to you. This is just a narrator."), voices A am_michael 0.97 / B bm_george 0.95, radio filter,
-# MDA_SFX_vt_<title><n>_<A|B>.wav. Lines synthesized with
+# MDA_SFX_vt_<title><n>_<A|B>.wav; v1.4: the commander's result lines (victory / defeat, round 14c presentation mockup),
+# MDA_SFX_vr_<win|lose><n>_<A|B>.wav. Lines synthesized with
 # Kokoro-82M (Apache-2.0; kokoro-onnx, model-files-v1.0 from github.com/thewh1teagle/kokoro-onnx releases), then trimmed,
 # styled and levelled with ffmpeg (-14 LUFS, -1 dBTP, mono 48 kHz). Usage: gen_point_vo.sh <kokoro.onnx> <voices.bin> <out dir>
 # Needs tools/mockup's sibling script say.py (below, written to a temp dir) and: pip install kokoro-onnx soundfile.
@@ -103,4 +104,18 @@ python3 -I "$T/say.py" "$M" "$V" "$T/raw_cmd_A" am_michael 0.97 "${CL[@]}"
 python3 -I "$T/say.py" "$M" "$V" "$T/raw_cmd_B" bm_george 0.95 "${CL[@]}"
 for v in A B; do for f in "$T"/raw_cmd_$v/*.wav; do n=$(basename "$f" .wav)
   ffmpeg -v error -y -i "$f" -af "$TRIM,$FR,loudnorm=I=-14:TP=-1:LRA=7,aresample=48000" -ac 1 -c:a pcm_s16le "$OUT/MDA_SFX_vt_${n}_$v.wav"
+done; done
+# v1.4 the commander's result lines (round 14c): said right after the win / lose sting, inside the 2 s VICTORY banner
+mapfile -t RL <<'L'
+win1=Mission accomplished.
+win2=Good work. Match is ours.
+win3=Victory. Well fought.
+lose1=Mission failed.
+lose2=We lost this one. Regroup.
+lose3=Fall back. Regroup.
+L
+python3 -I "$T/say.py" "$M" "$V" "$T/raw_res_A" am_michael 0.97 "${RL[@]}"
+python3 -I "$T/say.py" "$M" "$V" "$T/raw_res_B" bm_george 0.95 "${RL[@]}"
+for v in A B; do for f in "$T"/raw_res_$v/*.wav; do n=$(basename "$f" .wav)
+  ffmpeg -v error -y -i "$f" -af "$TRIM,$FR,loudnorm=I=-14:TP=-1:LRA=7,aresample=48000" -ac 1 -c:a pcm_s16le "$OUT/MDA_SFX_vr_${n}_$v.wav"
 done; done
