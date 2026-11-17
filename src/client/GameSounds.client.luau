@@ -112,6 +112,13 @@
 --               v1.13: and again on the double jump: JumpDoubleAt (JumpServer), on your own Pachy JumpDoublePredictedAt (JumpTest,
 --               this client, the moment you press), one per double jump (stamps closer than GameSoundsPachyDoubleDedupe 0.5 s
 --               are the same double jump); a stamp more than 0.3 s old is skipped.
+--   * phookfire / phookreel
+--               (v1.14, the Pachy's Grappling Hook, sound pass round 11 option C, each part on its beat) 3D at the dino,
+--               scheduled from HookServer's stamps (set before HookStartedAt): phookfire at HookLaunchAt - GameSoundsPachyHookLead
+--               (0.15: the shot is 0.15 s into the clip, the arm-raise before it); on HookResult "hit": phookreel from
+--               HookContactAt (the clamp), cut (GameSoundsTheriCutFade 0.04) at HookSmashAt, and phbhit (the headbutt hit) at
+--               HookSmashAt (the reel ends in a headbutt). While GameSoundsPachyBeatsEnabled (default true) the 1.7 phook does
+--               not play; false = 1.13.
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -136,6 +143,7 @@ VERSION = "1.10" -- v1.10 the Tenontosaurus' ability sounds re-timed to the anim
 VERSION = "1.11" -- v1.11 the Pachy's headbutt hit sound
 VERSION = "1.12" -- v1.12 the Pachy's jump sound
 VERSION = "1.13" -- v1.13 the Pachy's jump sound on the double jump too
+VERSION = "1.14" -- v1.14 the Pachy's Grappling Hook on its beats, ending in the headbutt hit
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -183,6 +191,9 @@ VERSION = "1.13" -- v1.13 the Pachy's jump sound on the double jump too
 --   Manager, at the Pachy's lift-off (header).
 -- v1.13 (Kepu 2026-11-17 11:13 "the double jump should have the jump sound just play again on the second jump"): pjump
 --   also on the double jump (header).
+-- v1.14 (Kepu 2026-11-17 11:17 "i like c for the grappling hook sound but make sure you add the headbutt sound at the end when
+--   the dino is reeled in since it ends with a headbutt"): Sound Pick Board round 11 hook C (recipe docs/sfx/gen_pachy_v2_sfx.py,
+--   the Sonniss sampler), imported through Asset Manager, scheduled from the hook stamps, phbhit at the smash (header).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -252,6 +263,13 @@ table.insert(EVENTS, "phbhit") -- v1.11 the Pachy's headbutt hit
 IDS.phbhit, VOL.phbhit = "108009591584705", 0.9
 table.insert(EVENTS, "pjump") -- v1.12 the Pachy's jump
 IDS.pjump, VOL.pjump = "70558141231443", 0.7
+local PACHY_PART = {phbhit = true} -- v1.14 the Pachy's beat-timed parts (startPart's switch)
+for e, v in pairs({phookfire = {"127660704971301", 0.7}, phookreel = {"73058958917716", 0.6}}) do
+	table.insert(EVENTS, e)
+	IDS[e], VOL[e] = v[1], v[2]
+	PACHY_PART[e] = true
+end
+local function pachyOn() return script:GetAttribute("GameSoundsPachyBeatsEnabled") ~= false end
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
@@ -260,6 +278,7 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 	GameSoundsTheriWallLoopAt = 0.15, GameSoundsTheriHitMax = 6, -- v1.9
 	GameSoundsTenoBeatsEnabled = true, GameSoundsTenoStrikeLead = 0.15, GameSoundsTenoShriekAt = 0.40, GameSoundsTenoLandDedupe = 1, -- v1.10
 	GameSoundsPachyDoubleDedupe = 0.5, -- v1.13
+	GameSoundsPachyBeatsEnabled = true, GameSoundsPachyHookLead = 0.15, -- v1.14
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -371,6 +390,7 @@ end
 ABILITY.phbhit = "HeadbuttHitAt" -- v1.11
 local function play3D(e, m)
 	if TENO_OLD[e] and tenoOn() then return end -- v1.10
+	if e == "phook" and pachyOn() then return end -- v1.14: the beat-timed hook replaces it
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	local root = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
@@ -416,7 +436,9 @@ local function fadeOut(s, fade)
 end
 -- start part e at server time startAt at `where` (a dino model or a Vector3); looped = a loop; returns the Sound (or nil)
 local function startPart(e, where, startAt, looped, maxD, minD) -- v1.10: optional range (default the ability range)
-	if TENO_PART[e] then if not tenoOn() then return nil end elseif not theriOn() then return nil end -- v1.10: the Teno's switch
+	if TENO_PART[e] then if not tenoOn() then return nil end
+	elseif PACHY_PART[e] then if not pachyOn() then return nil end -- v1.14: the Pachy's switch
+	elseif not theriOn() then return nil end -- v1.10: the Teno's switch
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return nil end
 	if player:GetAttribute("InMenu") == true then return nil end
 	group.Volume = num("GameSoundsVolume", 1)
@@ -590,6 +612,24 @@ local function hookTeno(m)
 	end)
 	on("TenoMudBlockAt", function(t) partAt("tnshieldblock", m, t) end)
 end
+-- v1.14 the Pachy's Grappling Hook, each part on its beat (header)
+local hookedPachyHook = setmetatable({}, {__mode = "k"})
+local function hookPachyHook(m)
+	if hookedPachyHook[m] or not m:IsA("Model") then return end
+	hookedPachyHook[m] = true
+	m:GetAttributeChangedSignal("HookStartedAt"):Connect(function()
+		local t = m:GetAttribute("HookStartedAt")
+		if typeof(t) ~= "number" or not pachyOn() then return end
+		local launch = tonumber(m:GetAttribute("HookLaunchAt")) or t
+		if launch < t then launch = t end
+		partAt("phookfire", m, launch - num("GameSoundsPachyHookLead", 0.15))
+		local contact, smash = tonumber(m:GetAttribute("HookContactAt")) or 0, tonumber(m:GetAttribute("HookSmashAt")) or 0
+		if m:GetAttribute("HookResult") == "hit" and contact >= t and smash > contact then
+			partAt("phookreel", m, contact, smash)
+			partAt("phbhit", m, smash)
+		end
+	end)
+end
 -- v1.12 the Pachy's jump: at the lift-off (JumpStartedAt + JumpWindup)
 local hookedPachyJump = setmetatable({}, {__mode = "k"})
 local function hookPachyJump(m)
@@ -622,6 +662,7 @@ local function hookAbility(m)
 	hookTheri(m) -- v1.9
 	hookTeno(m) -- v1.10
 	hookPachyJump(m) -- v1.12
+	hookPachyHook(m) -- v1.14
 	for e, attr in pairs(ABILITY) do
 		m:GetAttributeChangedSignal(attr):Connect(function()
 			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end

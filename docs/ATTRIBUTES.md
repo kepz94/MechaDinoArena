@@ -3552,3 +3552,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - GameSounds 1.11 event `phbhit` (0.9) with the per-event attributes (`GameSounds_phbhitEnabled`, `GameSoundsCount_phbhit`).
 - GameSounds 1.12 event `pjump` (0.7) with the per-event attributes; read: the character's `JumpWindup` (default 0.12).
 - GameSounds 1.13: `GameSoundsPachyDoubleDedupe` (0.5 s); read: `JumpDoubleAt`, own `JumpDoublePredictedAt`.
+- GameSounds 1.14 events `phookfire` (0.7), `phookreel` (0.6) with the per-event attributes; `GameSoundsPachyBeatsEnabled` (true; false = 1.13, the 1.7 phook), `GameSoundsPachyHookLead` (0.15 s).
