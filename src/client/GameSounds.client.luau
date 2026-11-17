@@ -15,6 +15,14 @@
 --               ReplicatedStorage.Hardpoint HpOcc changes while HpPhase is "live" and you have a HardpointTeam: your team letter =
 --               captured, the other letter = lost, "C" = contested, "N" = nothing; the same sound not again within
 --               GameSoundsOccGap (1) s.
+--               v1.16: while GameSoundsPointVoiceEnabled (default true) these three do not play; an announcer says it instead:
+--   * vosecured / volost / vocontested
+--               (v1.16, the Hardpoint voice callouts, round 12 voice A "Field radio": "Hardpoint secured." / "Enemy has the
+--               hardpoint." / "Hardpoint contested.") 2D, only you, from the same HpOcc changes (your team / the other team / "C";
+--               "N" says nothing), but only once the new HpOcc has held GameSoundsVoiceSettle (1) s with HpPhase "live" (a newer
+--               change cancels it), at least GameSoundsVoiceGap (4) s after the last callout (a settled change waits out the gap
+--               and is said only if it still holds), and never the same line twice in a row (the point moving to a new spot,
+--               HpIndex, clears that). false = 1.15 (the three sounds on every change).
 --   * moving    while HpPhase "live": once per point (HpIndex) when HpPointEndsAt - server time drops to GameSoundsMoveWarn (5) s.
 --   * tick      while HpPhase "warmup": when the whole seconds left (ceil(HpPointEndsAt - server time)) become 3, 2 or 1
 --               (from GameSoundsTickFrom, 3).
@@ -164,6 +172,7 @@ VERSION = "1.12" -- v1.12 the Pachy's jump sound
 VERSION = "1.13" -- v1.13 the Pachy's jump sound on the double jump too
 VERSION = "1.14" -- v1.14 the Pachy's Grappling Hook on its beats, ending in the headbutt hit
 VERSION = "1.15" -- v1.15 the rest of the Pachy's parts on their beats (round 11 picks), the hook on option A
+VERSION = "1.16" -- v1.16 Hardpoint voice callouts replace the captured / lost / contested sounds
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -219,6 +228,10 @@ VERSION = "1.15" -- v1.15 the rest of the Pachy's parts on their beats (round 11
 --   sixteen new parts (recipe docs/sfx/gen_pachy_v2_sfx.py) and the hook's option A, imported through Asset Manager, each on the
 --   beat the game stamps (header; beats checked against the recordings, docs/sfx/PACHY_BEATS_v1.0.md v1.2). Headbutt A and
 --   Jump A are the 1.11 / 1.12 sounds (unchanged).
+-- v1.16 (Kepu 2026-11-17 12:42 "I don't like the point sounds switching over and all that, it sounds stupid and does call of
+--   duty even do that?"; picked "Voice callouts" and "Keep them" (moving / tick / go stay); 12:53 "Point voice A"): three
+--   announcer lines (Kokoro-82M text to speech, Apache-2.0, radio-styled; recipe docs/sfx/gen_point_vo.sh), imported through
+--   Asset Manager, said once the point has settled (header).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -284,6 +297,10 @@ end
 local TENO_OLD = {tbellow = true, tchallenge = true, tgrab = true, tgrabland = true, tleap = true, tleapland = true, tmortar = true,
 	tmortarboom = true, tmud = true, tstomp = true} -- v1.10: the 1.8 Teno events, superseded while GameSoundsTenoBeatsEnabled
 local function tenoOn() return script:GetAttribute("GameSoundsTenoBeatsEnabled") ~= false end
+for e, v in pairs({vosecured = {"136123722053492", 0.8}, volost = {"125590664814127", 0.8}, vocontested = {"112060909723099", 0.8}}) do -- v1.16
+	table.insert(EVENTS, e)
+	IDS[e], VOL[e] = v[1], v[2]
+end
 table.insert(EVENTS, "phbhit") -- v1.11 the Pachy's headbutt hit
 IDS.phbhit, VOL.phbhit = "108009591584705", 0.9
 table.insert(EVENTS, "pjump") -- v1.12 the Pachy's jump
@@ -313,6 +330,7 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 	GameSoundsPachyBeatsEnabled = true, GameSoundsPachyHookLead = 0.15, -- v1.14
 	GameSoundsPachyDashBlastLead = 0.06, GameSoundsPachyDashBurnAt = 0.25, GameSoundsPachyVisorFieldAt = 0.10, -- v1.15
 	GameSoundsPachyInkLead = 0.10, GameSoundsPachyCockDedupe = 0.5, GameSoundsPachyMedHumAt = 0.60, -- v1.15
+	GameSoundsPointVoiceEnabled = true, GameSoundsVoiceSettle = 1, GameSoundsVoiceGap = 4, -- v1.16
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -912,13 +930,29 @@ task.spawn(function()
 	local hp = ReplicatedStorage:WaitForChild("Hardpoint", 120)
 	if not hp then return end
 	local lastOcc = {}
+	local VOICE = {captured = "vosecured", lost = "volost", contested = "vocontested"} -- v1.16
+	local voiceSeq, voiceLast, voiceAt = 0, nil, -math.huge
+	hp:GetAttributeChangedSignal("HpIndex"):Connect(function() voiceLast = nil end) -- a new spot: any line may be said again
 	hp:GetAttributeChangedSignal("HpOcc"):Connect(function()
+		voiceSeq += 1 -- v1.16: any change cancels a pending callout
 		if hp:GetAttribute("HpPhase") ~= "live" then return end
 		local team = player:GetAttribute("HardpointTeam")
 		if team ~= "A" and team ~= "B" then return end
 		local occ = hp:GetAttribute("HpOcc")
 		local e = (occ == team and "captured") or (occ == "C" and "contested") or ((occ == "A" or occ == "B") and "lost") or nil
 		if not e then return end
+		if script:GetAttribute("GameSoundsPointVoiceEnabled") ~= false then -- v1.16: the announcer, once it has settled
+			local my, line = voiceSeq, VOICE[e]
+			task.spawn(function()
+				local function holds() return my == voiceSeq and hp:GetAttribute("HpPhase") == "live" and hp:GetAttribute("HpOcc") == occ end
+				task.wait(num("GameSoundsVoiceSettle", 1))
+				while holds() and os.clock() - voiceAt < num("GameSoundsVoiceGap", 4) do task.wait(0.1) end
+				if not holds() or line == voiceLast then return end
+				voiceLast, voiceAt = line, os.clock()
+				play(line)
+			end)
+			return
+		end
 		if os.clock() - (lastOcc[e] or -math.huge) < num("GameSoundsOccGap", 1) then return end
 		lastOcc[e] = os.clock()
 		play(e)

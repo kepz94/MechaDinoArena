@@ -206,3 +206,4 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
   tools/mockup/build_point_voice_pick.py v1.0. Sound Pick Board version 23.
 - Planned rules (shown on the page): speak only once the new state has held about 1 s, a few seconds between callouts, never
   the same line twice in a row; 2D, only you. Built after Kepu picks a voice.
+- 12:53 "Point voice A" -> GameSounds 1.16 (VERSIONS.md). Not published yet.
