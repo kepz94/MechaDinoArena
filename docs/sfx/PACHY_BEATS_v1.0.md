@@ -1,4 +1,4 @@
-# Pachy sound beat sheet v1.1 (v1.1: the dash ends in steam, not a skid) (MDA-552, sound pass round 11)
+# Pachy sound beat sheet v1.2 (v1.1: the dash ends in steam, not a skid; v1.2: checked against Studio recordings of the game) (MDA-552, sound pass round 11)
 
 The beats the Pachy sounds get rebuilt to, read from the game (HookServer, ServoDashServer 1.2, VisorServer, InkServer 1.7,
 TetherServer 1.5, HeadbuttServer, MedStationServer 1.3, BoneCrest 1.6; PachyMovesPose 1.1) and the storyboard
@@ -16,3 +16,10 @@ live sounds (GameSounds 1.7: phook, pink, pmed, pdash, ptether, pvisor, pblood) 
 | Med-Station | the capsule pops at MedDroppedAt, lands DROP_TIME 0.3 s later and unfolds; heals until MedActiveUntil (moved on an early end); folds FOLD_TIME 0.4 | pop 0, thud 0.30, unfold to 0.60, waves, folds at 3.30 | drop @ MedDroppedAt (thud ON 0.30) · hum (loop) +0.60 .. MedActiveUntil · fold @ MedActiveUntil |
 
 Headbutt, Leap, Last Stand and Head Down are not in this pass (the headbutt and leap keep their sounds; the other two are passives).
+
+v1.2 (2026-11-17): every beat was checked against recordings of the live game (tools/mockup/pachy_rec/*.json, clip time with
+the press at 0.30 s). Hook launch 0.465 / contact 0.523 / smash 1.023; Servo Dash blast 0.37 (press + 0.06), until 1.87
+(1.5 s); Visor started 0.329, until 2.329 (2.0 s: the field time from the skill tree); Ink fire 0.43 (+0.10), arrive 0.542
+(36 studs); Tether thrown 0.848, lands 1.382 (+0.53 s flight, TetherServer 1.5+); Blood Rush sacrifice 0.325; Med dropped
+0.329, active until 10.632 (10.3 s). GameSounds 1.15 schedules the picked parts on these stamps (round 11 picks: Hook A,
+Dash A, Visor C, Ink C, Tether C, Blood Rush C, Med A).

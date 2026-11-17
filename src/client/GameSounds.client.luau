@@ -119,6 +119,25 @@
 --               HookContactAt (the clamp), cut (GameSoundsTheriCutFade 0.04) at HookSmashAt, and phbhit (the headbutt hit) at
 --               HookSmashAt (the reel ends in a headbutt). While GameSoundsPachyBeatsEnabled (default true) the 1.7 phook does
 --               not play; false = 1.13.
+--               v1.15: option A (Kepu 2026-11-17 12:20 "Hook A"): phookfire 94784187848873, phookreel 130597595260324 (the C ids
+--               127660704971301 / 73058958917716 were 1.14's).
+--   * the rest of the Pachy's parts (v1.15, sound pass round 11 picks "Dash A, Visor C, Ink C, Tether C, Blood Rush C, Med A",
+--               chosen on the game's own recorded animation), 3D like the hook, each on its beat, while GameSoundsPachyBeatsEnabled:
+--               Servo Dash: pdashblast at ServoDashBlastAt - GameSoundsPachyDashBlastLead (0.06, the blast is that far into the
+--                 clip); pdashburn (looped) from ServoDashBlastAt + GameSoundsPachyDashBurnAt (0.25, the 22-stud burst done) until
+--                 ServoDashUntil (read live: an early end moves it), faded; pdashsteam at that end (the game's dust + steam).
+--               Dome Visor: pvisorup on VisorStartedAt; pvisorfield (looped) from VisorStartedAt + GameSoundsPachyVisorFieldAt
+--                 (0.10, the panels in) until VisorUntil, faded; pvisordown at that end; pvisorblock on each VisorBlockAt.
+--               Ink Shooter: pinkfire at InkFireAt - GameSoundsPachyInkLead (0.10: the pump, the shot 0.10 s into the clip);
+--                 pinksplat on InkArriveAt (stamped when the shot resolves, after InkStartedAt) at InkAimEnd.
+--               Tether Spike: ptethercock when the aim starts: TetherAimAt (TetherServer), on your own Pachy also
+--                 TetherAimLocalAt and TetherAiming turning true (one per aim: stamps closer than GameSoundsPachyCockDedupe 0.5 s
+--                 are the same aim); ptetherthrow on TetherStartedAt; ptetherland at TetherLandAt (at the dino).
+--               Blood Rush: pbloodpact on HeadbuttSacrificeAt.
+--               Med-Station: pmeddrop on MedDroppedAt; pmedhum (looped) from MedDroppedAt + GameSoundsPachyMedHumAt (0.60, landed
+--                 and unfolded) until MedActiveUntil (read live), faded; pmedfold at that end; all three where the dino was at the
+--                 drop (the station stays there).
+--               While GameSoundsPachyBeatsEnabled the 1.7 pink / pmed / pdash / ptether / pvisor / pblood do not play; false = 1.14.
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -144,6 +163,7 @@ VERSION = "1.11" -- v1.11 the Pachy's headbutt hit sound
 VERSION = "1.12" -- v1.12 the Pachy's jump sound
 VERSION = "1.13" -- v1.13 the Pachy's jump sound on the double jump too
 VERSION = "1.14" -- v1.14 the Pachy's Grappling Hook on its beats, ending in the headbutt hit
+VERSION = "1.15" -- v1.15 the rest of the Pachy's parts on their beats (round 11 picks), the hook on option A
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -194,6 +214,11 @@ VERSION = "1.14" -- v1.14 the Pachy's Grappling Hook on its beats, ending in the
 -- v1.14 (Kepu 2026-11-17 11:17 "i like c for the grappling hook sound but make sure you add the headbutt sound at the end when
 --   the dino is reeled in since it ends with a headbutt"): Sound Pick Board round 11 hook C (recipe docs/sfx/gen_pachy_v2_sfx.py,
 --   the Sonniss sampler), imported through Asset Manager, scheduled from the hook stamps, phbhit at the smash (header).
+-- v1.15 (Kepu 2026-11-17 11:36 "How about you actually use the fucking animation from the game" -> the pick page plays Studio
+--   recordings of the game; 12:20 picks "Headbutt A, Jump A, Hook A, Dash A, Visor C, Ink C, Tether C, Blood Rush C, Med A"):
+--   sixteen new parts (recipe docs/sfx/gen_pachy_v2_sfx.py) and the hook's option A, imported through Asset Manager, each on the
+--   beat the game stamps (header; beats checked against the recordings, docs/sfx/PACHY_BEATS_v1.0.md v1.2). Headbutt A and
+--   Jump A are the 1.11 / 1.12 sounds (unchanged).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -264,12 +289,19 @@ IDS.phbhit, VOL.phbhit = "108009591584705", 0.9
 table.insert(EVENTS, "pjump") -- v1.12 the Pachy's jump
 IDS.pjump, VOL.pjump = "70558141231443", 0.7
 local PACHY_PART = {phbhit = true} -- v1.14 the Pachy's beat-timed parts (startPart's switch)
-for e, v in pairs({phookfire = {"127660704971301", 0.7}, phookreel = {"73058958917716", 0.6}}) do
+for e, v in pairs({phookfire = {"94784187848873", 0.7}, phookreel = {"130597595260324", 0.6}, -- v1.15 option A (1.14: C)
+	pdashblast = {"126810324831290", 0.8}, pdashburn = {"108611388528002", 0.5}, pdashsteam = {"119034673718501", 0.7}, -- v1.15
+	pvisorup = {"95515746698004", 0.7}, pvisorfield = {"86884477049579", 0.4}, pvisorblock = {"86631190160444", 0.8},
+	pvisordown = {"120963791844379", 0.6}, pinkfire = {"105959170413554", 0.7}, pinksplat = {"94524176200767", 0.8},
+	ptethercock = {"127114367228594", 0.6}, ptetherthrow = {"121222580398449", 0.7}, ptetherland = {"139847071392979", 0.8},
+	pbloodpact = {"124393868939241", 0.8}, pmeddrop = {"80475095684327", 0.7}, pmedhum = {"82731615993453", 0.4},
+	pmedfold = {"129929373362813", 0.6}}) do
 	table.insert(EVENTS, e)
 	IDS[e], VOL[e] = v[1], v[2]
 	PACHY_PART[e] = true
 end
 local function pachyOn() return script:GetAttribute("GameSoundsPachyBeatsEnabled") ~= false end
+local PACHY_OLD = {phook = true, pink = true, pmed = true, pdash = true, ptether = true, pvisor = true, pblood = true} -- v1.15
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
@@ -279,6 +311,8 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 	GameSoundsTenoBeatsEnabled = true, GameSoundsTenoStrikeLead = 0.15, GameSoundsTenoShriekAt = 0.40, GameSoundsTenoLandDedupe = 1, -- v1.10
 	GameSoundsPachyDoubleDedupe = 0.5, -- v1.13
 	GameSoundsPachyBeatsEnabled = true, GameSoundsPachyHookLead = 0.15, -- v1.14
+	GameSoundsPachyDashBlastLead = 0.06, GameSoundsPachyDashBurnAt = 0.25, GameSoundsPachyVisorFieldAt = 0.10, -- v1.15
+	GameSoundsPachyInkLead = 0.10, GameSoundsPachyCockDedupe = 0.5, GameSoundsPachyMedHumAt = 0.60, -- v1.15
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -391,6 +425,7 @@ ABILITY.phbhit = "HeadbuttHitAt" -- v1.11
 local function play3D(e, m)
 	if TENO_OLD[e] and tenoOn() then return end -- v1.10
 	if e == "phook" and pachyOn() then return end -- v1.14: the beat-timed hook replaces it
+	if PACHY_OLD[e] and pachyOn() then return end -- v1.15: the beat-timed parts replace the 1.7 Pachy sounds
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	local root = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
@@ -630,6 +665,84 @@ local function hookPachyHook(m)
 		end
 	end)
 end
+-- v1.15 the rest of the Pachy's parts, each on its beat (header)
+local hookedPachyParts = setmetatable({}, {__mode = "k"})
+local function hookPachyParts(m)
+	if hookedPachyParts[m] or not m:IsA("Model") then return end
+	hookedPachyParts[m] = true
+	local function n(k, d) return tonumber(m:GetAttribute(k)) or d end
+	local function on(attr, fn)
+		m:GetAttributeChangedSignal(attr):Connect(function()
+			local t = m:GetAttribute(attr)
+			if typeof(t) == "number" and pachyOn() then fn(t) end
+		end)
+	end
+	on("ServoDashStartedAt", function(t) -- Servo Dash
+		local blast = n("ServoDashBlastAt", t)
+		if blast < t then blast = t end
+		partAt("pdashblast", m, blast - num("GameSoundsPachyDashBlastLead", 0.06))
+		loopPart(m, "pdashburn", "pdashsteam", blast + num("GameSoundsPachyDashBurnAt", 0.25),
+			function() return m:GetAttribute("ServoDashUntil") end,
+			function() return m.Parent ~= nil and m:GetAttribute("ServoDashStartedAt") == t end)
+	end)
+	on("VisorStartedAt", function(t) -- Dome Visor
+		partAt("pvisorup", m, t)
+		loopPart(m, "pvisorfield", "pvisordown", t + num("GameSoundsPachyVisorFieldAt", 0.10),
+			function() return m:GetAttribute("VisorUntil") end,
+			function() return m.Parent ~= nil and m:GetAttribute("VisorStartedAt") == t end)
+	end)
+	on("VisorBlockAt", function(t) partAt("pvisorblock", m, t) end)
+	on("InkStartedAt", function(t) -- Ink Shooter
+		local fire = n("InkFireAt", t)
+		if fire < t then fire = t end
+		partAt("pinkfire", m, math.max(t, fire - num("GameSoundsPachyInkLead", 0.10)))
+	end)
+	on("InkArriveAt", function(t) -- stamped when the shot resolves (after InkStartedAt)
+		if t < n("InkStartedAt", math.huge) then return end
+		local where = m:GetAttribute("InkAimEnd")
+		partAt("pinksplat", typeof(where) == "Vector3" and where or m, t)
+	end)
+	local lastCock = -math.huge -- Tether Spike
+	local function cock(t)
+		if math.abs(t - lastCock) < num("GameSoundsPachyCockDedupe", 0.5) then return end
+		lastCock = t
+		partAt("ptethercock", m, t)
+	end
+	on("TetherAimAt", cock)
+	if m == player.Character then
+		on("TetherAimLocalAt", cock)
+		m:GetAttributeChangedSignal("TetherAiming"):Connect(function()
+			if m:GetAttribute("TetherAiming") == true and pachyOn() then cock(serverNow()) end
+		end)
+	end
+	on("TetherStartedAt", function(t)
+		partAt("ptetherthrow", m, t)
+		local land = n("TetherLandAt", 0)
+		if land >= t then partAt("ptetherland", m, land) end
+	end)
+	on("HeadbuttSacrificeAt", function(t) partAt("pbloodpact", m, t) end) -- Blood Rush
+	on("MedDroppedAt", function(t) -- Med-Station: where the dino was at the drop
+		local root = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
+		local spot = (root and root:IsA("BasePart")) and root.Position or m
+		partAt("pmeddrop", spot, t)
+		local alive = function() return m.Parent ~= nil and m:GetAttribute("MedDroppedAt") == t end
+		local loopAt = t + num("GameSoundsPachyMedHumAt", 0.60)
+		task.spawn(function() -- loopPart plays at a dino; the station stays put, so the same loop at the spot
+			while alive() and serverNow() < loopAt and serverNow() < n("MedActiveUntil", 0) do task.wait() end
+			if not alive() then return end
+			local fade = num("GameSoundsTheriLoopFade", 0.08)
+			local s = (serverNow() < n("MedActiveUntil", 0)) and startPart("pmedhum", spot, loopAt, true) or nil
+			local guard = serverNow() + 60
+			while alive() and serverNow() < n("MedActiveUntil", 0) - fade and serverNow() < guard do task.wait() end
+			if s then fadeOut(s, fade) end
+			if not alive() then return end
+			local u = n("MedActiveUntil", serverNow())
+			local d = u - serverNow()
+			if d > 0.005 then task.wait(d) end
+			if alive() then startPart("pmedfold", spot, u, false) end
+		end)
+	end)
+end
 -- v1.12 the Pachy's jump: at the lift-off (JumpStartedAt + JumpWindup)
 local hookedPachyJump = setmetatable({}, {__mode = "k"})
 local function hookPachyJump(m)
@@ -663,6 +776,7 @@ local function hookAbility(m)
 	hookTeno(m) -- v1.10
 	hookPachyJump(m) -- v1.12
 	hookPachyHook(m) -- v1.14
+	hookPachyParts(m) -- v1.15
 	for e, attr in pairs(ABILITY) do
 		m:GetAttributeChangedSignal(attr):Connect(function()
 			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end
