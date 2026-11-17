@@ -1,4 +1,4 @@
-# build_pachy_sound_pick.py v0.2 (Mecha Dino Arena) — builds the Pachy sound pick page (MDA-552, sound pass round 11): the Pachy
+# build_pachy_sound_pick.py v0.3 (Mecha Dino Arena) — builds the Pachy sound pick page (MDA-552, sound pass round 11): the Pachy
 # move storyboard (pachy_moves_anim.js, every move on its A version, the one in the game: Kepu 2026-11-05 "A for everything")
 # with an A / B / C sound panel per move, a pick row and the copy-picks bar (as build_teno_sound_pick.py 0.2). Picking an
 # option restarts the move and plays each part on its beat; while a sound plays, the storyboard is stepped to the audio clock
@@ -7,7 +7,9 @@
 # Usage: python3 tools/mockup/build_pachy_sound_pick.py <sound dir with meta.json + MDA_SFX_pachy2_*.wav> <out.html>
 #   [three.min.js r128 path; omitted = cdnjs].
 # v0.2 (Kepu 2026-11-17 10:58 "i dont hear it on the mockup you sent"): the Headbutt plays the hit Kepu sent (GameSounds 1.11
-#   phbhit) at the storyboard's hit (0.60 s); a move offers the options its sound set has (the headbutt has one). Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_pachy_v2_sfx.py.
+#   phbhit) at the storyboard's hit (0.60 s); a move offers the options its sound set has (the headbutt has one).
+# v0.3 (Kepu 2026-11-17 11:06 "use that for jump"): the Leap plays the 8-bit jump Kepu sent (GameSounds 1.12 pjump) at the
+#   lift-off (0.12 s); the double jump (0.42 s) stays silent. Sounds are not in the repo (Sonniss licence); recipe docs/sfx/gen_pachy_v2_sfx.py.
 import base64, json, os, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -110,6 +112,8 @@ const SND = __SND__;
 const PLAN = {
   headbutt: {mv: "headbutt", parts: () => [["hit", 0.60]],
     game: "In the game: on the hit (HeadbuttHitAt), heard by everyone nearby. The old built-in thud still plays under it. Wind-up and charge have no sound yet."},
+  leap: {mv: "leap", parts: () => [["jump", J_T0]],
+    game: "In the game: at the lift-off (the press + the 0.12 s crouch), heard by everyone nearby. The double jump has no sound."},
   hook: {mv: "hook", parts: () => [["fire", 0], ["reel", 0.286, 0.786]],
     game: "In the game: the fire 0.15 s before the claw flies (the brace), the reel from when the claw grabs until the head smash (the smash keeps its own sound). Here the target is 30 studs away."},
   servodash: {mv: "dash", parts: () => [["blast", 0], ["burn", 0.31, 1.31], ["skid", 1.31]],
@@ -125,7 +129,7 @@ const PLAN = {
   medstation: {mv: "med", parts: () => [["drop", 0], ["hum", 0.60, 3.30], ["fold", 3.30]],
     game: "In the game: the drop on the press (it lands at 0.30 s), the hum while it heals, the fold when it ends. Here it runs 2.7 s; in the game it runs its full time."},
 };
-const NOSOUND = {leap: "The leap and the double jump have no sound yet: they are next.",
+const NOSOUND = {
   laststand: "Last Stand is a passive: no sound in this pass.", headdown: "Head Down is a passive: no sound in this pass."};
 let actx = null, sndOpt = {}, sndLive = null, sndRepeat = true;
 const bufs = {};
@@ -197,7 +201,7 @@ function renderSnd() {
   }).join("");
 }
 // v0.2 picks + copy
-const PICK_NAME = {headbutt: "Headbutt", hook: "Hook", servodash: "Dash", visor: "Visor", ink: "Ink", tether: "Tether", bloodrush: "Blood Rush", medstation: "Med"};
+const PICK_NAME = {headbutt: "Headbutt", leap: "Jump", hook: "Hook", servodash: "Dash", visor: "Visor", ink: "Ink", tether: "Tether", bloodrush: "Blood Rush", medstation: "Med"};
 const PICK_MOVES = () => MOVES.filter(mm => PLAN[mm.id]);
 const PICK_KEY = "mda_pachy_sound_picks_r11";
 let myPicks = {};

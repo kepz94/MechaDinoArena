@@ -107,6 +107,8 @@
 --                 tleap, tleapland, tmortar, tmortarboom, tmud, tstomp) do not play; false = 1.9 (the 1.8 Teno sounds).
 --   * phbhit    (v1.11, the Pachy's headbutt) like cloak: 3D at the dino, on HeadbuttHitAt (the hit; HeadbuttServer stamps it on
 --               the pachy that hit). HeadbuttFX's own thud (the built-in collide sound) still plays under it.
+--   * pjump     (v1.12, the Pachy's jump) like cloak: 3D at the dino, at the lift-off: JumpStartedAt (JumpServer, the press) +
+--               the character's JumpWindup (0.12), on models with Species "Pachy". Not on the double jump.
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -129,6 +131,7 @@ VERSION = "1.8" -- v1.8 the Tenontosaurus' ability sounds (Sonniss real recordin
 VERSION = "1.9" -- v1.9 the Therizino's ability sounds, timed to the animation beats
 VERSION = "1.10" -- v1.10 the Tenontosaurus' ability sounds re-timed to the animation beats
 VERSION = "1.11" -- v1.11 the Pachy's headbutt hit sound
+VERSION = "1.12" -- v1.12 the Pachy's jump sound
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -171,6 +174,9 @@ VERSION = "1.11" -- v1.11 the Pachy's headbutt hit sound
 -- v1.11 (MDA-552; Kepu 2026-11-17 10:40 "there is no sound for the headbutt", 10:51 "use this for the headbutt" with
 --   180663__mixedupmoviestuff__headbutt.wav (Freesound)): phbhit, that file trimmed to 0.37 s and levelled for phone speakers
 --   (mono 48 kHz, the same levelling as the round 9-10 parts), imported through Studio's Asset Manager, on HeadbuttHitAt.
+-- v1.12 (MDA-552; Kepu 2026-11-17 10:40 "or for the double jump" (no sound), 11:06 "use that for jump" with
+--   399095__plasterbrain__8bit-jump.flac (Freesound)): pjump, that file (0.11 s) levelled like phbhit, imported through Asset
+--   Manager, at the Pachy's lift-off (header).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -238,6 +244,8 @@ local TENO_OLD = {tbellow = true, tchallenge = true, tgrab = true, tgrabland = t
 local function tenoOn() return script:GetAttribute("GameSoundsTenoBeatsEnabled") ~= false end
 table.insert(EVENTS, "phbhit") -- v1.11 the Pachy's headbutt hit
 IDS.phbhit, VOL.phbhit = "108009591584705", 0.9
+table.insert(EVENTS, "pjump") -- v1.12 the Pachy's jump
+IDS.pjump, VOL.pjump = "70558141231443", 0.7
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
@@ -575,12 +583,25 @@ local function hookTeno(m)
 	end)
 	on("TenoMudBlockAt", function(t) partAt("tnshieldblock", m, t) end)
 end
+-- v1.12 the Pachy's jump: at the lift-off (JumpStartedAt + JumpWindup)
+local hookedPachyJump = setmetatable({}, {__mode = "k"})
+local function hookPachyJump(m)
+	if hookedPachyJump[m] or not m:IsA("Model") then return end
+	hookedPachyJump[m] = true
+	m:GetAttributeChangedSignal("JumpStartedAt"):Connect(function()
+		local t = m:GetAttribute("JumpStartedAt")
+		if typeof(t) ~= "number" or m:GetAttribute("Species") ~= "Pachy" then return end
+		local d = t + (tonumber(m:GetAttribute("JumpWindup")) or 0.12) - workspace:GetServerTimeNow()
+		if d > 0.005 then task.delay(d, play3D, "pjump", m) elseif d > -0.3 then play3D("pjump", m) end -- later than 0.3 s: skipped
+	end)
+end
 local hookedAbility = setmetatable({}, {__mode = "k"})
 local function hookAbility(m)
 	if hookedAbility[m] or not m:IsA("Model") then return end
 	hookedAbility[m] = true
 	hookTheri(m) -- v1.9
 	hookTeno(m) -- v1.10
+	hookPachyJump(m) -- v1.12
 	for e, attr in pairs(ABILITY) do
 		m:GetAttributeChangedSignal(attr):Connect(function()
 			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end
