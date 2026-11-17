@@ -60,6 +60,28 @@
 --               heard within GameSoundsAbilityRange (200) studs, full volume within GameSoundsAbilityNear (10).
 --   * tmortarboom (v1.8) any dino's TenoMortarLandedAt changes to a number: 3D at its TenoMortarLand (the impact), heard like
 --               hcmboom (GameSoundsBlastRange 400 / GameSoundsBlastNear 20).
+--   * zhookfire / zhookwinch / zhookslash / zvortexstart / zvortexloop / zvortexend / zbolathrow / zbolahit / zdash / zvolley /
+--     zvolleyhit / zwallup / zwallloop / zwallblock / zwalldown
+--               (v1.9, the Therizino's buttons; sound pass round 9 v2, each move split into parts on its animation beats) 3D at
+--               the dino like cloak, each part at a server time worked out from the move's own stamps (late parts start part-way
+--               in; a one-shot later than its length is skipped):
+--               Reaper's Hook (TheriReelAt t): zhookfire at t + TheriReelBrace (the claw flies); on TheriReelResult "hit" with
+--                 TheriReelTime > 0, zhookwinch from t + Brace + TheriReelFly, cut (GameSoundsTheriCutFade 0.04 s) at the finish
+--                 f = t + Brace + Fly + ReelTime, and zhookslash at f.
+--               Reaper Vortex (TheriVortexAt t): zvortexstart at t; zvortexloop (looped) from TheriVortexStart until
+--                 TheriFieldUntil (read live, so a cut-short field stops it), faded over GameSoundsTheriLoopFade (0.08) s;
+--                 zvortexend at TheriFieldUntil.
+--               Bola (TheriBolaAt t): zbolathrow at t; zbolahit on TheriBolaHitAt (the catch) at the caught dino
+--                 (TheriSnareHitTarget), else at TheriBolaEnd.
+--               Dash (TheriDashAt t, TheriDashResult "dash"): zdash at t (built to TheriDashDelay 0.16).
+--               Feather volley (TheriFeatherAt t with TheriFeatherVolley true): zvolley at t (darts at TheriVolleyRelease 0.42);
+--                 on TheriVolleyLandedAt, zvolleyhit at each dino named in TheriVolleyLanded ("name=blades|..."), at most
+--                 GameSoundsTheriHitMax (6).
+--               Shield Wall (TheriDeflectAt t): zwallup at t; zwallloop (looped) from t + GameSoundsTheriWallLoopAt (0.15) until
+--                 TheriDeflectUntil (live), faded; zwalldown at TheriDeflectUntil; zwallblock on each TheriDeflectBlockAt.
+--               A new cast of the same move ends the old loop (no end sound for it). Overclock Joints is a passive: no sound.
+--               Switch: GameSoundsTheriBeatsEnabled (default true; false = 1.8, the Therizino silent). Diagnostics:
+--               GameSoundsTheriLog (the last 24 parts: "<event>@<ms late>", ms = how late the part started vs its beat).
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -79,6 +101,7 @@ VERSION = "1.5" -- v1.5 the Herrera's ability sounds
 VERSION = "1.6" -- v1.6 the Troodon's ability sounds
 VERSION = "1.7" -- v1.7 the Pachy's ability sounds (real recordings)
 VERSION = "1.8" -- v1.8 the Tenontosaurus' ability sounds (Sonniss real recordings)
+VERSION = "1.9" -- v1.9 the Therizino's ability sounds, timed to the animation beats
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -108,6 +131,11 @@ VERSION = "1.8" -- v1.8 the Tenontosaurus' ability sounds (Sonniss real recordin
 --   built from real recordings in the Sonniss GDC 2026 bundle (royalty-free for games; recipe docs/sfx/gen_teno_sonniss_sfx.py),
 --   imported through Studio's Asset Manager. Eight play at the Teno like the Raptor's; tgrabland at TenoGrabLand and tmortarboom
 --   at TenoMortarLand (header). playAt takes an optional range (maxDist, minDist); without it the blast range as in 1.5.
+-- v1.9 (MDA-552; Kepu 2026-11-16 21:21 "These sound options don't even line up with the damn animation timing"; 21:36 picks from
+--   the Sound Pick Board round 9 v2, the sounds played on the real move animation: Harvest C, Snare B, Dash B, Hook B, Feather A,
+--   Deflector A): fifteen sound parts built from the Sonniss GDC 2026 bundle to the move beats (TheriPose 1.11, TheriMovesFX2
+--   1.2; recipe docs/sfx/gen_theri_v2_sfx.py), imported through Studio's Asset Manager, scheduled from TheriMovesServer 1.14's
+--   stamps (header). The Teno's 1.8 sounds are unchanged (their re-time is the next round).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -149,10 +177,21 @@ local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5,
 	phook = 0.7, pink = 0.7, pmed = 0.6, pdash = 0.7, ptether = 0.7, pvisor = 0.7, pblood = 0.7, -- v1.7
 	tbellow = 0.8, tchallenge = 0.8, tgrab = 0.7, tgrabland = 0.8, tleap = 0.7, tleapland = 0.8, tmortar = 0.7, tmortarboom = 1,
 	tmud = 0.7, tstomp = 0.9} -- v1.8
+for e, v in pairs({ -- v1.9 the Therizino's parts: {id, volume}
+	zhookfire = {"131988444170332", 0.7}, zhookwinch = {"131501209791943", 0.6}, zhookslash = {"85268010968406", 0.8},
+	zvortexstart = {"91084196333840", 0.8}, zvortexloop = {"135068714785438", 0.6}, zvortexend = {"117745071258163", 0.7},
+	zbolathrow = {"122613590025358", 0.7}, zbolahit = {"99760597011860", 0.8}, zdash = {"118434882177264", 0.8},
+	zvolley = {"130759604256921", 0.7}, zvolleyhit = {"92654761874896", 0.7}, zwallup = {"135596427314350", 0.7},
+	zwallloop = {"94762016615713", 0.5}, zwallblock = {"140711257394199", 0.8}, zwalldown = {"71150551434238", 0.6}}) do
+	table.insert(EVENTS, e)
+	IDS[e], VOL[e] = v[1], v[2]
+end
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
 	GameSoundsBlastRange = 400, GameSoundsBlastNear = 20, -- v1.5
+	GameSoundsTheriBeatsEnabled = true, GameSoundsTheriLoopFade = 0.08, GameSoundsTheriCutFade = 0.04, -- v1.9
+	GameSoundsTheriWallLoopAt = 0.15, GameSoundsTheriHitMax = 6, -- v1.9
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -279,10 +318,159 @@ local function play3D(e, m)
 	s:Play()
 	Debris:AddItem(s, math.max(tpl.TimeLength, 1) + 0.5)
 end
+
+-- v1.9 the Therizino's ability sounds, each part on its animation beat (header) ----------------------------------------------
+local TweenService = game:GetService("TweenService")
+local function serverNow() return workspace:GetServerTimeNow() end
+local function theriOn() return script:GetAttribute("GameSoundsTheriBeatsEnabled") ~= false end
+local theriLog = {}
+local function logPart(e, lateMs)
+	table.insert(theriLog, e .. "@" .. tostring(lateMs))
+	while #theriLog > 24 do table.remove(theriLog, 1) end
+	script:SetAttribute("GameSoundsTheriLog", table.concat(theriLog, " "))
+end
+local function findDino(name)
+	if type(name) ~= "string" or name == "" then return nil end
+	local pl = Players:FindFirstChild(name)
+	if pl and pl:IsA("Player") and pl.Character then return pl.Character end
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local bots = isl and isl:FindFirstChild("Bots")
+	local b = bots and bots:FindFirstChild(name)
+	return (b and b:IsA("Model")) and b or nil
+end
+local function fadeOut(s, fade)
+	if not (s and s.Parent) then return end
+	local tw = TweenService:Create(s, TweenInfo.new(math.max(0.01, fade), Enum.EasingStyle.Linear), {Volume = 0})
+	tw:Play()
+	task.delay(fade + 0.05, function() local p = s.Parent; s:Destroy(); if p and p:IsA("Attachment") then p:Destroy() end end)
+end
+-- start part e at server time startAt at `where` (a dino model or a Vector3); looped = a loop; returns the Sound (or nil)
+local function startPart(e, where, startAt, looped)
+	if not theriOn() then return nil end
+	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return nil end
+	if player:GetAttribute("InMenu") == true then return nil end
+	group.Volume = num("GameSoundsVolume", 1)
+	local tpl = template(e)
+	if not tpl then return nil end
+	local late = serverNow() - startAt
+	if not looped and tpl.TimeLength > 0 and late > tpl.TimeLength then logPart(e, "skip"); return nil end
+	local parent
+	if typeof(where) == "Vector3" then
+		parent = Instance.new("Attachment")
+		parent.Name = "GameSounds_" .. e .. "_At"
+		parent.WorldPosition = where
+		parent.Parent = workspace.Terrain
+	elseif typeof(where) == "Instance" and where.Parent then
+		local root = where:FindFirstChild("HumanoidRootPart") or where.PrimaryPart
+		if not (root and root:IsA("BasePart")) then return nil end
+		parent = root
+	else
+		return nil
+	end
+	local s = tpl:Clone()
+	s.Looped = looped == true
+	s.RollOffMaxDistance = num("GameSoundsAbilityRange", 200)
+	s.RollOffMinDistance = num("GameSoundsAbilityNear", 10)
+	s.Parent = parent
+	if late > 0.02 then s.TimePosition = looped and (late % math.max(tpl.TimeLength, 0.05)) or late end
+	s:Play()
+	script:SetAttribute("GameSoundsLast", e)
+	script:SetAttribute("GameSoundsCount_" .. e, (script:GetAttribute("GameSoundsCount_" .. e) or 0) + 1)
+	logPart(e, math.floor(math.max(0, late) * 1000 + 0.5))
+	if not looped then
+		if parent:IsA("Attachment") then Debris:AddItem(parent, math.max(tpl.TimeLength, 1) + 0.5) else Debris:AddItem(s, math.max(tpl.TimeLength, 1) + 0.5) end
+	end
+	return s
+end
+-- a one-shot at server time `at` (cut at `cutAt` when given)
+local function partAt(e, where, at, cutAt)
+	local function go()
+		local s = startPart(e, where, at, false)
+		if s and cutAt then
+			local fade = num("GameSoundsTheriCutFade", 0.04)
+			task.delay(math.max(0, cutAt - fade - serverNow()), fadeOut, s, fade)
+		end
+	end
+	local d = at - serverNow()
+	if d > 0.005 then task.delay(d, go) else go() end
+end
+-- a loop from loopAt until untilFn() (read live), then endE at that time; alive() false = a newer cast: fade, no end sound
+local function loopPart(m, loopE, endE, loopAt, untilFn, alive)
+	task.spawn(function()
+		while alive() and serverNow() < loopAt and serverNow() < (tonumber(untilFn()) or 0) do task.wait() end -- ends first: no loop
+		if not alive() then return end
+		local fade = num("GameSoundsTheriLoopFade", 0.08)
+		local s = (serverNow() < (tonumber(untilFn()) or 0)) and startPart(loopE, m, loopAt, true) or nil
+		local guard = serverNow() + 60
+		while alive() and serverNow() < (tonumber(untilFn()) or 0) - fade and serverNow() < guard do task.wait() end
+		if s then fadeOut(s, fade) end
+		if not alive() then return end
+		local u = tonumber(untilFn()) or serverNow()
+		local d = u - serverNow()
+		if d > 0.005 then task.wait(d) end
+		if alive() then startPart(endE, m, u, false) end
+	end)
+end
+local hookedTheri = setmetatable({}, {__mode = "k"})
+local function hookTheri(m)
+	if hookedTheri[m] or not m:IsA("Model") then return end
+	hookedTheri[m] = true
+	local function n(k, d) return tonumber(m:GetAttribute(k)) or d end
+	local function on(attr, fn)
+		m:GetAttributeChangedSignal(attr):Connect(function()
+			local t = m:GetAttribute(attr)
+			if typeof(t) == "number" and theriOn() then fn(t) end
+		end)
+	end
+	on("TheriReelAt", function(t) -- Reaper's Hook
+		local brace, fly, reel = n("TheriReelBrace", 0.3), n("TheriReelFly", 0.22), n("TheriReelTime", 0)
+		partAt("zhookfire", m, t + brace)
+		if m:GetAttribute("TheriReelResult") == "hit" and reel > 0 then
+			local finish = t + brace + fly + reel
+			partAt("zhookwinch", m, t + brace + fly, finish)
+			partAt("zhookslash", m, finish)
+		end
+	end)
+	on("TheriVortexAt", function(t) -- Reaper Vortex
+		partAt("zvortexstart", m, t)
+		loopPart(m, "zvortexloop", "zvortexend", n("TheriVortexStart", t + 0.95),
+			function() return m:GetAttribute("TheriFieldUntil") end,
+			function() return m.Parent ~= nil and m:GetAttribute("TheriVortexAt") == t end)
+	end)
+	on("TheriBolaAt", function(t) partAt("zbolathrow", m, t) end) -- Bola
+	on("TheriBolaHitAt", function(t)
+		local target = findDino(m:GetAttribute("TheriSnareHitTarget"))
+		partAt("zbolahit", target or m:GetAttribute("TheriBolaEnd"), t)
+	end)
+	on("TheriDashAt", function(t) -- Dash
+		if m:GetAttribute("TheriDashResult") == "dash" then partAt("zdash", m, t) end
+	end)
+	on("TheriFeatherAt", function(t) -- Feather Barrage (the volley)
+		if m:GetAttribute("TheriFeatherVolley") == true then partAt("zvolley", m, t) end
+	end)
+	on("TheriVolleyLandedAt", function(t)
+		local k = 0
+		for name in string.gmatch(tostring(m:GetAttribute("TheriVolleyLanded") or ""), "([^|=]+)=[^|]*") do
+			local target = findDino(name)
+			if target and k < num("GameSoundsTheriHitMax", 6) then
+				k += 1
+				partAt("zvolleyhit", target, t)
+			end
+		end
+	end)
+	on("TheriDeflectAt", function(t) -- Deflector Claws (Shield Wall)
+		partAt("zwallup", m, t)
+		loopPart(m, "zwallloop", "zwalldown", t + num("GameSoundsTheriWallLoopAt", 0.15),
+			function() return m:GetAttribute("TheriDeflectUntil") end,
+			function() return m.Parent ~= nil and m:GetAttribute("TheriDeflectAt") == t end)
+	end)
+	on("TheriDeflectBlockAt", function(t) partAt("zwallblock", m, t) end)
+end
 local hookedAbility = setmetatable({}, {__mode = "k"})
 local function hookAbility(m)
 	if hookedAbility[m] or not m:IsA("Model") then return end
 	hookedAbility[m] = true
+	hookTheri(m) -- v1.9
 	for e, attr in pairs(ABILITY) do
 		m:GetAttributeChangedSignal(attr):Connect(function()
 			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end
