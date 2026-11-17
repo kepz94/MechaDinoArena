@@ -19,12 +19,18 @@
 --     nobody has first, then any).
 --   closeness(title, row, team, cfg) -> 0.. (1 = just earned it).
 --   statText(title, row) -> the lower-third stat line ("11 KILLS", "2:05 ON POINT", ...).
+-- v1.1 (Kepu 2026-11-16 20:03 "They should get carried still. You can get bad ones even on the winning team if your stats
+--   suck"): a member left over after the earned titles with 0 kills gets CARRIED (1.0 gave the closest title, which for a
+--   zero-stat member was APEX "0 KILLS"). Leftovers with kills still get the closest title. CARRIED can then be on more than
+--   one member. Switch: CFG.zeroKillCarried (default true; false = 1.0).
 local M = {}
 M.VERSION = "1.0"
+M.VERSION = "1.1" -- v1.1 zero-kill leftovers get CARRIED
 M.ORDER = {"apex", "king", "unkill", "medic", "masher", "extinct", "carried", "pacifist"}
 M.LEN = {apex = 5.4, king = 5.4, unkill = 5.4, medic = 5.4, masher = 5.4, carried = 6.4, pacifist = 5.6, extinct = 5.8}
 M.CFG = {max = 4, apexK = 3, kingPt = 30, unkillPt = 30, medicHeal = 100, masherAb = 20, extinctD = 4, carriedFrac = 0.5,
 	scoreKill = 100, scoreSec = 10}
+M.CFG.zeroKillCarried = true -- v1.1
 
 local function num(v) return type(v) == "number" and v == v and v or 0 end
 local function conf(cfg)
@@ -137,6 +143,10 @@ function M.assign(rows, winner, cfg)
 		if pick then got[pick.id] = title; used[title] = true end
 	end
 	for _, r in ipairs(team) do
+		if not got[r.id] and M.CFG.zeroKillCarried ~= false and num(r.k) == 0 then -- v1.1: no kills -> CARRIED
+			got[r.id] = "carried"
+			used.carried = true
+		end
 		if not got[r.id] then
 			local bestT, bestV
 			for pass = 1, 2 do -- titles nobody has first, then any

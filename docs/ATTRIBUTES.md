@@ -3545,3 +3545,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - VictoryTitles (LocalScript) 1.1 `VictoryHideHudEnabled` (true, per frame), `VictorySoftFlashEnabled` (true, per title), `VictoryHoldSlotEnabled` (true, per frame).
 - VictoryTitlesAnim 1.1 (module field) `SOFT_FLASH` (true; set per title from VictorySoftFlashEnabled).
 - Studio test only: Workspace `ModeTestPractice` (true = practice server in Studio; cleared after the test).
+- VictoryTitles 1.1 (module field) `CFG.zeroKillCarried` (true; false = 1.0 closest title for zero-kill leftovers).

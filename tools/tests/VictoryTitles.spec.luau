@@ -1,4 +1,5 @@
 -- VictoryTitles.spec v1.0 (Mecha Dino Arena) — VictoryTitles 1.0 (plan docs/plans/VICTORY_TITLES_v1.0.md Task 1, MDA-553).
+-- v1.1: VictoryTitles 1.1 (zero-kill leftovers get CARRIED; switch CFG.zeroKillCarried).
 -- Run in Studio Edit (clones ServerStorage.DinoArcade.VictoryTitles); returns "PASS n" or "FAIL ...".
 local src = game:GetService("ServerStorage").DinoArcade:FindFirstChild("VictoryTitles")
 if not src then return "FAIL require: VictoryTitles missing" end
@@ -10,7 +11,7 @@ local fails, passes = {}, 0
 local function eq(name, got, want) if got == want then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end end
 local function byId(list) local m = {} for i, e in ipairs(list) do m[e.id] = e.title; m["#" .. i] = e.id end return m end
 
-eq("version", R.VERSION, "1.0")
+eq("version", R.VERSION, "1.1")
 eq("order", table.concat(R.ORDER, ","), "apex,king,unkill,medic,masher,extinct,carried,pacifist")
 -- the mockup's sample team
 local team = {
@@ -55,5 +56,18 @@ eq("stat king", R.statText("king", {pt = 125.2}), "2:05 ON POINT")
 eq("stat unkill", R.statText("unkill", {k = 7, d = 0}), "0 DEATHS · 7 KILLS")
 eq("stat carried", R.statText("carried", {k = 0, pt = 12}), "0 K · 0:12 ON POINT")
 eq("len carried", R.LEN.carried, 6.4)
+-- v1.1: zero-kill leftovers -> CARRIED (the 2026-11-16 Studio test: 4 winners, no stats at all)
+local z = {{id = "z1", team = "A"}, {id = "z2", team = "A"}, {id = "z3", team = "A"}, {id = "z4", team = "A"}}
+local nP, nC = 0, 0
+for _, e in ipairs(R.assign(z, "A")) do if e.title == "pacifist" then nP += 1 elseif e.title == "carried" then nC += 1 end end
+eq("zero: 1 pacifist", nP, 1); eq("zero: 3 carried", nC, 3)
+local mz = byId(R.assign({{id = "q", team = "A", k = 0, d = 0, pt = 25, heal = 0, ab = 3}, {id = "w", team = "A", k = 0, d = 0, pt = 0}}, "A"))
+eq("zero-kill leftover carried", mz.w == "carried" or mz.q == "carried", true)
+eq("no apex at 0 kills", mz.q ~= "apex" and mz.w ~= "apex", true)
+R.CFG.zeroKillCarried = false
+local zoff = byId(R.assign({{id = "z1", team = "A"}, {id = "z2", team = "A"}}, "A"))
+R.CFG.zeroKillCarried = true
+eq("switch off = 1.0 closest (no carried)", zoff.z1 ~= "carried" and zoff.z2 ~= "carried", true)
+eq("switch on: no unkill / apex at 0 kills", (function() local mm = byId(R.assign({{id = "z1", team = "A"}, {id = "z2", team = "A"}}, "A")) return mm.z1 ~= "unkill" and mm.z2 ~= "unkill" and mm.z1 ~= "apex" and mm.z2 ~= "apex" end)(), true)
 if #fails > 0 then return "FAIL " .. #fails .. ": " .. table.concat(fails, " | ") end
 return "PASS " .. passes
