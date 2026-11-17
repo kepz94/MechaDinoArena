@@ -48,6 +48,10 @@
 --               TrooMenderAt / TrooRiftOpenAt (Portal Feathers is the Apex-style rift since TrooMovesServer 1.10: the rift opens
 --               at end B) / TrooSapAt / TrooSentryAt (the throws and the drone) / TrooShedAt (breaking free) / TrooSleepFireAt (the
 --               dart; not TrooSleepAt, which the sleeping target also gets).
+--   * phook / pink / pmed / pdash / ptether / pvisor / pblood
+--               (v1.7, the Pachy's buttons) like cloak: 3D at the dino, on HookStartedAt (the claw fires; the head smash keeps
+--               HookFX's sound) / InkStartedAt (the press) / MedDroppedAt / ServoDashStartedAt / TetherStartedAt / VisorStartedAt /
+--               HeadbuttSacrificeAt (Blood Rush pays health for a headbutt).
 --   Not while you are in the menu (player InMenu), except click.
 -- Switch: script attribute GameSoundsEnabled (default true, read per event). SoundGroup GameSFX volume: GameSoundsVolume (1).
 -- Diagnostics: GameSoundsVersion, GameSoundsLast ("<event>"), GameSoundsCount_<event>; v1.3 GameSoundsLast3D ("<event>:<dino>").
@@ -65,6 +69,7 @@ VERSION = "1.3" -- v1.3 the Raptor's ability sounds
 VERSION = "1.4" -- v1.4 the Dilophosaurus' ability sounds
 VERSION = "1.5" -- v1.5 the Herrera's ability sounds
 VERSION = "1.6" -- v1.6 the Troodon's ability sounds
+VERSION = "1.7" -- v1.7 the Pachy's ability sounds (real recordings)
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -83,6 +88,11 @@ VERSION = "1.6" -- v1.6 the Troodon's ability sounds
 -- v1.6 (MDA-552; Kepu 2026-11-16 16:37 "next" -> the Troodon; 16:43 picks from the Sound Pick Board round 6: "oburst B, odome B,
 --   olantern C, omender B, oportal C, osapwall A, osentry B, oshed B, osleep B"): nine original sounds (files
 --   docs/sfx/MDA_SFX_troo_<part>.wav), imported through Studio's Asset Manager, heard like the Raptor's (3D at the dino, at the press).
+-- v1.7 (MDA-552; Kepu 2026-11-16 17:05 the synthesized options "feel lazy" -> "Real sounds, redo all"; 17:14 "1. Let's do that" (the
+--   Roblox licensed library); 17:19 picks from the Sound Pick Board round 7 v2: "hookarm A, ink A, medstation C, servodash C,
+--   tether B, visor C, bloodrush A"): real recordings from Roblox's Pro Sound Effects library (free to use in Roblox games), used by
+--   their library ids (no upload): Chain Movement 1, Wet Newspaper Squish 14, Phasey Synth Power Up 2, Servo Pig Motor Burst 3,
+--   Sci-Fi Weapon 12, Robot Servo Synth, Blood Spurt 2. Heard like the Raptor's (3D at the dino).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -91,7 +101,8 @@ local EVENTS = {"hit", "kill", "captured", "lost", "contested", "moving", "tick"
 	"cloak", "shield", "adren", "cannon", "scent", -- v1.3 Raptor buttons
 	"dgatling", "dmortar", "dspine", "dover", "dhiss", "dpump", "dscope", -- v1.4 Dilophosaurus buttons
 	"hquills", "hsmoke", "hstrobe", "hbreaker", "hcaltrops", "hgoo", "hglider", "hcmlaunch", "hcmboom", -- v1.5 Herrera buttons
-	"oburst", "odome", "olantern", "omender", "oportal", "osapwall", "osentry", "oshed", "osleep"} -- v1.6 Troodon buttons
+	"oburst", "odome", "olantern", "omender", "oportal", "osapwall", "osentry", "oshed", "osleep", -- v1.6 Troodon buttons
+	"phook", "pink", "pmed", "pdash", "ptether", "pvisor", "pblood"} -- v1.7 Pachy buttons
 local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "113513728853752", lost = "124135883749071",
 	contested = "101864400003768", moving = "136030860049130", tick = "86647331351122", go = "122207388352651",
 	click = "100987841683034", win = "71840308309828", lose = "81529780885336",
@@ -105,7 +116,9 @@ local IDS = {hit = "123580812773962", kill = "76655662060940", captured = "11351
 	hcmboom = "111468500071162", -- v1.5
 	oburst = "117236886371898", odome = "122437822830255", olantern = "130563682814012", omender = "113309575050749",
 	oportal = "128803735549174", osapwall = "91446054650325", osentry = "134001878124782", oshed = "102472464366448",
-	osleep = "90715155100654"} -- v1.6
+	osleep = "90715155100654", -- v1.6
+	phook = "9113760085", pink = "9126209045", pmed = "9117297453", pdash = "9118999657", ptether = "9118792593",
+	pvisor = "9118462554", pblood = "9113464577"} -- v1.7 (Pro Sound Effects library ids)
 local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5, moving = 0.6, tick = 0.6, go = 0.7,
 	click = 0.4, win = 0.7, lose = 0.7, hurt = 0.6, died = 0.8,
 	cloak = 0.7, shield = 0.7, adren = 0.7, cannon = 0.8, scent = 0.6, -- v1.3
@@ -113,7 +126,8 @@ local VOL = {hit = 0.5, kill = 0.7, captured = 0.6, lost = 0.6, contested = 0.5,
 	hquills = 0.7, hsmoke = 0.7, hstrobe = 0.6, hbreaker = 0.8, hcaltrops = 0.6, hgoo = 0.7, hglider = 0.6, hcmlaunch = 0.8,
 	hcmboom = 1, -- v1.5
 	oburst = 0.6, odome = 0.7, olantern = 0.7, omender = 0.6, oportal = 0.7, osapwall = 0.7, osentry = 0.6, oshed = 0.7,
-	osleep = 0.6} -- v1.6
+	osleep = 0.6, -- v1.6
+	phook = 0.7, pink = 0.7, pmed = 0.6, pdash = 0.7, ptether = 0.7, pvisor = 0.7, pblood = 0.7} -- v1.7
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
 	GameSoundsAbilityRange = 200, GameSoundsAbilityNear = 10, -- v1.3
@@ -215,6 +229,10 @@ for e, attr in pairs({hquills = "QuillStartedAt", hsmoke = "SmokeStartedAt", hst
 end
 for e, attr in pairs({oburst = "TrooBurstAt", odome = "TrooDomeAt", olantern = "TrooLanternAt", omender = "TrooMenderAt", -- v1.6
 	oportal = "TrooRiftOpenAt", osapwall = "TrooSapAt", osentry = "TrooSentryAt", oshed = "TrooShedAt", osleep = "TrooSleepFireAt"}) do
+	ABILITY[e] = attr
+end
+for e, attr in pairs({phook = "HookStartedAt", pink = "InkStartedAt", pmed = "MedDroppedAt", pdash = "ServoDashStartedAt", -- v1.7
+	ptether = "TetherStartedAt", pvisor = "VisorStartedAt", pblood = "HeadbuttSacrificeAt"}) do
 	ABILITY[e] = attr
 end
 local function play3D(e, m)

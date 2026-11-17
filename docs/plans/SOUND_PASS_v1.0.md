@@ -118,3 +118,14 @@ Every server script, the existing sound scripts, Music, HardpointHUD, PrematchCo
 - **Triggers:** TrooBurstAt, TrooDomeAt, TrooLanternAt, TrooMenderAt, TrooSapAt, TrooSentryAt, TrooShedAt, TrooSleepFireAt (not TrooSleepAt: the sleeping target gets that one too).
   - Portal Feathers: code fact found while wiring it: since TrooMovesServer 1.10 the part is the Apex-style rift (press, walk, press), so the sound plays on TrooRiftOpenAt (the rift opens at end B, where the Troodon stands). The old two-ring mode (TrooPortalAt, switch off by default) stays silent. The Lab text still describes the rings.
 - **Studio test (bots match, Troodon, max-all):** burst, dome, lantern, mender, sap wall, sentry, sleep dart and the rift (press, walk 14 studs, press) through their real remotes → each played. Feather Shed by a server TrooShedAt stamp → 1. Troodon bots' rifts, sentries and domes also played at the bots.
+
+## Change of source: real recordings (GameSounds 1.7 on)
+- **Kepu 17:05**, on the synthesized Pachy options: "These are starting to fucking feel lazy. Don't even have any correlation to the fucking ability and what it should sound like these are just 8bit sounds." Pick: "Real sounds, redo all": Pachy, Teno, Therizino, then redo the live Raptor, Dilophosaurus, Herrera and Troodon sounds.
+- **Sources tried:** Openverse (refused by the session's network; Kepu's page did not load). Roblox Creator Store search: mostly sounds ripped from other games, except that a "<family> (SFX)" query returns Roblox's licensed **Pro Sound Effects** library (free to use in Roblox). Chosen 17:14: "1. Let's do that".
+- **Audition:** the pick page links each option to its Creator Store page (plays on the phone). The ids are used directly, so nothing is uploaded.
+- **Limits:** I cannot hear library audio myself; picks come from the library's own descriptions. Files with several takes would be cut to one with Sound.PlaybackRegion. Fallback if the library falls short: the Sonniss GDC bundle in Kepu's Music folder.
+
+## Round 7: the Pachy (GameSounds 1.7)
+- **Picks (17:19):** "hookarm A, ink A, medstation C, servodash C, tether B, visor C, bloodrush A" (page docs/mockups/sound_pick_board_v0.7b.html). The rejected synthesized round is docs/mockups/sound_pick_board_v0.7.html.
+- **Triggers:** HookStartedAt (the claw fires; the head smash keeps HookFX's sound), InkStartedAt, MedDroppedAt, ServoDashStartedAt, TetherStartedAt, VisorStartedAt, HeadbuttSacrificeAt (Blood Rush). Mecha Legs has no press.
+- **Studio test:** six parts through their real remotes played; Blood Rush by a server stamp (test headbutt presses returned "timeout").

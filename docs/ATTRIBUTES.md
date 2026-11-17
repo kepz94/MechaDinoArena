@@ -3532,3 +3532,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - GameSounds 1.4 events `dgatling` (0.6), `dmortar` (0.8), `dspine` (0.7), `dover` (0.7), `dhiss` (0.8), `dpump` (0.7), `dscope` (0.7) with the per-event attributes.
 - GameSounds 1.5 `GameSoundsBlastRange` (400 studs), `GameSoundsBlastNear` (20 studs); events `hquills` (0.7), `hsmoke` (0.7), `hstrobe` (0.6), `hbreaker` (0.8), `hcaltrops` (0.6), `hgoo` (0.7), `hglider` (0.6), `hcmlaunch` (0.8), `hcmboom` (1) with the per-event attributes.
 - GameSounds 1.6 events `oburst` (0.6), `odome` (0.7), `olantern` (0.7), `omender` (0.6), `oportal` (0.7), `osapwall` (0.7), `osentry` (0.6), `oshed` (0.7), `osleep` (0.6) with the per-event attributes.
+- GameSounds 1.7 events `phook`, `pink`, `pdash`, `ptether`, `pvisor`, `pblood` (0.7), `pmed` (0.6) with the per-event attributes; ids are Pro Sound Effects library ids.
