@@ -183,6 +183,7 @@ VERSION = "1.15" -- v1.15 the rest of the Pachy's parts on their beats (round 11
 VERSION = "1.16" -- v1.16 Hardpoint voice callouts replace the captured / lost / contested sounds
 VERSION = "1.17" -- v1.17 the match intro voice line over the pre-match countdown
 VERSION = "1.18" -- v1.18 the Raptor's buttons on their beats (round 17 picks)
+VERSION = "1.19" -- v1.19 the Dilo's buttons on their beats (round 18 picks)
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -261,6 +262,28 @@ VERSION = "1.18" -- v1.18 the Raptor's buttons on their beats (round 17 picks)
 --                   (0.60) until ScentUntil, then rscentend.
 --   While GameSoundsRaptorBeatsEnabled (default true) these replace the 1.3 cloak / shield / adren / cannon / scent sounds;
 --   false = 1.17. The loops fade over GameSoundsTheriLoopFade (0.08) s, as every beat-timed loop.
+-- v1.19 (MDA-552, sound pass round 18; Kepu 2026-11-17 20:20 "Scope B, Gatling B, Mortar B, Spine C, Hiss C, Pump B, Overdrive B"
+--   on the Dilo pick page that plays Studio recordings of the game): the Dilo's seven part buttons get real sounds (recipe
+--   docs/sfx/gen_dilo_v2_sfx.py, Sonniss; 23 parts imported through Asset Manager, ids checked with GetProductInfo), each part on
+--   the beat DiloMovesServer stamps (3D at the dino unless noted; heard by everyone near it):
+--     Sniper Scope    dscopein at DiloScopeStartAt; dscopecharge (loop) from + GameSoundsDiloScopeChargeAt (0.15) while
+--                     DiloScoping stays true for that start (ends at the shot, a cancel or the timeout); dscopeshot at
+--                     DiloScopeShotAt; dscopehit at the shot + GameSoundsDiloScopeHitDelay (0.03) on the dino named in
+--                     DiloScopeTarget when DiloScopeRule is "hit".
+--     Venom Gatling   dgatspinup at DiloGatlingAt; dgatwhirr (loop) from + DiloGatlingWindup until + DiloGatlingTime, then
+--                     dgatspindown; dgatshot on every DiloGatlingShot change (one per dart); dgathit on every DiloGatlingHit
+--                     change ("name;i"), on the dino hit.
+--     Toxin Mortar    dmortarload at DiloMortarAt; dmortarfire at DiloMortarFireAt; dmortarland at DiloMortarLandAt at the
+--                     landing point (DiloMortarTo); dmortarcloud (loop) there from + GameSoundsDiloCloudAt (0.15) until the
+--                     landing + DiloMortarTime.
+--     Spine Burst     dspineflare at DiloSpineAt; dspineburst at DiloSpineBurstAt; dspinehit at the burst + DiloSpineFlight on
+--                     each dino named in DiloSpineHits ("name=k|..."), at most GameSoundsDiloSpineHitMax (6).
+--     Sonic Hiss      dhisscharge at DiloHissAt; dhissblast at DiloHissBlastAt.
+--     Antivenom Pump  dpumpprime at DiloPumpAt; dpumpjolt at DiloPumpJoltAt.
+--     Venom Overdrive dovercharge at DiloOverdriveAt; doverloop (loop) from DiloOverdriveStartAt until DiloOverdriveUntil, then
+--                     doverend.
+--   While GameSoundsDiloBeatsEnabled (default true) these replace the 1.4 dgatling / dmortar / dspine / dover / dhiss / dpump /
+--   dscope sounds; false = 1.18. Spring Jets keeps its thruster sound (DiloMovesFX).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -361,6 +384,21 @@ for e, v in pairs({rcloakon = {"81803825775341", 0.7}, rcloakoff = {"10345404417
 end
 local function raptorOn() return script:GetAttribute("GameSoundsRaptorBeatsEnabled") ~= false end -- v1.18
 local RAPTOR_OLD = {cloak = true, shield = true, adren = true, cannon = true} -- v1.18 (scent: its own 2D call)
+local DILO_PART = {} -- v1.19 the Dilo's beat-timed parts: {id, volume}
+for e, v in pairs({dscopein = {"87996454276660", 0.6}, dscopecharge = {"112199806794801", 0.35}, dscopeshot = {"129819548998160", 0.8},
+	dscopehit = {"118523306834393", 0.8}, dgatspinup = {"127110981659220", 0.6}, dgatwhirr = {"95709239727917", 0.4},
+	dgatspindown = {"87616460780778", 0.5}, dgatshot = {"97930817117505", 0.45}, dgathit = {"80053461745984", 0.55},
+	dmortarload = {"100226302260787", 0.6}, dmortarfire = {"139629082255502", 0.8}, dmortarland = {"112720360694728", 0.8},
+	dmortarcloud = {"77641189060328", 0.4}, dspineflare = {"83711534998673", 0.6}, dspineburst = {"121775204885235", 0.8},
+	dspinehit = {"81225216290827", 0.7}, dhisscharge = {"121340012224637", 0.6}, dhissblast = {"123837392651778", 0.8},
+	dpumpprime = {"113217060937195", 0.6}, dpumpjolt = {"110091732824705", 0.7}, dovercharge = {"129720923588437", 0.8},
+	doverloop = {"84453617342584", 0.35}, doverend = {"88309815356089", 0.6}}) do
+	table.insert(EVENTS, e)
+	IDS[e], VOL[e] = v[1], v[2]
+	DILO_PART[e] = true
+end
+local function diloOn() return script:GetAttribute("GameSoundsDiloBeatsEnabled") ~= false end -- v1.19
+local DILO_OLD = {dgatling = true, dmortar = true, dspine = true, dover = true, dhiss = true, dpump = true, dscope = true} -- v1.19
 local PACHY_OLD = {phook = true, pink = true, pmed = true, pdash = true, ptether = true, pvisor = true, pblood = true} -- v1.15
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
@@ -377,6 +415,8 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 	GameSoundsIntroEnabled = true, GameSoundsIntroAt = 9, GameSoundsIntroLate = 0.5, GameSoundsIntroLines = "vointro1,vointro2", -- v1.17
 	GameSoundsRaptorBeatsEnabled = true, GameSoundsRaptorShieldHumAt = 0.10, GameSoundsRaptorRushAt = 0.30, -- v1.18
 	GameSoundsRaptorAuraAt = 0.60, GameSoundsRaptorChargeMax = 10, -- v1.18
+	GameSoundsDiloBeatsEnabled = true, GameSoundsDiloScopeChargeAt = 0.15, GameSoundsDiloScopeHitDelay = 0.03, -- v1.19
+	GameSoundsDiloCloudAt = 0.15, GameSoundsDiloSpineHitMax = 6, GameSoundsDiloLoopMax = 30, -- v1.19
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -491,6 +531,7 @@ local function play3D(e, m)
 	if e == "phook" and pachyOn() then return end -- v1.14: the beat-timed hook replaces it
 	if PACHY_OLD[e] and pachyOn() then return end -- v1.15: the beat-timed parts replace the 1.7 Pachy sounds
 	if RAPTOR_OLD[e] and raptorOn() then return end -- v1.18: the beat-timed parts replace the 1.3 Raptor sounds
+	if DILO_OLD[e] and diloOn() then return end -- v1.19: the beat-timed parts replace the 1.4 Dilo sounds
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	local root = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
@@ -539,6 +580,7 @@ local function startPart(e, where, startAt, looped, maxD, minD) -- v1.10: option
 	if TENO_PART[e] then if not tenoOn() then return nil end
 	elseif PACHY_PART[e] then if not pachyOn() then return nil end -- v1.14: the Pachy's switch
 	elseif RAPTOR_PART[e] then if not raptorOn() then return nil end -- v1.18: the Raptor's switch
+	elseif DILO_PART[e] then if not diloOn() then return nil end -- v1.19: the Dilo's switch
 	elseif not theriOn() then return nil end -- v1.10: the Teno's switch
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return nil end
 	if player:GetAttribute("InMenu") == true then return nil end
@@ -888,6 +930,90 @@ local function hookPachyJump(m)
 		m:GetAttributeChangedSignal("JumpDoublePredictedAt"):Connect(function() double("JumpDoublePredictedAt") end)
 	end
 end
+-- v1.19 the Dilo's buttons, each on its beat (header)
+local hookedDilo = setmetatable({}, {__mode = "k"})
+local function holdLoop(e, where, at, keep) -- a loop from server time `at` while keep() (read live), then a fade
+	task.spawn(function()
+		while keep() and serverNow() < at do task.wait() end
+		if not keep() then return end
+		local s = startPart(e, where, at, true)
+		if not s then return end
+		local guard = serverNow() + num("GameSoundsDiloLoopMax", 30)
+		while keep() and serverNow() < guard do task.wait() end
+		fadeOut(s, num("GameSoundsTheriLoopFade", 0.08))
+	end)
+end
+local function hookDiloParts(m)
+	if hookedDilo[m] or not m:IsA("Model") then return end
+	hookedDilo[m] = true
+	local function n(k, d) return tonumber(m:GetAttribute(k)) or d end
+	local function on(attr, fn)
+		m:GetAttributeChangedSignal(attr):Connect(function()
+			local t = m:GetAttribute(attr)
+			if typeof(t) == "number" and diloOn() then fn(t) end
+		end)
+	end
+	local function onChange(attr, fn) -- string stamps (no server time): the change is the beat
+		m:GetAttributeChangedSignal(attr):Connect(function()
+			local v = m:GetAttribute(attr)
+			if type(v) == "string" and v ~= "" and diloOn() then fn(v) end
+		end)
+	end
+	on("DiloScopeStartAt", function(t) -- Sniper Scope
+		partAt("dscopein", m, t)
+		holdLoop("dscopecharge", m, t + num("GameSoundsDiloScopeChargeAt", 0.15),
+			function() return m.Parent ~= nil and m:GetAttribute("DiloScoping") == true and m:GetAttribute("DiloScopeStartAt") == t end)
+	end)
+	on("DiloScopeShotAt", function(t)
+		partAt("dscopeshot", m, t)
+		if m:GetAttribute("DiloScopeRule") == "hit" then
+			local target = findDino(m:GetAttribute("DiloScopeTarget"))
+			if target then partAt("dscopehit", target, t + num("GameSoundsDiloScopeHitDelay", 0.03)) end
+		end
+	end)
+	on("DiloGatlingAt", function(t) -- Venom Gatling
+		partAt("dgatspinup", m, t)
+		local spin = t + n("DiloGatlingWindup", 0.4)
+		local stop = spin + n("DiloGatlingTime", 1)
+		loopPart(m, "dgatwhirr", "dgatspindown", spin, function() return stop end,
+			function() return m.Parent ~= nil and m:GetAttribute("DiloGatlingAt") == t end)
+	end)
+	onChange("DiloGatlingShot", function() partAt("dgatshot", m, serverNow()) end)
+	onChange("DiloGatlingHit", function(v)
+		local target = findDino(v:match("^(.-);") or v)
+		partAt("dgathit", target or m, serverNow())
+	end)
+	on("DiloMortarAt", function(t) partAt("dmortarload", m, t) end) -- Toxin Mortar
+	on("DiloMortarFireAt", function(t) partAt("dmortarfire", m, t) end)
+	on("DiloMortarLandAt", function(t)
+		local to = m:GetAttribute("DiloMortarTo")
+		local where = typeof(to) == "Vector3" and to or m
+		partAt("dmortarland", where, t)
+		local untilT = t + n("DiloMortarTime", 5)
+		holdLoop("dmortarcloud", where, t + num("GameSoundsDiloCloudAt", 0.15),
+			function() return serverNow() < untilT and m:GetAttribute("DiloMortarLandAt") == t end)
+	end)
+	on("DiloSpineAt", function(t) partAt("dspineflare", m, t) end) -- Spine Burst
+	on("DiloSpineBurstAt", function(t)
+		partAt("dspineburst", m, t)
+		local k, hitAt = 0, t + n("DiloSpineFlight", 0.2)
+		for name in string.gmatch(tostring(m:GetAttribute("DiloSpineHits") or ""), "([^|=]+)=%d+") do
+			if k >= num("GameSoundsDiloSpineHitMax", 6) then break end
+			local target = findDino(name)
+			if target then k += 1 partAt("dspinehit", target, hitAt) end
+		end
+	end)
+	on("DiloHissAt", function(t) partAt("dhisscharge", m, t) end) -- Sonic Hiss
+	on("DiloHissBlastAt", function(t) partAt("dhissblast", m, t) end)
+	on("DiloPumpAt", function(t) partAt("dpumpprime", m, t) end) -- Antivenom Pump
+	on("DiloPumpJoltAt", function(t) partAt("dpumpjolt", m, t) end)
+	on("DiloOverdriveAt", function(t) -- Venom Overdrive
+		partAt("dovercharge", m, t)
+		loopPart(m, "doverloop", "doverend", n("DiloOverdriveStartAt", t + 0.7),
+			function() return m:GetAttribute("DiloOverdriveUntil") end,
+			function() return m.Parent ~= nil and m:GetAttribute("DiloOverdriveAt") == t end)
+	end)
+end
 local hookedAbility = setmetatable({}, {__mode = "k"})
 local function hookAbility(m)
 	if hookedAbility[m] or not m:IsA("Model") then return end
@@ -898,6 +1024,7 @@ local function hookAbility(m)
 	hookPachyHook(m) -- v1.14
 	hookPachyParts(m) -- v1.15
 	hookRaptorParts(m) -- v1.18
+	hookDiloParts(m) -- v1.19
 	for e, attr in pairs(ABILITY) do
 		m:GetAttributeChangedSignal(attr):Connect(function()
 			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end

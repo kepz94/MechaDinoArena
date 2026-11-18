@@ -324,8 +324,8 @@ Tuba, Funny Cut D3).
   moves, destroyed after; DiloMovesSquadEnabled off for the session. Species back to Therizino, Play stopped.
 - Beats (clip time, press at 0.30 s): Scope in 0.33, charge 0.48-1.80, shot 1.80, hit 1.83 (the bot marked, 40 damage);
   Gatling spin-up 0.33, whirr 0.73-1.73, spin-down 1.73, 8 darts 0.76-1.70, 8 hits 0.95-1.88; Mortar load 0.33, fire 0.62,
-  land 1.00 (wind-up 0.275 s and flight 0.383 s in this build, not the header's 0.55 / 1.15), cloud 1.15 on (5 s in the
-  game); Spine flare 0.33, burst 0.76, hit 0.90; Hiss charge 0.33, blast 0.85; Pump prime 0.33, jolt 0.97; Overdrive charge
+  land 1.00 (wind-up 0.275 s and flight 0.383 s: DiloMovesServer 1.9's DiloMortarFastEnabled halves both and the shot pass
+  speeds the flight), cloud 1.15 on (5 s in the game); Spine flare 0.33, burst 0.76, hit 0.90; Hiss charge 0.33, blast 0.85; Pump prime 0.33, jolt 0.97; Overdrive charge
   0.33, loop 1.03 on (8 s in the game; the clip is 4.1 s, so the page plays the end at 2.88).
 - Sounds: docs/sfx/gen_dilo_v2_sfx.py (Sonniss; 39 more sources extracted from the bundle into Kepu's
   _work_dilo_sonniss/mono_flac), three options per move: Scope A rail sniper / B venom rifle / C plasma lance; Gatling A dart
@@ -335,3 +335,6 @@ Tuba, Funny Cut D3).
 - Page: tools/mockup/build_dilo_rec_pick.py v1.0 (repeated beats share one lane), Sound Pick Board version 28. Checked
   headless: all seven moves load and draw, the three options play on the beats, picks save; no errors.
 - Waiting: Kepu's picks. Then upload, GameSounds 1.19 on the beats, Studio test.
+- 20:20 Kepu picks "Scope B, Gatling B, Mortar B, Spine C, Hiss C, Pump B, Overdrive B". GameSounds 1.19: 23 parts imported
+  (one Asset Manager import), each on its beat; Studio test: all 23 played on time, the 1.4 Dilo sounds silent. Not published.
+  Next: the Herrera page.
