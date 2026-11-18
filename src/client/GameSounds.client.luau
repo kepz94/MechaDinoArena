@@ -846,7 +846,7 @@ local function hookRaptorParts(m)
 		local charge
 		m:GetAttributeChangedSignal("MechaScreechAim"):Connect(function() -- your own aim (client-side)
 			if m:GetAttribute("MechaScreechAim") == "aiming" and raptorOn() then
-				if charge then fadeOut(charge, 0.02) end
+				if charge and charge.Parent then return end -- already charging (MechaButtons sets "aiming" twice)
 				local s = startPart("rcannoncharge", m, serverNow(), true)
 				charge = s
 				if s then task.delay(num("GameSoundsRaptorChargeMax", 10), function() if charge == s then fadeOut(s, 0.1) charge = nil end end) end

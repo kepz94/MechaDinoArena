@@ -309,4 +309,6 @@ Tuba, Funny Cut D3).
 - Page: tools/mockup/build_raptor_rec_pick.py v1.0, Sound Pick Board version 27. Checked headless: every move loads, the
   three options play on the beats, picks save; no errors.
 - Waiting: Kepu's picks. Then upload, GameSounds on the beats, Studio test.
+- 19:18 Kepu picks "Cloak B, Shield B, Adrenaline A, Cannon A, Scent A". GameSounds 1.18: 15 parts imported, each on its beat;
+  Studio test: all 15 played on time, the 1.3 sounds silent. Not published. Next: the Dilo page.
 
