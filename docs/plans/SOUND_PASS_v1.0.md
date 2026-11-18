@@ -267,3 +267,20 @@ dinos too". Round 8 (Teno, live v857) and round 9 v1 were timed off the server s
 - Waiting on Kepu's music picks and his word on the sound effects; then the other four titles get cued and it all goes in
   the game behind switches.
 
+## Round 16 — the title music and sound effects in the game (2026-11-17)
+
+Kepu 16:48 kept all 16 music tracks (hero: All Action Hero (f), Day Of The Election Sting 2, Global Success StingA, Herald of
+Freedom (Sting 1), Forging The Army StingA, Wings of Destiny (Sting 2), The Ultimate Challenge StingA, Triumph; clown: Clown
+Parade Sting 1 and 2, Circus And Clowns Link, Clown Parade Link, Circus And Clowns Sting 2, Round Up Round Up Link 2, Cheerful
+Tuba, Funny Cut D3).
+- New: VictoryTitlesAudio 1.0 (ModuleScript), VictoryTitles 1.3, VictoryTitlesAnim 1.3 (`runner.time()`). Each title starts a
+  random track from its list and the card hit; the beats play on the title's own clock; the music fades at the next title,
+  a skip or the end; the crowd cheers at the results start and when the show ends. A switch per part (attributes in
+  docs/ATTRIBUTES.md).
+- gen_titles_sfx.py 1.1: cues for KING OF THE HILL, UNKILLABLE, MEDIC and PACIFIST (14 more Sonniss sources) and the game's
+  card hits; cue sheet docs/sfx/TITLES_SFX_v1.1.md. 47 cues rendered, copied to Kepu's Music\MechaDinoArena_SFX\titles_vt.
+- Studio Play test (VictoryTitlesTest "apex,carried"): apex played hero track 9042409054, carried clown track 9042030749, the
+  first faded as the second started, the last faded when the show ended; no errors.
+- Waiting: the 47 sound effects need uploading (Open Cloud refused the folder: not an approved upload folder in Studio's
+  Assistant Settings -> MCP Permissions). Until their ids are filled in, the sound effects are silent and the music plays.
+
