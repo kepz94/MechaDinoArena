@@ -1,4 +1,4 @@
-# rec_pack.py v1.0 (Mecha Dino Arena) — packs a move recording made in Studio by tools/studio/move_recorder.luau (MDA-552,
+# rec_pack.py v1.1 (Mecha Dino Arena) — packs a move recording made in Studio by tools/studio/move_recorder.luau (MDA-552,
 # Kepu 2026-11-17 "How about you actually use the fucking animation from the game") into the compact form the pick pages play.
 # Usage: python3 tools/mockup/rec_pack.py <raw.json> <out.json> [lead seconds before the press, default 0.3] [--nobot]
 # Raw (from the recorder): every part of the dino, the target bot and the effects near them, 30 Hz, in the frame of the
@@ -8,6 +8,8 @@
 #   [time, "me"/"bot", name, value (server stamps as seconds on the recording clock), isServerTime].
 # Out: {len, press, ground, lines (beams / ropes per frame), parts: [{sh, m, s0, seg?, rel?, k?}], tracks: base64 int16 (x, y, z in 1/100 stud, quaternion
 #   x 32767; absent = -32768 in x), changes, particles, stamps}. Time 0 = the press - lead.
+# v1.1 (the Raptor pick page, 2026-11-17): also reads move_recorder 1.1's export3 tracks ("trb": base64 int16 x7 per frame,
+#   already quaternions; absent = -32768 in x), about a quarter of the size of "tr".
 import base64, json, math, struct, sys
 
 NOBOT = "--nobot" in sys.argv  # v1.0: drop the bot (a bystander in that recording, pinned at the wrong height by the test setup)
@@ -69,6 +71,12 @@ for i in keep:
     if p.get("seg"):
         e["seg"] = idx[p["seg"] - 1]
         e["rel"] = p["rel"]
+    elif p.get("trb"):  # v1.1: packed already
+        raw7 = base64.b64decode(p["trb"])
+        e["k"] = ntr
+        ntr += 1
+        for f in frames:
+            tracks += raw7[f * 14:(f + 1) * 14] if (f + 1) * 14 <= len(raw7) else struct.pack("<7h", -32768, 0, 0, 0, 0, 0, 0)
     else:
         tr = expand(p["tr"])
         e["k"] = ntr

@@ -1,4 +1,4 @@
--- move_recorder.luau v1.0 (Mecha Dino Arena) — TEST TOOL, not part of the game (MDA-552; Kepu 2026-11-17 11:36 "How about you
+-- move_recorder.luau v1.1 (Mecha Dino Arena) — TEST TOOL, not part of the game (MDA-552; Kepu 2026-11-17 11:36 "How about you
 -- actually use the fucking animation from the game"). Run in Studio Play on the Client data model (execute_luau): records the
 -- local dino, a target model and the effects made near them, 30 times a second (every 2nd Heartbeat; the poses are applied on
 -- PreSimulation, so the parts are where the game drew them), in the frame of the dino's root at the start (+X right, +Y up,
@@ -10,6 +10,11 @@
 --   RemoteEvent the test created, MDARecPin) that held the target bot in place at its standing height until the press, with
 --   PracticeServer disabled for the session so the bot did not attack. Packed for the page by tools/mockup/rec_pack.py.
 -- v1.0 also records RopeConstraints (the tether chain) into beamFrames with a negative index.
+-- v1.1 (2026-11-17, the Raptor pick page; the 1.0 workflow's ad-hoc helpers, written down): R.export2(fxMax, botMax) = export()
+--   minus effect parts never closer than fxMax (40) studs to the dino's root / botMax (25) to the target's, and a frame equal
+--   to the one before written as 1; R.get(k) = the k-th 90 000-character chunk wrapped "<<C{k}>>...<<E>>" and padded to 95 000
+--   (tools/mockup/rec_pack.py and the join step read these). R.export3(fxMax, botMax) = export2 with each per-frame track packed
+--   as base64 int16 x7 per frame ("trb"), about a quarter of the size (rec_pack.py 1.1 reads it).
 local RunService = game:GetService("RunService")
 local Http = game:GetService("HttpService")
 local me = game:GetService("Players").LocalPlayer
@@ -220,6 +225,99 @@ function R.export()
 		stamps = rec.stamps, presses = rec.presses}
 	out = Http:JSONEncode(data)
 	return #out
+end
+function R.export2(fxMax, botMax) -- v1.1
+	fxMax, botMax = fxMax or 40, botMax or 25
+	local F = rec.f
+	local function near(i)
+		local P = rec.parts[i]
+		if P.own ~= "fx" then return true end
+		local root = rec.idx[rec.char:FindFirstChild("HumanoidRootPart")]
+		local troot = rec.target and rec.idx[rec.target:FindFirstChild("HumanoidRootPart") or rec.target.PrimaryPart]
+		for f = 1, F do
+			local a = rec.tracks[i][f]
+			if a then
+				local pa = Vector3.new(a[1], a[2], a[3])
+				local r = root and rec.tracks[root][f]
+				if r and (pa - Vector3.new(r[1], r[2], r[3])).Magnitude <= fxMax then return true end
+				local t = troot and rec.tracks[troot][f]
+				if t and (pa - Vector3.new(t[1], t[2], t[3])).Magnitude <= botMax then return true end
+			end
+		end
+		return false
+	end
+	local keep = {}
+	for i in ipairs(rec.parts) do keep[i] = near(i) end
+	R.export()
+	local d = Http:JSONDecode(out)
+	for i, e in ipairs(d.parts) do
+		if not keep[i] then d.parts[i] = {n = e.n, own = e.own, sh = e.sh, mat = e.mat, tr = {0}, drop = true}
+		elseif e.tr then
+			local prev
+			for f, a in ipairs(e.tr) do
+				local key = type(a) == "table" and table.concat(a, ",") or tostring(a)
+				if key == prev and type(a) == "table" then e.tr[f] = 1 end
+				prev = key
+			end
+		end
+	end
+	local ch = {}
+	for _, c in ipairs(d.changes) do if keep[c[2]] then table.insert(ch, c) end end
+	d.changes = ch
+	out = Http:JSONEncode(d)
+	return #out
+end
+function R.export3(fxMax, botMax) -- v1.1: export2 with every tr track packed: base64 of int16 x7 per frame (x, y, z in 1/100 stud, quaternion x 32767; absent = -32768 in x)
+	R.export2(fxMax, botMax)
+	local d = Http:JSONDecode(out)
+	local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	local function b64(s)
+		local o, n = {}, #s
+		for i = 1, n, 3 do
+			local a, b, c = string.byte(s, i, i + 2)
+			local v = a * 65536 + (b or 0) * 256 + (c or 0)
+			local c1, c2, c3, c4 = bit32.rshift(v, 18), bit32.band(bit32.rshift(v, 12), 63), bit32.band(bit32.rshift(v, 6), 63), bit32.band(v, 63)
+			o[#o + 1] = string.sub(B64, c1 + 1, c1 + 1) .. string.sub(B64, c2 + 1, c2 + 1) .. (b and string.sub(B64, c3 + 1, c3 + 1) or "=") .. (c and string.sub(B64, c4 + 1, c4 + 1) or "=")
+		end
+		return table.concat(o)
+	end
+	local function q(m)
+		local r00, r01, r02, r10, r11, r12, r20, r21, r22 = m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], m[12]
+		local tr, x, y, z, w = r00 + r11 + r22
+		if tr > 0 then local s = math.sqrt(tr + 1) * 2 w = 0.25 * s x = (r21 - r12) / s y = (r02 - r20) / s z = (r10 - r01) / s
+		elseif r00 > r11 and r00 > r22 then local s = math.sqrt(1 + r00 - r11 - r22) * 2 w = (r21 - r12) / s x = 0.25 * s y = (r01 + r10) / s z = (r02 + r20) / s
+		elseif r11 > r22 then local s = math.sqrt(1 + r11 - r00 - r22) * 2 w = (r02 - r20) / s x = (r01 + r10) / s y = 0.25 * s z = (r12 + r21) / s
+		else local s = math.sqrt(1 + r22 - r00 - r11) * 2 w = (r10 - r01) / s x = (r02 + r20) / s y = (r12 + r21) / s z = 0.25 * s end
+		local n = math.sqrt(x * x + y * y + z * z + w * w)
+		if n == 0 then n = 1 end
+		return x / n, y / n, z / n, w / n
+	end
+	local function cl(v) return math.clamp(math.floor(v + 0.5), -32767, 32767) end
+	for _, e in ipairs(d.parts) do
+		if e.tr and not e.drop then
+			local buf, prev = {}, 0
+			for f = 1, d.frames do
+				local a = e.tr[f]
+				if a == nil then a = 0 end
+				if a == 1 then a = prev end
+				prev = a
+				if a == 0 then buf[#buf + 1] = string.pack("<hhhhhhh", -32768, 0, 0, 0, 0, 0, 0)
+				else
+					local qx, qy, qz, qw = q(a)
+					buf[#buf + 1] = string.pack("<hhhhhhh", cl(a[1] * 100), cl(a[2] * 100), cl(a[3] * 100), cl(qx * 32767), cl(qy * 32767), cl(qz * 32767), cl(qw * 32767))
+				end
+			end
+			e.trb = b64(table.concat(buf))
+			e.tr = nil
+		end
+	end
+	out = Http:JSONEncode(d)
+	return #out
+end
+function R.get(k) -- v1.1
+	local s = string.sub(out, (k - 1) * 90000 + 1, k * 90000)
+	local w = "<<C" .. k .. ">>" .. s .. "<<E>>"
+	return w .. string.rep(" ", math.max(0, 95000 - #w))
 end
 function R.chunk(i, size)
 	size = size or 90000
