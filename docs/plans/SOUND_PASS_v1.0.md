@@ -336,5 +336,5 @@ Tuba, Funny Cut D3).
   headless: all seven moves load and draw, the three options play on the beats, picks save; no errors.
 - Waiting: Kepu's picks. Then upload, GameSounds 1.19 on the beats, Studio test.
 - 20:20 Kepu picks "Scope B, Gatling B, Mortar B, Spine C, Hiss C, Pump B, Overdrive B". GameSounds 1.19: 23 parts imported
-  (one Asset Manager import), each on its beat; Studio test: all 23 played on time, the 1.4 Dilo sounds silent. Not published.
-  Next: the Herrera page.
+  (one Asset Manager import), each on its beat; Studio test: all 23 played on time, the 1.4 Dilo sounds silent.
+- 21:12 Kepu "publish": sandbox v886 and the Arena place overwritten. 21:12 "then next": the Herrera page (round 19).
