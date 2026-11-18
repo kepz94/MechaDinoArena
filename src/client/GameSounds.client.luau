@@ -182,6 +182,7 @@ VERSION = "1.14" -- v1.14 the Pachy's Grappling Hook on its beats, ending in the
 VERSION = "1.15" -- v1.15 the rest of the Pachy's parts on their beats (round 11 picks), the hook on option A
 VERSION = "1.16" -- v1.16 Hardpoint voice callouts replace the captured / lost / contested sounds
 VERSION = "1.17" -- v1.17 the match intro voice line over the pre-match countdown
+VERSION = "1.18" -- v1.18 the Raptor's buttons on their beats (round 17 picks)
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -244,6 +245,22 @@ VERSION = "1.17" -- v1.17 the match intro voice line over the pre-match countdow
 -- v1.17 (Kepu 2026-11-17 12:58 "how about a voice playing in the background for the brief intro to like get to the Hardpoint.
 --   Use your mecha upgrades to your advantage"; 13:02 picks lines 1 and 2): two lines in voice A (recipe gen_point_vo.sh v1.1),
 --   imported through Asset Manager, over the countdown fly-over (header).
+-- v1.18 (MDA-552, sound pass round 17; Kepu 2026-11-17 19:18 "Cloak B, Shield B, Adrenaline A, Cannon A, Scent A" on the
+--   Raptor pick page that plays Studio recordings of the game): the Raptor's five buttons get real sounds (recipe
+--   docs/sfx/gen_raptor_v2_sfx.py, Sonniss; 15 parts imported through Asset Manager, ids checked with GetProductInfo), each part
+--   on the beat the game stamps (3D at the dino unless noted):
+--     Cloak Field   rcloakon at CloakStartedAt; rcloakoff when CloakState turns "off" (the cloak drops).
+--     Energy Shield rshieldup at EnergyShieldStartedAt; rshieldhum (loop) from + GameSoundsRaptorShieldHumAt (0.10) until
+--                   EnergyShieldUntil, then rshielddown; rshieldblock at every EnergyShieldBlockAt.
+--     Adrenaline    radreninject at AdrenalineStartedAt; radrenrush (loop, a heartbeat) from + GameSoundsRaptorRushAt (0.30)
+--                   until AdrenalineUntil, then radrenend.
+--     Shock Cannon  rcannoncharge (loop) on your own dino while you hold the aim (MechaScreechAim "aiming", set by your client;
+--                   other players don't see your aim, so they don't hear it); rcannonfire at ScreechStartedAt; rcannonhit at
+--                   the target's ScreechHitAt (on the dino that was hit).
+--     Scent Sense   your own dino only, as 1.3: rscentsniff at ScentStartedAt; rscentaura (loop) from + GameSoundsRaptorAuraAt
+--                   (0.60) until ScentUntil, then rscentend.
+--   While GameSoundsRaptorBeatsEnabled (default true) these replace the 1.3 cloak / shield / adren / cannon / scent sounds;
+--   false = 1.17. The loops fade over GameSoundsTheriLoopFade (0.08) s, as every beat-timed loop.
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -331,6 +348,19 @@ for e, v in pairs({phookfire = {"94784187848873", 0.7}, phookreel = {"1305975952
 	PACHY_PART[e] = true
 end
 local function pachyOn() return script:GetAttribute("GameSoundsPachyBeatsEnabled") ~= false end
+local RAPTOR_PART = {} -- v1.18 the Raptor's beat-timed parts: {id, volume}
+for e, v in pairs({rcloakon = {"81803825775341", 0.7}, rcloakoff = {"103454044172705", 0.7},
+	rshieldup = {"139909059107220", 0.7}, rshieldhum = {"92451753596567", 0.4}, rshielddown = {"78402630525991", 0.6},
+	rshieldblock = {"102231576226042", 0.8}, radreninject = {"125435868847109", 0.7}, radrenrush = {"110717663054124", 0.5},
+	radrenend = {"136450310078265", 0.6}, rcannoncharge = {"108134095342460", 0.45}, rcannonfire = {"139668904289876", 0.8},
+	rcannonhit = {"127154078035843", 0.8}, rscentsniff = {"86346147369461", 0.6}, rscentaura = {"106240258427764", 0.35},
+	rscentend = {"136991527467745", 0.5}}) do
+	table.insert(EVENTS, e)
+	IDS[e], VOL[e] = v[1], v[2]
+	RAPTOR_PART[e] = true
+end
+local function raptorOn() return script:GetAttribute("GameSoundsRaptorBeatsEnabled") ~= false end -- v1.18
+local RAPTOR_OLD = {cloak = true, shield = true, adren = true, cannon = true} -- v1.18 (scent: its own 2D call)
 local PACHY_OLD = {phook = true, pink = true, pmed = true, pdash = true, ptether = true, pvisor = true, pblood = true} -- v1.15
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
@@ -345,6 +375,8 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 	GameSoundsPachyInkLead = 0.10, GameSoundsPachyCockDedupe = 0.5, GameSoundsPachyMedHumAt = 0.60, -- v1.15
 	GameSoundsPointVoiceEnabled = true, GameSoundsVoiceSettle = 1, GameSoundsVoiceGap = 4, -- v1.16
 	GameSoundsIntroEnabled = true, GameSoundsIntroAt = 9, GameSoundsIntroLate = 0.5, GameSoundsIntroLines = "vointro1,vointro2", -- v1.17
+	GameSoundsRaptorBeatsEnabled = true, GameSoundsRaptorShieldHumAt = 0.10, GameSoundsRaptorRushAt = 0.30, -- v1.18
+	GameSoundsRaptorAuraAt = 0.60, GameSoundsRaptorChargeMax = 10, -- v1.18
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -458,6 +490,7 @@ local function play3D(e, m)
 	if TENO_OLD[e] and tenoOn() then return end -- v1.10
 	if e == "phook" and pachyOn() then return end -- v1.14: the beat-timed hook replaces it
 	if PACHY_OLD[e] and pachyOn() then return end -- v1.15: the beat-timed parts replace the 1.7 Pachy sounds
+	if RAPTOR_OLD[e] and raptorOn() then return end -- v1.18: the beat-timed parts replace the 1.3 Raptor sounds
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	local root = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
@@ -505,6 +538,7 @@ end
 local function startPart(e, where, startAt, looped, maxD, minD) -- v1.10: optional range (default the ability range)
 	if TENO_PART[e] then if not tenoOn() then return nil end
 	elseif PACHY_PART[e] then if not pachyOn() then return nil end -- v1.14: the Pachy's switch
+	elseif RAPTOR_PART[e] then if not raptorOn() then return nil end -- v1.18: the Raptor's switch
 	elseif not theriOn() then return nil end -- v1.10: the Teno's switch
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return nil end
 	if player:GetAttribute("InMenu") == true then return nil end
@@ -775,6 +809,60 @@ local function hookPachyParts(m)
 		end)
 	end)
 end
+-- v1.18 the Raptor's buttons, each on its beat (header)
+local hookedRaptor = setmetatable({}, {__mode = "k"})
+local function hookRaptorParts(m)
+	if hookedRaptor[m] or not m:IsA("Model") then return end
+	hookedRaptor[m] = true
+	local function n(k, d) return tonumber(m:GetAttribute(k)) or d end
+	local function on(attr, fn)
+		m:GetAttributeChangedSignal(attr):Connect(function()
+			local t = m:GetAttribute(attr)
+			if typeof(t) == "number" and raptorOn() then fn(t) end
+		end)
+	end
+	on("CloakStartedAt", function(t) partAt("rcloakon", m, t) end) -- Cloak Field
+	m:GetAttributeChangedSignal("CloakState"):Connect(function()
+		if m:GetAttribute("CloakState") == "off" and raptorOn() and serverNow() - n("CloakStartedAt", -math.huge) < 120 then
+			partAt("rcloakoff", m, serverNow())
+		end
+	end)
+	on("EnergyShieldStartedAt", function(t) -- Energy Shield
+		partAt("rshieldup", m, t)
+		loopPart(m, "rshieldhum", "rshielddown", t + num("GameSoundsRaptorShieldHumAt", 0.10),
+			function() return m:GetAttribute("EnergyShieldUntil") end,
+			function() return m.Parent ~= nil and m:GetAttribute("EnergyShieldStartedAt") == t end)
+	end)
+	on("EnergyShieldBlockAt", function(t) partAt("rshieldblock", m, t) end)
+	on("AdrenalineStartedAt", function(t) -- Adrenaline Injector
+		partAt("radreninject", m, t)
+		loopPart(m, "radrenrush", "radrenend", t + num("GameSoundsRaptorRushAt", 0.30),
+			function() return m:GetAttribute("AdrenalineUntil") end,
+			function() return m.Parent ~= nil and m:GetAttribute("AdrenalineStartedAt") == t end)
+	end)
+	on("ScreechStartedAt", function(t) partAt("rcannonfire", m, t) end) -- Shock Cannon: the shot
+	on("ScreechHitAt", function(t) partAt("rcannonhit", m, t) end) -- ... and the hit, on the dino that was hit
+	if m == player.Character then
+		local charge
+		m:GetAttributeChangedSignal("MechaScreechAim"):Connect(function() -- your own aim (client-side)
+			if m:GetAttribute("MechaScreechAim") == "aiming" and raptorOn() then
+				if charge then fadeOut(charge, 0.02) end
+				local s = startPart("rcannoncharge", m, serverNow(), true)
+				charge = s
+				if s then task.delay(num("GameSoundsRaptorChargeMax", 10), function() if charge == s then fadeOut(s, 0.1) charge = nil end end) end
+			elseif charge then
+				fadeOut(charge, num("GameSoundsTheriLoopFade", 0.08))
+				charge = nil
+			end
+		end)
+		on("ScentStartedAt", function(t) -- Scent Sense: you only
+			partAt("rscentsniff", m, t)
+			loopPart(m, "rscentaura", "rscentend", t + num("GameSoundsRaptorAuraAt", 0.60),
+				function() return m:GetAttribute("ScentUntil") end,
+				function() return m.Parent ~= nil and m:GetAttribute("ScentStartedAt") == t end)
+		end)
+	end
+end
 -- v1.12 the Pachy's jump: at the lift-off (JumpStartedAt + JumpWindup)
 local hookedPachyJump = setmetatable({}, {__mode = "k"})
 local function hookPachyJump(m)
@@ -809,6 +897,7 @@ local function hookAbility(m)
 	hookPachyJump(m) -- v1.12
 	hookPachyHook(m) -- v1.14
 	hookPachyParts(m) -- v1.15
+	hookRaptorParts(m) -- v1.18
 	for e, attr in pairs(ABILITY) do
 		m:GetAttributeChangedSignal(attr):Connect(function()
 			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end
@@ -816,7 +905,7 @@ local function hookAbility(m)
 	end
 	if m == player.Character then
 		m:GetAttributeChangedSignal("ScentStartedAt"):Connect(function()
-			if typeof(m:GetAttribute("ScentStartedAt")) == "number" then play("scent") end
+			if typeof(m:GetAttribute("ScentStartedAt")) == "number" and not raptorOn() then play("scent") end -- v1.18: off while the beat-timed scent plays
 		end)
 	end
 end
