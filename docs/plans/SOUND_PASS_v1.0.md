@@ -312,3 +312,26 @@ Tuba, Funny Cut D3).
 - 19:18 Kepu picks "Cloak B, Shield B, Adrenaline A, Cannon A, Scent A". GameSounds 1.18: 15 parts imported, each on its beat;
   Studio test: all 15 played on time, the 1.3 sounds silent. Not published. Next: the Dilo page.
 
+
+## Round 18 — the Dilo on the game's own animation (2026-11-17)
+- Kepu 19:52 "Next": the Dilo's record-the-game pick page, same as the Raptor's.
+- Recorded in Studio (Play, sandbox island, out of the menu, real key presses; the scope held 1.5 s, the rest tapped) with
+  move_recorder 1.1 into tools/mockup/dilo_rec: Sniper Scope, Venom Gatling, Toxin Mortar, Spine Burst, Sonic Hiss, Antivenom
+  Pump, Venom Overdrive. Spring Jets keeps its sound and is not on the page.
+- Test setup only (nothing saved): SkillSaveEnabled off for the session; slots scope / pump / jets / mortar, then gatling /
+  spine / hiss / overdrive for the second four, then put back (dscope, dpump, djets, dmortar); a passive Pachy target 30
+  studs ahead (16 for spine / hiss / overdrive), anchored, ArenaPvPTestTarget, in DinoIsland.Bots, health reset between
+  moves, destroyed after; DiloMovesSquadEnabled off for the session. Species back to Therizino, Play stopped.
+- Beats (clip time, press at 0.30 s): Scope in 0.33, charge 0.48-1.80, shot 1.80, hit 1.83 (the bot marked, 40 damage);
+  Gatling spin-up 0.33, whirr 0.73-1.73, spin-down 1.73, 8 darts 0.76-1.70, 8 hits 0.95-1.88; Mortar load 0.33, fire 0.62,
+  land 1.00 (wind-up 0.275 s and flight 0.383 s in this build, not the header's 0.55 / 1.15), cloud 1.15 on (5 s in the
+  game); Spine flare 0.33, burst 0.76, hit 0.90; Hiss charge 0.33, blast 0.85; Pump prime 0.33, jolt 0.97; Overdrive charge
+  0.33, loop 1.03 on (8 s in the game; the clip is 4.1 s, so the page plays the end at 2.88).
+- Sounds: docs/sfx/gen_dilo_v2_sfx.py (Sonniss; 39 more sources extracted from the bundle into Kepu's
+  _work_dilo_sonniss/mono_flac), three options per move: Scope A rail sniper / B venom rifle / C plasma lance; Gatling A dart
+  minigun / B air blaster / C bio rifle; Mortar A goo cannon / B toxic shell / C spore bomb; Spine A quill volley / B bone
+  spikes / C needle storm; Hiss A cobra hiss / B sonic screech / C bass hiss; Pump A piston pump / B hydraulic / C syringe;
+  Overdrive A reactor roar / B venom rage / C overclock. Bass-heavy parts trimmed to about -14 dB full-band RMS (POST_DB).
+- Page: tools/mockup/build_dilo_rec_pick.py v1.0 (repeated beats share one lane), Sound Pick Board version 28. Checked
+  headless: all seven moves load and draw, the three options play on the beats, picks save; no errors.
+- Waiting: Kepu's picks. Then upload, GameSounds 1.19 on the beats, Studio test.
