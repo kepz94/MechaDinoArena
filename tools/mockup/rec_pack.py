@@ -9,7 +9,8 @@
 # Out: {len, press, ground, lines (beams / ropes per frame), parts: [{sh, m, s0, seg?, rel?, k?}], tracks: base64 int16 (x, y, z in 1/100 stud, quaternion
 #   x 32767; absent = -32768 in x), changes, particles, stamps}. Time 0 = the press - lead.
 # v1.1 (the Raptor pick page, 2026-11-17): also reads move_recorder 1.1's export3 tracks ("trb": base64 int16 x7 per frame,
-#   already quaternions; absent = -32768 in x), about a quarter of the size of "tr".
+#   already quaternions; absent = -32768 in x), about a quarter of the size of "tr"; and its Highlight changes ("hls" ->
+#   out "hl": [frame, who, fill, fillT, outline, outlineT] or [frame, who, 0]; the state at the window start folds into frame 0).
 import base64, json, math, struct, sys
 
 NOBOT = "--nobot" in sys.argv  # v1.0: drop the bot (a bystander in that recording, pinned at the wrong height by the test setup)
@@ -116,11 +117,17 @@ emitters = [{k2: E[k2] for k2 in ("c0", "c1", "s0", "s1", "t0", "sp", "sp0", "li
 
 # beams and ropes (the tether chain): [frame, x0, y0, z0, x1, y1, z1, width, colour, transparency]
 lines = [[b[0] - 1 - f0] + b[2:8] + [b[8], b[10], b[11]] for b in d.get("beamFrames", []) if b[0] - 1 >= f0]
+hl, hl0 = [], {}
+for h in d.get("hls", []):  # v1.1
+    f = h[0] - 1 - f0
+    if f < 0: hl0[h[1]] = h
+    else: hl.append([f] + h[1:])
+hl = [[0] + h[1:] for h in hl0.values()] + hl
 st = d["stamps"]
 stamps = [[round(s[0] - t0, 3), s[1], s[2], (round(s[3] - t0, 3) if (len(s) > 4 and s[4]) else s[3]), bool(len(s) > 4 and s[4])] for s in st]
 out = {"name": d["name"], "fps": 30, "frames": len(frames), "len": round(times[-1] - t0, 3), "lead": LEAD, "ground": d["ground"],
        "times": [round(times[f] - t0, 3) for f in frames], "parts": P, "ntr": ntr,
        "tracks": base64.b64encode(bytes(tracks)).decode(), "lines": lines, "bursts": parts_fx, "emits": emits, "emitters": emitters,
-       "stamps": stamps, "presses": [[round(p[0] - t0, 3), p[1]] for p in d["presses"]]}
+       "hl": hl, "stamps": stamps, "presses": [[round(p[0] - t0, 3), p[1]] for p in d["presses"]]}
 json.dump(out, open(out_path, "w"), separators=(",", ":"))
 print(out_path, "frames", len(frames), "parts", len(P), "tracks", ntr, "bytes", len(json.dumps(out, separators=(",", ":"))))

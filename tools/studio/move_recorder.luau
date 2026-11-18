@@ -15,6 +15,10 @@
 --   to the one before written as 1; R.get(k) = the k-th 90 000-character chunk wrapped "<<C{k}>>...<<E>>" and padded to 95 000
 --   (tools/mockup/rec_pack.py and the join step read these). R.export3(fxMax, botMax) = export2 with each per-frame track packed
 --   as base64 int16 x7 per frame ("trb"), about a quarter of the size (rec_pack.py 1.1 reads it).
+--   Also 1.1: a part's recorded transparency includes its LocalTransparencyModifier (1 - (1 - T) x (1 - LTM); the Raptor's cloak
+--   only sets LTM); Highlights on the dino / target are recorded per change into hls = [frame, "me"/"bot", fill, fillT,
+--   outline, outlineT] or [frame, who, 0] when gone (the Energy Shield shell is a Highlight); export2 keeps an effect part
+--   whose nearest end (centre - half its longest side) comes within fxMax, so a long aim laser is kept.
 local RunService = game:GetService("RunService")
 local Http = game:GetService("HttpService")
 local me = game:GetService("Players").LocalPlayer
@@ -75,7 +79,7 @@ local function sample()
 		local p = P.inst
 		if p.Parent and p:IsDescendantOf(workspace) then
 			rec.tracks[i][f] = cfArr(rec.B:ToObjectSpace(p.CFrame))
-			local sz, tr, c = p.Size, p.Transparency, hex(p.Color)
+			local sz, tr, c = p.Size, 1 - (1 - p.Transparency) * (1 - p.LocalTransparencyModifier), hex(p.Color) -- v1.1: + LTM
 			local szA = {r3(sz.X), r3(sz.Y), r3(sz.Z)}
 			local L = P.last
 			if not L.sz or math.abs(L.sz[1] - szA[1]) + math.abs(L.sz[2] - szA[2]) + math.abs(L.sz[3] - szA[3]) > 0.005 or L.tr == nil or math.abs(L.tr - tr) > 0.01 or L.c ~= c or L.gone then
@@ -109,6 +113,18 @@ local function sample()
 			table.insert(rec.beamFrames, {f, -ri, r3(p0.X), r3(p0.Y), r3(p0.Z), r3(p1.X), r3(p1.Y), r3(p1.Z), r3(rp.Thickness), r3(rp.Thickness), hex(rp.Color.Color), 0})
 		end
 	end
+	for _, who in ipairs({"me", "bot"}) do -- v1.1: Highlights
+		local m = who == "me" and rec.char or rec.target
+		local key = "0"
+		local h = m and m:FindFirstChildWhichIsA("Highlight", true)
+		if h and h.Enabled then key = table.concat({hex(h.FillColor), r3(h.FillTransparency), hex(h.OutlineColor), r3(h.OutlineTransparency)}, ",") end
+		rec.hlLast = rec.hlLast or {}
+		if rec.hlLast[who] ~= key then
+			rec.hlLast[who] = key
+			if key == "0" then table.insert(rec.hls, {f, who, 0})
+			else table.insert(rec.hls, {f, who, hex(h.FillColor), r3(h.FillTransparency), hex(h.OutlineColor), r3(h.OutlineTransparency)}) end
+		end
+	end
 	if t >= rec.dur then R.stop() end
 end
 local function watchEmitter(pe)
@@ -136,7 +152,7 @@ function R.start(name, dur, target)
 	local flat = Vector3.new(lv.X, 0, lv.Z).Unit
 	rec = {name = name, dur = dur, char = char, target = target, t0 = os.clock(), st0 = workspace:GetServerTimeNow(),
 		B = CFrame.lookAt(hrp.Position, hrp.Position + flat), parts = {}, idx = {}, tracks = {}, times = {}, changes = {}, f = 0,
-		emitters = {}, emitterInfo = {}, bursts = {}, emits = {}, beams = {}, ropes = {}, beamFrames = {}, stamps = {}, presses = {}, done = false}
+		emitters = {}, emitterInfo = {}, bursts = {}, emits = {}, beams = {}, ropes = {}, beamFrames = {}, stamps = {}, presses = {}, done = false, hls = {}}
 	rec.ground = r3((hrp.Position.Y - hrp.Size.Y / 2 - hum.HipHeight) - hrp.Position.Y)
 	for _, m in ipairs({char, target}) do
 		if m then
@@ -222,7 +238,7 @@ function R.export()
 	for bi, b in ipairs(rec.beams) do beams[bi] = b.n end
 	local data = {name = rec.name, fps = 30, frames = F, times = rec.times, ground = rec.ground, joints = rec.joints, parts = parts,
 		changes = rec.changes, emitters = rec.emitterInfo, bursts = rec.bursts, emits = rec.emits, beams = beams, beamFrames = rec.beamFrames,
-		stamps = rec.stamps, presses = rec.presses}
+		stamps = rec.stamps, presses = rec.presses, hls = rec.hls}
 	out = Http:JSONEncode(data)
 	return #out
 end
@@ -232,6 +248,7 @@ function R.export2(fxMax, botMax) -- v1.1
 	local function near(i)
 		local P = rec.parts[i]
 		if P.own ~= "fx" then return true end
+		local reach = fxMax + (P.last.sz and math.max(P.last.sz[1], P.last.sz[2], P.last.sz[3]) / 2 or 0) -- v1.1: long parts
 		local root = rec.idx[rec.char:FindFirstChild("HumanoidRootPart")]
 		local troot = rec.target and rec.idx[rec.target:FindFirstChild("HumanoidRootPart") or rec.target.PrimaryPart]
 		for f = 1, F do
@@ -239,7 +256,7 @@ function R.export2(fxMax, botMax) -- v1.1
 			if a then
 				local pa = Vector3.new(a[1], a[2], a[3])
 				local r = root and rec.tracks[root][f]
-				if r and (pa - Vector3.new(r[1], r[2], r[3])).Magnitude <= fxMax then return true end
+				if r and (pa - Vector3.new(r[1], r[2], r[3])).Magnitude <= reach then return true end
 				local t = troot and rec.tracks[troot][f]
 				if t and (pa - Vector3.new(t[1], t[2], t[3])).Magnitude <= botMax then return true end
 			end

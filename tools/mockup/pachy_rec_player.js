@@ -1,7 +1,9 @@
-// pachy_rec_player.js v1.0 (Mecha Dino Arena) — plays move recordings made in Studio from the live game (MDA-552; Kepu
+// pachy_rec_player.js v1.1 (Mecha Dino Arena) — plays move recordings made in Studio from the live game (MDA-552; Kepu
 // 2026-11-17 "How about you actually use the fucking animation from the game"). Every part of the Pachy, the raptor bot and
 // the effects near them was sampled 30 times a second (tools/studio/move_recorder.luau, packed by tools/mockup/rec_pack.py);
 // this draws those parts where the game had them. Nothing is animated by hand here.
+// v1.1 (the Raptor page, 2026-11-17): a recorded Highlight (rec_pack 1.1 "hl", e.g. the Energy Shield shell) tints that
+// model's parts toward its fill colour by (1 - FillTransparency) and makes them glow a little, as the game's highlight does.
 // Needs (set by the builder): REC {id: packed recording}, MOVES [{id, name, area, rec}], PHASES {id: [[t0, t1, label]]},
 // INFO {id: {...}}, CAMERA {id: {points: [[x, y, z]] to keep in view (recording frame), pad: studs}}. Globals the sound panel uses: MOVES, cur, variant, play, playing, speed, M(), VV(), start(), step(),
 // seek(), syncPlay(), renderAll(), $.
@@ -143,6 +145,8 @@ function drawAt(t) {
     else if (e.p.seg !== undefined) { const sm = world(R.parts[e.p.seg]); if (sm) m = sm.clone().multiply(e.rel); }
     W[e.i] = m; return m;
   };
+  const HL = {}; // v1.1: the highlight on each model at this frame
+  for (const h of (R.d.hl || [])) { if (h[0] > fi) break; HL[h[1]] = h.length > 3 ? h : null; }
   for (const e of R.parts) {
     if (!e.mesh) { world(e); continue; }
     const st = stateAt(e, fi), m = world(e);
@@ -150,7 +154,13 @@ function drawAt(t) {
     e.mesh.visible = true;
     e.mesh.matrix.copy(m).multiply(_sc.makeScale(st.s[0], st.s[1], st.s[2]));
     const mat = e.mesh.material;
-    if (e._c !== st.c) { mat.color.set(hexCol(st.c)); if (e.neon) mat.color.multiplyScalar(1.15); e._c = st.c; }
+    const hl = HL[e.p.o], key = st.c + (hl ? hl[2] + hl[3] : ""); // v1.1
+    if (e._c !== key) {
+      mat.color.set(hexCol(st.c)); if (e.neon) mat.color.multiplyScalar(1.15);
+      if (mat.emissive) mat.emissive.setRGB(0, 0, 0);
+      if (hl) { const k = Math.max(1 - hl[3], (1 - hl[5]) * 0.4); mat.color.lerp(hexCol(hl[2]), Math.min(1, k * 1.2)); if (mat.emissive) mat.emissive.copy(hexCol(hl[4] || hl[2])).multiplyScalar(0.45 * k); } // the outline counts too (the shell is mostly outline)
+      e._c = key;
+    }
     const op = 1 - st.t;
     mat.transparent = op < 0.999 || mat.transparent; mat.opacity = op; mat.depthWrite = op > 0.6;
   }
