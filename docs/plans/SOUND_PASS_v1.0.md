@@ -287,3 +287,26 @@ Tuba, Funny Cut D3).
   (VictoryTitlesAudio 1.1). Studio Play test of all 8 titles: every beat plays on its animation time, the music changes per
   title, the board cheer plays at the end; no errors.
 
+## Round 17 — the Raptor on the game's own animation (2026-11-17)
+- Kepu 18:40 "1. Okay let's do this now": the Raptor, Dilo, Herrera and Troodon get the Pachy's record-the-game pick page,
+  one dino at a time; the Raptor first (the default dino).
+- Recorded in Studio (Play, sandbox island, out of the menu, real key presses: T cloak, V shield, R adrenaline, C held 0.8 s
+  for the Shock Cannon, T scent) with tools/studio/move_recorder.luau v1.1 (export2 / get written down; packed tracks; a
+  part's transparency now includes LocalTransparencyModifier, which is all the cloak changes on your own client; Highlights
+  recorded, which is how the Energy Shield shell is drawn; a long aim laser is kept). Packed by rec_pack.py 1.1 into
+  tools/mockup/raptor_rec; played by pachy_rec_player.js 1.1 (draws a recorded Highlight as a tint).
+- Test setup only (nothing saved): SkillSaveEnabled off for the session, slot 3 / 4 swapped to Scent / Energy Shield and put
+  back (adrenaline, screech, cloak, thrusters); a passive Pachy target spawned with PracticeBots 30 studs ahead, anchored,
+  ArenaPvPTestTarget so PlaceGate (hub) keeps it, in DinoIsland.Bots; ScreechServerSquadEnabled off for the session (with no
+  team the squad check skipped the bot). Species back to Therizino.
+- Beats (clip time, press at 0.30 s): Cloak on 0.33, off 8.57 (standing still kept it on 8.2 s); Shield up 0.33, hum
+  0.43-3.10, down 3.10; Adrenaline inject 0.33, rush 0.63-3.33, end 3.33; Shock Cannon charge 0.30-1.20 (the aim laser),
+  fire 1.20, hit 1.33 (the bot 30 studs ahead, stunned); Scent sniff 0.33, aura 0.93-6.33, end 6.33.
+- Sounds: docs/sfx/gen_raptor_v2_sfx.py (Sonniss; 16 more sources extracted from the bundle into Kepu's
+  _work_titles_sonniss/mono_flac3), three options per move: Cloak A light bend / B electro camo / C ghost fade; Shield A
+  hard-light shell / B force bubble / C wobble dome (each with a block part); Adrenaline A injector + heartbeat / B pressure
+  shot / C raptor rush; Shock Cannon A tesla / B plasma ball / C shock whip; Scent A snort + chime / B deep breath / C tracker.
+- Page: tools/mockup/build_raptor_rec_pick.py v1.0, Sound Pick Board version 27. Checked headless: every move loads, the
+  three options play on the beats, picks save; no errors.
+- Waiting: Kepu's picks. Then upload, GameSounds on the beats, Studio test.
+
