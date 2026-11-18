@@ -45,4 +45,4 @@ over 0.35 s when the next title starts, a title is skipped or the show stops.
 | board_cheer / board_fireworks | the show ends by itself / + 0.2 s | as v1.0 |
 
 Volumes: each cue's default (`VictorySfxVol_<cue>`) sets its active loudness to a target (beds -26 to -20 dB, big moments -13
-to -15 dB, others -17 dB). Ids: `VictorySfxId_<cue>` (blank until uploaded; a blank cue is silent).
+to -15 dB, others -17 dB). Ids: `VictorySfxId_<cue>` (a blank cue is silent); the uploaded ids are VictoryTitlesAudio 1.1's M.IDS.

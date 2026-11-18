@@ -16,6 +16,9 @@
 --   Switches (read per play): VictoryAudioEnabled (all), VictoryTitleMusicEnabled, VictoryTitleSfxEnabled,
 --     VictoryCrowdEnabled. VictoryAudioVolume (1) scales everything (the VictoryTitlesAudio SoundGroup).
 --   Diagnostics: VictoryAudioVersion, VictoryAudioLast ("<cue> @<t>"), VictoryAudioCount, VictoryMusicLast ("<id> <title>").
+-- v1.1 (Kepu 2026-11-17 17:52 "You do it"): the 47 cues imported through Asset Manager (fee 0), every id checked with
+--   GetProductInfo (name MDA_SFX_vt_<cue>, Audio, creator 8595585713); they are M.IDS and the VictorySfxId_<cue> defaults.
+--   An attribute already set to "" (a 1.0 test session) is filled in with the id once; any other value is kept.
 -- The sound files are made by docs/sfx/gen_titles_sfx.py v1.1 from Sonniss GDC 2026 recordings (cue sheet
 -- docs/sfx/TITLES_SFX_v1.1.md).
 local SoundService = game:GetService("SoundService")
@@ -24,6 +27,7 @@ local ContentProvider = game:GetService("ContentProvider")
 
 local M = {}
 M.VERSION = "1.0"
+M.VERSION = "1.1" -- v1.1 the 47 sound effect ids
 
 M.HERO = {"1839895012", "9042409054", "1848016523", "95493370982599", "1835295052", "94745027512855", "1848014986", "1839432165"}
 -- All Action Hero (f), Day Of The Election Sting 2, Global Success StingA, Herald of Freedom (Sting 1), Forging The Army
@@ -43,6 +47,20 @@ M.VOL = {apex_cheer = 0.68, apex_land = 1, apex_pounce = 0.99, apex_roar = 0.95,
 -- cue -> asset id (filled in once uploaded; blank = silent)
 M.IDS = {}
 for k in pairs(M.VOL) do M.IDS[k] = "" end
+M.IDS = {apex_cheer = "96532423673781", apex_land = "120142008364103", apex_pounce = "79357121984462",
+	apex_roar = "126390021485224", board_cheer = "119169568384031", board_fireworks = "78310813954178",
+	car_bag = "133903708278743", car_bite = "92893335324184", car_dizzy = "124934836451935", car_fling = "131894356692490",
+	car_mmph = "86725128850846", car_poof = "91083711005300", car_swish = "122593312847624", car_thump = "135100156451298",
+	car_zip = "113427946537625", ext_fall = "85514274487711", ext_ghost = "123651615430889", ext_gulp = "125146048141793",
+	ext_happy = "138251625769000", ext_impact = "114799108479742", ext_sign = "127566499028104",
+	gslam_hero = "71645155737742", gslam_roast = "97146079917175", king_bonk = "122024100932730",
+	king_coin = "132501650153339", king_ding = "102411658719885", king_land = "129374689512340",
+	king_rattle = "95408227468048", mash_click = "91717834960493", mash_fly = "111914653658294", mash_pop = "87134119392635",
+	mash_sad = "73997108531714", mash_sizzle = "104130928400385", mash_wahwah = "93576786331257", med_heal = "92719690524933",
+	med_open = "98848745455926", med_slap = "79119560274390", pac_ah = "134864139208586", pac_bloom = "134793104449345",
+	pac_choo = "98190956382459", res_cheer = "135699636484419", res_fireworks = "125602112619715",
+	unk_chew = "91499801194642", unk_glint = "72694165515052", unk_hit = "91429251701520", unk_pebble = "131758907774696",
+	unk_rocks = "85635194393101"} -- v1.1
 
 -- title -> {{cue, seconds into the title (the animation's clock), playback speed}}
 local BEATS = {
@@ -88,6 +106,9 @@ function M.init(script)
 	for i, id in ipairs(M.CLOWN) do defaults["VictoryMusicClown" .. i] = id end
 	for k, v in pairs(M.VOL) do defaults["VictorySfxVol_" .. k] = v defaults["VictorySfxId_" .. k] = M.IDS[k] end
 	for k, v in pairs(defaults) do if cfg:GetAttribute(k) == nil then cfg:SetAttribute(k, v) end end
+	for k, id in pairs(M.IDS) do -- v1.1: a blank id left by 1.0 gets the uploaded one
+		if id ~= "" and cfg:GetAttribute("VictorySfxId_" .. k) == "" then cfg:SetAttribute("VictorySfxId_" .. k, id) end
+	end
 	cfg:SetAttribute("VictoryAudioVersion", M.VERSION)
 	group = SoundService:FindFirstChild("VictoryTitlesAudio") or Instance.new("SoundGroup")
 	group.Name = "VictoryTitlesAudio"

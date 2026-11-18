@@ -283,4 +283,7 @@ Tuba, Funny Cut D3).
   first faded as the second started, the last faded when the show ended; no errors.
 - Waiting: the 47 sound effects need uploading (Open Cloud refused the folder: not an approved upload folder in Studio's
   Assistant Settings -> MCP Permissions). Until their ids are filled in, the sound effects are silent and the music plays.
+- 17:52 Kepu "You do it": the 47 cues imported through Asset Manager, ids checked with GetProductInfo and filled in
+  (VictoryTitlesAudio 1.1). Studio Play test of all 8 titles: every beat plays on its animation time, the music changes per
+  title, the board cheer plays at the end; no errors.
 
