@@ -408,6 +408,15 @@ VERSION = "1.49" -- v1.49 Herrera Cruise Missile button (MDA-524)
 VERSION = "1.50" -- v1.50 pre-match lock: no presses + padlocks
 VERSION = "1.51" -- v1.51 Sap Wall hold-to-aim: arc + wall ghost (MDA-549)
 VERSION = "1.52" -- v1.52 Sap Wall: no hold, the arc flashes on the throw (MDA-550)
+VERSION = "1.53" -- v1.53 tether aim stamps on PC too (MDA-552)
+-- v1.53 (MDA-552; Kepu 2026-11-17 18:20 "Go"): the v1.34 tether aim stamps reach PC. The 1.34 hook is connected at the very
+--   end of the script, after the PC exit ("keys": no touch buttons -> return), so on PC TetherAimLocalAt / TetherAimLocalEndAt
+--   were never stamped and DinoTetherAim never fired: no Tail Sling pose for anyone and no cock sound for other players
+--   (Studio Play 2026-11-17, Pachy on PC: MechaButtonsState "keys", TetherAiming true / false -> both stamps nil). 1.53
+--   connects the same hook (stamp + remote) inside the PC branch, just before its return; the touch path is unchanged (it
+--   still reaches the 1.34 hook). Switch: script attribute MechaTetherAimStampKeysEnabled (default true, read at each change;
+--   false = 1.52), together with 1.34's MechaTetherAimStampEnabled.
+if script:GetAttribute("MechaTetherAimStampKeysEnabled") == nil then script:SetAttribute("MechaTetherAimStampKeysEnabled", true) end
 -- v1.52 (MDA-550; Kepu 2026-11-15 12:48 after v1.51 went live "The fucking sap wall shit is ass. Just have it show the trajectory
 --   don't hold to drag", pick "Arc only, when SAP WALL is pressed"): the 1.51 hold-to-aim is off by default (script attribute
 --   MechaButtonsSapHoldEnabled, default false, read at each press: aimedPart is false for osapwall, so a press throws at once by the
@@ -2204,6 +2213,15 @@ end
 -- test hook: script attribute MechaButtonsForceTouch = true draws the touch buttons on PC too (Studio layout checks)
 if not UserInputService.TouchEnabled and script:GetAttribute("MechaButtonsForceTouch") ~= true then
 	char:SetAttribute("MechaButtonsState", "keys")
+	-- v1.53: the v1.34 tether aim stamps on PC (the 1.34 hook at the end of the script is never reached here)
+	char:GetAttributeChangedSignal("TetherAiming"):Connect(function()
+		if script:GetAttribute("MechaTetherAimStampEnabled") == false or script:GetAttribute("MechaTetherAimStampKeysEnabled") == false then return end
+		local on = char:GetAttribute("TetherAiming") == true
+		local t = workspace:GetServerTimeNow()
+		char:SetAttribute(on and "TetherAimLocalAt" or "TetherAimLocalEndAt", t)
+		local r = ReplicatedStorage:FindFirstChild("DinoTetherAim")
+		if r then r:FireServer(on and "aim" or "end", t) end
+	end)
 	return
 end
 char:SetAttribute("MechaButtonsState", "on")
