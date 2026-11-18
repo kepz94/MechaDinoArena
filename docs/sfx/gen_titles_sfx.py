@@ -1,4 +1,4 @@
-# gen_titles_sfx.py v1.0 (Mecha Dino Arena) — sound effects for the end-of-match title show (MDA-552, round 15; Kepu
+# gen_titles_sfx.py v1.1 (Mecha Dino Arena) — sound effects for the end-of-match title show (MDA-552, round 15; Kepu
 # 2026-11-17 15:05 "Nah these are ass, I think it would be better to have better music and sound effects during these",
 # 15:10 "Clown music for the crappy title cards and hero music for the good ones" / "With the appropriate sound effects").
 # Every cue is built from recordings in the Sonniss GDC 2026 Game Audio Bundle (royalty-free for games; the raw sounds may
@@ -6,6 +6,12 @@
 # Kepu's Music\MechaDinoArena_SFX\_work_titles_sonniss\mono_flac). Timings are VictoryTitlesAnim 1.1's own beats
 # (c:at("land", 1.5), c:at("roar", 2.26), c:at("pop", 3.0), c:at("impact", 2.3), ...); docs/sfx/TITLES_SFX_v1.0.md has
 # the cue sheet. Trims were picked from each source's loudness every 0.1 s (no listening).
+# v1.1 (Kepu 2026-11-17 16:48 kept all 16 music tracks; the in-game build): adds the cues for KING OF THE HILL (king_*),
+#   UNKILLABLE (unk_*), MEDIC (med_*) and PACIFIST (pac_*) from VictoryTitlesAnim 1.2's beats (c:at("bonk", 1.0),
+#   c:at("ding", 2.55), c:at("hit", 1.7), c:at("pebble", 4.75), c:at("open", 1.05), c:at("slap", 2.62), c:at("choo", 2.42),
+#   ...) and gslam_hero / gslam_roast, the game's title-card hits with the hit 0.42 s in (the lower third slams in at 0.3 s,
+#   so the cue starts with the title instead of before it as on the mockup page). 14 more Sonniss sources (S2). The 1.0
+#   cues are unchanged. docs/sfx/TITLES_SFX_v1.1.md has the cue sheet.
 # Output: <out>/MDA_SFX_vt_<cue>.wav, mono 48 kHz 16-bit, peak -1 dBFS.
 # Usage: python3 -I docs/sfx/gen_titles_sfx.py <mono_flac dir> <out dir>
 import os, sys
@@ -36,6 +42,18 @@ S = {  # short names -> source files (Sonniss GDC 2026)
     "pats": "FOLYMisc_WashingBasket_Pats_Movement12_InMotionAudio_WashingBasketFoley", "velcro": "OBJTape_VelcroRip29_InMotionAudio_Velcro",
     "grunt": "ANMLDog_Dog_Shuffle_Grunt_Movement_Lying_Down_344_Audio_Dog_Vocalisations",
 }
+S.update({  # v1.1
+    "airy": "Cartoon_Airy_Impact_Creaks", "metaltap": "METLImpt_Metal_Old_File_Impact_Tap_Against_Tire_Iron_Metallic_Hit_01_ESM_HDGM",
+    "coinflip": "Foley_Coin_Flip_Single_Fast", "spring": "METLTonl_Item_Spring_Wire_Impact_Flick_Top_Clatter_Light_Tap_Roll_Handling_Short_01_ESM_HDLM",
+    "ting": "Ting_Coins", "twinkle": "Button_Arp_Twinkle", "piece": "GAMEBoard_Game_Play_Piece_Action_Organic_Connect_Dots_Fall_Bounce_04_ESM_BG",
+    "lid": "METLMvmt__Opening_Lid_Of_Antique_Blowtorch_344_Audio_Antique_Small_Metals", "confetti": "Cofetti_Whoosh_Pluck_Spill",
+    "happy": "Game_Entry_Happy_Short", "swing": "SWSH_SWING_IMPACTS_Quick_Heavy_Weapon_Swing_To_Thud_Impact_Var_01_DDUMAIS_MWP2",
+    "smack": "FGHTImpt_Combat_Punch_Impact_Light_Hit_Delay_Crunchy_Vintage_Quick_Smack_05_ESM_AG",
+    "powerup": "DSGNStngr_Power_Up_Bright_Positive_Successful_Light_Saturation_Crash_Shimmer_05_ESM_AG",
+    "magic": "GAMEMisc_Magic_Creation_23_CB_Sounddesign_APPlicable_Sounds", "gasp": "HMNBrth_Police_Officer_Gasp_Vocal_Male_Shocked_Alert_1",
+    "exhale": "CREAHmn_Violent_Humanoid_Creature_Exhale_Short_4_SNDBTS_VB_SE",
+    "exhale2": "VOXFem_Anime_Schoolgirl_Fight_Exhale_15_344_Audio_Anime_Fight_Voices_Vol_2",
+})
 # cue -> layers: (source, from s, length s, at s inside the cue, gain dB, options)
 # options: fi / fo = fade in / out s, lp = low-pass Hz, rate = varispeed
 CUES = {
@@ -70,6 +88,27 @@ CUES = {
     "car_thump": [("thud", 0.0, 0.8, 0, -6, {"lp": 1200, "fo": 0.3})],
     "board_cheer": [("cheer", 0.0, 7.0, 0, 0, {"fi": 0.2, "fo": 2.0})],
     "board_fireworks": [("fw02", 0.2, 7.0, 0, 0, {"fi": 0.2, "fo": 2.0})],
+    # ---- v1.1 ----
+    "gslam_hero": [("cutsweep", 0.62, 1.9, 0, 0, {"fi": 0.02, "fo": 0.4})],                # hit at 0.42
+    "gslam_roast": [("shaker", 0.05, 1.41, 0, 0, {"fi": 0.02, "fo": 0.3})],               # snap at 0.42
+    "king_bonk": [("airy", 0.15, 1.6, 0, 0, {"fi": 0.3, "fo": 0.4}), ("metaltap", 0.08, 0.35, 0.86, -2, {"fo": 0.1})],   # hit at 0.90
+    "king_coin": [("coinflip", 0.0, 0.7, 0, 0, {"fo": 0.2})],
+    "king_land": [("metaltap", 0.08, 0.35, 0, 0, {"fo": 0.1}), ("piece", 0.0, 0.2, 0.01, -6, {})],
+    "king_rattle": [("spring", 0.30, 0.65, 0, 0, {"fi": 0.03, "fo": 0.15})],
+    "king_ding": [("ting", 0.04, 1.0, 0, 0, {"fo": 0.3}), ("twinkle", 0.0, 1.1, 0.02, -6, {"fo": 0.4})],                # ting at 0.06
+    "unk_chew": [("bite", 0.8, 1.6, 0, 0, {"fi": 0.05, "fo": 0.3})],
+    "unk_glint": [("twinkle", 0.0, 1.0, 0, 0, {"fo": 0.4})],
+    "unk_hit": [("blast", 0.0, 1.4, 0, 0, {"fo": 0.3}), ("boom075", 0.20, 2.5, 0, -5, {"fo": 0.8}),
+                ("pieces", 0.0, 1.1, 0.05, -3, {"fo": 0.2}), ("debris", 0.2, 1.3, 0.1, -6, {"fo": 0.3})],
+    "unk_rocks": [("piece", 0.0, 0.2, a, g, {}) for a, g in ((0, 0), (0.14, -3), (0.33, -5), (0.5, -8), (0.71, -11))],
+    "unk_pebble": [("piece", 0.0, 0.2, 0, 0, {}), ("metaltap", 0.08, 0.3, 0.0, -10, {"fo": 0.1})],
+    "med_open": [("lid", 0.15, 0.5, 0, 0, {"fo": 0.1}), ("confetti", 0.1, 1.5, 0.05, -2, {"fo": 0.4}), ("happy", 0.0, 0.35, 0.08, -4, {"fo": 0.05})],
+    "med_slap": [("swing", 0.0, 1.4, 0, 0, {"fo": 0.4}), ("smack", 0.0, 0.66, 0.2, -2, {"fo": 0.15})],                # hit at 0.20
+    "med_heal": [("powerup", 0.0, 1.5, 0, 0, {"fo": 0.4})],
+    "pac_bloom": [("magic", 0.2, 2.2, 0, 0, {"fi": 0.05, "fo": 0.8})],
+    "pac_ah": [("gasp", 0.0, 0.3, 0, 0, {"fo": 0.08})],
+    "pac_choo": [("exhale", 0.0, 0.43, 0, 0, {"fo": 0.1}), ("exhale2", 0.05, 0.5, 0.0, -3, {"fo": 0.1}),
+                 ("confetti", 0.15, 1.4, 0.03, -4, {"fo": 0.4}), ("smack", 0.0, 0.5, 0.0, -10, {"fo": 0.1})],
 }
 _cache = {}
 def src(name):

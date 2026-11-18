@@ -30,6 +30,9 @@
 --   wide, wider than it is long, so the bag towered over it.) Switch: M.CARRIED_FIT (default true; false = 1.1). Numbers:
 --   M.CARRIED_BAG = {h = 0.42, w = 0.8, d = 0.62, fit = 0.85}; VictoryTitles 1.2 sets both per title from its attributes.
 --   Diagnostics: M.lastCarriedK (the shrink used by the last CARRIED), M.lastCarriedInfo (mate height and bag size, studs).
+-- v1.3 (MDA-552, the title music and sound effects): the runner gets runner.time() -> the title's clock (c.t: seconds into
+--   the animation, held during a hit-stop), so VictoryTitlesAudio 1.0 plays each beat's sound on the picture's own time.
+--   Nothing else changes.
 local Workspace = game:GetService("Workspace")
 
 local M = {}
@@ -41,6 +44,7 @@ M.CARRIED_FIT = true -- v1.2
 M.CARRIED_BAG = {h = 0.42, w = 0.8, d = 0.62, fit = 0.85} -- v1.2
 M.lastCarriedK = nil -- v1.2
 M.lastCarriedInfo = "" -- v1.2
+M.VERSION = "1.3" -- v1.3 runner.time() for VictoryTitlesAudio
 M.LEN = {apex = 5.4, king = 5.4, unkill = 5.4, medic = 5.4, masher = 5.4, carried = 6.4, pacifist = 5.6, extinct = 5.8}
 
 -- ---------- maths ----------
@@ -1778,6 +1782,7 @@ function Show:play(titleId, model, mateModel, extra)
 		if c.gh and c.gh.model then c.gh.model:Destroy() end
 	end
 	runner.len = len
+	function runner.time() return c.t end -- v1.3: the title's clock (stops during a hit-stop), for VictoryTitlesAudio
 	return runner
 end
 

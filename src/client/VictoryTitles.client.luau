@@ -37,6 +37,12 @@
 --   false = Anim 1.1's bag). Numbers: VictoryCarriedBagH 0.42 (bag height × the mate's height), VictoryCarriedBagW 0.8 and
 --   VictoryCarriedBagD 0.62 (× the bag height), VictoryCarriedFit 0.85 (how much of the bag the shrunk dino may fill).
 --   Diagnostics: VictoryCarriedLastK (the shrink the last CARRIED used), VictoryCarriedLastInfo (mate height, bag size).
+-- v1.3 (MDA-552; Kepu 2026-11-17 15:10 "Clown music for the crappy title cards and hero music for the good ones" / "With the
+--   appropriate sound effects", 16:48 kept all 16 tracks): music and sound effects from VictoryTitlesAudio 1.0 (its header
+--   lists the attributes, all on this script): each title starts its music and card hit (startEntry), the beats follow the
+--   runner's clock (VictoryTitlesAnim 1.3 runner.time) each frame, the music fades when a title is skipped or the show
+--   stops, the crowd cheers when the results start (a match with a winner, out of the menu) and when the show ends by
+--   itself. If the module fails to load the show runs silent as in 1.2 (VictoryTitlesLast says so).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -46,6 +52,7 @@ local UserInputService = game:GetService("UserInputService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 HUD hold, test hook, step errors, soft flash
 VERSION = "1.2" -- v1.2 CARRIED bag fit
+VERSION = "1.3" -- v1.3 music and sound effects (VictoryTitlesAudio)
 script:SetAttribute("VictoryTitlesVersion", VERSION)
 for k, v in pairs({VictoryTitlesEnabled = true, VictoryBannerSec = 2, VictoryStageY = 3000, VictoryTapGuard = 1}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -60,6 +67,12 @@ script:SetAttribute("VictoryTitlesState", "idle")
 
 local player = Players.LocalPlayer
 local Anim = require(script.Parent:WaitForChild("VictoryTitlesAnim"))
+local Audio -- v1.3
+do
+	local okA, modA = pcall(function() return require(script.Parent:WaitForChild("VictoryTitlesAudio", 10)) end)
+	if okA and type(modA) == "table" then Audio = modA pcall(Audio.init, script)
+	else script:SetAttribute("VictoryTitlesLast", "audio module failed: " .. string.sub(tostring(modA), 1, 120)) end
+end
 
 local NAMES = {apex = "APEX PREDATOR", king = "KING OF THE HILL", unkill = "UNKILLABLE", medic = "MEDIC", masher = "BUTTON MASHER",
 	extinct = "EXTINCT", carried = "CARRIED", pacifist = "PACIFIST"}
@@ -335,6 +348,10 @@ local function releaseHud()
 	table.clear(hudHeld)
 end
 local function stopShow(why)
+	if Audio and show then -- v1.3
+		pcall(Audio.stop)
+		if why == "done" then pcall(Audio.crowd, "board") end
+	end
 	if show then
 		if show.runner then pcall(show.runner.destroy) end
 		show = nil
@@ -383,6 +400,7 @@ local function startEntry(i)
 	stat.BackgroundColor3 = ROAST[e.title] and PINK or YELLOW
 	stat.TextColor3 = ROAST[e.title] and Color3.fromRGB(42, 6, 16) or Color3.fromRGB(27, 20, 6)
 	setDots(show.entries, i)
+	if Audio then pcall(Audio.title, e.title, ROAST[e.title] == true) end -- v1.3
 	script:SetAttribute("VictoryTitlesState", ("%s %d/%d %s"):format(show.mode, i, #show.entries, e.title))
 	return true
 end
@@ -390,6 +408,7 @@ local function beginShow(entries, mode, key, startIndex, into)
 	stopShow()
 	if #entries == 0 then return end
 	show = {entries = entries, mode = mode, key = key}
+	if Audio then pcall(Audio.preload) end -- v1.3
 	holdHud() -- v1.1: from the first frame
 	gui.Enabled = true
 	layout()
@@ -428,6 +447,7 @@ RunService:BindToRenderStep("VictoryTitles", Enum.RenderPriority.Camera.Value + 
 		show.holding = true
 	end
 	if show.holding then alive = workspace:GetServerTimeNow() < (slotEnd or 0) end
+	if Audio and okStep and show.runner.time then pcall(Audio.step, show.runner.time()) end -- v1.3
 	local t = os.clock() - show.t0
 	-- the lower third slams in at 0.3 s
 	local u = math.clamp((t - 0.3) / 0.25, 0, 1)
@@ -491,6 +511,16 @@ end
 if state then
 	for _, a in ipairs({"HpTitles", "HpResultsEndAt", "HpPhase"}) do state:GetAttributeChangedSignal(a):Connect(check) end
 	player:GetAttributeChangedSignal("InMenu"):Connect(check)
+	local prevPhase = state:GetAttribute("HpPhase") -- v1.3: the crowd when the results start
+	state:GetAttributeChangedSignal("HpPhase"):Connect(function()
+		local ph = state:GetAttribute("HpPhase")
+		if ph == "results" and prevPhase ~= "results" and Audio and script:GetAttribute("VictoryTitlesEnabled") ~= false
+			and player:GetAttribute("InMenu") ~= true then
+			local w = state:GetAttribute("HpWinner")
+			if w == "A" or w == "B" then pcall(Audio.preload) pcall(Audio.crowd, "res") end
+		end
+		prevPhase = ph
+	end)
 	task.spawn(function() while true do task.wait(0.25) check() end end)
 end
 
