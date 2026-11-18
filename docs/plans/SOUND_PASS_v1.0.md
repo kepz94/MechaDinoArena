@@ -338,3 +338,27 @@ Tuba, Funny Cut D3).
 - 20:20 Kepu picks "Scope B, Gatling B, Mortar B, Spine C, Hiss C, Pump B, Overdrive B". GameSounds 1.19: 23 parts imported
   (one Asset Manager import), each on its beat; Studio test: all 23 played on time, the 1.4 Dilo sounds silent.
 - 21:12 Kepu "publish": sandbox v886 and the Arena place overwritten. 21:12 "then next": the Herrera page (round 19).
+
+## Round 19 — the Herrera on the game's own animation (2026-11-17)
+- Kepu 21:12 "then next" (after the v886 publish): the Herrera's record-the-game pick page.
+- Recorded in Studio (Play, sandbox island, out of the menu, real key presses) with move_recorder 1.1 into
+  tools/mockup/herrera_rec: Quill Launcher (R), Cruise Missile (T, then Space for the boost), Strobe Frill, Smoke Pods, Stun
+  Breaker (V; a test stun: the Herrera's stun immunity above a health share trims a stun, so its health was set to 20% for the
+  take and put back), Razor Caltrops, Goo Blob Shooter, Glider Wings (Space held from the ground: glides 2 s, 135 studs). The
+  Adrenaline Injector already plays the Raptor's beat-timed adrenaline (GameSounds 1.18) and is not on the page.
+- Test setup only (nothing saved): SkillSaveEnabled off; slots quills / glider / cmissile / breaker, then smoke / strobe /
+  caltrops / goo, then put back; a passive Pachy target 30 studs ahead (ArenaPvPTestTarget, anchored, destroyed after);
+  HerreraMovesServerSquadEnabled off for the session. Species back to Therizino, Play stopped.
+- Beats (clip time, press at 0.30 s): Quills arm 0.33, fire 0.68, 8 hits 0.91-1.23; Cruise launch 0.33, fly 0.93-4.06, boost
+  1.50, boom 4.06, crater 4.36 on (4 s in the game); Strobe charge 0.33, flash 0.75, daze 0.75; Smoke pop 0.33, burst 0.60, loop
+  1.10 on (6 s in the game; the page plays the end at 2.90); Breaker snap 0.33, push 0.65; Caltrops drop 0.33, land 0.75; Goo
+  charge 0.33, fire 0.70, splat 1.26 (flight 0.85 / 1.5); Glider open 0.86, loop 1.01-2.83, close 2.83.
+- Sounds: docs/sfx/gen_herrera_v2_sfx.py (Sonniss; one more source, Cartoon_Confused_Dizzy, extracted into
+  _work_dilo_sonniss), three options per move: Quills A quill volley / B dart gun / C spine rattle; Cruise A hellfire / B thunder
+  strike / C arcade nuke; Strobe A camera flash / B laser frill / C disco blast; Smoke A smoke grenade / B fog machine / C ninja
+  smoke; Breaker A chain snap / B shock release / C beast shrug; Caltrops A spike spill / B caltrop bag / C ice spikes; Goo A goo
+  spit / B slime cannon / C toxic blob; Glider A wing sail / B jet wings / C pterosaur. 75 wavs in Kepu's
+  Music\MechaDinoArena_SFX\herrera_v2 (not in the repo).
+- Page: tools/mockup/build_herrera_rec_pick.py v1.0, Sound Pick Board version 29. Checked headless: all eight moves load and
+  draw, the three options play on the beats, picks save; no errors.
+- Waiting: Kepu's picks. Then upload, GameSounds 1.20 on the beats, Studio test.
