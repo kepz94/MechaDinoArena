@@ -278,3 +278,15 @@ flow; TUTORIAL replays steps 3 to 10.
 - Built as drawn in direction B; the 3 taps became one hold (the server requests are unchanged: next, then roll).
 - Mockup's mecha egg built in a 3D viewport (no uploaded images). Phone checks in Studio's iPhone emulator; touch holds cannot be
   sent in the emulator, so the hold itself was checked on PC and the phone run drove next / roll directly. Not published.
+
+## 13:47 report: equip / stats panels "nothing like the actual equip screens"; stuck, could not walk
+- Kepu's 2nd screenshot (IMG_2166: "LAB - EQUIP PARTS", "TRAINER Pick 4. 3 left.") is the Tutorial 1.0.x client (the text exists
+  only in commits 1c511d4..8d3b37b; nothing in the Studio place has it). So that run was on a live server still running the
+  morning build: servers started before a publish keep their old scripts until they close.
+- Real equip / stats screen = the compact Lab (Lab 1.16): named buttons Card_<id>, Slot_1..4, Right.Detail.Actions.Btn
+  (EQUIP / BUY, below the fold of the Detail scroll on a phone), Tabs.Parts / Tabs.Stats, Right.Close. Opened by
+  PlayerScripts.Lab.Open:Invoke("compact"), closed by Lab.Close:Invoke().
+- Mockup docs/mockups/lab_coach_v0.1.html (A spotlight on the real Lab, recommended; B ring only). Captures of the real Lab in
+  Studio's iPhone view (a temporary capture hook in Lab was removed again; Lab hash back to 228888683). Waiting on Kepu's pick.
+- The step-5 sheet covers the bottom of the screen, so the thumbstick cannot start there while it is open (walking blocked on
+  that step by design). Not yet confirmed which screen Kepu was stuck on.
