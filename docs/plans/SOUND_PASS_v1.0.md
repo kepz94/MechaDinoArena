@@ -362,4 +362,4 @@ Tuba, Funny Cut D3).
 - Page: tools/mockup/build_herrera_rec_pick.py v1.0, Sound Pick Board version 29. Checked headless: all eight moves load and
   draw, the three options play on the beats, picks save; no errors.
 - 2026-11-22 04:51 Kepu picks "Quills B, Cruise A, Strobe A, Smoke C, Breaker B, Caltrops C, Goo A, Glider A". GameSounds 1.20: 25
-  parts imported (one Asset Manager import), each on its beat; Studio test: all 25 on time, the 1.5 Herrera sounds silent. Not published.
+  parts imported (one Asset Manager import), each on its beat; Studio test: all 25 on time, the 1.5 Herrera sounds silent. Published 2026-11-22 05:05 (sandbox v888 + Arena overwrite). Next: the Troodon page.
