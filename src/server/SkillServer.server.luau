@@ -134,6 +134,14 @@
 --     for the dino you arrive with (the lineup starting, or loading in during it). Player SkillLoadoutFrom = "saved" after it,
 --     "" when the dino has no saved loadout. Changing slots afterwards does not change the saved loadout.
 --   Switch: script attribute SkillSavedLoadoutEnabled (default true, read per request / apply; false = 1.11).
+-- v1.13 (first-time flow, MDA-560, plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 2, ADR-013; Kepu 2026-11-22: the free dino gets
+--   "all the mecha parts unlocked", "Fully maxed"): player attribute FreeDino (DinoOwnership 1.0) names the player's free dino.
+--   While the active dino is that dino, its live mecha parts are given at star exactly like the test layer's parts (testParts:
+--   stepsFor sets them to 4, buyBase leaves them out of points and mastery, a buy of one is refused "maxed", the v1.8 saved
+--   loadout restore keeps them). Unlike the test layer they are NOT auto-placed into empty slots (the tutorial's "Equip 4
+--   parts" step fills the slots); placement still happens while the test layer itself is on. Never stored: d.steps and the save
+--   stay the real record. A FreeDino change republishes the player. Switch: script attribute SkillFreePartsEnabled (default true,
+--   read per publish / buy; false = 1.12).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -143,6 +151,7 @@ local VERSION = "1.9"
 VERSION = "1.10" -- v1.10 match XP grant
 VERSION = "1.11" -- v1.11 max-all test switch
 VERSION = "1.12" -- v1.12 saved loadout + pre-game apply
+VERSION = "1.13" -- v1.13 free dino parts
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
 local SAVE_GAP = 10
@@ -191,9 +200,15 @@ local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest; 
 
 -- v1.6: the live mecha parts the active dino owns (PATH_ORDER order)
 local function maxAll() return script:GetAttribute("SkillTestMaxAllEnabled") ~= false end -- v1.11
+if script:GetAttribute("SkillFreePartsEnabled") == nil then script:SetAttribute("SkillFreePartsEnabled", true) end -- v1.13
+local function freeOn(d) -- v1.13: the active dino is the player's free dino
+	return script:GetAttribute("SkillFreePartsEnabled") ~= false and type(d.freeDino) == "string" and d.freeDino ~= ""
+		and d.active == d.freeDino
+end
+local function layerOn() return script:GetAttribute("SkillTestCloakEnabled") == true or maxAll() end -- v1.13
 local function testParts(d)
 	local out = {}
-	if (script:GetAttribute("SkillTestCloakEnabled") ~= true and not maxAll()) or not d.active then return out end -- v1.11: or max-all
+	if (script:GetAttribute("SkillTestCloakEnabled") ~= true and not maxAll() and not freeOn(d)) or not d.active then return out end -- v1.11: or max-all; v1.13: or the free dino
 	for _, id in ipairs(ST.PATH_ORDER) do
 		local p = ST.PATHS[id]
 		if ST.LIVE_MECH[id] and p and not p.soon and ST.seesPath(p, d.active) then table.insert(out, id) end
@@ -248,6 +263,7 @@ local function buyBase(d)
 end
 
 local function publish(player, d, levelUp)
+	d.freeDino = player:GetAttribute("FreeDino") -- v1.13
 	local test = testCloak(d) -- v1.4
 	player:SetAttribute("SkillTestCloak", test and "on" or "off")
 	local given = testParts(d) -- v1.6
@@ -291,7 +307,7 @@ local function publish(player, d, levelUp)
 			for _, id in ipairs(given) do
 				if not placed[id] then
 					placed[id] = true
-					d.loadout = ST.autoSlot(d.loadout, eff, id, d.active) -- passive parts are left out by autoSlot
+					if layerOn() then d.loadout = ST.autoSlot(d.loadout, eff, id, d.active) end -- passive parts are left out by autoSlot; v1.13: not for free parts alone
 				end
 			end
 			d.testPlaced[d.active] = placed
@@ -464,6 +480,14 @@ script:GetAttributeChangedSignal("SkillTestCloakEnabled"):Connect(function() -- 
 		if d.loaded then publish(player, d, false) end
 	end
 end)
+local function hookFree(player) -- v1.13: a FreeDino change republishes
+	player:GetAttributeChangedSignal("FreeDino"):Connect(function()
+		local d = data[player]
+		if d and d.loaded then publish(player, d, false) end
+	end)
+end
+Players.PlayerAdded:Connect(hookFree)
+for _, p in ipairs(Players:GetPlayers()) do hookFree(p) end
 script:GetAttributeChangedSignal("SkillTestMaxAllEnabled"):Connect(function() -- v1.11
 	for player, d in pairs(data) do
 		if d.loaded then publish(player, d, false) end
