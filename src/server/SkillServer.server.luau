@@ -142,6 +142,9 @@
 --   parts" step fills the slots); placement still happens while the test layer itself is on. Never stored: d.steps and the save
 --   stay the real record. A FreeDino change republishes the player. Switch: script attribute SkillFreePartsEnabled (default true,
 --   read per publish / buy; false = 1.12).
+-- v1.14 (account reset, Kepu 2026-11-22 11:22 "reset everyone's account anyways to zero so we can see how hard it is to grind players"; picks "Fresh saves, keep old", "Levels, XP, stats, parts, loadouts"): the save store name is the
+--   script attribute SkillSaveStoreName (default "MDA_Skills_v3", read at start). Every player starts at level 1 with nothing bought;
+--   "MDA_Skills_v2" is no longer read or written and stays as it is (set the attribute back to "MDA_Skills_v2" to bring those saves back).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -152,8 +155,11 @@ VERSION = "1.10" -- v1.10 match XP grant
 VERSION = "1.11" -- v1.11 max-all test switch
 VERSION = "1.12" -- v1.12 saved loadout + pre-game apply
 VERSION = "1.13" -- v1.13 free dino parts
+VERSION = "1.14" -- v1.14 fresh save store (account reset)
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
+if script:GetAttribute("SkillSaveStoreName") == nil then script:SetAttribute("SkillSaveStoreName", "MDA_Skills_v3") end -- v1.14
+SAVE_STORE_V2 = script:GetAttribute("SkillSaveStoreName") -- v1.14: account reset (v2 kept as it is)
 local SAVE_GAP = 10
 local RETRY_GAP = 30
 local REQUEST_GAP = 0.2

@@ -24,11 +24,18 @@
 --   on leave. Diagnostics: script OwnershipVersion, OwnSaveState ("ok" / "noStore" / "readFailed" / "writeFailed"),
 --   OwnGrandfathered, OwnRolls; player OwnLastResult.
 -- Switch: script attribute OwnershipEnabled (default true, read per join; false -> every joiner "off").
+-- v1.1 (account reset, Kepu 2026-11-22 11:22 "reset everyone's account anyways to zero so we can see how hard it is to grind players"; picks "Fresh saves, keep old", "Dino ownership + tutorial", "Last picked dino"): the store name is the
+--   script attribute OwnStoreName (default "MDA_Owned_v2", read at start) and the last-dino field read from "MDA_Settings_v1" is
+--   OwnLastField (default "lastSpecies2", SpeciesServer 1.10). With SkillServer 1.14's fresh store, every player is new again and
+--   gets the first-time flow; "MDA_Owned_v1" stays as it is.
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 fresh store (account reset)
+if script:GetAttribute("OwnStoreName") == nil then script:SetAttribute("OwnStoreName", "MDA_Owned_v2") end
+if script:GetAttribute("OwnLastField") == nil then script:SetAttribute("OwnLastField", "lastSpecies2") end
 script:SetAttribute("OwnershipVersion", VERSION)
 if script:GetAttribute("OwnershipEnabled") == nil then script:SetAttribute("OwnershipEnabled", true) end
 if script:GetAttribute("OwnSkillWait") == nil then script:SetAttribute("OwnSkillWait", 15) end
@@ -40,7 +47,7 @@ local R = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("Tutoria
 
 local store, settings
 do
-	local ok, s = pcall(function() return DataStoreService:GetDataStore("MDA_Owned_v1") end)
+	local ok, s = pcall(function() return DataStoreService:GetDataStore(script:GetAttribute("OwnStoreName")) end) -- v1.1 (was "MDA_Owned_v1")
 	store = ok and s or nil
 	local ok2, s2 = pcall(function() return DataStoreService:GetDataStore("MDA_Settings_v1") end)
 	settings = ok2 and s2 or nil
@@ -94,7 +101,8 @@ local function onPlayer(player)
 		if ok then value = type(v) == "table" and v or nil else script:SetAttribute("OwnSaveState", "readFailed") end
 		if settings then
 			local ok2, sv = pcall(function() return settings:GetAsync("u" .. player.UserId) end)
-			hasLast = ok2 and type(sv) == "table" and type(sv.lastSpecies) == "string" or false
+			hasLast = ok2 and type(sv) == "table" and type(sv[script:GetAttribute("OwnLastField") or "lastSpecies2"]) == "string" -- v1.1 (was sv.lastSpecies)
+				 or false
 		end
 	end
 	if not player.Parent then return end

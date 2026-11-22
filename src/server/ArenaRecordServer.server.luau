@@ -39,6 +39,12 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 writes on
 VERSION = "1.2" -- v1.2 last 10, streak, match attributes
 local STORE = "MDA_ArenaRecord_v1"
+-- v1.3 (account reset, Kepu 2026-11-22 11:22 "reset everyone's account anyways to zero so we can see how hard it is to grind players"; picks "Fresh saves, keep old", "Arena record (W-L, streak)"): the store name is the script attribute
+--   ArenaRecordStoreName (default "MDA_ArenaRecord_v2", read at start); "MDA_ArenaRecord_v1" stays as it is (set the attribute back to it
+--   to bring those records back).
+VERSION = "1.3" -- v1.3 fresh record store (account reset)
+if script:GetAttribute("ArenaRecordStoreName") == nil then script:SetAttribute("ArenaRecordStoreName", "MDA_ArenaRecord_v2") end
+STORE = script:GetAttribute("ArenaRecordStoreName")
 local TRIES, LOAD_GAP = 3, 2
 
 script:SetAttribute("ArenaRecordServerVersion", VERSION)

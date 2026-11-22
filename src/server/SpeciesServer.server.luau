@@ -70,6 +70,12 @@ script:SetAttribute("SpeciesServerVersion", "1.9") -- v1.9 remember respawn pick
 -- v1.9 (respawn swap, MDA-539, plan docs/plans/RESPAWN_SWAP_v1.0.md rule 4): a dino picked on the respawn screen (RespawnServer 1.0
 --   sets player attribute RespawnPicked = species, then DinoSpecies) is remembered like a switch (rememberSpecies: the next session
 --   starts as it). Switch: script attribute SpeciesRememberPicksEnabled (default true, read per pick).
+-- v1.10 (account reset, Kepu 2026-11-22 11:22 "reset everyone's account anyways to zero so we can see how hard it is to grind players"; picks "Fresh saves, keep old", "Last picked dino"): the remembered dino is stored in the field named by
+--   the script attribute SpeciesSaveField (default "lastSpecies2", read per load / save) of the same "MDA_Settings_v1" record; the old
+--   lastSpecies field stays as it is (music settings in the record are untouched). DinoOwnership 1.1 reads the same field.
+script:SetAttribute("SpeciesServerVersion", "1.10") -- v1.10 fresh last-dino field (account reset)
+if script:GetAttribute("SpeciesSaveField") == nil then script:SetAttribute("SpeciesSaveField", "lastSpecies2") end
+local function speciesField() return script:GetAttribute("SpeciesSaveField") or "lastSpecies2" end
 if script:GetAttribute("SpeciesDefault") == nil then script:SetAttribute("SpeciesDefault", "Raptor") end -- v1.1
 
 local remote = ReplicatedStorage:FindFirstChild("DinoSpeciesRequest")
@@ -208,7 +214,7 @@ local function saveSpecies(player)
 	local ok = pcall(function()
 		settingsStore:UpdateAsync("u" .. player.UserId, function(old)
 			local t = type(old) == "table" and old or {}
-			t.lastSpecies = value
+			t[speciesField()] = value -- v1.10 (was t.lastSpecies)
 			return t
 		end)
 	end)
@@ -237,7 +243,7 @@ local function loadSpecies(player)
 	if not (REMEMBER and settingsStore) then return nil end
 	local ok, data = pcall(function() return settingsStore:GetAsync("u" .. player.UserId) end)
 	if not ok then script:SetAttribute("SpeciesSaveState", "readFailed") return nil end
-	local sp = type(data) == "table" and data.lastSpecies or nil
+	local sp = type(data) == "table" and data[speciesField()] or nil -- v1.10 (was data.lastSpecies)
 	if type(sp) == "string" then
 		saveState[player] = saveState[player] or {lastSave = 0}
 		saveState[player].saved, saveState[player].want = sp, sp
