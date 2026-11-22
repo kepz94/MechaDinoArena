@@ -272,4 +272,4 @@ flow; TUTORIAL replays steps 3 to 10.
 - Stuck at the lane edge: no lane leash for players existed (only the bot, 60 studs from its mark). 1.2 returns a player or the
   bot that is outside the pad's walls or under the pad. In the check, a Teno slam had already put the bot outside the lane once
   (TutBotReturns counted it before the manual test).
-- Not built: a "missed" message on screen (UI change; needs Kepu's pick). Not published.
+- Not built: a "missed" message on screen (UI change; needs Kepu's pick). Published 2026-11-22 13:10 (Sandbox v905 + Arena overwrite).
