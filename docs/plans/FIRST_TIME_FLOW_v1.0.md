@@ -246,6 +246,7 @@ flow; TUTORIAL replays steps 3 to 10.
 - Red-team 1: both test layers are off on the place (SkillTestMaxAllEnabled and SkillTestCloakEnabled, which gave every dino
   every part at star). Kepu's Studio account came back with its real level 27 Therizino build; its slots are empty because the
   given parts are no longer owned.
+- Published 2026-11-22 11:18 (Sandbox v890 + Arena overwrite).
 - Not verified here: a real phone (the tap / pull finger on the real MechaButtons buttons). Studio's viewport was 1809 x 282.
 - Seen, not changed (MechaButtons is do-not-touch): its "NEW: <PART> / Put it in a LOADOUT slot (SKILLS)" popup shows for 4 s
   when the free parts arrive at the egg card.
