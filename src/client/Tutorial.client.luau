@@ -45,6 +45,7 @@ local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.0"
 VERSION = "1.0.1" -- v1.0.1 finds the bot in DinoIsland.Bots; > in the checklist
+VERSION = "1.0.2" -- v1.0.2 the stat list scrolls; trainer button room
 script:SetAttribute("TutorialClientVersion", VERSION)
 if script:GetAttribute("TutorialClientEnabled") == nil then script:SetAttribute("TutorialClientEnabled", true) end
 if script:GetAttribute("TutorialClientEnabled") == false then return end
@@ -230,7 +231,7 @@ local function trainer(text, btnText, onClick)
 	local face = make("Frame", {BackgroundColor3 = Color3.fromRGB(58, 123, 213), Size = UDim2.fromOffset(5 * ch, 5 * ch), LayoutOrder = 1}, f)
 	corner(face, ch)
 	label(face, "🦖", Enum.Font.GothamBold, 3 * ch, WHITE, {Size = UDim2.fromScale(1, 1)})
-	local body = make("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, -(btnText and 22 or 7) * ch, 0, 0),
+	local body = make("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, -(btnText and 30 or 7) * ch, 0, 0), -- v1.0.2: 22 -> 30
 		AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2}, f)
 	make("UIListLayout", {Padding = UDim.new(0, 0.3 * ch), SortOrder = Enum.SortOrder.LayoutOrder}, body)
 	label(body, "TRAINER", Enum.Font.GothamBlack, math.max(1.4 * ch, 9), CYAN, {Size = UDim2.new(1, 0, 0, math.max(1.6 * ch, 10)),
@@ -522,7 +523,9 @@ function render()
 		local f = panel("LAB · " .. string.upper(dinoName(dino)) .. " STATS", "Spend your point.")
 		local left = tonumber(player:GetAttribute("SkillLeft")) or 0
 		local spentNow = (tonumber(player:GetAttribute("SkillSpent")) or 0) > (tonumber(player:GetAttribute("TutPtsStart")) or 0)
-		local list = make("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(2.4 * ch, 10 * ch), Size = UDim2.new(0.66, 0, 0, 50 * ch)}, f)
+		local list = make("ScrollingFrame", {BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(2.4 * ch, 10 * ch),
+			Size = UDim2.new(0.66, 0, 1, -12 * ch), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			ScrollBarThickness = math.max(0.6 * ch, 4), ScrollingDirection = Enum.ScrollingDirection.Y}, f) -- v1.0.2: scrolls
 		make("UIListLayout", {Padding = UDim.new(0, 0.8 * ch), SortOrder = Enum.SortOrder.LayoutOrder}, list)
 		for i, id in ipairs(statsOf(dino)) do
 			local n = pathStep(id)
