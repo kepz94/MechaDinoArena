@@ -363,3 +363,31 @@ Tuba, Funny Cut D3).
   draw, the three options play on the beats, picks save; no errors.
 - 2026-11-22 04:51 Kepu picks "Quills B, Cruise A, Strobe A, Smoke C, Breaker B, Caltrops C, Goo A, Glider A". GameSounds 1.20: 25
   parts imported (one Asset Manager import), each on its beat; Studio test: all 25 on time, the 1.5 Herrera sounds silent. Published 2026-11-22 05:05 (sandbox v888 + Arena overwrite). Next: the Troodon page.
+
+## Round 20 — the Troodon on the game's own animation (2026-11-22)
+- Kepu 05:06 "next" (after the v888 publish): the Troodon's record-the-game pick page, the last of the four.
+- Recorded in Studio (Play, sandbox island, out of the menu, real key presses) with move_recorder 1.1 into
+  tools/mockup/troodon_rec: Mender Drone (R; own health set to 40% so it heals), Arc Lantern (C), Sap Wall (T; the bot moved 22
+  studs aside so the wall is not "occupied"), Sentry Pod (V; 7.8 s so the fold is in the clip), Feather Shed (a test stun),
+  Portal Feathers (C, W held 0.85 s, C, then S back to the start: the rift carries it; a 0.45 s walk was "short" and cancelled),
+  Bloom Burst, Shield Dome, Sleep Dart.
+- Test setup only (nothing saved): SkillSaveEnabled off; slots omender / olantern / osapwall / osentry, then oshed / oportal /
+  oburst / odome, then osleep / osentry, then put back (omender / olantern / osapwall / osentry); a passive Pachy target 30 studs
+  ahead (ArenaPvPTestTarget, anchored, destroyed after); TrooMovesSquadEnabled and TrooSlotSquadEnabled off for the session.
+  Species back to Therizino, Play stopped.
+- Beats (clip time, press at 0.30 s): Mender launch 0.33, arrive 1.53, heal hum to 6.93, end 7.03; Lantern throw 0.33, land 1.15,
+  zap 1.17 (the bot stunned 1 s); Sap throw 0.33, rise 1.03 (the wall 80 studs out; 8 s in the game, the page plays the end at
+  3.11); Shed snap 0.33, burst 0.50; Portal tear 0.33, trail to 1.53, open 1.53, ride 3.35 (0.15 s); Burst throw 0.33, bloom 1.13;
+  Dome throw 0.33, open 1.35, hum (6.75 s in the game; the page plays the close at 3.15); Sleep coil 0.33, dart 0.65, hit 0.83,
+  sleep to 4.23; Sentry throw 0.33, unfold 1.35, 16 shots 1.87-5.47 (the turret's shots are not on the dino: the page puts each
+  0.055 s before its bot hit), fold 5.55 (20 damage dealt).
+- Sounds: docs/sfx/gen_troodon_v2_sfx.py (Sonniss; 27 more sources extracted from the bundle into Kepu's
+  _work_troo_sonniss/mono_flac, map.txt there: music boxes, kalimba, bird flutes, astral travel, a UFO drone, fridge hums, forest
+  and night ambiences, suitcase / lock / board-game pieces), three options per move: Mender A med drone / B healing hum / C
+  hummingbird; Lantern A tesla lantern / B storm jar / C firefly lamp; Sap A amber wall / B tree resin / C goo barrier; Shed A
+  feather burst / B bird flush / C pillow pop; Portal A astral rift / B sci-fi warp / C feather path; Burst A seed pod / B spring
+  bloom / C power bloom; Dome A force field / B bubble / C leaf canopy; Sleep A lullaby dart / B tranq dart / C sleepy whistle;
+  Sentry A clockwork turret / B robo turret / C seed spitter. 90 wavs in Kepu's Music\MechaDinoArena_SFX\troodon_v2 (not in the repo).
+- Page: tools/mockup/build_troodon_rec_pick.py v1.0, Sound Pick Board version 30. Checked headless: all nine moves load and
+  draw, the three options play on the beats, picks save; no errors (the Google Fonts request only, offline).
+- Waiting: Kepu's picks. Then upload, GameSounds on the beats, Studio test.
