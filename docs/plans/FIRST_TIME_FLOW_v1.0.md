@@ -299,4 +299,4 @@ flow; TUTORIAL replays steps 3 to 10.
 - Tutorial client 1.4: the slot flash is look-only (Block button over the hole, no finger); with a slot selected and one still
   empty the coach points at the empty slot first. Showcase screen before the egg (7 roll dinos, 3D, name, role), switch
   TutorialShowcaseEnabled. No mockup for the showcase (Kepu asked for it directly); open to changes.
-
+- Published 15:14 (Sandbox v913 + Arena overwrite); Kepu's account reset again (backup _bak_20261122_1516).
