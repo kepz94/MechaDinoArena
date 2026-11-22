@@ -42,6 +42,14 @@
 --   target models in Workspace.DinoIsland.Bots): the bot is parented to Workspace.DinoIsland.Bots (made if missing) while it
 --   stands in its lane, like the practice bots. Clients find it there by TutOwner. Switch: script attribute TutBotIslandFolder
 --   (default true, read per spawn; false = the lane's own Bots folder, 1.0).
+-- v1.1 (first-time flow v1.1, mockup docs/mockups/first_time_flow_v0.4.html; Kepu 2026-11-22 11:38 "The teno has two different
+--   attack styles and it doesn't even teach you it", 12:09 "Build"):
+--   * Step 4 is a list of attack lessons (TutorialRules 1.1 lessonsFor(dino)): player attributes TutLesson (1-based, the current
+--     one) and TutLessonsDone ("1,2"). A lesson completes on its event (TutorialRules.lessonEvent): "hit" = the bot lost health,
+--     "stamp" = a character attribute the attack server writes (TenoSlamAt, DiloSnipeAt, TheriComboStep >= 3). When every
+--     lesson is done: TutHit = true and, TutAutoNext (1.2) s later, step 5 by itself ("next" still works).
+--   * Step 6 moves to 7 by itself TutAutoNext s after the last part is used ("next" still works).
+--   * Only "next" is gapped (0.15 s); "roll" / "used" are not (fast taps and keys were dropped as "busy").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -50,10 +58,11 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.0.1" -- v1.0.1 the bot stands in DinoIsland.Bots
+VERSION = "1.1" -- v1.1 attack lessons, auto-advance
 script:SetAttribute("TutorialServerVersion", VERSION)
 local DEFAULTS = {TutorialEnabled = true, TrainingOrigin = Vector3.new(0, 400, 4000), TrainingLanes = 8, TrainingSpacing = 300,
 	LanePad = 120, LaneWall = 30, TutBotSpecies = "Pachy", TutBotDistance = 28, TutBotSafeHealth = 100000, TutBotFinishHealth = 40,
-	TutBotLeash = 60, TutPlaceWait = 10, TutUnlockTextOn = false, TutBotIslandFolder = true}
+	TutBotLeash = 60, TutPlaceWait = 10, TutUnlockTextOn = false, TutBotIslandFolder = true, TutAutoNext = 1.2}
 for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -195,6 +204,38 @@ local function clearBot(p)
 	s.bot = nil
 end
 
+-- v1.1: attack lessons (see the header)
+local STAMPS = {TenoSlamAt = true, DiloSnipeAt = true, TheriComboStep = true}
+local function lessonEvent(p, ev)
+	if step(p) ~= 4 or not st[p] then return end
+	local ls = R.lessonsFor(speciesKey(p))
+	local done = R.parseDone(p:GetAttribute("TutLessonsDone"))
+	local cur = tonumber(p:GetAttribute("TutLesson")) or 1
+	local L = ls[cur]
+	if not L or done[cur] or not R.lessonEvent(L, ev) then return end
+	done[cur] = true
+	p:SetAttribute("TutLessonsDone", R.doneString(done))
+	if cur < #ls then
+		p:SetAttribute("TutLesson", cur + 1)
+		return
+	end
+	p:SetAttribute("TutHit", true)
+	local tok = os.clock()
+	st[p].autoTok = tok
+	task.delay(A("TutAutoNext"), function()
+		if st[p] and st[p].autoTok == tok and step(p) == 4 then
+			p:SetAttribute("TutNeed", needParts(p))
+			setStep(p, 5)
+			result(p, "auto 5")
+		end
+	end)
+end
+local function hookStamps(p, c)
+	c.AttributeChanged:Connect(function(name)
+		if STAMPS[name] and step(p) == 4 then lessonEvent(p, {kind = "stamp", name = name, value = c:GetAttribute(name)}) end
+	end)
+end
+
 local spawnBot
 local function botHealth(bot, n)
 	bot:SetAttribute("DummyMaxHealth", n)
@@ -231,7 +272,7 @@ spawnBot = function(p)
 		local hp = tonumber(bot:GetAttribute("DummyHealth")) or 0
 		local dropped = last and hp < last
 		last = hp
-		if dropped and step(p) == 4 and p:GetAttribute("TutHit") ~= true then p:SetAttribute("TutHit", true) end
+		if dropped and step(p) == 4 then lessonEvent(p, {kind = "hit"}) end -- v1.1 (1.0: TutHit on the first hit)
 		if step(p) < 7 then
 			local max = tonumber(bot:GetAttribute("DummyMaxHealth")) or A("TutBotSafeHealth")
 			if hp < max / 2 then task.defer(function() if bot.Parent then bot:SetAttribute("DummyHealth", max) end end) end
@@ -297,6 +338,8 @@ local function enterLane(p)
 	p:SetAttribute("TutHit", false)
 	p:SetAttribute("TutUsed", "")
 	p:SetAttribute("TutKilled", false)
+	p:SetAttribute("TutLesson", 1) -- v1.1
+	p:SetAttribute("TutLessonsDone", "")
 	p:SetAttribute("InMenu", false)
 	setStep(p, 4)
 	task.spawn(function()
@@ -372,9 +415,9 @@ end
 remote.OnServerEvent:Connect(function(p, action, arg)
 	local s = st[p]
 	if not s then return end
-	if os.clock() - (s.lastReq or 0) < 0.15 then result(p, "busy") return end
-	s.lastReq = os.clock()
 	if action == "next" then
+		if os.clock() - (s.lastReq or 0) < 0.15 then result(p, "busy") return end -- v1.1: only "next" is gapped
+		s.lastReq = os.clock()
 		onNext(p)
 	elseif action == "roll" and step(p) == 2 then
 		local ok, key = pcall(function() return ownRoll:Invoke(p) end)
@@ -388,6 +431,13 @@ remote.OnServerEvent:Connect(function(p, action, arg)
 		local cur = p:GetAttribute("TutUsed") or ""
 		if not string.find(cur, tostring(arg), 1, true) then
 			p:SetAttribute("TutUsed", cur == "" and tostring(arg) or (cur .. "," .. arg))
+		end
+		if usedAll(p, p:GetAttribute("TutNeed") or 4) then -- v1.1: on to step 7 by itself
+			local tok = os.clock()
+			s.autoTok = tok
+			task.delay(A("TutAutoNext"), function()
+				if st[p] and st[p].autoTok == tok and step(p) == 6 then onNext(p) end
+			end)
 		end
 	elseif action == "island" and step(p) == 10 then
 		finish(p)
@@ -425,7 +475,9 @@ local function onPlayer(p)
 	end
 	p:GetAttributeChangedSignal("TutState"):Connect(begin)
 	begin()
+	if p.Character then hookStamps(p, p.Character) end -- v1.1
 	p.CharacterAdded:Connect(function(c)
+		hookStamps(p, c) -- v1.1
 		if (p:GetAttribute("TutLane") or 0) > 0 and step(p) >= 4 then
 			task.spawn(placeBody, p, c)
 		end

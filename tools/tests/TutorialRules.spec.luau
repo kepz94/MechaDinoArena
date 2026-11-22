@@ -1,4 +1,4 @@
--- TutorialRules.spec v1.0 (Mecha Dino Arena) — TutorialRules 1.0 (plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 0, MDA-558).
+-- TutorialRules.spec v1.1 (Mecha Dino Arena) — TutorialRules 1.0 / 1.1 lessons (plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 0, MDA-558).
 -- Run in Studio Edit (clone + require ServerStorage.DinoArcade.TutorialRules); returns "PASS n" or "FAIL ...".
 local src = game:GetService("ServerStorage"):FindFirstChild("DinoArcade") and game.ServerStorage.DinoArcade:FindFirstChild("TutorialRules")
 if not src then return "FAIL require: ServerStorage.DinoArcade.TutorialRules missing" end
@@ -53,5 +53,26 @@ eq("lane 3", R.laneCFrame(o, 3, 300).Position, Vector3.new(610, 600, 4000))
 -- ownedList / ownedString
 eq("owned string", R.ownedString({Herrera = true, Dilo = true}), "Herrera,Dilo")
 eq("owned string all", R.ownedString(R.allOwned()), table.concat(R.ALL_DINOS, ","))
+-- v1.1 lessons
+eq("teno 2 lessons", #R.lessonsFor("Teno"), 2)
+eq("dilo 1 lesson (no hold-to-snipe since DiloAttackTest 1.6)", #R.lessonsFor("Dilo"), 1)
+eq("theri combo", R.lessonsFor("Therizino")[1].how, "tap3")
+eq("fallback", #R.lessonsFor("Nope"), 1)
+eq("every rolled dino has lessons", (function() for _, k in ipairs(R.ROLL_POOL) do if not R.LESSONS[k] then return k end end return "all" end)(), "all")
+eq("every dino has a role", (function() for _, k in ipairs(R.ALL_DINOS) do if not R.ROLE[k] then return k end end return "all" end)(), "all")
+local scr, slam = R.lessonsFor("Teno")[1], R.lessonsFor("Teno")[2]
+eq("scratch by hit", R.lessonEvent(scr, {kind = "hit"}), true)
+eq("scratch not by stamp", R.lessonEvent(scr, {kind = "stamp", name = "TenoSlamAt"}), false)
+eq("slam by stamp", R.lessonEvent(slam, {kind = "stamp", name = "TenoSlamAt", value = 1}), true)
+eq("slam not by hit", R.lessonEvent(slam, {kind = "hit"}), false)
+eq("slam not by other stamp", R.lessonEvent(slam, {kind = "stamp", name = "TenoScratchAt"}), false)
+local combo = R.lessonsFor("Therizino")[1]
+eq("combo step 2", R.lessonEvent(combo, {kind = "stamp", name = "TheriComboStep", value = 2}), false)
+eq("combo step 3", R.lessonEvent(combo, {kind = "stamp", name = "TheriComboStep", value = 3}), true)
+eq("combo hit only", R.lessonEvent(combo, {kind = "hit"}), false)
+eq("bad lesson", R.lessonEvent(nil, {kind = "hit"}), false)
+eq("parse", R.parseDone("1,3")[3], true)
+eq("parse empty", next(R.parseDone("")), nil)
+eq("done string", R.doneString({[2] = true, [1] = true}), "1,2")
 if #fails > 0 then return "FAIL " .. #fails .. ": " .. table.concat(fails, "; ") end
 return "PASS " .. passes

@@ -250,3 +250,18 @@ flow; TUTORIAL replays steps 3 to 10.
 - Not verified here: a real phone (the tap / pull finger on the real MechaButtons buttons). Studio's viewport was 1809 x 282.
 - Seen, not changed (MechaButtons is do-not-touch): its "NEW: <PART> / Put it in a LOADOUT slot (SKILLS)" popup shows for 4 s
   when the free parts arrive at the egg card.
+
+## v1.1 build notes (2026-11-22, after Kepu's live run at 11:38; "Build" 12:09 on mockup v0.4)
+- TutorialRules 1.1, TutorialServer 1.1, Tutorial client 1.1 (full rewrite of the screens; the server flow and requests are 1.0's).
+- Attack lessons grounded in the attack scripts: Teno tap = Scratch, hold + let go = Tail Slam (TenoSlamAt); Therizino 3-hit
+  combo (TheriComboStep >= 3); the rest one attack each (a hit on the bot). The Dilo's hold-to-snipe from the v0.4 mockup is
+  NOT taught: DiloAttackTest 1.6 turned it off (the sniper shot is the Sniper Scope part), so the Dilo has one lesson, Spit.
+- Studio checks: PC run of all steps (Dilo, then Teno: Scratch hit, Tail Slam stamp, step 5 by itself); Studio's phone
+  emulator (iPhone 17 Pro landscape, 750 x 381 points, touch on) through all 10 steps with captures at each step. Touch taps
+  cannot be sent in the emulator, so the phone run drove the requests directly; real taps were checked on PC.
+- Fixed during the checks: the objective box's accent bar fed its automatic height (box grew past the screen); the 3D dino is
+  PregameModels.<Dino>.Body; the gear card listed 0 parts (the free parts are only published once the body is the free dino);
+  long part names were cut; Silkscreen labels were too small on a phone; star glyphs moved to Gotham.
+- Kepu's live account (read in a Studio server, nothing written): free dino Teno, tutorial not finished, so his next join
+  resumes at step 3 with the Teno lessons.
+- Not verified here: a real phone. Not published.

@@ -3579,3 +3579,6 @@ Model numbers are generator output (old version = the flag in the last column, b
 - ArenaRecordServer 1.3: `ArenaRecordStoreName` ("MDA_ArenaRecord_v2"; "MDA_ArenaRecord_v1" = before the reset).
 - SpeciesServer 1.10: `SpeciesSaveField` ("lastSpecies2"; "lastSpecies" = before the reset).
 - DinoOwnership 1.1: `OwnStoreName` ("MDA_Owned_v2"; "MDA_Owned_v1" = before the reset), `OwnLastField` ("lastSpecies2").
+- TutorialRules 1.1: none (pure module).
+- TutorialServer 1.1: `TutAutoNext` (1.2 s). Player: `TutLesson` (current lesson, 1-based), `TutLessonsDone` ("1,2").
+- Tutorial (client) 1.1: `TutorialClientEnabled` (true); diagnostics `TutorialClientVersion` ("1.1"), player `TutClientStep`.
