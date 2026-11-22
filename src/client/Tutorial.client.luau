@@ -60,6 +60,17 @@
 --   TutNeed slots are filled -> CLOSE "4/4 EQUIPPED"; the Lab closed with the slots full sends "next" (1.1: TRY THEM).
 --   Spend: TAP STATS -> TAP A STAT (the first of this dino's stat rows not maxed) -> TAP BUY "-1 PT" -> CLOSE "STAT +1"; the
 --   Lab closed after the buy (or on a replay with 0 points: CLOSE "0 POINTS") sends "next".
+-- v1.4 (Kepu 2026-11-22 15:05 "the equip part of the tutorial is buggy. It keeps making me equip into the same slots over and
+--   over again"; "showcase all the Dino's before I go to the egg screen so I can see what I can get"):
+--   * Equip fix. Cause: the 1.6 s slot tag spotlit the slot with a finger, a tap there selected that slot in the Lab
+--     (LabSlotSel), and the Lab's EQUIP fills the selected slot before an empty one, so the next part replaced it, and the
+--     tag spotlit that slot again. Now the slot tag has no finger and its hole takes no taps (a clear button covers it), and
+--     when a filled slot is selected the coach points at the first empty slot instead of EQUIP (a slot tap with a new part
+--     selected equips there): tag "TAP C" / "C = BUTTON 2" (PC "TAP KEY C").
+--   * Dino showcase before the egg (step 1, script attribute TutorialShowcaseEnabled, default true): "MECHA DINO ARENA" /
+--     "YOUR FIRST DINO" / "1 OF THESE 7 · FREE", the roll pool (TutorialRules.ROLL_POOL) as cards dealt in left to right,
+--     each with its 3D model (PregameModels body + its parts) turning, its name and role chip; NEXT opens the egg. Client
+--     only (the server step stays 1); seen once per join.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -69,6 +80,7 @@ local GuiService = game:GetService("GuiService")
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 incubator egg + scan reveal
 VERSION = "1.3" -- v1.3 equip / spend on the real Lab (coach)
+VERSION = "1.4" -- v1.4 equip slot fix + dino showcase
 script:SetAttribute("TutorialClientVersion", VERSION)
 if script:GetAttribute("TutorialClientEnabled") == nil then script:SetAttribute("TutorialClientEnabled", true) end
 if script:GetAttribute("TutorialClientEnabled") == false then return end
@@ -546,7 +558,9 @@ local RunService = game:GetService("RunService")
 if script:GetAttribute("TutorialIncubatorEnabled") == nil then script:SetAttribute("TutorialIncubatorEnabled", true) end
 if script:GetAttribute("TutHatchHold") == nil then script:SetAttribute("TutHatchHold", 1.2) end
 local function incubatorOn() return script:GetAttribute("TutorialIncubatorEnabled") ~= false end
-local pod = {p = 0, holding = false, phase = "charge", revealed = false, conn = nil, sceneKey = nil, input = nil}
+local pod = {p = 0, holding = false, phase = "charge", revealed = false, conn = nil, sceneKey = nil, input = nil, showcased = false}
+if script:GetAttribute("TutorialShowcaseEnabled") == nil then script:SetAttribute("TutorialShowcaseEnabled", true) end -- v1.4
+local function showcaseOn() return script:GetAttribute("TutorialShowcaseEnabled") ~= false end
 local function podStop() if pod.conn then pod.conn:Disconnect() pod.conn = nil end end
 local function podReset() podStop() pod.p, pod.holding, pod.phase, pod.revealed, pod.sceneKey, pod.input = 0, false, "charge", false, nil, nil end
 UserInputService.InputEnded:Connect(function(io)
@@ -874,10 +888,81 @@ local function drawReveal(rolled, animate)
 		turn(dt2)
 	end)
 end
+
+-- v1.4: the dino showcase before the egg (see the header)
+local function drawShowcase()
+	backdrop()
+	local rays = podRays(W / 2, H * 0.52, C.cyan)
+	hatchText(root, "MECHA DINO ARENA", "title", px(1.8, 14), C.yellow, H * 0.05)
+	hatchText(root, "YOUR FIRST DINO", "title", px(4.6, 32), C.white, H * 0.1)
+	hatchText(root, ("1 OF THESE %d \u{00B7} FREE"):format(#R.ROLL_POOL), "black", px(2, 16), C.text, H * 0.21)
+	local n = #R.ROLL_POOL
+	local gutter = math.max(px(3, 16), freeLeft > 0 and 0 or 0)
+	local gap = px(1, 6)
+	local cw = math.min(px(13, 80), (W - 2 * gutter - (n - 1) * gap) / n)
+	local ch = math.min(H * 0.46, cw * 1.55)
+	local x0 = W / 2 - (n * cw + (n - 1) * gap) / 2
+	local y0 = H * 0.3
+	local turns = {}
+	-- the 3D bodies arrive from the server after the join: draw again every 0.5 s until all are complete (PieceCount, as
+	-- PregameScreen 1.3 does)
+	local models = ReplicatedStorage:FindFirstChild("PregameModels")
+	local ready = models ~= nil
+	for _, key in ipairs(R.ROLL_POOL) do
+		local f = models and models:FindFirstChild(key)
+		local body = f and f:FindFirstChild("Body")
+		local pc = body and tonumber(body:GetAttribute("PieceCount"))
+		if not body or (pc and #body:GetDescendants() < pc) then ready = false end
+	end
+	if not ready then
+		task.delay(0.5, function()
+			if step() == 1 and not pod.showcased and pod.phase == "charge" then pod.sceneKey = nil render() end
+		end)
+	end
+	local deal = ready and not pod.dealt
+	if ready then pod.dealt = true end
+	for i, key in ipairs(R.ROLL_POOL) do
+		local role = R.ROLE[key] or "FIGHTER"
+		local cg = make("Frame", {Name = "Dino_" .. key, BackgroundColor3 = C.card, -- v1.4: a Frame (viewports do not draw inside a CanvasGroup)
+			Position = UDim2.fromOffset(x0 + (i - 1) * (cw + gap), y0 + (deal and px(3) or 0)), Size = UDim2.fromOffset(cw, ch), ZIndex = 3}, root)
+		corner(cg, UDim.new(0, px(1.2, 8)))
+		stroke(cg, ROLE_COLOR[role] or C.cyan, px(0.25, 2), 0.25)
+		local art = make("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -px(5.6, 34))}, cg)
+		if ready then
+			local _, turn = dinoView(art, key)
+			table.insert(turns, turn)
+		end
+		local nm = text(cg, string.upper(dinoName(key)), "title", px(1.5, 11), C.white, {AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -px(2.6, 16)), TextWrapped = false})
+		local chip = text(cg, " " .. role .. " ", "title", px(1.1, 9), C.ink, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -px(0.8, 5)),
+			BackgroundTransparency = 0, BackgroundColor3 = ROLE_COLOR[role] or C.cyan, TextWrapped = false})
+		corner(chip, UDim.new(0, px(0.4, 3)))
+		for _, dd in ipairs(cg:GetDescendants()) do if dd:IsA("GuiObject") then dd.ZIndex = 4 end end -- over the card (the gui sorts globally)
+		if deal then
+			cg.Visible = false
+			task.delay(0.08 * i, function()
+				if cg.Parent then
+					cg.Visible = true
+					tween(cg, 0.35, {Position = UDim2.fromOffset(x0 + (i - 1) * (cw + gap), y0)}, Enum.EasingStyle.Back)
+				end
+			end)
+		end
+	end
+	local b = cta(root, "NEXT", function()
+		pod.showcased = true
+		pod.sceneKey = nil
+		task.defer(function() render() end)
+	end, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -px(2.2, 12))})
+	b.ZIndex = 6
+	pod.conn = RunService.RenderStepped:Connect(function(dt2)
+		rays.Rotation += dt2 * 6
+		for _, t in ipairs(turns) do t(dt2) end
+	end)
+end
 local function incubatorKey(s)
 	local rolled = player:GetAttribute("TutRolled") or ""
 	local scene = rolled == "" and (pod.phase == "open" and "wait" or "charge") or ("reveal:" .. rolled)
-	if s == 1 and rolled == "" and pod.phase ~= "open" then scene = "charge" end
+	if s == 1 and rolled == "" and pod.phase ~= "open" then scene = (showcaseOn() and not pod.showcased) and "showcase" or "charge" end -- v1.4
 	return scene .. "|" .. math.floor(W) .. "x" .. math.floor(H) .. "|" .. tostring(isTouch())
 end
 
@@ -979,9 +1064,10 @@ local function coachBuild(s)
 	local count = text(chip, "", "title", px(1.4, 11), C.ink, {LayoutOrder = 3, ZIndex = 7, BackgroundTransparency = 0, BackgroundColor3 = C.green})
 	corner(count, UDim.new(0, px(0.5, 4)))
 	pad(count, px(0.3, 2), px(0.6, 4))
-	return {cr = cr, shades = shades, ring = ring, finger = finger, bub = bub, big = big, small = small, count = count}
+	local block = make("TextButton", {Name = "Block", Text = "", AutoButtonColor = false, BackgroundTransparency = 1, ZIndex = 4, Visible = false}, cr) -- v1.4
+	return {cr = cr, shades = shades, ring = ring, finger = finger, bub = bub, big = big, small = small, count = count, block = block}
 end
-local function coachPlace(ui, target, bigText, smallText)
+local function coachPlace(ui, target, bigText, smallText, noTap) -- v1.4: + noTap
 	local cr = ui.cr
 	local pos, size
 	if target and target:IsA("GuiObject") and target.AbsoluteSize.X > 0 then
@@ -1001,6 +1087,7 @@ local function coachPlace(ui, target, bigText, smallText)
 		ui.shades[1].Position, ui.shades[1].Size = UDim2.fromOffset(0, 0), UDim2.fromOffset(CW, CH)
 		for i = 2, 4 do ui.shades[i].Size = UDim2.fromOffset(0, 0) end
 		ui.ring.Visible, ui.finger.Visible, ui.bub.Visible = false, false, false
+		ui.block.Visible = false
 		return
 	end
 	local m = px(0.5, 4)
@@ -1009,7 +1096,9 @@ local function coachPlace(ui, target, bigText, smallText)
 	ui.shades[2].Position, ui.shades[2].Size = UDim2.fromOffset(0, y1), UDim2.fromOffset(CW, math.max(0, CH - y1))
 	ui.shades[3].Position, ui.shades[3].Size = UDim2.fromOffset(0, y0), UDim2.fromOffset(math.max(0, x0), y1 - y0)
 	ui.shades[4].Position, ui.shades[4].Size = UDim2.fromOffset(x1, y0), UDim2.fromOffset(math.max(0, CW - x1), y1 - y0)
-	ui.ring.Visible, ui.finger.Visible, ui.bub.Visible = true, true, true
+	ui.ring.Visible, ui.finger.Visible, ui.bub.Visible = true, not noTap, true
+	ui.block.Visible = noTap == true -- v1.4: the hole takes no taps
+	ui.block.Position, ui.block.Size = UDim2.fromOffset(x0, y0), UDim2.fromOffset(x1 - x0, y1 - y0)
 	ui.ring.Position, ui.ring.Size = UDim2.fromOffset(x0, y0), UDim2.fromOffset(x1 - x0, y1 - y0)
 	ui.finger.Position = UDim2.fromOffset(pos.X + size.X * 0.85, pos.Y + size.Y * 0.85)
 	ui.big.Text = bigText
@@ -1047,7 +1136,7 @@ local function drawCoach(s)
 		local tab = player:GetAttribute("LabTab")
 		local sel = player:GetAttribute("LabSelected")
 		if type(press) == "string" and press:sub(1, 5) == "card:" then coach.picked = press:sub(6) end
-		local target, big, small
+		local target, big, small, noTap
 		if s == 5 then
 			local n = need()
 			local filled = 0
@@ -1067,6 +1156,7 @@ local function drawCoach(s)
 			elseif coach.flash and os.clock() < coach.flash.untilT then
 				local k = coach.flash.k
 				target = labFind("Slot_" .. k, "GuiButton")
+				noTap = true -- v1.4
 				if isTouch() then
 					local t = SLOT_TAGS_TOUCH[k]
 					big, small = t[1], ("%s \u{00B7} %d/%d EQUIPPED"):format(t[2], filled, n)
@@ -1081,7 +1171,19 @@ local function drawCoach(s)
 				local inSlot = {}
 				for k = 1, 4 do inSlot[slotOf(k)] = true end
 				local want = (coach.picked and not inSlot[coach.picked] and ST.BUTTONS[coach.picked]) and coach.picked or nil
-				if want and sel == want then
+				local ss = tonumber(player:GetAttribute("LabSlotSel")) or 0
+				local empty
+				for k = 1, n do if slotOf(k) == "" then empty = k break end end
+				if want and sel == want and ss > 0 and slotOf(ss) ~= "" and empty then
+					-- v1.4: a filled slot is selected, so EQUIP would replace it: equip by tapping the empty slot
+					target = labFind("Slot_" .. empty, "GuiButton")
+					if isTouch() then
+						local t = SLOT_TAGS_TOUCH[empty]
+						big, small = "TAP " .. string.split(t[1], " ")[1], t[1]
+					else
+						big, small = "TAP KEY " .. SLOT_KEYS_PC[empty], ("%d/%d EQUIPPED"):format(filled, n)
+					end
+				elseif want and sel == want then
 					target, big = labActionBtn({"EQUIP"}), "TAP EQUIP"
 				else
 					for _, id in ipairs(partsOf(dino, true)) do
@@ -1118,7 +1220,7 @@ local function drawCoach(s)
 			end
 		end
 		if target then scrollTo(target) end
-		coachPlace(ui, target, big or "", small)
+		coachPlace(ui, target, big or "", small, noTap)
 	end)
 end
 
@@ -1179,6 +1281,8 @@ function render()
 			drawReveal(rolled, not pod.revealed)
 		elseif pod.phase == "open" then
 			drawWait()
+		elseif s == 1 and showcaseOn() and not pod.showcased then -- v1.4
+			drawShowcase()
 		else
 			drawCharge()
 		end

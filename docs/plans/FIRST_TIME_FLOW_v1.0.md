@@ -292,3 +292,11 @@ flow; TUTORIAL replays steps 3 to 10.
   that step by design). Not yet confirmed which screen Kepu was stuck on.
 - 13:59 Kepu picked A. Built as Tutorial client 1.3; published 14:55 (Sandbox v911 + Arena). Copy table in the mockup (31 lines, now vs new)
   not yet approved; the tutorial's other lines are unchanged.
+
+## 15:05 report: equip keeps going into the same slot; show all dinos before the egg
+- Cause (code): Tutorial 1.3 flashed the slot after EQUIP with the spotlight and finger on it. Tapping it set LabSlotSel, and Lab
+  1.16's EQUIP fills the selected slot when one is set, so every next part replaced the same slot. Lab is unchanged.
+- Tutorial client 1.4: the slot flash is look-only (Block button over the hole, no finger); with a slot selected and one still
+  empty the coach points at the empty slot first. Showcase screen before the egg (7 roll dinos, 3D, name, role), switch
+  TutorialShowcaseEnabled. No mockup for the showcase (Kepu asked for it directly); open to changes.
+
