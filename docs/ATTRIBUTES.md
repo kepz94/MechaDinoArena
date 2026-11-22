@@ -3575,3 +3575,7 @@ Model numbers are generator output (old version = the flag in the last column, b
 - Tutorial (client) 1.0.2: `TutorialClientEnabled` (true); diagnostics `TutorialClientVersion`, player `TutClientStep`.
 - EggLoader 1.7: `EggLoaderTutorialEnabled` (true).
 - MainMenu 1.27: `MainMenuTutorialEnabled` (true).
+- SkillServer 1.14: `SkillSaveStoreName` ("MDA_Skills_v3"; "MDA_Skills_v2" = the saves before the 2026-11-22 reset).
+- ArenaRecordServer 1.3: `ArenaRecordStoreName` ("MDA_ArenaRecord_v2"; "MDA_ArenaRecord_v1" = before the reset).
+- SpeciesServer 1.10: `SpeciesSaveField` ("lastSpecies2"; "lastSpecies" = before the reset).
+- DinoOwnership 1.1: `OwnStoreName` ("MDA_Owned_v2"; "MDA_Owned_v1" = before the reset), `OwnLastField` ("lastSpecies2").
