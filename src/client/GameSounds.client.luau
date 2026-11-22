@@ -184,6 +184,7 @@ VERSION = "1.16" -- v1.16 Hardpoint voice callouts replace the captured / lost /
 VERSION = "1.17" -- v1.17 the match intro voice line over the pre-match countdown
 VERSION = "1.18" -- v1.18 the Raptor's buttons on their beats (round 17 picks)
 VERSION = "1.19" -- v1.19 the Dilo's buttons on their beats (round 18 picks)
+VERSION = "1.20" -- v1.20 the Herrera's buttons on their beats (round 19 picks)
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -284,6 +285,27 @@ VERSION = "1.19" -- v1.19 the Dilo's buttons on their beats (round 18 picks)
 --                     doverend.
 --   While GameSoundsDiloBeatsEnabled (default true) these replace the 1.4 dgatling / dmortar / dspine / dover / dhiss / dpump /
 --   dscope sounds; false = 1.18. Spring Jets keeps its thruster sound (DiloMovesFX).
+-- v1.20 (MDA-552, sound pass round 19; Kepu 2026-11-22 04:51 "Quills B, Cruise A, Strobe A, Smoke C, Breaker B, Caltrops C, Goo A,
+--   Glider A" on the Herrera pick page that plays Studio recordings of the game): the Herrera's eight part buttons get real sounds
+--   (recipe docs/sfx/gen_herrera_v2_sfx.py, Sonniss; 25 parts imported through Asset Manager, ids checked with GetProductInfo;
+--   the quills hit asset's name shows as #### because Roblox's text filter caught "quillshit", its length 0.194 s matches the
+--   file), each part on the beat the server stamps (3D at the dino unless noted; heard by everyone near it):
+--     Quill Launcher  hquillsarm at QuillWindupAt; hquillsfire at QuillStartedAt; hquillshit at every QuillHitAt, on the dino hit.
+--     Cruise Missile  hcruiselaunch at CruiseLaunchAt; hcruisefly (loop) at the missile (CruisePos, moved as it updates) from
+--                     + GameSoundsHerrCruiseFlyAt (0.6) while CruiseFlying; hcruiseboost when CruiseBoosted turns true (at the
+--                     missile); hcruiseboom at CruiseBoomAt at CruiseBoomPos (the blast range); hcruisecrater (loop) there
+--                     from + GameSoundsHerrCraterAt (0.3) until CruiseCraterUntil.
+--     Strobe Frill    hstrobecharge at StrobeStartedAt; hstrobeflash at StrobeAt; hstrobedaze at every DazedAt, on the dino dazed.
+--     Smoke Pods      hsmokepop at SmokeWindupAt; hsmokeburst at SmokeStartedAt; hsmokeloop (loop) at SmokeCenter from
+--                     + GameSoundsHerrSmokeLoopAt (0.5) until SmokeUntil; hsmokeend there at SmokeUntil.
+--     Stun Breaker    hbreakersnap at BreakerWindupAt (the stun breaks); hbreakerpush at BreakerAt.
+--     Razor Caltrops  hcaltropsdrop at CaltropDroppedAt; hcaltropsland at + GameSoundsHerrCaltropLandAt (0.42, the patch's ArmFly).
+--     Goo Blob        hgoocharge at GooWindupAt; hgoofire at GooFiredAt; hgoosplat at GooLand at + GameSoundsHerrGooFlight
+--                     (0.567: 0.85 s / 1.5, HerreraMovesServer 1.9's shot pass) or GameSoundsHerrGooGlideFlight (0.3) while Gliding.
+--     Glider Wings    hglideropen at GlideStartedAt; hgliderloop (loop) from + GameSoundsHerrGlideLoopAt (0.15) until GlideEndedAt,
+--                     then hgliderclose.
+--   While GameSoundsHerrBeatsEnabled (default true) these replace the 1.5 hquills / hsmoke / hstrobe / hbreaker / hcaltrops / hgoo /
+--   hglider / hcmlaunch / hcmboom sounds; false = 1.19. The Adrenaline Injector keeps the Raptor's beat-timed adrenaline (1.18).
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -399,6 +421,23 @@ for e, v in pairs({dscopein = {"87996454276660", 0.6}, dscopecharge = {"11219980
 end
 local function diloOn() return script:GetAttribute("GameSoundsDiloBeatsEnabled") ~= false end -- v1.19
 local DILO_OLD = {dgatling = true, dmortar = true, dspine = true, dover = true, dhiss = true, dpump = true, dscope = true} -- v1.19
+local HERR_PART = {} -- v1.20 the Herrera's beat-timed parts: {id, volume}
+for e, v in pairs({hquillsarm = {"125955805600171", 0.6}, hquillsfire = {"137099023207537", 0.8}, hquillshit = {"85994085645322", 0.6},
+	hcruiselaunch = {"118892333835461", 0.8}, hcruisefly = {"107481117620836", 0.45}, hcruiseboost = {"89339243069619", 0.7},
+	hcruiseboom = {"139603068393322", 1}, hcruisecrater = {"100193844960472", 0.4}, hstrobecharge = {"100006116783748", 0.6},
+	hstrobeflash = {"128244655325899", 0.8}, hstrobedaze = {"108143750861667", 0.6}, hsmokepop = {"101224803090773", 0.6},
+	hsmokeburst = {"82770164840283", 0.8}, hsmokeloop = {"137743435147895", 0.35}, hsmokeend = {"135545963939457", 0.6},
+	hbreakersnap = {"121948729242689", 0.7}, hbreakerpush = {"103501427166526", 0.8}, hcaltropsdrop = {"104436909982480", 0.6},
+	hcaltropsland = {"85408546732209", 0.6}, hgoocharge = {"132853207528126", 0.6}, hgoofire = {"98110033227408", 0.7},
+	hgoosplat = {"75197013505582", 0.8}, hglideropen = {"110060883869145", 0.6}, hgliderloop = {"105053613052150", 0.4},
+	hgliderclose = {"135851574814146", 0.6}}) do
+	table.insert(EVENTS, e)
+	IDS[e], VOL[e] = v[1], v[2]
+	HERR_PART[e] = true
+end
+local function herrOn() return script:GetAttribute("GameSoundsHerrBeatsEnabled") ~= false end -- v1.20
+local HERR_OLD = {hquills = true, hsmoke = true, hstrobe = true, hbreaker = true, hcaltrops = true, hgoo = true, hglider = true,
+	hcmlaunch = true, hcmboom = true} -- v1.20 (hcmboom: playAt)
 local PACHY_OLD = {phook = true, pink = true, pmed = true, pdash = true, ptether = true, pvisor = true, pblood = true} -- v1.15
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
@@ -417,6 +456,8 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 	GameSoundsRaptorAuraAt = 0.60, GameSoundsRaptorChargeMax = 10, -- v1.18
 	GameSoundsDiloBeatsEnabled = true, GameSoundsDiloScopeChargeAt = 0.15, GameSoundsDiloScopeHitDelay = 0.03, -- v1.19
 	GameSoundsDiloCloudAt = 0.15, GameSoundsDiloSpineHitMax = 6, GameSoundsDiloLoopMax = 30, -- v1.19
+	GameSoundsHerrBeatsEnabled = true, GameSoundsHerrCruiseFlyAt = 0.6, GameSoundsHerrCraterAt = 0.3, GameSoundsHerrSmokeLoopAt = 0.5, -- v1.20
+	GameSoundsHerrCaltropLandAt = 0.42, GameSoundsHerrGooFlight = 0.567, GameSoundsHerrGooGlideFlight = 0.3, GameSoundsHerrGlideLoopAt = 0.15, -- v1.20
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -532,6 +573,7 @@ local function play3D(e, m)
 	if PACHY_OLD[e] and pachyOn() then return end -- v1.15: the beat-timed parts replace the 1.7 Pachy sounds
 	if RAPTOR_OLD[e] and raptorOn() then return end -- v1.18: the beat-timed parts replace the 1.3 Raptor sounds
 	if DILO_OLD[e] and diloOn() then return end -- v1.19: the beat-timed parts replace the 1.4 Dilo sounds
+	if HERR_OLD[e] and herrOn() then return end -- v1.20: the beat-timed parts replace the 1.5 Herrera sounds
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	local root = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
@@ -581,6 +623,7 @@ local function startPart(e, where, startAt, looped, maxD, minD) -- v1.10: option
 	elseif PACHY_PART[e] then if not pachyOn() then return nil end -- v1.14: the Pachy's switch
 	elseif RAPTOR_PART[e] then if not raptorOn() then return nil end -- v1.18: the Raptor's switch
 	elseif DILO_PART[e] then if not diloOn() then return nil end -- v1.19: the Dilo's switch
+	elseif HERR_PART[e] then if not herrOn() then return nil end -- v1.20: the Herrera's switch
 	elseif not theriOn() then return nil end -- v1.10: the Teno's switch
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return nil end
 	if player:GetAttribute("InMenu") == true then return nil end
@@ -1014,6 +1057,101 @@ local function hookDiloParts(m)
 			function() return m.Parent ~= nil and m:GetAttribute("DiloOverdriveAt") == t end)
 	end)
 end
+-- v1.20 the Herrera's buttons, each on its beat (header)
+local hookedHerr = setmetatable({}, {__mode = "k"})
+local function herrLoop(e, where, at, keep, maxD, minD) -- a loop from server time `at` while keep() (read live), then a fade; returns a getter
+	local cur
+	task.spawn(function()
+		while keep() and serverNow() < at do task.wait() end
+		if not keep() then return end
+		cur = startPart(e, where, at, true, maxD, minD)
+		if not cur then return end
+		local guard = serverNow() + num("GameSoundsDiloLoopMax", 30)
+		while keep() and serverNow() < guard do task.wait() end
+		fadeOut(cur, num("GameSoundsTheriLoopFade", 0.08))
+		cur = nil
+	end)
+	return function() return cur end
+end
+local function hookHerreraParts(m)
+	if hookedHerr[m] or not m:IsA("Model") then return end
+	hookedHerr[m] = true
+	local function on(attr, fn)
+		m:GetAttributeChangedSignal(attr):Connect(function()
+			local t = m:GetAttribute(attr)
+			if typeof(t) == "number" and herrOn() then fn(t) end
+		end)
+	end
+	local blastR, blastN = num("GameSoundsBlastRange", 400), num("GameSoundsBlastNear", 20)
+	on("QuillWindupAt", function(t) partAt("hquillsarm", m, t) end) -- Quill Launcher
+	on("QuillStartedAt", function(t) partAt("hquillsfire", m, t) end)
+	on("QuillHitAt", function(t) partAt("hquillshit", m, t) end) -- ... on the dino hit
+	on("CruiseLaunchAt", function(t) -- Cruise Missile
+		partAt("hcruiselaunch", m, t)
+		local p0 = m:GetAttribute("CruisePos")
+		local get = herrLoop("hcruisefly", typeof(p0) == "Vector3" and p0 or m, t + num("GameSoundsHerrCruiseFlyAt", 0.6),
+			function() return m.Parent ~= nil and m:GetAttribute("CruiseFlying") == true and m:GetAttribute("CruiseLaunchAt") == t end, blastR, blastN)
+		local conn
+		conn = m:GetAttributeChangedSignal("CruisePos"):Connect(function()
+			local s, p = get(), m:GetAttribute("CruisePos")
+			if m:GetAttribute("CruiseLaunchAt") ~= t or m:GetAttribute("CruiseFlying") ~= true then conn:Disconnect() return end
+			if s and s.Parent and s.Parent:IsA("Attachment") and typeof(p) == "Vector3" then s.Parent.WorldPosition = p end
+		end)
+	end)
+	m:GetAttributeChangedSignal("CruiseBoosted"):Connect(function()
+		if m:GetAttribute("CruiseBoosted") == true and m:GetAttribute("CruiseFlying") == true and herrOn() then
+			local p = m:GetAttribute("CruisePos")
+			startPart("hcruiseboost", typeof(p) == "Vector3" and p or m, serverNow(), false, blastR, blastN)
+		end
+	end)
+	on("CruiseBoomAt", function(t)
+		local p = m:GetAttribute("CruiseBoomPos")
+		if typeof(p) ~= "Vector3" then return end
+		startPart("hcruiseboom", p, t, false, blastR, blastN)
+		local untilT = tonumber(m:GetAttribute("CruiseCraterUntil")) or 0
+		if untilT > t then
+			herrLoop("hcruisecrater", p, t + num("GameSoundsHerrCraterAt", 0.3),
+				function() return serverNow() < untilT and m:GetAttribute("CruiseBoomAt") == t end)
+		end
+	end)
+	on("StrobeStartedAt", function(t) partAt("hstrobecharge", m, t) end) -- Strobe Frill
+	on("StrobeAt", function(t) partAt("hstrobeflash", m, t) end)
+	on("DazedAt", function(t) partAt("hstrobedaze", m, t) end) -- ... on the dino dazed
+	on("SmokeWindupAt", function(t) partAt("hsmokepop", m, t) end) -- Smoke Pods
+	on("SmokeStartedAt", function(t)
+		partAt("hsmokeburst", m, t)
+		local c = m:GetAttribute("SmokeCenter")
+		local where = typeof(c) == "Vector3" and c or m
+		local untilT = tonumber(m:GetAttribute("SmokeUntil")) or (t + 6)
+		local function mine() return m:GetAttribute("SmokeStartedAt") == t end
+		herrLoop("hsmokeloop", where, t + num("GameSoundsHerrSmokeLoopAt", 0.5), function() return serverNow() < untilT and mine() end)
+		task.delay(math.max(0, untilT - serverNow()), function() if mine() and herrOn() then partAt("hsmokeend", where, untilT) end end)
+	end)
+	on("BreakerWindupAt", function(t) partAt("hbreakersnap", m, t) end) -- Stun Breaker
+	on("BreakerAt", function(t) partAt("hbreakerpush", m, t) end)
+	on("CaltropDroppedAt", function(t) -- Razor Caltrops
+		partAt("hcaltropsdrop", m, t)
+		partAt("hcaltropsland", m, t + num("GameSoundsHerrCaltropLandAt", 0.42))
+	end)
+	on("GooWindupAt", function(t) partAt("hgoocharge", m, t) end) -- Goo Blob
+	on("GooFiredAt", function(t)
+		partAt("hgoofire", m, t)
+		local land = m:GetAttribute("GooLand")
+		local fly = m:GetAttribute("Gliding") == true and num("GameSoundsHerrGooGlideFlight", 0.3) or num("GameSoundsHerrGooFlight", 0.567)
+		partAt("hgoosplat", typeof(land) == "Vector3" and land or m, t + fly)
+	end)
+	on("GlideStartedAt", function(t) -- Glider Wings (open-ended: the loop runs until GlideEndedAt arrives)
+		partAt("hglideropen", m, t)
+		herrLoop("hgliderloop", m, t + num("GameSoundsHerrGlideLoopAt", 0.15), function()
+			local e = m:GetAttribute("GlideEndedAt")
+			return m.Parent ~= nil and m:GetAttribute("GlideStartedAt") == t and not (typeof(e) == "number" and e > t)
+		end)
+	end)
+	on("GlideEndedAt", function(t)
+		local st = m:GetAttribute("GlideStartedAt")
+		if typeof(st) == "number" and t > st then partAt("hgliderclose", m, t) end
+	end)
+end
 local hookedAbility = setmetatable({}, {__mode = "k"})
 local function hookAbility(m)
 	if hookedAbility[m] or not m:IsA("Model") then return end
@@ -1025,6 +1163,7 @@ local function hookAbility(m)
 	hookPachyParts(m) -- v1.15
 	hookRaptorParts(m) -- v1.18
 	hookDiloParts(m) -- v1.19
+	hookHerreraParts(m) -- v1.20
 	for e, attr in pairs(ABILITY) do
 		m:GetAttributeChangedSignal(attr):Connect(function()
 			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end
@@ -1053,6 +1192,7 @@ end)
 -- v1.5 the Cruise Missile blast: 3D at CruiseBoomPos --------------------------------------------------------------------------
 local function playAt(e, pos, maxDist, minDist) -- v1.8: optional range (default the blast range)
 	if TENO_OLD[e] and tenoOn() then return end -- v1.10
+	if HERR_OLD[e] and herrOn() then return end -- v1.20: the beat-timed blast replaces hcmboom
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	if typeof(pos) ~= "Vector3" then return end

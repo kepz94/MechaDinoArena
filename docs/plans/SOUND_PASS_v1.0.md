@@ -361,4 +361,5 @@ Tuba, Funny Cut D3).
   Music\MechaDinoArena_SFX\herrera_v2 (not in the repo).
 - Page: tools/mockup/build_herrera_rec_pick.py v1.0, Sound Pick Board version 29. Checked headless: all eight moves load and
   draw, the three options play on the beats, picks save; no errors.
-- Waiting: Kepu's picks. Then upload, GameSounds 1.20 on the beats, Studio test.
+- 2026-11-22 04:51 Kepu picks "Quills B, Cruise A, Strobe A, Smoke C, Breaker B, Caltrops C, Goo A, Glider A". GameSounds 1.20: 25
+  parts imported (one Asset Manager import), each on its beat; Studio test: all 25 on time, the 1.5 Herrera sounds silent. Not published.
