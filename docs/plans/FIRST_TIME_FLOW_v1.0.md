@@ -236,3 +236,16 @@ flow; TUTORIAL replays steps 3 to 10.
 - [ ] Set SkillServer SkillTestMaxAllEnabled = false on the place (red-team 1); check a real build shows its real steps.
 - [ ] Restore the test setup (species Therizino, slots, bots, attributes, health).
 - [ ] Docs: VERSIONS.md rows, ATTRIBUTES.md entries. Commit. Publish only on Kepu's "Publish".
+
+## Build notes (2026-11-22, Studio checks)
+- Lanes are built by TutorialServer at start (no install script, no ServerStorage model): fewer moving parts, every number an
+  attribute. tools/training_ground_install.luau was not needed.
+- Found and fixed in the Studio check: the hub's PlaceGate removed the training bot (PlaceGate 1.3); the join egg waited for the
+  menu that the flow keeps closed (EggLoader 1.7); attacks only target DinoIsland.Bots (TutorialServer 1.0.1 puts the bot there).
+- Replay from TUTORIAL starts at step 4 (straight into a lane); the parts card is for the free dino only.
+- Red-team 1: both test layers are off on the place (SkillTestMaxAllEnabled and SkillTestCloakEnabled, which gave every dino
+  every part at star). Kepu's Studio account came back with its real level 27 Therizino build; its slots are empty because the
+  given parts are no longer owned.
+- Not verified here: a real phone (the tap / pull finger on the real MechaButtons buttons). Studio's viewport was 1809 x 282.
+- Seen, not changed (MechaButtons is do-not-touch): its "NEW: <PART> / Put it in a LOADOUT slot (SKILLS)" popup shows for 4 s
+  when the free parts arrive at the egg card.
