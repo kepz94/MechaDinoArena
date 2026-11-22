@@ -31,6 +31,7 @@
 local M = {}
 M.Version = "1.0"
 M.Version = "1.1" -- v1.1 attack lessons
+M.Version = "1.2" -- v1.2 a lesson needs the attack to land on the bot
 
 M.ALL_DINOS = {"Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"}
 M.ROLL_POOL = {"Raptor", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"} -- Kepu 10:46 "No, roll 7"
@@ -85,8 +86,33 @@ M.LESSONS = {
 M.ROLE = {Pachy = "HOLDER", Teno = "HOLDER", Raptor = "FIGHTER", TRex = "FIGHTER", Herrera = "FIGHTER", Therizino = "FIGHTER",
 	Dilo = "RANGED", Troodon = "RANGED"}
 
-function M.lessonsFor(dino)
+-- v1.2 (Kepu 2026-11-22 12:52 "I had the tail [slam] but I pressed it out of range and it still passed me"): the lessons with
+--   their own attack need that attack to land on the training bot. done = "target": the attack server's hit stamp `stamp`
+--   changed and its target list `targets` ("|" joined model names) holds the bot (ev.onBot, worked out by TutorialServer 1.2);
+--   `stepAttr` / `stepMin`: the hit's combo step must be at least stepMin (the Therizino's 3rd cut). Grounded in
+--   TenoAttackServer (TenoScratchHitAt / TenoScratchTargets, TenoSlamImpactAt / TenoSlamTargets, set at every scratch / slam,
+--   hit or miss) and TheriAttackServer (TheriHitAt / TheriHitTargets / TheriHitStep). Same names, hows and lines as 1.1.
+--   lessonsFor(dino, hitRules): hitRules false -> the 1.1 table (TutorialServer switch TutLessonNeedsHit).
+M.LESSONS_HIT = {
+	Teno = {
+		{n = "Scratch", how = "tap", line = "Hits in front of you.", done = "target", stamp = "TenoScratchHitAt", targets = "TenoScratchTargets"},
+		{n = "Tail Slam", how = "hold", line = "Hits behind you. Turn your back to it.", done = "target", stamp = "TenoSlamImpactAt",
+			targets = "TenoSlamTargets"},
+	},
+	Therizino = {{n = "Claw Combo", how = "tap3", line = "Tap 3 times. The 3rd hit is the big one.", done = "target", stamp = "TheriHitAt",
+		targets = "TheriHitTargets", stepAttr = "TheriHitStep", stepMin = 3}},
+}
+
+function M.lessonsFor(dino, hitRules)
+	if hitRules ~= false and M.LESSONS_HIT[dino] then return M.LESSONS_HIT[dino] end -- v1.2
 	return M.LESSONS[dino] or {{n = "Attack", how = "tap", line = "Hit it.", done = "hit"}}
+end
+
+-- v1.2: is a model name in a "|" joined target list
+function M.listHas(list, name)
+	if type(list) ~= "string" or type(name) ~= "string" or name == "" then return false end
+	for k in string.gmatch(list, "[^|]+") do if k == name then return true end end
+	return false
 end
 
 function M.lessonEvent(lesson, ev)
@@ -95,6 +121,10 @@ function M.lessonEvent(lesson, ev)
 	if lesson.done == "stamp" then return ev.kind == "stamp" and ev.name == lesson.stamp end
 	if lesson.done == "combo" then
 		return ev.kind == "stamp" and ev.name == lesson.stamp and (tonumber(ev.value) or 0) >= 3
+	end
+	if lesson.done == "target" then -- v1.2
+		return ev.kind == "stamp" and ev.name == lesson.stamp and ev.onBot == true
+			and (lesson.stepMin == nil or (tonumber(ev.step) or 0) >= lesson.stepMin)
 	end
 	return false
 end

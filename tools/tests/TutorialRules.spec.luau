@@ -1,4 +1,4 @@
--- TutorialRules.spec v1.1 (Mecha Dino Arena) — TutorialRules 1.0 / 1.1 lessons (plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 0, MDA-558).
+-- TutorialRules.spec v1.2 (Mecha Dino Arena) — TutorialRules 1.0 / 1.1 lessons / 1.2 hit rules (plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 0, MDA-558).
 -- Run in Studio Edit (clone + require ServerStorage.DinoArcade.TutorialRules); returns "PASS n" or "FAIL ...".
 local src = game:GetService("ServerStorage"):FindFirstChild("DinoArcade") and game.ServerStorage.DinoArcade:FindFirstChild("TutorialRules")
 if not src then return "FAIL require: ServerStorage.DinoArcade.TutorialRules missing" end
@@ -60,13 +60,13 @@ eq("theri combo", R.lessonsFor("Therizino")[1].how, "tap3")
 eq("fallback", #R.lessonsFor("Nope"), 1)
 eq("every rolled dino has lessons", (function() for _, k in ipairs(R.ROLL_POOL) do if not R.LESSONS[k] then return k end end return "all" end)(), "all")
 eq("every dino has a role", (function() for _, k in ipairs(R.ALL_DINOS) do if not R.ROLE[k] then return k end end return "all" end)(), "all")
-local scr, slam = R.lessonsFor("Teno")[1], R.lessonsFor("Teno")[2]
+local scr, slam = R.lessonsFor("Teno", false)[1], R.lessonsFor("Teno", false)[2] -- the 1.1 table
 eq("scratch by hit", R.lessonEvent(scr, {kind = "hit"}), true)
 eq("scratch not by stamp", R.lessonEvent(scr, {kind = "stamp", name = "TenoSlamAt"}), false)
 eq("slam by stamp", R.lessonEvent(slam, {kind = "stamp", name = "TenoSlamAt", value = 1}), true)
 eq("slam not by hit", R.lessonEvent(slam, {kind = "hit"}), false)
 eq("slam not by other stamp", R.lessonEvent(slam, {kind = "stamp", name = "TenoScratchAt"}), false)
-local combo = R.lessonsFor("Therizino")[1]
+local combo = R.lessonsFor("Therizino", false)[1]
 eq("combo step 2", R.lessonEvent(combo, {kind = "stamp", name = "TheriComboStep", value = 2}), false)
 eq("combo step 3", R.lessonEvent(combo, {kind = "stamp", name = "TheriComboStep", value = 3}), true)
 eq("combo hit only", R.lessonEvent(combo, {kind = "hit"}), false)
@@ -74,5 +74,23 @@ eq("bad lesson", R.lessonEvent(nil, {kind = "hit"}), false)
 eq("parse", R.parseDone("1,3")[3], true)
 eq("parse empty", next(R.parseDone("")), nil)
 eq("done string", R.doneString({[2] = true, [1] = true}), "1,2")
+-- v1.2 hit rules
+local scr2, slam2 = R.lessonsFor("Teno")[1], R.lessonsFor("Teno")[2]
+eq("v1.2 default = hit rules", slam2.done, "target")
+eq("v1.2 off = 1.1 table", R.lessonsFor("Teno", false)[2].done, "stamp")
+eq("slam missed", R.lessonEvent(slam2, {kind = "stamp", name = "TenoSlamImpactAt", onBot = false}), false)
+eq("slam on bot", R.lessonEvent(slam2, {kind = "stamp", name = "TenoSlamImpactAt", onBot = true}), true)
+eq("slam stamp alone", R.lessonEvent(slam2, {kind = "stamp", name = "TenoSlamAt", onBot = true}), false)
+eq("slam by bot hp drop", R.lessonEvent(slam2, {kind = "hit"}), false)
+eq("scratch on bot", R.lessonEvent(scr2, {kind = "stamp", name = "TenoScratchHitAt", onBot = true}), true)
+eq("scratch by bot hp drop", R.lessonEvent(scr2, {kind = "hit"}), false)
+local combo2 = R.lessonsFor("Therizino")[1]
+eq("combo cut 2 on bot", R.lessonEvent(combo2, {kind = "stamp", name = "TheriHitAt", onBot = true, step = 2}), false)
+eq("combo cut 3 missed", R.lessonEvent(combo2, {kind = "stamp", name = "TheriHitAt", onBot = false, step = 3}), false)
+eq("combo cut 3 on bot", R.lessonEvent(combo2, {kind = "stamp", name = "TheriHitAt", onBot = true, step = 3}), true)
+eq("dilo unchanged", R.lessonsFor("Dilo")[1].done, "hit")
+eq("listHas", R.listHas("A|PBot_Training Bot|C", "PBot_Training Bot"), true)
+eq("listHas no", R.listHas("A|B", "PBot_Training Bot"), false)
+eq("listHas empty", R.listHas("", "x"), false)
 if #fails > 0 then return "FAIL " .. #fails .. ": " .. table.concat(fails, "; ") end
 return "PASS " .. passes

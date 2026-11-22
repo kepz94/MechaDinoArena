@@ -50,6 +50,17 @@
 --     lesson is done: TutHit = true and, TutAutoNext (1.2) s later, step 5 by itself ("next" still works).
 --   * Step 6 moves to 7 by itself TutAutoNext s after the last part is used ("next" still works).
 --   * Only "next" is gapped (0.15 s); "roll" / "used" are not (fast taps and keys were dropped as "busy").
+-- v1.2 (Kepu 2026-11-22 12:52, after the live v1.1 run: "I had the tail [slam] but I pressed it out of range and it still
+--   passed me. Also I glitched on the edge of the trial map and was unable to finish it"):
+--   * A lesson with its own attack needs that attack to land on this player's bot (TutorialRules 1.2 done "target"): on the
+--     attack server's hit stamp (TenoScratchHitAt, TenoSlamImpactAt, TheriHitAt) the lesson's target list must hold the bot's
+--     name (and TheriHitStep >= 3 for the combo). A miss -> player TutLessonMiss = server time (nothing else changes).
+--     Switch: script attribute TutLessonNeedsHit (default true, read per event; false = 1.1 lessons).
+--   * Lane leash for bodies (script attribute TutPlayerLeash, default true, read each second): from step 4 to 7, a player's
+--     body or the bot that is outside the pad's walls (more than LanePad / 2 - TutLeashInset (0.5) from the lane centre on X
+--     or Z; a body on top of a wall counts) or more than 10 studs under the pad is put back on its mark (the player with the 1.0
+--     placement: anchored 0.3 s, facing the bot). High over the pad is fine (jump parts). Diagnostics: script TutPlayerReturns,
+--     TutBotReturns (counts); player TutLastResult "returned".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -59,10 +70,12 @@ local RunService = game:GetService("RunService")
 local VERSION = "1.0"
 VERSION = "1.0.1" -- v1.0.1 the bot stands in DinoIsland.Bots
 VERSION = "1.1" -- v1.1 attack lessons, auto-advance
+VERSION = "1.2" -- v1.2 lessons need a hit on the bot, lane leash
 script:SetAttribute("TutorialServerVersion", VERSION)
 local DEFAULTS = {TutorialEnabled = true, TrainingOrigin = Vector3.new(0, 400, 4000), TrainingLanes = 8, TrainingSpacing = 300,
 	LanePad = 120, LaneWall = 30, TutBotSpecies = "Pachy", TutBotDistance = 28, TutBotSafeHealth = 100000, TutBotFinishHealth = 40,
-	TutBotLeash = 60, TutPlaceWait = 10, TutUnlockTextOn = false, TutBotIslandFolder = true, TutAutoNext = 1.2}
+	TutBotLeash = 60, TutPlaceWait = 10, TutUnlockTextOn = false, TutBotIslandFolder = true, TutAutoNext = 1.2,
+	TutLessonNeedsHit = true, TutPlayerLeash = true, TutLeashInset = 0.5} -- v1.2
 for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -206,12 +219,20 @@ end
 
 -- v1.1: attack lessons (see the header)
 local STAMPS = {TenoSlamAt = true, DiloSnipeAt = true, TheriComboStep = true}
+STAMPS.TenoScratchHitAt, STAMPS.TenoSlamImpactAt, STAMPS.TheriHitAt = true, true, true -- v1.2: the hit stamps
+local function hitRules() return A("TutLessonNeedsHit") ~= false end -- v1.2
 local function lessonEvent(p, ev)
 	if step(p) ~= 4 or not st[p] then return end
-	local ls = R.lessonsFor(speciesKey(p))
+	local ls = R.lessonsFor(speciesKey(p), hitRules()) -- v1.2
 	local done = R.parseDone(p:GetAttribute("TutLessonsDone"))
 	local cur = tonumber(p:GetAttribute("TutLesson")) or 1
 	local L = ls[cur]
+	if L and not done[cur] and L.done == "target" and ev.kind == "stamp" and ev.name == L.stamp then -- v1.2: was it on the bot
+		local c, bot = p.Character, st[p].bot
+		ev.onBot = c ~= nil and bot ~= nil and R.listHas(c:GetAttribute(L.targets), bot.Name)
+		ev.step = L.stepAttr and c and c:GetAttribute(L.stepAttr) or nil
+		if not ev.onBot then p:SetAttribute("TutLessonMiss", workspace:GetServerTimeNow()) end
+	end
 	if not L or done[cur] or not R.lessonEvent(L, ev) then return end
 	done[cur] = true
 	p:SetAttribute("TutLessonsDone", R.doneString(done))
@@ -491,10 +512,37 @@ Players.PlayerRemoving:Connect(function(p)
 end)
 
 -- leash: a lost bot goes back to its mark
+-- v1.2: bodies outside the lane's walls (see the header)
+local function outsideLane(lane, pos)
+	local o = lane.model:FindFirstChild("TrainingPad")
+	if not o then return false end
+	local l = o.CFrame:PointToObjectSpace(pos)
+	local half = A("LanePad") / 2 - A("TutLeashInset")
+	return math.abs(l.X) > half or math.abs(l.Z) > half or l.Y < -10
+end
 task.spawn(function()
 	while true do
 		task.wait(1)
 		for p, s in pairs(st) do
+			local lane2 = lanes[p:GetAttribute("TutLane") or 0]
+			local stp = step(p)
+			if A("TutPlayerLeash") ~= false and lane2 and stp >= 4 and stp <= 7 then
+				local c = p.Character
+				local hrp = c and c:FindFirstChild("HumanoidRootPart")
+				local hum = c and c:FindFirstChildOfClass("Humanoid")
+				if hrp and hum and hum.Health > 0 and not hrp.Anchored and outsideLane(lane2, hrp.Position) then
+					script:SetAttribute("TutPlayerReturns", (script:GetAttribute("TutPlayerReturns") or 0) + 1)
+					result(p, "returned")
+					task.spawn(placeBody, p, c)
+				end
+				local b2 = s.bot
+				local r2 = b2 and b2.Parent and b2:FindFirstChild("HumanoidRootPart")
+				if r2 and (b2:GetAttribute("DummyHealth") or 1) > 0 and outsideLane(lane2, r2.Position) then
+					script:SetAttribute("TutBotReturns", (script:GetAttribute("TutBotReturns") or 0) + 1)
+					b2:PivotTo(lane2.botCF + Vector3.new(0, 6, 0))
+					r2.AssemblyLinearVelocity = Vector3.zero
+				end
+			end
 			local b = s.bot
 			local lane = lanes[p:GetAttribute("TutLane") or 0]
 			local root = b and b.Parent and b:FindFirstChild("HumanoidRootPart")

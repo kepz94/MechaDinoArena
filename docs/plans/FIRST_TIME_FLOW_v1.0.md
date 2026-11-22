@@ -265,3 +265,11 @@ flow; TUTORIAL replays steps 3 to 10.
 - Kepu's live account (read in a Studio server, nothing written): free dino Teno, tutorial not finished, so his next join
   resumes at step 3 with the Teno lessons.
 - Not verified here: a real phone. Published 2026-11-22 12:46 (Sandbox v902 + Arena overwrite).
+
+## v1.2 (2026-11-22 12:52, Kepu's live v1.1 run)
+- Tail Slam passed when it missed: 1.1 counted the TenoSlamAt stamp, which the server writes on every slam. 1.2 judges the
+  hit stamps and their target lists (TenoScratchHitAt / TenoSlamImpactAt / TheriHitAt). Checked in Studio both ways.
+- Stuck at the lane edge: no lane leash for players existed (only the bot, 60 studs from its mark). 1.2 returns a player or the
+  bot that is outside the pad's walls or under the pad. In the check, a Teno slam had already put the bot outside the lane once
+  (TutBotReturns counted it before the manual test).
+- Not built: a "missed" message on screen (UI change; needs Kepu's pick). Not published.
