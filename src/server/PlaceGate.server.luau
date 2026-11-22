@@ -20,15 +20,21 @@
 --   when ModeRules 1.2 serverKind() == "hub" the Sandbox does what the Arena does: BotServer stays off and bot models are
 --   removed at start and when added. PlaceGateState "hubNoBots". Kinds "practice" / "arena": exactly 1.1. Switch: script
 --   attribute PlaceGateHubEnabled (default true; false = 1.1). Read once at start. Diagnostic: PlaceKind.
+-- v1.3 (first-time flow, MDA-561, plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 3, ADR-013; found in the Studio check 2026-11-22:
+--   the hub removed the training bot 0.26 s after TutorialServer 1.0 spawned it): a model with TutBot = true, or inside
+--   Workspace.TrainingGround (the training lanes), is never removed. Switch: script attribute PlaceGateTutorialEnabled
+--   (default true, read per removal; false = 1.2).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.2"
+VERSION = "1.3" -- v1.3 training bots stay
 script:SetAttribute("PlaceGateVersion", VERSION)
 if script:GetAttribute("PlaceGateEnabled") == nil then script:SetAttribute("PlaceGateEnabled", true) end
 if script:GetAttribute("PlaceGatePracticeEnabled") == nil then script:SetAttribute("PlaceGatePracticeEnabled", true) end -- v1.1
 if script:GetAttribute("PlaceGateHubEnabled") == nil then script:SetAttribute("PlaceGateHubEnabled", true) end -- v1.2
+if script:GetAttribute("PlaceGateTutorialEnabled") == nil then script:SetAttribute("PlaceGateTutorialEnabled", true) end -- v1.3
 
 local ModeRules = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
 local mode = ModeRules.currentMode()
@@ -49,6 +55,9 @@ local function isBotModel(m)
 	elseif Players:GetPlayerFromCharacter(m) ~= nil then
 		return false
 	elseif m:GetAttribute("ArenaPvPTestTarget") == true then
+		return false
+	elseif script:GetAttribute("PlaceGateTutorialEnabled") ~= false and (m:GetAttribute("TutBot") == true -- v1.3
+		or (workspace:FindFirstChild("TrainingGround") ~= nil and m:IsDescendantOf(workspace.TrainingGround))) then
 		return false
 	elseif m:GetAttribute("IsBot") == true or m:GetAttribute("BiteDummy") == true or m:GetAttribute("Bitable") == true then
 		return true
