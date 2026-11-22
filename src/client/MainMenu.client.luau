@@ -175,6 +175,14 @@ VERSION = "1.23" -- v1.23 island hub
 VERSION = "1.24" -- v1.24 match preview edit
 VERSION = "1.25" -- v1.25 island loading screen
 VERSION = "1.26" -- v1.26 Arena record block
+VERSION = "1.27" -- v1.27 first-time flow: hidden during it + TUTORIAL
+-- v1.27 (first-time flow, MDA-564, plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 6, ADR-013, mockup docs/mockups/first_time_flow_v0.3.html;
+--   Kepu 2026-11-22: old players "Keep all, tutorial button"): while TutorialServer 1.0 runs on this server
+--   (ReplicatedStorage.TutorialRequest exists), the menu stays closed while the player's TutActive is true, TutStep > 0 or
+--   TutState is "wait" (DinoOwnership 1.0 still reading); it opens as before once none of these holds. A TUTORIAL pill under
+--   MUSIC (same style, size and right edge; 0.25 x its height below it) sends TutorialRequest("replay"); shown while TutState
+--   is "done" or "grand". Switch: script attribute MainMenuTutorialEnabled (default true, read per check; false = 1.26).
+--   Diagnostic: player MainMenuLastPress "tutorial".
 -- v1.26 (Arena record, MDA-495, plan docs/plans/ARENA_RECORD_v1.1.md T3, mockup docs/mockups/wl_record_v0.1.html; Kepu
 --   2026-11-13 pick "C · B + name tag", "Win streaks only"): a record block in the right column, 3ch under the ARENA title
 --   (where the hidden SANDBOX / ARENA buttons sat), left-aligned with it:
@@ -1542,13 +1550,21 @@ if player.Character then onChar(player.Character) end
 local function editing() -- v1.24
 	return player:GetAttribute("PrEditing") == true and script:GetAttribute("MainMenuPreviewEditEnabled") ~= false
 end
+if script:GetAttribute("MainMenuTutorialEnabled") == nil then script:SetAttribute("MainMenuTutorialEnabled", true) end -- v1.27
+local function tutHolds() -- v1.27: the first-time flow keeps the menu closed
+	if script:GetAttribute("MainMenuTutorialEnabled") == false or not ReplicatedStorage:FindFirstChild("TutorialRequest") then return false end
+	return player:GetAttribute("TutActive") == true or (tonumber(player:GetAttribute("TutStep")) or 0) > 0
+		or player:GetAttribute("TutState") == "wait"
+end
 local function wantOpen() -- v1.24
-	return player:GetAttribute("InMenu") == true and (player:GetAttribute("PrInLobby") ~= true or editing())
+	return player:GetAttribute("InMenu") == true and (player:GetAttribute("PrInLobby") ~= true or editing()) and not tutHolds() -- v1.27
 end
 player.AttributeChanged:Connect(function(name)
 	if name == "InMenu" then
 		setOpen(wantOpen()) -- v1.22: + not on the team screen; v1.24: unless editing from it
 	elseif name == "PrInLobby" then -- v1.22
+		setOpen(wantOpen())
+	elseif name == "TutActive" or name == "TutStep" or name == "TutState" then -- v1.27
 		setOpen(wantOpen())
 	elseif name == "PrEditing" then -- v1.24
 		setOpen(wantOpen())
@@ -1909,3 +1925,41 @@ task.spawn(function()
 	script:GetAttributeChangedSignal("MainMenuArenaRecordEnabled"):Connect(draw)
 	draw()
 end)
+
+-- v1.27: TUTORIAL pill under MUSIC (see the header)
+do
+	local tutB = musicB:Clone()
+	tutB.Name = "Tutorial"
+	tutB.Text = "TUTORIAL"
+	tutB.TextColor3 = VOLT
+	tutB.Visible = false
+	tutB.Parent = musicB.Parent
+	local function place()
+		local h = musicB.AbsoluteSize.Y
+		tutB.TextSize = musicB.TextSize
+		tutB.Size = musicB.Size
+		tutB.Position = musicB.Position + UDim2.fromOffset(0, h * 1.25)
+		local c, mc = tutB:FindFirstChildOfClass("UICorner"), musicB:FindFirstChildOfClass("UICorner")
+		if c and mc then c.CornerRadius = mc.CornerRadius end
+		local pd, mp = tutB:FindFirstChildOfClass("UIPadding"), musicB:FindFirstChildOfClass("UIPadding")
+		if pd and mp then pd.PaddingLeft, pd.PaddingRight = mp.PaddingLeft, mp.PaddingRight end
+	end
+	local function show()
+		local ts = player:GetAttribute("TutState")
+		tutB.Visible = script:GetAttribute("MainMenuTutorialEnabled") ~= false and musicB.Visible
+			and ReplicatedStorage:FindFirstChild("TutorialRequest") ~= nil and (ts == "done" or ts == "grand")
+		place()
+	end
+	for _, prop in ipairs({"Position", "Size", "TextSize", "AbsoluteSize", "Visible"}) do
+		musicB:GetPropertyChangedSignal(prop):Connect(show)
+	end
+	player:GetAttributeChangedSignal("TutState"):Connect(show)
+	script:GetAttributeChangedSignal("MainMenuTutorialEnabled"):Connect(show)
+	ReplicatedStorage.ChildAdded:Connect(function(ch) if ch.Name == "TutorialRequest" then show() end end)
+	tutB.Activated:Connect(function()
+		player:SetAttribute("MainMenuLastPress", "tutorial")
+		local remote = ReplicatedStorage:FindFirstChild("TutorialRequest")
+		if remote then remote:FireServer("replay") end
+	end)
+	show()
+end
