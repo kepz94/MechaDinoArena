@@ -89,7 +89,7 @@ Leaving mid-flow: lane and bot freed; state stays "resume". Death in the lane: r
 
 ## Tasks (build order)
 
-### Task 0 — TutorialRules 1.0 + spec · Mode: Logic
+### Task 0: TutorialRules 1.0 + spec · Mode: Logic
 **Files:** create src/shared/TutorialRules.luau (Rojo -> ServerStorage.DinoArcade.TutorialRules, cloned to
 ReplicatedStorage.TutorialShared by TutorialServer), create tools/tests/TutorialRules.spec.luau.
 **Interfaces (produces):**
@@ -109,7 +109,7 @@ ReplicatedStorage.TutorialShared by TutorialServer), create tools/tests/Tutorial
 - [ ] Commit.
 **Acceptance:** spec returns "PASS n" with every map row covered.
 
-### Task 1 — DinoOwnership 1.0 · Mode: Wired
+### Task 1: DinoOwnership 1.0 · Mode: Wired
 **Files:** create src/server/DinoOwnership.server.luau.
 **Interfaces:**
 - Consumes: TutorialRules.classify / rollPick / ALL_DINOS / ROLL_POOL; player SkillSaveState (SkillServer).
@@ -130,7 +130,7 @@ owned; a second join after finishing -> "done"; Studio without API access -> "of
 dino.
 **Out of scope:** the unlock purchase (decision 1).
 
-### Task 2 — SkillServer 1.13 free parts · Mode: Wired
+### Task 2: SkillServer 1.13 free parts · Mode: Wired
 **Files:** modify src/server/SkillServer.server.luau (testParts / buyBase / stepsFor gain one input; header, VERSION).
 **Interfaces:** consumes player attribute FreeDino; switch script attribute `SkillFreePartsEnabled` (default true, read per
 publish); republish the player when FreeDino changes.
@@ -143,7 +143,7 @@ publish); republish the player when FreeDino changes.
 real steps, SkillLeft unchanged; another dino shows its real build; FreeDino = "" -> 1.12 exactly.
 **Out of scope:** the test layer's own rules.
 
-### Task 3 — Training ground + TutorialServer 1.0 · Mode: Wired
+### Task 3: Training ground + TutorialServer 1.0 · Mode: Wired
 **Files:** create tools/training_ground_install.luau, src/server/TutorialServer.server.luau.
 **Interfaces:**
 - Consumes: OwnRoll / OwnFinishTut (Task 1), SkillGrantXp (SkillServer 1.10), PracticeBots (ServerScriptService.
@@ -168,7 +168,7 @@ real steps, SkillLeft unchanged; another dino shows its real build; FreeDino = "
 mortar / sentry / any part); 2 players get 2 lanes; leaving frees the lane; death respawns in the lane; replay grants no XP.
 **Out of scope:** PracticeServer, PracticeBrain.
 
-### Task 4 — HubServer 1.7, SpeciesServer 1.10, RespawnServer 1.1 · Mode: Wired
+### Task 4: HubServer 1.7, SpeciesServer 1.10, RespawnServer 1.1 · Mode: Wired
 **Files:** modify the three server scripts (headers, VERSION).
 - [ ] HubServer: per spawn, TutLane > 0 -> skip islet placement and the re-place checks (switch HubTutorialSkipEnabled,
       default true).
@@ -180,7 +180,7 @@ mortar / sentry / any part); 2 players get 2 lanes; leaving frees the lane; deat
 **Acceptance:** gate off -> 1.6 / 1.9 / 1.0 exactly; gate on -> a locked pick from every picker is refused, the owned one
 works; a death still respawns through the T-Rex step (internal LoadCharacter is not a pick).
 
-### Task 5 — Tutorial client 1.0 · Mode: Wired
+### Task 5: Tutorial client 1.0 · Mode: Wired
 **Files:** create src/client/Tutorial.client.luau.
 **Interfaces:** consumes TutActive, TutStep, FreeDino, SkillSlot1..4, SkillSpent, SkillLeft, MechaButtonsLastPress,
 the bot's DummyHealth, TutorialRequest.
@@ -203,7 +203,7 @@ count." / GOT IT; "TRAINING DONE" / "Level <n> <Dino>" / GO TO THE ISLAND.
 **Acceptance:** the full flow on PC and on phone emulation matches the mockup v0.2 screens; the attack prompt names each
 dino's own input (Raptor F, the others left click, phone ATTACK); nothing else on screen takes clicks during cards.
 
-### Task 6 — MainMenu 1.27 + pickers · Mode: Wired
+### Task 6: MainMenu 1.27 + pickers · Mode: Wired
 **Files:** modify MainMenu, PregameScreen, IslandDino, RespawnScreen (headers, VERSION).
 - [ ] MainMenu hidden while TutActive or TutState == "wait"; a TUTORIAL button under MUSIC (same size and style) sends
       TutorialRequest "replay" (shown when TutState is "done" or "grand"; switch MainMenuTutorialEnabled).
@@ -212,7 +212,7 @@ dino's own input (Raptor F, the others left click, phone ATTACK); nothing else o
 - [ ] Commit.
 **Acceptance:** gate off -> every screen as before (screenshot compare); gate on -> locks shown, only owned dinos selectable.
 
-### Task 7 — Live check · Mode: Wired
+### Task 7: Live check · Mode: Wired
 - [ ] Studio: TutorialTestForce run through all 10 steps for 3 different rolled dinos (one melee, one ranged, Raptor for F).
 - [ ] Restore the test setup (species Therizino, slots, bots, attributes, health).
 - [ ] Docs: VERSIONS.md rows, ATTRIBUTES.md entries. Commit. Publish only on Kepu's "Publish".
