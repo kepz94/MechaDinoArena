@@ -97,6 +97,7 @@ VERSION = "1.3" -- v1.3 portal flare
 VERSION = "1.4" -- v1.4 Arena queue
 VERSION = "1.5" -- v1.5 islet spawn hold + check
 VERSION = "1.6" -- v1.6 island dino swap stays put
+VERSION = "1.7" -- v1.7 tutorial lanes skip the islet
 local PLACE_DELAY, RESPAWN_DELAY = 0.15, 0.3
 
 script:SetAttribute("HubServerVersion", VERSION)
@@ -317,6 +318,22 @@ do
 			return
 		end
 		return rawPlaceHub(p, fixes)
+	end
+end
+
+-- v1.7 (first-time flow, MDA-562, plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 4, ADR-013): while a player has TutLane > 0
+-- (TutorialServer 1.0 put them in a training lane), no islet placement and no re-place checks for their spawns: TutorialServer
+-- places the body in the lane itself. Switch: script attribute HubTutorialSkipEnabled (default true, read per spawn; false = 1.6).
+-- Diagnostic: player HubPlaceLast "tutorial".
+if script:GetAttribute("HubTutorialSkipEnabled") == nil then script:SetAttribute("HubTutorialSkipEnabled", true) end
+do
+	local rawPlaceV16 = place
+	place = function(p, fixes)
+		if script:GetAttribute("HubTutorialSkipEnabled") ~= false and (tonumber(p:GetAttribute("TutLane")) or 0) > 0 then
+			p:SetAttribute("HubPlaceLast", "tutorial")
+			return
+		end
+		return rawPlaceV16(p, fixes)
 	end
 end
 
