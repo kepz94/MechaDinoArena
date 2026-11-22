@@ -103,6 +103,11 @@
 --   how to win: sub line "CAPTURE AND HOLD THE HARDPOINT", HOW TO WIN "HOLD THE HARDPOINT TO SCORE" / "IT MOVES EVERY 60
 --   SECONDS" / "FIRST TEAM TO 250 WINS", tips about scoring only; no top-right line. Switch: script attribute
 --   EggLoaderWinTextEnabled (default true, read at start; false = the 1.3 text).
+-- v1.7 (first-time flow, MDA-563, plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 5, ADR-013; found in the Studio check 2026-11-22:
+--   a new player's menu stays closed for the tutorial, so the join egg waited for MainMenuOpen until the 45 s timeout): while
+--   InMenu == true, the join also counts as loaded once the player attribute TutStep > 0 (TutorialServer 1.0 started the flow;
+--   the Tutorial screens take over from the egg). Switch: script attribute EggLoaderTutorialEnabled (default true, read per
+--   check; false = 1.6).
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local RunService = game:GetService("RunService")
@@ -113,10 +118,12 @@ local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 the bar carries over a trip
+if script:GetAttribute("EggLoaderTutorialEnabled") == nil then script:SetAttribute("EggLoaderTutorialEnabled", true) end -- v1.7
 VERSION = "1.3" -- v1.3 mode briefing screens
 VERSION = "1.4" -- v1.4 match briefing only on match screens
 VERSION = "1.5" -- v1.5 the egg on every non-match load
 VERSION = "1.6" -- v1.6 how to win only
+VERSION = "1.7" -- v1.7 the tutorial takes over from the join egg
 local ARRIVE_FLOOR = 0.5 -- v1.2
 local MIN_CRACK = 3
 local TIMEOUT = 45
@@ -909,6 +916,7 @@ local function isLoaded(s)
 		return os.clock() - s.t0 >= MENU_WAIT -- ModeServer off: nothing more to wait for
 	elseif inMenu == true then
 		return player:GetAttribute("MainMenuOpen") == true
+			or (script:GetAttribute("EggLoaderTutorialEnabled") ~= false and (tonumber(player:GetAttribute("TutStep")) or 0) > 0) -- v1.7
 	else
 		return true
 	end
