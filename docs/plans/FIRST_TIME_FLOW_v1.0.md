@@ -264,4 +264,4 @@ flow; TUTORIAL replays steps 3 to 10.
   long part names were cut; Silkscreen labels were too small on a phone; star glyphs moved to Gotham.
 - Kepu's live account (read in a Studio server, nothing written): free dino Teno, tutorial not finished, so his next join
   resumes at step 3 with the Teno lessons.
-- Not verified here: a real phone. Not published.
+- Not verified here: a real phone. Published 2026-11-22 12:46 (Sandbox v902 + Arena overwrite).
