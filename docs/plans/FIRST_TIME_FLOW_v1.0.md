@@ -2,8 +2,9 @@
 
 **Goal:** a new player gets a free random dino with all of its mecha parts maxed, learns the attack, the 4 slots and the
 parts on a training bot, levels up once, spends the point, learns what points do, and walks onto the island.
-**Chosen direction:** "A + B's cards" (Kepu 2026-11-22 10:28), mockup docs/mockups/first_time_flow_v0.2.html (artifact
-"First-Time Flow", version 2). Trainer box + checklist (A) for the training steps; big cards (B) for the welcome, the roll,
+**Chosen direction:** "A + B's cards" (Kepu 2026-11-22 10:28), mockup docs/mockups/first_time_flow_v0.3.html (artifact
+"First-Time Flow", version 3; Kepu 10:41: the roll is the egg, and the phone steps teach the real tap / pull-down slot
+buttons). Trainer box + checklist (A) for the training steps; big cards (B) for the welcome, the roll,
 the free parts and LEVEL 2. No skip. Old players keep every dino, never see it; a TUTORIAL button in the menu replays it.
 **Architecture:** two new server scripts (DinoOwnership owns who owns which dino and the tutorial state, in its own
 DataStore; TutorialServer owns the training lanes, the bot, the steps and the one XP grant), one new client script (the
@@ -58,11 +59,11 @@ Steps (TutorialServer is the judge of 2, 7; the client of 4, 5, 6, 8; cards adva
 | # | Objective (checklist) | Done when | Server action |
 |---|---|---|---|
 | 1 | Welcome | ROLL pressed | none |
-| 2 | Roll | server answers the roll | pick 1 of the roll pool at random, OwnedDinos = {it}, FreeDino = it, write |
+| 2 | Roll (tap the egg: shake, crack, hatch) | server answers the roll | pick 1 of the roll pool at random, OwnedDinos = {it}, FreeDino = it, write |
 | 3 | Parts | TO TRAINING pressed | lane reserved, player spawned as the free dino in the lane, target bot spawned |
 | 4 | Hit the bot | bot DummyHealth drops (client sees the replicated attribute) | none |
 | 5 | Equip 4 parts | SkillSlot1..4 all non-empty | slots via SkillRequest "slot" (existing judge) |
-| 6 | Use each part | MechaButtonsLastPress showed each slot 1..4 once | none |
+| 6 | Use each part | MechaButtonsLastPress showed each slot 1..4 once (phone order: tap 1, tap 2, pull 1, pull 2) | none |
 | 7 | Defeat the bot | bot KilledAt set | bot health set low at step 7 start; on KilledAt: SkillGrantXp(player, xpToNext(level), "training") |
 | 8 | Spend your point | SkillSpent increased | buy via SkillRequest "buy" (existing judge) |
 | 9 | Skill points | GOT IT pressed | none |
@@ -191,16 +192,29 @@ the bot's DummyHealth, TutorialRequest.
 - Trainer box: bottom center, portrait + "TRAINER" + the line.
 - Prompt: top center, key chip + action ("CLICK Slash", "R Tail Grab & Fling"; phone "Tap ATTACK").
 - Ring under the bot and an arrow over it on steps 4, 6, 7.
+- Roll (step 2): card "YOUR FREE DINO" / "Tap the egg." over the egg (the EggLoader 1.1 look: blocky egg); tap -> shake
+  0.8 s -> crack -> hatch at 1.5 s -> card "IT HATCHED!" / "<DINO>!" / "It's yours. More dinos unlock with skill points." /
+  NEXT. A pulsing finger dot sits on the egg until it is tapped.
+- Phone slots (MechaButtons 1.4+, grounded): 2 buttons, Slot_1 right 21% bottom 8%, Slot_2 right 32.5% bottom 18%, 9.5% of
+  the width; tap = slot 1 / 2 (the button's main part), pull down >= PULL_PX = slot 3 / 4 (the "▼ NAME" label). The tutorial
+  never draws its own copies: it points at the real buttons. Step 5 (equip) on phone labels the 4 slots "BUTTON 1 · TAP",
+  "BUTTON 2 · TAP", "BUTTON 1 · PULL ▼", "BUTTON 2 · PULL ▼". Step 6 on phone: a finger dot over the real button, pulsing for a
+  tap, sliding down for a pull; the prompt reads "Tap <part>" or "Pull down ▼ <part>".
+- On phone during steps 4, 6, 7 the trainer box moves to the top (under the prompt, left of the bot's health bar) so it
+  never covers the thumb buttons.
 - Equip panel (step 5) and stat panel (step 8): the mockup's small Lab; buttons send SkillRequest "slot" / "buy".
-**Strings (verbatim):** "WELCOME!" / "Your first dino is free." / ROLL; "YOUR FREE DINO" reel; "<DINO>!" / "It's yours.
-More dinos unlock with skill points."; "6 MECHA PARTS" (the count) / "All maxed out." / TO TRAINING; "See that bot? Hit it
-with your <attack>."; "Pick 4. <n> left." / "Good. Now try them."; "Now try your parts."; "Finish it!"; "LEVEL 2" / "+1
+**Strings (verbatim):** "WELCOME!" / "Your first dino is free." / ROLL; "YOUR FREE DINO" / "Tap the egg."; "IT HATCHED!" / "<DINO>!" /
+"It's yours. More dinos unlock with skill points."; "6 MECHA PARTS" (the count) / "All maxed out." / TO TRAINING; "See that bot? Hit it
+with your <attack>."; "Pick 4. <n> left." / "Good. Now try them."; phone equip line "2 buttons, 2 parts each. Tap for the top one. Pull
+down for the bottom one."; "Now try your parts." (PC); phone "Tap a button to use its part." / "Each button has a second
+part. Pull it down." / "Pull down again."; "All 4 done."; "Finish it!"; "LEVEL 2" / "+1
 skill point" / SPEND IT; "Spend your point." / "Tap + on a stat." / "<Stat> went up."; "SKILL POINTS" / "1 every level." /
 UPGRADE STATS "Health, attack, armor, speed." / UPGRADE PARTS "Parts go from I to ★." / UNLOCK DINOS "Points from any dino
 count." / GOT IT; "TRAINING DONE" / "Level <n> <Dino>" / GO TO THE ISLAND.
 - [ ] Build the screens per step; advance on the map's conditions; send "step", n for 4, 5, 6, 8.
 - [ ] Commit.
-**Acceptance:** the full flow on PC and on phone emulation matches the mockup v0.2 screens; the attack prompt names each
+**Acceptance:** the full flow on PC and on phone emulation matches the mockup v0.3 screens; on a real phone, a tap on
+each button and a pull down on each button tick all 4 parts; the attack prompt names each
 dino's own input (Raptor F, the others left click, phone ATTACK); nothing else on screen takes clicks during cards.
 
 ### Task 6: MainMenu 1.27 + pickers · Mode: Wired
