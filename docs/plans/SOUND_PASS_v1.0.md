@@ -392,4 +392,4 @@ Tuba, Funny Cut D3).
   draw, the three options play on the beats, picks save; no errors (the Google Fonts request only, offline).
 - Waiting: Kepu's picks. Then upload, GameSounds on the beats, Studio test.
 - 05:30 Kepu picks "Mender C, Lantern A, Sap B, Shed A, Portal A, Burst A, Dome C, Sleep A, Sentry B". GameSounds 1.21: 30
-  parts imported (one Asset Manager import), each on its beat; Studio test: all 30 on time, the 1.6 Troodon sounds silent. Not published.
+  parts imported (one Asset Manager import), each on its beat; Studio test: all 30 on time, the 1.6 Troodon sounds silent. Published 2026-11-22 06:08 (sandbox v889 + Arena overwrite).
