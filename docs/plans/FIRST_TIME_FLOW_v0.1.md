@@ -45,3 +45,18 @@ docs/mockups/first_time_flow_v0.1.html (artifact "First-Time Flow"): the 10 step
 - Open decisions for the plan: the price to unlock a dino; skip (what a skipping player gets); existing players (they never
   see it? they keep every dino?); a replay button; the test layer (SkillTestMaxAllEnabled) for new players; the first kill's
   level-up (a tutorial XP grant, since practice bots give 10%).
+
+## Writing (Kepu 2026-11-22 10:25: the mockup's text "sounded like AI too much"; research on how games write these modes)
+- Apex Legends Training: checklist objectives are 1-5 word action phrases ("Jump", "Use your syringe", "Ping an enemy",
+  "Pick up a second weapon"); the characters' lines are separate and longer.
+- Game Developer, mobile dialogue: write like people talk (contractions, fragments, exclamations), cut filler words, teach
+  mechanics with pop-ups and pointers rather than character speeches, show (the art) instead of describing.
+- GameAnalytics, mobile game copy: about 14 words a sentence, rarely over 25; few exclamation marks and capitals; plain words
+  ("get" not "obtain"); show what the player gets instead of adjectives; read it aloud.
+- GDevelop (citing Nielsen Norman): people read about 20-28% of words on a page, fewer in games; one mechanic at a time;
+  contextual prompts ("Space = Jump").
+- AI tells to avoid (Fast Company, Wikipedia's guide): "It's not X, it's Y", em dashes used for punch, the rule of three,
+  puffery / sales tags ("yours to keep").
+- Animal Crossing: a friendly tone even when the player says no; let players skip text they've seen.
+- The mockup v0.1 lines that broke these: em dashes in 7 lines, "yours to keep", "comes with every mecha part, fully
+  upgraded", "Let's get you a dino of your own", "Nice!", explanations of what the player can already see.
