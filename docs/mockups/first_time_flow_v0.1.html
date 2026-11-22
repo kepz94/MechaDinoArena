@@ -1,0 +1,369 @@
+<title>First-Time Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;600;700&display=swap">
+<style>
+/* Mecha Dino Arena — first-time flow mockup v0.1 (Kepu 2026-11-22 06:32 flow: welcome -> roll a free dino -> its mecha parts
+   unlocked (maxed) -> first attack -> equip parts -> try them -> first bot kill levels up -> spend the point on a stat ->
+   what skill points do -> the island). Three directions on the same flow; PC / phone prompts. Not the game: a picture of it. */
+:root { --ink:#0d1218; --panel:#151d27; --panel2:#1c2633; --line:#263243; --text:#e7edf5; --muted:#93a2b6; --yellow:#ffc832;
+  --orange:#ff9b2e; --green:#46e08a; --cyan:#7fe9ff; --red:#f05a4f; --purple:#c9a2ff;
+  --f-d:"Silkscreen","Courier New",monospace; --f-b:"Inter",system-ui,sans-serif; color-scheme:dark; }
+* { box-sizing:border-box; }
+html,body { background:var(--ink); color:var(--text); margin:0; }
+body { font-family:var(--f-b); font-size:15px; line-height:1.5; }
+.wrap { max-width:1180px; margin:0 auto; padding-block:24px 60px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:16px; }
+.eyebrow { font-family:var(--f-d); font-size:12px; letter-spacing:.12em; color:var(--muted); }
+h1 { font-family:var(--f-d); font-size:clamp(22px,4vw,34px); margin:4px 0; text-wrap:balance; }
+.lede { color:var(--muted); max-width:78ch; margin:0; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.btn { font-family:var(--f-d); font-size:12px; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:9px 13px; cursor:pointer; }
+.btn[aria-pressed="true"] { border-color:var(--yellow); box-shadow:inset 0 -3px 0 var(--yellow); }
+.label { font-family:var(--f-d); font-size:11px; color:var(--muted); letter-spacing:.1em; margin-right:2px; }
+.steps { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { font-family:var(--f-d); font-size:10px; padding:5px 8px; border-radius:20px; border:1px solid var(--line); background:var(--panel); color:var(--muted); cursor:pointer; }
+.chip.done { color:var(--green); border-color:#2c5a3e; }
+.chip.cur { color:#1b1405; background:var(--yellow); border-color:var(--yellow); }
+.cols { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; align-items:start; }
+@media (max-width:900px) { .cols { grid-template-columns:minmax(0,1fr); } }
+.note { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:grid; gap:10px; min-width:0; }
+.note h3 { font-family:var(--f-d); font-size:13px; margin:0; color:var(--yellow); letter-spacing:.06em; }
+.note p { margin:0; color:var(--text); font-size:14px; }
+.note .tag { font-family:var(--f-d); font-size:10px; color:var(--muted); letter-spacing:.1em; }
+.note ul { margin:0; padding-left:18px; color:var(--muted); font-size:13px; }
+.tradeoff { font-size:13px; color:var(--muted); border-top:1px solid var(--line); padding-top:10px; }
+.tradeoff b { color:var(--text); }
+
+/* ---------- the game screen ---------- */
+.screen { position:relative; width:100%; aspect-ratio:16/9; border:1px solid var(--line); border-radius:10px; overflow:hidden; container-type:inline-size; user-select:none;
+  background:linear-gradient(180deg,#8fd3ff 0%,#bfe8ff 38%,#5fae4e 38.2%,#3f8a3a 100%); }
+.screen * { font-family:var(--f-d); }
+.screen.indoor { background:linear-gradient(160deg,#101420,#1a2130 50%,#0e1219); }
+.fence { position:absolute; left:0; right:0; top:36%; height:3cqw; background:repeating-linear-gradient(90deg,#6b4a2a 0 .5cqw,transparent .5cqw 4cqw); opacity:.7; }
+.sign { position:absolute; left:3cqw; top:24%; background:#6b4a2a; color:#ffe9c2; font-size:1.1cqw; padding:.4cqw .9cqw; border-radius:.3cqw; }
+.dino { position:absolute; width:18cqw; height:14cqw; transition:transform .15s; }
+.dino .b { position:absolute; inset:0; clip-path:polygon(0 60%,30% 45%,55% 40%,70% 10%,100% 20%,85% 35%,70% 55%,60% 95%,45% 95%,40% 70%,20% 75%); }
+.dino.me { left:18cqw; top:22cqw; }
+.dino.hit { transform:translateX(1cqw) rotate(-3deg); }
+.bot { position:absolute; left:58cqw; top:20cqw; width:16cqw; height:15cqw; transition:transform .12s, opacity .4s; }
+.bot .b { position:absolute; inset:0; background:#8a6a3f; clip-path:polygon(100% 60%,70% 45%,45% 40%,30% 10%,0 20%,15% 35%,30% 55%,40% 95%,55% 95%,60% 70%,80% 75%); }
+.bot.shake { transform:translateX(1.2cqw); }
+.bot.dead { opacity:.25; transform:rotate(80deg) translate(4cqw,-2cqw); }
+.hpbar { position:absolute; left:58cqw; top:17cqw; width:16cqw; height:1cqw; background:#000a; border-radius:.5cqw; overflow:hidden; }
+.hpbar i { display:block; height:100%; background:var(--red); transition:width .2s; }
+.bot-tag { position:absolute; left:58cqw; top:14.3cqw; width:16cqw; text-align:center; font-size:1cqw; color:#fff; text-shadow:0 .1cqw .2cqw #000; }
+.arrow { position:absolute; width:0; height:0; border-left:1.4cqw solid transparent; border-right:1.4cqw solid transparent; border-top:2cqw solid var(--yellow); animation:bob .8s ease-in-out infinite; filter:drop-shadow(0 .2cqw .2cqw #0008); }
+@keyframes bob { 50% { transform:translateY(-.8cqw); } }
+.ring { position:absolute; border:.3cqw solid var(--yellow); border-radius:50%; animation:pulse 1.2s ease-out infinite; pointer-events:none; }
+@keyframes pulse { from { opacity:1; transform:scale(.85); } to { opacity:0; transform:scale(1.25); } }
+.fx { position:absolute; pointer-events:none; font-size:1.6cqw; color:#fff; text-shadow:0 .15cqw .3cqw #000; animation:rise .7s ease-out forwards; }
+@keyframes rise { to { transform:translateY(-4cqw); opacity:0; } }
+.flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
+.flash.on { animation:flash .5s ease-out; }
+@keyframes flash { 0% { opacity:.7; } 100% { opacity:0; } }
+
+/* HUD (bottom): PC ability bar / phone buttons */
+.hud-pc { position:absolute; left:50%; bottom:2cqw; transform:translateX(-50%); display:flex; gap:.8cqw; align-items:flex-end; }
+.tile { width:6.2cqw; height:6.2cqw; border-radius:1.3cqw; background:rgba(20,20,26,.75); border:.25cqw solid var(--orange); position:relative; display:grid; place-items:center; text-align:center; font-size:.75cqw; color:#fff; padding:.3cqw; cursor:pointer; }
+.tile .k { position:absolute; left:.4cqw; top:.2cqw; font-size:.85cqw; color:#ffd9a8; }
+.tile.move { border-color:#fff; } .tile.atk { border-color:var(--yellow); }
+.tile.empty { border-color:#ffffff66; color:#ffffff88; font-size:1.8cqw; }
+.tile.used { box-shadow:0 0 0 .3cqw var(--green); }
+.tile.used::after { content:"✓"; position:absolute; right:.3cqw; top:.1cqw; color:var(--green); font-size:1cqw; }
+.divider { width:.2cqw; height:5cqw; background:#ffffffa6; margin:0 .8cqw; }
+.hud-ph { position:absolute; right:3cqw; bottom:3cqw; width:26cqw; height:22cqw; }
+.pbtn { position:absolute; border-radius:50%; background:rgba(20,20,26,.7); border:.3cqw solid var(--orange); color:#fff; display:grid; place-items:center; text-align:center; font-size:.85cqw; cursor:pointer; padding:.4cqw; }
+.pbtn.atk { width:10cqw; height:10cqw; right:0; bottom:0; background:var(--yellow); border-color:#fff; color:#1b1405; font-size:1.4cqw; }
+.pbtn.s { width:6cqw; height:6cqw; }
+.pbtn.used { box-shadow:0 0 0 .35cqw var(--green); }
+.stick { position:absolute; left:4cqw; bottom:4cqw; width:12cqw; height:12cqw; border-radius:50%; border:.3cqw solid #ffffff55; background:#00000022; }
+.stick::after { content:""; position:absolute; left:3.5cqw; top:3.5cqw; width:5cqw; height:5cqw; border-radius:50%; background:#ffffff55; }
+
+/* overlays */
+.dim { position:absolute; inset:0; background:rgba(5,8,12,.72); }
+.card { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:var(--panel); border:.2cqw solid var(--line); border-radius:1.4cqw; padding:2.2cqw 2.6cqw; text-align:center; color:var(--text); width:56cqw; }
+.card h2 { font-size:3cqw; margin:0 0 1cqw; color:var(--yellow); }
+.card p { font-size:1.3cqw; margin:.6cqw 0; color:#cfd8e3; font-family:var(--f-b); }
+.cta { display:inline-block; margin-top:1.4cqw; background:var(--yellow); color:#1b1405; font-size:1.6cqw; padding:1cqw 2.6cqw; border-radius:.8cqw; cursor:pointer; border:none; }
+.cta.alt { background:transparent; color:var(--muted); border:.15cqw solid var(--line); font-size:1.1cqw; margin-left:1cqw; }
+.coach { position:absolute; left:22cqw; right:22cqw; bottom:10cqw; background:rgba(13,18,24,.92); border:.2cqw solid var(--cyan); border-radius:1cqw; padding:1cqw 1.4cqw 1cqw 7.4cqw; font-size:1.15cqw; color:#e7f7ff; min-height:6cqw; }
+.coach .face { position:absolute; left:1cqw; top:50%; transform:translateY(-50%); width:5cqw; height:5cqw; border-radius:.8cqw; background:linear-gradient(135deg,#3a7bd5,#7fe9ff); display:grid; place-items:center; font-size:2.6cqw; }
+.coach b { color:var(--cyan); display:block; font-size:.9cqw; margin-bottom:.2cqw; }
+.coach .go { float:right; margin-left:1cqw; background:var(--cyan); color:#062030; padding:.4cqw 1cqw; border-radius:.5cqw; font-size:1cqw; cursor:pointer; }
+.check { position:absolute; left:1.6cqw; top:1.6cqw; width:19cqw; background:rgba(13,18,24,.85); border:.15cqw solid var(--line); border-radius:1cqw; padding:1cqw 1.2cqw; font-size:.95cqw; }
+.check .t { color:var(--yellow); font-size:1cqw; margin-bottom:.6cqw; }
+.check div { padding:.25cqw 0; color:#ffffff70; display:flex; gap:.6cqw; }
+.check div.cur { color:#fff; } .check div.ok { color:var(--green); }
+.prompt { position:absolute; left:50%; top:9cqw; transform:translateX(-50%); background:rgba(13,18,24,.88); border:.2cqw solid var(--yellow); color:#fff; font-size:2cqw; padding:1cqw 2.2cqw; border-radius:1cqw; white-space:nowrap; }
+.prompt kbd { background:var(--yellow); color:#1b1405; padding:.1cqw .8cqw; border-radius:.4cqw; font-family:var(--f-d); }
+.quest { position:absolute; right:1.6cqw; top:1.6cqw; width:22cqw; background:rgba(13,18,24,.88); border:.15cqw solid var(--purple); border-radius:1cqw; padding:1cqw 1.2cqw; font-size:.95cqw; }
+.quest .t { color:var(--purple); font-size:1cqw; margin-bottom:.4cqw; }
+.quest .q { display:flex; justify-content:space-between; gap:.6cqw; padding:.3cqw 0; color:#ffffffb0; }
+.quest .q.ok { color:var(--green); } .quest .q.cur { color:#fff; }
+.quest .xp { color:var(--yellow); }
+.hint10 { position:absolute; left:50%; bottom:28cqw; transform:translateX(-50%); font-size:.95cqw; color:#ffffffc0; background:#0008; padding:.3cqw .8cqw; border-radius:.4cqw; }
+.toast { position:absolute; left:50%; top:3cqw; transform:translateX(-50%); background:rgba(13,18,24,.92); border:.18cqw solid var(--green); color:var(--green); padding:.6cqw 1.6cqw; border-radius:2cqw; font-size:1.2cqw; white-space:nowrap; }
+
+/* roll */
+.egg { position:absolute; left:50%; top:46%; width:12cqw; height:15cqw; transform:translate(-50%,-50%); background:radial-gradient(circle at 35% 30%,#fff8e6,#e7cf9c 60%,#a88b52); border-radius:50% 50% 46% 46% / 58% 58% 42% 42%; cursor:pointer; }
+.egg.shake { animation:shake .12s linear infinite; }
+@keyframes shake { 25% { transform:translate(-52%,-50%) rotate(-6deg); } 75% { transform:translate(-48%,-50%) rotate(6deg); } }
+.egg::after { content:""; position:absolute; left:20%; right:20%; top:45%; height:.3cqw; background:repeating-linear-gradient(90deg,#5b4628 0 1cqw,transparent 1cqw 1.6cqw); opacity:0; }
+.egg.crack::after { opacity:1; }
+.reel { display:flex; gap:1cqw; justify-content:center; margin:1.6cqw 0; }
+.reel div { width:13cqw; height:9cqw; background:var(--panel2); border:.2cqw solid var(--line); border-radius:.8cqw; display:grid; place-items:center; font-size:1.4cqw; color:#fff; }
+.reel div.mid { border-color:var(--yellow); box-shadow:0 0 0 .3cqw #ffc83244; transform:scale(1.08); }
+.crate { width:16cqw; height:12cqw; margin:1.4cqw auto; background:repeating-linear-gradient(90deg,#7a5a32 0 3cqw,#6a4d2a 3cqw 3.3cqw); border:.3cqw solid #3f2c15; border-radius:.6cqw; display:grid; place-items:center; color:#ffe9c2; font-size:1.3cqw; cursor:pointer; }
+.crate.open { background:radial-gradient(circle,#fff6c0,#ffc832 40%,#7a5a32 70%); color:#1b1405; }
+.reveal { font-size:4cqw; color:#fff; margin:.6cqw 0; }
+.reveal small { display:block; font-size:1.2cqw; color:var(--muted); }
+
+/* parts / lab */
+.parts { display:grid; grid-template-columns:repeat(3,1fr); gap:.8cqw; margin-top:1.2cqw; text-align:left; }
+.part { background:var(--panel2); border:.15cqw solid var(--line); border-radius:.7cqw; padding:.7cqw .9cqw; font-size:1cqw; color:#fff; cursor:default; position:relative; }
+.part small { display:block; color:var(--orange); font-size:.8cqw; }
+.part .star { position:absolute; right:.6cqw; top:.5cqw; color:var(--yellow); font-size:.9cqw; }
+.part.pick { cursor:pointer; } .part.pick:hover { border-color:var(--orange); }
+.part.inslot { opacity:.35; }
+.lab { position:absolute; inset:0; }
+.lab .ttl { position:absolute; left:3cqw; top:2.6cqw; font-size:2.2cqw; color:var(--yellow); }
+.lab .sub { position:absolute; left:3cqw; top:6cqw; font-size:1.05cqw; color:var(--muted); font-family:var(--f-b); }
+.lab .grid { position:absolute; left:3cqw; right:3cqw; top:9cqw; display:grid; grid-template-columns:repeat(3,1fr); gap:.9cqw; }
+.lab .slots { position:absolute; left:3cqw; right:3cqw; bottom:3cqw; display:flex; gap:1cqw; }
+.lab .slot { flex:1; height:7cqw; background:var(--panel); border:.22cqw dashed #ff9b2e88; border-radius:.8cqw; display:grid; place-items:center; text-align:center; font-size:1cqw; color:#ffffff88; }
+.lab .slot.full { border-style:solid; border-color:var(--orange); color:#fff; }
+.lab .slot small { display:block; color:var(--orange); font-size:.85cqw; }
+.stats { position:absolute; left:3cqw; right:30cqw; top:10cqw; display:grid; gap:.9cqw; }
+.stat { display:grid; grid-template-columns:12cqw 1fr 7cqw; gap:1cqw; align-items:center; background:var(--panel2); border:.15cqw solid var(--line); border-radius:.7cqw; padding:.8cqw 1cqw; font-size:1.1cqw; color:#fff; }
+.stat .pips { display:flex; gap:.4cqw; } .stat .pips i { width:1.6cqw; height:1cqw; border-radius:.2cqw; background:#ffffff22; } .stat .pips i.on { background:var(--c); }
+.stat .buy { background:var(--yellow); color:#1b1405; text-align:center; padding:.4cqw; border-radius:.5cqw; cursor:pointer; font-size:1cqw; }
+.stat.lit { position:relative; z-index:3; box-shadow:0 0 0 .3cqw var(--yellow); }
+.points { position:absolute; right:3cqw; top:10cqw; width:24cqw; background:var(--panel); border:.15cqw solid var(--line); border-radius:1cqw; padding:1.2cqw; font-size:1cqw; color:var(--muted); font-family:var(--f-b); }
+.points b { display:block; font-family:var(--f-d); font-size:3cqw; color:var(--yellow); }
+.spot { position:absolute; inset:0; background:rgba(5,8,12,.6); z-index:2; pointer-events:none; }
+.uses { display:grid; grid-template-columns:repeat(3,1fr); gap:1.2cqw; margin-top:1.4cqw; text-align:left; }
+.use { background:var(--panel2); border:.15cqw solid var(--line); border-radius:.9cqw; padding:1.1cqw; font-size:1cqw; color:#cfd8e3; font-family:var(--f-b); }
+.use b { display:block; font-family:var(--f-d); font-size:1.2cqw; color:#fff; margin-bottom:.4cqw; }
+.locked { display:flex; gap:.5cqw; flex-wrap:wrap; margin-top:.6cqw; }
+.locked span { font-family:var(--f-d); font-size:.75cqw; background:#0006; border:.12cqw solid var(--line); border-radius:.4cqw; padding:.2cqw .5cqw; color:#ffffff88; }
+.lvl { font-size:6cqw; color:var(--yellow); text-shadow:0 .3cqw 0 #7a4b00; margin:0; }
+.fade { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity .8s; }
+.fade.on { opacity:1; }
+</style>
+
+<div class="wrap">
+  <div>
+    <div class="eyebrow">MECHA DINO ARENA · FIRST-TIME FLOW · MOCKUP v0.1</div>
+    <h1>A new player's first five minutes</h1>
+    <p class="lede">Your flow, step by step: welcome, roll a free dino, its mecha parts unlocked (maxed), first attack, equip the parts, try them, the first bot kill levels you up, spend the skill point on a stat, what skill points do, then the island. The same flow in three directions, each based on the research (A Apex Training, B story cards with a spotlight, C a League / UNITE quest board). Click through it, or use the keys on PC. Switch PC / Phone to see each prompt for both.</p>
+  </div>
+  <div class="row">
+    <span class="label">DIRECTION</span>
+    <button class="btn" data-dir="A" aria-pressed="true">A · Coach + checklist</button>
+    <button class="btn" data-dir="B" aria-pressed="false">B · Story cards</button>
+    <button class="btn" data-dir="C" aria-pressed="false">C · Quest board</button>
+    <span class="label" style="margin-left:10px">DEVICE</span>
+    <button class="btn" data-dev="pc" aria-pressed="true">PC</button>
+    <button class="btn" data-dev="phone" aria-pressed="false">Phone</button>
+    <button class="btn" id="restart" style="margin-left:auto">Restart</button>
+  </div>
+  <div class="steps" id="steps"></div>
+  <div class="cols">
+    <div class="screen" id="scr" tabindex="0" aria-label="Mockup of the game screen"></div>
+    <aside class="note" id="note"></aside>
+  </div>
+</div>
+
+<script>
+const DINOS = [
+  {id:"Raptor", col:"#4f9a3c", atk:"Pounce", key:"F", parts:["Cloak Field","Energy Shield","Adrenaline Injector","Raptor Screech","Scent Sense","Thrusters"], stats:["Jaws","Thick Hide","Regeneration","Sprint Legs"]},
+  {id:"Dilo", col:"#3c8a7a", atk:"Bite", key:"Click", parts:["Sniper Scope","Venom Gatling","Toxin Mortar","Spine Burst","Sonic Hiss","Antivenom Pump"], stats:["Jaws","Thick Hide","Regeneration","Sprint Legs"]},
+  {id:"Herrera", col:"#9a5a3c", atk:"Slash", key:"Click", parts:["Quill Launcher","Cruise Missile","Strobe Frill","Smoke Pods","Stun Breaker","Glider Wings"], stats:["Jaws","Thick Hide","Regeneration","Sprint Legs"]},
+  {id:"Troodon", col:"#7a5ab0", atk:"Glow Pod Toss", key:"Click", parts:["Mender Drone","Arc Lantern","Sap Wall","Sentry Pod","Sleep Dart","Shield Dome"], stats:["Jaws","Thick Hide","Regeneration","Sprint Legs"]},
+  {id:"Pachy", col:"#b08a3c", atk:"Headbutt", key:"Click", parts:["Grappling Hook","Ink Shooter","Tether Spike","Dome Visor","Overclocked Servo Dash","Blood Rush"], stats:["Battering Dome","Thick Hide","Regeneration","Sprint Legs"]},
+  {id:"Teno", col:"#8a7a5a", atk:"Scratch / Tail Slam", key:"Click", parts:["Tail Grab & Fling","Boulder Mortar","Stomp Shockwave","Herd Bellow","Challenge Call","Hydraulic Leap"], stats:["Jaws","Thick Hide","Regeneration","Sprint Legs"]},
+  {id:"Therizino", col:"#5a7a9a", atk:"Claw Combo", key:"Click", parts:["Reaper's Hook","Feather Barrage","Harvest Field","Grapple Zip","Deflector Claws","Snare Wires"], stats:["Jaws","Thick Hide","Regeneration","Sprint Legs"]},
+];
+const SLOT_KEYS = ["R","C","T","V"];
+const STEPS = ["Welcome","Roll","Parts unlocked","First attack","Equip parts","Try abilities","First kill","Spend point","Skill points","Island"];
+const NOTES = {
+  A: {name:"A · Coach + checklist", based:"Apex Legends Training", what:"A trainer talks you through it in a box at the bottom; a checklist on the left ticks each task; an arrow and a ring point at what to hit. Everything happens on the training ground — no full-screen breaks except the roll.", good:"Clear at every moment; the checklist shows how far you are; works the same on PC and phone.", cost:"The most hand-holding; experienced players will want SKIP (included)."},
+  B: {name:"B · Story cards", based:"Big reveal cards + Roblox spotlight", what:"Big full-screen cards for the moments that matter (welcome, the roll as a slot reel, the parts reward, LEVEL UP, what points do). In play there's one big prompt in the middle; in the Lab the rest of the screen dims and only the thing to press is lit.", good:"The roll, the free parts and the level-up feel like rewards; the least on screen while you play.", cost:"Cards stop play for a moment each; no list of what's left."},
+  C: {name:"C · Quest board", based:"League quests + Pokémon UNITE objectives + timed hints", what:"A quest board (top right) lists the tasks with an XP reward each; attack, equip and try can be done in any order. No arrows unless you're stuck: a hint shows only after 10 s without progress (once). The roll opens a supply crate.", good:"Least hand-holding, feels like playing; XP per quest makes the first level-up earned.", cost:"A player can wander; needs the timed hints to tune."},
+};
+const STEP_NOTES = [
+  "First thing a new player sees: the welcome, then straight to the roll. SKIP is offered from here (decision for the plan: what skip gives).",
+  "The roll: one of the 7 dinos at random, shown big. The other 6 stay locked until unlocked (your answer). A: egg hatch · B: slot reel · C: supply crate.",
+  "Every mecha part of the rolled dino, unlocked at the top step (★), free — your answer 'Fully maxed'.",
+  "First use of the attack button on the training bot. PC shows the dino's own key (Raptor F, others click); phone the big yellow ATTACK.",
+  "A small Lab: pick a part, it goes into the next slot (R, C, T, V on PC; the 4 slot buttons on phone). All 4 slots filled to finish (A, B) or 1+ (C).",
+  "Use each slotted part once on the bot; each tile ticks when used.",
+  "Finish the bot: the first kill levels the dino up and gives 1 skill point (the tutorial gives the level; today's practice bots only give 10% XP).",
+  "Spend the point: the Lab's stat rows; one goes up a step.",
+  "What skill points do: upgrade stats, upgrade mecha parts, unlock the other dinos (price: a decision for the plan; any dino's points, your answer).",
+  "Off to the island; the tutorial is done (and never shows again; a TUTORIAL button could replay it — plan decision).",
+];
+
+let dir = "A", dev = "pc", step = 0, dino = DINOS[0], slots = [null,null,null,null], used = [false,false,false,false], botHp = 100, rolled = false, spent = null, attacked = false, idleT = 0;
+const $ = id => document.getElementById(id);
+const scr = $("scr");
+
+function reset() { step = 0; dino = DINOS[0]; slots = [null,null,null,null]; used = [false,false,false,false]; botHp = 100; rolled = false; spent = null; attacked = false; render(); }
+function go(n) { step = Math.max(0, Math.min(STEPS.length - 1, n)); idleT = performance.now(); if (step === 6 && botHp <= 0) botHp = 40; render(); }
+function next() { go(step + 1); }
+
+function hud() {
+  const s = slots.map((p, i) => p);
+  if (dev === "pc") {
+    return `<div class="hud-pc">` + [0,2,1,3].map(i => `<div class="tile ${s[i] ? "" : "empty"} ${used[i] ? "used" : ""}" data-slot="${i}"><span class="k">${SLOT_KEYS[i]}</span>${s[i] ? s[i] : "+"}</div>`).join("") +
+      `<div class="divider"></div><div class="tile atk" data-atk="1"><span class="k">${dino.key === "Click" ? "LMB" : dino.key}</span>${dino.atk.toUpperCase()}</div><div class="tile move"><span class="k">Space</span>JUMP</div></div>`;
+  }
+  const pos = [[11,0],[17,7],[0,11],[17,14.5]];
+  return `<div class="stick"></div><div class="hud-ph"><div class="pbtn atk" data-atk="1">ATTACK<br><small style="font-size:.8cqw">${dino.atk}</small></div>` +
+    [0,1,2,3].map(i => `<div class="pbtn s ${used[i] ? "used" : ""}" data-slot="${i}" style="right:${pos[i][1]}cqw;bottom:${pos[i][0]}cqw">${s[i] ? s[i] : "+"}</div>`).join("") + `</div>`;
+}
+function world(showBot = true) {
+  return `<div class="fence"></div><div class="sign">TRAINING GROUND</div>
+    <div class="dino me" id="me"><div class="b" style="background:${dino.col}"></div></div>` +
+    (showBot ? `<div class="bot-tag">TRAINING BOT</div><div class="hpbar"><i style="width:${Math.max(0, botHp)}%"></i></div><div class="bot ${botHp <= 0 ? "dead" : ""}" id="bot"><div class="b"></div></div>` : "");
+}
+const atkLabel = () => dev === "pc" ? (dino.key === "Click" ? `<kbd>CLICK</kbd>` : `<kbd>${dino.key}</kbd>`) : `<kbd>ATTACK</kbd>`;
+const slotLabel = i => dev === "pc" ? `<kbd>${SLOT_KEYS[i]}</kbd>` : `the <kbd>${slots[i]}</kbd> button`;
+
+// per-direction chrome around the shared content
+function checklist() {
+  return `<div class="check"><div class="t">TRAINING</div>` + STEPS.map((s, i) => `<div class="${i < step ? "ok" : i === step ? "cur" : ""}">${i < step ? "✓" : i === step ? "▸" : "·"} ${s}</div>`).join("") + `</div>`;
+}
+function coach(text, btn) { return `<div class="coach"><div class="face">🦖</div>${btn ? `<span class="go" data-next="1">${btn}</span>` : ""}<b>TRAINER</b>${text}</div>`; }
+const QUESTS = [["Hit the bot", 3, () => attacked], ["Equip your parts", 4, () => slots.some(Boolean)], ["Use an ability", 5, () => used.some(Boolean)], ["Defeat the bot", 6, () => botHp <= 0]];
+function questBoard() {
+  return `<div class="quest"><div class="t">QUESTS · TRAINING</div>` + QUESTS.map(([n, s, ok]) => `<div class="q ${ok() ? "ok" : (step === s ? "cur" : "")}"><span>${ok() ? "✓" : "○"} ${n}</span><span class="xp">+${s === 6 ? 50 : 10} XP</span></div>`).join("") + `</div>`;
+}
+
+function render() {
+  $("steps").innerHTML = STEPS.map((s, i) => `<button class="chip ${i < step ? "done" : ""} ${i === step ? "cur" : ""}" data-go="${i}">${i + 1}. ${s}</button>`).join("");
+  const N = NOTES[dir];
+  $("note").innerHTML = `<div class="tag">STEP ${step + 1} · ${STEPS[step].toUpperCase()}</div><p>${STEP_NOTES[step]}</p><h3>${N.name}</h3><div class="tag">BASED ON · ${N.based.toUpperCase()}</div><p>${N.what}</p><div class="tradeoff"><b>Good:</b> ${N.good}<br><b>Cost:</b> ${N.cost}</div>`;
+  scr.className = "screen" + ([0,1,2,4,7,8].includes(step) ? " indoor" : "");
+  let h = "";
+  const S = step;
+  if (S === 0) {
+    if (dir === "A") h = world(false) + `<div class="dim"></div>` + coach("Welcome to <b style='display:inline;color:#fff'>MECHA DINO ARENA</b>! Dinos with mecha parts, fighting for the hardpoint. First, let's get you a dino of your own.", "LET'S GO") + `<button class="cta alt" style="position:absolute;right:2cqw;top:2cqw">SKIP</button>`;
+    if (dir === "B") h = `<div class="card"><h2>WELCOME TO<br>MECHA DINO ARENA</h2><p>Every player starts with one free dino — and every mecha part it can carry.</p><button class="cta" data-next="1">ROLL MY DINO</button><button class="cta alt">SKIP</button></div>`;
+    if (dir === "C") h = `<div class="card" style="border-color:var(--purple)"><h2 style="color:var(--purple)">YOUR FIRST QUESTS</h2><p>Open your free supply crate, then finish the training quests to level up your dino.</p><button class="cta" data-next="1">START</button><button class="cta alt">SKIP</button></div>`;
+  }
+  if (S === 1) {
+    const reveal = rolled ? `<div class="reveal">${dino.id.toUpperCase()}<small>your free dino · the other 6 unlock with skill points</small></div><button class="cta" data-next="1">NEXT</button>` : "";
+    if (dir === "A") h = checklist() + (rolled ? `<div class="card" style="top:40%"><h2>IT HATCHED!</h2>${reveal}</div>` : `<div class="egg" id="roll"></div>` + coach("Tap the egg to hatch your free dino.", ""));
+    if (dir === "B") h = `<div class="card"><h2>ROLL YOUR FREE DINO</h2><div class="reel" id="reel">${[DINOS[6], dino, DINOS[2]].map((d, i) => `<div class="${i === 1 ? "mid" : ""}">${d.id}</div>`).join("")}</div>${rolled ? reveal : `<button class="cta" id="roll">ROLL</button>`}</div>`;
+    if (dir === "C") h = `<div class="card" style="border-color:var(--purple)"><h2 style="color:var(--purple)">SUPPLY CRATE</h2><div class="crate ${rolled ? "open" : ""}" id="roll">${rolled ? dino.id.toUpperCase() : "TAP TO OPEN"}</div>${rolled ? reveal : ""}</div>`;
+  }
+  if (S === 2) {
+    const grid = `<div class="parts">${dino.parts.map(p => `<div class="part">${p}<small>MECHA PART</small><span class="star">★ MAX</span></div>`).join("")}</div>`;
+    if (dir === "A") h = checklist() + `<div class="card" style="left:58%;width:70cqw"><h2>ALL ${dino.id.toUpperCase()} PARTS UNLOCKED</h2>${grid}</div>` + coach(`Your ${dino.id} comes with every mecha part, fully upgraded. You'll pick 4 to carry in a moment.`, "NEXT");
+    if (dir === "B") h = `<div class="card" style="width:74cqw"><h2>+${dino.parts.length} MECHA PARTS ★</h2><p>Every ${dino.id} part, maxed — yours to keep.</p>${grid}<button class="cta" data-next="1">TO TRAINING</button></div>`;
+    if (dir === "C") h = `<div class="card" style="width:74cqw;border-color:var(--purple)"><h2 style="color:var(--purple)">CRATE REWARD</h2><p>${dino.id} + all ${dino.parts.length} parts at ★</p>${grid}<button class="cta" data-next="1">GO TO TRAINING</button></div>`;
+  }
+  if (S === 3 || S === 5 || S === 6) {
+    h = world(true) + hud();
+    const atBot = `<div class="arrow" style="left:64.5cqw;top:9.5cqw"></div><div class="ring" style="left:57cqw;top:29cqw;width:18cqw;height:7cqw"></div>`;
+    let ask = "";
+    if (S === 3) ask = `Hit the bot: ${atkLabel()}`;
+    if (S === 5) { const i = used.findIndex((u, k) => !u && slots[k]); ask = i < 0 ? "All parts tried!" : `Use ${slots[i]}: ${slotLabel(i)}`; }
+    if (S === 6) ask = `Finish the bot: ${atkLabel()}`;
+    if (dir === "A") h += checklist() + atBot + coach(S === 3 ? `This is your attack. ${dev === "pc" ? "Your " + dino.atk + " is on " + (dino.key === "Click" ? "the left mouse button" : dino.key) : "Tap the big yellow ATTACK button"}. Hit the training bot!` : S === 5 ? "Now try each part you slotted. Each one ticks when you've used it." : "Knock the bot out — your first kill levels you up.", "") + `<div class="prompt">${ask}</div>`;
+    if (dir === "B") h += `<div class="prompt">${ask}</div>`;
+    if (dir === "C") { h += questBoard(); if (performance.now() - idleT > 10000) h += atBot + `<div class="hint10">Hint · ${ask.replace(/<[^>]+>/g, "")}</div>`; else h += `<div class="hint10" style="bottom:auto;top:2cqw;left:28cqw;transform:none;background:none;color:#ffffff60">(hints appear after 10 s without progress)</div>`; }
+    if (S === 6 && botHp <= 0) h += levelUp();
+    if (S === 5 && used.every((u, k) => u || !slots[k])) h += `<button class="cta" style="position:absolute;left:50%;bottom:30cqw;transform:translateX(-50%)" data-next="1">NEXT</button>`;
+    if (S === 3 && attacked) h += `<button class="cta" style="position:absolute;left:50%;bottom:30cqw;transform:translateX(-50%)" data-next="1">NEXT</button>`;
+  }
+  if (S === 4) {
+    const first = slots.findIndex(x => !x);
+    h = `<div class="lab"><div class="ttl">LAB · EQUIP PARTS</div><div class="sub">Pick a part — it goes into the next empty slot. ${dev === "pc" ? "Slots are your keys R, C, T, V." : "Slots are your 4 buttons next to ATTACK."}</div>
+      <div class="grid" style="${dir === "C" ? "right:27cqw;grid-template-columns:repeat(2,1fr)" : ""}">${dino.parts.map(p => `<div class="part pick ${slots.includes(p) ? "inslot" : ""}" data-part="${p}">${p}<small>★ MAX</small></div>`).join("")}</div>
+      <div class="slots" style="${dir === "C" ? "right:27cqw" : ""}">${slots.map((p, i) => `<div class="slot ${p ? "full" : ""}"><span>${p || "EMPTY"}<small>${dev === "pc" ? "KEY " + SLOT_KEYS[i] : "BUTTON " + (i + 1)}</small></span></div>`).join("")}</div></div>`;
+    if (dir === "A") h += coach(first < 0 ? "All 4 slots filled. Let's try them out!" : `Pick 4 parts to carry. (${4 - slots.filter(Boolean).length} to go)`, first < 0 ? "TRY THEM" : "");
+    if (dir === "B") { if (first >= 0) h += `<div class="spot" style="clip-path:polygon(0 0,100% 0,100% 100%,0 100%,0 0,3% 16%,3% 52%,97% 52%,97% 16%,3% 16%)"></div>`; else h += `<button class="cta" style="position:absolute;right:3cqw;top:2cqw" data-next="1">TRY THEM</button>`; }
+    if (dir === "C") { h += questBoard(); if (slots.some(Boolean)) h += `<button class="cta" style="position:absolute;right:26cqw;top:2cqw" data-next="1">BACK TO TRAINING</button>`; }
+  }
+  if (S === 7) {
+    const pts = spent ? 0 : 1;
+    h = `<div class="lab"><div class="ttl">LAB · ${dino.id.toUpperCase()} STATS</div><div class="sub">Level 2 · spend your skill point on a stat.</div>
+      <div class="stats">${dino.stats.map((s, i) => `<div class="stat ${dir !== "C" && !spent && i === 0 ? "lit" : ""}" style="--c:${["#f05a4f","#7fe9ff","#46e08a","#ffc832"][i]}"><span>${s}</span><span class="pips">${[0,1,2,3].map(k => `<i class="${spent === s && k === 0 ? "on" : ""}"></i>`).join("")}</span><span class="buy" data-stat="${s}">${spent === s ? "I ✓" : "+1 · 1 PT"}</span></div>`).join("")}</div>
+      <div class="points"><b>${pts}</b>SKILL POINT${pts === 1 ? "" : "S"} · ${dino.id}<br><br>One per level. Kills on bots and players earn XP.</div></div>`;
+    if (dir === "A") h += coach(spent ? `${spent} is now step I. Nice!` : "You earned a skill point. Put it into a stat — try " + dino.stats[0] + ".", spent ? "NEXT" : "");
+    if (dir === "B") { if (!spent) h += `<div class="spot"></div>`; else h += `<button class="cta" style="position:absolute;right:3cqw;bottom:3cqw" data-next="1">NEXT</button>`; }
+    if (dir === "C") { if (spent) h += `<button class="cta" style="position:absolute;right:3cqw;bottom:3cqw" data-next="1">NEXT</button>`; }
+  }
+  if (S === 8) {
+    const lockedDinos = DINOS.filter(d => d !== dino).map(d => `<span>🔒 ${d.id}</span>`).join("");
+    h = `<div class="card" style="width:80cqw;${dir === "C" ? "border-color:var(--purple)" : ""}"><h2 style="${dir === "C" ? "color:var(--purple)" : ""}">WHAT SKILL POINTS DO</h2><p>You get one every level, on any dino.</p>
+      <div class="uses"><div class="use"><b>UPGRADE STATS</b>Health, attack, defence, speed — each row has 4 steps.</div><div class="use"><b>UPGRADE PARTS</b>Mecha parts go from I to ★. (Your ${dino.id}'s are already ★.)</div><div class="use"><b>UNLOCK DINOS</b>Spend points from any dino to unlock a new one.<div class="locked">${lockedDinos}</div></div></div>
+      <button class="cta" data-next="1">GOT IT</button></div>`;
+    if (dir === "A") h = checklist() + h;
+  }
+  if (S === 9) {
+    h = `<div class="card"><h2>TRAINING COMPLETE</h2><p>${dino.id} · Level 2 · 4 parts slotted. The island is next — meet other dinos and join a match.</p><button class="cta" id="island">GO TO THE ISLAND</button></div><div class="fade" id="fade"></div>`;
+  }
+  scr.innerHTML = h + `<div class="flash" id="flash"></div>`;
+}
+function levelUp() {
+  const t = `<p class="lvl">LEVEL 2!</p><p>+1 SKILL POINT · ${dino.id}</p>`;
+  if (dir === "A") return `<div class="card" style="top:36%"><h2>FIRST KILL</h2>${t}<button class="cta" data-next="1">TO THE LAB</button></div>`;
+  if (dir === "B") return `<div class="dim"></div><div class="card"><h2>FIRST KILL!</h2>${t}<button class="cta" data-next="1">SPEND IT</button></div>`;
+  return `<div class="toast">QUEST DONE · +50 XP</div><div class="card" style="top:40%;border-color:var(--purple)"><h2 style="color:var(--purple)">LEVEL UP</h2>${t}<button class="cta" data-next="1">OPEN THE LAB</button></div>`;
+}
+function floatText(txt, x, y, col) { const f = document.createElement("div"); f.className = "fx"; f.textContent = txt; f.style.left = x + "cqw"; f.style.top = y + "cqw"; if (col) f.style.color = col; scr.appendChild(f); setTimeout(() => f.remove(), 800); }
+function attack() {
+  if (![3, 6].includes(step) || botHp <= 0) return;
+  attacked = true; idleT = performance.now();
+  botHp -= step === 3 ? 20 : 25;
+  render();
+  floatText("-" + (step === 3 ? 20 : 25), 64, 18);
+  const b = $("bot"); if (b) { b.classList.add("shake"); setTimeout(() => b.classList.remove("shake"), 120); }
+  const m = $("me"); if (m) { m.classList.add("hit"); setTimeout(() => m.classList.remove("hit"), 150); }
+  if (botHp <= 0) { const f = $("flash"); f.classList.add("on"); }
+}
+function useSlot(i) {
+  if (step !== 5 || !slots[i]) return;
+  used[i] = true; idleT = performance.now(); render();
+  floatText(slots[i], 30, 18, "#ffc832");
+}
+function doRoll() {
+  if (rolled) return;
+  let n = 0;
+  const el = $("roll");
+  if (el && dir === "A") { el.classList.add("shake"); setTimeout(() => el.classList.add("crack"), 900); }
+  const tick = () => {
+    dino = DINOS[Math.floor(Math.random() * DINOS.length)];
+    if (dir === "B") { const r = $("reel"); if (r) r.innerHTML = [DINOS[(DINOS.indexOf(dino) + 6) % 7], dino, DINOS[(DINOS.indexOf(dino) + 1) % 7]].map((d, i) => `<div class="${i === 1 ? "mid" : ""}">${d.id}</div>`).join(""); }
+    if (dir === "C" && el) el.textContent = "...";
+    if (++n < 16) setTimeout(tick, 60 + n * 9); else { rolled = true; slots = [null,null,null,null]; render(); const f = $("flash"); f.classList.add("on"); }
+  };
+  tick();
+}
+scr.addEventListener("click", e => {
+  const t = e.target.closest("[data-next],[data-atk],[data-slot],[data-part],[data-stat],#roll,#island");
+  if (!t) { if (step === 3 || step === 6) attack(); return; }
+  if (t.dataset.next) return next();
+  if (t.dataset.atk) return attack();
+  if (t.dataset.slot !== undefined && step === 5) return useSlot(+t.dataset.slot);
+  if (t.dataset.part && step === 4) { if (slots.includes(t.dataset.part)) return; const i = slots.findIndex(x => !x); if (i >= 0) { slots[i] = t.dataset.part; render(); } return; }
+  if (t.dataset.stat && step === 7 && !spent) { spent = t.dataset.stat; render(); return; }
+  if (t.id === "roll") return doRoll();
+  if (t.id === "island") { $("fade").classList.add("on"); setTimeout(() => { scr.innerHTML = `<div class="card"><h2>THE ISLAND</h2><p>(the normal game starts here)</p><button class="cta" id="again">RESTART MOCKUP</button></div>`; $("again").onclick = reset; }, 900); }
+});
+document.addEventListener("keydown", e => {
+  if (dev !== "pc" || e.target.closest("button") && e.key === " ") return;
+  const k = e.key.toUpperCase();
+  if (k === dino.key) attack();
+  const i = SLOT_KEYS.indexOf(k); if (i >= 0) useSlot(i);
+});
+scr.addEventListener("mousedown", e => { if (e.button === 0 && dino.key === "Click" && dev === "pc" && !e.target.closest("[data-next],[data-slot],.cta")) { /* handled by click */ } });
+$("steps").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (!b) return; const n = +b.dataset.go; if (n >= 4 && !slots.some(Boolean)) slots = dino.parts.slice(0, 4); if (n >= 3) rolled = true; if (n >= 7) { botHp = 0; } if (n < 7) spent = null; if (n === 6 && botHp <= 0) botHp = 40; go(n); });
+document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { dir = b.dataset.dir; document.querySelectorAll("[data-dir]").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); });
+document.querySelectorAll("[data-dev]").forEach(b => b.onclick = () => { dev = b.dataset.dev; document.querySelectorAll("[data-dev]").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); });
+$("restart").onclick = reset;
+setInterval(() => { if (dir === "C" && [3,5,6].includes(step)) render(); }, 1000);
+reset();
+</script>
