@@ -38,6 +38,10 @@
 --   TutBotSpecies, TutBotDistance, TutBotSafeHealth, TutBotFinishHealth, TutBotLeash, TutPlaceWait, TutUnlockTextOn (false:
 --   the client shows "Coming soon." for unlocking dinos; red-team 5). Diagnostics: TutorialServerVersion, TutorialState
 --   ("off" / "notSandbox" / "on"), TutLanesUsed, TutFinished, TutGrants.
+-- v1.0.1 (found in the Studio check 2026-11-22: the Therizino's claws never hit the training bot; the attack servers only
+--   target models in Workspace.DinoIsland.Bots): the bot is parented to Workspace.DinoIsland.Bots (made if missing) while it
+--   stands in its lane, like the practice bots. Clients find it there by TutOwner. Switch: script attribute TutBotIslandFolder
+--   (default true, read per spawn; false = the lane's own Bots folder, 1.0).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -45,10 +49,11 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.0.1" -- v1.0.1 the bot stands in DinoIsland.Bots
 script:SetAttribute("TutorialServerVersion", VERSION)
 local DEFAULTS = {TutorialEnabled = true, TrainingOrigin = Vector3.new(0, 400, 4000), TrainingLanes = 8, TrainingSpacing = 300,
 	LanePad = 120, LaneWall = 30, TutBotSpecies = "Pachy", TutBotDistance = 28, TutBotSafeHealth = 100000, TutBotFinishHealth = 40,
-	TutBotLeash = 60, TutPlaceWait = 10, TutUnlockTextOn = false}
+	TutBotLeash = 60, TutPlaceWait = 10, TutUnlockTextOn = false, TutBotIslandFolder = true}
 for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -200,8 +205,20 @@ spawnBot = function(p)
 	local lane = s and lanes[p:GetAttribute("TutLane") or 0]
 	if not lane then return end
 	clearBot(p)
+	local folder = lane.bots
+	if A("TutBotIslandFolder") ~= false then -- v1.0.1: where the attack servers look for bots
+		local isl = workspace:FindFirstChild("DinoIsland")
+		if isl then
+			folder = isl:FindFirstChild("Bots")
+			if not folder then
+				folder = Instance.new("Folder")
+				folder.Name = "Bots"
+				folder.Parent = isl
+			end
+		end
+	end
 	local bot = Bots.spawn({species = A("TutBotSpecies"), name = "Training Bot", loadout = {}, steps = {}}, "B", lane.botCF,
-		lane.bots, {xpMul = 0})
+		folder, {xpMul = 0})
 	if not bot then result(p, "noBot") return end
 	bot:SetAttribute("TutOwner", p.UserId)
 	bot:SetAttribute("TutBot", true)

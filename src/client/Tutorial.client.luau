@@ -44,6 +44,7 @@ local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.0"
+VERSION = "1.0.1" -- v1.0.1 finds the bot in DinoIsland.Bots; > in the checklist
 script:SetAttribute("TutorialClientVersion", VERSION)
 if script:GetAttribute("TutorialClientEnabled") == nil then script:SetAttribute("TutorialClientEnabled", true) end
 if script:GetAttribute("TutorialClientEnabled") == false then return end
@@ -139,7 +140,14 @@ local function usedSet()
 	for k in string.gmatch(player:GetAttribute("TutUsed") or "", "%d") do s[tonumber(k)] = true end
 	return s
 end
-local function botModel()
+local function botModel() -- v1.0.1: TutorialServer 1.0.1 keeps the bot in DinoIsland.Bots (TutOwner); 1.0 in the lane
+	local isl = workspace:FindFirstChild("DinoIsland")
+	local ib = isl and isl:FindFirstChild("Bots")
+	if ib then
+		for _, m in ipairs(ib:GetChildren()) do
+			if m:IsA("Model") and m:GetAttribute("TutOwner") == player.UserId then return m end
+		end
+	end
 	local tg = workspace:FindFirstChild("TrainingGround")
 	local lane = tg and tg:FindFirstChild("Lane" .. tostring(player:GetAttribute("TutLane") or 0))
 	local bots = lane and lane:FindFirstChild("Bots")
@@ -201,7 +209,7 @@ local function checklist()
 		LayoutOrder = 0})
 	for i, name in ipairs(R.STEPS) do
 		local cur, done = step(), i < step()
-		local mark = done and "✓ " or (i == cur and "▸ " or "· ")
+		local mark = done and "✓ " or (i == cur and "> " or "· ") -- v1.0.1: the game font has no ▸
 		label(f, mark .. name, Enum.Font.GothamBold, s, done and GREEN or (i == cur and WHITE or MUTED),
 			{Size = UDim2.new(1, 0, 0, s * 1.4), TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = i})
 	end
@@ -211,7 +219,7 @@ local function trainer(text, btnText, onClick)
 	local phoneTop = isTouch() and ({[4] = true, [6] = true, [7] = true})[step()]
 	local f = make("Frame", {Name = "Trainer", BackgroundColor3 = Color3.fromRGB(13, 18, 24), BackgroundTransparency = 0.08,
 		AnchorPoint = phoneTop and Vector2.new(0, 0) or Vector2.new(0.5, 1),
-		Position = phoneTop and UDim2.new(0.22, 0, 0, 16 * ch) or UDim2.new(0.5, 0, 1, -12 * ch),
+		Position = phoneTop and UDim2.new(0.22, 0, 0, 16 * ch) or UDim2.new(0.5, 0, 1, -14 * ch),
 		Size = phoneTop and UDim2.new(0.34, 0, 0, 0) or UDim2.new(0.56, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y}, root)
 	corner(f, 1.2 * ch)
 	stroke(f, CYAN, 0, 2)
