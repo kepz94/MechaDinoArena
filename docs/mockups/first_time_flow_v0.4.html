@@ -1,0 +1,458 @@
+<title>First-Time Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Montserrat:wght@500;700;800&display=swap">
+<style>
+/* Mecha Dino Arena, first-time flow mockup v0.4 (Kepu 2026-11-22 11:38, after playing v1.0 live on his phone: "unplayable and
+   unprofessional", "The teno has two different attack styles and it doesn't even teach you it", "Look at how big time games handle
+   this ... layout on mobile and spacing and copy that"). Phone-first redesign drawn on the real phone HUD (positions measured from
+   Kepu's 2532 x 1170 screenshots). v0.3 kept for reference. */
+:root { --bg:#0b0f16; --fg:#e8edf5; --muted:#8a95a8; --line:#2a3446; --panel:#141b27; --yellow:#ffc832; --cyan:#7fe9ff;
+  --green:#46e08a; --orange:#ff9b2e; --pink:#ff6b84; color-scheme:dark; }
+body { background:var(--bg); color:var(--fg); font:14px/1.45 Montserrat, system-ui, sans-serif; margin:0; }
+.wrap { max-width:1240px; margin:0 auto; padding-block:20px 40px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+.eyebrow { font:700 11px/1 Silkscreen, monospace; letter-spacing:.14em; color:var(--yellow); }
+h1 { font:800 26px/1.2 Montserrat, sans-serif; margin:6px 0 4px; text-wrap:balance; }
+.lede { color:var(--muted); max-width:78ch; margin:0 0 14px; }
+.bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 12px; }
+.bar button, .bar select { font:700 12px Montserrat, sans-serif; background:var(--panel); color:var(--fg); border:1.5px solid var(--line); border-radius:8px; padding:7px 11px; cursor:pointer; }
+.bar button[aria-pressed="true"] { border-color:var(--yellow); color:var(--yellow); }
+.grid { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; align-items:start; }
+@media (max-width:900px) { .grid { grid-template-columns:minmax(0,1fr); } }
+.note { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; min-width:0; }
+.note h3 { margin:0 0 6px; font:700 12px Silkscreen, monospace; color:var(--yellow); letter-spacing:.06em; }
+.note p, .note li { color:#c3cad6; margin:0 0 8px; }
+.note ul { padding-left:18px; margin:0 0 8px; }
+.chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
+.chips button { font:600 11px Montserrat; background:#0f1520; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:4px 7px; cursor:pointer; }
+.chips button.cur { color:var(--yellow); border-color:var(--yellow); }
+
+/* ---------- the phone ---------- */
+.phone { position:relative; width:100%; aspect-ratio:2532/1170; border-radius:22px; overflow:hidden; container-type:inline-size; background:#5b8fb8;
+  box-shadow:0 0 0 6px #1b2230, 0 18px 50px #0008; user-select:none; touch-action:none; }
+.world { position:absolute; inset:0; background:linear-gradient(#8fc3e6 0 38%, #b9d6e6 38% 41%, #4f8f45 41%); }
+.world .pad { position:absolute; left:14cqw; right:14cqw; top:17cqw; bottom:-4cqw; background:linear-gradient(#5aa24c,#3f7d36); clip-path:polygon(28% 0,72% 0,100% 100%,0 100%); }
+.world .fence { position:absolute; left:17cqw; right:17cqw; top:16cqw; height:1.6cqw; background:repeating-linear-gradient(90deg,#5a3d22 0 .5cqw,transparent .5cqw 4cqw); }
+.dino { position:absolute; width:7cqw; height:9cqw; }
+.dino .b { position:absolute; inset:0; border-radius:40% 40% 20% 20%; }
+.me { left:46.5cqw; top:27cqw; }
+.me .b { background:#7a6a52; box-shadow:inset 0 -1.2cqw #0003; }
+.bot { left:47cqw; top:15.5cqw; width:6cqw; height:7.5cqw; transition:transform .15s; }
+.bot .b { background:#8a8f99; box-shadow:inset 0 -1cqw #0003; }
+.bot.hit { transform:translateX(.6cqw) rotate(4deg); }
+.bot.down { transform:rotate(80deg) translateY(2cqw); opacity:.55; }
+.bot .ring { position:absolute; left:-2cqw; right:-2cqw; bottom:-1.2cqw; height:2.4cqw; border:.35cqw solid var(--yellow); border-radius:50%; animation:pulse 1.2s infinite; }
+.bot .arrow { position:absolute; left:50%; top:-4.2cqw; transform:translateX(-50%); font:2.6cqw Silkscreen; color:var(--yellow); animation:bob 1s infinite; }
+.bot .hp { position:absolute; left:-1cqw; right:-1cqw; top:-1.7cqw; height:.7cqw; background:#3a1e24; border-radius:1cqw; overflow:hidden; }
+.bot .hp i { display:block; height:100%; background:var(--pink); transition:width .2s; }
+@keyframes pulse { 50% { opacity:.35; transform:scale(1.08); } }
+@keyframes bob { 50% { transform:translate(-50%,-.6cqw); } }
+
+/* real HUD (measured) */
+.hud > * { position:absolute; transition:opacity .25s; }
+.rbx-logo { left:7.5cqw; top:1.4cqw; width:5.2cqw; height:5.2cqw; border-radius:50%; background:#eef0f2; display:grid; place-items:center; }
+.rbx-logo::after { content:""; width:2cqw; height:2cqw; background:#1d1f23; transform:rotate(15deg); }
+.rbx-pill { left:13.6cqw; top:1.4cqw; width:16.6cqw; height:5.2cqw; border-radius:3cqw; background:#eef0f2; }
+.rbx-pill::before { content:"☰    ▭    🎙"; position:absolute; inset:0; display:grid; place-items:center; color:#333; font-size:1.8cqw; }
+.health { left:7.3cqw; top:8.2cqw; width:14cqw; }
+.health b { font:1cqw Silkscreen; color:#cfd6df; letter-spacing:.1em; }
+.health i { display:block; height:1.3cqw; border-radius:1cqw; background:#2f8a3a; border:.15cqw solid #ffffff33; margin-top:.3cqw; }
+.streak { left:87.3cqw; top:.9cqw; width:5.3cqw; height:4.3cqw; border-radius:1cqw; background:#1c2330; border:.2cqw solid var(--yellow); display:grid; place-items:center; font:1.6cqw Silkscreen; color:var(--yellow); }
+.stick { left:9cqw; top:35.15cqw; width:8.7cqw; height:8.7cqw; border-radius:50%; background:#0004; border:.25cqw solid #fff4; }
+.stick::after { content:""; position:absolute; inset:2.2cqw; border-radius:50%; background:#fff6; }
+.jump { left:79.6cqw; top:20.7cqw; width:8.9cqw; height:8.9cqw; border-radius:50%; background:#1c2330e6; border:.25cqw solid #ffffff55; display:grid; place-items:center; font:700 1.5cqw Silkscreen; color:#dfe4ea; }
+.attack { left:77.9cqw; top:30.2cqw; width:12.2cqw; height:12.2cqw; border-radius:50%; background:var(--yellow); border:.3cqw solid #fff; display:grid; place-items:center; font:700 1.6cqw Silkscreen; color:#1b1405; cursor:pointer; }
+.attack small { display:block; font:600 .9cqw Montserrat; text-align:center; }
+.slot { width:8.9cqw; height:8.9cqw; border-radius:22%; background:#121a26e6; border:.25cqw solid #ffffff44; color:#fff; display:flex; flex-direction:column; justify-content:center; text-align:center; font:600 .95cqw Montserrat; cursor:pointer; padding:.4cqw; box-sizing:border-box; }
+.slot .t { flex:1; display:grid; place-items:center; line-height:1.15; }
+.slot .p { font:600 .8cqw Montserrat; color:#ffd9a8; border-top:.12cqw solid #ffd9a844; padding-top:.25cqw; }
+.slot.full { border-color:var(--orange); }
+.slot.pulling { border-color:#fff; border-width:.4cqw; }
+.slot2 { left:56.9cqw; top:30.4cqw; } .slot1 { left:67.1cqw; top:34.4cqw; }
+.gone { opacity:0 !important; pointer-events:none; }
+.dimctl { opacity:.25; pointer-events:none; }
+
+/* PC hotbar (Studio screenshot layout) */
+.hotbar { left:50%; bottom:1.4cqw; transform:translateX(-50%); display:flex; gap:.8cqw; align-items:end; }
+.hotbar .k { width:5.6cqw; height:5.6cqw; border-radius:1cqw; background:#121a26e6; border:.2cqw solid #ffffff44; color:#fff; font:600 .8cqw Montserrat; display:flex; flex-direction:column; justify-content:space-between; padding:.4cqw; box-sizing:border-box; }
+.hotbar .k i { font:700 .8cqw Silkscreen; color:#9aa4b4; font-style:normal; }
+.hotbar .k.full { border-color:var(--orange); }
+.hotbar .k.atk { border-color:var(--yellow); }
+.hotbar .sep { width:.2cqw; height:5cqw; background:#ffffff33; }
+
+/* tutorial layer */
+.layer > * { position:absolute; }
+.obj { left:50%; top:1.4cqw; transform:translateX(-50%); min-width:24cqw; background:#0d131ce8; border:.18cqw solid #ffffff22; border-left:.6cqw solid var(--yellow); border-radius:1cqw; padding:.8cqw 1.6cqw .9cqw; text-align:left; }
+.obj .n { font:700 .95cqw Silkscreen; color:var(--yellow); letter-spacing:.1em; }
+.obj .t { font:800 2.2cqw Montserrat; color:#fff; letter-spacing:.02em; text-transform:uppercase; }
+.obj .segs { display:flex; gap:.35cqw; margin-top:.6cqw; }
+.obj .segs i { flex:1; height:.45cqw; border-radius:.3cqw; background:#ffffff22; }
+.obj .segs i.d { background:var(--green); } .obj .segs i.c { background:var(--yellow); }
+.obj .sub { display:flex; gap:.6cqw; margin-top:.6cqw; }
+.obj .sub span { font:700 1.05cqw Montserrat; color:var(--muted); }
+.obj .sub span.d { color:var(--green); } .obj .sub span.c { color:#fff; }
+.obj .tp { font:600 1.35cqw Montserrat; color:#dfe6f0; margin-top:.35cqw; max-width:34cqw; }
+.callout { font:800 1.7cqw Montserrat; color:#1b1405; background:var(--yellow); padding:.45cqw .9cqw; border-radius:.8cqw; white-space:nowrap; box-shadow:0 .3cqw 1cqw #0006; }
+.callout::after { content:""; position:absolute; width:1.1cqw; height:1.1cqw; background:var(--yellow); transform:rotate(45deg); }
+.callout.r::after { right:-.45cqw; top:calc(50% - .55cqw); } .callout.b::after { bottom:-.45cqw; left:calc(50% - .55cqw); }
+.callout small { display:block; font:700 1.2cqw Montserrat; color:#4a3a10; }
+.ringc { border:.4cqw solid var(--yellow); border-radius:50%; animation:pulse 1s infinite; pointer-events:none; box-shadow:0 0 1.5cqw #ffc83299; }
+.rings { border-radius:24%; }
+.hand { width:3.2cqw; height:3.2cqw; border-radius:50%; background:#ffffffe6; border:.3cqw solid #fff; box-shadow:0 .2cqw .8cqw #0008; pointer-events:none; z-index:5; }
+.hand.tap { animation:tap 1s infinite; }
+.hand.hold { animation:hold 2s infinite; }
+.hand.pull { animation:pull 1.3s infinite; }
+.hand.tap3 { animation:tap .45s infinite; }
+@keyframes tap { 0%,100% { transform:scale(1); } 40% { transform:scale(.7); } }
+@keyframes hold { 0% { transform:scale(1); } 15%,75% { transform:scale(.7); box-shadow:0 0 0 1.2cqw #ffc83255; } 90% { transform:scale(1); } }
+@keyframes pull { 0% { transform:translateY(-1.2cqw); opacity:0; } 20% { opacity:1; } 80% { transform:translateY(2.6cqw); opacity:1; } 100% { opacity:0; transform:translateY(2.6cqw); } }
+.toast { left:50%; top:16cqw; transform:translateX(-50%); font:800 2.6cqw Montserrat; color:var(--green); text-shadow:0 .2cqw .6cqw #000a; animation:rise 1.2s forwards; }
+@keyframes rise { to { transform:translate(-50%,-3cqw); opacity:0; } }
+.charge { font:700 .9cqw Montserrat; color:#fff; }
+
+/* full-screen moments */
+.scene { inset:0; background:radial-gradient(circle at 50% 52%, #26324a 0, #0b0f16 62%); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.scene .rays { position:absolute; left:50%; top:52%; width:70cqw; height:70cqw; transform:translate(-50%,-50%); background:repeating-conic-gradient(#ffc83214 0 6deg, transparent 6deg 18deg); animation:spin 30s linear infinite; border-radius:50%; mask:radial-gradient(#000 20%, transparent 65%); -webkit-mask:radial-gradient(#000 20%, transparent 65%); }
+@keyframes spin { to { transform:translate(-50%,-50%) rotate(360deg); } }
+.scene .kick { font:700 1.2cqw Silkscreen; color:var(--yellow); letter-spacing:.2em; position:relative; }
+.scene h2 { font:700 3.6cqw Silkscreen; margin:.4cqw 0 0; color:#fff; letter-spacing:.06em; position:relative; text-align:center; }
+.scene p { font:600 1.6cqw Montserrat; color:#c3cad6; margin:.6cqw 0 0; position:relative; text-align:center; }
+.cta { position:relative; margin-top:2cqw; font:700 1.8cqw Silkscreen; color:#1b1405; background:var(--yellow); border:0; border-radius:1.2cqw; padding:1.3cqw 4cqw; cursor:pointer; box-shadow:0 .5cqw 0 #b58a12; letter-spacing:.06em; }
+.cta:active { transform:translateY(.3cqw); box-shadow:0 .2cqw 0 #b58a12; }
+.egg { position:relative; width:12cqw; height:15cqw; border-radius:50% 50% 46% 46% / 58% 58% 42% 42%; background:radial-gradient(circle at 35% 30%, #fffaf0, #e8d3a2 58%, #a8894f); box-shadow:0 0 5cqw #ffc83255; cursor:pointer; margin-top:1.6cqw; }
+.egg.shake { animation:shake .12s 3; }
+@keyframes shake { 25% { transform:rotate(-7deg); } 75% { transform:rotate(7deg); } }
+.egg .crk { position:absolute; inset:0; pointer-events:none; }
+.egg .crk i { position:absolute; height:.3cqw; background:#5b4628; border-radius:.2cqw; }
+.stand { position:relative; width:18cqw; height:2.6cqw; margin-top:-1.4cqw; border-radius:50%; background:radial-gradient(#7fe9ff55, transparent 70%); border:.25cqw solid #7fe9ff66; }
+.taps { position:relative; display:flex; gap:.8cqw; margin-top:1.4cqw; }
+.taps i { width:1.3cqw; height:1.3cqw; border-radius:50%; border:.2cqw solid var(--yellow); }
+.taps i.f { background:var(--yellow); }
+.flash { inset:0; background:#fff; opacity:0; pointer-events:none; }
+.flash.on { animation:fl .5s; }
+@keyframes fl { 0% { opacity:.9; } 100% { opacity:0; } }
+.reveal { position:relative; display:flex; gap:3cqw; align-items:center; }
+.portrait { width:16cqw; height:16cqw; border-radius:2cqw; background:linear-gradient(160deg,#2b3a55,#141b27); border:.3cqw solid var(--yellow); display:grid; place-items:center; box-shadow:0 0 4cqw #ffc83244; }
+.portrait .b { width:9cqw; height:11cqw; border-radius:40% 40% 20% 20%; }
+.facts { text-align:left; min-width:0; }
+.facts .role { display:inline-block; font:700 1cqw Silkscreen; color:#1b1405; background:var(--cyan); padding:.3cqw .7cqw; border-radius:.5cqw; letter-spacing:.1em; }
+.facts h2 { text-align:left; font-size:4.4cqw; }
+.facts .atk { margin-top:1cqw; font:700 1.4cqw Montserrat; color:#fff; }
+.facts .atk span { display:block; font:600 1.15cqw Montserrat; color:var(--muted); }
+.cards { position:relative; display:grid; grid-template-columns:repeat(4, 15cqw); gap:1cqw; margin-top:1.6cqw; }
+.card { height:7cqw; border-radius:1.2cqw; background:linear-gradient(160deg,#2a3a56,#151d2b); border:.22cqw solid var(--orange); display:flex; flex-direction:column; justify-content:center; padding:0 1cqw; opacity:0; transform:translateY(1.5cqw) scale(.9); animation:in .35s forwards; }
+.card b { font:700 1.2cqw Montserrat; color:#fff; } .card i { font:700 1cqw Silkscreen; color:var(--yellow); font-style:normal; }
+.card.passive { border-color:#6b7a94; } .card.passive i { color:var(--muted); }
+@keyframes in { to { opacity:1; transform:none; } }
+.lvl { position:relative; font:700 8cqw Silkscreen; color:var(--yellow); text-shadow:0 .5cqw 0 #b58a12; animation:pop .5s; }
+@keyframes pop { 0% { transform:scale(.3); } 70% { transform:scale(1.12); } }
+
+/* bottom sheet (equip / spend) */
+.sheet { left:0; right:0; bottom:0; height:31cqw; background:#0d131cf2; border-top:.25cqw solid var(--line); border-radius:2cqw 2cqw 0 0; display:grid; grid-template-columns:30cqw minmax(0,1fr); gap:2cqw; padding:1.8cqw 7cqw 1.8cqw 7cqw; box-sizing:border-box; }
+.sheet h4 { margin:0 0 .8cqw; font:700 1.2cqw Silkscreen; color:var(--yellow); letter-spacing:.1em; }
+.btnmap { display:flex; gap:2cqw; justify-content:center; }
+.bigbtn { width:12cqw; border-radius:2cqw; background:#121a26; border:.3cqw solid #ffffff44; display:flex; flex-direction:column; overflow:hidden; }
+.bigbtn .lab { font:700 1cqw Silkscreen; color:var(--muted); text-align:center; padding:.5cqw 0; letter-spacing:.08em; }
+.sock { height:7.5cqw; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; font:700 1.15cqw Montserrat; color:#fff; padding:0 .6cqw; border-top:.2cqw solid #ffffff1a; }
+.sock small { font:700 .95cqw Montserrat; color:var(--orange); margin-top:.3cqw; }
+.sock.empty { color:#ffffff55; } .sock.next { background:#ffc8321a; box-shadow:inset 0 0 0 .25cqw var(--yellow); }
+.plist { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.9cqw; align-content:start; overflow:auto; }
+.pc { height:5.4cqw; border-radius:1cqw; background:linear-gradient(160deg,#22304a,#151d2b); border:.22cqw solid var(--orange); color:#fff; font:700 1.15cqw Montserrat; display:flex; align-items:center; justify-content:space-between; padding:0 1cqw; cursor:pointer; }
+.pc i { font:700 1cqw Silkscreen; color:var(--yellow); font-style:normal; }
+.pc.used { opacity:.35; border-color:var(--line); cursor:default; }
+.pc.first { box-shadow:0 0 0 .35cqw #ffc83288; }
+.stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9cqw; align-content:start; }
+.st { height:5.4cqw; border-radius:1cqw; background:#151d2b; border:.2cqw solid var(--line); display:flex; align-items:center; padding:0 .6cqw 0 1.2cqw; gap:1cqw; }
+.st b { flex:1; font:700 1.25cqw Montserrat; color:#fff; } .st em { font:700 1.1cqw Silkscreen; color:var(--muted); font-style:normal; }
+.st em.on { color:var(--green); }
+.plus { width:4.6cqw; height:4.2cqw; border-radius:.9cqw; border:0; background:var(--yellow); font:800 2.2cqw Montserrat; color:#1b1405; cursor:pointer; }
+.plus.p { animation:pulse 1s infinite; }
+.ptbox { display:flex; flex-direction:column; align-items:center; justify-content:center; background:#151d2b; border-radius:1.4cqw; }
+.ptbox b { font:700 5cqw Silkscreen; color:var(--yellow); line-height:1; } .ptbox span { font:700 1.2cqw Montserrat; color:#fff; margin-top:.6cqw; } .ptbox small { font:600 1cqw Montserrat; color:var(--muted); }
+.sheet .go { position:absolute; right:7cqw; top:-6cqw; }
+.tiles { position:relative; display:grid; grid-template-columns:repeat(3, 19cqw); gap:1.4cqw; margin-top:1.8cqw; }
+.tile { border-radius:1.4cqw; background:#151d2b; border:.2cqw solid var(--line); padding:1.4cqw; text-align:left; }
+.tile .ic { font:700 2.4cqw Silkscreen; color:var(--yellow); } .tile b { display:block; font:800 1.4cqw Montserrat; color:#fff; margin-top:.5cqw; } .tile span { font:600 1.1cqw Montserrat; color:var(--muted); }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">MECHA DINO ARENA · FIRST-TIME FLOW · MOCKUP v0.4</div>
+  <h1>Phone-first redesign, drawn on your real phone HUD</h1>
+  <p class="lede">Built on the layout from your screenshots (2532 × 1170). Nothing sits under the Roblox buttons. Each moment has one thing to look at. Every attack style gets its own lesson. Tap and hold on the phone like you would in game: tap ATTACK, hold it down, drag down on a slot button to pull.</p>
+  <div class="bar">
+    <span class="eyebrow" style="color:var(--muted)">DINO</span>
+    <select id="dinoSel"></select>
+    <button data-dev="phone" aria-pressed="true">Phone</button>
+    <button data-dev="pc" aria-pressed="false">PC</button>
+    <button id="restart">Restart</button>
+  </div>
+  <div class="grid">
+    <div style="min-width:0"><div class="phone" id="ph"></div><div class="chips" id="jump"></div></div>
+    <div class="note" id="note"></div>
+  </div>
+</div>
+
+<script>
+const DINOS = {
+  Teno:{role:"HOLDER", col:"#7a6a52", attacks:[{n:"Scratch", how:"tap", line:"Hits in front of you.", stamp:"TenoScratchAt"},{n:"Tail Slam", how:"hold", line:"Hits behind you. Turn your back to it.", stamp:"TenoSlamAt"}],
+    parts:["Herd Bellow","Tail Grab & Fling","Boulder Mortar","Stomp Shockwave","Challenge Call","Shield Armor","Hydraulic Leap"], passive:[], stats:["Survivor","Heavy Tail","Front Claws","Thick Hide","Brace","Charge Up","Buck Off"]},
+  Dilo:{role:"RANGED", col:"#3c8a7a", attacks:[{n:"Spit", how:"tap", line:"5 shots, then it reloads.", stamp:"DiloDartAt"},{n:"Sniper Spit", how:"hold", line:"Hold 1.5 s with a full clip. One big shot.", stamp:"DiloSnipeAt"}],
+    parts:["Venom Gatling","Toxin Mortar","Sonic Hiss","Sniper Scope","Spine Burst","Antivenom Pump","Spring Jets","Venom Overdrive"], passive:[], stats:["Venom Feast","Venom Spit","Long Spit","Toxic Blood","Quick Draw","Cold Blood"]},
+  Therizino:{role:"FIGHTER", col:"#5a7a9a", attacks:[{n:"Claw Combo", how:"tap3", line:"Tap 3 times. The 3rd hit is the big one.", stamp:"TheriComboStep = 3"}],
+    parts:["Reaper's Hook","Feather Barrage","Harvest Field","Deflector Claws","Dash","Overclock Joints","Snare Wires"], passive:["Overclock Joints"], stats:["Reaper's Harvest","Building Fury","Flow Guard","Flowing Cuts","Fourth Cut"]},
+  Raptor:{role:"FIGHTER", col:"#4f9a3c", key:"F", attacks:[{n:"Pounce", how:"tap", line:"Jump on it and hang on.", stamp:"pounce"}],
+    parts:["Adrenaline Injector","Shock Cannon","Energy Shield","Cloak Field","Thrusters","Shock Mine","Scent Sense"], passive:[], stats:["Regeneration","Lifesteal","Blade Claws","Thick Hide","Sprint Legs"]},
+  Pachy:{role:"HOLDER", col:"#b08a3c", attacks:[{n:"Headbutt", how:"tap", line:"Charge into it. You have 2 charges.", stamp:"headbutt"}],
+    parts:["Med-Station","Grappling Hook","Blood Rush","Dome Visor","Mecha Legs","Overclocked Servo Dash","Ink Shooter","Tether Spike"], passive:[], stats:["Last Stand","Battering Dome","Bone Crest","Head Down","Sprint Legs"]},
+  Herrera:{role:"FIGHTER", col:"#9a5a3c", attacks:[{n:"Dash Slash", how:"tap", line:"Dash through it.", stamp:"slash"}],
+    parts:["Adrenaline Injector","Quill Launcher","Cruise Missile","Stun Breaker","Glider Wings","Smoke Pods","Strobe Frill","Razor Caltrops","Goo Blob Shooter"], passive:[], stats:["Lifesteal","Jaws","Blood Frenzy","Thick Hide","Back Plating","Sprint Legs","Tree Stalker"]},
+  Troodon:{role:"RANGED", col:"#7a5ab0", attacks:[{n:"Glow Pod Toss", how:"tap", line:"Lobs a pod. Aim a little ahead.", stamp:"toss"}],
+    parts:["Mender Drone","Bloom Tank","Bloom Burst","Arc Lantern","Sleep Dart","Sentry Pod","Sap Wall","Feather Shed","Shield Dome","Portal Feathers"], passive:["Bloom Tank"], stats:["Glow Feeder","Spore Leech","Hunter's Eyes","Zone Ward","Quick Feet","Night Watcher"]},
+};
+const OBJ = ["ATTACK", "EQUIP 4 PARTS", "USE EACH PART", "DEFEAT THE BOT", "SPEND YOUR POINT"];
+const SLOT_KEYS = ["R","C","T","V"];
+const NOTES = {
+  egg:["Full-screen moment, game HUD hidden (Brawl Stars / Clash Royale box opening: dark backdrop, rays, one big object, tap to open).","3 taps to hatch, a crack per tap, then a flash. Replaces the welcome card and the old egg card (one screen instead of two).","Copy: \"YOUR FIRST DINO\" / \"It's free. Tap the egg.\""],
+  reveal:["The dino in a portrait frame (in game: the dino's 3D model in a ViewportFrame), its role, and its main attack with how to use it.","Copy: role chip, name, \"MAIN ATTACK\" lines from the attack table."],
+  parts:["Part cards deal in one by one. Button parts in orange; passive parts grey with \"PASSIVE\". \"MAXED ★\" on each.","Copy: \"<n> MECHA PARTS\" / \"All maxed. They're yours.\""],
+  attack:["Objective pill top-centre, right of the Roblox buttons (TopbarSafeInsets): step number, 1-5 word goal, progress bar. Replaces the 10-row checklist.","Only the controls being taught are shown: joystick, camera, ATTACK. JUMP and the slot buttons come back later (Fortnite: one focus, no more than 5-6 controls).","The ATTACK button gets a pulsing ring, a finger that shows tap / hold, and a callout with the move's name. One short tip line under the objective; no chat box over the bot.","Dinos with 2 styles get 2 lessons: Teno Scratch then Tail Slam, Dilo Spit then Sniper Spit; Therizino taps 3 times."],
+  equip:["Bottom sheet instead of the full-screen Lab. Left: your 2 real buttons, each split into its TAP part (top) and PULL part (bottom). Right: your parts. Tap a part, it fills the glowing socket.","The world stays visible above the sheet. Nothing sits under the Roblox buttons."],
+  use:["The slot buttons appear, ring + finger on the exact one. Tap first (top parts), then pull down (bottom parts).","Callout names the part and the gesture."],
+  defeat:["Bot gets a health bar. Kill = full-screen LEVEL 2 burst."],
+  levelup:["Full-screen, one number, one button."],
+  spend:["Bottom sheet with big stat rows (2 columns, 5 cqw tall: thumb size). The first + pulses."],
+  points:["3 icon tiles, short lines. UNLOCK DINOS shows \"Coming soon.\" until unlocking exists."],
+  done:["Summary: dino, level, parts equipped. One button to the island."],
+};
+
+let dev = "phone", dinoKey = "Teno", st;
+function fresh() { return {scene:"egg", taps:0, lesson:0, lessonDone:[], tap3:0, slots:[null,null,null,null], used:[false,false,false,false], botHp:100, spent:null}; }
+st = fresh();
+const $ = id => document.getElementById(id);
+const ph = $("ph");
+const D = () => DINOS[dinoKey];
+
+function hud(show) {
+  // show: set of control names to show; others hidden
+  const s = new Set(show);
+  const g = n => s.has(n) ? "" : "gone";
+  if (dev === "pc") {
+    const keys = [0,2,1,3].map(i => `<div class="k ${st.slots[i] ? "full" : ""} ${g("slots")}" data-slot="${i}"><i>${SLOT_KEYS[i]}</i>${st.slots[i] || "+"}</div>`).join("");
+    return `<div class="hud">
+      <div class="streak ${g("top")}">0</div>
+      <div class="health ${g("top")}"><b>HEALTH</b><i></i></div>
+      <div class="hotbar ${g("bar")}">${keys}<div class="sep ${g("slots")}"></div><div class="k atk ${g("attack")}" data-atk="1"><i>${D().key || "LMB"}</i>${D().attacks[0].n.toUpperCase()}</div><div class="k ${g("jump")}"><i>SPACE</i>JUMP</div></div>
+      <div class="rbx-logo"></div><div class="rbx-pill"></div></div>`;
+  }
+  const sb = b => `<div class="slot slot${b + 1} ${st.slots[b] ? "full" : ""} ${g("slots")}" data-pbtn="${b}"><div class="t">${st.slots[b] || "+<br>SLOT " + (b + 1)}</div>${st.slots[b + 2] ? `<div class="p">▼ ${st.slots[b + 2]}</div>` : ""}</div>`;
+  return `<div class="hud">
+    <div class="health ${g("top")}"><b>HEALTH</b><i></i></div>
+    <div class="streak ${g("top")}">0</div>
+    <div class="stick ${g("stick")}"></div>
+    <div class="jump ${g("jump")}">JUMP</div>
+    <div class="attack ${g("attack")}" data-atk="1">ATTACK<small>${D().attacks[st.lesson] ? D().attacks[st.lesson].n : D().attacks[0].n}</small></div>
+    ${sb(1)}${sb(0)}
+    <div class="rbx-logo"></div><div class="rbx-pill"></div></div>`;
+}
+function world(bot) {
+  const showHp = st.scene === "defeat";
+  return `<div class="world"><div class="pad"></div><div class="fence"></div>
+    ${bot ? `<div class="dino bot ${st.botHp <= 0 ? "down" : ""}" id="bot">${showHp ? `<div class="hp"><i style="width:${Math.max(0, st.botHp)}%"></i></div>` : ""}<div class="b"></div>${st.botHp > 0 ? `<div class="ring"></div><div class="arrow">▼</div>` : ""}</div>` : ""}
+    <div class="dino me"><div class="b" style="background:${D().col}"></div></div></div>`;
+}
+function objective(i, subs, tip) {
+  const segs = OBJ.map((_, k) => `<i class="${k < i ? "d" : k === i ? "c" : ""}"></i>`).join("");
+  const sub = subs ? `<div class="sub">${subs.map(s => `<span class="${s.d ? "d" : s.c ? "c" : ""}">${s.d ? "✓" : "•"} ${s.t}</span>`).join("")}</div>` : "";
+  return `<div class="obj"><div class="n">STEP ${i + 1}/${OBJ.length}</div><div class="t">${OBJ[i]}</div>${sub}${tip ? `<div class="tp">${tip}</div>` : ""}<div class="segs">${segs}</div></div>`;
+}
+// geometry of the real controls (cqw), for rings / fingers / callouts
+const G = { attack:{x:77.9, y:30.2, s:12.2}, slot1:{x:67.1, y:34.4, s:8.9}, slot2:{x:56.9, y:30.4, s:8.9} };
+function ringOn(g, round) { return `<div class="ringc ${round ? "" : "rings"}" style="left:${g.x - .8}cqw;top:${g.y - .8}cqw;width:${g.s + 1.6}cqw;height:${g.s + 1.6}cqw"></div>`; }
+function handOn(g, kind) { return `<div class="hand ${kind}" style="left:${g.x + g.s / 2 - 1.6}cqw;top:${g.y + g.s / 2 - 1.6}cqw"></div>`; }
+function callLeft(g, big, small) { return `<div class="callout r" style="right:${100 - g.x + 1.6}cqw;top:${g.y + g.s / 2 - 2.2}cqw">${big}${small ? `<small>${small}</small>` : ""}</div>`; }
+function howWords(how) { return how === "hold" ? (dev === "pc" ? "HOLD CLICK, LET GO" : "HOLD, THEN LET GO") : how === "tap3" ? (dev === "pc" ? "CLICK 3 TIMES" : "TAP 3 TIMES") : (dev === "pc" ? (D().key ? "PRESS " + D().key : "CLICK") : "TAP"); }
+function pcTarget(which) {
+  // PC hotbar tile positions (approx): centred bar
+  const order = [0,2,1,3]; const w = 5.6, gap = .8, n = 4;
+  const total = n * w + (n - 1) * gap + .2 + 2 * gap + 2 * w + gap;
+  const left = 50 - total / 2;
+  if (which === "attack") return {x:left + n * (w + gap) + .2 + gap, y:46.2 - 1.4 - w, s:w};
+  const idx = order.indexOf(which);
+  return {x:left + idx * (w + gap), y:46.2 - 1.4 - w, s:w};
+}
+
+function render() {
+  const d = D(); let h = "";
+  const sc = st.scene;
+  if (sc === "egg") {
+    const cr = [[18,34,40,-20],[46,52,32,25],[24,62,50,-8]].slice(0, st.taps).map(c => `<i style="left:${c[0]}%;top:${c[1]}%;width:${c[2]}%;transform:rotate(${c[3]}deg)"></i>`).join("");
+    h = `<div class="layer"><div class="scene"><div class="rays"></div><div class="kick">MECHA DINO ARENA</div><h2>YOUR FIRST DINO</h2><p>It's free. Tap the egg.</p>
+      <div class="egg" id="egg"><div class="crk">${cr}</div></div><div class="stand"></div>
+      <div class="taps">${[0,1,2].map(i => `<i class="${i < st.taps ? "f" : ""}"></i>`).join("")}</div></div>
+      ${st.taps === 0 ? `<div class="hand tap" style="left:51.5cqw;top:27cqw"></div>` : ""}<div class="flash" id="flash"></div></div>`;
+  } else if (sc === "reveal") {
+    const a = d.attacks.map(x => `${x.n}<span>${howWords(x.how).toLowerCase().replace(/^./, c => c.toUpperCase())}. ${x.line}</span>`).join("");
+    h = `<div class="layer"><div class="scene"><div class="rays"></div><div class="kick">IT HATCHED</div>
+      <div class="reveal" style="margin-top:1.6cqw"><div class="portrait"><div class="b" style="background:${d.col}"></div></div>
+      <div class="facts"><span class="role">${d.role}</span><h2>${dinoKey.toUpperCase()}</h2><div class="atk" style="color:var(--yellow);font:700 1cqw Silkscreen;letter-spacing:.1em">MAIN ATTACK</div><div class="atk">${a}</div></div></div>
+      <button class="cta" data-go="parts">NEXT</button></div><div class="flash on"></div></div>`;
+  } else if (sc === "parts") {
+    const cards = d.parts.map((p, i) => { const pas = d.passive.includes(p); return `<div class="card ${pas ? "passive" : ""}" style="animation-delay:${i * .08}s"><b>${p}</b><i>${pas ? "PASSIVE ★" : "MAXED ★"}</i></div>`; }).join("");
+    h = `<div class="layer"><div class="scene"><div class="rays"></div><div class="kick">${dinoKey.toUpperCase()}'S GEAR</div><h2>${d.parts.length} MECHA PARTS</h2><p>All maxed. They're yours.</p>
+      <div class="cards" style="grid-template-columns:repeat(${Math.min(5, Math.ceil(d.parts.length / 2))}, 15cqw)">${cards}</div>
+      <button class="cta" data-go="attack">START TRAINING</button></div></div>`;
+  } else if (sc === "attack") {
+    const L = d.attacks[st.lesson];
+    const subs = d.attacks.length > 1 ? d.attacks.map((x, i) => ({t:x.n, d:st.lessonDone[i], c:i === st.lesson})) : null;
+    const g = dev === "pc" ? pcTarget("attack") : G.attack;
+    const all = st.lessonDone.length === d.attacks.length && st.lessonDone.every(Boolean);
+    h = world(true) + hud(dev === "pc" ? ["bar","attack","top","jump"] : ["stick","attack","top"]) + `<div class="layer">${objective(0, subs, all ? "Nice. That's your attack." : L.line)}`;
+    if (all) {
+      setTimeout(() => { if (st.scene === "attack") go("equip"); }, 1100); // auto-advance (no extra tap)
+    } else {
+      h += ringOn(g, dev !== "pc") + handOn(g, L.how);
+      h += dev === "pc" ? `<div class="callout b" style="left:${g.x + g.s / 2}cqw;transform:translateX(-50%);top:${g.y - 6}cqw">${howWords(L.how)}<small>${L.n}${L.how === "tap3" ? " · " + st.tap3 + "/3" : ""}</small></div>`
+        : callLeft(g, howWords(L.how), L.n + (L.how === "tap3" ? " · " + st.tap3 + "/3" : ""));
+    }
+    h += `</div>`;
+  } else if (sc === "equip") {
+    const btnParts = d.parts.filter(p => !d.passive.includes(p));
+    const next = st.slots.findIndex(x => !x);
+    const sock = (i, lab) => `<div class="sock ${st.slots[i] ? "" : "empty"} ${i === next ? "next" : ""}">${st.slots[i] || "EMPTY"}<small>${lab}</small></div>`;
+    const map = dev === "pc"
+      ? `<div class="btnmap" style="flex-wrap:wrap;gap:1cqw">${[0,1,2,3].map(i => `<div class="bigbtn" style="width:13cqw"><div class="lab">KEY ${SLOT_KEYS[i]}</div>${sock(i, "")}</div>`).join("")}</div>`
+      : `<div class="btnmap"><div class="bigbtn"><div class="lab">BUTTON 1</div>${sock(0, "TAP")}${sock(2, "PULL ▼")}</div><div class="bigbtn"><div class="lab">BUTTON 2</div>${sock(1, "TAP")}${sock(3, "PULL ▼")}</div></div>`;
+    const list = btnParts.map((p, i) => `<div class="pc ${st.slots.includes(p) ? "used" : ""} ${next >= 0 && !st.slots.includes(p) && btnParts.filter(q => !st.slots.includes(q))[0] === p ? "first" : ""}" data-part="${p}"><span>${p}</span><i>★</i></div>`).join("");
+    h = world(true) + hud(["top"]) + `<div class="layer">${objective(1, null, next < 0 ? "Ready. Try them on the bot." : (dev === "pc" ? "Pick a part for each key." : "Each button holds 2 parts. Tap for the top one, pull down for the bottom one."))}
+      <div class="sheet"><div><h4>${dev === "pc" ? "YOUR KEYS" : "YOUR 2 BUTTONS"}</h4>${map}</div><div style="min-width:0;display:flex;flex-direction:column"><h4>TAP A PART · ${st.slots.filter(Boolean).length}/4</h4><div class="plist">${list}</div></div>
+      ${next < 0 ? `<button class="cta go" data-go="use">TRY THEM</button>` : ""}</div></div>`;
+  } else if (sc === "use") {
+    const i = st.used.findIndex(u => !u);
+    const pullTip = (st.used[2] || st.used[3]) ? "Pull down again." : "Each button has a 2nd part. Press and drag down.";
+    const tip = i < 0 ? "All 4 done." : dev === "pc" ? "Each part is on its own key." : (i > 1 ? pullTip : "Tap a button to use its part.");
+    h = world(true) + hud(dev === "pc" ? ["bar","slots","attack","top","jump"] : ["stick","attack","slots","top","jump"]) + `<div class="layer">${objective(2, null, tip)}`;
+    if (i < 0) setTimeout(() => { if (st.scene === "use") go("defeat"); }, 1100);
+    else if (dev === "pc") {
+      const g = pcTarget(i);
+      h += ringOn(g, false) + `<div class="callout b" style="left:${g.x + g.s / 2}cqw;transform:translateX(-50%);top:${g.y - 6.4}cqw">PRESS ${SLOT_KEYS[i]}<small>${st.slots[i]}</small></div>`;
+    } else {
+      const b = i % 2, pull = i > 1, g = b === 0 ? G.slot1 : G.slot2;
+      h += ringOn(g, false) + handOn(g, pull ? "pull" : "tap") + `<div class="callout b" style="left:${g.x + g.s / 2}cqw;transform:translateX(-50%);top:${g.y - 6.4}cqw">${pull ? "PULL DOWN ▼" : "TAP"}<small>${st.slots[i]}</small></div>`;
+    }
+    h += `</div>`;
+  } else if (sc === "defeat") {
+    const g = dev === "pc" ? pcTarget("attack") : G.attack;
+    h = world(true) + hud(dev === "pc" ? ["bar","slots","attack","top","jump"] : ["stick","attack","slots","top","jump"]) + `<div class="layer">${objective(3, null, "Finish it. Use anything.")}${ringOn(g, dev !== "pc")}</div>`;
+  } else if (sc === "levelup") {
+    h = `<div class="layer"><div class="scene"><div class="rays"></div><div class="kick">LEVEL UP</div><div class="lvl">2</div><p>+1 skill point</p><button class="cta" data-go="spend">SPEND IT</button></div><div class="flash on"></div></div>`;
+  } else if (sc === "spend") {
+    const rows = d.stats.map((s, i) => `<div class="st"><b>${s}</b><em class="${st.spent === s ? "on" : ""}">${st.spent === s ? "I" : "-"}</em>${st.spent ? "" : `<button class="plus ${i === 0 ? "p" : ""}" data-stat="${s}">+</button>`}</div>`).join("");
+    h = world(false) + hud(["top"]) + `<div class="layer">${objective(4, null, st.spent ? st.spent + " went up." : "Tap + on a stat.")}
+      <div class="sheet" style="grid-template-columns:16cqw minmax(0,1fr)"><div class="ptbox"><b>${st.spent ? 0 : 1}</b><span>SKILL POINT${st.spent ? "S" : ""}</span><small>1 every level</small></div><div style="min-width:0"><h4>${dinoKey.toUpperCase()} STATS</h4><div class="stats">${rows}</div></div>
+      ${st.spent ? `<button class="cta go" data-go="points">NEXT</button>` : ""}</div></div>`;
+  } else if (sc === "points") {
+    h = `<div class="layer"><div class="scene"><div class="rays"></div><div class="kick">HOW YOU GET STRONGER</div><h2>SKILL POINTS</h2><p>1 every level. Kills give XP.</p>
+      <div class="tiles"><div class="tile"><div class="ic">+HP</div><b>STATS</b><span>Health, attack, armor, speed.</span></div><div class="tile"><div class="ic">I→★</div><b>PARTS</b><span>Every part goes from I to ★.</span></div><div class="tile"><div class="ic">🔒</div><b>NEW DINOS</b><span>Coming soon.</span></div></div>
+      <button class="cta" data-go="done">GOT IT</button></div></div>`;
+  } else if (sc === "done") {
+    h = `<div class="layer"><div class="scene"><div class="rays"></div><div class="kick">TRAINING COMPLETE</div><h2>LEVEL 2 ${dinoKey.toUpperCase()}</h2><p>${st.slots.filter(Boolean).length} parts equipped · ${st.spent || "1 stat"} I</p>
+      <button class="cta" data-go="island">GO TO THE ISLAND</button></div></div>`;
+  } else if (sc === "island") {
+    h = `<div class="layer"><div class="scene"><h2>THE ISLAND</h2><p>(the normal game starts here)</p><button class="cta" id="again">RESTART</button></div></div>`;
+  }
+  ph.innerHTML = h;
+  // notes + jump chips
+  const key = sc === "island" ? "done" : sc;
+  $("note").innerHTML = `<h3>${sc.toUpperCase()}</h3><ul>${(NOTES[key] || []).map(t => `<li>${t}</li>`).join("")}</ul>
+    <h3 style="margin-top:12px">WHAT CHANGED FROM v0.3 / LIVE 1.0</h3><ul>
+    <li>Nothing under the Roblox buttons (safe insets).</li><li>The game HUD hides during reward moments; training shows only what is being taught.</li>
+    <li>One objective pill instead of the 10-row checklist and the chat box.</li><li>Ring + finger + callout on the real control for every lesson.</li>
+    <li>Every attack style taught (Teno, Dilo 2 lessons; Therizino 3-hit combo).</li><li>Equip and stats as bottom sheets with thumb-size cards; one font set.</li>
+    <li>Fewer taps: welcome + egg merged; attack and parts lessons move on by themselves when done.</li></ul>`;
+  const order = ["egg","reveal","parts","attack","equip","use","defeat","levelup","spend","points","done"];
+  $("jump").innerHTML = order.map(s => `<button class="${s === sc ? "cur" : ""}" data-jump="${s}">${s}</button>`).join("");
+}
+
+function go(s) {
+  if (s === "use") st.used = [false,false,false,false];
+  if (s === "defeat") st.botHp = 100;
+  st.scene = s; render();
+}
+function toast(t) { const e = document.createElement("div"); e.className = "toast"; e.textContent = t; ph.querySelector(".layer")?.appendChild(e); setTimeout(() => e.remove(), 1200); }
+function hitBot(dmg) {
+  const b = $("bot"); if (b) { b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 150); }
+  if (st.scene === "defeat") { st.botHp -= dmg; if (st.botHp <= 0) { render(); setTimeout(() => go("levelup"), 700); return; } render(); }
+}
+function lessonDone() {
+  const d = D(); st.lessonDone[st.lesson] = true; const name = d.attacks[st.lesson].n;
+  if (st.lesson < d.attacks.length - 1) st.lesson++;
+  render(); toast("✓ " + name);
+}
+// input
+let press = null;
+ph.addEventListener("pointerdown", e => {
+  const a = e.target.closest("[data-atk]"), pb = e.target.closest("[data-pbtn]");
+  if (a) press = {kind:"atk", t:performance.now()};
+  else if (pb) { press = {kind:"slot", b:+pb.dataset.pbtn, y:e.clientY, el:pb, on:false}; }
+});
+ph.addEventListener("pointermove", e => {
+  if (!press || press.kind !== "slot") return;
+  const on = e.clientY - press.y >= 18 && !!st.slots[press.b + 2];
+  if (on !== press.on) { press.on = on; press.el.classList.toggle("pulling", on); }
+});
+ph.addEventListener("pointerup", () => {
+  if (!press) return; const p = press; press = null;
+  if (p.kind === "atk") {
+    const held = performance.now() - p.t;
+    if (st.scene === "attack") {
+      const L = D().attacks[st.lesson]; if (!L || st.lessonDone[st.lesson]) return;
+      hitBot(0);
+      if (L.how === "hold" ? held >= 400 : held < 400) {
+        if (L.how === "tap3") { st.tap3++; if (st.tap3 >= 3) lessonDone(); else render(); }
+        else lessonDone();
+      } else toast(L.how === "hold" ? "Hold it longer." : "Just a quick tap.");
+    } else if (st.scene === "defeat" || st.scene === "use") hitBot(34);
+  } else if (p.kind === "slot" && st.scene === "use") {
+    const i = p.on ? p.b + 2 : p.b;
+    p.el.classList.remove("pulling");
+    if (!st.used[i]) { st.used[i] = true; render(); toast("✓ " + st.slots[i]); }
+  }
+});
+ph.addEventListener("click", e => {
+  const go_ = e.target.closest("[data-go]"); if (go_) return go(go_.dataset.go);
+  if (e.target.id === "again") return restart();
+  if (e.target.closest("#egg") && st.scene === "egg") {
+    st.taps++; const eg = $("egg"); eg.classList.remove("shake"); void eg.offsetWidth; eg.classList.add("shake");
+    if (st.taps >= 3) { $("flash").classList.add("on"); setTimeout(() => go("reveal"), 450); } else render();
+    return;
+  }
+  const part = e.target.closest("[data-part]");
+  if (part && st.scene === "equip") { const p = part.dataset.part; if (st.slots.includes(p)) return; const i = st.slots.findIndex(x => !x); if (i >= 0) { st.slots[i] = p; render(); } return; }
+  const stat = e.target.closest("[data-stat]");
+  if (stat && st.scene === "spend" && !st.spent) { st.spent = stat.dataset.stat; render(); toast("✓ " + st.spent); return; }
+  const slot = e.target.closest("[data-slot]");
+  if (slot && dev === "pc" && st.scene === "use") { const i = +slot.dataset.slot; if (st.slots[i] && !st.used[i]) { st.used[i] = true; render(); toast("✓ " + st.slots[i]); } }
+});
+document.addEventListener("keydown", e => {
+  if (dev !== "pc") return; const k = e.key.toUpperCase();
+  const i = SLOT_KEYS.indexOf(k);
+  if (i >= 0 && st.scene === "use" && st.slots[i] && !st.used[i]) { st.used[i] = true; render(); toast("✓ " + st.slots[i]); }
+});
+$("jump").addEventListener("click", e => {
+  const b = e.target.closest("[data-jump]"); if (!b) return; const s = b.dataset.jump;
+  const btn = D().parts.filter(p => !D().passive.includes(p));
+  if (["use","defeat","levelup","spend","points","done"].includes(s) && !st.slots[3]) st.slots = btn.slice(0, 4);
+  if (["equip","use","defeat","levelup","spend","points","done"].includes(s)) { st.lessonDone = D().attacks.map(() => true); st.lesson = D().attacks.length - 1; }
+  if (s === "attack") { st.lesson = 0; st.lessonDone = []; st.tap3 = 0; }
+  if (s === "equip") st.slots = [null,null,null,null];
+  if (s === "egg") st.taps = 0;
+  go(s);
+});
+function restart() { st = fresh(); render(); }
+$("restart").onclick = restart;
+document.querySelectorAll("[data-dev]").forEach(b => b.onclick = () => { dev = b.dataset.dev; document.querySelectorAll("[data-dev]").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); });
+const sel = $("dinoSel");
+sel.innerHTML = Object.keys(DINOS).map(k => `<option>${k}</option>`).join("");
+sel.onchange = () => { dinoKey = sel.value; const sc = st.scene; st = fresh(); st.scene = sc; if (sc !== "egg") $("jump").querySelector(`[data-jump="${sc}"]`)?.click(); else render(); };
+render();
+</script>
