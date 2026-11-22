@@ -185,6 +185,7 @@ VERSION = "1.17" -- v1.17 the match intro voice line over the pre-match countdow
 VERSION = "1.18" -- v1.18 the Raptor's buttons on their beats (round 17 picks)
 VERSION = "1.19" -- v1.19 the Dilo's buttons on their beats (round 18 picks)
 VERSION = "1.20" -- v1.20 the Herrera's buttons on their beats (round 19 picks)
+VERSION = "1.21" -- v1.21 the Troodon's buttons on their beats (round 20 picks)
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -306,6 +307,38 @@ VERSION = "1.20" -- v1.20 the Herrera's buttons on their beats (round 19 picks)
 --                     then hgliderclose.
 --   While GameSoundsHerrBeatsEnabled (default true) these replace the 1.5 hquills / hsmoke / hstrobe / hbreaker / hcaltrops / hgoo /
 --   hglider / hcmlaunch / hcmboom sounds; false = 1.19. The Adrenaline Injector keeps the Raptor's beat-timed adrenaline (1.18).
+-- v1.21 (MDA-552, sound pass round 20; Kepu 2026-11-22 05:30 "Mender C, Lantern A, Sap B, Shed A, Portal A, Burst A, Dome C,
+--   Sleep A, Sentry B" on the Troodon pick page that plays Studio recordings of the game): the Troodon's nine part buttons get
+--   real sounds (recipe docs/sfx/gen_troodon_v2_sfx.py, Sonniss; 30 parts imported through Asset Manager in one import, ids
+--   checked with GetProductInfo), each part on the beat the server stamps (3D at the troodon unless noted; heard by everyone
+--   near it):
+--     Mender Drone    omenderlaunch at TrooMenderAt; omenderarrive at TrooMenderArriveAt on the dino in TrooMenderTarget (not
+--                     when TrooMenderEndAt came first: a cancelled wind-up); omenderloop (loop) on that dino from
+--                     + GameSoundsTrooMenderLoopAt (0.1) until TrooMenderUntil or TrooMenderEndAt; at each TrooMenderHopAt the
+--                     loop moves: omenderarrive on the TrooMenderHopTo dino at + GameSoundsTrooMenderHopFly (0.5), the loop
+--                     there; omenderend at TrooMenderEndAt.
+--     Arc Lantern     olanternthrow at TrooLanternAt; olanternland at TrooLanternLandAt at TrooLanternTo (re-stamped at the
+--                     landing); olanternzap at every TrooHitAt with TrooHitKind "zap", on the dino zapped (the chain too).
+--     Sap Wall        osapthrow at TrooSapAt; osaprise at TrooSapSplatAt at TrooSapTo (not when TrooSapResult is "occupied",
+--                     read a frame later); osapend at TrooSapEndAt at that wall (the oldest standing one: 2 charges).
+--     Feather Shed    oshedsnap at TrooShedAt (the stun / pin / snare breaks); oshedburst at TrooShedBurstAt.
+--     Portal Feathers oportaltear at TrooRiftAt (placing starts); oportaltrail (loop) from + GameSoundsTrooRiftTrailAt (0.1)
+--                     while TrooRiftPlacing stays true for that rift; oportalopen at TrooRiftOpenAt; oportaltravel at every
+--                     TrooRiftTravelAt, on the dino carried.
+--     Bloom Burst     oburstthrow at TrooBurstAt; oburstbloom at TrooBurstLandAt at TrooBurstTo.
+--     Shield Dome     odomethrow at TrooDomeAt; when the troodon's TrooDomeUntil is written ahead (the dome opens) odomeopen at
+--                     TrooDomeTo at that time (TrooDomeUntil - TrooPartDomeTime), odomeloop (loop) there from
+--                     + GameSoundsTrooDomeLoopAt (0.2) until TrooDomeUntil, then odomeclose there.
+--     Sleep Dart      osleepcoil at the troodon's TrooSleepAt (the press); osleepfire at TrooSleepFireAt; on a dino put to sleep
+--                     (its TrooSleepAt with TrooSleepUntil after it) osleephit on it, osleepsnore (loop) on it from
+--                     + GameSoundsTrooSnoreAt (0.6) while TrooSleepUntil is ahead (a wake sets it to 0).
+--     Sentry Pod      osentrythrow at TrooSentryAt; when the troodon's TrooSentryUntil is written ahead (the turret opens)
+--                     osentrydeploy at TrooSentryTo; osentryshot at every TrooSentryShotAt on a Workspace.TrooSentries turret,
+--                     at TrooSentryShotFrom (the muzzle); when TrooSentryUntil is re-stamped to now (the fold: 20 damage dealt
+--                     or its time up; at TrooSentryUntil when it runs its full time) osentryfold at TrooSentryTo.
+--   While GameSoundsTrooBeatsEnabled (default true) these replace the 1.6 oburst / odome / olantern / omender / oportal /
+--   osapwall / osentry / oshed / osleep sounds; false = 1.20. Last Feather, Fortify Field, Overheal Plume and Bloom Tank are
+--   passives with no sound in this pass.
 script:SetAttribute("GameSoundsVersion", VERSION)
 local player = Players.LocalPlayer
 
@@ -438,6 +471,24 @@ end
 local function herrOn() return script:GetAttribute("GameSoundsHerrBeatsEnabled") ~= false end -- v1.20
 local HERR_OLD = {hquills = true, hsmoke = true, hstrobe = true, hbreaker = true, hcaltrops = true, hgoo = true, hglider = true,
 	hcmlaunch = true, hcmboom = true} -- v1.20 (hcmboom: playAt)
+local TROO_PART = {} -- v1.21 the Troodon's beat-timed parts: {id, volume}
+for e, v in pairs({omenderlaunch = {"99009182988210", 0.6}, omenderarrive = {"116045912905115", 0.6}, omenderloop = {"95181286988888", 0.35},
+	omenderend = {"122559489819966", 0.5}, olanternthrow = {"95163292239295", 0.6}, olanternland = {"77539393876625", 0.6},
+	olanternzap = {"111375685237439", 0.7}, osapthrow = {"106369451561329", 0.6}, osaprise = {"115469769972629", 0.8},
+	osapend = {"125524126572603", 0.6}, oshedsnap = {"79825977442236", 0.7}, oshedburst = {"123690629490385", 0.8},
+	oportaltear = {"72062111983431", 0.6}, oportaltrail = {"128067302402742", 0.35}, oportalopen = {"80513605009971", 0.8},
+	oportaltravel = {"79339814155678", 0.6}, oburstthrow = {"122205011242643", 0.6}, oburstbloom = {"95511355345706", 0.8},
+	odomethrow = {"89868324693570", 0.6}, odomeopen = {"140173216518979", 0.7}, odomeloop = {"79833451776212", 0.35},
+	odomeclose = {"86207959673472", 0.6}, osleepcoil = {"118865066231613", 0.5}, osleepfire = {"120592415161402", 0.6},
+	osleephit = {"110338858568039", 0.7}, osleepsnore = {"80085252647621", 0.35}, osentrythrow = {"106190589679135", 0.6},
+	osentrydeploy = {"140373364098983", 0.7}, osentryshot = {"127669107723559", 0.45}, osentryfold = {"104480909409328", 0.6}}) do
+	table.insert(EVENTS, e)
+	IDS[e], VOL[e] = v[1], v[2]
+	TROO_PART[e] = true
+end
+local function trooOn() return script:GetAttribute("GameSoundsTrooBeatsEnabled") ~= false end -- v1.21
+local TROO_OLD = {oburst = true, odome = true, olantern = true, omender = true, oportal = true, osapwall = true, osentry = true,
+	oshed = true, osleep = true} -- v1.21
 local PACHY_OLD = {phook = true, pink = true, pmed = true, pdash = true, ptether = true, pvisor = true, pblood = true} -- v1.15
 for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHitGap = 0.07, GameSoundsOccGap = 1,
 	GameSoundsMoveWarn = 5, GameSoundsTickFrom = 3, GameSoundsHurtGap = 0.15, GameSoundsHurtSpawnIgnore = 1, -- v1.2
@@ -458,6 +509,8 @@ for k, v in pairs({GameSoundsEnabled = true, GameSoundsVolume = 1, GameSoundsHit
 	GameSoundsDiloCloudAt = 0.15, GameSoundsDiloSpineHitMax = 6, GameSoundsDiloLoopMax = 30, -- v1.19
 	GameSoundsHerrBeatsEnabled = true, GameSoundsHerrCruiseFlyAt = 0.6, GameSoundsHerrCraterAt = 0.3, GameSoundsHerrSmokeLoopAt = 0.5, -- v1.20
 	GameSoundsHerrCaltropLandAt = 0.42, GameSoundsHerrGooFlight = 0.567, GameSoundsHerrGooGlideFlight = 0.3, GameSoundsHerrGlideLoopAt = 0.15, -- v1.20
+	GameSoundsTrooBeatsEnabled = true, GameSoundsTrooMenderLoopAt = 0.1, GameSoundsTrooMenderHopFly = 0.5, -- v1.21
+	GameSoundsTrooRiftTrailAt = 0.1, GameSoundsTrooDomeLoopAt = 0.2, GameSoundsTrooSnoreAt = 0.6, -- v1.21
 	GameSoundsClickGuis = "MainMenu,Lab,LabButton,PregameScreen,IslandDino,PhoneMenu,RespawnScreen,CameraButton,SquadButton,PortalHUD,ArenaQueue,ArenaStatus,HardpointHUD"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -574,6 +627,7 @@ local function play3D(e, m)
 	if RAPTOR_OLD[e] and raptorOn() then return end -- v1.18: the beat-timed parts replace the 1.3 Raptor sounds
 	if DILO_OLD[e] and diloOn() then return end -- v1.19: the beat-timed parts replace the 1.4 Dilo sounds
 	if HERR_OLD[e] and herrOn() then return end -- v1.20: the beat-timed parts replace the 1.5 Herrera sounds
+	if TROO_OLD[e] and trooOn() then return end -- v1.21: the beat-timed parts replace the 1.6 Troodon sounds
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return end
 	if player:GetAttribute("InMenu") == true then return end
 	local root = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
@@ -624,6 +678,7 @@ local function startPart(e, where, startAt, looped, maxD, minD) -- v1.10: option
 	elseif RAPTOR_PART[e] then if not raptorOn() then return nil end -- v1.18: the Raptor's switch
 	elseif DILO_PART[e] then if not diloOn() then return nil end -- v1.19: the Dilo's switch
 	elseif HERR_PART[e] then if not herrOn() then return nil end -- v1.20: the Herrera's switch
+	elseif TROO_PART[e] then if not trooOn() then return nil end -- v1.21: the Troodon's switch
 	elseif not theriOn() then return nil end -- v1.10: the Teno's switch
 	if script:GetAttribute("GameSoundsEnabled") == false or script:GetAttribute("GameSounds_" .. e .. "Enabled") == false then return nil end
 	if player:GetAttribute("InMenu") == true then return nil end
@@ -1152,6 +1207,120 @@ local function hookHerreraParts(m)
 		if typeof(st) == "number" and t > st then partAt("hgliderclose", m, t) end
 	end)
 end
+-- v1.21 the Troodon's buttons, each on its beat (header)
+local hookedTroo = setmetatable({}, {__mode = "k"})
+local function hookTrooParts(m)
+	if hookedTroo[m] or not m:IsA("Model") then return end
+	hookedTroo[m] = true
+	local function on(attr, fn)
+		m:GetAttributeChangedSignal(attr):Connect(function()
+			local t = m:GetAttribute(attr)
+			if typeof(t) == "number" and trooOn() then fn(t) end
+		end)
+	end
+	local function vec(attr) local v = m:GetAttribute(attr) return typeof(v) == "Vector3" and v or m end
+	on("TrooMenderAt", function(t) -- Mender Drone
+		partAt("omenderlaunch", m, t)
+		local hops = 0
+		local function ended() local e = m:GetAttribute("TrooMenderEndAt") return typeof(e) == "number" and e > t end
+		local function mine() return m.Parent ~= nil and m:GetAttribute("TrooMenderAt") == t and not ended() end
+		local untilT = tonumber(m:GetAttribute("TrooMenderUntil")) or (t + 5)
+		local function stay(target, at, k) -- the drone over `target` from `at`: the arrive, then the hum
+			task.delay(math.max(0, at - serverNow()), function()
+				if not (mine() and hops == k and trooOn()) then return end
+				if target and target.Parent then startPart("omenderarrive", target, at, false) end
+			end)
+			if target then
+				herrLoop("omenderloop", target, at + num("GameSoundsTrooMenderLoopAt", 0.1),
+					function() return mine() and hops == k and target.Parent ~= nil and serverNow() < untilT end)
+			end
+		end
+		stay(findDino(m:GetAttribute("TrooMenderTarget")), tonumber(m:GetAttribute("TrooMenderArriveAt")) or (t + 1.2), 0)
+		local conn
+		conn = m:GetAttributeChangedSignal("TrooMenderHopAt"):Connect(function()
+			local h = m:GetAttribute("TrooMenderHopAt")
+			if not mine() then conn:Disconnect() return end
+			if typeof(h) ~= "number" or h < t then return end
+			hops += 1
+			stay(findDino(m:GetAttribute("TrooMenderHopTo")), h + num("GameSoundsTrooMenderHopFly", 0.5), hops)
+		end)
+	end)
+	on("TrooMenderEndAt", function(t)
+		local a = m:GetAttribute("TrooMenderAt")
+		if typeof(a) == "number" and t >= a then partAt("omenderend", m, t) end
+	end)
+	on("TrooLanternAt", function(t) partAt("olanternthrow", m, t) end) -- Arc Lantern
+	on("TrooLanternLandAt", function(t) partAt("olanternland", vec("TrooLanternTo"), t) end)
+	on("TrooHitAt", function(t) -- ... on the dino zapped
+		if m:GetAttribute("TrooHitKind") == "zap" then partAt("olanternzap", m, t) end
+	end)
+	local walls = {} -- Sap Wall: the standing walls' spots, oldest first (2 charges)
+	on("TrooSapAt", function(t) partAt("osapthrow", m, t) end)
+	on("TrooSapSplatAt", function(t)
+		local to = m:GetAttribute("TrooSapTo")
+		task.wait() -- TrooSapResult is written right after the splat
+		if m:GetAttribute("TrooSapResult") == "occupied" then return end
+		local where = typeof(to) == "Vector3" and to or m
+		table.insert(walls, where)
+		partAt("osaprise", where, t)
+	end)
+	on("TrooSapEndAt", function(t) partAt("osapend", table.remove(walls, 1) or vec("TrooSapTo"), t) end)
+	on("TrooShedAt", function(t) partAt("oshedsnap", m, t) end) -- Feather Shed
+	on("TrooShedBurstAt", function(t) partAt("oshedburst", m, t) end)
+	on("TrooRiftAt", function(t) -- Portal Feathers
+		partAt("oportaltear", m, t)
+		herrLoop("oportaltrail", m, t + num("GameSoundsTrooRiftTrailAt", 0.1),
+			function() return m.Parent ~= nil and m:GetAttribute("TrooRiftPlacing") == true and m:GetAttribute("TrooRiftAt") == t end)
+	end)
+	on("TrooRiftOpenAt", function(t) partAt("oportalopen", m, t) end)
+	on("TrooRiftTravelAt", function(t) partAt("oportaltravel", m, t) end) -- ... on the dino carried
+	on("TrooBurstAt", function(t) partAt("oburstthrow", m, t) end) -- Bloom Burst
+	on("TrooBurstLandAt", function(t) partAt("oburstbloom", vec("TrooBurstTo"), t) end)
+	on("TrooDomeAt", function(t) partAt("odomethrow", m, t) end) -- Shield Dome
+	on("TrooDomeUntil", function(u)
+		if u <= serverNow() then return end
+		local open = math.max(u - (tonumber(m:GetAttribute("TrooPartDomeTime")) or 5), serverNow() - 0.2)
+		local where = vec("TrooDomeTo")
+		local function mine() return m:GetAttribute("TrooDomeUntil") == u end
+		partAt("odomeopen", where, open)
+		herrLoop("odomeloop", where, open + num("GameSoundsTrooDomeLoopAt", 0.2), function() return mine() and serverNow() < u end)
+		task.delay(math.max(0, u - serverNow()), function() if mine() and trooOn() then partAt("odomeclose", where, u) end end)
+	end)
+	on("TrooSleepAt", function(t) -- Sleep Dart: the press on the troodon, the hit on the dino put to sleep
+		local u = tonumber(m:GetAttribute("TrooSleepUntil")) or 0
+		if u <= t then partAt("osleepcoil", m, t) return end
+		partAt("osleephit", m, t)
+		herrLoop("osleepsnore", m, t + num("GameSoundsTrooSnoreAt", 0.6), function()
+			return m.Parent ~= nil and m:GetAttribute("TrooSleepAt") == t and serverNow() < (tonumber(m:GetAttribute("TrooSleepUntil")) or 0)
+		end)
+	end)
+	on("TrooSleepFireAt", function(t) partAt("osleepfire", m, t) end)
+	on("TrooSentryAt", function(t) partAt("osentrythrow", m, t) end) -- Sentry Pod
+	local sentryOpen = nil
+	on("TrooSentryUntil", function(u)
+		local now = serverNow()
+		if u > now + 0.3 then
+			sentryOpen = u
+			local where = vec("TrooSentryTo")
+			partAt("osentrydeploy", where, now)
+			task.delay(u - now, function() -- its full time: TrooSentryUntil is not re-stamped (min(until, now) = until)
+				if sentryOpen == u and trooOn() then sentryOpen = nil partAt("osentryfold", where, u) end
+			end)
+		elseif sentryOpen then
+			sentryOpen = nil
+			partAt("osentryfold", vec("TrooSentryTo"), u)
+		end
+	end)
+end
+local hookedSentry = setmetatable({}, {__mode = "k"})
+local function hookSentry(s) -- v1.21: a Sentry Pod turret's shots (Workspace.TrooSentries)
+	if hookedSentry[s] or not s:IsA("Model") then return end
+	hookedSentry[s] = true
+	s:GetAttributeChangedSignal("TrooSentryShotAt"):Connect(function()
+		local t, from = s:GetAttribute("TrooSentryShotAt"), s:GetAttribute("TrooSentryShotFrom")
+		if typeof(t) == "number" and trooOn() then partAt("osentryshot", typeof(from) == "Vector3" and from or s:GetPivot().Position, t) end
+	end)
+end
 local hookedAbility = setmetatable({}, {__mode = "k"})
 local function hookAbility(m)
 	if hookedAbility[m] or not m:IsA("Model") then return end
@@ -1164,6 +1333,7 @@ local function hookAbility(m)
 	hookRaptorParts(m) -- v1.18
 	hookDiloParts(m) -- v1.19
 	hookHerreraParts(m) -- v1.20
+	hookTrooParts(m) -- v1.21
 	for e, attr in pairs(ABILITY) do
 		m:GetAttributeChangedSignal(attr):Connect(function()
 			if typeof(m:GetAttribute(attr)) == "number" then play3D(e, m) end
@@ -1187,6 +1357,12 @@ task.spawn(function()
 	if not bots then return end
 	bots.ChildAdded:Connect(hookAbility)
 	for _, b in ipairs(bots:GetChildren()) do hookAbility(b) end
+end)
+task.spawn(function() -- v1.21: the Sentry Pod turrets
+	local f = workspace:FindFirstChild("TrooSentries") or workspace:WaitForChild("TrooSentries", 1e6)
+	if not f then return end
+	f.ChildAdded:Connect(hookSentry)
+	for _, c in ipairs(f:GetChildren()) do hookSentry(c) end
 end)
 
 -- v1.5 the Cruise Missile blast: 3D at CruiseBoomPos --------------------------------------------------------------------------
