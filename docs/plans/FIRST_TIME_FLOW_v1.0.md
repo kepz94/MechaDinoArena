@@ -1,4 +1,4 @@
-# Mecha Dino Arena v1.0 (First-Time Flow): build plan (DRAFT, red-team pending)
+# Mecha Dino Arena v1.0 (First-Time Flow): build plan (red-teamed, Kepu 10:46 "Okay let's build it")
 
 **Goal:** a new player gets a free random dino with all of its mecha parts maxed, learns the attack, the 4 slots and the
 parts on a training bot, levels up once, spends the point, learns what points do, and walks onto the island.
@@ -9,8 +9,8 @@ the free parts and LEVEL 2. No skip. Old players keep every dino, never see it; 
 **Architecture:** two new server scripts (DinoOwnership owns who owns which dino and the tutorial state, in its own
 DataStore; TutorialServer owns the training lanes, the bot, the steps and the one XP grant), one new client script (the
 cards, checklist, trainer, prompts), one pure rules module. Existing scripts only get small switched entrances: SkillServer
-(free parts count as given), SpeciesServer / RespawnServer (refuse a locked dino), HubServer (no islet placement while in a
-lane), MainMenu and the 3 dino pickers (lock badges, TUTORIAL button, hidden during the flow).
+(free parts count as given), HubServer (no islet placement while in a lane), MainMenu (TUTORIAL button, hidden during the
+flow).
 
 ## Global constraints
 - Every change additive, behind a switch; every number an attribute. Version-brand script headers, docs/VERSIONS.md,
@@ -36,17 +36,28 @@ lane), MainMenu and the 3 dino pickers (lock badges, TUTORIAL button, hidden dur
 - Lab layout, MainMenu layout (one button and badges added, nothing moved), EggLoader.
 - GameSounds and all sound beats.
 
-## Decisions Kepu still owes (from his "Decide later" and the red-team)
-1. Dino unlock price (DinoUnlockCost). Until set, the unlock button shows SOON and the gate switch stays off.
-2. See the red-team list in the chat reply (test layer, T-Rex, gate timing). Answers are folded in before filing.
+## Red-team synthesis (Kepu 2026-11-22 10:46 answers)
+1. Test layer: "Turn it off". SkillServer SkillTestMaxAllEnabled is set false on the place when this ships (Task 7). Real
+   saved builds come back; the given test parts / stats stop.
+2. T-Rex: "No, roll 7". ROLL_POOL = Raptor, Pachy, Herrera, Teno, Therizino, Dilo, Troodon. The T-Rex is not rolled.
+3. Locks: "Smaller build, locks later". This build records ownership (so the later lock release has the data) but no
+   gate: every dino stays pickable. Cut from this build: the SpeciesServer / RespawnServer gate, lock badges in MainMenu,
+   PregameScreen, IslandDino, RespawnScreen, the unlock purchase and DinoUnlockCost. Follow-up plan: DINO_UNLOCKS_v1.0
+   once Kepu sets the price.
+4. Old players: "Yes, count it". A saved lastSpecies in "MDA_Settings_v1" (SpeciesServer 1.3) also marks an old player.
+5. Text while locks are not built: script attribute TutUnlockTextOn (TutorialServer, default false, copied to the client).
+   false -> the egg card's second line is dropped and the UNLOCK DINOS tile reads "Coming soon." (no lock chips); true ->
+   the mockup text. Flip it with DINO_UNLOCKS_v1.0.
+6. Scope: taken (point 3). Accepted risk: until locks ship, the roll is cosmetic for unlocking (the free dino still gets
+   its maxed parts for real).
 
 ## Deterministic map
 Player tutorial state = DinoOwnership attribute `TutState`:
 - `"wait"`: join, both stores not read yet. Menu waits (no flash of the menu for a new player).
-- `"grand"`: ownership store has no value AND SkillSaveState == "loaded" (has a v2 skills record) -> owns all 8, tut done,
-  written once. Never sees the flow.
+- `"grand"`: ownership store has no value AND (SkillSaveState == "loaded" (has a v2 skills record) OR a lastSpecies is
+  saved in "MDA_Settings_v1") -> owns all 8, tut done, written once. Never sees the flow.
 - `"done"`: ownership value with tut.done == true -> normal game.
-- `"new"`: ownership store has no value AND SkillSaveState == "new" -> the flow starts at step 1.
+- `"new"`: ownership store has no value AND SkillSaveState == "new" AND no saved lastSpecies -> the flow starts at step 1.
 - `"resume"`: ownership value with tut.done ~= true -> the flow restarts at step 3 with the dino already rolled (the roll
   and the free parts are kept; welcome / roll / parts cards are not shown again).
 - `"off"`: OwnershipEnabled false, or SkillSaveState / store read "noApi" / "failed" / "off" -> owns all, no flow, nothing
@@ -82,11 +93,8 @@ Leaving mid-flow: lane and bot freed; state stays "resume". Death in the lane: r
 | tools/training_ground_install.luau | New | Builds ServerStorage.TrainingGround (one lane model) in Studio |
 | src/client/Tutorial.client.luau | New | Cards, checklist, trainer, prompts, ring + arrow, equip panel, stat panel |
 | src/server/SkillServer.server.luau | Extend 1.13 | Player attribute FreeDino -> that dino's live parts count as given (like the test parts) |
-| src/server/SpeciesServer.server.luau | Extend 1.10 | Refuse a dino not in OwnedDinos ("locked") when the gate is on; join default = an owned dino |
-| src/server/RespawnServer.server.luau | Extend 1.1 | Same refusal for respawn picks |
 | src/server/HubServer/init.server.luau | Extend 1.7 | Skip islet placement while the player has TutLane > 0 |
-| src/client/MainMenu.client.luau | Extend 1.27 | Hidden while TutActive; TUTORIAL button; lock badge on locked dinos |
-| src/client/PregameScreen.client.luau, IslandDino.client.luau, RespawnScreen.client.luau | Extend 1.6 / 1.1 / 1.1 | Lock badge; SELECT on a locked dino shows "LOCKED" |
+| src/client/MainMenu.client.luau | Extend 1.27 | Hidden while TutActive; TUTORIAL button |
 
 ## Tasks (build order)
 
@@ -94,13 +102,12 @@ Leaving mid-flow: lane and bot freed; state stays "resume". Death in the lane: r
 **Files:** create src/shared/TutorialRules.luau (Rojo -> ServerStorage.DinoArcade.TutorialRules, cloned to
 ReplicatedStorage.TutorialShared by TutorialServer), create tools/tests/TutorialRules.spec.luau.
 **Interfaces (produces):**
-- `classify(ownValue: table?, readOk: boolean, skillState: string, enabled: boolean, force: boolean) -> "grand"|"done"|"new"|"resume"|"off"`
+- `classify(ownValue: table?, readOk: boolean, skillState: string, hasLastSpecies: boolean, enabled: boolean, force: boolean) -> "grand"|"done"|"new"|"resume"|"off"`
   (the map above, first matching row: not enabled -> "off"; force -> "new"; not readOk -> "off"; skillState not in
-  {"loaded","new"} -> "off"; ownValue table with tut.done -> "done"; ownValue table -> "resume"; skillState "loaded" ->
-  "grand"; else "new").
+  {"loaded","new"} -> "off"; ownValue table with tut.done -> "done"; ownValue table -> "resume"; skillState "loaded" or
+  hasLastSpecies -> "grand"; else "new").
 - `rollPick(pool: {string}, r: number) -> string` (r in [0,1); pool[floor(r * #pool) + 1]; empty pool -> nil).
-- `ALL_DINOS = {"Raptor","TRex","Pachy","Herrera","Teno","Therizino","Dilo","Troodon"}`; `ROLL_POOL` = Kepu's answer to
-  red-team point 2.
+- `ALL_DINOS = {"Raptor","TRex","Pachy","Herrera","Teno","Therizino","Dilo","Troodon"}`; `ROLL_POOL = {"Raptor","Pachy","Herrera","Teno","Therizino","Dilo","Troodon"}` (Kepu: no T-Rex).
 - `STEPS = {"Welcome","Roll","Parts","Hit the bot","Equip 4 parts","Use each part","Defeat the bot","Spend your point","Skill points","Island"}`
 - `startStep(state: string, replay: boolean) -> number` ("new" -> 1, "resume" -> 3, replay -> 3).
 - `laneCFrame(origin: CFrame, lane: number, spacing: number) -> CFrame` (origin * CFrame.new((lane - 1) * spacing, 0, 0)).
@@ -116,10 +123,11 @@ ReplicatedStorage.TutorialShared by TutorialServer), create tools/tests/Tutorial
 - Consumes: TutorialRules.classify / rollPick / ALL_DINOS / ROLL_POOL; player SkillSaveState (SkillServer).
 - Produces: player attributes `OwnedDinos` ("Herrera" or comma list), `FreeDino` ("" or key), `TutState`, `TutActive`
   (bool); BindableFunction `OwnRoll(player) -> key?`, `OwnFinishTut(player) -> boolean` (children of the script, for
-  TutorialServer); script attributes `OwnershipEnabled` (default true), `OwnGateEnabled` (default false), `DinoUnlockCost`
-  (nil = SOON), diagnostics `OwnSaveState`, `OwnGrandfathered` (count).
+  TutorialServer); script attributes `OwnershipEnabled` (default true), diagnostics `OwnSaveState`, `OwnGrandfathered`
+  (count). No gate in this build (red-team 3).
 - Store "MDA_Owned_v1", key "u"..UserId, value `{v = 1, owned = {[key] = true}, free = key, tut = {done = bool, at = unix}}`.
-- [ ] Join: read the store (pcall), wait for SkillSaveState ~= "loading" (max 15 s, then treat as "failed"), classify.
+- [ ] Join: read the store (pcall) and "MDA_Settings_v1" lastSpecies (read only), wait for SkillSaveState ~= "loading"
+      (max 15 s, then treat as "failed"), classify.
 - [ ] "grand": owned = all 8, tut.done = true, write once, OwnGrandfathered += 1.
 - [ ] "new" / "resume": TutActive = true; OwnRoll picks once (a second call returns the stored free dino), writes, sets
       DinoSpecies = the free dino.
@@ -129,7 +137,7 @@ ReplicatedStorage.TutorialShared by TutorialServer), create tools/tests/Tutorial
 **Acceptance:** in Studio with API access: a fresh key -> "new"; a key with an MDA_Skills_v2 record -> "grand" and all 8
 owned; a second join after finishing -> "done"; Studio without API access -> "off", owns all, no flow. Two rolls -> same
 dino.
-**Out of scope:** the unlock purchase (decision 1).
+**Out of scope:** the gate and the unlock purchase (DINO_UNLOCKS_v1.0).
 
 ### Task 2: SkillServer 1.13 free parts · Mode: Wired
 **Files:** modify src/server/SkillServer.server.luau (testParts / buyBase / stepsFor gain one input; header, VERSION).
@@ -169,17 +177,13 @@ real steps, SkillLeft unchanged; another dino shows its real build; FreeDino = "
 mortar / sentry / any part); 2 players get 2 lanes; leaving frees the lane; death respawns in the lane; replay grants no XP.
 **Out of scope:** PracticeServer, PracticeBrain.
 
-### Task 4: HubServer 1.7, SpeciesServer 1.10, RespawnServer 1.1 · Mode: Wired
-**Files:** modify the three server scripts (headers, VERSION).
-- [ ] HubServer: per spawn, TutLane > 0 -> skip islet placement and the re-place checks (switch HubTutorialSkipEnabled,
-      default true).
-- [ ] SpeciesServer: OwnGateEnabled true and species not in OwnedDinos -> SpeciesLastResult "locked", no switch; join
-      default (lastSpecies / SpeciesDefault) not owned -> the free dino (switch SpeciesGateEnabled, default true; the gate
-      itself only acts while OwnGateEnabled).
-- [ ] RespawnServer: the same refusal for a respawn pick (RespawnLastResult "locked").
+### Task 4: HubServer 1.7 · Mode: Wired
+**Files:** modify src/server/HubServer/init.server.luau (header, VERSION).
+- [ ] Per spawn, TutLane > 0 -> skip islet placement and the re-place checks (switch HubTutorialSkipEnabled, default
+      true, read per spawn). Diagnostic: player HubPlaceLast "tutorial".
 - [ ] Commit.
-**Acceptance:** gate off -> 1.6 / 1.9 / 1.0 exactly; gate on -> a locked pick from every picker is refused, the owned one
-works; a death still respawns through the T-Rex step (internal LoadCharacter is not a pick).
+**Acceptance:** TutLane 0 -> 1.6 exactly; TutLane > 0 -> the body stays where TutorialServer puts it.
+**Out of scope:** the SpeciesServer / RespawnServer gate (DINO_UNLOCKS_v1.0).
 
 ### Task 5: Tutorial client 1.0 · Mode: Wired
 **Files:** create src/client/Tutorial.client.luau.
@@ -217,16 +221,18 @@ count." / GOT IT; "TRAINING DONE" / "Level <n> <Dino>" / GO TO THE ISLAND.
 each button and a pull down on each button tick all 4 parts; the attack prompt names each
 dino's own input (Raptor F, the others left click, phone ATTACK); nothing else on screen takes clicks during cards.
 
-### Task 6: MainMenu 1.27 + pickers · Mode: Wired
-**Files:** modify MainMenu, PregameScreen, IslandDino, RespawnScreen (headers, VERSION).
-- [ ] MainMenu hidden while TutActive or TutState == "wait"; a TUTORIAL button under MUSIC (same size and style) sends
-      TutorialRequest "replay" (shown when TutState is "done" or "grand"; switch MainMenuTutorialEnabled).
-- [ ] Lock badge (🔒 + the dino name dimmed) on dinos not in OwnedDinos, only while OwnGateEnabled; ◀ ▶ still browse;
-      PLAY on a locked dino shows "LOCKED" and does nothing. Same badge in the 3 pickers.
+### Task 6: MainMenu 1.27 · Mode: Wired
+**Files:** modify src/client/MainMenu.client.luau (header, VERSION).
+- [ ] Menu hidden while TutActive or TutState == "wait" (switch MainMenuTutorialEnabled, default true).
+- [ ] A TUTORIAL button under MUSIC, same size and style, sends TutorialRequest "replay"; shown when TutState is "done" or
+      "grand".
 - [ ] Commit.
-**Acceptance:** gate off -> every screen as before (screenshot compare); gate on -> locks shown, only owned dinos selectable.
+**Acceptance:** an old player's menu is unchanged except the TUTORIAL button; a new player never sees the menu before the
+flow; TUTORIAL replays steps 3 to 10.
+**Out of scope:** lock badges (DINO_UNLOCKS_v1.0).
 
 ### Task 7: Live check · Mode: Wired
 - [ ] Studio: TutorialTestForce run through all 10 steps for 3 different rolled dinos (one melee, one ranged, Raptor for F).
+- [ ] Set SkillServer SkillTestMaxAllEnabled = false on the place (red-team 1); check a real build shows its real steps.
 - [ ] Restore the test setup (species Therizino, slots, bots, attributes, health).
 - [ ] Docs: VERSIONS.md rows, ATTRIBUTES.md entries. Commit. Publish only on Kepu's "Publish".
