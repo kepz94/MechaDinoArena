@@ -3585,3 +3585,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - TutorialServer 1.2: `TutLessonNeedsHit` (true), `TutPlayerLeash` (true), `TutLeashInset` (0.5); diagnostics `TutPlayerReturns`, `TutBotReturns`. Player: `TutLessonMiss` (server time of the last miss), `TutLastResult` "returned".
 - TutorialRules 1.2: none (pure module).
 - Tutorial (client) 1.2: `TutorialIncubatorEnabled` (true), `TutHatchHold` (1.2 s); diagnostics `TutorialClientVersion` "1.2".
+- Tutorial (client) 1.3: `TutorialLabCoachEnabled` (true); ScreenGui `TutorialCoach` (DisplayOrder 47). Reads Lab's player attributes LabOpen, LabTab, LabSelected, LabLastPress.

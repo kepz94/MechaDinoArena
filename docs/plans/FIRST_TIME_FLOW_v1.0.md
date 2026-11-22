@@ -290,3 +290,5 @@ flow; TUTORIAL replays steps 3 to 10.
   Studio's iPhone view (a temporary capture hook in Lab was removed again; Lab hash back to 228888683). Waiting on Kepu's pick.
 - The step-5 sheet covers the bottom of the screen, so the thumbstick cannot start there while it is open (walking blocked on
   that step by design). Not yet confirmed which screen Kepu was stuck on.
+- 13:59 Kepu picked A. Built as Tutorial client 1.3 (Studio only; not published). Copy table in the mockup (31 lines, now vs new)
+  not yet approved; the tutorial's other lines are unchanged.

@@ -46,6 +46,20 @@
 --   colors it in; right a panel: "FREE DINO UNLOCKED", the name, the role chip, "MAIN ATTACK" and one row per lesson (a round
 --   TAP / HOLD / key badge, the name, the tip), NEXT. Played once; a redraw of the same scene (same step, roll and screen size)
 --   is skipped so nothing restarts.
+-- v1.3 (Kepu 2026-11-22 13:47 "These screens don't make no damn sense. Nothing like how the actual equip screens actually look
+--   or the stats screen", 13:59 "A" on docs/mockups/lab_coach_v0.1.html): steps 5 (equip) and 8 (spend) run on the REAL Lab
+--   while script attribute TutorialLabCoachEnabled ~= false (default true, read per draw; false = the 1.1 sheets). The step
+--   opens the compact Lab (PlayerScripts.Lab.Open:Invoke("compact"), the SKILLS button's screen; opened again if closed early)
+--   and a coach layer (ScreenGui "TutorialCoach", DisplayOrder 47, over the Lab's 45) darkens everything but the next Lab
+--   button (4 dark buttons around a hole, so other taps do nothing), with a yellow ring, a finger and a tag; a chip at the top
+--   centre reads "STEP 2/5 EQUIP 4 PARTS 0/4" / "STEP 5/5 SPEND YOUR POINT 1 PT". Lab buttons are found by name every frame
+--   (Card_<id>, Tabs.Parts / Tabs.Stats, Right.Detail.Actions.Btn with label T "EQUIP" / "BUY ..." / "UPGRADE ...", Slot_n,
+--   Close); the Lab's Grid / Detail scroll is moved so the target is in view. The Lab's code is not changed.
+--   Equip: TAP ABILITIES (wrong tab) -> TAP A PART (first not-equipped button part) -> TAP EQUIP (after LabLastPress
+--   "card:<id>") -> 1.6 s tag on the slot it landed in ("R = BUTTON 1" / "TAP · 1/4 EQUIPPED"; PC "KEY R") -> again until
+--   TutNeed slots are filled -> CLOSE "4/4 EQUIPPED"; the Lab closed with the slots full sends "next" (1.1: TRY THEM).
+--   Spend: TAP STATS -> TAP A STAT (the first of this dino's stat rows not maxed) -> TAP BUY "-1 PT" -> CLOSE "STAT +1"; the
+--   Lab closed after the buy (or on a replay with 0 points: CLOSE "0 POINTS") sends "next".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -54,6 +68,7 @@ local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 incubator egg + scan reveal
+VERSION = "1.3" -- v1.3 equip / spend on the real Lab (coach)
 script:SetAttribute("TutorialClientVersion", VERSION)
 if script:GetAttribute("TutorialClientEnabled") == nil then script:SetAttribute("TutorialClientEnabled", true) end
 if script:GetAttribute("TutorialClientEnabled") == false then return end
@@ -866,6 +881,247 @@ local function incubatorKey(s)
 	return scene .. "|" .. math.floor(W) .. "x" .. math.floor(H) .. "|" .. tostring(isTouch())
 end
 
+-- ---------- v1.3: the Lab coach (see the header) ----------
+if script:GetAttribute("TutorialLabCoachEnabled") == nil then script:SetAttribute("TutorialLabCoachEnabled", true) end
+local function coachOn() return script:GetAttribute("TutorialLabCoachEnabled") ~= false end
+local coachGui = Instance.new("ScreenGui")
+coachGui.Name = "TutorialCoach"
+coachGui.DisplayOrder = 47
+coachGui.IgnoreGuiInset = true
+pcall(function() coachGui.ScreenInsets = Enum.ScreenInsets.None end) -- the dark layer reaches the phone's side edges too
+coachGui.ResetOnSpawn = false
+coachGui.Enabled = false
+coachGui.Parent = player:WaitForChild("PlayerGui")
+local coach = {conn = nil, step = 0, picked = nil, prev = {}, flash = nil, sent = false, reopenAt = 0, parts = nil}
+local function coachStop()
+	if coach.conn then coach.conn:Disconnect() coach.conn = nil end
+	coachGui.Enabled = false
+	coachGui:ClearAllChildren()
+end
+local function labScript() return player:FindFirstChild("PlayerScripts") and player.PlayerScripts:FindFirstChild("Lab") end
+local function labGui() return player.PlayerGui:FindFirstChild("Lab") end
+local function labOpen(open)
+	local l = labScript()
+	local fn = l and l:FindFirstChild(open and "Open" or "Close")
+	if fn then task.spawn(function() pcall(function() fn:Invoke(open and "compact" or nil) end) end) end
+end
+local function labFind(name, class)
+	local g = labGui()
+	if not g then return nil end
+	for _, d in ipairs(g:GetDescendants()) do
+		if d.Name == name and (not class or d:IsA(class)) then return d end
+	end
+	return nil
+end
+local function labActionBtn(prefixes)
+	local acts = labFind("Actions")
+	if not acts then return nil end
+	for _, b in ipairs(acts:GetChildren()) do
+		local t = b:IsA("GuiButton") and b:FindFirstChild("T")
+		if t and t:IsA("TextLabel") then
+			for _, pfx in ipairs(prefixes) do
+				if string.sub(t.Text, 1, #pfx) == pfx then return b end
+			end
+		end
+	end
+	return nil
+end
+-- move a scrolling frame so the target is inside its window
+local function scrollTo(target)
+	local sf = target and target:FindFirstAncestorWhichIsA("ScrollingFrame")
+	if not sf then return end
+	local top, bottom = sf.AbsolutePosition.Y, sf.AbsolutePosition.Y + sf.AbsoluteWindowSize.Y
+	local ty, tb = target.AbsolutePosition.Y, target.AbsolutePosition.Y + target.AbsoluteSize.Y
+	if tb > bottom - 4 then
+		sf.CanvasPosition = Vector2.new(sf.CanvasPosition.X, sf.CanvasPosition.Y + (tb - bottom) + 8)
+	elseif ty < top + 2 then
+		sf.CanvasPosition = Vector2.new(sf.CanvasPosition.X, math.max(0, sf.CanvasPosition.Y - (top - ty) - 8))
+	end
+end
+local SLOT_TAGS_TOUCH = {{"R = BUTTON 1", "TAP"}, {"C = BUTTON 2", "TAP"}, {"R\u{25BC} = BUTTON 1", "PULL \u{25BC}"}, {"C\u{25BC} = BUTTON 2", "PULL \u{25BC}"}}
+local SLOT_KEYS_PC = {"R", "C", "T", "V"}
+-- the coach's pieces (built once per draw, moved every frame)
+local function coachBuild(s)
+	coachGui:ClearAllChildren()
+	coachGui.Enabled = true
+	local cr = make("Frame", {Name = "Root", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1)}, coachGui)
+	local shades = {}
+	for i = 1, 4 do
+		shades[i] = make("TextButton", {Name = "Shade" .. i, Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.fromRGB(4, 7, 12),
+			BackgroundTransparency = 0.2, BorderSizePixel = 0, ZIndex = 1}, cr)
+	end
+	local ring = make("Frame", {Name = "Ring", BackgroundTransparency = 1, ZIndex = 3}, cr)
+	corner(ring, UDim.new(0, px(1.2, 8)))
+	local rs = stroke(ring, C.yellow, px(0.45, 3))
+	tween(rs, 0.5, {Transparency = 0.55}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	local d = px(3.4, 24)
+	local finger = make("Frame", {Name = "Finger", BackgroundColor3 = C.white, BackgroundTransparency = 0.05, AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.fromOffset(d, d), ZIndex = 5}, cr)
+	corner(finger, UDim.new(0.5, 0))
+	stroke(finger, C.white, 3, 0.5)
+	local fs = make("UIScale", {}, finger)
+	tween(fs, 0.45, {Scale = 0.7}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	local bub = make("Frame", {Name = "Tag", BackgroundColor3 = C.yellow, AutomaticSize = Enum.AutomaticSize.XY, ZIndex = 6}, cr)
+	corner(bub, UDim.new(0, px(0.9, 6)))
+	pad(bub, px(0.7, 5), px(1.2, 9))
+	list(bub, nil, px(0.2, 2), Enum.HorizontalAlignment.Left)
+	local big = text(bub, "", "title", px(2.3, 17), C.ink, {LayoutOrder = 1, ZIndex = 6, TextWrapped = false})
+	local small = text(bub, "", "black", px(1.5, 12), Color3.fromRGB(74, 58, 16), {LayoutOrder = 2, ZIndex = 6, TextWrapped = false})
+	-- the chip
+	local chip = make("Frame", {Name = "Chip", BackgroundColor3 = C.panel, BackgroundTransparency = 0.05, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(W / 2, math.max(topH / 2, px(3, 20))), AutomaticSize = Enum.AutomaticSize.XY, ZIndex = 7}, cr)
+	corner(chip, UDim.new(0, px(1, 8)))
+	stroke(chip, C.yellow, 1.5, 0.6)
+	pad(chip, px(0.6, 4), px(1.4, 10))
+	list(chip, Enum.FillDirection.Horizontal, px(1.2, 8))
+	text(chip, s == 5 and "STEP 2/5" or "STEP 5/5", "title", px(1.4, 11), C.yellow, {LayoutOrder = 1, ZIndex = 7})
+	text(chip, OBJ[s] or "", "black", px(2, 15), C.white, {LayoutOrder = 2, ZIndex = 7, TextWrapped = false})
+	local count = text(chip, "", "title", px(1.4, 11), C.ink, {LayoutOrder = 3, ZIndex = 7, BackgroundTransparency = 0, BackgroundColor3 = C.green})
+	corner(count, UDim.new(0, px(0.5, 4)))
+	pad(count, px(0.3, 2), px(0.6, 4))
+	return {cr = cr, shades = shades, ring = ring, finger = finger, bub = bub, big = big, small = small, count = count}
+end
+local function coachPlace(ui, target, bigText, smallText)
+	local cr = ui.cr
+	local pos, size
+	if target and target:IsA("GuiObject") and target.AbsoluteSize.X > 0 then
+		local sg = target:FindFirstAncestorWhichIsA("ScreenGui")
+		local shown = sg == nil or sg.Enabled
+		local q = target
+		while shown and q and q ~= sg do
+			if q:IsA("GuiObject") and not q.Visible then shown = false end
+			q = q.Parent
+		end
+		-- both screens' AbsolutePosition share one origin: offsets in the coach root are AbsolutePosition - root's
+		if shown then pos, size = target.AbsolutePosition - cr.AbsolutePosition, target.AbsoluteSize end
+	end
+	local CW, CH = cr.AbsoluteSize.X, cr.AbsoluteSize.Y
+	if not pos then
+		-- nothing to point at (the Lab is still opening): dark everywhere
+		ui.shades[1].Position, ui.shades[1].Size = UDim2.fromOffset(0, 0), UDim2.fromOffset(CW, CH)
+		for i = 2, 4 do ui.shades[i].Size = UDim2.fromOffset(0, 0) end
+		ui.ring.Visible, ui.finger.Visible, ui.bub.Visible = false, false, false
+		return
+	end
+	local m = px(0.5, 4)
+	local x0, y0, x1, y1 = pos.X - m, pos.Y - m, pos.X + size.X + m, pos.Y + size.Y + m
+	ui.shades[1].Position, ui.shades[1].Size = UDim2.fromOffset(0, 0), UDim2.fromOffset(CW, math.max(0, y0))
+	ui.shades[2].Position, ui.shades[2].Size = UDim2.fromOffset(0, y1), UDim2.fromOffset(CW, math.max(0, CH - y1))
+	ui.shades[3].Position, ui.shades[3].Size = UDim2.fromOffset(0, y0), UDim2.fromOffset(math.max(0, x0), y1 - y0)
+	ui.shades[4].Position, ui.shades[4].Size = UDim2.fromOffset(x1, y0), UDim2.fromOffset(math.max(0, CW - x1), y1 - y0)
+	ui.ring.Visible, ui.finger.Visible, ui.bub.Visible = true, true, true
+	ui.ring.Position, ui.ring.Size = UDim2.fromOffset(x0, y0), UDim2.fromOffset(x1 - x0, y1 - y0)
+	ui.finger.Position = UDim2.fromOffset(pos.X + size.X * 0.85, pos.Y + size.Y * 0.85)
+	ui.big.Text = bigText
+	ui.small.Text = smallText or ""
+	ui.small.Visible = smallText ~= nil and smallText ~= ""
+	local bw, bh = ui.bub.AbsoluteSize.X, ui.bub.AbsoluteSize.Y
+	local gap = px(1.2, 8)
+	local bx, by
+	if x1 + gap + bw <= CW - 6 then
+		bx, by = x1 + gap, (y0 + y1) / 2 - bh / 2
+	elseif x0 - gap - bw >= 6 then
+		bx, by = x0 - gap - bw, (y0 + y1) / 2 - bh / 2
+	elseif y0 - gap - bh >= 6 then
+		bx, by = (x0 + x1) / 2 - bw / 2, y0 - gap - bh
+	else
+		bx, by = (x0 + x1) / 2 - bw / 2, y1 + gap
+	end
+	bx = math.clamp(bx, 6, math.max(6, CW - bw - 6))
+	by = math.clamp(by, 6, math.max(6, CH - bh - 6))
+	ui.bub.Position = UDim2.fromOffset(bx, by)
+end
+local function drawCoach(s)
+	coachStop()
+	if coach.step ~= s then
+		coach.step, coach.picked, coach.flash, coach.sent, coach.prev = s, nil, nil, false, {}
+		for k = 1, 4 do coach.prev[k] = slotOf(k) end
+	end
+	if player:GetAttribute("LabOpen") ~= "compact" then labOpen(true) end
+	local ui = coachBuild(s)
+	local dino = dinoKey()
+	local startPts = tonumber(player:GetAttribute("TutPtsStart")) or 0
+	coach.conn = RunService.RenderStepped:Connect(function()
+		local open = player:GetAttribute("LabOpen") == "compact"
+		local press = player:GetAttribute("LabLastPress")
+		local tab = player:GetAttribute("LabTab")
+		local sel = player:GetAttribute("LabSelected")
+		if type(press) == "string" and press:sub(1, 5) == "card:" then coach.picked = press:sub(6) end
+		local target, big, small
+		if s == 5 then
+			local n = need()
+			local filled = 0
+			for k = 1, 4 do
+				local v = slotOf(k)
+				if v ~= "" and coach.prev[k] ~= v then coach.flash = {k = k, untilT = os.clock() + 1.6} coach.picked = nil end
+				coach.prev[k] = v
+			end
+			for k = 1, n do if slotOf(k) ~= "" then filled += 1 end end
+			ui.count.Text = ("%d/%d"):format(math.min(filled, n), n)
+			if filled >= n then
+				if not open then
+					if not coach.sent then coach.sent = true send("next") end
+					return
+				end
+				target, big, small = labFind("Close", "GuiButton"), "CLOSE", ("%d/%d EQUIPPED"):format(n, n)
+			elseif coach.flash and os.clock() < coach.flash.untilT then
+				local k = coach.flash.k
+				target = labFind("Slot_" .. k, "GuiButton")
+				if isTouch() then
+					local t = SLOT_TAGS_TOUCH[k]
+					big, small = t[1], ("%s \u{00B7} %d/%d EQUIPPED"):format(t[2], filled, n)
+				else
+					big, small = "KEY " .. SLOT_KEYS_PC[k], ("%d/%d EQUIPPED"):format(filled, n)
+				end
+			elseif not open then
+				if os.clock() > coach.reopenAt then coach.reopenAt = os.clock() + 1 labOpen(true) end
+			elseif tab ~= "parts" then
+				target, big = labFind("Parts", "GuiButton"), "TAP ABILITIES"
+			else
+				local inSlot = {}
+				for k = 1, 4 do inSlot[slotOf(k)] = true end
+				local want = (coach.picked and not inSlot[coach.picked] and ST.BUTTONS[coach.picked]) and coach.picked or nil
+				if want and sel == want then
+					target, big = labActionBtn({"EQUIP"}), "TAP EQUIP"
+				else
+					for _, id in ipairs(partsOf(dino, true)) do
+						if not inSlot[id] and labFind("Card_" .. id, "GuiButton") then want = id break end
+					end
+					target, big = want and labFind("Card_" .. want, "GuiButton"), "TAP A PART"
+				end
+			end
+		else
+			local spent = (tonumber(player:GetAttribute("SkillSpent")) or 0) > startPts
+			local left = tonumber(player:GetAttribute("SkillLeft")) or 0
+			local replay = player:GetAttribute("TutReplay") == true
+			ui.count.Text = spent and "DONE" or (left == 1 and "1 PT" or (left .. " PTS"))
+			if spent or (replay and left == 0) then
+				if not open then
+					if not coach.sent then coach.sent = true send("next") end
+					return
+				end
+				target, big, small = labFind("Close", "GuiButton"), "CLOSE", spent and "STAT +1" or "0 POINTS"
+			elseif not open then
+				if os.clock() > coach.reopenAt then coach.reopenAt = os.clock() + 1 labOpen(true) end
+			elseif tab ~= "stats" then
+				target, big = labFind("Stats", "GuiButton"), "TAP STATS"
+			else
+				local statId
+				for _, id in ipairs(statsOf(dino)) do
+					if pathStep(id) < 4 and labFind("Card_" .. id, "GuiButton") then statId = id break end
+				end
+				if statId and sel == statId and coach.picked == statId then
+					target, big, small = labActionBtn({"BUY", "UPGRADE"}), "TAP BUY", "-1 PT"
+				else
+					target, big = statId and labFind("Card_" .. statId, "GuiButton"), "TAP A STAT"
+				end
+			end
+		end
+		if target then scrollTo(target) end
+		coachPlace(ui, target, big or "", small)
+	end)
+end
+
 -- ---------- render ----------
 local lastSpentId = nil
 local fullRetry = false
@@ -901,8 +1157,10 @@ function render()
 			if pod.sceneKey ~= nil and pod.sceneKey == incubatorKey(s) and #root:GetChildren() > 0 then return end
 		end
 	end
+	if (s == 5 or s == 8) and coachOn() and coach.conn ~= nil and coach.step == s then return end -- v1.3: the coach keeps running
 	podStop()
 	pod.sceneKey = nil
+	coachStop() -- v1.3
 	root:ClearAllChildren()
 	gui.Enabled = s > 0
 	player:SetAttribute("TutClientStep", s)
@@ -978,6 +1236,8 @@ function render()
 				pcCallout(howWords(L), L.n)
 			end
 		end
+	elseif (s == 5 or s == 8) and coachOn() then -- v1.3: the real Lab
+		drawCoach(s)
 	elseif s == 5 then
 		local n = need()
 		local filled = 0
@@ -1185,6 +1445,10 @@ player.AttributeChanged:Connect(function(name)
 		if s ~= 8 then lastSpentId = nil end
 		if s <= 1 then egg.taps, egg.hatching = 0, false end
 		if s == 0 or s >= 3 then podReset() end -- v1.2
+		if coach.step ~= 0 and s ~= coach.step then -- v1.3: leaving a Lab step
+			if player:GetAttribute("LabOpen") == "compact" then labOpen(false) end
+			coach.step = 0
+		end
 		if s ~= 4 and s ~= 6 then shownLessons = {} end
 	end
 	if WATCH[name] or (step() == 5 and name:sub(1, 10) == "SkillPath_") then queue() end
