@@ -273,3 +273,8 @@ flow; TUTORIAL replays steps 3 to 10.
   bot that is outside the pad's walls or under the pad. In the check, a Teno slam had already put the bot outside the lane once
   (TutBotReturns counted it before the manual test).
 - Not built: a "missed" message on screen (UI change; needs Kepu's pick). Published 2026-11-22 13:10 (Sandbox v905 + Arena overwrite).
+
+## Tutorial client 1.2: Incubator egg + reveal (2026-11-22 13:22, Kepu "I like B" on egg_hatch_v0.1)
+- Built as drawn in direction B; the 3 taps became one hold (the server requests are unchanged: next, then roll).
+- Mockup's mecha egg built in a 3D viewport (no uploaded images). Phone checks in Studio's iPhone emulator; touch holds cannot be
+  sent in the emulator, so the hold itself was checked on PC and the phone run drove next / roll directly. Not published.

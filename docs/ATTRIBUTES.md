@@ -3584,3 +3584,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - Tutorial (client) 1.1: `TutorialClientEnabled` (true); diagnostics `TutorialClientVersion` ("1.1"), player `TutClientStep`.
 - TutorialServer 1.2: `TutLessonNeedsHit` (true), `TutPlayerLeash` (true), `TutLeashInset` (0.5); diagnostics `TutPlayerReturns`, `TutBotReturns`. Player: `TutLessonMiss` (server time of the last miss), `TutLastResult` "returned".
 - TutorialRules 1.2: none (pure module).
+- Tutorial (client) 1.2: `TutorialIncubatorEnabled` (true), `TutHatchHold` (1.2 s); diagnostics `TutorialClientVersion` "1.2".

@@ -35,6 +35,17 @@
 -- Bot marks (steps 4, 6, 7): yellow outline (Highlight) and arrow; health bar at step 7.
 -- Switch: script attribute TutorialClientEnabled (default true, read at start). Diagnostics: script TutorialClientVersion;
 --   player TutClientStep.
+-- v1.2 (Kepu 2026-11-22 13:13 "that egg hatch and reveal looks like shit", 13:22 "I like B" on docs/mockups/egg_hatch_v0.1.html):
+--   steps 1-2 are the Incubator while script attribute TutorialIncubatorEnabled ~= false (default true, read per draw; false =
+--   the 1.1 egg and reveal card). Egg: a 3D egg (cream, steel belt with a cyan seam) floats in a glass pod on a lit base, cyan
+--   light rays turn behind it; "YOUR FIRST DINO" / "It's free. Press and hold." and a yellow HOLD TO HATCH button with 24 lights
+--   around it. Holding fills it in TutHatchHold (script attribute, 1.2 s; letting go drains it in half that): the egg shakes,
+--   cracks glow (at 1/3 and 2/3), the seam turns yellow, the rays speed up. Full: flash, the glass and cap fly up, shell bits fly
+--   out, then (0.7 s) "next" / "roll" as 1.1. While the roll is on its way: the empty pod and "HATCHING". Reveal (TutRolled):
+--   the dino (PregameModels body + its free parts, turning slowly) on the pod base, left; it starts black and a cyan scan line
+--   colors it in; right a panel: "FREE DINO UNLOCKED", the name, the role chip, "MAIN ATTACK" and one row per lesson (a round
+--   TAP / HOLD / key badge, the name, the tip), NEXT. Played once; a redraw of the same scene (same step, roll and screen size)
+--   is skipped so nothing restarts.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -42,6 +53,7 @@ local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 incubator egg + scan reveal
 script:SetAttribute("TutorialClientVersion", VERSION)
 if script:GetAttribute("TutorialClientEnabled") == nil then script:SetAttribute("TutorialClientEnabled", true) end
 if script:GetAttribute("TutorialClientEnabled") == false then return end
@@ -514,6 +526,346 @@ local function header(parent, s, order)
 	return text(parent, s, "title", px(1.7, 13), C.yellow, {LayoutOrder = order or 0, TextXAlignment = Enum.TextXAlignment.Left})
 end
 
+-- ---------- v1.2: the incubator (see the header) ----------
+local RunService = game:GetService("RunService")
+if script:GetAttribute("TutorialIncubatorEnabled") == nil then script:SetAttribute("TutorialIncubatorEnabled", true) end
+if script:GetAttribute("TutHatchHold") == nil then script:SetAttribute("TutHatchHold", 1.2) end
+local function incubatorOn() return script:GetAttribute("TutorialIncubatorEnabled") ~= false end
+local pod = {p = 0, holding = false, phase = "charge", revealed = false, conn = nil, sceneKey = nil, input = nil}
+local function podStop() if pod.conn then pod.conn:Disconnect() pod.conn = nil end end
+local function podReset() podStop() pod.p, pod.holding, pod.phase, pod.revealed, pod.sceneKey, pod.input = 0, false, "charge", false, nil, nil end
+UserInputService.InputEnded:Connect(function(io)
+	if io == pod.input or io.UserInputType == Enum.UserInputType.MouseButton1 then pod.holding = false end
+end)
+local ROLE_COLOR = {HOLDER = C.cyan, FIGHTER = C.pink, RANGED = C.green}
+local function podRays(cx, cy, color)
+	local holder = make("Frame", {Name = "Rays", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(cx, cy),
+		Size = UDim2.fromOffset(px(120), px(120))}, root)
+	local beams = {}
+	for i = 1, 12 do
+		local b = make("Frame", {BackgroundColor3 = color, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, 0, 0, px(2.8, 12)), Rotation = (i - 1) * 15, BackgroundTransparency = 0.62}, holder)
+		make("UIGradient", {Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.28, 0.55),
+			NumberSequenceKeypoint.new(0.45, 0.85), NumberSequenceKeypoint.new(0.5, 1), NumberSequenceKeypoint.new(0.55, 0.85),
+			NumberSequenceKeypoint.new(0.72, 0.55), NumberSequenceKeypoint.new(1, 1)})}, b)
+		table.insert(beams, b)
+	end
+	return holder, beams
+end
+local function vpart(parent, props)
+	local o = Instance.new("Part")
+	o.Anchored, o.CanCollide, o.CastShadow = true, false, false
+	o.TopSurface, o.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do o[k] = v end
+	o.Parent = parent
+	return o
+end
+-- the 3D egg: radius 1 (x, z), 1.32 tall; returns the viewport, its seam and the 3 crack groups
+local function eggView(parent)
+	local vf = make("ViewportFrame", {Name = "EggView", BackgroundTransparency = 1, Ambient = Color3.fromRGB(150, 140, 125),
+		LightColor = Color3.new(1, 1, 1), LightDirection = Vector3.new(-0.6, -0.7, -0.8)}, parent)
+	local egg = vpart(vf, {Name = "Egg", Size = Vector3.new(2, 2, 2), Color = Color3.fromRGB(238, 218, 170), Material = Enum.Material.SmoothPlastic})
+	make("SpecialMesh", {MeshType = Enum.MeshType.Sphere, Scale = Vector3.new(1, 1.32, 1)}, egg)
+	local up = CFrame.Angles(0, 0, math.rad(90))
+	vpart(vf, {Name = "Belt", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.32, 2.04, 2.04), CFrame = CFrame.new(0, -0.12, 0) * up,
+		Color = Color3.fromRGB(128, 142, 168), Material = Enum.Material.Metal})
+	local seam = vpart(vf, {Name = "Seam", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.07, 2.08, 2.08), CFrame = CFrame.new(0, -0.12, 0) * up,
+		Color = C.cyan, Material = Enum.Material.Neon})
+	local function surf(x, y) return math.sqrt(math.max(0, 1 - x * x - (y / 1.32) ^ 2)) end
+	for _, sp in ipairs({{-0.5, 0.8}, {0.3, 1.0}, {0.62, 0.45}, {-0.7, 0.25}, {0.15, -0.75}, {-0.42, -0.95}, {0.66, -0.55}}) do
+		vpart(vf, {Name = "Spot", Shape = Enum.PartType.Ball, Size = Vector3.new(0.16, 0.16, 0.16), Color = Color3.fromRGB(176, 140, 86),
+			CFrame = CFrame.new(sp[1], sp[2], surf(sp[1], sp[2]) - 0.05), Material = Enum.Material.SmoothPlastic})
+	end
+	local lines = {
+		{{-0.45, 0.78}, {-0.28, 0.56}, {-0.42, 0.36}, {-0.22, 0.18}},
+		{{0.36, 0.95}, {0.24, 0.7}, {0.44, 0.5}, {0.3, 0.3}},
+		{{-0.76, -0.52}, {-0.46, -0.42}, {-0.3, -0.64}, {-0.04, -0.48}, {0.16, -0.72}, {0.42, -0.52}, {0.72, -0.66}},
+	}
+	local cracks = {}
+	for i, pts in ipairs(lines) do
+		cracks[i] = {}
+		for k = 1, #pts - 1 do
+			local a, b = pts[k], pts[k + 1]
+			local mx, my = (a[1] + b[1]) / 2, (a[2] + b[2]) / 2
+			local len = math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2)
+			local ang = math.atan2(b[2] - a[2], b[1] - a[1])
+			table.insert(cracks[i], vpart(vf, {Name = "Crack", Size = Vector3.new(len + 0.04, 0.06, 0.04), Color = C.yellow, Material = Enum.Material.Neon,
+				Transparency = 1, CFrame = CFrame.new(mx, my, surf(mx, my) + 0.01) * CFrame.Angles(0, 0, ang)}))
+		end
+	end
+	local cam = make("Camera", {FieldOfView = 30, CFrame = CFrame.lookAt(Vector3.new(0, 0.25, 6.6), Vector3.new(0, 0, 0))}, vf)
+	vf.CurrentCamera = cam
+	return vf, seam, cracks
+end
+-- the pod: glass, cap and lit base; returns the frame and its parts
+local function podFrame(cx, top, w, h)
+	local f = make("Frame", {Name = "Pod", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(cx, top),
+		Size = UDim2.fromOffset(w, h)}, root)
+	local baseH = px(6, 34)
+	local base = make("Frame", {Name = "Base", BackgroundColor3 = Color3.fromRGB(52, 64, 94), AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.new(1, 0, 0, baseH), ZIndex = 4}, f)
+	corner(base, UDim.new(0, px(1.4, 8)))
+	make("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(150, 160, 185), Color3.fromRGB(60, 66, 86)), Rotation = 90}, base)
+	local bar = make("Frame", {Name = "Light", BackgroundColor3 = C.cyan, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.new(0.8, 0, 0, px(0.6, 4)), ZIndex = 5}, base)
+	corner(bar, UDim.new(0.5, 0))
+	stroke(bar, C.cyan, px(0.5, 3), 0.55)
+	local glass = make("Frame", {Name = "Glass", BackgroundColor3 = C.cyan, BackgroundTransparency = 0.9, AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(1, -px(2.8, 14), 1, -baseH + px(1, 6)), ZIndex = 3}, f)
+	corner(glass, UDim.new(0, math.floor(w * 0.42)))
+	local gs = stroke(glass, C.cyan, px(0.35, 2), 0.35)
+	make("Frame", {Name = "Shine", BackgroundColor3 = C.white, BackgroundTransparency = 0.82, BorderSizePixel = 0, Position = UDim2.new(0.24, 0, 0.16, 0),
+		Size = UDim2.new(0, px(0.7, 4), 0.62, 0), ZIndex = 3}, glass)
+	local cap = make("Frame", {Name = "Cap", BackgroundColor3 = Color3.fromRGB(62, 76, 106), AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0.66, 0, 0, px(2, 11)), ZIndex = 4}, f)
+	corner(cap, UDim.new(0.5, 0))
+	return f, glass, gs, cap, baseH
+end
+local function hatchText(parent, s2, kind, size, color, y)
+	return text(parent, s2, kind, size, color, {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(W / 2, y), TextWrapped = false})
+end
+local function shardsAt(x, y)
+	for i = 1, 9 do
+		local a = (i / 9) * math.pi * 2 + math.random() * 0.4
+		local d = px(16 + math.random() * 10)
+		local sh = make("Frame", {BackgroundColor3 = Color3.fromRGB(240, 222, 178), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(px(2.4, 12), px(1.8, 9)), Rotation = math.random(0, 90), ZIndex = 12}, root)
+		corner(sh, UDim.new(0, px(0.4, 2)))
+		tween(sh, 0.9, {Position = UDim2.fromOffset(x + math.cos(a) * d, y + math.sin(a) * d * 0.7), Rotation = sh.Rotation + math.random(-360, 360),
+			BackgroundTransparency = 1}, Enum.EasingStyle.Quart)
+	end
+end
+local function rollLoop()
+	if egg.rollLoop then return end
+	egg.rollLoop = true
+	task.spawn(function()
+		while step() > 0 and step() <= 2 and (player:GetAttribute("TutRolled") or "") == "" do
+			if step() == 2 then send("roll") elseif step() == 1 then send("next") end
+			task.wait(0.8)
+		end
+		egg.rollLoop = false
+		task.defer(function() render() end)
+	end)
+end
+
+local function drawCharge()
+	backdrop()
+	local rays, beams = podRays(W / 2, H * 0.55, C.cyan)
+	hatchText(root, "MECHA DINO ARENA", "title", px(1.8, 14), C.yellow, H * 0.05)
+	hatchText(root, "YOUR FIRST DINO", "title", px(4.6, 32), C.white, H * 0.1)
+	hatchText(root, "It's free. Press and hold.", "body", px(1.9, 16), C.text, H * 0.21)
+	local pw, ph = px(23, 130), H * 0.45
+	local f, glass, gs, cap, baseH = podFrame(W / 2, H * 0.27, pw, ph)
+	local eh = ph - baseH - px(3, 16)
+	local vf, seam, cracks = eggView(f)
+	vf.AnchorPoint = Vector2.new(0.5, 1)
+	vf.Size = UDim2.fromOffset(eh * 0.8, eh)
+	vf.ZIndex = 2
+	local eggPos = UDim2.new(0.5, 0, 1, -baseH + px(0.4, 2))
+	vf.Position = eggPos
+	local d = math.max(px(12, 72), 72)
+	local by = H - px(1.8, 10) - d / 2
+	local btn = make("TextButton", {Name = "Hold", Text = "", AutoButtonColor = false, BackgroundColor3 = C.yellow, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(W / 2, by), Size = UDim2.fromOffset(d, d), ZIndex = 6, Modal = true}, root)
+	corner(btn, UDim.new(0.5, 0))
+	stroke(btn, C.yellowDark, px(0.35, 2))
+	local sc = make("UIScale", {}, btn)
+	text(btn, "HOLD\nTO\nHATCH", "title", px(2.1, 15), C.ink, {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), ZIndex = 7,
+		TextWrapped = false, LineHeight = 0.9})
+	local dots = {}
+	for i = 1, 24 do
+		local a = (i - 1) / 24 * math.pi * 2 - math.pi / 2
+		local r = d / 2 + px(1.2, 7)
+		local dt = make("Frame", {BackgroundColor3 = C.cyan, BackgroundTransparency = 0.8, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(W / 2 + math.cos(a) * r, by + math.sin(a) * r), Size = UDim2.fromOffset(px(0.9, 5), px(0.9, 5)), ZIndex = 6}, root)
+		corner(dt, UDim.new(0.5, 0))
+		dots[i] = dt
+	end
+	local function isPress(io) return io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.Touch end
+	btn.InputBegan:Connect(function(io) if isPress(io) and pod.phase == "charge" then pod.holding, pod.input = true, io end end)
+	btn.InputEnded:Connect(function(io) if isPress(io) then pod.holding = false end end)
+	local t0 = os.clock()
+	pod.conn = RunService.RenderStepped:Connect(function(dt2)
+		if pod.phase ~= "charge" then return end
+		local hold = math.max(0.2, tonumber(script:GetAttribute("TutHatchHold")) or 1.2)
+		pod.p = math.clamp(pod.p + (pod.holding and dt2 / hold or -dt2 / (hold / 2)), 0, 1)
+		local p = pod.p
+		rays.Rotation += dt2 * (6 + 50 * p)
+		for _, b in ipairs(beams) do b.BackgroundTransparency = 0.62 - 0.4 * p end
+		gs.Transparency = 0.35 - 0.3 * p
+		local lit = math.floor(p * 24 + 0.001)
+		for i, dt3 in ipairs(dots) do dt3.BackgroundTransparency = i <= lit and 0 or 0.8 end
+		local j = pod.holding and px(0.35) * p or 0
+		vf.Position = eggPos + UDim2.fromOffset((math.random() * 2 - 1) * j, (math.random() * 2 - 1) * j - (pod.holding and 0 or math.sin((os.clock() - t0) * 2.4) * px(0.5)))
+		seam.Color = p > 0.5 and C.yellow or C.cyan
+		for i, group in ipairs(cracks) do
+			local on = (i == 1 and p >= 0.34) or (i == 2 and p >= 0.67)
+			for _, c in ipairs(group) do c.Transparency = on and 0 or 1 end
+		end
+		sc.Scale = pod.holding and 0.93 or (p == 0 and 1 + 0.04 * math.sin((os.clock() - t0) * 5) or 1)
+		if p >= 1 then
+			pod.phase = "open"
+			pod.holding = false
+			for _, c in ipairs(cracks[3]) do c.Transparency = 0 end
+			flash()
+			local gy = glass.Position
+			tween(glass, 0.6, {Position = gy - UDim2.fromOffset(0, H * 0.6), BackgroundTransparency = 1}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			tween(gs, 0.5, {Transparency = 1})
+			tween(cap, 0.6, {Position = cap.Position - UDim2.fromOffset(0, H * 0.6), BackgroundTransparency = 1}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			tween(vf, 0.35, {ImageTransparency = 1, Size = UDim2.fromOffset(eh * 0.8 * 1.3, eh * 1.3)})
+			local ap = vf.AbsolutePosition + vf.AbsoluteSize / 2 - root.AbsolutePosition
+			shardsAt(ap.X, ap.Y)
+			btn.Visible = false
+			for _, dt3 in ipairs(dots) do dt3.Visible = false end
+			task.delay(0.7, rollLoop)
+		end
+	end)
+end
+
+local function drawWait()
+	backdrop()
+	local rays, beams = podRays(W / 2, H * 0.55, C.yellow)
+	for _, b in ipairs(beams) do b.BackgroundTransparency = 0.3 end
+	local pw, ph = px(23, 130), H * 0.45
+	local f, glass, gs, cap = podFrame(W / 2, H * 0.27, pw, ph)
+	glass.Visible, cap.Visible = false, false
+	local t = hatchText(root, "HATCHING", "title", px(3, 22), C.yellow, H * 0.16)
+	tween(t, 0.4, {TextTransparency = 0.6}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	pod.conn = RunService.RenderStepped:Connect(function(dt2) rays.Rotation += dt2 * 40 end)
+end
+
+-- the rolled dino in a viewport (PregameModels body + its free parts), turning; returns the viewport and a turn function
+local function dinoView(parent, key)
+	local vf = make("ViewportFrame", {Name = "DinoView", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Ambient = Color3.fromRGB(150, 160, 180),
+		LightColor = Color3.new(1, 1, 1), LightDirection = Vector3.new(-0.5, -1, -0.6)}, parent)
+	local models = ReplicatedStorage:FindFirstChild("PregameModels")
+	local fold = models and models:FindFirstChild(key)
+	local body = fold and fold:FindFirstChild("Body")
+	if not (body and body:IsA("Model")) then
+		text(parent, string.upper(dinoName(key)), "title", px(4, 30), C.yellow, {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5)})
+		return vf, function() end
+	end
+	local m = Instance.new("Model")
+	body:Clone().Parent = m
+	local pf = fold:FindFirstChild("Parts")
+	for _, id in ipairs(partsOf(key, false, true)) do
+		local pm = pf and pf:FindFirstChild(id)
+		if pm and pm:GetAttribute("Free") ~= true then pm:Clone().Parent = m end
+	end
+	for _, d in ipairs(m:GetDescendants()) do if d:IsA("BaseScript") then d:Destroy() end end
+	local bcf, bsz = body:GetBoundingBox()
+	local sz = body:GetAttribute("BodySize") or bsz
+	local minY = body:GetAttribute("BodyMinY") or (bcf.Position.Y - sz.Y / 2)
+	m.WorldPivot = CFrame.new(bcf.Position.X, minY, bcf.Position.Z)
+	m.Parent = vf
+	local yaw = math.pi + 0.8
+	m:PivotTo(CFrame.Angles(0, yaw, 0))
+	local mx = math.max(sz.X, sz.Y * 1.35, sz.Z)
+	local d, ty = mx * 1.4, sz.Y * 0.45
+	local cam = make("Camera", {FieldOfView = 30, CFrame = CFrame.lookAt(Vector3.new(0, ty + d * 0.2, d), Vector3.new(0, ty, 0))}, vf)
+	vf.CurrentCamera = cam
+	return vf, function(dt2) yaw += dt2 * 0.45 m:PivotTo(CFrame.Angles(0, yaw, 0)) end
+end
+local function badgeWords(L)
+	if L.key and not isTouch() then return L.key end
+	if L.how == "hold" then return "HOLD" end
+	if L.how == "tap3" then return isTouch() and "TAP\nX3" or "CLICK\nX3" end
+	return isTouch() and "TAP" or "CLICK"
+end
+
+local function drawReveal(rolled, animate)
+	backdrop()
+	local cx = W * 0.3
+	local rays, beams = podRays(cx, H * 0.5, C.cyan)
+	-- the dino on the pod base
+	local vw, vh = math.min(px(44), W * 0.46), H * 0.56
+	local holder = make("Frame", {Name = "Dino", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(cx, H * 0.44),
+		Size = UDim2.fromOffset(vw, vh), ZIndex = 3}, root)
+	local base = make("Frame", {Name = "Base", BackgroundColor3 = Color3.fromRGB(52, 64, 94), AnchorPoint = Vector2.new(0.5, 0), ZIndex = 2,
+		Position = UDim2.fromOffset(cx, H * 0.44 + vh * 0.3), Size = UDim2.fromOffset(px(22, 130), px(6, 34))}, root)
+	corner(base, UDim.new(0, px(1.4, 8)))
+	make("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(150, 160, 185), Color3.fromRGB(60, 66, 86)), Rotation = 90}, base)
+	local bar = make("Frame", {BackgroundColor3 = C.cyan, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45),
+		Size = UDim2.new(0.8, 0, 0, px(0.6, 4)), ZIndex = 3}, base)
+	corner(bar, UDim.new(0.5, 0))
+	stroke(bar, C.cyan, px(0.5, 3), 0.55)
+	local vf, turn = dinoView(holder, rolled)
+	-- the panel
+	local role = R.ROLE[rolled] or "FIGHTER"
+	local pw = math.min(px(44), W * 0.42)
+	local panel = make("CanvasGroup", {Name = "Panel", BackgroundTransparency = 1, Position = UDim2.fromOffset(W * 0.54, math.max(H * 0.1, topH * 0.6)),
+		Size = UDim2.fromOffset(pw, H * 0.86), ZIndex = 5}, root)
+	list(panel, nil, px(0.8, 5), Enum.HorizontalAlignment.Left).VerticalAlignment = Enum.VerticalAlignment.Top
+	text(panel, "FREE DINO UNLOCKED", "title", px(1.9, 14), C.cyan, {LayoutOrder = 1})
+	text(panel, string.upper(dinoName(rolled)), "title", px(6, 40), C.white, {LayoutOrder = 2})
+	local chip = text(panel, " " .. role .. " ", "title", px(1.8, 13), C.ink, {BackgroundTransparency = 0, BackgroundColor3 = ROLE_COLOR[role] or C.cyan,
+		LayoutOrder = 3})
+	corner(chip, UDim.new(0, px(0.6, 4)))
+	pad(chip, px(0.4, 3), px(0.6, 4))
+	local hr = make("Frame", {BackgroundColor3 = C.cyan, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 2), LayoutOrder = 4}, panel)
+	make("UIGradient", {Transparency = NumberSequence.new(0, 1)}, hr)
+	text(panel, "MAIN ATTACK", "title", px(1.9, 14), C.yellow, {LayoutOrder = 5})
+	local bd = px(6.2, 44)
+	for i, L in ipairs(R.lessonsFor(rolled)) do
+		local row = make("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 5 + i}, panel)
+		local hold = L.how == "hold"
+		local bdg = make("Frame", {BackgroundColor3 = hold and C.cyan or C.yellow, Size = UDim2.fromOffset(bd, bd)}, row)
+		corner(bdg, UDim.new(0.5, 0))
+		if hold then stroke(bdg, C.cyan, px(0.4, 3), 0.4) end
+		text(bdg, badgeWords(L), "title", px(1.7, 12), C.ink, {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), TextWrapped = false,
+			LineHeight = 0.9})
+		local col = make("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(bd + px(1.4, 8), 0), Size = UDim2.new(1, -bd - px(1.4, 8), 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y}, row)
+		list(col, nil, px(0.2, 2), Enum.HorizontalAlignment.Left).VerticalAlignment = Enum.VerticalAlignment.Top
+		text(col, L.n, "black", px(2.5, 19), C.white, {LayoutOrder = 1, TextWrapped = false})
+		text(col, L.line, "body", px(1.8, 14), C.muted, {LayoutOrder = 2, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+			TextXAlignment = Enum.TextXAlignment.Left})
+	end
+	if ReplicatedStorage:GetAttribute("TutUnlockTextOn") == true then
+		text(panel, "More dinos unlock with skill points.", "body", px(1.4, 12), C.muted, {LayoutOrder = 20})
+	end
+	local nb = cta(panel, "NEXT", function() send("next") end, {LayoutOrder = 21})
+	-- motion
+	local scanY = 0
+	local scan = make("Frame", {Name = "Scan", BackgroundColor3 = C.cyan, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = 4,
+		Position = UDim2.fromScale(0.5, 0), Size = UDim2.new(0.9, 0, 0, px(0.5, 3)), Visible = false}, holder)
+	stroke(scan, C.cyan, px(0.6, 4), 0.5)
+	if animate then
+		pod.revealed = true
+		vf.ImageColor3 = Color3.new(0, 0, 0)
+		holder.Position = UDim2.fromOffset(W / 2, H * 0.44)
+		base.Position = UDim2.fromOffset(W / 2, H * 0.44 + vh * 0.3)
+		tween(holder, 0.6, {Position = UDim2.fromOffset(cx, H * 0.44)}, Enum.EasingStyle.Back)
+		tween(base, 0.6, {Position = UDim2.fromOffset(cx, H * 0.44 + vh * 0.3)}, Enum.EasingStyle.Back)
+		panel.GroupTransparency = 1
+		panel.Position += UDim2.fromOffset(px(3), 0)
+		task.delay(0.55, function()
+			if not scan.Parent then return end
+			scan.Visible = true
+			tween(scan, 0.9, {Position = UDim2.fromScale(0.5, 1)}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+			tween(vf, 0.9, {ImageColor3 = Color3.new(1, 1, 1)}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+			for _, b in ipairs(beams) do tween(b, 0.5, {BackgroundTransparency = 0.3}) end
+			task.delay(0.95, function()
+				if scan.Parent then scan.Visible = false end
+				for _, b in ipairs(beams) do if b.Parent then tween(b, 0.8, {BackgroundTransparency = 0.6}) end end
+			end)
+		end)
+		task.delay(1.1, function()
+			if panel.Parent then tween(panel, 0.4, {GroupTransparency = 0, Position = panel.Position - UDim2.fromOffset(px(3), 0)}) end
+		end)
+	end
+	pod.conn = RunService.RenderStepped:Connect(function(dt2)
+		rays.Rotation += dt2 * 6
+		turn(dt2)
+	end)
+end
+local function incubatorKey(s)
+	local rolled = player:GetAttribute("TutRolled") or ""
+	local scene = rolled == "" and (pod.phase == "open" and "wait" or "charge") or ("reveal:" .. rolled)
+	if s == 1 and rolled == "" and pod.phase ~= "open" then scene = "charge" end
+	return scene .. "|" .. math.floor(W) .. "x" .. math.floor(H) .. "|" .. tostring(isTouch())
+end
+
 -- ---------- render ----------
 local lastSpentId = nil
 local fullRetry = false
@@ -542,8 +894,16 @@ local function scenePartsCards(col, add, ids)
 end
 
 function render()
-	root:ClearAllChildren()
 	local s = step()
+	if s == 1 or s == 2 then -- v1.2: the incubator keeps its scene while nothing it shows changed
+		if incubatorOn() then
+			measure()
+			if pod.sceneKey ~= nil and pod.sceneKey == incubatorKey(s) and #root:GetChildren() > 0 then return end
+		end
+	end
+	podStop()
+	pod.sceneKey = nil
+	root:ClearAllChildren()
 	gui.Enabled = s > 0
 	player:SetAttribute("TutClientStep", s)
 	updateMark()
@@ -554,7 +914,17 @@ function render()
 	local replay = player:GetAttribute("TutReplay") == true
 	local unlockText = ReplicatedStorage:GetAttribute("TutUnlockTextOn") == true
 	local lessons = R.lessonsFor(dino)
-	if s == 1 or (s == 2 and ((player:GetAttribute("TutRolled") or "") == "" or egg.hatching and egg.rollLoop)) then
+	if (s == 1 or s == 2) and incubatorOn() then -- v1.2
+		pod.sceneKey = incubatorKey(s)
+		local rolled = player:GetAttribute("TutRolled") or ""
+		if rolled ~= "" and s == 2 then
+			drawReveal(rolled, not pod.revealed)
+		elseif pod.phase == "open" then
+			drawWait()
+		else
+			drawCharge()
+		end
+	elseif s == 1 or (s == 2 and ((player:GetAttribute("TutRolled") or "") == "" or egg.hatching and egg.rollLoop)) then
 		drawEgg()
 	elseif s == 2 then
 		local rolled = player:GetAttribute("TutRolled")
@@ -814,6 +1184,7 @@ player.AttributeChanged:Connect(function(name)
 		local s = step()
 		if s ~= 8 then lastSpentId = nil end
 		if s <= 1 then egg.taps, egg.hatching = 0, false end
+		if s == 0 or s >= 3 then podReset() end -- v1.2
 		if s ~= 4 and s ~= 6 then shownLessons = {} end
 	end
 	if WATCH[name] or (step() == 5 and name:sub(1, 10) == "SkillPath_") then queue() end
