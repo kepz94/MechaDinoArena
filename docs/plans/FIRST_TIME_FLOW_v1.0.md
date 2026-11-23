@@ -314,5 +314,11 @@ flow; TUTORIAL replays steps 3 to 10.
   Waiting on Kepu's OK of the layout and tags; nothing built.- 21:32 Kepu: "What kinda explanations are those. Make it sound like a damn video game". Mockup
   docs/mockups/dino_showcase_v0.3.html: every ability is a card (type tag ATTACK / CONTROL / DEFENSE / HEAL / MOVE / SUPPORT /
   STEALTH / PASSIVE, one game-style line, stat chips with the numbers from the Lab text); main attacks rewritten the same way.
-  The raw Lab text is no longer shown in game, only in the mockup's copy table as the source. Waiting on Kepu's OK; nothing built.
+  The raw Lab text is no longer shown in game, only in the mockup's copy table as the source. Waiting on Kepu's OK; nothing built.- 21:36 Kepu: "These need to be more specific with damage as well as duration/effects". Mockup docs/mockups/dino_showcase_v0.4.html:
+  every card has a stat grid (DMG / effect / TIME / RANGE / AREA / CHARGES / CD) and each ability row shows its headline stat.
+  The free dino gets every part maxed (SkillServer 1.13), so ability numbers = SkillTree.effects(all parts at 4, dino) read in
+  Studio Edit 2026-11-22 (plus Thrusters 5.6 s from SkillEffects 1.54 SkillDashRechargeFast). Main attack numbers = attack server
+  DEFAULTS (Pounce 8 + 4/0.5 s, Headbutt 20, Slash 8 + bleed 3/s 4 s, Scratch 8, Tail Slam 40, Theri 9/9/20, Spit 6 + venom 2/s
+  3 s, Pod 6 + 3/s); to be checked live in Studio at build (model data can override). Not shown: Sonic Hiss range / cone (Lab text
+  60 studs 140 deg vs effects dHissRange 30 / dHissAngle 35 disagree). Waiting on Kepu's OK; nothing built.
 
