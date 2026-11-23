@@ -307,5 +307,9 @@ flow; TUTORIAL replays steps 3 to 10.
   to a plain grid because the wheel was slower to use.
 - Mockup docs/mockups/dino_showcase_v0.1.html (real models from pregame_v0.4_dinos.js): A select screen (roster by role as
   PregameScreen ROLE_GROUPS, big turning dino, MAIN ATTACK from TutorialRules LESSONS, 1 IN 7, cycles itself; recommended),
-  B lineup with a walking spotlight, C egg pod + contents board, NOW = 1.4 as built. Waiting on Kepu's pick; nothing built.
+  B lineup with a walking spotlight, C egg pod + contents board, NOW = 1.4 as built. Waiting on Kepu's pick; nothing built.- 20:26 Kepu: "I like A with explanations of the attacks for each Dino and how they work/abilities". Mockup
+  docs/mockups/dino_showcase_v0.2.html: A with MAIN ATTACK cards (TutorialRules LESSONS name, how, line) and ABILITIES · n =
+  every live mecha part the free dino gets (SkillServer 1.13; SkillTree PATHS seesPath, read live in Studio): name + a short
+  tag (NEW copy, 52 tags, table in the mockup), tap = the Lab's step-1 text in a detail box. Cycle 5 s, pause 10 s on a tap.
+  Waiting on Kepu's OK of the layout and tags; nothing built.
 
