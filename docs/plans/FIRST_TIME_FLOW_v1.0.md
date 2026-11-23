@@ -311,5 +311,8 @@ flow; TUTORIAL replays steps 3 to 10.
   docs/mockups/dino_showcase_v0.2.html: A with MAIN ATTACK cards (TutorialRules LESSONS name, how, line) and ABILITIES · n =
   every live mecha part the free dino gets (SkillServer 1.13; SkillTree PATHS seesPath, read live in Studio): name + a short
   tag (NEW copy, 52 tags, table in the mockup), tap = the Lab's step-1 text in a detail box. Cycle 5 s, pause 10 s on a tap.
-  Waiting on Kepu's OK of the layout and tags; nothing built.
+  Waiting on Kepu's OK of the layout and tags; nothing built.- 21:32 Kepu: "What kinda explanations are those. Make it sound like a damn video game". Mockup
+  docs/mockups/dino_showcase_v0.3.html: every ability is a card (type tag ATTACK / CONTROL / DEFENSE / HEAL / MOVE / SUPPORT /
+  STEALTH / PASSIVE, one game-style line, stat chips with the numbers from the Lab text); main attacks rewritten the same way.
+  The raw Lab text is no longer shown in game, only in the mockup's copy table as the source. Waiting on Kepu's OK; nothing built.
 
