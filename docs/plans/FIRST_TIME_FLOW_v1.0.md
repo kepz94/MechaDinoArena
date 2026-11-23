@@ -300,3 +300,12 @@ flow; TUTORIAL replays steps 3 to 10.
   empty the coach points at the empty slot first. Showcase screen before the egg (7 roll dinos, 3D, name, role), switch
   TutorialShowcaseEnabled. No mockup for the showcase (Kepu asked for it directly); open to changes.
 - Published 15:14 (Sandbox v913 + Arena overwrite); Kepu's account reset again (backup _bak_20261122_1516).
+
+## 20:15 Kepu: "the presentation screen for the 7 Dino's could be better, look at how other games handle this"
+- Patterns looked at: hero select (Overwatch / Marvel Rivals grid by role, one big hero), lineups on pedestals (Brawl Stars,
+  this game's Pregame LINEUP), egg / case contents boards (Pet Simulator 99, Bee Swarm). Marvel Rivals moved from a fancy wheel
+  to a plain grid because the wheel was slower to use.
+- Mockup docs/mockups/dino_showcase_v0.1.html (real models from pregame_v0.4_dinos.js): A select screen (roster by role as
+  PregameScreen ROLE_GROUPS, big turning dino, MAIN ATTACK from TutorialRules LESSONS, 1 IN 7, cycles itself; recommended),
+  B lineup with a walking spotlight, C egg pod + contents board, NOW = 1.4 as built. Waiting on Kepu's pick; nothing built.
+
