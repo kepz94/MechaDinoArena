@@ -71,6 +71,20 @@
 --     "YOUR FIRST DINO" / "1 OF THESE 7 · FREE", the roll pool (TutorialRules.ROLL_POOL) as cards dealt in left to right,
 --     each with its 3D model (PregameModels body + its parts) turning, its name and role chip; NEXT opens the egg. Client
 --     only (the server step stays 1); seen once per join.
+-- v1.5 (Kepu 2026-11-22 20:15 "the presentation screen for the 7 Dino's could be better, look at how other games handle
+--   this"; 20:26 "I like A with explanations of the attacks for each Dino and how they work/abilities"; 21:32 "Make it sound
+--   like a damn video game"; 21:36 "more specific with damage as well as duration/effects"; 21:42 "Build" on mockup
+--   docs/mockups/dino_showcase_v0.4.html): the showcase becomes a select screen (drawShowcase2). Left: "MECHA DINO ARENA" /
+--   "YOUR FIRST DINO" / "1 OF THESE 7 · FREE" below the Roblox buttons, the roll pool by role (HOLDER / FIGHTER / RANGED, as
+--   PregameScreen ROLE_GROUPS) as 3D tiles. Middle: the picked dino (PregameModels body + all its parts) turning over a base
+--   ringed in its role color, one dot per dino, NEXT (to the egg, as 1.4). Right: name, role chip, "1 IN 7"; MAIN ATTACK cards
+--   (name, TAP / HOLD / TAP x3 badge (PC: CLICK, Raptor F), one line, stat chips); ABILITIES · n = every live mecha part of
+--   that dino (partsOf given, the free dino gets them all, maxed) as rows: name, type (ATTACK / CONTROL / DEFENSE / HEAL / MOVE
+--   / SUPPORT / STEALTH / SCOUT / PASSIVE, colored), headline stat; the open ability's card at the bottom: name, type chip,
+--   one line, stat chips. The first ability is open; a tap on a row opens it. The screen moves to the next dino every
+--   TutShowcaseCycle s (5) and waits TutShowcaseHold s (10) after any tap. Numbers: abilities = SkillTree.effects with every
+--   part at step 4 (read in Studio Edit); main attacks = the dino's ModelData attributes. Switch: script attribute
+--   TutorialShowcaseCardsEnabled (default true; false = the 1.4 cards). Diagnostic: player attribute TutShowcaseDino.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -81,6 +95,7 @@ local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 incubator egg + scan reveal
 VERSION = "1.3" -- v1.3 equip / spend on the real Lab (coach)
 VERSION = "1.4" -- v1.4 equip slot fix + dino showcase
+VERSION = "1.5" -- v1.5 showcase select screen + attack / ability cards
 script:SetAttribute("TutorialClientVersion", VERSION)
 if script:GetAttribute("TutorialClientEnabled") == nil then script:SetAttribute("TutorialClientEnabled", true) end
 if script:GetAttribute("TutorialClientEnabled") == false then return end
@@ -959,6 +974,362 @@ local function drawShowcase()
 		for _, t in ipairs(turns) do t(dt2) end
 	end)
 end
+-- ---------- v1.5: the dino showcase as a select screen with attack / ability cards (see the header) ----------
+if script:GetAttribute("TutorialShowcaseCardsEnabled") == nil then script:SetAttribute("TutorialShowcaseCardsEnabled", true) end
+local function showcase2On() return script:GetAttribute("TutorialShowcaseCardsEnabled") ~= false end
+if script:GetAttribute("TutShowcaseCycle") == nil then script:SetAttribute("TutShowcaseCycle", 5) end -- s per dino
+if script:GetAttribute("TutShowcaseHold") == nil then script:SetAttribute("TutShowcaseHold", 10) end -- s of no cycling after a tap
+local TextService = game:GetService("TextService")
+local SC_GROUPS = {{"HOLDER", {"Pachy", "Teno"}}, {"FIGHTER", {"Raptor", "Herrera", "Therizino"}}, {"RANGED", {"Dilo", "Troodon"}}} -- PregameScreen ROLE_GROUPS (roll pool only)
+local SC_TYPE = {ATTACK = Color3.fromRGB(255, 107, 132), CONTROL = Color3.fromRGB(180, 140, 255), DEFENSE = Color3.fromRGB(127, 233, 255),
+	HEAL = Color3.fromRGB(70, 224, 138), MOVE = Color3.fromRGB(255, 155, 46), SUPPORT = Color3.fromRGB(255, 200, 50),
+	STEALTH = Color3.fromRGB(159, 176, 200), SCOUT = Color3.fromRGB(198, 211, 106), PASSIVE = Color3.fromRGB(138, 149, 168)}
+-- main attacks: name, how (as TutorialRules LESSONS), PC key, line, stats {label, value}. Numbers = the dino's ModelData attributes
+-- (RaptorModelData Pounce*, PachyModelData Headbutt*, HerreraModelData Slash*, TenoModelData TenoScratch* / TenoSlam*,
+-- TherizinoModelData TheriHitDamage1-3, DiloModelData DiloDart* / DiloVenom* / DiloSpit*, TroodonModelData TrooPod* / TrooZone*)
+local SC_ATK = {
+	Raptor = {{"Pounce", "tap", "F", "Leap onto an enemy and latch on. Keep clawing while you ride it.", {{"DMG", "8 + 5 / 0.5 S"}, {"COST", "15 STAMINA"}, {"CD", "3 S"}}}},
+	Pachy = {{"Headbutt", "tap", nil, "Charge head first. A full run-up hits hardest. The target is shoved back and slowed.", {{"DMG", "25"}, {"UP CLOSE", "18"}, {"SHOVE", "40 STUDS"}, {"SLOW", "35% · 3 S"}, {"CHARGES", "2 · 3 S"}}}},
+	Herrera = {{"Dash Slash", "tap", nil, "Dash straight through an enemy and slash it open. It keeps bleeding.", {{"DMG", "15"}, {"BLEED", "4/S · 4 S"}, {"CHARGES", "3 · 2.5 S"}}}},
+	Teno = {{"Scratch", "tap", nil, "Swipe whatever is in front of you.", {{"DMG", "12"}}},
+		{"Tail Slam", "hold", nil, "Turn your back and slam everything behind you.", {{"DMG", "25"}, {"CHARGES", "3 · 8 S"}}}},
+	Therizino = {{"Claw Combo", "tap3", nil, "Three slashes. The third one is the big hit.", {{"DMG", "11 · 11 · 24"}}}},
+	Dilo = {{"Spit", "tap", nil, "Spit venom from range. It burns after it lands.", {{"DMG", "5"}, {"VENOM", "4/S · 1.5 S"}, {"RANGE", "60"}, {"AMMO", "5 · 3 S RELOAD"}}}},
+	Troodon = {{"Glow Pod Toss", "tap", nil, "Lob a glowing pod. It splats into a zone that burns and slows enemies and heals your squad.", {{"DMG", "4 + 1/S"}, {"SLOW", "25% · 3 S"}, {"HEAL", "+5 SQUAD"}, {"CHARGES", "3 · 2 S"}}}},
+}
+-- abilities at max (the free dino gets every part maxed, SkillServer 1.13): type, line, stats. Numbers = SkillTree.effects(every
+-- part at step 4, dino) read in Studio 2026-11-22; Thrusters recharge = SkillEffects 1.54 SkillDashRechargeFast 5.6.
+local SC_INFO = {
+	adrenaline = {"HEAL", "Jab in a boost. Heal and sprint, and it snaps you out of a stun.", {{"HEAL", "34% HP"}, {"SPEED", "+40%"}, {"TIME", "3 S"}, {"CD", "10.3 S"}}},
+	screech = {"CONTROL", "Your shoulder cannon fires an electric ball. The first dino hit is stunned and its cloak drops.", {{"DMG", "30"}, {"STUN", "1.1 S"}, {"RANGE", "270"}, {"CD", "10.3 S"}}},
+	shield = {"DEFENSE", "Block every hit. You move slower while it's up.", {{"BLOCK", "ALL DMG"}, {"TIME", "2.77 S"}, {"SPEED", "68%"}, {"CD", "11.8 S"}}},
+	cloak = {"STEALTH", "Go nearly invisible and bots lose you. Stand still to stay hidden twice as long. Strike out of it for bonus damage.", {{"TIME", "4.1 S"}, {"STILL", "8.2 S"}, {"AMBUSH", "+35% DMG"}, {"CD", "12 S"}}},
+	thrusters = {"MOVE", "Pop a hop, then rocket forward. Steer the boost.", {{"SPEED", "2X"}, {"TIME", "1.85 S"}, {"HOP", "25 STUDS"}, {"CHARGES", "2 · 5.6 S"}}},
+	traps = {"ATTACK", "Throw a mine ahead. Whoever walks into it gets blasted back, dazed, slowed, and loses its boost, Shield and Adrenaline.", {{"DMG", "25"}, {"DAZE", "1 S"}, {"SLOW", "50% · 2 S"}, {"CHARGES", "4 · 8.8 S"}}},
+	scent = {"SCOUT", "Sniff the air. Every dino that passed by leaves a glowing trail. Bleeding dinos always leave a blood trail.", {{"RANGE", "81"}, {"TRAILS", "10.8 S OLD"}, {"TIME", "6 S"}, {"CD", "16 S"}}},
+	medstation = {"HEAL", "Drop a healing pad. Stand in the circle for a full heal.", {{"HEAL", "10% / S"}, {"TIME", "10 S"}, {"AREA", "18 STUDS"}, {"CD", "30 S"}}},
+	hookarm = {"CONTROL", "Fire your claw arm at a dino and yank it in for a head smash.", {{"DMG", "15"}, {"PULL", "+ KNOCKBACK"}, {"RANGE", "160"}, {"CD", "6 S"}}},
+	mechalegs = {"MOVE", "Piston legs. Leap farther and higher, then leap again in mid-air.", {{"LEAP", "+50% DIST"}, {"POWER", "+45%"}, {"AIR LEAP", "YES"}, {"CD", "2.73 S"}}},
+	servodash = {"MOVE", "Hip thrusters blast you forward into a sprint. The headbutt slow can't touch you, and you get a headbutt back.", {{"SPEED", "2X"}, {"TIME", "1.5 S"}, {"REFILL", "+1 HEADBUTT"}, {"CD", "5.6 S"}}},
+	visor = {"DEFENSE", "Force field up front. Blocks bites, pounces, headbutts, hooks, cannon shots and ink, and knocks the attacker back.", {{"TIME", "2 S"}, {"BLOCK", "FRONT"}, {"KNOCKBACK", "YES"}, {"CD", "10 S"}}},
+	ink = {"CONTROL", "Fire an ink glob. The dino hit and everyone next to it go blind: players see black, bots forget you.", {{"BLIND", "2 S"}, {"SPLASH", "6 STUDS"}, {"RANGE", "160"}, {"CD", "11 S"}}},
+	tether = {"CONTROL", "Aim from above and lob a spike. The closest dino in the circle is yanked to it and chained down.", {{"CHAIN", "5 S"}, {"AREA", "15 STUDS"}, {"RANGE", "180"}, {"CD", "10 S"}}},
+	bloodrush = {"ATTACK", "Out of headbutts? Pay health for one more. It hits harder and cripples the target.", {{"COST", "25% HP"}, {"DMG", "+25%"}, {"SLOW", "55% · 4 S"}, {"USES", "2"}}},
+	quills = {"ATTACK", "Fire a volley of quills at your target.", {{"DMG", "8 x 4"}, {"RANGE", "80"}, {"CD", "20 S"}}},
+	glider = {"MOVE", "Hold JUMP in the air to glide. Hit SLASH mid-glide to dive onto anything below.", {{"FALL", "8 STUDS/S"}, {"DIVE", "+30% DMG"}, {"LANDING", "BLEED BURST"}}},
+	smoke = {"STEALTH", "Pop a smoke cloud. Bots lose you, you run faster inside, enemies run slower.", {{"TIME", "6 S"}, {"AREA", "28 STUDS"}, {"YOU", "+25% SPEED"}, {"ENEMIES", "-25% SPEED"}, {"CD", "18 S"}}},
+	strobe = {"CONTROL", "Flash your frill. Enemies in front can't attack and take extra damage.", {{"DAZE", "1.5 S"}, {"DMG TAKEN", "+20%"}, {"CONE", "90° · 25"}, {"CD", "16 S"}}},
+	breaker = {"DEFENSE", "Stunned or pinned? Break free, shove everyone off you and shrug off damage.", {{"PUSH", "10 STUDS"}, {"IMMUNE", "1 S"}, {"CD", "14 S"}}},
+	caltrops = {"CONTROL", "Drop hidden razor spikes behind you. Whoever steps on one bleeds and slows.", {{"SPIKES", "10"}, {"BLEED", "3/S · 3 S"}, {"SLOW", "30% · 1 S"}, {"TIME", "14 S"}, {"CD", "16 S"}}},
+	goo = {"CONTROL", "Fire 2 goo blobs that splat into sticky puddles. Enemies stay slowed after they get out.", {{"SLOW", "50%"}, {"TIME", "8 S"}, {"AREA", "29 STUDS"}, {"CD", "14 S"}}},
+	hadren = {"HEAL", "Jab in a boost. Heal, sprint, and refill every slash charge.", {{"HEAL", "34% HP"}, {"SPEED", "+40%"}, {"TIME", "3 S"}, {"CD", "10.3 S"}}},
+	cmissile = {"ATTACK", "Launch a missile and fly it in yourself. Leaves a burning crater. Never hits your team.", {{"DMG", "40"}, {"AREA", "55 STUDS"}, {"BURN", "8/S · 4 S"}, {"CD", "20 S"}}},
+	tgrab = {"CONTROL", "Snatch a dino up to Pachy size with your tail and fling it. It's stunned and crashes into anyone where it lands.", {{"DMG", "8"}, {"CRASH", "8 DMG"}, {"STUN", "1 S"}, {"FLING", "45 STUDS"}, {"CD", "16 S"}}},
+	tmortar = {"ATTACK", "Lob 2 boulders where you aim. They splash, slow, and leave rubble behind.", {{"DMG", "2 x 12"}, {"SLOW", "30% · 2 S"}, {"AREA", "14 STUDS"}, {"RANGE", "180"}, {"CD", "14 S"}}},
+	tstomp = {"CONTROL", "Rear up and stomp. The shockwave stuns everything close and drains a raptor on your back.", {{"DMG", "6"}, {"STUN", "1 S"}, {"AREA", "20 STUDS"}, {"CD", "15 S"}}},
+	tbellow = {"SUPPORT", "Rally the herd. You and nearby squadmates get tanky and fast, and stuns are cleared.", {{"DMG TAKEN", "-50%"}, {"SPEED", "+50%"}, {"TIME", "6 S"}, {"RANGE", "40"}, {"CD", "30 S"}}},
+	tchallenge = {"CONTROL", "Call out every enemy near you. They hit weaker, move slower, and bots come for you.", {{"THEIR DMG", "-40%"}, {"SLOW", "20%"}, {"TIME", "7 S"}, {"RANGE", "45"}, {"CD", "20 S"}}},
+	tleap = {"MOVE", "Every jump is a hydraulic leap. Land it with a tail slam that stuns.", {{"DMG", "10"}, {"STUN", "0.5 S"}, {"LEAP", "55 STUDS"}, {"CHARGES", "2 · 4.2 S"}}},
+	tmud = {"DEFENSE", "Energy shield that eats your next hits. Every block slows enemies around you, and it bursts when it ends.", {{"BLOCKS", "4 HITS"}, {"TIME", "12 S"}, {"SLOW", "40% · 4 S"}, {"CD", "20 S"}}},
+	zhook = {"ATTACK", "Fire your chest claw at an enemy, reel in and slash. It's stunned and your combo starts on it.", {{"DMG", "10"}, {"STUN", "1 S"}, {"RANGE", "160"}, {"CD", "14 S"}}},
+	zfeather = {"ATTACK", "Fan out feather blades. Every hit slows.", {{"DMG", "12 x 3"}, {"SLOW", "25% · 2 S"}, {"RANGE", "100"}, {"CD", "14 S"}}},
+	zharvest = {"CONTROL", "Stab your claws in. A spinning sickle ring drags enemies to you while they bleed.", {{"BLEED", "4/S"}, {"SLOW", "30%"}, {"TIME", "5 S"}, {"AREA", "38 STUDS"}, {"CD", "20 S"}}},
+	zgrapple = {"MOVE", "Jolt the way you're moving.", {{"DASH", "50 STUDS"}, {"CHARGES", "3 · 3 S"}}},
+	zdeflect = {"DEFENSE", "Spin your claws in front of you. Darts, boulders and cannon shots bounce back at the shooter.", {{"TIME", "2 S"}, {"REFLECT", "YES"}, {"CD", "13 S"}}},
+	zclock = {"PASSIVE", "Overclocked joints. Always on.", {{"SPEED", "+40%"}, {"SLASH", "30% FASTER"}, {"JUMPS", "+1"}, {"SLOWS", "IMMUNE"}}},
+	zsnare = {"CONTROL", "Sling a bola from your tail. It wraps the target's legs and holds it in place.", {{"DMG", "12"}, {"ROOT", "2 S"}, {"RANGE", "160"}, {"CHARGES", "3 · 14 S"}}},
+	dgatling = {"ATTACK", "Your hood barrels spray auto-aimed venom darts.", {{"DMG", "8 x 3"}, {"VENOM", "EACH DART"}, {"TIME", "1 S"}, {"CD", "10 S"}}},
+	dmortar = {"ATTACK", "Lob a toxin canister. It blows up and leaves a poison cloud.", {{"DMG", "20"}, {"CLOUD", "5 S"}, {"AREA", "54 STUDS"}, {"RANGE", "120"}, {"CD", "16 S"}}},
+	dhiss = {"CONTROL", "Blast a sonic hiss. Dinos in the cone get knocked back and their mecha parts shut down.", {{"SILENCE", "3 S"}, {"KNOCKBACK", "YES"}, {"CD", "12 S"}}},
+	dspine = {"ATTACK", "Fire venom spines out in every direction.", {{"DMG", "12 x 4"}, {"VENOM", "EACH SPINE"}, {"CD", "12 S"}}},
+	dpump = {"HEAL", "Pump antivenom. Clear every debuff, heal up, then shrug off slows, stuns and blinds.", {{"HEAL", "+30 HP"}, {"IMMUNE", "4 S"}, {"CD", "20 S"}}},
+	djets = {"MOVE", "Your tail booster fires a dash and leaves a poison trail.", {{"DASH", "65 STUDS"}, {"CHARGES", "3 · 4.2 S"}}},
+	dover = {"ATTACK", "Overdrive. Spit nonstop with no ammo and double venom. Your shots refill.", {{"TIME", "8 S"}, {"VENOM", "2X DMG"}, {"CD", "30 S"}}},
+	dscope = {"ATTACK", "Hold to scope in, let go to fire an instant venom shot. A hit marks the dino for your squad.", {{"DMG", "15 - 40"}, {"CHARGE", "1 S"}, {"RANGE", "200"}, {"MARK", "3 S"}, {"CD", "8 S"}}},
+	omender = {"HEAL", "Your drone heals your most hurt squadmate, then moves on to the next. Solo, it heals you.", {{"HEAL", "4/S"}, {"TIME", "5.4 S"}, {"RANGE", "40"}, {"CD", "14.8 S"}}},
+	olantern = {"CONTROL", "Throw a lantern. It zaps the nearest enemy and chains through the pack.", {{"DMG", "12 EACH"}, {"STUN", "1 S"}, {"TARGETS", "3"}, {"CD", "10.3 S"}}},
+	osapwall = {"DEFENSE", "Throw a sap pod. It hardens into a giant wall that stops dinos and shots.", {{"WALL", "100 x 30"}, {"TIME", "8 S"}, {"CHARGES", "2 · 18 S"}}},
+	oshed = {"DEFENSE", "Shed your feathers to break a stun, pin or grab. The burst knocks dinos back and slows them.", {{"IMMUNE", "1.4 S"}, {"AREA", "20 STUDS"}, {"SLOW", "25% · 2 S"}, {"CD", "17.7 S"}}},
+	oportal = {"MOVE", "Drop a portal, run, drop the other end. Any dino can zip along your path untouchable.", {{"SPEED", "5X"}, {"LENGTH", "250 STUDS"}, {"OPEN", "30 S"}, {"CD", "45 S"}}},
+	obloom = {"PASSIVE", "Bigger, longer glow zones. When one ends, it heals your squad and keeps enemies slowed.", {{"AREA", "54 STUDS"}, {"TIME", "4 S"}, {"END", "+5 HEAL"}}},
+	oburst = {"HEAL", "Throw a bud. Squadmates heal and get boosted healing. Enemies inside heal less.", {{"HEAL", "+20 HP"}, {"BOOST", "+50% · 5.4 S"}, {"AREA", "54 STUDS"}, {"CD", "13.3 S"}}},
+	odome = {"DEFENSE", "Throw a canister and a giant dome pops up. Enemy shots stop on it, yours go out.", {{"TIME", "6.75 S"}, {"AREA", "121 STUDS"}, {"CD", "18.5 S"}}},
+	osleep = {"CONTROL", "Fire a sleep dart. The target and one enemy next to it are out cold until something hits them.", {{"SLEEP", "3.4 S"}, {"TARGETS", "2"}, {"RANGE", "120"}, {"CD", "8.9 S"}}},
+	osentry = {"ATTACK", "Throw twin turrets. They shoot the nearest enemy until they run dry.", {{"DMG", "UP TO 20"}, {"TIME", "10.8 S"}, {"RANGE", "60"}, {"CD", "16.3 S"}}},
+}
+local function scHead(stats) -- the row's headline: DMG if any, else the first stat
+	for _, kv in ipairs(stats) do
+		if kv[1] == "DMG" then
+			local v = kv[2]
+			return v:sub(-5) == " EACH" and v:sub(1, -6) .. " DMG EACH" or v .. " DMG"
+		end
+	end
+	local kv = stats[1]
+	if not kv then return "" end
+	return kv[2]:sub(-2) == "HP" and kv[2] or kv[2] .. " " .. kv[1]
+end
+local function scBadge(how, key)
+	if key and not isTouch() then return key end
+	if how == "hold" then return isTouch() and "HOLD" or "HOLD CLICK" end
+	if how == "tap3" then return isTouch() and "TAP x3" or "CLICK x3" end
+	return isTouch() and "TAP" or "CLICK"
+end
+local function drawShowcase2()
+	backdrop()
+	local function cq(n, mn) return math.max(W * n / 100, mn or 0) end
+	local function z(o, n) o.ZIndex = n return o end
+	local function lbl(parent, s2, font, size, color, props)
+		local l = make("TextLabel", {BackgroundTransparency = 1, Text = s2, Font = font, TextSize = size, TextColor3 = color, TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top, Size = UDim2.fromScale(1, 1), ZIndex = 6}, parent)
+		l:SetAttribute("FontSwap", font == Enum.Font.FredokaOne and "silk" or "keep")
+		for k, v in pairs(props or {}) do l[k] = v end
+		return l
+	end
+	local models = ReplicatedStorage:FindFirstChild("PregameModels")
+	local ready = models ~= nil
+	for _, key in ipairs(R.ROLL_POOL) do
+		local f = models and models:FindFirstChild(key)
+		local body = f and f:FindFirstChild("Body")
+		local pc = body and tonumber(body:GetAttribute("PieceCount"))
+		if not body or (pc and #body:GetDescendants() < pc) then ready = false end
+	end
+	if not ready then -- the 3D bodies arrive after the join (as 1.4): draw again every 0.5 s until all are complete
+		task.delay(0.5, function()
+			if step() == 1 and not pod.showcased and pod.phase == "charge" then pod.sceneKey = nil render() end
+		end)
+	end
+	pod.scIdx = pod.scIdx or 1
+	local L0, topY = W * 0.03, math.max(topH + px(0.6, 4), H * 0.05)
+	-- left: title + roster by role
+	local tb = z(make("Frame", {Name = "Title", BackgroundTransparency = 1, Position = UDim2.fromOffset(L0, topY), Size = UDim2.fromOffset(W * 0.24, cq(7.4, 52))}, root), 5)
+	list(tb, nil, 0, Enum.HorizontalAlignment.Left).VerticalAlignment = Enum.VerticalAlignment.Top
+	text(tb, "MECHA DINO ARENA", "title", cq(1.3, 9), C.yellow, {LayoutOrder = 1, ZIndex = 6})
+	text(tb, "YOUR FIRST DINO", "title", cq(3, 20), C.white, {LayoutOrder = 2, ZIndex = 6})
+	text(tb, ("1 OF THESE %d \u{00B7} FREE"):format(#R.ROLL_POOL), "black", cq(1.2, 9), C.text, {LayoutOrder = 3, ZIndex = 6})
+	local tile = math.min(cq(6.6, 44), (H - topY - cq(7.4, 52) - 3 * cq(1.6, 12) - px(1, 6)) / 3.3)
+	local roster = z(make("Frame", {Name = "Roster", BackgroundTransparency = 1, Position = UDim2.fromOffset(L0, topY + cq(7.4, 52) + px(0.6, 4)),
+		Size = UDim2.fromOffset(W * 0.235, H)}, root), 5)
+	list(roster, nil, px(0.6, 4), Enum.HorizontalAlignment.Left).VerticalAlignment = Enum.VerticalAlignment.Top
+	local tiles, tileTurns = {}, {}
+	for gi, g in ipairs(SC_GROUPS) do
+		local role = g[1]
+		local grp = z(make("Frame", {BackgroundTransparency = 1, LayoutOrder = gi, AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.new(1, 0, 0, 0)}, roster), 5)
+		list(grp, nil, px(0.3, 2), Enum.HorizontalAlignment.Left).VerticalAlignment = Enum.VerticalAlignment.Top
+		text(grp, role, "black", cq(1, 8), ROLE_COLOR[role] or C.cyan, {LayoutOrder = 1, ZIndex = 6})
+		local row = z(make("Frame", {BackgroundTransparency = 1, LayoutOrder = 2, Size = UDim2.new(1, 0, 0, tile * 1.06)}, grp), 5)
+		list(row, Enum.FillDirection.Horizontal, px(0.6, 4), Enum.HorizontalAlignment.Left)
+		for ki, key in ipairs(g[2]) do
+			local t = z(make("TextButton", {Name = "Tile_" .. key, Text = "", AutoButtonColor = true, BackgroundColor3 = C.card, LayoutOrder = ki,
+				Size = UDim2.fromOffset(tile, tile * 1.06)}, row), 6)
+			corner(t, UDim.new(0, px(0.9, 6)))
+			local st = stroke(t, C.line, px(0.25, 2))
+			local art = z(make("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -cq(1.6, 12))}, t), 7)
+			if ready then local vf, _ = dinoView(art, key) vf.ZIndex = 7 end
+			text(t, string.upper(dinoName(key)), "black", cq(0.9, 8), C.white, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -px(0.3, 2)),
+				TextWrapped = false, ZIndex = 8})
+			tiles[key] = {b = t, s = st}
+		end
+	end
+	-- middle: the dino on its base
+	-- the stage keeps a wide shape (w / h 1.25) so the turning dino fits; it stands on the base, above the dots and NEXT
+	local sx, sw2 = W * 0.265, W * 0.245
+	local nextB = H - cq(2.4, 14)
+	local dotsY = nextB - px(5.4, 44) - px(1.6, 12)
+	local baseH = sw2 * 0.86 * 0.22
+	local baseY = dotsY - px(1.4, 10) - baseH / 2
+	local sh = math.min(sw2 / 1.25, baseY - math.max(topH, H * 0.12))
+	local sy = baseY + baseH * 0.1 - sh
+	local base = z(make("Frame", {Name = "Base", BackgroundColor3 = Color3.fromRGB(52, 64, 94), AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(sx + sw2 / 2, baseY), Size = UDim2.fromOffset(sw2 * 0.86, baseH)}, root), 3)
+	corner(base, UDim.new(0.5, 0))
+	make("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(150, 160, 185), Color3.fromRGB(60, 66, 86)), Rotation = 90}, base)
+	local ring = stroke(base, C.cyan, px(0.45, 3), 0)
+	local stage = z(make("Frame", {Name = "Stage", BackgroundTransparency = 1, Position = UDim2.fromOffset(sx, sy), Size = UDim2.fromOffset(sw2, sh)}, root), 4)
+	local dots = z(make("Frame", {Name = "Dots", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(sx + sw2 / 2, dotsY),
+		Size = UDim2.fromOffset(sw2, px(1, 7))}, root), 5)
+	list(dots, Enum.FillDirection.Horizontal, px(0.6, 4))
+	local dotList = {}
+	for i = 1, #R.ROLL_POOL do
+		local d = z(make("Frame", {BackgroundColor3 = C.line, LayoutOrder = i, Size = UDim2.fromOffset(px(0.75, 5), px(0.75, 5))}, dots), 6)
+		corner(d, UDim.new(0.5, 0))
+		dotList[i] = d
+	end
+	local nb = cta(root, "NEXT", function()
+		pod.showcased = true
+		pod.sceneKey = nil
+		task.defer(function() render() end)
+	end, {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromOffset(sx + sw2 / 2, nextB)})
+	nb.Name = "Next"
+	nb.ZIndex = 8
+	-- right: name, main attack cards, abilities, the open ability's card
+	local ix, iw = W * 0.515, W * 0.459
+	local iy = math.max(H * 0.045, topH * 0.6)
+	local ih = H - cq(2.4, 14) - iy
+	local info = z(make("Frame", {Name = "Info", BackgroundTransparency = 1, Position = UDim2.fromOffset(ix, iy), Size = UDim2.fromOffset(iw, ih)}, root), 5)
+	local gap = px(0.55, 4)
+	local nameS, lineS, statL, statV = cq(3, 20), cq(1.05, 10), cq(0.72, 7), cq(1.05, 10)
+	local gridH = statL + statV + px(0.7, 6)
+	local function statGrid(parent, stats, y)
+		local g = z(make("Frame", {Name = "Stats", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, y), Size = UDim2.new(1, 0, 0, gridH)}, parent), 6)
+		list(g, Enum.FillDirection.Horizontal, px(0.4, 3), Enum.HorizontalAlignment.Left)
+		for i, kv in ipairs(stats) do
+			local c = z(make("Frame", {BackgroundColor3 = Color3.fromRGB(11, 17, 26), LayoutOrder = i, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 1, 0)}, g), 7)
+			corner(c, UDim.new(0, px(0.4, 3)))
+			stroke(c, C.line, 1)
+			pad(c, px(0.2, 2), px(0.6, 5))
+			list(c, nil, 0, Enum.HorizontalAlignment.Left)
+			text(c, kv[1], "black", statL, C.muted, {LayoutOrder = 1, ZIndex = 8, TextWrapped = false})
+			text(c, kv[2], "black", statV, C.yellow, {LayoutOrder = 2, ZIndex = 8, TextWrapped = false})
+		end
+		return g
+	end
+	local head = z(make("Frame", {Name = "Head", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, nameS * 1.1)}, info), 5)
+	local nameL = lbl(head, "", Enum.Font.FredokaOne, nameS, C.white, {AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 1, 0)})
+	local chip = text(head, "", "black", cq(1, 8), C.ink, {BackgroundTransparency = 0, AnchorPoint = Vector2.new(0, 0.5), TextWrapped = false, ZIndex = 7})
+	corner(chip, UDim.new(0, px(0.4, 3)))
+	pad(chip, px(0.2, 2), px(0.6, 5))
+	lbl(head, ("1 IN %d"):format(#R.ROLL_POOL), Enum.Font.GothamBlack, cq(1.15, 9), C.yellow, {TextXAlignment = Enum.TextXAlignment.Right, TextYAlignment = Enum.TextYAlignment.Center})
+	local body = z(make("Frame", {Name = "Body", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, nameS * 1.1 + gap), Size = UDim2.new(1, 0, 1, -(nameS * 1.1 + gap))}, info), 5)
+	local detH = px(0.6, 5) * 2 + cq(1.6, 12) * 1.2 + lineS * 1.25 * 2 + gridH + gap * 2
+	local function section(parent, s2, y)
+		local f = z(make("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(0, y), Size = UDim2.new(1, 0, 0, cq(1, 8) * 1.3)}, parent), 5)
+		lbl(f, s2, Enum.Font.GothamBlack, cq(0.95, 8), C.muted)
+		local ln = z(make("Frame", {BackgroundColor3 = C.line, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.fromScale(1, 0.5), Size = UDim2.new(0.68, 0, 0, 1)}, f), 6)
+		return f, f.Size.Y.Offset
+	end
+	local view = {}
+	local function openAbility(dino, id)
+		pod.scAb = id
+		for aid, r in pairs(view.rows or {}) do
+			r.s.Color = aid == id and C.yellow or C.line
+			r.b.BackgroundColor3 = aid == id and Color3.fromRGB(29, 39, 56) or C.card
+		end
+		local d = view.detail
+		if not d then return end
+		for _, c in ipairs(d:GetChildren()) do if not c:IsA("UICorner") and not c:IsA("UIStroke") then c:Destroy() end end
+		local inf = SC_INFO[id] or {"PASSIVE", "", {}}
+		local ty = SC_TYPE[inf[1]] or C.muted
+		local p0 = px(0.6, 5)
+		local nm = text(d, pname(id), "title", cq(1.6, 12), C.white, {Position = UDim2.fromOffset(p0 * 1.5, p0), TextWrapped = false, ZIndex = 7})
+		local tchip = text(d, " " .. inf[1] .. " ", "black", cq(0.85, 8), C.ink, {BackgroundTransparency = 0, BackgroundColor3 = ty, TextWrapped = false, ZIndex = 7})
+		corner(tchip, UDim.new(0, px(0.35, 3)))
+		task.defer(function() if tchip.Parent then tchip.Position = UDim2.fromOffset(nm.AbsoluteSize.X + p0 * 2.6, p0 + (nm.AbsoluteSize.Y - tchip.AbsoluteSize.Y) / 2) end end)
+		local y = p0 + cq(1.6, 12) * 1.2
+		local ln = lbl(d, inf[2], Enum.Font.GothamBold, lineS, C.text, {TextWrapped = true, Position = UDim2.fromOffset(p0 * 1.5, y), Size = UDim2.new(1, -p0 * 3, 0, lineS * 2.5)})
+		statGrid(d, inf[3], y + lineS * 2.5 + gap).Position = UDim2.fromOffset(p0 * 1.5, y + lineS * 2.5 + gap)
+		local _ = ln
+	end
+	local function show(i)
+		pod.scIdx = i
+		local key = R.ROLL_POOL[i]
+		local role = R.ROLE[key] or "FIGHTER"
+		for k, t in pairs(tiles) do
+			t.s.Color = k == key and C.yellow or C.line
+			t.s.Thickness = k == key and px(0.35, 3) or px(0.25, 2)
+		end
+		for j, d in ipairs(dotList) do d.BackgroundColor3 = j == i and C.yellow or C.line end
+		ring.Color = ROLE_COLOR[role] or C.cyan
+		nameL.Text = string.upper(dinoName(key))
+		chip.Text = role
+		chip.BackgroundColor3 = ROLE_COLOR[role] or C.cyan
+		task.defer(function() if chip.Parent then chip.Position = UDim2.new(0, nameL.AbsoluteSize.X + px(1, 7), 0.5, 0) end end)
+		stage:ClearAllChildren()
+		view.turn = nil
+		if ready then
+			local vf, turn = dinoView(stage, key)
+			vf.ZIndex = 4
+			if vf.CurrentCamera then vf.CurrentCamera.FieldOfView = 40 end -- wider than dinoView's 30: long dinos (Teno) fit the stage
+			view.turn = turn
+		end
+		body:ClearAllChildren()
+		local y = 0
+		local _, sh2 = section(body, "MAIN ATTACK", y)
+		y += sh2 + gap * 0.6
+		local atks = SC_ATK[key] or {}
+		local cols = math.max(1, #atks) -- two main attacks (Teno) sit side by side
+		local cw = (iw - gap * (cols - 1)) / cols
+		local p0 = px(0.55, 4)
+		local cardH = 0
+		local lineHs = {}
+		for ai, a in ipairs(atks) do
+			local tsz = TextService:GetTextSize(a[4], lineS, Enum.Font.GothamBold, Vector2.new(cw - p0 * 3.5, 1000))
+			local lines = math.clamp(math.ceil(tsz.Y / (lineS * 1.05) - 0.01), 1, 2) -- the line wraps to 2 rows when it needs to
+			lineHs[ai] = lineS * 1.3 * lines
+			cardH = math.max(cardH, p0 * 2 + cq(1.5, 12) * 1.15 + lineHs[ai] + gap + gridH)
+		end
+		for ai, a in ipairs(atks) do
+			local lineH = lineHs[ai]
+			local card = z(make("Frame", {Name = "Attack", BackgroundColor3 = C.card, Position = UDim2.fromOffset((ai - 1) * (cw + gap), y), Size = UDim2.fromOffset(cw, cardH)}, body), 5)
+			corner(card, UDim.new(0, px(0.7, 5)))
+			stroke(card, C.line, 1)
+			z(make("Frame", {BackgroundColor3 = C.yellow, BorderSizePixel = 0, Size = UDim2.new(0, px(0.45, 3), 1, 0)}, card), 6)
+			text(card, a[1], "title", cq(1.5, 12), C.white, {Position = UDim2.fromOffset(p0 * 2, p0), TextWrapped = false, ZIndex = 7})
+			local bd = text(card, " " .. scBadge(a[2], a[3]) .. " ", "black", cq(0.95, 8), C.ink, {BackgroundTransparency = 0, BackgroundColor3 = C.yellow,
+				AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -p0 * 1.5, 0, p0), TextWrapped = false, ZIndex = 7})
+			corner(bd, UDim.new(0, px(0.4, 3)))
+			lbl(card, a[4], Enum.Font.GothamBold, lineS, C.text, {Position = UDim2.fromOffset(p0 * 2, p0 + cq(1.5, 12) * 1.15), Size = UDim2.new(1, -p0 * 3.5, 0, lineH),
+				TextWrapped = true, TextTruncate = Enum.TextTruncate.AtEnd})
+			statGrid(card, a[5], 0).Position = UDim2.new(0, p0 * 2, 1, -(p0 + gridH))
+		end
+		y += cardH + gap
+		local ids = partsOf(key, false, true)
+		local _, sh3 = section(body, ("ABILITIES \u{00B7} %d"):format(#ids), y)
+		y += sh3 + gap * 0.6
+		local listH = math.max(px(6, 40), body.AbsoluteSize.Y - y - detH - gap)
+		local sc = z(make("ScrollingFrame", {Name = "Abilities", BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(0, y), Size = UDim2.new(1, 0, 0, listH),
+			ScrollBarThickness = px(0.3, 3), ScrollBarImageColor3 = C.line, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			ScrollingDirection = Enum.ScrollingDirection.Y}, body), 5)
+		local rowH = cq(1.12, 10) * 1.1 + cq(0.78, 7) * 1.1 + px(0.4, 3)
+		local cellW = (iw - px(0.3, 3)) / 2 - gap / 2
+		make("UIGridLayout", {CellSize = UDim2.new(0.5, -gap / 2 - px(0.3, 3), 0, rowH), CellPadding = UDim2.fromOffset(gap * 0.7, gap * 0.5),
+			SortOrder = Enum.SortOrder.LayoutOrder}, sc)
+		view.rows = {}
+		for i, id in ipairs(ids) do
+			local inf = SC_INFO[id] or {"PASSIVE", "", {}}
+			local ty = SC_TYPE[inf[1]] or C.muted
+			local b = z(make("TextButton", {Name = "Ab_" .. id, Text = "", AutoButtonColor = true, BackgroundColor3 = C.card, LayoutOrder = i}, sc), 6)
+			corner(b, UDim.new(0, px(0.6, 4)))
+			local s = stroke(b, C.line, 1)
+			z(make("Frame", {BackgroundColor3 = ty, BorderSizePixel = 0, Size = UDim2.new(0, px(0.35, 3), 1, 0)}, b), 7)
+			local p0 = px(0.2, 1)
+			local hl = scHead(inf[3])
+			local hw = TextService:GetTextSize(hl, cq(0.88, 8), Enum.Font.GothamBlack, Vector2.new(1000, 100)).X + px(0.6, 5) -- the headline keeps its width
+			local nw = math.max(cellW * 0.3, cellW - hw - px(1.1, 8) - px(0.6, 5))
+			lbl(b, pname(id), Enum.Font.GothamBold, cq(1.12, 10), C.white, {Position = UDim2.fromOffset(px(1.1, 8), p0), Size = UDim2.new(0, nw, 0, cq(1.12, 10) * 1.1),
+				TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 8})
+			lbl(b, inf[1], Enum.Font.GothamBlack, cq(0.78, 7), ty, {Position = UDim2.fromOffset(px(1.1, 8), p0 + cq(1.12, 10) * 1.1), Size = UDim2.new(0.62, 0, 0, cq(0.78, 7) * 1.1), ZIndex = 8})
+			lbl(b, hl, Enum.Font.GothamBlack, cq(0.88, 8), C.yellow, {AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -px(0.6, 5), 0, 0),
+				Size = UDim2.new(0, hw, 1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextYAlignment = Enum.TextYAlignment.Center, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 8})
+			b.Activated:Connect(function()
+				pod.scHoldUntil = os.clock() + (tonumber(script:GetAttribute("TutShowcaseHold")) or 10)
+				openAbility(key, id)
+			end)
+			view.rows[id] = {b = b, s = s}
+		end
+		local d = z(make("Frame", {Name = "Card", BackgroundColor3 = Color3.fromRGB(13, 19, 28), AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1),
+			Size = UDim2.new(1, 0, 0, detH)}, body), 5)
+		corner(d, UDim.new(0, px(0.7, 5)))
+		stroke(d, C.line, 1)
+		view.detail = d
+		openAbility(key, ids[1])
+		pod.scShownAt = os.clock()
+		player:SetAttribute("TutShowcaseDino", key)
+	end
+	for key, t in pairs(tiles) do
+		t.b.Activated:Connect(function()
+			pod.scHoldUntil = os.clock() + (tonumber(script:GetAttribute("TutShowcaseHold")) or 10)
+			show(table.find(R.ROLL_POOL, key) or 1)
+		end)
+	end
+	task.defer(function() if body.Parent then show(pod.scIdx) end end) -- after layout (the list height reads body's size)
+	pod.conn = RunService.RenderStepped:Connect(function(dt2)
+		if view.turn then view.turn(dt2) end
+		local cyc = tonumber(script:GetAttribute("TutShowcaseCycle")) or 5
+		if cyc > 0 and pod.scShownAt and os.clock() - pod.scShownAt > cyc and os.clock() > (pod.scHoldUntil or 0) then
+			show(pod.scIdx % #R.ROLL_POOL + 1)
+		end
+	end)
+end
 local function incubatorKey(s)
 	local rolled = player:GetAttribute("TutRolled") or ""
 	local scene = rolled == "" and (pod.phase == "open" and "wait" or "charge") or ("reveal:" .. rolled)
@@ -1282,7 +1653,7 @@ function render()
 		elseif pod.phase == "open" then
 			drawWait()
 		elseif s == 1 and showcaseOn() and not pod.showcased then -- v1.4
-			drawShowcase()
+			if showcase2On() then drawShowcase2() else drawShowcase() end -- v1.5
 		else
 			drawCharge()
 		end

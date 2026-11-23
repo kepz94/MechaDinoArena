@@ -320,5 +320,7 @@ flow; TUTORIAL replays steps 3 to 10.
   Studio Edit 2026-11-22 (plus Thrusters 5.6 s from SkillEffects 1.54 SkillDashRechargeFast). Main attack numbers = attack server
   DEFAULTS (Pounce 8 + 4/0.5 s, Headbutt 20, Slash 8 + bleed 3/s 4 s, Scratch 8, Tail Slam 40, Theri 9/9/20, Spit 6 + venom 2/s
   3 s, Pod 6 + 3/s); to be checked live in Studio at build (model data can override). Not shown: Sonic Hiss range / cone (Lab text
-  60 studs 140 deg vs effects dHissRange 30 / dHissAngle 35 disagree). Waiting on Kepu's OK; nothing built.
+  60 studs 140 deg vs effects dHissRange 30 / dHissAngle 35 disagree). Waiting on Kepu's OK; nothing built.- 21:42 Kepu "Build": Tutorial client 1.5 (drawShowcase2, switch TutorialShowcaseCardsEnabled). Main attack numbers corrected to
+  each dino's ModelData (the attack servers' DEFAULTS are overridden there); mockup v0.4 updated to match. Checked in Studio
+  (phone + PC). Not published.
 

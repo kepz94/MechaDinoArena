@@ -3587,3 +3587,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - Tutorial (client) 1.2: `TutorialIncubatorEnabled` (true), `TutHatchHold` (1.2 s); diagnostics `TutorialClientVersion` "1.2".
 - Tutorial (client) 1.3: `TutorialLabCoachEnabled` (true); ScreenGui `TutorialCoach` (DisplayOrder 47). Reads Lab's player attributes LabOpen, LabTab, LabSelected, LabLastPress.
 - Tutorial (client) 1.4: `TutorialShowcaseEnabled` (true; false = no dino showcase before the egg). Coach also reads LabSlotSel; diagnostics `TutorialClientVersion` "1.4".
+- Tutorial (client) 1.5: `TutorialShowcaseCardsEnabled` (true; false = the 1.4 showcase cards), `TutShowcaseCycle` (5 s per dino; 0 = no cycling), `TutShowcaseHold` (10 s of no cycling after a tap). Player diagnostic `TutShowcaseDino` (the dino shown). `TutorialClientVersion` "1.5".
