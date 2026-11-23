@@ -323,4 +323,4 @@ flow; TUTORIAL replays steps 3 to 10.
   60 studs 140 deg vs effects dHissRange 30 / dHissAngle 35 disagree). Waiting on Kepu's OK; nothing built.- 21:42 Kepu "Build": Tutorial client 1.5 (drawShowcase2, switch TutorialShowcaseCardsEnabled). Main attack numbers corrected to
   each dino's ModelData (the attack servers' DEFAULTS are overridden there); mockup v0.4 updated to match. Checked in Studio
   (phone + PC). Not published.
-
+- Published 22:13 (Sandbox v916 + Arena overwrite).
