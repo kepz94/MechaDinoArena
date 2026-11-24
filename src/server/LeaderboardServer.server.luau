@@ -28,6 +28,17 @@
 --   that rank (their own name, the wins of that row).
 -- Diagnostics: LeaderboardServerVersion, LbState ("off" / "noStore" / "saveOff" / "on"), LbFetches, LbFetchFails, LbWrites,
 --   LbWriteFails, LbLast (last fetch / write / error), LbBoards (models built).
+-- v1.1 (Kepu 2026-11-24 16:44 on live phone screenshots: "fix the height on these the size of the texts and yes remove that
+--   claw mark ... most are gonna be on mobile ... the angle is so high I can't read what's on the board"; "Make the boards
+--   bigger if you need to"): while script attribute LbLowBoardEnabled ~= false (default true, read at start) the boards are
+--   built low and big (style B v1.1):
+--   * rock plinth LbRockH (3) studs tall (1.0: 6); the monitor's bottom plate sits LbMonLift (3) studs over the ground (1.0:
+--     18); the hydraulic post only when LbMonLift - LbRockH >= 2 (it would not show otherwise); the monitor tips its top back
+--     LbMonTilt (-8) degrees (1.0: -6), so the screen faces down toward players.
+--   * the neon claw slashes over the screen only when LbClawsEnabled == true (default false).
+--   * then the whole model is scaled by LbBoardScale (1.2) about its base point on the ground (Model:ScaleTo).
+--   With the defaults the screen is 32.4 x 37.2 studs, its middle ~27.6 studs over the ground (1.0: 27 x 31, ~36.6).
+--   LbLowBoardEnabled false = the 1.0 board exactly (claws, height, size).
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,11 +47,16 @@ local RunService = game:GetService("RunService")
 local UserService = game:GetService("UserService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 low, big board, no claws
 local DEFAULTS = {LbEnabled = true, LbWorldEnabled = true, LbBoardsEnabled = true, LbSaveEnabled = true,
 	LbStoreName = "MDA_ArenaWins_v1", LbRefresh = 60, LbTopN = 100, LbBoardSide = 60, LbBoardFwd = 14, LbBoardAim = 82,
 	LbGroundY = 1.8, LbTestRows = 0, LbTestMyRank = 0}
 script:SetAttribute("LeaderboardServerVersion", VERSION)
 for k, v in pairs(DEFAULTS) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+for k, v in pairs({LbLowBoardEnabled = true, LbBoardScale = 1.2, LbMonLift = 3, LbRockH = 3, LbMonTilt = -8, LbClawsEnabled = false}) do -- v1.1
+	DEFAULTS[k] = v
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function A(k) local v = script:GetAttribute(k) if v == nil then return DEFAULTS[k] end return v end
@@ -287,6 +303,43 @@ local function styleB(m, base, kind)
 		W(m, Vector3.new(1, 5 - i, 4), mon * CFrame.new(17.5, 10 - i * 6, 0) * CFrame.Angles(0, math.rad(90), 0), C.slate, Enum.Material.Metal)
 	end
 end
+-- v1.1: style B, low and (after ScaleTo) big; claws only when LbClawsEnabled == true
+local function styleB11(m, base, kind)
+	local rockH = math.max(1, tonumber(A("LbRockH")) or 3)
+	local lift = math.max(0, tonumber(A("LbMonLift")) or 3)
+	rockLump(m, base * CFrame.new(0, rockH / 2, 0), Vector3.new(22, rockH, 14))
+	if lift - rockH >= 2 then
+		local postH = lift - rockH
+		P(m, Vector3.new(10, 1.5, 8), base * CFrame.new(0, rockH + 0.75, 0), C.slateD, Enum.Material.Metal)
+		P(m, Vector3.new(4, postH, 4), base * CFrame.new(-3, rockH + postH / 2, 0) * CFrame.Angles(0, 0, math.rad(90)), C.steel, Enum.Material.Metal, Enum.PartType.Cylinder)
+		P(m, Vector3.new(4, postH, 4), base * CFrame.new(3, rockH + postH / 2, 0) * CFrame.Angles(0, 0, math.rad(90)), C.steel, Enum.Material.Metal, Enum.PartType.Cylinder)
+	end
+	local mon = base * CFrame.new(0, lift + 1.5 + 19, 0) * CFrame.Angles(math.rad(tonumber(A("LbMonTilt")) or -8), 0, 0)
+	P(m, Vector3.new(32, 38, 4), mon, C.slateD, Enum.Material.Metal)
+	P(m, Vector3.new(34, 3, 5), mon * CFrame.new(0, 19.5, 0), C.slate, Enum.Material.DiamondPlate)
+	P(m, Vector3.new(34, 3, 5), mon * CFrame.new(0, -19.5, 0), C.slate, Enum.Material.DiamondPlate)
+	local scr = P(m, Vector3.new(27, 31, 0.3), mon * CFrame.new(0, -0.5, -2.1), C.screen)
+	scr.Name = "Screen"
+	scr:SetAttribute("LbBoard", kind)
+	for _, x in ipairs({-15.2, 15.2}) do
+		P(m, Vector3.new(0.6, 30, 0.6), mon * CFrame.new(x, 0, -2.2), C.neon, Enum.Material.Neon)
+	end
+	P(m, Vector3.new(26, 0.6, 0.6), mon * CFrame.new(0, 17.4, -2.2), C.neon, Enum.Material.Neon)
+	for _, v in ipairs({{-15.5, 19.5}, {15.5, 19.5}, {-15.5, -19.5}, {15.5, -19.5}}) do
+		P(m, Vector3.new(1.6, 1.6, 1.6), mon * CFrame.new(v[1], v[2], -2.6), C.steel, Enum.Material.Metal, Enum.PartType.Ball)
+	end
+	skull(m, mon * CFrame.new(0, 25, 0), 1.1, C.steel, C.neon)
+	if A("LbClawsEnabled") == true then
+		for i = 0, 2 do
+			P(m, Vector3.new(0.5, 8, 0.3), mon * CFrame.new(11 + i * 1.3, -12, -2.3) * CFrame.Angles(0, 0, math.rad(25)), C.neon, Enum.Material.Neon)
+		end
+	end
+	for i = 0, 3 do
+		W(m, Vector3.new(1, 5 - i, 4), mon * CFrame.new(-17.5, 10 - i * 6, 0) * CFrame.Angles(0, math.rad(-90), 0), C.slate, Enum.Material.Metal)
+		W(m, Vector3.new(1, 5 - i, 4), mon * CFrame.new(17.5, 10 - i * 6, 0) * CFrame.Angles(0, math.rad(90), 0), C.slate, Enum.Material.Metal)
+	end
+end
+local LOW = A("LbLowBoardEnabled") ~= false -- v1.1
 
 local old = workspace:FindFirstChild("IsletBoards")
 if old then old:Destroy() end
@@ -307,7 +360,16 @@ for _, side in ipairs({-1, 1}) do
 	local m = Instance.new("Model")
 	m.Name = "Board_" .. kindB
 	m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
-	local ok, err = pcall(styleB, m, base, kindB)
+	local ok, err = pcall(LOW and styleB11 or styleB, m, base, kindB) -- v1.1: low / big when on
+	if ok and LOW then -- v1.1: scale the whole board about its base point on the ground
+		local sc = tonumber(A("LbBoardScale")) or 1.2
+		if sc > 0 and math.abs(sc - 1) > 1e-3 then
+			ok, err = pcall(function()
+				m.WorldPivot = base
+				m:ScaleTo(sc)
+			end)
+		end
+	end
 	if ok then
 		m.Parent = folder
 		built += 1

@@ -21,17 +21,36 @@
 -- Numbers: script attributes LbScrollRange, LbRowH (read per refresh). Diagnostics: LeaderboardBoardsVersion, LbBoardsState
 --   ("off" / "on"), LbBoardsRows ("world <n> lobby <n>"), LbBoardsScroll ("near lobby" / "near world" / "far"), LbBoardsYou
 --   (the YOU row text).
+-- v1.1 (Kepu 2026-11-24 16:44 on live phone screenshots: "the size of the texts ... most are gonna be on mobile so don't have
+--   fonts be unreadable like these are"; "Make the boards bigger if you need to"): while script attribute LbBigTextEnabled
+--   ~= false (default true; read when a screen is built) the screens use big text (px on the 810 x 930 canvas):
+--   rows LbBigRowH (110) tall; place LbPlaceSize (44), name LbNameSize (56), wins LbNumSize (50), W-L LbSmallSize (38),
+--   badge LbBadgeSize (40); kicker LbKickerSize (40), title LbTitleSize (96), footer LbFootSize (30); YOU row LbYouH (120)
+--   tall with LbNameSize / LbNumSize text. Rows, YOU row and the empty note use the font LbBoardFont: "builder" (default,
+--   Builder Sans ExtraBold, the rank badge font) or "pixel" (Silkscreen); kicker / title / footer stay Silkscreen.
+--   The canvas stays 810 px wide however big the board is: PixelsPerStud = 810 / the screen part's width (LeaderboardServer
+--   1.1 scales the board), so the text grows with the board. (1.0: PixelsPerStud 30.)
+--   WORLDWIDE with no rows (no one has a win yet): "NO RANKED PLAYERS YET" and "WIN AN ARENA MATCH TO GET ON THE BOARD" in
+--   the list area while LbEmptyTextEnabled ~= false (default true, read per refresh).
+--   LbBigTextEnabled false = the 1.0 sizes, font and PixelsPerStud.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 big text, board font, empty note
 local DEFAULTS = {LbBoardsClientEnabled = true, LbScrollRange = 40, LbRowH = 62}
 script:SetAttribute("LeaderboardBoardsVersion", VERSION)
 for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 script:SetAttribute("LbBoardsState", "off")
+local BIG_DEFAULTS = {LbBigTextEnabled = true, LbBoardFont = "builder", LbBigRowH = 110, LbPlaceSize = 44, LbNameSize = 56, -- v1.1
+	LbNumSize = 50, LbSmallSize = 38, LbBadgeSize = 40, LbKickerSize = 40, LbTitleSize = 96, LbFootSize = 30, LbYouH = 120,
+	LbEmptyTextEnabled = true}
+for k, v in pairs(BIG_DEFAULTS) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 
 local RB
 do
@@ -47,6 +66,19 @@ local C = {
 	line = Color3.fromRGB(42, 52, 70),
 }
 local W, H, PAD = 810, 930, 40
+local BUILDER = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold) -- v1.1
+-- v1.1: the sizes for a screen being built (big when LbBigTextEnabled ~= false, else the 1.0 numbers)
+local function sizes()
+	if script:GetAttribute("LbBigTextEnabled") == false then
+		return {big = false, rowH = tonumber(script:GetAttribute("LbRowH")) or 62, place = 28, name = 32, num = 28, numW = 30, small = 24,
+			badge = 24, kicker = 28, title = 64, foot = 22, youH = 76, youName = 32, youNum = 30, font = SILK}
+	end
+	local function n(k) return tonumber(script:GetAttribute(k)) or BIG_DEFAULTS[k] end
+	return {big = true, rowH = n("LbBigRowH"), place = n("LbPlaceSize"), name = n("LbNameSize"), num = n("LbNumSize"),
+		numW = n("LbNumSize"), small = n("LbSmallSize"), badge = n("LbBadgeSize"), kicker = n("LbKickerSize"), title = n("LbTitleSize"),
+		foot = n("LbFootSize"), youH = n("LbYouH"), youName = n("LbNameSize"), youNum = n("LbNumSize"),
+		font = script:GetAttribute("LbBoardFont") == "pixel" and SILK or BUILDER}
+end
 
 local player = Players.LocalPlayer
 local pg = player:WaitForChild("PlayerGui")
@@ -69,8 +101,9 @@ local function label(parent, props)
 	return l
 end
 
-local function newRow(parent, kind)
-	local rh = tonumber(script:GetAttribute("LbRowH")) or 62
+local function newRow(parent, kind, S)
+	S = S or sizes() -- v1.1
+	local rh = S.rowH
 	local f = Instance.new("Frame")
 	f.Name = "Row"
 	f.BackgroundColor3 = C.cyan
@@ -79,12 +112,15 @@ local function newRow(parent, kind)
 	f.Size = UDim2.new(1, -16, 0, rh)
 	local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 8) c.Parent = f
 	local r = {frame = f}
-	r.pos = label(f, {name = "Place", size = 28, color = C.muted, x = Enum.TextXAlignment.Right, pos = UDim2.fromOffset(0, 0), sz = UDim2.new(0, 56, 1, 0)})
+	-- v1.1: big = wider columns (place 70, lobby wins 150 + W-L 135, world wins 190); else the 1.0 numbers
+	local placeW, nameX = S.big and 70 or 56, S.big and 86 or 72
+	local right = kind == "lobby" and (S.big and 300 or 250) or (S.big and 200 or 150)
+	r.pos = label(f, {name = "Place", size = S.place, color = C.muted, x = Enum.TextXAlignment.Right, pos = UDim2.fromOffset(0, 0), sz = UDim2.new(0, placeW, 1, 0), font = S.big and S.font or nil})
 	local nameBox = Instance.new("Frame")
 	nameBox.Name = "NameBox"
 	nameBox.BackgroundTransparency = 1
-	nameBox.Position = UDim2.fromOffset(72, 0)
-	nameBox.Size = UDim2.new(1, kind == "lobby" and -72 - 250 or -72 - 150, 1, 0)
+	nameBox.Position = UDim2.fromOffset(nameX, 0)
+	nameBox.Size = UDim2.new(1, -nameX - right, 1, 0)
 	nameBox.ClipsDescendants = true
 	nameBox.Parent = f
 	local lay = Instance.new("UIListLayout")
@@ -94,16 +130,23 @@ local function newRow(parent, kind)
 	lay.Padding = UDim.new(0, 10)
 	lay.Parent = nameBox
 	if RB and kind == "lobby" then
-		r.badge = RB.new(24)
+		r.badge = RB.new(S.badge)
 		r.badge.LayoutOrder = 1
 		r.badge.Parent = nameBox
 	end
-	r.name = label(nameBox, {name = "Name", size = 32, x = Enum.TextXAlignment.Left, sz = UDim2.new(0, 0, 1, 0)})
+	r.name = label(nameBox, {name = "Name", size = S.name, x = Enum.TextXAlignment.Left, sz = UDim2.new(0, 0, 1, 0), font = S.big and S.font or nil})
 	r.name.AutomaticSize = Enum.AutomaticSize.X
 	r.name.LayoutOrder = 2
 	if kind == "lobby" then
+		if S.big then -- v1.1
+			r.wins = label(f, {name = "Wins", size = S.num, color = C.green, x = Enum.TextXAlignment.Right, pos = UDim2.new(1, -300, 0, 0), sz = UDim2.new(0, 150, 1, 0), font = S.font})
+			r.wl = label(f, {name = "WL", size = S.small, color = C.muted, x = Enum.TextXAlignment.Right, pos = UDim2.new(1, -145, 0, 0), sz = UDim2.new(0, 135, 1, 0), font = S.font})
+		else
 		r.wins = label(f, {name = "Wins", size = 28, color = C.green, x = Enum.TextXAlignment.Right, pos = UDim2.new(1, -250, 0, 0), sz = UDim2.new(0, 110, 1, 0)})
 		r.wl = label(f, {name = "WL", size = 24, color = C.muted, x = Enum.TextXAlignment.Right, pos = UDim2.new(1, -130, 0, 0), sz = UDim2.new(0, 120, 1, 0)})
+		end
+	elseif S.big then -- v1.1
+		r.wins = label(f, {name = "Wins", size = S.numW, color = C.green, x = Enum.TextXAlignment.Right, pos = UDim2.new(1, -200, 0, 0), sz = UDim2.new(0, 190, 1, 0), font = S.font})
 	else
 		r.wins = label(f, {name = "Wins", size = 30, color = C.green, x = Enum.TextXAlignment.Right, pos = UDim2.new(1, -150, 0, 0), sz = UDim2.new(0, 140, 1, 0)})
 	end
@@ -112,12 +155,13 @@ local function newRow(parent, kind)
 end
 
 local function build(part, kind)
+	local S = sizes() -- v1.1
 	local sg = Instance.new("SurfaceGui")
 	sg.Name = "LbScreen_" .. kind
 	sg.Adornee = part
 	sg.Face = Enum.NormalId.Front
 	sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	sg.PixelsPerStud = 30
+	sg.PixelsPerStud = (S.big and part.Size.X > 0) and (W / part.Size.X) or 30 -- v1.1: the canvas stays 810 px wide
 	sg.LightInfluence = 0
 	sg.Brightness = 1.4
 	sg.ResetOnSpawn = false
@@ -129,23 +173,28 @@ local function build(part, kind)
 	bg.BorderSizePixel = 0
 	bg.Parent = sg
 	local world = kind == "world"
-	label(bg, {name = "Kicker", text = world and "ALL TIME" or "THIS SERVER", size = 28, color = world and C.gold or C.cyan, pos = UDim2.fromOffset(0, 28)})
-	label(bg, {name = "Title", text = world and "WORLDWIDE" or "LOBBY", size = 64, pos = UDim2.fromOffset(0, 62)})
+	-- v1.1: big = header laid out from the sizes (kicker at 22, title under it, rule 8 px under the title); else the 1.0 spots
+	local kY = S.big and 22 or 28
+	local tY = S.big and (kY + S.kicker + 4) or 62
+	local ruleY = S.big and (tY + S.title + 8) or 142
+	local listY = ruleY + 12
+	label(bg, {name = "Kicker", text = world and "ALL TIME" or "THIS SERVER", size = S.kicker, color = world and C.gold or C.cyan, pos = UDim2.fromOffset(0, kY)})
+	label(bg, {name = "Title", text = world and "WORLDWIDE" or "LOBBY", size = S.title, pos = UDim2.fromOffset(0, tY)})
 	local rule = Instance.new("Frame")
 	rule.BackgroundColor3 = world and C.gold or C.cyan
 	rule.BackgroundTransparency = 0.6
 	rule.BorderSizePixel = 0
-	rule.Position = UDim2.fromOffset(PAD, 142)
+	rule.Position = UDim2.fromOffset(PAD, ruleY)
 	rule.Size = UDim2.new(1, -PAD * 2, 0, 3)
 	rule.Parent = bg
-	local foot = 52
-	local youH = world and 76 or 0
+	local foot = S.big and (S.foot + 26) or 52
+	local youH = world and S.youH or 0
 	local sc = Instance.new("ScrollingFrame")
 	sc.Name = "List"
 	sc.BackgroundTransparency = 1
 	sc.BorderSizePixel = 0
-	sc.Position = UDim2.fromOffset(PAD - 8, 154)
-	sc.Size = UDim2.new(1, -(PAD - 8) * 2, 1, -154 - youH - foot - 8)
+	sc.Position = UDim2.fromOffset(PAD - 8, listY)
+	sc.Size = UDim2.new(1, -(PAD - 8) * 2, 1, -listY - youH - foot - 8)
 	sc.CanvasSize = UDim2.new()
 	sc.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	sc.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -158,7 +207,24 @@ local function build(part, kind)
 	lay.SortOrder = Enum.SortOrder.LayoutOrder
 	lay.Padding = UDim.new(0, 4)
 	lay.Parent = sc
-	local b = {sg = sg, part = part, scroll = sc, rows = {}, kind = kind}
+	local b = {sg = sg, part = part, scroll = sc, rows = {}, kind = kind, S = S}
+	if world then -- v1.1: the empty note (no ranked players yet)
+		local e = Instance.new("Frame")
+		e.Name = "Empty"
+		e.BackgroundTransparency = 1
+		e.Position = UDim2.fromOffset(PAD, listY + 40)
+		e.Size = UDim2.new(1, -PAD * 2, 0, 300)
+		e.Visible = false
+		e.Parent = bg
+		local l1 = label(e, {name = "Line1", text = "NO RANKED PLAYERS YET", size = S.big and S.num or 30, color = C.white, font = S.font, pos = UDim2.fromOffset(0, 40)})
+		l1.TextWrapped = true
+		l1.Size = UDim2.new(1, 0, 0, (S.big and S.num or 30) * 2 + 10)
+		local l2 = label(e, {name = "Line2", text = "WIN AN ARENA MATCH TO GET ON THE BOARD", size = S.big and S.small or 24, color = C.gold, font = S.font,
+			pos = UDim2.fromOffset(0, 40 + (S.big and S.num or 30) * 2 + 30)})
+		l2.TextWrapped = true
+		l2.Size = UDim2.new(1, 0, 0, (S.big and S.small or 24) * 2 + 10)
+		b.empty = e
+	end
 	if world then
 		local you = Instance.new("Frame")
 		you.Name = "You"
@@ -170,12 +236,18 @@ local function build(part, kind)
 		you.Parent = bg
 		local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 10) c.Parent = you
 		local s = Instance.new("UIStroke") s.Color = C.cyan s.Thickness = 3 s.Transparency = 0.3 s.Parent = you
+		local yf = S.big and S.font or nil -- v1.1
+		local yw = S.big and 200 or 150
+		if S.big then
+			b.youPlace = label(you, {name = "Place", size = S.youNum, color = C.cyan, x = Enum.TextXAlignment.Left, pos = UDim2.fromOffset(18, 0), sz = UDim2.new(1, -18 - yw - 24, 1, 0), font = yf})
+		else
 		b.youPlace = label(you, {name = "Place", size = 30, color = C.cyan, x = Enum.TextXAlignment.Left, pos = UDim2.fromOffset(18, 0), sz = UDim2.new(0, 330, 1, 0)})
-		b.youName = label(you, {name = "Name", size = 32, color = C.cyan, x = Enum.TextXAlignment.Left, pos = UDim2.fromOffset(150, 0), sz = UDim2.new(1, -330, 1, 0)})
-		b.youWins = label(you, {name = "Wins", size = 30, color = C.green, x = Enum.TextXAlignment.Right, pos = UDim2.new(1, -170, 0, 0), sz = UDim2.new(0, 150, 1, 0)})
+		end
+		b.youName = label(you, {name = "Name", size = S.youName, color = C.cyan, x = Enum.TextXAlignment.Left, pos = UDim2.fromOffset(150, 0), sz = UDim2.new(1, -330, 1, 0), font = yf})
+		b.youWins = label(you, {name = "Wins", size = S.youNum, color = C.green, x = Enum.TextXAlignment.Right, pos = UDim2.new(1, -yw - 20, 0, 0), sz = UDim2.new(0, yw, 1, 0), font = yf})
 	end
-	label(bg, {name = "Foot", text = world and "TOP 100 EARN A RANK BADGE" or "ARENA WINS · PLAYERS HERE NOW", size = 22, color = C.muted,
-		pos = UDim2.new(0, 0, 1, -foot + 8)})
+	label(bg, {name = "Foot", text = world and "TOP 100 EARN A RANK BADGE" or "ARENA WINS · PLAYERS HERE NOW", size = S.foot, color = C.muted,
+		pos = UDim2.new(0, 0, 1, -foot + (S.big and 10 or 8))})
 	sg.Parent = pg
 	return b
 end
@@ -183,7 +255,7 @@ end
 local function rowAt(b, i)
 	local r = b.rows[i]
 	if not r then
-		r = newRow(b.scroll, b.kind)
+		r = newRow(b.scroll, b.kind, b.S)
 		r.frame.LayoutOrder = i
 		b.rows[i] = r
 	end
@@ -219,6 +291,7 @@ local function drawWorld(b)
 		r.frame.BackgroundTransparency = me and 0.82 or 1
 	end
 	trim(b, #list)
+	if b.empty then b.empty.Visible = #list == 0 and script:GetAttribute("LbEmptyTextEnabled") ~= false end -- v1.1
 	local ready = player:GetAttribute("ArenaRecordReady") == true
 	if mine then
 		b.youPlace.Text = "#" .. mine[1]
@@ -229,7 +302,11 @@ local function drawWorld(b)
 		b.youName.Text = ""
 		b.youWins.Text = ready and ((tonumber(player:GetAttribute("ArenaW")) or 0) .. "W") or "-"
 	end
+	if b.S and b.S.big then -- v1.1: "#7" is short, YOU right after it; NOT RANKED fills the left (name empty)
+		b.youName.Position = UDim2.fromOffset(mine and 160 or 18, 0)
+	else
 	b.youName.Position = mine and UDim2.fromOffset(150, 0) or UDim2.fromOffset(330, 0)
+	end
 	script:SetAttribute("LbBoardsYou", b.youPlace.Text .. " " .. b.youName.Text .. " " .. b.youWins.Text)
 	return #list
 end
@@ -254,7 +331,7 @@ local function drawLobby(b)
 		local r = rowAt(b, i)
 		r.pos.Text = tostring(i)
 		r.name.Text = e.name
-		if r.badge then RB.set(r.badge, e.rank, 24) end
+		if r.badge then RB.set(r.badge, e.rank, b.S and b.S.badge or 24) end
 		r.wins.Text = e.ready and (e.w .. "W") or "-"
 		r.wl.Text = e.ready and (e.w .. "-" .. e.l) or ""
 		r.frame.BackgroundTransparency = e.p == player and 0.82 or 1

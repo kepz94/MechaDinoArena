@@ -3598,3 +3598,5 @@ Model numbers are generator output (old version = the flag in the last column, b
 - TeamTags 1.2: `TeamTagsBadgeEnabled` (true), `TeamTagsBadgeSize` 10 / `TeamTagsBadgeSizePC` 12.
 - PregameScreen 1.6: `PregameBadgeEnabled` (true), `PregameBadgeSize` (8.5, times TF).
 - KillFeed 1.3: `KillFeedBadgeEnabled` (true), `KillFeedBadgeSize` (12).
+- LeaderboardServer 1.1: `LbLowBoardEnabled` (true; false = 1.0 board), `LbBoardScale` (1.2), `LbMonLift` (3 studs), `LbRockH` (3 studs), `LbMonTilt` (-8 degrees), `LbClawsEnabled` (false). All read at start (board build).
+- LeaderboardBoards 1.1: `LbBigTextEnabled` (true; false = 1.0 sizes), `LbBoardFont` ("builder" / "pixel"), `LbBigRowH` (110), `LbPlaceSize` (44), `LbNameSize` (56), `LbNumSize` (50), `LbSmallSize` (38), `LbBadgeSize` (40), `LbKickerSize` (40), `LbTitleSize` (96), `LbFootSize` (30), `LbYouH` (120) (px on the 810-wide canvas; read when a screen is built), `LbEmptyTextEnabled` (true; read per refresh).
