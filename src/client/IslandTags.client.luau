@@ -17,15 +17,29 @@
 --   before texts and only on a change, so its fit settles.
 -- Numbers: script attributes IslandTagsMax (80), IslandTagsMaxCount (12), read every frame.
 -- Diagnostics: IslandTagsVersion, IslandTagsState ("off" / "on"), IslandTagsShown (tags drawn last frame).
+-- v1.1 (Kepu 2026-11-24 15:29 "how about w-l records appearing above Dino's" -> "Change how they look"; 15:34 pick "B" on mockup
+--   docs/mockups/island_tags_v0.1.html "B · Ratio bar"): the tag is the name, a win / loss bar and the numbers, no plate.
+--   * Name: Silkscreen Bold (set here, FontSwap "keep" so FontSwap does not shrink it), white, black text stroke; 18 px phone /
+--     22 px PC (IslandTagsNameSize / IslandTagsNameSizePC).
+--   * Bar (while the record is ready): IslandTagsBarW x IslandTagsBarH px (98 x 10 phone, 120 x 12 PC), round ends, dark outline;
+--     green rgb(70,224,138) fill = W / (W + L) of the width over red rgb(255,90,110); 0-0 = a grey rgb(58,68,86) bar.
+--   * Numbers under it: "<W>W" green and "<L>L" red side by side, Silkscreen Bold, black stroke; 13 px phone / 16 px PC.
+--   Record not ready: name only (as 1.0). Who / where / distance / count rules unchanged.
+--   Switch: script attribute IslandTagsBarEnabled (default true, read per frame; false = the 1.0 name + orange "W-L").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 ratio bar look
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local FONT = Enum.Font.FredokaOne
-local DEFAULTS = {IslandTagsEnabled = true, IslandTagsMax = 80, IslandTagsMaxCount = 12}
+local DEFAULTS = {IslandTagsEnabled = true, IslandTagsMax = 80, IslandTagsMaxCount = 12,
+	IslandTagsBarEnabled = true, IslandTagsNameSize = 18, IslandTagsNameSizePC = 22, IslandTagsNumSize = 13, IslandTagsNumSizePC = 16, -- v1.1
+	IslandTagsBarW = 98, IslandTagsBarWPC = 120, IslandTagsBarH = 10, IslandTagsBarHPC = 12}
+local SILK = Font.new("rbxassetid://12187371840", Enum.FontWeight.Bold) -- v1.1: Silkscreen Bold (as FontSwap 1.0)
+local GREEN, RED, GREY = Color3.fromRGB(70, 224, 138), Color3.fromRGB(255, 90, 110), Color3.fromRGB(58, 68, 86)
 
 script:SetAttribute("IslandTagsVersion", VERSION)
 for k, v in pairs(DEFAULTS) do
@@ -72,6 +86,51 @@ local function tagFor(p)
 		return l
 	end
 	t = {frame = f, name = line("Name", Color3.new(1, 1, 1)), rec = line("Record", ORANGE)}
+	-- v1.1: the ratio bar and the W / L numbers (hidden while the switch is off)
+	local bar = Instance.new("Frame")
+	bar.Name = "Bar"
+	bar.AnchorPoint = Vector2.new(0.5, 0)
+	bar.BackgroundColor3 = RED
+	bar.BorderSizePixel = 0
+	bar.ClipsDescendants = true
+	bar.Visible = false
+	bar.Parent = f
+	local bc = Instance.new("UICorner") bc.CornerRadius = UDim.new(0.5, 0) bc.Parent = bar
+	local bs = Instance.new("UIStroke") bs.Color = Color3.fromRGB(11, 15, 22) bs.Thickness = 2 bs.Transparency = 0.33 bs.Parent = bar
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.BackgroundColor3 = GREEN
+	fill.BorderSizePixel = 0
+	fill.Parent = bar
+	local fc = Instance.new("UICorner") fc.CornerRadius = UDim.new(0.5, 0) fc.Parent = fill
+	local nums = Instance.new("Frame")
+	nums.Name = "Nums"
+	nums.AnchorPoint = Vector2.new(0.5, 0)
+	nums.BackgroundTransparency = 1
+	nums.Visible = false
+	nums.Parent = f
+	local lay = Instance.new("UIListLayout")
+	lay.FillDirection = Enum.FillDirection.Horizontal
+	lay.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	lay.SortOrder = Enum.SortOrder.LayoutOrder
+	lay.Padding = UDim.new(0, 10)
+	lay.Parent = nums
+	local function num(name, color, order)
+		local l = Instance.new("TextLabel")
+		l.Name = name
+		l.BackgroundTransparency = 1
+		l.FontFace = SILK
+		l:SetAttribute("FontSwap", "keep")
+		l.TextColor3 = color
+		l.TextStrokeTransparency = 0.2
+		l.TextStrokeColor3 = Color3.new(0, 0, 0)
+		l.AutomaticSize = Enum.AutomaticSize.X
+		l.Size = UDim2.new(0, 0, 1, 0)
+		l.LayoutOrder = order
+		l.Parent = nums
+		return l
+	end
+	t.bar, t.fill, t.nums, t.w, t.l = bar, fill, nums, num("W", GREEN, 1), num("L", RED, 2)
 	tags[p] = t
 	return t
 end
@@ -137,6 +196,57 @@ RunService.RenderStepped:Connect(function()
 			if inView and v.Z > 0 then
 				local t = tagFor(e.p)
 				local ready = e.p:GetAttribute("ArenaRecordReady") == true
+				if script:GetAttribute("IslandTagsBarEnabled") ~= false then -- v1.1: the ratio bar look
+					local A = function(k, d) return tonumber(script:GetAttribute(k)) or d end
+					local ns = small and A("IslandTagsNameSize", 18) or A("IslandTagsNameSizePC", 22)
+					local us = small and A("IslandTagsNumSize", 13) or A("IslandTagsNumSizePC", 16)
+					local bw = small and A("IslandTagsBarW", 98) or A("IslandTagsBarWPC", 120)
+					local bh = small and A("IslandTagsBarH", 10) or A("IslandTagsBarHPC", 12)
+					if t.mode ~= "bar" then
+						t.mode, t.nS = "bar", nil
+						t.name.FontFace = SILK
+						t.name:SetAttribute("FontSwap", "keep")
+						t.name.TextStrokeTransparency = 0.2
+						t.rec.Visible = false
+					end
+					if t.nS ~= ns or t.uS ~= us or t.bw ~= bw or t.bh ~= bh then
+						t.nS, t.uS, t.bw, t.bh = ns, us, bw, bh
+						t.name.TextSize = ns
+						t.name.Size = UDim2.new(1, 0, 0, ns + 2)
+						t.name.Position = UDim2.new()
+						t.bar.Size = UDim2.fromOffset(bw, bh)
+						t.bar.Position = UDim2.new(0.5, 0, 0, ns + 5)
+						t.nums.Size = UDim2.new(1, 0, 0, us + 2)
+						t.nums.Position = UDim2.new(0.5, 0, 0, ns + 5 + bh + 4)
+						t.w.TextSize, t.l.TextSize = us, us
+					end
+					local nameT = string.upper(e.p.DisplayName)
+					if t.name.Text ~= nameT then t.name.Text = nameT end
+					local w = tonumber(e.p:GetAttribute("ArenaW")) or 0
+					local l = tonumber(e.p:GetAttribute("ArenaL")) or 0
+					t.bar.Visible, t.nums.Visible = ready, ready
+					if ready then
+						t.bar.BackgroundColor3 = (w + l) > 0 and RED or GREY
+						t.fill.Size = UDim2.fromScale((w + l) > 0 and w / (w + l) or 0, 1)
+						t.fill.Visible = w > 0
+						local wt, lt = w .. "W", l .. "L"
+						if t.w.Text ~= wt then t.w.Text = wt end
+						if t.l.Text ~= lt then t.l.Text = lt end
+					end
+					t.frame.Size = UDim2.fromOffset(200, ns + 2 + (ready and (3 + bh + 4 + us + 2) or 0))
+					t.frame.Position = UDim2.fromOffset(v.X, v.Y)
+					t.frame.Visible = true
+					shown[e.p] = true
+					count += 1
+					continue
+				end
+				if t.mode == "bar" then -- v1.1 switch turned off: back to the 1.0 look
+					t.mode, t.nS = nil, nil
+					t.name.Font = FONT
+					t.name:SetAttribute("FontSwap", nil)
+					t.name.TextStrokeTransparency = 0.45
+					t.bar.Visible, t.nums.Visible = false, false
+				end
 				-- sizes before texts, and only on a change (FontSwap 1.0 re-fits on a text or size change; per frame it would never settle)
 				if t.nS ~= nS then
 					t.nS = nS
