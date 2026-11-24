@@ -86,6 +86,14 @@
 --   within HubSwapWindow (3) s of the new body. The old body's last live state (alive, root CFrame, ground height) is kept
 --   every Heartbeat, since it is already destroyed when the deferred CharacterAdded runs (Studio: Humanoid gone). Switch: script attribute HubSwapKeepEnabled (default true, read per body; false
 --   = 1.5, every new body goes to the islet). Diagnostics: script HubSwapsKept; player HubPlaceLast "kept swap" / "moved swap".
+-- v1.8 (Kepu 2026-11-24 15:21 "Let's remove the arena vs bots portal and just make it one portal"; picks "Keep ARENA only",
+--   "Move it to the center"): one portal on the islet. When the islet copy is made (before it goes into Workspace), the copy's
+--   Portal_bots model is removed and Portal_arena is pivoted to the midpoint of the two portals' pivots (same facing: both
+--   face the bridge), so ARENA stands where the gap between the two gates was; every CFrame attribute inside the portal
+--   (PortalFX 1.0 BaseCFrame / LegacyCFrame) moves with it. ServerStorage.PortalIslet is not changed; the
+--   "bots" trip, HubTravel, PracticeServer and the private bots match are untouched (only the portal into it is gone).
+--   Switch: script attribute HubOnePortalEnabled (default true, read when the islet is made; false = 1.7, both portals).
+--   Diagnostic: script HubPortalCount (portals on the islet after the step).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -98,6 +106,7 @@ VERSION = "1.4" -- v1.4 Arena queue
 VERSION = "1.5" -- v1.5 islet spawn hold + check
 VERSION = "1.6" -- v1.6 island dino swap stays put
 VERSION = "1.7" -- v1.7 tutorial lanes skip the islet
+VERSION = "1.8" -- v1.8 one portal (ARENA, centered)
 local PLACE_DELAY, RESPAWN_DELAY = 0.15, 0.3
 
 script:SetAttribute("HubServerVersion", VERSION)
@@ -144,6 +153,29 @@ if not src then
 	return
 end
 local islet = src:Clone()
+-- v1.8: one portal (see the header)
+if script:GetAttribute("HubOnePortalEnabled") == nil then script:SetAttribute("HubOnePortalEnabled", true) end
+if script:GetAttribute("HubOnePortalEnabled") ~= false then
+	local pa, pb = islet:FindFirstChild("Portal_arena"), islet:FindFirstChild("Portal_bots")
+	if pa and pb and pa:IsA("Model") and pb:IsA("Model") then
+		local ca, cb = pa:GetPivot(), pb:GetPivot()
+		local target = ca.Rotation + ca.Position:Lerp(cb.Position, 0.5)
+		pa:PivotTo(target)
+		-- saved CFrame attributes inside the portal (PortalFX's BaseCFrame / LegacyCFrame) move with it
+		local delta = target * ca:Inverse()
+		for _, d in ipairs(pa:GetDescendants()) do
+			for k, v in pairs(d:GetAttributes()) do
+				if typeof(v) == "CFrame" then d:SetAttribute(k, delta * v) end
+			end
+		end
+		pb:Destroy()
+	end
+end
+do
+	local n = 0
+	for _, d in ipairs(islet:GetChildren()) do if d:IsA("Model") and d:GetAttribute("HubPortal") then n += 1 end end
+	script:SetAttribute("HubPortalCount", n)
+end
 islet.Parent = workspace
 ReplicatedStorage:SetAttribute("HubLive", true)
 script:SetAttribute("HubState", "on")
