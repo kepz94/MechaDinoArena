@@ -286,8 +286,9 @@ local build = STYLE == "A" and styleA or STYLE == "B" and styleB or styleC
 for i, side in ipairs({-1, 1}) do
 	local pos = Vector3.new(g.X, groundY, g.Z) + R * side * 60 + F * 14
 	-- face the spawns, turned 14 degrees in toward the gate's front
-	local look = (CFrame.fromAxisAngle(Vector3.yAxis, math.rad(side * 14)) * CFrame.new(Vector3.zero, F)).LookVector
-	local base = CFrame.lookAt(pos, pos + look) -- LookVector (-Z, the front) faces the spawns
+	-- face the spawn area (where players stand when they arrive): the point 82 studs out in front of the gate (the spawn arc centre, ~906, 906)
+	local target = Vector3.new(g.X, groundY, g.Z) + F * 82
+	local base = CFrame.lookAt(pos, Vector3.new(target.X, pos.Y, target.Z)) -- LookVector (-Z, the front) faces the spawns
 	local m = Instance.new("Model")
 	m.Name = "Board_" .. (side < 0 and "lobby" or "world")
 	m.Parent = root
