@@ -45,6 +45,12 @@ local STORE = "MDA_ArenaRecord_v1"
 VERSION = "1.3" -- v1.3 fresh record store (account reset)
 if script:GetAttribute("ArenaRecordStoreName") == nil then script:SetAttribute("ArenaRecordStoreName", "MDA_ArenaRecord_v2") end
 STORE = script:GetAttribute("ArenaRecordStoreName")
+-- v1.4 (leaderboards, Kepu 2026-11-24 15:44 pick "Count bot matches too"): an Arena match counts even when a team has no real
+--   player (bots filled it). While script attribute ArenaRecordCountBotsEnabled ~= false (default true, read per call), every
+--   "result" / "left" call is treated as eligible (the eligible argument becomes true) before anything else runs; false = 1.3
+--   (the caller's eligible as given). Diagnostic ArenaRecordEligibleIn = "<action> <eligible as given>" (last call).
+VERSION = "1.4" -- v1.4 bot matches count
+if script:GetAttribute("ArenaRecordCountBotsEnabled") == nil then script:SetAttribute("ArenaRecordCountBotsEnabled", true) end
 local TRIES, LOAD_GAP = 3, 2
 
 script:SetAttribute("ArenaRecordServerVersion", VERSION)
@@ -144,6 +150,14 @@ local function write(player, userId, name, out, matchId)
 end
 
 hook.OnInvoke = function(action, matchId, a, b, c, d)
+	if action == "result" or action == "left" then -- v1.4: bot matches count
+		local given = b
+		if action == "result" then given = c end
+		script:SetAttribute("ArenaRecordEligibleIn", tostring(action) .. " " .. tostring(given))
+		if script:GetAttribute("ArenaRecordCountBotsEnabled") ~= false then
+			if action == "result" then c = true else b = true end
+		end
+	end
 	if action == "result" then -- v1.2: before the writes-off / no-store checks
 		pcall(matchAttrs, matchId, a, b, c == true, type(d) == "table" and d or {})
 	end

@@ -49,6 +49,12 @@ VERSION = "1.2" -- v1.2 SAVED LOADOUT tag
 VERSION = "1.3" -- v1.3 3D models wait until fully arrived
 VERSION = "1.4" -- v1.4 respawn picker mode
 VERSION = "1.5" -- v1.5 island picker mode
+VERSION = "1.6" -- v1.6 rank badge on the lineup plaques
+-- v1.6 (leaderboards, Kepu 2026-11-24 15:44 pick "Pre-game lineup"; badge look A, font 2 Builder Sans, mockup
+--   docs/mockups/rank_badge_fonts_v0.2.html): on the LINEUP plaques, a human slot whose player is on this server with a worldwide
+--   rank (RankBadge 1.0 rankOf) gets the rank badge just left of the name text ("YOU" on your own), 4 * TF px gap, centred
+--   on the name line; text size PregameBadgeSize (8.5) * TF. Bots and players not here: none. Set with the column.
+--   Switch: script attribute PregameBadgeEnabled (default true, read per draw; false = no badge, = 1.5).
 -- v1.5 (island dino swap, MDA-544, plan docs/plans/ISLAND_DINO_SWAP_v1.0.md rule 2, mockup docs/mockups/island_dino_swap_v0.1.html
 --   "A · Dino button"; Kepu 2026-11-15 10:53 "when i load on to the main island there is no option at all to change dino" / 10:58
 --   "this is for the main island not any game modes"):
@@ -87,6 +93,14 @@ VERSION = "1.5" -- v1.5 island picker mode
 --   SkillLoadoutFrom == "saved" (SkillServer 1.12 put your saved loadout in) and SkillSlot1..4 equal SkillSavedLoadout.
 --   Hidden otherwise. Switch: script attribute PregameSavedTagEnabled (default true, read per draw; false = 1.1).
 script:SetAttribute("PregameScreenVersion", VERSION)
+for k, v in pairs({PregameBadgeEnabled = true, PregameBadgeSize = 8.5}) do -- v1.6
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local RB -- v1.6: RankBadge 1.0
+do
+	local ok, m = pcall(function() return require(script.Parent:WaitForChild("RankBadge", 10)) end)
+	RB = ok and m or nil
+end
 for k, v in pairs({PregameScreenEnabled = true, PregameFlatIcons = false}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -546,6 +560,19 @@ local function setColumn(col, e, ringColor, me)
 		col.view.set(d, lo, ringColor)
 	end
 	col.pn.Text = me and "YOU" or tostring(e.name or "")
+	if RB then -- v1.6: the rank badge left of the name
+		if not col.badge then
+			col.badge = RB.new()
+			col.badge.AnchorPoint = Vector2.new(1, 0.5)
+			col.badge.ZIndex = 7
+			col.badge.Parent = col.pn
+		end
+		local pl = e.kind == "human" and tonumber(e.userId) and Players:GetPlayerByUserId(tonumber(e.userId)) or nil
+		local rank = (pl and script:GetAttribute("PregameBadgeEnabled") ~= false) and RB.rankOf(pl) or nil
+		if RB.set(col.badge, rank, (tonumber(script:GetAttribute("PregameBadgeSize")) or 8.5) * TF) then
+			col.badge.Position = UDim2.new(0.5, -math.floor(col.pn.TextBounds.X / 2) - 4 * TF, 0.5, 0)
+		end
+	end
 	local rec, sub = recordOf(e)
 	col.wl.Text, col.pct.Text = rec, sub
 	col.wl.TextSize = (e.kind == "bot" and 11 or 16.5) * TF

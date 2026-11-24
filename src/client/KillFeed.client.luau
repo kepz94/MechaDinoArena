@@ -30,6 +30,32 @@ local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 phone HUD v2: lines top-right
+VERSION = "1.3" -- v1.3 rank badge
+-- v1.3 (leaderboards, Kepu 2026-11-24 15:44 pick "Kill feed"; badge look A, font 2 Builder Sans, mockup
+--   docs/mockups/rank_badge_fonts_v0.2.html): on a line, a killer / victim who is a player on this server (kBot / vBot not true,
+--   Players:GetPlayerByUserId(kId / vId)) with a worldwide rank (RankBadge 1.0 rankOf) gets the rank badge just before the
+--   name (you too: before "You"). Killer badge: LayoutOrder 0. Victim badge: LayoutOrder 4, added before the victim name (the
+--   list keeps equal LayoutOrders in the order they were added; checked in Studio 2026-11-24). Text size KillFeedBadgeSize (12)
+--   (the phone's 82% UIScale applies). It is one TextLabel, so the line's fade fades it too.
+--   Switch: script attribute KillFeedBadgeEnabled (default true, read per line; false = no badge, = 1.2).
+for k, v in pairs({KillFeedBadgeEnabled = true, KillFeedBadgeSize = 12}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local RB -- v1.3: RankBadge 1.0
+do
+	local ok, m = pcall(function() return require(script.Parent:WaitForChild("RankBadge", 10)) end)
+	RB = ok and m or nil
+end
+local function feedBadge(parent, isBot, userId, order) -- v1.3
+	if not RB or isBot == true or script:GetAttribute("KillFeedBadgeEnabled") == false or type(userId) ~= "number" then return end
+	local pl = Players:GetPlayerByUserId(userId)
+	local rank = pl and RB.rankOf(pl)
+	if not rank then return end
+	local b = RB.new()
+	b.LayoutOrder = order
+	RB.set(b, rank, tonumber(script:GetAttribute("KillFeedBadgeSize")) or 12)
+	b.Parent = parent
+end
 -- v1.2 (phone HUD v2, MDA-535, plan docs/plans/PHONE_HUD_V2_v1.0.md rule 5, mockup docs/mockups/phone_hud_v0.1.html "A · your
 --   version"): while player attribute PhoneHudV2 is true (PhoneMenu 1.0) and script attribute KillFeedPhoneV2Enabled ~= false
 --   (default true, read per frame), the lines sit top-right, right-aligned: AnchorPoint (1, 0) at (1, -16, 0, y), y = PhoneMenu's
@@ -193,6 +219,7 @@ local function addLine(e)
 			s.Parent = f
 		end
 	end
+	feedBadge(f, e.kBot, e.kId, 0) -- v1.3
 	text(f, 1, kName, teamColor(e.kTeam), 15)
 	if m.tags and e.kBot == true then tag(f, 2) end
 	if type(e.how) == "string" and e.how ~= "" then
@@ -203,6 +230,7 @@ local function addLine(e)
 		local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 4) c.Parent = chip
 		local p = Instance.new("UIPadding") p.PaddingLeft = UDim.new(0, 5) p.PaddingRight = UDim.new(0, 5) p.Parent = chip
 	end
+	feedBadge(f, e.vBot, e.vId, 4) -- v1.3: before the victim name (same LayoutOrder, added first)
 	text(f, 4, vName, teamColor(e.vTeam), 15)
 	if m.tags and e.vBot == true then tag(f, 5) end
 	f.Parent = feed

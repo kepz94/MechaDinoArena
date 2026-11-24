@@ -33,12 +33,26 @@
 --   the HUD's 6): each frame (RenderStepped) a marker is placed at the camera's WorldToViewportPoint of its spot (anchor +
 --   offset), AnchorPoint (0.5, 1); hidden while the spot is behind the camera or off the screen. Same look, same rules;
 --   teammates still show through walls (a screen overlay is never hidden by the world).
+-- v1.2 (leaderboards, Kepu 2026-11-24 15:44 pick "Match name tags"; badge look A, font 2 Builder Sans, mockup
+--   docs/mockups/rank_badge_fonts_v0.2.html): when a marker shows a name (friend, and bar on PC) and that dino is a player with
+--   a worldwide rank (RankBadge 1.0 rankOf), the rank badge sits just left of the name text, 4 px gap, centred on the name
+--   line; size TeamTagsBadgeSize (10) phone / TeamTagsBadgeSizePC (12) PC. Bots never have one. Set every SLOW tick.
+--   Switch: script attribute TeamTagsBadgeEnabled (default true, read per tick; false = no badge, = 1.1).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.1"
+VERSION = "1.2" -- v1.2 rank badge
+for k, v in pairs({TeamTagsBadgeEnabled = true, TeamTagsBadgeSize = 10, TeamTagsBadgeSizePC = 12}) do -- v1.2
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local RB -- v1.2: RankBadge 1.0
+do
+	local ok, m = pcall(function() return require(script.Parent:WaitForChild("RankBadge", 10)) end)
+	RB = ok and m or nil
+end
 local SLOW = 0.2
 local HIDE_DIST = 0.001
 local BLUE, BLUE_T = Color3.fromRGB(90, 160, 255), Color3.fromRGB(140, 192, 255)
@@ -304,6 +318,19 @@ local function slowTick()
 			r.fill.Size = UDim2.fromScale(math.clamp(h / math.max(hmax, 1e-3), 0, 1), 1)
 		elseif mark == "chevron" then
 			r.nm.Visible, r.bar.Visible, r.chev.Visible = false, false, true
+		end
+		if RB then -- v1.2: the rank badge left of the name
+			if not r.badge then
+				r.badge = RB.new()
+				r.badge.AnchorPoint = Vector2.new(1, 0.5)
+				r.badge.Parent = r.nm
+			end
+			local pl = Players:GetPlayerFromCharacter(m)
+			local rank = (r.show and r.nm.Visible and pl and script:GetAttribute("TeamTagsBadgeEnabled") ~= false) and RB.rankOf(pl) or nil
+			local size = phone and (tonumber(script:GetAttribute("TeamTagsBadgeSize")) or 10) or (tonumber(script:GetAttribute("TeamTagsBadgeSizePC")) or 12)
+			if RB.set(r.badge, rank, size) then
+				r.badge.Position = UDim2.new(0.5, -math.floor(r.nm.TextBounds.X / 2) - 4, 0.5, 0)
+			end
 		end
 	end
 	script:SetAttribute("TeamTagsFriends", counts.friend)

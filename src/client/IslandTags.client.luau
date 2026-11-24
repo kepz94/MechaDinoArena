@@ -26,6 +26,11 @@
 --   * Numbers under it: "<W>W" green and "<L>L" red side by side, Silkscreen Bold, black stroke; 13 px phone / 16 px PC.
 --   Record not ready: name only (as 1.0). Who / where / distance / count rules unchanged.
 --   Switch: script attribute IslandTagsBarEnabled (default true, read per frame; false = the 1.0 name + orange "W-L").
+-- v1.2 (leaderboards, Kepu 2026-11-24 15:44 "a special number badge by your name", pick "Island name tag"; badge look A with
+--   font 2 Builder Sans, mockup docs/mockups/rank_badge_fonts_v0.2.html): a player with a worldwide rank (RankBadge 1.0
+--   rankOf: WorldRank 1..100 from LeaderboardServer 1.0) gets the rank badge just left of their name, 5 px gap, centred on the
+--   name line; size IslandTagsBadgeSize (13) phone / IslandTagsBadgeSizePC (16) PC. Both looks (bar and 1.0). Switch: script
+--   attribute IslandTagsBadgeEnabled (default true, read per frame; false = no badge, = 1.1).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -33,6 +38,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 ratio bar look
+VERSION = "1.2" -- v1.2 rank badge
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local FONT = Enum.Font.FredokaOne
 local DEFAULTS = {IslandTagsEnabled = true, IslandTagsMax = 80, IslandTagsMaxCount = 12,
@@ -46,6 +52,14 @@ for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 script:SetAttribute("IslandTagsState", "off")
+for k, v in pairs({IslandTagsBadgeEnabled = true, IslandTagsBadgeSize = 13, IslandTagsBadgeSizePC = 16}) do -- v1.2
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local RB -- v1.2: RankBadge 1.0
+do
+	local ok, m = pcall(function() return require(script.Parent:WaitForChild("RankBadge", 10)) end)
+	RB = ok and m or nil
+end
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
@@ -131,8 +145,23 @@ local function tagFor(p)
 		return l
 	end
 	t.bar, t.fill, t.nums, t.w, t.l = bar, fill, nums, num("W", GREEN, 1), num("L", RED, 2)
+	if RB then -- v1.2: the rank badge, left of the name
+		t.badge = RB.new()
+		t.badge.AnchorPoint = Vector2.new(1, 0.5)
+		t.badge.Parent = f
+	end
 	tags[p] = t
 	return t
+end
+
+-- v1.2: the rank badge just left of the name text (nameH = the name line height)
+local function placeBadge(t, p, small, nameH)
+	if not t.badge then return end
+	local rank = script:GetAttribute("IslandTagsBadgeEnabled") ~= false and RB.rankOf(p) or nil
+	local size = small and (tonumber(script:GetAttribute("IslandTagsBadgeSize")) or 13) or (tonumber(script:GetAttribute("IslandTagsBadgeSizePC")) or 16)
+	if RB.set(t.badge, rank, size) then
+		t.badge.Position = UDim2.new(0.5, -math.floor(t.name.TextBounds.X / 2) - 5, 0, math.floor(nameH / 2))
+	end
 end
 
 local function anchorOf(model)
@@ -236,6 +265,7 @@ RunService.RenderStepped:Connect(function()
 					t.frame.Size = UDim2.fromOffset(200, ns + 2 + (ready and (3 + bh + 4 + us + 2) or 0))
 					t.frame.Position = UDim2.fromOffset(v.X, v.Y)
 					t.frame.Visible = true
+					placeBadge(t, e.p, small, ns + 2) -- v1.2
 					shown[e.p] = true
 					count += 1
 					continue
@@ -264,6 +294,7 @@ RunService.RenderStepped:Connect(function()
 				t.frame.Size = UDim2.fromOffset(200, nS + 2 + (ready and rS + 2 or 0))
 				t.frame.Position = UDim2.fromOffset(v.X, v.Y)
 				t.frame.Visible = true
+				placeBadge(t, e.p, small, nS + 2) -- v1.2
 				shown[e.p] = true
 				count += 1
 			end
