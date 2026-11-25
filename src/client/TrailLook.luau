@@ -584,6 +584,9 @@ local function walkPose(ph, a, t, h)
 	return out
 end
 
+TL.walkPose = walkPose -- (ph, a, t, h) -> {[joint name] = CFrame}; Lab 1.20 moves its own rig (welded mecha parts follow)
+
+-- opts = {parent, maxBits, pose = false: the caller walks the model itself (TL.walkPose), this only draws the trail}
 function TL.preview(model, id, opts)
 	opts = opts or {}
 	local hrp = model and model:FindFirstChild("HumanoidRootPart")
@@ -631,13 +634,13 @@ function TL.preview(model, id, opts)
 		clock += dt
 		local v = c.h * 2.4
 		ph += v * dt / (c.h * 2.6) * math.pi
-		apply(walkPose(ph, 1, clock, c.h))
+		if opts.pose ~= false then apply(walkPose(ph, 1, clock, c.h)) end
 		c.conv = -c:fwd() * v
 		c:stepLook(dt, true, v * dt)
 	end
 	function h:destroy()
 		c:clear()
-		pcall(apply, {})
+		if opts.pose ~= false then pcall(apply, {}) end
 	end
 	return h
 end

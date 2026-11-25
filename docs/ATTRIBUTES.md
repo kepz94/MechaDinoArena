@@ -3630,3 +3630,13 @@ Model numbers are generator output (old version = the flag in the last column, b
 - RespawnScreen 1.1 (script): `RespawnCamYieldEnabled` (true); `RespawnCamTarget` reads "yield" while standing aside. VictoryTitles 1.4 player attribute `VictoryCamOwned` (true while a show / test / hold owns the camera).
 - PracticeServer 1.15 (script): `PrResultsFreezeEnabled` (true). Diagnostic `PrResultsFrozen` (roots frozen now). Character `PrematchLockUntil` is also set during the results (HpResultsEndAt + 1).
 - VictoryTitles 1.4 (script): `VictoryLateCutEnabled` (true), `VictoryLateCut` (0.4 s past a slot end). Diagnostic `VictoryLateCuts`.
+
+## Dino trails (TrailCatalog 1.0 / TrailServer 1.0 / SkinServer 1.4 / TrailLook 1.0 / TrailFX 1.0 / ShopScreen 1.2 / Lab 1.20, 2026-11-25, plan docs/plans/TRAILS_v1.0.md)
+- TrailServer 1.0 (script): `TrailsEnabled` (true; false = no remote, no TrailId), `TrailBuyEnabled` (true), `TrailTestMemoryStore` (false, Studio only). Diagnostics: `TrailServerVersion`, `TrailStoreKind`, `TrailReceipts`, `TrailEquips`.
+- Player (TrailServer): `TrailSaveState`, `TrailOwned` (csv, catalog order), `TrailEquipped` (id or "none"), `TrailAllUnlocked`, `TrailResult` (equipped / off / prompted / bought / owned / notForSale / notLoaded / noProduct / promptFailed / badArg / ...), `TrailUnlocked` (last id earned or bought).
+- Character (TrailServer): `TrailId` (the equipped trail, "none" = off).
+- SkinServer 1.4 (script): `SkinTrailReceiptsEnabled` (true), diagnostic `SkinReceiptsToTrails`.
+- TrailFX 1.0 (script): `TrailFXEnabled` (true), `TrailFXRange` (150 studs), `TrailMoveSpeed` (2 studs/s flat), `TrailFXMaxBits` (24 a dino), `TrailFXMaxTotal` (120), `TrailFXSoft` ("auto" = soft off the island / "on" / "off"). Diagnostics: `TrailFXVersion`, `TrailFXActive`, `TrailFXParts`.
+- TrailLook 1.0 (module code values): ribbon MaxLength 7 x hip height (Comet 5; x0.6 soft); soft look opacity +45%, life x0.6, bits x0.5.
+- ShopScreen 1.2 (script): `ShopTrailsEnabled` (true, read at start). Player diagnostic `ShopTrailPreview` (trail id on the preview or "").
+- Lab 1.20 (script): `LabTrailsEnabled` (true, read at start; needs `LabEmotesEnabled`), `LabPillFitEnabled` (true, read at start), `LabPillFitPad` (0.5 x the normal pill padding when the row is too wide), `LabPillFitTextMin` (0.7, smallest text scale, steps of 0.1). Player diagnostics `LabTrailCards`, `LabTrailSelected`, `LabPillFit` ("<pad>/<text>").

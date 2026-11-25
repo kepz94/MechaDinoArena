@@ -29,6 +29,14 @@
 --   with the word on top. BUY -> ReplicatedStorage.DinoEmoteRequest:FireServer("buy", id) (149 product prompt); results from player
 --   EmoteResult ("bought" -> "<NAME> UNLOCKED", "owned" -> "ALREADY YOURS"). Emotes are not in FEATURED (featured stays skins only).
 --   Switch: script attribute ShopEmotesEnabled (default true, read at start; false = the 1.0 shop).
+-- v1.2 (Kepu 2026-11-25 11:00 "Build", plan docs/plans/TRAILS_v1.0.md; mockup docs/mockups/trails_shop_lab_v0.1.html, pick 23:55
+--   "1. Yes"): TRAILS tab after EMOTES = the 149 R$ trails of ReplicatedStorage.TrailShared.TrailCatalog (TrailServer 1.0) the
+--   player does not own (player TrailOwned, or all while TrailAllUnlocked). Card: the trail's colours (up to 4) as the swatch.
+--   Preview: your dino (or ◀ ▶ another) in its equipped skin walking in place with the trail (TrailLook 1.0 preview: joints moved
+--   by hand, the trail drawn with parts in the ViewportFrame). Detail: "TRAIL · R$149", name, WORKS ON ALL 8 DINOS, the trail's
+--   line. BUY -> ReplicatedStorage.DinoTrailRequest:FireServer("buy", id); results from player TrailResult ("bought" ->
+--   "<NAME> UNLOCKED", "owned" -> "ALREADY YOURS"). Not in FEATURED. Switch: script attribute ShopTrailsEnabled (default true,
+--   read at start; false = the 1.1 shop). Diagnostic: ShopTrailPreview (trail id on the preview or "").
 -- Diagnostics (LocalPlayer): ShopVersion, ShopOpen, ShopItems (listed), ShopFeatured ("id,id"), ShopSelected, ShopView (dino),
 --   ShopLastBuy (state).
 local Players = game:GetService("Players")
@@ -37,6 +45,7 @@ local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.1" -- v1.1 EMOTES tab
+VERSION = "1.2" -- v1.2 TRAILS tab
 local BUY_WAIT = 60
 local player = Players.LocalPlayer
 player:SetAttribute("ShopVersion", VERSION)
@@ -210,6 +219,41 @@ local function emoteOwned(it)
 	end
 	return false
 end
+-- v1.2: trails (TrailCatalog 1.0, client copy made by TrailServer 1.0)
+local TCM
+local function TC()
+	if TCM then return TCM end
+	local f = ReplicatedStorage:FindFirstChild("TrailShared")
+	local m = f and f:FindFirstChild("TrailCatalog")
+	if m then
+		local ok, r = pcall(require, m)
+		if ok then TCM = r end
+	end
+	return TCM
+end
+local function allTrails()
+	local tc = TC()
+	local out = {}
+	if not tc then return out end
+	for _, id in ipairs(tc.ORDER) do
+		local t = tc.get(id)
+		if t and t.unlock.kind == "robux" then
+			local sw = {}
+			for i, c in ipairs(t.sw) do if i <= 4 then table.insert(sw, c:ToHex()) end end
+			table.insert(out, {cat = "trails", id = id, name = t.name, price = t.unlock.price, tier = t.unlock.price, anim = false, sw = sw,
+				trail = true, desc = t.desc})
+		end
+	end
+	return out
+end
+local function trailOwned(it)
+	if script:GetAttribute("ShopTestShowAll") == true then return false end
+	if player:GetAttribute("TrailAllUnlocked") == true then return true end
+	for id in tostring(player:GetAttribute("TrailOwned") or ""):gmatch("[^,]+") do
+		if id == it.id then return true end
+	end
+	return false
+end
 -- v1.0: one tab; animations and accessories add their own entries here
 local CATEGORIES = {
 	{id = "skins", name = "SKINS", all = allSkins, owned = skinOwned, kind = "SKIN"},
@@ -217,6 +261,10 @@ local CATEGORIES = {
 if script:GetAttribute("ShopEmotesEnabled") == nil then script:SetAttribute("ShopEmotesEnabled", true) end -- v1.1
 if script:GetAttribute("ShopEmotesEnabled") ~= false then
 	table.insert(CATEGORIES, {id = "emotes", name = "EMOTES", all = allEmotes, owned = emoteOwned, kind = "EMOTE", featured = false})
+end
+if script:GetAttribute("ShopTrailsEnabled") == nil then script:SetAttribute("ShopTrailsEnabled", true) end -- v1.2
+if script:GetAttribute("ShopTrailsEnabled") ~= false then
+	table.insert(CATEGORIES, {id = "trails", name = "TRAILS", all = allTrails, owned = trailOwned, kind = "TRAIL", featured = false})
 end
 local function featured()
 	local all = {}
@@ -398,7 +446,7 @@ local function paintModel()
 	local sp = shownSpecies()
 	local classic = sc.get(sp, "classic")
 	local skin = sel or "classic"
-	if tab == "emotes" then -- v1.1: an emote plays on the dino's equipped skin
+	if tab == "emotes" or tab == "trails" then -- v1.1: an emote plays on the dino's equipped skin; v1.2: a trail too
 		local eq = player:GetAttribute("SkinEquipped_" .. sp)
 		skin = (type(eq) == "string" and us.get(eq)) and eq or "classic"
 	end
@@ -614,6 +662,10 @@ local function emoteSaveReady() -- v1.1
 	local s = player:GetAttribute("EmoteSaveState")
 	return s ~= nil and s ~= "loading" and s ~= "loadFailed" and s ~= "noApi"
 end
+local function trailSaveReady() -- v1.2
+	local s = player:GetAttribute("TrailSaveState")
+	return s ~= nil and s ~= "loading" and s ~= "loadFailed" and s ~= "noApi"
+end
 local function drawInfo()
 	clear(info)
 	local ch = S.ch
@@ -639,19 +691,20 @@ local function drawInfo()
 	a.TextXAlignment = Enum.TextXAlignment.Left
 	a.Size = UDim2.new(1, 0, 0, math.max(1.7 * ch, 9) * 1.3)
 	local ln = label(info, "Line", Enum.Font.GothamBlack, math.max(1.9 * ch, 10), GREY,
-		it.emote and (tostring(it.desc) .. " Every dino can do it.") or "Buy it once and every dino can wear it.")
+		it.emote and (tostring(it.desc) .. " Every dino can do it.") or it.trail and (tostring(it.desc) .. " One trail for every dino.") -- v1.2
+		or "Buy it once and every dino can wear it.")
 	ln.LayoutOrder = 4
 	ln.TextXAlignment = Enum.TextXAlignment.Left
 	ln.TextWrapped = true
 	ln.AutomaticSize = Enum.AutomaticSize.Y
 	ln.Size = UDim2.new(1, 0, 0, 0)
-	local credits = it.emote and 0 or tonumber(player:GetAttribute("SkinCredits_" .. tostring(sk and sk.unlock.rarity))) or 0
+	local credits = (it.emote or it.trail) and 0 or tonumber(player:GetAttribute("SkinCredits_" .. tostring(sk and sk.unlock.rarity))) or 0
 	local waiting = buyPendingAt ~= nil and os.clock() - buyPendingAt < BUY_WAIT
 	local state, b
 	if waiting then
 		state = "wait"
 		b = detailButton("…", YELLOW, DARK_TEXT, false, 5)
-	elseif not (it.emote and emoteSaveReady() or (not it.emote and saveReady())) then
+	elseif not (it.emote and emoteSaveReady() or it.trail and trailSaveReady() or (not it.emote and not it.trail and saveReady())) then -- v1.2: + trails
 		state = "loading"
 		b = detailButton("LOADING", YELLOW, DARK_TEXT, false, 5)
 	elseif credits > 0 then
@@ -665,6 +718,14 @@ local function drawInfo()
 	if state == "credit" or state == "get" then
 		b.Activated:Connect(function()
 			press("buy:" .. it.id)
+			if it.trail then -- v1.2
+				local tr = ReplicatedStorage:FindFirstChild("DinoTrailRequest")
+				if not tr then return end
+				buyPendingAt = os.clock()
+				tr:FireServer("buy", it.id)
+				redraw()
+				return
+			end
 			if it.emote then -- v1.1
 				local er = ReplicatedStorage:FindFirstChild("DinoEmoteRequest")
 				if not er then return end
@@ -793,6 +854,7 @@ function redraw()
 	dName.Text = dinoName(sp)
 	updateTimer()
 	subL.Text = tab == "emotes" and "Emotes you don't own yet. Every emote works on all 8 dinos." -- v1.1
+		or tab == "trails" and "Trails you don't own yet. Every trail works on all 8 dinos." -- v1.2
 		or "Skins you don't own yet. Every skin works on all 8 dinos."
 	player:SetAttribute("ShopView", sp)
 end
@@ -894,9 +956,39 @@ local function poseEmote(dt)
 	end
 	emoteShown = want
 end
+-- v1.2: the selected trail on the preview dino (TrailLook 1.0: walks it in place and draws the trail with parts)
+local TLM
+local trailPrev = nil -- {h, model, id}
+local function poseTrail(dt)
+	local it = sel and findItem(sel)
+	local want = open and tab == "trails" and it ~= nil and it.trail == true and model ~= nil
+	if trailPrev and (not want or trailPrev.model ~= model or trailPrev.id ~= it.id) then
+		pcall(function() trailPrev.h:destroy() end)
+		trailPrev = nil
+		player:SetAttribute("ShopTrailPreview", "")
+	end
+	if not want then return end
+	if not trailPrev then
+		if not TLM then
+			local m = script.Parent:FindFirstChild("TrailLook")
+			local ok, r = pcall(function() return m and require(m) end)
+			TLM = ok and r or nil
+		end
+		local h = TLM and TLM.preview(model, it.id)
+		if not h then return end
+		trailPrev = {h = h, model = model, id = it.id}
+		player:SetAttribute("ShopTrailPreview", it.id)
+	end
+	local ok = pcall(trailPrev.h.step, trailPrev.h, dt)
+	if not ok then pcall(function() trailPrev.h:destroy() end) trailPrev = nil end
+end
 RunService.RenderStepped:Connect(function(dt)
-	if not open then return end
+	if not open then
+		if trailPrev then poseTrail(dt) end -- v1.2: closing puts the preview dino back
+		return
+	end
 	poseEmote(dt)
+	poseTrail(dt) -- v1.2
 	orbit += dt * 0.5
 	cam.CFrame = CFrame.lookAt(center + Vector3.new(math.sin(orbit), 0.3, math.cos(orbit)).Unit * radius, center)
 end)
@@ -918,7 +1010,8 @@ end
 root:GetPropertyChangedSignal("AbsoluteSize"):Connect(queue)
 player.AttributeChanged:Connect(function(name)
 	if name == "SkinOwnedU" or name == "SkinAllUnlocked" or name:sub(1, 11) == "SkinCredits" or name:sub(1, 9) == "SkinPrice"
-		or name == "SkinSaveState" or name == "EmoteOwned" or name == "EmoteAllUnlocked" or name == "EmoteSaveState" then -- v1.1 Emote*
+		or name == "SkinSaveState" or name == "EmoteOwned" or name == "EmoteAllUnlocked" or name == "EmoteSaveState" -- v1.1 Emote*
+		or name == "TrailOwned" or name == "TrailAllUnlocked" or name == "TrailSaveState" then -- v1.2 Trail*
 		updateBadge()
 		queue()
 	end
@@ -930,6 +1023,22 @@ player.AttributeChanged:Connect(function(name)
 			if res == "bought" then
 				local sk = us and us.get(player:GetAttribute("SkinLastBought"))
 				if sk then showToast(string.upper(sk.name) .. " UNLOCKED · ON " .. dinoName(shownSpecies())) end
+			elseif res == "owned" then
+				showToast("ALREADY YOURS")
+			elseif res == "promptFailed" or res == "noProduct" or res == "notLoaded" then
+				showToast("TRY AGAIN IN A MOMENT")
+			end
+		end
+		queue()
+	end
+	if name == "TrailResult" then -- v1.2
+		local res = player:GetAttribute("TrailResult")
+		if res ~= "prompted" then buyPendingAt = nil end
+		if open and tab == "trails" then
+			local tc = TC()
+			if res == "bought" then
+				local t = tc and tc.get(player:GetAttribute("TrailUnlocked"))
+				showToast(t and (string.upper(t.name) .. " UNLOCKED") or "UNLOCKED")
 			elseif res == "owned" then
 				showToast("ALREADY YOURS")
 			elseif res == "promptFailed" or res == "noProduct" or res == "notLoaded" then

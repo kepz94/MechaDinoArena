@@ -141,6 +141,25 @@ VERSION = "1.16" -- v1.16 SAVE LOADOUT tile
 VERSION = "1.17" -- v1.17 phone HUD v2: SKILLS in the ☰ drawer
 VERSION = "1.18" -- v1.18 universal SKINS tab
 VERSION = "1.19" -- v1.19 LOOKS (SKINS / EMOTES)
+VERSION = "1.20" -- v1.20 LOOKS: TRAILS
+-- v1.20 (Kepu 2026-11-25 11:00 "Build", plan docs/plans/TRAILS_v1.0.md; mockup docs/mockups/trails_shop_lab_v0.1.html, picks 23:55
+--   "2. Yes", "3. A"): a third pill TRAILS after SKINS / EMOTES (when ReplicatedStorage.TrailShared.TrailCatalog exists, TrailServer
+--   1.0). TRAILS view, same layout:
+--   * left: NO TRAIL + the 10 trails in TrailCatalog.ORDER, 3 a row: a strip of the trail's colours, name, state: ON (orange stroke) /
+--     FREE · OWNED / OWNED / R$149 / a progress bar (earn, not owned). Filters ALL / OWNED / EARN / ROBUX apply (NO TRAIL: ALL, OWNED).
+--   * middle: the stage dino (yours or ◀ another, in its equipped skin) walks in place with the selected trail (TrailLook 1.0: walk
+--     pose on this Lab's rig so welded mecha parts follow; the trail drawn with parts). Tag "PREVIEW".
+--   * right: "TRAIL · ON / FREE / OWNED / EARN / R$149" (NO TRAIL: "TRAIL · OFF"), name, the colour strip, "✓ WORKS ON ALL 8 DINOS",
+--     the line (earn: challenge + "<have> / <need>" bar), a button: EQUIP (-> DinoTrailRequest("equip", id)) / EQUIPPED (green,
+--     off) / TURN TRAIL OFF (NO TRAIL -> "equip", "none") / BUY · R$149 (-> "buy", id) / LOCKED · KEEP PLAYING, and "One trail for
+--     every dino you play." (pick A). Toasts: "<NAME> ON", "TRAIL OFF", "<NAME> UNLOCKED!".
+--   New code lives in the script-global table TRL (the main chunk is at the 200-local limit, as EMO in 1.19).
+--   Switch: script attribute LabTrailsEnabled (default true, read at start; needs LabEmotesEnabled; false = the 1.19 LOOKS tab).
+--   Diagnostics: LabTrailCards, LabTrailSelected.
+--   Pill fit (Studio test 2026-11-25: SKINS EMOTES TRAILS + ALL OWNED EARN ROBUX ran past the left column, ROBUX cut off): when the
+--   row is wider than the column, the pills go tight as in the mockup's phone row (padding x LabPillFitPad, then text down in 0.1
+--   steps to x LabPillFitTextMin). Row height and the grid below do not move. Resets when the column width changes.
+--   Switch: script attribute LabPillFitEnabled (default true, read at start). Diagnostic: LabPillFit ("<pad>/<text>").
 -- v1.19 (Kepu 2026-11-24 20:27 "1 · SKINS becomes LOOKS", "Build next"; plan docs/plans/EMOTES_v1.0.md, mockup
 --   docs/mockups/emote_wheel_v0.1.html Lab option 1): when ReplicatedStorage.EmoteShared.EmoteCatalog exists (EmoteServer 1.0) the
 --   universal SKINS tab reads LOOKS and the filter row starts with two pills, SKINS / EMOTES (yellow = on). EMOTES view, same layout:
@@ -267,6 +286,14 @@ local uniSkinsOn = skinsOn and script:GetAttribute("LabUniversalSkinsEnabled") ~
 if script:GetAttribute("LabEmotesEnabled") == nil then script:SetAttribute("LabEmotesEnabled", true) end -- v1.19
 EMO = {} -- v1.19: emote state + helpers in one script-global table (the main chunk is at the 200-local limit; a local would not compile)
 EMO.switch = uniSkinsOn and script:GetAttribute("LabEmotesEnabled") ~= false -- v1.19
+if script:GetAttribute("LabTrailsEnabled") == nil then script:SetAttribute("LabTrailsEnabled", true) end -- v1.20
+TRL = {} -- v1.20: trail state + helpers (script-global, as EMO)
+TRL.switch = EMO.switch and script:GetAttribute("LabTrailsEnabled") ~= false -- v1.20
+if script:GetAttribute("LabPillFitEnabled") == nil then script:SetAttribute("LabPillFitEnabled", true) end -- v1.20 pill fit
+if script:GetAttribute("LabPillFitPad") == nil then script:SetAttribute("LabPillFitPad", 0.5) end
+if script:GetAttribute("LabPillFitTextMin") == nil then script:SetAttribute("LabPillFitTextMin", 0.7) end
+TRL.fitOn = TRL.switch and script:GetAttribute("LabPillFitEnabled") ~= false
+TRL.fitW, TRL.fitP, TRL.fitS = nil, 1, 1
 if script:GetAttribute("LabEnabled") == false then return end
 
 local shared = ReplicatedStorage:WaitForChild("SkillShared", 30)
@@ -912,8 +939,12 @@ local function uniBuild() -- the filter row and the dino strip, made once
 	if uniFilterRow then return end
 	uniFilterRow = frame(left, "UniFilters")
 	list(uniFilterRow, Enum.FillDirection.Horizontal, 6, nil, Enum.VerticalAlignment.Center)
+	if TRL.fitOn then -- v1.20 pill fit: re-check whenever the row's content width changes
+		uniFilterRow:FindFirstChildOfClass("UIListLayout"):GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() TRL.fitCheck() end)
+		uniFilterRow:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() TRL.fitCheck() end)
+	end
 	if EMO.switch then -- v1.19: SKINS / EMOTES pills first
-		for i, f in ipairs({{"skins", "SKINS"}, {"emotes", "EMOTES"}}) do
+		for i, f in ipairs(TRL.switch and {{"skins", "SKINS"}, {"emotes", "EMOTES"}, {"trails", "TRAILS"}} or {{"skins", "SKINS"}, {"emotes", "EMOTES"}}) do -- v1.20: + TRAILS
 			local b = button(uniFilterRow, "L_" .. f[1], PANEL2, 0)
 			b.LayoutOrder = i - 10
 			b.AutomaticSize = Enum.AutomaticSize.X
@@ -1091,7 +1122,141 @@ function EMO.cards()
 	player:SetAttribute("LabCards", shown)
 	player:SetAttribute("LabModels", 0)
 end
+-- ---------- v1.20: TRAILS on the LOOKS tab ----------
+function TRL.cat()
+	if TRL.cat_ then return TRL.cat_ end
+	local f = ReplicatedStorage:FindFirstChild("TrailShared")
+	local m = f and f:FindFirstChild("TrailCatalog")
+	if m then
+		local ok, r = pcall(require, m)
+		if ok then TRL.cat_ = r end
+	end
+	return TRL.cat_
+end
+function TRL.on() return TRL.switch and EMO.on() and TRL.cat() ~= nil end
+function TRL.view() return TRL.on() and EMO.looks == "trails" end
+function TRL.fitCheck() -- v1.20 pill fit: row wider than the column -> tight padding, then smaller text, one step a redraw
+	if not (mode and uniFilterRow and uniFilterRow.Visible) then return end
+	local over = uniFilterRow:FindFirstChildOfClass("UIListLayout").AbsoluteContentSize.X - uniFilterRow.AbsoluteSize.X
+	if over <= 0.5 then return end
+	local padMin = tonumber(script:GetAttribute("LabPillFitPad")) or 0.5
+	local textMin = tonumber(script:GetAttribute("LabPillFitTextMin")) or 0.7
+	if TRL.fitP > padMin then TRL.fitP = padMin
+	elseif TRL.fitS > textMin + 0.001 then TRL.fitS = math.max(textMin, TRL.fitS - 0.1)
+	else return end
+	player:SetAttribute("LabPillFit", ("%.2f/%.2f"):format(TRL.fitP, TRL.fitS))
+	task.defer(redraw)
+end
+function TRL.equipped()
+	local e = player:GetAttribute("TrailEquipped")
+	return type(e) == "string" and e ~= "" and e or "neon"
+end
+function TRL.state(id) -- "on" / "own" / "buy" / "earn"; id "none" = NO TRAIL
+	if id == "none" then return TRL.equipped() == "none" and "on" or "own" end
+	local t = TRL.cat().get(id)
+	for v in tostring(player:GetAttribute("TrailOwned") or ""):gmatch("[^,]+") do
+		if v == id then return TRL.equipped() == id and "on" or "own" end
+	end
+	return t.unlock.kind == "earn" and "earn" or "buy"
+end
+function TRL.progress(id)
+	local t = TRL.cat().get(id)
+	local have = tonumber(player:GetAttribute(t.unlock.stat)) or 0
+	return math.min(have, t.unlock.need), t.unlock.need
+end
+function TRL.strip(parent, id, h) -- the trail's colours left to right (NO TRAIL: dark, "OFF")
+	local s = frame(parent, "Colors", Color3.fromRGB(27, 35, 51), 0)
+	s.Size = UDim2.new(1, 0, 0, h)
+	corner(s, UDim.new(0, 0.8 * S.ch))
+	if id ~= "none" then
+		s.BackgroundColor3 = Color3.new(1, 1, 1)
+		local g = Instance.new("UIGradient")
+		g.Color = TRL.cat().colorSequence(id)
+		g.Parent = s
+	else
+		local d = label(s, "D", Enum.Font.GothamBlack, h * 0.5, MUTED, "OFF")
+		d.Size = UDim2.fromScale(1, 1)
+	end
+	return s
+end
+function TRL.cards()
+	gridList.Parent = nil
+	gridLayout.Parent = grid
+	local TC = TRL.cat()
+	if not TRL.sel or (TRL.sel ~= "none" and not TC.get(TRL.sel)) then TRL.sel = TRL.equipped() end
+	local p1 = 0.8 * S.ch
+	local cw3 = S.uniCellW or S.cellW
+	local swH = math.max(3.2 * S.ch, 14)
+	local nS = math.max(1.5 * S.ch, 9)
+	local tS = math.max(1.3 * S.ch, 8)
+	local shown = 0
+	local ids = {"none"}
+	for _, id in ipairs(TC.ORDER) do table.insert(ids, id) end
+	for i, id in ipairs(ids) do
+		local t = id ~= "none" and TC.get(id) or nil
+		local st = TRL.state(id)
+		local kind = t and t.unlock.kind or "free"
+		local keep = uniFilter == "all" or (uniFilter == "own" and (st == "on" or st == "own"))
+			or (uniFilter == "earn" and kind == "earn") or (uniFilter == "buy" and kind == "robux")
+		if keep then
+			shown += 1
+			local b = button(grid, "Trail_" .. id, PANEL2, 0)
+			b.LayoutOrder = i
+			corner(b, UDim.new(0, 1.2 * S.ch))
+			if TRL.sel == id then
+				stroke(b, WHITE, 0, 2.5)
+			elseif st == "on" then
+				stroke(b, ORANGE, 0, 2)
+			else
+				stroke(b, WHITE, 0.9, 2)
+			end
+			local sw = TRL.strip(b, id, swH)
+			sw.Position, sw.Size = UDim2.fromOffset(p1, p1), UDim2.fromOffset(cw3 - 2 * p1, swH)
+			if st == "buy" or st == "earn" then sw.BackgroundTransparency = 0.45 end
+			local nm = label(b, "Name", Enum.Font.FredokaOne, nS, WHITE, t and t.name or "No Trail")
+			nm.TextXAlignment = Enum.TextXAlignment.Left
+			nm.TextTruncate = Enum.TextTruncate.AtEnd
+			nm.Position = UDim2.fromOffset(p1, p1 + swH + 0.6 * S.ch)
+			nm.Size = UDim2.fromOffset(cw3 - 2 * p1, nS * 1.2)
+			nm.TextScaled = true
+			local nfit = Instance.new("UITextSizeConstraint")
+			nfit.MinTextSize, nfit.MaxTextSize = 6, nS
+			nfit.Parent = nm
+			local y = p1 + swH + 0.6 * S.ch + nS * 1.2 + 0.4 * S.ch
+			if st == "earn" then
+				local have, need = TRL.progress(id)
+				local bar = frame(b, "Bar", Color3.fromRGB(42, 52, 70), 0)
+				bar.Position, bar.Size = UDim2.fromOffset(p1, y + tS * 0.3), UDim2.fromOffset(cw3 - 2 * p1, math.max(0.9 * S.ch, 4))
+				corner(bar, UDim.new(1, 0))
+				local fill = frame(bar, "Fill", GREEN, 0)
+				fill.Size = UDim2.fromScale(need > 0 and math.clamp(have / need, 0, 1) or 0, 1)
+				corner(fill, UDim.new(1, 0))
+			else
+				local txt, col = "OWNED", MUTED
+				if st == "on" then txt, col = "ON", ORANGE
+				elseif st == "buy" then txt, col = "R$" .. tostring(t.unlock.price), YELLOW
+				elseif id == "none" then txt = "OFF"
+				elseif kind == "free" then txt, col = "FREE · OWNED", GREEN end
+				local sl = label(b, "State", Enum.Font.GothamBlack, tS, col, txt)
+				sl.TextXAlignment = Enum.TextXAlignment.Left
+				sl.TextTruncate = Enum.TextTruncate.AtEnd
+				sl.Position, sl.Size = UDim2.fromOffset(p1, y), UDim2.fromOffset(cw3 - 2 * p1, tS * 1.2)
+			end
+			b.Activated:Connect(function()
+				press("trail:" .. id)
+				TRL.sel = id
+				redraw()
+			end)
+			table.insert(cards, {id = id, b = b})
+		end
+	end
+	player:SetAttribute("LabTrailCards", shown)
+	player:SetAttribute("LabTrailSelected", TRL.sel or "")
+	player:SetAttribute("LabCards", shown)
+	player:SetAttribute("LabModels", 0)
+end
 local function drawUniCards()
+	if TRL.view() then TRL.cards() return end -- v1.20
 	if EMO.view() then EMO.cards() return end -- v1.19
 	gridList.Parent = nil
 	gridLayout.Parent = grid
@@ -1782,7 +1947,107 @@ EMO.detail = function() -- v1.19
 	end
 	b.Size = UDim2.new(1, 0, 0, math.max(5.6 * S.ch, 34))
 end
+TRL.detail = function() -- v1.20
+	local TC = TRL.cat()
+	local id = TRL.sel or TRL.equipped()
+	local t = id ~= "none" and TC.get(id) or nil
+	if id ~= "none" and not t then
+		local h = label(detail, "Empty", Enum.Font.GothamBlack, S.stepS, MUTED, "Pick a trail.")
+		h.Size = UDim2.new(1, 0, 0, S.stepS * 2)
+		return
+	end
+	local st = TRL.state(id)
+	local kindTxt
+	if id == "none" then kindTxt = st == "on" and "OFF" or "NONE"
+	elseif st == "on" then kindTxt = "ON"
+	elseif t.unlock.kind == "free" then kindTxt = "FREE"
+	elseif st == "own" then kindTxt = "OWNED"
+	elseif t.unlock.kind == "earn" then kindTxt = "EARN"
+	else kindTxt = "R$" .. tostring(t.unlock.price) end
+	local sub = label(detail, "Sub", Enum.Font.GothamBlack, S.stepS, YELLOW, "TRAIL · " .. kindTxt)
+	sub.TextXAlignment = Enum.TextXAlignment.Left
+	sub.Size = UDim2.new(1, 0, 0, S.stepS * 1.2)
+	sub.LayoutOrder = 1
+	local ttl = label(detail, "Title", Enum.Font.FredokaOne, math.max(3 * S.ch, 15), WHITE, t and t.name or "No Trail")
+	ttl.TextXAlignment = Enum.TextXAlignment.Left
+	ttl.TextWrapped = true
+	ttl.AutomaticSize = Enum.AutomaticSize.Y
+	ttl.Size = UDim2.new(1, 0, 0, 0)
+	ttl.LayoutOrder = 2
+	local ws = TRL.strip(detail, id, math.max(2.4 * S.ch, 12))
+	ws.LayoutOrder = 3
+	local all = label(detail, "All", Enum.Font.GothamBlack, S.stepS, GREEN, "✓ WORKS ON ALL 8 DINOS")
+	all.TextXAlignment = Enum.TextXAlignment.Left
+	all.Size = UDim2.new(1, 0, 0, S.stepS * 1.3)
+	all.LayoutOrder = 4
+	local how = t and t.desc or "Nothing follows your dino."
+	if t and st == "buy" then how = t.desc .. " Unlock it once and every dino can wear it."
+	elseif t and st == "earn" then how = t.unlock.text .. "." end
+	local line = label(detail, "Line", Enum.Font.GothamBlack, S.stepS, GREY, how)
+	line.TextXAlignment = Enum.TextXAlignment.Left
+	line.TextWrapped = true
+	line.AutomaticSize = Enum.AutomaticSize.Y
+	line.Size = UDim2.new(1, 0, 0, 0)
+	line.LayoutOrder = 5
+	if t and st == "earn" then
+		local have, need = TRL.progress(id)
+		local row = frame(detail, "Progress")
+		row.LayoutOrder = 6
+		row.Size = UDim2.new(1, 0, 0, S.stepS * 1.4 + math.max(1.2 * S.ch, 6) + 0.6 * S.ch)
+		local n = label(row, "N", Enum.Font.GothamBlack, S.stepS, GREEN, ("%d / %d"):format(have, need))
+		n.TextXAlignment = Enum.TextXAlignment.Left
+		n.Size = UDim2.new(1, 0, 0, S.stepS * 1.4)
+		local bar = frame(row, "Bar", Color3.fromRGB(42, 52, 70), 0)
+		bar.Position, bar.Size = UDim2.new(0, 0, 0, S.stepS * 1.4 + 0.3 * S.ch), UDim2.new(1, 0, 0, math.max(1.2 * S.ch, 6))
+		corner(bar, UDim.new(1, 0))
+		local fill = frame(bar, "Fill", GREEN, 0)
+		fill.Size = UDim2.fromScale(need > 0 and math.clamp(have / need, 0, 1) or 0, 1)
+		corner(fill, UDim.new(1, 0))
+	end
+	local b
+	local function equip(to)
+		press("trailEquip:" .. to)
+		local r = ReplicatedStorage:FindFirstChild("DinoTrailRequest")
+		if r then r:FireServer("equip", to) end
+	end
+	if st == "on" then
+		b = detailButton(detail, id == "none" and "TRAIL OFF" or "EQUIPPED", PANEL2, GREEN, false, 9)
+		stroke(b, GREEN, 0, 2)
+	elseif st == "own" then
+		b = detailButton(detail, id == "none" and "TURN TRAIL OFF" or "EQUIP", YELLOW, DARK_TEXT, true, 9)
+		b.Activated:Connect(function() equip(id) end)
+	elseif st == "buy" then
+		local waiting = buyPendingAt ~= nil and os.clock() - buyPendingAt < BUY_WAIT
+		local s = player:GetAttribute("TrailSaveState")
+		local ready = s ~= nil and s ~= "loading" and s ~= "loadFailed" and s ~= "noApi"
+		if waiting then
+			b = detailButton(detail, "…", YELLOW, DARK_TEXT, false, 9)
+		elseif not ready then
+			b = detailButton(detail, "LOADING", YELLOW, DARK_TEXT, false, 9)
+		else
+			b = detailButton(detail, "BUY · R$" .. tostring(t.unlock.price), YELLOW, DARK_TEXT, true, 9)
+			b.Activated:Connect(function()
+				press("trailBuy:" .. id)
+				local r = ReplicatedStorage:FindFirstChild("DinoTrailRequest")
+				if not r then return end
+				buyPendingAt = os.clock()
+				r:FireServer("buy", id)
+				redraw()
+			end)
+		end
+	else
+		b = detailButton(detail, "LOCKED · KEEP PLAYING", PANEL2, MUTED, false, 9)
+	end
+	b.Size = UDim2.new(1, 0, 0, math.max(5.6 * S.ch, 34))
+	local note = label(detail, "One", Enum.Font.GothamBlack, S.stepS, MUTED, "One trail for every dino you play.")
+	note.TextXAlignment = Enum.TextXAlignment.Left
+	note.TextWrapped = true
+	note.AutomaticSize = Enum.AutomaticSize.Y
+	note.Size = UDim2.new(1, 0, 0, 0)
+	note.LayoutOrder = 10
+end
 local function drawUniDetail()
+	if TRL.view() then TRL.detail() return end -- v1.20
 	if EMO.view() then EMO.detail() return end -- v1.19
 	local US = uniMod()
 	local sk = skinSel and US.get(skinSel)
@@ -2316,25 +2581,27 @@ local function layout()
 		uniBuild()
 		local fS = math.max(1.4 * ch, 9)
 		local fH = fS + 1.4 * ch
+		if TRL.fitW ~= lw then TRL.fitW, TRL.fitP, TRL.fitS = lw, 1, 1 end -- v1.20 pill fit: a new column width starts loose again
+		fS *= TRL.fitS
 		uniFilterRow.Visible = true
 		uniFilterRow.Position, uniFilterRow.Size = UDim2.fromOffset(0, tabH + 1.2 * ch), UDim2.fromOffset(lw, fH)
-		uniFilterRow:FindFirstChildOfClass("UIListLayout").Padding = UDim.new(0, 0.8 * ch)
+		uniFilterRow:FindFirstChildOfClass("UIListLayout").Padding = UDim.new(0, 0.8 * ch * TRL.fitP)
 		for k, f in pairs(uniFilterBtns) do
 			local on = uniFilter == k
 			f.b.Size = UDim2.fromOffset(0, fH)
 			f.b.BackgroundColor3 = on and SKIN or PANEL2
 			f.l.TextSize = fS
 			f.l.TextColor3 = on and Color3.fromRGB(26, 16, 48) or MUTED
-			f.pd.PaddingLeft, f.pd.PaddingRight = UDim.new(0, 1.2 * ch), UDim.new(0, 1.2 * ch)
+			f.pd.PaddingLeft, f.pd.PaddingRight = UDim.new(0, 1.2 * ch * TRL.fitP), UDim.new(0, 1.2 * ch * TRL.fitP)
 		end
 		for k, f in pairs(EMO.lookBtns) do -- v1.19
 			local on = EMO.looks == k
-			f.b.Visible = EMO.on()
+			f.b.Visible = EMO.on() and (k ~= "trails" or TRL.on()) -- v1.20
 			f.b.Size = UDim2.fromOffset(0, fH)
 			f.b.BackgroundColor3 = on and YELLOW or PANEL2
 			f.l.TextSize = fS
 			f.l.TextColor3 = on and DARK_TEXT or MUTED
-			f.pd.PaddingLeft, f.pd.PaddingRight = UDim.new(0, 1.2 * ch), UDim.new(0, 1.2 * ch)
+			f.pd.PaddingLeft, f.pd.PaddingRight = UDim.new(0, 1.2 * ch * TRL.fitP), UDim.new(0, 1.2 * ch * TRL.fitP) -- v1.20 pill fit
 		end
 		local gy = tabH + 1.2 * ch + fH + ch
 		grid.Position, grid.Size = UDim2.fromOffset(0, gy), UDim2.fromOffset(lw, bh - gy)
@@ -2476,11 +2743,11 @@ function redraw()
 	if skinsOn then
 		if useUni() then -- v1.18
 			local sp = uniStageSpecies()
-			if stagePreview then uniPaint(stagePreview, (tab == "skins" and not EMO.view()) and skinSel or uniEquipped(sp), sp) end -- v1.19
+			if stagePreview then uniPaint(stagePreview, (tab == "skins" and not EMO.view() and not TRL.view()) and skinSel or uniEquipped(sp), sp) end -- v1.19, v1.20
 		elseif stagePreview then paintModel(stagePreview, tab == "skins" and skinSel or equippedSkin()) end
 		stageTag.Text = tab == "skins" and "PREVIEW" or "ALL UPGRADES"
 		if uniTab() and skinSel and uniMod().get(skinSel) and not uniOwns(skinSel) then stageTag.Text = "PREVIEW · LOCKED" end -- v1.18
-		if uniTab() and EMO.view() then stageTag.Text = "PREVIEW" end -- v1.19
+		if uniTab() and (EMO.view() or TRL.view()) then stageTag.Text = "PREVIEW" end -- v1.19, v1.20
 		hint.Text = tab == "skins" and "Tap a skin to preview it on your dino" or "Tap a card, then EQUIP · tap a slot to choose where it goes"
 	end
 	player:SetAttribute("LabTab", tab)
@@ -2658,12 +2925,69 @@ function EMO.pose(dt)
 	end
 	EMO.shown = want
 end
+-- v1.20: the selected trail on the stage dino: the walk pose on EMO's rig (mecha parts follow) + TrailLook draws the trail
+TRL.prev, TRL.ph, TRL.clock = nil, 0, 0
+function TRL.pose(dt)
+	local id = TRL.view() and (TRL.sel or TRL.equipped()) or nil
+	local want = mode ~= nil and uniTab() and id ~= nil and stagePreview ~= nil
+	local look = want and id ~= "none" and id or nil
+	if TRL.prev and (TRL.prev.model ~= stagePreview or TRL.prev.id ~= look) then
+		pcall(function() TRL.prev.h:destroy() end)
+		TRL.prev = nil
+	end
+	if not want then
+		if TRL.walking and stagePreview and EMO.rig and EMO.rig.model == stagePreview and not EMO.view() then
+			EMO.shown = true -- EMO.pose puts the dino back in its rest pose on its next frame
+		end
+		TRL.walking = false
+		return
+	end
+	if not EMO.rig or EMO.rig.model ~= stagePreview then EMO.buildRig(stagePreview) end
+	local r = EMO.rig
+	if not (r and r.order) then return end
+	if not TRL.mod then
+		local m = script.Parent:FindFirstChild("TrailLook")
+		local ok, res = pcall(function() return m and require(m) end)
+		TRL.mod = ok and res or false
+	end
+	if not TRL.mod then return end
+	dt = math.min(dt, 0.05)
+	TRL.clock += dt
+	local hrp = r.hrp
+	local hum = stagePreview:FindFirstChildOfClass("Humanoid")
+	local h = (hum and hum.HipHeight > 0) and (hrp.Size.Y / 2 + hum.HipHeight) or hrp.Size.Y * 1.5
+	TRL.ph += 2.4 * h * dt / (2.6 * h) * math.pi
+	local pose = TRL.mod.walkPose(TRL.ph, 1, TRL.clock, h)
+	local W = {[r.hrp] = r.base}
+	for _, j in ipairs(r.order) do
+		local m = j.m
+		local w0 = W[m.Part0]
+		if w0 then
+			local w1 = w0 * j.c0 * (pose[m.Name] or CFrame.identity) * j.c1i
+			W[m.Part1] = w1
+			for _, x in ipairs(r.parts[m.Part1] or {}) do x[1].CFrame = w1 * x[2] end
+		end
+	end
+	TRL.walking = true
+	if look and not TRL.prev then
+		local hd = TRL.mod.preview(stagePreview, look, {pose = false})
+		if hd then TRL.prev = {h = hd, model = stagePreview, id = look} end
+	end
+	if TRL.prev then
+		local ok = pcall(TRL.prev.h.step, TRL.prev.h, dt)
+		if not ok then pcall(function() TRL.prev.h:destroy() end) TRL.prev = nil end
+	end
+end
 RunService.RenderStepped:Connect(function(dt)
-	if not mode then return end
+	if not mode then
+		if TRL.prev then pcall(function() TRL.prev.h:destroy() end) TRL.prev = nil end -- v1.20
+		return
+	end
 	orbit += dt * 0.45
 	radius = stageRadius()
 	cam.CFrame = CFrame.lookAt(center + Vector3.new(math.sin(orbit), 0.32, math.cos(orbit)).Unit * radius, center)
 	EMO.pose(dt) -- v1.19
+	TRL.pose(dt) -- v1.20
 	for _, c in ipairs(cards) do
 		if c.cam then
 			c.angle += dt * 0.9
@@ -2711,6 +3035,23 @@ player.AttributeChanged:Connect(function(name)
 	if useUni() and (name == "SkinOwnedU" or name == "SkinAllUnlocked" or name == "StatKills" or name == "ArenaW" or name == "ArenaL"
 		or name == "StatBestStreak" or name == "ArenaStreak") then queue() end -- v1.18
 	if EMO.switch and (name == "EmoteOwned" or name == "EmoteWheel" or name == "EmoteAllUnlocked" or name == "EmoteSaveState") then queue() end -- v1.19
+	if TRL.switch and (name == "TrailOwned" or name == "TrailEquipped" or name == "TrailAllUnlocked" or name == "TrailSaveState") then queue() end -- v1.20
+	if TRL.switch and name == "TrailResult" then -- v1.20
+		local res = player:GetAttribute("TrailResult")
+		if res ~= "prompted" then buyPendingAt = nil end
+		local TC = TRL.cat()
+		if mode and TC and TRL.view() then
+			if res == "equipped" then
+				local t = TC.get(player:GetAttribute("TrailEquipped"))
+				if t then showToast(string.upper(t.name) .. " ON") end
+			elseif res == "off" then showToast("TRAIL OFF")
+			elseif res == "bought" then
+				local t = TC.get(player:GetAttribute("TrailUnlocked"))
+				if t then showToast(string.upper(t.name) .. " UNLOCKED!") end
+			elseif res == "promptFailed" or res == "noProduct" or res == "notLoaded" then showToast("TRY AGAIN IN A MOMENT") end
+		end
+		queue()
+	end
 	if EMO.switch and name == "EmoteResult" then -- v1.19
 		local res = player:GetAttribute("EmoteResult")
 		if res ~= "prompted" then buyPendingAt = nil end

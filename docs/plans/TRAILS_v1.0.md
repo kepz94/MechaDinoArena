@@ -1,6 +1,7 @@
 # Dino Trails v1.0 (build plan)
 
-Status: plan, waiting for Kepu's "Build". Picks: docs/plans/TRAILS_v0.1.md (23:18 whenever moving / like emotes / island and matches
+Status: built and installed in Studio 2026-11-25 after Kepu's 11:00 "Build" (TrailCatalog 1.0, TrailServer 1.0, SkinServer 1.4, TrailLook 1.0,
+TrailFX 1.0, ShopScreen 1.2, Lab 1.20; hashes in docs/VERSIONS.md). Not published. Picks: docs/plans/TRAILS_v0.1.md (23:18 whenever moving / like emotes / island and matches
 / 10; 23:31 all 10, Neon Streak free, Fossil Prints = 25 Arena wins, Comet Tail = 250 kills; 23:55 Shop tab yes, Lab pill yes, equip A
 "one trail for every dino"). Mockups: docs/mockups/trails_v0.1.html (the 10 looks), docs/mockups/trails_shop_lab_v0.1.html (Shop + Lab).
 
