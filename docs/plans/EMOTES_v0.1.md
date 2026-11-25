@@ -103,3 +103,10 @@ ATTACK (611, 247, 101), part squares (435, 251) and (521, 283).
 - Lab 1 (recommended): SKINS tab becomes LOOKS with SKINS / EMOTES (SHOP v1.0 agreed direction); cards left, stage middle, detail +
   "your wheel" right; PUT ON WHEEL then tap a slot. Lab 2: a 4th EMOTES tab with the wheel big in the middle.
 - Open: new player owns only GG Party, so 7 slots start empty: show paid ones as greyed shop slots, or leave empty?
+
+## Wheel + Lab picks (Kepu 2026-11-24 20:27)
+- Phone: "A · Pill next to ☰" (☻ 44 x 36 at (638, 8), middle wheel, 8 slots, 3 s cooldown on the pill).
+- Lab: "1 · SKINS becomes LOOKS" (LOOKS tab, SKINS / EMOTES inside; cards | stage | detail + your wheel; PUT ON WHEEL then a slot).
+- PC: "B". During RespawnScreen's pick window (RespawnHold / grace) B stays the spawn picker.
+- Empty slots: "Greyed shop slots" (unowned paid emotes fill free slots greyed with 149 R$; tap opens the Shop on EMOTES).
+Next: build plan (tasks, switches, attributes, do-not-touch) + red-team, then Kepu's go before any Studio build.
