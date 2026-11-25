@@ -41,9 +41,13 @@ Totals: 6 earned, 14 Robux (5 x 149, 5 x 499, 4 x 999), 1 free.
   detail + EQUIP ON <DINO> / BUY / LOCKED right).
 - Old paid skins cut from the lineup: "Nobody bought any so don't worry about it". No compensation path.
 - "Play 3 Arena matches" = ArenaW + ArenaL (counted matches only).
-- Still open: what counts as a kill (see Red-team R2); grandfathering old free skins (R3).
+- Kills (R2): "Arena + island bots" = KillFeedServer kills by a player (players and Arena / practice bots) plus
+  KillRegenServer island bot kills. One death counts once (dedupe by victim model + KilledAt, both scripts can see a practice bot).
+- Old free skins (R3): "Back to Classic". No grandfathering; an equipped skin the player does not own falls back to Classic.
+- Phone FX (R1): Settings gets "Animated skins" on/off, on by default (UI: needs a mockup and Kepu's pick before build).
+- R4 (149 animated) stands as Kepu's plan. R5: keep all tasks.
 
-## Build plan (draft, before red-team)
+## Build plan (after red-team, Kepu 2026-11-24)
 Version tags: UniversalSkins 1.0 (new shared module), SkinCatalog 1.10, SkinServer 1.2, Lab 1.8, SkinFX 1.0 (new client),
 SkinStats 1.0 (new server). Master switch: SkinServer attribute UniversalSkinsEnabled (default true once built; false = the
 1.9 per-dino lists, saves untouched). Do-not-touch: ArenaRecordRules / ArenaRecordServer write path, MainMenu (it already
@@ -63,8 +67,9 @@ Task 1 · Logic · UniversalSkins 1.0 (src/shared/UniversalSkins.luau, pure)
   partLook is deterministic for the same lp; every earn rule at need - 1 / need; OLD_TO_NEW covers every non-dropped id.
 
 Task 2 · Logic + Wired · SkinStats 1.0 (new server script)
-- Saved lifetime kills and best win streak per player (new store MDA_SkinStats_v1, key u<UserId>, {k, best}). Kills from
-  KillFeedServer (see R2 for which kills). best = max(best, ArenaStreak) on every ArenaStreak change.
+- Saved lifetime kills and best win streak per player (new store MDA_SkinStats_v1, key u<UserId>, {k, best}). Kills =
+  KillFeedServer kills by a player + KillRegenServer island bot kills, one per victim + KilledAt. best = max(best,
+  ArenaStreak) on every ArenaStreak change.
 - Player attributes StatKills, StatBestStreak, SkinStatsReady. Switch SkinStatsEnabled; SkinStatsSaveEnabled (Studio guard
   like SkillSaveEnabled).
 
@@ -80,7 +85,8 @@ Task 3 · Wired · SkinServer 1.2
 
 Task 4 · Wired · SkinFX 1.0 (new client script)
 - Animates parts with SkinAnim (pulse / twinkle / hue) locally, on every character in range, capped part count; switch
-  SkinFXEnabled. Phone budget: only parts within 120 studs, 20 Hz.
+  SkinFXEnabled. Phone budget: only parts within 120 studs, 20 Hz. Off when the player setting "Animated skins" is off
+  (colours stay, no animation).
 
 Task 5 · Wired · Lab 1.8 SKINS tab (UI, layout = mockup v0.4)
 - Cards from UniversalSkins in the locked order; filters; progress bars from StatKills / ArenaW / ArenaL / StatBestStreak.
@@ -89,6 +95,8 @@ Task 5 · Wired · Lab 1.8 SKINS tab (UI, layout = mockup v0.4)
 - Switch LabUniversalSkinsEnabled (false = Lab 1.7 tab).
 
 Task 6 · Wired · unlock toast (UI, needs a mockup and Kepu's pick before build)
+
+Task 7 · Wired · Settings "Animated skins" on/off row, saved per player, default on (UI, needs a mockup and Kepu's pick)
 
 ## Red-team (Phase 4.5)
 R1. Animated skins on phones: Prism / Void Matter / Spectral / Element X / Opal animate many Neon parts per dino; 8+ dinos
