@@ -3618,3 +3618,5 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkinServer 1.3 (script): `SkinEmoteReceiptsEnabled` (true), diagnostic `SkinReceiptsToEmotes`.
 - EmoteFX 1.0 (script): `EmoteFXEnabled` (true), `EmoteFXRange` (120 studs), `EmoteWordsEnabled` (true), `EmotePropsEnabled` (true). Diagnostics: `EmoteFXVersion`, `EmoteFXActive`, `EmoteFXParts`.
 - EmoteWheel 1.0 (script): `EmoteWheelEnabled` (true), `EmoteWheelKey` ("B"), `EmoteWheelRadius` (0.336 x screen height). Diagnostics: `EmoteWheelVersion`, `EmoteWheelPlays`, `EmoteWheelPick`; player `EmoteWheelOpen`.
+- ShopScreen 1.1 (script): `ShopEmotesEnabled` (true, read at start). `ShopView` / `ShopSelected` also take the emote category and emote ids.
+- Lab 1.19 (script): `LabEmotesEnabled` (true, read at start; needs `LabUniversalSkinsEnabled`). Player diagnostics `LabLooks` ("skins" / "emotes", "" when the LOOKS tab is not showing), `LabEmoteCards`, `LabEmoteSelected`.

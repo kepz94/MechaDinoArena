@@ -1,7 +1,7 @@
 # Battle Emotes v1.0 (build plan)
 
 Status: Kepu 2026-11-24 20:27 "Build"; published 20:47 (Sandbox v948 + Arena): EmoteCatalog, EmotePose, IdleAnimation 1.48,
-EmoteServer, SkinServer 1.3, EmoteFX, EmoteWheel. Still to build: ShopScreen 1.1 EMOTES tab, Lab 1.19 LOOKS / EMOTES. Picks: docs/plans/EMOTES_v0.1.md (12 emotes locked 20:12, prices 20:13, unlocks 20:14,
+EmoteServer, SkinServer 1.3, EmoteFX, EmoteWheel. Built 2026-11-24 after "Build next" (not published): ShopScreen 1.1 EMOTES tab, Lab 1.19 LOOKS / EMOTES. Picks: docs/plans/EMOTES_v0.1.md (12 emotes locked 20:12, prices 20:13, unlocks 20:14,
 wheel A / Lab LOOKS / PC B / greyed shop slots 20:27). Mockups: docs/mockups/battle_emotes_v0.2.html, docs/mockups/emote_wheel_v0.1.html.
 
 ## Global constraints
@@ -50,3 +50,9 @@ wheel A / Lab LOOKS / PC B / greyed shop slots 20:27). Mockups: docs/mockups/bat
 - Fixes from the test: word size now uses the body height from segment parts (GetExtentsSize counted mecha parts: 27.6 vs ~14);
   sign scale R.h x 0.35 (was 0.5, board went off the top).
 - Not checked yet: the phone pill in the phone emulator, other species in Play, a real Robux purchase (test switch on).
+
+## Checked in Studio Play: Shop 1.1 + Lab 1.19 (2026-11-24, desktop)
+- Shop EMOTES tab: word cards, preview plays the emote with the word, detail EMOTE · R$149 + BUY.
+- Lab: LOOKS tab, EMOTES pill, 12 cards, stage animates (Therizino, T-Rex), PUT ON WHEEL -> TAP A SLOT -> slot 8 -> "equipped" +
+  toast; SKINS pill unchanged. Fix from the test: ring slots were 0.3 wide and overlapped their neighbours; now 0.24.
+- Not checked yet: phone emulator for the Lab EMOTES view and the ☻ pill, a real Robux purchase (test switch on).

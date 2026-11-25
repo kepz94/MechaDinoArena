@@ -140,6 +140,20 @@ VERSION = "1.15" -- v1.15 part clips (live clip + what line + chips + step previ
 VERSION = "1.16" -- v1.16 SAVE LOADOUT tile
 VERSION = "1.17" -- v1.17 phone HUD v2: SKILLS in the ☰ drawer
 VERSION = "1.18" -- v1.18 universal SKINS tab
+VERSION = "1.19" -- v1.19 LOOKS (SKINS / EMOTES)
+-- v1.19 (Kepu 2026-11-24 20:27 "1 · SKINS becomes LOOKS", "Build next"; plan docs/plans/EMOTES_v1.0.md, mockup
+--   docs/mockups/emote_wheel_v0.1.html Lab option 1): when ReplicatedStorage.EmoteShared.EmoteCatalog exists (EmoteServer 1.0) the
+--   universal SKINS tab reads LOOKS and the filter row starts with two pills, SKINS / EMOTES (yellow = on). EMOTES view, same layout:
+--   * left: the filters (ALL / OWNED / EARN / ROBUX) apply to emotes; 3 tiles a row in EmoteCatalog.ORDER: the emote's pop-up word
+--     (Bangers on dark), name, state: ON WHEEL (orange stroke) / OWNED / R$149 / a progress bar (earn, not owned).
+--   * middle: the stage dino (yours or ◀ another, in its equipped skin) does the selected emote on a loop (EmotePose 1.0; joints
+--     moved by hand, welded mecha parts follow their segment). Tag "PREVIEW".
+--   * right: "EMOTE · FREE / OWNED / EARN / R$149", name, the word, "✓ WORKS ON ALL 8 DINOS", the line (earn: challenge + "<have> /
+--     <need>" bar), YOUR WHEEL (8 slots on a ring, the selected emote outlined orange), then a button: PUT ON WHEEL / MOVE ON WHEEL
+--     (yellow) -> the slots blink -> tap a slot -> DinoEmoteRequest("equip", slot, id); BUY · R$149 -> ("buy", id); LOCKED · KEEP
+--     PLAYING. Toasts: "<TAG> ON YOUR WHEEL", "<NAME> UNLOCKED!".
+--   Switch: script attribute LabEmotesEnabled (default true, read at start; false = the 1.18 SKINS tab). Diagnostics: LabLooks,
+--   LabEmoteCards, LabEmoteSelected.
 -- v1.18 (universal skins, MDA-570, plan docs/plans/UNIVERSAL_SKINS_v0.1.md Task 5, mockup docs/mockups/universal_skins_plan_v0.4.html;
 --   Kepu 2026-11-24 "Yes, as shown"): when ReplicatedStorage.SkinShared.UniversalSkins exists (SkinServer 1.2) the SKINS tab (full
 --   Lab) shows the universal skins, laid out as the mockup:
@@ -250,6 +264,9 @@ local skinBuyOn = script:GetAttribute("LabSkinBuyEnabled") ~= false -- v1.7
 local BUY_WAIT = 60 -- v1.7
 if script:GetAttribute("LabUniversalSkinsEnabled") == nil then script:SetAttribute("LabUniversalSkinsEnabled", true) end -- v1.18
 local uniSkinsOn = skinsOn and script:GetAttribute("LabUniversalSkinsEnabled") ~= false -- v1.18
+if script:GetAttribute("LabEmotesEnabled") == nil then script:SetAttribute("LabEmotesEnabled", true) end -- v1.19
+EMO = {} -- v1.19: emote state + helpers in one script-global table (the main chunk is at the 200-local limit; a local would not compile)
+EMO.switch = uniSkinsOn and script:GetAttribute("LabEmotesEnabled") ~= false -- v1.19
 if script:GetAttribute("LabEnabled") == false then return end
 
 local shared = ReplicatedStorage:WaitForChild("SkillShared", 30)
@@ -888,10 +905,32 @@ local function swatchStrip(parent, sk, h)
 	return s
 end
 local uniFilterRow, uniFilterBtns, uniStrip, uniStripBtns = nil, {}, nil, {}
+EMO.lookBtns = {} -- v1.19
+EMO.looks = "skins" -- v1.19: "skins" / "emotes" on the LOOKS tab
+EMO.sel, EMO.arm = nil, false -- v1.19
 local function uniBuild() -- the filter row and the dino strip, made once
 	if uniFilterRow then return end
 	uniFilterRow = frame(left, "UniFilters")
 	list(uniFilterRow, Enum.FillDirection.Horizontal, 6, nil, Enum.VerticalAlignment.Center)
+	if EMO.switch then -- v1.19: SKINS / EMOTES pills first
+		for i, f in ipairs({{"skins", "SKINS"}, {"emotes", "EMOTES"}}) do
+			local b = button(uniFilterRow, "L_" .. f[1], PANEL2, 0)
+			b.LayoutOrder = i - 10
+			b.AutomaticSize = Enum.AutomaticSize.X
+			local c = corner(b, UDim.new(1, 0))
+			local l = label(b, "T", Enum.Font.GothamBlack, 10, MUTED, f[2])
+			l.AutomaticSize = Enum.AutomaticSize.X
+			l.Size = UDim2.fromScale(0, 1)
+			local pd = pad(b, 8)
+			EMO.lookBtns[f[1]] = {b = b, l = l, c = c, pd = pd}
+			b.Activated:Connect(function()
+				press("looks:" .. f[1])
+				EMO.looks = f[1]
+				EMO.arm = false
+				redraw()
+			end)
+		end
+	end
 	for i, f in ipairs({{"all", "ALL"}, {"own", "OWNED"}, {"earn", "EARN"}, {"buy", "ROBUX"}}) do
 		local b = button(uniFilterRow, "F_" .. f[1], PANEL2, 0)
 		b.LayoutOrder = i
@@ -931,7 +970,129 @@ local function uniBuild() -- the filter row and the dino strip, made once
 		end)
 	end
 end
+-- ---------- v1.19: EMOTES on the LOOKS tab ----------
+function EMO.cat()
+	if EMO.cat_ then return EMO.cat_ end
+	local f = ReplicatedStorage:FindFirstChild("EmoteShared")
+	local m = f and f:FindFirstChild("EmoteCatalog")
+	if m then
+		local ok, r = pcall(require, m)
+		if ok then EMO.cat_ = r end
+	end
+	return EMO.cat_
+end
+function EMO.on() return EMO.switch and useUni() and EMO.cat() ~= nil end
+function EMO.view() return EMO.on() and EMO.looks == "emotes" end
+function EMO.wheel()
+	local out, i = {}, 0
+	for v in (tostring(player:GetAttribute("EmoteWheel") or "") .. ","):gmatch("([^,]*),") do
+		i += 1
+		if i <= 8 then out[i] = v ~= "" and v or nil end
+	end
+	return out
+end
+function EMO.state(id) -- "wheel" / "own" / "buy" / "earn"
+	local e = EMO.cat().get(id)
+	for v in tostring(player:GetAttribute("EmoteOwned") or ""):gmatch("[^,]+") do
+		if v == id then
+			local w = EMO.wheel()
+			for i = 1, 8 do if w[i] == id then return "wheel" end end
+			return "own"
+		end
+	end
+	return e.unlock.kind == "earn" and "earn" or "buy"
+end
+function EMO.progress(id)
+	local e = EMO.cat().get(id)
+	local have = tonumber(player:GetAttribute(e.unlock.stat)) or 0
+	return math.min(have, e.unlock.need), e.unlock.need
+end
+function EMO.wordStrip(parent, word, h)
+	local s = frame(parent, "Word", Color3.fromRGB(27, 35, 51), 0)
+	s.Size = UDim2.new(1, 0, 0, h)
+	corner(s, UDim.new(0, 0.8 * S.ch))
+	local w = label(s, "W", Enum.Font.Bangers, h * 0.6, YELLOW, word)
+	w.Size, w.Position = UDim2.fromScale(0.92, 0.84), UDim2.fromScale(0.04, 0.08)
+	w.TextScaled = true
+	local st = Instance.new("UIStroke")
+	st.Thickness = 2
+	st.Parent = w
+	return s
+end
+function EMO.cards()
+	gridList.Parent = nil
+	gridLayout.Parent = grid
+	local EC = EMO.cat()
+	if not EMO.sel or not EC.get(EMO.sel) then EMO.sel = EMO.wheel()[1] or EC.ORDER[1] end
+	local p1 = 0.8 * S.ch
+	local cw3 = S.uniCellW or S.cellW
+	local swH = math.max(3.2 * S.ch, 14)
+	local nS = math.max(1.5 * S.ch, 9)
+	local tS = math.max(1.3 * S.ch, 8)
+	local shown = 0
+	for i, id in ipairs(EC.ORDER) do
+		local e = EC.get(id)
+		local st = EMO.state(id)
+		local keep = uniFilter == "all" or (uniFilter == "own" and (st == "wheel" or st == "own"))
+			or (uniFilter == "earn" and e.unlock.kind == "earn") or (uniFilter == "buy" and e.unlock.kind == "robux")
+		if keep then
+			shown += 1
+			local b = button(grid, "Emote_" .. id, PANEL2, 0)
+			b.LayoutOrder = i
+			corner(b, UDim.new(0, 1.2 * S.ch))
+			if EMO.sel == id then
+				stroke(b, WHITE, 0, 2.5)
+			elseif st == "wheel" then
+				stroke(b, ORANGE, 0, 2)
+			else
+				stroke(b, WHITE, 0.9, 2)
+			end
+			local sw = EMO.wordStrip(b, e.word, swH)
+			sw.Position, sw.Size = UDim2.fromOffset(p1, p1), UDim2.fromOffset(cw3 - 2 * p1, swH)
+			if st == "buy" or st == "earn" then sw.BackgroundTransparency = 0.45 end
+			local nm = label(b, "Name", Enum.Font.FredokaOne, nS, WHITE, e.name)
+			nm.TextXAlignment = Enum.TextXAlignment.Left
+			nm.TextTruncate = Enum.TextTruncate.AtEnd
+			nm.Position = UDim2.fromOffset(p1, p1 + swH + 0.6 * S.ch)
+			nm.Size = UDim2.fromOffset(cw3 - 2 * p1, nS * 1.2)
+			nm.TextScaled = true
+			local nfit = Instance.new("UITextSizeConstraint")
+			nfit.MinTextSize, nfit.MaxTextSize = 6, nS
+			nfit.Parent = nm
+			local y = p1 + swH + 0.6 * S.ch + nS * 1.2 + 0.4 * S.ch
+			if st == "earn" then
+				local have, need = EMO.progress(id)
+				local bar = frame(b, "Bar", Color3.fromRGB(42, 52, 70), 0)
+				bar.Position, bar.Size = UDim2.fromOffset(p1, y + tS * 0.3), UDim2.fromOffset(cw3 - 2 * p1, math.max(0.9 * S.ch, 4))
+				corner(bar, UDim.new(1, 0))
+				local fill = frame(bar, "Fill", GREEN, 0)
+				fill.Size = UDim2.fromScale(need > 0 and math.clamp(have / need, 0, 1) or 0, 1)
+				corner(fill, UDim.new(1, 0))
+			else
+				local txt, col = "OWNED", MUTED
+				if st == "wheel" then txt, col = "ON WHEEL", ORANGE
+				elseif st == "buy" then txt, col = "R$" .. tostring(e.unlock.price), YELLOW end
+				local sl = label(b, "State", Enum.Font.GothamBlack, tS, col, txt)
+				sl.TextXAlignment = Enum.TextXAlignment.Left
+				sl.TextTruncate = Enum.TextTruncate.AtEnd
+				sl.Position, sl.Size = UDim2.fromOffset(p1, y), UDim2.fromOffset(cw3 - 2 * p1, tS * 1.2)
+			end
+			b.Activated:Connect(function()
+				press("emote:" .. id)
+				EMO.sel = id
+				EMO.arm = false
+				redraw()
+			end)
+			table.insert(cards, {id = id, b = b})
+		end
+	end
+	player:SetAttribute("LabEmoteCards", shown)
+	player:SetAttribute("LabEmoteSelected", EMO.sel or "")
+	player:SetAttribute("LabCards", shown)
+	player:SetAttribute("LabModels", 0)
+end
 local function drawUniCards()
+	if EMO.view() then EMO.cards() return end -- v1.19
 	gridList.Parent = nil
 	gridLayout.Parent = grid
 	local US = uniMod()
@@ -1490,7 +1651,139 @@ local function clipMount(id, n, col)
 end
 
 -- v1.18: universal skin detail
+EMO.detail = function() -- v1.19
+	local EC = EMO.cat()
+	local e = EMO.sel and EC.get(EMO.sel)
+	if not e then
+		local h = label(detail, "Empty", Enum.Font.GothamBlack, S.stepS, MUTED, "Pick an emote.")
+		h.Size = UDim2.new(1, 0, 0, S.stepS * 2)
+		return
+	end
+	local id = EMO.sel
+	local st = EMO.state(id)
+	local kindTxt
+	if e.unlock.kind == "free" then kindTxt = "FREE"
+	elseif st == "wheel" or st == "own" then kindTxt = "OWNED"
+	elseif e.unlock.kind == "earn" then kindTxt = "EARN"
+	else kindTxt = "R$" .. tostring(e.unlock.price) end
+	local sub = label(detail, "Sub", Enum.Font.GothamBlack, S.stepS, YELLOW, "EMOTE · " .. kindTxt)
+	sub.TextXAlignment = Enum.TextXAlignment.Left
+	sub.Size = UDim2.new(1, 0, 0, S.stepS * 1.2)
+	sub.LayoutOrder = 1
+	local ttl = label(detail, "Title", Enum.Font.FredokaOne, math.max(3 * S.ch, 15), WHITE, e.name)
+	ttl.TextXAlignment = Enum.TextXAlignment.Left
+	ttl.TextWrapped = true
+	ttl.AutomaticSize = Enum.AutomaticSize.Y
+	ttl.Size = UDim2.new(1, 0, 0, 0)
+	ttl.LayoutOrder = 2
+	local ws = EMO.wordStrip(detail, e.word, math.max(3.6 * S.ch, 16))
+	ws.LayoutOrder = 3
+	local all = label(detail, "All", Enum.Font.GothamBlack, S.stepS, GREEN, "✓ WORKS ON ALL 8 DINOS")
+	all.TextXAlignment = Enum.TextXAlignment.Left
+	all.Size = UDim2.new(1, 0, 0, S.stepS * 1.3)
+	all.LayoutOrder = 4
+	local how = e.desc
+	if st == "buy" then how = e.desc .. " Unlock it once and every dino can do it."
+	elseif st == "earn" then how = e.unlock.text .. "." end
+	local line = label(detail, "Line", Enum.Font.GothamBlack, S.stepS, GREY, how)
+	line.TextXAlignment = Enum.TextXAlignment.Left
+	line.TextWrapped = true
+	line.AutomaticSize = Enum.AutomaticSize.Y
+	line.Size = UDim2.new(1, 0, 0, 0)
+	line.LayoutOrder = 5
+	if st == "earn" then
+		local have, need = EMO.progress(id)
+		local row = frame(detail, "Progress")
+		row.LayoutOrder = 6
+		row.Size = UDim2.new(1, 0, 0, S.stepS * 1.4 + math.max(1.2 * S.ch, 6) + 0.6 * S.ch)
+		local n = label(row, "N", Enum.Font.GothamBlack, S.stepS, GREEN, ("%d / %d"):format(have, need))
+		n.TextXAlignment = Enum.TextXAlignment.Left
+		n.Size = UDim2.new(1, 0, 0, S.stepS * 1.4)
+		local bar = frame(row, "Bar", Color3.fromRGB(42, 52, 70), 0)
+		bar.Position, bar.Size = UDim2.new(0, 0, 0, S.stepS * 1.4 + 0.3 * S.ch), UDim2.new(1, 0, 0, math.max(1.2 * S.ch, 6))
+		corner(bar, UDim.new(1, 0))
+		local fill = frame(bar, "Fill", GREEN, 0)
+		fill.Size = UDim2.fromScale(need > 0 and math.clamp(have / need, 0, 1) or 0, 1)
+		corner(fill, UDim.new(1, 0))
+	end
+	-- your wheel: 8 slots on a ring
+	local wheel = EMO.wheel()
+	local wh = label(detail, "WheelTitle", Enum.Font.GothamBlack, S.stepS, EMO.arm and YELLOW or MUTED, EMO.arm and "TAP A SLOT" or "YOUR WHEEL")
+	wh.TextXAlignment = Enum.TextXAlignment.Left
+	wh.Size = UDim2.new(1, 0, 0, S.stepS * 1.3)
+	wh.LayoutOrder = 7
+	local ring = frame(detail, "Wheel")
+	ring.LayoutOrder = 8
+	ring.Size = UDim2.new(1, 0, 0, math.max(20 * S.ch, 96))
+	local hub = label(ring, "Hub", Enum.Font.GothamBlack, math.max(1.2 * S.ch, 8), YELLOW, "☻")
+	hub.AnchorPoint, hub.Position, hub.Size = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.16, 0.24)
+	for i = 1, 8 do
+		local a = math.rad((i - 1) * 45 - 90)
+		local sid = wheel[i]
+		local se = sid and EC.get(sid)
+		local sb = button(ring, "Slot" .. i, PANEL2, 0)
+		sb.AnchorPoint = Vector2.new(0.5, 0.5)
+		sb.Position = UDim2.fromScale(0.5 + 0.36 * math.cos(a), 0.5 + 0.38 * math.sin(a))
+		sb.Size = UDim2.fromScale(0.24, 0.19) -- 0.24 < the 0.255 gap between neighbour slots, so no overlap at any width
+		corner(sb, UDim.new(0, 0.7 * S.ch))
+		if EMO.arm then stroke(sb, YELLOW, 0, 2)
+		elseif sid == id then stroke(sb, ORANGE, 0, 2)
+		else stroke(sb, WHITE, 0.85, 1.5) end
+		local sl = label(sb, "T", Enum.Font.GothamBlack, math.max(1.15 * S.ch, 7), se and WHITE or MUTED, se and se.tag or "EMPTY")
+		sl.Size = UDim2.fromScale(0.94, 0.9)
+		sl.Position = UDim2.fromScale(0.03, 0.05)
+		sl.TextScaled = true
+		local f = Instance.new("UITextSizeConstraint")
+		f.MinTextSize, f.MaxTextSize = 6, math.max(1.3 * S.ch, 9)
+		f.Parent = sl
+		sb.Activated:Connect(function()
+			if not EMO.arm then return end
+			press("emoteSlot:" .. i .. ":" .. id)
+			EMO.arm = false
+			local r = ReplicatedStorage:FindFirstChild("DinoEmoteRequest")
+			if r then r:FireServer("equip", i, id) end
+			redraw()
+		end)
+	end
+	local b
+	if st == "wheel" or st == "own" then
+		if EMO.arm then
+			b = detailButton(detail, "TAP A SLOT ABOVE", PANEL2, YELLOW, false, 9)
+			stroke(b, YELLOW, 0, 2)
+		else
+			b = detailButton(detail, st == "wheel" and "MOVE ON WHEEL" or "PUT ON WHEEL", YELLOW, DARK_TEXT, true, 9)
+			b.Activated:Connect(function()
+				press("emotePut:" .. id)
+				EMO.arm = true
+				redraw()
+			end)
+		end
+	elseif st == "buy" then
+		local waiting = buyPendingAt ~= nil and os.clock() - buyPendingAt < BUY_WAIT
+		local s = player:GetAttribute("EmoteSaveState")
+		local ready = s ~= nil and s ~= "loading" and s ~= "loadFailed" and s ~= "noApi"
+		if waiting then
+			b = detailButton(detail, "…", YELLOW, DARK_TEXT, false, 9)
+		elseif not ready then
+			b = detailButton(detail, "LOADING", YELLOW, DARK_TEXT, false, 9)
+		else
+			b = detailButton(detail, "BUY · R$" .. tostring(e.unlock.price), YELLOW, DARK_TEXT, true, 9)
+			b.Activated:Connect(function()
+				press("emoteBuy:" .. id)
+				local r = ReplicatedStorage:FindFirstChild("DinoEmoteRequest")
+				if not r then return end
+				buyPendingAt = os.clock()
+				r:FireServer("buy", id)
+				redraw()
+			end)
+		end
+	else
+		b = detailButton(detail, "LOCKED · KEEP PLAYING", PANEL2, MUTED, false, 9)
+	end
+	b.Size = UDim2.new(1, 0, 0, math.max(5.6 * S.ch, 34))
+end
 local function drawUniDetail()
+	if EMO.view() then EMO.detail() return end -- v1.19
 	local US = uniMod()
 	local sk = skinSel and US.get(skinSel)
 	if not sk then
@@ -2034,6 +2327,15 @@ local function layout()
 			f.l.TextColor3 = on and Color3.fromRGB(26, 16, 48) or MUTED
 			f.pd.PaddingLeft, f.pd.PaddingRight = UDim.new(0, 1.2 * ch), UDim.new(0, 1.2 * ch)
 		end
+		for k, f in pairs(EMO.lookBtns) do -- v1.19
+			local on = EMO.looks == k
+			f.b.Visible = EMO.on()
+			f.b.Size = UDim2.fromOffset(0, fH)
+			f.b.BackgroundColor3 = on and YELLOW or PANEL2
+			f.l.TextSize = fS
+			f.l.TextColor3 = on and DARK_TEXT or MUTED
+			f.pd.PaddingLeft, f.pd.PaddingRight = UDim.new(0, 1.2 * ch), UDim.new(0, 1.2 * ch)
+		end
 		local gy = tabH + 1.2 * ch + fH + ch
 		grid.Position, grid.Size = UDim2.fromOffset(0, gy), UDim2.fromOffset(lw, bh - gy)
 		S.uniCellW = (lw - 2 * ch - 12) / 3
@@ -2174,13 +2476,16 @@ function redraw()
 	if skinsOn then
 		if useUni() then -- v1.18
 			local sp = uniStageSpecies()
-			if stagePreview then uniPaint(stagePreview, tab == "skins" and skinSel or uniEquipped(sp), sp) end
+			if stagePreview then uniPaint(stagePreview, (tab == "skins" and not EMO.view()) and skinSel or uniEquipped(sp), sp) end -- v1.19
 		elseif stagePreview then paintModel(stagePreview, tab == "skins" and skinSel or equippedSkin()) end
 		stageTag.Text = tab == "skins" and "PREVIEW" or "ALL UPGRADES"
 		if uniTab() and skinSel and uniMod().get(skinSel) and not uniOwns(skinSel) then stageTag.Text = "PREVIEW · LOCKED" end -- v1.18
+		if uniTab() and EMO.view() then stageTag.Text = "PREVIEW" end -- v1.19
 		hint.Text = tab == "skins" and "Tap a skin to preview it on your dino" or "Tap a card, then EQUIP · tap a slot to choose where it goes"
 	end
 	player:SetAttribute("LabTab", tab)
+	tabSkinsLabel.Text = EMO.on() and "LOOKS" or "SKINS" -- v1.19
+	player:SetAttribute("LabLooks", EMO.on() and EMO.looks or "")
 end
 
 -- ---------- input ----------
@@ -2268,11 +2573,97 @@ closeFn.Parent = script
 closeFn.OnInvoke = function() setOpen(nil) return true end
 
 -- turning models
+-- v1.19: the selected emote on the stage dino (joints moved by hand; welded parts follow their segment)
+EMO.rig, EMO.clock, EMO.shown = nil, 0, false
+function EMO.poseModule()
+	local c = player.Character
+	local m = c and c:FindFirstChild("IdleAnimation") and c.IdleAnimation:FindFirstChild("EmotePose")
+	if not m then
+		local scs = game:GetService("StarterPlayer"):FindFirstChild("StarterCharacterScripts")
+		local ia = scs and scs:FindFirstChild("IdleAnimation")
+		m = ia and ia:FindFirstChild("EmotePose")
+	end
+	if not m then return nil end
+	local ok, r = pcall(require, m)
+	return ok and r or nil
+end
+function EMO.buildRig(model)
+	EMO.rig = {model = model}
+	local hrp = model:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local js, roots = {}, {}
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("Motor6D") and d.Part0 and d.Part1 and d.Part1.Name == "Root" then table.insert(js, d) roots[d.Part1] = true end
+	end
+	local done, order = {[hrp] = true}, {}
+	for _ = 1, 40 do
+		if #order >= #js then break end
+		for _, m in ipairs(js) do
+			if not done[m.Part1] and done[m.Part0] then table.insert(order, {m = m, c0 = m.C0, c1i = m.C1:Inverse()}) done[m.Part1] = true end
+		end
+	end
+	-- each part follows a segment root: its own segment, or the segment it is welded to (mecha parts)
+	local owner = {}
+	for r in pairs(roots) do
+		for _, p in ipairs(r.Parent:GetChildren()) do if p:IsA("BasePart") then owner[p] = r end end
+	end
+	local links = {}
+	for _, d in ipairs(model:GetDescendants()) do
+		if (d:IsA("JointInstance") or d:IsA("WeldConstraint")) and not (d:IsA("Motor6D") and roots[d.Part1]) and d.Part0 and d.Part1 then
+			table.insert(links, {d.Part0, d.Part1})
+		end
+	end
+	for _ = 1, 6 do
+		local grew = false
+		for _, l in ipairs(links) do
+			local a, b = l[1], l[2]
+			if owner[a] and not owner[b] and b ~= hrp then owner[b] = owner[a] grew = true
+			elseif owner[b] and not owner[a] and a ~= hrp then owner[a] = owner[b] grew = true end
+		end
+		if not grew then break end
+	end
+	local parts = {}
+	for p, r in pairs(owner) do
+		parts[r] = parts[r] or {}
+		table.insert(parts[r], {p, r.CFrame:ToObjectSpace(p.CFrame)})
+	end
+	local P = EMO.poseModule()
+	EMO.rig = {model = model, hrp = hrp, base = hrp.CFrame, order = order, parts = parts, P = P, R = P and P.rig(model, nil)}
+end
+function EMO.pose(dt)
+	local EC = EMO.on() and EMO.cat()
+	local e = EC and EMO.sel and EC.get(EMO.sel)
+	local want = mode ~= nil and uniTab() and EMO.view() and e ~= nil and stagePreview ~= nil
+	if not want and not EMO.shown then return end
+	if not stagePreview then EMO.shown = false return end
+	if not EMO.rig or EMO.rig.model ~= stagePreview then EMO.buildRig(stagePreview) end
+	local r = EMO.rig
+	if not (r and r.order and r.P and r.R) then return end
+	local pose = {}
+	if want then
+		EMO.clock += dt
+		local cycle = e.dur + 0.8
+		local et = EMO.clock % cycle
+		if et <= e.dur then pose = r.P.get(EMO.sel, et / e.dur, et, r.R) or {} end
+	end
+	local W = {[r.hrp] = r.base}
+	for _, j in ipairs(r.order) do
+		local m = j.m
+		local w0 = W[m.Part0]
+		if w0 then
+			local w1 = w0 * j.c0 * (pose[m.Name] or CFrame.identity) * j.c1i
+			W[m.Part1] = w1
+			for _, x in ipairs(r.parts[m.Part1] or {}) do x[1].CFrame = w1 * x[2] end
+		end
+	end
+	EMO.shown = want
+end
 RunService.RenderStepped:Connect(function(dt)
 	if not mode then return end
 	orbit += dt * 0.45
 	radius = stageRadius()
 	cam.CFrame = CFrame.lookAt(center + Vector3.new(math.sin(orbit), 0.32, math.cos(orbit)).Unit * radius, center)
+	EMO.pose(dt) -- v1.19
 	for _, c in ipairs(cards) do
 		if c.cam then
 			c.angle += dt * 0.9
@@ -2319,6 +2710,20 @@ player.AttributeChanged:Connect(function(name)
 	end
 	if useUni() and (name == "SkinOwnedU" or name == "SkinAllUnlocked" or name == "StatKills" or name == "ArenaW" or name == "ArenaL"
 		or name == "StatBestStreak" or name == "ArenaStreak") then queue() end -- v1.18
+	if EMO.switch and (name == "EmoteOwned" or name == "EmoteWheel" or name == "EmoteAllUnlocked" or name == "EmoteSaveState") then queue() end -- v1.19
+	if EMO.switch and name == "EmoteResult" then -- v1.19
+		local res = player:GetAttribute("EmoteResult")
+		if res ~= "prompted" then buyPendingAt = nil end
+		local EC = EMO.cat()
+		if mode and EC and EMO.view() then
+			if res == "equipped" and EMO.sel and EC.get(EMO.sel) then showToast(EC.get(EMO.sel).tag .. " ON YOUR WHEEL")
+			elseif res == "bought" then
+				local e = EC.get(player:GetAttribute("EmoteUnlocked"))
+				if e then showToast(string.upper(e.name) .. " UNLOCKED!") end
+			elseif res == "promptFailed" or res == "noProduct" or res == "notLoaded" then showToast("TRY AGAIN IN A MOMENT") end
+		end
+		queue()
+	end
 	if useUni() and name == "SkinServerResultAt" and mode then -- v1.18: universal toasts
 		local res = player:GetAttribute("SkinServerResult")
 		local US = uniMod()
