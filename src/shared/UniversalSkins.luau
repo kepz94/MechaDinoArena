@@ -26,10 +26,23 @@
 --   progress(id, stats) -> have, need (earn skins; stats = {w, l, kills, best}); unlocked(id, stats) -> bool
 --   tagModel(model, species, roleOf, skip) -> parts tagged (SkinRole, SkinBaseMaterial, SkinBaseHex, SkinLP; once per part)
 --   setAnim(part, kind, phase, baseHex) -> sets / clears SkinAnim, SkinPhase, SkinAnimBase and the CollectionService tag "SkinAnim"
+-- v1.1 (Kepu 2026-11-24 18:31 "These animated skins are weak asf ... animated on the smallest panels"; 18:40 picks on
+--   docs/mockups/animated_skins_v0.5/0.6.html: Void Matter "A · Body wave", Spectral "B · Full breathe", Element X "A · Body wave",
+--   Prism "C · Big panels"; 18:45 "Remove opal and add all the new ones you suggested as they are", all four Robux 499):
+--   * Whole-body animation: every block of the slots primary, secondary, limbs, belly, accent, mask (WHOLE) is Neon and animated
+--     for Void Matter / Element X (kind "wave": a bright band nose to tail), Spectral ("breathe": all blocks together); Prism
+--     ("rainbow") on the biggest 45% of the WHOLE blocks (SkinBig) plus its twinkle blocks; colours from the 1.0 pattern are the
+--     dark base, SkinGlow / SkinHi the lit colours.
+--   * New skins (EPIC 499, whole body, own motion): Glitch ("glitch": cyan / magenta flicker), Storm Front ("storm": lightning
+--     flashes), Bloodline ("beat": double heartbeat from the chest), Hellfire ("fire": flames climbing from the feet).
+--   * Opal removed (ORDER and SKINS; a saved "opal" now reads as Classic).
+--   * tagModel also stores SkinZF (0 nose / tail .. 1 along the body), SkinYF (0 feet .. 1 top) and SkinBig (biggest 45% of the
+--     WHOLE blocks by volume); partLook takes a 6th argument info = {big, yf}; setAnim also sets SkinGlow / SkinHi and re-adds
+--     the tag so SkinFX re-reads a repainted block.
 local CollectionService = game:GetService("CollectionService")
 
 local US = {}
-US.VERSION = "1.0"
+US.VERSION = "1.1" -- v1.1 whole-body animation, 4 new skins, Opal removed
 US.ANIM_TAG = "SkinAnim"
 US.DINOS = {"Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"}
 US.DINO_NAMES = {Raptor = "RAPTOR", TRex = "T-REX", Pachy = "PACHY", Herrera = "HERRERA", Teno = "TENO", Therizino = "THERIZINO",
@@ -41,6 +54,8 @@ US.SLOT = {main = "primary", bands = "secondary", dark = "secondary", stripes = 
 	tailbands = "accent", frill = "accent", scutes = "accent", crest = "accent", tailfan = "accent", mane = "accent",
 	frillmark = "accent", headplate = "accent", horns = "accent", spikes = "accent", club = "accent"}
 local BODY = {primary = true, secondary = true, limbs = true}
+local WHOLE = {primary = true, secondary = true, limbs = true, belly = true, accent = true, mask = true} -- v1.1
+US.WHOLE = WHOLE
 US.MAT = {Neon = "Neon", Metal = "Metal", Glass = "Glass", Opal = "Glass", Ghost = "Glass", Slate = "Slate",
 	SmoothPlastic = "SmoothPlastic", Foil = "Foil"}
 
@@ -60,7 +75,8 @@ US._hsh, US._cell = hsh, cell -- tests
 
 -- ---------- skins (ORDER = the Lab's card order, Kepu's plan order) ----------
 US.ORDER = {"classic", "desert", "riverstone", "canopy", "ghostbark", "zebra", "inkwar", "arctic", "sakura", "vipergold", "prism",
-	"voidmatter", "lava", "venom", "circuit", "chrome", "opal", "gold", "obsidianfang", "spectral", "elementx"}
+	"voidmatter", "lava", "venom", "circuit", "chrome", "glitch", "storm", "bloodline", "hellfire", "gold", "obsidianfang", "spectral",
+	"elementx"} -- v1.1: opal out; glitch, storm, bloodline, hellfire in
 
 local function earn(stat, need, text) return {kind = "earn", stat = stat, need = need, text = text} end
 local function robux(rarity, price) return {kind = "robux", rarity = rarity, price = price} end
@@ -111,22 +127,33 @@ US.SKINS = {
 			if (math.floor(lp.Z / 0.8) + math.floor(lp.Y / 0.8)) % 3 == 0 then return "1A1408", "SmoothPlastic" end
 			return "D4A72C", "Metal"
 		end},
-	prism = {name = "Prism", unlock = robux("RARE", 149), anim = true,
+	prism = {name = "Prism", unlock = robux("RARE", 149), anim = true, glow = "FFFFFF", hi = "FFFFFF", -- v1.1 C · Big panels
 		cols = {belly = "E8F6FF", claws = "9FB6D9", eyes = "FFFFFF", mask = "BFD8FF", accent = "D9C8FF"},
 		mats = {eyes = "Neon", accent = "Glass", belly = "Glass", mask = "Glass"}, sw = {"DDF3FF", "C7E3FF", "F2E9FF", "BDEFF0"},
-		pattern = function(slot, lp)
-			if not BODY[slot] then return nil end
-			if cell(lp, 0.6, 22) < 0.09 then return "FFFFFF", "Neon", "twinkle", ph(lp, 23) end
-			return pick({"DDF3FF", "C7E3FF", "F2E9FF", "FFFFFF", "BDEFF0"}, cell(lp, 0.8, 21)), "Glass"
+		pattern = function(slot, lp, info)
+			if not WHOLE[slot] then return nil end
+			local hex, mat
+			if BODY[slot] then
+				hex, mat = pick({"DDF3FF", "C7E3FF", "F2E9FF", "FFFFFF", "BDEFF0"}, cell(lp, 0.8, 21)), "Glass"
+			else
+				hex, mat = ({belly = "E8F6FF", accent = "D9C8FF", mask = "BFD8FF"})[slot], "Glass"
+			end
+			local tw = BODY[slot] and cell(lp, 0.6, 22) < 0.09
+			if tw then return "FFFFFF", "Neon", "rainbow", ph(lp, 23) end
+			if info and info.big then return hex, "Neon", "rainbow", 0 end
+			return hex, mat
 		end},
-	voidmatter = {name = "Void Matter", unlock = robux("RARE", 149), anim = true,
+	voidmatter = {name = "Void Matter", unlock = robux("RARE", 149), anim = true, glow = "8A3CFF", hi = "C77DFF", -- v1.1 A · Body wave
 		cols = {belly = "1A1228", claws = "07050B", eyes = "C77DFF", mask = "07050B"}, mats = {eyes = "Neon"},
 		sw = {"0D0A14", "1A1228", "8A3CFF", "C77DFF"},
 		pattern = function(slot, lp)
-			if slot == "accent" then return "8A3CFF", "Neon", "pulse", ph(lp, 31) end
-			if not BODY[slot] then return nil end
-			if cell(lp, 0.7, 31) < 0.22 or slot == "secondary" then return "8A3CFF", "Neon", "pulse", ph(lp, 32) end
-			return "0D0A14", "SmoothPlastic"
+			if not WHOLE[slot] then return nil end
+			local hex
+			if slot == "belly" then hex = "1A1228"
+			elseif slot == "mask" then hex = "07050B"
+			elseif slot == "accent" or slot == "secondary" or cell(lp, 0.7, 31) < 0.22 then hex = "8A3CFF"
+			else hex = "0D0A14" end
+			return hex, "Neon", "wave", 0
 		end},
 	lava = {name = "Lava", unlock = robux("EPIC", 499),
 		cols = {primary = "2E2524", secondary = "FF6A1A", limbs = "3D302E", belly = "5A3A30", claws = "120D0C", accent = "FFC832",
@@ -149,13 +176,33 @@ US.SKINS = {
 			if not BODY[slot] then return nil end
 			return slot == "secondary" and "6E7682" or "D8DEE6", "Metal"
 		end},
-	opal = {name = "Opal", unlock = robux("EPIC", 499), anim = true,
-		cols = {belly = "FFF4F8", claws = "B8A9C9", eyes = "FFFFFF", mask = "D8C9F7"}, mats = {eyes = "Neon", belly = "Opal", mask = "Opal"},
-		sw = {"F7C6D9", "C6F0E4", "D8C9F7", "FFE2C4"},
+	-- v1.1: four new whole-body skins (mockup v0.6, Kepu "add all the new ones you suggested as they are", Robux 499 each)
+	glitch = {name = "Glitch", unlock = robux("EPIC", 499), anim = true,
+		cols = {eyes = "00F0FF", claws = "0E1218"}, mats = {eyes = "Neon"}, sw = {"101418", "00F0FF", "FF2BD6"},
 		pattern = function(slot, lp)
-			if slot == "accent" then return "C6F0E4", "Neon", "hue", cell(lp, 0.6, 61) end
-			if not BODY[slot] then return nil end
-			return pick({"F7C6D9", "C6F0E4", "D8C9F7", "FFE2C4", "C9E6FF"}, cell(lp, 0.8, 62)), "Opal"
+			if not WHOLE[slot] then return nil end
+			local r = ph(lp, 9)
+			return r < 0.25 and "00F0FF" or (r < 0.4 and "FF2BD6" or "121822"), "Neon", "glitch", 0
+		end},
+	storm = {name = "Storm Front", unlock = robux("EPIC", 499), anim = true,
+		cols = {eyes = "FFF27A", claws = "1A1F2A"}, mats = {eyes = "Neon"}, sw = {"2A3140", "3A4458", "FFF27A"},
+		pattern = function(slot, lp)
+			if not WHOLE[slot] then return nil end
+			local r = ph(lp, 9)
+			return r < 0.2 and "3A5CB0" or (r < 0.6 and "2A3140" or "3A4458"), "Neon", "storm", 0
+		end},
+	bloodline = {name = "Bloodline", unlock = robux("EPIC", 499), anim = true,
+		cols = {eyes = "FF2A3A", claws = "140A0C"}, mats = {eyes = "Neon"}, sw = {"140A0C", "B0102A", "FF2A3A"},
+		pattern = function(slot, lp)
+			if not WHOLE[slot] then return nil end
+			return ph(lp, 9) < 0.35 and "B0102A" or "140A0C", "Neon", "beat", 0
+		end},
+	hellfire = {name = "Hellfire", unlock = robux("EPIC", 499), anim = true,
+		cols = {eyes = "FFD23A", claws = "120D0C"}, mats = {eyes = "Neon"}, sw = {"1A1210", "C8231E", "FF6A1A", "FFD23A"},
+		pattern = function(slot, lp, info)
+			if not WHOLE[slot] then return nil end
+			local yf = info and info.yf or 0.5
+			return yf < 0.3 and "FF6A1A" or (yf < 0.6 and "C8231E" or "1A1210"), "Neon", "fire", 0
 		end},
 	gold = {name = "Gold Hunter", unlock = robux("LEGENDARY", 999),
 		cols = {primary = "D4A72C", secondary = "7A5A10", limbs = "E6C25A", belly = "F5E4A8", claws = "3A2A08", accent = "FFF2B0",
@@ -163,23 +210,29 @@ US.SKINS = {
 	obsidianfang = {name = "Obsidian Fang", unlock = robux("LEGENDARY", 999),
 		cols = {primary = "141416", secondary = "2A2A2E", belly = "3A3A40", accent = "D0202A", limbs = "1E1E22", claws = "D4A72C",
 			eyes = "FFD24A", mask = "0A0A0C"}, mats = {accent = "Neon", claws = "Foil", eyes = "Neon"}},
-	spectral = {name = "Spectral", unlock = robux("LEGENDARY", 999), anim = true,
+	spectral = {name = "Spectral", unlock = robux("LEGENDARY", 999), anim = true, glow = "3FC8FF", hi = "BFF6FF", -- v1.1 B · Full breathe
 		cols = {belly = "BFE9FF", claws = "1B3A5C", eyes = "E6FBFF", mask = "1B3A5C"}, mats = {eyes = "Neon", belly = "Ghost"},
 		sw = {"2A5C8A", "3C7DB5", "7FE9FF", "BFE9FF"},
 		pattern = function(slot, lp)
-			if slot == "accent" then return "7FE9FF", "Neon", "pulse", ph(lp, 41) end
-			if not BODY[slot] then return nil end
-			if cell(lp, 0.75, 42) < 0.22 then return "7FE9FF", "Neon", "pulse", ph(lp, 43) end
-			return pick({"2A5C8A", "3C7DB5", "4F93CC"}, cell(lp, 1.0, 44)), "Ghost"
+			if not WHOLE[slot] then return nil end
+			local hex
+			if slot == "belly" then hex = "BFE9FF"
+			elseif slot == "mask" then hex = "1B3A5C"
+			elseif slot == "accent" or cell(lp, 0.75, 42) < 0.22 then hex = "7FE9FF"
+			else hex = pick({"2A5C8A", "3C7DB5", "4F93CC"}, cell(lp, 1.0, 44)) end
+			return hex, "Neon", "breathe", 0
 		end},
-	elementx = {name = "Element X", unlock = robux("LEGENDARY", 999), anim = true,
-		cols = {belly = "2E3A30", claws = "0F1410", eyes = "5CFF6A", mask = "0F1410"}, mats = {eyes = "Neon", belly = "Slate"},
+	elementx = {name = "Element X", unlock = robux("LEGENDARY", 999), anim = true, glow = "5CFF6A", hi = "D2FFD0", -- v1.1 A · Body wave
+		cols = {belly = "2E3A30", claws = "0F1410", eyes = "5CFF6A", mask = "0F1410"}, mats = {eyes = "Neon"},
 		sw = {"1E2420", "2A302A", "5CFF6A"},
 		pattern = function(slot, lp)
-			if slot == "accent" then return "5CFF6A", "Neon", "pulse", ph(lp, 51) end
-			if not BODY[slot] then return nil end
-			if cell(lp, 0.9, 52) < 0.25 then return "5CFF6A", "Neon", "pulse", ph(lp, 53) end
-			return pick({"1E2420", "2A302A", "161A17"}, cell(lp, 1.1, 54)), "Slate"
+			if not WHOLE[slot] then return nil end
+			local hex
+			if slot == "belly" then hex = "2E3A30"
+			elseif slot == "mask" then hex = "0F1410"
+			elseif slot == "accent" or cell(lp, 0.9, 52) < 0.25 then hex = "5CFF6A"
+			else hex = pick({"1E2420", "2A302A", "161A17"}, cell(lp, 1.1, 54)) end
+			return hex, "Neon", "wave", 0
 		end},
 }
 for id, sk in pairs(US.SKINS) do
@@ -231,7 +284,7 @@ function US.unlocked(id, stats)
 end
 
 -- the look of one block: slot colour / material, then the pattern
-function US.partLook(id, role, lp, baseHex, baseMat)
+function US.partLook(id, role, lp, baseHex, baseMat, info) -- v1.1: info = {big, yf}
 	local sk = US.get(id)
 	local slot = US.SLOT[role]
 	if not sk or sk.classic or not slot then return baseHex, baseMat, nil, nil end
@@ -240,7 +293,7 @@ function US.partLook(id, role, lp, baseHex, baseMat)
 	if sk.mats and sk.mats[slot] then mat = sk.mats[slot] end
 	local kind, phase
 	if sk.pattern then
-		local h, m, k, p = sk.pattern(slot, typeof(lp) == "Vector3" and lp or Vector3.zero)
+		local h, m, k, p = sk.pattern(slot, typeof(lp) == "Vector3" and lp or Vector3.zero, info)
 		if h then
 			hex = h
 			if m then mat = m end
@@ -287,6 +340,17 @@ function US.tagModel(model, species, roleOf, skip)
 		end
 		local span = math.max(hi.X - lo.X, hi.Y - lo.Y, hi.Z - lo.Z, 1e-3)
 		local k = 15 / span
+		-- v1.1: SkinZF / SkinYF (0..1 along the body / up it) and SkinBig (biggest 45% of the WHOLE blocks)
+		local zr, yr = math.max(hi.Z - lo.Z, 1e-3), math.max(hi.Y - lo.Y, 1e-3)
+		local whole = {}
+		for i, p in ipairs(fresh) do
+			p:SetAttribute("SkinZF", (pos[i].Z - lo.Z) / zr)
+			p:SetAttribute("SkinYF", (pos[i].Y - lo.Y) / yr)
+			if WHOLE[US.SLOT[p:GetAttribute("SkinRole")] or ""] then table.insert(whole, p) end
+		end
+		table.sort(whole, function(a, b) return a.Size.X * a.Size.Y * a.Size.Z > b.Size.X * b.Size.Y * b.Size.Z end)
+		local nBig = math.ceil(#whole * 0.45)
+		for i, p in ipairs(whole) do p:SetAttribute("SkinBig", i <= nBig) end
 		for i, p in ipairs(fresh) do
 			p:SetAttribute("SkinLP", pos[i] * k)
 			if p:GetAttribute("SkinBaseHex") == nil then
@@ -298,16 +362,22 @@ function US.tagModel(model, species, roleOf, skip)
 	return n
 end
 
-function US.setAnim(part, kind, phase, baseHex)
+function US.setAnim(part, kind, phase, baseHex, glow, hi)
 	if kind then
 		part:SetAttribute("SkinAnim", kind)
 		part:SetAttribute("SkinPhase", phase or 0)
 		part:SetAttribute("SkinAnimBase", baseHex)
-		if not CollectionService:HasTag(part, US.ANIM_TAG) then CollectionService:AddTag(part, US.ANIM_TAG) end
+		part:SetAttribute("SkinGlow", glow) -- v1.1
+		part:SetAttribute("SkinHi", hi) -- v1.1
+		-- v1.1: re-add the tag so SkinFX reads the new look of a repainted block
+		if CollectionService:HasTag(part, US.ANIM_TAG) then CollectionService:RemoveTag(part, US.ANIM_TAG) end
+		CollectionService:AddTag(part, US.ANIM_TAG)
 	elseif part:GetAttribute("SkinAnim") ~= nil then
 		part:SetAttribute("SkinAnim", nil)
 		part:SetAttribute("SkinPhase", nil)
 		part:SetAttribute("SkinAnimBase", nil)
+		part:SetAttribute("SkinGlow", nil)
+		part:SetAttribute("SkinHi", nil)
 		CollectionService:RemoveTag(part, US.ANIM_TAG)
 	end
 end
@@ -318,13 +388,15 @@ function US.paintModel(model, id, classicColors)
 		local role = p:IsA("BasePart") and p:GetAttribute("SkinRole")
 		if role then
 			local base = p:GetAttribute("SkinBaseHex") or (classicColors and classicColors[role]) or hexOf(p.Color)
-			local hex, mat, kind, phase = US.partLook(id, role, p:GetAttribute("SkinLP"), base, p:GetAttribute("SkinBaseMaterial"))
+			local hex, mat, kind, phase = US.partLook(id, role, p:GetAttribute("SkinLP"), base, p:GetAttribute("SkinBaseMaterial"),
+				{big = p:GetAttribute("SkinBig") == true, yf = p:GetAttribute("SkinYF")}) -- v1.1
 			if hex then p.Color = Color3.fromHex(hex) end
 			if type(mat) == "string" then
 				local ok, m = pcall(function() return Enum.Material[mat] end)
 				if ok and m then p.Material = m end
 			end
-			US.setAnim(p, kind, phase, hex)
+			local sk = US.SKINS[id]
+			US.setAnim(p, kind, phase, hex, sk and sk.glow, sk and sk.hi)
 		end
 	end
 end
