@@ -36,10 +36,69 @@ Totals: 6 earned, 14 Robux (5 x 149, 5 x 499, 4 x 999), 1 free.
 - SkinServer 1.1 sells by rarity tier: RARE 149, EPIC 499, LEGENDARY 999 (SkinCatalog PRODUCTS). The locked prices map 1:1
   onto those three products. No new products.
 
-## Open
-1. Lab SKINS tab layout (mockup v0.4): Kepu's pick.
-2. Old saves: skins in the current catalog that are NOT in the 20 and were sold before SkinCatalog 1.5 turned
-   ALL_UNLOCKED on (2026-10-31, 6bf3e02): Night Stalker (Raptor, 149), Fossil (Pachy, 149), Thunderhead (Pachy, 149),
-   Ember (Pachy, 499), Obsidian Crown (Pachy, 999), Bloodmoon (Herrera, 149). What an owner of one of these gets.
-3. ALL_UNLOCKED (SkinCatalog 1.9, still true) must be off at launch.
-4. "Play 3 Arena matches": count only counted matches (W + L), or every match joined.
+## Decisions (Kepu 2026-11-24 ~18:05)
+- Lab SKINS tab: "Yes, as shown" (mockup v0.4: cards left with ALL / OWNED / EARN / ROBUX, 3D stage + 8-dino strip middle,
+  detail + EQUIP ON <DINO> / BUY / LOCKED right).
+- Old paid skins cut from the lineup: "Nobody bought any so don't worry about it". No compensation path.
+- "Play 3 Arena matches" = ArenaW + ArenaL (counted matches only).
+- Still open: what counts as a kill (see Red-team R2); grandfathering old free skins (R3).
+
+## Build plan (draft, before red-team)
+Version tags: UniversalSkins 1.0 (new shared module), SkinCatalog 1.10, SkinServer 1.2, Lab 1.8, SkinFX 1.0 (new client),
+SkinStats 1.0 (new server). Master switch: SkinServer attribute UniversalSkinsEnabled (default true once built; false = the
+1.9 per-dino lists, saves untouched). Do-not-touch: ArenaRecordRules / ArenaRecordServer write path, MainMenu (it already
+re-copies the dino on SkinApplied), MechaLegsServer, the Mecha_ part filter in SkinServer.tag, NEVER_PAINT.
+
+Task 1 · Logic · UniversalSkins 1.0 (src/shared/UniversalSkins.luau, pure)
+- SKINS: the 21 entries (id, name, unlock {kind = "free" / "earn" / "robux", stat, need, rarity}), slot colours /
+  materials, optional pattern(slot, lp) -> hex, material, animKind, phase. Same ids as the mockup.
+- SLOT map role -> slot (the 31 roles in SkinCatalog 1.9 ROLES); BODY = primary / secondary / limbs; fallbacks mask, accent
+  -> secondary.
+- partLook(skinId, role, lp, baseHex, baseMat) -> hex, mat, animKind, phase. classic returns the base.
+- OLD_TO_NEW: pachy_riverstone -> riverstone, herrera_canopy -> canopy, herrera_ghostbark -> ghostbark, herrera_venom ->
+  venom, herrera_obsidian -> obsidianfang; desert, arctic, lava, gold keep their id.
+- unlocked(id, stats) for earn skins: desert W+L >= 3, riverstone kills >= 25, canopy W >= 5, ghostbark kills >= 100,
+  zebra W >= 15, inkwar bestStreak >= 3.
+- Tests (Studio loadstring runner, the same way ArenaRecordRules was checked): every role of all 8 species maps to a slot;
+  partLook is deterministic for the same lp; every earn rule at need - 1 / need; OLD_TO_NEW covers every non-dropped id.
+
+Task 2 · Logic + Wired · SkinStats 1.0 (new server script)
+- Saved lifetime kills and best win streak per player (new store MDA_SkinStats_v1, key u<UserId>, {k, best}). Kills from
+  KillFeedServer (see R2 for which kills). best = max(best, ArenaStreak) on every ArenaStreak change.
+- Player attributes StatKills, StatBestStreak, SkinStatsReady. Switch SkinStatsEnabled; SkinStatsSaveEnabled (Studio guard
+  like SkillSaveEnabled).
+
+Task 3 · Wired · SkinServer 1.2
+- tag(): also stores SkinLP (Vector3: part position in HumanoidRootPart space x 15 / model length) once per part.
+- paint(): UniversalSkins.partLook per part; sets SkinAnim / SkinPhase on animated Neon parts.
+- Save v2: owned keys become universal ids (OLD_TO_NEW on load, old value kept under owned_v1); equipped[species] mapped the
+  same way; an unowned equipped id falls back to classic.
+- Unlock check on ArenaW / ArenaL / StatKills / StatBestStreak change -> owned[id] = true, save, player attribute
+  SkinUnlocked = id (toast trigger). BUY: product = the skin's rarity product (149 RARE / 499 EPIC / 999 LEGENDARY);
+  receipt grants the universal id.
+- SkinCatalog 1.10: ALL_UNLOCKED stays a switch; set false at launch (Kepu's call, not part of the build).
+
+Task 4 · Wired · SkinFX 1.0 (new client script)
+- Animates parts with SkinAnim (pulse / twinkle / hue) locally, on every character in range, capped part count; switch
+  SkinFXEnabled. Phone budget: only parts within 120 studs, 20 Hz.
+
+Task 5 · Wired · Lab 1.8 SKINS tab (UI, layout = mockup v0.4)
+- Cards from UniversalSkins in the locked order; filters; progress bars from StatKills / ArenaW / ArenaL / StatBestStreak.
+- Stage paints the copy with partLook (selected skin), 8-dino strip previews other species, EQUIP ON <DINO> fires the
+  existing remote with the current species.
+- Switch LabUniversalSkinsEnabled (false = Lab 1.7 tab).
+
+Task 6 · Wired · unlock toast (UI, needs a mockup and Kepu's pick before build)
+
+## Red-team (Phase 4.5)
+R1. Animated skins on phones: Prism / Void Matter / Spectral / Element X / Opal animate many Neon parts per dino; 8+ dinos
+    on screen = hundreds of colour writes per frame on low-end phones. Mitigation: SkinFX distance cap, 20 Hz, a per-frame
+    part budget, and a setting to turn effects off; measure in Studio phone emulator with 8 bots before ship.
+R2. "Kills" is undefined in code today: DinoKills (KillRegenServer) counts only island bot bites / pounces; Arena kills live in
+    KillFeedServer (players and practice bots). Needs Kepu's pick before Task 2.
+R3. Desert Runner, Riverstone and Canopy are free today and equipped by players; after launch they become earned, so a player
+    wearing one gets reset to Classic until the challenge is done. Mitigation: grandfather (own it if the save had it
+    equipped). Kepu's pick.
+R4. 149 R$ now buys animated skins (Prism, Void Matter) while static ones cost 499 / 999. Recorded as Kepu's call; flag only.
+R5. Scope: 6 tasks touching save data. Smaller first ship = Tasks 1, 3, 5 with the earn skins hidden until SkinStats lands.
+    Recommendation: keep all 6; SkinStats is small and earn skins are half the point.
