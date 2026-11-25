@@ -3643,3 +3643,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 
 ## Island tag one line (IslandTags 1.4, 2026-11-25, mockup docs/mockups/island_tag_fix_v0.2.html)
 - IslandTags 1.4 (script): `IslandTagsOneLineEnabled` (true, read per frame; false = the 1.3 name with the record under it), `IslandTagsOneLineGap` (8 px between the name and the record), `IslandTagsOneLineNumGap` (6 px between "<W>W" and "<L>L").
+- IslandTags 1.5 (script): `IslandTagsHideOnEmote` (true, read per frame; no tag over a dino whose character has EmoteId).

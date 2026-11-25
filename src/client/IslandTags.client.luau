@@ -44,6 +44,9 @@
 --   IslandTagsOneLineNumGap (6 px) between W and L, the record centred on the name line. Spot (over the head), sizes, badge,
 --   who / where rules unchanged. Record not ready: badge + name only, centred.
 --   Switch: script attribute IslandTagsOneLineEnabled (default true, read per frame; false = the 1.3 two lines back).
+-- v1.5 (Kepu 2026-11-25 11:56 "when I do an emote have it hide the name plate and records so I can properly see the emote"): a player
+--   whose character has EmoteId (EmoteServer 1.0, set while the emote plays, cleared when it ends or is cancelled) gets no tag on
+--   any screen; it comes back the frame EmoteId clears. Switch: script attribute IslandTagsHideOnEmote (default true, read per frame).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -54,6 +57,7 @@ VERSION = "1.1" -- v1.1 ratio bar look
 VERSION = "1.2" -- v1.2 rank badge
 VERSION = "1.3" -- v1.3 no ratio bar
 VERSION = "1.4" -- v1.4 one line, centred
+VERSION = "1.5" -- v1.5 hidden while emoting
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local FONT = Enum.Font.FredokaOne
 local DEFAULTS = {IslandTagsEnabled = true, IslandTagsMax = 80, IslandTagsMaxCount = 12,
@@ -69,7 +73,8 @@ end
 script:SetAttribute("IslandTagsState", "off")
 for k, v in pairs({IslandTagsBadgeEnabled = true, IslandTagsBadgeSize = 13, IslandTagsBadgeSizePC = 16,
 	IslandTagsNoBarEnabled = true, IslandTagsNumSizeNoBar = 14, IslandTagsNumSizeNoBarPC = 16, -- v1.2, v1.3
-	IslandTagsOneLineEnabled = true, IslandTagsOneLineGap = 8, IslandTagsOneLineNumGap = 6}) do -- v1.4
+	IslandTagsOneLineEnabled = true, IslandTagsOneLineGap = 8, IslandTagsOneLineNumGap = 6, -- v1.4
+	IslandTagsHideOnEmote = true}) do -- v1.5
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local RB -- v1.2: RankBadge 1.0
@@ -222,10 +227,12 @@ RunService.RenderStepped:Connect(function()
 	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 	local from = myRoot and myRoot.Position or cam.CFrame.Position
 	local list = {}
+	local hideEmote = script:GetAttribute("IslandTagsHideOnEmote") ~= false -- v1.5
 	for _, p in ipairs(Players:GetPlayers()) do
 		local c = p.Character
 		local hrp = c and c:FindFirstChild("HumanoidRootPart")
-		if hrp and c.Parent and p:GetAttribute("InMenu") ~= true then
+		local emoting = hideEmote and c and c:GetAttribute("EmoteId") ~= nil -- v1.5: no tag while that dino emotes
+		if hrp and c.Parent and p:GetAttribute("InMenu") ~= true and not emoting then
 			local d = (hrp.Position - from).Magnitude
 			if d <= maxD then table.insert(list, {p = p, c = c, d = d}) end
 		end
