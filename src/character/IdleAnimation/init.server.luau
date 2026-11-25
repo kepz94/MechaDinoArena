@@ -1,4 +1,7 @@
--- IdleAnimation v1.47 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- IdleAnimation v1.48 (Dino Arcade): idle + walk animation for this model, on each player's client.
+-- v1.48 (Kepu 2026-11-24 "Build", plan docs/plans/EMOTES_v1.0.md): battle emote layer (EmotePose 1.0) multiplied on top after the
+--       boost lean and before the dead pose, while the model's EmoteId + EmoteStartedAt (server time) + EmoteDuration (EmoteServer 1.0)
+--       are live. Switch: model attribute EmotePoseEnabled (false = no emote layer). Diagnostic: EmotePoseState (emote id / "none").
 -- v1.1: RunContext = Client (joint motion from the server is not shown to players).
 -- v1.2: joints are picked up as they stream in; model uses Atomic streaming.
 -- v1.3: occasional head turn to the side (IdleLook* attributes).
@@ -308,6 +311,8 @@ local TenoPose = require(script.TenoPose) -- v1.37
 local TheriPose = require(script.TheriPose) -- v1.39
 local DiloPose = require(script.DiloPose) -- v1.43
 local TrooPose = require(script.TrooPose) -- v1.47
+local EmotePose = require(script.EmotePose) -- v1.48
+local emoteRig, emoteRigScale = nil, nil -- v1.48
 local StaggerPose = require(script.StaggerPose) -- v1.46
 local PachyMovesPose = require(script.PachyMovesPose) -- v1.46
 local function pachyLayerOn() return model:GetAttribute("PachyAnimLayerEnabled") ~= false end -- v1.46
@@ -639,6 +644,7 @@ model:SetAttribute("IdleAnimationVersion", "1.44") -- v1.44
 model:SetAttribute("IdleAnimationVersion", "1.45") -- v1.45
 model:SetAttribute("IdleAnimationVersion", "1.46") -- v1.46
 model:SetAttribute("IdleAnimationVersion", "1.47") -- v1.47
+model:SetAttribute("IdleAnimationVersion", "1.48") -- v1.48
 local function refitScale()
 	if not model:IsA("Model") then return end -- v1.25: the template copy in StarterCharacterScripts
 	local sc = model:GetScale()
@@ -1541,6 +1547,24 @@ RunService.PreSimulation:Connect(function(dt)
 	show("BoostSwivel", swState)
 	show("BoostSwivelAngle", math.floor(swAngle + 0.5))
 	show("BoostStagger", math.floor(swStagger * 100 + 0.5) / 100)
+	-- v1.48: battle emote on top (EmotePose 1.0)
+	local emoteState = "none"
+	local eId, eAt, eDur = model:GetAttribute("EmoteId"), model:GetAttribute("EmoteStartedAt"), model:GetAttribute("EmoteDuration")
+	if model:GetAttribute("EmotePoseEnabled") ~= false and type(eId) == "string" and typeof(eAt) == "number" and typeof(eDur) == "number" and eDur > 0 then
+		local et = workspace:GetServerTimeNow() - eAt
+		if et >= 0 and et <= eDur then
+			local sc = model:IsA("Model") and model:GetScale() or 1
+			if not emoteRig or emoteRigScale ~= sc then emoteRig, emoteRigScale = EmotePose.rig(model, motors), sc end
+			local em = EmotePose.get(eId, et / eDur, et, emoteRig)
+			if em then
+				for name, off in pairs(em) do
+					if motors[name] then pose[name] = (pose[name] or CFrame.identity) * off end
+				end
+				emoteState = eId
+			end
+		end
+	end
+	show("EmotePoseState", emoteState)
 	-- v1.21: dead pose, last
 	local ds = DeadPose.settings(model)
 	local deadHum = model:FindFirstChildOfClass("Humanoid")

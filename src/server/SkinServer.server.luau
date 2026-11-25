@@ -84,7 +84,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.2" -- v1.2 universal skins
+-- v1.3 (Kepu 2026-11-24 "Build", plan docs/plans/EMOTES_v1.0.md): this stays the game's only ProcessReceipt. When the BindableFunction
+--   ServerStorage.EmoteReceipt (EmoteServer 1.0) reports an emote intent for the receipt's product that is newer than the player's skin
+--   intent, the receipt goes to EmoteServer ("grant"; "emote" / "repeat" -> PurchaseGranted, else NotProcessedYet). Skin logic unchanged.
+--   Switch: script attribute SkinEmoteReceiptsEnabled (false = skins only, as 1.2). Diagnostic: SkinReceiptsToEmotes (count).
+local VERSION = "1.3" -- v1.3 emote receipts hook
 local STORE = "MDA_Skins_v1"
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local RETRY_GAP = 30
@@ -487,6 +491,22 @@ local function processReceipt(receipt)
 	if not (rarity and player and st and store) then
 		bumpAttr("SkinReceiptsDeferred")
 		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	-- v1.3: an emote buy (EmoteServer 1.0) newer than this player's skin intent for the same product takes the receipt
+	local emoteHook = ServerStorage:FindFirstChild("EmoteReceipt")
+	if emoteHook and script:GetAttribute("SkinEmoteReceiptsEnabled") ~= false then
+		local okI, eAt = pcall(function() return emoteHook:Invoke("intent", receipt.PlayerId, rarity) end)
+		local sI = st.intent
+		local sAt = (sI and sI.rarity == rarity and os.clock() - sI.at < INTENT_TTL) and sI.at or nil
+		if okI and type(eAt) == "number" and (not sAt or eAt > sAt) then
+			local okG, r = pcall(function() return emoteHook:Invoke("grant", receipt) end)
+			if okG and (r == "emote" or r == "repeat") then
+				bumpAttr("SkinReceiptsToEmotes")
+				return Enum.ProductPurchaseDecision.PurchaseGranted
+			end
+			bumpAttr("SkinReceiptsDeferred")
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
 	end
 	local intent = st.intent
 	if not (intent and intent.rarity == rarity and os.clock() - intent.at < INTENT_TTL) then intent = nil end
