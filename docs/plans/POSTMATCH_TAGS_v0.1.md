@@ -42,3 +42,11 @@ Mockup: docs/mockups/postmatch_tags_v0.1.html (artifact TJZRUMVkr4jCQ1ib7bLKcW).
   bots stop thinking and don't respawn; thawed when the results end. With RespawnServer 1.1 (no respawn) and VictoryTitles 1.4
   (camera on the stage) nothing in the match moves or fights after the win. RespawnScreen 1.1 stays as a guard (a damage-over-
   time tick can still finish someone).
+
+## Installed + Studio Play 2026-11-25 (not published)
+- All 7 scripts installed with base + new hash checks and a compile check. Test: Workspace ModeTestPractice = true (restored to
+  nil after), PracticeRequest lobby / join A / start, HardpointTest score 3-1 + clock 2.
+- Results: banner on the empty stage; PrResultsFrozen 8, player anchored + locked; killed in the results -> RespawnHold held,
+  RespawnCamTarget "yield"; 4 titles; hold "dino" with the board over the stage; lobby -> camera back, hold off.
+- Found + fixed: titles drifted past their slots under 20 FPS (dt clamp) so the 4th was cut by the results end -> late cut.
+  RankBadge spin stopped (weak-key list) -> strong list.

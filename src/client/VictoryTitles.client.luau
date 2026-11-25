@@ -61,6 +61,10 @@
 --   VictoryHoldState ("off" / "stage" / "dino").
 --   Also (Kepu 22:34 "the 4th one would just cut to a game camera of the Dino fighting"): player attribute VictoryCamOwned is
 --   true from camTake to camGive (any show, test or hold), so RespawnScreen 1.1's death cam (Camera + 9) stands aside.
+--   Also (found in Studio 2026-11-25): the runner steps with dt clamped to 0.05, so under 20 FPS a title runs slower than
+--   the server's slot and the drift grew title by title until the results ended inside the 4th title (camera back to the
+--   game). Now a title still playing VictoryLateCut (0.4) s after its slot end is cut and the next starts on time; the last
+--   one hands over to the hold. Switch: VictoryLateCutEnabled (default true). Diagnostic: VictoryLateCuts (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -83,7 +87,8 @@ for k, v in pairs({VictoryCarriedFitEnabled = true, VictoryCarriedBagH = 0.42, V
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 script:SetAttribute("VictoryTitlesState", "idle")
-for k, v in pairs({VictoryStageHoldEnabled = true, VictoryHoldDim = 0.35, VictoryHoldKeep = "HardpointHUD,EggLoader", VictoryHoldTripMax = 15}) do -- v1.4
+for k, v in pairs({VictoryStageHoldEnabled = true, VictoryHoldDim = 0.35, VictoryHoldKeep = "HardpointHUD,EggLoader", VictoryHoldTripMax = 15,
+	VictoryLateCutEnabled = true, VictoryLateCut = 0.4}) do -- v1.4
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 script:SetAttribute("VictoryHoldState", "off")
@@ -558,6 +563,11 @@ RunService:BindToRenderStep("VictoryTitles", Enum.RenderPriority.Camera.Value + 
 		show.holding = true
 	end
 	if show.holding then alive = workspace:GetServerTimeNow() < (slotEnd or 0) end
+	if alive and slotEnd and not show.holding and show.mode == "show" and script:GetAttribute("VictoryLateCutEnabled") ~= false
+		and workspace:GetServerTimeNow() > slotEnd + (tonumber(script:GetAttribute("VictoryLateCut")) or 0.4) then -- v1.4: late title
+		alive = false
+		script:SetAttribute("VictoryLateCuts", (script:GetAttribute("VictoryLateCuts") or 0) + 1)
+	end
 	if Audio and okStep and show.runner.time then pcall(Audio.step, show.runner.time()) end -- v1.3
 	local t = os.clock() - show.t0
 	-- the lower third slams in at 0.3 s

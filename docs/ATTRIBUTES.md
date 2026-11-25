@@ -3629,3 +3629,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - RankBadge 1.1 (module): `RankBadgeRainbowEnabled` (true), `RankBadgeRainbowMax` (10), `RankBadgeRainbowThick` (0.17 x size, min 2 px), `RankBadgeRainbowSpin` (2.4 s a turn; 0 = still). Diagnostic `RankBadgeRainbows`; per badge `RankBadgeRainbowOn`.
 - RespawnScreen 1.1 (script): `RespawnCamYieldEnabled` (true); `RespawnCamTarget` reads "yield" while standing aside. VictoryTitles 1.4 player attribute `VictoryCamOwned` (true while a show / test / hold owns the camera).
 - PracticeServer 1.15 (script): `PrResultsFreezeEnabled` (true). Diagnostic `PrResultsFrozen` (roots frozen now). Character `PrematchLockUntil` is also set during the results (HpResultsEndAt + 1).
+- VictoryTitles 1.4 (script): `VictoryLateCutEnabled` (true), `VictoryLateCut` (0.4 s past a slot end). Diagnostic `VictoryLateCuts`.

@@ -96,7 +96,7 @@ M.RAINBOW = ColorSequence.new({
 	ColorSequenceKeypoint.new(2 / 7, Color3.fromRGB(255, 226, 59)), ColorSequenceKeypoint.new(3 / 7, Color3.fromRGB(70, 224, 138)),
 	ColorSequenceKeypoint.new(4 / 7, Color3.fromRGB(59, 184, 255)), ColorSequenceKeypoint.new(5 / 7, Color3.fromRGB(138, 91, 255)),
 	ColorSequenceKeypoint.new(6 / 7, Color3.fromRGB(255, 79, 216)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 59, 59))})
-local spinning = setmetatable({}, {__mode = "k"}) -- [UIGradient] = true
+local spinning = {} -- [UIGradient] = true (a strong table: weak keys dropped the Instance proxies and the spin stopped; pruned when unparented / disabled)
 local spinConn
 
 local function spinStep()
