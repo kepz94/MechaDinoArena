@@ -176,6 +176,32 @@ VERSION = "1.24" -- v1.24 match preview edit
 VERSION = "1.25" -- v1.25 island loading screen
 VERSION = "1.26" -- v1.26 Arena record block
 VERSION = "1.27" -- v1.27 first-time flow: hidden during it + TUTORIAL
+VERSION = "1.28" -- v1.28 hero layout (mockup A)
+-- v1.28 (Kepu 2026-11-24 16:57 "redoing the main menu ... It looks awkwardly spaced. Look at how other games handle this";
+--   17:05 pick "A" on docs/mockups/main_menu_redo_v0.1.html "A · Hero center"): while script attribute
+--   MainMenuHeroLayoutEnabled ~= false (default true, read at start) a hero pass runs at the end of every layout() and moves
+--   the same pieces (nothing new to press; every handler unchanged):
+--   * edge E = max(MainMenuHeroEdge (3) cw, 12 px); bottom margin B = MainMenuHeroBottom (4) ch.
+--   * title, top centre: "MECHA DINO" (0.42 x) over "ARENA" (max(8.5ch, 28)), centred, 3ch from the top.
+--   * stage (the hangar's dino + MECH VIEW tag / hint, tap = flip): between the left rail and its mirror, from under the
+--     title to above the dino picker; the hangar camera centres the dino there (the scrim over the right side is hidden).
+--   * dino picker, bottom centre: ◀ name / sub ▶ (arrows max(9ch, 40), name max(7ch, 24) in max(36ch, 130), sub max(2.8ch,
+--     12)), and the
+--     part slots row centred under it (max(44cw, 220) wide), B from the bottom.
+--   * left rail at E, from max(top inset + 2ch, 28ch): GO TO THE LAB as a tile "LAB" (max(MainMenuHeroRailW (20) ch, 76) x
+--     max(MainMenuHeroLabH (14) ch, 50), text max(6ch, 20)), then the TUTORIAL pill under it, same width,
+--     max(MainMenuHeroTutH (9) ch, 34) tall.
+--   * Arena record (v1.26 block, drawn MainMenuHeroRecordScale (1.35) x bigger with a UIScale "HeroScale") bottom-left at E, B
+--     from the bottom, on a dark panel "HeroRecordPanel" (shown with it) as wide as what the block shows (its widest text line
+--     or its row of result squares, at least 14ch).
+--   * PLAY bottom-right (max(MainMenuHeroPlayW (30) ch, 130) x max(MainMenuHeroPlayH (17) ch, 60), text max(9ch, 30), the line
+--     under it max(2.6ch, 11)), E from
+--     the right, B from the bottom; BACK TO ISLAND (practice / arena servers) above it, PLAY's width; the mode chip and its
+--     list (hub off) above it at their own width, right-aligned.
+--   * top-right row, 3ch from the top: [SETTINGS (CameraModes, follows MUSIC)] [MUSIC] [CREDITS], E from the right.
+--   The pieces that other code places (CREDITS, TUTORIAL, the record block) are pinned: when that code moves them, the hero
+--   spot is put back. With the old SANDBOX / ARENA buttons (MainMenuModeChipEnabled false) those two stay in their 1.27 spots.
+--   Diagnostic: player MainMenuHeroLayout ("on" / "off").
 -- v1.27 (first-time flow, MDA-564, plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 6, ADR-013, mockup docs/mockups/first_time_flow_v0.3.html;
 --   Kepu 2026-11-22: old players "Keep all, tutorial button"): while TutorialServer 1.0 runs on this server
 --   (ReplicatedStorage.TutorialRequest exists), the menu stays closed while the player's TutActive is true, TutStep > 0 or
@@ -1080,6 +1106,196 @@ local function drawSpecies()
 	nextText.TextTransparency = locked and 0.6 or 0
 end
 
+-- ---------- v1.28: hero layout (see the header) ----------
+if script:GetAttribute("MainMenuHeroLayoutEnabled") == nil then script:SetAttribute("MainMenuHeroLayoutEnabled", true) end
+local heroOn = script:GetAttribute("MainMenuHeroLayoutEnabled") ~= false
+player:SetAttribute("MainMenuHeroLayout", heroOn and "on" or "off")
+for k, v in pairs({MainMenuHeroEdge = 3, MainMenuHeroBottom = 4, MainMenuHeroPlayW = 30, MainMenuHeroPlayH = 17, MainMenuHeroRailW = 20,
+	MainMenuHeroLabH = 14, MainMenuHeroTutH = 9, MainMenuHeroRecordScale = 1.35}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local function hn(k, d) return tonumber(script:GetAttribute(k)) or d end
+local heroPins, heroHooked = {}, {}
+local function heroApply(obj)
+	local p = heroPins[obj]
+	if not p then return end
+	if p.anchor and obj.AnchorPoint ~= p.anchor then obj.AnchorPoint = p.anchor end
+	if p.size and obj.Size ~= p.size then obj.Size = p.size end
+	if p.pos and obj.Position ~= p.pos then obj.Position = p.pos end
+end
+local function heroPin(obj, spec)
+	heroPins[obj] = spec
+	if not heroHooked[obj] then
+		heroHooked[obj] = true
+		for _, prop in ipairs({"Position", "Size", "AnchorPoint"}) do
+			obj:GetPropertyChangedSignal(prop):Connect(function() heroApply(obj) end)
+		end
+	end
+	heroApply(obj)
+end
+local heroRec = {panel = nil, hooked = false}
+local heroRecord
+heroRecord = function()
+	local box = root:FindFirstChild("ArenaRecord")
+	if not heroRec.waiting and not box and heroOn then -- the v1.26 block is made a moment after the menu; catch it when it lands
+		heroRec.waiting = true
+		root.ChildAdded:Connect(function(c) if c.Name == "ArenaRecord" then task.defer(heroRecord) end end)
+	end
+	if not (box and S.ch and S.ch > 0) then return end
+	local ch, cw = S.ch, S.cw
+	local edge = math.max(hn("MainMenuHeroEdge", 3) * cw, 12)
+	local pad = 1.6 * ch
+	if not heroRec.panel then
+		local pnl = Instance.new("Frame")
+		pnl.Name = "HeroRecordPanel"
+		pnl.BackgroundColor3 = PANEL
+		pnl.BackgroundTransparency = 0.12
+		pnl.BorderSizePixel = 0
+		pnl.ZIndex = 0
+		pnl.Parent = root
+		heroRec.c = corner(pnl)
+		stroke(pnl, WHITE, 0.86, 2)
+		heroRec.panel = pnl
+	end
+	if not heroRec.hooked then
+		heroRec.hooked = true
+		box:GetPropertyChangedSignal("Size"):Connect(heroRecord)
+		box:GetPropertyChangedSignal("Visible"):Connect(heroRecord)
+	end
+	local k = math.clamp(hn("MainMenuHeroRecordScale", 1.35), 0.5, 3) -- the block drawn bigger (UIScale "HeroScale")
+	local us = box:FindFirstChild("HeroScale") or Instance.new("UIScale")
+	us.Name = "HeroScale"
+	us.Scale = k
+	us.Parent = box
+	local dS = math.max(2.2 * ch, 12)
+	local h = box.Size.Y.Offset * k
+	-- the panel fits what the block shows: the widest text line or the row of result squares
+	local cwid = 0
+	for _, n in ipairs({"Head", "Record", "Pct", "Streak"}) do
+		local l = box:FindFirstChild(n)
+		if l and l:IsA("TextLabel") and l.Visible and l.Text ~= "" then cwid = math.max(cwid, l.Position.X.Offset + l.TextBounds.X) end
+	end
+	local dots = box:FindFirstChild("Last")
+	local nd = dots and #dots:GetChildren() or 0
+	if nd > 0 then cwid = math.max(cwid, nd * (dS + 0.6 * ch) - 0.6 * ch) end
+	local w = math.max(cwid, 14 * ch) * k
+	if not heroRec.fitHooked then
+		local pct = box:FindFirstChild("Pct")
+		if pct then
+			heroRec.fitHooked = true
+			pct:GetPropertyChangedSignal("TextBounds"):Connect(heroRecord)
+			if dots then dots.ChildAdded:Connect(function() task.defer(heroRecord) end) end
+		end
+	end
+	local y = S.H - hn("MainMenuHeroBottom", 4) * ch - pad - h
+	heroPin(box, {pos = UDim2.fromOffset(edge + pad, y)})
+	heroRec.panel.Position = UDim2.fromOffset(edge, y - pad)
+	heroRec.panel.Size = UDim2.fromOffset(w + 2 * pad, h + 2 * pad)
+	heroRec.c.CornerRadius = UDim.new(0, 1.8 * ch)
+	heroRec.panel.Visible = box.Visible
+end
+local heroScrimDone = false
+local function heroLayout()
+	local ch, cw, W, H = S.ch, S.cw, S.W, S.H
+	local edge = math.max(hn("MainMenuHeroEdge", 3) * cw, 12)
+	local bot = hn("MainMenuHeroBottom", 4) * ch
+	local drop = 0.6 * ch
+	if not heroScrimDone and hgui then
+		heroScrimDone = true
+		local sc = hgui:FindFirstChild("Scrim")
+		if sc then sc.Visible = false end
+	end
+	-- title, top centre
+	local tBig = math.max(8.5 * ch, 28)
+	local tSmall = tBig * 0.42
+	local tw = math.max(40 * cw, 200)
+	local tx, ty = (W - tw) / 2, 3 * ch
+	for _, l in ipairs({titleSmall, titleBig, titleShadow}) do l.TextXAlignment = Enum.TextXAlignment.Center end
+	titleSmall.TextSize = tSmall
+	titleSmall.Position, titleSmall.Size = UDim2.fromOffset(tx, ty), UDim2.fromOffset(tw, tSmall)
+	local by = ty + tSmall + 0.4 * ch
+	titleBig.TextSize, titleShadow.TextSize = tBig, tBig
+	titleBig.Position, titleBig.Size = UDim2.fromOffset(tx, by), UDim2.fromOffset(tw, tBig)
+	titleShadow.Position, titleShadow.Size = UDim2.fromOffset(tx, by + 0.5 * ch), UDim2.fromOffset(tw, tBig)
+	local titleBottom = by + tBig
+	-- PLAY bottom-right, BACK TO ISLAND / mode chip above it
+	local pw, ph = math.max(hn("MainMenuHeroPlayW", 30) * ch, 130), math.max(hn("MainMenuHeroPlayH", 17) * ch, 60)
+	local px, py = W - edge - pw, H - bot - ph
+	placeButton(playB, px, py, pw, ph, 1.8 * ch, 0.9 * ch, drop)
+	playText.TextSize = math.max(9 * ch, 30)
+	if playSub.Visible then -- the line under PLAY, bigger too
+		local subS = math.max(2.6 * ch, 11)
+		playSub.TextSize = subS
+		playSub.Size = UDim2.new(1, 0, 0, subS)
+		playSub.Position = UDim2.new(0, 0, 1, -subS - 2 * ch)
+		playText.Size = UDim2.new(1, 0, 1, -subS - ch)
+	end
+	local chipH = math.max(8 * ch, 44)
+	placeButton(islandB, px, py - 1.6 * ch - chipH, pw, chipH, 1.2 * ch, 0.6 * ch, 0.5 * ch)
+	local cwid = chip.Size.X.Offset
+	chip.Position = UDim2.fromOffset(W - edge - cwid, py - 1.6 * ch - chipH)
+	modeList.Position = UDim2.fromOffset(W - edge - modeList.Size.X.Offset, py - 1.6 * ch - chipH - modeList.Size.Y.Offset - ch)
+	-- left rail: LAB tile, TUTORIAL under it
+	local railW = math.max(hn("MainMenuHeroRailW", 20) * ch, 76)
+	local labH = math.max(hn("MainMenuHeroLabH", 14) * ch, 50)
+	local railY = math.max(S.top + 2 * ch, 28 * ch)
+	if labOn then
+		placeButton(labB, edge, railY, railW, labH, 1.6 * ch, 0.9 * ch, drop)
+		labText.Text = "LAB"
+		labText.TextSize = math.max(6 * ch, 20)
+	end
+	local tutB = root:FindFirstChild("Tutorial")
+	if tutB then
+		tutB.AutomaticSize = Enum.AutomaticSize.None
+		heroPin(tutB, {anchor = Vector2.zero, pos = UDim2.fromOffset(edge, railY + (labOn and (labH + 1.6 * ch) or 0)),
+			size = UDim2.fromOffset(railW, math.max(hn("MainMenuHeroTutH", 9) * ch, 34))})
+	end
+	-- dino picker + slots, bottom centre
+	local sw = math.max(44 * cw, 220)
+	slotsRow.Size = UDim2.fromOffset(sw, 0)
+	local slotsH = math.max(slotsRow.AbsoluteSize.Y, S.slotH)
+	local slotsY = H - bot - slotsH
+	slotsRow.Position = UDim2.fromOffset((W - sw) / 2, slotsY)
+	local arrow = math.max(9 * ch, 40)
+	local spY = slotsY - 1.4 * ch - arrow
+	local nameW = math.max(36 * ch, 130)
+	local rowW = arrow * 2 + nameW + 4 * ch
+	local rx = (W - rowW) / 2
+	placeButton(prevB, rx, spY, arrow, arrow, 1.6 * ch, 0.9 * ch, drop)
+	placeButton(nextB, rx + rowW - arrow, spY, arrow, arrow, 1.6 * ch, 0.9 * ch, drop)
+	prevText.TextSize, nextText.TextSize = arrow * 0.7, arrow * 0.7
+	local nameSize, subSize = math.max(7 * ch, 24), math.max(2.8 * ch, 12)
+	local block = nameSize + 0.6 * ch + subSize
+	local nx = rx + arrow + 2 * ch
+	dname.TextXAlignment, dsub.TextXAlignment = Enum.TextXAlignment.Center, Enum.TextXAlignment.Center
+	dname.TextSize, dsub.TextSize = nameSize, subSize
+	dname.Position, dname.Size = UDim2.fromOffset(nx, spY + (arrow - block) / 2), UDim2.fromOffset(nameW, nameSize)
+	dsub.Position, dsub.Size = UDim2.fromOffset(nx, spY + (arrow - block) / 2 + nameSize + 0.6 * ch), UDim2.fromOffset(nameW, subSize)
+	-- stage: the middle, between the rail and its mirror, title to picker
+	local sx = edge + railW + 2 * cw
+	local stw = math.max(W - 2 * sx, 100)
+	local sy = titleBottom + ch
+	local sth = math.max(spY - 1.4 * ch - sy, 60)
+	stage.Position, stage.Size = UDim2.fromOffset(sx, sy), UDim2.fromOffset(stw, sth)
+	hStage.x, hStage.y, hStage.w, hStage.h = sx, sy, stw, sth
+	if hangarOn and script:GetAttribute("MainMenuHintTopEnabled") ~= false then -- the v1.4 hint band at the stage top
+		local tagH = math.max(1.9 * ch, 11) + 1.6 * ch
+		local band = 2.4 * ch + tagH + 0.8 * ch
+		hStage.y, hStage.h = sy + band, math.max(sth - band, 40)
+	end
+	placeHangarCam()
+	-- top-right row: [SETTINGS] [MUSIC] [CREDITS]
+	local topY = 3 * ch
+	local right = W - edge
+	local credB = root:FindFirstChild("Credits")
+	if credB and credB:IsA("GuiObject") then
+		heroPin(credB, {anchor = Vector2.new(1, 0), pos = UDim2.fromOffset(right, topY), size = UDim2.fromOffset(0, math.max(4.6 * ch, 28))})
+		right -= credB.AbsoluteSize.X + ch
+	end
+	musicB.Position = UDim2.fromOffset(right, topY)
+	heroRecord()
+end
+
 -- ---------- layout ----------
 local function layout()
 	measure()
@@ -1262,6 +1478,7 @@ local function layout()
 	else
 		playText.Size = UDim2.fromScale(1, 1)
 	end
+	if heroOn then heroLayout() end -- v1.28
 end
 
 function relayout()
