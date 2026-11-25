@@ -84,7 +84,7 @@ b.y { color:var(--yellow); }
 
   <section><h2>1 · How each skin unlocks</h2>
     <div class="tw"><table><thead><tr><th></th><th>SKIN</th><th>UNLOCK</th><th>CHALLENGE (WHEN EARNED)</th></tr></thead><tbody id="plan"></tbody></table></div>
-    <div class="row"><span class="sum" id="psum"></span><span style="flex:1"></span><button class="btn g" id="preset" type="button">RESET TO PROPOSAL</button><button class="btn" id="pcopy" type="button">COPY PLAN</button></div>
+    <div class="row"><span class="sum" id="psum"></span><span style="flex:1"></span><button class="btn g" id="preset" type="button">RESET TO LOCKED PLAN</button><button class="btn" id="pcopy" type="button">COPY PLAN</button></div>
     <ul>
       <li><b class="y">Mastery chain</b> (CoD's Gold, then Diamond, then Dark Matter): Viper Gold, then Prism, then Void Matter. Each needs the one before it, so Void Matter becomes the flex skin.</li>
       <li><b class="y">New to track:</b> kills, matches played and hardpoint time are counted now but not saved between sessions. Challenges need a small saved stats store (per player, and per dino for the mastery chain). Arena wins and win streaks are already saved.</li>
@@ -183,9 +183,9 @@ const CH = {
   mast1: "MASTERY 1: Win 10 Arena matches with 3 different dinos", mast2: "MASTERY 2: Own Viper Gold, then win 10 with 6 different dinos",
   mast3: "MASTERY 3: Own Prism, then win 10 with all 8 dinos", custom: "(write your own)"};
 const PROPOSAL = {
-  classic: ["free", ""], desert: ["ch", "play3"], riverstone: ["ch", "kills25"], canopy: ["ch", "win5"], arctic: ["ch", "hold5"],
-  ghostbark: ["ch", "kills100"], zebra: ["ch", "win15"], inkwar: ["ch", "streak3"], sakura: ["ch", "dinos4"],
-  vipergold: ["ch", "mast1"], prism: ["ch", "mast2"], voidmatter: ["ch", "mast3"],
+  classic: ["free", ""], desert: ["ch", "play3"], riverstone: ["ch", "kills25"], canopy: ["ch", "win5"], arctic: ["149", ""],
+  ghostbark: ["ch", "kills100"], zebra: ["ch", "win15"], inkwar: ["ch", "streak3"], sakura: ["149", ""],
+  vipergold: ["149", ""], prism: ["149", ""], voidmatter: ["149", ""], // v0.4.1: Kepu's locked plan 2026-11-24
   lava: ["499", ""], venom: ["499", ""], circuit: ["499", ""], chrome: ["499", ""], opal: ["499", ""],
   gold: ["999", ""], obsidianfang: ["999", ""], spectral: ["999", ""], elementx: ["999", ""]};
 let plan = JSON.parse(JSON.stringify(PROPOSAL));
