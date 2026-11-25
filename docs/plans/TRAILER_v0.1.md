@@ -72,3 +72,18 @@ C:\Users\Kepu_\Videos\trailer_work, source recording 15-54-47. Shots: 1 T-Rex he
 Rainbow Road tracking, 3 Cruise Missile blast from outside (CruiseThermalEnabled false on HerreraMissileCam for filming
 only, client side), 4 T-Rex charge at the lens, 5 slow orbit on Raptor mecha parts, 6 dolly past all 8 dinos (anchored
 clones in Workspace.TrailerLineup, Play only). Found: ServerScriptService.RoarServer is disabled in the place, so no roar shot.
+
+## Trailer v0.2 cut (2026-11-25 16:50)
+
+Kepu 16:11 order: portal walk-in, island pan with dinos fighting, Lab "unlock dinos and mecha parts" with base-skin dinos
+getting full kits, Herrera gliding over the fight, Raptor Shock Cannon following the shot into a Pachy (stunned), Shop with
+skins and trails, Raptor in a cool skin doing GG over a dead dino. Cut: 29.2 s, silent, 1920x1080 30 fps,
+C:\Users\Kepu_\Videos\MechaDinoArena_Trailer_v0.2.mp4 (not in the repo). Sources: 14-42-04 (portal), 16-18-41 (island 19.6,
+glide 113.3, cannon 165.85, Lab 195.5 x4.8, Shop 283.4 / 291.0 / 302.8, GG 487.0). Captions: "UNLOCK DINOS & MECHA PARTS",
+"SKINS & TRAILS", end card MECHA DINO ARENA. Lab / Shop shots are the full viewport letterboxed (the 16:9 crop cut the UI).
+Filming-only, Play session only (nothing saved): PracticeRequest "newbots" rerolls until a Pachy is on the other team;
+ShopScreen script attribute ShopTestShowAll (existing Studio switch) lists owned skins / trails; HerreraMissileCam
+CruiseThermalEnabled false; Shock Cannon fired through DinoScreechRequest(stamp, 0, aim) to aim at the Pachy; the GG target's
+DummyHealth set to 0 (a practice bot body stays 2 s, PracticeServer BOT_BODY). Restored after: Play stopped,
+ModeTestPractice nil, SkillTestMaxAllEnabled false, ShopTestShowAll nil, render quality Automatic, Output + Asset Manager
+back, window snapped left. Studio account skins: Raptor set to glitch, Herrera to classic during the shoot.
