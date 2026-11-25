@@ -31,7 +31,7 @@ covered half the view: keep trails low and short), Roblox Trail objects (Static 
 ## Open
 - Mockup docs/mockups/trails_shop_lab_v0.1.html (artifact GUVxJFfX7ij1jScCSGU5nd): Shop TRAILS tab (after SKINS / EMOTES, the 7
   unowned 149 trails, preview + BUY), Lab LOOKS > TRAILS pill (NO TRAIL + 10 cards with ON / OWNED / FREE / earn progress / R$149,
-  stage preview, EQUIP / EQUIPPED / BUY / LOCKED). Waiting: yes on both, and equip A (one trail for every dino, rec) or B (per dino).
-- Then the build plan, then "Build".
+  stage preview, EQUIP / EQUIPPED / BUY / LOCKED). 23:55 "1. Yes 2. Yes. 3. A": Shop tab yes, Lab pill yes, equip A (one trail for every dino).
+- Build plan: docs/plans/TRAILS_v1.0.md (waiting for "Build").
 - Ability trails that already exist (do not touch, and stay readable next to): ServoDash, Adrenaline, Tether, Screech, Blade,
   HerreraParts, DiloPartsVFX, TrooFX, TrooSlotFX, TheriFX.
