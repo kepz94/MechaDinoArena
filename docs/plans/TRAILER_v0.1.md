@@ -61,3 +61,14 @@ Filming notes: abilities aim where the camera looks (the dino turns to the camer
 target on the camera's look line; practice bots walk off within ~1 s, so stage them right before the key press.
 Studio restored after filming: ModeTestPractice nil, SkillServer SkillTestMaxAllEnabled false, Output + Asset Manager
 reopened, window back to the left-half snap.
+
+## Trailer v0.2 angle mockup (2026-11-25 16:00)
+
+Kepu 15:24 rejected v0.1 ("why would you start off with a black and white cruise missile frame"), 15:26 "selling the game,
+more cinematic shots", 15:54 "send me the actual damn mockup". Research (his 3 reference clips + AppLovin, Unity, GMTK,
+Derek Lieu, Roblox thumbnail rules): open on one big readable subject, film from outside the player, short action cuts
+with slower hero beats, captions only say what you do. Moving 15.7 s angle reel (not in the repo):
+C:\Users\Kepu_\Videos\trailer_work, source recording 15-54-47. Shots: 1 T-Rex hero push-in (Summit), 2 glitch Raptor +
+Rainbow Road tracking, 3 Cruise Missile blast from outside (CruiseThermalEnabled false on HerreraMissileCam for filming
+only, client side), 4 T-Rex charge at the lens, 5 slow orbit on Raptor mecha parts, 6 dolly past all 8 dinos (anchored
+clones in Workspace.TrailerLineup, Play only). Found: ServerScriptService.RoarServer is disabled in the place, so no roar shot.
