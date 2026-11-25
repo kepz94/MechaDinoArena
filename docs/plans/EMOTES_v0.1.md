@@ -79,3 +79,9 @@ Mockup: docs/mockups/battle_emotes_v0.2.html (same artifact 6JSHpr6HG5nSTqorCFXW
 Cooked, Mic Drop, Skill Issue, Tea Time, Too Easy, GG Party, Stomp Stomp, Moon Call, Shake Off, Tiny Arms, Play Dead, Big Yawn.
 Note: the wheel (option A) holds 8, so players own up to 12 and equip 8 in the Lab.
 Still open: prices, emote wheel mockup (UI pick), then the build plan + red-team.
+
+## Prices (Kepu 2026-11-24 20:13)
+"We'll do stomp stomp gg and play dead as ones you unlock. Everything else will be 149"
+- Unlock (earn by playing): Stomp Stomp, GG Party, Play Dead. Challenge per emote: asked 20:13, pending.
+- Robux 149: Cooked, Mic Drop, Skill Issue, Tea Time, Too Easy, Moon Call, Shake Off, Tiny Arms, Big Yawn (9).
+- Product: the existing 149 tier product (SHOP v1.0 direction: one product per price, shared by every item type).
