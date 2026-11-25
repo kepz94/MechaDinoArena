@@ -22,6 +22,13 @@
 -- Menu badge: player attribute ShopBadge = true while a featured item is not owned and the shop was not opened this session.
 -- Switches (script attributes): ShopEnabled (default true, read at start; false = no shop, Open returns false); ShopTestShowAll
 --   (default false, read per draw; true = list every Robux skin even when owned, for Studio looks only).
+-- v1.1 (Kepu 2026-11-24 "Build next", plan docs/plans/EMOTES_v1.0.md): EMOTES tab = the 149 R$ emotes of
+--   ReplicatedStorage.EmoteShared.EmoteCatalog (EmoteServer 1.0) the player does not own (player EmoteOwned, or all while
+--   EmoteAllUnlocked). Card: the emote's pop-up word instead of colour swatches. Preview: your dino (or ◀ ▶ another) in its equipped
+--   skin, doing the emote on a loop (EmotePose 1.0 from the character's IdleAnimation, joints moved by hand in the ViewportFrame)
+--   with the word on top. BUY -> ReplicatedStorage.DinoEmoteRequest:FireServer("buy", id) (149 product prompt); results from player
+--   EmoteResult ("bought" -> "<NAME> UNLOCKED", "owned" -> "ALREADY YOURS"). Emotes are not in FEATURED (featured stays skins only).
+--   Switch: script attribute ShopEmotesEnabled (default true, read at start; false = the 1.0 shop).
 -- Diagnostics (LocalPlayer): ShopVersion, ShopOpen, ShopItems (listed), ShopFeatured ("id,id"), ShopSelected, ShopView (dino),
 --   ShopLastBuy (state).
 local Players = game:GetService("Players")
@@ -29,7 +36,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 
-local VERSION = "1.0"
+local VERSION = "1.1" -- v1.1 EMOTES tab
 local BUY_WAIT = 60
 local player = Players.LocalPlayer
 player:SetAttribute("ShopVersion", VERSION)
@@ -170,14 +177,53 @@ local function skinOwned(it)
 	if player:GetAttribute("SkinAllUnlocked") == true then return true end
 	return ownedSet()[it.id] == true
 end
+-- v1.1: emotes (EmoteCatalog 1.0, client copy made by EmoteServer 1.0)
+local ECM
+local function EC()
+	if ECM then return ECM end
+	local f = ReplicatedStorage:FindFirstChild("EmoteShared")
+	local m = f and f:FindFirstChild("EmoteCatalog")
+	if m then
+		local ok, r = pcall(require, m)
+		if ok then ECM = r end
+	end
+	return ECM
+end
+local function allEmotes()
+	local ec = EC()
+	local out = {}
+	if not ec then return out end
+	for _, id in ipairs(ec.ORDER) do
+		local e = ec.get(id)
+		if e and e.unlock.kind == "robux" then
+			table.insert(out, {cat = "emotes", id = id, name = e.name, price = e.unlock.price, tier = e.unlock.price, anim = false, sw = {},
+				emote = true, word = e.word, desc = e.desc, dur = e.dur})
+		end
+	end
+	return out
+end
+local function emoteOwned(it)
+	if script:GetAttribute("ShopTestShowAll") == true then return false end
+	if player:GetAttribute("EmoteAllUnlocked") == true then return true end
+	for id in tostring(player:GetAttribute("EmoteOwned") or ""):gmatch("[^,]+") do
+		if id == it.id then return true end
+	end
+	return false
+end
 -- v1.0: one tab; animations and accessories add their own entries here
 local CATEGORIES = {
 	{id = "skins", name = "SKINS", all = allSkins, owned = skinOwned, kind = "SKIN"},
 }
+if script:GetAttribute("ShopEmotesEnabled") == nil then script:SetAttribute("ShopEmotesEnabled", true) end -- v1.1
+if script:GetAttribute("ShopEmotesEnabled") ~= false then
+	table.insert(CATEGORIES, {id = "emotes", name = "EMOTES", all = allEmotes, owned = emoteOwned, kind = "EMOTE", featured = false})
+end
 local function featured()
 	local all = {}
 	for _, c in ipairs(CATEGORIES) do
-		for _, it in ipairs(c.all()) do table.insert(all, it) end
+		if c.featured ~= false then -- v1.1: emotes stay out of FEATURED
+			for _, it in ipairs(c.all()) do table.insert(all, it) end
+		end
 	end
 	local day = math.floor(workspace:GetServerTimeNow() / 86400)
 	local anim, plain = {}, {}
@@ -269,6 +315,13 @@ local dPrevC, dNextC = corner(dPrev), corner(dNext)
 local dPrevL = label(dPrev, "T", Enum.Font.FredokaOne, 16, WHITE, "◀") dPrevL.Size = UDim2.fromScale(1, 1)
 local dNextL = label(dNext, "T", Enum.Font.FredokaOne, 16, WHITE, "▶") dNextL.Size = UDim2.fromScale(1, 1)
 local dName = label(prev, "Dino", Enum.Font.FredokaOne, 14, WHITE, "")
+local wordL = label(prev, "EmoteWord", Enum.Font.Bangers, 30, YELLOW, "") -- v1.1
+wordL.AnchorPoint = Vector2.new(0.5, 0)
+wordL.Position = UDim2.fromScale(0.5, 0.1)
+wordL.Size = UDim2.fromScale(0.8, 0.14)
+wordL.TextScaled = true
+wordL.Visible = false
+do local s = Instance.new("UIStroke") s.Thickness = 3 s.Parent = wordL end
 local info = frame(root, "Info")
 local infoList = Instance.new("UIListLayout")
 infoList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -344,7 +397,12 @@ local function paintModel()
 	if not (model and us and sc) then return end
 	local sp = shownSpecies()
 	local classic = sc.get(sp, "classic")
-	us.paintModel(model, sel or "classic", classic and classic.colors)
+	local skin = sel or "classic"
+	if tab == "emotes" then -- v1.1: an emote plays on the dino's equipped skin
+		local eq = player:GetAttribute("SkinEquipped_" .. sp)
+		skin = (type(eq) == "string" and us.get(eq)) and eq or "classic"
+	end
+	us.paintModel(model, skin, classic and classic.colors)
 end
 
 -- ---------- drawing ----------
@@ -379,7 +437,22 @@ local function card(parent, it, big, order)
 	l.SortOrder = Enum.SortOrder.LayoutOrder
 	l.Padding = UDim.new(0, 0.6 * ch)
 	l.Parent = inner
-	local sw = swatch(inner, it, big and math.max(17 * ch, 50) or math.max(6.5 * ch, 22))
+	local swH = big and math.max(17 * ch, 50) or math.max(6.5 * ch, 22)
+	local sw
+	if it.word then -- v1.1: emote cards show the pop-up word
+		sw = frame(inner, "Word", Color3.fromRGB(27, 35, 51), 0)
+		sw.Size = UDim2.new(1, 0, 0, swH)
+		corner(sw, UDim.new(0, 0.9 * S.ch))
+		local w = label(sw, "W", Enum.Font.Bangers, swH * 0.6, YELLOW, it.word)
+		w.Size = UDim2.fromScale(0.92, 0.85)
+		w.Position = UDim2.fromScale(0.04, 0.08)
+		w.TextScaled = true
+		local ws = Instance.new("UIStroke")
+		ws.Thickness = 2
+		ws.Parent = w
+	else
+		sw = swatch(inner, it, swH)
+	end
 	sw.LayoutOrder = 1
 	local nS = big and math.max(2.6 * ch, 13) or math.max(1.8 * ch, 9)
 	local nm = label(inner, "Name", Enum.Font.FredokaOne, nS, WHITE, it.name)
@@ -466,6 +539,7 @@ local function drawList()
 	local items = itemsFor(c)
 	local feat, day = featured()
 	local featShown = {}
+	if c.featured == false then feat = {} end -- v1.1: no FEATURED row on the EMOTES tab
 	for _, it in ipairs(feat) do
 		local fc = catOf(it.cat)
 		if fc and not fc.owned(it) then table.insert(featShown, it) end
@@ -536,6 +610,10 @@ local function saveReady()
 	local s = player:GetAttribute("SkinSaveState")
 	return s ~= nil and s ~= "loading" and s ~= "loadFailed" and s ~= "noApi"
 end
+local function emoteSaveReady() -- v1.1
+	local s = player:GetAttribute("EmoteSaveState")
+	return s ~= nil and s ~= "loading" and s ~= "loadFailed" and s ~= "noApi"
+end
 local function drawInfo()
 	clear(info)
 	local ch = S.ch
@@ -560,19 +638,20 @@ local function drawInfo()
 	a.LayoutOrder = 3
 	a.TextXAlignment = Enum.TextXAlignment.Left
 	a.Size = UDim2.new(1, 0, 0, math.max(1.7 * ch, 9) * 1.3)
-	local ln = label(info, "Line", Enum.Font.GothamBlack, math.max(1.9 * ch, 10), GREY, "Buy it once and every dino can wear it.")
+	local ln = label(info, "Line", Enum.Font.GothamBlack, math.max(1.9 * ch, 10), GREY,
+		it.emote and (tostring(it.desc) .. " Every dino can do it.") or "Buy it once and every dino can wear it.")
 	ln.LayoutOrder = 4
 	ln.TextXAlignment = Enum.TextXAlignment.Left
 	ln.TextWrapped = true
 	ln.AutomaticSize = Enum.AutomaticSize.Y
 	ln.Size = UDim2.new(1, 0, 0, 0)
-	local credits = tonumber(player:GetAttribute("SkinCredits_" .. tostring(sk and sk.unlock.rarity))) or 0
+	local credits = it.emote and 0 or tonumber(player:GetAttribute("SkinCredits_" .. tostring(sk and sk.unlock.rarity))) or 0
 	local waiting = buyPendingAt ~= nil and os.clock() - buyPendingAt < BUY_WAIT
 	local state, b
 	if waiting then
 		state = "wait"
 		b = detailButton("…", YELLOW, DARK_TEXT, false, 5)
-	elseif not saveReady() then
+	elseif not (it.emote and emoteSaveReady() or (not it.emote and saveReady())) then
 		state = "loading"
 		b = detailButton("LOADING", YELLOW, DARK_TEXT, false, 5)
 	elseif credits > 0 then
@@ -586,6 +665,14 @@ local function drawInfo()
 	if state == "credit" or state == "get" then
 		b.Activated:Connect(function()
 			press("buy:" .. it.id)
+			if it.emote then -- v1.1
+				local er = ReplicatedStorage:FindFirstChild("DinoEmoteRequest")
+				if not er then return end
+				buyPendingAt = os.clock()
+				er:FireServer("buy", it.id)
+				redraw()
+				return
+			end
 			local r = ReplicatedStorage:FindFirstChild("DinoSkinRequest")
 			if not r then return end
 			buyPendingAt = os.clock()
@@ -700,8 +787,13 @@ function redraw()
 	paintModel()
 	local sp = shownSpecies()
 	onTag.Text = sp == species() and ("ON YOUR " .. dinoName(sp)) or ("TRYING ON " .. dinoName(sp))
+	local selIt = sel and findItem(sel) -- v1.1
+	wordL.Visible = selIt ~= nil and selIt.emote == true
+	wordL.Text = wordL.Visible and selIt.word or ""
 	dName.Text = dinoName(sp)
 	updateTimer()
+	subL.Text = tab == "emotes" and "Emotes you don't own yet. Every emote works on all 8 dinos." -- v1.1
+		or "Skins you don't own yet. Every skin works on all 8 dinos."
 	player:SetAttribute("ShopView", sp)
 end
 
@@ -737,8 +829,74 @@ dPrev.Activated:Connect(function() stepDino(-1) end)
 dNext.Activated:Connect(function() stepDino(1) end)
 
 -- turning model, timer
+-- v1.1: the selected emote on the preview dino (joints moved by hand: no physics in a ViewportFrame)
+local emoteRig = nil
+local function emotePoseModule()
+	local c = player.Character
+	local m = c and c:FindFirstChild("IdleAnimation") and c.IdleAnimation:FindFirstChild("EmotePose")
+	m = m or (game:GetService("StarterPlayer"):FindFirstChild("StarterCharacterScripts") and game.StarterPlayer.StarterCharacterScripts:FindFirstChild("IdleAnimation")
+		and game.StarterPlayer.StarterCharacterScripts.IdleAnimation:FindFirstChild("EmotePose"))
+	if not m then return nil end
+	local ok, r = pcall(require, m)
+	return ok and r or nil
+end
+local function buildEmoteRig()
+	emoteRig = {model = model}
+	local hrp = model and model:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local js = {}
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("Motor6D") and d.Part0 and d.Part1 then table.insert(js, d) end
+	end
+	local done, order = {[hrp] = true}, {}
+	for _ = 1, 40 do
+		if #order >= #js then break end
+		for _, m in ipairs(js) do
+			if not done[m.Part1] and done[m.Part0] then table.insert(order, {m = m, c0 = m.C0, c1i = m.C1:Inverse()}) done[m.Part1] = true end
+		end
+	end
+	local parts = {}
+	for _, j in ipairs(order) do
+		local r = j.m.Part1
+		local l = {}
+		for _, p in ipairs(r.Parent:GetChildren()) do
+			if p:IsA("BasePart") then table.insert(l, {p, r.CFrame:ToObjectSpace(p.CFrame)}) end
+		end
+		parts[r] = l
+	end
+	local P = emotePoseModule()
+	emoteRig = {model = model, hrp = hrp, base = hrp.CFrame, order = order, parts = parts, P = P, R = P and P.rig(model, nil)}
+end
+local emoteClock, emoteShown = 0, false
+local function poseEmote(dt)
+	local it = sel and findItem(sel)
+	local want = open and tab == "emotes" and it ~= nil and it.emote == true and model ~= nil
+	if not want and not emoteShown then return end
+	if not emoteRig or emoteRig.model ~= model then buildEmoteRig() end
+	local r = emoteRig
+	if not (r and r.order and r.P and r.R) then return end
+	local pose = {}
+	if want then
+		emoteClock += dt
+		local cycle = it.dur + 0.8
+		local et = emoteClock % cycle
+		if et <= it.dur then pose = r.P.get(it.id, et / it.dur, et, r.R) or {} end
+	end
+	local W = {[r.hrp] = r.base}
+	for _, j in ipairs(r.order) do
+		local m = j.m
+		local w0 = W[m.Part0]
+		if w0 then
+			local w1 = w0 * j.c0 * (pose[m.Name] or CFrame.identity) * j.c1i
+			W[m.Part1] = w1
+			for _, e in ipairs(r.parts[m.Part1]) do e[1].CFrame = w1 * e[2] end
+		end
+	end
+	emoteShown = want
+end
 RunService.RenderStepped:Connect(function(dt)
 	if not open then return end
+	poseEmote(dt)
 	orbit += dt * 0.5
 	cam.CFrame = CFrame.lookAt(center + Vector3.new(math.sin(orbit), 0.3, math.cos(orbit)).Unit * radius, center)
 end)
@@ -760,7 +918,7 @@ end
 root:GetPropertyChangedSignal("AbsoluteSize"):Connect(queue)
 player.AttributeChanged:Connect(function(name)
 	if name == "SkinOwnedU" or name == "SkinAllUnlocked" or name:sub(1, 11) == "SkinCredits" or name:sub(1, 9) == "SkinPrice"
-		or name == "SkinSaveState" then
+		or name == "SkinSaveState" or name == "EmoteOwned" or name == "EmoteAllUnlocked" or name == "EmoteSaveState" then -- v1.1 Emote*
 		updateBadge()
 		queue()
 	end
@@ -772,6 +930,22 @@ player.AttributeChanged:Connect(function(name)
 			if res == "bought" then
 				local sk = us and us.get(player:GetAttribute("SkinLastBought"))
 				if sk then showToast(string.upper(sk.name) .. " UNLOCKED · ON " .. dinoName(shownSpecies())) end
+			elseif res == "owned" then
+				showToast("ALREADY YOURS")
+			elseif res == "promptFailed" or res == "noProduct" or res == "notLoaded" then
+				showToast("TRY AGAIN IN A MOMENT")
+			end
+		end
+		queue()
+	end
+	if name == "EmoteResult" then -- v1.1
+		local res = player:GetAttribute("EmoteResult")
+		if res ~= "prompted" then buyPendingAt = nil end
+		if open and tab == "emotes" then
+			local ec = EC()
+			if res == "bought" then
+				local e = ec and ec.get(player:GetAttribute("EmoteUnlocked"))
+				showToast(e and (string.upper(e.name) .. " UNLOCKED") or "UNLOCKED")
 			elseif res == "owned" then
 				showToast("ALREADY YOURS")
 			elseif res == "promptFailed" or res == "noProduct" or res == "notLoaded" then
