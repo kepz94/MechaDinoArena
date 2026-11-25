@@ -90,3 +90,16 @@ Still open: prices, emote wheel mockup (UI pick), then the build plan + red-team
   | Play Dead | win 5 Arena matches in a row | StatBestStreak >= 5 (SkinStats) |
 - Robux 149: Cooked, Mic Drop, Skill Issue, Tea Time, Too Easy, Moon Call, Shake Off, Tiny Arms, Big Yawn (9).
 - Product: the existing 149 tier product (SHOP v1.0 direction: one product per price, shared by every item type).
+
+## Wheel + Lab mockup v0.1 (2026-11-24 20:25, waiting on Kepu's pick)
+Mockup: docs/mockups/emote_wheel_v0.1.html (artifact GFsVKTQsaBDdvvuC3nnVJn). Phone base = Phone HUD v2 "A · your version" as measured
+in docs/mockups/phone_hud_v0.1.html (750 x 381): ☰ (690, 8, 44 x 36), strip (255, 8), kill feed under ☰, JUMP (626, 170, 71),
+ATTACK (611, 247, 101), part squares (435, 251) and (521, 283).
+- Phone A (recommended): ☻ pill 44 x 36 at (638, 8), left of ☰; tap (or hold-slide) opens an 8-slot wheel in the middle. 6 buttons.
+- Phone B: ☻ round 50 at (560, 175), left of JUMP; hold fans 8 round chips in two arcs up-left. 6 buttons.
+- Phone C: EMOTES row in the ☰ drawer under [CAMERA][SQUAD]; opens the middle wheel. 5 buttons (no change), 3 taps.
+- All: after an emote the button shows the 3 s cooldown.
+- PC: hold B (Fortnite key) or X. Grounded: RespawnScreen uses B to open the spawn picker during RespawnHold / grace; X is unbound.
+- Lab 1 (recommended): SKINS tab becomes LOOKS with SKINS / EMOTES (SHOP v1.0 agreed direction); cards left, stage middle, detail +
+  "your wheel" right; PUT ON WHEEL then tap a slot. Lab 2: a 4th EMOTES tab with the wheel big in the middle.
+- Open: new player owns only GG Party, so 7 slots start empty: show paid ones as greyed shop slots, or leave empty?

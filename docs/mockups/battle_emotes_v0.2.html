@@ -841,5 +841,5 @@ function frame(now) {
 }
 layout(); resize(); play("cooked"); requestAnimationFrame(frame);
 window.__emote = {play, stop, setDino: n => { dino = n; all = false; syncChips(); layout(); }, setAll: v => { all = v; syncChips(); layout(); },
-  seek: (id, t) => { play(id); t0 = clock - t; }, freeze: v => { window.__frozen = v; }};
+  seek: (id, t) => { play(id); t0 = clock - t; }, warp: t => { t0 = clock - t; }, freeze: v => { window.__frozen = v; }};
 </script>
