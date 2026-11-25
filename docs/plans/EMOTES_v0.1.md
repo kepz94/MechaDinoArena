@@ -46,3 +46,9 @@ animations will be sold in the shop next to skins and accessories.
 3. Trigger: A wheel (recommended), B quick bar of 4, C auto after a kill.
 4. Prices (proposal: 2 free, 149 plain, 499 with effects).
 5. Sound later (no Freesound / Sonniss clips in the public repo).
+
+## Picks (Kepu 2026-11-24, after mockup v0.1)
+- Kind: "Emotes you fire". Replacement packs are out for now.
+- Trigger: "A · Emote wheel" (smiley button top right, hold and slide to 1 of 8 slots; PC hold B).
+- The 10: "Swap some" (which ones: waiting on Kepu).
+- Prices: "Let's talk about it" (open).
