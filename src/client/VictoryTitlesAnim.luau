@@ -33,6 +33,11 @@
 -- v1.3 (MDA-552, the title music and sound effects): the runner gets runner.time() -> the title's clock (c.t: seconds into
 --   the animation, held during a hit-stop), so VictoryTitlesAudio 1.0 plays each beat's sound on the picture's own time.
 --   Nothing else changes.
+-- v1.4 (post-match backdrop, Kepu 2026-11-24 22:27 pick "A · Stay on the stage" on docs/mockups/postmatch_tags_v0.1.html):
+--   one more entry, play("backdrop", model): the dino stands on the pad in the PROUD pose with breathe() on top, facing the
+--   camera, and the camera frames it (camFrame, 1.5 x pad) from the front, sweeping BACKDROP_SWEEP (0.6 rad) left / right
+--   over BACKDROP_PERIOD (14) s. It never ends by itself (M.LEN.backdrop = 1e9); VictoryTitles 1.4 destroys it. Not a title
+--   (no card, no sound). The 8 titles are unchanged.
 local Workspace = game:GetService("Workspace")
 
 local M = {}
@@ -46,6 +51,9 @@ M.lastCarriedK = nil -- v1.2
 M.lastCarriedInfo = "" -- v1.2
 M.VERSION = "1.3" -- v1.3 runner.time() for VictoryTitlesAudio
 M.LEN = {apex = 5.4, king = 5.4, unkill = 5.4, medic = 5.4, masher = 5.4, carried = 6.4, pacifist = 5.6, extinct = 5.8}
+M.VERSION = "1.4" -- v1.4 the backdrop idle after the last title
+M.LEN.backdrop = 1e9 -- v1.4
+M.BACKDROP_SWEEP, M.BACKDROP_PERIOD = 0.6, 14 -- v1.4
 
 -- ---------- maths ----------
 local rad = math.rad
@@ -1717,6 +1725,18 @@ TITLES.extinct = {
 		if gh and gh.model.Parent then ebox = boxUnion(ebox, worldBox(gh)) end
 		c:camShot(t, dt, {{0, V(-0.5, 0.3, -1), 0.92, 0, 0}, {1.35, V(-0.5, 0.24, -1), 0.8, 0, 0.3}, {1.6, V(-0.42, -0.08, -1), 0.7, 0.9, 0.2, "out"}, {2.29, V(-0.42, -0.08, -1), 0.7, 0.75, 0.2}, {2.31, V(-0.4, 1.3, -0.7), 1.2, 0, 0, "lin"}, {3.4, V(-0.55, 0.8, -1), 1.25, 0, 0}, {5.8, V(-0.55, 0.45, -1), 1.15, 0, 0}},
 			ebox, headC(r), (t > 1.35 and t < 2.3) and c.met.part.Position or nil, kf(t, {{1.4, 0}, {1.7, 0.12}, {2.25, 0.05}, {2.3, 0}}))
+	end,
+}
+
+-- v1.4: the backdrop behind the results board (not a title)
+TITLES.backdrop = {
+	setup = function(c)
+		c.r.yaw = 0
+	end,
+	update = function(c, t, dt)
+		drive(c.r, P.PROUD, dt, breathe(t, 1))
+		local a = (M.BACKDROP_SWEEP or 0.6) * math.sin(t * 2 * math.pi / math.max(1, M.BACKDROP_PERIOD or 14))
+		c:camFrame(worldBox(c.r), V(math.sin(a), 0.32, -math.cos(a)), dt, 1.5)
 	end,
 }
 

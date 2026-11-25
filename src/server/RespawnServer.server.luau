@@ -28,12 +28,25 @@
 -- Diagnostics: RespawnServerVersion, RespawnDeaths, RespawnSwaps, RespawnGraceSwaps, player RespawnLastResult.
 -- Switch: script attribute RespawnServerEnabled (default true, read per death / tick / request). Numbers: RespawnWait (5),
 --   RespawnPickMax (10), RespawnGrace (5), RespawnParkY (3000; read by PracticeServer 1.13).
+-- v1.1 (Kepu 2026-11-24 22:21 "When I got my post match results it showed me respawning in the background"; 22:27 pick on
+--   docs/mockups/postmatch_tags_v0.1.html "In every option: no respawning during the results"): while ReplicatedStorage.Hardpoint
+--   HpPhase is "results", a player on hold stays on hold (the release check is skipped; PracticeServer keeps the body parked),
+--   a death in the results is held as before. Dino picks work as in 1.0 (a new body is parked). When the results end the 1.0 rules
+--   run again (the trip to the island, or the next match's release). Switch: script attribute RespawnHoldInResultsEnabled
+--   (default true, read per tick / request; false = 1.0). Diagnostic: RespawnResultsHeld (players held by this rule last tick).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 no respawn during the results
 script:SetAttribute("RespawnServerVersion", VERSION)
+if script:GetAttribute("RespawnHoldInResultsEnabled") == nil then script:SetAttribute("RespawnHoldInResultsEnabled", true) end -- v1.1
+local function inResults() -- v1.1
+	if script:GetAttribute("RespawnHoldInResultsEnabled") == false then return false end
+	local hp = ReplicatedStorage:FindFirstChild("Hardpoint")
+	return hp ~= nil and hp:GetAttribute("HpPhase") == "results"
+end
 for k, v in pairs({RespawnServerEnabled = true, RespawnWait = 5, RespawnPickMax = 10, RespawnGrace = 5, RespawnParkY = 3000,
 	RespawnDeaths = 0, RespawnSwaps = 0, RespawnGraceSwaps = 0}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -121,11 +134,14 @@ RunService.Heartbeat:Connect(function(dt)
 	if acc < 0.1 then return end
 	acc = 0
 	local t = now()
+	local resHold, held = inResults(), 0 -- v1.1
 	for _, pl in ipairs(Players:GetPlayers()) do
 		if pl:GetAttribute("RespawnHold") == true then
 			if not on() or not inMatch(pl) then
 				graceArmed[pl] = nil
 				clear(pl)
+			elseif resHold then -- v1.1: no release during the results
+				held += 1
 			else
 				local died = tonumber(pl:GetAttribute("RespawnDiedAt")) or t
 				local at = tonumber(pl:GetAttribute("RespawnAt")) or t
@@ -144,6 +160,7 @@ RunService.Heartbeat:Connect(function(dt)
 			pl:SetAttribute("RespawnPickOpen", false)
 		end
 	end
+	if script:GetAttribute("RespawnResultsHeld") ~= held then script:SetAttribute("RespawnResultsHeld", held) end -- v1.1
 end)
 
 local lastPick = {}

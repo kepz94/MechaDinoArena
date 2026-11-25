@@ -43,6 +43,22 @@
 --   runner's clock (VictoryTitlesAnim 1.3 runner.time) each frame, the music fades when a title is skipped or the show
 --   stops, the crowd cheers when the results start (a match with a winner, out of the menu) and when the show ends by
 --   itself. If the module fails to load the show runs silent as in 1.2 (VictoryTitlesLast says so).
+-- v1.4 (post-match backdrop; Kepu 2026-11-24 22:21 "the last presentation cuts to a dinosaur playing on the island still. The
+--   game is still running in the background"; 22:27 pick "A · Stay on the stage" on docs/mockups/postmatch_tags_v0.1.html):
+--   the results never go back to the live game. A "hold" keeps the camera on the sky stage until the results end:
+--   * after the last title (ends by itself or skipped to the end): the last entry's model stays on the pad
+--     (VictoryTitlesAnim 1.4 "backdrop": PROUD pose + breathing, the camera sweeping slowly in front of it);
+--   * a results with no titles (draw, no models, the show already over) and the banner seconds before the titles: the empty
+--     stage, the camera 70 studs out and 22 up, looking 6 up at the pad centre, sweeping 0.6 rad left / right over 14 s.
+--   During the hold: a full-screen dim (ScreenGui "VictoryBackdrop", DisplayOrder 5, under HardpointHUD's 6) at
+--   VictoryHoldDim (0.35) black; every other ScreenGui stays off as in the show (1.1 hold) except the names in VictoryHoldKeep
+--   ("HardpointHUD,EggLoader": the results board and the trip loader); the lower third / dots are off. Ends (camera back to
+--   your dino, HUD back) when HpPhase leaves "results" or HpResultsEndAt changes; while a trip is under way (player
+--   ModeLastResult "saving" / "teleporting" with ModeLastAt under 30 s ago, ModeServer 1.3) it stays up to VictoryHoldTripMax
+--   (15) s more. Ends at once on
+--   InMenu, VictoryTitlesEnabled false or VictoryStageHoldEnabled false. A title show that is due takes over from the hold.
+--   Switch: script attribute VictoryStageHoldEnabled (default true, read per check; false = 1.3). Diagnostic:
+--   VictoryHoldState ("off" / "stage" / "dino").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -53,6 +69,7 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 HUD hold, test hook, step errors, soft flash
 VERSION = "1.2" -- v1.2 CARRIED bag fit
 VERSION = "1.3" -- v1.3 music and sound effects (VictoryTitlesAudio)
+VERSION = "1.4" -- v1.4 hold on the stage until the results end
 script:SetAttribute("VictoryTitlesVersion", VERSION)
 for k, v in pairs({VictoryTitlesEnabled = true, VictoryBannerSec = 2, VictoryStageY = 3000, VictoryTapGuard = 1}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -64,6 +81,10 @@ for k, v in pairs({VictoryCarriedFitEnabled = true, VictoryCarriedBagH = 0.42, V
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 script:SetAttribute("VictoryTitlesState", "idle")
+for k, v in pairs({VictoryStageHoldEnabled = true, VictoryHoldDim = 0.35, VictoryHoldKeep = "HardpointHUD,EggLoader", VictoryHoldTripMax = 15}) do -- v1.4
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+script:SetAttribute("VictoryHoldState", "off")
 
 local player = Players.LocalPlayer
 local Anim = require(script.Parent:WaitForChild("VictoryTitlesAnim"))
@@ -92,6 +113,20 @@ gui.IgnoreGuiInset = true
 gui.ResetOnSpawn = false
 gui.Enabled = false
 gui.Parent = player:WaitForChild("PlayerGui")
+local holdGui = Instance.new("ScreenGui") -- v1.4: the dim behind the results board while on the stage
+holdGui.Name = "VictoryBackdrop"
+holdGui.DisplayOrder = 5
+holdGui.IgnoreGuiInset = true
+holdGui.ResetOnSpawn = false
+holdGui.Enabled = false
+holdGui.Parent = player.PlayerGui
+local holdDim = Instance.new("Frame")
+holdDim.Name = "Dim"
+holdDim.Size = UDim2.fromScale(1, 1)
+holdDim.BackgroundColor3 = Color3.new(0, 0, 0)
+holdDim.BackgroundTransparency = 0.65
+holdDim.BorderSizePixel = 0
+holdDim.Parent = holdGui
 local function label(parent, font, color)
 	local l = Instance.new("TextLabel")
 	l.BackgroundTransparency = 1
@@ -327,10 +362,16 @@ local function setDots(entries, i)
 	end
 end
 local hudHeld, hudConns = {}, {} -- v1.1: ScreenGuis this show turned off, their Enabled watchers
+local function keepSet() -- v1.4: the guis the hold leaves on
+	local k = {}
+	for n in string.gmatch(tostring(script:GetAttribute("VictoryHoldKeep") or ""), "[^,%s]+") do k[n] = true end
+	return k
+end
 local function holdHud()
 	if script:GetAttribute("VictoryHideHudEnabled") == false then return end
+	local keep = (show and show.mode == "hold") and keepSet() or nil -- v1.4
 	for _, g in ipairs(player.PlayerGui:GetChildren()) do
-		if g ~= gui and g:IsA("ScreenGui") and g.Enabled then
+		if g ~= gui and g ~= holdGui and not (keep and keep[g.Name]) and g:IsA("ScreenGui") and g.Enabled then
 			g.Enabled = false
 			hudHeld[g] = true
 			if not hudConns[g] then
@@ -358,6 +399,8 @@ local function stopShow(why)
 	end
 	releaseHud() -- v1.1
 	gui.Enabled = false
+	holdGui.Enabled = false -- v1.4
+	if script:GetAttribute("VictoryHoldState") ~= "off" then script:SetAttribute("VictoryHoldState", "off") end
 	ui.counter(nil) ui.plaster(0, 1) ui.flash(0)
 	camGive()
 	script:SetAttribute("VictoryTitlesState", "idle")
@@ -423,16 +466,80 @@ local function beginShow(entries, mode, key, startIndex, into)
 	end
 end
 
+-- v1.4: the hold on the stage (see the header)
+local function holdWanted()
+	local hp = ReplicatedStorage:FindFirstChild("Hardpoint")
+	return show ~= nil and show.mode == "show" and script:GetAttribute("VictoryStageHoldEnabled") ~= false
+		and script:GetAttribute("VictoryTitlesEnabled") ~= false and player:GetAttribute("InMenu") ~= true
+		and hp ~= nil and hp:GetAttribute("HpPhase") == "results"
+end
+local function beginHold(model, key, why)
+	if show then
+		if show.runner then pcall(show.runner.destroy) end
+		if Audio then -- as stopShow: the music stops, the crowd when the show ended by itself
+			pcall(Audio.stop)
+			if why == "done" then pcall(Audio.crowd, "board") end
+		end
+	end
+	show = {mode = "hold", key = key, entries = {}, i = 0, t0 = os.clock()}
+	gui.Enabled = false
+	ui.counter(nil) ui.plaster(0, 1) ui.flash(0)
+	camTake()
+	local keep = keepSet()
+	for g in pairs(hudHeld) do -- the kept guis (the results board, the loader) come back
+		if keep[g.Name] then
+			hudHeld[g] = nil
+			if g.Parent then g.Enabled = true end
+		end
+	end
+	holdHud()
+	holdDim.BackgroundTransparency = 1 - math.clamp(tonumber(script:GetAttribute("VictoryHoldDim")) or 0.35, 0, 1)
+	holdGui.Enabled = true
+	local st = stage()
+	if model then
+		local ok, runner = pcall(function() return Anim.new(st, ui):play("backdrop", model:Clone()) end)
+		if ok and runner then show.runner = runner
+		else script:SetAttribute("VictoryTitlesLast", "hold model failed: " .. string.sub(tostring(runner), 1, 120)) end
+	end
+	script:SetAttribute("VictoryHoldState", show.runner and "dino" or "stage")
+	script:SetAttribute("VictoryTitlesState", "hold")
+	if why then script:SetAttribute("VictoryTitlesLast", why) end
+end
+local function holdStep(dt)
+	local cam = workspace.CurrentCamera
+	if cam.CameraType ~= Enum.CameraType.Scriptable then cam.CameraType = Enum.CameraType.Scriptable end
+	holdHud()
+	if show.runner then
+		local ok, err = pcall(show.runner.step, show.runner, math.min(dt, 0.05))
+		if not ok then
+			script:SetAttribute("VictoryTitlesLast", "hold step error: " .. string.sub(tostring(err), 1, 160))
+			pcall(show.runner.destroy)
+			show.runner = nil
+			script:SetAttribute("VictoryHoldState", "stage")
+		end
+	end
+	if not show.runner then -- the empty stage: a slow sweep in front of the pad
+		local st = stage()
+		local a = 0.6 * math.sin((os.clock() - show.t0) * 2 * math.pi / 14)
+		local look = st.origin + Vector3.new(0, 6, 0)
+		cam.CFrame = CFrame.lookAt(look + Vector3.new(math.sin(a) * 70, 16, -math.cos(a) * 70), look)
+	end
+end
+
 skipB.Activated:Connect(function()
-	if not show or not show.runner then return end
+	if not show or not show.runner or show.mode == "hold" then return end -- v1.4: no skip in the hold
 	if os.clock() - show.t0 < (tonumber(script:GetAttribute("VictoryTapGuard")) or 1) then return end
 	local i = show.i + 1
 	while i <= #show.entries and not startEntry(i) do i += 1 end
-	if i > #show.entries then stopShow("skipped to end") end
+	if i > #show.entries then
+		if holdWanted() then beginHold(show.entries[#show.entries].model, show.key, "skipped to end") -- v1.4
+		else stopShow("skipped to end") end
+	end
 end)
 
 -- per frame: run the current title after the other camera scripts
 RunService:BindToRenderStep("VictoryTitles", Enum.RenderPriority.Camera.Value + 2, function(dt)
+	if show and show.mode == "hold" then holdStep(dt) return end -- v1.4
 	if not show or not show.runner then return end
 	dt = math.min(dt, 0.05)
 	local cam = workspace.CurrentCamera
@@ -466,7 +573,10 @@ RunService:BindToRenderStep("VictoryTitles", Enum.RenderPriority.Camera.Value + 
 		local err = show.err -- v1.1
 		local i = show.i + 1
 		while i <= #show.entries and not startEntry(i) do i += 1 end
-		if i > #show.entries then stopShow(err or "done") end
+		if i > #show.entries then
+			if not err and holdWanted() then beginHold(show.entries[#show.entries].model, show.key, "done") -- v1.4
+			else stopShow(err or "done") end
+		end
 	end
 end)
 
@@ -477,19 +587,37 @@ local playedKey = nil
 local function now() return workspace:GetServerTimeNow() end
 local function check()
 	if not state then return end
-	if script:GetAttribute("VictoryTitlesEnabled") == false then if show and show.mode == "show" then stopShow("off") end return end
+	if script:GetAttribute("VictoryTitlesEnabled") == false then if show and (show.mode == "show" or show.mode == "hold") then stopShow("off") end return end -- v1.4: + hold
 	local raw = state:GetAttribute("HpTitles")
 	local endsAt = state:GetAttribute("HpResultsEndAt") or 0
 	local phase = state:GetAttribute("HpPhase")
 	local inMenu = player:GetAttribute("InMenu") == true
+	local holdOn = script:GetAttribute("VictoryStageHoldEnabled") ~= false -- v1.4
+	if show and show.mode == "hold" then -- v1.4
+		if inMenu or not holdOn then stopShow("ended") return end
+		if phase ~= "results" or show.key ~= endsAt then
+			local mr = player:GetAttribute("ModeLastResult")
+			if (mr == "saving" or mr == "teleporting") and now() - (tonumber(player:GetAttribute("ModeLastAt")) or 0) < 30 then -- a trip is under way: stay on the stage a little longer
+				show.tripUntil = show.tripUntil or (os.clock() + (tonumber(script:GetAttribute("VictoryHoldTripMax")) or 15))
+				if os.clock() < show.tripUntil then return end
+			end
+			stopShow("ended")
+			return
+		end
+		if playedKey == endsAt then return end -- the hold after the show stays; a show still due takes over below
+	end
 	if show and show.mode == "show" and (phase ~= "results" or inMenu or raw == "" or raw == nil) then stopShow("ended") return end
-	if show or type(raw) ~= "string" or raw == "" or phase ~= "results" or inMenu then return end
+	if (show and show.mode ~= "hold") or phase ~= "results" or inMenu then return end -- v1.4 (1.3: any show)
+	local function holdEmpty() -- v1.4: the empty stage (no titles, the banner, the show already over)
+		if holdOn and not show and (tonumber(endsAt) or 0) > 0 then beginHold(nil, endsAt) end
+	end
+	if type(raw) ~= "string" or raw == "" then holdEmpty() return end
 	local ok, data = pcall(function() return HttpService:JSONDecode(raw) end)
-	if not ok or type(data) ~= "table" or type(data.list) ~= "table" then return end
-	if data.key ~= endsAt or playedKey == endsAt then return end
+	if not ok or type(data) ~= "table" or type(data.list) ~= "table" then holdEmpty() return end
+	if data.key ~= endsAt or playedKey == endsAt then holdEmpty() return end
 	local resLen = tonumber(state:GetAttribute("HpResultsLen")) or 15
 	local t = now() - (endsAt - resLen) - (tonumber(script:GetAttribute("VictoryBannerSec")) or 2)
-	if t < 0 then return end
+	if t < 0 then holdEmpty() return end -- v1.4: the banner seconds on the empty stage
 	-- which entry is due
 	local entries, acc, idx, into = {}, 0, nil, 0
 	local mf = modelsFolder or ReplicatedStorage:FindFirstChild("VictoryTitleModels")
@@ -497,7 +625,7 @@ local function check()
 		local m = mf and mf:FindFirstChild(tostring(e.id))
 		if m then table.insert(entries, {title = e.title, model = m, name = e.name, species = e.species, stat = e.stat, len = tonumber(e.len) or 5.5}) end
 	end
-	if #entries == 0 then playedKey = endsAt return end
+	if #entries == 0 then playedKey = endsAt holdEmpty() return end
 	for i, e in ipairs(entries) do
 		e.mate = (entries[1] ~= e and entries[1].model) or (entries[2] and entries[2].model) or nil
 		if not idx and t < acc + e.len then idx, into = i, t - acc end
@@ -505,7 +633,10 @@ local function check()
 		e.endAt = (endsAt - resLen) + (tonumber(script:GetAttribute("VictoryBannerSec")) or 2) + acc -- v1.1 (e)
 	end
 	playedKey = endsAt
-	if not idx then return end -- the show is already over
+	if not idx then -- the show is already over
+		if holdOn and not show then beginHold(entries[#entries].model, endsAt) end -- v1.4
+		return
+	end
 	beginShow(entries, "show", endsAt, idx, into)
 end
 if state then

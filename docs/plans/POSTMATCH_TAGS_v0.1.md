@@ -22,4 +22,10 @@ Mockup: docs/mockups/postmatch_tags_v0.1.html (artifact TJZRUMVkr4jCQ1ib7bLKcW).
 - Ranks 1-10: rainbow outline (thicker than today's), chip colour unchanged. Spins (rec) or still; everywhere (rec) or tags only.
 
 ## Picks
-(waiting)
+- 22:27 "A A and spins": 1 A · Stay on the stage, 2 A · 12W 4L, 3 spins; "Everywhere" (rainbow wherever the badge shows).
+
+## Built in the repo 2026-11-24 (PC off: NOT INSTALLED, no compile check yet)
+- VictoryTitles 1.4 + VictoryTitlesAnim 1.4 (stage hold), RespawnServer 1.1 (no release during results), IslandTags 1.3 (no bar),
+  RankBadge 1.1 (rainbow 1-10).
+- To do when the PC is on: install (hash-checked), loadstring compile, Studio Play: a test results (titles + hold, draw = empty
+  stage), die at the end -> stays parked, phone emulator tag + badge, kill feed / lineup / boards badge, then report.

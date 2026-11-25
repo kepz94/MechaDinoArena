@@ -31,6 +31,11 @@
 --   rankOf: WorldRank 1..100 from LeaderboardServer 1.0) gets the rank badge just left of their name, 5 px gap, centred on the
 --   name line; size IslandTagsBadgeSize (13) phone / IslandTagsBadgeSizePC (16) PC. Both looks (bar and 1.0). Switch: script
 --   attribute IslandTagsBadgeEnabled (default true, read per frame; false = no badge, = 1.1).
+-- v1.3 (Kepu 2026-11-24 22:21 "remove the green/red bar that shows above your name because it confuses other players for a
+--   health bar. Just keep the name and record"; 22:27 pick "A" on mockup docs/mockups/postmatch_tags_v0.1.html "A · 12W 4L"):
+--   in the 1.1 look the ratio bar is hidden and the "<W>W" green / "<L>L" red numbers move up under the name (5 px gap), size
+--   IslandTagsNumSizeNoBar (14, was 13) phone / IslandTagsNumSizeNoBarPC (16) PC. Name, rank badge, who / where rules unchanged.
+--   Switch: script attribute IslandTagsNoBarEnabled (default true, read per frame; false = the 1.1 bar back).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -39,6 +44,7 @@ local UserInputService = game:GetService("UserInputService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 ratio bar look
 VERSION = "1.2" -- v1.2 rank badge
+VERSION = "1.3" -- v1.3 no ratio bar
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local FONT = Enum.Font.FredokaOne
 local DEFAULTS = {IslandTagsEnabled = true, IslandTagsMax = 80, IslandTagsMaxCount = 12,
@@ -52,7 +58,8 @@ for k, v in pairs(DEFAULTS) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 script:SetAttribute("IslandTagsState", "off")
-for k, v in pairs({IslandTagsBadgeEnabled = true, IslandTagsBadgeSize = 13, IslandTagsBadgeSizePC = 16}) do -- v1.2
+for k, v in pairs({IslandTagsBadgeEnabled = true, IslandTagsBadgeSize = 13, IslandTagsBadgeSizePC = 16,
+	IslandTagsNoBarEnabled = true, IslandTagsNumSizeNoBar = 14, IslandTagsNumSizeNoBarPC = 16}) do -- v1.2, v1.3
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local RB -- v1.2: RankBadge 1.0
@@ -231,6 +238,9 @@ RunService.RenderStepped:Connect(function()
 					local us = small and A("IslandTagsNumSize", 13) or A("IslandTagsNumSizePC", 16)
 					local bw = small and A("IslandTagsBarW", 98) or A("IslandTagsBarWPC", 120)
 					local bh = small and A("IslandTagsBarH", 10) or A("IslandTagsBarHPC", 12)
+					local noBar = script:GetAttribute("IslandTagsNoBarEnabled") ~= false -- v1.3
+					if noBar then us = small and A("IslandTagsNumSizeNoBar", 14) or A("IslandTagsNumSizeNoBarPC", 16) end
+					local gap = noBar and 0 or (bh + 4) -- v1.3: the bar's room under the name
 					if t.mode ~= "bar" then
 						t.mode, t.nS = "bar", nil
 						t.name.FontFace = SILK
@@ -238,22 +248,22 @@ RunService.RenderStepped:Connect(function()
 						t.name.TextStrokeTransparency = 0.2
 						t.rec.Visible = false
 					end
-					if t.nS ~= ns or t.uS ~= us or t.bw ~= bw or t.bh ~= bh then
-						t.nS, t.uS, t.bw, t.bh = ns, us, bw, bh
+					if t.nS ~= ns or t.uS ~= us or t.bw ~= bw or t.bh ~= bh or t.noBar ~= noBar then
+						t.nS, t.uS, t.bw, t.bh, t.noBar = ns, us, bw, bh, noBar
 						t.name.TextSize = ns
 						t.name.Size = UDim2.new(1, 0, 0, ns + 2)
 						t.name.Position = UDim2.new()
 						t.bar.Size = UDim2.fromOffset(bw, bh)
 						t.bar.Position = UDim2.new(0.5, 0, 0, ns + 5)
 						t.nums.Size = UDim2.new(1, 0, 0, us + 2)
-						t.nums.Position = UDim2.new(0.5, 0, 0, ns + 5 + bh + 4)
+						t.nums.Position = UDim2.new(0.5, 0, 0, ns + 5 + gap) -- v1.3 (1.1: ns + 5 + bh + 4)
 						t.w.TextSize, t.l.TextSize = us, us
 					end
 					local nameT = string.upper(e.p.DisplayName)
 					if t.name.Text ~= nameT then t.name.Text = nameT end
 					local w = tonumber(e.p:GetAttribute("ArenaW")) or 0
 					local l = tonumber(e.p:GetAttribute("ArenaL")) or 0
-					t.bar.Visible, t.nums.Visible = ready, ready
+					t.bar.Visible, t.nums.Visible = ready and not noBar, ready -- v1.3
 					if ready then
 						t.bar.BackgroundColor3 = (w + l) > 0 and RED or GREY
 						t.fill.Size = UDim2.fromScale((w + l) > 0 and w / (w + l) or 0, 1)
@@ -262,7 +272,7 @@ RunService.RenderStepped:Connect(function()
 						if t.w.Text ~= wt then t.w.Text = wt end
 						if t.l.Text ~= lt then t.l.Text = lt end
 					end
-					t.frame.Size = UDim2.fromOffset(200, ns + 2 + (ready and (3 + bh + 4 + us + 2) or 0))
+					t.frame.Size = UDim2.fromOffset(200, ns + 2 + (ready and (3 + gap + us + 2) or 0)) -- v1.3 (1.1: 3 + bh + 4)
 					t.frame.Position = UDim2.fromOffset(v.X, v.Y)
 					t.frame.Visible = true
 					placeBadge(t, e.p, small, ns + 2) -- v1.2
@@ -271,7 +281,7 @@ RunService.RenderStepped:Connect(function()
 					continue
 				end
 				if t.mode == "bar" then -- v1.1 switch turned off: back to the 1.0 look
-					t.mode, t.nS = nil, nil
+					t.mode, t.nS, t.noBar = nil, nil, nil
 					t.name.Font = FONT
 					t.name:SetAttribute("FontSwap", nil)
 					t.name.TextStrokeTransparency = 0.45

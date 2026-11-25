@@ -3620,3 +3620,10 @@ Model numbers are generator output (old version = the flag in the last column, b
 - EmoteWheel 1.0 (script): `EmoteWheelEnabled` (true), `EmoteWheelKey` ("B"), `EmoteWheelRadius` (0.336 x screen height). Diagnostics: `EmoteWheelVersion`, `EmoteWheelPlays`, `EmoteWheelPick`; player `EmoteWheelOpen`.
 - ShopScreen 1.1 (script): `ShopEmotesEnabled` (true, read at start). `ShopView` / `ShopSelected` also take the emote category and emote ids.
 - Lab 1.19 (script): `LabEmotesEnabled` (true, read at start; needs `LabUniversalSkinsEnabled`). Player diagnostics `LabLooks` ("skins" / "emotes", "" when the LOOKS tab is not showing), `LabEmoteCards`, `LabEmoteSelected`.
+
+## Post-match backdrop, island tag without the bar, top-10 rainbow badge (VictoryTitles 1.4 / VictoryTitlesAnim 1.4 / RespawnServer 1.1 / IslandTags 1.3 / RankBadge 1.1, 2026-11-24, docs/plans/POSTMATCH_TAGS_v0.1.md)
+- VictoryTitles 1.4 (script): `VictoryStageHoldEnabled` (true), `VictoryHoldDim` (0.35, black over the stage), `VictoryHoldKeep` ("HardpointHUD,EggLoader": guis left on in the hold), `VictoryHoldTripMax` (15 s on the stage after the results while a trip is saving / teleporting). Diagnostic `VictoryHoldState` ("off" / "stage" / "dino"); `VictoryTitlesState` reads "hold".
+- VictoryTitlesAnim 1.4 (module fields): `M.BACKDROP_SWEEP` (0.6 rad), `M.BACKDROP_PERIOD` (14 s), `M.LEN.backdrop` (1e9).
+- RespawnServer 1.1 (script): `RespawnHoldInResultsEnabled` (true). Diagnostic `RespawnResultsHeld`.
+- IslandTags 1.3 (script): `IslandTagsNoBarEnabled` (true), `IslandTagsNumSizeNoBar` (14), `IslandTagsNumSizeNoBarPC` (16).
+- RankBadge 1.1 (module): `RankBadgeRainbowEnabled` (true), `RankBadgeRainbowMax` (10), `RankBadgeRainbowThick` (0.17 x size, min 2 px), `RankBadgeRainbowSpin` (2.4 s a turn; 0 = still). Diagnostic `RankBadgeRainbows`; per badge `RankBadgeRainbowOn`.
