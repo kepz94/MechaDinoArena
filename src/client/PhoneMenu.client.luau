@@ -18,14 +18,19 @@
 --   SQUAD follows under SKILLS and the camera button under MENU on their own (SquadHUD / CameraModes): a 2 x 2 block
 --   [MENU][SKILLS] / [CAMERA][SQUAD] that stays above JUMP.
 -- Diagnostics: PhoneMenuVersion, player PhoneHudV2, PhoneMenuOpen, script PhoneMenuToggles (count).
+-- v1.1 (Kepu 2026-11-25 12:05 "yes fix the box too", mockup docs/mockups/emote_button_v0.1.html "FIX: DRAW 3 BARS"; his iPhone
+--   screenshot showed the ☰ as an empty box: the font has no ☰ glyph): the ☰ is drawn as 3 yellow bars (Frame "Bars", 3 Frames
+--   PhoneMenuBarW (20) x PhoneMenuBarH (3) px, PhoneMenuBarGap (4) px apart, round ends, centred); the button text is empty.
+--   Size, spot, dot, taps unchanged. Switch: script attribute PhoneMenuBarsEnabled (default true, read per frame; false = "☰" text).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 drawn bars
 script:SetAttribute("PhoneMenuVersion", VERSION)
 for k, v in pairs({PhoneHudV2Enabled = true, PhoneMenuY_Skills = 50, PhoneMenuY_Menu = 50, PhoneMenuCloseDelay = 0.15,
-	PhoneMenuToggles = 0}) do
+	PhoneMenuToggles = 0, PhoneMenuBarsEnabled = true, PhoneMenuBarW = 20, PhoneMenuBarH = 3, PhoneMenuBarGap = 4}) do -- v1.1 bars
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 
@@ -84,6 +89,45 @@ do
 	c.Parent = dot
 end
 
+-- v1.1: the ☰ drawn as 3 bars (the font has no ☰ glyph on phones)
+local bars = Instance.new("Frame")
+bars.Name = "Bars"
+bars.AnchorPoint = Vector2.new(0.5, 0.5)
+bars.Position = UDim2.fromScale(0.5, 0.5)
+bars.BackgroundTransparency = 1
+bars.Visible = false
+bars.Parent = burger
+local barList = {}
+for i = 1, 3 do
+	local b = Instance.new("Frame")
+	b.Name = "Bar" .. i
+	b.BackgroundColor3 = YELLOW
+	b.BorderSizePixel = 0
+	b.Parent = bars
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(1, 0)
+	c.Parent = b
+	barList[i] = b
+end
+local barsKey = nil
+local function drawBars()
+	local on = script:GetAttribute("PhoneMenuBarsEnabled") ~= false
+	local w = tonumber(script:GetAttribute("PhoneMenuBarW")) or 20
+	local h = tonumber(script:GetAttribute("PhoneMenuBarH")) or 3
+	local g = tonumber(script:GetAttribute("PhoneMenuBarGap")) or 4
+	local key = tostring(on) .. "|" .. w .. "|" .. h .. "|" .. g
+	if key == barsKey then return end
+	barsKey = key
+	bars.Visible = on
+	burger.Text = on and "" or "☰"
+	bars.Size = UDim2.fromOffset(w, 3 * h + 2 * g)
+	for i, b in ipairs(barList) do
+		b.Size = UDim2.fromOffset(w, h)
+		b.Position = UDim2.fromOffset(0, (i - 1) * (h + g))
+	end
+end
+drawBars()
+
 local function setOpen(v)
 	setP("PhoneMenuOpen", v == true)
 end
@@ -110,6 +154,7 @@ RunService.RenderStepped:Connect(function()
 	setP("PhoneMenuY_Skills", tonumber(script:GetAttribute("PhoneMenuY_Skills")) or 50)
 	setP("PhoneMenuY_Menu", tonumber(script:GetAttribute("PhoneMenuY_Menu")) or 50)
 	gui.Enabled = on and player:GetAttribute("InMenu") ~= true
+	drawBars() -- v1.1 (only does work when a switch or size attribute changed)
 	if not gui.Enabled and player:GetAttribute("PhoneMenuOpen") == true then setOpen(false) end
 	local lb = pg:FindFirstChild("LabButton")
 	local badge = lb and lb:FindFirstChild("Badge", true)

@@ -11,6 +11,11 @@
 -- Shown only out of the menu, alive, and while ReplicatedStorage.EmoteShared exists (EmoteServer on).
 -- Switches (script attributes): EmoteWheelEnabled (true), EmoteWheelKey ("B"), EmoteWheelRadius (0.336 x screen height).
 -- Diagnostics: EmoteWheelVersion, player EmoteWheelOpen, script EmoteWheelPlays, EmoteWheelPick.
+-- v1.1 (Kepu 2026-11-25 11:56 "the emote button needs to be properly sized, it's so small and unreadable on mobile"; 12:05 pick "A"
+--   on mockup docs/mockups/emote_button_v0.1.html "A · The word"): the phone pill reads "EMOTE" (EmoteWheelPillText) in Silkscreen
+--   Bold EmoteWheelPillTextSize (15), FontSwap "keep", size EmoteWheelPillW x EmoteWheelPillH (84 x 44), same spot (right edge 8 px
+--   left of ☰, top 8), panel / yellow stroke look; while EmoteCooldownUntil is ahead it shows the seconds instead. Tap, hold-and-slide,
+--   wheel and PC unchanged. Switch: script attribute EmoteWheelPillBigEnabled (default true, read per frame; false = the 1.0 ☻ pill).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,11 +23,17 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 bigger "EMOTE" pill
 local function default(name, v) if script:GetAttribute(name) == nil then script:SetAttribute(name, v) end end
 script:SetAttribute("EmoteWheelVersion", VERSION)
 default("EmoteWheelEnabled", true)
 default("EmoteWheelKey", "B")
 default("EmoteWheelRadius", 0.336)
+default("EmoteWheelPillBigEnabled", true) -- v1.1
+default("EmoteWheelPillW", 84)
+default("EmoteWheelPillH", 44)
+default("EmoteWheelPillText", "EMOTE")
+default("EmoteWheelPillTextSize", 15)
 script:SetAttribute("EmoteWheelPlays", 0)
 if script:GetAttribute("EmoteWheelEnabled") == false then return end
 
@@ -306,6 +317,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 local lastStop = 0
+local pillBig = nil -- v1.1: the pill look last set (true = "EMOTE", false = 1.0)
 RunService.RenderStepped:Connect(function()
 	local able = canEmote()
 	pill.Visible = able and touchDevice() and player:GetAttribute("PhoneHudV2") == true
@@ -322,7 +334,26 @@ RunService.RenderStepped:Connect(function()
 	end
 	-- cooldown on the pill
 	local left = (tonumber(player:GetAttribute("EmoteCooldownUntil")) or 0) - workspace:GetServerTimeNow()
-	pill.Text = left > 0 and tostring(math.ceil(left)) or "☻"
+	local big = script:GetAttribute("EmoteWheelPillBigEnabled") ~= false -- v1.1
+	if pillBig ~= big then
+		pillBig = big
+		if big then
+			pill.FontFace = Font.new("rbxassetid://12187371840", Enum.FontWeight.Bold) -- Silkscreen Bold
+			pill:SetAttribute("FontSwap", "keep")
+		else
+			pill.Font = Enum.Font.FredokaOne
+			pill:SetAttribute("FontSwap", nil)
+			pill.Size = UDim2.fromOffset(44, 36)
+			pill.TextSize = 22
+		end
+	end
+	if big then
+		local w, h = tonumber(script:GetAttribute("EmoteWheelPillW")) or 84, tonumber(script:GetAttribute("EmoteWheelPillH")) or 44
+		local ts = tonumber(script:GetAttribute("EmoteWheelPillTextSize")) or 15
+		if pill.Size.X.Offset ~= w or pill.Size.Y.Offset ~= h then pill.Size = UDim2.fromOffset(w, h) end
+		if pill.TextSize ~= ts then pill.TextSize = ts end
+	end
+	pill.Text = left > 0 and tostring(math.ceil(left)) or (big and tostring(script:GetAttribute("EmoteWheelPillText") or "EMOTE") or "☻")
 	pill.TextTransparency = left > 0 and 0.3 or 0
 	if toast.Visible and os.clock() - toastAt > 1.4 then toast.Visible = false end
 	-- owner cancel: moving or jumping ends the emote at once

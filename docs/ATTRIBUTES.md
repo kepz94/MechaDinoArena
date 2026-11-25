@@ -3644,3 +3644,7 @@ Model numbers are generator output (old version = the flag in the last column, b
 ## Island tag one line (IslandTags 1.4, 2026-11-25, mockup docs/mockups/island_tag_fix_v0.2.html)
 - IslandTags 1.4 (script): `IslandTagsOneLineEnabled` (true, read per frame; false = the 1.3 name with the record under it), `IslandTagsOneLineGap` (8 px between the name and the record), `IslandTagsOneLineNumGap` (6 px between "<W>W" and "<L>L").
 - IslandTags 1.5 (script): `IslandTagsHideOnEmote` (true, read per frame; no tag over a dino whose character has EmoteId).
+
+## Phone emote button + drawn ☰ (EmoteWheel 1.1 / PhoneMenu 1.1, 2026-11-25, mockup docs/mockups/emote_button_v0.1.html)
+- EmoteWheel 1.1 (script): `EmoteWheelPillBigEnabled` (true, read per frame; false = the 1.0 44 x 36 "☻" pill), `EmoteWheelPillW` (84), `EmoteWheelPillH` (44), `EmoteWheelPillText` ("EMOTE"), `EmoteWheelPillTextSize` (15).
+- PhoneMenu 1.1 (script): `PhoneMenuBarsEnabled` (true, read per frame; false = the "☰" text), `PhoneMenuBarW` (20 px), `PhoneMenuBarH` (3 px), `PhoneMenuBarGap` (4 px).
