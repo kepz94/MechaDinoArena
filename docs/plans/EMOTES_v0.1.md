@@ -73,3 +73,9 @@ Mockup: docs/mockups/battle_emotes_v0.2.html (same artifact 6JSHpr6HG5nSTqorCFXW
   at least a torso half-width to the side so tiny arms (T-Rex) and frills (Dilo) don't hide them; hats and shades sized from
   the Head_eye parts (head boxes include frills). Words = BillboardGui pop over the head, sized to the dino.
 - Prices: still open.
+
+## Lineup LOCKED (Kepu 2026-11-24 20:12)
+"I love these. I want to keep all of these" -> all 12 from mockup v0.2:
+Cooked, Mic Drop, Skill Issue, Tea Time, Too Easy, GG Party, Stomp Stomp, Moon Call, Shake Off, Tiny Arms, Play Dead, Big Yawn.
+Note: the wheel (option A) holds 8, so players own up to 12 and equip 8 in the Lab.
+Still open: prices, emote wheel mockup (UI pick), then the build plan + red-team.
