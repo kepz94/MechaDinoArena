@@ -52,3 +52,24 @@ animations will be sold in the shop next to skins and accessories.
 - Trigger: "A · Emote wheel" (smiley button top right, hold and slide to 1 of 8 slots; PC hold B).
 - The 10: "Swap some" (which ones: waiting on Kepu).
 - Prices: "Let's talk about it" (open).
+
+## v0.2 mockup (Kepu 2026-11-24 19:52)
+Ask: "Remove the ones that aren't expressive enough. Let's get some cartoony emotes going on too. They don't have to be Dino
+related, maybe like a chefs hat poppin up with a cooked word popping up while something funny is happening."
+Mockup: docs/mockups/battle_emotes_v0.2.html (same artifact 6JSHpr6HG5nSTqorCFXWDZ, version 2). 12 to pick 10 from.
+- Cut (my call, Kepu to confirm): Threat Display (the roar already does it), Pigeon Mode, Strut, GG Bow (too small to read in a fight).
+- New cartoon (props + pop-up words):
+  | Name | HUD tag | Props | Word |
+  |---|---|---|---|
+  | Cooked | COOKED | chef hat (head), pan + 2 egg flips (hand), steam | COOKED! (burst) |
+  | Mic Drop | MIC DROP | mic (hand), falls and hits the ground, dust ring | BOOM (burst, where it lands) |
+  | Skill Issue | SKILL ISSUE | protest sign on a pole (hand) | the sign itself |
+  | Tea Time | TEA | teacup on a saucer (hand), steam | *sip*, ahh~ |
+  | Too Easy | TOO EASY | pixel shades drop onto the eyes | TOO EASY (cyan pill) |
+  | GG Party | GG | party hat (head), 60 confetti bits | GG! (burst) |
+- Kept, words added: Stomp Stomp (STOMP!), Moon Call (AWOOO!), Shake Off, Tiny Arms (FLEX!), Play Dead (halo + RIP),
+  Big Yawn (Zzz + CHOMP).
+- How it maps to the game: props = Parts welded to the Head or hand segment Root (hand = ArmL, HandL on Therizino), held out
+  at least a torso half-width to the side so tiny arms (T-Rex) and frills (Dilo) don't hide them; hats and shades sized from
+  the Head_eye parts (head boxes include frills). Words = BillboardGui pop over the head, sized to the dino.
+- Prices: still open.
