@@ -30,3 +30,34 @@ parts (bite + roar only); Shock Cannon / Energy Shield / Thrusters are Raptor pa
 
 Needs from Kepu: bigger Studio viewport while filming (now 847 x 541); access to
 C:\Users\Kepu_\AppData\Local\Roblox\tmp-capture-storage\mcp (or clips copied to Downloads); audio choice; storyboard sign-off.
+
+## Trailer v0.1 cut (2026-11-25)
+
+Kepu 14:33: "1. Yes 2. Go ahead and max the screen ... 4. We won't do audio for now just the clips". Filmed with Windows Game
+Bar (Win+Alt+R, 1920x1012 window capture) in Studio Play, practice match (workspace ModeTestPractice) and the island.
+Cropped 1344x756 at (235,184) (victory: 1218x685 at (20,252), lab: 1244x700 at (36,230)), scaled to 1920x1080, 30 fps,
+H.264, silent, exactly 30.0 s. Captions in Silkscreen Bold (game yellow 255,200,50, ink 26,19,0). File:
+C:\Users\Kepu_\Videos\MechaDinoArena_Trailer_v0.1.mp4 (not in the repo).
+
+| # | In (s) | Shot (source recording, seconds) | Caption |
+|---|---|---|---|
+| 1 | 0.0 | Herrera Cruise Missile dive + impact (14-54-55, 21.3) | MECHA DINOS |
+| 2 | 2.7 | Teams clash on the Summit point (14-54-55, 658.6) | 4V4 ARENA |
+| 3 | 4.7 | Raptor pounce onto a Pachy bot (14-54-55, 249.3) | |
+| 4 | 6.7 | Therizino Reaper's Hook reel (14-54-55, 284.4) | |
+| 5 | 8.1 | Dilo Sonic Hiss, two Pachys SILENCED (14-54-55, 355.9) | |
+| 6 | 10.0 | Troodon Portal Rift zip (14-54-55, 425.3) | |
+| 7 | 12.0 | Roster, 7 dinos x 0.35 s at the gate (14-48-01) | 8 DINOS |
+| 8 | 14.6 | Lab, Raptor parts (14-48-01, 65.0) | BUILD YOUR MECHA |
+| 9 | 16.8 | Shock Cannon shot (14-54-55, 530.7) | |
+| 10 | 18.3 | Thrusters boost up the mountain (14-54-55, 577.0) | |
+| 11 | 20.2 | Hellfire, ElementX, then Rainbow Road run (14-43-33, 14-42-45) | SKINS & TRAILS |
+| 12 | 22.8 | Crane up over the Summit point (14-54-55, 661.0) | HOLD THE POINT |
+| 13 | 25.3 | Victory stage, KING OF THE HILL (14-54-55, 739.6) | |
+| 14 | 27.6 | Fly into the Arena gate, MECHA DINO ARENA card | logo |
+
+Dropped from the storyboard: shot 2 T-Rex roar (no readable roar in the takes) and shot 12 final KO.
+Filming notes: abilities aim where the camera looks (the dino turns to the camera's flat look), so aimed shots need the
+target on the camera's look line; practice bots walk off within ~1 s, so stage them right before the key press.
+Studio restored after filming: ModeTestPractice nil, SkillServer SkillTestMaxAllEnabled false, Output + Asset Manager
+reopened, window back to the left-half snap.
