@@ -88,7 +88,13 @@ local DataStoreService = game:GetService("DataStoreService")
 --   ServerStorage.EmoteReceipt (EmoteServer 1.0) reports an emote intent for the receipt's product that is newer than the player's skin
 --   intent, the receipt goes to EmoteServer ("grant"; "emote" / "repeat" -> PurchaseGranted, else NotProcessedYet). Skin logic unchanged.
 --   Switch: script attribute SkinEmoteReceiptsEnabled (false = skins only, as 1.2). Diagnostic: SkinReceiptsToEmotes (count).
+-- v1.4 (Kepu 2026-11-25 11:00 "Build", plan docs/plans/TRAILS_v1.0.md): trails share the same 149 product. Before the 1.3 emote
+--   check, ServerStorage.TrailReceipt (TrailServer 1.0) is asked for the player's trail intent; when it is newer than both the skin
+--   intent and the emote intent for this product, the receipt goes to TrailServer ("grant"; "trail" / "repeat" -> PurchaseGranted,
+--   else NotProcessedYet). Otherwise the 1.3 emote check and the skin logic run unchanged.
+--   Switch: script attribute SkinTrailReceiptsEnabled (false = as 1.3). Diagnostic: SkinReceiptsToTrails (count).
 local VERSION = "1.3" -- v1.3 emote receipts hook
+VERSION = "1.4" -- v1.4 trail receipts hook
 local STORE = "MDA_Skins_v1"
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local RETRY_GAP = 30
@@ -491,6 +497,30 @@ local function processReceipt(receipt)
 	if not (rarity and player and st and store) then
 		bumpAttr("SkinReceiptsDeferred")
 		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	-- v1.4: a trail buy (TrailServer 1.0) newer than this player's skin and emote intents for the same product takes the receipt
+	local trailHook = ServerStorage:FindFirstChild("TrailReceipt")
+	if trailHook and script:GetAttribute("SkinTrailReceiptsEnabled") ~= false then
+		local okT, tAt = pcall(function() return trailHook:Invoke("intent", receipt.PlayerId, rarity) end)
+		if okT and type(tAt) == "number" then
+			local sI = st.intent
+			local sAt = (sI and sI.rarity == rarity and os.clock() - sI.at < INTENT_TTL) and sI.at or nil
+			local eHook = ServerStorage:FindFirstChild("EmoteReceipt")
+			local eAt
+			if eHook and script:GetAttribute("SkinEmoteReceiptsEnabled") ~= false then
+				local okE, v = pcall(function() return eHook:Invoke("intent", receipt.PlayerId, rarity) end)
+				if okE and type(v) == "number" then eAt = v end
+			end
+			if (not sAt or tAt > sAt) and (not eAt or tAt > eAt) then
+				local okG, r = pcall(function() return trailHook:Invoke("grant", receipt) end)
+				if okG and (r == "trail" or r == "repeat") then
+					bumpAttr("SkinReceiptsToTrails")
+					return Enum.ProductPurchaseDecision.PurchaseGranted
+				end
+				bumpAttr("SkinReceiptsDeferred")
+				return Enum.ProductPurchaseDecision.NotProcessedYet
+			end
+		end
 	end
 	-- v1.3: an emote buy (EmoteServer 1.0) newer than this player's skin intent for the same product takes the receipt
 	local emoteHook = ServerStorage:FindFirstChild("EmoteReceipt")
