@@ -48,7 +48,7 @@ Totals: 6 earned, 14 Robux (5 x 149, 5 x 499, 4 x 999), 1 free.
 - R4 (149 animated) stands as Kepu's plan. R5: keep all tasks.
 
 ## Build plan (after red-team, Kepu 2026-11-24)
-Version tags: UniversalSkins 1.0 (new shared module), SkinCatalog 1.10, SkinServer 1.2, Lab 1.8, SkinFX 1.0 (new client),
+Version tags: UniversalSkins 1.0 (new shared module), SkinServer 1.2, Lab 1.18, SkinFX 1.0 (new client),
 SkinStats 1.0 (new server). Master switch: SkinServer attribute UniversalSkinsEnabled (default true once built; false = the
 1.9 per-dino lists, saves untouched). Do-not-touch: ArenaRecordRules / ArenaRecordServer write path, MainMenu (it already
 re-copies the dino on SkinApplied), MechaLegsServer, the Mecha_ part filter in SkinServer.tag, NEVER_PAINT.
@@ -110,3 +110,8 @@ R3. Desert Runner, Riverstone and Canopy are free today and equipped by players;
 R4. 149 R$ now buys animated skins (Prism, Void Matter) while static ones cost 499 / 999. Recorded as Kepu's call; flag only.
 R5. Scope: 6 tasks touching save data. Smaller first ship = Tasks 1, 3, 5 with the earn skins hidden until SkinStats lands.
     Recommendation: keep all 6; SkinStats is small and earn skins are half the point.
+
+## Built 2026-11-24 (Studio Edit, not published)
+- UniversalSkins 1.0, SkinStats 1.0, KillFeedServer 1.2, KillRegenServer 1.2, SkinServer 1.2, SkinFX 1.0, Lab 1.18 (the plan said
+  "Lab 1.8"; the Lab was already 1.17). SkinCatalog untouched (ALL_UNLOCKED still true).
+- Not built yet: MDA-571 unlock toast outside the Lab, MDA-572 Settings row (both need a mockup pick).

@@ -61,12 +61,30 @@
 --     receipt handler for the first player with a new PurchaseId; SkinTestReceiptRepeat = true re-sends the last test
 --     receipt. Result in SkinTestReceiptResult ("PurchaseGranted" / "NotProcessedYet").
 --   * Diagnostics: script SkinStoreKind ("datastore" / "memory" / "none"), SkinReceipts (granted), SkinReceiptsDeferred.
+-- v1.2 (universal skins, MDA-568, plan docs/plans/UNIVERSAL_SKINS_v0.1.md Task 3, mockup docs/mockups/universal_skins_plan_v0.4.html;
+--   Kepu 2026-11-24: one skin works on every dino, equip per dino, Robux + earn by playing, old free skins "Back to Classic"):
+--   with script attribute UniversalSkinsEnabled (default true, read at start; false = 1.1 per-dino lists, saves untouched) the skins
+--   are ServerStorage.DinoArcade.UniversalSkins 1.0 (cloned to ReplicatedStorage.SkinShared next to SkinCatalog).
+--   * Tag: UniversalSkins.tagModel (same parts as 1.0: visible, not the root, not in Hitboxes or a Mecha_* model) also stores
+--     SkinBaseHex and SkinLP once per part. Paint: UniversalSkins.paintModel (slot colours, patterns, SkinAnim on animated Neon).
+--   * Ids: equipped[species] and owned keys are universal ids; old 1.9 ids are mapped on read (UniversalSkins.fromOld), nothing
+--     is rewritten; an equipped skin the player does not own paints Classic (owns honours SkinCatalog.ALL_UNLOCKED).
+--   * Equip: DinoSkinRequest:FireServer("equip", id) for the current dino, or ("equipFor", id, species) for any of the 8 dinos
+--     (the Lab's dino strip). Checks: "badArg", "notInMenu", "noBody" / "badDino", "unknown", "locked", "same", "ok".
+--   * Buy: ("buy", id, species?) for a Robux skin: "free" (free / earned skins are not sold: "earnOnly"), "notLoaded", "owned",
+--     "noProduct", a credit of its rarity -> "bought", else the rarity's product prompt (1.1 receipt flow, intent = universal id).
+--   * Earned skins: on ArenaW / ArenaL / ArenaStreak / StatKills / StatBestStreak (SkinStats 1.0) / ArenaRecordReady /
+--     SkinStatsReady changes and after a load, every earn skin whose rule is met (UniversalSkins.unlocked; stats w, l, kills,
+--     best = max(StatBestStreak, ArenaStreak)) and is not in owned is written to owned in one UpdateAsync (only after a successful
+--     load); then player SkinUnlocked (id, last one) + SkinUnlockedAt and SkinServerResult "earned".
+--   * Player attributes: SkinOwnedU (comma list of owned universal ids, earned and bought), SkinAllUnlocked (SkinCatalog flag),
+--     SkinEquipped_<Species> (universal id). Diagnostics: script UniversalSkinsOn, SkinEarnGrants.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
-local VERSION = "1.1"
+local VERSION = "1.2" -- v1.2 universal skins
 local STORE = "MDA_Skins_v1"
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local RETRY_GAP = 30
@@ -80,6 +98,7 @@ if script:GetAttribute("SkinServerEnabled") == nil then script:SetAttribute("Ski
 if script:GetAttribute("SkinTestForceLoadFail") == nil then script:SetAttribute("SkinTestForceLoadFail", false) end
 if script:GetAttribute("SkinBuyEnabled") == nil then script:SetAttribute("SkinBuyEnabled", true) end -- v1.1
 if script:GetAttribute("SkinTestMemoryStore") == nil then script:SetAttribute("SkinTestMemoryStore", false) end -- v1.1
+if script:GetAttribute("UniversalSkinsEnabled") == nil then script:SetAttribute("UniversalSkinsEnabled", true) end -- v1.2
 if script:GetAttribute("SkinServerEnabled") == false then return end
 
 local catalogModule = ServerStorage:WaitForChild("DinoArcade"):WaitForChild("SkinCatalog")
@@ -95,6 +114,23 @@ end
 local oldCopy = shared:FindFirstChild("SkinCatalog")
 if oldCopy then oldCopy:Destroy() end
 catalogModule:Clone().Parent = shared
+-- v1.2: universal skins
+local uni = script:GetAttribute("UniversalSkinsEnabled") ~= false
+local US
+do
+	local m = uni and ServerStorage.DinoArcade:FindFirstChild("UniversalSkins")
+	local ok, r = false, nil
+	if m then ok, r = pcall(require, m) end
+	if ok and r then
+		US = r
+		local old = shared:FindFirstChild("UniversalSkins")
+		if old then old:Destroy() end
+		m:Clone().Parent = shared
+	else
+		uni = false
+	end
+end
+script:SetAttribute("UniversalSkinsOn", uni)
 
 local remote = ReplicatedStorage:FindFirstChild("DinoSkinRequest")
 if not remote then
@@ -142,6 +178,11 @@ end
 
 local function equippedId(player, species)
 	local st = states[player]
+	if uni then -- v1.2
+		local id = US.sanitize(st and st.equipped[species])
+		if not US.owns(id, st and st.owned, SC.ALL_UNLOCKED) then id = "classic" end
+		return id
+	end
 	local id = st and st.equipped[species]
 	id = SC.sanitize(species, id)
 	if not SC.owns(species, id, st and st.owned) then id = SC.default(species) end
@@ -153,6 +194,14 @@ local function publish(player)
 	if not st then return end
 	for species in pairs(SC.SKINS) do
 		player:SetAttribute("SkinEquipped_" .. species, equippedId(player, species))
+	end
+	if uni then -- v1.2
+		local ids = {}
+		for _, id in ipairs(US.ORDER) do
+			if type(st.owned) == "table" and st.owned[id] == true then table.insert(ids, id) end
+		end
+		player:SetAttribute("SkinOwnedU", table.concat(ids, ","))
+		player:SetAttribute("SkinAllUnlocked", SC.ALL_UNLOCKED == true)
 	end
 	if buyOn then -- v1.1
 		for species, list in pairs(SC.SKINS) do
@@ -169,7 +218,23 @@ local function publish(player)
 end
 
 -- tag a body once (SkinRole / SkinBaseMaterial)
+local function skipPart(p) -- v1.2: the 1.0 rule (hitboxes, Mecha_* models)
+	if p:FindFirstAncestor("Hitboxes") ~= nil then return true end
+	local char = p:FindFirstAncestorWhichIsA("Model")
+	local m = char
+	while m do
+		local up = m:FindFirstAncestorWhichIsA("Model")
+		if up == nil then return false end -- m is the character itself
+		if m.Name:sub(1, 6) == "Mecha_" then return true end
+		m = up
+	end
+	return false
+end
 local function tag(char, species)
+	if uni then -- v1.2
+		char:SetAttribute("SkinParts", US.tagModel(char, species, SC.roleOf, skipPart))
+		return
+	end
 	local n = 0
 	for _, p in ipairs(char:GetDescendants()) do
 		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" and p.Transparency < 1 then
@@ -197,6 +262,12 @@ local function tag(char, species)
 end
 
 local function paint(char, species, id)
+	if uni then -- v1.2
+		local classic = SC.get(species, "classic")
+		US.paintModel(char, id, classic and classic.colors)
+		char:SetAttribute("SkinApplied", id) -- last: clients react to this one
+		return
+	end
 	local skin = SC.get(species, id) or SC.get(species, SC.default(species))
 	if not skin then return end
 	for _, p in ipairs(char:GetDescendants()) do
@@ -228,6 +299,18 @@ local function isNoApi(err)
 	local e = tostring(err)
 	return e:find("not allowed") ~= nil or e:find("StudioAccessToApisNotAllowed") ~= nil or e:find("API Services") ~= nil
 end
+
+-- v1.2: old ids in owned also count as their universal id (in memory; nothing rewritten)
+local function mapOwned(owned)
+	if type(owned) ~= "table" then return end
+	local add = {}
+	for k, v in pairs(owned) do
+		local n = v == true and US.fromOld(k)
+		if n and n ~= k then add[n] = true end
+	end
+	for k in pairs(add) do owned[k] = true end
+end
+local checkEarn -- v1.2: set below
 
 local function save(player)
 	local st = states[player]
@@ -282,6 +365,7 @@ local function tryLoad(player)
 			if type(value) == "table" then
 				if type(value.owned) == "table" then st.owned = value.owned end
 				if type(value.credits) == "table" then st.credits = value.credits end -- v1.1
+				if uni then mapOwned(st.owned) end -- v1.2
 				if type(value.equipped) == "table" then
 					for species, id in pairs(value.equipped) do
 						if type(species) == "string" and type(id) == "string" and st.changed[species] == nil then
@@ -295,6 +379,7 @@ local function tryLoad(player)
 			end
 			publish(player)
 			dress(player)
+			if uni then task.spawn(checkEarn, player) end -- v1.2
 			return
 		end
 		lastErr = value
@@ -373,6 +458,7 @@ local function takeValue(st, value)
 	if type(value) ~= "table" then return end
 	if type(value.owned) == "table" then st.owned = value.owned end
 	if type(value.credits) == "table" then st.credits = value.credits end
+	if uni then mapOwned(st.owned) end -- v1.2
 end
 local function afterGrant(player, kind, species, skinId)
 	if kind == "skin" then
@@ -539,8 +625,153 @@ if buyOn then
 	end
 end
 
-remote.OnServerEvent:Connect(function(player, action, id)
+-- v1.2: universal equip / buy / earn
+local function dinoOk(species)
+	return type(species) == "string" and SC.SKINS[species] ~= nil and table.find(US.DINOS, species) ~= nil
+end
+local function onEquipUni(player, id, forSpecies)
+	local st = states[player]
+	local char = player.Character
+	local species = forSpecies
+	local result
+	if type(id) ~= "string" or not st then
+		result = "badArg"
+	elseif player:GetAttribute("InMenu") ~= true then
+		result = "notInMenu"
+	elseif species == nil and not (char and char.Parent and speciesOf(player, char)) then
+		result = "noBody"
+	elseif species ~= nil and not dinoOk(species) then
+		result = "badDino"
+	elseif not US.get(id) then
+		result = "unknown"
+	else
+		species = species or speciesOf(player, char)
+		if not US.owns(id, st.owned, SC.ALL_UNLOCKED) then
+			result = "locked"
+		elseif equippedId(player, species) == id then
+			result = "same"
+		else
+			result = "ok"
+			st.equipped[species] = id
+			st.changed[species] = true
+			st.lastChange = os.clock()
+			publish(player)
+			if char and char.Parent and speciesOf(player, char) == species then dress(player, char) end
+		end
+	end
+	player:SetAttribute("SkinLastEquipFor", species or "")
+	setResult(player, result)
+end
+local function onBuyUni(player, id, forSpecies)
+	local st = states[player]
+	local char = player.Character
+	local species = (dinoOk(forSpecies) and forSpecies) or (char and speciesOf(player, char))
+	local sk = US.get(id)
+	local result
+	if type(id) ~= "string" or not st then
+		result = "badArg"
+	elseif player:GetAttribute("InMenu") ~= true then
+		result = "notInMenu"
+	elseif not species then
+		result = "noBody"
+	elseif not sk then
+		result = "unknown"
+	elseif sk.unlock.kind == "free" then
+		result = "free"
+	elseif sk.unlock.kind == "earn" then
+		result = "earnOnly"
+	elseif not (st.loaded and store) then
+		result = "notLoaded"
+	elseif US.owns(id, st.owned, SC.ALL_UNLOCKED) then
+		result = "owned"
+	elseif not SC.PRODUCTS[sk.unlock.rarity] then
+		result = "noProduct"
+	elseif (tonumber(st.credits[sk.unlock.rarity]) or 0) > 0 then
+		local rarity = sk.unlock.rarity
+		local spent
+		local ok, value = pcall(function()
+			return store:UpdateAsync("u" .. player.UserId, function(old)
+				local v = blank(old)
+				spent = nil
+				if v.owned[id] == true then spent = "owned" return v end
+				local n = tonumber(v.credits[rarity]) or 0
+				if n <= 0 then spent = "none" return v end
+				v.credits[rarity] = n - 1
+				v.owned[id] = true
+				spent = "spent"
+				return v
+			end)
+		end)
+		if ok then takeValue(st, value) end
+		if ok and spent == "spent" then
+			player:SetAttribute("SkinLastBought", id)
+			player:SetAttribute("SkinLastBoughtAt", workspace:GetServerTimeNow())
+			equipBought(player, species, id)
+			result = "bought"
+		elseif ok and spent == "owned" then
+			publish(player)
+			result = "owned"
+		else
+			publish(player)
+			result = ok and "noCredit" or "saveFailed"
+		end
+	else
+		st.intent = {id = id, species = species, rarity = sk.unlock.rarity, at = os.clock()}
+		local ok = pcall(function() MarketplaceService:PromptProductPurchase(player, SC.PRODUCTS[sk.unlock.rarity]) end)
+		result = ok and "prompted" or "promptFailed"
+	end
+	setResult(player, result)
+end
+local function statsOf(player)
+	local streak = math.max(tonumber(player:GetAttribute("StatBestStreak")) or 0, tonumber(player:GetAttribute("ArenaStreak")) or 0)
+	return {w = player:GetAttribute("ArenaW"), l = player:GetAttribute("ArenaL"), kills = player:GetAttribute("StatKills"), best = streak}
+end
+checkEarn = function(player)
+	local st = states[player]
+	if not (uni and st and st.loaded and store) or st.granting then return end
+	local stats = statsOf(player)
+	local new = {}
+	for _, id in ipairs(US.ORDER) do
+		local sk = US.SKINS[id]
+		if sk.unlock.kind == "earn" and st.owned[id] ~= true and US.unlocked(id, stats) then table.insert(new, id) end
+	end
+	if #new == 0 then return end
+	st.granting = true
+	local ok, value = pcall(function()
+		return store:UpdateAsync("u" .. player.UserId, function(old)
+			local v = blank(old)
+			for _, id in ipairs(new) do v.owned[id] = true end
+			return v
+		end)
+	end)
+	st.granting = false
+	if not (ok and player.Parent) then return end
+	takeValue(st, value)
+	for _, id in ipairs(new) do st.owned[id] = true end
+	script:SetAttribute("SkinEarnGrants", (script:GetAttribute("SkinEarnGrants") or 0) + #new)
+	publish(player)
+	player:SetAttribute("SkinUnlocked", new[#new])
+	player:SetAttribute("SkinUnlockedAt", workspace:GetServerTimeNow())
+	setResult(player, "earned")
+	task.defer(checkEarn, player) -- stats that moved during the write
+end
+if uni then
+	local WATCH = {ArenaW = true, ArenaL = true, ArenaStreak = true, StatKills = true, StatBestStreak = true, ArenaRecordReady = true,
+		SkinStatsReady = true}
+	local function watch(player)
+		player.AttributeChanged:Connect(function(name)
+			if WATCH[name] then task.spawn(checkEarn, player) end
+		end)
+	end
+	Players.PlayerAdded:Connect(watch)
+	for _, p in ipairs(Players:GetPlayers()) do watch(p) end
+end
+
+remote.OnServerEvent:Connect(function(player, action, id, forSpecies)
 	script:SetAttribute("SkinRequests", (script:GetAttribute("SkinRequests") or 0) + 1)
+	if uni and action == "equip" then return onEquipUni(player, id, nil) end -- v1.2
+	if uni and action == "equipFor" then return onEquipUni(player, id, forSpecies) end -- v1.2
+	if uni and action == "buy" and buyOn then return onBuyUni(player, id, forSpecies) end -- v1.2
 	if action == "buy" and buyOn then return onBuy(player, id) end -- v1.1
 	local st = states[player]
 	local char = player.Character

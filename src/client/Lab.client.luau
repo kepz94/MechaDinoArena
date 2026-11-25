@@ -139,6 +139,27 @@ VERSION = "1.14" -- v1.14 troodon parts (OPart_*)
 VERSION = "1.15" -- v1.15 part clips (live clip + what line + chips + step preview)
 VERSION = "1.16" -- v1.16 SAVE LOADOUT tile
 VERSION = "1.17" -- v1.17 phone HUD v2: SKILLS in the ☰ drawer
+VERSION = "1.18" -- v1.18 universal SKINS tab
+-- v1.18 (universal skins, MDA-570, plan docs/plans/UNIVERSAL_SKINS_v0.1.md Task 5, mockup docs/mockups/universal_skins_plan_v0.4.html;
+--   Kepu 2026-11-24 "Yes, as shown"): when ReplicatedStorage.SkinShared.UniversalSkins exists (SkinServer 1.2) the SKINS tab (full
+--   Lab) shows the universal skins, laid out as the mockup:
+--   * left: filter pills ALL / OWNED / EARN / ROBUX under the tabs, then 3 tiles per row in UniversalSkins.ORDER: a strip of the
+--     skin's colours, name, and a state line: EQUIPPED (green, on the dino on the stage) / OWNED / R$<price> (ROBUX) / a progress
+--     bar (earn skins not owned); a lock on locked tiles. Stroke: selected white, equipped green.
+--   * middle: the stage fills the column (no slot row, no hint) with the dino strip at its bottom (8 dinos, yours outlined green,
+--     the shown one yellow; two rows of 4 when a button would be under 44 px wide, as on phones; tile names shrink to fit). Your dino is the live copy; another dino is ReplicatedStorage.PregameModels.<Dino>.Body, tagged here
+--     with UniversalSkins.tagModel. The shown dino wears the selected skin (UniversalSkins.paintModel; animated blocks via SkinFX).
+--     Tag "PREVIEW" / "PREVIEW · LOCKED".
+--   * right: "SKIN · FREE / OWNED / EARN / R$<price>" (+ " · ANIMATED"), name, colours, "✓ WORKS ON ALL 8 DINOS", a line (owned:
+--     "Owned. Your <DINO> is wearing it." / "Owned. Works on every dino."; Robux: "Unlock it once and every dino can wear it.";
+--     earn: the challenge + "<have> / <need>" and a bar), "Wearing it now: <DINOS>" / "No dino is wearing it yet.", then a button:
+--     EQUIPPED ON <DINO> (outlined) / EQUIP ON <DINO> (green) -> DinoSkinRequest("equipFor", id, dino) / GET · R$<price> (yellow;
+--     "UNLOCK · 1 CREDIT" with a credit; "…" while waiting; LOADING before the save loads) -> ("buy", id, dino) / LOCKED · KEEP
+--     PLAYING (grey).
+--   * owned = player SkinOwnedU, or free, or SkinAllUnlocked; progress from ArenaW + ArenaL, ArenaW, StatKills, max(StatBestStreak,
+--     ArenaStreak). Toasts: "<NAME> ON <DINO>" (equip ok), "<NAME> UNLOCKED!" (bought / earned).
+--   Switch: script attribute LabUniversalSkinsEnabled (default true, read at start; false = the 1.17 tab). Diagnostics: LabSkinCards,
+--   LabSkinSelected, LabSkinView (dino on the stage), LabSkinFilter.
 -- v1.17 (phone HUD v2, MDA-533, plan docs/plans/PHONE_HUD_V2_v1.0.md rule 2, mockup docs/mockups/phone_hud_v0.1.html "A · your
 --   version"): while player attribute PhoneHudV2 is true (PhoneMenu 1.0) and script attribute LabPhoneDrawerEnabled ~= false
 --   (default true, read per frame), a late render step (Last + 40) places the SKILLS pill at (1, -16, 0, PhoneMenuY_Skills (50))
@@ -227,6 +248,8 @@ local skinsOn = script:GetAttribute("LabSkinsEnabled") ~= false -- v1.6
 if script:GetAttribute("LabSkinBuyEnabled") == nil then script:SetAttribute("LabSkinBuyEnabled", true) end -- v1.7
 local skinBuyOn = script:GetAttribute("LabSkinBuyEnabled") ~= false -- v1.7
 local BUY_WAIT = 60 -- v1.7
+if script:GetAttribute("LabUniversalSkinsEnabled") == nil then script:SetAttribute("LabUniversalSkinsEnabled", true) end -- v1.18
+local uniSkinsOn = skinsOn and script:GetAttribute("LabUniversalSkinsEnabled") ~= false -- v1.18
 if script:GetAttribute("LabEnabled") == false then return end
 
 local shared = ReplicatedStorage:WaitForChild("SkillShared", 30)
@@ -802,7 +825,198 @@ local function plainCopy() -- the live character without scripts, effects, hitbo
 	copy:PivotTo(CFrame.lookAt(base.Position, base.Position + flat.Unit):Inverse() * copy:GetPivot())
 	return copy
 end
+-- v1.18: universal skins (see the header)
+local GREEN = Color3.fromRGB(70, 224, 138)
+local USM -- UniversalSkins (client copy)
+local function uniMod()
+	if USM then return USM end
+	local f = ReplicatedStorage:FindFirstChild("SkinShared")
+	local m = f and f:FindFirstChild("UniversalSkins")
+	if m then
+		local ok, r = pcall(require, m)
+		if ok then USM = r end
+	end
+	return USM
+end
+local function useUni() return uniSkinsOn and uniMod() ~= nil end
+local function uniTab() return useUni() and tab == "skins" and mode == "full" end
+local uniView = nil -- dino shown on the SKINS stage (nil = yours)
+local uniFilter = "all"
+local function uniStageSpecies()
+	if uniTab() and uniView then return uniView end
+	return species()
+end
+local function uniOwnedSet()
+	local set = {}
+	local v = player:GetAttribute("SkinOwnedU")
+	if type(v) == "string" then
+		for id in v:gmatch("[^,]+") do set[id] = true end
+	end
+	return set
+end
+local function uniOwns(id) return uniMod().owns(id, uniOwnedSet(), player:GetAttribute("SkinAllUnlocked") == true) end
+local function uniEquipped(sp) return uniMod().sanitize(player:GetAttribute("SkinEquipped_" .. sp)) end
+local function uniStats()
+	return {w = player:GetAttribute("ArenaW"), l = player:GetAttribute("ArenaL"), kills = player:GetAttribute("StatKills"),
+		best = math.max(tonumber(player:GetAttribute("StatBestStreak")) or 0, tonumber(player:GetAttribute("ArenaStreak")) or 0)}
+end
+local function uniPrice(sk)
+	local live = player:GetAttribute("SkinPrice_" .. tostring(sk.unlock.rarity))
+	if type(live) == "number" then return live end
+	return sk.unlock.price
+end
+local function uniState(sk, sp) -- "eq" / "own" / "buy" / "earn"
+	if uniOwns(sk.id) then return uniEquipped(sp) == sk.id and "eq" or "own" end
+	return sk.unlock.kind == "earn" and "earn" or "buy"
+end
+local function uniName(sp) return uniMod().DINO_NAMES[sp] or string.upper(sp) end
+local function uniPaint(model, id, sp)
+	local US, cat = uniMod(), skinCatalog()
+	local classic = cat and cat.get(sp, "classic")
+	US.paintModel(model, id, classic and classic.colors)
+end
+local function swatchStrip(parent, sk, h)
+	local s = frame(parent, "Colors")
+	s.Size = UDim2.new(1, 0, 0, h)
+	s.ClipsDescendants = true
+	corner(s, UDim.new(0, 0.8 * S.ch))
+	local n = math.max(1, math.min(4, #sk.sw))
+	for i = 1, n do
+		local c = frame(s, "C" .. i, Color3.fromHex(sk.sw[i]), 0)
+		c.Position, c.Size = UDim2.fromScale((i - 1) / n, 0), UDim2.fromScale(1 / n, 1)
+	end
+	return s
+end
+local uniFilterRow, uniFilterBtns, uniStrip, uniStripBtns = nil, {}, nil, {}
+local function uniBuild() -- the filter row and the dino strip, made once
+	if uniFilterRow then return end
+	uniFilterRow = frame(left, "UniFilters")
+	list(uniFilterRow, Enum.FillDirection.Horizontal, 6, nil, Enum.VerticalAlignment.Center)
+	for i, f in ipairs({{"all", "ALL"}, {"own", "OWNED"}, {"earn", "EARN"}, {"buy", "ROBUX"}}) do
+		local b = button(uniFilterRow, "F_" .. f[1], PANEL2, 0)
+		b.LayoutOrder = i
+		b.AutomaticSize = Enum.AutomaticSize.X
+		local c = corner(b, UDim.new(1, 0))
+		local l = label(b, "T", Enum.Font.GothamBlack, 10, MUTED, f[2])
+		l.AutomaticSize = Enum.AutomaticSize.X
+		l.Size = UDim2.fromScale(0, 1)
+		local pd = pad(b, 8)
+		uniFilterBtns[f[1]] = {b = b, l = l, c = c, pd = pd}
+		b.Activated:Connect(function()
+			press("skinFilter:" .. f[1])
+			uniFilter = f[1]
+			redraw()
+		end)
+	end
+	uniStrip = frame(stage, "UniStrip")
+	uniStrip.ZIndex = 3
+	for i, sp in ipairs(uniMod().DINOS) do
+		local b = button(uniStrip, "D_" .. sp, PANEL, 0.15)
+		b.ZIndex = 3
+		local c = corner(b, UDim.new(0, 6))
+		local st = stroke(b, WHITE, 0.8, 1.5)
+		local l = label(b, "T", Enum.Font.GothamBlack, 10, GREY, uniName(sp))
+		l.ZIndex = 3
+		l.Size = UDim2.new(1, -4, 1, 0)
+		l.Position = UDim2.fromOffset(2, 0)
+		l.TextScaled = true
+		local fit = Instance.new("UITextSizeConstraint")
+		fit.MinTextSize, fit.MaxTextSize = 6, 12
+		fit.Parent = l
+		uniStripBtns[i] = {sp = sp, b = b, c = c, st = st, l = l, fit = fit}
+		b.Activated:Connect(function()
+			press("skinDino:" .. sp)
+			uniView = sp ~= species() and sp or nil
+			redraw()
+		end)
+	end
+end
+local function drawUniCards()
+	gridList.Parent = nil
+	gridLayout.Parent = grid
+	local US = uniMod()
+	local sp = uniStageSpecies()
+	if not skinSel or not US.get(skinSel) then skinSel = uniEquipped(species()) end
+	local p1 = 0.8 * S.ch
+	local cw3 = S.uniCellW or S.cellW
+	local swH = math.max(3.2 * S.ch, 14)
+	local nS = math.max(1.5 * S.ch, 9)
+	local tS = math.max(1.3 * S.ch, 8)
+	local shown = 0
+	for i, id in ipairs(US.ORDER) do
+		local sk = US.SKINS[id]
+		local st = uniState(sk, sp)
+		local keep = uniFilter == "all" or (uniFilter == "own" and (st == "eq" or st == "own"))
+			or (uniFilter == "earn" and sk.unlock.kind == "earn") or (uniFilter == "buy" and sk.unlock.kind == "robux")
+		if keep then
+			shown += 1
+			local b = button(grid, "Skin_" .. id, PANEL2, 0)
+			b.LayoutOrder = i
+			corner(b, UDim.new(0, 1.2 * S.ch))
+			if flashId == id and os.clock() < flashUntil then
+				stroke(b, YELLOW, 0, 3)
+			elseif skinSel == id then
+				stroke(b, WHITE, 0, 2.5)
+			elseif st == "eq" then
+				stroke(b, GREEN, 0, 2)
+			else
+				stroke(b, WHITE, 0.9, 2)
+			end
+			local sw = swatchStrip(b, sk, swH)
+			sw.Position, sw.Size = UDim2.fromOffset(p1, p1), UDim2.fromOffset(cw3 - 2 * p1, swH)
+			if st == "buy" or st == "earn" then
+				for _, c in ipairs(sw:GetChildren()) do
+					if c:IsA("Frame") then c.BackgroundTransparency = 0.5 end
+				end
+				local lk = label(b, "Lock", Enum.Font.GothamBlack, math.max(1.6 * S.ch, 9), WHITE, "🔒")
+				lk.AnchorPoint = Vector2.new(1, 0)
+				lk.Position = UDim2.fromOffset(cw3 - p1 - 2, p1 + 1)
+				lk.Size = UDim2.fromOffset(math.max(1.8 * S.ch, 10), math.max(1.8 * S.ch, 10))
+			end
+			local nm = label(b, "Name", Enum.Font.FredokaOne, nS, WHITE, sk.name)
+			nm.TextXAlignment = Enum.TextXAlignment.Left
+			nm.TextTruncate = Enum.TextTruncate.AtEnd
+			nm.Position = UDim2.fromOffset(p1, p1 + swH + 0.6 * S.ch)
+			nm.Size = UDim2.fromOffset(cw3 - 2 * p1, nS * 1.2)
+			nm.TextScaled = true -- long names shrink to fit a phone tile (Studio phone test: "DESERT…")
+			local nfit = Instance.new("UITextSizeConstraint")
+			nfit.MinTextSize, nfit.MaxTextSize = 6, nS
+			nfit.Parent = nm
+			local y = p1 + swH + 0.6 * S.ch + nS * 1.2 + 0.4 * S.ch
+			if st == "earn" then
+				local have, need = US.progress(id, uniStats())
+				local bar = frame(b, "Bar", Color3.fromRGB(42, 52, 70), 0)
+				bar.Position, bar.Size = UDim2.fromOffset(p1, y + tS * 0.3), UDim2.fromOffset(cw3 - 2 * p1, math.max(0.9 * S.ch, 4))
+				corner(bar, UDim.new(1, 0))
+				local fill = frame(bar, "Fill", GREEN, 0)
+				fill.Size = UDim2.fromScale(need and need > 0 and math.clamp(have / need, 0, 1) or 0, 1)
+				corner(fill, UDim.new(1, 0))
+			else
+				local txt, col = "OWNED", MUTED
+				if st == "eq" then txt, col = "EQUIPPED", GREEN
+				elseif st == "buy" then txt, col = "R$" .. tostring(uniPrice(sk) or "?"), YELLOW end
+				local sl = label(b, "State", Enum.Font.GothamBlack, tS, col, txt)
+				sl.TextXAlignment = Enum.TextXAlignment.Left
+				sl.TextTruncate = Enum.TextTruncate.AtEnd
+				sl.Position, sl.Size = UDim2.fromOffset(p1, y), UDim2.fromOffset(cw3 - 2 * p1, tS * 1.2)
+			end
+			b.Activated:Connect(function()
+				press("skin:" .. id)
+				skinSel = id
+				redraw()
+			end)
+			table.insert(cards, {id = id, b = b})
+		end
+	end
+	player:SetAttribute("LabSkinCards", shown)
+	player:SetAttribute("LabSkinSelected", skinSel or "")
+	player:SetAttribute("LabSkinView", sp)
+	player:SetAttribute("LabSkinFilter", uniFilter)
+	player:SetAttribute("LabCards", shown)
+	player:SetAttribute("LabModels", 0)
+end
 local function drawSkinCards()
+	if useUni() then drawUniCards() return end -- v1.18
 	gridList.Parent = nil
 	gridLayout.Parent = grid
 	local cat = skinCatalog()
@@ -1275,6 +1489,122 @@ local function clipMount(id, n, col)
 	player:SetAttribute("LabClipParts", clip.c:count())
 end
 
+-- v1.18: universal skin detail
+local function drawUniDetail()
+	local US = uniMod()
+	local sk = skinSel and US.get(skinSel)
+	if not sk then
+		local h = label(detail, "Empty", Enum.Font.GothamBlack, S.stepS, MUTED, "Pick a skin.")
+		h.Size = UDim2.new(1, 0, 0, S.stepS * 2)
+		return
+	end
+	local sp = uniStageSpecies()
+	local dn = uniName(sp)
+	local st = uniState(sk, sp)
+	local kindTxt
+	if sk.unlock.kind == "free" then kindTxt = "FREE"
+	elseif st == "eq" or st == "own" then kindTxt = "OWNED"
+	elseif sk.unlock.kind == "earn" then kindTxt = "EARN"
+	else kindTxt = "R$" .. tostring(uniPrice(sk) or "?") end
+	local sub = label(detail, "Sub", Enum.Font.GothamBlack, S.stepS, SKIN, "SKIN · " .. kindTxt .. (sk.anim and " · ANIMATED" or ""))
+	sub.TextXAlignment = Enum.TextXAlignment.Left
+	sub.Size = UDim2.new(1, 0, 0, S.stepS * 1.2)
+	sub.LayoutOrder = 1
+	local ttl = label(detail, "Title", Enum.Font.FredokaOne, math.max(3 * S.ch, 15), WHITE, sk.name)
+	ttl.TextXAlignment = Enum.TextXAlignment.Left
+	ttl.TextWrapped = true
+	ttl.AutomaticSize = Enum.AutomaticSize.Y
+	ttl.Size = UDim2.new(1, 0, 0, 0)
+	ttl.LayoutOrder = 2
+	local sw = swatchStrip(detail, sk, math.max(3.6 * S.ch, 16))
+	sw.LayoutOrder = 3
+	local all = label(detail, "All", Enum.Font.GothamBlack, S.stepS, GREEN, "✓ WORKS ON ALL 8 DINOS")
+	all.TextXAlignment = Enum.TextXAlignment.Left
+	all.Size = UDim2.new(1, 0, 0, S.stepS * 1.3)
+	all.LayoutOrder = 4
+	local how
+	if st == "eq" then how = "Owned. Your " .. dn .. " is wearing it."
+	elseif st == "own" then how = "Owned. Works on every dino."
+	elseif st == "buy" then how = "Unlock it once and every dino can wear it."
+	else how = sk.unlock.text .. "." end
+	local line = label(detail, "Line", Enum.Font.GothamBlack, S.stepS, GREY, how)
+	line.TextXAlignment = Enum.TextXAlignment.Left
+	line.TextWrapped = true
+	line.AutomaticSize = Enum.AutomaticSize.Y
+	line.Size = UDim2.new(1, 0, 0, 0)
+	line.LayoutOrder = 5
+	if st == "earn" then
+		local have, need = US.progress(sk.id, uniStats())
+		local row = frame(detail, "Progress")
+		row.LayoutOrder = 6
+		row.Size = UDim2.new(1, 0, 0, S.stepS * 1.4 + math.max(1.2 * S.ch, 6) + 0.6 * S.ch)
+		local n = label(row, "N", Enum.Font.GothamBlack, S.stepS, GREEN, ("%d / %d"):format(have or 0, need or 0))
+		n.TextXAlignment = Enum.TextXAlignment.Left
+		n.Size = UDim2.new(1, 0, 0, S.stepS * 1.4)
+		local bar = frame(row, "Bar", Color3.fromRGB(42, 52, 70), 0)
+		bar.Position, bar.Size = UDim2.new(0, 0, 0, S.stepS * 1.4 + 0.3 * S.ch), UDim2.new(1, 0, 0, math.max(1.2 * S.ch, 6))
+		corner(bar, UDim.new(1, 0))
+		local fill = frame(bar, "Fill", GREEN, 0)
+		fill.Size = UDim2.fromScale(need and need > 0 and math.clamp((have or 0) / need, 0, 1) or 0, 1)
+		corner(fill, UDim.new(1, 0))
+	end
+	local wear = {}
+	for _, d in ipairs(US.DINOS) do
+		if uniEquipped(d) == sk.id then table.insert(wear, uniName(d)) end
+	end
+	local w = label(detail, "Wear", Enum.Font.GothamBlack, S.hintS, MUTED,
+		#wear > 0 and ("Wearing it now: " .. table.concat(wear, ", ")) or "No dino is wearing it yet.")
+	w.TextXAlignment = Enum.TextXAlignment.Left
+	w.TextWrapped = true
+	w.AutomaticSize = Enum.AutomaticSize.Y
+	w.Size = UDim2.new(1, 0, 0, 0)
+	w.LayoutOrder = 7
+	local dark = Color3.fromRGB(6, 32, 20)
+	local b
+	if st == "eq" then
+		b = detailButton(detail, "EQUIPPED ON " .. dn, PANEL2, GREEN, false, 8)
+		stroke(b, GREEN, 0, 2)
+	elseif st == "own" then
+		b = detailButton(detail, "EQUIP ON " .. dn, GREEN, dark, true, 8)
+		b.Activated:Connect(function()
+			press("skinEquip:" .. sk.id .. ":" .. sp)
+			local r = ReplicatedStorage:FindFirstChild("DinoSkinRequest")
+			if r then r:FireServer("equipFor", sk.id, sp) end
+		end)
+	elseif st == "buy" then
+		local credits = tonumber(player:GetAttribute("SkinCredits_" .. tostring(sk.unlock.rarity))) or 0
+		local waiting = buyPendingAt ~= nil and os.clock() - buyPendingAt < BUY_WAIT
+		local state
+		if waiting then
+			state = "wait"
+			b = detailButton(detail, "…", YELLOW, DARK_TEXT, false, 8)
+		elseif not skinSaveReady() then
+			state = "loading"
+			b = detailButton(detail, "LOADING", YELLOW, DARK_TEXT, false, 8)
+		elseif credits > 0 then
+			state = "credit"
+			b = detailButton(detail, "UNLOCK · 1 CREDIT", YELLOW, DARK_TEXT, true, 8)
+		else
+			state = "get"
+			b = detailButton(detail, "GET · R$" .. tostring(uniPrice(sk) or "?"), YELLOW, DARK_TEXT, true, 8)
+		end
+		player:SetAttribute("LabSkinBuy", state)
+		if state == "credit" or state == "get" then
+			b.Activated:Connect(function()
+				press("skinBuy:" .. sk.id)
+				local r = ReplicatedStorage:FindFirstChild("DinoSkinRequest")
+				if not r then return end
+				buyPendingAt = os.clock()
+				r:FireServer("buy", sk.id, sp)
+				redraw()
+			end)
+		end
+	else
+		b = detailButton(detail, "LOCKED · KEEP PLAYING", PANEL2, MUTED, false, 8)
+	end
+	b.Size = UDim2.new(1, 0, 0, math.max(5.6 * S.ch, 34))
+end
+
 local function drawDetail()
 	clipPark() -- v1.15
 	for _, ch in ipairs(detail:GetChildren()) do
@@ -1283,6 +1613,7 @@ local function drawDetail()
 	detailPad.PaddingLeft, detailPad.PaddingRight = UDim.new(0, 1.6 * S.ch), UDim.new(0, 1.6 * S.ch)
 	detailPad.PaddingTop, detailPad.PaddingBottom = UDim.new(0, 1.6 * S.ch), UDim.new(0, 1.6 * S.ch)
 	detailList.Padding = UDim.new(0, S.ch)
+	if tab == "skins" and useUni() then drawUniDetail() return end -- v1.18
 	if tab == "skins" then -- v1.6: the selected skin
 		local cat = skinCatalog()
 		local sk = cat and skinSel and cat.get(species(), skinSel)
@@ -1687,6 +2018,62 @@ local function layout()
 	end
 	hint.TextSize = S.hintS
 	hint.Position, hint.Size = UDim2.fromOffset(0, stageH + 1.2 * ch + S.slotH + 1.2 * ch), UDim2.fromOffset(mw, hintH)
+	-- v1.18: universal SKINS tab: filter row, 3 tiles a row, stage fills the column with the dino strip
+	if uniTab() then
+		uniBuild()
+		local fS = math.max(1.4 * ch, 9)
+		local fH = fS + 1.4 * ch
+		uniFilterRow.Visible = true
+		uniFilterRow.Position, uniFilterRow.Size = UDim2.fromOffset(0, tabH + 1.2 * ch), UDim2.fromOffset(lw, fH)
+		uniFilterRow:FindFirstChildOfClass("UIListLayout").Padding = UDim.new(0, 0.8 * ch)
+		for k, f in pairs(uniFilterBtns) do
+			local on = uniFilter == k
+			f.b.Size = UDim2.fromOffset(0, fH)
+			f.b.BackgroundColor3 = on and SKIN or PANEL2
+			f.l.TextSize = fS
+			f.l.TextColor3 = on and Color3.fromRGB(26, 16, 48) or MUTED
+			f.pd.PaddingLeft, f.pd.PaddingRight = UDim.new(0, 1.2 * ch), UDim.new(0, 1.2 * ch)
+		end
+		local gy = tabH + 1.2 * ch + fH + ch
+		grid.Position, grid.Size = UDim2.fromOffset(0, gy), UDim2.fromOffset(lw, bh - gy)
+		S.uniCellW = (lw - 2 * ch - 12) / 3
+		local swH, nS, tS = math.max(3.2 * ch, 14), math.max(1.5 * ch, 9), math.max(1.3 * ch, 8)
+		gridLayout.CellSize = UDim2.fromOffset(S.uniCellW, 0.8 * ch + swH + 0.6 * ch + nS * 1.2 + 0.4 * ch + tS * 1.2 + 0.8 * ch)
+		gridLayout.CellPadding = UDim2.fromOffset(ch, ch)
+		stage.Size = UDim2.fromOffset(mw, bh)
+		slotsRow.Visible, hint.Visible = false, false
+		uniStrip.Visible = true
+		local sH = math.max(1.4 * ch, 9) + 1.8 * ch
+		local g = 0.6 * ch
+		local n = #uniStripBtns
+		local perRow = n
+		local bw = (mw - 2 * ch - g * (n - 1)) / n
+		if bw < 44 then -- narrow stage (phone): two rows of 4 so names and taps fit (Studio phone test: 31 px buttons)
+			perRow = math.ceil(n / 2)
+			bw = (mw - 2 * ch - g * (perRow - 1)) / perRow
+			sH = math.max(sH, 18)
+		end
+		local rows = math.ceil(n / perRow)
+		local stripH = rows * sH + (rows - 1) * g
+		uniStrip.Position, uniStrip.Size = UDim2.new(0, ch, 1, -ch - stripH), UDim2.new(1, -2 * ch, 0, stripH)
+		local shown = uniStageSpecies()
+		for i, s in ipairs(uniStripBtns) do
+			local col, row = (i - 1) % perRow, math.floor((i - 1) / perRow)
+			s.b.Position, s.b.Size = UDim2.fromOffset(col * (bw + g), row * (sH + g)), UDim2.fromOffset(bw, sH)
+			s.c.CornerRadius = UDim.new(0, 0.8 * ch)
+			s.fit.MaxTextSize = math.max(1.4 * ch, 9)
+			local on = s.sp == shown
+			s.b.BackgroundColor3 = on and YELLOW or PANEL
+			s.b.BackgroundTransparency = on and 0 or 0.15
+			s.l.TextColor3 = on and DARK_TEXT or GREY
+			s.st.Color = s.sp == species() and GREEN or WHITE
+			s.st.Transparency = s.sp == species() and 0 or 0.8
+		end
+	else
+		slotsRow.Visible, hint.Visible = true, true
+		if uniFilterRow then uniFilterRow.Visible = false end
+		if uniStrip then uniStrip.Visible = false end
+	end
 	-- right
 	detail.Position, detail.Size = UDim2.fromOffset(0, 0), UDim2.fromOffset(rw, bh)
 	detailCorner.CornerRadius = UDim.new(0, 2 * ch)
@@ -1708,7 +2095,30 @@ local function layout()
 	end
 end
 
+local function rebuildUniStage(sp) -- v1.18: another dino on the SKINS stage
+	local key = "uni|" .. sp
+	if key == stageKey then return end
+	if stagePreview then stagePreview:Destroy() stagePreview = nil end
+	local f = ReplicatedStorage:FindFirstChild("PregameModels")
+	local holder = f and f:FindFirstChild(sp)
+	local src = holder and holder:FindFirstChild("Body")
+	if not src then stageKey = nil return end
+	stageKey = key
+	local copy = src:Clone()
+	for _, d in ipairs(copy:GetDescendants()) do
+		if d:IsA("BasePart") then d.Anchored = true end
+	end
+	local cat = skinCatalog()
+	if cat then uniMod().tagModel(copy, sp, cat.roleOf) end
+	local cf, size = copy:GetBoundingBox()
+	center = cf.Position
+	stageSize = size
+	radius = stageRadius()
+	copy.Parent = view
+	stagePreview = copy
+end
 local function rebuildStage()
+	if uniTab() and uniView and uniView ~= species() then rebuildUniStage(uniView) return end -- v1.18
 	local c = player.Character
 	local names = {}
 	if c then
@@ -1762,8 +2172,12 @@ function redraw()
 	rebuildStage()
 	-- v1.6: stage colours (selected skin on the SKINS tab, the equipped one elsewhere), tag and hint
 	if skinsOn then
-		if stagePreview then paintModel(stagePreview, tab == "skins" and skinSel or equippedSkin()) end
+		if useUni() then -- v1.18
+			local sp = uniStageSpecies()
+			if stagePreview then uniPaint(stagePreview, tab == "skins" and skinSel or uniEquipped(sp), sp) end
+		elseif stagePreview then paintModel(stagePreview, tab == "skins" and skinSel or equippedSkin()) end
 		stageTag.Text = tab == "skins" and "PREVIEW" or "ALL UPGRADES"
+		if uniTab() and skinSel and uniMod().get(skinSel) and not uniOwns(skinSel) then stageTag.Text = "PREVIEW · LOCKED" end -- v1.18
 		hint.Text = tab == "skins" and "Tap a skin to preview it on your dino" or "Tap a card, then EQUIP · tap a slot to choose where it goes"
 	end
 	player:SetAttribute("LabTab", tab)
@@ -1778,6 +2192,7 @@ tabSkins.Activated:Connect(function() -- v1.6
 	tab = "skins"
 	slotSel = nil
 	skinSel = equippedSkin()
+	if useUni() then skinSel = uniEquipped(species()) uniView = nil end -- v1.18
 	redraw()
 end)
 for n, s in ipairs(slotBtns) do
@@ -1902,7 +2317,27 @@ player.AttributeChanged:Connect(function(name)
 		end
 		queue()
 	end
-	if name == "SkinServerResultAt" and mode and player:GetAttribute("SkinServerResult") == "ok" then -- v1.6
+	if useUni() and (name == "SkinOwnedU" or name == "SkinAllUnlocked" or name == "StatKills" or name == "ArenaW" or name == "ArenaL"
+		or name == "StatBestStreak" or name == "ArenaStreak") then queue() end -- v1.18
+	if useUni() and name == "SkinServerResultAt" and mode then -- v1.18: universal toasts
+		local res = player:GetAttribute("SkinServerResult")
+		local US = uniMod()
+		if res == "ok" then
+			local sp = player:GetAttribute("SkinLastEquipFor")
+			sp = (type(sp) == "string" and sp ~= "") and sp or species()
+			local sk = US.get(player:GetAttribute("SkinEquipped_" .. sp))
+			if sk then showToast(string.upper(sk.name) .. " ON " .. uniName(sp)) end
+		elseif res == "bought" or res == "earned" then
+			local sk = US.get(player:GetAttribute(res == "bought" and "SkinLastBought" or "SkinUnlocked"))
+			if sk then
+				showToast(string.upper(sk.name) .. " UNLOCKED!")
+				flashId, flashUntil = sk.id, os.clock() + 1
+				task.delay(1.05, queue)
+			end
+		end
+		queue()
+	end
+	if name == "SkinServerResultAt" and mode and player:GetAttribute("SkinServerResult") == "ok" and not useUni() then -- v1.6 (v1.18: not with universal skins)
 		local cat = skinCatalog()
 		local sk = cat and cat.get(species(), equippedSkin())
 		if sk then showToast(string.upper(sk.name) .. " EQUIPPED") end

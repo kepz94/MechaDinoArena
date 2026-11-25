@@ -22,13 +22,22 @@
 --   read at each kill) a kill gives no heal to any dino. Kills are still counted (DinoKills, KillCount, LastKillTarget,
 --   LastKillWith, KillRegenKills); the bot's KillRegenCredited reads "healOff". The heal after 8 s without damage is
 --   SkillEffects 1.19. true = 1.0 (kill heal back, per character KillRegenEnabled / Fraction / Time).
+-- v1.2 (universal skins, MDA-567, plan docs/plans/UNIVERSAL_SKINS_v0.1.md Task 2; Kepu 2026-11-24 kills = "Arena + island bots"):
+--   every credited kill also fires the BindableEvent KillCredit (child of this script) with (killer UserId, bot model, KilledAt)
+--   for SkinStats 1.0. Nothing else changes.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local VERSION = "1.1"
+local VERSION = "1.2" -- v1.2 KillCredit for SkinStats
 local DEFAULTS = {KillRegenEnabled = true, KillRegenFraction = 0.25, KillRegenTime = 5}
 
 script:SetAttribute("KillRegenServerVersion", VERSION)
+local killCredit = script:FindFirstChild("KillCredit") -- v1.2
+if not killCredit then
+	killCredit = Instance.new("BindableEvent")
+	killCredit.Name = "KillCredit"
+	killCredit.Parent = script
+end
 script:SetAttribute("KillRegenKills", 0)
 if script:GetAttribute("KillRegenHealEnabled") == nil then script:SetAttribute("KillRegenHealEnabled", false) end -- v1.1
 
@@ -62,6 +71,7 @@ local function credit(bot)
 		return
 	end
 	player:SetAttribute("DinoKills", (player:GetAttribute("DinoKills") or 0) + 1)
+	killCredit:Fire(player.UserId, bot, at) -- v1.2
 	char:SetAttribute("KillCount", (char:GetAttribute("KillCount") or 0) + 1)
 	char:SetAttribute("LastKillTarget", bot.Name)
 	char:SetAttribute("LastKillWith", tostring(bot:GetAttribute("KilledWith")))

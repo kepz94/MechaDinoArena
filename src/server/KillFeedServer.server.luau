@@ -25,12 +25,16 @@
 --   player kills): after the killer's "k" stat, when killer and victim are both players (stat ids "u<UserId>"; bots and unknown names are not) the killer also gets the
 --   stat field "pk" (player kills; HardpointServer 1.5 pays kill XP from it at the end of the match). Switch: script attribute
 --   KillFeedPlayerKillStatEnabled (default true, read per kill; false = 1.0, no "pk").
+-- v1.2 (universal skins, MDA-567, plan docs/plans/UNIVERSAL_SKINS_v0.1.md Task 2; Kepu 2026-11-24 kills = "Arena + island bots"):
+--   a kill with a player as the killer also fires the BindableEvent KillCredit (child of this script) with (killer UserId, victim
+--   model, the KilledAt counted or true for a fallback) for SkinStats 1.0. Nothing else changes.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 player-kill stat
+VERSION = "1.2" -- v1.2 KillCredit for SkinStats
 local FALLBACK_WAIT = 0.4
 local HOW = {bite = "Bite", pounce = "Pounce", headbutt = "Headbutt", slash = "Slash", bleed = "Bleed", dilobite = "Bite",
 	dilodart = "Venom Dart", dilovenom = "Venom", troopod = "Pod", troozone = "Zone", scratch = "Scratch", thericlaw = "Claws",
@@ -48,6 +52,13 @@ if not remote then
 	remote = Instance.new("RemoteEvent")
 	remote.Name = "KillFeed"
 	remote.Parent = ReplicatedStorage
+end
+
+local killCredit = script:FindFirstChild("KillCredit") -- v1.2
+if not killCredit then
+	killCredit = Instance.new("BindableEvent")
+	killCredit.Name = "KillCredit"
+	killCredit.Parent = script
 end
 
 local function now() return workspace:GetServerTimeNow() end
@@ -106,6 +117,7 @@ local function report(victim, vWho, killerName, how)
 		return
 	end
 	stat(kWho.key, kWho.name, kWho.team, kWho.sp, kWho.bot, "k")
+	if (tonumber(kWho.id) or 0) > 0 then killCredit:Fire(kWho.id, victim, seen[victim]) end -- v1.2
 	if script:GetAttribute("KillFeedPlayerKillStatEnabled") ~= false and tostring(kWho.key):sub(1, 1) == "u" and tostring(vWho.key):sub(1, 1) == "u" then -- v1.1
 		stat(kWho.key, kWho.name, kWho.team, kWho.sp, kWho.bot, "pk")
 	end
