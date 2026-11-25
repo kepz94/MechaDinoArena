@@ -1,6 +1,7 @@
 # Battle Emotes v1.0 (build plan)
 
-Status: Kepu 2026-11-24 20:27 "Build". Picks: docs/plans/EMOTES_v0.1.md (12 emotes locked 20:12, prices 20:13, unlocks 20:14,
+Status: Kepu 2026-11-24 20:27 "Build". Built in Studio Edit (not published): EmoteCatalog, EmotePose, IdleAnimation 1.48,
+EmoteServer, SkinServer 1.3, EmoteFX, EmoteWheel. Still to build: ShopScreen 1.1 EMOTES tab, Lab 1.19 LOOKS / EMOTES. Picks: docs/plans/EMOTES_v0.1.md (12 emotes locked 20:12, prices 20:13, unlocks 20:14,
 wheel A / Lab LOOKS / PC B / greyed shop slots 20:27). Mockups: docs/mockups/battle_emotes_v0.2.html, docs/mockups/emote_wheel_v0.1.html.
 
 ## Global constraints
@@ -40,3 +41,12 @@ wheel A / Lab LOOKS / PC B / greyed shop slots 20:27). Mockups: docs/mockups/bat
 2. Phone cost: props are a handful of Parts per emote, words one BillboardGui; only characters within EmoteFXRange (120) build them.
 3. Emote as a shield: any damage, move, jump or attack ends it; the camera is untouched.
 4. Pose fit on 8 rigs: the mockup ran the same maths on the real ModelData rigs; Studio check on each species before publish.
+
+## Checked in Studio Play (2026-11-24, Therizino, desktop)
+- All 12 emotes: server "playing", EmotePoseState = the emote id on the client, effect parts spawned (party 46 at peak), ended "done".
+- Moving cancels (EmoteEndReason "move"); a second play inside 3 s -> "cooldown".
+- PC: hold B opens the wheel (8 owned emotes, test switch on), mouse direction highlights a slot, release plays it (EmoteWheelPlays 1).
+- No script errors in the output.
+- Fixes from the test: word size now uses the body height from segment parts (GetExtentsSize counted mecha parts: 27.6 vs ~14);
+  sign scale R.h x 0.35 (was 0.5, board went off the top).
+- Not checked yet: the phone pill in the phone emulator, other species in Play, a real Robux purchase (test switch on).

@@ -3610,3 +3610,11 @@ Model numbers are generator output (old version = the flag in the last column, b
 - UniversalSkins 1.1 (parts): `SkinZF` (0..1 along the body), `SkinYF` (0..1 feet to top), `SkinBig` (bool, biggest 45% of the whole-body blocks), `SkinGlow` / `SkinHi` (hex, lit colours of wave / breathe skins). `SkinAnim` gains "wave", "breathe", "rainbow", "glitch", "storm", "beat", "fire".
 - ShopScreen 1.0 (script): `ShopEnabled` (true, read at start), `ShopTestShowAll` (false; Studio looks only). Player: `ShopOpen`, `ShopBadge`, `ShopItems`, `ShopFeatured`, `ShopFeaturedDay`, `ShopSelected`, `ShopView`, `ShopLastBuy`, `ShopLastPress`.
 - MainMenu 1.29 (script): `MainMenuShopEnabled` (true, read at start), `MainMenuHeroShopH` (12, % of height).
+
+## Battle emotes (EmoteCatalog 1.0 / EmotePose 1.0 / IdleAnimation 1.48 / EmoteServer 1.0 / SkinServer 1.3 / EmoteFX 1.0 / EmoteWheel 1.0, 2026-11-24, plan docs/plans/EMOTES_v1.0.md)
+- EmoteServer 1.0 (script): `EmotesEnabled` (true; false = nothing runs), `EmoteCooldown` (3 s), `EmoteStillSpeed` (2 studs/s flat to start; 2x mid-emote cancels), `EmoteMoveCancel` (0.1 MoveDirection), `EmoteBuyEnabled` (true), `EmoteTestMemoryStore` (false, Studio only). Diagnostics: `EmoteServerVersion`, `EmoteStoreKind`, `EmotePlays`, `EmoteReceipts`.
+- Player (EmoteServer): `EmoteSaveState`, `EmoteOwned` (csv), `EmoteWheel` (csv of 8, "" = empty), `EmoteAllUnlocked`, `EmoteCooldownUntil` (server time), `EmoteResult` (playing / cooldown / moving / notOwned / inMenu / noBody / equipped / prompted / bought / cancelled / ...), `EmoteEndReason` (done / move / jump / hit / died / stopped / attack:<attr>), `EmoteUnlocked`.
+- Character (EmoteServer): `EmoteId`, `EmoteStartedAt` (server time), `EmoteDuration`. IdleAnimation 1.48 (model): `EmotePoseEnabled` (true), diagnostic `EmotePoseState`.
+- SkinServer 1.3 (script): `SkinEmoteReceiptsEnabled` (true), diagnostic `SkinReceiptsToEmotes`.
+- EmoteFX 1.0 (script): `EmoteFXEnabled` (true), `EmoteFXRange` (120 studs), `EmoteWordsEnabled` (true), `EmotePropsEnabled` (true). Diagnostics: `EmoteFXVersion`, `EmoteFXActive`, `EmoteFXParts`.
+- EmoteWheel 1.0 (script): `EmoteWheelEnabled` (true), `EmoteWheelKey` ("B"), `EmoteWheelRadius` (0.336 x screen height). Diagnostics: `EmoteWheelVersion`, `EmoteWheelPlays`, `EmoteWheelPick`; player `EmoteWheelOpen`.

@@ -83,7 +83,18 @@ local function rigOf(char)
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	local headM, headR = char:FindFirstChild("Head"), segRoot(char, "Head")
 	if not (hrp and hum and headM and headR) then return nil end
-	local R = {h = hrp.Size.Y / 2 + hum.HipHeight, H = char:GetExtentsSize().Y}
+	local R = {h = hrp.Size.Y / 2 + hum.HipHeight}
+	-- body height from the segment parts only (GetExtentsSize also counts mecha parts and tags)
+	local top = hrp.Position.Y
+	for _, m in ipairs(char:GetChildren()) do
+		local r = m:IsA("Model") and m:FindFirstChild("Root")
+		if r then
+			for _, p in ipairs(m:GetChildren()) do
+				if p:IsA("BasePart") and p ~= r and p.Transparency < 1 then top = max(top, p.Position.Y + p.Size.Magnitude * .3) end
+			end
+		end
+	end
+	R.H = max(R.h * 1.2, top - (hrp.Position.Y - R.h))
 	local legL = char:FindFirstChild("LegL")
 	local mL = legL and legL:FindFirstChild("Root") and legL.Root:FindFirstChildOfClass("Motor6D")
 	R.sL = (mL and mL.C0.Position.Z < 0) and -1 or 1
@@ -175,7 +186,7 @@ PROPS.sign = function(R)
 	blk(L, Vector3.new(.09, 2.5, .09), C("8a6236"), Vector3.new(0, 1.25, 0))
 	blk(L, Vector3.new(.07, 1, 2), C("fffdf4"), Vector3.new(0, 2.85, 0), nil, nil, nil)
 	L[#L].sign = true
-	return handProp(R, L, nil, R.h * .5)
+	return handProp(R, L, nil, R.h * .35)
 end
 PROPS.halo = function(R)
 	local L = {}
