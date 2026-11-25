@@ -115,3 +115,5 @@ R5. Scope: 6 tasks touching save data. Smaller first ship = Tasks 1, 3, 5 with t
 - UniversalSkins 1.0, SkinStats 1.0, KillFeedServer 1.2, KillRegenServer 1.2, SkinServer 1.2, SkinFX 1.0, Lab 1.18 (the plan said
   "Lab 1.8"; the Lab was already 1.17). SkinCatalog untouched (ALL_UNLOCKED still true).
 - Not built yet: MDA-571 unlock toast outside the Lab, MDA-572 Settings row (both need a mockup pick).
+
+- 2026-11-24 19:05 Kepu: Prism 999 (UniversalSkins 1.2). Robux tiers now 149: Arctic, Sakura, Viper Gold, Void Matter; 499: Lava, Venom, Neon Circuit, Chrome, Glitch, Storm Front, Bloodline, Hellfire; 999: Gold Hunter, Obsidian Fang, Spectral, Element X, Prism.

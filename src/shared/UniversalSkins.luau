@@ -39,10 +39,12 @@
 --   * tagModel also stores SkinZF (0 nose / tail .. 1 along the body), SkinYF (0 feet .. 1 top) and SkinBig (biggest 45% of the
 --     WHOLE blocks by volume); partLook takes a 6th argument info = {big, yf}; setAnim also sets SkinGlow / SkinHi and re-adds
 --     the tag so SkinFX re-reads a repainted block.
+-- v1.2 (Kepu 2026-11-24 19:05 "Make prism $999 actually"): Prism moves from RARE 149 to LEGENDARY 999 (the 999 product). Now
+--   RARE 149: Arctic, Sakura, Viper Gold, Void Matter; LEGENDARY 999: Gold Hunter, Obsidian Fang, Spectral, Element X, Prism.
 local CollectionService = game:GetService("CollectionService")
 
 local US = {}
-US.VERSION = "1.1" -- v1.1 whole-body animation, 4 new skins, Opal removed
+US.VERSION = "1.2" -- v1.2 Prism 999 (v1.1 whole-body animation, 4 new skins, Opal removed)
 US.ANIM_TAG = "SkinAnim"
 US.DINOS = {"Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"}
 US.DINO_NAMES = {Raptor = "RAPTOR", TRex = "T-REX", Pachy = "PACHY", Herrera = "HERRERA", Teno = "TENO", Therizino = "THERIZINO",
@@ -127,7 +129,7 @@ US.SKINS = {
 			if (math.floor(lp.Z / 0.8) + math.floor(lp.Y / 0.8)) % 3 == 0 then return "1A1408", "SmoothPlastic" end
 			return "D4A72C", "Metal"
 		end},
-	prism = {name = "Prism", unlock = robux("RARE", 149), anim = true, glow = "FFFFFF", hi = "FFFFFF", -- v1.1 C · Big panels
+	prism = {name = "Prism", unlock = robux("LEGENDARY", 999), anim = true, glow = "FFFFFF", hi = "FFFFFF", -- v1.1 C · Big panels; v1.2: was RARE 149
 		cols = {belly = "E8F6FF", claws = "9FB6D9", eyes = "FFFFFF", mask = "BFD8FF", accent = "D9C8FF"},
 		mats = {eyes = "Neon", accent = "Glass", belly = "Glass", mask = "Glass"}, sw = {"DDF3FF", "C7E3FF", "F2E9FF", "BDEFF0"},
 		pattern = function(slot, lp, info)
