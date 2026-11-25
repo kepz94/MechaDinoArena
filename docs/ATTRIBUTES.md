@@ -3648,3 +3648,8 @@ Model numbers are generator output (old version = the flag in the last column, b
 ## Phone emote button + drawn ☰ (EmoteWheel 1.1 / PhoneMenu 1.1, 2026-11-25, mockup docs/mockups/emote_button_v0.1.html)
 - EmoteWheel 1.1 (script): `EmoteWheelPillBigEnabled` (true, read per frame; false = the 1.0 44 x 36 "☻" pill), `EmoteWheelPillW` (84), `EmoteWheelPillH` (44), `EmoteWheelPillText` ("EMOTE"), `EmoteWheelPillTextSize` (15).
 - PhoneMenu 1.1 (script): `PhoneMenuBarsEnabled` (true, read per frame; false = the "☰" text), `PhoneMenuBarW` (20 px), `PhoneMenuBarH` (3 px), `PhoneMenuBarGap` (4 px).
+
+## Island shop stand (ShopStandServer 1.0 / ShopStandClient 1.0 / ShopScreen 1.3, 2026-11-25, mockup docs/mockups/shop_stand_v0.1.html)
+- ShopStandServer 1.0 (script, read at start): `ShopStandEnabled` (true), `ShopStandSide` (100 studs along the gate's right), `ShopStandFwd` (34 studs along the gate's forward), `ShopStandAim` (82, the point it faces), `ShopStandGroundY` (1.3, plaza top), `ShopStandScale` (1.35), `ShopStandRange` (24 studs), `ShopStandFrontGap` (4). Diagnostics `ShopStandServerVersion`, `ShopStandState`, `ShopStandParts`. Model Workspace.ShopStand attributes `ShopStandFront` (Vector3), `ShopStandRange`.
+- ShopStandClient 1.0 (script): `ShopStandClientEnabled` (true, per frame), `ShopStandBtnW` (150), `ShopStandBtnH` (46), `ShopStandBtnGap` (10 px over JUMP), `ShopStandBtnRight` (24), `ShopStandBtnUp` (150, PC corner). Diagnostics `ShopStandClientVersion`, `ShopStandOpens`, `ShopStandBtnSpot` ("jump" / "corner"); player `ShopStandNear`.
+- ShopScreen 1.3 (script): `ShopStandOpenEnabled` (true, read per open). Player `ShopOpenFrom` ("menu" / "stand" / "").

@@ -37,6 +37,11 @@
 --   line. BUY -> ReplicatedStorage.DinoTrailRequest:FireServer("buy", id); results from player TrailResult ("bought" ->
 --   "<NAME> UNLOCKED", "owned" -> "ALREADY YOURS"). Not in FEATURED. Switch: script attribute ShopTrailsEnabled (default true,
 --   read at start; false = the 1.1 shop). Diagnostic: ShopTrailPreview (trail id on the preview or "").
+-- v1.3 (Kepu 2026-11-25 13:24 island shop stand, mockup docs/mockups/shop_stand_v0.1.html "open shop"): Open:Invoke("stand") also
+--   opens the Shop out of the menu while player ShopStandNear == true (ShopStandClient 1.0, at the ShopStandServer 1.0 stall).
+--   Same Shop, same tabs and BUY. Player attribute ShopOpenFrom = "menu" / "stand" while open ("" closed). Opened from the stand it
+--   closes on its own when the player goes back to the menu, dies or leaves the stand's range. Switch: script attribute
+--   ShopStandOpenEnabled (default true, read per open; false = menu only, as 1.2).
 -- Diagnostics (LocalPlayer): ShopVersion, ShopOpen, ShopItems (listed), ShopFeatured ("id,id"), ShopSelected, ShopView (dino),
 --   ShopLastBuy (state).
 local Players = game:GetService("Players")
@@ -46,6 +51,7 @@ local GuiService = game:GetService("GuiService")
 
 local VERSION = "1.1" -- v1.1 EMOTES tab
 VERSION = "1.2" -- v1.2 TRAILS tab
+VERSION = "1.3" -- v1.3 opens from the island stand
 local BUY_WAIT = 60
 local player = Players.LocalPlayer
 player:SetAttribute("ShopVersion", VERSION)
@@ -859,10 +865,14 @@ function redraw()
 	player:SetAttribute("ShopView", sp)
 end
 
-local function setOpen(on)
-	if on and player:GetAttribute("InMenu") ~= true then return false end
+local openFrom = "" -- v1.3: "menu" / "stand" while open
+local function setOpen(on, from)
+	local stand = from == "stand" and script:GetAttribute("ShopStandOpenEnabled") ~= false and player:GetAttribute("ShopStandNear") == true -- v1.3
+	if on and player:GetAttribute("InMenu") ~= true and not stand then return false end
 	open = on
 	gui.Enabled = on
+	openFrom = on and (player:GetAttribute("InMenu") == true and "menu" or "stand") or ""
+	player:SetAttribute("ShopOpenFrom", openFrom) -- v1.3 (set before ShopOpen so readers of ShopOpen see it)
 	player:SetAttribute("ShopOpen", on)
 	if on then
 		seenThisSession = true
@@ -874,7 +884,10 @@ local function setOpen(on)
 	end
 	return true
 end
-openFn.OnInvoke = function() return setOpen(true) end
+openFn.OnInvoke = function(from) return setOpen(true, from) end -- v1.3: from "stand"
+player:GetAttributeChangedSignal("ShopStandNear"):Connect(function() -- v1.3: left the stand (died, moved, menu) -> close
+	if open and openFrom == "stand" and player:GetAttribute("ShopStandNear") ~= true then setOpen(false) end
+end)
 closeFn.OnInvoke = function() setOpen(false) return true end
 closeB.Activated:Connect(function() press("close") setOpen(false) end)
 local function stepDino(d)
