@@ -36,3 +36,9 @@ Mockup: docs/mockups/postmatch_tags_v0.1.html (artifact TJZRUMVkr4jCQ1ib7bLKcW).
   shot for the killer cam ("the Dino fighting"). RespawnServer 1.1 would make it last longer (held through the results).
 - Fix: RespawnScreen 1.1 yields while VictoryCamOwned (VictoryTitles 1.4). Not proven live: in Studio also read
   VictoryTitlesLast after a real 4-title show (a step error on the 4th title would also end the show early).
+
+## Presentation mode (Kepu 22:37 "once the game is done then it just goes into presentation mode and no more fighting")
+- PracticeServer 1.15: at "results" every living dino (humans + bots) is anchored where it stands, humans get the combat lock,
+  bots stop thinking and don't respawn; thawed when the results end. With RespawnServer 1.1 (no respawn) and VictoryTitles 1.4
+  (camera on the stage) nothing in the match moves or fights after the win. RespawnScreen 1.1 stays as a guard (a damage-over-
+  time tick can still finish someone).

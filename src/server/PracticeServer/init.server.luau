@@ -148,6 +148,16 @@ VERSION = "1.11" -- v1.11 pre-match countdown hold
 VERSION = "1.12" -- v1.12 pre-match lock (PrematchLockUntil)
 VERSION = "1.13" -- v1.13 respawn hold: park, place on release
 VERSION = "1.14" -- v1.14 respawn: place once
+VERSION = "1.15" -- v1.15 results freeze: no more fighting once the match is won
+-- v1.15 (Kepu 2026-11-24 22:37 "once the game is done then it just goes into presentation mode and no more fighting in the
+--   background"): when Hardpoint HpPhase turns "results" in a match (phase "match"), everyone stops:
+--   * every living human's HumanoidRootPart is server-owned and anchored where it stands (velocity zeroed) and the character
+--     gets PrematchLockUntil = HpResultsEndAt + 1 (the v1.12 lock: every combat / part remote is dropped by the server gate);
+--   * every living bot's root is anchored and bots are not stepped (no moving, no attacks) and none respawn;
+--   * a character added during the results (Roblox's respawn, parked by v1.13) is left to the park.
+--   When HpPhase leaves "results" (next match / team screen; Arena players are on their way to the island) the roots this
+--   froze are unanchored with ownership back to auto and the lock set to 0. Switch: script attribute PrResultsFreezeEnabled
+--   (default true, read when the results start and per tick). Diagnostic: PrResultsFrozen (roots frozen now: humans + bots).
 -- v1.14 (MDA-542; Kepu 2026-11-13 22:12 "When I change the Dino after a death it does a weird animation when I spawn like I'm
 --   fast forwarding to a spot", 2026-11-15 "Dino slid/ran to a spot"): a new body is placed 0.6 s after CharacterAdded (onPlayer).
 --   After a dino change the respawn release can come inside those 0.6 s, so the body was placed twice (Studio: placed 5.84,
@@ -547,6 +557,58 @@ local function placeHuman(pl)
 		if lockOn() then c:SetAttribute("PrematchLockUntil", lockUntil()) end -- v1.12
 		script:SetAttribute("PrPrematchHeld", (script:GetAttribute("PrPrematchHeld") or 0) + 1)
 	end
+end
+
+-- v1.15: results freeze (see the header)
+if script:GetAttribute("PrResultsFreezeEnabled") == nil then script:SetAttribute("PrResultsFreezeEnabled", true) end
+local frozenRoots = {} -- [HumanoidRootPart] = true
+local function resultsFrozen()
+	return script:GetAttribute("PrResultsFreezeEnabled") ~= false and phase == "match" and hpState ~= nil
+		and hpState:GetAttribute("HpPhase") == "results"
+end
+local function freezeRoot(hrp)
+	if not hrp or not hrp.Parent or hrp.Anchored then return end
+	pcall(function() hrp:SetNetworkOwner(nil) end)
+	hrp.AssemblyLinearVelocity = Vector3.zero
+	hrp.AssemblyAngularVelocity = Vector3.zero
+	hrp.Anchored = true
+	frozenRoots[hrp] = true
+end
+local function freezeAll()
+	local untilT = (tonumber(hpState:GetAttribute("HpResultsEndAt")) or now()) + 1
+	for _, h in ipairs(humans) do
+		local c = h.player and h.player.Character
+		local hum = c and c:FindFirstChildOfClass("Humanoid")
+		if c and hum and hum.Health > 0 and h.player:GetAttribute("PrParked") ~= true then
+			freezeRoot(c:FindFirstChild("HumanoidRootPart"))
+			c:SetAttribute("PrematchLockUntil", untilT)
+		end
+	end
+	for _, rec in ipairs(botRecs) do
+		if rec.model and rec.model.Parent and not rec.deadAt then freezeRoot(rec.hrp) end
+	end
+	local n = 0
+	for _ in pairs(frozenRoots) do n += 1 end
+	script:SetAttribute("PrResultsFrozen", n)
+end
+local function thawAll()
+	for hrp in pairs(frozenRoots) do
+		if hrp.Parent then
+			if hrp.Anchored then
+				hrp.Anchored = false
+				pcall(function() hrp:SetNetworkOwnershipAuto() end)
+			end
+			if hrp.Parent:GetAttribute("PrematchLockUntil") ~= nil then hrp.Parent:SetAttribute("PrematchLockUntil", 0) end
+		end
+	end
+	table.clear(frozenRoots)
+	script:SetAttribute("PrResultsFrozen", 0)
+end
+if hpState then
+	hpState:GetAttributeChangedSignal("HpPhase"):Connect(function()
+		if resultsFrozen() then freezeAll()
+		elseif next(frozenRoots) ~= nil then thawAll() end
+	end)
 end
 
 -- v1.13: respawn hold (see the header)
@@ -1204,12 +1266,12 @@ RunService.Heartbeat:Connect(function(dt)
 				alive += 1
 				ctx.home = cnt[rec.team] > 0 and sum[rec.team] / cnt[rec.team] or nil
 				local stepFn = (Brain2 and get("PrBrainV2Enabled") ~= false) and Brain2.step or Brain.step -- v1.7
-				if not prematchHeld() then -- v1.11: bots stand during the pre-match hold
+				if not prematchHeld() and not resultsFrozen() then -- v1.11: bots stand during the pre-match hold; v1.15: and the results
 					local ok, err = pcall(stepFn, rec, ctx)
 					if not ok then script:SetAttribute("PrBrainError", tostring(err)) end
 				end
 			end
-		elseif rec.respawnAt and os.clock() >= rec.respawnAt then
+		elseif rec.respawnAt and os.clock() >= rec.respawnAt and not resultsFrozen() then -- v1.15: no respawn in the results
 			rec.respawnAt = nil
 			spawnBot(rec)
 		end
