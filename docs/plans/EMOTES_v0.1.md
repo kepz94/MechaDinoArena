@@ -82,6 +82,11 @@ Still open: prices, emote wheel mockup (UI pick), then the build plan + red-team
 
 ## Prices (Kepu 2026-11-24 20:13)
 "We'll do stomp stomp gg and play dead as ones you unlock. Everything else will be 149"
-- Unlock (earn by playing): Stomp Stomp, GG Party, Play Dead. Challenge per emote: asked 20:13, pending.
+- Unlock (earn by playing), Kepu's answers 20:14:
+  | Emote | Unlock | Stat (already saved) |
+  |---|---|---|
+  | GG Party | free from the start | none |
+  | Stomp Stomp | win 10 Arena matches | ArenaW >= 10 (ArenaRecordServer) |
+  | Play Dead | win 5 Arena matches in a row | StatBestStreak >= 5 (SkinStats) |
 - Robux 149: Cooked, Mic Drop, Skill Issue, Tea Time, Too Easy, Moon Call, Shake Off, Tiny Arms, Big Yawn (9).
 - Product: the existing 149 tier product (SHOP v1.0 direction: one product per price, shared by every item type).
