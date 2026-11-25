@@ -3608,3 +3608,5 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkinFX 1.0 (script): `SkinFXEnabled` (true, read per tick). Player: `SettingAnimatedSkins` (nil / true = animate, false = off; set by the MDA-572 Settings row), diagnostics `SkinFXVersion`, `SkinFXBlocks`, `SkinFXLive`.
 - Lab 1.18 (script): `LabUniversalSkinsEnabled` (true, read at start). Player diagnostics `LabSkinView`, `LabSkinFilter` (plus 1.6's `LabSkinCards`, `LabSkinSelected`).
 - UniversalSkins 1.1 (parts): `SkinZF` (0..1 along the body), `SkinYF` (0..1 feet to top), `SkinBig` (bool, biggest 45% of the whole-body blocks), `SkinGlow` / `SkinHi` (hex, lit colours of wave / breathe skins). `SkinAnim` gains "wave", "breathe", "rainbow", "glitch", "storm", "beat", "fire".
+- ShopScreen 1.0 (script): `ShopEnabled` (true, read at start), `ShopTestShowAll` (false; Studio looks only). Player: `ShopOpen`, `ShopBadge`, `ShopItems`, `ShopFeatured`, `ShopFeaturedDay`, `ShopSelected`, `ShopView`, `ShopLastBuy`, `ShopLastPress`.
+- MainMenu 1.29 (script): `MainMenuShopEnabled` (true, read at start), `MainMenuHeroShopH` (12, % of height).

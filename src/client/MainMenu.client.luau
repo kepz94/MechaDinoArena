@@ -177,6 +177,13 @@ VERSION = "1.25" -- v1.25 island loading screen
 VERSION = "1.26" -- v1.26 Arena record block
 VERSION = "1.27" -- v1.27 first-time flow: hidden during it + TUTORIAL
 VERSION = "1.28" -- v1.28 hero layout (mockup A)
+VERSION = "1.29" -- v1.29 SHOP tile
+-- v1.29 (shop, plan docs/plans/SHOP_v1.0.md, mockup docs/mockups/main_menu_shop_v0.1.html option A; Kepu 2026-11-24 19:12 "build
+--   the shop knowing other tabs will be added", pick "A · Featured + rows"): with the hero layout, an orange SHOP tile (ORANGE, dark
+--   text, "R$" over "SHOP") in the left rail under LAB, the same width, height MainMenuHeroShopH (12, % of height, min 44 px);
+--   TUTORIAL moves under it. A pink "NEW" pill on its top-right corner while player ShopBadge is true (ShopScreen 1.0). Press ->
+--   ShopScreen's BindableFunction "Open". Switch: script attribute MainMenuShopEnabled (default true, read at start; false = 1.28,
+--   no tile). Diagnostic: player MainMenuLastPress "shop".
 -- v1.28 (Kepu 2026-11-24 16:57 "redoing the main menu ... It looks awkwardly spaced. Look at how other games handle this";
 --   17:05 pick "A" on docs/mockups/main_menu_redo_v0.1.html "A · Hero center"): while script attribute
 --   MainMenuHeroLayoutEnabled ~= false (default true, read at start) a hero pass runs at the end of every layout() and moves
@@ -552,6 +559,21 @@ labText.Text = "GO TO THE LAB"
 labText.Size = UDim2.fromScale(1, 1)
 labB.b.Visible = labOn
 labB.shadow.Visible = labOn
+-- v1.29: SHOP tile (hero layout only; placed in heroLayout)
+if script:GetAttribute("MainMenuShopEnabled") == nil then script:SetAttribute("MainMenuShopEnabled", true) end
+local shopOn = script:GetAttribute("MainMenuShopEnabled") ~= false and script:GetAttribute("MainMenuHeroLayoutEnabled") ~= false
+local shopB = blockButton(root, "ShopGo", ORANGE)
+local shopRs = label(shopB.b, "Rs", Enum.Font.FredokaOne, Color3.fromRGB(42, 15, 0), "R$")
+local shopText = label(shopB.b, "T", Enum.Font.FredokaOne, Color3.fromRGB(42, 15, 0), "SHOP")
+local shopBadge = label(shopB.b, "Badge", Enum.Font.FredokaOne, WHITE, "NEW")
+shopRs.Text, shopText.Text, shopBadge.Text = "R$", "SHOP", "NEW" -- label() here takes no text argument
+shopBadge.BackgroundTransparency = 0
+shopBadge.BackgroundColor3 = Color3.fromRGB(255, 90, 110)
+shopBadge.AnchorPoint = Vector2.new(1, 0)
+shopBadge.ZIndex = 3
+local shopBadgeC = corner(shopBadge)
+shopB.b.Visible = shopOn
+shopB.shadow.Visible = shopOn
 
 -- right column
 local titleSmall = label(root, "TitleSmall", Enum.Font.FredokaOne, YELLOW)
@@ -1111,7 +1133,7 @@ if script:GetAttribute("MainMenuHeroLayoutEnabled") == nil then script:SetAttrib
 local heroOn = script:GetAttribute("MainMenuHeroLayoutEnabled") ~= false
 player:SetAttribute("MainMenuHeroLayout", heroOn and "on" or "off")
 for k, v in pairs({MainMenuHeroEdge = 3, MainMenuHeroBottom = 4, MainMenuHeroPlayW = 30, MainMenuHeroPlayH = 17, MainMenuHeroRailW = 20,
-	MainMenuHeroLabH = 14, MainMenuHeroTutH = 9, MainMenuHeroRecordScale = 1.35}) do
+	MainMenuHeroLabH = 14, MainMenuHeroTutH = 9, MainMenuHeroRecordScale = 1.35, MainMenuHeroShopH = 12}) do -- v1.29: + ShopH
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function hn(k, d) return tonumber(script:GetAttribute(k)) or d end
@@ -1244,10 +1266,26 @@ local function heroLayout()
 		labText.Text = "LAB"
 		labText.TextSize = math.max(6 * ch, 20)
 	end
+	local tutY = railY + (labOn and (labH + 1.6 * ch) or 0)
+	if shopOn then -- v1.29: SHOP under LAB, TUTORIAL under SHOP
+		local shopH = math.max(hn("MainMenuHeroShopH", 12) * ch, 44)
+		placeButton(shopB, edge, tutY, railW, shopH, 1.6 * ch, 0.9 * ch, drop)
+		local rsS, tS = math.max(3.4 * ch, 13), math.max(4.6 * ch, 16)
+		shopRs.TextSize, shopText.TextSize = rsS, tS
+		local blockH = rsS + 0.2 * ch + tS
+		shopRs.Position, shopRs.Size = UDim2.fromOffset(0, (shopH - 0.9 * ch - blockH) / 2), UDim2.new(1, 0, 0, rsS)
+		shopText.Position, shopText.Size = UDim2.fromOffset(0, (shopH - 0.9 * ch - blockH) / 2 + rsS + 0.2 * ch), UDim2.new(1, 0, 0, tS)
+		local bS = math.max(1.6 * ch, 9)
+		shopBadge.TextSize = bS
+		shopBadge.Size = UDim2.fromOffset(bS * 3 + 1.2 * ch, bS + 0.8 * ch)
+		shopBadge.Position = UDim2.new(1, 0.8 * ch, 0, -0.8 * ch)
+		shopBadgeC.CornerRadius = UDim.new(1, 0)
+		tutY += shopH + 1.6 * ch
+	end
 	local tutB = root:FindFirstChild("Tutorial")
 	if tutB then
 		tutB.AutomaticSize = Enum.AutomaticSize.None
-		heroPin(tutB, {anchor = Vector2.zero, pos = UDim2.fromOffset(edge, railY + (labOn and (labH + 1.6 * ch) or 0)),
+		heroPin(tutB, {anchor = Vector2.zero, pos = UDim2.fromOffset(edge, tutY),
 			size = UDim2.fromOffset(railW, math.max(hn("MainMenuHeroTutH", 9) * ch, 34))})
 	end
 	-- dino picker + slots, bottom centre
@@ -1594,6 +1632,16 @@ labB.b.Activated:Connect(function() -- v1.2
 	local open = lab and lab:FindFirstChild("Open")
 	if open then pcall(function() open:Invoke("full") end) end
 end)
+shopB.b.Activated:Connect(function() -- v1.29
+	press("shop")
+	local ps = player:FindFirstChild("PlayerScripts")
+	local sh = ps and ps:FindFirstChild("ShopScreen")
+	local open = sh and sh:FindFirstChild("Open")
+	if open then pcall(function() open:Invoke() end) end
+end)
+local function shopBadgeShow() shopBadge.Visible = player:GetAttribute("ShopBadge") == true end -- v1.29
+player:GetAttributeChangedSignal("ShopBadge"):Connect(shopBadgeShow)
+shopBadgeShow()
 prevB.b.Activated:Connect(function() switchDino(-1) end)
 nextB.b.Activated:Connect(function() switchDino(1) end)
 -- v1.3: the egg while the island loads (this server's mode only; a hop uses the travel loader)
