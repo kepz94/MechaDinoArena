@@ -25,8 +25,13 @@ STOP, ISLAND (full) / MATCH (soft: opacity x0.55, life x0.6, particles x0.5).
 Research (on the mockup): Rocket League boost trails (speed, rarity, later remade cheaper), Fortnite contrails (Stormy Descent
 covered half the view: keep trails low and short), Roblox Trail objects (Static mode stamps prints), Nitro Type (simple slot).
 
+- 23:31 "I love these. And yes I agree with 2&3": all 10 kept; Neon Streak free; Fossil Prints = Win 25 Arena matches; Comet Tail =
+  Get 250 kills.
+
 ## Open
-- Keep all 10 / swap; which is free; the 2 earned and their goals.
-- Next: Shop TRAILS tab + Lab LOOKS TRAILS pill mockup, then the build plan.
+- Mockup docs/mockups/trails_shop_lab_v0.1.html (artifact GUVxJFfX7ij1jScCSGU5nd): Shop TRAILS tab (after SKINS / EMOTES, the 7
+  unowned 149 trails, preview + BUY), Lab LOOKS > TRAILS pill (NO TRAIL + 10 cards with ON / OWNED / FREE / earn progress / R$149,
+  stage preview, EQUIP / EQUIPPED / BUY / LOCKED). Waiting: yes on both, and equip A (one trail for every dino, rec) or B (per dino).
+- Then the build plan, then "Build".
 - Ability trails that already exist (do not touch, and stay readable next to): ServoDash, Adrenaline, Tether, Screech, Blade,
   HerreraParts, DiloPartsVFX, TrooFX, TrooSlotFX, TheriFX.
