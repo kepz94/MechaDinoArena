@@ -29,3 +29,10 @@ Mockup: docs/mockups/postmatch_tags_v0.1.html (artifact TJZRUMVkr4jCQ1ib7bLKcW).
   RankBadge 1.1 (rainbow 1-10).
 - To do when the PC is on: install (hash-checked), loadstring compile, Studio Play: a test results (titles + hold, draw = empty
   stage), die at the end -> stays parked, phone emulator tag + badge, kill feed / lineup / boards badge, then report.
+
+## 4th title cuts to the live game (Kepu 22:34)
+- Most likely cause (code): RespawnScreen's death cam (render step Camera + 9) overrides VictoryTitles' camera (Camera + 2)
+  whenever RespawnHold is true. The match keeps running during the results, so dying mid-show (bots still fight) swaps the title
+  shot for the killer cam ("the Dino fighting"). RespawnServer 1.1 would make it last longer (held through the results).
+- Fix: RespawnScreen 1.1 yields while VictoryCamOwned (VictoryTitles 1.4). Not proven live: in Studio also read
+  VictoryTitlesLast after a real 4-title show (a step error on the 4th title would also end the show early).

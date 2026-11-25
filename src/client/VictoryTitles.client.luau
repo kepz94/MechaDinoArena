@@ -59,6 +59,8 @@
 --   InMenu, VictoryTitlesEnabled false or VictoryStageHoldEnabled false. A title show that is due takes over from the hold.
 --   Switch: script attribute VictoryStageHoldEnabled (default true, read per check; false = 1.3). Diagnostic:
 --   VictoryHoldState ("off" / "stage" / "dino").
+--   Also (Kepu 22:34 "the 4th one would just cut to a game camera of the Dino fighting"): player attribute VictoryCamOwned is
+--   true from camTake to camGive (any show, test or hold), so RespawnScreen 1.1's death cam (Camera + 9) stands aside.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -336,6 +338,7 @@ local function camTake()
 	if not savedCam then savedCam = {type = cam.CameraType, subject = cam.CameraSubject, fov = cam.FieldOfView} end
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.FieldOfView = 36
+	player:SetAttribute("VictoryCamOwned", true) -- v1.4
 end
 local function camGive()
 	local cam = workspace.CurrentCamera
@@ -347,6 +350,7 @@ local function camGive()
 		cam.FieldOfView = savedCam.fov or 70
 		savedCam = nil
 	end
+	player:SetAttribute("VictoryCamOwned", false) -- v1.4
 end
 local function setDots(entries, i)
 	for _, d in ipairs(dots:GetChildren()) do if d:IsA("TextLabel") then d:Destroy() end end

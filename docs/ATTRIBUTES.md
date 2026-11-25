@@ -3627,3 +3627,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - RespawnServer 1.1 (script): `RespawnHoldInResultsEnabled` (true). Diagnostic `RespawnResultsHeld`.
 - IslandTags 1.3 (script): `IslandTagsNoBarEnabled` (true), `IslandTagsNumSizeNoBar` (14), `IslandTagsNumSizeNoBarPC` (16).
 - RankBadge 1.1 (module): `RankBadgeRainbowEnabled` (true), `RankBadgeRainbowMax` (10), `RankBadgeRainbowThick` (0.17 x size, min 2 px), `RankBadgeRainbowSpin` (2.4 s a turn; 0 = still). Diagnostic `RankBadgeRainbows`; per badge `RankBadgeRainbowOn`.
+- RespawnScreen 1.1 (script): `RespawnCamYieldEnabled` (true); `RespawnCamTarget` reads "yield" while standing aside. VictoryTitles 1.4 player attribute `VictoryCamOwned` (true while a show / test / hold owns the camera).

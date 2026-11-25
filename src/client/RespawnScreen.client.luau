@@ -23,12 +23,21 @@
 --   touch that starts on an ArenaTouch button or a MechaButtons slot).
 -- Switch: script attribute RespawnScreenEnabled (default true, read per frame). Diagnostics: RespawnScreenVersion,
 --   RespawnScreenState ("off" / "dead" / "picking" / "grace"), RespawnCamTarget (killer name or "spot").
+-- v1.1 (Kepu 2026-11-24 22:34 "during the end game presentation it would do 3 of the Dino presentations but the 4th one would
+--   just cut to a game camera of the Dino fighting in the background"): the death cam runs at Camera + 9, after VictoryTitles'
+--   camera (Camera + 2), so dying during the results (the match keeps running behind the show) swapped the title shot for the
+--   killer cam. Now while player attribute VictoryCamOwned is true (VictoryTitles 1.4: a title show or the stage hold is on)
+--   this render step does nothing at all (no death cam, no hand-back); it picks up again when the show / hold ends.
+--   Switch: script attribute RespawnCamYieldEnabled (default true, read per frame; false = 1.0). Diagnostic:
+--   RespawnCamTarget "yield" while standing aside.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 the death cam stands aside for the victory show
+if script:GetAttribute("RespawnCamYieldEnabled") == nil then script:SetAttribute("RespawnCamYieldEnabled", true) end -- v1.1
 script:SetAttribute("RespawnScreenVersion", VERSION)
 for k, v in pairs({RespawnScreenEnabled = true, RespawnCamBack = 18, RespawnCamUp = 8, RespawnCamEase = 6, RespawnPillY = 72,
 	RespawnParkY = 3000, RespawnBackDist = 12, RespawnBackUp = 5, RespawnTagGap = 104, RespawnTopY = 64, RespawnTopYPhone = 80}) do
@@ -143,6 +152,10 @@ local tagMinY = 168
 local BIND = "DinoRespawnCam"
 pcall(function() RunService:UnbindFromRenderStep(BIND) end)
 RunService:BindToRenderStep(BIND, Enum.RenderPriority.Camera.Value + 9, function(dt)
+	if player:GetAttribute("VictoryCamOwned") == true and script:GetAttribute("RespawnCamYieldEnabled") ~= false then -- v1.1
+		if script:GetAttribute("RespawnCamTarget") ~= "yield" then script:SetAttribute("RespawnCamTarget", "yield") end
+		return
+	end
 	local held = script:GetAttribute("RespawnScreenEnabled") ~= false and player:GetAttribute("RespawnHold") == true
 	local c = player.Character
 	local cam = workspace.CurrentCamera
