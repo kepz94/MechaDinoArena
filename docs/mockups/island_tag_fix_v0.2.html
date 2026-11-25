@@ -40,7 +40,8 @@ button.t[aria-pressed="true"]{background:var(--yellow);color:var(--ink);border-c
 <button class="t" data-v="now" aria-pressed="true">NOW (1.3)</button>
 <button class="t" data-v="a">A · ONE LINE</button>
 <button class="t" data-v="b">B · TWO LINES</button>
-<button class="t" data-v="c">C · RECORD CHIP</button></div>
+<button class="t" data-v="c">C · RECORD CHIP</button>
+<button class="t" data-v="pick">PICKED · A, GREEN / RED</button></div>
 <div class="row" id="pos"><b>SPOT</b>
 <button class="t" data-p="head" aria-pressed="true">OVER THE HEAD (NOW)</button>
 <button class="t" data-p="mid">OVER THE MIDDLE OF THE DINO</button></div>
@@ -56,7 +57,8 @@ const L={
  now:['<div class="line">'+B+'<span class="nm">KEPZ</span></div><div class="wl"><span class="rec g">1W</span><span class="rec r">0L</span></div>','Today: the name line is centred without the badge, and the "1W" / "0L" row is centred under the name only, so the two lines do not line up. Green and red still read as a health colour.'],
  a:['<div class="line">'+B+'<span class="nm">KEPZ</span><span class="rec s">1-0</span></div>','A · One line: badge, name, then the record as "1-0" in soft white, all centred together. Smallest tag, nothing under the name.'],
  b:['<div class="line">'+B+'<span class="nm">KEPZ</span></div><div class="line"><span class="rec s">1W</span><span class="rec s dot">·</span><span class="rec s">0L</span></div>','B · Two lines: the record stays under the name as "1W · 0L" in soft white. Both lines are centred on the same middle, so they line up.'],
- c:['<div class="line">'+B+'<span class="nm">KEPZ</span></div><span class="chip">1-0</span>','C · Record chip: the record as "1-0" in a small dark rounded box under the name, centred. It reads as a stat, not a bar.']};
+ c:['<div class="line">'+B+'<span class="nm">KEPZ</span></div><span class="chip">1-0</span>','C · Record chip: the record as "1-0" in a small dark rounded box under the name, centred. It reads as a stat, not a bar.'],
+ pick:['<div class="line">'+B+'<span class="nm">KEPZ</span><span class="rec g">1W</span><span class="rec r">0L</span></div>','Kepu 2026-11-25 11:46: "One line over the head but keep the wins in green and losses in red". Built as IslandTags 1.4.']};
 const P={head:[43.2,42.5,41.7,48.6],mid:[50.8,43.5,50.8,51.5]};
 let v='now',p='head';
 function draw(){tag.className='tag '+v;tag.innerHTML=L[v][0];say.textContent=L[v][1]+(p==='mid'?' Spot: centred over the middle of the dino (half way between nose and tail tip).':' Spot: over the head, as now.');const q=P[p];tag.style.left=q[0]+'%';tag.style.top=q[1]+'%';}

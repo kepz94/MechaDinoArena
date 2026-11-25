@@ -36,6 +36,14 @@
 --   in the 1.1 look the ratio bar is hidden and the "<W>W" green / "<L>L" red numbers move up under the name (5 px gap), size
 --   IslandTagsNumSizeNoBar (14, was 13) phone / IslandTagsNumSizeNoBarPC (16) PC. Name, rank badge, who / where rules unchanged.
 --   Switch: script attribute IslandTagsNoBarEnabled (default true, read per frame; false = the 1.1 bar back).
+-- v1.4 (Kepu 2026-11-25 11:43 live phone screenshot: "remove the green/red bar entirely and realign that info above the Dino's
+--   looks really off"; 11:46 pick on mockup docs/mockups/island_tag_fix_v0.2.html: "One line over the head but keep the wins in
+--   green and losses in red"): with no bar (1.3) the tag is one line, [badge] NAME 1W 0L, and the whole group (badge, name,
+--   record) is centred on the head spot (1.3 centred the name alone, the badge hung off its left and the record sat under the
+--   name, so the two lines did not line up). "<W>W" green / "<L>L" red unchanged, IslandTagsOneLineGap (8 px) after the name,
+--   IslandTagsOneLineNumGap (6 px) between W and L, the record centred on the name line. Spot (over the head), sizes, badge,
+--   who / where rules unchanged. Record not ready: badge + name only, centred.
+--   Switch: script attribute IslandTagsOneLineEnabled (default true, read per frame; false = the 1.3 two lines back).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -45,6 +53,7 @@ local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 ratio bar look
 VERSION = "1.2" -- v1.2 rank badge
 VERSION = "1.3" -- v1.3 no ratio bar
+VERSION = "1.4" -- v1.4 one line, centred
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local FONT = Enum.Font.FredokaOne
 local DEFAULTS = {IslandTagsEnabled = true, IslandTagsMax = 80, IslandTagsMaxCount = 12,
@@ -59,7 +68,8 @@ for k, v in pairs(DEFAULTS) do
 end
 script:SetAttribute("IslandTagsState", "off")
 for k, v in pairs({IslandTagsBadgeEnabled = true, IslandTagsBadgeSize = 13, IslandTagsBadgeSizePC = 16,
-	IslandTagsNoBarEnabled = true, IslandTagsNumSizeNoBar = 14, IslandTagsNumSizeNoBarPC = 16}) do -- v1.2, v1.3
+	IslandTagsNoBarEnabled = true, IslandTagsNumSizeNoBar = 14, IslandTagsNumSizeNoBarPC = 16, -- v1.2, v1.3
+	IslandTagsOneLineEnabled = true, IslandTagsOneLineGap = 8, IslandTagsOneLineNumGap = 6}) do -- v1.4
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local RB -- v1.2: RankBadge 1.0
@@ -152,6 +162,7 @@ local function tagFor(p)
 		return l
 	end
 	t.bar, t.fill, t.nums, t.w, t.l = bar, fill, nums, num("W", GREEN, 1), num("L", RED, 2)
+	t.lay = lay -- v1.4
 	if RB then -- v1.2: the rank badge, left of the name
 		t.badge = RB.new()
 		t.badge.AnchorPoint = Vector2.new(1, 0.5)
@@ -162,12 +173,12 @@ local function tagFor(p)
 end
 
 -- v1.2: the rank badge just left of the name text (nameH = the name line height)
-local function placeBadge(t, p, small, nameH)
+local function placeBadge(t, p, small, nameH, dx) -- v1.4: dx = the name's offset from the tag centre (one line)
 	if not t.badge then return end
 	local rank = script:GetAttribute("IslandTagsBadgeEnabled") ~= false and RB.rankOf(p) or nil
 	local size = small and (tonumber(script:GetAttribute("IslandTagsBadgeSize")) or 13) or (tonumber(script:GetAttribute("IslandTagsBadgeSizePC")) or 16)
 	if RB.set(t.badge, rank, size) then
-		t.badge.Position = UDim2.new(0.5, -math.floor(t.name.TextBounds.X / 2) - 5, 0, math.floor(nameH / 2))
+		t.badge.Position = UDim2.new(0.5, -math.floor(t.name.TextBounds.X / 2) - 5 + (dx or 0), 0, math.floor(nameH / 2))
 	end
 end
 
@@ -241,6 +252,8 @@ RunService.RenderStepped:Connect(function()
 					local noBar = script:GetAttribute("IslandTagsNoBarEnabled") ~= false -- v1.3
 					if noBar then us = small and A("IslandTagsNumSizeNoBar", 14) or A("IslandTagsNumSizeNoBarPC", 16) end
 					local gap = noBar and 0 or (bh + 4) -- v1.3: the bar's room under the name
+					local one = noBar and script:GetAttribute("IslandTagsOneLineEnabled") ~= false -- v1.4
+					if t.one ~= one then t.one, t.nS = one, nil end -- v1.4: a switch flip re-runs the size block (puts 1.3 back)
 					if t.mode ~= "bar" then
 						t.mode, t.nS = "bar", nil
 						t.name.FontFace = SILK
@@ -258,6 +271,9 @@ RunService.RenderStepped:Connect(function()
 						t.nums.Size = UDim2.new(1, 0, 0, us + 2)
 						t.nums.Position = UDim2.new(0.5, 0, 0, ns + 5 + gap) -- v1.3 (1.1: ns + 5 + bh + 4)
 						t.w.TextSize, t.l.TextSize = us, us
+						t.nums.AnchorPoint = Vector2.new(0.5, 0) -- v1.4: 1.3 layout (the one-line block below moves these per frame)
+						t.lay.HorizontalAlignment = Enum.HorizontalAlignment.Center
+						t.lay.Padding = UDim.new(0, 10)
 					end
 					local nameT = string.upper(e.p.DisplayName)
 					if t.name.Text ~= nameT then t.name.Text = nameT end
@@ -272,16 +288,37 @@ RunService.RenderStepped:Connect(function()
 						if t.w.Text ~= wt then t.w.Text = wt end
 						if t.l.Text ~= lt then t.l.Text = lt end
 					end
-					t.frame.Size = UDim2.fromOffset(200, ns + 2 + (ready and (3 + gap + us + 2) or 0)) -- v1.3 (1.1: 3 + bh + 4)
+					local dx = 0
+					if one then -- v1.4: one line [badge] NAME 1W 0L, the whole group centred on the head spot
+						local gapN = A("IslandTagsOneLineGap", 8)
+						local numGap = A("IslandTagsOneLineNumGap", 6)
+						t.lay.Padding = UDim.new(0, numGap)
+						t.lay.HorizontalAlignment = Enum.HorizontalAlignment.Left
+						t.nums.AnchorPoint = Vector2.new(0, 0)
+						local nameW = t.name.TextBounds.X
+						local numsW = ready and (t.w.TextBounds.X + numGap + t.l.TextBounds.X) or 0
+						local badgeW = (t.badge and t.badge.Visible) and (t.badge.AbsoluteSize.X + 5) or 0 -- last frame's badge
+						local groupW = badgeW + nameW + (ready and (gapN + numsW) or 0)
+						local left = -groupW / 2
+						dx = math.floor(left + badgeW + nameW / 2 + 0.5)
+						t.name.Position = UDim2.fromOffset(dx, 0)
+						t.nums.Size = UDim2.fromOffset(math.ceil(numsW) + 2, us + 2)
+						t.nums.Position = UDim2.new(0.5, math.floor(left + badgeW + nameW + gapN + 0.5), 0, math.floor((ns - us) / 2))
+						t.frame.Size = UDim2.fromOffset(math.max(200, math.ceil(groupW) + 20), ns + 2)
+					else
+						if t.name.Position ~= UDim2.new() then t.name.Position = UDim2.new() end
+						t.frame.Size = UDim2.fromOffset(200, ns + 2 + (ready and (3 + gap + us + 2) or 0)) -- v1.3 (1.1: 3 + bh + 4)
+					end
 					t.frame.Position = UDim2.fromOffset(v.X, v.Y)
 					t.frame.Visible = true
-					placeBadge(t, e.p, small, ns + 2) -- v1.2
+					placeBadge(t, e.p, small, ns + 2, dx) -- v1.2, v1.4 dx
 					shown[e.p] = true
 					count += 1
 					continue
 				end
 				if t.mode == "bar" then -- v1.1 switch turned off: back to the 1.0 look
-					t.mode, t.nS, t.noBar = nil, nil, nil
+					t.mode, t.nS, t.noBar, t.one = nil, nil, nil, nil
+					t.name.Position = UDim2.new() -- v1.4
 					t.name.Font = FONT
 					t.name:SetAttribute("FontSwap", nil)
 					t.name.TextStrokeTransparency = 0.45

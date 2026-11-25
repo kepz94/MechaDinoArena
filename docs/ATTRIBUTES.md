@@ -3640,3 +3640,6 @@ Model numbers are generator output (old version = the flag in the last column, b
 - TrailLook 1.0 (module code values): ribbon MaxLength 7 x hip height (Comet 5; x0.6 soft); soft look opacity +45%, life x0.6, bits x0.5.
 - ShopScreen 1.2 (script): `ShopTrailsEnabled` (true, read at start). Player diagnostic `ShopTrailPreview` (trail id on the preview or "").
 - Lab 1.20 (script): `LabTrailsEnabled` (true, read at start; needs `LabEmotesEnabled`), `LabPillFitEnabled` (true, read at start), `LabPillFitPad` (0.5 x the normal pill padding when the row is too wide), `LabPillFitTextMin` (0.7, smallest text scale, steps of 0.1). Player diagnostics `LabTrailCards`, `LabTrailSelected`, `LabPillFit` ("<pad>/<text>").
+
+## Island tag one line (IslandTags 1.4, 2026-11-25, mockup docs/mockups/island_tag_fix_v0.2.html)
+- IslandTags 1.4 (script): `IslandTagsOneLineEnabled` (true, read per frame; false = the 1.3 name with the record under it), `IslandTagsOneLineGap` (8 px between the name and the record), `IslandTagsOneLineNumGap` (6 px between "<W>W" and "<L>L").
