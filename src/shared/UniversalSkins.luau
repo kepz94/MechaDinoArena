@@ -41,10 +41,15 @@
 --     the tag so SkinFX re-reads a repainted block.
 -- v1.2 (Kepu 2026-11-24 19:05 "Make prism $999 actually"): Prism moves from RARE 149 to LEGENDARY 999 (the 999 product). Now
 --   RARE 149: Arctic, Sakura, Viper Gold, Void Matter; LEGENDARY 999: Gold Hunter, Obsidian Fang, Spectral, Element X, Prism.
+-- v1.3 (Kepu 2026-11-24 19:07 "logical step ups ... non animated bland skins for the cheapest, then ones with neon/glowing a step
+--   up, then animated at the highest"; prices "149 / 499 / 999" on the existing products; sorting confirmed): RARE 149 = bland
+--   (no glowing body blocks): Arctic, Sakura, Viper Gold, Chrome. EPIC 499 = glowing (Neon on the body): Lava, Venom, Neon Circuit,
+--   Gold Hunter, Obsidian Fang. LEGENDARY 999 = animated: Prism, Void Matter, Spectral, Element X, Glitch, Storm Front, Bloodline,
+--   Hellfire. ORDER follows the tiers (cheapest first).
 local CollectionService = game:GetService("CollectionService")
 
 local US = {}
-US.VERSION = "1.2" -- v1.2 Prism 999 (v1.1 whole-body animation, 4 new skins, Opal removed)
+US.VERSION = "1.3" -- v1.3 price steps bland 149 / glowing 499 / animated 999 (v1.2 Prism 999; v1.1 whole-body animation)
 US.ANIM_TAG = "SkinAnim"
 US.DINOS = {"Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"}
 US.DINO_NAMES = {Raptor = "RAPTOR", TRex = "T-REX", Pachy = "PACHY", Herrera = "HERRERA", Teno = "TENO", Therizino = "THERIZINO",
@@ -76,9 +81,9 @@ local function ph(lp, seed) return cell(lp, 0.6, seed) end
 US._hsh, US._cell = hsh, cell -- tests
 
 -- ---------- skins (ORDER = the Lab's card order, Kepu's plan order) ----------
-US.ORDER = {"classic", "desert", "riverstone", "canopy", "ghostbark", "zebra", "inkwar", "arctic", "sakura", "vipergold", "prism",
-	"voidmatter", "lava", "venom", "circuit", "chrome", "glitch", "storm", "bloodline", "hellfire", "gold", "obsidianfang", "spectral",
-	"elementx"} -- v1.1: opal out; glitch, storm, bloodline, hellfire in
+US.ORDER = {"classic", "desert", "riverstone", "canopy", "ghostbark", "zebra", "inkwar", "arctic", "sakura", "vipergold", "chrome",
+	"lava", "venom", "circuit", "gold", "obsidianfang", "prism", "voidmatter", "spectral", "elementx", "glitch", "storm", "bloodline",
+	"hellfire"} -- v1.3: by price step (v1.1: opal out; glitch, storm, bloodline, hellfire in)
 
 local function earn(stat, need, text) return {kind = "earn", stat = stat, need = need, text = text} end
 local function robux(rarity, price) return {kind = "robux", rarity = rarity, price = price} end
@@ -145,7 +150,7 @@ US.SKINS = {
 			if info and info.big then return hex, "Neon", "rainbow", 0 end
 			return hex, mat
 		end},
-	voidmatter = {name = "Void Matter", unlock = robux("RARE", 149), anim = true, glow = "8A3CFF", hi = "C77DFF", -- v1.1 A · Body wave
+	voidmatter = {name = "Void Matter", unlock = robux("LEGENDARY", 999), anim = true, glow = "8A3CFF", hi = "C77DFF", -- v1.1 A · Body wave; v1.3: was RARE 149
 		cols = {belly = "1A1228", claws = "07050B", eyes = "C77DFF", mask = "07050B"}, mats = {eyes = "Neon"},
 		sw = {"0D0A14", "1A1228", "8A3CFF", "C77DFF"},
 		pattern = function(slot, lp)
@@ -171,7 +176,7 @@ US.SKINS = {
 			if frac(lp.Z / 2.4) < 0.12 then return "33E1FF", "Neon" end
 			return "15171C", "SmoothPlastic"
 		end},
-	chrome = {name = "Chrome", unlock = robux("EPIC", 499),
+	chrome = {name = "Chrome", unlock = robux("RARE", 149), -- v1.3: was EPIC 499
 		cols = {belly = "9EA6B0", claws = "2A2E36", eyes = "FF3B3B", mask = "2A2E36", accent = "2A2E36"}, mats = {eyes = "Neon"},
 		sw = {"D8DEE6", "6E7682", "2A2E36"},
 		pattern = function(slot, lp)
@@ -179,37 +184,37 @@ US.SKINS = {
 			return slot == "secondary" and "6E7682" or "D8DEE6", "Metal"
 		end},
 	-- v1.1: four new whole-body skins (mockup v0.6, Kepu "add all the new ones you suggested as they are", Robux 499 each)
-	glitch = {name = "Glitch", unlock = robux("EPIC", 499), anim = true,
+	glitch = {name = "Glitch", unlock = robux("LEGENDARY", 999), anim = true, -- v1.3: was EPIC 499
 		cols = {eyes = "00F0FF", claws = "0E1218"}, mats = {eyes = "Neon"}, sw = {"101418", "00F0FF", "FF2BD6"},
 		pattern = function(slot, lp)
 			if not WHOLE[slot] then return nil end
 			local r = ph(lp, 9)
 			return r < 0.25 and "00F0FF" or (r < 0.4 and "FF2BD6" or "121822"), "Neon", "glitch", 0
 		end},
-	storm = {name = "Storm Front", unlock = robux("EPIC", 499), anim = true,
+	storm = {name = "Storm Front", unlock = robux("LEGENDARY", 999), anim = true, -- v1.3: was EPIC 499
 		cols = {eyes = "FFF27A", claws = "1A1F2A"}, mats = {eyes = "Neon"}, sw = {"2A3140", "3A4458", "FFF27A"},
 		pattern = function(slot, lp)
 			if not WHOLE[slot] then return nil end
 			local r = ph(lp, 9)
 			return r < 0.2 and "3A5CB0" or (r < 0.6 and "2A3140" or "3A4458"), "Neon", "storm", 0
 		end},
-	bloodline = {name = "Bloodline", unlock = robux("EPIC", 499), anim = true,
+	bloodline = {name = "Bloodline", unlock = robux("LEGENDARY", 999), anim = true, -- v1.3: was EPIC 499
 		cols = {eyes = "FF2A3A", claws = "140A0C"}, mats = {eyes = "Neon"}, sw = {"140A0C", "B0102A", "FF2A3A"},
 		pattern = function(slot, lp)
 			if not WHOLE[slot] then return nil end
 			return ph(lp, 9) < 0.35 and "B0102A" or "140A0C", "Neon", "beat", 0
 		end},
-	hellfire = {name = "Hellfire", unlock = robux("EPIC", 499), anim = true,
+	hellfire = {name = "Hellfire", unlock = robux("LEGENDARY", 999), anim = true, -- v1.3: was EPIC 499
 		cols = {eyes = "FFD23A", claws = "120D0C"}, mats = {eyes = "Neon"}, sw = {"1A1210", "C8231E", "FF6A1A", "FFD23A"},
 		pattern = function(slot, lp, info)
 			if not WHOLE[slot] then return nil end
 			local yf = info and info.yf or 0.5
 			return yf < 0.3 and "FF6A1A" or (yf < 0.6 and "C8231E" or "1A1210"), "Neon", "fire", 0
 		end},
-	gold = {name = "Gold Hunter", unlock = robux("LEGENDARY", 999),
+	gold = {name = "Gold Hunter", unlock = robux("EPIC", 499), -- v1.3: was LEGENDARY 999
 		cols = {primary = "D4A72C", secondary = "7A5A10", limbs = "E6C25A", belly = "F5E4A8", claws = "3A2A08", accent = "FFF2B0",
 			eyes = "FFFFFF", mask = "7A5A10"}, mats = {accent = "Neon", eyes = "Neon"}},
-	obsidianfang = {name = "Obsidian Fang", unlock = robux("LEGENDARY", 999),
+	obsidianfang = {name = "Obsidian Fang", unlock = robux("EPIC", 499), -- v1.3: was LEGENDARY 999
 		cols = {primary = "141416", secondary = "2A2A2E", belly = "3A3A40", accent = "D0202A", limbs = "1E1E22", claws = "D4A72C",
 			eyes = "FFD24A", mask = "0A0A0C"}, mats = {accent = "Neon", claws = "Foil", eyes = "Neon"}},
 	spectral = {name = "Spectral", unlock = robux("LEGENDARY", 999), anim = true, glow = "3FC8FF", hi = "BFF6FF", -- v1.1 B · Full breathe

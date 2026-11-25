@@ -5,7 +5,7 @@
 /* Shop v0.1 (Kepu 2026-11-24 18:58: "creating a shop button on the main menu where it's dedicated to buying stuff you don't have.
    Look at how other games handle this and then create a mockup"). Menu = the live MainMenu 1.28 hero layout (backdrop: the real
    Studio capture used for main_menu_redo_v0.1). Three ways in + three shop screens. Items = the Robux skins of UniversalSkins 1.1
-   (17: 4 x 149, 8 x 499, 5 x 999; Prism 999 per Kepu 19:05), only the ones you don't own. 3D preview = the real block dinos with the v0.6 animations. Demo
+   (17: bland 4 x 149, glowing 5 x 499, animated 8 x 999; Kepu 19:07), only the ones you don't own. 3D preview = the real block dinos with the v0.6 animations. Demo
    player owns Arctic and Lava. Single dark look (a game screen). Nothing here is built. */
 :root { --page:#07090e; --text:#dfe6f0; --muted:#8a95a8; --card:#101622; --line:#222c3c; --yellow:#ffc832; --ink:#1b1406;
   --volt:#7fe9ff; --orange:#ff6412; --green:#46e08a; --pink:#ff5a6e; --robux:#00b06f; color-scheme:dark; }
@@ -403,10 +403,10 @@ function init3d() {
 
 // ---------- shop data (UniversalSkins 1.1 Robux skins) ----------
 const SHOP = [
-  ["arctic", "Arctic", 149], ["sakura", "Sakura", 149], ["vipergold", "Viper Gold", 149], ["voidmatter", "Void Matter", 149, 1],
-  ["lava", "Lava", 499], ["venom", "Venom", 499], ["circuit", "Neon Circuit", 499], ["chrome", "Chrome", 499],
-  ["glitch", "Glitch", 499, 1], ["storm", "Storm Front", 499, 1], ["bloodline", "Bloodline", 499, 1], ["hellfire", "Hellfire", 499, 1],
-  ["gold", "Gold Hunter", 999], ["obsidianfang", "Obsidian Fang", 999], ["spectral", "Spectral", 999, 1], ["elementx", "Element X", 999, 1], ["prism", "Prism", 999, 1],
+  ["arctic", "Arctic", 149], ["sakura", "Sakura", 149], ["vipergold", "Viper Gold", 149], ["chrome", "Chrome", 149],
+  ["lava", "Lava", 499], ["venom", "Venom", 499], ["circuit", "Neon Circuit", 499], ["gold", "Gold Hunter", 499], ["obsidianfang", "Obsidian Fang", 499],
+  ["prism", "Prism", 999, 1], ["voidmatter", "Void Matter", 999, 1], ["spectral", "Spectral", 999, 1], ["elementx", "Element X", 999, 1],
+  ["glitch", "Glitch", 999, 1], ["storm", "Storm Front", 999, 1], ["bloodline", "Bloodline", 999, 1], ["hellfire", "Hellfire", 999, 1],
 ].map(([k, n, p, a]) => ({k, n, p, anim: !!a, sw: (SK.find(s => s.k === k) || CANDS.find(c => c.k === k) || {sw: ["333333"]}).sw}));
 const FEATURED = ["hellfire", "voidmatter"];
 const owned = new Set(["arctic", "lava"]);

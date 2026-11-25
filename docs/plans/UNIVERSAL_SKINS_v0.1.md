@@ -117,3 +117,4 @@ R5. Scope: 6 tasks touching save data. Smaller first ship = Tasks 1, 3, 5 with t
 - Not built yet: MDA-571 unlock toast outside the Lab, MDA-572 Settings row (both need a mockup pick).
 
 - 2026-11-24 19:05 Kepu: Prism 999 (UniversalSkins 1.2). Robux tiers now 149: Arctic, Sakura, Viper Gold, Void Matter; 499: Lava, Venom, Neon Circuit, Chrome, Glitch, Storm Front, Bloodline, Hellfire; 999: Gold Hunter, Obsidian Fang, Spectral, Element X, Prism.
+- 2026-11-24 19:07 Kepu: price steps replace the above (UniversalSkins 1.3): bland 149 / glowing 499 / animated 999 on the existing products; earned skins stay earn-only.
