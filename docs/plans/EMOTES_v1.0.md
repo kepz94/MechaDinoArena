@@ -1,7 +1,7 @@
 # Battle Emotes v1.0 (build plan)
 
 Status: Kepu 2026-11-24 20:27 "Build"; published 20:47 (Sandbox v948 + Arena): EmoteCatalog, EmotePose, IdleAnimation 1.48,
-EmoteServer, SkinServer 1.3, EmoteFX, EmoteWheel. Built 2026-11-24 after "Build next" (not published): ShopScreen 1.1 EMOTES tab, Lab 1.19 LOOKS / EMOTES. Picks: docs/plans/EMOTES_v0.1.md (12 emotes locked 20:12, prices 20:13, unlocks 20:14,
+EmoteServer, SkinServer 1.3, EmoteFX, EmoteWheel. Built 2026-11-24 after "Build next", published 21:12 (Sandbox v952 + Arena): ShopScreen 1.1 EMOTES tab, Lab 1.19 LOOKS / EMOTES. Picks: docs/plans/EMOTES_v0.1.md (12 emotes locked 20:12, prices 20:13, unlocks 20:14,
 wheel A / Lab LOOKS / PC B / greyed shop slots 20:27). Mockups: docs/mockups/battle_emotes_v0.2.html, docs/mockups/emote_wheel_v0.1.html.
 
 ## Global constraints
