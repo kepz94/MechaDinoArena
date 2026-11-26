@@ -3653,3 +3653,8 @@ Model numbers are generator output (old version = the flag in the last column, b
 - ShopStandServer 1.0 (script, read at start): `ShopStandEnabled` (true), `ShopStandSide` (100 studs along the gate's right), `ShopStandFwd` (34 studs along the gate's forward), `ShopStandAim` (82, the point it faces), `ShopStandGroundY` (1.3, plaza top), `ShopStandScale` (1.35), `ShopStandRange` (24 studs), `ShopStandFrontGap` (4). Diagnostics `ShopStandServerVersion`, `ShopStandState`, `ShopStandParts`. Model Workspace.ShopStand attributes `ShopStandFront` (Vector3), `ShopStandRange`.
 - ShopStandClient 1.0 (script): `ShopStandClientEnabled` (true, per frame), `ShopStandBtnW` (150), `ShopStandBtnH` (46), `ShopStandBtnGap` (10 px over JUMP), `ShopStandBtnRight` (24), `ShopStandBtnUp` (150, PC corner). Diagnostics `ShopStandClientVersion`, `ShopStandOpens`, `ShopStandBtnSpot` ("jump" / "corner"); player `ShopStandNear`.
 - ShopScreen 1.3 (script): `ShopStandOpenEnabled` (true, read per open). Player `ShopOpenFrom` ("menu" / "stand" / "").
+
+## Filler Bots v1.0 (2026-11-25)
+- Bot model (PracticeBots 1.2 persona): FillerPersona (true), FillerW, FillerL (made-up record), TrailId, DisplayName (persona name), FillerSkinResult (SkinPaintBot answer).
+- SkinServer 1.5: SkinPaintBotEnabled (true). ServerStorage.SkinPaintBot (BindableFunction).
+- PlaceGate 1.4: PlaceGateFillerEnabled (true).

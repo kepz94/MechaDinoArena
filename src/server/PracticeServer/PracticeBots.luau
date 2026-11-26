@@ -20,12 +20,16 @@
 --   with itself or the other. A bot's parts in "DinoHitbox" move to PracticeBotBox, its parts in "Default" to PracticeBotBody
 --   (at spawn, 0.5 s and 2 s after, and 0.1 s after any part is added). Players' dinos, the ground and the world still
 --   collide with bots; bites / attack queries still find the boxes (Default can still touch them).
+-- v1.2 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T2, MDA-575): spawn(..., opts) with opts.persona = {name, w, l, skin,
+--   trail} -> after the body is placed: DisplayName = persona.name (else spec.name), FillerPersona = true, FillerW, FillerL (the
+--   made-up record), TrailId = persona.trail ("" = none; TrailFX draws it), and ServerStorage.SkinPaintBot (SkinServer 1.5) paints
+--   persona.skin; its answer in FillerSkinResult. No opts.persona -> exactly 1.1.
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local HttpService = game:GetService("HttpService")
 
 local M = {}
-M.Version = "1.1"
+M.Version = "1.2" -- v1.2 filler bot persona
 
 local MODEL_DATA = {Raptor = "RaptorModelData", Pachy = "PachyModelData", Herrera = "HerreraModelData", Teno = "TenoModelData",
 	Therizino = "TherizinoModelData", Dilo = "DiloModelData", Troodon = "TroodonModelData"}
@@ -153,6 +157,19 @@ function M.spawn(spec, team, groundCFrame, folder, opts)
 	hrp.Anchored = false
 	model.Parent = folder
 	pcall(function() hrp:SetNetworkOwner(nil) end)
+	if type(opts.persona) == "table" then -- v1.2
+		local pe = opts.persona
+		model:SetAttribute("DisplayName", pe.name or spec.name)
+		model:SetAttribute("FillerPersona", true)
+		model:SetAttribute("FillerW", tonumber(pe.w) or 0)
+		model:SetAttribute("FillerL", tonumber(pe.l) or 0)
+		model:SetAttribute("TrailId", type(pe.trail) == "string" and pe.trail or "")
+		local fn = ServerStorage:FindFirstChild("SkinPaintBot")
+		if fn and type(pe.skin) == "string" then
+			local ok, res = pcall(function() return fn:Invoke(model, spec.species, pe.skin) end)
+			model:SetAttribute("FillerSkinResult", ok and tostring(res) or "error")
+		end
+	end
 	if opts.noCollide then -- v1.1
 		M.noCollide(model)
 		model.DescendantAdded:Connect(function(d) task.delay(0.1, regroup, d) end)

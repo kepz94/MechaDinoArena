@@ -93,8 +93,13 @@ local DataStoreService = game:GetService("DataStoreService")
 --   intent and the emote intent for this product, the receipt goes to TrailServer ("grant"; "trail" / "repeat" -> PurchaseGranted,
 --   else NotProcessedYet). Otherwise the 1.3 emote check and the skin logic run unchanged.
 --   Switch: script attribute SkinTrailReceiptsEnabled (false = as 1.3). Diagnostic: SkinReceiptsToTrails (count).
+-- v1.5 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T2, MDA-575): server-only BindableFunction ServerStorage.SkinPaintBot
+--   (made here). Invoke(model, species, skinId) -> "ok" / "off" / "badModel" / "badDino" / "error ...": the same tag + paint a
+--   player's body gets (tag(), paint(); universal ids sanitized, 1.1 ids fall back to the dino's default), SkinApplied set last.
+--   Bots only: no player, no save, no DataStore. Switch: script attribute SkinPaintBotEnabled (default true, read per call).
 local VERSION = "1.3" -- v1.3 emote receipts hook
 VERSION = "1.4" -- v1.4 trail receipts hook
+VERSION = "1.5" -- v1.5 SkinPaintBot for filler bots
 local STORE = "MDA_Skins_v1"
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local RETRY_GAP = 30
@@ -850,6 +855,32 @@ remote.OnServerEvent:Connect(function(player, action, id, forSpecies)
 	player:SetAttribute("SkinServerResult", result)
 	player:SetAttribute("SkinServerResultAt", workspace:GetServerTimeNow())
 end)
+
+-- v1.5: SkinPaintBot (see the header)
+do
+	local fn = ServerStorage:FindFirstChild("SkinPaintBot")
+	if not fn then
+		fn = Instance.new("BindableFunction")
+		fn.Name = "SkinPaintBot"
+		fn.Parent = ServerStorage
+	end
+	fn.OnInvoke = function(model, species, id)
+		if script:GetAttribute("SkinPaintBotEnabled") == false then return "off" end
+		if typeof(model) ~= "Instance" or not model:IsA("Model") or not model.Parent then return "badModel" end
+		if type(species) ~= "string" then return "badDino" end
+		if uni then
+			id = US.sanitize(id)
+		elseif not SC.get(species, id) then
+			id = SC.default(species)
+		end
+		local ok, err = pcall(function()
+			tag(model, species)
+			paint(model, species, id)
+		end)
+		if not ok then return "error " .. tostring(err) end
+		return "ok"
+	end
+end
 
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end

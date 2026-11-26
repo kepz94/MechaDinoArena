@@ -24,17 +24,22 @@
 --   the hub removed the training bot 0.26 s after TutorialServer 1.0 spawned it): a model with TutBot = true, or inside
 --   Workspace.TrainingGround (the training lanes), is never removed. Switch: script attribute PlaceGateTutorialEnabled
 --   (default true, read per removal; false = 1.2).
+-- v1.4 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T4, MDA-577; found in the T2 Studio check 2026-11-25: the hub removed a
+--   persona bot at once): a model with FillerPersona = true (PracticeBots 1.2 persona: FillerServer on the hub, Arena match
+--   fill bots) is never removed. Switch: script attribute PlaceGateFillerEnabled (default true, read per removal; false = 1.3).
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 training bots stay
+VERSION = "1.4" -- v1.4 filler bots stay
 script:SetAttribute("PlaceGateVersion", VERSION)
 if script:GetAttribute("PlaceGateEnabled") == nil then script:SetAttribute("PlaceGateEnabled", true) end
 if script:GetAttribute("PlaceGatePracticeEnabled") == nil then script:SetAttribute("PlaceGatePracticeEnabled", true) end -- v1.1
 if script:GetAttribute("PlaceGateHubEnabled") == nil then script:SetAttribute("PlaceGateHubEnabled", true) end -- v1.2
 if script:GetAttribute("PlaceGateTutorialEnabled") == nil then script:SetAttribute("PlaceGateTutorialEnabled", true) end -- v1.3
+if script:GetAttribute("PlaceGateFillerEnabled") == nil then script:SetAttribute("PlaceGateFillerEnabled", true) end -- v1.4
 
 local ModeRules = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("ModeRules"))
 local mode = ModeRules.currentMode()
@@ -55,6 +60,8 @@ local function isBotModel(m)
 	elseif Players:GetPlayerFromCharacter(m) ~= nil then
 		return false
 	elseif m:GetAttribute("ArenaPvPTestTarget") == true then
+		return false
+	elseif script:GetAttribute("PlaceGateFillerEnabled") ~= false and m:GetAttribute("FillerPersona") == true then -- v1.4
 		return false
 	elseif script:GetAttribute("PlaceGateTutorialEnabled") ~= false and (m:GetAttribute("TutBot") == true -- v1.3
 		or (workspace:FindFirstChild("TrainingGround") ~= nil and m:IsDescendantOf(workspace.TrainingGround))) then
