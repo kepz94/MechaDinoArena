@@ -43,13 +43,15 @@ local STORE = "MDA_ArenaRecord_v1"
 --   ArenaRecordStoreName (default "MDA_ArenaRecord_v2", read at start); "MDA_ArenaRecord_v1" stays as it is (set the attribute back to it
 --   to bring those records back).
 VERSION = "1.3" -- v1.3 fresh record store (account reset)
-if script:GetAttribute("ArenaRecordStoreName") == nil then script:SetAttribute("ArenaRecordStoreName", "MDA_ArenaRecord_v2") end
+if script:GetAttribute("ArenaRecordStoreName") == nil then script:SetAttribute("ArenaRecordStoreName", "MDA_ArenaRecord_v3") end -- v1.5 (1.3: "MDA_ArenaRecord_v2")
 STORE = script:GetAttribute("ArenaRecordStoreName")
 -- v1.4 (leaderboards, Kepu 2026-11-24 15:44 pick "Count bot matches too"): an Arena match counts even when a team has no real
 --   player (bots filled it). While script attribute ArenaRecordCountBotsEnabled ~= false (default true, read per call), every
 --   "result" / "left" call is treated as eligible (the eligible argument becomes true) before anything else runs; false = 1.3
 --   (the caller's eligible as given). Diagnostic ArenaRecordEligibleIn = "<action> <eligible as given>" (last call).
 VERSION = "1.4" -- v1.4 bot matches count
+VERSION = "1.5" -- v1.5 launch reset
+-- v1.5 (launch reset, Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): ArenaRecordStoreName default "MDA_ArenaRecord_v3"; the old data is kept as it is.
 if script:GetAttribute("ArenaRecordCountBotsEnabled") == nil then script:SetAttribute("ArenaRecordCountBotsEnabled", true) end
 local TRIES, LOAD_GAP = 3, 2
 

@@ -29,11 +29,16 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 EmoteGrant
+VERSION = "1.2" -- v1.2 launch reset
+-- v1.2 (launch reset, Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): the store is script attribute EmoteStoreName (default "MDA_Emotes_v2"); the old store is kept
+--   as it is.
 -- v1.1 (Favorite Egg, plan docs/plans/FAVORITE_EGG_v1.0.md Task 2, MDA-608): server-only BindableFunction EmoteGrant (child of this
 --   script): Invoke(player, id, reason) -> "ok" (written to owned with one UpdateAsync, wheel filled, EmoteUnlocked set) / "owned" /
 --   "unknown" / "notLoaded" / "failed" / "disabled". Buying and receipts are not touched. Switch: script attribute EmoteGrantEnabled
 --   (true, read per call). Diagnostic: EmoteGrants.
 local STORE = "MDA_Emotes_v1"
+if script:GetAttribute("EmoteStoreName") == nil then script:SetAttribute("EmoteStoreName", "MDA_Emotes_v2") end -- v1.2
+STORE = script:GetAttribute("EmoteStoreName")
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local INTENT_TTL = 600
 local RECEIPT_KEEP = 200

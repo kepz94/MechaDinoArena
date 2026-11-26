@@ -161,6 +161,15 @@ VERSION = "1.16" -- v1.16 maxed dinos (Favorite Egg)
 -- v1.16 (Favorite Egg, plan docs/plans/FAVORITE_EGG_v1.0.md Task 2, MDA-608): the v1.13 free-dino rule also holds for every dino in
 --   the player attribute MaxedDinos (comma list, DinoOwnership 1.2: a dino won from the Favorite Egg). A MaxedDinos change
 --   republishes the player. Switch: script attribute SkillMaxedDinosEnabled (true, read per publish / buy; false = 1.15).
+VERSION = "1.17" -- v1.17 dino unlock spend
+-- v1.17 (Kepu 2026-11-26 08:06 "make dinos 40 skill points to unlock base", pick "Spend 40 (as said)"): server-only BindableFunction
+--   SkillSpendUnlock (child of this script): Invoke(player, amount, reason) -> "ok", before, after (the account pool) | "notEnough",
+--   have | "notLoaded" | "disabled" (universal off / SkillSpendUnlockEnabled false) | "badArg". The amount is kept in d.unlock (saved
+--   as value.unlock, a whole number >= 0) and taken off the account pool: SkillPoints = level points + bonus - unlock. Every dino
+--   build that is now over the pool goes back to nothing (as a respec: steps 0, empty loadout), so nobody keeps parts the pool no
+--   longer pays for. Load: each record is checked against the pool after unlock. Player SkillUnlockSpent (total), SkillLastPoints
+--   ("unlock -40"). Switch: script attribute SkillSpendUnlockEnabled (true, read per call). Diagnostic: SkillUnlockSpends.
+--   Launch reset (Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): SkillSaveStoreName default "MDA_Skills_v4" ("MDA_Skills_v3" kept).
 -- v1.15 (universal points, plan docs/plans/UNIVERSAL_POINTS_v1.0.md Task 2; Kepu 2026-11-26 "Make all points universal", "the daily
 --   quest rewards will be skill points"; picks "Full pool on every dino", "Highest dino's XP", "Yes, past 40"; red-team "Accept",
 --   "Yes, that's the point", "No cap"). While script attribute SkillUniversalEnabled ~= false (read at each player's load, d.universal):
@@ -182,7 +191,7 @@ VERSION = "1.16" -- v1.16 maxed dinos (Favorite Egg)
 --   SkillBonusMax (unset = no cap), SkillPointGrants (count). Switch off = 1.14 (per-dino XP; bonus ignored but kept in the save).
 local SAVE_STORE = "MDA_Skills_v1"
 local SAVE_STORE_V2 = "MDA_Skills_v2" -- v1.2: per-dino records (reset all)
-if script:GetAttribute("SkillSaveStoreName") == nil then script:SetAttribute("SkillSaveStoreName", "MDA_Skills_v3") end -- v1.14
+if script:GetAttribute("SkillSaveStoreName") == nil then script:SetAttribute("SkillSaveStoreName", "MDA_Skills_v4") end -- v1.17 launch reset (1.14: "MDA_Skills_v3")
 SAVE_STORE_V2 = script:GetAttribute("SkillSaveStoreName") -- v1.14: account reset (v2 kept as it is)
 local SAVE_GAP = 10
 local RETRY_GAP = 30
@@ -200,7 +209,7 @@ if script:GetAttribute("SkillUniversalEnabled") == nil then script:SetAttribute(
 if script:GetAttribute("SkillGrantPointsEnabled") == nil then script:SetAttribute("SkillGrantPointsEnabled", true) end -- v1.15
 local function bonusMax() local m = script:GetAttribute("SkillBonusMax") return type(m) == "number" and m or nil end -- v1.15
 local function earnedOf(d) -- v1.15: account level points + bonus when universal, else 1.14
-	if d.universal then return SkillPool.earned(d.xp, d.bonus, ST, bonusMax()) end
+	if d.universal then return math.max(0, SkillPool.earned(d.xp, d.bonus, ST, bonusMax()) - (d.unlock or 0)) end -- v1.17: - unlock
 	return ST.pointsOf((ST.levelOf(d.xp)))
 end
 
@@ -421,6 +430,7 @@ local function save(player, d)
 	end
 	if d.universal then value.uxp, value.bonus = d.xp, d.bonus -- v1.15
 	else value.uxp, value.bonus = d.rawUxp, d.rawBonus end
+	value.unlock = d.unlock or 0 -- v1.17
 	if type(d.saved) == "table" then -- v1.12: each dino's saved loadout rides in its record
 		for key, sv in pairs(d.saved) do
 			if value.dinos[key] then value.dinos[key].saved = sv end
@@ -448,6 +458,7 @@ local function load(player)
 	d.saved = {} -- v1.12
 	d.universal = script:GetAttribute("SkillUniversalEnabled") ~= false -- v1.15
 	d.uxp, d.bonus = 0, 0
+	d.unlock = 0 -- v1.17
 	player:SetAttribute("SkillAccountFrom", "new")
 	data[player] = d
 	if script:GetAttribute("SkillSaveEnabled") == false or not store then
@@ -460,10 +471,11 @@ local function load(player)
 			player:SetAttribute("SkillSaveState", tostring(value):find("not allowed") and "noApi" or "failed")
 		elseif type(value) == "table" and value.v == 2 and type(value.dinos) == "table" then -- v1.2: per-dino records
 			d.rawUxp, d.rawBonus = value.uxp, value.bonus -- v1.15: written back as they are while universal is off
+			d.unlock = math.max(0, math.floor(tonumber(value.unlock) or 0)) -- v1.17
 			local cap -- v1.15: the account points every record is checked against
 			if d.universal then
 				d.uxp, d.bonus = SkillPool.accountXp(value), SkillPool.cleanBonus(value.bonus, bonusMax())
-				cap = SkillPool.earned(d.uxp, d.bonus, ST, bonusMax())
+				cap = math.max(0, SkillPool.earned(d.uxp, d.bonus, ST, bonusMax()) - d.unlock) -- v1.17: - unlock
 				local n = 0 for _ in pairs(value.dinos) do n += 1 end
 				player:SetAttribute("SkillAccountFrom", (type(value.uxp) == "number" and "uxp" or "max") .. " of " .. n .. " dinos")
 			end
@@ -755,4 +767,37 @@ pointsFn.OnInvoke = function(player, amount, reason)
 	player:SetAttribute("SkillLastPoints", tostring(reason or "points") .. " +" .. amount)
 	script:SetAttribute("SkillPointGrants", (script:GetAttribute("SkillPointGrants") or 0) + 1)
 	return "ok", before, d.bonus
+end
+
+-- ---------- v1.17: dino unlock spend (see the v1.17 note) ----------
+local spendFn = script:FindFirstChild("SkillSpendUnlock") or Instance.new("BindableFunction")
+spendFn.Name = "SkillSpendUnlock"
+spendFn.Parent = script
+spendFn.OnInvoke = function(player, amount, reason)
+	if script:GetAttribute("SkillEnabled") == false or script:GetAttribute("SkillSpendUnlockEnabled") == false then return "disabled" end
+	if typeof(player) ~= "Instance" or not player:IsA("Player") or not SkillPool.grantOk(amount) then return "badArg" end
+	local d = data[player]
+	if not d or not d.loaded then return "notLoaded" end
+	if not d.universal then return "disabled" end
+	local before = earnedOf(d)
+	if before < amount then return "notEnough", before end
+	d.unlock = (d.unlock or 0) + amount
+	local cap = earnedOf(d)
+	if d.active and ST.spent(d.steps, d.active) > cap then -- the active build, as a respec
+		d.steps = ST.sanitize({}, d.active)
+		d.loadout = emptyLoadout()
+		if d.testPlaced then d.testPlaced[d.active] = nil end
+	end
+	for key, r in pairs(d.dinos) do
+		if key ~= d.active and type(r) == "table" and ST.spent(r.steps or {}, key) > cap then
+			r.steps = ST.sanitize({}, key)
+			r.loadout = emptyLoadout()
+		end
+	end
+	d.dirty = true
+	publish(player, d, false)
+	player:SetAttribute("SkillUnlockSpent", d.unlock)
+	player:SetAttribute("SkillLastPoints", tostring(reason or "unlock") .. " -" .. amount)
+	script:SetAttribute("SkillUnlockSpends", (script:GetAttribute("SkillUnlockSpends") or 0) + 1)
+	return "ok", before, cap
 end

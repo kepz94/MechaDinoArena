@@ -44,6 +44,8 @@ local DataStoreService = game:GetService("DataStoreService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 achievements
+VERSION = "1.2" -- v1.2 launch reset
+-- v1.2 (launch reset, Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): QuestStoreName default "MDA_Quests_v2" (1.1: "MDA_Quests_v1"); the old data is kept as it is.
 -- v1.1 (achievements, plan docs/plans/ACHIEVEMENTS_v1.0.md Task 2; Kepu 2026-11-26 picks "Skill points by tier", "Claim at the Quest
 --   Stand", "Start fresh" + "Live state", "B · Three columns", pop-up "top centre 1 s"; red-team "OK", "Keep 2 / 5 / 10"). The 17
 --   achievements of ServerStorage.DinoArcade.AchievementRules 1.0 ride in the same store value: ach = {p = {[stat] = n} (counters,
@@ -56,7 +58,7 @@ VERSION = "1.1" -- v1.1 achievements
 --   not in ach.n: player AchDoneList ("NAME|medal;..." of the new ones) and AchDoneAt (server time) for SkinUnlockPopup 1.1, and it
 --   joins ach.n (saved). Switch: script attribute QuestAchievementsEnabled (true, read per use; false = 1.0).
 script:SetAttribute("QuestServerVersion", VERSION)
-for k, v in pairs({QuestEnabled = true, QuestSaveEnabled = true, QuestStoreName = "MDA_Quests_v1", QuestRange = 24, QuestSaveGap = 10,
+for k, v in pairs({QuestEnabled = true, QuestSaveEnabled = true, QuestStoreName = "MDA_Quests_v2", QuestRange = 24, QuestSaveGap = 10,
 	QuestTestDayOffset = 0}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end

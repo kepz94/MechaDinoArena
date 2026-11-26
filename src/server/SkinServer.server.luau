@@ -102,6 +102,13 @@ VERSION = "1.4" -- v1.4 trail receipts hook
 VERSION = "1.5" -- v1.5 SkinPaintBot for filler bots
 VERSION = "1.6" -- v1.6 island streak earn stat
 VERSION = "1.7" -- v1.7 stand claims + SkinGrant
+VERSION = "1.8" -- v1.8 dino receipts + launch reset
+-- v1.8: (1) dino unlocks (DinoUnlockServer 1.0, Kepu 2026-11-26 08:06 "pay robux to unlock maxed out", pick "R$149"): before the
+--   trail / emote / skin checks, ServerStorage.DinoReceipt is asked for the player's dino intent for the receipt's rarity; when it is
+--   newer than the skin, emote and trail intents, the receipt goes to DinoReceipt("grant") ("dino" / "repeat" -> PurchaseGranted,
+--   else NotProcessedYet). Switch: script attribute SkinDinoReceiptsEnabled (true). Diagnostic: SkinReceiptsToDinos.
+--   (2) launch reset (Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): the store is script attribute SkinStoreName (default "MDA_Skins_v2"; "MDA_Skins_v1" kept as
+--   it is).
 -- v1.7 (Quest Stand, plan docs/plans/QUEST_STAND_v1.0.md Task 3; picks "Claim at the stand", "Always claimable"): the earn check
 --   skips skins whose unlock has claim == "stand" (UniversalSkins 1.5: Zebra, Storm Front) while script attribute
 --   SkinStandClaimsEnabled ~= false (read per check; false = 1.6, they unlock by themselves again). Skins already owned stay owned.
@@ -113,6 +120,8 @@ VERSION = "1.7" -- v1.7 stand claims + SkinGrant
 --   IslandStreak / StatIslandBest runs the earn check. Switch: script attribute SkinIslandStreakEarnEnabled (default true, read
 --   per check; false = istreak 0, so the streak skins stay locked).
 local STORE = "MDA_Skins_v1"
+if script:GetAttribute("SkinStoreName") == nil then script:SetAttribute("SkinStoreName", "MDA_Skins_v2") end -- v1.8 launch reset
+STORE = script:GetAttribute("SkinStoreName")
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local RETRY_GAP = 30
 local SAVE_GAP = 6
@@ -514,6 +523,32 @@ local function processReceipt(receipt)
 	if not (rarity and player and st and store) then
 		bumpAttr("SkinReceiptsDeferred")
 		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	-- v1.8: a dino unlock (DinoUnlockServer 1.0) newer than every skin / emote / trail intent for the same product takes the receipt
+	local dinoHook = ServerStorage:FindFirstChild("DinoReceipt")
+	if dinoHook and script:GetAttribute("SkinDinoReceiptsEnabled") ~= false then
+		local okD, dAt = pcall(function() return dinoHook:Invoke("intent", receipt.PlayerId, rarity) end)
+		if okD and type(dAt) == "number" then
+			local newest = true
+			local sI = st.intent
+			if sI and sI.rarity == rarity and os.clock() - sI.at < INTENT_TTL and sI.at > dAt then newest = false end
+			for _, hn in ipairs({"EmoteReceipt", "TrailReceipt"}) do
+				local hk = ServerStorage:FindFirstChild(hn)
+				if hk then
+					local okO, o = pcall(function() return hk:Invoke("intent", receipt.PlayerId, rarity) end)
+					if okO and type(o) == "number" and o > dAt then newest = false end
+				end
+			end
+			if newest then
+				local okG, r = pcall(function() return dinoHook:Invoke("grant", receipt) end)
+				if okG and (r == "dino" or r == "repeat") then
+					bumpAttr("SkinReceiptsToDinos")
+					return Enum.ProductPurchaseDecision.PurchaseGranted
+				end
+				bumpAttr("SkinReceiptsDeferred")
+				return Enum.ProductPurchaseDecision.NotProcessedYet
+			end
+		end
 	end
 	-- v1.4: a trail buy (TrailServer 1.0) newer than this player's skin and emote intents for the same product takes the receipt
 	local trailHook = ServerStorage:FindFirstChild("TrailReceipt")

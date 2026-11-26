@@ -60,6 +60,10 @@
 local SkinCatalog = {}
 SkinCatalog.ALL_UNLOCKED = true -- v1.5: group test, every skin unlocked
 SkinCatalog.Version = "1.9"
+SkinCatalog.Version = "1.10" -- v1.10 launch: the group test is over
+-- v1.10 (launch, Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): ALL_UNLOCKED off, so paid skins, emotes and trails are earned or bought again (with it on,
+--   everyone owned every emote and trail, and the Favorite Egg could only roll skins and dinos).
+SkinCatalog.ALL_UNLOCKED = false
 
 SkinCatalog.ROLES = {
 	Raptor = {["5E943E"] = "main", ["283A1E"] = "bands", ["8FA046"] = "limbs", ["C9C98F"] = "belly", ["302824"] = "claws",

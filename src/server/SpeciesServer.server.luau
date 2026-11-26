@@ -74,9 +74,46 @@ script:SetAttribute("SpeciesServerVersion", "1.9") -- v1.9 remember respawn pick
 --   the script attribute SpeciesSaveField (default "lastSpecies2", read per load / save) of the same "MDA_Settings_v1" record; the old
 --   lastSpecies field stays as it is (music settings in the record are untouched). DinoOwnership 1.1 reads the same field.
 script:SetAttribute("SpeciesServerVersion", "1.10") -- v1.10 fresh last-dino field (account reset)
-if script:GetAttribute("SpeciesSaveField") == nil then script:SetAttribute("SpeciesSaveField", "lastSpecies2") end
+script:SetAttribute("SpeciesServerVersion", "1.11") -- v1.11 coming soon + dino unlock gate
+-- v1.11 (Kepu 2026-11-26 08:06 "make dinos 40 skill points to unlock base or pay robux to unlock maxed out", 08:09 "for the t-rex
+--   have it be unselectable and unable to use. just slap a coming soon on it"; picks "Spend 40 (as said)", "R$149"):
+--   * Coming soon: script attribute SpeciesComingSoon (csv, default "TRex", read per check). Such a dino can't be picked (request
+--     -> "comingSoon") and a player whose DinoSpecies becomes one (a saved pick, RespawnServer, any script) is moved to a fallback.
+--   * Unlock gate: script attribute SpeciesUnlockGateEnabled (default true, read per check). Once the player's ownership is known
+--     (TutState set and not "wait", OwnedDinos not empty), a dino not in OwnedDinos (DinoOwnership) is "locked": request ->
+--     "locked", and DinoSpecies set to it is moved to a fallback. Unlocking is DinoUnlockServer 1.0 (40 points or R$149 maxed).
+--   * Fallback: the last allowed DinoSpecies (player SpeciesLastAllowed), FreeDino, SpeciesDefault, then any owned dino; the body is
+--     swapped with switch(). Diagnostic: player SpeciesLockReverts (count).
+--   * ReplicatedStorage attributes for the pick screens: DinoComingSoon (csv), DinoUnlockGate (bool).
+--   * Launch reset (Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): SpeciesSaveField default "lastSpecies3" (DinoOwnership 1.3 reads the same field).
+if script:GetAttribute("SpeciesSaveField") == nil then script:SetAttribute("SpeciesSaveField", "lastSpecies3") end -- v1.11 launch reset (1.10: "lastSpecies2")
 local function speciesField() return script:GetAttribute("SpeciesSaveField") or "lastSpecies2" end
 if script:GetAttribute("SpeciesDefault") == nil then script:SetAttribute("SpeciesDefault", "Raptor") end -- v1.1
+-- v1.11: coming soon + unlock gate (see the v1.11 note)
+for k, v in pairs({SpeciesComingSoon = "TRex", SpeciesUnlockGateEnabled = true}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local function soonSet()
+	local s = {}
+	for id in tostring(script:GetAttribute("SpeciesComingSoon") or ""):gmatch("[^,%s]+") do s[id] = true end
+	return s
+end
+local function publishLocks()
+	ReplicatedStorage:SetAttribute("DinoComingSoon", tostring(script:GetAttribute("SpeciesComingSoon") or ""))
+	ReplicatedStorage:SetAttribute("DinoUnlockGate", script:GetAttribute("SpeciesUnlockGateEnabled") ~= false)
+end
+publishLocks()
+script:GetAttributeChangedSignal("SpeciesComingSoon"):Connect(publishLocks)
+script:GetAttributeChangedSignal("SpeciesUnlockGateEnabled"):Connect(publishLocks)
+local function lockOf(player, sp)
+	if soonSet()[sp] then return "comingSoon" end
+	if script:GetAttribute("SpeciesUnlockGateEnabled") == false then return nil end
+	local ts = player:GetAttribute("TutState")
+	local owned = tostring(player:GetAttribute("OwnedDinos") or "")
+	if ts == nil or ts == "wait" or owned == "" then return nil end
+	if string.find("," .. owned .. ",", "," .. tostring(sp) .. ",", 1, true) then return nil end
+	return "locked"
+end
 
 local remote = ReplicatedStorage:FindFirstChild("DinoSpeciesRequest")
 if not remote then
@@ -411,6 +448,13 @@ remote.OnServerEvent:Connect(function(player, species)
 		player:SetAttribute("SpeciesLastResult", "badArg")
 		return
 	end
+	do -- v1.11
+		local lk = lockOf(player, species)
+		if lk then
+			player:SetAttribute("SpeciesLastResult", lk)
+			return
+		end
+	end
 	if species == "Raptor" and not raptorTemplate then
 		player:SetAttribute("SpeciesLastResult", "noTemplate")
 		return
@@ -558,3 +602,41 @@ local function watchRespawnPick(player)
 end
 Players.PlayerAdded:Connect(watchRespawnPick)
 for _, p in ipairs(Players:GetPlayers()) do task.spawn(watchRespawnPick, p) end
+
+-- v1.11: keep players off coming-soon and locked dinos (see the v1.11 note)
+local function fallbackFor(player)
+	local cands = {player:GetAttribute("SpeciesLastAllowed"), player:GetAttribute("FreeDino"), script:GetAttribute("SpeciesDefault")}
+	for id in tostring(player:GetAttribute("OwnedDinos") or ""):gmatch("[^,]+") do table.insert(cands, id) end
+	for _, c in ipairs(cands) do
+		if type(c) == "string" and c ~= "" and SPECIES[c] and not lockOf(player, c) then return c end
+	end
+	return nil
+end
+local function enforceLocks(player)
+	if not player.Parent then return end
+	local sp = player:GetAttribute("DinoSpecies")
+	if type(sp) ~= "string" or sp == "" then return end
+	if not lockOf(player, sp) then
+		if player:GetAttribute("SpeciesLastAllowed") ~= sp then player:SetAttribute("SpeciesLastAllowed", sp) end
+		return
+	end
+	local fb = fallbackFor(player)
+	if not fb then return end
+	player:SetAttribute("SpeciesLockReverts", (player:GetAttribute("SpeciesLockReverts") or 0) + 1)
+	player:SetAttribute("DinoSpecies", fb)
+	local char = player.Character
+	if char and speciesOf(char) ~= fb then
+		task.defer(function() if player.Parent and player.Character == char then switch(player, fb) end end)
+	end
+end
+local function watchLocks(player)
+	for _, k in ipairs({"DinoSpecies", "OwnedDinos", "TutState"}) do
+		player:GetAttributeChangedSignal(k):Connect(function() enforceLocks(player) end)
+	end
+	task.delay(1, enforceLocks, player)
+end
+Players.PlayerAdded:Connect(watchLocks)
+for _, p in ipairs(Players:GetPlayers()) do task.spawn(watchLocks, p) end
+script:GetAttributeChangedSignal("SpeciesComingSoon"):Connect(function()
+	for _, p in ipairs(Players:GetPlayers()) do enforceLocks(p) end
+end)

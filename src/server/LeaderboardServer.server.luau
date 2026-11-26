@@ -48,8 +48,10 @@ local UserService = game:GetService("UserService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 low, big board, no claws
+VERSION = "1.2" -- v1.2 launch reset
+-- v1.2 (launch reset, Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): LbStoreName default "MDA_ArenaWins_v2" (1.1: "MDA_ArenaWins_v1"), so the world board starts empty; the old data is kept as it is.
 local DEFAULTS = {LbEnabled = true, LbWorldEnabled = true, LbBoardsEnabled = true, LbSaveEnabled = true,
-	LbStoreName = "MDA_ArenaWins_v1", LbRefresh = 60, LbTopN = 100, LbBoardSide = 60, LbBoardFwd = 14, LbBoardAim = 82,
+	LbStoreName = "MDA_ArenaWins_v2", LbRefresh = 60, LbTopN = 100, LbBoardSide = 60, LbBoardFwd = 14, LbBoardAim = 82,
 	LbGroundY = 1.8, LbTestRows = 0, LbTestMyRank = 0}
 script:SetAttribute("LeaderboardServerVersion", VERSION)
 for k, v in pairs(DEFAULTS) do

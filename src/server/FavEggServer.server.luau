@@ -29,6 +29,7 @@
 -- Switches / numbers (script attributes): FavEggEnabled (true, read at start), FavEggStoreName, FavEggWindowH (48, read per use),
 --   FavEggSeenRange (60), FavEggRange (24), FavEggGrantDelay (5), FavEggRetry (15), FavEggReelLen (40), FavEggReelAt (34), the odds,
 --   FavEggTestMemoryStore (false). Diagnostics: FavEggServerVersion, FavEggRolls, FavEggGrants, FavEggStoreKind.
+--   Coming-soon dinos (ReplicatedStorage DinoComingSoon, SpeciesServer 1.11: the T-Rex) count as owned, so the egg never rolls them.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -224,6 +225,7 @@ local function favorited(player)
 	st.busy = true
 	local owned = {skin = R.setOf(player:GetAttribute("SkinOwnedU")), emote = R.setOf(player:GetAttribute("EmoteOwned")),
 		trail = R.setOf(player:GetAttribute("TrailOwned")), dino = R.setOf(player:GetAttribute("OwnedDinos"))}
+	for id in pairs(R.setOf(ReplicatedStorage:GetAttribute("DinoComingSoon"))) do owned.dino[id] = true end -- coming soon (SpeciesServer 1.11): never rolled
 	local odds = {common = A("FavEggOddsCommon", 60), rare = A("FavEggOddsRare", 30), epic = A("FavEggOddsEpic", 5),
 		legend = A("FavEggOddsLegend", 2), dino = A("FavEggOddsDino", 3)}
 	local rng = Random.new()

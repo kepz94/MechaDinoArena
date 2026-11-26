@@ -23,6 +23,12 @@ local DataStoreService = game:GetService("DataStoreService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 island kill streak
+VERSION = "1.2" -- v1.2 store line + launch reset
+-- v1.2: 1.1's header ran into the store line ("... false = 1.0.local STORE = ..."), so STORE was nil and nothing loaded or saved since
+--   v1022 (found 2026-11-26). The store is now script attribute SkinStatsStoreName (default "MDA_SkinStats_v2", launch reset,
+--   Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"; "MDA_SkinStats_v1" kept).
+if script:GetAttribute("SkinStatsStoreName") == nil then script:SetAttribute("SkinStatsStoreName", "MDA_SkinStats_v2") end
+local STORE = script:GetAttribute("SkinStatsStoreName")
 -- v1.1 (island kill streak, plan docs/plans/ISLAND_STREAK_v1.0.md Task 2; Kepu 2026-11-26 "a fire streak emblem once you go on a killing spree on the main island. 25 kills streak unlocks the
 --   thunder storm skin. 10 kill streak unlocks the zebra"; kills of players and bots, main island
 --   only; picks "Death or menu"): every counted kill (after the dedupe above) also adds 1 to the killer's island streak when

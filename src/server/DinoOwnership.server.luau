@@ -35,6 +35,8 @@ local DataStoreService = game:GetService("DataStoreService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 fresh store (account reset)
 VERSION = "1.2" -- v1.2 OwnGrant + maxed dinos
+VERSION = "1.3" -- v1.3 launch reset
+-- v1.3 (launch reset, Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): OwnStoreName default "MDA_Owned_v3", OwnLastField default "lastSpecies3" (SpeciesServer 1.11 writes it); the old data is kept as it is.
 -- v1.2 (Favorite Egg, plan docs/plans/FAVORITE_EGG_v1.0.md Task 2, MDA-608; Kepu 2026-11-26 "Owned + parts maxed"): server-only
 --   BindableFunction OwnGrant (child of this script): Invoke(player, key, maxed) -> "ok" (value.owned[key] = true, and with maxed
 --   value.maxed[key] = true; written as every other change) / "owned" (owned, and maxed when asked) / "unknown" (not one of
@@ -42,8 +44,8 @@ VERSION = "1.2" -- v1.2 OwnGrant + maxed dinos
 --   ("grand" / "off": every dino already) / "disabled". New player attribute MaxedDinos (comma list of value.maxed; SkillServer
 --   1.16 gives those dinos every mecha part like FreeDino). Switch: script attribute OwnGrantEnabled (true, read per call).
 --   Diagnostic: OwnGrants.
-if script:GetAttribute("OwnStoreName") == nil then script:SetAttribute("OwnStoreName", "MDA_Owned_v2") end
-if script:GetAttribute("OwnLastField") == nil then script:SetAttribute("OwnLastField", "lastSpecies2") end
+if script:GetAttribute("OwnStoreName") == nil then script:SetAttribute("OwnStoreName", "MDA_Owned_v3") end -- v1.3 (1.1: "MDA_Owned_v2")
+if script:GetAttribute("OwnLastField") == nil then script:SetAttribute("OwnLastField", "lastSpecies3") end -- v1.3 (1.1: "lastSpecies2")
 script:SetAttribute("OwnershipVersion", VERSION)
 if script:GetAttribute("OwnershipEnabled") == nil then script:SetAttribute("OwnershipEnabled", true) end
 if script:GetAttribute("OwnSkillWait") == nil then script:SetAttribute("OwnSkillWait", 15) end
