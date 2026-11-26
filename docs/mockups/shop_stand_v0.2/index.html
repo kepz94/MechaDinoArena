@@ -1,0 +1,136 @@
+<title>Shop Stand v0.2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Shop Stand v0.2 mockup: real Studio captures (Play, client view, 2026-11-25) of the live ShopStand model moved on the client only. */
+:root{
+  --ink:#0d1218; --panel:#151d27; --line:#263243; --text:#e7edf5; --muted:#93a2b6;
+  --yellow:#ffc832; --green:#46e08a; --red:#e0284a; --cyan:#7fe9ff;
+  --display:"Silkscreen","Courier New",monospace; --body:"Inter",system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+body{background:#080b10;color:var(--text);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1040px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;letter-spacing:.03em;text-wrap:balance}
+h1{font-size:clamp(22px,3.4vw,30px);color:var(--yellow)}
+h2{font-size:17px}
+p{margin:0}
+.lead{color:var(--muted);max-width:75ch}
+.switch{display:flex;flex-wrap:wrap;gap:8px}
+.switch button{font-family:var(--display);font-size:13px;letter-spacing:.04em;background:var(--panel);color:var(--text);border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--yellow);color:#1b1405;border-color:var(--yellow)}
+.switch button:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:14px;min-width:0}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.row{grid-template-columns:minmax(0,1fr)}}
+.shot{position:relative;border-radius:10px;overflow:hidden;background:#9cc4e8;max-width:100%}
+.shot img{display:block;width:100%;height:auto}
+.shot svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.facts{display:grid;gap:8px}
+.facts div{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px}
+.facts b{font-family:var(--display);font-size:12px;color:var(--muted);display:block;letter-spacing:.04em}
+.good{color:var(--green)} .bad{color:#ff8098}
+.rec{font-family:var(--display);font-size:11px;background:var(--green);color:#06210f;border-radius:4px;padding:1px 6px;margin-left:6px}
+.note{font-size:13px;color:var(--muted)}
+.keep{background:var(--ink);border:1px dashed var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <h1>Shop Stand v0.2</h1>
+    <p class="lead">Two picks: where the stall stands, and how OPEN SHOP shows on it. Every picture is a real Studio capture of the live stall, moved on the client only. Top views: portal at the top, bridge at the bottom, the yellow cross is the plaza centre (930, 930), which is also the centre of the spawn arc.</p>
+  </header>
+
+  <section class="card" aria-labelledby="p1">
+    <h2 id="p1">1. Spot (all face the plaza centre)</h2>
+    <div class="switch" role="group" aria-label="Spot">
+      <button data-spot="now" aria-pressed="false">NOW</button>
+      <button data-spot="a" aria-pressed="true">A · WORLDWIDE SIDE</button>
+      <button data-spot="b" aria-pressed="false">B · LOBBY SIDE</button>
+      <button data-spot="c" aria-pressed="false">C · BY THE BRIDGE</button>
+    </div>
+    <div class="row">
+      <div class="shot">
+        <img id="topImg" src="top_a.jpg" alt="Top view of the islet plaza with the shop stall" width="507" height="496">
+        <svg viewBox="0 0 507 496" aria-hidden="true">
+          <line id="aim" x1="408" y1="340" x2="253.5" y2="268" stroke="#ffc832" stroke-width="2.5" stroke-dasharray="7 6"/>
+          <g stroke="#ffc832" stroke-width="3"><line x1="243.5" y1="268" x2="263.5" y2="268"/><line x1="253.5" y1="258" x2="253.5" y2="278"/></g>
+        </svg>
+      </div>
+      <div class="facts" id="facts"></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="p2">
+    <h2 id="p2">2. OPEN SHOP on the stall</h2>
+    <div class="switch" role="group" aria-label="Button">
+      <button data-btn="1" aria-pressed="true">1 · FLOATING BUTTON</button>
+      <button data-btn="2" aria-pressed="false">2 · SIGN IS THE BUTTON</button>
+      <button data-btn="3" aria-pressed="false">3 · PROMPT (E / TAP)</button>
+    </div>
+    <div class="row">
+      <div class="shot"><img id="btnImg" src="btn1.jpg" alt="The stall seen from the plaza with the OPEN SHOP control" width="847" height="526"></div>
+      <div class="facts" id="bfacts"></div>
+    </div>
+    <p class="keep">All three: shows only within the stall's range (24 studs, as now), hides while the Shop is open, tap or click opens the Shop as today. The current screen button above JUMP stays in the code behind a switch, off by default.</p>
+  </section>
+</div>
+
+<script>
+const SPOTS = {
+  now:{img:"top_now.jpg",x:455,y:235,rows:[
+    ["Where","Next to WORLDWIDE, at the plaza edge (101 studs out)"],
+    ["Gap to board",'<span class="bad">0 studs, touching</span>'],
+    ["Facing","The spawn arc, not the centre"]]},
+  a:{img:"top_a.jpg",x:408,y:340,rec:true,rows:[
+    ["Where","Same side as now (WORLDWIDE side), pulled in to 85 studs and turned 34 degrees toward the bridge"],
+    ["Gap to board",'<span class="good">21 studs</span>'],
+    ["Facing","Plaza centre"],
+    ["Why","Keeps your first pick (by WORLDWIDE), only spaced out. Its counter is about 24 studs from the nearest spawn pad."]]},
+  b:{img:"top_b.jpg",x:88,y:310,rows:[
+    ["Where","Mirror side, by the LOBBY board, 85 studs out"],
+    ["Gap to board",'<span class="good">22 studs</span>'],
+    ["Facing","Plaza centre"],
+    ["Trade-off","Same spacing as A, but on the other side of the spawn arc."]]},
+  c:{img:"top_c.jpg",x:375,y:388,rows:[
+    ["Where","West edge, next to where the bridge lands, 85 studs out"],
+    ["Gap to board",'<span class="good">45 studs</span>'],
+    ["Facing","Plaza centre"],
+    ["Trade-off","Most open space. Players walking in from the bridge pass it, but it sits farther from both boards and from the portal."]]}
+};
+const BTNS = {
+  1:{img:"btn1.jpg",rec:true,rows:[
+    ["What","The yellow OPEN SHOP button floats over the counter"],
+    ["Phone","Same pixel size at any distance (150 x 46), so it stays easy to tap"],
+    ["Trade-off","Not part of the stall's wood, it is a UI button pinned to it"]]},
+  2:{img:"btn2.jpg",rows:[
+    ["What","When you walk up, the SHOP sign turns yellow and reads OPEN SHOP; tap the sign"],
+    ["Phone","Gets smaller with distance; at the 24-stud edge the text is small"],
+    ["Trade-off","Looks most built-in, but tapping the sign can miss if the camera is low"]]},
+  3:{img:"btn3.jpg",rows:[
+    ["What","A prompt over the counter: press E on PC, tap it on phone (Roblox ProximityPrompt, our colours)"],
+    ["Phone","Fixed size like option 1"],
+    ["Trade-off","Adds a keyboard key (E). Feels like other Roblox games"]]}
+};
+function facts(el, rows, rec){
+  el.innerHTML = rows.map(([k,v],i)=>`<div><b>${k}${i===0&&rec?'<span class="rec">RECOMMENDED</span>':''}</b>${v}</div>`).join("");
+}
+function setSpot(k){
+  const s = SPOTS[k];
+  document.getElementById("topImg").src = s.img;
+  const a = document.getElementById("aim");
+  a.setAttribute("x1", s.x); a.setAttribute("y1", s.y);
+  a.style.display = k === "now" ? "none" : "";
+  facts(document.getElementById("facts"), s.rows, s.rec);
+  document.querySelectorAll("[data-spot]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.spot===k));
+}
+function setBtn(k){
+  const s = BTNS[k];
+  document.getElementById("btnImg").src = s.img;
+  facts(document.getElementById("bfacts"), s.rows, s.rec);
+  document.querySelectorAll("[data-btn]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.btn===k));
+}
+document.querySelectorAll("[data-spot]").forEach(b=>b.addEventListener("click",()=>setSpot(b.dataset.spot)));
+document.querySelectorAll("[data-btn]").forEach(b=>b.addEventListener("click",()=>setBtn(b.dataset.btn)));
+setSpot("a"); setBtn("1");
+</script>
