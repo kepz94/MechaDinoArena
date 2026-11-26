@@ -88,3 +88,9 @@ sky + baseplate grass, plain Raptor, "DINO" | white slanted divider | gold burst
 icon_dino_to_mecha_1024.png / _512.png (same split, square), thumb_current_icon.jpg (the v1.0 icon as a framed card on a matching
 blue burst). Copies on Kepu's PC: Downloads\MechaDinoArena_UPLOAD. Upload is Kepu's (Creator Hub; Open Cloud thumbnail scope not
 granted).
+- 11:44 Kepu: "why would you choose that as the mecha picture. you cant even see what the fuck is going on" (the 19-40-18 close-up
+  was cropped: no body, no legs). Re-shot in Studio from the plain Raptor's camera: the same Raptor, Lava skin, parts on (Shock
+  Cannon, Adrenaline pack, Energy Shield, Blade claws; SkillTestMaxAllEnabled in Play only). 11:47 Kepu: "i like this dino model for
+  the mecha part but try to do an action shot with it" -> src/mecha_raptor_action_frame.jpg: a real jump, the Shock Cannon fired
+  at the top, every body part frozen at that instant (client snapshot), the real ShockBall (shell, arcs) frozen just past the
+  barrel. Only the dino gets the sticker outline; the ball gets a cyan glow. Restored after: Play stopped, switches back.

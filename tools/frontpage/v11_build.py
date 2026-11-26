@@ -27,7 +27,7 @@ def keyed(path, crop=None, clear=()):
     return crop_sub(im, 30)
 
 plain = keyed(os.path.join(D, 'src', 'plain_raptor_frame.jpg'), clear=[(0, 560, 1920, 700), (0, 110, 300, 170)])
-mecha = keyed(os.path.join(D, 'src', 'mecha_raptor_frame_19-40-18_4.5s.png'), crop=(600, 420, 1260, 940))
+mecha = keyed(os.path.join(D, 'src', 'mecha_raptor_action_frame.jpg'), clear=[(0, 560, 1920, 700), (0, 110, 300, 170)])  # v1.1c: action shot (mid-leap, real Shock Cannon ball frozen at the barrel)
 
 def sky_ground(W, H, horizon):
     yy, xx = np.mgrid[0:H, 0:W]
@@ -80,28 +80,53 @@ def split(W, H, xt, xb, left, right, stripe=16):
 
 WHITE_TXT = dict(fill_top=(255, 255, 255), fill_bot=(205, 225, 255))
 GOLD_TXT = dict(fill_top=(255, 240, 130), fill_bot=(255, 150, 20))
-MECH = outlined(mecha, 12, (255, 255, 255), 6, (12, 12, 20), glow=(255, 210, 90))
+def build_mech():
+    # v1.1c: the action frame has the dino (left of x 1010) and the Shock Cannon ball (right of it); only the dino gets the
+    # sticker outline, the ball gets an electric glow instead
+    src = Image.open(os.path.join(D, 'src', 'mecha_raptor_action_frame.jpg')).convert('RGB')
+    tmp = os.path.join(D, 'src', '_k.png'); src.save(tmp); full = key(tmp); os.remove(tmp)
+    px = full.load()
+    for y in range(560, full.size[1]):
+        for x in range(full.size[0]): px[x, y] = (0, 0, 0, 0)
+    W0, H0 = full.size
+    dino = full.copy(); ball = full.copy()
+    dm = Image.new('L', (W0, H0), 0); ImageDraw.Draw(dm).rectangle([0, 0, 1010, H0], fill=255)
+    bm = Image.new('L', (W0, H0), 0); ImageDraw.Draw(bm).rectangle([1011, 0, W0, H0], fill=255)
+    dino.putalpha(Image.composite(dino.getchannel('A'), Image.new('L', (W0, H0), 0), dm))
+    ball.putalpha(Image.composite(ball.getchannel('A'), Image.new('L', (W0, H0), 0), bm))
+    pad = 60
+    dl = outlined(dino, 12, (255, 255, 255), 6, (12, 12, 20), glow=(255, 210, 90))
+    # ball: brighten toward white-cyan, add a soft cyan glow behind
+    arr = np.asarray(ball).astype(np.float32)
+    a = arr[..., 3:4] / 255
+    arr[..., :3] = arr[..., :3] * 0.35 + np.array([225, 245, 255.]) * 0.65
+    ballc = Image.fromarray(arr.astype(np.uint8))
+    glow = Image.new('RGBA', (W0, H0), (110, 220, 255, 0)); glow.putalpha(ball.getchannel('A').filter(ImageFilter.MaxFilter(15)).filter(ImageFilter.GaussianBlur(26)))
+    out = Image.new('RGBA', (W0, H0), (0, 0, 0, 0))
+    out.alpha_composite(glow); out.alpha_composite(glow); out.alpha_composite(dl); out.alpha_composite(ballc)
+    return crop_sub(out, 20)
+MECH = build_mech()
 
 # thumbnail 1920 x 1080
 W, H = 1920, 1080
 R = gold(W, H, cx=0.72, cy=0.5)
-place(R, MECH, 960, 1420, 690)
+place(R, MECH, 1090, 1370, 590)
 base = split(W, H, 930, 790, sky_ground(W, H, 720), R)
 place(base, outlined(plain, 10, (255, 255, 255), 5, (12, 12, 20)), 760, 400, 640)
 place(base, text3d('DINO', 190, **WHITE_TXT), 560, 410, 175)
 place(base, text3d('MECHA', 210, **GOLD_TXT), 720, 1430, 150)
-base.alpha_composite(arrow((W, H), (560, 330), (720, 150), (930, 330)))
+base.alpha_composite(arrow((W, H), (590, 330), (760, 130), (950, 280)))
 base.convert('RGB').save(os.path.join(D, 'thumb_dino_to_mecha.jpg'), quality=92)
 
 # icon 1024 x 1024
 W, H = 1024, 1024
 R = gold(W, H, cx=0.7, cy=0.5)
-place(R, MECH, 760, 690, 690)
+place(R, MECH, 870, 585, 560)
 base = split(W, H, 470, 330, sky_ground(W, H, 700), R, stripe=14)
-place(base, outlined(plain, 9, (255, 255, 255), 5, (12, 12, 20)), 450, 215, 790)
+place(base, outlined(plain, 9, (255, 255, 255), 5, (12, 12, 20)), 330, 175, 880)
 place(base, text3d('DINO', 150, **WHITE_TXT), 380, 210, 120)
-place(base, text3d('MECHA', 170, **GOLD_TXT), 520, 750, 120)
-base.alpha_composite(arrow((W, H), (230, 590), (300, 330), (470, 420), width=34, head=80))
+place(base, text3d('MECHA', 170, **GOLD_TXT), 520, 740, 120)
+base.alpha_composite(arrow((W, H), (190, 740), (210, 470), (390, 420), width=34, head=80))
 base.convert('RGB').save(os.path.join(D, 'icon_dino_to_mecha_1024.png'))
 base.convert('RGB').resize((512, 512), Image.LANCZOS).save(os.path.join(D, 'icon_dino_to_mecha_512.png'))
 
