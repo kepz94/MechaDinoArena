@@ -1,4 +1,5 @@
--- TutorialRules.spec v1.2 (Mecha Dino Arena) — TutorialRules 1.0 / 1.1 lessons / 1.2 hit rules (plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 0, MDA-558).
+-- TutorialRules.spec v1.3 (Mecha Dino Arena) — TutorialRules 1.0 / 1.1 lessons / 1.2 hit rules (plan docs/plans/FIRST_TIME_FLOW_v1.0.md Task 0, MDA-558)
+-- / 1.3 passives + JUMP parts (plan docs/plans/WELCOME_MOVES_v1.0.md Task 1, MDA-593).
 -- Run in Studio Edit (clone + require ServerStorage.DinoArcade.TutorialRules); returns "PASS n" or "FAIL ...".
 local src = game:GetService("ServerStorage"):FindFirstChild("DinoArcade") and game.ServerStorage.DinoArcade:FindFirstChild("TutorialRules")
 if not src then return "FAIL require: ServerStorage.DinoArcade.TutorialRules missing" end
@@ -92,5 +93,48 @@ eq("dilo unchanged", R.lessonsFor("Dilo")[1].done, "hit")
 eq("listHas", R.listHas("A|PBot_Training Bot|C", "PBot_Training Bot"), true)
 eq("listHas no", R.listHas("A|B", "PBot_Training Bot"), false)
 eq("listHas empty", R.listHas("", "x"), false)
+-- v1.3: passives + JUMP parts (MDA-593)
+local function n(t) return type(t) == "table" and #t or -1 end
+eq("passives Herrera", n(R.passivesFor and R.passivesFor("Herrera")), 1)
+eq("passives Therizino", n(R.passivesFor and R.passivesFor("Therizino")), 1)
+eq("passives Troodon", n(R.passivesFor and R.passivesFor("Troodon")), 1)
+for _, d in ipairs({"Raptor", "Pachy", "Teno", "Dilo", "TRex", "Nope"}) do eq("passives none " .. d, n(R.passivesFor and R.passivesFor(d)), 0) end
+eq("passives nil", n(R.passivesFor and R.passivesFor(nil)), 0)
+eq("Herrera passive name", R.passivesFor and R.passivesFor("Herrera")[1] and R.passivesFor("Herrera")[1].n, "Tree Climber")
+if R.passivesFor then
+	local c = R.passivesFor("Herrera")
+	c[1] = nil
+	eq("passives copy", n(R.passivesFor("Herrera")), 1)
+end
+for d, list in pairs(R.PASSIVES or {}) do
+	for i, P in ipairs(list) do
+		eq("passive tag " .. d .. i, P.tag == "PASSIVE" or P.tag == "ON JUMP", true)
+		eq("passive dash " .. d .. i, string.find(P.n .. P.line, "\u{2014}") == nil, true)
+		eq("passive line " .. d .. i, type(P.line) == "string" and #P.line > 0, true)
+	end
+end
+local gl, ml, tl = R.jumpPart and R.jumpPart("glider"), R.jumpPart and R.jumpPart("mechalegs"), R.jumpPart and R.jumpPart("tleap")
+eq("glider stamp", gl and gl.stamp, "GlideStartedAt")
+eq("mechalegs stamp", ml and ml.stamp, "JumpDoubleAt")
+eq("tleap stamp", tl and tl.stamp, "JumpStartedAt")
+eq("tleap needAttr", tl and tl.needAttr, "TenoLeapOnJump")
+eq("quills not jump", R.jumpPart and R.jumpPart("quills"), nil)
+eq("nil not jump", R.jumpPart and R.jumpPart(nil), nil)
+eq("tleap needs flag", R.jumpPartEvent and R.jumpPartEvent(tl, "JumpStartedAt", false), false)
+eq("tleap with flag", R.jumpPartEvent and R.jumpPartEvent(tl, "JumpStartedAt", true), true)
+eq("glider wrong stamp", R.jumpPartEvent and R.jumpPartEvent(gl, "JumpStartedAt", nil), false)
+eq("glider stamp ok", R.jumpPartEvent and R.jumpPartEvent(gl, "GlideStartedAt", nil), true)
+eq("mechalegs stamp ok", R.jumpPartEvent and R.jumpPartEvent(ml, "JumpDoubleAt", nil), true)
+eq("nil entry", R.jumpPartEvent and R.jumpPartEvent(nil, "GlideStartedAt", true), false)
+local okST, ST = pcall(function() return require(game:GetService("ServerStorage").DinoArcade.SkillTree) end)
+for id, J in pairs(R.JUMP_PARTS or {}) do
+	eq("jump part in SkillTree " .. id, okST and ST.PATHS[id] ~= nil, true)
+	for _, k in ipairs({"big", "pcBig", "small", "tip"}) do
+		eq("jump part " .. id .. " " .. k, type(J[k]) == "string" and #J[k] > 0 and string.find(J[k], "\u{2014}") == nil, true)
+	end
+end
+eq("jump parts count", (function() local c = 0 for _ in pairs(R.JUMP_PARTS or {}) do c += 1 end return c end)(), 3)
+eq("lessons kept", #R.lessonsFor("Teno"), 2)
+eq("roll pool kept", #R.ROLL_POOL, 7)
 if #fails > 0 then return "FAIL " .. #fails .. ": " .. table.concat(fails, "; ") end
 return "PASS " .. passes
