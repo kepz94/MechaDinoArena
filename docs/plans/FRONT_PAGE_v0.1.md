@@ -71,3 +71,8 @@ window as before.
   thumb_1_pick_your_dino, thumb_2_mecha_parts, thumb_4_skins_and_trails (3 thumbnails, inside Roblox's 2-5 active range).
 - 20:27 Kepu: "For the title let's go with number 3" = "[NEW] Mecha Dino Arena". Not applied to the live game: Kepu sets the
   name on the game's settings page (or says "Publish").
+- 20:43 Kepu: update the official game page with the trailer and front page. Checked via Open Cloud (read only): universe
+  10773455700, root place 84022023159448, name "Mecha Dino Arena", description empty, no thumbnails, visibility PRIVATE.
+  Blocked: scopes universe.place:write and universe.thumbnail:write not granted, and the FrontPage folder is not an
+  approved upload folder (asset:write is on). Video thumbnails have no Open Cloud upload; Creator Dashboard only.
+  21:12 Kepu: parked for later. Nothing on the live page was changed. Both steps are on Dev Hub as pending for Kepu.
