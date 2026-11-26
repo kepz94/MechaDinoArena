@@ -1,0 +1,265 @@
+<title>Looks Lab v0.1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@500;700;800&family=Bangers&display=swap">
+<style>
+/* Looks Lab v0.1: SKINS / EMOTES / TRAILS in Lab 2.0 without the filter row, owned first, locked tiles say why; the emote wheel
+   edited by tapping a slot then an emote. Colours are Lab.client.luau's. Names, prices and challenges are the real catalog ones
+   (UniversalSkins, EmoteCatalog, TrailCatalog). Phone frame = iPhone 17 Pro viewport (750 x 381); 1 em = 10 px phone, 13 px PC. */
+:root{
+  --bg:#080b10; --page:#0d1218; --panel:#14141a; --panel2:#1c2230; --line:#2a3344; --text:#e7edf5; --muted:#8f99aa; --grey:#cfd3dc;
+  --yellow:#ffc832; --orange:#ff9b2e; --volt:#7fe9ff; --skin:#c9a2ff; --robux:#00b06f; --green:#46e08a; --dark:#1b1406;
+  --px:"Silkscreen","Courier New",monospace; --body:"Inter",system-ui,-apple-system,sans-serif; color-scheme:dark;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+h1,h2{font-family:var(--px);font-weight:700;margin:0;letter-spacing:.03em;text-wrap:balance}
+h1{font-size:clamp(20px,3vw,28px);color:var(--yellow)} h2{font-size:16px}
+p{margin:0} .lead{color:var(--muted);max-width:80ch}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar .lbl{font-family:var(--px);font-size:12px;color:var(--muted);margin-right:4px}
+.sw{font-family:var(--px);font-size:13px;background:var(--panel2);color:var(--text);border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+.sw[aria-pressed="true"]{background:var(--yellow);color:var(--dark);border-color:var(--yellow)}
+.sw:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.rec{font-family:var(--px);font-size:10px;background:var(--green);color:#06210f;border-radius:4px;padding:1px 5px;margin-left:6px}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+.notes div{background:var(--page);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}
+.notes b{display:block;font-family:var(--px);font-size:11px;color:var(--muted);letter-spacing:.05em;margin-bottom:2px}
+.stagewrap{overflow:hidden;border-radius:14px;background:#000;border:1px solid var(--line);max-width:100%}
+.scaler{transform-origin:0 0}
+.f{position:relative;overflow:hidden;color:#fff;font-family:var(--px);background:linear-gradient(180deg,#10141d,#1a2130 55%,#0e1219);user-select:none}
+.f.phone{width:750px;height:381px;font-size:10px} .f.pc{width:1280px;height:720px;font-size:13px}
+.f *{box-sizing:border-box}
+.f button{font-family:var(--px);color:inherit;cursor:pointer;border:0;background:none;padding:0}
+.top{position:absolute;left:0;right:0;top:0;height:5em;display:flex;align-items:center;gap:1.2em;padding:0 1.2em 0 15em;border-bottom:.3em solid var(--volt)}
+.pc .top{padding-left:1.2em}
+.top .lab{color:var(--volt);font-size:1.1em} .top .dn{font-size:1.7em} .top .sp{flex:1}
+.x{width:3.7em;height:3.7em;border:2px solid #fff6!important;border-radius:.7em;font-size:1.2em!important;display:grid;place-items:center}
+.body{position:absolute;left:0;right:0;top:5em;bottom:0;display:flex;gap:1em;padding:1em}
+.col{min-width:0;display:flex;flex-direction:column;gap:.8em}
+.pane{background:#121620;border:1.5px solid var(--line);border-radius:1.2em;min-width:0;min-height:0;position:relative;overflow:hidden}
+.tabs{display:flex;gap:.5em}
+.tab{flex:1;min-height:4.4em;border-radius:.8em;background:var(--panel2)!important;color:var(--muted)!important;font-size:1.05em!important;border:2px solid transparent!important}
+.tab[aria-pressed="true"]{color:#fff!important;border-color:var(--skin)!important;background:#2a2140!important}
+.tab.v[aria-pressed="true"]{border-color:var(--volt)!important;background:#16303a!important}
+.grid{display:grid;gap:.7em;align-content:start;grid-auto-rows:max-content;overflow:auto;padding:.2em .4em .4em .2em;min-height:0;flex:1}
+.card{background:var(--panel)!important;border:2px solid var(--line)!important;border-radius:1em;padding:.7em!important;display:flex;flex-direction:column;gap:.35em;text-align:left;position:relative;min-height:4.4em}
+.card.sel{border-color:#fff!important} .card.eq{border-color:var(--green)!important} .card.wh{border-color:var(--orange)!important}
+.card.locked .swatch,.card.locked .word{opacity:.45}
+.nm{font-size:1.1em;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st{font-size:.95em} .st.own{color:var(--muted)} .st.on{color:var(--green)} .st.wh{color:var(--orange)}
+.lock{position:absolute;top:.5em;right:.5em;width:2em;height:2em;border-radius:.5em;background:#000a;display:grid;place-items:center;font-size:1em}
+.buy{display:inline-flex;align-self:flex-start;align-items:center;gap:.3em;background:var(--yellow);color:var(--dark);border-radius:.5em;padding:.25em .6em;font-size:.95em;font-weight:700}
+.prog{display:grid;gap:.25em} .prog span{font-size:.9em;color:var(--yellow)}
+.bar2{height:.8em;border-radius:1em;background:#2a3446;overflow:hidden} .bar2 i{display:block;height:100%;background:var(--green)}
+.swatch{display:flex;height:2.4em;border-radius:.6em;overflow:hidden}.swatch i{flex:1;display:block}
+.word{font-family:"Bangers",var(--px);font-size:1.45em;color:var(--yellow);text-align:center;padding:.35em 0;background:#0b0e14;border-radius:.6em;white-space:nowrap;overflow:hidden}
+.divider{grid-column:1/-1;font-size:1em;color:var(--muted);display:flex;align-items:center;gap:.6em;padding:.4em .2em 0}
+.divider::after{content:"";flex:1;height:2px;background:var(--line)}
+.det{display:flex;flex-direction:column;gap:.7em;padding:1em;overflow:auto;min-height:0;flex:1}
+.det .kind{font-size:1em;color:var(--skin)} .det .ttl{font-size:1.6em;line-height:1.1}
+.what{font-family:var(--body);font-weight:800;font-size:1.1em;line-height:1.3}
+.btn{min-height:4.4em;border-radius:.9em;font-size:1.15em!important;width:100%;display:flex;align-items:center;justify-content:center;padding:0 1em!important}
+.btn.g{background:var(--green)!important;color:#06210f!important} .btn.y{background:var(--yellow)!important;color:var(--dark)!important}
+.btn.off{background:#232a38!important;color:var(--muted)!important}
+.btn.d{background:#232a38!important;border:2px solid var(--green)!important;color:var(--green)!important}
+.chal{background:#0b0e14;border:2px solid var(--yellow);border-radius:.9em;padding:.8em;display:grid;gap:.45em}
+.chal b{font-size:1em;color:var(--yellow)} .chal p{font-family:var(--body);font-weight:800;font-size:1.15em}
+.stage{flex:1;display:grid;place-items:center;position:relative;min-height:0}
+.stage .tag{position:absolute;left:.8em;top:.8em;font-size:.95em;color:var(--volt);background:#0b2a33;border-radius:.4em;padding:.2em .5em}
+.hdr{font-size:1.05em;color:var(--yellow);display:flex;align-items:center;gap:.6em;min-height:2.4em}
+.hdr.m{color:var(--muted)}
+.hdr button{margin-left:auto;min-height:4.4em;padding:0 1em!important;border-radius:.7em;background:var(--panel2)!important;color:var(--grey)!important}
+.wheel{position:relative;width:100%;aspect-ratio:1;margin:auto}
+.cq{container-type:size;display:grid;place-items:center} .wheel.big{width:min(100cqw,100cqh)}
+.wheel svg{position:absolute;inset:0;width:100%;height:100%}
+.wheel .seg{position:absolute;transform:translate(-50%,-50%);min-width:5.2em;min-height:5.2em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2em;font-size:.85em;text-align:center;line-height:1.05;border-radius:.6em;padding:.2em .3em!important}
+.wheel .seg .n{font-size:.8em;color:var(--muted)}
+.wheel .seg .w{font-family:"Bangers",var(--px);font-size:1.3em;color:#fff}
+.wheel .seg.sel .w{color:var(--yellow)}
+.wheel .hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font-size:.85em;color:var(--muted);text-align:center;background:#0b0e14;border:2px solid var(--line)}
+.toast{position:absolute;left:50%;top:5.8em;transform:translateX(-50%);background:#000c;border:2px solid var(--yellow);color:var(--yellow);border-radius:.8em;padding:.6em 1.2em;font-size:1.2em;z-index:30;white-space:nowrap;pointer-events:none}
+.pick{position:absolute;inset:0;background:#000b;z-index:20;display:flex;align-items:center;justify-content:center}
+.pickbox{background:#121620;border:2px solid var(--yellow);border-radius:1.2em;padding:1em;display:flex;gap:1em;width:min(96%,80em);height:94%;min-height:0}
+.small{font-family:var(--body);font-size:12px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <h1>Looks Lab v0.1</h1>
+    <p class="lead">Two changes to the Lab's SKINS / EMOTES / TRAILS tabs. 1: the ALL / OWNED / EARN / ROBUX row is gone. What you own comes first, then the locked ones, and each locked tile says why: a yellow BUY with the price, or the challenge with your progress. 2: the emote wheel is edited by tapping a slot on the wheel, then an emote from your list. The wheel has 8 even sections. Tap around: tabs, tiles, wheel slots and buttons all work.</p>
+  </header>
+  <div class="bar" role="group" aria-label="Wheel layout">
+    <span class="lbl">WHEEL</span>
+    <button class="sw" data-opt="A">A · BIG WHEEL ON THE LEFT</button>
+    <button class="sw" data-opt="B">B · WHEEL IN THE DETAIL</button>
+    <button class="sw" data-opt="C">C · EDIT WHEEL POP-UP</button>
+  </div>
+  <div class="bar" role="group" aria-label="Device">
+    <span class="lbl">DEVICE</span>
+    <button class="sw" data-dev="phone">PHONE 750 × 381</button>
+    <button class="sw" data-dev="pc">PC 1280 × 720</button>
+  </div>
+  <div class="stagewrap" id="sw"><div class="scaler" id="scaler"><div id="frame"></div></div></div>
+  <div class="notes" id="notes"></div>
+  <p class="small">The wheel's sections here are drawn as true pie slices. In the game, 8 even slices with lines between them can be built from plain UI. A filled, glowing slice for the selected slot needs one wedge image uploaded (you would upload it; I can't). Without it, the selected slot lights up its label and its two lines instead.</p>
+</div>
+
+<script>
+const SKINS = [ // id, name, colours, unlock: own / on / earn [have, need, text] / buy [price]
+ ["classic","Classic",["#4f7f3a","#2f4d2a","#c9c48a","#3a8f7a"],"own"],["lava","Lava",["#2a1f1a","#ff6a1a","#5a3020","#ffc232"],"on"],
+ ["desert","Desert Runner",["#c99a5a","#8a5a32","#f0dcb4","#b8643a"],"own"],["canopy","Canopy",["#4f7f3a","#2f4d2a","#c9d08a","#d0a040"],"own"],
+ ["river","Riverstone",["#6f7f6a","#4a564a","#c9cfc0","#9aa594"],"earn",[18,25,"Get 25 kills"]],
+ ["zebra","Zebra",["#f4f4f4","#111","#f4f4f4","#111"],"earn",[6,15,"Win 15 Arena matches"]],
+ ["ghost","Ghost Bark",["#d8d0c0","#6a6050","#efe8dc","#3a332a"],"earn",[18,100,"Get 100 kills"]],
+ ["ink","Ink War",["#c02020","#111","#f0e6d8","#c02020"],"earn",[1,3,"Win 3 Arena matches in a row"]],
+ ["arctic","Arctic",["#dfe9f2","#8fb0cc","#ffffff","#5aa8e0"],"buy",[149]],["sakura","Sakura",["#f8e1ea","#f2a0bd","#ffffff","#d9567f"],"buy",[149]],
+ ["viper","Viper Gold",["#d8a82a","#151515","#f0d070","#151515"],"buy",[149]],["prism","Prism",["#e0f0ff","#ffd0f0","#d0ffe8","#c0d8ff"],"buy",[999]],
+];
+const EMOTES = [ // id, name, word, unlock
+ ["party","GG Party","GG!","own"],["mic","Mic Drop","BOOM","own"],["tea","Tea Time","*sip*","own"],["skill","Skill Issue","SKILL ISSUE","own"],
+ ["shake","Shake Off","BRRR","own"],["arms","Tiny Arms","FLEX!","own"],
+ ["stomp","Stomp Stomp","STOMP!","earn",[4,10,"Win 10 Arena matches"]],["dead","Play Dead","RIP","earn",[2,5,"Win 5 Arena matches in a row"]],
+ ["cooked","Cooked","COOKED!","buy",[149]],["easy","Too Easy","TOO EASY","buy",[149]],["moon","Moon Call","AWOOO!","buy",[149]],["yawn","Big Yawn","ZZZ","buy",[149]],
+];
+const TRAILS = [["none","No Trail",["#2a3344"],"own"],["neon","Neon Streak",["#3ae8ff","#ff2aa8"],"on"],["lava","Lava Steps",["#ff6a1a","#2a1f1a"],"own"],
+ ["fossil","Fossil Prints",["#c9b48a","#8a7350"],"earn",[11,25,"Win 25 Arena matches"]],["comet","Comet Tail",["#fff2b0","#ff9b2e"],"earn",[96,250,"Get 250 kills"]],
+ ["light","Lightning",["#7fe9ff","#ffffff"],"buy",[149]],["rain","Rainbow Road",["#f05a4f","#ffd34d","#5fd16a","#5aa0ff","#c9a2ff"],"buy",[149]]];
+const ORDER = {on:0, wheel:0, own:1, earn:2, buy:3};
+const S = {opt:"A", dev:"phone", tab:"emotes", skin:"lava", skinOn:"lava", emote:"mic", trail:"neon", trailOn:"neon",
+  wheel:["party","mic","tea","skill","shake","arms",null,null], slot:-1, pick:false, toast:""};
+function toast(t){ S.toast=t; draw(); clearTimeout(toast.t); toast.t=setTimeout(()=>{S.toast="";draw()},1500); }
+const sorted = list => list.map((x,i)=>[x,i]).sort((a,b)=>(ORDER[a[0][3]]-ORDER[b[0][3]])||(a[1]-b[1])).map(p=>p[0]);
+const emoteState = e => S.wheel.includes(e[0]) ? "wheel" : e[3];
+
+function lockedBits(st, u){
+  if(st==="buy") return `<span class="lock">🔒</span><span class="buy">BUY · R$${u[0]}</span>`;
+  if(st==="earn") return `<span class="lock">🔒</span><span class="prog"><span>${u[0]} / ${u[1]}</span><span class="bar2"><i style="width:${Math.round(100*u[0]/u[1])}%"></i></span></span>`;
+  return "";
+}
+function looksGrid(cols){
+  let html = "", lastLocked = false;
+  const add = (st, inner, attrs, cls) => {
+    const locked = st==="earn"||st==="buy";
+    if(locked && !lastLocked){ html += `<div class="divider">LOCKED · TAP TO SEE HOW TO GET IT</div>`; lastLocked = true; }
+    html += `<button class="card ${cls||''} ${locked?'locked':''}" ${attrs}>${inner}</button>`;
+  };
+  if(S.tab==="skins") sorted(SKINS).forEach(s=>{ const st = s[0]===S.skinOn?"on":(s[3]==="on"?"own":s[3]);
+    add(st, `<span class="swatch">${s[2].map(c=>`<i style="background:${c}"></i>`).join("")}</span><span class="nm">${s[1]}</span>${st==="on"?'<span class="st on">EQUIPPED</span>':st==="own"?'<span class="st own">OWNED</span>':''}${lockedBits(st,s[4])}`, `data-skin="${s[0]}"`, (S.skin===s[0]?'sel ':'')+(st==="on"?'eq':'')); });
+  if(S.tab==="emotes") sorted(EMOTES.map(e=>[e[0],e[1],e[2],emoteState(e),e[4]])).forEach(e=>{ const st=e[3];
+    const pick = S.slot>=0 && (st==="own"||st==="wheel");
+    add(st, `<span class="word">${e[2]}</span><span class="nm">${e[1]}</span>${st==="wheel"?`<span class="st wh">ON WHEEL · ${S.wheel.indexOf(e[0])+1}</span>`:st==="own"?(pick?'<span class="st" style="color:var(--yellow)">TAP TO PUT ON '+(S.slot+1)+'</span>':'<span class="st own">OWNED</span>'):''}${lockedBits(st,e[4])}`, `data-emote="${e[0]}"`, (S.emote===e[0]&&S.slot<0?'sel ':'')+(st==="wheel"?'wh':'')); });
+  if(S.tab==="trails") sorted(TRAILS).forEach(t=>{ const st = t[0]===S.trailOn?"on":(t[3]==="on"?"own":t[3]);
+    add(st, `<span class="swatch">${t[2].map(c=>`<i style="background:${c}"></i>`).join("")}</span><span class="nm">${t[1]}</span>${st==="on"?'<span class="st on">ON</span>':st==="own"?'<span class="st own">OWNED</span>':''}${lockedBits(st,t[4])}`, `data-trail="${t[0]}"`, (S.trail===t[0]?'sel ':'')+(st==="on"?'eq':'')); });
+  return `<div class="grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${html}</div>`;
+}
+function detail(){
+  let item, kind, top, st;
+  if(S.tab==="skins"){ item = SKINS.find(s=>s[0]===S.skin); st = item[0]===S.skinOn?"on":(item[3]==="on"?"own":item[3]); kind="SKIN";
+    top = `<span class="swatch" style="height:3em">${item[2].map(c=>`<i style="background:${c}"></i>`).join("")}</span>`; }
+  else if(S.tab==="emotes"){ item = EMOTES.find(e=>e[0]===S.emote); st = emoteState(item); kind="EMOTE"; top = `<span class="word">${item[2]}</span>`; }
+  else { item = TRAILS.find(t=>t[0]===S.trail); st = item[0]===S.trailOn?"on":(item[3]==="on"?"own":item[3]); kind="TRAIL";
+    top = `<span class="swatch" style="height:3em">${item[2].map(c=>`<i style="background:${c}"></i>`).join("")}</span>`; }
+  const u = item[4];
+  let body = "";
+  if(st==="earn") body = `<div class="chal"><b>🔒 CHALLENGE</b><p>${u[2]}</p><span class="bar2" style="height:1.1em"><i style="width:${Math.round(100*u[0]/u[1])}%"></i></span><b>${u[0]} / ${u[1]}</b></div><button class="btn off">LOCKED · KEEP PLAYING</button>`;
+  else if(st==="buy") body = `<p class="what">Unlock it once and every dino can use it.</p><button class="btn y" data-act="buy">BUY · R$${u[0]}</button>`;
+  else if(S.tab==="emotes") body = st==="wheel" ? `<p class="what" style="color:var(--orange)">On your wheel, slot ${S.wheel.indexOf(item[0])+1}.</p>` : `<p class="what">Owned. Tap a wheel slot, then this emote, to put it on.</p>`;
+  else body = st==="on" ? `<button class="btn d">EQUIPPED</button>` : `<button class="btn g" data-act="equip">EQUIP</button>`;
+  return `<span class="kind">${kind} · ${st==="buy"?"R$"+u[0]:st==="earn"?"CHALLENGE":"OWNED"}</span><span class="ttl">${item[1]}</span>${top}<p class="what" style="color:var(--green)">✓ WORKS ON ALL 8 DINOS</p>${body}`;
+}
+function wheel(big){
+  const R = 50, r0 = 15, segs = [];
+  let svg = `<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="49" fill="#0f141d" stroke="#2a3344" stroke-width=".8"/>`;
+  for(let i=0;i<8;i++){
+    const a0 = (i*45-112.5)*Math.PI/180, a1 = ((i+1)*45-112.5)*Math.PI/180;
+    if(S.slot===i){
+      const p = (a,r)=>[50+r*Math.cos(a),50+r*Math.sin(a)];
+      const [x0,y0]=p(a0,49),[x1,y1]=p(a1,49),[x2,y2]=p(a1,r0),[x3,y3]=p(a0,r0);
+      svg += `<path d="M${x3} ${y3} L${x0} ${y0} A49 49 0 0 1 ${x1} ${y1} L${x2} ${y2} A${r0} ${r0} 0 0 0 ${x3} ${y3}Z" fill="#3a2f0a" stroke="#ffc832" stroke-width=".9"/>`;
+    }
+    const a = (i*45-112.5)*Math.PI/180;
+    svg += `<line x1="${50+r0*Math.cos(a)}" y1="${50+r0*Math.sin(a)}" x2="${50+49*Math.cos(a)}" y2="${50+49*Math.sin(a)}" stroke="#3a4556" stroke-width=".7"/>`;
+    const m = (i*45-90)*Math.PI/180, rm = 33;
+    const e = S.wheel[i] && EMOTES.find(x=>x[0]===S.wheel[i]);
+    segs.push(`<button class="seg ${S.slot===i?'sel':''}" data-wslot="${i}" style="left:${50+rm*Math.cos(m)}%;top:${50+rm*Math.sin(m)}%"><span class="n">${i+1}</span><span class="w">${e?e[2]:'+'}</span>${e?'':'<span class="n">EMPTY</span>'}</button>`);
+  }
+  svg += `</svg>`;
+  return `<div class="wheel ${big?'big':''}">${svg}${segs.join("")}<div class="hub">${S.slot>=0?'SLOT '+(S.slot+1)+'<br>PICK →':'YOUR<br>WHEEL'}</div></div>`;
+}
+function tabs(){
+  return `<div class="tabs">${[["abil","ABILITIES"],["stats","STATS"],["skins","SKINS"],["emotes","EMOTES"],["trails","TRAILS"]].map(([k,l])=>`<button class="tab ${k==='abil'||k==='stats'?'v':''}" data-tab="${k}" aria-pressed="${S.tab===k}">${l}</button>`).join("")}</div>`;
+}
+function dino(){ return `<svg viewBox="0 0 300 160" style="width:78%;max-height:80%" aria-hidden="true"><rect x="20" y="58" width="120" height="10" fill="#2a1f1a"/><g fill="#ff6a1a">${[0,1,2,3,4,5].map(i=>`<rect x="${28+i*18}" y="54" width="8" height="18"/>`).join("")}</g><rect x="130" y="50" width="80" height="44" rx="6" fill="#2a1f1a"/><rect x="200" y="36" width="60" height="30" rx="5" fill="#2a1f1a"/><rect x="246" y="46" width="22" height="6" fill="#ffc232"/><rect x="150" y="92" width="12" height="40" fill="#3a2a22"/><rect x="186" y="92" width="12" height="40" fill="#3a2a22"/><ellipse cx="170" cy="146" rx="90" ry="8" fill="#ffffff12"/></svg>`; }
+function head(inPop){
+  if(S.tab!=="emotes") return "";
+  if(S.slot>=0) return `<div class="hdr">PICK AN EMOTE FOR SLOT ${S.slot+1}<button data-act="cancel">CANCEL</button></div>`;
+  return `<div class="hdr m">${S.opt==="C"&&!inPop?'TAP EDIT WHEEL TO CHANGE YOUR WHEEL':'TAP A WHEEL SLOT, THEN AN EMOTE'}</div>`;
+}
+function body(){
+  const ph = S.dev==="phone", emotes = S.tab==="emotes";
+  const cols = ph?2:3;
+  let left, right;
+  if(emotes && S.opt==="A"){
+    left = `<div class="pane stage" style="padding:.6em"><div class="cq" style="width:100%;height:100%">${wheel(true)}</div></div>`;
+    right = `${tabs()}${head()}<div style="display:flex;gap:1em;flex:1;min-height:0"><div class="col" style="flex:1.5">${looksGrid(cols)}</div><div class="col pane" style="flex:1"><div class="det">${detail()}</div></div></div>`;
+  } else if(emotes && S.opt==="B"){
+    left = `<div class="pane stage"><span class="tag">PREVIEW</span>${dino()}</div>`;
+    right = `${tabs()}${head()}<div style="display:flex;gap:1em;flex:1;min-height:0"><div class="col" style="flex:1">${looksGrid(ph?1:2)}</div><div class="col pane" style="flex:1.15"><div class="det" style="gap:.4em"><span class="kind">YOUR WHEEL</span>${wheel(false)}</div></div></div>`;
+  } else {
+    left = `<div class="pane stage"><span class="tag">PREVIEW</span>${dino()}</div>${emotes&&S.opt==="C"?'<button class="btn y" data-act="openpick">EDIT WHEEL</button>':''}`;
+    right = `${tabs()}${head()}<div style="display:flex;gap:1em;flex:1;min-height:0"><div class="col" style="flex:1.5">${looksGrid(cols)}</div><div class="col pane" style="flex:1"><div class="det">${detail()}</div></div></div>`;
+  }
+  let pick = "";
+  if(emotes && S.opt==="C" && S.pick){
+    pick = `<div class="pick"><div class="pickbox"><div class="col cq" style="flex:1">${wheel(true)}</div><div class="col" style="flex:1.2">${head(true)}${looksGrid(2)}<button class="btn off" data-act="closepick" style="color:#fff!important">DONE</button></div></div></div>`;
+  }
+  return `<div class="top"><span class="lab">LAB</span><span class="dn">RAPTOR</span><span class="sp"></span><button class="x" aria-label="Close">X</button></div><div class="body"><div class="col" style="flex:0 0 ${ph?'42%':'40%'}">${left}</div><div class="col" style="flex:1">${right}</div>${pick}</div>`;
+}
+const NOTES = {
+ A:[["Emote wheel","The wheel takes the left side on the EMOTES tab, big, with 8 even sections. Tap a section (it lights up), then tap an emote in your list: it goes there. Tap the same section again or CANCEL to stop."],
+    ["Trade-off","Biggest wheel and the fewest taps. On EMOTES you don't see your dino doing the emote, because the wheel takes its place."]],
+ B:[["Emote wheel","The dino preview stays on the left. The wheel sits on the right where the detail was, as big as that column allows. Same flow: tap a section, then an emote."],
+    ["Trade-off","You keep the preview, but on a phone the wheel is smaller (about 170 px across) and the list drops to one tile a row."]],
+ C:[["Emote wheel","The EMOTES tab looks like SKINS (preview, list, detail). An EDIT WHEEL button opens a big pop-up with the wheel on the left and your emotes on the right."],
+    ["Trade-off","The roomiest wheel and the tab stays simple. It takes one extra tap (EDIT WHEEL), and the wheel is hidden until you open it."]],
+};
+NOTES.common = ["All three","No ALL / OWNED / EARN / ROBUX row. Equipped and owned come first, then LOCKED. A Robux item's tile says BUY · R$149, and its detail has the BUY button. A challenge item's tile shows your progress bar, and its detail shows the challenge, e.g. \"Win 10 Arena matches\", with 4 / 10. The same goes for SKINS and TRAILS."];
+function draw(){
+  document.getElementById("frame").innerHTML = `<div class="f ${S.dev}" id="game">${body()}${S.toast?`<div class="toast">${S.toast}</div>`:''}</div>`;
+  document.querySelectorAll("[data-opt]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.opt===S.opt));
+  document.querySelectorAll("[data-dev]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.dev===S.dev));
+  document.getElementById("notes").innerHTML = [NOTES.common, ...NOTES[S.opt]].map(([k,v],i)=>`<div><b>${k}${i===1&&S.opt==="A"?'<span class="rec">RECOMMENDED</span>':''}</b>${v}</div>`).join("");
+  const w = S.dev==="phone"?750:1280, h = S.dev==="phone"?381:720;
+  const k = Math.min(1, document.getElementById("sw").parentElement.clientWidth / w);
+  document.getElementById("scaler").style.transform = `scale(${k})`;
+  const sw = document.getElementById("sw"); sw.style.width = (w*k)+"px"; sw.style.height = (h*k)+"px";
+}
+window.addEventListener("resize", draw);
+document.addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return; const d = b.dataset;
+  if(d.opt){ S.opt=d.opt; S.slot=-1; S.pick=false; return draw(); }
+  if(d.dev){ S.dev=d.dev; return draw(); }
+  if(!b.closest("#game")) return;
+  if(d.tab){ if(d.tab==="abil"||d.tab==="stats"){ toast("ABILITIES / STATS AS IN LAB 2.0"); return; } S.tab=d.tab; S.slot=-1; return draw(); }
+  if(d.skin){ S.skin=d.skin; return draw(); }
+  if(d.trail){ S.trail=d.trail; return draw(); }
+  if(d.wslot!==undefined){ const i=+d.wslot; S.slot = S.slot===i?-1:i; return draw(); }
+  if(d.emote){
+    const e = EMOTES.find(x=>x[0]===d.emote); const st = emoteState(e);
+    if(S.slot>=0 && (st==="own"||st==="wheel")){
+      const old = S.wheel.indexOf(e[0]); if(old>=0) S.wheel[old] = S.wheel[S.slot];
+      S.wheel[S.slot] = e[0]; const n=S.slot+1; S.slot=-1; S.emote=e[0]; toast(e[1].toUpperCase()+" ON SLOT "+n); return;
+    }
+    S.emote = e[0]; return draw();
+  }
+  switch(d.act){
+    case "cancel": S.slot=-1; break;
+    case "buy": toast("ROBLOX BUY PROMPT"); return;
+    case "equip": if(S.tab==="skins") S.skinOn=S.skin; else S.trailOn=S.trail; toast("EQUIPPED"); return;
+    case "openpick": S.pick=true; break;
+    case "closepick": S.pick=false; S.slot=-1; break;
+  }
+  draw();
+});
+S.tab="emotes"; draw();
+</script>
