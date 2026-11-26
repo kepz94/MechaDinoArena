@@ -1,0 +1,465 @@
+<title>Lab Revamp v0.1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@500;700;800&display=swap">
+<style>
+/* Lab Revamp v0.1 mockup. Colours are Lab.client.luau's own (PANEL, PANEL2, YELLOW, ORANGE, VOLT, GOLD, MUTED, skin purple,
+   Robux green). Part art is drawn with simple shapes here; the game keeps its 3D part models. Sizes: the phone frame is the
+   iPhone 17 Pro viewport Studio emulates (750 x 381); 1 em = 10 px on phone, 13 px on PC (1280 x 720). */
+:root{
+  --bg:#080b10; --page:#0d1218; --panel:#14141a; --panel2:#1c2230; --line:#2a3344; --text:#e7edf5; --muted:#8f99aa; --grey:#cfd3dc;
+  --yellow:#ffc832; --orange:#ff9b2e; --volt:#7fe9ff; --gold:#ffd666; --skin:#c9a2ff; --robux:#00b06f; --green:#46e08a; --dark:#1b1406;
+  --red:#f05a4f; --blue:#5aa0ff;
+  --px:"Silkscreen","Courier New",monospace; --body:"Inter",system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+h1,h2{font-family:var(--px);font-weight:700;margin:0;letter-spacing:.03em;text-wrap:balance}
+h1{font-size:clamp(20px,3vw,28px);color:var(--yellow)}
+h2{font-size:16px}
+p{margin:0}
+.lead{color:var(--muted);max-width:80ch}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar .lbl{font-family:var(--px);font-size:12px;color:var(--muted);margin-right:4px}
+.sw{font-family:var(--px);font-size:13px;background:var(--panel2);color:var(--text);border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+.sw[aria-pressed="true"]{background:var(--yellow);color:var(--dark);border-color:var(--yellow)}
+.sw:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.rec{font-family:var(--px);font-size:10px;background:var(--green);color:#06210f;border-radius:4px;padding:1px 5px;margin-left:6px}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+.notes div{background:var(--page);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}
+.notes b{display:block;font-family:var(--px);font-size:11px;color:var(--muted);letter-spacing:.05em;margin-bottom:2px}
+.stagewrap{overflow:hidden;border-radius:14px;background:#000;border:1px solid var(--line);max-width:100%}
+.scaler{transform-origin:0 0}
+details{background:var(--page);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+summary{cursor:pointer;font-family:var(--px);font-size:13px}
+.now{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:10px}
+.now img{width:100%;height:auto;border-radius:8px;display:block}
+.now p{font-size:13px;color:var(--muted);margin-top:4px}
+
+/* ---------- the game frame ---------- */
+.f{position:relative;overflow:hidden;color:#fff;font-family:var(--px);background:linear-gradient(180deg,#10141d,#1a2130 55%,#0e1219);user-select:none}
+.f.phone{width:750px;height:381px;font-size:10px}
+.f.pc{width:1280px;height:720px;font-size:13px}
+.f *{box-sizing:border-box}
+.f button{font-family:var(--px);color:inherit;cursor:pointer;border:0;background:none;padding:0}
+.top{position:absolute;left:0;right:0;top:0;height:5em;display:flex;align-items:center;gap:1.2em;padding:0 1.2em;border-bottom:.3em solid var(--volt)}
+.phone .top{padding-left:15em}
+.robloxbtns{position:absolute;left:1.2em;top:.8em;display:none;gap:.8em}
+.phone .robloxbtns{display:flex}
+.robloxbtns i{width:3.2em;height:3.2em;border-radius:.8em;background:#ffffff22;display:block}
+.top .lab{color:var(--volt);font-size:1.1em}
+.top .dn{font-size:1.7em;font-weight:700}
+.top .lv{font-size:1.1em;color:var(--grey)}
+.xp{width:9em;height:1em;border-radius:1em;background:#333a48;overflow:hidden}.xp i{display:block;height:100%;width:62%;background:var(--yellow)}
+.top .sp{flex:1}
+.pts{background:var(--yellow);color:var(--dark);font-weight:700;border-radius:.6em;padding:0 1em;height:3.2em;display:flex;align-items:center;font-size:1.1em}
+.x{width:3.7em;height:3.7em;border:2px solid #fff6!important;border-radius:.7em;font-size:1.2em!important;display:grid;place-items:center}
+.body{position:absolute;left:0;right:0;top:5em;bottom:0;display:flex;gap:1em;padding:1em}
+.col{min-width:0;display:flex;flex-direction:column;gap:.8em}
+.pane{background:#121620;border:1.5px solid var(--line);border-radius:1.2em;min-width:0;min-height:0;position:relative;overflow:hidden}
+.tabs{display:flex;gap:.5em}
+.tab{flex:1;min-height:4.4em;border-radius:.8em;background:var(--panel2)!important;color:var(--muted)!important;font-size:1.05em!important;display:flex;align-items:center;justify-content:center;gap:.4em;border:2px solid transparent!important;line-height:1.05;text-align:center;padding:0 .3em!important}
+.tab[aria-pressed="true"]{color:#fff!important;border-color:var(--volt)!important;background:#16303a!important}
+.tab.looks[aria-pressed="true"]{border-color:var(--skin)!important;background:#2a2140!important}
+.tab .ic{font-size:1.3em}
+.grid{display:grid;gap:.7em;align-content:start;grid-auto-rows:max-content;overflow:auto;padding:.2em .4em .4em .2em;min-height:0;flex:1}
+.card{background:var(--panel)!important;border:2px solid var(--line)!important;border-radius:1em;padding:.7em!important;display:flex;flex-direction:column;gap:.4em;text-align:left;position:relative;min-height:4.4em}
+.card.sel{border-color:#fff!important}
+.card.eq{border-color:var(--orange)!important}
+.card.dim{opacity:.38}
+.art{border-radius:.7em;background:#0b0e14;display:grid;place-items:center;aspect-ratio:16/9;position:relative;overflow:hidden}
+.art svg{width:62%;height:78%}
+.nm{font-size:1.15em;font-weight:700;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta{display:flex;align-items:center;gap:.5em;font-size:.95em;color:var(--muted)}
+.pips{display:flex;gap:.25em}.pips i{width:.9em;height:.9em;border-radius:.2em;background:#333a48;display:block}
+.badge{position:absolute;top:.5em;right:.5em;font-size:1em;font-weight:700;border-radius:.4em;padding:.1em .45em;background:var(--orange);color:var(--dark)}
+.badge.off{background:#2a3344;color:var(--muted)}
+.btn{min-height:4.4em;border-radius:.9em;font-size:1.2em!important;font-weight:700;display:flex;align-items:center;justify-content:center;gap:.5em;padding:0 1em!important;width:100%}
+.btn.y{background:var(--yellow)!important;color:var(--dark)!important}
+.btn.o{background:var(--orange)!important;color:var(--dark)!important}
+.btn.g{background:var(--green)!important;color:#06210f!important}
+.btn.d{background:#232a38!important;color:#fff!important;border:2px solid #fff3!important}
+.btn.off{background:#232a38!important;color:var(--muted)!important}
+.btn.p{background:var(--skin)!important;color:#1a1030!important}
+.btn.r{background:var(--robux)!important;color:#fff!important}
+.stage{flex:1;display:grid;place-items:center;position:relative;min-height:0}
+.stage .tag{position:absolute;left:.8em;top:.8em;font-size:.95em;color:var(--volt);background:#0b2a33;border-radius:.4em;padding:.2em .5em}
+.dino{width:78%;max-height:88%}
+.slots{display:flex;gap:.6em}
+.slot{flex:1;min-width:0;min-height:5.6em;border-radius:.9em;background:var(--panel2)!important;border:2px solid var(--line)!important;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15em;padding:.3em!important;position:relative}
+.slot .k{font-size:1.5em;font-weight:700;color:var(--orange)}
+.slot .s{font-size:.9em;color:#fff;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot.empty{border-style:dashed!important;border-color:#ffffff44!important}
+.slot.empty .k{color:var(--muted)}
+.slot.empty .s{color:var(--muted)}
+.slot.sel{border-color:var(--yellow)!important;border-style:solid!important;background:#3a2f0a!important}
+.slot.pulse{animation:pulse .5s 3}
+@keyframes pulse{50%{border-color:var(--yellow);transform:scale(1.06)}}
+.save{flex:1.25;min-height:5.6em;border-radius:.9em;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1em!important;line-height:1.1;text-align:center;padding:.3em!important}
+.save.y{background:var(--yellow)!important;color:var(--dark)!important}
+.save.ok{background:#24402f!important;border:2px solid var(--green)!important;color:var(--green)!important}
+.save small{font-size:.75em;opacity:.85}
+.coach{display:flex;align-items:center;gap:.8em;background:#0b2a33f0;border:2px solid var(--volt);border-radius:1em;padding:.5em .7em;font-size:1em;position:absolute;left:.6em;right:.6em;bottom:.6em;z-index:5}
+.coach ol{row-gap:.4em}
+.coach ol{display:flex;gap:1.2em;margin:0;padding:0;list-style:none;flex:1;flex-wrap:wrap}
+.coach li{display:flex;align-items:center;gap:.4em;white-space:nowrap}
+.coach li b{width:1.8em;height:1.8em;border-radius:50%;background:var(--volt);color:#06242f;display:grid;place-items:center}
+.coach li.done{opacity:.4;text-decoration:line-through}
+.coach .ok{min-height:4.4em;padding:0 1em!important;border-radius:.7em;background:var(--volt)!important;color:#06242f!important;font-weight:700}
+.det{display:flex;flex-direction:column;gap:.7em;padding:1em;overflow:auto;min-height:0;flex:1}
+.det .kind{font-size:1em;color:var(--green)}
+.det .ttl{font-size:1.6em;font-weight:700;line-height:1.1}
+.clip{border-radius:.9em;background:#0b0e14;aspect-ratio:16/8;display:grid;place-items:center;color:var(--volt);font-size:.95em;border:1px solid #ffffff18;position:relative}
+.clip span{position:absolute;left:.6em;top:.5em;background:#06242f;border-radius:.3em;padding:.1em .4em}
+.what{font-family:var(--body);font-weight:800;font-size:1.15em;line-height:1.3}
+.steps{display:grid;gap:.5em}
+.steps div{display:flex;gap:.6em;align-items:flex-start;font-family:var(--body);font-weight:700;font-size:1.05em;line-height:1.25}
+.steps b{flex:0 0 2em;height:2em;border-radius:.4em;display:grid;place-items:center;font-family:var(--px);font-size:.9em;background:#333a48;color:#fff}
+.steps b.got{background:var(--green);color:#06210f}
+.row2{display:flex;gap:.6em}
+.toast{position:absolute;left:50%;top:5.8em;transform:translateX(-50%);background:#000c;border:2px solid var(--yellow);color:var(--yellow);border-radius:.8em;padding:.6em 1.2em;font-size:1.2em;z-index:30;white-space:nowrap;pointer-events:none;transition:opacity .3s}
+.chips{display:flex;gap:.5em}
+.chip{flex:1;min-height:4.4em;padding:0 .4em!important;border-radius:2.2em;background:var(--panel2)!important;color:var(--grey)!important;font-size:1.05em!important;border:2px solid transparent!important}
+.chip[aria-pressed="true"]{background:var(--skin)!important;color:#1a1030!important}
+.swatch{display:flex;height:2.4em;border-radius:.6em;overflow:hidden}.swatch i{flex:1;display:block}
+.word{font-family:"Bangers",var(--px);font-size:1.5em;color:var(--yellow);text-align:center;padding:.6em 0;background:#0b0e14;border-radius:.6em}
+.st{font-size:.95em}
+.st.own{color:var(--muted)} .st.on{color:var(--green)} .st.buy{color:var(--robux)} .st.earn{color:var(--gold)}
+.sheet{position:absolute;inset:0;background:#121620;z-index:10;display:flex;flex-direction:column}
+.sheethead{display:flex;align-items:center;gap:.6em;padding:.6em .8em 0}
+.sheethead .back{min-height:4.4em;min-width:4.4em;border-radius:.8em;background:var(--panel2)!important;font-size:1.2em!important;padding:0 1em!important}
+.pick{position:absolute;inset:0;background:#000b;z-index:20;display:grid;place-items:center}
+.pickbox{background:#121620;border:2px solid var(--yellow);border-radius:1.2em;padding:1.2em;display:grid;gap:1em;width:min(92%,52em)}
+.pickbox h3{margin:0;font-size:1.4em;text-align:center}
+.pickbox .slots .slot{min-height:8em}
+.pickbox .slot .k{font-size:2em}
+.rail{display:flex;flex-direction:column;gap:.5em;width:7.2em;flex:0 0 7.2em}
+.rail .tab{flex:0 0 auto;min-height:5.6em;flex-direction:column;font-size:.85em!important}
+.hdr{font-size:1.05em;color:var(--yellow);display:flex;align-items:center;gap:.6em;min-height:2.4em}
+.hdr button{margin-left:auto;min-height:3.6em;padding:0 1em!important;border-radius:.7em;background:var(--panel2)!important;color:var(--grey)!important}
+.inline{display:flex;gap:.5em;margin-top:.2em}
+.inline .btn{min-height:4.4em;font-size:1.05em!important}
+.cardrow{flex-direction:row!important;align-items:center;gap:.8em!important}
+.cardrow .art{width:7.6em;flex:0 0 7.6em;aspect-ratio:4/3}
+.cardrow .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3em}
+.dstrip{display:flex;gap:.4em;flex-wrap:wrap}
+.dstrip button{flex:1 1 22%;min-height:4.4em;border-radius:.7em;background:var(--panel2)!important;font-size:1em!important;border:2px solid transparent!important}
+.dstrip button[aria-pressed="true"]{border-color:var(--yellow)!important;color:var(--yellow)}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <h1>Lab Revamp v0.1</h1>
+    <p class="lead">Three ways to rebuild the Lab so every button is at least 44 px on a phone and a first-time player can see how parts go into slots. Pick a layout and a device, then tap around: tabs, cards, EQUIP, slots, SAVE and the LOOKS tabs all work. Part art here is flat shapes; the game keeps its 3D models and live clips.</p>
+  </header>
+
+  <div class="bar" role="group" aria-label="Layout">
+    <span class="lbl">LAYOUT</span>
+    <button class="sw" data-opt="A">A · BIGGER WORKBENCH</button>
+    <button class="sw" data-opt="B">B · SLOTS FIRST</button>
+    <button class="sw" data-opt="C">C · SIDE TABS + PICKER</button>
+  </div>
+  <div class="bar" role="group" aria-label="Device">
+    <span class="lbl">DEVICE</span>
+    <button class="sw" data-dev="phone">PHONE 750 × 381</button>
+    <button class="sw" data-dev="pc">PC 1280 × 720</button>
+    <span class="lbl" style="margin-left:12px">FIRST TIME</span>
+    <button class="sw" id="reset">RESET (EMPTY SLOTS + TIPS)</button>
+  </div>
+
+  <div class="stagewrap" id="sw"><div class="scaler" id="scaler"><div id="frame"></div></div></div>
+
+  <div class="notes" id="notes"></div>
+
+  <details>
+    <summary>THE LAB TODAY (Studio captures, 2026-11-25)</summary>
+    <div class="now">
+      <div><img src="now_phone_looks.jpg" alt="Lab LOOKS tab on an emulated iPhone 17 Pro" width="627" height="288"><p>Phone (iPhone 17 Pro, 750 × 381): tabs 72 × 16 px, SKINS / EMOTES / TRAILS and filter pills about 30 × 14 px with 7 px text, skin tiles 67 × 44 px, slots 46 × 34 px, main button 34 px tall.</p></div>
+      <div><img src="now_pc_abilities.jpg" alt="Lab MECHA ABILITIES tab on PC" width="847" height="616"><p>PC (847 × 616 window): the slot row only says R / C / T / V with a small icon; the hint line under it is the only place that explains equipping.</p></div>
+    </div>
+  </details>
+</div>
+
+<script>
+// ---------- data (real names from SkillTree / UniversalSkins / EmoteCatalog / TrailCatalog) ----------
+const AREA = {health:"#5fd16a", attack:"#f05a4f", defense:"#5aa0ff", speed:"#ffd34d", eng:"#ff9b2e"};
+const PARTS = [
+  {id:"adren", name:"Adrenaline Injector", area:"health", step:4, what:"Heals you over 3 seconds and makes you run faster while it lasts.", steps:["Button: heal 25% over 3 s and run 1.4x faster","Heal 34%","Recharges 26% faster","Also ends a stun at once"], shape:"inj"},
+  {id:"cannon", name:"Shock Cannon", area:"attack", step:4, what:"Fires a shock bolt that stuns the first dino it hits.", steps:["Button: shock bolt, 1 s stun","Longer stun","Faster recharge","Bolt chains to a second dino"], shape:"can"},
+  {id:"shield", name:"Energy Shield", area:"defense", step:3, what:"Puts up a shield that soaks the next hits.", steps:["Button: shield for 40 damage","60 damage","Lasts longer","Breaking it knocks dinos back"], shape:"shd"},
+  {id:"cloak", name:"Cloak Field", area:"defense", step:2, what:"Turns you see-through for a few seconds.", steps:["Button: cloak for 3 s","4 s","Faster recharge","First bite out of cloak hits harder"], shape:"clk"},
+  {id:"thrust", name:"Thrusters", area:"speed", step:4, what:"Blasts you forward in a quick dash.", steps:["Button: dash forward","Longer dash","Faster recharge","Two dashes"], shape:"thr"},
+  {id:"mine", name:"Shock Mine", area:"eng", step:4, what:"Drops a mine that stuns the first dino to step on it.", steps:["Button: drop a mine","Bigger blast","Two mines","Mines are hidden"], shape:"mine"},
+  {id:"scent", name:"Scent Sense", area:"speed", step:1, what:"Shows nearby dinos through walls for a moment.", steps:["Button: see dinos within 60 studs","80 studs","Lasts longer","Marks them for your team"], shape:"sns"},
+];
+const STATS = [
+  {id:"regen", name:"Regeneration", area:"health", step:2}, {id:"life", name:"Lifesteal", area:"health", step:3},
+  {id:"jaws", name:"Jaws", area:"attack", step:1}, {id:"hide", name:"Thick Hide", area:"defense", step:0},
+  {id:"legs", name:"Sprint Legs", area:"speed", step:2}, {id:"stam", name:"Stamina", area:"speed", step:1},
+];
+const SKINS = [
+  ["classic","Classic",["#4f7f3a","#2f4d2a","#c9c48a","#3a8f7a"],"own"],["desert","Desert Runner",["#c99a5a","#8a5a32","#f0dcb4","#b8643a"],"own"],
+  ["river","Riverstone",["#6f7f6a","#4a564a","#c9cfc0","#9aa594"],"own"],["canopy","Canopy",["#4f7f3a","#2f4d2a","#c9d08a","#d0a040"],"own"],
+  ["zebra","Zebra",["#f4f4f4","#111","#f4f4f4","#111"],"own"],["ink","Ink War",["#c02020","#111","#f0e6d8","#c02020"],"own"],
+  ["arctic","Arctic",["#dfe9f2","#8fb0cc","#ffffff","#5aa8e0"],"own"],["sakura","Sakura",["#f8e1ea","#f2a0bd","#ffffff","#d9567f"],"own"],
+  ["viper","Viper Gold",["#d8a82a","#151515","#f0d070","#151515"],"earn",[34,50]],["lava","Lava",["#2a1f1a","#ff6a1a","#5a3020","#ffc232"],"on"],
+  ["venom","Venom",["#9fe02a","#1a1a1a","#2f4d2a","#8cff3a"],"buy"],["circuit","Neon Circuit",["#10151d","#1b2531","#3ae8ff","#3ae8ff"],"buy"],
+  ["gold","Gold Hunter",["#d4a42a","#f0d070","#fff2b0","#8a6a10"],"earn",[12,30]],["prism","Prism",["#e0f0ff","#ffd0f0","#d0ffe8","#c0d8ff"],"buy"],
+  ["void","Void Matter",["#140f24","#2a1a50","#8a3aff","#c9a2ff"],"buy"],["glitch","Glitch",["#111","#00f0ff","#ff2aa8","#111"],"buy"],
+];
+const EMOTES = [["cooked","Cooked","COOKED!","own"],["mic","Mic Drop","BOOM","wheel"],["skill","Skill Issue","SKILL ISSUE","wheel"],["tea","Tea Time","*sip*","own"],["easy","Too Easy","TOO EASY","buy"],["gg","GG Party","GG!","earn",[3,10]],["stomp","Stomp Stomp","STOMP!","own"],["moon","Moon Call","AWOOO!","buy"]];
+const TRAILS = [["none","No Trail",["#2a3344"],"own"],["neon","Neon Streak",["#3ae8ff","#ff2aa8"],"on"],["fossil","Fossil Prints",["#c9b48a","#8a7350"],"own"],["comet","Comet Tail",["#fff2b0","#ff9b2e"],"buy"],["rainbow","Rainbow Road",["#f05a4f","#ffd34d","#5fd16a","#5aa0ff","#c9a2ff"],"earn",[6,20]],["light","Lightning",["#7fe9ff","#ffffff"],"buy"],["lava","Lava Steps",["#ff6a1a","#2a1f1a"],"own"],["leaf","Leaf Storm",["#5fd16a","#2f4d2a"],"own"]];
+const KEYS = ["R","C","T","V"];
+const DINOS = ["RAPTOR","T-REX","PACHY","HERRERA","TENO","THERIZINO","DILO","TROODON"];
+
+const S = {opt:"B", dev:"phone", tab:"abil", sel:"adren", slotSel:-1, slots:["thrust",null,null,null], saved:"thrust,,,", tips:true,
+  did:{slot:false,part:false,save:false}, sheet:false, pick:false, filter:"ALL", skinSel:"lava", skinOn:"lava", emoteSel:"mic", trailSel:"neon", trailOn:"neon", dino:"RAPTOR", toast:"", pulse:false};
+const P = id => PARTS.find(p=>p.id===id);
+const slotOf = id => S.slots.indexOf(id);
+function toast(t){ S.toast=t; draw(); clearTimeout(toast.t); toast.t=setTimeout(()=>{S.toast="";draw()},1600); }
+function loadoutKey(){ return S.slots.map(s=>s||"").join(","); }
+
+// ---------- shared actions ----------
+function equip(id, slot){
+  const cur = slotOf(id); if(cur>=0) S.slots[cur]=null;
+  if(slot===undefined || slot<0){ slot = S.slots.indexOf(null); if(slot<0){ S.pulse=true; toast("SLOTS FULL · TAP A SLOT TO SWAP"); setTimeout(()=>{S.pulse=false;draw()},1600); if(cur>=0) S.slots[cur]=id; return; } }
+  S.slots[slot]=id; S.slotSel=-1; S.did.part=true; S.did.slot=true; S.pick=false;
+  toast(P(id).name.toUpperCase()+" ON "+KEYS[slot]);
+}
+function unequip(id){ const i=slotOf(id); if(i>=0){ S.slots[i]=null; toast(P(id).name.toUpperCase()+" OFF"); } }
+function save(){ S.saved=loadoutKey(); S.did.save=true; toast("RAPTOR LOADOUT SAVED"); }
+
+// ---------- art ----------
+function art(shape, col){
+  const c = col || "#7fe9ff";
+  const m = {
+    inj:`<rect x="20" y="10" width="34" height="40" rx="4" fill="${c}"/><rect x="28" y="50" width="18" height="16" fill="#555"/><rect x="34" y="66" width="6" height="12" fill="#999"/>`,
+    can:`<rect x="10" y="30" width="56" height="20" rx="3" fill="#555"/><rect x="60" y="34" width="18" height="12" fill="${c}"/><rect x="18" y="48" width="14" height="16" fill="#333"/>`,
+    shd:`<path d="M40 8 L70 20 L64 56 L40 74 L16 56 L10 20Z" fill="none" stroke="${c}" stroke-width="5"/>`,
+    clk:`<g fill="none" stroke="${c}" stroke-width="3">${[0,1,2,3].map(i=>`<polygon points="${10+i*16},28 ${18+i*16},22 ${26+i*16},28 ${26+i*16},40 ${18+i*16},46 ${10+i*16},40"/>`).join("")}</g>`,
+    thr:`<rect x="16" y="22" width="40" height="30" rx="3" fill="#666"/><rect x="56" y="26" width="10" height="22" fill="#888"/><path d="M8 30 L16 37 L8 44Z" fill="${c}"/>`,
+    mine:`<ellipse cx="40" cy="58" rx="28" ry="8" fill="none" stroke="${c}" stroke-width="4"/><circle cx="40" cy="30" r="14" fill="#fff"/><rect x="37" y="40" width="6" height="16" fill="#333"/>`,
+    sns:`<rect x="22" y="14" width="36" height="28" rx="4" fill="#444"/><circle cx="32" cy="28" r="5" fill="${c}"/><circle cx="48" cy="28" r="5" fill="${c}"/><rect x="26" y="42" width="28" height="26" rx="3" fill="#333"/>`,
+  };
+  return `<svg viewBox="0 0 80 80" aria-hidden="true">${m[shape]||""}</svg>`;
+}
+function dino(){
+  return `<svg class="dino" viewBox="0 0 300 160" aria-hidden="true">
+    <rect x="20" y="58" width="120" height="10" fill="#2a1f1a"/><g fill="#ff6a1a">${[0,1,2,3,4,5].map(i=>`<rect x="${28+i*18}" y="54" width="8" height="18"/>`).join("")}</g>
+    <rect x="130" y="50" width="80" height="44" rx="6" fill="#2a1f1a"/><rect x="138" y="60" width="64" height="6" fill="#ff6a1a"/>
+    <rect x="200" y="36" width="60" height="30" rx="5" fill="#2a1f1a"/><rect x="246" y="46" width="22" height="6" fill="#ffc232"/><rect x="250" y="60" width="18" height="4" fill="#fff"/>
+    <rect x="150" y="92" width="12" height="40" fill="#3a2a22"/><rect x="186" y="92" width="12" height="40" fill="#3a2a22"/><rect x="146" y="130" width="22" height="6" fill="#ffc232"/><rect x="182" y="130" width="22" height="6" fill="#ffc232"/>
+    ${S.slots[0]?'<rect x="150" y="30" width="30" height="22" fill="#666"/>':''}${S.slots[1]?'<rect x="176" y="72" width="44" height="12" fill="#555"/><rect x="216" y="74" width="10" height="8" fill="#7fe9ff"/>':''}
+    ${S.slots[3]?'<rect x="168" y="36" width="20" height="18" fill="#5fd16a"/>':''}${S.slots[2]?'<circle cx="140" cy="44" r="7" fill="#fff"/>':''}
+    <ellipse cx="170" cy="146" rx="90" ry="8" fill="#ffffff12"/></svg>`;
+}
+const pips = (n,col) => `<span class="pips">${[0,1,2,3].map(i=>`<i style="${i<n?`background:${col}`:''}"></i>`).join("")}</span>`;
+
+// ---------- shared pieces ----------
+function slotRow(mode){ // mode: "a" | "b" | "pick"
+  const ch = loadoutKey()!==S.saved;
+  return `<div class="slots">${S.slots.map((id,i)=>{
+    const p=id&&P(id); const cls=["slot", id?"":"empty", S.slotSel===i?"sel":"", S.pulse?"pulse":""].join(" ");
+    const sub = p ? p.name : (mode==="b" ? "TAP TO FILL" : "EMPTY");
+    return `<button class="${cls}" data-slot="${i}" aria-label="Slot ${KEYS[i]}"><span class="k">${KEYS[i]}</span><span class="s">${sub}</span></button>`;}).join("")}
+    ${mode==="pick"||mode==="a"?"":`<button class="save ${ch?'y':'ok'}" data-act="save">${ch?'SAVE<small>FOR PRE-GAME</small>':'SAVED ✓<small>PRE-GAME</small>'}</button>`}</div>`;
+}
+function coach(steps){
+  if(!S.tips) return "";
+  return `<div class="coach"><ol>${steps.map((s,i)=>`<li class="${s[1]?'done':''}"><b>${i+1}</b>${s[0]}</li>`).join("")}</ol><button class="ok" data-act="tips">GOT IT</button></div>`;
+}
+function topbar(extra){
+  return `<div class="robloxbtns"><i></i><i></i><i></i></div><div class="top"><span class="lab">LAB</span><span class="dn">RAPTOR</span><span class="lv">LV 13</span><span class="xp"><i></i></span><span class="sp"></span>${extra||''}<span class="pts">11 PTS</span><button class="x" data-act="close" aria-label="Close">X</button></div>`;
+}
+function tabsRow(list, cls){
+  return `<div class="${cls||'tabs'}">${list.map(([k,l,ic])=>`<button class="tab ${["skins","emotes","trails"].includes(k)?'looks':''}" data-tab="${k}" aria-pressed="${S.tab===k}">${ic?`<span class="ic">${ic}</span>`:''}<span>${l}</span></button>`).join("")}</div>`;
+}
+const TABS5 = [["abil","ABILITIES","⚡"],["stats","STATS","▲"],["skins","SKINS","◆"],["emotes","EMOTES","☺"],["trails","TRAILS","~"]];
+
+function partCard(p, opts){
+  const s=slotOf(p.id); const col=AREA[p.area];
+  const eq = s>=0;
+  return `<div role="button" tabindex="0" class="card ${S.sel===p.id&&!opts.noSel?'sel':''} ${eq?'eq':''} ${opts.row?'cardrow':''}" data-part="${p.id}" style="cursor:pointer">
+    <div class="art">${art(p.shape,col)}</div>
+    <div class="info" style="${opts.row?'':'display:contents'}">
+      <span class="nm">${p.name}</span>
+      <span class="meta">${pips(p.step,col)}${eq?`<span style="color:var(--orange)">ON ${KEYS[s]}</span>`:'<span>NOT ON A SLOT</span>'}</span>
+      ${opts.inline?opts.inline(p):''}
+    </div>
+    ${!opts.row&&eq?`<span class="badge">${KEYS[s]}</span>`:''}</div>`;
+}
+function partDetail(p, opts){
+  const s=slotOf(p.id); const col=AREA[p.area];
+  let actions="";
+  const up = `<button class="btn off">MAXED</button>`;
+  if(opts.mode==="c") actions = s>=0 ? `<div class="row2">${up}<button class="btn d" data-act="unequip" data-id="${p.id}">TAKE OFF ${KEYS[s]}</button></div><button class="btn o" data-act="openpick" data-id="${p.id}">MOVE TO ANOTHER BUTTON</button>` : `<div class="row2">${up}</div><button class="btn o" data-act="openpick" data-id="${p.id}">EQUIP · PICK A BUTTON</button>`;
+  else actions = `<div class="row2">${up}${s>=0?`<button class="btn d" data-act="unequip" data-id="${p.id}">TAKE OFF ${KEYS[s]}</button>`:`<button class="btn o" data-act="equip" data-id="${p.id}">${S.slotSel>=0?'EQUIP ON '+KEYS[S.slotSel]:'EQUIP'}</button>`}</div>`;
+  return `<span class="kind" style="color:${col}">${p.area.toUpperCase()} · MECHA ABILITY · BUTTON</span><span class="ttl">${p.name}</span>
+    ${actions}
+    <div class="clip"><span>LIVE CLIP</span>3D CLIP OF THE PART</div><p class="what">${p.what}</p>
+    <div class="steps">${p.steps.map((t,i)=>`<div><b class="${i<p.step?'got':''}" style="${i<p.step?`background:${col}`:''}">${["I","II","III","★"][i]}</b>${t}</div>`).join("")}</div>`;
+}
+function statsList(){
+  return STATS.map(r=>`<div class="card cardrow" style="cursor:default"><div class="info"><span class="nm">${r.name}</span><span class="meta">${pips(r.step,AREA[r.area])}<span>${r.area.toUpperCase()}</span></span></div><button class="btn y" style="width:auto;min-width:11em" data-act="buystat" data-id="${r.id}">${r.step>=4?'MAXED':'UPGRADE · 1 PT'}</button></div>`).join("");
+}
+// LOOKS
+function lookGrid(cols){
+  const f = S.filter; const pass = st => f==="ALL" || (f==="OWNED"&&(st==="own"||st==="on"||st==="wheel")) || (f==="EARN"&&st==="earn") || (f==="ROBUX"&&st==="buy");
+  const stLine = (st, pr) => st==="on"?'<span class="st on">EQUIPPED</span>':st==="wheel"?'<span class="st on">ON WHEEL</span>':st==="own"?'<span class="st own">OWNED</span>':st==="buy"?'<span class="st buy">R$149</span>':`<span class="st earn">${pr[0]} / ${pr[1]}</span>`;
+  let items="";
+  if(S.tab==="skins") items = SKINS.filter(s=>pass(s[0]===S.skinOn?"on":s[3]==="on"?"own":s[3])).map(s=>{const st=s[0]===S.skinOn?"on":(s[3]==="on"?"own":s[3]);return `<button class="card ${S.skinSel===s[0]?'sel':''} ${st==='on'?'eq':''}" data-skin="${s[0]}"><span class="swatch">${s[2].map(c=>`<i style="background:${c}"></i>`).join("")}</span><span class="nm">${s[1]}</span>${stLine(st,s[4])}</button>`}).join("");
+  if(S.tab==="emotes") items = EMOTES.filter(e=>pass(e[3])).map(e=>`<button class="card ${S.emoteSel===e[0]?'sel':''} ${e[3]==='wheel'?'eq':''}" data-emote="${e[0]}"><span class="word">${e[2]}</span><span class="nm">${e[1]}</span>${stLine(e[3],e[4])}</button>`).join("");
+  if(S.tab==="trails") items = TRAILS.filter(t=>pass(t[0]===S.trailOn?"on":(t[3]==="on"?"own":t[3]))).map(t=>{const st=t[0]===S.trailOn?"on":(t[3]==="on"?"own":t[3]);return `<button class="card ${S.trailSel===t[0]?'sel':''} ${st==='on'?'eq':''}" data-trail="${t[0]}"><span class="swatch">${t[2].map(c=>`<i style="background:${c}"></i>`).join("")}</span><span class="nm">${t[1]}</span>${stLine(st,t[4])}</button>`}).join("");
+  const chips = `<div class="chips">${["ALL","OWNED","EARN","ROBUX"].map(c=>`<button class="chip" data-filter="${c}" aria-pressed="${S.filter===c}">${c}</button>`).join("")}</div>`;
+  return chips + `<div class="grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${items || '<p style="color:var(--muted);font-size:1.1em;padding:1em">Nothing here yet.</p>'}</div>`;
+}
+function lookDetail(){
+  if(S.tab==="skins"){ const s=SKINS.find(x=>x[0]===S.skinSel); const st=s[0]===S.skinOn?"on":(s[3]==="on"?"own":s[3]);
+    const b = st==="on"?`<button class="btn d" style="border-color:var(--green)!important;color:var(--green)!important">EQUIPPED ON ${S.dino}</button>`:st==="own"?`<button class="btn g" data-act="skinon">EQUIP ON ${S.dino}</button>`:st==="buy"?`<button class="btn r">GET · R$149</button>`:`<button class="btn off">LOCKED · KEEP PLAYING</button>`;
+    return `<span class="kind" style="color:var(--skin)">SKIN · ${st==="buy"?"R$149":st==="earn"?"EARN":"OWNED"}</span><span class="ttl">${s[1]}</span><span class="swatch" style="height:3em">${s[2].map(c=>`<i style="background:${c}"></i>`).join("")}</span><p class="what" style="color:var(--green)">✓ WORKS ON ALL 8 DINOS</p>${b}`; }
+  if(S.tab==="emotes"){ const e=EMOTES.find(x=>x[0]===S.emoteSel);
+    const b = e[3]==="wheel"?`<button class="btn y" data-act="wheel">MOVE ON WHEEL</button>`:e[3]==="own"?`<button class="btn y" data-act="wheel">PUT ON WHEEL</button>`:e[3]==="buy"?`<button class="btn r">BUY · R$149</button>`:`<button class="btn off">LOCKED · KEEP PLAYING</button>`;
+    return `<span class="kind" style="color:var(--skin)">EMOTE</span><span class="ttl">${e[1]}</span><span class="word">${e[2]}</span><p class="what" style="color:var(--green)">✓ WORKS ON ALL 8 DINOS</p>${b}`; }
+  const t=TRAILS.find(x=>x[0]===S.trailSel); const st=t[0]===S.trailOn?"on":(t[3]==="on"?"own":t[3]);
+  const b = st==="on"?`<button class="btn d" style="border-color:var(--green)!important;color:var(--green)!important">EQUIPPED</button>`:st==="own"?`<button class="btn g" data-act="trailon">${t[0]==="none"?"TURN TRAIL OFF":"EQUIP"}</button>`:st==="buy"?`<button class="btn r">BUY · R$149</button>`:`<button class="btn off">LOCKED · KEEP PLAYING</button>`;
+  return `<span class="kind" style="color:var(--skin)">TRAIL</span><span class="ttl">${t[1]}</span><span class="swatch" style="height:3em">${t[2].map(c=>`<i style="background:${c}"></i>`).join("")}</span><p class="what" style="color:var(--green)">✓ WORKS ON ALL 8 DINOS</p>${b}`;
+}
+function dinoStrip(){ return `<div class="dstrip">${DINOS.map(d=>`<button data-dino="${d}" aria-pressed="${S.dino===d}">${d}</button>`).join("")}</div>`; }
+const isLooks = () => ["skins","emotes","trails"].includes(S.tab);
+
+// ---------- option A: bigger workbench (3 columns kept, everything resized, LOOKS flattened into 5 tabs) ----------
+function optA(){
+  const ph = S.dev==="phone";
+  const left = S.tab==="abil" ? `<div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">${PARTS.map(p=>partCard(p,{})).join("")}</div>`
+    : S.tab==="stats" ? `<div class="grid" style="grid-template-columns:1fr">${statsList()}</div>` : lookGrid(ph?2:3);
+  const tips = S.tab==="abil" ? coach([["TAP A PART",S.did.part],["TAP EQUIP",S.did.slot],["SAVE",S.did.save]]) : "";
+  const mid = isLooks() ? `<div class="pane stage"><span class="tag">PREVIEW</span>${dino()}</div>${S.tab==="skins"?dinoStrip():''}`
+    : `<div class="pane stage"><span class="tag">ALL UPGRADES</span>${dino()}${tips}</div>${slotRow("a")}`;
+  const right = isLooks() ? lookDetail() : S.tab==="abil" ? partDetail(P(S.sel),{mode:"a"}) : `<span class="ttl">Stats</span><p class="what">Always-on upgrades. Spend points on a row to raise it.</p>`;
+  const ch = loadoutKey()!==S.saved;
+  const saveTop = `<button class="save ${ch?'y':'ok'}" data-act="save" style="flex:0 0 auto;min-height:4.4em;padding:0 1em!important;flex-direction:row;gap:.4em">${ch?'SAVE LOADOUT':'SAVED ✓'}</button>`;
+  return topbar(saveTop) + `<div class="body" style="flex-direction:column">
+    ${tabsRow(TABS5)}
+    <div style="display:flex;gap:1em;flex:1;min-height:0">
+      <div class="col" style="flex:0 0 ${ph?'36%':'33%'}">${left}</div>
+      <div class="col" style="flex:1">${mid}</div>
+      <div class="col pane" style="flex:0 0 ${ph?'31%':'28%'}"><div class="det">${right}</div></div>
+    </div></div>`;
+}
+// ---------- option B: slots first (2 panes: dino + big slots | tabs + list; details slide over the list) ----------
+function optB(){
+  const ph = S.dev==="phone";
+  let rightBody="";
+  if(S.sheet && S.tab==="abil"){
+    rightBody = `<div class="sheet"><div class="sheethead"><button class="back" data-act="closesheet">◀ BACK</button></div><div class="det">${partDetail(P(S.sel),{mode:"b"})}</div></div>`;
+  }
+  let list="";
+  if(S.tab==="abil"){
+    const head = S.slotSel>=0 ? `<div class="hdr">PICK A PART FOR SLOT ${KEYS[S.slotSel]}<button data-act="cancelslot">CANCEL</button></div>` : `<div class="hdr" style="color:var(--muted)">${S.slots.includes(null)?'TAP A SLOT ON THE LEFT, OR EQUIP A PART BELOW':'TAP A SLOT TO SWAP ITS PART'}</div>`;
+    const inline = p => { const s=slotOf(p.id);
+      if(S.slotSel>=0) return `<span class="inline"><button class="btn o" data-act="equip" data-id="${p.id}">${s===S.slotSel?'ALREADY ON '+KEYS[s]:'PUT ON '+KEYS[S.slotSel]}</button></span>`;
+      return `<span class="inline">${s>=0?`<button class="btn d" data-act="unequip" data-id="${p.id}">TAKE OFF ${KEYS[s]}</button>`:`<button class="btn o" data-act="equip" data-id="${p.id}">EQUIP</button>`}<button class="btn d" style="width:auto;flex:0 0 auto" data-act="info" data-id="${p.id}">INFO</button></span>`; };
+    list = head + `<div class="grid" style="grid-template-columns:repeat(${ph?1:2},minmax(0,1fr))">${PARTS.map(p=>partCard(p,{row:true,inline,noSel:true})).join("")}</div>`;
+  } else if(S.tab==="stats"){
+    list = `<div class="grid" style="grid-template-columns:1fr">${statsList()}</div>`;
+  } else {
+    list = `<div style="display:flex;gap:1em;flex:1;min-height:0"><div class="col" style="flex:1.4">${lookGrid(ph?2:3)}</div><div class="col pane" style="flex:1"><div class="det">${lookDetail()}</div></div></div>`;
+  }
+  const leftTips = S.tab==="abil" ? coach([["TAP A SLOT",S.did.slot],["PICK A PART",S.did.part],["SAVE",S.did.save]]) : "";
+  const left = isLooks() ? `<div class="pane stage"><span class="tag">PREVIEW</span>${dino()}</div>${S.tab==="skins"?dinoStrip():''}`
+    : `<div class="pane stage"><span class="tag">YOUR RAPTOR</span>${dino()}${leftTips}</div>${slotRow("b")}`;
+  return topbar() + `<div class="body">
+    <div class="col" style="flex:0 0 ${ph?'42%':'40%'}">${left}</div>
+    <div class="col" style="flex:1;position:relative">${tabsRow(TABS5)}<div class="col" style="flex:1;min-height:0;position:relative">${list}${rightBody}</div></div>
+  </div>`;
+}
+// ---------- option C: side tabs + button picker (rail | big grid | dino + short detail; EQUIP asks which button) ----------
+function optC(){
+  const ph = S.dev==="phone";
+  const grid = S.tab==="abil" ? `<div class="grid" style="grid-template-columns:repeat(${ph?2:3},minmax(0,1fr))">${PARTS.map(p=>partCard(p,{})).join("")}</div>`
+    : S.tab==="stats" ? `<div class="grid" style="grid-template-columns:1fr">${statsList()}</div>` : lookGrid(ph?2:3);
+  const tips = S.tab==="abil" ? coach([["TAP A PART",S.did.part],["TAP EQUIP",S.did.slot],["PICK A BUTTON",S.did.slot],["SAVE",S.did.save]]) : "";
+  const right = isLooks() ? `<div class="pane stage" style="flex:0 0 40%"><span class="tag">PREVIEW</span>${dino()}</div><div class="pane" style="flex:1;min-height:0"><div class="det">${lookDetail()}</div></div>`
+    : `<div class="pane stage" style="flex:0 0 ${ph?'40%':'38%'}"><span class="tag">YOUR RAPTOR</span>${dino()}${S.tab==="abil"?tips:''}</div>${S.tab==="abil"?`<div class="pane" style="flex:1;min-height:0"><div class="det">${partDetail(P(S.sel),{mode:"c"})}</div></div>`:''}`;
+  const pick = S.pick ? `<div class="pick"><div class="pickbox"><h3>WHICH BUTTON FOR ${P(S.sel).name.toUpperCase()}?</h3>${slotRow("pick")}<button class="btn d" data-act="closepick">CANCEL</button></div></div>` : "";
+  const save = S.tab==="abil" ? `<button class="save ${loadoutKey()!==S.saved?'y':'ok'}" data-act="save" style="flex:0 0 auto;min-height:5.6em">${loadoutKey()!==S.saved?'SAVE<small>LOADOUT</small>':'SAVED ✓'}</button>` : "";
+  return topbar() + `<div class="body">
+    <div class="rail">${TABS5.map(([k,l,ic])=>`<button class="tab ${["skins","emotes","trails"].includes(k)?'looks':''}" data-tab="${k}" aria-pressed="${S.tab===k}"><span class="ic">${ic}</span><span>${l}</span></button>`).join("")}${save}</div>
+    <div class="col" style="flex:1">${grid}</div>
+    <div class="col" style="flex:0 0 ${ph?'36%':'32%'}">${right}</div>
+    ${pick}</div>`;
+}
+
+const NOTES = {
+  A:[["What changes","Same three columns. Every button is 44 px or more on a phone. SAVE LOADOUT moves up next to the points. SKINS / EMOTES / TRAILS become their own tabs (no tiny pill row). Slots say EMPTY, and a 3-step tip strip shows how to equip until you tap GOT IT."],
+     ["Equip flow","Tap a part, then EQUIP: it goes into the first empty slot. Tap a slot first to choose which one (same rules as today)."],
+     ["Trade-off","Smallest change to how the Lab works. On a phone the middle column is narrow, so the dino is small and slot names cut off."]],
+  B:[["What changes","Two halves. Left: your dino with 4 big slots and SAVE under it. Right: big tabs and the list. Each part has its own EQUIP / TAKE OFF button on the card. INFO slides the full details (clip, steps, UPGRADE) over the list."],
+     ["Equip flow","Tap an empty slot (it says TAP TO FILL), and the list says PICK A PART FOR SLOT C, with PUT ON C on every card. Or tap EQUIP on a card to fill the first empty slot."],
+     ["Trade-off","Clearest for a first-timer, and the biggest slot buttons. Details are one tap away (INFO) instead of always on screen. LOOKS tabs use the same right half as a list plus details."]],
+  C:[["What changes","A side rail of 5 big tabs (with SAVE under it), a wide card grid in the middle, and the dino plus details on the right."],
+     ["Equip flow","Tap a part, then EQUIP · PICK A BUTTON. A pop-up shows the 4 buttons as big tiles with what is on each. Tap one to put the part there."],
+     ["Trade-off","The biggest grid, so more cards fit on screen. Equipping always goes through the pop-up (one extra step), and the slots are only shown inside it."]]
+};
+
+// ---------- render + events ----------
+function draw(){
+  const fr = document.getElementById("frame");
+  const body = S.opt==="A"?optA():S.opt==="B"?optB():optC();
+  fr.innerHTML = `<div class="f ${S.dev}" id="game">${body}${S.toast?`<div class="toast">${S.toast}</div>`:''}</div>`;
+  document.querySelectorAll("[data-opt]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.opt===S.opt));
+  document.querySelectorAll("[data-dev]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.dev===S.dev));
+  document.getElementById("notes").innerHTML = NOTES[S.opt].map(([k,v],i)=>`<div><b>${k}${i===0&&S.opt==="B"?'<span class="rec">RECOMMENDED</span>':''}</b>${v}</div>`).join("");
+  fit();
+}
+function fit(){
+  const g = document.getElementById("game"); if(!g) return;
+  const w = S.dev==="phone"?750:1280, h = S.dev==="phone"?381:720;
+  const avail = document.getElementById("sw").parentElement.clientWidth;
+  const k = Math.min(1, avail / w);
+  document.getElementById("scaler").style.transform = `scale(${k})`;
+  document.getElementById("sw").style.width = (w*k)+"px"; document.getElementById("sw").style.height = (h*k)+"px";
+}
+window.addEventListener("resize", fit);
+document.addEventListener("click", e => {
+  const b = e.target.closest("button,[data-part]"); if(!b) return;
+  const d = b.dataset;
+  if(d.opt){ S.opt=d.opt; S.sheet=false; S.pick=false; S.slotSel=-1; return draw(); }
+  if(d.dev){ S.dev=d.dev; return draw(); }
+  if(b.id==="reset"){ Object.assign(S,{slots:[null,null,null,null],saved:",,,",tips:true,did:{slot:false,part:false,save:false},slotSel:-1,sheet:false,pick:false,tab:"abil"}); return draw(); }
+  if(!b.closest("#game")) return;
+  e.stopPropagation();
+  if(d.tab){ S.tab=d.tab; S.sheet=false; S.slotSel=-1; S.filter="ALL"; return draw(); }
+  if(d.filter){ S.filter=d.filter; return draw(); }
+  if(d.dino){ S.dino=d.dino; return draw(); }
+  if(d.skin){ S.skinSel=d.skin; return draw(); }
+  if(d.emote){ S.emoteSel=d.emote; return draw(); }
+  if(d.trail){ S.trailSel=d.trail; return draw(); }
+  if(d.slot!==undefined){
+    const i=+d.slot;
+    if(S.pick){ equip(S.sel,i); return draw(); }
+    if(S.opt==="A"){ const p=P(S.sel); if(S.slotSel!==i && slotOf(S.sel)<0){ equip(S.sel,i); return draw(); } S.slotSel = S.slotSel===i?-1:i; if(S.slots[i]) S.sel=S.slots[i]; return draw(); }
+    if(S.opt==="B"){ S.slotSel = S.slotSel===i?-1:i; S.sheet=false; S.tab="abil"; S.did.slot = S.did.slot || false; return draw(); }
+    return draw();
+  }
+  if(d.part){ S.sel=d.part; S.did.part=true; if(S.opt==="B"){ if(S.slotSel>=0){ equip(d.part,S.slotSel); } else { S.sheet=true; } return draw(); } return draw(); }
+  switch(d.act){
+    case "equip": S.sel=d.id; equip(d.id, S.slotSel); break;
+    case "unequip": unequip(d.id); break;
+    case "save": if(loadoutKey()!==S.saved) save(); break;
+    case "tips": S.tips=false; break;
+    case "info": S.sel=d.id; S.sheet=true; break;
+    case "closesheet": S.sheet=false; break;
+    case "cancelslot": S.slotSel=-1; break;
+    case "openpick": S.sel=d.id; S.pick=true; S.did.part=true; break;
+    case "closepick": S.pick=false; break;
+    case "skinon": S.skinOn=S.skinSel; toast(SKINS.find(s=>s[0]===S.skinSel)[1].toUpperCase()+" ON "+S.dino); return;
+    case "trailon": S.trailOn=S.trailSel; toast(S.trailSel==="none"?"TRAIL OFF":TRAILS.find(t=>t[0]===S.trailSel)[1].toUpperCase()+" ON"); return;
+    case "wheel": toast("TAP A WHEEL SLOT (AS TODAY)"); return;
+    case "buystat": toast("UPGRADE (AS TODAY)"); return;
+    case "close": toast("CLOSES THE LAB"); return;
+  }
+  draw();
+});
+draw();
+</script>
