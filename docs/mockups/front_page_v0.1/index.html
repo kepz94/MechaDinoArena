@@ -1,0 +1,137 @@
+<title>Mecha Dino Arena Front Page</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column of pick sections (icon, thumbnails, text), each option labelled with an ID Kepu can answer with. */
+:root{
+  --bg:#0f1420; --panel:#171e2e; --line:#2a3348; --fg:#e9edf5; --muted:#9aa5bb; --gold:#ffc832; --ink:#0b0e15;
+  --display:"Silkscreen","Courier New",monospace; --body:"Inter",system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2{font-family:var(--display);font-weight:700;letter-spacing:.04em;text-wrap:balance;margin:0}
+h1{font-size:clamp(26px,4vw,40px);color:var(--gold)}
+h2{font-size:22px;margin-bottom:6px}
+.lead{color:var(--muted);max-width:70ch;margin:8px 0 0}
+section{margin-top:44px;display:grid;gap:16px}
+.note{color:var(--muted);font-size:13.5px;max-width:75ch;margin:0}
+.tag{font-family:var(--display);font-size:13px;letter-spacing:.06em;color:var(--ink);background:var(--gold);padding:2px 8px;border-radius:4px}
+.icons{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.opt{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:10px;min-width:0}
+.opt header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.opt header b{font-weight:600}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pair figure{margin:0;display:grid;gap:6px}
+.pair img{width:100%;aspect-ratio:1;border-radius:22%;display:block}
+figcaption{font-size:12.5px;color:var(--muted)}
+.small{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.small img{width:75px;height:75px;border-radius:22%}
+.why{font-size:13.5px;color:var(--muted);margin:0}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
+.thumbs img{width:100%;aspect-ratio:16/9;border-radius:8px;display:block}
+.text{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
+.titles{display:grid;gap:8px}
+.titles div{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center}
+pre{white-space:pre-wrap;font-family:var(--body);font-size:14px;background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:14px;margin:0;max-height:none}
+button{font-family:var(--display);font-size:13px;letter-spacing:.05em;background:var(--gold);color:var(--ink);border:0;border-radius:6px;padding:8px 12px;cursor:pointer;justify-self:start}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.src{font-size:12.5px;color:var(--muted)}
+.src a{color:var(--gold)}
+</style>
+
+<div class="wrap">
+  <h1>MECHA DINO ARENA · FRONT PAGE v0.1</h1>
+  <p class="lead">Options for the Roblox game page: the icon, the thumbnails, and the title and description. Every picture is a real frame from Studio, with no repainting. Answer with the IDs you want, for example "Icon A2, thumbnails T1 T2 T4, title 1".</p>
+
+  <section>
+    <h2>ICON (512 × 512)</h2>
+    <p class="note">The icon is the square tile in the Roblox app. It is also shown as small as 150 × 150, so the small preview is the one to judge. Each direction comes without text (1) and with the name (2).</p>
+    <div class="icons">
+      <article class="opt">
+        <header><span class="tag">A</span><b>Raptor up close, T-Rex behind</b></header>
+        <div class="pair">
+          <figure><img src="icon_A.jpg" alt="Icon A1: Lava Raptor head close up with the Shock Cannon, T-Rex behind"><figcaption>A1 · no text</figcaption></figure>
+          <figure><img src="icon_A_text.jpg" alt="Icon A2: same with MECHA DINO ARENA text at the bottom"><figcaption>A2 · with name</figcaption></figure>
+        </div>
+        <div class="small"><img src="m_icon_A.jpg" alt="A1 at 150 pixels"><img src="m_icon_A_text.jpg" alt="A2 at 150 pixels"><figcaption>at 150 px</figcaption></div>
+        <p class="why">Biggest face and the glowing cannon read best when small. The T-Rex sets the scale.</p>
+      </article>
+      <article class="opt">
+        <header><span class="tag">B</span><b>Raptor against the sky</b></header>
+        <div class="pair">
+          <figure><img src="icon_B.jpg" alt="Icon B1: Lava Raptor from below against blue sky"><figcaption>B1 · no text</figcaption></figure>
+          <figure><img src="icon_B_text.jpg" alt="Icon B2: same with MECHA DINO ARENA text at the top"><figcaption>B2 · with name</figcaption></figure>
+        </div>
+        <div class="small"><img src="m_icon_B.jpg" alt="B1 at 150 pixels"><img src="m_icon_B_text.jpg" alt="B2 at 150 pixels"><figcaption>at 150 px</figcaption></div>
+        <p class="why">Clean background, so the name has room at the top. Less sense of the world around it.</p>
+      </article>
+      <article class="opt">
+        <header><span class="tag">C</span><b>T-Rex looming over the Raptor</b></header>
+        <div class="pair">
+          <figure><img src="icon_C.jpg" alt="Icon C1: T-Rex towering over the Lava Raptor"><figcaption>C1 · no text</figcaption></figure>
+          <figure><img src="icon_C_text.jpg" alt="Icon C2: same with MECHA DINO ARENA text at the top"><figcaption>C2 · with name</figcaption></figure>
+        </div>
+        <div class="small"><img src="m_icon_C.jpg" alt="C1 at 150 pixels"><img src="m_icon_C_text.jpg" alt="C2 at 150 pixels"><figcaption>at 150 px</figcaption></div>
+        <p class="why">Shows two dinos and a size gap. Busier at 150 px than A.</p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>THUMBNAILS (1920 × 1080)</h2>
+    <p class="note">These sit next to the trailer on the game page. Roblox can rotate 2 to 5 active thumbnails per player and track which one gets more plays. Text stays at the top, because the bottom edge gets covered by the player count.</p>
+    <div class="thumbs">
+      <figure class="opt" style="margin:0"><img src="s_thumb_1_dinos.jpg" alt="T1: all 8 dinos lined up, text 8 DINOS"><figcaption><span class="tag">T1</span> 8 DINOS · all eight playable dinos lined up</figcaption></figure>
+      <figure class="opt" style="margin:0"><img src="s_thumb_2_parts.jpg" alt="T2: Lava Raptor Shock Cannon close up, text MECHA PARTS"><figcaption><span class="tag">T2</span> MECHA PARTS · the Shock Cannon highlighted on the Raptor</figcaption></figure>
+      <figure class="opt" style="margin:0"><img src="s_thumb_3_battle.jpg" alt="T3: Troodon dome and lantern hitting a Pachy, text BATTLE ON THE ISLAND"><figcaption><span class="tag">T3</span> BATTLE ON THE ISLAND · Troodon vs Pachy mid fight</figcaption></figure>
+      <figure class="opt" style="margin:0"><img src="s_thumb_4_skins.jpg" alt="T4: Herrera gliding past the sun with a rainbow trail, text SKINS AND TRAILS"><figcaption><span class="tag">T4</span> SKINS &amp; TRAILS · Herrera with the Rainbow Road trail</figcaption></figure>
+      <figure class="opt" style="margin:0"><img src="s_thumb_5_cannon.jpg" alt="T5: Pachy stunned by the Shock Cannon, text SHOCK CANNON"><figcaption><span class="tag">T5</span> SHOCK CANNON · the Pachy stunned, -30</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>TITLE &amp; DESCRIPTION</h2>
+    <div class="text">
+      <div class="opt">
+        <header><b>Title options</b></header>
+        <div class="titles">
+          <div><span class="tag">1</span>Mecha Dino Arena</div>
+          <div><span class="tag">2</span>Mecha Dino Arena 🦖</div>
+          <div><span class="tag">3</span>[NEW] Mecha Dino Arena</div>
+        </div>
+        <p class="why">Many games on the Discover page add a tag in brackets while they are new. It can be swapped later without changing the name.</p>
+      </div>
+      <div class="opt">
+        <header><b>Description draft</b></header>
+<pre id="desc">Pick a dino, bolt on mecha parts and fight.
+
+DINOS
+Play as T-Rex, Raptor, Pachy, Herrera, Teno, Troodon, Therizino or Dilo. Each one fights its own way.
+
+MECHA PARTS
+Unlock parts in the Lab and build your loadout: Shock Cannon, Thrusters, Adrenaline, Energy Shield, Cloak Field and more.
+
+MODES
+Island: roam the island and fight anyone outside the safe area.
+Practice: hold the point with your team against bots.
+
+SQUADS
+Team up with friends in a squad.
+
+SKINS & TRAILS
+Grab skins, trails and emotes in the Shop.</pre>
+        <button id="copy" type="button">COPY TEXT</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="src" style="margin-top:40px">Roblox guidance used: <a href="https://create.roblox.com/docs/production/promotion/game-icons">game icons</a> (512 × 512, check it at 150 × 150) and <a href="https://create.roblox.com/docs/production/promotion/thumbnails">thumbnails</a> (16:9, up to 10, 2 to 5 active for personalization, keep text off the bottom edge).</p>
+</div>
+<script>
+document.getElementById('copy').addEventListener('click',function(){
+  var b=this,t=document.getElementById('desc').textContent;
+  try{navigator.clipboard.writeText(t).then(function(){b.textContent='COPIED'},function(){sel()})}catch(e){sel()}
+  function sel(){var r=document.createRange();r.selectNodeContents(document.getElementById('desc'));var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='SELECTED, PRESS COPY'}
+});
+</script>
