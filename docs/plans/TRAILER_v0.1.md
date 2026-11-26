@@ -152,3 +152,23 @@ Herrera glider slot). Account changes during the shoot: Raptor skin set to class
 equipped adrenaline / screech / thrusters, all three Raptor slots cleared again after; species Herrera for the glide, back
 to Raptor. Restored after: SkillTestMaxAllEnabled false, Play stopped, ModeTestPractice nil, quality Automatic, Output +
 Asset Manager back, window snapped left.
+
+## Trailer v0.7 cut (2026-11-25 19:10)
+
+Kepu 18:52 (screen recording of 7 Roblox game-page previews: PLS Donate, Ant Evolution, My Hero Academia Ultimate, Crazy 8
+Ball, Territories, Fallen Survival, Hoop Jam): gameplay comes first; open on a Raptor with its mecha parts highlighted in
+close camera sweeps, then it jumps into battle, then cuts (battles, equipping parts, etc.). Observed in the recording: 6 of 7
+previews are in gameplay within ~0.7 s; the preview plays muted at about a third of the phone screen and is scrolled past
+after 5-10 s; one large subject per frame; 1-2 s shots with a moving camera; real HUD kept. Kepu picks (19:00): part callout
+= in-game outline + short label; keep Lab, Herrera glide, Shop, GG + logo.
+Cut: 29.7 s, silent, C:\Users\Kepu_\Videos\MechaDinoArena_Trailer_v0.7.mp4 (not in the repo). New source 18-59-30 (file time
+= Studio clock - 18:59:26.3). Order: Lava Raptor close sweeps with a gold Highlight (Roblox Highlight on the part model,
+Occluded, faded in / out) and a tag (Silkscreen 700, gold on dark, bottom left): SHOCK CANNON, ADRENALINE, THRUSTERS (with a
+far depth-of-field blur); Thrusters boost (DinoDashRequest, real hop) into the battle, camera trailing; two close fight
+cuts (Troodon dome / lantern vs Pachy, Therizino harvest field vs Dilo); cannon side-rear, ball ride, stun (v0.6); Lab
+(v0.6, trimmed to 4.8 s); Herrera summit leap into the sun (v0.6), white flash, pull-out over the battle; Shop (3.0 s); GG;
+logo. Removed: portal and island crane / lateral battle shots.
+Filming-only (Play session): same TrailerBots / crowd director / FX watcher copies as v0.6; Lighting DepthOfFieldEffect
+"CINE_DOF" (Play only, gone after stop). Account: Raptor slots set to adrenaline / screech / thrusters for the shoot and
+cleared after. Restored after: Play stopped, ModeTestPractice nil, SkillTestMaxAllEnabled false (checked), quality
+Automatic, Output + Asset Manager back, window snapped left.
