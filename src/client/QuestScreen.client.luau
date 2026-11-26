@@ -23,6 +23,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 achievements tab
+-- v1.1 (achievements, plan docs/plans/ACHIEVEMENTS_v1.0.md Task 3, mockup docs/mockups/achievements_v0.1.html "B · Three columns"):
+--   the header title becomes two tabs, QUESTS (150 x 48) and ACHIEVEMENTS (250 x 48, a red count of ready achievements on its corner);
+--   the active tab has the dark rgb(27,36,52) fill and white text, the other muted text. The quests page is unchanged except that
+--   the "NEW DAILIES IN" chip moves to the right end of the DAILY line (300 x 26 at y 80). ACHIEVEMENTS page: a ScrollingFrame with
+--   three columns ISLAND / ARENA / BOTH (headed "got / total"), rows 58 px with a 40 px medal disc (B / S / G in bronze / silver /
+--   gold once done, grey "?" before), the name, a bar, "have / need", and on the right "+n PTS", a yellow "CLAIM +n" (84 x 44) or
+--   "✓ +n" (the row dims). Header right: "<got> / 17 · +<pts> PTS". Claims go through the same QuestRequest("claim", "a_<id>")
+--   (QuestServer 1.1). Switch: script attribute QuestAchTabEnabled (true, read at start; false = 1.0).
 script:SetAttribute("QuestScreenVersion", VERSION)
 for k, v in pairs({QuestScreenEnabled = true, QuestPanelW = 900, QuestPanelH = 520, QuestFitW = 0.92, QuestFitH = 0.92, QuestRefresh = 5}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -214,6 +223,165 @@ for i = 1, 2 do
 	specs[i] = {f = cd, st = st, swSlot = sw, text = tl, fill = fill, track = tr, prog = pl, rew = rl, holder = holder, btn = btn, skin = nil}
 end
 
+-- v1.1: QUESTS / ACHIEVEMENTS tabs (see the v1.1 note)
+local claimIdRef, drawRef -- set below, once claimId / draw exist
+if script:GetAttribute("QuestAchTabEnabled") == nil then script:SetAttribute("QuestAchTabEnabled", true) end
+local tabsOn = script:GetAttribute("QuestAchTabEnabled") ~= false
+local tab = "quests"
+local questPage = frame(panel, "QuestPage", 0, 0, PW, PH)
+for _, ch in ipairs(panel:GetChildren()) do
+	if ch.Name == "DailyHead" or ch.Name == "SpecialHead" or ch.Name:match("^Daily%d") or ch.Name:match("^Special%d") then ch.Parent = questPage end
+end
+local achPage = frame(panel, "AchPage", 0, 76, PW, PH - 76)
+achPage.Visible = false
+local MEDAL = {b = Color3.fromRGB(208, 138, 78), s = Color3.fromRGB(201, 211, 223), g = Color3.fromRGB(255, 210, 74)}
+local MEDAL_L = {b = "B", s = "S", g = "G"}
+local scroll = Instance.new("ScrollingFrame")
+scroll.Name = "List"
+scroll.Position = UDim2.fromOffset(20, 8)
+scroll.Size = UDim2.fromOffset(PW - 40, PH - 76 - 16)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 6
+scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+scroll.CanvasSize = UDim2.fromOffset(0, 0)
+scroll.Parent = achPage
+local COLW, ROWH, GAP = math.floor((PW - 40 - 2 * 14) / 3), 58, 8
+local cols, achRows = {}, {}
+for ci, where in ipairs({"ISLAND", "ARENA", "BOTH"}) do
+	local x = (ci - 1) * (COLW + 14)
+	local hd = label(scroll, "Head_" .. where, x, 0, COLW - 60, 22, where, 15, C.muted, "silk")
+	local cnt = label(scroll, "Count_" .. where, x + COLW - 60, 0, 60, 22, "", 15, C.muted, "silk", Enum.TextXAlignment.Right)
+	cols[where] = {x = x, head = hd, count = cnt, n = 0}
+end
+local function achRow(i)
+	local r = achRows[i]
+	if r then return r end
+	local f = frame(scroll, "Ach" .. i, 0, 0, COLW, ROWH, C.card)
+	corner(f, 10)
+	local st = stroke(f, C.cardLine, 2)
+	local md = frame(f, "Medal", 8, 9, 40, 40, C.track)
+	corner(md, 20)
+	local ml = label(md, "L", 0, 0, 40, 40, "?", 16, C.ink, "silk", Enum.TextXAlignment.Center)
+	local nm = label(f, "Name", 56, 6, COLW - 56 - 90, 18, "", 14, C.white, "silk")
+	nm.TextScaled = true
+	local trk, fill = bar(f, 56, 28, COLW - 56 - 96)
+	trk.Size = UDim2.fromOffset(COLW - 56 - 96, 8)
+	fill.Size = UDim2.fromOffset(0, 8)
+	local pr = label(f, "Prog", 56, 38, COLW - 56 - 96, 16, "", 12, C.muted, "silk")
+	local rw = label(f, "Reward", COLW - 92, 0, 84, ROWH, "", 14, C.yellow, "silk", Enum.TextXAlignment.Right)
+	local holder = frame(f, "ClaimHolder", COLW - 90, 7, 84, 44)
+	local lip = frame(holder, "Lip", 0, 4, 84, 44, C.lip)
+	corner(lip, 10)
+	local b = Instance.new("TextButton")
+	b.Name = "Claim"
+	b.Size = UDim2.fromOffset(84, 44)
+	b.BackgroundColor3 = C.yellow
+	b.FontFace = SILK
+	b:SetAttribute("FontSwap", "keep")
+	b.TextSize = 13
+	b.TextColor3 = C.ink
+	b.ZIndex = 2
+	b.Parent = holder
+	corner(b, 10)
+	r = {f = f, st = st, md = md, ml = ml, nm = nm, trk = trk, fill = fill, pr = pr, rw = rw, holder = holder, btn = b, id = nil, barW = COLW - 56 - 96}
+	b.Activated:Connect(function() if r.id then claimIdRef(r.id) end end)
+	achRows[i] = r
+	return r
+end
+local tabQ = Instance.new("TextButton")
+tabQ.Name = "TabQuests"
+tabQ.Position = UDim2.fromOffset(16, 12)
+tabQ.Size = UDim2.fromOffset(150, 48)
+tabQ.FontFace = SILK
+tabQ:SetAttribute("FontSwap", "keep")
+tabQ.TextSize = 24
+tabQ.Text = "QUESTS"
+tabQ.Parent = panel
+corner(tabQ, 10)
+local tabA = tabQ:Clone()
+tabA.Name = "TabAchievements"
+tabA.Position = UDim2.fromOffset(172, 12)
+tabA.Size = UDim2.fromOffset(250, 48)
+tabA.Text = "ACHIEVEMENTS"
+tabA.Parent = panel
+local dot = Instance.new("TextLabel")
+dot.Name = "Dot"
+dot.AnchorPoint = Vector2.new(0.5, 0.5)
+dot.Position = UDim2.new(1, -4, 0, 6)
+dot.Size = UDim2.fromOffset(26, 26)
+dot.BackgroundColor3 = Color3.fromRGB(255, 90, 110)
+dot.FontFace = SILK
+dot:SetAttribute("FontSwap", "keep")
+dot.TextSize = 13
+dot.TextColor3 = C.white
+dot.Visible = false
+dot.ZIndex = 3
+dot.Parent = tabA
+corner(dot, 13)
+local titleL = panel:FindFirstChild("Title")
+local function setTab(t)
+	tab = t
+	questPage.Visible = t == "quests"
+	achPage.Visible = t == "ach"
+	chip.Visible = t == "quests"
+	for _, b in ipairs({tabQ, tabA}) do
+		local on = (b == tabQ) == (t == "quests")
+		b.BackgroundColor3 = Color3.fromRGB(27, 36, 52)
+		b.BackgroundTransparency = on and 0 or 1
+		b.TextColor3 = on and C.white or C.muted
+	end
+end
+if tabsOn then
+	if titleL then titleL.Visible = false end
+	chip.Position = UDim2.fromOffset(PW - 320, 80)
+	chip.Size = UDim2.fromOffset(300, 26)
+	timerL.Size = UDim2.fromOffset(300, 26)
+	tabQ.Activated:Connect(function() setTab("quests") drawRef() end)
+	tabA.Activated:Connect(function() setTab("ach") drawRef() end)
+	setTab("quests")
+else
+	tabQ.Visible, tabA.Visible = false, false
+end
+local function drawAch(v)
+	if not tabsOn then return end
+	local ready = tonumber(v.achReady) or 0
+	dot.Visible = ready > 0
+	dot.Text = tostring(ready)
+	if tab ~= "ach" then return end
+	readyL.Text = tostring(v.achGot or 0) .. " / " .. tostring(v.achievements and #v.achievements or 0) .. " · +" .. tostring(v.achPts or 0) .. " PTS"
+	for _, c in pairs(cols) do c.n, c.got, c.total = 0, 0, 0 end
+	local maxRows = 0
+	for i, a in ipairs(v.achievements or {}) do
+		local c = cols[a.where] or cols.BOTH
+		local r = achRow(i)
+		r.f.Position = UDim2.fromOffset(c.x, 30 + c.n * (ROWH + GAP))
+		c.n += 1
+		c.total += 1
+		if a.claimed then c.got += 1 end
+		maxRows = math.max(maxRows, c.n)
+		local done = a.have >= a.need
+		local canClaim = done and not a.claimed
+		r.id = a.id
+		r.md.BackgroundColor3 = (done or a.claimed) and (MEDAL[a.medal] or C.track) or C.track
+		r.ml.Text = (done or a.claimed) and (MEDAL_L[a.medal] or "?") or "?"
+		r.ml.TextColor3 = (done or a.claimed) and C.ink or C.muted
+		r.nm.Text = a.name
+		r.fill.Size = UDim2.fromOffset(math.floor(r.barW * math.clamp(a.have / math.max(1, a.need), 0, 1) + 0.5), 8)
+		r.fill.BackgroundColor3 = done and C.yellow or C.cyan
+		r.pr.Text = a.have .. " / " .. a.need
+		r.holder.Visible = canClaim
+		r.btn.Text = "CLAIM +" .. a.pts
+		r.rw.Visible = not canClaim
+		r.rw.Text = a.claimed and ("✓ +" .. a.pts) or ("+" .. a.pts .. " PTS")
+		r.rw.TextColor3 = a.claimed and C.green or C.yellow
+		r.st.Color = canClaim and C.yellow or C.cardLine
+		r.f.BackgroundTransparency = a.claimed and 0.45 or 0
+		r.f.Visible = true
+	end
+	for _, c in pairs(cols) do c.count.Text = c.got .. " / " .. c.total end
+	scroll.CanvasSize = UDim2.fromOffset(0, 30 + maxRows * (ROWH + GAP))
+end
 local toast = Instance.new("TextLabel")
 toast.Name = "Toast"
 toast.AnchorPoint = Vector2.new(0.5, 1)
@@ -310,6 +478,7 @@ local function draw()
 			cd.id = s.id
 		end
 	end
+	drawAch(v) -- v1.1
 end
 
 local function refresh()
@@ -335,6 +504,9 @@ local function claimId(id)
 			if q.id == id then msg = "+" .. q.pts .. (q.pts == 1 and " SKILL POINT" or " SKILL POINTS") end
 		end
 		for _, s in ipairs(view and view.specials or {}) do if s.id == id then msg = s.name .. " UNLOCKED" end end
+		for _, a in ipairs(view and view.achievements or {}) do -- v1.1
+			if a.id == id then msg = "+" .. a.pts .. " SKILL POINTS" end
+		end
 		showToast(msg)
 	else
 		showToast(WORDS[r] or "TRY AGAIN")
@@ -343,6 +515,7 @@ local function claimId(id)
 end
 for i = 1, 3 do cards[i].btn.Activated:Connect(function() claimId(cards[i].id) end) end
 for i = 1, 2 do specs[i].btn.Activated:Connect(function() claimId(specs[i].id) end) end
+claimIdRef, drawRef = claimId, draw -- v1.1
 
 xBtn.Activated:Connect(function() setOpen(false) end)
 openFn.OnInvoke = function(from)

@@ -43,6 +43,18 @@ local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 achievements
+-- v1.1 (achievements, plan docs/plans/ACHIEVEMENTS_v1.0.md Task 2; Kepu 2026-11-26 picks "Skill points by tier", "Claim at the Quest
+--   Stand", "Start fresh" + "Live state", "B · Three columns", pop-up "top centre 1 s"; red-team "OK", "Keep 2 / 5 / 10"). The 17
+--   achievements of ServerStorage.DinoArcade.AchievementRules 1.0 ride in the same store value: ach = {p = {[stat] = n} (counters,
+--   saved as deltas / bests like the quests; everyone starts at 0), c = {[id] = true} (claimed), n = {[id] = true} (pop-up shown)}.
+--   The day roll never touches ach. Counted stats: ikill / akill / aplay / awin / istreak from the events above, awstreak (player
+--   ArenaStreak rising after ArenaRecordReady, max), qclaim (+1 per daily claim). Live stats: OwnedDinos / SkinOwnedU counts and
+--   SkillLevel. claim("a_<id>") (same near-the-stand rule) sets ach.c[id] + pend in one UpdateAsync when have >= need, then pays
+--   SkillGrantPoints(player, 2 / 5 / 10 by medal, "achievement"). The view gets achievements = {{id, name, text, where, medal, have,
+--   need, pts, claimed}} and achReady; QuestReady counts quests + achievements. When an achievement first becomes claimable and is
+--   not in ach.n: player AchDoneList ("NAME|medal;..." of the new ones) and AchDoneAt (server time) for SkinUnlockPopup 1.1, and it
+--   joins ach.n (saved). Switch: script attribute QuestAchievementsEnabled (true, read per use; false = 1.0).
 script:SetAttribute("QuestServerVersion", VERSION)
 for k, v in pairs({QuestEnabled = true, QuestSaveEnabled = true, QuestStoreName = "MDA_Quests_v1", QuestRange = 24, QuestSaveGap = 10,
 	QuestTestDayOffset = 0}) do
@@ -52,6 +64,9 @@ for _, k in ipairs({"QuestClaims", "QuestEvents", "QuestSaves"}) do script:SetAt
 if script:GetAttribute("QuestEnabled") == false then return end
 
 local Q = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("QuestRules"))
+local AR = require(ServerStorage:WaitForChild("DinoArcade"):WaitForChild("AchievementRules")) -- v1.1
+if script:GetAttribute("QuestAchievementsEnabled") == nil then script:SetAttribute("QuestAchievementsEnabled", true) end -- v1.1
+local function achOn() return script:GetAttribute("QuestAchievementsEnabled") ~= false end
 local saveOn = script:GetAttribute("QuestSaveEnabled") ~= false
 local store
 if saveOn then
@@ -80,6 +95,11 @@ local function clean(v)
 	for _, f in ipairs({"dp", "dc", "pc", "pend"}) do
 		if type(v[f]) == "table" then for k, x in pairs(v[f]) do if type(k) == "string" then out[f][k] = x end end end
 	end
+	local a = type(v.ach) == "table" and v.ach or {} -- v1.1
+	out.ach = {p = {}, c = {}, n = {}}
+	for _, f in ipairs({"p", "c", "n"}) do
+		if type(a[f]) == "table" then for k, x in pairs(a[f]) do if type(k) == "string" then out.ach[f][k] = x end end end
+	end
 	return out
 end
 local function picksValid(p)
@@ -101,6 +121,16 @@ local function readyCount(player, st)
 	local n = 0
 	for _, q in ipairs(st.picks or {}) do if Q.claimable(q.need, have(st, q), st.dc[q.id]) then n += 1 end end
 	for _, s in ipairs(Q.specials()) do if Q.claimable(s.need, specialHave(player), st.pc[s.id]) then n += 1 end end
+	if achOn() and st.ach then -- v1.1
+		local live = AR.liveStats(player:GetAttribute("OwnedDinos"), player:GetAttribute("SkinOwnedU"), player:GetAttribute("SkillLevel"))
+		for _, x in ipairs(AR.LIST) do
+			local h
+			if AR.LIVE_STATS[x.stat] then h = live[x.stat]
+			elseif AR.MAX_STATS[x.stat] then h = math.max(tonumber(st.ach.p[x.stat]) or 0, st.abest[x.stat] or 0)
+			else h = (tonumber(st.ach.p[x.stat]) or 0) + (st.aadd[x.stat] or 0) end
+			if AR.claimable(x, h, st.ach.c[x.id]) then n += 1 end
+		end
+	end
 	return n
 end
 local function publish(player)
@@ -109,6 +139,27 @@ local function publish(player)
 	player:SetAttribute("QuestDay", st.day)
 	local n = st.loaded and readyCount(player, st) or 0
 	if player:GetAttribute("QuestReady") ~= n then player:SetAttribute("QuestReady", n) end
+	if st.loaded and achOn() and st.ach then -- v1.1: the "ACHIEVEMENT DONE" pop-up, once per achievement ever
+		local live = AR.liveStats(player:GetAttribute("OwnedDinos"), player:GetAttribute("SkinOwnedU"), player:GetAttribute("SkillLevel"))
+		local new = {}
+		for _, x in ipairs(AR.LIST) do
+			if not st.ach.n[x.id] and not st.ach.c[x.id] then
+				local h
+				if AR.LIVE_STATS[x.stat] then h = live[x.stat]
+				elseif AR.MAX_STATS[x.stat] then h = math.max(tonumber(st.ach.p[x.stat]) or 0, st.abest[x.stat] or 0)
+				else h = (tonumber(st.ach.p[x.stat]) or 0) + (st.aadd[x.stat] or 0) end
+				if h >= x.need then
+					st.ach.n[x.id] = true
+					st.dirty = true
+					table.insert(new, x.name .. "|" .. x.medal)
+				end
+			end
+		end
+		if #new > 0 then
+			player:SetAttribute("AchDoneList", table.concat(new, ";"))
+			player:SetAttribute("AchDoneAt", workspace:GetServerTimeNow())
+		end
+	end
 end
 
 -- adopt a stored value (already cleaned) for today
@@ -116,6 +167,10 @@ local function adopt(player, st, v)
 	local d = today()
 	st.pc = v.pc
 	st.pend = v.pend
+	if v.ach then -- v1.1: keep the pop-ups already shown this session
+		for k in pairs(st.ach and st.ach.n or {}) do v.ach.n[k] = true end
+		st.ach = v.ach
+	end
 	if v.day == d then
 		st.dp, st.dc = v.dp, v.dc
 		if picksValid(v.picks) then st.picks = v.picks end
@@ -136,11 +191,15 @@ local function save(player)
 	if not store then st.dirty = false return true end
 	local d = st.day
 	local sentAdd, sentBest = table.clone(st.add), table.clone(st.best)
+	local sentAAdd, sentABest, sentN = table.clone(st.aadd), table.clone(st.abest), table.clone(st.ach.n) -- v1.1
 	local picks = st.picks
 	local stored
 	local ok = pcall(function()
 		store:UpdateAsync("u" .. player.UserId, function(old)
 			local v = clean(old)
+			for s, n in pairs(sentAAdd) do v.ach.p[s] = (tonumber(v.ach.p[s]) or 0) + n end -- v1.1: achievements first (any day)
+			for s, n in pairs(sentABest) do v.ach.p[s] = math.max(tonumber(v.ach.p[s]) or 0, n) end
+			for k in pairs(sentN) do v.ach.n[k] = true end
 			if (v.day or -1) > d then stored = v return v end -- this server is behind: keep the store, drop ours
 			if v.day ~= d then v.day, v.picks, v.dp, v.dc = d, picks, {}, {} end
 			if not picksValid(v.picks) then v.picks = picks end
@@ -159,7 +218,12 @@ local function save(player)
 		if st.add[id] <= 0 then st.add[id] = nil end
 	end
 	for id, n in pairs(sentBest) do if (st.best[id] or 0) <= n then st.best[id] = nil end end
-	st.dirty = next(st.add) ~= nil or next(st.best) ~= nil
+	for s, n in pairs(sentAAdd) do -- v1.1
+		st.aadd[s] = (st.aadd[s] or 0) - n
+		if st.aadd[s] <= 0 then st.aadd[s] = nil end
+	end
+	for s, n in pairs(sentABest) do if (st.abest[s] or 0) <= n then st.abest[s] = nil end end
+	st.dirty = next(st.add) ~= nil or next(st.best) ~= nil or next(st.aadd) ~= nil or next(st.abest) ~= nil -- v1.1: + achievements
 	adopt(player, st, stored)
 	player:SetAttribute("QuestState", "loaded")
 	bump("QuestSaves")
@@ -170,6 +234,7 @@ end
 local function load(player)
 	local st = {loaded = false, day = today(), picks = nil, dp = {}, dc = {}, pc = {}, pend = {}, add = {}, best = {}, dirty = false,
 		lastChange = 0, lastRead = 0, busy = false}
+	st.ach, st.aadd, st.abest = {p = {}, c = {}, n = {}}, {}, {} -- v1.1
 	states[player] = st
 	player:SetAttribute("QuestState", "loading")
 	if not store then
@@ -195,9 +260,24 @@ local function load(player)
 	player:SetAttribute("QuestState", "failed")
 end
 
+-- v1.1: achievement counters (deltas / bests, saved with the quests)
+local function achAdd(st, ev, n, value)
+	if not achOn() or not st.ach then return end
+	local used = false
+	for _, x in ipairs(AR.LIST) do if x.stat == ev then used = true break end end
+	if not used then return end
+	if AR.MAX_STATS[ev] then
+		if (value or 0) > math.max(tonumber(st.ach.p[ev]) or 0, st.abest[ev] or 0) then st.abest[ev] = value else return end
+	else
+		st.aadd[ev] = (st.aadd[ev] or 0) + (n or 0)
+	end
+	st.dirty = true
+	st.lastChange = os.clock()
+end
 -- progress
 local function add(player, ev, n, value)
 	local st = states[player]
+	if st and st.loaded then achAdd(st, ev, n, value) end -- v1.1
 	if not (st and st.loaded and st.picks) then return end
 	local hit = false
 	for _, q in ipairs(st.picks) do
@@ -295,6 +375,22 @@ local function onPlayer(player)
 		publish(player)
 	end)
 	player:GetAttributeChangedSignal("StatIslandBest"):Connect(function() publish(player) end)
+	for _, k in ipairs({"OwnedDinos", "SkinOwnedU", "SkillLevel"}) do -- v1.1: live achievement stats
+		player:GetAttributeChangedSignal(k):Connect(function() publish(player) end)
+	end
+	local lastAS -- v1.1: Arena win streak rises after the record is ready -> "awstreak" (max)
+	player:GetAttributeChangedSignal("ArenaStreak"):Connect(function()
+		local v = tonumber(player:GetAttribute("ArenaStreak")) or 0
+		local was = lastAS
+		lastAS = v
+		if player:GetAttribute("ArenaRecordReady") ~= true or was == nil or v <= was then return end
+		add(player, "awstreak", 0, v)
+		publish(player)
+	end)
+	if player:GetAttribute("ArenaRecordReady") == true then lastAS = tonumber(player:GetAttribute("ArenaStreak")) or 0 end
+	player:GetAttributeChangedSignal("ArenaRecordReady"):Connect(function()
+		if player:GetAttribute("ArenaRecordReady") == true then lastAS = tonumber(player:GetAttribute("ArenaStreak")) or 0 end
+	end)
 	player.CharacterAdded:Connect(function(c) hookCharacter(player, c) end)
 	if player.Character then hookCharacter(player, player.Character) end
 end
@@ -330,6 +426,14 @@ end)
 
 -- rewards
 local function grant(player, id)
+	if id:sub(1, 2) == "a_" then -- v1.1: achievements pay 2 / 5 / 10 by medal
+		local x = AR.BY_ID[id:sub(3)]
+		local sk = ServerScriptService:FindFirstChild("SkillServer")
+		local fn = sk and sk:FindFirstChild("SkillGrantPoints")
+		if not (x and fn) then return false end
+		local ok, r = pcall(function() return fn:Invoke(player, AR.pts(x), "achievement") end)
+		return ok and r == "ok"
+	end
 	if id:sub(1, 2) == "s_" then
 		local sk
 		for _, s in ipairs(Q.specials()) do if s.id == id then sk = s.skin end end
@@ -378,6 +482,51 @@ local function nearStand(player)
 	return Vector3.new(hrp.Position.X - f.X, 0, hrp.Position.Z - f.Z).Magnitude <= A("QuestRange", 24) + 6
 end
 
+-- v1.1: claim an achievement (the caller checked hub, loaded, near, busy)
+local function achHave(player, st, x)
+	if AR.LIVE_STATS[x.stat] then
+		return AR.liveStats(player:GetAttribute("OwnedDinos"), player:GetAttribute("SkinOwnedU"), player:GetAttribute("SkillLevel"))[x.stat]
+	end
+	if AR.MAX_STATS[x.stat] then return math.max(tonumber(st.ach.p[x.stat]) or 0, st.abest[x.stat] or 0) end
+	return (tonumber(st.ach.p[x.stat]) or 0) + (st.aadd[x.stat] or 0)
+end
+local function claimAch(player, st, id)
+	local x = AR.BY_ID[id:sub(3)]
+	if not x then return "unknown" end
+	st.busy = true
+	if st.dirty and not save(player) then st.busy = false return "failed" end
+	local result = "failed"
+	if not store then
+		if st.ach.c[x.id] then result = "claimed" elseif achHave(player, st, x) < x.need then result = "notReady"
+		else st.ach.c[x.id], st.pend[id], result = true, true, "ok" end
+	else
+		local liveHave = AR.LIVE_STATS[x.stat] and achHave(player, st, x) or nil
+		local stored
+		local ok = pcall(function()
+			store:UpdateAsync("u" .. player.UserId, function(old)
+				local v = clean(old)
+				stored, result = v, "failed"
+				if v.ach.c[x.id] then result = "claimed" return nil end
+				local h = liveHave or tonumber(v.ach.p[x.stat]) or 0
+				if h < x.need then result = "notReady" return nil end
+				v.ach.c[x.id] = true
+				v.pend[id] = true
+				result = "ok"
+				return v
+			end)
+		end)
+		if not ok then result = "failed" end
+		if result == "ok" and stored then adopt(player, st, stored) end
+	end
+	st.busy = false
+	if result == "ok" then
+		bump("QuestClaims")
+		player:SetAttribute("QuestLastClaim", id)
+		if grant(player, id) then clearPend(player, id) end
+	end
+	publish(player)
+	return result
+end
 local function claim(player, id)
 	local st = states[player]
 	if not isHub() then return "notHub" end
@@ -388,6 +537,7 @@ local function claim(player, id)
 	local q, special
 	for _, x in ipairs(st.picks or {}) do if x.id == id then q = x end end
 	for _, s in ipairs(Q.specials()) do if s.id == id then q, special = s, true end end
+	if not q and id:sub(1, 2) == "a_" and achOn() then return claimAch(player, st, id) end -- v1.1
 	if not q then return "unknown" end
 	st.busy = true
 	if st.dirty and not save(player) then st.busy = false return "failed" end
@@ -429,6 +579,7 @@ local function claim(player, id)
 	if result == "ok" then
 		bump("QuestClaims")
 		player:SetAttribute("QuestLastClaim", id)
+		if not special then achAdd(st, "qclaim", 1) end -- v1.1: Quest Fan
 		if grant(player, id) then clearPend(player, id) end
 	end
 	publish(player)
@@ -452,6 +603,17 @@ local function view(player)
 			claimed = st.pc[s.id] == true})
 	end
 	out.ready = readyCount(player, st)
+	if achOn() and st.ach then -- v1.1
+		out.achievements, out.achReady, out.achGot, out.achPts = {}, 0, 0, 0
+		for _, x in ipairs(AR.LIST) do
+			local h = achHave(player, st, x)
+			local c = st.ach.c[x.id] == true
+			table.insert(out.achievements, {id = "a_" .. x.id, name = x.name, text = x.text, where = x.where, medal = x.medal,
+				have = math.min(h, x.need), need = x.need, pts = AR.pts(x), claimed = c})
+			if AR.claimable(x, h, c) then out.achReady += 1 end
+			if c then out.achGot += 1 out.achPts += AR.pts(x) end
+		end
+	end
 	return out
 end
 

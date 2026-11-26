@@ -89,3 +89,7 @@ The total is 95 skill points.
 1. **A burst of pop-ups at launch.** "Live state" achievements (level 10, 4 dinos, 5 skins) are done for many players the first time they join. They queue, 1 s each, up to 3, then "+n MORE". They show once per player ever (`n` is saved).
 2. **The total is 95 skill points.** That is on top of levels and dailies, and bonus points have no cap (piece 2). Accepted by the list?
 3. **Arena achievements show at the stand after the trip back**, same as the Arena dailies.
+
+## Synthesis (Kepu 2026-11-26)
+- R1 "OK": pop-ups queue 1 s each, at most 3 (the third says "+n MORE"), each once per player ever.
+- R2 "Keep 2 / 5 / 10": 95 points total.

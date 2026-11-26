@@ -15,6 +15,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 achievement pop-up
+-- v1.1 (achievements, plan docs/plans/ACHIEVEMENTS_v1.0.md Task 4; Kepu 2026-11-26 pop-up "top centre 1 s", red-team "OK"): on player
+--   AchDoneAt (QuestServer 1.1) the same plate shows "ACHIEVEMENT DONE" (yellow), the achievement name (white) and "CLAIM AT THE
+--   QUEST STAND" (cyan, Silkscreen Bold 11), with a medal disc (B / S / G on bronze / silver / gold) instead of the swatch; plate
+--   76 px tall. AchDoneList ("NAME|medal;...") queues: 1 s each, at most 3; when more were done the third line of the last one reads
+--   "+n MORE · CLAIM AT THE QUEST STAND". Skin pop-ups keep the 1.0 look. Switch: script attribute AchPopupEnabled (true, per
+--   signal). Diagnostic: AchPopupShown (count).
 script:SetAttribute("SkinUnlockPopupVersion", VERSION)
 for k, v in pairs({SkinPopupEnabled = true, SkinPopupTime = 1, SkinPopupTop = 10, SkinPopupShown = 0}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -67,6 +74,8 @@ end
 local top = text("Top", 10, 13, YELLOW)
 top.Text = "SKIN UNLOCKED"
 local nm = text("Name", 29, 20, Color3.new(1, 1, 1))
+local sub = text("Sub", 54, 11, Color3.fromRGB(127, 233, 255)) -- v1.1: achievements only
+sub.Visible = false
 
 local US
 local function skins()
@@ -87,7 +96,11 @@ local function show(id)
 	local lib = skins()
 	local sk = lib and lib.get(id)
 	if not sk then return end
-	for _, c in ipairs(sw:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
+	top.Text = "SKIN UNLOCKED" -- v1.1: the achievement look changes these
+	sub.Visible = false
+	sw.Size = UDim2.fromOffset(40, 40)
+	sw.Position = UDim2.fromOffset(10, 10)
+	for _, c in ipairs(sw:GetChildren()) do if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end end
 	local cols = type(sk.sw) == "table" and #sk.sw > 0 and sk.sw or {"5E943E"}
 	for i, hex in ipairs(cols) do
 		local s = Instance.new("Frame")
@@ -119,6 +132,73 @@ local function show(id)
 	end)
 end
 
+-- v1.1: achievements
+if script:GetAttribute("AchPopupEnabled") == nil then script:SetAttribute("AchPopupEnabled", true) end
+script:SetAttribute("AchPopupShown", 0)
+local MEDAL = {b = Color3.fromRGB(208, 138, 78), s = Color3.fromRGB(201, 211, 223), g = Color3.fromRGB(255, 210, 74)}
+local achQueue, achBusy = {}, false
+local function showAch(name, medal, third)
+	for _, c in ipairs(sw:GetChildren()) do if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end end
+	sw.Size = UDim2.fromOffset(40, 40)
+	local disc = Instance.new("Frame")
+	disc.BorderSizePixel = 0
+	disc.Size = UDim2.fromScale(1, 1)
+	disc.BackgroundColor3 = MEDAL[medal] or MEDAL.b
+	disc.Parent = sw
+	do local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0.5, 0) c.Parent = disc end
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Size = UDim2.fromScale(1, 1)
+	l.FontFace = SILK
+	l:SetAttribute("FontSwap", "keep")
+	l.TextSize = 18
+	l.TextColor3 = Color3.fromRGB(27, 20, 6)
+	l.Text = ({b = "B", s = "S", g = "G"})[medal] or "B"
+	l.Parent = disc
+	top.Text = "ACHIEVEMENT DONE"
+	nm.Text = name
+	sub.Text = third
+	sub.Visible = true
+	plate.Position = UDim2.new(0.5, 0, 0, tonumber(script:GetAttribute("SkinPopupTop")) or 10)
+	plate.Size = UDim2.fromOffset(60 + #name * 16 + 16, 76)
+	plate.Visible = true
+	task.wait()
+	local w = math.max(top.TextBounds.X, nm.TextBounds.X, sub.TextBounds.X)
+	plate.Size = UDim2.fromOffset(60 + math.ceil(w) + 16, 76)
+	sw.Position = UDim2.fromOffset(10, 18)
+	if reducedMotion() then scale.Scale = 1 else
+		scale.Scale = 0.8
+		TweenService:Create(scale, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+	end
+	shownId += 1
+	local my = shownId
+	script:SetAttribute("AchPopupShown", (script:GetAttribute("AchPopupShown") or 0) + 1)
+	task.wait(tonumber(script:GetAttribute("SkinPopupTime")) or 1)
+	if shownId == my then plate.Visible = false sw.Position = UDim2.fromOffset(10, 10) end
+end
+local function runQueue()
+	if achBusy then return end
+	achBusy = true
+	while #achQueue > 0 do
+		local e = table.remove(achQueue, 1)
+		showAch(e[1], e[2], e[3])
+	end
+	achBusy = false
+end
+player:GetAttributeChangedSignal("AchDoneAt"):Connect(function()
+	if script:GetAttribute("AchPopupEnabled") == false then return end
+	local list = {}
+	for part in tostring(player:GetAttribute("AchDoneList") or ""):gmatch("[^;]+") do
+		local n, m = part:match("^(.-)|(%a)$")
+		if n then table.insert(list, {n, m}) end
+	end
+	local more = math.max(0, #list - 3)
+	for i = 1, math.min(3, #list) do
+		local third = (i == math.min(3, #list) and more > 0) and ("+" .. more .. " MORE · CLAIM AT THE QUEST STAND") or "CLAIM AT THE QUEST STAND"
+		table.insert(achQueue, {list[i][1], list[i][2], third})
+	end
+	task.spawn(runQueue)
+end)
 player:GetAttributeChangedSignal("SkinUnlockedAt"):Connect(function()
 	if script:GetAttribute("SkinPopupEnabled") == false then return end
 	local lab = player:GetAttribute("LabOpen")
