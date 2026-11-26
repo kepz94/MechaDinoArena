@@ -3705,3 +3705,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - QuestStandClient 1.0 (script): `QuestStandClientEnabled` (true), `QuestStandPromptKey` ("E"), `QuestStandPromptPad` ("ButtonX"), `QuestStandPromptUp` (7), `QuestStandPromptW` (190), `QuestStandPromptH` (52). Player `QuestStandNear` (client).
 - QuestScreen 1.0 (script): `QuestScreenEnabled` (true), `QuestPanelW` (900), `QuestPanelH` (520), `QuestFitW` (0.92), `QuestFitH` (0.92), `QuestRefresh` (5 s). Player `QuestOpen`, `QuestOpenFrom`.
 - UniversalSkins 1.5: module flag `US.STAND_CLAIMS` (true). SkinServer 1.7: `SkinStandClaimsEnabled` (true); BindableFunction `SkinGrant`; diagnostic `SkinQuestGrants`.
+- SkinUnlockPopup 1.0 (script): `SkinPopupEnabled` (true), `SkinPopupTime` (1 s), `SkinPopupTop` (10 px). Diagnostics `SkinPopupShown`, `SkinPopupLast`.
