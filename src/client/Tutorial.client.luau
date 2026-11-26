@@ -1436,12 +1436,12 @@ local function drawWelcome()
 	text(head, "WELCOME TO", "black", cq(1.6, 11), C.cyan, {LayoutOrder = 1, TextWrapped = false})
 	text(head, 'MECHA <font color="#FFC832">DINO</font> ARENA', "title", cq(6.4, 32), C.white, {LayoutOrder = 2})
 	local tw, gap = cq(19, 118), cq(1.6, 10)
-	local th = cq(13.5, 96)
+	local th = cq(9.5, 66) -- Studio check: fitted (13.5 cqw left the tiles half empty)
 	local row = make("Frame", {Name = "Tiles", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), ZIndex = 5,
 		Position = UDim2.new(0.5, 0, 0, H * 0.43), Size = UDim2.fromOffset(tw * 3 + gap * 2, th)}, root)
 	list(row, Enum.FillDirection.Horizontal, gap)
-	local TILES = {{"\u{2694}", "FIGHT", "Squad battles on the island"}, {"\u{2699}", "UPGRADE", "Mecha parts and skill points"},
-		{"\u{2605}", "COLLECT", "7 dinos, skins, emotes, trails"}}
+	local TILES = {{"", "FIGHT", "Squad battles on the island"}, {"", "UPGRADE", "Mecha parts and skill points"},
+		{"", "COLLECT", "7 dinos, skins, emotes, trails"}} -- Studio check: no icons (see the tile text below)
 	for i, t in ipairs(TILES) do
 		local holder = make("Frame", {Name = "Slot" .. i, BackgroundTransparency = 1, LayoutOrder = i, Size = UDim2.fromOffset(tw, th)}, row)
 		local card = make("Frame", {Name = "Tile", BackgroundColor3 = C.card, Size = UDim2.fromScale(1, 1), Position = UDim2.fromOffset(0, px(2, 14)),
@@ -1449,11 +1449,10 @@ local function drawWelcome()
 		corner(card, UDim.new(0, px(1.4, 10)))
 		local st = stroke(card, C.line, px(0.25, 2), 1)
 		pad(card, px(1, 8), px(1, 8))
-		list(card, nil, px(0.4, 3)).VerticalAlignment = Enum.VerticalAlignment.Top
+		list(card, nil, px(0.5, 4)) -- Studio check: centred, no icon line (the emoji ignored the yellow)
 		local parts = {
-			text(card, t[1], "black", cq(3.2, 22), C.yellow, {LayoutOrder = 1, TextWrapped = false, TextTransparency = 1}),
-			text(card, t[2], "title", cq(1.9, 14), C.white, {LayoutOrder = 2, TextTransparency = 1}),
-			text(card, t[3], "body", cq(1.15, 10), C.muted, {LayoutOrder = 3, AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.new(1, 0, 0, 0),
+			text(card, t[2], "title", cq(2.2, 15), C.yellow, {LayoutOrder = 2, TextTransparency = 1}),
+			text(card, t[3], "body", cq(1.4, 11), C.text, {LayoutOrder = 3, AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.new(1, 0, 0, 0),
 				TextTransparency = 1}),
 		}
 		task.delay(0.12 * (i - 1), function()
