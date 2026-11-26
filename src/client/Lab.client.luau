@@ -145,6 +145,10 @@ VERSION = "1.20" -- v1.20 LOOKS: TRAILS
 VERSION = "2.0" -- v2.0 Lab Revamp v1.0: slots first
 VERSION = "2.1" -- v2.1 Looks Lab v1.0: owned first, locked tiles say why, emote wheel on the left
 VERSION = "2.2" -- v2.2 island streak progress
+VERSION = "2.3" -- v2.3 no STATS tab while every stat is maxed
+-- v2.3 (Kepu 2026-11-26 11:14 "lets remove stats entirely. everyone should be automatically maxed out."; SkillServer 1.18): while the player attribute SkillAllStatsMax is true the
+--   STATS tab is hidden (the tab row lays out without it), a stats view falls back to the parts view, and its button does nothing.
+--   A SkillAllStatsMax change redraws an open Lab. Switch: script attribute LabHideStatsEnabled (true, read per draw).
 -- v2.2 (island kill streak, plan docs/plans/ISLAND_STREAK_v1.0.md Task 4): uniStats() also carries istreak = max(StatIslandBest,
 --   IslandStreak) (SkinStats 1.1), so the Zebra and Storm Front cards (UniversalSkins 1.4) show their island streak progress through
 --   the existing earn card path. No layout change.
@@ -2592,6 +2596,13 @@ function L2.layoutBody()
 	local view = EMO.on() and EMO.looks or "skins"
 	local tl = {{tabParts, tabCorners[1], tabStrokes[1], tabLabels[1], "ABILITIES", tab == "parts", VOLT},
 		{tabStats, tabCorners[2], tabStrokes[2], tabLabels[2], "STATS", tab == "stats", VOLT}}
+	if script:GetAttribute("LabHideStatsEnabled") ~= false and player:GetAttribute("SkillAllStatsMax") == true then -- v2.3
+		table.remove(tl, 2)
+		tabStats.Visible = false
+		if tab == "stats" then tab = "parts" end
+	else
+		tabStats.Visible = true
+	end
 	if full then
 		table.insert(tl, {tabSkins, tabSkinsCorner, tabSkinsStroke, tabSkinsLabel, "SKINS", looks and view == "skins", SKIN})
 		if EMO.on() then table.insert(tl, {L2.tabEmotes.b, L2.tabEmotes.c, L2.tabEmotes.st, L2.tabEmotes.l, "EMOTES", looks and view == "emotes", SKIN}) end
@@ -3477,7 +3488,11 @@ end
 
 -- ---------- input ----------
 tabParts.Activated:Connect(function() press("tab:parts") tab = "parts" selected = nil L2.sheet = false redraw() end)
-tabStats.Activated:Connect(function() press("tab:stats") tab = "stats" selected = nil slotSel = nil L2.sheet = false redraw() end)
+tabStats.Activated:Connect(function()
+	if script:GetAttribute("LabHideStatsEnabled") ~= false and player:GetAttribute("SkillAllStatsMax") == true then return end -- v2.3
+	press("tab:stats") tab = "stats" selected = nil slotSel = nil L2.sheet = false redraw()
+end)
+player:GetAttributeChangedSignal("SkillAllStatsMax"):Connect(function() if mode then redraw() end end) -- v2.3
 tabSkins.Activated:Connect(function() -- v1.6
 	if not (skinsOn and mode == "full") then return end
 	press("tab:skins")

@@ -170,6 +170,14 @@ VERSION = "1.17" -- v1.17 dino unlock spend
 --   longer pays for. Load: each record is checked against the pool after unlock. Player SkillUnlockSpent (total), SkillLastPoints
 --   ("unlock -40"). Switch: script attribute SkillSpendUnlockEnabled (true, read per call). Diagnostic: SkillUnlockSpends.
 --   Launch reset (Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): SkillSaveStoreName default "MDA_Skills_v4" ("MDA_Skills_v3" kept).
+VERSION = "1.18" -- v1.18 every stat row maxed for everyone
+-- v1.18 (Kepu 2026-11-26 11:14 "lets remove stats entirely. everyone should be automatically maxed out."; standing pick "whatever the recommended option is ... just choose that" ->
+--   stats only, mecha parts still bought with points): script attribute SkillAllStatsMaxEnabled (true, read at each publish; a change
+--   republishes everyone). While on, the v1.11 stat layer is on for every player and every dino: every stat row the active dino sees
+--   (Lab STATS tab: not soon, not a live mecha part) is at its top step (4), never stored, left out of points (buyBase), and a buy of
+--   one is refused "maxed". Points a player already spent on stat rows are free again: every points check (publish, load
+--   cleanRecord, SkillSpendUnlock) counts each record without its stat rows (noStats). Mecha parts, the free dino, MaxedDinos and
+--   SkillTestMaxAllEnabled are unchanged. Player attribute SkillAllStatsMax (true / false) tells the Lab (2.3) to hide the STATS tab.
 -- v1.15 (universal points, plan docs/plans/UNIVERSAL_POINTS_v1.0.md Task 2; Kepu 2026-11-26 "Make all points universal", "the daily
 --   quest rewards will be skill points"; picks "Full pool on every dino", "Highest dino's XP", "Yes, past 40"; red-team "Accept",
 --   "Yes, that's the point", "No cap"). While script attribute SkillUniversalEnabled ~= false (read at each player's load, d.universal):
@@ -271,12 +279,19 @@ end
 -- v1.11: every stat row the active dino sees (not soon, not a live mecha part) while max-all is on
 local function testStats(d)
 	local out = {}
-	if not maxAll() or not d.active then return out end
+	if not (maxAll() or script:GetAttribute("SkillAllStatsMaxEnabled") ~= false) or not d.active then return out end -- v1.18: or every stat maxed
 	for _, id in ipairs(ST.PATH_ORDER) do
 		local p = ST.PATHS[id]
 		if p and not p.soon and not ST.LIVE_MECH[id] and ST.seesPath(p, d.active) then table.insert(out, id) end
 	end
 	return out
+end
+if script:GetAttribute("SkillAllStatsMaxEnabled") == nil then script:SetAttribute("SkillAllStatsMaxEnabled", true) end -- v1.18
+local function noStats(steps, key) -- v1.18: a record's steps without its stat rows while every stat is maxed (points checks)
+	if script:GetAttribute("SkillAllStatsMaxEnabled") == false or type(steps) ~= "table" then return steps end
+	local s = table.clone(steps)
+	for _, id in ipairs(testStats({active = key})) do s[id] = nil end
+	return s
 end
 local function stepsFor(d) -- v1.5: real steps, plus the test parts at star while the layer is on (v1.6: all live parts)
 	local stats = testStats(d) -- v1.11
@@ -320,6 +335,7 @@ local function publish(player, d, levelUp)
 	local given = testParts(d) -- v1.6
 	player:SetAttribute("SkillTestParts", table.concat(given, ","))
 	player:SetAttribute("SkillTestStats", #testStats(d)) -- v1.11
+	player:SetAttribute("SkillAllStatsMax", script:GetAttribute("SkillAllStatsMaxEnabled") ~= false) -- v1.18
 	local level, into, nxt = ST.levelOf(d.xp)
 	local earned = earnedOf(d) -- v1.15 (1.14: ST.pointsOf(level))
 	local spent = ST.spent((buyBase(d)), d.active) -- v1.3: + dino; v1.7: given test parts left out
@@ -409,7 +425,7 @@ local function cleanRecord(raw, key, cap) -- v1.15: + cap (account points when u
 	if not ST.masteryOk(steps, key) then -- v1.3: over Mastery 3 -> every line back to step II
 		for id, n in pairs(steps) do if n > 2 then steps[id] = 2 end end
 	end
-	if ST.spent(steps, key) > (cap or ST.pointsOf((ST.levelOf(xp)))) then steps = ST.sanitize({}, key) end
+	if ST.spent(noStats(steps, key), key) > (cap or ST.pointsOf((ST.levelOf(xp)))) then steps = ST.sanitize({}, key) end -- v1.18: noStats
 	return {xp = xp, steps = steps, loadout = ST.sanitizeLoadout(type(raw) == "table" and raw.loadout or nil, steps, key),
 		rawLoadout = type(raw) == "table" and type(raw.loadout) == "table" and table.clone(raw.loadout) or nil} -- v1.8
 end
@@ -563,6 +579,11 @@ local function hookFree(player) -- v1.13: a FreeDino change republishes
 end
 Players.PlayerAdded:Connect(hookFree)
 for _, p in ipairs(Players:GetPlayers()) do hookFree(p) end
+script:GetAttributeChangedSignal("SkillAllStatsMaxEnabled"):Connect(function() -- v1.18
+	for player, d in pairs(data) do
+		if d.loaded then publish(player, d, false) end
+	end
+end)
 script:GetAttributeChangedSignal("SkillTestMaxAllEnabled"):Connect(function() -- v1.11
 	for player, d in pairs(data) do
 		if d.loaded then publish(player, d, false) end
@@ -783,13 +804,13 @@ spendFn.OnInvoke = function(player, amount, reason)
 	if before < amount then return "notEnough", before end
 	d.unlock = (d.unlock or 0) + amount
 	local cap = earnedOf(d)
-	if d.active and ST.spent(d.steps, d.active) > cap then -- the active build, as a respec
+	if d.active and ST.spent((buyBase(d)), d.active) > cap then -- the active build, as a respec (v1.18: given rows left out)
 		d.steps = ST.sanitize({}, d.active)
 		d.loadout = emptyLoadout()
 		if d.testPlaced then d.testPlaced[d.active] = nil end
 	end
 	for key, r in pairs(d.dinos) do
-		if key ~= d.active and type(r) == "table" and ST.spent(r.steps or {}, key) > cap then
+		if key ~= d.active and type(r) == "table" and ST.spent(noStats(r.steps or {}, key), key) > cap then -- v1.18: noStats
 			r.steps = ST.sanitize({}, key)
 			r.loadout = emptyLoadout()
 		end
