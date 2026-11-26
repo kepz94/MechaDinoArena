@@ -25,8 +25,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 beside the bridge, facing it
+-- v1.1 (Kepu 2026-11-26 12:11 "MOVE THE EGG ROLL MACHINE NEXT TO THE BRIDGE TO THE SIDE OF IT SO ALL PLAYERS SEE IT WHEN WALKING BACK TO THE ISLAND"): the stand moves to the islet beside the bridge mouth: FavEggStandAngle default 239 (was 315),
+--   FavEggStandRadius 100 (was 45): 25 studs to the side of the bridge line, inside the plaza edge (r 110). It faces the point FaceAngle / FaceRadius from the plaza centre (default 225 deg, 190 studs: out along the bridge deck, which runs 225 deg, r 125-209), so players walking back over the bridge see its front.
+--   Attributes FavEggStandFaceAngle (225), FavEggStandFaceRadius (190); switch FavEggStandFaceEnabled (true, read at start; false
+--   = faces the plaza centre as 1.0). FeedbackStandServer 1.1 mirrors it on the other side of the bridge.
 script:SetAttribute("FavEggStandServerVersion", VERSION)
-for k, v in pairs({FavEggStandEnabled = true, FavEggStandAngle = 315, FavEggStandRadius = 45, FavEggPromptRange = 20, FavEggStandScale = 2.2}) do
+for k, v in pairs({FavEggStandEnabled = true, FavEggStandAngle = 239, FavEggStandRadius = 100, FavEggPromptRange = 20, FavEggStandScale = 2.2, -- v1.1: 239 / 100 (1.0: 315 / 45)
+	FavEggStandFaceEnabled = true, FavEggStandFaceAngle = 225, FavEggStandFaceRadius = 190}) do -- v1.1
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function state(s) script:SetAttribute("FavEggStandState", s) end
@@ -96,6 +102,11 @@ local ok, err = pcall(function()
 	local hit = workspace:Raycast(Vector3.new(x, sp.Position.Y + 60, z), Vector3.new(0, -200, 0), params)
 	local gy = hit and hit.Position.Y or (sp.Position.Y - 4)
 	local base = CFrame.lookAt(Vector3.new(x, gy, z), Vector3.new(c.X, gy, c.Z))
+	if script:GetAttribute("FavEggStandFaceEnabled") ~= false then -- v1.1: face out along the bridge
+		local fa = math.rad(tonumber(script:GetAttribute("FavEggStandFaceAngle")) or 225)
+		local fr = tonumber(script:GetAttribute("FavEggStandFaceRadius")) or 190
+		base = CFrame.lookAt(Vector3.new(x, gy, z), Vector3.new(c.X + math.cos(fa) * fr, gy, c.Z + math.sin(fa) * fr))
+	end
 
 	local m = Instance.new("Model")
 	m.Name = "FavEggStand"

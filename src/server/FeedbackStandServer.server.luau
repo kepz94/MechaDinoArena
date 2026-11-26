@@ -21,9 +21,13 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 the other side of the bridge, facing it
+-- v1.1 (Kepu 2026-11-26 12:14 "PUT IT ON THE OTHER SIDE OF WHERE THE EGG IS LOCATED SO THERES THE EGG MACHINE ON ONE SIDE OF THE BRIDGE ENTRANCE TO THE ISLAND AND THE FEEDBACK MACHINE ON THE OTHER SIDE"): FeedbackStandAngle default 211 (was 145), FeedbackStandRadius 100 (was 45): 22 studs to the
+--   other side of the bridge line from the Favorite Egg (239). It faces the point FaceAngle / FaceRadius from the plaza centre (default 225 deg, 190 studs: out along the bridge deck, which runs 225 deg, r 125-209), so players walking back over the bridge see its front. Attributes FeedbackStandFaceAngle (225),
+--   FeedbackStandFaceRadius (190); switch FeedbackStandFaceEnabled (true, read at start; false = faces the plaza centre as 1.0).
 script:SetAttribute("FeedbackStandServerVersion", VERSION)
-for k, v in pairs({FeedbackStandEnabled = true, FeedbackStandAngle = 145, FeedbackStandRadius = 45, FeedbackStandScale = 2,
-	FeedbackPromptRange = 14}) do
+for k, v in pairs({FeedbackStandEnabled = true, FeedbackStandAngle = 211, FeedbackStandRadius = 100, FeedbackStandScale = 2, -- v1.1: 211 / 100 (1.0: 145 / 45)
+	FeedbackPromptRange = 14, FeedbackStandFaceEnabled = true, FeedbackStandFaceAngle = 225, FeedbackStandFaceRadius = 190}) do -- v1.1
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function state(s) script:SetAttribute("FeedbackStandState", s) end
@@ -87,6 +91,11 @@ local ok, err = pcall(function()
 	local hit = workspace:Raycast(Vector3.new(x, sp.Position.Y + 60, z), Vector3.new(0, -200, 0), params)
 	local gy = hit and hit.Position.Y or (sp.Position.Y - 4)
 	local base = CFrame.lookAt(Vector3.new(x, gy, z), Vector3.new(c.X, gy, c.Z))
+	if script:GetAttribute("FeedbackStandFaceEnabled") ~= false then -- v1.1: face out along the bridge
+		local fa = math.rad(tonumber(script:GetAttribute("FeedbackStandFaceAngle")) or 225)
+		local fr = tonumber(script:GetAttribute("FeedbackStandFaceRadius")) or 190
+		base = CFrame.lookAt(Vector3.new(x, gy, z), Vector3.new(c.X + math.cos(fa) * fr, gy, c.Z + math.sin(fa) * fr))
+	end
 
 	local m = Instance.new("Model")
 	m.Name = "FeedbackStand"
