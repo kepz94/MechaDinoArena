@@ -3677,3 +3677,10 @@ Model numbers are generator output (old version = the flag in the last column, b
 - Tutorial 1.7.1 (script, read per draw): `TutorialRevealFitEnabled` (true), `TutRevealFov` (44, the reveal's dino camera FOV).
 - KillFeed 1.5 (script, per frame): `KillFeedHideOnMenuEnabled` (true). EggLoader 1.8 (script, per build): `EggLoaderBabyFrontEnabled` (true).
 - EggLoader 1.9 (script): `EggLoaderLookAEnabled` (true, per build), `EggLoaderSeamlessEnabled` (true, at start), `EggLoaderStatusEnabled` (true, per frame), `EggLoaderSwapWait` (2 s), `EggLoaderBarRate` (0.6 per s). Gui attribute `EggLoaderTipIdx`. Player diagnostics `EggLoaderArriveCopy` ("kept" / "timeout"), `EggLoaderWaitingFor`.
+
+## Island Spawn Lock v1.0 (2026-11-26, plan docs/plans/SPAWN_LOCK_v1.0.md)
+- HubLockRules 1.0: none (pure module; data ATTACK_PARTS 28 ids, ATTACK_MOVES, ATTACK_BUTTONS).
+- BiteTest 1.9, PounceTest 1.10, RamTest 1.4, RoarTest 1.2, HeadbuttTest 1.5, SlashTest 1.9, TenoAttackTest 1.6, TheriAttackTest 1.5, DiloAttackTest 1.8, TrooAttackTest 1.4 (script, per press): `HubSafeAttackLockEnabled` (true).
+- ArenaTouch 1.22, AbilityBar 1.45, MechaButtons 1.54 (script, per frame / per press): `HubSafeAttackLockEnabled` (true). Character diagnostics `ArenaTouchHubLocked`, `AbilityBarHubLocked`, `MechaButtonsHubLockedPresses`.
+- FillerServer 1.2 (script, per tick): `FillerSafeGuardEnabled` (true when unset), `FillerSafeGuard` (s; unset = HubRules.GUARD 3). Diagnostic script attribute `FillerSafeBots`.
+- Reads (unchanged): character `HubSafe` (HubServer).

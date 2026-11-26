@@ -136,6 +136,13 @@ VERSION = "1.18" -- v1.18 troodon ATTACK pod pips + JUMP hop pips
 VERSION = "1.19" -- v1.19 dilo spit only: the dart pip fills over DiloSpitGap
 VERSION = "1.20" -- v1.20 dilo spit ammo: 5 pips, reload fill, dim
 VERSION = "1.21" -- v1.21 pre-match padlocks
+VERSION = "1.22" -- v1.22 island spawn padlocks
+-- v1.22 (island spawn lock, plan docs/plans/SPAWN_LOCK_v1.0.md Task 3; Kepu 2026-11-26 "having attack buttons locked on spawn and up until the timer goes down",
+--   picks "Island PROTECTED timer", "Attacks only"): while the character attribute HubSafe is true (islet + 3 s guard)
+--   the main attack buttons (HubLockRules.ATTACK_BUTTONS: Bite, PounceMain, Ram, HeadbuttMain, SlashMain, TenoMain,
+--   TheriMain, DiloMain, TrooMain) show the padlock; JUMP / RUN do not. The press itself is dropped by each attack script.
+--   Same padlock as the Arena countdown. Switch: script attribute HubSafeAttackLockEnabled (default true, read per frame;
+--   false = 1.21). Diagnostic: character attribute ArenaTouchHubLocked (true while any button shows it).
 -- v1.21 (pre-match lock, MDA-530 + MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rules 3-4, mockup
 --   docs/mockups/prematch_pan_lock_v0.1.html "A · Locked"; Kepu 2026-11-13 18:23 "all mecha abilities and actions should be
 --   unplayable ... during the count down"): while the character's PrematchLockUntil (PracticeServer 1.12) is after the server
@@ -1141,12 +1148,25 @@ local function setLock(parent, on, radius) -- the overlay follows the lock; made
 	if on and not o then o = lockOverlay(parent, radius) end
 	if o and o.Visible ~= on then o.Visible = on end
 end
+local __HL = (function() -- HubLockRules 1.0 (StarterPlayerScripts); missing = no island padlocks
+	local ps = Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerScripts")
+	local m = ps and ps:WaitForChild("HubLockRules", 5)
+	local ok, r = pcall(function() return m and require(m) end)
+	return ok and r or nil
+end)()
+local function __hubLocked() -- the island spawn lock (HubSafe) is on for this character
+	return __HL ~= nil and __HL.locked(char, script:GetAttribute("HubSafeAttackLockEnabled"))
+end
 RunService.RenderStepped:Connect(function() -- v1.21
 	local on = __prematchLocked()
+	local hub, hubAny = __hubLocked(), false -- v1.22
 	for _, b in ipairs(gui:GetChildren()) do
 		if b:IsA("GuiObject") and b:FindFirstChildOfClass("UIStroke") and b:FindFirstChildOfClass("UICorner") and b:FindFirstChildOfClass("UIScale") then
-			setLock(b, on, b:FindFirstChildOfClass("UICorner").CornerRadius)
+			local hubB = hub and __HL.isAttackButton(b.Name) -- v1.22
+			if hubB then hubAny = true end
+			setLock(b, on or hubB, b:FindFirstChildOfClass("UICorner").CornerRadius)
 		end
 	end
 	if char:GetAttribute("ArenaTouchLocked") ~= on then char:SetAttribute("ArenaTouchLocked", on) end
+	if char:GetAttribute("ArenaTouchHubLocked") ~= hubAny then char:SetAttribute("ArenaTouchHubLocked", hubAny) end -- v1.22
 end)

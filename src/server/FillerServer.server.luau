@@ -46,6 +46,13 @@ local PathfindingService = game:GetService("PathfindingService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 EmoteId cleared after the emote
+VERSION = "1.2" -- v1.2 safe guard: no fights on / right off the islet
+-- v1.2 (island spawn lock, plan docs/plans/SPAWN_LOCK_v1.0.md Task 4; Kepu 2026-11-26 "the bots are just fighting right at
+--   spawn even without damage", pick "Fighting each other"): a bot inside the safe area gets safeUntil = now + FillerSafeGuard
+--   (default HubRules.GUARD, 3) s, renewed every tick while inside, so it keeps the protection for 3 s after leaving like a player.
+--   While os.clock() < safeUntil the bot is not a target for other bots and steps with no enemies (it walks, it does not
+--   swing) and its old target is dropped. Switch: script attribute FillerSafeGuardEnabled (default true, read per tick;
+--   false = 1.1). Diagnostic: script attribute FillerSafeBots (bots guarded this tick).
 script:SetAttribute("FillerServerVersion", VERSION)
 local DEFAULTS = {FillerEnabled = true, FillerFillTo = 8, FillerTick = 0.1, FillerLeaveViaPortal = true,
 	FillerRoamCentre = Vector3.new(640, 0, 640), FillerRoamRadius = 200, FillerPathBudget = 3, FillerBody = 2,
@@ -424,10 +431,19 @@ task.spawn(function()
 		task.wait(dt)
 		local t0 = os.clock()
 		local ins = standIns()
+		local safeOn, safeNow, safeN = get("FillerSafeGuardEnabled") ~= false, os.clock(), 0 -- v1.2
+		for _, r in ipairs(recs) do
+			if safeOn and r.hrp and r.hrp.Parent and not r.deadAt and inSafe(r.hrp.Position) then
+				r.safeUntil = safeNow + (tonumber(get("FillerSafeGuard")) or HR.GUARD or 3)
+			end
+			if safeOn and r.safeUntil and safeNow < r.safeUntil then safeN += 1 end
+		end
+		set("FillerSafeBots", safeN)
 		local eligible = {}
 		for _, r in ipairs(recs) do
 			if r.model and r.model.Parent and r.hrp and r.hrp.Parent and not r.deadAt and not r.leaving
-				and not inSafe(r.hrp.Position) then
+				and not inSafe(r.hrp.Position)
+				and not (safeOn and r.safeUntil and safeNow < r.safeUntil) then -- v1.2
 				table.insert(eligible, r)
 			end
 		end
@@ -477,8 +493,10 @@ task.spawn(function()
 							if id then emoteNow(rec, id) end
 						end
 					end
+					local guarded = safeOn and rec.safeUntil and os.clock() < rec.safeUntil -- v1.2
+					if guarded then rec.target = nil end
 					if not rec.busy then
-						local ctx = {bots = eligible, R = R, H = H, diff = R.diffOf("Normal"), rng = rng, centre = rec.roam,
+						local ctx = {bots = guarded and {} or eligible, R = R, H = H, diff = R.diffOf("Normal"), rng = rng, centre = rec.roam,
 							home = rec.roam, index = 1, into = 0, pointTime = 60, pathBudget = budget, kit = Kit, tiered = true}
 						local okS, err = pcall(Brain2.step, rec, ctx)
 						if not okS then set("FillerBrainError", tostring(err)) end

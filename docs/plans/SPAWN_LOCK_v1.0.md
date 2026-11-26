@@ -23,3 +23,6 @@ Arena / bots match lock (PracticeServer 1.12, PrematchLockUntil), every server m
 - A pull-down (slot 3 / 4) attack part shares a button with a non-attack tap part: that press is blocked but the button shows no padlock. Accepted (the press still does nothing).
 - If HubSafe were ever stuck true, attacks would stay locked on the island: the switch turns it off live; HubServer writes HubSafe on every change and clears the guard on a fresh body.
 - Studio check: hub Play with the save switches off; filler bots need FillerTestReal in Studio.
+
+## Build (2026-11-26, Kepu "Build" 04:17)
+Built as planned; patches tools/spawnlock_patch_*.luau from tools/spawnlock_generator.py, spec tools/tests/HubLockRules.spec.luau PASS 57. Studio checks and hashes in docs/VERSIONS.md. Not published. Still to see live: a real phone on the islet, and bots walking off the islet without swinging.

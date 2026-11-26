@@ -409,6 +409,15 @@ VERSION = "1.50" -- v1.50 pre-match lock: no presses + padlocks
 VERSION = "1.51" -- v1.51 Sap Wall hold-to-aim: arc + wall ghost (MDA-549)
 VERSION = "1.52" -- v1.52 Sap Wall: no hold, the arc flashes on the throw (MDA-550)
 VERSION = "1.53" -- v1.53 tether aim stamps on PC too (MDA-552)
+VERSION = "1.54" -- v1.54 island spawn lock
+-- v1.54 (island spawn lock, plan docs/plans/SPAWN_LOCK_v1.0.md Task 3; Kepu 2026-11-26 "having attack buttons locked on spawn and up until the timer goes down",
+--   picks "Island PROTECTED timer", "Attacks only"): while the character attribute HubSafe is true (islet + 3 s guard)
+--   a press / aim / tactical start of a slot holding an ATTACK or CONTROL part (HubLockRules.ATTACK_PARTS) is dropped
+--   (keys and touch), and a touch slot button shows the padlock when its tap part is one. MOVE / DEFENSE / HEAL /
+--   STEALTH / SCOUT / SUPPORT parts keep working. A pull-down attack part sharing a button with a non-attack tap part
+--   is blocked but that button shows no padlock (plan red-team, accepted).
+--   Same padlock as the Arena countdown. Switch: script attribute HubSafeAttackLockEnabled (default true, read per frame;
+--   false = 1.53). Diagnostic: character attribute MechaButtonsHubLockedPresses (count of dropped presses).
 -- v1.53 (MDA-552; Kepu 2026-11-17 18:20 "Go"): the v1.34 tether aim stamps reach PC. The 1.34 hook is connected at the very
 --   end of the script, after the PC exit ("keys": no touch buttons -> return), so on PC TetherAimLocalAt / TetherAimLocalEndAt
 --   were never stamped and DinoTetherAim never fired: no Tail Sling pose for anyone and no cock sound for other players
@@ -2143,6 +2152,27 @@ do -- v1.50: nothing starts before GO (here, before the PC return below, so keys
 	end
 	press, aimStart, tacStart = guard(press), guard(aimStart), guard(tacStart) -- a touch gesture ends in press / aimStart
 end
+local __HL = (function() -- HubLockRules 1.0 (StarterPlayerScripts); missing = no island padlocks
+	local ps = Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerScripts")
+	local m = ps and ps:WaitForChild("HubLockRules", 5)
+	local ok, r = pcall(function() return m and require(m) end)
+	return ok and r or nil
+end)()
+local function __hubLocked() -- the island spawn lock (HubSafe) is on for this character
+	return __HL ~= nil and __HL.locked(char, script:GetAttribute("HubSafeAttackLockEnabled"))
+end
+do -- v1.54: no attack / control part on the islet or in the 3 s guard
+	local function hubGuard(fn)
+		return function(n, ...)
+			if __hubLocked() and __HL.isAttackPart(slotPart(n)) then
+				char:SetAttribute("MechaButtonsHubLockedPresses", (char:GetAttribute("MechaButtonsHubLockedPresses") or 0) + 1)
+				return
+			end
+			return fn(n, ...)
+		end
+	end
+	press, aimStart, tacStart = hubGuard(press), hubGuard(aimStart), hubGuard(tacStart)
+end
 
 -- v1.1: "new ability" popup ----------------------------------------------------------------------------------------
 local pgNews = player:WaitForChild("PlayerGui")
@@ -2513,7 +2543,8 @@ for n = 1, 2 do
 end
 RunService.RenderStepped:Connect(function() -- v1.50: padlocks
 	local on = __prematchLocked()
-	for _, sl in ipairs(slots) do setLock(sl.b, on, UDim.new(0.22, 0)) end
+	local hub = __hubLocked() -- v1.54
+	for n, sl in ipairs(slots) do setLock(sl.b, on or (hub and __HL.isAttackPart(slotPart(n))), UDim.new(0.22, 0)) end
 end)
 
 local function layout()

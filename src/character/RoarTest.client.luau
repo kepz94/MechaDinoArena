@@ -19,8 +19,16 @@ local function onRoar(_, inputState)
 end
 local function __prematchLocked() -- v1.1: PracticeServer 1.12 pre-match lock
 	return (tonumber(char:GetAttribute("PrematchLockUntil")) or 0) > workspace:GetServerTimeNow()
+		or (script:GetAttribute("HubSafeAttackLockEnabled") ~= false and char:GetAttribute("HubSafe") == true) -- island spawn lock
 end
 char:SetAttribute("RoarTestVersion", "1.1") -- v1.1 pre-match lock
+char:SetAttribute("RoarTestVersion", "1.2") -- v1.2 island spawn lock
+-- v1.2 (island spawn lock, plan docs/plans/SPAWN_LOCK_v1.0.md Task 2; Kepu 2026-11-26 "having attack buttons locked on spawn and up until the timer goes down",
+--   picks "Island PROTECTED timer", "Attacks only"): the pre-match lock check also says locked while the character
+--   attribute HubSafe is true (HubServer: on the islet or the 3 s PROTECTED guard after leaving it), so a press does
+--   nothing there. Movement keeps working. Switch: script attribute HubSafeAttackLockEnabled (default true, read per
+--   press; false = 1.1).
+if script:GetAttribute("HubSafeAttackLockEnabled") == nil then script:SetAttribute("HubSafeAttackLockEnabled", true) end
 -- v1.1 (pre-match lock, MDA-529, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 3; Kepu 2026-11-13 18:23 "all mecha abilities and
 --   actions should be unplayable ... during the count down", pick "A · Locked everywhere"): while the character's
 --   PrematchLockUntil (PracticeServer 1.12) is after the server time, onRoar() does nothing (no local start; the server drops it too).
