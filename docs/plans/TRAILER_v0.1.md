@@ -87,3 +87,14 @@ CruiseThermalEnabled false; Shock Cannon fired through DinoScreechRequest(stamp,
 DummyHealth set to 0 (a practice bot body stays 2 s, PracticeServer BOT_BODY). Restored after: Play stopped,
 ModeTestPractice nil, SkillTestMaxAllEnabled false, ShopTestShowAll nil, render quality Automatic, Output + Asset Manager
 back, window snapped left. Studio account skins: Raptor set to glitch, Herrera to classic during the shoot.
+
+## Trailer v0.3 cut (2026-11-25 17:08)
+
+Kepu 16:39-16:42: Herrera jumps off the mountain and glides over ~40 dinos fighting across the island, a movie-like sun shot,
+cinematic pull-out; Shock Cannon as a GoPro POV on the Raptor that rides the ball into the Pachy; better GG angle; "it doesn't
+have to be in a match, do it on the main island". Cut: 29.97 s, silent, C:\Users\Kepu_\Videos\MechaDinoArena_Trailer_v0.3.mp4.
+Sources: 14-42-04 (portal), 16-44-56 (island pan 17.5, GG 615.0 punched in 1.25x), 17-00-19 (glide 75.6 x1.45, cannon 140.2
+with 140.6-141.5 slowed 2x), 16-18-41 (Lab, Shop). Crowd shot: 39 dinos (clones of each species' practice bot / player
+character into Workspace.TrailerCrowd, Play session only) paired up across the island and, for the glide, along its path,
+moving with Humanoid:MoveTo and stamping BiteStartedAt / BiteHitAt so the bite poses play. Not saved; Play stopped.
+Downed dino in the GG shot: a crowd Pachy anchored on its side. Cannon at 100 studs, aimed via DinoScreechRequest.
