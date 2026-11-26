@@ -1,4 +1,4 @@
--- ShopStandServer v1.0 (Mecha Dino Arena) — the island shop stand by the WORLDWIDE board (Script, ServerScriptService).
+-- ShopStandServer v1.1 (Mecha Dino Arena) — the island shop stand by the WORLDWIDE board (Script, ServerScriptService).
 -- Kepu 2026-11-25 13:04 "Create a shop stand where the spawn is on the island by the side of the leaderboard"; 13:24 picks on mockup
 --   docs/mockups/shop_stand_v0.1.html: look "B" (dino market stall), "open shop" (walking up shows OPEN SHOP and opens the Shop),
 --   spot "Right of WORLDWIDE".
@@ -15,13 +15,20 @@
 --   ShopStandFrontGap (4). Studio 2026-11-25: at scale 1 the stall read small next to the 65-stud board; 1.35 and the spot moved
 --   (Side 92 -> 100, Fwd 26 -> 34) keep it clear of the board and on the plaza (radius 110).
 -- Diagnostics: ShopStandServerVersion, ShopStandState ("off" / "notHub" / "waiting" / "built" / "error: ..."), ShopStandParts.
+-- v1.1 (Kepu 2026-11-25 22:24 "The shop is placed weird, I want it to be spaced properly and facing the center"; picks on mockup
+--   docs/mockups/shop_stand_v0.2: spot "A: WORLDWIDE side", centre = the plaza centre): new switch ShopStandPlace ("centre", the
+--   default; "gate" = the v1.0 spot above, unchanged). "centre": c = Workspace.PortalIslet.Plaza (X, Z) at ShopStandGroundY;
+--   spot = c + (cos a, 0, sin a) * ShopStandRadius with a = ShopStandAngle degrees from world +X toward +Z (160, 85: the WORLDWIDE
+--   side, 21 studs clear of that board, measured in Studio); turned to face c. No Plaza part -> the "gate" spot.
+--   Diagnostic ShopStandPlaceUsed ("centre" / "gate").
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 script:SetAttribute("ShopStandServerVersion", VERSION)
 for k, v in pairs({ShopStandEnabled = true, ShopStandSide = 100, ShopStandFwd = 34, ShopStandAim = 82, ShopStandGroundY = 1.3,
-	ShopStandScale = 1.35, ShopStandRange = 24, ShopStandFrontGap = 4}) do
+	ShopStandScale = 1.35, ShopStandRange = 24, ShopStandFrontGap = 4,
+	ShopStandPlace = "centre", ShopStandAngle = 160, ShopStandRadius = 85}) do -- v1.1: last three
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function A(k, d) return tonumber(script:GetAttribute(k)) or d end
@@ -61,6 +68,17 @@ local origin = Vector3.new(g.X, gy, g.Z)
 local pos = origin + R * A("ShopStandSide", 100) + F * A("ShopStandFwd", 34)
 local aim = origin + F * A("ShopStandAim", 82)
 local base = CFrame.lookAt(pos, Vector3.new(aim.X, pos.Y, aim.Z)) -- local -Z = the front (counter side)
+-- v1.1: "centre" spot (the v1.0 lines above stay as the "gate" spot)
+local placeUsed = "gate"
+local plaza = gate.Parent and gate.Parent:FindFirstChild("Plaza")
+if script:GetAttribute("ShopStandPlace") ~= "gate" and plaza and plaza:IsA("BasePart") then
+	local c = Vector3.new(plaza.Position.X, gy, plaza.Position.Z)
+	local a = math.rad(A("ShopStandAngle", 160))
+	local cpos = c + Vector3.new(math.cos(a), 0, math.sin(a)) * A("ShopStandRadius", 85)
+	base = CFrame.lookAt(cpos, c)
+	placeUsed = "centre"
+end
+script:SetAttribute("ShopStandPlaceUsed", placeUsed)
 
 local old = workspace:FindFirstChild("ShopStand")
 if old then old:Destroy() end
