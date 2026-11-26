@@ -1,0 +1,352 @@
+<title>Favorite Egg</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Montserrat:wght@600;700;800&display=swap">
+<style>
+/* Favorite Egg options v0.1 (roadmap piece 6). One dark game look: the live island HUD and the Quest Stand panel language
+   (navy plates, yellow call to action, Silkscreen caps). Layout: controls on top, one landscape phone, notes under it. */
+:root { --page: #07090e; --text: #dfe6f0; --muted: #8a95a8; --card: #151d2b; --line: #2a3446; --yellow: #ffc832; --lip: #b88a12;
+  --ink: #1b1406; --cyan: #7fe9ff; --green: #46e08a; --red: #ff5a6e; --violet: #b86bff;
+  --common: #9fb3c8; --rare: #4aa8ff; --epic: #b86bff; --legend: #ffb02e; --dino: #46e08a;
+  --pix: Silkscreen, ui-monospace, monospace; --sans: Montserrat, system-ui, sans-serif; color-scheme: dark; }
+body { background: var(--page); color: var(--text); font-family: var(--sans); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; }
+h1 { font: 700 21px/1.2 var(--pix); margin: 0; color: #fff; }
+.sub { color: var(--muted); font-size: 13px; margin: 4px 0 0; max-width: 80ch; line-height: 1.5; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row b { font: 800 11px var(--sans); letter-spacing: .12em; color: var(--muted); min-width: 64px; }
+button { font-family: inherit; cursor: pointer; }
+button.t { font: 800 12px var(--sans); letter-spacing: .06em; color: var(--text); background: var(--card); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 14px; min-height: 44px; }
+button.t[aria-pressed="true"] { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+
+/* phone: iPhone 17 Pro landscape, everything sized in cqw so it scales */
+.phone { position: relative; width: 100%; aspect-ratio: 750 / 345; container-type: inline-size; border-radius: 3cqw; overflow: hidden;
+  border: 6px solid #1a1f29; background: linear-gradient(#7ec4f2 0%, #bfe3f7 46%, #e9f4f2 47%, #d9cfa4 60%, #c7b98a 100%); }
+.sea { position: absolute; left: 0; right: 0; top: 44%; height: 6%; background: linear-gradient(#5aa9d8, #8fd0e8); }
+.plaza { position: absolute; left: 8%; right: 8%; top: 56%; height: 44%; border-radius: 50% 50% 0 0 / 30% 30% 0 0;
+  background: radial-gradient(ellipse at 50% 20%, #e8e2cf 0 30%, #d3c9a6 31% 60%, #b9ab7f 61%); }
+.tree { position: absolute; width: 4cqw; height: 9cqw; top: 36%; }
+.tree::before { content: ""; position: absolute; left: 1.6cqw; bottom: 0; width: .8cqw; height: 4cqw; background: #7a5532; }
+.tree::after { content: ""; position: absolute; left: 0; top: 0; width: 4cqw; height: 5.4cqw; background: #3f8f3a; box-shadow: inset -.8cqw -.6cqw 0 #2f6f2c; }
+.shop { position: absolute; left: 4%; top: 30%; width: 14cqw; height: 15cqw; }
+.shop .roof { height: 3.6cqw; background: repeating-linear-gradient(90deg, #ff8a2a 0 2cqw, #fff3df 2cqw 4cqw); border-radius: .6cqw .6cqw 0 0; }
+.shop .box { height: 11cqw; background: #8a5a35; border: .3cqw solid #5f3c22; display: grid; place-items: center;
+  font: 700 1.4cqw/1 var(--pix); color: #ffe3b8; }
+.portal { position: absolute; right: 5%; top: 24%; width: 11cqw; height: 18cqw; border-radius: 50%; border: 1.4cqw solid #ff9b2e;
+  box-shadow: 0 0 2.4cqw #ff9b2e99, inset 0 0 3cqw #fff4; background: radial-gradient(#fff8 0, #ffcf7a66 40%, transparent 70%); }
+
+/* the incubator stand */
+.stand { position: absolute; left: 50%; top: 9%; width: 26cqw; transform: translateX(-50%); display: grid; justify-items: center; }
+.timer { font: 700 1.9cqw/1 var(--pix); color: #fff; background: #0b0f16e6; border: .3cqw solid var(--red); border-radius: 1cqw;
+  padding: .8cqw 1.4cqw; display: flex; gap: 1cqw; align-items: center; white-space: nowrap; }
+.timer small { font: 700 1.2cqw/1 var(--pix); color: var(--red); letter-spacing: .05em; }
+.sign { margin-top: .8cqw; font: 700 1.5cqw/1.25 var(--pix); color: var(--ink); background: var(--yellow); border-radius: .8cqw;
+  padding: .6cqw 1.2cqw; text-align: center; box-shadow: 0 .4cqw 0 var(--lip); }
+.sign em { font-style: normal; color: #7a2b00; }
+.pod { position: relative; margin-top: 1.2cqw; width: 14cqw; height: 18cqw; }
+.lid { position: absolute; left: .6cqw; right: .6cqw; top: 0; height: 2cqw; background: #3a4350; border-radius: 1cqw 1cqw .3cqw .3cqw; }
+.lid::before, .lid::after { content: ""; position: absolute; top: .6cqw; width: 1cqw; height: .8cqw; background: #ff9b2e; border-radius: .3cqw; box-shadow: 0 0 .8cqw #ff9b2e; }
+.lid::before { left: 1.6cqw; } .lid::after { right: 1.6cqw; }
+.glass { position: absolute; left: 1.6cqw; right: 1.6cqw; top: 2cqw; bottom: 2.6cqw; border: .4cqw solid #9fb3c8;
+  border-radius: .6cqw; background: linear-gradient(90deg, #7fe9ff22, #7fe9ff55 30%, #7fe9ff18 60%, #ffffff33); box-shadow: 0 0 2cqw #7fe9ff66; }
+.base { position: absolute; left: 0; right: 0; bottom: 0; height: 2.8cqw; background: #2b323d; border-radius: .4cqw .4cqw 1cqw 1cqw;
+  border-top: .3cqw solid #7fe9ff; }
+.egg { position: absolute; left: 50%; top: 4.6cqw; width: 6.4cqw; height: 8.2cqw; margin-left: -3.2cqw; border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%;
+  background: radial-gradient(circle at 35% 30%, #fffdf2 0 18%, #f3e6c2 40%, #d9c48f 100%); box-shadow: 0 1cqw 1.6cqw #0006;
+  animation: float 2.4s ease-in-out infinite; }
+.egg i { position: absolute; border-radius: 50%; background: #a8d86a; }
+.egg i:nth-child(1) { left: 22%; top: 30%; width: 1.4cqw; height: 1.2cqw; } .egg i:nth-child(2) { left: 58%; top: 18%; width: 1cqw; height: 1cqw; background: #7fe9ff; }
+.egg i:nth-child(3) { left: 52%; top: 58%; width: 1.6cqw; height: 1.3cqw; } .egg i:nth-child(4) { left: 18%; top: 66%; width: .9cqw; height: .8cqw; background: #7fe9ff; }
+@keyframes float { 50% { transform: translateY(-1cqw) rotate(4deg); } }
+@media (prefers-reduced-motion: reduce) { .egg, .bigegg { animation: none !important; } }
+.stand.used .egg { filter: grayscale(.8) brightness(.8); animation: none; }
+.stand.gone { display: none; }
+
+/* Roblox ProximityPrompt look */
+.prompt { position: absolute; left: 60%; top: 52%; display: flex; align-items: center; gap: .8cqw; background: #000a; border-radius: 1cqw;
+  padding: .7cqw 1.2cqw .7cqw .7cqw; color: #fff; border: 0; }
+.prompt .k { width: 4.6cqw; height: 4.6cqw; border-radius: 50%; border: .3cqw solid #fff; display: grid; place-items: center; font: 700 1.6cqw var(--sans); }
+.prompt .tx { display: grid; text-align: left; } .prompt .tx b { font: 800 1.7cqw var(--sans); } .prompt .tx span { font: 600 1.2cqw var(--sans); color: #ddd; }
+
+/* island HUD bits, so it reads as the real screen */
+.rbx { position: absolute; left: 2.4%; top: 4%; display: flex; gap: .8cqw; }
+.rbx span { width: 4.4cqw; height: 4.4cqw; border-radius: 1.2cqw; background: #000a; display: grid; place-items: center; color: #fff; font: 700 1.6cqw var(--sans); }
+.hudr { position: absolute; right: 3%; top: 4%; display: flex; gap: .8cqw; }
+.hudr span { font: 700 1.5cqw/1 var(--pix); color: var(--yellow); background: #0b0f16e6; border: .3cqw solid var(--yellow); border-radius: 1cqw; padding: 1.1cqw 1.4cqw; }
+.joy { position: absolute; left: 6%; bottom: 8%; width: 9cqw; height: 9cqw; border-radius: 50%; background: #0003; border: .3cqw solid #fff5; }
+.atk { position: absolute; right: 6%; bottom: 8%; width: 10cqw; height: 10cqw; border-radius: 50%; background: #c8962e; border: .4cqw solid #ffe08a; display: grid; place-items: center; font: 700 1.4cqw var(--pix); color: #2b1d05; }
+/* C: the HUD egg chip */
+.chip { position: absolute; left: 50%; top: 4%; transform: translateX(-50%); display: none; align-items: center; gap: .8cqw;
+  background: #0b0f16e6; border: .3cqw solid var(--yellow); border-radius: 1.2cqw; padding: .5cqw 1.2cqw .5cqw .6cqw; color: #fff; min-height: 6cqw; }
+.chip .mini { width: 3.2cqw; height: 4cqw; border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%; background: radial-gradient(circle at 35% 30%, #fffdf2, #d9c48f); }
+.chip b { font: 700 1.4cqw/1.2 var(--pix); color: var(--yellow); display: block; } .chip small { font: 700 1.2cqw/1 var(--pix); color: var(--red); }
+.v-c .chip { display: flex; }
+.v-c .chip.hide { display: none; }
+
+/* Roblox favorite prompt (Roblox's own window, approximated) */
+.scrim { position: absolute; inset: 0; background: #000b; display: grid; place-items: center; }
+.rfav { width: 40cqw; background: #393b3d; border-radius: 1.4cqw; color: #fff; padding: 2.4cqw; display: grid; gap: 1.6cqw; text-align: center; font-family: var(--sans); }
+.rfav h3 { margin: 0; font: 800 2.2cqw var(--sans); } .rfav p { margin: 0; font: 600 1.5cqw/1.4 var(--sans); color: #d0d3d6; }
+.rfav .thumb { justify-self: center; width: 9cqw; height: 9cqw; border-radius: 1.2cqw; background: linear-gradient(135deg, #2b3a1d, #5e943e); display: grid; place-items: center; font: 700 1.2cqw var(--pix); color: #fff; }
+.rfav .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2cqw; }
+.rfav button { border: 0; border-radius: .8cqw; padding: 1.4cqw; font: 800 1.6cqw var(--sans); min-height: 6cqw; }
+.rfav .no { background: #5a5d60; color: #fff; } .rfav .yes { background: #fff; color: #111; }
+.note { position: absolute; left: 2%; bottom: 2%; font: 700 1.1cqw var(--pix); color: #fff9; }
+
+/* reveal */
+.reveal { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, #1b2434 0, #05080d 70%); display: grid; place-items: center; overflow: hidden; }
+.rays { position: absolute; width: 140cqw; height: 140cqw; left: 50%; top: 50%; margin: -70cqw 0 0 -70cqw; opacity: 0;
+  background: repeating-conic-gradient(var(--rc, #ffc832) 0 6deg, transparent 6deg 18deg); transition: opacity .4s; mask: radial-gradient(circle, #000 0, transparent 45%); }
+.reveal.burst .rays { opacity: .5; animation: spin 8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.bigegg { position: relative; width: 16cqw; height: 20.5cqw; border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%;
+  background: radial-gradient(circle at 35% 30%, #fffdf2 0 18%, #f3e6c2 40%, #d9c48f 100%); box-shadow: 0 2cqw 3cqw #000a; }
+.bigegg.rock { animation: rock .5s ease-in-out infinite; } .bigegg.rock2 { animation: rock .22s ease-in-out infinite; }
+@keyframes rock { 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
+.bigegg svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bigegg svg path { stroke: #4a3a1a; stroke-width: 2.4; fill: none; stroke-linecap: round; opacity: 0; transition: opacity .15s; }
+.bigegg.c1 svg .p1, .bigegg.c2 svg .p1, .bigegg.c2 svg .p2, .bigegg.c3 svg path { opacity: 1; }
+.tap { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); font: 700 1.6cqw var(--pix); color: var(--cyan); }
+.reel { position: absolute; left: 0; right: 0; top: 34%; height: 18cqw; overflow: hidden; display: none; }
+.reel .strip { display: flex; gap: 1.2cqw; position: absolute; left: 0; top: 0; will-change: transform; }
+.reel .mark { position: absolute; left: 50%; top: -1cqw; bottom: -1cqw; width: .5cqw; margin-left: -.25cqw; background: var(--yellow); box-shadow: 0 0 1.4cqw var(--yellow); z-index: 2; }
+.rc { width: 14cqw; height: 18cqw; flex: none; border-radius: 1.2cqw; background: #151d2b; border: .4cqw solid var(--r, #9fb3c8);
+  display: grid; justify-items: center; align-content: center; gap: .8cqw; padding: 1cqw; }
+.rc .sw { width: 8cqw; height: 8cqw; border-radius: 1cqw; }
+.rc b { font: 700 1.2cqw/1.2 var(--pix); color: #fff; text-align: center; } .rc small { font: 700 1cqw var(--pix); color: var(--r); }
+.prize { position: relative; display: grid; justify-items: center; gap: 1.2cqw; text-align: center; }
+.prize .kind { font: 700 1.5cqw/1 var(--pix); color: var(--ink); background: var(--rc); padding: .6cqw 1.2cqw; border-radius: .6cqw; }
+.prize .sw { width: 15cqw; height: 15cqw; border-radius: 2cqw; box-shadow: 0 0 3cqw var(--rc); }
+.prize h2 { margin: 0; font: 700 3.6cqw/1 var(--pix); color: #fff; }
+.prize .rar { font: 700 1.6cqw/1 var(--pix); color: var(--rc); letter-spacing: .1em; }
+.prize .extra { font: 600 1.5cqw var(--sans); color: var(--muted); }
+.prize .btns { display: flex; gap: 1.4cqw; margin-top: .6cqw; }
+.cta { font: 700 1.8cqw/1 var(--pix); color: var(--ink); background: var(--yellow); border: 0; border-radius: 1.2cqw; padding: 1.6cqw 3cqw;
+  box-shadow: 0 .6cqw 0 var(--lip); min-height: 6.6cqw; }
+.ghost { font: 700 1.8cqw/1 var(--pix); color: #fff; background: #1b2434; border: .3cqw solid var(--line); border-radius: 1.2cqw; padding: 1.6cqw 3cqw; min-height: 6.6cqw; }
+.toast { position: absolute; left: 50%; bottom: 6%; transform: translateX(-50%); font: 700 1.7cqw var(--pix); color: #fff; background: #0b0f16;
+  border: .3cqw solid var(--yellow); border-radius: 1.2cqw; padding: 1.2cqw 2cqw; white-space: nowrap; }
+
+/* odds panel */
+.odds { width: 52cqw; background: #0d1320f2; border: .3cqw solid var(--line); border-radius: 2cqw; padding: 2cqw; display: grid; gap: 1.2cqw; }
+.odds h3 { margin: 0; font: 700 2.4cqw var(--pix); color: #fff; display: flex; justify-content: space-between; align-items: center; }
+.odds .x { width: 5.6cqw; height: 5.6cqw; border-radius: 1cqw; background: #1b2434; border: .2cqw solid var(--line); color: #fff; font: 700 2cqw var(--pix); }
+.orow { display: grid; grid-template-columns: 14cqw 1fr 7cqw; gap: 1.2cqw; align-items: center; font: 700 1.4cqw var(--pix); }
+.orow .bar { height: 1.4cqw; border-radius: .7cqw; background: #1b2434; overflow: hidden; } .orow .bar i { display: block; height: 100%; background: var(--c); }
+.orow span:first-child { color: var(--c); } .orow span:last-child { text-align: right; color: #fff; }
+.odds p { margin: 0; font: 600 1.3cqw/1.4 var(--sans); color: var(--muted); }
+
+/* notes */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.card.on { border-color: var(--yellow); }
+.card h3 { margin: 0 0 6px; font: 700 14px var(--pix); color: #fff; }
+.card p, .card li { font-size: 13px; line-height: 1.5; color: var(--text); margin: 0; }
+.card ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.card .tag { font: 800 11px var(--sans); letter-spacing: .1em; color: var(--yellow); }
+.facts { font-size: 13px; line-height: 1.55; color: var(--muted); }
+.facts b { color: var(--text); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>FAVORITE EGG · OPTIONS v0.1</h1>
+    <p class="sub">An incubator on the island plaza with a floating egg: "LIKE + FAVORITE · FREE EGG ROLL", with a 48 h timer per player above it.
+      Tap the egg, Roblox's favorite window opens, and a favorite rolls one prize from everything in the game. Pick how the roll is shown.</p>
+  </header>
+
+  <div class="row" role="group" aria-label="Option">
+    <b>OPTION</b>
+    <button class="t" id="vA" aria-pressed="true">A · EGG HATCH</button>
+    <button class="t" id="vB" aria-pressed="false">B · PRIZE REEL</button>
+    <button class="t" id="vC" aria-pressed="false">C · HATCH + HUD EGG</button>
+  </div>
+  <div class="row" role="group" aria-label="State">
+    <b>TRY</b>
+    <button class="t" id="sFresh">NEW PLAYER</button>
+    <button class="t" id="sDecline">SAYS NO TO FAVORITE</button>
+    <button class="t" id="sUsed">ALREADY ROLLED</button>
+    <button class="t" id="sExpired">TIMER RAN OUT</button>
+    <button class="t" id="sOdds">ODDS</button>
+  </div>
+
+  <div class="phone v-a" id="phone">
+    <div class="sea"></div>
+    <div class="plaza"></div>
+    <div class="tree" style="left:22%"></div><div class="tree" style="left:70%;top:34%"></div>
+    <div class="shop"><div class="roof"></div><div class="box">SHOP</div></div>
+    <div class="portal"></div>
+
+    <div class="stand" id="stand">
+      <div class="timer"><small>LIMITED TIME</small><span id="clock">47:59:59</span></div>
+      <div class="sign">LIKE + FAVORITE<br><em>FREE EGG ROLL</em></div>
+      <div class="pod"><div class="lid"></div><div class="glass"></div><div class="egg" id="egg"><i></i><i></i><i></i><i></i></div><div class="base"></div></div>
+    </div>
+    <button class="prompt" id="prompt"><span class="k">E</span><span class="tx"><b id="promptB">FREE ROLL</b><span id="promptS">Favorite Egg</span></span></button>
+
+    <div class="rbx" aria-hidden="true"><span>⌂</span><span>≡</span><span>✎</span></div>
+    <button class="chip" id="chip"><span class="mini"></span><span><b>FREE EGG</b><small id="chipClock">47:59:59</small></span></button>
+    <div class="hudr" aria-hidden="true"><span>EMOTE</span><span>≡</span></div>
+    <div class="joy" aria-hidden="true"></div>
+    <div class="atk" aria-hidden="true">ATTACK</div>
+
+    <div id="layer"></div>
+  </div>
+
+  <section class="notes">
+    <div class="card on" id="nA"><span class="tag">A · EGG HATCH (RECOMMENDED)</span><h3>The egg cracks open</h3>
+      <ul><li>Big egg center screen, rocks and cracks (about 2 s, or tap to speed it up), bursts in the prize's rarity colour.</li>
+        <li>Same egg as the stand and the loading screen, so it feels like ours.</li>
+        <li>Trade-off: you don't see what you "almost" got.</li></ul></div>
+    <div class="card" id="nB"><span class="tag">B · PRIZE REEL</span><h3>Cards spin past and stop</h3>
+      <ul><li>A strip of real prize cards scrolls and slows onto the prize (about 4 s).</li>
+        <li>Shows off how much is in the egg (skins, emotes, trails, dinos).</li>
+        <li>Trade-off: feels like a case opening; longer; more UI to build.</li></ul></div>
+    <div class="card" id="nC"><span class="tag">C · HATCH + HUD EGG</span><h3>A as well, plus an egg chip on the HUD</h3>
+      <ul><li>A small "FREE EGG" chip with the timer at the top of the screen until you roll, anywhere on the island.</li>
+        <li>Tap it to roll from anywhere (same favorite window).</li>
+        <li>Trade-off: one more thing on a busy phone HUD.</li></ul></div>
+  </section>
+
+  <section class="card facts">
+    <h3>HOW IT WORKS (ALL OPTIONS)</h3>
+    <p><b>Tap</b> the egg → Roblox's own favorite window (the game). <b>Favorite</b> → the roll. <b>Cancel</b> → "FAVORITE TO ROLL", ask again any time.
+      Roblox has no like window and no way to check likes, so only the favorite is checked; the sign still asks for both.</p>
+    <p><b>Prize:</b> rarity first (proposed odds, all attributes: Common 50% · Rare 30% · Epic 10% · Legendary 5% · Dino 5%), then any item of that rarity you don't own yet.
+      A dino comes owned with every mecha part maxed. <b>One roll per player, ever.</b> <b>Timer:</b> 48 h from your first visit after launch; at zero the egg is gone for you.</p>
+    <p><b>Place:</b> the plaza rim at 225°, across from the ARENA portal (shop 160°, quests 290°). Sizes here are the phone sizes; every button is at least 44 px.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const phone = $("phone"), layer = $("layer"), stand = $("stand"), prompt = $("prompt");
+  const RAR = {
+    common: {label: "COMMON", c: "var(--common)"}, rare: {label: "RARE", c: "var(--rare)"}, epic: {label: "EPIC", c: "var(--epic)"},
+    legend: {label: "LEGENDARY", c: "var(--legend)"}, dino: {label: "DINO", c: "var(--dino)"}
+  };
+  // real items from UniversalSkins 1.5, EmoteCatalog, TrailCatalog, the 8 dinos
+  const POOL = [
+    {k: "SKIN", n: "Desert Runner", r: "common", sw: ["#d9b26a", "#8a6a3a"]}, {k: "SKIN", n: "Riverstone", r: "common", sw: ["#6f8796", "#3e4d57"]},
+    {k: "EMOTE", n: "Stomp Stomp", r: "common", sw: ["#ff9b2e", "#3a2a10"]}, {k: "TRAIL", n: "Fossil Prints", r: "common", sw: ["#d8cfb8", "#7a6a4a"]},
+    {k: "SKIN", n: "Arctic", r: "rare", sw: ["#e8f6ff", "#8fc7e8"]}, {k: "SKIN", n: "Sakura", r: "rare", sw: ["#ffc4d8", "#c94d7a"]},
+    {k: "EMOTE", n: "Mic Drop", r: "rare", sw: ["#7fe9ff", "#1b2434"]}, {k: "EMOTE", n: "Tea Time", r: "rare", sw: ["#c9e86a", "#4a5a1a"]},
+    {k: "TRAIL", n: "Rainbow Road", r: "rare", sw: ["#ff5a6e", "#ffc832", "#46e08a", "#4aa8ff"]}, {k: "TRAIL", n: "Lightning", r: "rare", sw: ["#fff27a", "#4aa8ff"]},
+    {k: "SKIN", n: "Lava", r: "epic", sw: ["#ff5a1a", "#2b0e05"]}, {k: "SKIN", n: "Venom", r: "epic", sw: ["#7cff4a", "#0e2b05"]},
+    {k: "SKIN", n: "Gold Hunter", r: "epic", sw: ["#ffd24a", "#7a5a10"]},
+    {k: "SKIN", n: "Void Matter", r: "legend", sw: ["#8a3cff", "#120524"]}, {k: "SKIN", n: "Prism", r: "legend", sw: ["#ff5a6e", "#7fe9ff", "#ffc832"]},
+    {k: "SKIN", n: "Hellfire", r: "legend", sw: ["#ff3a1a", "#ffb02e"]},
+    {k: "DINO", n: "Therizino", r: "dino", sw: ["#5e943e", "#283a1e"], extra: "OWNED · ALL MECHA PARTS MAXED"},
+    {k: "DINO", n: "Herrera", r: "dino", sw: ["#8a6a3a", "#3a2a10"], extra: "OWNED · ALL MECHA PARTS MAXED"}
+  ];
+  const ODDS = [["common", 50], ["rare", 30], ["epic", 10], ["legend", 5], ["dino", 5]];
+  let variant = "a", rolled = false, expired = false, forceDecline = false, ends = Date.now() + 48 * 3600e3 - 1000;
+
+  const swBg = (sw) => sw.length > 1 ? `linear-gradient(135deg, ${sw.map((c, i) => `${c} ${i * 100 / sw.length}% ${(i + 1) * 100 / sw.length}%`).join(", ")})` : sw[0];
+  function pick() {
+    let t = Math.random() * 100, r = "common";
+    for (const [k, w] of ODDS) { if (t < w) { r = k; break; } t -= w; }
+    const list = POOL.filter((p) => p.r === r);
+    return list[Math.floor(Math.random() * list.length)];
+  }
+  function fmt(ms) { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`; }
+  function paint() {
+    stand.classList.toggle("used", rolled);
+    stand.classList.toggle("gone", expired);
+    prompt.hidden = expired;
+    $("promptB").textContent = rolled ? "ROLLED ✓" : "FREE ROLL";
+    $("promptS").textContent = rolled ? "Thanks for the favorite!" : "Favorite Egg";
+    $("chip").classList.toggle("hide", rolled || expired);
+    phone.className = "phone v-" + variant;
+  }
+  setInterval(() => { const t = fmt(ends - Date.now()); $("clock").textContent = t; $("chipClock").textContent = t; }, 1000);
+
+  function clear() { layer.innerHTML = ""; }
+  function toast(t) { const d = document.createElement("div"); d.className = "toast"; d.textContent = t; layer.appendChild(d); setTimeout(() => d.remove(), 2200); }
+
+  function favWindow() {
+    clear();
+    layer.innerHTML = `<div class="scrim"><div class="rfav" role="dialog" aria-label="Favorite">
+      <div class="thumb">MECHA<br>DINO</div><h3>Favorite Experience</h3><p>Add Mecha Dino Arena to your Favorites?</p>
+      <div class="btns"><button class="no" id="fNo">Cancel</button><button class="yes" id="fYes">Favorite</button></div></div>
+      <span class="note">ROBLOX'S OWN WINDOW (LOOK APPROXIMATED)</span></div>`;
+    $("fNo").onclick = () => { clear(); toast("FAVORITE TO ROLL THE EGG"); };
+    $("fYes").onclick = () => { if (forceDecline) { forceDecline = false; clear(); toast("FAVORITE TO ROLL THE EGG"); return; } roll(); };
+  }
+  function prizeCard(p) {
+    const r = RAR[p.r];
+    return `<div class="prize" style="--rc:${r.c}"><span class="kind">${p.k}</span><div class="sw" style="background:${swBg(p.sw)}"></div>
+      <h2>${p.n.toUpperCase()}</h2><span class="rar">${r.label}</span>${p.extra ? `<span class="extra">${p.extra}</span>` : ""}
+      <div class="btns"><button class="cta" id="pEq">${p.k === "DINO" ? "PLAY IT" : "EQUIP"}</button><button class="ghost" id="pOk">NICE</button></div></div>`;
+  }
+  function done(p) {
+    rolled = true; paint();
+    const close = () => { clear(); toast(p.n.toUpperCase() + " UNLOCKED"); };
+    $("pEq").onclick = close; $("pOk").onclick = close;
+  }
+  function roll() {
+    const p = pick();
+    clear();
+    if (variant === "b") return reel(p);
+    layer.innerHTML = `<div class="reveal" id="rv" style="--rc:${RAR[p.r].c}"><div class="rays"></div>
+      <div class="bigegg rock" id="be"><svg viewBox="0 0 100 128" preserveAspectRatio="none"><path class="p1" d="M50 6 L44 26 L54 40 L46 58"/>
+      <path class="p2" d="M20 50 L34 56 L30 70 L42 78"/><path class="p3" d="M80 46 L66 60 L72 74 L60 86"/></svg></div>
+      <span class="tap">TAP TO HATCH</span></div>`;
+    const be = $("be"), rv = $("rv");
+    let stage = 0;
+    const next = () => {
+      stage++;
+      if (stage === 1) be.className = "bigegg rock c1";
+      else if (stage === 2) be.className = "bigegg rock2 c2";
+      else if (stage === 3) be.className = "bigegg rock2 c3";
+      else if (stage === 4) { clearInterval(tm); rv.classList.add("burst"); be.remove(); rv.querySelector(".tap").remove();
+        rv.insertAdjacentHTML("beforeend", prizeCard(p)); done(p); }
+    };
+    const tm = setInterval(next, 550);
+    rv.onclick = (e) => { if (stage < 4 && !e.target.closest("button")) next(); };
+  }
+  function reel(p) {
+    const cards = [];
+    for (let i = 0; i < 40; i++) cards.push(i === 34 ? p : POOL[Math.floor(Math.random() * POOL.length)]);
+    layer.innerHTML = `<div class="reveal" id="rv" style="--rc:${RAR[p.r].c}"><div class="rays"></div><div class="reel" style="display:block"><div class="mark"></div>
+      <div class="strip" id="strip">${cards.map((c) => `<div class="rc" style="--r:${RAR[c.r].c}"><div class="sw" style="background:${swBg(c.sw)}"></div><b>${c.n.toUpperCase()}</b><small>${c.k} · ${RAR[c.r].label}</small></div>`).join("")}</div></div></div>`;
+    const strip = $("strip"), rv = $("rv");
+    const cw = phone.clientWidth / 100, step = 15.2 * cw, target = 34 * step + 7 * cw - phone.clientWidth / 2 + (Math.random() - .5) * 8 * cw;
+    const t0 = performance.now(), D = matchMedia("(prefers-reduced-motion: reduce)").matches ? 10 : 4000;
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 4);
+      strip.style.transform = `translateX(${-target * e}px)`;
+      if (k < 1) requestAnimationFrame(tick);
+      else setTimeout(() => { rv.querySelector(".reel").remove(); rv.classList.add("burst"); rv.insertAdjacentHTML("beforeend", prizeCard(p)); done(p); }, 350);
+    };
+    requestAnimationFrame(tick);
+  }
+  function odds() {
+    clear();
+    layer.innerHTML = `<div class="scrim"><div class="odds" role="dialog" aria-label="Odds"><h3>EGG ODDS <button class="x" id="oX" aria-label="Close">X</button></h3>
+      ${ODDS.map(([k, w]) => `<div class="orow" style="--c:${RAR[k].c}"><span>${RAR[k].label}</span><span class="bar"><i style="width:${w * 2}%"></i></span><span>${w}%</span></div>`).join("")}
+      <p>Then one item of that rarity you don't own yet. Common = earnable skins, emotes, trails · Rare / Epic / Legendary = the R$ 149 / 499 / 999 items · Dino = a dino you don't own, every mecha part maxed.</p></div></div>`;
+    $("oX").onclick = clear;
+  }
+  function tapEgg() {
+    if (expired) return;
+    if (rolled) { toast("YOU ALREADY ROLLED · THANKS!"); return; }
+    favWindow();
+  }
+  prompt.onclick = tapEgg; $("egg").onclick = tapEgg; $("chip").onclick = tapEgg;
+
+  const setV = (v) => { variant = v; ["A", "B", "C"].forEach((x) => { $("v" + x).setAttribute("aria-pressed", String(x.toLowerCase() === v)); $("n" + x).classList.toggle("on", x.toLowerCase() === v); }); clear(); paint(); };
+  $("vA").onclick = () => setV("a"); $("vB").onclick = () => setV("b"); $("vC").onclick = () => setV("c");
+  $("sFresh").onclick = () => { rolled = false; expired = false; forceDecline = false; ends = Date.now() + 48 * 3600e3 - 1000; clear(); paint(); };
+  $("sDecline").onclick = () => { rolled = false; expired = false; forceDecline = true; paint(); favWindow(); };
+  $("sUsed").onclick = () => { rolled = true; expired = false; clear(); paint(); };
+  $("sExpired").onclick = () => { expired = true; ends = Date.now(); clear(); paint(); toast("THE FREE EGG HAS GONE"); };
+  $("sOdds").onclick = odds;
+  paint();
+})();
+</script>
