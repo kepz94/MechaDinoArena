@@ -108,6 +108,10 @@ VERSION = "1.6" -- v1.6 Lab coach on Lab 2.0 (Lab Revamp v1.0)
 --     reads BUY / UPGRADE -> "TAP BUY" / "TAP UPGRADE", "-1 PT".
 --   The buttons are found under that card (Lab 2.0 has an Actions frame on every card; 1.3's labActionBtn took the first).
 VERSION = "1.7" -- v1.7 welcome screen, dino passives, JUMP parts in step 6
+VERSION = "1.7.1" -- v1.7.1 the reveal's dino fits (wider camera)
+-- v1.7.1 (Kepu 2026-11-26 03:05 live, Therizino "cut off at the top"): drawReveal sets its dino view's camera FieldOfView to the
+--   script attribute TutRevealFov (default 44; dinoView's own 30 cut Therizino, Pachy, Teno and Dilo over a turn, measured in
+--   Studio). Switch: script attribute TutorialRevealFitEnabled (default true, read per draw; false = 1.7).
 -- v1.7 (plan docs/plans/WELCOME_MOVES_v1.0.md, MDA-594..597, mockup docs/mockups/welcome_moves_v0.2.html; Kepu 2026-11-26 after his
 --   first-time walkthrough: "the tutorial didn't explain that wings work through the jump button ... can climb up trees ... a
 --   welcome to mecha Dino, then a here's our roster screen"; picks "A", "Just have the climbing ability in the description of
@@ -869,6 +873,9 @@ local function drawReveal(rolled, animate)
 	corner(bar, UDim.new(0.5, 0))
 	stroke(bar, C.cyan, px(0.5, 3), 0.55)
 	local vf, turn = dinoView(holder, rolled)
+	if script:GetAttribute("TutorialRevealFitEnabled") ~= false and vf.CurrentCamera then -- v1.7.1: tall / long dinos fit
+		vf.CurrentCamera.FieldOfView = tonumber(script:GetAttribute("TutRevealFov")) or 44
+	end
 	-- the panel
 	local role = R.ROLE[rolled] or "FIGHTER"
 	local pw = math.min(px(44), W * 0.42)
@@ -1426,6 +1433,8 @@ for _, k in ipairs({"TutorialWelcomeEnabled", "TutorialRosterTitleEnabled", "Tut
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, true) end
 end
 if script:GetAttribute("TutJumpPartSkipAfter") == nil then script:SetAttribute("TutJumpPartSkipAfter", 20) end
+if script:GetAttribute("TutorialRevealFitEnabled") == nil then script:SetAttribute("TutorialRevealFitEnabled", true) end -- v1.7.1
+if script:GetAttribute("TutRevealFov") == nil then script:SetAttribute("TutRevealFov", 44) end -- v1.7.1
 local function welcomeOn() return script:GetAttribute("TutorialWelcomeEnabled") ~= false end
 local function drawWelcome()
 	backdrop()

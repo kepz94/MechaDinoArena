@@ -3674,3 +3674,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 ## Welcome + Passives v1.0 (TutorialRules 1.3 / Tutorial 1.7, 2026-11-26, plan docs/plans/WELCOME_MOVES_v1.0.md)
 - TutorialRules 1.3: none (pure module; data PASSIVES, JUMP_PARTS).
 - Tutorial 1.7 (script, read per draw unless noted): `TutorialWelcomeEnabled` (true), `TutorialRosterTitleEnabled` (true), `TutorialRosterPassiveEnabled` (true), `TutorialRevealPassiveEnabled` (true), `TutorialJumpPartsEnabled` (true, per draw and per character attribute change), `TutJumpPartSkipAfter` (20 s). Script-global table `WM` (welcomed, jpN, jpSince, jpTapAt, jpTok, markUsed).
+- Tutorial 1.7.1 (script, read per draw): `TutorialRevealFitEnabled` (true), `TutRevealFov` (44, the reveal's dino camera FOV).
