@@ -60,3 +60,9 @@ Files (docs/front_page_v1.0/, copies on Kepu's PC in C:\Users\Kepu_\Videos\Mecha
 Title not picked (options 1-3 in the mockup); description approved as in the v0.2 mockup. Upload is Kepu's.
 Restored after each shoot: Play stopped, ModeTestPractice nil, SkillTestMaxAllEnabled false, Raptor slots empty, panels and
 window as before.
+- 20:19 Kepu: "that's literally glitchy as hell. There's two shocks and the raptor face is blocked." The second "shock" was the
+  cannon's muzzle flash (ScreechServer muzzleFlash part "ShockMuzzleFlash", a see-through ball at the barrel for 0.2 s)
+  sitting on the Raptor's face. Re-shot (recording 20-20-55) with that part hidden on the filming client only
+  (LocalTransparencyModifier 1, Play session), Raptor turned so the ball leaves past the camera on the left; frame 3.50 s:
+  one ball clear of the head, face and cannon visible. Built with tools/frontpage/t3build.py (keeps the two largest
+  cut-out pieces: the Raptor and the ball). A cyan re-tint of the ball was tried and dropped (it flattened the glow).
