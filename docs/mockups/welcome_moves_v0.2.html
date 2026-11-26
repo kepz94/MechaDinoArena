@@ -1,0 +1,298 @@
+<title>Welcome and Passives</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Montserrat:wght@700;800;900&display=swap">
+<style>
+/* Welcome + Passives v0.2 (Kepu 2026-11-26 02:10 answers) (Kepu 2026-11-26 walkthrough feedback). Tokens = dino_showcase_v0.4 (the game's tutorial look).
+   Move copy = SkillTree PATHS[id].steps[1] / Tutorial SC_INFO, read 2026-11-26; short tags are NEW copy for approval.
+   Single dark look on purpose: these are game screens. */
+:root {
+  --bg: #0b0f16; --glow: #26324a; --card: #151d2b; --line: #2a3446; --yellow: #ffc832; --yellowDark: #b58a12; --ink: #1b1406;
+  --white: #fff; --text: #dfe6f0; --muted: #8a95a8; --green: #46e08a; --cyan: #7fe9ff; --pink: #ff6b84; --page: #07090e;
+  --grass: #2f5a2c; --sky: #16324a; --trunk: #6b4a2b; --leaf: #2f8a3a;
+  color-scheme: dark;
+}
+body { background: var(--page); color: var(--text); font-family: Montserrat, "Segoe UI", system-ui, sans-serif; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { font: 700 22px/1.2 Fredoka, system-ui, sans-serif; margin: 0; color: #fff; text-wrap: balance; }
+h2 { font: 700 18px Fredoka, system-ui, sans-serif; margin: 0; color: #fff; }
+.sub { color: var(--muted); font-size: 13px; margin: 4px 0 0; max-width: 75ch; line-height: 1.55; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tabs button, .ctl { font: 800 12px Montserrat, system-ui, sans-serif; letter-spacing: .06em; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-height: 44px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+.note { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--yellow); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.55; }
+.note b { color: #fff; }
+.note.warn { border-left-color: var(--pink); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* phone frame (iPhone 17 Pro landscape 750x381, as the Studio emulator) */
+.phone { position: relative; width: 100%; aspect-ratio: 750 / 381; container-type: inline-size; border-radius: 3.2cqw; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 55%, var(--glow) 0%, var(--bg) 62%); border: 6px solid #1a1f29; box-shadow: 0 10px 40px #0008; }
+.scr { position: absolute; inset: 0; }
+.scr[hidden] { display: none !important; }
+.fade { animation: fade .35s ease both; }
+@keyframes fade { from { opacity: 0; transform: scale(1.02) } to { opacity: 1; transform: none } }
+.btn { position: absolute; font: 700 2.1cqw Fredoka, sans-serif; color: var(--ink); background: var(--yellow); border: 0; border-bottom: .45cqw solid var(--yellowDark);
+  border-radius: 1cqw; padding: .9cqw 3.4cqw; cursor: pointer; z-index: 5; min-height: 5.9cqw; }
+.brand { font: 700 1.3cqw Fredoka, sans-serif; color: var(--yellow); letter-spacing: .25em; }
+.chip { display: inline-block; font: 900 1cqw Montserrat, sans-serif; letter-spacing: .1em; color: var(--ink); padding: .25cqw .7cqw; border-radius: .4cqw; }
+.badge { display: inline-block; font: 900 .95cqw Montserrat, sans-serif; letter-spacing: .08em; color: var(--ink); background: var(--yellow); border-radius: .4cqw; padding: .25cqw .6cqw; white-space: nowrap; min-width: 6.4cqw; text-align: center; }
+.badge.c { background: var(--cyan); } .badge.g { background: var(--green); } .badge.p { background: var(--pink); }
+.topbar { position: absolute; left: 1.4cqw; top: 1.2cqw; display: flex; gap: .8cqw; }
+.topbar i { width: 4.4cqw; height: 4.4cqw; border-radius: 1cqw; background: #0007; display: block; }
+
+/* dino block icon */
+.dino { position: relative; width: 100%; aspect-ratio: 1.5; }
+.dino b { position: absolute; border-radius: .3cqw; }
+
+/* welcome A */
+.wa-title { position: absolute; left: 0; right: 0; top: 8cqw; text-align: center; }
+.wa-title .w { font: 900 1.6cqw Montserrat, sans-serif; letter-spacing: .4em; color: var(--cyan); }
+.wa-title .t { font: 700 6.4cqw/1 Fredoka, sans-serif; color: #fff; text-shadow: 0 .5cqw 0 #000a; margin-top: .6cqw; }
+.wa-title .t span { color: var(--yellow); }
+.pillars { position: absolute; left: 50%; transform: translateX(-50%); top: 22.5cqw; display: grid; grid-template-columns: repeat(3, 19cqw); gap: 1.6cqw; }
+.pill { background: var(--card); border: .25cqw solid var(--line); border-radius: 1.4cqw; padding: 1.4cqw 1.4cqw 1.2cqw; text-align: center; }
+.pill .ic { font: 700 3.2cqw Fredoka, sans-serif; color: var(--yellow); line-height: 1; }
+.pill .n { font: 700 1.9cqw Fredoka, sans-serif; color: #fff; margin-top: .6cqw; }
+.pill .l { font: 800 1.15cqw/1.35 Montserrat, sans-serif; color: var(--muted); margin-top: .4cqw; }
+.pill { opacity: 0; animation: deal .45s ease forwards; }
+.pill:nth-child(2) { animation-delay: .12s } .pill:nth-child(3) { animation-delay: .24s }
+@keyframes deal { from { opacity: 0; transform: translateY(2cqw) } to { opacity: 1; transform: none } }
+
+/* welcome B: lineup */
+.lineup { position: absolute; left: 4cqw; right: 4cqw; bottom: 9cqw; display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.2cqw; align-items: end; }
+.lineup .d { filter: brightness(0); transition: filter .5s; }
+.lineup.lit .d { filter: none; }
+.lineup .d:nth-child(2) { transition-delay: .1s } .lineup .d:nth-child(3) { transition-delay: .2s } .lineup .d:nth-child(4) { transition-delay: .3s }
+.lineup .d:nth-child(5) { transition-delay: .4s } .lineup .d:nth-child(6) { transition-delay: .5s } .lineup .d:nth-child(7) { transition-delay: .6s }
+.wb-title { position: absolute; left: 0; right: 0; top: 7cqw; text-align: center; }
+.wb-title .t { font: 700 5.6cqw/1 Fredoka, sans-serif; color: #fff; }
+.wb-title .s { font: 900 1.4cqw Montserrat, sans-serif; letter-spacing: .14em; color: var(--text); margin-top: 1.2cqw; }
+.floor { position: absolute; left: 0; right: 0; bottom: 0; height: 10cqw; background: linear-gradient(#0000, #1d2638); }
+
+/* roster */
+.r-head { position: absolute; left: 3cqw; top: 6.6cqw; }
+.r-head .t { font: 700 3.1cqw Fredoka, sans-serif; color: #fff; }
+.r-head .s { font: 900 1.2cqw Montserrat, sans-serif; color: var(--text); letter-spacing: .1em; margin-top: .3cqw; }
+.r-list { position: absolute; left: 3cqw; top: 14.6cqw; width: 22cqw; display: grid; grid-template-columns: repeat(3, 1fr); gap: .8cqw; }
+.r-tile { background: var(--card); border: .25cqw solid var(--line); border-radius: 1cqw; padding: .5cqw; cursor: pointer; text-align: center; min-height: 6cqw; }
+.r-tile[aria-pressed="true"] { border-color: var(--yellow); }
+.r-tile .n { font: 900 .95cqw Montserrat, sans-serif; color: #fff; letter-spacing: .05em; margin-top: .3cqw; }
+.r-mid { position: absolute; left: 27cqw; top: 13cqw; width: 26cqw; }
+.r-mid .base { height: 3cqw; margin-top: -1cqw; border-radius: 50%; border: .35cqw solid var(--yellow); background: #0004; }
+.r-side { position: absolute; right: 2.4cqw; top: 3cqw; bottom: 2.4cqw; width: 42cqw; background: #0d1320ee; border: .25cqw solid var(--line); border-radius: 1.4cqw; padding: 1.4cqw 1.6cqw; overflow: hidden; display: flex; flex-direction: column; gap: .7cqw; }
+.r-side .nm { font: 700 3cqw/1 Fredoka, sans-serif; color: #fff; }
+.r-side h4 { margin: .6cqw 0 0; font: 900 1.05cqw Montserrat, sans-serif; letter-spacing: .14em; color: var(--muted); }
+.mv { display: grid; grid-template-columns: auto 1fr; gap: .9cqw; align-items: center; background: var(--card); border-radius: .8cqw; padding: .7cqw .9cqw; }
+.mv .n { font: 800 1.35cqw Montserrat, sans-serif; color: #fff; }
+.mv .l { font: 700 1.1cqw/1.35 Montserrat, sans-serif; color: var(--text); }
+.mv.new { outline: .2cqw solid var(--cyan); }
+.tag-new { font: 900 .8cqw Montserrat, sans-serif; color: var(--cyan); letter-spacing: .12em; margin-left: .5cqw; }
+
+/* training / island scenes */
+.sky { position: absolute; inset: 0; background: linear-gradient(var(--sky), #2b5a78 52%, var(--grass) 52%, #1f3f1e); }
+.tree { position: absolute; bottom: 22cqw; width: 4cqw; }
+.tree .trunk { position: absolute; left: 1cqw; bottom: 0; width: 2cqw; height: 17cqw; background: var(--trunk); border-radius: .4cqw; }
+.tree .top { position: absolute; left: -4cqw; bottom: 15cqw; width: 12cqw; height: 6cqw; background: var(--leaf); border-radius: 50%; }
+.me { position: absolute; width: 7cqw; transition: left .6s ease, bottom .6s ease; }
+.bot { position: absolute; width: 8cqw; }
+.obj { position: absolute; left: 50%; transform: translateX(-50%); top: 1.2cqw; width: 40cqw; background: #0d1320ee; border: .25cqw solid var(--line); border-radius: 1.2cqw; padding: 1cqw 1.4cqw; }
+.obj .st { font: 900 .95cqw Montserrat, sans-serif; color: var(--yellow); letter-spacing: .14em; }
+.obj .g { font: 700 1.8cqw Fredoka, sans-serif; color: #fff; margin: .2cqw 0 .5cqw; }
+.obj ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35cqw; }
+.obj li { font: 800 1.15cqw Montserrat, sans-serif; color: var(--muted); display: flex; gap: .7cqw; align-items: center; }
+.obj li.on { color: #fff; } .obj li.done { color: var(--green); }
+.obj li .k { width: 1.8cqw; height: 1.8cqw; border-radius: 50%; border: .2cqw solid currentColor; display: grid; place-items: center; font-size: 1cqw; flex: none; }
+.tbtn { position: absolute; border-radius: 50%; background: #0008; border: .3cqw solid #fff6; display: grid; place-items: center; font: 900 1.1cqw Montserrat, sans-serif; color: #fff; }
+.ring { position: absolute; border-radius: 50%; border: .5cqw solid var(--yellow); animation: pulse 1s ease-in-out infinite; pointer-events: none; }
+@keyframes pulse { 50% { transform: scale(1.15); opacity: .55 } }
+.call { position: absolute; background: var(--yellow); color: var(--ink); font: 900 1.2cqw Montserrat, sans-serif; padding: .6cqw 1cqw; border-radius: .7cqw; white-space: nowrap; }
+.toast { position: absolute; left: 50%; transform: translateX(-50%); background: #0d1320ee; border: .3cqw solid var(--cyan); border-radius: 1cqw; padding: .9cqw 1.6cqw; display: flex; gap: 1cqw; align-items: center; }
+.toast .t { font: 800 1.5cqw Montserrat, sans-serif; color: #fff; }
+.stick { position: absolute; left: 6cqw; bottom: 5cqw; width: 11cqw; height: 11cqw; border-radius: 50%; background: #0005; border: .3cqw solid #fff4; }
+
+/* audit table */
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
+th, td { text-align: left; padding: 9px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 900 11px Montserrat, sans-serif; letter-spacing: .1em; color: var(--muted); background: var(--card); }
+td.d { font: 700 14px Fredoka, sans-serif; color: #fff; }
+.y { color: var(--green); font-weight: 800; } .n { color: var(--pink); font-weight: 800; } .h { color: var(--yellow); font-weight: 800; }
+@media (max-width: 560px) { .tabs button { flex: 1 1 45%; } }
+</style>
+<style>
+.objr { position: absolute; left: 50%; transform: translateX(-50%); top: 1.2cqw; width: 36cqw; background: #0d1320f0; border: .2cqw solid #ffffff26; border-radius: 1cqw; overflow: hidden; display: flex; }
+.objr .acc { width: .6cqw; background: var(--yellow); flex: none; }
+.objr .b { padding: .8cqw 1.4cqw .9cqw 1.8cqw; display: grid; gap: .35cqw; flex: 1; }
+.objr .st { font: 700 1.4cqw Fredoka, sans-serif; color: var(--yellow); }
+.objr .g { font: 900 2.3cqw Montserrat, sans-serif; color: #fff; }
+.objr .ls { display: flex; flex-wrap: wrap; gap: .4cqw 1.2cqw; font: 900 1.3cqw Montserrat, sans-serif; }
+.objr .tip { font: 700 1.6cqw/1.3 Montserrat, sans-serif; color: var(--text); }
+.objr .segs { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35cqw; }
+.objr .segs i { height: .5cqw; border-radius: 1cqw; background: #ffffff26; }
+.callb { position: absolute; background: var(--yellow); color: var(--ink); border-radius: .8cqw; padding: .6cqw 1.1cqw; text-align: center; }
+.callb .big { font: 900 1.4cqw Montserrat, sans-serif; } .callb .sm { font: 800 1.05cqw Montserrat, sans-serif; }
+.slot { position: absolute; border-radius: 50%; background: #0008; border: .3cqw solid #fff6; display: grid; place-items: center; text-align: center; font: 900 .95cqw Montserrat, sans-serif; color: #fff; width: 7cqw; height: 7cqw; }
+.toast2 { position: absolute; left: 50%; top: 17cqw; transform: translateX(-50%); background: var(--green); color: var(--ink); font: 900 1.5cqw Montserrat, sans-serif; padding: .6cqw 1.4cqw; border-radius: .8cqw; }
+.mv.pas { outline: .2cqw solid var(--green); }
+</style>
+<div class="wrap">
+  <header>
+    <div class="brand" style="font-size:12px">MECHA DINO ARENA · MOCKUP v0.2 · 2026-11-26</div>
+    <h1>Welcome, roster passives and parts that fire another way</h1>
+    <p class="sub">From your answers: the glide is not a special move, it gets taught when Glider Wings is equipped. Climbing is a passive written under the dino's attack. Mecha parts that fire another way are taught in the "use each part" step with the real input. Welcome A stays as picked.</p>
+  </header>
+
+  <section style="display:grid;gap:10px">
+    <h2>1 · Welcome (A, as picked), then the roster with PASSIVE</h2>
+    <div class="phone" id="wPhone">
+      <div class="scr fade" id="wA">
+        <div class="topbar"><i></i><i></i></div>
+        <div class="wa-title"><div class="w">WELCOME TO</div><div class="t">MECHA <span>DINO</span> ARENA</div></div>
+        <div class="pillars">
+          <div class="pill"><div class="ic">⚔</div><div class="n">FIGHT</div><div class="l">Squad battles on the island</div></div>
+          <div class="pill"><div class="ic">⚙</div><div class="n">UPGRADE</div><div class="l">Mecha parts and skill points</div></div>
+          <div class="pill"><div class="ic">★</div><div class="n">COLLECT</div><div class="l">7 dinos, skins, emotes, trails</div></div>
+        </div>
+        <button class="btn go" style="left:50%;transform:translateX(-50%);bottom:3.4cqw">LET'S GO</button>
+      </div>
+      <div class="scr fade" id="wR" hidden>
+        <div class="topbar"><i></i><i></i></div>
+        <div class="r-head"><div class="t">MEET THE ROSTER</div><div class="s">1 OF THESE 7 IS YOURS FREE</div></div>
+        <div class="r-list" id="rList"></div>
+        <div class="r-mid"><div class="dino" id="rBig"></div><div class="base"></div></div>
+        <div class="r-side" id="rSide"></div>
+        <button class="btn" id="toEgg" style="left:40cqw;transform:translateX(-50%);bottom:2.4cqw">NEXT</button>
+      </div>
+    </div>
+    <div class="row"><button class="ctl" id="wRestart">RESTART FLOW</button><span class="sub" style="margin:0">Tap LET'S GO, then tap Herrera, Therizino or Troodon to see a PASSIVE row. The others have none.</span></div>
+    <div class="note">The roster panel is today's (Tutorial 1.5) with one new <b>PASSIVE</b> row under MAIN ATTACK (green outline), only for a dino with a built-in move that isn't a button. The ABILITIES list and its cards below it stay as they are (drawn simplified here).</div>
+  </section>
+
+  <section style="display:grid;gap:10px">
+    <h2>2 · "Free dino unlocked" with the passive</h2>
+    <div class="tabs" id="rvTabs">
+      <button aria-pressed="true" data-d="Herrera">HERRERA</button><button aria-pressed="false" data-d="Therizino">THERIZINO</button><button aria-pressed="false" data-d="Troodon">TROODON</button><button aria-pressed="false" data-d="Raptor">RAPTOR (NONE)</button>
+    </div>
+    <div class="phone">
+      <div class="scr">
+        <div class="topbar"><i></i><i></i></div>
+        <div class="r-mid" style="left:6cqw;top:9cqw;width:34cqw"><div class="dino" id="rvBig"></div><div class="base" style="border-color:var(--cyan)"></div></div>
+        <div class="r-side" style="width:50cqw" id="rvSide"></div>
+        <button class="btn" style="left:23cqw;transform:translateX(-50%);bottom:2.4cqw">NEXT</button>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:10px">
+    <h2>3 · "Use each part": a part that fires another way</h2>
+    <div class="tabs" id="pTabs">
+      <button aria-pressed="true" data-p="glider">HERRERA · GLIDER WINGS</button>
+      <button aria-pressed="false" data-p="mechalegs">PACHY · MECHA LEGS</button>
+      <button aria-pressed="false" data-p="tleap">TENO · HYDRAULIC LEAP</button>
+    </div>
+    <div class="phone" id="pPhone">
+      <div class="scr">
+        <div class="sky"></div>
+        <div class="bot dino" id="pBot" style="left:50cqw;bottom:21cqw"></div>
+        <div class="me dino" id="pMe" style="left:22cqw;bottom:21cqw"></div>
+        <div class="objr"><div class="acc"></div><div class="b">
+          <div class="st">STEP 3/5</div><div class="g">USE EACH PART</div>
+          <div class="ls" id="pList"></div>
+          <div class="tip" id="pTip"></div>
+          <div class="segs"><i style="background:var(--green)"></i><i style="background:var(--green)"></i><i style="background:var(--yellow)"></i><i></i><i></i></div>
+        </div></div>
+        <div class="stick"></div>
+        <div class="tbtn" style="right:5cqw;bottom:6cqw;width:9cqw;height:9cqw" id="pAtk">ATTACK</div>
+        <div class="slot" style="right:21cqw;bottom:4cqw" id="pS1">1</div>
+        <div class="slot" style="right:30cqw;bottom:10cqw" id="pS2">2</div>
+        <div class="tbtn" id="pJump" style="right:7cqw;bottom:21cqw;width:7.4cqw;height:7.4cqw">JUMP</div>
+        <div class="ring" id="pRing"></div>
+        <div class="callb" id="pCall"><div class="big" id="pBig"></div><div class="sm" id="pSm"></div></div>
+        <div class="toast2" id="pToast" hidden></div>
+      </div>
+    </div>
+    <div class="row"><button class="ctl" id="pDo">DO IT ▶</button><button class="ctl" id="pTap">TAP ITS SLOT BUTTON</button><button class="ctl" id="pReset">RESET</button></div>
+    <div class="note"><b>Today:</b> the coach points at the part's slot button, and a tap there counts as "used", but that button does nothing for these parts. <b>New:</b> for a part that fires through JUMP, the ring and callout go on the JUMP button with the real input, and it only counts when the move really happens (Glider: you glide; Mecha Legs: the air leap; Hydraulic Leap: the leap). A tap on its slot button no longer counts (try TAP ITS SLOT BUTTON). With today's equip order the Herrera gets Glider Wings and the Pachy gets Mecha Legs. The Teno gets Hydraulic Leap only if it's in its 4.</div>
+  </section>
+</div>
+<script>
+const COL = { Raptor:["#7a8f3a","#c9d36b"], Pachy:["#8a5a3a","#d9a066"], Herrera:["#9a3b2f","#e0785a"], Teno:["#4c6a8a","#9bc0de"],
+  Therizino:["#5f4a8a","#b59be0"], Dilo:["#3f7a4a","#f2c94c"], Troodon:["#3a7f86","#7fe9ff"] };
+function dinoSvg(el, name) {
+  const [a,b] = COL[name] || ["#555","#999"];
+  el.innerHTML = `<svg viewBox="0 0 60 40" style="width:100%;height:100%;display:block"><rect x="14" y="14" width="26" height="14" rx="2" fill="${a}"/>
+  <rect x="36" y="6" width="14" height="10" rx="2" fill="${a}"/><rect x="46" y="10" width="8" height="5" rx="1" fill="${b}"/>
+  <rect x="2" y="16" width="14" height="5" rx="2" fill="${a}"/><rect x="18" y="28" width="5" height="10" fill="${a}"/><rect x="31" y="28" width="5" height="10" fill="${a}"/>
+  <rect x="20" y="11" width="14" height="4" rx="1" fill="#9aa4b4"/><circle cx="46" cy="10" r="1.3" fill="#fff"/></svg>`;
+}
+const ROLE = { Pachy:["HOLDER","#ffc832"], Teno:["HOLDER","#ffc832"], Raptor:["FIGHTER","#ff6b84"], Herrera:["FIGHTER","#ff6b84"], Therizino:["FIGHTER","#ff6b84"], Dilo:["RANGED","#7fe9ff"], Troodon:["RANGED","#7fe9ff"] };
+const MAIN = { Raptor:[["TAP","Pounce","Jump on it and hang on."]], Pachy:[["TAP","Headbutt","Charge into it. You have 2 charges."]], Herrera:[["TAP","Dash Slash","Dash through it."]],
+  Teno:[["TAP","Scratch","Hits in front of you."],["HOLD","Tail Slam","Hits behind you. Turn your back to it."]], Therizino:[["TAP x3","Claw Combo","Tap 3 times. The 3rd hit is the big one."]],
+  Dilo:[["TAP","Spit","5 shots, then it reloads."]], Troodon:[["TAP","Glow Pod Toss","Lobs a pod. Aim a little ahead."]] };
+// built-in moves that aren't a button (native). New copy for approval.
+const PASSIVE = {
+  Herrera: [["PASSIVE","Tree Climber","Walk into a tree to climb it. SLASH from a tree drops onto the dino below."]],
+  Therizino: [["ON JUMP","Spin Dive","JUMP spins you forward. 3 charges."]],
+  Troodon: [["ON JUMP","Flap & Glide","JUMP, then JUMP twice more in the air. Then it glides."]]
+};
+const POOL = ["Raptor","Pachy","Herrera","Teno","Therizino","Dilo","Troodon"];
+const $ = id => document.getElementById(id);
+function panel(d, head) {
+  const [role, rc] = ROLE[d];
+  let h = head + `<div><span class="chip" style="background:${rc}">${role}</span></div><h4>MAIN ATTACK</h4>`;
+  MAIN[d].forEach(m => h += `<div class="mv"><span class="badge">${m[0]}</span><div><div class="n">${m[1]}</div><div class="l">${m[2]}</div></div></div>`);
+  if (PASSIVE[d]) { h += `<h4>PASSIVE</h4>`; PASSIVE[d].forEach(m => h += `<div class="mv pas"><span class="badge g">${m[0]}</span><div><div class="n">${m[1]}</div><div class="l">${m[2]}</div></div></div>`); }
+  return h;
+}
+let rPick = "Herrera";
+function show(id) { ["wA","wR"].forEach(s => $(s).hidden = s !== id); $(id).classList.remove("fade"); void $(id).offsetWidth; $(id).classList.add("fade"); }
+function roster() {
+  const list = $("rList"); list.innerHTML = "";
+  POOL.forEach(n => {
+    const b = document.createElement("button"); b.className = "r-tile"; b.setAttribute("aria-pressed", n === rPick);
+    const ic = document.createElement("div"); ic.className = "dino"; dinoSvg(ic, n);
+    const nm = document.createElement("div"); nm.className = "n"; nm.textContent = n.toUpperCase();
+    b.append(ic, nm); b.onclick = () => { rPick = n; roster(); }; list.appendChild(b);
+  });
+  dinoSvg($("rBig"), rPick);
+  $("rSide").innerHTML = panel(rPick, `<div class="nm">${rPick.toUpperCase()}</div>`) + `<h4>ABILITIES</h4><div class="mv"><div class="l" style="grid-column:1/3;color:var(--muted)">(today's ability list and card, unchanged)</div></div>`;
+}
+document.querySelector(".go").onclick = () => { show("wR"); roster(); };
+$("toEgg").onclick = () => {};
+$("wRestart").onclick = () => show("wA");
+// reveal
+function reveal(d) { dinoSvg($("rvBig"), d); $("rvSide").innerHTML = panel(d, `<div class="brand">FREE DINO UNLOCKED</div><div class="nm">${d.toUpperCase()}</div>`); }
+$("rvTabs").onclick = e => { const b = e.target.closest("button"); if (!b) return; document.querySelectorAll("#rvTabs button").forEach(x => x.setAttribute("aria-pressed", x === b)); reveal(b.dataset.d); };
+reveal("Herrera");
+// use each part
+const PARTS = {
+  glider: { dino: "Herrera", list: ["Quill Launcher","Glider Wings","Smoke Pods","Strobe Frill"], cur: 1, big: "JUMP, THEN HOLD JUMP", sm: "Glider Wings", tip: "Glider Wings works on JUMP. Jump, then hold JUMP in the air.", end: [44, 38], done: "✓ Glider Wings" },
+  mechalegs: { dino: "Pachy", list: ["Med-Station","Grappling Hook","Mecha Legs","Overclocked Servo Dash"], cur: 2, big: "JUMP, THEN JUMP AGAIN", sm: "Mecha Legs", tip: "Mecha Legs works on JUMP. Leap, then JUMP again in the air.", end: [44, 40], done: "✓ Mecha Legs" },
+  tleap: { dino: "Teno", list: ["Tail Grab & Fling","Boulder Mortar","Stomp Shockwave","Hydraulic Leap"], cur: 3, big: "TAP JUMP", sm: "Hydraulic Leap", tip: "Hydraulic Leap works on JUMP. Every jump is the leap.", end: [40, 30], done: "✓ Hydraulic Leap" }
+};
+let pk = "glider", pDone = false, pMsg;
+function drawP(msg) {
+  if (msg !== undefined) pMsg = msg; msg = pMsg;
+  const P = PARTS[pk];
+  dinoSvg($("pMe"), P.dino); dinoSvg($("pBot"), "Pachy");
+  $("pList").innerHTML = P.list.map((n, i) => { const d = i < P.cur || (i === P.cur && pDone); return `<span style="color:${d ? "var(--green)" : i === P.cur ? "#fff" : "var(--muted)"}">${d ? "✓" : "•"} ${n}</span>`; }).join("");
+  $("pTip").textContent = msg || (pDone ? "Nice. Next part." : P.tip);
+  const ring = $("pRing"), call = $("pCall");
+  ring.hidden = call.hidden = pDone;
+  if (!pDone) {
+    const pr = $("pPhone").getBoundingClientRect(), r = $("pJump").getBoundingClientRect(), u = pr.width / 100, pad = 1.2 * u;
+    Object.assign(ring.style, { left: (r.left - pr.left - pad) + "px", top: (r.top - pr.top - pad) + "px", width: (r.width + pad * 2) + "px", height: (r.height + pad * 2) + "px" });
+    $("pBig").textContent = P.big; $("pSm").textContent = P.sm;
+    call.style.right = "17cqw"; call.style.left = "auto"; call.style.top = (r.top - pr.top) + "px";
+  }
+  $("pToast").hidden = !pDone; $("pToast").textContent = P.done;
+  $("pMe").style.left = (pDone ? P.end[0] : 22) + "cqw"; $("pMe").style.bottom = (pDone ? P.end[1] : 21) + "cqw";
+}
+$("pDo").onclick = () => { pDone = true; drawP(null); };
+$("pTap").onclick = () => { pDone = false; drawP("That button does nothing for " + PARTS[pk].sm + ". It works on JUMP."); };
+$("pReset").onclick = () => { pDone = false; drawP(null); };
+$("pTabs").onclick = e => { const b = e.target.closest("button"); if (!b) return; pk = b.dataset.p; pDone = false; document.querySelectorAll("#pTabs button").forEach(x => x.setAttribute("aria-pressed", x === b)); drawP(null); };
+window.addEventListener("resize", () => drawP());
+drawP();
+</script>
