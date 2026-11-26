@@ -76,6 +76,10 @@ US.VERSION = "1.7" -- v1.7 Overtime (playtime skin)
 --   on a client, the local player's PlaytimeBase + time since PlaytimeAt, in whole minutes (the Lab tile shows n / 60). ORDER: after
 --   Holiday Lights. EggRules 1.2 keeps it out of the Favorite Egg. Switch: US.PLAYTIME_SKIN (true; false = 1.6).
 US.PLAYTIME_SKIN = true -- v1.7
+US.VERSION = "1.8" -- v1.8 Overtime at 30 min
+-- v1.8 (Kepu 2026-11-26 16:44 "Nah this is too crazy, cap out at 30 minutes to get the overtime skin"; points spread: standing pick, recommended): Overtime's need is US.PLAYTIME_NEED minutes (30; PlaytimeServer 1.1 grants it at 30 min) and its text says
+--   30 minutes. Switch: set US.PLAYTIME_NEED = 60 for the 1.7 numbers.
+US.PLAYTIME_NEED = 30 -- v1.8
 -- v1.5 (Quest Stand, plan docs/plans/QUEST_STAND_v1.0.md Task 3; Kepu 2026-11-26 "this is the only place where you can claim them",
 --   picks "Claim at the stand", "Always claimable"): with US.STAND_CLAIMS (true) the Zebra and Storm Front unlocks get
 --   claim = "stand" (SkinServer 1.7 no longer grants them by itself; QuestServer 1.0 grants them through SkinGrant when claimed) and
@@ -415,7 +419,8 @@ function US.playtimeSecs()
 end
 if US.PLAYTIME_SKIN then
 	US.SKINS.overtime = {name = "Overtime",
-		unlock = {kind = "earn", stat = "playtime", need = 60, claim = "playtime", text = "Play 60 minutes in one session, then claim it from the gift at the top"},
+		unlock = {kind = "earn", stat = "playtime", need = US.PLAYTIME_NEED, claim = "playtime", -- v1.8: need / text follow US.PLAYTIME_NEED
+			text = "Play " .. US.PLAYTIME_NEED .. " minutes in one session, then claim it from the gift at the top"},
 		cols = {belly = "2A2A30", claws = "0A0A0C", eyes = "FFC832", accent = "FFC832", mask = "0E0E10"}, mats = {eyes = "Neon", accent = "Neon"},
 		sw = {"141416", "FFC832", "2A2A30"},
 		pattern = function(slot, lp)

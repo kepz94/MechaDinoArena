@@ -24,6 +24,9 @@ local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 track capped at 30 min
+-- v1.1 (Kepu 2026-11-26 16:44 "Nah this is too crazy, cap out at 30 minutes to get the overtime skin"; points spread: standing pick, recommended): the cards follow PlaytimeServer 1.1: 5 / 10 / 15 MIN +1 PT, 20 / 25 MIN +2 PTS, 30 MIN OVERTIME SKIN.
+--   Switch: script attribute PlaytimeShortTrackEnabled (true, read at start; false = the 1.0 cards). Layout unchanged.
 script:SetAttribute("PlaytimeClientVersion", VERSION)
 for k, v in pairs({PlaytimeClientEnabled = true, PlaytimeChipY = 8, PlaytimePanelW = 720, PlaytimeClaimPresses = 0}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -35,6 +38,11 @@ local YELLOW, RED, GREEN, PLATE, CARD, MUTED = Color3.fromRGB(255, 200, 50), Col
 	Color3.fromRGB(13, 18, 24), Color3.fromRGB(21, 29, 41), Color3.fromRGB(143, 162, 184)
 local TRACK = {{t = 300, txt = "+1 PT"}, {t = 600, txt = "+1 PT"}, {t = 1200, txt = "+2 PTS"}, {t = 1800, txt = "+2 PTS"},
 	{t = 2700, txt = "+3 PTS"}, {t = 3600, txt = "OVERTIME SKIN"}}
+if script:GetAttribute("PlaytimeShortTrackEnabled") == nil then script:SetAttribute("PlaytimeShortTrackEnabled", true) end -- v1.1
+if script:GetAttribute("PlaytimeShortTrackEnabled") ~= false then
+	TRACK = {{t = 300, txt = "+1 PT"}, {t = 600, txt = "+1 PT"}, {t = 900, txt = "+1 PT"}, {t = 1200, txt = "+2 PTS"},
+		{t = 1500, txt = "+2 PTS"}, {t = 1800, txt = "OVERTIME SKIN"}}
+end
 
 local function new(class, props, parent)
 	local o = Instance.new(class)

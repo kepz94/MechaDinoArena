@@ -27,6 +27,10 @@ local MemoryStoreService = game:GetService("MemoryStoreService")
 local SSS = game:GetService("ServerScriptService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 track capped at 30 min
+-- v1.1 (Kepu 2026-11-26 16:44 "Nah this is too crazy, cap out at 30 minutes to get the overtime skin"; points spread: standing pick, recommended): TRACK = 300 +1 pt, 600 +1 pt, 900 +1 pt, 1200 +2 pts, 1500 +2 pts, 1800 the Overtime skin (3 pts if owned).
+--   Switch: script attribute PlaytimeShortTrackEnabled (true, read at start; false = the 1.0 60 min track). Claimed flags keep their
+--   slot numbers (6 rewards either way).
 script:SetAttribute("PlaytimeServerVersion", VERSION)
 for k, v in pairs({PlaytimeEnabled = true, PlaytimeStoreName = "MDA_Playtime_v1", PlaytimeTTL = 600, PlaytimeSaveGap = 30,
 	PlaytimeTestSpeed = 1, PlaytimeTestMemory = false, PlaytimeClaims = 0, PlaytimeSaves = 0, PlaytimeStoreErrors = 0}) do
@@ -36,6 +40,11 @@ if script:GetAttribute("PlaytimeEnabled") == false then return end
 
 local TRACK = {{t = 300, pts = 1}, {t = 600, pts = 1}, {t = 1200, pts = 2}, {t = 1800, pts = 2}, {t = 2700, pts = 3},
 	{t = 3600, skin = "overtime", alt = 3}}
+if script:GetAttribute("PlaytimeShortTrackEnabled") == nil then script:SetAttribute("PlaytimeShortTrackEnabled", true) end -- v1.1
+if script:GetAttribute("PlaytimeShortTrackEnabled") ~= false then
+	TRACK = {{t = 300, pts = 1}, {t = 600, pts = 1}, {t = 900, pts = 1}, {t = 1200, pts = 2}, {t = 1500, pts = 2},
+		{t = 1800, skin = "overtime", alt = 3}}
+end
 local N = #TRACK
 
 local map
