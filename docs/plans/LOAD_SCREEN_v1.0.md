@@ -53,3 +53,9 @@
 2. **Arena screen change.** You want the Arena screen kept. The double-screen fix (Task 2) is invisible on it, but the status words (Task 3) would add one short word next to the tip line ("JOINING", "WAITING FOR PLAYERS"). Keep the Arena screen exactly as is, or allow that one word?
 3. **The 95% hang is not fixed by this.** Task 3 only names its cause on the next hang. Accepted, or hold Task 3 until MDA-598 is solved?
 4. **Status is tied to real steps.** If a step never happens (no character), the bar holds at that step's cap until the 45 s timeout, same as today, but now with the word showing why.
+
+## Synthesis (Kepu 2026-11-26)
+- R2: "Allow the word" — the Arena / Bots briefing shows the step word in front of its tip; nothing else changes there.
+- R1: "Yes, build it" — built behind EggLoaderSeamlessEnabled; Studio harness (a disabled copy reading a fake arriving gui, removed after) showed no frame without a screen, the copy swapped out, % carried (45 → 46 ...), tip kept, EggLoaderArriveCopy "kept". Live portal trip still to confirm.
+- Publish: "With the load screen" (KillFeed 1.5 + EggLoader 1.8 ship with 1.9).
+- Studio fixes during the build: bar rate cap (EggLoaderBarRate 0.6/s; the asset part jumped 54% → 95%), LOADING before the hatch, glow behind the egg as a thin soft line, phone title minimums 13 / 36 px.
