@@ -118,15 +118,15 @@ for tag, (frame, bc, br) in VARIANTS.items():
     place(base, text3d('MECHA', 210, **GOLD_TXT), 720, 1430, 150)
     base.alpha_composite(arrow((W, H), (560, 340), (740, 140), (950, 290)))
     base.convert('RGB').save(os.path.join(D, 'thumb_dino_to_mecha_' + tag + '.jpg'), quality=92)
-    # icon 1024 x 1024
+    # icon 1024 x 1024 (v1.1e, Kepu 12:02 "KEEP THESE POSES JUST SPACE IT BETTER"): two even halves split near the middle, each
+    # dino big and centred in its half, the word over each, a small arrow between the heads; the mecha sits on top of the split
     W, H = 1024, 1024
-    R = gold(W, H, cx=0.7, cy=0.5)
-    place(R, MECH, 900, 600, 600)
-    base = split(W, H, 470, 330, sky_ground(W, H, 700), R, stripe=14)
-    place(base, PLAIN_I, 270, 170, 870)
-    place(base, text3d('DINO', 150, **WHITE_TXT), 380, 210, 120)
-    place(base, text3d('MECHA', 170, **GOLD_TXT), 520, 740, 120)
-    base.alpha_composite(arrow((W, H), (200, 700), (220, 470), (390, 420), width=34, head=80))
+    base = split(W, H, 575, 455, sky_ground(W, H, 690), gold(W, H, cx=0.75, cy=0.55), stripe=14)
+    place(base, PLAIN_I, 410, 225, 775)
+    place(base, MECH, 860, 780, 700)
+    place(base, text3d('DINO', 150, **WHITE_TXT), 370, 250, 140)
+    place(base, text3d('MECHA', 170, **GOLD_TXT), 440, 775, 140)
+    base.alpha_composite(arrow((W, H), (300, 400), (430, 250), (590, 350), width=30, head=66))
     base.convert('RGB').save(os.path.join(D, 'icon_dino_to_mecha_' + tag + '_1024.png'))
     base.convert('RGB').resize((512, 512), Image.LANCZOS).save(os.path.join(D, 'icon_dino_to_mecha_' + tag + '_512.png'))
 
