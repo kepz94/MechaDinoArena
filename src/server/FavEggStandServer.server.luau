@@ -12,14 +12,19 @@
 -- A ProximityPrompt on the base: ActionText "FREE ROLL", ObjectText "Favorite Egg", HoldDuration 0, MaxActivationDistance
 --   FavEggPromptRange (14), RequiresLineOfSight false. Model attributes for the server / client: FavEggFront (6 studs in front of the
 --   base, toward c), FavEggEgg (the egg's rest position).
--- Switches / numbers (script attributes, read at start): FavEggStandEnabled (true), FavEggStandAngle (225), FavEggPromptRange (14).
+-- Size: the stand is built at the sizes above, then Model:ScaleTo(FavEggStandScale (2.2)) about its ground point (Studio check
+--   2026-11-26: at 1x it was 16 studs tall next to the 46-stud shop); the sign's PixelsPerStud is 40 / scale so its text keeps its
+--   look; the timer billboard is sized in studs (6.6 x 1.45, times the scale) 3.4 x scale studs over the sign, so it no longer covers
+--   the sign from far away. ModelStreamingMode Persistent (StreamingEnabled: FavEggClient needs the egg, clock and prompt).
+-- Switches / numbers (script attributes, read at start): FavEggStandEnabled (true), FavEggStandAngle (225), FavEggPromptRange (20),
+--   FavEggStandScale (2.2), FavEggStandRadius (unset = the shop's distance from c).
 -- Diagnostics: FavEggStandServerVersion, FavEggStandState ("off" / "notHub" / "waiting" / "built" / "error: ...").
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.0"
 script:SetAttribute("FavEggStandServerVersion", VERSION)
-for k, v in pairs({FavEggStandEnabled = true, FavEggStandAngle = 225, FavEggPromptRange = 14}) do
+for k, v in pairs({FavEggStandEnabled = true, FavEggStandAngle = 225, FavEggPromptRange = 20, FavEggStandScale = 2.2}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function state(s) script:SetAttribute("FavEggStandState", s) end
@@ -80,7 +85,7 @@ local ok, err = pcall(function()
 	if old then old:Destroy() end
 	local c = Vector3.new(plaza.Position.X, 0, plaza.Position.Z)
 	local sp = shop:GetPivot()
-	local r = (Vector3.new(sp.Position.X, 0, sp.Position.Z) - c).Magnitude
+	local r = tonumber(script:GetAttribute("FavEggStandRadius")) or (Vector3.new(sp.Position.X, 0, sp.Position.Z) - c).Magnitude
 	local a = math.rad(tonumber(script:GetAttribute("FavEggStandAngle")) or 225)
 	local x, z = c.X + math.cos(a) * r, c.Z + math.sin(a) * r
 	local params = RaycastParams.new()
@@ -92,6 +97,7 @@ local ok, err = pcall(function()
 
 	local m = Instance.new("Model")
 	m.Name = "FavEggStand"
+	local SC = math.clamp(tonumber(script:GetAttribute("FavEggStandScale")) or 2.2, 0.5, 5)
 	local METAL, LID, CYAN, ORANGE = Color3.fromRGB(43, 50, 61), Color3.fromRGB(58, 67, 80), Color3.fromRGB(127, 233, 255),
 		Color3.fromRGB(255, 155, 46)
 	local baseP = cyl(m, "Base", 10, 1.6, base, 0, METAL, Enum.Material.Metal)
@@ -120,7 +126,7 @@ local ok, err = pcall(function()
 	local sg = Instance.new("SurfaceGui")
 	sg.Face = Enum.NormalId.Front
 	sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	sg.PixelsPerStud = 40
+	sg.PixelsPerStud = 40 / SC
 	sg.LightInfluence = 0
 	sg.Parent = sign
 	label(sg, "LIKE + FAVORITE", 70, Color3.fromRGB(27, 20, 6), 0.04, 0.36)
@@ -132,8 +138,8 @@ local ok, err = pcall(function()
 	-- the timer billboard (FavEggClient fills the clock per player)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "Timer"
-	bb.Size = UDim2.new(0, 250, 0, 54)
-	bb.StudsOffsetWorldSpace = Vector3.new(0, 3.4, 0)
+	bb.Size = UDim2.fromScale(6.6 * SC, 1.45 * SC) -- studs
+	bb.StudsOffsetWorldSpace = Vector3.new(0, 3.4 * SC, 0)
 	bb.MaxDistance = 140
 	bb.LightInfluence = 0
 	bb.Adornee = sign
@@ -145,9 +151,9 @@ local ok, err = pcall(function()
 	plate.Parent = bb
 	local cr = Instance.new("UICorner") cr.CornerRadius = UDim.new(0, 10) cr.Parent = plate
 	local st = Instance.new("UIStroke") st.Color = Color3.fromRGB(255, 90, 110) st.Thickness = 3 st.Parent = plate
-	local top = label(plate, "LIMITED TIME", 16, Color3.fromRGB(255, 90, 110), 0.06, 0.34)
+	local top = label(plate, "LIMITED TIME", 60, Color3.fromRGB(255, 90, 110), 0.06, 0.34)
 	top.Name = "Top"
-	local clock = label(plate, "48:00:00", 30, Color3.new(1, 1, 1), 0.38, 0.56)
+	local clock = label(plate, "48:00:00", 110, Color3.new(1, 1, 1), 0.38, 0.56)
 	clock.Name = "Clock"
 	-- the prompt
 	local pp = Instance.new("ProximityPrompt")
@@ -156,12 +162,15 @@ local ok, err = pcall(function()
 	pp.ObjectText = "Favorite Egg"
 	pp.HoldDuration = 0
 	pp.KeyboardKeyCode = Enum.KeyCode.E
-	pp.MaxActivationDistance = tonumber(script:GetAttribute("FavEggPromptRange")) or 14
+	pp.MaxActivationDistance = tonumber(script:GetAttribute("FavEggPromptRange")) or 20
 	pp.RequiresLineOfSight = false
 	pp.Parent = baseP
 	m.PrimaryPart = baseP
-	m:SetAttribute("FavEggFront", (base * CFrame.new(0, 0, -6)).Position)
-	m:SetAttribute("FavEggEgg", eggCF.Position)
+	m.WorldPivot = base
+	if SC ~= 1 then m:ScaleTo(SC) end
+	pcall(function() m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent end)
+	m:SetAttribute("FavEggFront", (base * CFrame.new(0, 0, -6 * SC)).Position)
+	m:SetAttribute("FavEggEgg", egg.Position)
 	m.Parent = workspace
 end)
 state(ok and "built" or ("error: " .. tostring(err)))

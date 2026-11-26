@@ -24,6 +24,8 @@
 --   with the dino name; points = yellow "+10".
 -- Switches (script attributes): FavEggClientEnabled (true, read at start), FavEggReelTime (4), FavEggSeenNear (55),
 --   FavEggFavoriteId (unset = game.PlaceId), FavEggTestFakeFavorite (false; Studio only: skip Roblox's window and answer Success).
+-- PC mouse: while the reveal is up, MouseBehavior Default and the cursor shown right after the camera (RenderStep "FavEggMouse",
+--   Camera + 1; the QuestScreen 1.1 / Lab pattern), so NICE / EQUIP can be clicked under ShoulderCam.
 -- Diagnostics: FavEggClientVersion, FavEggFavResult (the last PromptSetFavoriteCompleted result), FavEggRevealShown (count).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -193,6 +195,7 @@ end
 local function clearStage() for _, c in ipairs(stage:GetChildren()) do if not c:IsA("UIScale") then c:Destroy() end end end
 local function close(msg)
 	gui.Enabled = false
+	pcall(function() RunService:UnbindFromRenderStep("FavEggMouse") end)
 	clearStage()
 	if msg then showToast(msg) end
 end
@@ -214,7 +217,7 @@ local function showPrize(prize)
 	local rays = frame(stage, "Rays", W / 2 - 420, H / 2 - 420, 840, 840)
 	for i = 1, 8 do
 		local r = frame(rays, "Ray" .. i, 410, 0, 20, 840, t[2])
-		r.BackgroundTransparency = 0.82
+		r.BackgroundTransparency = 0.88
 		r.Rotation = i * 22.5
 	end
 	if not reducedMotion() then
@@ -272,6 +275,12 @@ local function reveal(prize, reel)
 	fit()
 	clearStage()
 	gui.Enabled = true
+	local UIS = game:GetService("UserInputService")
+	pcall(function() RunService:UnbindFromRenderStep("FavEggMouse") end)
+	RunService:BindToRenderStep("FavEggMouse", Enum.RenderPriority.Camera.Value + 1, function()
+		UIS.MouseBehavior = Enum.MouseBehavior.Default
+		UIS.MouseIconEnabled = true
+	end)
 	local holder = frame(stage, "Reel", 0, 130, W, 190)
 	holder.ClipsDescendants = true
 	local strip = frame(holder, "Strip", 0, 5, 10, 180)
@@ -297,8 +306,10 @@ end
 local remote = ReplicatedStorage:WaitForChild("FavEggRequest", 60)
 local stand = workspace:WaitForChild("FavEggStand", 120)
 if not (remote and stand) then return end
-local prompt = stand:FindFirstChild("FavEggPrompt", true)
-local egg = stand:FindFirstChild("Egg")
+local baseP = stand:WaitForChild("Base", 30) -- the model is Persistent; these waits cover a slow first stream
+local prompt = baseP and baseP:WaitForChild("FavEggPrompt", 30)
+local egg = stand:WaitForChild("Egg", 30)
+stand:WaitForChild("Sign", 30)
 local eggRest = egg and egg.CFrame
 local spots = {}
 for _, d in ipairs(stand:GetDescendants()) do

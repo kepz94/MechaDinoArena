@@ -16,7 +16,7 @@
 --   ("favorited") -> result, prize, reel. The client sends it after Roblox's favorite window answered Success
 --     (AvatarEditorService.PromptSetFavoriteCompleted; the server cannot check a favorite: red-team R1, accepted). Hub only,
 --     loaded, within FavEggRange (24) + 6 studs of FavEggFront, state "open", the other stores loaded (SkinOwnedU set,
---     EmoteSaveState / TrailSaveState loaded or saved, TutState not "wait"); one request at a time. EggRules.pick over the items
+--     EmoteSaveState / TrailSaveState loaded / saved / new / saveFailed, TutState not "wait"); one request at a time. EggRules.pick over the items
 --     the player does not own (SkinOwnedU, EmoteOwned, TrailOwned, OwnedDinos) with the odds FavEggOddsCommon / Rare / Epic /
 --     Legend / Dino (60 / 30 / 5 / 2 / 3, read per roll). One UpdateAsync writes roll (refused when a roll is stored or the window
 --     is over) -> "ok", prize {kind, id, name, tier}, reel (FavEggReelLen (40) items, the prize at FavEggReelAt (34)). The grant
@@ -181,7 +181,7 @@ local function load(player)
 end
 
 local function othersLoaded(player)
-	local function ok(s) return s == "loaded" or s == "saved" end
+	local function ok(s) return s == "loaded" or s == "saved" or s == "new" or s == "saveFailed" end -- "new": loaded, no record yet
 	return player:GetAttribute("SkinOwnedU") ~= nil and ok(player:GetAttribute("EmoteSaveState"))
 		and ok(player:GetAttribute("TrailSaveState")) and player:GetAttribute("TutState") ~= "wait"
 		and player:GetAttribute("TutState") ~= nil
