@@ -15,8 +15,12 @@
 --     m = practiceMul in practice, else 1. round = floor(x + 0.5).
 --   compute(rows, winner, practice, cfg) -> {mvp = id | "", svp = id | "", rows = {[id] = lines}} (humans only).
 --   cfg: any field missing / not a number -> CFG's.
+-- v1.1 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T6b, MDA-580; red-team R2 "Fake XP, MVP humans only"): compute also
+--   gives lines for rows with bot == true and p == true (filler bot personas): the row counted as a player's with pk = k, plus
+--   shown = true and granted = false (display only: HardpointServer grants "u<UserId>" ids only). MVP / SVP still pick humans
+--   only (pick unchanged). Switch: cfg.personaLines (default true; false = 1.0).
 local M = {}
-M.VERSION = "1.0"
+M.VERSION = "1.1"
 M.CFG = {mvpKill = 100, mvpSec = 10, kill = 50, sec = 1, win = 100, draw = 50, mvp = 50, svp = 25, practiceMul = 0.1}
 
 local function num(v) return type(v) == "number" and v == v and v or 0 end
@@ -96,7 +100,16 @@ function M.compute(rows, winner, practice, cfg)
 	res.mvp, res.svp = mvp or "", svp or ""
 	local ctx = {winner = winner, practice = practice == true, mvpId = mvp, svpId = svp}
 	for _, r in ipairs(rows) do
-		if type(r) == "table" and r.bot ~= true and r.id ~= nil then res.rows[tostring(r.id)] = M.lines(r, ctx, cfg) end
+		if type(r) == "table" and r.bot ~= true and r.id ~= nil then
+			res.rows[tostring(r.id)] = M.lines(r, ctx, cfg)
+		elseif type(r) == "table" and r.bot == true and r.p == true and r.id ~= nil
+			and not (type(cfg) == "table" and cfg.personaLines == false) then -- v1.1: persona bots, display only
+			local h = table.clone(r)
+			h.bot, h.pk = false, num(r.k)
+			local l = M.lines(h, ctx, cfg)
+			l.shown, l.granted = true, false
+			res.rows[tostring(r.id)] = l
+		end
 	end
 	return res
 end

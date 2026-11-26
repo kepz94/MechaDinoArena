@@ -1,4 +1,5 @@
 -- MatchAwards.spec v1.0 (Mecha Dino Arena) — MatchAwards 1.0 (plan docs/plans/MATCH_END_v1.0.md Task 1, MDA-461).
+-- v1.1 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T6b, MDA-580): persona bot rows (bot + p) get display-only lines.
 -- Run in Studio Edit (clones ServerStorage.DinoArcade.MatchAwards); returns "PASS n" or "FAIL ...".
 local src = game:GetService("ServerStorage").DinoArcade:FindFirstChild("MatchAwards")
 if not src then return "FAIL require: MatchAwards missing" end
@@ -9,7 +10,7 @@ if not okR then return "FAIL require: " .. tostring(R) end
 local fails, passes = {}, 0
 local function eq(name, got, want) if got == want then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end end
 
-eq("version", R.VERSION, "1.0")
+eq("version", R.VERSION, "1.1")
 eq("cfg", R.CFG.kill == 50 and R.CFG.sec == 1 and R.CFG.win == 100 and R.CFG.draw == 50 and R.CFG.mvp == 50 and R.CFG.svp == 25
 	and R.CFG.practiceMul == 0.1 and R.CFG.mvpKill == 100 and R.CFG.mvpSec == 10, true)
 -- score
@@ -85,5 +86,25 @@ res = R.compute(nil, "A", false)
 eq("c nil", res.mvp .. "|" .. res.svp, "|")
 local n = 0 for _ in pairs(res.rows) do n += 1 end
 eq("c nil rows", n, 0)
+-- v1.1: persona bot rows (filler bots) get display-only lines, never MVP / SVP
+local prow = {
+	{id = "u1", team = "A", bot = false, k = 1, d = 2, pt = 10, pk = 1},
+	{id = "bPBot_Mossy", team = "A", bot = true, p = true, k = 9, d = 0, pt = 60, pk = 0},
+	{id = "bPBot_Fang", team = "B", bot = true, k = 5, d = 1, pt = 30, pk = 0},
+	{id = "u2", team = "B", bot = false, k = 0, d = 3, pt = 0, pk = 0},
+}
+res = R.compute(prow, "A", false)
+eq("p mvp is the human", res.mvp, "u1")
+eq("p svp is the human", res.svp, "u2")
+eq("p persona has lines", res.rows["bPBot_Mossy"] ~= nil, true)
+eq("p persona total", res.rows["bPBot_Mossy"] and res.rows["bPBot_Mossy"].total, 9 * 50 + 60 + 100)
+eq("p persona shown", res.rows["bPBot_Mossy"] and res.rows["bPBot_Mossy"].shown, true)
+eq("p persona not granted", res.rows["bPBot_Mossy"] and res.rows["bPBot_Mossy"].granted, false)
+eq("p plain bot nothing", res.rows["bPBot_Fang"], nil)
+eq("p human u1", res.rows.u1.total, 50 + 10 + 100 + 50)
+res = R.compute(prow, "A", false, {personaLines = false})
+eq("p switch off", res.rows["bPBot_Mossy"], nil)
+res = R.compute(prow, "A", true)
+eq("p practice mul", res.rows["bPBot_Mossy"] and res.rows["bPBot_Mossy"].total, 0 + 6 + 10)
 if #fails > 0 then return "FAIL " .. #fails .. ": " .. table.concat(fails, " | ") end
 return "PASS " .. passes
